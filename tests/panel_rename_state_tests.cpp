@@ -3,6 +3,7 @@
 #include "CPP/7zip/UI/FileManager/Panel.h"
 #include "filetable.h"
 #include "layout_inspection.h"
+#include "native_link_fixture.h"
 #include "window_state_support.h"
 #include <QFile>
 #include <QMessageBox>
@@ -18,6 +19,116 @@ class PanelRenameStateTests final : public QObject, protected MainWindowTestSupp
         return file.open(QIODevice::WriteOnly) && file.write(bytes) == bytes.size();
     }
   private slots:
+    void activationUsesFocusedRow_data() {
+        QTest::addColumn<unsigned>("pane");
+        QTest::addColumn<bool>("alternative");
+        QTest::addColumn<bool>("icons");
+        QTest::addColumn<bool>("link");
+        for (unsigned pane : {0u, 1u})
+            for (bool alternative : {false, true})
+                for (bool icons : {false, true})
+                    QTest::newRow(
+                        qPrintable(QString("%1-%2-%3").arg(pane).arg(alternative).arg(icons)))
+                        << pane << alternative << icons << false;
+        QTest::newRow("link-table") << 0u << false << false << true;
+        QTest::newRow("link-icons-alternative") << 1u << true << true << true;
+    }
+    void activationUsesFocusedRow() {
+        QFETCH(unsigned, pane);
+        QFETCH(bool, alternative);
+        QFETCH(bool, icons);
+        QFETCH(bool, link);
+        const QString settings = qEnvironmentVariable("SEVENZIP_SETTINGS_PATH");
+        QFile::remove(settings);
+        CFmSettings preferences;
+        preferences.Load(settings);
+        preferences.ShowDots = false;
+        preferences.AlternativeSelection = alternative;
+        preferences.Save(settings);
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString original = QStringLiteral("focused 文件.txt");
+        const QString peer = QStringLiteral("marked δ.txt");
+        const QString renamed = QStringLiteral("renamed 空.txt");
+        QTemporaryDir linkTarget;
+        QVERIFY(linkTarget.isValid());
+        const QString target = linkTarget.filePath("keep-target.bin");
+        if (link) {
+            QVERIFY(write(target, "focus bytes"));
+            QVERIFY(CreateNativeSymbolicLink(fixture.filePath(original), target));
+        } else
+            QVERIFY(write(fixture.filePath(original), "focus bytes"));
+        QVERIFY(write(fixture.filePath(peer), "mark bytes"));
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        window.show();
+        action(window, "twoPanelsAction")->trigger();
+        auto *ui = window.findChild<QWidget *>(QString("filePanel%1").arg(pane));
+        auto *view = static_cast<FileTable *>(ui->findChild<QTableWidget *>("archiveTable"));
+        auto *address = ui->findChild<QLineEdit *>("archivePath");
+        address->setFocus();
+        address->setText(fixture.path());
+        QTest::keyClick(address, Qt::Key_Return);
+        QTRY_COMPARE(view->rowCount(), 2);
+        view->sourcePanel->Set_AutoRefresh_Mode(false);
+        int focusedRow = -1;
+        for (int row = 0; row < view->rowCount(); ++row)
+            if (view->item(row, 0)->data(Qt::UserRole + 3).toString() == original)
+                focusedRow = row;
+        QVERIFY(focusedRow >= 0);
+        view->sourcePanel->SelectSpec(alternative ? ToUString(peer) : UString(L"*"), true);
+        view->selectionModel()->setCurrentIndex(view->model()->index(focusedRow, 0),
+                                                QItemSelectionModel::NoUpdate);
+        action(window, icons ? "viewMode0Action" : "viewMode3Action")->trigger();
+        auto *active =
+            icons ? static_cast<QAbstractItemView *>(ui->findChild<QListView *>("iconList"))
+                  : static_cast<QAbstractItemView *>(view);
+        QVERIFY(active);
+        active->setFocus();
+        UStringVector savedMarks;
+        view->sourcePanel->GetSelectedNames(savedMarks);
+        QVERIFY(action(window, "renameAction")->isEnabled());
+        action(window, "renameAction")->trigger();
+        auto *editor = active->findChild<QLineEdit *>();
+        QVERIFY(editor);
+        QCOMPARE(editor->text(), original);
+        for (const QSize size : {QSize(980, 620), QSize(640, 400)}) {
+            window.resize(size);
+            QApplication::processEvents();
+            QVERIFY(UiInspection::fullyVisible(*editor, window));
+            QVERIFY(UiInspection::writeReport(
+                window,
+                QString("rename-activation-%1-%2").arg(QTest::currentDataTag()).arg(size.width())));
+        }
+        QTest::keyClick(editor, Qt::Key_Escape);
+        QTRY_VERIFY(!active->findChild<QLineEdit *>());
+        QVERIFY(QFileInfo::exists(fixture.filePath(original)));
+        UStringVector remainingMarks;
+        view->sourcePanel->GetSelectedNames(remainingMarks);
+        QCOMPARE(remainingMarks.Size(), savedMarks.Size());
+        FOR_VECTOR(i, savedMarks)
+        QCOMPARE(remainingMarks[i], savedMarks[i]);
+        action(window, "renameAction")->trigger();
+        editor = active->findChild<QLineEdit *>();
+        QVERIFY(editor);
+        editor->setText(renamed);
+        QTest::keyClick(editor, Qt::Key_Return);
+        QTRY_VERIFY(QFileInfo::exists(fixture.filePath(renamed)));
+        QVERIFY(!QFileInfo::exists(fixture.filePath(original)));
+        QFile preserved(fixture.filePath(peer));
+        QVERIFY(preserved.open(QIODevice::ReadOnly));
+        QCOMPARE(preserved.readAll(), QByteArray("mark bytes"));
+        QFile changed(fixture.filePath(renamed));
+        QVERIFY(changed.open(QIODevice::ReadOnly));
+        QCOMPARE(changed.readAll(), QByteArray("focus bytes"));
+        if (link) {
+            QVERIFY(QFileInfo(fixture.filePath(renamed)).isSymLink());
+            QCOMPARE(QFileInfo(fixture.filePath(renamed)).symLinkTarget(), target);
+            QFile untouched(target);
+            QVERIFY(untouched.open(QIODevice::ReadOnly));
+            QCOMPARE(untouched.readAll(), QByteArray("focus bytes"));
+        }
+    }
     void editorPreservesSavedSelection_data() {
         QTest::addColumn<unsigned>("sourceIndex");
         QTest::addColumn<QString>("language");

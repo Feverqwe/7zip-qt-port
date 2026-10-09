@@ -38,6 +38,12 @@ or in `Resources/7zip`. `SEVENZIP_ENGINE_PATH` explicitly selects an engine;
 a missing explicit path reports an error. Standalone `7zz` remains the fallback.
 Codecs/Formats discovery follows original LoadCodecs from the confirmed deployment;
 native modules must agree with the dynamic engine's reported libraries.
+Native regression fixtures also cache `SEVENZIP_CODEC_MODULE` in CMake. When
+preparing a fresh checkout or changing deployments, configure that variable to
+the same pinned module, for example `cmake --preset dev
+-DSEVENZIP_CODEC_MODULE="$PWD/build/codec-runtime/7z.so"` on macOS/Linux
+(`7z.dll` on Windows), before building and running the gate. Copying runtime
+artifacts alone does not replace an already cached system-module path.
 Current package statuses belong in [the checklist](porting-checklist.md).
 On Windows, `scripts/build-codec-runtime.ps1 -Architecture arm64` (or `x64`/`x86`)
 uses a matching developer environment and the same optional source/output arguments

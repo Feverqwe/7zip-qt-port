@@ -359,7 +359,6 @@ class MainWindowNavigationTests : public QObject, protected MainWindowTestSuppor
         QVERIFY(action(window, "copyAction")->isEnabled());
         QVERIFY(action(window, "moveAction")->isEnabled());
         QVERIFY(!action(window, "deleteAction")->isEnabled());
-        QVERIFY(!action(window, "renameAction")->isEnabled());
 
         QVERIFY(backend.prepareArchiveFixture("first.7z"));
         backend.queueListAction([&] {
@@ -398,6 +397,7 @@ class MainWindowNavigationTests : public QObject, protected MainWindowTestSuppor
                  QFileInfo("second.zip").absoluteFilePath());
         QCOMPARE(table(window)->rowCount(), 0);
         QVERIFY(action(window, "backAction")->isEnabled());
+        QVERIFY(!action(window, "renameAction")->isEnabled());
         QVERIFY(action(window, "parentFolderAction")->isEnabled());
         QVERIFY(!action(window, "openItemAction")->isEnabled());
         QVERIFY(!action(window, "selectAllAction")->isEnabled());

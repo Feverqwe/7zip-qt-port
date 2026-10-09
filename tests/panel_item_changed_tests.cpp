@@ -149,7 +149,7 @@ class PanelItemChangedTests final : public QObject, protected MainWindowTestSupp
         list->selectRow(0);
         QVERIFY(action(window, "renameAction")->isEnabled());
         list->selectAll();
-        QVERIFY(!action(window, "renameAction")->isEnabled());
+        QVERIFY(action(window, "renameAction")->isEnabled());
         marks(panel, 2);
         path(window, 1 - pane)->setFocus();
         for (const QSize size : {QSize(980, 620), QSize(640, 400)}) {

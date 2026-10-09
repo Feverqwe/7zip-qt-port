@@ -77,10 +77,7 @@ void QtFileManagerCommands::EditItem(bool editor) {
     panel.EditItem(editor);
 }
 void QtFileManagerCommands::DiffFiles() { window_.app_.DiffFiles(); }
-void QtFileManagerCommands::Rename() {
-    if (window_.app_.GetFocusedPanel().CheckBeforeUpdate(IDS_ERROR_RENAMING))
-        window_.renameSelected();
-}
+void QtFileManagerCommands::Rename() { window_.app_.GetFocusedPanel().RenameFile(); }
 void QtFileManagerCommands::CopyTo() {
     window_.app_.OnCopy(false, false, window_.app_.GetFocusedPanelIndex());
 }

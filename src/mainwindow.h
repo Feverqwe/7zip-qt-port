@@ -247,7 +247,7 @@ class MainWindow : public QMainWindow {
     void executeCopyDestination(bool move, bool copyToSame, unsigned sourceIndex,
                                 const QString &destination, const CRecordVector<UInt32> &indices,
                                 bool useDestPanel, bool useTemp);
-    void renameSelected();
+    void beginRename(int row);
     void finishFilesystemRename(quint32 sourceIndex, const QString &originalPath,
                                 const QString &name);
     QStringList selectedArchivePaths();

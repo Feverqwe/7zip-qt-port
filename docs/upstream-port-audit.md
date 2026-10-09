@@ -1,5 +1,72 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-05 — source Rename activation scenario (2026-10-10)
+
+Source repository https://github.com/ip7z/7zip.git, full revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. Reviewed complete original/current
+PanelOperations.cpp RenameFile, OnBeginLabelEdit and OnEndLabelEdit, App.h's
+Rename caller, MyLoadMenu policy/dispatch, Windows/Control/ListView.h EditLabel,
+Qt command availability, list binding, editor callbacks and saved-state consumers.
+Dependencies remain CPanel's source selection/focus, CheckBeforeUpdate,
+IsThereReadOnlyFolder, IFolderOperations and existing rename/progress/reload flow.
+
+Restored original RenameFile and OnBeginLabelEdit in PanelOperations.cpp.
+Their complete normalized bodies match after list-control, row-notification and
+boolean-type adaptations. RenameFile uses the focused row independently of
+operated marks. QtPanelList transports EditLabel(row) to the owning pane's
+existing table/icon editor; MainWindow now constructs that editor for the
+supplied row without independently choosing an operated item. Source begin-edit
+rejects parent/read-only items. Existing OnEndLabelEdit and deferred publication
+remain the authoritative operation/result/selection algorithm.
+
+Qt transport availability now requires a focused non-parent item rather than
+one operated item. Native menu policy remains unchanged. Eight actual old-product
+RED cases showed disabled Rename for multiple normal selections and the wrong
+editor target for alternative marks. Bounded both-pane/table-icon/normal-alternative
+consumers now check focused editor text, Escape/no mutation, reactivation,
+successful Unicode/spaced Rename and exact focused/marked-peer bytes. Two old
+tests expecting multiselection to disable Rename were corrected to source policy.
+Two additional symbolic-link consumers verify renaming the link object while
+preserving its target path and bytes; the independent Qt symlink veto is removed.
+Existing failure/collision/invalid-name/selection, real ZIP writer, keyboard,
+name formatting and ADS consumers provide direct integration coverage.
+
+Validation uses an isolated checkout containing only Rename changes; concurrent
+Delete work is excluded. Seven initial focused consumers pass10.00s. All20
+normal980×620/compact640×400 editor JSON reports have fully visible inline editors
+and no clipped named visible controls. Both normalized source bodies match;
+baseline408exact/196adapted/3local verifies.
+
+Final Linux/Windows x64 Qt6.12 source snapshot `20261009T224016Z-811d5a99`, SHA256
+`f8a18797cdd0a04489192559695d715a9b93104b182bc2f445421850a6ecdf8a`:
+Linux11/11 safe consumers pass26.76s with208Qt/0fail/0skip; Windows10/10 safe consumers
+pass67.37s with198Qt/0fail/0skip. The same1417 frozen input hashes match isolated
+local, archive and actual guest trees. Eleven slow suites, including both
+native_rename matrices, were excluded; they provide no new acceptance here.
+The original Windows11-suite run failed two pre-existing native-window exposure
+cases in ui_archive_states. Read-only quser returned “No User exists for *”;
+those desktop/context/address consumers remain unverified under P3-03. The safe
+rerun retains their failure logs separately and does not close that requirement.
+
+Required unsandboxed macOS Qt6.12 formatting/all-target/default gate307/307
+passes248.24s,4812Qt/0fail/18 existing platform skips. Two later localized
+symbolic-link rows change only the focused test; its final32Qt/0fail/0skip pass
+on macOS and both x64 guests (Linux2.27s, Windows8.79s). The localized snapshot
+`20261009T230137Z-5963fe33` has source.tar SHA256
+`f67275f7a7ab70db9511fb9231a081bed28ae50d820d1af27a18e30f7ebdf2ee`.
+All1417 hashes match local, archive and actual guests; after removing the
+temporary wrapper, all1416 retained input hashes remain unchanged.
+Production inputs remain
+unchanged from the passing gate. Official pinned SFX/runtime artifacts and
+CMake's explicit codec module use the same deployment. Earlier missing-artifact/
+module-mismatch failures remain recorded; product guards correctly refused a
+mismatched engine/module pair. See [development](development.md) for fresh setup.
+After concurrent Delete commit `4740852`, the combined primary tree builds all
+ten affected consumers and passes10/10 in16.02s,230Qt/0fail/0skip, including
+source_delete, Rename, keyboard, archive selection, ADS and navigation.
+This closes no whole FileManager module or P3 parent. Native/rendered/package
+acceptance remains mandatory.
+
 ## P3-05 — source Delete lifecycle (2026-10-10)
 
 Source repository https://github.com/ip7z/7zip.git, full revision

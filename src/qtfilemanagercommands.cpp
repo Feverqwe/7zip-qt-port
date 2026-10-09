@@ -168,6 +168,7 @@ QtFileManagerCommands::TransportCapabilities QtFileManagerCommands::ReadTranspor
     c.one = operated.Size() == 1;
     c.operated = !operated.IsEmpty();
     c.focused = selection.FocusedItem >= 0;
+    c.focusedNonParent = c.focused && selection.FocusedName_Defined;
     // SaveSelectedState leaves the parent's FocusedName undefined.
     c.selectedParent =
         c.focused && !selection.FocusedName_Defined &&
@@ -325,7 +326,7 @@ bool QtFileManagerCommands::TransportAllows(unsigned id, const TransportCapabili
     case IDM_DELETE:
         return c.selected && (c.filesystem || c.filesystemStreams || c.mutationWritable);
     case IDM_RENAME:
-        return c.one && c.selected && (c.filesystem || c.filesystemStreams || c.mutationWritable);
+        return c.focusedNonParent && (c.filesystem || c.filesystemStreams || c.mutationWritable);
     case IDM_CREATE_FOLDER:
         return c.filesystem || c.mutationWritable;
     case IDM_CREATE_FILE:

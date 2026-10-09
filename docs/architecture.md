@@ -1831,6 +1831,13 @@ hand its restored processing state to QtAppOperationState after source return.
 The retained scan guard blocks callbacks until completion and then restores
 that state; it does not retain the temporary native disabled snapshot.
 
+The same module owns source RenameFile/OnBeginLabelEdit activation: focus chooses
+the editor target, while marks belong to operated-item commands. QtPanelList's
+EditLabel callback binds the owning pane and invokes its table/icon editor;
+MainWindow does not independently choose an operated item for Rename. The source
+begin-edit guard rejects parent/read-only targets. Existing OnEndLabelEdit and
+queued reload publication retain rename validation, operation and selection state.
+
 `PanelSplitFile.cpp` owns CApp::Split/Combine, source selection/default peer
 destination, confirmation, destination preparation, contiguous part discovery,
 naming/summary and native CThreadSplit/Combine transfer loops/preallocation.

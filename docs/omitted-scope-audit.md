@@ -12,6 +12,13 @@ local provenance; this document does not replace its exact/adapted distinction.
 
 ## Source Create File/Folder workflows restored on 2026-10-10
 
+Source RenameFile and OnBeginLabelEdit activation is now retained in the same
+module: focus chooses the target independently of operated selection, and Qt's
+EditLabel callback is only a control transport. Source policy no longer disables
+Rename solely for multiple marks. This does not close remaining PanelOperations
+bodies or FileManager family disposition; see the
+[activation receipt](upstream-port-audit.md#p3-05--source-rename-activation-scenario-2026-10-10).
+
 The previous PanelOperations helpers kept validation/operation fragments while
 MainWindow supplied independent dialogs/errors/selection. Complete source
 CreateFile/CreateFolder bodies now own those phases and refresh policy in their

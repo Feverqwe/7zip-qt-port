@@ -9,9 +9,15 @@
 class QtPanelList {
   public:
     using SortColumnResolver = std::function<int(PROPID, Int32)>;
-    void Attach(QAbstractItemView *view, SortColumnResolver sortColumn = {}) {
+    void Attach(QAbstractItemView *view, SortColumnResolver sortColumn = {},
+                std::function<void(int)> editLabel = {}) {
         view_ = view;
         sortColumn_ = std::move(sortColumn);
+        editLabel_ = std::move(editLabel);
+    }
+    void EditLabel(int row) {
+        if (editLabel_)
+            editLabel_(row);
     }
     bool IsBound() const { return view_ && view_->model() && view_->selectionModel(); }
     int GetItemCount() const;
@@ -43,4 +49,5 @@ class QtPanelList {
   private:
     QPointer<QAbstractItemView> view_;
     SortColumnResolver sortColumn_;
+    std::function<void(int)> editLabel_;
 };

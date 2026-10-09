@@ -1,5 +1,18 @@
 # Сверка с Windows 7zFM
 
+## Source Rename activation (P3-05, 2026-10-10)
+
+F2/Rename редактирует строку с фокусом, независимо от количества выбранных
+элементов и alternative marks. Исходные RenameFile/OnBeginLabelEdit выбирают
+цель и запрещают parent/read-only edit; Qt отображает редактор table/icon
+в соответствующей панели. Escape оставляет имена и байты без изменений.
+При Rename symbolic link меняется имя самой ссылки; её target и байты
+сохраняются. Проверки включают два native filesystem случая.
+Операция, ошибки и восстановление выбора остаются в прежнем исходном
+OnEndLabelEdit и его reload consumer. Проверки и provenance — в
+[receipt](upstream-port-audit.md#p3-05--source-rename-activation-scenario-2026-10-10).
+Эти проверки не устанавливают rendered Windows parity.
+
 ## Source Delete lifecycle (P3-05, 2026-10-10)
 
 Delete сохраняет исходный ранний выход после No/Cancel. Yes является кнопкой

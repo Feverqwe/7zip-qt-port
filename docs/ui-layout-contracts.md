@@ -279,6 +279,15 @@ Inspect both panes and status/address groups under EN/RU normal980×620 and
 compact640×400, including load cancellation. Parent retains its source ignored
 reload-result policy; explicit OnReload remains the HRESULT message owner.
 
+Rename activation uses original RenameFile's focused row, independently of
+operated marks; OnBeginLabelEdit rejects parent/read-only targets. The table/icon
+editor must show that row's raw source name in either pane. Escape preserves
+names, selection and bytes; a subsequent Rename can commit normally. Bounded
+`panel_rename_state` consumers cover ordinary multiselection and alternative
+marks on a different item. Existing editor geometry reports below apply.
+Twenty current activation reports cover both panes/table-icon/selection modes
+and two symbolic-link cases at980×620/640×400, with visible inline editors.
+
 Rename completion uses original OnEndLabelEdit's saved selected names and raw
 prefix/name, focusing the new name on success and the old name on error/Cancel.
 Do not replace the saved selection with a single Qt path. After the worker,

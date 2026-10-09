@@ -85,6 +85,7 @@ class QtFileManagerCommands final : public IQtFileManagerMenuCommandServices {
         bool copy = false;
         bool nested = false, root = false;
         bool comment = false;
+        bool focusedNonParent = false;
         bool benchmark = false;
         QHash<unsigned, bool> hashMethods;
         bool selected = false, one = false, oneFile = false, operated = false, focused = false;

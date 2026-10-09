@@ -22,40 +22,26 @@ void rejectLabelEdit(CPanel &panel, QTableWidget &view, UInt32 sourceIndex) {
 
 } // namespace
 
-void MainWindow::renameSelected() {
-    const auto &panel = app_.GetFocusedPanel();
+void MainWindow::beginRename(int row) {
+    auto &panel = app_.GetFocusedPanel();
     const bool streams = panel.GetFolder() && panel.IsAltStreamsFolder();
     if (state_ != State::Filesystem && state_ != State::Viewing && !streams)
         return;
     const bool archive = state_ == State::Viewing;
     if (!rename_->isEnabled())
         return;
-    const QStringList paths = archive ? selectedArchiveItemsPaths() : selectedFilesystemPaths();
-    if (paths.size() != 1)
-        return;
-    if (!archive && QFileInfo(paths.first()).isSymLink())
-        return;
-    const auto indices = sourceOperatedIndices();
-    if (indices.Size() != 1)
-        return;
-    int row = -1;
-    for (int i = 0; i < table_->rowCount(); ++i)
-        if (table_->item(i, 0) &&
-            table_->item(i, 0)->data(Qt::UserRole + 6).toUInt() == indices[0]) {
-            row = i;
-            break;
-        }
-    if (row < 0)
+    if (row < 0 || row >= table_->rowCount() || panel.OnBeginLabelEdit(row))
         return;
     auto *item = table_->item(row, 0);
     if (!item || item->data(Qt::UserRole + 6).isNull())
         return;
     renameEditingItem_ = item;
-    renameOriginalPath_ = paths.first();
     renameSourceIndex_ = item->data(Qt::UserRole + 6).toUInt();
+    renameOriginalPath_ = ToQString(archive ? panel.GetItemRelPath2(renameSourceIndex_)
+                                            : panel.GetItemFullPath(renameSourceIndex_));
     renameActivationPending_ = true;
     const QString nameHint =
-        archive || streams ? ToQString(app_.GetFocusedPanel().GetItemName(indices[0])) : QString();
+        archive || streams ? ToQString(panel.GetItemName(renameSourceIndex_)) : QString();
     if (viewStack_->currentWidget() == iconList_) {
         const QModelIndex modelIndex = table_->model()->index(row, 0);
         iconList_->scrollTo(modelIndex);

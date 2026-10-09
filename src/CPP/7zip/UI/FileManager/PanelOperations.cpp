@@ -270,6 +270,23 @@ void CPanel::CreateFile() {
     RefreshListCtrl(state);
 }
 
+bool CPanel::OnBeginLabelEdit(int row) {
+    const unsigned realIndex = GetRealItemIndex(row);
+    if (realIndex == kParentIndex)
+        return true;
+    if (IsThereReadOnlyFolder())
+        return true;
+    return false;
+}
+
+void CPanel::RenameFile() {
+    if (!CheckBeforeUpdate(IDS_ERROR_RENAMING))
+        return;
+    int index = _selectionList.GetFocusedItem();
+    if (index >= 0)
+        _selectionList.EditLabel(index);
+}
+
 HRESULT CPanel::OnEndLabelEdit(UInt32 realIndex, const UString &enteredName) {
     CDisableTimerProcessing disableTimerProcessing2(*this);
     if (!CheckBeforeUpdate(IDS_ERROR_RENAMING))

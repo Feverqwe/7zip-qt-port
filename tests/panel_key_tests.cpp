@@ -881,7 +881,7 @@ class PanelKeyTests final : public QObject, protected MainWindowTestSupport {
         static_cast<FileTable *>(table)->sourcePanel->Get_ItemIndices_Selected(markedIndices);
         QCOMPARE(markedIndices.Size(), unsigned(2));
         if (mode == 3 && !archive && !flat) {
-            QVERIFY(!action(window, "renameAction")->isEnabled());
+            QVERIFY(action(window, "renameAction")->isEnabled());
             QTimer::singleShot(0, &window, [&] {
                 auto *dialog = window.findChild<QDialog *>("copyDialog");
                 QVERIFY(dialog);

@@ -30,9 +30,10 @@ void CPanel::OnItemChanged(unsigned index, bool oldSelected, bool newSelected) {
 }
 
 void CPanel::AttachSelectionView(QAbstractItemView *view,
-                                 QtPanelList::SortColumnResolver sortColumn) {
+                                 QtPanelList::SortColumnResolver sortColumn,
+                                 std::function<void(int)> editLabel) {
     disconnect(_itemChangedConnection);
-    _selectionList.Attach(view, std::move(sortColumn));
+    _selectionList.Attach(view, std::move(sortColumn), std::move(editLabel));
     _selectionList.SetSingleSelection(_mySelectMode);
     if (!_selectionList.IsBound())
         return;

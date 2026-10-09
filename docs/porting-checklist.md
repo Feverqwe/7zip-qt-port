@@ -113,6 +113,19 @@ See the [source receipt](upstream-port-audit.md#p3-05--source-create-filefolder-
 Eleven slow suites excluded. Full FileManager/native/rendered/package acceptance
 remains mandatory;43/47 and P3-03/04/05/06 remain open.
 
+P3-05,2026-10-10: source RenameFile/OnBeginLabelEdit now own focused-row
+activation independently of operated marks, with narrow owning-pane table/icon
+EditLabel transport. Eight old-product RED cases retained; Escape, reactivation,
+Unicode/spaces, peer bytes and two symbolic-link targets are verified. Twenty
+normal/compact editor JSON reports inspected; both normalized source bodies match.
+Mac required full307/307 PASS248.24s,4812Qt/0fail/18 existing skips; later
+localized final32Qt/0fail/0skip pass on macOS/Linux/Windows. Broad Linux11/11 and
+Windows10/10 safe consumers pass26.76s/67.37s; two Windows native-window exposure
+consumers remain unverified without an active desktop. See the
+[source receipt](upstream-port-audit.md#p3-05--source-rename-activation-scenario-2026-10-10).
+Eleven slow suites excluded. Full FileManager/native/rendered/package acceptance
+remains mandatory;43/47 and P3-03/04/05/06 remain open.
+
 P3-05,2026-10-10: source Delete lifecycle restores original CPanel refresh/
 notification phases, No/Cancel early return, source default Yes/Enter and one
 captioned worker/trash error. Window's independent completion path is removed;

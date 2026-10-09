@@ -37,6 +37,8 @@ class ArchiveSelectionRuntimeTests : public QObject, protected MainWindowTestSup
         view->clearSelection();
         view->selectionModel()->select(view->model()->index(row, 0),
                                        QItemSelectionModel::Select | QItemSelectionModel::Rows);
+        view->selectionModel()->setCurrentIndex(view->model()->index(row, 0),
+                                                QItemSelectionModel::NoUpdate);
     }
     static void corruptPresentationPath(MainWindow &window, int row) {
         auto *item = table(window)->item(row, 0);

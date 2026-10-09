@@ -1,5 +1,14 @@
 # Regression strategy
 
+`panel_rename_state` also covers source Rename activation with a focused item
+distinct from operated marks: eight bounded both-pane/table-icon/normal-alternative
+rows check editor text, Escape, reactivation, successful rename and exact peer
+bytes. Two additional symbolic-link rows preserve the target object and bytes.
+Existing selection/failure/invalid-name coverage remains in this suite.
+`panel_key` and `panel_item_changed` keep Rename enabled for multiple marks with
+a real focused item, following source policy. Provenance and current platform
+evidence are in the [receipt](upstream-port-audit.md#p3-05--source-rename-activation-scenario-2026-10-10).
+
 `source_delete` covers the source confirmation/operation/refresh lifecycle in
 30 bounded rows: both panes/EN-RU No/Cancel, permanent success, injected partial
 worker failure/Cancel, injected trash success/failure and deferred large-list

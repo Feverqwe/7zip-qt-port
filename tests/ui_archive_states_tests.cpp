@@ -428,7 +428,8 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
         QVERIFY(QMetaObject::invokeMethod(view, "customContextMenuRequested", Qt::DirectConnection,
                                           Q_ARG(QPoint, QPoint(5, view->height() - 5))));
         QVERIFY(commands.contains("Rena&me"));
-        QVERIFY(!enabled.value(QStringLiteral("Rena&me")));
+        // Clearing selection retains focus; native Rename edits that row.
+        QVERIFY(enabled.value(QStringLiteral("Rena&me")));
         QVERIFY(commands.contains("Create Folder"));
         QVERIFY(enabled.value(QStringLiteral("Create Folder")));
 

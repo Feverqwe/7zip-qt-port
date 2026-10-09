@@ -555,7 +555,8 @@ class CPanel : public QObject {
     void EditCopy();
     void EditPaste();
     void AttachSelectionView(QAbstractItemView *view,
-                             QtPanelList::SortColumnResolver sortColumn = {});
+                             QtPanelList::SortColumnResolver sortColumn = {},
+                             std::function<void(int)> editLabel = {});
     void DeleteListItems() {
         if (_selectionList.GetItemCount() != 0) {
             const bool b = _enableItemChangeNotify;
@@ -626,6 +627,8 @@ class CPanel : public QObject {
     bool CorrectFsPath(const UString &path, UString &result);
     void CreateFolder();
     void CreateFile();
+    void RenameFile();
+    bool OnBeginLabelEdit(int row);
     HRESULT OnEndLabelEdit(UInt32 realIndex, const UString &enteredName);
     HRESULT DeleteItems(bool toRecycleBin, class IQtTrashService &trash, CSelectedState &selection,
                         const CRecordVector<UInt32> *explicitIndices = nullptr);

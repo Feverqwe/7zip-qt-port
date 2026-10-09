@@ -14,6 +14,7 @@ production access is added for this matrix.
 
 | Package / scenario | Functional owner and integration boundary | CTest consumers |
 | --- | --- | --- |
+| P3-05 source Rename activation | Source focused-row RenameFile and parent/read-only OnBeginLabelEdit; table/icon editor, Escape and operated marks independent of focus | `panel_rename_state`, `panel_key`, `panel_item_changed`, `panel_name_text`, `ui_operations`, `alt_streams_command` |
 | P3-05 source Delete lifecycle | CPanel confirmation/accepted-result refresh and one source error, No/Cancel early return, partial bytes/provider/peer and deferred guards; Move transaction retains explicit-index seam | `source_delete`, `ui_operations`, `native_fs_operations`, `panel_key`, `alt_streams_command`, `archive_transfer_backup` |
 | P3-05 source Create File/Folder | CPanel owns complete dialog/validation/operation/refresh and first-component focus; alternative marks, collision, Cancel and deferred-scan guards | `source_create`, `large_list_window`, `ui_operations`, `panel_key`, `alt_streams_command` |
 | P3-05 source Split/Combine | CApp selection/peer destination and native plans; UInt64/Trim, contiguous prefix/empty parts, NIO/preallocation, progress and joined transactional failure/cancel | `volume_dialog`, `volume_workflow`, `volume_operations`, `combine_names`, `worker_window_progress` |

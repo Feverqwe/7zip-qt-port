@@ -199,9 +199,12 @@ void MainWindow::createFileTable(QWidget *central) {
                                   : (keyboard ? QPoint(0, 0) : pos);
         showItemContextMenu(table_->viewport()->mapToGlobal(anchor));
     });
-    app_.GetFocusedPanel().AttachSelectionView(fileTable, [fileTable](PROPID property, Int32) {
-        return fileTable->columnForProperty(property);
-    });
+    app_.GetFocusedPanel().AttachSelectionView(
+        fileTable,
+        [fileTable](PROPID property, Int32) { return fileTable->columnForProperty(property); },
+        [this, owner = projectedPanel_](int row) {
+            withPanelProjection(owner, [this, row] { beginRename(row); });
+        });
 }
 
 void MainWindow::createPanelActions(QMenu *editMenu) {
