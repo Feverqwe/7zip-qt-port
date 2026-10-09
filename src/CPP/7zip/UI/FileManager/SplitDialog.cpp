@@ -18,7 +18,6 @@
 #include <QLineEdit>
 #include <QPushButton>
 #include <QVBoxLayout>
-#include <limits>
 
 CSplitDialog::CSplitDialog(const QString &filePath, const QString &path, QWidget *parent)
     : QDialog(parent), FilePath(filePath), Path(path) {
@@ -97,18 +96,12 @@ void CSplitDialog::OnButtonSetPath() {
 
 void CSplitDialog::OnOK() {
     Path = _pathCombo->currentText();
-    const QString volumeString = _volumeCombo->currentText().trimmed();
+    UString volumeString(_volumeCombo->currentText().toStdWString().c_str());
+    volumeString.Trim();
     CRecordVector<UInt64> values;
     VolumeSizes.Clear();
-    bool valid =
-        ParseVolumeSizes(UString(volumeString.toStdWString().c_str()), values) && !values.IsEmpty();
-    FOR_VECTOR(i, values) {
-        const UInt64 value = values[i];
-        // The Qt worker/file API has signed 64-bit offsets.
-        if (value > UInt64(std::numeric_limits<qint64>::max()))
-            valid = false;
-        VolumeSizes.Add(value);
-    }
+    bool valid = ParseVolumeSizes(volumeString, values) && !values.IsEmpty();
+    VolumeSizes = values;
     if (!valid) {
         QtBindLangText(error_, IDS_INCORRECT_VOLUME_SIZE);
         error_->show();

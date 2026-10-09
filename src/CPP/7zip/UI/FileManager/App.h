@@ -18,6 +18,7 @@ enum {
     kMenuCmdID_Toolbar_End
 };
 class IQtFileManagerMenuCommandServices;
+class IQtVolumeServices;
 
 class CApp;
 class CDropTarget;
@@ -112,6 +113,8 @@ class CApp {
     // their full application command bodies are ported in P0-03/P0-08.
     void OnCopy(bool move, bool copyToSame, unsigned index);
     void CompleteCopy();
+    void Split(IQtVolumeServices &services);
+    void Combine(IQtVolumeServices &services);
     HRESULT CopyArchiveToArchive(unsigned srcPanelIndex, const CRecordVector<UInt32> &indices,
                                  UStringVector *messages);
     void OnSetSameFolder(unsigned index);

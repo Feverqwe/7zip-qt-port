@@ -6,7 +6,7 @@ class CombineNameTests final : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
   private slots:
     void init() { QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH")); }
-    void rejectsInvalidSuffixAndGap() {
+    void rejectsInvalidSuffixAndUsesContiguousPrefix() {
         QTemporaryDir dir;
         QVERIFY(dir.isValid());
         QString error;
@@ -19,8 +19,8 @@ class CombineNameTests final : public QObject, protected MainWindowTestSupport {
             QVERIFY(file.open(QIODevice::WriteOnly));
             QCOMPARE(file.write("data"), qint64(4));
         }
-        QVERIFY(VolumeOperation::discoverParts(dir.filePath("part01"), &error).isEmpty());
-        QCOMPARE(error, QString("A part is missing from the sequence."));
+        QCOMPARE(VolumeOperation::discoverParts(dir.filePath("part01"), &error),
+                 (QStringList{dir.filePath("part01"), dir.filePath("part02")}));
     }
     void upstreamFirstPartNames_data() {
         QTest::addColumn<QString>("first");
@@ -69,7 +69,8 @@ class CombineNameTests final : public QObject, protected MainWindowTestSupport {
             auto *dialog = window.findChild<QDialog *>("combineDialog");
             if (!dialog)
                 return;
-            if (first == ".001") {
+            if (first == ".001" &&
+                qEnvironmentVariableIntValue("SEVENZIP_CAPTURE_SCREENSHOTS") == 1) {
                 const QString screenshots = QDir::currentPath() + "/ui-screenshots";
                 QDir().mkpath(screenshots);
                 for (int width : {540, 360}) {

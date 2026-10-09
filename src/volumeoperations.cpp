@@ -3,218 +3,238 @@
 #include "CPP/7zip/UI/FileManager/FormatUtils.h"
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/PanelSplitFile.h"
+#include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "CPP/7zip/UI/FileManager/SplitUtils.h"
+#include "CPP/7zip/UI/FileManager/ViewSettings.h"
+#include "qtlangcontrols.h"
 #include "qtlanguageservices.h"
-
+#include "qtvolumetransaction.h"
 #include <QDir>
-#include <QFile>
 #include <QFileInfo>
-#include <QRegularExpression>
-#include <QUuid>
 #include <limits>
 
 VolumeOperation::VolumeOperation(Mode mode, QString source, QString destination, qint64 volumeSize,
                                  QObject *parent)
     : VolumeOperation(mode, std::move(source), std::move(destination), QList<qint64>{volumeSize},
                       parent) {}
-
 VolumeOperation::VolumeOperation(Mode mode, QString source, QString destination,
                                  QList<qint64> volumeSizes, QObject *parent)
     : QThread(parent), mode_(mode), source_(std::move(source)),
-      destination_(std::move(destination)), volumeSizes_(std::move(volumeSizes)) {}
-
+      destination_(std::move(destination)) {
+    for (qint64 size : volumeSizes) {
+        invalidSizes_ |= size <= 0;
+        volumeSizes_.Add(UInt64(size));
+    }
+}
+VolumeOperation::VolumeOperation(const CThreadSplit &plan, QObject *parent)
+    : QThread(parent), mode_(Mode::Split), source_(ToQString(fs2us(plan.FilePath))),
+      destination_(QFileInfo(ToQString(fs2us(plan.VolBasePath))).absolutePath()),
+      volumeSizes_(plan.VolumeSizes), volBasePath_(plan.VolBasePath), numVolumes_(plan.NumVolumes),
+      nativePlan_(true) {}
+VolumeOperation::VolumeOperation(const CThreadCombine &plan, QObject *parent)
+    : QThread(parent), mode_(Mode::Combine),
+      source_(ToQString(fs2us(plan.InputDirPrefix + plan.Names.Front()))),
+      destination_(ToQString(fs2us(plan.OutputPath))), inputDirPrefix_(plan.InputDirPrefix),
+      partNames_(plan.Names), totalSize_(plan.TotalSize), nativePlan_(true) {}
 void VolumeOperation::cancel() { canceled_ = true; }
 
 QList<qint64> VolumeOperation::parseSizes(const QString &text) {
+    UString s = ToUString(text);
+    s.Trim();
     CRecordVector<UInt64> values;
-    if (!ParseVolumeSizes(UString(text.trimmed().toStdWString().c_str()), values) ||
-        values.IsEmpty())
+    if (!ParseVolumeSizes(s, values) || values.IsEmpty())
         return {};
     QList<qint64> result;
     FOR_VECTOR(i, values) {
-        const UInt64 value = values[i];
-        if (value == 0 || value > UInt64(std::numeric_limits<qint64>::max()))
+        if (values[i] == 0 || values[i] > UInt64(std::numeric_limits<qint64>::max()))
             return {};
-        result.append(qint64(value));
+        result.append(qint64(values[i]));
     }
     return result;
 }
-
 qint64 VolumeOperation::parseSize(const QString &text) {
     const auto sizes = parseSizes(text);
     return sizes.size() == 1 ? sizes.first() : 0;
 }
 
-QStringList VolumeOperation::discoverParts(const QString &firstPart, QString *error) {
+VolumeParts VolumeOperation::inspectParts(const QString &firstPart, QString *error) {
     const QFileInfo first(firstPart);
     CVolSeqName sequence;
-    if (!sequence.ParseName(first.fileName())) {
-        *error = QString::fromWCharArray(LangString(IDS_COMBINE_CANT_DETECT_SPLIT_FILE));
+    if (!sequence.ParseName(ToUString(first.fileName()))) {
+        *error = ToQString(LangString(IDS_COMBINE_CANT_DETECT_SPLIT_FILE));
         return {};
     }
-    const QString base = sequence.UnchangedPart;
-    const qsizetype width = sequence.ChangedPart.size();
-    QStringList parts;
-    QString name = first.fileName();
-    for (int number = 1; number <= 10000; ++number) {
-        const QString path = first.dir().filePath(name);
-        const QFileInfo info(path);
-        if (!info.exists())
-            break;
-        if (!info.isFile() || info.isSymLink() || info.size() == 0) {
-            *error = QtLocalText("Part is unavailable or empty: %1",
-                                 QStringLiteral("Часть недоступна или пуста: %1"))
+    CThreadCombine combiner;
+    const UString prefix = ToUString(first.absolutePath() + '/');
+    combiner.LoadParts(prefix, ToUString(first.fileName()), sequence);
+    if (combiner.Names.Size() == 1) {
+        *error = ToQString(LangString(IDS_COMBINE_CANT_FIND_MORE_THAN_ONE_PART));
+        return {};
+    }
+    if (combiner.TotalSize == 0) {
+        *error = "No data";
+        return {};
+    }
+    VolumeParts result;
+    FOR_VECTOR(i, combiner.Names) {
+        const QString path = ToQString(prefix + fs2us(combiner.Names[i]));
+        if (QFileInfo(path).isSymLink()) {
+            *error = QtLocalText("File part is unavailable: %1",
+                                 QStringLiteral("Часть файла недоступна: %1"))
                          .arg(path);
             return {};
         }
-        parts << path;
-        name = sequence.GetNextName();
+        result.paths << path;
     }
-    if (parts.size() < 2) {
-        *error = QString::fromWCharArray(LangString(IDS_COMBINE_CANT_FIND_MORE_THAN_ONE_PART));
+    if (combiner.TotalSize > UInt64(std::numeric_limits<qint64>::max())) {
+        *error = QtLocalText("Part sizes are unavailable or too large.",
+                             QStringLiteral("Размер частей недоступен или слишком велик."));
         return {};
     }
-    const QRegularExpression other(
-        QStringLiteral("^%1(\\d{%2,})$").arg(QRegularExpression::escape(base)).arg(width));
-    for (const QString &name : first.dir().entryList(QDir::Files | QDir::Hidden | QDir::System)) {
-        const auto candidate = other.match(name);
-        if (candidate.hasMatch() && candidate.captured(1).toInt() > parts.size()) {
-            *error = QtLocalText("A part is missing from the sequence.",
-                                 QStringLiteral("В последовательности частей есть пропуск."));
-            return {};
-        }
-    }
-    return parts;
+    result.totalSize = qint64(combiner.TotalSize);
+    return result;
+}
+QStringList VolumeOperation::discoverParts(const QString &firstPart, QString *error) {
+    return inspectParts(firstPart, error).paths;
 }
 
-VolumeParts VolumeOperation::inspectParts(const QString &firstPart, QString *error) {
-    VolumeParts result;
-    result.paths = discoverParts(firstPart, error);
-    for (const QString &path : result.paths) {
-        const qint64 size = QFileInfo(path).size();
-        if (size <= 0 || size > std::numeric_limits<qint64>::max() - result.totalSize) {
-            *error = QtLocalText("Part sizes are unavailable or too large.",
-                                 QStringLiteral("Размер частей недоступен или слишком велик."));
-            return {};
-        }
-        result.totalSize += size;
+bool VolumeOperation::process(QtVolumeWorker &worker, QString *error) {
+    if (progressSync_)
+        worker.Sync.attach(*progressSync_);
+    worker.Sync.advanced = [this, &worker](UInt64 pos) {
+        emit advanced(qint64(pos));
+        if (canceled_)
+            worker.Sync.cancel();
+    };
+    if (canceled_)
+        worker.Sync.cancel();
+    HRESULT result;
+    try {
+        result = mode_ == Mode::Split ? static_cast<CThreadSplit &>(worker).ProcessVirt()
+                                      : static_cast<CThreadCombine &>(worker).ProcessVirt();
+    } catch (const char *message) {
+        *error = QString::fromLatin1(message);
+        return false;
+    } catch (...) {
+        *error = QStringLiteral("Volume operation failed");
+        return false;
     }
-    return result;
+    if (canceled_ || result == E_ABORT) {
+        *error = QtLocalText("Operation canceled.", QStringLiteral("Операция отменена."));
+        return false;
+    }
+    if (result != S_OK) {
+        if (mode_ == Mode::Combine && !worker.ErrorPaths.IsEmpty())
+            *error = QtLocalText("File part is unavailable: %1",
+                                 QStringLiteral("Часть файла недоступна: %1"))
+                         .arg(ToQString(worker.ErrorPaths.Back()));
+        else {
+            *error = ToQString(HResultToMessage(result));
+            if (!worker.ErrorPaths.IsEmpty())
+                *error += '\n' + ToQString(worker.ErrorPaths.Back());
+        }
+        return false;
+    }
+    return true;
 }
 
 bool VolumeOperation::split(QString *error) {
-    const QFileInfo sourceInfo(source_);
-    const QFileInfo destinationInfo(destination_);
-    CRecordVector<UInt64> sizes;
-    for (qint64 size : volumeSizes_) {
-        if (size <= 0) {
-            *error = QtLocalText("Volume size must be positive.",
-                                 QStringLiteral("Размер тома должен быть положительным."));
-            return false;
-        }
-        sizes.Add(UInt64(size));
+    const QFileInfo source(source_);
+    CThreadSplit spliter;
+    if (invalidSizes_) {
+        *error = QtLocalText("Volume size must be positive.",
+                             QStringLiteral("Размер тома должен быть положительным."));
+        return false;
     }
-    if (!sourceInfo.isFile() || sourceInfo.isSymLink() || !destinationInfo.isDir() ||
-        destinationInfo.isSymLink() || sizes.IsEmpty() ||
-        sourceInfo.size() <= qint64(sizes.FrontItem())) {
+    spliter.VolumeSizes = volumeSizes_;
+    if (!source.isFile() || source.isSymLink() || !QFileInfo(destination_).isDir() ||
+        QFileInfo(destination_).isSymLink() || spliter.VolumeSizes.IsEmpty() ||
+        UInt64(source.size()) <= spliter.VolumeSizes.FrontItem()) {
         *error = QtLocalText("File or volume size is unavailable for splitting.",
                              QStringLiteral("Файл или размер тома недоступен для разделения."));
         return false;
     }
-    const qint64 total = sourceInfo.size();
-    const qint64 count = qint64(GetNumberOfVolumes(UInt64(total), sizes));
-    if (count > 10000) {
-        *error = QtLocalText("Too many parts (more than 10000).",
-                             QStringLiteral("Слишком много частей (более 10000)."));
+    spliter.FilePath = us2fs(ToUString(source_));
+    spliter.VolBasePath = nativePlan_
+                              ? volBasePath_
+                              : us2fs(ToUString(QDir(destination_).filePath(source.fileName())));
+    spliter.NumVolumes =
+        nativePlan_ ? numVolumes_ : GetNumberOfVolumes(UInt64(source.size()), spliter.VolumeSizes);
+    QtVolumeTransaction transaction;
+    spliter.createOutput = [&transaction](auto &file, const FString &path) {
+        return transaction.create(file, path);
+    };
+    if (!process(spliter, error))
+        return false;
+    const QFileInfo after(source_);
+    if (!after.isFile() || after.isSymLink() || after.size() != source.size()) {
+        *error = QtLocalText("Source file changed while splitting.",
+                             QStringLiteral("Исходный файл изменился во время разделения."));
         return false;
     }
-    CVolSeqName sequence;
-    sequence.UnchangedPart = sourceInfo.fileName() + '.';
-    sequence.SetNumDigits(count);
-    QStringList targets;
-    for (qint64 n = 1; n <= count; ++n) {
-        const QString target = QDir(destination_).filePath(sequence.GetNextName());
-        if (QFileInfo::exists(target) || QFileInfo(target).isSymLink()) {
-            *error = QString::fromWCharArray(
-                MyFormatNew(IDS_FILE_EXIST, UString(target.toStdWString().c_str())));
-            return false;
-        }
-        targets << target;
+    if (!transaction.publish()) {
+        *error =
+            QtLocalText("Could not save part: %1", QStringLiteral("Не удалось сохранить часть: %1"))
+                .arg(transaction.failedPath());
+        return false;
     }
-    QStringList staged;
-    for (const QString &target : targets)
-        staged << target + ".sevenzip-" + QUuid::createUuid().toString(QUuid::Id128);
-    QStringList published;
-    CThreadSplit spliter;
-    spliter.FilePath = source_;
-    spliter.OutputPaths = staged;
-    spliter.VolumeSizes = volumeSizes_;
-    spliter.TotalSize = total;
-    spliter.Set_NumBytesCur = [this](qint64 pos) {
-        emit advanced(pos);
-        return !canceled_.load();
-    };
-    bool ok = spliter.ProcessVirt(error);
-    if (ok && canceled_) {
-        *error = QtLocalText("Operation canceled.", QStringLiteral("Операция отменена."));
-        ok = false;
-    }
-    for (qsizetype i = 0; i < targets.size() && ok; ++i) {
-        if (QFileInfo::exists(targets[i]) || QFileInfo(targets[i]).isSymLink() ||
-            !QFile::rename(staged[i], targets[i])) {
-            *error = QtLocalText("Could not save part: %1",
-                                 QStringLiteral("Не удалось сохранить часть: %1"))
-                         .arg(targets[i]);
-            ok = false;
-        } else {
-            published << targets[i];
-        }
-    }
-    if (!ok) {
-        for (const QString &path : staged)
-            QFile::remove(path);
-        for (const QString &path : published)
-            QFile::remove(path);
-    }
-    return ok;
+    return true;
 }
 
 bool VolumeOperation::combine(QString *error) {
-    const QStringList parts = discoverParts(source_, error);
-    if (parts.isEmpty())
+    VolumeParts parts;
+    if (nativePlan_) {
+        FOR_VECTOR(i, partNames_)
+        parts.paths << ToQString(fs2us(inputDirPrefix_ + partNames_[i]));
+    } else
+        parts = inspectParts(source_, error);
+    if (parts.paths.isEmpty())
         return false;
-    const QFileInfo targetInfo(destination_);
-    if (!QFileInfo(targetInfo.absolutePath()).isDir() || QFileInfo::exists(destination_) ||
-        targetInfo.isSymLink()) {
+    const QFileInfo target(destination_);
+    if (!QFileInfo(target.absolutePath()).isDir() || QFileInfo::exists(destination_) ||
+        target.isSymLink()) {
         *error =
             QtLocalText("Destination folder is unavailable or the file already exists.",
                         QStringLiteral("Папка назначения недоступна или файл уже существует."));
         return false;
     }
-    const QString stage = destination_ + ".sevenzip-" + QUuid::createUuid().toString(QUuid::Id128);
+    QList<qint64> sizes;
     CThreadCombine combiner;
-    combiner.OutputPath = stage;
-    combiner.InputDirPrefix = QFileInfo(source_).absolutePath() + '/';
-    for (const QString &part : parts)
-        combiner.Names << QFileInfo(part).fileName();
-    combiner.Set_NumBytesCur = [this](qint64 pos) {
-        emit advanced(pos);
-        return !canceled_.load();
-    };
-    bool ok = combiner.ProcessVirt(error);
-    if (ok && canceled_) {
-        *error = QtLocalText("Operation canceled.", QStringLiteral("Операция отменена."));
-        ok = false;
+    combiner.InputDirPrefix =
+        nativePlan_ ? inputDirPrefix_ : us2fs(ToUString(QFileInfo(source_).absolutePath() + '/'));
+    combiner.OutputPath = us2fs(ToUString(destination_));
+    combiner.TotalSize = nativePlan_ ? totalSize_ : UInt64(parts.totalSize);
+    for (const QString &path : parts.paths) {
+        if (!QFileInfo(path).isFile() || QFileInfo(path).isSymLink()) {
+            *error = QtLocalText("File part is unavailable: %1",
+                                 QStringLiteral("Часть файла недоступна: %1"))
+                         .arg(path);
+            return false;
+        }
+        combiner.Names.Add(us2fs(ToUString(QFileInfo(path).fileName())));
+        sizes << QFileInfo(path).size();
     }
-    if (ok && (QFileInfo::exists(destination_) || QFileInfo(destination_).isSymLink() ||
-               !QFile::rename(stage, destination_))) {
+    QtVolumeTransaction transaction;
+    combiner.createOutput = [&transaction](auto &file, const FString &path) {
+        return transaction.create(file, path);
+    };
+    if (!process(combiner, error))
+        return false;
+    for (qsizetype i = 0; i < parts.paths.size(); ++i) {
+        const QFileInfo after(parts.paths[i]);
+        if (!after.isFile() || after.isSymLink() || after.size() != sizes[i]) {
+            *error =
+                QtLocalText("File part changed: %1", QStringLiteral("Часть файла изменилась: %1"))
+                    .arg(parts.paths[i]);
+            return false;
+        }
+    }
+    if (!transaction.publish()) {
         *error = QtLocalText("Could not save combined file.",
                              QStringLiteral("Не удалось сохранить объединённый файл."));
-        ok = false;
+        return false;
     }
-    if (!ok)
-        QFile::remove(stage);
-    return ok;
+    return true;
 }
 
 void VolumeOperation::run() {

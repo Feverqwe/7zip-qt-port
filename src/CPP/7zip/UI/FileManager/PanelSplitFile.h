@@ -1,37 +1,48 @@
+// Declarations extracted from upstream PanelSplitFile.cpp (0766b733).
 #pragma once
 
-#include <QString>
-#include <QStringList>
-#include <functional>
+#include "Common/MyString.h"
+#include "Common/MyVector.h"
+#include "Windows/FileIO.h"
+#include "qtvolumeprogress.h"
 
 struct CVolSeqName {
-    QString UnchangedPart;
-    QString ChangedPart = QStringLiteral("000");
-
-    void SetNumDigits(quint64 numVolumes);
-    bool ParseName(const QString &name);
-    QString GetNextName();
-    QString GetCombinedName() const;
+    UString UnchangedPart;
+    UString ChangedPart;
+    CVolSeqName() : ChangedPart("000") {}
+    void SetNumDigits(UInt64 numVolumes);
+    bool ParseName(const UString &name);
+    UString GetNextName();
+    UString GetCombinedName() const;
 };
 
-// Functional worker from PanelSplitFile.cpp; Qt replaces NIO and progress sync.
-class CThreadCombine {
+// Qt replaces the QWidget-bearing CProgressThreadVirt base. Output creation
+// crosses the transaction boundary; all reads/writes remain native NIO.
+class QtVolumeWorker {
   public:
-    QString InputDirPrefix;
-    QStringList Names;
-    QString OutputPath;
-    quint64 TotalSize = 0;
-    QString GetInfo() const;
-    std::function<bool(qint64)> Set_NumBytesCur;
-    bool ProcessVirt(QString *error);
+    QtVolumeProgress Sync;
+    UStringVector ErrorPaths;
+    std::function<bool(NWindows::NFile::NIO::COutFile &, const FString &)> createOutput;
+    void AddErrorPath(const FString &path) { ErrorPaths.Add(fs2us(path)); }
+    bool CreateOutput(NWindows::NFile::NIO::COutFile &file, const FString &path);
 };
 
-class CThreadSplit {
+class CThreadCombine : public QtVolumeWorker {
   public:
-    QString FilePath;
-    QStringList OutputPaths;
-    QList<qint64> VolumeSizes;
-    qint64 TotalSize = 0;
-    std::function<bool(qint64)> Set_NumBytesCur;
-    bool ProcessVirt(QString *error);
+    FString InputDirPrefix;
+    FStringVector Names;
+    FString OutputPath;
+    UInt64 TotalSize = 0;
+    UString GetInfo() const;
+    void LoadParts(const UString &srcPath, const UString &itemName, CVolSeqName &volSeqName);
+    HRESULT ProcessVirt();
+};
+
+class CThreadSplit : public QtVolumeWorker {
+  public:
+    FString FilePath;
+    FString VolBasePath;
+    UInt64 NumVolumes = 0;
+    CRecordVector<UInt64> VolumeSizes;
+    HRESULT ProcessVirt();
 };

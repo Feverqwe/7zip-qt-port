@@ -1,5 +1,68 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-05 — complete source Split/Combine scenario (2026-10-08)
+
+Source repository https://github.com/ip7z/7zip.git, full revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. Reviewed the complete original/current
+`CPP/7zip/UI/FileManager/PanelSplitFile.cpp`, SplitDialog.cpp/h/rc,
+SplitUtils.cpp/h, CopyDialog.cpp/h/rc, App.h, panel path/selection callers,
+menu/command availability, VolumeOperation and window/progress consumers.
+Dependencies include original UString/FString/CRecordVector/FStringVector,
+FileFind/FileIO/FileDir/FileName, CMyBuffer, FormatUtils, CProgressSync and
+resource/translation IDs. The sibling checkout remains read-only.
+
+Restored CApp::Split/Combine in their original module, including operated
+indices, filesystem guards, peer-panel destination, source size/count checks,
+100-part confirmation, destination creation, output collision and title refresh.
+LoadParts, GetInfo and GetCombinedName are extractions of their original blocks
+shared with the legacy worker API. Discovery stops at the first missing file
+or directory, accepts empty individual parts when total data is nonzero, and
+ignores later files beyond the gap. Independent regex scanning and the 10000-part
+cap are removed. SplitDialog uses original UString::Trim and accepts UInt64 sizes;
+the signed parseSizes compatibility API retains its explicit return-type bound.
+
+Restored native worker fields, HRESULT, CMyBuffer and CPreAllocOutFile, preserving
+read/write loops, repeat-last-size sequence, numbering, EOF/error paths and
+checkpoint order. Qt replaces the QWidget-bearing CProgressThreadVirt base with
+a joined QThread transport. QtVolumeProgress forwards to original CProgressSync;
+QtVolumeIO calls native Windows Read/Write/SeekToBegin or the existing POSIX
+ReadFull/write_full/seekToBegin. These are API adapters, without a new I/O loop.
+Only native output creation crosses QtVolumeTransaction for owned staging,
+no-overwrite publication and rollback. Input-size/symlink checks remain narrow
+integration guards. MainWindow presents progress and joins before releasing it;
+it no longer plans Split/Combine. SharedPortObjects registers all adapter sources
+for every existing application/test consumer. No portable source branch or
+preallocation helper is omitted. This supersedes the older QString/QFile,
+omitted-preallocation and Qt-discovery descriptions below.
+
+Nine new regression rows fail on c0a5c91: both commands and panes choose the
+source directory, leading NBSP/CR are trimmed away, and empty parts in a valid
+prefix are rejected. Current bounded tests cover retry/source whitespace,
+UInt64 plan transport, sequence width/carry, both-pane EN/RU destinations and
+peer/selection/bytes, empty first/middle/last parts plus a later file beyond a
+gap, and existing success/failure/cancellation/input-change rollback scenarios.
+The existing normal/compact volume dialog JSON contracts remain in use.
+Native Windows FileIO::CInFile::Open retains OpenShared(false)/FILE_SHARE_READ:
+opening the active input for writing fails with ERROR_SHARING_VIOLATION.
+The earlier QFile fixture expected mutation to succeed. Six Windows cases now
+assert the native denial, successful transfer and unchanged/exact bytes without
+skips; POSIX retains mutation/rollback checks. A completed Combine part is then
+modified after its native handle closes, proving the final input-size guard and
+rollback on every OS. Production read-sharing/control flow is unchanged.
+
+Nine normalized source body/block comparisons pass after documented adapters.
+Required unsandboxed macOS gate:306/306 PASS251.91s,4767Qt/0fail/18 existing
+platform skips. Final localized diagnostics/header/fixture checks:6/6 PASS2.04s;
+baseline408exact/196adapted/3local verified. Final Linux/Windows x64 Qt6.12
+snapshot `20261007T232949Z-ce60b3fb`, source.tar SHA256
+`b7df291328287fc8c1cf49411d6de18cbe09323c8f58d216daebd97cd128f248`:
+each6/6 PASS7.64s/20.22s,106Qt/0fail/0skip. All1416 frozen source/test/build/
+resource/script inputs match local files, archive and both actual guest trees;
+1415 retained inputs remain unchanged after removing the temporary runner wrapper.
+Final logs and hashes rechecked2026-10-10. Eleven slow suites were excluded;
+no disk changes or cleanup were needed. This accepts the integrated component,
+not the remaining FileManager/native/rendered/package scope or final P3 acceptance.
+
 ## P3-05 — source filesystem comparator (2026-10-08)
 
 Source repository https://github.com/ip7z/7zip.git, full revision

@@ -1815,11 +1815,16 @@ then publishes the merged tree. For Move, only accepted source files are
 removed; skipped files remain. Cancellation before deletion restores the old
 tree, while deletion failure keeps published bytes and reports a partial move.
 
-`VolumeOperation` owns Split/Combine path validation, temporary outputs,
-publication and rollback. `PanelSplitFile.cpp` owns naming and the
-`CThreadSplit::ProcessVirt` / `CThreadCombine::ProcessVirt` transfer loops.
-The window coordinates confirmation and destination preparation; the worker
-validates Combine parts again before writing.
+`PanelSplitFile.cpp` owns CApp::Split/Combine, source selection/default peer
+destination, confirmation, destination preparation, contiguous part discovery,
+naming/summary and native CThreadSplit/Combine transfer loops/preallocation.
+`IQtVolumeServices` launches immutable native plans through `VolumeOperation`'s
+joined QThread. `QtVolumeProgress` uses original CProgressSync and `QtVolumeIO`
+adapts only the Windows/POSIX FileIO method names/types. QtVolumeTransaction
+owns staged outputs, no-overwrite publication and rollback; VolumeOperation
+retains input-change/symlink guards. MainWindow owns progress presentation and
+joins the worker before releasing its progress snapshot. See the [source
+receipt](upstream-port-audit.md#p3-05--complete-source-splitcombine-scenario-2026-10-08).
 
 ## Archive backend and safety
 

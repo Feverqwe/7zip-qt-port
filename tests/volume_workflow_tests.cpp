@@ -21,6 +21,14 @@ class VolumeWorkflowTests : public QObject, protected MainWindowTestSupport {
         address->setText(path);
         QTest::keyClick(address, Qt::Key_Return);
     }
+    static FileTable *openPanel(MainWindow &window, unsigned index, const QString &path) {
+        auto *ui = window.findChild<QWidget *>(QString("filePanel%1").arg(index));
+        auto *address = ui->findChild<QLineEdit *>("archivePath");
+        address->setFocus();
+        address->setText(path);
+        QTest::keyClick(address, Qt::Key_Return);
+        return static_cast<FileTable *>(ui->findChild<QTableWidget *>("archiveTable"));
+    }
     static void language(bool russian) {
         const QString path = qEnvironmentVariable("SEVENZIP_SETTINGS_PATH");
         SaveRegLang(UString(russian ? "ru" : "-"), path);
@@ -33,6 +41,90 @@ class VolumeWorkflowTests : public QObject, protected MainWindowTestSupport {
         language(false);
     }
     void cleanup() { language(false); }
+
+    void sourceDestinationUsesOtherFilesystemPanel_data() {
+        QTest::addColumn<unsigned>("pane");
+        QTest::addColumn<bool>("combine");
+        QTest::addColumn<bool>("russian");
+        QTest::addColumn<bool>("flat");
+        for (unsigned pane : {0u, 1u})
+            for (bool combine : {false, true})
+                for (bool flat : {false, true})
+                    QTest::newRow(qPrintable(QString("%1-%2-%3").arg(pane).arg(combine).arg(flat)))
+                        << pane << combine << (pane == 1) << flat;
+    }
+    void sourceDestinationUsesOtherFilesystemPanel() {
+        QFETCH(unsigned, pane);
+        QFETCH(bool, combine);
+        QFETCH(bool, russian);
+        QFETCH(bool, flat);
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString input = fixture.filePath(QStringLiteral("исходная папка"));
+        const QString output = fixture.filePath(QStringLiteral("другая папка"));
+        const QString sourcePath = flat ? QDir(input).filePath("nested") : input;
+        QVERIFY(QDir().mkpath(sourcePath));
+        QVERIFY(QDir().mkpath(output));
+        const QString name = combine ? "source.bin.001" : "source.bin";
+        QVERIFY(write(QDir(sourcePath).filePath(name), "first"));
+        if (combine)
+            QVERIFY(write(QDir(sourcePath).filePath("source.bin.002"), "second"));
+        QVERIFY(write(QDir(output).filePath("keep.txt"), "peer bytes"));
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        language(russian);
+        window.show();
+        action(window, "twoPanelsAction")->trigger();
+        auto *peer = openPanel(window, 1 - pane, output);
+        QTRY_COMPARE(peer->rowCount(), 1);
+        peer->selectRow(0);
+        peer->sourcePanel->Set_AutoRefresh_Mode(false);
+        CMyComPtr<IFolderFolder> peerProvider = peer->sourcePanel->GetFolder();
+        const auto peerSelection = peer->selectionModel()->selection();
+        auto *source = openPanel(window, pane, input);
+        if (flat)
+            action(window, "flatViewAction")->trigger();
+        QTRY_COMPARE(source->rowCount(), (combine ? 2 : 1) + (flat ? 1 : 0));
+        for (int row = 0; row < source->rowCount(); ++row)
+            if (source->item(row, 0)->data(Qt::UserRole + 3).toString() == name)
+                source->selectRow(row);
+        QCOMPARE(source->selectionModel()->selectedRows().size(), 1);
+        source->setFocus();
+        QString defaultPath;
+        bool handled = false;
+        QTimer::singleShot(0, &window, [&] {
+            auto *dialog = window.findChild<QDialog *>(combine ? "combineDialog" : "splitDialog");
+            if (!dialog)
+                return;
+            handled = true;
+            defaultPath =
+                dialog->findChild<QComboBox *>(combine ? "copyDestination" : "volumeDestination")
+                    ->currentText();
+            if (!combine)
+                dialog->findChild<QComboBox *>("volumeSize")
+                    ->setCurrentText("2 9223372036854775808");
+            dialog->accept();
+        });
+        action(window, combine ? "combineFilesAction" : "splitFileAction")->trigger();
+        QVERIFY(handled);
+        // Join the operation even on the old implementation, then report the
+        // wrong default without leaving a running worker during assertion exit.
+        QTRY_VERIFY(action(window, "createFolderAction")->isEnabled());
+        QCOMPARE(QDir::cleanPath(defaultPath), output);
+        QCOMPARE(read(QDir(output).filePath("keep.txt")), QByteArray("peer bytes"));
+        QCOMPARE(peer->sourcePanel->GetFolder(), (IFolderFolder *)peerProvider);
+        QCOMPARE(peer->selectionModel()->selection(), peerSelection);
+        QCOMPARE(read(QDir(sourcePath).filePath(name)), QByteArray("first"));
+        if (combine)
+            QCOMPARE(read(QDir(output).filePath("source.bin")), QByteArray("firstsecond"));
+        else {
+            QByteArray bytes;
+            for (int part = 1; part <= 2; ++part)
+                bytes += read(QDir(output).filePath(
+                    name + QString(".%1").arg(part, 3, 10, QLatin1Char('0'))));
+            QCOMPARE(bytes, QByteArray("first"));
+        }
+    }
 
     void splitCreatesNewDestinationAndCombinesIntoAnother_data() {
         QTest::addColumn<bool>("russian");

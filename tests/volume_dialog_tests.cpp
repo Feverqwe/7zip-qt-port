@@ -1,7 +1,9 @@
 #include "CPP/7zip/UI/FileManager/CopyDialog.h"
 #include "CPP/7zip/UI/FileManager/PanelSplitFile.h"
 #include "CPP/7zip/UI/FileManager/SplitDialog.h"
+#include "CPP/7zip/UI/FileManager/ViewSettings.h"
 #include "layout_inspection.h"
+#include "qtlangcontrols.h"
 #include <QComboBox>
 #include <QDialogButtonBox>
 #include <QFileInfo>
@@ -14,6 +16,43 @@
 class VolumeDialogTests : public QObject {
     Q_OBJECT
   private slots:
+    void splitKeepsUnsignedSourceSizes() {
+        CSplitDialog dialog("source.bin", "/not-created");
+        dialog.findChild<QComboBox *>("volumeSize")->setCurrentText("2 9223372036854775808");
+        dialog.accept();
+        QCOMPARE(dialog.result(), int(QDialog::Accepted));
+        QCOMPARE(dialog.VolumeSizes.Size(), 2u);
+        QCOMPARE(dialog.VolumeSizes[0], UInt64(2));
+        QCOMPARE(dialog.VolumeSizes[1], UInt64(1) << 63);
+    }
+
+    void splitUsesSourceTrimAndAllowsRetry_data() {
+        QTest::addColumn<QString>("bad");
+        QTest::newRow("leading-nbsp") << QString(QChar(0x00a0)) + "10";
+        QTest::newRow("leading-cr") << QString("\r10");
+    }
+    void splitUsesSourceTrimAndAllowsRetry() {
+        QFETCH(QString, bad);
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        CSplitDialog dialog("source.bin", temp.filePath("not created"));
+        dialog.show();
+        auto *volume = dialog.findChild<QComboBox *>("volumeSize");
+        volume->setCurrentText(bad);
+        dialog.accept();
+        QVERIFY(dialog.isVisible());
+        QVERIFY(dialog.findChild<QLabel *>("volumeError")->isVisible());
+        QVERIFY(!QFileInfo::exists(dialog.Path));
+        // UString::Trim removes precisely space, LF and tab.
+        volume->setCurrentText(" \n\t10 20\t\n ");
+        dialog.accept();
+        QCOMPARE(dialog.result(), int(QDialog::Accepted));
+        QCOMPARE(dialog.VolumeSizes.Size(), 2u);
+        QCOMPARE(dialog.VolumeSizes[0], UInt64(10));
+        QCOMPARE(dialog.VolumeSizes[1], UInt64(20));
+        QVERIFY(!QFileInfo::exists(dialog.Path));
+    }
+
     void splitInitAndConfirmation_data() {
         QTest::addColumn<bool>("viaButton");
         QTest::newRow("accept") << false;
@@ -51,7 +90,7 @@ class VolumeDialogTests : public QObject {
         dialog.show();
         auto *volume = dialog.findChild<QComboBox *>("volumeSize");
         for (const QString &bad : {QString(), QString("0"), QString("10M 0M"),
-                                   QString("9223372036854775808"), QString("wrong")}) {
+                                   QString("18446744073709551616"), QString("wrong")}) {
             volume->setCurrentText(bad);
             dialog.accept();
             QVERIFY(dialog.isVisible());
@@ -122,20 +161,21 @@ class VolumeDialogTests : public QObject {
     void combineUsesCopyDialogAndUpstreamSummary() {
         QFETCH(int, count);
         CThreadCombine combiner;
-        combiner.InputDirPrefix = "/parts/";
+        combiner.InputDirPrefix = us2fs(UString("/parts/"));
         combiner.TotalSize = 1234;
         for (int i = 1; i <= count; ++i)
-            combiner.Names << QStringLiteral("часть с пробелом.%1").arg(i, 3, 10, QLatin1Char('0'));
-        const QString info = combiner.GetInfo();
+            combiner.Names.Add(us2fs(
+                ToUString(QStringLiteral("часть с пробелом.%1").arg(i, 3, 10, QLatin1Char('0')))));
+        const QString info = ToQString(combiner.GetInfo());
         QVERIFY(info.contains(QStringLiteral("Files: %1").arg(count)));
         QVERIFY(info.contains("1 234 bytes"));
         QVERIFY(info.contains("\n/parts/"));
-        QVERIFY(info.contains(combiner.Names.first()));
-        QVERIFY(info.contains(combiner.Names[1]));
-        QVERIFY(info.contains(combiner.Names.last()));
+        QVERIFY(info.contains(ToQString(fs2us(combiner.Names.Front()))));
+        QVERIFY(info.contains(ToQString(fs2us(combiner.Names[1]))));
+        QVERIFY(info.contains(ToQString(fs2us(combiner.Names.Back()))));
         QCOMPARE(info.contains("..."), count > 3);
         if (count == 5)
-            QVERIFY(!info.contains(combiner.Names[2]));
+            QVERIFY(!info.contains(ToQString(fs2us(combiner.Names[2]))));
         CCopyDialog dialog("Объединить файлы часть.001", "Объединить в:", "/output", info);
         auto *summary = dialog.findChild<QPlainTextEdit *>("copySelectionInfo");
         QCOMPARE(summary->toPlainText(), info);

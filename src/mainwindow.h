@@ -98,6 +98,7 @@ class MainWindow : public QMainWindow {
 
   private:
     friend class QtAppPresentation;
+    friend class QtVolumeWindowServices;
     friend class QtFileManagerWindowServices;
     friend class QtFileManagerCommands;
     friend class QtFileManagerDrag;
@@ -168,6 +169,8 @@ class MainWindow : public QMainWindow {
 
   private:
     void startVolume(VolumeOperation::Mode mode);
+    void launchVolume(VolumeOperation *operation, const UString &title, const QString &source,
+                      UInt64 totalSize, std::function<void()> completion);
     void showItemContextMenu(const QPoint &globalPos);
     void applySortMode(bool enableSorting = false);
     void sortIndicatorChanged(unsigned panel, int column, Qt::SortOrder order);

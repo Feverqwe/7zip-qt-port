@@ -10,6 +10,16 @@ full revision `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`.
 The maintained per-module [manifest](upstream-baseline.json) owns reproducible
 local provenance; this document does not replace its exact/adapted distinction.
 
+## Split/Combine owner and native workers restored on 2026-10-08
+
+Existing mirrored names concealed absent CApp::Split/Combine, substituted native
+types/NIO and omitted CPreAllocOutFile. The complete scenario now uses original
+application bodies and worker algorithms with narrow Qt progress, I/O API and
+publication adapters. Original discovery/summary/output-name blocks have one
+shared implementation. The [source receipt](upstream-port-audit.md#p3-05--complete-source-splitcombine-scenario-2026-10-08)
+supersedes earlier claims that native preallocation and source discovery were
+unusable. This closes those omissions, without closing the FileManager family.
+
 ## Filesystem comparator restored on 2026-10-08
 
 Existing FSFolder.cpp/h names concealed an omitted IFolderCompare interface,

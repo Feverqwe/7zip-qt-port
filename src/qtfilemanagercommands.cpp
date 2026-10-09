@@ -233,7 +233,7 @@ QtFileManagerCommands::TransportCapabilities QtFileManagerCommands::ReadTranspor
         const QFileInfo file(ToQString(panel.GetItemFullPath(operated[0])));
         c.split = !file.isSymLink();
         CVolSeqName sequence;
-        c.combine = c.split && sequence.ParseName(file.fileName());
+        c.combine = c.split && sequence.ParseName(ToUString(file.fileName()));
     }
     return c;
 }

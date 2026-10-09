@@ -11,6 +11,19 @@ Suite descriptions and dated local results do not establish acceptance of the
 current checkout or other platforms; check the [audit](upstream-port-audit.md)
 and [checklist](porting-checklist.md) for their scope.
 
+Split/Combine source reconciliation uses `volume_operations`, `volume_dialog`,
+`volume_workflow`, `combine_names` and `worker_window_progress`. Bounded cases
+cover source UString whitespace/retry and UInt64 plans, native sequence width
+and carry, both-pane EN/RU default destinations with peer state/input bytes,
+empty parts and first-gap prefix discovery, and existing transfer failure,
+cancellation, input changes and owned rollback. Volume dialog JSON covers
+normal/compact presentation. The source receipt owns dated platform evidence;
+these suites do not establish rendered Windows reference or physical input.
+Windows mutation fixtures assert native ERROR_SHARING_VIOLATION for the active
+read handle, with exact successful output and unchanged input. POSIX exercises
+permitted active-input mutations and rollback. A completed Combine part changes
+after its handle closes, exercising final size validation/rollback on every OS.
+
 `panel_filesystem_sort` covers source CFSFolder comparison and its actual
 FileTable/CPanel consumer: raw comment suffixes versus equal visible text,
 normal/flat and both sort directions, source indices/selection, lazy cache and
@@ -2997,15 +3010,16 @@ change notification.
 `flat-sort-980.png` и `flat-sort-640.png` в том же каталоге снимков.
 
 `volume_operations` также проверяет сводку Combine для пяти частей с Unicode и
-пробелами: число, размер в байтах, первые две и последнюю часть, отказ при
-пропуске и отмену диалога без создания результата. Снимки `combine-540.png`
-и `combine-360.png` сохраняются в `build/dev/ui-screenshots/`.
+пробелами: число, размер в байтах, первые две и последнюю часть и остановку
+на первом пропуске. Пустые части допустимы при ненулевой сумме.
+`volume_workflow` проверяет отмену диалога без создания результата;
+`volume_dialog` сохраняет normal/compact widget JSON. Скриншоты opt-in.
 
 Последовательности размеров Split проверяются в `volume_operations`: повторение
 последнего размера, три разных размера, неиспользованный хвост, точные байты
 всех частей, отклонение нуля и переполнения, отмена с очисткой вывода. Диалог
-принимает `10M 20M` и оставляет ошибочный ввод открытым; снимки `split-540.png`
-и `split-360.png` сохраняются в том же каталоге.
+принимает `10M 20M` и UInt64-размеры, сохраняет исходный Trim и оставляет
+ошибочный ввод открытым для исправления; геометрия проверяется widget JSON.
 
 `panel_key` проверяет Alt+F1/F2 из списка и адреса и Tab из адреса во всех
 четырёх режимах просмотра каталога и архива, сохранение текущего пути и

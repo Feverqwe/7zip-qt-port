@@ -2,6 +2,19 @@
 # Consumers keep their existing link closure, fixtures and platform settings.
 get_property(sevenzip_port_consumers DIRECTORY PROPERTY BUILDSYSTEM_TARGETS)
 
+# Register the narrow worker adapters for every existing module consumer before
+# consolidating those sources into shared production objects.
+foreach(consumer IN LISTS sevenzip_port_consumers)
+    get_target_property(consumer_sources ${consumer} SOURCES)
+    if("src/CPP/7zip/UI/FileManager/PanelSplitFile.cpp" IN_LIST consumer_sources)
+        target_sources(${consumer} PRIVATE src/qtvolumeprogress.cpp src/qtvolumeprogress.h
+            src/qtvolumeio.cpp src/qtvolumeio.h src/qtvolumeservices.h)
+    endif()
+    if("src/volumeoperations.cpp" IN_LIST consumer_sources)
+        target_sources(${consumer} PRIVATE src/qtvolumetransaction.cpp src/qtvolumetransaction.h)
+    endif()
+endforeach()
+
 function(sevenzip_share_port_objects owner header)
     set(module_sources ${ARGN})
     add_library(${owner} OBJECT ${module_sources} ${header})
@@ -122,10 +135,12 @@ sevenzip_share_port_objects(sevenzip_panel_selection src/CPP/7zip/UI/FileManager
 sevenzip_share_port_objects(sevenzip_split_dialog src/CPP/7zip/UI/FileManager/SplitDialog.h
     src/CPP/7zip/UI/FileManager/SplitDialog.cpp)
 sevenzip_share_port_objects(sevenzip_panel_split src/CPP/7zip/UI/FileManager/PanelSplitFile.h
-    src/CPP/7zip/UI/FileManager/PanelSplitFile.cpp)
+    src/CPP/7zip/UI/FileManager/PanelSplitFile.cpp src/qtvolumeprogress.h src/qtvolumeprogress.cpp
+    src/qtvolumeio.h src/qtvolumeio.cpp src/qtvolumeservices.h)
 sevenzip_share_port_objects(sevenzip_file_transfer src/filetransferoperation.h
     src/filetransferoperation.cpp src/qtfiletransfertransaction.cpp src/qtfiletransfertransaction.h)
 sevenzip_share_port_objects(sevenzip_filesystem_scan src/filesystemscanner.h
     src/filesystemscanner.cpp)
-sevenzip_share_port_objects(sevenzip_volume_operations src/volumeoperations.h
+sevenzip_share_port_objects(sevenzip_volume_operations src/qtvolumetransaction.h
+    src/qtvolumetransaction.cpp src/volumeoperations.h
     src/volumeoperations.cpp)

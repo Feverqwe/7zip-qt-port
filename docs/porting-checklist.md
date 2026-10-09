@@ -89,6 +89,18 @@ P0: 12/12; P1: 18/18; P2: 11/11; P3: 2/6. P0-01–P0-12, P1-01–P1-18, P2-01–
 добавляется в план и этот чеклист, а текущий счётчик обновляется здесь.
 Это счётчик выполнения плана, не процент исходных строк upstream.
 
+P3-05,2026-10-10: complete source Split/Combine scenario restored original
+CApp workflow, peer destination, UInt64/Trim, contiguous-prefix discovery,
+empty parts, NIO/preallocation and native workers, with narrow Qt progress/I/O/
+transaction services and joined lifetime. Nine old-product RED rows retained;
+EN/RU both-pane normal/flat success/failure/cancel/input-change consumers pass.
+Required macOS full306/306 PASS251.91s; final localized6/6 PASS2.04s.
+Linux/Windows x64 Qt6.12 each6/6 PASS7.64s/20.22s,106Qt/0fail/0skip,1416
+local/archive/guest input hashes exact. Provenance, adaptations and platform
+sharing behavior are in the [source receipt](upstream-port-audit.md#p3-05--complete-source-splitcombine-scenario-2026-10-08).
+Eleven slow suites excluded. Remaining full-body FileManager/native/rendered/
+package acceptance remains mandatory;43/47 and P3-03/04/05/06 remain open.
+
 ## Рабочие итерации после укрупнения (2026-09-29)
 
 Применяются обновлённые правила [размера итерации](porting-plan.md#размер-итерации-и-коммита-уточнение-2026-09-29).
