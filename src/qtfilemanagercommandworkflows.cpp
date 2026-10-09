@@ -88,8 +88,10 @@ void QtFileManagerCommands::MoveTo() {
     window_.app_.OnCopy(true, false, window_.app_.GetFocusedPanelIndex());
 }
 void QtFileManagerCommands::Delete(bool toRecycleBin) {
-    if (window_.app_.GetFocusedPanel().CheckBeforeUpdate(IDS_ERROR_DELETING))
-        window_.deleteSelected(toRecycleBin);
+    const unsigned index = window_.app_.GetFocusedPanelIndex();
+    CSelectedState selection;
+    window_.app_.Panels[index].DeleteItems(toRecycleBin, *window_.trashService_, selection);
+    window_.app_.QtOperations().ContinueScanAfterSourceCall(index);
 }
 void QtFileManagerCommands::CalculateCrc(const char *method) {
     window_.calculateHash(QString::fromLatin1(method));

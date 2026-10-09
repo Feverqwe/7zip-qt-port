@@ -347,41 +347,48 @@ HRESULT CPanel::DeleteItems(bool toRecycleBin, IQtTrashService &trash, CSelected
     const QString message = ToQString(MyFormatNew(messageID, messageParam));
     if (QMessageBox::question(GetParent(), title, message,
                               QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel,
-                              QMessageBox::No) != QMessageBox::Yes)
+                              QMessageBox::Yes) != QMessageBox::Yes)
         return E_ABORT;
 
+    CDisableNotify disableNotify(*this);
     HRESULT result = S_OK;
-    {
-        CDisableNotify disableNotify(*this);
-        if (toRecycleBin && IsFSFolder()) {
-            FOR_VECTOR(i, indices) {
-                const QString path = ToQString(GetItemFullPath(indices[i]));
-                if (QFileInfo(path).isSymLink()) {
-                    result = E_NOTIMPL;
-                    break;
-                }
-                if (!trash.MoveToTrash(path)) {
-                    result = E_FAIL;
-                    break;
-                }
+    if (toRecycleBin && IsFSFolder()) {
+        FOR_VECTOR(i, indices) {
+            const QString path = ToQString(GetItemFullPath(indices[i]));
+            if (QFileInfo(path).isSymLink()) {
+                result = E_NOTIMPL;
+                break;
             }
-        } else {
-            CThreadFolderOperations op(FOLDER_TYPE_DELETE);
-            op.FolderOperations = _folderOperations;
-            op.Indices = indices;
-            auto *folder = dynamic_cast<NFsFolder::CFSFolder *>((IFolderFolder *)_folder);
-            if (folder)
-                folder->CheckBreak = [&op](const QString &path) {
-                    op.Sync.Set_FilePath(path.toStdWString().c_str());
-                    return op.Sync.CheckStop() == S_OK;
-                };
-            result =
-                op.DoOperation(*this, LangString(IDS_DELETING), LangString(IDS_ERROR_DELETING));
-            if (folder)
-                folder->CheckBreak = {};
+            if (!trash.MoveToTrash(path)) {
+                result = E_FAIL;
+                break;
+            }
         }
+        // QFile's native trash boundary has no shell error UI. Preserve the
+        // source shell branch's refresh after a partial result.
+        if (result != S_OK)
+            MessageBox_Error_HRESULT_Caption(result, LangString(IDS_ERROR_DELETING));
+        RefreshListCtrl(state);
+        return result;
+    }
+    {
+        CThreadFolderOperations op(FOLDER_TYPE_DELETE);
+        op.FolderOperations = _folderOperations;
+        op.Indices = indices;
+        auto *folder = dynamic_cast<NFsFolder::CFSFolder *>((IFolderFolder *)_folder);
+        if (folder)
+            folder->CheckBreak = [&op](const QString &path) {
+                op.Sync.Set_FilePath(path.toStdWString().c_str());
+                return op.Sync.CheckStop() == S_OK;
+            };
+        result = op.DoOperation(*this, LangString(IDS_DELETING), LangString(IDS_ERROR_DELETING));
+        if (folder)
+            folder->CheckBreak = {};
     }
     RefreshTitleAlways();
-    // The Qt presentation reloads FSFolder before restoring this source state.
+    // Interarchive Move retains its transaction guards until rollback settles;
+    // that caller publishes the captured selection after releasing them.
+    if (!explicitIndices)
+        RefreshListCtrl(state);
     return result;
 }

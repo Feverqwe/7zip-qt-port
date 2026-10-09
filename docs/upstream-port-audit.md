@@ -1,5 +1,80 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-05 — source Delete lifecycle (2026-10-10)
+
+Source repository https://github.com/ip7z/7zip.git, full revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. Reviewed complete original/current
+PanelOperations.cpp DeleteItems/worker bodies, CFSFolder::Delete,
+PanelMenu::CheckBeforeUpdate, MyLoadMenu Delete dispatch, current command/window
+consumers, source reload/presentation/scan guards and interarchive Move rollback.
+Dependencies remain IFolderOperations, CSelectedState, CThreadFolderOperations,
+CUpdateCallback100Imp and source RefreshListCtrl/RefreshTitleAlways.
+
+Delete's original internal control flow now owns the accepted-operation refresh
+and notification scope through RefreshListCtrl, including worker E_FAIL/E_ABORT.
+No/Cancel returns before refresh. The question restores source default Yes
+(MB_YESNOCANCEL has no alternate default-button flag); real Return-key consumers
+confirm deletion. Removed MainWindow's separate filesystem/
+archive refresh and generic second error path; Qt command services invoke the
+source owner and hand restored source guards to any deferred scan. The source
+worker presents its own error once. The existing explicit-index input/result
+extension remains for interarchive Move: its transaction must settle rollback
+and release operation guards before publishing the saved source selection.
+That narrow exception has no usable upstream archive Move implementation;
+see the [existing transaction review](#interarchive-copy-publication-and-rollback-2026-10-07).
+
+Qt's existing IQtTrashService replaces SHFileOperationA/W, including old ANSI,
+CE and MAX_PATH shell plumbing. It uses the source file/folder/count question
+because QFile::moveToTrash has no confirmation UI, rejects directly selected
+links, and refreshes after a partial trash result. This service also lacks shell
+error UI: a failed trash call now uses original captioned HRESULT presentation.
+No new deletion algorithm or archive engine path; filesystem recursion/cancel
+continues through CFSFolder and its existing CheckBreak bridge. Native desktop
+Trash behavior is separate from these injected, disposable-fixture checks.
+
+Actual old-product regression fails all eight both-pane EN/RU No/Cancel cases:
+an external file created during the question appears after the refused command.
+The original source returns before refresh. The new bounded source_delete suite
+has30 rows: those8,20 accepted success/partial-failure/operation-Cancel cases,
+and2 deferred258-to257-row scans. Real CFSFolder/commands cover ordinary success
+and injected trash; terminal worker failures delegate filesystem bytes then
+inject E_FAIL/E_ABORT through a generic provider projection and direct CPanel
+entry. It checks one error, exact caption, protected bytes/provider identity,
+owning guards and independent peer. Forwarding fixtures never impersonate
+Qt's concrete filesystem provider. Thirty-two current native-message JSON
+reports per OS have no clipped visible controls or truncated labels. Windows rendered
+parity is not established by these reports.
+
+Own source changes are validated in a detached05ffac8 snapshot, excluding
+concurrent Rename hunks in the primary worktree. Focused3/3 PASS8.03s,
+98Qt/0fail/0skip on macOS arm64 Qt6.12. Initial full303/308 PASS235.46s
+exposed missing runtime/SFX in the isolated build. Existing scripts built both
+from the pinned read-only upstream; manifests and hashes were verified before
+selecting that native module. Repeated required unsandboxed formatting/all-target/
+default gate308/308 PASS224.62s,4836Qt/0fail/18 existing platform skips.
+That full gate precedes the final localized default-Yes correction. Intermediate
+product RED10 covers eight default-button checks and two actual Return-key
+consumers. Final application/affected-target build and9focused suites pass21.80s,
+188Qt/0fail/0skip; the unchanged full gate is not repeated for this localized fix.
+Baseline408exact/196adapted/3local PASS. Initial Linux fixture assumed display
+order for partial deletion; it now derives exact paths from source operated
+indices and verifies retained bytes. Final x64 Qt6.12 snapshot
+`20261009T225645Z-b34eb839`, source.tar SHA256
+`df72d1eb71257cbae4caaea9661dac95c84d12d29d919d4cd277d8eae5ca5930`,
+passes Linux9/9 in33.06s,188Qt/0fail/0skip. Windows initially passes8/9:
+large_list_window records three GUI heartbeat gaps859/774/767ms at4096rows.
+Concurrent foreign Rename compilation was observed, without establishing
+causation. After waiting for other build/test processes, the same frozen
+snapshot/environment and unchanged nine-suite command pass9/9 in85.27s,
+190Qt/0fail/0skip. The initial failed runner result/log remains retained;
+the retry does not rewrite it or relax any assertion. Ninety-six current
+message JSON reports cover the three OS builds. Frozen1418 source/test/build/
+resource/script hashes match local, source archive and actual guest trees;
+removing only the temporary check wrapper leaves1417 retained inputs unchanged.
+This accepts the bounded source Delete scenario, including confirmation,
+success, partial failure/Cancel, refresh and deferred guards.
+Eleven slow suites excluded. Whole FileManager/P3/goal acceptance stays open.
+
 ## P3-05 — source Create File/Folder scenario (2026-10-10)
 
 Source repository https://github.com/ip7z/7zip.git, full revision

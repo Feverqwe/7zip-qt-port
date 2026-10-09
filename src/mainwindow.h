@@ -247,7 +247,6 @@ class MainWindow : public QMainWindow {
     void executeCopyDestination(bool move, bool copyToSame, unsigned sourceIndex,
                                 const QString &destination, const CRecordVector<UInt32> &indices,
                                 bool useDestPanel, bool useTemp);
-    void deleteSelected(bool toRecycleBin);
     void renameSelected();
     void finishFilesystemRename(quint32 sourceIndex, const QString &originalPath,
                                 const QString &name);

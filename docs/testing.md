@@ -1,5 +1,18 @@
 # Regression strategy
 
+`source_delete` covers the source confirmation/operation/refresh lifecycle in
+30 bounded rows: both panes/EN-RU No/Cancel, permanent success, injected partial
+worker failure/Cancel, injected trash success/failure and deferred large-list
+completion. The source default Yes and real Enter dispatch are checked
+independently of explicit No/Cancel answers. Ordinary commands use the concrete
+source CFSFolder; deterministic terminal errors delegate real byte deletion
+through a generic provider before
+returning E_FAIL/E_ABORT. It checks one source error, protected bytes, provider/
+peer identity and callback guards. Thirty-two confirmation/error JSON reuse
+native-message auto-fit. Existing ui_operations/native_fs_operations retain
+real archive and recursive filesystem consumers. See the
+[source receipt](upstream-port-audit.md#p3-05--source-delete-lifecycle-2026-10-10).
+
 `source_create` owns the moved CreateFile regression from ui_state and the
 source CreateFile/CreateFolder workflow consumers. It covers both panes and
 languages, standard/alternative marks, normal/flat nested paths, Cancel,

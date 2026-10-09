@@ -1,5 +1,18 @@
 # Text specifications and geometry checks
 
+Source Delete uses PanelOperations.cpp's file/folder/count language IDs and
+standard Yes/No/Cancel question. Refusal keeps the source selection/list.
+Yes is the source default button; Enter confirms, while explicit No/Cancel
+returns before refresh. Deferred consumers exercise real Return-key dispatch.
+Accepted worker error/Cancel refreshes it. Native message boxes retain wrapping,
+auto-fit and standard button grouping rather than a fixed resource rectangle.
+Trash failures reuse Panel.cpp's captioned HRESULT presentation; macOS exposes
+the caption as a heading because native window captions are omitted. The
+bounded source_delete consumers inspect both languages/panes at400×200 and
+300×180 probes:32 current JSON reports check reachable buttons and fitted text.
+Source scope/evidence are in the [receipt](upstream-port-audit.md#p3-05--source-delete-lifecycle-2026-10-10);
+these probes do not establish rendered Windows pixel parity.
+
 Find the affected dialog, command or plan ID with `rg -n` and read its contract
 before changing layout/text/visibility. [Commands and reports](#commands-and-reports)
 describes report generation; [UI reference tooling](ui-reference.md) owns the

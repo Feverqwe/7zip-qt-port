@@ -23,6 +23,18 @@ synchronous. It transfers the restored native processing snapshot after Create
 returns; it does not replace the source guards or creation algorithms.
 Remaining PanelOperations bodies and FileManager family disposition stay open.
 
+## Source Delete lifecycle reconciliation, 2026-10-10
+
+Delete's internal confirmation/worker/refresh phases now remain in the original
+PanelOperations owner. No/Cancel exits before refresh; accepted error/Cancel
+refreshes inside the source notification scope. MainWindow's independent
+filesystem/archive completion and duplicate error path are removed. Existing
+QFile trash presentation and explicit-index archive Move transaction seams are
+adaptations with concrete platform/transport reasons, not new deletion bodies.
+See the [source receipt](upstream-port-audit.md#p3-05--source-delete-lifecycle-2026-10-10).
+The bounded checks close the identified Delete lifecycle substitution;
+remaining PanelOperations/FileManager full disposition stays open.
+
 ## Split/Combine owner and native workers restored on 2026-10-08
 
 Existing mirrored names concealed absent CApp::Split/Combine, substituted native

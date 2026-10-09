@@ -310,34 +310,3 @@ bool MainWindow::transferToArchivePanel(const QString &destination, bool move,
     }
     return true;
 }
-
-void MainWindow::deleteSelected(bool toRecycleBin) {
-    if (state_ == State::Viewing) {
-        if (!remove_->isEnabled())
-            return;
-        CSelectedState selection;
-        const HRESULT result =
-            app_.GetFocusedPanel().DeleteItems(toRecycleBin, *trashService_, selection);
-        if (result == S_FALSE || result == E_ABORT)
-            return;
-        renderBoundFolder();
-        restoreListSelection(selection);
-        if (result != S_OK)
-            QMessageBox::warning(this, QStringLiteral("7-Zip"),
-                                 QtLocalText("Could not delete items from the archive.",
-                                             "Не удалось удалить объекты из архива."));
-        return;
-    }
-    if (state_ != State::Filesystem && !app_.GetFocusedPanel().IsAltStreamsFolder())
-        return;
-    CPanel &panel = app_.GetFocusedPanel();
-    CSelectedState selection;
-    const HRESULT result = panel.DeleteItems(toRecycleBin, *trashService_, selection);
-    if (result == S_FALSE)
-        return;
-    refreshCurrent(&selection);
-    if (result != S_OK && result != E_ABORT)
-        QMessageBox::warning(this, QStringLiteral("7-Zip"),
-                             QtLocalText("Could not delete all selected items.",
-                                         "Не удалось удалить все выбранные объекты."));
-}

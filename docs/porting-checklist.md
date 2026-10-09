@@ -113,6 +113,20 @@ See the [source receipt](upstream-port-audit.md#p3-05--source-create-filefolder-
 Eleven slow suites excluded. Full FileManager/native/rendered/package acceptance
 remains mandatory;43/47 and P3-03/04/05/06 remain open.
 
+P3-05,2026-10-10: source Delete lifecycle restores original CPanel refresh/
+notification phases, No/Cancel early return, source default Yes/Enter and one
+captioned worker/trash error. Window's independent completion path is removed;
+deferred scans consume restored guards, archive Move retains its transaction seam.
+Old-product refusal RED8 and intermediate default/Enter RED10 are retained.
+Mac required full308/308 PASS224.62s precedes the localized default correction;
+final app/affected build and9/9 PASS21.80s,188Qt/0fail/0skip. Linux final9/9
+PASS33.06s; Windows initial8/9 heartbeat failure and unchanged-snapshot retry9/9
+PASS85.27s remain distinct. Exact1418 input hashes and96 current message JSON
+are reviewed; wrapper removal preserves1417 retained inputs. See the
+[source receipt](upstream-port-audit.md#p3-05--source-delete-lifecycle-2026-10-10).
+Eleven slow suites excluded. Whole FileManager/native/rendered/package acceptance
+remains mandatory;43/47 and P3-03/04/05/06 remain open.
+
 ## Рабочие итерации после укрупнения (2026-09-29)
 
 Применяются обновлённые правила [размера итерации](porting-plan.md#размер-итерации-и-коммита-уточнение-2026-09-29).

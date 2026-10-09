@@ -1,5 +1,20 @@
 # Сверка с Windows 7zFM
 
+## Source Delete lifecycle (P3-05, 2026-10-10)
+
+Delete сохраняет исходный ранний выход после No/Cancel. Yes является кнопкой
+по умолчанию, как в исходном MB_YESNOCANCEL; Enter подтверждает удаление.
+Явные No/Cancel сохраняют файлы и прежний список. После принятой операции
+CPanel обновляет bound provider и восстанавливает selection даже при ошибке
+или отмене worker. Qt больше не выбирает отдельную политику refresh по типу
+папки и не добавляет второе общее сообщение после исходной ошибки progress.
+Отложенный scan принимает восстановленные source guards после возврата команды.
+Существующий Qt Trash adapter использует исходное подтверждение и captioned
+HRESULT при ошибке, затем обновляет частичный результат. Native desktop Trash
+и rendered Windows reference остаются отдельной проверкой. Archive Move
+с explicit indices сохраняет отложенную публикацию до завершения rollback.
+Provenance и границы проверки — в [source receipt](upstream-port-audit.md#p3-05--source-delete-lifecycle-2026-10-10).
+
 ## Source Create File/Folder (P3-05, 2026-10-10)
 
 Обе команды проходят исходные CPanel::CreateFile/CreateFolder: guards, диалог,

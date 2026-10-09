@@ -1778,10 +1778,15 @@ natural-name portion of the authoritative PanelSort.cpp compiles into
 remaining CPanel portion. This shared QtCore/common owner avoids a dependency
 cycle or duplicate comparator between filesystem and panel libraries.
 `FileDir.cpp` owns recursive removal without traversing symbolic links.
-The mirrored `CPanel::DeleteItems` owns confirmation and source progress-worker
-lifecycle for permanent deletion. `IQtTrashService` delegates ordinary Delete
-to the desktop's Trash/Recycle Bin; Qt refreshes and restores source selection
-after each result. A test-only callback driver remains in `tests/`.
+The mirrored `CPanel::DeleteItems` owns confirmation, source progress-worker
+lifecycle and refresh after an accepted deletion, including partial error or
+operation cancellation. No/Cancel exits before refresh. `IQtTrashService`
+delegates ordinary Delete to the desktop's Trash/Recycle Bin. Qt command
+services hand restored source state to a retained asynchronous scan guard;
+the window publishes source refresh without a second deletion workflow/error.
+The explicit-index interarchive Move extension defers source publication until
+its rollback transaction settles and releases operation guards. A test-only
+callback driver remains in `tests/`. See the [source receipt](upstream-port-audit.md#p3-05--source-delete-lifecycle-2026-10-10).
 
 `FileTransferOperation` owns the joined worker, immutable transfer inputs,
 cancellation, overwrite interaction and public result/progress signals.
