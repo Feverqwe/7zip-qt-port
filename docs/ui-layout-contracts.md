@@ -118,6 +118,12 @@ including archive-first and late creation from an initially single right panel.
 
 ### Source Copy/Move destination (P3-05.15, required scope)
 
+Copy history values follow source UStringVector/IsEqualTo_NoCase, retaining
+source-distinct K/K spellings through save/reload and the actual editable combo.
+Cancel preserves order; accepted CApp Copy moves its destination to the front.
+`copy_dialog` and `app_copy_routing` assert those values; existing normal/compact
+Copy/error geometry reports retain the same control structure.
+
 Interarchive F5/F6 preserves the destination provider and pre-update marked/focused
 names after success. Move Delete No/Cancel/error/engine cancellation restores
 backup bytes and physically reopens the destination with that same saved state;

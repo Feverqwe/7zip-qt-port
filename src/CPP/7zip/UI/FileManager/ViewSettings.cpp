@@ -224,33 +224,20 @@ void ReadFastFolders(UStringVector &folders, const QString &settingsPath) {
     ReadStringList(kFastFoldersValueName, folders, settingsPath);
 }
 
-static void SaveStringList(const char *valueName, const QStringList &folders,
-                           const QString &settingsPath) {
-    QSettings key(settingsPath, QSettings::IniFormat);
-    key.setValue(valueName, folders);
-}
-
-static void ReadStringList(const char *valueName, QStringList &folders,
-                           const QString &settingsPath) {
-    folders.clear();
-    QSettings key(settingsPath, QSettings::IniFormat);
-    folders = key.value(valueName).toStringList();
-}
-
-void SaveCopyHistory(const QStringList &folders, const QString &settingsPath) {
+void SaveCopyHistory(const UStringVector &folders, const QString &settingsPath) {
     SaveStringList(kCopyHistoryValueName, folders, settingsPath);
 }
 
-void ReadCopyHistory(QStringList &folders, const QString &settingsPath) {
+void ReadCopyHistory(UStringVector &folders, const QString &settingsPath) {
     ReadStringList(kCopyHistoryValueName, folders, settingsPath);
 }
 
-void AddUniqueStringToHeadOfList(QStringList &list, const QString &s) {
-    for (qsizetype i = 0; i < list.size();) {
-        if (s.compare(list[i], Qt::CaseInsensitive) == 0)
-            list.removeAt(i);
+void AddUniqueStringToHeadOfList(UStringVector &list, const UString &s) {
+    for (unsigned i = 0; i < list.Size();) {
+        if (s.IsEqualTo_NoCase(list[i]))
+            list.Delete(i);
         else
             i++;
     }
-    list.insert(0, s);
+    list.Insert(0, s);
 }

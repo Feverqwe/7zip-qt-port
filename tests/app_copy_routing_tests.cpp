@@ -71,6 +71,7 @@ struct CopyInteraction {
     bool shown = false;
     bool inspected = false;
     QString error;
+    QStringList history;
 };
 
 CopyInteraction chooseDestination(CApp &app, QWidget &window, const QString &path,
@@ -82,7 +83,10 @@ CopyInteraction chooseDestination(CApp &app, QWidget &window, const QString &pat
         auto *dialog = window.findChild<CCopyDialog *>("copyDialog");
         if (dialog && dialog->isVisible() && !result.shown) {
             result.shown = true;
-            dialog->findChild<QComboBox *>("copyDestination")->setCurrentText(path);
+            auto *destination = dialog->findChild<QComboBox *>("copyDestination");
+            for (int i = 0; i < destination->count(); ++i)
+                result.history.append(destination->itemText(i));
+            destination->setCurrentText(path);
             if (cancel)
                 dialog->reject();
             else
@@ -129,6 +133,49 @@ class AppCopyRoutingTests final : public QObject {
         presentation.views[0]->selectAll();
     }
   private slots:
+    void copyHistoryKeepsSourceDistinctNamesThroughDialogAndReopen() {
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString source = fixture.filePath(QStringLiteral("source 空"));
+        const QString peer = fixture.filePath("K");
+        const QString kelvin = fixture.filePath(QStringLiteral("\u212A")) + '/';
+        const QString settings = fixture.filePath("settings.ini");
+        QVERIFY(QDir().mkpath(source));
+        QVERIFY(QDir().mkpath(peer));
+        const QString payload = QDir(source).filePath("one.txt");
+        write(payload);
+        QWidget window;
+        CopyPresentation presentation(window);
+        CApp app;
+        create(app, presentation, window, source, peer, settings);
+        UStringVector history;
+        history.Add(ToUString(kelvin));
+        history.Add(ToUString(peer + '/'));
+        history.Add(L"/keep");
+        SaveCopyHistory(history, settings);
+        const QStringList initial{kelvin, peer + '/', "/keep"};
+        const auto cancelled = chooseDestination(app, window, peer + '/', true);
+        QVERIFY(cancelled.shown);
+        QVERIFY(cancelled.error.isEmpty());
+        QCOMPARE(cancelled.history, initial);
+        QCOMPARE(presentation.executions, 0u);
+        const auto accepted = chooseDestination(app, window, peer + '/');
+        QVERIFY(accepted.shown);
+        QVERIFY(accepted.error.isEmpty());
+        QCOMPARE(accepted.history, initial);
+        QCOMPARE(presentation.executions, 1u);
+        app.CompleteCopy();
+        presentation.views[0]->selectAll();
+        const auto reopened = chooseDestination(app, window, peer + '/', true);
+        QVERIFY(reopened.shown);
+        QVERIFY(reopened.error.isEmpty());
+        QCOMPARE(reopened.history, (QStringList{peer + '/', kelvin, "/keep"}));
+        QCOMPARE(presentation.executions, 1u);
+        QFile bytes(payload);
+        QVERIFY(bytes.open(QIODevice::ReadOnly));
+        QCOMPARE(bytes.readAll(), QByteArray("control bytes"));
+        QVERIFY(QDir(peer).entryList(QDir::Files).isEmpty());
+    }
     void asynchronousCopyRetainsThenRestoresSourceTimer_data() {
         QTest::addColumn<unsigned>("panels");
         QTest::newRow("one-panel") << 1u;

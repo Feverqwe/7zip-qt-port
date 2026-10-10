@@ -29,7 +29,13 @@ struct QtPanelContextMenu::Impl {
 
 QtPanelContextMenu::QtPanelContextMenu(MainWindow &window, QAbstractItemView &view)
     : impl_(std::make_unique<Impl>(window, view)) {}
-QtPanelContextMenu::~QtPanelContextMenu() = default;
+QtPanelContextMenu::~QtPanelContextMenu() {
+    auto &window = impl_->window;
+    // Native popup focus events can project disabled actions while source
+    // notification guards are held. Recompute after popup and CallScope end.
+    impl_.reset();
+    window.refreshActions();
+}
 bool QtPanelContextMenu::IsHeader(QWidget *handle) const {
     auto *table = qobject_cast<QTableWidget *>(&impl_->view);
     return table && handle == table->horizontalHeader();

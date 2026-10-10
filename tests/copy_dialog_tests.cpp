@@ -14,9 +14,23 @@
 #include <QTemporaryDir>
 #include <QTest>
 #include <QTimer>
+#include <initializer_list>
 
 class CopyDialogTests : public QObject {
     Q_OBJECT
+
+    static UStringVector SourceStrings(std::initializer_list<const wchar_t *> values) {
+        UStringVector strings;
+        for (const wchar_t *value : values)
+            strings.Add(value);
+        return strings;
+    }
+    static QStringList QtStrings(const UStringVector &values) {
+        QStringList strings;
+        FOR_VECTOR(i, values)
+        strings.append(ToQString(values[i]));
+        return strings;
+    }
 
   private slots:
     void initTestCase() { QApplication::setAttribute(Qt::AA_DontUseNativeDialogs); }
@@ -55,30 +69,43 @@ class CopyDialogTests : public QObject {
             settings.setValue("copy/history", QStringList{"/old", "/OLDER"});
             settings.setValue("unrelated/value", 17);
         }
-        QStringList history{"stale"};
+        UStringVector history = SourceStrings({L"stale"});
         ReadCopyHistory(history, ini);
-        QVERIFY(history.isEmpty());
-        SaveCopyHistory({"/old", "/OLDER"}, ini);
+        QVERIFY(history.IsEmpty());
+        SaveCopyHistory(SourceStrings({L"/old", L"/OLDER"}), ini);
         ReadCopyHistory(history, ini);
-        QCOMPARE(history, (QStringList{"/old", "/OLDER"}));
-        history << "/NEW" << "/new" << "/NeW";
-        AddUniqueStringToHeadOfList(history, "/new");
-        QCOMPARE(history, (QStringList{"/new", "/old", "/OLDER"}));
-        QStringList unicode{QStringLiteral("/ПАПКА"), "/keep", QStringLiteral("/папка")};
-        AddUniqueStringToHeadOfList(unicode, QStringLiteral("/Папка"));
-        QCOMPARE(unicode, (QStringList{QStringLiteral("/Папка"), "/keep"}));
+        QCOMPARE(QtStrings(history), (QStringList{"/old", "/OLDER"}));
+        history.Add(L"/NEW");
+        history.Add(L"/new");
+        history.Add(L"/NeW");
+        AddUniqueStringToHeadOfList(history, L"/new");
+        QCOMPARE(QtStrings(history), (QStringList{"/new", "/old", "/OLDER"}));
+        UStringVector unicode = SourceStrings({L"/ПАПКА", L"/keep", L"/папка"});
+        AddUniqueStringToHeadOfList(unicode, L"/Папка");
+        QCOMPARE(QtStrings(unicode), (QStringList{QStringLiteral("/Папка"), "/keep"}));
+        UStringVector sourceCase = SourceStrings({L"/\u212A", L"/k", L"/K", L"/keep"});
+        AddUniqueStringToHeadOfList(sourceCase, L"/K");
+        QCOMPARE(QtStrings(sourceCase), (QStringList{"/K", QStringLiteral("/\u212A"), "/keep"}));
+        SaveCopyHistory(sourceCase, ini);
+        UStringVector restarted;
+        ReadCopyHistory(restarted, ini);
+        QCOMPARE(QtStrings(restarted), QtStrings(sourceCase));
+        CCopyDialog sourceHistory(false, "/destination", {}, QtStrings(restarted));
+        auto *destinations = sourceHistory.findChild<QComboBox *>("copyDestination");
+        QCOMPARE(destinations->count(), 3);
+        QCOMPARE(destinations->itemText(1), QStringLiteral("/\u212A"));
         SaveCopyHistory(history, ini);
-        history.clear();
+        history.Clear();
         ReadCopyHistory(history, ini);
-        QCOMPARE(history, (QStringList{"/new", "/old", "/OLDER"}));
+        QCOMPARE(QtStrings(history), (QStringList{"/new", "/old", "/OLDER"}));
         QSettings settings(ini, QSettings::IniFormat);
         QCOMPARE(settings.value("unrelated/value").toInt(), 17);
         QCOMPARE(settings.value("copy/history").toStringList(), (QStringList{"/old", "/OLDER"}));
         SaveCopyHistory({}, ini);
         ReadCopyHistory(history, ini);
-        QVERIFY(history.isEmpty());
+        QVERIFY(history.IsEmpty());
         ReadCopyHistory(history, temp.filePath("missing.ini"));
-        QVERIFY(history.isEmpty());
+        QVERIFY(history.IsEmpty());
     }
 
     void browseNormalizesDirectoryAndCancelPreservesText() {

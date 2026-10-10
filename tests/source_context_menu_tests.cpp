@@ -111,6 +111,7 @@ class SourceContextMenuTests final : public QObject, protected MainWindowTestSup
         QVERIFY(QMetaObject::invokeMethod(owner->horizontalHeader(), "customContextMenuRequested",
                                           Qt::DirectConnection, Q_ARG(QPoint, QPoint(10, 5))));
         QVERIFY(headerObserved);
+        QVERIFY(action(window, "settingsAction")->isEnabled());
         QCOMPARE(owner->isColumnHidden(timeColumn), !ownerHidden);
         QCOMPARE(peer->isColumnHidden(peerTimeColumn), peerHidden);
         QVERIFY(peer->sourcePanel->GetColumns().IsEqualTo(peerCatalog));
@@ -158,6 +159,7 @@ class SourceContextMenuTests final : public QObject, protected MainWindowTestSup
                 QVERIFY(QMetaObject::invokeMethod(view, "customContextMenuRequested",
                                                   Qt::DirectConnection, Q_ARG(QPoint, point)));
                 QVERIFY(cancelled);
+                QVERIFY(action(window, "settingsAction")->isEnabled());
                 QCOMPARE(owner->sourcePanel->GetFolder(), (IFolderFolder *)ownerFolder);
                 QCOMPARE(peer->sourcePanel->GetFolder(), (IFolderFolder *)peerFolder);
                 QVERIFY(!QFileInfo::exists(fixture.filePath(created)));

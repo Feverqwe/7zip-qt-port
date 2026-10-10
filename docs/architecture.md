@@ -1692,7 +1692,15 @@ settings; source opening/extraction callbacks persist accepted ShowPassword only
 panel summary functions. Callers validate operation input; dialogs commit
 values only after confirmation. Folder snapshots supply summary metadata;
 archive folder sizes come from `CProxyArc`. `ViewSettings` persists Copy/Move
-destination history through QSettings.
+destination history through QSettings. Its original UStringVector interfaces and
+IsEqualTo_NoCase/Delete/Insert algorithm own comparison and ordering; CApp retains
+the20-entry limit. QStringList is used only for settings storage and the Copy
+dialog presentation boundary. Source-distinct K/K history values survive reopen.
+Window Position serialization is complete, but its omitted source InitInstance
+startup/normal/maximized consumer remains mandatory P3-05.16.
+QtPanelContextMenu destroys its popup/CallScope before refreshing cached QAction
+availability, so native focus events under temporary source guards cannot leave
+commands disabled after Cancel. Source menu admission remains authoritative.
 
 `CExtractDialog` owns extraction input and confirmation. `NExtract::CInfo`
 stores destination history and mode preferences in the Extraction INI group.

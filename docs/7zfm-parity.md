@@ -1,5 +1,17 @@
 # Сверка с Windows 7zFM
 
+## Source Copy history (P3-05, 2026-10-10)
+
+История Copy/Move снова использует исходные UStringVector и IsEqualTo_NoCase,
+порядок удаления совпадений и добавления в начало; предел20 сохраняется в CApp.
+Qt case folding удалял отдельную исходную строку K при добавлении K. Теперь обе
+строки сохраняются после записи, Cancel и повторного открытия source Copy
+dialog. В QStringList значения переходят только на границе Qt-представления.
+После закрытия popup Qt пересчитывает доступность общих QAction: временный
+запрет уведомлений панели больше не должен оставлять «Настройки» отключёнными.
+Проверки и ограничение native Windows session0:
+[receipt](upstream-port-audit.md#p3-05--viewsettings-and-source-copy-history-2026-10-10).
+
 ## Source Comment publication (P3-05, 2026-10-10)
 
 Исходный void CPanel::ChangeComment снова владеет сохранением выбора, ошибкой
@@ -2049,8 +2061,9 @@ Windows/Linux runtime and rendered Windows parity remain unverified.
 Диалог F5/F6 перенесён из `CopyDialog.cpp/.h`: назначения выбираются из
 редактируемой истории, Browse нормализует конечный разделитель, Cancel
 оставляет Value без изменений. История CopyHistory читает только исходный
-ключ; MVP copy/history игнорируется. Совпадения удаляются без учёта регистра,
-предел — 20.
+ключ; MVP copy/history игнорируется. Совпадения удаляются исходным
+IsEqualTo_NoCase, предел —20; [текущая запись](upstream-port-audit.md#p3-05--viewsettings-and-source-copy-history-2026-10-10)
+уточняет отличие source upper-case от прежнего Qt case folding.
 Список выделения прокручивается и не переносит строки; это адаптация
 SS_LEFTNOWORDWRAP для длинных имён. Структура проверена по `CopyDialog.rc`
 и геометрии Qt; пиксельная сверка с Windows и проверка Windows/Linux не выполнены.

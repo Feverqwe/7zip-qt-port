@@ -1,5 +1,77 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-05 — ViewSettings and source Copy history (2026-10-10)
+
+Source repository https://github.com/ip7z/7zip.git, full revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. Complete original/current
+ViewSettings.cpp/.h bodies were compared with original App::OnCopy history
+phases, source MyString case comparison, AppState persistence, source App
+create/save/toolbar consumers, PanelItems column persistence and Qt construction/
+close/view-mode consumers. The [body/caller disposition](omitted-scope-audit.md#viewsettings-complete-bodycaller-disposition-2026-10-10)
+accounts for binary records, keys, types and remaining source window placement.
+
+Restored original UStringVector SaveCopyHistory/ReadCopyHistory and
+AddUniqueStringToHeadOfList bodies and declarations. Original unsigned iteration,
+IsEqualTo_NoCase/Delete/Insert algorithm is authoritative; duplicated QStringList
+storage helpers and independent Qt case folding are removed. CApp::OnCopy again
+owns UStringVector history and its original20-entry limit. QStringList conversion
+is confined to the Qt Copy dialog boundary. Existing portable destination/slash
+transport remains; this does not alter Copy classification or archive algorithms.
+
+Actual old-product Copy dialog history RED: adding K removed the distinct Kelvin
+symbol K, producing2 entries instead of3 (8Qt pass/1fail,0.54s). The same expected
+strings now survive source comparison, Save/Read and actual combo items. A new
+CApp consumer exercises Cancel, accepted Copy and reopening the source-created
+dialog, preserving distinct stored names/order and protected disposable bytes.
+The existing source comparison diagnostic confirms upper-case equivalence differs
+from Qt case folding; no new Unicode comparison implementation is introduced.
+Initial focused10/10 pass9.77s,90Qt/0fail/0skip.
+
+The related Linux list-settings consumer exposed a Qt popup completion defect:
+after Cancel, Options remained disabled even after a bounded wait. A direct
+public-action regression fails immediately after popup return (130ms); diagnostic
+output confirms no dialog was created and the action was disabled. Source
+FM WM_INITMENUPOPUP/MyLoadMenu::OnMenuActivating were checked: Win32 updates menu
+state on activation, while Qt retains shared QAction state. QtPanelContextMenu
+now destroys its popup and CallScope before recomputing command availability.
+No source menu algorithm or command admission rule changes. Existing both-pane
+header/list Cancel rows now check restored Options availability; the list-settings
+consumer retains its actual second Options invocation with no added wait.
+
+Initial macOS full311/311 passed331.71s. Initial same-source guest snapshot
+`20261010T005734Z-fc5e5726` (SHA256
+`be49e41975faab7272881b55ac6adf751e30e373397dfe5b19b3ccf3d712f8d3`)
+preserves the Linux9/10 popup failure and Windows9/10 window-exposure failure.
+All1424 original archive/local/actual-guest inputs match;16 Copy/error/toolbar
+JSON per guest have no clipping. Windows ran in SSH session0; read-only session
+inventory shows no logged-on user/explorer. Its native list-settings acceptance
+requires the already tracked active-desktop prerequisite; no credentials or
+login policy were changed.
+
+Final updated-source snapshot `20261010T011111Z-4e7f15bd`, SHA256
+`d8081fa60e441c2c6c692bfbbaba52574d99ae4368a7f90f7edbc0b454c32314`:
+Linux11/11 passes12.82s,104Qt/0fail/0skip. Windows10/11 in38.11s,
+102Qt/2fail/0skip; only native list_settings_runtime fails its two exposure waits
+before any Options interaction in session0. All other consumers, including
+restored Copy history and immediate popup action recovery, pass. This is partial
+Windows evidence, not native desktop acceptance; that prerequisite remains P3-03.
+The failed consumer was retained in the gate and its assertions were not relaxed.
+
+Required unsandboxed macOS arm64 Qt6.12 final gate passes formatting, all-target
+build and311/311 CTest in296.32s,4892Qt/0fail/18 existing platform skips. All1424
+frozen source/test/build/resource/script inputs match isolated local, source.tar
+and both actual guests. All156 current Copy/error/toolbar/popup JSON (52 per OS)
+have no clipping. The temporary task wrapper is archived/removed;1423 retained
+inputs match the primary checkout. Baseline verifies408exact/196adapted/3local.
+Evidence: build/review/filemanager-final/viewsettings-*.
+
+Complete ViewSettings serialization does not establish the omitted FM InitInstance
+placement consumer: MainWindow currently reads Position but applies only Panels.
+Original WinMain2→InitInstance read/create/normal/maximized workflow and
+SaveWindowInfo were reviewed; mandatory P3-05.16 records its separate startup/
+restart scenario. Remaining FileManager, native/rendered, package and final
+P3-03/04/05/06 acceptance stay open. Eleven slow suites excluded.
+
 ## P3-05 — PanelOperations disposition and source Comment lifecycle (2026-10-10)
 
 Source repository https://github.com/ip7z/7zip.git, full revision

@@ -1,5 +1,17 @@
 # Regression strategy
 
+`copy_dialog` verifies source Copy history case policy, stored ordering and
+reloaded combo items: K retains the source-distinct Kelvin symbol K while all
+ordinary K/k variants are removed. `app_copy_routing` exercises real CApp dialog
+Cancel/accept/reopen against disposable settings and protected fixture bytes.
+Related column/settings/toolbar/persisted-location consumers share the restored
+UStringVector owner; see the [source receipt](upstream-port-audit.md#p3-05--viewsettings-and-source-copy-history-2026-10-10).
+
+`source_context_menu` checks Options availability immediately after header/list
+popup return in its existing bounded rows. `list_settings_runtime` also checks
+availability after Cancel and actually opens Options again after closing a second
+window. No retry or added readiness wait hides a stale disabled QAction.
+
 `filesystem_comment::sourceCommentOwnsPublication` exercises the public source
 reload-presentation contract: Cancel does not publish; accepted Comment publishes
 once under source guards with the captured focused name and same provider.

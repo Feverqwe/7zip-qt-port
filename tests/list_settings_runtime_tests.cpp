@@ -155,6 +155,7 @@ class ListSettingsRuntimeTests final : public QObject, protected MainWindowTestS
             files, "customContextMenuRequested", Qt::DirectConnection,
             Q_ARG(QPoint, files->visualItemRect(files->item(1, 0)).center())));
         QVERIFY(menuInspected);
+        QVERIFY(action(window, "settingsAction")->isEnabled());
 
         MainWindow reopened;
         QCOMPARE(table(reopened)->rowCount(), 2);
