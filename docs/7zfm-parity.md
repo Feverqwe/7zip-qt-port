@@ -10,6 +10,17 @@ source order, labels and geometry are unchanged. See the
 [validation receipt](upstream-port-audit.md#p3-05--password-state-and-process-callers-2026-10-10).
 Qt widget/runtime evidence does not establish rendered Windows 7zFM parity.
 
+## Source panel context menu (P3-05, 2026-10-10)
+
+Table, icon и header передают событие своему CPanel::OnContextMenu. Исходный
+owner сохраняет точный keyboard sentinel, empty origin, focus/refusal, Cancel
+и plugin/file dispatch. Закрытие Qt popup больше не направляет команду соседней
+панели через восстановление её фокуса; общий QAction не выполняет её дважды.
+Qt использует центр visual item и собственное ограничение popup экраном вместо
+Win32 LVIR_ICON/TrackPopupMenu. Структура и порядок исходные; rendered Windows
+pixel parity не проверена. Provenance и актуальные checks — в
+[receipt](upstream-port-audit.md#p3-05--source-panel-context-menu-lifecycle-2026-10-10).
+
 ## Options: ошибки Apply (P3-05, 2026-10-10)
 
 Ошибка ассоциации на странице System показывается один раз, затем остальные

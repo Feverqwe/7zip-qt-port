@@ -157,6 +157,26 @@ this closes these two caller/type debts, not whole FileManager acceptance.
 
 See the [validation receipt](upstream-port-audit.md#p3-05--operation-prompts-and-source-modal-lifetime-2026-10-10).
 
+### PanelMenu complete body/caller disposition, 2026-10-10
+
+Complete original1160-line/current PanelMenu.cpp and its types/callers were
+reviewed at pinned upstream `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`.
+The [source receipt](upstream-port-audit.md#p3-05--source-panel-context-menu-lifecycle-2026-10-10)
+owns provenance, validation and current limitations.
+
+| Body family | Retained source and adaptation |
+| --- | --- |
+| EditCut/EditCopy/EditPaste | Source Cut/Paste are inactive commented shell calls and remain no-ops. Copy retains selected item/path concatenation; QClipboard replaces SetClipboardText. |
+| Properties | Original item/raw-property, folder, archive-level and NonOpen property traversal/order remains; Qt displays the source property collector through an explicit-index overload. Native System properties is applicable on Windows, not omitted globally. |
+| Shell context creation and invocation | Original native PIDL/Query/Invoke body remains on Windows. HWND/control/menu transport uses winId, CMINVOKECOMMANDINFOEX and native Qt menu services. Portable source plugin numeric routing/error/selection rules are shared. |
+| CreateSevenZipMenu/CreateFileMenu | Original selected-path, directory, read-only/hash/FS/ADS policy and CFileMenu load remain. Explorer source trees and source file rows have Qt ownership/rendering services; original engine services execute archive operations. |
+| IsReadOnlyFolder/IsThereReadOnlyFolder/CheckBeforeUpdate | Original provider/parent/read-only checks and source error construction remain. Qt message services replace Win32 presentation. |
+| OnContextMenu | Complete original header/list/keyboard/empty/focus/Cancel/plugin/file routing is restored. Qt supplies handle identity, visual row coordinates, popup RAII/Track and source dispatch transport. Table/icon/header consumers capture their own pane. |
+| Inactive/presentation scope | Commented context hit-test and debug SHOW_DEBUG paths do not define additional active desktop workflows. Native CMenu/CMenuDestroyer, HMENU and screen-coordinate APIs are replaced by scoped Qt services, retaining source branch order. |
+
+This disposition covers PanelMenu; rendered native Windows reference and the
+remaining FileManager/package/final acceptance stay separate.
+
 ### Six Options pages and Apply error policy, 2026-10-10
 
 Source https://github.com/ip7z/7zip.git at full revision

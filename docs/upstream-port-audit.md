@@ -111,6 +111,82 @@ Temporary wrapper is archived/removed; all1417 retained frozen inputs match.
 Eleven slow suites are excluded. Native Windows rendered/physical drag receiver,
 whole FileManager, package and P3-03/04/05/06 acceptance remain mandatory.
 
+## P3-05 — source panel context-menu lifecycle (2026-10-10)
+
+Source repository https://github.com/ip7z/7zip.git, full revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. Complete original/current
+PanelMenu.cpp bodies, Panel.h declarations, native list/header caller and
+MyLoadMenu dispatch, Qt table/icon/header callbacks, withPanelProjection,
+QtFileMenuProjection, QtFileManagerShellMenu and source command consumers were
+reviewed. The C++ source owner, shared types and module path remain authoritative;
+[complete body disposition](omitted-scope-audit.md#panelmenu-complete-bodycaller-disposition-2026-10-10)
+records clipboard, Properties, native shell, menu policy and inactive branches.
+
+Restored CPanel::OnContextMenu's complete header/list admission, exact(-1,-1)
+keyboard sentinel, operated-empty origin, focused-item refusal/rectangle,
+popup construction, Cancel and plugin/file-command routing. Qt supplies control
+identity, visual-item rectangle/viewport coordinates, QMenu RAII and numeric
+Track result through IQtPanelContextMenuServices. Its visual item centre adapts
+the native LVIR_ICON centre; no pixel claim is made. MainWindow routes the
+captured pane/view and existing mouse hit-selection transport through temporary
+panel projection. The header reaches the same source entry before its existing
+ShowColumns workflow. No archive, matching or column algorithm is duplicated.
+
+QtPanelContextMenu renders the shared source CFileMenu projection and shell
+trees. Shared QActions are signal-blocked during Track so the returned command
+is dispatched once by the source branch. Source notification guards cover both
+panes during item and header popups: Qt closing a popup can restore peer focus
+before numeric dispatch or QAction::toggled. Native plugin IDs, original
+InvokePluginCommand, source command availability/dispatch and Create File remain
+shared. Scoped popup/plugin ownership survives dispatch and releases afterward.
+The existing QtAppOperationState::CallScope covers construction through popup
+destruction and dispatch, preventing source Close from releasing live providers.
+An actual close attempt previously succeeded and cleared the owner folder in
+all eight popup consumers; the unchanged regression now requires refusal and
+preserved visibility/provider identity.
+
+Eight actual old-product public RED consumers showed inactive-pane Create File
+missing from its owner; the intermediate source integration recorded the exact
+file incorrectly created in the peer. The strengthened actual header Return
+regression then exposed eight peer source-catalog mutations on both guests,
+while the visible owner column changed. macOS did not reproduce that focus/action
+ordering. Failed snapshot `20261010T000203Z-4bb481ad`, SHA256
+`0466f97949fd54afb2b229903f5e35fc642a9fcc9e30e64a00ba56c507d9584c`,
+retains Linux9/10 in22.67s and Windows9/10 in79.97s, eight failures each;
+all1423 archive/local/actual-guest input hashes match. The assertion and source
+column algorithm are unchanged; the complete header-popup guard fixes routing.
+
+Final12 bounded data rows/14Qt cover both panes, EN/RU table/icon lists,
+standard/alternative marks, inactive-owner mouse/keyboard Cancel and actual
+Create File, header Return with the intended owner catalog and unchanged peer
+catalog, popup Close refusal, created list/provider
+publication, protected bytes/provider identity and no archive backend requests.
+Four rows cover empty/Parent keyboard admission. Existing shell/column/command,
+source Create, keyboard and checksum consumers provide direct integration.
+
+Required isolated unsandboxed macOS arm64 Qt6.12 formatting/all-target/default
+gate passes310/310 in237.73s,4877Qt/0fail/18 existing platform skips. Earlier
+preliminary full310/310 in252.31s and guest9/9 passes predate the strengthened
+header regression. The later full310/310 in317.12s and guest10/10 passes at
+21.52s/67.47s establish the header fix but predate popup Close coverage. Final source snapshot
+`20261010T002152Z-821a8fee`, SHA256
+`4bb72f674a4c9a43c7d114d94faf2e7d3fb6e4d5ca8180e1f07e4fc71ed795bb`:
+Linux/Windows x64 Qt6.12 each10/10 PASS21.88s/73.61s,181/185Qt/0fail/0skip.
+All1423 frozen source/test/build/resource/script hashes match isolated local,
+source.tar and actual guests. The temporary task wrapper is archived/removed;
+all1422 retained inputs remain exact. Thirty-six current popup JSON reports per
+OS,108 total, have no clipped visible controls or truncated labels. Pinned
+baseline verifies408exact/196adapted/3local. Evidence: build/review/filemanager-final/context-*.
+
+The validation tree starts at77e100c and excludes separately accepted4ad7c9e
+prompt-dialog work and separately accepted8f388a5 password work. Combined current
+tree consumers source_context_menu/password_window/extract_prompt/language_dialog
+pass4/4 in2.75s after8f388a5. The initial remote invocation
+failed before sync because the temporary worktree had no sibling upstream;
+subsequent runs supply the explicit read-only checkout. Eleven slow suites are
+excluded. Rendered native Windows, remaining FileManager, package and final
+P3-03/04/05/06 acceptance remain mandatory.
+
 ## P3-05 — six Options pages and Apply errors (2026-10-10)
 
 Source repository https://github.com/ip7z/7zip.git, full revision

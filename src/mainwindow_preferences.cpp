@@ -5,13 +5,9 @@
 #include "CPP/7zip/UI/FileManager/SysIconUtils.h"
 #include "mainwindow.h"
 #include "qtapppresentation.h"
-#include "qtdialogscreenservices.h"
-#include "qtfilemanagershellmenu.h"
-#include "qtfilemenuprojection.h"
 #include "qtlanguageservices.h"
 #include "qtlocationfolder.h"
-#include "qtprogramfilemenu.h"
-#include <QBitmap>
+#include "qtpanelcontextmenu.h"
 #include <QMouseEvent>
 #include <QSignalBlocker>
 
@@ -30,50 +26,24 @@ QString SavedSourcePath(QString path) {
 }
 } // namespace
 
-void MainWindow::showItemContextMenu(const QPoint &globalPos) {
-    QMenu menu(this);
-    QtFileManagerShellMenu shell(*this, menu);
-    menu.setObjectName("panelContextMenu");
-    QtFileMenuProjection projection;
-    ReadRegDiff(projection.diffPath, toolbarSettingsPath());
-    ReadReg_VerCtrlPath(projection.versionControlPath, toolbarSettingsPath());
-    QtDialogScreenServices screen(this);
-    projection.screenServices = &screen;
-    QHash<unsigned, QAction *> actions;
-    for (QAction *action : programFileMenu_->SourceActions()) {
-        const bool separator = action->isSeparator();
-        const unsigned id = action->menu() ? 0u : action->property("nativeCommandID").toUInt();
-        if (id < IDM_VER_EDIT || id > IDM_VER_DIFF)
-            projection.sourceItems.append({id, ToUString(action->text()), separator});
-        if (!separator && !action->menu())
-            actions.insert(id, action);
-    }
-    for (QAction *action : programFileMenu_->SourceActions()) {
-        const unsigned id = action->property("nativeCommandID").toUInt();
-        if (id >= IDM_VER_EDIT && id <= IDM_VER_DIFF)
-            actions.insert(id, action);
-    }
-    sourceOperatedIndices(); // Synchronize the Qt selection before source menu construction.
-    app_.GetFocusedPanel().CreateFileMenu(projection, false, &shell);
-    for (const auto &entry : projection.items) {
-        if (entry.source.IsSeparator()) {
-            menu.addSeparator();
-            continue;
+void MainWindow::showItemContextMenu(unsigned owner, QAbstractItemView *view, const QPoint &pos) {
+    withPanelProjection(owner, [this, view, pos] {
+        const bool keyboard = pos == QPoint(-1, -1);
+        if (!keyboard) {
+            const QModelIndex index = view->indexAt(pos);
+            if (index.isValid() &&
+                !view->selectionModel()->isRowSelected(index.row(), QModelIndex())) {
+                view->selectionModel()->select(index, QItemSelectionModel::ClearAndSelect |
+                                                          QItemSelectionModel::Rows);
+                view->setCurrentIndex(index);
+            }
         }
-        if (entry.source.wID == 0) {
-            auto *hash = menu.addMenu(QStringLiteral("CRC"));
-            hash->setObjectName("contextHashMenu");
-            for (QAction *action : findChild<QMenu *>("hashMenu")->actions())
-                hash->addAction(action);
-            continue;
-        }
-        QAction *action = actions.value(entry.source.wID, nullptr);
-        if (!action)
-            continue;
-        menu.addAction(action);
-        action->setEnabled(action->isEnabled() && entry.enabled);
-    }
-    menu.exec(globalPos);
+        sourceOperatedIndices();
+        refreshActions();
+        const QPoint point = keyboard ? pos : view->viewport()->mapToGlobal(pos);
+        QtPanelContextMenu menu(*this, *view);
+        app_.GetFocusedPanel().OnContextMenu(view, point.x(), point.y(), menu);
+    });
 }
 
 void MainWindow::applySortMode(bool enableSorting) {

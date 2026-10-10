@@ -64,6 +64,19 @@ owner и интегрированными consumers, включая уже ра�
 
 ## Правила статусов и счётчика
 
+P3-05,2026-10-10: complete PanelMenu body/caller disposition and source
+OnContextMenu header/list/keyboard/empty/Cancel/plugin/file lifecycle restored.
+Captured-pane Qt popups preserve source command and column ownership; actual
+old-product Create File RED8 and Linux/Windows header-catalog RED8 each are
+retained. Popup Close RED8/provider-release is fixed through the existing
+application CallScope. Final required macOS gate310/310 PASS237.73s,4877Qt/0fail/18 existing
+skips. Linux/Windows x64 Qt6.12 each10/10 PASS21.88s/73.61s,
+181/185Qt/0fail/0skip;1423 archive/isolated/actual-guest hashes exact,
+1422 retained after temporary wrapper removal;108 current popup JSON reviewed.
+Scope and platform limits: [source receipt](upstream-port-audit.md#p3-05--source-panel-context-menu-lifecycle-2026-10-10).
+Eleven slow suites excluded. Whole FileManager/native/rendered/package/final
+acceptance remains open;43/47 and P3-03/04/05/06 are unchanged.
+
 P3-05,2026-10-10: complete PanelSelect body/caller disposition and source
 Select/Deselect dialog lifecycle are reconciled with one wildcard algorithm.
 Eight bounded both-pane EN/RU standard/alternative consumers cover Cancel,

@@ -104,6 +104,7 @@ class MainWindow : public QMainWindow {
     friend class QtFileManagerDrag;
     friend class QtFileManagerShellMenu;
     friend class QtProgramFileMenu;
+    friend class QtPanelContextMenu;
     HRESULT openArchiveAs(const QString &path, const QString &type);
     void closeEvent(QCloseEvent *event) override;
     void changeEvent(QEvent *event) override;
@@ -171,7 +172,7 @@ class MainWindow : public QMainWindow {
     void startVolume(VolumeOperation::Mode mode);
     void launchVolume(VolumeOperation *operation, const UString &title, const QString &source,
                       UInt64 totalSize, std::function<void()> completion);
-    void showItemContextMenu(const QPoint &globalPos);
+    void showItemContextMenu(unsigned owner, QAbstractItemView *view, const QPoint &pos);
     void applySortMode(bool enableSorting = false);
     void sortIndicatorChanged(unsigned panel, int column, Qt::SortOrder order);
     static QIcon toolbarIcon(int kind);

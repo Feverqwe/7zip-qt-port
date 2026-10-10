@@ -1857,6 +1857,17 @@ entry and source SelectSpec(bool) share one wildcard loop. QtPanelList supplies
 focus, selected state, alternative mark roles and post-movement notification
 timing. See the [complete source disposition](omitted-scope-audit.md#panelselect-complete-bodycaller-disposition-2026-10-10).
 
+`PanelMenu.cpp::OnContextMenu` owns header/list admission, keyboard/empty/focus
+branches, popup Cancel and numeric plugin/file routing. Each Qt table/icon/header
+callback captures its pane. `QtPanelContextMenu` supplies control coordinates,
+scoped popup/projection/shell lifetime and Track results; it blocks shared
+QAction signals until source dispatch and suppresses peer FocusIn retargeting
+while the popup closes. The existing application CallScope spans popup creation,
+dispatch and destruction so Close cannot release its borrowed source providers.
+The temporary panel projection then restores its peer.
+The [complete PanelMenu disposition](omitted-scope-audit.md#panelmenu-complete-bodycaller-disposition-2026-10-10)
+records native properties and plugin dependencies separately.
+
 `PanelSplitFile.cpp` owns CApp::Split/Combine, source selection/default peer
 destination, confirmation, destination preparation, contiguous part discovery,
 naming/summary and native CThreadSplit/Combine transfer loops/preallocation.

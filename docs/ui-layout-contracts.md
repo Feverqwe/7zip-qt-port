@@ -1091,6 +1091,14 @@ QActions. The Windows rendered menu is not yet available for pixel comparison.
 
 ### Per-panel context and status (P0-09.2)
 
+`source_context_menu` also inspects both pane owners, EN/RU table/icon lists,
+mouse/keyboard Cancel at980×620 and640×400, with32 popup JSON reports; four
+additional empty/Parent reports cover keyboard no-item admission. Source
+OnContextMenu uses exact(-1,-1), origin for no operated items and otherwise the
+focused item's rectangle. Qt substitutes visual-item centre/viewport coordinates
+and clamps its popup to the screen. Action order/state is asserted separately
+from widget geometry. Rendered Windows pixel acceptance remains unverified.
+
 Reference: `Panel.cpp::Create/OnSize` gives every panel a status strip below
 its list with four parts (`{220, 320, 420, -1}` Win32 boundaries), while
 `PanelListNotify.cpp::Refresh_StatusBar` supplies selected/total, selected

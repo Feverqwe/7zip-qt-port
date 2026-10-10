@@ -608,6 +608,8 @@ class CPanel : public QObject {
     void CreateFileMenu(class IQtFileMenuServices &menu, bool programMenu,
                         class IQtPanelPluginMenuServices *plugins = nullptr);
     bool InvokePluginCommand(unsigned id, class IQtPanelPluginServices &services);
+    bool OnContextMenu(QWidget *windowHandle, int xPos, int yPos,
+                       class IQtPanelContextMenuServices &services);
 #ifdef _WIN32
     void InvokeSystemCommand(const char *command);
     HRESULT CreateShellContextMenu(const CRecordVector<UInt32> &operatedIndices,

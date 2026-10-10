@@ -13,6 +13,15 @@ cover wrong password, retry, extraction failure and secret-free output. The
 ControlledBackend window fixture establishes UI signal routing, not real engine
 bytes. Current platform results are in the [password receipt](upstream-port-audit.md#p3-05--password-state-and-process-callers-2026-10-10).
 
+`source_context_menu` covers eight bounded both-pane EN/RU table/icon consumers
+with inactive-owner mouse/keyboard popup Cancel, source action order, actual
+Create File dispatch, popup Close refusal and protected peer bytes/providers. Four empty/Parent
+keyboard cases verify source admission/refusal. Thirty-six current popup JSON
+reports cover normal/compact and empty/Parent states. Existing panel_shell,
+shell_context/shell_menu_window, source_create, native_command_dispatch,
+panel_key/checksum and panel_name_text exercise direct consumers. See the
+[source receipt](upstream-port-audit.md#p3-05--source-panel-context-menu-lifecycle-2026-10-10).
+
 The all-six-page `options_integration` workflow includes denied/stale association
 Apply and OK, source rollback, later-page persistence, Cancel/restart and a
 combined association error followed by invalid RAM and successful correction.

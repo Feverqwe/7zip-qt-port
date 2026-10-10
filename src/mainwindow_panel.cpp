@@ -5,6 +5,7 @@
 #include "qtfilemanagerdrag.h"
 #include "qtlangcontrols.h"
 #include "qtpaneladdresscombo.h"
+#include "qtpanelcontextmenu.h"
 #include "qtstatuslabel.h"
 
 void MainWindow::createFilePanel(QMenu *editMenu, unsigned index) {
@@ -134,7 +135,12 @@ void MainWindow::createFileTable(QWidget *central) {
     const unsigned columnOwner = projectedPanel_;
     connect(table_->horizontalHeader(), &QWidget::customContextMenuRequested, this,
             [this, columnOwner](const QPoint &pos) {
-                withPanelProjection(columnOwner, [this, pos] { showColumnsMenu(pos); });
+                withPanelProjection(columnOwner, [this, pos] {
+                    QtPanelContextMenu menu(*this, *table_);
+                    auto *header = table_->horizontalHeader();
+                    const QPoint point = header->mapToGlobal(pos);
+                    app_.GetFocusedPanel().OnContextMenu(header, point.x(), point.y(), menu);
+                });
             });
     connect(table_->horizontalHeader(), &QHeaderView::sectionResized, this,
             [this, columnOwner] { withPanelProjection(columnOwner, [this] { saveColumns(); }); });
@@ -189,16 +195,10 @@ void MainWindow::createFileTable(QWidget *central) {
     connect(table_, &QTableWidget::cellClicked, this,
             [this](int row, int) { handleSelectionClick(row); });
     table_->setContextMenuPolicy(Qt::CustomContextMenu);
-    connect(table_, &QWidget::customContextMenuRequested, this, [this](const QPoint &pos) {
-        const bool keyboard = pos.x() < 0 && pos.y() < 0;
-        const int row = keyboard ? table_->currentRow() : table_->rowAt(pos.y());
-        if (row >= 0 && !table_->selectionModel()->isRowSelected(row, QModelIndex()))
-            table_->selectRow(row);
-        const QPoint anchor = keyboard && row >= 0
-                                  ? table_->visualItemRect(table_->item(row, 0)).center()
-                                  : (keyboard ? QPoint(0, 0) : pos);
-        showItemContextMenu(table_->viewport()->mapToGlobal(anchor));
-    });
+    connect(table_, &QWidget::customContextMenuRequested, this,
+            [this, owner = projectedPanel_, view = table_](const QPoint &pos) {
+                showItemContextMenu(owner, view, pos);
+            });
     app_.GetFocusedPanel().AttachSelectionView(
         fileTable,
         [fileTable](PROPID property, Int32) { return fileTable->columnForProperty(property); },
@@ -274,17 +274,10 @@ void MainWindow::createIconList(QWidget *central) {
     });
     connect(iconList_, &QListView::clicked, this,
             [this](const QModelIndex &index) { activateSingleClickedRow(index.row()); });
-    connect(iconList_, &QWidget::customContextMenuRequested, this, [this](const QPoint &pos) {
-        const bool keyboard = pos.x() < 0 && pos.y() < 0;
-        const QModelIndex index = keyboard ? iconList_->currentIndex() : iconList_->indexAt(pos);
-        if (index.isValid() &&
-            !iconList_->selectionModel()->isRowSelected(index.row(), QModelIndex()))
-            iconList_->selectionModel()->select(index, QItemSelectionModel::ClearAndSelect |
-                                                           QItemSelectionModel::Rows);
-        const QPoint anchor = keyboard && index.isValid() ? iconList_->visualRect(index).center()
-                                                          : (keyboard ? QPoint(0, 0) : pos);
-        showItemContextMenu(iconList_->viewport()->mapToGlobal(anchor));
-    });
+    connect(iconList_, &QWidget::customContextMenuRequested, this,
+            [this, owner = projectedPanel_, view = iconList_](const QPoint &pos) {
+                showItemContextMenu(owner, view, pos);
+            });
 }
 
 void MainWindow::appendParentEntry() {

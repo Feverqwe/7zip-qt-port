@@ -24,6 +24,7 @@
 #include "Windows/PropVariantConv.h"
 #include "qtfilemenuservices.h"
 #include "qtlangcontrols.h"
+#include "qtpanelcontextmenuservices.h"
 #include "qtpanelpluginservices.h"
 #include <QApplication>
 #include <QClipboard>
@@ -430,6 +431,50 @@ void CPanel::CreateFileMenu(IQtFileMenuServices &menu, bool programMenu,
     // Qt stores/renders plugin rows separately from CFileMenu's projection;
     // its zero position is the original menu.GetItemCount() insertion point.
     fm.Load(menu, 0);
+}
+
+bool CPanel::OnContextMenu(QWidget *windowHandle, int xPos, int yPos,
+                           IQtPanelContextMenuServices &services) {
+    if (services.IsHeader(windowHandle)) {
+        services.ShowColumnsContextMenu(xPos, yPos);
+        return true;
+    }
+    if (!services.IsList(windowHandle))
+        return false;
+
+    CRecordVector<UInt32> operatedIndices;
+    Get_ItemIndices_Operated(operatedIndices);
+
+    // Negative coordinates can name real monitors; only (-1, -1) is keyboard.
+    if (xPos == -1 && yPos == -1) {
+        if (operatedIndices.Size() == 0) {
+            xPos = 0;
+            yPos = 0;
+        } else {
+            const int itemIndex = _selectionList.GetFocusedItem();
+            if (itemIndex == -1)
+                return false;
+            QRect rect;
+            if (!services.GetItemRect(itemIndex, rect))
+                return false;
+            xPos = rect.center().x();
+            yPos = rect.center().y();
+        }
+        services.ClientToScreen(xPos, yPos);
+    }
+
+    services.CreatePopup();
+    CreateFileMenu(services.Menu(), false, &services.Plugins());
+    const unsigned id = services.Track(xPos, yPos);
+    if (id == 0)
+        return true;
+    if (id >= kMenuCmdID_Plugin_Start) {
+        services.InvokePluginCommand(id);
+        return true;
+    }
+    if (services.ExecuteFileCommand(id))
+        return true;
+    return true;
 }
 
 static const char *const kSeparator = "------------------------";
