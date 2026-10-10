@@ -1,5 +1,19 @@
 # Omitted source scope review
 
+## App Copy publication caller reconciliation (2026-10-10)
+
+The complete pinned App.cpp::OnCopy565–858 and final load/selection callers were
+revisited with all Qt execution/publication routes. CApp retains its original
+saved states and RefreshListCtrl caller across the asynchronous boundary;
+OnReload's separate error policy is no longer substituted. Source publication
+for move/copyToSame, destination publication, guard/scan lifetime and native
+worker result policy are reconciled together. Actual writer and accepted Move
+rollback/reopen diagnostics remain owned by their existing operation paths.
+This supersedes earlier post-Copy expected reload-message assertions, not their
+retained body/provenance evidence. No module/dependency/language omission is
+introduced; the [receipt](upstream-port-audit.md#p3-05--copy-publication-caller-and-result-policy-2026-10-10)
+owns validation and remaining whole-family/native/final scope.
+
 ## PanelDrag protocol body disposition (2026-10-10)
 
 The complete original 3006-line PanelDrag.cpp, declarations, callers and

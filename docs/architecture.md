@@ -177,7 +177,8 @@ OnCopy saves original source/destination CSelectedState after the modal and
 retains its post-operation title/selection/notify/focus body in CApp. The Qt
 presentation marks terminal execution and waits for the existing operation/scan
 owner to become idle before invoking this continuation once. It restores the
-captured source projection first; ReleaseApp discards the continuation. Ordinary
+captured source projection first; ReleaseApp discards the continuation and its
+saved-state publication callback. Ordinary
 two-panel filesystem Copy preserves source rows/current item, while Move,
 copyToSame and a shared single panel keep their required source publication.
 The existing providers still own row loading; RefreshListCtrl invokes the
@@ -185,13 +186,17 @@ attached load/publication adapter before its extracted source selection tail.
 Qt render completion calls RestoreLoadedSelection directly to avoid recursive
 reload. Source requests retain their saved state while operation guards defer
 publication; the actual renderer consumes it. The Copy continuation runs after
-its existing Qt publication and uses the same extracted selection tail, without
-retrying an already completed load or concealing its failure.
+its existing Qt publication and uses the same extracted selection tail without
+retrying an already completed load. CApp's RefreshCopyPanel retains the source
+RefreshListCtrl caller and its ignored HRESULT, including asynchronous filesystem
+load failures. Qt tracks required source publication for move/copyToSame even
+when execution fails or is canceled. Explicit OnReload keeps its own diagnostics;
+actual writer and rollback/reopen errors retain their existing owners.
 Filesystem-to-archive Copy/Move saves destination state before CopyFrom and
 publishes that same bound provider through RefreshListCtrl after success.
 ArchiveFolderOut already owns engine reopening and proxy restoration; the Qt
 completion no longer opens another provider. Failure/Cancel retain the existing
-unconditional destination OnReload and single-use source continuation.
+unconditional destination RefreshListCtrl and single-use source continuation.
 Interarchive Copy/Move uses the same pre-update destination snapshot and source
 RefreshListCtrl after successful publication. Its accepted Copy/Delete/rollback
 composition remains: a source Delete refusal, error or cancellation restores the
@@ -211,7 +216,7 @@ The recovery fixture covers this boundary and reopening/retrying a repaired
 private destination without changing the product's rollback implementation.
 For ordinary Copy/Move, the Qt continuation also publishes the captured
 destination panel when output is elsewhere. Consumers mark an already requested
-destination refresh, avoiding duplicate publication. OnReload uses the existing
+destination refresh, avoiding duplicate publication. RefreshListCtrl uses the existing
 filesystem/archive/namespace publication owners; completion waits for their scan
 owners before restoring the original saved states. Namespace reload invokes the
 existing native-provider renderer instead of returning without loading rows.

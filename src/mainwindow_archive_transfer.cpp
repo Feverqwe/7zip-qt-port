@@ -56,6 +56,7 @@ bool MainWindow::transferBetweenArchivePanels(const QString &destination, bool m
             app_.QtOperations().End();
             renderBoundFolder();
             source.RestoreLoadedSelection(selected);
+            appPresentation_->CopySourceRefreshed(sourceIndex);
         }
         if (result != S_OK) {
             const bool restored = rollback->restore([&target] {

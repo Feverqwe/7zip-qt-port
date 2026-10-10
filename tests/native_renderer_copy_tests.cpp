@@ -141,8 +141,6 @@ class NativeRendererCopyTests final : public QObject, protected MainWindowTestSu
         sourceView->setFocus();
         QTRY_VERIFY(sourceView->hasFocus());
         bool submitted = false;
-        bool messageIdle = true;
-        bool marksBeforeCompletion = true;
         QStringList messages;
         QTimer driver;
         connect(&driver, &QTimer::timeout, &window, [&] {
@@ -155,14 +153,6 @@ class NativeRendererCopyTests final : public QObject, protected MainWindowTestSu
             for (QWidget *widget : QApplication::topLevelWidgets())
                 if (auto *box = qobject_cast<QMessageBox *>(widget); box && box->isVisible()) {
                     messages << box->text();
-                    messageIdle = messageIdle && peer->isEnabled() && peer->updatesEnabled() &&
-                                  source->isEnabled() && source->updatesEnabled() &&
-                                  peer->sourcePanel->ShouldProcessNotifications() &&
-                                  source->sourcePanel->ShouldProcessNotifications();
-                    UStringVector marked;
-                    source->sourcePanel->GetSelectedNames(marked);
-                    marksBeforeCompletion =
-                        marksBeforeCompletion && marked.Size() == (move ? 0u : 1u);
                     box->accept();
                 }
         });
@@ -170,11 +160,16 @@ class NativeRendererCopyTests final : public QObject, protected MainWindowTestSu
         driver.start(1);
         QTest::keyClick(sourceView, move ? Qt::Key_F6 : Qt::Key_F5);
         QVERIFY(submitted);
-        QTRY_COMPARE(messages.size(), 1);
+        QTRY_COMPARE(peer->rowCount(), 0);
         QTRY_VERIFY(action(window, "refreshAction")->isEnabled());
         driver.stop();
-        QCOMPARE(messages[0], ToQString(HResultToMessage(HRESULT(result))));
-        QVERIFY(messageIdle && marksBeforeCompletion);
+        // Original OnCopy ignores the final RefreshListCtrl HRESULT. Explicit
+        // OnReload diagnostics are covered by the separate renderer suite.
+        QVERIFY(messages.isEmpty());
+        QVERIFY(peer->isEnabled() && peer->updatesEnabled());
+        QVERIFY(source->isEnabled() && source->updatesEnabled());
+        QVERIFY(peer->sourcePanel->ShouldProcessNotifications());
+        QVERIFY(source->sourcePanel->ShouldProcessNotifications());
         QVERIFY(runtime_.receipts().contains("257 " + QByteArray::number(quint32(result))));
         QCOMPARE(peer->rowCount(), 0);
         QCOMPARE(peer->sourcePanel->GetFolder(), provider.Interface());

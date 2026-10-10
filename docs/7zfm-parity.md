@@ -619,7 +619,7 @@ EN/RU оба source-panel roles, peer selection, bytes и normal/compact state
 Destination panel теперь обновляется и при цели вне peer после Copy/Move или
 Cancel в overwrite dialog. Cancel самого Copy dialog сохраняет прежний список.
 Qt учитывает уже начатую публикацию и ждёт сканирования перед исходной
-continuation. Namespace OnReload повторно публикует существующий native provider.
+continuation. Post-Copy RefreshListCtrl повторно публикует существующий native provider.
 Эти consumers проверены отдельно от оставшейся полной загрузки RefreshListCtrl;
 текущие Windows/Linux и rendered evidence ещё требуются.
 Загрузка namespace/archive/filesystem теперь использует исходные stages
@@ -632,8 +632,12 @@ namespace оставляет пустой список; последующая �
 OnReload; ошибку сопровождает его исходное сообщение, включая E_ABORT.
 Namespace и filesystem Refresh идут через тот же handler. Direct/explicit/timer/command
 consumers проверены под EN/RU с восстановлением списка после ошибки.
-После ошибки загрузки исходная post-Copy continuation теперь получает тот же
-HRESULT до восстановления выделения. Повторный reload пустого списка не читает
+Post-Copy publication сохраняет исходный RefreshListCtrl с состоянием до операции:
+его HRESULT игнорируется, включая E_ABORT и ошибки асинхронного FS worker.
+Ошибка самой записи по-прежнему показывается, кроме E_ABORT; явный Ctrl+R/OnReload
+сохраняет отдельную диагностику загрузки. Move/copyToSame публикует источник и при
+ошибке операции; ordinary Copy не перечитывает источник streams/devices.
+Повторный reload пустого списка не читает
 невалидный count provider. Copy/Move consumers проверяют output, очистку marks,
 focus/title, notification guards и последующую успешную загрузку peer.
 Синхронный FS reload сохраняет уже привязанный CFSFolder и возвращает load

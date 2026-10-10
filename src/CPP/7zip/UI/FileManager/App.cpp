@@ -298,6 +298,15 @@ void CApp::OnCopy(bool move, bool copyToSame, unsigned srcPanelIndex) {
     CSelectedState destSelState;
     srcPanel.SaveSelectedState(srcSelState);
     destPanel.SaveSelectedState(destSelState);
+    // Keep the original RefreshListCtrl caller and its saved state across the
+    // asynchronous presentation boundary. OnCopy ignores reload HRESULTs.
+    _copyRefresh = [this, srcPanelIndex, destPanelIndex, srcSelState,
+                    destSelState](unsigned index) {
+        if (index == srcPanelIndex)
+            Panels[index].RefreshListCtrl(srcSelState);
+        else if (index == destPanelIndex)
+            Panels[index].RefreshListCtrl(destSelState);
+    };
     // The original post-operation body runs after Qt publishes both panels.
     _copyContinuation = [this, move, copyToSame, srcPanelIndex, destPanelIndex, srcSelState,
                          destSelState] {
@@ -327,8 +336,18 @@ void CApp::OnCopy(bool move, bool copyToSame, unsigned srcPanelIndex) {
 void CApp::CompleteCopy() {
     auto continuation = std::move(_copyContinuation);
     _copyContinuation = nullptr;
+    _copyRefresh = nullptr;
     if (continuation && !_qtOperations.closed())
         continuation();
+}
+
+bool CApp::RefreshCopyPanel(unsigned index) {
+    if (!_copyRefresh || _qtOperations.closed() || index >= kNumPanelsMax)
+        return false;
+    // Synchronous publication can re-enter completion and release the owner.
+    const auto refresh = _copyRefresh;
+    refresh(index);
+    return true;
 }
 
 HRESULT CApp::CopyArchiveToArchive(unsigned srcPanelIndex, const CRecordVector<UInt32> &indices,
@@ -625,6 +644,7 @@ void CApp::Save() {
 
 void CApp::ReleaseApp() {
     _copyContinuation = nullptr;
+    _copyRefresh = nullptr;
     _qtOperations.Close();
     _qtCommandServices = nullptr;
     // 24.09: ReleasePanel() will stop panel timer processing.

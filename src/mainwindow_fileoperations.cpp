@@ -123,13 +123,13 @@ void MainWindow::transferFiles(const QStringList &sources, const QString &destin
                 if (refreshSource) {
                     showDirectory(directory_, false, true);
                     selectPaths(sources);
+                    appPresentation_->CopySourceRefreshed(sourcePanel);
                 } else
                     setState(State::Filesystem);
                 if (refreshDestination && app_.NumPanels == 2 &&
                     app_.GetFocusedPanelIndex() == sourcePanel) {
                     activatePanelUi(destinationPanel);
-                    app_.Panels[destinationPanel].OnReload();
-                    appPresentation_->CopyDestinationRefreshed(destinationPanel);
+                    appPresentation_->RefreshCopyPanel(destinationPanel);
                     activatePanelUi(sourcePanel);
                 }
                 if (app_.GetFocusedPanelIndex() == sourcePanel)
@@ -175,11 +175,11 @@ void MainWindow::executeCopyDestination(bool move, bool copyToSame, unsigned sou
         }
         const HRESULT result =
             app_.Panels[sourceIndex].CopyTo(options, indices, &messages, usePassword, password);
-        if (!alternateDestination || move || copyToSame)
-            renderBoundFolder();
+        if (move || copyToSame)
+            appPresentation_->RefreshCopyPanel(sourceIndex);
         if (useDestPanel && app_.NumPanels == 2) {
             activatePanelUi(1 - sourceIndex);
-            app_.Panels[1 - sourceIndex].OnReload();
+            appPresentation_->RefreshCopyPanel(1 - sourceIndex);
             activatePanelUi(sourceIndex);
         }
         if (result != S_OK && result != E_ABORT)
@@ -315,7 +315,7 @@ bool MainWindow::transferToArchivePanel(const QString &destination, bool move,
         appPresentation_->CopyDestinationRefreshed(destinationIndex);
         activatePanelUi(sourceIndex);
         if (move)
-            source.OnReload();
+            appPresentation_->RefreshCopyPanel(sourceIndex);
         statusBar()->showMessage(
             move ? QtLocalText("Items moved into the archive.", "Объекты перемещены в архив.")
                  : QtLocalText("Items copied into the archive.", "Объекты скопированы в архив."));

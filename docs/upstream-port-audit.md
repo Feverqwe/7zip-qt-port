@@ -1,5 +1,85 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-05 — Copy publication caller and result policy (2026-10-10)
+
+Source https://github.com/ip7z/7zip.git, full revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`: complete
+CPP/7zip/UI/FileManager/App.cpp::OnCopy565–858, its CopyTo/CopyFrom dispatch,
+CSelectedState/Panel.h and PanelItems.cpp::RefreshListCtrl/OnReload callers
+were compared with CApp completion/release, QtAppPresentation, filesystem and
+native stream/device/archive transfer, backend completion, projection and
+filesystem-worker publication consumers. Original OnCopy ignores the final
+RefreshListCtrl HRESULT; OnReload separately reports every non-S_OK. Earlier
+receipts using OnReload for post-Copy publication preserved loading but also
+introduced its extra error policy. Their expected reload messages are superseded
+by this source-caller correction, not by a change to the upstream algorithm.
+
+CApp retains the original pre-operation source/destination CSelectedState across
+Qt execution. Its narrow RefreshCopyPanel service invokes RefreshListCtrl and
+ignores the result; completion and ReleaseApp release both callbacks. A local
+callback copy survives synchronous completion re-entry. Qt records source
+publication for move/copyToSame as well as unconditional ordinary destination
+publication, waits for retained scans and avoids repeating completed routes.
+Native streams/devices no longer reload the ordinary Copy source. Filesystem
+worker failure keeps empty rows/result/guards but suppresses its message while
+Copy owns publication. Generic extraction/navigation and explicit OnReload keep
+their diagnostic policy. Actual writer errors, cancellation suppression and
+accepted interarchive Move rollback/reopen diagnostics remain separate.
+No format, engine, selection or enumeration algorithm was added; no new module,
+dependency, baseline or source-language change. Original notices remain.
+
+Unchanged f03cd2f product fails28 of32 public panel_copy_reload cases with the
+previously incorrect extra error (four count cases already pass). The correction
+also retains explicit manual OnReload message controls, success bytes, Move-only
+deletion, provider/peer bytes, failed rows, recovery, guards, title and source
+focus. The first implementation passes24 corrected cases but exposes four
+unconditional asynchronous worker messages; the final worker policy covers that
+same public transport. Existing slow native_renderer_copy expectations now use
+ignored publication results while retaining fault receipts, empty/recovered rows,
+controls/guards/focus and archive/input/output bytes. Its96-case matrix remains
+slow and is not executed without an explicit long-suite request.
+
+Unsandboxed macOS arm64 check.sh passes formatting/all-target build and320/320
+CTest in254.79s,5056 Qt passes/0 failures/56 platform skips. Initial focused10/10
+passes29.09s; after a localized test wait correction, panel_copy_reload passes1/1
+in3.81s and both changed test targets build. The full gate is not repeated on
+unchanged product code. Baseline verification passes412 exact/198 adapted/3 local.
+
+First shared x64 snapshot20261010T100025Z-cd7b64e3, parentf03cd2f, SHA-256
+`82b8b6c79220857060312d0bf544284b0913fa50b47086aefb0db4ba08bf50f1`:
+Linux15/15 passes86.66s (553 Qt/0 failures/one Windows-only NTFS skip), Windows
+15/16 in286.59s (564 Qt passes/one failure/no skips). Its only failure is the
+test's premature workerFailed.size assertion after rows clear and controls
+briefly become idle; removing the error dialog also removed its accidental wait.
+The correction explicitly waits for the worker failure signal, preserving the
+exactly-one signal assertion and all result/cleanup checks. Both actual guest
+trees match all1512 frozen inputs; all eight runtime files/OS and codec/SFX
+metadata hashes/repository/full pin/version1703939 are retained. Local runtime
+is the identical eight-file accepted f03 payload, configured explicitly before
+building. Raw first failure and reports remain under first-guests.
+
+Final localized snapshot20261010T101109Z-40527396 SHA-256
+`38cf8064a28e7a1c73618b8a28c1266ce990c4ff847f8153d82b16d389a841f9`:
+Linux1/1 passes5.01s and Windows1/1 passes16.43s, each34 Qt passes/0 failures/
+0 skips. Both corrected test targets compile on each OS; the96-case slow suite
+is not run. This focused no-runtime snapshot repeats only the changed regression;
+all product sources are identical to the preceding native/runtime consumers.
+Only the temporary wrapper and two test files differ among1454 product/test/build
+inputs. All1512 final frozen inputs match both actual guest trees;1453 retained
+product/test/build inputs remain exact after removing the wrapper and updating
+documentation receipts. It does not claim another native codec/package run.
+
+Forty current normal/compact reports per OS (120 combined) cover terminal worker
+failure and source-refresh status. No meaningful clipping or status elision;
+64 empty zero-width status labels/OS intentionally have no painted text. Windows
+constrains the requested1100px worker view to1028px; compact640px and status980px
+are actual measured sizes. Reports combine unchanged first status consumers with
+the corrected final worker cases. They establish Qt geometry, not rendered
+Windows7zFM pixels or physical desktop input. Host storage remains OK with no
+warnings or VHDX growth. Evidence: build/review/copy-publication. Eleven slow
+suites excluded. Remaining source-family/native/rendered/cold/current-package
+and final acceptance remain mandatory; P3-03/04/05/06 and43/47 stay open.
+
 ## P3-05 — PanelItems selection and provider lifecycle (2026-10-10)
 
 Source https://github.com/ip7z/7zip.git at full revision

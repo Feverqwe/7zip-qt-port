@@ -116,6 +116,7 @@ class CApp {
     // their full application command bodies are ported in P0-03/P0-08.
     void OnCopy(bool move, bool copyToSame, unsigned index);
     void CompleteCopy();
+    bool RefreshCopyPanel(unsigned index);
     void Split(IQtVolumeServices &services);
     void Combine(IQtVolumeServices &services);
     HRESULT CopyArchiveToArchive(unsigned srcPanelIndex, const CRecordVector<UInt32> &indices,
@@ -182,4 +183,5 @@ class CApp {
     IQtAppPresentation *_presentation = nullptr;
     QString _settingsPath;
     std::function<void()> _copyContinuation;
+    std::function<void(unsigned)> _copyRefresh;
 };

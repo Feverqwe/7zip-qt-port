@@ -208,7 +208,6 @@ void MainWindow::refreshTransferDestination(unsigned index) {
         return;
     const unsigned source = app_.GetFocusedPanelIndex();
     activatePanelUi(index);
-    app_.Panels[index].OnReload();
-    appPresentation_->CopyDestinationRefreshed(index);
+    appPresentation_->RefreshCopyPanel(index);
     activatePanelUi(source);
 }

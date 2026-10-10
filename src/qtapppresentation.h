@@ -25,6 +25,9 @@ class QtAppPresentation final : public IQtAppPresentation {
     void CopyFinished();
     void CompleteCopyIfReady();
     void CopyDestinationRefreshed(unsigned index);
+    void RefreshCopyPanel(unsigned index);
+    void CopySourceRefreshed(unsigned index);
+    bool IsCopyPending() const { return copyPending_; }
     void RequestInitialFocus(unsigned index);
     void RequestListFocus(unsigned index);
     void CompleteInitialFocusIfReady();
@@ -39,4 +42,5 @@ class QtAppPresentation final : public IQtAppPresentation {
     bool copyExecuting_ = false;
     bool copyFinished_ = false;
     bool copyRefreshDestination_ = false;
+    bool copyRefreshSource_ = false;
 };

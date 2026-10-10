@@ -4,6 +4,16 @@
 Готовый запрос агенту: [porting-chat-prompt.md](porting-chat-prompt.md).
 Исходная дата: 2026-09-28. Это список **оставшейся** работы, не оценка MVP с нуля.
 
+P3-05,2026-10-10: Copy publication now retains CApp's saved-state RefreshListCtrl
+caller and ignored reload HRESULT, including async filesystem failure; explicit
+OnReload and writer/rollback diagnostics remain separate. Actual old-product
+RED28/32; Mac full320/320, Linux15/15, Windows15/16 followed by corrected
+localized1/1 on both guests (test signal-wait race). All1512 final inputs and
+120 selected reports are verified; slow matrix expectations compile without
+executing long tests. [Receipt](upstream-port-audit.md#p3-05--copy-publication-caller-and-result-policy-2026-10-10).
+Remaining source/native/rendered/current-package/final acceptance stays mandatory;
+P3-03/04/05/06 and43/47 remain open.
+
 P3-05,2026-10-10: PanelItems lifecycle/body reconciliation restores original
 SelectFocused and removes providerless model-row counts. Old-product RED and
 native Win32 state/mask evidence are retained. Mac full320/320 and focused17/17,

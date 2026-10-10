@@ -156,6 +156,7 @@ void QtAppPresentation::ExecuteCopy(bool move, bool copyToSame, unsigned sourceI
     copyPending_ = true;
     copyFinished_ = false;
     copyRefreshDestination_ = !copyToSame;
+    copyRefreshSource_ = move || copyToSame;
     copyExecuting_ = true;
     window_.executeCopyDestination(move, copyToSame, sourceIndex, destination, indices,
                                    useDestPanel, useTemp);
@@ -179,13 +180,19 @@ void QtAppPresentation::CopyFinished() {
 void QtAppPresentation::CompleteCopyIfReady() {
     if (!copyPending_ || copyExecuting_ || !copyFinished_ || window_.app_.QtOperations().active())
         return;
+    if (copyRefreshSource_ && !window_.app_.QtOperations().closed()) {
+        QScopedValueRollback<bool> publishing(copyExecuting_, true);
+        RefreshCopyPanel(copySource_);
+    }
+    if (window_.app_.QtOperations().active())
+        return;
     if (copyRefreshDestination_ && !window_.app_.QtOperations().closed()) {
         copyRefreshDestination_ = false;
         // Original OnCopy refreshes its destination panel even when the typed
-        // output is elsewhere. Its retained OnReload owner supplies row loading.
+        // output is elsewhere, ignoring the RefreshListCtrl result.
         QScopedValueRollback<bool> publishing(copyExecuting_, true);
         const unsigned destination = window_.app_.NumPanels <= 1 ? copySource_ : 1 - copySource_;
-        window_.app_.Panels[destination].OnReload();
+        RefreshCopyPanel(destination);
     }
     if (window_.app_.QtOperations().active())
         return;
@@ -200,6 +207,18 @@ void QtAppPresentation::CopyDestinationRefreshed(unsigned index) {
     const unsigned destination = window_.app_.NumPanels <= 1 ? copySource_ : 1 - copySource_;
     if (copyPending_ && index == destination)
         copyRefreshDestination_ = false;
+}
+
+void QtAppPresentation::CopySourceRefreshed(unsigned index) {
+    if (copyPending_ && index == copySource_)
+        copyRefreshSource_ = false;
+}
+
+void QtAppPresentation::RefreshCopyPanel(unsigned index) {
+    CopySourceRefreshed(index);
+    CopyDestinationRefreshed(index);
+    if (!window_.app_.RefreshCopyPanel(index))
+        window_.app_.Panels[index].OnReload();
 }
 
 void QtAppPresentation::SetListSettings(unsigned index, const CFmSettings &settings) {

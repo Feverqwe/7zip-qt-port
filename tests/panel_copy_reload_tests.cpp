@@ -153,8 +153,9 @@ class PanelCopyReloadTests final : public QObject, protected MainWindowTestSuppo
         driver.start(0);
         QTest::keyClick(sourceView, move ? Qt::Key_F6 : Qt::Key_F5);
         QVERIFY(submitted);
-        QTRY_VERIFY((phase == "count" || !shown.isEmpty()) &&
+        QTRY_VERIFY((phase != "worker" || !workerFailed.isEmpty()) &&
                     action(window, "refreshAction")->isEnabled());
+        QTRY_COMPARE(peerView->rowCount(), phase == "count" ? peerRows : 0);
         driver.stop();
         if (phase == "worker") {
             QVERIFY(restarted);
@@ -163,7 +164,9 @@ class PanelCopyReloadTests final : public QObject, protected MainWindowTestSuppo
             QVERIFY(expected != S_OK);
             disconnect(restart);
         }
-        QCOMPARE(shown, phase == "count" ? QString() : ToQString(HResultToMessage(expected)));
+        // OnCopy ignores the HRESULT from its final RefreshListCtrl. A reload
+        // failure cannot replace the successful writer result with an error.
+        QCOMPARE(shown, QString());
         QFile result(QDir(output).filePath(name));
         QVERIFY(result.open(QIODevice::ReadOnly));
         QCOMPARE(result.readAll(), bytes);
@@ -189,6 +192,13 @@ class PanelCopyReloadTests final : public QObject, protected MainWindowTestSuppo
                                                               .arg(QTest::currentDataTag())
                                                               .arg(size.width())));
             }
+        if (!filesystem && phase != "count") {
+            // Explicit reload has its own diagnostic policy, unlike OnCopy.
+            driver.start(0);
+            peerView->sourcePanel->OnReload();
+            driver.stop();
+            QCOMPARE(shown, ToQString(HResultToMessage(expected)));
+        }
         if (filesystem)
             filesystem->CheckBreak = {};
         else {

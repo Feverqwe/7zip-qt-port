@@ -201,9 +201,10 @@ void MainWindow::failFilesystemListing(HRESULT result) {
     table_->clearSelection();
     table_->setRowCount(0);
     table_->setSortingEnabled(true);
-    // Keep the async publication pending until its error has been presented.
-    // The original OnCopy continuation then restores source focus last.
-    panel.MessageBox_Error_HRESULT(result);
+    // OnCopy ignores RefreshListCtrl errors, including a retained worker load.
+    // Navigation and explicit reload keep their existing diagnostic policy.
+    if (!appPresentation_->IsCopyPending())
+        panel.MessageBox_Error_HRESULT(result);
     if (app_.QtOperations().closed())
         return;
     scanningDisk_ = false;

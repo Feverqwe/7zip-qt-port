@@ -491,7 +491,7 @@ these native suites and their focused consumers had no skips. The full gate's
 `native_renderer_copy` adds96 real filesystem Copy/Move workflows to a separate
 output folder with a301-row native archive peer. Both source roles, EN/RU,
 table/icon, selection modes and S_FALSE/E_FAIL/E_ABORT cover unconditional
-destination OnReload, message-before-source-cleanup ordering, restored controls,
+destination RefreshListCtrl with its ignored HRESULT, restored controls,
 terminal source focus, correct output/input bytes, retained archive provider
 and recovery. Failed/recovered normal/compact JSON includes both panes.
 
@@ -781,12 +781,14 @@ namespace peer reload, from either source panel. Load/property/count errors,
 wrong directory type and load Cancel must leave the peer empty, preserve output
 bytes and Copy input bytes, delete only Move input, restore source focus/title,
 clear ordinary source marks and release notification guards. A subsequent valid
-peer reload must recover. It uses private Unicode paths and a modal driver;
+peer reload must recover. Final publication must not display its HRESULT as a
+Copy/Move error; separate explicit OnReload controls retain the error message.
+It uses private Unicode paths and a modal driver;
 Windows uses the native plugin and desktop lock. Offscreen window activation
 does not establish native focus parity.
 Eight additional consumers use an actual filesystem peer, preserve its provider,
 and cause CheckBreak cancellation or a controlled allocation exception. They
-verify original E_ABORT/E_OUTOFMEMORY messages, unchanged peer control bytes and
+verify ignored publication E_ABORT/E_OUTOFMEMORY, unchanged peer control bytes and
 the same operation cleanup/recovery assertions.
 
 Thirty-two `panel_list_load` filesystem rows exercise direct SaveFocused,
