@@ -316,7 +316,7 @@ UInt32 CPanel::GetFolderItemCount() const {
     if (_loadedItemCount)
         return *_loadedItemCount;
     if (!_folder)
-        return UInt32(_selectionList.GetItemCount());
+        return 0;
     UInt32 numItems;
     if (_folder->GetNumberOfItems(&numItems) != S_OK)
         throw 2723400;
@@ -689,7 +689,7 @@ HRESULT CPanel::RestoreLoadedSelection(const CSelectedState &state) {
     disableNotify.SetMemMode_Enable();
     disableNotify.Restore();
     if (_selectionList.GetItemCount() > 0 && cursorIndex >= 0)
-        SetFocusedSelectedItem(cursorIndex, _mySelectMode || state.SelectFocused);
+        SetFocusedSelectedItem(cursorIndex, state.SelectFocused);
     SetSortRawStatus();
     _selectionList.SortItems(_sortID, _ascending, _isRawSortProp);
     if (cursorIndex < 0 && _selectionList.GetItemCount() > 0) {

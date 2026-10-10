@@ -4,6 +4,16 @@
 Готовый запрос агенту: [porting-chat-prompt.md](porting-chat-prompt.md).
 Исходная дата: 2026-09-28. Это список **оставшейся** работы, не оценка MVP с нуля.
 
+P3-05,2026-10-10: PanelItems lifecycle/body reconciliation restores original
+SelectFocused and removes providerless model-row counts. Old-product RED and
+native Win32 state/mask evidence are retained. Mac full320/320 and focused17/17,
+Linux17/17 pass; Windows16/17 retains only the existing native Properties
+exposure timeout. All1512 frozen guest inputs and eight runtime files/OS are
+verified;168 selected normal/compact reports have no meaningful clipping.
+[Receipt](upstream-port-audit.md#p3-05--panelitems-selection-and-provider-lifecycle-2026-10-10).
+Physical/native desktop/rendered, remaining source/package/final acceptance
+stay mandatory; P3-03/04/05/06 and43/47 remain open.
+
 P3-04,2026-10-10: fresh Release runtime packages at9731b16 pass relocated
 7zG/engine ZIP+7z byte/error/missing-module consumers: Mac15/15, Linux14/14,
 Windows localized14/14 after two private-helper failures. Linux also proves

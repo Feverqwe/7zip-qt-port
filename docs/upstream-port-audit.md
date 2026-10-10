@@ -1,5 +1,79 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-05 — PanelItems selection and provider lifecycle (2026-10-10)
+
+Source https://github.com/ip7z/7zip.git at full revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`: complete1476-line
+CPP/7zip/UI/FileManager/PanelItems.cpp and931-line adapted module at458bfbb
+were compared with Panel.h, PanelSelect/PanelListNotify/PanelFolderChange,
+PanelSort and snapshot/publication callers. The
+[complete body map](omitted-scope-audit.md#panelitems-complete-body-map-2026-10-06)
+records35 original active bodies/four column helpers and the Qt phase boundary.
+No copied dependency or baseline change; original notices and source language
+remain. The verifier reports412 exact,198 adapted and3 local paths.
+
+Original Refresh passes `state.SelectFocused` unchanged. The Qt extraction
+incorrectly ORed it with alternative mode, turning unselected focus into an
+operated item after reload. A disposable native Windows11 SysListView32 probe
+uses original report/SINGLESEL styles and exact SetItemState(index,state,state):
+both styles retain only LVIS_FOCUSED for select=false and both bits for true.
+The correction restores the original argument and keeps Qt SingleSelection.
+Original marks and focused metadata guards remain: no selected row means empty
+focused size/date even when separate alternative marks exist.
+
+`GetFolderItemCount` is local load/publication glue, not a new source algorithm.
+Its former no-provider model-row fallback invented source marks at attachment.
+It now returns zero there, retaining actual provider queries and cached native
+written count. Snapshot constructors already supply QtPanelFolder; existing
+attachment callbacks survive subsequent load/rebind/release. No providerless
+property lookup or archive operation policy is added.
+
+Old product RED is retained: providerless marks1 failure, unselected-focus
+round trip1 failure and public both-pane/EN-RU active/inactive status8 failures.
+The first corrected status check exposed its newly added alternative expectation
+of focused size despite zero selected rows; it now asserts the exact original
+PanelListNotify guard. The existing parent_reload test had encoded the former
+forced alternative selection. Its source-backed expected selected state is now
+showDots alone, empty operated indices and saved SelectFocused==showDots;
+the1/301-row, flat, timer/manual and both-pane/language cases remain intact.
+
+Evidence is in isolated build/review/panel-items-disposition, including native
+probe, RED logs, source/runtime manifests, default/focused logs and widget JSON.
+
+| Final platform check | Result |
+| --- | --- |
+| macOS arm64, Qt6.12.0, required unsandboxed default gate | 320/320 PASS,226.31s;5056Qt passed/0failed/56skipped |
+| macOS focused direct consumers | 17/17 PASS,20.18s;526Qt/0failed/0skipped |
+| Ubuntu24.04.5 x64, Qt6.12.0 | 17/17 PASS,55.64s;526Qt/0failed/0skipped |
+| Windows11Pro x64, Qt6.12.0, service desktop | 16/17,224.65s;506 completed Qt passes/0fail/0skip, plus7 exposure assertion failures in the timed-out filesystem_selection_runtime |
+
+The Windows failures precede native Properties at qWaitForWindowExposed; the
+same suite failed identically in the first snapshot. New source and corrected
+parent/reload cases pass. Assertions, native QPA and45s suite timeout remain;
+this is not a passing full Windows/native result. The first Mac gate315/320
+retains four native-module failures from auto-selected Homebrew7z.so and the
+old parent/reload expectation. Explicit own official module selection plus
+the source-backed test correction produce the final passing gate above.
+
+Final shared snapshot20261010T093221Z-f8ac8927 has archive SHA256
+`380e5404ef2c6e324a7e19ef475df3865cf1362bcb6ad18111ac04d50ca8f7da`.
+All1512 frozen inputs match its archive and both actual guest trees;1477 retained
+product/test/build/resource inputs remain exact after temporary validator removal
+and documentation receipt updates. Eight runtime files perOS are retained;
+declared codec/SFX hashes, source repository/revision/version are verified.
+The native ListView probe was rerun with SDK10.0.26100.0 style definitions;
+its initial extra-autoarrange style probe is retained separately.
+All168 selected widget JSON reports (56/OS) preserve both panes and normal/
+compact controls. Six Mac and six Linux long selected-items labels use the
+existing elision/full-text tooltip;16 empty focused-size labels perOS collapse
+to zero width intentionally. No meaningful control clipping is found.
+Fresh authenticated guest identity/process/capacity and host-storage checks
+pass; VHDX deltas stay zero, with no disk/account/policy/upstream changes.
+
+Native control state is not physical pointer, interactive desktop or rendered
+Windows parity. Eleven slow suites remain excluded. P3-03/04/05/06 and global
+final acceptance remain open.
+
 ## P3-04 — three-platform runtime package relocation (2026-10-10)
 
 Product parent `9731b168cb2fcda0bb39232c9f7e1ab2ef500717`, Qt6.12.0 and official

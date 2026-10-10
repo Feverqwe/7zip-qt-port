@@ -158,6 +158,13 @@ branches, generic cell errors и suppression. Raw operation/editor names ост�
 отдельными от display text; Rename completion читает editor value. Public callback
 и real ZIP Rename/Cancel/refusal/bytes покрыты с14 normal/compact name reports;
 native marker rendering и full acceptance остаются открытыми.
+Уточнение2026-10-10: native ListView probe подтвердил, что LVS_SINGLESEL не
+выделяет строку при восстановлении одного фокуса. Qt теперь сохраняет исходный
+SelectFocused и отдельные marks; без selected row focused metadata остаётся
+пустой. Providerless model rows не создают source marks. Public restore/status
+и manual/timer Reload consumers проверяют этот контракт; native/rendered
+приёмка остаётся отдельной. [Evidence](upstream-port-audit.md#p3-05--panelitems-selection-and-provider-lifecycle-2026-10-10).
+
 Полная [карта PanelItems](omitted-scope-audit.md#panelitems-complete-body-map-2026-10-06)
 выявила ещё незавершённые исходные потребители: красный foreground удалённых
 архивных элементов (IsItem_Deleted / OnCustomDraw, default marking enabled)

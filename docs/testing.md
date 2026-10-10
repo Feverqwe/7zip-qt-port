@@ -946,6 +946,19 @@ EN/RU, table/icons and shown/hidden parent rows verify marks/paint, single focus
 selected size, peer provider/path and seven unchanged Unicode control files.
 Ninety-six current normal/compact group reports cover these forty-eight cases.
 
+The2026-10-10 source-state reconciliation adds alternative mode to the existing
+active/inactive status cases: named but unselected focus remains unselected,
+separate marks and saved SelectFocused survive, and focused metadata obeys the
+original selected-row guard. `panel_refresh_names` also checks empty operated
+indices after an unselected-focus round trip. `panel_processing` attaches stale
+providerless rows, then loads/rebinds a real snapshot provider and observes its
+existing selection callback and release cleanup. `panel_parent_reload` covers
+the same SelectFocused rule through public OnReload(timer/manual),1/301-row and
+flat filesystem consumers in both panes/languages. Its former forced-selection
+expectation was corrected using the exact original Win32 ListView state/mask
+probe, not relaxed to accept either result. Current results are in the
+[source receipt](upstream-port-audit.md#p3-05--panelitems-selection-and-provider-lifecycle-2026-10-10).
+
 `app_copy_routing` observes the existing public CApp presentation seam with real
 filesystem providers: a peer filesystem destination uses source CopyTo flags,
 multiple-item targets normalize/create before execution, Cancel makes no output,

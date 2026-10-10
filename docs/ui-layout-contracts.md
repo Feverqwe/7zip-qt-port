@@ -1,5 +1,17 @@
 # Text specifications and geometry checks
 
+### Refresh focus and alternative marks (P3-05)
+
+Named focus restoration uses saved SelectFocused in both modes. A focused
+unselected row remains unselected; source marks restore independently. With no
+selected row, source focused-size/date fields stay empty even when alternative
+marks exist. Inspect both panes/EN-RU/active and inactive ownership at980×620
+and640×400 through `source-refresh-status` widget reports. Providerless attached
+rows do not create source marks; rebind must retain the live notification route.
+These are selection/status states of the existing controls, with no geometry or
+text changes. Native ListView state probing does not establish rendered Windows
+or physical input parity.
+
 ### Panel address keys and flat view (P3-05)
 
 Preserve the source header/address above its own list and pane visibility after

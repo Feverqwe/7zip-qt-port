@@ -1,5 +1,16 @@
 # Сверка с Windows 7zFM
 
+PanelItems selection restoration now passes source SelectFocused unchanged in
+both selection modes. LVS_SINGLESEL limits selected rows; native ListView does
+not select a focused row on its own. Alternative marks stay independent: an
+unselected focused item does not become operated after Refresh, and original
+focused-size/date status stays empty when no row is selected. A providerless
+Qt model cannot supply source item count/marks; real snapshot providers retain
+attachment callbacks across load/rebind. This source-state correction leaves
+the Qt single-selection control adaptation in place. Native control semantics
+and public UI consumers are distinct from rendered Windows/physical input
+acceptance; see the [receipt](upstream-port-audit.md#p3-05--panelitems-selection-and-provider-lifecycle-2026-10-10).
+
 Windows drag now uses the original native IDataObject reverse protocol and
 IDropSource/DoDragDrop on the windows Qt platform. Qt supplies incoming native
 MIME access, widget hit testing and popup presentation; headless and POSIX paths

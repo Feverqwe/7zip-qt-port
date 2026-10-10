@@ -1,5 +1,14 @@
 # Regression and security traceability
 
+PanelItems provider/selection lifecycle: `panel_processing`, `panel_refresh_names`,
+`panel_refresh_completion` and `panel_parent_reload` cover providerless attachment
+followed by real-provider callbacks/release, unselected named focus, separate
+alternative marks and status, and public manual/timer reload with1/301-row/flat
+filesystem consumers. Native Win32 ListView state/mask evidence determines the
+SelectFocused contract; physical/native Properties exposure remains separate.
+The [receipt](upstream-port-audit.md#p3-05--panelitems-selection-and-provider-lifecycle-2026-10-10)
+records RED, three-platform direct consumers and normal/compact reports.
+
 Native drag protocol: `drag_protocol` and `drag_drop_ui` cover original button,
 root/wait and actual popup Cancel paths. Windows `native_drag_protocol`,
 `native_drag_archive` and `native_drag_qt` cover original native wire/ownership,

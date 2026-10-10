@@ -5,6 +5,39 @@
 class PanelRefreshNamesTests final : public QObject {
     Q_OBJECT
   private slots:
+    void unselectedFocusDoesNotBecomeOperated_data() {
+        QTest::addColumn<bool>("alternative");
+        QTest::newRow("standard") << false;
+        QTest::newRow("alternative") << true;
+    }
+    void unselectedFocusDoesNotBecomeOperated() {
+        QFETCH(bool, alternative);
+        auto *spec = new LoadFolder;
+        CMyComPtr<IFolderFolder> folder = spec;
+        CPanel panel(folder);
+        QCOMPARE(panel.LoadListItems(), S_OK);
+        QTableWidget view(2, 1);
+        view.setSelectionBehavior(QAbstractItemView::SelectRows);
+        for (int row = 0; row < 2; ++row) {
+            auto *item = new QTableWidgetItem;
+            item->setData(Qt::UserRole + 6, row);
+            view.setItem(row, 0, item);
+        }
+        panel.AttachSelectionView(&view);
+        panel.SetAlternativeSelection(alternative);
+        view.setCurrentCell(1, 0, QItemSelectionModel::NoUpdate);
+        view.clearSelection();
+        CSelectedState state;
+        panel.SaveSelectedState(state);
+        QVERIFY(!state.SelectFocused);
+        QVERIFY(state.SelectedNames.IsEmpty());
+        QCOMPARE(panel.RefreshListCtrl(state), S_OK);
+        QCOMPARE(view.currentRow(), 1);
+        QCOMPARE(view.selectionModel()->selectedRows().size(), 0);
+        CRecordVector<UInt32> operated;
+        panel.Get_ItemIndices_Operated(operated);
+        QVERIFY(operated.IsEmpty());
+    }
     void restoredNames_data() {
         QTest::addColumn<bool>("fast");
         QTest::addColumn<bool>("flat");

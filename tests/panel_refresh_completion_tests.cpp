@@ -236,17 +236,23 @@ class PanelRefreshCompletionTests final : public QObject, protected MainWindowTe
         QTest::addColumn<unsigned>("pane");
         QTest::addColumn<bool>("russian");
         QTest::addColumn<bool>("inactive");
+        QTest::addColumn<bool>("alternative");
         for (unsigned pane : {0u, 1u})
             for (bool russian : {false, true})
                 for (bool inactive : {false, true})
-                    QTest::newRow(
-                        qPrintable(QString("%1-%2-%3").arg(pane).arg(russian).arg(inactive)))
-                        << pane << russian << inactive;
+                    for (bool alternative : {false, true})
+                        QTest::newRow(qPrintable(QString("%1-%2-%3-%4")
+                                                     .arg(pane)
+                                                     .arg(russian)
+                                                     .arg(inactive)
+                                                     .arg(alternative)))
+                            << pane << russian << inactive << alternative;
     }
     void sourceCompletionPublishesStatus() {
         QFETCH(unsigned, pane);
         QFETCH(bool, russian);
         QFETCH(bool, inactive);
+        QFETCH(bool, alternative);
         language(russian);
         QTemporaryDir fixture;
         ControlledBackend backend;
@@ -256,6 +262,7 @@ class PanelRefreshCompletionTests final : public QObject, protected MainWindowTe
         const QList<ArchiveEntry> entries = {
             {"file0 δ.txt", 1, 1}, {"file1 文件.txt", 2, 2}, {"file2 space.txt", 3, 3}};
         auto *view = openPane(window, backend, pane, fixture.filePath("status space.zip"), entries);
+        view->sourcePanel->SetAlternativeSelection(alternative);
         view->setCurrentCell(2, 0);
         action(window, "selectAllAction")->trigger();
         auto *widget = window.findChild<QWidget *>(QString("filePanel%1").arg(pane));
@@ -280,8 +287,20 @@ class PanelRefreshCompletionTests final : public QObject, protected MainWindowTe
         state.SelectedNames.Add(ToUString(entries[1].path));
         QCOMPARE(view->sourcePanel->RefreshListCtrl(state), S_OK);
         QCOMPARE(view->currentRow(), 2);
+        QVERIFY(!view->selectionModel()->isRowSelected(2, QModelIndex()));
+        QCOMPARE(view->selectionModel()->selectedRows().size(), alternative ? 0 : 1);
+        CSelectedState roundTrip;
+        view->sourcePanel->SaveSelectedState(roundTrip);
+        QVERIFY(roundTrip.FocusedName_Defined);
+        QCOMPARE(roundTrip.FocusedName, state.FocusedName);
+        QVERIFY(!roundTrip.SelectFocused);
+        QCOMPARE(roundTrip.SelectedNames.Size(), 1u);
+        QCOMPARE(roundTrip.SelectedNames[0], state.SelectedNames[0]);
         QCOMPARE(size->text(), QStringLiteral("2"));
-        QCOMPARE(widget->findChild<QLabel *>("focusedSizeStatus")->text(), QStringLiteral("3"));
+        // Source status shows focused metadata only while a row is selected;
+        // alternative marks are independent of the ListView selection.
+        QCOMPARE(widget->findChild<QLabel *>("focusedSizeStatus")->text(),
+                 alternative ? QString() : QStringLiteral("3"));
         QVERIFY(widget->findChild<QLabel *>("selectedItemsStatus")->text().contains("1 / 3"));
         QVERIFY(widget->findChild<QLabel *>("focusedDateStatus")->text().isEmpty());
         QCOMPARE(QApplication::focusWidget(), focused);

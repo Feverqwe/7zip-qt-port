@@ -98,7 +98,10 @@ class PanelParentReloadTests final : public QObject, protected MainWindowTestSup
             QTRY_COMPARE(view->rowCount(), count + int(dots));
             QTRY_VERIFY(panel.ShouldProcessNotifications());
             QCOMPARE(view->currentRow(), 0);
-            QCOMPARE(view->selectionModel()->isRowSelected(0, QModelIndex()), dots || alternative);
+            QCOMPARE(view->selectionModel()->isRowSelected(0, QModelIndex()), dots);
+            CSelectedState restored;
+            panel.SaveSelectedState(restored);
+            QCOMPARE(restored.SelectFocused, dots);
             if (dots) {
                 QCOMPARE(view->item(0, 0)->text(), QString(".."));
                 QCOMPARE(view->item(0, 0)->data(Qt::UserRole + 6).toUInt(), UInt32(-1));
@@ -111,7 +114,7 @@ class PanelParentReloadTests final : public QObject, protected MainWindowTestSup
             panel.Get_ItemIndices_Selected(indices);
             QVERIFY(indices.IsEmpty());
             panel.Get_ItemIndices_Operated(indices);
-            QCOMPARE(indices.Size(), unsigned(!dots && alternative));
+            QVERIFY(indices.IsEmpty());
             QCOMPARE(peerView->sourcePanel->GetFolder(), (IFolderFolder *)peerFolder);
             QCOMPARE(peerView->selectionModel()->selectedRows().size(), 1);
             QCOMPARE(panelAddress(window, 1 - sourceIndex)->text(), peer);

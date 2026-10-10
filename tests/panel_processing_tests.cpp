@@ -6,6 +6,47 @@ class PanelProcessingTests : public QObject {
     Q_OBJECT
 
   private slots:
+    void providerlessAttachmentDoesNotInventMarks() {
+        CPanel panel;
+        QTableWidget table(2, 1);
+        table.setSelectionBehavior(QAbstractItemView::SelectRows);
+        for (int row = 0; row < 2; ++row) {
+            auto *item = new QTableWidgetItem(QString::number(row));
+            item->setData(Qt::UserRole + 6, UInt32(row));
+            table.setItem(row, 0, item);
+        }
+        table.selectRow(1);
+        panel.AttachSelectionView(&table);
+        CRecordVector<UInt32> selected;
+        panel.Get_ItemIndices_Selected(selected);
+        QVERIFY(selected.IsEmpty());
+        table.selectRow(0);
+        panel.Get_ItemIndices_Selected(selected);
+        QVERIFY(selected.IsEmpty());
+        CObjectVector<CPanelItem> items;
+        for (int index = 0; index < 2; ++index) {
+            CPanelItem item;
+            item.RelPath = QStringLiteral("owned 文件 %1.txt").arg(index);
+            items.Add(item);
+        }
+        panel.SetNewFolder(new QtPanelFolder(QStringLiteral("/fixture/"), items));
+        QCOMPARE(panel.LoadListItems(), HRESULT(S_OK));
+        table.setRowCount(2);
+        for (int row = 0; row < 2; ++row) {
+            auto *item = new QTableWidgetItem(items[unsigned(row)].RelPath);
+            item->setData(Qt::UserRole + 6, UInt32(row));
+            table.setItem(row, 0, item);
+        }
+        // The existing attachment must keep its live selection callback.
+        table.selectRow(1);
+        panel.Get_ItemIndices_Selected(selected);
+        QCOMPARE(selected.Size(), 1u);
+        QCOMPARE(selected[0], 1u);
+        panel.ReleaseFolder();
+        QCOMPARE(table.rowCount(), 0);
+        panel.Get_ItemIndices_Selected(selected);
+        QVERIFY(selected.IsEmpty());
+    }
     void absentFolderRefreshPreservesPresentation_data() {
         QTest::addColumn<bool>("released");
         QTest::addColumn<bool>("populated");

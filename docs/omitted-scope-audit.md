@@ -844,6 +844,40 @@ or current Windows/Linux/rendered/cold-stable acceptance.
 
 ### PanelItems complete body map, 2026-10-06
 
+Reconciled again on2026-10-10 against the complete original1476-line module
+at the same full pin and the adapted931-line module at458bfbb. Original35
+active bodies/four column helpers, Panel declarations, selection/notification/
+sort/folder-change callers, snapshot constructors and synchronous/deferred
+MainWindow publication were reviewed. The following correction supersedes the
+former unspecified providerless count and forced alternative-focus adaptation:
+`GetFolderItemCount` retains the source load count across Qt phases, otherwise
+queries the actual provider; with no provider it returns zero, never model rows.
+Every snapshot constructor already creates QtPanelFolder. Release/rebind clear
+rows, marks and the count; attachment keeps its notification connection for a
+later real provider without inventing marks from stale presentation rows.
+`RestoreLoadedSelection` passes original `state.SelectFocused` unchanged to
+SetFocusedSelectedItem. LVS_SINGLESEL constrains multiplicity but does not
+select a merely focused row: the exact native state/mask calls were verified
+on Windows11 ListView in both source styles. Source marks, focus and selected
+rows remain independent, including original status/operated-index guards.
+
+The remaining extraction boundaries are intentional Qt services: load/caches
+before row publication, source-indexed callback rows/parent sentinel, source
+restore and sort after publication, and redraw/enabled state through the owning
+scan/operation lifecycle. QtFolderProjection retains the provider per batch,
+invalidates generations on cancel/rebind and clears its completion before
+calling it; MainWindow publishes only the owning pane and restores guards before
+deferred result callbacks. The phase/caller map above retains individual source
+result policies. GetItemName's unused output-reference overload has no separate
+active consumer here; the value overload preserves its property/type exceptions
+and supplies the pointer consumed by restoration/icon matching. Win32 callback
+messages, redraw, column/control structs, image lists, popups and timers remain
+presentation/platform substitutions; debug/commented branches stay omitted.
+No archive algorithm, extra upstream dependency, source language or baseline
+changes. Body disposition is distinct from native/rendered/final acceptance;
+the dated [receipt](upstream-port-audit.md#p3-05--panelitems-selection-and-provider-lifecycle-2026-10-10)
+owns current validation evidence.
+
 Compared the complete original `CPP/7zip/UI/FileManager/PanelItems.cpp` at
 0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17 from https://github.com/ip7z/7zip.git
 with the adapted module at project b834b9e. The original has35 active CPanel
@@ -860,7 +894,7 @@ those of the original review snapshot.
 | InitColumns | Same module retains folder/raw-property enumeration, individual info failures skipped, descriptor types and saved visibility/order/width, name protection, visible/name-first sorting and sort default. Original mark clear now precedes enumeration on every call; equal-column early return and DeleteColumn/AddColumn rebuild restored. Original CIntArr order validation is extracted as GetColumnOrder for deferred Qt physical publication: source logical Name stays first, visual Name may move elsewhere. Direct unchanged-catalog marks/rows/selection/restore and EN/RU both-pane move/Refresh/reopen/width consumers pass. Publication now gives each catalog entry a separate Qt section and uses its exact descriptor for cells/alignment/visible width/order, including generic/raw CRC and reserved Size overlap. Both-pane EN/RU guard/error/Cancel/Refresh/peer consumers pass. Duplicate-ID menu projection now retains first-visible-ID deletion and appended copies with separate visible logical mappings, callback cells/widths and selection; both-pane EN/RU repeated toggles pass. Overlapping CRC/Size header sorting now uses source first-catalog raw flag and same-PropID toggle through generic/raw/append sections;16 EN/RU both-pane copies/Refresh consumers pass. Written generic/raw count enumeration now retains original ignored-HRESULT loops, with existing initialized-zero outputs; individual info errors/IsDir are skipped. Same-provider raw-Name/no-Name/empty/unwritten/recovery consumers retain source defaults/logical indices and remove phantom Qt Name, with rows/selection/menu/peer preserved. Label-only selection now resolves native visible subitem zero when reserved Name is hidden; actual delegate-image RED4 and focused consumers cover raw Name/no Name. Icon/list projection now resolves the same logical-zero text and existing row icon after schema publication/menu mutations; four view modes cover raw-Name hide/re-add, no-Name/empty/recovery with peer focus/selection retained. Real FS/ZIP/7z defaults, independent per-type width/order/visibility, unchanged equality and separate Type/Name changes now have an integrated EN/RU both-pane workflow; see the [dated evidence](upstream-port-audit.md#source-real-provider-column-workflow-2026-10-07). Provider failures and raw/empty/duplicate schemas retain the focused evidence above; current native/rendered acceptance remains open. |
 | DeleteColumn, AddColumn | Original visible-vector bodies now remain in PanelItems and are called by ShowColumnsContextMenu and restored InitColumns rebuild. Win32 LV_COLUMN insertion/removal and column-order-array transport become Qt hide/show/append and deferred source order-array application with compact visible order persistence. Both-pane menu/move/width/Refresh/reopen and direct unchanged-catalog consumers cover these boundaries. Qt now maps native visible indices separately from the catalog and creates additional callback sections for appended copies, preserving first-ID deletion, widths and selected rows. Overlapping CRC/Size header sorting retains source flags/toggles after Qt mouse dispatch and across appended copies. Real-provider defaults/settings and separate Type/Name equality changes now have integrated coverage; current native/rendered acceptance remains required. Path presence alone does not prove whole column closure. |
 | RefreshListCtrl() / RefreshListCtrl(state), RefreshListCtrl_SaveFocused, SetFocusedSelectedItem | Retained source restoration and extracted LoadListItems/LoadItemIcon with Qt row publication. The phase/caller map above owns remaining terminal/async/error boundaries. SaveFocused calls RefreshListCtrl, which invokes the attached load/publication callback; source OnReload consumes its HRESULT. Qt render completion calls extracted RestoreLoadedSelection, avoiding recursive reload. Callback-free fixture restoration and deferred operation guards remain explicit boundaries. Pending state transfers synchronous source navigation to Qt publication. |
-| GetSelectedNames, SaveSelectedState, Get_ItemIndices_Selected, Get_ItemIndices_Operated, Get_ItemIndices_All, Get_ItemIndices_OperSmart | Same module retains source names/mark vectors, operated focused-row fallback and all-item/provider count. Source OnItemChanged now consumes owning-model selected-state deltas behind notification/deletion/alternative guards, including inactive panes. SaveSelectedState reads marks without rebuilding them; pre-populated Qt attachment seeds once and load prepares marks before deferred publication. Direct InitColumns restoration uses the pre-clear snapshot. Dated source/consumer evidence is linked in the audit. GetFolderItemCount's providerless row-count helper remains outside the newly corrected absent-folder Refresh guard and needs disposition with snapshot/callback consumers. |
+| GetSelectedNames, SaveSelectedState, Get_ItemIndices_Selected, Get_ItemIndices_Operated, Get_ItemIndices_All, Get_ItemIndices_OperSmart | Same module retains source names/mark vectors, operated focused-row fallback and all-item/provider count. Source OnItemChanged consumes owning-model selected-state deltas behind notification/deletion/alternative guards, including inactive panes. SaveSelectedState reads marks without rebuilding them; pre-populated Qt attachment seeds once from a real provider and load prepares marks before deferred publication. Direct InitColumns restoration uses the pre-clear snapshot. The2026-10-10 lifecycle reconciliation above removes providerless model-row counts and preserves source SelectFocused independently of alternative marks. Dated source/consumer evidence is linked in the audit. |
 | EditItem(bool), OpenFocusedItemAsInternal, OpenSelectedItems | Same module retains folder-size calculation/invalidation, parent refusal for editing, operated-item20 limit, selected-parent insertion and first internal-folder break. Qt commands call these bodies; PanelItemOpen owns actual external/internal opening and process/update continuations. Their complete workflow/platform acceptance is separate. |
 | GetItemName(value), GetItemName(output-reference) | Value-returning BSTR/type/error/parent body remains. The output-reference overload is omitted; adapted Refresh/formatter/icon callers use the value body rather than a second property implementation. This omission does not justify removing the generic property fallback. |
 | GetItemName_for_Copy, GetItemPrefix, GetItemRelPath, GetItemRelPath2, Add_ItemRelPath2_To_String, GetItemFullPath | Same module retains out-name fallback, extraction name correction, property/fast-name append and Windows drive/device separator conditional. Existing path tests and Copy/Open consumers cover separate subsets; current native device/ADS acceptance remains mandatory. |
