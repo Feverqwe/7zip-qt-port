@@ -1,5 +1,45 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-03 — Current full Linux gate after status corrections (2026-10-10)
+
+The current product at `67b4f96` (same1480 retained inputs as `38b740a`) passes
+the complete unsandboxed Linux format/build/default CTest gate:318/318,501.75s.
+All301 Qt suites total5058pass/0fail/56skip; every skip is explicitly Windows/NTFS
+specific. Eleven labeled slow suites are excluded and not accepted by this gate.
+Actual toolchain is Ubuntu24.04.5 x86_64, kernel6.8.0-142-generic, GCC13.3.0,
+CMake3.28.3, Qt6.12.0 and runner clang-format23.1.2.
+
+Snapshot `20261010T172635Z-5d8e0c7d` matches all1515 archive/actual guest inputs,
+including upstream.bundle; archive SHA256
+`be0734da652f5f3047bf5a656a03ac8ef119dcd0e573faf3406f7840dd785dab`.
+Fresh official engine/SFX builds retain source https://github.com/ip7z/7zip.git
+revision `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. All eight runtime files,
+repository/revision/version1703939/x86_64 and declared module/SFX hashes are
+verified. No new borrowed module, dependency, algorithm or product code change.
+The fresh eight runtime files also match the current Linux delivery inputs
+byte-for-byte; no package refresh is needed for this documentation-only step.
+All5391 widget reports are hashed; the12 EN/RU normal/compact status reports
+have fully exposed visible bars, one→two→one counts and no visible grip. The
+full report set is not claimed individually visually reviewed or pixel-matched.
+Complete logs/cache/source/runtime/report proofs are in the isolated checkout's
+`build/review/platform-gate`, with no temporary staged helper.
+
+Authorized retention cleanup removed reproducible dev-build outputs in only
+the three older completed runs `20261010T115930Z-9ed04bf8`,
+`20261010T114057Z-74f7fd07`, `20261010T102904Z-9876848d`, after completion,
+active-process/reference and newest-three checks. Source/runtime, CMake caches,
+Testing logs, widget reports and small build descriptors remain. Free bytes
+rose1878097920→6335848448; exact943 removed paths are recorded in evidence.
+After the fresh gate, free space is1103908864 bytes and no compiler/CTest remains.
+Host storage has no warnings/zero VHDX growth. No VM/disk configuration changes,
+other-project/toolchain cleanup, upstream writes, push or publication occurred.
+
+The current Mac full321/321 and Windows focused4/4 receipts remain valid for
+their unchanged product scope; they are not repeated here. Current runtime
+packages already include both status fixes. Native launcher source gaps,
+Windows full/cold-stable/native/rendered, clean-OS and final acceptance stay open
+in the [matrix](ux-port-audit.md#current-final-acceptance-matrix-2026-10-10).
+
 ## P3-04 — Refreshed delivery after status corrections (2026-10-10)
 
 Fresh Qt6.12 Release/BUILD_TESTING=OFF artifacts use product `38b740a`, including
