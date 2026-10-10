@@ -1,5 +1,19 @@
 # Omitted source scope review
 
+## FM startup platform caller disposition (2026-10-10)
+
+Source https://github.com/ip7z/7zip.git revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`: WinMain2's small-screen and
+Set_SymLink_Supported policies now reach their startup consumers. CApp::Create
+passes its presentation capability to retained ReadToolbar; source Dialog.cpp
+200×200 arithmetic uses existing Qt font/work-area services instead of a global
+Win32 screen flag. Explicit toolbar masks retain precedence. The production
+entry calls existing link initialization after SetMemoryLock, before Copy;
+Link dialog retains its idempotent call. Original capability/version/token
+bodies and operation/refusal/cleanup owners remain. No account policy is granted.
+Remaining FM platform/full-body, native/rendered/package/final scope stays open;
+[source/consumer receipt](upstream-port-audit.md#p3-05--startup-platform-consumers-and-toolbar-defaults-2026-10-10).
+
 ## FM launch-show and hidden-close disposition (2026-10-10)
 
 At source https://github.com/ip7z/7zip.git revision

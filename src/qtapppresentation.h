@@ -10,6 +10,7 @@ class QtAppPresentation final : public IQtAppPresentation {
   public:
     explicit QtAppPresentation(MainWindow &window) : window_(window) {}
     void Initialize(CApp &app) override;
+    bool IsSmallScreen() const override;
     bool CreatePanel(CPanel &panel, unsigned index) override;
     CPanelCallback *PanelCallback(unsigned index) override;
     void RefreshFolder(unsigned index) override;

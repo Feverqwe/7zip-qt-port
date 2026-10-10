@@ -3,6 +3,7 @@
 #include "mainwindow.h"
 #include "qtfilemanagerinitservices.h"
 #include "qtfilemanagerstartup.h"
+#include "qtlinkservices.h"
 #include "qtmemorylockservices.h"
 #ifdef _WIN32
 #include "../third_party/7zip/C/Alloc.h"
@@ -33,6 +34,7 @@ int RunSevenzipFileManager(QApplication &application) {
 #endif
         const QtMemoryLockServices memoryLock;
         NQtFileManager::SetMemoryLock(FmSettingsPath(), memoryLock);
+        QtInitializeLinkPlatform();
         ArchiveBackend backend;
         if (startup.NeedOpenArc) {
             // The source first archive open loads Global_Codecs synchronously.

@@ -10,6 +10,7 @@
 #include <QSignalSpy>
 #include <QtTest>
 #ifdef Q_OS_WIN
+#include "native_link_fixture.h"
 #include <windows.h>
 
 namespace {
@@ -185,6 +186,48 @@ class FileManagerStartupTests final : public QObject {
 #endif
     }
 #ifdef Q_OS_WIN
+    void nativeStartupEnablesLinkCopy() {
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString target = fixture.filePath(QStringLiteral("цель 空 with spaces.txt"));
+        const QString link = fixture.filePath(QStringLiteral("ссылка 空 with spaces"));
+        const QString destination = fixture.filePath(QStringLiteral("копия 空 with spaces"));
+        const QByteArray bytes("startup symbolic link protected target");
+        QVERIFY(SourceExtractFixture::writeFile(target, bytes));
+        QVERIFY(CreateNativeSymbolicLink(link, QFileInfo(target).fileName()));
+        CByteBuffer original;
+        QVERIFY(NWindows::NFile::NIO::GetReparseData(NativeFixturePath(link), original));
+        QProcess process;
+        auto environment = QProcessEnvironment::systemEnvironment();
+        environment.insert("QT_QPA_PLATFORM", "offscreen");
+        environment.insert("SEVENZIP_SETTINGS_PATH", fixture.filePath("link startup.ini"));
+        environment.insert("SEVENZIP_PROBE_MEMBER", QFileInfo(link).fileName());
+        environment.insert("SEVENZIP_PROBE_COPY_LINK", link);
+        environment.insert("SEVENZIP_PROBE_LINK_DESTINATION", destination);
+        process.setProcessEnvironment(environment);
+        process.start(QString::fromUtf8(SEVENZIP_FM_PROBE), {fixture.path()});
+        QVERIFY(process.waitForStarted(5000));
+        QVERIFY2(process.waitForFinished(35000), "startup link probe did not finish");
+        QCOMPARE(process.exitStatus(), QProcess::NormalExit);
+        QCOMPARE(process.exitCode(), 0);
+        const auto report = QJsonDocument::fromJson(process.readAllStandardOutput()).object();
+        QVERIFY(report.value("bound").toBool());
+        QVERIFY(!report.value("timeout").toBool());
+        QVERIFY(report.value("privilegeDropped").toBool());
+        QVERIFY(report.value("linkCopied").toBool());
+        CByteBuffer actual, source;
+        QVERIFY(NWindows::NFile::NIO::GetReparseData(NativeFixturePath(destination), actual));
+        QVERIFY(NWindows::NFile::NIO::GetReparseData(NativeFixturePath(link), source));
+        const auto blob = [](const CByteBuffer &data) {
+            return QByteArray(reinterpret_cast<const char *>(static_cast<const Byte *>(data)),
+                              qsizetype(data.Size()));
+        };
+        QCOMPARE(blob(actual), blob(original));
+        QCOMPARE(blob(source), blob(original));
+        QCOMPARE(SourceExtractFixture::readFile(target), bytes);
+        QCOMPARE(SourceExtractFixture::readFile(destination), bytes);
+    }
+
     void nativeLaunchShowCommand_data() {
         QTest::addColumn<int>("command");
         QTest::addColumn<bool>("savedMaximized");

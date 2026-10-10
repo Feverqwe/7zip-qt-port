@@ -118,6 +118,14 @@ including archive-first and late creation from an initially single right panel.
 
 ### Source startup window placement (P3-05.16)
 
+Toolbar defaults retain source IsDialogSizeOK(200,200): when the dialog-unit
+extent exceeds the available work area, default-mask bit31 disables labels.
+Explicit saved labels/icons override this classification. Qt font metrics and
+available screen geometry supply the original calculation; compact client
+width alone does not change the saved/default policy. Actual large-font tests
+check QAction/style without a rendered-geometry claim. Ordinary980×620/640×400
+main-shell reports retain toolbar grouping/order, control visibility and menus.
+
 FM.cpp::InitInstance restores a valid saved normal rectangle and maximized flag
 before the caller exposes the window. Missing or malformed Position leaves the
 default rectangle; Panels is admitted independently, with source panel-count and

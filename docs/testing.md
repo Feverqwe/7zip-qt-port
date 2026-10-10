@@ -10,6 +10,18 @@ resource contract. This bounded default suite requires Windows and the official
 codec module; other platforms skip it explicitly. Native widget geometry does
 not establish exposed Windows desktop or rendered 7zFM parity.
 
+`native_toolbar_state` now checks missing/default masks through CApp::Create
+with both screen capabilities, plus explicit labels/icons. `main_shell` checks
+the actual Qt font/work-area consumer and resulting toolbar QAction/style;
+fonts/settings are restored. Artificial large-font rows check classification,
+while existing normal/compact shell reports inspect ordinary geometry.
+Windows `file_manager_startup::nativeStartupEnablesLinkCopy` launches production
+Run after dropping only its own child-token privileges. It copies a disposable
+Unicode/space relative symbolic link before any Link dialog and compares raw
+reparse data and source/target bytes. Fixtures do not grant account rights.
+Existing filesystem/link permission-failure/occupied/Cancel consumers remain;
+[source receipt](upstream-port-audit.md#p3-05--startup-platform-consumers-and-toolbar-defaults-2026-10-10).
+
 `native_fs_operations` checks public case-only Rename for Unicode file and
 directory names, actual stored directory spelling and protected child bytes.
 `fs_provider_command` checks F2/Escape in both panels and EN/RU, retained provider

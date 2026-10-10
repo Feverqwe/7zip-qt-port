@@ -1,5 +1,68 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-05 — Startup platform consumers and toolbar defaults (2026-10-10)
+
+Source https://github.com/ip7z/7zip.git, full revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. Reviewed original/current
+FM.cpp::WinMain2/Set_SymLink_Supported, App.h::ReadToolbar/App.cpp::Create,
+Windows/Control/Dialog.cpp::IsDialogSizeOK, Windows/MemoryLock.cpp/.h privilege
+services and Windows/FileLink.cpp::SetReparseData, plus entry, Link and
+filesystem-copy consumers. Upstream paths, C++ language, notices/licenses and
+per-module revisions remain authoritative; upstream is read-only. This is a
+bounded caller reconciliation, not whole FM closure.
+
+Original WinMain2 sets g_IsSmallScreen from IsDialogSizeOK(200,200); ReadToolbar
+uses it only for default-mask bit31. Its adapted bool input already existed,
+but CApp::Create always used false. The presentation now supplies IsSmallScreen;
+QtAppPresentation reuses source Dialog.cpp with existing QtDialogScreenServices.
+Qt font metrics/work area replace GetDialogBaseUnits/GetWorkAreaRect. Original
+200×200 arithmetic, masks, explicit labels/icons and Save→Reload→Move remain.
+Per-window capability replaces the process global; nonwidget presentations
+keep a false default. No new size threshold or settings policy is introduced.
+
+Original WinMain2 calls Set_SymLink_Supported immediately after SetMemoryLock.
+Its retained body was reached only by lazy Link-dialog creation, leaving earlier
+Copy/reparse consumers without source token initialization. RunSevenzipFileManager
+now calls existing QtInitializeLinkPlatform at that startup point. Version check,
+supported flag and SeRestore/SeCreateSymbolicLink attempts remain source-owned.
+The existing once-only Link call stays idempotent; POSIX keeps its no-op. Link
+initialization grants no account right or policy. Refusal retains existing
+operation errors and protected-link cleanup.
+
+Owned changes are IQtAppPresentation/QtAppPresentation, CApp::Create and the
+production entry caller; source algorithms/module boundaries remain. Tests use
+private settings, restored fonts, owned child tokens and Unicode/space links.
+NativeToolbarState first gives8Qtpass/2fail with the old caller. Actual MainWindow
+QAction/style regression gives5pass/1fail. Explicit masks remain authoritative.
+Windows entry probe drops its own privileges before Run and copies a private
+native link without Link dialog; old startup gives2pass/1fail at linkCopied.
+Original fixtures were restored/rebuilt with exact SHA/timestamps. New checks
+protect raw reparse data and source/target bytes; existing success/refusal/Skip/
+cancellation consumers remain. Offscreen does not establish native rendered parity.
+
+Fresh unsandboxed macOS format/build/default gate315/315 PASS251.53s;
+298Qt suites4982pass/0fail/55platform skips. Final focused11/11 PASS8.79s,
+234Qtpass/0fail/2existing Windows-only extraction skips. Linux11/11 PASS18.27s
+with the same Qt totals;1460local/archive/actual guest inputs match exactly.
+Each supplies23selected current window/splitter/launch/shell/menu JSON reports,
+all46 without unexpected clipping. Windows10/11 suites pass101.77s,
+241Qtpass/2fail/0skip: only the two established actual-7zFM IsWindowVisible
+failures on the invisible service desktop. The new native startup link-copy
+row, seven STARTUPINFO rows and toolbar/lifecycle consumers pass unchanged.
+Windows also matches1460local/archive/actual guest inputs and23JSON without
+clipping;69reports across3OS inspected. Linux snapshot
+`20261010T050339Z-a0d83032`, archive SHA-256
+`b904ab0954be8b205daa0e4905379e83eedbdb8fc1f2c42a8b9346569721246c`;
+Windows snapshot `20261010T050929Z-a19af76b`, SHA-256
+`39ddbc96728d3c24f3e32895ce35aaf62429dc088c3854bbccf776dac7ce6cfc`.
+Both use parent47bfda1 and pinned official runtime26.03. Successful idle
+preflight is not a cold-stability or interactive/native-rendered claim.
+After additive integration over foreign archive-ADS commit beb87b7, the same
+nine source/test files match the checked component byte-for-byte. All12 focused
+suites, including the new foreign native_archive_ads_copy consumer, PASS12.44s
+on macOS. Foreign source, test and documentation changes are preserved.
+Eleven slow suites excluded; no parent P3 package or final acceptance is closed.
+
 ## P3-05 — Launch show command and hidden-window close (2026-10-10)
 
 Source https://github.com/ip7z/7zip.git, full revision

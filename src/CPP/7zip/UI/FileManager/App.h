@@ -49,6 +49,7 @@ class IQtAppPresentation {
   public:
     virtual ~IQtAppPresentation() = default;
     virtual void Initialize(CApp &app) = 0;
+    virtual bool IsSmallScreen() const { return false; }
     virtual bool CreatePanel(CPanel &panel, unsigned index) = 0;
     virtual CPanelCallback *PanelCallback(unsigned index) = 0;
     virtual void RefreshFolder(unsigned) {}

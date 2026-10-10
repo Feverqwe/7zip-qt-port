@@ -1,9 +1,16 @@
 #include "qtapppresentation.h"
+#include "CPP/Windows/Control/Dialog.h"
 #include "mainwindow.h"
+#include "qtdialogscreenservices.h"
 #include "qtfilelisthover.h"
 #include "qtfilemanagerdrag.h"
 #include <QPointer>
 #include <QScopedValueRollback>
+
+bool QtAppPresentation::IsSmallScreen() const {
+    const QtDialogScreenServices screen(&window_);
+    return !NWindows::NControl::IsDialogSizeOK(200, 200, screen);
+}
 
 void QtAppPresentation::Initialize(CApp &app) {
     // Preserve the existing single-panel preferences when introducing the

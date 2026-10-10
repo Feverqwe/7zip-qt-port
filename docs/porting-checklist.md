@@ -35,6 +35,16 @@ P3-03/04/05/06 remain open;43/47 and final acceptance are unchanged.
 
 ## Общие правила и обязательный рефакторинг
 
+P3-05.16, 2026-10-10: original small-screen toolbar default now reaches
+CApp::Create through existing Qt dialog-unit services, and startup initializes
+source symbolic-link token privileges before Copy. Public toolbar and real
+Windows entry RED regressions are retained. Mac full315/315 PASS; focused
+Mac/Linux11/11, Windows10/11 with only the two established service-desktop
+visibility failures. New native link-copy row passes;1460inputs match actual
+guest trees and69selected3OS widget reports fit. Eleven slow suites excluded.
+Native/rendered/cold-stable/package/final scope stays open;43/47 unchanged.
+[Receipt](upstream-port-audit.md#p3-05--startup-platform-consumers-and-toolbar-defaults-2026-10-10).
+
 Source port, исходные языки C/C++, размещение модулей и backend-границы
 определены в [AGENTS.md](../AGENTS.md#source-port-requirements).
 Обязательный P2-11 добавлен 2026-10-03 для рефакторинга уже написанной обвязки;

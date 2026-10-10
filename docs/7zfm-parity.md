@@ -1,5 +1,16 @@
 # Сверка с Windows 7zFM
 
+## Source startup platform defaults (P3-05, 2026-10-10)
+
+При исходном условии малого экрана подписи toolbar по умолчанию отключаются;
+сохранённые labels/icons имеют приоритет. Исходный расчёт200×200 dialog units
+использует Qt font metrics и available work area вместо Win32 system-font/
+work-area APIs. Layout и порядок toolbar сохранены. Искусственно крупный шрифт
+проверяет классификацию/состояние, без rendered parity. Windows symbolic-link
+поддержка и process token privileges инициализируются при startup до Copy и
+первого Link dialog. Недоступная привилегия сохраняет отказ операции; права
+account не выдаются. [Receipt](upstream-port-audit.md#p3-05--startup-platform-consumers-and-toolbar-defaults-2026-10-10).
+
 ## Source Windows namespace icons (P3-05, 2026-10-10)
 
 Computer/Documents/Network снова получают исходные Windows CSIDL image-list

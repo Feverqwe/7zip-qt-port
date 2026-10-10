@@ -498,7 +498,7 @@ HRESULT CApp::Create(QWidget *window, const UString &mainPath, const UString &ar
     _settingsPath = settingsPath;
     // Qt child/menu construction replaces Win32 handles, not toolbar state.
     _presentation->Initialize(*this);
-    ReadToolbar();
+    ReadToolbar(_presentation->IsSmallScreen());
     ReloadToolbars();
     unsigned i;
     for (i = 0; i < kNumPanelsMax; i++)

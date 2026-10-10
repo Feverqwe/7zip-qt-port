@@ -7,6 +7,15 @@ bindings, selection/notifications and normal/compact Copy/main geometry. This
 uses actual native codecs and owned NTFS fixtures; platform skips and native
 desktop/rendered acceptance remain distinct.
 
+Startup platform callers: `native_toolbar_state` and `main_shell` cover default
+small-screen labels and explicit-mask precedence through source CApp and actual
+Qt screen/font transport. Windows `file_manager_startup` drops child privileges
+before the real entry, then checks link Copy, raw reparse data and protected
+bytes without Link dialog. `filesystem_link`, `link_dialog`, `link_command`,
+`source_link_extract`, `ui_copy_routing` and lifecycle/placement retain direct
+success/refusal/Cancel consumers. No account-policy grant or rendered acceptance
+is inferred; [receipt](upstream-port-audit.md#p3-05--startup-platform-consumers-and-toolbar-defaults-2026-10-10).
+
 Launch show/hidden-close: `window_placement` checks saved-state precedence,
 explicit commands and nonminimized geometry. `file_manager_startup` exercises
 Windows STARTUPINFO through production entry/archive binding;

@@ -4,6 +4,8 @@
 #include "window_state_support.h"
 
 #include <QMenuBar>
+#include <QScopeGuard>
+#include <QScreen>
 #include <QTimer>
 #include <QToolBar>
 #include <QTreeWidget>
@@ -19,6 +21,48 @@ class MainShellTests final : public QObject {
     }
 
   private slots:
+    void startupToolbarUsesActualScreenMetrics_data() {
+        QTest::addColumn<bool>("smallScreen");
+        QTest::addColumn<quint32>("mask");
+        QTest::addColumn<bool>("labels");
+        QTest::newRow("default-normal") << false << quint32(0x8000000d) << true;
+        QTest::newRow("default-small") << true << quint32(0x8000000d) << false;
+        QTest::newRow("explicit-labels-small") << true << quint32(13) << true;
+        QTest::newRow("explicit-icons-normal") << false << quint32(12) << false;
+    }
+
+    void startupToolbarUsesActualScreenMetrics() {
+        QFETCH(bool, smallScreen);
+        QFETCH(quint32, mask);
+        QFETCH(bool, labels);
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QByteArray oldSettings = qgetenv("SEVENZIP_SETTINGS_PATH");
+        const auto restoreSettings =
+            qScopeGuard([&] { qputenv("SEVENZIP_SETTINGS_PATH", oldSettings); });
+        const QString settings = fixture.filePath("screen toolbar.ini");
+        qputenv("SEVENZIP_SETTINGS_PATH", settings.toUtf8());
+        SaveToolbarsMask(mask, settings);
+        const QFont oldFont = QApplication::font();
+        const auto restoreFont = qScopeGuard([&] { QApplication::setFont(oldFont); });
+        if (smallScreen) {
+            QVERIFY(QApplication::primaryScreen());
+            QFont font = oldFont;
+            font.setPixelSize(QApplication::primaryScreen()->availableGeometry().height() / 25 +
+                              16);
+            QApplication::setFont(font);
+        }
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        auto *toolbar = window.findChild<QToolBar *>("archiveToolbar");
+        auto *option = window.findChild<QAction *>("buttonTextOption");
+        QVERIFY(toolbar && option);
+        QCOMPARE(option->isChecked(), labels);
+        QCOMPARE(toolbar->toolButtonStyle(),
+                 labels ? Qt::ToolButtonTextUnderIcon : Qt::ToolButtonIconOnly);
+        QCOMPARE(ReadToolbarsMask(settings), UInt32(mask));
+    }
+
     void init() { QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH")); }
 
     void nativeTemporaryFilesCommandUsesActualModalConsumer() {

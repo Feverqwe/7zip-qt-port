@@ -8,7 +8,9 @@ class Presentation final : public IQtAppPresentation {
   public:
     QString path;
     QStringList events;
+    bool smallScreen = false;
     void Initialize(CApp &) override {}
+    bool IsSmallScreen() const override { return smallScreen; }
     bool CreatePanel(CPanel &, unsigned) override { return true; }
     CPanelCallback *PanelCallback(unsigned) override { return nullptr; }
     void SetListSettings(unsigned, const CFmSettings &) override {}
@@ -23,6 +25,43 @@ class Presentation final : public IQtAppPresentation {
 class NativeToolbarStateTests : public QObject {
     Q_OBJECT
   private slots:
+    void startupToolbarDefaultUsesScreenCapability_data() {
+        QTest::addColumn<bool>("smallScreen");
+        QTest::addColumn<bool>("saved");
+        QTest::addColumn<quint32>("mask");
+        QTest::addColumn<bool>("labels");
+        QTest::newRow("missing-large") << false << false << quint32(0) << true;
+        QTest::newRow("missing-small") << true << false << quint32(0) << false;
+        QTest::newRow("default-large") << false << true << quint32(0x8000000d) << true;
+        QTest::newRow("default-small") << true << true << quint32(0x8000000d) << false;
+        QTest::newRow("explicit-labels-small") << true << true << quint32(13) << true;
+        QTest::newRow("explicit-icons-large") << false << true << quint32(12) << false;
+    }
+    void startupToolbarDefaultUsesScreenCapability() {
+        QFETCH(bool, smallScreen);
+        QFETCH(bool, saved);
+        QFETCH(quint32, mask);
+        QFETCH(bool, labels);
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        Presentation presentation;
+        presentation.path = temp.filePath("startup toolbar.ini");
+        presentation.smallScreen = smallScreen;
+        if (saved)
+            SaveToolbarsMask(mask, presentation.path);
+        const UInt32 original = ReadToolbarsMask(presentation.path);
+        CApp app;
+        app.NumPanels = 1;
+        COpenResult opened;
+        int widths[] = {300, 300};
+        QCOMPARE(app.Create(nullptr, ToUString(temp.path()), UString(), widths, false, opened,
+                            presentation, presentation.path),
+                 S_OK);
+        QCOMPARE(app.ShowButtonsLables, labels);
+        QVERIFY(!app.LargeButtons && app.ShowStandardToolbar && app.ShowArchiveToolbar);
+        QCOMPARE(ReadToolbarsMask(presentation.path), original);
+    }
+
     void nativeMaskIsAuthoritativeAndSwitchSavesBeforeReload() {
         QTemporaryDir temp;
         QVERIFY(temp.isValid());

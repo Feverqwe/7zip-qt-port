@@ -7,6 +7,10 @@
 #include <QMessageBox>
 #include <QTimer>
 #include <cstdio>
+#ifdef Q_OS_WIN
+#include "Windows/MemoryLock.h"
+#include "qtlinkservices.h"
+#endif
 
 int main(int argc, char **argv) {
     QApplication application(argc, argv);
@@ -15,6 +19,16 @@ int main(int argc, char **argv) {
     bool refusal = false;
     bool password = false;
     bool timedOut = false;
+    bool privilegeDropped = false;
+    bool linkCopied = false;
+    const QString copyLink = qEnvironmentVariable("SEVENZIP_PROBE_COPY_LINK");
+#ifdef Q_OS_WIN
+    if (!copyLink.isEmpty()) {
+        NWindows::NSecurity::EnablePrivilege(SE_RESTORE_NAME, false);
+        privilegeDropped =
+            NWindows::NSecurity::EnablePrivilege(TEXT("SeCreateSymbolicLinkPrivilege"), false);
+    }
+#endif
     QJsonObject windowState;
     const bool inspectState = qEnvironmentVariableIsSet("SEVENZIP_PROBE_WINDOW_STATE");
     const QString expected = qEnvironmentVariable("SEVENZIP_PROBE_MEMBER");
@@ -41,6 +55,11 @@ int main(int argc, char **argv) {
                 if (table->item(row, 0)->text() != expected)
                     continue;
                 bound = true;
+#ifdef Q_OS_WIN
+                if (!copyLink.isEmpty())
+                    linkCopied = QtCopyFileSystemLink(
+                        copyLink, qEnvironmentVariable("SEVENZIP_PROBE_LINK_DESTINATION"));
+#endif
                 if (inspectState)
                     windowState = {
                         {"visible", window->isVisible()},
@@ -59,9 +78,14 @@ int main(int argc, char **argv) {
     });
     const int result = RunSevenzipFileManager(application);
     observer.stop();
-    const QJsonObject report{
-        {"bound", bound},      {"refusal", refusal},         {"password", password},
-        {"timeout", timedOut}, {"windowState", windowState}, {"exitCode", result}};
+    const QJsonObject report{{"bound", bound},
+                             {"refusal", refusal},
+                             {"password", password},
+                             {"timeout", timedOut},
+                             {"windowState", windowState},
+                             {"exitCode", result},
+                             {"privilegeDropped", privilegeDropped},
+                             {"linkCopied", linkCopied}};
     const QByteArray bytes = QJsonDocument(report).toJson(QJsonDocument::Compact);
     std::fwrite(bytes.constData(), 1, static_cast<size_t>(bytes.size()), stdout);
     return timedOut ? 1 : result;

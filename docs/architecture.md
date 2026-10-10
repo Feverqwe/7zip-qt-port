@@ -14,6 +14,14 @@ source/platform evidence to the [audit](upstream-port-audit.md).
 
 This document describes component ownership, data flow and integration boundaries.
 
+CApp::Create obtains source small-screen capability from IQtAppPresentation
+before ReadToolbar. QtAppPresentation uses existing QtDialogScreenServices and
+source IsDialogSizeOK(200,200); ReadToolbar owns default/saved-mask policy.
+RunSevenzipFileManager calls retained FM symbolic-link initialization after
+SetMemoryLock, before archive/filesystem consumers. Link's lazy call stays
+idempotent. Source MemoryLock owns token adjustment; link operations and failure
+cleanup retain their existing owners.
+
 RunSevenzipFileManager carries Windows STARTUPINFO's launch show command in
 QtFileManagerStartup before any progress window. MainWindow passes it to source
 InitInstance, whose saved-maximized branch owns precedence; the Qt window
