@@ -6,11 +6,11 @@
 Checked означает только названную
 проверку; partial/unverified не дают итоговой приёмки P3-06.
 [Текущий launcher, логи, входы и ограничения](upstream-port-audit.md#p3-05--native-associated-launcher-and-process-lifetime-2026-10-10);
-[предыдущий полный Linux gate и версии](upstream-port-audit.md#p3-03--current-full-linux-gate-after-status-corrections-2026-10-10).
+[текущий полный Linux gate и версии](upstream-port-audit.md#p3-03--full-linux-gate-after-launcher-restoration-2026-10-10).
 
 | Область приёмки | macOS arm64 | Linux x64 | Windows x64 |
 | --- | --- | --- | --- |
-| Default format/build/CTest | checked: current321/321,5075Qtpass/0fail/56Windows-NTFS skips | partial: current consumers7/7,119Qtpass/0fail/0skip; prior full318/318 | partial: current native/consumer focused11/11,134Qtpass/0fail/0skip; прежние list-settings exposure failures сохранены, current full не принят |
+| Default format/build/CTest | checked: current321/321,5075Qtpass/0fail/56Windows-NTFS skips | checked: current318/318,5059Qtpass/0fail/56Windows-NTFS skips | partial: current native/consumer focused11/11,134Qtpass/0fail/0skip; прежние list-settings exposure failures сохранены, current full не принят |
 | Исходные модули, headers/resources/callers | partial: [109 source receipts](omitted-scope-audit.md#109-unit-source-receipt-ledger-2026-10-10); identified launcher/continuation gap corrected, whole workflow acceptance open | partial: общий source scope тот же; POSIX no-handle consumers checked | partial: original native launcher and real handle/disk/browser/archive consumers checked; whole acceptance open |
 | EN/RU, normal/compact, команды и workflow | partial: автоматические contracts/regressions проходят; полный нативный обход не принят | partial: offscreen contracts/regressions проходят; физический ввод не принят | partial: выполненные focused consumers/JSON; service desktop не доказывает показ окон |
 | Нативные dialogs/shortcuts/icons/drag/registration/FS | partial: историческая ручная Finder-проверка принята отдельно; текущий полный native обход не проверен | partial: Unix FS проверен; native desktop/physical drag не проверены | partial: прежние scoped native receipts сохранены; текущий interactive desktop недоступен |

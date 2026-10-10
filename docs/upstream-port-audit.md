@@ -1,5 +1,47 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-03 — Full Linux gate after launcher restoration (2026-10-10)
+
+Product `c2cb7be` contains the restored native launcher from `8d56d8d` and its
+accepted three-platform delivery. The current full unsandboxed runner wrapper
+passes format/build/default CTest:318/318,495.26s. All301 Qt suites total
+5059pass/0fail/56 explicit Windows-NTFS skips; eleven labeled slow suites remain
+excluded and unaccepted. No production/test/build-tool changes belong to this
+iteration, and all1482 retained product inputs remain unchanged.
+
+Authenticated `runner-linux` is Ubuntu24.04.5 x64, kernel6.8.0-142-generic,
+GCC13.3.0, CMake3.28.3, Qt6.12.0 and selected clang-format23.1.2. The unmodified
+`check.sh` runs through `hyperv-runner.py check linux --upstream` with the
+read-only sibling checkout. Fresh official engine/module/SFX builds use
+https://github.com/ip7z/7zip.git full revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. All eight runtime files and metadata
+exactly match current accepted Linux delivery; no package refresh is required
+for this documentation-only result.
+
+Snapshot `20261010T184616Z-086652e6` matches all1517 frozen/archive/actual guest
+inputs, including upstream.bundle; archive SHA256
+`51ff323208e7fa57724dbee9ad7ae944b4d4847a491d3addc26f6553bd3317bf`.
+Evidence under `/private/tmp/sevenzip-platform-gate-c2cb7be/build/review/platform-gate`
+retains the full LastTest, cache, toolchain/source/runtime proof and5391 current
+widget-report hashes. Twelve EN/RU normal/compact status reports confirm visible
+bar counts2→3→2, fully exposed bars and no size grip; other hashed reports are
+not all claimed as visually reviewed. No layout/code changes were made.
+
+Authorized retention cleanup removed794 reproducible dev-build entries from
+older passed `20261010T172635Z-5d8e0c7d`, after local completion metadata,
+actual LastTest/failure-log, active process/reference and newest-three checks.
+Source/runtime/SFX/cache/Testing/widget JSON/review/logs/ninja descriptors stayed.
+Free bytes2119737344→7068774400, final1834516480. Host storage has no warnings
+or VHDX growth; no own compiler/CTest remains. No disk/VM configuration, upstream,
+push, publication or desktop/account/policy changes occurred.
+
+Current macOS full321/321 and Windows focused11/11 receipts remain their exact
+scope. This Linux gate does not accept physical/native desktop, rendered Windows
+reference, clean OS, full/cold-stable Windows or whole P3-03/04/05/06. GitHub
+workflow deletion remains the user's explicit scope choice. The
+[final matrix](ux-port-audit.md#current-final-acceptance-matrix-2026-10-10)
+keeps those obligations open.
+
 ## P3-04 — Delivery after native launcher restoration (2026-10-10)
 
 Fresh Qt6.12 Release/BUILD_TESTING=OFF packages contain product `8d56d8d`,
