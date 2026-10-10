@@ -1,4 +1,5 @@
 #include "7zip/UI/FileManager/resourceGui.h"
+#include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "layout_inspection.h"
 #include "mainwindow.h"
 #include "qtlangcontrols.h"
@@ -52,6 +53,79 @@ class FlatViewTests : public QObject, protected MainWindowTestSupport {
     }
 
   private slots:
+    void drivesToggleCarriesSourceFlatModeIntoFilesystem_data() {
+        QTest::addColumn<unsigned>("pane");
+        QTest::addColumn<QString>("language");
+        for (unsigned pane : {0u, 1u})
+            for (const QString language : {QString("-"), QString("ru")})
+                QTest::newRow(qPrintable(QString("%1-%2").arg(pane).arg(language)))
+                    << pane << language;
+    }
+    void drivesToggleCarriesSourceFlatModeIntoFilesystem() {
+        QFETCH(unsigned, pane);
+        QFETCH(QString, language);
+        QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+        SaveRegLang(ToUString(language), qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        QVERIFY(QDir(fixture.path()).mkdir(QStringLiteral("nested папка")));
+        QFile file(fixture.filePath(QStringLiteral("nested папка/protected δ.txt")));
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        QCOMPARE(file.write("flat state control"), qint64(18));
+        file.close();
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        window.show();
+        if (!action(window, "twoPanelsAction")->isChecked())
+            action(window, "twoPanelsAction")->trigger();
+        auto *panel = window.findChild<QWidget *>(QString("filePanel%1").arg(pane));
+        auto *address = panel->findChild<QLineEdit *>("archivePath");
+        auto *list = static_cast<FileTable *>(panel->findChild<QTableWidget *>("archiveTable"));
+        address->setFocus();
+        address->setText(fixture.path());
+        QTest::keyClick(address, Qt::Key_Return);
+        QTRY_VERIFY(list->rowCount() > 0);
+        action(window, "openRootAction")->trigger();
+        QVERIFY(list->sourcePanel->IsFSDrivesFolder());
+        auto *flat = action(window, "flatViewAction");
+        QVERIFY(flat->isEnabled());
+        QVERIFY(!list->sourcePanel->GetFlatMode());
+        flat->trigger();
+        QVERIFY(list->sourcePanel->GetFlatMode());
+        auto *view = window.findChild<QMenu *>("viewMenu");
+        QVERIFY(QMetaObject::invokeMethod(view, "aboutToShow", Qt::DirectConnection));
+        QVERIFY(flat->isChecked());
+        const auto inspect = [&](const QString &state) {
+            for (const QSize size : {QSize(980, 620), QSize(640, 400)}) {
+                window.resize(size);
+                QApplication::processEvents();
+                QVERIFY(UiInspection::fullyVisible(*address, window));
+                QVERIFY(UiInspection::fullyVisible(*list, window));
+                QVERIFY(UiInspection::writeReport(window, QString("source-flat-%1-%2-%3")
+                                                              .arg(QTest::currentDataTag(), state)
+                                                              .arg(size.width())));
+            }
+        };
+        inspect("drives");
+        address->setFocus();
+        address->setText(fixture.path());
+        QTest::keyClick(address, Qt::Key_Return);
+        QTRY_VERIFY([&] {
+            for (int row = 0; row < list->rowCount(); ++row)
+                if (list->item(row, 0)->text().contains("protected"))
+                    return true;
+            return false;
+        }());
+        QVERIFY(list->sourcePanel->GetFlatMode());
+        inspect("filesystem-flat");
+        flat->trigger();
+        QTRY_VERIFY(!list->sourcePanel->GetFlatMode());
+        QTRY_COMPARE(list->rowCount(), 1);
+        inspect("filesystem-normal");
+        QVERIFY(file.open(QIODevice::ReadOnly));
+        QCOMPARE(file.readAll(), QByteArray("flat state control"));
+    }
+
     void flatSelectionUsesNamesInsteadOfParentPaths() {
         ControlledBackend backend;
         MainWindow window(&backend);

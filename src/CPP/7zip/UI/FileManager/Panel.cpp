@@ -18,6 +18,7 @@
 #include <QComboBox>
 #include <QEvent>
 #include <QMessageBox>
+#include <QTimer>
 #include <QWidget>
 
 HRESULT CPanel::Create(QWidget *mainWindow, QWidget *parentWindow, UINT id,
@@ -57,6 +58,7 @@ bool CPanel::OnCreate() {
     _sortID = kpidName;
     _ascending = true;
     _lastFocusedIsList = true;
+    _comboBoxEdit._panel = this;
     const UInt32 kNumListModes = 4;
     if (_listViewMode >= kNumListModes)
         _listViewMode = kNumListModes - 1;
@@ -198,6 +200,27 @@ UString CPanel::GetFsPath() const {
     return _currentFolderPrefix;
 }
 
+void CPanel::SetListViewMode(UInt32 index) {
+    if (index >= 4)
+        return;
+    _listViewMode = index;
+    // Qt style/stack setters replace GetStyle/SetStyle on the native list.
+    if (_viewModePresentation)
+        _viewModePresentation(index);
+}
+
+void CPanel::ChangeFlatMode() {
+    _flatMode = !_flatMode;
+    if (!_parentFolders.IsEmpty())
+        _flatModeForArc = _flatMode;
+    else
+        _flatModeForDisk = _flatMode;
+    // Publish source flags to Qt's asynchronous renderer/settings before load.
+    if (_flatModePresentation)
+        _flatModePresentation(_flatMode);
+    RefreshListCtrl_SaveFocused();
+}
+
 // Original AddToArchive body. The retained engine/Qt modal replaces the
 // process-global CompressFiles entry; only the root prefix is platform-specific.
 void CPanel::AddToArchive(IQtCompressCallServices &services) {
@@ -255,6 +278,8 @@ void CPanel::GetFilePaths(const CRecordVector<UInt32> &operatedIndices,
 }
 
 void CPanel::SetFocusToList() {
+    if (auto *combo = qobject_cast<QComboBox *>(_headerComboBox.data()))
+        combo->hidePopup();
     if (_listView)
         _listView->setFocus();
 }
@@ -397,4 +422,45 @@ bool CPanel::OnListViewKeyDown(const QtPanelKeyDown &key, CApp &app) {
         break;
     }
     return false;
+}
+
+bool CMyComboBoxEdit::OnMessage(const QtPanelKeyDown &key, CApp &g_App) {
+    // Qt decodes WM_SYSKEYDOWN/WM_KEYDOWN and GetKeyState. Return/Escape
+    // completion and WM_CHAR suppression belong to the address control adapter.
+    if (!_panel)
+        return false;
+    if (key.Alt) {
+        switch (key.VKey) {
+        case Qt::Key_F1:
+        case Qt::Key_F2:
+            if (!key.Control && !key.Shift) {
+                _panel->_panelCallback->SetFocusToPath(key.VKey == Qt::Key_F1 ? 0 : 1);
+                return true;
+            }
+            break;
+        }
+        return false;
+    }
+    switch (key.VKey) {
+    case Qt::Key_Tab:
+        _panel->SetFocusToList();
+        return true;
+    case Qt::Key_F9:
+        if (!key.Control && !key.Shift) {
+            g_App.SwitchOnOffOnePanel();
+            return true;
+        }
+        break;
+    case 'W':
+        if (key.Control) {
+            QTimer::singleShot(0, _panel, [&g_App] { g_App.ExecuteCommand(8); });
+            return true;
+        }
+        break;
+    }
+    return false;
+}
+
+bool CPanel::OnAddressEditKeyDown(const QtPanelKeyDown &key, CApp &app) {
+    return _comboBoxEdit.OnMessage(key, app);
 }

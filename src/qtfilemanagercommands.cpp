@@ -116,8 +116,7 @@ void QtFileManagerCommands::AttachViewActions() {
     actions_[IDM_VIEW_FLAT_VIEW].append(w.flatView_);
     QObject::disconnect(w.flatView_, &QAction::toggled, &w, nullptr);
     QObject::connect(w.flatView_, &QAction::toggled, &w, [this](bool checked) {
-        const bool previous =
-            window_.state_ == MainWindow::State::Viewing ? window_.flatArchive_ : window_.flatDisk_;
+        const bool previous = window_.app_.GetFlatMode();
         if (checked == previous)
             return;
         {

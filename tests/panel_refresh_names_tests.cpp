@@ -31,7 +31,8 @@ class PanelRefreshNamesTests final : public QObject {
         spec->fastNames = fast;
         spec->prefix = L"nested 文件/";
         CPanel panel(folder);
-        panel.SetFlatModeForArc(flat);
+        if (flat)
+            panel.ChangeFlatMode();
         QCOMPARE(panel.LoadListItems(), S_OK);
         QTableWidget view(2, 1);
         view.setSelectionBehavior(QAbstractItemView::SelectRows);
@@ -89,7 +90,7 @@ class PanelRefreshNamesTests final : public QObject {
         spec->fastPrefixDefined = prefixDefined;
         spec->prefix = L"nested 文件/";
         CPanel panel(folder);
-        panel.SetFlatModeForArc(true);
+        panel.ChangeFlatMode();
         QCOMPARE(panel.LoadListItems(), S_OK);
         QTableWidget view(2, 1);
         view.setSelectionBehavior(QAbstractItemView::SelectRows);

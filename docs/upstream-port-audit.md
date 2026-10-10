@@ -59,6 +59,77 @@ Primary integration onto 8f10607 has the separate focused receipt above.
 The temporary validation wrapper is archived outside tracked source; 1440
 retained inputs are unchanged. P3-03/04/05/06 and final acceptance remain open.
 
+## P3-05 — Panel address keys and source view state (2026-10-10)
+
+Source https://github.com/ip7z/7zip.git at
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
+`CPP/7zip/UI/FileManager/Panel.cpp/.h` and `App.h`. Complete original/current
+Panel bodies and declarations, original edit/list message callers, CApp command
+dispatch, Qt address control, panel creation, view projection, folder binding,
+reload and scanner consumers were inspected. This receipt accepts the bounded
+control/view component; the remaining Panel obligations are explicit in the
+[disposition](omitted-scope-audit.md#panel-control-and-view-state-disposition-2026-10-10).
+Original paths, names, C++ language, types and notices remain.
+
+Copied CMyComboBoxEdit::OnMessage preserves Alt-F1/F2, unconditional Tab,
+unmodified F9 and Control-W decisions. Typed Qt key decoding replaces Win32
+messages/GetKeyState; Qt Backtab becomes source Tab. A receiver-bound queued
+command replaces PostMessage(IDCLOSE), using existing application admission.
+Return/Escape completion remains the source PanelComboBox owner. Narrow Qt
+ShortcutOverride lets the edit handler receive F9/Control-W before QAction.
+Native subclass procedures, ANSI CallWindowProc and CE transports have no Qt
+control counterpart. Qt focus closes the popup before focusing the source list.
+
+Original CApp inline SetListViewMode/ChangeFlatMode now reach CPanel's retained
+index validation, mode assignment, flat toggle, parent-folder branch and
+RefreshListCtrl_SaveFocused. Qt callbacks replace list style changes and publish
+the source flags to the existing per-panel renderer/settings. GetFlatMode again
+returns original _flatMode; the Qt startup disk setter synchronizes that flag.
+Initial list attachment follows container registration. A flat-mode change
+cancels/joins the previous folder loader before source refresh reuses that
+IFolderFolder, and cancels stale row publication. Source reload owns selection.
+No independent view-toggle algorithm, archive format or engine syntax is added.
+
+Actual old-product regressions: eight address Control-W rows fail to close;
+four both-pane/EN-RU Drives flat-toggle rows fail source GetFlatMode. New public
+consumers also cover F9, Tab/Backtab, icon/table, namespace→filesystem inheritance,
+View activation, private Unicode bytes and normal/compact geometry. Existing
+scan-cancellation regressions exposed the reload-admission boundary; existing
+address focus consumers exposed an intermediate initial-attachment ordering
+error. Standalone folder fixtures now use public ChangeFlatMode instead of the
+former Arc-only flag setter, which had no production caller and is removed.
+Their selection/name/native-WIM assertions remain. Intermediate failures and
+diagnosis remain in local evidence.
+Final unsandboxed macOS arm64/Qt6.12 formatting/all-target/default gate318/318
+PASS260.83s,5003Qtpass/0fail/56platform skips; focused22/22 PASS42.90s,
+538Qt/0fail/0skip. The first full gate312/318 in244.62s retains four direct
+fixture failures and two missing-runtime preparation failures. The isolated
+runtime had omitted official7z; all eight completed codec/SFX files now hash-
+match the previous verified pinned build. No assertion or deadline was weakened.
+
+Fresh final Linux x64/Qt6.12 passes22/22 in73.16s,538Qt/0fail/0skip.
+Windows x64/Qt6.12 passes20/22 in264.90s,544Qtpass/9fail/0skip: eight existing
+address_combo popup-exposure rows and one native SendInput refusal in
+panel_key_source before product key dispatch. Earlier popup baseline reproduction
+and native keyboard's logged-on-desktop prerequisite remain authoritative.
+New address/flat cases, all corrected folder/name/native-WIM consumers and both
+native publication suites pass. Initial15-suite guest checks retain the same
+Windows failures. Native physical-key/popup and rendered acceptance remain open.
+
+Snapshot `20261010T063156Z-b331bd12`, parent8f10607, source.tar SHA-256
+`32be19f8cd9574baf3aa78df810dec0a10c61c65fe02b233a48061f58f5d5bfe`:
+1441frozen code/test/build/resource inputs match local/archive/both actual
+guest trees; runtime hashes and full guest logs are retained. The temporary
+checked wrapper is archived and removed before commit, leaving1440retained
+inputs. Baseline verifies410exact/198adapted/3local paths. All120 current
+normal/compact reports have visible address/list groups fitting. Windows's24
+compact status labelFits=false records use the existing QtStatusLabel elision
+and full-text tooltip; no unexpected clipping remains. Source resources do not
+prove rendered Windows pixels. Host/guest capacity preflights pass; VHDX sizes
+have zero growth. Eleven slow suites were excluded. Evidence:
+`build/review/panel-core/`. Whole Panel drag/lifecycle/status reconciliation,
+native/rendered/package and P3 acceptance remain mandatory.
+
 ## P3-05 — FM platform dispatch and source toolbar text (2026-10-10)
 
 Source https://github.com/ip7z/7zip.git, full revision

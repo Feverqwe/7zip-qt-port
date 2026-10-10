@@ -60,12 +60,6 @@ bool MainWindow::handlePanelKey(QObject *watched, QKeyEvent *key) {
                       (iconList_ && watched == iconList_->viewport());
     if (!address && !list)
         return false;
-    if (address && (key->key() == Qt::Key_F1 || key->key() == Qt::Key_F2) &&
-        key->modifiers() == Qt::AltModifier) {
-        app_.m_PanelCallbackImp[app_.GetFocusedPanelIndex()].SetFocusToPath(
-            key->key() == Qt::Key_F1 ? 0 : 1);
-        return true;
-    }
     if (address) {
         if (key->key() == Qt::Key_Return || key->key() == Qt::Key_Enter ||
             key->key() == Qt::Key_Escape) {
@@ -78,12 +72,14 @@ bool MainWindow::handlePanelKey(QObject *watched, QKeyEvent *key) {
                 return true;
             }
         }
-        if (key->key() == Qt::Key_Tab && key->modifiers() == Qt::NoModifier) {
-            pathCombo_->hidePopup();
-            app_.GetFocusedPanel().SetFocusToList();
-            return true;
-        }
-        return false;
+        const auto modifiers = key->modifiers();
+        if (modifiers.testFlag(Qt::MetaModifier))
+            return false;
+        return app_.GetFocusedPanel().OnAddressEditKeyDown(
+            {key->key() == Qt::Key_Backtab ? Qt::Key_Tab : key->key(),
+             modifiers.testFlag(Qt::AltModifier), modifiers.testFlag(Qt::ControlModifier), false,
+             modifiers.testFlag(Qt::ShiftModifier)},
+            app_);
     }
     return handlePanelListKey(key);
 }

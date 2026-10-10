@@ -10,6 +10,15 @@ parent restoration and protected Unicode/space archive/payload bytes. Official
 file-only transport materialization, not evidence of memory-route selection.
 Existing extraction/open/lifecycle consumers cover cancellation and other errors.
 
+`panel_address_keys` covers the original edit subclass through real public Qt
+key delivery in both panes, EN/RU and table/icon: F9 draft retention, Tab and
+Backtab list focus, queued Control-W/Control-Shift-W close and unchanged private
+Unicode file bytes. `flat_view` additionally covers Drives flat-toggle state,
+parent View activation and inheritance into filesystem navigation in both
+panes/languages. Existing scan cancellation, filesystem/archive refresh and
+selection consumers remain required after source view-state changes. Geometry
+contracts and evidence are linked from the [source receipt](upstream-port-audit.md#p3-05--panel-address-keys-and-source-view-state-2026-10-10).
+
 `language_ui::toolbarTooltipsRetainSourceTextAfterActionChanges` checks all seven
 source toolbar captions/tooltips through EN/RU/EN reload, actual filesystem
 selection changes, normal/compact JSON and unchanged private Unicode file bytes.

@@ -4,6 +4,15 @@
 Готовый запрос агенту: [porting-chat-prompt.md](porting-chat-prompt.md).
 Исходная дата: 2026-09-28. Это список **оставшейся** работы, не оценка MVP с нуля.
 
+P3-05,2026-10-10: source Panel address-key and view-state component restores
+CMyComboBoxEdit, CApp→CPanel view dispatch and original flat-toggle/refresh.
+Actual old-product RED8address/4Drives rows are retained. Mac full318/318 and
+focused22/22 pass; Linux22/22, Windows20/22 with eight existing popup-exposure
+rows and one pre-dispatch SendInput refusal. All new cases pass;120reports
+are inspected with existing compact status elision audited. Whole Panel drag/lifecycle/status disposition and
+native/rendered/package/final acceptance remain mandatory;43/47 and
+P3-03/04/05/06 stay open. [Receipt](upstream-port-audit.md#p3-05--panel-address-keys-and-source-view-state-2026-10-10).
+
 P3-05,2026-10-10: complete MyLoadMenu body/caller disposition restores parent
 View activation, source state checks and date/precision/UTC choices. Public
 both-pane/EN-RU RED4→GREEN; existing column/time/reopen consumers use the parent

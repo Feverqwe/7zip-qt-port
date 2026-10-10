@@ -248,6 +248,17 @@ bool MainWindow::eventFilter(QObject *watched, QEvent *event) {
         selectionClickLeft_ = mouse->button() == Qt::LeftButton;
     }
     const bool listControl = watched == table_ || watched == iconList_ || listViewport;
+    if ((watched == path_ || watched == pathCombo_) && event->type() == QEvent::ShortcutOverride) {
+        const auto *key = static_cast<QKeyEvent *>(event);
+        const auto mods = key->modifiers();
+        // Deliver the edit subclass's keys before application QAction shortcuts.
+        if (!(mods & (Qt::MetaModifier | Qt::AltModifier)) &&
+            ((key->key() == Qt::Key_W && mods.testFlag(Qt::ControlModifier)) ||
+             (key->key() == Qt::Key_F9 && mods == Qt::NoModifier))) {
+            event->accept();
+            return true;
+        }
+    }
     if (listControl && event->type() == QEvent::ShortcutOverride) {
         const auto *key = static_cast<QKeyEvent *>(event);
         if (overridePanelKey(*key)) {
@@ -275,7 +286,6 @@ void MainWindow::setViewMode(int mode) {
     const bool restoreFocus =
         previousView && focused && (focused == previousView || previousView->isAncestorOf(focused));
     viewMode_ = mode;
-    panel._listViewMode = static_cast<UInt32>(mode);
     viewActions_[mode]->setChecked(true);
     if (mode != 3) {
         iconList_->setViewMode(mode == 2 ? QListView::ListMode : QListView::IconMode);

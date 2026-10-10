@@ -233,7 +233,7 @@ class NativeFolderOpeningTests final : public QObject {
         QCOMPARE(opening.Folder.QueryInterface(IID_IFolderSetFlatMode, &flat), S_OK);
         QCOMPARE(flat->SetFlatMode(1), S_OK);
         CPanel panel(opening.Folder);
-        panel.SetFlatModeForArc(true);
+        panel.ChangeFlatMode();
         QCOMPARE(panel.LoadListItems(), S_OK);
         UInt32 count = 0;
         QCOMPARE(opening.Folder->GetNumberOfItems(&count), S_OK);

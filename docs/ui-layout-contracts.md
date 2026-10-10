@@ -1,5 +1,19 @@
 # Text specifications and geometry checks
 
+### Panel address keys and flat view (P3-05)
+
+Preserve the source header/address above its own list and pane visibility after
+F9. Tab/Backtab focuses that pane's visible table/icon list without submitting
+the address draft. Check both panes and EN/RU at980×620/640×400, with address
+and current list fully inside the window. `panel_address_keys` writes16 reports.
+`flat_view` adds24 reports for Drives with source flat enabled, filesystem flat,
+and filesystem normal in both panes/languages at the same sizes. Address/list
+grouping and source View checked state must survive navigation and toggles;
+protected fixture bytes remain unchanged. At compact Windows widths the existing
+QtStatusLabel may elide selectedItemsStatus, with full source text in its tooltip;
+this is separate from clipping address/list controls. These are Qt geometry/key delivery
+checks, not a rendered original Windows or physical-input claim.
+
 Source Delete uses PanelOperations.cpp's file/folder/count language IDs and
 standard Yes/No/Cancel question. Refusal keeps the source selection/list.
 Yes is the source default button; Enter confirms, while explicit No/Cancel

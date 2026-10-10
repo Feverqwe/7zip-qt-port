@@ -1,5 +1,18 @@
 # Сверка с Windows 7zFM
 
+Panel address keys and view state now follow original Panel.cpp: Control-W
+(also with Shift) queues close from the address edit, Tab/Backtab returns to its
+list and F9 retains the address draft while changing pane visibility. Source
+ChangeFlatMode changes Arc/Disk flags by parentFolders and owns refresh; a flat
+toggle in Computer/Drives survives View activation and entry into a filesystem
+folder. Qt replaces native styles/messages with existing control projection,
+popup focus and joined cancellation of the prior folder loader. Normal/compact
+and platform evidence belongs to the [receipt](upstream-port-audit.md#p3-05--panel-address-keys-and-source-view-state-2026-10-10);
+physical input and rendered Windows parity remain separate acceptance work.
+Untested native Alt/system-key modifier combinations retain that separate
+platform acceptance requirement. Compact Windows status parts retain existing
+QtStatusLabel elision and full-text tooltip.
+
 ## FM platform dispatch and toolbar text (P3-05, 2026-10-10)
 
 Toolbar сохраняет исходные короткие подписи и tooltip из App.cpp::SetButtonText

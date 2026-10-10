@@ -51,7 +51,7 @@ class PanelFolderTests : public QObject {
         }
         CMyComPtr<IFolderFolder> folder = new QtPanelFolder("/root/", items);
         CPanel panel(folder);
-        panel.SetFlatModeForArc(true);
+        panel.ChangeFlatMode();
         QTableWidget table(0, 1);
         table.setSelectionBehavior(QAbstractItemView::SelectRows);
         table.setSelectionMode(QAbstractItemView::ExtendedSelection);

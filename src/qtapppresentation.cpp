@@ -61,6 +61,14 @@ bool QtAppPresentation::CreatePanel(CPanel &panel, unsigned index) {
     panel.LoadFullPath();
     window_.flatArchive_ = panel.GetFlatModeForArc();
     panel.SetFlatModeForDisk(window_.flatDisk_);
+    panel.AttachViewModePresentation([window = QPointer<MainWindow>(&window_), index](UInt32 mode) {
+        if (window)
+            window->withPanelProjection(index, [window, mode] { window->setViewMode(int(mode)); });
+    });
+    panel.AttachFlatModePresentation([window = QPointer<MainWindow>(&window_), index](bool flat) {
+        if (window)
+            window->withPanelProjection(index, [window, flat] { window->applyFlatView(flat); });
+    });
     window_.createFilePanel(editMenu_, index);
     panel.AttachStatusPresentation(
         [window = QPointer<MainWindow>(&window_), index](const CPanelStatus &status) {

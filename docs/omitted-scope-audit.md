@@ -1,5 +1,28 @@
 # Omitted source scope review
 
+## Panel control and view state disposition (2026-10-10)
+
+Original/current Panel.cpp and Panel.h were read in full at source revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17` from
+https://github.com/ip7z/7zip.git. Whole-file reading is not whole-module
+acceptance. The restored integrated control/view component has these owners:
+
+| Original body or dependency | Disposition |
+| --- | --- |
+| CMyComboBoxEdit::OnMessage | Retained source class, Alt-F1/F2, Tab, F9 and Control-W branches; QtPanelKeyDown replaces message/key-state transport and receiver-bound queued ExecuteCommand replaces posted close. Qt Return/Escape reach existing PanelComboBox end-edit handlers. |
+| ComboBoxEditSubclassProc, SetWindowProc, ANSI/native default procedure, CE edit transport | Qt event filters own control delivery/lifetime; no HWND subclass procedure or ANSI buffer is needed. Qt Backtab is normalized to original VK_TAB. This does not prove physical platform input. |
+| CPanel::SetListViewMode and CApp inline caller | Original four-index validation/state retained in Panel.cpp; Qt callback changes existing stack/icon style and reattaches source list focus after container registration. CListMode retains persistence. |
+| CPanel::ChangeFlatMode, GetFlatMode and CApp inline caller | Original toggle, parentFolders Arc/Disk branch and RefreshListCtrl_SaveFocused retained. Qt publishes flags/settings, cancels stale presentation and joins the same-folder loader before source reload. Source OpenAsArc/CloseOneLevel assignments remain authoritative. |
+| Source OnCreate list style/header edit initialization | Existing source creation/mode/sort/binding owner remains; typed callbacks attach the Qt table/icon/address controls. No independent key/view policy remains in the removed MainWindow branches. |
+| CMyListView and PanelListNotify | Existing retained list key and notification owners and their separate body/caller receipts remain authoritative; this component changes the address consumer, not those algorithms. |
+| GetDriveOrNetworkPrefix and CDropTarget::IsItSameDrive | Mandatory remaining drag-owner reconciliation. The original active FS/FSDrives prefix branches and empty-source loop are currently replaced on all OSes by Qt volume identity; POSIX mounts need an adapter, while Windows source policy and AltStreams default effect still need reconciliation and public regressions. Absence of the helper is not N/A. |
+| Remaining lifecycle, status-message admission and native control presentation | Existing owner receipts remain evidence; final Panel body disposition must reconcile ReleasePanel/context-menu ownership, OnDestroy saved columns, posted status guard/callers, parent/layout/rebar/timer/native command routing and header guards before claiming the whole module. No whole-Panel closure follows from the bounded restoration above. |
+
+Direct dependencies include original App/Panel/PanelComboBox/PanelItems/folder
+types and resource command IDs; Qt uses existing MainWindow/QtAppPresentation,
+QtPanelAddressCombo, projection and FilesystemScanner services. Provenance and
+current checks are in the [component receipt](upstream-port-audit.md#p3-05--panel-address-keys-and-source-view-state-2026-10-10).
+
 ## FM desktop bodies and platform dispatch (2026-10-10)
 
 Full original `CPP/7zip/UI/FileManager/FM.cpp` (1223 lines), current adapted

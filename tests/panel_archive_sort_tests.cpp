@@ -94,7 +94,8 @@ class PanelArchiveSortTests final : public QObject {
         QCOMPARE(folder.QueryInterface(IID_IFolderSetFlatMode, &mode), S_OK);
         QCOMPARE(mode->SetFlatMode(flat), S_OK);
         CPanel panel(folder);
-        panel.SetFlatModeForArc(flat);
+        if (flat)
+            panel.ChangeFlatMode();
         QCOMPARE(panel.LoadListItems(), S_OK);
         FileTable view(3, 1);
         view.sourcePanel = &panel;

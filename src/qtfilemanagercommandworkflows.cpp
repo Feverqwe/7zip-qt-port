@@ -125,7 +125,7 @@ void QtFileManagerCommands::InvertSelection() { window_.InvertSelection(); }
 void QtFileManagerCommands::SelectSpec(bool select) { window_.SelectSpec(select); }
 void QtFileManagerCommands::SelectByType(bool select) { window_.SelectByType(select); }
 void QtFileManagerCommands::Refresh_StatusBar() { window_.refreshActions(); }
-void QtFileManagerCommands::SetListViewMode(unsigned index) { window_.setViewMode(index); }
+void QtFileManagerCommands::SetListViewMode(unsigned index) { window_.app_.SetListViewMode(index); }
 void QtFileManagerCommands::SortItemsWithPropID(unsigned propID) {
     window_.app_.GetFocusedPanel().SortItemsWithPropID(propID);
 }
@@ -134,10 +134,7 @@ void QtFileManagerCommands::OpenRootFolder() {
 }
 void QtFileManagerCommands::OpenParentFolder() { window_.goParent(); }
 void QtFileManagerCommands::FoldersHistory() { window_.showFoldersHistory(); }
-void QtFileManagerCommands::ChangeFlatMode() {
-    window_.applyFlatView(
-        !(window_.state_ == MainWindow::State::Viewing ? window_.flatArchive_ : window_.flatDisk_));
-}
+void QtFileManagerCommands::ChangeFlatMode() { window_.app_.ChangeFlatMode(); }
 void QtFileManagerCommands::RefreshView() { window_.app_.RefreshView(); }
 void QtFileManagerCommands::SwitchStandardToolbar() { window_.app_.SwitchStandardToolbar(); }
 void QtFileManagerCommands::SwitchArchiveToolbar() { window_.app_.SwitchArchiveToolbar(); }

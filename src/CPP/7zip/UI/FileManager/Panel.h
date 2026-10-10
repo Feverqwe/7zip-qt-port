@@ -61,6 +61,11 @@ class CListViewDialog;
 class CPanel;
 class CApp;
 struct QtPanelKeyDown;
+class CMyComboBoxEdit {
+  public:
+    CPanel *_panel = nullptr;
+    bool OnMessage(const QtPanelKeyDown &key, CApp &app);
+};
 class IQtPanelDragServices;
 class QWidget;
 class CVirtFileSystem;
@@ -335,6 +340,12 @@ class CPanel : public QObject {
     void AttachStatusPresentation(std::function<void(const CPanelStatus &)> status) {
         _statusPresentation = std::move(status);
     }
+    void AttachViewModePresentation(std::function<void(UInt32)> view) {
+        _viewModePresentation = std::move(view);
+    }
+    void AttachFlatModePresentation(std::function<void(bool)> flat) {
+        _flatModePresentation = std::move(flat);
+    }
     void InvalidateList() {
         if (_invalidatePresentation)
             _invalidatePresentation();
@@ -369,11 +380,16 @@ class CPanel : public QObject {
     bool _showDots = false;
     bool _showRealFileIcons = false;
     UInt32 GetListViewMode() const { return _listViewMode; }
+    void SetListViewMode(UInt32 index);
+    void ChangeFlatMode();
     PROPID GetSortID() const { return _sortID; }
     bool GetFlatModeForArc() const { return _flatModeForArc; }
-    bool GetFlatMode() const { return Is_IO_FS_Folder() ? _flatModeForDisk : _flatModeForArc; }
-    void SetFlatModeForArc(bool enabled) { _flatModeForArc = enabled; }
-    void SetFlatModeForDisk(bool enabled) { _flatModeForDisk = enabled; }
+    bool GetFlatMode() const { return _flatMode; }
+    void SetFlatModeForDisk(bool enabled) {
+        _flatModeForDisk = enabled;
+        if (_parentFolders.IsEmpty())
+            _flatMode = enabled;
+    }
     // Qt notification adapters replace the Win32 OnNotify entry point.
     bool ShouldProcessNotifications() const { return _processNotify; }
     bool ShouldDisplayItemText() const { return !_dontShowMode; }
@@ -552,6 +568,7 @@ class CPanel : public QObject {
     void OnNotifyActivateItems(Qt::KeyboardModifiers modifiers);
     bool OnKeyDown(const QtPanelKeyDown &keyDownInfo, CApp &app);
     bool OnListViewKeyDown(const QtPanelKeyDown &key, CApp &app);
+    bool OnAddressEditKeyDown(const QtPanelKeyDown &key, CApp &app);
     void EditCut();
     void EditCopy();
     void EditPaste();
@@ -694,6 +711,7 @@ class CPanel : public QObject {
 
   private:
     friend class CApp;
+    friend class CMyComboBoxEdit;
     void OnItemChanged(unsigned index, bool oldSelected, bool newSelected);
     friend class CThreadFolderOperations;
     QPointer<QWidget> _mainWindow;
@@ -703,6 +721,8 @@ class CPanel : public QObject {
     std::function<void(HRESULT)> _reloadCompletion;
     std::function<void()> _invalidatePresentation;
     std::function<void(const CPanelStatus &)> _statusPresentation;
+    std::function<void(UInt32)> _viewModePresentation;
+    std::function<void(bool)> _flatModePresentation;
     bool _portableFolderChanged = false;
     CAppState *_appState = nullptr;
     UINT _baseID = 0;
@@ -722,6 +742,7 @@ class CPanel : public QObject {
     bool eventFilter(QObject *watched, QEvent *event) override;
     QPointer<QWidget> _listView;
     QPointer<QWidget> _headerComboBox;
+    CMyComboBoxEdit _comboBoxEdit;
     UStringVector ComboBoxPaths;
     QtPanelList _selectionList;
     QMetaObject::Connection _itemChangedConnection;

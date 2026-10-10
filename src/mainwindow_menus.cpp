@@ -212,27 +212,23 @@ void MainWindow::createViewOptions(QMenu *viewMenu) {
 }
 
 void MainWindow::applyFlatView(bool enabled) {
+    // A user mode change supersedes the current scan. Join its folder loader
+    // before source RefreshListCtrl reuses that same IFolderFolder instance.
+    filesystemScanner_->cancelAndWait();
+    listProjection_->cancel();
+    scanningDisk_ = false;
+    scanningArchive_ = false;
     QSettings settings(toolbarSettingsPath(), QSettings::IniFormat);
-    CSelectedState selection;
-    app_.GetFocusedPanel().SaveSelectedState(selection);
     {
         const QSignalBlocker block(flatView_);
         flatView_->setChecked(enabled);
     }
-    if (state_ == State::Viewing) {
+    if (!app_.GetFocusedPanel().GetParentFolders().IsEmpty()) {
         flatArchive_ = enabled;
-        app_.GetFocusedPanel().SetFlatModeForArc(enabled);
         SaveFlatView(app_.GetFocusedPanelIndex(), enabled, toolbarSettingsPath());
-        showArchiveFolder(archiveFolder_);
-    } else if (state_ == State::Filesystem) {
+    } else {
         flatDisk_ = enabled;
-        app_.GetFocusedPanel().SetFlatModeForDisk(enabled);
         settings.setValue("view/flatDisk", enabled);
-        showDirectory(directory_, false);
-    }
-    restoreListSelection(selection);
-    if (!scanningDisk_ && !scanningArchive_) {
-        refreshActions();
     }
 }
 

@@ -85,7 +85,6 @@ void MainWindow::createFilePanel(QMenu *editMenu, unsigned index) {
         if (projectedPanel_ == index && app_.Panels[index].ShouldProcessNotifications())
             refreshActions();
     });
-    setViewMode(static_cast<int>(app_.GetFocusedPanel().GetListViewMode()));
     if (!panelSplitter_) {
         panelSplitter_ = new QtFileManagerSplitter(this);
         panelSplitter_->setObjectName("filePanelSplitter");
@@ -94,6 +93,7 @@ void MainWindow::createFilePanel(QMenu *editMenu, unsigned index) {
     panelUi_[index].container = central;
     central->setObjectName(QStringLiteral("filePanel%1").arg(index));
     panelSplitter_->insertWidget(static_cast<int>(index), central);
+    app_.GetFocusedPanel().SetListViewMode(app_.GetFocusedPanel().GetListViewMode());
     statusBar()->showMessage("Готово");
     connect(table_, &QTableWidget::cellDoubleClicked, this, [this](int row, int) {
         if (!fileListSettings_.SingleClick)

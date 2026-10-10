@@ -7,6 +7,15 @@ including corrupt inner archives and protected Unicode/space payloads. Existing
 `nested_archive`, `nested_edit_chain`, `external_launch`, `app_lifecycle` and
 `file_manager_startup` remain direct error/cancellation/lifetime consumers.
 
+Panel edit/view source state: `panel_address_keys` covers both panes/EN-RU,
+table/icon, F9 draft preservation, Tab/Backtab and queued Control-W close.
+`flat_view` covers source Drives flat state through View activation and filesystem
+navigation, plus scan cancellation. Direct folder/selection/name/archive-sort/
+native-WIM consumers use public ChangeFlatMode and retain their assertions.
+Normal/compact geometry and protected private Unicode bytes accompany the
+[component receipt](upstream-port-audit.md#p3-05--panel-address-keys-and-source-view-state-2026-10-10).
+Popup exposure, native SendInput and rendered acceptance have separate evidence.
+
 FM platform dispatch: `language_ui` covers seven source toolbar captions and
 tooltips after language/selection changes; existing `main_shell`, toolbar,
 command-policy, placement/focus and lifecycle consumers cover the connected
