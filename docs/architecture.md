@@ -1679,9 +1679,13 @@ binds those native IDs and refreshes selection/availability after execution.
 The source advanced `7vc` setting has no setup UI; it remains an INI key.
 
 `CPasswordDialog` owns the archive password prompt and show/hide state, preserving
-upstream ReadControls/SetTextSpec/OnOK. `MainWindow` submits accepted passwords
-to ArchiveBackend and cancels a rejected or empty request. It does not persist
-the prompt's password or show state.
+upstream ReadControls/SetTextSpec/OnOK and its public `UString Password`.
+QLineEdit converts only at that widget boundary; the source callbacks receive
+the portable string directly. The asynchronous `MainWindow` process prompt
+converts accepted raw text to QString for ArchiveBackend, including an empty
+value, and cancels only rejection. Source modal operations own their callback
+prompt instead. Passwords are held in operation/archive state, never saved to
+settings; source opening/extraction callbacks persist accepted ShowPassword only.
 
 `sevenzip_panel` owns shared `CComboDialog`, `CCopyDialog`, `CSplitDialog` and
 panel summary functions. Callers validate operation input; dialogs commit

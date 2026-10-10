@@ -121,11 +121,14 @@ class OpenCallbackTests : public QObject {
 
     void passwordPresentationAndPersistence_data() {
         QTest::addColumn<bool>("accept");
-        QTest::newRow("accepted-empty") << true;
-        QTest::newRow("cancelled") << false;
+        QTest::addColumn<QString>("value");
+        QTest::newRow("accepted-empty") << true << QString();
+        QTest::newRow("accepted-raw-unicode") << true << QStringLiteral("  fixture 密碼 🗜  ");
+        QTest::newRow("cancelled") << false << QStringLiteral("discarded fixture");
     }
     void passwordPresentationAndPersistence() {
         QFETCH(bool, accept);
+        QFETCH(QString, value);
         QTemporaryDir temp;
         QVERIFY(temp.isValid());
         CPasswordRequest request;
@@ -144,7 +147,7 @@ class OpenCallbackTests : public QObject {
             QVERIFY(edit);
             QVERIFY(!show->isChecked());
             show->setChecked(true);
-            edit->clear();
+            edit->setText(value);
             responder.stop();
             if (accept)
                 dialog->accept();
@@ -162,7 +165,13 @@ class OpenCallbackTests : public QObject {
         QCOMPARE(NExtract::Read_ShowPassword(request.Callback.SettingsPath), accept);
         if (accept) {
             QVERIFY(request.Password);
-            QCOMPARE(SysStringLen(request.Password), UINT(0));
+            QCOMPARE(QString::fromWCharArray(request.Password), value);
+            BSTR cached = nullptr;
+            QCOMPARE(request.Callback.Open_CryptoGetTextPassword(&cached), HRESULT(S_OK));
+            const QString cachedValue = QString::fromWCharArray(cached);
+            SysFreeString(cached);
+            QCOMPARE(cachedValue, value);
+            QVERIFY(!QApplication::activeModalWidget());
         }
         QVERIFY(request.Callback.PasswordWasAsked);
     }

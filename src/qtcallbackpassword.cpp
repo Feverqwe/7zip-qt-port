@@ -17,8 +17,7 @@ bool AskCallbackPassword(CProgressDialog &parent, UString &password, bool &showP
         dialog.OnInit();
         if (dialog.exec() != QDialog::Accepted)
             return;
-        const std::wstring text = dialog.Password.toStdWString();
-        password = text.c_str();
+        password = dialog.Password;
         showPassword = dialog.ShowPassword;
         accepted = true;
     };

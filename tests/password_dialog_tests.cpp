@@ -13,7 +13,7 @@ class PasswordDialogTests final : public QObject {
     void initialValueAndShowTransitions() {
         CPasswordDialog dialog;
         const QString password = QStringLiteral("пароль 密碼 с пробелом");
-        dialog.Password = password;
+        dialog.Password = password.toStdWString().c_str();
         dialog.OnInit();
         dialog.show();
         auto *edit = dialog.findChild<QLineEdit *>("passwordEdit");
@@ -45,7 +45,7 @@ class PasswordDialogTests final : public QObject {
             else
                 dialog.findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Ok)->click();
             QCOMPARE(dialog.result(), int(QDialog::Accepted));
-            QCOMPARE(dialog.Password, QStringLiteral("  密碼  "));
+            QCOMPARE(QString::fromWCharArray(dialog.Password), QStringLiteral("  密碼  "));
         }
         CPasswordDialog dialog;
         dialog.Password = "initial";
@@ -53,7 +53,7 @@ class PasswordDialogTests final : public QObject {
         dialog.findChild<QLineEdit *>("passwordEdit")->setText("discarded");
         dialog.findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Cancel)->click();
         QCOMPARE(dialog.result(), int(QDialog::Rejected));
-        QCOMPARE(dialog.Password, QString("initial"));
+        QCOMPARE(QString::fromWCharArray(dialog.Password), QString("initial"));
     }
     void geometry() {
         for (int width : {360, 260}) {

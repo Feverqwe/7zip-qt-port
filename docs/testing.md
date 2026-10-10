@@ -1,5 +1,18 @@
 # Regression strategy
 
+`password_window` owns the two password/reopen workflows extracted from
+`ui_archive_states`, with raw Unicode/spaces/empty rows and the asynchronous
+MainWindow process-prompt signal after Test. The empty row fails against the
+old accepted-empty veto; opening alone already passed and is retained separately.
+`password_dialog`, `open_callback`, `update_callback`, `archive_progress`,
+`archive_opening`, `language_dialog`, `ui_archive_states`, `archive_backend` and
+`ui_parity_password` are its direct consumers. Callback rows cover portable
+UString/BSTR, accepted-only state and cancellation; owned helper processes cover
+empty newline transport. Real disposable encrypted 7z/ZIP fixtures separately
+cover wrong password, retry, extraction failure and secret-free output. The
+ControlledBackend window fixture establishes UI signal routing, not real engine
+bytes. Current platform results are in the [password receipt](upstream-port-audit.md#p3-05--password-state-and-process-callers-2026-10-10).
+
 The all-six-page `options_integration` workflow includes denied/stale association
 Apply and OK, source rollback, later-page persistence, Cancel/restart and a
 combined association error followed by invalid RAM and successful correction.

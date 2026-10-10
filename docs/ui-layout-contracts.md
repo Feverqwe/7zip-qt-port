@@ -1803,6 +1803,13 @@ cover initial values, Unicode/spaces, show/hide, OK/Enter and Cancel. Editable
 password values stay out of reports. Russian captions and Qt button ordering
 are documented adaptations. Windows rendering remains unverified.
 
+`password_window` adds current-build 360×170/260×170 reports for accepted
+Unicode, surrounding spaces and empty text during source archive opening.
+It also checks the subsequent asynchronous process prompt, raw-value reuse,
+Cancel/reopen and reset on another archive. `open_callback`/`update_callback`
+cover empty and supplementary Unicode through the portable UString/BSTR boundary.
+These add caller coverage; the resource layout and labels are unchanged.
+
 ## Progress dialog and modal lifecycle
 
 Reference: upstream `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,

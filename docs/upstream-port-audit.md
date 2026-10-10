@@ -1,5 +1,62 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-05 — password state and process callers (2026-10-10)
+
+Source repository https://github.com/ip7z/7zip.git, full revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. Complete original/current
+`CPP/7zip/UI/FileManager/PasswordDialog.cpp/.h`, original `.rc` and copied
+`PasswordDialogRes.h`, opening/extraction/update callbacks, the GUI-thread
+presenter and MainWindow/ArchiveBackend process callers were reviewed.
+ReadControls, SetTextSpec, OnInit, OnButtonClicked and OnOK retain the source
+read/toggle/read/accept flow, default ShowPassword and raw accepted text.
+The header restores usable original `UString Password`; QLineEdit converts at
+its widget boundary and AskCallbackPassword copies the portable state directly.
+Qt construction/OnInit/exec replaces Win32 RC/control/message/Create/modal
+services; resource order/IDs remain authoritative. Source module boundaries,
+C++ language and notices remain. No password validation algorithm is added.
+The [body map](omitted-scope-audit.md#operation-prompt-bodies-and-modal-lifetime-2026-10-10)
+records adaptations/omissions; no whole-file equality is claimed. Portable
+MyString/BSTR, callback caches/defined/asked flags, accepted-only ShowPassword
+settings and backend UTF-8/newline transport are reused unchanged.
+
+MainWindow's independent accepted-empty veto is removed. Opening already
+routes through COpenArchiveCallback and accepts empty. A public asynchronous
+passwordRequired after window.testArchive() reaches the extra process slot:
+the actual old-product RED has 5 Qt passes/1 failure/0 skips (empty row cancels).
+The initial opening-only run passed and is retained separately, not counted
+as a regression failure. Reject retains cancellation. The two existing password
+workflows move from ui_archive_states into focused password_window, with raw
+Unicode/spaces/empty, cache/reopen/reset, source ShowPassword and redacted
+normal/compact reports. Open/update callback rows add supplementary Unicode
+and empty UString/BSTR coverage. Existing owned process helpers check empty
+newline; real disposable encrypted 7z/ZIP consumers separately cover wrong
+password/retry/extraction failure/secret-free output. ControlledBackend UI
+signals do not prove actual engine transport bytes.
+
+Validation uses an isolated checkout based on 4ad7c9e, excluding concurrent
+ContextMenu changes. macOS arm64 Qt6.12 focused 10/10 passes 2.80s,
+120Qt/0fail/0skip. Required unsandboxed full gate passes formatting/all-target
+build and 310/310 CTest in 247.66s,4876Qt/0fail/18 existing platform skips.
+Linux x64 Qt6.12 passes 10/10 in 4.11s,120Qt/0fail/0skip. Windows x64 Qt6.12
+passes 9/10 in 30.07s,118Qt/2fail/0skip: the existing ui_archive_states native
+context-menu/address-popup rows cannot expose their windows in SSH session.
+All password-specific rows pass. No assertions/platform selection are weakened.
+An interactive retry cannot start: runner has no logged-on desktop user. Its
+own never-started scheduled task is removed; that retry provides no application
+acceptance. Both initial native failures and the desktop prerequisite are retained.
+
+All 1420 frozen code/test/build inputs match local, source.tar and both actual
+guest trees at snapshot 20261010T001511Z-ff268e0c, SHA256
+`059e700db5401ab894be547b9ff7fe862e123e3ccad39648dcc8b5758c1ee8ff`.
+Official pinned engine/SFX are built in both initial guest snapshots. Fourteen
+password/language/window widget reports per OS fit without clipped named visible
+controls or truncated labels (the fifteenth JSON is parity metadata). Empty,
+spaces and Unicode inputs are redacted. Baseline408exact/196adapted/3local verifies.
+The temporary wrapper is archived/removed; all 1419 retained inputs remain exact.
+Evidence: build/review/filemanager-final/password-*. Eleven slow suites and
+Windows VHD fixtures are excluded. Native Windows desktop/rendered, whole
+FileManager, package and P3-03/04/05/06 acceptance remain mandatory.
+
 ## P3-05 — operation prompts and source modal lifetime (2026-10-10)
 
 Source repository https://github.com/ip7z/7zip.git, full revision

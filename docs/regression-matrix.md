@@ -1,5 +1,12 @@
 # Regression and security traceability
 
+Password source DTO/process caller: `password_window`, `password_dialog`,
+`open_callback`, `update_callback`, `archive_progress`, `archive_opening`,
+`language_dialog`, `ui_archive_states`, `archive_backend`, `ui_parity_password`.
+Public raw empty/Unicode/spaces, source caching/ShowPassword, cancellation,
+reopen/reset, local encrypted failure/retry and redacted geometry are covered;
+see the [receipt](upstream-port-audit.md#p3-05--password-state-and-process-callers-2026-10-10).
+
 Operation prompt source lifetime/error-policy consumers: `extract_prompt`,
 `password_dialog`, `language_dialog`, `language_standard_buttons`,
 `native_rar_memory`, `native_extract_callback`, `archive_opening`,

@@ -142,17 +142,18 @@ ResourceString/LangUtils, FILETIME/size conversions, upstream COM answer flags a
 RAM/error/string helpers retain their existing dependency owners. No archive
 algorithm, native service registration or upstream file is changed.
 
-The legacy MainWindow process-password slot still independently treats an
-accepted empty password as cancellation, unlike the source callback presenter
-and its existing accepted-empty process regression. Reachability and public
-window behavior require a separate complete process-prompt caller scenario;
-The existing PasswordDialog QString public field also differs from the usable
-upstream UString DTO. Reconcile that state/type boundary with the complete
-process-prompt callers, rather than declaring it necessary merely because Qt
-controls use QString. This record reviews four bodies and closes the identified
-memory-error/modal substitutions; it does not close those password caller/type
-debts or the whole operation workflow. No acceptance is inferred from static
-inspection alone.
+The subsequent [password caller reconciliation](upstream-port-audit.md#p3-05--password-state-and-process-callers-2026-10-10)
+restores the usable original `UString Password` DTO. ReadControls/SetTextSpec
+convert at QLineEdit; AskCallbackPassword copies the portable string directly.
+The source read/toggle/read/accept sequence, ShowPassword default, RC order,
+language IDs, GUI-thread dispatch and native callback state remain authoritative.
+The MainWindow process-password slot's extra accepted-empty veto is removed:
+its public asynchronous signal path after Test reproduces cancellation before
+the fix, whereas opening routes through COpenArchiveCallback and already accepts
+empty. Backend providePassword retains its existing raw UTF-8/newline transport.
+Reject still cancels. No trimming, validation or password algorithm is added.
+Win32 control/message/modal services remain the narrow Qt presentation adaptation;
+this closes these two caller/type debts, not whole FileManager acceptance.
 
 See the [validation receipt](upstream-port-audit.md#p3-05--operation-prompts-and-source-modal-lifetime-2026-10-10).
 

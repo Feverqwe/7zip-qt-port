@@ -178,9 +178,22 @@ Linux/Windows x64 Qt6.12 each11/11 PASS10.84s/28.55s,140Qt/0fail/0skip.
 All1418 inputs match local/archive/actual guests;1417 retained after wrapper
 removal. Thirty-eight widget reports per OS fit. See the
 [source receipt](upstream-port-audit.md#p3-05--operation-prompts-and-source-modal-lifetime-2026-10-10).
-Password portable DTO/legacy process caller, whole FileManager/native/rendered/
-package acceptance remain mandatory;43/47 and P3-03/04/05/06 remain open.
+Password portable DTO/legacy process caller is subsequently reconciled in the
+[password receipt](upstream-port-audit.md#p3-05--password-state-and-process-callers-2026-10-10).
+Whole FileManager/native/rendered/package acceptance remains mandatory;
+43/47 and P3-03/04/05/06 remain open.
 Eleven slow suites excluded.
+
+P3-05,2026-10-10: complete PasswordDialog state/caller reconciliation restores
+source UString and accepts raw empty asynchronous process passwords. Actual RED
+and public Unicode/spaces/empty/cache/Cancel/reopen regressions are retained.
+Mac full310/310 and Linux focused10/10 pass; Windows9/10 retains two native
+window-exposure failures, while password rows pass. Interactive retry cannot
+start without a logged-on runner desktop; its own pending task is removed.
+Fourteen widget reports per OS fit;1420 frozen inputs match actual guest trees,
+1419 retained after wrapper removal. See the
+[source receipt](upstream-port-audit.md#p3-05--password-state-and-process-callers-2026-10-10).
+Whole native/rendered/package and parent acceptance remain open.
 
 Применяются обновлённые правила [размера итерации](porting-plan.md#размер-итерации-и-коммита-уточнение-2026-09-29).
 Исторические audit, commits и evidence сохранены; P0-01/P0-02 свёрнуты

@@ -1,5 +1,15 @@
 # Сверка с Windows 7zFM
 
+## Password source state and process caller (P3-05, 2026-10-10)
+
+PasswordDialog follows the original UString state and raw read/toggle/accept
+flow. An accepted empty asynchronous process password no longer cancels the
+operation; rejection still cancels. Source opening already accepted empty.
+Normal/compact widget reports cover Unicode/spaces/empty and redact the value;
+source order, labels and geometry are unchanged. See the
+[validation receipt](upstream-port-audit.md#p3-05--password-state-and-process-callers-2026-10-10).
+Qt widget/runtime evidence does not establish rendered Windows 7zFM parity.
+
 ## Options: ошибки Apply (P3-05, 2026-10-10)
 
 Ошибка ассоциации на странице System показывается один раз, затем остальные

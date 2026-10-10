@@ -50,12 +50,12 @@ void MainWindow::connectBackend() {
             return;
         CPasswordDialog dialog(this);
         dialog.OnInit();
-        if (dialog.exec() != QDialog::Accepted || dialog.Password.isEmpty()) {
+        if (dialog.exec() != QDialog::Accepted) {
             backend_->cancel();
             return;
         }
-        archivePassword_ = dialog.Password;
-        backend_->providePassword(dialog.Password);
+        archivePassword_ = ToQString(dialog.Password);
+        backend_->providePassword(archivePassword_);
     });
     connect(backend_, &ArchiveBackend::outputReceived, this, [this](const QString &line) {
         if (!app_.QtOperations().closed()) {

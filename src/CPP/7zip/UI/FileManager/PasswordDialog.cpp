@@ -13,13 +13,13 @@
 CPasswordDialog::CPasswordDialog(QWidget *parent) : QDialog(parent) {}
 
 void CPasswordDialog::ReadControls() {
-    Password = _passwordEdit->text();
+    Password = _passwordEdit->text().toStdWString().c_str();
     ShowPassword = _showPassword->isChecked();
 }
 
 void CPasswordDialog::SetTextSpec() {
     _passwordEdit->setEchoMode(ShowPassword ? QLineEdit::Normal : QLineEdit::Password);
-    _passwordEdit->setText(Password);
+    _passwordEdit->setText(QString::fromWCharArray(Password.Ptr(), Password.Len()));
 }
 
 bool CPasswordDialog::OnInit() {

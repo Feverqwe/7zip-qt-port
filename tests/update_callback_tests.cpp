@@ -142,11 +142,14 @@ class UpdateCallbackTests : public QObject {
     }
     void workerPasswordPrompt_data() {
         QTest::addColumn<bool>("accept");
-        QTest::newRow("accept") << true;
-        QTest::newRow("cancel") << false;
+        QTest::addColumn<QString>("value");
+        QTest::newRow("accept") << true << QStringLiteral("  fixture пароль 密碼 🗜  ");
+        QTest::newRow("empty") << true << QString();
+        QTest::newRow("cancel") << false << QStringLiteral("discarded fixture");
     }
     void workerPasswordPrompt() {
         QFETCH(bool, accept);
+        QFETCH(QString, value);
         CPasswordWorker worker;
         auto *callback = new CUpdateCallback100Imp;
         worker.Callback = callback;
@@ -162,8 +165,7 @@ class UpdateCallbackTests : public QObject {
             observed = true;
             ownerThread = dialog->thread() == QApplication::instance()->thread();
             QVERIFY(dialog->parentWidget() == &worker);
-            dialog->findChild<QLineEdit *>("passwordEdit")
-                ->setText(QStringLiteral("fixture пароль"));
+            dialog->findChild<QLineEdit *>("passwordEdit")->setText(value);
             if (accept)
                 dialog->accept();
             else
@@ -177,7 +179,7 @@ class UpdateCallbackTests : public QObject {
         QCOMPARE(callback->PasswordIsDefined, accept);
         QVERIFY(!callback->PasswordWasAsked); // The source does not set this flag here.
         if (accept)
-            QCOMPARE(QString::fromWCharArray(worker.Password), QStringLiteral("fixture пароль"));
+            QCOMPARE(QString::fromWCharArray(worker.Password), value);
         else
             QVERIFY(!worker.Password);
     }
