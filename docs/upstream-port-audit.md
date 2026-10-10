@@ -1,5 +1,56 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-04 — Current macOS and Windows binary dependency closure (2026-10-10)
+
+The [current runtime packages](#p3-04--current-three-platform-runtime-artifacts-2026-10-10)
+were inspected without rebuilding or changing their bytes. macOS ZIP SHA256 is
+`ab1eaac179803be0d996561cd1f56c652fbcff015ba1a6669974012a133a9c17`;
+Windows ZIP SHA256 is
+`fb848da0b76bf2710044c321e6af5de961566c0c3a04f755328ba85295af031f`.
+All1480 retained product inputs still match the accepted source/gates. No new
+functional code, borrowed module, dependency, language or upstream baseline is
+introduced; official runtime provenance remains the preceding package receipt
+and https://github.com/ip7z/7zip.git revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`.
+
+All11 real Mach-O files were enumerated after ditto extraction, including four
+Qt frameworks, three plugins, application, engine, codec and console SFX.
+Apple otool load commands cover normal/weak/re-export/upward/lazy loads and
+RPATHs. All157 checked edges, including each GUI executable context, resolve
+either inside the bundle or to Apple `/System/Library` and `/usr/lib` namespaces.
+Relative RPATHs stay inside the bundle; no host SDK/Qt/build path is a load target.
+The `7zFM` symlink uses the authoritative executable's load commands. An initial
+collector lookup of that alias was corrected; no artifact or assertion changed.
+System namespace classification does not prove availability on another macOS
+release, and does not enumerate arbitrary runtime dlopen requests.
+
+Apple LLVM21 objdump enumerates all26 Windows PE files, including Qt/plugins,
+official engine/module/SFX, app-local CRT and shader helpers. All344 normal import
+edges are accounted for:84 point to unique packaged DLLs in `bin`,260 to55
+external names. Every PE delay-import directory is empty. A separate PowerShell
+probe on the authenticated existing Windows11 Pro10.0.26300 x64 runner resolves
+all55 external names with LoadLibraryExW's SYSTEM32 search flag, records actual
+GetModuleFileNameW paths, hashes and versions, then releases its references.
+The actual43 unique files belong to Windows System32 or WinSxS, including API-set
+redirection and system ICU; no SDK/host Qt/CRT fallback is required by these
+imports. The probe observes the diagnostic process, not the application's live
+module list; arbitrary dynamic plugin loads and other Windows versions remain
+outside this proof. Earlier package smoke results remain the runtime evidence.
+
+The first Windows collector correctly stopped when COMCTL32 resolved to system
+WinSxS rather than System32; that failure is retained and the OS namespace guard
+now accounts for both. A subsequent command-length failure was resolved by
+passing the same probe through stdin. No system/account/security policy changed.
+No interactive desktop user was present; no GUI automation or native acceptance
+is claimed. Evidence, complete binary load commands, per-file hashes, diagnostic
+source and failed/successful outputs are in the isolated checkout's
+`build/review/package-closure`. These are temporary evidence tools, not retained
+project scripts. Docs-only diff checks pass; unchanged full gates were not rerun,
+and eleven slow suites were not run. No push/publication/upstream edits occurred.
+This closes the bounded binary-import review; clean-OS/native/rendered and final
+obligations remain in the [acceptance matrix](ux-port-audit.md#current-final-acceptance-matrix-2026-10-10)
+and [checklist](porting-checklist.md).
+
 ## P3-04 — Isolated Linux runtime and temporary-directory contract (2026-10-10)
 
 The [current Linux runtime artifact](#p3-04--current-three-platform-runtime-artifacts-2026-10-10)

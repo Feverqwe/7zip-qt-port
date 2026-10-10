@@ -4,6 +4,12 @@
 Готовый запрос агенту: [porting-chat-prompt.md](porting-chat-prompt.md).
 Исходная дата: 2026-09-28. Это список **оставшейся** работы, не оценка MVP с нуля.
 
+P3-04,2026-10-10: current macOS/Windows artifacts дополнительно прошли
+[binary-import review](upstream-port-audit.md#p3-04--current-macos-and-windows-binary-dependency-closure-2026-10-10):
+11 Mach-O/157 edges остаются внутри bundle/Apple system namespaces;
+26 PE/344 imports обеспечены packaged DLLs и проверенными Windows system files.
+Это bounded dependency evidence; clean-OS/native/rendered и итоговая приёмка открыты.
+
 P3-04.1,2026-10-10: текущий Linux package проходит15/15 в новом FROM scratch
 userspace без host Qt/SDK. Фактические234/233 image-файла сверены, negative
 отличается только отсутствием7z.so. Проверены noexec refusal, process-scoped
