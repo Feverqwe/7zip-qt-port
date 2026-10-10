@@ -1,5 +1,46 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-05 — PanelListNotify complete body and caller disposition (2026-10-10)
+
+Baseline: [ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17),
+`CPP/7zip/UI/FileManager/PanelListNotify.cpp`. All 838 original lines and the
+complete current module were compared, with Panel.h types/guards, Panel.cpp
+notification and status-message callers, PanelKey/PanelSelect/PanelOperations,
+QtPanelList, FileTable/delegate, MainWindow table/icon/key/selection/rename/status
+consumers, QtAppPresentation and the drag-input/start services. This is a source
+disposition review of the implementation retained at a91376a, without code or
+observable UI changes.
+
+| Original body or notification | Retained policy and presentation boundary |
+| --- | --- |
+| ConvertSizeToString, IsSizeProp | Original integer grouping, UInt32 fast branch and property-ID switch remain in this module. The string-returning overload exposes QString to the Qt cells/status labels; the buffer overload retains the source algorithm. |
+| SetItemText / LVN_GETDISPINFOW | GetItemText retains raw reparse/security conversion, 64-byte summary threshold, checksum case, name/RLO/space policy, prefix, failed-property text, size variants, BSTR newline replacement and timestamp precision. QString replaces caller-owned LVITEM buffers and native buffer clipping; zero/absent raw data is rejected before conversion. FileTable supplies source row/property identity, lazy text, invalidation and owning-provider lifetime checks. Icons use the existing GetItemIcon owner; the original inline image branch is commented out. |
+| OnItemChanged / LVN_ITEMCHANGED | Original parent exclusion and old/new selected comparison remain. AttachSelectionView translates batched QItemSelection ranges to source indices, excludes alternative mark mode, disconnects the old binding and checks notification admission. Pre-populated Qt models require initial selection synchronization. Status presentation is outside the per-index loop, preserving the source warning against per-item status recalculation. |
+| OnNotifyActivateItems / LVN_ITEMACTIVATE, NM_DBLCLK, NM_RETURN | Original Alt/Ctrl/Shift Properties/OpenSelectedItems decision remains. Qt Return/double-click signals replace the ComCtl32-version dispatch; table and icon views share the source command/lifetime owner. Single-click preference, selection modifiers and pending label-editor admission are Qt input services. |
+| LVN_KEYDOWN, LVN_COLUMNCLICK | Existing PanelKey/OnListViewKeyDown source owners handle keys; non-modifier completion updates status. The header click adapter resolves the source column and lets Qt finish its automatic sort before publishing the source OnColumnClick result. No second sort policy is added. |
+| NM_CLICK, NM_RCLICK, label editing, begin drag | Qt focus/input projection captures the owning pane; source OnLeftClick owns alternative marks. Context-menu admission updates selection/status before source OnContextMenu. Qt delegates bridge source OnBeginLabelEdit/OnEndLabelEdit. Left/right drag services invoke source OnDrag, retaining the filesystem-only right-drag policy; Cocoa press-time menus are deferred until release. |
+| OnCustomDraw | Qt draw roles replace native paint stages. Source alternative marks use the same RGB(255,192,192) background via QtPanelList; source deleted-item admission uses RGB(255,0,0). The shared table/icon delegate preserves deleted foreground in selected text. Provider exceptions cannot escape Qt painting. |
+| Refresh_StatusBar | Original operated-index count, UInt64 size sum, focused selected-item size and mtime decisions remain. CPanelStatus and its owning-panel callback replace four native SetText calls; the localized selected-count wrapper remains in showPanelStatus. Original Refresh_StatusBar itself has no guard: Post_Refresh_StatusBar guards the posted native message. Qt callers guard publication/reload admission and update after batched selection/input and completed source transitions. |
+
+Native NMHDR/result structures, paint-stage return codes, fixed text-buffer sizes
+and ComCtl32 version probes are presentation transport, replaced by Qt signals,
+roles and event services. Commented timing/debug/old property/image/subitem-color
+experiments and LVN_ODSTATECHANGED stay inactive. The included resource.h supplies
+no active command or dialog layout to these bodies; property IDs and existing
+panel/menu resources remain authoritative. No new archive or selection algorithm
+is introduced by this review.
+
+Existing evidence remains with its owners: [selection lifecycle](#p3-05--source-selection-command-lifecycle-2026-10-10),
+[context-menu lifecycle](#p3-05--source-panel-context-menu-lifecycle-2026-10-10),
+[Rename activation](#p3-05--source-rename-activation-scenario-2026-10-10),
+[callback display](#p3-0334--callback-property-display-accepted-component-2026-10-05)
+and the source deleted-item/drag/activation receipts. Direct regression consumers
+include panel_item_changed, panel_cell_text, panel_deleted_draw, panel_selection,
+panel_activation, panel_column_sort, panel_key_source and source_context_menu.
+No test result is added by this documentation review; git diff --check validates
+the receipt. Physical native input, rendered Windows comparison, remaining FM
+bodies/resources and P3-03/04/05/06 acceptance remain open.
+
 ## P3-05 — source path dialogs and long-path browser (2026-10-10)
 
 Baseline: [ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17),

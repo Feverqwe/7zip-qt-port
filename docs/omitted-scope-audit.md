@@ -325,7 +325,9 @@ Source PanelListNotify::OnNotifyActivateItems is now retained with explicit Qt
 event modifiers. The owning table/icon Return/double-click adapters replace the
 native ComCtl32 notification-version switch and share the existing OpenNative
 state/history projection. Parent/multiple-item behavior stays in OpenSelectedItems;
-the broader OnNotify/status/drag/rendered/platform review remains open.
+The complete notification/status/paint caller mapping is now recorded in the
+[PanelListNotify disposition](upstream-port-audit.md#p3-05--panellistnotify-complete-body-and-caller-disposition-2026-10-10).
+Physical native input/rendered/platform acceptance remains open.
 See [dated consumer evidence](upstream-port-audit.md#source-item-activation-notification-consumers-2026-10-07).
 
 ### PanelKey complete body/caller review, 2026-10-07

@@ -82,6 +82,13 @@ rows. Integration atop293a826 passes28/28 direct consumers plus the localized
 browser follow-up. Final input hashes are recorded separately from the earlier
 full-consumer snapshot in the linked receipt; this does not close P3-05.
 
+P3-05,2026-10-10: complete PanelListNotify body/type/caller disposition now maps
+all active notification, cell text, selection, activation, paint and four-part
+status policies to their source owners and Qt transports. No code/UI changes or
+new test claims; docs diff check. Native input/rendered and remaining FM/resource
+closure stay open;43/47 unchanged.
+[Receipt](upstream-port-audit.md#p3-05--panellistnotify-complete-body-and-caller-disposition-2026-10-10).
+
 P3-05.16,2026-10-10: original InitInstance placement/panel/default/show/refusal/
 fallback flow restored through narrow Qt services. Public old-product four-row
 geometry RED retained;13 source/window cases and8 geometry JSON pass on each OS,
