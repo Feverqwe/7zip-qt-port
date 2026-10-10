@@ -39,6 +39,10 @@ Actual hidden MainWindow construction, normal/maximized show, one/two panels,
 focus, splitter persistence and Close/restart use disposable settings/files;
 980×620/640×400 geometry reports accompany each launch. Source binary encoding
 and malformed-record rejection remain covered by `window_info`.
+Its splitter cases also check exact saved-coordinate replay, source fixed-point
+resize/return, F9 with one pane hidden, effective close persistence, source
+minimum/default/narrow-width behavior and actual Qt handle input. Initial
+coordinate assertions fail on the previous independent Qt layout policy.
 
 `copy_dialog` verifies source Copy history case policy, stored ordering and
 reloaded combo items: K retains the source-distinct Kelvin symbol K while all

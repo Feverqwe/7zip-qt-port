@@ -87,7 +87,7 @@ sevenzip_share_port_objects(sevenzip_main_window src/mainwindow.h
     src/mainwindow_archiveopening.cpp
     src/mainwindow_backendevents.cpp
     src/mainwindow_close.cpp
-    src/mainwindow_startup.cpp
+    src/mainwindow_startup.cpp src/qtfilemanagersplitter.cpp
     src/mainwindow_columns.cpp
     src/mainwindow_refresh.cpp
     src/mainwindow_dialogs.cpp

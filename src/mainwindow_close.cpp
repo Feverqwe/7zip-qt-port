@@ -52,9 +52,7 @@ class QtFileManagerWindowServices final : public IQtFileManagerWindowServices {
         info.maximized = window_.isMaximized();
         info.numPanels = window_.app_.NumPanels;
         info.currentPanel = window_.app_.LastFocusedPanel;
-        if (window_.app_.NumPanels == 2 && window_.panelSplitter_)
-            window_.splitterPos_ = window_.panelSplitter_->sizes().value(0);
-        info.splitterPos = static_cast<UInt32>(qMax(1, window_.splitterPos_));
+        info.splitterPos = static_cast<UInt32>(window_.panelSplitter_->SourcePosition());
         info.Save(MainWindow::toolbarSettingsPath());
     }
 };

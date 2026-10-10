@@ -42,6 +42,18 @@ ListView resources remain reproducible read-only upstream references for the
 existing contract; About resources/logo are exact vendored inputs. No rendered
 Windows or native-system-picker claim follows from these source reviews.
 
+## FM splitter body/caller disposition (P3-05.16, 2026-10-10)
+
+Original CSplitterPos and its WM_CREATE/WM_SIZE/mouse/SaveWindowInfo/
+MoveSubWindows callers now retain source coordinate and fixed-point ratio policy
+in FM.cpp. QtFileManagerSplitter replaces native client-rectangle lookup, handle
+capture and child moves; startup, F9, resize and close use the same state.
+Qt child content minimums can exceed source120; the handle retains source4.
+The original vertical toolbar/panel moves become Qt layout services, with panel
+ordering retained. This bounded disposition leaves remaining startup-platform
+branches and native/rendered acceptance open. See the
+[splitter receipt](upstream-port-audit.md#p3-0516--source-splitter-resize-and-persistence-2026-10-10).
+
 ## Temporary browser complete body/caller disposition (2026-10-10)
 
 Pinned repository/revision and validation are in the

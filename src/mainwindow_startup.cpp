@@ -15,8 +15,7 @@ class QtFileManagerInitServices final : public IQtFileManagerInitServices {
             window_.resize(width, height);
         if (x != NQtFileManager::WindowUseDefault)
             window_.move(x, y);
-        window_.splitterPos_ = panelsDefined ? static_cast<int>(splitterPos) : window_.width() / 2;
-        window_.createFileManagerWindow(startup_, panelsDefined);
+        window_.createFileManagerWindow(startup_, panelsDefined, splitterPos);
         return true;
     }
 

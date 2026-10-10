@@ -19,6 +19,7 @@
 #include "Windows/FileName.h"
 #include "qtfilemanagercommandservices.h"
 #include "qtfilemanagerinitservices.h"
+#include "qtfilemanagersplitter.h"
 #include "qtfilemanagerstartup.h"
 #include "qtfilemanagerwindowservices.h"
 #include "qtlinkservices.h"
@@ -33,6 +34,44 @@ static void ErrorMessage(const wchar_t *s) {
 }
 
 static void ErrorMessage(const char *s) { ErrorMessage(GetUnicodeString(s)); }
+
+static const int kPanelSizeMin = 120;
+
+void CSplitterPos::SetRatioFromPos(int width) {
+    _ratio = (_pos + kSplitterWidth / 2) * kSplitterRateMax / MyMax(width, 1);
+}
+
+void CSplitterPos::SetRatio(int width, int aRatio) {
+    _ratio = aRatio;
+    SetPosFromRatio(width);
+}
+
+void CSplitterPos::SetPosPure(int width, int pos) {
+    int posMax = width - kSplitterWidth;
+    if (posMax < kPanelSizeMin * 2)
+        pos = posMax / 2;
+    else {
+        if (pos > posMax - kPanelSizeMin)
+            pos = posMax - kPanelSizeMin;
+        else if (pos < kPanelSizeMin)
+            pos = kPanelSizeMin;
+    }
+    _pos = pos;
+}
+
+void CSplitterPos::SetPos(int width, int pos) {
+    _fullWidth = width;
+    SetPosPure(width, pos);
+    SetRatioFromPos(width);
+}
+
+void CSplitterPos::SetPosFromRatio(int width) {
+    int fullWidth = width;
+    if (_fullWidth != fullWidth && fullWidth != 0) {
+        _fullWidth = fullWidth;
+        SetPosPure(width, width * _ratio / kSplitterRateMax - kSplitterWidth / 2);
+    }
+}
 
 bool NQtFileManager::InitInstance(int nCmdShow, CApp &g_App, IQtFileManagerInitServices &wnd,
                                   const QString &settingsPath) {

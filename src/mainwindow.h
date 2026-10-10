@@ -11,6 +11,7 @@
 #include "filesystemscanner.h"
 #include "filetable.h"
 #include "filetransferoperation.h"
+#include "qtfilemanagersplitter.h"
 #include "qtfolderprojection.h"
 #include "settingsdialog.h"
 #include "volumeoperations.h"
@@ -56,7 +57,6 @@
 #include <QSettings>
 #include <QSignalBlocker>
 #include <QSizePolicy>
-#include <QSplitter>
 #include <QStackedWidget>
 #include <QStandardPaths>
 #include <QStatusBar>
@@ -107,7 +107,8 @@ class MainWindow : public QMainWindow {
     friend class QtPanelContextMenu;
     friend class QtFileManagerInitServices;
     void initializeFileManagerWindow(const QtFileManagerStartup *startup);
-    void createFileManagerWindow(const QtFileManagerStartup *startup, bool panelsDefined);
+    void createFileManagerWindow(const QtFileManagerStartup *startup, bool panelsDefined,
+                                 UInt32 splitterPos);
     HRESULT openArchiveAs(const QString &path, const QString &type);
     void closeEvent(QCloseEvent *event) override;
     void changeEvent(QEvent *event) override;
@@ -341,10 +342,9 @@ class MainWindow : public QMainWindow {
         std::optional<QStringList> pendingSelectedPaths;
     };
     std::array<PanelUiState, 2> panelUi_;
-    QSplitter *panelSplitter_ = nullptr;
+    QtFileManagerSplitter *panelSplitter_ = nullptr;
     unsigned projectedPanel_ = 0;
     unsigned panelProjectionDepth_ = 0;
-    int splitterPos_ = 0;
     QHash<QString, FilesystemSignature> autoRefreshSnapshot_;
     QString autoRefreshTopPath_;
     int autoRefreshScrollValue_ = -1;

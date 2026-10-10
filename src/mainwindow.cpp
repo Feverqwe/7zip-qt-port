@@ -63,7 +63,8 @@ MainWindow::MainWindow(ArchiveBackend *backend, std::function<bool(const QUrl &)
     }
 }
 
-void MainWindow::createFileManagerWindow(const QtFileManagerStartup *startup, bool panelsDefined) {
+void MainWindow::createFileManagerWindow(const QtFileManagerStartup *startup, bool panelsDefined,
+                                         UInt32 splitterPos) {
     const unsigned focusedPanel = app_.LastFocusedPanel;
     appPresentation_ = std::make_unique<QtAppPresentation>(*this);
     connectFilesystemScanner();
@@ -93,13 +94,12 @@ void MainWindow::createFileManagerWindow(const QtFileManagerStartup *startup, bo
         activatePanelUi(focusedPanel);
     app_.SetFocusedPanel(focusedPanel);
     appPresentation_->RequestInitialFocus(focusedPanel);
-    QTimer::singleShot(0, this, [this, panelsDefined] {
+    if (layout())
+        layout()->activate();
+    panelSplitter_->Initialize(panelsDefined, splitterPos);
+    QTimer::singleShot(0, this, [this] {
         appPresentation_->CompleteInitialFocusIfReady();
-        if (!panelsDefined || app_.NumPanels != 2 || !panelSplitter_)
-            return;
-        const int width = panelSplitter_->width();
-        const int left = qBound(1, splitterPos_, width - 1);
-        panelSplitter_->setSizes({left, width - left});
+        panelSplitter_->UpdateSourceLayout();
     });
     autoRefreshTimer_ = new QTimer(this);
     autoRefreshTimer_->setInterval(1000);

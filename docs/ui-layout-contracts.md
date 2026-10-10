@@ -130,6 +130,15 @@ Current JSON checks the visible panel and its controls on each launch. Qt uses
 logical client coordinates and native frame/handle/content minimums; a native
 rendered Windows reference remains required for frame and pixel parity.
 
+The source splitter has a4-unit handle and a16-bit fixed-point ratio. Saved
+coordinates are actual left-panel widths, excluding the handle; initial width300
+remains300 at client widths980 and640. Expansion/return and F9 while one panel is
+hidden retain the source ratio and rounding. Public splitter fixtures cover the
+source120-unit bounds and halving below244 total width. Actual panel content can
+impose a larger Qt minimum to prevent clipped address/list controls. Current
+`splitter-source-{980,640}` JSON accompanies the normal/compact window cases;
+native pixel/frame comparison remains open.
+
 ### Source Copy/Move destination (P3-05.15, required scope)
 
 Copy history values follow source UStringVector/IsEqualTo_NoCase, retaining

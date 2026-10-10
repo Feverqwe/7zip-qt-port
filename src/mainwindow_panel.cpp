@@ -87,9 +87,8 @@ void MainWindow::createFilePanel(QMenu *editMenu, unsigned index) {
     });
     setViewMode(static_cast<int>(app_.GetFocusedPanel().GetListViewMode()));
     if (!panelSplitter_) {
-        panelSplitter_ = new QSplitter(Qt::Horizontal, this);
+        panelSplitter_ = new QtFileManagerSplitter(this);
         panelSplitter_->setObjectName("filePanelSplitter");
-        panelSplitter_->setChildrenCollapsible(false);
         setCentralWidget(panelSplitter_);
     }
     panelUi_[index].container = central;

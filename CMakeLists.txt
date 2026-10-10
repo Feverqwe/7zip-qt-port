@@ -2269,6 +2269,7 @@ foreach(engine_consumer IN LISTS engine_consumer_targets)
             src/mainwindow_panelkey.cpp src/qtpanelkey.h
             src/mainwindow_close.cpp src/qtfilemanagerwindowservices.h
             src/mainwindow_startup.cpp src/qtfilemanagerinitservices.h
+            src/qtfilemanagersplitter.cpp src/qtfilemanagersplitter.h
             src/qtfilemanagercommands.cpp src/qtfilemanagercommands.h
             src/qtfilemanagercommandworkflows.cpp src/mainwindow_root.cpp
             src/qtfilemanagershellmenu.cpp src/qtfilemanagershellmenu.h

@@ -155,16 +155,14 @@ void MainWindow::togglePanels() {
         return;
     }
     if (app_.NumPanels == 2 && panelSplitter_)
-        splitterPos_ = panelSplitter_->sizes().value(0);
+        panelSplitter_->RememberPosition();
     if (app_.SwitchOnOffOnePanel() != S_OK) {
         twoPanelsAction_->setChecked(app_.NumPanels == 2);
         return;
     }
     twoPanelsAction_->setChecked(app_.NumPanels == 2);
     if (panelSplitter_ && app_.NumPanels == 2) {
-        const int width = panelSplitter_->width();
-        const int left = qBound(1, splitterPos_, width - 1);
-        panelSplitter_->setSizes({left, width - left});
+        panelSplitter_->UpdateSourceLayout();
     }
     app_.GetFocusedPanel().SetFocusToList();
 }

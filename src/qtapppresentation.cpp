@@ -214,4 +214,6 @@ void QtAppPresentation::ShowPanel(unsigned index, bool visible) {
 void QtAppPresentation::MoveSubWindows() {
     if (window_.layout())
         window_.layout()->activate();
+    if (window_.panelSplitter_)
+        window_.panelSplitter_->UpdateSourceLayout();
 }

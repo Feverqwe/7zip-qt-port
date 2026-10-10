@@ -125,6 +125,109 @@ class WindowPlacementTests final : public QObject, protected MainWindowTestSuppo
         QTest::newRow("maximized-one") << QSize(640, 400) << true << 1u;
     }
 
+    void splitterCoordinateAndResize_data() {
+        QTest::addColumn<int>("initialWidth");
+        QTest::newRow("normal") << 980;
+        QTest::newRow("compact") << 640;
+    }
+
+    void splitterBounds_data() {
+        QTest::addColumn<bool>("defined");
+        QTest::addColumn<unsigned>("position");
+        QTest::addColumn<int>("expectedLeft");
+        QTest::newRow("minimum") << true << 0u << 120;
+        QTest::newRow("maximum") << true << 999u << 516;
+        QTest::newRow("default") << false << 0u << 318;
+    }
+
+    void splitterBounds() {
+        QFETCH(bool, defined);
+        QFETCH(unsigned, position);
+        QFETCH(int, expectedLeft);
+        QtFileManagerSplitter splitter(nullptr);
+        QWidget left, right;
+        splitter.addWidget(&left);
+        splitter.addWidget(&right);
+        splitter.resize(640, 200);
+        splitter.show();
+        splitter.activateWindow();
+        QVERIFY(QTest::qWaitForWindowActive(&splitter));
+        splitter.Initialize(defined, position);
+        QCOMPARE(splitter.sizes().value(0), expectedLeft);
+    }
+
+    void splitterCompactResizeAndHandleInput() {
+        QtFileManagerSplitter splitter(nullptr);
+        QWidget left, right;
+        splitter.addWidget(&left);
+        splitter.addWidget(&right);
+        splitter.resize(640, 200);
+        splitter.show();
+        splitter.activateWindow();
+        QVERIFY(QTest::qWaitForWindowActive(&splitter));
+        splitter.Initialize(false, 0);
+        QCOMPARE(splitter.sizes().value(0), 318);
+        splitter.resize(200, 200);
+        QTRY_COMPARE_WITH_TIMEOUT(splitter.sizes().value(0), 98, 1000);
+        splitter.resize(640, 200);
+        QTRY_COMPARE_WITH_TIMEOUT(splitter.sizes().value(0), 318, 1000);
+        auto *handle = splitter.handle(1);
+        QSignalSpy moved(&splitter, &QSplitter::splitterMoved);
+        const QPoint point = handle->rect().center();
+        QTest::mousePress(handle, Qt::LeftButton, Qt::NoModifier, point);
+        QTest::mouseMove(handle, point + QPoint(50, 0));
+        QTest::mouseRelease(handle, Qt::LeftButton, Qt::NoModifier, point + QPoint(50, 0));
+        QVERIFY(!moved.isEmpty());
+        QCOMPARE(splitter.sizes().value(0), 368);
+        QCOMPARE(splitter.SourcePosition(), 368);
+    }
+
+    void splitterCoordinateAndResize() {
+        QFETCH(int, initialWidth);
+        const QString settings = qEnvironmentVariable("SEVENZIP_SETTINGS_PATH");
+        QFile::remove(settings);
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString previous = QDir::currentPath();
+        const auto restore = qScopeGuard([&] { QDir::setCurrent(previous); });
+        QVERIFY(QDir::setCurrent(fixture.path()));
+        for (unsigned i = 0; i < 2; ++i)
+            SavePanelPath(i, ToUString(fixture.path()), settings);
+        CWindowInfo info{{42, 54, 42 + initialWidth, 674}, false, 2, 0, 300};
+        info.Save(settings);
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        window.show();
+        window.activateWindow();
+        QVERIFY(QTest::qWaitForWindowActive(&window));
+        auto *splitter = window.findChild<QSplitter *>("filePanelSplitter");
+        QVERIFY(splitter);
+        QTRY_COMPARE_WITH_TIMEOUT(splitter->sizes().value(0), 300, 1000);
+        const int ratio = (300 + 2) * (1 << 16) / initialWidth;
+        window.resize(1600, 620);
+        const int expandedPosition = 1600 * ratio / (1 << 16) - 2;
+        QTRY_COMPARE_WITH_TIMEOUT(splitter->sizes().value(0), expandedPosition, 1000);
+        window.resize(initialWidth, 620);
+        const int restoredPosition = initialWidth * ratio / (1 << 16) - 2;
+        QTRY_COMPARE_WITH_TIMEOUT(splitter->sizes().value(0), restoredPosition, 1000);
+        auto *twoPanels = action(window, "twoPanelsAction");
+        QTRY_VERIFY(twoPanels->isEnabled());
+        twoPanels->trigger();
+        QVERIFY(!twoPanels->isChecked());
+        window.resize(1600, 620);
+        twoPanels->trigger();
+        QVERIFY(twoPanels->isChecked());
+        QTRY_COMPARE_WITH_TIMEOUT(splitter->sizes().value(0), expandedPosition, 1000);
+        window.resize(initialWidth, 620);
+        QTRY_COMPARE_WITH_TIMEOUT(splitter->sizes().value(0), restoredPosition, 1000);
+        QVERIFY(UiInspection::writeReport(window, QString("splitter-source-%1").arg(initialWidth)));
+        QVERIFY(window.close());
+        bool position = false, panels = false;
+        info.Read(position, panels, settings);
+        QVERIFY(position && panels);
+        QCOMPARE(info.splitterPos, unsigned(restoredPosition));
+    }
+
     void savedPlacementAndRestart() {
         QFETCH(QSize, size);
         QFETCH(bool, maximized);

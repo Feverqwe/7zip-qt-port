@@ -1713,6 +1713,11 @@ creation and placement transport; MainWindow construction remains hidden until
 the entry caller calls show. QWidget logical client coordinates/state replace
 Win32 frame/workspace coordinates and g_Maximized. The existing close owner
 saves normalGeometry/isMaximized; P3-05.16 tracks its current platform acceptance.
+FM.cpp also retains CSplitterPos's fixed-point ratio and coordinate bounds.
+QtFileManagerSplitter adapts initial layout, handle capture, resize and child
+visibility to that policy; startup/F9/close share its state. Qt child minimum
+sizes remain a presentation constraint, and unchanged layout requests preserve
+effective user input.
 QtPanelContextMenu destroys its popup/CallScope before refreshing cached QAction
 availability, so native focus events under temporary source guards cannot leave
 commands disabled after Cancel. Source menu admission remains authoritative.

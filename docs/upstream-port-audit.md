@@ -56,6 +56,81 @@ property sorting, and the old About note that its external-codec diagnostic
 was unavailable. The existing scoped catalog supplies that source branch;
 help_source covers its actual error presentation.
 
+## P3-05.16 — Source splitter resize and persistence (2026-10-10)
+
+Source repository https://github.com/ip7z/7zip.git, full revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
+`CPP/7zip/UI/FileManager/FM.cpp::CSplitterPos`, WM_CREATE splitter admission,
+WM_SIZE, mouse-capture handlers, SaveWindowInfo and CApp::MoveSubWindows.
+Complete bodies and startup, CApp panel-switch/toolbar, Qt layout and close
+consumers were reviewed before changing behavior.
+
+CSplitterPos retains its original symbol, fields and SetRatioFromPos/SetRatio/
+SetPosPure/SetPos/SetPosFromRatio algorithms in FM.cpp. A supplied client width
+replaces GetWidth's HWND/GetClientRect lookup; original 4-unit handle, 16-bit fixed-point ratio,
+120-unit lower bound, narrow-window halving and unchanged-width admission remain.
+Ratio replay is skipped at zero width. Per-window zero-initialized state replaces
+static globals. The declaration and shared handle/ratio constants cross a narrow
+Qt header; there is one authoritative coordinate algorithm.
+
+QtFileManagerSplitter supplies QSplitter child layout, resize and handle events.
+Initialization uses the source saved-position/default-ratio branch after Qt
+activates the client layout; subsequent resize uses SetPosFromRatio and handle
+movement uses SetPos. The ratio remains active while one panel is hidden.
+QSplitter's native handle capture replaces the window mouse-capture protocol.
+Qt layouts place the toolbar and panel contents; source panel0-left/panel1-right
+and focused-single-panel placement remain. Native child minimum sizes can exceed
+the source120-unit bound to keep Qt address/list controls usable; this adaptation
+is retained explicitly rather than claiming exact Windows pixels.
+
+The duplicate startup/F9 qBound/setSizes and splitterPos cache are removed.
+Close saves the effective coordinate. Unchanged layout requests do not overwrite
+an explicit Qt setSizes; visibility/width/source-position changes apply the source
+layout. F9 only synchronizes an effective coordinate when native constraints or
+an explicit resize changed it, preserving the existing fixed-point ratio otherwise.
+
+Actual old-product public-window RED: saved300 becomes299 at980 and298 at640
+(13Qt pass/2fail,6.94s). The initial unbounded-wait timeout is retained separately;
+bounded assertions verify the same values within the existing30s suite deadline.
+Normal/compact windows now check exact startup coordinate, fixed-point expansion
+and return, F9 with resize while one pane is hidden, and saved close coordinate.
+Additional public splitter cases cover low/high/default admission, narrow-window
+halving and actual Qt handle movement. Initial integration exposed a saved400
+coordinate being reset to300 by an unchanged layout call; preserving effective
+input and avoiding redundant layout application fixes that existing consumer.
+Four related consumers pass5.24s; final expanded window suite19Qt passes0.63s.
+
+Required unsandboxed macOS arm64 Qt6.12 full gate passes formatting/all-target
+build and313/313 CTest in281.82s,4930Qt/0fail/18 existing platform skips. Snapshot
+`20261010T020937Z-6c93e77c`, SHA256
+`cc30fcf13aa4d8ee22963331173cb2d49a78a0c7d2d0d28739a29ee8e29ed071`:
+Linux16/16 passes68.45s,606Qt/0fail/0skip. Windows14/16 in298.47s; completed Qt
+suites report565pass/2fail/16 existing native-Properties skips, excluding the
+timed-out filesystem_selection_runtime partial output. Its seven observed rows
+fail at the initial native window exposure check. The other failing suite is
+the previously reproduced two external-process startup rows. Window placement
+itself passes all19 cases on each OS, including handle input and resize/F9.
+
+All1434 archive/local/actual-guest input hashes match. Ten fresh geometry JSON
+per OS (30 total) have no clipping or status-elision exceptions. Original evidence
+is preserved before the controlled previous/current filesystem-selection
+comparison. Previous22b7763 repeats the same seven exposure failures and45.04s
+timeout. All ten temporarily replaced source/build files are restored and their
+timestamps advanced to force recompilation. Rebuilt current window suite19Qt
+passes; the filesystem suite repeats the same failures/timeout (two-suite run
+47.89s). A second1434-input bookend check verifies archive/local/actual guests
+after restoration. This proves that failure predates the splitter port; its
+native environment cause and acceptance remain open.
+
+The temporary wrapper is archived/removed. All1433 retained combined inputs match
+the primary checkout after preserving accepted browser/casing commits3271d2c
+and0d71043. The combined macOS build and31 direct splitter/browser/sort/operation
+consumers pass29.31s,840Qt/0fail/0skip, with exact retained-input hashes.
+Baseline410exact/198adapted/3local passes; storage has no warnings or disk deltas.
+This receipt does not close P3-05.16
+external-process/rendered acceptance or the remaining FM startup-platform family
+review. Eleven slow suites are excluded.
+
 ## P3-05 — temporary browser source lifecycle reconciliation (2026-10-10)
 
 Source: https://github.com/ip7z/7zip.git, full revision
@@ -291,8 +366,10 @@ stays hidden; RunSevenzipFileManager still owns show/event-loop timing. Qt logic
 client coordinates replace Win32 workspace/frame coordinates in this app's own
 INI; no import of Windows registry or physical pixel coordinates is introduced.
 QWidget state replaces g_Maximized and the existing close owner saves normalGeometry
-and isMaximized. QSplitter retains native Qt handle widths and content minimums;
-this receipt does not establish full FM splitter/resize-handler source disposition.
+and isMaximized. This initial placement receipt left splitter/resize policy to
+Qt. The subsequent [source splitter receipt](#p3-0516--source-splitter-resize-and-persistence-2026-10-10)
+restores its coordinate algorithm and4-unit handle; Qt content minimums remain
+an explicit presentation adaptation.
 
 Actual old-product public-window RED: four normal/compact/maximized scenarios
 ignore the saved rectangle (2Qt pass/4fail,0.55s). They now restore hidden-window
