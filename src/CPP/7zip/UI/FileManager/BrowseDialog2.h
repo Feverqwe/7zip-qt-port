@@ -7,6 +7,7 @@
 #include "Windows/FileFind.h"
 #include "qtownedtempregistry.h"
 #include <QDialog>
+#include <functional>
 
 class QTreeWidget;
 class QLineEdit;
@@ -14,6 +15,15 @@ class QPushButton;
 class QComboBox;
 class QDialogButtonBox;
 class QKeyEvent;
+class QUrl;
+#ifdef _WIN32
+namespace NWindows {
+class CProcess;
+}
+HRESULT StartApplication(const UString &dir, const UString &path, QWidget *window,
+                         NWindows::CProcess &process);
+void StartApplicationDontWait(const UString &dir, const UString &path, QWidget *window);
+#endif
 
 struct CBrowseItem {
     unsigned MainFileIndex;
@@ -30,6 +40,7 @@ struct CBrowseItem {
 };
 
 class CBrowseDialog2 : public QDialog {
+    std::function<bool(const QUrl &)> _opener;
     CRecordVector<CBrowseItem> _items;
     CObjectVector<NWindows::NFile::NFind::CFileInfo> _files;
     QVector<QtOwnedTempEntry> _owners;
@@ -69,11 +80,12 @@ class CBrowseDialog2 : public QDialog {
 
   public:
     UString TempFolderPath, Title;
-    explicit CBrowseDialog2(QWidget *parent = nullptr);
+    explicit CBrowseDialog2(QWidget *parent = nullptr,
+                            std::function<bool(const QUrl &)> opener = {});
     bool IsExactTempFolder(const UString &pathPrefix) const;
     int CompareItems(int index1, int index2) const;
     int Create();
 };
 
-void MyBrowseForTempFolder(QWidget *owner);
+void MyBrowseForTempFolder(QWidget *owner, std::function<bool(const QUrl &)> opener = {});
 #endif

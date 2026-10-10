@@ -234,6 +234,12 @@ IQtProcessHandle *QtNativeProcessServices::OpenProcess(UInt32 id) {
 #endif
 }
 
+#ifdef Q_OS_WIN
+IQtProcessHandle *QtNativeProcessServices::Adopt(NWindows::CProcess &process) {
+    return (HANDLE)process ? new CWinProcessHandle(process.Detach()) : nullptr;
+}
+#endif
+
 HRESULT QtNativeProcessServices::Create(const UString &program, const UString &parameters,
                                         const UStringVector &paths, IQtProcessHandle *&process) {
     process = nullptr;
@@ -252,7 +258,7 @@ HRESULT QtNativeProcessServices::Create(const UString &program, const UString &p
     const WRes result = native.Create(program, param, nullptr);
     if (result != 0)
         return HRESULT_FROM_WIN32(result);
-    process = new CWinProcessHandle(native.Detach());
+    process = Adopt(native);
 #else
     auto handle = std::make_unique<CPidProcessHandle>();
     QList<QByteArray> bytes;

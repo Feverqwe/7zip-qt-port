@@ -19,13 +19,70 @@ an indexed receipt, build path or green consumer into whole workflow/platform
 acceptance. Later correction receipts supersede earlier bounded claims; original
 native branches and current-package/rendered/final scope remain mandatory.
 
-Two connected live source gaps remain: BrowseDialog2::StartApplication/
-StartApplicationDontWait and PanelItemOpen's associated-process continuation.
-The original Windows ShellExecuteEx/PIDL/directory/extension/result bodies can
-return a waitable process; current Qt association delivery always takes the
-no-handle branch. The temporary-browser lifecycle map remains valid for its
-owned browsing/deletion work, but its earlier whole-file wording does not close
-these native launcher bodies. No new implementation or closure is claimed here.
+The two connected launcher gaps are corrected in the
+[native associated-launcher body map](#native-associated-launcher-and-continuation-2026-10-10):
+BrowseDialog2::StartApplication/StartApplicationDontWait and PanelItemOpen's
+associated-process continuation. Windows now transfers the original returned
+handle to the source worker; POSIX/explicit openers retain the no-handle branch.
+This closes the identified functional source gap, not whole native/rendered,
+delivery or final workflow acceptance.
+
+### Native associated launcher and continuation (2026-10-10)
+
+Source https://github.com/ip7z/7zip.git, revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
+`CPP/7zip/UI/FileManager/BrowseDialog2.cpp` lines987–1115 and
+`PanelItemOpen.cpp` lines1750–1818. This completes the previously identified
+launcher body scope; the existing browser and PanelItemOpen maps below still
+own their other bodies and documented platform adaptations.
+
+| Original body/dependency | Current disposition |
+| --- | --- |
+| StartApplication | Restored in the same adapted BrowseDialog2.cpp. PIDL parsing/fallback, extension-dot handling, directory conversion, original ShellExecuteEx masks, process Attach, hInstApp result and no-association error branch retain original control flow. Qt QWidget replaces HWND only for the existing error presenter; empty UString replaces its NULL error-name. All579 functional tokens match after these two adapters and formatting. |
+| StartApplicationDontWait | Original local CProcess/call/destructor body retained in BrowseDialog2.cpp. Disk service and owned browser use the HRESULT-returning body with the same local process lifetime, so the browser can release protection on a proved launch failure. Neither waits nor terminates the launched process. |
+| ShellFolder_ParseDisplayName; NShell::CItemIDList | Reuse authoritative PanelMenu.cpp parser and Windows/Shell.cpp/.h PIDL owner, including CoTaskMemFree. No duplicate parser or PIDL implementation. |
+| CProcess/CHandle; QtNativeProcessServices | Existing unchanged third_party Windows ProcessUtils/Handle remain owners of OS handle operations. A narrow Adopt transfers a returned CProcess into the existing CWinProcessHandle; its wait/status/path/snapshot implementations remain authoritative. |
+| OpenFolderExternal/OpenItem; OpenItemInArchive | Disk/folder callers use the source launcher through QtAssociatedFileServices. Archive caller restores the original failure guard: reject only when both handle is absent and HRESULT failed. A valid handle enters existing CChildProcesses/MyThreadFunction even on failure. No-handle, child search, update, cancel, shutdown and temp-lease policies retain their existing owners. |
+| Browser OpenOutside; MainWindow command | Windows default invokes the same source launcher. Optional explicit opener is passed through the window command and dialog; POSIX keeps Qt association because the source Windows Shell/PIDL implementation cannot execute there. The browser closes any process handle, retaining unconfirmed external protection. |
+
+CMake explicitly selects the modern Windows Unicode body; original ANSI/CE
+conditionals are retained but not claimed as executed Qt6 desktop targets.
+Existing MyCom/StringConvert/Windows DLL/Shell/ProcessUtils dependencies and
+shell32/ole32 linkage are reused; no new borrowed module or baseline revision.
+Source language and original module organization remain unchanged. The larger
+BrowseDialog2 file remains a copied source module; Qt presentation remains in
+qttempbrowsepresentation.cpp. No archive syntax/format logic moved into widgets.
+
+Current execution evidence and remaining native/rendered/delivery limits belong
+to the [launcher receipt](upstream-port-audit.md#p3-05--native-associated-launcher-and-process-lifetime-2026-10-10).
+
+### PanelItemOpen body and platform closure (2026-10-10)
+
+Complete original/current bodies, declarations and their process/open/update
+callers were reconciled at the same pinned revision. Earlier opening, Parent,
+RAM and external-edit receipts remain their execution evidence; the connected
+launcher correction above closes the outstanding associated-process admission.
+
+| Original body family | Retained owner and adaptation |
+| --- | --- |
+| CProcessSnapshot, My_GetProcessFileName, CSnapshotProcess/GetSnapshot | qtexternalprocess retains the OS-only seam: Windows Toolhelp snapshot, process ID/open/status and owned CProcess. QueryFullProcessImageNameW supplies the DOS form instead of device-form/Psapi global loading; CChildProcesses still owns basename/lineage decisions. POSIX has no usable Windows snapshot implementation, so existing native PID identity, reap and launch-group services supply it. |
+| CChildProcesses; CTmpProcessInfo/CTmpProcessInfoRelease | Source unique IDs, handles/NeedWait, same-name/parent discovery loop and release behavior remain in PanelItemOpen. Only typed process handles/services, panel/parent pointers and owned-temp leases replace native handles/window messages/global lifetime. |
+| MyThreadFunction; CExitEventLauncher::Exit | Original first-pass, bounded wait batch, two-second policy, child search, changed/read-only/update prompt/result, no-handle exit-event wait and final timestamp deletion remain. QElapsedTimer and typed status polling replace OS wait transport; QtExternalGuiCall marshals prompts/update onto the GUI thread. Panel-scoped exit joins its workers rather than detaching after original100ms hard-exit timeout, preventing access after owner release. Proven completion clears external protection; refusal/error/shutdown preserve unconfirmed copies. |
+| OpenAsArc/OpenAsArc_Msg/OpenAsArc_Name/OpenAsArc_Index | Source FileInfo/virtual link, password/error, parent-folder/library ownership, flat/deleted state and opening result policies remain. CFfpOpen uses the existing retained manager, settings and owned stream materialization. Previously accepted scoped guard release permits deferred Qt publication; original unconditional Refresh result policy remains. |
+| OpenParentArchiveFolder; CThreadCopyFrom; OnOpenItemChanged overloads | Source changed-child prompt, update callback/worker, password, relocated index search, selected state and unconditional Refresh remain. Typed request replaces LPARAM/SendMessage; progress transport and deferred selection publish after GUI guards unwind. Original duplicate-name ambiguity and failed-update retention remain explicit source limitations. |
+| kExeExtensions/kStartExtensions/DoItemAlwaysStart; IsVirus_Message | Original extension lists, space/RLO/Windows trailing-dot checks, name sanitization and source warning remain. No alternate executable classifier was introduced. |
+| SplitCmdLineSmart/StartAppWithParams/StartEditApplication; EditItem/CApp::DiffFiles | Original command split, settings/default Windows notepad, selected/peer path and error admission remain. Qt process services transport parameters/paths; existing Windows native quoting and POSIX argv replace platform invocation only. Diff's source guards and no-command return remain. |
+| OpenFolderExternal/OpenItem/OpenItemInArchive | Source path construction, smart internal/external admission, hash/operation guards, stream probe, RAM limit, virtual filesystem/ZoneId, CopyTo/password/error and disk fallback remain. RAM uses the accepted immutable source record/shift guard. Timer/notification scopes hand off to asynchronous Qt publication; temp leases preserve ownership through launch/thread failure. Native launch now supplies the original process continuation, as detailed above. |
+
+Headers/types, original FileManager makefile dependencies and current CMake owners
+were checked. FileFolderPluginOpen, StreamObjects/CBufInStream, ExtractingFilePath,
+FileName/PropVariant, source threads/events, UpdateCallback100 and progress remain
+authoritative. Thread/process snapshots and GUI marshaling are narrow platform
+services, not a second opening/update module. Original commented extension-program
+experiments, old zone helper/stream/time implementations and debug output remain
+inactive; CE and obsolete Windows SDK paths are not executed Qt6 desktop targets.
+Current execution limits remain in the launcher receipt; a complete body disposition
+does not establish every native desktop, rendered or final-delivery workflow.
 
 ### FileManager receipt index
 
@@ -35,7 +92,7 @@ these native launcher bodies. No new implementation or closure is claimed here.
 | AltStreamsFolder.cpp | adapted | [body map](#filesystem-provider-bodies-and-command-consumers-2026-10-10) |
 | App.cpp | adapted | [body map](#app-complete-bodycaller-review-2026-10-06); [current Copy caller/phase correction](#native-copy-terminal-phase-reconciliation-2026-10-10) |
 | BrowseDialog.cpp | adapted | [body map](#browse-path-dialog-disposition-2026-10-10) |
-| BrowseDialog2.cpp | adapted | [body map](#temporary-browser-complete-bodycaller-disposition-2026-10-10); native StartApplication remains open (above) |
+| BrowseDialog2.cpp | adapted | [browser body map](#temporary-browser-complete-bodycaller-disposition-2026-10-10); [native launcher](#native-associated-launcher-and-continuation-2026-10-10) |
 | ClassDefs.cpp | adapted | [body map](#classdefs-and-native-guid-dependencies-reviewed-on-2026-10-05) |
 | ComboDialog.cpp | adapted | [body map](#primitive-input-and-read-only-dialog-bodies-2026-10-10) |
 | CopyDialog.cpp | adapted | [body map](#primitive-input-and-read-only-dialog-bodies-2026-10-10) |
@@ -69,7 +126,7 @@ these native launcher bodies. No new implementation or closure is claimed here.
 | PanelCrc.cpp | adapted | [body map](#copy-crc-and-sort-complete-bodycaller-disposition-2026-10-10) |
 | PanelDrag.cpp | adapted | [body map](#paneldrag-protocol-body-disposition-2026-10-10) |
 | PanelFolderChange.cpp | adapted | [body map](#panelfolderchange-complete-bodycaller-review-2026-10-06) |
-| PanelItemOpen.cpp | adapted | Native association/process continuation remains open (above) |
+| PanelItemOpen.cpp | adapted | [Complete body/platform map](#panelitemopen-body-and-platform-closure-2026-10-10); [associated-process continuation correction](#native-associated-launcher-and-continuation-2026-10-10) |
 | PanelItems.cpp | adapted | [current body/caller receipt](upstream-port-audit.md#p3-05--panelitems-selection-and-provider-lifecycle-2026-10-10) |
 | PanelKey.cpp | adapted | [body map](#panelkey-complete-bodycaller-review-2026-10-07) |
 | PanelListNotify.cpp | adapted | [body map](#panel-control-and-view-state-disposition-2026-10-10) |
@@ -703,9 +760,10 @@ Complete original/current BrowseDialog2 bodies and dependencies were reviewed;
 the original private class is declared in its header for the existing extracted
 Qt presentation, without a second functional implementation.
 
-The later [109-unit ledger](#109-unit-source-receipt-ledger-2026-10-10) identifies
-remaining native StartApplication bodies; this browser-lifecycle map does not
-establish whole-translation-unit acceptance of those launcher services.
+The later [109-unit ledger](#109-unit-source-receipt-ledger-2026-10-10) identified
+the native StartApplication gap. Its correction and caller/handle disposition
+are now in the [launcher map](#native-associated-launcher-and-continuation-2026-10-10);
+this earlier browser-lifecycle receipt alone did not establish that acceptance.
 
 | Original body family | Retained owner and platform boundary |
 | --- | --- |
@@ -715,7 +773,7 @@ establish whole-translation-unit acceptance of those launcher services.
 | GetParentPath/OpenParentFolder/OnItemEnter/OnOK | Original parent limits and one-selection/Alt-properties/link refusal/Shift-external navigation retained. Owned OS-temp root is the top boundary. Qt Enter event dispatch replaces IDOK/list-focus transport; no default push button accepts Enter. |
 | OnKeyDown, OnButtonClicked | Complete active keyboard switch restored. Qt button connections retain source Parent/Delete/Refresh then unconditional list focus; Return is list activation and unmodified F5 remains the recorded Qt convenience. |
 | OnDelete | Original prefix guard, selection, one/many confirmation, ten-name summary, per-item deletion, first-failure return and final reload retained. Existing ownership claim revalidates identity/no-link ancestry and active/external protection before each original removal call. |
-| OnContextMenu, StartApplication/StartApplicationDontWait/GetQuotedString2 | Source command IDs/order, selected-count admission, link refusal, property/open/delete dispatch retained. QMenu/QDesktopServices and detached executable+argument vector replace native menu/PIDL/ShellExecute/process quoting. Lease protection remains until proven external completion. |
+| OnContextMenu, StartApplication/StartApplicationDontWait/GetQuotedString2 | Source command IDs/order, selected-count admission, link refusal, property/open/delete dispatch retained. QMenu replaces native menu presentation; self-launch uses a detached executable+argument vector. The later launcher map restores original Windows PIDL/ShellExecute bodies, with Qt association limited to POSIX/explicit openers. Browser lease protection remains until proven external completion. |
 | OnInit/OnSize/OnMessage/OnNotify, CWaitCursor2, MyBrowseForTempFolder/OnHelp | Qt construction/layout/tree notifications replace HWND/RC/redraw/message transport. Original aggregate count>1000 and CWaitCursor2 Set/destructor phases restored through QApplication override/restore services. Source title, OS temp lookup and fm/temp.htm remain; Qt canonicalizes the OS alias. Exact RC/Res retain grouping/IDs. Drive/non-temp navigation and naming-only7z* admission are superseded by the accepted owned-temp boundary; CE sizing and commented path/filter/debug branches have no new desktop feature claim. |
 
 The original FindNonHexChar_F actually accepts alphanumeric characters; its

@@ -146,6 +146,7 @@ if(WIN32)
     target_sources(sevenzip_common PRIVATE src/CPP/Windows/Shell.cpp
         third_party/7zip/CPP/Windows/MemoryGlobal.cpp)
     set_source_files_properties(src/CPP/Windows/Shell.cpp
+        src/CPP/7zip/UI/FileManager/BrowseDialog2.cpp
         third_party/7zip/CPP/Windows/MemoryGlobal.cpp PROPERTIES
         COMPILE_DEFINITIONS "_UNICODE;UNICODE")
     target_link_libraries(sevenzip_common PUBLIC shell32)
@@ -3107,6 +3108,33 @@ if(BUILD_TESTING)
     target_include_directories(archive_metadata_ui_tests PRIVATE src tests)
     target_link_libraries(archive_metadata_ui_tests PRIVATE ${metadata_ui_libraries})
     if(SEVENZIP_CODEC_MODULE)
+        if(WIN32)
+            add_executable(native_association_process tests/fixtures/native_association_process.cpp)
+            qt_add_executable(native_association_tests tests/native_association_tests.cpp
+                ${metadata_ui_sources})
+            target_include_directories(native_association_tests PRIVATE src tests)
+            target_link_libraries(native_association_tests PRIVATE ${metadata_ui_libraries})
+            target_compile_definitions(native_association_tests PRIVATE
+                "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\""
+                "SEVENZIP_ASSOC_HELPER=\"$<TARGET_FILE:native_association_process>\"")
+            add_dependencies(native_association_tests native_association_process)
+            foreach(association_case IN ITEMS handle disk browser workflow)
+                if(association_case STREQUAL "handle")
+                    set(association_function nativeShellReturnsWaitableProcess)
+                elseif(association_case STREQUAL "disk")
+                    set(association_function diskOpenKeepsOriginalAndDoesNotWait)
+                elseif(association_case STREQUAL "browser")
+                    set(association_function temporaryBrowserClosesHandleAndRetainsProtection)
+                else()
+                    set(association_function archiveOpenCleansCopyAfterNativeCompletion)
+                endif()
+                add_test(NAME native_association_${association_case}
+                    COMMAND native_association_tests ${association_function} -silent)
+                set_tests_properties(native_association_${association_case} PROPERTIES TIMEOUT 90
+                    RESOURCE_LOCK sevenzip_native_ui
+                    ENVIRONMENT "QT_QPA_PLATFORM=windows;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/native-association-${association_case}.ini")
+            endforeach()
+        endif()
         qt_add_executable(file_manager_entry_probe tests/fixtures/file_manager_entry_probe.cpp
             src/qtfilemanagermain.cpp ${metadata_ui_sources})
         target_include_directories(file_manager_entry_probe PRIVATE src tests)
@@ -3253,6 +3281,8 @@ foreach(sevenzip_test IN LISTS sevenzip_registered_tests)
         set(sevenzip_test_target native_external_publication_tests)
     elseif(sevenzip_test MATCHES "^native_nested_(stream|memory|disk)$")
         set(sevenzip_test_target native_nested_publication_tests)
+    elseif(sevenzip_test MATCHES "^native_association_(handle|disk|browser|workflow)$")
+        set(sevenzip_test_target native_association_tests)
     endif()
     if(TARGET ${sevenzip_test_target})
         get_target_property(sevenzip_test_sources ${sevenzip_test_target} SOURCES)

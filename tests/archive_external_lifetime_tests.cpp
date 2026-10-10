@@ -37,6 +37,7 @@ class CProcessService final : public IQtExternalFileServices {
 
   public:
     bool FailWait = false;
+    HRESULT LaunchResult = S_OK;
     std::atomic_bool Closed{false};
     QString Opened;
     HRESULT StartApplication(const UString &, const UString &, QWidget *) override {
@@ -49,7 +50,7 @@ class CProcessService final : public IQtExternalFileServices {
         Opened = ToQString(paths[0]);
         if (FailWait) {
             process = new CErrorHandle(Closed);
-            return S_OK;
+            return LaunchResult;
         }
         return _native.CreateKnownProcess(program, parameters, paths, window, process);
     }
@@ -188,11 +189,14 @@ class ArchiveExternalLifetimeTests final : public QObject {
     }
     void launchAndWaitFailures_data() {
         QTest::addColumn<bool>("waitError");
-        QTest::newRow("missing-program-cleanup") << false;
-        QTest::newRow("wait-error-preserves-copy") << true;
+        QTest::addColumn<HRESULT>("launchResult");
+        QTest::newRow("missing-program-cleanup") << false << HRESULT(S_OK);
+        QTest::newRow("wait-error-preserves-copy") << true << HRESULT(S_OK);
+        QTest::newRow("launch-error-with-handle-preserves-copy") << true << HRESULT(E_FAIL);
     }
     void launchAndWaitFailures() {
         QFETCH(bool, waitError);
+        QFETCH(HRESULT, launchResult);
         QTemporaryDir fixture;
         const QString name = QStringLiteral("ошибка запуска.txt");
         const QString archive = fixture.filePath("original.zip");
@@ -203,6 +207,7 @@ class ArchiveExternalLifetimeTests final : public QObject {
         CMyComPtr<IFolderManager> manager = new QtArchiveFolderManager(backend);
         CProcessService service;
         service.FailWait = waitError;
+        service.LaunchResult = launchResult;
         CPanel panel;
         QVERIFY(bind(panel, manager, service, archive));
         bool error = false;
@@ -221,7 +226,7 @@ class ArchiveExternalLifetimeTests final : public QObject {
         if (waitError)
             QTRY_VERIFY(service.Closed.load());
         panel.ExitExternalWorkers(false);
-        QCOMPARE(error, !waitError);
+        QCOMPARE(error, !waitError || launchResult != S_OK);
         QCOMPARE(QFileInfo(service.Opened).exists(), waitError);
         if (waitError) {
             const auto owned = ownedDirectory(service.Opened);

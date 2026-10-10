@@ -154,7 +154,7 @@ class TempCleanupTests : public QObject {
                     launchProtected = entry.externallyProtected && !entry.active;
             dialog->reject();
         });
-        MyBrowseForTempFolder(nullptr);
+        MyBrowseForTempFolder(nullptr, QDesktopServices::openUrl);
         QDesktopServices::unsetUrlHandler("file");
         QVERIFY(dots && launchProtected);
         QCOMPARE(QFileInfo(opened.toLocalFile()).canonicalFilePath(),

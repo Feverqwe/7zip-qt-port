@@ -229,4 +229,6 @@ void QtFileManagerCommands::AboutDialog() {
     CAboutDialog dialog(&window_, catalog ? &catalog->nativeCodecs() : nullptr);
     dialog.Create();
 }
-void QtFileManagerCommands::MyBrowseForTempFolder() { ::MyBrowseForTempFolder(&window_); }
+void QtFileManagerCommands::MyBrowseForTempFolder() {
+    ::MyBrowseForTempFolder(&window_, window_.fileOpener_);
+}

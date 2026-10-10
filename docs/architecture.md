@@ -1098,12 +1098,19 @@ implemented by widgets.
 P0-04.1 WIP also attaches one retained QtArchiveFolderManager and
 QtAssociatedFileServices to the focused native panel. MainWindow owns those
 services before CApp in member lifetime order; panels retain their manager.
-The association adapter invokes the existing injectable QUrl opener on the GUI
-thread and displays plain-text launch errors. It supplies no waitable process
-handle; the copied native no-handle temp worker waits on a panel-scoped
-CExitEventLauncher and joins before panel member release. Unchanged files are
-deleted at owner exit, changed files are retained. This does not substitute for
-the mandatory known/child-process/editor service or complete window-close owner.
+On Windows, the default association adapter calls original BrowseDialog2's
+StartApplication on the GUI thread. Its PIDL/ShellExecuteEx body returns the
+original CProcess, which QtNativeProcessServices transfers into its existing
+waitable handle owner. MainWindow preserves an empty optional opener so this
+native default remains reachable. Explicit QUrl openers and POSIX associations
+retain the no-handle service. PanelItemOpen rejects a launch failure only when
+no handle was returned, as upstream does; known handles enter the existing
+child-process/update worker even if the launch HRESULT reports failure.
+The no-handle branch waits on a panel-scoped CExitEventLauncher and joins before
+panel member release. Unchanged files are deleted at owner exit, changed files
+are retained. The temporary browser receives the same optional opener from its
+window; its native default closes the source process handle without waiting and
+retains external protection until completion can be established elsewhere.
 MainWindow root/nested/address/parent navigation now uses the native panel parent
 stack. Its duplicate ArchiveParent/temp stack is removed.
 P1-09 materializes source-owned nested memory streams at the CTempFileInfo

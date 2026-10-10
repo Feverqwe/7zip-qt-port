@@ -1828,8 +1828,13 @@ Windows/Linux runtime и rendered Windows reference остаются unverified.
 P1-15.2 accepted: source Delete Temporary Files is connected. It lists only registered
 objects directly under the current OS temp directory and allows browsing inside
 those owned roots. Delete uses native confirmation/first-failure/reload behavior;
-active or externally unconfirmed objects are visible and protected. Qt association
-launches retain protection because their completion cannot be established.
+active or externally unconfirmed objects are visible and protected. Browser
+association launches retain protection because this source caller does not wait.
+Windows uses original BrowseDialog2 PIDL/ShellExecuteEx by default; explicit
+injected openers and POSIX use the Qt association boundary. Archive Open transfers
+a returned Windows process handle into the existing source child-process worker;
+successful associations returning no handle still retain their separate exit-event
+lifetime. Disk and browser callers close the handle without terminating the process.
 POSIX native temp creation now respects TMPDIR/macOS per-user temp, matching Qt.
 Enter/Backspace/Delete/F5/F1/Escape and Help/Close retain source meanings; the six
 columns may scroll horizontally at compact width. Qt controls replace Win32 shell
@@ -1838,7 +1843,8 @@ settings through Qt parent rows, shared hover and painting. Parent/dot navigatio
 stops at OS temp, excluding non-owned ancestors. macOS composed/decomposed
 filenames are matched with OS identity proof, keeping Unicode cleanup reachable.
 Context new-window directory open is disabled until the P2-07 directory CLI
-consumer; file self-open and OS Open Outside use Qt platform services. Runtime
+consumer; file self-open uses Qt detached launch, while OS Open Outside uses
+the source/native or Qt association boundary described above. Runtime
 Windows/Linux and rendered Windows parity remain unverified. Final focused18/18
 passed12.43s; full unsandboxed check.sh175/175 passed66.82s, macOS arm64 Qt6.11.2
 2026-10-01; EN/RU normal/compact JSON inspected. P1-15 parent accepted.

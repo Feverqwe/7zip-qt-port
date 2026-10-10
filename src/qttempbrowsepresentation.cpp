@@ -60,7 +60,10 @@ class BrowseAppearance final : public QStyledItemDelegate {
     }
 };
 } // namespace
-CBrowseDialog2::CBrowseDialog2(QWidget *parent) : QDialog(parent) { BuildControls(); }
+CBrowseDialog2::CBrowseDialog2(QWidget *parent, std::function<bool(const QUrl &)> opener)
+    : QDialog(parent), _opener(std::move(opener)) {
+    BuildControls();
+}
 void CBrowseDialog2::BuildControls() {
     setObjectName("tempBrowseDialog");
     resize(900, 580);

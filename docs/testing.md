@@ -1,5 +1,18 @@
 # Regression strategy
 
+Windows `native_association_handle`, `native_association_disk`,
+`native_association_browser` and `native_association_workflow` use a bounded
+private executable without registering extensions or changing the desktop.
+They check native process identity/status, original disk paths, browser external
+protection and archive-copy deletion after known completion in both panes and
+EN/RU. The archive fixture selects its pane through saved source window state;
+it does not assert native desktop exposure. Unicode/space executable and archive
+bytes are checked independently. `archive_external_lifetime` also injects an
+error HRESULT with a valid handle and checks its closure, retained error copy
+and original editor diagnostic. Existing launch/no-handle, update, cancellation
+and security consumers remain required. These small bounded cases are default
+tests; they do not establish rendered parity or arbitrary association handoff.
+
 `main_shell` checks the original no-grip status-bar style at normal/compact sizes
 in EN/RU, one→two→one panes and unchanged Unicode transient messages. The
 `status-no-grip-*` JSON records exposed bars and no visible QSizeGrip.

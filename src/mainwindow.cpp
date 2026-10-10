@@ -17,7 +17,7 @@
 
 MainWindow::MainWindow(ArchiveBackend *backend, std::function<bool(const QUrl &)> fileOpener,
                        IQtTrashService *trashService, const QtFileManagerStartup *startup)
-    : fileOpener_(fileOpener ? std::move(fileOpener) : QDesktopServices::openUrl) {
+    : fileOpener_(std::move(fileOpener)) {
     if (trashService)
         trashService_ = trashService;
     else {

@@ -1,9 +1,13 @@
 #include "qtassociatedfileservices.h"
+#include "CPP/7zip/UI/FileManager/BrowseDialog2.h"
 #include "CPP/7zip/UI/FileManager/ViewSettings.h"
 #include "qtlanguageservices.h"
 #include <QDesktopServices>
 #include <QMessageBox>
 #include <QProcess>
+#ifdef Q_OS_WIN
+#include "Windows/ProcessUtils.h"
+#endif
 
 namespace {
 bool OpenAssociation(const QUrl &url) { return QDesktopServices::openUrl(url); }
@@ -13,7 +17,7 @@ QtAssociatedFileServices::QtAssociatedFileServices(
     std::function<bool(const QUrl &)> opener,
     std::function<bool(CPanel &, const QtArchiveUpdateBody &)> updateRunner,
     std::function<bool()> updateReady)
-    : _opener(opener ? std::move(opener) : OpenAssociation), _updateRunner(std::move(updateRunner)),
+    : _opener(std::move(opener)), _updateRunner(std::move(updateRunner)),
       _updateReady(std::move(updateReady)) {}
 
 bool QtAssociatedFileServices::CanHandleExternalUpdate() const {
@@ -56,13 +60,35 @@ HRESULT QtAssociatedFileServices::CreateProcess(const UString &program, const US
     return process.startDetached() ? S_OK : E_FAIL;
 }
 
-HRESULT QtAssociatedFileServices::StartApplication(const UString &, const UString &path,
+HRESULT QtAssociatedFileServices::StartApplicationKnown(const UString &dir, const UString &path,
+                                                        QWidget *window,
+                                                        IQtProcessHandle *&process) {
+    process = nullptr;
+#ifdef Q_OS_WIN
+    if (!_opener) {
+        NWindows::CProcess native;
+        const HRESULT result = ::StartApplication(dir, path, window, native);
+        process = _processServices.Adopt(native);
+        return result;
+    }
+#endif
+    return StartApplication(dir, path, window);
+}
+
+HRESULT QtAssociatedFileServices::StartApplication(const UString &dir, const UString &path,
                                                    QWidget *window) {
-    // The platform association API has no waitable process handle. The native
-    // caller retains its temp through the no-handle exit-event branch.
+#ifdef Q_OS_WIN
+    if (!_opener) {
+        NWindows::CProcess native;
+        return ::StartApplication(dir, path, window, native);
+    }
+#else
+    (void)dir;
+#endif
+    // POSIX associations and explicitly injected openers have no waitable handle.
     bool opened = false;
     try {
-        opened = _opener(QUrl::fromLocalFile(ToQString(path)));
+        opened = (_opener ? _opener : OpenAssociation)(QUrl::fromLocalFile(ToQString(path)));
     } catch (...) {
         opened = false;
     }

@@ -1,5 +1,80 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-05 — Native associated launcher and process lifetime (2026-10-10)
+
+The connected native launcher scenario is restored from
+https://github.com/ip7z/7zip.git revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. Original BrowseDialog2.cpp
+StartApplication/StartApplicationDontWait bodies retain PIDL, extension,
+directory, ShellExecuteEx masks, process Attach and result/error control flow.
+Only QWidget error ownership and the empty error-name argument replace Win32
+presentation;579 functional tokens match after those adapters and formatting.
+Existing PanelMenu parser, Shell PIDL owner and unchanged ProcessUtils/CHandle
+dependencies are reused. No new borrowed module, language or revision.
+The complete [body/caller map](omitted-scope-audit.md#native-associated-launcher-and-continuation-2026-10-10)
+records platform conditionals and the browser's nonwaiting lease boundary.
+
+QtAssociatedFileServices transfers a returned native CProcess into the existing
+waitable owner. MainWindow preserves its empty optional opener to select that
+default; explicit injected openers and POSIX retain Qt delivery. PanelItemOpen
+restores original failure admission: only absent handle plus failed HRESULT
+returns early. Valid handles enter the existing child/update worker even on
+failure. Disk and browser callers close handles without waiting or termination;
+the browser preserves unconfirmed external protection. No archive algorithm,
+command syntax, wait/child/update policy or window layout was reimplemented.
+
+Two genuine old-product RED checks were retained: Windows launched the private
+Unicode/space exe but returned no handle (2Qtpass/1fail); the macOS lifetime
+regression left the error-returned handle unclosed (7Qtpass/1fail). Related
+prepared regression scaffolding was reviewed and adapted in an owned isolated
+checkout; original files/worktree remained untouched. Final fixtures initialize
+the disk source path, load the exact official codec through its public backend
+API, and use saved source pane state and normal startup isolation. Unexpected
+dialogs fail the archive case after cancellation instead of hanging the suite.
+These fixture corrections do not weaken native desktop exposure assertions.
+
+| Current validation | Result |
+| --- | --- |
+| macOS arm64 Qt6.12 full unsandboxed format/build/default gate |321/321,224.72s;304Qt suites5075pass/0fail/56Windows-NTFS skips|
+| macOS final CMake selection and launch/lifetime/temp consumers |4/4,3.25s|
+| Ubuntu24.04.5 x64 Qt6.12 direct consumers |7/7,27.22s;119Qtpass/0fail/0skip|
+| Windows11 x64 Qt6.12/MSVC14.44.35207 direct/native consumers |11/11,74.55s;134Qtpass/0fail/0skip|
+| Complete borrowed baseline |412exact/198adapted/3local paths verified at the single recorded pin|
+
+Native Windows cases prove real handle identity/status, disk original-path
+launch, browser protection and archive-copy deletion only after associated
+completion in both panes and EN/RU. Existing no-handle, update, failure,
+cancellation and security consumers pass. No extension registry, account,
+desktop/login or security-policy changes; the private helper is bounded.
+Eleven labeled slow suites remain excluded and unaccepted.
+
+Final Windows snapshot `20261010T181734Z-ef2785e5` matches all1518 frozen/actual
+inputs; source archive SHA256
+`0bd5c0c936c0f3b8337d3abe63ed7674cccd943faa40e4a3dc5084cd07cbdaae`.
+Linux snapshot `20261010T181122Z-4b549739` also matches all1518 actual inputs;
+later test/CMake corrections are Windows-only. All current production inputs
+match the final Windows proof. All eight runtime/SFX inputs per OS match their
+prior verified delivery inputs, including provenance metadata. Initial diagnostic
+runs with missing macOS runtime/SFX fixtures and absent Linux runtime PATH are
+not accepted gates; corrected complete/focused results above supersede them.
+Frozen inputs, runtime hashes, cache/toolchain, LastTest logs, source token proof
+and helper history remain under the isolate's `build/review/native-launch`.
+Temporary runner helper is archived there and removed before commit.
+
+Authorized Linux retention cleanup removed only34 reproducible build outputs
+from two older passed status runs after completion, newest-three and active
+process/reference checks. Source/runtime/logs/cache/reports and the newest three
+runs remained; free bytes1103847424→2459054080. After checks Linux has851156992
+free bytes, Windows11428978688; host storage reports no warnings or VHDX growth.
+No own compiler/CTest remains. Future large Linux builds require retention
+cleanup. No disk/VM changes, upstream edits, push or publication occurred.
+
+Windows desktop_user is still null. This component does not establish exposed
+desktop/physical input, rendered 7zFM parity, current Windows full/cold-stable
+acceptance or clean-OS acceptance. Existing delivery artifacts precede this
+product change and require refresh. P3-03/04/05/06 remain open in the
+[final matrix](ux-port-audit.md#current-final-acceptance-matrix-2026-10-10).
+
 ## P3-03 — Current full Linux gate after status corrections (2026-10-10)
 
 The current product at `67b4f96` (same1480 retained inputs as `38b740a`) passes

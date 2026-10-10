@@ -515,8 +515,7 @@ void CPanel::OpenFolderExternal(unsigned index) {
         path += GetItemRelPath(index);
         path.Add_PathSepar();
     }
-    // OS association without a waitable process handle is the existing narrow
-    // StartApplicationDontWait service; known-process owners remain P1-08.
+    // This disk/folder caller closes any returned native handle without waiting.
     if (_externalFileServices)
         _externalFileServices->StartApplication(prefix, path, GetParent());
     else
@@ -1081,8 +1080,9 @@ void CPanel::OpenItemInArchive(unsigned index, bool tryInternal, bool tryExterna
                                                    *_externalFileServices, _settingsPath, &process)
                             : _externalFileServices->StartApplicationKnown(
                                   fs2us(tempDirNorm), fs2us(tempFilePath), GetParent(), process);
-    // No handle never proves completion of a successful association launch.
-    if (res != S_OK)
+    // Original caller rejects failure only when no process was returned.
+    // A valid handle must retain its file and enter the worker even on error.
+    if (!process && res != S_OK)
         return;
     // The external process can now hold/write the file even if thread creation
     // fails. Preserve it before handing the source record to the native worker.

@@ -1,6 +1,11 @@
 #pragma once
 #include "Common/MyString.h"
 #include "Common/MyVector.h"
+#ifdef _WIN32
+namespace NWindows {
+class CProcess;
+}
+#endif
 
 // CSnapshotProcess copied from 7-Zip PanelItemOpen.cpp, revision
 // 0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17; Igor Pavlov, LGPL-2.1-or-later.
@@ -42,6 +47,9 @@ class QtNativeProcessServices final : public IQtProcessServices {
                      const CRecordVector<UInt32> &roots) override;
     IQtProcessHandle *OpenProcess(UInt32 id) override;
     UInt32 CurrentProcessId() const override;
+#ifdef _WIN32
+    IQtProcessHandle *Adopt(NWindows::CProcess &process);
+#endif
     HRESULT Create(const UString &program, const UString &parameters, const UStringVector &paths,
                    IQtProcessHandle *&process);
 };

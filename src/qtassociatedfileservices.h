@@ -1,4 +1,4 @@
-// Qt OS-association boundary for the source external-open no-handle workflow.
+// OS-association boundary for the source external-open process workflow.
 #pragma once
 #include "CPP/7zip/UI/FileManager/Panel.h"
 #include <QUrl>
@@ -18,6 +18,8 @@ class QtAssociatedFileServices final : public IQtExternalFileServices {
     bool CanHandleExternalUpdate() const override;
     bool RunArchiveUpdate(CPanel &panel, const QtArchiveUpdateBody &body) override;
     HRESULT StartApplication(const UString &dir, const UString &path, QWidget *window) override;
+    HRESULT StartApplicationKnown(const UString &dir, const UString &path, QWidget *window,
+                                  IQtProcessHandle *&process) override;
     HRESULT CreateProcess(const UString &program, const UString &parameters,
                           const UStringVector &paths, QWidget *window) override;
     IQtProcessServices *ProcessServices() override { return &_processServices; }
