@@ -24,7 +24,7 @@
 | Извлечение ресурсов и resource-to-widget comparison | [UI reference tooling](ui-reference.md) |
 | Сбор настоящего Windows runtime reference | [Windows reference](windows-ui-reference.md) |
 | Общие Windows/Linux runners, transport и snapshot checks | [Hyper-V runners](hyperv-runners.md) |
-| CI jobs, pinned tools/runtime, диагностика и границы native acceptance | [CI](ci.md) |
+| Локальные runtime artifacts, scope CI и границы native acceptance | [CI scope](ci.md) |
 | Локальная память, проверка старых свидетельств и handoff | [Memory protocol](agent-memory.md) |
 
 Skills в `.agents/skills/` содержат профильные приёмы и ссылки на эти правила.

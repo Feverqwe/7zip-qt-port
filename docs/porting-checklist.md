@@ -4,6 +4,19 @@
 Готовый запрос агенту: [porting-chat-prompt.md](porting-chat-prompt.md).
 Исходная дата: 2026-09-28. Это список **оставшейся** работы, не оценка MVP с нуля.
 
+P3-04,2026-10-10: fresh Release runtime packages at9731b16 pass relocated
+7zG/engine ZIP+7z byte/error/missing-module consumers: Mac15/15, Linux14/14,
+Windows localized14/14 after two private-helper failures. Linux also proves
+packaged7zFM archive title/ownPID and unchanged ZIP. All1453 guest inputs and
+complete runtime/license payloads are verified; retained1450 product inputs
+are unchanged. [Package receipt](upstream-port-audit.md#p3-04--three-platform-runtime-package-relocation-2026-10-10).
+Native/desktop prerequisite and final acceptance remain open;43/47 unchanged.
+
+P3-03,2026-10-10: пользователь подтвердил сохранение удаления GitHub workflow
+из `96daee8de9f82374a4548e6dff2bd47a6fe5a891`. Hosted CI не восстанавливается;
+обязательные локальные/runner и native проверки трёх ОС остаются в scope.
+[Текущая граница CI и упаковки](ci.md); P3-03 остаётся открытым до native приёмки.
+
 P3-05,2026-10-10: original native PanelDrag protocol, source middle-button/root
 policy and complete body/dependency disposition are restored with shared source
 lifetime and Qt-native MIME ownership. Mac full320/320 and focused16/16 pass;

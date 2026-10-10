@@ -1,5 +1,72 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-04 — three-platform runtime package relocation (2026-10-10)
+
+Product parent `9731b168cb2fcda0bb39232c9f7e1ab2ef500717`, Qt6.12.0 and official
+7-Zip26.03 from https://github.com/ip7z/7zip.git at
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. Fresh Release builds use
+BUILD_TESTING=OFF, existing CMake deployment and scripts/package.py; no source,
+format algorithm, runtime builder, package script or toolchain is changed.
+Exact Qt/ICU private license inputs are reused with their existing pinned hashes.
+GitHub workflow deletion remains by the user's explicit decision; current
+[CI scope](ci.md) and the plan now describe that absence accurately.
+
+| Platform | Runtime archive bytes | Relocated consumers |
+| --- | --- | --- |
+| macOS arm64, native Cocoa | 12,512,036 ZIP | 15/15 PASS, including deep/strict ad-hoc signature |
+| Linux x64, X11/Xvfb | 34,189,622 tar.gz | 14/14 PASS; additional packaged File Manager opens Unicode ZIP |
+| Windows11 x64, native windows Qt platform | 28,502,627 ZIP | 14/14 PASS after private-helper corrections |
+
+Archive SHA-256 values, respectively:
+`08c9eab62bfd59253f4be4736f11ad96b380eb3127c96c39b1dee33b8755c070`,
+`91f22f56dafe4014e784d4c3d2569550ff3b8e8e413925dba77fac0534a47aaf`,
+`c7b4e02d7e9de26f48d9c221f0d033ec339a6d755922b6f66a178449dc04deba`.
+Every platform runs the packaged original7zG dispatcher and bundled engine with
+fresh private home/settings, package/system paths and removed Qt/codec/loader
+overrides. ZIP/7z Create/List/Test/Extract preserve exact4864-byte Unicode/space
+and empty inputs. Broken archive and missing module return fatal2. These are
+existing-host relocation checks, not a separate clean OS image or physical-input
+acceptance. Linux's separate private DBus/Xvfb observer matches the archive title
+and _NET_WM_PID to its own packaged7zFM process, then verifies unchanged ZIP bytes.
+No rendered Windows reference, native Windows/macOS FM-window observation or
+desktop registration is claimed by these package checks.
+
+All three payloads contain the exact own-code LICENSE and all38 Qt license files
+from the checksum-verified matching archive, with no source/build/development
+suffixes. Original engine license is present; Windows includes imported CRT DLLs
+and Microsoft redistributable notices. Qt deployment supplies its runtime/plugins;
+macOS binaries are thinned/stripped and signed inside out, with the packaged SFX
+sidecar refreshed by the existing script. Runtime/source provenance is recorded
+separately from these packaging transformations.
+
+Guest snapshot `20261010T085547Z-dd11f05a`, source.tar SHA-256
+`06bf37af620387af027ef6f0cacdaa03886de585b8cf0fde6ec35a034a4f3597`:
+all1453 frozen inputs match the archive and both actual guest trees. Three inputs
+are temporary check scripts, removed before committing; retained1450 product/
+test/build/resource inputs are identical to the accepted9731b16 component.
+Actual guest Release caches, PackageInfo and complete eight-file runtime/metadata
+proofs are retained. Source repository/revision and declared binary hashes match
+their runtime inputs; macOS runtime inputs are the complete accepted eight files.
+
+The initial Windows build/install/package succeeds, but its smoke helper fails
+before launching an application: converting os.environ to a dict loses the
+case-insensitive SystemRoot lookup. A private helper reads the original mapping;
+its first retry then exposes Python ZIP extraction MAX_PATH at the deep evidence
+directory. The final retry uses a shorter private project path, preserving Unicode,
+all assertions and40s operation deadlines. The package bytes and product are
+unchanged; both failures and the final14-pass receipt remain recorded. The original
+runner status stays failed, with the successful localized smoke reported separately.
+
+Authenticated capacity/process preflight found no active compiler/CTest processes;
+existing guests and private project paths were reused. Host-storage before/after
+reports have no warnings or VHDX growth. No disk, account, policy, association,
+upstream or publication changes occurred. Eleven slow suites were not run;
+unchanged product retains its preceding full/default and focused gate evidence.
+Evidence: isolated build/review/runtime-package-acceptance source/runtime/package
+proofs, downloaded archives, license summary, failure/final logs and smoke JSON.
+P3-03 native/desktop, remaining source reconciliation and final acceptance remain
+open; these artifacts do not close P3-04's outstanding prerequisite acceptance.
+
 ## P3-05 — original native PanelDrag protocol and Qt consumers (2026-10-10)
 
 Source https://github.com/ip7z/7zip.git, full revision

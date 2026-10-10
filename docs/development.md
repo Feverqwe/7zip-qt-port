@@ -90,8 +90,8 @@ brew install cmake ninja qtbase sevenzip clang-format
 On Linux, install CMake, Ninja, Qt 6 base development files, clang-format,
 pkg-config and GLib/GIO development files (`libglib2.0-dev` on Ubuntu). The native
 association adapter links `gio-unix-2.0`. On Windows, use a Qt 6 Widgets kit plus
-CMake, Ninja, and a C++17 compiler. The configured native Windows CI job uses
-MSVC2022/Qt6.12.0 kit; see [CI builds and artifacts](ci.md). Point
+CMake, Ninja, and a C++17 compiler. The shared Windows runner uses the
+MSVC2022/Qt6.12.0 kit; see [runtime artifacts and CI scope](ci.md). Point
 `CMAKE_PREFIX_PATH` to Qt when CMake cannot locate it.
 
 ## Local commands
@@ -106,7 +106,8 @@ local builds default to OFF. For debugger work, rebuild the affected test with
 `SEVENZIP_COMPACT_TEST_BINARIES=OFF ./scripts/build.sh dev <target>` in the same
 snapshot/toolchain. The option does not delete artifacts from older builds.
 
-CI uses Release builds with testing disabled; local checks remain unchanged.
+Runtime packages use Release builds with testing disabled; local checks remain
+unchanged. GitHub CI is absent by user decision; see [CI scope](ci.md).
 To package an existing Release build, run `python3 scripts/package.py
 --qt-source <matching-qtbase.tar.xz> --qt-sha256 <checksum-file>`; add
 `--icu-license <license-file>` if the deployed Qt kit uses ICU. The script uses
