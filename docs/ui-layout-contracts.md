@@ -116,6 +116,20 @@ source rows; pending initial focus cannot change projection during peer Create.
 Source FM.cpp::MoveSubWindows fixes panel0 on the left and panel1 on the right,
 including archive-first and late creation from an initially single right panel.
 
+### Source startup window placement (P3-05.16)
+
+FM.cpp::InitInstance restores a valid saved normal rectangle and maximized flag
+before the caller exposes the window. Missing or malformed Position leaves the
+default rectangle; Panels is admitted independently, with source panel-count and
+focus defaults. Construction itself stays hidden under the QWidget lifecycle.
+Close saves the normal rectangle while maximized; the next launch replays it.
+
+`window_placement` covers980×620/640×400 normal rectangles, normal/maximized
+startup, one/two panels, focused pane, splitter publication, Close and restart.
+Current JSON checks the visible panel and its controls on each launch. Qt uses
+logical client coordinates and native frame/handle/content minimums; a native
+rendered Windows reference remains required for frame and pixel parity.
+
 ### Source Copy/Move destination (P3-05.15, required scope)
 
 Copy history values follow source UStringVector/IsEqualTo_NoCase, retaining

@@ -112,6 +112,77 @@ follow-up uses skip-runtime because it performs no engine operations; the earlie
 19-consumer run provides the runtime/SFX coverage. Final merged macOS browser
 follow-up passes1/1 in0.68s,16Qt/0fail/0skip.
 
+## P3-05.16 — Source InitInstance window placement (2026-10-10)
+
+Source repository https://github.com/ip7z/7zip.git, revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. Original FM.cpp InitInstance,
+WinMain2 caller, WM_CREATE, SaveWindowInfo, WM_SIZE and CSplitterPos were read
+with current FM/MainWindow/entry/close/presentation consumers and CWindowInfo
+records. Original/current CApp::Create and Save bodies were also compared.
+FM resource.rc identifies IDM_MENU and IDI_ICON; no resource layout is changed.
+
+The active InitInstance settings/create/show/placement body is restored in its
+original source module. It retains missing-position defaults, rectangle extents,
+independent panel-record admission/defaults, splitter transport, CApp panel/focus
+assignment before creation, creation refusal, Normal/Show/Default saved-maximized
+policy, explicit show-command preservation and GetPlacement/Show fallback.
+Per-window service arguments replace process globals. Qt metadata/widget/menu
+construction replaces WNDCLASS/RegisterClass/CreateWindow; commented theme/
+single-instance experiments and unsupported CE branches remain inactive scope.
+
+The narrow Qt service calls the existing CApp creation workflow, applies source
+geometry and sets window state before its caller exposes the widget. Construction
+stays hidden; RunSevenzipFileManager still owns show/event-loop timing. Qt logical
+client coordinates replace Win32 workspace/frame coordinates in this app's own
+INI; no import of Windows registry or physical pixel coordinates is introduced.
+QWidget state replaces g_Maximized and the existing close owner saves normalGeometry
+and isMaximized. QSplitter retains native Qt handle widths and content minimums;
+this receipt does not establish full FM splitter/resize-handler source disposition.
+
+Actual old-product public-window RED: four normal/compact/maximized scenarios
+ignore the saved rectangle (2Qt pass/4fail,0.55s). They now restore hidden-window
+geometry/state, panel count/focus, normal/maximized close and restart, source
+records, splitter publication and protected disposable bytes. Direct source-service
+tests cover six show policies plus missing/malformed position, invalid panel
+fields, creation refusal and placement fallback. Initial related six-consumer run
+exposed two old panel-key fixtures writing a zero-sized Position while expecting
+980×620; those fixtures now explicitly store their intended rectangle, with all
+splitter assertions retained. Updated focused six pass5.05s,111Qt/0fail/0skip.
+
+Required unsandboxed macOS arm64 Qt6.12 gate passes formatting/all-target build
+and312/312 CTest in259.88s,4905Qt/0fail/18 existing platform skips. Frozen source
+snapshot `20261010T013122Z-9ed912cf`, SHA256
+`b167272d2ad44d68259b082191f1455f9ed2eff640bd602bfabcf690e6a7373d`:
+Linux9/9 passes13.31s,134Qt/0fail/0skip. Windows8/9 in80.08s,127Qt/2fail/0skip;
+window_placement itself passes all13 cases, including actual window state and
+geometry. The only failing suite is file_manager_startup: its two actual separate
+7zFM.exe success/refusal rows cannot find their expected visible native window.
+
+The unchanged external-process fixture also fails identically against the
+previous293a826 product (9Qt pass/2fail). Original guest evidence is archived
+before this controlled comparison. All four temporarily replaced startup-source
+files are restored, their bytes checked and their timestamps advanced to force
+recompilation after the baseline build. Rebuilt current window_placement and
+file_manager_startup yield22Qt pass/2 same failures. Thus this is a pre-existing
+native caller failure, not introduced by InitInstance restoration; its cause is
+not established by these session0 checks. Active-desktop/cold-stable native caller
+acceptance and root-cause confirmation remain mandatory P3-03/P3-05 work.
+
+All1427 frozen source/test/build/resource/script inputs match source.tar, isolated
+local and actual guests, with a second exact check after restoring diagnostic
+inputs. Eight current geometry JSON per OS (24 total) have no clipping or status
+elision exceptions. The temporary task wrapper is archived/removed; all1426
+retained isolated inputs match the frozen manifest. The subsequently accepted
+path-dialog commit97e7194 is preserved in the primary checkout; its combined
+source inputs and the owned window changes are checked separately before commit.
+The combined macOS build and11 direct window/path-dialog consumers pass7.12s,
+162Qt/0fail/0skip, with exact combined-input hashes.
+Baseline408exact/196adapted/3local
+passes; storage monitoring reports no warnings or disk-size changes. Evidence:
+build/review/filemanager-final/window-placement-*. Eleven slow suites excluded.
+Implementation is verified on3OS; external-process/rendered/package/final
+acceptance and full FM family disposition remain open.
+
 ## P3-05 — ViewSettings and source Copy history (2026-10-10)
 
 Source repository https://github.com/ip7z/7zip.git, full revision
@@ -177,8 +248,11 @@ have no clipping. The temporary task wrapper is archived/removed;1423 retained
 inputs match the primary checkout. Baseline verifies408exact/196adapted/3local.
 Evidence: build/review/filemanager-final/viewsettings-*.
 
-Complete ViewSettings serialization does not establish the omitted FM InitInstance
-placement consumer: MainWindow currently reads Position but applies only Panels.
+At this component's acceptance, complete ViewSettings serialization did not
+establish the omitted FM InitInstance placement consumer: MainWindow read Position
+but applied only Panels. The subsequent
+[P3-05.16 receipt](#p3-0516--source-initinstance-window-placement-2026-10-10)
+supersedes that implementation gap, with its own validation limits.
 Original WinMain2→InitInstance read/create/normal/maximized workflow and
 SaveWindowInfo were reviewed; mandatory P3-05.16 records its separate startup/
 restart scenario. Remaining FileManager, native/rendered, package and final

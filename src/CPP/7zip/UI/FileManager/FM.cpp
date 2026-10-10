@@ -3,7 +3,8 @@
 // Partial port: WM_CLOSE, WM_COMMAND/toolbar dispatch and IsLargePageSupported.
 // WinMain exception policy, WinMain2's active command-line body and WM_CREATE
 // path/refusal flow are also ported. Qt/CApp services own widget construction,
-// the event loop and per-window cleanup; window placement retains its plan owner.
+// the event loop and per-window cleanup. InitInstance retains source placement
+// and panel settings flow through narrow Qt window services.
 #include "7zip/UI/FileManager/StringUtils.h"
 #include "7zip/UI/GUI/ExtractRes.h"
 #include "App.h"
@@ -17,6 +18,7 @@
 #include "Windows/FileFind.h"
 #include "Windows/FileName.h"
 #include "qtfilemanagercommandservices.h"
+#include "qtfilemanagerinitservices.h"
 #include "qtfilemanagerstartup.h"
 #include "qtfilemanagerwindowservices.h"
 #include "qtlinkservices.h"
@@ -31,6 +33,59 @@ static void ErrorMessage(const wchar_t *s) {
 }
 
 static void ErrorMessage(const char *s) { ErrorMessage(GetUnicodeString(s)); }
+
+bool NQtFileManager::InitInstance(int nCmdShow, CApp &g_App, IQtFileManagerInitServices &wnd,
+                                  const QString &settingsPath) {
+    // Qt registers its QWidget class and constructs menus/icons with CApp.
+    // Original Win32 class/style setup and inactive theme experiments are
+    // presentation services; the active settings/create/placement flow follows.
+    static const int kNumDefaultPanels = 1;
+    CWindowInfo info;
+    info.maximized = false;
+    int x, y, xSize, ySize;
+    x = y = xSize = ySize = WindowUseDefault;
+    bool windowPosIsRead, g_PanelsInfoDefined;
+    info.Read(windowPosIsRead, g_PanelsInfoDefined, settingsPath);
+    if (windowPosIsRead) {
+        x = info.rect.left;
+        y = info.rect.top;
+        xSize = info.rect.right - info.rect.left;
+        ySize = info.rect.bottom - info.rect.top;
+    }
+    UInt32 g_SplitterPos = 0;
+    if (g_PanelsInfoDefined) {
+        g_SplitterPos = info.splitterPos;
+        if (info.numPanels < 1 || info.numPanels > 2)
+            info.numPanels = kNumDefaultPanels;
+        if (info.currentPanel >= 2)
+            info.currentPanel = 0;
+    } else {
+        info.numPanels = kNumDefaultPanels;
+        info.currentPanel = 0;
+    }
+    g_App.NumPanels = info.numPanels;
+    g_App.LastFocusedPanel = info.currentPanel;
+    if (!wnd.Create(x, y, xSize, ySize, g_PanelsInfoDefined, g_SplitterPos))
+        return false;
+
+    if (nCmdShow == NShowCommand::Normal || nCmdShow == NShowCommand::Show ||
+        nCmdShow == NShowCommand::Default) {
+        if (info.maximized)
+            nCmdShow = NShowCommand::Maximized;
+        else
+            nCmdShow = NShowCommand::Normal;
+    }
+    // QWidget state replaces g_Maximized; SaveWindowInfo queries isMaximized.
+    QtFileManagerPlacement placement;
+    if (wnd.GetPlacement(placement)) {
+        if (windowPosIsRead)
+            placement.normalPosition = info.rect;
+        placement.showCmd = (unsigned)nCmdShow;
+        wnd.SetPlacement(placement);
+    } else
+        wnd.Show(nCmdShow);
+    return true;
+}
 
 int NQtFileManager::WinMain(const std::function<int()> &main2) {
     // Original WinMain exception/exit policy. CApp's per-window RAII release

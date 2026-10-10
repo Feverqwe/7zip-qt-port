@@ -422,6 +422,7 @@ class PanelKeyTests final : public QObject, protected MainWindowTestSupport {
         modes.Panels[1] = 3;
         modes.Save(settings);
         CWindowInfo saved{};
+        saved.rect = {0, 0, 980, 620};
         saved.numPanels = 2;
         saved.currentPanel = 1;
         saved.splitterPos = 300;
@@ -484,6 +485,7 @@ class PanelKeyTests final : public QObject, protected MainWindowTestSupport {
         SavePanelPath(0, ToUString(left), settings);
         SavePanelPath(1, ToUString(right), settings);
         CWindowInfo saved{};
+        saved.rect = {0, 0, 980, 620};
         saved.numPanels = 1;
         saved.currentPanel = 1;
         saved.splitterPos = 390;

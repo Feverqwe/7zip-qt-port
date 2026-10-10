@@ -28,17 +28,6 @@ MainWindow::MainWindow(ArchiveBackend *backend, std::function<bool(const QUrl &)
     ReloadLang(toolbarSettingsPath());
     setWindowTitle("Sevenzip Desktop");
     resize(980, 620);
-    CWindowInfo windowInfo{};
-    bool windowPositionDefined = false;
-    bool panelsDefined = false;
-    windowInfo.Read(windowPositionDefined, panelsDefined, toolbarSettingsPath());
-    app_.NumPanels =
-        panelsDefined && windowInfo.numPanels >= 1 && windowInfo.numPanels <= kNumPanelsMax
-            ? windowInfo.numPanels
-            : 1;
-    app_.LastFocusedPanel =
-        panelsDefined && windowInfo.currentPanel < kNumPanelsMax ? windowInfo.currentPanel : 0;
-    splitterPos_ = panelsDefined ? static_cast<int>(windowInfo.splitterPos) : width() / 2;
     folderManager_ = new QtArchiveFolderManager(*backend_);
     associatedFileServices_ = std::make_unique<QtAssociatedFileServices>(
         fileOpener_,
@@ -62,6 +51,20 @@ MainWindow::MainWindow(ArchiveBackend *backend, std::function<bool(const QUrl &)
     g_Timestamp_Show_UTC = viewSettings.value(QStringLiteral("view/timestampUTC"), false).toBool();
     app_.AutoRefresh_Mode = viewSettings.value(QStringLiteral("view/autoRefresh"), true).toBool();
     app_.SetPanels_AutoRefresh_Mode();
+    initializeFileManagerWindow(startup);
+    connect(backend_, &ArchiveBackend::codecCatalogReady, this,
+            [this](bool, const QString &message) {
+                refreshActions();
+                if (!message.isEmpty())
+                    statusBar()->showMessage(message);
+            });
+    if (!backend) {
+        backend_->discoverCodecCatalog();
+    }
+}
+
+void MainWindow::createFileManagerWindow(const QtFileManagerStartup *startup, bool panelsDefined) {
+    const unsigned focusedPanel = app_.LastFocusedPanel;
     appPresentation_ = std::make_unique<QtAppPresentation>(*this);
     connectFilesystemScanner();
     COpenResult opened;
@@ -86,8 +89,6 @@ MainWindow::MainWindow(ArchiveBackend *backend, std::function<bool(const QUrl &)
                 redrawSourceProperties();
         });
     installEventFilter(this);
-    const unsigned focusedPanel =
-        panelsDefined && windowInfo.currentPanel < kNumPanelsMax ? windowInfo.currentPanel : 0;
     if (focusedPanel != projectedPanel_)
         activatePanelUi(focusedPanel);
     app_.SetFocusedPanel(focusedPanel);
@@ -107,15 +108,6 @@ MainWindow::MainWindow(ArchiveBackend *backend, std::function<bool(const QUrl &)
     refreshActions();
     connectBackend();
     reloadLangItems();
-    connect(backend_, &ArchiveBackend::codecCatalogReady, this,
-            [this](bool, const QString &message) {
-                refreshActions();
-                if (!message.isEmpty())
-                    statusBar()->showMessage(message);
-            });
-    if (!backend) {
-        backend_->discoverCodecCatalog();
-    }
 }
 
 void MainWindow::connectFilesystemScanner() {

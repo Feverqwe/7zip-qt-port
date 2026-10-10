@@ -105,6 +105,9 @@ class MainWindow : public QMainWindow {
     friend class QtFileManagerShellMenu;
     friend class QtProgramFileMenu;
     friend class QtPanelContextMenu;
+    friend class QtFileManagerInitServices;
+    void initializeFileManagerWindow(const QtFileManagerStartup *startup);
+    void createFileManagerWindow(const QtFileManagerStartup *startup, bool panelsDefined);
     HRESULT openArchiveAs(const QString &path, const QString &type);
     void closeEvent(QCloseEvent *event) override;
     void changeEvent(QEvent *event) override;

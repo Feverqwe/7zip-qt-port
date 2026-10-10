@@ -24,6 +24,18 @@ accessible button names, полный путь в подсказке и лока
 BrowseDialog.rc/Res; EN/RU geometry — 560×640 и 420×400. Rendered Windows
 reference и native desktop acceptance этим не установлены.
 
+## Source startup placement (P3-05.16, 2026-10-10)
+
+Сохранённый normal rectangle и maximized flag теперь применяет исходный
+FM.cpp::InitInstance. Проверяются закрытие и повторный запуск, одна/две панели,
+фокус и разделитель. Qt-конструктор остаётся скрытым до show вызывающего кода;
+INI хранит логические координаты клиентской области Qt. Это необходимая
+адаптация Win32 frame/workspace placement, без импорта системного registry.
+Все13 window-placement cases и8 geometry JSON проходят на каждой из3ОС.
+Два Windows external-process startup failure воспроизводятся и на прежнем коде;
+их причина, native rendered и итоговая приёмка остаются открыты.
+[Receipt](upstream-port-audit.md#p3-0516--source-initinstance-window-placement-2026-10-10).
+
 ## Source Copy history (P3-05, 2026-10-10)
 
 История Copy/Move снова использует исходные UStringVector и IsEqualTo_NoCase,

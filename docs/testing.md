@@ -15,6 +15,13 @@ and Save of an existing name returns without a second overwrite prompt or
 changing bytes. Both preserve process cwd. These rows fail when the previous
 Qt ExistingFile/overwrite-confirmation policy is restored.
 
+`window_placement` checks original InitInstance policy through its public typed
+window-service boundary, including creation refusal and placement fallback.
+Actual hidden MainWindow construction, normal/maximized show, one/two panels,
+focus, splitter persistence and Close/restart use disposable settings/files;
+980×620/640×400 geometry reports accompany each launch. Source binary encoding
+and malformed-record rejection remain covered by `window_info`.
+
 `copy_dialog` verifies source Copy history case policy, stored ordering and
 reloaded combo items: K retains the source-distinct Kelvin symbol K while all
 ordinary K/k variants are removed. `app_copy_routing` exercises real CApp dialog

@@ -1701,8 +1701,12 @@ destination history through QSettings. Its original UStringVector interfaces and
 IsEqualTo_NoCase/Delete/Insert algorithm own comparison and ordering; CApp retains
 the20-entry limit. QStringList is used only for settings storage and the Copy
 dialog presentation boundary. Source-distinct K/K history values survive reopen.
-Window Position serialization is complete, but its omitted source InitInstance
-startup/normal/maximized consumer remains mandatory P3-05.16.
+Source FM.cpp::InitInstance owns Position/Panels admission, creation ordering and
+normal/maximized show policy. IQtFileManagerInitServices supplies widget geometry,
+creation and placement transport; MainWindow construction remains hidden until
+the entry caller calls show. QWidget logical client coordinates/state replace
+Win32 frame/workspace coordinates and g_Maximized. The existing close owner
+saves normalGeometry/isMaximized; P3-05.16 tracks its current platform acceptance.
 QtPanelContextMenu destroys its popup/CallScope before refreshing cached QAction
 availability, so native focus events under temporary source guards cannot leave
 commands disabled after Cancel. Source menu admission remains authoritative.

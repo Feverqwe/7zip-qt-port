@@ -10,7 +10,7 @@ MyString/Vector types remain source dependencies, with their original linkage.
 | Original body family | Source owner and adapter/caller disposition |
 | --- | --- |
 | CColumnInfo/CListViewInfo constructors, Clear/IsEqual, Save/Read | Original version1, header/column sizes, byte order, sort/direction/visibility/width serialization and validation/control flow retained. QSettings QByteArray replaces REG_BINARY; hex-encoded UTF-8 folder-type IDs escape INI key syntax. PanelItems SaveListViewInfo/InitColumns consume the same records. |
-| CWindowInfo Save/Read, QueryBuf | Original20-byte signed rectangle/maximized and12-byte panel/current/splitter records retained; CWindowRect replaces32-bit Win32 RECT fields. MainWindow close saves Qt normal geometry. Startup applies panel fields but currently omits position/maximized replay; this is mandatory P3-05.16, not N/A. |
+| CWindowInfo Save/Read, QueryBuf | Original20-byte signed rectangle/maximized and12-byte panel/current/splitter records retained; CWindowRect replaces32-bit Win32 RECT fields. MainWindow close saves Qt normal geometry. Source InitInstance now owns position/maximized replay and panel admission through typed Qt services; P3-05.16 platform acceptance remains open. |
 | SaveUi32Val/ReadUi32Val, Save/ReadToolbarsMask | QSettings scalar transport replaces private registry helpers, with DWORD range validation and original bit31/default1+4+8 mask. Source App Read/SaveToolbar and Qt legacy-key migration/presentation own consumers. |
 | CListMode Init/Save/Read | Original default Report and two packed eight-bit fields retained; source App Create/Save and Qt setViewMode consume them. |
 | GetPanelPathName, Save/ReadPanelPath | Original PanelPath+decimal-index naming and missing-value refusal retained. Source CreateOnePanel and Save own path/outer-archive decisions; Qt supplies INI string transport. |
@@ -19,8 +19,9 @@ MyString/Vector types remain source dependencies, with their original linkage.
 | Registry paths, g_CS, inactive structs/FindColumnWithID | HKCU/CKey become explicit INI paths. Actual consumers run on the GUI thread, so Win32 critical-section state is replaced by that confinement. Commented sample record structs and unused FindColumnWithID have no active upstream body. |
 
 Existing source settings/column/runtime/persisted-location consumers retain
-malformed-data, independent folder-type and restart coverage. The missing
-InitInstance position/maximized consumer remains explicitly mandatory.
+malformed-data, independent folder-type and restart coverage. The source
+InitInstance position/maximized consumer and its platform acceptance are tracked
+under [P3-05.16](upstream-port-audit.md#p3-0516--source-initinstance-window-placement-2026-10-10).
 
 ## PanelOperations complete body/caller disposition (2026-10-10)
 
