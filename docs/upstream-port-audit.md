@@ -1,5 +1,68 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-04 — Delivery after native launcher restoration (2026-10-10)
+
+Fresh Qt6.12 Release/BUILD_TESTING=OFF packages contain product `8d56d8d`,
+including the restored native association launcher. All1482 retained product
+inputs remain unchanged. No new borrowed source, production/test/build-tool
+change or engine rebuild belongs to this delivery iteration. Each OS reuses
+its exact eight verified runtime/SFX inputs and provenance metadata from the
+preceding delivery. The upstream repository is https://github.com/ip7z/7zip.git,
+full pin `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`; upstream stayed read-only.
+
+| Local artifact | Bytes | SHA256 | Relocation scenarios |
+| --- | ---: | --- | ---: |
+| macOS arm64 ZIP |12513726|`7a9bd60f0c7d3e76e3aba1f03e8180266650e1f3d296104ff55ece61907168c9`|15/15|
+| Linux x64 TAR.GZ |34193235|`306a7c7d88f6844343f0feda71ffc505bdebbe0bb6fa3e1d6f60c06edb4ec6c6`|14/14|
+| Windows x64 ZIP |28509053|`13f31a2148487f7c41b9f5002f63f5d8efd0fefd4817e88f6d2dd05f16bd11af`|14/14|
+
+Sanitized relocated 7zG Create/Test/Extract and engine List cover ZIP/7z,
+Unicode/spaces, exact nonempty/empty bytes, broken archives and missing codec.
+All three payloads pass the existing validator:38 exact Qt licenses,
+project/engine notices, applicable ICU notice, SFX checksum/provenance and no
+development/test payload. Windows contains five VC CRT DLLs with redistribution
+notice. Mac deep/strict ad-hoc signature passes. The initial Mac build missed
+Objective-C++ standard headers; the build-wrapper's SDK header fallback fixes
+the environment. Sandbox Cocoa pasteboard/XPC failure is superseded by the
+passing ordinary unsandboxed CLI smoke; no Computer Use automation was attempted.
+
+Current binary inspection resolves11 Mach-O objects/157 load edges inside the
+bundle or Apple system namespaces. All26 PE objects have344 normal imports,
+84 bundled/260 external and no delay imports. A fresh SYSTEM32-search probe
+resolves55 external names to43 hashed/versioned System32/WinSxS files on
+Windows11 Pro10.0.26300. This is dependency evidence, not a live app module list
+or arbitrary dynamic-load/other-OS proof. Desktop user remains null.
+
+The current Linux artifact passes15/15 isolated FROM scratch scenarios in3.703s,
+including noexec-temp refusal/private TMPDIR recovery and cleanup. The guest
+kernel remains6.8.0-142-generic and private Xvfb stays outside the rootfs.
+All115 public OS dependency/config/font inputs are manifested; no host Qt,
+SDK/toolchain/home or network is supplied. Actual exported positive/negative
+images match234/233 files, differing only in app/bin/7z.so. Image IDs:
+`9170d0f8f4da227d53e95f97278c007b264492278d038a0331f545a5526def0f`
+and `1ffb425425a559a61c797fa113785580a544cdfa5ab526add511015707d2fd36`.
+Own runtime/proof containers are removed; review images remain.
+
+Package snapshot `20261010T183600Z-ee406a4c` matches all1520 archive/guest inputs,
+archive SHA256 `17c29c9a8223854ef8beb1478cece03e257d421ec8cfe44ecce018116ee50c6e`.
+Isolated-runtime snapshot `20261010T184019Z-0dafa96f` matches all1522 inputs,
+archive SHA256 `0001fc76c0331e3e27adb59c6a572a026c6433af31d8ed4add531aa6953b20cb`.
+Counts include upstream.bundle and three/five temporary validators respectively.
+Validators are archived in evidence and removed before commit. Artifacts and
+proofs live in `/private/tmp/sevenzip-delivery-8d56d8d/build/review/`
+(`current-packages`, `clean-runtime`); Mac ZIP lives under build/packages.
+
+Authorized retention cleanup removed1411 object files from older passed run
+`20261010T162154Z-bc318058` after metadata, newest-three and process/reference
+checks. Source/runtime/binaries/Testing/cache/reports remained; free bytes
+851128320→2893758464. Final free bytes:Linux2119315456, Windows11241959424;
+host storage has no warnings or VHDX growth. No own compiler/CTest remains.
+No disk/VM configuration, registration/account/policy, upstream, push or
+publication action occurred. The unchanged product's current Mac full gate is
+not repeated; eleven slow suites remain excluded. Clean-OS/native/rendered,
+current Linux/Windows full and cold-stable Windows acceptance stay open in the
+[matrix](ux-port-audit.md#current-final-acceptance-matrix-2026-10-10).
+
 ## P3-05 — Native associated launcher and process lifetime (2026-10-10)
 
 The connected native launcher scenario is restored from

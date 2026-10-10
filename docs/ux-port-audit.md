@@ -2,7 +2,7 @@
 
 ## Current final acceptance matrix (2026-10-10)
 
-Матрица различает текущий native launcher component и прежние full/package/native receipts.
+Матрица различает текущие native launcher и delivery components и прежние full/native receipts.
 Checked означает только названную
 проверку; partial/unverified не дают итоговой приёмки P3-06.
 [Текущий launcher, логи, входы и ограничения](upstream-port-audit.md#p3-05--native-associated-launcher-and-process-lifetime-2026-10-10);
@@ -16,15 +16,15 @@ Checked означает только названную
 | Нативные dialogs/shortcuts/icons/drag/registration/FS | partial: историческая ручная Finder-проверка принята отдельно; текущий полный native обход не проверен | partial: Unix FS проверен; native desktop/physical drag не проверены | partial: прежние scoped native receipts сохранены; текущий interactive desktop недоступен |
 | Наблюдение текущего приложения через Computer Use | unverified: доступ к Sevenzip Desktop не одобрен | unverified: не выполнялось | unverified: нет активного runner logon |
 | Сверка с отрисованным Windows 7zFM того же pin | unverified: нет полного rendered reference | unverified: нет полного rendered reference | partial: исторический System menu; полный текущий rendered audit не принят |
-| Runtime packages и чистая ОС | partial: prior38b740a Release/relocation15/15, notices/signature,11 Mach-O import review; launcher refresh required; clean OS unverified | partial: prior38b740a Release/relocation14/14; isolated userspace15/15 без SDK/host Qt, actual image hashes checked; launcher refresh required; отдельный desktop/kernel unverified | partial: prior38b740a Release/relocation14/14, CRT/notices,26 PE import review/system resolution; launcher refresh required; clean OS unverified |
+| Runtime packages и чистая ОС | partial: current8d56d8d Release/relocation15/15, notices/signature,11 Mach-O import review; clean OS unverified | partial: current8d56d8d Release/relocation14/14; isolated userspace15/15 без SDK/host Qt, actual image hashes checked; отдельный desktop/kernel unverified | partial: current8d56d8d Release/relocation14/14, CRT/notices,26 PE import review/system resolution; clean OS unverified |
 | Cold/stable Windows, итоговая трёхплатформенная приёмка | partial: общий gate остаётся открытым | partial: успешный Linux gate не заменяет Windows | unverified: повторения и full gate требуют активного desktop |
 | GitHub CI | N/A по явному решению пользователя сохранить удаление workflow | N/A по тому же решению | N/A по тому же решению |
 
 Slow suites исключены из default gates по AGENTS.md и не объявляются принятыми.
 Текущий source style строк состояния и geometry consumers — в
 [P3-06 receipt](upstream-port-audit.md#p3-06--source-status-bar-style-and-current-geometry-consumers-2026-10-10).
-Предыдущие артефакты и точные границы relocation-проверки — в
-[P3-04 receipt](upstream-port-audit.md#p3-04--refreshed-delivery-after-status-corrections-2026-10-10).
+Текущие артефакты, dependency/rootfs proofs и точные границы relocation-проверки — в
+[P3-04 receipt](upstream-port-audit.md#p3-04--delivery-after-native-launcher-restoration-2026-10-10).
 Linux userspace/rootfs, отсутствие host Qt, missing-module и TMPDIR проверены
 в [isolated runtime receipt](upstream-port-audit.md#p3-04--isolated-linux-runtime-and-temporary-directory-contract-2026-10-10).
 Подробная методика macOS/Windows load commands и системных импортов — в
