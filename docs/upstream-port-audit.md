@@ -113,6 +113,78 @@ Native startup, popup exposure, cold stability and rendered acceptance still
 require the existing interactive runner path. This diagnosis accepts no parent
 P3 package and does not weaken or skip the failing tests.
 
+## P3-05 — Native archive source to NTFS peer acceptance (2026-10-10)
+
+Reference: https://github.com/ip7z/7zip.git, full commit
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. Complete original/current
+Agent/ArchiveFolder.cpp and PanelCopy CPanelCopyThread::ProcessVirt, App::OnCopy
+admission/options/completion and current Agent::Extract were inspected with
+their folder interfaces, native extract callback and Qt command caller.
+ArchiveExtractCallback's existing complete disposition remains in the
+[Common review](omitted-scope-audit.md); this acceptance additionally traces
+Init, current-path removal, output-prefix and metadata phases. Existing
+source paths, C++ bodies, notices and per-module baseline remain unchanged.
+
+The restored peer ADS dispatcher already reaches CAgentFolder::CopyTo and
+Agent::Extract. Original current-path extraction removes the bound nested source
+prefix and preserves the colon destination without appending a directory
+separator. Original AskWrite/Skip/Cancel and native output creation remain the
+owners. Archive Move remains E_NOTIMPL in the original provider; there is no
+delete fallback. The native consumer passed6Qt/0fail/0skip in4.44s, but the
+same nine-suite snapshot exposed four existing ZIP→WIM ADS failures with
+E_NOTIMPL. The Qt colon dispatcher had bypassed App's original useTemp
+classification on Windows. Its narrow predicate now excludes useTemp routes,
+preserving archive-to-archive staging/update/rollback while native NTFS peers
+still reach source CopyTo. Complete executeCopyDestination, transferToArchivePanel
+and transferBetweenArchivePanels bodies/callers were reread with original
+App::OnCopy and CAgentFolder::CopyTo before that correction. The existing
+agent_stream_copy_ui failures provide the regression; assertions remain intact.
+No new class, library or borrowed dependency is introduced. Qt owns presentation;
+widgets do not construct archive-process arguments.
+
+The new public `native_archive_ads_copy` consumer uses official7zz to create an
+owned ZIP and the official native codec module to bind/extract it into actual
+NTFS. Four both-pane/EN-RU rows each perform dialog Cancel, occupied-stream Skip,
+overwrite Cancel, successful F5 and original F6 refusal. Nested Unicode/space
+names, binary-NUL payload, unchanged ZIP/base/control ADS bytes, provider
+identity, selected row, notification restoration and enabled state are checked.
+Normal/compact main and Copy controls reuse CopyDialog.rc and the existing
+[contract](ui-layout-contracts.md#copymove-dialog). Native Qt geometry is separate
+from exposed Windows desktop/rendered7zFM acceptance.
+
+Initial test drafts had a wrong resource include, then a driver that clicked
+progress Close before the source final-error modal returned. The Windows
+new-only snapshot `20261010T044601Z-980cfa8d` reached18reports and timed out at
+60s. Its unchanged log is retained. The corrected driver leaves source progress
+completion to its existing handler and dismisses the actual error message.
+No product policy, assertion or timeout was weakened. This is acceptance of
+an existing source path after the filesystem dispatcher restoration, not a
+claimed old-product regression or whole Agent/Extract rewrite.
+
+macOS arm64 Qt6.12 integrated unsandboxed gate316/316PASS257.74s,
+4972Qt/0fail/56platform skips; after the localized Windows predicate correction,
+nine direct consumers PASS22.55s,144Qt/0fail/19skips. Final Ubuntu24.04 x64
+Qt6.12 nine consumers PASS29.91s; the new Windows-only suite explicitly skips
+on both POSIX platforms. Final Windows11 x64 MSVC/Qt6.12 native widgets pass
+nine consumers94.63s,168Qt/0fail/0skips, including the four previously failing
+ZIP→WIM rows. Eighty final JSON reports (40Copy/40main) cover both panes,
+EN/RU and normal/compact controls; Russian labels fit.
+
+Evidence: isolate `/private/tmp/sevenzip-archive-ads-e428e8b`,
+`build/review/archive-ads/`, on startup commit
+`47bfda191d2512d675f9e70244541828634e3720`. Final Windows snapshot
+`20261010T050032Z-aa553d82`, archive SHA-256
+`9e860b197c1a27bb7a2f5123a07fa191e41fab44d613d446cb3109db6d5ac629`;
+Linux `20261010T050158Z-e95c08ca`, SHA-256
+`16771fe3767890e785e53331f299d262b027b974907dc4d8fc8d9795cb072898`.
+Both archives match1397current product/test/build inputs. Baseline verification
+passes410exact/198adapted/three local paths. The temporary runner wrapper is
+archived as evidence and excluded from the product commit. Hoststorage remains
+OK/no warnings/zero VHDX growth; no disks, login policy or upstream were changed.
+Eleven slow
+suites, devices, live network, rendered/installed/package and final P3
+acceptance remain excluded/open.
+
 ## P3-05 — Filesystem provider Rename and NTFS destination consumers (2026-10-10)
 
 Source https://github.com/ip7z/7zip.git, full commit
@@ -153,8 +225,8 @@ peer-prefix admission, selection/completion and peer reload remain intact.
 Existing staged filesystem transaction, native metadata and link adaptations
 retain their owners; they are not rewritten as part of these missing branches.
 No widget constructs archive-process arguments. Archive-to-NTFS-stream workflows
-are not established by these filesystem-source tests; Agent/Extract retain
-their separate required review and acceptance. Native CAltStreamsFolder import
+are not established by these filesystem-source tests; their separate Agent/Extract
+consumer acceptance is recorded above. Native CAltStreamsFolder import
 E_NOTIMPL is also present in the original, whose alternative is commented out.
 
 Dependencies are existing source MyString/MyVector/FileDir/FileFind/FileIO/

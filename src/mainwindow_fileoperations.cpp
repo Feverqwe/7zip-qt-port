@@ -155,7 +155,8 @@ void MainWindow::executeCopyDestination(bool move, bool copyToSame, unsigned sou
         return;
     bool alternateDestination = false;
 #ifdef _WIN32
-    alternateDestination = NWindows::NFile::NName::IsAltPathPrefix(us2fs(ToUString(destination)));
+    alternateDestination =
+        !useTemp && NWindows::NFile::NName::IsAltPathPrefix(us2fs(ToUString(destination)));
 #endif
     if (streams || devices || alternateDestination) {
         CCopyToOptions options;

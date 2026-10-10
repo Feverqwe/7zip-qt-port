@@ -1694,6 +1694,13 @@ was unavailable and pixel-level parity remains unverified.
 
 ## Copy/Move dialog
 
+`native_archive_ads_copy` applies this same resource contract to a nested ZIP
+source and opened native NTFS-stream peer. Both panes and EN/RU exercise Copy,
+dialog Cancel, occupied-stream Skip/Cancel and original unsupported Move at
+440×250/340×220, with main address/list pairs at980×620/640×400. It introduces
+no new controls; JSON establishes Qt geometry, separately from exposed/rendered
+Windows reference acceptance.
+
 The filesystem-provider command consumer `fs_provider_command` reuses this
 source CopyDialog resource and controls for the opened NTFS-stream peer. Its
 EN/RU F5/F6/Cancel/Skip cases cover both source panes, path/Browse/summary/footer

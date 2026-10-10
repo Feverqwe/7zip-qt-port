@@ -3128,6 +3128,22 @@ it does not retry a cancelled callback. Qt layouts replace no source command
 policy. EN/RU/both-pane command tests inspect normal/compact widget geometry,
 provider identity, selection and protected bytes. Native Qt geometry on a
 service desktop does not establish exposed/rendered Windows 7zFM parity.
-Case-insensitive Linux volumes and archive-source→NTFS-stream acceptance remain
-unverified by this component. Historical filesystem ADS-refusal claims above
+Case-insensitive Linux volumes remain unverified. Archive-source→NTFS-stream
+acceptance is recorded separately below. Historical filesystem ADS-refusal claims above
 are superseded only for these restored filesystem-source branches.
+
+## P3-05 archive source and native NTFS stream peer (2026-10-10)
+
+Original reference: App::OnCopy, PanelCopy::CopyTo, AgentFolder::CopyTo and
+Agent::Extract/ArchiveExtractCallback at
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`.
+F5 from a bound nested ZIP folder to an opened NTFS-stream peer retains original
+current-path removal, colon output prefix and overwrite Skip/Cancel. Dialog
+Cancel preserves both providers and all bytes. Successful Copy preserves source
+ZIP/base/control-stream bytes and publishes the new ADS. F6 retains original
+E_NOTIMPL without deleting source items. This native destination differs from
+archived WIM ADS: App's useTemp classification retains the existing staged
+archive-to-archive update/Move rollback route. Qt's colon dispatcher must respect
+that distinction. Both-pane/EN-RU public tests and normal/compact geometry are
+described in the [receipt](upstream-port-audit.md#p3-05--native-archive-source-to-ntfs-peer-acceptance-2026-10-10).
+Service-desktop widgets do not establish exposed/rendered Windows7zFM parity.

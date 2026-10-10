@@ -2830,6 +2830,15 @@ if(BUILD_TESTING)
     target_include_directories(fs_provider_command_tests PRIVATE src tests)
     target_link_libraries(fs_provider_command_tests PRIVATE ${options_window_libraries})
     add_test(NAME fs_provider_command COMMAND fs_provider_command_tests -silent)
+    qt_add_executable(native_archive_ads_copy_tests tests/native_archive_ads_copy_tests.cpp tests/layout_inspection.cpp ${options_window_sources})
+    target_include_directories(native_archive_ads_copy_tests PRIVATE src tests)
+    target_link_libraries(native_archive_ads_copy_tests PRIVATE ${options_window_libraries})
+    if(SEVENZIP_CODEC_MODULE)
+        target_compile_definitions(native_archive_ads_copy_tests PRIVATE "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\"")
+    endif()
+    add_test(NAME native_archive_ads_copy COMMAND native_archive_ads_copy_tests -silent)
+    set_tests_properties(native_archive_ads_copy PROPERTIES TIMEOUT 60 RESOURCE_LOCK sevenzip_ui_artifacts ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/native-archive-ads-copy.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     set_tests_properties(fs_provider_command PROPERTIES TIMEOUT 60 RESOURCE_LOCK sevenzip_ui_artifacts ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/fs-provider-command.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     qt_add_executable(alt_streams_archive_ui_tests tests/alt_streams_archive_ui_tests.cpp tests/layout_inspection.cpp ${options_window_sources})
@@ -3249,7 +3258,7 @@ if(BUILD_TESTING AND WIN32)
             archive_reload_command drag_reload_completion panel_creation_path copy_archive_refresh interarchive_recovery panel_load_count panel_activation progress_dialog language_dialog language_standard_buttons fm_settings list_settings_runtime
             language_main_dialog language_focus properties_runtime
             archive_item_open archive_external_edit external_editors_ui language_archive_command
-            alt_streams_command alt_streams_archive_ui fs_provider_command)
+            alt_streams_command alt_streams_archive_ui fs_provider_command native_archive_ads_copy)
         get_property(sevenzip_native_ui_environment TEST ${sevenzip_native_ui_test}
             PROPERTY ENVIRONMENT)
         list(TRANSFORM sevenzip_native_ui_environment REPLACE

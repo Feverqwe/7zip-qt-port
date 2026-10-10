@@ -1,5 +1,12 @@
 # Regression and security traceability
 
+Archive source to native NTFS peer: `native_archive_ads_copy` covers nested ZIP
+source F5, Copy-dialog Cancel, overwrite Skip/Cancel and original F6 refusal,
+both panes/languages. It protects source/base/control ADS bytes and both provider
+bindings, selection/notifications and normal/compact Copy/main geometry. This
+uses actual native codecs and owned NTFS fixtures; platform skips and native
+desktop/rendered acceptance remain distinct.
+
 Launch show/hidden-close: `window_placement` checks saved-state precedence,
 explicit commands and nonminimized geometry. `file_manager_startup` exercises
 Windows STARTUPINFO through production entry/archive binding;

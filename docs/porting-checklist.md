@@ -4,6 +4,17 @@
 Готовый запрос агенту: [porting-chat-prompt.md](porting-chat-prompt.md).
 Исходная дата: 2026-09-28. Это список **оставшейся** работы, не оценка MVP с нуля.
 
+P3-05,2026-10-10: native nested ZIP→opened NTFS peer F5/Skip/overwrite Cancel/
+dialog Cancel and original F6 refusal pass both panes/EN-RU with protected
+bytes/providers and80normal/compact reports. Direct consumers exposed four
+ZIP→WIM ADS routing regressions; the Qt colon predicate now preserves source
+useTemp archive staging. Final Windows9/9PASS94.63s,168Qt/0fail/0skip;
+Linux9/9PASS29.91s; Mac integrated full316/316PASS257.74s and localized9/9
+PASS22.55s. Same1397product/test/build inputs match both runner archives.
+See the [receipt](upstream-port-audit.md#p3-05--native-archive-source-to-ntfs-peer-acceptance-2026-10-10).
+Eleven slow suites excluded; whole source/native/rendered/package/final
+acceptance remains open. Parents43/47 and P3-03/04/05/06 unchanged.
+
 P3-03/P3-05.16, 2026-10-10: actual startup failures at df06775 now have a
 native control diagnosis: SSH session 0 has an invisible service desktop;
 even a separate Win32 window with WS_VISIBLE fails IsWindowVisible after two

@@ -1,5 +1,15 @@
 # Regression strategy
 
+`native_archive_ads_copy` exercises a real native ZIP source folder and an
+opened NTFS-stream peer through F5/F6 in both panes and EN/RU. Each row runs
+Copy-dialog Cancel, occupied-stream Skip, overwrite Cancel, successful Copy
+and the original unsupported archive Move. Archive/base/control-stream bytes,
+provider bindings, selected row and notification state are checked after each
+transition. Normal/compact Copy and main-window JSON checks reuse the existing
+resource contract. This bounded default suite requires Windows and the official
+codec module; other platforms skip it explicitly. Native widget geometry does
+not establish exposed Windows desktop or rendered 7zFM parity.
+
 `native_fs_operations` checks public case-only Rename for Unicode file and
 directory names, actual stored directory spelling and protected child bytes.
 `fs_provider_command` checks F2/Escape in both panels and EN/RU, retained provider
