@@ -1,5 +1,70 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-06 — Source status-bar style and current geometry consumers (2026-10-10)
+
+Source https://github.com/ip7z/7zip.git revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`, CPP/7zip/UI/FileManager/Panel.cpp::OnCreate
+and CPP/Windows/Control/StatusBar.h::CStatusBar::Create, creates the four-part panel
+status bar with WS_CHILD|WS_VISIBLE; the wrapper forwards these flags without
+SBARS_SIZEGRIP. Qt panel bars already disabled grips, but the shared transient
+message bar retained Qt's enabled default. Current compact VerCtrl widget JSON
+exposed only22 of its30-pixel grip height. This is a structural finding, not a
+rendered Windows comparison.
+
+The existing mainwindow_panel.cpp presentation owner now also disables that
+shared grip. No new source module, functional algorithm, dependency, language
+or baseline is introduced; the existing Qt message adapter and OS window-border
+resizing remain. Actual unchanged-product RED is10Qt pass/4fail; all four new
+main_shell cases detect the extra grip. EN/RU980×620/640×400 checks cover
+one→two→one panes, unchanged Unicode messages, exposed bars and no visible
+QSizeGrip, with12 current reports per OS. Existing VerCtrl, panel-key and dialog
+geometry consumers remain covered. The small matrix is not slow.
+
+Initial Windows focused validation was3/4: status tests passed, but standalone
+ui_geometry compact Add exposed only25 of the confirmation field's26 pixels.
+That suite never constructs MainWindow. A neutral-focus diagnostic passed4/4;
+the final test instead scrolls each whole control rectangle with ensureVisible,
+preserving source initial focus and all full-visibility/order/footer assertions.
+[Qt's implementation](https://code.qt.io/cgit/qt/qtbase.git/tree/src/widgets/widgets/qscrollarea.cpp?h=6.12)
+shows ensureWidgetVisible may accept an exposed input-method cursor before
+applying margins. No production Add layout or focus behavior was changed.
+The failed attempt and successful diagnostic remain separate evidence.
+
+Current product gates pass: unsandboxed Mac321/321 (255.38s) and Linux318/318 (519.94s);
+macOS27.0.1 arm64, Ubuntu24.04.5 x64 and Windows11 Pro10.0.26300 x64 retain
+the preceding receipts' Qt6.12 toolchains; native desktop limits are unchanged.
+Linux301Qt suites report5058pass/0fail/56 explicit Windows-NTFS skips. After the
+localized test-only change, Mac ui_geometry passes1/1 (0.50s) and final Windows
+focused4/4 passes (34.40s),89Qt/0fail/0skip. Eleven slow suites remain excluded.
+Final Linux focused4/4 passes (9.15s),89Qt/0fail/0skip, using the same product
+and final test source. All36 status reports across three OS have exposed visible
+bars and no visible grip; final compact confirmation fields are fully exposed.
+Passing full product gates are not repeated for this localized test correction.
+Current Windows full/native/cold-stable/rendered acceptance remains open.
+
+Snapshots `20261010T162154Z-bc318058`, `20261010T163223Z-791e93b6` and
+`20261010T163832Z-cf5fef52` each match all1516 archived/actual guest inputs.
+The final Linux snapshot `20261010T164521Z-888db5d7` also matches all1516 inputs.
+Final Linux/Windows archive SHA256 values are respectively
+`c759dc59b075d188bdc9742724f3c5b51e05a8c3db4610033cf7e54a065641c8` and
+`c7b82729e154af31758ddd20c678fbe090c945e94b00bb3208b7e3f7a2a2bab9`.
+Each final guest run reuses its first run's exact eight official runtime files;
+repository/revision/version1703939, architecture and declared module/SFX hashes
+are verified independently. Source archive/bundle, actual hashes, full logs and
+widget JSON are under the isolated checkout's `build/review/ux-acceptance`.
+All1480 retained product inputs are accounted for; only the presentation owner
+and two owned test files differ from the preceding accepted product.
+The temporary runner wrapper is evidence only, removed before commit.
+Host storage before/after is OK with no warnings; the existing Linux VHDX grew
+64MiB, Windows zero. No cleanup, new/attached disks, upstream edits,
+login/account/policy changes, push or publication occurred.
+
+Current package artifacts precede this presentation fix; their prior receipts
+remain valid for their own source revision, not this new binary. Source launcher,
+native/rendered/clean-OS and final obligations remain in the
+[checklist](porting-checklist.md) and
+[matrix](ux-port-audit.md#current-final-acceptance-matrix-2026-10-10).
+
 ## P3-04 — Current macOS and Windows binary dependency closure (2026-10-10)
 
 The [current runtime packages](#p3-04--current-three-platform-runtime-artifacts-2026-10-10)

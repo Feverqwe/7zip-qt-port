@@ -1,11 +1,14 @@
 #include "7zip/UI/FileManager/resource.h"
 #include "CPP/7zip/UI/FileManager/BrowseDialog2.h"
+#include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "layout_inspection.h"
+#include "qtlangcontrols.h"
 #include "window_state_support.h"
 
 #include <QMenuBar>
 #include <QScopeGuard>
 #include <QScreen>
+#include <QSizeGrip>
 #include <QTimer>
 #include <QToolBar>
 #include <QTreeWidget>
@@ -64,6 +67,53 @@ class MainShellTests final : public QObject {
     }
 
     void init() { QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH")); }
+
+    void statusBarsKeepNativeNoGripStyle_data() {
+        QTest::addColumn<QString>("language");
+        QTest::addColumn<QSize>("size");
+        for (const auto &language : {QStringLiteral("en"), QStringLiteral("ru")})
+            for (const QSize size : {QSize(980, 620), QSize(640, 400)})
+                QTest::newRow(qPrintable(language + QString::number(size.width())))
+                    << language << size;
+    }
+
+    void statusBarsKeepNativeNoGripStyle() {
+        QFETCH(QString, language);
+        QFETCH(QSize, size);
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString settings = qEnvironmentVariable("SEVENZIP_SETTINGS_PATH");
+        SaveRegLang(ToUString(language), settings);
+        ReloadLang(settings);
+        const auto restoreLanguage = qScopeGuard([&] {
+            SaveRegLang(UString(), settings);
+            ReloadLang(settings);
+            QtNotifyLanguageChanged();
+        });
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        window.resize(size);
+        window.show();
+        auto *twoPanels = window.findChild<QAction *>("twoPanelsAction");
+        QVERIFY(twoPanels);
+        const QString message = QStringLiteral("status проверка 空");
+        for (int phase = 0; phase < 3; ++phase) {
+            if (twoPanels->isChecked() != (phase == 1))
+                twoPanels->trigger();
+            window.statusBar()->showMessage(message);
+            QApplication::processEvents();
+            QCOMPARE(window.statusBar()->currentMessage(), message);
+            QVERIFY(UiInspection::fullyVisible(*window.statusBar(), window));
+            for (auto *bar : window.findChildren<QStatusBar *>())
+                QVERIFY2(!bar->isSizeGripEnabled(), "7zFM status bars have no resize grip");
+            for (auto *grip : window.findChildren<QSizeGrip *>())
+                QVERIFY(!grip->isVisible());
+            QVERIFY(UiInspection::writeReport(window, QStringLiteral("status-no-grip-%1-%2-%3")
+                                                          .arg(language)
+                                                          .arg(size.width())
+                                                          .arg(phase)));
+        }
+    }
 
     void nativeTemporaryFilesCommandUsesActualModalConsumer() {
         ControlledBackend backend;

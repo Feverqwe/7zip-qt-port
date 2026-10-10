@@ -1,5 +1,11 @@
 # Сверка с Windows 7zFM
 
+The shared Qt transient-message status bar now disables its default resize grip,
+matching the existing per-panel bars and original Panel.cpp::OnCreate status
+style without SBARS_SIZEGRIP. Window-border resizing and message delivery remain
+available. Current EN/RU normal/compact one/two/restored-pane geometry checks
+cover this structure; rendered/native acceptance remains separate.
+
 Linux codec metadata uses the existing immutable Qt temporary image, unlike
 the original native in-place module loading. The selected temporary directory
 must allow writes and loading shared libraries. With `noexec /tmp`, a private

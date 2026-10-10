@@ -2,23 +2,27 @@
 
 ## Current final acceptance matrix (2026-10-10)
 
-Матрица относится к продукту `f169833` (код тот же, что `056bcd2`). Checked означает только названную
+Матрица различает текущий status-style delta от `1edda2a` и прежние package/native receipts.
+Checked означает только названную
 проверку; partial/unverified не дают итоговой приёмки P3-06.
-[Текущие логи, версии, входы и ограничения](upstream-port-audit.md#p3-03--current-full-linux-gate-and-acceptance-boundaries-2026-10-10).
+[Текущие логи, входы и ограничения](upstream-port-audit.md#p3-06--source-status-bar-style-and-current-geometry-consumers-2026-10-10);
+[предыдущий platform receipt и версии](upstream-port-audit.md#p3-03--current-full-linux-gate-and-acceptance-boundaries-2026-10-10).
 
 | Область приёмки | macOS arm64 | Linux x64 | Windows x64 |
 | --- | --- | --- | --- |
-| Default format/build/CTest | checked:321/321 | checked:318/318;56 Windows/NTFS Qt skips | partial: текущие focused15/16, два отказа exposure; current full не принят |
+| Default format/build/CTest | checked:321/321; final localized geometry1/1 | checked:318/318; final focused4/4;56 Windows/NTFS Qt skips | partial: status/geometry focused4/4; прежние list-settings exposure failures сохранены, current full не принят |
 | Исходные модули, headers/resources/callers | partial: [109 source receipts](omitted-scope-audit.md#109-unit-source-receipt-ledger-2026-10-10); native launcher/associated-process continuation открыт | partial: общий source scope тот же | partial: применимые native launcher bodies обязательны |
 | EN/RU, normal/compact, команды и workflow | partial: автоматические contracts/regressions проходят; полный нативный обход не принят | partial: offscreen contracts/regressions проходят; физический ввод не принят | partial: выполненные focused consumers/JSON; service desktop не доказывает показ окон |
 | Нативные dialogs/shortcuts/icons/drag/registration/FS | partial: историческая ручная Finder-проверка принята отдельно; текущий полный native обход не проверен | partial: Unix FS проверен; native desktop/physical drag не проверены | partial: прежние scoped native receipts сохранены; текущий interactive desktop недоступен |
 | Наблюдение текущего приложения через Computer Use | unverified: доступ к Sevenzip Desktop не одобрен | unverified: не выполнялось | unverified: нет активного runner logon |
 | Сверка с отрисованным Windows 7zFM того же pin | unverified: нет полного rendered reference | unverified: нет полного rendered reference | partial: исторический System menu; полный текущий rendered audit не принят |
-| Текущие runtime packages и чистая ОС | partial: current Release/relocation15/15, notices/signature,11 Mach-O import review; clean OS unverified | partial: current Release/relocation14/14; isolated userspace15/15 без SDK/host Qt, dependency closure checked; отдельный desktop/kernel unverified | partial: current Release/relocation14/14, CRT/notices,26 PE import review/system resolution; clean OS unverified |
+| Runtime packages и чистая ОС | partial: pre-status-style Release/relocation15/15, notices/signature,11 Mach-O import review; clean OS unverified | partial: pre-status-style Release/relocation14/14; isolated userspace15/15 без SDK/host Qt, dependency closure checked; отдельный desktop/kernel unverified | partial: pre-status-style Release/relocation14/14, CRT/notices,26 PE import review/system resolution; clean OS unverified |
 | Cold/stable Windows, итоговая трёхплатформенная приёмка | partial: общий gate остаётся открытым | partial: успешный Linux gate не заменяет Windows | unverified: повторения и full gate требуют активного desktop |
 | GitHub CI | N/A по явному решению пользователя сохранить удаление workflow | N/A по тому же решению | N/A по тому же решению |
 
 Slow suites исключены из default gates по AGENTS.md и не объявляются принятыми.
+Текущий source style строк состояния и geometry consumers — в
+[P3-06 receipt](upstream-port-audit.md#p3-06--source-status-bar-style-and-current-geometry-consumers-2026-10-10).
 Текущие артефакты и точные границы relocation-проверки — в
 [P3-04 receipt](upstream-port-audit.md#p3-04--current-three-platform-runtime-artifacts-2026-10-10).
 Linux userspace/rootfs, отсутствие host Qt, missing-module и TMPDIR проверены

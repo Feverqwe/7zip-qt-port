@@ -146,9 +146,11 @@ class UiGeometryTests final : public QObject {
                                      "archivePasswordConfirmation", "archiveBrowse"}) {
                 auto *control = dialog->findChild<QWidget *>(name);
                 QVERIFY2(control, name);
-                // Qt scrolls input-method cursor rectangles for editable fields.
-                // Keep a margin so the entire control, not just its cursor, is exposed.
-                scroll->ensureWidgetVisible(control, 16, 16);
+                // ensureWidgetVisible can accept an already exposed input-method
+                // cursor before applying margins. Probe the whole control instead.
+                const QRect rect(control->mapTo(scroll->widget(), QPoint()), control->size());
+                scroll->ensureVisible(rect.center().x(), rect.center().y(), rect.width() / 2 + 16,
+                                      rect.height() / 2 + 16);
                 QApplication::processEvents();
                 QVERIFY(UiInspection::writeReport(*dialog, tag + "-" + name));
                 QVERIFY2(

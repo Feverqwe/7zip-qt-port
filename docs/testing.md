@@ -1,5 +1,12 @@
 # Regression strategy
 
+`main_shell` checks the original no-grip status-bar style at normal/compact sizes
+in EN/RU, one→two→one panes and unchanged Unicode transient messages. The
+`status-no-grip-*` JSON records exposed bars and no visible QSizeGrip.
+`ui_geometry` scrolls the entire control rectangle, preserving source initial
+focus and strict full-field visibility instead of accepting cursor-only exposure.
+These are public widget/geometry checks; native/rendered acceptance is separate.
+
 `copy_publication_order` exercises the native CopyTo presentation route with a
 controlled interface proxy over original filesystem byte operations. Twelve
 both-pane Copy/Move success/failure/E_ABORT cases disable auto-refresh, observe

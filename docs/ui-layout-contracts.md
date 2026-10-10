@@ -1168,6 +1168,14 @@ units, independently of the main window's compact resize fixture.
 
 ### Main menu and toolbar (P0-09.1)
 
+Source Panel.cpp::OnCreate creates status bars with WS_CHILD|WS_VISIBLE and no
+SBARS_SIZEGRIP; Windows/Control/StatusBar.h forwards those flags unchanged.
+Qt's per-panel and shared transient-message status bars must likewise have no
+resize grip. `main_shell` checks EN/RU at980×620/640×400, one→two→one panels,
+unchanged Unicode message text, exposed shared bar and absent visible QSizeGrip;
+`status-no-grip-*` reports record each phase. The window border remains the
+platform resize surface. These checks establish Qt structure, not rendered parity.
+
 Source SetButtonText supplies the seven short button captions AND tooltips;
 shared File menu QAction captions do not replace them after language/selection
 changes. `language_ui` inspects EN/RU normal980×620 and compact640×400 reports
@@ -1907,6 +1915,10 @@ upstream options are still absent; this is a partial resource adaptation.
 `ui_geometry` covers column ordering, absence of a source picker, reachability
 and the footer; existing compression tests
 cover method/format-dependent enabled states and persistence.
+Its scroll probe uses each whole control rectangle with `ensureVisible`, since
+Qt's `ensureWidgetVisible` can accept an exposed input-method cursor while a
+field border remains outside the viewport. Initial source focus stays unchanged;
+full-control visibility, ordering and footer assertions remain strict.
 Saved method-dependent choices follow source SetDictionary2/SetOrder2/
 SetSolidBlockSize2: nearest admissible entries, first-entry fallback for a value
 below the minimum, large dictionary threshold/clamp and source BZip2 decimal
