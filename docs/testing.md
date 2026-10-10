@@ -8,6 +8,16 @@ Windows QPA and checks its QApplication-owned STA without initializing COM in
 the probe; offscreen keeps its separate logical-state row. Native visibility
 assertions remain unchanged. [Receipt](upstream-port-audit.md#p3-05--fm-platform-dispatch-and-source-toolbar-text-2026-10-10).
 
+`view_menu` opens the actual parent View popup in both panes and EN/RU. It
+checks source date/precision/UTC initialization, precision/UTC commands and
+persistence, source CTime sort fallback, icon mode, public Select All, retained
+provider/peer/notification state and protected Unicode/space fixture bytes.
+Normal/compact main/View/time reports inspect both visible lists and addresses.
+`panel_columns` activates the parent View handler for its existing raw-property,
+filesystem/archive time and settings/reopen consumers. The bounded default
+suite uses controlled local fixtures and the normal UI artifact resource lock;
+native Windows runs retain real desktop-exposure requirements in their consumers.
+
 `native_archive_ads_copy` exercises a real native ZIP source folder and an
 opened NTFS-stream peer through F5/F6 in both panes and EN/RU. Each row runs
 Copy-dialog Cancel, occupied-stream Skip, overwrite Cancel, successful Copy

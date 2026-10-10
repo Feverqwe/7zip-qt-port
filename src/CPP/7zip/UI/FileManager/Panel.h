@@ -369,6 +369,7 @@ class CPanel : public QObject {
     bool _showDots = false;
     bool _showRealFileIcons = false;
     UInt32 GetListViewMode() const { return _listViewMode; }
+    PROPID GetSortID() const { return _sortID; }
     bool GetFlatModeForArc() const { return _flatModeForArc; }
     bool GetFlatMode() const { return Is_IO_FS_Folder() ? _flatModeForDisk : _flatModeForArc; }
     void SetFlatModeForArc(bool enabled) { _flatModeForArc = enabled; }

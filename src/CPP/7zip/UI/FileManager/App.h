@@ -146,6 +146,9 @@ class CApp {
     unsigned GetFocusedPanelIndex() const { return LastFocusedPanel; }
     bool IsPanelVisible(unsigned index) const { return NumPanels > 1 || index == LastFocusedPanel; }
     CPanel &GetFocusedPanel() { return Panels[GetFocusedPanelIndex()]; }
+    UInt32 GetListViewMode() { return GetFocusedPanel().GetListViewMode(); }
+    PROPID GetSortID() { return GetFocusedPanel().GetSortID(); }
+    bool GetFlatMode() { return Panels[LastFocusedPanel].GetFlatMode(); }
     void ExtractArchives(IQtCompressCallServices &services) {
         GetFocusedPanel().ExtractArchives(services);
     }

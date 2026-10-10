@@ -10,16 +10,17 @@
 #include "App.h"
 #include "LangUtils.h"
 #include "Windows/FileFind.h"
+#include "Windows/TimeUtils.h"
 #include "qtfilemanagercommandservices.h"
 #include "qtfilemenuservices.h"
 #include "qtpanelpluginservices.h"
 #include <QAction>
 #include <QMenu>
 #include <QMenuBar>
+#include <QSignalBlocker>
 #include <QVariant>
 
-// Original OnMenuActivating File branch. Qt supplies the actual menu bar and
-// source projection instead of global HWND/HMENU; other branches remain partial.
+// Qt supplies the actual menu bar and source projection instead of HWND/HMENU.
 void OnMenuActivating(QMenuBar &mainMenu, QMenu &hMenu, int position, CApp &g_App,
                       IQtFileMenuServices &projection, IQtPanelPluginMenuServices &plugins) {
     if (position < 0 || position >= mainMenu.actions().size() ||
@@ -29,7 +30,8 @@ void OnMenuActivating(QMenuBar &mainMenu, QMenu &hMenu, int position, CApp &g_Ap
         for (QAction *action : hMenu.actions())
             hMenu.removeAction(action);
         g_App.GetFocusedPanel().CreateFileMenu(projection, true, &plugins);
-    }
+    } else
+        OnMenuActivating(mainMenu, hMenu, position, g_App);
 }
 
 #ifndef IDCLOSE
@@ -42,6 +44,110 @@ static const unsigned k_MenuID_Time = IDM_VIEW_TIME;
 static const unsigned g_Zvc_IDs[] = {IDM_VER_EDIT, IDM_VER_COMMIT, IDM_VER_REVERT, IDM_VER_DIFF};
 static const char *const g_Zvc_Strings[] = {"Ver Edit (&1)", "Ver Commit", "Ver Revert",
                                             "Ver Diff (&0)"};
+
+static unsigned GetSortControlID(PROPID propID) {
+    switch (propID) {
+    case kpidName:
+        return IDM_VIEW_ARANGE_BY_NAME;
+    case kpidExtension:
+        return IDM_VIEW_ARANGE_BY_TYPE;
+    case kpidMTime:
+        return IDM_VIEW_ARANGE_BY_DATE;
+    case kpidSize:
+        return IDM_VIEW_ARANGE_BY_SIZE;
+    case kpidNoProperty:
+        return IDM_VIEW_ARANGE_NO_SORT;
+    }
+    return IDM_VIEW_ARANGE_BY_NAME;
+}
+
+static QAction *MenuItemByID(QMenu &menu, unsigned id) {
+    for (QAction *item : menu.actions()) {
+        if (item->property("nativeCommandID").toUInt() == id)
+            return item;
+        if (item->menu())
+            if (QAction *found = MenuItemByID(*item->menu(), id))
+                return found;
+    }
+    return nullptr;
+}
+static void CheckItemByID(QMenu &menu, unsigned id, bool checked) {
+    if (QAction *item = MenuItemByID(menu, id)) {
+        const QSignalBlocker block(item);
+        item->setChecked(checked);
+    }
+}
+static void CheckRadioItem(QMenu &menu, unsigned first, unsigned last, unsigned selected) {
+    for (unsigned id = first; id <= last; ++id)
+        CheckItemByID(menu, id, id == selected);
+}
+static bool Is_MenuItem_TimePopup(const QAction &item) {
+    return item.property("nativeCommandID").toUInt() == IDM_VIEW_TIME_POPUP ||
+           UString(item.text().toStdWString().c_str()).IsPrefixedBy_Ascii_NoCase("20");
+}
+
+void OnMenuActivating(QMenuBar &mainMenu, QMenu &hMenu, int position, CApp &g_App) {
+    if (position < 0 || position >= mainMenu.actions().size() ||
+        mainMenu.actions()[position]->menu() != &hMenu)
+        return;
+    if (position == 2) { // k_MenuIndex_View in the source resource.
+        CheckRadioItem(hMenu, IDM_VIEW_LARGE_ICONS, IDM_VIEW_DETAILS,
+                       IDM_VIEW_LARGE_ICONS + g_App.GetListViewMode());
+        CheckRadioItem(hMenu, IDM_VIEW_ARANGE_BY_NAME, IDM_VIEW_ARANGE_NO_SORT,
+                       GetSortControlID(g_App.GetSortID()));
+        CheckItemByID(hMenu, IDM_VIEW_TWO_PANELS, g_App.NumPanels == 2);
+        CheckItemByID(hMenu, IDM_VIEW_FLAT_VIEW, g_App.GetFlatMode());
+        CheckItemByID(hMenu, IDM_VIEW_ARCHIVE_TOOLBAR, g_App.ShowArchiveToolbar);
+        CheckItemByID(hMenu, IDM_VIEW_STANDARD_TOOLBAR, g_App.ShowStandardToolbar);
+        CheckItemByID(hMenu, IDM_VIEW_TOOLBARS_LARGE_BUTTONS, g_App.LargeButtons);
+        CheckItemByID(hMenu, IDM_VIEW_TOOLBARS_SHOW_BUTTONS_TEXT, g_App.ShowButtonsLables);
+        CheckItemByID(hMenu, IDM_VIEW_AUTO_REFRESH, g_App.Get_AutoRefresh_Mode());
+        for (QAction *item : hMenu.actions()) {
+            if (item->menu() && Is_MenuItem_TimePopup(*item)) {
+                FILETIME ft;
+                NWindows::NTime::GetCurUtcFileTime(ft);
+                wchar_t s[64];
+                s[0] = 0;
+                if (ConvertUtcFileTimeToString(ft, s, kTimestampPrintLevel_DAY))
+                    item->setText(QString::fromWCharArray(s));
+                item->setProperty("nativeCommandID", IDM_VIEW_TIME_POPUP);
+                QMenu &subMenu = *item->menu();
+                // Preserve Qt action identity and command bindings instead of
+                // removing/recreating native menu items on each activation.
+                for (QAction *entry : subMenu.actions()) {
+                    const unsigned id = entry->property("nativeCommandID").toUInt();
+                    if (id >= k_MenuID_Time && id < k_MenuID_Time + 5)
+                        entry->setVisible(false);
+                }
+                const int k_TimeLevels[] = {kTimestampPrintLevel_DAY, kTimestampPrintLevel_MIN,
+                                            kTimestampPrintLevel_SEC, kTimestampPrintLevel_NTFS,
+                                            kTimestampPrintLevel_NS};
+                unsigned last = k_MenuID_Time;
+                unsigned selectedCommand = 0;
+                g_App._timestampLevels.Clear();
+                unsigned id = k_MenuID_Time;
+                for (unsigned k = 0; k < Z7_ARRAY_SIZE(k_TimeLevels); k++) {
+                    s[0] = 0;
+                    const int timestampLevel = k_TimeLevels[k];
+                    if (ConvertUtcFileTimeToString(ft, s, timestampLevel)) {
+                        if (QAction *entry = MenuItemByID(subMenu, id)) {
+                            entry->setText(QString::fromWCharArray(s));
+                            entry->setVisible(true);
+                            last = id;
+                            g_App._timestampLevels.Add(timestampLevel);
+                            if (g_App.GetTimestampLevel() == timestampLevel)
+                                selectedCommand = id;
+                            id++;
+                        }
+                    }
+                }
+                if (selectedCommand != 0)
+                    CheckRadioItem(subMenu, k_MenuID_Time, last, selectedCommand);
+                CheckItemByID(subMenu, IDM_VIEW_TIME_UTC, g_Timestamp_Show_UTC);
+            }
+        }
+    }
+}
 
 // MyChangeMenu retains the upstream popup/ID/special-caption/shortcut flow.
 // Qt preserves QAction identity; English resource lookup replaces LoadMenu's

@@ -70,6 +70,79 @@ stability or native receiver/rendered acceptance. Eleven slow suites excluded.
 FM body disposition does not close remaining family/native/rendered/cold-stable/
 package/P3 acceptance.
 
+## P3-05 — source View-menu activation (2026-10-10)
+
+Source repository https://github.com/ip7z/7zip.git, full revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. Complete original/current
+`CPP/7zip/UI/FileManager/MyLoadMenu.cpp/.h` bodies were reviewed with the exact
+`resource.rc` menu, App/Panel getters and current command/menu consumers.
+[Body disposition](omitted-scope-audit.md#myloadmenu-complete-body-disposition-2026-10-10)
+accounts for language/reset, File policy, native menu lifetime, bookmarks,
+command switches, Benchmark services and inactive/platform branches. Existing
+module revisions, C++ language, paths and notices remain unchanged; no upstream
+checkout edit or new source dependency is involved.
+
+Original OnMenuActivating's View branch now runs when the parent View menu
+opens. Copied GetSortControlID and App/Panel inline getters supply focused
+view/sort/flat state. Original radio/check sequence, current-day caption,
+five timestamp levels, successful command-ID/vector increment, selected
+precision and UTC check remain in MyLoadMenu. Qt recursive QAction lookup and
+QSignalBlocker replace CMenu handles/checks. Time actions retain identity and
+bindings; unavailable examples are hidden instead of rebuilding HMENU. The
+MainWindow consumer removes its independent child-popup timestamp algorithm
+and connects parent aboutToShow to the source owner. Platform font/menu
+rendering and native services remain Qt adapters, not a replacement menu policy.
+
+Public `view_menu` RED on the previous product reproduces all four both-pane,
+EN/RU failures: parent View retains generic time caption instead of current day
+(2Qt passed/4failed). The corrected fixture locates its owned Unicode file by
+name; an earlier Parent-row assumption timeout is retained separately and is
+not product RED. Initial source correction is GREEN. Final rows also exercise
+precision/UTC persistence, icon mode, CTime's source Name fallback and public
+Select All, preserving providers/peer/notification state and protected bytes.
+Select All passed before any further product change; no separate sorting defect
+is claimed. Existing `panel_columns` filesystem/archive/raw-sort/reopen assertions
+remain, with all three activations corrected to the parent View event.
+
+Evidence is in the isolated component's `build/review/view-menu/`, including
+five pinned input hashes, RED/first/final LastTest logs and24 main/View/time
+reports per platform at980×620 and640×400. Popup reports are inspected in their
+own top-level coordinate space; their main-window child entries are native
+popups outside the owner rectangle. Compact status text uses the existing
+reviewed QtStatusLabel elision/tooltip adaptation. Both visible lists and
+addresses fit; geometry is not rendered Windows reference acceptance.
+
+The first unsandboxed Mac gate retains314/317PASS416.71s: old panel_columns
+child-only fixture failure, native_benchmark30.04s timeout and large_list_window
+480/381ms heartbeats against250ms. Independent local compilation/stress tests
+were observed concurrently. After they ended, the same two binary hashes passed
+unchanged-limit controls2/2 in8.39s (Benchmark4.94s/list3.44s); this is evidence
+of non-reproduction without that load, not proof of a universal timing bound.
+Final combined focused Mac9/9PASS13.22s includes the parent-event fixture fix.
+Final combined unsandboxed Mac gate passes format/all-target build and317/317
+default tests in260.33s (4988Qt passed,0failed,56existing platform skips).
+Final Linux9/9PASS16.29s,110Qt/0failed/0skipped, snapshot
+`20261010T054043Z-1faac940`. Its24reports and actual guest inputs are retained.
+The1440product/test/build/resource/dependency inputs, including the temporary
+runner validator archived and removed before commit, match both final runner
+archives and both actual guest trees by SHA-256. Eight copied official codec/SFX files
+match the previously accepted runtime; baseline verification remains410exact,
+198adapted and3local paths. Final Windows8/9 in66.68s,108Qt passed/2failed/
+0skipped, snapshot `20261010T054253Z-bb8d2b69`; only the same two native exposure
+assertions in list_settings_runtime fail. View itself passes6Qt/0failed/0skipped
+in1686ms, panel_columns7Qt/0failed/0skipped. All24Windows reports were collected
+and inspected,72across3OS with no unexpected clipping. Local/archive/guest
+hash proofs are retained. Host storage monitoring reports OK and zero VHDX
+growth; no disks, account rights or desktop policy were changed.
+
+The prior-base first guest snapshot retains Linux8/8PASS16.35s and Windows7/8
+in56.09s. View itself passes both; Windows list_settings_runtime fails its two
+existing qWaitForWindowExposed assertions before menu activation on the
+established SSH service desktop. Assertions,30s timeout and heartbeat limits
+are unchanged. Eleven slow suites remain excluded. Remaining source, native/
+rendered, installed/package and final acceptance stay open; this component
+does not close P3-03/04/05/06 or change43/47.
+
 ## P3-05 — Startup platform consumers and toolbar defaults (2026-10-10)
 
 Source https://github.com/ip7z/7zip.git, full revision

@@ -146,7 +146,7 @@ production access is added for this matrix.
 | P1-08 native external editor update with publication failure and actual writer retry | PanelItemOpen::OnOpenItemChanged; Agent CopyFromFile/UpdateOneFile/CommonUpdate and Qt terminal publication/focus | `native_external_2`, `native_external_301`, `archive_external_edit` |
 | P0-07 focus/marks/keyboard/mouse | PanelSelect/PanelKey; shared hover adapter | `panel_key`, `panel_key_source`, `panel_selection`, `list_settings_runtime`, `list_activation` |
 | P0-08 two-panel focus/persistence | CApp/Panel; MainWindow projection | `panel_focus`, `panel_runtime`, `window_info`, `ui_copy_same` |
-| P0-09 menu/toolbar/context/status | MyLoadMenu/PanelMenu/PanelListNotify; Qt presentation | `main_shell`, `panel_shell`, `native_toolbar_state`, `file_menu_policy` |
+| P0-09 menu/toolbar/context/status | MyLoadMenu/PanelMenu/PanelListNotify; Qt presentation | `main_shell`, `view_menu`, `panel_shell`, `native_toolbar_state`, `file_menu_policy` |
 | P0-10 progress/pause/background/cancel | CProgressDialog/CProgressSync; process/worker transport | `progress_dialog`, `progress_cancel`, `progress_priority_failure`, `process_pause`, `worker_checkpoint` |
 | P0-11 conflict decisions/rollback | OverwriteDialog/AutoRenamePath/FSFolderCopy; transaction | `extract_prompt`, `file_transfer`, `file_transfer_direct` |
 | P0-12 selected/root/batch Ask | ExtractGUI/ExtractCallback/PanelCopy; ArchiveBackend path guard | `source_extract_backend`, `source_extract_contract`, `extraction_options`, `ui_operations` |

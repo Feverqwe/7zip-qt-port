@@ -4,6 +4,17 @@
 Готовый запрос агенту: [porting-chat-prompt.md](porting-chat-prompt.md).
 Исходная дата: 2026-09-28. Это список **оставшейся** работы, не оценка MVP с нуля.
 
+P3-05,2026-10-10: complete MyLoadMenu body/caller disposition restores parent
+View activation, source state checks and date/precision/UTC choices. Public
+both-pane/EN-RU RED4→GREEN; existing column/time/reopen consumers use the parent
+event. Combined Mac full317/317PASS260.33s and focused9/9; Linux9/9PASS16.29s.
+Windows8/9 in66.68s retains only two established service-desktop exposure
+failures; View and column/time consumers pass. Normal/compact main/View/time
+reports and retained fixture bytes/providers are
+checked. [Source/platform receipt](upstream-port-audit.md#p3-05--source-view-menu-activation-2026-10-10).
+Eleven slow suites excluded; remaining source/native/rendered/package/final
+scope remains open. P3-03/04/05/06 and43/47 are unchanged.
+
 P3-05,2026-10-10: native nested ZIP→opened NTFS peer F5/Skip/overwrite Cancel/
 dialog Cancel and original F6 refusal pass both panes/EN-RU with protected
 bytes/providers and80normal/compact reports. Direct consumers exposed four

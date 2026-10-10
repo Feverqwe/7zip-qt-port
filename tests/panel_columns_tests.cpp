@@ -302,9 +302,9 @@ class PanelColumnsTests final : public QObject, protected MainWindowTestSupport 
             MainWindow window;
             window.show();
             auto *files = static_cast<FileTable *>(table(window));
-            auto *timeMenu = window.findChild<QMenu *>("timestampMenu");
-            QVERIFY(timeMenu);
-            QVERIFY(QMetaObject::invokeMethod(timeMenu, "aboutToShow", Qt::DirectConnection));
+            auto *viewMenu = window.findChild<QMenu *>("viewMenu");
+            QVERIFY(viewMenu);
+            QVERIFY(QMetaObject::invokeMethod(viewMenu, "aboutToShow", Qt::DirectConnection));
             for (int index = 0; index < 5; ++index) {
                 auto *action = window.findChild<QAction *>(
                     QStringLiteral("timestampLevel%1Action").arg(index));
@@ -336,8 +336,8 @@ class PanelColumnsTests final : public QObject, protected MainWindowTestSupport 
             auto *files = static_cast<FileTable *>(table(reopened));
             QVERIFY(files->item(0, 4)->text().endsWith('Z'));
             QVERIFY(files->item(0, 4)->text().contains(QStringLiteral("04:05:06")));
-            auto *timeMenu = reopened.findChild<QMenu *>("timestampMenu");
-            QVERIFY(QMetaObject::invokeMethod(timeMenu, "aboutToShow", Qt::DirectConnection));
+            auto *viewMenu = reopened.findChild<QMenu *>("viewMenu");
+            QVERIFY(QMetaObject::invokeMethod(viewMenu, "aboutToShow", Qt::DirectConnection));
             QVERIFY(reopened.findChild<QAction *>("timestampLevel2Action")->isChecked());
             QVERIFY(reopened.findChild<QAction *>("timestampUtcAction")->isChecked());
             for (const QSize size : {QSize(980, 620), QSize(640, 400)}) {
@@ -361,8 +361,8 @@ class PanelColumnsTests final : public QObject, protected MainWindowTestSupport 
             auto *files = static_cast<FileTable *>(table(archive));
             QVERIFY(files->item(0, 4)->text().contains(QStringLiteral("04:05:06")));
             QVERIFY(files->item(0, 4)->text().endsWith('Z'));
-            QVERIFY(QMetaObject::invokeMethod(archive.findChild<QMenu *>("timestampMenu"),
-                                              "aboutToShow", Qt::DirectConnection));
+            QVERIFY(QMetaObject::invokeMethod(archive.findChild<QMenu *>("viewMenu"), "aboutToShow",
+                                              Qt::DirectConnection));
             archive.findChild<QAction *>("timestampLevel0Action")->trigger();
             QCOMPARE(files->item(0, 4)->text().size(), 11);
         }

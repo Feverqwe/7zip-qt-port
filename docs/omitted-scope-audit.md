@@ -43,6 +43,30 @@ The body map covers FM.cpp; native visibility/focus/popup/OLE receivers,
 cold stability, packages, remaining family bodies and final P3 acceptance stay
 separate. [Current source/platform receipt](upstream-port-audit.md#p3-05--fm-platform-dispatch-and-source-toolbar-text-2026-10-10).
 
+## MyLoadMenu complete body disposition (2026-10-10)
+
+Complete original/current `CPP/7zip/UI/FileManager/MyLoadMenu.cpp/.h` were
+compared at https://github.com/ip7z/7zip.git revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`, together with the exact
+`resource.rc` menu, App/Panel getters and active Qt command/menu consumers.
+The existing per-module baseline, C++ language, paths and notices remain.
+
+| Source body or dependency | Disposition |
+| --- | --- |
+| Menu globals, CopyMenu/CopyPopMenu and destroyer | Qt owns bound QActions and submenu lifetimes. QtProgramFileMenu retains source action references and the static CRC submenu; QtFileMenuProjection removes dynamic plugin items through their owner. Native HMENU copying/destruction is replaced, not duplicated alongside Qt ownership. |
+| MyChangeMenu, language pairs and MyLoadMenu | Original popup/ID/position, special Open Inside/Benchmark captions and shortcut-preservation flow remain. Qt English resource lookup replaces LoadMenu reset in place, preserving QAction identity and signal bindings; timestamp examples remain untranslated. |
+| CFileMenu::Load | Original screen/read-only/hash/filesystem/selection/stream/version-control admission and separator flow remain. QtFileMenuProjection supplies screen, settings, item and platform services. PanelMenu owns dynamic File/context policy and plugin release. |
+| OnMenuActivating File/View | Actual menu identity is checked before dispatch. File rebuild remains source-owned. Restored View body uses original GetSortControlID, focused-panel getters, radio/check flags and current-time precision/UTC loop. Recursive QAction lookup and signal-blocked checks replace CMenu; existing time actions are hidden/reused instead of destroyed. Parent View aboutToShow is the consumer. |
+| Favorites activation | Original ten Set and ten Open caption loops, 100/50 shortening and shortcuts remain in MyLoadBookmarks. Qt eagerly refreshes them after state/language changes and construction; full-path tooltip is a presentation addition. FastFolders, persistence and source command dispatch remain authoritative. |
+| ExecuteFileCommand and OnMenuCommand | Source command switches, timestamp vector indexing/UTC redraw and bookmark routing remain behind CApp-owned services. Qt availability guards stale callbacks; backend operations and native shell/plugin owners are unchanged. |
+| MyBenchmark, About/Help/temp services | Original timer guards and benchmark workflow reside in QtFileManagerCommandWorkflows::MyBenchmark; official engine/backend remains the operation boundary. Existing narrow Qt/platform dialogs and HelpUtils supply native presentation/services. |
+| Inactive and platform branches | UNDER_CE command bar and obsolete native menu-mask APIs have no Qt 6 desktop consumer. Commented clipboard, Show Deleted and bookmark experiments remain inactive, not missing live commands. Native HWND/HMENU lifecycle is replaced by Qt. |
+
+This disposes this menu module's bodies and dependencies; it does not close the
+remaining FileManager/Panel/FM, native/rendered or package acceptance. Regression,
+geometry and platform evidence belongs to the
+[source receipt](upstream-port-audit.md#p3-05--source-view-menu-activation-2026-10-10).
+
 ## FM startup platform caller disposition (2026-10-10)
 
 Source https://github.com/ip7z/7zip.git revision

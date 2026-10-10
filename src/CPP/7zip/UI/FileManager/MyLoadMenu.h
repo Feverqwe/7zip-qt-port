@@ -10,6 +10,7 @@ class QAction;
 class CApp;
 class QMenu;
 class IQtPanelPluginMenuServices;
+void OnMenuActivating(QMenuBar &mainMenu, QMenu &menu, int position, CApp &app);
 void OnMenuActivating(QMenuBar &mainMenu, QMenu &menu, int position, CApp &app,
                       IQtFileMenuServices &projection, IQtPanelPluginMenuServices &plugins);
 void MyLoadMenu(QMenuBar &menu, bool needResetMenu);

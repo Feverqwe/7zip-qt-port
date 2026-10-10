@@ -1131,6 +1131,15 @@ changes. `language_ui` inspects EN/RU normal980×620 and compact640×400 reports
 `toolbar-text-{-,ru}-{980,640}.json`. Tooltip text is asserted directly, without
 a popup-pixel claim. Native rendered tooltip appearance remains unverified.
 
+Opening the parent View menu runs source OnMenuActivating before display. Its
+time submenu caption is the current day; five current-time examples and UTC
+reflect the focused source panel and shared UTC flag. Source view/sort/two-panel,
+flat/toolbar/auto-refresh checks are projected without executing commands.
+`view_menu` covers both panes and EN/RU at980×620 and640×400, writing24
+`view-menu-*-main.json`, `view-menu-*.json` and `view-menu-*-time.json` reports.
+Both addresses and the actual visible table/icon lists must fit. Menu order and
+action bindings are retained; reports do not establish rendered Windows parity.
+
 Reference: `CPP/7zip/UI/FileManager/resource.rc::IDM_MENU`,
 `App.cpp::g_ArchiveButtons/g_StandardButtons` and `MyLoadMenu.cpp` at
 `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. Six top-level menus follow
@@ -1423,6 +1432,7 @@ Reference: pinned `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
 `PanelListNotify.cpp` property-to-text branch, and unchanged portable
 `PropVariantConv.cpp`/`PropIDUtils.cpp`. The popup presents five current-time
 examples (day, minute, second, 100 ns, nanosecond) and a separate UTC toggle.
+The parent View menu fills these examples before the child popup opens.
 Changing either setting redraws visible time columns in place; day-level ties
 still sort by source `FILETIME`. `panel_columns` checks the menu text and state,
 filesystem/archive cells, persistence and fully visible list at 980×620 and

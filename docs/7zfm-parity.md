@@ -14,6 +14,23 @@ Qt Windows platform context владеет OLE для QApplication; offscreen н
 [disposition](omitted-scope-audit.md#fm-desktop-bodies-and-platform-dispatch-2026-10-10);
 native/rendered/platform/package и итоговая приёмка остаются отдельными.
 
+## Source View-menu activation (P3-05, 2026-10-10)
+
+Родительское меню «Вид» при открытии выполняет исходный OnMenuActivating:
+показывает текущую дату, пять примеров точности времени и UTC, состояние вида,
+сортировки, двух панелей, плоского вида, toolbar и автообновления. Сортировка
+по другим свойствам использует исходный fallback «Имя». До исправления дата
+и примеры заполнялись только при открытии дочернего меню времени. Qt сохраняет
+объекты QAction и их команды, блокируя сигналы при отражении состояния;
+пересоздание HMENU заменено обновлением существующих действий.
+
+`view_menu` проверяет обе панели, EN/RU, команды точности/UTC и сохранение,
+публичное выделение после сортировки CTime, normal/compact geometry главного
+окна и двух popup. `panel_columns` активирует тот же родительский обработчик.
+Ресурсы и widget JSON устанавливают структуру Qt; rendered Windows parity и
+интерактивная desktop-приёмка остаются отдельными обязательными проверками.
+[Source receipt](upstream-port-audit.md#p3-05--source-view-menu-activation-2026-10-10).
+
 ## Source startup platform defaults (P3-05, 2026-10-10)
 
 При исходном условии малого экрана подписи toolbar по умолчанию отключаются;
