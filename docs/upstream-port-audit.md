@@ -1,5 +1,61 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-05 — core Copy/CRC sort and results reconciliation (2026-10-10)
+
+Source https://github.com/ip7z/7zip.git, full revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`:
+`CPP/7zip/UI/FileManager/PanelCopy.cpp`, `PanelCrc.cpp`, `PanelSort.cpp`,
+`Panel.h`, `App.cpp/.h`, `ListViewDialog.cpp/.h/.rc/ListViewDialogRes.h`,
+`AboutDialog.cpp/.h/.rc/AboutDialogRes.h`, `HelpUtils.cpp/.h` and
+`CPP/Common/MyString.cpp/.h`. Complete original/adapted bodies, supporting
+types, resources, dependencies and actual operation/provider/list/result/help
+callers were reviewed. The
+[body map](omitted-scope-audit.md#copy-crc-and-sort-complete-bodycaller-disposition-2026-10-10)
+records retained/adapted/inactive scope, including source callbacks, Qt progress
+and typed property/header transport. Paths, C++ language and original notices
+remain; existing per-module baseline ownership is unchanged.
+
+The review found independently substituted case conversion in the otherwise
+source natural-name comparator. Its char16_t boundary called QChar::toUpper
+despite usable original MyCharUpper(wchar_t). The adapter now calls that original
+function, preserving ASCII/native CharUpperW/MyCharUpper_WIN/towupper behavior
+and the exact digit-run/leading-zero loop. QStringView/wide-string conversion
+still preserves Windows UTF-16 units at the presentation boundary. No new
+sorting or Unicode case algorithm is introduced.
+
+Actual macOS Qt6.12/source probe in C.UTF-8 found35 BMP differences. The concrete
+Greek U+1F80/U+1F88 pair maps to U+1F88 in source towupper; QChar leaves U+1F80.
+Authenticated Windows x64 CharUpperW also returned8072 (U+1F88) for both inputs.
+Actual old-product archive-panel RED8Qt pass/1fail/0skip put the lower-form
+file10 before upper-form file2. Public regressions now cover natural numeric
+order after native casing, descending order/retained selection, filesystem
+provider traversal and unchanged owned bytes. Filename NFC is test display
+comparison only, not product path normalization. These concrete probes do not
+claim exhaustive cross-platform Unicode equivalence.
+
+Validation: required unsandboxed macOS gate passed 313/313 in 254.08s,
+4928 Qt checks, zero failures and 18 existing platform skips. The 14 focused
+Copy/CRC/sort/result/history/help consumers passed on Linux x64 in 10.77s and
+Windows x64 in 38.96s; each recorded 218 Qt checks, zero failures/skips.
+Both used Qt 6.12, official runtime/SFX and snapshot
+`20261010T022005Z-2b5417cc`, archive SHA-256
+`e525976a27ee8e28c0a8badfdf3f2c65f18e3e64b1dbcc6a9a383952e6463552`.
+All 1432 frozen code/test/build/resource inputs matched local files, archive
+and actual guest files. After removal of the one-off runner wrapper, 1431
+retained inputs still match. Two current normal/compact flat-sort widget JSON
+reports per guest have visible named controls and fitting labels; the existing
+public test also verifies table visibility. No layout changed. Eleven slow
+suites and device-image fixtures were excluded; rendered Windows reference,
+physical desktop and other native acceptance are not established by these tests.
+
+Copy/CRC/Sort and result/history/About/Help source disposition is reconciled;
+whole FileManager/native/rendered/package and final acceptance remain open.
+
+This supersedes historical partial PanelSort descriptions of unported raw
+property sorting, and the old About note that its external-codec diagnostic
+was unavailable. The existing scoped catalog supplies that source branch;
+help_source covers its actual error presentation.
+
 ## P3-05 — temporary browser source lifecycle reconciliation (2026-10-10)
 
 Source: https://github.com/ip7z/7zip.git, full revision

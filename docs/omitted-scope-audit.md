@@ -1,5 +1,47 @@
 # Omitted source scope review
 
+## Copy, CRC and sort complete body/caller disposition (2026-10-10)
+
+Complete original/current PanelCopy.cpp, PanelCrc.cpp and PanelSort.cpp were
+reviewed with Panel.h/App.h, CApp::OnCopy, typed copy options, folder/Agent/raw
+interfaces and Qt progress/list consumers. Pinned source repository/revision
+and the casing correction are in the
+[source receipt](upstream-port-audit.md#p3-05--core-copycrc-sort-and-results-reconciliation-2026-10-10).
+
+| Original body family | Retained owner and integration boundary |
+| --- | --- |
+| CPanelCopyThread ProcessVirt/ShowFinalResults/ProcessWasFinished_GuiVirt | Source hash/test/filesystem-stream/CopyTo branches, callback result/hash publication and once-only final results retained. Typed extract/path/overwrite options route the original IArchiveFolder extraction entrypoint; Qt supplies joined modal/progress transport, not archive algorithms. |
+| CPanel CopyTo/CopyFsItems | Source Zone registry decision, external-codec lifetime before Hash, callback/password initialization, progress title, reached result/messages/password cache and title refresh retained. Explicit settings/provider injection replaces FM globals; ArchiveBackend supplies official engine operations. |
+| CThreadUpdate, CPanel CopyFrom/CopyFromNoAsk | Original file/path vectors, folder/password/callback state, CopyFrom, E_NOINTERFACE-to-message/E_ABORT and guarded selection/focus phases retained. Existing original CProgressThreadVirt supplies exception/closer/thread/modal join instead of duplicating Win32 thread transport. ActionSet/PathMode use Agent's source update entrypoints; Qt returns the reached selection phase for deferred publication after source guards unwind. |
+| CDirEnumerator Init/Next, CThreadCrc ProcessVirt/SetStatus/AddErrorMessage/ShowFinalResults | Original two-pass scan/hash,100-entry scan updates,32KiB buffer,2MiB progress thresholds, counts/errors/digests and once-only results retained. POSIX dirent-to-FileInfo and native bounded Windows CInFileStream adapt I/O; the accepted filesystem link refusal remains explicit. No digest implementation exists in widgets. |
+| CApp CalculateCrc2/CalculateCrc | Source operated indices, operations-capable stream-folder delegation, codec/hash selection, flat-mode traversal, source progress and result/title phases retained. Backend catalog supplies the original providers instead of LoadGlobalCodecs; the source-panel flat-mode query and empty-prefix guard adapt the former CApp context. Native device acceptance remains separate. |
+| CompareFileNames_ForFolderList, CompareFileNames_Le16, raw-property comparison | Original digit-run/leading-zero and UTF-16 comparison retained. QStringView converts at the boundary; the local char16_t adapter now calls original MyCharUpper(wchar_t), replacing independent QChar casing. Raw NtReparse uses source CReparseShortInfo; invalid records return equality instead of dereferencing a failed parse. |
+| CompareItems2/CompareItems, SetSortRawStatus/SortItemsWithPropID/OnColumnClick | Source parent/directory precedence, raw/provider/property branches, three-step property/name/prefix fallback and load-index tie-break remain. Typed CPanel::CompareItemIndices replaces LPARAM callback transport; Qt applies direction outside the comparator so directory/parent precedence remains stable. Header events supply a property ID; source initial size/time direction and raw-column flag remain. |
+| Commented raw CRC/read experiments and old SortItems variants | Original inactive examples remain inactive. Qt does not implement an alternate copy/hash/sort algorithm for these comments. |
+
+This records source body and dependency boundaries, not whole FileManager or
+native platform/package/final acceptance. Existing operation receipts own the
+success/failure/Cancel/publication contracts; the source correction and bounded
+current consumers are recorded in the linked receipt.
+
+## Result/history and About complete disposition (2026-10-10)
+
+Complete original/current ListViewDialog.cpp/.h and AboutDialog.cpp/.h, exact
+original RC/Res, HelpUtils bodies and actual HashGUI/PanelFolderChange/PanelMenu/
+MyLoadMenu/CApp/Qt Help/About callers were reviewed at the same pinned revision.
+
+| Original body family | Retained owner and adaptation |
+| --- | --- |
+| ListView_GetSelected, CListViewDialog OnInit | Source vector insertion,1024-unit display truncation, CRLF/LF flattening, SelectFirst, columns and StringsWereChanged initialization retained. QTreeWidget/Qt layouts replace native attachment/column/resize transport; FM SingleClick and shared hover replace list styles. |
+| CopyToClipboard/ShowItemInfo/DeleteItems | Original untruncated selected names/values, platform line endings, one-item info, parallel Strings/Values deletion and focused selection retained. Qt clipboard and source EditDialog modal replace native services. Property-name language bindings are a UI adaptation. |
+| OnEnter/OnNotify/OnOK | Original Alt/two-column info, one-column accept, delete admission, Ctrl+A/C/Insert and accepted focused index retained through Qt events. Native activation-version dispatch becomes typed click/double-click; Meta is the documented macOS keyboard adaptation. Cancel leaves caller history unpublished. |
+| CAboutDialog OnInit/OnHelp/OnButtonClicked | Original external-codec error getter, version/date, language IDs, start.htm and homepage switch retained. Scoped catalog injection replaces g_CodecsObj; QMessageBox/QDesktopServices/Qt modal positioning replace Win32/CE services. Local app version/license access are existing explicit additions, not inferred engine versions. |
+| HelpUtils ShowHelpWindow | Original module-prefix/7-zip.chm::/topic construction retained. Offline original HTML/CSS and Qt navigation replace HtmlHelp/hh.exe/CE/MingW presentation branches. Page/dialog callbacks retain original topic ownership. |
+
+ListView resources remain reproducible read-only upstream references for the
+existing contract; About resources/logo are exact vendored inputs. No rendered
+Windows or native-system-picker claim follows from these source reviews.
+
 ## Temporary browser complete body/caller disposition (2026-10-10)
 
 Pinned repository/revision and validation are in the

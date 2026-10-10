@@ -1,5 +1,15 @@
 # Сверка с Windows 7zFM
 
+## Source native casing before numeric sort (P3-05, 2026-10-10)
+
+Сортировка имён снова использует исходный MyCharUpper и его платформенный
+сервис регистра. Для подтверждённой пары U+1F80/U+1F88 одинаковый буквенный
+префикс позволяет сравнить file2 перед file10, как в Windows CharUpperW;
+прежний QChar оставлял строчную форму отдельной группой. Алгоритм числовых
+серий и Windows UTF-16 единицы сохранены; Agent, filesystem и fallback панели
+используют один компаратор. Это проверка поведения, без изменения layout или
+утверждения о rendered Windows parity. [Source receipt](upstream-port-audit.md#p3-05--core-copycrc-sort-and-results-reconciliation-2026-10-10).
+
 ## Temporary browser source keyboard (P3-05, 2026-10-10)
 
 Delete Temporary Files снова обрабатывает исходные Ctrl+R и Ctrl+F3/F5/F6:

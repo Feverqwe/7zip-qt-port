@@ -36,6 +36,52 @@ class PanelSortTests final : public QObject, protected MainWindowTestSupport {
                                                QStringView(second).mid(2, 6)) < 0);
     }
 
+    void nativeCasePolicyPrecedesNaturalDigitComparison() {
+        // Windows CharUpperW and source POSIX towupper pair these Greek
+        // small/capital forms; Qt's single-QChar uppercase leaves U+1F80.
+        QTemporaryDir temp;
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        const QString lower = QStringLiteral("\u1F80file10.txt");
+        const QString upper = QStringLiteral("\u1F88file2.txt");
+        openListedArchive(window, backend, temp.filePath("native case.7z"),
+                          {{lower, 1, 1}, {upper, 1, 1}});
+        QCOMPARE(names(window), (QStringList{upper, lower}));
+        QCOMPARE(CompareFileNames_ForFolderList(u"\u1F80file2", u"\u1F88file2"), 0);
+        table(window)->selectRow(rowWithPath(window, upper));
+        action(window, "sort3Action")->trigger();
+        QCOMPARE(names(window), (QStringList{lower, upper}));
+        const auto selected = table(window)->selectionModel()->selectedRows();
+        QCOMPARE(selected.size(), 1);
+        QCOMPARE(selected.first().data().toString(), upper);
+    }
+    void filesystemUsesTheSameNativeCaseAndNumericOrder() {
+        QTemporaryDir temp;
+        const QString lower = QStringLiteral("\u1F80file10.txt");
+        const QString upper = QStringLiteral("\u1F88file2.txt");
+        for (const auto &name : {lower, upper}) {
+            QFile file(temp.filePath(name));
+            QVERIFY(file.open(QIODevice::WriteOnly));
+            QCOMPARE(file.write("owned"), qint64(5));
+        }
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        auto *address = window.findChild<QLineEdit *>("archivePath");
+        address->setText(temp.path());
+        QTest::keyClick(address, Qt::Key_Return);
+        auto normalizedNames = [&] {
+            QStringList result = names(window);
+            for (auto &name : result)
+                name = name.normalized(QString::NormalizationForm_C);
+            return result;
+        };
+        QTRY_COMPARE(normalizedNames(), (QStringList{upper, lower}));
+        action(window, "sort3Action")->trigger();
+        QCOMPARE(normalizedNames(), (QStringList{lower, upper}));
+        QFile file(temp.filePath(upper));
+        QVERIFY(file.open(QIODevice::ReadOnly));
+        QCOMPARE(file.readAll(), QByteArray("owned"));
+    }
     void flatArchiveSortsNamesBeforePrefixes() {
         QTemporaryDir temp;
         ControlledBackend backend;

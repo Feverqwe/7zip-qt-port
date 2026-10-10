@@ -64,6 +64,20 @@ owner и интегрированными consumers, включая уже ра�
 
 ## Правила статусов и счётчика
 
+P3-05, 2026-10-10: complete Copy/CRC/Sort and result/history/About/Help
+body/type/resource/caller disposition reconciled. The name comparator now
+uses original MyCharUpper through its UTF-16 adapter; actual old archive-panel
+RED and public archive/filesystem regressions establish native Greek casing
+before numeric ordering, selection and unchanged bytes. Required macOS gate
+313/313 PASS (254.08s; 4928 Qt checks, 0 failures, 18 existing platform skips).
+Linux/Windows x64 Qt 6.12 each passed 14 focused consumers (10.77s/38.96s;
+218 Qt checks, 0 failures/skips), with 1432 local/archive/actual-guest inputs
+exact and 1431 retained after wrapper removal. Two current normal/compact
+flat-sort widget JSON reports per guest fit. Eleven slow suites excluded.
+[Source and validation receipt](upstream-port-audit.md#p3-05--core-copycrc-sort-and-results-reconciliation-2026-10-10).
+Whole FileManager/native/rendered/package/final acceptance remains open;
+43/47 and P3-03/04/05/06 unchanged.
+
 P3-05,2026-10-10: complete BrowseDialog2 body/header/resource/caller disposition
 and temporary-browser lifecycle reconciled. Missing source Ctrl+R/Ctrl+F3/F5/F6
 and aggregate-count wait cursor restored with actual RED1 each. Required macOS

@@ -278,6 +278,10 @@ tree. Native ConfigureArc retains the codec's raw/tree capabilities. Original
 Agent temporary prefix strings remain confined to GUI sorting. Its wide-name
 calls share PanelSort's existing UTF-16 comparison through a Qt conversion
 overload; no independent archive comparator is added.
+The char16_t boundary delegates casing to original MyCharUpper(wchar_t), using
+its native platform policy rather than Qt's Unicode table. It preserves source
+numeric-run comparison and is shared by Agent, filesystem and panel fallback
+comparators; no second casing or natural-name algorithm exists in these views.
 Sort commands delegate through the existing command service directly to source
 CPanel::SortItemsWithPropID. Its original toggle/default property policy,
 SetSortRawStatus and focused-row EnsureVisible replace MainWindow's independent

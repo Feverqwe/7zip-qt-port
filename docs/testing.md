@@ -1,5 +1,13 @@
 # Regression strategy
 
+`panel_sort` covers the source native-case/numeric ordering through actual
+archive and filesystem panels, including Greek U+1F80/U+1F88, descending order,
+retained archive selection and unchanged owned files. `panel_filesystem_sort`,
+`panel_archive_sort`, `panel_column_sort` and `panel_sort_commands` cover the
+shared comparator's provider/raw-property/column/command consumers. Original
+platform casing is authoritative; a Qt single-QChar uppercase table is not a
+source oracle. All fixtures remain local and bounded.
+
 `temp_cleanup` exercises the source keyboard owner through the public modal
 browser: Ctrl+R discovers a newly created Unicode/space file; Ctrl+F3/F5/F6
 switch and toggle source sort columns while current selection survives; Ctrl+A

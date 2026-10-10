@@ -5,6 +5,7 @@
 
 #include "PanelSort.h"
 #ifdef SEVENZIP_NAME_SORT_ONLY
+#include "Common/MyString.h"
 #include <QString>
 #include <string>
 #else
@@ -20,7 +21,9 @@
 #ifdef SEVENZIP_NAME_SORT_ONLY
 namespace {
 // Preserve Windows 7zFM UTF-16 code units on platforms with 32-bit wchar_t.
-char16_t MyCharUpper(char16_t c) { return QChar(c).toUpper().unicode(); }
+char16_t MyCharUpper(char16_t c) {
+    return static_cast<char16_t>(::MyCharUpper(static_cast<wchar_t>(c)));
+}
 } // namespace
 
 int CompareFileNames_ForFolderList(const char16_t *s1, const char16_t *s2) {

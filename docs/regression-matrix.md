@@ -1,5 +1,13 @@
 # Regression and security traceability
 
+Core Copy/CRC/Sort source disposition: `panel_sort` reproduces native Greek
+casing before numeric runs through archive/filesystem panels, descending
+selection retention and preserved bytes. Filesystem/archive/column/command
+sorting, App Copy routing, Extract/Update contracts, checksum/hash results,
+ListView/history/About and Copy dialog suites retain direct consumer coverage.
+Source body/adaptation boundaries are recorded in the
+[core receipt](upstream-port-audit.md#p3-05--core-copycrc-sort-and-results-reconciliation-2026-10-10).
+
 Temporary browser source commands: `temp_cleanup` covers public Ctrl+R and
 Ctrl+F3/F5/F6 refresh/sort transitions, retained current selection, Ctrl+A and
 unchanged owned Unicode/space file bytes alongside success/failure/Cancel and
