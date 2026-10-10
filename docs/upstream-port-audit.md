@@ -1,5 +1,64 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-05 — FM startup RAM lifetime and nested-open consumers (2026-10-10)
+
+Source https://github.com/ip7z/7zip.git, full revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`: CPP/7zip/UI/FileManager/FM.cpp
+WinMain2 and RAM globals; PanelItemOpen.cpp stream-limit consumer; original
+Windows/System GetRamSize implementation and direct entry/panel callers were
+reviewed. FM.cpp now owns the original query in immutable GetRamInfo storage,
+replacing two write-once globals with a typed Size/Defined record. Production
+RunSevenzipFileManager initializes it first, as original WinMain2 does, before
+platform/language/parser consumers. PanelItemOpen reads that same record instead
+of querying on each nested open. Its original threshold, unknown-RAM fallback,
+branch ordering and existing excessive-shift guard remain. Direct source-panel
+callers without entry initialize the same process record on first use.
+
+Adapted scope is query storage/entry delivery and the existing active reader;
+PanelCopy/Panel.h RAM mentions are comments only. Source C++ language, module
+paths, dependencies and notices remain; no independent sizing algorithm or
+compression/format implementation is added. Dependencies are original System.h,
+the existing startup boundary and source nested-open/extraction owners. Existing
+QtArchiveFolderManager file-only transport materializes streams and clears final
+CFolderLink::IsVirtual; that flag does not prove the source memory-route decision.
+
+New bounded file_manager_ram fixture compiles only actual FM.cpp/PanelItemOpen.cpp
+with a substituted public platform query. Production keeps original GetRamSize;
+there is no runtime test hook or exposed internal state. Eight separate children
+exercise both panes, startup zero/64MiB, query failure and corrupt inner archive
+through production entry and source Open/Copy/Parent. Official 7zz creates private
+Unicode/space 7z-in-7z fixtures. Protected source archives/payload bytes and parent
+bindings survive. With the final corrected oracle, restoring only the old reader
+fails all eight rows (two RAM queries instead of one):2 Qt pass/8 fail,3.52s.
+Restored cache passes1/1,4.08s. This closes the RAM lifetime debt recorded in the
+preceding FM receipt; whole-family/native/rendered/package/final acceptance stays
+open. Nonvisual logic does not change layout or require new appearance coverage.
+
+Fresh focused macOS 9/9 PASS in 5.79 s and Linux 9/9 PASS in 11.44 s each report
+109 Qt pass, 0 fail and 2 Windows-only skips. Windows 8/9 PASS in 76.07 s reports
+113 Qt pass, 2 fail and 0 skip:
+only the two established actual-7zFM service-desktop visibility assertions fail;
+the new RAM suite and native/offscreen Link-copy rows pass. All 1441 code/build/
+resource inputs match local files, source archives and actual guest trees.
+Linux snapshot20261010T060650Z-ef5770b0 archive SHA-256
+`fdb3abda48298af4dfa2af4dfbd302c190440a54ae1d77eea86afa5d55e604d9`;
+Windows snapshot20261010T060647Z-1b55954b archive SHA-256
+`fccfa8fb7bd198cb776ed74cf9d9f80f7f28f7fbaac9b9d74e79ceb03d19e56f`.
+Primary integration preserves the completed View-menu component; 12 rebuilt
+direct/merged consumers PASS in 17.20 s, with 127 Qt pass, 0 fail and 2 Windows-only skips.
+Eleven slow suites remain excluded. Guest snapshots do not establish exposed
+native Windows desktop, rendered parity, cold stability or package acceptance.
+
+Unsandboxed macOS formatting/all-target/default gate on baseline 7aff5eb plus
+this component finally PASS 317/317 in 358.54 s: 300 Qt suites, 4993 pass,
+0 fail and 56 platform skips. The first full run was 316/317 in 306.05 s with
+only temp_cleanup timing out at 30.02 s; its complete log is retained. That
+unchanged suite passed separately in 0.55 s before the passing full rerun.
+No assertion, timeout or production behavior was changed for that failure.
+Primary integration onto 8f10607 has the separate focused receipt above.
+The temporary validation wrapper is archived outside tracked source; 1440
+retained inputs are unchanged. P3-03/04/05/06 and final acceptance remain open.
+
 ## P3-05 — FM platform dispatch and source toolbar text (2026-10-10)
 
 Source https://github.com/ip7z/7zip.git, full revision
@@ -40,7 +99,9 @@ S_FALSE in destruction. That presentation owner replaces FM's OLE entry/exit;
 offscreen is not native OLE evidence. NSystem RAM query/fallback remains source-
 owned at PanelItemOpen; the point-of-use versus startup-cache lifetime difference
 is explicit in parity and its source startup-cache reconciliation remains
-mandatory P3-05 work. Legacy ComCtl activation delivery, Wow64 capability,
+mandatory P3-05 work at this receipt, subsequently restored by the
+[RAM lifetime reconciliation](#p3-05--fm-startup-ram-lifetime-and-nested-open-consumers-2026-10-10).
+Legacy ComCtl activation delivery, Wow64 capability,
 native class/instance handles and event loop each have concrete Qt/OS owners;
 no algorithm is declared unnecessary solely because a path is absent.
 

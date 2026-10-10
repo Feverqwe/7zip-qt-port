@@ -22,6 +22,7 @@
 #include "Windows/PropVariantConv.h"
 #include "Windows/System.h"
 #include "qtexternalguicall.h"
+#include "qtfilemanagerstartup.h"
 #include "qtownedtempregistry.h"
 #include <QElapsedTimer>
 #include <QMessageBox>
@@ -908,8 +909,9 @@ void CPanel::OpenItemInArchive(unsigned index, bool tryInternal, bool tryExterna
         options.NeedRegistryZone = false;
     }
 
-    size_t g_RAM_Size = 0;
-    const bool g_RAM_Size_Defined = NSystem::GetRamSize(g_RAM_Size);
+    const auto &ram = NQtFileManager::GetRamInfo();
+    const size_t g_RAM_Size = ram.Size;
+    const bool g_RAM_Size_Defined = ram.Defined;
     if (tryAsArchive) {
         // actually we want to get sum: size of main file plus sizes of altStreams.
         // but now there is no interface to get altStreams sizes.

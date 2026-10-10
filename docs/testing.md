@@ -1,5 +1,15 @@
 # Regression strategy
 
+`file_manager_ram` runs production startup and real source-panel nested Open,
+Copy and Parent in eight isolated child processes across both panes. A fixture
+OBJECT library substitutes only FM.cpp/PanelItemOpen.cpp's original platform
+GetRamSize dependency; production retains the real service. Startup zero/64MiB,
+query refusal and corrupt inner archive check one query, the immutable record,
+parent restoration and protected Unicode/space archive/payload bytes. Official
+7zz creates private 7z-in-7z fixtures. Final IsVirtual=false reflects existing
+file-only transport materialization, not evidence of memory-route selection.
+Existing extraction/open/lifecycle consumers cover cancellation and other errors.
+
 `language_ui::toolbarTooltipsRetainSourceTextAfterActionChanges` checks all seven
 source toolbar captions/tooltips through EN/RU/EN reload, actual filesystem
 selection changes, normal/compact JSON and unchanged private Unicode file bytes.

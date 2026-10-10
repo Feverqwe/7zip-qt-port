@@ -5,10 +5,12 @@
 Toolbar сохраняет исходные короткие подписи и tooltip из App.cpp::SetButtonText
 при смене языка и доступности QAction. Caption общей QAction в меню остаётся
 меню-подписью; Qt владеет временем жизни tooltip вместо статических Win32 buffers.
-Исходный GetRamSize в PanelItemOpen вызывается при nested-open вместо единственного
-startup-cache FM; threshold/fallback сохранены. Это явное отличие lifetime при
-изменении физической RAM между открытиями, а не новый расчёт лимита.
-Восстановление исходного startup-cache остаётся обязательной работой P3-05.
+Исходный GetRamSize вызывается один раз первым шагом production startup;
+PanelItemOpen использует общий неизменяемый результат FM. Исходные threshold,
+fallback и process lifetime восстановлены; существующая защита excessive shift
+сохранена. Прямые source-panel consumers без entry могут лениво создать тот же
+process cache. Файловый транспорт вложенных архивов по-прежнему materializes
+stream на диск; конечный IsVirtual не доказывает выбор RAM-ветки.
 Qt Windows platform context владеет OLE для QApplication; offscreen не доказывает
 нативный COM/drag transport. Все ветви FM.cpp сопоставлены с владельцами в
 [disposition](omitted-scope-audit.md#fm-desktop-bodies-and-platform-dispatch-2026-10-10);

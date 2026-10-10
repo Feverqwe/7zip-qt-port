@@ -17,6 +17,7 @@
 #include "ProgressDialog2.h"
 #include "Windows/FileFind.h"
 #include "Windows/FileName.h"
+#include "Windows/System.h"
 #include "qtfilemanagercommandservices.h"
 #include "qtfilemanagerinitservices.h"
 #include "qtfilemanagersplitter.h"
@@ -37,6 +38,15 @@ static void ErrorMessage(const wchar_t *s) {
 static void ErrorMessage(const char *s) { ErrorMessage(GetUnicodeString(s)); }
 
 extern bool g_LargePagesMode;
+
+const QtFileManagerRamInfo &NQtFileManager::GetRamInfo() {
+    static const QtFileManagerRamInfo info = [] {
+        QtFileManagerRamInfo result;
+        result.Defined = NWindows::NSystem::GetRamSize(result.Size);
+        return result;
+    }();
+    return info;
+}
 
 void NQtFileManager::SetMemoryLock(const QString &settingsPath,
                                    const IQtMemoryLockServices &services) {

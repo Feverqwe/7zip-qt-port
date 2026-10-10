@@ -17,7 +17,7 @@ remain the evidence for their respective consumers.
 | GetDllVersion and ComCtl activation version setup | Only selects old Win32 LVN_ITEMACTIVATE versus NM_DBLCLK/NM_RETURN delivery. Qt table/icon/keyboard transport calls retained OnNotifyActivateItems directly, with the original modifier policy. No independent activation algorithm or comctl DLL loader is needed for Qt widgets. |
 | Set_Wow64 | Only active consumer is MenuPage's other-bitness capability. QtNativeMenuPageServices queries the same IsWow64Process for a 32-bit process; 64-bit availability is explicit. No stale process-global copy is maintained. This is not an x86 runtime-verification claim. |
 | IsLargePageSupported/SetMemoryLock/Set_SymLink_Supported | Retained FM bodies and MemoryLock services own version/risk/setting/token policy. Production entry calls memory then link initialization before consumers. POSIX link support has no Windows token service; large-page command is unavailable there. Startup/Settings/engine and pre-Link Copy receipts remain authoritative. |
-| WinMain2 RAM initialization | Same source NSystem::GetRamSize now runs at PanelItemOpen's only active stream-limit consumer. Original fallback/shift decision remains, with the existing excessive-shift guard. Total RAM is read per nested-open instead of cached once at process startup; this lifetime difference is explicit, not a claim that the original startup cache was copied. PanelCopy/Panel.h mentions are comments only. |
+| WinMain2 RAM initialization | Original NSystem::GetRamSize runs first at production startup. FM.cpp's immutable GetRamInfo record replaces the two write-once source globals; PanelItemOpen reads the shared result. Original fallback/shift decision and existing excessive-shift guard remain. Direct source-panel consumers can initialize the same process record lazily. PanelCopy/Panel.h mentions are comments only. |
 | WinMain2 language/small-screen/OLE setup | LoadLangOneTime and CApp::ReloadLangItems remain source-owned. Source IsDialogSizeOK(200,200) reaches ReadToolbar through existing Qt font/work-area services. Native Windows QApplication's Qt platform context owns OleInitialize/OleUninitialize; offscreen fixtures do not establish OLE support. See the current platform receipt. |
 | WinMain2 command line and InitInstance return | Active source two-string tokenizer, trim and -t handling remain; Unix receives decoded argv through the typed boundary. WM_CREATE path preparation remains source FileName/FileFind plus CheckFileManagerStartup. Refusal/E_ABORT preserves source exit/message policy. |
 | WinMain2 accelerator/message loop and exit | Qt event delivery/QAction shortcuts replace HACCEL/GetMessage/TranslateAccelerator/DispatchMessage. Source command IDs and handlers remain. ArchiveBackend/catalog ownership releases source CCodecs libraries after window/folder/worker lifetime instead of one global FreeGlobalCodecs call. QApplication owns platform-context teardown and loop exit. |
@@ -37,8 +37,8 @@ Process globals for window/path/format/placement/splitter/application state are
 per-window typed state, preserving independent association-window lifetimes.
 Language and question-suppression globals retain their already audited source
 owners. RAM lifetime and Qt platform services are recorded in parity. The RAM
-startup-cache reconciliation remains mandatory P3-05 work; this map does not
-approve its lifetime substitution or close whole-module source acceptance.
+startup-cache reconciliation restores process lifetime; it does not close
+whole-module source acceptance.
 The body map covers FM.cpp; native visibility/focus/popup/OLE receivers,
 cold stability, packages, remaining family bodies and final P3 acceptance stay
 separate. [Current source/platform receipt](upstream-port-audit.md#p3-05--fm-platform-dispatch-and-source-toolbar-text-2026-10-10).

@@ -14,6 +14,14 @@ source/platform evidence to the [audit](upstream-port-audit.md).
 
 This document describes component ownership, data flow and integration boundaries.
 
+FM.cpp owns the process-lifetime RAM snapshot through GetRamInfo, an immutable
+record replacing the original two write-once globals. RunSevenzipFileManager
+initializes it first, before platform/language/parser services. PanelItemOpen
+consumes that record with the retained source limit/fallback and existing shift
+guard. Direct source-panel callers initialize the same record on first use.
+The platform query remains original NSystem::GetRamSize; ArchiveBackend retains
+operation/stream-materialization ownership.
+
 Original App.cpp::SetButtonText owns toolbar caption/tooltip lookup by native
 command ID. MainWindow transports that text into QToolButton after language
 reload and QAction changes; shared menu QAction captions remain menu-owned.

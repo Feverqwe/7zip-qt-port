@@ -46,12 +46,24 @@ P3-03/04/05/06 remain open;43/47 and final acceptance are unchanged.
 
 ## Общие правила и обязательный рефакторинг
 
+P3-05, 2026-10-10: original FM startup RAM cache now reaches PanelItemOpen through
+one immutable process snapshot; source thresholds/fallback and existing shift
+guard remain. Old reader fails all eight both-pane nested Open/Copy/Parent rows;
+the restored consumer passes. Final Mac default gate 317/317 PASS; focused
+Mac/Linux 9/9 PASS, Windows 8/9 with only the two established service-desktop
+visibility failures. 1441 inputs match both actual guests; 12 merged primary
+consumers pass with the foreign View-menu component preserved. Eleven slow
+suites excluded; native/rendered/package/family closure stays open. 43/47 and
+P3-03/04/05/06 are unchanged.
+[Receipt](upstream-port-audit.md#p3-05--fm-startup-ram-lifetime-and-nested-open-consumers-2026-10-10).
+
 P3-05, 2026-10-10: full FM.cpp body/branch/caller map now distinguishes source
 algorithms and explicit Qt/platform services. WM_NOTIFY's source SetButtonText
 and both button tables supply short toolbar captions/tooltips after language
 and action changes; the public old-product RED is retained. The map records
-RAM point-of-use versus startup-cache as mandatory remaining source work,
-and does not close FM/native/family/package/final acceptance.
+RAM point-of-use versus startup-cache as remaining source work at that receipt;
+the subsequent RAM reconciliation restores startup lifetime without closing
+FM/native/family/package/final acceptance.
 Full Mac316/316 PASS; final focusedMac/Linux12/12 andWindows11/12 with only the
 two established service-desktop visibility failures. Native STA/link-copy and
 toolbar/language rows pass;1461inputs match both guests and81widget reports fit.

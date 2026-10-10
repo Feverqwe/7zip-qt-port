@@ -13,6 +13,7 @@
 
 int RunSevenzipFileManager(QApplication &application) {
     return NQtFileManager::WinMain([&] {
+        NQtFileManager::GetRamInfo();
 #if defined(_WIN32) && defined(Z7_LARGE_PAGES)
         z7_LargePage_Set(0, 0, 0);
 #endif

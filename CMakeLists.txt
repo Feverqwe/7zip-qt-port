@@ -3073,6 +3073,26 @@ if(BUILD_TESTING)
             src/qtfilemanagermain.cpp ${metadata_ui_sources})
         target_include_directories(file_manager_entry_probe PRIVATE src tests)
         target_link_libraries(file_manager_entry_probe PRIVATE ${metadata_ui_libraries})
+        add_library(file_manager_ram_source_fixture OBJECT
+            src/CPP/7zip/UI/FileManager/FM.cpp src/CPP/7zip/UI/FileManager/PanelItemOpen.cpp)
+        target_include_directories(file_manager_ram_source_fixture PRIVATE src tests)
+        target_link_libraries(file_manager_ram_source_fixture PRIVATE ${metadata_ui_libraries})
+        target_compile_definitions(file_manager_ram_source_fixture PRIVATE
+            GetRamSize=FixtureGetRamSize)
+        qt_add_executable(file_manager_ram_probe tests/fixtures/file_manager_ram_probe.cpp
+            $<TARGET_OBJECTS:file_manager_ram_source_fixture>
+            src/qtfilemanagermain.cpp ${metadata_ui_sources})
+        target_include_directories(file_manager_ram_probe PRIVATE src tests)
+        target_link_libraries(file_manager_ram_probe PRIVATE ${metadata_ui_libraries})
+        qt_add_executable(file_manager_ram_tests tests/file_manager_ram_tests.cpp)
+        target_include_directories(file_manager_ram_tests PRIVATE src tests)
+        target_link_libraries(file_manager_ram_tests PRIVATE ${metadata_ui_libraries})
+        target_compile_definitions(file_manager_ram_tests PRIVATE
+            "SEVENZIP_RAM_PROBE=\"$<TARGET_FILE:file_manager_ram_probe>\"")
+        add_dependencies(file_manager_ram_tests file_manager_ram_probe)
+        add_test(NAME file_manager_ram COMMAND file_manager_ram_tests -silent)
+        set_tests_properties(file_manager_ram PROPERTIES TIMEOUT 120 ENVIRONMENT
+            "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/file-manager-ram.ini")
         if(NOT WIN32)
             qt_add_executable(unix_gui_entry_tests tests/unix_gui_entry_tests.cpp)
             target_include_directories(unix_gui_entry_tests PRIVATE src tests)
