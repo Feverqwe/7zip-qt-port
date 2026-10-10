@@ -1,5 +1,43 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-05 — FileManager resource and plugin dependency reconciliation (2026-10-10)
+
+Source https://github.com/ip7z/7zip.git at full revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. The repeated pinned-tree inventory
+and complete absent header/resource/build disposition are in the
+[body/dependency map](omitted-scope-audit.md#filemanager-headerresource-and-plugin-dependency-inventory-2026-10-10).
+It covers all 197 top-level FileManager files, including the 176 cpp/h/rc paths,
+without interpreting physical presence as functional acceptance. Existing
+per-module baseline ownership/revision/notices remain unchanged. The verifier
+passes 410 exact, 198 adapted and three local files at committed port `0d71043`.
+
+Complete original/current FilePlugins.cpp/.h and FileFolderPluginOpen.cpp/.h,
+PluginLoader/RegistryPlugins/PluginInterface headers and actual SystemPage and
+PanelItemOpen consumers were reviewed. Original extension/icon merging, archive
+worker, error-level formatting, callbacks/password/volume lifetime, joined
+progress and result/library publication remain the active owners. Scoped manager,
+Qt progress/settings and owned nested-stream transport are the existing narrow
+engine/platform adaptations. Inline plugin-loader definitions are not themselves
+inactive, but their only loading calls in these modules are originally commented.
+External codec loading remains active in its separate source owner.
+
+A read-only authenticated Windows x64 probe inspected RT_MANIFEST of the already
+built app_copy_routing_tests.exe in snapshot `20261010T022005Z-2b5417cc`, then
+the actual sevenzip_desktop.exe from the independently built splitter snapshot
+`20261010T020937Z-6c93e77c` (source parent `22b7763`; executable SHA-256
+`869eecb3be0f226fab91af182fa60e69c952b01dae7c67eccf15fb0333912b5c`).
+Both contain longPathAware=true, Windows10 supportedOS and asInvoker. The
+installed Qt6.12 Windows CMake generator independently contains the long-path
+and execution-level declarations. This establishes those embedded fields;
+neither executable was launched by the probe. It does not establish actual DPI,
+native desktop/package acceptance or render the original Common-Controls v6
+theme. No manifest/code change was made on the strength of an absent filename.
+
+Validation is documentation/inventory only: git diff --check and the complete
+borrowed-file verifier pass. No build/test result is newly claimed; no UI changed,
+so the existing source/dialog receipts retain their exact platform limits.
+Whole FileManager/109-module/native/rendered/package/final acceptance remains open.
+
 ## P3-05 — core Copy/CRC sort and results reconciliation (2026-10-10)
 
 Source https://github.com/ip7z/7zip.git, full revision

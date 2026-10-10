@@ -64,6 +64,14 @@ owner и интегрированными consumers, включая уже ра�
 
 ## Правила статусов и счётчика
 
+P3-05, 2026-10-10: repeated pinned FileManager cpp/header/resource/build
+inventory and complete absent-file disposition recorded with actual owners;
+FilePlugins/FileFolderPluginOpen bodies, headers, dependencies and callers
+reconciled. Qt's existing Windows manifest supplies long-path/execution-level
+transport; no speculative product change. Documentation diff and complete
+borrowed baseline verification pass. [Source receipt](upstream-port-audit.md#p3-05--filemanager-resource-and-plugin-dependency-reconciliation-2026-10-10).
+This is not whole-module/platform/final acceptance; 43/47 unchanged.
+
 P3-05, 2026-10-10: complete Copy/CRC/Sort and result/history/About/Help
 body/type/resource/caller disposition reconciled. The name comparator now
 uses original MyCharUpper through its UTF-16 adapter; actual old archive-panel

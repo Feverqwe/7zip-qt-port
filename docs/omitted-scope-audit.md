@@ -1,5 +1,58 @@
 # Omitted source scope review
 
+## FileManager header/resource and plugin dependency inventory (2026-10-10)
+
+Pinned source: https://github.com/ip7z/7zip.git at
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. The inventory was repeated from
+that Git tree against committed port `0d71043`, rather than inferred from the
+sibling checkout or filenames mentioned in earlier receipts. FileManager has
+197 top-level files: 67 C++ units, 80 headers, 29 RC files, 14 BMPs, two ICOs,
+one application manifest and four build/project files. Of the 176 cpp/h/rc
+paths, 142 have exactly one recorded local owner (36 exact, 106 adapted),
+and 34 have no physical local copy (five cpp, 11 headers, 18 RC). All 16
+bitmap/icon inputs have exact owners; the other five absent files are the
+manifest and build/project inputs. No duplicate or unrecorded owner was found.
+This is a physical ownership inventory, not acceptance of every functional body.
+
+Every pinned original was compared with the checkout; only FM.dsp/FM.dsw have
+checkout CRLF conversion. Their Git blobs define the baseline. The complete
+borrowed-file verifier independently passes 410 exact, 198 adapted and three
+local paths. The following table accounts for every absent FileManager path.
+
+| Absent original files | Body/resource disposition and actual owner |
+| --- | --- |
+| ProgramLocation.cpp/.h, RegistryPlugins.cpp/.h, StdAfx.cpp | Empty include/guard, commented registry plugin declarations/bodies and PCH transport respectively. The [translation-unit review](#missing-ui-translation-units-reviewed-on-2026-10-05) records their callers/build boundary. FilePlugins and Windows/DLL remain active owners; the empty header is not a replacement for those modules. |
+| EnumFormatEtc.cpp/.h | Active native IEnumFORMATETC Next/Skip/Reset/Clone, target-device copy and factory declaration. Source PanelDrag supplied DATADIR_GET formats; QtPanelDragMime/QtPanelDragTransport delegate native enumeration to Qt's MIME/QDrag platform transport. This is an explicit presentation adaptation, with native receiver acceptance still open. |
+| ProgressDialog.cpp/.h/.rc/ProgressDialogRes.h | Active installer-specific legacy progress/sync/range/cancel/thread-join implementation and its two-control resource. FM.mak selects ProgressDialog2; SFXSetup selects this separate implementation. The [legacy disposition](#missing-ui-translation-units-reviewed-on-2026-10-05) and accepted bundle selection remain authoritative. No modern progress implementation is claimed from these absent files. |
+| PluginInterface.h | All plugin interface macros/declarations are inside the original block comment. Actual active interfaces are IFolder/IFolderArchive and codec interfaces; no active API is omitted from this header. |
+| PluginLoader.h | Its CreateManager/LoadAndCreateManager inline bodies are active definitions, but both actual FilePlugins/FileFolderPluginOpen loading branches are commented in the original. The live branch constructs CArchiveFolderManager. Current injected IFolderManager replaces that construction at the established ArchiveBackend engine boundary; CLibrary retains actual archive-module lifetime. Original external codec loading remains in LoadCodecs, not this inactive plugin branch. |
+| DialogSize.h | BIG_DIALOG_SIZE/SIZED_DIALOG select alternate resources only under UNDER_CE; the desktop branch selects the normal resource. OverwriteDialog, OptionsDialog and ProgressDialog2 use Qt controls/layouts and their existing normal/compact contracts. No Windows CE target or independent dialog-size algorithm is introduced. |
+| ComboDialog.rc/ComboDialogRes.h, CopyDialog.rc, SplitDialog.rc | Label/editable-combo/Browse/info/volume fields and OK/Cancel grouping map to the same source ComboDialog/CopyDialog/SplitDialog owners. Combo's numeric RC-only IDs become direct Qt control references. Existing [text/geometry contracts](ui-layout-contracts.md) and source Create/Copy/Split/Combine receipts own the states; omission of RC compilation does not omit functional dialog bodies. |
+| EditDialog.rc/EditDialogRes.h, ListViewDialog.rc/ListViewDialogRes.h | Read-only multiline edit plus Close, and report list plus OK/Cancel, map to source EditDialog/ListViewDialog Qt controls. Direct Qt references replace numeric attachment IDs. Full-value/info/history/result behavior remains in those source modules; current body disposition is [recorded separately](#resulthistory-and-about-complete-disposition-2026-10-10). |
+| MemDialog.rc, MessagesDialog.rc, PasswordDialog.rc | Source memory/action/repeat/Continue/Cancel, diagnostics list/Close and password/show/OK/Cancel controls map to the same source Qt dialog owners. Mem/Password generated reference contracts preserve original resource hashes; Messages uses its reviewed text/geometry contract. Their conditional state, result and callback receipts remain authoritative. |
+| EditPage.rc/EditPage2.rc, FoldersPage.rc/FoldersPage2.rc, MenuPage.rc/MenuPage2.rc, SettingsPage.rc/SettingsPage2.rc, SystemPage.rc | The outer resources select desktop/CE sizes; their included bodies define Viewer/Editor/Diff, work-folder choices, shell-menu/Zone/items, file-manager/memory settings and association user columns/buttons. Source pages retain the actual initialization/Apply logic; Qt SettingsDialog supplies controls and property-sheet navigation. Existing Options/source page and System resource contracts own the desktop grouping, platform availability and errors. CE-only duplicate sizes and the commented memory/skip controls are not active desktop features. |
+| 7zFM.exe.manifest | Original resource.rc embeds Common-Controls v6, Vista–Windows10 compatibility, system DPI and long-path declarations. Qt creates the current executable manifest; a read-only Windows RT_MANIFEST probe and installed Qt generator confirm longPathAware/asInvoker/Windows10 support. Original native control/theme and legacy DPI declarations are presentation boundaries, not archive algorithms. Actual application/desktop/DPI acceptance is not inferred from a test executable; the dated source receipt states the exact probe scope. |
+| FM.mak, makefile, FM.dsp, FM.dsw | FM.mak/makefile/7zip.mak identify FM/Agent/Common/GUI/native objects, language/device/external-codec defines and selected resource.res. Current CMake explicitly owns corresponding source libraries, C-versus-C++ languages, Qt controls and resource generators. VC6 workspace/configuration, PCH and machine-specific output paths are build transport. Makefiles remain the dependency map; their absence locally does not authorize dropping active listed bodies. |
+
+### FilePlugins and FileFolderPluginOpen complete disposition
+
+Complete original/current cpp/h bodies were reviewed with PluginLoader,
+RegistryPlugins/PluginInterface, IFolder and the actual SystemPage::OnInit and
+PanelItemOpen::OpenAsArc consumers. Existing source/engine/opening receipts
+remain authoritative for native/process/stream acceptance.
+
+| Original body family | Retained implementation and integration boundary |
+| --- | --- |
+| CExtDatabase FindExt/Read, CPluginToIcon/CExtPlugins | Original IsEqualTo_NoCase lookup, SplitString, icon defaults and duplicate-extension merge loop retained. Read receives the retained manager instead of constructing another one. SystemPage clears the database before reading it and consumes original extension/icon records. CE-only CAB filtering and commented registry plugin iteration have no desktop branch. |
+| CThreadArchiveOpen Process/MyThreadFunction | Original progress closer, OpenFolderFile call, exception-to-E_FAIL and worker entry retained. Owned nested file streams use the existing IQtArchiveStreamOpenServices seam so the original parent-link path sees subsequent changes; the established source stream-copy/materialization receipt owns that necessary file-only adaptation. |
+| SplitNameToPureNameAndExtension, CArcLevelInfo/GetFolderLevels/GetBracedType/GetFolderError | Original final-dot split, QueryInterface/property reads, reverse archive levels, type/error/flags formatting and non-open versus opened diagnostics retained. Portable types/propvariants and existing language/resource services supply representation; no second diagnostic composition algorithm is added. |
+| CFfpOpen OpenFileFolderPlugin | Original path split, callback creation, cached password, volume callback lifetime, subarchive versus directory initialization, joined progress, S_OK/S_FALSE/error handling, diagnostic/password publication and library/folder transfer retained. QWidget/settings/catalog injection replace HWND/global manager transport. Only S_OK publishes Folder; S_FALSE can retain diagnostic ErrorMessage. PanelItemOpen consumes those exact results and owns its parent link. |
+| FindPlugin, association reordering, plugin enumeration/load branches | These bodies are inside original comments. They are not active third-party plugin support and are not substitutes for the mandatory external codec loader. CPluginLibrary has no active LoadAndCreateManager caller in these two source units. |
+
+No code, resource bytes, baseline revision or UI changed in this reconciliation.
+The remaining FM startup/platform disposition, full 109-module integration,
+native receivers/rendered reference/packages and final acceptance stay open.
+
 ## Copy, CRC and sort complete body/caller disposition (2026-10-10)
 
 Complete original/current PanelCopy.cpp, PanelCrc.cpp and PanelSort.cpp were
