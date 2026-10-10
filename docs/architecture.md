@@ -192,6 +192,10 @@ RefreshListCtrl caller and its ignored HRESULT, including asynchronous filesyste
 load failures. Qt tracks required source publication for move/copyToSame even
 when execution fails or is canceled. Explicit OnReload keeps its own diagnostics;
 actual writer and rollback/reopen errors retain their existing owners.
+The synchronous native stream/device/ADS route retains pending publication
+through writer-result presentation. It cannot mark a blocked reload completed:
+ExecuteCopy first ends its operation guards, then its existing completion owner
+loads the required source and destination panels.
 Filesystem-to-archive Copy/Move saves destination state before CopyFrom and
 publishes that same bound provider through RefreshListCtrl after success.
 ArchiveFolderOut already owns engine reopening and proxy restoration; the Qt

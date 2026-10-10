@@ -4,6 +4,16 @@
 Готовый запрос агенту: [porting-chat-prompt.md](porting-chat-prompt.md).
 Исходная дата: 2026-09-28. Это список **оставшейся** работы, не оценка MVP с нуля.
 
+P3-05,2026-10-10: native Copy retains pending source/peer publication until
+operation guards are released and uses the source HRESULT diagnostic owner.
+Old-product RED covers six stale Move cases and four wrong-icon error cases.
+Mac full321/321 and first Linux/Windows12/12 precede the localized diagnostic
+follow-up; final affected2/2 passes on all three OS,48Qt/0 failures each.
+All1513 final guest inputs and96 current widget reports are verified.
+[Receipt](upstream-port-audit.md#p3-05--native-copy-terminal-phases-and-retained-guards-2026-10-10).
+Physical/rendered/current-package/final scope remains mandatory;
+P3-03/04/05/06 and43/47 remain open.
+
 P3-05,2026-10-10: Copy publication now retains CApp's saved-state RefreshListCtrl
 caller and ignored reload HRESULT, including async filesystem failure; explicit
 OnReload and writer/rollback diagnostics remain separate. Actual old-product

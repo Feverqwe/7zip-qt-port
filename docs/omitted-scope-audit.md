@@ -1,5 +1,16 @@
 # Omitted source scope review
 
+## Native Copy terminal phase reconciliation (2026-10-10)
+
+Complete pinned OnCopy, PanelCopy worker/progress/result and CPanel HRESULT
+diagnostic callers retain their source order across Qt execution. Pending source
+and peer publication survive until operation guards release; the final diagnostic
+uses the existing source owner, with both worker/OnCopy phases preserved.
+No new algorithm/module/dependency/language omission is introduced. The controlled
+interface regression is separate from actual archive/stream/NTFS consumers.
+The [receipt](upstream-port-audit.md#p3-05--native-copy-terminal-phases-and-retained-guards-2026-10-10)
+owns three-OS evidence and remaining native/whole-family/package/final scope.
+
 ## App Copy publication caller reconciliation (2026-10-10)
 
 The complete pinned App.cpp::OnCopy565–858 and final load/selection callers were

@@ -1,5 +1,19 @@
 # Text specifications and geometry checks
 
+### Native Copy terminal errors (P3-05)
+
+Reference App.cpp::OnCopy, PanelCopy.cpp::CopyTo/ProcessVirt and
+Panel.cpp::MessageBox_Error_HRESULT/MessageBox_Error_Caption at the audit's pin.
+The standard message has HRESULT plain text, Critical icon and OK, caption7-Zip
+(Qt omits it on macOS). Preserve worker and final OnCopy diagnostic phases;
+E_ABORT has neither. Writer error precedes source/peer publication; retained
+Move source loads after guards release. Both panes/Copy/Move/result states use
+copy_publication_order terminal reports at980×620/640×400. Error resize requests
+440×220/340×220 auto-fit to400×116 Mac,399×98 Linux and214×88 Windows for both
+requests; inspect actual visible text/OK bounds, not requested sizes. These
+32 reports/OS have no meaningful clipping and do not prove rendered Windows
+pixels or physical input. [Receipt](upstream-port-audit.md#p3-05--native-copy-terminal-phases-and-retained-guards-2026-10-10).
+
 ### Refresh focus and alternative marks (P3-05)
 
 Named focus restoration uses saved SelectFocused in both modes. A focused

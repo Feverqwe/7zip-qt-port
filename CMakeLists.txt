@@ -2098,6 +2098,13 @@ if(BUILD_TESTING)
     set_tests_properties(panel_list_load PROPERTIES ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/panel-list-load-settings.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     qt_add_executable(panel_copy_reload_tests tests/panel_copy_reload_tests.cpp tests/panel_load_folder.cpp tests/layout_inspection.cpp ${panel_sort_sources})
+    qt_add_executable(copy_publication_order_tests tests/copy_publication_order_tests.cpp tests/layout_inspection.cpp ${panel_sort_sources})
+    target_include_directories(copy_publication_order_tests PRIVATE src tests)
+    target_link_libraries(copy_publication_order_tests PRIVATE sevenzip_location sevenzip_folder_loader Qt6::Test)
+    target_sources(copy_publication_order_tests PRIVATE src/mainwindow_selectionpaths.cpp)
+    add_test(NAME copy_publication_order COMMAND copy_publication_order_tests -silent)
+    set_tests_properties(copy_publication_order PROPERTIES TIMEOUT 45 ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/copy-publication-order-settings.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     target_include_directories(panel_copy_reload_tests PRIVATE src tests)
     target_link_libraries(panel_copy_reload_tests PRIVATE sevenzip_location sevenzip_folder_loader Qt6::Test)
     target_sources(panel_copy_reload_tests PRIVATE src/mainwindow_selectionpaths.cpp)
@@ -3308,7 +3315,7 @@ if(BUILD_TESTING AND WIN32)
             codec_commands_ui codec_creation_ui ui_geometry
             filesystem_selection_runtime ui_operations ui_copy_same ui_copy_routing app_copy_routing ui_update_modes archive_metadata_ui source_drop_add
             drag_drop_add_ui modal_refresh_window
-            main_shell panel_shell panel_key window_placement panel_key_source panel_list_load panel_item_icons panel_name_text panel_copy_reload filesystem_reload address_navigation panel_parent_reload panel_folder_sync native_archive_properties filesystem_comment fs_drives_device_ui namespace_hash native_network_navigation address_combo panel_address_keys root_command persisted_location ui_navigation ui_archive_states ui_archive_volumes
+            main_shell panel_shell panel_key window_placement panel_key_source panel_list_load panel_item_icons panel_name_text panel_copy_reload copy_publication_order filesystem_reload address_navigation panel_parent_reload panel_folder_sync native_archive_properties filesystem_comment fs_drives_device_ui namespace_hash native_network_navigation address_combo panel_address_keys root_command persisted_location ui_navigation ui_archive_states ui_archive_volumes
             large_list_window worker_window_progress panel_sort_commands panel_refresh_drop panel_refresh_completion panel_rename_state navigation_reload panel_deleted_draw panel_column_menu panel_column_initialization panel_column_schema panel_column_sort panel_column_changes panel_cell_text native_column_workflow panel_item_changed
             archive_reload_command drag_reload_completion panel_creation_path copy_archive_refresh interarchive_recovery panel_load_count panel_activation progress_dialog language_dialog language_standard_buttons fm_settings list_settings_runtime
             language_main_dialog language_focus properties_runtime

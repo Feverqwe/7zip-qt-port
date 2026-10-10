@@ -175,16 +175,11 @@ void MainWindow::executeCopyDestination(bool move, bool copyToSame, unsigned sou
         }
         const HRESULT result =
             app_.Panels[sourceIndex].CopyTo(options, indices, &messages, usePassword, password);
-        if (move || copyToSame)
-            appPresentation_->RefreshCopyPanel(sourceIndex);
-        if (useDestPanel && app_.NumPanels == 2) {
-            activatePanelUi(1 - sourceIndex);
-            appPresentation_->RefreshCopyPanel(1 - sourceIndex);
-            activatePanelUi(sourceIndex);
-        }
+        // Original OnCopy reports the writer result before refreshing either
+        // list. Retain both pending publications until ExecuteCopy releases
+        // its operation guards; a blocked reload would only return S_OK.
         if (result != S_OK && result != E_ABORT)
-            QMessageBox::warning(this, QtLangText(move ? IDS_MOVING : IDS_COPYING),
-                                 QString::fromWCharArray(HResultToMessage(result).Ptr()));
+            app_.Panels[sourceIndex].MessageBox_Error_HRESULT(result);
         return;
     }
     const bool directPath = indices.Size() == 1 && !destination.endsWith('/') &&

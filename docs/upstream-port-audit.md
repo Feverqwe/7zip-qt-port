@@ -1,5 +1,92 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-05 — Native Copy terminal phases and retained guards (2026-10-10)
+
+Source https://github.com/ip7z/7zip.git at full revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`: complete App.cpp::OnCopy565–858,
+PanelCopy.cpp::CPanelCopyThread::ProcessVirt/CopyTo and zone/progress/result
+dependencies were compared with QtAppPresentation::ExecuteCopy/CompleteCopyIfReady,
+QtAppOperationState, reloadPanelPresentation, namespace rendering and all native
+stream/device/ADS execution consumers. Original OnCopy presents writer failure
+before final panel publication and refreshes a Move source even after E_ABORT.
+
+The preceding result-policy component replaced immediate native-route rendering
+with RefreshCopyPanel while the operation owner still blocked reload. The
+presentation returned S_OK without loading, but its pending source flag was
+cleared. This regression could leave a Move source stale, hidden by auto-refresh.
+Native execution now retains both pending publications through CopyTo/result
+presentation. ExecuteCopy releases its guards before the existing completion
+owner performs the source-conditional and ordinary destination RefreshListCtrl.
+No new operation/selection/format algorithm, copied module, dependency, source
+language or baseline change; original notices remain. Accepted archive
+Copy/Delete/rollback/reopen paths keep their separate existing owners.
+
+The focused public copy_publication_order suite uses12 both-pane Copy/Move
+success/E_INVALIDARG/E_ABORT scenarios. Its test-only interface proxy delegates
+actual Unicode/binary byte operations to original CFSFolder::CopyTo and controls
+only folder type and terminal result. It exercises the shared native CopyTo
+route, not a real Windows ADS or raw device provider. Auto-refresh is disabled;
+writer-error observations retain pre-publication source loads/peer rows. Final
+load count, partial-result bytes, unchanged source/peer control files, rows,
+provider, marks, focus and notification recovery are checked. Existing actual
+archive/ADS consumers remain necessary and separate. New target uses the native
+Windows UI resource lock and a45s deadline; the12-case passing matrix is small.
+
+Unchanged4c79a1f product fails all six Move cases because source LoadItems is not
+called (success, failure and Cancel in both panes). Initial fixture also found
+six offscreen activation waits; using the established window-reactivation
+control before checking retained list focus isolates the six product failures.
+Raw first fixture failure and corrected old-product RED are preserved. Initial
+corrected source plus panel_copy_reload passes2/2 in3.65s.
+
+The same native caller also recreated the final diagnostic as a Qt warning with
+an operation caption. Original App invokes CPanel::MessageBox_Error_HRESULT,
+whose existing source presentation supplies7-Zip/Critical/OK/plain text. The
+native route now calls that owner directly. Full ProgressDialog2.cpp::Process/
+Create and final-message callers show that the source worker and OnCopy each
+present their diagnostic; both phases remain, while E_ABORT presents neither.
+The extended public regression observes exact HRESULT text, both critical icons,
+source caller identity, normal/compact error geometry and the source caption
+(omitted by Qt on macOS). Initial fixture assumptions of one message and a
+macOS caption were corrected against those source bodies and existing native
+dialog contracts before trusting RED. The pre-correction caller then fails all
+four writer-error cases with Warning instead of Critical; final focused2/2
+passes4.54s. This localized source-presentation follow-up is validated separately
+from the preceding full gate and native/runtime snapshot.
+
+Validation receipt: the stable publication correction passes unsandboxed Mac
+check.sh321/321 in259.23s (5070Qt,0 failures,56 skips). Before the localized
+diagnostic-owner follow-up, snapshot20261010T102904Z-9876848d, source SHA256
+`07e1a250d44c3199b9b9a127adeee93fc48848be61c6f100ac005c038b512e0d`,
+passes Linux12/12 in85.68s (484Qt,0 failures,one Windows-only skip) and
+Windows12/12 in274.42s (490Qt,0 failures/skips). All1513 frozen inputs match
+both guest trees; eight runtime files/OS and their pinned source metadata match.
+Actual archive/stream/NTFS consumers accompany the controlled proxy; no new
+device disk fixture is selected.
+
+Final affected checks after the source diagnostic call pass Mac2/2 in4.54s,
+Linux2/2 in6.90s and Windows2/2 in21.19s, each48Qt/0 failures/0 skips.
+Final snapshot20261010T104149Z-4130b34a SHA256
+`1bf8021874c5711a82afe6b1d991abbc0f93f8061ad320903e3c2722d3ea0536`
+matches all1513 inputs on both guests. This localized run deliberately skips
+runtime payload: its filesystem-interface and diagnostic consumers need no
+engine. It does not repeat the first snapshot's native/runtime acceptance or
+claim a full gate on the final diagnostic follow-up. All1454 retained product,
+test and build inputs match the final snapshot after removing its temporary
+validation wrapper. Baseline check verifies412 exact/198 adapted/3 local paths
+at one revision. Host storage reports OK, no warnings or VHDX growth; no disks,
+accounts or login policies changed.
+
+Final current-build JSON has32 reports/OS:24 terminal980×620/640×400 states
+and eight source-caller error resize requests440×220/340×220. Error dialogs
+auto-fit to400×116 Mac,399×98 Linux and214×88 Windows for both requests;
+these are not two distinct error-window geometries. Visible error text/OK and
+terminal pane controls fit;72 zero-width empty status labels/OS are not clipped
+content. No screenshots or rendered Windows reference are claimed. Eleven slow
+suites remain excluded and unexecuted. Physical/native desktop, rendered parity,
+remaining whole-family disposition and current-package/final acceptance remain
+mandatory; this component does not close P3-03/04/05/06.
+
 ## P3-05 — Copy publication caller and result policy (2026-10-10)
 
 Source https://github.com/ip7z/7zip.git, full revision

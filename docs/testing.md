@@ -1,5 +1,18 @@
 # Regression strategy
 
+`copy_publication_order` exercises the native CopyTo presentation route with a
+controlled interface proxy over original filesystem byte operations. Twelve
+both-pane Copy/Move success/failure/E_ABORT cases disable auto-refresh, observe
+source loads and peer rows during writer errors, then verify exactly the required
+source reload, partial-result bytes, untouched controls, provider, marks, focus
+and notification recovery. Normal/compact terminal JSON accompanies each case.
+Writer failures retain both original diagnostic phases and verify HRESULT text,
+Critical icons, source caller identity and the platform caption contract.
+Source-caller error resize requests produce auto-fitted widget reports; they
+do not establish two distinct dialog geometries or rendered reference parity.
+The proxy's AltStreamsFolder type selects the route; it is not real ADS/device
+evidence. Actual archive/NTFS/stream suites own those separate consumers.
+
 `drag_protocol` covers both panes' external left/right/middle entry, source
 button-flag precedence, release-before-Drop menu retention and temp-root/wait
 priority without writing to a root folder. `drag_drop_ui` adds the actual Qt

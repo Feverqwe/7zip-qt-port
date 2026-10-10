@@ -637,6 +637,12 @@ Post-Copy publication сохраняет исходный RefreshListCtrl с с�
 Ошибка самой записи по-прежнему показывается, кроме E_ABORT; явный Ctrl+R/OnReload
 сохраняет отдельную диагностику загрузки. Move/copyToSame публикует источник и при
 ошибке операции; ordinary Copy не перечитывает источник streams/devices.
+Native CopyTo сохраняет pending publication до снятия operation guards:
+ошибка записи показывается до обновления списков, Move обновляет источник и
+после E_ABORT. Финальный HRESULT показывает исходный CPanel owner с Critical/OK
+и заголовком7-Zip; macOS Qt не отображает этот заголовок. Сохраняются обе исходные
+фазы диагностики worker/OnCopy, без сообщений при E_ABORT.
+[Проверки и ограничения](upstream-port-audit.md#p3-05--native-copy-terminal-phases-and-retained-guards-2026-10-10).
 Повторный reload пустого списка не читает
 невалидный count provider. Copy/Move consumers проверяют output, очистку marks,
 focus/title, notification guards и последующую успешную загрузку peer.
