@@ -86,8 +86,11 @@ FM.cpp::InitInstance. Проверяются закрытие и повторн�
 INI хранит логические координаты клиентской области Qt. Это необходимая
 адаптация Win32 frame/workspace placement, без импорта системного registry.
 Все13 window-placement cases и8 geometry JSON проходят на каждой из3ОС.
-Два Windows external-process startup failure воспроизводятся и на прежнем коде;
-их причина, native rendered и итоговая приёмка остаются открыты.
+Два Windows external-process startup failure воспроизводятся и на прежнем коде.
+Последующая [диагностика service desktop](upstream-port-audit.md#p3-03--windows-service-desktop-visibility-diagnosis-2026-10-10)
+показывает тот же false от IsWindowVisible у отдельного Win32 окна с WS_VISIBLE:
+desktop служебного сеанса невидим. Проверки на активном desktop, native rendered
+и итоговая приёмка остаются открыты; assertions и deadlines сохранены.
 [Receipt](upstream-port-audit.md#p3-0516--source-initinstance-window-placement-2026-10-10).
 
 ## Source Copy history (P3-05, 2026-10-10)

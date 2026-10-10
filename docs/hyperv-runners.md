@@ -173,6 +173,15 @@ active runner logon; it does not log in, supply credentials or fall back to a
 noninteractive desktop. Linux in `all` keeps its normal path. Session0 runs may
 verify backend/COM data consumers, but hidden windows do not prove UI acceptance.
 
+The 2026-10-10 native control diagnosis confirms this distinction: session 0's
+service window station reports flags 0 and an invisible desktop. A disposable
+Win32 window gains WS_VISIBLE after ShowWindow, yet IsWindowVisible remains
+false, just as for the actual Qt startup window. Do not replace the visibility
+assertion with a style-bit check to accept that environment. The
+[diagnostic receipt](upstream-port-audit.md#p3-03--windows-service-desktop-visibility-diagnosis-2026-10-10)
+records the tested snapshot and retained probes; an active logon is still
+required for interactive checks.
+
 Full Windows gates also include privileged native symlink/security fixtures.
 Use `check windows --interactive --elevated` or `check all --interactive --elevated`
 for those gates; custom validation wrappers accept the same flags before `--`.

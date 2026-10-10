@@ -4,6 +4,13 @@
 Готовый запрос агенту: [porting-chat-prompt.md](porting-chat-prompt.md).
 Исходная дата: 2026-09-28. Это список **оставшейся** работы, не оценка MVP с нуля.
 
+P3-03/P3-05.16, 2026-10-10: actual startup failures at df06775 now have a
+native control diagnosis: SSH session 0 has an invisible service desktop;
+even a separate Win32 window with WS_VISIBLE fails IsWindowVisible after two
+ShowWindow calls. Qt reaches setVisible(true). No product/test/deadline change
+or parent closure follows; interactive startup/rendered acceptance remains
+required. [Evidence](upstream-port-audit.md#p3-03--windows-service-desktop-visibility-diagnosis-2026-10-10).
+
 ## Общие правила и обязательный рефакторинг
 
 Source port, исходные языки C/C++, размещение модулей и backend-границы

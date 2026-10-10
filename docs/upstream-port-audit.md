@@ -1,5 +1,46 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-03 — Windows service-desktop visibility diagnosis (2026-10-10)
+
+The two actual 7zFM startup-window failures retained by df06775 were diagnosed
+without changing product code, test assertions/deadlines, login or system policy.
+The completed snapshot `20261010T031046Z-f9fc78b7` is the tested source boundary;
+the later namespace-icon commit 1961fb9 is not claimed validated by this probe.
+SSH observer and its own GUI children run in session 0 on a noninteractive
+`Service-0x0-…$` window station; `query user` reports no logged-on user.
+
+Private folder/ZIP launches create the correctly titled native main window.
+Qt 6.12's QPA log reaches QWindowsWindow::setVisible(true), while native
+IsWindowVisible remains false at both 1.5s and 5s. Explicit `windows` QPA behaves
+the same; `offscreen` produces no native window, as expected. The smoke process
+exits 0. No engine child remains at the sampled times, and private ZIP hashes
+remain unchanged. These bounded probes supplement, rather than replace, the
+retained 15-second failed startup regressions.
+
+A separate disposable Win32 STATIC top-level window, without Qt or archive
+code, reproduces the visibility result after both its first and second
+ShowWindow(SW_SHOWNORMAL). Its style is `0x14CF0000`, including WS_VISIBLE,
+but IsWindowVisible(window) and IsWindowVisible(GetDesktopWindow()) are false;
+GetUserObjectInformation(UOI_FLAGS) reports window-station flags 0. Thus this
+service desktop cannot satisfy the existing visibility assertion even for the
+native control case. Microsoft documents that
+[IsWindowVisible checks the window and its ancestors](https://learn.microsoft.com/en-us/windows/win32/api/winuser/nf-winuser-iswindowvisible)
+and [WSF_VISIBLE identifies a visible window station](https://learn.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-userobjectflags).
+The Qt call path was checked against the
+[pinned Qt 6.12 Windows window implementation](https://github.com/qt/qtbase/blob/v6.12.0/src/plugins/platforms/windows/qwindowswindow.cpp).
+
+Evidence is retained under `build/review/filemanager-final/`: native startup
+readiness/diagnostic/QPA logs, `native-show-probe*.log` and the two disposable
+PowerShell probe sources. File-script execution was rejected by the existing
+execution policy; commands were subsequently evaluated through the runner's
+existing ScriptBlock transport without changing that policy. An oversized
+stdin attempt was stopped before execution. Only owned probe processes/windows
+and fixtures were created or terminated. No source/upstream/registration writes,
+credential access, desktop activation or account-policy changes were performed.
+Native startup, popup exposure, cold stability and rendered acceptance still
+require the existing interactive runner path. This diagnosis accepts no parent
+P3 package and does not weaken or skip the failing tests.
+
 ## P3-05 — FileManager services and native namespace icons (2026-10-10)
 
 Source https://github.com/ip7z/7zip.git, full revision
