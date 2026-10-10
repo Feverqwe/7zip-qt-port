@@ -309,8 +309,29 @@ bool CDropTarget::IsItSameDrive() const {
         return false;
     if (!IsFsFolderPath())
         return false;
-    // Win32 drive/network-prefix service becomes actual platform volume identity.
+    UString drive;
+    if (m_Panel->IsFSFolder()) {
+        drive = m_Panel->GetDriveOrNetworkPrefix();
+        if (drive.IsEmpty())
+            return false;
+    } else if (m_Panel->IsFSDrivesFolder() && m_Panel->m_DropHighlighted_SelectionIndex >= 0) {
+        drive = m_Panel->m_DropHighlighted_SubFolderName;
+        drive.Add_PathSepar();
+    } else
+        return false;
+    if (m_SourcePaths.Size() == 0)
+        return false;
+#ifdef _WIN32
+    FOR_VECTOR(i, m_SourcePaths) {
+        if (!m_SourcePaths[i].IsPrefixedBy_NoCase(drive))
+            return false;
+    }
+    return true;
+#else
+    // POSIX root prefixes cannot distinguish mounted volumes. Retain the source
+    // admission above and replace only its Windows volume-identity comparison.
     return presentation_ && presentation_->IsSameDrive(GetTargetPath(), m_SourcePaths);
+#endif
 }
 static DWORD GetEffect_ForKeys(DWORD keyState) {
     if (keyState & MK_CONTROL) {

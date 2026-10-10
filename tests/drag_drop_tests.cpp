@@ -1,5 +1,6 @@
 #include "CPP/7zip/UI/FileManager/App.h"
 #include "CPP/7zip/UI/FileManager/FSFolder.h"
+#include "panel_load_folder.h"
 #include "qtpaneldragmodel.h"
 #include "qtpaneldragtransport.h"
 #include <QDrag>
@@ -12,13 +13,14 @@ namespace {
 class Presentation final : public IQtDropTargetPresentation {
   public:
     int hit = 1, folder = -1;
+    UString folderName = L"подпапка с пробелом";
     bool enabled = true, sameDrive = true;
     QList<QPair<int, bool>> highlights;
     int PanelAtPoint(int, int) const override { return hit; }
     bool PanelEnabled(unsigned) const override { return enabled; }
     int FolderAtPoint(unsigned, int, int, UString &name) const override {
         if (folder >= 0)
-            name = L"подпапка с пробелом";
+            name = folderName;
         return folder;
     }
     void Highlight(unsigned, int item, bool selected) override {
@@ -35,6 +37,110 @@ void BindDisk(CPanel &panel, const QString &path) {
 class DragDropTests : public QObject {
     Q_OBJECT
   private slots:
+    void defaultEffectRespectsSourceFolderKind_data() {
+        QTest::addColumn<unsigned>("pane");
+        QTest::addColumn<QString>("kind");
+        for (unsigned pane : {0u, 1u})
+            for (const QString kind : {"streams", "empty-fs", "relative-fs", "absolute-fs"})
+                QTest::newRow(qPrintable(QString("%1-%2").arg(pane).arg(kind))) << pane << kind;
+    }
+    void defaultEffectRespectsSourceFolderKind() {
+        QFETCH(unsigned, pane);
+        QFETCH(QString, kind);
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        QFile file(fixture.filePath(QStringLiteral("protected файл δ.txt")));
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        QCOMPARE(file.write("drop effect control"), qint64(19));
+        file.close();
+        Presentation view;
+        view.hit = int(pane);
+        CApp app;
+        auto *folder = new LoadFolder;
+        folder->folderType = kind == "streams" ? L"AltStreamsFolder" : L"FSFolder";
+        if (kind == "streams")
+            folder->folderPath = ToUString(QDir::toNativeSeparators(file.fileName()) + ':');
+        else if (kind == "relative-fs")
+            folder->folderPath = L"relative/";
+        else if (kind == "absolute-fs")
+            folder->folderPath =
+                ToUString(QDir::toNativeSeparators(fixture.path() + QDir::separator()));
+        app.Panels[pane].SetNewFolder(folder);
+        app.Panels[pane].LoadFullPath();
+        auto &target = app.DropTarget();
+        target.AttachPresentation(&view);
+        UStringVector paths;
+        paths.Add(ToUString(QDir::toNativeSeparators(file.fileName())));
+        target.LoadNames_From_DataObject(paths, true);
+        target.PositionCursor(0, 0);
+        QCOMPARE(target.TargetPanel(), &app.Panels[pane]);
+        const DWORD both = DROPEFFECT_COPY | DROPEFFECT_MOVE;
+        QCOMPARE(target.GetEffect(0, both),
+                 DWORD(kind == "absolute-fs" ? DROPEFFECT_MOVE : DROPEFFECT_COPY));
+        QCOMPARE(target.GetEffect(MK_CONTROL, both), DWORD(DROPEFFECT_COPY));
+        QCOMPARE(target.GetEffect(MK_SHIFT, both), DWORD(DROPEFFECT_MOVE));
+        QCOMPARE(target.GetEffect(0, DROPEFFECT_COPY), DWORD(DROPEFFECT_COPY));
+        QVERIFY(file.open(QIODevice::ReadOnly));
+        QCOMPARE(file.readAll(), QByteArray("drop effect control"));
+        paths.Clear();
+        target.LoadNames_From_DataObject(paths, true);
+        QVERIFY(!target.IsItSameDrive());
+        QCOMPARE(target.GetEffect(0, both), DWORD(0));
+    }
+
+#ifdef _WIN32
+    void windowsDefaultEffectUsesAllSourcePrefixes_data() {
+        QTest::addColumn<QString>("destination");
+        QTest::addColumn<QStringList>("sources");
+        QTest::addColumn<bool>("same");
+        QTest::newRow("drive-case")
+            << QString("C:\\target\\") << QStringList{"c:\\source δ.txt"} << true;
+        QTest::newRow("drive-mixed")
+            << QString("C:\\target\\") << QStringList{"C:\\one.txt", "D:\\two.txt"} << false;
+        QTest::newRow("drive-relative")
+            << QString("C:\\target\\") << QStringList{"source.txt"} << false;
+        QTest::newRow("unc-case") << QString("\\\\server\\share\\target\\")
+                                  << QStringList{"\\\\SERVER\\SHARE\\source.txt"} << true;
+        QTest::newRow("unc-other-share") << QString("\\\\server\\share\\target\\")
+                                         << QStringList{"\\\\server\\share2\\source.txt"} << false;
+    }
+    void windowsDefaultEffectUsesAllSourcePrefixes() {
+        QFETCH(QString, destination);
+        QFETCH(QStringList, sources);
+        QFETCH(bool, same);
+        CApp app;
+        auto *folder = new LoadFolder;
+        folder->folderType = L"FSFolder";
+        folder->folderPath = ToUString(destination);
+        app.Panels[1].SetNewFolder(folder);
+        app.Panels[1].LoadFullPath();
+        Presentation view;
+        // Windows source policy does not delegate prefix identity to Qt volumes.
+        view.sameDrive = !same;
+        auto &target = app.DropTarget();
+        target.AttachPresentation(&view);
+        UStringVector paths;
+        for (const QString &source : sources)
+            paths.Add(ToUString(source));
+        target.LoadNames_From_DataObject(paths, true);
+        target.PositionCursor(0, 0);
+        QCOMPARE(target.GetEffect(0, DROPEFFECT_COPY | DROPEFFECT_MOVE),
+                 DWORD(same ? DROPEFFECT_MOVE : DROPEFFECT_COPY));
+        auto *drives = new LoadFolder;
+        drives->folderType = L"FSDrives";
+        app.Panels[1].SetNewFolder(drives);
+        app.Panels[1].LoadFullPath();
+        view.folder = -1;
+        target.PositionCursor(0, 0);
+        QCOMPARE(target.GetEffect(0, DROPEFFECT_COPY | DROPEFFECT_MOVE), DWORD(DROPEFFECT_COPY));
+        view.folder = 0;
+        view.folderName = ToUString(destination.left(destination.lastIndexOf("target\\") - 1));
+        target.PositionCursor(0, 0);
+        QCOMPARE(target.GetEffect(0, DROPEFFECT_COPY | DROPEFFECT_MOVE),
+                 DWORD(same ? DROPEFFECT_MOVE : DROPEFFECT_COPY));
+    }
+#endif
+
     void nativeInternalDropCopiesOrMovesThroughSourceCopyTo_data() {
         QTest::addColumn<bool>("move");
         QTest::newRow("control-copy") << false;
@@ -208,7 +314,7 @@ class DragDropTests : public QObject {
         auto &target = app.DropTarget();
         target.AttachPresentation(&view);
         UStringVector paths;
-        paths.Add(L"source.txt");
+        paths.Add(ToUString(QDir::toNativeSeparators(root.filePath("source.txt"))));
         target.LoadNames_From_DataObject(paths, true);
         target.PositionCursor(0, 0);
         const DWORD both = DROPEFFECT_COPY | DROPEFFECT_MOVE;
@@ -218,6 +324,11 @@ class DragDropTests : public QObject {
         QCOMPARE(target.GetEffect(MK_ALT, both), DWORD(0));
         QCOMPARE(target.GetEffect(MK_CONTROL | MK_SHIFT, both), DWORD(0));
         view.sameDrive = false;
+#ifdef _WIN32
+        paths.Clear();
+        paths.Add(L"\\\\other-server\\other-share\\source.txt");
+        target.LoadNames_From_DataObject(paths, true);
+#endif
         QCOMPARE(target.GetEffect(0, both), DWORD(DROPEFFECT_COPY));
         QCOMPARE(target.GetEffect(MK_CONTROL | MK_ALT, both), DWORD(DROPEFFECT_COPY));
         QCOMPARE(target.GetEffect(MK_SHIFT, DROPEFFECT_COPY), DWORD(DROPEFFECT_COPY));

@@ -1,5 +1,16 @@
 # Сверка с Windows 7zFM
 
+Default drag effect now follows source folder-kind/root admission: AltStreams
+and empty/relative FS paths prefer Copy; explicit Control/Shift remain source
+policy. Windows uses the original all-source case-insensitive drive/UNC prefix
+comparison. POSIX uses actual mounted-volume identity after those same guards.
+Qt header mutation persistence, popup-scoped COM cleanup and guarded status
+delivery replace native child-window lifecycle/messages; their exact owners
+are in the [Panel core map](omitted-scope-audit.md#panel-control-and-view-state-disposition-2026-10-10).
+Three-OS consumer checks and existing status elision are recorded in the
+[receipt](upstream-port-audit.md#p3-05--source-default-drop-effect-and-panel-core-disposition-2026-10-10).
+Physical/OLE receiver and rendered acceptance remain separate.
+
 Panel address keys and view state now follow original Panel.cpp: Control-W
 (also with Shift) queues close from the address edit, Tab/Backtab returns to its
 list and F9 retains the address draft while changing pane visibility. Source

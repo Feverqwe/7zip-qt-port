@@ -1,5 +1,13 @@
 # Regression strategy
 
+`drag_drop` covers both panes' public default-effect policy for AltStreams and
+empty/relative/absolute filesystem paths, empty-source refusal and unchanged
+private Unicode/space bytes. Windows adds all-source drive/UNC prefix, case,
+mixed/relative paths and Drives-highlight cases. Existing explicit modifiers,
+actual Copy/Move/cancel, archive drag/publication and native ADS consumers
+remain required. The [source receipt](upstream-port-audit.md#p3-05--source-default-drop-effect-and-panel-core-disposition-2026-10-10)
+records old-product RED, final three-OS checks and their native/geometry limits.
+
 `file_manager_ram` runs production startup and real source-panel nested Open,
 Copy and Parent in eight isolated child processes across both panes. A fixture
 OBJECT library substitutes only FM.cpp/PanelItemOpen.cpp's original platform

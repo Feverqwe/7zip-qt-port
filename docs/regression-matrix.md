@@ -1,5 +1,13 @@
 # Regression and security traceability
 
+Default drop effect: `drag_drop` checks source folder-kind/root/empty-source
+admission in both panes and Windows all-source case-insensitive drive/UNC
+prefix policy, including mixed sources and Drives highlights. Protected private
+Unicode bytes and existing modifier/refusal assertions accompany real
+Copy/Move/cancel, archive/native ADS and publication consumers. Mac/Linux/Windows
+focused14/14 pass; [receipt](upstream-port-audit.md#p3-05--source-default-drop-effect-and-panel-core-disposition-2026-10-10).
+SSH/offscreen success does not establish physical/OLE receiver acceptance.
+
 FM RAM lifetime: `file_manager_ram` covers the single startup platform query,
 immutable cached size/failure flag and real nested Open/Copy/Parent in both panes,
 including corrupt inner archives and protected Unicode/space payloads. Existing

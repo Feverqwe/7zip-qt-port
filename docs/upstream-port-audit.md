@@ -1,5 +1,68 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-05 — source default drop effect and Panel core disposition (2026-10-10)
+
+Source https://github.com/ip7z/7zip.git, full revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`: original
+CPP/7zip/UI/FileManager/Panel.cpp::GetDriveOrNetworkPrefix and
+PanelDrag.cpp::CDropTarget::IsItSameDrive, IsFsFolderPath, GetEffect,
+GetEffect_ForKeys, PositionCursor and their panel/path/string dependencies
+were compared with current bodies and public consumers before changes.
+Original Panel.cpp/Panel.h core dispatch, lifecycle, native-control and inline
+type/guard disposition is recorded in the
+[body map](omitted-scope-audit.md#panel-control-and-view-state-disposition-2026-10-10).
+PanelDrag's complete 3006-line body is not accepted by this bounded review.
+
+Copied/adapted scope restores the original Panel helper and drop-owner
+FS/FSDrives admission, empty root/source checks and all-source Windows
+IsPrefixedBy_NoCase loop. AltStreams remains an eligible filesystem target,
+but default effect does not prefer Move. Explicit Control/Shift and allowed
+effect policy remain original. POSIX retains the source admission and existing
+QStorageInfo device/root service only for volume identity: `/` alone cannot
+distinguish mounts. No alternate drop algorithm, archive syntax or format code
+is added. Dependencies are existing FileName::GetRootPrefixSize, UString,
+source folder types/highlight state and QtFileManagerDrag presentation.
+Paths, C++ language, baseline, notices and licenses remain unchanged.
+
+Eight both-pane public GetEffect rows use private Unicode/space file bytes and
+typed folder providers for AltStreams, empty/relative/absolute FS paths. Empty
+sources check public refusal; five Windows rows cover case, mixed/relative
+sources, UNC share boundaries and highlighted/unhighlighted Drives. The prior
+modifier fixture now supplies absolute private paths and a different UNC
+prefix on Windows, preserving all original assertions. Initial old-product
+RED:10 Qt pass/6 fail in0.38s. An intermediate new empty-source expectation was
+corrected to existing LoadNames_From_DataObject refusal (GetEffect=0), with an
+additional IsItSameDrive=false assertion; no product guard or deadline changed.
+
+Final macOS arm64 Qt6.12 unsandboxed default gate:319/319 PASS263.28s;
+302 Qt suites,5021 pass/0 fail/56 platform skips. Focused14 consumers:
+Mac14/14 PASS8.19s,196 Qt pass/0 fail/1 Windows-only skip;
+Linux x64 Qt6.12 14/14 PASS22.87s,195/0/1;
+Windows x64 Qt6.12 14/14 PASS74.93s,201/0/0. These include actual source
+Copy/Move/cancel, archive drag, archive-to-NTFS ADS, native publication,
+context/selection, columns/persistence, timer/load and window lifecycle.
+Eleven slow suites were excluded. These SSH/offscreen checks do not establish
+physical modifier/OLE receiver or rendered Windows acceptance.
+
+Fresh guest snapshot `20261010T070401Z-2c0571de`, parent `2c50756`, archive SHA256
+`a4b860ac09597865c8c3d2d02254d5127f26adcde4b82f9626051167bc0c0666`:
+1443 frozen code/test/build/resource/dependency inputs match the archive and
+both actual guest trees. The temporary validation wrapper is removed before
+commit;1442 retained inputs remain identical. All8 Mac codec/SFX runtime files
+match the prior verified official runtime; both guests build the pinned runtime.
+Baseline verification:410 exact/198 adapted/3 local. Fresh authenticated
+identity/storage/process preflight and post-build storage receipts are retained.
+No VM disk or account policy changed.
+
+54 selected current-build drag/column/time JSON reports were inspected.
+Mac has no fit issues; Linux4 and Windows12 selectedItemsStatus parts report
+labelFits=false with fullyVisible=true. Existing QtStatusLabel paints elided
+text and exposes full text by tooltip; this is recorded presentation behavior,
+not a new geometry change or proof of rendered parity. Evidence lives under
+`/private/tmp/sevenzip-panel-drag-2c50756/build/review/panel-drag/` and its runner
+snapshot directory. Whole PanelDrag/family, native/rendered/cold-stable,
+packages and final acceptance remain open; P3-03/04/05/06 and43/47 are unchanged.
+
 ## P3-05 — FM startup RAM lifetime and nested-open consumers (2026-10-10)
 
 Source https://github.com/ip7z/7zip.git, full revision

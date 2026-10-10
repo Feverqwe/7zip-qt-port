@@ -53,6 +53,15 @@ rows pass on their applicable platforms;1460 inputs match both guest trees,
 stability claims. [Receipt](upstream-port-audit.md#p3-05--launch-show-command-and-hidden-window-close-2026-10-10).
 P3-03/04/05/06 remain open;43/47 and final acceptance are unchanged.
 
+P3-05,2026-10-10: source default-drop folder/root admission and Windows
+all-source drive/UNC prefix policy restored; POSIX retains mounted-volume
+identity after the same guards. Panel core lifecycle/status/control/header
+disposition is recorded without claiming whole PanelDrag. Mac default319/319
+PASS; focused14/14 on Mac/Linux/Windows, including actual native ADS consumer.
+1443 inputs match both guests;11 slow suites excluded. Native/rendered,
+remaining family/package/final acceptance stays open;43/47 unchanged.
+[Receipt](upstream-port-audit.md#p3-05--source-default-drop-effect-and-panel-core-disposition-2026-10-10).
+
 ## Общие правила и обязательный рефакторинг
 
 P3-05, 2026-10-10: original FM startup RAM cache now reaches PanelItemOpen through

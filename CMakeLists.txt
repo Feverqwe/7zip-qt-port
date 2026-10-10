@@ -540,7 +540,7 @@ file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/PackageInfo.json"
 
 if(BUILD_TESTING)
     find_package(Qt6 REQUIRED COMPONENTS Test)
-    qt_add_executable(drag_drop_tests tests/drag_drop_tests.cpp)
+    qt_add_executable(drag_drop_tests tests/drag_drop_tests.cpp tests/panel_load_folder.cpp)
     target_link_libraries(drag_drop_tests PRIVATE sevenzip_panel Qt6::Test)
     add_test(NAME drag_drop COMMAND drag_drop_tests -silent)
     set_tests_properties(drag_drop PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)

@@ -200,6 +200,14 @@ UString CPanel::GetFsPath() const {
     return _currentFolderPrefix;
 }
 
+UString CPanel::GetDriveOrNetworkPrefix() const {
+    if (!IsFSFolder())
+        return UString();
+    UString drive = GetFsPath();
+    drive.DeleteFrom(NWindows::NFile::NName::GetRootPrefixSize(drive));
+    return drive;
+}
+
 void CPanel::SetListViewMode(UInt32 index) {
     if (index >= 4)
         return;

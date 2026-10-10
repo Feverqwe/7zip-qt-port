@@ -658,6 +658,7 @@ class CPanel : public QObject {
     bool IsDeviceDrivesPrefix() const { return _currentFolderPrefix.IsEqualTo("\\\\.\\"); }
     bool IsSuperDrivesPrefix() const { return _currentFolderPrefix.IsEqualTo("\\\\?\\"); }
     UString GetFsPath() const;
+    UString GetDriveOrNetworkPrefix() const;
     void AddToArchive(class IQtCompressCallServices &services);
     UString GetItemName_for_Copy(unsigned index) const;
     UString GetItemName(unsigned index) const;
