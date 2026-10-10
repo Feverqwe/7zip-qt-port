@@ -1,11 +1,19 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
+#include "Common/Common.h"
 #include "mainwindow.h"
 #include "qtfilemanagerstartup.h"
+#include "qtmemorylockservices.h"
+#ifdef _WIN32
+#include "../third_party/7zip/C/Alloc.h"
+#endif
 #include <QEventLoop>
 #include <QScopeGuard>
 
 int RunSevenzipFileManager(QApplication &application) {
     return NQtFileManager::WinMain([&] {
+#if defined(_WIN32) && defined(Z7_LARGE_PAGES)
+        z7_LargePage_Set(0, 0, 0);
+#endif
         LoadLangOneTime();
 #ifdef Q_OS_WIN
         const auto startup = WinMain2(UString(GetCommandLineW()));
@@ -14,6 +22,8 @@ int RunSevenzipFileManager(QApplication &application) {
         const auto startup = WinMain2(UString(arguments.value(1).toStdWString().c_str()),
                                       UString(arguments.mid(2).join(' ').toStdWString().c_str()));
 #endif
+        const QtMemoryLockServices memoryLock;
+        NQtFileManager::SetMemoryLock(FmSettingsPath(), memoryLock);
         ArchiveBackend backend;
         if (startup.NeedOpenArc) {
             // The source first archive open loads Global_Codecs synchronously.

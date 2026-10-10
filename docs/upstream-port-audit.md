@@ -1,5 +1,86 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-05 — startup, Settings and large-page engine policy (2026-10-10)
+
+Source https://github.com/ip7z/7zip.git, full revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. Reviewed original
+FileManager/FM.cpp::SetMemoryLock (508–522), its WinMain2 caller and allocator
+initialization (608–610,728); SettingsPage.cpp::OnInit/OnApply (including the
+262–309 Apply branches); Common/CompressCall.cpp::AddLagePagesSwitch and all
+three Windows launch callers; Common/ArchiveCommandLine.cpp's `-slp` parser;
+Common/Bench.cpp::Add_LargePages_String and C/Alloc.c::z7_LargePage_Set/BigAlloc.
+RegistryUtils, MemoryLock, SecurityUtils and the Qt entry/settings/backend/
+in-process Benchmark consumers supply the dependency and caller closure.
+
+The original SetMemoryLock control flow is restored in adapted FM.cpp through
+stateless IQtMemoryLockServices: capability admission, unconditional attempted
+AddLockMemoryPrivilege, saved-option/risk-zero checks and the result of
+EnablePrivilege_LockMemory assigned to the existing process flag. Failure of
+AddLockMemoryPrivilege deliberately does not veto the subsequent source calls.
+RunSevenzipFileManager invokes it after command-line parsing and before initial
+archive binding; the original Windows allocator reset precedes language setup.
+ArchiveCommandLine remains the single definition of g_LargePagesMode reused
+by FM and the retained in-process Bench diagnostic. No allocator/compressor
+algorithm was recreated. Unchanged C/Alloc.c stays compiled as C.
+
+Settings OnApply again adjusts the current process token before saving the
+requested flag, even on adjustment failure, as upstream requires. Cancel and
+unchanged Apply do neither. Original AddLagePagesSwitch has one authoritative
+body in CompressCall.cpp with explicit settings/native-service arguments; its
+Windows launch wrapper and ArchiveBackend reuse it. Backend retains ownership
+of process arguments and the existing platform capability guard; risky Windows
+versions now omit `-slp` by the source GUI launch policy. The Console parser's
+own risk/privilege policy remains unchanged. The previous assertion that child
+processes cannot inherit the GUI privilege was removed; upstream explicitly
+accounts for inheritance. Settings Apply does not rewrite g_LargePagesMode or
+allocator flags: those source behaviors are not silently changed.
+
+QtMemoryLockServices reuses unchanged Windows/MemoryLock.cpp and
+Windows/SecurityUtils.cpp, including original native token and LSA calls;
+POSIX capability rejection returns before either. The interface adapts the
+native boundary and enables deterministic refusal/risk tests without changing
+account policy. Upstream AddLockMemoryPrivilege can persist an account right;
+the existing Windows runner was checked read-only before native execution and
+already had direct SeLockMemoryPrivilege. No account right was provisioned.
+No elevation, login/autologon or security-policy repair is part of this port.
+Windows CE/legacy ANSI GUI dispatch is outside the Qt 6 desktop target.
+
+Validation: the old Settings body fails the public Apply regression because no
+token-adjustment call occurs. The new bounded `memory_lock`
+suite covers unsupported/disabled/risky/success/refusal startup, ignored Add
+failure, prior process-mode preservation, source Benchmark diagnostic on Windows,
+source engine-switch policy, Apply/Cancel/repeated Apply and Unicode/space INI
+paths (11 Qt checks on each OS). A gate-discovered Hash fixture race was
+reproduced with completion already recorded before QSignalSpy::wait: the old
+wait fails after30s. The fixture now checks exactly one recorded completion
+within the same deadline, retaining source failure/cancellation results and
+adding before/after-completion rows; no Hash production code changed.
+
+Required unsandboxed macOS gate: formatting/all targets/default314/314 PASS,
+255.87s,4946 Qt checks/0 failures/18 existing platform skips. Focused13/13 PASS,
+5.43s,189 Qt/0fail/0skip. Fresh Qt6.12 Linux13/13 PASS6.62s,189Qt/0fail/0skip;
+Windows12/13 in57.04s,180Qt/2fail/2existing affinity skips. The two Windows
+failures are the previously baseline-reproduced external-process startup window
+assertions; MemoryLock, Hash, Benchmark and the other consumers pass.
+The native adapter belongs to sevenzip_panel, avoiding a common→FM static-link
+cycle exposed by Linux. An initial local codec deployment mismatch was proven
+by passing all four affected suites on the same binaries with the matching
+engine; final configuration pairs the owned official console/module.
+
+Snapshot20261010T031046Z-f9fc78b7, SHA256
+`5790f4c01d9836e97ce3ccde7b96419c26f8a997a461d56ff8b8a05ba35ed1d7`:
+all1437 source/test/build/resource inputs match archive/local/actual guests.
+The one-off validation wrapper is archived/removed, leaving1436 retained inputs.
+Sixty current JSON reports cover Settings, normal/total EN/RU Benchmark and
+window/splitter consumers. No unexpected text/control clipping; source control
+scrolling remains explicit, including the empty Windows SYS2 tail at normal
+size, with every named control verified after scrolling. Original account rights
+are identical before/after native execution; storage checks report no warnings
+or disk-size delta. Borrowed baseline verification:410exact/198adapted/3local.
+This receipt does not close whole FileManager, physical input, rendered parity,
+native allocation on every account/machine or final acceptance; eleven slow
+suites remain excluded.
+
 ## P3-05 — complete UI physical inputs and GUI resource disposition (2026-10-10)
 
 Pinned source https://github.com/ip7z/7zip.git,

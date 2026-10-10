@@ -1,5 +1,26 @@
 # Regression strategy
 
+`memory_lock` covers original startup capability/saved-option/risk admission,
+privilege success/refusal, ignored account-right Add failure and preserved prior
+process mode through the public native-service boundary. Settings cases exercise
+Apply/Cancel, repeated unchanged Apply and save-on-adjustment-failure with owned
+Unicode/space INI files. Source CompressCall risk policy and Windows Bench
+diagnostic consume that same state. The recorder never changes native account
+rights. `archive_backend` separately checks actual helper-process `-slp`
+transport; Settings/Options, startup, native Benchmark, lifecycle/placement and
+command consumers retain their focused suites. Existing native Windows runners
+must be inspected before executing the source startup account-right call;
+tests do not provision policy or repair login. [Receipt](upstream-port-audit.md#p3-05--startup-settings-and-large-page-engine-policy-2026-10-10).
+
+`native_hash_workflow` observes exactly one recorded worker completion within
+the existing30s deadline, including a deterministic row joining the worker
+before checking its signal. The source failure/E_NOTIMPL and paused Cancel/
+E_ABORT assertions and empty output remain unchanged. Waiting only for a new
+signal falsely times out when completion was already recorded;
+[QSignalSpy wait semantics](https://doc.qt.io/qt-6/qsignalspy.html#wait-1)
+require inspecting the recorded count for this case. No production Hash
+algorithm, worker synchronization or timeout was changed.
+
 `panel_sort` covers the source native-case/numeric ordering through actual
 archive and filesystem panels, including Greek U+1F80/U+1F88, descending order,
 retained archive selection and unchanged owned files. `panel_filesystem_sort`,

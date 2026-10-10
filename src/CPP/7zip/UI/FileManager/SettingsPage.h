@@ -6,6 +6,7 @@
 
 class QCheckBox;
 class QtMemoryLimitSpin;
+class IQtMemoryLockServices;
 class CSettingsPage : public QDialog {
     Q_OBJECT
     bool _wasChanged = false;
@@ -14,6 +15,7 @@ class CSettingsPage : public QDialog {
     bool _memx_wasChanged = false;
     CFmSettings _settings;
     QString _settingsPath;
+    const IQtMemoryLockServices *_memoryLockServices;
     QCheckBox *_showDots;
     QCheckBox *_showRealFileIcons;
     QCheckBox *_fullRow;
@@ -30,7 +32,8 @@ class CSettingsPage : public QDialog {
 
   public:
     explicit CSettingsPage(const QString &settingsPath, QWidget *parent = nullptr,
-                           bool embedded = false);
+                           bool embedded = false,
+                           const IQtMemoryLockServices *memoryLockServices = nullptr);
     long OnApply();
     void OnNotifyHelp();
     void accept() override;

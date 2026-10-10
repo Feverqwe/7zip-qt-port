@@ -695,7 +695,10 @@ parity. Windows spanning group/error/system labels retain natural width; wrapped
 source text updates also set its required height, since a grid span's height
 calculation otherwise assumes the wider span. The Windows console is618×332
 compact/938×582normal; Linux618×330/938×580. Lower system rows are expected below
-the initial compact viewport and are tested after scrolling. P2-04 acceptance
+the initial compact viewport and are tested after scrolling. Current Windows
+960×650 reports also leave3px of the empty final SYS2 row below the initial
+viewport; its label fits and the same per-control scrolling check verifies
+reachability. This is scroll-content geometry, not clipped text. P2-04 acceptance
 is recorded in the audit; whole-plan platform/rendered checks remain P3.
 
 ### SFX Options group (P2-02)

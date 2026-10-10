@@ -1597,8 +1597,12 @@ System association errors are presented without vetoing later pages or OK, as
 source PSNRET_NOERROR requires. Settings invalid input still vetoes acceptance
 and selects Settings. Its error uses the retained MyMessages policy.
 Source CSettingsPage owns RAM limit validation and capability-gated large pages;
-QtMemoryLimitSpin adapts only
-edit/arrows. Backend transports `-slp` to the Windows engine process. CFoldersPage
+QtMemoryLimitSpin adapts only edit/arrows. IQtMemoryLockServices adapts the original
+FM startup and Settings token/LSA calls to unchanged native Windows services.
+FM reuses the single ArchiveCommandLine process-mode flag consumed by Bench;
+Settings preserves its separate source Apply behavior. Backend transports `-slp`
+through the original CompressCall risk policy to the Windows engine process.
+CFoldersPage
 owns NWorkDir::CInfo; source WorkDir in sevenzip_filesystem serves both FM update
 temporary files and the UpdateGUI Create working-dir block, transported via `-w`.
 `settingsdialog.h` aliases the container. `MainWindow` applies committed list flags

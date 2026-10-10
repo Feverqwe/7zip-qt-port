@@ -1,5 +1,18 @@
 # Сверка с Windows 7zFM
 
+## Large-page startup and Settings policy (P3-05, 2026-10-10)
+
+Windows startup again follows source SetMemoryLock: attempt the account right,
+then enable the process privilege only for the saved option and risk level zero.
+Settings Apply immediately enables/disables the current process privilege and
+saves the requested option even if token adjustment fails; Cancel leaves it
+unchanged. Original source behavior keeps the startup diagnostic flag separate
+from later Settings changes. Backend uses the original GUI launch risk check
+before adding `-slp`; the engine keeps its own parser checks. POSIX keeps this
+Windows-only option disabled. No control layout or wording changed.
+This establishes the source policy, not successful large-page allocation on
+every machine or rendered Windows parity. [Receipt](upstream-port-audit.md#p3-05--startup-settings-and-large-page-engine-policy-2026-10-10).
+
 ## Source native casing before numeric sort (P3-05, 2026-10-10)
 
 Сортировка имён снова использует исходный MyCharUpper и его платформенный

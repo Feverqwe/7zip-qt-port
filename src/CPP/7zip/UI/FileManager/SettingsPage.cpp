@@ -14,6 +14,7 @@
 #include "qtguimessages.h"
 #include "qtlangcontrols.h"
 #include "qtmemorylimitspin.h"
+#include "qtmemorylockservices.h"
 #include <QCheckBox>
 #include <QDialogButtonBox>
 #include <QHBoxLayout>
@@ -23,8 +24,9 @@
 #define kSettingsTopic "FM/options.htm#settings"
 void CSettingsPage::OnNotifyHelp() { ShowHelpWindow(kSettingsTopic, this); }
 
-CSettingsPage::CSettingsPage(const QString &settingsPath, QWidget *parent, bool embedded)
-    : QDialog(parent), _settingsPath(settingsPath) {
+CSettingsPage::CSettingsPage(const QString &settingsPath, QWidget *parent, bool embedded,
+                             const IQtMemoryLockServices *memoryLockServices)
+    : QDialog(parent), _settingsPath(settingsPath), _memoryLockServices(memoryLockServices) {
     setObjectName(embedded ? "settingsPage" : "settingsDialog");
     if (embedded)
         setWindowFlags(Qt::Widget);
@@ -126,7 +128,9 @@ bool CSettingsPage::OnInit() {
     _singleClick->setChecked(_settings.SingleClick);
     _alternativeSelection->setChecked(_settings.AlternativeSelection);
     _showSystemMenu->setChecked(_settings.ShowSystemMenu);
-    if (IsLargePageSupported())
+    const QtMemoryLockServices nativeMemoryLock;
+    const auto &memoryLock = _memoryLockServices ? *_memoryLockServices : nativeMemoryLock;
+    if (memoryLock.IsSupported())
         _largePages->setChecked(ReadLockMemoryEnable(_settingsPath));
     else
         _largePages->setEnabled(false);
@@ -194,10 +198,11 @@ long CSettingsPage::OnApply() {
         _wasChanged = false;
     }
     if (_largePages_wasChanged) {
-        if (IsLargePageSupported()) {
+        const QtMemoryLockServices nativeMemoryLock;
+        const auto &memoryLock = _memoryLockServices ? *_memoryLockServices : nativeMemoryLock;
+        if (memoryLock.IsSupported()) {
             const bool enable = _largePages->isChecked();
-            // External engine cannot inherit this GUI's token. ArchiveBackend
-            // passes -slp; upstream Console enables the privilege in that process.
+            memoryLock.EnablePrivilege_LockMemory(enable);
             SaveLockMemoryEnable(enable, _settingsPath);
         }
         _largePages_wasChanged = false;

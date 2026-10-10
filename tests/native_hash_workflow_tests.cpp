@@ -91,7 +91,7 @@ class NativeHashWorkflowTests final : public QObject {
         QtArchiveHashOperation worker({root}, methods, {});
         QSignalSpy finished(&worker, &QThread::finished);
         worker.start();
-        QVERIFY(finished.wait(30000));
+        QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 30000);
         QVERIFY(worker.wait());
         QCOMPARE(worker.Result, S_OK);
         QCOMPARE(worker.Bundle.NumFiles, UInt64(2));
@@ -110,7 +110,13 @@ class NativeHashWorkflowTests final : public QObject {
         else
             QCOMPARE(worker.Bundle.Hashers.Size(), 3u);
     }
+    void sourceWorkerFailureAndPausedCancellation_data() {
+        QTest::addColumn<bool>("alreadyFinished");
+        QTest::newRow("completion-after-wait") << false;
+        QTest::newRow("completion-before-wait") << true;
+    }
     void sourceWorkerFailureAndPausedCancellation() {
+        QFETCH(bool, alreadyFinished);
         QTemporaryDir temporary;
         const QString path = temporary.filePath("input.txt");
         QVERIFY(write(path, "input"));
@@ -122,7 +128,9 @@ class NativeHashWorkflowTests final : public QObject {
             worker.start();
             if (cancel)
                 worker.cancel();
-            QVERIFY(finished.wait(30000));
+            if (alreadyFinished)
+                QVERIFY(worker.wait(30000));
+            QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 30000);
             QVERIFY(worker.wait());
             QCOMPARE(worker.Result, cancel ? E_ABORT : E_NOTIMPL);
             QVERIFY(worker.Output.isEmpty());

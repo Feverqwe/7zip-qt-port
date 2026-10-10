@@ -1,5 +1,17 @@
 # Regression and security traceability
 
+Large-page startup/Settings/engine policy: `memory_lock`, `fm_settings`,
+`options_dialog`, `options_integration`, `archive_backend`, `archive_mutation`,
+`benchmark_lifecycle`, `native_benchmark`, `native_hash_workflow`, `file_manager_startup`,
+`app_lifecycle_window`, `window_placement`, `native_command_dispatch`.
+Deterministic recorder cases cover unsupported/disabled/risky/privilege-refused
+and successful source branches, persistence on refusal, Cancel/repeated Apply,
+protected account policy and source process-mode/Benchmark coupling. Owned
+helper-process transport checks remain separate from successful native allocation.
+Hash completion covers ordinary scheduling and completion already observed
+before waiting; both retain failure/cancellation results and exactly one signal.
+See the [source receipt](upstream-port-audit.md#p3-05--startup-settings-and-large-page-engine-policy-2026-10-10).
+
 Core Copy/CRC/Sort source disposition: `panel_sort` reproduces native Greek
 casing before numeric runs through archive/filesystem panels, descending
 selection retention and preserved bytes. Filesystem/archive/column/command

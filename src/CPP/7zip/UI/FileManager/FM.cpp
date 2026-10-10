@@ -23,6 +23,7 @@
 #include "qtfilemanagerstartup.h"
 #include "qtfilemanagerwindowservices.h"
 #include "qtlinkservices.h"
+#include "qtmemorylockservices.h"
 #include <QMessageBox>
 #ifdef _WIN32
 #include "../../../../../third_party/7zip/C/DllSecur.h"
@@ -34,6 +35,22 @@ static void ErrorMessage(const wchar_t *s) {
 }
 
 static void ErrorMessage(const char *s) { ErrorMessage(GetUnicodeString(s)); }
+
+extern bool g_LargePagesMode;
+
+void NQtFileManager::SetMemoryLock(const QString &settingsPath,
+                                   const IQtMemoryLockServices &services) {
+    if (!services.IsSupported())
+        return;
+    // if (ReadLockMemoryAdd())
+    services.AddLockMemoryPrivilege();
+
+    if (ReadLockMemoryEnable(settingsPath))
+        if (services.Get_LargePages_RiskLevel() == 0) {
+            // note: child processes can inherit that Privilege
+            g_LargePagesMode = services.EnablePrivilege_LockMemory();
+        }
+}
 
 static const int kPanelSizeMin = 120;
 

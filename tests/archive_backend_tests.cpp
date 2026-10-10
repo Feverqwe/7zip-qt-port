@@ -3,6 +3,7 @@
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "Common/StringConvert.h"
 #include "archive_backend_test_support.h"
+#include "qtmemorylockservices.h"
 #include <QScopeGuard>
 
 class ArchiveBackendTests : public QObject, protected ArchiveBackendTestSupport {
@@ -233,7 +234,11 @@ class ArchiveBackendTests : public QObject, protected ArchiveBackendTestSupport 
             QCOMPARE(ReadLockMemoryEnable(settings), enable);
             backend.list(fixture.filePath("fixture.zip"));
             await(backend, true);
-            QCOMPARE(requested, QString(IsLargePageSupported() && enable ? "1" : "0"));
+            const QtMemoryLockServices memoryLock;
+            QCOMPARE(requested, QString(IsLargePageSupported() && enable &&
+                                                memoryLock.Get_LargePages_RiskLevel() == 0
+                                            ? "1"
+                                            : "0"));
         }
     }
     void commandsUseTheirListedArchiveAcrossTwoPanels() {

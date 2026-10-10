@@ -1,5 +1,19 @@
 # Omitted source scope review
 
+## Startup and large-page source closure (2026-10-10)
+
+The previously omitted FM.cpp::SetMemoryLock body and WinMain2 large-page
+allocator reset now have active Qt entry callers. SettingsPage::OnApply again
+uses original EnablePrivilege_LockMemory before saving. CompressCall's original
+AddLagePagesSwitch risk check is shared with ArchiveBackend instead of the
+independent capability/setting-only argument policy. Native MemoryLock and
+SecurityUtils and the existing ArchiveCommandLine/Bench/C allocator remain the
+authoritative dependencies; no second global or memory-allocation algorithm is
+added. POSIX capability rejection and Qt 6 desktop-only scope are explicit.
+Historical receipts describing these omissions are superseded only for these
+branches; the remaining FM/native/packaging acceptance stays open. See the
+[source and validation receipt](upstream-port-audit.md#p3-05--startup-settings-and-large-page-engine-policy-2026-10-10).
+
 ## Complete 109-unit physical input inventory (2026-10-10)
 
 The pinned Git-tree inventory was extended from FileManager to Agent, GUI and

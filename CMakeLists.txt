@@ -163,7 +163,8 @@ if(WIN32)
     set_source_files_properties(src/qtnativemenupageservices.cpp PROPERTIES
         COMPILE_DEFINITIONS "_UNICODE;UNICODE")
     set_source_files_properties(third_party/7zip/CPP/Windows/MemoryLock.cpp
-        src/CPP/7zip/UI/FileManager/FM.cpp PROPERTIES COMPILE_DEFINITIONS "_UNICODE;UNICODE")
+        src/CPP/7zip/UI/FileManager/FM.cpp src/qtmemorylockservices.cpp
+        PROPERTIES COMPILE_DEFINITIONS "_UNICODE;UNICODE")
     target_link_libraries(sevenzip_common PUBLIC ole32 oleaut32 uuid advapi32)
 endif()
 
@@ -192,6 +193,7 @@ target_include_directories(sevenzip_name_sort PUBLIC src)
 target_link_libraries(sevenzip_name_sort PUBLIC Qt6::Core sevenzip_common)
 
 add_library(sevenzip_panel STATIC src/CPP/7zip/UI/FileManager/App.cpp
+    src/qtmemorylockservices.cpp src/qtmemorylockservices.h
     src/CPP/7zip/UI/FileManager/PanelCrc.cpp
     src/CPP/7zip/UI/Common/ArchiveName.cpp
     src/qtpaneldragmodel.h
@@ -2181,6 +2183,11 @@ if(BUILD_TESTING)
     endforeach()
     target_sources(properties_tests PRIVATE tests/layout_inspection.cpp)
     qt_add_executable(fm_settings_tests tests/fm_settings_tests.cpp tests/layout_inspection.cpp)
+    qt_add_executable(memory_lock_tests tests/memory_lock_tests.cpp)
+    target_include_directories(memory_lock_tests PRIVATE src tests)
+    target_link_libraries(memory_lock_tests PRIVATE sevenzip_panel Qt6::Test)
+    add_test(NAME memory_lock COMMAND memory_lock_tests -silent)
+    set_tests_properties(memory_lock PROPERTIES TIMEOUT 30)
     target_include_directories(fm_settings_tests PRIVATE src tests)
     target_link_libraries(fm_settings_tests PRIVATE sevenzip_panel Qt6::Test)
     add_test(NAME fm_settings COMMAND fm_settings_tests -silent)

@@ -3,6 +3,17 @@
 // Original shared quoting and Windows process/map/event launch bodies.
 // In-process consumers retain their typed GUI/backend service overloads.
 #include "CompressCall.h"
+#include "../FileManager/RegistryUtils.h"
+#include "qtmemorylockservices.h"
+
+void AddLagePagesSwitch(UString &params, const QString &settingsPath,
+                        const IQtMemoryLockServices *services) {
+    const QtMemoryLockServices nativeMemoryLock;
+    const auto &memoryLock = services ? *services : nativeMemoryLock;
+    if (ReadLockMemoryEnable(settingsPath))
+        if (memoryLock.Get_LargePages_RiskLevel() == 0)
+            params += " -slp";
+}
 
 UString GetQuotedString(const UString &s) {
     UString s2('"');
@@ -105,13 +116,7 @@ static HRESULT Call7zGui(const UString &params,
     return S_OK;
 }
 
-static void AddLagePagesSwitch(UString &params) {
-    if (ReadLockMemoryEnable(FmSettingsPath()))
-#ifndef UNDER_CE
-        if (NSecurity::Get_LargePages_RiskLevel() == 0)
-#endif
-            params += " -slp";
-}
+static void AddLagePagesSwitch(UString &params) { AddLagePagesSwitch(params, FmSettingsPath()); }
 
 class CRandNameGenerator {
     CRandom _random;
