@@ -4,6 +4,14 @@
 Готовый запрос агенту: [porting-chat-prompt.md](porting-chat-prompt.md).
 Исходная дата: 2026-09-28. Это список **оставшейся** работы, не оценка MVP с нуля.
 
+P3-05,2026-10-10: complete ProgressDialog2 body/resource/caller/dependency map
+retains source algorithms; Cancel/success message boxes regain source NoIcon,
+errors retain Critical. Existing regressions reproduce17 old-product failures;
+toolbar consumer and Windows native-font report delivery are reconciled together.
+[Source disposition, checks and limits](upstream-port-audit.md#p3-05--progressdialog2-source-and-message-policy-2026-10-10).
+Whole-family/native/rendered/current-package/final scope stays mandatory;
+P3-03/04/05/06 and43/47 remain open.
+
 P3-05,2026-10-10: complete ExtractCallback/OpenCallback bodies, interfaces,
 direct callers and virtual-file/memory/overwrite/error/password boundaries are
 reconciled; no functional change is needed. Five current suites pass on all

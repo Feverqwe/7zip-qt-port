@@ -144,7 +144,7 @@ void CQtProgressDialog::SetDefaultButton(unsigned id) {
 }
 void CQtProgressDialog::MessageBox(QWidget *parent, const UString &message, const UString &title,
                                    bool error) {
-    QMessageBox box(error ? QMessageBox::Critical : QMessageBox::Information,
+    QMessageBox box(error ? QMessageBox::Critical : QMessageBox::NoIcon,
                     QString::fromWCharArray(title.Ptr()), QString::fromWCharArray(message.Ptr()),
                     QMessageBox::Ok, parent);
     box.setObjectName("progressFinalMessage");
@@ -152,7 +152,7 @@ void CQtProgressDialog::MessageBox(QWidget *parent, const UString &message, cons
     box.exec();
 }
 int CQtProgressDialog::AskCancel(QWidget *parent, const UString &message, const UString &title) {
-    QMessageBox box(QMessageBox::Question, QString::fromWCharArray(title.Ptr()),
+    QMessageBox box(QMessageBox::NoIcon, QString::fromWCharArray(title.Ptr()),
                     QString::fromWCharArray(message.Ptr()),
                     QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel, parent);
     box.setObjectName("progressCancelQuestion");

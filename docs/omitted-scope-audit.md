@@ -1,5 +1,49 @@
 # Omitted source scope review
 
+## ProgressDialog2 complete body disposition (2026-10-10)
+
+Complete original/current FileManager/ProgressDialog2.cpp/.h were compared at
+port parent fc4012e with https://github.com/ip7z/7zip.git revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`: all1483 original and1316 adapted
+implementation lines, inline declarations, ProgressDialog2.rc/2a.rc/Res.h and
+GuiCommon.rc desktop macros. Normalized comparison separates formatting from
+functional platform boundaries. The authoritative adapted C++ owner remains
+under its original path; reusable resource/type dependencies remain vendored.
+
+| Original active body/interface family | Retained owner and platform boundary |
+| --- | --- |
+| CProgressSync constructor, stop/pause access, CheckStop, Clear_Stop_Status, ScanProgress, total/current/ratio/title/status/path/error setters | Original locked state, undefined sentinels, cancellation HRESULT and100ms multi-producer pause polling remain. The existing opt-in single-worker wake uses the upstream synchronization event; QtWorkerProgress's publication lock prevents cancelled output publication without replacing source progress state. |
+| GetTimeString, ReduceString, ConvertSizeToString, GetChangedString, GetPower32/64, MyMultAndDiv, GetNumDigits | Original formatting, truncation, integer scaling and overflow behavior remain, including byte-based speed during files-progress. No Qt number/statistics algorithm replaces these bodies. |
+| CProgressDialog construction/destruction, AddToTitle, OnInit/OnSize, EnableErrorsControls | Same initial source fields, control IDs/groups/order, language strings, icon branch, progress/list setup and rectangle calculation. Qt font-DLU/control/move/work-area services replace HWND calls. NormalizeSize retains the original oversized-window adjustment and supplies no minimum size. Source title ownership is released before queued backend completion restores the application title. |
+| SetProgressRange/Pos, ShowSize, UpdateStatInfo, SetTitleText | Original undefined-total, range reduction, cached repaint, elapsed/pause accounting, remaining/speed/ratio, path splitting and percentage title flow remain. CQtProgressBar translates PBM range/position, including native clamping; Qt timers/resize/show events deliver original handlers. |
+| SetPauseText/OnPauseButton, SetPriorityText/OnPriorityButton, SetTaskbarProgressState | Same state transition/captions and taskbar precedence. ArchiveProgressTransport supplies actual process pause/priority; callback workers explicitly lack pause. Windows retains ITaskbarList3 and upstream process helpers. Darwin uses process priority and an AppKit Dock badge; Linux uses thread scheduler rollback and the existing launcher DBus adapter. Failed priority delivery preserves state and records a source Sync error. |
+| AddMessageDirect/AddMessage/UpdateMessagesDialog, ListView_GetSelected/CopyToClipboard, OnNotify | Same numbered first lines, unnumbered continuations, source newline/selection/all-row clipboard policy and message counter. Qt list/clipboard/key delivery replaces Win32 presentation; macOS additionally accepts Meta. |
+| OnOK/OnCancel, OnButtonClicked, OnExternalCloseMessage, OnMessage, CheckNeedClose | Same source no-op OK, YES/NO/CANCEL/default/escape cancellation, temporary pause and restoration, finish deferred through an open question, final-error/list/Close and success-message transitions. Qt accept/reject/queued delivery replace native messages. Two invented Qt icons were removed: original MB_YESNOCANCEL and success MB_OK have no icon flags; MB_ICONERROR remains Critical. |
+| Create, ProcessWasFinished, MyThreadFunction, CProgressThreadVirt::Create/Process, AddMessageToString/HResultToMessage | Original creation delay, WaitMode, worker result/exception/error composition, event sequencing, joined lifetime and GUI finalization remain. Windows uses native source handles/waits; POSIX QtProgressStartWait supplies two-latch wake/deadline with finished-first precedence and joins the upstream CThread. ShowAfterMessages is only an upstream declaration, with no implemented body/caller to recover. |
+
+All Qt progress controls, wait, taskbar, process-priority, archive/callback
+transports and volume/worker progress adapters were read with their headers.
+Direct source consumers include UpdateGUI/ExtractGUI/HashGUI, PanelCopy,
+PanelCrc, PanelOperations and PanelSplitFile; callbacks assign their progress
+owner before joined Create. MainWindow begin/worker/completion and
+ArchiveProgressOperation retain GUI-thread backend delivery through
+ArchiveBackend and the official engine. An exceptional launch cancels/joins
+the child before releasing its progress owner; completion is still observed
+during pause. QtVolumeProgress delegates source setters and checkpoint return
+values; it does not supply a new split/combine algorithm.
+
+CMake compiles the same source separately as Sync-only and presentation-only
+objects, linking one authoritative Sync implementation to each consumer.
+Native Windows taskbar/COM/thread/process resources, portable strings/vectors/
+synchronization/error/language helpers and existing Qt platform adapters remain
+the dependencies. The AppKit bridge remains Objective-C++ for the native API;
+original C dependencies retain C compilation/linkage. No new borrowed file,
+dependency, baseline or language change follows. CE dialogs/priority/taskbar
+branches are outside the desktop target; original inactive experiments remain
+inactive. Selected official SFX modules build their own unchanged sources.
+The [receipt](upstream-port-audit.md#p3-05--progressdialog2-source-and-message-policy-2026-10-10)
+owns validation and remaining native/rendered/package/final acceptance limits.
+
 ## Extraction and opening callback body disposition (2026-10-10)
 
 Complete original/current FileManager/ExtractCallback.cpp/.h and

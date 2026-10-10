@@ -2,6 +2,7 @@
 #include "Common/StringConvert.h"
 #include "layout_inspection.h"
 #include <QLabel>
+#include <QLayout>
 #include <QMessageBox>
 #include <QPushButton>
 #include <QThread>
@@ -236,8 +237,10 @@ class ProgressWorkerTests : public QObject {
         CWorker worker;
         worker.Mode = mode;
         bool observed = false;
+        bool geometry = true;
         QString actualTitle, actualMessage;
         Qt::TextFormat format = Qt::AutoText;
+        QMessageBox::Icon icon = QMessageBox::Question;
         QTimer timer;
         connect(&timer, &QTimer::timeout, &worker, [&] {
             if (auto *box = qobject_cast<QMessageBox *>(QApplication::activeModalWidget())) {
@@ -245,6 +248,15 @@ class ProgressWorkerTests : public QObject {
                 actualTitle = box->windowTitle();
                 actualMessage = box->text();
                 format = box->textFormat();
+                icon = box->icon();
+                for (const QSize size : {QSize(480, 200), QSize(320, 200)}) {
+                    box->resize(size);
+                    box->layout()->activate();
+                    geometry &=
+                        UiInspection::writeReport(*box, QString("progress-final-message-%1-%2")
+                                                            .arg(QTest::currentDataTag())
+                                                            .arg(size.width()));
+                }
                 box->button(QMessageBox::Ok)->click();
             }
         });
@@ -259,6 +271,9 @@ class ProgressWorkerTests : public QObject {
 #endif
         QCOMPARE(actualMessage, message);
         QCOMPARE(format, Qt::PlainText);
+        // Source MB_ICONERROR for failure, plain MB_OK for success.
+        QCOMPARE(icon, mode == 3 ? QMessageBox::Critical : QMessageBox::NoIcon);
+        QVERIFY(geometry);
         QVERIFY(worker.ThreadFinishedOK);
         QVERIFY(worker.MessagesDisplayed);
     }

@@ -2001,7 +2001,7 @@ oversized windows/work-area overlap; it does not supply a minimum size.
 Normal 760×450 and compact 640×380 geometry tests check every visible control,
 text/button fitting and footer/list separation. `ui_parity_progress` maps all
 26 IDs to 24 JSON reports across compression/errors/paused, native priority and finish-Close
-states. Captions are fixed Russian; clipboard shortcuts also accept macOS Meta.
+states. Captions follow source language bindings; clipboard shortcuts also accept macOS Meta.
 Background is the source default button and receives initial focus when native
 priority capability is available; Enter on focused Pause toggles pause instead.
 Real priority failure restores the previous caption/title and reports a source
@@ -2010,7 +2010,14 @@ pausing and restoring prior pause. Native completion while the question is open
 is deferred until the answer; completed errors hide Pause/Background and focus
 the default Close button. Native message boxes use plain text. Their Qt platform
 layout is checked separately from the 26-control source resource; macOS ignores
-message-box window titles. Add in an open archive was the first operation consumer
+message-box window titles. Source MB_YESNOCANCEL and success MB_OK have no icon
+flags: both Qt boxes use NoIcon; MB_ICONERROR uses Critical. Cancel's existing
+normal/compact answer matrix checks the public icon. Final-error/success reports
+request480×200/320×200, but native QMessageBox auto-fit determines actual sizes;
+these requests do not establish two distinct rendered sizes. On Windows all
+four progress-report producers and Cancel use the native QPA/font database,
+as the main dialog already does. The offscreen plugin's missing-font fallback
+metrics are unsuitable for application geometry. Add in an open archive was the first operation consumer
 under P0-10.1. P0-10.2 connects the other current archive, filesystem and volume
 operations. Filesystem/volume workers expose cancellation and real background
 priority, but Pause is disabled because they have no worker pause capability.

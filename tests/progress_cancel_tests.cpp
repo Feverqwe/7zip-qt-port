@@ -112,6 +112,7 @@ class ProgressCancelTests : public QObject {
         bool visibleAfterDenial = false;
         bool geometry = false;
         QString promptText;
+        QMessageBox::Icon promptIcon = QMessageBox::Critical;
         QTimer responder, trigger;
         connect(&responder, &QTimer::timeout, &worker, [&] {
             if (observed)
@@ -120,6 +121,7 @@ class ProgressCancelTests : public QObject {
                 observed = true;
                 promptPaused = worker.Sync.Get_Paused();
                 promptText = box->text();
+                promptIcon = box->icon();
                 geometry = worker.size() == size &&
                            UiInspection::fullyVisible(*Button(worker, "IDCANCEL"), worker) &&
                            UiInspection::fullyVisible(*box->button(QMessageBox::Yes), *box) &&
@@ -157,6 +159,8 @@ class ProgressCancelTests : public QObject {
         QVERIFY(restored);
         QVERIFY(geometry);
         QCOMPARE(promptText, QStringLiteral("Are you sure you want to cancel?"));
+        // Original MB_YESNOCANCEL adds no icon flags.
+        QCOMPARE(promptIcon, QMessageBox::NoIcon);
         QCOMPARE(worker.Sync.Get_Stopped(), answer == int(QMessageBox::Yes));
         QCOMPARE(worker.Result, answer == int(QMessageBox::Yes) ? E_ABORT : S_OK);
         QCOMPARE(worker.GuiFinishes, 1u);

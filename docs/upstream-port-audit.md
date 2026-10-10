@@ -1,5 +1,68 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-05 — ProgressDialog2 source and message policy (2026-10-10)
+
+Full source https://github.com/ip7z/7zip.git revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`, port parent fc4012e:
+complete ProgressDialog2.cpp/.h bodies, resources, callers, types and platform
+dependencies were compared. The [complete body map](omitted-scope-audit.md#progressdialog2-complete-body-disposition-2026-10-10)
+records original synchronization/statistics/message/worker algorithms and the
+existing Qt/native seams. No new borrowed module, dependency, baseline or
+source-language change; original notices and authoritative owners remain.
+AppKit continues to use its existing narrow Objective-C++ native bridge.
+
+Two Qt message-box arguments independently added icons absent from the source:
+OnButtonClicked uses MB_YESNOCANCEL, and OnExternalCloseMessage success uses
+MB_OK, both without icon flags. AskCancel and successful MessageBox now use
+NoIcon; original MB_ICONERROR remains Critical. Default Yes, Escape-as-Cancel,
+pause restoration, finish deferral, plain text and all result algorithms remain.
+Existing public regressions fail17 cases before the fix:16 cancel rows and one
+success-message row. The two existing final-message cases additionally write
+four JSON reports after normal/compact resize requests; QMessageBox auto-fit,
+rather than requested width, determines actual geometry.
+
+The first unsandboxed Mac full gate passes320/321; only toolbar_archive_workflow
+fails because its helper mistakes successful NoIcon messages for errors. The
+helper now recognizes the named source progress success box; other/error boxes
+remain errors. Localized7/7 passes13.35s. Final full gate passes321/321 in227.97s,
+including19 affected suites/175Qt/0 failures/0 skips and the native Darwin
+priority/taskbar consumers. Eleven slow suites remain excluded.
+
+Initial Linux17/17 and Windows15/15 pass, but Windows JSON exposes42 label-fit
+findings in eight offscreen reports: the missing-font fallback does not describe
+application controls. ProgressDialog already used native Windows QPA/fonts.
+Worker/priority/archive report producers and Cancel now share that native QPA
+and existing UI resource lock. This corrects the test environment, not the
+original source rectangle algorithm or application font. First snapshot
+20261010T111421Z-c656f513 is retained as diagnostic history, not accepted
+Windows geometry.
+
+Final Linux passes18/18 in18.35s,168Qt/0 failures/0 skips, including toolbar,
+actual child pause/priority, launcher/private DBus, archive backend and file
+worker consumers. Final Windows passes16/16 in52.87s,159Qt/0 failures/0 skips,
+with the application QPA/fonts for all progress geometry and modal consumers.
+
+Final snapshot20261010T112221Z-21cd386e archive SHA256
+`593adbd96e4d540c378fe95d5553be41c9294e9d27556316d294738cdd6b0104`
+matches all1513 frozen inputs in both actual guest trees. All1478 retained
+non-documentation inputs are byte-identical in the final checkout after removal
+of the temporary review wrapper. Eight runtime files/OS are hashed;
+metadata source repository/full revision/version1703939 and declared codec/SFX
+hashes match on all three OS. Forty-four current-build reports/OS,132 total,
+have no visible bounds/text-fit findings. The26-control source contract, all16
+cancel-answer states and four final-message reports remain separate checks.
+No rendered Windows reference or physical desktop/Dock/Explorer acceptance is
+inferred from native QPA, process tests or JSON.
+
+The baseline verifier passes412 exact/198 adapted/3 local paths at one revision.
+Fresh guest preflight has Linux17,569,853,440 and Windows18,105,913,344 bytes
+free; final host storage is OK with no warnings or VHDX growth. No cleanup,
+disk, account/login/policy, upstream or publication change is made.
+Evidence is retained in build/review/progress-final. This completes the source
+progress disposition and corrects its message policy; whole-family, native/
+rendered, current-package and final acceptance remain mandatory.
+P3-03/04/05/06 and43/47 stay open; GitHub workflow deletion remains preserved.
+
 ## P3-05 — Extraction and opening callback disposition (2026-10-10)
 
 Full source https://github.com/ip7z/7zip.git revision

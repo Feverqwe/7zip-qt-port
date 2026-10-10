@@ -2475,6 +2475,14 @@ all 26 controls from the pinned source resource. These checks do not accept the
 separate integrated modal-worker/cancel/finish/update suites described below;
 Windows rendering and Windows/Linux runtime remain unverified.
 
+ProgressDialog2 source reconciliation (2026-10-10) additionally checks public
+QMessageBox icon policy: the existing16-case `progress_cancel` matrix expects
+NoIcon, and `progress_worker` expects NoIcon for success and Critical for error.
+These assertions fail17 cases before the two-argument presenter correction.
+Four current-build final-message JSON reports inspect native auto-fit after
+normal/compact resize requests; they are separate from the source26-control
+contract and do not establish rendered Windows parity.
+
 P0-10.1 focused suites add `progress_worker` (native worker/result/exception,
 startup fast/request/timeout, modal finish/messages and normal/compact default
 Close), `progress_cancel` (YES/NO/CANCEL/Escape, prior pause and finish deferred

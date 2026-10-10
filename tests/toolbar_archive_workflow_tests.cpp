@@ -26,10 +26,11 @@ bool makeArchive(const QString &directory, const QString &path, const QString &t
 void dismissResults(QStringList &errors, QStringList &successes) {
     if (auto *widget = QApplication::activeModalWidget()) {
         if (auto *box = qobject_cast<QMessageBox *>(widget)) {
-            if (box->icon() != QMessageBox::Information)
-                errors << box->text();
-            else
+            // Source ProgressDialog2 success MB_OK carries no icon flags.
+            if (box->objectName() == "progressFinalMessage" && box->icon() == QMessageBox::NoIcon)
                 successes << box->text();
+            else
+                errors << box->text();
             box->accept();
         } else if (auto *results = qobject_cast<CListViewDialog *>(widget)) {
             errors << results->windowTitle();
