@@ -18,7 +18,9 @@
 #include <QLineEdit>
 #include <QPushButton>
 #include <QRadioButton>
+#include <QScopeGuard>
 #include <QTemporaryDir>
+#include <QTimer>
 #include <QTreeWidget>
 #include <QtTest>
 
@@ -144,7 +146,7 @@ class LanguageDialogTests final : public QObject {
         copy.accept();
         QCOMPARE(copy.Value, QStringLiteral(" /pending path 密碼 "));
     }
-    void overwriteMemoryAndMessagesPreserveDecisions() {
+    void overwriteMemoryPreserveDecisions() {
         COverwriteDialog overwrite;
         overwrite.DefaultButton_is_NO = true;
         overwrite.OldFileInfo.Path = L"/folder 密碼/old.bin";
@@ -160,11 +162,6 @@ class LanguageDialogTests final : public QObject {
         limit->setText(" 007 pending ");
         memory.findChild<QRadioButton *>("memSkip")->click();
         memory.findChild<QCheckBox *>("memRemember")->click();
-        CMessagesDialog messages;
-        messages.Create();
-        messages.AppendMessage(UString(L"message 密碼\nnext row"));
-        auto *list = messages.findChild<QTreeWidget *>("IDL_MESSAGE");
-        const int rows = list->topLevelItemCount();
         language("ru");
         QCOMPARE(overwrite.windowTitle(), QStringLiteral("Подтверждение замены файла"));
         QVERIFY(overwrite.findChild<QPushButton *>("overwriteNo")->isDefault());
@@ -174,23 +171,42 @@ class LanguageDialogTests final : public QObject {
         QVERIFY(limit->isEnabled());
         QVERIFY(memory.findChild<QRadioButton *>("memSkip")->isChecked());
         QVERIFY(memory.findChild<QCheckBox *>("memRemember")->isChecked());
-        QCOMPARE(list->topLevelItemCount(), rows);
-        QCOMPARE(list->topLevelItem(0)->text(1), QString("message 密碼"));
-        QCOMPARE(list->headerItem()->text(1), QStringLiteral("Сообщение"));
         for (int width : {700, 560}) {
             inspect(overwrite, "language-overwrite-ru", width, 440);
             inspect(memory, "language-memory-ru", width, 460);
-            inspect(messages, "language-messages-ru", width, 400);
         }
         language("-");
         QCOMPARE(overwrite.findChild<QLabel *>("overwriteOldFile")->text(), oldInfo);
-        QCOMPARE(list->topLevelItemCount(), rows);
-        QCOMPARE(list->headerItem()->text(1), QString("Message"));
         for (int width : {700, 560}) {
             inspect(overwrite, "language-overwrite-en", width, 440);
             inspect(memory, "language-memory-en", width, 460);
-            inspect(messages, "language-messages-en", width, 400);
         }
+    }
+    void modalMessagesPreserveRowsAcrossLanguageChanges() {
+        UStringVector values;
+        values.Add(L"message 密碼\nnext row");
+        CMessagesDialog messages;
+        messages.Messages = &values;
+        bool visited = false;
+        QTimer::singleShot(0, &messages, [&] {
+            const auto close = qScopeGuard([&] { messages.accept(); });
+            visited = true;
+            auto *list = messages.findChild<QTreeWidget *>("IDL_MESSAGE");
+            const int rows = list->topLevelItemCount();
+            QCOMPARE(rows, 2);
+            for (const char *name : {"ru", "-"}) {
+                language(name);
+                QCOMPARE(list->topLevelItemCount(), rows);
+                QCOMPARE(list->topLevelItem(0)->text(1), QString("message 密碼"));
+                QCOMPARE(list->headerItem()->text(1),
+                         QString(name) == "ru" ? QStringLiteral("Сообщение") : QString("Message"));
+                for (int width : {700, 560})
+                    inspect(messages, "language-messages-" + QString(name), width, 400);
+            }
+        });
+        QCOMPARE(messages.Create(), INT_PTR(IDOK));
+        QVERIFY(visited);
+        QVERIFY(!messages.isVisible());
     }
     void extractPreservesModesHistoryAndSecret() {
         CExtractDialog dialog("/initial path", {"/history"});

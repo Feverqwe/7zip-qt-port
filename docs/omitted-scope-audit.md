@@ -116,6 +116,46 @@ do not require a new project GUID implementation. No source/header changes.
 
 ## Remaining reconciliation
 
+### Operation prompt bodies and modal lifetime, 2026-10-10
+
+Complete original/current PasswordDialog, OverwriteDialog, MemDialog and
+MessagesDialog `.cpp/.h`, all four desktop RC/Res headers and Overwrite's CE
+resource were reviewed at the pinned revision above. The source module/language
+boundaries and one authoritative algorithm per prompt remain intact.
+
+| Source owner/body | Copied/adapted/omitted scope and dependencies |
+| --- | --- |
+| PasswordDialog ReadControls, SetTextSpec, OnInit, OnButtonClicked, OnOK; header defaults | Retained read/toggle/read/accept flow and initial hidden-password policy. Qt replaces control attachment, echo mode, event dispatch, modal base, label buddy and resource language binding. Its QString widget boundary converts once into caller-owned UString; it introduces no password parsing or trimming. OpenCallback and ExtractCallback preserve cached password/asked/defined state, accepted-only show-password persistence and E_ABORT on refusal. UpdateCallbackGUI2 uses the same GUI-thread presenter with source success/refusal policy. |
+| OverwriteDialog ReduceString, AddSizeValue, SetFileInfoControl text, OnInit, OnButtonClicked; CFileInfo setters/defaults | Retained72-character shortening/trailing-space quoting, byte/KiB/MiB/GiB thresholds, optional time/size text, old/new order, native decision IDs, extra-action visibility and requested No default. QFileIconProvider replaces SHGetFileInfo/HICON ownership; optional second EXE/ICO icon and CE30-character layout are explicit platform presentation omissions. Qt owns positioning/destruction and Cancel transport. MapButtonResult is the same narrow native-to-extraction-answer mapping used by Qt consumers; source AskOverwrite retains its original switch/E_ABORT policy. |
+| MemDialog EnableSpin, AddSize_GB, AddInfoMessage_To_String, OnInit, OnButtonClicked, OnContinue; header defaults | Retained RAM rounding, strict allow comparison, source min/max arrows, independently typed Required_GB, hidden Remember, action defaults, parser/range and NeedSave/Remember/SkipArc-before-validation order. Qt widgets/arrows replace edit/up-down and controls; ReloadInfoMessage extracts only existing source text for language changes. Invalid input now reaches the retained MyMessages Critical/7-Zip/question-suppression owner. The dialog still remains open with raw input/unchanged Limit_GB. Inactive action-combo/skip-file/debug branches stay inactive. |
+| MessagesDialog AddMessageDirect, AddMessage, OnInit, OnSize; header/RC | Retained zero-based numbering, newline/trailing-empty-row splitting, two columns/autosizing and source list/footer resize equations. Qt replaces list attachment, DLU/font metrics, language notifications and modal dispatch. Create now blocks until dismissal and returns native IDOK/IDCANCEL; the former modeless dispatch was invalid for PanelDrag's stack-owned source caller. Unused modeless append/reset extension is removed with its obsolete journal workflow already removed under P2-09. |
+
+Caller review includes complete OpenCallback.cpp/.h and UpdateCallbackGUI2.cpp,
+source/current ExtractCallback AskOverwrite/CryptoGetTextPassword/RequestMemoryUse,
+PanelDrag's source/current terminal diagnostics branch, Qt callback dialog/password
+thread boundaries and MainWindow's existing process/filesystem prompt consumers.
+ProgressDialog2's UpdateMessagesDialog is a separate progress-list owner and does
+not call CMessagesDialog. Callback-owned questions/settings and joined GUI-thread
+dispatch remain narrow integration seams; whole ExtractCallback/PanelDrag/native
+desktop acceptance is not inferred from these prompt bodies. Original Win32
+ResourceString/LangUtils, FILETIME/size conversions, upstream COM answer flags and
+RAM/error/string helpers retain their existing dependency owners. No archive
+algorithm, native service registration or upstream file is changed.
+
+The legacy MainWindow process-password slot still independently treats an
+accepted empty password as cancellation, unlike the source callback presenter
+and its existing accepted-empty process regression. Reachability and public
+window behavior require a separate complete process-prompt caller scenario;
+The existing PasswordDialog QString public field also differs from the usable
+upstream UString DTO. Reconcile that state/type boundary with the complete
+process-prompt callers, rather than declaring it necessary merely because Qt
+controls use QString. This record reviews four bodies and closes the identified
+memory-error/modal substitutions; it does not close those password caller/type
+debts or the whole operation workflow. No acceptance is inferred from static
+inspection alone.
+
+See the [validation receipt](upstream-port-audit.md#p3-05--operation-prompts-and-source-modal-lifetime-2026-10-10).
+
 ### Six Options pages and Apply error policy, 2026-10-10
 
 Source https://github.com/ip7z/7zip.git at full revision

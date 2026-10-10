@@ -1212,7 +1212,11 @@ were connected in P0-10.1. P0-10.2 connects the remaining current archive,
 filesystem and volume consumers, with source MessagesDialog replacing the custom
 QPlainTextEdit journal view. The independent File-menu journal command and its
 recent-operation collector were removed during the P2-09 source UI audit.
-Errors remain in original Progress/Messages. On GUI-thread completion, the source final
+Errors remain in original Progress/Messages. MessagesDialog Create is modal for
+the source PanelDrag stack-owned diagnostics; Close/Enter and Escape return the
+original native IDs. MemDialog validation uses the same suppressible MyMessages
+owner as other source early errors, while the source extraction callback owns
+limit/action persistence and answer flags. On GUI-thread completion, the source final
 transition is delivered before command re-enablement so a late final prompt
 cannot interrupt the next operation.
 Original GetTimeString is the native duration formatter for that presentation;

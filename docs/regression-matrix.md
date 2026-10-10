@@ -1,5 +1,12 @@
 # Regression and security traceability
 
+Operation prompt source lifetime/error-policy consumers: `extract_prompt`,
+`password_dialog`, `language_dialog`, `language_standard_buttons`,
+`native_rar_memory`, `native_extract_callback`, `archive_opening`,
+`update_callback`, `progress_dialog`, `ui_parity_overwrite`, `ui_parity_mem`.
+Public modal Close/Enter/Escape and invalid-limit suppression/correction retain
+source rows/results/fields; see the [receipt](upstream-port-audit.md#p3-05--operation-prompts-and-source-modal-lifetime-2026-10-10).
+
 This is the P3-02 scenario-to-owner-to-CTest register for the accepted P0–P2
 scope. [Testing](testing.md) owns fixture details and reproduction commands;
 [the checklist](porting-checklist.md) owns acceptance status. Test registration

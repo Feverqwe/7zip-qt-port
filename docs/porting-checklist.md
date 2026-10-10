@@ -168,6 +168,20 @@ remains mandatory;43/47 and P3-03/04/05/06 remain open.
 
 ## Рабочие итерации после укрупнения (2026-09-29)
 
+P3-05,2026-10-10: operation-prompt review restores source memory validation
+MyMessages suppression/title and modal MessagesDialog stack lifetime with native
+Close/Enter/Escape results. Four actual old-product RED rows retained; normal/
+compact, EN/RU, retry and direct native callback consumers verified. Mac required
+final full308/308 PASS287.67s,4860Qt/0fail/18 existing skips; first305/308 failed
+on the missing copied SFX fixture and is retained, recovery3/3 PASS8.42s.
+Linux/Windows x64 Qt6.12 each11/11 PASS10.84s/28.55s,140Qt/0fail/0skip.
+All1418 inputs match local/archive/actual guests;1417 retained after wrapper
+removal. Thirty-eight widget reports per OS fit. See the
+[source receipt](upstream-port-audit.md#p3-05--operation-prompts-and-source-modal-lifetime-2026-10-10).
+Password portable DTO/legacy process caller, whole FileManager/native/rendered/
+package acceptance remain mandatory;43/47 and P3-03/04/05/06 remain open.
+Eleven slow suites excluded.
+
 Применяются обновлённые правила [размера итерации](porting-plan.md#размер-итерации-и-коммита-уточнение-2026-09-29).
 Исторические audit, commits и evidence сохранены; P0-01/P0-02 свёрнуты
 в итоговые сводки и архив. Старые

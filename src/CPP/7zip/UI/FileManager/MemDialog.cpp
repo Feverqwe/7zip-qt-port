@@ -7,6 +7,7 @@
 #include "LangUtils.h"
 #include "Windows/ErrorMsg.h"
 #include "Windows/System.h"
+#include "qtguimessages.h"
 #include "qtlangbuttonbox.h"
 #include "qtlangcontrols.h"
 #include <QAbstractButton>
@@ -15,7 +16,6 @@
 #include <QGroupBox>
 #include <QLabel>
 #include <QLineEdit>
-#include <QMessageBox>
 #include <QPushButton>
 #include <QRadioButton>
 #include <QToolButton>
@@ -241,9 +241,7 @@ void CMemDialog::OnContinue() {
         const wchar_t *end;
         const UInt32 val = ConvertStringToUInt32(s.Ptr(), &end);
         if (s.IsEmpty() || *end != 0 || val > (1u << 30)) {
-            QMessageBox::critical(
-                this, windowTitle(),
-                QString::fromWCharArray(NWindows::NError::MyFormatMessage(E_INVALIDARG)));
+            ShowErrorMessageQt(this, NWindows::NError::MyFormatMessage(E_INVALIDARG));
             return;
         }
         Limit_GB = val;

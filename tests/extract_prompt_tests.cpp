@@ -1,6 +1,7 @@
 #include "CPP/7zip/UI/Common/ZipRegistry.h"
 #include "CPP/7zip/UI/FileManager/ExtractCallback.h"
 #include "CPP/7zip/UI/FileManager/MemDialog.h"
+#include "CPP/7zip/UI/FileManager/MessagesDialog.h"
 #include "CPP/7zip/UI/FileManager/OverwriteDialog.h"
 #include "layout_inspection.h"
 #include <QCheckBox>
@@ -11,10 +12,15 @@
 #include <QMessageBox>
 #include <QPushButton>
 #include <QRadioButton>
+#include <QScopeGuard>
+#include <QScopedValueRollback>
 #include <QTemporaryDir>
 #include <QTimer>
 #include <QToolButton>
+#include <QTreeWidget>
 #include <QtTest>
+
+extern bool g_DisableUserQuestions;
 
 class ExtractPromptTests final : public QObject {
     Q_OBJECT
@@ -152,21 +158,110 @@ class ExtractPromptTests final : public QObject {
         QCOMPARE(cancelled.Limit_GB, UInt32(4));
         QVERIFY(!cancelled.NeedSave);
     }
+    void memoryInvalidInput_data() {
+        QTest::addColumn<QString>("text");
+        QTest::addColumn<bool>("disabled");
+        QTest::newRow("empty") << QString() << false;
+        QTest::newRow("trailing") << QString("2x") << false;
+        QTest::newRow("over-source-limit") << QString("1073741825") << false;
+        QTest::newRow("suppressed-empty") << QString() << true;
+    }
     void memoryInvalidInput() {
-        for (const auto &text : {QString(), QString("2x"), QString("1073741825")}) {
-            CMemDialog dialog;
-            dialog.OnInit();
-            dialog.findChild<QCheckBox *>("memSaveLimit")->click();
-            dialog.findChild<QLineEdit *>("memLimit")->setText(text);
-            QTimer::singleShot(0, [] {
-                for (auto *widget : QApplication::topLevelWidgets())
-                    if (auto *message = qobject_cast<QMessageBox *>(widget))
-                        message->accept();
-            });
-            dialog.OnContinue();
-            QCOMPARE(dialog.result(), 0);
-            QCOMPARE(dialog.Limit_GB, UInt32(4));
+        QFETCH(QString, text);
+        QFETCH(bool, disabled);
+        QScopedValueRollback<bool> questions(g_DisableUserQuestions, disabled);
+        CMemDialog dialog;
+        dialog.OnInit();
+        dialog.resize(text.isEmpty() ? QSize(560, 460) : QSize(700, 460));
+        dialog.show();
+        dialog.findChild<QCheckBox *>("memSaveLimit")->click();
+        auto *edit = dialog.findChild<QLineEdit *>("memLimit");
+        edit->setText(text);
+        bool errorShown = false;
+        bool report = false;
+        QMessageBox::Icon errorIcon = QMessageBox::NoIcon;
+        QString errorTitle;
+        QTimer::singleShot(0, &dialog, [&] {
+            if (auto *error = qobject_cast<QMessageBox *>(QApplication::activeModalWidget())) {
+                errorShown = true;
+                errorIcon = error->icon();
+                errorTitle = error->windowTitle();
+                report = UiInspection::writeReport(
+                    *error, QString("mem-input-error-%1").arg(QTest::currentDataTag()));
+                error->accept();
+            }
+        });
+        dialog.findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Ok)->click();
+        QCOMPARE(errorShown, !disabled);
+        if (errorShown) {
+            QCOMPARE(errorIcon, QMessageBox::Critical);
+#ifndef Q_OS_MACOS
+            QCOMPARE(errorTitle, QString("7-Zip"));
+#endif
+            QVERIFY(report);
         }
+        QVERIFY(dialog.isVisible());
+        QCOMPARE(dialog.result(), 0);
+        QCOMPARE(dialog.Limit_GB, UInt32(4));
+        QCOMPARE(edit->text(), text);
+        QVERIFY(dialog.NeedSave); // Source reads action fields before validating the limit.
+        edit->setText("2");
+        dialog.findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Ok)->click();
+        QCOMPARE(dialog.result(), IDCONTINUE);
+        QCOMPARE(dialog.Limit_GB, UInt32(2));
+        QVERIFY(!dialog.isVisible());
+    }
+    void sourceMessagesModalLifetime_data() {
+        QTest::addColumn<int>("decision");
+        QTest::newRow("close") << 0;
+        QTest::newRow("enter") << 1;
+        QTest::newRow("escape") << 2;
+    }
+    void sourceMessagesModalLifetime() {
+        QFETCH(int, decision);
+        UStringVector lines;
+        lines.Add(L"diagnostic 密碼\nnext row\n");
+        QWidget owner;
+        owner.show();
+        CMessagesDialog dialog;
+        dialog.Messages = &lines;
+        bool visited = false;
+        QTimer::singleShot(0, &dialog, [&] {
+            const auto close = qScopeGuard([&] {
+                if (dialog.isVisible())
+                    dialog.reject();
+            });
+            visited = true;
+            QCOMPARE(QApplication::activeModalWidget(), &dialog);
+            QCOMPARE(dialog.parentWidget(), &owner);
+            QVERIFY(dialog.isVisible());
+            auto *list = dialog.findChild<QTreeWidget *>("IDL_MESSAGE");
+            QCOMPARE(list->topLevelItemCount(), 3);
+            const QStringList expected{QStringLiteral("diagnostic 密碼"), "next row", ""};
+            for (int i = 0; i < expected.size(); ++i) {
+                QCOMPARE(list->topLevelItem(i)->text(0), QString::number(i));
+                QCOMPARE(list->topLevelItem(i)->text(1), expected[i]);
+            }
+            dialog.resize(decision == 0 ? QSize(760, 450) : QSize(640, 380));
+            QApplication::processEvents();
+            auto *button = dialog.findChild<QPushButton *>("IDOK");
+            QVERIFY(UiInspection::fullyVisible(*list, dialog));
+            QVERIFY(UiInspection::fullyVisible(*button, dialog));
+            QVERIFY(UiInspection::separate(*list, *button, dialog));
+            QVERIFY(UiInspection::writeReport(
+                dialog, QString("messages-modal-%1").arg(QTest::currentDataTag())));
+            if (decision == 0)
+                button->click();
+            else
+                QTest::keyClick(list, decision == 1 ? Qt::Key_Return : Qt::Key_Escape);
+            QVERIFY(!dialog.isVisible());
+        });
+        const INT_PTR result = dialog.Create(&owner);
+        QVERIFY2(visited, "Source Create must retain the stack-owned diagnostic until dismissal");
+        QVERIFY(!dialog.isVisible());
+        QCOMPARE(result, INT_PTR(decision == 2 ? IDCANCEL : IDOK));
+        QCOMPARE(lines.Size(), unsigned(1));
+        QCOMPARE(QString::fromWCharArray(lines[0]), QStringLiteral("diagnostic 密碼\nnext row\n"));
     }
     void geometry() {
         for (int width : {700, 560}) {

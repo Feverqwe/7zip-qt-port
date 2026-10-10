@@ -2250,6 +2250,16 @@ current-build JSON. `checksum` checks the last-operation digest through its
 source message list. `app_lifecycle_window` exercises joined window teardown.
 Windows/Linux runtime needs its own evidence.
 
+`extract_prompt` also checks source modal diagnostic lifetime through actual
+Close/Enter/Escape, native results, parent ownership, zero-based message rows
+and trailing empty lines. Its invalid memory-limit cases check source Critical
+errors/question suppression, unchanged limit/raw input and successful correction.
+`language_dialog` runs message hot-language and normal/compact geometry inside
+the modal lifetime, preserving rows. The independent File-menu journal and its
+last-operation collector were removed under P2-09; historical consumer receipts
+above do not imply those local commands still exist. See the
+[current prompt receipt](upstream-port-audit.md#p3-05--operation-prompts-and-source-modal-lifetime-2026-10-10).
+
 `progress_statistics_helpers` compiles the authoritative progress module in a
 separate test translation unit to preserve original file-local helper visibility.
 It checks source size-unit boundaries and buffer guards, overflow/zero arithmetic,

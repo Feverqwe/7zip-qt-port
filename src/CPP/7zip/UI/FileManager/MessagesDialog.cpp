@@ -83,27 +83,17 @@ CMessagesDialog::CMessagesDialog(QWidget *parent) : QDialog(parent) {
                    qMax(int(std::round(16 * _unitY)), _close->sizeHint().height()));
 }
 
-void CMessagesDialog::Create(QWidget *parent) {
+INT_PTR CMessagesDialog::Create(QWidget *parent) {
     if (parent && parentWidget() != parent)
         setParent(parent, Qt::Dialog);
     if (!_initialized) {
         _initialized = OnInit();
         _list->setFocus();
     }
-    show();
-    raise();
-    activateWindow();
+    return exec();
 }
 
-void CMessagesDialog::AppendMessage(const UString &message) {
-    if (_initialized)
-        AddMessage(message);
-}
-
-void CMessagesDialog::ResetMessages() {
-    if (_initialized)
-        _list->clear();
-}
+void CMessagesDialog::reject() { done(IDCANCEL); }
 
 void CMessagesDialog::resizeEvent(QResizeEvent *event) {
     if (_initialized)

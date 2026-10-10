@@ -1,5 +1,59 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-05 — operation prompts and source modal lifetime (2026-10-10)
+
+Source repository https://github.com/ip7z/7zip.git, full revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. Complete four operation-prompt
+bodies/headers/resources and their opening/extraction/drag/password callers
+were reviewed; [body and dependency map](omitted-scope-audit.md#operation-prompt-bodies-and-modal-lifetime-2026-10-10)
+records copied, adapted and omitted scope. Portable string/RAM/size/time helpers,
+native answer IDs and source module boundaries remain authoritative.
+Six complete portable helper bodies have equal normalized tokens: memory
+AddSize_GB/AddInfoMessage_To_String and four CFileInfo time/size setters.
+Other bodies have the explicit control/thread/platform adaptations in the map;
+this is not a whole-file equality claim. Baseline408exact/196adapted/3local verifies.
+
+Two independent Qt presentation substitutions were corrected. MemDialog invalid
+limit now uses source MyMessages' Critical/7-Zip and suppressed-question policy,
+while retaining parser, raw input, action fields and retry. MessagesDialog Create
+now retains the source modal lifetime and native IDOK/IDCANCEL result. The former
+modeless call returned immediately to PanelDrag's stack-owned diagnostic caller,
+allowing destruction before dismissal. The obsolete append/reset extension is
+removed; the old independent File-menu journal was already removed under P2-09.
+This supersedes historical modeless journal claims, without reopening that UI.
+
+Actual old-product RED: one suppressed-memory error failure, then three modal
+lifetime failures (Close/Enter/Escape),11Qt passes/4 failures/0 skips. Public
+regressions inspect actual modal ownership, zero-based rows including trailing
+empty text, native results, no input mutation, raw invalid memory/correction,
+and EN/RU hot language/normal-compact geometry inside modal dispatch. Existing
+password/overwrite decisions, real native RAR memory success/refusal/cancellation,
+opening, extraction and update callbacks remain direct consumers.
+
+Validation uses an isolated checkout, excluding concurrent Selection/ContextMenu
+work. Isolated macOS arm64 Qt6.12 focused11/11 passes12.10s,140Qt/0fail/0skip.
+Thirty-eight current affected page/error reports have no clipped named visible
+controls or truncated labels; one RED-only suppressed error report is archived
+separately. Linux/Windows x64 Qt6.12 each pass11/11 consumers in10.84s/28.55s,
+140Qt/0fail/0skip on each. All1418 frozen code/test/build input hashes match
+local, source.tar and both actual guest trees at snapshot
+`20261009T234628Z-65db5a82`, SHA256
+`1d4e0d26a68e333480fe6a835775cad86c7d3678400ac4588d51c35f176d7d27`.
+Each guest's38 current affected reports fit without clipping/truncated labels.
+Official pinned engine/SFX were built in both guest snapshots. Evidence:
+build/review/filemanager-final/prompts-*. The first local full gate passes305/308
+in253.54s; sfx_lifecycle, codec_update and shell_update_window fail because this
+isolated checkout was missing its copied official SFX fixture (4804Qt/24fail/
+27skip). That attempt is retained separately. After its exit, the pinned SFX
+producer/revision/SHA is checked and the fixture restored; those same three
+consumers pass8.42s without source/assertion changes. Required unsandboxed final
+macOS arm64 Qt6.12 gate passes formatting/all-target build and308/308 CTest in
+287.67s,4860Qt/0fail/18 existing platform skips. No code/test changes follow the
+frozen guest snapshot; the repaired local SFX prerequisite is recorded separately.
+Temporary wrapper is archived/removed; all1417 retained frozen inputs match.
+Eleven slow suites are excluded. Native Windows rendered/physical drag receiver,
+whole FileManager, package and P3-03/04/05/06 acceptance remain mandatory.
+
 ## P3-05 — six Options pages and Apply errors (2026-10-10)
 
 Source repository https://github.com/ip7z/7zip.git, full revision

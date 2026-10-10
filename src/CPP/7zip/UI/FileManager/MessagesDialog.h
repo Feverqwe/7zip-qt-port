@@ -4,6 +4,7 @@
 #define ZIP7_INC_MESSAGES_DIALOG_H
 
 #include "Common/MyString.h"
+#include "qtmodalresult.h"
 #include "qtprogresscontrols.h"
 #include <QDialog>
 
@@ -28,9 +29,8 @@ class CMessagesDialog : public QDialog {
   public:
     const UStringVector *Messages = nullptr;
     explicit CMessagesDialog(QWidget *parent = nullptr);
-    void Create(QWidget *parent = nullptr);
-    void AppendMessage(const UString &message);
-    void ResetMessages();
+    INT_PTR Create(QWidget *parent = nullptr);
+    void reject() override;
 };
 
 #endif

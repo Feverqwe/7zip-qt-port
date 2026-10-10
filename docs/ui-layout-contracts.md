@@ -1224,9 +1224,13 @@ independent edit/spinner and GB label, Action group containing Allow/Skip and
 Remember, Continue/Cancel. Source RAM-dependent default and spinner range,
 text validation, NeedSave/Remember/SkipArc and cancellation are preserved.
 The text field remains independent of the spinner range, including source
-acceptance of zero; invalid text does not close the dialog. Qt spinner buttons
-adapt the original edit/up-down pair. These checks establish structure and local
-Qt usability. Native PanelOpen integration is checked in P0-04.1; Windows
+acceptance of zero; invalid text does not close the dialog.
+Invalid-limit errors use source MyMessages' Critical/OK and 7-Zip title, with
+user-question suppression; macOS hides QMessageBox titles. The pending dialog
+and raw text remain available for correction in either policy state.
+Qt spinner buttons adapt the original edit/up-down pair. These checks establish
+structure and local Qt usability. Native PanelOpen integration is checked in
+P0-04.1; Windows
 rendering remains unverified.
 
 ```sh
@@ -1842,8 +1846,9 @@ MessagesDialog.rc (`IDD_MESSAGES`) uses a two-column numbered/message list and
 Close footer. The Qt source port preserves AddMessageDirect/AddMessage and the
 OnInit/OnSize control flow; `IDL_MESSAGE` is above `IDOK` at 760×450 and
 640×380. Current-build JSON confirms both controls are visible, separated and
-within the dialog. The File menu reopens this source view modelessly for the
-last operation; this is an explicit Qt workflow adaptation. Font-DLU scaling
+within the dialog. Create follows the source modal lifetime until Close/Enter
+(IDOK) or Escape (IDCANCEL), retaining the stack-owned PanelDrag message vector.
+The independent File-menu journal was removed under P2-09. Font-DLU scaling
 may enlarge the Close button to its Qt size hint. Windows rendered appearance
 remains unverified.
 No Windows rendered reference; geometry does not establish pixel parity.
