@@ -1,5 +1,62 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-03 — Current full Linux gate and acceptance boundaries (2026-10-10)
+
+Unchanged product `056bcd23126f599c837181822573996255da28b3` passes a fresh
+`python3 scripts/hyperv-runner.py check linux --upstream ...` using the read-only
+official checkout. Ubuntu 24.04.5 LTS x86_64, kernel 6.8.0-142, GCC 13.3.0,
+CMake 3.28.3, selected Qt 6.12.0 and gate formatter 23.1.2 were observed.
+The system formatter is 18.1.3; the runner's explicit PATH selects 23.1.2.
+
+The official engine/module/SFX are rebuilt from
+https://github.com/ip7z/7zip.git revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. Format, all-target build and default
+CTest pass **318/318 in 520.15s**. The 301 Qt suites report **5054 passed,
+0 failed, 56 skipped**. All skips are explicit Windows/NTFS contracts:
+SourceExtractAdvanced2, SourceLinkExtract2, FsFolderCopy19, PanelItemIcons2,
+AssociationServices1, AgentStreamUpdate3, SourceMetadataStorage10,
+FsProviderCommand16 and NativeArchiveAdsCopy1. They do not establish Windows
+coverage. Eleven slow suites remain excluded and were not run.
+
+This closes the remaining Linux validation of bounded P3-05.8 namespace Hash
+and P3-05.10 language-helper components. `namespace_hash` passes3 Qt cases,
+including disabled Unix mounted-volume Hash; Windows-only private-device cases
+are compile-time absent on Linux, not silently accepted as executed. Existing
+native Windows device/ADS evidence remains in the original .8 receipt.
+`language`7, `language_standard_buttons`27, `language_dialog`8,
+`benchmark_command`5, `benchmark_lifecycle`12, `progress_dialog`22 and
+`link_dialog`16 Qt cases pass without skips. Complete LangUtils body/caller
+disposition and original native Windows captions remain in the .10 receipt.
+Their old ENOSPC/pending-Linux checkpoints are historical; parent source,
+cold/stable/native/rendered acceptance remains open.
+
+Snapshot `20261010T115930Z-9ed04bf8`, archive SHA256
+`399d2ae316f23495e8a8c45dea94bb7f8abb14ec669a9d2e40c6e3f2319734fc`,
+matches all1514 tracked inputs in both the archive and actual guest tree.
+Eight runtime files are hashed; declared codec/SFX hashes, repository, complete
+revision and version1703939 metadata match. All5379 generated widget report
+files are hashed for evidence, not claimed individually visually reviewed.
+The full LastTest log and CMake cache are retained under the isolated checkout's
+`build/review/platform-final` alongside proof and skip classification.
+After these documentation updates, all1480 retained non-document inputs still
+match the previously verified product; no code, tests or tooling changed.
+
+Preflight Linux root had14,969,323,520 bytes available; no competing compiler/
+CTest was observed. Host storage before/after is OK with no warnings. No cleanup,
+new disks, attachments, compaction, login/account/policy changes or upstream
+writes were performed. The existing full macOS321/321 gate from the preceding
+Split receipt validates the same retained product; it was not repeated.
+
+Current macOS native UX observation was also attempted through Computer Use
+against that exact built app. The tool returned “Computer Use was not approved
+to use Sevenzip Desktop”; no UI state/action or native acceptance follows.
+No alternate UI automation was used. Windows has no active runner desktop in
+the latest read-only probe; its latest focused15/16 retains two unchanged
+list-settings exposure failures, not an accepted full Windows gate.
+The [current final matrix](ux-port-audit.md#current-final-acceptance-matrix-2026-10-10)
+records these limits. P3-03/04/05/06 remain open;43/47 is unchanged. The deleted
+GitHub workflow remains absent by explicit user decision; no push/publication.
+
 ## P3-05 — Input-dialog source and Split error policy (2026-10-10)
 
 Source https://github.com/ip7z/7zip.git at full revision

@@ -1,5 +1,27 @@
 # Сверка интерфейса с оригинальным 7zFM
 
+## Current final acceptance matrix (2026-10-10)
+
+Матрица относится к продукту `056bcd2`. Checked означает только названную
+проверку; partial/unverified не дают итоговой приёмки P3-06.
+[Текущие логи, версии, входы и ограничения](upstream-port-audit.md#p3-03--current-full-linux-gate-and-acceptance-boundaries-2026-10-10).
+
+| Область приёмки | macOS arm64 | Linux x64 | Windows x64 |
+| --- | --- | --- | --- |
+| Default format/build/CTest | checked:321/321 | checked:318/318;56 Windows/NTFS Qt skips | partial: текущие focused15/16, два отказа exposure; current full не принят |
+| Исходные модули, headers/resources/callers | partial: [109 source receipts](omitted-scope-audit.md#109-unit-source-receipt-ledger-2026-10-10); native launcher/associated-process continuation открыт | partial: общий source scope тот же | partial: применимые native launcher bodies обязательны |
+| EN/RU, normal/compact, команды и workflow | partial: автоматические contracts/regressions проходят; полный нативный обход не принят | partial: offscreen contracts/regressions проходят; физический ввод не принят | partial: выполненные focused consumers/JSON; service desktop не доказывает показ окон |
+| Нативные dialogs/shortcuts/icons/drag/registration/FS | partial: историческая ручная Finder-проверка принята отдельно; текущий полный native обход не проверен | partial: Unix FS проверен; native desktop/physical drag не проверены | partial: прежние scoped native receipts сохранены; текущий interactive desktop недоступен |
+| Наблюдение текущего приложения через Computer Use | unverified: доступ к Sevenzip Desktop не одобрен | unverified: не выполнялось | unverified: нет активного runner logon |
+| Сверка с отрисованным Windows 7zFM того же pin | unverified: нет полного rendered reference | unverified: нет полного rendered reference | partial: исторический System menu; полный текущий rendered audit не принят |
+| Текущие runtime packages и чистая ОС | unverified: прежние relocation artifacts предшествуют новым исходникам | unverified: то же | unverified: то же |
+| Cold/stable Windows, итоговая трёхплатформенная приёмка | partial: общий gate остаётся открытым | partial: успешный Linux gate не заменяет Windows | unverified: повторения и full gate требуют активного desktop |
+| GitHub CI | N/A по явному решению пользователя сохранить удаление workflow | N/A по тому же решению | N/A по тому же решению |
+
+Slow suites исключены из default gates по AGENTS.md и не объявляются принятыми.
+Открытые обязательства остаются в P3-03/04/05/06;43/47 не изменено. Историческая
+успешная проверка не превращается в проверку нового бинарника или другой ОС.
+
 Уточнение пользователя 2026-10-03: исправить во всём приложении подобные
 самостоятельные допущения, как выбор источников внутри Add to Archive.
 Это обязательная часть текущего портирования и итоговой P3-06 приёмки.
