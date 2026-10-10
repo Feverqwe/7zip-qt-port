@@ -2826,6 +2826,12 @@ if(BUILD_TESTING)
     target_include_directories(alt_streams_command_tests PRIVATE src tests)
     target_link_libraries(alt_streams_command_tests PRIVATE ${options_window_libraries})
     add_test(NAME alt_streams_command COMMAND alt_streams_command_tests -silent)
+    qt_add_executable(fs_provider_command_tests tests/fs_provider_command_tests.cpp tests/layout_inspection.cpp ${options_window_sources})
+    target_include_directories(fs_provider_command_tests PRIVATE src tests)
+    target_link_libraries(fs_provider_command_tests PRIVATE ${options_window_libraries})
+    add_test(NAME fs_provider_command COMMAND fs_provider_command_tests -silent)
+    set_tests_properties(fs_provider_command PROPERTIES TIMEOUT 60 RESOURCE_LOCK sevenzip_ui_artifacts ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/fs-provider-command.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     qt_add_executable(alt_streams_archive_ui_tests tests/alt_streams_archive_ui_tests.cpp tests/layout_inspection.cpp ${options_window_sources})
     target_include_directories(alt_streams_archive_ui_tests PRIVATE src tests)
     target_link_libraries(alt_streams_archive_ui_tests PRIVATE ${options_window_libraries})
@@ -3246,7 +3252,7 @@ if(BUILD_TESTING AND WIN32)
             archive_reload_command drag_reload_completion panel_creation_path copy_archive_refresh interarchive_recovery panel_load_count panel_activation progress_dialog language_dialog language_standard_buttons fm_settings list_settings_runtime
             language_main_dialog language_focus properties_runtime
             archive_item_open archive_external_edit external_editors_ui language_archive_command
-            alt_streams_command alt_streams_archive_ui)
+            alt_streams_command alt_streams_archive_ui fs_provider_command)
         get_property(sevenzip_native_ui_environment TEST ${sevenzip_native_ui_test}
             PROPERTY ENVIRONMENT)
         list(TRANSFORM sevenzip_native_ui_environment REPLACE

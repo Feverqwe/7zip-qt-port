@@ -41,6 +41,96 @@ Native startup, popup exposure, cold stability and rendered acceptance still
 require the existing interactive runner path. This diagnosis accepts no parent
 P3 package and does not weaken or skip the failing tests.
 
+## P3-05 — Filesystem provider Rename and NTFS destination consumers (2026-10-10)
+
+Source https://github.com/ip7z/7zip.git, full commit
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. Complete original/current
+FSFolder.cpp/.h, FSFolderCopy.cpp, FSDrives.cpp/.h, NetFolder.cpp/.h and
+AltStreamsFolder.cpp/.h were reviewed with native file/path services and the
+full Rename/Copy/Move panel, App and Qt presentation callers. The
+[disposition](omitted-scope-audit.md#filesystem-provider-bodies-and-command-consumers-2026-10-10)
+records retained, adapted and inactive scope for all nine inputs. Existing
+upstream paths, C++ language, notices/licenses and recorded module revision
+remain authoritative; no upstream checkout was modified.
+
+The independent QFileInfo target-exists guard in CFSFolder::Rename incorrectly
+refused case-only spelling changes on the default macOS volume. Windows again
+calls the original MyMoveFile body directly. The existing qtlinkservices owner
+now supplies macOS renamex_np(RENAME_EXCL), preserving atomic collision refusal
+for files, directories and links. Linux retains the existing guarded source
+service; case-insensitive Linux filesystems are not claimed. PanelOperations
+still owns source validation, selected-state capture, worker execution and
+posted reload; Qt retains its focus/selection presentation.
+
+FSFolderCopy's active source colon-destination classification, directory
+statistics/diagnostic and CCopyStateIO read/write branches are restored for
+both CFSFolder::CopyTo and CopyFileSystemItems. This replaces their independent
+E_NOTIMPL guard. Original64KiB copying, AskWrite/Skip, callback HRESULT,
+delete-after-complete Move and INVALID_FILE_ATTRIBUTES suppression of base
+metadata remain. Original cancellation can leave a partial stream; source
+bytes survive. Native CopyFile_NT and Unicode CopyFile_Sys again use the source
+main/super-path policy and skip retry after a progress error. Their progress
+pointer targets the existing adapted CCopyState instead of ProgressInfo;
+IsCallbackProgressError is expressed by its stored ProgressResult. The original
+Return_LastError_or_FAIL/GetLastErrorMessage helpers supply native diagnostics.
+Legacy ANSI/dynamic Win9x and CE branches are excluded for Qt6 desktop targets.
+
+The Qt destination dispatcher now sends an accepted peer ADS prefix through
+source CPanel::CopyTo, with source copy/password options. Original App::OnCopy
+peer-prefix admission, selection/completion and peer reload remain intact.
+Existing staged filesystem transaction, native metadata and link adaptations
+retain their owners; they are not rewritten as part of these missing branches.
+No widget constructs archive-process arguments. Archive-to-NTFS-stream workflows
+are not established by these filesystem-source tests; Agent/Extract retain
+their separate required review and acceptance. Native CAltStreamsFolder import
+E_NOTIMPL is also present in the original, whose alternative is commented out.
+
+Dependencies are existing source MyString/MyVector/FileDir/FileFind/FileIO/
+FileName/ErrorMsg, IFolderOperations callbacks, PanelCopy/PanelOperations and
+Qt presentation/link services. No new product class or library is introduced.
+The focused fs_provider_command suite is registered with existing window
+sources and Windows native Qt platform selection. Its tests use owned local
+files/ADS only; no device or live network is opened.
+
+Old-product public Mac Rename regression is RED (six Qt passes/two failures,
+0.26s). Native Windows old-product ADS regression is RED with18 expected
+failures; the separate long-path regression is RED with29 passes/one failure
+and E_ABORT. An intermediate fixture incorrectly expected Windows ADS writes
+not to set Archive, even when the fixture itself wrote an occupied stream;
+its initial base flags now include Archive while preserving the independent
+Hidden-vs-source-Archive and protected-byte assertions. The first UI draft
+also needed deferred editor deletion between Escape and another F2; the
+corrected test retains the same product, assertions and60s timeout.
+
+| Current validation | Result and scope |
+| --- | --- |
+| macOS arm64, Qt6.12 | Required unsandboxed full gate315/315 PASS254.02s,4958Qt/0fail/54platform skips. After localized native-boundary/test changes, eight focused/direct-consumer suites PASS9.21s,190Qt/0fail/35skips. |
+| Ubuntu24.04 x64, Qt6.12 | Eight focused suites PASS32.59s,190Qt/0fail/35skips. The final native-boundary/header revision is rebuilt in the same fresh snapshot as two provider suites, PASS0.06s,19Qt/0fail/19platform skips. |
+| Windows11 x64, MSVC, Qt6.12 native widgets | Eight focused suites PASS93.34s,227Qt/0fail/0skips, including actual NTFS writes, native error text and long Unicode destination. |
+
+Focused union: fs_folder_copy, native_fs_operations, fs_provider_command,
+ui_operations, ui_copy_routing, source_delete, link_command and
+alt_streams_command. EN/RU normal/compact JSON inspection covers16Rename main
+reports on macOS and Linux, plus80Windows reports (48main/32CopyDialog), both
+address/list pairs and destination/Browse/summary/footer visibility. Original
+CopyDialog.rc supplies structure; these are not rendered Windows7zFM pixels.
+
+Evidence: own isolate `/private/tmp/sevenzip-fs-providers-1961fb9`,
+`build/review/fs-providers/` (body inputs, RED/GREEN LastTest, full/focused gates,
+widget JSON, native error/long-path regressions and frozen-input proof).
+Final Windows snapshot `20261010T041658Z-4eba7984`, SHA-256
+`9df09a14f2c43579b6d57bbd920877b1d64865208473d0cbbb052f375a381087`;
+Linux focused `20261010T041121Z-c6cffdaf`, followed by final provider snapshot
+`20261010T041752Z-aae98714`, SHA-256
+`85f67ecfbc14fe6cf9c663f0aca2bded981597bfc448d898c6b652de6ddddfcd`.
+Each final Windows/Linux provider archive matches1396current product/test/build
+inputs; the earlier Linux focused archive differs only in the three subsequently
+rebuilt provider/header/test inputs. Temporary runner wrapper is archived as
+evidence and excluded from the product commit. Baseline verification passes
+410exact/198adapted/three local paths. Host monitoring remains OK/no warnings;
+no disks or login policy changed. The11 slow suites, device/VHD fixtures, live
+network, rendered/installed/package and final P3 acceptance remain excluded/open.
+
 ## P3-05 — FileManager services and native namespace icons (2026-10-10)
 
 Source https://github.com/ip7z/7zip.git, full revision

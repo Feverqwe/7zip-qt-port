@@ -27,6 +27,35 @@ class Progress final : public IProgress, public CMyUnknownImp {
 class NativeFsOperationsTests : public QObject {
     Q_OBJECT
   private slots:
+    void caseOnlyRename_data() {
+        QTest::addColumn<bool>("directory");
+        QTest::newRow("file") << false;
+        QTest::newRow("directory") << true;
+    }
+    void caseOnlyRename() {
+        QFETCH(bool, directory);
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        const QString oldName = QStringLiteral("MiXeD файл");
+        const QString newName = QStringLiteral("mixed файл");
+        if (directory)
+            QVERIFY(QDir(temp.path()).mkdir(oldName));
+        const QString payload = directory ? oldName + QStringLiteral("/keep.txt") : oldName;
+        QFile file(temp.filePath(payload));
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        QCOMPARE(file.write("protected"), qint64(9));
+        file.close();
+        CMyComPtr<IFolderFolder> folder = new NFsFolder::CFSFolder(temp.path());
+        QCOMPARE(folder->LoadItems(), S_OK);
+        CMyComPtr<IFolderOperations> operations;
+        QCOMPARE(folder.QueryInterface(IID_IFolderOperations, &operations), S_OK);
+        QCOMPARE(operations->Rename(0, newName.toStdWString().c_str(), nullptr), S_OK);
+        QCOMPARE(QDir(temp.path()).entryList(QDir::AllEntries | QDir::NoDotAndDotDot),
+                 QStringList{newName});
+        QFile result(temp.filePath(directory ? newName + QStringLiteral("/keep.txt") : newName));
+        QVERIFY(result.open(QIODevice::ReadOnly));
+        QCOMPARE(result.readAll(), QByteArray("protected"));
+    }
 #ifndef Q_OS_WIN
     void readOnlyDirectoryRejectsFilesystemMutations() {
         QTemporaryDir temp;

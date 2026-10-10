@@ -1,5 +1,18 @@
 # Regression strategy
 
+`native_fs_operations` checks public case-only Rename for Unicode file and
+directory names, actual stored directory spelling and protected child bytes.
+`fs_provider_command` checks F2/Escape in both panels and EN/RU, retained provider
+identity/selection and normal/compact geometry. Its Windows F5/F6 rows copy or
+move a local file into the opened NTFS-stream peer, cancel the Copy dialog or
+skip an occupied stream; protected base/control-stream bytes and both provider
+bindings survive. `fs_folder_copy` separately covers both public filesystem
+Copy APIs with NTFS success/Skip/progress-cancel/failure and folder diagnostics.
+Cancellation retains the source and original partial-stream policy. Fixtures
+also check native Windows error text and the source extended-path Copy retry.
+They are temporary, bounded and independent of real archives/network/device data.
+These tests are focused default suites; the11 slow suites remain opt-in.
+
 `memory_lock` covers original startup capability/saved-option/risk admission,
 privilege success/refusal, ignored account-right Add failure and preserved prior
 process mode through the public native-service boundary. Settings cases exercise

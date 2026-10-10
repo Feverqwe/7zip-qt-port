@@ -71,6 +71,18 @@ owner и интегрированными consumers, включая уже ра�
 
 ## Правила статусов и счётчика
 
+P3-05, 2026-10-10: complete filesystem-provider body/caller review restores
+case-only Rename, source filesystem→opened peer NTFS-stream Copy/Move and
+Windows main/super-path Copy retry. Public RED regressions reproduce each
+omission; source admission/Skip/errors/cancellation and selected-state/peer
+consumers remain. Mac full315/315 PASS; final focused Mac8/8, Linux8/8 plus
+localized2/2 and Windows8/8 PASS. EN/RU/both-pane geometry produces16Mac,
+16Linux and80Windows widget reports.
+[Source/platform receipt](upstream-port-audit.md#p3-05--filesystem-provider-rename-and-ntfs-destination-consumers-2026-10-10).
+Archive-source→NTFS-stream, remaining source/entrypoint disposition and
+native/rendered/installed/package acceptance retain their required owners.
+This component does not close whole P3-05 or change43/47/P3-03/04/05/06.
+
 P3-05, 2026-10-10: complete services/namespace body, header and caller review
 records twelve FileManager units and23 pinned inputs. Original Windows CSIDL
 root/address icons and both native image sizes are restored through the existing

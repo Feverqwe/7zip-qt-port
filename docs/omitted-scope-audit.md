@@ -1,5 +1,38 @@
 # Omitted source scope review
 
+## Filesystem provider bodies and command consumers (2026-10-10)
+
+Source https://github.com/ip7z/7zip.git at full revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. Complete original/current
+FSFolder.cpp/.h, FSFolderCopy.cpp, FSDrives.cpp/.h, NetFolder.cpp/.h and
+AltStreamsFolder.cpp/.h were compared, including their native/POSIX services
+and PanelOperations, PanelCopy, App::OnCopy and Qt command consumers. These
+nine pinned inputs retain their existing per-module baseline, C++ language,
+source paths and notices. This review supplements the existing operation,
+links, native metadata, devices and network receipts rather than replacing
+their platform limits.
+
+| Owner | Retained policy and adaptation boundary |
+| --- | --- |
+| FSFolder | Original properties/comparator, parent/binding, flat relative paths, descript.ion CPairsStorage, directory statistics, create/delete and Rename command policy retain their source owners. QFile/native stat services expose portable metadata, Qt supplies asynchronous load publication and notifications. Existing no-follow recursive traversal/cancellation protects links and owned operations; it does not replace the archive engine. Windows Rename again invokes original MyMoveFile directly. macOS renamex_np(RENAME_EXCL) supplies its atomic no-replacement boundary while allowing case-only file/directory spelling changes. Linux keeps its existing guarded source service; case-insensitive Linux volumes are unverified. |
+| FSFolderCopy | Original destination classification, stat/count/progress, AskWrite/Skip, folder recursion, native Copy/Move and read/write ADS branches remain authoritative. Missing active colon-prefix branches are restored in both CopyTo and CopyFileSystemItems; folders retain the original diagnostic. Native CopyFile_NT/CopyFile_Sys restore main/super-path retry, excluding callback errors; Return_LastError_or_FAIL/GetLastErrorMessage restore the source native diagnostic. CCopyStateIO retains the original64KiB loop, source deletion after successful Move, callback cancellation and INVALID_FILE_ATTRIBUTES suppression for ADS base metadata. Existing exclusive stages, source metadata service, no-follow links and QtFileTransferTransaction rollback remain necessary accepted integration adaptations. Qt translates native path/types and presents callbacks; ordinary archive bytes remain behind ArchiveBackend. |
+| FSDrives | Original native drive/device enumeration, binding, parent, property projection, GetFileSize/AddExt and image CopyTo stay active on Windows. POSIX QtVolumeMount supplies readable mounted volumes instead of Win32 drive APIs; it does not emulate device-image operations. Root icon checks open no device. Device/VHD and slow fixtures are excluded from this review's checks. |
+| NetFolder | Original Windows resource/authentication/enumeration, nested binding, parent and native icon policy remain. POSIX exposes already-mounted network resources through its existing service; it does not invent SMB discovery or authentication. No live network fixture was used. |
+| AltStreamsFolder | Original NTFS enumeration/properties, bind/parent, create/Rename/delete, CopyTo and read/write handling remain. CopyFrom/CopyFromFile are E_NOTIMPL in the pinned source too; the alternative body is commented out. These are source capability limits, not a newly omitted import implementation. POSIX filesystem ADS enumeration remains unavailable; archived ADS has its separate Agent owner. |
+
+Original App::OnCopy permits a stream-prefix destination only when that prefix
+is the opened peer ADS folder; the adapter preserves this restriction. Qt now
+dispatches that accepted destination through CPanel::CopyTo instead of treating
+the colon prefix as a normal filesystem directory. Source password and copy
+options are forwarded. Source selection/completion and peer reload continue
+through their existing presentation owners. No new 7zz syntax or format logic
+is added to a widget.
+
+Legacy ANSI/Win9x dynamic entry points and Windows CE presentation are omitted
+for Qt6 desktop targets; Unicode native services remain the Windows boundary.
+Inactive commented alternatives remain inactive. This body review does not
+establish rendered Windows, installed-package or final P3 acceptance.
+
 ## FileManager services and namespace icon consumers (2026-10-10)
 
 Source https://github.com/ip7z/7zip.git, pinned full revision

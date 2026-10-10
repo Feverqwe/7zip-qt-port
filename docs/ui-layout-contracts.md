@@ -1686,6 +1686,16 @@ was unavailable and pixel-level parity remains unverified.
 
 ## Copy/Move dialog
 
+The filesystem-provider command consumer `fs_provider_command` reuses this
+source CopyDialog resource and controls for the opened NTFS-stream peer. Its
+EN/RU F5/F6/Cancel/Skip cases cover both source panes, path/Browse/summary/footer
+visibility at440×250/340×220 and both main address/list pairs at980×620/640×400.
+The same suite checks accepted case-only F2 and Escape for file/directory rows
+in both panes/languages, retained provider/selection and protected bytes.
+Widget JSON establishes Qt geometry; exposed native Windows reference and
+pixel acceptance remain separate. No new destination control or stream-specific
+dialog is introduced.
+
 Reference: upstream `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
 `CPP/7zip/UI/FileManager/CopyDialog.rc` and `CopyDialog.cpp::OnSize`.
 Implemented view: `src/CPP/7zip/UI/FileManager/CopyDialog.cpp`.

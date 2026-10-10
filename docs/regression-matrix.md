@@ -1,5 +1,16 @@
 # Regression and security traceability
 
+Filesystem-provider source branches: `native_fs_operations` and
+`fs_provider_command` cover stored-case Rename, F2/Escape, both panes/languages,
+selection/provider identity and normal/compact geometry. `fs_folder_copy`
+covers both Copy APIs with NTFS success/Skip/cancel/failure/folder diagnostics,
+base attributes/bytes, source preservation, native error text and extended-path
+retry. `ui_operations`, `ui_copy_routing`, `source_delete`, `link_command` and
+`alt_streams_command` retain their direct consumers. All fixtures are bounded
+and local; the [receipt](upstream-port-audit.md#p3-05--filesystem-provider-rename-and-ntfs-destination-consumers-2026-10-10)
+separates three-platform checks from excluded device/slow/network and rendered/
+installed/final acceptance.
+
 Source namespace images/services: `panel_item_icons` compares Windows CSIDL
 root/address icons and both native image-list sizes through public controls;
 `root_command` and `address_combo` cover navigation and EN/RU geometry.

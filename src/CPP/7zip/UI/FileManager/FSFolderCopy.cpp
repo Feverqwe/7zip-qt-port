@@ -6,6 +6,7 @@
 #include "Common/MyBuffer.h"
 #include "Common/StringConvert.h"
 #include "FSFolder.h"
+#include "Windows/ErrorMsg.h"
 #include "Windows/FileName.h"
 #include "Windows/TimeUtils.h"
 #include "qtlanguageservices.h"
@@ -15,6 +16,32 @@
 #include <QFileInfo>
 
 namespace NFsFolder {
+static const char *const k_CannotCopyDirToAltStream = "Cannot copy folder as alternate stream";
+
+static HRESULT SendMessageError(IFolderOperationsExtractCallback *callback, const wchar_t *message,
+                                const FString &fileName) {
+    UString s = message;
+    s += " : ";
+    s += fs2us(fileName);
+    return callback->ShowMessage(s);
+}
+
+static HRESULT SendMessageError(IFolderOperationsExtractCallback *callback, const char *message,
+                                const FString &fileName) {
+    return SendMessageError(callback, MultiByteToUnicodeString(message), fileName);
+}
+
+static DWORD Return_LastError_or_FAIL() {
+    DWORD errorCode = GetLastError();
+    if (errorCode == 0)
+        errorCode = (DWORD)E_FAIL;
+    return errorCode;
+}
+
+static UString GetLastErrorMessage() {
+    return NWindows::NError::MyFormatMessage(Return_LastError_or_FAIL());
+}
+
 HRESULT CCopyStateIO::MyCopyFile(CFSTR inPath, CFSTR outPath, DWORD attrib) {
     using namespace NWindows::NFile;
     ErrorFileIndex = -1;
@@ -167,6 +194,32 @@ static DWORD CALLBACK CopyProgressRoutine(LARGE_INTEGER totalFileSize,
     return static_cast<CCopyState *>(data)->ReportSystemProgress(
         UInt64(totalFileSize.QuadPart), UInt64(totalBytesTransferred.QuadPart));
 }
+
+bool CCopyState::CopyFile_NT(const wchar_t *oldFile, const wchar_t *newFile) {
+    BOOL cancelFlag = FALSE;
+    return BOOLToBool(::CopyFileExW(oldFile, newFile, CopyProgressRoutine, this, &cancelFlag,
+                                    COPY_FILE_FAIL_IF_EXISTS));
+}
+
+bool CCopyState::CopyFile_Sys(CFSTR oldFile, CFSTR newFile) {
+    using namespace NWindows::NFile::NName;
+    IF_USE_MAIN_PATH_2(oldFile, newFile) {
+        if (CopyFile_NT(fs2us(oldFile), fs2us(newFile)))
+            return true;
+    }
+#ifdef Z7_LONG_PATH
+    if (USE_SUPER_PATH_2) {
+        if (ProgressResult != S_OK)
+            return false;
+        UString superPathOld, superPathNew;
+        if (!GetSuperPaths(oldFile, newFile, superPathOld, superPathNew, USE_MAIN_PATH_2))
+            return false;
+        if (CopyFile_NT(superPathOld, superPathNew))
+            return true;
+    }
+#endif
+    return false;
+}
 #endif
 
 bool CCopyState::CopyFile_Sys(const QString &oldFile, const QString &newFile,
@@ -177,9 +230,7 @@ bool CCopyState::CopyFile_Sys(const QString &oldFile, const QString &newFile,
     const std::wstring newWide = QDir::toNativeSeparators(newFile).toStdWString();
     FileSize = quint64(QFileInfo(oldFile).size());
     ProgressResult = S_OK;
-    BOOL cancelFlag = FALSE;
-    const bool copied = ::CopyFileExW(oldWide.c_str(), newWide.c_str(), CopyProgressRoutine, this,
-                                      &cancelFlag, COPY_FILE_FAIL_IF_EXISTS) != FALSE;
+    const bool copied = CopyFile_Sys(us2fs(oldWide.c_str()), us2fs(newWide.c_str()));
     if (copied) {
         StartPos += FileSize;
         return true;
@@ -342,6 +393,34 @@ bool CopyFile_Ask(CCopyState &state, const QString &srcPath, const QFileInfo &sr
             state.StartPos += info.Size;
         return state.CallProgress();
     }
+    if (state.UseReadWriteMode) {
+        NFsFolder::CCopyStateIO state2;
+        state2.Progress = state.Callback;
+        state2.DeleteSrcFile = state.MoveMode;
+        state2.TotalSize = state.TotalSize;
+        state2.StartPos = state.StartPos;
+        const FString from = us2fs(QDir::toNativeSeparators(srcPath).toStdWString().c_str());
+        const FString to = us2fs(QDir::toNativeSeparators(destPathNew).toStdWString().c_str());
+        NWindows::NFile::NFind::CFileInfo sourceInfo;
+        if (!sourceInfo.Find(from))
+            return ReportError(
+                state,
+                QtLocalText("Source unavailable: %1", "Источник недоступен: %1").arg(srcPath));
+        state.ProgressResult = state2.MyCopyFile(
+            from, to, state.IsAltStreamsDest ? DWORD(-1) : sourceInfo.GetWinAttrib());
+        if (state.ProgressResult != S_OK)
+            return false;
+        if (state2.ErrorFileIndex >= 0) {
+            if (state2.ErrorMessage.isEmpty())
+                state2.ErrorMessage = QString::fromWCharArray(GetLastErrorMessage());
+            const FString errorName = state2.ErrorFileIndex == 0 ? from : to;
+            state.ProgressResult = SendMessageError(
+                state.Callback, UString(state2.ErrorMessage.toStdWString().c_str()), errorName);
+            return false;
+        }
+        state.StartPos += state2.CurrentSize;
+        return state.CallProgress();
+    }
     const bool copied = state.MoveMode
                             ? state.MoveFile_Sys(srcPath, destPathNew, srcFileInfo.permissions())
                             : state.CopyFile_Sys(srcPath, destPathNew, srcFileInfo.permissions());
@@ -461,9 +540,7 @@ Z7_COM7F_IMF(CFSFolder::CopyTo(Int32 moveMode, const UInt32 *indices, UInt32 num
 #ifdef Q_OS_WIN
     isAltDest = NWindows::NFile::NName::IsAltPathPrefix(destPath);
 #endif
-    if (isAltDest)
-        return E_NOTIMPL; // Alternate streams require the P2-05 platform adapter.
-    const bool isDirectPath = !IsPathSepar(destPath.Back());
+    const bool isDirectPath = !isAltDest && !IsPathSepar(destPath.Back());
     if (isDirectPath && numItems > 1)
         return E_INVALIDARG;
 
@@ -475,8 +552,10 @@ Z7_COM7F_IMF(CFSFolder::CopyTo(Int32 moveMode, const UInt32 *indices, UInt32 num
         const CDirItem &fi = Files[index];
         const FString srcPath = _path + GetRelPath(fi);
         if (fi.IsDir() && !fi.IsOsSymLink()) {
-            stat.Path = srcPath;
-            RINOK(stat.Enumerate())
+            if (!isAltDest) {
+                stat.Path = srcPath;
+                RINOK(stat.Enumerate())
+            }
             stat.NumFolders++;
         } else {
             stat.NumFiles++;
@@ -504,10 +583,12 @@ Z7_COM7F_IMF(CFSFolder::CopyTo(Int32 moveMode, const UInt32 *indices, UInt32 num
         const QString target =
             QDir::fromNativeSeparators(QString::fromWCharArray(fs2us(destPath2)));
         if (fi.IsDir() && !fi.IsOsSymLink()) {
-            if (!CopyFolder(state, source, target))
+            if (isAltDest) {
+                RINOK(SendMessageError(callback, k_CannotCopyDirToAltStream, srcPath))
+            } else if (!CopyFolder(state, source, target))
                 return E_ABORT;
         } else if (!CopyFile_Ask(state, source, QFileInfo(source), target)) {
-            return E_ABORT;
+            return state.ProgressResult != S_OK ? state.ProgressResult : E_ABORT;
         }
     }
     return S_OK;
@@ -517,14 +598,14 @@ HRESULT CopyFileSystemItems(const UStringVector &itemsPaths, const FString &dest
                             bool moveMode, IFolderOperationsExtractCallback *callback) {
     if (itemsPaths.IsEmpty())
         return S_OK;
-    if (destDirPrefix.IsEmpty() || !callback || !IsPathSepar(destDirPrefix.Back()))
+    if (destDirPrefix.IsEmpty() || !callback)
         return E_INVALIDARG;
     bool isAltDest = false;
 #ifdef Q_OS_WIN
     isAltDest = NWindows::NFile::NName::IsAltPathPrefix(destDirPrefix);
 #endif
-    if (isAltDest)
-        return E_NOTIMPL;
+    if (!isAltDest && !IsPathSepar(destDirPrefix.Back()))
+        return E_INVALIDARG;
 
     CFsFolderStat stat(FString(), callback);
     FOR_VECTOR(i, itemsPaths) {
@@ -533,8 +614,10 @@ HRESULT CopyFileSystemItems(const UStringVector &itemsPaths, const FString &dest
         if (!fi.Find(path))
             continue;
         if (fi.IsDir() && !fi.IsOsSymLink()) {
-            stat.Path = path;
-            RINOK(stat.Enumerate())
+            if (!isAltDest) {
+                stat.Path = path;
+                RINOK(stat.Enumerate())
+            }
             stat.NumFolders++;
         } else {
             stat.NumFiles++;
@@ -564,10 +647,12 @@ HRESULT CopyFileSystemItems(const UStringVector &itemsPaths, const FString &dest
         const QString source = QDir::fromNativeSeparators(QString::fromWCharArray(fs2us(path)));
         const QString target = QDir::fromNativeSeparators(QString::fromWCharArray(fs2us(destPath)));
         if (fi.IsDir() && !fi.IsOsSymLink()) {
-            if (!CopyFolder(state, source, target))
+            if (isAltDest) {
+                RINOK(SendMessageError(callback, k_CannotCopyDirToAltStream, path))
+            } else if (!CopyFolder(state, source, target))
                 return E_ABORT;
         } else if (!CopyFile_Ask(state, source, QFileInfo(source), target)) {
-            return E_ABORT;
+            return state.ProgressResult != S_OK ? state.ProgressResult : E_ABORT;
         }
     }
     return S_OK;

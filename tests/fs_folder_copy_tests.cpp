@@ -70,6 +70,151 @@ class FsFolderCopyTests : public QObject {
     }
 
   private slots:
+    void longDestination() {
+#ifdef _WIN32
+        QTemporaryDir temp;
+        QVERIFY(QDir().mkdir(temp.filePath("source")));
+        const QString name = QStringLiteral("файл δ with space.bin");
+        const QString source = temp.filePath("source/" + name);
+        QVERIFY(write(source, "protected bytes"));
+        QString destination = temp.filePath("destination");
+        while (destination.size() < 300)
+            destination += QStringLiteral("/длинный каталог δ with spaces");
+        QVERIFY(QDir().mkpath(destination));
+        destination += '/';
+        NFsFolder::CFSFolder folder;
+        QCOMPARE(folder.Init(us2fs(
+                     QDir::toNativeSeparators(temp.filePath("source/")).toStdWString().c_str())),
+                 S_OK);
+        QCOMPARE(folder.LoadItems(), S_OK);
+        CopyCallback callback;
+        QCOMPARE(copy(folder, false, destination, callback), S_OK);
+        QCOMPARE(callback.asks, 1);
+        QVERIFY(callback.messages.isEmpty());
+        QCOMPARE(read(destination + name), QByteArray("protected bytes"));
+        QCOMPARE(read(source), QByteArray("protected bytes"));
+#else
+        QSKIP("The source super-path retry is a Windows service.");
+#endif
+    }
+    void streamDestination_data() {
+        QTest::addColumn<bool>("pathsApi");
+        QTest::addColumn<bool>("move");
+        QTest::addColumn<int>("outcome");
+        for (bool pathsApi : {false, true})
+            for (bool move : {false, true})
+                for (int outcome = 0; outcome < 4; ++outcome)
+                    QTest::newRow(qPrintable(QStringLiteral("paths-%1-move-%2-result-%3")
+                                                 .arg(pathsApi)
+                                                 .arg(move)
+                                                 .arg(outcome)))
+                        << pathsApi << move << outcome;
+    }
+    void streamDestination() {
+#ifdef _WIN32
+        QFETCH(bool, pathsApi);
+        QFETCH(bool, move);
+        QFETCH(int, outcome);
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        QVERIFY(QDir(temp.path()).mkdir("source"));
+        const QString name = QStringLiteral("данные δ с пробелом.bin");
+        const QString source = temp.filePath("source/" + name);
+        const QString base = temp.filePath(QStringLiteral("назначение δ.bin"));
+        const QByteArray bytes(150000, 'x');
+        QVERIFY(write(source, bytes));
+        QVERIFY(write(source + ":ignored", "source alternate stream"));
+        QVERIFY(write(base, "protected base"));
+        QVERIFY(
+            SetFileAttributesW(reinterpret_cast<LPCWSTR>(source.utf16()), FILE_ATTRIBUTE_ARCHIVE));
+        // Native ADS writes set Archive on the base. Start with that normal
+        // state; Hidden must survive instead of inheriting the source flags.
+        QVERIFY(SetFileAttributesW(reinterpret_cast<LPCWSTR>(base.utf16()),
+                                   FILE_ATTRIBUTE_HIDDEN | FILE_ATTRIBUTE_ARCHIVE));
+        const DWORD baseAttributes = GetFileAttributesW(reinterpret_cast<LPCWSTR>(base.utf16()));
+        const QString prefix = (outcome == 3 ? temp.filePath("missing/base") : base) + ':';
+        const QString target = prefix + name;
+        if (outcome == 1)
+            QVERIFY(write(target, "keep stream"));
+        NFsFolder::CFSFolder folder(temp.filePath("source"));
+        QCOMPARE(folder.LoadItems(), S_OK);
+        CopyCallback callback;
+        callback.skipExisting = outcome == 1;
+        callback.cancelAt = outcome == 2 ? 65536 : 0;
+        HRESULT result;
+        if (pathsApi) {
+            UStringVector paths;
+            paths.Add(source.toStdWString().c_str());
+            const FString destination = us2fs(prefix.toStdWString().c_str());
+            result = NFsFolder::CopyFileSystemItems(paths, destination, move, &callback);
+        } else
+            result = copy(folder, move, prefix, callback);
+        QCOMPARE(result, outcome >= 2 ? E_ABORT : S_OK);
+        QCOMPARE(callback.asks, 1);
+        QCOMPARE(read(base), QByteArray("protected base"));
+        QCOMPARE(GetFileAttributesW(reinterpret_cast<LPCWSTR>(base.utf16())), baseAttributes);
+        if (outcome == 0) {
+            QCOMPARE(read(target), bytes);
+            QCOMPARE(QFileInfo::exists(source), !move);
+        } else {
+            QCOMPARE(read(source), bytes);
+            if (outcome == 1)
+                QCOMPARE(read(target), QByteArray("keep stream"));
+            else if (outcome == 2)
+                QCOMPARE(read(target), bytes.left(65536));
+            else {
+                QVERIFY(!QFileInfo::exists(target));
+                QVERIFY(!callback.messages.isEmpty());
+                wchar_t message[512];
+                QVERIFY(FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS,
+                                       nullptr, ERROR_PATH_NOT_FOUND, 0, message, 512, nullptr));
+                QVERIFY(
+                    callback.messages.first().contains(QString::fromWCharArray(message).trimmed()));
+                QVERIFY(callback.messages.first().contains(QDir::toNativeSeparators(target)));
+            }
+        }
+#else
+        QSKIP("Native alternate-stream destinations require Windows.");
+#endif
+    }
+    void folderStreamDestination_data() {
+        QTest::addColumn<bool>("pathsApi");
+        QTest::newRow("copy-to") << false;
+        QTest::newRow("selected-paths") << true;
+    }
+    void folderStreamDestination() {
+#ifdef _WIN32
+        QFETCH(bool, pathsApi);
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        const QString source = temp.filePath(QStringLiteral("папка δ"));
+        QVERIFY(QDir().mkpath(source));
+        QVERIFY(write(source + "/keep", "protected child"));
+        const QString base = temp.filePath(QStringLiteral("назначение δ.bin"));
+        QVERIFY(write(base, "protected base"));
+        const QString prefix = base + ':';
+        CopyCallback callback;
+        if (pathsApi) {
+            UStringVector paths;
+            paths.Add(source.toStdWString().c_str());
+            QCOMPARE(NFsFolder::CopyFileSystemItems(paths, us2fs(prefix.toStdWString().c_str()),
+                                                    false, &callback),
+                     S_OK);
+        } else {
+            NFsFolder::CFSFolder folder(temp.path());
+            folder.AddPath(source);
+            QCOMPARE(copy(folder, false, prefix, callback), S_OK);
+        }
+        QCOMPARE(callback.asks, 0);
+        QCOMPARE(callback.messages.size(), 1);
+        QVERIFY(callback.messages.first().contains("Cannot copy folder as alternate stream"));
+        QCOMPARE(read(base), QByteArray("protected base"));
+        QCOMPARE(read(source + "/keep"), QByteArray("protected child"));
+        QVERIFY(!QFileInfo::exists(prefix + QFileInfo(source).fileName()));
+#else
+        QSKIP("Native alternate-stream destinations require Windows.");
+#endif
+    }
     void nativeCopyPreservesBytesAndRefusesOccupiedTarget() {
         QTemporaryDir temp;
         QVERIFY(temp.isValid());

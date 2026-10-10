@@ -156,6 +156,10 @@ struct CCopyState {
     bool MoveMode = false;
     bool UseReadWriteMode = false;
     bool IsAltStreamsDest = false;
+#ifdef _WIN32
+    bool CopyFile_NT(const wchar_t *oldFile, const wchar_t *newFile);
+    bool CopyFile_Sys(CFSTR oldFile, CFSTR newFile);
+#endif
     bool CopyFile_Sys(const QString &oldFile, const QString &newFile,
                       QFileDevice::Permissions attrib);
     bool MoveFile_Sys(const QString &oldFile, const QString &newFile,

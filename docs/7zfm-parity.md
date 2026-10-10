@@ -3096,3 +3096,29 @@ Shift+F5/F6 использует исходный `PanelKey` consumer и отк�
 внутри архива этим маршрутом не поддерживается. Новый диалог и новые controls
 не добавлялись; структура/размер CopyDialog соответствуют P1-01.1.
 Windows/Linux runtime и rendered Windows reference не проверены.
+
+## P3-05 filesystem Rename and NTFS peer destination (2026-10-10)
+
+Original reference: FileManager FSFolder::Rename, FSFolderCopy::CopyTo/
+CopyFileSystemItems/CopyFile_Ask/CopyFile_Sys, PanelOperations::OnEndLabelEdit,
+PanelCopy::CopyTo and App::OnCopy at
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`.
+
+F2 now permits a case-only file/directory spelling change on macOS while
+preserving no-replacement semantics. Windows uses the original MoveFile
+service; Linux retains its existing guarded service. Escape preserves the
+source spelling and selection. The accepted peer NTFS-stream prefix now reaches
+the source filesystem Copy/Move provider through F5/F6. Original peer-only
+admission, overwrite Skip, folder diagnostic, progress cancellation and
+source preservation remain; cancellation can retain the original partial ADS
+output. Base metadata is not copied from the input file. Native ADS writes may
+set the base Archive bit as part of Windows filesystem behavior.
+
+The original Unicode main/super-path retry handles long Copy destinations;
+it does not retry a cancelled callback. Qt layouts replace no source command
+policy. EN/RU/both-pane command tests inspect normal/compact widget geometry,
+provider identity, selection and protected bytes. Native Qt geometry on a
+service desktop does not establish exposed/rendered Windows 7zFM parity.
+Case-insensitive Linux volumes and archive-source→NTFS-stream acceptance remain
+unverified by this component. Historical filesystem ADS-refusal claims above
+are superseded only for these restored filesystem-source branches.

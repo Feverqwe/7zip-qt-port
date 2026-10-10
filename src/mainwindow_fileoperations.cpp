@@ -7,6 +7,7 @@
 #include "CPP/7zip/UI/FileManager/Panel.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "CPP/7zip/UI/FileManager/ViewSettings.h"
+#include "Windows/FileName.h"
 #include "mainwindow.h"
 #include "qtapppresentation.h"
 #include "qtlangcontrols.h"
@@ -152,16 +153,29 @@ void MainWindow::executeCopyDestination(bool move, bool copyToSame, unsigned sou
     QtAppOperationState::CallScope call(app_.QtOperations());
     if (useDestPanel && !useTemp && transferToArchivePanel(destination, move, indices))
         return;
-    if (streams || devices) {
+    bool alternateDestination = false;
+#ifdef _WIN32
+    alternateDestination = NWindows::NFile::NName::IsAltPathPrefix(us2fs(ToUString(destination)));
+#endif
+    if (streams || devices || alternateDestination) {
         CCopyToOptions options;
         options.folder = ToUString(destination);
         options.moveMode = move;
+        options.includeAltStreams = true;
+        options.replaceAltStreamChars = false;
+        options.showErrorMessages = true;
         UStringVector messages;
         bool usePassword = false;
         UString password;
+        if (!app_.Panels[sourceIndex].GetParentFolders().IsEmpty()) {
+            const CFolderLink &folder = app_.Panels[sourceIndex].GetParentFolders().Back();
+            usePassword = folder.UsePassword;
+            password = folder.Password;
+        }
         const HRESULT result =
             app_.Panels[sourceIndex].CopyTo(options, indices, &messages, usePassword, password);
-        renderBoundFolder();
+        if (!alternateDestination || move || copyToSame)
+            renderBoundFolder();
         if (useDestPanel && app_.NumPanels == 2) {
             activatePanelUi(1 - sourceIndex);
             app_.Panels[1 - sourceIndex].OnReload();

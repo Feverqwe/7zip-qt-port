@@ -9,6 +9,9 @@
 #include <QTemporaryDir>
 #ifndef _WIN32
 #include <cstdio>
+#ifdef __APPLE__
+#include <sys/stdio.h>
+#endif
 #endif
 
 namespace {
@@ -29,6 +32,23 @@ bool QtRenameFileSystemEntry(const QString &source, const QString &destination) 
     // Original MyMoveFile falls back to copying file bytes on EXDEV. This
     // narrow rename service must let the caller clone a link object instead.
     return ::rename(NativePath(source), NativePath(destination)) == 0;
+#endif
+}
+
+bool QtRenameFileSystemEntryWithoutReplacing(const QString &source, const QString &destination) {
+#ifdef __APPLE__
+    // Match source MoveFileW's no-replacement contract while allowing a change
+    // of spelling on a case-insensitive volume, for files, folders and links.
+    return ::renamex_np(NativePath(source), NativePath(destination), RENAME_EXCL) == 0;
+#else
+#ifndef _WIN32
+    const QFileInfo target(destination);
+    if (target.exists() || target.isSymLink()) {
+        errno = EEXIST;
+        return false;
+    }
+#endif
+    return NWindows::NFile::NDir::MyMoveFile(NativePath(source), NativePath(destination));
 #endif
 }
 
