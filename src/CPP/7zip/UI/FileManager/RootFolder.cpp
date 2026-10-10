@@ -5,6 +5,8 @@
 #include "RootFolder.h"
 #ifdef _WIN32
 #include "AltStreamsFolder.h"
+#include "SysIconUtils.h"
+#include <ShlObj.h>
 #endif
 #include "7zip/PropID.h"
 #include "7zip/UI/FileManager/resource.h"
@@ -46,18 +48,30 @@ enum {
 static const char *const kVolPrefix = "\\\\.";
 #endif
 
-// Qt owns namespace icons rather than a Win32 image-list index. The source
-// helpers still own translated names; the address control supplies Qt icons.
+// Windows retains source namespace image-list indices; Qt presents those
+// images through the existing QIcon bridge. POSIX uses platform icons.
 UString RootFolder_GetName_Computer(int &iconIndex) {
+#ifdef USE_WIN_PATHS
+    iconIndex = Shell_GetFileInfo_SysIconIndex_for_CSIDL(CSIDL_DRIVES);
+#else
     iconIndex = -1;
+#endif
     return LangString(IDS_COMPUTER);
 }
 UString RootFolder_GetName_Network(int &iconIndex) {
+#ifdef USE_WIN_PATHS
+    iconIndex = Shell_GetFileInfo_SysIconIndex_for_CSIDL(CSIDL_NETWORK);
+#else
     iconIndex = -1;
+#endif
     return LangString(IDS_NETWORK);
 }
 UString RootFolder_GetName_Documents(int &iconIndex) {
+#ifdef USE_WIN_PATHS
+    iconIndex = Shell_GetFileInfo_SysIconIndex_for_CSIDL(CSIDL_PERSONAL);
+#else
     iconIndex = -1;
+#endif
     return LangString(IDS_DOCUMENTS);
 }
 
@@ -67,9 +81,7 @@ void CRootFolder::Init() {
     _names[ROOT_INDEX_DOCUMENTS] = RootFolder_GetName_Documents(_iconIndices[ROOT_INDEX_DOCUMENTS]);
     _names[ROOT_INDEX_NETWORK] = RootFolder_GetName_Network(_iconIndices[ROOT_INDEX_NETWORK]);
     _names[ROOT_INDEX_VOLUMES] = kVolPrefix;
-    _iconIndices[ROOT_INDEX_DOCUMENTS] = -1;
-    _iconIndices[ROOT_INDEX_NETWORK] = -1;
-    _iconIndices[ROOT_INDEX_VOLUMES] = -1;
+    _iconIndices[ROOT_INDEX_VOLUMES] = Shell_GetFileInfo_SysIconIndex_for_CSIDL(CSIDL_DRIVES);
 #endif
 #ifndef USE_WIN_PATHS
     const auto mounts = QtLocalText("Volumes", "Тома").toStdWString();

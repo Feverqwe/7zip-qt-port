@@ -12,8 +12,36 @@
 #ifdef _WIN32
 #include "Common/StringConvert.h"
 #include "Windows/FileIO.h"
+#include <ShlObj.h>
 #include <commctrl.h>
 #include <shellapi.h>
+
+int Shell_GetFileInfo_SysIconIndex_for_CSIDL(int csidl) {
+    LPITEMIDLIST pidl = NULL;
+    if (SHGetSpecialFolderLocation(NULL, csidl, &pidl) == S_OK)
+        if (pidl) {
+            SHFILEINFO shFileInfo;
+            shFileInfo.iIcon = -1;
+            const DWORD_PTR res =
+                SHGetFileInfo((LPCTSTR)(const void *)(pidl), FILE_ATTRIBUTE_DIRECTORY, &shFileInfo,
+                              sizeof(shFileInfo), SHGFI_PIDL | SHGFI_SYSICONINDEX);
+            // we use OLE2.dll function here
+            CoTaskMemFree(pidl);
+            if (res)
+                return shFileInfo.iIcon;
+        }
+    return -1;
+}
+
+HIMAGELIST Shell_Get_SysImageList_smallIcons(bool smallIcons) {
+    SHFILEINFO shFileInfo;
+    Z7_memset_0_VAR(shFileInfo);
+    const DWORD_PTR res =
+        SHGetFileInfo(TEXT(""), FILE_ATTRIBUTE_DIRECTORY, &shFileInfo, sizeof(shFileInfo),
+                      SHGFI_USEFILEATTRIBUTES | SHGFI_SYSICONINDEX |
+                          (smallIcons ? SHGFI_SMALLICON : SHGFI_LARGEICON));
+    return (HIMAGELIST)res;
+}
 
 // Original Unicode branch and HRESULT wrapper; obsolete ANSI dispatch omitted.
 static DWORD_PTR Shell_GetFileInfo_SysIconIndex_for_Path_attrib_iconIndexRef(CFSTR path,
@@ -226,17 +254,19 @@ QIcon CExtToIconMap::GetSystemIcon(int index) {
     const auto cached = _systemIcons.constFind(index);
     if (cached != _systemIcons.cend())
         return cached.value();
-    SHFILEINFOW shFileInfo{};
-    const DWORD_PTR res =
-        ::SHGetFileInfoW(L"", FILE_ATTRIBUTE_DIRECTORY, &shFileInfo, sizeof(shFileInfo),
-                         SHGFI_USEFILEATTRIBUTES | SHGFI_SYSICONINDEX | SHGFI_SMALLICON);
-    if (!res)
+    QIcon icon;
+    for (bool smallIcons : {true, false}) {
+        const HIMAGELIST images = Shell_Get_SysImageList_smallIcons(smallIcons);
+        if (!images)
+            continue;
+        HICON native = ImageList_GetIcon(images, index, ILD_NORMAL);
+        if (!native)
+            continue;
+        icon.addPixmap(QPixmap::fromImage(QImage::fromHICON(native)));
+        ::DestroyIcon(native);
+    }
+    if (icon.isNull())
         return {};
-    HICON native = ImageList_GetIcon(reinterpret_cast<HIMAGELIST>(res), index, ILD_NORMAL);
-    if (!native)
-        return {};
-    const QIcon icon(QPixmap::fromImage(QImage::fromHICON(native)));
-    ::DestroyIcon(native);
     _systemIcons.insert(index, icon);
     return icon;
 }

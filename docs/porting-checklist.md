@@ -64,6 +64,15 @@ owner и интегрированными consumers, включая уже ра�
 
 ## Правила статусов и счётчика
 
+P3-05, 2026-10-10: complete services/namespace body, header and caller review
+records twelve FileManager units and23 pinned inputs. Original Windows CSIDL
+root/address icons and both native image sizes are restored through the existing
+Qt bridge. Settings/association/callback/comment/split/version-control/Link
+source policies and their platform boundaries are explicitly disposed.
+[Source receipt](upstream-port-audit.md#p3-05--filemanager-services-and-native-namespace-icons-2026-10-10).
+Whole FileManager startup/platform, native/rendered/package and final acceptance
+remain open; this component does not change43/47 or P3-03/04/05/06.
+
 P3-05.16, 2026-10-10: the integrated startup/Settings/Benchmark/engine workflow
 restores source SetMemoryLock, allocator reset, token adjustment on Apply and
 the shared CompressCall risk policy before `-slp`. Old Settings regression RED;

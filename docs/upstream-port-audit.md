@@ -1,5 +1,80 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-05 — FileManager services and native namespace icons (2026-10-10)
+
+Source https://github.com/ip7z/7zip.git, full revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. Complete StringUtils,
+FormatUtils, PropertyName, RegistryUtils, RegistryAssociations, UpdateCallback100,
+TextPairs, SplitUtils, VerCtrl, LinkDialog, SysIconUtils and RootFolder bodies,
+available headers/resources, dependencies and actual callers were reviewed;
+the [disposition map](omitted-scope-audit.md#filemanager-services-and-namespace-icon-consumers-2026-10-10)
+records each source policy, platform/presentation boundary and inactive branch.
+All23 pinned cpp/header inputs have unique owners and match checkout blobs.
+Existing paths, original C++ language, notices and baseline ownership remain.
+
+The review found an unjustified omitted Windows service: RootFolder returned−1
+for every namespace icon despite usable original CSIDL lookup and an existing
+native image-list→QIcon bridge. The original
+Shell_GetFileInfo_SysIconIndex_for_CSIDL body and RootFolder callers now return
+the native Computer/Documents/Network indices; Init no longer erases the latter
+two, and its device-root row regains CSIDL_DRIVES. No device is opened by this
+icon check. The address popup and closed Computer/Network address consume those images
+through the existing Qt bridge. The source small/large image-list helper also
+restores both native sizes in the combined QIcon; the previous bridge retained
+only the small image despite source Panel.cpp attaching both lists. Temporary
+native HICONs are released; failed lookups are not cached. No new namespace enumeration/icon-selection
+algorithm is introduced. POSIX uses its existing platform image services;
+Qt layouts and source cache policies are unchanged.
+
+Dependencies remain source MyString/MyVector/MyWindows, Windows shell/PIDL and
+image-list services, and the existing Qt image transport. CMake's
+sevenzip_system_icons already links Qt Widgets/sevenzip_common/shell32/comctl32;
+ole32 is supplied by sevenzip_common. No additional module or build dependency
+is introduced. The UTF-8/comment, split, settings, association, callback and
+version-control policies retain their existing owners and platform adapters.
+
+Actual Windows old-product RED records31 Qt passes/two failures/zero skips:
+the native large-size and namespace-image checks both fail. Final public tests
+also cover the fourth root row without opening it. Both restored helper bodies
+match pinned active source after comment/format normalization. The complete
+borrowed baseline verifier passes410 exact/198 adapted/three local paths.
+
+Required unsandboxed macOS arm64/Qt6.12 gate passes313/313 in261.68s,
+4934 Qt checks/zero failures/20 platform skips. Final localized build and ten
+direct consumers pass10/10 in4.53s,146Qt/zero failures/three skips. The initial
+isolated gate selected the system Homebrew module alongside the owned console
+and four native-discovery suites failed; retained logs precede the final explicit
+paired pinned-runtime configuration. No assertion or deadline was weakened.
+
+Fresh Qt6.12 Linux x64 passes10/10 in8.01s,146Qt/zero failures/three explicit
+platform skips. Windows x64 passes9/10 suites in74.42s,141Qt/eight failures/zero
+skips: panel_item_icons passes all33 checks, while address_combo fails eight
+popup-exposure rows. Replacing the four changed product inputs with their
+919c31b bodies and rebuilding in the same completed guest reproduces the same eight failures
+(five Qt passes;44.19s). This establishes an existing failure on old code, not
+its environment cause or native popup acceptance. Assertions and timeouts remain
+unchanged; the source files and their original mtimes are restored afterward.
+The first post-restore command failed in its temporary CMD wrapper because of
+single-quoted pipe syntax; no test ran in that attempt. After correcting only
+wrapper quoting, rebuilding and rerunning panel_item_icons/root_command passes
+2/2 in13.67s,57Qt/zero failures/zero skips, with all four source hashes unchanged.
+The separate oversized stdin transport attempt was stopped before any build.
+Integration with the separately committed startup/MemoryLock component df06775
+passes all23 affected macOS suites in8.66s,335Qt/zero failures/three skips.
+
+Snapshot `20261010T031733Z-c4702589`, source archive SHA-256
+`22eec8d1b420e93bbb019309deb9398ca812c377c76d3b511769274e7a6c9a16`:
+all1434 frozen code/test/build/resource inputs match local/archive/actual guest
+bytes. Eight current EN/RU normal/compact root/address JSON per OS have fitting
+main-window controls and labels. The temporary runner wrapper is archived and
+removed; all1433 retained local inputs still match the frozen manifest.
+Mac/Linux popup-internal coordinates belong to
+a separate window and are recorded separately, rather than declared clipped by
+the main-window bounds. Windows JSON does not override the failed exposure test.
+Eleven slow suites and device fixtures are excluded. Whole FileManager startup/
+platform, rendered Windows/HiDPI, installed/package and final acceptance remain
+open; source image-data checks are not a physical desktop claim.
+
 ## P3-05 — startup, Settings and large-page engine policy (2026-10-10)
 
 Source https://github.com/ip7z/7zip.git, full revision

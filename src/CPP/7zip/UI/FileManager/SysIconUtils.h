@@ -10,6 +10,9 @@
 #include <QMap>
 #include <QString>
 #include <QVector>
+#ifdef _WIN32
+#include <commctrl.h>
+#endif
 
 struct CExtIconPair {
     UString Ext;
@@ -55,6 +58,8 @@ struct CExtToIconMap {
 extern CExtToIconMap g_Ext_to_Icon_Map;
 
 #ifdef _WIN32
+int Shell_GetFileInfo_SysIconIndex_for_CSIDL(int csidl);
+HIMAGELIST Shell_Get_SysImageList_smallIcons(bool smallIcons);
 HRESULT Shell_GetFileInfo_SysIconIndex_for_Path_return_HRESULT(CFSTR path, DWORD attrib,
                                                                Int32 *iconIndex);
 #endif

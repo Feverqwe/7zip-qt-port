@@ -743,8 +743,12 @@ on/off, comparing displayed icons to the public source icon result and preservin
 control bytes. Namespace consumers verify failed rows are cleared. Projection
 callbacks cover success, early/later failure, cancellation and replacement,
 with one terminal result and no stale completion. Normal/compact widget JSON
-checks the affected list/address groups; native Windows shell conversion and
-rendered appearance require current Windows execution.
+checks the affected list/address groups. Windows-only cases compare all four
+actual root-row icons and the three address-popup namespaces with native CSIDL
+data, verify closed Computer/Network images, and compare both small/large QIcon
+sizes with the native shell image lists. They do not open device rows or run
+VHD fixtures; POSIX reports two explicit native-provider skips. Current Windows
+execution is required for those cases; rendered/HiDPI appearance remains separate.
 
 `panel_name_text` covers ordinary/RLO/four-five-many spaces/empty/trailing fast
 names, fast prefix/name bypass of failed properties, generic CR/LF and cell

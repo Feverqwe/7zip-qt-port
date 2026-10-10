@@ -1197,6 +1197,13 @@ writes `macos-root-980x620.json`/`macos-root-640x400.json` on the checked host.
 The JSON verifies Qt structure/usability; source resources establish grouping,
 not Windows pixel appearance. Windows runtime capture is still unverified.
 
+Windows Computer/Documents/Network row and address-popup icons use the original
+CSIDL shell indices through SysIconUtils's native QIcon bridge. The closed
+Computer/Network address uses that same source image. Icon selection does not
+alter the control order or geometry; POSIX retains platform icons. Public
+panel_item_icons verifies native image data and small/large sizes separately from these geometry
+contracts. Whole rendered/HiDPI Windows reference acceptance remains open.
+
 ### Mounted volumes (P1-11.1)
 
 On macOS/Linux the virtual root adds «Тома» after «Компьютер». The mounted

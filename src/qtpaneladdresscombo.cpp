@@ -2,6 +2,7 @@
 #include "7zip/UI/FileManager/resource.h"
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/Panel.h"
+#include "CPP/7zip/UI/FileManager/RootFolder.h"
 #include "CPP/7zip/UI/FileManager/SysIconUtils.h"
 #include "Windows/FileName.h"
 #include "qtvolumemounts.h"
@@ -69,12 +70,18 @@ void QtPanelAddressCombo::InsertItem(const UString &name, int iconIndex, unsigne
                                      bool namespaceItem) {
     QIcon icon = g_Ext_to_Icon_Map.GetIcon(iconIndex);
     if (namespaceItem) {
-        const QStyle::StandardPixmap kind =
-            name == LangString(IDS_COMPUTER)    ? QStyle::SP_ComputerIcon
-            : name == LangString(IDS_DOCUMENTS) ? QStyle::SP_DirHomeIcon
-            : name == LangString(IDS_NETWORK)   ? QStyle::SP_DriveNetIcon
-                                                : QStyle::SP_DriveHDIcon;
-        icon = style()->standardIcon(kind);
+#ifdef _WIN32
+        icon = g_Ext_to_Icon_Map.GetSystemIcon(iconIndex);
+        if (icon.isNull())
+#endif
+        {
+            const QStyle::StandardPixmap kind =
+                name == LangString(IDS_COMPUTER)    ? QStyle::SP_ComputerIcon
+                : name == LangString(IDS_DOCUMENTS) ? QStyle::SP_DirHomeIcon
+                : name == LangString(IDS_NETWORK)   ? QStyle::SP_DriveNetIcon
+                                                    : QStyle::SP_DriveHDIcon;
+            icon = style()->standardIcon(kind);
+        }
     }
     addItem(icon, name.IsEmpty() ? QStringLiteral("/") : ToQString(name));
     setItemData(count() - 1, indent, kIndentRole);
@@ -92,6 +99,17 @@ int QtPanelAddressCombo::GetPathIconIndex(const UString &path, DWORD attributes)
     return g_Ext_to_Icon_Map.GetPathIconIndex(path, attributes);
 }
 int QtPanelAddressCombo::GetNamespaceIconIndex(const UString &name) {
+#ifdef _WIN32
+    int nativeIndex = -1;
+    if (name == LangString(IDS_COMPUTER))
+        RootFolder_GetName_Computer(nativeIndex);
+    else
+        RootFolder_GetName_Network(nativeIndex);
+    const QIcon native = g_Ext_to_Icon_Map.GetSystemIcon(nativeIndex);
+    if (!native.isNull())
+        return g_Ext_to_Icon_Map.GetPlatformIconIndex(
+            QStringLiteral("shell-namespace:") + QString::number(nativeIndex), native);
+#endif
     const auto kind =
         name == LangString(IDS_COMPUTER) ? QStyle::SP_ComputerIcon : QStyle::SP_DriveNetIcon;
     return g_Ext_to_Icon_Map.GetPlatformIconIndex(QString::number(kind),

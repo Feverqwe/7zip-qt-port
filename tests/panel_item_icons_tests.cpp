@@ -1,16 +1,94 @@
+#include "7zip/PropID.h"
+#include "CPP/7zip/UI/FileManager/RootFolder.h"
 #include "CPP/7zip/UI/FileManager/SysIconUtils.h"
+#include "Windows/PropVariant.h"
 #include "external_editor_fixture.h"
 #include "layout_inspection.h"
 #include "panel_load_folder.h"
 #include "qtfolderprojection.h"
+#include "qtpaneladdresscombo.h"
 #include "window_state_support.h"
+#include <QAction>
 #include <QApplication>
 #include <QStyle>
 #include <QtTest>
+#ifdef _WIN32
+#include <ShlObj.h>
+#endif
 
 class PanelItemIconsTests final : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
   private slots:
+    void nativeShellIconSizes() {
+#ifdef _WIN32
+        Int32 index = -1;
+        QCOMPARE(Shell_GetFileInfo_SysIconIndex_for_Path_return_HRESULT(
+                     L"__DIR__", FILE_ATTRIBUTE_DIRECTORY, &index),
+                 S_OK);
+        QVERIFY(index >= 0);
+        const QIcon icon = g_Ext_to_Icon_Map.GetSystemIcon(index);
+        for (UINT sizeFlag : {SHGFI_SMALLICON, SHGFI_LARGEICON}) {
+            SHFILEINFOW info{};
+            const auto result =
+                SHGetFileInfoW(L"", FILE_ATTRIBUTE_DIRECTORY, &info, sizeof(info),
+                               SHGFI_USEFILEATTRIBUTES | SHGFI_SYSICONINDEX | sizeFlag);
+            QVERIFY(result);
+            HICON handle =
+                ImageList_GetIcon(reinterpret_cast<HIMAGELIST>(result), index, ILD_NORMAL);
+            QVERIFY(handle);
+            const QImage native = QImage::fromHICON(handle);
+            DestroyIcon(handle);
+            QVERIFY(!native.isNull());
+            QVERIFY(icon.availableSizes().contains(native.size()));
+            QCOMPARE(icon.pixmap(native.size()).toImage(), native);
+        }
+#else
+        QSKIP("Windows shell image lists provide the native icon sizes.");
+#endif
+    }
+    void nativeRootNamespaceIcons() {
+#ifdef _WIN32
+        CMyComPtr<IFolderFolder> folder = new CRootFolder;
+        CPanel panel(folder);
+        QCOMPARE(panel.LoadListItems(), S_OK);
+        QtPanelAddressCombo address(panel, [](const QString &, bool) { return S_OK; }, nullptr);
+        for (unsigned item = 0; item < 4; ++item) {
+            const int csidl[] = {CSIDL_DRIVES, CSIDL_PERSONAL, CSIDL_NETWORK, CSIDL_DRIVES};
+            LPITEMIDLIST pidl = nullptr;
+            QCOMPARE(SHGetSpecialFolderLocation(nullptr, csidl[item], &pidl), S_OK);
+            QVERIFY(pidl);
+            SHFILEINFOW info{};
+            const auto result =
+                SHGetFileInfoW(reinterpret_cast<LPCWSTR>(pidl), FILE_ATTRIBUTE_DIRECTORY, &info,
+                               sizeof(info), SHGFI_PIDL | SHGFI_SYSICONINDEX);
+            CoTaskMemFree(pidl);
+            QVERIFY(result);
+            QVERIFY(info.iIcon > 0);
+            QIcon icon;
+            QCOMPARE(panel.GetItemIcon(item, icon), S_OK);
+            const QIcon native = g_Ext_to_Icon_Map.GetSystemIcon(info.iIcon);
+            QVERIFY(!native.isNull());
+            QCOMPARE(icon.pixmap(16, 16).toImage(), native.pixmap(16, 16).toImage());
+            if (item == 3)
+                continue; // The device-root row is not an address-popup namespace entry.
+            NWindows::NCOM::CPropVariant name;
+            QCOMPARE(folder->GetProperty(item, kpidName, &name), S_OK);
+            QCOMPARE(name.vt, VARTYPE(VT_BSTR));
+            address.InsertItem(UString(name.bstrVal), info.iIcon, 0, true);
+            QCOMPARE(address.itemIcon(item).pixmap(16, 16).toImage(),
+                     native.pixmap(16, 16).toImage());
+            if (item != 1) {
+                address.SetCurrentIcon(address.GetNamespaceIconIndex(UString(name.bstrVal)));
+                const auto *current =
+                    address.lineEdit()->findChild<QAction *>("currentAddressIcon");
+                QVERIFY(current);
+                QCOMPARE(current->icon().pixmap(16, 16).toImage(), native.pixmap(16, 16).toImage());
+            }
+        }
+#else
+        QSKIP("Windows shell namespace icons use the native CSIDL provider.");
+#endif
+    }
     void sourcePolicy_data() {
         QTest::addColumn<QString>("type");
         QTest::addColumn<bool>("real");

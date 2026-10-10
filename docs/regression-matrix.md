@@ -1,5 +1,14 @@
 # Regression and security traceability
 
+Source namespace images/services: `panel_item_icons` compares Windows CSIDL
+root/address icons and both native image-list sizes through public controls;
+`root_command` and `address_combo` cover navigation and EN/RU geometry.
+`verctrl`, Link, filesystem comments, update callbacks and association suites
+retain the reviewed services' direct consumers. Native data/image checks and
+the Windows popup-exposure failure are distinct results; baseline comparison
+and exact platform limits remain in the
+[source receipt](upstream-port-audit.md#p3-05--filemanager-services-and-native-namespace-icons-2026-10-10).
+
 Large-page startup/Settings/engine policy: `memory_lock`, `fm_settings`,
 `options_dialog`, `options_integration`, `archive_backend`, `archive_mutation`,
 `benchmark_lifecycle`, `native_benchmark`, `native_hash_workflow`, `file_manager_startup`,

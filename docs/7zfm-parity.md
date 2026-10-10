@@ -1,5 +1,17 @@
 # Сверка с Windows 7zFM
 
+## Source Windows namespace icons (P3-05, 2026-10-10)
+
+Computer/Documents/Network снова получают исходные Windows CSIDL image-list
+indices. Список корневой папки и строки раскрытого адреса используют эти
+системные изображения через существующий QIcon-мост; закрытый адрес Computer/
+Network использует тот же источник. Прежний безусловный−1 заменял их общим
+значком или QStyle. На POSIX остаётся платформенный сервис значков. Порядок,
+геометрия, translated names и navigation policy сохраняются. QIcon также
+содержит оба исходных размера small/large из системных image lists. Проверка
+native данных и QIcon не устанавливает rendered/HiDPI parity всего Windows 7zFM;
+[source/validation receipt](upstream-port-audit.md#p3-05--filemanager-services-and-native-namespace-icons-2026-10-10).
+
 ## Large-page startup and Settings policy (P3-05, 2026-10-10)
 
 Windows startup again follows source SetMemoryLock: attempt the account right,
