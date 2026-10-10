@@ -10,7 +10,14 @@ EN/RU normal/compact и one→two→one панели проверены, стр�
 потерю сообщения при первом создании второй панели: лишняя запись «Готово»
 удалена, сохранение Unicode-диагностики проверено на3ОС (Mac full321/321,
 Linux/Windows focused4/4). [Source и текущие gates](upstream-port-audit.md#p3-06--source-status-bar-style-and-current-geometry-consumers-2026-10-10).
-Parent/native/rendered/final acceptance остаётся открытой; packages предшествуют этому UI delta.
+Parent/native/rendered/final acceptance остаётся открытой; обновлённые пакеты включают оба UI delta.
+
+P3-04,2026-10-10: свежие38b740a Release-пакеты прошли relocation15/14/14
+на macOS/Linux/Windows, payload/notices/signature и актуальную dependency
+проверку. Новый Linux artifact дополнительно проходит15/15 в изолированном
+userspace; actual images234/233 files проверены. [Единый delivery receipt](upstream-port-audit.md#p3-04--refreshed-delivery-after-status-corrections-2026-10-10).
+Clean-OS/native/rendered/source-launcher и итоговые родители остаются открытыми;
+43/47 не изменено, GitHub workflow не восстановлен.
 
 P3-04,2026-10-10: current macOS/Windows artifacts дополнительно прошли
 [binary-import review](upstream-port-audit.md#p3-04--current-macos-and-windows-binary-dependency-closure-2026-10-10):

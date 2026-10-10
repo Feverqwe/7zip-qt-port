@@ -1,5 +1,61 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-04 — Refreshed delivery after status corrections (2026-10-10)
+
+Fresh Qt6.12 Release/BUILD_TESTING=OFF artifacts use product `38b740a`, including
+both status corrections. All1480 retained non-documentation inputs match that
+accepted product; no production/test/build-tool code changes in this iteration.
+Official engine/SFX inputs reuse each OS's exact eight previously verified files,
+including repository/revision/version/architecture/hash metadata; no fresh engine
+build is claimed. Source repository https://github.com/ip7z/7zip.git, full baseline
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`, remains unchanged and read-only.
+
+| Current local artifact | Bytes | SHA256 | Relocation scenarios |
+| --- | ---: | --- | ---: |
+| macOS arm64 ZIP |12513255|`34c04a03f5094064e0d4891f8d741f7e24480c41184525fadc4228f9d968f748`|15/15|
+| Linux x64 TAR.GZ |34191320|`c8bc5490a577de5749878d3cfd4452eb1f2b512f6747b3d2b5ee094834ade8eb`|14/14|
+| Windows x64 ZIP |28506516|`bcf2ff2329919dc7c112fc252a80fb1d79a08f6babad96a63e804ab622300edd`|14/14|
+
+Existing reviewed scenarios cover native 7zG Create/Test/Extract and engine List,
+ZIP/7z, exact Unicode/space/empty bytes, broken archives and missing codec module.
+Environment paths are sanitized and payloads relocated. All packages contain the
+exact38 Qt license files, project/engine notices, applicable ICU notice, verified
+SFX metadata and no development/test payload. Windows includes five CRT DLLs and
+redistribution notice. Mac deep/strict ad-hoc signature verification passes.
+No public signing, publication, registration or source/upstream modification.
+
+Current Mach-O inspection accounts for11 objects/157 load edges, resolving inside
+the bundle or Apple system namespaces. Current26 PE objects have344 normal import
+edges and no delay imports:84 bundled and260 external. All55 external names resolve
+through the fresh SYSTEM32-search probe to43 actual System32/WinSxS files, hashed
+with versions. This is import/dependency evidence, not a live app module list or
+proof of arbitrary dynamic loads/another OS release. Windows desktop_user remains
+null; no logon/account/policy action was taken.
+
+The new Linux package additionally passes15/15 isolated FROM scratch scenarios
+(4.209s), including noexec-temp refusal/private TMPDIR recovery and cleanup.
+The existing guest kernel is6.8.0-142-generic; private Xvfb remains outside the
+rootfs. All115 public OS dependency/config/font inputs are manifested, no host
+Qt/SDK/toolchain/home/network is supplied. Actual exported positive/negative
+images match234/233 files and differ only in app/bin/7z.so. Image IDs are
+`8d161378d8019d5d3fd717058b1bf7e021c666ad5a5e1389687413788856bb0e` and
+`e9ea2373b60f85f1c8d55174414c6fdcd76d9611b8de91b6129e500d07d573e2`.
+Own proof/runtime containers are removed; local review images remain.
+
+Package snapshot `20261010T171424Z-9a574381` matches all1518 archive/guest inputs,
+archive SHA256 `c3e0c86aa6f305b127326d68400e6c936ce8c8bd4a2fd631ae5f44344520894c`.
+Isolated-runtime snapshot `20261010T171830Z-f8d52b36` matches all1520 inputs,
+archive SHA256 `17561e3b4104c7608aeac9a7a7866e853ed7cb31068ab078ac32b748795ad94e`.
+Counts include upstream.bundle and respectively three/five temporary validators;
+validators are archived in evidence and removed before commit. Complete evidence
+and local artifacts are in `/private/tmp/sevenzip-delivery-38b740a/build/review/`
+(`current-packages`, `clean-runtime`), with the Mac ZIP under build/packages.
+The unchanged product's passing full macOS gate is not repeated; no slow suites
+run. Final storage has no warnings/zero VHDX growth; Linux free space is1878122496
+bytes. No cleanup or VM/disk configuration changes occurred in this delivery
+iteration. Clean-OS/native/rendered/current-full-Windows/source-launcher and final
+acceptance remain open in the [matrix](ux-port-audit.md#current-final-acceptance-matrix-2026-10-10).
+
 ## P3-06 — Source status-bar style and current geometry consumers (2026-10-10)
 
 Follow-up on `525cb42`: first-time second-panel construction also overwrote the
@@ -91,8 +147,9 @@ warnings; the existing Linux VHDX grew64MiB, Windows zero. No cleanup,
 new/attached disks, upstream edits,
 login/account/policy changes, push or publication occurred.
 
-Current package artifacts precede this presentation fix; their prior receipts
-remain valid for their own source revision, not this new binary. Source launcher,
+Initial package artifacts preceded this presentation fix; current delivery is
+covered by the [refreshed receipt](#p3-04--refreshed-delivery-after-status-corrections-2026-10-10).
+Source launcher,
 native/rendered/clean-OS and final obligations remain in the
 [checklist](porting-checklist.md) and
 [matrix](ux-port-audit.md#current-final-acceptance-matrix-2026-10-10).
