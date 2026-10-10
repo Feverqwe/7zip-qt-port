@@ -1,5 +1,69 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-05 — Extraction and opening callback disposition (2026-10-10)
+
+Full source https://github.com/ip7z/7zip.git revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`, port parent c601400:
+FileManager/ExtractCallback.cpp/.h and OpenCallback.cpp/.h were compared in full,
+including active bodies, inline state/interfaces, original comments and direct
+GUI/PanelCopy/open/reopen/shell consumers. The
+[complete body map](omitted-scope-audit.md#extraction-and-opening-callback-body-disposition-2026-10-10)
+records unchanged source algorithms and the existing Qt/settings/platform seams.
+No new functional code, copied file, dependency, baseline or language change is
+needed. Original notices and authoritative source/vendor owners remain intact.
+In particular, current GUI.cpp already forwards YesToAll to the callback-owned
+question flag; that caller was checked rather than inferred from a default.
+
+The review covers callback progress, overwrite/write conflicts, all error/result
+formatting and return branches, raw password/cache, stream/hash/stat delivery,
+memory report/allow/skip/remember/persistence and virtual-file memory/spill/time/
+ADS/Zone lifetime. It does not replace source policy with Qt tests or close
+PanelItemOpen's separate process continuation, ProgressDialog2's whole module,
+physical/native desktop, rendered reference or current-package/final acceptance.
+Existing native RAR fixtures supply actual official handler memory callbacks,
+including independently decoded compressed bytes; virtual-stream and process
+extraction fixtures use private Unicode/space paths with protected control bytes.
+
+Current macOS arm64/Qt6.12 affected build and five focused suites pass5/5 in1.50s,
+79Qt/0 failures/0 skips. These are extract_prompt, native_extract_callback,
+source_extract_backend, native_rar_memory and gui_error_policy. No test or product
+body changed; a repeated full gate is not required for this documentation review.
+Eleven slow suites remain excluded.
+
+The same five suites pass Linux5/5 in1.61s and Windows5/5 in9.21s, each
+79Qt/0 failures/0 skips. Snapshot20261010T105719Z-09fc3e2d archive SHA256
+`5e154505af3d7fc2425741394dc181ab3d42f4cec1287a9c5315a47333925ad5`
+matches all1513 frozen inputs in both actual guest trees. Eight runtime files/OS
+are hashed; metadata source repository/full revision/version1703939 and declared
+codec/SFX hashes match. This is actual native engine/callback evidence, not a
+claim of physical desktop visibility, rendered pixels or final packages.
+Twenty-nine selected current-build reports/OS cover overwrite/memory/RAR-memory
+and source error states; visible bounds/text fit in all87 reports. No widget or
+text/layout change is made. The existing prompt contracts remain authoritative.
+
+Direct Open/password consumer additionally passes Mac1/1 in0.19s,8Qt/0 failures/
+0 skips. Its separate guest checks build the target in the same no-runtime
+snapshot; this consumer uses private volume files and joined password callbacks,
+without requiring an archive engine. The first attempted invocation failed before
+guest sync because the isolated checkout's default sibling upstream path did not
+exist; supplying the explicit read-only source path starts the actual checks.
+Linux1/1 passes0.14s and Windows1/1 passes1.25s, each8Qt/0 failures/0 skips.
+Snapshot20261010T110213Z-d0fae78b SHA256
+`c5fdc637bad9ececc6fdc7e7942ad65fc324b7f48f74a131806625281e8fd3d6`
+matches all1513 frozen guest inputs. All1454 retained product/test/build inputs
+are byte-identical across both snapshots and the final checkout after temporary
+wrapper removal; only review documentation and that wrapper differ. This second
+snapshot does not repeat the first's runtime/native codec acceptance.
+
+The baseline verifier passes412 exact/198 adapted/3 local paths at one revision.
+Fresh authenticated preflight has Linux18,667,388,928 and Windows18,877,411,328
+bytes free, with no active compiler/CTest before the first sync. Final host
+storage is OK, no warnings or VHDX growth. No cleanup, disk, login/account/policy,
+source-language, upstream or publication change is made. Evidence is retained
+in build/review/extract-callback. This completes these two source callback
+dispositions, with remaining whole-family/native/rendered/current-package/final
+scope still mandatory; P3-03/04/05/06 remain open.
+
 ## P3-05 — Native Copy terminal phases and retained guards (2026-10-10)
 
 Source https://github.com/ip7z/7zip.git at full revision

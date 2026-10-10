@@ -4,6 +4,15 @@
 Готовый запрос агенту: [porting-chat-prompt.md](porting-chat-prompt.md).
 Исходная дата: 2026-09-28. Это список **оставшейся** работы, не оценка MVP с нуля.
 
+P3-05,2026-10-10: complete ExtractCallback/OpenCallback bodies, interfaces,
+direct callers and virtual-file/memory/overwrite/error/password boundaries are
+reconciled; no functional change is needed. Five current suites pass on all
+three OS,79Qt/0 failures/0 skips each; all1513 guest inputs/runtime metadata
+and87 widget reports are verified.
+[Source disposition and limits](upstream-port-audit.md#p3-05--extraction-and-opening-callback-disposition-2026-10-10).
+Remaining ProgressDialog2/whole-family/native/rendered/current-package/final
+scope remains mandatory; P3-03/04/05/06 and43/47 stay open.
+
 P3-05,2026-10-10: native Copy retains pending source/peer publication until
 operation guards are released and uses the source HRESULT diagnostic owner.
 Old-product RED covers six stale Move cases and four wrong-icon error cases.

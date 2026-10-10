@@ -1,5 +1,50 @@
 # Omitted source scope review
 
+## Extraction and opening callback body disposition (2026-10-10)
+
+Complete original/current FileManager/ExtractCallback.cpp/.h and
+OpenCallback.cpp/.h were compared at port c601400 with source
+https://github.com/ip7z/7zip.git revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. Formatting-normalized complete
+comparisons separate unchanged algorithms from the adaptations below. The
+1272-line original ExtractCallback and its1161-line adapted owner retain their
+original C++ module paths; all four manifest owners remain authoritative.
+
+| Original active body/interface family | Retained owner and actual integration boundary |
+| --- | --- |
+| CExtractCallbackImp constructor/destructor, Init, IsOK, COM QI/interfaces | Original defaults, language initialization, archive/message error counters, stream/hash/operation interfaces and portable UString/BSTR state remain. SettingsPath and callback-owned DisableUserQuestions replace implicit registry/global delivery. GUI.cpp explicitly forwards parsed YesToAll; ordinary FM callbacks default to questions enabled. |
+| SetNumFiles/SetTotal/SetCompleted/SetRatioInfo, Open_CheckBreak/SetTotal/SetCompleted/Finished | Same source Sync totals, ratio, MultiArc suppression, undefined totals, current files and CheckStop policy. Open_SetCompleted's unused byte input remains as in source; no fabricated progress is added. |
+| PrepareOperation, SetCurrentFilePath2/SetCurrentFilePath, BeforeOpen, ThereAreNoFiles | Same mode-label selection, file/folder and pending-file counts, archive title/path and cancellation ordering. BeforeOpen resets archive-name diagnostics; the no-files callback retains S_OK. |
+| AddError_Message/ShowArcPath, MessageError overloads, ShowMessage, Add_ArchiveName_Error | Source once-per-archive name delivery and ThereAreMessageErrors flag remain; Sync owns message storage. No independent widget journal or error accumulator replaces them. |
+| SetExtractErrorMessage, SetOperationResult, ReportExtractResult | Source operation-result/language-ID mapping, old-language fallback, encrypted guess versus definite wrong-password text, unknown numeric result, file-path clearing and file/folder counts remain. |
+| k_ErrorFlagsIds, AddNewLineString, GetOpenArcErrorMessage, ErrorInfo_Print, GetBracedType, OpenResult_GUI/OpenResult, ExtractResult | Source known/unknown error-bit formatting, warnings, nested levels, detected/forced format, encrypted-open text, NumArchiveErrors and final newline policy remain. ExtractResult preserves direct E_ABORT/disk-full return and handled-error S_OK; callers must still inspect IsOK. |
+| AskOverwrite/AskWrite | Original button-answer switch, Cancel/E_ABORT, file/folder conflict distinctions, Skip/Ask/YesAll/NoAll/AutoRename state, original AutoRenamePath and deletion error policy remain. RunCallbackDialog supplies joined GUI-thread construction/modal/destruction. FiTime_To_FILETIME converts destination timestamps on POSIX; it does not alter overwrite policy. |
+| SetPassword/CryptoGetTextPassword/Open_CryptoGetTextPassword | Original asked/defined cache, accepted-only raw password and ShowPassword persistence, BSTR conversion and E_ABORT remain. qtcallbackpassword owns GUI-thread modal transport; explicit settings path replaces registry scope. Empty accepted text is not rejected or trimmed. |
+| UseExtractToStream, GetTime/GetItemBoolProp, GetStream7, PrepareOperation7, SetOperationResult8 | Source dir/mode/AltStream refusal, expected-size/property checks, virtual-file index/name/colon/Zone state, hash stream attachment/release/finalization and stats remain. Original ignored GetItemBoolProp result and inactive extract/test experiments are not silently rewritten. |
+| RequestMemoryUse | Source rounded limits, persisted/forced precedence, immediate allow, report/no-question/no-error paths, remembered skip/allow, Save/Remember, Stop/E_ABORT and archive/file diagnostics remain. RunCallbackDialog marshals the body because even report text uses the existing Qt memory presenter; it adds no memory policy. |
+| CGrowBuf and CVirtFile/CVirtFileSystem header state, CloseMemFile, Write/FlushToDisk | Same allocation growth/budget, memory-to-disk switch, partial-write/result handling, name correction, main-file creation failure versus ignored additional-stream failure, close ordering, Zone filtering and attribute restoration. POSIX converts FILETIME into source CFiTime for SetTime; Windows retains read-only base-file ADS handling. Colon names on POSIX are ordinary files, not native NTFS streams. |
+| COpenArchiveCallback complete methods/header | Original progress stop/total/current-files/current-bytes, password cache and StartProgressDialog flow remain. QPointer<QWidget>/qintptr replace HWND/INT_PTR presentation types and SettingsPath makes persistence explicit. IOpenCallbackUI stays the same portable interface; commented COM/locking/subarchive alternatives remain inactive. |
+
+Direct consumers reviewed: PanelCopy callback/options/hash/password lifetime;
+GUI Main2 and ExtractGUI worker/init/join/result; CompressCall2 and
+QtShellArchiveServices; QtArchiveBatchExtract; FileFolderPluginOpen,
+QtArchiveFolderManager and QtArchiveReopen. PanelItemOpen consumes the virtual
+file interface through its existing CopyTo route; its external-process/source
+disposition remains a separate component and is not closed here.
+
+Dependencies retain the original C allocator/C linkage, COM/string/variant and
+folder/archive/progress/hash interfaces, FileStreams/StreamUtils/FilePathAutoRename,
+ExtractingFilePath, OpenArchive/ArchiveOpenCallback, FileFind/FileDir/time helpers,
+ZipRegistry, LangUtils/PropertyName/FormatUtils and the four existing prompt
+owners. Their resource/layout receipts and Common/Agent audits remain separate.
+Original inactive debug/password/stat alternatives stay inactive. Qt desktop
+builds do not claim Z7_SFX/Z7_NO_CRYPTO/CE configurations; selected official SFX
+bundles compile their own unchanged source. ProgressDialog2's whole presentation
+and native/rendered/physical/package/final scope are not inferred from this map.
+No functional source, dependency, baseline or UI change follows from the review.
+The [receipt](upstream-port-audit.md#p3-05--extraction-and-opening-callback-disposition-2026-10-10)
+owns current checks and the remaining acceptance limits.
+
 ## Native Copy terminal phase reconciliation (2026-10-10)
 
 Complete pinned OnCopy, PanelCopy worker/progress/result and CPanel HRESULT
