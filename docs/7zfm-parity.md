@@ -1,5 +1,12 @@
 # Сверка с Windows 7zFM
 
+Linux codec metadata uses the existing immutable Qt temporary image, unlike
+the original native in-place module loading. The selected temporary directory
+must allow writes and loading shared libraries. With `noexec /tmp`, a private
+process-scoped `TMPDIR` retains successful archive Test and automatic cleanup;
+default noexec refusal is recorded in the
+[isolated runtime receipt](upstream-port-audit.md#p3-04--isolated-linux-runtime-and-temporary-directory-contract-2026-10-10).
+
 PanelItems selection restoration now passes source SelectFocused unchanged in
 both selection modes. LVS_SINGLESEL limits selected rows; native ListView does
 not select a focused row on its own. Alternative marks stay independent: an

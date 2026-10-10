@@ -1,5 +1,79 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-04 — Isolated Linux runtime and temporary-directory contract (2026-10-10)
+
+The [current Linux runtime artifact](#p3-04--current-three-platform-runtime-artifacts-2026-10-10)
+was tested in a fresh project-owned Docker FROM scratch userspace on the existing
+Ubuntu24.04.5 x86_64 runner/kernel6.8.0-142/Docker29.8.2. Artifact SHA256 remains
+`390a2240bdc73067b151d6684a404bde44390f364f096c497e424eea603b5264`.
+No new application, engine, source-language, dependency or borrowed-module
+baseline change: retained product code is the same as056bcd2/f169833/0411444.
+Official engine/module/SFX retain https://github.com/ip7z/7zip.git revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17` and the preceding package proofs.
+
+Only the artifact,115 explicitly hashed public OS inputs (ELF dependency closure,
+UTF-8 locale, os-release and one system font), and minimal public test configuration
+enter the rootfs. External Qt/ICU dependency resolution is rejected. No host Qt,
+SDK, compiler, shell binaries, host root or home enters the image. Network is
+disabled for builds and runs; no base image is pulled. The container is nonroot,
+read-only, drops all capabilities, uses no-new-privileges and bounded CPU/memory/
+PIDs. The host writable bind contains only owned fixture bytes; a private tmpfs
+supplies temporary storage alongside Docker's standard kernel virtual filesystems;
+one owned Xvfb Unix socket supplies the native xcb display. A private Xauthority
+cookie is removed after testing and never logged. No user archive or live service
+is used; unrelated Docker images/containers remain untouched.
+
+Final **15/15 bounded checks pass**, with3.54s aggregate command time: bundled
+engine formats/list, native7zG ZIP/7z Create/Test/Extract, exact Unicode/spaces/
+empty bytes and unchanged inputs, broken archive fatal2, missing module fatal2,
+noexec-default-temp refusal, private TMPDIR recovery and cleanup. The original40s
+per-command deadline remains. This is a private X11 userspace/dependency check,
+not physical input, rendered parity or a separately booted OS/desktop. Mac/Windows
+clean-environment and parent native/final acceptance are not inferred from it.
+No CTest suite or large matrix was introduced; eleven slow suites were not run.
+
+Actual Docker filesystem exports, not only intended COPY inputs, verify all234
+positive and233 negative manifest files. Their actual regular-file hashes differ
+only by `app/bin/7z.so`. Both have no host Qt/SDK/home. Proof containers are created
+without starting, exported, and removed by exact owned ID; review images remain
+local. Positive image ID:
+`sha256:794edc5d3e9894cdb7b934f188b9540e1703678700d5e0c2aa9288a113003a82`;
+negative image ID:
+`sha256:dfeaa9ac6139593953e62efbf48fee494ce13e0fabc8588b6202e22414ad420f`.
+
+Initial fixture failures are retained: Xauthority's local hostname did not match
+the container and the UTF-8 locale was absent; then the constructed tmp directory
+was measured0775/root and prevented codec-image creation; finally Docker's private
+tmpfs was measured noexec and refused loading the copied codec module. These are
+not passing attempts. Correct local hostname/locale,1777 and executable private
+tmpfs restore ordinary successful operation without changing the application.
+The complete final check additionally reproduces default-noexec fatal2 and proves
+`TMPDIR=/work/private-temp` succeeds while `/tmp` remains noexec; the approved
+private directory is empty afterward and the archive hash unchanged. Source
+RunSevenzipGUI/discovery, ArchiveCodecImage/QtOwnedTempDir loading/lifetime paths
+were inspected. This existing integration requirement is now explicit in
+[development](development.md) and [parity](7zfm-parity.md); no global mount, account
+or security policy was changed. A separate image-proof collector syntax error
+was corrected before collection; successful application checks were not repeated
+for that mechanical evidence fix.
+
+Final snapshot `20261010T155623Z-0bcfcdde`, archive SHA256
+`e17a548c9edb17063adee061971ab4ea84df15cef4218955c9d399be3804f317`,
+matches all1516 frozen inputs in both archive and actual guest tree. The earlier
+three failed and two bounded successful snapshots are retained separately. After
+archiving/removing two temporary validators, all1480 retained product inputs still
+match the accepted Mac321/321/Linux318/318 code; those gates were not repeated.
+Evidence, rootfs/OS manifests, actual-image proofs, Docker configuration, complete
+logs and source proofs are under the isolated checkout's `build/review/clean-runtime`.
+
+Preflight guest root/Docker storage had9,554,210,816 bytes available; no competing
+compiler/CTest was observed. Host storage before/after is OK with no warnings or
+VHDX growth. No new/attached disks, system changes, toolchain installation,
+image downloads, upstream edits, push or publication occurred. Existing Docker
+access was reused. The Linux dependency-closure result is complete; remaining
+platform, source launcher, clean-environment/native/rendered and final obligations
+stay in the [checklist](porting-checklist.md) and [matrix](ux-port-audit.md#current-final-acceptance-matrix-2026-10-10).
+
 ## P3-04 — Current three-platform runtime artifacts (2026-10-10)
 
 Fresh Release runtime packages validate product

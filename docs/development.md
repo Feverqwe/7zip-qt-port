@@ -38,6 +38,12 @@ or in `Resources/7zip`. `SEVENZIP_ENGINE_PATH` explicitly selects an engine;
 a missing explicit path reports an error. Standalone `7zz` remains the fallback.
 Codecs/Formats discovery follows original LoadCodecs from the confirmed deployment;
 native modules must agree with the dynamic engine's reported libraries.
+The immutable codec image uses Qt's selected temporary directory to copy and
+load its module. That directory must permit writes and executable mappings.
+On Linux with a `noexec` default temporary filesystem, a process-scoped `TMPDIR`
+can select an approved private directory with those capabilities. The isolated
+[runtime check](upstream-port-audit.md#p3-04--isolated-linux-runtime-and-temporary-directory-contract-2026-10-10)
+verifies this override, cleanup and unchanged archives; it changes no system policy.
 Native regression fixtures also cache `SEVENZIP_CODEC_MODULE` in CMake. When
 preparing a fresh checkout or changing deployments, configure that variable to
 the same pinned module, for example `cmake --preset dev

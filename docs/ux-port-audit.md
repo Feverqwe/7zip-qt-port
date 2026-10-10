@@ -14,13 +14,15 @@
 | Нативные dialogs/shortcuts/icons/drag/registration/FS | partial: историческая ручная Finder-проверка принята отдельно; текущий полный native обход не проверен | partial: Unix FS проверен; native desktop/physical drag не проверены | partial: прежние scoped native receipts сохранены; текущий interactive desktop недоступен |
 | Наблюдение текущего приложения через Computer Use | unverified: доступ к Sevenzip Desktop не одобрен | unverified: не выполнялось | unverified: нет активного runner logon |
 | Сверка с отрисованным Windows 7zFM того же pin | unverified: нет полного rendered reference | unverified: нет полного rendered reference | partial: исторический System menu; полный текущий rendered audit не принят |
-| Текущие runtime packages и чистая ОС | partial: current Release/relocation15/15, notices/signature; clean OS unverified | partial: current Release/relocation14/14, notices; clean OS unverified | partial: current Release/relocation14/14, CRT/notices; clean OS unverified |
+| Текущие runtime packages и чистая ОС | partial: current Release/relocation15/15, notices/signature; clean OS unverified | partial: current Release/relocation14/14; isolated userspace15/15 без SDK/host Qt, dependency closure checked; отдельный desktop/kernel unverified | partial: current Release/relocation14/14, CRT/notices; clean OS unverified |
 | Cold/stable Windows, итоговая трёхплатформенная приёмка | partial: общий gate остаётся открытым | partial: успешный Linux gate не заменяет Windows | unverified: повторения и full gate требуют активного desktop |
 | GitHub CI | N/A по явному решению пользователя сохранить удаление workflow | N/A по тому же решению | N/A по тому же решению |
 
 Slow suites исключены из default gates по AGENTS.md и не объявляются принятыми.
 Текущие артефакты и точные границы relocation-проверки — в
 [P3-04 receipt](upstream-port-audit.md#p3-04--current-three-platform-runtime-artifacts-2026-10-10).
+Linux userspace/rootfs, отсутствие host Qt, missing-module и TMPDIR проверены
+в [isolated runtime receipt](upstream-port-audit.md#p3-04--isolated-linux-runtime-and-temporary-directory-contract-2026-10-10).
 Открытые обязательства остаются в P3-03/04/05/06;43/47 не изменено. Историческая
 успешная проверка не превращается в проверку нового бинарника или другой ОС.
 
