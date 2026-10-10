@@ -1,5 +1,34 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-05 — complete UI physical inputs and GUI resource disposition (2026-10-10)
+
+Pinned source https://github.com/ip7z/7zip.git,
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`, port `951a855`:
+the [repeated inventory](omitted-scope-audit.md#complete-109-unit-physical-input-inventory-2026-10-10)
+covers all 302 top-level FileManager/Agent/GUI/Common inputs, including every
+one of their 109 cpp, 130 headers and 37 RC files. Every physical absence has
+a body/resource/build disposition and current owner; the historical six missing
+cpp decisions remain intact. Source language, module boundaries, original notices
+and per-module baseline are unchanged. This is not a count of accepted behaviors.
+
+Reviewed complete absent Agent/GUI StdAfx headers/PCH, GUI makefile/resource
+aggregate/manifest, resource2 STRINGTABLE, desktop/CE CompressDialog,
+CompressOptionsDialog and ExtractDialog resources with shared includes and their
+already reconciled source owners/callers. Original GUI/FM.ico is byte-identical
+to its exact shared FileManager owner. Current Qt CMake resources, GUI dispatch
+alias and original CLang English fallback are the existing platform services;
+no replacement caption parser, duplicated icon or speculative manifest was added.
+Resource2's Compressing/Archives and compression error/mode/time IDs retain the
+original LangString→MyLoadString→CLang fallback boundary. Current language and
+dialog behavior evidence remains with its existing receipts.
+
+Validation: all pinned Git blobs, checkout inputs and unique local owners were
+hashed; the full borrowed baseline verifier passes 410 exact, 198 adapted and
+three local paths. git diff --check passes. Legacy dsp/dsw checkout CRLF conversion
+is recorded separately from their pinned blobs. No product or UI changed; no new
+test/platform/rendered result is claimed. Full-body/native/packaging and final
+acceptance remain open despite the now complete physical ownership inventory.
+
 ## P3-05 — FileManager resource and plugin dependency reconciliation (2026-10-10)
 
 Source https://github.com/ip7z/7zip.git at full revision

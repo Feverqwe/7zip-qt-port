@@ -64,6 +64,15 @@ owner и интегрированными consumers, включая уже ра�
 
 ## Правила статусов и счётчика
 
+P3-05, 2026-10-10: physical inventory now includes every cpp/header/resource/
+build input in FileManager, Agent, GUI and Common (all 109 original cpp units),
+with explicit disposition for every absent input and existing source owners.
+GUI standalone/resources/language fallback and duplicate shared icon boundaries
+reconciled. Complete borrowed baseline verifier and documentation diff pass;
+[source receipt](upstream-port-audit.md#p3-05--complete-ui-physical-inputs-and-gui-resource-disposition-2026-10-10).
+Physical ownership is not full-body/native/rendered/package acceptance;
+43/47 and P3-03/04/05/06 unchanged.
+
 P3-05, 2026-10-10: repeated pinned FileManager cpp/header/resource/build
 inventory and complete absent-file disposition recorded with actual owners;
 FilePlugins/FileFolderPluginOpen bodies, headers, dependencies and callers

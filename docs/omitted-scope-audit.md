@@ -1,5 +1,50 @@
 # Omitted source scope review
 
+## Complete 109-unit physical input inventory (2026-10-10)
+
+The pinned Git-tree inventory was extended from FileManager to Agent, GUI and
+Common at port `951a855`, source https://github.com/ip7z/7zip.git,
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. It includes every top-level file
+in those four directories, not just cpp names or CMake's selected objects.
+
+| Original directory | cpp / h / rc | All files | Exact / adapted local owners | Physically absent |
+| --- | --- | --- | --- | --- |
+| FileManager | 67 / 80 / 29 | 197 | 52 / 106 | 39 |
+| Agent | 7 / 5 / 0 | 12 | 0 / 11 | 1 |
+| GUI | 10 / 15 / 8 | 38 | 8 / 18 | 12 |
+| Common | 25 / 30 / 0 | 55 | 21 / 34 | 0 |
+| Total | 109 / 130 / 37 | 302 | 81 / 169 | 52 |
+
+The 276 cpp/h/rc paths have 234 single owners and 42 physical omissions.
+The six missing cpp units retain their [explicit body/build dispositions](#missing-ui-translation-units-reviewed-on-2026-10-05).
+FileManager's complete absent-file map is [below](#filemanager-headerresource-and-plugin-dependency-inventory-2026-10-10);
+the following rows account for all other absent inputs. Common has no missing
+physical input; its [complete source reconciliation](#common-owner-and-adaptation-reconciliation-2026-10-08)
+owns the relevant body/dependency decisions, rather than this file count.
+
+| Absent original input | Source contents and current boundary |
+| --- | --- |
+| Agent/StdAfx.h, GUI/StdAfx.cpp/.h | Agent's header supplies the compiler warning pragma and portable Common.h. GUI's header includes FileManager/StdAfx.h; its cpp includes only that header. Current sources include the existing portable common headers directly and CMake supplies compilation policy. No active workflow body or new PCH implementation is omitted. |
+| GUI/resource.rc | Standalone version/icon/manifest and included dialog/string resources. Current RunSevenzipGUI invokes original GUI Main2/WinMain dispatch through the shared executable's 7zG alias; it is not an omitted standalone workflow. CMake/Qt supplies executable/resource transport, while the original GUI/dialog owners remain active. Version/product packaging acceptance stays separate. |
+| GUI/resource2.rc | Original two-entry STRINGTABLE: IDS_PROGRESS_COMPRESSING3301 and IDS_ARCHIVES_COLON3907. UpdateGUI/UpdateCallbackGUI and ExtractGUI still use those IDs through source LangString. Compiled ResourceString tables are tried first, then the existing original CLang-backed bundled English resource supplies Compressing/Archives:. This is the established resource fallback, not a new caption table or parser. |
+| GUI/CompressDialog.rc, GUI/CompressOptionsDialog.rc | Exact desktop/CE controls, compression STRINGTABLE and options include reviewed. Source CCompressDialog and its COptionsDialog retain format/profile/event/default/validation/Apply policies; CreateArchiveDialog and Qt options controls present the reviewed grouping. Original language IDs and bundled English fallback supply error/mode/time captions. The [complete compression](#ccompressdialog-complete-bodyheader-disposition-2026-10-08) and [options](#coptionsdialog-complete-controllifecycle-disposition-2026-10-08) receipts own behavior, platform adaptations and actual checks. RC absence is not an acceptance of unreviewed controls. |
+| GUI/ExtractDialog.rc | Desktop destination/name/path/overwrite/eliminate-duplication/password/security and OK/Cancel/Help controls, CE alternate layout and commented ADS control reviewed. Source ExtractDialog owns conditional state and acceptance; Qt supplies controls/layouts and its existing text/geometry contract. Source ExtractGUI/ExtractCallback/Common Extract remain the operation owners. The [Extract disposition](#gui-extract-dialog-and-hash-worker-2026-10-07) remains authoritative. |
+| GUI/FM.ico | Byte-identical to the single exact FileManager/FM.ico owner (SHA-256649f8e81cce9d8e3ab9a0d06db31788f5ced3c6ed99a78304a87dba35ecf06cc). The existing Qt resource embeds that original shared icon; a second source copy is unnecessary. This does not prove native executable icon or rendered fidelity. |
+| GUI/7zG.exe.manifest | Same long-path/compatibility/native-control/DPI structure as the FM manifest, with GUI assembly identity/description. The 7zG alias copies the same Qt executable, whose embedded longPathAware/Windows10/asInvoker fields were read directly in the [manifest receipt](upstream-port-audit.md#p3-05--filemanager-resource-and-plugin-dependency-reconciliation-2026-10-10). Original native theme/DPI and current executable identity/packaging remain distinct acceptance boundaries. |
+| GUI/makefile, GUI/GUI.dsp, GUI/GUI.dsw | Original nine GUI objects plus PCH, Common/native/C/Explorer/FM dependencies, language/device/external-codec flags and resource.res reviewed with FM.mak/7zip.mak. CMake owns the current libraries and shared dispatcher executable. VC6 workspace, Win32/CE toolchain configurations and C:\\Util output paths are build transport; they do not justify omitting listed functional modules. |
+
+All pinned files and unique local owners were recorded with source/checkout/local
+hashes; only legacy dsp/dsw checkout line endings differ from their Git blobs.
+The three declared local PanelSelect/PanelSort/PanelSplitFile headers remain
+outside the original inventory and expose their source cpp owners; they do not
+create additional functional implementations. The complete borrowed manifest
+still verifies 410 exact, 198 adapted and three local paths. No source/resource,
+UI, build or test change follows from this documentation-only review.
+
+This completes the physical inventory and absent-input map for these 109 units.
+It does not close full-body integration, FM startup/platform omissions,
+native/rendered/package acceptance or P3-05/P3-06.
+
 ## FileManager header/resource and plugin dependency inventory (2026-10-10)
 
 Pinned source: https://github.com/ip7z/7zip.git at
