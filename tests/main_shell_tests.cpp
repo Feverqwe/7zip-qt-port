@@ -98,9 +98,9 @@ class MainShellTests final : public QObject {
         QVERIFY(twoPanels);
         const QString message = QStringLiteral("status проверка 空");
         for (int phase = 0; phase < 3; ++phase) {
+            window.statusBar()->showMessage(message);
             if (twoPanels->isChecked() != (phase == 1))
                 twoPanels->trigger();
-            window.statusBar()->showMessage(message);
             QApplication::processEvents();
             QCOMPARE(window.statusBar()->currentMessage(), message);
             QVERIFY(UiInspection::fullyVisible(*window.statusBar(), window));

@@ -3,6 +3,8 @@
 `main_shell` checks the original no-grip status-bar style at normal/compact sizes
 in EN/RU, one→two→one panes and unchanged Unicode transient messages. The
 `status-no-grip-*` JSON records exposed bars and no visible QSizeGrip.
+The message is set before the one→two→one transition so first-time panel
+construction cannot silently replace an existing diagnostic with a ready caption.
 `ui_geometry` scrolls the entire control rectangle, preserving source initial
 focus and strict full-field visibility instead of accepting cursor-only exposure.
 These are public widget/geometry checks; native/rendered acceptance is separate.

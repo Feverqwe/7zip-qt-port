@@ -1175,6 +1175,8 @@ resize grip. `main_shell` checks EN/RU at980×620/640×400, one→two→one pane
 unchanged Unicode message text, exposed shared bar and absent visible QSizeGrip;
 `status-no-grip-*` reports record each phase. The window border remains the
 platform resize surface. These checks establish Qt structure, not rendered parity.
+Set the Unicode message before each panel toggle: creating the second panel
+must preserve it. Panel construction does not publish a new operation result.
 
 Source SetButtonText supplies the seven short button captions AND tooltips;
 shared File menu QAction captions do not replace them after language/selection

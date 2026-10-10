@@ -2,6 +2,37 @@
 
 ## P3-06 — Source status-bar style and current geometry consumers (2026-10-10)
 
+Follow-up on `525cb42`: first-time second-panel construction also overwrote the
+shared diagnostic with the hard-coded Russian `Готово`. Moving the existing
+Unicode message setup before the one→two→one toggle exposes four failures
+(EN/RU, normal/compact); startup itself already publishes a folder message.
+The full original CApp::CreateOnePanel/SwitchOnOffOnePanel and CPanel::OnCreate
+call chain has no corresponding shared ready message. The existing Qt
+presentation adapter therefore removes that assignment rather than introducing
+a new translated operation state. Panel status publication and upstream
+control flow remain unchanged; no upstream code/dependency is newly copied.
+This is a message-lifecycle correction with the existing public interaction and
+geometry consumers, not a new global language-retranslation policy.
+Fresh unsandboxed macOS default gate passes321/321 (258.29s);304 Qt suites total
+5074pass/0fail/56 Windows-only skips. Eleven slow suites remain excluded.
+Current Linux/Windows focused consumers pass4/4 (9.34s/34.47s), each89Qtpass/
+0fail/0skip. All36 current status reports have exposed visible bars with no
+visible grip; the four message-preservation cases pass on each OS.
+Snapshot `20261010T170530Z-7e5dbc86` matches all1516 archived and actual inputs
+on both guests; archive SHA256
+`b01b18bb017c2cb825b3f84ab6b509aae56a91a8cfd2eac31c10f156ce1b09d5`.
+Each guest reuses its previous exact eight runtime files and metadata; all1480
+retained non-documentation inputs are accounted for, with only
+mainwindow_panel.cpp and main_shell_tests.cpp changed from `525cb42`.
+Evidence is `build/review/ux-acceptance/status-preservation-*` and its run-ID
+subdirectory. Temporary runner glue is archived there and removed before commit.
+Authorized Linux cleanup removed only CMakeFiles from the older completed
+`20261010T115930Z-9ed04bf8` gate after active/reference/newest-three checks;
+free space rose1228021760→3376275456 bytes. Logs/reports/cache/binaries/runtime
+and source remain. Final host storage has no warnings and zero VHDX growth.
+The preceding full Linux gate remains predecessor evidence; this follow-up has
+focused Linux/Windows coverage, not current full/native/rendered acceptance.
+
 Source https://github.com/ip7z/7zip.git revision
 `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`, CPP/7zip/UI/FileManager/Panel.cpp::OnCreate
 and CPP/Windows/Control/StatusBar.h::CStatusBar::Create, creates the four-part panel
@@ -30,7 +61,7 @@ shows ensureWidgetVisible may accept an exposed input-method cursor before
 applying margins. No production Add layout or focus behavior was changed.
 The failed attempt and successful diagnostic remain separate evidence.
 
-Current product gates pass: unsandboxed Mac321/321 (255.38s) and Linux318/318 (519.94s);
+The initial style correction's product gates pass: unsandboxed Mac321/321 (255.38s) and Linux318/318 (519.94s);
 macOS27.0.1 arm64, Ubuntu24.04.5 x64 and Windows11 Pro10.0.26300 x64 retain
 the preceding receipts' Qt6.12 toolchains; native desktop limits are unchanged.
 Linux301Qt suites report5058pass/0fail/56 explicit Windows-NTFS skips. After the
@@ -55,8 +86,9 @@ widget JSON are under the isolated checkout's `build/review/ux-acceptance`.
 All1480 retained product inputs are accounted for; only the presentation owner
 and two owned test files differ from the preceding accepted product.
 The temporary runner wrapper is evidence only, removed before commit.
-Host storage before/after is OK with no warnings; the existing Linux VHDX grew
-64MiB, Windows zero. No cleanup, new/attached disks, upstream edits,
+For the initial style iteration, host storage before/after was OK with no
+warnings; the existing Linux VHDX grew64MiB, Windows zero. No cleanup,
+new/attached disks, upstream edits,
 login/account/policy changes, push or publication occurred.
 
 Current package artifacts precede this presentation fix; their prior receipts

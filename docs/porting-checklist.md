@@ -6,7 +6,10 @@
 
 P3-06,2026-10-10: исходный no-grip style общей строки состояния восстановлен;
 EN/RU normal/compact и one→two→one панели проверены, строгий Add scroll probe
-исправлен без изменения production focus/layout. [Source и текущие gates](upstream-port-audit.md#p3-06--source-status-bar-style-and-current-geometry-consumers-2026-10-10).
+исправлен без изменения production focus/layout. Последующая проверка выявила
+потерю сообщения при первом создании второй панели: лишняя запись «Готово»
+удалена, сохранение Unicode-диагностики проверено на3ОС (Mac full321/321,
+Linux/Windows focused4/4). [Source и текущие gates](upstream-port-audit.md#p3-06--source-status-bar-style-and-current-geometry-consumers-2026-10-10).
 Parent/native/rendered/final acceptance остаётся открытой; packages предшествуют этому UI delta.
 
 P3-04,2026-10-10: current macOS/Windows artifacts дополнительно прошли

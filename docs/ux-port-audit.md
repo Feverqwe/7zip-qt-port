@@ -2,7 +2,7 @@
 
 ## Current final acceptance matrix (2026-10-10)
 
-Матрица различает текущий status-style delta от `1edda2a` и прежние package/native receipts.
+Матрица различает текущие status-style/message corrections и прежние package/native receipts.
 Checked означает только названную
 проверку; partial/unverified не дают итоговой приёмки P3-06.
 [Текущие логи, входы и ограничения](upstream-port-audit.md#p3-06--source-status-bar-style-and-current-geometry-consumers-2026-10-10);
@@ -10,7 +10,7 @@ Checked означает только названную
 
 | Область приёмки | macOS arm64 | Linux x64 | Windows x64 |
 | --- | --- | --- | --- |
-| Default format/build/CTest | checked:321/321; final localized geometry1/1 | checked:318/318; final focused4/4;56 Windows/NTFS Qt skips | partial: status/geometry focused4/4; прежние list-settings exposure failures сохранены, current full не принят |
+| Default format/build/CTest | checked: current321/321 | partial: current focused4/4; predecessor full318/318 и56 Windows/NTFS Qt skips | partial: current status/geometry focused4/4; прежние list-settings exposure failures сохранены, current full не принят |
 | Исходные модули, headers/resources/callers | partial: [109 source receipts](omitted-scope-audit.md#109-unit-source-receipt-ledger-2026-10-10); native launcher/associated-process continuation открыт | partial: общий source scope тот же | partial: применимые native launcher bodies обязательны |
 | EN/RU, normal/compact, команды и workflow | partial: автоматические contracts/regressions проходят; полный нативный обход не принят | partial: offscreen contracts/regressions проходят; физический ввод не принят | partial: выполненные focused consumers/JSON; service desktop не доказывает показ окон |
 | Нативные dialogs/shortcuts/icons/drag/registration/FS | partial: историческая ручная Finder-проверка принята отдельно; текущий полный native обход не проверен | partial: Unix FS проверен; native desktop/physical drag не проверены | partial: прежние scoped native receipts сохранены; текущий interactive desktop недоступен |

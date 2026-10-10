@@ -95,7 +95,6 @@ void MainWindow::createFilePanel(QMenu *editMenu, unsigned index) {
     panelSplitter_->insertWidget(static_cast<int>(index), central);
     app_.GetFocusedPanel().SetListViewMode(app_.GetFocusedPanel().GetListViewMode());
     statusBar()->setSizeGripEnabled(false);
-    statusBar()->showMessage("Готово");
     connect(table_, &QTableWidget::cellDoubleClicked, this, [this](int row, int) {
         if (!fileListSettings_.SingleClick)
             activateRow(row, selectionClickModifiers_);

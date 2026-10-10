@@ -5,6 +5,9 @@ matching the existing per-panel bars and original Panel.cpp::OnCreate status
 style without SBARS_SIZEGRIP. Window-border resizing and message delivery remain
 available. Current EN/RU normal/compact one/two/restored-pane geometry checks
 cover this structure; rendered/native acceptance remains separate.
+Creating a Qt panel also leaves the shared transient message intact. The former
+unconditional Russian ready caption overwrote diagnostics on the first switch
+to two panels; source CApp::CreateOnePanel/CPanel::OnCreate has no such message.
 
 Linux codec metadata uses the existing immutable Qt temporary image, unlike
 the original native in-place module loading. The selected temporary directory
