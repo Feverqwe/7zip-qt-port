@@ -1,5 +1,69 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-05 — PanelOperations disposition and source Comment lifecycle (2026-10-10)
+
+Source repository https://github.com/ip7z/7zip.git, full revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. Complete original/current
+PanelOperations.cpp bodies and Panel.h declarations were compared, with source
+App/MyLoadMenu dispatch, Qt consumers, property worker, folder interfaces,
+RefreshListCtrl/reload presentation and source error helpers. Original C++ path,
+types, validation, operation and selection algorithms remain authoritative.
+The [complete disposition](omitted-scope-audit.md#paneloperations-complete-bodycaller-disposition-2026-10-10)
+links earlier integrated Create/Delete/Rename and provider implementations.
+
+Restored original void CPanel::ChangeComment: local selected-state capture,
+hash/update/focus/Parent/property admission, original title/prompt/value, Cancel
+early return, property HRESULT policy and unconditional accepted-operation
+RefreshListCtrl under source timer/notification guards. Qt retains the joined
+SetProperty worker/native progress transport and quiet E_ABORT adaptation.
+Shared MessageBox_Error_HRESULT_Caption replaces the independent error widget;
+Set Comment Error and its macOS visible-heading adaptation remain. No archive
+syntax, ZIP writer or descript.ion logic is introduced.
+
+The Qt caller no longer sets blocking Operation state or owns separate render/
+restore. It retains sourceArchiveProgress during the source call and uses the
+same ContinueScanAfterSourceCall handoff as Create. The existing source reload
+service loads/publishes the provider; the void caller ignores reload HRESULT.
+Source FM WndProc already protects command lifetime through CallScope.
+
+Actual old-product public presentation-service RED: Cancel calls zero times,
+accepted Comment also zero instead of once (25Qt pass/1fail,0.92s). The unchanged
+regression now checks one guarded callback with original focused state/provider,
+real saved comment and protected payload. The independent expanded load
+observation passed before this fix: the renderer already guards LoadItems;
+no unguarded-load defect is claimed. Existing16 both-pane EN/RU accepted/Cancel/
+load-failure/load-cancel/recovery rows and actual ZIP/AES writer/error/Cancel/
+nested publication consumers remain. Initial focused filesystem_comment and
+native_comment_ui pass2/2 in5.35s.
+
+Fresh same-source Linux/Windows x64 Qt6.12 snapshot
+`20261010T003344Z-70a6b10a`, SHA256
+`6381ddf25aa1380fb12ee15780b994160f6c2475511b82ab5f0bd34c25871a6e`,
+passes10/10 in30.24s/97.08s,295Qt each/0fail/0skip. All1424 frozen source/test/
+build/resource/script inputs match isolated local, source.tar and actual guests.
+Forty-four current Comment JSON per guest are inspected. The generic collector
+initially rejected QtStatusLabel compact elision and empty zero-width fields;
+the existing [status contract](ui-layout-contracts.md)
+and actual paint/tooltip code establish these intended presentations. The
+corrected collector records56 Linux/48 Windows adaptations separately and
+reports no unexplained clipping. No source/test/assertion change follows this
+guest snapshot. Forty-four current macOS JSON record52 corresponding status
+adaptations;132 reports total have no unexplained clipping. The temporary task
+wrapper is archived/removed; all1423 retained inputs remain exact.
+
+The first new macOS worktree gate selected Homebrew7z.so instead of the copied
+official runtime:307/311 CTest in256.19s,4869Qt/22fail/18 existing skips,
+with source_link_extract/source_link_storage/agent_stream_copy_ui/archive_metadata_ui
+native catalog failures. Its log/cache/LastTest are preserved. CMake is then
+explicitly pinned to the copied official codec module without code changes.
+Required unsandboxed macOS arm64 Qt6.12 full retry passes formatting/all-target
+build and311/311 CTest in225.98s,4891Qt/0fail/18 existing platform skips.
+Baseline verifies408exact/
+196adapted/3local. Evidence: build/review/filemanager-final/comment-*.
+
+Eleven slow suites excluded. Remaining FileManager, native/rendered, package and
+P3-03/04/05/06 acceptance remain mandatory.
+
 ## P3-05 — password state and process callers (2026-10-10)
 
 Source repository https://github.com/ip7z/7zip.git, full revision
@@ -2819,6 +2883,11 @@ copy or functional change and does not extend the phase tests into module or
 platform acceptance.
 
 ### Source Comment reload boundary (2026-10-06)
+
+The reload-flag/output-state signature below is historical. The
+[2026-10-10 source owner receipt](#p3-05--paneloperations-disposition-and-source-comment-lifecycle-2026-10-10)
+restores original void ChangeComment and its guarded RefreshListCtrl through
+the existing presentation service, preserving this Cancel/recovery behavior.
 
 Reference: full upstream revision
 `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,

@@ -165,20 +165,12 @@ void QtFileManagerCommands::VerCtrl(unsigned id) {
 }
 void QtFileManagerCommands::Comment() {
     auto &w = window_;
-    auto &panel = w.app_.GetFocusedPanel();
-    CSelectedState selection;
-    const auto previousState = w.state_;
-    w.setState(MainWindow::State::Operating);
-    bool reload;
+    const unsigned index = w.app_.GetFocusedPanelIndex();
     {
         QScopedValueRollback<bool> source(w.sourceArchiveProgress_, true);
-        reload = panel.ChangeComment(selection);
+        w.app_.Panels[index].ChangeComment();
     }
-    if (reload) {
-        if (w.renderBoundFolder() == S_OK)
-            w.restoreListSelection(selection);
-    } else
-        w.setState(previousState);
+    w.app_.QtOperations().ContinueScanAfterSourceCall(index);
     w.refreshActions();
 }
 void QtFileManagerCommands::Link() {

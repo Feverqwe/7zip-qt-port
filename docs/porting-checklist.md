@@ -64,6 +64,19 @@ owner и интегрированными consumers, включая уже ра�
 
 ## Правила статусов и счётчика
 
+P3-05,2026-10-10: complete PanelOperations body/caller disposition and original
+void Comment state/error/guarded Refresh lifecycle restored. Public source
+publication RED0→1 retained; joined native property worker and quiet Cancel
+adaptations remain. Final required macOS full311/311 PASS225.98s,
+4891Qt/0fail/18 existing skips. Same-source Linux/Windows Qt6.12 each10/10
+PASS30.24s/97.08s,295Qt/0fail/0skip;1424 archive/local/actual-guest hashes exact,
+1423 retained after task wrapper removal. Current132 Comment JSON reviewed,
+with documented status elision/empty fields separated from unexplained clipping.
+The initial unpinned-runtime Mac307/311 failure is preserved. See
+[source receipt](upstream-port-audit.md#p3-05--paneloperations-disposition-and-source-comment-lifecycle-2026-10-10).
+Eleven slow suites excluded; remaining FileManager/native/rendered/package/final
+acceptance remains mandatory. Parents43/47 and P3-03/04/05/06 stay open.
+
 P3-05,2026-10-10: complete PanelMenu body/caller disposition and source
 OnContextMenu header/list/keyboard/empty/Cancel/plugin/file lifecycle restored.
 Captured-pane Qt popups preserve source command and column ownership; actual

@@ -1594,7 +1594,10 @@ Reference: upstream `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
 - Original Set Comment Error/HRESULT remains the error presentation. On macOS,
   which omits QMessageBox window captions, the caption is the visible message
   heading and HRESULT detail is informative text. Tests exercise real writer
-  refusal on both languages and ordinary/AES ZIP.
+  refusal on both languages and ordinary/AES ZIP. Comment now uses the shared
+  source panel HRESULT/caption helper; its source-owned refresh follows the
+  error, while dialog Cancel returns before refresh. Existing Combo JSON and
+  normal/compact geometry consumers retain the same controls and text contract.
 - Filesystem comments use the same source dialog, focused name/title and
   IDS_COMMENT2 prompt. `filesystem_comment` checks existing value, EN/RU,
   normal360×150/compact260×150, File Comment and Ctrl+Z, OK and Escape, selected

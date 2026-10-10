@@ -113,28 +113,29 @@ bool CPanel::CanComment() const {
     return folder && folder->CanComment();
 }
 
-bool CPanel::ChangeComment(CSelectedState &state) {
+void CPanel::ChangeComment() {
     if (IsHashFolder())
-        return false;
+        return;
     if (!CheckBeforeUpdate(IDS_COMMENT))
-        return false;
+        return;
     CDisableTimerProcessing disableTimerProcessing2(*this);
     const int index = _selectionList.GetFocusedItem();
     if (index < 0)
-        return false;
+        return;
     const unsigned realIndex = GetRealItemIndex(index);
     if (realIndex == kParentIndex)
-        return false;
+        return;
+    CSelectedState state;
     SaveSelectedState(state);
     UString comment;
     {
         NWindows::NCOM::CPropVariant propVariant;
         if (_folder->GetProperty(realIndex, kpidComment, &propVariant) != S_OK)
-            return false;
+            return;
         if (propVariant.vt == VT_BSTR)
             comment = propVariant.bstrVal;
         else if (propVariant.vt != VT_EMPTY)
-            return false;
+            return;
     }
     const UString name = GetItemRelPath2(realIndex);
     UString title = name;
@@ -144,11 +145,11 @@ bool CPanel::ChangeComment(CSelectedState &state) {
                      GetParent());
     dlg.BindLanguage(0, IDS_COMMENT2);
     if (dlg.exec() != QDialog::Accepted)
-        return false;
+        return;
 
     CDisableNotify disableNotify(*this);
-    // Qt runs the unchanged source property operation on its existing worker
-    // and callback lifecycle. The caller owns the original error presentation.
+    // Keep the source property operation on Qt's joined worker/callback
+    // transport; this source owner retains error and refresh ordering.
     CThreadFolderOperations op(FOLDER_TYPE_COMMENT);
     op.FolderOperations = _folderOperations;
     op.Index = realIndex;
@@ -158,24 +159,11 @@ bool CPanel::ChangeComment(CSelectedState &state) {
     if (result != S_OK && result != E_ABORT) {
         if (result == E_NOINTERFACE)
             MessageBox_Error_UnsupportOperation();
-        else {
-            QMessageBox box(QMessageBox::Critical, QStringLiteral("Set Comment Error"),
-                            ToQString(NWindows::NError::MyFormatMessage(result)), QMessageBox::Ok,
-                            GetParent());
-            box.setObjectName("commentUpdateError");
-#ifdef Q_OS_MACOS
-            // Native macOS message boxes omit window captions. Keep the
-            // original source caption visible as the message heading.
-            box.setInformativeText(box.text());
-            box.setText(QStringLiteral("Set Comment Error"));
-#endif
-            box.setTextFormat(Qt::PlainText);
-            box.exec();
-        }
+        else
+            MessageBox_Error_HRESULT_Caption(result, L"Set Comment Error");
     }
     // The original reaches RefreshListCtrl here even after operation errors.
-    // Qt must load the provider before restoring this captured source state.
-    return true;
+    RefreshListCtrl(state);
 }
 
 bool CPanel::CorrectFsPath(const UString &path2, UString &result) {

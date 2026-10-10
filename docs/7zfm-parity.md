@@ -1,5 +1,14 @@
 # Сверка с Windows 7zFM
 
+## Source Comment publication (P3-05, 2026-10-10)
+
+Исходный void CPanel::ChangeComment снова владеет сохранением выбора, ошибкой
+Set Comment Error и RefreshListCtrl внутри защиты уведомлений. Qt сохраняет
+joined worker и тихую отмену; существующий source callback выполняет загрузку
+и публикацию. Cancel не обновляет список; отказ загрузки не восстанавливает
+старые строки. Общий source HRESULT helper сохраняет видимый заголовок macOS.
+Текущие проверки: [receipt](upstream-port-audit.md#p3-05--paneloperations-disposition-and-source-comment-lifecycle-2026-10-10).
+
 ## Password source state and process caller (P3-05, 2026-10-10)
 
 PasswordDialog follows the original UString state and raw read/toggle/accept
@@ -1402,7 +1411,8 @@ Escape/Cancel в Comment теперь сохраняет исходный ран
 отказ/отмена загрузки очищает старые строки и допускает последующее обновление.
 Результат reload здесь по-прежнему не вызывает нового сообщения об ошибке,
 как в исходном ChangeComment. EN/RU, обе панели и normal/compact состояния
-проверены на macOS; текущая native Windows/Linux проверка этого изменения открыта.
+первоначально проверены на macOS; текущие Linux/Windows consumers и триплатформенная
+геометрия подтверждены в [новой записи](upstream-port-audit.md#p3-05--paneloperations-disposition-and-source-comment-lifecycle-2026-10-10).
 Windows сохраняет исходные file attributes; POSIX использует portable source
 Create_ALWAYS/write_full и сохраняет permissions существующего файла. Windows/
 Linux execution и rendered Windows reference этого компонента ещё не проверены.

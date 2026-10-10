@@ -46,6 +46,51 @@ class FilesystemCommentTests final : public QObject, protected MainWindowTestSup
         return -1;
     }
   private slots:
+    void sourceCommentOwnsPublication() {
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString name = QStringLiteral("comment 空.txt");
+        QVERIFY(Write(fixture.filePath(name), "protected bytes"));
+        ArchiveBackend backend;
+        MainWindow window(&backend);
+        window.show();
+        window.openPath(fixture.path());
+        QTRY_VERIFY(FsRow(window, name) >= 0);
+        table(window)->selectRow(FsRow(window, name));
+        auto &panel = *static_cast<FileTable *>(table(window))->sourcePanel;
+        panel.Set_AutoRefresh_Mode(false);
+        CMyComPtr<IFolderFolder> folder = panel.GetFolder();
+        unsigned publications = 0;
+        bool guarded = false;
+        panel.AttachReloadPresentation([&](const CSelectedState &state) {
+            ++publications;
+            guarded = !panel.ShouldProcessNotifications() && state.FocusedName_Defined &&
+                      ToQString(state.FocusedName) == name && panel.GetFolder() == folder;
+            return folder->LoadItems();
+        });
+        bool accept = false;
+        QTimer responder;
+        connect(&responder, &QTimer::timeout, &window, [&] {
+            auto *dialog = dynamic_cast<CComboDialog *>(QApplication::activeModalWidget());
+            if (!dialog)
+                return;
+            if (accept) {
+                dialog->findChild<QComboBox *>("comboValue")->setEditText("published 空");
+                dialog->accept();
+            } else
+                dialog->reject();
+        });
+        responder.start(2);
+        action(window, "commentAction")->trigger();
+        QCOMPARE(publications, 0u);
+        accept = true;
+        action(window, "commentAction")->trigger();
+        QCOMPARE(publications, 1u);
+        QVERIFY(guarded);
+        QCOMPARE(Comment(folder, Find(folder, name)), QStringLiteral("published 空"));
+        QVERIFY(panel.ShouldProcessNotifications());
+        QCOMPARE(Read(fixture.filePath(name)), QByteArray("protected bytes"));
+    }
     void commentReloadBoundary_data() {
         QTest::addColumn<unsigned>("sourceIndex");
         QTest::addColumn<QString>("language");
@@ -109,6 +154,7 @@ class FilesystemCommentTests final : public QObject, protected MainWindowTestSup
         CMyComPtr<IFolderFolder> peerFolder = peerView->sourcePanel->GetFolder();
         const int peerRows = peerView->rowCount();
         std::atomic<unsigned> loads{0};
+        std::atomic<bool> unguardedReload{false};
         bool observed = false;
         QTimer responder;
         connect(&responder, &QTimer::timeout, &window, [&] {
@@ -123,6 +169,8 @@ class FilesystemCommentTests final : public QObject, protected MainWindowTestSup
             QVERIFY(Write(fixture.filePath("added δ.txt"), "external bytes"));
             filesystem->CheckBreak = [&](const QString &) {
                 ++loads;
+                if (panel.ShouldProcessNotifications())
+                    unguardedReload = true;
                 if (outcome == "load-failure")
                     throw std::bad_alloc();
                 return outcome != "load-cancel";
@@ -140,6 +188,7 @@ class FilesystemCommentTests final : public QObject, protected MainWindowTestSup
         QVERIFY(observed);
         const unsigned calls = loads.load();
         filesystem->CheckBreak = {};
+        QVERIFY(!unguardedReload.load());
         if (outcome == "cancel") {
             QCOMPARE(calls, 0u);
             QCOMPARE(view->rowCount(), 2);

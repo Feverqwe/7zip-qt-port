@@ -1,5 +1,12 @@
 # Regression strategy
 
+`filesystem_comment::sourceCommentOwnsPublication` exercises the public source
+reload-presentation contract: Cancel does not publish; accepted Comment publishes
+once under source guards with the captured focused name and same provider.
+Actual saved comment and protected payload prove completion. Its old-product
+zero-publication RED and related load/ZIP consumers are recorded in the
+[source receipt](upstream-port-audit.md#p3-05--paneloperations-disposition-and-source-comment-lifecycle-2026-10-10).
+
 `password_window` owns the two password/reopen workflows extracted from
 `ui_archive_states`, with raw Unicode/spaces/empty rows and the asynchronous
 MainWindow process-prompt signal after Test. The empty row fails against the
