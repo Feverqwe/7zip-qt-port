@@ -11,6 +11,7 @@
 #include "CPP/7zip/UI/FileManager/SplitDialog.h"
 #include "CPP/7zip/UI/FileManager/ViewSettings.h"
 #include "CPP/7zip/UI/GUI/ExtractDialog.h"
+#include "fixtures/split_dialog_prompt.h"
 #include "layout_inspection.h"
 #include "qtlangcontrols.h"
 #include <QCheckBox>
@@ -121,9 +122,12 @@ class LanguageDialogTests final : public QObject {
         destination->setEditText(QStringLiteral(" /pending path 密碼 "));
         volume->setEditText("bad-volume");
         name->setEditText(QStringLiteral(" pending folder 密碼 "));
-        split.accept();
+        const auto englishPrompt = SubmitInvalidSplit(split, "language-split-error-en");
+        QVERIFY(englishPrompt.shown);
+        QVERIFY(englishPrompt.sourcePolicy);
+        QVERIFY(englishPrompt.geometry);
         QCOMPARE(split.result(), int(QDialog::Rejected));
-        const QString englishError = split.findChild<QLabel *>("volumeError")->text();
+        const QString englishError = englishPrompt.text;
         language("ru");
         QCOMPARE(copy.windowTitle(), QStringLiteral("Копировать"));
         QCOMPARE(destination->currentText(), QStringLiteral(" /pending path 密碼 "));
@@ -131,14 +135,20 @@ class LanguageDialogTests final : public QObject {
         QCOMPARE(volume->currentText(), QString("bad-volume"));
         QCOMPARE(name->currentText(), QStringLiteral(" pending folder 密碼 "));
         QVERIFY(split.windowTitle().endsWith(" file 密碼.bin"));
-        QVERIFY(split.findChild<QLabel *>("volumeError")->text() != englishError);
+        const auto russianPrompt = SubmitInvalidSplit(split, "language-split-error-ru");
+        QVERIFY(russianPrompt.shown);
+        QVERIFY(russianPrompt.sourcePolicy);
+        QVERIFY(russianPrompt.geometry);
+        QVERIFY(russianPrompt.text != englishError);
         for (int width : {480, 300}) {
             inspect(copy, "language-copy-ru", width, 280);
             inspect(split, "language-split-ru", width, 280);
             inspect(folder, "language-folder-ru", width, 170);
         }
         language("-");
-        QCOMPARE(split.findChild<QLabel *>("volumeError")->text(), englishError);
+        const auto restoredPrompt = SubmitInvalidSplit(split);
+        QVERIFY(restoredPrompt.shown);
+        QCOMPARE(restoredPrompt.text, englishError);
         for (int width : {480, 300}) {
             inspect(copy, "language-copy-en", width, 280);
             inspect(split, "language-split-en", width, 280);

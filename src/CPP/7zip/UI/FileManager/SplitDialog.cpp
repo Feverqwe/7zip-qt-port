@@ -17,6 +17,7 @@
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
+#include <QMessageBox>
 #include <QPushButton>
 #include <QVBoxLayout>
 
@@ -62,11 +63,6 @@ bool CSplitDialog::OnInit() {
     _volumeCombo->setInsertPolicy(QComboBox::NoInsert);
     volumeLabel->setBuddy(_volumeCombo);
     layout->addWidget(_volumeCombo);
-    error_ = new QLabel(this);
-    error_->setObjectName("volumeError");
-    error_->setWordWrap(true);
-    error_->hide();
-    layout->addWidget(error_);
     layout->addStretch(1);
     auto *buttons = new QtLangButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
     buttons->setObjectName("splitButtons");
@@ -98,17 +94,14 @@ void CSplitDialog::OnOK() {
     Path = _pathCombo->currentText();
     UString volumeString(_volumeCombo->currentText().toStdWString().c_str());
     volumeString.Trim();
-    CRecordVector<UInt64> values;
-    VolumeSizes.Clear();
-    bool valid = ParseVolumeSizes(volumeString, values) && !values.IsEmpty();
-    VolumeSizes = values;
-    if (!valid) {
-        QtBindLangText(error_, IDS_INCORRECT_VOLUME_SIZE);
-        error_->show();
+    if (!ParseVolumeSizes(volumeString, VolumeSizes) || VolumeSizes.Size() == 0) {
+        QMessageBox box(QMessageBox::Critical, "7-Zip", QtLangText(IDS_INCORRECT_VOLUME_SIZE),
+                        QMessageBox::Ok, this);
+        box.setObjectName("splitVolumeError");
+        box.setTextFormat(Qt::PlainText);
+        box.exec();
         return;
     }
-    error_->clear();
-    error_->hide();
     QDialog::accept();
 }
 

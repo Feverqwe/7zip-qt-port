@@ -2,6 +2,7 @@
 #include "CPP/7zip/UI/FileManager/PanelSplitFile.h"
 #include "CPP/7zip/UI/FileManager/SplitDialog.h"
 #include "CPP/7zip/UI/FileManager/ViewSettings.h"
+#include "fixtures/split_dialog_prompt.h"
 #include "layout_inspection.h"
 #include "qtlangcontrols.h"
 #include <QComboBox>
@@ -39,9 +40,10 @@ class VolumeDialogTests : public QObject {
         dialog.show();
         auto *volume = dialog.findChild<QComboBox *>("volumeSize");
         volume->setCurrentText(bad);
-        dialog.accept();
+        const auto prompt = SubmitInvalidSplit(dialog);
+        QVERIFY(prompt.shown);
+        QVERIFY(prompt.sourcePolicy);
         QVERIFY(dialog.isVisible());
-        QVERIFY(dialog.findChild<QLabel *>("volumeError")->isVisible());
         QVERIFY(!QFileInfo::exists(dialog.Path));
         // UString::Trim removes precisely space, LF and tab.
         volume->setCurrentText(" \n\t10 20\t\n ");
@@ -92,9 +94,12 @@ class VolumeDialogTests : public QObject {
         for (const QString &bad : {QString(), QString("0"), QString("10M 0M"),
                                    QString("18446744073709551616"), QString("wrong")}) {
             volume->setCurrentText(bad);
-            dialog.accept();
+            const auto prompt = SubmitInvalidSplit(dialog, {}, bad.isEmpty());
+            QVERIFY(prompt.shown);
+            QVERIFY(prompt.sourcePolicy);
             QVERIFY(dialog.isVisible());
-            QVERIFY(dialog.findChild<QLabel *>("volumeError")->isVisible());
+            QCOMPARE(dialog.result(), int(QDialog::Rejected));
+            QCOMPARE(volume->currentText(), bad);
             QVERIFY(!QFileInfo::exists(path));
         }
         dialog.reject();
@@ -120,13 +125,19 @@ class VolumeDialogTests : public QObject {
         auto *pathLabel = dialog.findChild<QLabel *>("splitPathLabel");
         auto *volumeLabel = dialog.findChild<QLabel *>("splitVolumeLabel");
         auto *buttons = dialog.findChild<QDialogButtonBox *>("splitButtons");
-        if (invalid) {
-            volume->setCurrentText("wrong");
-            dialog.accept();
-        }
         dialog.resize(width, 240);
         dialog.show();
         QApplication::processEvents();
+        if (invalid) {
+            volume->setCurrentText("wrong");
+            const auto prompt =
+                SubmitInvalidSplit(dialog, QStringLiteral("split-invalid-volume-%1").arg(width));
+            QVERIFY(prompt.shown);
+            QVERIFY(prompt.sourcePolicy);
+            QVERIFY(prompt.geometry);
+            QCOMPARE(dialog.result(), int(QDialog::Rejected));
+            QVERIFY(dialog.isVisible());
+        }
         QVERIFY(UiInspection::fullyVisible(*path, dialog));
         QVERIFY(UiInspection::fullyVisible(*volume, dialog));
         QVERIFY(UiInspection::fullyVisible(*browse, dialog));
@@ -142,12 +153,6 @@ class VolumeDialogTests : public QObject {
         QVERIFY(UiInspection::separate(*path, *browse, dialog));
         QVERIFY(UiInspection::separate(*buttons->button(QDialogButtonBox::Ok),
                                        *buttons->button(QDialogButtonBox::Cancel), dialog));
-        if (invalid) {
-            auto *error = dialog.findChild<QLabel *>("volumeError");
-            QVERIFY(UiInspection::fullyVisible(*error, dialog));
-            QVERIFY(UiInspection::labelFits(*error));
-            QVERIFY(UiInspection::separate(*error, *buttons, dialog));
-        }
         QVERIFY(UiInspection::writeReport(
             dialog, QStringLiteral("split-%1-%2").arg(width).arg(invalid ? "error" : "normal")));
     }

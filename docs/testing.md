@@ -2933,6 +2933,15 @@ invert loops, indexed rows and parent sentinel; `panel_key` covers keyboard
 consumers across the four view modes. JSON reports
 are generated for all six geometry states.
 
+2026-10-10: `volume_dialog` и `language_dialog` дополнительно наблюдают исходную
+модальную ошибку Split: Critical/plain text/7-Zip/OK, default OK, Escape,
+неизменённый сырой ввод, отсутствие созданного каталога и успешный retry.
+Общий test-only observer обслуживает оба public UI consumer; он не раскрывает
+внутренности продукта. Старое inline-поведение даёт шесть регрессионных отказов.
+Четыре message JSON покрывают два размера родителя и EN/RU; native auto-fit
+определяет фактическую геометрию. Windows volume/language suites используют
+application QPA/fonts и общую native UI resource lock. Это не rendered parity.
+
 `volume_dialog` проверяет исходные presets, подтверждение через кнопку и
 accept(), ошибочный/переполненный размер, Cancel, сводку 2/3/5 частей и
 геометрию Split/Combine при нормальном и компактном размере с JSON-отчётами.

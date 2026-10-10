@@ -4,6 +4,17 @@
 Готовый запрос агенту: [porting-chat-prompt.md](porting-chat-prompt.md).
 Исходная дата: 2026-09-28. Это список **оставшейся** работы, не оценка MVP с нуля.
 
+P3-05,2026-10-10: all109 original cpp units now have explicit source-receipt
+links/omission boundaries. Complete primitive-dialog review restores source
+Split invalid-volume modal Critical/OK instead of the old inline adaptation;
+six old-product regressions reproduce the difference. Mac full321/321 and
+Linux16/16 pass; Windows15/16 retains list_settings_runtime exposure failure
+before settings assertions, with no active runner logon. All1515 guest inputs,
+runtime metadata and114 current widget reports are verified.
+[Source ledger/dialog receipt and limits](upstream-port-audit.md#p3-05--input-dialog-source-and-split-error-policy-2026-10-10).
+BrowseDialog2 native launcher/PanelItemOpen continuation, whole native/rendered/
+current-package/final acceptance remain mandatory;43/47 andP3-03/04/05/06 stay open.
+
 P3-05,2026-10-10: complete ProgressDialog2 body/resource/caller/dependency map
 retains source algorithms; Cancel/success message boxes regain source NoIcon,
 errors retain Critical. Existing regressions reproduce17 old-product failures;

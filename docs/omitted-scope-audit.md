@@ -1,5 +1,188 @@
 # Omitted source scope review
 
+## 109-unit source receipt ledger (2026-10-10)
+
+Current port parent48866c8, source https://github.com/ip7z/7zip.git revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. The pinned Git tree and current
+baseline manifest were enumerated again, with unique original/local paths,
+Git blob IDs and source/local SHA256. All104 present cpp owners occur in current
+CMake source lists; platform conditions still determine actual target selection.
+The302 top-level inputs now have83 exact/169 adapted/50 absent owners, after the
+PanelDrag EnumFormatEtc restoration. The dated951a855 inventory below is retained
+as history. The109 cpp units have8 exact/96 adapted owners and five omissions.
+
+Each row indexes its source body/header/caller disposition, including exact
+dependencies and explicit non-desktop omissions. Adapted paths are under src/;
+exact paths under third_party/7zip/, with the original UI-relative suffix.
+The baseline manifest owns each full path/revision. This ledger does not convert
+an indexed receipt, build path or green consumer into whole workflow/platform
+acceptance. Later correction receipts supersede earlier bounded claims; original
+native branches and current-package/rendered/final scope remain mandatory.
+
+Two connected live source gaps remain: BrowseDialog2::StartApplication/
+StartApplicationDontWait and PanelItemOpen's associated-process continuation.
+The original Windows ShellExecuteEx/PIDL/directory/extension/result bodies can
+return a waitable process; current Qt association delivery always takes the
+no-handle branch. The temporary-browser lifecycle map remains valid for its
+owned browsing/deletion work, but its earlier whole-file wording does not close
+these native launcher bodies. No new implementation or closure is claimed here.
+
+### FileManager receipt index
+
+| Original cpp | Current owner kind | Source disposition |
+| --- | --- | --- |
+| AboutDialog.cpp | adapted | [body map](#resulthistory-and-about-complete-disposition-2026-10-10) |
+| AltStreamsFolder.cpp | adapted | [body map](#filesystem-provider-bodies-and-command-consumers-2026-10-10) |
+| App.cpp | adapted | [body map](#app-complete-bodycaller-review-2026-10-06); [current Copy caller/phase correction](#native-copy-terminal-phase-reconciliation-2026-10-10) |
+| BrowseDialog.cpp | adapted | [body map](#browse-path-dialog-disposition-2026-10-10) |
+| BrowseDialog2.cpp | adapted | [body map](#temporary-browser-complete-bodycaller-disposition-2026-10-10); native StartApplication remains open (above) |
+| ClassDefs.cpp | adapted | [body map](#classdefs-and-native-guid-dependencies-reviewed-on-2026-10-05) |
+| ComboDialog.cpp | adapted | [body map](#primitive-input-and-read-only-dialog-bodies-2026-10-10) |
+| CopyDialog.cpp | adapted | [body map](#primitive-input-and-read-only-dialog-bodies-2026-10-10) |
+| EditDialog.cpp | adapted | [body map](#primitive-input-and-read-only-dialog-bodies-2026-10-10) |
+| EditPage.cpp | adapted | [body map](#six-options-pages-and-apply-error-policy-2026-10-10) |
+| EnumFormatEtc.cpp | exact | [body map](#paneldrag-protocol-body-disposition-2026-10-10) |
+| ExtractCallback.cpp | adapted | [body map](#extraction-and-opening-callback-body-disposition-2026-10-10) |
+| FM.cpp | adapted | [body map](#fm-desktop-bodies-and-platform-dispatch-2026-10-10) |
+| FSDrives.cpp | adapted | [body map](#filesystem-provider-bodies-and-command-consumers-2026-10-10) |
+| FSFolder.cpp | adapted | [body map](#filesystem-provider-bodies-and-command-consumers-2026-10-10) |
+| FSFolderCopy.cpp | adapted | [body map](#filesystem-provider-bodies-and-command-consumers-2026-10-10) |
+| FileFolderPluginOpen.cpp | adapted | [body map](#fileplugins-and-filefolderpluginopen-complete-disposition) |
+| FilePlugins.cpp | adapted | [body map](#fileplugins-and-filefolderpluginopen-complete-disposition) |
+| FoldersPage.cpp | adapted | [body map](#six-options-pages-and-apply-error-policy-2026-10-10) |
+| FormatUtils.cpp | adapted | [body map](#filemanager-services-and-namespace-icon-consumers-2026-10-10) |
+| HelpUtils.cpp | adapted | [body map](#resulthistory-and-about-complete-disposition-2026-10-10) |
+| LangPage.cpp | adapted | [body map](#six-options-pages-and-apply-error-policy-2026-10-10) |
+| LangUtils.cpp | adapted | [body map](upstream-port-audit.md#langutils-complete-bodydependency-review-2026-10-06) |
+| LinkDialog.cpp | adapted | [body map](#filemanager-services-and-namespace-icon-consumers-2026-10-10) |
+| ListViewDialog.cpp | adapted | [body map](#resulthistory-and-about-complete-disposition-2026-10-10) |
+| MemDialog.cpp | adapted | [body map](#operation-prompt-bodies-and-modal-lifetime-2026-10-10) |
+| MenuPage.cpp | adapted | [body map](#six-options-pages-and-apply-error-policy-2026-10-10) |
+| MessagesDialog.cpp | adapted | [body map](#operation-prompt-bodies-and-modal-lifetime-2026-10-10) |
+| MyLoadMenu.cpp | adapted | [body map](#myloadmenu-complete-body-disposition-2026-10-10) |
+| NetFolder.cpp | adapted | [body map](#filesystem-provider-bodies-and-command-consumers-2026-10-10) |
+| OpenCallback.cpp | adapted | [body map](#extraction-and-opening-callback-body-disposition-2026-10-10) |
+| OptionsDialog.cpp | adapted | [body map](#six-options-pages-and-apply-error-policy-2026-10-10) |
+| OverwriteDialog.cpp | adapted | [body map](#operation-prompt-bodies-and-modal-lifetime-2026-10-10) |
+| Panel.cpp | adapted | [body map](#panel-control-and-view-state-disposition-2026-10-10) |
+| PanelCopy.cpp | adapted | [body map](#copy-crc-and-sort-complete-bodycaller-disposition-2026-10-10) |
+| PanelCrc.cpp | adapted | [body map](#copy-crc-and-sort-complete-bodycaller-disposition-2026-10-10) |
+| PanelDrag.cpp | adapted | [body map](#paneldrag-protocol-body-disposition-2026-10-10) |
+| PanelFolderChange.cpp | adapted | [body map](#panelfolderchange-complete-bodycaller-review-2026-10-06) |
+| PanelItemOpen.cpp | adapted | Native association/process continuation remains open (above) |
+| PanelItems.cpp | adapted | [current body/caller receipt](upstream-port-audit.md#p3-05--panelitems-selection-and-provider-lifecycle-2026-10-10) |
+| PanelKey.cpp | adapted | [body map](#panelkey-complete-bodycaller-review-2026-10-07) |
+| PanelListNotify.cpp | adapted | [body map](#panel-control-and-view-state-disposition-2026-10-10) |
+| PanelMenu.cpp | adapted | [body map](#panelmenu-complete-bodycaller-disposition-2026-10-10) |
+| PanelOperations.cpp | adapted | [body map](#paneloperations-complete-bodycaller-disposition-2026-10-10) |
+| PanelSelect.cpp | adapted | [body map](#panelselect-complete-bodycaller-disposition-2026-10-10) |
+| PanelSort.cpp | adapted | [body map](#copy-crc-and-sort-complete-bodycaller-disposition-2026-10-10) |
+| PanelSplitFile.cpp | adapted | [body map](#splitcombine-owner-and-native-workers-restored-on-2026-10-08) |
+| PasswordDialog.cpp | adapted | [body map](#operation-prompt-bodies-and-modal-lifetime-2026-10-10) |
+| ProgramLocation.cpp | absent | [body map](#missing-ui-translation-units-reviewed-on-2026-10-05) |
+| ProgressDialog.cpp | absent | [body map](#missing-ui-translation-units-reviewed-on-2026-10-05) |
+| ProgressDialog2.cpp | adapted | [body map](#progressdialog2-complete-body-disposition-2026-10-10) |
+| PropertyName.cpp | adapted | [body map](#filemanager-services-and-namespace-icon-consumers-2026-10-10) |
+| RegistryAssociations.cpp | adapted | [body map](#filemanager-services-and-namespace-icon-consumers-2026-10-10) |
+| RegistryPlugins.cpp | absent | [body map](#missing-ui-translation-units-reviewed-on-2026-10-05) |
+| RegistryUtils.cpp | adapted | [body map](#filemanager-services-and-namespace-icon-consumers-2026-10-10) |
+| RootFolder.cpp | adapted | [body map](#filemanager-services-and-namespace-icon-consumers-2026-10-10) |
+| SettingsPage.cpp | adapted | [body map](#six-options-pages-and-apply-error-policy-2026-10-10) |
+| SplitDialog.cpp | adapted | [body map](#primitive-input-and-read-only-dialog-bodies-2026-10-10) |
+| SplitUtils.cpp | adapted | [body map](#filemanager-services-and-namespace-icon-consumers-2026-10-10) |
+| StdAfx.cpp | absent | [body map](#missing-ui-translation-units-reviewed-on-2026-10-05) |
+| StringUtils.cpp | exact | [body map](#filemanager-services-and-namespace-icon-consumers-2026-10-10) |
+| SysIconUtils.cpp | adapted | [body map](#filemanager-services-and-namespace-icon-consumers-2026-10-10) |
+| SystemPage.cpp | adapted | [body map](#six-options-pages-and-apply-error-policy-2026-10-10) |
+| TextPairs.cpp | adapted | [body map](#filemanager-services-and-namespace-icon-consumers-2026-10-10) |
+| UpdateCallback100.cpp | adapted | [body map](#filemanager-services-and-namespace-icon-consumers-2026-10-10) |
+| VerCtrl.cpp | adapted | [body map](#filemanager-services-and-namespace-icon-consumers-2026-10-10) |
+| ViewSettings.cpp | adapted | [body map](#viewsettings-complete-bodycaller-disposition-2026-10-10) |
+
+### Agent receipt index
+
+| Original cpp | Current owner kind | Source disposition |
+| --- | --- | --- |
+| Agent.cpp | adapted | [body map](#agent-desktop-bodyheaderdependency-disposition-2026-10-07) |
+| AgentOut.cpp | adapted | [body map](#agent-desktop-bodyheaderdependency-disposition-2026-10-07) |
+| AgentProxy.cpp | adapted | [body map](#agent-desktop-bodyheaderdependency-disposition-2026-10-07) |
+| ArchiveFolder.cpp | adapted | [body map](#agent-desktop-bodyheaderdependency-disposition-2026-10-07) |
+| ArchiveFolderOpen.cpp | adapted | [body map](#agent-desktop-bodyheaderdependency-disposition-2026-10-07) |
+| ArchiveFolderOut.cpp | adapted | [body map](#agent-desktop-bodyheaderdependency-disposition-2026-10-07) |
+| UpdateCallbackAgent.cpp | adapted | [body map](#agent-desktop-bodyheaderdependency-disposition-2026-10-07) |
+
+### GUI receipt index
+
+| Original cpp | Current owner kind | Source disposition |
+| --- | --- | --- |
+| BenchmarkDialog.cpp | adapted | [body map](#gui-benchmark-complete-bodyheaderresource-disposition-2026-10-07) |
+| CompressDialog.cpp | adapted | [body map](#ccompressdialog-complete-bodyheader-disposition-2026-10-08) |
+| ExtractDialog.cpp | adapted | [body map](#gui-extract-dialog-and-hash-worker-2026-10-07) |
+| ExtractGUI.cpp | adapted | [body map](#gui-dispatcher-workers-and-update-callbacks-2026-10-07) |
+| GUI.cpp | adapted | [body map](#gui-dispatcher-workers-and-update-callbacks-2026-10-07) |
+| HashGUI.cpp | adapted | [body map](#gui-extract-dialog-and-hash-worker-2026-10-07) |
+| StdAfx.cpp | absent | [body map](#missing-ui-translation-units-reviewed-on-2026-10-05) |
+| UpdateCallbackGUI.cpp | adapted | [body map](#gui-dispatcher-workers-and-update-callbacks-2026-10-07) |
+| UpdateCallbackGUI2.cpp | adapted | [body map](#gui-dispatcher-workers-and-update-callbacks-2026-10-07) |
+| UpdateGUI.cpp | adapted | [body map](#gui-dispatcher-workers-and-update-callbacks-2026-10-07) |
+
+### Common receipt index
+
+| Original cpp | Current owner kind | Source disposition |
+| --- | --- | --- |
+| ArchiveCommandLine.cpp | adapted | [body map](#common-owner-and-adaptation-reconciliation-2026-10-08) |
+| ArchiveExtractCallback.cpp | adapted | [body map](#common-owner-and-adaptation-reconciliation-2026-10-08) |
+| ArchiveName.cpp | adapted | [body map](#common-owner-and-adaptation-reconciliation-2026-10-08) |
+| ArchiveOpenCallback.cpp | exact | [body map](#common-owner-and-adaptation-reconciliation-2026-10-08) |
+| Bench.cpp | adapted | [body map](#common-owner-and-adaptation-reconciliation-2026-10-08) |
+| CompressCall.cpp | adapted | [body map](#common-owner-and-adaptation-reconciliation-2026-10-08) |
+| CompressCall2.cpp | adapted | [body map](#common-owner-and-adaptation-reconciliation-2026-10-08) |
+| DefaultName.cpp | exact | [body map](#common-owner-and-adaptation-reconciliation-2026-10-08) |
+| EnumDirItems.cpp | adapted | [body map](#common-owner-and-adaptation-reconciliation-2026-10-08) |
+| Extract.cpp | adapted | [body map](#common-owner-and-adaptation-reconciliation-2026-10-08) |
+| ExtractingFilePath.cpp | adapted | [body map](#common-owner-and-adaptation-reconciliation-2026-10-08) |
+| HashCalc.cpp | adapted | [body map](#common-owner-and-adaptation-reconciliation-2026-10-08) |
+| LoadCodecs.cpp | adapted | [body map](#common-owner-and-adaptation-reconciliation-2026-10-08) |
+| OpenArchive.cpp | adapted | [body map](#common-owner-and-adaptation-reconciliation-2026-10-08) |
+| PropIDUtils.cpp | exact | [body map](#common-owner-and-adaptation-reconciliation-2026-10-08) |
+| SetProperties.cpp | exact | [body map](#common-owner-and-adaptation-reconciliation-2026-10-08) |
+| SortUtils.cpp | adapted | [body map](#common-owner-and-adaptation-reconciliation-2026-10-08) |
+| TempFiles.cpp | adapted | [body map](#common-owner-and-adaptation-reconciliation-2026-10-08) |
+| Update.cpp | adapted | [body map](#common-owner-and-adaptation-reconciliation-2026-10-08) |
+| UpdateAction.cpp | exact | [body map](#common-owner-and-adaptation-reconciliation-2026-10-08) |
+| UpdateCallback.cpp | adapted | [body map](#common-owner-and-adaptation-reconciliation-2026-10-08) |
+| UpdatePair.cpp | adapted | [body map](#common-owner-and-adaptation-reconciliation-2026-10-08) |
+| UpdateProduce.cpp | exact | [body map](#common-owner-and-adaptation-reconciliation-2026-10-08) |
+| WorkDir.cpp | adapted | [body map](#common-owner-and-adaptation-reconciliation-2026-10-08) |
+| ZipRegistry.cpp | adapted | [body map](#common-owner-and-adaptation-reconciliation-2026-10-08) |
+
+## Primitive input and read-only dialog bodies (2026-10-10)
+
+Complete original/current ComboDialog.cpp/.h, CopyDialog.cpp/.h,
+SplitDialog.cpp/.h, EditDialog.cpp/.h and OptionsDialog.cpp were compared at
+https://github.com/ip7z/7zip.git revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`, port parent48866c8. The four
+desktop resources, shared dialog macros, source parser/path/control services
+and current CApp/PanelSelect/ListView/settings consumers were reviewed too.
+
+| Original body/interface | Retained source policy and narrow Qt boundary |
+| --- | --- |
+| Combo OnInit/OnOK, header Title/Static/Value/Strings | Original title/prompt/raw value/history insertion and accepted-only Value publication remain. Qt restores initial edit text after insertion because its first addItem selects row0. Editable NoInsert combo, label buddy, focus/select-all, standard buttons and layouts replace native control/modal/OnSize services. Sorted-style code is commented upstream and remains inactive. SelectSpec and Create/Comment callers own mask/name/path validation. |
+| Copy OnInit/OnButtonClicked/OnButtonSetPath/OnOK | Original history, title/prompt/info, raw accepted Value, source MyBrowseForFolder refusal, NormalizeDirPathPrefix and selection reset remain. Qt supplies controls/Browse/layout and a read-only scrolling plain-text summary instead of SS_LEFTNOWORDWRAP. Constructor conversion of supplied filenames is integration input; CApp's source selection/destination/history/CopyTo policy is separate. The CE initial-path insertion is outside desktop scope. |
+| Split OnInit/OnButtonClicked/OnButtonSetPath/OnOK | Original file-title suffix, path, nine presets/initial index, Browse normalization, UString::Trim, ParseVolumeSizes/VolumeSizes and accept-or-return flow remain. Invalid volume restores the original direct MB_ICONERROR/7-Zip/OK modal message, including source text, rather than the independent inline error label. It leaves raw input and parent dialog open, allows correction, and creates no output. The source parser retains partial values on failure; no new size parser or archive/volume writer is added. |
+| Edit OnInit/OnSize, Title/Text header | Original read-only multiline, horizontal/vertical scrolling, raw full text and Close remain. QPlainTextEdit/layout replace native attachment/rectangles; ES_WANTRETURN is preserved by consuming Enter instead of triggering Close. ListView ShowItemInfo still supplies full untruncated values and retains original Windows CRLF conversion. |
+| OptionsDialog page construction, MyPropertySheet and accepted application refresh | Original System/Menu/Folders/Edit/Settings/Language order, initial page0, source page state/Apply and CApp SetListSettings/RefreshAllPanels remain. QtFmOptionsDialog owns tab/modal/Help/modified/close services and typed Applied delivery; language notifications refresh the existing menu/toolbar/panel bindings. Its existing Apply callback makes the source application refresh available after Apply/OK. The [complete six-page/body/property-sheet map](#six-options-pages-and-apply-error-policy-2026-10-10) owns page error/veto/continuation policy. Commented SysIconsWereChanged/PostMessage alternatives and CE resources remain inactive/outside desktop presentation. |
+
+This replaces the old inline Split-error adaptation in the UI contract. Native
+QMessageBox still determines its own geometry and Windows button order;
+macOS ignores its supplied title. All four source dialog owners retain C++ and
+their paths/notices; no borrowed dependency or baseline change is introduced.
+Existing portable strings/vectors/path/parser/language/folder interfaces remain
+authoritative. Qt widgets do not perform archive/volume operations: CApp's
+accepted Split/Combine worker and ArchiveBackend/official-engine boundaries
+remain separate. Current checks/geometry and acceptance limits are recorded
+in the [receipt](upstream-port-audit.md#p3-05--input-dialog-source-and-split-error-policy-2026-10-10).
+
 ## ProgressDialog2 complete body disposition (2026-10-10)
 
 Complete original/current FileManager/ProgressDialog2.cpp/.h were compared at
@@ -519,6 +702,10 @@ Pinned repository/revision and validation are in the
 Complete original/current BrowseDialog2 bodies and dependencies were reviewed;
 the original private class is declared in its header for the existing extracted
 Qt presentation, without a second functional implementation.
+
+The later [109-unit ledger](#109-unit-source-receipt-ledger-2026-10-10) identifies
+remaining native StartApplication bodies; this browser-lifecycle map does not
+establish whole-translation-unit acceptance of those launcher services.
 
 | Original body family | Retained owner and platform boundary |
 | --- | --- |

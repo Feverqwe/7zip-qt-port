@@ -1,5 +1,82 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-05 — Input-dialog source and Split error policy (2026-10-10)
+
+Source https://github.com/ip7z/7zip.git at full revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`, port parent48866c8:
+complete Combo/Copy/Split/Edit cpp/header/resource bodies and OptionsDialog
+container/callers were compared. The [body map](omitted-scope-audit.md#primitive-input-and-read-only-dialog-bodies-2026-10-10)
+records source data/acceptance/Browse/resize/read-only/Apply policy and the
+existing Qt control/layout/type/presentation seams. No new borrowed module,
+dependency, language or baseline change; original paths/notices remain intact.
+
+Source SplitDialog::OnOK uses ParseVolumeSizes directly with its public vector
+and, on failure/empty result, shows an unconditional MB_ICONERROR/7-Zip/OK modal
+message before returning. The Qt adaptation independently substituted an inline
+label. The original condition/control flow is restored through QMessageBox
+Critical/plain text/OK and source LangString delivery. The extra label/field is
+removed. Raw input, original trimming/partial parse state, retry, refusal and
+success remain; invalid submission starts no worker or filesystem output.
+This supersedes the earlier documented inline-error UI adaptation.
+
+Both existing public suites share a test-only modal observer. It checks source
+text/icon/buttons/default/title, native message bounds, raw input, OK/Escape,
+unchanged absent output directory and successful retry. EN/RU/EN preserves
+uncommitted Copy/Combo/Split text. Old-product RED is volume_dialog10Qt pass/
+5 failures and language_dialog7Qt pass/1 failure,0/2CTest in1.10s. A preceding
+test-helper compile error (QAbstractButton versus QPushButton default API) was
+corrected before this RED; it is not behavioral evidence. Initial UI-only RED
+requires no engine. The accepted official runtime was then copied/hash-checked
+and explicitly configured for all final backend/volume consumers.
+
+Final Mac full unsandboxed gate passes321/321 in260.87s. Its16 affected suites
+contain291Qt/0 failures/0 skips. Linux passes the same16/16 in30.93s,291Qt/0/0.
+Consumers include all four small dialogs, language, result viewer, source Browse,
+actual Copy routing/comment, Split/Combine byte/error/cancel, settings/list and
+Options container/Apply/window integration. Eleven slow suites remain excluded;
+the existing bounded cases are extended without a new large matrix.
+
+Windows passes15/16 in107.54s,291Qt pass/2 failures/0 skips. Only unchanged
+list_settings_runtime fails qWaitForWindowExposed in two cases, before any
+settings assertions. Split/modal/language and the other14 suites pass. Native
+volume/language consumers use application QPA/fonts and the shared UI lock.
+A fresh read-only probe finds no runner logon, ComputerSystem.UserName=null and
+no explorer; interactive launch requires that existing desktop. No retry in the
+same invisible session, login/account/policy change or visibility-assertion
+weakening is made. This is not accepted Windows list/native desktop coverage;
+P3-03 remains open. The failure and complete current logs are retained.
+
+Snapshot20261010T114057Z-74f7fd07 archive SHA256
+`5043e86a574fff667bc41ae163f8d477f0d4546263275a4fda23349adb663801`
+matches all1515 frozen inputs in both actual guest trees. Eight runtime files/OS
+are hashed; metadata repository/full revision/version1703939 and declared
+codec/SFX hashes match on all three OS. Thirty-eight current-build reports/OS,
+114 total, have no visible-bounds/text-fit findings, including four source modal
+error reports per OS. Native auto-fit controls message size; Qt geometry/native
+QPA does not prove physical visibility or a rendered Windows 7zFM reference.
+
+After removing the temporary runner wrapper, all1480 retained non-document
+inputs still match the frozen snapshot. Preflight available capacity was
+15,893,520,384 bytes on Linux and16,886,026,240 bytes on Windows. The final host
+storage report is OK, with no warnings or VHDX growth; no cleanup or disk changes
+were needed.
+
+The [109-unit receipt ledger](omitted-scope-audit.md#109-unit-source-receipt-ledger-2026-10-10)
+indexes every original cpp, all headers/resources through their family maps,
+current unique owner kinds and explicit five cpp omissions. Full302-input Git
+blob/local hash enumeration and104 CMake path registrations are verified;
+historical951a855 inventory is retained. Current counts are83 exact/169 adapted/
+50 absent inputs, cpp8 exact/96 adapted/5 absent. These are physical/source
+disposition facts, not109 accepted workflows. BrowseDialog2's usable native
+StartApplication bodies and PanelItemOpen's associated-process continuation
+remain explicitly open rather than hidden behind prior temp-browser wording.
+
+Baseline verification passes412 exact/198 adapted/3 local paths at one revision.
+Evidence is retained in build/review/source-ledger. The source Split correction
+and receipt indexing are complete; native/rendered, remaining launcher source,
+current packages and final acceptance remain mandatory. P3-03/04/05/06 and43/47
+stay open. GitHub workflow deletion, upstream and unrelated work are preserved.
+
 ## P3-05 — ProgressDialog2 source and message policy (2026-10-10)
 
 Full source https://github.com/ip7z/7zip.git revision

@@ -6,7 +6,6 @@
 #include <QDialog>
 
 class QComboBox;
-class QLabel;
 
 class CSplitDialog : public QDialog {
     Q_OBJECT
@@ -20,7 +19,6 @@ class CSplitDialog : public QDialog {
   private:
     QComboBox *_pathCombo = nullptr;
     QComboBox *_volumeCombo = nullptr;
-    QLabel *error_ = nullptr;
     bool OnInit();
     void OnOK();
     void OnButtonSetPath();

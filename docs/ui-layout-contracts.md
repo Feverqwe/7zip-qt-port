@@ -1744,8 +1744,9 @@ Implemented views: `SplitDialog.cpp` and the existing `CopyDialog.cpp`.
 - Split puts the destination label above its editable combo, with Browse on
   the right. The volume-size label and editable preset combo follow below.
   The source filename is appended to the window title, as in OnInit.
-- OK/Cancel remain at the bottom. Invalid volume input shows a wrapping
-  inline error above the footer and keeps the dialog open, including accept().
+- OK/Cancel remain at the bottom. Invalid volume input opens the source
+  Critical/7-Zip/OK modal message and keeps Split open, including accept().
+  OK or Escape dismisses only the message; raw input remains available for retry.
 - Combine uses the original shared Copy dialog: destination, Browse,
   read-only scrolling summary and footer. The summary lists the count and
   size, source prefix, first two names, ellipsis when needed and final name.
@@ -1755,7 +1756,13 @@ Implemented views: `SplitDialog.cpp` and the existing `CopyDialog.cpp`.
   separated path/Browse and separate OK/Cancel.
 
 Qt layouts replace OnSize arithmetic; Qt native folder browsing replaces
-MyBrowseForFolder. The inline error replaces the upstream modal MessageBox.
+MyBrowseForFolder. The earlier inline-error adaptation is removed2026-10-10;
+no extra error control exists in the source resource. Separate current-build
+message JSON checks Critical/plain text/OK and native auto-fit; macOS ignores
+its caption. `language_dialog` also checks English/Russian prompts and raw input
+across language changes. Windows volume/language consumers use native QPA/fonts
+and the existing UI resource lock. The original parser and partial-failure
+vector remain authoritative; invalid submission starts no operation or directory.
 Reports establish structure/usability on macOS; a rendered Windows reference
 was unavailable and pixel-level parity remains unverified.
 
