@@ -1,5 +1,79 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-04 — Current three-platform runtime artifacts (2026-10-10)
+
+Fresh Release runtime packages validate product
+`f169833cd73fd7bfae0cf2920166e300e4731a68` on macOS27.0.1 arm64,
+Ubuntu24.04.5 x86_64 and Windows11 x86_64, using the existing hosts/runners.
+All three CMake caches have BUILD_TESTING=OFF, Release and Qt6.12.0;
+PackageInfo independently records0.1.0/6.12.0. No product, packaging tool,
+dependency, source language or borrowed-module baseline changed in this step.
+
+Official engine/module/SFX inputs retain https://github.com/ip7z/7zip.git revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. Guests rebuild private snapshots;
+macOS reuses all eight hash-verified official runtime files from the accepted
+Split input snapshot. Producer/repository/full revision/version1703939 and
+declared codec/SFX hashes are checked on all three OS. macOS package stripping/
+ad-hoc signing intentionally changes binaries; the installed SFX sidecar is
+refreshed and its final hash verified separately from source runtime inputs.
+
+| Local runtime artifact | Bytes | SHA256 |
+| --- | ---: | --- |
+| sevenzip-desktop-0.1.0-darwin-arm64.zip |12513135| `ab1eaac179803be0d996561cd1f56c652fbcff015ba1a6669974012a133a9c17` |
+| sevenzip-desktop-0.1.0-linux-x86_64.tar.gz |34192043| `390a2240bdc73067b151d6684a404bde44390f364f096c497e424eea603b5264` |
+| sevenzip-desktop-0.1.0-windows-x86_64.zip |28505601| `fb848da0b76bf2710044c321e6af5de961566c0c3a04f755328ba85295af031f` |
+
+Relocated smoke passes **15/15 macOS**, **14/14 Linux** and **14/14 Windows**:
+native7zG Add/Test/Extract for ZIP/7z, bundled engine format/list, exact Unicode/
+space/empty payloads and unchanged inputs, broken archive fatal2, missing module
+fatal2, exact project notice, plus macOS deep/strict signature. Child environments
+remove Qt/build/library search overrides, restrict PATH and use fresh private
+settings/home. Linux uses X11/Xvfb and Windows uses its native QPA in service
+session0. No physical window/keyboard/FM/rendered acceptance follows from these
+command-driven GUI consumers; a clean home is not a clean OS installation.
+The existing40s deadlines and exact byte/error assertions remain unchanged.
+
+All three payloads contain the exact38 Qt license files from the checksum-verified
+matching source archive, exact project LICENSE and each platform's engine notice.
+Windows notice bytes retain checkout line endings; normalized text matches the
+pinned upstream DOC/License.txt. Imported VC CRT DLLs and Microsoft notice are
+present. Development sources/headers/static libraries/test plugins/build metadata
+and source archives are absent. Runtime symlinks stay within the payload.
+Windows runtime.json records build inputs, including development fallback7zz.exe;
+as documented in development.md, only7z.exe/7z.dll are installed. Their installed
+hashes match;7zz.exe remains absent. Existing source/build manifest is not a
+claim that every development binary is deployed.
+
+Guest snapshot `20261010T152239Z-7db2b50f`, archive SHA256
+`3a0588481f058539a0513836466e3e66427ead616e9fdf0933e2146d71a262fa`,
+matches all1517 frozen inputs in the archive and both actual guest trees.
+All eight runtime files/OS and downloaded package bytes match their guest hashes.
+After archiving/removing three temporary validators, all1480 retained non-document
+product inputs still match the prior Mac321/321/Linux318/318 accepted product;
+those full gates were not repeated for documentation-only changes.
+
+All package builds and application smoke checks pass on their first execution.
+An early evidence collector requested Windows run.json before terminal status;
+only collection was repeated after PASS. Local payload verification initially
+hit Apple Python3.9's absent tar filter API, then an incorrect assumption that
+development7zz.exe was installed. The validator now checks paths/types/link
+targets before extraction and follows the existing deployment contract. These
+mechanical evidence failures and final successful logs are retained; artifacts
+and application checks were unchanged. Evidence/artifacts are under the isolated
+checkout's `build/review/current-packages` and macOS `build/packages`.
+
+Preflight free space was9,737,863,168 bytes Linux/16,201,097,216 Windows with no
+active compiler/CTest. Host storage before/after is OK, warnings[]/VHDX delta0.
+No cleanup, disk/volume changes, account/login/registration/policy changes,
+upstream writes, publication or push occurred. Slow suites were not run.
+Fresh post-package Windows readiness again finds UserName=null, no explorer and
+no runner logon. Native desktop acceptance remains unavailable; no login was attempted.
+P3-04's current relocation artifacts are verified; clean-OS/native and remaining
+source/prerequisite/final acceptance stay open. The
+[final matrix](ux-port-audit.md#current-final-acceptance-matrix-2026-10-10)
+reflects this partial status. P3-03/04/05/06 and43/47 remain open; the explicit
+user decision to preserve deleted GitHub CI remains unchanged.
+
 ## P3-03 — Current full Linux gate and acceptance boundaries (2026-10-10)
 
 Unchanged product `056bcd23126f599c837181822573996255da28b3` passes a fresh
