@@ -1,5 +1,16 @@
 # Regression and security traceability
 
+Native drag protocol: `drag_protocol` and `drag_drop_ui` cover original button,
+root/wait and actual popup Cancel paths. Windows `native_drag_protocol`,
+`native_drag_archive` and `native_drag_qt` cover original native wire/ownership,
+selected-byte Copy/Move/cancel, deferred archive bytes, retained receivers,
+closed-panel refusal and real Qt platform MIME. Mac full320/320 and focused16/16,
+Linux16/16, Windows19/19 pass. Source/runtime and153current-build reports are
+recorded in the [receipt](upstream-port-audit.md#p3-05--original-native-paneldrag-protocol-and-qt-consumers-2026-10-10).
+Physical pointer/Explorer and rendered acceptance remain separate.
+An additional Windows2/2 localized run proves reverse native formats through
+an independent Qt consumer process and COM proxy without product-code changes.
+
 Default drop effect: `drag_drop` checks source folder-kind/root/empty-source
 admission in both panes and Windows all-source case-insensitive drive/UNC
 prefix policy, including mixed sources and Drives highlights. Protected private

@@ -4,6 +4,21 @@
 Готовый запрос агенту: [porting-chat-prompt.md](porting-chat-prompt.md).
 Исходная дата: 2026-09-28. Это список **оставшейся** работы, не оценка MVP с нуля.
 
+P3-05,2026-10-10: original native PanelDrag protocol, source middle-button/root
+policy and complete body/dependency disposition are restored with shared source
+lifetime and Qt-native MIME ownership. Mac full320/320 and focused16/16 pass;
+Linux16/16, Windows19/19 pass, including original COM/archive and actual windows
+Qt platform consumers. All1453 frozen guest inputs and eight runtime files/OS
+are verified;153 selected JSON reports preserve source menu order and exposed
+normal/compact states. Localized Windows2/2 also passes an independent Qt/native
+COM peer process; the final original GetTransfer-helper follow-up also passes
+2/2,16Qt/0fail/0skip. All1450 retained inputs match that final Windows snapshot;
+only its Windows native block and conditional Windows fixture differ from the
+preceding three-OS source proof.
+[Receipt](upstream-port-audit.md#p3-05--original-native-paneldrag-protocol-and-qt-consumers-2026-10-10).
+Physical pointer/Explorer, rendered/cold/package and remaining module/final
+acceptance remain mandatory;43/47 and P3-03/04/05/06 stay open.
+
 P3-05,2026-10-10: source Panel address-key and view-state component restores
 CMyComboBoxEdit, CApp→CPanel view dispatch and original flat-toggle/refresh.
 Actual old-product RED8address/4Drives rows are retained. Mac full318/318 and

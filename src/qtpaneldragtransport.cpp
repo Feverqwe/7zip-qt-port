@@ -1,6 +1,8 @@
 #include "qtpaneldragtransport.h"
+#include "qtpaneldragnative.h"
 #include "qtpanelfolder.h"
 #include <QDrag>
+#include <QGuiApplication>
 #include <QScopedValueRollback>
 #include <QUrl>
 #include <QWidget>
@@ -25,6 +27,10 @@ HRESULT QtPanelDragTransport::DoDragDrop(CDataObject &data, CDropSource &source,
     if (!widget_ || active_)
         return E_ABORT;
     QScopedValueRollback<bool> active(active_, true);
+#ifdef _WIN32
+    if (nativeExecutor_ && QGuiApplication::platformName() == QStringLiteral("windows"))
+        return DoNativePanelDrag(data, source, allowed, effect);
+#endif
     // Qt has no cross-platform release-before-drop hook equivalent to OLE
     // QueryContinueDrag. Prepare real bytes before exec so native receivers
     // never observe promised paths without their contents. Copy remains native.

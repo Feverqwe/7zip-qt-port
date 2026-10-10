@@ -12,6 +12,19 @@ lifetime details; locate the relevant class/path with `rg -n` before reading.
 Current acceptance belongs to the [checklist](porting-checklist.md), and dated
 source/platform evidence to the [audit](upstream-port-audit.md).
 
+PanelDrag owns the original source/target transfer decisions. Windows real drag
+executes original IDataObject/IDropSource/DoDragDrop with shared source names and
+owned-temp lifetime; the source panel detaches when OnDrag returns. Its incoming
+application-owned Qt converter retains native IDataObject through public QWindowsMimeConverter
+and the original Shell HDROP/IDLIST parser. SetTargetFolder and transfer wire
+records remain in PanelDrag, rather than serialized Qt pointers. The converter
+exports no private token format. One QApplication registration serves all windows;
+offscreen platforms do not instantiate the Windows converter. Injected Qt
+executors, headless platforms and POSIX URL transport
+retain the existing portable seam. The complete
+[body map](omitted-scope-audit.md#paneldrag-protocol-body-disposition-2026-10-10)
+records native ownership and omitted legacy/debug scope.
+
 This document describes component ownership, data flow and integration boundaries.
 
 FM.cpp owns the process-lifetime RAM snapshot through GetRamInfo, an immutable

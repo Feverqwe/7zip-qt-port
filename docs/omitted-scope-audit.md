@@ -1,5 +1,44 @@
 # Omitted source scope review
 
+## PanelDrag protocol body disposition (2026-10-10)
+
+The complete original 3006-line PanelDrag.cpp, declarations, callers and
+EnumFormatEtc/MemoryGlobal/Shell dependencies were compared at
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
+https://github.com/ip7z/7zip.git. The original Windows functional protocol lives
+in adapted PanelDrag.cpp, with the native types in NPanelDragNative to coexist
+with its typed Qt owner. This map records owners; validation and remaining
+native acceptance are recorded in the [port audit](upstream-port-audit.md).
+
+| Original bodies | Current owner and narrow adaptation |
+| --- | --- |
+| CDataObject_TransferBase::Init_Program, GetTransfer constructor/Check, SetTransfer Init/Check, CTargetTransferInfo | Original 64-byte base and 112-byte Get/Set wire records, version/ISA/process/size/reserved fields retained for Windows. Explicit conversion bridges the portable target record, whose layout is not the wire ABI. |
+| CDataObject constructor, CopyNamesToHGlobal, DuplicateGlobalMem, Medium_CopyFrom | Native registered formats, source Unicode DROPFILES and independent HGLOBAL copies retained. InitNames initializes original pre/final name storage before exposure. Typed names and shared owned-temp lease remain authoritative for Qt/POSIX consumers. |
+| CDataObject::SetData, SetData2 | Original validation, UTF-16 target path, transfer checks, performed/logical effects and accepted shell presentation formats retained. TRUE consumes the medium and returns S_OK; FALSE returns the real validation result. CGlobalLock closes original early-validation unlock gaps. Transfer policy calls the existing typed SetTransfer body, avoiding a second policy implementation. |
+| CDataObject::GetData, GetDataHere, QueryGetData, EnumFormatEtc, canonical/advisory methods | Original native methods retained; GetTransfer uses the one typed GetTransferFlags owner. Failed extraction is refused before returning CF_HDROP, retaining the port's existing error safety. DATADIR_GET enumerates source CF_HDROP through byte-exact EnumFormatEtc.cpp/.h. |
+| CopyFromPanelTo_Folder, CDropSource::QueryContinueDrag/GiveFeedback | Existing source copy/release/control-flow owner retained. Native IDataObject restores OLE capture to the Qt source window before password/progress modal entry. Windows real execution uses native DoDragDrop; injected executors and POSIX retain Qt transport. |
+| CPanel::OnDrag | Original admission, selected indices, corrected names, temp owner, callback lifetime, post-drop Copy/Move, messages and selection branches retained. Shared heap ownership replaces stack-only typed storage; a scope guard detaches CPanel on every exit so retained native data cannot call a destroyed panel. Unconfirmed native receivers retain the owned root. Explicit final WasCanceled retains the port's existing selection-on-Cancel adaptation when native OLE returns DROP after a menu Cancel. |
+| CDropTarget constructor/ClearState, PositionCursor, RemoveSelection, IsFsFolderPath/GetFolderType, GetTargetPath, IsItSameDrive, GetEffect_ForKeys/GetEffect | Source decisions remain in PanelDrag; Qt supplies hit testing/highlighting and POSIX mounted-volume identity. Windows retains source drive-prefix comparison. Per-window Qt service replaces native RegisterDragDrop/RevokeDragDrop/window ownership. |
+| DataObject_GetData_GetTransfer, SendToSource_TargetPath_enable, SendToSource_TransferInfo, SendToSource_UInt32, LoadNames_From_DataObject | Original GetTransfer helper, INIT_FORMATETC_HGLOBAL and Windows/COM.h CStgMedium retain type/size/header validation and medium cleanup. Windows native adapter owns IDataObject, original registered SetTargetFolder/SetTransfer/GetTransfer exchange, medium ownership and source Shell HDROP/IDLIST parsing. Performed-effect sends COPY or NONE, never MOVE; failed TRUE SetData retains caller cleanup. Typed in-process protocol remains the non-native seam. |
+| DragEnter/Over/Leave/Drop, NDragMenu, Drag_OnContextMenu | Original source owner retains admission, button/flags precedence, commands, waits, confirmations and delegated-source versus target execution. Middle and right buttons both request the menu; Qt supplies menu presentation and key/point transport. ReadTransferFlags replaces Panel-pointer presence as the native capability test. |
+| Is_Path1_Prefixed_by_Path2, IsFolderInTemp, AreThereNamesFromTemp, CompressDropFiles | Source temporary-path and wait precedence retained. Original ROOT_FS_FOLDER is shared with AddToArchive: C:\\ on Windows, `/` for POSIX mounts. ArchiveBackend and bound source providers retain operation ownership. |
+| UNDER_CE, old non-Unicode/non-NT CF_HDROP branch, SHOW_DEBUG_DRAG, disabled preferred-effect/file-operation flags | Desktop Qt uses Unicode; CE and non-NT targets are outside this application's platform scope. Debug traces and source-disabled formats have no active workflow. Native performed/logical-effect storage and shell presentation acknowledgements remain, although upstream has no operational consumer for those stored fields. |
+
+QWindowsMimeConverter supplies incoming IDataObject through its public API;
+one explicitly QApplication-owned registration serves all windows, retains COM
+ownership and returns a private nonce. Offscreen platforms do not register it.
+Windows real execution uses native DoDragDrop only with the windows Qt platform;
+headless tests keep the portable Qt transport. Repeated MIME conversion replaces
+the single retained native owner; MIME destruction or application shutdown releases
+it. Window-local native owners release on Leave/Drop/Revoke. A reusable Qt platform
+MIME object can retain the last native owner until replacement/shutdown, without
+retaining a source panel or accumulating prior transfers.
+It exports no token format. Qt's outgoing OLE object accepts only performed-effect
+SetData, so it cannot carry the reverse 7-Zip protocol; the native outgoing
+source above is required. No Qt platform source is copied into the product.
+Actual pointer-driven Explorer/peer Drop and rendered acceptance remain separate
+from this source disposition and the automated COM/Qt consumers.
+
 ## Panel control and view state disposition (2026-10-10)
 
 Original/current Panel.cpp and Panel.h were read in full at source revision
@@ -274,7 +313,7 @@ local paths. The following table accounts for every absent FileManager path.
 | Absent original files | Body/resource disposition and actual owner |
 | --- | --- |
 | ProgramLocation.cpp/.h, RegistryPlugins.cpp/.h, StdAfx.cpp | Empty include/guard, commented registry plugin declarations/bodies and PCH transport respectively. The [translation-unit review](#missing-ui-translation-units-reviewed-on-2026-10-05) records their callers/build boundary. FilePlugins and Windows/DLL remain active owners; the empty header is not a replacement for those modules. |
-| EnumFormatEtc.cpp/.h | Active native IEnumFORMATETC Next/Skip/Reset/Clone, target-device copy and factory declaration. Source PanelDrag supplied DATADIR_GET formats; QtPanelDragMime/QtPanelDragTransport delegate native enumeration to Qt's MIME/QDrag platform transport. This is an explicit presentation adaptation, with native receiver acceptance still open. |
+| EnumFormatEtc.cpp/.h | Byte-exact dependency retained under third_party and compiled for Windows. Native PanelDrag::CDataObject::EnumFormatEtc supplies source DATADIR_GET/CF_HDROP; Next/Skip/Reset/Clone and factory retain their original owner. POSIX Qt platform enumeration remains a presentation adapter. See the complete PanelDrag protocol map above. |
 | ProgressDialog.cpp/.h/.rc/ProgressDialogRes.h | Active installer-specific legacy progress/sync/range/cancel/thread-join implementation and its two-control resource. FM.mak selects ProgressDialog2; SFXSetup selects this separate implementation. The [legacy disposition](#missing-ui-translation-units-reviewed-on-2026-10-05) and accepted bundle selection remain authoritative. No modern progress implementation is claimed from these absent files. |
 | PluginInterface.h | All plugin interface macros/declarations are inside the original block comment. Actual active interfaces are IFolder/IFolderArchive and codec interfaces; no active API is omitted from this header. |
 | PluginLoader.h | Its CreateManager/LoadAndCreateManager inline bodies are active definitions, but both actual FilePlugins/FileFolderPluginOpen loading branches are commented in the original. The live branch constructs CArchiveFolderManager. Current injected IFolderManager replaces that construction at the established ArchiveBackend engine boundary; CLibrary retains actual archive-module lifetime. Original external codec loading remains in LoadCodecs, not this inactive plugin branch. |
@@ -529,7 +568,7 @@ callers. This physical inventory is not a functional coverage measure: remaining
 | `FileManager/RegistryPlugins.cpp` | All old plugin lookup/list bodies are inside comments. Header plugin types/declarations are commented too. | No active plugin registry behavior at this revision. Actual folder/codec discovery belongs to `FilePlugins`, `LoadCodecs` and their accepted consumers; the commented legacy code does not replace those dependencies. |
 | `FileManager/StdAfx.cpp` | Only includes `StdAfx.h`. Header includes portable Common.h plus compiler warning policy and explanatory SDK comments. | Upstream precompiled-header build transport, with no runtime body. CMake compiles each source with its required headers/definitions; exact StdAfx/Common/Precomp dependencies remain in the manifest. No claim that compiler macros or platform definitions are unnecessary. |
 | `GUI/StdAfx.cpp` | Only includes `StdAfx.h`, whose active contents are warning policy and FileManager/StdAfx.h include. | Same build-transport boundary. GUI.cpp now has production consumers on all supported desktop platforms; omitting this empty PCH translation unit does not omit the GUI dispatcher. |
-| `FileManager/EnumFormatEtc.cpp` | `CEnumFormatEtc` owns Next/Skip/Reset/Clone and target-device copies. `PanelDrag.cpp::CDataObject::EnumFormatEtc` supplies one format for DATADIR_GET through `CreateEnumFormatEtc`. | Active Win32 presentation transport, not inactive code. Current source PanelDrag owns data/lifetime/drop policy; `QtPanelDragMime` supplies URLs and `QtPanelDragTransport` supplies QDrag. MIME/native format enumeration is delegated to Qt platform transport, without a second project enumerator. Native receiver proof remains P3-03/P3-06, including blocked Finder evidence; synthetic MIME tests do not close it. |
+| `FileManager/EnumFormatEtc.cpp` | `CEnumFormatEtc` owns Next/Skip/Reset/Clone and target-device copies. `PanelDrag.cpp::CDataObject::EnumFormatEtc` supplies one format for DATADIR_GET through `CreateEnumFormatEtc`. | Byte-exact Windows dependency is compiled and used by the restored native source IDataObject. POSIX delegates enumeration to Qt. Automated native consumers and physical peer acceptance have separate receipts; the previously accepted Finder workflow is not reopened. |
 | `FileManager/ProgressDialog.cpp` | Active legacy CProgressSync pause/stop, progress range/percent, timer, cancellation prompt, external-close/event and thread-join bodies. FM.mak and GUI/makefile instead select ProgressDialog2. SFXSetup/makefile and resource.rc select this legacy dialog. | Explicit installer-bundle boundary: SFXSetup produces `7zS.sfx`, with its separate installer/configuration workflow. The accepted SFX builders select unchanged SFXWin `7z.sfx` on Windows and SFXCon on Unix; SFXWin/resource.rc uses ProgressDialog2. Legacy implementation is not declared inactive or replaced with a homemade equivalent. Custom installer `7zS.sfx` is outside these selected bundles; a future installer feature must reuse its original bodies/dependencies. |
 
 The legacy review includes `ProgressDialog.h`, `ProgressDialogRes.h`, `ProgressDialog.rc` and the

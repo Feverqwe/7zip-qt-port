@@ -267,6 +267,8 @@
     "third_party/7zip/CPP/7zip/UI/FileManager/Delete.bmp",
     "third_party/7zip/CPP/7zip/UI/FileManager/Delete2.bmp",
     "third_party/7zip/CPP/7zip/UI/FileManager/EditPageRes.h",
+    "third_party/7zip/CPP/7zip/UI/FileManager/EnumFormatEtc.cpp",
+    "third_party/7zip/CPP/7zip/UI/FileManager/EnumFormatEtc.h",
     "third_party/7zip/CPP/7zip/UI/FileManager/Extract.bmp",
     "third_party/7zip/CPP/7zip/UI/FileManager/Extract2.bmp",
     "third_party/7zip/CPP/7zip/UI/FileManager/FM.ico",

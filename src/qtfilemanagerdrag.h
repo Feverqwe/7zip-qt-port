@@ -1,4 +1,5 @@
 #pragma once
+#include "qtpaneldragnative.h"
 #include "qtpaneldragtransport.h"
 #include <QObject>
 #include <QPoint>
@@ -36,6 +37,9 @@ class QtFileManagerDrag final : public QObject,
     void SuspendHover(bool suspended);
     MainWindow &window_;
     CDataObject external_;
+#ifdef _WIN32
+    QPointer<QtNativePanelDragConverter> nativeConverter_;
+#endif
     bool active_ = false, revoked_ = false;
     QPointer<QWidget> rightPressWidget_;
     QPoint rightPressPosition_;

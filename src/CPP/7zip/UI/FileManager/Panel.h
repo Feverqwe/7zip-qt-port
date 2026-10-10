@@ -33,6 +33,12 @@
 class IQtCompressCallServices;
 #include <optional>
 
+#ifdef _WIN32
+#define ROOT_FS_FOLDER L"C:\\"
+#else
+#define ROOT_FS_FOLDER L"/"
+#endif
+
 class CFolderHistory;
 struct CSelectedState;
 using QtArchiveUpdateBody = std::function<bool(std::optional<CSelectedState> &)>;

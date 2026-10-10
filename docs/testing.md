@@ -1,5 +1,25 @@
 # Regression strategy
 
+`drag_protocol` covers both panes' external left/right/middle entry, source
+button-flag precedence, release-before-Drop menu retention and temp-root/wait
+priority without writing to a root folder. `drag_drop_ui` adds the actual Qt
+middle-button route, Cancel/protected bytes and current menu JSON.
+Windows `native_drag_protocol` drives the real source frame through native
+IDataObject for Copy/Move/Escape/menu Cancel, performed-effect ownership,
+malformed formats/records, enum Clone/Reset, independent buffers and retained
+source lifetime. `native_drag_archive` covers deferred extraction, completed and
+unconfirmed receivers, pre-request Escape and actual extraction Cancel with
+protected source/control bytes. `native_drag_qt` uses the windows Qt platform
+for public converter/native clipboard, shared application registration,
+private-marker refusal and MIME/COM lifetime; converter tests cannot use
+offscreen because Qt asserts that a native Windows platform exists.
+Its independent child-process consumer exercises actual COM proxy/native Qt
+MIME, private Unicode bytes and reverse target/transfer/performed formats while
+the source pumps its STA. This does not synthesize a physical mouse Drop.
+The [protocol receipt](upstream-port-audit.md#p3-05--original-native-paneldrag-protocol-and-qt-consumers-2026-10-10)
+records three-OS consumers, runtime/source hashes and the separate physical Drop
+acceptance boundary. These bounded suites are not slow.
+
 `drag_drop` covers both panes' public default-effect policy for AltStreams and
 empty/relative/absolute filesystem paths, empty-source refusal and unchanged
 private Unicode/space bytes. Windows adds all-source drive/UNC prefix, case,

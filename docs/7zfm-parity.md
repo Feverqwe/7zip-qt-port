@@ -1,5 +1,21 @@
 # Сверка с Windows 7zFM
 
+Windows drag now uses the original native IDataObject reverse protocol and
+IDropSource/DoDragDrop on the windows Qt platform. Qt supplies incoming native
+MIME access, widget hit testing and popup presentation; headless and POSIX paths
+keep their Qt transport. Source right-or-middle menu admission, source button
+flags, temporary-source root and wait precedence are restored. The middle menu
+has original Copy/Move/Add/Cancel order. Shared source/temp ownership prevents
+late callbacks into closed panels; explicit target WasCanceled retains the
+existing Qt selection-on-Cancel fix. A reusable Qt platform MIME may retain the
+last native owner until replacement/shutdown. Native COM/archive and actual Qt
+platform checks are recorded in the
+[protocol receipt](upstream-port-audit.md#p3-05--original-native-paneldrag-protocol-and-qt-consumers-2026-10-10),
+including an independent Qt receiver process exchanging the native formats
+through COM proxy.
+They do not replace physical pointer/Explorer acceptance or rendered Windows
+comparison.
+
 Default drag effect now follows source folder-kind/root admission: AltStreams
 and empty/relative FS paths prefer Copy; explicit Control/Shift remain source
 policy. Windows uses the original all-source case-insensitive drive/UNC prefix

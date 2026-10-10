@@ -11,6 +11,9 @@
 #include <QStorageInfo>
 
 QtFileManagerDrag::QtFileManagerDrag(MainWindow &window) : QObject(&window), window_(window) {
+#ifdef _WIN32
+    nativeConverter_ = QtNativePanelDragConverter::ForApplication();
+#endif
     window.app_.DropTarget().AttachPresentation(this);
     window.setAcceptDrops(true);
     window.installEventFilter(this);
@@ -36,6 +39,7 @@ void QtFileManagerDrag::Revoke() {
     if (revoked_)
         return;
     revoked_ = true;
+    external_.NativeData.reset();
     window_.app_.DropTarget().ClearState();
     window_.app_.DropTarget().AttachPresentation(nullptr);
     window_.removeEventFilter(this);
@@ -151,6 +155,13 @@ bool QtFileManagerDrag::eventFilter(QObject *object, QEvent *event) {
 CDataObject *QtFileManagerDrag::ReadData(const QMimeData &mime) {
     if (auto *internal = dynamic_cast<const QtPanelDragMime *>(&mime))
         return &internal->Data();
+    external_.NativeData.reset();
+#ifdef _WIN32
+    if (nativeConverter_)
+        external_.NativeData = nativeConverter_->Read(mime);
+    if (external_.NativeData)
+        return &external_;
+#endif
     external_.Names.Clear();
     for (const QUrl &url : mime.urls()) {
         if (!url.isLocalFile())
@@ -169,6 +180,8 @@ static DWORD DropKeys(const QDropEvent &drop) {
         keys |= MK_ALT;
     if (drop.buttons() & Qt::RightButton)
         keys |= MK_RBUTTON;
+    if (drop.buttons() & Qt::MiddleButton)
+        keys |= MK_MBUTTON;
     return keys;
 }
 HRESULT QtFileManagerDrag::ExecuteDrop(CDataObject *data, DWORD keys, const QPoint &position,
@@ -192,6 +205,7 @@ HRESULT QtFileManagerDrag::ExecuteDrop(CDataObject *data, DWORD keys, const QPoi
 bool QtFileManagerDrag::HandleDropEvent(QWidget &widget, QEvent &event) {
     if (event.type() == QEvent::DragLeave) {
         window_.app_.DropTarget().DragLeave();
+        external_.NativeData.reset();
         SuspendHover(active_);
         return true;
     }
@@ -241,6 +255,7 @@ bool QtFileManagerDrag::HandleDropEvent(QWidget &widget, QEvent &event) {
     } else
         drop.ignore();
     if (event.type() == QEvent::Drop) {
+        external_.NativeData.reset();
         SuspendHover(active_);
     }
     return true;

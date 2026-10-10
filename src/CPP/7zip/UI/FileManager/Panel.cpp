@@ -244,11 +244,7 @@ void CPanel::AddToArchive(IQtCompressCallServices &services) {
     }
     UString destCurDirPrefix = GetFsPath();
     if (IsFSDrivesFolder()) {
-#ifdef _WIN32
-        destCurDirPrefix = L"C:\\";
-#else
-        destCurDirPrefix = L"/";
-#endif
+        destCurDirPrefix = ROOT_FS_FOLDER;
     }
     UStringVector names;
     GetFilePaths(indices, names);

@@ -769,6 +769,9 @@ resource baselines.
 
 Reference: pinned `PanelDrag.cpp::PositionCursor`, its `LVIS_DROPHILITED`
 paint state, native right-drop popup pairs/masks and Copy-to-archive confirmation.
+External middle-button entry uses the same source popup; source transfer flags
+retain left/right precedence. Button release at Drop must not erase the entry
+decision. `drag-middle-menu.json` records the current-build popup geometry.
 Qt preserves per-panel path→view→status order. Hover highlights the folder through
 a separate paint role without changing selection; DragLeave/Drop removes it.
 Refresh clears the source panel's drop-folder name/index before loading or

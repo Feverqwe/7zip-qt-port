@@ -319,6 +319,8 @@ target_link_libraries(sevenzip_panel PUBLIC Qt6::Widgets sevenzip_common sevenzi
 target_sources(sevenzip_panel PRIVATE src/CPP/7zip/UI/Explorer/MyMessages.cpp src/qtguimessages.h)
 if(WIN32)
     target_sources(sevenzip_panel PRIVATE
+        src/qtpaneldragnative.cpp src/qtpaneldragnative.h
+        third_party/7zip/CPP/7zip/UI/FileManager/EnumFormatEtc.cpp
         src/CPP/7zip/UI/FileManager/AltStreamsFolder.cpp
         src/CPP/7zip/UI/FileManager/AltStreamsFolder.h
         src/wincontextmenuservices.cpp src/wincontextmenuservices.h
@@ -544,6 +546,20 @@ if(BUILD_TESTING)
     target_link_libraries(drag_drop_tests PRIVATE sevenzip_panel Qt6::Test)
     add_test(NAME drag_drop COMMAND drag_drop_tests -silent)
     set_tests_properties(drag_drop PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
+    qt_add_executable(drag_protocol_tests tests/drag_protocol_tests.cpp)
+    target_link_libraries(drag_protocol_tests PRIVATE sevenzip_panel Qt6::Test)
+    add_test(NAME drag_protocol COMMAND drag_protocol_tests -silent)
+    set_tests_properties(drag_protocol PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
+    if(WIN32)
+        qt_add_executable(native_drag_protocol_tests tests/native_drag_protocol_tests.cpp)
+        target_link_libraries(native_drag_protocol_tests PRIVATE sevenzip_panel Qt6::Test)
+        add_test(NAME native_drag_protocol COMMAND native_drag_protocol_tests -silent)
+        set_tests_properties(native_drag_protocol PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
+        qt_add_executable(native_drag_qt_tests tests/native_drag_qt_tests.cpp)
+        target_link_libraries(native_drag_qt_tests PRIVATE sevenzip_panel Qt6::Test)
+        add_test(NAME native_drag_qt COMMAND native_drag_qt_tests -silent)
+        set_tests_properties(native_drag_qt PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=windows" TIMEOUT 30)
+    endif()
     qt_add_executable(owned_temp_tests tests/owned_temp_tests.cpp)
     target_include_directories(owned_temp_tests PRIVATE src)
     target_link_libraries(owned_temp_tests PRIVATE sevenzip_panel Qt6::Test)
@@ -919,6 +935,12 @@ if(BUILD_TESTING)
     target_link_libraries(drag_archive_tests PRIVATE sevenzip_location Qt6::Test)
     add_test(NAME drag_archive COMMAND drag_archive_tests -silent)
     set_tests_properties(drag_archive PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
+    if(WIN32)
+        qt_add_executable(native_drag_archive_tests tests/native_drag_archive_tests.cpp ${owned_temp_publication_sources})
+        target_link_libraries(native_drag_archive_tests PRIVATE sevenzip_location Qt6::Test)
+        add_test(NAME native_drag_archive COMMAND native_drag_archive_tests -silent)
+        set_tests_properties(native_drag_archive PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 30)
+    endif()
     qt_add_executable(owned_temp_publication_tests tests/owned_temp_publication_tests.cpp
         ${owned_temp_publication_sources})
     target_include_directories(owned_temp_publication_tests PRIVATE src)

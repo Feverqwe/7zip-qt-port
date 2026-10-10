@@ -32,6 +32,53 @@ class DragDropUiTests final : public QObject {
   private slots:
     void init() { QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH")); }
 
+    void externalMiddleButtonUsesDropMenu() {
+        QTemporaryDir root;
+        QVERIFY(root.isValid());
+        QFile file(root.filePath(QStringLiteral("middle protected δ.txt")));
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        QCOMPARE(file.write("middle button control"), qint64(21));
+        file.close();
+        SavePanelPath(0, ToUString(root.path()), qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        window.show();
+        auto *table = window.findChild<QTableWidget *>("archiveTable");
+        QVERIFY(table);
+        auto *panel = window.findChild<QWidget *>("filePanel0");
+        QVERIFY(panel);
+        Navigate(*panel, root.path());
+        QTRY_VERIFY(table->isEnabled() && Row(*table, QFileInfo(file).fileName()) >= 0);
+        QMimeData mime;
+        mime.setUrls({QUrl::fromLocalFile(file.fileName())});
+        QDragEnterEvent enter(DragEventPosition(QPoint(5, 5)), Qt::CopyAction, &mime,
+                              Qt::MiddleButton, Qt::NoModifier);
+        QCoreApplication::sendEvent(table->viewport(), &enter);
+        QVERIFY(enter.isAccepted());
+        bool menuShown = false;
+        QTimer cancel;
+        connect(&cancel, &QTimer::timeout, &window, [&] {
+            for (QWidget *widget : QApplication::topLevelWidgets()) {
+                auto *menu = qobject_cast<QMenu *>(widget);
+                if (menu && menu->objectName() == "dragContextMenu" && menu->isVisible()) {
+                    menuShown = true;
+                    QVERIFY(UiInspection::writeReport(*menu, "drag-middle-menu"));
+                    QTest::keyClick(menu, Qt::Key_Escape);
+                }
+            }
+        });
+        cancel.start(1);
+        // Buttons are released for Drop. DragEnter must retain the menu decision.
+        QDropEvent drop(QPointF(5, 5), Qt::CopyAction, &mime, Qt::NoButton, Qt::NoModifier);
+        QCoreApplication::sendEvent(table->viewport(), &drop);
+        cancel.stop();
+        QVERIFY(menuShown);
+        QVERIFY(!drop.isAccepted());
+        QVERIFY(!backend.busy());
+        QVERIFY(file.open(QIODevice::ReadOnly));
+        QCOMPARE(file.readAll(), QByteArray("middle button control"));
+    }
+
     void archiveSourceCancelsThroughLiveController_data() {
         QTest::addColumn<bool>("icons");
         QTest::addColumn<bool>("right");

@@ -1,5 +1,135 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-05 — original native PanelDrag protocol and Qt consumers (2026-10-10)
+
+Source https://github.com/ip7z/7zip.git, full revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`: complete original 3006-line
+CPP/7zip/UI/FileManager/PanelDrag.cpp, original declarations/callers and
+EnumFormatEtc, MemoryGlobal, Shell, MyCom2 and version/CPU dependencies were
+reviewed before functional changes. The complete
+[body disposition](omitted-scope-audit.md#paneldrag-protocol-body-disposition-2026-10-10)
+records copied/adapted/omitted scope. Notices and third_party/7zip/License.txt
+are preserved. EnumFormatEtc.cpp/.h are byte-exact original dependencies under
+third_party/7zip/CPP/7zip/UI/FileManager, compiled only for Windows; the baseline
+verifier reports 412 exact, 198 adapted and 3 local paths at the pinned revision.
+
+Restored native CDataObject retains original registered SetTargetFolder,
+SetTransfer/GetTransfer, 64/112-byte wire records, program/version/ISA/process
+fields, UTF-16 DROPFILES, independent HGLOBAL copies, Get/Query/Set/Enum methods
+and TRUE/FALSE STGMEDIUM ownership. Existing typed SetTransfer/GetTransferFlags
+remain the single policy owner. Native target exchange uses the source Shell
+HDROP/IDLIST parser and performed COPY/NONE response, never MOVE. CGlobalLock
+closes original early-validation unlock gaps; failed TRUE SetData retains caller
+cleanup. Failed extraction is refused before exposing nonexistent CF_HDROP paths,
+preserving the existing port safety contract.
+
+Original source release/copy decisions run through native IDropSource/DoDragDrop
+on the windows Qt platform; POSIX, injected executors and offscreen retain the Qt
+transport. Shared source ownership and a scope guard replace unsafe stack-only
+native exposure: after OnDrag returns a retained IDataObject owns names/temp lease,
+but cannot call a closed panel. Native deferred extraction restores OLE capture
+to the Qt source window before progress/password modal entry. Final explicit
+WasCanceled preserves the port's existing selection-on-menu-Cancel fix when OLE
+returns DROP. ROOT_FS_FOLDER is shared with AddToArchive: source C:\\ on Windows
+and `/` on POSIX. Original right-or-middle menu admission and source button-flag
+precedence are restored, including actual Qt MiddleButton transport.
+
+The original reverse protocol cannot be implemented by merely adding QMimeData
+formats: Qt 6.12's outgoing OLE object accepts SetData only for performed-effect.
+The incoming adapter uses public
+[QWindowsMimeConverter](https://doc.qt.io/qt-6/qwindowsmimeconverter.html), with one
+explicit QApplication-owned registration serving all windows. It retains native
+COM ownership and a private nonce, exports no token format and ignores forged
+markers. MIME destruction/replacement releases the retained owner; a reusable
+platform MIME can keep the last owner until replacement/shutdown without keeping
+a source panel or accumulating prior transfers. qAddPostRoutine unregisters the
+converter before Qt platform teardown. Official Qt 6.12 converter/registry/OLE/
+internal-MIME/application bodies were inspected; no Qt source was copied.
+No usable upstream Qt converter/application-lifetime bridge exists, so this narrow
+platform glue is local; transfer/wire/archive algorithms retain their source owner.
+
+Actual old-product RED: Mac drag_protocol21 pass/2 fail (both external middle
+rows); Windows18 pass/5 fail (same two plus three temp-root rows). The restored
+native source then exposed menu-Cancel deselection:9 pass/1 fail before the final
+WasCanceled adaptation. First expanded Windows checks passed real Qt platform
+MIME and native archive consumers, but exposed the converter's offscreen assertion;
+conditional registration and headless transport resolve it. Missing includes and
+the new UI fixture's navigation prerequisite were corrected without weakening
+existing assertions or deadlines. The first Mac full gate had317/320 with three
+SFX-dependent failures because this worktree lacked the three SFX runtime files.
+Those failures are retained; all eight files were restored from the accepted
+pinned runtime and checked by SHA-256 before the passing gate.
+
+Validated component checks, with eleven slow suites excluded:
+
+| Platform | Full/default or direct consumers | Qt results |
+| --- | --- | --- |
+| macOS arm64 / Qt6.12 | Full320/320 PASS221.75s; focused16/16 PASS8.64s | Full5045 pass/0 fail/56 platform skips; focused256/0/1 Windows-only skip |
+| Linux x64 / Qt6.12 | Focused16/16 PASS25.02s | 255 pass/0 fail/1 Windows-only skip |
+| Windows x64 / Qt6.12 | Focused19/19 PASS85.54s | 282 pass/0 fail/0 skip |
+
+Windows adds native_drag_protocol (10 Qt passes), native_drag_archive (6) and
+native_drag_qt (5): actual selected-file Copy/Move/Escape/menu Cancel, source
+selection, medium ownership, malformed records, enum Clone/Reset, independent
+buffers, retained/closed source lifetime, real archive bytes/extraction Cancel,
+unconfirmed receivers and actual Windows platform MIME/clipboard. Normal direct
+consumers retain archive/NTFS ADS/publication, refresh, context/selection, columns,
+timer/load and lifecycle coverage.
+
+The subsequent Windows-only native_drag_qt fixture starts an independent process
+using the same test executable. The peer receives actual platform MIME from
+OLE clipboard, reads private Unicode/space file bytes, sends SetTargetFolder and
+SetTransfer through the real COM proxy, reads resulting source flags and sends
+performed COPY with TRUE ownership. The source process pumps its native STA and
+asserts returned target/effect/coordinates and unchanged control bytes. This
+localized native protocol/Qt follow-up passes2/2 in2.16s,16 Qt passes/0 fail/0 skip;
+native_drag_qt now has6 passes. It uses --skip-runtime because these two suites
+consume no archive codec; the full archive consumers retain the preceding
+eight-file pinned runtime proof. Final source review also restores the original
+DataObject_GetData_GetTransfer helper, its FORMATETC macro and Windows/COM.h
+CStgMedium dependency instead of reconstructing the read in the adapter.
+The first helper build exposed the omitted macro definition; that failed run is
+retained and the original definition is restored. These changes are confined to
+the Windows native block and Windows-only fixture; macOS/Linux compiled bodies
+and the passing macOS full gate remain unchanged.
+
+Frozen guest run `20261010T080445Z-5afec8c5`, parentf92cbaa, source.tar SHA-256
+`f4dff44cf6edf7ef266e2cd9f72e9d4067dbb7ade4275b6456e3a10041aade94`:
+all1453 then-frozen code/test/build/resource/dependency inputs match the archive
+and both actual guest trees. Eight actual runtime files/OS have recorded hashes
+and source metadata; declared codec/SFX hashes and pinned repository/revision
+match. Mac's complete eight-file runtime matches the accepted baseline exactly.
+Follow-up `20261010T082042Z-99a84463`, source.tar SHA-256
+`960b94e91db656185eefbeab0eb13b285db1c152b7521ce02d0a69fe6139c685`,
+matches all1453 updated inputs against its archive and actual Windows tree.
+Only the Windows-only test and a temporary wrapper differ at that follow-up.
+Final source-helper run `20261010T084329Z-9d814194`, source.tar SHA-256
+`ff8efb8d02c315b57479ec7d326d539d3b38b199c114abdc88c7554a38285220`,
+passes native protocol/Qt2/2 in2.29s,16Qt/0fail/0skip. All1451 frozen inputs match
+its archive and actual Windows tree. After removing the last temporary wrapper,
+all1450 retained inputs match this final snapshot. Compared with the three-OS
+run, only the Windows native helper block and Windows-only Qt test differ;
+all other retained code/build/resource inputs match both earlier actual guests.
+The localized fixture is excluded from macOS/Linux CMake.
+Fresh authenticated capacity/process preflight preceded the final builds;
+post-build host D:627,853,189,120 bytes free, VHDX deltas0. No disk/configuration
+changes, upstream writes or unrelated process termination occurred.
+
+153 selected current-build JSON reports (51/OS) include both-pane EN/RU
+normal/compact refresh/highlight states, existing drag/column/time views and the
+actual middle-button menu. Copy/Move/Add/separator/Cancel order and every menu
+action are visible; menu bounds Mac163×94, Linux150×90, Windows255×82. Mac has no
+fit failures; twelve Linux and twelve Windows selectedItemsStatus labelFits
+flags remain fully visible and use existing QtStatusLabel paint elision/full
+tooltip. Hidden popup actions are excluded from visible-geometry assessment.
+No rendered Windows reference or physical pointer Drop is claimed.
+
+Evidence is retained under the isolated worktree's
+build/review/drag-disposition: frozen/archive/actual-guest source proofs, runtime
+metadata, LastTest logs, geometry summary, original/Qt review sources and earlier
+RED/failure logs. Physical Explorer/peer drag, rendered/cold/package and whole
+P3-03/04/05/06 acceptance remain open; this component does not close the plan.
+
 ## P3-05 — source default drop effect and Panel core disposition (2026-10-10)
 
 Source https://github.com/ip7z/7zip.git, full revision

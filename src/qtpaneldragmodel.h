@@ -54,12 +54,22 @@ struct CDataObject_SetTransfer {
     CTargetTransferInfo Target;
 };
 #ifndef _WIN32
-constexpr DWORD MK_LBUTTON = 1, MK_RBUTTON = 2, MK_SHIFT = 4, MK_CONTROL = 8, MK_ALT = 32;
+constexpr DWORD MK_LBUTTON = 1, MK_RBUTTON = 2, MK_SHIFT = 4, MK_CONTROL = 8, MK_MBUTTON = 16,
+                MK_ALT = 32;
 constexpr DWORD DROPEFFECT_NONE = 0, DROPEFFECT_COPY = 1, DROPEFFECT_MOVE = 2, DROPEFFECT_LINK = 4;
 constexpr HRESULT DRAGDROP_S_DROP = 0x00040100, DRAGDROP_S_CANCEL = 0x00040101,
                   DRAGDROP_S_USEDEFAULTCURSORS = 0x00040102;
 #endif
-class CDataObject {
+class IQtNativeDragData {
+  public:
+    virtual ~IQtNativeDragData() = default;
+    virtual HRESULT GetNames(UStringVector &) = 0;
+    virtual bool SetTargetFolder(const UString &) = 0;
+    virtual bool SetTransfer(const CTargetTransferInfo &) = 0;
+    virtual bool ReadTransferFlags(UInt32 &) = 0;
+    virtual void SendPerformedEffect(DWORD) = 0;
+};
+class CDataObject : public std::enable_shared_from_this<CDataObject> {
   public:
     CPanel *Panel = nullptr;
     CRecordVector<UInt32> Indices;
@@ -71,10 +81,12 @@ class CDataObject {
     bool m_Transfer_WasSet = false;
     CDataObject_SetTransfer m_Transfer;
     std::shared_ptr<QtOwnedTempLease> OwnedTempLease;
+    std::shared_ptr<IQtNativeDragData> NativeData;
     bool ExternalReceiverUnconfirmed = false;
     bool m_DestDirPrefix_FromTarget_WasSet = false;
     void SetTransfer(const CTargetTransferInfo &target);
     UInt32 GetTransferFlags() const;
+    bool ReadTransferFlags(UInt32 &flags) const;
     HRESULT GetData(UStringVector &names);
     void CopyFromPanelTo_Folder();
     bool BeginExternalReceiver();
