@@ -16,16 +16,7 @@ void MainWindow::reloadLangItems() {
     MyLoadMenu(*menuBar(), true);
     refreshBookmarks();
     QtReloadLangTexts(*this);
-    // App.cpp g_ArchiveButtons/g_StandardButtons StringResIDs. QToolButton
-    // text is independent of the shared QAction's longer File menu caption.
-    auto *toolbar = findChild<QToolBar *>("archiveToolbar");
-    const UInt32 ids[] = {IDS_ADD,         IDS_EXTRACT,       IDS_TEST,       IDS_BUTTON_COPY,
-                          IDS_BUTTON_MOVE, IDS_BUTTON_DELETE, IDS_BUTTON_INFO};
-    QAction *actions[] = {toolbarAdd_, extract_, test_, copy_, move_, remove_, infoAction_};
-    if (toolbar)
-        for (unsigned i = 0; i < 7; ++i)
-            if (auto *button = qobject_cast<QToolButton *>(toolbar->widgetForAction(actions[i])))
-                QtBindLangText(button, ids[i]);
+    refreshToolbarTexts();
     for (QTableWidget *table : findChildren<QTableWidget *>()) {
         auto *files = dynamic_cast<FileTable *>(table);
         if (!files)
@@ -77,6 +68,22 @@ void MainWindow::reloadLangItems() {
         if (panelUi_[i].statusLabels[0])
             app_.Panels[i].Refresh_StatusBar();
     }
+}
+
+void MainWindow::refreshToolbarTexts() {
+    auto *toolbar = findChild<QToolBar *>("archiveToolbar");
+    if (!toolbar)
+        return;
+    // Original AddButton and WM_NOTIFY/TTN_GETDISPINFO share SetButtonText.
+    // QAction keeps its File menu caption; Qt supplies button/tooltip lifetime.
+    for (QAction *action : {toolbarAdd_, extract_, test_, copy_, move_, remove_, infoAction_})
+        if (auto *button = qobject_cast<QToolButton *>(toolbar->widgetForAction(action))) {
+            UString text;
+            SetButtonText(action->property("nativeCommandID").toInt(), text);
+            const QString caption = QString::fromWCharArray(text);
+            button->setText(caption);
+            button->setToolTip(caption);
+        }
 }
 
 void MainWindow::changeEvent(QEvent *event) {

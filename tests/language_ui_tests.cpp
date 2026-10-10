@@ -1,3 +1,4 @@
+#include "7zip/UI/FileManager/resource.h"
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "createarchivedialog.h"
 #include "layout_inspection.h"
@@ -32,6 +33,62 @@ class LanguageUiTests : public QObject, protected MainWindowTestSupport {
     }
 
   private slots:
+    void toolbarTooltipsRetainSourceTextAfterActionChanges() {
+        QTemporaryDir directory;
+        QVERIFY(directory.isValid());
+        QFile file(directory.filePath(QStringLiteral("toolbar файл 空.txt")));
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        QCOMPARE(file.write("protected toolbar bytes"), qint64(23));
+        file.close();
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        window.show();
+        auto *address = window.findChild<QLineEdit *>("archivePath");
+        address->setText(directory.path());
+        QTest::keyClick(address, Qt::Key_Return);
+        auto *table = window.findChild<QTableWidget *>("archiveTable");
+        QTRY_COMPARE(table->rowCount(), 1);
+        auto *toolbar = window.findChild<QToolBar *>("archiveToolbar");
+        QVERIFY(toolbar);
+        const char *names[] = {"toolbarAddAction", "extractArchiveAction", "testArchiveAction",
+                               "copyAction",       "moveAction",           "deleteAction",
+                               "archiveInfoAction"};
+        const UInt32 ids[] = {IDS_ADD,         IDS_EXTRACT,       IDS_TEST,       IDS_BUTTON_COPY,
+                              IDS_BUTTON_MOVE, IDS_BUTTON_DELETE, IDS_BUTTON_INFO};
+        for (const QString &language : {QString("-"), QString("ru"), QString("-")}) {
+            SaveRegLang(ToUString(language), settingsPath());
+            ReloadLang(settingsPath());
+            QtNotifyLanguageChanged();
+            for (bool selected : {false, true}) {
+                table->clearSelection();
+                table->setCurrentCell(-1, -1);
+                if (selected) {
+                    table->setCurrentCell(0, 0);
+                    table->selectRow(0);
+                }
+                QApplication::processEvents();
+                for (unsigned i = 0; i < 7; ++i) {
+                    auto *action = window.findChild<QAction *>(names[i]);
+                    QVERIFY(action);
+                    auto *button = qobject_cast<QToolButton *>(toolbar->widgetForAction(action));
+                    QVERIFY(button);
+                    const QString expected = QString::fromWCharArray(LangString(ids[i]));
+                    QCOMPARE(button->text(), expected);
+                    QCOMPARE(button->toolTip(), expected);
+                }
+            }
+            for (const QSize size : {QSize(980, 620), QSize(640, 400)}) {
+                window.resize(size);
+                QApplication::processEvents();
+                QVERIFY(UiInspection::fullyVisible(*toolbar, window));
+                QVERIFY(UiInspection::writeReport(
+                    window, QString("toolbar-text-%1-%2").arg(language).arg(size.width())));
+            }
+        }
+        QVERIFY(file.open(QIODevice::ReadOnly));
+        QCOMPARE(file.readAll(), QByteArray("protected toolbar bytes"));
+    }
+
     void init() {
         QFile::remove(settingsPath());
         SaveRegLang(UString("-"), settingsPath());

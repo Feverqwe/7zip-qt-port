@@ -1,5 +1,75 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-05 — FM platform dispatch and source toolbar text (2026-10-10)
+
+Source https://github.com/ip7z/7zip.git, full revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. Full original FM.cpp, current
+body, direct entry/window/placement/splitter/presentation callers and App.cpp
+toolbar metadata/SetButtonText/OnNotify bodies were reviewed. The
+[complete disposition map](omitted-scope-audit.md#fm-desktop-bodies-and-platform-dispatch-2026-10-10)
+records retained algorithms, Qt/OS services, globals/lifetimes, dependencies and
+inactive/legacy branches. In particular, FM WM_NOTIFY only dispatches toolbar
+tooltips; panel selection notifications have a different source owner.
+
+Copied CButtonInfo, g_StandardButtons/g_ArchiveButtons and both SetButtonText
+overloads retain original names, C++ types, lookup order, source resource IDs
+and control flow in App.cpp. Both normalized overload bodies and both complete
+tables match pinned source exactly; original notices/license remain. External
+linkage on the existing two-argument overload lets Qt replace the native
+OnNotify callback. No independent caption map, command policy or class is added.
+MainWindow now supplies source text to both button and tooltip after language
+reload and QAction changes. The former independent seven-ID caption list is
+removed. QAction retains its menu caption; Qt owns button/tooltip storage,
+replacing native TBBUTTON/TTN_GETDISPINFO and static ANSI/Wide tooltip buffers.
+Existing BMP resources, masks, grouping, IDs, shortcuts and command consumers
+remain. Dependencies are source LangUtils/resource/App types and Qt Widgets.
+
+Public language_ui regression first fails2Qtpass/1fail: English Add button's
+tooltip remains Russian from construction. It now exercises all seven source
+captions/tooltips through EN/RU/EN and real filesystem-selection transitions,
+normal/compact reports and protected private Unicode file bytes. Four initial
+affected suites PASS2.66s after restoration. Windows startup's existing private
+link-copy scenario gains native Windows-QPA and offscreen rows. The native row
+reads CoGetApartmentType immediately after QApplication, without initializing
+COM in the probe, and requires STA/MainSTA plus the same production entry,
+child-token privilege reset, Copy/raw-reparse and unchanged-byte checks.
+
+Qt6.12's [Windows platform context](https://github.com/qt/qtbase/blob/v6.12.0/src/plugins/platforms/windows/qwindowscontext.cpp)
+calls OleInitialize in QWindowsContextPrivate construction and balances S_OK/
+S_FALSE in destruction. That presentation owner replaces FM's OLE entry/exit;
+offscreen is not native OLE evidence. NSystem RAM query/fallback remains source-
+owned at PanelItemOpen; the point-of-use versus startup-cache lifetime difference
+is explicit in parity and its source startup-cache reconciliation remains
+mandatory P3-05 work. Legacy ComCtl activation delivery, Wow64 capability,
+native class/instance handles and event loop each have concrete Qt/OS owners;
+no algorithm is declared unnecessary solely because a path is absent.
+
+Fresh unsandboxed macOS formatting/all-target/default gate316/316 PASS269.05s;
+299Qt suites4983pass/0fail/56platform skips. The Windows-only diagnostic lookup
+was corrected afterward without changing production or POSIX fixture behavior;
+final focused rebuild12/12 PASS8.84s,217Qtpass/0fail/0skip. Fresh final Linux
+12/12 PASS21.26s with the same Qt totals. Both match1461frozen local/archive/
+actual guest code/build/test/resource inputs;27selected reports each (54total)
+have no unexpected clipping. Linux snapshot `20261010T053558Z-8f80ea7e`, SHA-256
+`4e7da9c6ae19aa97c67b8da2960b7cb378c0dba1ccee02a9cecaa63eef61030e`, parent9e03406.
+The first Linux snapshot passed before the Windows-only correction; the first
+Windows build failed at the unavailable CoGetApartmentType declaration, with
+no test acceptance. The probe now uses GetProcAddress on already-loaded ole32,
+retaining the source header API baseline without loading/initializing COM.
+Final Windows11/12 suites pass119.17s,219Qtpass/2fail/0skip. Only the established
+actual-7zFM visibility rows fail on the invisible service desktop; assertions
+and deadlines remain unchanged. Native Windows-QPA STA/link-copy, offscreen
+link-copy, seven launch rows and all toolbar/language consumers pass.
+Snapshot `20261010T053557Z-79781ecd`, SHA-256
+`db52f6364fdfd1ea62ef5636e5b60b828d7cd5b1f44aabc155d20445e8c8010c`, parent9e03406;
+1461actual guest/archive/local inputs match and27Windows reports fit,81across3OS.
+After integration on9e03406, all16owned source/test/doc paths and1460retained
+code/build/resource inputs match the checked isolate. Primary12/12 focused
+suites PASS9.98s. Successful idle preflights and a live process diagnostic do not establish cold
+stability or native receiver/rendered acceptance. Eleven slow suites excluded.
+FM body disposition does not close remaining family/native/rendered/cold-stable/
+package/P3 acceptance.
+
 ## P3-05 — Startup platform consumers and toolbar defaults (2026-10-10)
 
 Source https://github.com/ip7z/7zip.git, full revision

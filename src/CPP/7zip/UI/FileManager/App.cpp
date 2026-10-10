@@ -37,6 +37,45 @@ CApp::~CApp() { ReleaseApp(); }
 
 void CApp::ReloadLangItems() { LangString(IDS_N_SELECTED_ITEMS, LangString_N_SELECTED_ITEMS); }
 
+struct CButtonInfo {
+    int CommandID;
+    UINT BitmapResID;
+    UINT Bitmap2ResID;
+    UINT StringResID;
+
+    UString GetText() const { return LangString(StringResID); }
+};
+
+static const CButtonInfo g_StandardButtons[] = {
+    {IDM_COPY_TO, IDB_COPY, IDB_COPY2, IDS_BUTTON_COPY},
+    {IDM_MOVE_TO, IDB_MOVE, IDB_MOVE2, IDS_BUTTON_MOVE},
+    {IDM_DELETE, IDB_DELETE, IDB_DELETE2, IDS_BUTTON_DELETE},
+    {IDM_PROPERTIES, IDB_INFO, IDB_INFO2, IDS_BUTTON_INFO}};
+
+static const CButtonInfo g_ArchiveButtons[] = {
+    {kMenuCmdID_Toolbar_Add, IDB_ADD, IDB_ADD2, IDS_ADD},
+    {kMenuCmdID_Toolbar_Extract, IDB_EXTRACT, IDB_EXTRACT2, IDS_EXTRACT},
+    {kMenuCmdID_Toolbar_Test, IDB_TEST, IDB_TEST2, IDS_TEST}};
+
+static bool SetButtonText(int commandID, const CButtonInfo *buttons, unsigned numButtons,
+                          UString &s) {
+    for (unsigned i = 0; i < numButtons; i++) {
+        const CButtonInfo &b = buttons[i];
+        if (b.CommandID == commandID) {
+            s = b.GetText();
+            return true;
+        }
+    }
+    return false;
+}
+
+// External linkage replaces App.cpp::OnNotify's native tooltip callback.
+void SetButtonText(int commandID, UString &s) {
+    if (SetButtonText(commandID, g_StandardButtons, Z7_ARRAY_SIZE(g_StandardButtons), s))
+        return;
+    SetButtonText(commandID, g_ArchiveButtons, Z7_ARRAY_SIZE(g_ArchiveButtons), s);
+}
+
 bool CApp::ExecuteCommand(unsigned id) {
     return !_qtOperations.closed() && _qtCommandServices && WndProc(id, *this, *_qtCommandServices);
 }

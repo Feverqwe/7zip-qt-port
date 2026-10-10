@@ -1,5 +1,48 @@
 # Omitted source scope review
 
+## FM desktop bodies and platform dispatch (2026-10-10)
+
+Full original `CPP/7zip/UI/FileManager/FM.cpp` (1223 lines), current adapted
+body and direct entry/init/window/splitter/presentation callers were reviewed
+at https://github.com/ip7z/7zip.git revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. This table completes the body
+disposition for that translation unit; it does not accept every runtime platform
+or the entire FileManager family. Earlier bounded startup/placement receipts
+remain the evidence for their respective consumers.
+
+| Original body/branch | Retained owner or concrete adaptation |
+| --- | --- |
+| CSplitterPos GetWidth/SetRatioFromPos/SetRatio/SetPosPure/SetPos/SetPosFromRatio | Original fixed-point arithmetic, bounds and minimums remain in FM.cpp. QtFileManagerSplitter supplies client width, handle events and per-window state instead of HWND/GetClientRect/capture globals. Existing resize/F9/restart consumers cover this owner. |
+| InitInstance | Original Position/Panels admission, defaults, CApp assignments, Create refusal and saved-maximized/show-command precedence remain. Typed QtFileManagerInitServices supplies QWidget geometry/state. Qt owns WNDCLASS registration, frame, menu/icon construction, cursor and background; the desktop resource/bitmap owners remain unchanged. |
+| GetDllVersion and ComCtl activation version setup | Only selects old Win32 LVN_ITEMACTIVATE versus NM_DBLCLK/NM_RETURN delivery. Qt table/icon/keyboard transport calls retained OnNotifyActivateItems directly, with the original modifier policy. No independent activation algorithm or comctl DLL loader is needed for Qt widgets. |
+| Set_Wow64 | Only active consumer is MenuPage's other-bitness capability. QtNativeMenuPageServices queries the same IsWow64Process for a 32-bit process; 64-bit availability is explicit. No stale process-global copy is maintained. This is not an x86 runtime-verification claim. |
+| IsLargePageSupported/SetMemoryLock/Set_SymLink_Supported | Retained FM bodies and MemoryLock services own version/risk/setting/token policy. Production entry calls memory then link initialization before consumers. POSIX link support has no Windows token service; large-page command is unavailable there. Startup/Settings/engine and pre-Link Copy receipts remain authoritative. |
+| WinMain2 RAM initialization | Same source NSystem::GetRamSize now runs at PanelItemOpen's only active stream-limit consumer. Original fallback/shift decision remains, with the existing excessive-shift guard. Total RAM is read per nested-open instead of cached once at process startup; this lifetime difference is explicit, not a claim that the original startup cache was copied. PanelCopy/Panel.h mentions are comments only. |
+| WinMain2 language/small-screen/OLE setup | LoadLangOneTime and CApp::ReloadLangItems remain source-owned. Source IsDialogSizeOK(200,200) reaches ReadToolbar through existing Qt font/work-area services. Native Windows QApplication's Qt platform context owns OleInitialize/OleUninitialize; offscreen fixtures do not establish OLE support. See the current platform receipt. |
+| WinMain2 command line and InitInstance return | Active source two-string tokenizer, trim and -t handling remain; Unix receives decoded argv through the typed boundary. WM_CREATE path preparation remains source FileName/FileFind plus CheckFileManagerStartup. Refusal/E_ABORT preserves source exit/message policy. |
+| WinMain2 accelerator/message loop and exit | Qt event delivery/QAction shortcuts replace HACCEL/GetMessage/TranslateAccelerator/DispatchMessage. Source command IDs and handlers remain. ArchiveBackend/catalog ownership releases source CCodecs libraries after window/folder/worker lifetime instead of one global FreeGlobalCodecs call. QApplication owns platform-context teardown and loop exit. |
+| WinMain/ErrorMessage | Original exception types, messages and return codes remain in NQtFileManager::WinMain. Source DllSecur runs on Windows. Per-window RAII joins workers before the exception owner, replacing the global exit launcher. QMessageBox replaces the native top-level 7-Zip error message. Qt owns instance/window handles. |
+| SaveWindowInfo | Original CWindowInfo fields/record serialization remain. Close service obtains Qt normal geometry/maximized state, source panel/current values and source splitter position instead of WINDOWPLACEMENT/IsZoomed. |
+| ExecuteCommand/WM_COMMAND | Original toolbar Add/Extract/Test switch and both timer guards remain; other IDs enter original OnMenuCommand. Qt supplies action ID/modifiers instead of LOWORD/HIWORD/control-notification fields. Capability/live-call seams protect asynchronous inputs. |
+| WM_INITMENUPOPUP | QMenu aboutToShow replaces the native popup message; original File/menu policy has typed adapters. Remaining View activation reconciliation has its own owner/receipt; this FM review does not silently accept it. |
+| WM_CREATE | Source initial splitter/panel/path/Create/open-error/refusal logic is retained across InitInstance, WinMain2 and CApp::Create; Qt splitter and presentation supply width/widget construction. QDrag/MIME transport registers receiving widgets instead of RegisterDragDrop on g_HWND. Native receiver proof remains separate. |
+| WM_CLOSE/WM_DESTROY | Retained deactivation, soft external-worker exit, drop revocation, guarded save, ReleaseApp, placement save and hard exit order. Qt additionally joins asynchronous owners before folders are released. Accepted hidden Close uses the previously verified automatic-quit/peer-window bridge. |
+| WM_LBUTTONDOWN/UP/MOUSEMOVE/WM_SIZE | Qt splitter captures handle input and forwards source position/ratio transitions; QWidget/layout delivers resize. Native capture globals, LOWORD signed mouse extraction and SIZE_* flags are presentation transport, not duplicated input policies. |
+| WM_SETFOCUS | MainWindow's FocusIn event calls original CApp::SetFocusToLastItem; owning panel remembers list/path focus. panel_focus tests cover remembered controls and destroyed/rebound presentations. |
+| WM_NOTIFY | Original CApp::OnNotify handles toolbar TTN_GETDISPINFO text only. Its SetButtonText, CButtonInfo and both button tables now remain in App.cpp; Qt button/tooltip ownership replaces static native tooltip buffers and ANSI/Wide notification structures. Panel selection/display/key notifications have their own PanelListNotify transport and are not routed through this FM branch. |
+| Window_GetRealHeight/CApp::MoveSubWindows | Qt layout/toolbar/splitter geometry replaces Win32 toolbar AutoSize/window rectangles and explicit child Move calls; original panel-count/visible-owner choice and CSplitterPos remain. Native pixel coordinates are not reused as Qt layout dimensions. |
+| NT_CHECK, ANSI/CE and inactive experiments | Legacy ANSI/NT4/WinCE window/control/message-loop branches are outside the supported Qt6 desktop target model; no CE/old-NT support is claimed. DEP/heap/theme/alternative parser/single-instance/menu-unactivate/WM_ACTIVATE/SETTINGCHANGE/DROPFILES blocks are commented upstream and remain inactive, not omitted active behavior. |
+
+Process globals for window/path/format/placement/splitter/application state are
+per-window typed state, preserving independent association-window lifetimes.
+Language and question-suppression globals retain their already audited source
+owners. RAM lifetime and Qt platform services are recorded in parity. The RAM
+startup-cache reconciliation remains mandatory P3-05 work; this map does not
+approve its lifetime substitution or close whole-module source acceptance.
+The body map covers FM.cpp; native visibility/focus/popup/OLE receivers,
+cold stability, packages, remaining family bodies and final P3 acceptance stay
+separate. [Current source/platform receipt](upstream-port-audit.md#p3-05--fm-platform-dispatch-and-source-toolbar-text-2026-10-10).
+
 ## FM startup platform caller disposition (2026-10-10)
 
 Source https://github.com/ip7z/7zip.git revision

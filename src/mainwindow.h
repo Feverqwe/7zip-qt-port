@@ -113,6 +113,7 @@ class MainWindow : public QMainWindow {
     void closeEvent(QCloseEvent *event) override;
     void changeEvent(QEvent *event) override;
     void reloadLangItems();
+    void refreshToolbarTexts();
     void quiesceOperations();
     bool canHandleExternalUpdate() const;
     bool runExternalArchiveUpdate(CPanel &panel, const QtArchiveUpdateBody &body);

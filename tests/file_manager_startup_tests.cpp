@@ -186,7 +186,13 @@ class FileManagerStartupTests final : public QObject {
 #endif
     }
 #ifdef Q_OS_WIN
+    void nativeStartupEnablesLinkCopy_data() {
+        QTest::addColumn<QString>("platform");
+        QTest::newRow("offscreen") << QString("offscreen");
+        QTest::newRow("windows-ole") << QString("windows");
+    }
     void nativeStartupEnablesLinkCopy() {
+        QFETCH(QString, platform);
         QTemporaryDir fixture;
         QVERIFY(fixture.isValid());
         const QString target = fixture.filePath(QStringLiteral("цель 空 with spaces.txt"));
@@ -199,7 +205,7 @@ class FileManagerStartupTests final : public QObject {
         QVERIFY(NWindows::NFile::NIO::GetReparseData(NativeFixturePath(link), original));
         QProcess process;
         auto environment = QProcessEnvironment::systemEnvironment();
-        environment.insert("QT_QPA_PLATFORM", "offscreen");
+        environment.insert("QT_QPA_PLATFORM", platform);
         environment.insert("SEVENZIP_SETTINGS_PATH", fixture.filePath("link startup.ini"));
         environment.insert("SEVENZIP_PROBE_MEMBER", QFileInfo(link).fileName());
         environment.insert("SEVENZIP_PROBE_COPY_LINK", link);
@@ -215,6 +221,8 @@ class FileManagerStartupTests final : public QObject {
         QVERIFY(!report.value("timeout").toBool());
         QVERIFY(report.value("privilegeDropped").toBool());
         QVERIFY(report.value("linkCopied").toBool());
+        if (platform == "windows")
+            QVERIFY(report.value("oleInitialized").toBool());
         CByteBuffer actual, source;
         QVERIFY(NWindows::NFile::NIO::GetReparseData(NativeFixturePath(destination), actual));
         QVERIFY(NWindows::NFile::NIO::GetReparseData(NativeFixturePath(link), source));

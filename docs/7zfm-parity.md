@@ -1,5 +1,19 @@
 # Сверка с Windows 7zFM
 
+## FM platform dispatch and toolbar text (P3-05, 2026-10-10)
+
+Toolbar сохраняет исходные короткие подписи и tooltip из App.cpp::SetButtonText
+при смене языка и доступности QAction. Caption общей QAction в меню остаётся
+меню-подписью; Qt владеет временем жизни tooltip вместо статических Win32 buffers.
+Исходный GetRamSize в PanelItemOpen вызывается при nested-open вместо единственного
+startup-cache FM; threshold/fallback сохранены. Это явное отличие lifetime при
+изменении физической RAM между открытиями, а не новый расчёт лимита.
+Восстановление исходного startup-cache остаётся обязательной работой P3-05.
+Qt Windows platform context владеет OLE для QApplication; offscreen не доказывает
+нативный COM/drag transport. Все ветви FM.cpp сопоставлены с владельцами в
+[disposition](omitted-scope-audit.md#fm-desktop-bodies-and-platform-dispatch-2026-10-10);
+native/rendered/platform/package и итоговая приёмка остаются отдельными.
+
 ## Source startup platform defaults (P3-05, 2026-10-10)
 
 При исходном условии малого экрана подписи toolbar по умолчанию отключаются;

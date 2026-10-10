@@ -20,6 +20,8 @@ enum {
 class IQtFileManagerMenuCommandServices;
 class IQtVolumeServices;
 
+void SetButtonText(int commandID, UString &s);
+
 class CApp;
 class CDropTarget;
 

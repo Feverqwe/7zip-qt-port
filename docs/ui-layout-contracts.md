@@ -1125,6 +1125,12 @@ units, independently of the main window's compact resize fixture.
 
 ### Main menu and toolbar (P0-09.1)
 
+Source SetButtonText supplies the seven short button captions AND tooltips;
+shared File menu QAction captions do not replace them after language/selection
+changes. `language_ui` inspects EN/RU normal980×620 and compact640×400 reports
+`toolbar-text-{-,ru}-{980,640}.json`. Tooltip text is asserted directly, without
+a popup-pixel claim. Native rendered tooltip appearance remains unverified.
+
 Reference: `CPP/7zip/UI/FileManager/resource.rc::IDM_MENU`,
 `App.cpp::g_ArchiveButtons/g_StandardButtons` and `MyLoadMenu.cpp` at
 `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. Six top-level menus follow

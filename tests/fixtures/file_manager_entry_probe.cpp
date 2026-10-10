@@ -15,6 +15,19 @@
 int main(int argc, char **argv) {
     QApplication application(argc, argv);
     application.setApplicationName("Sevenzip File Manager entry probe");
+    bool oleInitialized = false;
+#ifdef Q_OS_WIN
+    APTTYPE apartment;
+    APTTYPEQUALIFIER qualifier;
+    // The retained Windows headers keep an older API declaration baseline.
+    // Inspect the Qt-initialized apartment without changing that baseline or
+    // loading/initializing COM in the probe.
+    using GetApartmentType = HRESULT(WINAPI *)(APTTYPE *, APTTYPEQUALIFIER *);
+    const auto getApartmentType = reinterpret_cast<GetApartmentType>(
+        GetProcAddress(GetModuleHandleW(L"ole32.dll"), "CoGetApartmentType"));
+    oleInitialized = getApartmentType && SUCCEEDED(getApartmentType(&apartment, &qualifier)) &&
+                     (apartment == APTTYPE_STA || apartment == APTTYPE_MAINSTA);
+#endif
     bool bound = false;
     bool refusal = false;
     bool password = false;
@@ -85,7 +98,8 @@ int main(int argc, char **argv) {
                              {"windowState", windowState},
                              {"exitCode", result},
                              {"privilegeDropped", privilegeDropped},
-                             {"linkCopied", linkCopied}};
+                             {"linkCopied", linkCopied},
+                             {"oleInitialized", oleInitialized}};
     const QByteArray bytes = QJsonDocument(report).toJson(QJsonDocument::Compact);
     std::fwrite(bytes.constData(), 1, static_cast<size_t>(bytes.size()), stdout);
     return timedOut ? 1 : result;

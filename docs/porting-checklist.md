@@ -35,6 +35,18 @@ P3-03/04/05/06 remain open;43/47 and final acceptance are unchanged.
 
 ## Общие правила и обязательный рефакторинг
 
+P3-05, 2026-10-10: full FM.cpp body/branch/caller map now distinguishes source
+algorithms and explicit Qt/platform services. WM_NOTIFY's source SetButtonText
+and both button tables supply short toolbar captions/tooltips after language
+and action changes; the public old-product RED is retained. The map records
+RAM point-of-use versus startup-cache as mandatory remaining source work,
+and does not close FM/native/family/package/final acceptance.
+Full Mac316/316 PASS; final focusedMac/Linux12/12 andWindows11/12 with only the
+two established service-desktop visibility failures. Native STA/link-copy and
+toolbar/language rows pass;1461inputs match both guests and81widget reports fit.
+Eleven slow suites excluded;43/47 and P3-03/04/05/06 remain open.
+[Receipt](upstream-port-audit.md#p3-05--fm-platform-dispatch-and-source-toolbar-text-2026-10-10).
+
 P3-05.16, 2026-10-10: original small-screen toolbar default now reaches
 CApp::Create through existing Qt dialog-unit services, and startup initializes
 source symbolic-link token privileges before Copy. Public toolbar and real

@@ -1,5 +1,13 @@
 # Regression strategy
 
+`language_ui::toolbarTooltipsRetainSourceTextAfterActionChanges` checks all seven
+source toolbar captions/tooltips through EN/RU/EN reload, actual filesystem
+selection changes, normal/compact JSON and unchanged private Unicode file bytes.
+Windows `file_manager_startup` repeats the pre-Link Copy consumer using native
+Windows QPA and checks its QApplication-owned STA without initializing COM in
+the probe; offscreen keeps its separate logical-state row. Native visibility
+assertions remain unchanged. [Receipt](upstream-port-audit.md#p3-05--fm-platform-dispatch-and-source-toolbar-text-2026-10-10).
+
 `native_archive_ads_copy` exercises a real native ZIP source folder and an
 opened NTFS-stream peer through F5/F6 in both panes and EN/RU. Each row runs
 Copy-dialog Cancel, occupied-stream Skip, overwrite Cancel, successful Copy

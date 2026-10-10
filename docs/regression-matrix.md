@@ -1,5 +1,12 @@
 # Regression and security traceability
 
+FM platform dispatch: `language_ui` covers seven source toolbar captions and
+tooltips after language/selection changes; existing `main_shell`, toolbar,
+command-policy, placement/focus and lifecycle consumers cover the connected
+entry/window path. Windows startup has separate offscreen/native-QPA link-copy
+rows, with read-only apartment inspection in the native row. Native visibility
+and receiver/rendered acceptance remain separate; [receipt](upstream-port-audit.md#p3-05--fm-platform-dispatch-and-source-toolbar-text-2026-10-10).
+
 Archive source to native NTFS peer: `native_archive_ads_copy` covers nested ZIP
 source F5, Copy-dialog Cancel, overwrite Skip/Cancel and original F6 refusal,
 both panes/languages. It protects source/base/control ADS bytes and both provider

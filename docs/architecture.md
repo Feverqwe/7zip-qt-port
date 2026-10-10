@@ -14,6 +14,13 @@ source/platform evidence to the [audit](upstream-port-audit.md).
 
 This document describes component ownership, data flow and integration boundaries.
 
+Original App.cpp::SetButtonText owns toolbar caption/tooltip lookup by native
+command ID. MainWindow transports that text into QToolButton after language
+reload and QAction changes; shared menu QAction captions remain menu-owned.
+Qt owns tooltip storage and its platform context owns native Windows OLE.
+FM.cpp's complete body/platform dispatch map is in the
+[omitted-scope audit](omitted-scope-audit.md#fm-desktop-bodies-and-platform-dispatch-2026-10-10).
+
 CApp::Create obtains source small-screen capability from IQtAppPresentation
 before ReadToolbar. QtAppPresentation uses existing QtDialogScreenServices and
 source IsDialogSizeOK(200,200); ReadToolbar owns default/saved-mask policy.
