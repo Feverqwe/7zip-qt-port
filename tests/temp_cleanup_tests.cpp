@@ -340,6 +340,84 @@ class TempCleanupTests : public QObject {
         QVERIFY(QFileInfo::exists(moved));
         QVERIFY(QFileInfo::exists(third.path()));
     }
+    void sourceLargeCountRestoresWaitCursorAfterPopulation() {
+        QTemporaryDir owned;
+        QVERIFY(owned.isValid());
+        for (unsigned i = 0; i < 1001; ++i)
+            QVERIFY(file(owned.filePath(QString::number(i))));
+        QVERIFY(inactive(owned.path()));
+        CBrowseDialog2 dialog;
+        dialog.TempFolderPath =
+            (QFileInfo(QDir::tempPath()).canonicalFilePath() + QDir::separator())
+                .toStdWString()
+                .c_str();
+        auto *list = dialog.findChild<QTreeWidget *>("tempList");
+        bool populatedWithWait = false;
+        connect(list->model(), &QAbstractItemModel::rowsInserted, &dialog, [&] {
+            if (auto *cursor = QApplication::overrideCursor())
+                populatedWithWait |= cursor->shape() == Qt::WaitCursor;
+        });
+        const bool hadCursor = QApplication::overrideCursor() != nullptr;
+        const auto oldShape = hadCursor ? QApplication::overrideCursor()->shape() : Qt::ArrowCursor;
+        QTimer::singleShot(0, &dialog, &QDialog::reject);
+        dialog.Create();
+        QVERIFY(populatedWithWait);
+        QCOMPARE(QApplication::overrideCursor() != nullptr, hadCursor);
+        if (hadCursor)
+            QCOMPARE(QApplication::overrideCursor()->shape(), oldShape);
+        QVERIFY(QFileInfo::exists(owned.filePath("1000")));
+    }
+    void sourceRefreshAndSortKeysRetainSelectionAndBytes() {
+        QTemporaryDir owned;
+        QVERIFY(owned.isValid());
+        QVERIFY(file(owned.filePath(QStringLiteral("я большой.txt"))));
+        QVERIFY(file(owned.filePath("a small.txt")));
+        {
+            QFile large(owned.filePath(QStringLiteral("я большой.txt")));
+            QVERIFY(large.open(QIODevice::Append));
+            QCOMPARE(large.write("more bytes"), qint64(10));
+        }
+        QVERIFY(inactive(owned.path()));
+        bool observed = false;
+        QTimer::singleShot(0, qApp, [&] {
+            auto *dialog = dynamic_cast<CBrowseDialog2 *>(QApplication::activeModalWidget());
+            QVERIFY(dialog);
+            const auto close = qScopeGuard([&] { dialog->reject(); });
+            auto *list = dialog->findChild<QTreeWidget *>("tempList");
+            select(*dialog, owned.path());
+            QTest::keyClick(list, Qt::Key_Return);
+            select(*dialog, owned.filePath("a small.txt"));
+            QVERIFY(file(owned.filePath(QStringLiteral("новый файл.txt"))));
+            QTest::keyClick(list, Qt::Key_R, Qt::ControlModifier);
+            QCOMPARE(list->topLevelItemCount(), 3);
+            QCOMPARE(list->selectedItems().size(), 1);
+            QCOMPARE(list->currentItem()->text(0), QString("a small.txt"));
+            for (const auto key : {Qt::Key_F3, Qt::Key_F5, Qt::Key_F6}) {
+                QTest::keyClick(list, key, Qt::ControlModifier);
+                const int column = key == Qt::Key_F3 ? 0 : key == Qt::Key_F5 ? 1 : 2;
+                QCOMPARE(list->header()->sortIndicatorSection(), column);
+                QCOMPARE(list->header()->sortIndicatorOrder(),
+                         column == 0 ? Qt::AscendingOrder : Qt::DescendingOrder);
+                QCOMPARE(list->selectedItems().size(), 1);
+                QCOMPARE(list->currentItem()->text(0), QString("a small.txt"));
+                if (column == 2)
+                    QCOMPARE(
+                        list->topLevelItem(0)->text(0).normalized(QString::NormalizationForm_C),
+                        QStringLiteral("я большой.txt"));
+                QTest::keyClick(list, key, Qt::ControlModifier);
+                QCOMPARE(list->header()->sortIndicatorOrder(),
+                         column == 0 ? Qt::DescendingOrder : Qt::AscendingOrder);
+            }
+            QTest::keyClick(list, Qt::Key_A, Qt::ControlModifier);
+            QCOMPARE(list->selectedItems().size(), 3);
+            observed = true;
+        });
+        MyBrowseForTempFolder(nullptr);
+        QVERIFY(observed);
+        QFile large(owned.filePath(QStringLiteral("я большой.txt")));
+        QVERIFY(large.open(QIODevice::ReadOnly));
+        QCOMPARE(large.readAll(), QByteArray("fixturemore bytes"));
+    }
     void sourceNavigationHelpAndNormalCompactGeometry() {
         QTemporaryDir owned;
         QTemporaryDir settings;

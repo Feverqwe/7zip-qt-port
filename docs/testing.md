@@ -1,5 +1,15 @@
 # Regression strategy
 
+`temp_cleanup` exercises the source keyboard owner through the public modal
+browser: Ctrl+R discovers a newly created Unicode/space file; Ctrl+F3/F5/F6
+switch and toggle source sort columns while current selection survives; Ctrl+A
+selects all. Fixture bytes remain unchanged. The same suite covers source
+large-count WaitCursor population and prior cursor restoration, owned-only
+deletion, confirmation/Cancel, first failure, link refusal, active/external
+protection, navigation, Help and current EN/RU normal/compact widget reports.
+`temp_detached_launch` checks exact launch arguments and unconfirmed lifetime;
+`owned_temp` covers registry identity/lease behavior separately.
+
 `source_browse_dialog` tests the actual public file/folder entries with owned
 long Unicode paths: source-browser dispatch, masks/filter state, parent/directory
 sorting, Enter/Backspace/Ctrl+R/F7, create success/failure/Cancel, raw SaveMode

@@ -1,5 +1,29 @@
 # Omitted source scope review
 
+## Temporary browser complete body/caller disposition (2026-10-10)
+
+Pinned repository/revision and validation are in the
+[source receipt](upstream-port-audit.md#p3-05--temporary-browser-source-lifecycle-reconciliation-2026-10-10).
+Complete original/current BrowseDialog2 bodies and dependencies were reviewed;
+the original private class is declared in its header for the existing extracted
+Qt presentation, without a second functional implementation.
+
+| Original body family | Retained owner and platform boundary |
+| --- | --- |
+| CBrowseItem Construct, CBrowseEnumerator Enumerate/NeedInterrupt | Original200-directory/2000-file bounds, root-child counts, one-child metadata, interrupted totals and recursion retained. POSIX enumerator uses no-follow FileInfo; IsOsSymLink maps to HasReparsePoint on Windows. |
+| PrintPropsPrefix/Size/MTime/Name/Attrib/PrintProps, PrintFileProps/Show_FileProps_Window | Source properties/formatters and fresh-file lookup retained. Portable FiTime/GetWinAttrib and QMessageBox replace Win32 representations. Existing failed-lookup guard exits after reload invalidates row references. |
+| CompareItems, ChangeSorting_and_Reload, Reload overloads, selection helpers | Source directory/parent precedence, six sort fields, stable index tie-break, sort direction and selected/focused names retained. Qt rows delegate to CompareItems; PopulateRows supplies icons, columns and source timestamp/size text. |
+| GetParentPath/OpenParentFolder/OnItemEnter/OnOK | Original parent limits and one-selection/Alt-properties/link refusal/Shift-external navigation retained. Owned OS-temp root is the top boundary. Qt Enter event dispatch replaces IDOK/list-focus transport; no default push button accepts Enter. |
+| OnKeyDown, OnButtonClicked | Complete active keyboard switch restored. Qt button connections retain source Parent/Delete/Refresh then unconditional list focus; Return is list activation and unmodified F5 remains the recorded Qt convenience. |
+| OnDelete | Original prefix guard, selection, one/many confirmation, ten-name summary, per-item deletion, first-failure return and final reload retained. Existing ownership claim revalidates identity/no-link ancestry and active/external protection before each original removal call. |
+| OnContextMenu, StartApplication/StartApplicationDontWait/GetQuotedString2 | Source command IDs/order, selected-count admission, link refusal, property/open/delete dispatch retained. QMenu/QDesktopServices and detached executable+argument vector replace native menu/PIDL/ShellExecute/process quoting. Lease protection remains until proven external completion. |
+| OnInit/OnSize/OnMessage/OnNotify, CWaitCursor2, MyBrowseForTempFolder/OnHelp | Qt construction/layout/tree notifications replace HWND/RC/redraw/message transport. Original aggregate count>1000 and CWaitCursor2 Set/destructor phases restored through QApplication override/restore services. Source title, OS temp lookup and fm/temp.htm remain; Qt canonicalizes the OS alias. Exact RC/Res retain grouping/IDs. Drive/non-temp navigation and naming-only7z* admission are superseded by the accepted owned-temp boundary; CE sizing and commented path/filter/debug branches have no new desktop feature claim. |
+
+The original FindNonHexChar_F actually accepts alphanumeric characters; its
+eight-character naming convention is not proof of ownership. The registry
+supplies membership only, while BrowseDialog2 retains deletion and enumeration.
+No whole-family or native rendered acceptance follows from this disposition.
+
 ## ViewSettings complete body/caller disposition (2026-10-10)
 
 Complete original/current ViewSettings.cpp/.h reviewed at

@@ -898,7 +898,9 @@ Folders/Name-2 columns. Controls retain Delete/Refresh, Parent/read-only path,
 list, disabled filter, Help/Close ordering. Owned membership replaces upstream's
 7z* convention; active or unconfirmed external entries remain visible with an
 explanatory tooltip and disabled Delete. Enter navigates, Backspace returns,
-Delete confirms eligible deletion, F5 refreshes, F1 opens fm/temp.htm, Escape
+Delete confirms eligible deletion, Ctrl+R refreshes, Ctrl+F3/F5/F6 sort by
+name/time/size and toggle direction while retaining selection. Plain F5 remains
+the Qt Refresh convenience. F1 opens fm/temp.htm, Escape
 and Close exit without deletion. No push button is an Enter default.
 
 temp_cleanup writes EN/RU900×580/500×320 temp-cleanup-*.json; footer/path/filter

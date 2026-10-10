@@ -270,20 +270,20 @@ void CBrowseDialog2::UpdateDeleteAvailability() {
 bool CBrowseDialog2::eventFilter(QObject *object, QEvent *event) {
     if (object == _list && event->type() == QEvent::KeyPress) {
         auto *key = static_cast<QKeyEvent *>(event);
+        if (OnKeyDown(key))
+            return true;
         switch (key->key()) {
-        case Qt::Key_Delete:
-            OnDelete();
-            return true;
-        case Qt::Key_Backspace:
-            OpenParentFolder();
-            return true;
         case Qt::Key_Return:
         case Qt::Key_Enter:
             OnItemEnter();
             return true;
         case Qt::Key_F5:
-            Reload_WithErrorMessage();
-            return true;
+            // Retain the established Qt Refresh convenience after source Ctrl+F5.
+            if (key->modifiers() == Qt::NoModifier) {
+                Reload_WithErrorMessage();
+                return true;
+            }
+            break;
         default:
             break;
         }

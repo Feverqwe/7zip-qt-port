@@ -64,6 +64,18 @@ owner и интегрированными consumers, включая уже ра�
 
 ## Правила статусов и счётчика
 
+P3-05,2026-10-10: complete BrowseDialog2 body/header/resource/caller disposition
+and temporary-browser lifecycle reconciled. Missing source Ctrl+R/Ctrl+F3/F5/F6
+and aggregate-count wait cursor restored with actual RED1 each. Required macOS
+gate312/312 PASS252.70s, localized10/10 PASS5.87s83Qt/0fail/0skip. Linux/Windows
+initial10/10 PASS7.63s/39.29s82Qt/0fail/0skip each; final localized browser13Qt
+perOS passes,1429 local/archive/actual-guest inputs exact,1428 retained after
+wrapper removal. Four current EN/RU normal/compact JSON perOS fit. Integration
+atop22b7763 passes13/13 including startup/window placement. Eleven slow excluded;
+[source receipt](upstream-port-audit.md#p3-05--temporary-browser-source-lifecycle-reconciliation-2026-10-10).
+Whole FileManager/native/rendered/package/final acceptance remains open;
+43/47 and P3-03/04/05/06 unchanged.
+
 P3-05,2026-10-10: source Copy/Combo portable DTOs, CommonDialog owner/flags and
 active long/super-path CBrowseDialog restored with all direct consumers and UX.
 Source routing RED2 and old Qt flags RED2 retained. Required macOS gate312/312

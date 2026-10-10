@@ -22,6 +22,7 @@
 #include <QDir>
 #include <QFileInfo>
 #include <QHash>
+#include <QKeyEvent>
 #include <QMenu>
 #include <QMessageBox>
 #include <QProcess>
@@ -391,12 +392,26 @@ HRESULT CBrowseDialog2::Reload(const UString &pathPrefix, const UString &selecte
         selectedVector.Add(selectedName);
     return Reload(pathPrefix, selectedVector, selectedName);
 }
+struct CWaitCursor2 {
+    bool _waitCursor = false;
+    void Set() {
+        if (!_waitCursor) {
+            QApplication::setOverrideCursor(Qt::WaitCursor);
+            _waitCursor = true;
+        }
+    }
+    ~CWaitCursor2() {
+        if (_waitCursor)
+            QApplication::restoreOverrideCursor();
+    }
+};
 HRESULT CBrowseDialog2::Reload(const UString &pathPrefix, const UStringVector &selectedVector2,
                                const UString &focusedName) {
     UStringVector selectedVector = selectedVector2;
     selectedVector.Sort();
     CObjectVector<CFileInfo> files;
     CRecordVector<CBrowseItem> items;
+    CWaitCursor2 waitCursor;
     QVector<QtOwnedTempEntry> owners;
     const auto entries = QtOwnedTempRegistry().Entries();
     const bool isTempFolder = IsExactTempFolder(pathPrefix);
@@ -443,6 +458,7 @@ HRESULT CBrowseDialog2::Reload(const UString &pathPrefix, const UStringVector &s
             owners.append(owner);
         }
     }
+    UInt64 cnt = items.Size();
     FOR_VECTOR(i, items) {
         CBrowseItem &item = items[i];
         const CFileInfo &fi = files[item.MainFileIndex];
@@ -458,6 +474,10 @@ HRESULT CBrowseDialog2::Reload(const UString &pathPrefix, const UStringVector &s
             item.SubFileIndex = (int)files.Size();
             files.Add(enumer.fi_SubFile);
         }
+        cnt += item.NumDirs;
+        cnt += item.NumFiles;
+        if (cnt > 1000)
+            waitCursor.Set();
     }
     _items = items;
     _files = files;
@@ -638,6 +658,44 @@ void CBrowseDialog2::OnContextMenu(const QPoint &position) {
     }
 }
 void CBrowseDialog2::OnHelp() { ShowHelpWindow("fm/temp.htm", this); }
+bool CBrowseDialog2::OnKeyDown(QKeyEvent *keyDownInfo) {
+    const bool ctrl = keyDownInfo->modifiers().testFlag(Qt::ControlModifier);
+    switch (keyDownInfo->key()) {
+    case Qt::Key_Backspace:
+        OpenParentFolder();
+        return true;
+    case Qt::Key_R:
+        if (ctrl) {
+            Reload_WithErrorMessage();
+            return true;
+        }
+        return false;
+    case Qt::Key_F3:
+    case Qt::Key_F5:
+    case Qt::Key_F6:
+        if (ctrl) {
+            int index = 0;
+            if (keyDownInfo->key() == Qt::Key_F5)
+                index = 1;
+            else if (keyDownInfo->key() == Qt::Key_F6)
+                index = 2;
+            ChangeSorting_and_Reload(index);
+            Reload_WithErrorMessage();
+            return true;
+        }
+        return false;
+    case Qt::Key_A:
+        if (ctrl) {
+            _list->selectAll();
+            return true;
+        }
+        return false;
+    case Qt::Key_Delete:
+        OnDelete();
+        return true;
+    }
+    return false;
+}
 int CBrowseDialog2::Create() {
     _topDirPrefix = TempFolderPath;
     setWindowTitle(QtPath(Title));

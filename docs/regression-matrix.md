@@ -1,5 +1,12 @@
 # Regression and security traceability
 
+Temporary browser source commands: `temp_cleanup` covers public Ctrl+R and
+Ctrl+F3/F5/F6 refresh/sort transitions, retained current selection, Ctrl+A and
+unchanged owned Unicode/space file bytes alongside success/failure/Cancel and
+EN/RU geometry. `owned_temp` and `temp_detached_launch` retain identity/lease,
+protected external lifetime and exact detached-argument consumers. No device
+fixture or live user temp data is used.
+
 Source long-path picker and portable dialog boundaries: `source_browse_dialog`,
 `browse_dialog`, `combo_dialog`, `copy_dialog`, `volume_dialog`, `language_dialog`,
 `source_archive_browse`, `compression_format`. Owned long Unicode fixtures

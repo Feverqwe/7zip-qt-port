@@ -856,8 +856,10 @@ FileDir temp owners and copied CTempFileInfo/nested/process records retain those
 leases; Qt temp/spool services use the same owner. The registry offers an inactive
 object claim with identity revalidation; it does not implement deletion. Native
 BrowseDialog2 owns native enumeration, aggregate/props/sort/navigation and
-confirmation/per-item deletion/first-failure behavior. Qt presentation renders
-its controls and columns; claims protect owned roots including nested navigation.
+confirmation/per-item deletion/first-failure behavior. Qt presentation delegates
+keyboard policy to source OnKeyDown, including Ctrl+R and Ctrl+F3/F5/F6, before
+its Enter/plain-F5 event adaptations. It renders controls and columns; claims
+protect owned roots including nested navigation.
 FM ShowDots/SingleClick/FullRow/Grid are projected into the tree and paint adapter;
 QtFileListHover has one shared implementation in sevenzip_panel for both views.
 When source CommonUpdateOperation publishes over a private stream spool,

@@ -1,5 +1,18 @@
 # Сверка с Windows 7zFM
 
+## Temporary browser source keyboard (P3-05, 2026-10-10)
+
+Delete Temporary Files снова обрабатывает исходные Ctrl+R и Ctrl+F3/F5/F6:
+обновление и сортировку по имени/времени/размеру с переключением направления
+и сохранением выделения. Исходный OnKeyDown также владеет Backspace,
+Ctrl+A и Delete. Qt передаёт ему клавиши списка; Enter остаётся активацией,
+обычный F5 — ранее документированным Qt Refresh. Порядок и геометрия контролов
+не меняются. Исходный wait cursor включается при подсчёте свыше1000 объектов
+и восстанавливает предыдущий курсор после обновления. Реестр owned-temp,
+защита active/external, отказ от открытия
+ссылок и исходные подтверждение/отмена/первая ошибка удаления сохранены.
+Полная disposition и ограничения: [source receipt](upstream-port-audit.md#p3-05--temporary-browser-source-lifecycle-reconciliation-2026-10-10).
+
 ## Source long-path browser (P3-05, 2026-10-10)
 
 Обычный выбор файла/папки остаётся системным QFileDialog. Для длинного

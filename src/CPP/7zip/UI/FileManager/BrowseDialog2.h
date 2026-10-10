@@ -13,6 +13,7 @@ class QLineEdit;
 class QPushButton;
 class QComboBox;
 class QDialogButtonBox;
+class QKeyEvent;
 
 struct CBrowseItem {
     unsigned MainFileIndex;
@@ -59,6 +60,7 @@ class CBrowseDialog2 : public QDialog {
     void PrintFileProps(UString &s, const NWindows::NFile::NFind::CFileInfo &file);
     void Show_FileProps_Window(const NWindows::NFile::NFind::CFileInfo &file);
     void OnItemEnter();
+    bool OnKeyDown(QKeyEvent *keyDownInfo);
     void OnContextMenu(const QPoint &position);
     void OpenOutside(const UString &path, const QtOwnedTempEntry &owner, bool sevenzip);
     void OnDelete();

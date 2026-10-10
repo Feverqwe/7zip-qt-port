@@ -1,5 +1,63 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-05 — temporary browser source lifecycle reconciliation (2026-10-10)
+
+Source: https://github.com/ip7z/7zip.git, full revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
+`CPP/7zip/UI/FileManager/BrowseDialog2.cpp/.h/.rc/BrowseDialog2Res.h`.
+Complete original and adapted bodies, header and exact resources were reviewed,
+including the extracted Qt presentation, FileFind link/time services, owned-temp
+identity/registry/lease adapter and MyLoadMenu/CApp/Qt command callers. Existing
+P1-15.2 receipts remain authoritative for the ownership adaptation and deletion
+policy; this review does not replace them with another cleanup implementation.
+
+The review found active OnKeyDown omitted: Ctrl+R did not reload and
+Ctrl+F3/F5/F6 did not select source name/time/size sorting. The complete source
+switch is restored in BrowseDialog2.cpp with the same symbol and flow; QKeyEvent
+replaces NMLVKEYDOWN/IsKeyDown and QTreeWidget supplies SelectAll. Qt presentation
+delegates to it before Enter activation and the established plain-F5 convenience.
+Both source reload calls in the sort-key branch remain. Backspace/Delete/Ctrl+A
+retain source admission. A public owned-fixture regression proves refresh sees
+a newly created Unicode/space file, sorting toggles, size order, retained current
+selection, SelectAll and unchanged file bytes. Actual old-product RED:
+11Qt pass/1fail/0skip because Ctrl+R leaves two rows instead of three. The first
+fixed run exposed a macOS decomposed-name assertion; the test now compares the
+displayed filename in NFC, without normalizing product paths.
+
+The same final review found omitted CWaitCursor2 and Reload's aggregate-count
+cursor phase. Both are restored at the source boundary: Set once when the
+source count exceeds1000, restore the prior cursor stack on every return.
+QApplication override/restore replaces HCURSOR LoadCursor/SetCursor. A single
+owned1001-file fixture observes WaitCursor during public model population and
+restoration after the modal closes, retaining fixture bytes. Actual pre-fix
+RED12Qt pass/1fail/0skip; this is a bounded fixture, not a parameter matrix.
+
+No source language, resource or engine algorithm changes. Existing original
+notices remain; BrowseDialog2 stays the single functional owner, while
+qttempbrowsepresentation owns Qt controls/notification transport. Whole
+FileManager/native/rendered/package/final acceptance remains open.
+
+Validation: required unsandboxed macOS arm64 Qt6.12 full format/build/default
+gate312/312 PASS252.70s before the final localized cursor correction. After that
+correction, all10 affected consumers rebuilt/pass5.87s,83Qt/0fail/0skip. No
+repeated full gate is required for this localized change under AGENTS.md.
+Initial Linux/Windows x64 Qt6.12 matrix each10/10 PASS7.63s/39.29s,
+82Qt/0fail/0skip. Snapshot20261010T015552Z-94a6f3fd SHA-256
+`c63c7757853a37dc33d26d86c75d78cf90ddcbe4819927183b2d2adadb55d915`
+preserves1429 archive/actual-guest hashes and original runtime/SFX coverage;
+later cursor edits are not claimed to match that initial local snapshot.
+
+Final focused snapshot20261010T020309Z-7f9b1ecf SHA-256
+`ea729a8766423911fe4f85faf845e5ba0fc6d13d90cdf98b5d53dd90f7cd76d2`:
+1429 local/archive/actual-guest inputs exact,1428 retained after archiving/removing
+the one-off wrapper. Linux/Windows browser each1/1 PASS0.48s/3.27s,
+13Qt/0fail/0skip; this engine-free UI follow-up uses skip-runtime. Four current
+EN/RU900×580/500×320 temp-browser JSON perOS fit; rendered original Windows and
+physical desktop acceptance remain unverified. Integration atop22b7763 passes
+13/13 in6.43s, including main_shell/file_manager_startup/window_placement.
+Evidence: build/review/filemanager-final/temp-dialogs-* in the isolated checkout.
+Eleven slow suites excluded; no parent closes,43/47 and P3-03/04/05/06 remain open.
+
 ## P3-05 — PanelListNotify complete body and caller disposition (2026-10-10)
 
 Baseline: [ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17),
