@@ -2,12 +2,12 @@
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 #pragma once
 #include "Common/MyString.h"
-#include <QString>
+#include "Windows/CommonDialog.h"
 class QWidget;
-bool Dlg_CreateFolder(QWidget *wnd, QString &destName);
+bool Dlg_CreateFolder(QWidget *wnd, UString &destName);
 bool CorrectFsPath(const UString &relBase, const UString &path, UString &result);
-bool MyBrowseForFolder(QWidget *owner, const QString &title, const QString &path,
-                       QString &resultPath);
+bool MyBrowseForFolder(QWidget *owner, const UString &title, const UString &path,
+                       UString &resultPath);
 
 // Original BrowseDialog.h filter DTO; Qt translates only the native dialog
 // presentation syntax, retaining the source filter order and selected index.
@@ -16,16 +16,6 @@ struct CBrowseFilterInfo {
     UString Description;
 };
 
-struct CBrowseInfo {
-    QWidget *Owner = nullptr;
-    QString Title;
-    QString FilePath;
-    QString Filters;
-    bool SaveMode = false;
-    int FilterIndex = 0;
-    bool BrowseForFile();
+struct CBrowseInfo : public NWindows::CCommonDialogInfo {
     bool BrowseForFile(const CObjectVector<CBrowseFilterInfo> &filters);
-
-  private:
-    bool BrowseForFile(bool hideNameFilterDetails);
 };

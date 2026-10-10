@@ -209,6 +209,7 @@ add_library(sevenzip_panel STATIC src/CPP/7zip/UI/FileManager/App.cpp
     src/CPP/7zip/UI/FileManager/SplitUtils.cpp src/CPP/7zip/UI/FileManager/SplitUtils.h
     src/CPP/7zip/UI/FileManager/CopyDialog.cpp src/CPP/7zip/UI/FileManager/CopyDialog.h
     src/CPP/Windows/Control/Dialog.cpp src/CPP/Windows/Control/Dialog.h
+    src/CPP/Windows/CommonDialog.cpp src/CPP/Windows/CommonDialog.h
     src/CPP/7zip/UI/FileManager/MyLoadMenu.cpp src/CPP/7zip/UI/FileManager/MyLoadMenu.h
     src/qtfilemenuservices.h src/qtfilemanagercommandservices.h
     src/CPP/7zip/UI/FileManager/FM.cpp src/qtfilemanagerwindowservices.h src/qtfilemanagerstartup.h
@@ -674,6 +675,12 @@ if(BUILD_TESTING)
     target_link_libraries(browse_dialog_tests PRIVATE sevenzip_panel Qt6::Test)
     add_test(NAME browse_dialog COMMAND browse_dialog_tests -silent)
     set_tests_properties(browse_dialog PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 15)
+    qt_add_executable(source_browse_dialog_tests tests/source_browse_dialog_tests.cpp tests/layout_inspection.cpp)
+    target_include_directories(source_browse_dialog_tests PRIVATE tests)
+    target_link_libraries(source_browse_dialog_tests PRIVATE sevenzip_panel Qt6::Test)
+    add_test(NAME source_browse_dialog COMMAND source_browse_dialog_tests -silent)
+    set_tests_properties(source_browse_dialog PROPERTIES TIMEOUT 30 ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     set_tests_properties(combo_dialog PROPERTIES TIMEOUT 30 ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     qt_add_executable(volume_dialog_tests tests/volume_dialog_tests.cpp tests/layout_inspection.cpp
@@ -3212,7 +3219,7 @@ if(BUILD_TESTING AND WIN32)
     foreach(sevenzip_native_ui_test IN ITEMS
             native_parent_publication native_drop_publication native_rename_2 native_rename_301 native_external_2 native_external_301 native_nested_stream native_nested_memory native_nested_disk
             native_renderer_failure native_renderer_copy
-            source_compress_dialog source_extract_advanced shell_archive_services shell_menu_window shell_update_window
+            source_compress_dialog source_extract_advanced source_browse_dialog shell_archive_services shell_menu_window shell_update_window
             compression compression_advanced compression_path dialog_path_rules compression_error_policy compression_profile_selection compression_method_state compression_preferences compression_resources language_ui
             codec_commands_ui codec_creation_ui ui_geometry
             filesystem_selection_runtime ui_operations ui_copy_same ui_copy_routing app_copy_routing ui_update_modes archive_metadata_ui source_drop_add

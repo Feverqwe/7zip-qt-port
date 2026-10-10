@@ -1,3 +1,4 @@
+#include "CPP/7zip/UI/FileManager/ViewSettings.h"
 #include "CPP/7zip/UI/GUI/CompressDialog.h"
 #include "archivecodeccatalog.h"
 #include <QTemporaryDir>
@@ -57,13 +58,13 @@ class SourceArchiveBrowseTests final : public QObject {
         QVERIFY(dialog.OnButtonSetArchive(nullptr, [&](CBrowseInfo &info, const auto &filters) {
             shown = true;
             initialFilter = info.FilterIndex;
-            initialPath = info.FilePath;
+            initialPath = ToQString(info.FilePath);
             count = filters.Size();
             zipDescription = QString::fromWCharArray(filters[1].Description.Ptr());
             FOR_VECTOR(i, filters[1].Masks)
             zipMasks.append(QString::fromWCharArray(filters[1].Masks[i].Ptr()));
             info.FilterIndex = filter;
-            info.FilePath = directory_.filePath(name);
+            info.FilePath = ToUString(directory_.filePath(name));
             return true;
         }));
         QVERIFY(shown);
@@ -95,7 +96,7 @@ class SourceArchiveBrowseTests final : public QObject {
         unsigned count = 0;
         QVERIFY(dialog.OnButtonSetArchive(nullptr, [&](CBrowseInfo &info, const auto &filters) {
             count = filters.Size();
-            info.FilePath = directory_.filePath("name.tar.zip");
+            info.FilePath = ToUString(directory_.filePath("name.tar.zip"));
             return true;
         }));
         QCOMPARE(count, 2u);

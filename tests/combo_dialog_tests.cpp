@@ -1,5 +1,6 @@
 #include "CPP/7zip/UI/FileManager/BrowseDialog.h"
 #include "CPP/7zip/UI/FileManager/ComboDialog.h"
+#include "CPP/7zip/UI/FileManager/ViewSettings.h"
 #include "layout_inspection.h"
 #include <QComboBox>
 #include <QDialogButtonBox>
@@ -21,7 +22,7 @@ class ComboDialogTests : public QObject {
         for (int i = 0; i < strings.size(); ++i)
             QCOMPARE(combo->itemText(i), strings[i]);
         QCOMPARE(combo->currentText(), QStringLiteral("initial"));
-        QCOMPARE(dialog.Value, QStringLiteral("initial"));
+        QCOMPARE(ToQString(dialog.Value), QStringLiteral("initial"));
         auto *label = dialog.findChild<QLabel *>("comboPrompt");
         QCOMPARE(label->textFormat(), Qt::PlainText);
         QCOMPARE(label->text(), QStringLiteral("Имя <буквально>:"));
@@ -48,7 +49,7 @@ class ComboDialogTests : public QObject {
         else
             dialog.accept();
         QCOMPARE(dialog.result(), int(QDialog::Accepted));
-        QCOMPARE(dialog.Value, value);
+        QCOMPARE(ToQString(dialog.Value), value);
         QCOMPARE(dialog.value(), value);
     }
 
@@ -56,22 +57,22 @@ class ComboDialogTests : public QObject {
         CComboDialog dialog("Title", "Prompt", "before");
         dialog.findChild<QComboBox *>("comboValue")->setCurrentText("edited");
         dialog.reject();
-        QCOMPARE(dialog.Value, QStringLiteral("before"));
+        QCOMPARE(ToQString(dialog.Value), QStringLiteral("before"));
         QWidget parent;
-        QString name = "previous";
+        UString name = L"previous";
         QString initialName;
         bool found = false;
         QTimer::singleShot(0, &parent, [&] {
             if (auto *folder = parent.findChild<CComboDialog *>("comboDialog")) {
                 found = true;
-                initialName = folder->Value;
+                initialName = ToQString(folder->Value);
                 folder->reject();
             }
         });
         QVERIFY(!Dlg_CreateFolder(&parent, name));
         QVERIFY(found);
         QCOMPARE(initialName, QString("New Folder"));
-        QVERIFY(name.isEmpty());
+        QVERIFY(name.IsEmpty());
         QTimer::singleShot(0, &parent, [&] {
             if (auto *folder = parent.findChild<CComboDialog *>("comboDialog")) {
                 folder->findChild<QComboBox *>("comboValue")
@@ -80,7 +81,7 @@ class ComboDialogTests : public QObject {
             }
         });
         QVERIFY(Dlg_CreateFolder(&parent, name));
-        QCOMPARE(name, QStringLiteral("папка с пробелом"));
+        QCOMPARE(ToQString(name), QStringLiteral("папка с пробелом"));
     }
 
     void geometry_data() {

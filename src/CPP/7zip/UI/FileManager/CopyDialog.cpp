@@ -6,11 +6,12 @@
 #include "7zip/UI/FileManager/CopyDialogRes.h"
 #include "7zip/UI/FileManager/resource.h"
 #include "BrowseDialog.h"
+#include "ViewSettings.h"
+#include "Windows/FileName.h"
 #include "qtlangcontrols.h"
 
 #include "qtlangbuttonbox.h"
 #include <QComboBox>
-#include <QDir>
 #include <QFileInfo>
 #include <QHBoxLayout>
 #include <QLabel>
@@ -21,21 +22,24 @@
 
 CCopyDialog::CCopyDialog(const QString &title, const QString &label, const QString &path,
                          const QString &info, QWidget *parent)
-    : QDialog(parent), Title(title), Static(label), Value(path), Info(info) {
+    : QDialog(parent), Title(ToUString(title)), Static(ToUString(label)), Value(ToUString(path)),
+      Info(ToUString(info)) {
     OnInit();
 }
 
 CCopyDialog::CCopyDialog(bool move, const QString &initialPath, const QStringList &sources,
                          const QStringList &history, QWidget *parent, const QString &info)
-    : QDialog(parent), Title(QtLangText(move ? IDS_MOVE : IDS_COPY)),
-      Static(QtLangText(move ? IDS_MOVE_TO : IDS_COPY_TO)), Value(initialPath), Info(info),
-      Strings(history) {
+    : QDialog(parent), Title(ToUString(QtLangText(move ? IDS_MOVE : IDS_COPY))),
+      Static(ToUString(QtLangText(move ? IDS_MOVE_TO : IDS_COPY_TO))),
+      Value(ToUString(initialPath)), Info(ToUString(info)) {
+    for (const QString &s : history)
+        Strings.Add(ToUString(s));
     // The Qt caller supplies filenames, rather than IFolder property indices.
-    if (Info.isNull())
+    if (info.isNull())
         for (const QString &source : sources) {
-            if (!Info.isEmpty())
-                Info += '\n';
-            Info += QFileInfo(source).fileName();
+            if (!Info.IsEmpty())
+                Info.Add_LF();
+            Info += ToUString(QFileInfo(source).fileName());
         }
     OnInit();
     BindLanguage(move ? IDS_MOVE : IDS_COPY, move ? IDS_MOVE_TO : IDS_COPY_TO);
@@ -43,28 +47,28 @@ CCopyDialog::CCopyDialog(bool move, const QString &initialPath, const QStringLis
 
 void CCopyDialog::BindLanguage(UInt32 titleID, UInt32 promptID, const QString &titleSuffix) {
     setProperty("languageSuffix", titleSuffix);
-    QtBindLangText(this, titleID, Title);
-    QtBindLangText(findChild<QLabel *>("copyDestinationLabel"), promptID, Static);
-    QtBindLangText(_path, promptID, Static, true);
+    QtBindLangText(this, titleID, ToQString(Title));
+    QtBindLangText(findChild<QLabel *>("copyDestinationLabel"), promptID, ToQString(Static));
+    QtBindLangText(_path, promptID, ToQString(Static), true);
 }
 
 bool CCopyDialog::OnInit() {
     setObjectName("copyDialog");
-    setWindowTitle(Title);
+    setWindowTitle(ToQString(Title));
     resize(440, 250);
     auto *layout = new QVBoxLayout(this);
-    auto *label = new QLabel(Static, this);
+    auto *label = new QLabel(ToQString(Static), this);
     label->setObjectName("copyDestinationLabel");
     layout->addWidget(label);
     auto *pathRow = new QHBoxLayout;
     _path = new QComboBox(this);
     _path->setObjectName("copyDestination");
-    _path->setAccessibleName(Static);
+    _path->setAccessibleName(ToQString(Static));
     _path->setEditable(true);
     _path->setInsertPolicy(QComboBox::NoInsert);
-    for (const QString &s : Strings)
-        _path->addItem(s);
-    _path->setCurrentText(Value);
+    FOR_VECTOR(i, Strings)
+    _path->addItem(ToQString(Strings[i]));
+    _path->setCurrentText(ToQString(Value));
     label->setBuddy(_path);
     _path->setMinimumContentsLength(12);
     _path->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
@@ -76,7 +80,7 @@ bool CCopyDialog::OnInit() {
     layout->addLayout(pathRow);
     // Native SS_LEFTNOWORDWRAP shows a bounded summary. Qt scrolling keeps long
     // Unicode filenames and large selections reachable at compact sizes.
-    auto *info = new QPlainTextEdit(Info, this);
+    auto *info = new QPlainTextEdit(ToQString(Info), this);
     info->setObjectName("copySelectionInfo");
     QtBindLangText(info, IDS_PROPERTIES, "Properties", true);
     info->setReadOnly(true);
@@ -96,23 +100,22 @@ bool CCopyDialog::OnInit() {
 
 void CCopyDialog::OnButtonSetPath() {
     const QString currentPath = _path->currentText();
-    QString resultPath;
-    if (!MyBrowseForFolder(this, QtLangText(IDS_SET_FOLDER), currentPath, resultPath))
+    UString selectedPath;
+    if (!MyBrowseForFolder(this, ToUString(QtLangText(IDS_SET_FOLDER)), ToUString(currentPath),
+                           selectedPath))
         return;
-    resultPath = QDir::fromNativeSeparators(resultPath);
-    if (!resultPath.endsWith('/'))
-        resultPath += '/';
+    NWindows::NFile::NName::NormalizeDirPathPrefix(selectedPath);
     _path->setCurrentIndex(-1);
-    _path->setCurrentText(resultPath);
+    _path->setCurrentText(ToQString(selectedPath));
 }
 
 void CCopyDialog::OnOK() {
-    Value = _path->currentText();
+    Value = ToUString(_path->currentText());
     QDialog::accept();
 }
 
 void CCopyDialog::accept() { OnOK(); }
 
 QString CCopyDialog::destination() const {
-    return result() == QDialog::Accepted ? Value : _path->currentText();
+    return result() == QDialog::Accepted ? ToQString(Value) : _path->currentText();
 }

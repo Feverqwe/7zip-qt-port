@@ -162,7 +162,7 @@ void CApp::OnCopy(bool move, bool copyToSame, unsigned srcPanelIndex) {
                            srcPanel.GetItemsInfoString(indices));
     if (copyDialog.exec() != QDialog::Accepted)
         return;
-    destPath = ToUString(copyDialog.destination());
+    destPath = copyDialog.Value;
     if (destPath.IsEmpty()) {
         srcPanel.MessageBox_Error_UnsupportOperation();
         return;

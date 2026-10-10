@@ -1,10 +1,12 @@
 #include "CPP/7zip/UI/FileManager/BrowseDialog.h"
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
+#include "CPP/7zip/UI/FileManager/ViewSettings.h"
 #include <QApplication>
 #include <QDir>
 #include <QFile>
 #include <QFileDialog>
+#include <QMessageBox>
 #include <QTemporaryDir>
 #include <QTimer>
 #include <QtTest>
@@ -12,26 +14,89 @@
 class BrowseDialogTests final : public QObject {
     Q_OBJECT
   private slots:
+    void sourceCommonDialogFlags_data() {
+        QTest::addColumn<bool>("save");
+        QTest::addColumn<bool>("noFilters");
+        QTest::newRow("open-new-name") << false << false;
+        QTest::newRow("save-existing-without-extra-prompt") << true << false;
+        QTest::newRow("open-without-filter") << false << true;
+    }
+    void sourceCommonDialogFlags() {
+        QFETCH(bool, save);
+        QFETCH(bool, noFilters);
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString selected = fixture.filePath(QStringLiteral("new 密碼 with spaces.7z"));
+        if (save) {
+            QFile existing(selected);
+            QVERIFY(existing.open(QIODevice::WriteOnly | QIODevice::NewOnly));
+            existing.write("original bytes");
+        }
+        CBrowseInfo browse;
+        browse.FilePath = ToUString(selected);
+        browse.SaveMode = save;
+        QCOMPARE(browse.FilterIndex, -1);
+        CObjectVector<CBrowseFilterInfo> filters;
+        if (!noFilters) {
+            browse.FilterIndex = 0;
+            filters.AddNew().Description = "Archive";
+            filters[0].Masks.Add(UString("*.7z"));
+        }
+        QObject timerContext;
+        bool shown = false;
+        bool unexpectedPrompt = false;
+        const QString currentDirectory = QDir::currentPath();
+        QTimer::singleShot(0, &timerContext, [&] {
+            auto *dialog = qobject_cast<QFileDialog *>(QApplication::activeModalWidget());
+            if (!dialog)
+                return;
+            shown = true;
+            dialog->selectFile(selected);
+            QTimer::singleShot(0, &timerContext, [&] {
+                if (auto *prompt = qobject_cast<QMessageBox *>(QApplication::activeModalWidget())) {
+                    unexpectedPrompt = true;
+                    prompt->done(QMessageBox::No);
+                }
+            });
+            QMetaObject::invokeMethod(dialog, "accept", Qt::DirectConnection);
+            if (dialog->isVisible())
+                dialog->reject();
+        });
+        const bool accepted = browse.BrowseForFile(filters);
+        QVERIFY(shown);
+        QVERIFY(!unexpectedPrompt);
+        QVERIFY(accepted);
+        QCOMPARE(QDir::fromNativeSeparators(ToQString(browse.FilePath)), selected);
+        QCOMPARE(QDir::currentPath(), currentDirectory);
+        QCOMPARE(browse.FilterIndex, noFilters ? -1 : 0);
+        if (save) {
+            QFile existing(selected);
+            QVERIFY(existing.open(QIODevice::ReadOnly));
+            QCOMPARE(existing.readAll(), QByteArray("original bytes"));
+        } else
+            QVERIFY(!QFile::exists(selected));
+    }
+
     void folderCancelAndUnicodeSelection() {
         QTemporaryDir fixture;
         QVERIFY(fixture.isValid());
         const QString selected = fixture.filePath(QStringLiteral("папка с пробелом"));
         QVERIFY(QDir().mkdir(selected));
-        QString result = QStringLiteral("stale");
+        UString result = L"stale";
         QTimer::singleShot(0, [] {
             if (auto *dialog = qobject_cast<QFileDialog *>(QApplication::activeModalWidget()))
                 dialog->reject();
         });
-        QVERIFY(!MyBrowseForFolder(nullptr, "Папка", fixture.path(), result));
-        QVERIFY(result.isEmpty());
+        QVERIFY(!MyBrowseForFolder(nullptr, L"Папка", ToUString(fixture.path()), result));
+        QVERIFY(result.IsEmpty());
         QTimer::singleShot(0, [selected] {
             if (auto *dialog = qobject_cast<QFileDialog *>(QApplication::activeModalWidget())) {
                 dialog->setDirectory(selected);
                 QMetaObject::invokeMethod(dialog, "accept", Qt::DirectConnection);
             }
         });
-        QVERIFY(MyBrowseForFolder(nullptr, "Папка", fixture.path(), result));
-        QCOMPARE(result, selected);
+        QVERIFY(MyBrowseForFolder(nullptr, L"Папка", ToUString(fixture.path()), result));
+        QCOMPARE(ToQString(result), selected);
     }
 
     void firstArchiveVolumeUsesArchiveFilter_data() {
@@ -56,9 +121,16 @@ class BrowseDialogTests final : public QObject {
         QVERIFY(file.open(QIODevice::WriteOnly));
         file.close();
         CBrowseInfo browse;
-        browse.Title = "Открыть архив";
-        browse.Filters = archives + " (*.7z *.zip *.001);;" + allFiles + " (*)";
-        browse.FilePath = fixture.path() + '/';
+        browse.lpstrTitle = L"Открыть архив";
+        CObjectVector<CBrowseFilterInfo> filters;
+        filters.AddNew().Description = ToUString(archives);
+        filters[0].Masks.Add(UString("*.7z"));
+        filters[0].Masks.Add(UString("*.zip"));
+        filters[0].Masks.Add(UString("*.001"));
+        filters.AddNew().Description = ToUString(allFiles);
+        filters[1].Masks.Add(UString("*"));
+        browse.FilterIndex = 0;
+        browse.FilePath = ToUString(fixture.path() + '/');
         bool answered = false;
         QStringList observedFilters;
         QString selectedFilter;
@@ -71,13 +143,13 @@ class BrowseDialogTests final : public QObject {
                 QMetaObject::invokeMethod(dialog, "accept", Qt::DirectConnection);
             }
         });
-        QVERIFY(browse.BrowseForFile());
+        QVERIFY(browse.BrowseForFile(filters));
         QVERIFY(answered);
         QVERIFY(selectedFilter.contains("*.001"));
         QCOMPARE(observedFilters.size(), 2);
         QVERIFY(observedFilters.at(0).startsWith(archives + " ("));
         QCOMPARE(observedFilters.at(1), allFiles + " (*)");
-        QCOMPARE(browse.FilePath, selected);
+        QCOMPARE(ToQString(browse.FilePath), selected);
         QCOMPARE(browse.FilterIndex, 0);
         SaveRegLang(UString("-"), settings);
         ReloadLang(settings);
@@ -90,24 +162,28 @@ class BrowseDialogTests final : public QObject {
         QVERIFY(file.open(QIODevice::WriteOnly));
         file.close();
         CBrowseInfo browse;
-        browse.Title = "Открыть архив";
-        browse.Filters = "Архивы (*.7z);;Все файлы (*)";
-        browse.FilePath = selected;
+        browse.lpstrTitle = L"Открыть архив";
+        CObjectVector<CBrowseFilterInfo> filters;
+        filters.AddNew().Description = L"Архивы";
+        filters[0].Masks.Add(UString("*.7z"));
+        filters.AddNew().Description = L"Все файлы";
+        filters[1].Masks.Add(UString("*"));
+        browse.FilePath = ToUString(selected);
         browse.FilterIndex = 1;
         QTimer::singleShot(0, [] {
             if (auto *dialog = qobject_cast<QFileDialog *>(QApplication::activeModalWidget()))
                 dialog->reject();
         });
-        QVERIFY(!browse.BrowseForFile());
-        QCOMPARE(browse.FilePath, selected);
+        QVERIFY(!browse.BrowseForFile(filters));
+        QCOMPARE(ToQString(browse.FilePath), selected);
         QTimer::singleShot(0, [selected] {
             if (auto *dialog = qobject_cast<QFileDialog *>(QApplication::activeModalWidget())) {
                 dialog->selectFile(selected);
                 QMetaObject::invokeMethod(dialog, "accept", Qt::DirectConnection);
             }
         });
-        QVERIFY(browse.BrowseForFile());
-        QCOMPARE(browse.FilePath, selected);
+        QVERIFY(browse.BrowseForFile(filters));
+        QCOMPARE(ToQString(browse.FilePath), selected);
         QCOMPARE(browse.FilterIndex, 1);
     }
 };

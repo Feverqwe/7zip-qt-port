@@ -193,7 +193,7 @@ class VolumeDialogTests : public QObject {
         }
         dialog.findChild<QComboBox *>("copyDestination")->setCurrentText("/new destination");
         dialog.accept();
-        QCOMPARE(dialog.Value, QStringLiteral("/new destination"));
+        QCOMPARE(ToQString(dialog.Value), QStringLiteral("/new destination"));
     }
 };
 QTEST_MAIN(VolumeDialogTests)

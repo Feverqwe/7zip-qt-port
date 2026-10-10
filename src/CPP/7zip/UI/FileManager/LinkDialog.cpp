@@ -190,11 +190,8 @@ void CLinkDialog::OnButton_SetPath(bool to) {
     const UString title = LangString(IDS_SET_FOLDER);
 
     UString resultPath;
-    QString qtResult;
-    if (!MyBrowseForFolder(this, QString::fromWCharArray(title.Ptr()),
-                           QString::fromWCharArray(currentPath.Ptr()), qtResult))
+    if (!MyBrowseForFolder(this, title, currentPath, resultPath))
         return;
-    resultPath = qtResult.toStdWString().c_str();
     NName::NormalizeDirPathPrefix(resultPath);
     combo.SetCurSel(-1);
     combo.SetText(resultPath);

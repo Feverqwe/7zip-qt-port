@@ -1,5 +1,20 @@
 # Regression strategy
 
+`source_browse_dialog` tests the actual public file/folder entries with owned
+long Unicode paths: source-browser dispatch, masks/filter state, parent/directory
+sorting, Enter/Backspace/Ctrl+R/F7, create success/failure/Cancel, raw SaveMode
+names and Cancel output. EN/RU file/folder geometry at560×640/420×400 writes
+current widget JSON. `browse_dialog` retains ordinary picker coverage with
+source filter vectors; Combo/Copy, volume, language, source archive Browse and
+compression-format consumers cover the portable DTO boundaries. Offscreen
+geometry does not establish rendered Windows parity or physical desktop input.
+
+The ordinary `browse_dialog` also exercises source common-dialog flags through
+real picker acceptance: a new Open filename returns without creating a file,
+and Save of an existing name returns without a second overwrite prompt or
+changing bytes. Both preserve process cwd. These rows fail when the previous
+Qt ExistingFile/overwrite-confirmation policy is restored.
+
 `copy_dialog` verifies source Copy history case policy, stored ordering and
 reloaded combo items: K retains the source-distinct Kelvin symbol K while all
 ordinary K/k variants are removed. `app_copy_routing` exercises real CApp dialog

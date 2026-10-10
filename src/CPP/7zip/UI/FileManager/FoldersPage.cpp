@@ -139,9 +139,9 @@ bool CFoldersPage::OnButtonClicked(unsigned buttonID) {
 void CFoldersPage::OnFoldersWorkButtonPath() {
     QString currentPath = m_WorkPath->text();
     QString title = QtLangText(IDS_FOLDERS_SET_WORK_PATH_TITLE);
-    QString resultPath;
-    if (MyBrowseForFolder(this, title, currentPath, resultPath))
-        m_WorkPath->setText(resultPath);
+    UString resultPath;
+    if (MyBrowseForFolder(this, ToUString(title), ToUString(currentPath), resultPath))
+        m_WorkPath->setText(ToQString(resultPath));
 }
 
 long CFoldersPage::OnApply() {

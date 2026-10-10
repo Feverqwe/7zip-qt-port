@@ -435,7 +435,7 @@ void CApp::Combine(IQtVolumeServices &services) {
             copyDialog.setObjectName("combineDialog");
             if (copyDialog.exec() != QDialog::Accepted)
                 return;
-            path = ToUString(copyDialog.Value);
+            path = copyDialog.Value;
         }
 
         NName::NormalizeDirPathPrefix(path);

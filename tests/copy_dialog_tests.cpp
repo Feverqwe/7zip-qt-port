@@ -38,7 +38,7 @@ class CopyDialogTests : public QObject {
     void copiesFieldsAndCommitsOnlyOnOK() {
         CCopyDialog dialog(false, QStringLiteral("/начальная папка/"),
                            {QStringLiteral("/tmp/имя с пробелом.txt")}, {"/one", "/two"});
-        QCOMPARE(dialog.Title, QString("Copy"));
+        QCOMPARE(ToQString(dialog.Title), QString("Copy"));
         auto *path = dialog.findChild<QComboBox *>("copyDestination");
         QVERIFY(path);
         QCOMPARE(path->count(), 2);
@@ -48,15 +48,15 @@ class CopyDialogTests : public QObject {
         QCOMPARE(info->toPlainText(), QStringLiteral("имя с пробелом.txt"));
         path->setCurrentText(QStringLiteral("  /новая папка/  "));
         dialog.reject();
-        QCOMPARE(dialog.Value, QStringLiteral("/начальная папка/"));
+        QCOMPARE(ToQString(dialog.Value), QStringLiteral("/начальная папка/"));
         dialog.accept();
-        QCOMPARE(dialog.Value, QStringLiteral("  /новая папка/  "));
-        QCOMPARE(dialog.destination(), dialog.Value);
+        QCOMPARE(ToQString(dialog.Value), QStringLiteral("  /новая папка/  "));
+        QCOMPARE(dialog.destination(), ToQString(dialog.Value));
         CCopyDialog move(true, "/initial", {}, {});
-        QCOMPARE(move.Static, QString("Move to:"));
+        QCOMPARE(ToQString(move.Static), QString("Move to:"));
         move.findChild<QComboBox *>("copyDestination")->setCurrentText("/by-button");
         move.findChild<QDialogButtonBox *>("copyButtons")->button(QDialogButtonBox::Ok)->click();
-        QCOMPARE(move.Value, QString("/by-button"));
+        QCOMPARE(ToQString(move.Value), QString("/by-button"));
         QCOMPARE(move.result(), int(QDialog::Accepted));
     }
 
@@ -144,9 +144,9 @@ class CopyDialogTests : public QObject {
         browse->click();
         QVERIFY(found);
         QCOMPARE(path->currentIndex(), -1);
-        QCOMPARE(path->currentText(), chosen + '/');
+        QCOMPARE(QDir::fromNativeSeparators(path->currentText()), chosen + '/');
         dialog.accept();
-        QCOMPARE(dialog.Value, chosen + '/');
+        QCOMPARE(QDir::fromNativeSeparators(ToQString(dialog.Value)), chosen + '/');
     }
 
     void geometryAndLongSelection_data() {

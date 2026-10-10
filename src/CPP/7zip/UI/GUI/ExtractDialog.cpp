@@ -4,6 +4,7 @@
 #include "../../../Common/Wildcard.h"
 #include "../FileManager/BrowseDialog.h"
 #include "../FileManager/HelpUtils.h"
+#include "../FileManager/ViewSettings.h"
 #include "7zip/UI/GUI/ExtractDialogRes.h"
 #include "7zip/UI/GUI/ExtractRes.h"
 #include "Windows/FileName.h"
@@ -289,9 +290,10 @@ void CExtractDialog::UpdatePasswordControl() {
                                                           : QLineEdit::Password);
 }
 void CExtractDialog::OnButtonSetPath() {
-    QString path;
-    if (MyBrowseForFolder(this, QtLangText(IDS_EXTRACT_SET_FOLDER), _path->currentText(), path))
-        _path->setEditText(path);
+    UString path;
+    if (MyBrowseForFolder(this, ToUString(QtLangText(IDS_EXTRACT_SET_FOLDER)),
+                          ToUString(_path->currentText()), path))
+        _path->setEditText(ToQString(path));
 }
 
 void CExtractDialog::OnOK() {

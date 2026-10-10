@@ -1,5 +1,117 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-05 — source path dialogs and long-path browser (2026-10-10)
+
+Baseline: [ip7z/7zip `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17),
+`CPP/7zip/UI/FileManager/BrowseDialog.cpp/.h/.rc/BrowseDialogRes.h`,
+`ComboDialog.cpp/.h` and `CopyDialog.cpp/.h`. The complete Browse implementation,
+headers, resources and actual consumers were read before this change. The
+`USE_MY_BROWSE_DIALOG` definition is active on desktop, not only Windows CE.
+This supersedes the P1-11.2 description that deferred its functional fallback.
+
+`CPP/Windows/CommonDialog.cpp/.h` was also read completely and restored under
+src at its original module boundary. CBrowseInfo again inherits CCommonDialogInfo;
+Browse builds the source sequential description/mask vector and calls
+CommonDlg_BrowseForFile. QWidget replaces HWND at hwndOwner; lpstrTitle retains
+the original caller-owned wide-string lifetime. Qt replaces OPENFILENAME,
+ANSI/old-SDK/CE buffers and GetOpen/SaveFileName services. Original portable
+FilterIndex=-1, SaveMode, FilePath and accepted-only tempPath publication remain.
+Qt AnyFile and DontConfirmOverwrite match source flags, which do not set
+OFN_FILEMUSTEXIST or OFN_OVERWRITEPROMPT; callers still validate open/update.
+The picker preserves process current-directory state. No independent native
+picker implementation remains inside BrowseDialog.cpp.
+
+The original private `CBrowseDialog` remains in BrowseDialog.cpp. Its
+GetParentPath, CompareItems, Reload overloads, OpenParentFolder,
+SetPathEditText, OnCreateDir, OnItemEnter, OnKeyDown, OnButtonClicked, OnOK and FinishOnOK preserve source
+state and flow. Qt controls replace LVITEM/control attachment, notification,
+resize and icon presentation. A Qt row delegates comparison to CompareItems;
+there is no second mask, name, size or path algorithm. Source Wildcard,
+FileFind/FileName/FileDir, TimeUtils/PropVariantConv, RegistryUtils, SysIconUtils,
+ComboDialog and portable strings/vectors remain dependencies. Windows retains
+drive/super-prefix enumeration; POSIX uses the original CEnumerator dirent and
+Fill_FileInfo service, following directory links and retaining a broken link's
+own metadata. POSIX uses E_INVALIDARG for invalid-name presentation where the
+Win32 ERROR_INVALID_NAME service is unavailable.
+
+Normal paths still use QFileDialog as the native picker service. Long initial
+paths use the source custom dialog on every OS at the reference Win32 260-unit
+boundary; Windows super/device paths also select it. Qt has no
+CommDlgExtendedError/FNERR_INVALIDFILENAME result, so file selection dispatches
+to the fallback before the native call instead of interpreting Cancel as an
+error/retry. Folder selection already uses this preselection in upstream.
+Native picker failures remain limited by Qt's public API. This is an explicit
+platform adaptation, not evidence that a native Windows long-path picker ran.
+
+Combo/Copy public strings and history use UString/UStringVector. Browse FilePath
+and folder/create outputs use UString; CBrowseInfo FilterIndex defaults
+to the original -1. Original CBrowseFilterInfo vectors replace the Qt-only
+filter-string/no-argument API. QWidget ownership replaces HWND; QString
+conversions occur at widget
+boundaries. Select/Create/Comment/Split, Copy/Move, Extract/Link/Folders,
+Compress archive selection and Edit program selection are direct consumers.
+Copy/Split destination separators now use source NormalizeDirPathPrefix.
+
+The two original Browse resources are byte-exact references in third_party;
+they are not compiled as Qt resources. Original notices/licenses remain.
+CE resource sizing, Win32 common-dialog structures/error retrieval and shell
+image-list transport are replaced presentation/services, not omitted navigation.
+Commented/debug tooltip and mask examples remain inactive. BrowseDialog2 and
+its owned temporary-file deletion policy are separate modules.
+
+Initial source-routing regression: two valid long owned paths reached the
+ordinary picker and failed the custom-dialog assertion. The first overlong
+macOS fixture failed setup and is not product RED. Current focused coverage
+includes source filters/sorting/navigation/create success/failure/Cancel,
+raw names and state, file/folder selection, consumers and EN/RU normal/compact
+geometry. Current-folder text elides with full tooltip/accessibility text;
+Qt font/style sizing uses560×640/420×400 while retaining source grouping.
+Whole FileManager disposition and P3-03/04/05/06 acceptance remain open.
+
+Validation: required unsandboxed macOS arm64/Qt6.12 full gate312/312 PASS250.51s,
+4908Qt/0fail/18 existing platform skips. The earlier pre-CommonDialog gate also
+passed312/312; the broad owner change required the final gate. After the localized
+empty-filter index fix/property assertions, all19 direct consumers rebuilt and
+passed14.00s,295Qt/0fail/0skip. Linux/Windows x64 Qt6.12 each19/19 PASS24.75s/85.89s,
+295/294Qt/0fail/0skip. The one-result difference is the compiled POSIX-only
+NativeFsOperations read-only-directory slot, not a skipped Windows requirement.
+Eight current source-browser JSON perOS fit controls/labels at both sizes and
+languages; Windows uses native Qt platform/font/style through the existing test
+policy. This is widget geometry, not rendered original Windows comparison or
+physical desktop/native-system-picker acceptance.
+
+Snapshot20261010T011953Z-77b5cfa6, isolated parentc222831, source.tar SHA-256
+`547b89c5e1013bad1e144382cd69ff885e747263f07ce60e76af4df02326dbf9`:
+1429 frozen code/test/build inputs match local files, archive and both actual
+guest trees. Baseline verifies410 exact/198 adapted/3 local paths. Runtime/SFX
+copies match their completed producer and metadata hashes. Temporary wrapper
+is archived/removed before commit. This receipt precedes the localized focus
+correction below; it is not a hash claim for the later changed handlers/tests.
+Evidence: build/review/filemanager-final/path-dialogs-* in the isolated checkout.
+Eleven slow suites excluded. Installed/CLI/package/native/rendered and final
+P3 acceptance remain open; no parent package closes from this component.
+
+Final source-handler review restored OnButtonClicked's unconditional list focus
+after Create Folder, including child Cancel. The actual public-button regression
+failed before the fix (15Qt pass/1fail/0skip); the restored original dispatch and
+OnKeyDown switch pass on macOS, Linux and Windows. Windows additionally exercises
+two owned short super-prefix paths, independently of the length threshold.
+Qt layout/events replace Win32 OnSize/OnMessage/OnNotify/OnCommand transport.
+The localized macOS suite passes16Qt/0fail/0skip; validation atop parent293a826
+also passes28/28 direct consumers (375Qt/0fail/0skip), then the localized browser
+follow-up. Final focused platform snapshot and retained-input proof accompany
+the original full-consumer receipt in path-dialogs-focus-* evidence. No third
+full gate is needed for this localized handler correction under AGENTS.md.
+
+Final snapshot20261010T014414Z-d0cb5911 SHA-256
+`620f91e99f6cdfa445f4233a205f167938bc2a624893384b5afa26a708942f6d`:
+1429 local/archive/actual-guest inputs match;1428 remain exact after archiving
+and removing the one-off wrapper. Linux16Qt and Windows18Qt pass with no failures
+or skips; all eight source-browser geometry reports perOS fit. This focused
+follow-up uses skip-runtime because it performs no engine operations; the earlier
+19-consumer run provides the runtime/SFX coverage. Final merged macOS browser
+follow-up passes1/1 in0.68s,16Qt/0fail/0skip.
+
 ## P3-05 — ViewSettings and source Copy history (2026-10-10)
 
 Source repository https://github.com/ip7z/7zip.git, full revision
@@ -14377,7 +14489,7 @@ Extract column ordering on disposable fixtures.
 | `src/createarchivedialog.cpp`, `createarchivedialog_compression.cpp`, `createarchivedialog_resources.cpp`, `createarchivedialog.h` | `CPP/7zip/UI/GUI/CompressDialog.cpp`, `CompressDialog.rc`, `FileManager/PanelCopy.cpp` | Qt-форма выбора источников и сжатия. Правила уровней (`SetLevel2`) и методы берутся из перенесённого `GUI/CompressDialog.cpp`; Ветки размера слова LZMA/LZMA2, Deflate/Deflate64 и порядка PPMd/PPMdZip перенесены в `SetOrder2`; Словари доступных методов, Auto/Non/Full solid, потоки и оценки памяти перенесены; путь/история, шифрование, пользовательский лимит памяти и профили перенесены последующими итерациями выше; выбор источников и остальные поля полного OnOK остаются долгом. |
 | `src/CPP/7zip/UI/GUI/ExtractDialog.cpp`, `.h`, `src/CPP/7zip/UI/Common/ZipRegistry.*` | `CPP/7zip/UI/GUI/ExtractDialog.cpp::CExtractDialog::OnInit`, `OnOK`, `AddComboItems`, `AddUniqueString`; `ZipRegistry.*::NExtract::CInfo` | Исходные таблицы режимов, история и сохранение режимов/показа пароля перенесены. Qt заменяет presentation; `src/extractdialog.h` — compatibility alias, прежняя самостоятельная реализация удалена. SplitDest и SplitPathToParts_Smart перенесены следующей итерацией; ElimDup и NtSecurity остаются долгом. |
 | `src/CPP/7zip/UI/FileManager/CopyDialog.*`, `ViewSettings.*`, `App.cpp`, `Panel.h`, `PanelListNotify.cpp`, `src/copydialog.h` | `FileManager/CopyDialog.cpp`, `.h`, `.rc`; `ViewSettings.cpp::ReadCopyHistory`, `SaveCopyHistory`, `AddUniqueStringToHeadOfList`; `App.cpp::Copy`, `CPanel::GetItemsInfoString`; `PanelListNotify.cpp::ConvertSizeToString` | Перенесены CCopyDialog, история, сводка выделения и форматирование чисел. Qt layouts заменяют OnSize, QSettings — Registry, snapshot свойств — COM; старый header содержит только alias. Остальные App/Panel/ListNotify функции пока не перенесены. |
-| `src/CPP/7zip/UI/FileManager/ComboDialog.cpp/.h`, `BrowseDialog.cpp/.h`, `src/combodialog.h` | `FileManager/ComboDialog.cpp/.h/.rc`, `BrowseDialog.cpp::Dlg_CreateFolder` | Перенесены OnInit/OnOK и создание папки через общий dialog; Qt заменяет presentation, header alias сохраняет существующих потребителей. Остальная BrowseDialog не перенесена. |
+| `src/CPP/7zip/UI/FileManager/ComboDialog.cpp/.h`, `BrowseDialog.cpp/.h`, `src/combodialog.h` | `FileManager/ComboDialog.cpp/.h/.rc`, `BrowseDialog.cpp::Dlg_CreateFolder` | Здесь переносились OnInit/OnOK и создание папки через общий dialog; Qt заменяет presentation, header alias сохраняет существующих потребителей. Остальной Browse и CommonDialog owner восстановлены в [P3-05 path dialogs](#p3-05--source-path-dialogs-and-long-path-browser-2026-10-10). |
 | `src/CPP/7zip/UI/FileManager/SettingsPage.*`, `RegistryUtils.*`, `settingsdialog.h` | `FileManager/SettingsPage.cpp/.h`, `RegistryUtils.cpp/.h`, `SettingsPage2.rc` | Частичный source port страницы и CFmSettings, подробно выше; OptionsDialog и остальные controls остаются долгом. |
 | `src/archiveformats.h` | `FileManager/FilePlugins.cpp`, `PanelFolderChange.cpp`, `PanelItemOpen.cpp` | Собственный статический список расширений для эвристики двойного щелчка и фильтра диалога. В upstream расширения приходят от установленных обработчиков; движок сам определяет формат при явном открытии. |
 | `src/archivebackend.cpp`, `archivebackend.h`, `archivebackend_listing.cpp`, `archivebackend_mutations.cpp`, `archivebackend_validation.cpp` | `CPP/7zip/UI/Console/Main.cpp`, `CPP/7zip/UI/Common/OpenArchive.cpp`, `Update.cpp` и движок `CPP/7zip/Archive/` | Адаптер процесса `7zz`, парсер его вывода, проверка путей и транзакционное обновление. Не является копией движка; переносить код форматов сюда нельзя. |
@@ -15178,16 +15290,13 @@ Cancel и индекс выбранного фильтра. Qt `QFileDialog` з�
 управляет контролами, а `CBrowseInfo` остаётся владельцем пути и результата.
 Текущие CreateArchive и MainWindow Open Archive используют те же входы.
 
-Существующие статические Qt filters передаются presentation-адаптеру;
-исходное построение filters из handler registry остаётся P2-01. Win32
-`CommDlgExtendedError`/super-path fallback не переносится на Qt/Unix picker;
-для Windows длинных путей это непроверенная ветка. Внутренний
-`CBrowseDialog` tree/list/Reload/OnItemEnter/FinishOnOK (USE_MY_BROWSE_DIALOG)
-не строится: в текущем upstream desktop используется системный picker,
-а визуальный custom fallback для super/device paths остаётся обязательным
-при подтверждении такого Windows workflow. `BrowseDialog2` Delete Temporary
-Files остаётся P1-15. Original notices сохранены, лицензия —
-`third_party/7zip/License.txt`.
+В этой исторической P1-11.2 итерации использовались статические Qt filters,
+а custom fallback был отложен. Последующая P2-01 возвращает handler filters;
+P3-05 возвращает исходный активный desktop CBrowseDialog и переносимые DTO.
+Его bodies, точные ресурсы, native-picker adaptation и ограничения описаны в
+[текущем source audit](#p3-05--source-path-dialogs-and-long-path-browser-2026-10-10).
+`BrowseDialog2` Delete Temporary Files остаётся отдельным owner P1-15.
+Original notices сохранены, лицензия — `third_party/7zip/License.txt`.
 
 ## P1-11.3 — сетевой namespace (2026-09-30)
 

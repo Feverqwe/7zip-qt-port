@@ -2,6 +2,7 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
+#include "CPP/7zip/UI/FileManager/ViewSettings.h"
 #include "CPP/7zip/UI/GUI/UpdateGUI.h"
 #include "archivecodeccatalog.h"
 #include "createarchivedialog.h"
@@ -189,7 +190,7 @@ class CompressionFormatTests final : public QObject {
         QVERIFY(source.OnButtonSetArchive(
             nullptr, [&](CBrowseInfo &info, const CObjectVector<CBrowseFilterInfo> &) {
                 info.FilterIndex = gzip;
-                info.FilePath = fixture_.filePath("browse 空 with spaces");
+                info.FilePath = ToUString(fixture_.filePath("browse 空 with spaces"));
                 return true;
             }));
         QCOMPARE(source.Info.FormatIndex, catalog_->formatIndex("gzip"));

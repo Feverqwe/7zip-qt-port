@@ -1,22 +1,604 @@
 // Adapted from 7-Zip CPP/7zip/UI/FileManager/BrowseDialog.cpp (0766b73).
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
-// Dlg_CreateFolder, CorrectFsPath, MyBrowseForFolder and BrowseForFile are ported.
-// Qt/localized strings replace HWND/LangString and native platform pickers.
+// Source custom-browser navigation, filtering, sorting and acceptance remain.
+// Qt replaces Win32 controls and ordinary native picker services.
 #include "BrowseDialog.h"
+#include "7zip/UI/FileManager/BrowseDialogRes.h"
+#include "7zip/UI/FileManager/PropertyNameRes.h"
 #include "7zip/UI/FileManager/resource.h"
 #include "ComboDialog.h"
+#include "Common/Defs.h"
 #include "Common/IntToString.h"
 #include "Common/StringConvert.h"
+#include "Common/Wildcard.h"
+#include "RegistryUtils.h"
+#include "SysIconUtils.h"
+#include "ViewSettings.h"
+#include "Windows/FileDir.h"
 #include "Windows/FileFind.h"
 #include "Windows/FileName.h"
+#include "Windows/PropVariantConv.h"
+#include "Windows/TimeUtils.h"
+#include "qtfilelisthover.h"
+#include "qtlangbuttonbox.h"
 #include "qtlangcontrols.h"
+#include <QComboBox>
+#include <QDialogButtonBox>
 #include <QDir>
 #include <QFileDialog>
-#include <QFileInfo>
+#include <QHeaderView>
+#include <QKeyEvent>
+#include <QLabel>
+#include <QLineEdit>
+#include <QMessageBox>
+#include <QPushButton>
+#include <QSignalBlocker>
+#include <QTreeWidget>
+#include <QVBoxLayout>
 
 using namespace NWindows;
 using namespace NFile;
 using namespace NName;
+using namespace NFind;
+
+extern UString HResultToMessage(HRESULT errorCode);
+wchar_t *Browse_ConvertSizeToString(UInt64 v, wchar_t *s);
+
+namespace {
+const int kParentIndex = -1;
+#ifdef _WIN32
+const HRESULT kInvalidNameError = ERROR_INVALID_NAME;
+#else
+const HRESULT kInvalidNameError = E_INVALIDARG;
+#endif
+// The reference native picker uses Win32 MAX_PATH, independently of the host
+// filesystem limit. Qt exposes no CommDlgExtendedError for its native picker;
+// select the source fallback before opening an unsupported long initial path.
+bool NeedsSourceBrowser(const UString &path) {
+#ifdef _WIN32
+    if (IsSuperOrDevicePath(path))
+        return true;
+#endif
+    return path.Len() >= 260;
+}
+
+void MessageBox_HResError(QWidget *wnd, HRESULT errorCode, const UString &name) {
+    UString s = HResultToMessage(errorCode);
+    if (!name.IsEmpty()) {
+        s.Add_LF();
+        s += name;
+    }
+    QMessageBox::critical(wnd, "7-Zip", ToQString(s));
+}
+
+bool BrowseNext(CEnumerator &enumerator, CFileInfo &fi, bool &found) {
+#ifdef _WIN32
+    return enumerator.Next(fi, found);
+#else
+    CDirEntry entry;
+    if (!enumerator.Next(entry, found))
+        return false;
+    // A general selector follows directory links, as the Windows picker does.
+    if (!found)
+        return true;
+    // Keep broken links visible too; upstream's no-follow conversion retains
+    // their own metadata when a target cannot be read.
+    return enumerator.Fill_FileInfo(entry, fi, true) || enumerator.Fill_FileInfo(entry, fi, false);
+#endif
+}
+
+class CBrowseDialog : public QDialog {
+    QTreeWidget *_list = nullptr;
+    QLineEdit *_pathEdit = nullptr;
+    QComboBox *_filterCombo = nullptr;
+    QLabel *_folder = nullptr;
+    CObjectVector<CFileInfo> _files;
+    CExtToIconMap _extToIconMap;
+    int _sortIndex = 0;
+    bool _ascending = true;
+    bool _showDots = false;
+    UString _topDirPrefix;
+    UString DirPrefix;
+
+    bool GetParentPath(const UString &path, UString &parentPrefix, UString &name);
+    HRESULT Reload(const UString &pathPrefix, const UString &selectedName);
+    HRESULT Reload();
+    void OpenParentFolder();
+    void SetPathEditText();
+    void OnCreateDir();
+    void OnItemEnter();
+    void FinishOnOK();
+    void OnOK();
+    bool OnButtonClicked(unsigned buttonID);
+    bool OnKeyDown(QKeyEvent *keyDownInfo);
+    void OnInit();
+    void SetFolderText();
+    int GetRealItemIndex(QTreeWidgetItem *item) const {
+        return item ? item->data(0, Qt::UserRole).toInt() : kParentIndex;
+    }
+    QTreeWidgetItem *SelectedItem() const {
+        const auto items = _list->selectedItems();
+        return items.isEmpty() ? nullptr : items.front();
+    }
+    bool eventFilter(QObject *watched, QEvent *event) override;
+    void changeEvent(QEvent *event) override;
+
+  public:
+    bool SaveMode = false;
+    bool FolderMode = false;
+    int FilterIndex = -1;
+    CObjectVector<CBrowseFilterInfo> Filters;
+    UString FilePath;
+    UString Title;
+    explicit CBrowseDialog(QWidget *parent) : QDialog(parent) {}
+    int Create() {
+        OnInit();
+        return exec();
+    }
+    void accept() override { FinishOnOK(); }
+    int CompareItems(int lParam1, int lParam2) const;
+};
+
+class BrowseRow final : public QTreeWidgetItem {
+    const CBrowseDialog &_dialog;
+
+  public:
+    BrowseRow(QTreeWidget *list, const CBrowseDialog &dialog, int index)
+        : QTreeWidgetItem(list), _dialog(dialog) {
+        setData(0, Qt::UserRole, index);
+    }
+    bool operator<(const QTreeWidgetItem &other) const override {
+        return _dialog.CompareItems(data(0, Qt::UserRole).toInt(),
+                                    other.data(0, Qt::UserRole).toInt()) < 0;
+    }
+};
+
+void CBrowseDialog::OnInit() {
+    setObjectName("browseDialog");
+    setWindowTitle(Title.IsEmpty() ? QStringLiteral("7-Zip: Browse") : ToQString(Title));
+    auto *layout = new QVBoxLayout(this);
+    auto *top = new QHBoxLayout;
+    auto *parent = new QPushButton("<--", this);
+    parent->setObjectName("browseParent");
+    QtBindLangText(parent, IDM_OPEN_PARENT_FOLDER, {}, true);
+    parent->setAutoDefault(false);
+    auto *create = new QPushButton("+", this);
+    create->setObjectName("browseCreateFolder");
+    QtBindLangText(create, IDM_CREATE_FOLDER, {}, true);
+    create->setAutoDefault(false);
+    _folder = new QLabel(this);
+    _folder->setObjectName("browseFolder");
+    _folder->setTextFormat(Qt::PlainText);
+    _folder->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+    _folder->installEventFilter(this);
+    top->addWidget(parent);
+    top->addWidget(create);
+    top->addWidget(_folder, 1);
+    layout->addLayout(top);
+    _list = new QTreeWidget(this);
+    _list->setObjectName("browseList");
+    _list->setRootIsDecorated(false);
+    _list->setSelectionMode(QAbstractItemView::SingleSelection);
+    _list->setHeaderLabels(
+        {QtLangText(IDS_PROP_NAME), QtLangText(IDS_PROP_MTIME), QtLangText(IDS_PROP_SIZE)});
+    _list->setColumnWidth(0, fontMetrics().horizontalAdvance("123456789012345678901234567"));
+    _list->setColumnWidth(1, fontMetrics().horizontalAdvance("2009-09-09 09:09") + 20);
+    _list->setColumnWidth(2, fontMetrics().horizontalAdvance("9999 MB") + 20);
+    _list->header()->setSortIndicatorShown(true);
+    _list->header()->setSortIndicator(0, Qt::AscendingOrder);
+    _list->installEventFilter(this);
+    layout->addWidget(_list, 1);
+    _pathEdit = new QLineEdit(this);
+    _pathEdit->setObjectName("browsePath");
+    QtBindLangText(_pathEdit, IDS_PROP_NAME, {}, true);
+    layout->addWidget(_pathEdit);
+    _filterCombo = new QComboBox(this);
+    _filterCombo->setObjectName("browseFilter");
+    FOR_VECTOR(i, Filters)
+    _filterCombo->addItem(ToQString(Filters[i].Description));
+    if (Filters.Size() <= 1) {
+        if (FolderMode)
+            _filterCombo->hide();
+        else
+            _filterCombo->setEnabled(false);
+    }
+    _filterCombo->setCurrentIndex((unsigned)FilterIndex < Filters.Size() ? FilterIndex : -1);
+    layout->addWidget(_filterCombo);
+    auto *buttons = new QtLangButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
+    layout->addWidget(buttons);
+    connect(buttons, &QDialogButtonBox::accepted, this, &CBrowseDialog::OnOK);
+    connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
+    connect(parent, &QPushButton::clicked, this, [this] { OnButtonClicked(IDB_BROWSE_PARENT); });
+    connect(create, &QPushButton::clicked, this,
+            [this] { OnButtonClicked(IDB_BROWSE_CREATE_DIR); });
+    connect(_filterCombo, &QComboBox::currentIndexChanged, this, [this] { Reload(); });
+    connect(_list, &QTreeWidget::itemSelectionChanged, this, &CBrowseDialog::SetPathEditText);
+    connect(_list->header(), &QHeaderView::sectionClicked, this, [this](int index) {
+        if (index == _sortIndex)
+            _ascending = !_ascending;
+        else {
+            _ascending = index == 0;
+            _sortIndex = index;
+        }
+        _list->header()->setSortIndicator(index,
+                                          _ascending ? Qt::AscendingOrder : Qt::DescendingOrder);
+        Reload();
+    });
+    CFmSettings st;
+    st.Load(FmSettingsPath());
+    _showDots = st.ShowDots;
+    auto *hover = new QtFileListHover(*_list);
+    hover->SetEnabled(st.SingleClick);
+    if (st.SingleClick)
+        connect(_list, &QTreeWidget::itemClicked, this, [this] { OnItemEnter(); });
+    else
+        connect(_list, &QTreeWidget::itemDoubleClicked, this, [this] { OnItemEnter(); });
+
+    unsigned rootSize = GetRootPrefixSize(FilePath);
+#ifdef _WIN32
+    if (IsDrivePath(FilePath))
+        rootSize = 0;
+    else if (IsSuperPath(FilePath) && IsDrivePath(FilePath.Ptr(kSuperPathPrefixSize)))
+        rootSize = kSuperPathPrefixSize;
+#endif
+    _topDirPrefix.SetFrom(FilePath, rootSize);
+    UString name;
+    if (!GetParentPath(FilePath, DirPrefix, name))
+        DirPrefix = _topDirPrefix;
+    for (;;) {
+        const UString baseFolder = DirPrefix;
+        if (Reload(baseFolder, name) == S_OK)
+            break;
+        name.Empty();
+        if (DirPrefix.IsEmpty())
+            break;
+        UString parentPath, name2;
+        GetParentPath(DirPrefix, parentPath, name2);
+        DirPrefix = parentPath;
+    }
+    if (name.IsEmpty())
+        name = FilePath;
+    if (FolderMode)
+        NormalizeDirPathPrefix(name);
+    _pathEdit->setText(ToQString(name));
+    setTabOrder(_pathEdit, _filterCombo);
+    setTabOrder(_filterCombo, buttons->button(QDialogButtonBox::Ok));
+    setTabOrder(buttons->button(QDialogButtonBox::Cancel), parent);
+    setTabOrder(parent, create);
+    setTabOrder(create, _list);
+    _pathEdit->setFocus();
+    resize(560, 640);
+}
+
+bool CBrowseDialog::eventFilter(QObject *watched, QEvent *event) {
+    if (watched == _folder &&
+        (event->type() == QEvent::Resize || event->type() == QEvent::FontChange))
+        SetFolderText();
+    if (watched == _list && event->type() == QEvent::KeyPress) {
+        auto *key = static_cast<QKeyEvent *>(event);
+        if (key->key() == Qt::Key_Return || key->key() == Qt::Key_Enter) {
+            OnItemEnter();
+            return true;
+        }
+        if (OnKeyDown(key))
+            return true;
+    }
+    return QDialog::eventFilter(watched, event);
+}
+
+bool CBrowseDialog::OnKeyDown(QKeyEvent *keyDownInfo) {
+    const bool ctrl = keyDownInfo->modifiers() & Qt::ControlModifier;
+    switch (keyDownInfo->key()) {
+    case Qt::Key_Backspace:
+        OpenParentFolder();
+        return true;
+    case Qt::Key_R:
+        if (ctrl) {
+            Reload();
+            return true;
+        }
+        return false;
+    case Qt::Key_F7:
+        OnCreateDir();
+        return true;
+    }
+    return false;
+}
+
+bool CBrowseDialog::OnButtonClicked(unsigned buttonID) {
+    switch (buttonID) {
+    case IDB_BROWSE_PARENT:
+        OpenParentFolder();
+        break;
+    case IDB_BROWSE_CREATE_DIR:
+        OnCreateDir();
+        break;
+    default:
+        return false;
+    }
+    _list->setFocus();
+    return true;
+}
+
+void CBrowseDialog::SetFolderText() {
+    const QString fullPath = ToQString(DirPrefix);
+    _folder->setText(_folder->fontMetrics().elidedText(
+        fullPath, Qt::ElideMiddle, qMax(0, _folder->contentsRect().width() - 2)));
+    _folder->setToolTip(fullPath);
+    _folder->setAccessibleName(fullPath);
+}
+
+void CBrowseDialog::changeEvent(QEvent *event) {
+    if (event->type() == QEvent::LanguageChange && _list)
+        _list->setHeaderLabels(
+            {QtLangText(IDS_PROP_NAME), QtLangText(IDS_PROP_MTIME), QtLangText(IDS_PROP_SIZE)});
+    QDialog::changeEvent(event);
+}
+
+void CBrowseDialog::OnOK() {
+    if (_list->hasFocus()) {
+        OnItemEnter();
+        return;
+    }
+    FinishOnOK();
+}
+
+bool CBrowseDialog::GetParentPath(const UString &path, UString &parentPrefix, UString &name) {
+    parentPrefix.Empty();
+    name.Empty();
+    if (path.IsEmpty() || _topDirPrefix == path)
+        return false;
+    UString s = path;
+    if (IS_PATH_SEPAR(s.Back()))
+        s.DeleteBack();
+    if (s.IsEmpty() || IS_PATH_SEPAR(s.Back()))
+        return false;
+    const unsigned pos1 = (unsigned)(s.ReverseFind_PathSepar() + 1);
+    parentPrefix.SetFrom(s, pos1);
+    name = s.Ptr(pos1);
+    return true;
+}
+
+int CBrowseDialog::CompareItems(int lParam1, int lParam2) const {
+    if (lParam1 == lParam2)
+        return 0;
+    if (lParam1 == kParentIndex)
+        return -1;
+    if (lParam2 == kParentIndex)
+        return 1;
+    const CFileInfo &f1 = _files[lParam1];
+    const CFileInfo &f2 = _files[lParam2];
+    const bool isDir2 = f2.IsDir();
+    if (f1.IsDir()) {
+        if (!isDir2)
+            return -1;
+    } else if (isDir2)
+        return 1;
+    int res = 0;
+    switch (_sortIndex) {
+    case 0:
+        res = CompareFileNames(fs2us(f1.Name), fs2us(f2.Name));
+        break;
+    case 1: {
+        FILETIME t1, t2;
+        FiTime_To_FILETIME(f1.MTime, t1);
+        FiTime_To_FILETIME(f2.MTime, t2);
+        res = CompareFileTime(&t1, &t2);
+        break;
+    }
+    case 2:
+        res = MyCompare(f1.Size, f2.Size);
+        break;
+    }
+    return _ascending ? res : -res;
+}
+
+HRESULT CBrowseDialog::Reload(const UString &pathPrefix, const UString &selectedName) {
+    CObjectVector<CFileInfo> files;
+#ifdef _WIN32
+    if (pathPrefix.IsEmpty() || pathPrefix.IsEqualTo(kSuperPathPrefix)) {
+        FStringVector drives;
+        if (!MyGetLogicalDriveStrings(drives))
+            return GetLastError_noZero_HRESULT();
+        FOR_VECTOR(i, drives) {
+            const FString &d = drives[i];
+            if (d.Len() < 2 || d.Back() != '\\')
+                return E_FAIL;
+            CFileInfo &fi = files.AddNew();
+            fi.SetAsDir();
+            fi.Name = d;
+            fi.Name.DeleteBack();
+        }
+    } else
+#endif
+    {
+        const UStringVector *masks = nullptr;
+        if (!Filters.IsEmpty() && _filterCombo->count() > 0) {
+            const int selected = _filterCombo->currentIndex();
+            if ((unsigned)selected < Filters.Size()) {
+                const UStringVector &m = Filters[selected].Masks;
+                if (m.Size() > 1 ||
+                    (m.Size() == 1 && !m[0].IsEqualTo("*.*") && !m[0].IsEqualTo("*")))
+                    masks = &m;
+            }
+        }
+        CEnumerator enumerator;
+        enumerator.SetDirPrefix(us2fs(pathPrefix));
+        CFileInfo fi;
+        for (;;) {
+            bool found;
+            if (!BrowseNext(enumerator, fi, found))
+                return GetLastError_noZero_HRESULT();
+            if (!found)
+                break;
+            if (!fi.IsDir()) {
+                if (FolderMode)
+                    continue;
+                if (masks) {
+                    unsigned i;
+                    for (i = 0; i < masks->Size(); i++)
+                        if (DoesWildcardMatchName((*masks)[i], fs2us(fi.Name)))
+                            break;
+                    if (i == masks->Size())
+                        continue;
+                }
+            }
+            files.Add(fi);
+        }
+    }
+    DirPrefix = pathPrefix;
+    _files = files;
+    SetFolderText();
+    const QSignalBlocker blocker(_list);
+    _list->setUpdatesEnabled(false);
+    _list->clear();
+    QTreeWidgetItem *cursor = nullptr;
+    if (_showDots && _topDirPrefix != DirPrefix) {
+        auto *item = new BrowseRow(_list, *this, kParentIndex);
+        item->setText(0, "..");
+        item->setIcon(0, _extToIconMap.GetIcon(FILE_ATTRIBUTE_DIRECTORY, ToQString(DirPrefix)));
+        if (selectedName.IsEmpty())
+            cursor = item;
+    }
+    FOR_VECTOR(i, _files) {
+        const CFileInfo &fi = _files[i];
+        const UString name = fs2us(fi.Name);
+        auto *item = new BrowseRow(_list, *this, (int)i);
+        item->setText(0, ToQString(name));
+        item->setIcon(0, _extToIconMap.GetIcon(fi.GetWinAttrib(), ToQString(DirPrefix + name)));
+        if (!selectedName.IsEmpty() && CompareFileNames(name, selectedName) == 0)
+            cursor = item;
+        wchar_t s[64] = {};
+        FILETIME time;
+        FiTime_To_FILETIME(fi.MTime, time);
+        if (!FILETIME_IsZero(time))
+            ConvertUtcFileTimeToString(time, s, kTimestampPrintLevel_MIN);
+        item->setText(1, QString::fromWCharArray(s));
+        s[0] = 0;
+        if (!fi.IsDir())
+            Browse_ConvertSizeToString(fi.Size, s);
+        item->setText(2, QString::fromWCharArray(s));
+        item->setTextAlignment(2, Qt::AlignRight | Qt::AlignVCenter);
+    }
+    _list->sortItems(_sortIndex, Qt::AscendingOrder);
+    _list->header()->setSortIndicator(_sortIndex,
+                                      _ascending ? Qt::AscendingOrder : Qt::DescendingOrder);
+    if (cursor) {
+        _list->setCurrentItem(cursor);
+        cursor->setSelected(true);
+    } else if (_list->topLevelItemCount() > 0)
+        _list->setCurrentItem(_list->topLevelItem(0), 0, QItemSelectionModel::NoUpdate);
+    _list->scrollToItem(_list->currentItem());
+    _list->setUpdatesEnabled(true);
+    return S_OK;
+}
+
+HRESULT CBrowseDialog::Reload() {
+    UString selected;
+    if (auto *item = SelectedItem()) {
+        const int fileIndex = GetRealItemIndex(item);
+        if (fileIndex != kParentIndex)
+            selected = fs2us(_files[fileIndex].Name);
+    }
+    const UString dirPathTemp = DirPrefix;
+    return Reload(dirPathTemp, selected);
+}
+
+void CBrowseDialog::OpenParentFolder() {
+    UString parent, selected;
+    if (GetParentPath(DirPrefix, parent, selected)) {
+        Reload(parent, selected);
+        SetPathEditText();
+    }
+}
+
+void CBrowseDialog::SetPathEditText() {
+    auto *item = SelectedItem();
+    if (!item) {
+        if (FolderMode)
+            _pathEdit->setText(ToQString(DirPrefix));
+        return;
+    }
+    const int fileIndex = GetRealItemIndex(item);
+    if (fileIndex == kParentIndex) {
+        if (FolderMode)
+            _pathEdit->setText(ToQString(UString(L".." WSTRING_PATH_SEPARATOR)));
+        return;
+    }
+    const CFileInfo &file = _files[fileIndex];
+    if (file.IsDir()) {
+        if (!FolderMode)
+            return;
+        _pathEdit->setText(ToQString(fs2us(file.Name) + WCHAR_PATH_SEPARATOR));
+    } else
+        _pathEdit->setText(ToQString(fs2us(file.Name)));
+}
+
+void CBrowseDialog::OnCreateDir() {
+    UString name;
+    {
+        UString enteredName;
+        Dlg_CreateFolder(this, enteredName);
+        if (enteredName.IsEmpty())
+            return;
+        if (!CorrectFsPath(DirPrefix, enteredName, name)) {
+            MessageBox_HResError(this, kInvalidNameError, name);
+            return;
+        }
+    }
+    if (name.IsEmpty())
+        return;
+    FString destPath;
+    if (GetFullPath(us2fs(DirPrefix), us2fs(name), destPath)) {
+        if (!NDir::CreateComplexDir(destPath))
+            MessageBox_HResError(this, GetLastError_noZero_HRESULT(), fs2us(destPath));
+        else {
+            const UString tempPath = DirPrefix;
+            Reload(tempPath, name);
+            SetPathEditText();
+        }
+        _list->setFocus();
+    }
+}
+
+void CBrowseDialog::OnItemEnter() {
+    auto *item = SelectedItem();
+    if (!item)
+        return;
+    const int fileIndex = GetRealItemIndex(item);
+    if (fileIndex == kParentIndex)
+        OpenParentFolder();
+    else {
+        const CFileInfo &file = _files[fileIndex];
+        if (!file.IsDir()) {
+            if (!FolderMode)
+                FinishOnOK();
+            return;
+        }
+        UString s = DirPrefix;
+        s += fs2us(file.Name);
+        s.Add_PathSepar();
+        const HRESULT res = Reload(s, UString());
+        if (res != S_OK)
+            MessageBox_HResError(this, res, s);
+        SetPathEditText();
+    }
+}
+
+void CBrowseDialog::FinishOnOK() {
+    const UString s = ToUString(_pathEdit->text());
+    FString destPath;
+    if (!GetFullPath(us2fs(DirPrefix), us2fs(s), destPath)) {
+        MessageBox_HResError(this, kInvalidNameError, s);
+        return;
+    }
+    FilePath = fs2us(destPath);
+    if (FolderMode)
+        NormalizeDirPathPrefix(FilePath);
+    FilterIndex = _filterCombo->currentIndex();
+    QDialog::accept();
+}
+} // namespace
 
 // Original shared list-size formatter used by BrowseDialog2.
 wchar_t *Browse_ConvertSizeToString(UInt64 v, wchar_t *s) {
@@ -41,8 +623,8 @@ wchar_t *Browse_ConvertSizeToString(UInt64 v, wchar_t *s) {
     return s;
 }
 
-bool Dlg_CreateFolder(QWidget *wnd, QString &destName) {
-    destName.clear();
+bool Dlg_CreateFolder(QWidget *wnd, UString &destName) {
+    destName.Empty();
     CComboDialog dlg(QtLangText(IDS_CREATE_FOLDER), QtLangText(IDS_CREATE_FOLDER_NAME),
                      QtLangText(IDS_CREATE_FOLDER_DEFAULT_NAME), wnd);
     dlg.BindLanguage(IDS_CREATE_FOLDER, IDS_CREATE_FOLDER_NAME);
@@ -52,56 +634,66 @@ bool Dlg_CreateFolder(QWidget *wnd, QString &destName) {
     return true;
 }
 
-bool MyBrowseForFolder(QWidget *owner, const QString &title, const QString &path,
-                       QString &resultPath) {
-    resultPath.clear();
-    const QString selected = QFileDialog::getExistingDirectory(owner, title, path);
+bool MyBrowseForFolder(QWidget *owner, const UString &title, const UString &path,
+                       UString &resultPath) {
+    resultPath.Empty();
+    if (NeedsSourceBrowser(path)) {
+        CBrowseDialog dialog(owner);
+        dialog.FolderMode = true;
+        dialog.Title = title;
+        dialog.FilePath = path;
+        if (dialog.Create() != QDialog::Accepted)
+            return false;
+        resultPath = dialog.FilePath;
+        return true;
+    }
+    const QString selected =
+        QFileDialog::getExistingDirectory(owner, ToQString(title), ToQString(path));
     if (selected.isEmpty())
         return false;
-    resultPath = QDir::cleanPath(selected);
+    resultPath = ToUString(QDir::cleanPath(selected));
     return true;
 }
 
 bool CBrowseInfo::BrowseForFile(const CObjectVector<CBrowseFilterInfo> &filters) {
-    QStringList names;
+    if (NeedsSourceBrowser(FilePath)) {
+        CBrowseDialog dialog(hwndOwner);
+        dialog.FolderMode = false;
+        dialog.SaveMode = SaveMode;
+        dialog.FilterIndex = FilterIndex;
+        dialog.Filters = filters;
+        if (lpstrTitle)
+            dialog.Title = lpstrTitle;
+        dialog.FilePath = FilePath;
+        if (dialog.Create() != QDialog::Accepted)
+            return false;
+        FilePath = dialog.FilePath;
+        FilterIndex = dialog.FilterIndex;
+        return true;
+    }
+    UStringVector filters2;
     FOR_VECTOR(i, filters) {
-        QStringList masks;
-        FOR_VECTOR(k, filters[i].Masks)
-        masks.append(QString::fromWCharArray(filters[i].Masks[k].Ptr()));
-        names.append(QString::fromWCharArray(filters[i].Description.Ptr()) + " (" +
-                     masks.join(' ') + ')');
+        const CBrowseFilterInfo &fi = filters[i];
+        filters2.Add(fi.Description);
+        UString s;
+        FOR_VECTOR(k, fi.Masks) {
+            if (k != 0)
+                s += ";";
+            s += fi.Masks[k];
+        }
+        filters2.Add(s);
     }
-    Filters = names.join(";;");
-    return BrowseForFile(true);
-}
-
-bool CBrowseInfo::BrowseForFile() { return BrowseForFile(false); }
-
-bool CBrowseInfo::BrowseForFile(bool hideNameFilterDetails) {
-    const QString storedPath = FilePath;
-    const QFileInfo initial(FilePath);
-    QFileDialog dialog(Owner, Title, initial.absolutePath(), Filters);
-    // Source descriptions already contain their reviewed extension list.
-    // Qt still needs the mask suffix for matching, but must not display it twice.
-    dialog.setOption(QFileDialog::HideNameFilterDetails, hideNameFilterDetails);
-    dialog.setFileMode(SaveMode ? QFileDialog::AnyFile : QFileDialog::ExistingFile);
-    dialog.setAcceptMode(SaveMode ? QFileDialog::AcceptSave : QFileDialog::AcceptOpen);
-    if (FilterIndex >= 0 && FilterIndex < dialog.nameFilters().size())
-        dialog.selectNameFilter(dialog.nameFilters()[FilterIndex]);
-    if (!FilePath.isEmpty())
-        dialog.selectFile(initial.fileName());
-    if (dialog.exec() != QDialog::Accepted) {
-        FilePath = storedPath;
-        return false;
+    const UString storedPath = FilePath;
+    UString dirPrefix;
+    FString prefix, name;
+    if (NDir::GetFullPathAndSplit(us2fs(FilePath), prefix, name)) {
+        dirPrefix = fs2us(prefix);
+        FilePath = fs2us(name);
     }
-    const QStringList selected = dialog.selectedFiles();
-    if (selected.isEmpty()) {
-        FilePath = storedPath;
-        return false;
-    }
-    FilePath = selected.front();
-    FilterIndex = dialog.nameFilters().indexOf(dialog.selectedNameFilter());
-    return true;
+    if (CommonDlg_BrowseForFile(!dirPrefix.IsEmpty() ? dirPrefix.Ptr() : nullptr, filters2))
+        return true;
+    FilePath = storedPath;
+    return false;
 }
 
 #ifdef _WIN32

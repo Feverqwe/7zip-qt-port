@@ -91,15 +91,19 @@ static void Edit_BrowseForFile(QLineEdit &edit, QWidget *hwnd) {
     SplitCmdLineSmart(cmd, prg, param);
     CBrowseInfo bi;
     bi.FilterIndex = 0;
-    bi.FilePath = ToQString(prg);
-    bi.Owner = hwnd;
+    bi.FilePath = prg;
+    bi.hwndOwner = hwnd;
+    CObjectVector<CBrowseFilterInfo> filters;
+    CBrowseFilterInfo &filter = filters.AddNew();
 #ifdef Q_OS_WIN
-    bi.Filters = "*.exe (*.exe)";
+    filter.Description = "*.exe";
+    filter.Masks.Add(UString("*.exe"));
 #else
-    bi.Filters = "* (*)";
+    filter.Description = "*";
+    filter.Masks.Add(UString("*"));
 #endif
-    if (bi.BrowseForFile()) {
-        cmd = ToUString(bi.FilePath);
+    if (bi.BrowseForFile(filters)) {
+        cmd = bi.FilePath;
         cmd.Trim();
         edit.setText(ToQString(cmd));
     }

@@ -9,10 +9,11 @@
 #include "7zip/UI/FileManager/resourceGui.h"
 #include "BrowseDialog.h"
 #include "SplitUtils.h"
+#include "ViewSettings.h"
+#include "Windows/FileName.h"
 #include "qtlangbuttonbox.h"
 #include "qtlangcontrols.h"
 #include <QComboBox>
-#include <QDir>
 #include <QHBoxLayout>
 #include <QLabel>
 #include <QLineEdit>
@@ -84,14 +85,13 @@ bool CSplitDialog::OnInit() {
 
 void CSplitDialog::OnButtonSetPath() {
     const QString currentPath = _pathCombo->currentText();
-    QString resultPath;
-    if (!MyBrowseForFolder(this, QtLangText(IDS_SET_FOLDER), currentPath, resultPath))
+    UString selectedPath;
+    if (!MyBrowseForFolder(this, ToUString(QtLangText(IDS_SET_FOLDER)), ToUString(currentPath),
+                           selectedPath))
         return;
-    resultPath = QDir::fromNativeSeparators(resultPath);
-    if (!resultPath.endsWith('/'))
-        resultPath += '/';
+    NWindows::NFile::NName::NormalizeDirPathPrefix(selectedPath);
     _pathCombo->setCurrentIndex(-1);
-    _pathCombo->setCurrentText(resultPath);
+    _pathCombo->setCurrentText(ToQString(selectedPath));
 }
 
 void CSplitDialog::OnOK() {

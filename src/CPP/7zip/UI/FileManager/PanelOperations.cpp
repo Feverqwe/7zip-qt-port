@@ -153,7 +153,7 @@ void CPanel::ChangeComment() {
     CThreadFolderOperations op(FOLDER_TYPE_COMMENT);
     op.FolderOperations = _folderOperations;
     op.Index = realIndex;
-    op.Name = ToUString(dlg.Value);
+    op.Name = dlg.Value;
     op.DisableUserQuestions = true;
     const HRESULT result = op.DoOperation(*this, LangString(IDS_COMMENT), L"Set Comment Error");
     if (result != S_OK && result != E_ABORT) {
@@ -178,10 +178,10 @@ void CPanel::CreateFolder() {
     CDisableTimerProcessing disableTimerProcessing2(*this);
     CSelectedState state;
     SaveSelectedState(state);
-    QString enteredName;
+    UString enteredName;
     if (!Dlg_CreateFolder(GetParent(), enteredName))
         return;
-    UString newName = ToUString(enteredName);
+    UString newName = enteredName;
     if (!IsCorrectFsName(newName)) {
         MessageBox_Error_HRESULT(E_INVALIDARG);
         return;
@@ -233,7 +233,7 @@ void CPanel::CreateFile() {
     if (dlg.exec() != QDialog::Accepted)
         return;
     CDisableNotify disableNotify(*this);
-    UString newName = ToUString(dlg.Value);
+    UString newName = dlg.Value;
     if (IsFSFolder()) {
         UString correctName;
         if (!CorrectFsPath(newName, correctName)) {

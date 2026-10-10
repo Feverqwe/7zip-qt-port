@@ -1,5 +1,18 @@
 # Regression and security traceability
 
+Source long-path picker and portable dialog boundaries: `source_browse_dialog`,
+`browse_dialog`, `combo_dialog`, `copy_dialog`, `volume_dialog`, `language_dialog`,
+`source_archive_browse`, `compression_format`. Owned long Unicode fixtures
+cover routing, filters/sort, parent/reload/create/activation, error and cancellation,
+raw names and output state. Geometry emits8 EN/RU normal/compact file/folder JSON.
+Normal native picker and source custom browser are distinct test paths; neither
+offscreen result establishes rendered Windows or final package acceptance.
+
+The ordinary picker additionally covers source Open-new-name and Save-existing
+without an extra confirmation, unchanged bytes/cwd and accepted-only publication.
+CommonDialog's original inherited DTO/filter contract is exercised by Browse
+and the real Compress/Edit consumers, rather than a separate Qt filter API.
+
 Password source DTO/process caller: `password_window`, `password_dialog`,
 `open_callback`, `update_callback`, `archive_progress`, `archive_opening`,
 `language_dialog`, `ui_archive_states`, `archive_backend`, `ui_parity_password`.

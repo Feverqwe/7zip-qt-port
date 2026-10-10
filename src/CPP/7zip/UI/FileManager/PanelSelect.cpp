@@ -193,7 +193,7 @@ void CPanel::SelectSpec(bool selectMode) {
     dlg.BindLanguage(titleID, IDS_SELECT_MASK);
     if (dlg.exec() != QDialog::Accepted)
         return;
-    SelectSpec(ToUString(dlg.Value), selectMode);
+    SelectSpec(dlg.Value, selectMode);
 }
 
 // The explicit-mask integration entry shares the original source loop.

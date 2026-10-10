@@ -9,6 +9,7 @@
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "CPP/7zip/UI/FileManager/SplitDialog.h"
+#include "CPP/7zip/UI/FileManager/ViewSettings.h"
 #include "CPP/7zip/UI/GUI/ExtractDialog.h"
 #include "layout_inspection.h"
 #include "qtlangcontrols.h"
@@ -144,7 +145,7 @@ class LanguageDialogTests final : public QObject {
             inspect(folder, "language-folder-en", width, 170);
         }
         copy.accept();
-        QCOMPARE(copy.Value, QStringLiteral(" /pending path 密碼 "));
+        QCOMPARE(ToQString(copy.Value), QStringLiteral(" /pending path 密碼 "));
     }
     void overwriteMemoryPreserveDecisions() {
         COverwriteDialog overwrite;

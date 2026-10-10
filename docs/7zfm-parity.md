@@ -1,5 +1,29 @@
 # Сверка с Windows 7zFM
 
+## Source long-path browser (P3-05, 2026-10-10)
+
+Обычный выбор файла/папки остаётся системным QFileDialog. Для длинного
+начального пути сохранён исходный CBrowseDialog с Parent/Create Folder,
+Name/Modified/Size, строкой пути, фильтром и OK/Cancel. Windows super/device
+prefix тоже выбирает его. Source sorting удерживает parent/каталоги перед
+файлами; Backspace, Ctrl+R, F7 и Enter вызывают исходные обработчики.
+Cancel сохраняет FilePath/filter, выбор папки очищает выход до вызова,
+а raw input разрешает исходный GetFullPath без trim.
+
+Отдельный исходный CommonDialog owner обслуживает обычный picker. Как и
+исходные OFN flags, он допускает новое имя в Open и не добавляет overwrite
+prompt в Save: дальнейший Open/Update остаётся ответственностью caller.
+Cancel не публикует путь/filter, cwd процесса сохраняется.
+
+Qt не возвращает CommDlgExtendedError, поэтому длинный file path выбирает
+fallback заранее на reference Win32 границе 260 вместо native-error retry.
+На POSIX браузер использует исходный enumerator, включая переход по directory
+links; Win32 drive/super branches сохранены. Qt layouts, platform icons,
+accessible button names, полный путь в подсказке и локализованные стандартные
+кнопки заменяют presentation/services. Структура проверена по точным
+BrowseDialog.rc/Res; EN/RU geometry — 560×640 и 420×400. Rendered Windows
+reference и native desktop acceptance этим не установлены.
+
 ## Source Copy history (P3-05, 2026-10-10)
 
 История Copy/Move снова использует исходные UStringVector и IsEqualTo_NoCase,

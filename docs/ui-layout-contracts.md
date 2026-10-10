@@ -1803,6 +1803,28 @@ reports are `encryption-{760,640}-{0,1}.json`.
 at 760×720 and 640×480; current-build reports are
 `update-options-normal.json` and `update-options-compact.json`.
 
+## Source long-path browser
+
+Reference: upstream `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
+`FileManager/BrowseDialog.cpp/.rc`, `IDD_BROWSE`. The original custom browser
+is active for long/super/device paths; it is distinct from the normal native
+folder/file picker. Preserve Parent, Create Folder, current folder on the top
+row; single-selection Name/Modified/Size list; editable path, filter, OK/Cancel.
+Folder mode hides the filter; zero/one file filter disables it. Parent and
+directories remain before files regardless of sorting direction. Changing the
+filter reloads the list, keeping the source-selected filename where possible.
+Backspace/Control+R/F7 and list Enter retain source parent/reload/create/open
+handlers. OK outside the list resolves raw input through source GetFullPath;
+Cancel preserves the caller's FilePath/filter. Folder acceptance adds a separator.
+Ordinary native pickers use source CommonDialog flags: Open permits a new name,
+Save does not add an overwrite prompt; callers own subsequent validation.
+Source settings control dots and single-click behavior. Qt layouts, icons,
+accessible button names and locale time presentation replace Win32 services.
+The current-folder caption elides in the middle; tooltip and accessible name
+retain the full source prefix, while the editable path keeps the raw value.
+Normal 560×640 and compact 420×400 reports check grouping/order, fitting labels,
+visible path/filter/footer and row values. Rendered Windows parity is unverified.
+
 ## Archive password prompt
 
 Reference: upstream `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,

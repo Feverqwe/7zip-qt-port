@@ -46,6 +46,30 @@ acceptance is separate.
 
 This review records module bodies and caller/dependency boundaries for P3-05.
 It does not establish whole-module, platform or final acceptance from filenames.
+
+### Browse path-dialog disposition, 2026-10-10
+
+The complete pinned BrowseDialog.cpp/.h/.rc/Res and Combo/Copy headers/bodies
+were reviewed with their callers. The active desktop custom CBrowseDialog is
+now retained in its source owner: parent/root limits, files, filtering,
+sort direction and directory grouping, reload/selection, create-folder errors,
+list activation, raw GetFullPath acceptance and Cancel publication. Qt replaces
+control construction/events/resize, native icons and ordinary picker services.
+POSIX enumeration uses the source FileFind conversion; Win32 drive/super
+branches remain. The Win32 260-unit fallback boundary is explicit on all hosts;
+Qt's lack of common-dialog extended errors requires preselection for long files.
+Portable DTOs and source filter vectors reach every direct production consumer.
+Original RC/Res are exact baseline references. The complete CommonDialog.cpp/.h
+is restored at its Windows module boundary, with original inherited DTO and
+CommonDlg_BrowseForFile filter contract. Qt replaces native OPENFILENAME,
+ANSI/SDK/CE transport; source flags permit new Open names and omit a second
+Save overwrite prompt, with accepted-only publication and unchanged cwd.
+CE layout, HWND/common-dialog transport and commented/debug examples are
+accounted for as presentation or
+inactive scope. BrowseDialog2's temp ownership/delete flow remains separate.
+This supersedes the older fallback deferral, without closing FileManager or
+asserting rendered/native Windows acceptance. See the
+[source audit](upstream-port-audit.md#p3-05--source-path-dialogs-and-long-path-browser-2026-10-10).
 The historical [P0-01 registry](history/p0-01-source-inventory.md) remains intact;
 later functional ownership is recorded in the [port audit](upstream-port-audit.md).
 

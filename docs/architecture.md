@@ -917,7 +917,12 @@ On macOS/Linux the root also binds a `CFSDrives` mount view. `qtvolumemounts`
 supplies OS mount metadata; `CFSDrives` retains source property/binding ownership
 and rechecks a mount before entering it. The Qt list only presents those items.
 `BrowseDialog.cpp` owns the source file/folder picker entry points and result
-state; `QFileDialog` is its platform presentation service. Copy, Split, Extract,
+state, including its original private CBrowseDialog navigation/filter/sort/create
+and acceptance bodies. `QFileDialog` is the ordinary native picker service;
+the source browser handles long initial paths and Windows super/device prefixes.
+Qt rows delegate sorting to the source comparator. Portable strings/filter
+vectors remain at the dialog boundary; widgets convert only for presentation.
+Copy, Split, Extract,
 Create Archive and Open Archive call those entries instead of opening their own
 picker implementations.
 Qt Back history marks this empty prefix explicitly. Typed relative paths and

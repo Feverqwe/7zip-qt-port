@@ -358,15 +358,16 @@ bool CCompressDialog::OnButtonSetArchive(QWidget *parent, const BrowseFileHandle
     AddFilter(filters, LangString(IDS_OPEN_TYPE_ALL_FILES), UString("*"));
     if (filterIndex < 0)
         filterIndex = int(filters.Size()) - 1;
+    const UString title = LangString(IDS_COMPRESS_SET_ARCHIVE_BROWSE);
     CBrowseInfo bi;
-    bi.Title = QString::fromWCharArray(LangString(IDS_COMPRESS_SET_ARCHIVE_BROWSE).Ptr());
+    bi.lpstrTitle = title;
     bi.SaveMode = true;
     bi.FilterIndex = filterIndex;
-    bi.Owner = parent;
-    bi.FilePath = QString::fromWCharArray(path.Ptr());
+    bi.hwndOwner = parent;
+    bi.FilePath = path;
     if (!(browse ? browse(bi, filters) : bi.BrowseForFile(filters)))
         return false;
-    path = bi.FilePath.toStdWString().c_str();
+    path = bi.FilePath;
     if (isSFX) {
         const int dotPos = GetExtDotPos(path);
         if (dotPos >= 0)

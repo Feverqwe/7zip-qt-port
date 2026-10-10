@@ -64,6 +64,24 @@ owner и интегрированными consumers, включая уже ра�
 
 ## Правила статусов и счётчика
 
+P3-05,2026-10-10: source Copy/Combo portable DTOs, CommonDialog owner/flags and
+active long/super-path CBrowseDialog restored with all direct consumers and UX.
+Source routing RED2 and old Qt flags RED2 retained. Required macOS gate312/312
+PASS250.51s,4908Qt/0fail/18 existing skips; final localized19/19 PASS14.00s,
+295Qt/0fail/0skip. Linux/Windows x64 Qt6.12 each19/19 PASS24.75s/85.89s,
+295/294Qt/0fail/0skip (one POSIX-only compiled slot).1429 frozen local/archive/
+actual-guest inputs match in that snapshot;8 current
+EN/RU normal/compact browser JSON perOS fit. Provenance/adaptations:
+[source receipt](upstream-port-audit.md#p3-05--source-path-dialogs-and-long-path-browser-2026-10-10).
+Eleven slow suites excluded. Whole FileManager/native/rendered/package/final
+acceptance remains open;43/47 and P3-03/04/05/06 unchanged.
+
+The final localized source OnButtonClicked focus correction has an actual RED1
+and green browser follow-ups on all three OS; Windows adds two super-prefix
+rows. Integration atop293a826 passes28/28 direct consumers plus the localized
+browser follow-up. Final input hashes are recorded separately from the earlier
+full-consumer snapshot in the linked receipt; this does not close P3-05.
+
 P3-05,2026-10-10: ViewSettings complete body/caller disposition restores original
 Copy history UStringVector/comparison and CApp20-entry ownership. Source-distinct
 K/K Cancel/accept/reopen is covered; related Linux consumer exposed stale disabled
