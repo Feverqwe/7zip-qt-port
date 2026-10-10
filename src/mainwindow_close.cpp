@@ -3,6 +3,7 @@
 #include "qtfilemanagerdrag.h"
 #include "qtfilemanagerwindowservices.h"
 #include <QCloseEvent>
+#include <QEventLoopLocker>
 
 class QtFileManagerWindowServices final : public IQtFileManagerWindowServices {
     MainWindow &window_;
@@ -59,9 +60,22 @@ class QtFileManagerWindowServices final : public IQtFileManagerWindowServices {
 
 void MainWindow::closeEvent(QCloseEvent *event) {
     QtFileManagerWindowServices services(*this);
-    if (WndProc(QtFileManagerMessage::Close, app_, services))
+    if (WndProc(QtFileManagerMessage::Close, app_, services)) {
         event->accept();
-    else
+        if (!isVisible()) {
+            // Source WM_DESTROY posts quit even after SW_HIDE. Qt only emits
+            // lastWindowClosed for a previously visible window. Request its
+            // automatic quit after this close, retaining other visible windows.
+            QMetaObject::invokeMethod(
+                qApp,
+                [] {
+                    if (qApp->quitOnLastWindowClosed()) {
+                        QEventLoopLocker finished;
+                    }
+                },
+                Qt::QueuedConnection);
+        }
+    } else
         event->ignore();
 }
 

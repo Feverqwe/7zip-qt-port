@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 #include "qtfilemanagerinitservices.h"
+#include "qtfilemanagerstartup.h"
 
 class QtFileManagerInitServices final : public IQtFileManagerInitServices {
     MainWindow &window_;
@@ -37,6 +38,10 @@ class QtFileManagerInitServices final : public IQtFileManagerInitServices {
         // QWidget construction remains hidden until its caller calls show().
         // Set the source show state now so the first exposure has that state.
         Qt::WindowStates state = Qt::WindowNoState;
+        window_.setAttribute(Qt::WA_ShowWithoutActivating,
+                             command == NQtFileManager::NShowCommand::NoActivate ||
+                                 command == NQtFileManager::NShowCommand::ShowNoActivate ||
+                                 command == NQtFileManager::NShowCommand::MinNoActivate);
         if (command == NQtFileManager::NShowCommand::Maximized)
             state = Qt::WindowMaximized;
         else if (command == NQtFileManager::NShowCommand::Minimized ||
@@ -50,7 +55,7 @@ class QtFileManagerInitServices final : public IQtFileManagerInitServices {
 
 void MainWindow::initializeFileManagerWindow(const QtFileManagerStartup *startup) {
     QtFileManagerInitServices services(*this, startup);
-    if (!NQtFileManager::InitInstance(NQtFileManager::NShowCommand::Normal, app_, services,
-                                      toolbarSettingsPath()))
+    const int command = startup ? startup->ShowCommand : NQtFileManager::NShowCommand::Normal;
+    if (!NQtFileManager::InitInstance(command, app_, services, toolbarSettingsPath()))
         throw E_FAIL;
 }

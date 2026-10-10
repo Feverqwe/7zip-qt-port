@@ -74,6 +74,15 @@ reference и native desktop acceptance этим не установлены.
 
 ## Source startup placement (P3-05.16, 2026-10-10)
 
+Windows STARTUPINFO снова передаёт исходный show command в InitInstance.
+Normal/Show/Default учитывают сохранённый maximized flag; явные Maximize/
+Minimize/Restore/no-activate имеют исходный приоритет. Hide оставляет окно
+скрытым. Qt заменяет native placement и no-activation через QWidget; настоящий
+focus/taskbar/rendered parity остаётся непроверенным. Закрытие никогда не
+показанного окна завершает цикл, как исходный WM_DESTROY/PostQuitMessage.
+Qt сохраняет видимые association окна и явную политику автозавершения.
+[Receipt](upstream-port-audit.md#p3-05--launch-show-command-and-hidden-window-close-2026-10-10).
+
 CSplitterPos сохраняет исходный fixed-point ratio, границы и округление при
 resize, F9 и сохранении. Ручка имеет исходную ширину4; Qt управляет захватом мыши
 и размещением дочерних widgets. Минимальная ширина содержимого Qt может превышать

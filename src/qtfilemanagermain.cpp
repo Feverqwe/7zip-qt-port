@@ -1,6 +1,7 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "Common/Common.h"
 #include "mainwindow.h"
+#include "qtfilemanagerinitservices.h"
 #include "qtfilemanagerstartup.h"
 #include "qtmemorylockservices.h"
 #ifdef _WIN32
@@ -16,7 +17,15 @@ int RunSevenzipFileManager(QApplication &application) {
 #endif
         LoadLangOneTime();
 #ifdef Q_OS_WIN
-        const auto startup = WinMain2(UString(GetCommandLineW()));
+        auto startup = WinMain2(UString(GetCommandLineW()));
+        // Qt's main() has no nCmdShow parameter. Recover the original WinMain
+        // launch value before a progress dialog can consume the first ShowWindow.
+        STARTUPINFOW nativeStartup{};
+        nativeStartup.cb = sizeof(nativeStartup);
+        GetStartupInfoW(&nativeStartup);
+        startup.ShowCommand = nativeStartup.dwFlags & STARTF_USESHOWWINDOW
+                                  ? nativeStartup.wShowWindow
+                                  : NQtFileManager::NShowCommand::Default;
 #else
         const QStringList arguments = application.arguments();
         const auto startup = WinMain2(UString(arguments.value(1).toStdWString().c_str()),
@@ -49,7 +58,8 @@ int RunSevenzipFileManager(QApplication &application) {
                 qScopeGuard([&] { application.setQuitOnLastWindowClosed(quitOnClose); });
             application.setQuitOnLastWindowClosed(false);
             MainWindow window(&backend, {}, nullptr, &startup);
-            window.show();
+            if (startup.ShowCommand != NQtFileManager::NShowCommand::Hide)
+                window.show();
             application.setQuitOnLastWindowClosed(quitOnClose);
             if (!startup.NeedOpenArc)
                 backend.discoverCodecCatalog();

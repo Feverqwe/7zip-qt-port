@@ -78,6 +78,16 @@ resize/return, F9 with one pane hidden, effective close persistence, source
 minimum/default/narrow-width behavior and actual Qt handle input. Initial
 coordinate assertions fail on the previous independent Qt layout policy.
 
+Launch-command cases enter the public constructor with conflicting saved flags.
+Windows `file_manager_startup` passes real STARTUPINFO commands through the
+production entry and archive binding, with private Unicode/space ZIP/settings
+and unchanged bytes. Its probe closes without forcing application.quit.
+Explicit offscreen QPA checks Qt state; separate actual 7zFM native visibility
+assertions remain unchanged and require interactive-desktop acceptance.
+`app_lifecycle_window` runs QApplication::exec to check never-shown close exit,
+visible-peer retention and explicitly disabled quitOnLastWindowClosed.
+Existing modal/live-call refusal and joined-worker consumers remain.
+
 `copy_dialog` verifies source Copy history case policy, stored ordering and
 reloaded combo items: K retains the source-distinct Kelvin symbol K while all
 ordinary K/k variants are removed. `app_copy_routing` exercises real CApp dialog

@@ -14,6 +14,15 @@ source/platform evidence to the [audit](upstream-port-audit.md).
 
 This document describes component ownership, data flow and integration boundaries.
 
+RunSevenzipFileManager carries Windows STARTUPINFO's launch show command in
+QtFileManagerStartup before any progress window. MainWindow passes it to source
+InitInstance, whose saved-maximized branch owns precedence; the Qt window
+service maps placement/state/no-activation. Hide suppresses the caller's show.
+Accepted hidden close queues a Qt automatic-quit completion: lastWindowClosed
+requires previous visibility, while source WM_DESTROY posts quit regardless.
+QEventLoopLocker uses Qt's visible-window/quit-lock policy, retaining visible
+association peers. Modal/live-call refusal stays in source WndProc/services.
+
 Archive opening enters the original CArchiveFolderManager::OpenFolderFile and
 CAgent::Open through QtArchiveFolderManager. A per-opening IQtAgentOpenServices
 lease supplies the retained codec catalog and ArchiveBackend service in place of

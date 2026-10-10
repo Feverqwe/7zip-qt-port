@@ -7,12 +7,16 @@ class CApp;
 namespace NQtFileManager {
 // Win32 startup values cross the narrow presentation boundary unchanged.
 namespace NShowCommand {
+constexpr int Hide = 0;
 constexpr int Normal = 1;
 constexpr int Minimized = 2;
 constexpr int Maximized = 3;
+constexpr int NoActivate = 4;
 constexpr int Show = 5;
 constexpr int Minimize = 6;
 constexpr int MinNoActivate = 7;
+constexpr int ShowNoActivate = 8;
+constexpr int Restore = 9;
 constexpr int Default = 10;
 constexpr int ForceMinimize = 11;
 } // namespace NShowCommand

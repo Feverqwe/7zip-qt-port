@@ -11,6 +11,8 @@ struct QtFileManagerStartup {
     UString FullPath;
     UString ArcFormat;
     bool NeedOpenArc = false;
+    // Original WinMain/WinMain2 nCmdShow, default SW_SHOWNORMAL.
+    int ShowCommand = 1;
 };
 
 struct QtFileManagerStartupFailure {

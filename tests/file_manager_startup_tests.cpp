@@ -1,4 +1,5 @@
 #include "CPP/7zip/UI/FileManager/PasswordDialog.h"
+#include "CPP/7zip/UI/FileManager/ViewSettings.h"
 #include "archivecodeccatalog.h"
 #include "mainwindow.h"
 #include "qtfilemanagerstartup.h"
@@ -184,6 +185,74 @@ class FileManagerStartupTests final : public QObject {
 #endif
     }
 #ifdef Q_OS_WIN
+    void nativeLaunchShowCommand_data() {
+        QTest::addColumn<int>("command");
+        QTest::addColumn<bool>("savedMaximized");
+        QTest::addColumn<bool>("maximized");
+        QTest::addColumn<bool>("minimized");
+        QTest::addColumn<bool>("visible");
+        QTest::addColumn<bool>("withoutActivation");
+        QTest::newRow("hidden") << SW_HIDE << true << false << false << false << false;
+        QTest::newRow("normal-saved-maximized")
+            << SW_SHOWNORMAL << true << true << false << true << false;
+        QTest::newRow("explicit-maximized")
+            << SW_SHOWMAXIMIZED << false << true << false << true << false;
+        QTest::newRow("explicit-minimized")
+            << SW_SHOWMINIMIZED << true << false << true << true << false;
+        QTest::newRow("no-activate") << SW_SHOWNOACTIVATE << true << false << false << true << true;
+        QTest::newRow("show-no-activate") << SW_SHOWNA << true << false << false << true << true;
+        QTest::newRow("restore") << SW_RESTORE << true << false << false << true << false;
+    }
+
+    void nativeLaunchShowCommand() {
+        QFETCH(int, command);
+        QFETCH(bool, savedMaximized);
+        QFETCH(bool, maximized);
+        QFETCH(bool, minimized);
+        QFETCH(bool, visible);
+        QFETCH(bool, withoutActivation);
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QByteArray bytes("native startup show command fixture");
+        const QString archive = SourceExtractFixture::makeArchive(fixture.path(), bytes);
+        QVERIFY(!archive.isEmpty());
+        const QByteArray original = SourceExtractFixture::readFile(archive);
+        const QString settings = fixture.filePath(QStringLiteral("startup 空 settings.ini"));
+        CWindowInfo info{{42, 54, 1022, 674}, savedMaximized, 1, 0, 370};
+        info.Save(settings);
+        QProcess process;
+        auto environment = QProcessEnvironment::systemEnvironment();
+        environment.insert("SEVENZIP_SETTINGS_PATH", settings);
+        environment.insert("SEVENZIP_PROBE_MEMBER", QFileInfo(SourceExtractFixture::kName).path());
+        environment.insert("SEVENZIP_PROBE_WINDOW_STATE", "1");
+        // Inspect Qt state through the actual Win32 launch transport. Native
+        // visibility/exposure remains covered independently below.
+        environment.insert("QT_QPA_PLATFORM", "offscreen");
+        process.setProcessEnvironment(environment);
+        process.setWorkingDirectory(fixture.path());
+        process.setCreateProcessArgumentsModifier([command](QProcess::CreateProcessArguments *a) {
+            a->startupInfo->dwFlags |= STARTF_USESHOWWINDOW;
+            a->startupInfo->wShowWindow = WORD(command);
+        });
+        process.start(QString::fromUtf8(SEVENZIP_FM_PROBE), {archive, "-tzip"});
+        QVERIFY(process.waitForStarted(5000));
+        QVERIFY2(process.waitForFinished(30000), "startup state probe did not finish");
+        QCOMPARE(process.exitStatus(), QProcess::NormalExit);
+        QCOMPARE(process.exitCode(), 0);
+        const auto report = QJsonDocument::fromJson(process.readAllStandardOutput()).object();
+        QVERIFY(report.value("bound").toBool());
+        QVERIFY(!report.value("timeout").toBool());
+        const auto state = report.value("windowState").toObject();
+        QVERIFY(!state.isEmpty());
+        QCOMPARE(state.value("visible").toBool(), visible);
+        QCOMPARE(state.value("maximized").toBool(), maximized);
+        QCOMPARE(state.value("minimized").toBool(), minimized);
+        QCOMPARE(state.value("withoutActivation").toBool(), withoutActivation);
+        QCOMPARE(SourceExtractFixture::readFile(archive), original);
+        QCOMPARE(SourceExtractFixture::readFile(fixture.filePath(SourceExtractFixture::kName)),
+                 bytes);
+    }
+
     void actualFileManagerProcess_data() {
         QTest::addColumn<QString>("type");
         QTest::addColumn<bool>("refused");

@@ -1,8 +1,10 @@
 #include "CPP/7zip/UI/FileManager/ViewSettings.h"
 #include "layout_inspection.h"
 #include "qtfilemanagerinitservices.h"
+#include "qtfilemanagerstartup.h"
 #include "window_state_support.h"
 #include <QScopeGuard>
+#include <QSizeGrip>
 #include <QSplitter>
 
 namespace {
@@ -41,6 +43,60 @@ class WindowPlacementTests final : public QObject, protected MainWindowTestSuppo
     Q_OBJECT
 
   private slots:
+    void launchShowCommand_data() {
+        QTest::addColumn<int>("command");
+        QTest::addColumn<bool>("savedMaximized");
+        QTest::addColumn<bool>("maximized");
+        QTest::addColumn<bool>("minimized");
+        QTest::addColumn<bool>("withoutActivation");
+        QTest::newRow("normal-saved-maximized") << 1 << true << true << false << false;
+        QTest::newRow("show-saved-maximized") << 5 << true << true << false << false;
+        QTest::newRow("default-saved-maximized") << 10 << true << true << false << false;
+        QTest::newRow("explicit-maximized") << 3 << false << true << false << false;
+        QTest::newRow("explicit-minimized-overrides-saved") << 2 << true << false << true << false;
+        QTest::newRow("minimize-overrides-saved") << 6 << true << false << true << false;
+        QTest::newRow("minimize-no-activate") << 7 << true << false << true << true;
+        QTest::newRow("force-minimize") << 11 << true << false << true << false;
+        QTest::newRow("no-activate-overrides-saved") << 4 << true << false << false << true;
+        QTest::newRow("show-no-activate") << 8 << false << false << false << true;
+        QTest::newRow("restore-overrides-saved") << 9 << true << false << false << false;
+    }
+
+    void launchShowCommand() {
+        QFETCH(int, command);
+        QFETCH(bool, savedMaximized);
+        QFETCH(bool, maximized);
+        QFETCH(bool, minimized);
+        QFETCH(bool, withoutActivation);
+        const QString settings = qEnvironmentVariable("SEVENZIP_SETTINGS_PATH");
+        QFile::remove(settings);
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        CWindowInfo info{{42, 54, 1022, 674}, savedMaximized, 1, 0, 370};
+        info.Save(settings);
+        auto startup = WinMain2(ToUString(fixture.path()), UString());
+        startup.ShowCommand = command;
+        ControlledBackend backend;
+        MainWindow window(&backend, {}, nullptr, &startup);
+        QVERIFY(!window.isVisible());
+        QCOMPARE(window.geometry(), QRect(42, 54, 980, 620));
+        QCOMPARE(window.isMaximized(), maximized);
+        QCOMPARE(window.isMinimized(), minimized);
+        QCOMPARE(window.testAttribute(Qt::WA_ShowWithoutActivating), withoutActivation);
+        if (!minimized) {
+            window.show();
+            QTRY_VERIFY(window.isVisible());
+            auto *panel = window.findChild<QWidget *>("filePanel0");
+            QVERIFY(panel);
+            QTRY_VERIFY(UiInspection::fullyVisible(*panel, window));
+            for (QSizeGrip *grip : window.findChildren<QSizeGrip *>())
+                QTRY_VERIFY(!grip->isVisible() || UiInspection::fullyVisible(*grip, window));
+            QVERIFY(UiInspection::writeReport(
+                window, QString("launch-show-%1").arg(QTest::currentDataTag())));
+        }
+        QVERIFY(window.close());
+    }
+
     void sourceShowCommands_data() {
         QTest::addColumn<int>("command");
         QTest::addColumn<bool>("savedMaximized");

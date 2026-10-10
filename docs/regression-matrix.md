@@ -1,5 +1,13 @@
 # Regression and security traceability
 
+Launch show/hidden-close: `window_placement` checks saved-state precedence,
+explicit commands and nonminimized geometry. `file_manager_startup` exercises
+Windows STARTUPINFO through production entry/archive binding;
+`app_lifecycle_window` checks actual event-loop exit, visible peers and disabled
+automatic quit. Private settings and Unicode/space archive bytes are protected.
+Offscreen state checks remain separate from native visibility/focus acceptance;
+see the [receipt](upstream-port-audit.md#p3-05--launch-show-command-and-hidden-window-close-2026-10-10).
+
 Filesystem-provider source branches: `native_fs_operations` and
 `fs_provider_command` cover stored-case Rename, F2/Escape, both panes/languages,
 selection/provider identity and normal/compact geometry. `fs_folder_copy`

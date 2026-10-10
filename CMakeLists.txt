@@ -3054,11 +3054,11 @@ if(BUILD_TESTING)
     target_include_directories(archive_metadata_ui_tests PRIVATE src tests)
     target_link_libraries(archive_metadata_ui_tests PRIVATE ${metadata_ui_libraries})
     if(SEVENZIP_CODEC_MODULE)
+        qt_add_executable(file_manager_entry_probe tests/fixtures/file_manager_entry_probe.cpp
+            src/qtfilemanagermain.cpp ${metadata_ui_sources})
+        target_include_directories(file_manager_entry_probe PRIVATE src tests)
+        target_link_libraries(file_manager_entry_probe PRIVATE ${metadata_ui_libraries})
         if(NOT WIN32)
-            qt_add_executable(file_manager_entry_probe tests/fixtures/file_manager_entry_probe.cpp
-                src/qtfilemanagermain.cpp ${metadata_ui_sources})
-            target_include_directories(file_manager_entry_probe PRIVATE src tests)
-            target_link_libraries(file_manager_entry_probe PRIVATE ${metadata_ui_libraries})
             qt_add_executable(unix_gui_entry_tests tests/unix_gui_entry_tests.cpp)
             target_include_directories(unix_gui_entry_tests PRIVATE src tests)
             target_link_libraries(unix_gui_entry_tests PRIVATE sevenzip_common Qt6::Test)
@@ -3073,12 +3073,9 @@ if(BUILD_TESTING)
         target_include_directories(file_manager_startup_tests PRIVATE src tests)
         target_link_libraries(file_manager_startup_tests PRIVATE ${metadata_ui_libraries})
         target_compile_definitions(file_manager_startup_tests PRIVATE
-            "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\"")
-        if(NOT WIN32)
-            target_compile_definitions(file_manager_startup_tests PRIVATE
-                "SEVENZIP_FM_PROBE=\"$<TARGET_FILE:file_manager_entry_probe>\"")
-            add_dependencies(file_manager_startup_tests file_manager_entry_probe)
-        endif()
+            "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\""
+            "SEVENZIP_FM_PROBE=\"$<TARGET_FILE:file_manager_entry_probe>\"")
+        add_dependencies(file_manager_startup_tests file_manager_entry_probe)
         if(WIN32)
             target_compile_definitions(file_manager_startup_tests PRIVATE
                 "SEVENZIP_NATIVE_FM=\"$<TARGET_FILE_DIR:sevenzip_desktop>/7zFM.exe\"")

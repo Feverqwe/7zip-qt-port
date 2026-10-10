@@ -1,5 +1,6 @@
 #include "qtarchivefoldermanager.h"
 #include "window_state_support.h"
+#include <QScopeGuard>
 
 namespace {
 class ArchiveOwnerPresentation final : public IQtAppPresentation {
@@ -20,6 +21,55 @@ class ArchiveOwnerPresentation final : public IQtAppPresentation {
 class AppLifecycleWindowTests : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
   private slots:
+    void hiddenCloseEndsApplicationLoop_data() {
+        QTest::addColumn<bool>("peerVisible");
+        QTest::addColumn<bool>("automaticQuit");
+        QTest::newRow("hidden-only") << false << true;
+        QTest::newRow("visible-peer") << true << true;
+        QTest::newRow("automatic-quit-disabled") << false << false;
+    }
+
+    void hiddenCloseEndsApplicationLoop() {
+        QFETCH(bool, peerVisible);
+        QFETCH(bool, automaticQuit);
+        QTemporaryDir settings;
+        QVERIFY(settings.isValid());
+        const QByteArray oldSettings = qgetenv("SEVENZIP_SETTINGS_PATH");
+        const auto restore = qScopeGuard([&] { qputenv("SEVENZIP_SETTINGS_PATH", oldSettings); });
+        qputenv("SEVENZIP_SETTINGS_PATH", settings.filePath("hidden-close.ini").toUtf8());
+        const bool oldQuit = qApp->quitOnLastWindowClosed();
+        const auto restoreQuit = qScopeGuard([&] { qApp->setQuitOnLastWindowClosed(oldQuit); });
+        qApp->setQuitOnLastWindowClosed(automaticQuit);
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        QWidget peer;
+        if (peerVisible)
+            peer.show();
+        bool closed = false;
+        bool peerRetained = false;
+        bool timedOut = false;
+        QTimer::singleShot(0, &window, [&] { closed = window.close(); });
+        QTimer peerClose;
+        peerClose.setSingleShot(true);
+        connect(&peerClose, &QTimer::timeout, [&] {
+            peerRetained = peer.isVisible();
+            peer.close();
+        });
+        if (peerVisible)
+            peerClose.start(100);
+        QTimer deadline;
+        deadline.setSingleShot(true);
+        connect(&deadline, &QTimer::timeout, [&] {
+            timedOut = true;
+            qApp->quit();
+        });
+        deadline.start(automaticQuit ? 2000 : 100);
+        QCOMPARE(qApp->exec(), 0);
+        QVERIFY(closed);
+        QCOMPARE(timedOut, !automaticQuit);
+        QCOMPARE(peerRetained, peerVisible);
+    }
+
     void archiveStartupUsesJoinedSourceOwner_data() {
         QTest::addColumn<int>("result");
         QTest::newRow("success") << int(S_OK);

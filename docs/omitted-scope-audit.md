@@ -1,5 +1,23 @@
 # Omitted source scope review
 
+## FM launch-show and hidden-close disposition (2026-10-10)
+
+At source https://github.com/ip7z/7zip.git revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`, FM.cpp WinMain's nCmdShow flows
+through WinMain2 to InitInstance. The retained InitInstance body keeps that
+policy; QtFileManagerStartup/Run/MainWindow now preserve its real Windows
+STARTUPINFO input instead of supplying Normal unconditionally. Qt maps states
+and no-activation, leaves Hide unexposed and retains saved-maximized precedence
+only for the original Normal/Show/Default branch.
+
+WM_CLOSE cleanup remains source-owned. Qt previously omitted the corresponding
+WM_DESTROY quit for never-visible windows; an accepted hidden close now queues
+Qt automatic-quit completion while retaining visible association peers and
+explicit quit policy. Native class/frame/old-OS presentation remains replaced
+by Qt. Native focus/taskbar/rendered/interactive visibility and the remaining
+FM platform/full-body review are required separate scope. Provenance and
+consumer checks: [receipt](upstream-port-audit.md#p3-05--launch-show-command-and-hidden-window-close-2026-10-10).
+
 ## Filesystem provider bodies and command consumers (2026-10-10)
 
 Source https://github.com/ip7z/7zip.git at full revision

@@ -124,6 +124,14 @@ default rectangle; Panels is admitted independently, with source panel-count and
 focus defaults. Construction itself stays hidden under the QWidget lifecycle.
 Close saves the normal rectangle while maximized; the next launch replays it.
 
+The launch show command overrides saved maximization except Normal/Show/Default,
+whose original InitInstance branch applies the saved flag. Explicit Maximize,
+Minimize, Restore and no-activation retain their requested states. Hide binds
+without exposing the window. Qt uses WA_ShowWithoutActivating for source
+no-activation commands; native focus/taskbar behavior remains unverified.
+Seven `launch-show-*` JSON reports inspect nonminimized states after the visible
+QSizeGrip finishes deferred layout. Hidden/minimized cases check state only.
+
 `window_placement` covers980×620/640×400 normal rectangles, normal/maximized
 startup, one/two panels, focused pane, splitter publication, Close and restart.
 Current JSON checks the visible panel and its controls on each launch. Qt uses

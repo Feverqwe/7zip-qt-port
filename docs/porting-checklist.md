@@ -11,6 +11,17 @@ ShowWindow calls. Qt reaches setVisible(true). No product/test/deadline change
 or parent closure follows; interactive startup/rendered acceptance remains
 required. [Evidence](upstream-port-audit.md#p3-03--windows-service-desktop-visibility-diagnosis-2026-10-10).
 
+P3-05.16, 2026-10-10: source launch show command now reaches InitInstance;
+explicit state/no-activation overrides saved maximization, Hide remains hidden
+and accepted hidden Close exits without the probe forcing application.quit.
+Public/native old-caller RED and actual application-loop RED are retained.
+Mac full315/315 PASS; final focused Mac7/7, Linux7/7 and Windows6/7, with only
+the same two service-desktop native visibility failures. New launch/lifecycle
+rows pass on their applicable platforms;1460 inputs match both guest trees,
+51selected widget JSON fit. Concurrent Windows foreign build excludes cold-
+stability claims. [Receipt](upstream-port-audit.md#p3-05--launch-show-command-and-hidden-window-close-2026-10-10).
+P3-03/04/05/06 remain open;43/47 and final acceptance are unchanged.
+
 ## Общие правила и обязательный рефакторинг
 
 Source port, исходные языки C/C++, размещение модулей и backend-границы

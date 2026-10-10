@@ -15,6 +15,8 @@ int main(int argc, char **argv) {
     bool refusal = false;
     bool password = false;
     bool timedOut = false;
+    QJsonObject windowState;
+    const bool inspectState = qEnvironmentVariableIsSet("SEVENZIP_PROBE_WINDOW_STATE");
     const QString expected = qEnvironmentVariable("SEVENZIP_PROBE_MEMBER");
     QTimer observer;
     QObject::connect(&observer, &QTimer::timeout, &application, [&] {
@@ -30,7 +32,7 @@ int main(int argc, char **argv) {
         }
         for (QWidget *widget : QApplication::topLevelWidgets()) {
             auto *window = dynamic_cast<MainWindow *>(widget);
-            if (!window || !window->isVisible())
+            if (!window || (!inspectState && !window->isVisible()))
                 continue;
             auto *table = window->findChild<QTableWidget *>("archiveTable");
             if (!table || !table->isEnabled())
@@ -39,6 +41,12 @@ int main(int argc, char **argv) {
                 if (table->item(row, 0)->text() != expected)
                     continue;
                 bound = true;
+                if (inspectState)
+                    windowState = {
+                        {"visible", window->isVisible()},
+                        {"maximized", window->isMaximized()},
+                        {"minimized", window->isMinimized()},
+                        {"withoutActivation", window->testAttribute(Qt::WA_ShowWithoutActivating)}};
                 window->close();
                 return;
             }
@@ -51,11 +59,9 @@ int main(int argc, char **argv) {
     });
     const int result = RunSevenzipFileManager(application);
     observer.stop();
-    const QJsonObject report{{"bound", bound},
-                             {"refusal", refusal},
-                             {"password", password},
-                             {"timeout", timedOut},
-                             {"exitCode", result}};
+    const QJsonObject report{
+        {"bound", bound},      {"refusal", refusal},         {"password", password},
+        {"timeout", timedOut}, {"windowState", windowState}, {"exitCode", result}};
     const QByteArray bytes = QJsonDocument(report).toJson(QJsonDocument::Compact);
     std::fwrite(bytes.constData(), 1, static_cast<size_t>(bytes.size()), stdout);
     return timedOut ? 1 : result;

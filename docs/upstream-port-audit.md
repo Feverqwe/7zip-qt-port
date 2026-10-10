@@ -1,5 +1,77 @@
 # Ревизия происхождения кода 7zFM
 
+## P3-05 — Launch show command and hidden-window close (2026-10-10)
+
+Source https://github.com/ip7z/7zip.git, full revision
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
+`CPP/7zip/UI/FileManager/FM.cpp`: WinMain/WinMain2/InitInstance and WndProc
+WM_CLOSE/WM_DESTROY. Original bodies, entry callers, saved CWindowInfo types,
+placement services and current application/association lifecycle were reviewed.
+The retained InitInstance algorithm was correct, but its Qt caller always
+supplied Normal, discarding WinMain's nCmdShow. QtFileManagerStartup now carries
+the integer show command; Windows RunSevenzipFileManager recovers it from
+GetStartupInfoW/STARTF_USESHOWWINDOW before progress, or uses source Default.
+The existing MainWindow caller supplies that value to unchanged InitInstance.
+Normal/Show/Default retain its saved-maximized branch; explicit states override
+the saved flag. Existing Qt state mapping adds source no-activation commands
+through WA_ShowWithoutActivating. Hide suppresses only the caller's show.
+
+Source WM_DESTROY's PostQuitMessage must also work for a never-exposed window.
+Qt 6.12's [QWindow close implementation](https://github.com/qt/qtbase/blob/v6.12.0/src/gui/kernel/qwindow.cpp)
+requires previous visibility for lastWindowClosed. The accepted hidden close
+therefore queues an application-context
+[QEventLoopLocker completion](https://doc.qt.io/qt-6/qeventlooplocker.html),
+using existing Qt automatic-quit/visible-window/quit-lock policy. It respects
+quitOnLastWindowClosed and retains visible association peers, the established
+adaptation of independent native association processes. Source WndProc still
+owns close refusal, deactivation, joined workers, settings/folder release and
+hard-exit ordering. No new archive/process syntax, allocator, parser, source
+algorithm or class is introduced. Existing source modules/paths, C++ language,
+notices and per-module baseline remain; upstream checkout is unchanged.
+
+Adapted integration paths are mainwindow_startup.cpp, mainwindow_close.cpp,
+qtfilemanagermain.cpp, qtfilemanagerstartup.h and qtfilemanagerinitservices.h.
+Dependencies remain source CApp/CWindowInfo, Qt Widgets/Core and Windows
+STARTUPINFO. Win32 class/frame/presentation is still Qt-owned; native focus,
+taskbar/rendered state and interactive visibility are not inferred from logical
+Qt state. Remaining FM/platform and whole-module disposition stay open.
+
+Regressions: conflicting saved-state public constructor rows first gave20 Qt
+pass/5fail with old caller. Controlled native old entry/caller gives3pass/6fail;
+restored callers give9pass/0fail. Windows probe uses actual CreateProcess
+STARTUPINFO, production codec discovery/ZIP binding, private Unicode/space
+settings and unchanged fixture bytes; its state inspection uses offscreen QPA.
+The probe no longer forces application.quit after window.close. Actual app-loop
+hidden-close regression independently gave3pass/1fail before the close bridge;
+final rows cover hidden-only, visible peer and disabled automatic quit. Existing
+modal/live-call/cancellation and command consumers remain. Nonminimized current
+geometry waits for visible QSizeGrip layout before writing strict widget JSON;
+hidden/minimized cases assert state without visible-geometry claims.
+
+Validation: fresh unsandboxed macOS format/build/default gate315/315 PASS281.60s;
+298 Qt suites4972pass/0fail/55 platform skips, including the newly integrated
+filesystem Windows-only rows. Final focused seven suites PASS2.46s/85Qt/0skip.
+Fresh Linux seven suites PASS3.62s/85Qt/0skip. Windows six of seven suites pass
+in60.94s,85Qtpass/2fail/0skip: only the previously reproduced actual 7zFM
+IsWindowVisible cases fail on the invisible service desktop. All seven native
+STARTUPINFO rows and all hidden-close/lifecycle rows pass. Assertions/deadlines
+remain unchanged; interactive/native rendered acceptance remains required.
+The Windows build overlapped a foreign ADS build that began13.753s later despite
+the successful idle preflight. Neither process tree was stopped. These results
+establish bounded component behavior, not unloaded/cold stability.
+
+Fresh source snapshot `20261010T043334Z-c25be2b2`, parent e428e8b, SHA-256
+`2f3e40d6ab41573f01dce008a14bd16a93ada6d8b06554ece6cdde49f8d43fcf`:
+1460 code/test/build/resource/skill inputs match archive, local and both actual
+guest trees exactly, including the temporary validation wrapper subsequently
+removed from product. Each OS supplies17 selected widget JSON reports; all51
+have no unexpected clipping. Local evidence under `build/review/startup-show/`
+includes frozen inputs, full/focused/guest LastTest logs, RED probes, platform
+proofs, current JSON and process-ownership receipt. Earlier passing checks,
+the stopped overlapping Windows run and the initial deferred-QSizeGrip report
+failure are retained separately. Eleven slow suites remain excluded. No parent
+P3 package or final acceptance is closed; no push/upstream/account-policy change.
+
 ## P3-03 — Windows service-desktop visibility diagnosis (2026-10-10)
 
 The two actual 7zFM startup-window failures retained by df06775 were diagnosed
