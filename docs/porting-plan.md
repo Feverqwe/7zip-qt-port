@@ -1,154 +1,35 @@
 # Полный план портирования Sevenzip Desktop
 
-Дата исходной инвентаризации: **2026-09-28**. Рабочий baseline проекта:
-`8899ffbfc0063e6b053306478df9060907977c5c` **плюс незакоммиченные изменения**.
-Baseline upstream: [ip7z/7zip, 0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
-План относится к коду этого checkout; новые изменения требуют уточнения статусов.
-К завершению подготовки документов HEAD стал
-`21b775c035eb1464fae725608307f2ddc5ad8685` (shared list activation/hover);
-начальные изменения этой области уже закоммичены другой задачей.
-
-Цель и правила переноса исходников, исходные языки C/C++, допустимые адаптеры
-и граница `ArchiveBackend` определены в [AGENTS.md](../AGENTS.md).
-Этот план задаёт scope и зависимости работ; рефакторинг уже написанной
-обвязки включён отдельным обязательным P2-11.
-
-Соседние документы:
-
-- [Чеклист выполнения и статусы шагов](porting-checklist.md).
-- [Сообщение для каждого нового чата](porting-chat-prompt.md).
-- [Происхождение и границы уже перенесённого кода](upstream-port-audit.md).
-- [Сценарии, ограничения и отличия от 7zFM](7zfm-parity.md).
-- [Обязательное исправление самостоятельных UX-допущений](ux-port-audit.md).
-- [Владельцы компонентов](architecture.md), [тесты](testing.md),
-  [геометрия UI](ui-layout-contracts.md), [сверка ресурсов](ui-reference.md).
-
-План задаёт порядок работы; audit хранит доказательства source port, parity —
-наблюдаемое поведение. Чеклист хранит текущий прогресс. При противоречии сначала
-проверяются код и upstream, затем исправляются документы. Этот файл не заменяет
-`AGENTS.md` и не даёт разрешения публиковать, развёртывать или менять upstream.
+План задаёт scope, dependencies и размер итерации для порученного портирования.
+Общие требования — в [AGENTS.md](../AGENTS.md), текущие статусы — в
+[чеклисте](porting-checklist.md), остальные владельцы фактов — в
+[карте документации](README.md). Исходный snapshot от 2026-09-28 сохранён
+в [исторической инвентаризации](history/porting-plan-baseline.md).
 
 ## 1. Сколько сделано и сколько осталось
 
+Единица инвентаризации — upstream `.cpp` вместе с headers/resources/dependencies;
+это не процент готовности. Единица приёмки — пакет с постоянным ID.
+Текущие counts и статусы ведутся только в
+[чеклисте](porting-checklist.md#правила-статусов-и-счётчика).
+Физические inputs и disposition всех 109 UI units — в
+[source ledger](omitted-scope-audit.md#109-unit-source-receipt-ledger-2026-10-10).
+
 ### Единицы подсчёта
 
-**Модуль инвентаризации** — один upstream `.cpp` в четырёх каталогах ниже.
-Его `.h`, `.rc`, ресурсы и зависимости рассматриваются вместе с ним, но не
-увеличивают этот счётчик. Это воспроизводимый подсчёт файлов, а не процент
-завершённости продукта или оценка трудозатрат.
-
-| Область upstream | Всего `.cpp` | Есть соответствующий `.cpp` в `src/` | Нет соответствующего файла в `src/` |
-| --- | ---: | ---: | ---: |
-| `CPP/7zip/UI/FileManager` | 67 | 47 | 20 |
-| `CPP/7zip/UI/Agent` | 7 | 6 | 1 |
-| `CPP/7zip/UI/GUI` | 10 | 5 | 5 |
-| `CPP/7zip/UI/Common` | 25 | 11 | 14 |
-| **Всего** | **109** | **69** | **40** |
-
-Текущие counts пересчитаны на 2026-10-01 после partial Common/Update.cpp P1-07.2;
-P0-01 inventory зафиксировал исторический snapshot 27 mirrored/82 missing.
-Все 69 совпадений путей
-требуют проверки пропущенных функций/веток. Нельзя считать их полностью
-завершёнными модулями. Из 42 отсутствующих файлов часть
-содержит необходимую логику, часть обслуживает Win32 presentation или запуск
-отдельной 7zG/console-программы. Они должны получить явное решение о переносе,
-адаптации или неприменимости, а не автоматически копироваться целиком.
-
-Дополнительно есть 10 зеркальных `.cpp` вне этой таблицы, включая
-`CPP/Common/Wildcard.cpp`, `CPP/Windows/FileDir.cpp`, `FileName.cpp`,
-`FileLink.cpp`, `DLL.cpp`, `ResourceString.cpp` и
-`CPP/7zip/Common/MethodProps.cpp`. Всего в `src/CPP` — 76 `.cpp`.
-В корне `src/` — 69 `.cpp` Qt/integration; это не 69 неперенесённых компонентов:
-часть является необходимой обвязкой, часть содержит миграционный долг.
-Отдельно есть Apple-only Objective-C++ `qttaskbarprogress_mac.mm`: narrow native
-Dock service с проверенными source state/value/cleanup вызовами; полный modal
-workflow и rendered/platform acceptance остаются обязательными.
-В `third_party/7zip` — 192 файла, побайтово совпадающих с baseline,
-включая License.txt из upstream `DOC/License.txt`, плюс локальный README.
-Точный реестр и проверка — `docs/upstream-baseline.json` и
-`scripts/upstream_baseline.py`. Это зависимости и ресурсы, не 192 завершённые
-пользовательские функции.
-В таблице учитываются только файлы `src/`: переносимый `UI/Common/PropIDUtils.cpp`
-собирается без изменений из `third_party/7zip` и входит в счётчик зависимостей.
-Его дальнейшая runtime-интеграция и Windows-проверки остаются обязательными;
-создавать вторую реализацию под `src/` не требуется.
-
-**Оставшуюся работу планируем как 47 пакетов**: P0 — 12, P1 — 18,
-P2 — 11, P3 — 6. P2-11 добавлен 2026-10-03 для рефакторинга уже написанного
-кода; исторические счётчики в evidence сохраняются. Каждый пакет имеет постоянный ID и отдельный результат.
-Часть пакетов завершает частичный перенос; часть добавляет отсутствующие
-модули; P3 закрывает обновляемость, проверки и поставку. Это не утверждение,
-что осталось ровно 44 исходных класса или 44 чата: большой пакет можно разделить
-на подшаги, сохранив родительский ID. Первоначально закрытых пакетов — 0/44:
-это счётчик оставшейся работы, уже работающий MVP не обнуляется.
-
-Текущие статусы и счётчик ведутся в
-[чеклисте](porting-checklist.md#правила-статусов-и-счётчика).
-P1-04 принят в пределах .1/.2; прежний P1-04.3 остаётся обязательной функцией
-под самостоятельным ID P1-17. Реальные decoder RAM prompts из исторического
-P1-07.2 сохраняются обязательным P1-18. Остальные mandatory workflow
-owners сохраняются в чеклисте.
-
-Нельзя честно вывести процент полного source port из числа файлов: размеры,
-зависимости и объём частичных портов различаются. P0-01.1–.4 в audit содержит
-реестр copied/adapted/omitted scope всех 109 UI и трёх supporting modules. Новые зависимости
-добавляются в audit и к владельцу пакета, а не скрываются за прежним счётчиком.
+[Исходная инвентаризация и её ограничения](history/porting-plan-baseline.md#единицы-подсчёта).
 
 ### Уже работает и имеет перенесённую исходную основу
 
-Области ниже описывают исходную основу и остаток обязательных веток. Точные
-результаты новых проверок и статус каждого пакета находятся в чеклисте;
-исторический результат теста не подтверждает изменённый checkout.
-
-| Область | Сделано | Что не следует считать завершённым |
-| --- | --- | --- |
-| Архивная модель | `CProxyArc`/`CProxyDir`, дерево явных и неявных папок, размеры, `CAgentFolder`, flat traversal, раскрытие выбора в индексы | Полные Agent/ArchiveFolder, CRC/raw properties, CProxyArc2 и streams |
-| Сортировка | Исходное сравнение имён, папки перед файлами, числовые имена, направление, flat tie-breaks | Полный набор свойств и состояния двух панелей |
-| Выделение | `SelectSpec`, `SelectByType`, `SelectAll`, `InvertSelection`, wildcard helper, исходная модель отметок, мышь/диапазоны и клавиши P0-07 | Проверка Windows/Linux runtime и интеграция с ещё не перенесёнными командами |
-| История/избранное | `CFolderHistory`, `CFastFolders`, команды истории/закладок, сохранение через INI | Полный CAppState и навигационный стек CPanel |
-| Общие диалоги | `CComboDialog`, `CCopyDialog`, `CSplitDialog`, `CPasswordDialog`, `CListViewDialog`, `CEditDialog` и часть callers | Локализация всех форм, полные callers, непренесённые Browse/Options/Progress |
-| Свойства | Сводка выбранного, доступные snapshot properties, подробное значение и clipboard | Raw/format-specific properties, общий исходный pipeline свойств |
-| Файловые операции | `CFSFolder` create/rename/delete, recursive removal, часть `CCopyState`/`FSFolderCopy` | Полный workflow панели, overwrite callbacks, recycle bin, cross-volume move |
-| Split/Combine | Parser размеров, presets, последовательность томов, циклы переноса, подготовка форм | Полная оркестрация CApp и единый progress/callback |
-| Compress | Таблицы уровней/методов, словари, порядок/слово, solid, потоки, RAM, путь/история, password/encryption, profiles | Полный OnInit/OnOK, update/path modes, volumes, SFX, advanced options и codecs |
-| Extract | История 16 путей, split destination, часть path modes, 5 overwrite modes, password/show | Интерактивный Ask, absolute paths, ElimDup, security/metadata |
-| Settings | `CFmSettings`, real icons/grid/single click, часть `CSettingsPage` | Полные 6 страниц Options и остальные поля |
-| Portable dependencies | Строки/числа/типы и другие файлы из upstream в `third_party` | Необходимые зависимости будущих портов ещё выявляются |
+[Исторический снимок](history/porting-plan-baseline.md).
 
 ### Уже работает как MVP или интеграционная адаптация
 
-- Две независимые панели F9/Tab/Alt+F1/F2, disk/archive и archive/archive
-  (P0-08), четыре режима списка, файловая и архивная навигация, плоский вид,
-  адресная строка, menus/toolbar/context menu и shortcuts. Реальные
-  межпанельные операции остаются P1-01.
-- Чтение вложенных архивов, открытие по содержимому по явной команде,
-  временные файлы и возврат к родительскому архиву.
-- Создание/изменение `.7z`/`.zip`, извлечение, тест и хеширование через `7zz`;
-  staged archive replacement, отмена и журнал, проверки опасных путей.
-- F3/F4 в собственном ограниченном текстовом редакторе; обновление файла
-  незашифрованного верхнего архива. Системное открытие извлечённых файлов.
-- Qt workers для transfer/delete/volumes, временные результаты и откат;
-  filesystem enumeration порциями на GUI thread.
-- Геометрические тесты/JSON, извлечение upstream UI resources и часть
-  resource-to-widget contracts, CMake/CTest и `scripts/check.sh`.
-
-Необходимая Qt/process обвязка останется. Свою функциональную реализацию
-навигации, команд и операций надо заменить upstream bodies в соответствующих
-владельцах, сохранив ограничения безопасности и явно документируя различия.
+[Исторические границы обвязки](history/porting-plan-baseline.md#уже-работает-как-mvp-или-интеграционная-адаптация).
 
 ### Ограничения исходного снимка
 
-В начале инвентаризации незакоммиченные изменения затрагивали `CMakeLists.txt`, list/settings
-модули, `qtlistview.*`, `mainwindow_preferences.cpp`, несколько документов
-и `tests/list_activation_tests.cpp`. Audit описывает single-click/hover общего
-списка; основной table/icon view ещё не получил hover/track-select. План учитывает
-этот код, но не утверждает, что его проверки выполнены в этой задаче.
-Нельзя сбрасывать, присваивать себе или молча коммитить эти изменения.
-
-В исходном снимке отсутствовал `.github/`; актуальное решение о сохранении
-удаления workflow записано в P3-03. Наличие проверок macOS в истории не
-подтверждает Windows/Linux или
-визуальную идентичность с отрисованным Windows 7zFM.
+[Контекст исходного checkout](history/porting-plan-baseline.md#ограничения-исходного-снимка).
 
 ## 2. Приоритеты, зависимости и правила одного чата
 
@@ -258,1150 +139,211 @@ P0-05 и P0-10, чтобы зависимости и фактический пр
 
 ## 3. P0 — критическая основа и ежедневный UX (12 шагов)
 
-Сокращения источников: **FM** = `CPP/7zip/UI/FileManager`, **Agent** =
-`CPP/7zip/UI/Agent`, **GUI** = `CPP/7zip/UI/GUI`, **Common** =
-`CPP/7zip/UI/Common`. Все пути относятся к указанному upstream commit.
-Перечень файлов ниже задаёт точки исследования; точный scope символов агент
-фиксирует после чтения соответствующей реализации.
+[Scope, зависимости и приёмка](porting-plan/p0.md#3-p0--критическая-основа-и-ежедневный-ux-12-шагов).
 
 ### P0-01. Реестр символов, границ и зависимостей
 
-**Зависимости:** нет. **Статус:** done, 2026-09-28; audit P0-01.1–.4,
-112 unique source paths, all owners/decisions, 33 vendor byte matches и
-docs-only checks macOS. Функциональные порты и native acceptance остаются открыты.
-
-Сверить 27 mirrored UI-модулей и 3 остальных mirrored `.cpp` с baseline.
-В audit добавить для каждого перечень copied/adapted/omitted symbols,
-зависимости, исходную ревизию и причины локальных замен типов/контейнеров.
-Для 82 отсутствующих `.cpp` зафиксировать владельца из карты в разделе 7
-и решение: нужен целиком, частичный scope, process/platform adapter или N/A.
-Не требуется переписывать эти 82 файла в первом чате.
-
-**Готово:** каждый модуль инвентаризации имеет owner и понятный scope;
-выявлены нужные portable types/adapters без второго authoritative алгоритма;
-уточнены пакеты и счётчик. `git diff --check`; отсутствие runtime-изменений
-не требует app build. В новых шагах читать тела повторно по своей области.
+[Scope, зависимости и приёмка](porting-plan/p0.md#p0-01-реестр-символов-границ-и-зависимостей).
 
 ### P0-02. Исходные владельцы CApp/CPanel и состояние панелей
 
-**После:** P0-01. **Источники:** FM `App.cpp/.h`, `AppState.h`, `Panel.cpp/.h`,
-`FM.cpp`; локальные `MainWindow`, `mainwindow_panel.cpp`, `mainwindow.cpp`.
-
-Перенести необходимые функциональные тела CApp/CPanel, lifecycle и состояние
-местоположения/фокуса/selected state. Вывести эти решения из MainWindow в
-исходных владельцев; Qt окно остаётся presentation и signal adapter.
-Сохранить уже работающие selection/history/backend interfaces. Подготовить
-независимые экземпляры состояния панели для P0-08, без глобального singleton.
-
-**Готово:** одна панель работает через новые owners без регрессии; переход,
-обновление, начало/ошибка/отмена операции и закрытие окна сохраняют корректное
-состояние. Обновлена architecture; consumer tests навигации/команд/выделения.
+[Scope, зависимости и приёмка](porting-plan/p0.md#p0-02-исходные-владельцы-cappcpanel-и-состояние-панелей).
 
 ### P0-03. Единая доступность и маршрутизация команд
 
-**После:** P0-02. **Источники:** FM `PanelMenu.cpp`, `MyLoadMenu.cpp`,
-`PanelOperations.cpp`, `PanelCopy.cpp`, `PanelKey.cpp`, `App.cpp`.
-
-Перенести исходные проверки capabilities folder/selection/active panel.
-Заменить собственные ветки `refreshActions` и дубли menu/context/keyboard
-одним источником правил. Отдельно учитывать read-only/nested/encrypted archive,
-busy/loading state, выбранную папку, пустую панель и возможности backend.
-Неперенесённая операция остаётся disabled с документированной причиной.
-
-**Готово:** меню, toolbar, context menu и клавиши вызывают один command owner;
-отключённую команду невозможно выполнить shortcut. Тестирована матрица состояний
-диск/архив/вложенный архив/операция, focused item и selection.
+[Scope, зависимости и приёмка](porting-plan/p0.md#p0-03-единая-доступность-и-маршрутизация-команд).
 
 ### P0-04. Переходы, адрес и стек открытых папок
 
-**После:** P0-02, P0-03. **Источники:** FM `PanelFolderChange.cpp`,
-`PanelItemOpen.cpp`, `OpenCallback.cpp`; Agent `ArchiveFolderOpen.cpp`.
-
-Перенести BindToPath/BindToPathAndRefresh, parent/root/open/close-level flow,
-восстановление выделения и виртуальные пути. Qt адрес и async backend адаптируют
-исходный flow вместо собственного навигационного алгоритма. Сохранить историю,
-закладки, исключение temp paths и открытие по содержимому.
-
-**Готово:** Enter/Backspace/Up/root/address ведут одинаково; переход в nested
-archive и назад восстанавливает folder/focus; ошибка, неверный пароль и отмена
-не оставляют полуприменённое состояние. Unicode, relative/root paths и tar.gz.
+[Scope, зависимости и приёмка](porting-plan/p0.md#p0-04-переходы-адрес-и-стек-открытых-папок).
 
 ### P0-05. Файловая модель, перечисление и flat view
 
-**После:** P0-02, P0-04. **Источники:** FM `FSFolder.cpp/.h`, `PanelItems.cpp`,
-`Panel.cpp`; при необходимости Common `EnumDirItems.cpp`.
-
-Перенести LoadSubItems и relevant enumeration/flat logic, filters и property
-accessors. `FilesystemScanner` сохраняется как узкий scheduling/cancellation
-adapter при необходимости; его независимая функциональная логика заменяется.
-Не блокировать UI большими перечислениями и не следовать циклическим ссылкам.
-
-**Готово:** hidden/empty/Unicode entries, inaccessible folders, flat prefixes,
-stale batch после перехода и отмена соответствуют source scope. Проверить
-публичный результат модели и отзывчивость на детерминированном большом fixture.
+[Scope, зависимости и приёмка](porting-plan/p0.md#p0-05-файловая-модель-перечисление-и-flat-view).
 
 ### P0-06. Столбцы, сортировка, формат времени и автообновление
 
-**После:** P0-05. **Источники:** FM `PanelItems.cpp`, `PanelSort.cpp`,
-`PanelListNotify.cpp`, `ViewSettings.cpp`, `FormatUtils.cpp`, `PropertyName.cpp`,
-`Panel.cpp`; Windows `TimeUtils.*` как dependency/adapter.
-
-Довести поддерживаемые properties и сортировку до исходных правил, выбрать
-колонки по folder capabilities, сохранить width/order/sort/view mode.
-Перенести format/precision меню времени и auto-refresh policy, сохранить
-focus/selection/scroll при refresh. UI не парсит отформатированный размер
-или дату обратно для сравнения.
-
-**Готово:** сортировка по типизированным значениям, null/undefined, одинаковым
-именам и flat prefixes; столбцы/время persist и restore; refresh не рвёт выбор.
-Геометрия четырёх режимов и context column menu на двух размерах.
+[Scope, зависимости и приёмка](porting-plan/p0.md#p0-06-столбцы-сортировка-формат-времени-и-автообновление).
 
 ### P0-07. Выделение, клавиши и все общие настройки списка
 
-**После:** P0-03, P0-05. **Источники:** FM `PanelSelect.cpp`, `PanelKey.cpp`,
-`PanelListNotify.cpp`, `SettingsPage.cpp`, `SettingsPage2.rc`, `RegistryUtils.cpp`.
-
-Завершить relevant mouse/range/alternative selection и keyboard branches,
-ShowDots/FullRow/AlternativeSelection/ShowSystemMenu и другие list flags.
-Довести single-click и hover/track-select до основной table/icon панели,
-не активируя файл при Ctrl/Shift/Meta selection/drag. Учесть уже изменённый
-общий `qtlistview` и не вводить конкурирующую реализацию настроек.
-
-**Готово:** keyboard-only и mouse workflows во всех четырёх режимах и disk/archive;
-OK/Cancel/persistence, ranges, modifiers, leave, row removal и scroll во время
-hover. Узкие Qt-отличия записаны; tooltip/focus/accessibility проверены.
+[Scope, зависимости и приёмка](porting-plan/p0.md#p0-07-выделение-клавиши-и-все-общие-настройки-списка).
 
 ### P0-08. Две панели как основной файловый UX
 
-**После:** P0-02, P0-03, P0-04, P0-07. **Источники:** FM `App.cpp/.h`,
-`Panel.cpp/.h`, `AppState.h`, `ViewSettings.cpp`, `resource.rc`, `PanelKey.cpp`.
-
-Перенести one/two-panel переключение F9, active panel, Tab и Alt+F1/F2,
-раздельные location/view/selection и восстановление раскладки. Команды
-работают с активной панелью, второй путь готов для Copy/Move. Реальные transfer
-сценарии закрывает P1-01; в этом шаге нельзя обещать их готовность.
-
-**Готово:** обе панели независимы, переключение не теряет путь/выбор,
-shortcut/toolbar target однозначен. Disk/disk, disk/archive, archive/archive,
-compact layout и скрытая вторая панель покрыты tests/JSON.
+[Scope, зависимости и приёмка](porting-plan/p0.md#p0-08-две-панели-как-основной-файловый-ux).
 
 ### P0-09. Меню, toolbar, status bar и контекстное меню 7zFM
 
-**После:** P0-03, P0-06, P0-08. **Источники:** FM `resource.rc`, `MyLoadMenu.cpp`,
-`PanelMenu.cpp`, `App.cpp`, `SysIconUtils.cpp` и исходные bitmap resources.
-
-Перенести command tables, grouping/order, checks, shortcuts, toolbar options,
-status summary и context menu. Устранить самостоятельные заменители исходных
-команд там, где они меняют workflow. Неперенесённые команды видимо disabled;
-их enablement выполняется в собственном шаге функции. Системные icons через
-Qt/platform adapters; перенесённые ресурсы сохраняют provenance.
-
-**Готово:** source/resource-derived спецификация всей оболочки, keyboard access,
-active panel routing, status totals; current-build normal/compact JSON. Не
-утверждать pixel parity без rendered Windows reference.
+[Scope, зависимости и приёмка](porting-plan/p0.md#p0-09-меню-toolbar-status-bar-и-контекстное-меню-7zfm).
 
 ### P0-10. Прогресс, сообщения, подтверждение отмены, pause/background
 
-**После:** P0-02, P0-03. **Источники:** FM `ProgressDialog2.cpp/.h`,
-`ProgressDialog2.rc/2a.rc`, `MessagesDialog.*`, callbacks и GUI `UpdateCallbackGUI2.*`.
-
-Перенести CProgressSync и relevant CProgressDialog flow/statistics, ошибки и
-closing policy; заменить разрозненные QProgressDialog и собственный journal UI.
-Показывать текущий файл, totals, speed/elapsed/remaining, ошибки и итог.
-Pause/background нуждаются в настоящих worker/process capabilities: заранее
-проверить механизм каждой ОС; неподдерживаемая кнопка не имитирует паузу.
-Если current `7zz` adapter не обеспечивает сценарий, создать явный prerequisite
-адаптера внутри шага и оставить parent partial до решения, без переписывания engine.
-
-**Готово:** общий progress для archive/filesystem/volumes, cancel-confirm и
-закрытие/ошибка/partial result без потери сообщения, рабочая pause/resume по
-capabilities, корректный background priority или записанная N/A платформы.
-Детерминированные callback tests, destruction/cancel races и geometry всех состояний.
+[Scope, зависимости и приёмка](porting-plan/p0.md#p0-10-прогресс-сообщения-подтверждение-отмены-pausebackground).
 
 ### P0-11. Общий OverwriteDialog и конфликты Copy/Move
 
-**После:** P0-10. **Источники:** FM `OverwriteDialog.*`, `FSFolderCopy.cpp`,
-`ExtractCallback.*`, `UpdateCallback100.*`, Common `FilePathAutoRename` dependency.
-
-Перенести отображение двух файлов, исходные решения yes/no/all/auto-rename/cancel,
-состояние решения на операцию и relevant callback flow. Worker ждёт решения
-без прямого доступа к widgets; подтверждение безопасно закрывается при отмене.
-Транзакционность/rollback локального adapter сохраняются и описываются.
-
-**Готово:** одиночные/повторные конфликты и All, occupied rename target,
-cancel во время prompt, Unicode/длинные имена, файловый и directory conflict.
-Правильный результат байтов и исходный набор controls на двух размерах.
+[Scope, зависимости и приёмка](porting-plan/p0.md#p0-11-общий-overwritedialog-и-конфликты-copymove).
 
 ### P0-12. Интерактивный Ask при извлечении
 
-**После:** P0-11. **Источники:** GUI `ExtractDialog.cpp`, `ExtractGUI.cpp`,
-FM `ExtractCallback.cpp`, Common `ArchiveExtractCallback.cpp`, `Extract.cpp`.
-
-Заменить адаптацию Ask → отказ исходным интерактивным flow через общий overwrite.
-Сначала исследовать `7zz` prompt/protocol: можно адаптировать процессный диалог
-или понадобится capability extension за ArchiveBackend. Не распознавать ответы
-по хрупкому локализованному тексту без проверенного протокола. Сохранить validation,
-selected extraction, rename-existing/extracted и password retry/cancel.
-
-**Готово:** Ask/YesAll/NoAll/AutoRename/Cancel при реальном extract `.7z`/`.zip`,
-failure и cancellation без deadlock; UI отражает частичный результат и ограничения
-rollback. Tests backend и dialog consumers; история/Cancel не регрессируют.
-
-Рабочие результаты: P0-12.1 закрепил общий интерактивный Ask на `7zz` transport;
-P0-12.2 подключил незашифрованный root FullPaths FM consumer к исходным
-`CPanel::CopyTo`/`CAgentFolder::Extract`/`CheckExistFile` и проверил source UX.
-P0-12.3 подключил root NoPaths/Ask с выбранной папкой к тому же source callback;
-P0-12.4 подключил зашифрованный root и текущую папку архива к source callback
-с проверкой пароля до записи. P0-12.5 подключил вложенные и многотомные архивы,
-`ExtractGUI.cpp`/`Common/Extract.cpp`, multi-archive source loop и завершил
-parent приёмку. Точные критерии и evidence — в checklist; прочие режимы
-Extract и метаданные остаются P2-07.
+[Scope, зависимости и приёмка](porting-plan/p0.md#p0-12-интерактивный-ask-при-извлечении).
 
 ## 4. P1 — основные сценарии и полноценный UX (17 шагов)
 
+[Scope, зависимости и приёмка](porting-plan/p1.md#4-p1--основные-сценарии-и-полноценный-ux-17-шагов).
+
 ### P1-01. Copy/Move routing между диском, архивом и панелями
 
-**После:** P0-08, P0-11, P0-12, P1-04. **Источники:** FM `App.cpp::Copy`, `PanelCopy.cpp`,
-Agent `ArchiveFolderOut.cpp`, `AgentOut.cpp`; локальный `mainwindow_fileoperations`.
-
-Перенести исходную оркестрацию F5/F6: destination default второй панели,
-selected/focused items, disk↔disk, archive→disk, disk→archive и archive→archive
-через безопасный temp staging и backend capabilities. Одним пакетом не скрывать
-разные типы transfer: при необходимости выделить по одному подшагу на маршрут.
-Запреты nested/encrypted writes снимаются только после соответствующего owner.
-
-**Готово:** destination и summary исходные; обе панели refresh/restore;
-failure/cancel не удаляют source и не выдают partial copy за успешный Move.
-Routing matrix tests и byte-level integration fixtures.
-
-Итерации P1-01.1/.2/.3 проверяют обычные F5/F6 по всем маршрутам и исходный
-`CApp::OnCopy` selection/dialog/panel/temp dispatch. Исходный
-`PanelKey.cpp` вызывает `OnCopy(..., shift)` для Shift+F5/F6;
-`copyToSame`/одиночный destination filename остаются обязательным P1-01.4.
-Эта ветка использует отсутствующие полные `FSFolderCopy` destination branches
-из P1-02. Поэтому P1-02 начинается после проверенных обычных маршрутов
-P1-01.3, а parent P1-01 принимается только после P1-01.4. Исторические
-P1-01.1/.2 и их доказательства не меняются.
-
-P1-01.4 и parent P1-01 приняты 2026-10-01: Shift+F5/F6 использует исходный
-focused-item `OnCopy`, файловый direct destination копирует/перемещает один
-объект по точному имени, архивный source Agent извлекает focused item в
-указанную папку и при F6 удаляет его после успешного извлечения. Обычный F5/F6
-тоже принимает одиночный новый filename. Детали и локальные ограничения —
-в audit § P1-01.4 и `docs/7zfm-parity.md`.
+[Scope, зависимости и приёмка](porting-plan/p1.md#p1-01-copymove-routing-между-диском-архивом-и-панелями).
 
 ### P1-02. Cross-volume move и завершение FSFolderCopy
 
-**После:** P1-01.3. **Источники:** FM `FSFolderCopy.cpp`, `FSFolder.cpp`,
-`PanelCopy.cpp`; Windows FileIO/FileDir/FileName adapters.
-
-Довести исходные move/rename/copy-delete branches, overwrite и callback semantics.
-Сохранить narrow staging adapter вместо нового алгоритма переноса дерева.
-Метаданные/ссылки, пока не поддержанные, обрабатываются явно и без ложного успеха.
-
-**Готово:** same-volume rename, cross-volume fallback, ошибка удаления source,
-occupied target, cancel между copy и delete, частично выполненный набор.
-Тестировать fallback инъекцией файлового adapter и отдельно реальными томами
-на доступных ОС; не требовать второй физический диск для CTest.
-
-P1-02.1 принимает целый F6 cross-volume сценарий через уже перенесённые
-`FSFolderCopy.cpp::CopyFolder/CopyFile_Ask` и транзакционный Qt staging worker:
-инъекция отказа rename, публикация перед удалением, rollback до удаления и
-явный частичный результат при ошибке удаления. P1-02.2 завершает исходные
-`CFSFolder::CopyTo`, `CCopyState` move/callback bodies, прямое имя назначения,
-создание папки и recursive merge; parent закрывается только после обоих
-результатов. Shift+F5/F6 consumer принимается отдельно в P1-01.4.
+[Scope, зависимости и приёмка](porting-plan/p1.md#p1-02-cross-volume-move-и-завершение-fsfoldercopy).
 
 ### P1-03. Полные Create/Rename/Delete и корзина
 
-**После:** P0-03, P0-10, P0-11. **Источники:** FM `PanelOperations.cpp`,
-`BrowseDialog.cpp`, `FSFolder.cpp`, `UpdateCallback100.cpp`; Windows FileDir/Shell.
-
-Перенести CorrectFsPath/name validation, inline rename, создание составного пути,
-исходные confirmations и Delete/Shift+Delete semantics. Подключить recycle bin
-через узкий platform adapter с исходным Windows flow и явным поведением macOS/Linux.
-Не потерять уже перенесённый recursive deletion без traversal symlinks.
-
-**Готово:** inline accept/cancel/error сохраняет имя и выбор; занятые имена,
-read-only/permissions, корзина vs permanent delete и partial failure проверены.
-Archive mutation ветки передаются owner P1-04, не пишут `7zz` syntax в panel.
-
-Крупные результаты: P1-03.1 переносит цельный filesystem Create/Rename
-с `PanelOperations.cpp` и `BrowseDialog.cpp::CorrectFsPath`, исходным
-`IFolderOperations`, inline F2, составным путём, сохранением выбора,
-ошибками/Cancel и нормальной/compact UX-проверкой. P1-03.2 переносит Delete и
-Shift+Delete, подтверждение по числу/типу, platform recycle adapter,
-постоянное удаление, частичный результат/отмену и завершает parent приёмку.
-Уже принятые FSFolder Create/Rename/Delete bodies и ComboDialog не копируются
-повторно; archive mutations остаются P1-04.
-P1-03.1 принят 2026-09-30: source CreateFolder/CreateFile/inline Rename во всех
-четырёх режимах списка, составные пути, ошибка занятого имени и отмена;
-`check.sh` 137/137 на macOS arm64.
-P1-03.2 и parent P1-03 приняты 2026-09-30: обычный Delete через native Trash
-adapter, Shift+Delete через исходный worker, подтверждение файла/папки/набора,
-частичный отказ и выбор после обновления; Unix read-only Create/Rename/Delete
-и ошибки занятого имени проверены. Полный `check.sh` 137/137 на macOS arm64;
-Windows/Linux, native Trash runtime и rendered Windows подтверждения локально
-не проверены. Следующий доступный шаг — P1-04.
+[Scope, зависимости и приёмка](porting-plan/p1.md#p1-03-полные-createrenamedelete-и-корзина).
 
 ### P1-04. Запись, Rename/Delete/CreateFolder в архиве
 
-**После:** P0-03, P0-10, P0-11, P1-03. **Источники:** FM `PanelOperations.cpp`,
-`PanelCopy.cpp`; Agent `AgentOut.cpp`, `ArchiveFolderOut.cpp`, `UpdateCallbackAgent.cpp`;
-GUI `UpdateGUI.cpp`, Common `Update*.cpp`, `SetProperties.cpp`.
-
-Перенести relevant update orchestration/validation/selection recovery, включая
-защищённые верхние архивы при наличии capabilities. Сохранить transactional
-replacement за ArchiveBackend. Запись ZIP comment вынесена в P1-17 с отдельным
-writer prerequisite.
-
-**Готово:** все поддержанные действия сохраняют bytes/metadata/пароль и исходный
-архив при ошибке; busy и nested ограничения видимы. Unsupported handler branch
-имеет доказательство и статус; операции/refresh и prompts проверены.
-Этот шаг доступен раньше P1-01 и предоставляет ему archive-write capability;
-не ждать завершения transfer routing для реализации самих архивных мутаций.
-
-Крупные результаты: P1-04.1 переносит целый unencrypted CreateFolder/Rename/
-Delete workflow через исходные `AgentOut`/`ArchiveFolderOut` selection/update
-bodies, source `PanelOperations` consumers, transactional ArchiveBackend adapter,
-progress/error/refresh и UX. P1-04.2 добавляет защищённые верхние архивы к
-тем же операциям и проверяет пароль, ciphertext/metadata, ошибки и отмену.
-Исторический P1-04.3 — исследование capability и источник evidence для P1-17;
-он больше не является подшагом приёмки P1-04. Archive Add/path modes и nested
-update остаются P1-05/P1-09.
-
-P1-04.1 завершён для незашифрованных верхних ZIP/7z. P1-04.2 завершён для
-защищённых верхних ZIP AES/7z: сохранённый пароль передаётся source update и
-native ReOpen без повторного запроса, проверены bytes/mtime, неверный пароль,
-отмена и сохранность исходного архива. Parent P1-04 принят по проверенному
-mutation scope .1/.2; P1-05/P1-09 ещё не выполнены.
-
-Следующий доступный пакет по приоритету — P1-05. Зависимости P1-01/P1-05/
-P1-08/P1-09/P1-10 от P1-04 относятся к принятой archive-write capability;
-ни одному из этих consumers запись ZIP comment не нужна.
+[Scope, зависимости и приёмка](porting-plan/p1.md#p1-04-запись-renamedeletecreatefolder-в-архиве).
 
 ### P1-05. Полные update/path modes Add to Archive
 
-**После:** P1-04. **Источники:** GUI `CompressDialog.cpp/.h/.rc`, `UpdateGUI.cpp`,
-Common `UpdateAction.cpp`, `UpdatePair.cpp`, `UpdateProduce.cpp`, `ArchiveName.cpp`.
-
-Перенести update-mode и path-mode controls/flow, relevant OnInit/OnOK,
-поведение существующего архива и изменение compression options в Add.
-Профили/история/пароль используют уже перенесённые методы. Функциональная
-логика выбора файлов/операций берётся из upstream; process switches — backend.
-
-**Готово:** Add/Update/Freshen/Synchronize в поддерживаемом scope сохраняют
-правильный набор newer/older/deleted files; relative/full path modes и имена
-проверены. Cancel/invalid options не сохраняют профиль и не меняют archive.
-Compress resource geometry включает новые controls и compact scrolling.
-
-Интегрированные результаты: P1-05.1 — Add/Update/Freshen/Synchronize для
-существующих верхних ZIP/7z с относительными именами, исходный callback plan,
-настройки сжатия и транзакционный backend; P1-05.2 — исходные Relative/Full/
-Absolute path modes для нового и существующего ZIP/7z и простых каталогов;
-P1-05.3 — защищённый Add; P1-05.4 — сложные directory branches и
-полная parent приёмка.
-Промежуточные результаты не закрывают P1-05.
+[Scope, зависимости и приёмка](porting-plan/p1.md#p1-05-полные-updatepath-modes-add-to-archive).
 
 ### P1-06. Многотомные архивы и связанные диалоги
 
-**После:** P1-05. **Источники:** GUI `CompressDialog.*`, `UpdateGUI.cpp`,
-Common `Update.cpp`, `OpenArchive.cpp`; FM `SplitUtils.*` для reused volume parser.
-
-Перенести volume-size control/validation/history и исходный сценарий создания,
-открытия, проверки и извлечения архивных томов. Различать обычный Split и
-многотомный archive. SFX control не обещает результат без P2-02; его prerequisite
-можно выполнить раньше, если требуется для полного исходного сценария.
-
-**Готово:** тома имеют верный набор/нумерацию, missing/occupied/corrupt volume
-обрабатывается понятно, cancel убирает staged outputs, пароль работает.
-Volume creation/list/test/extract integration и geometry формы.
-
-Интегрированные результаты: P1-06.1 — создание ZIP/7z volumes из Add to Archive,
-исходные volume parser/control/small-size confirmation и CMultiOutStream,
-transactional publication, occupied/failure/cancel/password и normal/compact UX;
-P1-06.2 — source open/list/test/extract consumers, missing/corrupt volumes,
-password/cancel и parent приёмка. Существующий обычный Split сохраняет свой workflow.
+[Scope, зависимости и приёмка](porting-plan/p1.md#p1-06-многотомные-архивы-и-связанные-диалоги).
 
 ### P1-07. Advanced compression options, время и RAM dialogs
 
-**После:** P1-05, P0-10. **Источники:** GUI `CompressDialog.cpp` (включая
-CompressOptionsDialog implementation), `CompressOptionsDialog.rc`, `UpdateGUI.cpp`,
-Common `ZipRegistry.cpp`; FM `MemDialog.*`, `SettingsPage.*`.
-
-Перенести параметры времени/точности, preserve access time, archive mtime,
-share-for-write/delete-after-compress, advanced parameter field и relevant
-memory prompts. Inspect original checks/SetOutProperties, не создавать второй
-parser. Опции уровня ОС доступны по capability с объяснённой адаптацией.
-
-**Готово:** timestamps проверены round-trip, unsupported/invalid parameters
-дают исходный отказ; source удаляется только после доказанного успешного archive;
-compression memory rejection/retry/cancel и profile persistence не теряют настройку.
-Реальные decoder RAM prompts вынесены отдельно в обязательный P1-18. UI contracts
-advanced/memory dialogs, tests success/failure/cancel.
-
-Интегрированные результаты: P1-07.1 переносит целую source Options форму,
-time/capability states, parameter field с исходным parser/SetOutProperties,
-backend effect/validation, format profiles и normal/compact UX. P1-07.2
-завершает lifecycle shared/preserve access/archive mtime/delete-after-compress
-и compression memory retry/cancel через source checks и multi-stage/volume consumers.
-Исторический decoder callback scope P1-07.2 вынесен в P1-18 после проверки
-реальных callers и consumers (audit § P1-18 prerequisite), не объявлен выполненным.
-Parent принимается по .1/.2 без этой отдельной обязательной функции.
-NTFS/link controls сохраняют
-исходную capability policy; функциональные links/ADS/security owners — P2-05.
+[Scope, зависимости и приёмка](porting-plan/p1.md#p1-07-advanced-compression-options-время-и-ram-dialogs).
 
 ### P1-08. Внешние viewer/editor/diff и возврат изменённого файла
 
-**После:** P0-04, P1-04. **Источники:** FM `PanelItemOpen.cpp`, `PanelItems.cpp`,
-`EditPage.cpp`, `RegistryUtils.cpp`, `VerCtrl.cpp`, Common `TempFiles.cpp`.
-
-Перенести View/Edit/Diff command semantics, external app launch, ожидание/наблюдение
-изменённой временной копии, вопрос об update и cleanup. Собственный ограниченный
-текстовый редактор — явная дополнительная Qt-возможность, а не замена upstream
-external workflow. Command templates/quoting не проходят через shell без нужды.
-
-**Готово:** spaces/Unicode, app launch failure, changed/unchanged file,
-accept/reject update, cancel и lifetime temp проверены controlled process fixture.
-Editor/viewer/diff settings применяются и доступны с клавиатуры.
-
-Интегрированные результаты: P1-08.1 — весь disk View/Edit/Diff со settings,
-EditPage/Browse/Apply/Cancel, source launch и реальными controlled-process
-проверками. P1-08.2 — archive external editing с исходным process wait,
-changed-temp prompt/update и cleanup/lifetime. P1-08.3 — исходный VerCtrl
-Edit/Commit/Revert/Diff с backup/file metadata и platform adapters; это отдельный
-целый workflow из обязательного scope, а не helper. Parent закрывается после всех.
-Helper переноса запуска сам по себе не принимается и не коммитится отдельно.
+[Scope, зависимости и приёмка](porting-plan/p1.md#p1-08-внешние-viewereditordiff-и-возврат-изменённого-файла).
 
 ### P1-09. Обратное обновление цепочки вложенных архивов
 
-**После:** P1-04, P1-08. **Источники:** FM `PanelItemOpen.cpp`, `PanelFolderChange.cpp`,
-Agent `ArchiveFolderOpen.cpp`, `ArchiveFolderOut.cpp`, `UpdateCallbackAgent.cpp`.
-
-Перенести исходный parent-link update flow от внутреннего файла к внешнему архиву,
-prompt/password handling и удержание temp chain. Capabilities каждого handler
-проверяются до записи; `tar.gz` и immutable/read-only levels не заменяются
-самостоятельным packer. При недоступном process механизме — prerequisite adapter.
-
-**Готово:** two-level update, ошибка внутренней/внешней записи, wrong password,
-отмена prompt и возврат в родителя не уничтожают исходный внешний archive.
-Проверить bytes на всех уровнях и восстановление listing/selection.
-
-**Принято 2026-10-01:** source parent-link/update bodies интегрированы с
-source-owned materialization nested memory stream; F4 и Rename/Delete/CreateFolder
-проверены на реальном inner7z/outerZIP, включая protected levels, ошибки/отмену
-обеих записей, wrong/cancel inner password, No/Escape и read-only parent/child.
-Исходный внешний архив сохраняется при отказе; изменённый temp остаётся при
-ошибке записи. Listing/focus и normal/compact prompt JSON проверены.
-Focused11/11 PASS7.70 s; final unsandboxed check.sh156/156 PASS54.56 s,
-macOS arm64 Qt6.11.2. Сверка baseline197 exact/145 adapted/3 local PASS.
-Windows/Linux runtime и rendered Windows parity не проверены; file-only
-adaptations и omitted codec opening scope записаны в audit § P1-09.
+[Scope, зависимости и приёмка](porting-plan/p1.md#p1-09-обратное-обновление-цепочки-вложенных-архивов).
 
 ### P1-10. Полные свойства и исходное форматирование значений
 
-**После:** P0-06, P1-04. **Источники:** FM `PanelMenu.cpp`, `PanelItems.cpp`,
-`PropertyName.cpp`, `FormatUtils.cpp`, `ListViewDialog.cpp`, `EditDialog.cpp`;
-Agent `AgentProxy.cpp`, `ArchiveFolder.cpp`; Common `PropIDUtils.cpp`.
-
-Перенести перечисление folder/item/archive properties и relevant raw value
-formatting, CRC, totals и full-value display. Snapshot process listing дополняется
-только теми данными, которые реально даёт engine adapter; отсутствие raw values
-не заполнять выдуманными значениями. Решение CProxyArc2 оформить по provenance.
-Сюда входит исходная ветка F3 для выбранных папок: CalcItemFullSize и обновление
-статистики/свойств PanelItems::EditItem(bool).
-
-**Готово:** undefined/zero/UInt64, Unicode, multi-selection и explicit/implicit
-folders отображаются правильно; clipboard и detail не обрезают данные.
-Resource comparator/JSON и deterministic property fixtures.
-
-**Крупные результаты:** P1-10.1 — целый исходный F3 folder-size workflow:
-operated directories, existing source FS calculator, Qt invalidation без reload,
-numeric rows/status/selection и normal/compact regression. P1-10.2 — полное
-source Properties перечисление item/raw/folder/archive levels, доступный engine
-transport, CRC/totals и полный detail/clipboard; отдельная UX/fixture приёмка.
-Parent закрывается после обоих результатов; .1 не закрывает raw transport.
-
-**P1-10.1 принято 2026-10-01:** source EditItem folder branch, реальные FS totals
-и Qt invalidation интегрированы, focused5/5 PASS1.41 s, final unsandboxed
-check.sh157/157 PASS54.89 s macOS arm64 Qt6.11.2. Normal/compact JSON проверены;
-Windows/Linux runtime/rendering unverified.
-
-**P1-10.2 и parent принято 2026-10-01:** восстановлены source Properties
-item/raw/folder/archive levels/MainItemProperty/non-open flow и Agent interfaces.
-File-only adapter сохраняет actual fields, UInt64/CRC и доступные checksum/SHA
-bytes; UI snapshot не расширяет native catalog. Long Unicode clipboard/detail,
-normal/compact JSON проверены. Final focused6/6 PASS2.04 s; unsandboxed check.sh
-158/158 PASS55.35 s macOS arm64 Qt6.11.2. Native codec error-type lookup, ADS graph,
-недоступные CLI bytes и shell integration остаются в своих P2 owners;
-Windows/Linux runtime/rendering unverified. Следующий ID — P1-12.
+[Scope, зависимости и приёмка](porting-plan/p1.md#p1-10-полные-свойства-и-исходное-форматирование-значений).
 
 ### P1-11. Корни, диски, сеть и Browse dialogs
 
-**После:** P0-04, P0-05. **Источники:** FM `RootFolder.*`, `FSDrives.*`,
-`NetFolder.*`, `BrowseDialog.*`, `BrowseDialog2.*`; Windows FileSystem/Net adapters.
-
-Перенести иерархию root/drives/network, address dropdown и relevant Browse flows.
-Для macOS/Linux сохранить workflow с mount roots/native folder picker там,
-где Win32 services неприменимы; не имитировать несуществующий Windows namespace.
-Remote credentials/real services не использовать в tests.
-
-**Готово:** drive/mount disappearance, unreadable root, cancel picker и history
-не ломают панель. Fake mounts/network adapter fixtures; native поведение
-проверяется на соответствующей ОС и отражается в parity.
-
-P1-11 разделён на три интегрированных результата. P1-11.1 проводит source
-`CRootFolder` → `CFSDrives` → filesystem через системные mount roots на
-macOS/Linux, включая исчезновение/недоступность, history и normal/compact UX.
-P1-11.2 переносит source Browse entry points и все текущие folder/file picker
-consumers с Qt/native service. P1-11.3 переносит network namespace с Windows
-service и portable mounted-share capability.
-P1-11.1/.2/.3 завершены вместе с parent. Device imaging из `FSDrives.cpp`
-остаётся в P2-05/P3-05 и не считается завершённым от просмотра списка томов.
+[Scope, зависимости и приёмка](porting-plan/p1.md#p1-11-корни-диски-сеть-и-browse-dialogs).
 
 ### P1-12. Полный OptionsDialog, Settings и Folders
 
-**После:** P0-07, P0-08, P1-07. **Источники:** FM `OptionsDialog.cpp`,
-`SettingsPage.*`, `FoldersPage.*`, `RegistryUtils.*`, `ViewSettings.*`,
-Common `WorkDir.*`, `ZipRegistry.*`.
-
-Перенести исходную оболочку шести страниц System/Menu/Folders/Edit/Settings/Language,
-Apply/OK/Cancel, changed-state и перечитывание обеих панелей. В этом шаге довести
-Settings/Folders: temp/work folder, large-pages/RAM flags и relevant paths.
-Остальные страницы имеют owners P1-13/P1-14/P2-08/P2-09; их неполные controls
-явно disabled. Не маркировать весь Options завершённым до этих шагов.
-P1-08.1 переносит prerequisite оболочку с Editor и существующей Settings;
-это partial P1-12, остальные страницы и memory controls остаются обязательными.
-
-**Готово:** изменённые страницы применяются, Cancel не пишет pending values,
-Apply затем Cancel сохраняет уже применённое; temp settings реально используются.
-Page switching/focus и normal/compact JSON, invalid config и round-trip tests.
-
-**Крупные результаты:** P1-12.1 — цельный Settings/Folders scenario: исходные
-state/apply/RAM/work-dir bodies, Qt controls, creation/update consumers, refresh
-обеих панелей и проверка UX/config/normal/compact. P1-12.2 — итоговая интеграция
-всех шести страниц после P1-13/P1-14/P2-08/P2-09 и приёмка Options parent.
-Остальные owners могут использовать capability .1 до закрытия parent; это
-устраняет зависимость по кругу без объявления недоступных pages завершёнными.
-
-**P1-12.1 принято 2026-10-01:** source Settings/Folders state, RAM validation,
-working directory в native FM update и GUI Create, Windows large-page request,
-source RefreshAllPanels интегрированы. Normal640×390/compact520×380 JSON,
-Cancel/Apply-then-Cancel/invalid config/input focus/real work-dir failure и обе
-панели проверены. Final unsandboxed check.sh160/160 PASS55.99 s macOS arm64
-Qt6.11.2; Windows/Linux runtime и rendered parity unverified. Parent остаётся
-открыт, счёт24/46 не меняется. Следующий доступный ID P1-13.
+[Scope, зависимости и приёмка](porting-plan/p1.md#p1-12-полный-optionsdialog-settings-и-folders).
 
 ### P1-13. Страницы Edit и Menu
 
-**После:** P1-08, P1-12.1 capability. **Источники:** FM `EditPage.*`, `MenuPage.*`,
-`RegistryUtils.cpp`, `MyLoadMenu.cpp`; Explorer `RegistryContextMenu.*` для dependency.
-
-Перенести viewer/editor/diff configuration и menu policies/flags. System-shell
-часть Menu использует adapter P2-09; обычные app options работают сейчас.
-Настройка обязана менять поведение, а не просто сохранять checkbox.
-
-**Готово:** launch settings применены к соответствующим командам; invalid app
-path/templates и Cancel/Apply обработаны; menu flags дают наблюдаемый результат.
-Для platform-only controls — explicit capability state и tests.
-
-Два крупных результата сохраняют parent scope:
-
-- **P1-13.1** — интегрированный source MenuPage/Options/Zone scenario с source
-  persistence и реальным FM extraction consumer; accepted Edit P1-08 используется
-  без повторного переноса. Shell controls явно disabled до своего consumer.
-- **P1-13.2** — наблюдаемые source shell policies/flags/registration вместе с
-  P2-09; parent остаётся открыт до их проверки. Текущий Explorer/ContextMenu.cpp
-  содержит только FindExt, не QueryContextMenu. Source Menu ElimDup не является
-  FM extraction default, поэтому подмена consumer недопустима.
-
-P1-13.1 принят2026-10-01: source Menu bodies/flags и resource fallback,
-BoolPair unchanged preservation, реальный PanelCopy/Agent extraction consumer,
-explicit disabled shell/POSIX Zone controls. Normal640×390/compact520×380 JSON
-просмотрены; focused5/5 1.87 s, full unsandboxed check.sh161/161 57.27 s macOS
-arm64 Qt6.11.2. Baseline203 exact/149 adapted/3 local verified. Windows ADS,
-Windows/Linux runtime и rendered parity unverified. Parent остаётся открыт;
-счёт24/46 прежний, следующий доступный P1-14.
+[Scope, зависимости и приёмка](porting-plan/p1.md#p1-13-страницы-edit-и-menu).
 
 ### P1-14. Language и локализация всего интерфейса
 
-**После:** P0-09, P1-12.1 capability. **Источники:** FM `LangPage.*`, `LangUtils.*`,
-`TextPairs.*`, `StringUtils.*`; Common `Lang.*` и upstream language resources.
-
-Перенести выбор/чтение language files, fallback IDs, смену меню/toolbar/dialogs
-и исходные тексты команд. Убрать жёсткие русские captions в перенесённых forms,
-сохраняя Qt standard buttons/platform conventions как адаптацию. UI state не
-теряется при смене языка; сообщения backend остаются с явным переводом/контекстом.
-
-**Готово:** минимум source English и Russian, missing/malformed file fallback,
-hot switch/restart, accelerator collisions и длинные labels. Geometry normal/
-compact в обоих языках и доступность controls, без новых algorithm duplicates.
-
-Пакет включает два крупных пользовательских результата, без отдельных коммитов
-для parser/helpers/resources:
-
-- **P1-14.1 — выбор языка и его реальные consumers:** source Lang/LangPage/
-  LangUtils, исходные English/Russian assets, persistence и fallback; Options
-  Apply/Cancel/restart, hot switch source menus/toolbar/list/status и доступных
-  Options pages с сохранением input/selection/action identity. Общий ResourceString
-  fallback возвращает source English, fixed Russian override удалён.
-- **P1-14.2 — оставшиеся app captions и полная приёмка:** source dialog labels,
-  динамические сообщения и локальные Qt captions/commands без upstream IDs,
-  явный контекст backend сообщений, акселераторы и длинные labels во всех
-  затронутых формах; EN/RU normal/compact contracts и final full gate. Сохранить
-  проверенный сценарий .1; parent и счёт принимаются только после .2.
-
-P1-14.1/.2 и parent приняты 2026-10-01: audit § P1-14.2 acceptance,
-полный unsandboxed check.sh170/170PASS63.11s macOS arm64 Qt6.11.2;
-baseline210 exact/152 adapted/3 local. Счёт25/46; следующий P1-15.
-Windows/Linux runtime и rendered Windows parity остаются непроверенными.
+[Scope, зависимости и приёмка](porting-plan/p1.md#p1-14-language-и-локализация-всего-интерфейса).
 
 ### P1-15. Help/About и управление временными файлами
 
-**После:** P0-09, P1-08, P1-14. **Источники:** FM `HelpUtils.*`, `AboutDialog.*`,
-`App.cpp`, `ProgramLocation.*`, Common `TempFiles.*`, upstream help/license resources.
-
-Перенести F1/context help/About и Delete Temporary Files command. Windows CHM
-заменяется narrow help adapter на других ОС с сохранением разделов/ссылок;
-описать источник и доступность документации. Cleanup удаляет только owned temp
-с корректным active-open/edit lifetime, не произвольные файлы пользователя.
-
-**Готово:** command routing, offline/unavailable-help error, version/license,
-cleanup confirm/cancel/partial failure и сохранение active temp fixtures.
-Help/About/cleanup UX закрыт в P1, не оставлен на этап выпуска.
-
-**Рабочее деление:** P1-15.1 — интегрированный Help/About с исходными offline
-topics/links, F1/context consumers и version/license; P1-15.2 — source cleanup
-с owned-temp lifetime и итоговая приёмка parent. .1 принята: focused11/11PASS
-4.70s, final F1/geometry4/4PASS1.05s, final native About2/2PASS0.54s и full
-unsandboxed check.sh172/172PASS63.63s на macOS arm64 Qt6.11.2 2026-10-01;
-baseline215 exact/156 adapted/3 local verified на checkpoint .1. Disabled System/Benchmark
-получат свои source Help callbacks вместе с P2-08/P2-04; cleanup Help входит в .2.
-
-.2 и parent приняты: native BrowseDialog2 command/browser, ownership registry,
-nested/process leases и private spool publication identity transfer; actual
-Yes/No/Cancel, first failure/replaced identity, active child-editor protection,
-context/props, FM preferences, navigation/Help/F1. Focused18/18PASS12.43s;
-full unsandboxed check.sh formatting/build/175 tests PASS66.82s macOS arm64
-Qt6.11.2 2026-10-01. EN/RU900×580/500×320 JSON reviewed, baseline217 exact/
-158 adapted/3 local verified. Счёт26/46; следующий P1-16. Windows/Linux runtime/
-rendered parity, actual cross-volume publication IO и late Finish cancellation
-локально не проверены. Directory Open Outside : 7-Zip disabled до P2-07
-directory CLI consumer; file self-open/OS association подключены.
+[Scope, зависимости и приёмка](porting-plan/p1.md#p1-15-helpabout-и-управление-временными-файлами).
 
 ### P1-16. Полный drag/drop между панелями и внешними приложениями
 
-**После:** P1-01, P1-09, P0-07. **Источники:** FM `PanelDrag.cpp`,
-`EnumFormatEtc.*`, `PanelCopy.cpp`, `App.cpp`; локальные filetable/drop adapters.
-
-Перенести исходные drag effect/selection/destination rules: disk→disk,
-disk→archive, archive→disk/outside, между панелями и relevant archive→archive.
-OLE IDataObject заменяется Qt mime/platform promise adapter; archive drag-out
-реально подготавливает временные bytes и удерживает их для получателя.
-Mouse hover/single-click не открывает файл во время drag.
-
-**Готово:** copy/move modifiers, отказ/отмена extract, outside receiver failure
-и lifetime temp тестированы fake recipient; live Qt workflow и полный gate проверены.
-Нативная проверка Finder вынесена в обязательный P3-03.1 и не блокирует приёмку
-реализации P1-16. Остальные native file managers проверяются в P3-03.
-Unsupported native promise branch остаётся documented partial.
-
-Реализация принята: native OnDrag/Drop/transfer/CompressDropFiles и CApp bodies скопированы,
-подключены обе table/icon панели, lazy F9 panel, исходные popup/confirmation/Add.
-Actual ZIP binary bytes/receiver lifetime/refusal/drag+extract cancel, disk Copy/
-Move, live two-panel и archive Yes/No/Cancel, source close/SingleClick/hover guards
-проверены; focused11/11PASS7.44s macOS arm64 Qt6.11.2 2026-10-02 до последних
-archive→disk/archive и Add naming fixtures. Native archive→disk/archive проверены
-отдельно. Полный unsandboxed check.sh: formatting/build/179 tests PASS67.66s,
-macOS arm64 Qt6.11.2 2026-10-02; drag_drop_add_ui PASS0.55s.
-Finder proof теперь относится к P3-03.1: Computer Use отказал в доступе к
-sevenzip_desktop, запрос доступа ожидает ответа. Source scope и адаптации
-зафиксированы в audit § P1-16; Windows/Linux runtime/rendered parity остаются
-непроверенными в P3-03/P3-06, GUI-thread preparation — mandatory P2-10.
-P2-01 принят 2026-10-02; native module/lease и factories теперь доступны.
-Следующий доступный пакет — P1-17: source writer/dependencies и actual GUI
-consumer ещё не интегрированы. P1-18 сохраняет отдельный decoder callback scope.
+[Scope, зависимости и приёмка](porting-plan/p1.md#p1-16-полный-dragdrop-между-панелями-и-внешними-приложениями).
 
 ### P1-17. ZIP per-item comment и запись свойства
 
-**После:** P1-04. **Исторический ID:** P1-04.3; его исследование и provenance
-сохранены в audit § P1-04.3. **Статус:** done, 2026-10-02; audit § P1-17 acceptance.
-P2-01 дал native module/lease, теперь исходный ZIP writer и actual comment
-consumer перенесены и проверены. Следующие требования и WIP checkpoints
-сохранены как история scope; их pending/disabled state superseded приёмкой ниже.
-
-Текущий file-only `7zz` 26.03 не записывает комментарий отдельного ZIP-элемента.
-Портировать исходный `ZipHandlerOut.cpp::CHandler::UpdateItems` через
-`IOutArchive`, `ZipUpdate.cpp`, `ZipOut.cpp` и необходимые codec/crypto/stream
-зависимости за ArchiveBackend. Затем подключить `CAgent::CommentItem`,
-`CAgentFolder::SetProperty`, `CPanel::ChangeComment`, Qt dialog, capability/
-error/refresh и tests. Не писать новый ZIP writer вместо upstream bodies.
-
-**Разблокировка:** исходный in-process ZIP writer и adapter проверены на
-per-item comment round-trip, отказе, отмене, сохранности bytes/metadata и
-неизменности исходного архива при ошибке. До появления этой capability сама
-команда остаётся disabled/unverified; итерация снятия prerequisite использует
-новую foundation из P2-01. Другие пакеты выполняются по своим зависимостям. P3-02/05
-могут проверить и документировать остальной scope, но полная приёмка P3-06
-требует закрытия P1-17.
-
-WIP checkpoint 2026-10-02: полный original ZIP handler/writer и codec/crypto/stream
-dependency closure скопированы из baseline и собираются в `sevenzip_zip`.
-Source writer prerequisite suite `native_zip_writer` прошла1/1 (шесть scenarios,
-0.51s) на macOS arm64 Qt6.11.2: обычный/AES ZIP, Unicode comment, исходные bytes,
-Path/Size/CRC/encryption и извлечение через официальный `7zz`, failure/cancel.
-Это ещё не actual Agent/ArchiveBackend/GUI/publication consumer; P1-17 остаётся
-active, команда disabled, счёт28/46 прежний. Provenance: audit § P1-17.
-
-Latest checkpoint supersedes that historical disabled/next state: actual source
-Agent/SetProperty/CommonUpdate/native ZIP/ArchiveBackend publication/reopen and
-Panel ChangeComment/GUI command are connected. EN/RU ordinary/AES success,
-failure, dialog Cancel, raw comment readback/clear, focus, independent extraction,
-nested parent Yes/No and original native progress pause/resume/cancel-paused
-verified. Final focused native suites2/2PASS5.65s; four current Combo JSON reports
-reviewed360×150/260×150. Baseline351/163/3 verified. Shared check.sh43923 passed
-formatting/all-target build and191/192 suites88.64s; unrelated concurrent runner_vm
-failed because its test file disappeared. It is preserved outside this scope.
-Isolated P1-17 snapshot full gate1910 terminal0: formatting/all-target build and
-191/191 CTest PASS86.83s macOS arm64 Qt6.11.2, 2026-10-02. Снимок исключает только
-чужие runner hunks; все162 own source/build-module/test files совпадают с checkout.
-P1-17 принят целой итерацией; исторический счёт после неё29/46. Windows/Linux runtime и rendered Windows
-parity не проверены. На момент приёмки следующим prerequisite был P1-18;
-native catalog/leases и original progress callbacks доступны, actual RAR handler/
-decoder/GUI consumer ещё требуется подключить. Finder остаётся mandatory P3-03.1.
+[Scope, зависимости и приёмка](porting-plan/p1.md#p1-17-zip-per-item-comment-и-запись-свойства).
 
 ### P1-18. Реальные decoder RAM prompts
 
-**После:** P0-12, source RAR reader/decoder capability из P2-01.
-**Исторический scope:** decoder RequestMemoryUse из P1-07.2; provenance и
-подтверждённый разрыв — audit § P1-18 prerequisite. **Статус:** done, 2026-10-02;
-source handler/decoder capability и реальные GUI consumers приняты.
-
-Исходные callers — `Rar5Handler.cpp::CHandler::Extract` (RAR5/RAR7); текущий
-до этой итерации mirrored модуль содержал только hash registration, а console callback внешнего
-7zz не передаёт GUI native requiredSize/allowedSize/flags/answerFlags. Перенести
-исходный handler с decoder/crypto/stream dependencies и подключить его через
-ArchiveBackend к уже перенесённому FM RequestMemoryUse/CMemDialog. Допустим
-source-derived структурированный engine bridge; парсинг диагностик/угадывание
-dictionary по строке Method не заменяют перенос алгоритма.
-
-**Разблокировка и готово:** реальные детерминированные RAR5/RAR7 fixtures вызывают
-GUI worker callback, проверены Allow/Skip/Cancel/remember, источник sizes/flags,
-root/selected/Test/batch consumers, persistence и failure/cancel. Настройки
-P1-12 и остальные независимые P1 owners не требуют этой runtime capability;
-P3-02/05/06 требуют закрытия P1-18 для полной приёмки. Функция не отменена
-и не закрывается synthetic callback тестом.
-
-**Приёмка:** audit § P1-18 implementation/acceptance. Полный оригинальный
-Rar5Handler/decoder/crypto; actual small RAR5/RAR7 requests, original bytes/flags,
-Allow/Skip/Cancel, whole/selected Extract/Test, batch remember/save/new-callback
-reuse, CRC errors и compressed RAR5 source decoder проверены. MainWindow root/
-selected/Test используют source во всех overwrite modes, traversal и потерянный
-item contract дают отказ. Четыре actual Mem JSON700/560 inspected. Baseline367/
-164/3 verified; все16,536 functional handler tokens совпадают с baseline.
-Полный unsandboxed check.sh formatting/all-target build/193 CTest PASS79.91s
-macOS arm64 Qt6.11.2. Windows/Linux runtime/rendered reference и дополнительные
-compressed RAR7/encrypted/solid/multivolume workflows не подтверждены этими
-fixtures. Не объявлять перенос исходного модуля полной платформенной приёмкой.
+[Scope, зависимости и приёмка](porting-plan/p1.md#p1-18-реальные-decoder-ram-prompts).
 
 ## 5. P2 — расширенная функциональность и платформы (11 шагов)
 
+[Scope, зависимости и приёмка](porting-plan/p2.md#5-p2--расширенная-функциональность-и-платформы-11-шагов).
+
 ### P2-01. Форматы, codec capabilities и Open Inside */#
 
-**После:** P0-04, P1-05. **Источники:** FM `FilePlugins.*`, `FileFolderPluginOpen.*`,
-`RegistryPlugins.*`, `PanelItemOpen.cpp`, Agent `ArchiveFolderOpen.cpp`,
-Common `LoadCodecs.*`, `OpenArchive.*`, `DefaultName.*`, `ArchiveName.*`.
-
-Заменить самостоятельный `archiveformats.h` capabilities из engine/handler;
-перенести KeepName/default extension, supported update formats и `*`/`#` open modes.
-Process backend может читать engine capabilities, но не выдавать произвольное
-расширение за writable. GUI codec DLL loading требует separate adapter, P2-02.
-
-**Готово:** unknown extension/content open, handler override/parser mode,
-read-only/update capability, missing codec и version mismatch проверены;
-dialog filters/default names следуют той же metadata.
-
-**Приёмка 2026-10-02:** done — audit § P2-01. Complete source LoadCodecs/
-OpenArchive, immutable native catalog/leases, asynchronous official version/module
-discovery, metadata naming/filters и семь typed writer transports подключены.
-MainWindow Add success/cancel, Inside */#, module-failure read-only fallback и
-реальные stream mutation contracts проверены; current Add JSON760/640 просмотрен.
-Native Open3 выполняется в source worker, archive properties/stream/module lifetime
-сохраняются до Close. Item listing/extract/update/reopen оставляют документированную
-process integration boundary; это не приёмка ZIP comment/RAR memory consumers.
-Полный unsandboxed check.sh formatting/build/188 CTest PASS74.09s macOS arm64
-Qt6.11.2, baseline224 exact/161 adapted/3 local verified. Windows/Linux runtime и
-rendered Windows parity остаются обязательными в P3-03/P3-06. Следующий lower
-priority незавершённый capability scope — P1-17; источник writer/dependencies и
-actual GUI comment consumer ещё требуется перенести/проверить.
+[Scope, зависимости и приёмка](porting-plan/p2.md#p2-01-форматы-codec-capabilities-и-open-inside-).
 
 ### P2-02. SFX и внешние handlers/plugins
 
-**Статус 2026-10-03:** done, audit § P2-02 acceptance. Pinned native
-SFXCon build и native disposable Test/Extract доказаны на macOS arm64;
-source SFX naming/method/control, Update presence/separate-module copy подключены
-к backend и форме. Реальные single/multi-root ordinary/split self-Test/Extract,
-AES/header encryption, missing/occupied/cancel и EN/RU geometry проверены.
-Unix имена томов адаптированы к исходному SFX reader; причина в аудите.
-Dynamic Console7z/Format7zF runtime и original external-directory/ABI policy
-подключены: actual external-codec Create/List/Test/Extract/native lease, warnings,
-wrong ABI/mismatch/cancel и default engine selection проверены на macOS arm64.
-Private runtime images подключают исходный SetCodecs без перезаписи retained
-каталогов; native/engine consumer исходного Formats модуля без main DLL проверен.
-Global-only external handler fixture без per-instance interface сохраняет
-декодирование после освобождения второго каталога; implicit deployment resolution
-и отказ неисполняемого SFX с совпадающими SHA/metadata проверены.
-Nested plugin assets и cycle refusal проверены через external handler consumer,
-codec/catalog/SFX3/3PASS5.31s macOS. Windows build-sfx.ps1 и
-build-codec-runtime.ps1 собрали unchanged SFXWin/Console/Format7zF/Alone2
-на Windows11 ARM64 с MSVC14.44; оба клиента запускаются как26.03.
-Linux ARM64 Qt6.4.2/GCC13.3 focused6/6PASS1.52s без skips; original runtime/SFX/
-standalone engine собраны, четыре SFX JSON EN/RU inspected. Windows SFX consumer
-tests используют исходные GUI switches. Ошибки Windows header dependencies,
-MSVC ABI и narrow filesystem adapters исправлены; финальная чистая сборка и
-focused7/7PASS13.76s. SFX/external suites без skips; один существующий owned_temp
-symlink case остаётся непроверенным на Windows и сохраняется для P3.
-Actual Add acceptance, delete-after-publication, engine/volume-worker pause и
-отмена second-root/prepublication volume проверены, affected4/4PASS2.63s macOS.
-Финальный Linux ARM64 snapshot focused9/9PASS2.79s без Qt skips. Полный
-unsandboxed macOS gate: formatting/all-target build/197 CTest PASS107.31s,
-Qt6.11.2 arm64. Baseline372 exact/164 adapted/3 local. Целая итерация,
-отдельный local commit; P3 и rendered Windows parity остаются обязательными.
-
-**После:** P2-01, P1-06. **Источники:** GUI `CompressDialog.cpp`, `UpdateGUI.cpp`,
-Common `LoadCodecs.*`, FM `FilePlugins.*`, `RegistryPlugins.*`, `ProgramLocation.*`;
-upstream SFX modules как отдельная runtime dependency.
-
-Перенести SFX options/name/validation и plugin discovery/loading policy, исходную
-проверку совместимости. Не переписывать SFX engine: использовать официальный
-модуль, проверять его наличие и происхождение. Windows executable target не
-объявлять native macOS/Linux application; выбрать и записать supported scope.
-
-**Готово:** supported SFX создание/test, missing/incompatible module, cancel,
-extension transitions и user prompt; external codecs реально доступны engine.
-Принятые platform N/A не маскируют неперенесённую functional branch.
+[Scope, зависимости и приёмка](porting-plan/p2.md#p2-02-sfx-и-внешние-handlersplugins).
 
 ### P2-03. CRC/Hash workflow и тест архивов
 
-**После:** P0-10, P1-10, P2-01. **Источники:** FM `PanelCrc.cpp`, GUI `HashGUI.cpp`,
-Common `HashCalc.*`, `Extract.*`; engine digest algorithms остаются в `7zz`.
-
-Заменить собственную orchestration исходным выбором методов/объектов, scan totals,
-hash result presentation и test callback handling. Переносить application logic,
-не вторую реализацию хешей. Проверить совпадение списков capabilities/меню.
-
-**Готово:** одиночные/множественные методы и `*`, folders/selection в архиве,
-known digests, corrupt archive, wrong password, failure/cancel и messages UI.
+[Scope, зависимости и приёмка](porting-plan/p2.md#p2-03-crchash-workflow-и-тест-архивов).
 
 ### P2-04. Benchmark
 
-**После:** P0-10, P1-14. **Источники:** GUI `BenchmarkDialog.*`,
-Common `Bench.*`, FM menu dispatch; `7zz b` или отдельный engine adapter.
-
-Перенести dialog/state/result logic, threads/dictionary/CPU/ratings и
-start/stop/restart. Engine выполняет benchmark, Qt отображает исходный набор
-метрик. Сначала проверить process output capabilities; недоступные данные
-нельзя вычислять придуманной формулой.
-
-**Готово:** lifecycle и controls source-compatible, отказ по памяти, stop/close,
-deterministic fake results и маленький bounded engine smoke. Геометрия normal/
-compact; численные performance результаты машины не являются golden fixture.
-
-**Приёмка2026-10-03:** complete source Bench/BenchmarkDialog и исходный
-CompressCall Benchmark entry подключены к backend providers/services и Tools.
-Нативные bounded callbacks/GUI, deterministic metrics/total, память, ошибка,
-Restart/Stop/Close/join, deferred MainWindow close и source Help проверены.
-Full macOS gate202/202PASS89.68s + финальные3/3PASS5.82s; Linux5/5PASS3.34s
-+ финальные3/3PASS2.28s; Windows5/5PASS4.09s, zero focused Qt skips.
-EN/RU normal/compact JSON всех трёх платформ проверены; audit § P2-04 содержит
-provenance/адаптации. Rendered parity и полная платформенная приёмка остаются P3.
+[Scope, зависимости и приёмка](porting-plan/p2.md#p2-04-benchmark).
 
 ### P2-05. Links, junctions и metadata файловой системы
 
-**После:** P1-02, P1-03. **Источники:** FM `LinkDialog.*`, `FSFolder.*`,
-`FSFolderCopy.cpp`, Windows `FileLink.*`, `FileIO.*`, `FileName.*`.
-
-Перенести Link command, symlink/hardlink/junction capabilities, source validation
-и metadata preservation. Запрет обхода опасных links при extract остаётся отдельным
-security boundary. Для Unix adapters документировать различия inode/permissions.
-
-**Готово:** relative/absolute/dangling links, cycle, unsupported privilege,
-hardlink bytes/identity, copy/move/delete и cancel; platform fixtures без live data.
-Не следовать ссылкам неявно и не путать link creation с extract policy.
-
-Приёмка2026-10-03: исходные LinkDialog/CApp::Link и native FSFolder/FSFolderCopy
-подключены к File menu; link objects не обходятся, сохраняют raw target и
-поддерживаемые metadata. Hardlink inode/bytes, permissions/privilege refusal,
-Windows junction, actual create/Cancel/selection, Linux real EXDEV и metadata
-проверены. Full macOS gate205/205PASS82.95s; Windows7/7PASS30.24s и
-Linux7/7PASS0.15s zero focused skips;12normal/compact EN/RU JSON reviewed,
-baseline382exact/173adapted/3local. Scope/deviations — audit § P2-05.
-Archive link storage/extract security остаются отдельными backend workflows.
+[Scope, зависимости и приёмка](porting-plan/p2.md#p2-05-links-junctions-и-metadata-файловой-системы).
 
 ### P2-06. Alternate streams и расширенные archive proxies
 
-**После:** P1-10, P2-05. **Источники:** FM `AltStreamsFolder.*`,
-`PanelFolderChange.cpp::OpenAltStreams`, `FSFolder.*`, Agent `AgentProxy.*`
-(CProxyArc2), `ArchiveFolder.*`.
-
-Перенести Windows streams namespace/enumeration/actions и архивное представление
-streams/raw props. NTFS ADS не подменять Unix xattrs без documented decision.
-Backend capabilities должны возвращать настоящие данные; если process listing
-не даёт их, завершение требует adapter extension или доказанной N/A ветки.
-
-**Готово:** streams list/open/copy/delete/property, occupied/cancel/error;
-Windows fixtures на подходящей FS. Другие ОС имеют явный unsupported state,
-не создают неожиданные `name:stream` файлы.
+[Scope, зависимости и приёмка](porting-plan/p2.md#p2-06-alternate-streams-и-расширенные-archive-proxies).
 
 ### P2-07. Оставшиеся Extract modes, права и security metadata
 
-**После:** P0-12, P2-05, P2-06. **Источники:** GUI `ExtractDialog.*`,
-`ExtractGUI.cpp`, FM `ExtractCallback.*`, Common `ExtractingFilePath.*`,
-`ArchiveExtractCallback.*`, `Extract.*`, Windows `SecurityUtils.*`.
-
-Перенести ElimDup, remaining path modes (включая absolute по source scope),
-NtSecurity/attributes/timestamps/streams и metadata toggles. Source algorithm
-копируется, ограничения небезопасных путей остаются explicit integration
-policy. Absolute extraction требует предварительного определения допустимой
-границы и подтверждения в исходном workflow, не просто снятия validation.
-
-**Готово:** каждый control имеет effect/round-trip; root elimination,
-ACL/permissions/timestamps при поддержке, malicious paths/links/collisions,
-failure/cancel и partial writes. Differences исходного Windows и Unix recorded.
-
-Связанный оставшийся archive metadata consumer: source link storage и deletion
-after archive creation/update. Текущий guard запрещает deletion для input links;
-его нельзя снимать только потому, что filesystem Link принят в P2-05. Проверить
-native DirItems/Update link metadata и processed-item deletion вместе с backend
-archive boundary, включая dangling/cycle, no-follow refusal, failure и Cancel.
+[Scope, зависимости и приёмка](porting-plan/p2.md#p2-07-оставшиеся-extract-modes-права-и-security-metadata).
 
 ### P2-08. System page и file associations
 
-**После:** P1-12.1 capability, P2-01. **Источники:** FM `SystemPage.*`,
-`RegistryAssociations.*`, `ProgramLocation.*`; platform registration adapter.
-
-Перенести formats/association state, current-user/all-users distinction и
-changed/apply flow. На macOS/Linux использовать платформенный registration
-mechanism и соответствующие ограничения без прямого Win32 registry imitation.
-Для разработки только fake registration tests; реальные системные изменения
-выполняются как явно выбранное пользователем действие приложения.
-
-**Готово:** detect/apply/revert state, denied permissions, handler absent и
-external association changes; geometry страницы и typed adapter tests.
-
-Принят целой итерацией2026-10-03: исходные System/FilePlugins/RegistryAssociations
-и partial ArchiveFolderOpen icon owner, actual Options/MainWindow, native
-file-open и .app declaration. macOS unsandboxed fullgate219/219PASS67.46s;
-финальные localized9/9PASS3.21s, Windows12/12PASS25.26s, Linux12/12PASS3.17s.
-Двенадцать System EN/RU normal/compact и четыре Windows WIM JSON reviewed;
-baseline384/182/3. Реальные defaults в разработке не менялись. Полные
-Windows/Linux gates, installed native registration/rendered/Finder остаются P3.
-Статус пакета и выбор следующего шага — в чеклисте.
+[Scope, зависимости и приёмка](porting-plan/p2.md#p2-08-system-page-и-file-associations).
 
 ### P2-09. Shell/context integration и завершение Menu page
 
-**Оставшиеся интегрированные результаты (2026-10-04):**
-
-- **P2-09.1 — File Manager shell consumers.** Source query/invoke и lifetime
-  обоих menus, настоящий Add/update/SFX/Hash/Open/Extract/Test, source F3/F4
-  вместо самостоятельных aliases, native Windows System menu; errors/Cancel,
-  selection, normal/compact EN/RU и текущие gates. Использует существующий
-  P2-09 source port; helpers не являются отдельными итерациями.
-- **P2-09.2 — Native Windows shell/launch component.** Оставшиеся COM interfaces,
-  DLL/GUI process entrypoints, email, native Properties, package и установленная
-  тестовая extension с реальными Windows consumers; native System icons,
-  owner-drawn handlers и rendered comparison существующего bridge. Unix applicability каждой
-  Windows-only ветви фиксируется по исходным callers, без замены workflow.
-- **P2-09.3 — Menu integration и приёмка parent.** Реальные registration/policy
-  controls, flags и consumers всех применимых платформ; закрывает P1-13.2,
-  после чего доступна итоговая P1-12.2. Обязательная глобальная UX-сверка остаётся
-  за своими owners и P3-06. Приёмка каждого результата ведётся в чеклисте;
-  прежние evidence и открытые omissions сохраняются. Parent закрывается только
-  после всех трёх.
-
-**После:** P1-13.1, P2-08. **Источники:** upstream
-`CPP/7zip/UI/Explorer/ContextMenu.*`, `RegistryContextMenu.*`, `MyMessages.*`,
-FM `MenuPage.*`, `MyLoadMenu.*`.
-
-Исследовать Explorer functional command generation и перенести применимый scope;
-Win32 COM extension не строится на Unix. Platform services/extension packaging
-изолировать от widgets и ArchiveBackend. Полный native shell UX обязателен там,
-где предусмотрен scope; недоступную интеграцию платформы описать явно.
-
-**Готово:** menu selections/paths/quoting и flags ведут к правильному запросу,
-registration/unregistration проверены fake environment; native extension
-проверяется на ОС с установленной тестовой сборкой. Не регистрировать её на
-машине пользователя только ради автоматического теста.
-
-Текущий scope P2-09.1: исходные PanelMenu/ContextMenu владеют генерацией и
-вызовом команд в popup и program File menu. Common UpdateArchive/Compress,
-TempFiles и GUI UpdateGUI/ShowDialog обеспечивают настоящий modal Add, прямые
-Add7z/ZIP и SHA256 generation через ArchiveBackend и retained codec catalog.
-Native Windows System query/invoke подключён; email, COM extension, установка,
-native Properties и завершение Menu page относятся к .2/.3. Самостоятельные
-File aliases, встроенный viewer и source picker удалены. Проверки, provenance
-и точные исторические omissions — в [audit](upstream-port-audit.md), текущая
-приёмка — в [чеклисте](porting-checklist.md).
+[Scope, зависимости и приёмка](porting-plan/p2.md#p2-09-shellcontext-integration-и-завершение-menu-page).
 
 ### P2-10. Большие списки и операции без блокировки интерфейса
 
-**После:** P0-05, P0-06, P0-10, P1-09, P1-16. **Источники:** FM
-`PanelItems.cpp`, `FSFolder.cpp`, Agent `AgentProxy.cpp`, Common
-`EnumDirItems.cpp`, `Update.cpp`; Qt/backend scheduling adapters.
-
-Проверить large/deep fixtures, перенести оставшуюся relevant scan logic и
-устранить GUI-thread archive-copy preparation. Если нужна Qt model/view
-адаптация, сохранять upstream folder owners/indices/selection, не переписывать
-их алгоритмы ради QTableWidget replacement. Ограничить queued progress/messages.
-
-**Готово:** navigation/cancel/selection отзывчивы, deep archive не переполняет stack,
-stale responses отбрасываются, память temp chain очищается. Reproducible benchmark
-данные/пороги и tests lifecycle; UI structure после оптимизации не регрессирует.
+[Scope, зависимости и приёмка](porting-plan/p2.md#p2-10-большие-списки-и-операции-без-блокировки-интерфейса).
 
 ### P2-11. Рефакторинг уже написанной обвязки
 
-**После:** P0-01, P0-02. Инвентаризацию можно начать сейчас; изменения
-конкретного компонента проверяются вместе с его feature owner и consumers.
-Не требуется ждать завершения всех P2, чтобы исправлять уже перенесённые области.
-
-Составить проверенный по текущему коду реестр собственного Qt/backend/platform
-кода: ответственность, consumers, дубли исходной логики, смешение UI и операций,
-избыточные адаптеры и нарушения границы C/C++. Для каждого пункта указать
-файлы, upstream-основание, нужное изменение и критерий проверки. Реестр scope
-вести в audit; границы компонентов — в architecture.
-
-Рефакторить по целым компонентам: сохранить upstream C и C++ bodies, заменить
-самостоятельные функциональные дубли исходной реализацией, оставить нашу
-обвязку на C++17. Разделить смешанные обязанности в собственных файлах,
-свести повторяющиеся проверки состояния и маршрутизацию к существующему owner,
-удалить неиспользуемые дубли после подключения всех consumers. Не менять
-организацию borrowed modules ради размера файла или стиля. Узкие платформенные
-bridges, включая необходимый Objective-C++, сохранить с обоснованием.
-
-**Готово:** весь зафиксированный реестр разобран; необходимые изменения
-реализованы, оставленные адаптеры имеют конкретное обоснование. C-файлы
-собираются как C, собственная обвязка — как C++17; нет двух authoritative
-implementations одного модуля. Поведение, ошибки, Cancel и lifetime сохранены;
-focused checks/direct consumers и полный gate выполнены, затронутые UI contracts
-проверены. Audit/baseline и architecture обновлены; непроверенные платформы
-названы явно. Прежняя приёмка функциональных пакетов не заменяет эти проверки.
+[Scope, зависимости и приёмка](porting-plan/p2.md#p2-11-рефакторинг-уже-написанной-обвязки).
 
 ## 6. P3 — обновляемость, все платформы и приёмка (6 шагов)
 
+[Scope, зависимости и приёмка](porting-plan/p3.md#6-p3--обновляемость-все-платформы-и-приёмка-6-шагов).
+
 ### P3-01. Воспроизводимый upstream baseline и процедура обновления
 
-**После:** P0-01; выполнять maintenance по мере всех переносов.
-Для каждого borrowed module закрепить exact commit/path/repository, scope
-omissions, dependency revision и adaptation record. Подготовить воспроизводимую
-проверку vendored equality и сравнение old→new upstream отдельно от Qt diff;
-проверить в disposable snapshot, не изменяя sibling upstream. Reuse scripts,
-добавлять reusable automation только при реальной повторяемой необходимости.
-
-**Готово:** baseline извлекается без старого локального checkout; borrowed modules
-не имеют неизвестного происхождения/двух authoritative implementations;
-демонстрация update review одного adapted и одного unchanged модуля.
-
-Текущий baseline закреплён в `docs/upstream-baseline.json`; проверка и
-old→new report реализованы в `scripts/upstream_baseline.py`, процедура —
-`docs/upstream-update.md`. P3-01 принят для текущего checkout и пополняется при
-каждом следующем переносе; synthetic update review не является фактическим
-обновлением 7-Zip.
+[Scope, зависимости и приёмка](porting-plan/p3.md#p3-01-воспроизводимый-upstream-baseline-и-процедура-обновления).
 
 ### P3-02. Сквозная regression и security матрица
 
-**После:** проверенные P0/P1 scenarios; advanced rows после соответствующих P2.
-Матрицу можно собирать при blocked P1-17, обозначая comment как непроверенный
-обязательный scope; итоговую приёмку P3-02 завершить после P1-17. Проверки
-каждой принятой функции уже должны существовать.
-Собрать traceability scenario→owner→CTest и закрыть
-пробелы: success/failure/cancel, wrong password, temp lifetime, interrupted
-update/rollback, traversal/absolute/links/case/Unicode collision, process errors,
-close-window races. Fixtures local/deterministic, без реальных архивов/сервисов.
-
-**Готово:** regression воспроизводит критические сбои, в logs/reports нет passwords,
-сквозной цикл create/list/edit/update/extract/test/transfer проверен. Tests не
-зависят от предыдущего запуска; известные неподдержанные ветки имеют evidence.
+[Scope, зависимости и приёмка](porting-plan/p3.md#p3-02-сквозная-regression-и-security-матрица).
 
 ### P3-03. CI Windows/macOS/Linux и native проверки
 
-**После:** первая реализация возможна уже после P0-02; финальная матрица после P2.
-Добавить отсутствующую в исходном снимке CI-конфигурацию: reproducible Qt/toolchain/
-official 7zz, format/build/CTest, diagnostics artifacts. Запуск на GitHub требует
-опубликованного репозитория/соответствующего user task, локальная настройка — нет.
-
-Уточнение scope пользователя 2026-10-10: сохранить удаление GitHub workflow из
-`96daee8de9f82374a4548e6dff2bd47a6fe5a891`, не восстанавливать его. Текущий
-P3-03 проверяет воспроизводимые локальные/runner builds и native матрицу трёх ОС;
-GitHub CI отсутствует по этому решению и не объявляется проверенным.
-
-**Готово:** фактические результаты трёх ОС с versions/date/revision; native
-dialogs/shortcuts/icons/drag/registration/FS differences проверены отдельно.
-При недоступной ОС записать unverified; config файл сам по себе не доказывает
-триплатформенную готовность. Windows visual reference — отдельное свидетельство.
+[Scope, зависимости и приёмка](porting-plan/p3.md#p3-03-ci-windowsmacoslinux-и-native-проверки).
 
 ### P3-03.1. Нативная проверка drag-out в Finder (macOS)
 
-**После:** проверенная реализация P1-16. Отдельный обязательный подшаг P3-03;
-не является prerequisite приёмки реализации P1-16 или работы над P2.
-
-В тестовой сборке перетащить файл из disposable архива в папку Finder и проверить
-реальные bytes, Unicode/пробелы в имени, отмену, сохранность исходного архива и
-доступность временных данных до завершения получения. Зафиксировать macOS,
-Qt/7zz versions, revision/date, результат и ограничения наблюдения lifetime.
-Qt synthetic events и fake recipient не заменяют этот сценарий.
-
-**Готово:** реальный Finder transfer подтверждён с доказательствами; ошибки,
-отмена и lifetime проверены в доступном native scope, оставшиеся ограничения
-явно записаны. До этого P3-03 и итоговая P3-06 не могут быть полностью приняты.
-Текущий статус: done — пользователь выполнил нативный drag-out 2026-10-05;
-Finder вернул -8058, журнал подтвердил удаление исходного временного файла
-до его получения. macOS transport сохраняет bytes при неоднозначном нативном
-IgnoreAction; подтверждённая отмена через typed recipient сохраняет cleanup.
-Нативный Escape также может оставить защищённый temp: Qt не подтверждает,
-что внешний получатель закончил чтение. Ручной повтор исправления успешен:
-полученный файл совпадает по SHA-256, исходный ZIP не изменён. Пользователь
-подтвердил Escape; папка отменённого переноса пуста, временные bytes сохранены
-под external protection. Прежний Computer Use refusal сохраняется как
-историческое ограничение; приёмка выполнена вручную. Evidence — audit § P3-03.1.
+[Scope, зависимости и приёмка](porting-plan/p3.md#p3-031-нативная-проверка-drag-out-в-finder-macos).
 
 ### P3-04. Поставка приложения, движка, ресурсов и лицензий
 
-**После:** P2-01, P2-02, P1-14, P1-15, P3-03.
-Выбрать модель официального `7zz` (bundled/system), detection/version errors,
-upstream notices/third-party licenses и лицензию собственного UI. Подготовить
-packages/deployment Qt/plugins/lang/help/resources для трёх ОС и smoke сценарий
-на чистой среде. Подписание/публичный выпуск — отдельное явно разрешённое действие.
-
-**Готово:** portable/installable artifacts воспроизводимы; app на чистой среде
-открывает/create/extract archive, корректно сообщает missing dependency;
-применимые лицензии/notice доступны пользователю, решения не остаются TODO.
+[Scope, зависимости и приёмка](porting-plan/p3.md#p3-04-поставка-приложения-движка-ресурсов-и-лицензий).
 
 ### P3-05. Закрытие omitted modules, branches и интеграционного долга
 
-**После:** принятый scope P0–P2, включая рефакторинг P2-11, P3-01; blocked P1-17 записать отдельно и
-выполнить до итоговой приёмки P3-05. Повторить полную инвентаризацию 109 `.cpp`, headers,
-resources и фактически добавленных dependencies. Для omitted `ProgressDialog`
-legacy/CE, standalone GUI/console entrypoints, ClassDefs/StdAfx и Win32 adapters
-нужен documented scope/N/A, а не «файл не нужен потому что пока не используем».
-Использовать upstream makefile/FM.mak/7zip.mak как карту зависимостей.
-
-**Готово:** нет бесхозных modules/unknown provenance; самостоятельная functional
-логика мигрирована или обоснована отсутствием usable upstream implementation.
-Каждый claimed full module проверен по bodies, не по pathname. Неперенесённые
-обязательные branches создают конкретные новые подшаги, не закрываются N/A.
+[Scope, зависимости и приёмка](porting-plan/p3.md#p3-05-закрытие-omitted-modules-branches-и-интеграционного-долга).
 
 ### P3-06. Итоговая функциональная и UX приёмка
 
-**После:** все обязательные шаги. Пройти исходные menus/toolbar/dialogs и
-end-to-end workflows 7zFM. Проверить оба режима панелей, клавиатуру, compact/
-normal layout, оба языка, accessibility/focus, prompts/error/progress/help.
-Сопоставить resources и current-build reports, rendered Windows там, где доступен.
-
-**Готово:** опубликована матрица checked/partial/unverified/N/A с доказательствами
-по ОС и source scope; README не обещает лишнего; счётчик checklist актуален.
-Только реальные закрытые обязательные пакеты дают 47/47 (или новое честное число
-после decomposition/additions). Известные обязательные пробелы не объявляются
-«полным портом» ради завершения плана.
+[Scope, зависимости и приёмка](porting-plan/p3.md#p3-06-итоговая-функциональная-и-ux-приёмка).
 
 ## 7. Карта покрытия всех 109 upstream `.cpp`
 

@@ -7,8 +7,8 @@
 | --- | --- |
 | Обзор проекта и быстрый старт | [README](../README.md) |
 | Общие правила работы агента и source port | [AGENTS.md](../AGENTS.md) |
-| Scope пакетов, зависимости, размер итераций и критерии приёмки | [План](porting-plan.md) |
-| Текущие статусы, счётчик и выбор следующего доступного шага | [Чеклист](porting-checklist.md) |
+| Scope пакетов, зависимости, размер итераций и критерии приёмки | [Правила плана](porting-plan.md), scope [P0](porting-plan/p0.md) / [P1](porting-plan/p1.md) / [P2](porting-plan/p2.md) / [P3](porting-plan/p3.md) |
+| Текущие статусы, счётчик и выбор следующего доступного шага | [Правила и счётчик](porting-checklist.md), таблицы [P0](porting-checklist/p0.md) / [P1](porting-checklist/p1.md) / [P2](porting-checklist/p2.md) / [P3](porting-checklist/p3.md) |
 | Короткое поручение продолжить план | [Стартовый запрос](porting-chat-prompt.md) |
 | Происхождение модулей, copied/adapted/omitted scope, причины отклонений и датированные свидетельства переноса | [Source audit](upstream-port-audit.md) |
 | Bodies/callers и границы omitted UI modules при итоговой сверке | [Omitted scope](omitted-scope-audit.md) |
@@ -18,7 +18,7 @@
 | Обязательные открытые UX-коррекции | [UX audit](ux-port-audit.md) |
 | Владельцы компонентов, lifetime и границы UI/backend | [Архитектура](architecture.md) |
 | Установка, toolchain, сборка, запуск и native runtime | [Разработка](development.md) |
-| Поведение, покрытие и выбор регрессионных проверок | [Тестирование](testing.md) |
+| Поведение, покрытие и выбор регрессионных проверок | [Выбор проверок](testing.md), [покрытие suites](testing/coverage.md), [geometry](testing/geometry.md) |
 | Сценарий → source owner → CTest, критические отказы/Cancel/security | [Regression matrix](regression-matrix.md) |
 | Контролы, состояния, normal/compact геометрия и widget JSON | [UI contracts](ui-layout-contracts.md) |
 | Извлечение ресурсов и resource-to-widget comparison | [UI reference tooling](ui-reference.md) |
@@ -33,15 +33,16 @@ Skills в `.agents/skills/` содержат профильные приёмы �
 
 ## Как выбрать минимальный контекст
 
-Начинать с `AGENTS.md` и индекса памяти, затем читать основной документ
-по задаче. Большие audit, parity и testing содержат датированные дополнения;
-их начало не заменяет текущие статусы в чеклисте.
+Начинать с `AGENTS.md` и индекса памяти, затем выбирать маршрут ниже.
+Audit, parity, UI contracts и omitted scope — индексы с прежними якорями;
+подробности лежат в одноимённых каталогах. Открывать раздел или найденный диапазон,
+а не весь каталог. Датированные записи не заменяют статусы в чеклисте.
 
 | Задача | Что читать дальше |
 | --- | --- |
-| Продолжить портирование | Правила выбора и строку ID в [чеклисте](porting-checklist.md), соответствующий пакет и правила итерации в [плане](porting-plan.md) |
+| Продолжить портирование | [Правила выбора](porting-checklist.md), строку ID в `docs/porting-checklist/<p0–p3>.md`, пакет в `docs/porting-plan/<p0–p3>.md` и [правила итерации](porting-plan.md#размер-итерации-и-коммита-уточнение-2026-10-07) |
 | Найти владельца или границу адаптера | [Разделы архитектуры](architecture.md#reading-guide), затем bodies/callers в коде |
-| Исправить поведение и выбрать проверки | [Regression matrix](regression-matrix.md), описание нужной suite в [testing](testing.md), [команды сборки и тестов](development.md#local-commands) |
+| Исправить поведение и выбрать проверки | [Regression matrix](regression-matrix.md), нужную suite в [coverage](testing/coverage.md), [команды сборки и тестов](development.md#local-commands) |
 | Изменить форму или layout | Контракт затронутого вида в [UI specifications](ui-layout-contracts.md), [resource tooling](ui-reference.md) и открытые коррекции в [UX audit](ux-port-audit.md) |
 | Сверить происхождение кода | [Manifest](upstream-baseline.json) и раздел audit по пути, символу или ID; для обновления — [процедуру](upstream-update.md) |
 | Проверить Windows/Linux | [Hyper-V runners](hyperv-runners.md); для долгих suites — [явный opt-in](development.md#long-suites) |
@@ -51,8 +52,8 @@ Skills в `.agents/skills/` содержат профильные приёмы �
 
 ```sh
 rg -n '^#{1,3} ' docs/architecture.md
-rg -n -F 'CAgent::Open' docs/upstream-port-audit.md
-rg -n -F 'archive_transfer' docs/testing.md docs/regression-matrix.md
+rg -n -F 'CAgent::Open' docs/upstream-port-audit/ docs/omitted-scope-audit/
+rg -n -F 'archive_transfer' docs/testing/ docs/regression-matrix.md
 ```
 
 Читать найденный раздел и связанные зависимости, а не все совпадения подряд.
@@ -63,6 +64,9 @@ rg -n -F 'archive_transfer' docs/testing.md docs/regression-matrix.md
 
 - Менять основной документ, когда изменился соответствующий факт. В чеклисте
   достаточно статуса, краткого результата и ссылки на подробный audit.
+- У индекса менять маршруты; содержание — в связанном тематическом файле.
+  Сохранять существующие якоря. Не накапливать receipts перед правилами выбора
+  работы, между архитектурными разделами или в кратком каталоге проверок.
 - Новые результаты проверок записывать с датой, ОС, ревизией/snapshot и scope
   в соответствующем разделе audit; в testing описывать, что проверяют suites.
   Ссылки из parity, architecture и UI contracts должны объяснять сценарий,

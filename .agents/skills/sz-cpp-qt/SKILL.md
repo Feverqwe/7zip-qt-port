@@ -6,8 +6,9 @@ description: Implement or review Sevenzip Desktop C++17 and Qt 6 Widgets code, i
 # C++ and Qt in Sevenzip Desktop
 
 Follow `AGENTS.md` for source reuse, module organization, provenance and validation.
-Read [architecture](../../../docs/architecture.md) for the affected owner and
-UI/backend boundary. Use `$sz-navigation` to locate original bodies and dependencies.
+Use [architecture](../../../docs/architecture.md#reading-guide) for the affected
+owner and UI/backend boundary. Use `$sz-navigation` to locate original bodies
+and dependencies.
 
 - Keep long archive operations off the UI event loop. Use asynchronous process
   signals or a worker; make lifetime/cancellation explicit and update widgets

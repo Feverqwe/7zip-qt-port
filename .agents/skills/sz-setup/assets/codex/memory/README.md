@@ -13,6 +13,9 @@ in `../notes/` when useful context needs to survive a task.
 No investigations recorded yet. Link resolved research rather than copying
 product facts, status counters or test logs.
 
+Keep this entrypoint short. When needed, move older links to `archive.md` and
+link it here; preserve note content and statuses.
+
 ## Project context
 
 [Documentation map](../docs/README.md) · [Agent rules](../AGENTS.md)

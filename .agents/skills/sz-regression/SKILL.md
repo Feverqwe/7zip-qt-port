@@ -5,8 +5,9 @@ description: Design or review regression tests for Sevenzip Desktop bug fixes, a
 
 # Sevenzip Desktop regression work
 
-Read [testing](../../../docs/testing.md) for the affected behavior and inspect
-its current code/callers. Follow `AGENTS.md` for coverage, focused build/CTest
+Use [testing](../../../docs/testing.md) to select checks; search
+`docs/testing/` for the affected suite and inspect its current code/callers.
+Follow `AGENTS.md` for coverage, focused build/CTest
 wrappers, the full gate and reporting platform limits.
 
 Prefer small public-behavior tests and disposable archives made by official

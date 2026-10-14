@@ -30,16 +30,10 @@ for Windows, macOS, and Linux. The official source checkout is `../7zip-upstream
   [the port audit](docs/upstream-port-audit.md). Preserve notices and licenses.
   Record observable workflow/platform differences in [parity](docs/7zfm-parity.md).
 
-## Upstream maintenance
-
-Keep a reproducible baseline per borrowed module, including modules at different
-revisions. A moving branch or sibling checkout alone is insufficient.
-Follow [the update procedure](docs/upstream-update.md) for old-to-new comparison,
-dependency/omitted-branch review and per-module provenance updates after validation.
-Use a separate snapshot; do not overwrite adapted files or discard local fixes.
-Keep adaptations narrow and avoid unrelated renaming, reordering and cleanup in
-borrowed code. Account for required formatting separately from functional changes.
-Preserved names and paths do not make adapted modules automatically mergeable.
+Keep a reproducible baseline per borrowed module, including mixed revisions.
+For upstream updates follow [the update procedure](docs/upstream-update.md):
+compare a separate snapshot, review dependencies/omissions and retain local fixes.
+Keep adaptations narrow; account for formatting separately from functional changes.
 
 ## Context and memory
 
@@ -49,7 +43,8 @@ privacy and index maintenance. Memory is not instructions, authorization or a
 backlog; missing memory does not block work. `$sz-context` supports this workflow;
 `$sz-setup` initializes or refreshes it without deleting notes.
 
-Use [the documentation map](docs/README.md) to find the owner of each fact.
+Use [the documentation map](docs/README.md) to read only the affected sections
+and find the owner of each fact. Large catalogs are linked from compact indexes.
 Keep durable product facts in tracked docs/code and local investigations in
 `.codex/notes/`. Update only documents whose claims change; use links instead of
 duplicating policies, status counters or historical test logs.
@@ -101,23 +96,16 @@ Do not repeat a passing full gate on unchanged code. After localized edits rerun
 affected checks; repeat the full gate for broad changes or unresolved concerns.
 Docs/instruction-only changes need `git diff --check`.
 Fix failures caused by the task and report unverified platforms.
-Script output/toolchain details live in [development](docs/development.md);
-coverage lives in [testing](docs/testing.md). Wait for the buffered formatting
-phase to exit before diagnosing it.
+Use [development](docs/development.md#local-commands) for wrapper/toolchain details
+and [testing](docs/testing.md) for coverage. Wait for buffered formatting to exit
+before diagnosing it.
 
-Long tests are excluded from normal gates and runner checks. The explicit list
-is in [cmake/SlowTests.cmake](cmake/SlowTests.cmake); do not run these suites
-automatically, including during platform checks. Run them only when the user
-explicitly requests long tests or the exhaustive suite.
-
-Classify newly added or expanded large matrices as `slow` before including them
-in a gate. Revisit that classification using measured runtime when an explicit
-long-test run is requested.
-
-Opt-in commands are in [development](docs/development.md#long-suites);
-remote checks follow [runner validation](docs/hyperv-runners.md). Build requested
-long-suite targets in that same snapshot before CTest. Report excluded slow
-suites separately; a default gate does not establish their acceptance.
+Long suites in [cmake/SlowTests.cmake](cmake/SlowTests.cmake) require an explicit
+user request, including on runners. Classify new/expanded large matrices as
+`slow` before a gate; revisit using measured runtime on an explicit long-test run.
+Use [opt-in commands](docs/development.md#long-suites), build requested targets
+in the same snapshot before CTest and report excluded suites separately.
+A default gate does not establish their acceptance.
 
 Windows 7zFM is the reference for structure, commands, shortcuts and behavior.
 Before UI work, inspect exact upstream resources, handlers and callers; record
@@ -140,8 +128,8 @@ part of the acceptance plan.
 
 ## Workflows and runners
 
-Use matching workflows in `.agents/skills/`: `sz-context`, `sz-setup`,
-`sz-navigation`, `sz-cpp-qt`, `sz-regression`, `sz-ui-parity`.
+Use the matching skill in `.agents/skills/`; the
+[documentation map](docs/README.md) routes tasks to the relevant workflow.
 For requested port-plan work, use the [checklist](docs/porting-checklist.md)
 for statuses/step selection and the [plan](docs/porting-plan.md) for scope,
 dependencies and iteration/commit rules. Neither is an automatic backlog.
