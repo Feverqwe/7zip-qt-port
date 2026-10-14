@@ -29,9 +29,11 @@ void MainWindow::reloadLangItems() {
             }
             if (files->isRawProperty(i))
                 continue;
-            if (auto *header = files->horizontalHeaderItem(i))
-                header->setText(
-                    QString::fromWCharArray(GetNameOfProperty(files->propertyId(i), nullptr)));
+            if (auto *header = files->horizontalHeaderItem(i)) {
+                const CPropColumn *column = files->sourceColumn(i);
+                header->setText(QString::fromWCharArray(GetNameOfProperty(
+                    files->propertyId(i), column ? column->Name.Ptr() : nullptr)));
+            }
         }
         for (int row = 0; row < files->rowCount(); ++row)
             if (auto *item = files->item(row, 0);

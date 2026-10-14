@@ -2,6 +2,18 @@
 
 Индекс provenance и датированных receipts. Найдите путь, символ или ID в заголовках ниже и откройте нужный раздел. Полные commits, dependencies, copied/adapted/omitted scope и результаты сохранены в тематических файлах. Текущие статусы — в [чеклисте](porting-checklist.md), baseline — в [manifest](upstream-baseline.json). Новые receipts добавлять к своему пакету в этом каталоге и связывать из индекса.
 
+## P3-03/P3-06 — Provider column names through language changes (2026-10-15)
+
+[Открыть раздел](upstream-port-audit/p3-03-2026-10-15.md#p3-03p3-06--provider-column-names-through-language-changes-2026-10-15).
+
+## P3-03 — Windows full gate and diagnostic boundaries (2026-10-15)
+
+[Открыть раздел](upstream-port-audit/p3-03-2026-10-15.md#p3-03--windows-full-gate-and-diagnostic-boundaries-2026-10-15).
+
+## P3-04 — Native Linux GIO default-open and unfinished Clear (2026-10-15)
+
+[Открыть раздел](upstream-port-audit/p3-03-2026-10-15.md#p3-04--native-linux-gio-default-open-and-unfinished-clear-2026-10-15).
+
 ## P3-03/P3-04 — Native Linux package workflow and desktop recovery (2026-10-14)
 
 [Открыть раздел](upstream-port-audit/p3-03-2026-10-14.md#p3-03p3-04--native-linux-package-workflow-and-desktop-recovery-2026-10-14).

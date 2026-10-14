@@ -9,7 +9,12 @@ Checked означает только названную
 [текущий полный Linux gate и версии](upstream-port-audit.md#p3-03--full-linux-gate-after-launcher-restoration-2026-10-10).
 
 Нативное дополнение2026-10-14: [Linux package workflow и console recovery](upstream-port-audit.md#p3-03p3-04--native-linux-package-workflow-and-desktop-recovery-2026-10-14).
-Windows desktop теперь доступен; текущий интерактивный full gate ещё не принят.
+Windows desktop был восстановлен обычным входом; после Windows Update и
+перезагрузок повторный вход не прошёл. [Продолжение2026-10-15](upstream-port-audit/p3-03-2026-10-15.md)
+фиксирует full Windows332/337, границы служебной диагностики, GIO default-open,
+незавершённый Clear и исправление provider headers при смене языка.
+Числа прежних full gates в таблице относятся к продукту до этого исправления;
+они не доказывают новый snapshot или итоговую приёмку.
 
 | Область приёмки | macOS arm64 | Linux x64 | Windows x64 |
 | --- | --- | --- | --- |

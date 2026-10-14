@@ -319,6 +319,11 @@ snapshot; changing only Type or only Name must rebuild it and update cell alignm
 or the header caption, preserving saved widths and selection/peer focus.
 Inspect all seven phases under EN/RU in both panes at980×620/640×400.
 
+Language changes retain provider-defined column names, including Unicode names
+with IDs outside the translated property catalog, in both panes. Standard
+property headers still follow EN/RU. Reuse the owning source descriptor as the
+property-name fallback without re-enumerating the provider.
+
 Column initialization keeps Name at source logical index zero while retaining
 the saved visual header order, including Name moved after other visible columns.
 Refresh and reopening must retain that order and widths in both panes under

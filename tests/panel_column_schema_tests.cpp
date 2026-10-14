@@ -1,5 +1,6 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "layout_inspection.h"
+#include "qtlangcontrols.h"
 #include "schema_folder.h"
 #include "window_state_support.h"
 
@@ -12,6 +13,52 @@ class PanelColumnSchemaTests final : public QObject, protected MainWindowTestSup
         return -1;
     }
   private slots:
+    void providerNamesSurviveLanguageChanges_data() {
+        QTest::addColumn<unsigned>("pane");
+        QTest::newRow("left") << 0u;
+        QTest::newRow("right") << 1u;
+    }
+    void providerNamesSurviveLanguageChanges() {
+        QFETCH(unsigned, pane);
+        const QString settings = qEnvironmentVariable("SEVENZIP_SETTINGS_PATH");
+        QFile::remove(settings);
+        SaveRegLang(UString(L"-"), settings);
+        ReloadLang(settings);
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        window.show();
+        QVERIFY(QTest::qWaitForWindowActive(&window));
+        action(window, "twoPanelsAction")->trigger();
+        auto *ui = window.findChild<QWidget *>(QString("filePanel%1").arg(pane));
+        auto *view = static_cast<FileTable *>(ui->findChild<QTableWidget *>("archiveTable"));
+        auto *spec = new SchemaFolder;
+        const PROPID customId = 65536;
+        const QString customName = QStringLiteral("Method 空");
+        spec->properties.append({customId, VT_BSTR, S_OK, ToUString(customName)});
+        spec->rawEnabled = false;
+        CMyComPtr<IFolderFolder> provider = spec;
+        auto &panel = *view->sourcePanel;
+        panel.Set_AutoRefresh_Mode(false);
+        panel.SetNewFolder(provider);
+        panel.LoadFullPath();
+        panel.OnReload();
+        const int custom = propertyColumn(*view, customId, false);
+        const int name = propertyColumn(*view, kpidName, false);
+        QVERIFY(custom >= 0);
+        QVERIFY(name >= 0);
+        QCOMPARE(view->horizontalHeaderItem(custom)->text(), customName);
+        const unsigned queries = spec->propertyInfoQueries;
+        for (const char *language : {"ru", "-"}) {
+            SaveRegLang(UString(language), settings);
+            ReloadLang(settings);
+            QtNotifyLanguageChanged();
+            QCOMPARE(view->horizontalHeaderItem(custom)->text(), customName);
+            QCOMPARE(view->horizontalHeaderItem(name)->text(),
+                     QString(language) == "ru" ? QStringLiteral("Имя") : QString("Name"));
+            QCOMPARE(panel.GetFolder(), (IFolderFolder *)provider);
+            QCOMPARE(spec->propertyInfoQueries, queries);
+        }
+    }
     void owningDescriptorSurvivesPublication_data() {
         QTest::addColumn<unsigned>("pane");
         QTest::addColumn<bool>("russian");
