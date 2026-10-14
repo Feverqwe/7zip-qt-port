@@ -1897,9 +1897,12 @@ Reference: the same upstream commit, `CPP/7zip/UI/GUI/CompressDialog.rc`,
 - The editable archive-path combo and format precede the options.
   The combo retains the extension and offers the last twenty destinations;
   its text and the format row do not overlap at either tested size.
-- For an existing target, the update-mode row precedes the path-mode row;
-  the latter offers Relative, Full and Absolute. A new target has the same
-  path-mode row without an update-mode row.
+- New and existing targets both expose Update mode above Path mode in the
+  right column; Path mode offers Relative, Full and Absolute. Source
+  CompressDialog.cpp::OnInit attaches/populates both combos without testing
+  target existence, matching CompressDialog.rc and the current Qt constructor.
+  The new-target native Linux state is recorded in the
+  [native receipt](../upstream-port-audit.md#p3-03p3-04--native-linux-package-workflow-and-desktop-recovery-2026-10-14).
 - Compression controls retain level, method, dictionary, word size, solid block,
   CPU threads, and memory controls. Encryption retains the upstream order:
   password, confirmation, Show Password, method, Encrypt file names.

@@ -219,6 +219,23 @@ the Mac key `~/.ssh/id_ed25519` and stable guest keys in
 
 ## Source and runtime scope
 
+Native desktop availability is separate from SSH readiness. On2026-10-14 the
+existing Windows credential was used only inside the host's anton process to
+enter the observed Runner console password form through Msvm_Keyboard. This
+normal login required no autologon, password reset, RDP enablement or reboot.
+Do not print credentials or include them in command arguments/logs. The
+[native acceptance receipt](upstream-port-audit.md#p3-03p3-04--native-linux-package-workflow-and-desktop-recovery-2026-10-14)
+records Session1 and the unchanged logon settings.
+
+After a Linux kernel update, missing matching `linux-cloud-tools-$(uname -r)`
+can make hv-kvp-daemon fail and leave Hyper-V's reported IP list empty even
+while guest SSH works. Verify the exact VM MAC/host ARP mapping and pinned SSH
+identity before a fallback connection; do not guess a new address or reconfigure
+networking. On2026-10-14 installing the missing6.8.0-146 package restored KVP.
+The same receipt records the temporary real-console Xorg/Openbox/PCManFM scope.
+Linux bulk TypeText lost input events in that setup; paced TypeKey input and
+inspection of the actual destination preceded the accepted transfer.
+
 Each check creates a fresh `/home/runner/sevenzip-desktop/runs/<id>` or
 `C:\runner\sevenzip-desktop\runs\<id>`. The SHA256-verified archive contains
 current tracked project sources, resources, tests, docs, skills and build
