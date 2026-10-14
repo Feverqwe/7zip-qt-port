@@ -12,16 +12,19 @@ Checked означает только названную
 Windows desktop был восстановлен обычным входом; после Windows Update и
 перезагрузок повторный вход не прошёл. [Продолжение2026-10-15](upstream-port-audit/p3-03-2026-10-15.md)
 фиксирует full Windows332/337, границы служебной диагностики, GIO default-open,
-незавершённый Clear и исправление provider headers при смене языка.
-Числа прежних full gates в таблице относятся к продукту до этого исправления;
-они не доказывают новый snapshot или итоговую приёмку.
+обнаруженный Clear defect и исправление provider headers при смене языка.
+[Linux native correction](upstream-port-audit/p3-04-2026-10-15.md) проверяет
+quoted identity, Clear/reopen/Cancel и corrected provider headers на реальном
+Xorg; это не обновлённая поставка или полная трёхплатформенная приёмка.
+Build/CTest обновлены на2026-10-15; поставки в таблице ещё относятся к8d56d8d.
+Новые gate receipts не заменяют проверку новых packages и итоговую приёмку.
 
 | Область приёмки | macOS arm64 | Linux x64 | Windows x64 |
 | --- | --- | --- | --- |
-| Default format/build/CTest | checked: current321/321,5075Qtpass/0fail/56Windows-NTFS skips | checked: current318/318,5059Qtpass/0fail/56Windows-NTFS skips | partial: current native/consumer focused11/11,134Qtpass/0fail/0skip; прежние list-settings exposure failures сохранены, current full не принят |
+| Default format/build/CTest | checked: current321/321,5077Qtpass/0fail/56Windows-NTFS skips | checked: current320/320,5069Qtpass/0fail/56Windows-NTFS skips | partial: full332/337 до исправлений; current service column/language7/7 PASS; native full/stable не приняты |
 | Исходные модули, headers/resources/callers | partial: [109 source receipts](omitted-scope-audit.md#109-unit-source-receipt-ledger-2026-10-10); identified launcher/continuation gap corrected, whole workflow acceptance open | partial: общий source scope тот же; POSIX no-handle consumers checked | partial: original native launcher and real handle/disk/browser/archive consumers checked; whole acceptance open |
 | EN/RU, normal/compact, команды и workflow | partial: автоматические contracts/regressions проходят; полный нативный обход не принят | partial: current package на реальной консоли, EN/RU/two-panel normal/compact, Options/Copy и create/open/test/extract проверены; полный обход открыт | partial: выполненные focused consumers/JSON; current interactive gate и полный обход не приняты |
-| Нативные dialogs/shortcuts/icons/drag/registration/FS | partial: историческая ручная Finder-проверка принята отдельно; текущий полный native обход не проверен | partial: реальные Copy/Overwrite/Language, virtual hardware keyboard/pointer и PCManFM archive drag-out/Escape с точными bytes; registration/full native scope открыт | partial: прежние scoped native receipts сохранены; Session1 восстановлена, current full/native acceptance открыта |
+| Нативные dialogs/shortcuts/icons/drag/registration/FS | partial: историческая ручная Finder-проверка принята отдельно; текущий полный native обход не проверен | partial: delivery8d56d8d Copy/Overwrite/Language/PCManFM drag/Escape; corrected dev binary GIO Apply/open/Clear/reopen/Cancel и EN/RU headers проверены; full native scope открыт | partial: прежние scoped native receipts сохранены; после Update рабочая Session1 отсутствует, current full/native acceptance открыта |
 | Наблюдение текущего приложения через Computer Use | unverified: доступ к Sevenzip Desktop не одобрен | partial: current package/affected views наблюдались через Hyper-V console API; полный rendered audit открыт | unverified: console доступна, полный обход текущего приложения не принят |
 | Сверка с отрисованным Windows 7zFM того же pin | unverified: нет полного rendered reference | unverified: нет полного rendered reference | partial: исторический System menu; полный текущий rendered audit не принят |
 | Runtime packages и чистая ОС | partial: current8d56d8d Release/relocation15/15, notices/signature,11 Mach-O import review; clean OS unverified | partial: current8d56d8d Release/relocation14/14 и isolated userspace15/15; дополнительно реальный Xorg/PCManFM workflow на kernel6.8.0-146; отдельная clean OS unverified | partial: current8d56d8d Release/relocation14/14, CRT/notices,26 PE import review/system resolution; clean OS unverified |

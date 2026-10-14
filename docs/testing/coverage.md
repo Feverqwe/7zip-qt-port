@@ -1703,8 +1703,14 @@ P2-08 accepted: system_page checks source mixed selections, clear/other/7-Zip
 cycles, unsupported groups/types, per-row failure and external-state refresh,
 actual Options Apply/Cancel and EN/RU640×390/520×380 geometry. association_services
 injects a fake native platform to cover detect/apply/revert, denied/failed reads,
-external revisions and shared MIME/UTType aliases. No development check writes
-real OS associations. codec_catalog checks real original association resource
+external revisions and shared MIME/UTType aliases. These injected suites write
+no real OS associations. Linux `linux_association_clear_0/1` additionally run
+native GIO in separate private HOME/XDG profiles: quoted Unicode/spaced own
+executable identity, foreign-executable rejection, Add→Clear/no-default,
+Clear/retained other default, unrelated MIME preferences and independent
+`gio mime` queries. They touch no global desktop entries/defaults.
+`scripts/check-associations.sh` builds these and their direct source consumers.
+codec_catalog checks real original association resource
 extensions and case-insensitive icon lookup through QtArchiveFolderManager,
 independently of the broader Open filter aliases. ui_parity_system runs the
 System producer fixture and compares all four pinned RC controls. Native adapter
