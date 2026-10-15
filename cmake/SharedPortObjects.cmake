@@ -79,6 +79,9 @@ sevenzip_share_port_objects(sevenzip_compress_presentation src/createarchivedial
     src/createarchivedialog_source.cpp
     src/createarchivedialog_volumes.cpp)
 
+sevenzip_share_port_objects(sevenzip_dialog_screen src/qtdialogscreenservices.h
+    src/qtdialogscreenservices.cpp)
+
 sevenzip_share_port_objects(sevenzip_main_window src/mainwindow.h
     src/mainwindow.cpp
     src/mainwindow_archive_transfer.cpp
@@ -116,7 +119,6 @@ sevenzip_share_port_objects(sevenzip_main_window src/mainwindow.h
     src/qtfilemanagerdrag.cpp
     src/qtfilemanagerdragpresentation.cpp
     src/qtfilemanagerdraginput.cpp
-    src/qtdialogscreenservices.cpp
     src/qtfilemenuprojection.cpp)
 
 sevenzip_share_port_objects(sevenzip_native_menu_presentation src/qtnativeshellmenupresentation.h

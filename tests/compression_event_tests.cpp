@@ -162,11 +162,20 @@ class CompressionEventTests final : public QObject {
         for (const QSize size : {QSize(760, 720), QSize(640, 480)}) {
             dialog.resize(size);
             QApplication::processEvents();
-            dialog.findChild<QScrollArea *>()->ensureWidgetVisible(thread, 0, 80);
+            // Native fonts can put the usage/limit row more than 80 pixels
+            // below Threads. Expose the actual source group, retaining both
+            // controls' original visibility assertions.
+            auto *memoryGroup = dialog.findChild<QWidget *>("compressionMemoryGroup");
+            QVERIFY(memoryGroup);
+            dialog.findChild<QScrollArea *>()->ensureWidgetVisible(memoryGroup, 0, 0);
             QApplication::processEvents();
             QVERIFY(UiInspection::fullyVisible(*thread, dialog));
             auto *memory = dialog.findChild<QLabel *>("compressionMemoryUsage");
             QVERIFY(UiInspection::labelFits(*memory));
+            if (!UiInspection::fullyVisible(*memory, dialog))
+                QVERIFY(UiInspection::writeReport(
+                    dialog,
+                    QString("compression-event-%1-%2-clipped").arg(language).arg(size.width())));
             QVERIFY(UiInspection::fullyVisible(*memory, dialog));
             QVERIFY(UiInspection::writeReport(
                 dialog, QString("compression-event-%1-%2").arg(language).arg(size.width())));

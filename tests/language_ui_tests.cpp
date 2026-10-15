@@ -209,6 +209,7 @@ class LanguageUiTests : public QObject, protected MainWindowTestSupport {
                                    TIME_PREC_TO_ARC_FLAGS_MASK(NFileTimeType::kUnix);
         COptionsDialog dialog(&source);
         dialog.show();
+        QVERIFY(QTest::qWaitForWindowActive(&dialog));
         auto *precision = dialog.findChild<QComboBox *>("IDC_COMPRESS_TIME_PREC");
         auto *explicitPrecision = dialog.findChild<QCheckBox *>("IDX_COMPRESS_PREC_SET");
         auto *explicitArchiveTime = dialog.findChild<QCheckBox *>("IDX_COMPRESS_ZTIME_SET");
@@ -238,9 +239,9 @@ class LanguageUiTests : public QObject, protected MainWindowTestSupport {
             for (QSize size : {QSize(520, 400), QSize(440, 340)}) {
                 dialog.resize(size);
                 QApplication::processEvents();
+                QTRY_COMPARE(dialog.size(), size);
                 QVERIFY(UiInspection::writeReport(
                     dialog, QString("language-advanced-%1-%2").arg(lang).arg(size.width())));
-                QCOMPARE(dialog.size(), size);
                 for (auto *label : dialog.findChildren<QLabel *>())
                     if (label->isVisible()) {
                         QVERIFY(UiInspection::fullyVisible(*label, dialog));

@@ -5,6 +5,7 @@
 #include "CPP/7zip/UI/FileManager/BrowseDialog.h"
 #include "CPP/7zip/UI/GUI/CompressDialog.h"
 #include "archivecodeccatalog.h"
+#include "qtdialogscreenservices.h"
 #include "qtguimessages.h"
 #include "qtlangbuttonbox.h"
 #include "qtlangcontrols.h"
@@ -21,6 +22,12 @@ CreateArchiveDialog::CreateArchiveDialog(const QString &directory,
       codecs_(std::move(codecs)) {
     setObjectName("createArchiveDialog");
     auto *layout = new QVBoxLayout(this);
+    // GuiCommon.rc uses an eight-dialog-unit outer margin. Native Cocoa's
+    // larger default would add horizontal scrolling at the compact size.
+    const QSize units = QtDialogScreenServices(this).GetDialogBaseUnits();
+    const int horizontalMargin = 8 * units.width() / 4;
+    const int verticalMargin = 8 * units.height() / 8;
+    layout->setContentsMargins(horizontalMargin, verticalMargin, horizontalMargin, verticalMargin);
     auto *scroll = new QScrollArea(this);
     scroll->setObjectName("archiveOptionsScrollArea");
     scroll->setWidgetResizable(true);
@@ -39,6 +46,16 @@ CreateArchiveDialog::CreateArchiveDialog(const QString &directory,
     scroll->setWidget(content);
     layout->addWidget(scroll);
     createFooter(layout);
+    // Cocoa layout-item margins can extend a combo or group frame past its
+    // allocated column/scroll area. Keep the complete source controls exposed.
+    for (auto *combo : findChildren<QComboBox *>())
+        combo->setAttribute(Qt::WA_LayoutUsesWidgetRect);
+    for (auto *group : findChildren<QGroupBox *>())
+        group->setAttribute(Qt::WA_LayoutUsesWidgetRect);
+    // Source MY_CHECKBOX/PushButton controls participate in Tab traversal.
+    // QMacStyle otherwise gives buttons only the restricted TabFocus policy.
+    for (auto *button : findChildren<QAbstractButton *>())
+        button->setFocusPolicy(Qt::StrongFocus);
     BindLanguage();
     if (fixedSources_)
         initializeSourceControls(sourceDialog->Info);
@@ -141,11 +158,15 @@ void CreateArchiveDialog::createArchiveForm(QVBoxLayout *layout) {
         compressionColumn->setObjectName("archiveCompressionColumn");
         auto *compressionForm = new QFormLayout(compressionColumn);
         compressionForm->setContentsMargins(0, 0, 0, 0);
+        // CompressDialog.rc gives the six combo rows a shared g1x/g1xs.
+        // Cocoa's default keeps each field at its individual size hint.
+        compressionForm->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
         compressionForm->setRowWrapPolicy(QFormLayout::WrapLongRows);
         auto *encryptionColumn = new QWidget(this);
         encryptionColumn->setObjectName("archiveEncryptionColumn");
         auto *encryptionForm = new QFormLayout(encryptionColumn);
         encryptionForm->setContentsMargins(0, 0, 0, 0);
+        encryptionForm->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
         encryptionForm->setRowWrapPolicy(QFormLayout::WrapLongRows);
         compressionForm->addRow("Формат:", format_);
         createCompressionOptions(compressionForm);

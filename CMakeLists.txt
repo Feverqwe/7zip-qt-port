@@ -2344,6 +2344,10 @@ foreach(engine_consumer IN LISTS engine_consumer_targets)
         target_link_libraries(${engine_consumer} PRIVATE sevenzip_filesystem)
     endif()
     if("src/createarchivedialog.cpp" IN_LIST engine_consumer_sources)
+        if(NOT "src/mainwindow.cpp" IN_LIST engine_consumer_sources)
+            target_sources(${engine_consumer} PRIVATE src/qtdialogscreenservices.cpp
+                src/qtdialogscreenservices.h)
+        endif()
         target_sources(${engine_consumer} PRIVATE src/createarchivedialog_language.cpp)
         target_sources(${engine_consumer} PRIVATE src/createarchivedialog_volumes.cpp
             src/createarchivedialog_advanced.cpp src/createarchivedialog_formats.cpp

@@ -2,6 +2,17 @@
 
 [Индекс](../7zfm-parity.md). Scope и свидетельства ниже сохраняют даты и ревизии; они не подтверждают текущий checkout.
 
+### Native Add control geometry and traversal (2026-10-15)
+
+The source two-column CompressDialog keeps its eight-dialog-unit outer margin
+and common compression combo widths under Cocoa as well as Windows/Linux.
+Qt layout-item extents no longer clip complete combo/group frames; explicit
+button StrongFocus retains the original Tab stops without changing macOS system
+preferences. Compact lower controls remain vertically scrollable. Native file
+pickers still use platform dialogs; their unresolved Cocoa automation is not a
+product workflow change. Current geometry checks do not claim rendered pixel
+parity. [Source and validation receipt](../upstream-port-audit/p3-03-2026-10-15.md#p3-03p3-06--native-add-geometry-tab-traversal-and-display-fixtures-2026-10-15).
+
 
 The shared Qt transient-message status bar now disables its default resize grip,
 matching the existing per-panel bars and original Panel.cpp::OnCreate status

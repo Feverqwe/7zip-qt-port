@@ -561,6 +561,11 @@ Compression and archive-path rules live in `CPP/7zip/UI/GUI/CompressDialog.cpp`.
 The partial `CCompressDialog` owns name/extension transitions, path resolution
 and archive history confirmation; `CreateArchiveDialog` supplies combo/directory
 snapshots. `NCompression::CInfo` persists ArcPaths and ArcType.
+The Add presentation uses `QtDialogScreenServices` for source dialog-unit outer
+margins. CMake shares that existing service through `sevenzip_dialog_screen`
+with both main-window and standalone Add consumers. Native widget rectangles,
+explicit form-field growth and button StrongFocus preserve source control
+exposure, equal combo widths and Tab traversal across platform styles.
 Both dialog owners use the source UString::Trim and FileName/FileDir path
 services. CompressDialog's GetFinalPath_Smart/GetFullPathAndSplit preserve
 source resolution and refusal; ExtractDialog uses NormalizeDirPathPrefix.

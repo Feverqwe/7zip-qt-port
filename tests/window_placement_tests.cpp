@@ -4,6 +4,7 @@
 #include "qtfilemanagerstartup.h"
 #include "window_state_support.h"
 #include <QScopeGuard>
+#include <QScreen>
 #include <QSizeGrip>
 #include <QSplitter>
 
@@ -302,7 +303,10 @@ class WindowPlacementTests final : public QObject, protected MainWindowTestSuppo
         file.close();
         for (unsigned i = 0; i < 2; ++i)
             SavePanelPath(i, ToUString(fixture.path()), settings);
-        const QRect expected(QPoint(42, 54), size);
+        // Keep the saved fixture inside the native work area, including the
+        // title bar. Cocoa clamps a frame above its menu-bar/notch boundary.
+        const QPoint workOrigin = QGuiApplication::primaryScreen()->availableGeometry().topLeft();
+        const QRect expected(workOrigin + QPoint(42, 54), size);
         const unsigned focused = panels - 1;
         CWindowInfo info{{expected.x(), expected.y(), expected.x() + expected.width(),
                           expected.y() + expected.height()},

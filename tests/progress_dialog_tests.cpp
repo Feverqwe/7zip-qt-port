@@ -37,7 +37,9 @@ class ProgressDialogTests : public QObject {
         QVERIFY(!source.windowIcon().isNull());
         for (const int size : {16, 32, 48}) {
             QVERIFY(source.windowIcon().availableSizes().contains(QSize(size, size)));
-            const QPixmap frame = source.windowIcon().pixmap(size, size);
+            // Inspect the embedded 1x frame; the default overload can return
+            // a Retina pixmap with twice the requested logical dimensions.
+            const QPixmap frame = source.windowIcon().pixmap(QSize(size, size), 1.0);
             QVERIFY(!frame.isNull());
             QCOMPARE(frame.size(), QSize(size, size));
         }

@@ -850,6 +850,17 @@ These checks establish Qt structure/usability, not rendered 7zFM pixel parity.
 
 ### Add archive naming metadata (P2-01)
 
+Native adaptation,2026-10-15: outer margins follow source m8 using current
+dialog base units; both columns grow their nonfixed fields, including all six
+shared-width compression combos. Complete combo/group widget rectangles must
+fit the viewport; source buttons/checks remain reachable by Tab. Normal and
+compact EN/RU source-add reports cover native styles and an explicit
+FieldsStayAtSizeHint style, with distinct `-size-hints` report tags. The lower
+memory usage/limit group is scrolled into view before asserting both Threads
+and memory visibility. Padding-only address-icon clipping has its separate
+glyph contract; it does not relax Add control bounds.
+[Native Add receipt and limits](../upstream-port-audit/p3-03-2026-10-15.md#p3-03p3-06--native-add-geometry-tab-traversal-and-display-fixtures-2026-10-15).
+
 P2-09 WIP correction 2026-10-03: desktop `IDD_COMPRESS` places
 Format/compression/memory/volumes/parameters/Options summary in the left column;
 Update mode/Path mode/Options group/Encryption group are in the right column.

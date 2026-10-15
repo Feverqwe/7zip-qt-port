@@ -7,10 +7,25 @@
 #include "createarchivedialog.h"
 #include "layout_inspection.h"
 #include "qtshellarchiveservices.h"
+#include <QProxyStyle>
+#include <QScopeGuard>
 #include <QScrollArea>
 #include <QScrollBar>
 #include <QTimer>
 #include <QtTest>
+
+namespace {
+class SizeHintFieldsStyle final : public QProxyStyle {
+  public:
+    SizeHintFieldsStyle() : QProxyStyle("Fusion") {}
+    int styleHint(StyleHint hint, const QStyleOption *option, const QWidget *widget,
+                  QStyleHintReturn *data) const override {
+        if (hint == SH_FormLayoutFieldGrowthPolicy)
+            return QFormLayout::FieldsStayAtSizeHint;
+        return QProxyStyle::styleHint(hint, option, widget, data);
+    }
+};
+} // namespace
 
 class SourceCompressDialogTests final : public QObject {
     Q_OBJECT
@@ -29,9 +44,13 @@ class SourceCompressDialogTests final : public QObject {
     void fixedSelectionRoundTrip_data() {
         QTest::addColumn<QString>("language");
         QTest::addColumn<QSize>("size");
+        QTest::addColumn<bool>("sizeHintFields");
         for (const QString &lang : {QString("-"), QString("ru")})
             for (const QSize size : {QSize(760, 720), QSize(640, 480)})
-                QTest::newRow(qPrintable(lang + QString::number(size.width()))) << lang << size;
+                for (const bool hints : {false, true})
+                    QTest::newRow(qPrintable(lang + QString::number(size.width()) +
+                                             (hints ? "-size-hints" : "")))
+                        << lang << size << hints;
     }
     void originalMethodSelection() {
         QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
@@ -69,6 +88,23 @@ class SourceCompressDialogTests final : public QObject {
     void fixedSelectionRoundTrip() {
         QFETCH(QString, language);
         QFETCH(QSize, size);
+        QFETCH(bool, sizeHintFields);
+        std::unique_ptr<QStyle> previousStyle;
+        if (sizeHintFields) {
+            // Retain the actual native style; its object name need not be a
+            // QStyleFactory key. QApplication deletes only an app-owned style.
+            previousStyle.reset(QApplication::style());
+            previousStyle->setParent(nullptr);
+            QApplication::setStyle(new SizeHintFieldsStyle);
+        }
+        const auto restoreStyle = qScopeGuard([&] {
+            if (previousStyle)
+                QApplication::setStyle(previousStyle.release());
+        });
+        const QString reportTag = QString("source-add-%1-%2%3")
+                                      .arg(language == "ru" ? "ru" : "en")
+                                      .arg(size.width())
+                                      .arg(sizeHintFields ? "-size-hints" : "");
         const QString settings = qEnvironmentVariable("SEVENZIP_SETTINGS_PATH");
         QFile::remove(settings);
         SaveRegLang(UString(language.toStdWString().c_str()), settings);
@@ -97,9 +133,7 @@ class SourceCompressDialogTests final : public QObject {
         auto *name = dialog.findChild<QLineEdit *>("archiveName");
         QVERIFY(name);
         QCOMPARE(name->selectedText(), name->text());
-        QVERIFY(UiInspection::writeReport(
-            dialog,
-            QString("source-add-%1-%2").arg(language == "ru" ? "ru" : "en").arg(size.width())));
+        QVERIFY(UiInspection::writeReport(dialog, reportTag));
         QVERIFY(!dialog.findChild<QListWidget *>("availableSources"));
         QVERIFY(!dialog.findChild<QLineEdit *>("sourceDirectory"));
         QVERIFY(!dialog.findChild<QLineEdit *>("archiveDestination"));
@@ -159,9 +193,7 @@ class SourceCompressDialogTests final : public QObject {
         QCoreApplication::processEvents();
         QVERIFY(UiInspection::fullyVisible(*dialog.findChild<QLineEdit *>("archiveParameters"),
                                            dialog));
-        QVERIFY(UiInspection::writeReport(dialog, QString("source-add-%1-%2-bottom")
-                                                      .arg(language == "ru" ? "ru" : "en")
-                                                      .arg(size.width())));
+        QVERIFY(UiInspection::writeReport(dialog, reportTag + "-bottom"));
         mode->setCurrentIndex(mode->findData(int(NCompressDialog::NUpdateMode::kUpdate)));
         dialog.findChild<QLineEdit *>("archivePassword")->setText("edited");
         dialog.findChild<QLineEdit *>("archivePasswordConfirmation")->setText("edited");
