@@ -380,6 +380,8 @@ names, selection and bytes; a subsequent Rename can commit normally. Bounded
 marks on a different item. Existing editor geometry reports below apply.
 Twenty current activation reports cover both panes/table-icon/selection modes
 and two symbolic-link cases at980×620/640×400, with visible inline editors.
+An address Return's queued list-focus request must not close a newer inline
+Rename editor in the same pane when the next events or resize are delivered.
 
 Rename completion uses original OnEndLabelEdit's saved selected names and raw
 prefix/name, focusing the new name on success and the old name on error/Cancel.

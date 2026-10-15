@@ -416,8 +416,10 @@ row count. No widget builds an archive operation or its command-line syntax.
 The queued address focus service checks the current application focus widget,
 or the window's retained widget while application focus is temporarily null.
 The retained widget preserves newer panel/control intent through popup/window
-activation transitions. This adapter records list focus without activating an
-inactive production window; source binding still owns the request/result.
+activation transitions. Delivery requires focus to remain in the address combo;
+an inline editor in the same pane supersedes the queued request. This adapter
+records list focus without activating an inactive production window; source
+binding still owns the request/result.
 
 LoadFullPathAndShow owns current-path icon classification, including the source
 archive-link/virtual-file boundary and extension fallback. Qt supplies path and

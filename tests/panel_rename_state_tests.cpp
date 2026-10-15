@@ -7,6 +7,7 @@
 #include "window_state_support.h"
 #include <QFile>
 #include <QMessageBox>
+#include <QPointer>
 #include <QScopeGuard>
 #include <QTemporaryDir>
 #include <QTimer>
@@ -62,6 +63,7 @@ class PanelRenameStateTests final : public QObject, protected MainWindowTestSupp
         ControlledBackend backend;
         MainWindow window(&backend);
         window.show();
+        QVERIFY(QTest::qWaitForWindowActive(&window));
         action(window, "twoPanelsAction")->trigger();
         auto *ui = window.findChild<QWidget *>(QString("filePanel%1").arg(pane));
         auto *view = static_cast<FileTable *>(ui->findChild<QTableWidget *>("archiveTable"));
@@ -89,12 +91,13 @@ class PanelRenameStateTests final : public QObject, protected MainWindowTestSupp
         view->sourcePanel->GetSelectedNames(savedMarks);
         QVERIFY(action(window, "renameAction")->isEnabled());
         action(window, "renameAction")->trigger();
-        auto *editor = active->findChild<QLineEdit *>();
+        QPointer<QLineEdit> editor = active->findChild<QLineEdit *>();
         QVERIFY(editor);
         QCOMPARE(editor->text(), original);
         for (const QSize size : {QSize(980, 620), QSize(640, 400)}) {
             window.resize(size);
             QApplication::processEvents();
+            QVERIFY(editor);
             QVERIFY(UiInspection::fullyVisible(*editor, window));
             QVERIFY(UiInspection::writeReport(
                 window,
