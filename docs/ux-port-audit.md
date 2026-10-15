@@ -5,6 +5,9 @@
 Матрица различает текущие native launcher и delivery components и прежние full/native receipts.
 Checked означает только названную
 проверку; partial/unverified не дают итоговой приёмки P3-06.
+Clean-OS проверки Windows/macOS/Linux исключены из текущей приёмки по явному
+решению пользователя2026-10-15. Это waiver, а не свидетельство прохождения;
+package/relocation/native/rendered требования остаются в scope.
 [Текущий launcher, логи, входы и ограничения](upstream-port-audit.md#p3-05--native-associated-launcher-and-process-lifetime-2026-10-10);
 [текущий полный Linux gate и версии](upstream-port-audit.md#p3-03--full-linux-gate-after-launcher-restoration-2026-10-10).
 
@@ -47,7 +50,7 @@ native Windows и rendered reference этим не подтверждены.
 | Нативные dialogs/shortcuts/icons/drag/registration/FS | partial: историческая ручная Finder-проверка принята отдельно; Cocoa keyboard notification protocol0–9 проверен, physical input/full native обход не проверены | partial: delivery8d56d8d Copy/Overwrite/Language/PCManFM drag/Escape; Release2f8e194 GIO workflow проверен; corrected keyboard XTest1/native consumers7/7; full native scope открыт | partial: active console Session1; corrected keyboard consumers7/7,143Qt/0fail/0skip; physical digit0/reference и current full/native acceptance открыты |
 | Наблюдение текущего приложения через Computer Use | unverified: доступ к Sevenzip Desktop не одобрен | partial: current package/affected views наблюдались через Hyper-V console API; полный rendered audit открыт | unverified: console доступна, полный обход текущего приложения не принят |
 | Сверка с отрисованным Windows 7zFM того же pin | unverified: нет полного rendered reference | unverified: нет полного rendered reference | partial: исторический System menu; полный текущий rendered audit не принят |
-| Runtime packages и чистая ОС | partial: current2f8e194 Release/relocation15/15, notices/signature,11 Mach-O/127 loads; clean OS unverified | partial: current2f8e194 Release/relocation14/14, isolated userspace15/15 и actual GIO/header native workflow на kernel6.8.0-146; clean OS unverified | partial: current2f8e194 Release/relocation14/14, CRT/notices,26 PE/344 imports и fresh55 system names resolved; clean OS unverified |
+| Runtime packages; clean-OS scope исключён пользователем2026-10-15 | partial: current2f8e194 Release/relocation15/15, notices/signature,11 Mach-O/127 loads; clean OS waived, не проверена | partial: current2f8e194 Release/relocation14/14, isolated userspace15/15 и actual GIO/header native workflow на kernel6.8.0-146; clean OS waived, не проверена | partial: current2f8e194 Release/relocation14/14, CRT/notices,26 PE/344 imports и fresh55 system names resolved; clean OS waived, не проверена |
 | Cold/stable Windows, итоговая трёхплатформенная приёмка | partial: общий gate остаётся открытым | partial: успешный Linux gate не заменяет Windows | unverified: Explorer в active console Session1; focused replay не заменяет текущий native full gate и повторы |
 | GitHub CI | N/A по явному решению пользователя сохранить удаление workflow | N/A по тому же решению | N/A по тому же решению |
 
