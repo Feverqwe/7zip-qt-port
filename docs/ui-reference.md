@@ -17,6 +17,10 @@ compares the pinned running 7zFM with the current Qt shell-menu bridge. All20
 entries and their public states match. Inspected runtime screenshots retain
 Qt style differences in row/separator spacing and popup width; this establishes
 bounded Windows evidence, not pixel equality or other-dialog acceptance.
+Run the original reference only in an Interactive Limited session. The runtime
+consumer checks its own token before starting 7zFM and skips an elevated run:
+original FM startup attempts to grant Lock Memory privilege. An elevated skip
+does not supply reference coverage; a separate Limited run must pass.
 
 `scripts/check_ui_parity.py` extracts a desktop 7zFM resource reference and
 compares it with a reviewed contract and the existing Qt widget JSON reports.

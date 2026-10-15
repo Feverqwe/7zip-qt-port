@@ -217,6 +217,16 @@ class NativeRenderedSystemMenuTests final : public QObject {
 
   private slots:
     void pinnedNativeWindowAndQtBridge() {
+        HANDLE token = nullptr;
+        QVERIFY(OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &token));
+        const auto closeToken = qScopeGuard([&] { CloseHandle(token); });
+        TOKEN_ELEVATION elevation{};
+        DWORD bytes = 0;
+        QVERIFY(GetTokenInformation(token, TokenElevation, &elevation, sizeof(elevation), &bytes));
+        // Original FM startup attempts AddLockMemoryPrivilege. The runtime
+        // reference must inherit a limited token, including inside a full gate.
+        if (elevation.TokenIsElevated)
+            QSKIP("Run the original rendered reference in an Interactive Limited session");
         const QString referenceDirectory = QStringLiteral(SEVENZIP_NATIVE_REFERENCE_DIR);
         QJsonObject provenance;
         ValidateReference(referenceDirectory, provenance);
