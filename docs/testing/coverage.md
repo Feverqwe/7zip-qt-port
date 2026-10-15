@@ -2,6 +2,12 @@
 
 [Индекс](../testing.md). Scope и свидетельства ниже сохраняют даты и ревизии; они не подтверждают текущий checkout.
 
+Native Xorg/Openbox fixtures must establish window activation before dispatching
+user commands or reading frame/layout geometry. Five legacy Add/Editor/Rename
+fixtures now assert that public prerequisite, preserving their original geometry,
+editor and byte assertions. The modal Add timer blocks re-entry during the wait.
+[Native RED→GREEN receipt](../upstream-port-audit.md#p3-03p3-06--native-linux-add-consumers-and-activation-2026-10-15).
+
 
 Windows `native_association_handle`, `native_association_disk`,
 `native_association_browser` and `native_association_workflow` use a bounded

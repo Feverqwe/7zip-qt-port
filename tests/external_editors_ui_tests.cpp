@@ -65,6 +65,7 @@ class ExternalEditorsUiTests final : public QObject, protected MainWindowTestSup
             dialog.findChild<QLineEdit *>("diffCommand")->setText("diff --compare");
             QVERIFY(applyButton->isEnabled());
             dialog.show();
+            QVERIFY(QTest::qWaitForWindowActive(&dialog));
             for (QSize size : {QSize(640, 390), QSize(520, 380)}) {
                 dialog.resize(size);
                 QApplication::processEvents();

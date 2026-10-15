@@ -100,7 +100,7 @@ class UiGeometryTests final : public QObject {
     void addDefaultSizeFitsScreen() {
         CreateArchiveDialog dialog(directory_.path());
         dialog.show();
-        QApplication::processEvents();
+        QVERIFY(QTest::qWaitForWindowActive(&dialog));
         QVERIFY(UiInspection::writeReport(dialog, "create-default"));
         QVERIFY(dialog.screen()->availableGeometry().contains(dialog.frameGeometry()));
         QVERIFY(footerFits(dialog));

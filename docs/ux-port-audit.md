@@ -29,6 +29,10 @@ splitter/F9 и address/Root/history/bookmarks/keyboard на Xorg/Openbox:
 дополняют его columns/language/Rename и Copy/Move/Refresh/Comment:
 22/22 CTest,687Qt/0fail/0skip; geometry/paint consumers проверены на Linux,
 исходные Windows GUI failures и slow/native-writer scope остаются открытыми.
+[Native Add consumers](upstream-port-audit.md#p3-03p3-06--native-linux-add-consumers-and-activation-2026-10-15)
+дополняют Linux-сценарий:42 unchanged passes и5/5 после восстановления
+activation prerequisite в fixtures. Продуктовый layout не изменён;
+native Windows и rendered reference этим не подтверждены.
 
 | Область приёмки | macOS arm64 | Linux x64 | Windows x64 |
 | --- | --- | --- | --- |

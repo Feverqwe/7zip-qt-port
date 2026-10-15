@@ -229,7 +229,7 @@ class FlatViewTests : public QObject, protected MainWindowTestSupport {
         QCOMPARE(table(window)->item(nestedRow, 1)->text(), QFileInfo(nested).canonicalFilePath());
         table(window)->selectRow(nestedRow);
         window.show();
-        QCoreApplication::processEvents();
+        QVERIFY(QTest::qWaitForWindowActive(&window));
         action(window, "renameAction")->trigger();
         auto *editor = qobject_cast<QLineEdit *>(QApplication::focusWidget());
         QVERIFY(editor);

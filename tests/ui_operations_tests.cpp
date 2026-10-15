@@ -49,7 +49,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         address->setText(temp.path());
         QTest::keyClick(address, Qt::Key_Return);
         window.show();
-        QCoreApplication::processEvents();
+        QVERIFY(QTest::qWaitForWindowActive(&window));
         table(window)->selectRow(filesystemRow(window, QStringLiteral("исходный.txt")));
         action(window, "renameAction")->trigger();
         auto *editor = qobject_cast<QLineEdit *>(QApplication::focusWidget());
@@ -240,7 +240,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         QTest::keyClick(address, Qt::Key_Return);
         window.resize(width, 380);
         window.show();
-        QCoreApplication::processEvents();
+        QVERIFY(QTest::qWaitForWindowActive(&window));
         action(window, qPrintable(QStringLiteral("viewMode%1Action").arg(mode)))->trigger();
         table(window)->selectRow(filesystemRow(window, QStringLiteral("папка с пробелом")));
         action(window, "renameAction")->trigger();

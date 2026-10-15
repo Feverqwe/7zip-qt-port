@@ -10,6 +10,7 @@
 #include "window_state_support.h"
 #include <QScrollArea>
 #include <QScrollBar>
+#include <QSignalBlocker>
 
 namespace {
 QAction *findVerb(QMenu &menu, const QString &verb) {
@@ -167,6 +168,8 @@ class ShellUpdateWindowTests final : public QObject, protected MainWindowTestSup
         connect(&dismissal, &QTimer::timeout, [&] {
             if (auto *dialog =
                     qobject_cast<CreateArchiveDialog *>(QApplication::activeModalWidget())) {
+                const QSignalBlocker preventReentry(&dismissal);
+                QVERIFY(QTest::qWaitForWindowActive(dialog));
                 QVERIFY(!dialog->findChild<QListWidget *>("availableSources"));
                 QCOMPARE(dialog->sources(), QStringList{fixture.filePath(name)});
                 if (nested)
