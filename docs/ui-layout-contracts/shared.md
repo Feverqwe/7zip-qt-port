@@ -1202,6 +1202,12 @@ flat/toolbar/auto-refresh checks are projected without executing commands.
 `view-menu-*-main.json`, `view-menu-*.json` and `view-menu-*-time.json` reports.
 Both addresses and the actual visible table/icon lists must fit. Menu order and
 action bindings are retained; reports do not establish rendered Windows parity.
+For the closed address's decorative image, verify the complete painted glyph.
+Qt6.12 Cocoa can clip one transparent pixel of its QLineEdit side-widget padding
+while exposing the full16×16 logical icon. Reports retain strict widget bounds
+and additionally record `iconBounds`/`iconFullyVisible`; clipping or hiding the
+glyph remains a failure. A source selection's pending list-focus request survives
+popup visibility until Hide, while a newer editor/peer interaction supersedes it.
 
 Reference: `CPP/7zip/UI/FileManager/resource.rc::IDM_MENU`,
 `App.cpp::g_ArchiveButtons/g_StandardButtons` and `MyLoadMenu.cpp` at

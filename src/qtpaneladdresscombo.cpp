@@ -6,6 +6,7 @@
 #include "CPP/7zip/UI/FileManager/SysIconUtils.h"
 #include "Windows/FileName.h"
 #include "qtvolumemounts.h"
+#include <QAbstractItemView>
 #include <QAction>
 #include <QApplication>
 #include <QKeyEvent>
@@ -45,6 +46,7 @@ QtPanelAddressCombo::QtPanelAddressCombo(CPanel &panel,
     currentIcon_->setObjectName("currentAddressIcon");
     lineEdit()->installEventFilter(this);
     setItemDelegate(new AddressItemDelegate(this));
+    view()->installEventFilter(this);
     connect(this, &QComboBox::activated, this,
             [this](int) { panel_.OnComboBoxCommand(QtAddressCommand::SelectionAccepted, *this); });
     connect(lineEdit(), &QLineEdit::returnPressed, this, [this] {
@@ -148,20 +150,28 @@ HRESULT QtPanelAddressCombo::BindToPathAndRefresh(const UString &path, bool sour
     return navigate_(ToQString(CPanel::PrepareBindPath(path)), sourcePath);
 }
 void QtPanelAddressCombo::SetFocusToList() {
-    QTimer::singleShot(0, this, [this] {
-        // Popup closure can temporarily clear application focus. The window
-        // retains its intended focus widget. Deliver only while the address
-        // owns focus: a newer interaction may already have opened a list editor
-        // in this same panel. Setting list focus does not activate a window.
-        QWidget *focus = QApplication::focusWidget();
-        if (!focus)
-            focus = window()->focusWidget();
-        if (focus && (focus == this || isAncestorOf(focus)))
-            panel_.SetFocusToList();
-    });
+    listFocusPending_ = true;
+    QTimer::singleShot(0, this, [this] { CompleteListFocus(); });
+}
+
+void QtPanelAddressCombo::CompleteListFocus() {
+    // Source navigation can process events before the selection popup closes.
+    // Its Hide notification completes delivery after Qt restores combo focus.
+    if (!listFocusPending_ || view()->isVisible())
+        return;
+    listFocusPending_ = false;
+    // Deliver only while the address owns focus: a newer same-pane interaction
+    // may have opened a list editor. Do not activate an inactive window.
+    QWidget *focus = QApplication::focusWidget();
+    if (!focus)
+        focus = window()->focusWidget();
+    if (focus && (focus == this || isAncestorOf(focus)))
+        panel_.SetFocusToList();
 }
 
 bool QtPanelAddressCombo::eventFilter(QObject *object, QEvent *event) {
+    if (object == view() && event->type() == QEvent::Hide && listFocusPending_)
+        QTimer::singleShot(0, this, [this] { CompleteListFocus(); });
     if (object == lineEdit()) {
         if (event->type() == QEvent::KeyPress &&
             static_cast<QKeyEvent *>(event)->key() == Qt::Key_Escape) {

@@ -420,6 +420,10 @@ activation transitions. Delivery requires focus to remain in the address combo;
 an inline editor in the same pane supersedes the queued request. This adapter
 records list focus without activating an inactive production window; source
 binding still owns the request/result.
+If nested navigation delivers the queued callback while the selection popup
+remains open, the combo retains the request until its view's Hide notification.
+The later delivery applies the same address-ownership guard; no timer polls for
+closure and no source handler is duplicated.
 
 LoadFullPathAndShow owns current-path icon classification, including the source
 archive-link/virtual-file boundary and extension fallback. Qt supplies path and

@@ -5,6 +5,7 @@
 #include "layout_inspection.h"
 #include "window_state_support.h"
 #include <QFileIconProvider>
+#include <QStyle>
 #include <QToolButton>
 
 class AddressComboTests final : public QObject, protected MainWindowTestSupport {
@@ -15,6 +16,66 @@ class AddressComboTests final : public QObject, protected MainWindowTestSupport 
         QVERIFY(!settings.isEmpty());
         QFile::remove(settings);
         ReloadLang(settings);
+    }
+    void decorativeIconAllowsPaddingClipButRejectsGlyphClip() {
+        QWidget window;
+        window.resize(320, 80);
+        QLineEdit edit(&window);
+        edit.setFrame(false);
+        const int size = edit.style()->pixelMetric(QStyle::PM_LineEditIconSize, nullptr, &edit);
+        QVERIFY(size > 1);
+        edit.setGeometry(10, 10, 280, size + 1);
+        edit.addAction(edit.style()->standardIcon(QStyle::SP_DirIcon), QLineEdit::LeadingPosition);
+        window.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&window));
+        auto *button = edit.findChild<QToolButton *>();
+        QVERIFY(button);
+        QVERIFY(!UiInspection::fullyVisible(*button, window));
+        QVERIFY(UiInspection::lineEditIconVisible(*button, window));
+        edit.resize(edit.width(), size - 1);
+        QApplication::processEvents();
+        QVERIFY(!UiInspection::lineEditIconVisible(*button, window));
+        edit.resize(edit.width(), size + 1);
+        edit.hide();
+        QVERIFY(!UiInspection::lineEditIconVisible(*button, window));
+    }
+    void queuedSelectionFocusWaitsForPopupClosure() {
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        QFile file(fixture.filePath(QStringLiteral("keep 空.txt")));
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        QCOMPARE(file.write("preserved"), qint64(9));
+        file.close();
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        window.show();
+        QVERIFY(QTest::qWaitForWindowActive(&window));
+        auto *address = window.findChild<QLineEdit *>("archivePath");
+        address->setFocus();
+        address->setText(fixture.path());
+        QTest::keyClick(address, Qt::Key_Return);
+        QTRY_COMPARE(table(window)->rowCount(), 1);
+        auto *combo = window.findChild<QComboBox *>("pathCombo");
+        AddressPopupSupport::show(*combo);
+        auto *view = combo->view();
+        QVERIFY(QTest::qWaitForWindowExposed(view->window()));
+        view->setFocus();
+        QTRY_VERIFY(view->hasFocus());
+        const int index = combo->findText(QFileInfo(fixture.path()).fileName());
+        QVERIFY(index >= 0);
+        // Source navigation can deliver posted events inside activated(),
+        // before QComboBox subsequently hides its selection popup.
+        QVERIFY(
+            QMetaObject::invokeMethod(combo, "activated", Qt::DirectConnection, Q_ARG(int, index)));
+        QApplication::processEvents();
+        QVERIFY(view->isVisible());
+        combo->hidePopup();
+        window.activateWindow();
+        QVERIFY(QTest::qWaitForWindowActive(&window));
+        QTRY_VERIFY(table(window)->hasFocus());
+        QVERIFY(file.open(QIODevice::ReadOnly));
+        QCOMPARE(file.readAll(), QByteArray("preserved"));
+        QCOMPARE(backend.listCalls, 0);
     }
     void dropdownContainsCurrentHierarchy_data() {
         QTest::addColumn<QString>("language");
@@ -58,8 +119,12 @@ class AddressComboTests final : public QObject, protected MainWindowTestSupport 
                  QFileIconProvider().icon(QFileInfo(child)).pixmap(16, 16).toImage());
         const auto iconButtons = address->findChildren<QToolButton *>();
         QVERIFY(!iconButtons.isEmpty());
-        for (const auto *button : iconButtons)
-            QVERIFY(UiInspection::fullyVisible(*button, window));
+        for (const auto *button : iconButtons) {
+            if (!UiInspection::lineEditIconVisible(*button, window))
+                QVERIFY(UiInspection::writeReport(
+                    window, QString("address-icon-clipped-%1-%2").arg(language).arg(size.width())));
+            QVERIFY(UiInspection::lineEditIconVisible(*button, window));
+        }
         AddressPopupSupport::show(*combo);
         QApplication::processEvents();
         QVERIFY2(combo->findText(QStringLiteral("родитель space")) >= 0,

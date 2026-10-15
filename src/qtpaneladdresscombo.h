@@ -52,8 +52,10 @@ class QtPanelAddressCombo final : public QComboBox, public IQtPanelAddressCombo 
     void SetFocusToList() override;
 
   private:
+    void CompleteListFocus();
     bool eventFilter(QObject *object, QEvent *event) override;
     CPanel &panel_;
     std::function<HRESULT(const QString &, bool)> navigate_;
     QAction *currentIcon_ = nullptr;
+    bool listFocusPending_ = false;
 };

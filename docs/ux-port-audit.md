@@ -21,8 +21,8 @@ Windows desktop был восстановлен обычным входом; п�
 quoted identity, Clear/reopen/Cancel и corrected provider headers на реальном
 Xorg. [Текущая поставка2f8e194](upstream-port-audit.md#p3-04--delivery-after-native-association-correction-2026-10-15)
 проверена на3OS и отдельно в isolated Linux userspace; actual Linux Release
-native workflow проверен с live Qt mappings. Build/CTest и packages обновлены
-на2026-10-15; full native/rendered/clean-OS acceptance остаётся открытой.
+native workflow проверен с live Qt mappings. Эти package receipts предшествуют
+текущим UI adaptations; full native/rendered acceptance остаётся открытой.
 
 [Native Linux placement/navigation](upstream-port-audit.md#p3-03p3-05--native-linux-placement-and-navigation-2026-10-15)
 на текущем продукте дополнительно проверяет normal/maximized Close/restart,
@@ -44,7 +44,7 @@ native Windows и rendered reference этим не подтверждены.
 
 | Область приёмки | macOS arm64 | Linux x64 | Windows x64 |
 | --- | --- | --- | --- |
-| Default format/build/CTest | checked: c43cc75 full321/321,5079Qtpass/0fail/66skips (56NTFS+10offscreen native mapping) | checked: keyboard8a93428 full320/320,5071Qtpass/0fail/66skips; subsequent c43cc75 address/Rename consumers3/3 and native1/1 PASS | partial: keyboard8a93428 full334/337; progress_wait timeout/external codec deadline/Rename failures retained. c43cc75 Rename/address consumers3/3 PASS; cold/stable full remains open |
+| Default format/build/CTest | checked: current Qt adapters full321/321,5085Qtpass/0fail/66skips (56NTFS+10offscreen native mapping); later localized memory-geometry fixture checked separately | checked: keyboard8a93428 full320/320,5071Qtpass/0fail/66skips; current Qt adapters9/9 default and9/9 XCB,164Qt/0skip each | partial: c43cc75/reference-guard whole337/338,5310Qtpass/1fail/21skip; only external codec deadline failure. Current Qt adapters all-target build and9 native consumers164Qt/0skip PASS; new whole/cold acceptance remains open |
 | Исходные модули, headers/resources/callers | partial: [109 source receipts](omitted-scope-audit.md#109-unit-source-receipt-ledger-2026-10-10); identified launcher/continuation gap corrected, whole workflow acceptance open | partial: общий source scope тот же; POSIX no-handle consumers checked | partial: original native launcher and real handle/disk/browser/archive consumers checked; whole acceptance open |
 | EN/RU, normal/compact, команды и workflow | partial: автоматические contracts/regressions проходят; полный нативный обход не принят | partial: current package на реальной консоли, EN/RU/two-panel normal/compact, Options/Copy и create/open/test/extract проверены; полный обход открыт | partial: выполненные focused consumers/JSON; current interactive gate и полный обход не приняты |
 | Нативные dialogs/shortcuts/icons/drag/registration/FS | partial: историческая ручная Finder-проверка принята отдельно; Cocoa keyboard notification protocol0–9 проверен, physical input/full native обход не проверены | partial: delivery8d56d8d Copy/Overwrite/Language/PCManFM drag/Escape; Release2f8e194 GIO workflow проверен; corrected keyboard XTest1/native consumers7/7; full native scope открыт | partial: active console Session1; corrected keyboard consumers7/7,143Qt/0fail/0skip; physical digit0/reference и current full/native acceptance открыты |

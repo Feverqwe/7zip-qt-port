@@ -9,8 +9,11 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QLabel>
+#include <QLineEdit>
 #include <QMenu>
 #include <QPixmap>
+#include <QStyle>
+#include <QToolButton>
 #include <QWidget>
 
 namespace UiInspection {
@@ -39,6 +42,26 @@ static bool fullyVisible(const QRect &rect, const QRect &exposed) {
 bool fullyVisible(const QWidget &widget, const QWidget &root) {
     const QRect rect = bounds(widget, root);
     return fullyVisible(rect, exposedBounds(widget, root, rect));
+}
+
+static QRect lineEditIconBounds(const QWidget &widget, const QWidget &root) {
+    const auto *edit = qobject_cast<const QLineEdit *>(widget.parentWidget());
+    const auto *button = qobject_cast<const QToolButton *>(&widget);
+    if (!edit || !button || button->icon().isNull())
+        return {};
+    // Qt 6.12 QLineEditIconButton::paintEvent centers this logical glyph;
+    // native style may clip transparent side-widget padding, not the icon.
+    const int size = edit->style()->pixelMetric(QStyle::PM_LineEditIconSize, nullptr, edit);
+    QRect glyph(QPoint(), QSize(size, size));
+    glyph.moveCenter(widget.rect().center());
+    if (!widget.rect().contains(glyph))
+        return {};
+    return glyph.translated(widget.mapTo(&root, QPoint()));
+}
+
+bool lineEditIconVisible(const QWidget &widget, const QWidget &root) {
+    const QRect glyph = lineEditIconBounds(widget, root);
+    return fullyVisible(glyph, exposedBounds(widget, root, glyph));
 }
 
 bool separate(const QWidget &first, const QWidget &second, const QWidget &root) {
@@ -76,6 +99,11 @@ static QJsonObject describe(const QWidget &widget, const QWidget &root) {
         result["labelFits"] = labelFits(widget);
     } else if (const auto *button = qobject_cast<const QAbstractButton *>(&widget)) {
         result["text"] = button->text();
+        if (qobject_cast<const QToolButton *>(&widget) &&
+            qobject_cast<const QLineEdit *>(widget.parentWidget())) {
+            result["iconBounds"] = rectData(lineEditIconBounds(widget, root));
+            result["iconFullyVisible"] = lineEditIconVisible(widget, root);
+        }
     } else if (const auto *group = qobject_cast<const QGroupBox *>(&widget)) {
         result["text"] = group->title();
     } else if (const auto *combo = qobject_cast<const QComboBox *>(&widget)) {
