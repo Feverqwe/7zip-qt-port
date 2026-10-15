@@ -2,6 +2,17 @@
 
 [Индекс](../7zfm-parity.md). Scope и свидетельства ниже сохраняют даты и ревизии; они не подтверждают текущий checkout.
 
+### Windows physical bookmark zero (2026-10-15)
+
+On the current runner desktop, original pinned7zFM also cannot save bookmark0
+through physical RightCtrl+Shift+0. RightCtrl+Shift+1 and Alt+Shift+0 positive
+controls save the expected path in that same focused native list. The Qt port
+has the same unavailable chord, with no digit0 WM_KEYDOWN in its earlier trace;
+native-notification dispatch0–9 passes separately. This records observable
+reference parity on that desktop, without claiming the OS interception cause,
+a working physical zero chord or N/A. System shortcuts/preferences are unchanged.
+[Original comparison](../upstream-port-audit/p3-03-2026-10-15.md#p3-03p3-06--original-windows-physical-bookmark-zero-comparison-2026-10-15).
+
 ### Native Add control geometry and traversal (2026-10-15)
 
 The source two-column CompressDialog keeps its eight-dialog-unit outer margin
