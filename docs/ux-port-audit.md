@@ -1,6 +1,6 @@
 # Сверка интерфейса с оригинальным 7zFM
 
-## Current final acceptance matrix (2026-10-10)
+## Current final acceptance matrix (2026-10-16)
 
 Матрица различает текущие native launcher и delivery components и прежние full/native receipts.
 Checked означает только названную
@@ -8,10 +8,13 @@ Checked означает только названную
 Clean-OS проверки Windows/macOS/Linux исключены из текущей приёмки по явному
 решению пользователя2026-10-15. Это waiver, а не свидетельство прохождения;
 package/relocation/native/rendered требования остаются в scope.
-Текущая Overwrite/font-DLU коррекция проверяется как отдельный компонент:
+Overwrite/font-DLU коррекция проверена как отдельный компонент:
 [rendered reference, регрессии и gates](upstream-port-audit/p3-06-2026-10-15.md).
-Приведённые ниже packages609bf25 предшествуют этой продуктовой коррекции;
-для поставки текущего варианта требуется обновление всех трёх пакетов.
+Текущий продукт1f5e16a также содержит [Add gutter correction](upstream-port-audit/p3-06-add-scroll-2026-10-15.md):
+native Cocoa/Windows и Linux offscreen consumers, full macOS и ручная macOS
+проверка пользователя приняты в указанном scope. [macOS пакет1f5e16a](upstream-port-audit/p3-04-2026-10-15.md#p3-04--add-edge-gutter-macos-delivery-refresh-2026-10-15)
+и Windows/Linux пакеты1f5e16a обновлены и проверены. Прежние packages/full
+receipts сохраняют свои исходные ревизии и не подтверждают текущий вариант.
 [Текущий launcher, логи, входы и ограничения](upstream-port-audit.md#p3-05--native-associated-launcher-and-process-lifetime-2026-10-10);
 [текущий полный Linux gate и версии](upstream-port-audit.md#p3-03--full-linux-gate-after-launcher-restoration-2026-10-10).
 
@@ -48,14 +51,14 @@ native Windows и rendered reference этим не подтверждены.
 
 | Область приёмки | macOS arm64 | Linux x64 | Windows x64 |
 | --- | --- | --- | --- |
-| Default format/build/CTest | checked: source609bf25 full322/322271.77s,5128Qt/0fail/66skip; current Cocoa consumers11/11 PASS67.13s,226Qt/0fail/0skip after user confirms unlocked desktop; earlier activation failures retained, cause unproved | checked: source609bf25 whole321/321515.28s,5120Qt/0fail/66skip; focused default/XCB12/12 each PASS, native302Qt/0skip and104 reports. First whole had three Qt startup failures from omitted global offscreen harness default; corrected environment only | checked: source609bf25 native12/12 PASS146.90s,302Qt/0skip/104reports; second whole339/339 executed PASS1817.61s,5360Qt/0fail/21skip, separately disabled VHD fixture. Earlier progress_wait timeout and10 successful isolated repeats retained; cold/stable cause unresolved |
+| Default format/build/CTest | checked: current1f5e16a full323/323271.35s,5143Qt/0fail/66skip; Add native EN/RU regression passes | partial: prior3275293 whole322/322598.13s; current1f5e16a focused8/8 PASS4.72s,128Qt/0fail/0skip; current full pending | partial: prior3275293 V3 whole337/3392525.07s fails process_pause/external_codecs; current1f5e16a focused8/8 PASS46.57s,128Qt/0fail/0skip including native Add; stable whole gate remains open |
 | Исходные модули, headers/resources/callers | partial: [109 source receipts](omitted-scope-audit.md#109-unit-source-receipt-ledger-2026-10-10); identified launcher/continuation gap corrected, whole workflow acceptance open | partial: общий source scope тот же; POSIX no-handle consumers checked | partial: original native launcher and real handle/disk/browser/archive consumers checked; whole acceptance open |
 | EN/RU, normal/compact, команды и workflow | partial: автоматические contracts/regressions проходят; полный нативный обход не принят | partial: current package на реальной консоли, EN/RU/two-panel normal/compact, Options/Copy и create/open/test/extract проверены; полный обход открыт | partial: выполненные focused consumers/JSON; current interactive gate и полный обход не приняты |
 | Нативные dialogs/shortcuts/icons/drag/registration/FS | partial: историческая ручная Finder-проверка принята отдельно; Cocoa keyboard notification protocol0–9 проверен, physical input/full native обход не проверены | partial: delivery8d56d8d Copy/Overwrite/Language/PCManFM drag/Escape; Release2f8e194 GIO workflow проверен; corrected keyboard XTest1/native consumers7/7; full native scope открыт | partial: active console Session1; corrected keyboard consumers7/7,143Qt/0fail/0skip; original Limited reference also suppresses physical RightCtrlShift0, positive1/AltShift0 PASS; current full/native acceptance открыт |
-| Наблюдение текущего приложения через Computer Use | unverified: доступ к Sevenzip Desktop не одобрен | partial: current package/affected views наблюдались через Hyper-V console API; полный rendered audit открыт | unverified: console доступна, полный обход текущего приложения не принят |
+| Наблюдение текущего приложения через Computer Use | manual alternative: пользователь выбрал ручную проверку; Add gutter и Save/Folder EN/RU select/cancel подтверждены для1f5e16a. Прямой Computer Use не разрешён; остальной native scope открыт | partial: current package/affected views наблюдались через Hyper-V console API; полный rendered audit открыт | unverified: console доступна, полный обход текущего приложения не принят |
 | Сверка с отрисованным Windows 7zFM того же pin | partial: current Cocoa Add/Extract2/2 PASS9Qt/12JSON; Windows initial EN/RU reference available, grouping/fit checked; no Mac PNG or full rendered/input acceptance | partial: current XCB Add/Extract2/2 PASS9Qt/12JSON/12PNG; representative normal/compact views inspected against four original initial states; full rendered audit open | partial: four pinned original Add/Extract EN/RU initial views inspected, current Qt2/2 PASS9Qt/12JSON/12PNG; grouping/order/labels/fit match with documented Qt metrics/scroll adaptation, not pixel equality. Earlier System menu20entries/states/icons remains bounded evidence; full audit open |
-| Runtime packages; clean-OS scope исключён пользователем2026-10-15 | checked in bounded delivery scope: source609bf25 Release/relocation15/15, notices/signature,11 Mach-O/127 loads/private ABI; clean OS waived, не проверена | checked in bounded delivery scope: source609bf25 Release/relocation14/14, notices/SFX/ELF/private ABI; physical ZIP/7z file/folder relative Rename/error/Escape4/4 and4exit0. Older Parent/Add/GIO proofs keep their original artifacts; clean OS waived | checked in bounded delivery scope: source609bf25 Release/relocation14/14, five CRT DLLs/notices,26 PE/344 imports and fresh55 system names resolved; clean OS waived |
-| Cold/stable Windows, итоговая трёхплатформенная приёмка | partial: общий gate остаётся открытым | partial: успешный Linux gate не заменяет Windows | partial: Explorer в active console Session1; current whole339/339 и isolated10 repeats PASS, прежний deadline failure не объяснён и cold stability не доказана |
+| Runtime packages; clean-OS scope исключён пользователем2026-10-15 | checked in bounded delivery scope: source1f5e16a Release/relocation15/15, notices/signature,11 Mach-O/127 loads/private ABI and user manual pickers; clean OS waived | checked in bounded delivery scope:1f5e16a Release/relocation14/14, notices/SFX/ELF/private ABI. Prior physical Rename/GIO proofs retain original artifacts; clean OS waived | checked in bounded delivery scope:1f5e16a Release/relocation14/14, five CRT DLLs/notices,26 PE/344 imports/55 trusted system names; clean OS waived |
+| Cold/stable Windows, итоговая трёхплатформенная приёмка | partial: общий gate остаётся открытым | partial: успешный Linux gate не заменяет Windows | partial: latest whole3275293 fails2/339; phase probes reproduce first-run child/native-load delays and pass a second execution; cause/cold stability unresolved, not fixed by retry |
 | GitHub CI | N/A по явному решению пользователя сохранить удаление workflow | N/A по тому же решению | N/A по тому же решению |
 
 Slow suites исключены из default gates по AGENTS.md и не объявляются принятыми.
