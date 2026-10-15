@@ -9,10 +9,52 @@
 #include "qtguimessages.h"
 #include "qtlangbuttonbox.h"
 #include "qtlangcontrols.h"
+#include <QEvent>
+#include <QProxyStyle>
 #include <QScreen>
 #include <QScrollArea>
+#include <QScrollBar>
 #include <QShortcut>
 #include <QStyle>
+
+namespace {
+// Compact Add is a form: its scroll bars need a separate gutter, including
+// when the native style normally flashes an auto-hiding overlay at startup.
+class ArchiveFormScrollStyle final : public QProxyStyle {
+  public:
+    int styleHint(StyleHint hint, const QStyleOption *option, const QWidget *widget,
+                  QStyleHintReturn *data) const override {
+        if (hint == SH_ScrollBar_Transient)
+            return false;
+        return QProxyStyle::styleHint(hint, option, widget, data);
+    }
+    int pixelMetric(PixelMetric metric, const QStyleOption *option,
+                    const QWidget *widget) const override {
+        if (metric == PM_ScrollView_ScrollBarOverlap)
+            return 0;
+        return QProxyStyle::pixelMetric(metric, option, widget);
+    }
+};
+
+class ArchiveFormScrollArea final : public QScrollArea {
+  public:
+    explicit ArchiveFormScrollArea(QWidget *parent) : QScrollArea(parent) {}
+
+  protected:
+    bool eventFilter(QObject *object, QEvent *event) override {
+        const bool result = QScrollArea::eventFilter(object, event);
+        if (object == widget() && event->type() == QEvent::LayoutRequest) {
+            // Native metrics and translated labels can settle after show.
+            // Keep the gutter outside the form even when its minimum grows.
+            setMinimumWidth(widget()->minimumSizeHint().width() +
+                            verticalScrollBar()->sizeHint().width());
+            if (window()->layout())
+                window()->layout()->activate();
+        }
+        return result;
+    }
+};
+} // namespace
 
 CreateArchiveDialog::CreateArchiveDialog(const QString &directory,
                                          const QStringList &initialSources, QWidget *parent,
@@ -28,10 +70,14 @@ CreateArchiveDialog::CreateArchiveDialog(const QString &directory,
     const int horizontalMargin = 8 * units.width() / 4;
     const int verticalMargin = 8 * units.height() / 8;
     layout->setContentsMargins(horizontalMargin, verticalMargin, horizontalMargin, verticalMargin);
-    auto *scroll = new QScrollArea(this);
+    auto *scroll = new ArchiveFormScrollArea(this);
     scroll->setObjectName("archiveOptionsScrollArea");
     scroll->setWidgetResizable(true);
     scroll->setFrameShape(QFrame::NoFrame);
+    auto *scrollStyle = new ArchiveFormScrollStyle;
+    scrollStyle->setParent(scroll);
+    scroll->verticalScrollBar()->setStyle(scrollStyle);
+    scroll->horizontalScrollBar()->setStyle(scrollStyle);
     auto *content = new QWidget(scroll);
     auto *contentLayout = new QVBoxLayout(content);
     contentLayout->setContentsMargins(0, 0, 0, 0);

@@ -2,6 +2,10 @@
 
 Индекс provenance и датированных receipts. Найдите путь, символ или ID в заголовках ниже и откройте нужный раздел. Полные commits, dependencies, copied/adapted/omitted scope и результаты сохранены в тематических файлах. Текущие статусы — в [чеклисте](porting-checklist.md), baseline — в [manifest](upstream-baseline.json). Новые receipts добавлять к своему пакету в этом каталоге и связывать из индекса.
 
+## P3-06 — Add form scroll-bar gutter (2026-10-15)
+
+[Source scope and regression](upstream-port-audit/p3-06-add-scroll-2026-10-15.md).
+
 ## P3-03.9 — Current native Windows external-editor repetitions (2026-10-15)
 
 [Открыть раздел](upstream-port-audit/p3-03-2026-10-15.md#p3-039--current-native-windows-external-editor-repetitions-2026-10-15).

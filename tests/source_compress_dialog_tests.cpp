@@ -25,6 +25,23 @@ class SizeHintFieldsStyle final : public QProxyStyle {
         return QProxyStyle::styleHint(hint, option, widget, data);
     }
 };
+
+class OverlayScrollStyle final : public QProxyStyle {
+  public:
+    OverlayScrollStyle() : QProxyStyle("Fusion") {}
+    int styleHint(StyleHint hint, const QStyleOption *option, const QWidget *widget,
+                  QStyleHintReturn *data) const override {
+        if (hint == SH_ScrollBar_Transient)
+            return true;
+        return QProxyStyle::styleHint(hint, option, widget, data);
+    }
+    int pixelMetric(PixelMetric metric, const QStyleOption *option,
+                    const QWidget *widget) const override {
+        if (metric == PM_ScrollView_ScrollBarOverlap)
+            return pixelMetric(PM_ScrollBarExtent, option, widget);
+        return QProxyStyle::pixelMetric(metric, option, widget);
+    }
+};
 } // namespace
 
 class SourceCompressDialogTests final : public QObject {
@@ -51,6 +68,63 @@ class SourceCompressDialogTests final : public QObject {
                     QTest::newRow(qPrintable(lang + QString::number(size.width()) +
                                              (hints ? "-size-hints" : "")))
                         << lang << size << hints;
+    }
+    void scrollBarKeepsItsOwnSpace_data() {
+        QTest::addColumn<QString>("language");
+        QTest::addColumn<bool>("overlayStyle");
+        for (const QString &language : {QString("-"), QString("ru")})
+            for (bool overlay : {false, true})
+                QTest::newRow(qPrintable(language + (overlay ? "-overlay" : "-native")))
+                    << language << overlay;
+    }
+    void scrollBarKeepsItsOwnSpace() {
+        QFETCH(QString, language);
+        QFETCH(bool, overlayStyle);
+        std::unique_ptr<QStyle> previousStyle;
+        if (overlayStyle) {
+            previousStyle.reset(QApplication::style());
+            previousStyle->setParent(nullptr);
+            QApplication::setStyle(new OverlayScrollStyle);
+        }
+        const auto restoreStyle = qScopeGuard([&] {
+            if (previousStyle)
+                QApplication::setStyle(previousStyle.release());
+        });
+        const QString settings = qEnvironmentVariable("SEVENZIP_SETTINGS_PATH");
+        QFile::remove(settings);
+        SaveRegLang(UString(language.toStdWString().c_str()), settings);
+        ReloadLang(settings);
+        QTemporaryDir fixture;
+        CreateArchiveDialog dialog(fixture.path(), {}, nullptr, _catalog);
+        dialog.resize(640, 480);
+        dialog.show();
+        QCoreApplication::processEvents();
+        auto *scroll = dialog.findChild<QScrollArea *>("archiveOptionsScrollArea");
+        QVERIFY(scroll);
+        auto *bar = scroll->verticalScrollBar();
+        QVERIFY(bar->maximum() > 0);
+        QVERIFY(bar->isVisible());
+        const QRect viewport = UiInspection::bounds(*scroll->viewport(), dialog);
+        QVERIFY2(!viewport.intersects(UiInspection::bounds(*bar, dialog)),
+                 "The Add scroll bar must reserve space outside the form viewport");
+        QVERIFY(!bar->style()->styleHint(QStyle::SH_ScrollBar_Transient, nullptr, bar));
+        QCOMPARE(scroll->horizontalScrollBar()->maximum(), 0);
+        QVERIFY(UiInspection::fullyVisible(*dialog.findChild<QDialogButtonBox *>(), dialog));
+        const QString tag = QString("source-add-scroll-%1-%2")
+                                .arg(language == "ru" ? "ru" : "en")
+                                .arg(overlayStyle ? "overlay" : "native");
+        QVERIFY(UiInspection::writeReport(dialog, tag + "-top"));
+        bar->setValue(bar->maximum());
+        QCoreApplication::processEvents();
+        QCOMPARE(UiInspection::bounds(*scroll->viewport(), dialog), viewport);
+        QVERIFY(UiInspection::fullyVisible(*dialog.findChild<QLineEdit *>("archiveParameters"),
+                                           dialog));
+        QVERIFY(UiInspection::writeReport(dialog, tag + "-bottom"));
+        dialog.resize(900, 1100);
+        QCoreApplication::processEvents();
+        QCOMPARE(bar->maximum(), 0);
+        QVERIFY(!bar->isVisible());
+        QVERIFY(UiInspection::writeReport(dialog, tag + "-expanded"));
     }
     void originalMethodSelection() {
         QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));

@@ -19,6 +19,14 @@ pixels or physical input. [Receipt](../upstream-port-audit.md#p3-05--native-copy
 
 ### Rendered Add/Extract reference (P3-06, 2026-10-15)
 
+Add's compact form reserves a separate gutter for its non-transient scroll bar;
+it must not cover fields or fade while scrolling is required. Native/translated
+minimum widths include that gutter. `source_compress_dialog::scrollBarKeepsItsOwnSpace`
+checks EN/RU native and simulated overlay styles, compact top/bottom states and
+expansion without scrolling. Cocoa640-wide requests may grow to651 for Russian
+labels; the footer stays exposed and Parameters remains reachable.
+[Correction and checks](../upstream-port-audit/p3-06-add-scroll-2026-10-15.md).
+
 Rendered Add/Extract reference is separately available for original EN/RU initial
 states. Its fixed desktop geometry is not a compact resize contract; Qt keeps
 standard platform metrics and exposes compact Add content through scrolling with
