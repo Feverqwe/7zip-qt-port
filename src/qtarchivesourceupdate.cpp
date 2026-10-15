@@ -17,6 +17,7 @@
 #include "archiveprogresstransport.h"
 #include "qtarchivebackendrequest.h"
 #include "qtarchivefileresource.h"
+#include "qtarchivesourcerename.h"
 #include "qtownedtempdir.h"
 #include <QDir>
 #include <QFileInfo>
@@ -307,7 +308,7 @@ HRESULT FindMutationPlan(IInArchive *metadata, UInt32 count, IArchiveUpdateCallb
     if (count > originalCount + 1)
         return E_NOTIMPL;
     QSet<UInt32> kept;
-    QList<QPair<QString, QString>> renamed;
+    QList<SourceRenamedItem> renamed;
     QString created;
     for (UInt32 i = 0; i < count; ++i) {
         Int32 newData, newProps;
@@ -332,7 +333,12 @@ HRESULT FindMutationPlan(IInArchive *metadata, UInt32 count, IArchiveUpdateCallb
             RINOK(ReadNewPath(callback, i, newPath))
             if (oldPath == newPath)
                 return E_NOTIMPL;
-            renamed.append({oldPath, newPath});
+            NWindows::NCOM::CPropVariant directory;
+            RINOK(metadata->GetProperty(index, kpidIsDir, &directory))
+            if (directory.vt != VT_EMPTY && directory.vt != VT_BOOL)
+                return E_NOTIMPL;
+            renamed.append(
+                {oldPath, newPath, directory.vt == VT_BOOL && directory.boolVal != VARIANT_FALSE});
         }
     }
     if (!created.isEmpty()) {
@@ -345,27 +351,8 @@ HRESULT FindMutationPlan(IInArchive *metadata, UInt32 count, IArchiveUpdateCallb
     if (!renamed.isEmpty()) {
         if (count != originalCount || kept.size() != int(originalCount))
             return E_NOTIMPL;
-        const QStringList oldParts = renamed.first().first.split('/');
-        const QStringList newParts = renamed.first().second.split('/');
-        if (oldParts.size() != newParts.size())
-            return E_NOTIMPL;
-        int changed = -1;
-        for (int i = 0; i < oldParts.size(); ++i)
-            if (oldParts[i] != newParts[i]) {
-                if (changed != -1)
-                    return E_NOTIMPL;
-                changed = i;
-            }
-        if (changed < 0)
-            return E_NOTIMPL;
-        const QString oldRoot = oldParts.mid(0, changed + 1).join('/');
-        const QString newRoot = newParts.mid(0, changed + 1).join('/');
-        for (const auto &item : renamed)
-            if (item.first != oldRoot && !item.first.startsWith(oldRoot + '/') ||
-                item.second != newRoot + item.first.mid(oldRoot.size()))
-                return E_NOTIMPL;
+        RINOK(ReadSourceRenamePaths(callback, renamed, plan.Paths))
         plan.Operation = ArchiveBackend::SourceMutation::Rename;
-        plan.Paths = {oldRoot, newRoot};
         return S_OK;
     }
     if (count >= originalCount || kept.size() != int(count))

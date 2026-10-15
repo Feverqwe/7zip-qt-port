@@ -1394,12 +1394,18 @@ class SourceUpdateBackendTests final : public QObject {
         QCOMPARE(readFile(archive), original);
         connect(&backend, &ArchiveBackend::engineStarted, &backend,
                 [&backend] { backend.cancel(); });
-        backend.updateSourceMutation(archive, output, "zip", ArchiveBackend::SourceMutation::Delete,
-                                     {entry}, {});
-        QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 2, 10000);
-        QCOMPARE(backend.lastResult(), E_ABORT);
-        QVERIFY(!QFile::exists(output));
-        QCOMPARE(readFile(archive), original);
+        for (const auto operation :
+             {ArchiveBackend::SourceMutation::Delete, ArchiveBackend::SourceMutation::Rename}) {
+            QStringList paths{entry};
+            if (operation == ArchiveBackend::SourceMutation::Rename)
+                paths << QStringLiteral("nested 空/новое имя.bin");
+            finished.clear();
+            backend.updateSourceMutation(archive, output, "zip", operation, paths, {});
+            QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 10000);
+            QCOMPARE(backend.lastResult(), E_ABORT);
+            QVERIFY(!QFile::exists(output));
+            QCOMPARE(readFile(archive), original);
+        }
     }
     void implicitFolderRenameAndDelete_data() {
         QTest::addColumn<QString>("format");

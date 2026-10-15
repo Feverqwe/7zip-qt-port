@@ -17,6 +17,21 @@ requests; inspect actual visible text/OK bounds, not requested sizes. These
 32 reports/OS have no meaningful clipping and do not prove rendered Windows
 pixels or physical input. [Receipt](../upstream-port-audit.md#p3-05--native-copy-terminal-phases-and-retained-guards-2026-10-10).
 
+### Rename validation error (P3-05, 2026-10-15)
+
+Source OnEndLabelEdit rejects an invalid filesystem name with the shared HRESULT
+error: Critical icon, source7-Zip caption (macOS omits native captions), plain
+formatted E_INVALIDARG and OK. It keeps the original name/selection and peer
+state without loading rows. `panel_rename_state` covers both panes and EN/RU;
+eight `rename-invalid-*` Qt reports check message and OK bounds at requested
+440×220/340×220. macOS backing-widget reports fit400×116. Native Cocoa text/icon
+checks do not use its hidden backing-widget geometry as rendered native proof.
+
+Archive relative Rename retains the current provider and prefix while the source
+reload publishes the new parent row. ZIP/7z file and implicit-folder scenarios
+inspect the table at980×620/640×400 in eight `archive-rename-relative-*` reports.
+Their geometry checks do not establish rendered Windows pixel parity.
+
 ### Parent keyboard focus (P3-05, 2026-10-15)
 
 Parent keeps the keyboard owner while replacing rows: a focused list returns

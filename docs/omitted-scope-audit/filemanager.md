@@ -868,6 +868,16 @@ boundary; it does not close the whole `PanelItems.cpp` module or P3-05.15.
 | Interarchive Copy/Move | Successful destination publication uses pre-update saved state and original RefreshListCtrl on the existing provider. Source CopyTo/CopyFrom own staging/update; accepted Move composes source Delete and backup rollback because native CopyTo(moveMode) is E_NOTIMPL. Delete No/Cancel/error/engine cancellation restores exact destination bytes and then physically reopens with pre-update state. Before backup publication, the caller supplies source CAgent::Close through a narrow CAgentFolder bridge, releasing native read sharing without coupling the standalone backend to Agent. interarchive_refresh covers native ZIP/7z,301-row publication, both views/panes and controlled transport phases. interarchive_recovery adds actual native reopen failure/Cancel to restore failure, filesystem fallback and repaired-destination retry; archive_transfer_backup covers refused close/retry. Current platform evidence is in the dated audit; rendered and whole-platform acceptance remain separate. |
 | Other operation archive reopen | `refreshCurrent` reopens through `ReOpenArchiveFolder`, then renders/restores. Drag and successful filesystem/interarchive destination completion no longer call it. Physical interarchive rollback deliberately retains this reopen. It does not share the synchronous `OnReload` result consumer for every remaining operation renderer call. Remaining source `PanelItemOpen` continuations and native renderer failure require full-consumer reconciliation. Source OnCreate now owns initial and late-panel publication through the service installed with its controls; constructor/toggle no longer publish again. Its original ignored initial Refresh HRESULT policy is retained. |
 
+Rename validation follow-up2026-10-15 restores source OnEndLabelEdit's two
+E_INVALIDARG message calls before returning, and removes the caller's generic
+validation warning. Invalid edits retain the no-reload path and saved selection.
+The archive pre-validation branch is removed as well: source Agent RenameItem
+owns name/path transformation, with its old/new roots carried to the CLI adapter
+and checked by original CRenamePair. This closes the adapter's same-depth
+restriction for source callbacks; backend path-safety and whole native/rendered
+acceptance remain separate boundaries.
+[Source error and native-modal fixture receipt](../upstream-port-audit/p3-03-2026-10-15.md#p3-03p3-05--source-rename-validation-and-cocoa-modal-fixtures-2026-10-15).
+
 Source creation's Qt splitter insertion now follows FM.cpp::MoveSubWindows:
 panel0 left/panel1 right regardless of creation order. This geometry service
 does not change the retained App creation/binding algorithm.

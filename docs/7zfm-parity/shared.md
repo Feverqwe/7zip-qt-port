@@ -2,6 +2,18 @@
 
 [Индекс](../7zfm-parity.md). Scope и свидетельства ниже сохраняют даты и ревизии; они не подтверждают текущий checkout.
 
+### Rename validation error (2026-10-15)
+
+Filesystem label validation now uses original OnEndLabelEdit's shared Critical
+HRESULT message and7-Zip caption, then rejects the edit without a reload. The
+independent generic Qt warning was removed from that caller. Archive labels also
+delegate to source validation and Agent RenameItem; safe relative paths with
+additional parent levels use its original roots through the CLI adapter.
+Backend path safety still refuses parent/absolute archive names. Original-name,
+selection and peer-state restoration remain. Cocoa native message boxes retain
+the existing platform caption omission; native pixels remain unverified.
+[Source/fixture receipt](../upstream-port-audit/p3-03-2026-10-15.md#p3-03p3-05--source-rename-validation-and-cocoa-modal-fixtures-2026-10-15).
+
 ### Parent keyboard focus (2026-10-15)
 
 Original `CPanel::OpenParentFolder` guards notifications/timer processing while

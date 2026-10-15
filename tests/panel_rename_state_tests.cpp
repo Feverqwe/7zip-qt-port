@@ -1,11 +1,14 @@
 #include "CPP/7zip/UI/FileManager/FSFolder.h"
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/Panel.h"
+#include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "filetable.h"
 #include "layout_inspection.h"
 #include "native_link_fixture.h"
 #include "window_state_support.h"
+#include <QEventLoop>
 #include <QFile>
+#include <QLabel>
 #include <QMessageBox>
 #include <QPointer>
 #include <QScopeGuard>
@@ -211,12 +214,35 @@ class PanelRenameStateTests final : public QObject, protected MainWindowTestSupp
                                        QItemSelectionModel::Select | QItemSelectionModel::Rows);
         QCOMPARE(view->selectionModel()->selectedRows().size(), 2);
         bool errorShown = false;
+        QString errorObject, errorText;
+        QMessageBox::Icon errorIcon = QMessageBox::NoIcon;
+        bool errorGeometry = true;
+        QEventLoop errorDelivery;
         QTimer closeError;
         connect(&closeError, &QTimer::timeout, &window, [&] {
             for (QWidget *widget : QApplication::topLevelWidgets())
                 if (auto *box = qobject_cast<QMessageBox *>(widget); box && box->isVisible()) {
                     errorShown = true;
+                    errorObject = box->objectName();
+                    errorText = box->text();
+                    errorIcon = box->icon();
+                    if (invalid && !box->testAttribute(Qt::WA_DontShowOnScreen)) {
+                        for (const QSize size : {QSize(440, 220), QSize(340, 220)}) {
+                            box->resize(size);
+                            QApplication::processEvents();
+                            auto *label = box->findChild<QLabel *>("qt_msgbox_label");
+                            auto *ok = box->button(QMessageBox::Ok);
+                            errorGeometry &= label && ok &&
+                                             UiInspection::fullyVisible(*label, *box) &&
+                                             UiInspection::fullyVisible(*ok, *box);
+                            errorGeometry &=
+                                UiInspection::writeReport(*box, QString("rename-invalid-%1-%2")
+                                                                    .arg(QTest::currentDataTag())
+                                                                    .arg(size.width()));
+                        }
+                    }
                     box->accept();
+                    errorDelivery.quit();
                 }
         });
         closeError.start(2);
@@ -231,8 +257,20 @@ class PanelRenameStateTests final : public QObject, protected MainWindowTestSupp
         };
         editor->setText(renamed);
         QTest::keyClick(editor, Qt::Key_Return);
-        if (collision || invalid)
-            QTRY_VERIFY(errorShown);
+        if (collision || invalid) {
+            // Cocoa native modal callbacks need a real Qt event loop, rather
+            // than QTRY's manual processEvents pump. Keep the same 5s limit.
+            QTimer::singleShot(5000, &errorDelivery, &QEventLoop::quit);
+            if (!errorShown)
+                errorDelivery.exec();
+            QVERIFY(errorShown);
+        }
+        if (invalid) {
+            QCOMPARE(errorObject, QString("panelArchiveError"));
+            QCOMPARE(errorIcon, QMessageBox::Critical);
+            QCOMPARE(errorText, ToQString(HResultToMessage(E_INVALIDARG)));
+            QVERIFY(errorGeometry);
+        }
         QTRY_COMPARE(view->item(view->currentRow(), 0)->data(Qt::UserRole + 3).toString(),
                      collision || invalid ? original : renamed);
         QCOMPARE(view->selectionModel()->selectedRows().size(), 2);

@@ -209,6 +209,8 @@ class NativeParentPublicationTests final : public QObject, protected MainWindowT
         QVERIFY(runtime_.clear());
         bool prompted = false, injected = false, cancelled = false;
         QStringList errors;
+        QPointer<QMessageBox> closingError;
+        QPointer<QPushButton> pendingButton;
         QTimer responder, driver;
         connect(&responder, &QTimer::timeout, &window, [&] {
             if (scenario >= 2 && !injected && !runtime_.writerReceipts().isEmpty()) {
@@ -221,24 +223,44 @@ class NativeParentPublicationTests final : public QObject, protected MainWindowT
                 if (box->objectName() == "modifiedArchiveQuestion") {
                     prompted = true;
                     box->button(answer)->click();
-                } else if (box->objectName() == "progressCancelQuestion")
+                } else if (box->objectName() == "progressCancelQuestion") {
+                    closingError = box;
                     box->button(QMessageBox::Yes)->click();
-                else {
+                } else {
                     errors << box->text();
+                    closingError = box;
                     box->accept();
                 }
             }
         });
         connect(&driver, &QTimer::timeout, &window, [&] {
+            // Cocoa hides the Qt widget before its native modal loop unwinds.
+            // Wait for that error's destruction before driving its parent.
+            if (closingError || pendingButton)
+                return;
             if (auto *progress =
                     dynamic_cast<CProgressDialog *>(QApplication::activeModalWidget())) {
                 auto *button = progress->findChild<QPushButton *>("IDCANCEL");
-                if (button && button->property("languageID").toUInt() == IDS_CLOSE)
-                    button->click();
-                else if (button && injected && written == E_ABORT && !cancelled) {
-                    cancelled = true;
-                    button->click();
-                }
+                const bool close = button && button->property("languageID").toUInt() == IDS_CLOSE;
+                const bool cancel =
+                    !close && button && injected && written == E_ABORT && !cancelled;
+                if (!close && !cancel)
+                    return;
+                pendingButton = button;
+                // A native confirmation must not enter from the timer callback
+                // that also dispatches its responder. Recheck modal ownership
+                // after posting, since a final error may have appeared meanwhile.
+                QTimer::singleShot(0, &driver,
+                                   [&, button = QPointer<QPushButton>(button),
+                                    progress = QPointer<CProgressDialog>(progress), cancel] {
+                                       pendingButton.clear();
+                                       if (!button || !progress || closingError ||
+                                           QApplication::activeModalWidget() != progress)
+                                           return;
+                                       if (cancel)
+                                           cancelled = true;
+                                       button->click();
+                                   });
             }
         });
         if (scenario >= 2)

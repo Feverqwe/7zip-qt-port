@@ -2,6 +2,20 @@
 
 [Индекс](../testing.md). Scope и свидетельства ниже сохраняют даты и ревизии; они не подтверждают текущий checkout.
 
+Native Cocoa deferred Rename errors use a real Qt event loop with the existing
+5s wait. Manual QTest::qWait pumping can strand a native modal callback. Parent
+drivers wait for closing error/Cancel objects to be destroyed, post progress
+button delivery outside the polling callback and recheck modal ownership.
+Source error/Cancel/recovery/byte assertions and CTest deadlines remain intact.
+[Source-error/native fixture receipt](../upstream-port-audit/p3-03-2026-10-15.md#p3-03p3-05--source-rename-validation-and-cocoa-modal-fixtures-2026-10-15).
+
+`archive_rename_window` owns raw editor-name/Escape/source-error behavior and
+ZIP/7z file/implicit-folder relative renames, provider/prefix retention, exact
+payload bytes and parent/absolute rejection. Eight normal/compact reports cover
+relative results; its60s deadline matches panel_name_text's focused source-name
+suite after extraction. `source_update_backend` covers Rename cancellation at
+engineStarted alongside retained Delete cancellation and unsafe-path rejection.
+
 Native Xorg/Openbox fixtures must establish window activation before dispatching
 user commands or reading frame/layout geometry. Five legacy Add/Editor/Rename
 fixtures now assert that public prerequisite, preserving their original geometry,

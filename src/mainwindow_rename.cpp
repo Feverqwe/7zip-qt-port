@@ -1,11 +1,8 @@
 #include "CPP/7zip/UI/FileManager/Panel.h"
 #include "mainwindow.h"
-#include "qtlangcontrols.h"
-#include <QApplication>
 #include <QDir>
 #include <QFileInfo>
 #include <QLineEdit>
-#include <QMessageBox>
 
 namespace {
 // Qt equivalent of rejecting the native LV_DISPINFO edit without a reload.
@@ -71,22 +68,10 @@ void MainWindow::finishFilesystemRename(quint32 sourceIndex, const QString &orig
         return;
     if (!archive && !streams && QFileInfo(originalPath).absolutePath() != directory_ && !flatDisk_)
         return;
-    if (archive && (name.isEmpty() || name == "." || name == ".." || name.contains('/') ||
-                    name.contains('\\'))) {
-        rejectLabelEdit(app_.GetFocusedPanel(), *table_, sourceIndex);
-        refreshActions();
-        QMessageBox::warning(this, QStringLiteral("7-Zip"),
-                             QtLocalText("Invalid file name.", "Недопустимое имя файла."));
-        return;
-    }
-    const HRESULT result = app_.GetFocusedPanel().OnEndLabelEdit(sourceIndex, ToUString(name));
+    app_.GetFocusedPanel().OnEndLabelEdit(sourceIndex, ToUString(name));
     const auto selection = app_.GetFocusedPanel().TakeRefreshSelection();
     if (!selection) {
         // The source validation return rejects the edit without reloading.
-        if (result != S_OK && result != E_ABORT)
-            QMessageBox::warning(
-                this, "Sevenzip Desktop",
-                QtLocalText("Could not rename the item.", "Не удалось переименовать объект."));
         rejectLabelEdit(app_.GetFocusedPanel(), *table_, sourceIndex);
         refreshActions();
         return;

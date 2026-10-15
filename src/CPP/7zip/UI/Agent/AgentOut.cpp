@@ -582,6 +582,9 @@ HRESULT CAgent::RenameItem(ISequentialOutStream *outArchiveStream, const UInt32 
     NArchive::NItemName::NormalizeSlashes_in_FileName_for_OsPath(name);
     const UString oldItemPath = fullPrefix + name;
     const UString newItemPath = fullPrefix + newItemName;
+    updateCallback->SourceRenamePathsDefined = true;
+    updateCallback->SourceRenameOldPath = oldItemPath;
+    updateCallback->SourceRenameNewPath = newItemPath;
     UStringVector newNames;
 
     unsigned curIndex = 0;

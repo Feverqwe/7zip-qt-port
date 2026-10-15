@@ -2,6 +2,10 @@
 
 Индекс provenance и датированных receipts. Найдите путь, символ или ID в заголовках ниже и откройте нужный раздел. Полные commits, dependencies, copied/adapted/omitted scope и результаты сохранены в тематических файлах. Текущие статусы — в [чеклисте](porting-checklist.md), baseline — в [manifest](upstream-baseline.json). Новые receipts добавлять к своему пакету в этом каталоге и связывать из индекса.
 
+## P3-03/P3-05 — Source Rename validation and Cocoa modal fixtures (2026-10-15)
+
+[Открыть раздел](upstream-port-audit/p3-03-2026-10-15.md#p3-03p3-05--source-rename-validation-and-cocoa-modal-fixtures-2026-10-15).
+
 ## P3-03/P3-05 — Parent keyboard owner and deferred publication (2026-10-15)
 
 [Открыть раздел](upstream-port-audit/p3-03-2026-10-15.md#p3-03p3-05--parent-keyboard-owner-and-deferred-publication-2026-10-15).

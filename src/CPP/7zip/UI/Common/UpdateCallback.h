@@ -160,6 +160,11 @@ class CArchiveUpdateCallback Z7_final : public IArchiveUpdateCallback2,
     UString ArcFileName; // without path prefix
 
     const UStringVector *NewNames;
+    // Preserve Agent::RenameItem's authoritative roots for the external-engine
+    // transport; native writers still consume the original UpdatePairs/NewNames.
+    bool SourceRenamePathsDefined = false;
+    UString SourceRenameOldPath;
+    UString SourceRenameNewPath;
     const UString *Comment;
     int CommentIndex;
 
