@@ -107,6 +107,12 @@ class SourceCompressDialogTests final : public QObject {
         const QRect viewport = UiInspection::bounds(*scroll->viewport(), dialog);
         QVERIFY2(!viewport.intersects(UiInspection::bounds(*bar, dialog)),
                  "The Add scroll bar must reserve space outside the form viewport");
+        const QRect barBounds = UiInspection::bounds(*bar, dialog);
+        QCOMPARE(barBounds.right(), dialog.rect().right());
+        auto *rightColumn = dialog.findChild<QWidget *>("archiveEncryptionColumn");
+        QVERIFY(rightColumn);
+        QVERIFY(barBounds.left() - UiInspection::bounds(*rightColumn, dialog).right() - 1 >=
+                UiInspection::bounds(*scroll, dialog).left());
         QVERIFY(!bar->style()->styleHint(QStyle::SH_ScrollBar_Transient, nullptr, bar));
         QCOMPARE(scroll->horizontalScrollBar()->maximum(), 0);
         QVERIFY(UiInspection::fullyVisible(*dialog.findChild<QDialogButtonBox *>(), dialog));

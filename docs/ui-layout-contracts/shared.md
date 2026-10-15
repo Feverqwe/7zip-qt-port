@@ -21,7 +21,9 @@ pixels or physical input. [Receipt](../upstream-port-audit.md#p3-05--native-copy
 
 Add's compact form reserves a separate gutter for its non-transient scroll bar;
 it must not cover fields or fade while scrolling is required. Native/translated
-minimum widths include that gutter. `source_compress_dialog::scrollBarKeepsItsOwnSpace`
+minimum widths include that gutter. The bar reaches the right window edge;
+the source right margin separates it from the form, and footer buttons retain
+their right inset. `source_compress_dialog::scrollBarKeepsItsOwnSpace`
 checks EN/RU native and simulated overlay styles, compact top/bottom states and
 expansion without scrolling. Cocoa640-wide requests may grow to651 for Russian
 labels; the footer stays exposed and Parameters remains reachable.

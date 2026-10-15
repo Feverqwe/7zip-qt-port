@@ -7,7 +7,9 @@
 The Qt compact Add adaptation uses non-transient scroll bars with a separate
 gutter, avoiding native macOS opening flashes over form fields. Its minimum
 width can expand for translated controls plus the gutter; bars disappear when
-content fits. This is a Qt compact-form adaptation of the fixed Windows desktop
+content fits. The source right margin separates the form from the bar at the
+window edge, while the footer retains its inset. This is a Qt compact-form
+adaptation of the fixed Windows desktop
 resource. [Source scope and current checks](../upstream-port-audit/p3-06-add-scroll-2026-10-15.md).
 
 Original pinned Windows7zG EN/RU initial views are now inspected against current

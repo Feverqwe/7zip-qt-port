@@ -69,7 +69,9 @@ CreateArchiveDialog::CreateArchiveDialog(const QString &directory,
     const QSize units = QtDialogScreenServices(this).GetDialogBaseUnits();
     const int horizontalMargin = 8 * units.width() / 4;
     const int verticalMargin = 8 * units.height() / 8;
-    layout->setContentsMargins(horizontalMargin, verticalMargin, horizontalMargin, verticalMargin);
+    // Put the scroll bar at the window edge; the source right margin belongs
+    // between the form controls and that bar, not outside the scroll area.
+    layout->setContentsMargins(horizontalMargin, verticalMargin, 0, verticalMargin);
     auto *scroll = new ArchiveFormScrollArea(this);
     scroll->setObjectName("archiveOptionsScrollArea");
     scroll->setWidgetResizable(true);
@@ -80,7 +82,7 @@ CreateArchiveDialog::CreateArchiveDialog(const QString &directory,
     scroll->horizontalScrollBar()->setStyle(scrollStyle);
     auto *content = new QWidget(scroll);
     auto *contentLayout = new QVBoxLayout(content);
-    contentLayout->setContentsMargins(0, 0, 0, 0);
+    contentLayout->setContentsMargins(0, 0, horizontalMargin, 0);
     m_RegistryInfo.Load(compressionSettingsPath());
     fixedSources_ = sourceDialog != nullptr;
     if (sourceDialog)
@@ -92,6 +94,7 @@ CreateArchiveDialog::CreateArchiveDialog(const QString &directory,
     scroll->setWidget(content);
     layout->addWidget(scroll);
     createFooter(layout);
+    buttons_->setContentsMargins(0, 0, horizontalMargin, 0);
     // Cocoa layout-item margins can extend a combo or group frame past its
     // allocated column/scroll area. Keep the complete source controls exposed.
     for (auto *combo : findChildren<QComboBox *>())
