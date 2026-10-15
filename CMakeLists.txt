@@ -276,6 +276,7 @@ add_library(sevenzip_panel STATIC src/CPP/7zip/UI/FileManager/App.cpp
     src/CPP/7zip/UI/FileManager/UpdateCallback100.cpp src/CPP/7zip/UI/FileManager/UpdateCallback100.h
     src/qtcallbackpassword.cpp src/qtcallbackpassword.h
     src/qtprogresscontrols.cpp src/qtprogresscontrols.h
+    src/qtdialogunits.cpp src/qtdialogunits.h
     src/qtpanellist.cpp src/qtpanellist.h
     src/qtpanelfolder.cpp src/qtpanelfolderraw.cpp src/qtpanelfolder.h
     src/CPP/7zip/UI/FileManager/App.h src/CPP/7zip/UI/FileManager/Panel.cpp
@@ -990,6 +991,12 @@ if(BUILD_TESTING)
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/benchmark_lifecycle.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     set_tests_properties(hash_results PROPERTIES ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports" TIMEOUT 30)
+    qt_add_executable(overwrite_layout_tests tests/overwrite_layout_tests.cpp tests/layout_inspection.cpp)
+    target_include_directories(overwrite_layout_tests PRIVATE tests)
+    target_link_libraries(overwrite_layout_tests PRIVATE sevenzip_panel Qt6::Test)
+    add_test(NAME overwrite_layout COMMAND overwrite_layout_tests -silent)
+    set_tests_properties(overwrite_layout PROPERTIES TIMEOUT 30 ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     qt_add_executable(extract_prompt_tests tests/extract_prompt_tests.cpp tests/layout_inspection.cpp)
     qt_add_executable(language_dialog_tests tests/language_dialog_tests.cpp tests/layout_inspection.cpp
         tests/fixtures/split_dialog_prompt.cpp
@@ -3386,7 +3393,7 @@ if(BUILD_TESTING AND WIN32)
             large_list_window worker_window_progress panel_sort_commands panel_refresh_drop panel_refresh_completion panel_rename_state navigation_reload panel_deleted_draw panel_column_menu panel_column_initialization panel_column_schema panel_column_sort panel_column_changes panel_cell_text native_column_workflow panel_item_changed
             archive_reload_command drag_reload_completion panel_creation_path copy_archive_refresh interarchive_recovery panel_load_count panel_activation progress_dialog progress_worker progress_cancel progress_priority archive_progress volume_dialog language_dialog language_standard_buttons fm_settings list_settings_runtime
             language_main_dialog language_focus properties_runtime
-            archive_item_open archive_external_edit external_editors_ui language_archive_command
+            archive_item_open archive_external_edit external_editors_ui language_archive_command overwrite_layout
             alt_streams_command alt_streams_archive_ui fs_provider_command native_archive_ads_copy view_menu)
         get_property(sevenzip_native_ui_environment TEST ${sevenzip_native_ui_test}
             PROPERTY ENVIRONMENT)

@@ -7,6 +7,7 @@
 #include "FormatUtils.h"
 #include "LangUtils.h"
 #include "Windows/PropVariantConv.h"
+#include "qtdialogunits.h"
 #include "qtlangcontrols.h"
 #include <QEvent>
 #include <QFileIconProvider>
@@ -114,7 +115,8 @@ void COverwriteDialog::SetFileInfoControl(const NOverwriteDialog::CFileInfo &fil
 void COverwriteDialog::BuildPresentation() {
     setObjectName("overwriteDialog");
     QtBindResourceText(this, IDD_OVERWRITE, "Confirm File Replace");
-    resize(700, 440);
+    // OverwriteDialog.rc: xc=340, yc=200; GuiCommon.rc adds m=8 on each side.
+    resize(QtDialogUnits(font()).pixels(QSize(356, 216)));
     auto *layout = new QVBoxLayout(this);
     const auto label = [&](unsigned id, const char *name, const QString &text) {
         auto *control = new QLabel(text, this);
@@ -141,7 +143,9 @@ void COverwriteDialog::BuildPresentation() {
         icons->addWidget(second);
         icons->addStretch();
         row->addLayout(icons);
-        row->addWidget(label(textID, name, {}), 1);
+        auto *details = label(textID, name, {});
+        details->setAlignment(Qt::AlignLeft | Qt::AlignTop);
+        row->addWidget(details, 1);
         layout->addLayout(row);
     };
     fileRow(IDT_OVERWRITE_OLD_FILE_SIZE_TIME, IDI_OVERWRITE_OLD_FILE, IDI_OVERWRITE_OLD_FILE_2,
@@ -150,7 +154,8 @@ void COverwriteDialog::BuildPresentation() {
     fileRow(IDT_OVERWRITE_NEW_FILE_SIZE_TIME, IDI_OVERWRITE_NEW_FILE, IDI_OVERWRITE_NEW_FILE_2,
             "overwriteNewFile");
     layout->addStretch();
-    auto *buttons = new QGridLayout;
+    _buttons = new QGridLayout;
+    _buttons->setHorizontalSpacing(0);
     struct Button {
         unsigned Id;
         const char *Name;
@@ -172,11 +177,41 @@ void COverwriteDialog::BuildPresentation() {
                                                       : spec.Id;
         QtBindResourceText(button, langID, QString::fromUtf8(spec.Text));
         _controls.insert(spec.Id, button);
-        buttons->addWidget(button, spec.Row, spec.Column);
+        _buttons->addWidget(button, spec.Row, spec.Column * 2,
+                            spec.Id == IDCANCEL ? Qt::AlignRight : Qt::Alignment{});
         connect(button, &QPushButton::clicked, this,
                 [this, id = spec.Id, button] { OnButtonClicked(id, button); });
     }
-    layout->addLayout(buttons);
+    auto *footer = new QHBoxLayout;
+    footer->addStretch();
+    footer->addLayout(_buttons);
+    footer->setAlignment(_buttons, Qt::AlignRight);
+    layout->addLayout(footer);
+}
+
+void COverwriteDialog::UpdateButtonSizes() {
+    if (!_buttons || !_controls.contains(IDCANCEL))
+        return;
+    // GuiCommon.rc uses bxs=64 and m=8 for the five standard buttons, while
+    // OverwriteDialog.rc uses bSizeBig=104 for Auto Rename. Preserve their
+    // proportions with native Qt size hints, including translated labels.
+    const unsigned standard[] = {IDYES, IDNO, IDB_YES_TO_ALL, IDB_NO_TO_ALL, IDCANCEL};
+    int width = 0;
+    for (unsigned id : standard)
+        width = qMax(width, static_cast<QPushButton *>(_controls.value(id))->sizeHint().width());
+    for (unsigned id : standard)
+        _controls.value(id)->setFixedWidth(width);
+    auto *rename = static_cast<QPushButton *>(_controls.value(IDB_AUTO_RENAME));
+    const int renameWidth = qMax(rename->sizeHint().width(), (width * 104 + 63) / 64);
+    rename->setFixedWidth(renameWidth);
+    // Native HideItem does not move the remaining Yes/No/Cancel controls.
+    // Explicit gap columns avoid QGridLayout dropping spacing at hidden cells.
+    const int gap = (width * 8 + 63) / 64;
+    _buttons->setColumnMinimumWidth(0, width);
+    _buttons->setColumnMinimumWidth(1, gap);
+    _buttons->setColumnMinimumWidth(2, width);
+    _buttons->setColumnMinimumWidth(3, gap);
+    _buttons->setColumnMinimumWidth(4, renameWidth);
 }
 
 void COverwriteDialog::SetItemText(unsigned id, const UString &text) {
@@ -190,6 +225,7 @@ bool COverwriteDialog::OnInit() {
                        IDI_OVERWRITE_OLD_FILE_2);
     SetFileInfoControl(NewFileInfo, IDT_OVERWRITE_NEW_FILE_SIZE_TIME, IDI_OVERWRITE_NEW_FILE,
                        IDI_OVERWRITE_NEW_FILE_2);
+    UpdateButtonSizes();
     if (!ShowExtraButtons) {
         _controls.value(IDB_YES_TO_ALL)->hide();
         _controls.value(IDB_NO_TO_ALL)->hide();
@@ -232,6 +268,9 @@ void COverwriteDialog::changeEvent(QEvent *event) {
         SetFileInfoControl(NewFileInfo, IDT_OVERWRITE_NEW_FILE_SIZE_TIME, IDI_OVERWRITE_NEW_FILE,
                            IDI_OVERWRITE_NEW_FILE_2);
     }
+    if (event->type() == QEvent::LanguageChange || event->type() == QEvent::FontChange ||
+        event->type() == QEvent::StyleChange)
+        UpdateButtonSizes();
     QDialog::changeEvent(event);
 }
 

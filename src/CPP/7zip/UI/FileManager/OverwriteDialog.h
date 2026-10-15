@@ -8,6 +8,8 @@
 #include <QDialog>
 #include <QHash>
 
+class QGridLayout;
+
 namespace NOverwriteDialog {
 int MapButtonResult(INT_PTR button);
 struct CFileInfo {
@@ -46,12 +48,14 @@ struct CFileInfo {
 
 class COverwriteDialog final : public QDialog {
     QHash<unsigned, QWidget *> _controls;
+    QGridLayout *_buttons = nullptr;
     void SetFileInfoControl(const NOverwriteDialog::CFileInfo &info, unsigned textID,
                             unsigned iconID, unsigned iconID_2);
     void SetItemText(unsigned id, const UString &text);
     void ReduceString(UString &text);
     bool OnButtonClicked(unsigned buttonID, QWidget *button);
     void BuildPresentation();
+    void UpdateButtonSizes();
     void changeEvent(QEvent *event) override;
 
   public:

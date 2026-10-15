@@ -1410,6 +1410,18 @@ Overwrite order is destination notice, question start, old file icon/details,
 question end, new file icon/details, then two rows of Yes/Yes to all/Auto rename
 and No/No to all/Cancel. Source ReduceString, byte size and timestamp formatting
 remain native. No is the default when requested; extra actions hide together.
+The footer is a compact block aligned right. Five standard buttons have equal
+native-text widths; Auto Rename uses the source 104/64 width proportion, enlarged
+if its translated text requires it. Cancel has a standard width and aligns with
+Auto Rename's right edge. Hidden extra buttons retain their resource columns and
+gaps, so Yes/No/Cancel do not move. File details start beside the top of each icon.
+`overwrite_layout` covers EN/RU, normal/compact widths, extra-action visibility
+and the public hide transition. Its initial-frame case checks growth between
+8pt and 12pt fonts: the source 356×216 dialog-unit frame maps through
+`QtDialogUnits` and may expand to Qt's minimum size. Responsive Qt layouts and
+native font metrics are deliberate adaptations of the fixed Win32 dialog;
+they do not imply identical pixel dimensions. Rendered reference evidence is
+recorded in the [P3-06 audit](../upstream-port-audit/p3-06-2026-10-15.md).
 Qt supplies one file icon; the optional second Windows EXE/ICO icon is omitted
 explicitly in the contract. Widths must fit labels and footer buttons without
 clipping. Default and native result IDs are checked behaviorally.

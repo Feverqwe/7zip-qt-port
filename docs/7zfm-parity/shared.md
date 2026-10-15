@@ -605,6 +605,12 @@ Compress extraction также содержит IDD_COMPRESS_OPTIONS; этот �
 | Информация об архиве / F3/F4 | Archive Info остаётся отдельной QLabel-формой. Disk/archive F3/F4 используют source внешний viewer/editor; ограниченный UTF-8 диалог оставлен отдельной дополнительной командой. Archive known/child-process lifetime и changed-file update подключены в P1-08.2. |
 
 Copy и Password проверяются ресурсными контрактами с current-build fixture.
+Текущая коррекция Overwrite восстанавливает компактный footer справа, короткий
+Cancel под Auto Rename, верхнее выравнивание file details и font-relative
+начальный размер. Qt сохраняет адаптацию native metrics/minimum sizes и
+responsive layout; скрытие extra actions не сдвигает Yes/No/Cancel.
+Исходные шесть решений и default No сохранены. Rendered Windows reference и
+точный проверенный scope — в [receipt P3-06](../upstream-port-audit/p3-06-2026-10-15.md).
 После исправлений `./scripts/check.sh` прошёл на macOS: formatting, сборка
 приложения и все 51 CTest. Свежая extraction Copy полностью совпала с сохранённым
 reference; оба resource comparator завершились без ошибок, по четыре отчёта.

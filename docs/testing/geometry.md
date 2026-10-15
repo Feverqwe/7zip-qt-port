@@ -278,6 +278,14 @@ Focused CTest `compression_preferences` проверяет независимы�
 compression-наборы также получили отдельные SEVENZIP_SETTINGS_PATH,
 чтобы не читать и не менять настоящие пользовательские настройки.
 
+Focused CTest `overwrite_layout` checks the source replacement prompt's compact
+right footer, equal standard button widths, wider Auto Rename, right-aligned
+Cancel and top-aligned file details in EN/RU at 700/560 pixels. Showing then
+hiding extra actions through public `OnInit` must preserve the remaining button
+rectangles. A separate 8pt/12pt case checks initial-frame font scaling. These
+small deterministic cases emit widget JSON and use disposable metadata/settings;
+`extract_prompt` remains the consumer of result IDs and source decisions.
+
 Focused CTest `extract_dialog` проверяет исходный порядок overwrite,
 OnOK через кнопку и accept(), восстановление режимов/видимости без сохранения
 пароля, Cancel, cap истории 16, выбранный и введённый пути, Unicode/пробелы,

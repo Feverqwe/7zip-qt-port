@@ -44,6 +44,12 @@ transition is delivered before command re-enablement so a late final prompt
 cannot interrupt the next operation.
 Original GetTimeString is the native duration formatter for that presentation;
 source progress/update resource tables use the same generated resource owner.
+`QtDialogUnits` owns the native-font conversion used by Progress, Messages and
+Overwrite presentation. It extracts the existing Progress/Messages alphabet-width
+and rounded line-height mapping; original formatting, operation state and resize
+handlers retain their owners. Win32 `CDialog::MapRect` requires a dialog HWND and
+cannot supply this Qt font service. Overwrite maps its resource initial frame
+through this adapter, allowing Qt minimum sizes to accommodate native controls.
 POSIX parent-link transfer/copy guard uses the original Windows method bodies;
 there is one adapted DLL owner. This is a parent-stack lifetime dependency, not
 in-process archive engine integration. Module-path/resource services remain

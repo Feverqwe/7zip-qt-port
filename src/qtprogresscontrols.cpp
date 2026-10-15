@@ -2,10 +2,10 @@
 #include "7zip/UI/FileManager/ProgressDialog2Res.h"
 #include "7zip/UI/FileManager/resourceGui.h"
 #include "CPP/7zip/UI/FileManager/ViewSettings.h"
+#include "qtdialogunits.h"
 #include "qtlistview.h"
 #include <QApplication>
 #include <QClipboard>
-#include <QFontMetricsF>
 #include <QLabel>
 #include <QMessageBox>
 #include <QProgressBar>
@@ -59,14 +59,9 @@ void CQtProgressDialog::AddControl(unsigned id, const char *name, QWidget *widge
 
 CQtProgressDialog::CQtProgressDialog(QWidget *parent) : QDialog(parent) {
     setObjectName("progressDialog");
-    const QFontMetricsF metrics(font());
-    // Win32 dialog units: average character width / 4 and font height / 8.
-    _unitX = metrics.horizontalAdvance(
-                 QStringLiteral("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz")) /
-             52 / 4;
-    // QLabel rounds its line height upward; fractional font metrics must not
-    // produce a control one pixel shorter than its rendered text.
-    _unitY = std::ceil(metrics.height()) / 8;
+    const QtDialogUnits units(font());
+    _unitX = units.horizontalScale();
+    _unitY = units.verticalScale();
     _clock.start();
     auto addLabel = [this](unsigned id, const char *name, const QString &text, int x, int y,
                            int width, int height, bool right) {

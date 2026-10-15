@@ -5,10 +5,10 @@
 #include "Common/IntToString.h"
 #include "LangUtils.h"
 #include "MessagesDialogRes.h"
+#include "qtdialogunits.h"
 #include "qtlangcontrols.h"
 #include "qtlistview.h"
 #include <QEvent>
-#include <QFontMetricsF>
 #include <QPushButton>
 #include <QResizeEvent>
 #include <cmath>
@@ -64,11 +64,9 @@ bool CMessagesDialog::OnSize(int xSize, int ySize) {
 CMessagesDialog::CMessagesDialog(QWidget *parent) : QDialog(parent) {
     setObjectName("operationMessagesDialog");
     QtBindResourceText(this, IDD_MESSAGES, "7-Zip: Diagnostic messages");
-    const QFontMetricsF metrics(font());
-    _unitX = metrics.horizontalAdvance(
-                 QStringLiteral("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz")) /
-             52 / 4;
-    _unitY = std::ceil(metrics.height()) / 8;
+    const QtDialogUnits units(font());
+    _unitX = units.horizontalScale();
+    _unitY = units.verticalScale();
     _list = new CListView(this);
     _list->setObjectName("IDL_MESSAGE");
     _list->setColumnCount(2);

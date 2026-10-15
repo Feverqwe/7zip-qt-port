@@ -8,6 +8,10 @@ Checked означает только названную
 Clean-OS проверки Windows/macOS/Linux исключены из текущей приёмки по явному
 решению пользователя2026-10-15. Это waiver, а не свидетельство прохождения;
 package/relocation/native/rendered требования остаются в scope.
+Текущая Overwrite/font-DLU коррекция проверяется как отдельный компонент:
+[rendered reference, регрессии и gates](upstream-port-audit/p3-06-2026-10-15.md).
+Приведённые ниже packages609bf25 предшествуют этой продуктовой коррекции;
+для поставки текущего варианта требуется обновление всех трёх пакетов.
 [Текущий launcher, логи, входы и ограничения](upstream-port-audit.md#p3-05--native-associated-launcher-and-process-lifetime-2026-10-10);
 [текущий полный Linux gate и версии](upstream-port-audit.md#p3-03--full-linux-gate-after-launcher-restoration-2026-10-10).
 

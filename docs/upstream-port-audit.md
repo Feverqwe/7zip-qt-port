@@ -143,6 +143,10 @@ records the bounded Windows reference and three-OS geometry follow-up.
 
 [Открыть раздел](upstream-port-audit/p3-05-2026-10-10.md#p3-05--input-dialog-source-and-split-error-policy-2026-10-10).
 
+## P3-06 — Rendered Copy/Overwrite/Progress and font adaptation (2026-10-15)
+
+[Открыть раздел](upstream-port-audit/p3-06-2026-10-15.md).
+
 ## P3-05 — ProgressDialog2 source and message policy (2026-10-10)
 
 [Открыть раздел](upstream-port-audit/p3-05-2026-10-10.md#p3-05--progressdialog2-source-and-message-policy-2026-10-10).
