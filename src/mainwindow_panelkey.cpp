@@ -1,5 +1,6 @@
 #include "7zip/UI/FileManager/resource.h"
 #include "mainwindow.h"
+#include "qtnativepanelkeys.h"
 #include "qtpaneladdresscombo.h"
 #include "qtpanelkey.h"
 #ifdef Q_OS_WIN
@@ -14,8 +15,10 @@ void MainWindow::updatePanelModifier(const QKeyEvent &key) {
 #ifdef Q_OS_MACOS
     const bool right = key.nativeVirtualKey() == 0x36; // kVK_RightCommand
 #elif defined(Q_OS_WIN)
-    const bool right = key.nativeVirtualKey() == VK_RCONTROL ||
-                       (key.nativeVirtualKey() == VK_CONTROL && (key.nativeScanCode() & 0x100));
+    // Windows QPA prefixes extended scan codes with 0xE000.
+    const bool right =
+        key.nativeVirtualKey() == VK_RCONTROL ||
+        (key.nativeVirtualKey() == VK_CONTROL && (key.nativeScanCode() & 0xff00) == 0xe000);
 #else
     const bool right = key.nativeVirtualKey() == 0xffe4; // XKB_KEY_Control_R
 #endif
@@ -27,10 +30,13 @@ bool MainWindow::overridePanelKey(const QKeyEvent &key) const {
     const auto mods = key.modifiers();
     if (mods.testFlag(Qt::MetaModifier))
         return false;
-    const int k = key.key();
+    const int k = QtPanelVirtualKey(key);
     const bool ctrl = mods.testFlag(Qt::ControlModifier);
     const bool alt = mods.testFlag(Qt::AltModifier);
     const bool shift = mods.testFlag(Qt::ShiftModifier);
+    // Native keypad keys must reach the list without becoming row-digit actions.
+    if (mods.testFlag(Qt::KeypadModifier) && (ctrl || alt))
+        return true;
     // Only list shortcuts conflicting with QAction/Qt defaults need claiming.
     // CPanel::OnKeyDown remains the dispatcher; text editors keep their keys.
     if (k == Qt::Key_Return || k == Qt::Key_Enter || k == Qt::Key_Backspace ||
@@ -95,8 +101,9 @@ bool MainWindow::handlePanelListKey(QKeyEvent *key) {
     if (!panel.ShouldProcessNotifications())
         return true;
     const auto mods = key->modifiers();
+    const int virtualKey = QtPanelVirtualKey(*key);
     if (!mods.testFlag(Qt::MetaModifier) &&
-        panel.OnListViewKeyDown({key->key(), mods.testFlag(Qt::AltModifier),
+        panel.OnListViewKeyDown({virtualKey, mods.testFlag(Qt::AltModifier),
                                  mods.testFlag(Qt::ControlModifier), false,
                                  mods.testFlag(Qt::ShiftModifier)},
                                 app_))
@@ -123,14 +130,16 @@ bool MainWindow::handlePanelListKey(QKeyEvent *key) {
         return true;
     }
     if ((!mods.testFlag(Qt::KeypadModifier) || mods.testFlag(Qt::MetaModifier)) &&
-        (key->key() == Qt::Key_Plus || key->key() == Qt::Key_Minus ||
-         key->key() == Qt::Key_Asterisk))
+        (virtualKey == Qt::Key_Plus || virtualKey == Qt::Key_Minus ||
+         virtualKey == Qt::Key_Asterisk))
         return false;
     bool rightCtrl = rightControlPressed_ && mods.testFlag(Qt::ControlModifier);
 #ifdef Q_OS_WIN
-    rightCtrl = mods.testFlag(Qt::ControlModifier) && (::GetKeyState(VK_RCONTROL) & 0x8000);
+    // Qt queues notifications; GetKeyState can already reflect a later key-up.
+    rightCtrl = mods.testFlag(Qt::ControlModifier) &&
+                (rightControlPressed_ || (::GetKeyState(VK_RCONTROL) & 0x8000));
 #endif
-    const bool handled = panel.OnKeyDown({key->key(), mods.testFlag(Qt::AltModifier),
+    const bool handled = panel.OnKeyDown({virtualKey, mods.testFlag(Qt::AltModifier),
                                           mods.testFlag(Qt::ControlModifier), rightCtrl,
                                           mods.testFlag(Qt::ShiftModifier)},
                                          app_);

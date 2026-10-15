@@ -1,5 +1,15 @@
 # Development toolchain
 
+The native panel keyboard adapter requires the private development headers of
+the selected Qt GUI SDK (`Qt6::GuiPrivate`). Install those headers with the same
+Qt build as Core/Gui/Widgets; on distribution SDKs this can be a separate private
+development package. `qtnativepanelkeys.cpp` uses Qt's native keyboard-layout
+mapping instead of maintaining another platform key map. This private API has
+no ABI compatibility guarantee: build and deploy against the same Qt module
+build, and rebuild the application when changing it. CMake retains Qt's warning
+and rejects a missing matching private SDK. Bundled packages must carry that
+same Qt runtime; this adds no separate runtime module.
+
 Native console SFX can be built from the recorded official baseline with
 `./scripts/build-sfx.sh [upstream-checkout] [artifact-directory]` on macOS/Linux.
 Defaults are the read-only sibling checkout and `build/sfx`. The script extracts

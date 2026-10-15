@@ -362,6 +362,14 @@ single focused Qt row. `PanelSelect.cpp` owns Ctrl/Shift mouse ranges,
 Shift-arrow and Insert; source `PanelKey.cpp::CPanel::OnKeyDown` owns list keys.
 `mainwindow_panelkey.cpp` decodes Qt/native modifiers, claims conflicting
 shortcuts and adapts posted Shift-selection timing to its owning panel.
+`qtnativepanelkeys.cpp` is the narrow Qt GUI private-API boundary for native
+digit decoding. Windows virtual digits survive shifted symbols; other native
+QPA plugins resolve candidates through their existing keyboard-layout mapper.
+Keypad digits retain their separate upstream meaning. Ordered right-Control
+notifications preserve modifier state when Qt dispatch follows native key-up;
+Windows extended scan codes use Qt's `0xE000` prefix. Source `OnKeyDown` keeps
+bookmark priority over view-mode actions. See the matching SDK/runtime
+requirement in [development](development.md).
 The window's clicked signals supply mouse notifications.
 `QtPanelList` paints marks through the shared model, so table
 and icon views show the same state. Source operated indices drive commands

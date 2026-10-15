@@ -193,6 +193,18 @@ target_compile_definitions(sevenzip_name_sort PRIVATE SEVENZIP_NAME_SORT_ONLY)
 target_include_directories(sevenzip_name_sort PUBLIC src)
 target_link_libraries(sevenzip_name_sort PUBLIC Qt6::Core sevenzip_common)
 
+if(NOT TARGET Qt6::GuiPrivate)
+    find_package(Qt6GuiPrivate ${Qt6Gui_VERSION} EXACT QUIET CONFIG
+        HINTS "${Qt6Gui_DIR}/../Qt6GuiPrivate")
+endif()
+if(NOT TARGET Qt6::GuiPrivate)
+    message(FATAL_ERROR "Qt GUI private development headers are required for native keyboard decoding")
+endif()
+add_library(sevenzip_native_keys STATIC src/qtnativepanelkeys.cpp src/qtnativepanelkeys.h)
+target_include_directories(sevenzip_native_keys PUBLIC src)
+target_link_libraries(sevenzip_native_keys PRIVATE Qt6::GuiPrivate)
+set_target_properties(sevenzip_native_keys PROPERTIES AUTOMOC OFF AUTOUIC OFF)
+
 add_library(sevenzip_panel STATIC src/CPP/7zip/UI/FileManager/App.cpp
     src/qtmemorylockservices.cpp src/qtmemorylockservices.h
     src/CPP/7zip/UI/FileManager/PanelCrc.cpp
@@ -316,7 +328,8 @@ qt_add_resources(sevenzip_panel upstream_shell_icons
     FILES third_party/7zip/CPP/7zip/UI/Explorer/MenuLogo.bmp)
 target_include_directories(sevenzip_panel PUBLIC src)
 target_include_directories(sevenzip_panel PRIVATE "${CMAKE_CURRENT_BINARY_DIR}")
-target_link_libraries(sevenzip_panel PUBLIC Qt6::Widgets sevenzip_common sevenzip_system_icons)
+target_link_libraries(sevenzip_panel PUBLIC Qt6::Widgets sevenzip_common sevenzip_system_icons
+    sevenzip_native_keys)
 target_sources(sevenzip_panel PRIVATE src/CPP/7zip/UI/Explorer/MyMessages.cpp src/qtguimessages.h)
 if(WIN32)
     target_sources(sevenzip_panel PRIVATE

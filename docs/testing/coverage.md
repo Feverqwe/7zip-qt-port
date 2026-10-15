@@ -367,6 +367,15 @@ with the latter displaying the source error report. The test closes only a
 completed progress report and inspects its public message tree. This is Qt input
 protocol evidence; native physical keyboard/rendered acceptance remains separate.
 
+`panel_key_source` retains the Windows SendInput right-Control bookmark case
+and adds physical digits8/9. Native QPA notification rows cover shifted and
+unshifted digits0–9 using recorded US-layout Windows/Cocoa/XCB metadata,
+ShortcutOverride admission, bookmark persistence/navigation, left-Control view
+mode and keypad exclusion. Native layout rows explicitly require windows,
+cocoa or xcb; offscreen cannot verify that mapper. Native notification rows
+are not physical Cocoa/X11 input. The bounded real XTest and Windows digit0
+transport diagnosis are recorded in the [native keyboard receipt](../upstream-port-audit/p3-03-2026-10-15.md#p3-03p3-06--native-panel-digit-and-right-control-transport-2026-10-15).
+
 `native_drop_publication` exercises eight actual bound-archive Drop cases using
 the existing private native writer fixture: successful updates and four later
 attribute publication results, Write failure, actual progress Cancel and both

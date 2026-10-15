@@ -12,12 +12,14 @@
 class PanelKeySourceTests final : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
 
-    static bool rightControlDigit(QWidget *view, bool shift) {
+    static bool rightControlDigit(QWidget *view, bool shift, int digit) {
 #ifdef Q_OS_WIN
-        // Exercise actual GetKeyState in the Windows adapter, with all keys
-        // released by the same SendInput batch on the owned active test window.
+        // Exercise native virtual digits and right-Control delivery, with all
+        // keys released by one SendInput batch on the owned active test window.
         INPUT keys[6] = {};
-        const WORD codes[] = {VK_RCONTROL, VK_SHIFT, '1', '1', VK_SHIFT, VK_RCONTROL};
+        const WORD codes[] = {
+            VK_RCONTROL, VK_SHIFT,   static_cast<WORD>(digit), static_cast<WORD>(digit),
+            VK_SHIFT,    VK_RCONTROL};
         int count = 0;
         for (int i = 0; i < 6; ++i) {
             if (!shift && codes[i] == VK_SHIFT)
@@ -33,7 +35,7 @@ class PanelKeySourceTests final : public QObject, protected MainWindowTestSuppor
         const bool sent = SendInput(UINT(count), keys, sizeof(INPUT)) == UINT(count);
         if (!sent) {
             INPUT release[3] = {};
-            const WORD codesToRelease[] = {'1', VK_SHIFT, VK_RCONTROL};
+            const WORD codesToRelease[] = {static_cast<WORD>(digit), VK_SHIFT, VK_RCONTROL};
             for (int i = 0; i < 3; ++i) {
                 release[i].type = INPUT_KEYBOARD;
                 release[i].ki.wVk = codesToRelease[i];
@@ -55,12 +57,48 @@ class PanelKeySourceTests final : public QObject, protected MainWindowTestSuppor
         QKeyEvent down(QEvent::KeyPress, Qt::Key_Control, Qt::ControlModifier, 0,
                        nativeRightControl, 0);
         QApplication::sendEvent(view, &down);
-        QTest::keyClick(view, Qt::Key_1,
+        QTest::keyClick(view, static_cast<Qt::Key>(digit),
                         shift ? Qt::ControlModifier | Qt::ShiftModifier : Qt::ControlModifier);
         QKeyEvent up(QEvent::KeyRelease, Qt::Key_Control, Qt::NoModifier, 0, nativeRightControl, 0);
         QApplication::sendEvent(view, &up);
         return true;
 #endif
+    }
+
+    static bool nativeDigitNotification(QWidget *view, bool shift, int digit) {
+        const int index = digit - Qt::Key_0;
+        const int logical = shift ? QStringLiteral(")!@#$%^&*(").at(index).unicode() : digit;
+        const auto modifiers =
+            shift ? Qt::ControlModifier | Qt::ShiftModifier : Qt::ControlModifier;
+#ifdef Q_OS_WIN
+        const quint32 controlScan = 0xe000, controlKey = VK_CONTROL;
+        const quint32 scan = 0, nativeKey = digit, nativeModifiers = shift ? 0x21 : 0x20;
+#elif defined(Q_OS_MACOS)
+        const quint32 controlScan = 0, controlKey = 0x36;
+        constexpr quint32 codes[] = {0x1d, 0x12, 0x13, 0x14, 0x15, 0x17, 0x16, 0x1a, 0x1c, 0x19};
+        const quint32 scan = 0, nativeKey = codes[index];
+        const quint32 nativeModifiers = (1u << 20) | (shift ? 1u << 17 : 0);
+#else
+        const quint32 controlScan = 105, controlKey = 0xffe4;
+        const quint32 scan = index ? index + 9 : 19, nativeKey = logical;
+        const quint32 nativeModifiers = shift ? 5 : 4;
+#endif
+        // Recorded US-layout native notification protocol, not OS input injection.
+        QKeyEvent controlDown(QEvent::KeyPress, Qt::Key_Control, Qt::ControlModifier, controlScan,
+                              controlKey, 0);
+        QApplication::sendEvent(view, &controlDown);
+        QKeyEvent override(QEvent::ShortcutOverride, logical, modifiers, scan, nativeKey,
+                           nativeModifiers);
+        override.ignore();
+        QApplication::sendEvent(view, &override);
+        QKeyEvent down(QEvent::KeyPress, logical, modifiers, scan, nativeKey, nativeModifiers);
+        QApplication::sendEvent(view, &down);
+        QKeyEvent up(QEvent::KeyRelease, logical, modifiers, scan, nativeKey, nativeModifiers);
+        QApplication::sendEvent(view, &up);
+        QKeyEvent controlUp(QEvent::KeyRelease, Qt::Key_Control, Qt::NoModifier, controlScan,
+                            controlKey, 0);
+        QApplication::sendEvent(view, &controlUp);
+        return override.isAccepted();
     }
   private slots:
     void init() {
@@ -277,7 +315,24 @@ class PanelKeySourceTests final : public QObject, protected MainWindowTestSuppor
         QCOMPARE(window.findChild<QStackedWidget *>("fileViewStack")->currentIndex(), 1);
         QVERIFY(action(window, "viewMode0Action")->isChecked());
     }
+    void rightControlNotificationHasBookmarkPriority_data() {
+        QTest::addColumn<int>("digit");
+        QTest::addColumn<bool>("nativeNotification");
+        // Preserve the original Windows SendInput consumer regression.
+        QTest::newRow("physical-1") << int(Qt::Key_1) << false;
+        QTest::newRow("physical-8") << int(Qt::Key_8) << false;
+        QTest::newRow("physical-9") << int(Qt::Key_9) << false;
+        for (int digit = Qt::Key_0; digit <= Qt::Key_9; ++digit)
+            QTest::newRow(qPrintable(QStringLiteral("native-%1").arg(digit - Qt::Key_0)))
+                << digit << true;
+    }
     void rightControlNotificationHasBookmarkPriority() {
+        QFETCH(int, digit);
+        QFETCH(bool, nativeNotification);
+        if (nativeNotification && QApplication::platformName() != "windows" &&
+            QApplication::platformName() != "cocoa" && QApplication::platformName() != "xcb")
+            QSKIP("Native layout mapping requires the corresponding QPA plugin");
+        const int slot = digit - Qt::Key_0;
         QTemporaryDir fixture;
         QVERIFY(fixture.isValid());
         const QString saved = fixture.filePath(QStringLiteral("правая клавиша 空"));
@@ -295,20 +350,22 @@ class PanelKeySourceTests final : public QObject, protected MainWindowTestSuppor
         QTest::keyClick(address, Qt::Key_Return);
         list->setFocus();
         QTRY_VERIFY(list->hasFocus());
-        QVERIFY(rightControlDigit(list, true));
+        QVERIFY(nativeNotification ? nativeDigitNotification(list, true, digit)
+                                   : rightControlDigit(list, true, digit));
         const QString settingsPath = qEnvironmentVariable("SEVENZIP_SETTINGS_PATH");
         const auto stored = [&] {
             return QSettings(settingsPath, QSettings::IniFormat)
                 .value("FolderShortcuts")
                 .toStringList();
         };
-        QTRY_COMPARE(stored().size(), 2);
-        QCOMPARE(QDir::cleanPath(QDir::fromNativeSeparators(stored()[1])), saved);
+        QTRY_COMPARE(stored().size(), slot + 1);
+        QCOMPARE(QDir::cleanPath(QDir::fromNativeSeparators(stored()[slot])), saved);
         address->setText(other);
         QTest::keyClick(address, Qt::Key_Return);
         list->setFocus();
         QTRY_VERIFY(list->hasFocus());
-        QVERIFY(rightControlDigit(list, false));
+        QVERIFY(nativeNotification ? nativeDigitNotification(list, false, digit)
+                                   : rightControlDigit(list, false, digit));
         QTRY_COMPARE(QFileInfo(address->text()).canonicalFilePath(), saved);
         address->setText(other);
         QTest::keyClick(address, Qt::Key_Return);
@@ -316,6 +373,14 @@ class PanelKeySourceTests final : public QObject, protected MainWindowTestSuppor
         QTest::keyClick(list, Qt::Key_1, Qt::ControlModifier);
         QCOMPARE(QFileInfo(address->text()).canonicalFilePath(), other);
         QVERIFY(action(window, "viewMode0Action")->isChecked());
+        const auto bookmarks = stored();
+        action(window, "viewMode3Action")->trigger();
+        list->setFocus();
+        QTest::keyClick(list, Qt::Key_1,
+                        Qt::ControlModifier | Qt::ShiftModifier | Qt::KeypadModifier);
+        QCOMPARE(stored(), bookmarks);
+        QCOMPARE(QFileInfo(address->text()).canonicalFilePath(), other);
+        QVERIFY(action(window, "viewMode3Action")->isChecked());
         QCOMPARE(backend.listCalls, 0);
     }
     void suppressedKeysRecoverWithoutCopyOrClose() {

@@ -2,6 +2,10 @@
 
 Индекс provenance и датированных receipts. Найдите путь, символ или ID в заголовках ниже и откройте нужный раздел. Полные commits, dependencies, copied/adapted/omitted scope и результаты сохранены в тематических файлах. Текущие статусы — в [чеклисте](porting-checklist.md), baseline — в [manifest](upstream-baseline.json). Новые receipts добавлять к своему пакету в этом каталоге и связывать из индекса.
 
+## P3-03/P3-06 — Native panel digit and right-Control transport (2026-10-15)
+
+[Открыть раздел](upstream-port-audit/p3-03-2026-10-15.md#p3-03p3-06--native-panel-digit-and-right-control-transport-2026-10-15).
+
 ## P3-03/P3-06 — Native Linux Extract and prompt lifecycle (2026-10-15)
 
 [Открыть раздел](upstream-port-audit/p3-03-2026-10-15.md#p3-03p3-06--native-linux-extract-and-prompt-lifecycle-2026-10-15).
