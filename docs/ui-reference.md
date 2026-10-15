@@ -12,6 +12,12 @@ official 7zFM, use the [Windows capture guide](windows-ui-reference.md) and
 `scripts/capture-7zfm-reference.ps1`. Its runtime JSON is a separate schema,
 not yet an input to the RC/Qt comparator below.
 
+The [2026-10-15 System menu receipt](upstream-port-audit/p3-03-2026-10-15.md#p3-03p3-06--current-rendered-windows-system-menu-2026-10-15)
+compares the pinned running 7zFM with the current Qt shell-menu bridge. All20
+entries and their public states match. Inspected runtime screenshots retain
+Qt style differences in row/separator spacing and popup width; this establishes
+bounded Windows evidence, not pixel equality or other-dialog acceptance.
+
 `scripts/check_ui_parity.py` extracts a desktop 7zFM resource reference and
 compares it with a reviewed contract and the existing Qt widget JSON reports.
 It runs without Windows. Python 3.9+ and the standard library are sufficient

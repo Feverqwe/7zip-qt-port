@@ -258,6 +258,12 @@ Win32 LVIR_ICON/TrackPopupMenu. Структура и порядок исход�
 pixel parity не проверена. Provenance и актуальные checks — в
 [receipt](../upstream-port-audit.md#p3-05--source-panel-context-menu-lifecycle-2026-10-10).
 
+2026-10-15: реальный System submenu pinned Windows 7zFM сопоставлен с текущим
+Qt bridge:20 entries, text/order/states/icons совпадают, обе отрисовки просмотрены
+при96DPI/Segoe UI. QWindows11Style сохраняет собственные интервалы строк и
+разделителей и более узкую ширину popup; pixel equality не заявлена.
+[Runtime receipt](../upstream-port-audit/p3-03-2026-10-15.md#p3-03p3-06--current-rendered-windows-system-menu-2026-10-15).
+
 ## Options: ошибки Apply (P3-05, 2026-10-10)
 
 Ошибка ассоциации на странице System показывается один раз, затем остальные
