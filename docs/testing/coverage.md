@@ -207,6 +207,10 @@ and seven integrated navigation suites with `xcb`; normal/compact JSON and
 the limits of popup/ancestor visibility are recorded in the
 [native receipt](../upstream-port-audit.md#p3-03p3-05--native-linux-placement-and-navigation-2026-10-15).
 This does not establish native Windows or rendered-reference acceptance.
+The related [native Linux panel workflow receipt](../upstream-port-audit.md#p3-03p3-05--native-linux-panel-workflows-2026-10-15)
+records unchanged column/language/Rename and Copy/Move/Refresh/Comment consumers
+on the same Xorg desktop, with failure/Cancel/recovery and private real-engine
+fixtures. The labeled slow writer matrices remain excluded.
 
 Launch-command cases enter the public constructor with conflicting saved flags.
 Windows `file_manager_startup` passes real STARTUPINFO commands through the

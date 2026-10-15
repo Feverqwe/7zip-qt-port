@@ -25,6 +25,10 @@ native workflow проверен с live Qt mappings. Build/CTest и packages о
 splitter/F9 и address/Root/history/bookmarks/keyboard на Xorg/Openbox:
 8/8 CTest,122Qt/0fail/0skip. JSON normal/compact/EN-RU просмотрены;
 это ограниченный Linux-сценарий, оставшийся полный обход обязателен.
+[Native panel workflows](upstream-port-audit.md#p3-03p3-05--native-linux-panel-workflows-2026-10-15)
+дополняют его columns/language/Rename и Copy/Move/Refresh/Comment:
+22/22 CTest,687Qt/0fail/0skip; geometry/paint consumers проверены на Linux,
+исходные Windows GUI failures и slow/native-writer scope остаются открытыми.
 
 | Область приёмки | macOS arm64 | Linux x64 | Windows x64 |
 | --- | --- | --- | --- |
