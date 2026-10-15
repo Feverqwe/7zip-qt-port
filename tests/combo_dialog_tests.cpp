@@ -27,7 +27,7 @@ class ComboDialogTests : public QObject {
         QCOMPARE(label->textFormat(), Qt::PlainText);
         QCOMPARE(label->text(), QStringLiteral("Имя <буквально>:"));
         dialog.show();
-        QApplication::processEvents();
+        QVERIFY(QTest::qWaitForWindowActive(&dialog));
         QVERIFY(combo->hasFocus() || combo->lineEdit()->hasFocus());
         QCOMPARE(combo->lineEdit()->selectedText(), QStringLiteral("initial"));
     }

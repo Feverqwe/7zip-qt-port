@@ -8,6 +8,13 @@ fixtures now assert that public prerequisite, preserving their original geometry
 editor and byte assertions. The modal Add timer blocks re-entry during the wait.
 [Native RED→GREEN receipt](../upstream-port-audit.md#p3-03p3-06--native-linux-add-consumers-and-activation-2026-10-15).
 
+Combo focus and Progress Cancel fixtures use the same activation prerequisite.
+The latter also waits at most1s for all confirmation buttons to be exposed;
+an active native QMessageBox can still have its initial100×30 geometry.
+Failure still answers the modal before terminal assertions, retaining pause/
+stop/default/escape/results and original CTest deadlines.
+[Extract/prompt native receipt](../upstream-port-audit.md#p3-03p3-06--native-linux-extract-and-prompt-lifecycle-2026-10-15).
+
 
 Windows `native_association_handle`, `native_association_disk`,
 `native_association_browser` and `native_association_workflow` use a bounded

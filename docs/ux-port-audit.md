@@ -33,17 +33,21 @@ splitter/F9 и address/Root/history/bookmarks/keyboard на Xorg/Openbox:
 дополняют Linux-сценарий:42 unchanged passes и5/5 после восстановления
 activation prerequisite в fixtures. Продуктовый layout не изменён;
 native Windows и rendered reference этим не подтверждены.
+[Native Extract/prompts](upstream-port-audit.md#p3-03p3-06--native-linux-extract-and-prompt-lifecycle-2026-10-15)
+проверены вместе с resource-contract subset; legacy focus/layout fixtures
+исправлены, четыре Windows-only skips сохранены. Windows console после ручного
+входа активна; old-snapshot native replay3/4 не закрывает fresh full/stability.
 
 | Область приёмки | macOS arm64 | Linux x64 | Windows x64 |
 | --- | --- | --- | --- |
 | Default format/build/CTest | checked: current321/321,5077Qtpass/0fail/56Windows-NTFS skips | checked: current320/320,5069Qtpass/0fail/56Windows-NTFS skips | partial: full332/337 до исправлений; current service column/language7/7 PASS; native full/stable не приняты |
 | Исходные модули, headers/resources/callers | partial: [109 source receipts](omitted-scope-audit.md#109-unit-source-receipt-ledger-2026-10-10); identified launcher/continuation gap corrected, whole workflow acceptance open | partial: общий source scope тот же; POSIX no-handle consumers checked | partial: original native launcher and real handle/disk/browser/archive consumers checked; whole acceptance open |
 | EN/RU, normal/compact, команды и workflow | partial: автоматические contracts/regressions проходят; полный нативный обход не принят | partial: current package на реальной консоли, EN/RU/two-panel normal/compact, Options/Copy и create/open/test/extract проверены; полный обход открыт | partial: выполненные focused consumers/JSON; current interactive gate и полный обход не приняты |
-| Нативные dialogs/shortcuts/icons/drag/registration/FS | partial: историческая ручная Finder-проверка принята отдельно; текущий полный native обход не проверен | partial: delivery8d56d8d Copy/Overwrite/Language/PCManFM drag/Escape; current Release2f8e194 GIO Apply/open/Clear/reopen/Cancel и EN/RU headers проверены; full native scope открыт | partial: прежние scoped native receipts сохранены; после Update рабочая Session1 отсутствует, current full/native acceptance открыта |
+| Нативные dialogs/shortcuts/icons/drag/registration/FS | partial: историческая ручная Finder-проверка принята отдельно; текущий полный native обход не проверен | partial: delivery8d56d8d Copy/Overwrite/Language/PCManFM drag/Escape; current Release2f8e194 GIO Apply/open/Clear/reopen/Cancel и EN/RU headers проверены; full native scope открыт | partial: console Session1 восстановлена пользователем; original-snapshot interactive replay3/4, RightCtrl bookmark failure остаётся; current full/native acceptance открыта |
 | Наблюдение текущего приложения через Computer Use | unverified: доступ к Sevenzip Desktop не одобрен | partial: current package/affected views наблюдались через Hyper-V console API; полный rendered audit открыт | unverified: console доступна, полный обход текущего приложения не принят |
 | Сверка с отрисованным Windows 7zFM того же pin | unverified: нет полного rendered reference | unverified: нет полного rendered reference | partial: исторический System menu; полный текущий rendered audit не принят |
 | Runtime packages и чистая ОС | partial: current2f8e194 Release/relocation15/15, notices/signature,11 Mach-O/127 loads; clean OS unverified | partial: current2f8e194 Release/relocation14/14, isolated userspace15/15 и actual GIO/header native workflow на kernel6.8.0-146; clean OS unverified | partial: current2f8e194 Release/relocation14/14, CRT/notices,26 PE/344 imports и fresh55 system names resolved; clean OS unverified |
-| Cold/stable Windows, итоговая трёхплатформенная приёмка | partial: общий gate остаётся открытым | partial: успешный Linux gate не заменяет Windows | unverified: LogonUI Session1 без Explorer; текущий native full gate и повторы ещё не приняты |
+| Cold/stable Windows, итоговая трёхплатформенная приёмка | partial: общий gate остаётся открытым | partial: успешный Linux gate не заменяет Windows | unverified: Explorer в active console Session1; focused replay не заменяет текущий native full gate и повторы |
 | GitHub CI | N/A по явному решению пользователя сохранить удаление workflow | N/A по тому же решению | N/A по тому же решению |
 
 Slow suites исключены из default gates по AGENTS.md и не объявляются принятыми.

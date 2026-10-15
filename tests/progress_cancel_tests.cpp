@@ -110,6 +110,7 @@ class ProgressCancelTests : public QObject {
         bool promptPaused = false;
         bool restored = false;
         bool visibleAfterDenial = false;
+        bool parentActive = false;
         bool geometry = false;
         QString promptText;
         QMessageBox::Icon promptIcon = QMessageBox::Critical;
@@ -119,10 +120,19 @@ class ProgressCancelTests : public QObject {
                 return;
             if (auto *box = Question()) {
                 observed = true;
+                const bool promptActive = QTest::qWaitForWindowActive(box);
+                const bool controlsExposed = QTest::qWaitFor(
+                    [&] {
+                        return UiInspection::fullyVisible(*box->button(QMessageBox::Yes), *box) &&
+                               UiInspection::fullyVisible(*box->button(QMessageBox::No), *box) &&
+                               UiInspection::fullyVisible(*box->button(QMessageBox::Cancel), *box);
+                    },
+                    1000);
                 promptPaused = worker.Sync.Get_Paused();
                 promptText = box->text();
                 promptIcon = box->icon();
-                geometry = worker.size() == size &&
+                geometry = parentActive && promptActive && controlsExposed &&
+                           worker.size() == size &&
                            UiInspection::fullyVisible(*Button(worker, "IDCANCEL"), worker) &&
                            UiInspection::fullyVisible(*box->button(QMessageBox::Yes), *box) &&
                            UiInspection::fullyVisible(*box->button(QMessageBox::No), *box) &&
@@ -142,6 +152,7 @@ class ProgressCancelTests : public QObject {
             if (clicked || !worker.Started || !worker.isVisible())
                 return;
             clicked = true;
+            parentActive = QTest::qWaitForWindowActive(&worker);
             Button(worker, "IDCANCEL")->click();
             restored = worker.Sync.Get_Paused() == paused;
             if (answer != int(QMessageBox::Yes)) {
