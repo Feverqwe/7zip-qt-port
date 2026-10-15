@@ -6,6 +6,7 @@
 #include "layout_inspection.h"
 #include "window_state_support.h"
 #include <QCoreApplication>
+#include <QEventLoop>
 #include <QScopeGuard>
 #include <QStandardPaths>
 #include <QTreeWidget>
@@ -115,11 +116,13 @@ class ArchiveExternalEditTests final : public QObject, protected MainWindowTestS
         const QString temporaryDirectory = QFileInfo(temporary).absolutePath();
         bool asked = false;
         bool geometry = false;
+        QEventLoop promptDelivery;
         QTimer responder;
         connect(&responder, &QTimer::timeout, &window, [&] {
             auto *box = qobject_cast<QMessageBox *>(QApplication::activeModalWidget());
             if (box && box->objectName() == "externalUpdatePrompt") {
                 responder.stop();
+                connect(box, &QObject::destroyed, &promptDelivery, &QEventLoop::quit);
                 asked = box->textFormat() == Qt::PlainText;
                 geometry = true;
                 for (auto *button : box->findChildren<QAbstractButton *>())
@@ -141,7 +144,12 @@ class ArchiveExternalEditTests final : public QObject, protected MainWindowTestS
         responder.start(1);
         QVERIFY(write(control, "change"));
         QVERIFY(write(control + ".exit", "exit"));
-        QTRY_VERIFY2(
+        // Cocoa native modal delivery requires a running event loop, rather
+        // than QTest's manual processEvents pump. Keep the same 5s wait budget.
+        QTimer::singleShot(5000, &promptDelivery, &QEventLoop::quit);
+        if (!asked)
+            promptDelivery.exec();
+        QVERIFY2(
             asked,
             qPrintable(QString("editor finished=%1, temporary bytes=%2, backend busy=%3, modal=%4")
                            .arg(QFileInfo::exists(control + ".finished"))
@@ -254,9 +262,13 @@ class ArchiveExternalEditTests final : public QObject, protected MainWindowTestS
         const int peerRows = peerList->rowCount();
         QVERIFY(action(window, "editFileAction")->isEnabled());
         bool error = false;
+        QEventLoop errorDelivery;
+        QPointer<QMessageBox> closingMessage;
         QString previousModalState;
         QTimer responder;
         connect(&responder, &QTimer::timeout, &window, [&] {
+            if (closingMessage)
+                return;
             auto *modal = QApplication::activeModalWidget();
             if (modal) {
                 const auto *button = modal->findChild<QPushButton *>("IDCANCEL");
@@ -274,11 +286,14 @@ class ArchiveExternalEditTests final : public QObject, protected MainWindowTestS
                 }
             }
             if (auto *box = qobject_cast<QMessageBox *>(modal)) {
+                closingMessage = box;
                 qInfo().noquote() << "External update message:" << box->text();
                 if (box->objectName() == "externalUpdatePrompt")
                     box->done(QMessageBox::Yes);
                 else {
                     error |= box->objectName() == "externalUpdateError";
+                    if (error)
+                        connect(box, &QObject::destroyed, &errorDelivery, &QEventLoop::quit);
                     box->accept();
                 }
             } else if (auto *progress = dynamic_cast<CProgressDialog *>(modal)) {
@@ -304,7 +319,9 @@ class ArchiveExternalEditTests final : public QObject, protected MainWindowTestS
         QSignalSpy refreshed(list->model(), &QAbstractItemModel::rowsRemoved);
         QVERIFY(write(control, "change"));
         QVERIFY(write(control + ".exit", "exit"));
-        QTRY_VERIFY(error);
+        QTimer::singleShot(5000, &errorDelivery, &QEventLoop::quit);
+        errorDelivery.exec();
+        QVERIFY(error);
         responder.stop();
         QCOMPARE(backend.Started, outcome != 3);
         QVERIFY(!backend.busy());
@@ -376,14 +393,20 @@ class ArchiveExternalEditTests final : public QObject, protected MainWindowTestS
         }
         backend.HoldBusy = true;
         bool asked = false, failed = false;
+        QEventLoop completion;
+        QPointer<QMessageBox> closingMessage;
         QTimer responder;
         connect(&responder, &QTimer::timeout, this, [&] {
+            if (closingMessage)
+                return;
             if (auto *box = qobject_cast<QMessageBox *>(QApplication::activeModalWidget())) {
+                closingMessage = box;
                 if (box->objectName() == "externalUpdatePrompt") {
                     asked = true;
                     box->done(QMessageBox::Yes);
                 } else if (box->objectName() == "externalUpdateError") {
                     failed = true;
+                    connect(box, &QObject::destroyed, &completion, &QEventLoop::quit);
                     box->accept();
                 }
             }
@@ -406,12 +429,20 @@ class ArchiveExternalEditTests final : public QObject, protected MainWindowTestS
                 address->setText(fixture.path());
                 QTest::keyClick(address, Qt::Key_Return);
             }
+            QTimer published;
+            connect(&published, &QTimer::timeout, &completion, [&] {
+                if (!QFileInfo(temporary).exists())
+                    completion.quit();
+            });
+            published.start(2);
+            QTimer::singleShot(5000, &completion, &QEventLoop::quit);
             backend.HoldBusy = false;
-            QTRY_VERIFY(asked);
+            completion.exec();
+            QVERIFY(asked);
             if (outcome == 2)
-                QTRY_VERIFY(failed);
+                QVERIFY(failed);
             else {
-                QTRY_VERIFY(!QFileInfo(temporary).exists());
+                QVERIFY(!QFileInfo(temporary).exists());
                 QCOMPARE(contents(archive, name), modified);
                 if (outcome == 3)
                     QCOMPARE(QDir::cleanPath(rightAddress->text()), fixture.path());
