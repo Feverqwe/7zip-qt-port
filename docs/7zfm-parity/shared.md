@@ -2,6 +2,16 @@
 
 [Индекс](../7zfm-parity.md). Scope и свидетельства ниже сохраняют даты и ревизии; они не подтверждают текущий checkout.
 
+### Rendered Add/Extract reference (2026-10-15)
+
+Original pinned Windows7zG EN/RU initial views are now inspected against current
+609bf25 native Qt layouts. Grouping/order/labels are retained; standard Qt widget
+metrics/borders/icons and compact scrolling differ. Original desktop dialogs are
+fixed-size; their _2 templates are CE-only, and forced resize is not a valid
+desktop compact reference. Native Qt normal/compact consumers pass2/2 on each OS;
+Mac uses JSON only. This does not claim default-value/pixel parity or full native
+input acceptance. [Concrete reference and scope](../upstream-port-audit/p3-03-2026-10-15.md#p3-03p3-06--rendered-addextract-and-native-layout-consumers-2026-10-15).
+
 ### Rename validation error (2026-10-15)
 
 Filesystem label validation now uses original OnEndLabelEdit's shared Critical

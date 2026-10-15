@@ -2,6 +2,10 @@
 
 Индекс текстовых спецификаций. Перед изменением layout/text/visibility откройте контракт затронутого вида; проверьте normal/compact geometry и current-build widget JSON. [Resource tooling](ui-reference.md) задаёт процедуру сравнения. Новые состояния описывать в соответствующем контракте.
 
+### Rendered Add/Extract reference (P3-06)
+
+[Открыть раздел](ui-layout-contracts/shared.md#rendered-addextract-reference-p3-06-2026-10-15).
+
 ### Native Copy terminal errors (P3-05)
 
 [Открыть раздел](ui-layout-contracts/shared.md#native-copy-terminal-errors-p3-05).

@@ -17,6 +17,14 @@ requests; inspect actual visible text/OK bounds, not requested sizes. These
 32 reports/OS have no meaningful clipping and do not prove rendered Windows
 pixels or physical input. [Receipt](../upstream-port-audit.md#p3-05--native-copy-terminal-phases-and-retained-guards-2026-10-10).
 
+### Rendered Add/Extract reference (P3-06, 2026-10-15)
+
+Rendered Add/Extract reference is separately available for original EN/RU initial
+states. Its fixed desktop geometry is not a compact resize contract; Qt keeps
+standard platform metrics and exposes compact Add content through scrolling with
+a visible footer. Current native Add/Extract consumers supply12 JSON per OS;
+Mac Extract may expand470-wide requests to554×343. [Reference/scope](../upstream-port-audit/p3-03-2026-10-15.md#p3-03p3-06--rendered-addextract-and-native-layout-consumers-2026-10-15).
+
 ### Rename validation error (P3-05, 2026-10-15)
 
 Source OnEndLabelEdit rejects an invalid filesystem name with the shared HRESULT

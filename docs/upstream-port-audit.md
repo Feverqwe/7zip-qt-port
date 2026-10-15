@@ -2,6 +2,11 @@
 
 Индекс provenance и датированных receipts. Найдите путь, символ или ID в заголовках ниже и откройте нужный раздел. Полные commits, dependencies, copied/adapted/omitted scope и результаты сохранены в тематических файлах. Текущие статусы — в [чеклисте](porting-checklist.md), baseline — в [manifest](upstream-baseline.json). Новые receipts добавлять к своему пакету в этом каталоге и связывать из индекса.
 
+## P3-03/P3-06 — Rendered Add/Extract and native layout consumers (2026-10-15)
+
+[Rendered Add/Extract and native layout consumers](upstream-port-audit/p3-03-2026-10-15.md#p3-03p3-06--rendered-addextract-and-native-layout-consumers-2026-10-15)
+records the bounded Windows reference and three-OS geometry follow-up.
+
 ## P3-03/P3-05 — Source Rename validation and Cocoa modal fixtures (2026-10-15)
 
 [Открыть раздел](upstream-port-audit/p3-03-2026-10-15.md#p3-03p3-05--source-rename-validation-and-cocoa-modal-fixtures-2026-10-15).
@@ -45,6 +50,10 @@
 ## P3-03/P3-04 — Current Linux package native Add workflow (2026-10-15)
 
 [Открыть раздел](upstream-port-audit/p3-04-2026-10-15.md#p3-03p3-04--current-linux-package-native-add-workflow-2026-10-15).
+
+## P3-04 — Source Rename delivery and native Linux workflow (2026-10-15)
+
+[Открыть раздел](upstream-port-audit/p3-04-2026-10-15.md#p3-04--source-rename-delivery-and-native-linux-workflow-2026-10-15).
 
 ## P3-04 — Current delivery after native Add and address corrections (2026-10-15)
 
