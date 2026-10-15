@@ -267,12 +267,24 @@ void MainWindow::goParent() {
         return;
     if (!panel.GetFolder())
         return;
+    const QPointer<QWidget> focused = focusWidget();
+    const bool restoreListFocus =
+        focused && (focused == table_ || table_->isAncestorOf(focused) || focused == iconList_ ||
+                    iconList_->isAncestorOf(focused));
+    const unsigned panelIndex = app_.LastFocusedPanel;
     setState(State::Operating);
     {
         QScopedValueRollback<bool> source(sourceArchiveProgress_, true);
         panel.OpenParentFolder();
     }
     renderBoundFolder();
+    // Win32 keeps list focus while Parent refreshes its rows. Qt can clear it
+    // when disabling that view; use the existing publication/input guard.
+    if (restoreListFocus)
+        appPresentation_->RequestListFocus(panelIndex);
+    else if (!app_.QtOperations().closed() && focused && focused->isVisible() &&
+             focused->isEnabled() && !QApplication::activeModalWidget())
+        focused->setFocus(Qt::OtherFocusReason);
     if (panel.IsRootFolder() && !history_.isEmpty() && history_.last().isEmpty())
         history_.removeLast(); // Parent consumed the virtual-root Back location.
 }

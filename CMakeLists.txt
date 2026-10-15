@@ -1640,12 +1640,13 @@ if(BUILD_TESTING)
     get_target_property(native_navigation_sources nested_archive_tests SOURCES)
     list(REMOVE_ITEM native_navigation_sources tests/nested_archive_tests.cpp)
     qt_add_executable(native_navigation_window_tests tests/native_navigation_window_tests.cpp
+        tests/layout_inspection.cpp tests/layout_inspection.h
         ${native_navigation_sources})
     target_include_directories(native_navigation_window_tests PRIVATE src)
     target_link_libraries(native_navigation_window_tests PRIVATE Qt6::Widgets Qt6::Test)
     add_test(NAME native_navigation_window COMMAND native_navigation_window_tests -silent)
     set_tests_properties(native_navigation_window PROPERTIES TIMEOUT 30 ENVIRONMENT
-        "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/native-navigation-settings.ini")
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/native-navigation-settings.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     qt_add_executable(file_transfer_tests tests/file_transfer_tests.cpp src/CPP/7zip/UI/FileManager/FSFolder.h src/filetransferoperation.cpp src/filetransferoperation.h src/qtfiletransfertransaction.cpp src/qtfiletransfertransaction.h)
     target_include_directories(file_transfer_tests PRIVATE src)
     target_link_libraries(file_transfer_tests PRIVATE Qt6::Test sevenzip_filesystem)

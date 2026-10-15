@@ -2459,7 +2459,11 @@ does not touch personal application preferences during the smoke test.
 The native navigation component is exercised through root/nested/address/parent
 window consumers and native callback/transaction fixtures. `native_navigation_window`
 updates a real Unicode/space ZIP externally, refreshes its metadata/selection, and
-checks parent focus. `nested_update` returns from a changed nested archive through
+checks parent focus. The same navigation suite also covers filesystem Parent in
+both panes/four views/EN-RU with list and address callers,64 normal/compact
+widget reports, and deferred publication that respects newer address/peer input.
+It checks protected bytes and unchanged peer state without backend extraction.
+`nested_update` returns from a changed nested archive through
 OpenParentFolder and the native update prompt: successful replacement, failed update
 and cancellation check outer bytes and owned temporary data. `source_extract_contract`
 checks all-items/cumulative progress and cancellation without a fabricated DataError.

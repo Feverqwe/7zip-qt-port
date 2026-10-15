@@ -17,6 +17,18 @@ requests; inspect actual visible text/OK bounds, not requested sizes. These
 32 reports/OS have no meaningful clipping and do not prove rendered Windows
 pixels or physical input. [Receipt](../upstream-port-audit.md#p3-05--native-copy-terminal-phases-and-retained-guards-2026-10-10).
 
+### Parent keyboard focus (P3-05, 2026-10-15)
+
+Parent keeps the keyboard owner while replacing rows: a focused list returns
+to the same pane's visible table/icon view; an address caller retains its actual
+Qt focus proxy. Preserve the source focused child row, peer address draft and
+peer rows. Deferred publication must yield to newer address input or peer focus.
+`native_navigation_window` covers both panes, four views, EN/RU and list/address
+callers, with64 `parent-focus-*` reports at980×620/640×400 per QPA. Inspect both
+addresses and visible views for enabled state and complete bounds. Focus and
+draft contents are public behavioral assertions, deliberately absent from JSON.
+This does not establish physical keyboard delivery or rendered Windows pixels.
+
 ### Refresh focus and alternative marks (P3-05)
 
 Named focus restoration uses saved SelectFocused in both modes. A focused

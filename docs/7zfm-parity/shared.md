@@ -2,6 +2,18 @@
 
 [Индекс](../7zfm-parity.md). Scope и свидетельства ниже сохраняют даты и ревизии; они не подтверждают текущий checkout.
 
+### Parent keyboard focus (2026-10-15)
+
+Original `CPanel::OpenParentFolder` guards notifications/timer processing while
+refreshing rows; it leaves the Win32 list enabled and focused. The Qt caller
+temporarily disables views during publication, so it must restore the previous
+keyboard owner. List focus uses the existing publication/input guard and yields
+to newer user interaction; address focus retains its actual Qt proxy without
+activating a window. No source navigation/provider algorithm changes.
+The old Linux Release package needed a list click between Parent and opening a
+physical bookmark; a settling delay alone did not help. Automated current-code
+focus checks are separate from the pending rebuilt-package physical replay.
+
 ### Windows physical bookmark zero (2026-10-15)
 
 On the current runner desktop, original pinned7zFM also cannot save bookmark0
