@@ -26,6 +26,10 @@
 
 [Открыть раздел](upstream-port-audit/p3-03-2026-10-15.md#p3-03p3-05--native-linux-placement-and-navigation-2026-10-15).
 
+## P3-04 — Current delivery after native Add and address corrections (2026-10-15)
+
+[Открыть раздел](upstream-port-audit/p3-04-2026-10-15.md#p3-04--current-delivery-after-native-add-and-address-corrections-2026-10-15).
+
 ## P3-04 — Delivery after native association correction (2026-10-15)
 
 [Открыть раздел](upstream-port-audit/p3-04-2026-10-15.md#p3-04--delivery-after-native-association-correction-2026-10-15).
