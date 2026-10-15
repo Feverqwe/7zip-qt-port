@@ -10,9 +10,21 @@ export TMPDIR="$fixture"
 compact_success="$(CODEX_SESSION_ID=test SEVENZIP_SCRIPT_OUTPUT=auto bash -c '
   source "$SEVENZIP_OUTPUT_HELPER"
   sevenzip_setup_output sample
-  sevenzip_run_command 'printf build details' printf "build details\n"
+  sevenzip_run_command "printf build details" printf "build details\n"
 ')"
 [[ "$compact_success" == $'sample: running (output buffered; wait for exit)\nsample: OK' ]]
+[[ -z "$(find "$fixture" -type f -print -quit)" ]]
+
+# A fast command can finish before its background notifier installs traps.
+# Only the shell that owns the buffered log may print its terminal status.
+fast_success="$(CODEX_SESSION_ID=test SEVENZIP_SCRIPT_OUTPUT=auto bash -c '
+  source "$SEVENZIP_OUTPUT_HELPER"
+  sevenzip_setup_output fast
+  for ((iteration=0; iteration<64; ++iteration)); do
+    sevenzip_run_command "fast command" true
+  done
+')"
+[[ "$fast_success" == $'fast: running (output buffered; wait for exit)\nfast: OK' ]]
 [[ -z "$(find "$fixture" -type f -print -quit)" ]]
 
 delayed_output="$(CODEX_SESSION_ID=test SEVENZIP_PROGRESS_DELAY_SECONDS=0.02 bash -c '

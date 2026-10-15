@@ -15,6 +15,7 @@ sevenzip_setup_output() {
       ;;
   esac
 
+  sevenzip_output_owner_depth="$BASH_SUBSHELL"
   sevenzip_output_log="$(mktemp "${TMPDIR:-/tmp}/sevenzip-script.XXXXXX")"
   exec 3>&1 4>&2
   printf '%s: running (output buffered; wait for exit)\n' "$sevenzip_output_label" >&3
@@ -48,6 +49,9 @@ sevenzip_run_command() {
 
 sevenzip_finish_output() {
   local status="$1"
+  # A notifier can receive TERM before installing its own traps. Its inherited
+  # EXIT trap must not finalize or remove the parent shell's buffered log.
+  [[ "$BASH_SUBSHELL" == "$sevenzip_output_owner_depth" ]] || return 0
   if [[ "$status" -eq 0 ]]; then
     printf '%s: OK\n' "$sevenzip_output_label" >&3
     rm -f "$sevenzip_output_log"
