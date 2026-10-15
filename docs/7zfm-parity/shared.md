@@ -12,7 +12,10 @@ to newer user interaction; address focus retains its actual Qt proxy without
 activating a window. No source navigation/provider algorithm changes.
 The old Linux Release package needed a list click between Parent and opening a
 physical bookmark; a settling delay alone did not help. Automated current-code
-focus checks are separate from the pending rebuilt-package physical replay.
+focus checks are separate from physical input. Rebuilt Linux Release2a20be0
+now passes physical XTest Save/Open0–9 with Parent before each Open and no extra
+list click; bytes are preserved and normal exit succeeds. Other OS physical
+and whole native acceptance remain open.
 
 ### Windows physical bookmark zero (2026-10-15)
 
