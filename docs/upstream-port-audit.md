@@ -2,6 +2,14 @@
 
 Индекс provenance и датированных receipts. Найдите путь, символ или ID в заголовках ниже и откройте нужный раздел. Полные commits, dependencies, copied/adapted/omitted scope и результаты сохранены в тематических файлах. Текущие статусы — в [чеклисте](porting-checklist.md), baseline — в [manifest](upstream-baseline.json). Новые receipts добавлять к своему пакету в этом каталоге и связывать из индекса.
 
+## P3-03 — Bounded Windows timing diagnosis (2026-10-16)
+
+[Observed phases and unresolved stability](upstream-port-audit/p3-03-codec-timing-2026-10-16.md).
+
+## P3-06 — Options source initial frame (2026-10-16)
+
+[Source frame, rendered reference and regressions](upstream-port-audit/p3-06-options-2026-10-16.md).
+
 ## P3-06 — Add form scroll-bar gutter (2026-10-15)
 
 [Source scope and regression](upstream-port-audit/p3-06-add-scroll-2026-10-15.md).

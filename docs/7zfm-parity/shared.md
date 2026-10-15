@@ -331,6 +331,18 @@ Qt bridge:20 entries, text/order/states/icons совпадают, обе отр�
 разделителей и более узкую ширину popup; pixel equality не заявлена.
 [Runtime receipt](../upstream-port-audit/p3-03-2026-10-15.md#p3-03p3-06--current-rendered-windows-system-menu-2026-10-15).
 
+## Options: начальный размер окна (P3-06, 2026-10-16)
+
+Исходный desktop property sheet выбирает самую большую страницу316×296DLU,
+а не фиксированные640×390px. Qt отображает этот размер через текущий шрифт,
+добавляя native tab/footer и поля layout; длинные заголовки могут увеличить
+ширину. Начальная System page и порядок шести страниц сохраняются. Qt позволяет
+уменьшать окно до доступного minimum size ради scaling/accessibility, тогда как
+исходное Windows окно фиксировано. В настоящем RU reference footer остаётся
+английским из-за языка Windows property-sheet; это отдельный платформенный
+владелец, а не эталон перевода Qt captions.
+[Source и ограниченный rendered scope](../upstream-port-audit/p3-06-options-2026-10-16.md).
+
 ## Options: ошибки Apply (P3-05, 2026-10-10)
 
 Ошибка ассоциации на странице System показывается один раз, затем остальные

@@ -10,6 +10,7 @@
 #include "SettingsPage.h"
 #include "SystemPage.h"
 #include "qtassociationplatform.h"
+#include "qtdialogunits.h"
 #include "qtfmoptionsdialog.h"
 #include "qtlangcontrols.h"
 #include <QCloseEvent>
@@ -20,6 +21,7 @@
 #include <QScopeGuard>
 #include <QScopedValueRollback>
 #include <QShortcut>
+#include <QTabBar>
 #include <QTabWidget>
 #include <QVBoxLayout>
 
@@ -74,7 +76,22 @@ QtFmOptionsDialog::QtFmOptionsDialog(const QString &settingsPath, QWidget *paren
     connect(_langPage, &CLangPage::Changed, this, &QtFmOptionsDialog::updateApplyButton);
     connect(_systemPage, &CSystemPage::Changed, this, &QtFmOptionsDialog::updateApplyButton);
     updateApplyButton();
-    resize(640, 390);
+    // MyPropertySheet uses the largest source page: GuiCommon.rc's 300x280
+    // content DLU plus two eight-DLU margins. Qt supplies its native chrome.
+    QSize pageHint;
+    for (auto *page : pagePointers)
+        if (page)
+            pageHint = pageHint.expandedTo(page->sizeHint());
+    const QSize tabHint = pages->tabBar()->sizeHint();
+    const QSize contentHint(qMax(pageHint.width(), tabHint.width()), pageHint.height());
+    const QSize tabChrome = (pages->sizeHint() - contentHint).expandedTo(QSize(0, 0));
+    QSize sourcePage = QtDialogUnits(font()).pixels(QSize(316, 296));
+    sourcePage.setWidth(qMax(sourcePage.width(), tabHint.width()));
+    const QMargins margins = layout->contentsMargins();
+    const int footerHeight = layout->spacing() + _buttons->sizeHint().height();
+    const QSize outer(margins.left() + margins.right(),
+                      margins.top() + margins.bottom() + footerHeight);
+    resize((sourcePage + tabChrome + outer).expandedTo(minimumSizeHint()));
 }
 
 CFmSettings QtFmOptionsDialog::settings() const { return _settingsPage->settings(); }

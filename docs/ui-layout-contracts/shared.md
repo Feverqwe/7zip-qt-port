@@ -2,6 +2,18 @@
 
 [Индекс](../ui-layout-contracts.md). Scope и свидетельства ниже сохраняют даты и ревизии; они не подтверждают текущий checkout.
 
+### Options initial frame (P3-06, 2026-10-16)
+
+Original `OptionsDialog.cpp`/`MyPropertySheet` use the largest desktop page
+template. `GuiCommon.rc` supplies300×280 content DLU plus eight-DLU margins:
+316×296 DLU for System/Menu/Settings/Language. Editor/Folders are shorter.
+The initial Qt sheet must map that source page through its native font, adding
+native tab/footer and outer-layout chrome. The rendered pinned Windows System
+page exposes more than20 rows; an initial fake one-format page must retain that
+viewport capacity at8pt/12pt and in EN/RU. A fixed640×390 frame is not that source
+initial-size contract. Existing explicit640×390/520×380 normal/compact probes
+remain valid Qt resizing adaptations of the fixed original property sheet.
+
 
 ### Native Copy terminal errors (P3-05)
 

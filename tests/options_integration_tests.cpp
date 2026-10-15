@@ -7,11 +7,13 @@
 #include <QCheckBox>
 #include <QComboBox>
 #include <QDialogButtonBox>
+#include <QFont>
 #include <QLineEdit>
 #include <QListWidget>
 #include <QMessageBox>
 #include <QPushButton>
 #include <QRadioButton>
+#include <QScopeGuard>
 #include <QSettings>
 #include <QTabBar>
 #include <QTabWidget>
@@ -64,6 +66,82 @@ QString text(const UString &value) { return QString::fromWCharArray(value.Ptr())
 class OptionsIntegrationTests final : public QObject {
     Q_OBJECT
   private slots:
+    void sourceInitialFrame_data() {
+        QTest::addColumn<QString>("language");
+        QTest::newRow("en") << QString("-");
+        QTest::newRow("ru") << QString("ru");
+    }
+    void sourceInitialFrame() {
+        QFETCH(QString, language);
+        const QFont originalFont = QApplication::font();
+        const auto restoreFont = qScopeGuard([&] { QApplication::setFont(originalFont); });
+        int smallHeight = 0;
+        for (int points : {8, 12}) {
+            QFont font = originalFont;
+            font.setPointSize(points);
+            QApplication::setFont(font);
+            QTemporaryDir fixture;
+            const QString settings = fixture.filePath("options.ini");
+            SaveRegLang(UString(language.toStdWString().c_str()), settings);
+            CMyComPtr<IFolderManager> manager = new COptionsManager;
+            auto associations = std::make_shared<COptionsAssociations>();
+            QtFmOptionsDialog dialog(settings, nullptr, manager, associations);
+            dialog.show();
+            QApplication::processEvents();
+            auto *pages = dialog.findChild<QTabWidget *>("optionsPages");
+            QCOMPARE(pages->currentIndex(), 0);
+            auto *list = dialog.findChild<QTreeWidget *>("systemAssociations");
+            QVERIFY(list && list->topLevelItemCount() == 1);
+            const int rowHeight = list->sizeHintForRow(0);
+            QVERIFY(rowHeight > 0);
+            // The rendered original System page exposes more than twenty rows.
+            // Its source page template remains full-height even with one format.
+            const int rows = list->viewport()->height() / rowHeight;
+            QVERIFY2(rows >= 20,
+                     qPrintable(QString("Only %1 initial rows at %2pt").arg(rows).arg(points)));
+            if (points == 8)
+                smallHeight = dialog.height();
+            else
+                QVERIFY(dialog.height() > smallHeight);
+            QVERIFY(UiInspection::writeReport(
+                dialog, QString("options-initial-%1-%2").arg(language).arg(points)));
+            dialog.resize(520, 380);
+            QApplication::processEvents();
+            QVERIFY(UiInspection::fullyVisible(
+                *dialog.findChild<QDialogButtonBox *>("settingsButtons"), dialog));
+            QVERIFY(UiInspection::fullyVisible(*list, dialog));
+            dialog.reject();
+            QCOMPARE(associations->writes, 0);
+            QCOMPARE(associations->notifications, 0);
+        }
+    }
+    void translatedTabsKeepSourceInitialWidth() {
+        const QFont originalFont = QApplication::font();
+        const auto restoreFont = qScopeGuard([&] { QApplication::setFont(originalFont); });
+        QFont font = originalFont;
+        font.setPointSize(12);
+        QApplication::setFont(font);
+        int initialWidth = 0;
+        for (const char *language : {"-", "ru"}) {
+            QTemporaryDir fixture;
+            const QString settings = fixture.filePath("options.ini");
+            SaveRegLang(UString(language), settings);
+            CMyComPtr<IFolderManager> manager = new COptionsManager;
+            auto associations = std::make_shared<COptionsAssociations>();
+            QtFmOptionsDialog dialog(settings, nullptr, manager, associations);
+            dialog.show();
+            QApplication::processEvents();
+            // Both rendered source languages use the same page dimensions.
+            // Their tab titles fit inside that page; they must not add another
+            // content-width difference to its native border/chrome.
+            if (!initialWidth)
+                initialWidth = dialog.width();
+            else
+                QCOMPARE(dialog.width(), initialWidth);
+            dialog.reject();
+            QCOMPARE(associations->writes, 0);
+        }
+    }
     void keyboardPageSwitchKeepsPendingInputAndVisibleFocus() {
         QTemporaryDir fixture;
         QtFmOptionsDialog dialog(fixture.filePath("options.ini"));

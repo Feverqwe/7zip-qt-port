@@ -121,7 +121,9 @@ class SystemPageTests final : public QObject {
                 QApplication::processEvents();
                 QVERIFY(UiInspection::writeReport(
                     dialog, QString("options-system-%1-%2").arg(language).arg(size.width())));
-                QCOMPARE(dialog.size(), size);
+                // Native styles can require a taller minimum than the requested
+                // compact frame; preserve it while checking every control fits.
+                QCOMPARE(dialog.size(), size.expandedTo(dialog.minimumSizeHint()));
                 for (const char *name : {"systemAssociateLabel", "systemCurrent", "systemAll",
                                          "systemAssociations", "settingsButtons"}) {
                     auto *control = dialog.findChild<QWidget *>(name);
