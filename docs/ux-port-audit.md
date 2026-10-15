@@ -20,6 +20,12 @@ Xorg. [Текущая поставка2f8e194](upstream-port-audit.md#p3-04--del
 native workflow проверен с live Qt mappings. Build/CTest и packages обновлены
 на2026-10-15; full native/rendered/clean-OS acceptance остаётся открытой.
 
+[Native Linux placement/navigation](upstream-port-audit.md#p3-03p3-05--native-linux-placement-and-navigation-2026-10-15)
+на текущем продукте дополнительно проверяет normal/maximized Close/restart,
+splitter/F9 и address/Root/history/bookmarks/keyboard на Xorg/Openbox:
+8/8 CTest,122Qt/0fail/0skip. JSON normal/compact/EN-RU просмотрены;
+это ограниченный Linux-сценарий, оставшийся полный обход обязателен.
+
 | Область приёмки | macOS arm64 | Linux x64 | Windows x64 |
 | --- | --- | --- | --- |
 | Default format/build/CTest | checked: current321/321,5077Qtpass/0fail/56Windows-NTFS skips | checked: current320/320,5069Qtpass/0fail/56Windows-NTFS skips | partial: full332/337 до исправлений; current service column/language7/7 PASS; native full/stable не приняты |

@@ -202,6 +202,11 @@ Its splitter cases also check exact saved-coordinate replay, source fixed-point
 resize/return, F9 with one pane hidden, effective close persistence, source
 minimum/default/narrow-width behavior and actual Qt handle input. Initial
 coordinate assertions fail on the previous independent Qt layout policy.
+The current native Linux Xorg/Openbox run also passes the unchanged placement
+and seven integrated navigation suites with `xcb`; normal/compact JSON and
+the limits of popup/ancestor visibility are recorded in the
+[native receipt](../upstream-port-audit.md#p3-03p3-05--native-linux-placement-and-navigation-2026-10-15).
+This does not establish native Windows or rendered-reference acceptance.
 
 Launch-command cases enter the public constructor with conflicting saved flags.
 Windows `file_manager_startup` passes real STARTUPINFO commands through the
