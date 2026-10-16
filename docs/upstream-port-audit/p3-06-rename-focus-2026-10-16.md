@@ -50,3 +50,10 @@ The subsequent [macOS delivery receipt](p3-04-2026-10-16.md#current-macos-delive
 refreshes producta2254e5 with1047 exact inputs and15 passing runtime scenarios.
 The new manual fixtures use that extracted app; guest package refresh and
 manual confirmation remain separate requirements.
+
+On2026-10-16 the user confirms “да все хорошо” for the newa2254e5 fixture:
+Rename outline is fully visible, real Delete→Cancel and existing-name Rename
+messages fit on EN/RU, and closing them returns focus to the list. This is manual
+acceptance of those native panels in that package, not automated NSAlert
+inspection or a whole-platform acceptance. Earlier pending statements above
+describe the sequence before this attestation.

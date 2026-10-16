@@ -124,6 +124,13 @@ Slow suites исключены из default gates по AGENTS.md и не объ�
 native consumers проверены3OS по отдельным receipts. Пользовательский дефект
 inline Rename focus frame и ручная приёмка macOS сообщений остаются открыты.
 
+Последующий [Rename focus-frame receipt](upstream-port-audit/p3-06-rename-focus-2026-10-16.md)
+проверяет исправление default/native subset на3OS. Пользователь2026-10-16
+принял fresha2254e5 outline и настоящие EN/RU Delete→Cancel/existing-name messages,
+fit кнопок/текста и возврат фокуса в список. Этот конкретный manual scope закрыт.
+Новый Mac full323/324 сохраняет unchanged taskbar child handshake failure;
+remaining native/cold/platform и guest delivery приёмка не подменяется этой проверкой.
+
 Windows Options/direct consumers также проверены: семь suite с Limited токеном
 и отдельный source_link_storage с Highest для disposable symlinks дают88Qt/0fail/
 0skip в каждом режиме. Сбой symlink setup в Limited сохранён; это два запуска,
