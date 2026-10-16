@@ -8,6 +8,7 @@
 #include "window_state_support.h"
 #include <QEventLoop>
 #include <QFile>
+#include <QFocusFrame>
 #include <QLabel>
 #include <QMessageBox>
 #include <QPointer>
@@ -102,6 +103,25 @@ class PanelRenameStateTests final : public QObject, protected MainWindowTestSupp
             QApplication::processEvents();
             QVERIFY(editor);
             QVERIFY(UiInspection::fullyVisible(*editor, window));
+            if (!icons)
+                QVERIFY(editor->height() >= editor->minimumSizeHint().height());
+            for (auto *frame : active->findChildren<QFocusFrame *>())
+                if (frame->isVisible() && frame->widget() == editor) {
+                    const QRect ring = UiInspection::bounds(*frame, *active->viewport());
+                    QVERIFY2(active->viewport()->rect().contains(ring),
+                             qPrintable(QString("focus frame %1,%2 %3x%4 exceeds parent %5x%6")
+                                            .arg(frame->x())
+                                            .arg(frame->y())
+                                            .arg(frame->width())
+                                            .arg(frame->height())
+                                            .arg(frame->parentWidget()->width())
+                                            .arg(frame->parentWidget()->height())));
+                    if (!icons) {
+                        const QRect row = view->visualItemRect(view->item(focusedRow, 0));
+                        QVERIFY(ring.top() >= row.top());
+                        QVERIFY(ring.bottom() <= row.bottom());
+                    }
+                }
             QVERIFY(UiInspection::writeReport(
                 window,
                 QString("rename-activation-%1-%2").arg(QTest::currentDataTag()).arg(size.width())));

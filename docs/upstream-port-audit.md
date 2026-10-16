@@ -25,6 +25,9 @@
 [Rendered main-panel chrome, transient feedback and native flat-view fixtures](upstream-port-audit/p3-06-main-chrome-2026-10-16.md)
 records the subsequent Parent/status correction and current platform boundaries.
 
+[Cocoa inline Rename focus-frame correction](upstream-port-audit/p3-06-rename-focus-2026-10-16.md)
+records the user-reported clipping, native regression and whole-gate limitation.
+
 ## P3-04 — Delivery after the Options source-frame correction (2026-10-16)
 
 [Current delivery and exact product inputs](upstream-port-audit/p3-04-2026-10-16.md).

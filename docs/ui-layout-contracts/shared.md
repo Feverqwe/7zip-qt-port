@@ -440,6 +440,11 @@ and two symbolic-link cases at980×620/640×400, with visible inline editors.
 An address Return's queued list-focus request must not close a newer inline
 Rename editor in the same pane when the next events or resize are delivered.
 
+Cocoa table Rename reserves native focus-frame vertical margins inside the row.
+The visible QFocusFrame must fit both the viewport and that row's vertical band;
+the editor must retain its minimum text height. Icon-editor geometry is retained.
+[Native RED/GREEN and platform checks](../upstream-port-audit/p3-06-rename-focus-2026-10-16.md).
+
 Main-panel navigation contains one Parent button before the address field,
 matching original Panel.cpp. Every visible panel retains its own source status
 fields. The global operation-feedback row is hidden while empty and appears for

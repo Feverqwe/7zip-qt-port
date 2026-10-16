@@ -4,6 +4,11 @@
 
 ### Main-panel chrome (2026-10-16)
 
+Cocoa inline table Rename reserves the style's vertical focus-frame margins
+inside the row; the text remains at least its native minimum height. This adapts
+Qt's external QFocusFrame to the clipped viewport while retaining Windows
+ListView Rename semantics. [Regression and scope](../upstream-port-audit/p3-06-rename-focus-2026-10-16.md).
+
 Main-panel chrome now retains the original single Parent button and per-panel
 status fields. Qt's global row provides transient operation/error feedback and
 is hidden while empty. The original Windows main views support this structure;

@@ -57,6 +57,20 @@ bool sameColumnIdentity(const CPropColumn &left, const CPropColumn &right) {
 class FileRowDelegate final : public QStyledItemDelegate {
   public:
     using QStyledItemDelegate::QStyledItemDelegate;
+    void updateEditorGeometry(QWidget *editor, const QStyleOptionViewItem &option,
+                              const QModelIndex &index) const override {
+        QStyledItemDelegate::updateEditorGeometry(editor, option, index);
+#ifdef Q_OS_MACOS
+        if (qobject_cast<QTableWidget *>(parent()) &&
+            editor->testAttribute(Qt::WA_MacShowFocusRect)) {
+            // Cocoa paints QFocusFrame outside the editor. Keep its vertical
+            // margin inside the row, including the first visible row.
+            const int margin =
+                editor->style()->pixelMetric(QStyle::PM_FocusFrameVMargin, nullptr, editor);
+            editor->setGeometry(editor->geometry().adjusted(0, margin, 0, -margin));
+        }
+#endif
+    }
     bool eventFilter(QObject *editor, QEvent *event) override {
         if (event->type() == QEvent::KeyPress) {
             const auto *key = static_cast<QKeyEvent *>(event);
