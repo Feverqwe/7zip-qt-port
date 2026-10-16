@@ -17,6 +17,10 @@ evidence root. Twenty changed UI paths since48866c8 additionally map to the
 and [Browse/Temp source corrections](../upstream-port-audit/p3-06-source-browsers-2026-10-16.md).
 This inventory precedes the final focus/control refinements documented in the
 Browse receipt; final six-file hashes are separately verified on both guests.
+The committed0e7c0ee refresh revalidates every original Git blob and all302
+owner rows, retaining8 exact/96 adapted/five absent cpp modules. The final
+inventory is `source-inventory-0e7c0ee.json` in that evidence root; presentation
+and restored source OnOK changes do not add an omitted module or duplicate owner.
 All302 top-level source/header/resource inputs retain their unique path owners;
 the109 cpp units still have8 exact,96 adapted and five absent owners. All104
 present cpp paths occur in current CMake source lists. Git blob IDs and source/
