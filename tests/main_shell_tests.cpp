@@ -11,6 +11,7 @@
 #include <QSizeGrip>
 #include <QTimer>
 #include <QToolBar>
+#include <QToolButton>
 #include <QTreeWidget>
 
 class MainShellTests final : public QObject {
@@ -67,6 +68,76 @@ class MainShellTests final : public QObject {
     }
 
     void init() { QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH")); }
+
+    void sourcePanelChrome_data() {
+        QTest::addColumn<QString>("language");
+        QTest::addColumn<QSize>("size");
+        for (const QString &language : {QString("-"), QString("ru")})
+            for (const QSize size : {QSize(980, 620), QSize(640, 400)})
+                QTest::newRow(qPrintable(language + QString::number(size.width())))
+                    << language << size;
+    }
+
+    void sourcePanelChrome() {
+        QFETCH(QString, language);
+        QFETCH(QSize, size);
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString settings = qEnvironmentVariable("SEVENZIP_SETTINGS_PATH");
+        const UString oldLanguage = g_LangID;
+        const auto restoreLanguage = qScopeGuard([&] {
+            SaveRegLang(oldLanguage, settings);
+            ReloadLang(settings);
+            QtNotifyLanguageChanged();
+        });
+        SaveRegLang(ToUString(language), settings);
+        ReloadLang(settings);
+        const QString left = fixture.filePath(QStringLiteral("левый каталог 空"));
+        const QString right = fixture.filePath("right folder");
+        QVERIFY(QDir().mkpath(left) && QDir().mkpath(right));
+        SavePanelPath(0, ToUString(left), settings);
+        SavePanelPath(1, ToUString(right), settings);
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        window.resize(size);
+        window.show();
+        QVERIFY(QTest::qWaitForWindowActive(&window));
+        QVERIFY(window.findChild<QAction *>("backAction"));
+        auto *twoPanels = window.findChild<QAction *>("twoPanelsAction");
+        QVERIFY(twoPanels);
+        for (int phase = 0; phase < 3; ++phase) {
+            if (twoPanels->isChecked() != (phase == 1))
+                twoPanels->trigger();
+            QApplication::processEvents();
+            QStringList differences;
+            if (window.statusBar()->isVisible())
+                differences << "shared idle status bar";
+            for (unsigned index = 0; index < (phase == 1 ? 2u : 1u); ++index) {
+                auto *panel = window.findChild<QWidget *>(QString("filePanel%1").arg(index));
+                QVERIFY(panel);
+                const auto buttons =
+                    panel->findChildren<QToolButton *>(QString(), Qt::FindDirectChildrenOnly);
+                if (buttons.size() != 1 ||
+                    buttons[0]->objectName() != QString("panelParentButton%1").arg(index))
+                    differences << QString("panel%1 navigation buttons").arg(index);
+                auto *status = panel->findChild<QStatusBar *>("panelStatusBar");
+                QVERIFY(status && UiInspection::fullyVisible(*status, window));
+                QVERIFY(UiInspection::fullyVisible(*panel->findChild<QComboBox *>("pathCombo"),
+                                                   window));
+            }
+            QVERIFY(UiInspection::writeReport(window, QString("source-panel-chrome-%1-%2-%3")
+                                                          .arg(language)
+                                                          .arg(size.width())
+                                                          .arg(phase)));
+            QVERIFY2(differences.isEmpty(), qPrintable(differences.join(", ")));
+        }
+        window.statusBar()->showMessage(QStringLiteral("operation проверка 空"));
+        QApplication::processEvents();
+        QVERIFY(UiInspection::fullyVisible(*window.statusBar(), window));
+        window.statusBar()->clearMessage();
+        QApplication::processEvents();
+        QVERIFY(!window.statusBar()->isVisible());
+    }
 
     void statusBarsKeepNativeNoGripStyle_data() {
         QTest::addColumn<QString>("language");

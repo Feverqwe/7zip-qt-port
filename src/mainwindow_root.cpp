@@ -46,10 +46,11 @@ HRESULT MainWindow::renderRootFolder(bool updateAddress) {
         // Otherwise this guard would restore its saved disabled state afterward.
         disableNotify.reset();
         setState(State::Namespace);
-        statusBar()->showMessage(
-            result == S_OK ? QtLocalText("%1 items", "%1 объектов").arg(table_->rowCount())
-                           : QtLocalText("Could not read root folder.",
-                                         "Не удалось прочитать корневую папку."));
+        if (result == S_OK)
+            statusBar()->clearMessage();
+        else
+            statusBar()->showMessage(
+                QtLocalText("Could not read root folder.", "Не удалось прочитать корневую папку."));
         return result;
     };
     HRESULT result = panel.LoadListItems();

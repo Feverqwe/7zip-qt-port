@@ -22,6 +22,9 @@
 
 [Current menus/panels/dialog consumers and DPR/popup fixture corrections](upstream-port-audit/p3-06-native-shell-2026-10-16.md).
 
+[Rendered main-panel chrome, transient feedback and native flat-view fixtures](upstream-port-audit/p3-06-main-chrome-2026-10-16.md)
+records the subsequent Parent/status correction and current platform boundaries.
+
 ## P3-04 — Delivery after the Options source-frame correction (2026-10-16)
 
 [Current delivery and exact product inputs](upstream-port-audit/p3-04-2026-10-16.md).

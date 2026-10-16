@@ -440,6 +440,14 @@ and two symbolic-link cases at980×620/640×400, with visible inline editors.
 An address Return's queued list-focus request must not close a newer inline
 Rename editor in the same pane when the next events or resize are delivered.
 
+Main-panel navigation contains one Parent button before the address field,
+matching original Panel.cpp. Every visible panel retains its own source status
+fields. The global operation-feedback row is hidden while empty and appears for
+an operation/error message. Successful publication clears it; failed archive
+completion retains its diagnostic. Four EN/RU normal980×620/compact640×400
+one→two→one consumers inspect these groups and transient visibility.
+[Rendered/source and three-platform receipt](../upstream-port-audit/p3-06-main-chrome-2026-10-16.md).
+
 Rename completion uses original OnEndLabelEdit's saved selected names and raw
 prefix/name, focusing the new name on success and the old name on error/Cancel.
 Do not replace the saved selection with a single Qt path. After the worker,

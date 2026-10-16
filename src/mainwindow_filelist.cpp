@@ -128,9 +128,11 @@ HRESULT MainWindow::startFilesystemListing(bool sourceAlreadyBound, bool updateA
         }
         applySortMode(true);
         setState(State::Filesystem);
-        statusBar()->showMessage(
-            result == S_OK ? QtLocalText("%1 items", "%1 объектов").arg(table_->rowCount())
-                           : QtLocalText("Could not read folder.", "Не удалось прочитать папку."));
+        if (result == S_OK)
+            statusBar()->clearMessage();
+        else
+            statusBar()->showMessage(
+                QtLocalText("Could not read folder.", "Не удалось прочитать папку."));
     }
     return result;
 }

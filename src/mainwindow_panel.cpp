@@ -15,22 +15,20 @@ void MainWindow::createFilePanel(QMenu *editMenu, unsigned index) {
     layout->setContentsMargins(4, 4, 4, 4);
     auto *navigation = new QHBoxLayout;
     navigation->setContentsMargins(0, 0, 0, 0);
-    for (QAction *action : {back_, up_}) {
+    {
         auto *button = new QToolButton(central);
-        button->setDefaultAction(action);
+        button->setDefaultAction(up_);
         // Panel.cpp's parent toolbar uses the standard VIEW_PARENTFOLDER image,
         // without its longer View menu caption. Qt supplies the platform arrow.
-        const auto updateIcon = [this, button, action] {
-            button->setIcon(
-                style()->standardIcon(action == up_ ? QStyle::SP_ArrowUp : QStyle::SP_ArrowBack));
+        const auto updateIcon = [this, button] {
+            button->setIcon(style()->standardIcon(QStyle::SP_ArrowUp));
         };
         updateIcon();
         // QAction::changed also projects its empty menu icon to QToolButton.
         // Restore the panel-specific image after every caption/state update.
-        connect(action, &QAction::changed, button, updateIcon);
+        connect(up_, &QAction::changed, button, updateIcon);
         button->setToolButtonStyle(Qt::ToolButtonIconOnly);
-        button->setObjectName(
-            QString(action == up_ ? "panelParentButton%1" : "panelBackButton%1").arg(index));
+        button->setObjectName(QString("panelParentButton%1").arg(index));
         navigation->addWidget(button);
     }
     pathCombo_ = new QtPanelAddressCombo(
@@ -95,6 +93,13 @@ void MainWindow::createFilePanel(QMenu *editMenu, unsigned index) {
     panelSplitter_->insertWidget(static_cast<int>(index), central);
     app_.GetFocusedPanel().SetListViewMode(app_.GetFocusedPanel().GetListViewMode());
     statusBar()->setSizeGripEnabled(false);
+    if (index == 0) {
+        auto *feedback = statusBar();
+        feedback->setObjectName("operationStatusBar");
+        feedback->setVisible(!feedback->currentMessage().isEmpty());
+        connect(feedback, &QStatusBar::messageChanged, feedback,
+                [feedback](const QString &message) { feedback->setVisible(!message.isEmpty()); });
+    }
     connect(table_, &QTableWidget::cellDoubleClicked, this, [this](int row, int) {
         if (!fileListSettings_.SingleClick)
             activateRow(row, selectionClickModifiers_);

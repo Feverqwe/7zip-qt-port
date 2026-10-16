@@ -103,7 +103,8 @@ class NavigationReloadTests final : public QObject, protected MainWindowTestSupp
             QVERIFY(UiInspection::fullyVisible(*peerView, window));
             QVERIFY(UiInspection::fullyVisible(*address, window));
             QVERIFY(UiInspection::fullyVisible(*peerAddress, window));
-            QVERIFY(UiInspection::fullyVisible(*window.statusBar(), window));
+            QVERIFY(UiInspection::fullyVisible(*window.findChild<QStatusBar *>("panelStatusBar"),
+                                               window));
             QVERIFY(UiInspection::fullyVisible(*window.findChild<QToolBar *>(), window));
             for (const auto *label : window.findChildren<QLabel *>())
                 if (label->isVisible() && !label->text().isEmpty()) {

@@ -163,7 +163,7 @@ class MainWindowLayoutTests : public QObject {
             if (button->defaultAction() == window.findChild<QAction *>("backAction") ||
                 button->defaultAction() == window.findChild<QAction *>("upAction"))
                 ++navigationButtons;
-        QCOMPARE(navigationButtons, 2);
+        QCOMPARE(navigationButtons, 1);
 
         path->setText(QString(180, QLatin1Char('a')) +
                       QStringLiteral("/имя с пробелом/archive.7z"));
@@ -175,7 +175,9 @@ class MainWindowLayoutTests : public QObject {
         QVERIFY(path->isVisible());
         QVERIFY(table->isVisible());
         QVERIFY(toolbar->isVisible());
-        QVERIFY(window.statusBar()->isVisible());
+        QCOMPARE(window.statusBar()->isVisible(), !window.statusBar()->currentMessage().isEmpty());
+        QVERIFY(
+            UiInspection::fullyVisible(*window.findChild<QStatusBar *>("panelStatusBar"), window));
         QVERIFY(table->columnCount() >
                 7); // Source folder property catalog extends the transport columns.
         QVERIFY(table->isColumnHidden(5));

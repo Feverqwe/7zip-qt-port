@@ -118,6 +118,12 @@ representative editor checks; полная96-row editor matrix достигае�
 
 Slow suites исключены из default gates по AGENTS.md и не объявляются принятыми.
 
+[Main-panel chrome](upstream-port-audit/p3-06-main-chrome-2026-10-16.md)
+сверен с восемью original Windows views: один Parent, source status каждой
+панели и скрытый пустой global feedback. Mac full324/3245191QtPASS; bounded
+native consumers проверены3OS по отдельным receipts. Пользовательский дефект
+inline Rename focus frame и ручная приёмка macOS сообщений остаются открыты.
+
 Windows Options/direct consumers также проверены: семь suite с Limited токеном
 и отдельный source_link_storage с Highest для disposable symlinks дают88Qt/0fail/
 0skip в каждом режиме. Сбой symlink setup в Limited сохранён; это два запуска,

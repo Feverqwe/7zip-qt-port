@@ -1,5 +1,8 @@
+#include "7zip/UI/FileManager/ProgressDialog2Res.h"
 #include "7zip/UI/FileManager/resourceGui.h"
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
+#include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
+#include "fixtures/widget_dialogs.h"
 #include "layout_inspection.h"
 #include "mainwindow.h"
 #include "qtlangcontrols.h"
@@ -21,6 +24,7 @@
 
 class FlatViewTests : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
+    WidgetDialogFixture widgetDialogs_;
 
     static QAction *action(MainWindow &window, const char *name) {
         auto *result = window.findChild<QAction *>(name);
@@ -146,13 +150,11 @@ class FlatViewTests : public QObject, protected MainWindowTestSupport {
         QVERIFY(list->selectionModel()->isRowSelected(
             rowWithPath(window, QStringLiteral("другая папка/README")), {}));
         action(window, "deselectAllAction")->trigger();
-        QTimer::singleShot(0, &window, [] {
-            for (QWidget *widget : QApplication::topLevelWidgets())
-                if (auto *dialog = dynamic_cast<ComboDialog *>(widget);
-                    dialog && dialog->isVisible()) {
-                    dialog->findChild<QLineEdit *>()->setText("README");
-                    dialog->accept();
-                }
+        widgetDialogs_.respond(window, [](QDialog &active) {
+            auto *dialog = dynamic_cast<ComboDialog *>(&active);
+            QVERIFY(dialog);
+            dialog->findChild<QLineEdit *>()->setText("README");
+            dialog->accept();
         });
         action(window, "selectMaskAction")->trigger();
         QCOMPARE(list->selectionModel()->selectedRows().size(), 2);
@@ -161,11 +163,7 @@ class FlatViewTests : public QObject, protected MainWindowTestSupport {
         flat->trigger();
     }
 
-    void initTestCase() {
-        QSettings settings(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"), QSettings::IniFormat);
-        settings.remove("view/flatDisk");
-        settings.remove("view/flatArchive");
-    }
+    void init() { QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH")); }
 
     void flatArchiveViewShowsNestedPathsAndKeepsOperationsExact() {
         ControlledBackend backend;
@@ -227,15 +225,39 @@ class FlatViewTests : public QObject, protected MainWindowTestSupport {
         const int nestedRow = filesystemRow(window, QStringLiteral("папка с пробелом/файл.txt"));
         QVERIFY(nestedRow >= 0);
         QCOMPARE(table(window)->item(nestedRow, 1)->text(), QFileInfo(nested).canonicalFilePath());
-        table(window)->selectRow(nestedRow);
         window.show();
         QVERIFY(QTest::qWaitForWindowActive(&window));
+        table(window)->setFocus();
+        table(window)->setCurrentCell(nestedRow, 0);
+        table(window)->selectRow(nestedRow);
+        QCOMPARE(table(window)->currentRow(), nestedRow);
+        QString renameFailure;
+        QTimer dismissFailure;
+        widgetDialogs_.connectResponder(dismissFailure, &window, [&] {
+            auto *modal = widgetDialogs_.activeDialog();
+            if (auto *box = qobject_cast<QMessageBox *>(modal)) {
+                if (box->icon() == QMessageBox::Critical) {
+                    renameFailure = box->text();
+                    box->accept();
+                }
+            } else if (auto *progress = dynamic_cast<CProgressDialog *>(modal)) {
+                auto *close = progress->findChild<QPushButton *>("IDCANCEL");
+                if (close && close->text() == ToQString(LangString(IDS_CLOSE)))
+                    close->click();
+            }
+        });
+        dismissFailure.start(5);
         action(window, "renameAction")->trigger();
         auto *editor = qobject_cast<QLineEdit *>(QApplication::focusWidget());
         QVERIFY(editor);
+        QVERIFY(table(window)->isAncestorOf(editor));
         editor->setText(QStringLiteral("новое имя.txt"));
         QTest::keyClick(editor, Qt::Key_Return);
-        QTRY_VERIFY(QFileInfo::exists(QDir(folder).filePath(QStringLiteral("новое имя.txt"))));
+        QTRY_VERIFY(QFileInfo::exists(QDir(folder).filePath(QStringLiteral("новое имя.txt"))) ||
+                    !renameFailure.isEmpty());
+        dismissFailure.stop();
+        QVERIFY2(renameFailure.isEmpty(), qPrintable(renameFailure));
+        QVERIFY(QFileInfo::exists(QDir(folder).filePath(QStringLiteral("новое имя.txt"))));
         QVERIFY(!QFileInfo::exists(nested));
         QTRY_COMPARE(table(window)->rowCount(), 2);
         openListedArchive(window, backend, temp.filePath("other.7z"),

@@ -2,6 +2,14 @@
 
 [Индекс](../7zfm-parity.md). Scope и свидетельства ниже сохраняют даты и ревизии; они не подтверждают текущий checkout.
 
+### Main-panel chrome (2026-10-16)
+
+Main-panel chrome now retains the original single Parent button and per-panel
+status fields. Qt's global row provides transient operation/error feedback and
+is hidden while empty. The original Windows main views support this structure;
+current three-platform widget consumers establish fit and visibility in the
+[dated receipt](../upstream-port-audit/p3-06-main-chrome-2026-10-16.md).
+
 ### Options row spacing (2026-10-16)
 
 Menu and Folders map the source4-DLU row gaps using current-font dialog units.

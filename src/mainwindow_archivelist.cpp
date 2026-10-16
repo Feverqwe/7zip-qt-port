@@ -80,8 +80,8 @@ HRESULT MainWindow::renderArchiveFolder(bool updateAddress) {
                         completed(result);
                     if (app_.QtOperations().closed())
                         return;
-                    statusBar()->showMessage(
-                        QtLocalText("%1 items", "%1 объектов").arg(table_->rowCount()));
+                    if (result == S_OK)
+                        statusBar()->clearMessage();
                 });
                 if (!app_.QtOperations().closed())
                     refreshActions();
@@ -96,8 +96,7 @@ HRESULT MainWindow::renderArchiveFolder(bool updateAddress) {
         }
     }
     applySortMode(true);
-    statusBar()->showMessage(
-        QtLocalText("%1 items", "%1 объектов").arg(archiveFolder->GetNumberOfItems()));
+    statusBar()->clearMessage();
     refreshActions();
     return S_OK;
 }
