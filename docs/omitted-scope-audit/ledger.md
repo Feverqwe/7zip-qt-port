@@ -7,6 +7,16 @@
 
 ### Current inventory refresh (2026-10-16)
 
+Producta2254e5 is re-enumerated in `source-inventory-a2254e5.json` under the final
+availability evidence root:302 source/header/resource inputs and109 cpp units
+retain8 exact/96 adapted/five absent owners; every present cpp remains in CMake.
+Git blobs and local SHA256 are retained. Baseline verify passes412 exact,
+198 adapted and three local paths across one revision. Subsequent main-panel
+and Cocoa focus-frame corrections change local Qt presentation glue only;
+Options spacing changes already-adapted constructors. No omitted module,
+unknown owner or duplicate implementation is added. This is inventory/provenance
+evidence, not closure of the remaining final native/source acceptance.
+
 Product2fcc0e1 was re-enumerated against the same full upstream pin below.
 The subsequent cadb215 Browse working candidate retains302 inputs and the same
 109-unit disposition/CMake closure, recorded in ignored
