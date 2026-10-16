@@ -3,6 +3,45 @@
 [Index](../upstream-port-audit.md). Windows cold/stable acceptance remains open.
 This investigation changes neither product logic nor test deadlines.
 
+## Bounded scan recording and current full gates
+
+Windows snapshot `20261016T004104Z-2ca70aab` runs the same password-free
+three-consumer/two-probe diagnostic with a90-second Defender performance
+recording. Both probes pass3/3,12Qt/0fail/0skip each. The first native LoadDll
+takes1010ms, including406ms before the fixture export and604ms in its query;
+the second takes605ms with immediate export entry. Maximum GUI heartbeat gaps
+are22/20ms. The earlier9-second delay is not reproduced. These passing bounded
+probes do not fix or establish cold stability.
+
+The timed recording starts at00:44:40UTC and finishes at00:46:11UTC. WPR is
+confirmed stopped; AMService, antivirus and realtime protection remain enabled
+before/after. Its private ETL is2,980,963bytes, SHA256
+`7c58133a1dcb32c842b2d053258ec1f3ee34a81c8c05e6d29b931d7a6f50f81f`.
+Raw ETL/report stay inside the dedicated guest. Automatic approval review
+rejects export of individual scan paths/process information; the safer approved
+export contains only numeric aggregates for own project files:183 entries among
+TopScans200. Raw duration units are unverified and no timestamp/process/file
+correlation is claimed. This bounded sample does not establish an antivirus,
+scheduling, loader or module-query cause for earlier failures.
+
+The first recorder harness snapshot `20261016T003621Z-b319ac13` fails before
+probes because local ExecutionPolicy rejects `-File`. Its source/config restore
+and stock rebuild pass. V2 uses the existing stdin/ScriptBlock command transport;
+ExecutionPolicy, authorization, security settings and test deadlines are not
+changed. V2 restores all six instrumented source files and generated test
+configuration, and rebuilds the three stock targets successfully. No temporary
+driver remains in the product checkout.
+
+Evidence root below includes `windows-codec-defender-phase-evidence/` and
+`windows-codec-defender-phase-v2-evidence/`, with phase logs, source inputs,
+restoration receipts, bounded-recording receipt and numeric-only aggregate.
+Current full gates are started separately: Linux
+`20261016T003859Z-f2ac3bc3`, Windows `20261016T004958Z-53dcb02f`, product2fcc0e1.
+Their results are pending. Windows retains the existing no-new-VHD exclusions;
+eleven slow suites remain excluded on both OS.
+
+## Earlier phase probes
+
 The preceding3275293 whole gate executes337/339 successfully and retains two
 failures: the15s process_pause CTest cap and external codec-discovery assertions.
 Temporary, hash-guarded instrumentation in isolated runner snapshots measures
