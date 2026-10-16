@@ -20,7 +20,10 @@ class PanelColumnChangesTests final : public QObject, protected MainWindowTestSu
             option.initFrom(&view);
             option.widget = &view;
             option.rect = image.rect();
-            option.state &= ~(QStyle::State_Selected | QStyle::State_HasFocus);
+            // Compare resting selection independently of the physical cursor:
+            // the Windows 11 style also highlights hovered items.
+            option.state &=
+                ~(QStyle::State_Selected | QStyle::State_HasFocus | QStyle::State_MouseOver);
             if (selected)
                 option.state |= QStyle::State_Selected;
             view.itemDelegate()->paint(&painter, option, view.model()->index(0, column));
@@ -139,6 +142,7 @@ class PanelColumnChangesTests final : public QObject, protected MainWindowTestSu
         ControlledBackend backend;
         MainWindow window(&backend);
         window.show();
+        window.activateWindow();
         QVERIFY(QTest::qWaitForWindowActive(&window));
         action(window, "twoPanelsAction")->trigger();
         auto *ui = window.findChild<QWidget *>(QString("filePanel%1").arg(pane));

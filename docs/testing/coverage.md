@@ -766,6 +766,8 @@ about native uninitialized-variable behavior. Native/rendered acceptance remains
 The real delegate paints selected/unselected primary cells differently and
 secondary cells identically under label-only selection, including raw Name and
 no-Name transitions; existing full-row/deleted/alternative consumers also run.
+The resting reference paints clear cursor-dependent hover and focus before
+setting selection, and the native schema fixture activates its owned window.
 
 `panel_column_sort` uses the existing Agent/archive metadata interfaces with
 overlapping generic/raw CRC or Size and empty/nonempty raw values. Sixteen cases
@@ -893,6 +895,8 @@ commands/notification guards recover and the next valid worker publishes301
 rows with exact control bytes. Thirty-two OS-managed message JSON probes inspect
 exposure/fit. This tests the async error transport; it does not prove the separate
 address-navigation behavior for a missing folder.
+Its scoped WidgetDialogFixture and queued responder exercise Qt widget error
+dialogs under native QPA; actual NSAlert appearance remains separate manual scope.
 `panel_list_load` also checks that a supplied failed worker result returns before
 column/property queries. Four `panel_copy_reload` consumers cause the same actual
 worker failure on a301-item filesystem peer after successful Copy/Move output

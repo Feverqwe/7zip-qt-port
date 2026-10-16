@@ -3391,7 +3391,7 @@ if(BUILD_TESTING)
             browse_dialog_tests nested_update_tests archive_progress_tests progress_cancel_tests
             nested_edit_chain_tests archive_external_edit_tests archive_external_security_tests
             archive_external_lifetime_tests checksum_tests source_link_storage_tests
-            options_dialog_tests system_page_tests flat_view_tests)
+            options_dialog_tests system_page_tests flat_view_tests filesystem_reload_tests)
         target_sources(${sevenzip_widget_dialog_target} PRIVATE tests/fixtures/widget_dialogs.cpp)
     endforeach()
 endif()

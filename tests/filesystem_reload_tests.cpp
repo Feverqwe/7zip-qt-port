@@ -2,11 +2,13 @@
 #include "CPP/7zip/UI/FileManager/Panel.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "filesystemscanner.h"
+#include "fixtures/widget_dialogs.h"
 #include "layout_inspection.h"
 #include "window_state_support.h"
 
 class FilesystemReloadTests final : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
+    WidgetDialogFixture widgetDialogs_;
     static bool writeControl(const QString &path) {
         QFile file(path);
         return file.open(QIODevice::WriteOnly) && file.write("control") == 7;
@@ -164,7 +166,7 @@ class FilesystemReloadTests final : public QObject, protected MainWindowTestSupp
         });
         QString shown;
         QTimer driver;
-        connect(&driver, &QTimer::timeout, &window, [&] {
+        widgetDialogs_.connectResponder(driver, &window, [&] {
             for (QWidget *widget : QApplication::topLevelWidgets())
                 if (auto *box = qobject_cast<QMessageBox *>(widget); box && box->isVisible()) {
                     shown = box->text();
