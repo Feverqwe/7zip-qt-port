@@ -18,6 +18,31 @@ class PersistedLocationTests final : public QObject, protected MainWindowTestSup
         folders.Read(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
         return ToQString(folders.GetString(index));
     }
+    static void openEmptyHistoryItem(MainWindow &window, const QString &phase) {
+        QTimer::singleShot(0, &window, [&window, phase] {
+            auto *dialog = window.findChild<QDialog *>("foldersHistoryDialog");
+            QVERIFY(dialog);
+            const auto close = qScopeGuard([&] {
+                if (dialog->isVisible())
+                    dialog->reject();
+            });
+            auto *tree = dialog->findChild<QTreeWidget *>("foldersHistoryList");
+            QVERIFY(tree);
+            const auto items = tree->findItems(QString(), Qt::MatchExactly);
+            QCOMPARE(items.size(), 1);
+            tree->setCurrentItem(items.front());
+            for (const QSize size : {QSize(540, 360), QSize(360, 240)}) {
+                dialog->resize(size);
+                QApplication::processEvents();
+                QVERIFY(UiInspection::fullyVisible(*tree, *dialog));
+                QVERIFY(UiInspection::writeReport(*dialog, QString("root-history-%1-%2-%3")
+                                                               .arg(QTest::currentDataTag(), phase)
+                                                               .arg(size.width())));
+            }
+            dialog->accept();
+        });
+        action(window, "foldersHistoryAction")->trigger();
+    }
   private slots:
     void init() {
         const QString settings = qEnvironmentVariable("SEVENZIP_SETTINGS_PATH");
@@ -89,6 +114,42 @@ class PersistedLocationTests final : public QObject, protected MainWindowTestSup
         action(window, "saveBookmark9Action")->trigger();
         QVERIFY(saved(9).isEmpty());
         QCOMPARE(backend.listCalls, 0);
+    }
+    void emptyRootHistorySurvivesRestart_data() {
+        QTest::addColumn<QString>("language");
+        QTest::newRow("en") << QString("-");
+        QTest::newRow("ru") << QString("ru");
+    }
+    void emptyRootHistorySurvivesRestart() {
+        QFETCH(QString, language);
+        const QString settings = qEnvironmentVariable("SEVENZIP_SETTINGS_PATH");
+        SaveRegLang(ToUString(language), settings);
+        ReloadLang(settings);
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        window.show();
+        window.activateWindow();
+        QVERIFY(QTest::qWaitForWindowActive(&window));
+        action(window, "openRootAction")->trigger();
+        action(window, "parentFolderAction")->trigger();
+        QVERIFY(leftTable(window)->sourcePanel->IsRootFolder());
+        QVERIFY(prefix(window).isEmpty());
+        QVERIFY(QSettings(settings, QSettings::IniFormat)
+                    .value("FolderHistory")
+                    .toStringList()
+                    .contains(QString()));
+        action(window, "openRootAction")->trigger();
+        openEmptyHistoryItem(window, "initial");
+        QVERIFY(leftTable(window)->sourcePanel->IsRootFolder());
+        QVERIFY(prefix(window).isEmpty());
+        ControlledBackend restartedBackend;
+        MainWindow restarted(&restartedBackend);
+        action(restarted, "openRootAction")->trigger();
+        openEmptyHistoryItem(restarted, "restart");
+        QVERIFY(leftTable(restarted)->sourcePanel->IsRootFolder());
+        QVERIFY(prefix(restarted).isEmpty());
+        QCOMPARE(backend.listCalls, 0);
+        QCOMPARE(restartedBackend.listCalls, 0);
     }
     void realArchiveSourceLocationsAndBindingFallback_data() {
         QTest::addColumn<bool>("nested");

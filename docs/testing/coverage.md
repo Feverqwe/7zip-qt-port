@@ -1104,6 +1104,14 @@ history editing/Cancel and busy commands remain covered by existing consumers.
 Windows uses the native plugin/desktop lock; actual current platform evidence
 and remaining acceptance belong to the port audit.
 
+EN/RU root history rows additionally select the exact empty source-prefix item
+before and after restart. `native_persisted_locations` is Windows-only: twelve
+device/ADS/UNC × pane × language rows cover source-prefix Save/Open bookmark,
+history selection and restart, provider type, peer draft and fixture bytes.
+Device enumeration performs no raw IO; ADS uses a disposable file and UNC an
+owned current-SID-only share. Namespace address/list reports use normal/compact
+window sizes; root history uses the existing normal/compact dialog sizes.
+
 `root_command` asserts the actual Root/slash/backslash/keypad-slash destination is
 CFSDrives, not merely a nonempty list. EN/RU980×620/640×400 two-panel rows verify
 the source prefix/provider, peer panel state and input bytes, command capability,

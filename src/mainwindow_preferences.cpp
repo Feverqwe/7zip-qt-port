@@ -128,8 +128,6 @@ QIcon MainWindow::toolbarIcon(int kind) {
 QString MainWindow::toolbarSettingsPath() { return FmSettingsPath(); }
 
 void MainWindow::recordVisitedPath(const QString &path) {
-    if (path.isEmpty())
-        return;
     app_.AppState.FolderHistory.AddString(ToUString(path));
     app_.AppState.FolderHistory.Save(toolbarSettingsPath());
 }

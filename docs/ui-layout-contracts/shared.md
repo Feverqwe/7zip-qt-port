@@ -603,6 +603,10 @@ CAgentFolder::BindToFolder finds directories rather than opening archive files:
 a stored nested location stops at its containing outer archive. Verify this
 original fallback on close/restart as well as exact reuse while still open.
 History uses its existing540×360/360×240 dialog geometry contract.
+The root namespace's empty source prefix remains an actual selectable empty
+history entry, including after restart; Cancel is distinct from accepting it.
+Native Windows device/ADS/UNC bookmark/history/restart consumers inspect the
+owning address and list at980×620/640×400 and preserve the peer's draft.
 
 ### Source root command target (P3-05.13, implementation validation active)
 
