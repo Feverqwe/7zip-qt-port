@@ -3,6 +3,19 @@
 [Index](../upstream-port-audit.md). Windows cold/stable acceptance remains open.
 This investigation changes neither product logic nor test deadlines.
 
+## Subsequent current-product focused failure
+
+Producta2254e5, Windows Limited snapshot `20261016T191848Z-eebac2e8` repeats
+the unresolved failure with original deadlines: external_codecs init readiness
+5300ms versus5000ms in default mode. Native replay also fails global-handler
+discovery with `Codec discovery timed out` (and QProcess still-running destructor
+warning), and incompatible-module readiness5650ms versus5000ms. No cause or
+security/loader attribution is established. Current codec_probe17Qt,
+panel_key_source35Qt and external editor60Qt pass in each mode; that does not
+erase earlier whole-gate probe/key failures or establish stability. Complete
+actual logs/source/config guards are linked from the
+[bounded native receipt](p3-03-native-editor-coverage-2026-10-16.md).
+
 ## Bounded scan recording and current full gates
 
 Windows snapshot `20261016T004104Z-2ca70aab` runs the same password-free

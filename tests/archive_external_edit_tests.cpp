@@ -245,6 +245,7 @@ class ArchiveExternalEditTests final : public QObject, protected MainWindowTestS
         });
         MainWindow window(&backend);
         window.show();
+        window.activateWindow();
         QVERIFY(QTest::qWaitForWindowActive(&window));
         action(window, "twoPanelsAction")->trigger();
         auto *owner = window.findChild<QWidget *>(QString("filePanel%1").arg(pane));

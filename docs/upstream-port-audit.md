@@ -34,6 +34,10 @@ records the user-reported clipping, native regression and whole-gate limitation.
 
 ## P3-03 — Bounded Windows timing diagnosis (2026-10-16)
 
+[Bounded native external-editor coverage](upstream-port-audit/p3-03-native-editor-coverage-2026-10-16.md)
+records all48 refused-update rows, the actual Cocoa activation regression and
+unchanged per-run deadlines.
+
 [Native navigation/selection fixtures and current whole-gate boundaries](upstream-port-audit/p3-03-native-navigation-fixtures-2026-10-16.md)
 records filesystem error-dialog delivery, resting selection paint, broad XCB
 acceptance and the actual Limited Windows failures.

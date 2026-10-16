@@ -118,6 +118,13 @@ representative editor checks; полная96-row editor matrix достигае�
 
 Slow suites исключены из default gates по AGENTS.md и не объявляются принятыми.
 
+[Bounded native editor coverage](upstream-port-audit/p3-03-native-editor-coverage-2026-10-16.md)
+закрывает coverage всех48 Cocoa refused-update rows тремя16-row запусками;
+исходный aggregate90s timeout сохраняется отдельно. Wholeeditor default/native
+60QtPASS наLinux/Windows. Scoped Highest12symlink suites191QtPASS не является
+новым wholeWindows gate. Current Limitedcodec discovery снова fails; key/probe
+проходят отдельно, без утверждения causal fix/stability.
+
 [Current native navigation/selection receipt](upstream-port-audit/p3-03-native-navigation-fixtures-2026-10-16.md)
 records source/config guards, scoped widget error delivery and resting selection
 paint. Windows Limited full failures remain actual failures; the empty disabled

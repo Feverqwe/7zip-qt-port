@@ -34,6 +34,11 @@ changes and six failure/read-only combinations across pane/language/view/
 alternative-selection dimensions. Its whole default suite remains60Qt PASS.
 The complete Cocoa matrix is not claimed as passing.
 
+Subsequent [bounded native editor coverage](p3-03-native-editor-coverage-2026-10-16.md)
+executes all48 existing refused-update rows in three outcome groups without
+raising the90s cap. A reproduced window-activation fixture failure is corrected;
+the earlier aggregate timeout remains distinct from the resulting row coverage.
+
 Linux official snapshot20261016T153616Z-ced3da6f passes nine default and nine
 native XCB suites, each151Qt/0fail/0skip, with122 JSON reports and no PNG.
 Windows passes the same nine default and nine native suites, each151Qt/0fail/
