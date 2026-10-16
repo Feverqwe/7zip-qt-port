@@ -506,6 +506,16 @@ HRESULT CBrowseDialog2::Reload() {
     const UString dirPathTemp = DirPrefix;
     return Reload(dirPathTemp, selected, focusedName);
 }
+void CBrowseDialog2::OnOK() {
+    if (QApplication::focusWidget() == _list) {
+        OnItemEnter();
+        return;
+    }
+    // Original Enter on the read-only path must not end the dialog.
+}
+
+void CBrowseDialog2::accept() { OnOK(); }
+
 bool CBrowseDialog2::GetParentPath(const UString &path, UString &parentPrefix, UString &name) {
     parentPrefix.Empty();
     name.Empty();

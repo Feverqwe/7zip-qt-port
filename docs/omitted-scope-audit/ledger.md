@@ -8,6 +8,15 @@
 ### Current inventory refresh (2026-10-16)
 
 Product2fcc0e1 was re-enumerated against the same full upstream pin below.
+The subsequent cadb215 Browse working candidate retains302 inputs and the same
+109-unit disposition/CMake closure, recorded in ignored
+`candidate-source-inventory-cadb215-browsers.json` under the final availability
+evidence root. Twenty changed UI paths since48866c8 additionally map to the
+[secondary presentation](../upstream-port-audit/p3-06-secondary-dialogs-2026-10-16.md),
+[prompt presentation](../upstream-port-audit/p3-06-source-prompts-2026-10-16.md)
+and [Browse/Temp source corrections](../upstream-port-audit/p3-06-source-browsers-2026-10-16.md).
+This inventory precedes the final focus/control refinements documented in the
+Browse receipt; final six-file hashes are separately verified on both guests.
 All302 top-level source/header/resource inputs retain their unique path owners;
 the109 cpp units still have8 exact,96 adapted and five absent owners. All104
 present cpp paths occur in current CMake source lists. Git blob IDs and source/

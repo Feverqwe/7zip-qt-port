@@ -14,6 +14,10 @@
 
 [Source correction, original EN/RU views and native three-platform consumers](upstream-port-audit/p3-06-source-prompts-2026-10-16.md).
 
+## P3-06 — Source fallback and temporary-file browsers (2026-10-16)
+
+[Source frames, focus and columns; original reference and three-platform native verification](upstream-port-audit/p3-06-source-browsers-2026-10-16.md).
+
 ## P3-04 — Delivery after the Options source-frame correction (2026-10-16)
 
 [Current delivery and exact product inputs](upstream-port-audit/p3-04-2026-10-16.md).

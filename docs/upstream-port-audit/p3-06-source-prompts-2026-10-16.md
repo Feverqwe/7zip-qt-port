@@ -160,6 +160,18 @@ Linux whole323/323 predates final focus changes and is historical; current
 Windows whole stability, final packages and whole native/workflow acceptance
 remain required.
 
+Final committed cadb215 Linux whole `20261016T095845Z-055eaf88` subsequently
+passes323/323 in530.12s,5165Qt/0fail/66skip. All1626 uploaded inputs match guest
+files and the HEAD diff is empty; synthetic snapshot
+`516d2bbb41b56808468274256578fbe159b539e1`. This verifies the final prompt focus
+changes. It predates the separate Browse correction and does not validate that
+newer component. The same cadb215 Windows whole subsequently passes342/342
+in2375.07s,5428Qt/0fail/20skip. All1626 uploaded inputs match guest files and
+the HEAD diff is empty; synthetic snapshot
+`9d20eee8404a4d059a8d5d4d73a991002ba98744`. Evidence is retained under
+`windows-cadb215-full-gate-evidence`. Earlier pause/codec failures remain;
+this passing run establishes neither their cause nor cold stability.
+
 Evidence root: ignored `build/review/final-availability-8e9343b-20261014`:
 `source-prompt-frame-red-evidence`, `source-prompt-footer-gap-red-evidence`,
 `source-memory-spinner-key-red-evidence`, `source-prompt-*`/`source-memory-*`

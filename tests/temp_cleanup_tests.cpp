@@ -1,8 +1,10 @@
+#include "7zip/UI/FileManager/PropertyNameRes.h"
 #include "CPP/7zip/UI/FileManager/BrowseDialog2.h"
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "layout_inspection.h"
 #include "native_link_fixture.h"
+#include "qtdialogunits.h"
 #include "qtlangcontrols.h"
 #include "qtownedtempdir.h"
 #include <QComboBox>
@@ -16,6 +18,7 @@
 #include <QMessageBox>
 #include <QPushButton>
 #include <QScopeGuard>
+#include <QStyleOptionButton>
 #include <QTemporaryDir>
 #include <QTemporaryFile>
 #include <QTextBrowser>
@@ -26,6 +29,9 @@
 class TempCleanupTests : public QObject {
     Q_OBJECT
     QUrl opened;
+    QTemporaryDir registry_;
+    QByteArray oldRegistry_;
+    bool hadRegistry_ = false;
     static QTreeWidgetItem *row(CBrowseDialog2 &dialog, const QString &path) {
         auto *list = dialog.findChild<QTreeWidget *>("tempList");
         const QString name = QFileInfo(path).fileName().normalized(QString::NormalizationForm_C);
@@ -53,9 +59,143 @@ class TempCleanupTests : public QObject {
   public slots:
     void captureFile(const QUrl &url) { opened = url; }
   private slots:
+    void initTestCase() {
+        QVERIFY(registry_.isValid());
+        hadRegistry_ = qEnvironmentVariableIsSet("SEVENZIP_OWNED_TEMP_REGISTRY");
+        oldRegistry_ = qgetenv("SEVENZIP_OWNED_TEMP_REGISTRY");
+        qputenv("SEVENZIP_OWNED_TEMP_REGISTRY", registry_.path().toUtf8());
+    }
+    void cleanupTestCase() {
+        if (hadRegistry_)
+            qputenv("SEVENZIP_OWNED_TEMP_REGISTRY", oldRegistry_);
+        else
+            qunsetenv("SEVENZIP_OWNED_TEMP_REGISTRY");
+    }
     void init() {
         QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
         ReloadLang(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+    }
+    void sourceInitialFrame_data() {
+        QTest::addColumn<QString>("language");
+        QTest::newRow("en") << QString("-");
+        QTest::newRow("ru") << QString("ru");
+    }
+    void sourceInitialFrame() {
+        QFETCH(QString, language);
+        const QString settings = qEnvironmentVariable("SEVENZIP_SETTINGS_PATH");
+        SaveRegLang(UString(language.toStdWString().c_str()), settings);
+        ReloadLang(settings);
+        QTemporaryDir owned;
+        QVERIFY(owned.isValid());
+        QVERIFY(file(owned.filePath("fixture.txt")));
+        QVERIFY(inactive(owned.path()));
+        bool inspected = false;
+        QTimer::singleShot(0, qApp, [&] {
+            auto *dialog = qobject_cast<QDialog *>(QApplication::activeModalWidget());
+            QVERIFY(dialog);
+            const auto close = qScopeGuard([&] { dialog->reject(); });
+            QCOMPARE(dialog->objectName(), QString("tempBrowseDialog"));
+            QVERIFY(UiInspection::writeReport(*dialog,
+                                              QString("temp-source-initial-%1").arg(language)));
+            QCOMPARE(dialog->size(), QtDialogUnits(dialog->font())
+                                         .pixels(QSize(466, 344))
+                                         .expandedTo(dialog->minimumSizeHint()));
+            QVERIFY(dialog->windowFlags().testFlag(Qt::WindowMinMaxButtonsHint));
+            QVERIFY(!dialog->windowFlags().testFlag(Qt::WindowContextHelpButtonHint));
+            auto *parent = dialog->findChild<QPushButton *>("tempParent");
+            QCOMPARE(parent->width(), QtDialogUnits(dialog->font()).pixels(QSize(24, 0)).width());
+            QStyleOptionButton option;
+            option.initFrom(parent);
+            option.text = parent->text();
+            const QRect contents =
+                parent->style()->subElementRect(QStyle::SE_PushButtonContents, &option, parent);
+            QVERIFY(parent->fontMetrics().horizontalAdvance(parent->text()) <= contents.width());
+            QVERIFY(!dialog->findChild<QLineEdit *>("tempPath")->text().isEmpty());
+            auto *list = dialog->findChild<QTreeWidget *>("tempList");
+            QCOMPARE(list->columnCount(), 6);
+            QCOMPARE(list->headerItem()->text(0), QtLangText(IDS_PROP_NAME));
+            QVERIFY(list->columnWidth(0) > list->columnWidth(2));
+            QVERIFY(list->columnWidth(5) > list->columnWidth(3));
+            QVERIFY(list->columnWidth(5) > list->columnWidth(4));
+            for (auto *button : dialog->findChildren<QPushButton *>()) {
+                QVERIFY(UiInspection::fullyVisible(*button, *dialog));
+                QCOMPARE(button->isDefault(), button->objectName() == "tempClose");
+            }
+            QCOMPARE(dialog->focusWidget(), dialog->findChild<QPushButton *>("tempClose"));
+            inspected = true;
+        });
+        MyBrowseForTempFolder(nullptr);
+        QVERIFY(inspected);
+    }
+    void sourceFocusedButtonsAndListEnter_data() {
+        QTest::addColumn<int>("scenario");
+        QTest::addColumn<int>("key");
+        for (int scenario = 0; scenario != 3; ++scenario)
+            for (int key : {int(Qt::Key_Return), int(Qt::Key_Enter)})
+                QTest::newRow(qPrintable(QString("%1-%2").arg(scenario).arg(key)))
+                    << scenario << key;
+    }
+    void sourceFocusedButtonsAndListEnter() {
+        QFETCH(int, scenario);
+        QFETCH(int, key);
+        QTemporaryDir owned, extra;
+        QVERIFY(owned.isValid() && extra.isValid());
+        QVERIFY(file(owned.filePath("fixture.txt")));
+        QVERIFY(inactive(owned.path()));
+        bool inspected = false;
+        QTimer::singleShot(0, qApp, [&] {
+            auto *dialog = dynamic_cast<CBrowseDialog2 *>(QApplication::activeModalWidget());
+            QVERIFY(dialog);
+            const auto closeDialog = qScopeGuard([&] { dialog->reject(); });
+            QVERIFY(QTest::qWaitForWindowExposed(dialog));
+            dialog->activateWindow();
+            QVERIFY(QTest::qWaitForWindowActive(dialog));
+            auto *close = dialog->findChild<QPushButton *>("tempClose");
+            auto *list = dialog->findChild<QTreeWidget *>("tempList");
+            auto *path = dialog->findChild<QLineEdit *>("tempPath");
+            if (scenario == 0) {
+                QCOMPARE(dialog->focusWidget(), close);
+                QTest::keyClick(close, Qt::Key(key));
+                QVERIFY(!dialog->isVisible());
+            } else if (scenario == 1) {
+                select(*dialog, owned.path());
+                const QString root = path->text();
+                path->setFocus();
+                QCOMPARE(QApplication::focusWidget(), path);
+                for (auto *button : dialog->findChildren<QPushButton *>())
+                    QVERIFY2(!button->isDefault(), qPrintable(button->objectName()));
+                QTest::keyClick(path, Qt::Key(key));
+                QVERIFY(dialog->isVisible());
+                QCOMPARE(path->text(), root); // Source OnOK ignores the read-only path.
+                dialog->accept();
+                QVERIFY(dialog->isVisible());
+                QCOMPARE(path->text(), root);
+                list->setFocus();
+                QTest::keyClick(list, Qt::Key(key));
+                QVERIFY(path->text() != root);
+                auto *parent = dialog->findChild<QPushButton *>("tempParent");
+                parent->setFocus();
+                QTest::keyClick(parent, Qt::Key(key));
+                QCOMPARE(path->text(), root);
+                list->setFocus();
+                dialog->accept();
+                QVERIFY(dialog->isVisible());
+                QVERIFY(path->text() != root);
+                parent->setFocus();
+                QTest::keyClick(parent, Qt::Key(key));
+                QCOMPARE(path->text(), root);
+            } else {
+                QVERIFY(!row(*dialog, extra.path()));
+                QVERIFY(inactive(extra.path()));
+                auto *refresh = dialog->findChild<QPushButton *>("tempRefresh");
+                refresh->setFocus();
+                QTest::keyClick(refresh, Qt::Key(key));
+                QVERIFY(row(*dialog, extra.path()));
+            }
+            inspected = true;
+        });
+        MyBrowseForTempFolder(nullptr);
+        QVERIFY(inspected);
     }
     void ownedFileCleanupAndLinkNavigationNeverReachUserTargets() {
         QTemporaryDir root;

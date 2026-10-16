@@ -55,6 +55,7 @@ class CBrowseDialog2 : public QDialog {
     bool _showDots = false, _singleClick = false;
     UString _topDirPrefix, DirPrefix;
     void BuildControls();
+    void InitializeColumns();
     void ConnectControls(QDialogButtonBox *buttons, QPushButton *refresh);
     void PopulateRows(const UStringVector &selected, const UString &focused);
     void UpdateDeleteAvailability();
@@ -71,20 +72,25 @@ class CBrowseDialog2 : public QDialog {
     void PrintFileProps(UString &s, const NWindows::NFile::NFind::CFileInfo &file);
     void Show_FileProps_Window(const NWindows::NFile::NFind::CFileInfo &file);
     void OnItemEnter();
+    void OnOK();
+    void OnFocusChanged(QWidget *previous, QWidget *current);
     bool OnKeyDown(QKeyEvent *keyDownInfo);
     void OnContextMenu(const QPoint &position);
     void OpenOutside(const UString &path, const QtOwnedTempEntry &owner, bool sevenzip);
     void OnDelete();
     void OnHelp();
     bool eventFilter(QObject *object, QEvent *event) override;
+    void keyPressEvent(QKeyEvent *event) override;
 
   public:
     UString TempFolderPath, Title;
     explicit CBrowseDialog2(QWidget *parent = nullptr,
                             std::function<bool(const QUrl &)> opener = {});
+    ~CBrowseDialog2() override;
     bool IsExactTempFolder(const UString &pathPrefix) const;
     int CompareItems(int index1, int index2) const;
     int Create();
+    void accept() override;
 };
 
 void MyBrowseForTempFolder(QWidget *owner, std::function<bool(const QUrl &)> opener = {});

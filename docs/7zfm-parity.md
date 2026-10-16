@@ -4,6 +4,13 @@
 
 [Общие сведения](7zfm-parity/shared.md).
 
+## Browse and temporary-file source presentation (2026-10-16)
+
+[Source frames, initial focus, Enter behavior and column sizing](upstream-port-audit/p3-06-source-browsers-2026-10-16.md).
+Qt native font/button minima and middle-elided folder labels with full accessible
+names are explicit adaptations. Original populated Windows EN/RU views and
+targeted keyboard probes are available; pixel equality is not claimed.
+
 ## List, Link and Benchmark source presentation (2026-10-16)
 
 [Открыть раздел](7zfm-parity/shared.md#list-link-and-benchmark-source-presentation-2026-10-16).

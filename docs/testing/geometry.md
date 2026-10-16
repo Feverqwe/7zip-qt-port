@@ -4,6 +4,13 @@
 
 ## Проверка компоновки Qt
 
+`source_browse_dialog` and `temp_cleanup` cover source DLU frames, exact small
+navigation widths, path/filter minimum heights, the reserved hidden filter row,
+sample-driven column sizing and initial focus. Public Return/keypad Enter cases
+exercise Parent/Create cancellation, Close/Refresh, list navigation and readonly
+path/public-accept guards. Fixtures wait for actual activation and restore their
+private temporary-resource registry. See the [three-platform receipt](../upstream-port-audit/p3-06-source-browsers-2026-10-16.md).
+
 Независимые пункты текстового просмотра/правки и тест `file_viewer` удалены:
 исходный 7zFM использует внешние приложения. `archive_item_open` сохраняет проверки
 системного Open, lifetime извлечённой копии и отказа от запуска после Cancel.

@@ -1078,24 +1078,53 @@ The OS-owned picker is a documented platform adaptation, not a Windows pixel
 reference. Actual MainWindow startup/error/command integration and full P2-01
 gate passed188/188(74.09s), macOS arm64 Qt6.11.2 2026-10-02.
 
+For long/super paths the original custom Browse fallback retains its top
+Parent/Create/folder row, three-column list, path edit, conditional filter and
+OK/Cancel footer. Its source initial client is272×336DLU, with8DLU margins/gaps,
+exact24DLU top-button widths with16DLU minimum height and64×16DLU footer
+buttons with native caption protection. Path/filter heights have14DLU minimums.
+Hidden FolderMode filter retains its vacant row; Cocoa uses its actual widget
+rectangle to preserve that source space. It requests source minimize/maximize/
+resize without context-help. Source demonstration rows initialize column widths
+through content autosizing, including the native icon slot.
+`source_browse_dialog` checks the initial EN/RU frame and visible controls;
+existing normal/compact navigation/filter/create/accept/Cancel tests remain.
+Parent/Create activate on Return/keypad Enter; Create cancellation leaves the
+filesystem unchanged. Initial focus remains the path edit. Bounded original
+EN/RU and current native results are in the
+[browser receipt](../upstream-port-audit/p3-06-source-browsers-2026-10-16.md).
+
 ### Delete Temporary Files (P1-15.2)
 
 Reference: pinned BrowseDialog2.cpp/rc (dialog93), six Name/MTime/Size/Files/
 Folders/Name-2 columns. Controls retain Delete/Refresh, Parent/read-only path,
 list, disabled filter, Help/Close ordering. Owned membership replaces upstream's
-7z* convention; active or unconfirmed external entries remain visible with an
+7z[E/O/S]+eight-hex naming convention; active or unconfirmed external entries remain visible with an
 explanatory tooltip and disabled Delete. Enter navigates, Backspace returns,
 Delete confirms eligible deletion, Ctrl+R refreshes, Ctrl+F3/F5/F6 sort by
 name/time/size and toggle direction while retaining selection. Plain F5 remains
 the Qt Refresh convenience. F1 opens fm/temp.htm, Escape
-and Close exit without deletion. No push button is an Enter default.
+and Close exit without deletion. Close has initial focus. Focused buttons
+activate on Return; no permanent Enter default remains on non-button focus.
+Source OnOK only navigates with actual list focus; readonly-path Enter/public
+accept is a no-op. Tab order follows the resource, with disabled controls skipped.
+
+Initial client is466×344DLU, with8DLU root margins, source5/3DLU gaps between
+command/path/list rows and8DLU gaps around filter/footer. Delete/Refresh/footer
+buttons are64×16DLU with native caption protection; Parent is exactly24DLU wide
+with16DLU minimum height. Path/filter heights have14DLU minimums. Source sample
+strings initialize all six column widths through native content autosizing. The
+existing500×320 compact minimum remains a Qt accessibility adaptation.
+Source minimize/maximize/resize capabilities are requested without context-help;
+native window managers may suppress modal chrome. Initial EN/RU reports and
+focus-sensitive Enter policy are checked in `temp_cleanup`.
 
 temp_cleanup writes EN/RU900×580/500×320 temp-cleanup-*.json; footer/path/filter
 stay exposed, and the six-column list scrolls horizontally at compact width.
-Geometry and source structure are checked; rendered Windows parity is unverified.
-All four current reports were reviewed at acceptance: named controls are fully
-visible at both sizes. Integrated P1-15 check.sh passed175/175 on macOS arm64;
-Windows/Linux runtime remains unverified.
+Geometry/source structure and a bounded original EN/RU comparison are checked
+in the [current browser receipt](../upstream-port-audit/p3-06-source-browsers-2026-10-16.md).
+Named controls remain exposed at normal/compact sizes; full workflow/pixel parity
+is not inferred from those reports. Earlier P1-15 check.sh175/175 is historical.
 
 ### Offline Help and About (P1-15.1)
 

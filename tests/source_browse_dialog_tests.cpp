@@ -4,6 +4,7 @@
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "CPP/7zip/UI/FileManager/ViewSettings.h"
 #include "layout_inspection.h"
+#include "qtdialogunits.h"
 #include <QApplication>
 #include <QComboBox>
 #include <QDialog>
@@ -12,10 +13,13 @@
 #include <QFile>
 #include <QHeaderView>
 #include <QLabel>
+#include <QLayout>
 #include <QLineEdit>
 #include <QMessageBox>
 #include <QPushButton>
 #include <QScopeGuard>
+#include <QStyleOptionButton>
+#include <QStyleOptionViewItem>
 #include <QTemporaryDir>
 #include <QTimer>
 #include <QTreeWidget>
@@ -50,6 +54,21 @@ class SourceBrowseDialogTests final : public QObject {
             names.append(list.topLevelItem(i)->text(0));
         return names;
     }
+    static bool sourceNameSampleFits(QTreeWidget &list) {
+        QStyleOptionViewItem option;
+        option.initFrom(&list);
+        option.font = list.font();
+        option.fontMetrics = QFontMetrics(option.font);
+        option.text = "123456789012345678901234567";
+        option.features = QStyleOptionViewItem::HasDisplay | QStyleOptionViewItem::HasDecoration;
+        const int icon = list.style()->pixelMetric(QStyle::PM_SmallIconSize, nullptr, &list);
+        option.decorationSize = QSize(icon, icon);
+        option.icon = list.style()->standardIcon(QStyle::SP_FileIcon);
+        option.rect = QRect(0, 0, list.columnWidth(0), qMax(icon, option.fontMetrics.height()) + 8);
+        const QRect contents =
+            list.style()->subElementRect(QStyle::SE_ItemViewItemText, &option, &list);
+        return option.fontMetrics.horizontalAdvance(option.text) <= contents.width();
+    }
 
   private slots:
     void init() {
@@ -71,6 +90,113 @@ class SourceBrowseDialogTests final : public QObject {
         else
             qunsetenv("SEVENZIP_SETTINGS_PATH");
         ReloadLang(FmSettingsPath());
+    }
+    void sourceInitialFrame_data() {
+        QTest::addColumn<QString>("language");
+        QTest::newRow("en") << QString("-");
+        QTest::newRow("ru") << QString("ru");
+    }
+    void sourceInitialFrame() {
+        QFETCH(QString, language);
+        SaveRegLang(UString(language.toStdWString().c_str()), FmSettingsPath());
+        ReloadLang(FmSettingsPath());
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString directory = LongDirectory(fixture);
+        QVERIFY(QDir().mkpath(directory));
+        bool inspected = false;
+        QTimer::singleShot(0, [&] {
+            auto *dialog = Dialog();
+            QVERIFY(dialog);
+            const auto close = qScopeGuard([&] { dialog->reject(); });
+            QVERIFY(UiInspection::writeReport(*dialog,
+                                              QString("browse-source-initial-%1").arg(language)));
+            QCOMPARE(dialog->size(), QtDialogUnits(dialog->font())
+                                         .pixels(QSize(272, 336))
+                                         .expandedTo(dialog->minimumSizeHint()));
+            QVERIFY(dialog->windowFlags().testFlag(Qt::WindowMinMaxButtonsHint));
+            QVERIFY(!dialog->windowFlags().testFlag(Qt::WindowContextHelpButtonHint));
+            auto *list = dialog->findChild<QTreeWidget *>("browseList");
+            QVERIFY(list);
+            QVERIFY(sourceNameSampleFits(*list));
+            auto *path = dialog->findChild<QLineEdit *>("browsePath");
+            QVERIFY(path->height() >= QtDialogUnits(dialog->font()).pixels(QSize(0, 14)).height());
+            auto *footer = dialog->findChild<QDialogButtonBox *>("browseButtons");
+            const QRect footerItem =
+                dialog->layout()->itemAt(dialog->layout()->indexOf(footer))->geometry();
+            const int gap = footerItem.top() - path->geometry().bottom() - 1;
+            QVERIFY(gap >= path->height() +
+                               2 * QtDialogUnits(dialog->font()).pixels(QSize(0, 8)).height());
+            for (const char *name : {"browseParent", "browseCreateFolder"}) {
+                auto *button = dialog->findChild<QPushButton *>(name);
+                QCOMPARE(button->width(),
+                         QtDialogUnits(dialog->font()).pixels(QSize(24, 0)).width());
+                QStyleOptionButton option;
+                option.initFrom(button);
+                option.text = button->text();
+                const QRect contents =
+                    button->style()->subElementRect(QStyle::SE_PushButtonContents, &option, button);
+                QVERIFY(button->fontMetrics().horizontalAdvance(button->text()) <=
+                        contents.width());
+            }
+            for (auto *button : dialog->findChildren<QPushButton *>())
+                QVERIFY(UiInspection::fullyVisible(*button, *dialog));
+            inspected = true;
+        });
+        UString result;
+        QVERIFY(!MyBrowseForFolder(nullptr, UString("Source browser"),
+                                   UString(directory.toStdWString().c_str()), result));
+        QVERIFY(inspected);
+    }
+    void sourceTopButtonsActivateOnEnter_data() {
+        QTest::addColumn<bool>("create");
+        QTest::addColumn<int>("key");
+        for (bool create : {false, true})
+            for (int key : {int(Qt::Key_Return), int(Qt::Key_Enter)})
+                QTest::newRow(qPrintable(QString("%1-%2").arg(create).arg(key))) << create << key;
+    }
+    void sourceTopButtonsActivateOnEnter() {
+        QFETCH(bool, create);
+        QFETCH(int, key);
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString directory = LongDirectory(fixture);
+        QVERIFY(QDir().mkpath(directory));
+        bool inspected = false;
+        QTimer::singleShot(0, [&] {
+            auto *dialog = Dialog();
+            QVERIFY(dialog);
+            const auto close = qScopeGuard([&] { dialog->reject(); });
+            QVERIFY(QTest::qWaitForWindowExposed(dialog));
+            dialog->activateWindow();
+            QVERIFY(QTest::qWaitForWindowActive(dialog));
+            auto *folder = dialog->findChild<QLabel *>("browseFolder");
+            const QString before = folder->toolTip();
+            auto *button =
+                dialog->findChild<QPushButton *>(create ? "browseCreateFolder" : "browseParent");
+            button->setFocus();
+            bool prompted = false;
+            if (create)
+                QTimer::singleShot(0, dialog, [&] {
+                    auto *child = qobject_cast<QDialog *>(QApplication::activeModalWidget());
+                    if (child && child != dialog) {
+                        prompted = child->objectName() == "comboDialog";
+                        child->reject();
+                    }
+                });
+            QTest::keyClick(button, Qt::Key(key));
+            QVERIFY(dialog->isVisible());
+            if (create) {
+                QVERIFY(prompted);
+                QCOMPARE(folder->toolTip(), before);
+            } else
+                QVERIFY(folder->toolTip() != before);
+            inspected = true;
+        });
+        UString result;
+        QVERIFY(!MyBrowseForFolder(nullptr, UString("Source browser"),
+                                   UString(directory.toStdWString().c_str()), result));
+        QVERIFY(inspected);
     }
     void longPathUsesSourceBrowser_data() {
         QTest::addColumn<bool>("folder");

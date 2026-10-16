@@ -1,4 +1,7 @@
 // Qt controls for the mirrored upstream BrowseDialog2 workflow/resource.
+// Source samples and control flow adapted from 7-Zip BrowseDialog2.cpp
+// (0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
+// Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 #include "7zip/UI/FileManager/BrowseDialog2Res.h"
 #include "7zip/UI/FileManager/PropertyNameRes.h"
 #include "7zip/UI/FileManager/resource.h"
@@ -7,6 +10,7 @@
 #include "Common/StringConvert.h"
 #include "Windows/PropVariantConv.h"
 #include "Windows/TimeUtils.h"
+#include "qtdialogunits.h"
 #include "qtfilelisthover.h"
 #include "qtlangbuttonbox.h"
 #include "qtlangcontrols.h"
@@ -64,12 +68,22 @@ CBrowseDialog2::CBrowseDialog2(QWidget *parent, std::function<bool(const QUrl &)
     : QDialog(parent), _opener(std::move(opener)) {
     BuildControls();
 }
+CBrowseDialog2::~CBrowseDialog2() {
+    // QDialog teardown changes focus before QObject disconnects its context.
+    disconnect(qApp, nullptr, this, nullptr);
+}
 void CBrowseDialog2::BuildControls() {
     setObjectName("tempBrowseDialog");
-    resize(900, 580);
+    setWindowFlag(Qt::WindowMinMaxButtonsHint);
+    setWindowFlag(Qt::WindowContextHelpButtonHint, false);
     setMinimumSize(500, 320);
+    const QtDialogUnits units(font());
+    const QSize margin = units.pixels(QSize(8, 8));
     auto *layout = new QVBoxLayout(this);
+    layout->setContentsMargins(margin.width(), margin.height(), margin.width(), margin.height());
+    layout->setSpacing(0);
     auto *commands = new QHBoxLayout;
+    commands->setSpacing(margin.width());
     _delete = new QPushButton(this);
     _delete->setObjectName("tempDelete");
     _delete->setProperty("sourceControlID", IDS_BUTTON_DELETE);
@@ -82,7 +96,9 @@ void CBrowseDialog2::BuildControls() {
     commands->addWidget(refresh);
     commands->addStretch();
     layout->addLayout(commands);
+    layout->addSpacing(units.pixels(QSize(0, 5)).height());
     auto *path = new QHBoxLayout;
+    path->setSpacing(units.pixels(QSize(4, 0)).width());
     _parent = new QPushButton("<--", this);
     _parent->setObjectName("tempParent");
     _parent->setProperty("sourceControlID", IDB_BROWSE2_PARENT);
@@ -90,11 +106,13 @@ void CBrowseDialog2::BuildControls() {
     path->addWidget(_parent);
     _pathEdit = new QLineEdit(this);
     _pathEdit->setReadOnly(true);
+    _pathEdit->setMinimumHeight(units.pixels(QSize(0, 14)).height());
     _pathEdit->setObjectName("tempPath");
     _pathEdit->setProperty("sourceControlID", IDT_BROWSE2_FOLDER);
     QtBindLocalText(_pathEdit, "Temporary folder", "Временная папка", true);
     path->addWidget(_pathEdit, 1);
     layout->addLayout(path);
+    layout->addSpacing(units.pixels(QSize(0, 3)).height());
     _list = new QTreeWidget(this);
     _list->setObjectName("tempList");
     _list->setProperty("sourceControlID", IDL_BROWSE2);
@@ -109,31 +127,53 @@ void CBrowseDialog2::BuildControls() {
     _list->setItemDelegate(new BrowseAppearance(st.FullRow, st.ShowGrid, _list));
     auto *hover = new QtFileListHover(*_list);
     hover->SetEnabled(st.SingleClick);
-    _list->setColumnCount(6);
-    _list->header()->setStretchLastSection(false);
-    _list->header()->setSectionsClickable(true);
-    for (int i = 0; i < 6; ++i)
-        _list->setColumnWidth(i, i == 1 ? 165 : 130);
+    InitializeColumns();
     _list->installEventFilter(this);
     _list->setContextMenuPolicy(Qt::CustomContextMenu);
     layout->addWidget(_list, 1);
+    layout->addSpacing(margin.height());
     _filterCombo = new QComboBox(this);
     _filterCombo->setObjectName("tempFilter");
+    _filterCombo->setMinimumHeight(units.pixels(QSize(0, 14)).height());
     _filterCombo->setProperty("sourceControlID", IDC_BROWSE2_FILTER);
     _filterCombo->addItem(
         QtLocalText("Sevenzip Desktop owned temporary files", "Временные файлы Sevenzip Desktop"));
     _filterCombo->setEnabled(false);
     layout->addWidget(_filterCombo);
+    layout->addSpacing(margin.height());
     auto *buttons = new QtLangButtonBox(QDialogButtonBox::Help | QDialogButtonBox::Close, this);
     buttons->setObjectName("tempFooter");
     buttons->button(QDialogButtonBox::Help)->setObjectName("tempHelp");
     buttons->button(QDialogButtonBox::Close)->setObjectName("tempClose");
+    buttons->layout()->setSpacing(margin.width());
+    for (auto *button : {_delete, refresh, buttons->button(QDialogButtonBox::Help),
+                         buttons->button(QDialogButtonBox::Close)}) {
+        button->setFixedWidth(qMax(units.pixels(QSize(64, 0)).width(), button->sizeHint().width()));
+        button->setMinimumHeight(units.pixels(QSize(0, 16)).height());
+    }
+    _parent->setFixedWidth(units.pixels(QSize(24, 0)).width());
+    _parent->setMinimumHeight(units.pixels(QSize(0, 16)).height());
     layout->addWidget(buttons);
     ConnectControls(buttons, refresh);
+    resize(units.pixels(QSize(466, 344)).expandedTo(minimumSizeHint()));
+}
+void CBrowseDialog2::InitializeColumns() {
+    _list->setHeaderLabels({QtLangText(IDS_PROP_NAME), QtLangText(IDS_PROP_MTIME),
+                            QtLangText(IDS_PROP_SIZE), QtLangText(IDS_PROP_FILES),
+                            QtLangText(IDS_PROP_FOLDERS), QtLangText(IDS_PROP_NAME) + "-2"});
+    _list->header()->setStretchLastSection(false);
+    _list->header()->setSectionsClickable(true);
+    auto *sample = new QTreeWidgetItem(_list, {"123456789012345678901234567", "2009-09-09 09:09:09",
+                                               "99999 MB+", "123456789+", "123456789+",
+                                               "12345678901234567890"});
+    sample->setIcon(0, QFileIconProvider().icon(QFileIconProvider::File));
+    for (int column = 0; column != 6; ++column)
+        _list->resizeColumnToContents(column);
+    delete sample;
 }
 void CBrowseDialog2::ConnectControls(QDialogButtonBox *buttons, QPushButton *refresh) {
     for (auto *button : findChildren<QPushButton *>()) {
-        button->setAutoDefault(false);
+        button->setAutoDefault(true);
         button->setDefault(false);
     }
     connect(_delete, &QPushButton::clicked, this, [this] {
@@ -150,6 +190,7 @@ void CBrowseDialog2::ConnectControls(QDialogButtonBox *buttons, QPushButton *ref
     });
     connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
     connect(buttons, &QDialogButtonBox::helpRequested, this, &CBrowseDialog2::OnHelp);
+    connect(qApp, &QApplication::focusChanged, this, &CBrowseDialog2::OnFocusChanged);
     connect(_list, &QTreeWidget::itemActivated, this, [this] {
         if (!_singleClick)
             OnItemEnter();
@@ -165,7 +206,17 @@ void CBrowseDialog2::ConnectControls(QDialogButtonBox *buttons, QPushButton *ref
             &CBrowseDialog2::ChangeSorting_and_Reload);
     auto *help = new QShortcut(QKeySequence(Qt::Key_F1), this);
     connect(help, &QShortcut::activated, this, &CBrowseDialog2::OnHelp);
-    _list->setFocus();
+    auto *close = buttons->button(QDialogButtonBox::Close);
+    auto *helpButton = buttons->button(QDialogButtonBox::Help);
+    setTabOrder(close, helpButton);
+    setTabOrder(helpButton, _delete);
+    setTabOrder(_delete, refresh);
+    setTabOrder(refresh, _parent);
+    setTabOrder(_parent, _pathEdit);
+    setTabOrder(_pathEdit, _list);
+    setTabOrder(_list, _filterCombo);
+    setTabOrder(_filterCombo, close);
+    close->setFocus();
 }
 void CBrowseDialog2::PopulateRows(const UStringVector &selected, const UString &focused) {
     _list->setUpdatesEnabled(false);
@@ -270,6 +321,26 @@ void CBrowseDialog2::UpdateDeleteAvailability() {
     }
     _delete->setEnabled(enabled);
 }
+void CBrowseDialog2::OnFocusChanged(QWidget *, QWidget *current) {
+    if (current == _list || current == _pathEdit) {
+        // Run after Qt's focus/default restoration; source has no permanent
+        // default button when a non-button control has focus.
+        for (auto *button : findChildren<QPushButton *>())
+            if (button->window() == this)
+                button->setDefault(false);
+    }
+}
+
+void CBrowseDialog2::keyPressEvent(QKeyEvent *event) {
+    if ((event->key() == Qt::Key_Return || event->key() == Qt::Key_Enter) &&
+        (!event->modifiers() || event->modifiers() == Qt::KeypadModifier)) {
+        OnOK();
+        event->accept();
+        return;
+    }
+    QDialog::keyPressEvent(event);
+}
+
 bool CBrowseDialog2::eventFilter(QObject *object, QEvent *event) {
     if (object == _list && event->type() == QEvent::KeyPress) {
         auto *key = static_cast<QKeyEvent *>(event);
