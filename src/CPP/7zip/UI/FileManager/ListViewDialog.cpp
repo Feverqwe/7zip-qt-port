@@ -6,12 +6,14 @@
 #include "PropertyName.h"
 #include "RegistryUtils.h"
 #include "ViewSettings.h"
+#include "qtdialogunits.h"
 #include "qtlangbuttonbox.h"
 #include "qtlangcontrols.h"
 #include "qtlistview.h"
 #include <QApplication>
 #include <QClipboard>
 #include <QKeyEvent>
+#include <QPushButton>
 #include <QVBoxLayout>
 
 static const unsigned kOneStringMaxSize = 1024;
@@ -34,9 +36,14 @@ CListViewDialog::CListViewDialog(QWidget *parent) : QDialog(parent) {}
 
 bool CListViewDialog::OnInit() {
     setObjectName("foldersHistoryDialog");
+    setWindowFlag(Qt::WindowMinMaxButtonsHint);
+    setWindowFlag(Qt::WindowContextHelpButtonHint, false);
     setWindowTitle(ToQString(Title));
-    resize(540, 360);
+    const QtDialogUnits units(font());
+    const QSize margin = units.pixels(QSize(8, 8));
     auto *layout = new QVBoxLayout(this);
+    layout->setContentsMargins(margin.width(), margin.height(), margin.width(), margin.height());
+    layout->setSpacing(margin.height());
     _listView = new CListView(this);
     _listView->setObjectName(NumColumns > 1 ? "propertiesList" : "foldersHistoryList");
     _listView->setColumnCount((int)NumColumns);
@@ -80,6 +87,11 @@ bool CListViewDialog::OnInit() {
     layout->addWidget(_listView);
     auto *buttons = new QtLangButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
     buttons->setObjectName("listViewButtons");
+    buttons->layout()->setSpacing(margin.width());
+    for (auto *button : buttons->buttons()) {
+        button->setFixedWidth(qMax(units.pixels(QSize(64, 0)).width(), button->sizeHint().width()));
+        button->setMinimumHeight(units.pixels(QSize(0, 16)).height());
+    }
     layout->addWidget(buttons);
     connect(buttons, &QDialogButtonBox::accepted, this, &CListViewDialog::OnOK);
     connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
@@ -91,6 +103,7 @@ bool CListViewDialog::OnInit() {
         });
     else
         connect(_listView, &QTreeWidget::itemDoubleClicked, this, &CListViewDialog::OnEnter);
+    resize(units.pixels(QSize(496, 336)).expandedTo(minimumSizeHint()));
     _listView->setFocus();
     return true;
 }

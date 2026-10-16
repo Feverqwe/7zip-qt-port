@@ -23,6 +23,7 @@ class CQtLinkWindow : public QDialog {
     QHash<unsigned, QWidget *> controls_;
     QWidget *Register(unsigned id, const char *name, QWidget *view, const QString &caption = {});
     void BuildControls();
+    QWidget *BuildLinkTypes();
     void AddPathRow(QVBoxLayout *layout, bool to);
 
   protected:

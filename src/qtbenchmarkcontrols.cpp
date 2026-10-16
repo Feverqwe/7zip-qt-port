@@ -1,5 +1,6 @@
 #include "qtbenchmarkcontrols.h"
 #include "7zip/UI/GUI/BenchmarkDialogRes.h"
+#include "qtdialogunits.h"
 #include "qtlangcontrols.h"
 #include "qtmodalresult.h"
 #include <QApplication>
@@ -11,6 +12,23 @@
 #include <QPushButton>
 #include <QResizeEvent>
 #include <QScrollArea>
+#include <QScrollBar>
+#include <QStyle>
+
+namespace {
+class CBenchmarkControlsScroll final : public QScrollArea {
+  public:
+    using QScrollArea::QScrollArea;
+    QSize sizeHint() const override {
+        QSize size = QScrollArea::sizeHint();
+        const int controls = widget() ? widget()->minimumSizeHint().width() : 0;
+        size.setWidth(qMax(QtDialogUnits(font()).pixels(QSize(332, 0)).width(), controls) +
+                      qMax(style()->pixelMetric(QStyle::PM_ScrollBarExtent),
+                           verticalScrollBar()->sizeHint().width()));
+        return size;
+    }
+};
+} // namespace
 
 QString CQtBenchmarkWindow::ResourceCaption(unsigned id) {
     // Original BenchmarkDialog.rc captions are not STRINGTABLE entries.
@@ -42,6 +60,8 @@ QString CQtBenchmarkWindow::QtLangText(unsigned id) {
 }
 
 CQtBenchmarkWindow::CQtBenchmarkWindow(QWidget *parent) : QDialog(parent) {
+    setWindowFlag(Qt::WindowMinMaxButtonsHint);
+    setWindowFlag(Qt::WindowContextHelpButtonHint, false);
     clock_.start();
     QtBindResourceText(this, IDD_BENCH, ResourceCaption(IDD_BENCH));
     setObjectName("IDD_BENCH");
@@ -69,9 +89,16 @@ QLabel *CQtBenchmarkWindow::label(unsigned id, const char *name, const QString &
     view->setTextInteractionFlags(Qt::TextSelectableByMouse);
     return view;
 }
+QLabel *CQtBenchmarkWindow::rightLabel(unsigned id, const char *name, const QString &text) {
+    auto *view = label(id, name, text);
+    view->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    return view;
+}
 QPushButton *CQtBenchmarkWindow::button(unsigned id, const char *name, const QString &text) {
     auto *view = new QPushButton(text, this);
     Register(id, name, view);
+    view->setFixedWidth(
+        qMax(QtDialogUnits(font()).pixels(QSize(64, 0)).width(), view->sizeHint().width()));
     connect(view, &QPushButton::clicked, this, [this, id, view] {
         if (id == 2)
             OnCancel();
@@ -95,7 +122,7 @@ void CQtBenchmarkWindow::BuildControls(bool totalMode) {
         auto *elapsed = new QHBoxLayout;
         elapsed->addWidget(
             label(IDT_BENCH_ELAPSED, "IDT_BENCH_ELAPSED", QtLangText(IDT_BENCH_ELAPSED)));
-        elapsed->addWidget(label(IDT_BENCH_ELAPSED_VAL, "IDT_BENCH_ELAPSED_VAL"));
+        elapsed->addWidget(rightLabel(IDT_BENCH_ELAPSED_VAL, "IDT_BENCH_ELAPSED_VAL"));
         elapsed->addStretch();
         outer->addLayout(elapsed);
         auto *console = new QPlainTextEdit(this);
@@ -103,41 +130,58 @@ void CQtBenchmarkWindow::BuildControls(bool totalMode) {
         console->setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
         Register(IDE_BENCH2_EDIT, "IDE_BENCH2_EDIT", console);
         outer->addWidget(console, 1);
+        outer->addLayout(BuildFooter());
     } else {
         auto *body = new QHBoxLayout;
         BuildNormalControls(body);
         outer->addLayout(body, 1);
     }
+    resize(QtDialogUnits(font())
+               .pixels(totalMode ? QSize(376, 276) : QSize(488, 264))
+               .expandedTo(minimumSizeHint()));
+}
+QHBoxLayout *CQtBenchmarkWindow::BuildFooter() {
     auto *footer = new QHBoxLayout;
+    footer->setSpacing(QtDialogUnits(font()).pixels(QSize(8, 0)).width());
     footer->addStretch();
     footer->addWidget(button(9, "IDHELP", QtLangText(9)));
     footer->addWidget(button(2, "IDCANCEL", QtLangText(2)));
-    outer->addLayout(footer);
-    resize(totalMode ? QSize(760, 560) : QSize(960, 650));
+    return footer;
 }
-void CQtBenchmarkWindow::BuildNormalControls(QHBoxLayout *body) {
-    auto *left = new QWidget(this);
-    auto *grid = new QGridLayout(left);
+QGridLayout *CQtBenchmarkWindow::BuildParameters() {
+    auto *grid = new QGridLayout;
+    grid->setVerticalSpacing(QtDialogUnits(font()).pixels(QSize(0, 6)).height());
     grid->addWidget(
         label(IDT_BENCH_DICTIONARY, "IDT_BENCH_DICTIONARY", QtLangText(IDT_BENCH_DICTIONARY)), 0,
         0);
     grid->addWidget(combo(IDC_BENCH_DICTIONARY, "IDC_BENCH_DICTIONARY"), 0, 1);
-    grid->addWidget(label(IDT_BENCH_MEMORY, "IDT_BENCH_MEMORY", QtLangText(IDT_BENCH_MEMORY)), 0,
-                    2);
-    grid->addWidget(label(IDT_BENCH_MEMORY_VAL, "IDT_BENCH_MEMORY_VAL"), 1, 2);
+    auto *memory = new QVBoxLayout;
+    memory->setSpacing(0);
+    memory->addWidget(label(IDT_BENCH_MEMORY, "IDT_BENCH_MEMORY", QtLangText(IDT_BENCH_MEMORY)));
+    memory->addWidget(label(IDT_BENCH_MEMORY_VAL, "IDT_BENCH_MEMORY_VAL"));
+    grid->addLayout(memory, 0, 2);
+    grid->addWidget(button(IDB_RESTART, "IDB_RESTART", QtLangText(IDB_RESTART)), 0, 3);
     grid->addWidget(
-        label(IDT_BENCH_NUM_THREADS, "IDT_BENCH_NUM_THREADS", QtLangText(IDT_BENCH_NUM_THREADS)), 2,
+        label(IDT_BENCH_NUM_THREADS, "IDT_BENCH_NUM_THREADS", QtLangText(IDT_BENCH_NUM_THREADS)), 1,
         0);
-    grid->addWidget(combo(IDC_BENCH_NUM_THREADS, "IDC_BENCH_NUM_THREADS"), 2, 1);
-    grid->addWidget(label(IDT_BENCH_HARDWARE_THREADS, "IDT_BENCH_HARDWARE_THREADS"), 2, 2);
+    grid->addWidget(combo(IDC_BENCH_NUM_THREADS, "IDC_BENCH_NUM_THREADS"), 1, 1);
+    grid->addWidget(label(IDT_BENCH_HARDWARE_THREADS, "IDT_BENCH_HARDWARE_THREADS"), 1, 2);
+    grid->addWidget(button(IDB_STOP, "IDB_STOP", QtLangText(IDB_STOP)), 1, 3);
     qobject_cast<QLabel *>(GetItem(IDT_BENCH_DICTIONARY))->setBuddy(GetItem(IDC_BENCH_DICTIONARY));
     qobject_cast<QLabel *>(GetItem(IDT_BENCH_NUM_THREADS))
         ->setBuddy(GetItem(IDC_BENCH_NUM_THREADS));
-    grid->addLayout(BuildMetrics(), 3, 0, 1, 3);
-    auto *error = label(IDT_BENCH_ERROR_MESSAGE, "IDT_BENCH_ERROR_MESSAGE");
+    return grid;
+}
+void CQtBenchmarkWindow::BuildNormalControls(QHBoxLayout *body) {
+    auto *left = new QWidget(this);
+    auto *grid = new QGridLayout(left);
+    grid->setContentsMargins(0, 0, 0, 0);
+    grid->addLayout(BuildParameters(), 0, 0, 1, 2);
+    grid->addLayout(BuildMetrics(), 1, 0, 1, 2);
+    auto *error = rightLabel(IDT_BENCH_ERROR_MESSAGE, "IDT_BENCH_ERROR_MESSAGE");
     error->setWordWrap(true);
-    grid->addWidget(error, 4, 0, 1, 3, Qt::AlignLeft);
-    grid->addLayout(BuildSummary(), 5, 0, 1, 3);
+    grid->addWidget(error, 2, 0, 1, 2, Qt::AlignRight);
+    grid->addLayout(BuildSummary(), 3, 0, 1, 2);
     const unsigned info[] = {IDT_BENCH_CPU, IDT_BENCH_CPU_FEATURE, IDT_BENCH_VER, IDT_BENCH_SYS1,
                              IDT_BENCH_SYS2};
     const char *names[] = {"IDT_BENCH_CPU", "IDT_BENCH_CPU_FEATURE", "IDT_BENCH_VER",
@@ -145,23 +189,40 @@ void CQtBenchmarkWindow::BuildNormalControls(QHBoxLayout *body) {
     for (int i = 0; i < 5; ++i) {
         auto *view = label(info[i], names[i]);
         view->setWordWrap(true);
-        grid->addWidget(view, 6 + i, 0, 1, 3, Qt::AlignLeft);
+        if (i == 0 || i == 2)
+            view->setAlignment(Qt::AlignRight | Qt::AlignTop);
+        if (i == 0)
+            grid->addWidget(view, 4, 0, 1, 2, Qt::AlignRight);
+        else if (i == 1 || i == 2)
+            grid->addWidget(view, 5, i - 1, i == 2 ? Qt::AlignRight : Qt::AlignLeft);
+        else
+            grid->addWidget(view, i + 3, 0, Qt::AlignLeft);
     }
-    grid->setRowStretch(11, 1);
-    auto *scroll = new QScrollArea(this);
+    grid->setColumnStretch(0, 232);
+    grid->setColumnStretch(1, 100);
+    grid->setRowStretch(8, 1);
+    auto *scroll = new CBenchmarkControlsScroll(this);
     scroll->setObjectName("benchmarkControlsScroll");
+    scroll->setFrameShape(QFrame::NoFrame);
+    scroll->setFocusPolicy(Qt::NoFocus);
     scroll->setWidgetResizable(true);
     scroll->setWidget(left);
-    body->addWidget(scroll, 3);
-    auto *right = new QVBoxLayout;
-    right->addWidget(button(IDB_RESTART, "IDB_RESTART", QtLangText(IDB_RESTART)));
-    right->addWidget(button(IDB_STOP, "IDB_STOP", QtLangText(IDB_STOP)));
-    auto *log = new QPlainTextEdit(this);
-    log->setReadOnly(true);
-    log->setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
-    Register(IDT_BENCH_LOG, "IDT_BENCH_LOG", log);
-    right->addWidget(log, 1);
-    body->addLayout(right, 1);
+    auto *pane = new QWidget(this);
+    auto *column = new QVBoxLayout(pane);
+    column->setContentsMargins(0, 0, 0, 0);
+    column->addWidget(scroll, 1);
+    column->addLayout(BuildFooter());
+    // Source normal OnSize grows only the log; compact Qt viewports scroll
+    // the left controls while retaining the source footer beside the log.
+    pane->setMaximumWidth(scroll->sizeHint().width());
+    body->addWidget(pane);
+    auto *log = label(IDT_BENCH_LOG, "IDT_BENCH_LOG");
+    log->setAlignment(Qt::AlignLeft | Qt::AlignTop);
+    log->setTextFormat(Qt::PlainText);
+    log->setTextInteractionFlags(Qt::NoTextInteraction);
+    log->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
+    log->setMinimumWidth(QtDialogUnits(font()).pixels(QSize(20, 0)).width());
+    body->addWidget(log, 1);
 }
 QGridLayout *CQtBenchmarkWindow::BuildMetrics() {
     const unsigned captions[] = {IDT_BENCH_SIZE, IDT_BENCH_SPEED, IDT_BENCH_USAGE_LABEL,
@@ -177,29 +238,50 @@ QGridLayout *CQtBenchmarkWindow::BuildMetrics() {
           IDT_BENCH_DECOMPR_RPU1, IDT_BENCH_DECOMPR_RATING1},
          {IDT_BENCH_DECOMPR_SIZE2, IDT_BENCH_DECOMPR_SPEED2, IDT_BENCH_DECOMPR_USAGE2,
           IDT_BENCH_DECOMPR_RPU2, IDT_BENCH_DECOMPR_RATING2}}};
+    const int widths[] = {50, 52, 60, 46, 58, 58};
+    const QtDialogUnits units(font());
     auto *metrics = new QGridLayout;
-    for (int col = 0; col < 5; ++col)
-        metrics->addWidget(label(captions[col], captionNames[col], QtLangText(captions[col])), 0,
-                           col + 1);
+    auto *headers = new QGridLayout;
+    headers->setHorizontalSpacing(0);
+    for (int col = 0; col < 6; ++col)
+        headers->setColumnMinimumWidth(col, units.pixels(QSize(widths[col], 0)).width());
+    for (int col = 0; col < 5; ++col) {
+        auto *header = rightLabel(captions[col], captionNames[col], QtLangText(captions[col]));
+        header->setWordWrap(true);
+        header->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+        headers->addWidget(header, 0, col + 1);
+    }
+    metrics->addLayout(headers, 0, 0);
     for (int group = 0; group < 2; ++group) {
         const unsigned id = group ? IDG_BENCH_DECOMPRESSING : IDG_BENCH_COMPRESSING;
-        metrics->addWidget(
-            label(id, group ? "IDG_BENCH_DECOMPRESSING" : "IDG_BENCH_COMPRESSING", QtLangText(id)),
-            1 + group * 3, 0, 1, 6, Qt::AlignLeft);
+        auto *box = new QGroupBox(this);
+        Register(id, group ? "IDG_BENCH_DECOMPRESSING" : "IDG_BENCH_COMPRESSING", box);
+        auto *rows = new QGridLayout(box);
+        rows->setHorizontalSpacing(0);
+        for (int col = 0; col < 6; ++col)
+            rows->setColumnMinimumWidth(col, units.pixels(QSize(widths[col], 0)).width());
+        box->ensurePolished();
+        if (group == 0) {
+            const auto layoutMargins = rows->contentsMargins();
+            const auto frameMargins = box->contentsMargins();
+            headers->setContentsMargins(layoutMargins.left() + frameMargins.left(), 0,
+                                        layoutMargins.right() + frameMargins.right(), 0);
+        }
+        metrics->addWidget(box, group + 1, 0);
         for (int row = 0; row < 2; ++row) {
             const unsigned textId = row ? IDT_BENCH_RESULTING : IDT_BENCH_CURRENT;
             const unsigned fieldId = group ? textId + 50 : textId;
-            metrics->addWidget(label(fieldId,
-                                     group ? (row ? "IDT_BENCH_RESULTING2" : "IDT_BENCH_CURRENT2")
-                                           : (row ? "IDT_BENCH_RESULTING" : "IDT_BENCH_CURRENT"),
-                                     QtLangText(textId)),
-                               2 + group * 3 + row, 0);
+            rows->addWidget(label(fieldId,
+                                  group ? (row ? "IDT_BENCH_RESULTING2" : "IDT_BENCH_CURRENT2")
+                                        : (row ? "IDT_BENCH_RESULTING" : "IDT_BENCH_CURRENT"),
+                                  QtLangText(textId)),
+                            row, 0);
             for (int col = 0; col < 5; ++col) {
                 const unsigned valueId = values[group][row][col];
                 const QByteArray name = "benchmarkValue" + QByteArray::number(valueId);
-                auto *view = label(valueId, name.constData());
-                view->setMinimumWidth(62);
-                metrics->addWidget(view, 2 + group * 3 + row, col + 1);
+                auto *view = rightLabel(valueId, name.constData());
+                view->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+                rows->addWidget(view, row, col + 1);
             }
         }
     }
@@ -209,17 +291,17 @@ QGridLayout *CQtBenchmarkWindow::BuildSummary() {
     auto *summary = new QGridLayout;
     summary->addWidget(label(IDT_BENCH_ELAPSED, "IDT_BENCH_ELAPSED", QtLangText(IDT_BENCH_ELAPSED)),
                        0, 0);
-    summary->addWidget(label(IDT_BENCH_ELAPSED_VAL, "IDT_BENCH_ELAPSED_VAL"), 0, 1);
+    summary->addWidget(rightLabel(IDT_BENCH_ELAPSED_VAL, "IDT_BENCH_ELAPSED_VAL"), 0, 1);
     summary->addWidget(label(IDT_BENCH_PASSES, "IDT_BENCH_PASSES", QtLangText(IDT_BENCH_PASSES)), 1,
                        0);
-    summary->addWidget(label(IDT_BENCH_PASSES_VAL, "IDT_BENCH_PASSES_VAL"), 1, 1);
+    summary->addWidget(rightLabel(IDT_BENCH_PASSES_VAL, "IDT_BENCH_PASSES_VAL"), 1, 1);
     summary->addWidget(combo(IDC_BENCH_NUM_PASSES, "IDC_BENCH_NUM_PASSES"), 2, 0);
     auto *total = new QGroupBox(QtLangText(IDG_BENCH_TOTAL_RATING), this);
     Register(IDG_BENCH_TOTAL_RATING, "IDG_BENCH_TOTAL_RATING", total);
     auto *totalLayout = new QHBoxLayout(total);
-    totalLayout->addWidget(label(IDT_BENCH_TOTAL_USAGE_VAL, "IDT_BENCH_TOTAL_USAGE_VAL"));
-    totalLayout->addWidget(label(IDT_BENCH_TOTAL_RPU_VAL, "IDT_BENCH_TOTAL_RPU_VAL"));
-    totalLayout->addWidget(label(IDT_BENCH_TOTAL_RATING_VAL, "IDT_BENCH_TOTAL_RATING_VAL"));
+    totalLayout->addWidget(rightLabel(IDT_BENCH_TOTAL_USAGE_VAL, "IDT_BENCH_TOTAL_USAGE_VAL"));
+    totalLayout->addWidget(rightLabel(IDT_BENCH_TOTAL_RPU_VAL, "IDT_BENCH_TOTAL_RPU_VAL"));
+    totalLayout->addWidget(rightLabel(IDT_BENCH_TOTAL_RATING_VAL, "IDT_BENCH_TOTAL_RATING_VAL"));
     summary->addWidget(total, 0, 2, 3, 1);
     return summary;
 }
@@ -272,6 +354,20 @@ qintptr CQtBenchmarkWindow::Create(unsigned resource, QWidget *parent) {
         setParent(parent, windowFlags());
     BuildControls(resource == IDD_BENCH_TOTAL);
     OnInit();
+    if (resource == IDD_BENCH_TOTAL)
+        GetItem(IDE_BENCH2_EDIT)->setFocus();
+    else {
+        const unsigned order[] = {IDB_RESTART,
+                                  IDB_STOP,
+                                  IDHELP,
+                                  IDCANCEL,
+                                  IDC_BENCH_DICTIONARY,
+                                  IDC_BENCH_NUM_THREADS,
+                                  IDC_BENCH_NUM_PASSES};
+        for (unsigned i = 1; i < sizeof(order) / sizeof(order[0]); ++i)
+            QWidget::setTabOrder(GetItem(order[i - 1]), GetItem(order[i]));
+        GetItem(IDB_RESTART)->setFocus();
+    }
     const int result = exec();
     OnDestroy();
     return result;

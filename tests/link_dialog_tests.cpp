@@ -4,17 +4,21 @@
 #include "Common/StringConvert.h"
 #include "Windows/FileIO.h"
 #include "layout_inspection.h"
+#include "qtdialogunits.h"
 #include "qtlangcontrols.h"
 #include "qtlinkservices.h"
 #include <QApplication>
 #include <QComboBox>
 #include <QFile>
 #include <QFileInfo>
+#include <QGroupBox>
 #include <QLabel>
 #include <QMessageBox>
 #include <QPushButton>
 #include <QRadioButton>
 #include <QScrollArea>
+#include <QStyleOptionButton>
+#include <QStyleOptionGroupBox>
 #include <QTemporaryDir>
 #include <QTimer>
 #include <QtTest>
@@ -104,6 +108,13 @@ class LinkDialogTests final : public QObject {
                 QVERIFY(!radio->toolTip().isEmpty());
             }
 #endif
+            QApplication::processEvents();
+            QVERIFY(UiInspection::writeReport(
+                dialog, QString("link-source-frame-%1-%2").arg(language).arg(size.width())));
+            QVERIFY(dialog.windowFlags().testFlag(Qt::WindowMinMaxButtonsHint));
+            QCOMPARE(dialog.size(), QtDialogUnits(dialog.font())
+                                        .pixels(QSize(304, 230))
+                                        .expandedTo(dialog.minimumSizeHint()));
             dialog.resize(size);
             QApplication::processEvents();
             // Focused editable combos can asynchronously scroll themselves into view.
@@ -115,15 +126,44 @@ class LinkDialogTests final : public QObject {
             for (QWidget *control : scroll->widget()->findChildren<QWidget *>()) {
                 if (control->objectName().isEmpty() || !control->isVisible())
                     continue;
+                if (auto *group = qobject_cast<QGroupBox *>(control)) {
+                    // The frame can exceed a compact viewport; check its title
+                    // here and each child independently in subsequent iterations.
+                    QStyleOptionGroupBox option;
+                    option.initFrom(group);
+                    option.text = group->title();
+                    const QRect title = group->style()->subControlRect(
+                        QStyle::CC_GroupBox, &option, QStyle::SC_GroupBoxLabel, group);
+                    const QPoint center = group->mapTo(scroll->widget(), title.center());
+                    scroll->ensureVisible(center.x(), center.y(), title.width() / 2 + 5,
+                                          title.height() / 2 + 5);
+                    QApplication::processEvents();
+                    QVERIFY(scroll->viewport()->rect().contains(
+                        QRect(group->mapTo(scroll->viewport(), title.topLeft()), title.size())));
+                    continue;
+                }
                 scroll->ensureWidgetVisible(control, 5, 5);
                 QApplication::processEvents();
                 QVERIFY2(UiInspection::fullyVisible(*control, dialog),
                          qPrintable(control->objectName()));
                 if (qobject_cast<QLabel *>(control))
                     QVERIFY2(UiInspection::labelFits(*control), qPrintable(control->objectName()));
-                if (auto *button = qobject_cast<QAbstractButton *>(control))
-                    QVERIFY2(button->width() >= button->sizeHint().width(),
-                             qPrintable(button->objectName()));
+                if (auto *button = qobject_cast<QAbstractButton *>(control)) {
+                    if (button->objectName() == "IDB_LINK_PATH_FROM" ||
+                        button->objectName() == "IDB_LINK_PATH_TO") {
+                        QCOMPARE(button->width(),
+                                 QtDialogUnits(dialog.font()).pixels(QSize(20, 0)).width());
+                        QStyleOptionButton option;
+                        option.initFrom(button);
+                        option.text = button->text();
+                        const QRect contents = button->style()->subElementRect(
+                            QStyle::SE_PushButtonContents, &option, button);
+                        QVERIFY(button->fontMetrics().horizontalAdvance(button->text()) <=
+                                contents.width());
+                    } else
+                        QVERIFY2(button->width() >= button->sizeHint().width(),
+                                 qPrintable(button->objectName()));
+                }
             }
             for (const char *name : {"IDB_LINK_LINK", "IDCANCEL"})
                 QVERIFY(UiInspection::fullyVisible(*dialog.findChild<QPushButton *>(name), dialog));

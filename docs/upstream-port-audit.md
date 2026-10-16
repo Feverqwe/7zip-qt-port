@@ -6,6 +6,10 @@
 
 [Source presentation, rendered reference and integrated regressions](upstream-port-audit/p3-06-primitives-2026-10-16.md).
 
+## P3-06 — List, Link and Benchmark presentation (2026-10-16)
+
+[Source frames/grouping, rendered reference and native consumers](upstream-port-audit/p3-06-secondary-dialogs-2026-10-16.md).
+
 ## P3-04 — Delivery after the Options source-frame correction (2026-10-16)
 
 [Current delivery and exact product inputs](upstream-port-audit/p3-04-2026-10-16.md).

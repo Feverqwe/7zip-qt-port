@@ -1902,11 +1902,21 @@ fallback without claiming a real second volume. Direct consumers are
 `fs_folder_copy`, `file_transfer`, `file_transfer_direct`, `filesystem_operations`.
 Fixtures never use user archives or targets. Geometry proves accessible controls
 and source grouping, not rendered 7zFM pixel fidelity.
+Current `link_dialog` additionally checks304×230DLU initial frames, source window
+flags and20DLU Browse with native content/text fit. Compact scroll checks reach
+the native group-title rectangle and every child independently; the90DLU frame
+need not fit a smaller viewport. EN/RU source reports supplement the original
+explicit normal/compact requests.
 
 P2-04 accepted checks: `native_benchmark` exercises original Bench encode/decode callbacks,
 callback cancellation and a bounded real GUI run (256KiB dictionary, one thread,
 one pass,50ms benchmark interval; frequency calibration adds several seconds).
 It asserts source metrics, not machine performance goldens. `benchmark_lifecycle`
+checks488×264/376×276DLU initial frames, source flags, actual metric group boxes,
+right-aligned values, left parameter/footer controls, static right log and
+resource logical focus/tab order in EN/RU. These public Qt assertions supplement
+the original lifecycle consumers and do not establish physical OS input.
+`benchmark_lifecycle`
 uses a narrow backend service fixture for deterministic source results, total
 console, Restart/Stop/Close joins, memory refusal and engine errors, plus live
 EN/RU normal/compact geometry and JSON. `benchmark_command` invokes the real
@@ -3238,6 +3248,9 @@ descendant), grouped sizes and omitted dates. It writes normal/compact
 geometry reports. `list_view_dialog` checks two-column display normalization,
 truncation without loss of the stored value, full-value clipboard/detail and
 aligned deletion. History/navigation tests cover the shared QTreeWidget adapter.
+It also checks496×336DLU source-initial frames, source window flags, hidden
+one-column/blank two-column headers and fully exposed list/footer in EN/RU at
+normal/compact sizes through the shared geometry inspector.
 `edit_dialog` checks Unicode/literal markup, immutable text, Enter/Close and
 both scroll directions at normal/compact sizes, with JSON geometry reports.
 `archive_item_open` checks that Open sends a Unicode filesystem path to the system file handler, extracts one archive entry before opening it, keeps that temporary copy until window destruction, and does not launch a handler after extraction cancellation. Its file-handler dependency is injected so the test never launches a desktop application.

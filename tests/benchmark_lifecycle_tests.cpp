@@ -1,18 +1,23 @@
+#include "7zip/UI/GUI/BenchmarkDialogRes.h"
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "CPP/7zip/UI/GUI/BenchmarkDialog.h"
 #include "benchmark_services_fixture.h"
 #include "layout_inspection.h"
 #include "qtbenchmarkcontrols.h"
+#include "qtdialogunits.h"
 #include "qtlangcontrols.h"
 #include <QApplication>
 #include <QDialog>
+#include <QGroupBox>
 #include <QLabel>
 #include <QMessageBox>
 #include <QPlainTextEdit>
 #include <QPushButton>
+#include <QScopeGuard>
 #include <QScrollArea>
 #include <QScrollBar>
+#include <QStyleOptionGroupBox>
 #include <QTextBrowser>
 #include <QTimer>
 #include <QtTest>
@@ -39,6 +44,84 @@ class BenchmarkLifecycleTests final : public QObject {
     }
 
   private slots:
+    void sourceInitialPresentation_data() {
+        QTest::addColumn<QString>("language");
+        QTest::addColumn<bool>("total");
+        for (const char *language : {"-", "ru"})
+            for (bool total : {false, true})
+                QTest::newRow(qPrintable(QString("%1-%2").arg(language).arg(total)))
+                    << QString::fromLatin1(language) << total;
+    }
+    void sourceInitialPresentation() {
+        QFETCH(QString, language);
+        QFETCH(bool, total);
+        SaveRegLang(UString(language.toStdWString().c_str()),
+                    qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+        ReloadLang(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+        FixtureBenchmarkServices service;
+        service.Hold = true;
+        bool inspected = false;
+        QTimer responder;
+        connect(&responder, &QTimer::timeout, this, [&] {
+            auto *view = dialog();
+            if (!view || !service.Active || inspected)
+                return;
+            inspected = true;
+            const auto close = qScopeGuard([view] { view->reject(); });
+            QVERIFY(UiInspection::writeReport(
+                *view, QString("benchmark-source-initial-%1-%2").arg(language).arg(total)));
+            QVERIFY(view->windowFlags().testFlag(Qt::WindowMinMaxButtonsHint));
+            const QSize source = total ? QSize(376, 276) : QSize(488, 264);
+            QCOMPARE(
+                view->size(),
+                QtDialogUnits(view->font()).pixels(source).expandedTo(view->minimumSizeHint()));
+            if (total) {
+                QCOMPARE(view->focusWidget(), view->findChild<QPlainTextEdit *>("IDE_BENCH2_EDIT"));
+                return;
+            }
+            auto *log = view->findChild<QLabel *>("IDT_BENCH_LOG");
+            QVERIFY(log);
+            auto *scroll = view->findChild<QScrollArea *>("benchmarkControlsScroll");
+            QVERIFY(scroll);
+            QCOMPARE(scroll->horizontalScrollBar()->maximum(), 0);
+            QVERIFY(!log->wordWrap());
+            QVERIFY(view->findChild<QGroupBox *>("IDG_BENCH_COMPRESSING"));
+            QVERIFY(view->findChild<QGroupBox *>("IDG_BENCH_DECOMPRESSING"));
+            const QRect logBounds(log->mapTo(view, QPoint()), log->size());
+            for (const char *name : {"IDB_RESTART", "IDB_STOP", "IDHELP", "IDCANCEL"}) {
+                auto *button = view->findChild<QPushButton *>(name);
+                QVERIFY(button);
+                QVERIFY2(UiInspection::fullyVisible(*button, *view), name);
+                const QRect bounds(button->mapTo(view, QPoint()), button->size());
+                QVERIFY2(bounds.right() < logBounds.left(), name);
+                if (QString::fromLatin1(name) == "IDB_RESTART")
+                    QVERIFY(logBounds.top() <= bounds.top());
+            }
+            for (const QString &name : {QStringLiteral("IDT_BENCH_SIZE"),
+                                        QString("benchmarkValue%1").arg(IDT_BENCH_COMPRESS_SIZE1),
+                                        QStringLiteral("IDT_BENCH_TOTAL_RATING_VAL")}) {
+                auto *value = view->findChild<QLabel *>(name);
+                QVERIFY(value);
+                QVERIFY2(value->alignment().testFlag(Qt::AlignRight), qPrintable(name));
+            }
+            QCOMPARE(view->focusWidget(), view->findChild<QPushButton *>("IDB_RESTART"));
+            QWidget *focused = view->focusWidget();
+            for (const char *name :
+                 {"IDB_STOP", "IDHELP", "IDCANCEL", "IDC_BENCH_DICTIONARY", "IDC_BENCH_NUM_THREADS",
+                  "IDC_BENCH_NUM_PASSES", "IDB_RESTART"}) {
+                QWidget *next = focused->nextInFocusChain();
+                while (next != focused && !(next->focusPolicy() & Qt::TabFocus))
+                    next = next->nextInFocusChain();
+                QCOMPARE(next, view->findChild<QWidget *>(name));
+                focused = next;
+            }
+        });
+        responder.start(1);
+        QCOMPARE(Benchmark(nullptr, properties(total), 1, nullptr, &service), S_OK);
+        QVERIFY(inspected);
+        QCOMPARE(service.Active.load(), 0u);
+    }
+
     void detachedWorkerCompletionIsSuccessfulNoOp() {
         class Window final : public CQtBenchmarkWindow {
           public:
@@ -160,6 +243,24 @@ class BenchmarkLifecycleTests final : public QObject {
                         for (QWidget *control : scroll->widget()->findChildren<QWidget *>()) {
                             if (control->objectName().isEmpty() || !control->isVisible())
                                 continue;
+                            if (auto *group = qobject_cast<QGroupBox *>(control)) {
+                                // A source group frame can exceed a compact viewport;
+                                // its title and each child control must remain reachable.
+                                QStyleOptionGroupBox option;
+                                option.initFrom(group);
+                                option.text = group->title();
+                                const QRect title = group->style()->subControlRect(
+                                    QStyle::CC_GroupBox, &option, QStyle::SC_GroupBoxLabel, group);
+                                const QPoint center =
+                                    group->mapTo(scroll->widget(), title.center());
+                                scroll->ensureVisible(center.x(), center.y(), title.width() / 2 + 5,
+                                                      title.height() / 2 + 5);
+                                QApplication::processEvents();
+                                QVERIFY(scroll->viewport()->rect().contains(
+                                    QRect(group->mapTo(scroll->viewport(), title.topLeft()),
+                                          title.size())));
+                                continue;
+                            }
                             scroll->ensureWidgetVisible(control, 5, 10);
                             QApplication::processEvents();
                             QVERIFY2(UiInspection::fullyVisible(*control, *view),

@@ -637,10 +637,11 @@ if(BUILD_TESTING)
     add_test(NAME edit_dialog COMMAND edit_dialog_tests -silent)
     set_tests_properties(edit_dialog PROPERTIES ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
-    qt_add_executable(list_view_dialog_tests tests/list_view_dialog_tests.cpp)
+    qt_add_executable(list_view_dialog_tests tests/list_view_dialog_tests.cpp tests/layout_inspection.cpp)
     target_link_libraries(list_view_dialog_tests PRIVATE sevenzip_panel Qt6::Test)
     add_test(NAME list_view_dialog COMMAND list_view_dialog_tests -silent)
-    set_tests_properties(list_view_dialog PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+    set_tests_properties(list_view_dialog PROPERTIES ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     qt_add_executable(list_activation_tests tests/list_activation_tests.cpp)
     target_link_libraries(list_activation_tests PRIVATE sevenzip_panel Qt6::Test)
     add_test(NAME list_activation COMMAND list_activation_tests -silent)

@@ -4,6 +4,10 @@
 
 [Общие сведения](7zfm-parity/shared.md).
 
+## List, Link and Benchmark source presentation (2026-10-16)
+
+[Открыть раздел](7zfm-parity/shared.md#list-link-and-benchmark-source-presentation-2026-10-16).
+
 ## Options: начальный размер окна (P3-06, 2026-10-16)
 
 [Открыть раздел](7zfm-parity/shared.md#options-начальный-размер-окна-p3-06-2026-10-16).

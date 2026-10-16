@@ -39,6 +39,13 @@ GREEN7Qt и три native editor repetitions180Qt проходят без изм
 external_codecs startup wait FAIL6750ms/5000ms.1623 uploaded inputs и stock
 source/config verified. Эти результаты не заменяют
 ещё не завершённую общую приёмку.
+[List/Link/Benchmark presentation](upstream-port-audit/p3-06-secondary-dialogs-2026-10-16.md)
+добавляет source frames/grouping, десять оригинальных EN/RU видов и текущие
+native Qt consumers на3OS: по10focused/3native CTest и36JSON. Mac full323/323
+PASS262.65s. [Runner context correction](upstream-port-audit/p3-03-runner-priority-2026-10-16.md)
+восстанавливает обычный priority только проектной интерактивной задачи; причина
+codec delay и стабильность whole Windows этим не установлены. Остальные
+вторичные dialogs, current packages и полный native обход остаются открытыми.
 [Текущий launcher, логи, входы и ограничения](upstream-port-audit.md#p3-05--native-associated-launcher-and-process-lifetime-2026-10-10);
 [текущий полный Linux gate и версии](upstream-port-audit.md#p3-03--full-linux-gate-after-launcher-restoration-2026-10-10).
 
@@ -75,7 +82,7 @@ native Windows и rendered reference этим не подтверждены.
 
 | Область приёмки | macOS arm64 | Linux x64 | Windows x64 |
 | --- | --- | --- | --- |
-| Default format/build/CTest | checked: snapshot identity component full323/323260.39s,5152Qt/0fail/66skip; prior UI component receipts retained | checked: snapshot identity component whole322/322509.94s,5144Qt/0fail/66skip,1622 uploaded inputs and stock source verified; native acceptance remains separate | partial: snapshot identity component whole339/3402550.18s,5388Qt/1fail/20skip,1623 uploaded inputs/stock source/config verified; editor60Qt PASS, sole external_codecs startup wait FAIL6750ms/5000ms; stability open |
+| Default format/build/CTest | checked: secondary presentation/runner context full323/323262.65s,5160Qt/0fail/66skip; localized later range assertion checked separately | checked: snapshot identity component whole322/322509.94s,5144Qt/0fail/66skip,1622 uploaded inputs and stock source verified; current secondary whole gate executing, native acceptance separate | partial: snapshot identity component whole339/3402550.18s,5388Qt/1fail/20skip,1623 uploaded inputs/stock source/config verified; editor60Qt PASS, sole external_codecs startup wait FAIL6750ms/5000ms; normal-priority follow-up5/5 passes, stability open |
 | Исходные модули, headers/resources/callers | partial: [109 source receipts](omitted-scope-audit.md#109-unit-source-receipt-ledger-2026-10-10); identified launcher/continuation gap corrected, whole workflow acceptance open | partial: общий source scope тот же; POSIX no-handle consumers checked | partial: original native launcher and real handle/disk/browser/archive consumers checked; whole acceptance open |
 | EN/RU, normal/compact, команды и workflow | partial: автоматические contracts/regressions проходят; полный нативный обход не принят | partial: current package на реальной консоли, EN/RU/two-panel normal/compact, Options/Copy и create/open/test/extract проверены; полный обход открыт | partial: выполненные focused consumers/JSON; current interactive gate и полный обход не приняты |
 | Нативные dialogs/shortcuts/icons/drag/registration/FS | partial: историческая ручная Finder-проверка принята отдельно; Cocoa keyboard notification protocol0–9 проверен, physical input/full native обход не проверены | partial: delivery8d56d8d Copy/Overwrite/Language/PCManFM drag/Escape; Release2f8e194 GIO workflow проверен; corrected keyboard XTest1/native consumers7/7; full native scope открыт | partial: active console Session1; corrected keyboard consumers7/7,143Qt/0fail/0skip; original Limited reference also suppresses physical RightCtrlShift0, positive1/AltShift0 PASS; current full/native acceptance открыт |

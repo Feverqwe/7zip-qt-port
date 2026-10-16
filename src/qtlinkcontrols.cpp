@@ -1,5 +1,6 @@
 #include "qtlinkcontrols.h"
 #include "7zip/UI/FileManager/LinkDialogRes.h"
+#include "qtdialogunits.h"
 #include "qtlangcontrols.h"
 #include "qtlinkservices.h"
 #include "qtmodalresult.h"
@@ -24,14 +25,18 @@ QWidget *CQtLinkWindow::Register(unsigned id, const char *name, QWidget *view,
     return view;
 }
 void CQtLinkWindow::AddPathRow(QVBoxLayout *layout, bool to) {
+    const QtDialogUnits units(font());
     const unsigned labelID = to ? IDT_LINK_PATH_TO : IDT_LINK_PATH_FROM;
     const unsigned comboID = to ? IDC_LINK_PATH_TO : IDC_LINK_PATH_FROM;
     const unsigned buttonID = to ? IDB_LINK_PATH_TO : IDB_LINK_PATH_FROM;
     auto *label = new QLabel(this);
     Register(labelID, to ? "IDT_LINK_PATH_TO" : "IDT_LINK_PATH_FROM", label,
              to ? "Link to:" : "Link from:");
+    label->setMinimumHeight(units.pixels(QSize(0, 8)).height());
     layout->addWidget(label);
+    layout->addSpacing(units.pixels(QSize(0, 2)).height());
     auto *row = new QHBoxLayout;
+    row->setSpacing(units.pixels(QSize(8, 0)).width());
     auto *combo = new QComboBox(this);
     combo->setEditable(true);
     combo->setInsertPolicy(QComboBox::NoInsert);
@@ -41,26 +46,18 @@ void CQtLinkWindow::AddPathRow(QVBoxLayout *layout, bool to) {
     label->setBuddy(combo);
     row->addWidget(combo, 1);
     auto *browse = new QPushButton("...", this);
+    browse->setFixedWidth(units.pixels(QSize(20, 0)).width());
+    browse->setMinimumHeight(units.pixels(QSize(0, 16)).height());
     Register(buttonID, to ? "IDB_LINK_PATH_TO" : "IDB_LINK_PATH_FROM", browse);
     connect(browse, &QPushButton::clicked, this,
             [this, buttonID, browse] { OnButtonClicked(buttonID, browse); });
     row->addWidget(browse);
     layout->addLayout(row);
 }
-void CQtLinkWindow::BuildControls() {
-    setObjectName("IDD_LINK");
-    QtBindResourceText(this, IDD_LINK, "Link");
-    auto *outer = new QVBoxLayout(this);
-    auto *content = new QWidget(this);
-    auto *layout = new QVBoxLayout(content);
-    AddPathRow(layout, false);
-    AddPathRow(layout, true);
-    auto *current = new QLabel(this);
-    current->setWordWrap(true);
-    current->setTextFormat(Qt::PlainText);
-    Register(IDT_LINK_PATH_TO_CUR, "IDT_LINK_PATH_TO_CUR", current);
-    layout->addWidget(current);
+QWidget *CQtLinkWindow::BuildLinkTypes() {
+    const QtDialogUnits units(font());
     auto *group = new QGroupBox(this);
+    group->setMinimumHeight(units.pixels(QSize(0, 90)).height());
     Register(IDG_LINK_TYPE, "IDG_LINK_TYPE", group, "Link Type");
     auto *types = new QVBoxLayout(group);
     const unsigned ids[] = {IDR_LINK_TYPE_HARD, IDR_LINK_TYPE_SYM_FILE, IDR_LINK_TYPE_SYM_DIR,
@@ -71,6 +68,7 @@ void CQtLinkWindow::BuildControls() {
                               "Directory Junction", "WSL"};
     for (int i = 0; i < 5; ++i) {
         auto *radio = new QRadioButton(group);
+        radio->setMinimumHeight(units.pixels(QSize(0, 10)).height());
         // Keep translated captions inside the compact viewport at native font metrics.
         radio->setProperty("languageWrapWidth", 220);
         Register(ids[i], names[i], radio, QString::fromLatin1(captions[i]));
@@ -83,14 +81,43 @@ void CQtLinkWindow::BuildControls() {
 #endif
         types->addWidget(radio);
     }
-    layout->addWidget(group);
+    return group;
+}
+void CQtLinkWindow::BuildControls() {
+    const QtDialogUnits units(font());
+    setWindowFlag(Qt::WindowMinMaxButtonsHint);
+    setWindowFlag(Qt::WindowContextHelpButtonHint, false);
+    setObjectName("IDD_LINK");
+    QtBindResourceText(this, IDD_LINK, "Link");
+    auto *outer = new QVBoxLayout(this);
+    const QSize margin = units.pixels(QSize(8, 8));
+    outer->setContentsMargins(margin.width(), margin.height(), margin.width(), margin.height());
+    outer->setSpacing(margin.height());
+    auto *content = new QWidget(this);
+    auto *layout = new QVBoxLayout(content);
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->setSpacing(0);
+    AddPathRow(layout, false);
+    layout->addSpacing(units.pixels(QSize(0, 14)).height());
+    AddPathRow(layout, true);
+    layout->addSpacing(units.pixels(QSize(0, 4)).height());
+    auto *current = new QLabel(this);
+    current->setWordWrap(true);
+    current->setTextFormat(Qt::PlainText);
+    current->setMinimumHeight(units.pixels(QSize(0, 8)).height());
+    Register(IDT_LINK_PATH_TO_CUR, "IDT_LINK_PATH_TO_CUR", current);
+    layout->addWidget(current);
+    layout->addSpacing(units.pixels(QSize(0, 18)).height());
+    layout->addWidget(BuildLinkTypes());
     layout->addStretch();
     auto *scroll = new QScrollArea(this);
     scroll->setObjectName("linkControlsScroll");
+    scroll->setFrameShape(QFrame::NoFrame);
     scroll->setWidgetResizable(true);
     scroll->setWidget(content);
     outer->addWidget(scroll, 1);
     auto *footer = new QHBoxLayout;
+    footer->setSpacing(margin.width());
     footer->addStretch();
     auto *link = new QPushButton(this);
     Register(IDB_LINK_LINK, "IDB_LINK_LINK", link, "Link");
@@ -100,10 +127,14 @@ void CQtLinkWindow::BuildControls() {
     footer->addWidget(link);
     auto *cancel = new QPushButton(this);
     Register(2, "IDCANCEL", cancel, "Cancel");
+    for (auto *button : {link, cancel}) {
+        button->setFixedWidth(qMax(units.pixels(QSize(64, 0)).width(), button->sizeHint().width()));
+        button->setMinimumHeight(units.pixels(QSize(0, 16)).height());
+    }
     connect(cancel, &QPushButton::clicked, this, &QDialog::reject);
     footer->addWidget(cancel);
     outer->addLayout(footer);
-    resize(520, 500);
+    resize(units.pixels(QSize(304, 230)).expandedTo(minimumSizeHint()));
 }
 void CQtLinkWindow::SetItemText(unsigned id, const UString &text) {
     if (auto *label = qobject_cast<QLabel *>(GetItem(id)))

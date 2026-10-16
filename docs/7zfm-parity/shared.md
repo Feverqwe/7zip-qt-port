@@ -2,6 +2,20 @@
 
 [Индекс](../7zfm-parity.md). Scope и свидетельства ниже сохраняют даты и ревизии; они не подтверждают текущий checkout.
 
+### List, Link and Benchmark source presentation (2026-10-16)
+
+Properties/Folder History retain the shared source list and blank two-column
+Properties header, with496×336DLU initial client and native standard-button
+ordering. Link restores304×230DLU, source path/group spacing and20DLU Browse.
+Benchmark restores488×264/376×276DLU normal/total frames, left parameter/footer
+buttons, right static log, actual metric group boxes and right-aligned values.
+Normal initial focus/logical tab order follows the resource; total focuses its
+console. Native fonts/minimum sizes and compact scrolling remain explicit Qt
+adaptations. Ten original EN/RU Windows states and current native Qt views on
+three OS support structure/grouping checks; complete pixel equality and
+physical input are not claimed.
+[Provenance, regressions and exact platform boundaries](../upstream-port-audit/p3-06-secondary-dialogs-2026-10-16.md).
+
 ### Split, shared input and About source presentation (2026-10-16)
 
 Split restores the304×112DLU initial frame, fixed96DLU volume field and20DLU

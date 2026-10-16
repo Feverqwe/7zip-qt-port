@@ -59,9 +59,12 @@ class CQtBenchmarkWindow : public QDialog {
     std::atomic_bool postsEnabled_{true};
     void BuildControls(bool totalMode);
     void BuildNormalControls(QHBoxLayout *body);
+    QGridLayout *BuildParameters();
+    QHBoxLayout *BuildFooter();
     QGridLayout *BuildMetrics();
     QGridLayout *BuildSummary();
     QLabel *label(unsigned id, const char *name, const QString &text = {});
+    QLabel *rightLabel(unsigned id, const char *name, const QString &text = {});
     QPushButton *button(unsigned id, const char *name, const QString &text);
     QComboBox *combo(unsigned id, const char *name);
     QWidget *Register(unsigned id, const char *name, QWidget *widget);

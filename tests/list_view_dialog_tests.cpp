@@ -1,8 +1,14 @@
+#include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/ListViewDialog.h"
+#include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "CPP/7zip/UI/FileManager/ViewSettings.h"
+#include "layout_inspection.h"
+#include "qtdialogunits.h"
 #include <QApplication>
 #include <QClipboard>
+#include <QDialogButtonBox>
 #include <QPlainTextEdit>
+#include <QPushButton>
 #include <QTimer>
 #include <QTreeWidget>
 #include <QtTest>
@@ -10,6 +16,53 @@
 class ListViewDialogTests : public QObject {
     Q_OBJECT
   private slots:
+    void sourceFrame_data() {
+        QTest::addColumn<QString>("language");
+        QTest::addColumn<unsigned>("columns");
+        for (const char *language : {"-", "ru"})
+            for (unsigned columns : {1u, 2u})
+                QTest::newRow(qPrintable(QString("%1-%2").arg(language).arg(columns)))
+                    << QString::fromLatin1(language) << columns;
+    }
+    void sourceFrame() {
+        QFETCH(QString, language);
+        QFETCH(unsigned, columns);
+        SaveRegLang(ToUString(language), qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+        ReloadLang(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+        CListViewDialog dialog;
+        dialog.Title = "Source list fixture";
+        dialog.NumColumns = columns;
+        dialog.Strings.Add(UString(L"Unicode 文件"));
+        dialog.Values.Add(UString("value"));
+        dialog.OnInit();
+        dialog.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&dialog));
+        QApplication::processEvents();
+        QVERIFY(UiInspection::writeReport(
+            dialog, QString("list-source-initial-%1-%2").arg(language).arg(columns)));
+        QVERIFY(dialog.windowFlags().testFlag(Qt::WindowMinMaxButtonsHint));
+        QCOMPARE(dialog.size(), QtDialogUnits(dialog.font())
+                                    .pixels(QSize(496, 336))
+                                    .expandedTo(dialog.minimumSizeHint()));
+        auto *list = dialog.findChild<QTreeWidget *>();
+        QVERIFY(list);
+        QCOMPARE(list->isHeaderHidden(), columns == 1);
+        for (const QSize size : {QSize(540, 360), QSize(360, 240)}) {
+            dialog.resize(size);
+            QApplication::processEvents();
+            QVERIFY(UiInspection::fullyVisible(*list, dialog));
+            for (auto *button : dialog.findChild<QDialogButtonBox *>()->buttons())
+                QVERIFY(UiInspection::fullyVisible(*button, dialog));
+            QVERIFY(UiInspection::writeReport(
+                dialog,
+                QString("list-source-%1-%2-%3").arg(language).arg(columns).arg(size.width())));
+        }
+    }
+    void cleanup() {
+        SaveRegLang(UString("-"), qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+        ReloadLang(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+    }
+
     void twoColumnsNormalizeAndTruncateDisplayOnly() {
         CListViewDialog dialog;
         dialog.NumColumns = 2;

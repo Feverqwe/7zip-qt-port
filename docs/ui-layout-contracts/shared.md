@@ -776,9 +776,26 @@ fit434-wide controls; last-access337×32 fits414×32; footer458×20 fully expose
 Only the last-access caption wraps additionally for WIM; 3px vertical gaps keep
 all source groups and controls reachable at compact sizes without reordering.
 
+### Shared ListView: Properties and Folder History (P3-06)
+
+Reference: pinned FileManager/ListViewDialog.rc and OnInit/OnEnter/OnOK callers.
+Initial client is496×336DLU with native font/minimum protection; root margins
+and footer gap are8DLU, buttons64×16DLU with native caption protection. Preserve
+one-column hidden History header and the blank two-column Properties header.
+Native standard-button ordering is retained. `list_view_dialog` writes EN/RU
+source-initial and540×360/360×240 reports, checking exposed list/footer without
+changing stored full values, clipboard/detail or acceptance behavior.
+
 ### Link (P2-05)
 
 Reference: pinned FileManager/LinkDialog.rc and source OnInit/OnButton_Link.
+Initial client is304×230DLU, mapped with the native Qt font and protected
+minimum sizes. Root margins are8DLU; Browse is20DLU wide. Source path labels
+start at8/48DLU vertically, Current target at78, Link Type at104 with90DLU
+height. The footer uses64×16DLU buttons with native caption protection.
+The source resizable/minimize/maximize capabilities are requested through Qt
+window flags; native window managers may suppress modal title-bar controls.
+The resource has no context-help title-bar button.
 Link from combo/browse precedes Link to combo/browse and current target text.
 Link Type contains Hard→File Symbolic→Directory Symbolic→Junction→WSL in source
 order. Link is the default footer button, followed by Cancel. Qt scrolls the
@@ -789,8 +806,13 @@ IDCANCEL to its source language entry.
 Radio captions use the existing220-pixel language wrapping binding so native
 Windows EN/RU font metrics do not force horizontal clipping at360 pixels.
 `link_dialog` writes EN/RU520×500/360×300 JSON and checks named controls after
-scrolling and footer exposure. Twelve current reports reviewed across macOS,
-Windows and Linux2026-10-03. Rendered Windows pixel parity remains unverified.
+scrolling and footer exposure, plus native-font source initial frames. A group
+frame may exceed a compact viewport; its native title rectangle and every child
+must each be fully reachable. Current native EN/RU reports on three OS and
+rendered original initial states are recorded in the
+[secondary-dialog receipt](../upstream-port-audit/p3-06-secondary-dialogs-2026-10-16.md).
+Native font metrics, compact scrolling and modal chrome prevent a claim of
+complete rendered Windows pixel equality.
 
 ### Benchmark (P2-04)
 
@@ -802,14 +824,25 @@ Windows retains its native source helper. These system failures do not change
 grouping or controls.
 Dictionary/memory precede CPU threads, then Size→Speed→CPU Usage→Rating / Usage→
 Rating columns; Compressing and Decompressing retain Current/Resulting rows.
-Elapsed/Passes and Total Rating precede CPU/version/system information. Restart
-and Stop sit beside the original log; Help/Cancel stay in the footer. Total mode
-has elapsed time and a fixed-font console. Qt scrolls the normal control pane at
+Elapsed/Passes and Total Rating precede CPU/version/system information. In the
+normal resource, Restart/Stop belong to the upper right of the left control
+pane; Help/Cancel remain in that pane's footer. The separate static log begins
+at the top of the right column and spans the normal dialog height. It uses
+plain, nonwrapping dialog-font text, not the total mode's fixed-font edit.
+Compressing/Decompressing are group boxes; resource RTEXT metric headers and
+values are right-aligned. Initial clients are488×264DLU normal and376×276DLU
+total, with Qt font/minimum-size protection. Current tests assert these initial
+frames, roles/grouping, footer placement, right alignment and logical focus.
+Source normal logical tab order is Restart→Stop→Help→Cancel→Dictionary→Threads→
+Passes, with Restart initially focused. Total initially focuses its console.
+Both source templates request minimize/maximize/resizable style and no
+context-help title-bar button; Qt retains native modal-chrome conventions.
+Total mode has elapsed time and a fixed-font console. Qt scrolls the normal control pane at
 compact sizes and replaces Win32 rectangles/font setup with Qt layout services.
 
-`benchmark_lifecycle` writes normal/total EN/RU JSON at960×650 and640×400,
+`benchmark_lifecycle` writes source-initial and normal/total EN/RU JSON at960×650 and640×400,
 checks all named labels/inputs after scrolling, fixed footer exposure and live
-language changes. Current reports on all three OS were reviewed2026-10-03: normal compact
+language changes. Historical reports on all three OS were reviewed2026-10-03: normal compact
 controls scroll vertically/horizontally, metrics captions fit; buttons remain
 fully exposed. Total console is618×326 compact and938×576 normal. Cancel/Help use
 the original standard language mapping402/409; control IDs2/9 are not language
@@ -823,6 +856,11 @@ the initial compact viewport and are tested after scrolling. Current Windows
 viewport; its label fits and the same per-control scrolling check verifies
 reachability. This is scroll-content geometry, not clipped text. P2-04 acceptance
 is recorded in the audit; whole-plan platform/rendered checks remain P3.
+The current source-frame/grouping correction has36 native JSON per OS and ten
+original Windows EN/RU reference states across List/Link/Benchmark. See the
+[current receipt](../upstream-port-audit/p3-06-secondary-dialogs-2026-10-16.md)
+for precise checks and deviations; the older console dimensions above retain
+their historical revision.
 
 ### SFX Options group (P2-02)
 
@@ -1709,6 +1747,10 @@ Reference: `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
 `CPP/7zip/UI/FileManager/ListViewDialog.rc/.cpp` and
 `PanelFolderChange.cpp::CPanel::FoldersHistory`.
 The single-column list fills the resizable body; OK/Cancel sit below it.
+Its initial496×336DLU frame,8DLU margins/list-footer gap and64×16DLU footer
+buttons use the native Qt font and protect native minimum sizes. Native button
+ordering is retained. Source minimize/maximize/resizable capabilities are
+requested with Qt flags; no context-help title-bar button is added.
 There is no separate Delete button in the reference. Delete affects all
 selected rows, Ctrl+A/C copy/select, Enter confirms the focused path.
 Long paths remain reachable through scrolling, without eliding stored text.
@@ -1757,6 +1799,8 @@ Reference: ListViewDialog.rc; source scope and baseline are recorded in the
 [properties audit](../upstream-port-audit.md#свойства-и-двухколоночный-список-2026-09-28).
 Two columns (property/value) fill the body with a visible empty header,
 followed by OK/Cancel. No label form or custom selection title remains.
+The same496×336DLU source frame and native-font/margin/footer policy as folder
+history apply; header visibility remains controlled by NumColumns.
 The value shown in the list is limited to 1024 upstream wchar_t units,
 then ` ...`; CRLF/LF become spaces. Copy and Enter/double-click detail
 use the full value. Delete is disabled for properties.
