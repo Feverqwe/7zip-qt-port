@@ -3,9 +3,11 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QHash>
 #include <QProcess>
 #include <QVector>
 #include <memory>
+#include <optional>
 #ifdef Q_OS_WIN
 #include "Windows/ProcessUtils.h"
 #include <TlHelp32.h>
@@ -26,6 +28,15 @@ extern char **environ;
 
 namespace {
 #ifdef Q_OS_WIN
+std::optional<FILETIME> ProcessCreationTime(UInt32 id) {
+    NWindows::CProcess process;
+    FILETIME created{}, exited{}, kernel{}, user{};
+    if (!process.Open(PROCESS_QUERY_LIMITED_INFORMATION, false, id) ||
+        !process.GetTimes(&created, &exited, &kernel, &user))
+        return std::nullopt;
+    return created;
+}
+
 class CWinProcessHandle final : public IQtProcessHandle {
     NWindows::CProcess _process;
 
@@ -184,6 +195,24 @@ void QtNativeProcessServices::GetSnapshot(CObjectVector<CSnapshotProcess> &items
         items.Add(item);
     }
     CloseHandle(snapshot);
+    // Toolhelp retains the creator's PID after it exits. A recycled PID can
+    // otherwise make an unrelated older process look like an editor child.
+    QHash<UInt32, std::optional<FILETIME>> creationTimes;
+    const auto creationTime = [&creationTimes](UInt32 id) {
+        auto found = creationTimes.constFind(id);
+        if (found == creationTimes.cend())
+            found = creationTimes.insert(id, ProcessCreationTime(id));
+        return found.value();
+    };
+    FOR_VECTOR(i, items) {
+        CSnapshotProcess &item = items[i];
+        if (!item.ParentId)
+            continue;
+        const auto child = creationTime(item.Id);
+        const auto parent = creationTime(item.ParentId);
+        if (child && parent && CompareFileTime(&*child, &*parent) < 0)
+            item.ParentId = 0;
+    }
 #else
     QVector<UInt32> ids;
 #ifdef Q_OS_MACOS

@@ -2568,6 +2568,13 @@ startup fast/request/timeout, modal finish/messages and normal/compact default
 Close), `progress_cancel` (YES/NO/CANCEL/Escape, prior pause and finish deferred
 during prompt), and `update_callback` (all native COM interfaces, counters,
 operation/error/move/reopen and GUI-owned password accept/cancel).
+Windows64 `process_snapshot` exercises the public native snapshot adapter with
+deterministic executable-local SDK fixtures: actual children, recycled parent
+PIDs, equal creation ticks and unavailable parent/child times. It checks record
+order/names, limited query access and handle cleanup without creating OS
+processes. The recycled-PID row fails before the adapter correction; native
+editor consumers remain separate integration coverage.
+
 `process_pause` observes an owned disposable native child stop/resume across
 three cycles and cancellation while paused. `archive_progress` connects the
 source worker to real ArchiveBackend: real zip Add with Unicode/spaces, unchanged

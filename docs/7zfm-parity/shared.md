@@ -592,6 +592,15 @@ during archive proxy reopen. This fixes an actual native Rename crash.
 
 ### Native external editor update (P3-05.15, 2026-10-07)
 
+Windows snapshot identity correction (2026-10-16): Toolhelp may retain a parent
+PID belonging to a later unrelated process. The Qt native service clears that
+relation only when both creation times are available and the child is older
+than its purported parent. Equal ticks and failed queries keep the original
+relation. Existing upstream descendant traversal, same-name fallback and
+update/error/cancel flow are preserved; POSIX services are unchanged.
+[Regression and runtime evidence](../upstream-port-audit/p3-03-editor-stability-2026-10-16.md#windows-snapshot-identity-adaptation)
+distinguishes deterministic SDK validation from native and whole-gate acceptance.
+
 The native editor-completion consumer preserves original OnOpenItemChanged's
 unconditional ignored-result Refresh after writer success/failure/Cancel.
 An ignored native property publication error does not turn a successful update
