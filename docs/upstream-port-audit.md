@@ -630,6 +630,10 @@ records the bounded Windows reference and three-OS geometry follow-up.
 
 ## P3-05.11 — source UNC root binding and Qt consumer (validation active, 2026-10-06)
 
+[Current source/local-UNC acceptance](upstream-port-audit/p3-05-network-closure-2026-10-16.md)
+closes the bounded component after current scoped native/default verification;
+whole Windows cold/stability and parent acceptance remain open.
+
 [Открыть раздел](upstream-port-audit/p3-05-2026-10-06.md#p3-0511--source-unc-root-binding-and-qt-consumer-validation-active-2026-10-06).
 
 ## P3-05.10 — source caption helpers (validation active, 2026-10-06)
