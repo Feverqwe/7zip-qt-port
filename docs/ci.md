@@ -3,7 +3,7 @@
 The GitHub workflow was removed in `96daee8de9f82374a4548e6dff2bd47a6fe5a891`.
 On 2026-10-10 the user explicitly chose to preserve that deletion. There is no
 active GitHub build, artifact upload or automatic release configuration in this
-checkout. Local validation uses [the full gate](development.md#local-commands),
+checkout. Local validation uses [focused checks and a full gate when needed](development.md#local-commands),
 and Windows/Linux acceptance uses [Hyper-V runners](hyperv-runners.md).
 Release runtime packaging uses `BUILD_TESTING=OFF` and the matching Qt kit;
 tests and native acceptance are separate checks.

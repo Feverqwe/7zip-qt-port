@@ -12,9 +12,11 @@ capacity problems. Do not grow disks, repartition or reformat volumes without
 a separate user request. Use the existing configured volumes; the historical
 data-disk creation recorded below is not authorization to repeat it.
 
-Before substantial builds, check current free space on the host and selected
-guest volume. If space is insufficient, delete obsolete Sevenzip Desktop run
-payloads, build outputs and temporary data, then measure again. This project
+Before each new validation batch, inspect completed runs and remove obsolete
+Sevenzip Desktop run payloads, build outputs and temporary data under the
+retention rules below, even when space is sufficient. Before substantial builds,
+also check current free space on the host and selected guest volume; measure
+again after cleanup. This project
 cleanup is explicitly authorized by the user and takes precedence over the
 global runners skill's default restriction on automatic deletion for warnings.
 It does not authorize compaction or VM storage reconfiguration.

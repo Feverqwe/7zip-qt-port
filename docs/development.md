@@ -139,8 +139,15 @@ See [CI and release helper](ci.md) for exact artifact scope and release commands
 ```sh
 sh .agents/skills/sz-setup/scripts/setup.sh
 ./scripts/doctor.sh
-./scripts/check.sh
+./scripts/build.sh dev <targets>
+./scripts/ctest.sh --preset dev -R '<test-name-regex>' --output-on-failure
 ```
+
+Focused checks are the default for agent work. Select targets and suites using
+[testing](testing.md); use `./scripts/check.sh` only when the full-gate criteria
+in [AGENTS.md](../AGENTS.md#validation-and-ui-reference) apply. Before each batch,
+follow [artifact retention](testing.md#test-artifact-retention). The wrappers do
+not automatically prune old runs; the agent performs the scoped cleanup.
 
 `check.sh` checks formatting, builds with the development CMake preset, and runs CTest with long suites excluded. Both `check.sh` and `ctest.sh` run up to four tests in parallel by default. CTest resource locks serialize tests that write to the shared UI report or screenshot directories. Set `SEVENZIP_CTEST_JOBS=1` for a sequential run or another positive number to change concurrency; `CTEST_PARALLEL_LEVEL` and an explicit `--parallel` argument to `ctest.sh` also take precedence. CTest reports failed suites through `--output-on-failure` and continues running the remaining suites. For a release build, run `./scripts/build.sh release` and `./scripts/ctest.sh --preset release --output-on-failure`.
 

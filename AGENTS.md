@@ -88,17 +88,34 @@ with `./scripts/build.sh dev <targets>` and
 `./scripts/ctest.sh --preset dev -R '<regex>' --output-on-failure`.
 Do not invoke CTest directly. Expand checks for shared changes or failures.
 
-Run `./scripts/check.sh` once before completing code/test/build-tooling changes,
-**unsandboxed**: sandbox DBus sockets and process-priority calls fail.
+Focused validation is the default, including before completing an iteration or
+commit. Select tests from the changed behavior, owners and direct consumers;
+build only their required targets. Explain the selected scope briefly. A local
+code, test or build-script change does not by itself require the full suite.
+Expand checks when failures or shared dependencies show a wider impact.
+Run `./scripts/check.sh` only for broad cross-component changes whose impact
+cannot be covered confidently by focused suites, unresolved integration risks,
+or explicitly requested full/release acceptance. State the concrete reason
+before launching it; an iteration/commit boundary alone is not a reason.
+Run it **unsandboxed**: sandbox DBus sockets and process-priority calls fail.
 It checks repository C++ formatting, builds all targets and runs the default
-CTest set, excluding tests labeled `slow`.
-Do not repeat a passing full gate on unchanged code. After localized edits rerun
-affected checks; repeat the full gate for broad changes or unresolved concerns.
+CTest set, excluding tests labeled `slow`. Do not repeat a passing full gate
+on unchanged code. After localized follow-up edits rerun affected checks;
+repeat the full gate only if the same broader-risk criteria apply.
 Docs/instruction-only changes need `git diff --check`.
 Fix failures caused by the task and report unverified platforms.
 Use [development](docs/development.md#local-commands) for wrapper/toolchain details
 and [testing](docs/testing.md) for coverage. Wait for buffered formatting to exit
 before diagnosing it.
+
+Before each new validation batch, inspect and remove obsolete task-owned test
+fixtures, temporary logs and generated reports from completed runs. Follow
+[test artifact retention](docs/testing.md#test-artifact-retention) locally and
+[runner storage policy](docs/hyperv-runners.md#storage-policy-user-instruction-2026-10-07)
+on guests. Do this routinely, not only when space is low. Preserve active runs,
+current review/failure evidence, incremental build trees and compiler caches.
+Clean disposable task-owned files after validation too; do not create new
+snapshot/build directories for each focused rerun when the current one is usable.
 
 Long suites in [cmake/SlowTests.cmake](cmake/SlowTests.cmake) require an explicit
 user request, including on runners. Classify new/expanded large matrices as
