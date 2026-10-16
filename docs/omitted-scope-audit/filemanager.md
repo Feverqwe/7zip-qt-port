@@ -1182,6 +1182,11 @@ The subsequent P3-05.14 integration reconnects those consumers to source-prefix
 storage/history and source-address binding, including original empty-slot and
 open-chain/cold fallback semantics. The static state-service boundary is retained
 for Qt publication; current validation and platform limits are in the port audit.
+The 2026-10-16 follow-up restores the original unconditional empty-root prefix
+history insertion in its Qt caller; `CFolderHistory` and the existing string-list
+storage remain authoritative. EN/RU history selection/restart and Windows
+device/ADS/UNC persisted consumers now have current three-platform evidence:
+[root/namespace receipt](../upstream-port-audit/p3-05-persisted-namespaces-2026-10-16.md).
 
 Review on 2026-10-05 also found an active two-panel omission. Upstream
 `FileManager/PanelKey.cpp::CPanel::OnKeyDown` invokes `OnSetSameFolder` for
@@ -1195,6 +1200,14 @@ acceptance is recorded in the [port audit](../upstream-port-audit.md#p3-054--sam
 The RefreshListCtrl selection stage and actual Qt row publication remain
 separate presentation phases, now connected for the destination without
 canceling its work when source focus is restored.
+
+The subsequent2026-10-17 P3-05.15 review finds a separate native lifetime gap:
+failed ReOpen retires proxies still borrowed by published folders. A private
+agent generation now rejects those directory bindings while retaining the
+source's proxy-independent type; Qt reload activation suppresses old-row
+availability until publication. Original bodies, actual crashes and current
+consumer/platform limits are in the
+[retired-proxy receipt](../upstream-port-audit/p3-05-proxy-lifetime-2026-10-17.md).
 
 Review on 2026-10-06 identifies another active body gap, owned by P3-05.5:
 original Agent.cpp::GetArcProp resolves kpidErrorType from codec names for both

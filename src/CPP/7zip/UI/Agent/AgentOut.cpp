@@ -43,7 +43,7 @@ HRESULT CAgent::SetFolder(IFolderFolder *folder) {
         Z7_DECL_CMyComPtr_QI_FROM(IArchiveFolderInternal, afi, folder) if (afi) {
             RINOK(afi->GetAgentFolder(&_agentFolder))
         }
-        if (!_agentFolder)
+        if (!_agentFolder || !_agentFolder->IsBound())
             return E_FAIL;
     }
     if (_proxy2) {

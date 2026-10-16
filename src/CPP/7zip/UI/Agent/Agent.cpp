@@ -103,6 +103,8 @@ CProxyItem CAgentFolder::GetItem(unsigned index) const {
 }
 
 bool CAgentFolder::IsBound() const {
+    if (!_agentSpec || _proxyGeneration != _agentSpec->_proxyGeneration.load())
+        return false;
     return _proxy2 ? _proxyDirIndex < _proxy2->Dirs.Size()
                    : _proxy && _proxyDirIndex < _proxy->Dirs.Size();
 }
@@ -111,6 +113,7 @@ void CAgentFolder::Init(const CProxyArc *proxy, const CProxyArc2 *proxy2, unsign
                         CAgent *agent) {
     _proxy = proxy;
     _proxy2 = proxy2;
+    _proxyGeneration = agent->_proxyGeneration.load();
     _proxyDirIndex = proxyDirIndex;
     _isAltStreamFolder = false;
     if (_proxy2)
@@ -959,8 +962,16 @@ Z7_COM7F_IMF(CAgentFolder::GetStream(UInt32 index, ISequentialInStream **stream)
 
 Z7_COM7F_IMF(CAgentFolder::GetFolderProperty(PROPID propID, PROPVARIANT *value)) {
     COM_TRY_BEGIN
-    if (!IsBound())
+    if (!IsBound()) {
+        // The source type is independent of the directory proxy. Qt still
+        // needs it to render an archive whose native reopen has failed.
+        if (propID == kpidType && _agentSpec) {
+            NWindows::NCOM::CPropVariant type(UString("7-Zip.") + _archiveType);
+            type.Detach(value);
+            return S_OK;
+        }
         return E_FAIL;
+    }
     NWindows::NCOM::CPropVariant prop;
     if (propID == kpidReadOnly) {
         if ((_agentSpec->_proxy && _agentSpec->_proxy->Are_Changed_LongPaths) ||
@@ -1511,6 +1522,9 @@ HRESULT CAgent::Init(const QList<ArchiveEntry> &entries, IFolderFolder *archiveP
 
 Z7_COM7F_IMF(CAgent::ReOpen(IArchiveOpenCallback *openArchiveCallback)) {
     COM_TRY_BEGIN
+    // Published folders borrow these proxies. Retire their binding before
+    // deletion, including when reopening fails before a replacement exists.
+    ++_proxyGeneration;
     if (_proxy2) {
         delete _proxy2;
         _proxy2 = NULL;
@@ -1560,6 +1574,8 @@ HRESULT CAgentFolder::ReOpen(IArchiveOpenCallback *callback, IFolderFolder **fol
     if (!folder)
         return E_INVALIDARG;
     *folder = nullptr;
+    if (!IsBound())
+        return E_FAIL;
     UStringVector pathParts;
     bool isAltStreamFolder = false;
     GetPathParts(pathParts, isAltStreamFolder);

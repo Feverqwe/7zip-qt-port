@@ -141,6 +141,9 @@ class AgentLifecycleTests final : public QObject, protected ArchiveBackendTestSu
         QCOMPARE(root.QueryInterface(IID_IGetFolderArcProps, &getter), S_OK);
         QCOMPARE(getter->GetFolderArcProps(&properties), S_OK);
         QCOMPARE(properties.QueryInterface(IID_IInFolderArchive, &archive), S_OK);
+        NWindows::NCOM::CPropVariant originalType;
+        QCOMPARE(root->GetFolderProperty(kpidType, &originalType), S_OK);
+        const QString type = QString::fromWCharArray(originalType.bstrVal);
         manager.Release();
         QCOMPARE(archive->Close(), S_OK);
         // Both published folders still retain their source owner/proxy, but
@@ -154,11 +157,19 @@ class AgentLifecycleTests final : public QObject, protected ArchiveBackendTestSu
         // must short-circuit before consulting those invalidated pointers.
         QCOMPARE(root->LoadItems(), E_FAIL);
         QCOMPARE(child->LoadItems(), E_FAIL);
+        NWindows::NCOM::CPropVariant stalePath;
+        QCOMPARE(root->GetFolderProperty(kpidPath, &stalePath), E_FAIL);
+        QCOMPARE(child->GetFolderProperty(kpidPath, &stalePath), E_FAIL);
+        NWindows::NCOM::CPropVariant retainedType;
+        QCOMPARE(root->GetFolderProperty(kpidType, &retainedType), S_OK);
+        QCOMPARE(QString::fromWCharArray(retainedType.bstrVal), type);
         writeFile(path, archiveBytes);
         QCOMPARE(run(backend, [&] { return archive->ReOpen(nullptr); }), S_OK);
         CMyComPtr<IFolderFolder> repaired;
         QCOMPARE(archive->BindToRootFolder(&repaired), S_OK);
         QVERIFY(repaired);
+        QCOMPARE(root->GetFolderProperty(kpidPath, &stalePath), E_FAIL);
+        QCOMPARE(child->GetFolderProperty(kpidPath, &stalePath), E_FAIL);
         root.Release();
         child.Release();
         getter.Release();

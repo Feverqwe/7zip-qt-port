@@ -1,6 +1,7 @@
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "archivecodeccatalog.h"
 #include "createarchivedialog.h"
+#include "fixtures/widget_dialogs.h"
 #include "layout_inspection.h"
 #include "window_state_support.h"
 #include <QCheckBox>
@@ -19,15 +20,17 @@ bool writeFile(const QString &path, const QByteArray &bytes) {
     return file.open(QIODevice::WriteOnly) && file.write(bytes) == bytes.size();
 }
 class CMessageAnswers {
+    WidgetDialogFixture &dialogs_;
     QTimer timer_;
     bool cancelQuestions_;
 
   public:
     QStringList Errors;
     bool CancelledQuestion = false;
-    explicit CMessageAnswers(bool cancelQuestions = false) : cancelQuestions_(cancelQuestions) {
-        QObject::connect(&timer_, &QTimer::timeout, &timer_, [this] {
-            auto *widget = QApplication::activeModalWidget();
+    explicit CMessageAnswers(WidgetDialogFixture &dialogs, bool cancelQuestions = false)
+        : dialogs_(dialogs), cancelQuestions_(cancelQuestions) {
+        dialogs_.connectResponder(timer_, &timer_, [this] {
+            auto *widget = dialogs_.activeDialog();
             if (auto *box = qobject_cast<QMessageBox *>(widget)) {
                 if (box->icon() == QMessageBox::Warning || box->icon() == QMessageBox::Critical)
                     Errors.append(box->text());
@@ -48,13 +51,20 @@ class CMessageAnswers {
         timer_.start(2);
     }
 };
-// Stop at the first visible native progress event, before its OnInit releases
-// callback waiters. A polling timer can run after a small native update commits.
+// Stop at the first visible native progress event and record the source phase.
+// A small native update can already have entered publication by this event.
 class CNativeCancel final : public QObject {
     bool &observed_;
+    bool &publication_;
+    const QString &archive_;
+    const QByteArray &before_;
 
   public:
-    explicit CNativeCancel(bool &observed) : observed_(observed) { qApp->installEventFilter(this); }
+    CNativeCancel(bool &observed, bool &publication, const QString &archive,
+                  const QByteArray &before)
+        : observed_(observed), publication_(publication), archive_(archive), before_(before) {
+        qApp->installEventFilter(this);
+    }
     ~CNativeCancel() override { qApp->removeEventFilter(this); }
 
   protected:
@@ -63,6 +73,15 @@ class CNativeCancel final : public QObject {
             if (auto *progress = dynamic_cast<CProgressDialog *>(object)) {
                 observed_ = true;
                 progress->Sync.Set_Stopped(true);
+                {
+                    NWindows::NSynchronization::CCriticalSectionLock lock(progress->Sync._cs);
+                    publication_ = QDir::cleanPath(QDir::fromNativeSeparators(ToQString(
+                                       progress->Sync._filePath))) == QDir::cleanPath(archive_);
+                }
+                // MoveArc_Start names the destination before its stop check.
+                // After Finish clears that name, the committed bytes identify
+                // the later reopen phase instead.
+                publication_ = publication_ || readFile(archive_) != before_;
             }
         return false;
     }
@@ -71,6 +90,7 @@ class CNativeCancel final : public QObject {
 
 class CodecCommandsUiTests final : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
+    WidgetDialogFixture dialogs_;
     QString engine_, module_;
     quint32 version_ = 0;
     bool run(const QString &directory, const QStringList &arguments) {
@@ -125,9 +145,10 @@ class CodecCommandsUiTests final : public QObject, protected MainWindowTestSuppo
         QVERIFY(!before.isEmpty());
         ArchiveBackend backend(nullptr, engine_);
         QCOMPARE(backend.loadCodecCatalog(module_, version_), S_OK);
-        CMessageAnswers messages;
+        CMessageAnswers messages(dialogs_);
         MainWindow window(&backend);
         window.show();
+        QVERIFY(QTest::qWaitForWindowActive(&window));
         window.openArchive(archive);
         QTRY_COMPARE(table(window)->rowCount(), 1);
         table(window)->selectRow(0);
@@ -149,6 +170,7 @@ class CodecCommandsUiTests final : public QObject, protected MainWindowTestSuppo
         auto *right = window.findChild<QWidget *>("filePanel1");
         auto *rightTable = right->findChild<QTableWidget *>("archiveTable");
         window.activateWindow();
+        QVERIFY(QTest::qWaitForWindowActive(&window));
         rightTable->setFocus();
         QTRY_VERIFY(rightTable->hasFocus());
         window.openArchive(archive);
@@ -156,6 +178,7 @@ class CodecCommandsUiTests final : public QObject, protected MainWindowTestSuppo
         QTRY_VERIFY(rightTable->isEnabled());
         QTRY_VERIFY(action(window, "testArchiveAction")->isEnabled());
         window.activateWindow();
+        QVERIFY(QTest::qWaitForWindowActive(&window));
         QApplication::processEvents();
         QTRY_VERIFY(leftTable->isEnabled());
         leftTable->setFocus();
@@ -167,8 +190,8 @@ class CodecCommandsUiTests final : public QObject, protected MainWindowTestSuppo
         QVERIFY(sourceRow >= 0);
         leftTable->selectRow(sourceRow);
         bool submitted = false;
-        QTimer::singleShot(0, &window, [&] {
-            auto *dialog = qobject_cast<CopyDialog *>(QApplication::activeModalWidget());
+        dialogs_.respond(window, [&](QDialog &active) {
+            auto *dialog = qobject_cast<CopyDialog *>(&active);
             QVERIFY(dialog);
             const auto closeOnFailure = qScopeGuard([&] {
                 if (!submitted)
@@ -189,9 +212,11 @@ class CodecCommandsUiTests final : public QObject, protected MainWindowTestSuppo
             submitted = dialog->result() == QDialog::Accepted;
         });
         bool observedStart = false;
+        bool publicationAtCancel = false;
         std::unique_ptr<CNativeCancel> nativeCancel;
         if (cancel)
-            nativeCancel = std::make_unique<CNativeCancel>(observedStart);
+            nativeCancel = std::make_unique<CNativeCancel>(observedStart, publicationAtCancel,
+                                                           archive, before);
         const auto connection = connect(&backend, &ArchiveBackend::engineStarted, &window, [&] {
             if (cancel)
                 return; // Native writer cancellation belongs to its source Sync.
@@ -208,6 +233,8 @@ class CodecCommandsUiTests final : public QObject, protected MainWindowTestSuppo
         QVERIFY2(messages.Errors.isEmpty(), qPrintable(messages.Errors.join('\n')));
         QVERIFY(!backend.busy());
         if (cancel)
+            qInfo() << "Native cancel phase:" << (publicationAtCancel ? "publication" : "writer");
+        if (cancel && (!publicationAtCancel || readFile(archive) == before))
             QCOMPARE(readFile(archive), before);
         else {
             QVERIFY(run(fixture.path(), {"x", "-y", "-o" + output.path(), "--", archive}));
@@ -243,9 +270,10 @@ class CodecCommandsUiTests final : public QObject, protected MainWindowTestSuppo
         const QByteArray before = readFile(archive);
         ArchiveBackend backend(nullptr, engine_);
         QCOMPARE(backend.loadCodecCatalog(module_, version_), S_OK);
-        CMessageAnswers messages(cancel);
+        CMessageAnswers messages(dialogs_, cancel);
         MainWindow window(&backend);
         window.show();
+        QVERIFY(QTest::qWaitForWindowActive(&window));
         window.openArchive(archive);
         QTRY_COMPARE(table(window)->rowCount(), 1);
         table(window)->selectRow(0);
@@ -289,8 +317,9 @@ class CodecCommandsUiTests final : public QObject, protected MainWindowTestSuppo
                                           mismatch ? version_ + 1 : version_),
                  E_FAIL);
         MainWindow window(&backend);
-        CMessageAnswers messages;
+        CMessageAnswers messages(dialogs_);
         window.show();
+        QVERIFY(QTest::qWaitForWindowActive(&window));
         window.openArchive(archive);
         QTRY_COMPARE(table(window)->rowCount(), 1);
         table(window)->selectRow(0);
@@ -315,9 +344,10 @@ class CodecCommandsUiTests final : public QObject, protected MainWindowTestSuppo
         }
         ArchiveBackend backend(nullptr, engine_);
         QCOMPARE(backend.loadCodecCatalog(module_, version_), S_OK);
-        CMessageAnswers messages;
+        CMessageAnswers messages(dialogs_);
         MainWindow window(&backend);
         window.show();
+        QVERIFY(QTest::qWaitForWindowActive(&window));
         auto *address = window.findChild<QLineEdit *>("archivePath");
         QVERIFY(address);
         address->setText(fixture.path());

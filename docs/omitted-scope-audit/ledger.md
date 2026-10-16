@@ -7,6 +7,21 @@
 
 ### Current inventory refresh (2026-10-16)
 
+The subsequent retired-proxy working candidate changes only four of those302
+borrowed owners: Agent.cpp/.h, AgentOut.cpp and ArchiveFolderOut.cpp. Their private
+lifetime adaptation and original dependency/pin boundary are documented in the
+[proxy receipt](../upstream-port-audit/p3-05-proxy-lifetime-2026-10-17.md).
+All owners are rehashed in `source-inventory-proxy-lifetime-candidate-v87.json`;
+the receipt explicitly identifies base591174e and uncommitted working bytes.
+No new module or duplicate owner is introduced;109-unit disposition is unchanged.
+
+Product591174e retains all302 borrowed source/header/resource owner hashes from
+the preceding inventory, rechecked in `source-inventory-history-591174e.json`
+under the final availability evidence root. The root-history correction changes
+the local Qt caller outside these borrowed bodies; no module, revision,
+dependency or authoritative implementation is added. The109-unit disposition
+therefore remains8 exact/96 adapted/five absent, separately from final acceptance.
+
 Producta2254e5 is re-enumerated in `source-inventory-a2254e5.json` under the final
 availability evidence root:302 source/header/resource inputs and109 cpp units
 retain8 exact/96 adapted/five absent owners; every present cpp remains in CMake.

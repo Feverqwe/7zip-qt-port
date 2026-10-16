@@ -19,8 +19,12 @@ HRESULT MainWindow::reloadPanelPresentation(unsigned index, const CSelectedState
     app_.Panels[index].TakeRefreshSelection();
     const unsigned original = projectedPanel_;
     const QString originalStatus = statusBar()->currentMessage();
-    if (index != original)
+    if (index != original) {
+        // ReOpen can retire this panel's proxy before its old rows are cleared.
+        // Do not derive command state from those rows during activation.
+        CPanel::CDisableNotify notify(app_.Panels[index]);
         activatePanelUi(index);
+    }
     const auto restore = qScopeGuard([&] {
         if (index != original) {
             activatePanelUi(original);

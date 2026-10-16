@@ -1646,6 +1646,11 @@ filesystem drops into Add: 7z/ZIP, Cancel and broken-existing output, without
 CLI create starts. Controlled archive Copy fixtures are tested separately.
 `codec_commands_ui` updates unknown-extension archives through original
 two-panel Copy, with success/cancellation and unchanged-source checks.
+Native responders wait for exposed, active nested dialogs. Cancellation before
+publication preserves archive bytes; cancellation after source publication has
+started permits only unchanged bytes or the exact requested extracted result.
+The native update suite separately retains deterministic pre-publication Cancel
+and failure byte-preservation coverage.
 The focused script now contains29 suites including method-dependent
 dictionary/order/solid/memory/limit consumers, `shell_update_gui`,
 `sfx_creation`, `sfx_lifecycle`, `compression_preferences`, `flat_view`,
@@ -2871,7 +2876,9 @@ creation: shutdown must not call completion handlers, leave a temporary archive,
 or alter the source file. This reproduces the implicit-destructor lifetime bug
 before the explicit QProcess shutdown fix.
 `agent_lifecycle` uses official ZIP/WIM fixtures to check Close, failed ReOpen,
-byte-exact repair and fresh root/child binding in normal/flat modes. Separate
+byte-exact repair and fresh root/child binding in normal/flat modes. Stale-binding
+assertions reject old root/child directory paths after failed and repaired
+reopening while retaining the source's proxy-independent archive type. Separate
 callback cases cancel during source proxy binding after listing, retry through
 the same manager and verify source/archive bytes. `archive_property_catalog`
 checks written/unwritten E_FAIL/S_FALSE property counts, descriptor-error cleanup

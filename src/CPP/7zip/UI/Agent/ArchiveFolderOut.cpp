@@ -86,6 +86,8 @@ HRESULT CAgentFolder::CommonUpdateOperation(AGENT_OP operation, bool moveMode,
                                             const NUpdateArchive::CActionSet *actionSet,
                                             const UInt32 *indices, UInt32 numItems,
                                             IProgress *progress) {
+    if (!IsBound())
+        return E_FAIL;
     if (moveMode && _agentSpec->_isHashHandler)
         return E_NOTIMPL;
 
@@ -277,6 +279,7 @@ HRESULT CAgentFolder::CommonUpdateOperation(AGENT_OP operation, bool moveMode,
         // CAgent::BindToRootFolder() changes _proxy and _proxy2
         _proxy = _agentSpec->_proxy;
         _proxy2 = _agentSpec->_proxy2;
+        _proxyGeneration = _agentSpec->_proxyGeneration.load();
 
         if (_proxy) {
             FOR_VECTOR(i, pathParts) {

@@ -13,6 +13,7 @@
 #include "archivebackend.h"
 #include "qtfolderpropertycapabilities.h"
 #include "qtprogresstransport.h"
+#include <atomic>
 #include <optional>
 
 struct CProxyItem {
@@ -140,6 +141,7 @@ class CAgentFolder final : public IFolderFolder,
     bool CanCopyTo() const;
     const CProxyArc *_proxy = nullptr;
     const CProxyArc2 *_proxy2 = nullptr;
+    UInt64 _proxyGeneration = 0;
     bool _isAltStreamFolder = false;
     unsigned _proxyDirIndex = 0;
     bool _flatMode = false;
@@ -228,6 +230,8 @@ class CAgent final : public IInFolderArchive,
     IProgress *_progress_for_Open = nullptr;
 
   private:
+    friend class CAgentFolder;
+    std::atomic<UInt64> _proxyGeneration{0};
     const CArchiveLink &GetArchivePropertyLink() const;
     const CCodecs *GetArchivePropertyCodecs() const;
     HRESULT ReadItems();

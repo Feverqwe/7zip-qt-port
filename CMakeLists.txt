@@ -2844,6 +2844,7 @@ if(BUILD_TESTING)
     set_tests_properties(source_metadata_storage PROPERTIES TIMEOUT 60 ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     qt_add_executable(codec_commands_ui_tests tests/codec_commands_ui_tests.cpp tests/layout_inspection.cpp ${options_window_sources})
+    target_sources(codec_commands_ui_tests PRIVATE tests/fixtures/widget_dialogs.cpp)
     target_include_directories(codec_commands_ui_tests PRIVATE src tests)
     target_link_libraries(codec_commands_ui_tests PRIVATE ${options_window_libraries})
     if(SEVENZIP_CODEC_MODULE)
