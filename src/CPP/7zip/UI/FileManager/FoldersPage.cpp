@@ -8,6 +8,7 @@
 #include "BrowseDialog.h"
 #include "Common/StringConvert.h"
 #include "Panel.h"
+#include "qtdialogunits.h"
 #include "qtlangcontrols.h"
 #include <QButtonGroup>
 #include <QCheckBox>
@@ -28,6 +29,8 @@ CFoldersPage::CFoldersPage(const QString &settingsPath, QWidget *parent)
     : QWidget(parent), _settingsPath(settingsPath) {
     setObjectName("foldersPage");
     auto *layout = new QGridLayout(this);
+    // FoldersPage2.rc places the 10-DLU radio buttons at 14-DLU intervals.
+    layout->setVerticalSpacing(QtDialogUnits(font()).pixels(QSize(0, 4)).height());
     auto *workingLabel = new QLabel(this);
     QtBindResourceText(workingLabel, IDT_FOLDERS_WORKING_FOLDER, "&Working folder");
     layout->addWidget(workingLabel, 0, 0, 1, 2);

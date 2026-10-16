@@ -1220,6 +1220,13 @@ the isolated `root_navigation` startup directory contains their current JSON.
 
 ### Menu page (P1-13.1)
 
+Menu checkbox rows and Folders radio rows retain the resource's10-DLU height /
+14-DLU pitch through a4-DLU gap mapped using the current font. Native QWidget
+frames must remain separate at normal/compact sizes. Options geometry waits for
+activation/configure and retains minimumSizeHint when a style requires a taller
+frame. The [native Options receipt](../upstream-port-audit/p3-06-options-spacing-2026-10-16.md)
+records RED/GREEN geometry and platform boundaries.
+
 Reference: pinned `FileManager/MenuPage.cpp`, `MenuPage2.rc` and
 `Explorer/ContextMenuFlags.h`. Options page 2300 is titled 7-Zip and keeps source
 order: two shell registration checkboxes, Cascaded, Icons, Eliminate duplication,

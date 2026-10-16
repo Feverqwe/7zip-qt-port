@@ -1,5 +1,6 @@
 #include "CPP/7zip/UI/Common/WorkDir.h"
 #include "Common/StringConvert.h"
+#include "fixtures/widget_dialogs.h"
 #include "layout_inspection.h"
 #include "qtfmoptionsdialog.h"
 #include <QCheckBox>
@@ -25,6 +26,7 @@ QString qtPath(const FString &path) { return QString::fromWCharArray(fs2us(path)
 
 class OptionsDialogTests : public QObject {
     Q_OBJECT
+    WidgetDialogFixture widgetDialogs_;
   private slots:
     void sourceInitialPageAndPageOrder() {
         QTemporaryDir fixture;
@@ -43,10 +45,11 @@ class OptionsDialogTests : public QObject {
         QtFmOptionsDialog dialog(fixture.filePath("options.ini"));
         dialog.findChild<QTabWidget *>("optionsPages")->setCurrentIndex(4);
         dialog.show();
+        QVERIFY(QTest::qWaitForWindowActive(&dialog));
         for (QSize size : {QSize(640, 390), QSize(520, 380)}) {
             dialog.resize(size);
             QApplication::processEvents();
-            QCOMPARE(dialog.size(), size);
+            QTRY_COMPARE(dialog.size(), size.expandedTo(dialog.minimumSizeHint()));
             QWidget *previous = nullptr;
             for (const char *name :
                  {"showDotsOption", "realFileIconsOption", "fullRowOption", "gridOption",
@@ -87,12 +90,13 @@ class OptionsDialogTests : public QObject {
         QtFmOptionsDialog dialog(fixture.filePath("options.ini"));
         dialog.findChild<QTabWidget *>("optionsPages")->setCurrentIndex(2);
         dialog.show();
+        QVERIFY(QTest::qWaitForWindowActive(&dialog));
         dialog.findChild<QRadioButton *>("workSpecified")->click();
         auto *path = dialog.findChild<QLineEdit *>("workPath");
         path->setText(fixture.path());
         bool browsed = false;
-        QTimer::singleShot(0, &dialog, [&] {
-            auto *browse = qobject_cast<QFileDialog *>(QApplication::activeModalWidget());
+        widgetDialogs_.respond(dialog, [&](QDialog &active) {
+            auto *browse = qobject_cast<QFileDialog *>(&active);
             QVERIFY(browse);
             browsed = true;
             browse->reject();
@@ -134,8 +138,8 @@ class OptionsDialogTests : public QObject {
         QMessageBox::Icon errorIcon = QMessageBox::NoIcon;
         QString errorTitle;
         if (!valid)
-            QTimer::singleShot(0, &dialog, [&] {
-                auto *error = qobject_cast<QMessageBox *>(QApplication::activeModalWidget());
+            widgetDialogs_.respond(dialog, [&](QDialog &active) {
+                auto *error = qobject_cast<QMessageBox *>(&active);
                 QVERIFY(error);
                 errorShown = true;
                 errorIcon = error->icon();
@@ -274,18 +278,21 @@ class OptionsDialogTests : public QObject {
         QVERIFY(dialog.findChild<QRadioButton *>("workSystem")->isChecked());
         dialog.findChild<QTabWidget *>("optionsPages")->setCurrentIndex(2);
         dialog.show();
+        QVERIFY(QTest::qWaitForWindowActive(&dialog));
         for (QSize size : {QSize(640, 390), QSize(520, 380)}) {
             dialog.resize(size);
             QApplication::processEvents();
-            QCOMPARE(dialog.size(), size);
+            QTRY_COMPARE(dialog.size(), size.expandedTo(dialog.minimumSizeHint()));
             QWidget *previous = nullptr;
             for (const char *name :
                  {"workSystem", "workCurrent", "workSpecified", "workPath", "workRemovableOnly"}) {
                 auto *control = dialog.findChild<QWidget *>(name);
                 QVERIFY(control && UiInspection::fullyVisible(*control, dialog));
                 if (previous)
-                    QVERIFY(UiInspection::bounds(*previous, dialog).bottom() <
-                            UiInspection::bounds(*control, dialog).top());
+                    QVERIFY2(
+                        UiInspection::bounds(*previous, dialog).bottom() <
+                            UiInspection::bounds(*control, dialog).top(),
+                        qPrintable(previous->objectName() + " before " + control->objectName()));
                 previous = control;
             }
             auto *path = dialog.findChild<QLineEdit *>("workPath");

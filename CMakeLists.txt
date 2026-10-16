@@ -3390,7 +3390,8 @@ if(BUILD_TESTING)
     foreach(sevenzip_widget_dialog_target IN ITEMS
             browse_dialog_tests nested_update_tests archive_progress_tests progress_cancel_tests
             nested_edit_chain_tests archive_external_edit_tests archive_external_security_tests
-            archive_external_lifetime_tests checksum_tests)
+            archive_external_lifetime_tests checksum_tests source_link_storage_tests
+            options_dialog_tests system_page_tests)
         target_sources(${sevenzip_widget_dialog_target} PRIVATE tests/fixtures/widget_dialogs.cpp)
     endforeach()
 endif()

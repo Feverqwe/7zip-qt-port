@@ -2,6 +2,15 @@
 
 [Индекс](../7zfm-parity.md). Scope и свидетельства ниже сохраняют даты и ревизии; они не подтверждают текущий checkout.
 
+### Options row spacing (2026-10-16)
+
+Menu and Folders map the source4-DLU row gaps using current-font dialog units.
+This prevents overlapping native Cocoa checkbox/radio frames while preserving
+order, settings and disabled states. Qt minimumSizeHint can make the requested
+compact frame taller; every control must still fit and remain separate. Original
+Windows Menu/Folders views support grouping/order, not pixel equality with Qt.
+[Source and native regression receipt](../upstream-port-audit/p3-06-options-spacing-2026-10-16.md).
+
 ### List, Link and Benchmark source presentation (2026-10-16)
 
 Properties/Folder History retain the shared source list and blank two-column

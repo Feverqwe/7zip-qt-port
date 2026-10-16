@@ -28,6 +28,13 @@ local SHA256 are retained in `build/review/final-availability-8e9343b-20261014/c
 No new omitted module, baseline revision or duplicate implementation is found.
 This inventory is source/dependency evidence, not a whole native acceptance.
 
+The subsequent [Menu/Folders native-spacing correction](../upstream-port-audit/p3-06-options-spacing-2026-10-16.md)
+changes two already-adapted presentation constructors to use the existing
+QtDialogUnits dependency. Functional handlers, module/path ownership and the
+109-unit disposition remain unchanged; no copied module or omitted branch is
+added. Its current baseline verify and three-platform consumers are recorded
+separately from the0e7c0ee inventory.
+
 Fourteen paths changed since the recorded48866c8 parent. Their existing body
 and adaptation receipts are:
 

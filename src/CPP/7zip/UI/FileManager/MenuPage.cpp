@@ -14,6 +14,7 @@
 #include "Common/StringConvert.h"
 #include "FormatUtils.h"
 #include "LangUtils.h"
+#include "qtdialogunits.h"
 #include "qtlangcontrols.h"
 #include "qtmenupageservices.h"
 #include "qtnativemenupageservices.h"
@@ -65,7 +66,9 @@ CMenuPage::CMenuPage(const QString &settingsPath, QWidget *parent, bool zoneSupp
       _services(services ? std::move(services) : CreateNativeMenuPageServices()) {
     setObjectName("menuPage");
     auto *layout = new QVBoxLayout(this);
-    layout->setSpacing(4);
+    // MenuPage2.rc separates 10-DLU checkboxes by 4 DLU. Pixel spacing
+    // compresses their native Cocoa widget frames into each other.
+    layout->setSpacing(QtDialogUnits(font()).pixels(QSize(0, 4)).height());
     auto addCheck = [&](const QString &text, const char *name, unsigned id) {
         auto *check = new QCheckBox(text, this);
         check->setObjectName(name);

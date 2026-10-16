@@ -7,6 +7,7 @@
 #include "archive_backend_test_support.h"
 #include "archivecodeccatalog.h"
 #include "createarchivedialog.h"
+#include "fixtures/widget_dialogs.h"
 #include "layout_inspection.h"
 #include "native_link_fixture.h"
 #include "qtarchivefileresource.h"
@@ -24,6 +25,7 @@ QByteArray readFile(const QString &path) {
 
 class SourceLinkStorageTests final : public QObject, protected ArchiveBackendTestSupport {
     Q_OBJECT
+    WidgetDialogFixture widgetDialogs_;
   private slots:
     void optionsTransactionAndGeometry_data() {
         QTest::addColumn<QString>("language");
@@ -66,16 +68,15 @@ class SourceLinkStorageTests final : public QObject, protected ArchiveBackendTes
         QVERIFY(advanced);
         bool inspected = false;
         const auto changeOptions = [&](bool accept) {
-            QTimer::singleShot(0, &form, [&, accept] {
-                auto *dialog = qobject_cast<QDialog *>(QApplication::activeModalWidget());
-                QVERIFY(dialog);
+            widgetDialogs_.respond(form, [&, accept](QDialog &active) {
+                auto *dialog = &active;
                 const auto close = qScopeGuard([&] {
                     if (dialog->isVisible())
                         dialog->reject();
                 });
                 dialog->resize(size);
                 QApplication::processEvents();
-                QCOMPARE(dialog->size(), size);
+                QTRY_COMPARE(dialog->size(), size);
                 auto *sym = dialog->findChild<QCheckBox *>("IDX_COMPRESS_NT_SYM_LINKS");
                 auto *hard = dialog->findChild<QCheckBox *>("IDX_COMPRESS_NT_HARD_LINKS");
                 QVERIFY(sym && hard && sym->isVisible() && hard->isVisible());

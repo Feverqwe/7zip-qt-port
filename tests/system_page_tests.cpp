@@ -1,6 +1,7 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/SystemPage.h"
 #include "Common/MyCom.h"
+#include "fixtures/widget_dialogs.h"
 #include "layout_inspection.h"
 #include "qtfmoptionsdialog.h"
 #include "qtlangcontrols.h"
@@ -82,6 +83,7 @@ class CFakeAssociations final : public IQtAssociationServices {
 
 class SystemPageTests final : public QObject {
     Q_OBJECT
+    WidgetDialogFixture widgetDialogs_;
   private slots:
     void nativeUsernameAndPendingStateSurviveLanguageChanges() {
         QTemporaryDir fixture;
@@ -116,14 +118,15 @@ class SystemPageTests final : public QObject {
             QVERIFY(pages->isTabEnabled(0));
             pages->setCurrentIndex(0);
             dialog.show();
+            QVERIFY(QTest::qWaitForWindowActive(&dialog));
             for (const QSize size : {QSize(640, 390), QSize(520, 380)}) {
                 dialog.resize(size);
                 QApplication::processEvents();
-                QVERIFY(UiInspection::writeReport(
-                    dialog, QString("options-system-%1-%2").arg(language).arg(size.width())));
                 // Native styles can require a taller minimum than the requested
                 // compact frame; preserve it while checking every control fits.
-                QCOMPARE(dialog.size(), size.expandedTo(dialog.minimumSizeHint()));
+                QTRY_COMPARE(dialog.size(), size.expandedTo(dialog.minimumSizeHint()));
+                QVERIFY(UiInspection::writeReport(
+                    dialog, QString("options-system-%1-%2").arg(language).arg(size.width())));
                 for (const char *name : {"systemAssociateLabel", "systemCurrent", "systemAll",
                                          "systemAssociations", "settingsButtons"}) {
                     auto *control = dialog.findChild<QWidget *>(name);
@@ -195,8 +198,8 @@ class SystemPageTests final : public QObject {
         list->topLevelItem(1)->setSelected(true);
         dialog.findChild<QPushButton *>("systemCurrent")->click();
         QTimer responder;
-        connect(&responder, &QTimer::timeout, &dialog, [&] {
-            if (auto *message = qobject_cast<QMessageBox *>(QApplication::activeModalWidget())) {
+        widgetDialogs_.connectResponder(responder, &dialog, [&] {
+            if (auto *message = qobject_cast<QMessageBox *>(widgetDialogs_.activeDialog())) {
                 message->accept();
                 responder.stop();
             }

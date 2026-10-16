@@ -42,6 +42,10 @@
 
 [Source frame, rendered reference and regressions](upstream-port-audit/p3-06-options-2026-10-16.md).
 
+[Native Menu/Folders source row spacing and Options fixture delivery](upstream-port-audit/p3-06-options-spacing-2026-10-16.md)
+records the subsequent source4-DLU gap correction, configure waits and exact
+default/native platform boundaries.
+
 ## P3-06 — Add form scroll-bar gutter (2026-10-15)
 
 [Source scope and regression](upstream-port-audit/p3-06-add-scroll-2026-10-15.md).

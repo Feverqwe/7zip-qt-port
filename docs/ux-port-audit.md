@@ -97,7 +97,7 @@ native Windows и rendered reference этим не подтверждены.
 
 | Область приёмки | macOS arm64 | Linux x64 | Windows x64 |
 | --- | --- | --- | --- |
-| Default format/build/CTest | checked: current widget-fixture full324/324234.12s,5187Qt/0fail/66skip; product0e7c0ee | checked: final Browse full323/323496.92s,5179Qt/0fail/66skip;1627 exact uploaded inputs/stock Git verified | partial: final Browse340/3412487.71s,5423Qt/1fail/20skip; external_codecs incompatible-module startup7600ms exceeds5000ms. fs_drives_device disabled under disk prohibition;1628 exact inputs/stock Git verified. Prior cadb215342/342 PASS retained; stability open |
+| Default format/build/CTest | checked: source Options-spacing full324/324427.38s,5187Qt/0fail/66skip; affected4default/native48QtPASS | checked: final Browse full323/323496.92s,5179Qt/0fail/66skip;1627 exact uploaded inputs/stock Git verified; subsequent Options/direct8default/native88QtPASS | partial: final Browse340/3412487.71s,5423Qt/1fail/20skip; external_codecs incompatible-module startup7600ms exceeds5000ms. fs_drives_device disabled under disk prohibition;1628 exact inputs/stock Git verified. Prior cadb215342/342 PASS retained; stability open |
 | Исходные модули, headers/resources/callers | partial: [109 source receipts](omitted-scope-audit.md#109-unit-source-receipt-ledger-2026-10-10); identified launcher/continuation gap corrected, whole workflow acceptance open | partial: общий source scope тот же; POSIX no-handle consumers checked | partial: original native launcher and real handle/disk/browser/archive consumers checked; whole acceptance open |
 | EN/RU, normal/compact, команды и workflow | partial: автоматические contracts/regressions проходят; полный нативный обход не принят | partial: current package на реальной консоли, EN/RU/two-panel normal/compact, Options/Copy и create/open/test/extract проверены; полный обход открыт | partial: выполненные focused consumers/JSON; current interactive gate и полный обход не приняты |
 | Нативные dialogs/shortcuts/icons/drag/registration/FS | partial: историческая ручная Finder-проверка принята отдельно; Cocoa keyboard notification protocol0–9 проверен, physical input/full native обход не проверены | partial: delivery8d56d8d Copy/Overwrite/Language/PCManFM drag/Escape; Release2f8e194 GIO workflow проверен; corrected keyboard XTest1/native consumers7/7; full native scope открыт | partial: active console Session1; corrected keyboard consumers7/7,143Qt/0fail/0skip; original Limited reference also suppresses physical RightCtrlShift0, positive1/AltShift0 PASS; current full/native acceptance открыт |
@@ -117,6 +117,16 @@ representative editor checks; полная96-row editor matrix достигае�
 проверяет изменённый consumer на3OS.
 
 Slow suites исключены из default gates по AGENTS.md и не объявляются принятыми.
+
+Windows Options/direct consumers также проверены: семь suite с Limited токеном
+и отдельный source_link_storage с Highest для disposable symlinks дают88Qt/0fail/
+0skip в каждом режиме. Сбой symlink setup в Limited сохранён; это два запуска,
+не новый полный Windows gate.
+
+[Native Options spacing](upstream-port-audit/p3-06-options-spacing-2026-10-16.md)
+изменяет два presentation owners после product0e7c0ee; перечисленные пакеты
+сохраняют прежнюю ревизию и требуют обновления после этой коррекции. Ручные
+Save/Folder и отдельные message-panel attestations не переносятся на другие owners.
 Текущий source style строк состояния и geometry consumers — в
 [P3-06 receipt](upstream-port-audit.md#p3-06--source-status-bar-style-and-current-geometry-consumers-2026-10-10).
 Текущие артефакты, dependency/rootfs proofs и точные границы relocation-проверки — в

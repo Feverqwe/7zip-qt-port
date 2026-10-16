@@ -99,6 +99,9 @@ class MenuPageTests : public QObject {
             for (QSize size : {QSize(640, 390), QSize(520, 380)}) {
                 page.resize(size);
                 QApplication::processEvents();
+                QVERIFY(UiInspection::writeReport(page, QString("menu-shell-%1-%2")
+                                                            .arg(language[0] == '-' ? "en" : "ru")
+                                                            .arg(size.width())));
                 QWidget *previous = nullptr;
                 for (const char *name :
                      {"shellIntegration", "shellIntegration32", "cascadedMenu", "menuIcons",
@@ -106,15 +109,14 @@ class MenuPageTests : public QObject {
                     auto *control = page.findChild<QWidget *>(name);
                     QVERIFY(UiInspection::fullyVisible(*control, page));
                     if (previous)
-                        QVERIFY(UiInspection::bounds(*previous, page).bottom() <
-                                UiInspection::bounds(*control, page).top());
+                        QVERIFY2(UiInspection::bounds(*previous, page).bottom() <
+                                     UiInspection::bounds(*control, page).top(),
+                                 qPrintable(previous->objectName() + " before " +
+                                            control->objectName()));
                     if (qobject_cast<QCheckBox *>(control))
                         QVERIFY(control->width() >= control->sizeHint().width());
                     previous = control;
                 }
-                QVERIFY(UiInspection::writeReport(page, QString("menu-shell-%1-%2")
-                                                            .arg(language[0] == '-' ? "en" : "ru")
-                                                            .arg(size.width())));
             }
         }
     }
@@ -152,6 +154,7 @@ class MenuPageTests : public QObject {
         QCOMPARE(pages->widget(1)->property("sourcePageID").toUInt(), 2300u);
         pages->setCurrentIndex(1);
         dialog.show();
+        QVERIFY(QTest::qWaitForWindowActive(&dialog));
         auto *zone = dialog.findChild<QComboBox *>("menuZone");
         QCOMPARE(zone->isEnabled(), IsZonePropagationSupported());
         QCOMPARE(zone->count(), 3);
@@ -183,7 +186,7 @@ class MenuPageTests : public QObject {
         for (QSize size : {QSize(640, 390), QSize(520, 380)}) {
             dialog.resize(size);
             QApplication::processEvents();
-            QCOMPARE(dialog.size(), size);
+            QTRY_COMPARE(dialog.size(), size.expandedTo(dialog.minimumSizeHint()));
             QWidget *previous = nullptr;
             for (const char *name :
                  {"shellIntegration", "shellIntegration32", "cascadedMenu", "menuIcons",
@@ -191,8 +194,10 @@ class MenuPageTests : public QObject {
                 auto *control = dialog.findChild<QWidget *>(name);
                 QVERIFY(UiInspection::fullyVisible(*control, dialog));
                 if (previous)
-                    QVERIFY(UiInspection::bounds(*previous, dialog).bottom() <
-                            UiInspection::bounds(*control, dialog).top());
+                    QVERIFY2(
+                        UiInspection::bounds(*previous, dialog).bottom() <
+                            UiInspection::bounds(*control, dialog).top(),
+                        qPrintable(previous->objectName() + " before " + control->objectName()));
                 if (qobject_cast<QCheckBox *>(control))
                     QVERIFY2(control->width() >= control->sizeHint().width(), name);
                 previous = control;
