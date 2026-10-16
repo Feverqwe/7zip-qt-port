@@ -162,6 +162,9 @@ class NativeRendererCopyTests final : public QObject, protected MainWindowTestSu
         QVERIFY(submitted);
         QTRY_COMPARE(peer->rowCount(), 0);
         QTRY_VERIFY(action(window, "refreshAction")->isEnabled());
+        // Refresh availability belongs to the active source. The peer reload
+        // publishes asynchronously and restores redraw at its own completion.
+        QTRY_VERIFY(peer->isEnabled() && peer->updatesEnabled());
         driver.stop();
         // Original OnCopy ignores the final RefreshListCtrl HRESULT. Explicit
         // OnReload diagnostics are covered by the separate renderer suite.

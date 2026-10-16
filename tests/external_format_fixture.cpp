@@ -6,6 +6,7 @@
 #include "7zip/ICoder.h"
 #include "7zip/PropID.h"
 #include "Common/MyCom.h"
+#include <atomic>
 #include <chrono>
 #include <cwchar>
 #include <filesystem>
@@ -142,6 +143,7 @@ class CGlobalOnlyArchive final : public IInArchive,
     CMyComPtr<ISetProperties> properties_;
     std::filesystem::path propertyControl_;
     std::filesystem::path diskControl_;
+    std::atomic<bool> diskSizeReported_{false};
     std::filesystem::path writerControl_;
 
   public:
@@ -172,6 +174,7 @@ class CGlobalOnlyArchive final : public IInArchive,
         std::ifstream control(writerControl_);
         const bool failOutput = (control >> process >> requested) && process == CurrentProcess() &&
                                 requested == UInt32(E_FAIL);
+        control.close();
         CMyComPtr<ISequentialOutStream> failed;
         if (failOutput)
             failed = new CFailedOutput(output);
@@ -191,6 +194,7 @@ class CGlobalOnlyArchive final : public IInArchive,
             std::ifstream control(writerControl_);
             if (!(control >> process >> result >> hold) || process != CurrentProcess())
                 return written;
+            control.close();
             if (!hold && result != UInt32(E_ABORT))
                 return HRESULT(result);
             const HRESULT progress = callback->SetCompleted(nullptr);
@@ -215,6 +219,9 @@ class CGlobalOnlyArchive final : public IInArchive,
             if (!(control >> process >> index >> result >> count) || process != CurrentProcess() ||
                 index != UInt32(-1) || result != UInt32(E_ABORT) || count != actualCount)
                 return opened;
+            // The GUI releases this hold by removing its control file. Do not
+            // retain a Windows CRT handle across a possibly paused callback.
+            control.close();
             if (!observed) {
                 auto receipt = propertyControl_;
                 receipt += ".open";
@@ -257,7 +264,10 @@ class CGlobalOnlyArchive final : public IInArchive,
             UInt64 process = 0;
             UInt32 count = 0;
             if (control >> process && process == CurrentProcess() &&
-                archive_->GetNumberOfItems(&count) == S_OK && count == 1) {
+                archive_->GetNumberOfItems(&count) == S_OK && count == 1 &&
+                !diskSizeReported_.exchange(true)) {
+                // Force only PanelItemOpen's route decision. Extraction must
+                // retain the real size, including native Windows preallocation.
                 auto receipt = diskControl_;
                 receipt += ".hit";
                 std::ofstream(receipt, std::ios::app) << index << ' ' << count << '\n';

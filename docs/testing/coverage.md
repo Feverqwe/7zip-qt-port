@@ -1893,7 +1893,10 @@ local; missing modules or NTFS skips do not establish platform acceptance.
 Native WIM failure/cancel in `codec_update` is injected through public source
 progress callbacks after actual progress, preserving original bytes and cleaning
 owned output stages. `codec_commands_ui` cancels the writer through original
-`CProgressDialog::Sync`, before publication rather than during backend reopen.
+`CProgressDialog::Sync` at the first visible progress event and checks the
+recorded source phase; tiny native updates can already have entered publication
+or reopening. Pre-publication byte preservation remains deterministic in
+`codec_update`.
 Windows gzip cases use an ASCII stored name inside a Unicode/spaced filesystem
 path: original GzHandler.cpp reads/writes that header with CP_ACP, which cannot
 represent arbitrary Unicode. Other tested formats retain Unicode stored names.

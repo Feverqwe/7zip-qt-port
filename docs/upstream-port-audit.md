@@ -46,6 +46,10 @@ records the user-reported clipping, native regression and whole-gate limitation.
 
 ## P3-03 — Bounded Windows timing diagnosis (2026-10-16)
 
+[Explicit eleven-suite acceptance and Windows failures](upstream-port-audit/p3-03-long-acceptance-2026-10-16.md)
+records the complete three-platform long run and source-correct filesystem
+provider fixture follow-up; final acceptance remains open.
+
 [Bounded native external-editor coverage](upstream-port-audit/p3-03-native-editor-coverage-2026-10-16.md)
 records all48 refused-update rows, the actual Cocoa activation regression and
 unchanged per-run deadlines.

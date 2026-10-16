@@ -2,6 +2,7 @@
 #include "CPP/7zip/UI/FileManager/FileFolderPluginOpen.h"
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
+#include "fixtures/widget_dialogs.h"
 #include "layout_inspection.h"
 #include "native_property_failure_runtime.h"
 #include "qtarchivefileresource.h"
@@ -13,6 +14,7 @@
 
 class NativeNestedPublicationTests final : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
+    WidgetDialogFixture dialogs_;
     NativePropertyFailureRuntime runtime_;
     QTemporaryDir archives_;
     QMap<QString, QString> outer_;
@@ -227,19 +229,18 @@ class NativeNestedPublicationTests final : public QObject, protected MainWindowT
         QElapsedTimer elapsed;
         elapsed.start();
         QTimer driver, responder;
-        connect(&responder, &QTimer::timeout, &window, [&] {
-            for (QWidget *widget : QApplication::topLevelWidgets())
-                if (auto *box = qobject_cast<QMessageBox *>(widget); box && box->isVisible()) {
-                    if (box->objectName() == "progressCancelQuestion") {
-                        replied = true;
-                        box->button(QMessageBox::StandardButton(answer))->click();
-                    } else {
-                        errors << box->text();
-                        box->accept();
-                    }
+        dialogs_.connectResponder(responder, &window, [&] {
+            if (auto *box = qobject_cast<QMessageBox *>(dialogs_.activeDialog())) {
+                if (box->objectName() == "progressCancelQuestion") {
+                    replied = true;
+                    box->button(QMessageBox::StandardButton(answer))->click();
+                } else {
+                    errors << box->text();
+                    box->accept();
                 }
+            }
         });
-        connect(&driver, &QTimer::timeout, &window, [&] {
+        dialogs_.connectResponder(driver, &window, [&] {
             if (elapsed.elapsed() > 15000) {
                 timedOut = true;
                 runtime_.clear();
@@ -249,7 +250,7 @@ class NativeNestedPublicationTests final : public QObject, protected MainWindowT
                 return;
             for (QWidget *widget : QApplication::topLevelWidgets())
                 if (auto *progress = dynamic_cast<CProgressDialog *>(widget);
-                    progress && progress->isVisible()) {
+                    progress && dialogs_.ready(*progress)) {
                     for (const auto &entry : registry.Entries())
                         if (!before.contains(entry.key))
                             created << entry.path;
@@ -440,6 +441,13 @@ class NativeNestedPublicationTests final : public QObject, protected MainWindowT
         QCOMPARE(list->rowCount(), result == S_OK ? count : 0);
         QVERIFY(panel.ShouldProcessNotifications());
         QCOMPARE(!runtime_.diskReceipts().isEmpty(), route == "disk");
+        if (route == "disk") {
+            // Forcing the route must not poison extraction/preallocation metadata.
+            NWindows::NCOM::CPropVariant size;
+            QCOMPARE(resource->NativeItemProperties()->GetProperty(0, kpidSize, &size), S_OK);
+            QCOMPARE(size.vt, VARTYPE(VT_UI8));
+            QCOMPARE(size.uhVal.QuadPart, UInt64(innerBytes.size()));
+        }
         if (route == "stream")
             QVERIFY(runtime_.extractionReceipts().isEmpty());
         else
@@ -462,11 +470,13 @@ class NativeNestedPublicationTests final : public QObject, protected MainWindowT
         QCOMPARE(panel.GetFolder(), childProvider.Interface());
         QVERIFY(panel.ShouldProcessNotifications());
         inspectState(window, "recovered");
+        // The fixture's identity assertion is complete. Release its extra
+        // reader before the source Parent workflow closes/deletes the spool.
+        childProvider.Release();
         action(window, "parentFolderAction")->trigger();
         QTRY_COMPARE(list->rowCount(), 1);
         QCOMPARE(panel.GetFolder(), outerProvider.Interface());
         QCOMPARE(panel.GetParentFolders().Size(), 1u);
-        childProvider.Release();
         QTRY_VERIFY(!QFileInfo::exists(spool));
         QCOMPARE(peerList->sourcePanel->GetFolder(), peerProvider.Interface());
         QCOMPARE(peerList->rowCount(), 1);

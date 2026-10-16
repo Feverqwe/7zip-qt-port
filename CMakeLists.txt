@@ -1936,7 +1936,8 @@ if(BUILD_TESTING)
     qt_add_executable(native_nested_publication_tests tests/native_nested_publication_tests.cpp tests/native_property_failure_runtime.cpp tests/layout_inspection.cpp ${panel_sort_sources})
     target_include_directories(native_nested_publication_tests PRIVATE src tests)
     target_link_libraries(native_nested_publication_tests PRIVATE sevenzip_location sevenzip_folder_loader Qt6::Test)
-    target_sources(native_nested_publication_tests PRIVATE src/mainwindow_selectionpaths.cpp)
+    target_sources(native_nested_publication_tests PRIVATE src/mainwindow_selectionpaths.cpp
+        tests/fixtures/widget_dialogs.cpp)
     target_compile_definitions(native_nested_publication_tests PRIVATE
         "SEVENZIP_EXTERNAL_RUNTIME=\"${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime\""
         "SEVENZIP_EXTERNAL_FORMAT_FIXTURE=\"$<TARGET_FILE:external_format_fixture>\"")
@@ -3417,7 +3418,7 @@ if(BUILD_TESTING AND WIN32)
     endif()
     foreach(sevenzip_native_ui_test IN ITEMS
             native_parent_publication native_drop_publication native_rename_2 native_rename_301 native_external_2 native_external_301 native_nested_stream native_nested_memory native_nested_disk
-            native_renderer_failure native_renderer_copy
+            native_renderer_failure native_renderer_copy interarchive_refresh panel_creation_publication
             source_compress_dialog source_extract_advanced source_browse_dialog shell_archive_services shell_menu_window shell_update_window
             compression compression_advanced compression_path dialog_path_rules compression_error_policy compression_profile_selection compression_method_state compression_preferences compression_resources language_ui
             codec_commands_ui codec_creation_ui ui_geometry
@@ -3446,4 +3447,19 @@ if(BUILD_TESTING AND WIN32)
     set_tests_properties(panel_creation_path PROPERTIES TIMEOUT 180)
     set_tests_properties(interarchive_recovery PROPERTIES TIMEOUT 300)
     set_tests_properties(copy_archive_refresh PROPERTIES TIMEOUT 360)
+    # Explicit long-matrix run: at the original caps Windows published
+    # 188/137 of 192 Rename rows, 149/102 of 192 External rows,
+    # 185 of 288 renderer rows and 91 of 256 interarchive rows.
+    # Allow about twice the extrapolated whole-matrix time, rounded up.
+    # Individual waits and application deadlines remain unchanged.
+    set_tests_properties(native_rename_2 PROPERTIES TIMEOUT 720)
+    set_tests_properties(native_rename_301 PROPERTIES TIMEOUT 1080)
+    set_tests_properties(native_external_2 PROPERTIES TIMEOUT 660)
+    set_tests_properties(native_external_301 PROPERTIES TIMEOUT 960)
+    set_tests_properties(native_renderer_failure PROPERTIES TIMEOUT 600)
+    set_tests_properties(interarchive_refresh PROPERTIES TIMEOUT 720)
+    # Corrected creation reached 122/256 rows in 120s; Copy completed all
+    # 98 Qt checks in 173.32s. Apply the same whole-matrix reserve.
+    set_tests_properties(panel_creation_publication PROPERTIES TIMEOUT 540)
+    set_tests_properties(native_renderer_copy PROPERTIES TIMEOUT 360)
 endif()

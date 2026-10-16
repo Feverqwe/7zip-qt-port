@@ -51,6 +51,8 @@ same snapshot still fails actual global-only external-handler discovery at the
 unchanged5000ms deadline. Current macOS full gate passes324/324 in264.75s
 with source guard passing (`mac-current-full-v83`). No appearance change requires
 a new screenshot.
+Linux's subsequent full gate also passes323/323 with source guard passing
+(`20261016T225934Z-73529f4a`);66Qt platform skips remain recorded separately.
 
 ## Acceptance limit
 

@@ -7,6 +7,11 @@
 
 ### Current inventory refresh (2026-10-16)
 
+Committed product7dadf6d matches all302 owner hashes in
+`source-inventory-7dadf6d.json`, retaining the same109-unit disposition. It
+includes exactly the four Agent deltas described below; the worker's local Qt
+deadline scheduler is outside the borrowed-body inventory.
+
 The subsequent retired-proxy working candidate changes only four of those302
 borrowed owners: Agent.cpp/.h, AgentOut.cpp and ArchiveFolderOut.cpp. Their private
 lifetime adaptation and original dependency/pin boundary are documented in the

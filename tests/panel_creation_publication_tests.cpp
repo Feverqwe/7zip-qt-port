@@ -14,9 +14,11 @@ class CreationProbeBackend final : public ControlledBackend {
     std::function<void()> CompleteProbe;
     void openFolder(const QString &archive, const QString &format,
                     const QString &password) override {
-        if (archive == ProbePath && BeforeProbe)
+        const bool probe =
+            QDir::fromNativeSeparators(archive) == QDir::fromNativeSeparators(ProbePath);
+        if (probe && BeforeProbe)
             BeforeProbe();
-        if (archive == ProbePath && CompleteProbe)
+        if (probe && CompleteProbe)
             queueListAction(CompleteProbe);
         else
             queueList(Entries);
@@ -255,9 +257,8 @@ class PanelCreationPublicationTests final : public QObject, protected MainWindow
             QCOMPARE(nativeCount, UInt32(count));
             table->sourcePanel->Set_AutoRefresh_Mode(false);
         }
-        if (kind != "filesystem" || !large)
-            QCOMPARE(first->sourcePanel->GetFolder(), firstProvider.Interface());
-        // The existing filesystem worker publishes its separately loaded folder.
+        // Source LoadItems reloads the bound provider, including the worker path.
+        QCOMPARE(first->sourcePanel->GetFolder(), firstProvider.Interface());
         firstProvider = first->sourcePanel->GetFolder();
         CMyComPtr<IFolderFolder> secondProvider = second->sourcePanel->GetFolder();
         QVERIFY(dynamic_cast<CAgentFolder *>(secondProvider.Interface()));
@@ -282,13 +283,12 @@ class PanelCreationPublicationTests final : public QObject, protected MainWindow
         QCOMPARE(selection.SelectedNames.Size(), 1u);
         QCOMPARE(ToQString(selection.SelectedNames[0]), names[0]);
         QCOMPARE(ToQString(selection.FocusedName), names.last());
+        QCOMPARE(first->sourcePanel->GetFolder(), firstProvider.Interface());
         if (kind == "filesystem" && large) {
-            QVERIFY(first->sourcePanel->GetFolder() != firstProvider.Interface());
             QCOMPARE(QFileInfo(ToQString(GetFolderPath(first->sourcePanel->GetFolder())))
                          .canonicalFilePath(),
                      QFileInfo(root).canonicalFilePath());
-        } else
-            QCOMPARE(first->sourcePanel->GetFolder(), firstProvider.Interface());
+        }
         action(window, "twoPanelsAction")->trigger();
         action(window, "twoPanelsAction")->trigger();
         QCOMPARE(second->sourcePanel->GetFolder(), secondProvider.Interface());

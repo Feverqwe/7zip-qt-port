@@ -88,11 +88,21 @@ recovery84Qt, Parent7Qt, nested stream137Qt and memory137Qt. External codec
 discovery still times out; disk times out before producing a completed-row
 report and requires separate diagnosis. Neither failure is counted as acceptance.
 
+The subsequent disk diagnosis identifies a test-only artificial size leaking
+into original Windows preallocation. Its corrected full disk/direct-consumer
+follow-up passes167Qt on Windows; corresponding six-suite Mac/Linux follow-ups
+pass441Qt each. The exact source diagnosis, regression and unchanged-cap results
+are in the [long-suite receipt](p3-03-long-acceptance-2026-10-16.md).
+
 The final macOS default gate passes324/324 in264.75s, with source guard passing
 (`mac-current-full-v83`). It excludes the eleven explicitly requested slow suites,
 whose separate receipts remain in the long-suite audit. All302 borrowed owners
 are rehashed against the previous591174e inventory; only the four documented
 Agent source/header paths differ (`source-inventory-proxy-lifetime-candidate-v87.json`).
-The109 cpp disposition and original pin remain unchanged. Current guest broad
-gates, remaining Windows failures and refreshed packages still bound final P3
+The109 cpp disposition and original pin remain unchanged. Linux's current broad
+gate then passes323/323 in513.57s,5186Qt pass/66platform skips, with source guard passing
+(`20261016T225934Z-73529f4a`). It precedes only the subsequent test-only disk
+metadata correction, covered by focused follow-ups. The fresh7dadf6d macOS
+package also passes its bounded runtime/payload/dependency checks. Windows broad
+gate, remaining failures and guest package refresh still bound final P3
 acceptance; this receipt establishes the narrow retired-proxy correction only.
