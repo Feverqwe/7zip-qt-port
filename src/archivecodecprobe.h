@@ -3,7 +3,6 @@
 #include "archivecodeccatalog.h"
 #include <QObject>
 #include <QThread>
-#include <QTimer>
 #include <functional>
 #include <memory>
 
@@ -16,7 +15,6 @@ struct ArchiveCodecProbeResult {
 // Process-version/discovery glue; format semantics remain in native CCodecs.
 class ArchiveCodecProbe final : public QObject {
     struct Work;
-    QTimer deadline_;
     std::unique_ptr<QThread> loader_;
     std::shared_ptr<Work> work_;
     std::function<void(ArchiveCodecProbeResult)> completion_;

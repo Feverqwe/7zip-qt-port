@@ -20,6 +20,37 @@ class CodecProbeTests : public QObject {
     }
 
   private slots:
+    void deadlineDoesNotDependOnGuiTimerDelivery() {
+        QTemporaryDir temporary;
+        QVERIFY(temporary.isValid());
+        const QString engine = Fixture(temporary, "delayed");
+        QVERIFY(!engine.isEmpty());
+        ArchiveCodecProbe probe;
+        int calls = 0;
+        ArchiveCodecProbeResult result;
+        QVERIFY(probe.Start(
+            engine, temporary.filePath("missing module"),
+            [&](auto value) {
+                QCOMPARE(QThread::currentThread(), thread());
+                result = std::move(value);
+                ++calls;
+            },
+            50));
+        // Withhold GUI timer/completion delivery past the deadline. The worker
+        // can terminate the child before its exit receipt is written.
+        QElapsedTimer wait;
+        wait.start();
+        while (!QFileInfo::exists(engine + ".finished") && wait.elapsed() < 1000)
+            QThread::msleep(5);
+        if (QFileInfo::exists(engine + ".finished"))
+            QThread::msleep(100);
+        QCOMPARE(calls, 0);
+        QTRY_COMPARE(calls, 1);
+        QCOMPARE(result.result, E_ABORT);
+        QVERIFY(!result.catalog);
+        QVERIFY(!result.error.isEmpty());
+        QVERIFY(!probe.active());
+    }
 #ifdef Q_OS_WIN
     void delayedNativeProcessStartKeepsEventLoopResponsive_data() {
         QTest::addColumn<QString>("mode");

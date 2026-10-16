@@ -1244,6 +1244,9 @@ callback; restart after failure/cancel must deliver exactly once. Disposable
 Unicode marker paths identify native entry/exit, not production diagnostics.
 Their test-module environment transport is ASCII Base64 of UTF-8, with explicit
 decoding; Windows local-code-page conversion must not change the marker path.
+An owned delayed engine fixture also withholds GUI delivery past a50ms deadline:
+the worker must return one joined owner-thread E_ABORT, no catalog and inactive
+state, independently of GUI timer delivery.
 `filesystem_comment` checks the source filesystem property writer and its actual
 File Comment consumer: Unicode/spaces, quoted UTF-8/BOM, preserved other pairs
 and permissions, trim/empty deletion, invalid input and flat nested refusal,

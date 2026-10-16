@@ -10,6 +10,10 @@
 
 [Source lifetime correction, actual native crashes and integrated consumers](upstream-port-audit/p3-05-proxy-lifetime-2026-10-17.md).
 
+## P3-03.8 — Worker-owned discovery deadline (2026-10-17)
+
+[Monotonic worker deadline and three-platform regression](upstream-port-audit/p3-03-codec-deadline-2026-10-17.md).
+
 ## P3-06 — Split, shared input and About presentation (2026-10-16)
 
 [Source presentation, rendered reference and integrated regressions](upstream-port-audit/p3-06-primitives-2026-10-16.md).

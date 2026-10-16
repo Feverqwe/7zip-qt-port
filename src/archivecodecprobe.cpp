@@ -1,6 +1,7 @@
 #include "archivecodecprobe.h"
 #include "qtlanguageservices.h"
 #include <QCoreApplication>
+#include <QDeadlineTimer>
 #include <QDir>
 #include <QFileInfo>
 #include <QProcess>
@@ -95,14 +96,23 @@ QString DeploymentModule(const QStringList &libraries, const QString &fallback) 
 struct ArchiveCodecProbe::Work {
     std::atomic<bool> cancelled{false};
     std::atomic<bool> timedOut{false};
+    const QDeadlineTimer deadline;
     ArchiveCodecProbeResult result;
+
+    explicit Work(int timeoutMs) : deadline(qMax(1, timeoutMs), Qt::PreciseTimer) {}
+
+    bool Stopped() {
+        if (deadline.hasExpired())
+            timedOut = true;
+        return cancelled || timedOut;
+    }
 };
 
 ArchiveCodecProbeResult ArchiveCodecProbe::Discover(const QString &engine,
                                                     const QString &requestedModule,
                                                     const std::shared_ptr<Work> &work) {
     ArchiveCodecProbeResult result;
-    if (work->cancelled || work->timedOut)
+    if (work->Stopped())
         return result;
     const QString module = requestedModule.isEmpty() ? FindModule(engine) : requestedModule;
     QProcess process;
@@ -118,7 +128,7 @@ ArchiveCodecProbeResult ArchiveCodecProbe::Discover(const QString &engine,
         output.append(bytes.left(qMax(0, 8192 - int(output.size()))));
     };
     while (process.state() != QProcess::NotRunning) {
-        if (work->cancelled || work->timedOut) {
+        if (work->Stopped()) {
             process.kill();
             process.waitForFinished(3000);
             return result;
@@ -127,7 +137,7 @@ ArchiveCodecProbeResult ArchiveCodecProbe::Discover(const QString &engine,
         readOutput();
     }
     readOutput();
-    if (work->cancelled || work->timedOut)
+    if (work->Stopped())
         return result;
     if (process.error() == QProcess::FailedToStart ||
         process.exitStatus() != QProcess::NormalExit || process.exitCode() != 0) {
@@ -154,13 +164,9 @@ ArchiveCodecProbeResult ArchiveCodecProbe::Discover(const QString &engine,
     return result;
 }
 
-ArchiveCodecProbe::ArchiveCodecProbe(QObject *parent) : QObject(parent) {
-    deadline_.setSingleShot(true);
-    connect(&deadline_, &QTimer::timeout, this, [this] { work_->timedOut = true; });
-}
+ArchiveCodecProbe::ArchiveCodecProbe(QObject *parent) : QObject(parent) {}
 
 ArchiveCodecProbe::~ArchiveCodecProbe() {
-    deadline_.stop();
     Cancel();
     if (loader_) {
         disconnect(loader_.get(), nullptr, this, nullptr);
@@ -178,16 +184,19 @@ bool ArchiveCodecProbe::Start(const QString &engine, const QString &module,
         return false;
     active_ = true;
     completion_ = std::move(completion);
-    work_ = std::make_shared<Work>();
+    work_ = std::make_shared<Work>(timeoutMs);
     const auto work = work_;
-    loader_.reset(
-        QThread::create([work, engine, module] { work->result = Discover(engine, module, work); }));
+    loader_.reset(QThread::create([work, engine, module] {
+        work->result = Discover(engine, module, work);
+        // Native DLL calls cannot be interrupted safely. Account for their
+        // elapsed time before queueing the joined result back to the GUI.
+        work->Stopped();
+    }));
     connect(loader_.get(), &QThread::finished, this, [this, work] {
         loader_->wait();
         loader_.reset();
         Complete(std::move(work->result));
     });
-    deadline_.start(qMax(1, timeoutMs));
     loader_->start();
     return true;
 }
@@ -198,7 +207,6 @@ void ArchiveCodecProbe::Cancel() {
 }
 
 void ArchiveCodecProbe::Complete(ArchiveCodecProbeResult result) {
-    deadline_.stop();
     if (work_->cancelled || work_->timedOut) {
         result.catalog.reset();
         result.result = E_ABORT;

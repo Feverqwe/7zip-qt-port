@@ -1,4 +1,5 @@
 #include <QCoreApplication>
+#include <QFile>
 #include <QFileInfo>
 #include <QTimer>
 #include <cstdio>
@@ -16,6 +17,18 @@ int main(int argc, char **argv) {
     else
         std::puts("7-Zip (z) 26.03 : fixture");
     std::fflush(stdout);
+    if (mode.contains("delayed")) {
+        QTimer::singleShot(100, &app, [&app] {
+            QFile finished(QCoreApplication::applicationFilePath() + ".finished");
+            if (!finished.open(QIODevice::WriteOnly) || finished.write("finished") != 8) {
+                app.exit(74);
+                return;
+            }
+            finished.close();
+            app.quit();
+        });
+        return app.exec();
+    }
     if (mode.contains("hang")) {
         QTimer::singleShot(10000, &app, [&app] { app.exit(1); });
         return app.exec();
