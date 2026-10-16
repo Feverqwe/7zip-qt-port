@@ -121,6 +121,15 @@ active runner logon; it does not log in, supply credentials or fall back to a
 noninteractive desktop. Linux in `all` keeps its normal path. Session0 runs may
 verify backend/COM data consumers, but hidden windows do not prove UI acceptance.
 
+Interactive tasks explicitly request Task Scheduler priority4 (normal process
+priority); its default7 starts a background process and affects child fixtures.
+The child records and verifies actual `Priority=Normal` before `check.cmd`, and
+sets `SEVENZIP_RUNNER_EXPECT_NORMAL_PRIORITY=1` so `process_priority` also checks
+the inherited CTest process context. This is scoped to the owned task, in both
+Limited and Highest modes; it changes no global scheduler or account setting.
+See [Microsoft's priority mapping](https://learn.microsoft.com/en-us/windows/win32/taskschd/tasksettings-priority)
+and the [native regression receipt](upstream-port-audit/p3-03-runner-priority-2026-10-16.md).
+
 The 2026-10-10 native control diagnosis confirms this distinction: session 0's
 service window station reports flags 0 and an invisible desktop. A disposable
 Win32 window gains WS_VISIBLE after ShowWindow, yet IsWindowVisible remains

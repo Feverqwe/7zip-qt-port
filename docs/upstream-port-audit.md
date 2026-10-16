@@ -14,6 +14,10 @@
 
 [Observed phases and unresolved stability](upstream-port-audit/p3-03-codec-timing-2026-10-16.md).
 
+## P3-03 — Interactive runner process context (2026-10-16)
+
+[Normal-priority task and native RED/GREEN consumer](upstream-port-audit/p3-03-runner-priority-2026-10-16.md).
+
 ## P3-03 — Current Windows whole gate and editor delivery diagnosis (2026-10-16)
 
 [Whole gate failure, source proof and bounded editor traces](upstream-port-audit/p3-03-editor-stability-2026-10-16.md).

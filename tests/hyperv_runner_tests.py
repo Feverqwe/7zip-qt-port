@@ -329,6 +329,24 @@ class RunnerTests(unittest.TestCase):
                 self.assertIn(guard, child)
                 self.assertLess(child.index(guard), child.index("& cmd.exe"))
 
+    def test_interactive_tasks_request_normal_priority_and_verify_child_context(self):
+        root = "C:/runner/sevenzip-desktop/runs/20261006T010000Z-1234abcd"
+        for elevated in (False, True):
+            with self.subTest(elevated=elevated):
+                command = runner.interactive_command(root, elevated)
+                settings = next(line for line in command.splitlines()
+                                if line.startswith("$settings=New-ScheduledTaskSettingsSet "))
+                priority = re.search(r"-Priority\s+([0-9]+)", settings)
+                self.assertIsNotNone(priority, "Default7 is a background task, not an interactive run")
+                self.assertIn(int(priority.group(1)), (4, 5, 6))
+                encoded = re.search(r"-EncodedCommand ([A-Za-z0-9+/=]+)", command).group(1)
+                child = base64.b64decode(encoded).decode("utf-16le")
+                self.assertIn("Priority=$runnerPriority", child)
+                self.assertIn("$env:SEVENZIP_RUNNER_EXPECT_NORMAL_PRIORITY='1'", child)
+                guard = "if ($runnerPriority -ne 'Normal')"
+                self.assertIn(guard, child)
+                self.assertLess(child.index(guard), child.index("& cmd.exe"))
+
     def test_custom_linux_script_preserves_arguments_and_failure_log(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

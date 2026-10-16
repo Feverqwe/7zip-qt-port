@@ -2535,6 +2535,11 @@ that language through CMake. Linux/Windows taskbar acceptance remains separate.
 process and an owned child whose native worker already exists, repeated/idempotent
 restoration, invalid PID failure and output preservation. It copies only its own
 test executable to a Unicode/space path and joins all owned threads/processes.
+On Windows, `SEVENZIP_RUNNER_EXPECT_NORMAL_PRIORITY=1` additionally checks actual
+normal process priority before any test changes it; the interactive runner sets
+this contract after checking its own task process. A native fresh-snapshot
+regression observes both the launcher and its child, independently of the
+offline `hyperv_runner_tests.py` generated-command checks.
 Darwin checks effective target policy through proc_pidinfo; getpriority(child)
 queries the caller's task policy. A sandbox denying setpriority must be reported
 as a failed environment check; an authorized unsandboxed run verifies success.

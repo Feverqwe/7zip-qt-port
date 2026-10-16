@@ -23,8 +23,11 @@ try {{
     $identity=[Security.Principal.WindowsIdentity]::GetCurrent()
     $principal=[Security.Principal.WindowsPrincipal]::new($identity)
     $elevated=$principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
-    [IO.File]::WriteAllText("$root/interactive-session.txt", "Session=$session User=$env:USERNAME RunLevel={run_level} Elevated=$elevated")
+    $runnerPriority=[Diagnostics.Process]::GetCurrentProcess().PriorityClass
+    [IO.File]::WriteAllText("$root/interactive-session.txt", "Session=$session User=$env:USERNAME RunLevel={run_level} Elevated=$elevated Priority=$runnerPriority")
     if ({'$true' if elevated else '$false'} -and !$elevated) {{ throw 'Elevated fixtures require an administrator runner token' }}
+    if ($runnerPriority -ne 'Normal') {{ throw 'Interactive fixtures require normal process priority' }}
+    $env:SEVENZIP_RUNNER_EXPECT_NORMAL_PRIORITY='1'
     & cmd.exe /d /c 'check.cmd > check.log 2>&1'
     $code=$LASTEXITCODE
 }} catch {{
@@ -39,7 +42,7 @@ exit $code
 $user=[Security.Principal.WindowsIdentity]::GetCurrent().Name
 $action=New-ScheduledTaskAction -Execute 'powershell.exe' -Argument '-NoProfile -EncodedCommand {encoded}'
 $principal=New-ScheduledTaskPrincipal -UserId $user -LogonType Interactive -RunLevel {run_level}
-$settings=New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Hours 2)
+$settings=New-ScheduledTaskSettingsSet -Priority 4 -ExecutionTimeLimit (New-TimeSpan -Hours 2)
 Register-ScheduledTask -TaskName $taskName -Action $action -Principal $principal -Settings $settings | Out-Null
 Write-Output "Interactive task=$taskName user=$user"
 try {{

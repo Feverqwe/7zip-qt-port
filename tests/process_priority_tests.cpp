@@ -135,6 +135,13 @@ class ProcessPriorityTests : public QObject {
     Q_OBJECT
 
   private slots:
+    void initTestCase() {
+#ifdef _WIN32
+        if (qgetenv("SEVENZIP_RUNNER_EXPECT_NORMAL_PRIORITY") == "1")
+            QCOMPARE(::GetPriorityClass(::GetCurrentProcess()), DWORD(NORMAL_PRIORITY_CLASS));
+#endif
+    }
+
     void currentProcessReversibleAndIdempotent() {
         CRestoreCurrent restore;
         QVERIFY(restore.Valid);
