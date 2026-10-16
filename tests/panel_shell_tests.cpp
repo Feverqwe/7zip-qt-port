@@ -4,6 +4,7 @@
 
 #include <QMenuBar>
 #include <QScopeGuard>
+#include <QThread>
 
 namespace {
 struct CurrentDirectoryGuard {
@@ -51,6 +52,9 @@ class PanelShellTests final : public QObject, protected MainWindowTestSupport {
         ControlledBackend backend;
         MainWindow window(&backend);
         window.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&window));
+        window.activateWindow();
+        QVERIFY(QTest::qWaitForWindowActive(&window));
         auto *leftPanel = window.findChild<QWidget *>("filePanel0");
         QVERIFY(leftPanel);
         auto *leftTable = leftPanel->findChild<QTableWidget *>("archiveTable");
@@ -71,42 +75,57 @@ class PanelShellTests final : public QObject, protected MainWindowTestSupport {
         QCOMPARE(status(leftPanel, "focusedSizeStatus")->text(), QStringLiteral("7"));
         QVERIFY(!status(leftPanel, "focusedDateStatus")->text().isEmpty());
 
-        QTimer::singleShot(0, &window, [&] {
-            auto *menu = qobject_cast<QMenu *>(QApplication::activePopupWidget());
-            QVERIFY(menu);
-            const auto close = qScopeGuard([&] { menu->close(); });
-            QCOMPARE(menu->objectName(), QStringLiteral("panelContextMenu"));
-            QCOMPARE(menu->actions().first()->objectName(), QStringLiteral("systemContextGroup"));
+        auto inspectContextMenu = [&](QTableWidget *view, const QPoint &point,
+                                      const auto &inspect) {
+            window.activateWindow();
+            QVERIFY(QTest::qWaitForWindowActive(&window));
+            view->setFocus();
+            QTRY_COMPARE(QApplication::focusWidget(), view);
+            const int outerLoopLevel = QThread::currentThread()->loopLevel();
+            bool observed = false;
+            QTimer timer;
+            connect(&timer, &QTimer::timeout, &window, [&] {
+                auto *menu = window.findChild<QMenu *>("panelContextMenu");
+                if (!menu || !menu->isVisible() ||
+                    QThread::currentThread()->loopLevel() <= outerLoopLevel)
+                    return;
+                timer.stop();
+                observed = true;
+                const auto close = qScopeGuard([&] { menu->close(); });
+                inspect(menu);
+            });
+            timer.start(5);
+            QVERIFY(QMetaObject::invokeMethod(view, "customContextMenuRequested",
+                                              Qt::DirectConnection, Q_ARG(QPoint, point)));
+            QVERIFY(observed);
+        };
+        inspectContextMenu(
+            leftTable, leftTable->visualItemRect(leftTable->item(0, 0)).center(), [&](QMenu *menu) {
+                QCOMPARE(menu->objectName(), QStringLiteral("panelContextMenu"));
+                QCOMPARE(menu->actions().first()->objectName(),
+                         QStringLiteral("systemContextGroup"));
 #ifdef Q_OS_WIN
-            QVERIFY(menu->actions().first()->isEnabled());
-            QVERIFY(menu->actions().first()->menu());
-            QVERIFY(!menu->actions().first()->menu()->actions().isEmpty());
+                QVERIFY(menu->actions().first()->isEnabled());
+                QVERIFY(menu->actions().first()->menu());
+                QVERIFY(!menu->actions().first()->menu()->actions().isEmpty());
 #else
             QVERIFY(!menu->actions().first()->isEnabled());
 #endif
-            QCOMPARE(menu->actions().at(1)->objectName(), QStringLiteral("sevenZipContextGroup"));
-            QVERIFY(!menu->actions().at(1)->isEnabled());
+                QCOMPARE(menu->actions().at(1)->objectName(),
+                         QStringLiteral("sevenZipContextGroup"));
+                QVERIFY(!menu->actions().at(1)->isEnabled());
+                QVERIFY(menu->actions().contains(window.findChild<QAction *>("openItemAction")));
+                QVERIFY(menu->actions().contains(window.findChild<QAction *>("renameAction")));
+                QVERIFY(menu->actions().indexOf(window.findChild<QAction *>("openItemAction")) <
+                        menu->actions().indexOf(window.findChild<QAction *>("renameAction")));
+                QVERIFY(menu->actions().indexOf(window.findChild<QAction *>("renameAction")) <
+                        menu->actions().indexOf(window.findChild<QAction *>("createFolderAction")));
+                QVERIFY(!menu->actions().contains(window.findChild<QAction *>("exitAction")));
+                QVERIFY(UiInspection::writeReport(*menu, QStringLiteral("panel-context-disk")));
+            });
+        inspectContextMenu(leftTable, QPoint(-1, -1), [&](QMenu *menu) {
             QVERIFY(menu->actions().contains(window.findChild<QAction *>("openItemAction")));
-            QVERIFY(menu->actions().contains(window.findChild<QAction *>("renameAction")));
-            QVERIFY(menu->actions().indexOf(window.findChild<QAction *>("openItemAction")) <
-                    menu->actions().indexOf(window.findChild<QAction *>("renameAction")));
-            QVERIFY(menu->actions().indexOf(window.findChild<QAction *>("renameAction")) <
-                    menu->actions().indexOf(window.findChild<QAction *>("createFolderAction")));
-            QVERIFY(!menu->actions().contains(window.findChild<QAction *>("exitAction")));
-            QVERIFY(UiInspection::writeReport(*menu, QStringLiteral("panel-context-disk")));
-            menu->close();
         });
-        QVERIFY(QMetaObject::invokeMethod(
-            leftTable, "customContextMenuRequested", Qt::DirectConnection,
-            Q_ARG(QPoint, leftTable->visualItemRect(leftTable->item(0, 0)).center())));
-        QTimer::singleShot(0, [&] {
-            auto *menu = qobject_cast<QMenu *>(QApplication::activePopupWidget());
-            QVERIFY(menu);
-            QVERIFY(menu->actions().contains(window.findChild<QAction *>("openItemAction")));
-            menu->close();
-        });
-        QVERIFY(QMetaObject::invokeMethod(leftTable, "customContextMenuRequested",
-                                          Qt::DirectConnection, Q_ARG(QPoint, QPoint(-1, -1))));
 
         window.findChild<QAction *>("twoPanelsAction")->trigger();
         auto *rightPanel = window.findChild<QWidget *>("filePanel1");
@@ -135,15 +154,11 @@ class PanelShellTests final : public QObject, protected MainWindowTestSupport {
             QVERIFY(UiInspection::writeReport(
                 window, QStringLiteral("panel-shell-%1x%2").arg(size.width()).arg(size.height())));
         }
-        QTimer::singleShot(0, [&] {
-            auto *menu = qobject_cast<QMenu *>(QApplication::activePopupWidget());
-            QVERIFY(menu);
-            QVERIFY(UiInspection::writeReport(*menu, QStringLiteral("panel-context-disk-640")));
-            menu->close();
-        });
-        QVERIFY(QMetaObject::invokeMethod(
-            rightTable, "customContextMenuRequested", Qt::DirectConnection,
-            Q_ARG(QPoint, rightTable->visualItemRect(rightTable->item(0, 0)).center())));
+        inspectContextMenu(
+            rightTable, rightTable->visualItemRect(rightTable->item(0, 0)).center(),
+            [&](QMenu *menu) {
+                QVERIFY(UiInspection::writeReport(*menu, QStringLiteral("panel-context-disk-640")));
+            });
         QCOMPARE(status(leftPanel, "selectedSizeStatus")->text(), QStringLiteral("7"));
     }
 

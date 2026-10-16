@@ -1356,8 +1356,8 @@ popup visibility until Hide, while a newer editor/peer interaction supersedes it
 Reference: `CPP/7zip/UI/FileManager/resource.rc::IDM_MENU`,
 `App.cpp::g_ArchiveButtons/g_StandardButtons` and `MyLoadMenu.cpp` at
 `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. Six top-level menus follow
-File/Edit/View/Favorites/Tools/Help. File follows the RC command groups, then
-one Qt archive-workflow group before Exit. Unsupported source commands remain
+File/Edit/View/Favorites/Tools/Help. File follows the RC command groups;
+independent Qt archive-workflow aliases have been removed. Unsupported source commands remain
 visible disabled. Archive and Standard toolbar groups use the seven exact
 large/small BMP pairs and source mask; text/size/visibility derive from the
 native toolbar flags. `main_shell` asserts menu action order, IDs, shortcuts,
@@ -1366,6 +1366,9 @@ enabled state, active-panel routing and resource icons, then writes
 for both sizes. Qt QMenu may scroll when its source command list exceeds the
 available screen; JSON records its geometry and action tests cover non-widget
 QActions. The Windows rendered menu is not yet available for pixel comparison.
+
+Resource-pixel checks explicitly request DPR1 and retain both original BMP sizes;
+native rendering can choose the appropriate high-DPI resource.
 
 ### Per-panel context and status (P0-09.2)
 
@@ -1387,9 +1390,13 @@ widths for compact two-panel layout; the main-window bar displays operation
 messages. `panel_shell` checks all four labels visible and independent at
 980×620 and 640×400 and writes `panel-shell-*.json`. It also writes disk and
 archive context popup JSON at normal/compact sizes; QActions are non-widget
-objects, so their order/enabled state is asserted separately. Disabled shell
-groups are explicit pending integrations. The upstream Win32 resource/source
+objects, so their order/enabled state is asserted separately. System shell groups
+are available through the Windows bridge and disabled on other platforms;
+the independent SevenZip group remains disabled. The upstream Win32 resource/source
 establishes structure, not rendered pixel dimensions on macOS.
+Native popup fixtures observe the owned visible menu inside its nested loop,
+after activating the window/list, for mouse, keyboard and compact peer consumers.
+See the [current Cocoa receipt](../upstream-port-audit/p3-06-native-shell-2026-10-16.md).
 
 ### Two disk panels (P0-08.1)
 

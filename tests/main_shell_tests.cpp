@@ -265,10 +265,14 @@ class MainShellTests final : public QObject {
             QVERIFY(!source.isNull());
             auto *action = window.findChild<QAction *>(actions[i]);
             QVERIFY(action);
-            const QPixmap actual = action->icon().pixmap(QSize(24, 24));
+            // Check resource pixels independently of the screen's scale.
+            // QIcon's default overload requests a native high-DPI pixmap.
+            const QPixmap actual = action->icon().pixmap(QSize(24, 24), 1.0);
             QVERIFY(!actual.isNull());
             QCOMPARE(actual.size(), QSize(24, 24));
             QCOMPARE(actual.toImage().pixelColor(0, 0).alpha(), 0);
+            QVERIFY(action->icon().availableSizes().contains(QSize(24, 24)));
+            QVERIFY(action->icon().availableSizes().contains(QSize(48, 36)));
         }
         for (const QSize size : {QSize(980, 620), QSize(640, 400)}) {
             window.resize(size);
@@ -294,9 +298,11 @@ class MainShellTests final : public QObject {
         QVERIFY(large);
         large->trigger();
         QCOMPARE(toolbar->iconSize(), QSize(48, 36));
-        QCOMPARE(
-            window.findChild<QAction *>("toolbarAddAction")->icon().pixmap(QSize(48, 36)).size(),
-            QSize(48, 36));
+        QCOMPARE(window.findChild<QAction *>("toolbarAddAction")
+                     ->icon()
+                     .pixmap(QSize(48, 36), 1.0)
+                     .size(),
+                 QSize(48, 36));
     }
 
     void fileMenuTracksTheFocusedPanelAfterToggleAndTab() {

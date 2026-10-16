@@ -4,6 +4,13 @@
 
 ## Проверка компоновки Qt
 
+Native `main_shell` resource assertions request explicit DPR1 and retain both
+source bitmap sizes, independent of Retina's native icon choice. `panel_shell`
+establishes active window/list focus and observes the visible owned popup after
+QMenu enters its nested loop for mouse, keyboard and compact peer checks. The
+[Cocoa scenario receipt](../upstream-port-audit/p3-06-native-shell-2026-10-16.md)
+retains actual native failures and final full/focused consumers.
+
 `source_browse_dialog` and `temp_cleanup` cover source DLU frames, exact small
 navigation widths, path/filter minimum heights, the reserved hidden filter row,
 sample-driven column sizing and initial focus. Public Return/keypad Enter cases
