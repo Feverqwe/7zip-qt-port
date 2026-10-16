@@ -5,18 +5,56 @@
 #include "fixtures/split_dialog_prompt.h"
 #include "layout_inspection.h"
 #include "qtlangcontrols.h"
+#include <QApplication>
 #include <QComboBox>
 #include <QDialogButtonBox>
 #include <QFileInfo>
 #include <QLabel>
 #include <QPlainTextEdit>
 #include <QPushButton>
+#include <QScopeGuard>
 #include <QTemporaryDir>
 #include <QtTest>
 
 class VolumeDialogTests : public QObject {
     Q_OBJECT
   private slots:
+    void sourceInitialFrameAndFixedFields() {
+        const QFont originalFont = QApplication::font();
+        const auto restoreFont = qScopeGuard([&] { QApplication::setFont(originalFont); });
+        int smallHeight = 0;
+        for (int points : {8, 12}) {
+            QFont font = originalFont;
+            font.setPointSize(points);
+            QApplication::setFont(font);
+            CSplitDialog dialog(QStringLiteral("файл 空.bin"), "/temporary/destination");
+            dialog.show();
+            QApplication::processEvents();
+            auto *path = dialog.findChild<QComboBox *>("volumeDestination");
+            auto *volume = dialog.findChild<QComboBox *>("volumeSize");
+            auto *browse = dialog.findChild<QPushButton *>("volumeBrowse");
+            QCOMPARE(browse->text(), QString("..."));
+            const int volumeWidth = volume->width();
+            const int browseWidth = browse->width();
+            QVERIFY(volumeWidth < path->width());
+            QVERIFY(browseWidth <= browse->height() * 2);
+            const int pathWidth = path->width();
+            const int initialHeight = dialog.height();
+            dialog.resize(dialog.width() + 180, dialog.height());
+            // XCB's window manager publishes resize asynchronously.
+            QTRY_VERIFY(path->width() > pathWidth);
+            QCOMPARE(volume->width(), volumeWidth);
+            QCOMPARE(browse->width(), browseWidth);
+            QVERIFY(
+                UiInspection::writeReport(dialog, QString("split-source-fields-%1").arg(points)));
+            if (points == 8)
+                smallHeight = initialHeight;
+            else
+                QVERIFY(initialHeight > smallHeight);
+            dialog.reject();
+        }
+    }
+
     void splitKeepsUnsignedSourceSizes() {
         CSplitDialog dialog("source.bin", "/not-created");
         dialog.findChild<QComboBox *>("volumeSize")->setCurrentText("2 9223372036854775808");

@@ -2,6 +2,22 @@
 
 [Индекс](../7zfm-parity.md). Scope и свидетельства ниже сохраняют даты и ревизии; они не подтверждают текущий checkout.
 
+### Split, shared input and About source presentation (2026-10-16)
+
+Split restores the304×112DLU initial frame, fixed96DLU volume field and20DLU
+Browse button with source `...` caption; native hit-target minimums are retained.
+Shared input restores its256×80DLU initial frame. About restores the natural
+110×63 logo, source160×160DLU frame, top-aligned42DLU information area and equal
+homepage-left/OK-right buttons. Existing product identity/license rows extend
+the frame and protect the bilingual native minimum. A requested Cocoa300×310
+compact About becomes306×403 to keep all labels and the logo visible.
+Functional handlers, raw values, source errors and default Return are preserved.
+Twelve pinned original EN/RU states and bounded current Windows/Linux views were
+inspected; three-OS consumers pass in the documented scope. Fonts/chrome,
+responsive resizing and the added identity rows are adaptations; complete pixel
+and physical-input acceptance remain separate.
+[Source, regressions and precise check boundaries](../upstream-port-audit/p3-06-primitives-2026-10-16.md).
+
 ### Rendered Add/Extract reference (2026-10-15)
 
 The Qt compact Add adaptation uses non-transient scroll bars with a separate

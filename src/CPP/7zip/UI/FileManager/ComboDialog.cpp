@@ -4,6 +4,7 @@
 // converts only at widget boundaries. OnOK keeps the raw value.
 #include "ComboDialog.h"
 #include "ViewSettings.h"
+#include "qtdialogunits.h"
 #include "qtlangbuttonbox.h"
 #include "qtlangcontrols.h"
 #include <QComboBox>
@@ -23,7 +24,6 @@ CComboDialog::CComboDialog(const QString &title, const QString &prompt, const QS
 bool CComboDialog::OnInit() {
     setObjectName("comboDialog");
     setWindowTitle(ToQString(Title));
-    resize(360, 150);
     auto *layout = new QVBoxLayout(this);
     auto *staticControl = new QLabel(ToQString(Static), this);
     staticControl->setObjectName("comboPrompt");
@@ -54,6 +54,7 @@ bool CComboDialog::OnInit() {
     connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
     _comboBox->setFocus();
     _comboBox->lineEdit()->selectAll();
+    resize(QtDialogUnits(font()).pixels(QSize(256, 80)).expandedTo(minimumSizeHint()));
     return true;
 }
 

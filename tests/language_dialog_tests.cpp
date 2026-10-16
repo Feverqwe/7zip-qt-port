@@ -21,6 +21,8 @@
 #include <QPushButton>
 #include <QRadioButton>
 #include <QScopeGuard>
+#include <QStyle>
+#include <QStyleOptionButton>
 #include <QTemporaryDir>
 #include <QTimer>
 #include <QTreeWidget>
@@ -61,10 +63,23 @@ class LanguageDialogTests final : public QObject {
         QApplication::processEvents();
     }
     void inspect(QWidget &dialog, const QString &name, int width, int height) {
-        dialog.resize(width, height);
+        const bool wasVisible = dialog.isVisible();
+        if (!wasVisible)
+            dialog.resize(width, height);
         dialog.show();
+        if (QGuiApplication::platformName() != "offscreen") {
+            dialog.raise();
+            dialog.activateWindow();
+            QVERIFY(QTest::qWaitForWindowActive(&dialog));
+            QVERIFY(QTest::qWaitForWindowExposed(&dialog));
+        }
+        if (wasVisible)
+            dialog.resize(width, height);
         QApplication::processEvents();
         // Retain current-build evidence even when a fitting assertion fails.
+        QVERIFY(UiInspection::writeReport(dialog, name + '-' + QString::number(width)));
+        QTRY_COMPARE(dialog.size(), QSize(width, height).expandedTo(dialog.minimumSizeHint()));
+        // Publish the settled geometry after asynchronous native configure events.
         QVERIFY(UiInspection::writeReport(dialog, name + '-' + QString::number(width)));
         for (auto *label : dialog.findChildren<QLabel *>())
             if (label->isVisible() && !label->text().isEmpty()) {
@@ -75,7 +90,18 @@ class LanguageDialogTests final : public QObject {
         for (auto *button : dialog.findChildren<QPushButton *>())
             if (button->isVisible()) {
                 QVERIFY(UiInspection::fullyVisible(*button, dialog));
-                QVERIFY(button->width() >= button->sizeHint().width());
+                if (button->objectName() == "volumeBrowse") {
+                    // SplitDialog.rc uses a narrow twenty-DLU button. Native
+                    // QPushButton's preferred footer width is not its text fit.
+                    QStyleOptionButton option;
+                    option.initFrom(button);
+                    option.text = button->text();
+                    const QRect contents = button->style()->subElementRect(
+                        QStyle::SE_PushButtonContents, &option, button);
+                    QVERIFY(button->fontMetrics().horizontalAdvance(button->text()) <=
+                            contents.width());
+                } else
+                    QVERIFY(button->width() >= button->sizeHint().width());
             }
     }
 
@@ -122,6 +148,8 @@ class LanguageDialogTests final : public QObject {
         destination->setEditText(QStringLiteral(" /pending path 密碼 "));
         volume->setEditText("bad-volume");
         name->setEditText(QStringLiteral(" pending folder 密碼 "));
+        split.show();
+        QVERIFY(QTest::qWaitForWindowActive(&split));
         const auto englishPrompt = SubmitInvalidSplit(split, "language-split-error-en");
         QVERIFY(englishPrompt.shown);
         QVERIFY(englishPrompt.sourcePolicy);
@@ -140,19 +168,31 @@ class LanguageDialogTests final : public QObject {
         QVERIFY(russianPrompt.sourcePolicy);
         QVERIFY(russianPrompt.geometry);
         QVERIFY(russianPrompt.text != englishError);
+        // The source opens these as separate modal forms. Keep the geometry
+        // probe's inspected view exposed instead of stacking three dialogs.
+        split.hide();
         for (int width : {480, 300}) {
             inspect(copy, "language-copy-ru", width, 280);
+            copy.hide();
             inspect(split, "language-split-ru", width, 280);
+            split.hide();
             inspect(folder, "language-folder-ru", width, 170);
+            folder.hide();
         }
         language("-");
+        split.show();
+        QVERIFY(QTest::qWaitForWindowActive(&split));
         const auto restoredPrompt = SubmitInvalidSplit(split);
         QVERIFY(restoredPrompt.shown);
         QCOMPARE(restoredPrompt.text, englishError);
+        split.hide();
         for (int width : {480, 300}) {
             inspect(copy, "language-copy-en", width, 280);
+            copy.hide();
             inspect(split, "language-split-en", width, 280);
+            split.hide();
             inspect(folder, "language-folder-en", width, 170);
+            folder.hide();
         }
         copy.accept();
         QCOMPARE(ToQString(copy.Value), QStringLiteral(" /pending path 密碼 "));

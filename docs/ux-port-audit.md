@@ -20,6 +20,11 @@ receipts сохраняют свои исходные ревизии и не п�
 reference. [Три свежих пакетаd20d50d](upstream-port-audit/p3-04-2026-10-16.md)
 также проверены в bounded delivery scope. [Windows phase diagnosis](upstream-port-audit/p3-03-codec-timing-2026-10-16.md)
 не устанавливает причину cold failures и не закрывает стабильность.
+Последующий [Split/shared input/About компонент](upstream-port-audit/p3-06-primitives-2026-10-16.md)
+проверен source/rendered и focused/native на3OS: macOS full323/323 PASS264.06s
+до отдельно проверенных локальных правок; Windows/Linux current-owner composite
+по32Qt/0fail/0skip. Он ещё не входит вd20d50d packages и не заменяет whole gates
+гостей или полный native обход.
 [Текущий launcher, логи, входы и ограничения](upstream-port-audit.md#p3-05--native-associated-launcher-and-process-lifetime-2026-10-10);
 [текущий полный Linux gate и версии](upstream-port-audit.md#p3-03--full-linux-gate-after-launcher-restoration-2026-10-10).
 

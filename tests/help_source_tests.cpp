@@ -12,6 +12,7 @@
 #include <QLabel>
 #include <QMessageBox>
 #include <QPushButton>
+#include <QScopeGuard>
 #include <QTemporaryDir>
 #include <QTextBrowser>
 #include <QTimer>
@@ -23,6 +24,60 @@ class HelpSourceTests : public QObject {
   public slots:
     void openUrl(const QUrl &url) { openedUrl = url; }
   private slots:
+    void aboutKeepsNaturalSourceLogo() {
+        CAboutDialog dialog;
+        const QPixmap source(":/upstream/7zip/About/7zipLogo.ico");
+        QCOMPARE(source.size(), QSize(110, 63));
+        QCOMPARE(dialog.findChild<QLabel *>("aboutLogo")->pixmap().size(), source.size());
+    }
+    void aboutInitialFrameScalesWithSourceFont() {
+        const QFont originalFont = QApplication::font();
+        const auto restoreFont = qScopeGuard([&] { QApplication::setFont(originalFont); });
+        QSize smallFrame;
+        for (int points : {8, 12}) {
+            QFont font = originalFont;
+            font.setPointSize(points);
+            QApplication::setFont(font);
+            CAboutDialog dialog;
+            dialog.show();
+            QApplication::processEvents();
+            if (points == 8)
+                smallFrame = dialog.size();
+            else {
+                QVERIFY(dialog.width() > smallFrame.width());
+                QVERIFY(dialog.height() > smallFrame.height());
+            }
+            for (auto *label : dialog.findChildren<QLabel *>()) {
+                QVERIFY(UiInspection::fullyVisible(*label, dialog));
+                QVERIFY2(UiInspection::labelFits(*label), qPrintable(label->objectName()));
+            }
+            QVERIFY(UiInspection::writeReport(dialog, QString("about-source-font-%1").arg(points)));
+            dialog.reject();
+        }
+    }
+    void aboutKeepsSourceFooterOrder() {
+        CAboutDialog dialog;
+        dialog.show();
+        QApplication::processEvents();
+        auto *homepage = dialog.findChild<QPushButton *>("aboutHomepage");
+        auto *ok = dialog.findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Ok);
+        QVERIFY(UiInspection::bounds(*homepage, dialog).right() <
+                UiInspection::bounds(*ok, dialog).left());
+        QCOMPARE(homepage->width(), ok->width());
+    }
+    void aboutInitialReturnClosesSourceDialog() {
+        CAboutDialog dialog;
+        dialog.show();
+        QVERIFY(QTest::qWaitForWindowActive(&dialog));
+        auto *ok = dialog.findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Ok);
+        QVERIFY(ok->hasFocus());
+        QSignalSpy accepted(&dialog, &QDialog::accepted);
+        QTest::keyClick(&dialog, Qt::Key_Return);
+        QCOMPARE(accepted.count(), 1);
+        QVERIFY(!dialog.isVisible());
+        QVERIFY(!dialog.findChild<QDialog *>("helpWindow"));
+    }
+
     void aboutReportsSourceCodecErrors() {
         CCodecs codecs;
         auto &error = codecs.Errors.AddNew();
@@ -62,6 +117,7 @@ class HelpSourceTests : public QObject {
         QVERIFY(version->text().startsWith("7-Zip 26.03"));
         const QString sourceVersion = version->text();
         QCOMPARE(dialog.findChild<QLabel *>("aboutText102")->text(), QString("2026-09-03"));
+        QVERIFY(dialog.findChild<QLabel *>("aboutText2901")->alignment() & Qt::AlignTop);
         QVERIFY(!dialog.findChild<QLabel *>("aboutLogo")->pixmap().isNull());
         QVERIFY(dialog.findChild<QLabel *>("aboutApplicationVersion")
                     ->text()
@@ -79,9 +135,11 @@ class HelpSourceTests : public QObject {
             QCOMPARE(version->text(), sourceVersion);
             for (QSize size : {QSize(360, 330), QSize(300, 310)}) {
                 dialog.resize(size);
-                QApplication::processEvents();
-                for (auto *label : dialog.findChildren<QLabel *>())
+                QTRY_COMPARE(dialog.size(), size.expandedTo(dialog.minimumSizeHint()));
+                for (auto *label : dialog.findChildren<QLabel *>()) {
                     QVERIFY(UiInspection::fullyVisible(*label, dialog));
+                    QVERIFY2(UiInspection::labelFits(*label), qPrintable(label->objectName()));
+                }
                 for (auto *button : dialog.findChildren<QPushButton *>())
                     QVERIFY(UiInspection::fullyVisible(*button, dialog));
                 QVERIFY(UiInspection::writeReport(

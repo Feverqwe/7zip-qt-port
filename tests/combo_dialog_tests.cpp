@@ -7,12 +7,36 @@
 #include <QLabel>
 #include <QLineEdit>
 #include <QPushButton>
+#include <QScopeGuard>
 #include <QTimer>
 #include <QtTest>
 
 class ComboDialogTests : public QObject {
     Q_OBJECT
   private slots:
+    void initialFrameScalesWithSourceFont() {
+        const QFont originalFont = QApplication::font();
+        const auto restoreFont = qScopeGuard([&] { QApplication::setFont(originalFont); });
+        QSize smallFrame;
+        for (int points : {8, 12}) {
+            QFont font = originalFont;
+            font.setPointSize(points);
+            QApplication::setFont(font);
+            CComboDialog dialog("Create Folder", "Folder name:", QStringLiteral("папка 空"));
+            dialog.show();
+            QApplication::processEvents();
+            if (points == 8)
+                smallFrame = dialog.size();
+            else {
+                QVERIFY(dialog.width() > smallFrame.width());
+                QVERIFY(dialog.height() > smallFrame.height());
+            }
+            QVERIFY(UiInspection::writeReport(dialog, QString("combo-source-font-%1").arg(points)));
+            dialog.reject();
+            QCOMPARE(ToQString(dialog.Value), QStringLiteral("папка 空"));
+        }
+    }
+
     void initializesValueAndOrderedStringsWithoutReplacingEdit() {
         const QStringList strings = {"first", QStringLiteral("второе имя"), "third"};
         CComboDialog dialog("Заголовок", "Имя <буквально>:", "initial", nullptr, strings);

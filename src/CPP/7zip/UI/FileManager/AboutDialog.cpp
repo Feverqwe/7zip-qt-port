@@ -6,9 +6,11 @@
 #include "../Common/LoadCodecs.h"
 #include "7zip/MyVersion.h"
 #include "HelpUtils.h"
+#include "qtdialogunits.h"
 #include "qtlangbuttonbox.h"
 #include "qtlangcontrols.h"
 #include <QDesktopServices>
+#include <QHBoxLayout>
 #include <QLabel>
 #include <QMessageBox>
 #include <QPixmap>
@@ -25,16 +27,27 @@ static const UInt32 kLangIDs[] = {IDT_ABOUT_INFO};
 
 static void InitAboutResources() { Q_INIT_RESOURCE(upstream_about); }
 
+static QSize IdentityMinimumSize(const QLabel &application, int width, const QString &english,
+                                 const QString &russian) {
+    QLabel measure;
+    measure.setFont(application.font());
+    measure.setTextFormat(Qt::PlainText);
+    measure.setWordWrap(true);
+    measure.setText(english);
+    const int englishHeight = measure.heightForWidth(width);
+    measure.setText(russian);
+    return QSize(width, qMax(englishHeight, measure.heightForWidth(width)));
+}
+
 CAboutDialog::CAboutDialog(QWidget *parent, const CCodecs *codecs)
     : QDialog(parent), codecs_(codecs) {
     InitAboutResources();
     setObjectName("aboutDialog");
-    resize(360, 330);
     auto *layout = new QVBoxLayout(this);
     auto *logo = new QLabel(this);
     logo->setObjectName("aboutLogo");
-    logo->setPixmap(QPixmap(":/upstream/7zip/About/7zipLogo.ico")
-                        .scaled(64, 64, Qt::KeepAspectRatio, Qt::SmoothTransformation));
+    logo->setPixmap(QPixmap(":/upstream/7zip/About/7zipLogo.ico"));
+    logo->setMinimumSize(logo->pixmap().deviceIndependentSize().toSize());
     layout->addWidget(logo);
     for (unsigned id : {IDT_ABOUT_VERSION, IDT_ABOUT_DATE, IDT_ABOUT_INFO}) {
         auto *label = new QLabel(this);
@@ -42,6 +55,10 @@ CAboutDialog::CAboutDialog(QWidget *parent, const CCodecs *codecs)
         label->setProperty("sourceControlID", id);
         label->setWordWrap(true);
         label->setTextFormat(Qt::PlainText);
+        if (id == IDT_ABOUT_INFO) {
+            label->setAlignment(Qt::AlignLeft | Qt::AlignTop);
+            label->setMinimumHeight(QtDialogUnits(font()).pixels(QSize(0, 42)).height());
+        }
         layout->addWidget(label);
     }
     auto *copyright = new QLabel(MY_COPYRIGHT, this);
@@ -50,11 +67,12 @@ CAboutDialog::CAboutDialog(QWidget *parent, const CCodecs *codecs)
     auto *application = new QLabel(this);
     application->setObjectName("aboutApplicationVersion");
     application->setWordWrap(true);
-    QtBindLocalText(application,
-                    "Sevenzip Desktop " SEVENZIP_DESKTOP_VERSION
-                    "\n7-Zip source port; uses the official 7-Zip engine.",
-                    "Sevenzip Desktop " SEVENZIP_DESKTOP_VERSION
-                    "\nПорт исходников 7-Zip; использует официальный движок 7-Zip.");
+    application->setTextFormat(Qt::PlainText);
+    const QString english = "Sevenzip Desktop " SEVENZIP_DESKTOP_VERSION
+                            "\n7-Zip source port; uses the official 7-Zip engine.";
+    const QString russian = "Sevenzip Desktop " SEVENZIP_DESKTOP_VERSION
+                            "\nПорт исходников 7-Zip; использует официальный движок 7-Zip.";
+    QtBindLocalText(application, english, russian);
     layout->addWidget(application);
     layout->addStretch();
     auto *license = new QPushButton(this);
@@ -64,16 +82,37 @@ CAboutDialog::CAboutDialog(QWidget *parent, const CCodecs *codecs)
     connect(license, &QPushButton::clicked, this,
             [this] { ShowHelpWindow("general/license.htm", this); });
     auto *buttons = new QtLangButtonBox(QDialogButtonBox::Ok, this);
-    auto *homepage = buttons->addButton("www.7-zip.org", QDialogButtonBox::ActionRole);
+    auto *homepage = new QPushButton("www.7-zip.org", this);
     homepage->setObjectName("aboutHomepage");
     homepage->setProperty("sourceControlID", IDB_ABOUT_HOMEPAGE);
     connect(homepage, &QPushButton::clicked, this,
             [this, homepage] { OnButtonClicked(IDB_ABOUT_HOMEPAGE, homepage); });
     connect(buttons, &QDialogButtonBox::accepted, this, &QDialog::accept);
-    layout->addWidget(buttons);
+    auto *ok = buttons->button(QDialogButtonBox::Ok);
+    const int buttonWidth = qMax(QtDialogUnits(font()).pixels(QSize(64, 0)).width(),
+                                 qMax(homepage->sizeHint().width(), ok->sizeHint().width()));
+    homepage->setFixedWidth(buttonWidth);
+    ok->setFixedWidth(buttonWidth);
+    auto *footer = new QHBoxLayout;
+    footer->setSpacing(QtDialogUnits(font()).pixels(QSize(8, 0)).width());
+    footer->addStretch();
+    footer->addWidget(homepage);
+    footer->addWidget(buttons);
+    layout->addLayout(footer);
     auto *help = new QShortcut(QKeySequence(Qt::Key_F1), this);
     connect(help, &QShortcut::activated, this, &CAboutDialog::OnHelp);
     OnInit();
+    ok->setDefault(true);
+    ok->setFocus();
+    // Preserve the source client template and extend it for the explicit
+    // application identity/license controls added by this port.
+    QSize frame = QtDialogUnits(font()).pixels(QSize(160, 160));
+    const QMargins margins = layout->contentsMargins();
+    application->setMinimumSize(IdentityMinimumSize(
+        *application, qMax(1, frame.width() - margins.left() - margins.right()), english, russian));
+    frame.rheight() +=
+        application->minimumHeight() + license->sizeHint().height() + 2 * layout->spacing();
+    resize(frame.expandedTo(minimumSizeHint()));
 }
 
 void CAboutDialog::SetItemText(unsigned id, const UString &text) {

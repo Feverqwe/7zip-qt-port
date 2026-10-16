@@ -11,6 +11,7 @@
 #include "SplitUtils.h"
 #include "ViewSettings.h"
 #include "Windows/FileName.h"
+#include "qtdialogunits.h"
 #include "qtlangbuttonbox.h"
 #include "qtlangcontrols.h"
 #include <QComboBox>
@@ -31,7 +32,6 @@ bool CSplitDialog::OnInit() {
     if (!FilePath.isEmpty())
         setProperty("languageSuffix", ' ' + FilePath);
     QtBindResourceText(this, IDD_SPLIT, "Split File");
-    resize(480, 240);
     auto *layout = new QVBoxLayout(this);
     auto *pathLabel = new QLabel(this);
     QtBindResourceText(pathLabel, IDT_SPLIT_PATH, "&Split to:");
@@ -47,9 +47,11 @@ bool CSplitDialog::OnInit() {
     _pathCombo->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
     pathLabel->setBuddy(_pathCombo);
     row->addWidget(_pathCombo, 1);
-    auto *browse = new QPushButton("…", this);
+    auto *browse = new QPushButton("...", this);
     browse->setObjectName("volumeBrowse");
     QtBindLangText(browse, IDT_SPLIT_PATH, "Split to:", true);
+    browse->setFixedWidth(
+        qMax(QtDialogUnits(font()).pixels(QSize(20, 0)).width(), browse->sizeHint().height()));
     row->addWidget(browse);
     layout->addLayout(row);
     auto *volumeLabel = new QLabel(this);
@@ -62,7 +64,8 @@ bool CSplitDialog::OnInit() {
     _volumeCombo->setEditable(true);
     _volumeCombo->setInsertPolicy(QComboBox::NoInsert);
     volumeLabel->setBuddy(_volumeCombo);
-    layout->addWidget(_volumeCombo);
+    _volumeCombo->setFixedWidth(QtDialogUnits(font()).pixels(QSize(96, 0)).width());
+    layout->addWidget(_volumeCombo, 0, Qt::AlignLeft);
     layout->addStretch(1);
     auto *buttons = new QtLangButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
     buttons->setObjectName("splitButtons");
@@ -76,6 +79,7 @@ bool CSplitDialog::OnInit() {
     _volumeCombo->setCurrentIndex(0);
     _pathCombo->setFocus();
     _pathCombo->lineEdit()->selectAll();
+    resize(QtDialogUnits(font()).pixels(QSize(304, 112)).expandedTo(minimumSizeHint()));
     return true;
 }
 

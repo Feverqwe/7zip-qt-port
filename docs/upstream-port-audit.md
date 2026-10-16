@@ -2,6 +2,10 @@
 
 Индекс provenance и датированных receipts. Найдите путь, символ или ID в заголовках ниже и откройте нужный раздел. Полные commits, dependencies, copied/adapted/omitted scope и результаты сохранены в тематических файлах. Текущие статусы — в [чеклисте](porting-checklist.md), baseline — в [manifest](upstream-baseline.json). Новые receipts добавлять к своему пакету в этом каталоге и связывать из индекса.
 
+## P3-06 — Split, shared input and About presentation (2026-10-16)
+
+[Source presentation, rendered reference and integrated regressions](upstream-port-audit/p3-06-primitives-2026-10-16.md).
+
 ## P3-04 — Delivery after the Options source-frame correction (2026-10-16)
 
 [Current delivery and exact product inputs](upstream-port-audit/p3-04-2026-10-16.md).

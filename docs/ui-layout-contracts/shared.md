@@ -1067,13 +1067,22 @@ QTextBrowser replaces Win32 CHM presentation, retaining pages/links/fragments.
 help_source writes EN/RU760×560/420×300 help-*.json: browser, Back and standard
 Close remain exposed. AboutDialog.rc/source is the structural reference for
 About360×330/300×310 EN/RU: logo, version/date/copyright/free-software, footer
-OK/homepage. Added application version/license link are explicit adaptations.
+homepage/OK in source left-to-right order. The original ICO is110×63 and is
+displayed at its natural size, rather than independently reduced to64×36.
+OK owns initial keyboard focus/default Return. The source160×160DLU client
+template maps through the font; application version/license rows may extend it
+and protect the Qt minimum size. The free-software text is top-aligned inside
+its source42DLU area. The natural logo cannot shrink; the added identity row
+uses Qt's height-for-width measurement for both EN/RU and protects its minimum
+content width/height. These added rows are explicit adaptations.
 help_source writes about-*.json; all text fits and controls remain exposed.
 help_ui checks actual Contents/F1/modal About, source Options page callbacks and
 Add/Extract button/F1 without applying pending state; compression_advanced checks
 original Options Help. Existing Add760/640, Extract600/470 and Options640/520
 geometry reports cover the added Help footer. Current Qt usability is checked;
-rendered Windows parity remains unverified; P1-15 acceptance includes cleanup above.
+the bounded About EN/RU source/rendered comparison and native font/compact checks
+are recorded in the [presentation receipt](../upstream-port-audit/p3-06-primitives-2026-10-16.md).
+Complete pixel parity remains unverified; P1-15 acceptance includes cleanup above.
 
 ### Live dialog language consumers (P1-14.2)
 
@@ -1790,6 +1799,10 @@ Reference: upstream `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
 
 - The prompt precedes one editable combo, with OK/Cancel at the bottom.
   Initial Value remains visible after populating ordered Strings.
+- The initial frame follows the256×80 DLU source client template through the
+  native font and Qt minimum-size protection; it scales with the font instead
+  of retaining an arbitrary360×150px initial size. Explicit normal/compact
+  resizing below remains a separate adaptation.
 - Folder/file creation uses source title, prompt and default-name language IDs;
   selection masks use the same view with their own prompts.
 - CPanel::SelectSpec owns the Select/Deselect titles, mask prompt, initial `*`
@@ -1850,6 +1863,11 @@ Implemented views: `SplitDialog.cpp` and the existing `CopyDialog.cpp`.
 - Split puts the destination label above its editable combo, with Browse on
   the right. The volume-size label and editable preset combo follow below.
   The source filename is appended to the window title, as in OnInit.
+- The source initial client template is304×112DLU. The volume combo remains
+  left-aligned at96DLU, including after resize; Browse uses20DLU width with a
+  native minimum hit target and the source `...` caption. Only the destination
+  combo expands horizontally.
+  Font mapping and Qt minimum sizes protect labels/footer on each platform.
 - OK/Cancel remain at the bottom. Invalid volume input opens the source
   Critical/7-Zip/OK modal message and keeps Split open, including accept().
   OK or Escape dismisses only the message; raw input remains available for retry.
