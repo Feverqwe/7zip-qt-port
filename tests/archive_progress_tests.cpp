@@ -2,6 +2,7 @@
 #include "CPP/7zip/UI/FileManager/PasswordDialog.h"
 #include "archive_backend_test_support.h"
 #include "archiveprogressoperation.h"
+#include "fixtures/widget_dialogs.h"
 #include "layout_inspection.h"
 #include "processpriority.h"
 #include <QApplication>
@@ -37,6 +38,7 @@ class CControlledTransport : public ArchiveBackend {
 
 class ArchiveProgressTests : public QObject, protected ArchiveBackendTestSupport {
     Q_OBJECT
+    WidgetDialogFixture widgetDialogs_;
   private slots:
     void ownedEnginePasswordCallback_data() {
         QTest::addColumn<bool>("accept");
@@ -61,8 +63,8 @@ class ArchiveProgressTests : public QObject, protected ArchiveBackendTestSupport
         bool observed = false;
         QTimer responder;
         responder.setInterval(5);
-        connect(&responder, &QTimer::timeout, &operation, [&] {
-            auto *dialog = dynamic_cast<CPasswordDialog *>(QApplication::activeModalWidget());
+        widgetDialogs_.connectResponder(responder, &operation, [&] {
+            auto *dialog = dynamic_cast<CPasswordDialog *>(widgetDialogs_.activeDialog());
             if (!dialog || observed)
                 return;
             observed = true;
@@ -96,10 +98,11 @@ class ArchiveProgressTests : public QObject, protected ArchiveBackendTestSupport
         bool geometry = false;
         QTimer responder;
         responder.setInterval(5);
-        connect(&responder, &QTimer::timeout, &operation, [&] {
+        widgetDialogs_.connectResponder(responder, &operation, [&] {
             auto *pause = operation.findChild<QPushButton *>("IDB_PAUSE");
             auto *close = operation.findChild<QPushButton *>("IDCANCEL");
-            if (stage == 0 && operation.findChild<QProgressBar *>("IDC_PROGRESS1")->value() == 42 &&
+            if (stage == 0 && widgetDialogs_.ready(operation) &&
+                operation.findChild<QProgressBar *>("IDC_PROGRESS1")->value() == 42 &&
                 operation.windowTitle().contains(QStringLiteral("42%"))) {
                 stage = 1;
                 QCOMPARE(operation.Sync._totalBytes, UInt64(-1));
@@ -167,8 +170,8 @@ class ArchiveProgressTests : public QObject, protected ArchiveBackendTestSupport
         QString observed;
         QTimer responder;
         responder.setInterval(5);
-        connect(&responder, &QTimer::timeout, &operation, [&] {
-            auto *box = qobject_cast<QMessageBox *>(QApplication::activeModalWidget());
+        widgetDialogs_.connectResponder(responder, &operation, [&] {
+            auto *box = qobject_cast<QMessageBox *>(widgetDialogs_.activeDialog());
             if (box && box->objectName() == "progressFinalMessage" && observed.isEmpty()) {
                 observed = box->text();
                 box->button(QMessageBox::Ok)->click();
@@ -219,8 +222,8 @@ class ArchiveProgressTests : public QObject, protected ArchiveBackendTestSupport
         QString errorText;
         QTimer responder;
         responder.setInterval(5);
-        connect(&responder, &QTimer::timeout, &operation, [&] {
-            auto *box = qobject_cast<QMessageBox *>(QApplication::activeModalWidget());
+        widgetDialogs_.connectResponder(responder, &operation, [&] {
+            auto *box = qobject_cast<QMessageBox *>(widgetDialogs_.activeDialog());
             if (box && box->objectName() == "progressFinalMessage" && !errorObserved) {
                 errorObserved = true;
                 errorText = box->text();
@@ -229,7 +232,7 @@ class ArchiveProgressTests : public QObject, protected ArchiveBackendTestSupport
             if (box)
                 return; // Let source finish leave the message's nested event loop.
             auto *close = operation.findChild<QPushButton *>("IDCANCEL");
-            if (operation.isVisible() && QApplication::activeModalWidget() == &operation && close &&
+            if (operation.isVisible() && widgetDialogs_.activeDialog() == &operation && close &&
                 close->text() == QStringLiteral("&Close"))
                 close->click();
         });
@@ -293,8 +296,8 @@ class ArchiveProgressTests : public QObject, protected ArchiveBackendTestSupport
                 [&](const QString &) { started = true; });
         QTimer responder;
         responder.setInterval(5);
-        connect(&responder, &QTimer::timeout, &operation, [&] {
-            auto *box = qobject_cast<QMessageBox *>(QApplication::activeModalWidget());
+        widgetDialogs_.connectResponder(responder, &operation, [&] {
+            auto *box = qobject_cast<QMessageBox *>(widgetDialogs_.activeDialog());
             if (box && box->objectName() == "progressCancelQuestion") {
                 confirmed = true;
                 QVERIFY(operation.Sync.Get_Paused());

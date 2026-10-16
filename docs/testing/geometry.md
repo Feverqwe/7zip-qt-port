@@ -4,6 +4,14 @@
 
 ## Проверка компоновки Qt
 
+Archive/browser/password/progress tests use the scoped public-Qt
+`WidgetDialogFixture` to wait for a dialog's nested loop, exposure and activation
+before inspecting or answering it. Queued responders remain usable across nested
+modal requests and ignore stopped/destroyed timers. These tests explicitly
+exercise widget dialogs; actual OS panels retain separate acceptance. See the
+[workflow receipt](../upstream-port-audit/p3-03-widget-dialog-fixtures-2026-10-16.md)
+for default/native scopes and retained Cocoa matrix timeouts.
+
 Native `main_shell` resource assertions request explicit DPR1 and retain both
 source bitmap sizes, independent of Retina's native icon choice. `panel_shell`
 establishes active window/list focus and observes the visible owned popup after

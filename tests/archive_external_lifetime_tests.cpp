@@ -3,6 +3,7 @@
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "archivebackend.h"
 #include "external_editor_fixture.h"
+#include "fixtures/widget_dialogs.h"
 #include "qtarchivefoldermanager.h"
 #include "qtassociatedfileservices.h"
 #include "qtownedtempregistry.h"
@@ -79,6 +80,7 @@ bool bind(CPanel &panel, IFolderManager *manager, IQtExternalFileServices &servi
 
 class ArchiveExternalLifetimeTests final : public QObject {
     Q_OBJECT
+    WidgetDialogFixture widgetDialogs_;
   private slots:
     void init() { QFile::remove(settings()); }
     void childOutlivesParentAndKeepsCopyUntilItsExit() {
@@ -107,7 +109,7 @@ class ArchiveExternalLifetimeTests final : public QObject {
         bool cleanupProtected = false;
         QTimer browseResponder;
         connect(&browseResponder, &QTimer::timeout, this, [&] {
-            auto *dialog = dynamic_cast<CBrowseDialog2 *>(QApplication::activeModalWidget());
+            auto *dialog = dynamic_cast<CBrowseDialog2 *>(widgetDialogs_.activeDialog());
             if (!dialog)
                 return;
             auto *list = dialog->findChild<QTreeWidget *>("tempList");
@@ -129,8 +131,8 @@ class ArchiveExternalLifetimeTests final : public QObject {
         QVERIFY(QFileInfo(temporary).isFile());
         bool prompt = false;
         QTimer responder;
-        connect(&responder, &QTimer::timeout, this, [&] {
-            if (auto *box = qobject_cast<QMessageBox *>(QApplication::activeModalWidget())) {
+        widgetDialogs_.connectResponder(responder, this, [&] {
+            if (auto *box = qobject_cast<QMessageBox *>(widgetDialogs_.activeDialog())) {
                 if (box->objectName() == "externalUpdatePrompt") {
                     prompt = true;
                     box->done(QMessageBox::No);
@@ -212,8 +214,8 @@ class ArchiveExternalLifetimeTests final : public QObject {
         QVERIFY(bind(panel, manager, service, archive));
         bool error = false;
         QTimer responder;
-        connect(&responder, &QTimer::timeout, this, [&] {
-            if (auto *box = qobject_cast<QMessageBox *>(QApplication::activeModalWidget())) {
+        widgetDialogs_.connectResponder(responder, this, [&] {
+            if (auto *box = qobject_cast<QMessageBox *>(widgetDialogs_.activeDialog())) {
                 error = box->objectName() == "externalEditorError" &&
                         box->textFormat() == Qt::PlainText;
                 box->accept();

@@ -3,6 +3,7 @@
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "external_editor_fixture.h"
+#include "fixtures/widget_dialogs.h"
 #include "layout_inspection.h"
 #include "window_state_support.h"
 #include <QCoreApplication>
@@ -32,6 +33,7 @@ class UpdateBackend final : public ArchiveBackend {
 
 class ArchiveExternalEditTests final : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
+    WidgetDialogFixture widgetDialogs_;
   private slots:
     void init() { QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH")); }
     void sourceViewerOpensLargeFileWithoutPreviewLimit() {
@@ -50,8 +52,8 @@ class ArchiveExternalEditTests final : public QObject, protected MainWindowTestS
         MainWindow window(&backend);
         QString unexpectedMessage;
         QTimer responder;
-        connect(&responder, &QTimer::timeout, &window, [&] {
-            if (auto *box = qobject_cast<QMessageBox *>(QApplication::activeModalWidget())) {
+        widgetDialogs_.connectResponder(responder, &window, [&] {
+            if (auto *box = qobject_cast<QMessageBox *>(widgetDialogs_.activeDialog())) {
                 unexpectedMessage = box->text();
                 box->accept();
             }
@@ -118,8 +120,8 @@ class ArchiveExternalEditTests final : public QObject, protected MainWindowTestS
         bool geometry = false;
         QEventLoop promptDelivery;
         QTimer responder;
-        connect(&responder, &QTimer::timeout, &window, [&] {
-            auto *box = qobject_cast<QMessageBox *>(QApplication::activeModalWidget());
+        widgetDialogs_.connectResponder(responder, &window, [&] {
+            auto *box = qobject_cast<QMessageBox *>(widgetDialogs_.activeDialog());
             if (box && box->objectName() == "externalUpdatePrompt") {
                 responder.stop();
                 connect(box, &QObject::destroyed, &promptDelivery, &QEventLoop::quit);
@@ -266,10 +268,10 @@ class ArchiveExternalEditTests final : public QObject, protected MainWindowTestS
         QPointer<QMessageBox> closingMessage;
         QString previousModalState;
         QTimer responder;
-        connect(&responder, &QTimer::timeout, &window, [&] {
+        widgetDialogs_.connectResponder(responder, &window, [&] {
             if (closingMessage)
                 return;
-            auto *modal = QApplication::activeModalWidget();
+            auto *modal = widgetDialogs_.activeDialog();
             if (modal) {
                 const auto *button = modal->findChild<QPushButton *>("IDCANCEL");
                 const QString state =
@@ -299,11 +301,11 @@ class ArchiveExternalEditTests final : public QObject, protected MainWindowTestS
             } else if (auto *progress = dynamic_cast<CProgressDialog *>(modal)) {
                 auto *close = progress->findChild<QPushButton *>("IDCANCEL");
                 if (close && close->text() == ToQString(LangString(IDS_CLOSE)))
-                    QTimer::singleShot(0, progress, [progress, close] {
+                    QTimer::singleShot(0, progress, [this, progress, close] {
                         // Source sets the Close caption before presenting its
                         // final error. Allow that transition to finish before
                         // simulating input; never click through a child modal.
-                        if (QApplication::activeModalWidget() == progress)
+                        if (widgetDialogs_.activeDialog() == progress)
                             close->click();
                     });
             }
@@ -396,10 +398,10 @@ class ArchiveExternalEditTests final : public QObject, protected MainWindowTestS
         QEventLoop completion;
         QPointer<QMessageBox> closingMessage;
         QTimer responder;
-        connect(&responder, &QTimer::timeout, this, [&] {
+        widgetDialogs_.connectResponder(responder, this, [&] {
             if (closingMessage)
                 return;
-            if (auto *box = qobject_cast<QMessageBox *>(QApplication::activeModalWidget())) {
+            if (auto *box = qobject_cast<QMessageBox *>(widgetDialogs_.activeDialog())) {
                 closingMessage = box;
                 if (box->objectName() == "externalUpdatePrompt") {
                     asked = true;

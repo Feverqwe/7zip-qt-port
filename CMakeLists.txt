@@ -3386,6 +3386,15 @@ if(BUILD_TESTING AND (MSVC OR CMAKE_SYSTEM_NAME STREQUAL "Linux"))
         "${CMAKE_CURRENT_SOURCE_DIR}/tests/compact_test_binaries_tests.py")
 endif()
 
+if(BUILD_TESTING)
+    foreach(sevenzip_widget_dialog_target IN ITEMS
+            browse_dialog_tests nested_update_tests archive_progress_tests progress_cancel_tests
+            nested_edit_chain_tests archive_external_edit_tests archive_external_security_tests
+            archive_external_lifetime_tests checksum_tests)
+        target_sources(${sevenzip_widget_dialog_target} PRIVATE tests/fixtures/widget_dialogs.cpp)
+    endforeach()
+endif()
+
 # The Windows offscreen plugin uses FreeType rather than the native Windows
 # font database. Without a separately supplied font directory its fallback box
 # metrics do not describe the application's controls. Compare these dialog and

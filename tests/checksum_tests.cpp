@@ -1,6 +1,7 @@
 #include "CPP/7zip/UI/FileManager/ListViewDialog.h"
 #include "CPP/7zip/UI/FileManager/PasswordDialog.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
+#include "fixtures/widget_dialogs.h"
 #include "mainwindow.h"
 #include <QLineEdit>
 
@@ -16,6 +17,7 @@
 
 class ChecksumTests : public QObject {
     Q_OBJECT
+    WidgetDialogFixture widgetDialogs_;
 
     static QString messageText(const QTreeWidget *list) {
         QString text;
@@ -108,7 +110,7 @@ class ChecksumTests : public QObject {
         QString results;
         QTimer closeResults;
         connect(&closeResults, &QTimer::timeout, this, [&] {
-            auto *dialog = qobject_cast<CListViewDialog *>(QApplication::activeModalWidget());
+            auto *dialog = qobject_cast<CListViewDialog *>(widgetDialogs_.activeDialog());
             if (!dialog)
                 return;
             results = messageText(dialog->findChild<QTreeWidget *>("propertiesList"));
@@ -180,8 +182,8 @@ class ChecksumTests : public QObject {
         QStringList errors;
         bool passwordAsked = false;
         QTimer responder;
-        connect(&responder, &QTimer::timeout, this, [&] {
-            QWidget *modal = QApplication::activeModalWidget();
+        widgetDialogs_.connectResponder(responder, this, [&] {
+            QWidget *modal = widgetDialogs_.activeDialog();
             if (auto *dialog = dynamic_cast<CPasswordDialog *>(modal)) {
                 passwordAsked = true;
                 if (outcome == "cancel")

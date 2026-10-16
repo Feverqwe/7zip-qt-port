@@ -3,6 +3,7 @@
 #include "CPP/7zip/UI/FileManager/PasswordDialog.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "external_editor_fixture.h"
+#include "fixtures/widget_dialogs.h"
 #include "layout_inspection.h"
 #include "window_state_support.h"
 #include <QScopeGuard>
@@ -42,6 +43,7 @@ class ChainBackend final : public ArchiveBackend {
 
 class NestedEditChainTests final : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
+    WidgetDialogFixture widgetDialogs_;
   private slots:
     void init() { QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH")); }
     void nativeEditorUpdatesParentChain_data() {
@@ -84,8 +86,8 @@ class NestedEditChainTests final : public QObject, protected MainWindowTestSuppo
         int passwords = 0;
         QString openingMessage;
         QTimer responder;
-        connect(&responder, &QTimer::timeout, this, [&] {
-            auto *modal = QApplication::activeModalWidget();
+        widgetDialogs_.connectResponder(responder, this, [&] {
+            auto *modal = widgetDialogs_.activeDialog();
             if (auto *password = dynamic_cast<CPasswordDialog *>(modal)) {
                 ++passwords;
                 password->findChild<QLineEdit *>("passwordEdit")
@@ -125,8 +127,8 @@ class NestedEditChainTests final : public QObject, protected MainWindowTestSuppo
                             progress->findChild<QTreeWidget *>("IDL_PROGRESS_MESSAGES"))
                         for (int row = 0; row < messages->topLevelItemCount(); ++row)
                             openingMessage += messages->topLevelItem(row)->text(1) + '\n';
-                    QTimer::singleShot(0, progress, [progress, close] {
-                        if (QApplication::activeModalWidget() == progress)
+                    QTimer::singleShot(0, progress, [this, progress, close] {
+                        if (widgetDialogs_.activeDialog() == progress)
                             close->click();
                     });
                 }
@@ -227,8 +229,8 @@ class NestedEditChainTests final : public QObject, protected MainWindowTestSuppo
         window.show();
         bool error = false;
         QTimer responder;
-        connect(&responder, &QTimer::timeout, this, [&] {
-            if (auto *box = qobject_cast<QMessageBox *>(QApplication::activeModalWidget())) {
+        widgetDialogs_.connectResponder(responder, this, [&] {
+            if (auto *box = qobject_cast<QMessageBox *>(widgetDialogs_.activeDialog())) {
                 error = box->objectName() == "externalUpdateError";
                 box->accept();
             }
@@ -286,8 +288,8 @@ class NestedEditChainTests final : public QObject, protected MainWindowTestSuppo
         window.show();
         bool prompted = false;
         QTimer responder;
-        connect(&responder, &QTimer::timeout, this, [&] {
-            auto *modal = QApplication::activeModalWidget();
+        widgetDialogs_.connectResponder(responder, this, [&] {
+            auto *modal = widgetDialogs_.activeDialog();
             if (auto *dialog = dynamic_cast<CPasswordDialog *>(modal)) {
                 prompted = true;
                 if (cancel)
@@ -302,8 +304,8 @@ class NestedEditChainTests final : public QObject, protected MainWindowTestSuppo
             else if (auto *progress = dynamic_cast<CProgressDialog *>(modal)) {
                 auto *close = progress->findChild<QPushButton *>("IDCANCEL");
                 if (close && close->text() == ToQString(LangString(IDS_CLOSE)))
-                    QTimer::singleShot(0, progress, [progress, close] {
-                        if (QApplication::activeModalWidget() == progress)
+                    QTimer::singleShot(0, progress, [this, progress, close] {
+                        if (widgetDialogs_.activeDialog() == progress)
                             close->click();
                     });
             }
@@ -344,8 +346,8 @@ class NestedEditChainTests final : public QObject, protected MainWindowTestSuppo
         window.show();
         bool unexpectedError = false, parentPrompt = false;
         QTimer responder;
-        connect(&responder, &QTimer::timeout, this, [&] {
-            if (auto *box = qobject_cast<QMessageBox *>(QApplication::activeModalWidget())) {
+        widgetDialogs_.connectResponder(responder, this, [&] {
+            if (auto *box = qobject_cast<QMessageBox *>(widgetDialogs_.activeDialog())) {
                 unexpectedError |=
                     box->icon() == QMessageBox::Critical || box->icon() == QMessageBox::Warning;
                 parentPrompt |= box->objectName() == "modifiedArchiveQuestion";

@@ -1,6 +1,7 @@
 #include "CPP/7zip/UI/FileManager/Panel.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "archivebackend.h"
+#include "fixtures/widget_dialogs.h"
 #include "qtarchivefoldermanager.h"
 #include "source_extract_fixture.h"
 #include <QApplication>
@@ -29,6 +30,7 @@ class NestedUpdateBackend final : public ArchiveBackend {
 
 class NestedUpdateTests final : public QObject {
     Q_OBJECT
+    WidgetDialogFixture widgetDialogs_;
   private slots:
     void changedNestedArchiveReturnsThroughNativeUpdate_data() {
         QTest::addColumn<int>("outcome");
@@ -76,8 +78,8 @@ class NestedUpdateTests final : public QObject {
         });
         int prompts = 0, errors = 0;
         QTimer responder;
-        connect(&responder, &QTimer::timeout, this, [&] {
-            if (auto *box = qobject_cast<QMessageBox *>(QApplication::activeModalWidget())) {
+        widgetDialogs_.connectResponder(responder, this, [&] {
+            if (auto *box = qobject_cast<QMessageBox *>(widgetDialogs_.activeDialog())) {
                 if (box->objectName() == "modifiedArchiveQuestion") {
                     ++prompts;
                     box->button(QMessageBox::Yes)->click();
@@ -87,8 +89,7 @@ class NestedUpdateTests final : public QObject {
                 }
                 return;
             }
-            if (auto *progress =
-                    dynamic_cast<CProgressDialog *>(QApplication::activeModalWidget())) {
+            if (auto *progress = dynamic_cast<CProgressDialog *>(widgetDialogs_.activeDialog())) {
                 auto *close = progress->findChild<QPushButton *>("IDCANCEL");
                 if (close && close->text().contains(QStringLiteral("Close")))
                     close->click();

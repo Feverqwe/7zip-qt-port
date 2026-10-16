@@ -1,6 +1,7 @@
 #include "CPP/7zip/UI/FileManager/PasswordDialog.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "external_editor_fixture.h"
+#include "fixtures/widget_dialogs.h"
 #include "window_state_support.h"
 #include <QScopeGuard>
 
@@ -29,6 +30,7 @@ class ExtractBackend final : public ArchiveBackend {
 
 class ArchiveExternalSecurityTests final : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
+    WidgetDialogFixture widgetDialogs_;
   private slots:
     void init() { QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH")); }
     void extractionFailureDoesNotLaunchEditor_data() {
@@ -54,8 +56,8 @@ class ArchiveExternalSecurityTests final : public QObject, protected MainWindowT
         table(window)->selectRow(0);
         backend.Failure = cancel ? E_ABORT : E_FAIL;
         QTimer responder;
-        connect(&responder, &QTimer::timeout, this, [] {
-            auto *modal = QApplication::activeModalWidget();
+        widgetDialogs_.connectResponder(responder, this, [this] {
+            auto *modal = widgetDialogs_.activeDialog();
             if (auto *box = qobject_cast<QMessageBox *>(modal))
                 box->accept();
             else if (auto *progress = dynamic_cast<CProgressDialog *>(modal)) {
@@ -98,8 +100,8 @@ class ArchiveExternalSecurityTests final : public QObject, protected MainWindowT
         bool extracting = false, asked = false;
         int passwordPrompts = 0;
         QTimer responder;
-        connect(&responder, &QTimer::timeout, this, [&] {
-            auto *modal = QApplication::activeModalWidget();
+        widgetDialogs_.connectResponder(responder, this, [&] {
+            auto *modal = widgetDialogs_.activeDialog();
             if (auto *dialog = dynamic_cast<CPasswordDialog *>(modal)) {
                 ++passwordPrompts;
                 if (cancelPassword && extracting)
@@ -134,10 +136,21 @@ class ArchiveExternalSecurityTests final : public QObject, protected MainWindowT
         } else {
             QTRY_VERIFY(QFileInfo(control + ".ready").size() > 0);
             const QString temporary = QString::fromUtf8(read(control + ".ready"));
+            QEventLoop completion;
+            QTimer completed;
+            connect(&completed, &QTimer::timeout, &completion, [&] {
+                if (asked && !QFileInfo(temporary).exists())
+                    completion.quit();
+            });
+            completed.start(5);
+            QTimer::singleShot(5000, &completion, &QEventLoop::quit);
             QVERIFY(write(control, "change"));
             QVERIFY(write(control + ".exit", "exit"));
-            QTRY_VERIFY(asked);
-            QTRY_VERIFY(!QFileInfo(temporary).exists());
+            // Cocoa must deliver nested modal requests from a running loop,
+            // rather than QTest's manual processEvents wait.
+            completion.exec();
+            QVERIFY(asked);
+            QVERIFY(!QFileInfo(temporary).exists());
             QVERIFY(passwordPrompts > 0);
             QCOMPARE(contents(archive, name, password), modified);
             QProcess wrong;

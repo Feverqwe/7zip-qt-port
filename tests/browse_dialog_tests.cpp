@@ -2,6 +2,7 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "CPP/7zip/UI/FileManager/ViewSettings.h"
+#include "fixtures/widget_dialogs.h"
 #include <QApplication>
 #include <QDir>
 #include <QFile>
@@ -13,6 +14,7 @@
 
 class BrowseDialogTests final : public QObject {
     Q_OBJECT
+    WidgetDialogFixture widgetDialogs_;
   private slots:
     void sourceCommonDialogFlags_data() {
         QTest::addColumn<bool>("save");
@@ -46,14 +48,15 @@ class BrowseDialogTests final : public QObject {
         bool shown = false;
         bool unexpectedPrompt = false;
         const QString currentDirectory = QDir::currentPath();
-        QTimer::singleShot(0, &timerContext, [&] {
-            auto *dialog = qobject_cast<QFileDialog *>(QApplication::activeModalWidget());
+        widgetDialogs_.respond(timerContext, [&](QDialog &active) {
+            auto *dialog = qobject_cast<QFileDialog *>(&active);
             if (!dialog)
                 return;
             shown = true;
+            dialog->setFocus();
             dialog->selectFile(selected);
-            QTimer::singleShot(0, &timerContext, [&] {
-                if (auto *prompt = qobject_cast<QMessageBox *>(QApplication::activeModalWidget())) {
+            widgetDialogs_.respond(timerContext, [&](QDialog &activePrompt) {
+                if (auto *prompt = qobject_cast<QMessageBox *>(&activePrompt)) {
                     unexpectedPrompt = true;
                     prompt->done(QMessageBox::No);
                 }
@@ -83,14 +86,14 @@ class BrowseDialogTests final : public QObject {
         const QString selected = fixture.filePath(QStringLiteral("папка с пробелом"));
         QVERIFY(QDir().mkdir(selected));
         UString result = L"stale";
-        QTimer::singleShot(0, [] {
-            if (auto *dialog = qobject_cast<QFileDialog *>(QApplication::activeModalWidget()))
+        widgetDialogs_.respond(*this, [](QDialog &active) {
+            if (auto *dialog = qobject_cast<QFileDialog *>(&active))
                 dialog->reject();
         });
         QVERIFY(!MyBrowseForFolder(nullptr, L"Папка", ToUString(fixture.path()), result));
         QVERIFY(result.IsEmpty());
-        QTimer::singleShot(0, [selected] {
-            if (auto *dialog = qobject_cast<QFileDialog *>(QApplication::activeModalWidget())) {
+        widgetDialogs_.respond(*this, [selected](QDialog &active) {
+            if (auto *dialog = qobject_cast<QFileDialog *>(&active)) {
                 dialog->setDirectory(selected);
                 QMetaObject::invokeMethod(dialog, "accept", Qt::DirectConnection);
             }
@@ -134,12 +137,14 @@ class BrowseDialogTests final : public QObject {
         bool answered = false;
         QStringList observedFilters;
         QString selectedFilter;
-        QTimer::singleShot(0, [&] {
-            if (auto *dialog = qobject_cast<QFileDialog *>(QApplication::activeModalWidget())) {
+        widgetDialogs_.respond(*this, [&](QDialog &active) {
+            if (auto *dialog = qobject_cast<QFileDialog *>(&active)) {
                 answered = true;
                 selectedFilter = dialog->selectedNameFilter();
                 observedFilters = dialog->nameFilters();
+                dialog->setFocus();
                 dialog->selectFile(selected);
+                QCOMPARE(dialog->selectedFiles(), QStringList{selected});
                 QMetaObject::invokeMethod(dialog, "accept", Qt::DirectConnection);
             }
         });
@@ -170,14 +175,15 @@ class BrowseDialogTests final : public QObject {
         filters[1].Masks.Add(UString("*"));
         browse.FilePath = ToUString(selected);
         browse.FilterIndex = 1;
-        QTimer::singleShot(0, [] {
-            if (auto *dialog = qobject_cast<QFileDialog *>(QApplication::activeModalWidget()))
+        widgetDialogs_.respond(*this, [](QDialog &active) {
+            if (auto *dialog = qobject_cast<QFileDialog *>(&active))
                 dialog->reject();
         });
         QVERIFY(!browse.BrowseForFile(filters));
         QCOMPARE(ToQString(browse.FilePath), selected);
-        QTimer::singleShot(0, [selected] {
-            if (auto *dialog = qobject_cast<QFileDialog *>(QApplication::activeModalWidget())) {
+        widgetDialogs_.respond(*this, [selected](QDialog &active) {
+            if (auto *dialog = qobject_cast<QFileDialog *>(&active)) {
+                dialog->setFocus();
                 dialog->selectFile(selected);
                 QMetaObject::invokeMethod(dialog, "accept", Qt::DirectConnection);
             }
