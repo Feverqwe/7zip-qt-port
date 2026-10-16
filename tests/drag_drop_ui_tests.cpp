@@ -10,6 +10,7 @@
 #include <QDragLeaveEvent>
 #include <QMouseEvent>
 #include <QStackedWidget>
+#include <QThread>
 
 namespace {
 int Row(QTableWidget &table, const QString &name) {
@@ -137,6 +138,22 @@ class DragDropUiTests final : public QObject {
                 }
             }
         });
+        bool cancelledNativeDrag = false;
+        QTimer cancelNativeDrag;
+        const bool xcb = QGuiApplication::platformName() == QStringLiteral("xcb");
+        const int outerLoop = QThread::currentThread()->loopLevel();
+        connect(&cancelNativeDrag, &QTimer::timeout, &window, [&] {
+            // The offscreen plugin returns IgnoreAction itself. A real XCB
+            // drag waits for a drop/cancel event; cancel only its entered loop,
+            // after archive extraction and publication of the owned QDrag.
+            if (window.findChild<QDrag *>() && QThread::currentThread()->loopLevel() > outerLoop) {
+                cancelledNativeDrag = true;
+                cancelNativeDrag.stop();
+                QDrag::cancel();
+            }
+        });
+        if (xcb)
+            cancelNativeDrag.start(5);
         if (right) {
             QWidget *viewport = table->viewport();
             const QPoint point =
@@ -161,8 +178,16 @@ class DragDropUiTests final : public QObject {
             list->dragStarter();
         } else
             table->dragStarter();
-        if (right) {
+        cancelNativeDrag.stop();
+        if (xcb && !right)
+            QVERIFY(cancelledNativeDrag);
+        const bool nativeOle = QGuiApplication::platformName() == QStringLiteral("windows");
+        if (right || nativeOle) {
+            // This fixture holds no OS mouse button. OLE's source
+            // QueryContinueDrag cancels before requesting lazy archive bytes.
+            // Qt's other transports prepare bytes before entering exec instead.
             QVERIFY(!extracted);
+            QVERIFY(!closeRefused && !protectedActiveRoot);
             QVERIFY(dragRoots.isEmpty());
         } else
             QVERIFY(extracted && closeRefused && protectedActiveRoot);

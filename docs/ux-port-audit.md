@@ -131,6 +131,13 @@ fit кнопок/текста и возврат фокуса в список. Э
 Новый Mac full323/324 сохраняет unchanged taskbar child handshake failure;
 remaining native/cold/platform и guest delivery приёмка не подменяется этой проверкой.
 
+Последующий [fresha2254e5 delivery](upstream-port-audit/p3-04-2026-10-16.md#current-macos-delivery-after-optionsmainrename-a2254e5)
+обновляет пакеты на3OS с1047 exact inputs и15/14/14 relocated scenarios,
+licenses/SFX/signature/dependency/privateABI проверками. Новый
+[native drag fixture receipt](upstream-port-audit/p3-03-native-drag-fixtures-2026-10-16.md)
+снимает scoped XCB hang и уточняет OLE early cancel; current Mac full324/324
+PASS, но whole native/cold/source приёмка остаётся отдельным обязательством.
+
 Windows Options/direct consumers также проверены: семь suite с Limited токеном
 и отдельный source_link_storage с Highest для disposable symlinks дают88Qt/0fail/
 0skip в каждом режиме. Сбой symlink setup в Limited сохранён; это два запуска,

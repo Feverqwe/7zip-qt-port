@@ -34,6 +34,9 @@ records the user-reported clipping, native regression and whole-gate limitation.
 
 ## P3-03 — Bounded Windows timing diagnosis (2026-10-16)
 
+[Native archive drag cancellation fixtures](upstream-port-audit/p3-03-native-drag-fixtures-2026-10-16.md)
+records explicit XCB cancellation and source-defined OLE early cancellation.
+
 [Observed phases and unresolved stability](upstream-port-audit/p3-03-codec-timing-2026-10-16.md).
 
 ## P3-03 — Interactive runner process context (2026-10-16)
