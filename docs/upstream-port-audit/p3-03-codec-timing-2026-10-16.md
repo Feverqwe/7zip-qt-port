@@ -41,8 +41,10 @@ Current full gates are started separately: Linux
 `20261016T003859Z-f2ac3bc3`, Windows `20261016T004958Z-53dcb02f`, product2fcc0e1.
 [Current Linux whole gate and source proof](p3-06-primitives-2026-10-16.md)
 pass for the final product; this does not validate Windows cold stability.
-Windows remains in progress and retains the existing no-new-VHD exclusions;
-eleven slow suites remain excluded on both OS.
+[Current Windows whole gate](p3-03-editor-stability-2026-10-16.md) completes with
+one external-editor failure; the three codec/pause consumers pass. This does
+not establish a cold-delay fix. Existing no-new-VHD exclusions and eleven slow
+suite exclusions are retained.
 
 ## Earlier phase probes
 

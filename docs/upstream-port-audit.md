@@ -14,6 +14,10 @@
 
 [Observed phases and unresolved stability](upstream-port-audit/p3-03-codec-timing-2026-10-16.md).
 
+## P3-03 — Current Windows whole gate and editor delivery diagnosis (2026-10-16)
+
+[Whole gate failure, source proof and bounded editor traces](upstream-port-audit/p3-03-editor-stability-2026-10-16.md).
+
 ## P3-06 — Options source initial frame (2026-10-16)
 
 [Source frame, rendered reference and regressions](upstream-port-audit/p3-06-options-2026-10-16.md).

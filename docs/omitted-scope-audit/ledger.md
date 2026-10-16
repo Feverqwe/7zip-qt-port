@@ -5,6 +5,34 @@
 
 ## 109-unit source receipt ledger (2026-10-10)
 
+### Current inventory refresh (2026-10-16)
+
+Product2fcc0e1 was re-enumerated against the same full upstream pin below.
+All302 top-level source/header/resource inputs retain their unique path owners;
+the109 cpp units still have8 exact,96 adapted and five absent owners. All104
+present cpp paths occur in current CMake source lists. Git blob IDs and source/
+local SHA256 are retained in `build/review/final-availability-8e9343b-20261014/current-source-inventory.json`.
+No new omitted module, baseline revision or duplicate implementation is found.
+This inventory is source/dependency evidence, not a whole native acceptance.
+
+Fourteen paths changed since the recorded48866c8 parent. Their existing body
+and adaptation receipts are:
+
+- AgentOut.cpp, Common/UpdateCallback.h and PanelOperations.cpp:
+  [source Rename validation/relative paths](../upstream-port-audit/p3-03-2026-10-15.md#p3-03p3-05--source-rename-validation-and-cocoa-modal-fixtures-2026-10-15).
+- BrowseDialog2.cpp/.h and PanelItemOpen.cpp:
+  [associated launcher/continuation](filemanager.md#native-associated-launcher-and-continuation-2026-10-10).
+- MessagesDialog.cpp and OverwriteDialog.cpp/.h:
+  [source font/Overwrite presentation](../upstream-port-audit/p3-06-2026-10-15.md).
+- OptionsDialog.cpp: [source frame](../upstream-port-audit/p3-06-options-2026-10-16.md).
+- AboutDialog.cpp, ComboDialog.cpp and SplitDialog.cpp/.h:
+  [primitive bodies](dialogs-callbacks.md#primitive-input-and-read-only-dialog-bodies-2026-10-10)
+  and [current presentation](../upstream-port-audit/p3-06-primitives-2026-10-16.md).
+
+The current Linux whole gate and three-OS affected consumers are recorded in
+those receipts; Windows whole/stability and the remaining native/rendered scope
+remain separate open requirements. The dated original inventory follows.
+
 Current port parent48866c8, source https://github.com/ip7z/7zip.git revision
 `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. The pinned Git tree and current
 baseline manifest were enumerated again, with unique original/local paths,
