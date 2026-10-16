@@ -158,6 +158,31 @@ class ExtractPromptTests final : public QObject {
         QCOMPARE(cancelled.Limit_GB, UInt32(4));
         QVERIFY(!cancelled.NeedSave);
     }
+    void memorySpinnerKeysUseTheSourceBuddyEdit_data() {
+        QTest::addColumn<bool>("up");
+        QTest::newRow("up") << true;
+        QTest::newRow("down") << false;
+    }
+    void memorySpinnerKeysUseTheSourceBuddyEdit() {
+        QFETCH(bool, up);
+        CMemDialog dialog;
+        dialog.OnInit();
+        dialog.show();
+        auto *edit = dialog.findChild<QLineEdit *>("memLimit");
+        const QString disabledValue = edit->text();
+        QTest::keyClick(edit, up ? Qt::Key_Up : Qt::Key_Down);
+        QCOMPARE(edit->text(), disabledValue);
+        dialog.findChild<QCheckBox *>("memSaveLimit")->click();
+        auto *button = dialog.findChild<QToolButton *>(up ? "memSpinUp" : "memSpinDown");
+        edit->setText("2");
+        button->click();
+        const QString expected = edit->text();
+        edit->setText("2");
+        edit->setFocus();
+        QTest::keyClick(edit, up ? Qt::Key_Up : Qt::Key_Down);
+        QCOMPARE(edit->text(), expected);
+        QCOMPARE(button->focusPolicy(), Qt::NoFocus);
+    }
     void memoryInvalidInput_data() {
         QTest::addColumn<QString>("text");
         QTest::addColumn<bool>("disabled");

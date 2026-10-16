@@ -44,8 +44,16 @@ source/config verified. Эти результаты не заменяют
 native Qt consumers на3OS: по10focused/3native CTest и36JSON. Mac full323/323
 PASS262.65s. [Runner context correction](upstream-port-audit/p3-03-runner-priority-2026-10-16.md)
 восстанавливает обычный priority только проектной интерактивной задачи; причина
-codec delay и стабильность whole Windows этим не установлены. Остальные
-вторичные dialogs, current packages и полный native обход остаются открытыми.
+codec delay и стабильность whole Windows этим не установлены.
+[Edit/Password/Memory/Messages](upstream-port-audit/p3-06-source-prompts-2026-10-16.md)
+добавляет восемь оригинальных EN/RU initial views, source frame/focus/default
+button и paired spinner keyboard. Current Mac full324/324266.43s проходит;
+Windows/Linux по13focused/4native PASS без skip, включая реальный Windows RAR
+memory. Полный Linux323/323529.30s предшествует последним focus-изменениям.
+Предыдущий Windows secondary whole имеет339/3412750.99s: process_pause timeout
+и codec_probe entered-marker delay; editor60Qt и external_codecs проходят.
+Этот результат сохраняется как failed, без нормализации числа341 до340.
+Current packages и полный native обход остаются открытыми.
 [Текущий launcher, логи, входы и ограничения](upstream-port-audit.md#p3-05--native-associated-launcher-and-process-lifetime-2026-10-10);
 [текущий полный Linux gate и версии](upstream-port-audit.md#p3-03--full-linux-gate-after-launcher-restoration-2026-10-10).
 
@@ -82,14 +90,14 @@ native Windows и rendered reference этим не подтверждены.
 
 | Область приёмки | macOS arm64 | Linux x64 | Windows x64 |
 | --- | --- | --- | --- |
-| Default format/build/CTest | checked: secondary presentation/runner context full323/323262.65s,5160Qt/0fail/66skip; localized later range assertion checked separately | checked: snapshot identity component whole322/322509.94s,5144Qt/0fail/66skip,1622 uploaded inputs and stock source verified; current secondary whole gate executing, native acceptance separate | partial: snapshot identity component whole339/3402550.18s,5388Qt/1fail/20skip,1623 uploaded inputs/stock source/config verified; editor60Qt PASS, sole external_codecs startup wait FAIL6750ms/5000ms; normal-priority follow-up5/5 passes, stability open |
+| Default format/build/CTest | checked: source prompts full324/324266.43s,5173Qt/0fail/66skip; current native4/4,38Qt/0skip | checked for pre-final-focus snapshot: source prompts whole323/323529.30s,5164Qt/0fail/66skip,1626 inputs/stock Git verified; final focused13/13 and native4/4 PASS | partial: secondary whole339/3412750.99s,5410Qt/1fail/20skip plus process_pause CTest timeout; codec_probe entered-marker FAIL. Final prompts focused13/13/native4/4 PASS with native RAR; current whole/stability open |
 | Исходные модули, headers/resources/callers | partial: [109 source receipts](omitted-scope-audit.md#109-unit-source-receipt-ledger-2026-10-10); identified launcher/continuation gap corrected, whole workflow acceptance open | partial: общий source scope тот же; POSIX no-handle consumers checked | partial: original native launcher and real handle/disk/browser/archive consumers checked; whole acceptance open |
 | EN/RU, normal/compact, команды и workflow | partial: автоматические contracts/regressions проходят; полный нативный обход не принят | partial: current package на реальной консоли, EN/RU/two-panel normal/compact, Options/Copy и create/open/test/extract проверены; полный обход открыт | partial: выполненные focused consumers/JSON; current interactive gate и полный обход не приняты |
 | Нативные dialogs/shortcuts/icons/drag/registration/FS | partial: историческая ручная Finder-проверка принята отдельно; Cocoa keyboard notification protocol0–9 проверен, physical input/full native обход не проверены | partial: delivery8d56d8d Copy/Overwrite/Language/PCManFM drag/Escape; Release2f8e194 GIO workflow проверен; corrected keyboard XTest1/native consumers7/7; full native scope открыт | partial: active console Session1; corrected keyboard consumers7/7,143Qt/0fail/0skip; original Limited reference also suppresses physical RightCtrlShift0, positive1/AltShift0 PASS; current full/native acceptance открыт |
 | Наблюдение текущего приложения через Computer Use | manual alternative: пользователь выбрал ручную проверку; Add gutter и Save/Folder EN/RU select/cancel подтверждены для1f5e16a. Прямой Computer Use не разрешён; остальной native scope открыт | partial: current package/affected views наблюдались через Hyper-V console API; полный rendered audit открыт | unverified: console доступна, полный обход текущего приложения не принят |
 | Сверка с отрисованным Windows 7zFM того же pin | partial: current Cocoa Add/Extract2/2 PASS9Qt/12JSON; Windows initial EN/RU reference available, grouping/fit checked; no Mac PNG or full rendered/input acceptance | partial: current XCB Add/Extract2/2 PASS9Qt/12JSON/12PNG; representative normal/compact views inspected against four original initial states; full rendered audit open | partial: four pinned original Add/Extract EN/RU initial views inspected, current Qt2/2 PASS9Qt/12JSON/12PNG; grouping/order/labels/fit match with documented Qt metrics/scroll adaptation, not pixel equality. Earlier System menu20entries/states/icons remains bounded evidence; full audit open |
 | Runtime packages; clean-OS scope исключён пользователем2026-10-15 | checked in bounded delivery scope: 2fcc0e1 Release/relocation15/15,1047 product inputs, notices/signature,11 Mach-O/127 loads/private ABI; manual pickers retain1f5e16a revision; clean OS waived | checked in bounded delivery scope: 2fcc0e1 Release/relocation14/14,1047 product inputs, notices/SFX/ELF/private ABI. Prior physical Rename/GIO proofs retain original artifacts; clean OS waived | checked in bounded delivery scope: 2fcc0e1 Release/relocation14/14,1047 product inputs, five CRT DLLs/notices,26 PE/344 imports/55 freshly resolved trusted system names; clean OS waived |
-| Cold/stable Windows, итоговая трёхплатформенная приёмка | partial: общий gate остаётся открытым | partial: успешный Linux gate не заменяет Windows | partial: snapshot identity fix passes RED/GREEN and native180Qt/editor60Qt in completed whole339/340; sole external_codecs startup wait fails6750ms/5000ms. Earlier9s cause unproven; successful whole/current stability remain open |
+| Cold/stable Windows, итоговая трёхплатформенная приёмка | partial: общий gate остаётся открытым | partial: успешный Linux gate не заменяет Windows | partial: latest secondary whole339/341 has process_pause timeout and codec_probe startup delay; editor60Qt/external_codecs PASS. Current prompt/RAR consumers pass, original startup failures retained; successful current whole/stability remain open |
 | GitHub CI | N/A по явному решению пользователя сохранить удаление workflow | N/A по тому же решению | N/A по тому же решению |
 
 Slow suites исключены из default gates по AGENTS.md и не объявляются принятыми.

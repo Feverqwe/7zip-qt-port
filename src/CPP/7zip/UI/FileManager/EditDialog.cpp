@@ -4,17 +4,24 @@
 // ES_READONLY/ES_MULTILINE/WS_HSCROLL/WS_VSCROLL/ES_WANTRETURN are retained.
 #include "EditDialog.h"
 #include "ViewSettings.h"
+#include "qtdialogunits.h"
 #include "qtlangbuttonbox.h"
 #include <QKeyEvent>
 #include <QPlainTextEdit>
+#include <QPushButton>
 #include <QVBoxLayout>
 
 CEditDialog::CEditDialog(QWidget *parent) : QDialog(parent) {}
 
 bool CEditDialog::OnInit() {
     setObjectName("editDialog");
-    resize(480, 320);
+    setWindowFlag(Qt::WindowMinMaxButtonsHint);
+    setWindowFlag(Qt::WindowContextHelpButtonHint, false);
+    const QtDialogUnits units(font());
+    const QSize margin = units.pixels(QSize(8, 8));
     auto *layout = new QVBoxLayout(this);
+    layout->setContentsMargins(margin.width(), margin.height(), margin.width(), margin.height());
+    layout->setSpacing(margin.height());
     _edit = new QPlainTextEdit(this);
     _edit->setObjectName("editText");
     _edit->setReadOnly(true);
@@ -26,9 +33,14 @@ bool CEditDialog::OnInit() {
     layout->addWidget(_edit);
     auto *buttons = new QtLangButtonBox(QDialogButtonBox::Close, this);
     buttons->setObjectName("editButtons");
+    auto *close = buttons->button(QDialogButtonBox::Close);
+    close->setDefault(true);
+    close->setFixedWidth(qMax(units.pixels(QSize(64, 0)).width(), close->sizeHint().width()));
+    close->setMinimumHeight(units.pixels(QSize(0, 16)).height());
     layout->addWidget(buttons);
     connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
-    _edit->setFocus();
+    resize(units.pixels(QSize(336, 256)).expandedTo(minimumSizeHint()));
+    close->setFocus();
     return true;
 }
 

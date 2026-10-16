@@ -58,6 +58,14 @@
 
 ## Password source state and process caller (P3-05, 2026-10-10)
 
+The [2026-10-16 presenter receipt](upstream-port-audit/p3-06-source-prompts-2026-10-16.md)
+compares eight pinned original Edit/Password/Memory/Messages initial EN/RU views
+with current native Qt consumers. Source client dimensions, initial focus,
+Edit default Close/Return and Memory buddy-arrow behavior are restored.
+Qt font/control minimums, native footer ordering and compact accessibility
+resizing remain documented presentation adaptations; pixel equality and full
+physical-input/workflow acceptance remain open.
+
 [Открыть раздел](7zfm-parity/shared.md#password-source-state-and-process-caller-p3-05-2026-10-10).
 
 ## Source panel context menu (P3-05, 2026-10-10)

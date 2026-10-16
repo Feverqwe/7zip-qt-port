@@ -1495,6 +1495,13 @@ Qt supplies one file icon; the optional second Windows EXE/ICO icon is omitted
 explicitly in the contract. Widths must fit labels and footer buttons without
 clipping. Default and native result IDs are checked behaviorally.
 
+Memory initially maps the336×216DLU client through its native font/minimum
+hint, with eight-DLU root margins,72DLU message area and62DLU Action group.
+The limit edit/spinner pair occupies50DLU with native minimum protection,
+indented10DLU from the root margin; GB follows after8DLU. Remember has a10DLU
+inset from the radio buttons. Continue/Cancel are64×16DLU with native caption
+protection, with a minimum10DLU gap after Action. The source has no minimize/
+maximize/context-help title-bar buttons.
 Memory order is native requirement/limit/RAM message, change-limit checkbox,
 independent edit/spinner and GB label, Action group containing Allow/Skip and
 Remember, Continue/Cancel. Source RAM-dependent default and spinner range,
@@ -1504,10 +1511,21 @@ acceptance of zero; invalid text does not close the dialog.
 Invalid-limit errors use source MyMessages' Critical/OK and 7-Zip title, with
 user-question suppression; macOS hides QMessageBox titles. The pending dialog
 and raw text remain available for correction in either policy state.
-Qt spinner buttons adapt the original edit/up-down pair. These checks establish
-structure and local Qt usability. Native PanelOpen integration is checked in
-P0-04.1; Windows
-rendering remains unverified.
+Qt spinner buttons adapt the original edit/up-down pair, preserving
+the original `UDS_ALIGNRIGHT` paired width and `UDS_ARROWKEYS` keyboard path:
+enabled buddy edit ↑/↓ invokes the same step operation as the buttons; disabled
+input is unchanged. Up/down buttons are not independent tab stops. The raw text
+parser and source range policy remain separate. Native button-box optical
+margins may shift its backing widget by one pixel; source footer gaps are
+asserted through public layout-item geometry, with actual control visibility
+checked separately. This corresponds to Qt's
+[QWidgetItem rectangle conversion](https://github.com/qt/qtbase/blob/6.12/src/widgets/kernel/qlayoutitem.cpp#L456).
+These checks establish
+structure and local Qt usability. Initial focus is Change allowed limit, as in
+the first source tab stop. Native PanelOpen integration is checked in P0-04.1.
+The bounded EN/RU original/current rendered comparison is recorded in the
+[source-prompts receipt](../upstream-port-audit/p3-06-source-prompts-2026-10-16.md);
+whole workflow and pixel equality are not established by those initial views.
 
 ```sh
 ./scripts/build.sh dev ui_geometry_tests
@@ -1780,10 +1798,14 @@ HashCalcGUI invoke this same source presenter; current540/420 JSON reviewed
 
 Reference: EditDialog.rc; source scope and baseline are recorded in the
 [properties audit](../upstream-port-audit.md#свойства-и-двухколоночный-список-2026-09-28).
-CEditDialog has one read-only multiline
+CEditDialog initially maps the336×256DLU client through the native Qt font,
+with eight-DLU root margins/gap and64×16DLU Close protected by its native hint.
+It requests the source resize/minimize/maximize capabilities without a title-bar
+context-help button. CEditDialog has one read-only multiline
 edit above Close, with both scroll directions and no automatic wrapping.
-Text/Title are copied without truncation. Enter remains in the edit
-(ES_WANTRETURN); Tab moves focus to the footer. Geometry: 480×320 and 320×240,
+Text/Title are copied without truncation. Close has initial focus and is the
+default button: initial Enter closes. Tab reaches the edit, where Enter remains
+inside the edit (ES_WANTRETURN). Geometry: 480×320 and 320×240,
 visible, separate text area and footer. Coverage is described in
 [testing](../testing.md). Rendered Windows parity remains unverified.
 
@@ -2139,7 +2161,15 @@ visible path/filter/footer and row values. Rendered Windows parity is unverified
 Reference: upstream `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
 `CPP/7zip/UI/FileManager/PasswordDialog.cpp/.h/.rc` (`IDD_PASSWORD`).
 `CPasswordDialog` shows a prompt, password edit, Show Password, then OK/Cancel.
-Initial Password/ShowPassword are applied before display. Toggling copies the
+Initial client is216×88DLU, with eight-DLU root margins. The prompt is8DLU
+high, the edit begins at20DLU with14DLU minimum height, and Show Password begins
+at42DLU with10DLU minimum height. Footer buttons are64×16DLU protected by native
+metrics and use native standard-button ordering.
+The minimum gap from Show Password to the footer layout item is12DLU; native
+button-box optical margins remain platform geometry. The source has no minimize,
+maximize or context-help title-bar buttons. Compact Qt resize remains an
+accessibility adaptation of the fixed original form.
+Initial focus is the password edit. Initial Password/ShowPassword are applied before display. Toggling copies the
 current edit into public state, then changes echo mode without changing its text,
 as in ReadControls/SetTextSpec. OK/Enter commit raw text; the caller discards a
 rejected dialog and keeps the existing backend cancellation policy.
@@ -2205,7 +2235,10 @@ operations. Filesystem/volume workers expose cancellation and real background
 priority, but Pause is disabled because they have no worker pause capability.
 
 MessagesDialog.rc (`IDD_MESSAGES`) uses a two-column numbered/message list and
-Close footer. The Qt source port preserves AddMessageDirect/AddMessage and the
+Close footer,456×176DLU initial client and resize/minimize/maximize capabilities
+without context-help. Assigning a parent must preserve those source flags.
+Close has initial focus, matching the first resource tab stop.
+The Qt source port preserves AddMessageDirect/AddMessage and the
 OnInit/OnSize control flow; `IDL_MESSAGE` is above `IDOK` at 760×450 and
 640×380. Current-build JSON confirms both controls are visible, separated and
 within the dialog. Create follows the source modal lifetime until Close/Enter

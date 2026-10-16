@@ -63,6 +63,8 @@ bool CMessagesDialog::OnSize(int xSize, int ySize) {
 
 CMessagesDialog::CMessagesDialog(QWidget *parent) : QDialog(parent) {
     setObjectName("operationMessagesDialog");
+    setWindowFlag(Qt::WindowMinMaxButtonsHint);
+    setWindowFlag(Qt::WindowContextHelpButtonHint, false);
     QtBindResourceText(this, IDD_MESSAGES, "7-Zip: Diagnostic messages");
     const QtDialogUnits units(font());
     _unitX = units.horizontalScale();
@@ -83,10 +85,10 @@ CMessagesDialog::CMessagesDialog(QWidget *parent) : QDialog(parent) {
 
 INT_PTR CMessagesDialog::Create(QWidget *parent) {
     if (parent && parentWidget() != parent)
-        setParent(parent, Qt::Dialog);
+        setParent(parent, windowFlags());
     if (!_initialized) {
         _initialized = OnInit();
-        _list->setFocus();
+        _close->setFocus();
     }
     return exec();
 }

@@ -7,6 +7,7 @@
 #include "LangUtils.h"
 #include "Windows/ErrorMsg.h"
 #include "Windows/System.h"
+#include "qtdialogunits.h"
 #include "qtguimessages.h"
 #include "qtlangbuttonbox.h"
 #include "qtlangcontrols.h"
@@ -14,6 +15,7 @@
 #include <QCheckBox>
 #include <QEvent>
 #include <QGroupBox>
+#include <QKeyEvent>
 #include <QLabel>
 #include <QLineEdit>
 #include <QPushButton>
@@ -22,36 +24,77 @@
 #include <QVBoxLayout>
 
 void CMemDialog::BuildPresentation() {
+    const QtDialogUnits units(font());
     setObjectName("memDialog");
+    setWindowFlag(Qt::WindowContextHelpButtonHint, false);
     QtBindResourceText(this, IDD_MEM, "Memory usage request");
-    resize(680, 460);
     auto *layout = new QVBoxLayout(this);
+    const QSize margin = units.pixels(QSize(8, 8));
+    layout->setContentsMargins(margin.width(), margin.height(), margin.width(), margin.height());
+    layout->setSpacing(0);
     auto *message = new QLabel(this);
     message->setObjectName("memMessage");
     message->setTextFormat(Qt::PlainText);
     message->setWordWrap(true);
+    message->setMinimumHeight(units.pixels(QSize(0, 72)).height());
     _controls.insert(IDT_MEM_MESSAGE, message);
     layout->addWidget(message);
+    layout->addSpacing(units.pixels(QSize(0, 4)).height());
     auto *save = new QCheckBox(this);
     QtBindResourceText(save, IDX_MEM_SAVE_LIMIT, "Change allowed limit for next operations");
     save->setObjectName("memSaveLimit");
+    save->setMinimumHeight(units.pixels(QSize(0, 10)).height());
     _controls.insert(IDX_MEM_SAVE_LIMIT, save);
     layout->addWidget(save);
     connect(save, &QCheckBox::toggled, this, &CMemDialog::EnableSpin);
-    auto *row = new QHBoxLayout;
-    auto *edit = new QLineEdit(this);
+    layout->addSpacing(units.pixels(QSize(0, 6)).height());
+    layout->addWidget(BuildLimitRow());
+    layout->addSpacing(units.pixels(QSize(0, 8)).height());
+    layout->addWidget(BuildActions());
+    layout->addSpacing(units.pixels(QSize(0, 10)).height());
+    layout->addStretch();
+    auto *buttons =
+        new QtLangButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this, IDCONTINUE);
+    buttons->setObjectName("memButtons");
+    QtBindResourceText(buttons->button(QDialogButtonBox::Ok), 411, "Continue");
+    buttons->layout()->setSpacing(margin.width());
+    for (auto *button : buttons->buttons()) {
+        button->setFixedWidth(qMax(units.pixels(QSize(64, 0)).width(), button->sizeHint().width()));
+        button->setMinimumHeight(units.pixels(QSize(0, 16)).height());
+    }
+    connect(buttons, &QDialogButtonBox::accepted, this, &CMemDialog::OnContinue);
+    connect(buttons, &QDialogButtonBox::rejected, this, &CMemDialog::reject);
+    layout->addWidget(buttons);
+}
+
+QWidget *CMemDialog::BuildLimitRow() {
+    const QtDialogUnits units(font());
+    auto *view = new QWidget(this);
+    auto *row = new QHBoxLayout(view);
+    row->setContentsMargins(0, 0, 0, 0);
+    row->setSpacing(0);
+    row->addSpacing(units.pixels(QSize(10, 0)).width());
+    auto *pair = new QWidget(view);
+    pair->setObjectName("memLimitPair");
+    auto *fields = new QHBoxLayout(pair);
+    fields->setContentsMargins(0, 0, 0, 0);
+    fields->setSpacing(0);
+    auto *edit = new QLineEdit(pair);
     edit->setObjectName("memLimit");
     QtBindLangText(edit, IDS_MEM_CURRENT_MEM_LIMIT, "Current allowed limit", true);
-    edit->setMaximumWidth(130);
+    edit->setAlignment(Qt::AlignCenter);
+    edit->setMinimumHeight(units.pixels(QSize(0, 12)).height());
+    edit->installEventFilter(this);
     _controls.insert(IDE_MEM_SPIN_EDIT, edit);
-    row->addWidget(edit);
-    auto *spin = new QWidget(this);
+    fields->addWidget(edit, 1);
+    auto *spin = new QWidget(pair);
     spin->setObjectName("memSpin");
     auto *arrows = new QVBoxLayout(spin);
     arrows->setContentsMargins(0, 0, 0, 0);
     arrows->setSpacing(0);
     for (bool up : {true, false}) {
         auto *button = new QToolButton(spin);
+        button->setFocusPolicy(Qt::NoFocus);
         button->setArrowType(up ? Qt::UpArrow : Qt::DownArrow);
         button->setObjectName(up ? "memSpinUp" : "memSpinDown");
         button->setAutoRepeat(true);
@@ -59,23 +102,36 @@ void CMemDialog::BuildPresentation() {
         connect(button, &QToolButton::clicked, this, [this, up] { StepSpin(up); });
     }
     _controls.insert(IDC_MEM_SPIN, spin);
-    row->addWidget(spin);
-    auto *gb = new QLabel(this);
+    spin->setFixedWidth(qMax(units.pixels(QSize(8, 0)).width(), spin->sizeHint().width()));
+    fields->addWidget(spin);
+    pair->setFixedWidth(qMax(units.pixels(QSize(50, 0)).width(),
+                             edit->minimumSizeHint().width() + spin->sizeHint().width()));
+    row->addWidget(pair);
+    row->addSpacing(units.pixels(QSize(8, 0)).width());
+    auto *gb = new QLabel(view);
     gb->setObjectName("memGB");
     _controls.insert(IDT_MEM_GB, gb);
     row->addWidget(gb);
     row->addStretch();
-    layout->addLayout(row);
+    return view;
+}
+
+QWidget *CMemDialog::BuildActions() {
+    const QtDialogUnits units(font());
     auto *group = new QGroupBox(this);
+    group->setMinimumHeight(units.pixels(QSize(0, 62)).height());
     QtBindResourceText(group, IDG_MEM_ACTION, "Action");
     group->setObjectName("memAction");
     auto *actions = new QVBoxLayout(group);
+    actions->setSpacing(units.pixels(QSize(0, 4)).height());
     auto *allow = new QRadioButton(group);
     auto *skip = new QRadioButton(group);
     QtBindResourceText(allow, IDR_MEM_ACTION_ALLOW, "&Allow archive unpacking");
     QtBindResourceText(skip, IDR_MEM_ACTION_SKIP_ARC, "&Skip archive unpacking");
     allow->setObjectName("memAllow");
     skip->setObjectName("memSkip");
+    for (auto *button : {allow, skip})
+        button->setMinimumHeight(units.pixels(QSize(0, 10)).height());
     _controls.insert(IDR_MEM_ACTION_ALLOW, allow);
     _controls.insert(IDR_MEM_ACTION_SKIP_ARC, skip);
     actions->addWidget(allow);
@@ -83,17 +139,13 @@ void CMemDialog::BuildPresentation() {
     auto *remember = new QCheckBox(group);
     QtBindResourceText(remember, IDX_MEM_REMEMBER, "&Repeat selected action for current operation");
     remember->setObjectName("memRemember");
+    remember->setMinimumHeight(units.pixels(QSize(0, 10)).height());
     _controls.insert(IDX_MEM_REMEMBER, remember);
-    actions->addWidget(remember);
-    layout->addWidget(group);
-    layout->addStretch();
-    auto *buttons =
-        new QtLangButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this, IDCONTINUE);
-    buttons->setObjectName("memButtons");
-    QtBindResourceText(buttons->button(QDialogButtonBox::Ok), 411, "Continue");
-    connect(buttons, &QDialogButtonBox::accepted, this, &CMemDialog::OnContinue);
-    connect(buttons, &QDialogButtonBox::rejected, this, &CMemDialog::reject);
-    layout->addWidget(buttons);
+    auto *rememberRow = new QHBoxLayout;
+    rememberRow->addSpacing(units.pixels(QSize(10, 0)).width());
+    rememberRow->addWidget(remember);
+    actions->addLayout(rememberRow);
+    return group;
 }
 
 void CMemDialog::EnableSpin(bool enable) {
@@ -132,6 +184,20 @@ void CMemDialog::StepSpin(bool up) {
     text.Empty();
     text.Add_UInt32(value);
     SetItemText(IDE_MEM_SPIN_EDIT, text);
+}
+
+bool CMemDialog::eventFilter(QObject *watched, QEvent *event) {
+    auto *edit = _controls.value(IDE_MEM_SPIN_EDIT);
+    if (watched == edit && edit->isEnabled() && event->type() == QEvent::KeyPress) {
+        const auto *key = static_cast<QKeyEvent *>(event);
+        if (key->key() == Qt::Key_Up || key->key() == Qt::Key_Down) {
+            // Original GuiCommon.rc UDS_ARROWKEYS routes the buddy edit's
+            // arrows through the same native up/down control as its buttons.
+            StepSpin(key->key() == Qt::Key_Up);
+            return true;
+        }
+    }
+    return QDialog::eventFilter(watched, event);
 }
 
 INT_PTR CMemDialog::Create(QWidget *parent) {
@@ -206,6 +272,8 @@ bool CMemDialog::OnInit() {
     const UINT buttonId = is_Allowed ? IDR_MEM_ACTION_ALLOW : IDR_MEM_ACTION_SKIP_ARC;
     static_cast<QRadioButton *>(_controls.value(buttonId))->setChecked(true);
     _controls.value(IDX_MEM_REMEMBER)->setVisible(ShowRemember);
+    resize(QtDialogUnits(font()).pixels(QSize(336, 216)).expandedTo(minimumSizeHint()));
+    _controls.value(IDX_MEM_SAVE_LIMIT)->setFocus();
     return true;
 }
 

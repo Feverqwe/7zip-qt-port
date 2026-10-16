@@ -10,6 +10,27 @@
 class EditDialogTests : public QObject {
     Q_OBJECT
   private slots:
+    void initialReturnClosesAndTabReachesTheReadOnlyEdit() {
+        for (bool tab : {false, true}) {
+            CEditDialog dialog;
+            dialog.OnInit();
+            dialog.show();
+            QVERIFY(QTest::qWaitForWindowExposed(&dialog));
+            auto *close = dialog.findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Close);
+            QCOMPARE(dialog.focusWidget(), close);
+            QVERIFY(close->isDefault());
+            if (tab) {
+                QTest::keyClick(close, Qt::Key_Tab);
+                auto *edit = dialog.findChild<QPlainTextEdit *>("editText");
+                QCOMPARE(dialog.focusWidget(), edit);
+                QTest::keyClick(edit, Qt::Key_Return);
+                QVERIFY(dialog.isVisible());
+            } else {
+                QTest::keyClick(close, Qt::Key_Return);
+                QVERIFY(!dialog.isVisible());
+            }
+        }
+    }
     void displaysRawUnicodeTextWithoutInterpretationOrEditing() {
         CEditDialog dialog;
         dialog.Title = ToUString(QStringLiteral("Свойство 😀"));
@@ -54,8 +75,8 @@ class EditDialogTests : public QObject {
         QVERIFY(UiInspection::fullyVisible(*edit, dialog));
         QVERIFY(UiInspection::fullyVisible(*buttons, dialog));
         QVERIFY(UiInspection::separate(*edit, *buttons, dialog));
-        QVERIFY(edit->horizontalScrollBar()->maximum() > 0);
-        QVERIFY(edit->verticalScrollBar()->maximum() > 0);
+        QTRY_VERIFY(edit->horizontalScrollBar()->maximum() > 0);
+        QTRY_VERIFY(edit->verticalScrollBar()->maximum() > 0);
         QVERIFY(UiInspection::fullyVisible(*buttons->button(QDialogButtonBox::Close), dialog));
         QCOMPARE(edit->toPlainText(), raw);
         QVERIFY(UiInspection::writeReport(dialog, QString("edit-dialog-%1").arg(size.width())));

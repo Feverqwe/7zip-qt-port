@@ -286,6 +286,16 @@ rectangles. A separate 8pt/12pt case checks initial-frame font scaling. These
 small deterministic cases emit widget JSON and use disposable metadata/settings;
 `extract_prompt` remains the consumer of result IDs and source decisions.
 
+Focused `source_prompt_presentation` checks source-initial Edit/Password/Memory/
+Messages frames in EN/RU, native minimum protection, title-bar capabilities,
+footer/label fitting and initial focus. Memory also checks the centered paired
+spinner width, Remember inset and footer gap; Password checks its footer gap.
+`edit_dialog` checks initial default Close/Return, Tab-to-edit and preserved
+read-only multiline scrolling. `extract_prompt` compares enabled buddy-edit
+Up/Down with the same spinner button operation and preserves disabled input.
+The bounded native three-platform and original Windows comparison is recorded
+in the [source-prompts receipt](../upstream-port-audit/p3-06-source-prompts-2026-10-16.md).
+
 Focused CTest `extract_dialog` проверяет исходный порядок overwrite,
 OnOK через кнопку и accept(), восстановление режимов/видимости без сохранения
 пароля, Cancel, cap истории 16, выбранный и введённый пути, Unicode/пробелы,

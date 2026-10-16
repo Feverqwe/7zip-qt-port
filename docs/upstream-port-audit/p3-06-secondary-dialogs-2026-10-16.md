@@ -89,6 +89,24 @@ The required unsandboxed macOS full gate passes323/323 in262.65s,
 component and the separate runner-priority prerequisite, not a new Windows
 whole gate, current packages, pixel equality or complete native acceptance.
 
+The subsequent Linux whole gate `20261016T064154Z-d545cdbe` also passes322/322
+in526.01s,5152Qt/0fail/66skip. All1623 uploaded inputs match their terminal
+guest files and stock Git diff is empty (synthetic snapshot
+`698785f7917975bad696be87182e7d62b7cf3dcd`). Product/build/test inputs match
+committed5f9e258; the archive predates only the final UX-summary text/new audit
+document, not a code change. Full logs/config/source proof are retained in
+`linux-secondary-full-gate-evidence` under the evidence root. Windows whole
+`20261016T064508Z-5886c1e7` finishes339/341 in2750.99s: process_pause exceeds
+its15s CTest cap (16.05s observed), and codec_probe's failure-mode entered marker
+arrives6650ms after its5s check. Raw Qt totals5410pass/1fail/20skip; all1624
+uploaded inputs match and stock Git diff is empty (synthetic
+`ff0201b62d5d7996a20cec454f9188fdf12e8ce1`). Session1/Highest/Elevated=True
+actually records Priority=Normal. External codecs passes13Qt and editor60Qt
+passes47.38s; corrected priority does not establish a cold-delay cause/fix.
+Full logs/config/source proof are in `windows-secondary-full-gate-evidence`.
+Later prompt presentation work remains a separate component and is not covered
+by this frozen whole-gate snapshot. Whole Windows acceptance remains open.
+
 A localized follow-up adds an explicit zero horizontal-scroll range assertion
 for the normal source-initial Benchmark. macOS offscreen passes1/1 in3.71s.
 The current full native Cocoa Benchmark consumer also passes1/1 in1.41s,

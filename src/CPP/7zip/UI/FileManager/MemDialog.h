@@ -15,7 +15,10 @@ class CMemDialog final : public QDialog {
     UInt32 _messageRam_GB = 0;
     void ReloadInfoMessage(const UInt32 *ramSize_GB);
     void changeEvent(QEvent *event) override;
+    bool eventFilter(QObject *watched, QEvent *event) override;
     void BuildPresentation();
+    QWidget *BuildLimitRow();
+    QWidget *BuildActions();
     void EnableSpin(bool enable);
     void SetItemText(unsigned id, const UString &text);
     void GetItemText(unsigned id, UString &text) const;
