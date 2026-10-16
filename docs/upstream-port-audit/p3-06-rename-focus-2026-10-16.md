@@ -45,3 +45,8 @@ Ignored evidence: `build/review/final-availability-8e9343b-20261014/`
 current macOS receipts are `build/review/final-rename-focus-native-v28`.
 Manual confirmation of the new outline and real macOS Delete/collision messages
 remains pending. Packages require a refresh. Parent acceptance stays open.
+
+The subsequent [macOS delivery receipt](p3-04-2026-10-16.md#current-macos-delivery-after-optionsmainrename-a2254e5)
+refreshes producta2254e5 with1047 exact inputs and15 passing runtime scenarios.
+The new manual fixtures use that extracted app; guest package refresh and
+manual confirmation remain separate requirements.
