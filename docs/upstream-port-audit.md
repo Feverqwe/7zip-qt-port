@@ -6,6 +6,10 @@
 
 [Source boundary, sync/cache contract and focused validation](upstream-port-audit/developer-workflow-2026-10-17.md).
 
+## P3-03 — Current full gates and caption-fit regression (2026-10-17)
+
+[Three-platform original full results and focused default/native correction](upstream-port-audit/p3-03-final-default-2026-10-17.md).
+
 ## P3-03/P3-06 — Copy/Move runtime comparison (2026-10-17)
 
 [Source Browse width, actual original states and three-platform native comparison](upstream-port-audit/p3-06-copy-runtime-2026-10-17.md).

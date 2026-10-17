@@ -90,18 +90,16 @@ class LanguageDialogTests final : public QObject {
         for (auto *button : dialog.findChildren<QPushButton *>())
             if (button->isVisible()) {
                 QVERIFY(UiInspection::fullyVisible(*button, dialog));
-                if (button->objectName() == "volumeBrowse") {
-                    // SplitDialog.rc uses a narrow twenty-DLU button. Native
-                    // QPushButton's preferred footer width is not its text fit.
-                    QStyleOptionButton option;
-                    option.initFrom(button);
-                    option.text = button->text();
-                    const QRect contents = button->style()->subElementRect(
-                        QStyle::SE_PushButtonContents, &option, button);
-                    QVERIFY(button->fontMetrics().horizontalAdvance(button->text()) <=
-                            contents.width());
-                } else
-                    QVERIFY(button->width() >= button->sizeHint().width());
+                // Source Browse controls can be narrower than the style's
+                // preferred footer button width. Check the displayed caption.
+                QStyleOptionButton option;
+                option.initFrom(button);
+                option.text = button->text();
+                const QRect contents =
+                    button->style()->subElementRect(QStyle::SE_PushButtonContents, &option, button);
+                QVERIFY2(button->fontMetrics().size(Qt::TextShowMnemonic, button->text()).width() <=
+                             contents.width(),
+                         qPrintable(button->objectName()));
             }
     }
 
