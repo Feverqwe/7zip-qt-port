@@ -527,6 +527,12 @@ target_include_directories(sevenzip_desktop PRIVATE src)
 target_link_libraries(sevenzip_desktop PRIVATE Qt6::Widgets)
 target_sources(sevenzip_desktop PRIVATE src/qtguimain.cpp src/qtfilemanagermain.cpp)
 if(WIN32)
+    # Original resource.rc IDI_ICON entry, with build-local absolute paths.
+    file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/application_icon.rc"
+        "#include \"${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/UI/FileManager/resourceGui.h\"\nIDI_ICON ICON \"${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/UI/FileManager/FM.ico\"\n")
+    set_source_files_properties("${CMAKE_CURRENT_BINARY_DIR}/application_icon.rc" PROPERTIES
+        OBJECT_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/UI/FileManager/FM.ico")
+    target_sources(sevenzip_desktop PRIVATE "${CMAKE_CURRENT_BINARY_DIR}/application_icon.rc")
     add_custom_command(TARGET sevenzip_desktop POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:sevenzip_desktop>
             "$<TARGET_FILE_DIR:sevenzip_desktop>/7zG.exe"

@@ -13,6 +13,7 @@
 #include <QToolBar>
 #include <QToolButton>
 #include <QTreeWidget>
+#include <QWindow>
 
 class MainShellTests final : public QObject {
     Q_OBJECT
@@ -25,6 +26,20 @@ class MainShellTests final : public QObject {
     }
 
   private slots:
+    void fileManagerWindowUsesSourceApplicationIcon() {
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        const QIcon original(QStringLiteral(":/upstream/7zip/UI/FileManager/FM.ico"));
+        QVERIFY(!original.isNull());
+        QVERIFY(!window.windowIcon().isNull());
+        window.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&window));
+        QVERIFY(window.windowHandle());
+        for (const QSize &size : original.availableSizes())
+            QCOMPARE(window.windowHandle()->icon().pixmap(size).toImage(),
+                     original.pixmap(size).toImage());
+    }
+
     void startupToolbarUsesActualScreenMetrics_data() {
         QTest::addColumn<bool>("smallScreen");
         QTest::addColumn<quint32>("mask");

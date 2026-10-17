@@ -36,6 +36,12 @@ selection and Cancel without association writes. [Source and native receipt](../
 
 ### Native System handler images (P3-06, 2026-10-17)
 
+The application/window identity uses source FM.ico, matching original
+FM.cpp::InitInstance and GUI/FileManager IDI_ICON resources. The native Windows
+EXE and macOS bundle retain that image; Qt window chrome uses its supported
+sizes. This does not alter panel/footer geometry or file-type handler icons.
+[Native resource verification](../upstream-port-audit/p3-06-application-icon-2026-10-17.md).
+
 Source `SystemPage.cpp::AddIcon/OnInit/RefreshListItem` and
 `SystemPage.h::CAssoc::GetIconIndex` choose the displayed handler image from the
 source association state. A pending own selection uses the application image;

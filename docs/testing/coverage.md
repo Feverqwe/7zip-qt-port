@@ -3204,6 +3204,12 @@ During implementation, build affected targets and run focused tests for changed 
 For layout, visible-text, control-visibility, and resizing changes, start with [view specifications and geometry reports](../ui-layout-contracts.md). Run focused checks at normal and compact sizes and review current-build JSON. Screenshots are a fallback for rendering details these checks cannot resolve, or at the user's request. Identify the upstream resource/source or Windows screenshot used for comparison; geometric/structural checks do not establish pixel-level Windows parity. Nonvisual changes need no appearance inspection.
 
 `settings` checks that cancelling Options leaves the file list unchanged, accepting its list options persists them, and a click opens a Unicode folder when single-click mode is enabled. System icon appearance still needs manual checks on each platform.
+
+`main_shell` also verifies that a shown File Manager QWindow presents the original
+application image at each source-supported size, catching empty/generic window
+icons independently of toolbar images. [Native artifact observations](../upstream-port-audit/p3-06-application-icon-2026-10-17.md)
+check Windows PE color/mask and macOS bundle resolution separately; the window
+regression alone does not prove launcher metadata or screenshot parity.
 `source_update_backend` checks source Add/Update/Freshen/Synchronize pair
 actions on real ZIP and 7z fixtures with newer, older, new and archive-only
 files. It also checks staged Unicode replacement, invalid compression options

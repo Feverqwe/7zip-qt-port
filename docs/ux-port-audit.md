@@ -4,6 +4,12 @@
 
 ## Current final acceptance matrix (2026-10-17)
 
+[Source application icon](upstream-port-audit/p3-06-application-icon-2026-10-17.md)
+восстанавливает исходный FM.ico у Qt app/window и в Windows/macOS native
+артефактах. Null-icon RED→GREEN, shown-window native3OS и decoded PE/AppKit
+checks PASS; privileged Windows startup проверен отдельно от Limited setup
+failures. Полный native/cold обход и обновление packages остаются открытыми.
+
 [Live System values and macOS bundle image](upstream-port-audit/p3-06-system-live-2026-10-17.md)
 добавляют40 actual catalog rows в четырёх native состояниях Windows/macOS,
 pending indexed/bundle icon и Cancel с неизменными native revisions. Исправлен

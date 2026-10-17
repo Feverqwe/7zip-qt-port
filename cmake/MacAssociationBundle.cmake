@@ -17,7 +17,20 @@ foreach(pair IN LISTS association_pairs)
 endforeach()
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/resources/macos-bundle.plist.in"
     "${CMAKE_CURRENT_BINARY_DIR}/macos-bundle.plist.in" @ONLY)
+# Native bundle metadata needs an ICNS container, while the authoritative source
+# image remains the original ICO shared by 7zFM and 7zG. Use macOS's converter.
+set(sevenzip_bundle_icon "${CMAKE_CURRENT_BINARY_DIR}/FM.icns")
+add_custom_command(OUTPUT "${sevenzip_bundle_icon}"
+    COMMAND /usr/bin/sips -s format icns
+        "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/UI/FileManager/FM.ico"
+        --out "${sevenzip_bundle_icon}"
+    DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/UI/FileManager/FM.ico"
+    VERBATIM)
+set_source_files_properties("${sevenzip_bundle_icon}" PROPERTIES
+    GENERATED TRUE MACOSX_PACKAGE_LOCATION Resources)
+target_sources(sevenzip_desktop PRIVATE "${sevenzip_bundle_icon}")
 set_target_properties(sevenzip_desktop PROPERTIES
+    MACOSX_BUNDLE_ICON_FILE FM.icns
     MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_BINARY_DIR}/macos-bundle.plist.in"
     MACOSX_BUNDLE_GUI_IDENTIFIER "org.sevenzip-desktop"
     MACOSX_BUNDLE_BUNDLE_NAME "Sevenzip Desktop"

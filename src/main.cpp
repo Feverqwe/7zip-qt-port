@@ -6,10 +6,12 @@
 
 #include <QApplication>
 #include <QFileInfo>
+#include <QIcon>
 #include <QTimer>
 
 int main(int argc, char *argv[]) {
     QApplication app(argc, argv);
+    app.setWindowIcon(QIcon(QStringLiteral(":/upstream/7zip/UI/FileManager/FM.ico")));
     app.setApplicationName("Sevenzip Desktop");
     app.setDesktopFileName(QString::fromLatin1(NDesktopIdentity::kFileName));
 #ifdef Q_OS_WIN

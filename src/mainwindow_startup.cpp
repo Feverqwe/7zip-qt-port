@@ -1,6 +1,7 @@
 #include "mainwindow.h"
 #include "qtfilemanagerinitservices.h"
 #include "qtfilemanagerstartup.h"
+#include <QIcon>
 
 class QtFileManagerInitServices final : public IQtFileManagerInitServices {
     MainWindow &window_;
@@ -12,6 +13,7 @@ class QtFileManagerInitServices final : public IQtFileManagerInitServices {
 
     bool Create(int x, int y, int width, int height, bool panelsDefined,
                 UInt32 splitterPos) override {
+        window_.setWindowIcon(QIcon(QStringLiteral(":/upstream/7zip/UI/FileManager/FM.ico")));
         if (width != NQtFileManager::WindowUseDefault)
             window_.resize(width, height);
         if (x != NQtFileManager::WindowUseDefault)
