@@ -7,6 +7,9 @@
 
 ## Дополнительные форматы
 
+[Read-only Brotli](upstream-port-audit/brotli.md) — Google C decoder,
+адаптация format handler, границы распаковки `.br` и проверки.
+
 [Read-only exFAT из Linux](upstream-port-audit/exfat-linux.md) — исходная ревизия,
 границы C-переноса, адаптации потокового ввода и проверки отдельного модуля.
 

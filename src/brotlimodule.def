@@ -1,0 +1,7 @@
+EXPORTS
+  CreateObject PRIVATE
+  GetHandlerProperty PRIVATE
+  GetHandlerProperty2 PRIVATE
+  GetNumberOfFormats PRIVATE
+  GetIsArc PRIVATE
+  GetModuleProp PRIVATE

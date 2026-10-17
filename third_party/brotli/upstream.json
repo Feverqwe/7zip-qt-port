@@ -1,0 +1,51 @@
+{
+  "repository": "https://github.com/google/brotli.git",
+  "revision": "86ee1f65f62d6272345dee751d49e7d1f01c2b11",
+  "scope": "Unmodified c/common, c/dec, c/include and LICENSE; encoder/tools omitted.",
+  "sha256": {
+    "LICENSE": "3d180008e36922a4e8daec11c34c7af264fed5962d07924aea928c38e8663c94",
+    "c/common/constants.c": "630f40ca2ac787025175eaf39b9569a60aff6ddec7e5085197e4cb0d43641b0d",
+    "c/common/constants.h": "c9c898542360e811dc44aa9be270d21ce0d18f3ecf45310f3d9f285f3692a59e",
+    "c/common/context.c": "c9aa1acb35af38c90c4a38ba168885b649838236b2d57adb5e76d687bdbe252e",
+    "c/common/context.h": "2745ef910928a4acd58e1cb98128a0a228fa1812c61e69538c9d393d405bf047",
+    "c/common/dictionary.c": "0890056e4ae595efab6bbf3bf1fd244332e2cfad3adcb9f5793ee29a8f3a18c5",
+    "c/common/dictionary.h": "bfb4f010a2279c53a039ec6f095a12ab62c7d49ab138e385a16caf3904341b10",
+    "c/common/dictionary_inc.h": "55b98973df9dcb353bd78b2b573fb7338ab55d98fb5571ad93939095978768e8",
+    "c/common/platform.c": "fce95889e6b1d1a91c0baa2ee0f3b83a41b670a4f51a5053185ffbed6bde71fd",
+    "c/common/platform.h": "82911e60a4223f47b2556aa7e314d3688f2b2c04ca1a60aeb6867f80419877ed",
+    "c/common/shared_dictionary.c": "0cf405b0155230e060b9e0855bb22379037362948828b98338f203be07923d0e",
+    "c/common/shared_dictionary_internal.h": "e9e343e5d4ddd0f87a9579aab6796dd82af08639abfda122e874a97e896c6b6a",
+    "c/common/static_init.h": "be55ce94cace1a6c9dd9460ae30a5b7942834fd8c1003ffdef56df0b35dbcfd7",
+    "c/common/transform.c": "47f229a79c3542ea57ec07145d7eaf77300a02816d95695332f9911ea19d6ab3",
+    "c/common/transform.h": "b79dd99d1dcc618c1a4284b74dd04adda099fc3f65f906924991a736e09c125c",
+    "c/common/version.h": "792d03d8feff8168edf639899f72b71a37e9cbd9f178e3be397ccef29d3346b0",
+    "c/dec/bit_reader.c": "6126ebebd3adbc96430c2b75ccaec02b188901f2a17960e6a4606470e71925ec",
+    "c/dec/bit_reader.h": "f23fbb82054c5e4405e2a262df9cf4c4756b3e0e476ac849c0dd8f741018d161",
+    "c/dec/decode.c": "6b2cc010fa4aed5a65a8a0de5f3651d3e0cd9cd78c349793dce93844909c33d5",
+    "c/dec/huffman.c": "b7c973c2918c6765c4eb534c3ae314055d535b6d1fafb021cee5f7eae170aae6",
+    "c/dec/huffman.h": "09f3a1f7608b09df131342c9759f4a63c19b0e784bda5e474ec01eb72699079d",
+    "c/dec/prefix.c": "0a31304f440f7bb2017d52b83ae35cb428cbc5ac2fc172c8eec2fea449c2f7cd",
+    "c/dec/prefix.h": "fe1f3630f78a0ed3f79146a52d8e480c12d130ccfe9781f03d0edc581c3b9e83",
+    "c/dec/prefix_inc.h": "e1ade26b7b1e1e56b1a91af20ef93f81ef7a4ed83e0543fd6d9eb29f5c6d2983",
+    "c/dec/state.c": "66a7c3d9c01cda374d33d3693ba45d059ff00b12114a8844ee4f2519ba2af14e",
+    "c/dec/state.h": "0518985c7c09a492a00f559da28d6b1f4226b1b12a243da5c42b998304ecc8cb",
+    "c/dec/static_init.c": "a4a308e394fe05a124d919977b3f457a06363615a882dce058f329edcf7dc851",
+    "c/dec/static_init.h": "a4f13d0e5c770ad92fb2d6b8d4a8f93bfe70b1e97352306636a1119a6f44f270",
+    "c/include/brotli/decode.h": "e2f5fdc3ae41e6b7e8986538e421ae79c095541bacf32f2bbfccf8e056405444",
+    "c/include/brotli/encode.h": "7857ec5381f7c2ae087ce990e4dd45252fc97c233180e8ef6d04d8ebdad365ef",
+    "c/include/brotli/port.h": "72b484d7a2561f3a9ad35ebd0d4f97f7a2d9863b619782ada5b083a4b6f40df5",
+    "c/include/brotli/shared_dictionary.h": "3bc1a02686d25765a27ee24c7de6136287e944dc7fe8c7deb89ed91d5d2f69ca",
+    "c/include/brotli/types.h": "ebbd136dc411cc8167636d6f54b66ad0c234dc18989265c37a28c242eaae2efd"
+  },
+  "adapter_baseline": {
+    "repository": "https://github.com/mcmilk/7-Zip-zstd.git",
+    "revision": "964ba6a645545f47edc26452a35a18c726a5f1c4",
+    "original_sha256": {
+      "CPP/7zip/Archive/BrotliHandler.cpp": "4948049573845f1987f957862ed277023fccfc03a77ae7f183989b15cf8b9ab4",
+      "CPP/7zip/Compress/BrotliDecoder.cpp": "4227cd75c3b60a84e58037e316186640e0d66bba1fa7a5322ae96a72a46ae75e",
+      "CPP/7zip/Compress/BrotliDecoder.h": "6425e54ca60794fc3320da6a3d01a5266d100baec400cef7cfdeca106137dd8b",
+      "C/zstdmt/brotli-mt_decompress.c": "200e687bc03c79d575e6b641d8d10e14529c97947ff714ee626b7747bec4d787",
+      "CPP/7zip/Bundles/Codecs/LICENSE": "f6178b8686bc052ad37c04a115946112a849856efd9bdf8c2071f83c44b59464"
+    }
+  }
+}

@@ -87,6 +87,8 @@
     "third_party/7zip/C/ZstdDec.c",
     "third_party/7zip/C/ZstdDec.h",
     "third_party/7zip/CPP/7zip/Archive/ArchiveExports.cpp",
+    "third_party/7zip/CPP/7zip/Archive/Common/DummyOutStream.cpp",
+    "third_party/7zip/CPP/7zip/Archive/Common/DummyOutStream.h",
     "third_party/7zip/CPP/7zip/Archive/Common/FindSignature.cpp",
     "third_party/7zip/CPP/7zip/Archive/Common/FindSignature.h",
     "third_party/7zip/CPP/7zip/Archive/Common/HandlerOut.cpp",
@@ -619,6 +621,9 @@
     "src/CPP/Windows/Shell.h"
   ],
   "local": [
+    "src/CPP/7zip/Archive/BrotliHandler.cpp",
+    "src/CPP/7zip/Compress/BrotliDecoder.cpp",
+    "src/CPP/7zip/Compress/BrotliDecoder.h",
     "src/CPP/7zip/UI/FileManager/PanelSelect.h",
     "src/CPP/7zip/UI/FileManager/PanelSort.h",
     "src/CPP/7zip/UI/FileManager/PanelSplitFile.h"
