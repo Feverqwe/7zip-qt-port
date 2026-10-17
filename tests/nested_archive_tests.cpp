@@ -1,4 +1,5 @@
 #include "CPP/7zip/UI/FileManager/OverwriteDialog.h"
+#include "archivecodeccatalog.h"
 #include "dot_path_cpio_fixture.h"
 #include "mainwindow.h"
 
@@ -89,17 +90,27 @@ class NestedArchiveTests : public QObject {
   private slots:
     void extractsDotFolderInNestedPayload_data() {
         QTest::addColumn<bool>("selectedOnly");
-        QTest::newRow("whole-folder") << false;
-        QTest::newRow("selected-app") << true;
+        QTest::addColumn<QString>("prefix");
+        QTest::addColumn<bool>("native");
+        QTest::newRow("whole-folder") << false << "." << false;
+        QTest::newRow("selected-app") << true << "." << false;
+        QTest::newRow("parent-whole-folder") << false << ".." << false;
+        QTest::newRow("parent-selected-app") << true << ".." << false;
+#ifdef SEVENZIP_CODEC_MODULE
+        QTest::newRow("native-parent-whole-folder") << false << ".." << true;
+        QTest::newRow("native-parent-selected-app") << true << ".." << true;
+#endif
     }
     void extractsDotFolderInNestedPayload() {
         QFETCH(bool, selectedOnly);
+        QFETCH(QString, prefix);
+        QFETCH(bool, native);
         QTemporaryDir fixture;
         QVERIFY(fixture.isValid());
         const QString cpio = fixture.filePath("Payload~");
         QFile file(cpio);
         QVERIFY(file.open(QIODevice::WriteOnly));
-        const QByteArray bytes = DotPathCpioFixture();
+        const QByteArray bytes = DotPathCpioFixture(prefix.toUtf8());
         QCOMPARE(file.write(bytes), qint64(bytes.size()));
         file.close();
         QVERIFY(QDir().mkpath(fixture.filePath("temp.pkg")));
@@ -114,6 +125,14 @@ class NestedArchiveTests : public QObject {
                               fixture.filePath("temp.pkg/Payload")));
         QVERIFY(make({"a", "-tzip", "installer.zip", "temp.pkg"}));
         ArchiveBackend backend;
+        if (native) {
+#ifdef SEVENZIP_CODEC_MODULE
+            const QString module = QString::fromUtf8(SEVENZIP_CODEC_MODULE);
+            ArchiveCodecCatalog probe(module, 0);
+            QCOMPARE(probe.result(), S_OK);
+            QCOMPARE(backend.loadCodecCatalog(module, probe.version()), S_OK);
+#endif
+        }
         MainWindow window(&backend);
         window.show();
         auto *table = window.findChild<QTableWidget *>("archiveTable");
@@ -126,7 +145,7 @@ class NestedArchiveTests : public QObject {
                     return i;
             return -1;
         };
-        for (const QString &name : {"temp.pkg", "Payload", "Payload~", "."}) {
+        for (const QString &name : QStringList{"temp.pkg", "Payload", "Payload~", prefix}) {
             QTRY_VERIFY2(row(name) >= 0, qPrintable(name));
             table->selectRow(row(name));
             table->setCurrentCell(row(name), 0);
@@ -147,7 +166,12 @@ class NestedArchiveTests : public QObject {
         });
         dismiss.start(1);
         const QString output = fixture.filePath("output");
-        window.extractTo(output, selectedOnly);
+        ExtractionOptions options;
+        if (prefix == "..") {
+            options.pathMode = ExtractionOptions::PathMode::CurrentPaths;
+            options.currentFolder = prefix;
+        }
+        window.extractTo(output, selectedOnly, {}, options);
         QVERIFY2(errors.isEmpty(), qPrintable(errors));
         QFile extracted(QDir(output).filePath(QStringLiteral("ProxyBridge.app/имя 空.txt")));
         QVERIFY(extracted.open(QIODevice::ReadOnly));

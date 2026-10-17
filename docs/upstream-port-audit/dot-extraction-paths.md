@@ -83,3 +83,46 @@ unchanged; the diagnostic copy was removed. No CPIO handler change or suppressio
 of upstream warnings is needed for this extraction fix.
 
 Windows and Linux have not been checked for this change.
+
+## Bound current-folder extraction — 2026-10-17
+
+Follow-up source review at the same full upstream revision covered
+`CPP/7zip/UI/Agent/Agent.cpp` (`CAgentFolder::Extract`, both `BindToFolder`
+overloads), `AgentProxy.cpp` (`GetDirPathParts_isChanged`), FileManager
+`PanelCopy.cpp` (`CThreadCopy::ProcessVirt`) and Common
+`ArchiveExtractCallback.cpp` (`Init`, `GetStream`, `CorrectPathParts`). The source
+folder selects archive indices and supplies its exact path parts to the callback;
+`GetStream` checks and removes that prefix before filesystem name correction.
+These existing ported bodies are preserved, including original link handling
+and the final Qt destination/link policy. No additional upstream bodies are
+copied or omitted.
+
+The Qt preflight now accepts that actual bound folder as explicit context. In
+current-path mode, when it matches the requested current folder, it checks the
+unmodified suffix after verifying the full component boundary. Thus a source
+folder literally named `..` can yield an ordinary safe destination filename.
+Parent components remaining in the suffix still fail before upstream correction
+can remove them. Full-path, no-path and console/batch validation retain their
+previous raw-path checks; supplying only a requested current folder does not
+grant this exception. Stream-specific checks remain unchanged.
+
+MainWindow supplies the prefix of the bound Agent folder; it does not infer it
+from the selected name or clean it as a filesystem path. The native decoder still
+selects exact archive indices, and the file-service fallback still selects the
+full original member name into a controlled stream. Neither transports output
+paths containing the removed prefix to the filesystem writer.
+
+Focused regressions cover matching/mismatched/absent source context, a nested
+prefix, remaining traversal, prefix-boundary confusion, reserved output names
+and occupied destinations. The nested payload scenario also covers entering a
+literal `..` folder and extracting either its contents or only the application,
+using both file-service and native decoder paths when the module is available.
+On macOS arm64, the existing incremental dev build compiled the application and
+the affected test targets. The project CTest wrapper passed all six selected
+suites: `archive_backend`, `nested_archive`, `extraction_options`,
+`source_extract_advanced`, `source_extract_backend` and `ui_copy_routing`
+(16.06 seconds total). The nested suite passed both literal-parent-folder rows
+for each transport; native module rows were enabled and did not skip. Existing
+root traversal refusals, source output/link checks, overwrite, error and
+cancellation scenarios remained covered. `git diff --check` passed. No layout
+or presentation was changed; Windows and Linux are unverified for this follow-up.

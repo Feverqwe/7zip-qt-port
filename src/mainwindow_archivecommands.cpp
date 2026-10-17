@@ -188,14 +188,14 @@ bool MainWindow::extractWithSource(const QString &destination, bool onlySelected
         QString validationError;
         const bool sourceLinks = resource->HasNativeExtractService();
         if (!backend_->validateExtraction(destination, validationNames, options, &validationError,
-                                          sourceLinks)) {
+                                          sourceLinks, archiveFolder_)) {
             QMessageBox::warning(this, QtLangText(IDS_PROGRESS_EXTRACTING), validationError);
             return true;
         }
         const QString output = QFileInfo(destination).absoluteFilePath();
         if (!QDir().mkpath(output) ||
             !backend_->validateExtraction(output, validationNames, options, &validationError,
-                                          sourceLinks)) {
+                                          sourceLinks, archiveFolder_)) {
             QMessageBox::warning(
                 this, QtLangText(IDS_PROGRESS_EXTRACTING),
                 validationError.isEmpty()

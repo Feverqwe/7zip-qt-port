@@ -86,7 +86,7 @@ bool ArchiveBackend::validateExtractionStreamOutput(const QString &destination, 
 
 bool ArchiveBackend::validateExtraction(const QString &destination, const QStringList &selected,
                                         const ExtractionOptions &options, QString *error,
-                                        bool nativeSource) const {
+                                        bool nativeSource, const QString &sourceFolder) const {
     if (destination.trimmed().isEmpty()) {
         *error = QtLocalText("Specify a destination folder.",
                              QStringLiteral("Укажите папку назначения."));
@@ -134,6 +134,8 @@ bool ArchiveBackend::validateExtraction(const QString &destination, const QStrin
     }
     QString currentFolder = options.currentFolder;
     currentFolder.replace('\\', '/');
+    QString boundFolder = sourceFolder;
+    boundFolder.replace('\\', '/');
     for (const ArchiveEntry &entry : entries_) {
         QString entryPath = entry.path;
         entryPath.replace('\\', '/');
@@ -175,19 +177,6 @@ bool ArchiveBackend::validateExtraction(const QString &destination, const QStrin
                        safePath(boundedPath.mid(colon + 1)) &&
                        !boundedPath.mid(colon + 1).contains('/');
 #endif
-        // A dot denotes the current directory in CPIO/TAR paths. Check every
-        // other raw component before source correction can erase traversal.
-        QStringList checkedParts = boundedPath.split('/');
-        checkedParts.removeAll(QStringLiteral("."));
-        const bool safeRelative =
-            (entry.directory && checkedParts.isEmpty()) || safePath(checkedParts.join('/'));
-        if ((!safeStream && !nativeStream && !safeRelative) || (entry.link && !nativeSource) ||
-            (streamFolder && !safeStream)) {
-            *error = QtLocalText("Archive contains an unsafe path or link: %1",
-                                 QStringLiteral("Архив содержит небезопасный путь или ссылку: %1"))
-                         .arg(entry.path);
-            return false;
-        }
         QString relative = boundedPath;
         if (options.pathMode == ExtractionOptions::PathMode::CurrentPaths &&
             !currentFolder.isEmpty()) {
@@ -202,6 +191,21 @@ bool ArchiveBackend::validateExtraction(const QString &destination, const QStrin
             relative.remove(0, prefix.size());
         } else if (options.pathMode == ExtractionOptions::PathMode::NoPaths)
             relative = relative.section('/', -1);
+        // Only the bound source folder guarantees removal of this exact
+        // archive prefix. A plain console extraction still uses the full name.
+        const bool sourceRelative = options.pathMode == ExtractionOptions::PathMode::CurrentPaths &&
+                                    !boundFolder.isEmpty() && boundFolder == currentFolder;
+        QStringList checkedParts = (sourceRelative ? relative : boundedPath).split('/');
+        checkedParts.removeAll(QStringLiteral("."));
+        const bool safeRelative =
+            (entry.directory && checkedParts.isEmpty()) || safePath(checkedParts.join('/'));
+        if ((!safeStream && !nativeStream && !safeRelative) || (entry.link && !nativeSource) ||
+            (streamFolder && !safeStream)) {
+            *error = QtLocalText("Archive contains an unsafe path or link: %1",
+                                 QStringLiteral("Архив содержит небезопасный путь или ссылку: %1"))
+                         .arg(entry.path);
+            return false;
+        }
         if (!safeStream && !nativeStream) {
             UStringVector parts;
             SplitPathToParts(UString(relative.toStdWString().c_str()), parts);

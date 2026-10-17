@@ -551,6 +551,54 @@ class ArchiveBackendTests : public QObject, protected ArchiveBackendTestSupport 
         QVERIFY(extracted.open(QIODevice::ReadOnly));
         QCOMPARE(extracted.readAll(), QByteArray("payload bytes"));
     }
+    void currentSourceFolderValidation_data() {
+        QTest::addColumn<QString>("entry");
+        QTest::addColumn<QString>("currentFolder");
+        QTest::addColumn<QString>("sourceFolder");
+        QTest::addColumn<bool>("accepted");
+        QTest::newRow("bound-parent") << "../имя 空.txt" << ".." << ".." << true;
+        QTest::newRow("bound-nested-parent")
+            << "outer/../inside/имя 空.txt" << "outer/../inside" << "outer/../inside" << true;
+        QTest::newRow("unbound-parent") << "../file.txt" << ".." << "" << false;
+        QTest::newRow("different-binding") << "../file.txt" << ".." << "other" << false;
+        QTest::newRow("remaining-traversal")
+            << "../inside/../escape.txt" << "../inside" << "../inside" << false;
+        QTest::newRow("prefix-boundary")
+            << "../inside-other/file.txt" << "../inside" << "../inside" << false;
+        QTest::newRow("reserved-output") << "../CON.txt" << ".." << ".." << false;
+    }
+    void currentSourceFolderValidation() {
+        QFETCH(QString, entry);
+        QFETCH(QString, currentFolder);
+        QFETCH(QString, sourceFolder);
+        QFETCH(bool, accepted);
+        QTemporaryDir fixture;
+        qputenv("SEVENZIP_TEST_HELPER", "listing");
+        qputenv("SEVENZIP_TEST_LISTING", ("Path = " + entry + "\nSize = 1\n\n").toUtf8());
+        const auto restore = qScopeGuard([] {
+            qunsetenv("SEVENZIP_TEST_HELPER");
+            qunsetenv("SEVENZIP_TEST_LISTING");
+        });
+        ArchiveBackend backend(nullptr, QCoreApplication::applicationFilePath());
+        backend.list(fixture.filePath("fixture.cpio"));
+        await(backend, true);
+        ExtractionOptions options;
+        options.pathMode = ExtractionOptions::PathMode::CurrentPaths;
+        options.currentFolder = currentFolder;
+        QString error;
+        const QString output = fixture.filePath("output");
+        QCOMPARE(backend.validateExtraction(output, {entry}, options, &error, false, sourceFolder),
+                 accepted);
+        if (accepted) {
+            options.pathMode = ExtractionOptions::PathMode::FullPaths;
+            QVERIFY(
+                !backend.validateExtraction(output, {entry}, options, &error, false, sourceFolder));
+            options.pathMode = ExtractionOptions::PathMode::CurrentPaths;
+            QVERIFY(QDir().mkpath(QDir(output).filePath(entry.section('/', -1))));
+            QVERIFY(
+                !backend.validateExtraction(output, {entry}, options, &error, false, sourceFolder));
+        }
+    }
     void unsafePath() {
         QTemporaryDir temp;
         QVERIFY(temp.isValid());

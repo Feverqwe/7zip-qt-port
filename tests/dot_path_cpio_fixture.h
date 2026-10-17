@@ -5,7 +5,7 @@
 
 // A newc payload with the current-directory entry and ./ names used by pkg
 // payloads. Keep literal names: archive creation tools can strip the dots.
-inline QByteArray DotPathCpioFixture() {
+inline QByteArray DotPathCpioFixture(const QByteArray &root = ".") {
     QByteArray archive;
     quint32 inode = 1;
     const auto append = [&](const QByteArray &name, bool directory, const QByteArray &bytes) {
@@ -23,10 +23,10 @@ inline QByteArray DotPathCpioFixture() {
         while (archive.size() % 4)
             archive += '\0';
     };
-    append(".", true, {});
-    append("./ProxyBridge.app", true, {});
-    append(QStringLiteral("./ProxyBridge.app/имя 空.txt").toUtf8(), false, "payload bytes");
-    append("./._ProxyBridge.app", false, "sidecar bytes");
+    append(root, true, {});
+    append(root + "/ProxyBridge.app", true, {});
+    append(root + QStringLiteral("/ProxyBridge.app/имя 空.txt").toUtf8(), false, "payload bytes");
+    append(root + "/._ProxyBridge.app", false, "sidecar bytes");
     append("TRAILER!!!", false, {});
     return archive;
 }

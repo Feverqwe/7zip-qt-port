@@ -205,10 +205,11 @@ class ArchiveBackend : public QObject {
                                     const QString &output, const QString &format,
                                     const QString &password, bool isAltStream = false);
     bool hasListedSourceArchive(const QString &archive) const;
-    // Shared destination/path guard for the native archive callback transport.
+    // sourceFolder is the exact bound Agent prefix removed by the source callback;
+    // plain console extraction must leave it empty.
     bool validateExtraction(const QString &destination, const QStringList &selected,
                             const ExtractionOptions &options, QString *error,
-                            bool nativeSource = false) const;
+                            bool nativeSource = false, const QString &sourceFolder = {}) const;
     static bool validateExtractionOutput(const QString &destination, const QString &path,
                                          bool directory, QString *error);
     static bool validateExtractionStreamOutput(const QString &destination, const QString &path,
