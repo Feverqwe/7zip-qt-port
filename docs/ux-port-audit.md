@@ -39,6 +39,13 @@ count remain open until their actual prerequisites are accepted.
 
 ### Current receipts
 
+[Current initial-document delivery](upstream-port-audit/p3-04-associated-bootstrap-delivery-2026-10-17.md)
+packagesd0a74dc on three OS with1056 exact inputs, relocation15/14/14,
+payload/license/SFX/dependency/private-ABI/native-icon checks PASS. Cocoa6Qt
+checks the corrected single initial window and independent repeated documents;
+the fresh physical Finder retry is pending. ZIP was restored to Archive Utility
+at the user's request and independently queried before that retry.
+
 [Current native-association delivery](upstream-port-audit/p3-04-native-associations-delivery-2026-10-17.md)
 packages5ccf3f1 on three OS with1056 exact inputs, relocation15/14/14 and fresh
 payload/license/SFX/dependency/private-ABI checks PASS. Manual Finder retry opens

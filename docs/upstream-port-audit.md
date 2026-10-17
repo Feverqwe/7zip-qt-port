@@ -34,7 +34,8 @@
 
 ## P3-04 — Current source/Copy delivery (2026-10-17)
 
-[Current native association corrections in three private Release packages](upstream-port-audit/p3-04-native-associations-delivery-2026-10-17.md).
+[Current initial-document correction in three private Release packages](upstream-port-audit/p3-04-associated-bootstrap-delivery-2026-10-17.md).
+[Previous native association delivery](upstream-port-audit/p3-04-native-associations-delivery-2026-10-17.md).
 [Previous Compression Options delivery](upstream-port-audit/p3-04-compression-options-delivery-2026-10-17.md).
 [Previous Options footer/Control delivery](upstream-port-audit/p3-04-options-delivery-2026-10-17.md).
 
