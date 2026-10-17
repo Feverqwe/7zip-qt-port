@@ -13,6 +13,8 @@ only OptionsDialog.cpp and SystemPage.cpp differ from product17fab0f.
 hashes under the final availability evidence root. The109-unit disposition and
 unique owners remain unchanged. [Keyboard presentation scope and dependencies](../upstream-port-audit/p3-06-options-keyboard-2026-10-17.md)
 do not change source Apply bodies or introduce another implementation.
+After commit e3b3c65, `source-inventory-e3b3c65.json` additionally verifies all
+present local owner bytes against committed Git blobs; the disposition is unchanged.
 
 Product17fab0f is revalidated on2026-10-17 against all302 rows in
 `source-inventory-17fab0f.json`: every original blob/hash matches the full pin,

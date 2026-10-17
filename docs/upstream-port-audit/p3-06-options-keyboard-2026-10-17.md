@@ -64,5 +64,6 @@ Ignored evidence root `build/review/final-availability-8e9343b-20261014/`:
 (run `20261017T061347Z-22d859d6`). This localized component uses focused checks;
 prior default gates and explicitly requested11 long suites retain their recorded
 revision/scope. Live System association values/icons, full rendered UX acceptance
-and the separate Windows cold codec timeout remain open. Existing product17fab0f
-packages precede this change and require refresh.
+and the separate Windows cold codec timeout remain open. The subsequent
+[three-platform e3b3c65 delivery](p3-04-2026-10-16.md#delivery-after-options-keyboard-activation-e3b3c65)
+refreshes this committed component; older17fab0f artifacts retain their scope.
