@@ -216,15 +216,21 @@ class HelpSourceTests : public QObject {
         QTest::addColumn<QString>("caption");
         QTest::addColumn<QString>("topic");
         QTest::addColumn<QString>("content");
+        QTest::addColumn<bool>("keyboard");
         QTest::newRow("method") << "-m (Method)" << "method.htm"
-                                << "Specifies the compression method.";
+                                << "Specifies the compression method." << false;
         QTest::newRow("sfx") << "-sfx (Create SFX archive)" << "sfx.htm"
-                             << "Creates self extracting archive.";
+                             << "Creates self extracting archive." << false;
+        QTest::newRow("method-keyboard") << "-m (Method)" << "method.htm"
+                                         << "Specifies the compression method." << true;
+        QTest::newRow("sfx-keyboard") << "-sfx (Create SFX archive)" << "sfx.htm"
+                                      << "Creates self extracting archive." << true;
     }
     void addHelpCrossChapterLinks() {
         QFETCH(QString, caption);
         QFETCH(QString, topic);
         QFETCH(QString, content);
+        QFETCH(bool, keyboard);
         QWidget parent;
         ShowHelpWindow("fm/plugins/7-zip/add.htm#options", &parent);
         auto *window = parent.findChild<QDialog *>("helpWindow");
@@ -234,7 +240,17 @@ class HelpSourceTests : public QObject {
         const auto link = browser->document()->find(caption);
         QVERIFY(!link.isNull());
         QVERIFY(link.charFormat().isAnchor());
-        browser->anchorClicked(QUrl(link.charFormat().anchorHref()));
+        browser->setTextCursor(link);
+        browser->ensureCursorVisible();
+        QApplication::processEvents();
+        QTextCursor clickCursor = link;
+        clickCursor.setPosition(link.selectionStart() + 2);
+        const QPoint click = browser->cursorRect(clickCursor).center();
+        QVERIFY(!browser->anchorAt(click).isEmpty());
+        if (keyboard)
+            QTest::keyClick(browser, Qt::Key_Return);
+        else
+            QTest::mouseClick(browser->viewport(), Qt::LeftButton, Qt::NoModifier, click);
         QCOMPARE(browser->source().path(), "/upstream/7zip/Help/cmdline/switches/" + topic);
         QVERIFY2(browser->toPlainText().contains(content), qPrintable(browser->toPlainText()));
         browser->backward();

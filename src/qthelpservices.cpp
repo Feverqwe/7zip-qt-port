@@ -12,6 +12,7 @@
 #include <QMessageBox>
 #include <QPushButton>
 #include <QScrollBar>
+#include <QTextBlock>
 #include <QTextBrowser>
 #include <QTextDocument>
 #include <QUrl>
@@ -24,7 +25,9 @@ namespace {
 // layout and typography, replacing only its fixed light-theme color tokens.
 class HelpBrowser final : public QTextBrowser {
   public:
-    explicit HelpBrowser(QWidget *parent) : QTextBrowser(parent) {}
+    HelpBrowser(QWidget *parent, const QUrl &root) : QTextBrowser(parent) {
+        connect(this, &QTextBrowser::sourceChanged, this, [this, root] { resolveHelpLinks(root); });
+    }
 
   protected:
     QVariant loadResource(int type, const QUrl &url) override {
@@ -52,6 +55,44 @@ class HelpBrowser final : public QTextBrowser {
     }
 
   private:
+    void resolveHelpLinks(const QUrl &root) {
+        // QTextBrowser resolves hrefs before emitting anchorClicked, so resolve
+        // them inside the CHM namespace before mouse/keyboard activation.
+        QUrl member;
+        member.setScheme("help");
+        member.setPath('/' + source().path().mid(root.path().size()));
+        struct Link {
+            int start;
+            int length;
+            QString href;
+        };
+        QList<Link> links;
+        for (auto block = document()->begin(); block.isValid(); block = block.next()) {
+            for (auto it = block.begin(); !it.atEnd(); ++it) {
+                const auto fragment = it.fragment();
+                const auto format = fragment.charFormat();
+                const QUrl href(format.anchorHref());
+                if (!format.isAnchor() || href.isEmpty() || !href.isRelative() ||
+                    !href.authority().isEmpty())
+                    continue;
+                const QUrl resolved = member.resolved(href);
+                QUrl target = root;
+                target.setPath(root.path() + resolved.path().mid(1).toLower());
+                target.setFragment(resolved.fragment());
+                target.setQuery(resolved.query());
+                links.append({fragment.position(), fragment.length(), target.toString()});
+            }
+        }
+        for (const auto &link : links) {
+            QTextCursor cursor(document());
+            cursor.setPosition(link.start);
+            cursor.setPosition(link.start + link.length, QTextCursor::KeepAnchor);
+            QTextCharFormat format;
+            format.setAnchorHref(link.href);
+            cursor.mergeCharFormat(format);
+        }
+    }
+
     QByteArray themedStyle(const QByteArray &css) const {
         const QPalette colors = palette();
         const bool dark =
@@ -119,7 +160,9 @@ void QtOpenHelpTopic(const QString &topic, QWidget *parent, const QString &root)
     QtBindLocalText(window, "7-Zip Help", "Справка 7-Zip");
     window->resize(760, 560);
     auto *layout = new QVBoxLayout(window);
-    auto *browser = new HelpBrowser(window);
+    const QUrl helpRoot = root.isEmpty() ? QUrl("qrc:/upstream/7zip/Help/")
+                                         : QUrl::fromLocalFile(QDir(root).absolutePath() + '/');
+    auto *browser = new HelpBrowser(window, helpRoot);
     browser->setObjectName("helpBrowser");
     browser->setOpenLinks(false);
     layout->addWidget(browser, 1);
@@ -127,28 +170,13 @@ void QtOpenHelpTopic(const QString &topic, QWidget *parent, const QString &root)
         root.isEmpty() ? QUrl("qrc:/upstream/7zip/Help/" + fileName) : QUrl::fromLocalFile(path);
     source.setFragment(relative.fragment());
     browser->setSource(source);
-    const QUrl helpRoot = root.isEmpty() ? QUrl("qrc:/upstream/7zip/Help/")
-                                         : QUrl::fromLocalFile(QDir(root).absolutePath() + '/');
-    QObject::connect(
-        browser, &QTextBrowser::anchorClicked, window, [browser, helpRoot](const QUrl &url) {
-            QUrl target = browser->source().resolved(url);
-            if (url.isRelative() && url.authority().isEmpty()) {
-                // Resolve within the CHM namespace, so excess ../ segments stop at
-                // its root rather than escaping the resource/installation prefix.
-                QUrl member;
-                member.setScheme("help");
-                member.setPath('/' + browser->source().path().mid(helpRoot.path().size()));
-                const QUrl resolved = member.resolved(url);
-                target = helpRoot;
-                target.setPath(helpRoot.path() + resolved.path().mid(1).toLower());
-                target.setFragment(resolved.fragment());
-                target.setQuery(resolved.query());
-            }
-            if (target.scheme() == "http" || target.scheme() == "https")
-                QDesktopServices::openUrl(target);
-            else if (target.scheme() == browser->source().scheme())
-                browser->setSource(target);
-        });
+    QObject::connect(browser, &QTextBrowser::anchorClicked, window, [browser](const QUrl &url) {
+        const QUrl target = browser->source().resolved(url);
+        if (target.scheme() == "http" || target.scheme() == "https")
+            QDesktopServices::openUrl(target);
+        else if (target.scheme() == browser->source().scheme())
+            browser->setSource(target);
+    });
     auto *buttons = new QDialogButtonBox(QDialogButtonBox::Close, window);
     auto *back = buttons->addButton(QString(), QDialogButtonBox::ActionRole);
     QtBindLocalText(back, "Back", "Назад");
