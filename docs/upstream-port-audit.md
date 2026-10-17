@@ -20,6 +20,8 @@
 
 [Actual-main macOS launch completion, late-document RED/GREEN and restored ZIP preference](upstream-port-audit/p3-06-associated-bootstrap-2026-10-17.md#native-launch-completion-correction).
 
+[Current private56c01ba delivery on three OS and manual Finder retry](upstream-port-audit/p3-06-associated-bootstrap-2026-10-17.md#private-delivery-and-manual-finder-acceptance).
+
 [Windows HKCU/HKLM native registration, privilege refusal and nonmutating detection](upstream-port-audit/p3-06-windows-registration-2026-10-17.md).
 
 ## P3-03/P3-06 — Copy/Move runtime comparison (2026-10-17)

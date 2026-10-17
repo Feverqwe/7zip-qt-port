@@ -154,5 +154,46 @@ All11 source/build/test hashes match the root after collection. Incremental
 trees/cache are reused; no full/slow gate is repeated for this bounded correction.
 Evidence remains in `build/review/goal-associated-launchservices-20261017/`:
 native lifecycle traces, RED/accepted LastTest, source guards and widget JSON.
-Temporary source tracing is removed. Refreshed packages and physical Finder
-retry remain required; parent count44/47 is unchanged.
+Temporary source tracing is removed. The delivery and manual retry below
+supersede the pending-package/Finder boundary; parent count44/47 is unchanged.
+
+## Private delivery and manual Finder acceptance
+
+Product `56c01ba2a7f26bc33993fd7975f95b08abf49410` is packaged on all three
+platforms with Release/testing-OFF and1058 matching committed product/build
+inputs. Existing incremental trees and compiler caches are retained.
+
+| Artifact | Bytes | SHA256 | Relocated scenarios |
+| --- | ---: | --- | ---: |
+| macOS arm64 ZIP | 12537567 | `04bc8bdfa918754c8b87b9d073a656742b0e3383c8debb7b256762ee396e71b7` | 15 |
+| Linux x64 TAR | 34218152 | `cfe0c2c66ef34da7e951a976d037737e7da1ceac420cbf6fcd3f2f1e2075d99b` | 14 |
+| Windows x64 ZIP | 28576930 | `cf412c540ead3ba5470acae799a913c122a0ad5dd1acca5a2f0c2af0ce29aab6` | 14 |
+
+Fresh payload/license/notices/SFX checks pass, including38 bundled Qt license
+files. macOS strict ad-hoc signature,11 Mach-O/127 load/5 ID inspection,
+bundled Qt private-symbol resolution and original ICNS bytes pass. Linux ELF
+bindings/runpaths and Windows26 PE/345 imports/55 resolved system dependencies
+pass. Windows native extracted color/mask match the source ICO for all three
+packaged executables. These checks make no pixel-parity claim. Eight retained
+runtime producer hashes match on both guests. No full/slow gate is repeated.
+
+Guest packaging run `20261017T164432Z-fb18e29e` passes on both guests. An
+auxiliary icon attempt fails before readiness with invalid inventory JSON;
+the simultaneous storage query reports a host System.OutOfMemoryException.
+The subsequent read-only memory query succeeds; this does not establish the
+cause. Sequential icon retry `20261017T165228Z-afec7579` and storage retry
+both finish successfully. Neither package validation nor that failed auxiliary
+attempt is relabelled. Evidence: `build/review/goal-delivery-56c01ba/`.
+
+For the fresh private56c01ba bundle, the user reports one window on initial
+Finder opening, then clarifies that opening an archive with a window already
+open yields two. This accepts the reported extra-initial-window correction and
+preservation of the existing window in that manual scenario. No Sevenzip process
+remains at the immediate identity query, so the executed bundle URL cannot be
+independently established. This limit remains separate from the exact-identity
+actual-main native regression above. An independent NSWorkspace query confirms
+ZIP still uses Archive Utility; no additional default change is needed.
+
+Protected Windows UserChoice/OS Settings, remaining native workflow and Windows
+cold cause/stability remain separate open scopes. No publication, push or
+upstream modification is performed.

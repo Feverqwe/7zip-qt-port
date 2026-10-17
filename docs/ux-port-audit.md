@@ -25,7 +25,7 @@ existence does not make every current workflow or platform checked.
 | Browse and temporary files | [Original populated views, keyboard probes and native three-OS consumers](upstream-port-audit/p3-06-source-browsers-2026-10-16.md) | Native folder/save OS panels use the separately accepted manual scenes; Xvfb evidence is not a physical desktop observation. |
 | Shared input, Split/Combine destination and About | [Original EN/RU views, source callbacks and native consumers](upstream-port-audit/p3-06-primitives-2026-10-16.md) | Composite owner checks retain their revisions; they are not a new whole-product gate. |
 | Properties/History lists, Link and normal/total Benchmark | [Ten original states and three-OS component checks](upstream-port-audit/p3-06-secondary-dialogs-2026-10-16.md) | POSIX Junction/WSL capability differences and native modal chrome remain explicit. |
-| Six Options pages, Apply/Cancel, language and keyboard | [Frame](upstream-port-audit/p3-06-options-2026-10-16.md), [keyboard](upstream-port-audit/p3-06-options-keyboard-2026-10-17.md), [footer/manual Control](upstream-port-audit/p3-06-options-control-2026-10-17.md), [live System](upstream-port-audit/p3-06-system-live-2026-10-17.md), [GIO workflow](upstream-port-audit/p3-06-system-native-2026-10-17.md), [native mutation/opening](upstream-port-audit/p3-06-native-associations-2026-10-17.md), [Windows scopes](upstream-port-audit/p3-06-windows-registration-2026-10-17.md) | Windows unique-extension HKCU/HKLM mutation/recipient and manual Mac ZIP assignment/restoration are checked separately. Protected UserChoice/OS Settings selection remains open; packaged Finder retry still reports an extra window. |
+| Six Options pages, Apply/Cancel, language and keyboard | [Frame](upstream-port-audit/p3-06-options-2026-10-16.md), [keyboard](upstream-port-audit/p3-06-options-keyboard-2026-10-17.md), [footer/manual Control](upstream-port-audit/p3-06-options-control-2026-10-17.md), [live System](upstream-port-audit/p3-06-system-live-2026-10-17.md), [GIO workflow](upstream-port-audit/p3-06-system-native-2026-10-17.md), [native mutation/opening](upstream-port-audit/p3-06-native-associations-2026-10-17.md), [Windows scopes](upstream-port-audit/p3-06-windows-registration-2026-10-17.md) | Windows unique-extension HKCU/HKLM mutation/recipient and manual Mac ZIP assignment/restoration are checked separately. Protected UserChoice/OS Settings selection remains open; current Finder retry is accepted in the bounded receipt below. |
 | External application/desktop integration | [Finder acceptance](porting-checklist/p3.md), [Explorer transfer/Escape](upstream-port-audit/p3-03-native-drag-fixtures-2026-10-16.md#physical-windows-explorer-recipient-2026-10-17), [editor completion](upstream-port-audit/p3-03-editor-stability-2026-10-16.md), [source closure](upstream-port-audit/p3-05-source-closure-2026-10-17.md) | Keep OS-recipient, command-dispatch and synthetic-widget evidence separate. Unrelated dialog changes do not invalidate unchanged accepted Finder transport. |
 
 No additional unpaired desktop dialog family is identified by this reconciliation.
@@ -46,14 +46,18 @@ without the wait, then GREEN1 archive window; ordinary/CLI startup also pass.
 Mac focused4/4 and Cocoa6Qt pass; Linux/Windows direct consumers3/3 each pass.
 Three normal/compact widget JSON reports remain valid. The live manual process
 was build/dev and already contained the earlier desktop entry, so an old binary
-alone did not explain the failure. ZIP is restored to Archive Utility. Packages
-and physical Finder retry for the new completion correction remain pending.
+alone did not explain the failure. ZIP is restored to Archive Utility.
+[Current private delivery and manual retry](upstream-port-audit/p3-06-associated-bootstrap-2026-10-17.md#private-delivery-and-manual-finder-acceptance)
+verify56c01ba packages on3OS with1058 committed inputs and relocation15/14/14.
+The user confirms one initial window and two when opening with a window already
+open. The process has terminated before identity inspection; the manually run
+bundle URL is unverified. Native exact-identity regression remains separate.
 
 [Current Windows registration scopes](upstream-port-audit/p3-06-windows-registration-2026-10-17.md)
 check native HKCU/HKLM Apply/Clear/recipient, Limited HKLM refusal and fix
 unwanted empty UserChoice creation during detection. Final scoped administrator
 1/1 and Limited direct-consumer4/4 pass,42Qt total without failures/skips.
-Current private packagesaae7876 include this Windows correction:1056 committed
+Previous private packagesaae7876 include this Windows correction:1056 committed
 inputs match, relocation15/14/14 and fresh payload/license/SFX/dependency/private
 ABI/native-icon checks pass. macOS behavior is unchanged from d0a74dc.
 
