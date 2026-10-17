@@ -2,7 +2,10 @@
 import hashlib
 import importlib.util
 import io
+import os
 from pathlib import Path
+import shutil
+import subprocess
 import tarfile
 import tempfile
 import unittest
@@ -23,6 +26,49 @@ release = load_script("release")
 
 
 class PackageTests(unittest.TestCase):
+    def test_local_install_replaces_old_dependencies_only_after_success(self):
+        with tempfile.TemporaryDirectory(prefix="install 空 ") as temporary:
+            install = Path(temporary) / "dist"
+            install.mkdir()
+            (install / "app").write_bytes(b"old working application")
+            (install / "old-qt-dependency").write_bytes(b"obsolete runtime")
+
+            def install_fixture(command, **kwargs):
+                runtime = Path(command[command.index("--prefix") + 1])
+                runtime.mkdir()
+                (runtime / "app").write_bytes(b"new working application")
+
+            with patch.object(package.subprocess, "run", side_effect=install_fixture):
+                with patch.object(package, "finalize_runtime", side_effect=ValueError("bad runtime")):
+                    with self.assertRaises(ValueError):
+                        package.install_local_runtime(Path("build"), install, "Darwin")
+                self.assertEqual((install / "app").read_bytes(), b"old working application")
+                self.assertEqual((install / "old-qt-dependency").read_bytes(), b"obsolete runtime")
+                with patch.object(package, "finalize_runtime"):
+                    package.install_local_runtime(Path("build"), install, "Darwin")
+            self.assertEqual((install / "app").read_bytes(), b"new working application")
+            self.assertEqual(sum(path.stat().st_size for path in install.rglob("*")
+                                 if path.is_file()), len(b"new working application"))
+
+    @unittest.skipIf(os.name == "nt", "Unix entry aliases")
+    def test_compact_runtime_preserves_named_entries_without_duplicate_payload(self):
+        with tempfile.TemporaryDirectory(prefix="runtime 空 ") as temporary:
+            root = Path(temporary)
+            binary = root / "bin/sevenzip_desktop"
+            binary.parent.mkdir()
+            binary.write_text('#!/bin/sh\nbasename "$0"\n')
+            binary.chmod(0o755)
+            for alias in ("7zFM", "7zG"):
+                shutil.copy2(binary, binary.parent / alias)
+            for _ in range(2):
+                package.finalize_runtime(root, "Linux")
+                for alias in ("7zFM", "7zG"):
+                    self.assertEqual(subprocess.check_output([str(binary.parent / alias)], text=True),
+                                     alias + "\n")
+                payload_bytes = sum(path.stat().st_size for path in root.rglob("*")
+                                    if path.is_file() and not path.is_symlink())
+                self.assertEqual(payload_bytes, binary.stat().st_size)
+
     def test_windows_copies_transitive_crt_only_without_installer(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary) / "package"

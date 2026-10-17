@@ -102,11 +102,17 @@ if [[ "$(uname -s)" == Darwin ]]; then
     export CPLUS_INCLUDE_PATH="$sdk_cxx_headers${CPLUS_INCLUDE_PATH:+:$CPLUS_INCLUDE_PATH}"
   fi
 
-  if [[ -z "${CMAKE_PREFIX_PATH:-}" ]] && command -v brew >/dev/null 2>&1 && brew list --versions qtbase >/dev/null 2>&1; then
-    configure -DCMAKE_PREFIX_PATH="$(brew --prefix qtbase)"
-  else
-    configure
+  if [[ -z "${CMAKE_PREFIX_PATH:-}" ]]; then
+    export CMAKE_PREFIX_PATH="$project_root/build/qt/6.12.0/macos"
+    if [[ ! -f "$CMAKE_PREFIX_PATH/lib/cmake/Qt6/Qt6Config.cmake" ]]; then
+      printf 'Install the official Qt 6.12.0 macOS kit into build/qt, or set CMAKE_PREFIX_PATH to its macos directory. See docs/development.md.\n' >&2
+      exit 2
+    fi
   fi
+  # A different SDK must not inherit cached package locations from Homebrew.
+  # Keep the build tree and compiler cache; refresh only Qt package discovery.
+  configure -U 'Qt6*_DIR' "-DCMAKE_PREFIX_PATH=$CMAKE_PREFIX_PATH" \
+    -DCMAKE_OSX_DEPLOYMENT_TARGET=14.4
 else
   configure
 fi

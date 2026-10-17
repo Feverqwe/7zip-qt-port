@@ -70,7 +70,10 @@ include(cmake/DeveloperWorkflow.cmake)
         command = [sys.executable, str(root / "scripts/verify.py"), "--tests", selection, "--skip-runtime"]
         if plan:
             command.append("--plan")
-        result = subprocess.run(command, cwd=root, text=True, capture_output=True)
+        # This fixture exercises the wrappers without any Qt dependency.
+        # Supply its own prefix instead of requiring a machine-local SDK.
+        environment = dict(os.environ, CMAKE_PREFIX_PATH=str(root))
+        result = subprocess.run(command, cwd=root, env=environment, text=True, capture_output=True)
         if succeeds:
             self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         else:

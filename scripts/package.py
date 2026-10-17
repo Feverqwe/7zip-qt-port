@@ -118,6 +118,11 @@ def compact_and_sign(bundle):
             thin = path.with_name(path.name + ".thin")
             subprocess.run(["lipo", str(path), "-thin", architecture, "-output", str(thin)], check=True)
             thin.replace(path)
+        signed = subprocess.run(["codesign", "--display", str(path)],
+                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        if signed.returncode == 0:
+            # These bytes are about to change; sign the finished payload below.
+            subprocess.run(["codesign", "--remove-signature", str(path)], check=True)
         subprocess.run(["strip", "-x", str(path)], check=True)
     sign_bundle(bundle)
 
@@ -126,12 +131,15 @@ def sign_bundle(bundle):
     # Same inside-out ad-hoc signing order as htopQt/scripts/package.py.
     # Include the console engine/module in Resources as nested runtime code.
     containers = []
+    main_executable = bundle / "Contents/MacOS/Sevenzip"
     for path in bundle.rglob("*"):
         if path.is_symlink():
             continue
         if path.is_dir() and path.suffix in {".framework", ".bundle", ".app"}:
             containers.append(path)
-        if path.is_file():
+        # Signing the main executable also signs its enclosing app, which must
+        # wait until all nested code has a valid signature.
+        if path.is_file() and path != main_executable:
             with path.open("rb") as stream:
                 if stream.read(4) not in MACHO_MAGIC:
                     continue
@@ -151,19 +159,67 @@ def sign_bundle(bundle):
     subprocess.run(["codesign", "--verify", "--deep", "--strict", str(bundle)], check=True)
 
 
+def finalize_runtime(install, system):
+    if system == "Darwin":
+        bundle = install / "Sevenzip.app"
+        executable_dir = bundle / "Contents/MacOS"
+        executable = "Sevenzip"
+    elif system == "Linux":
+        executable_dir = install / "bin"
+        executable = "sevenzip_desktop"
+    if system in {"Darwin", "Linux"}:
+        # Entry names select the original FM/GUI modes; share their executable.
+        for alias in ("7zFM", "7zG"):
+            path = executable_dir / alias
+            path.unlink(missing_ok=True)
+            path.symlink_to(executable)
+    prune_development(install)
+    validate_payload(install)
+    if system == "Darwin":
+        compact_and_sign(bundle)
+
+
+def install_local_runtime(build_dir, install, system):
+    install.parent.mkdir(parents=True, exist_ok=True)
+    with tempfile.TemporaryDirectory(prefix=".sevenzip-install-", dir=install.parent) as temporary:
+        stage = Path(temporary)
+        runtime = stage / "runtime"
+        subprocess.run(["cmake", "--install", str(build_dir), "--prefix", str(runtime)], check=True)
+        finalize_runtime(runtime, system)
+        # A fresh payload excludes dependencies left by a previous Qt kit.
+        previous = stage / "previous"
+        if install.exists():
+            install.rename(previous)
+        try:
+            runtime.rename(install)
+        except OSError:
+            if previous.exists():
+                previous.rename(install)
+            raise
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--build-dir", type=Path, default=ROOT / "build/release")
-    parser.add_argument("--qt-source", type=Path, required=True)
-    parser.add_argument("--qt-sha256", type=Path, required=True)
+    parser.add_argument("--install-only", type=Path, metavar="DIRECTORY",
+                        help="Prepare a local runtime installation without creating an archive")
+    parser.add_argument("--qt-source", type=Path)
+    parser.add_argument("--qt-sha256", type=Path)
     parser.add_argument("--icu-license", type=Path)
     parser.add_argument("--vc-runtime", type=Path)
     parser.add_argument("--vc-notices", type=Path)
     args = parser.parse_args()
+    system = platform.system()
+    if args.install_only is not None:
+        install = args.install_only.resolve()
+        install_local_runtime(args.build_dir, install, system)
+        print(install)
+        return
+    if args.qt_source is None or args.qt_sha256 is None:
+        parser.error("Archives require --qt-source and --qt-sha256")
     info = json.loads((args.build_dir / "PackageInfo.json").read_text())
     destination = ROOT / "build/packages"
     destination.mkdir(parents=True, exist_ok=True)
-    system = platform.system()
     if system == "Windows" and (args.vc_runtime is None or args.vc_notices is None):
         parser.error("Windows packages require --vc-runtime and --vc-notices")
     arch = {"AMD64": "x86_64", "aarch64": "arm64"}.get(platform.machine(), platform.machine())
@@ -174,19 +230,9 @@ def main():
         subprocess.run(["cmake", "--install", str(args.build_dir), "--prefix", str(install)], check=True)
         if system == "Darwin":
             bundle = install / "Sevenzip.app"
-            # Build aliases are copies; installed aliases share the actual application.
-            for alias in ("7zFM", "7zG"):
-                path = bundle / "Contents/MacOS" / alias
-                path.unlink(missing_ok=True)
-                path.symlink_to("Sevenzip")
             notices = bundle / "Contents/Resources/Notices"
         else:
             notices = install / "share/licenses/sevenzip-desktop"
-            if system == "Linux":
-                for alias in ("7zFM", "7zG"):
-                    path = install / "bin" / alias
-                    path.unlink()
-                    path.symlink_to("sevenzip_desktop")
         qt_notices(args.qt_source, args.qt_sha256, info["qt_version"], notices / "Qt")
         if system == "Windows":
             deploy_crt(install, args.vc_runtime)
@@ -195,10 +241,8 @@ def main():
             if args.icu_license is None:
                 raise ValueError("Deployed ICU needs its license input")
             shutil.copy2(args.icu_license, notices / "ICU-LICENSE")
-        prune_development(install)
-        validate_payload(install)
+        finalize_runtime(install, system)
         if system == "Darwin":
-            compact_and_sign(bundle)
             archive = stage / (name + ".zip")
             subprocess.run(["ditto", "--norsrc", "-c", "-k", "--keepParent",
                             str(bundle), str(archive)], check=True)

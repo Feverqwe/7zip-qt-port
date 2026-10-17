@@ -26,7 +26,7 @@ SplitPromptObservation SubmitInvalidSplit(CSplitDialog &dialog, const QString &r
             box->icon() == QMessageBox::Critical && box->standardButtons() == QMessageBox::Ok &&
             box->textFormat() == Qt::PlainText && ok && ok->isDefault() &&
             observed.text == QString::fromWCharArray(LangString(IDS_INCORRECT_VOLUME_SIZE));
-#ifdef Q_OS_MAC
+#ifdef Q_OS_MACOS
         observed.sourcePolicy &= box->windowTitle().isEmpty();
 #else
         observed.sourcePolicy &= box->windowTitle() == QStringLiteral("7-Zip");

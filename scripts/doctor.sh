@@ -28,6 +28,14 @@ fi
 if command -v cmake >/dev/null 2>&1; then
   if [[ -n "${CMAKE_PREFIX_PATH:-}" ]]; then
     printf 'INFO Qt prefix    %s\n' "$CMAKE_PREFIX_PATH"
+  elif [[ "$(uname -s)" == Darwin ]]; then
+    qt_prefix="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/build/qt/6.12.0/macos"
+    if [[ -f "$qt_prefix/lib/cmake/Qt6/Qt6Config.cmake" ]]; then
+      printf 'INFO Qt prefix    %s\n' "$qt_prefix"
+    else
+      printf 'MISS Qt           install official Qt 6.12.0 into build/qt or set CMAKE_PREFIX_PATH\n'
+      failed=1
+    fi
   elif command -v brew >/dev/null 2>&1 && brew --prefix qtbase >/dev/null 2>&1; then
     printf 'INFO Qt prefix    %s\n' "$(brew --prefix qtbase)"
   else

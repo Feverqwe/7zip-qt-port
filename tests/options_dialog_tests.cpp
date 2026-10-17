@@ -154,7 +154,7 @@ class OptionsDialogTests : public QObject {
         QCOMPARE(errorShown, !valid && !disabled);
         if (errorShown) {
             QCOMPARE(errorIcon, QMessageBox::Critical);
-#ifndef Q_OS_MAC
+#ifndef Q_OS_MACOS
             QCOMPARE(errorTitle, QString("7-Zip"));
 #endif
         }

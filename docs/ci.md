@@ -7,6 +7,9 @@ checkout. Local validation uses [focused checks and a full gate when needed](dev
 and Windows/Linux acceptance uses [Hyper-V runners](hyperv-runners.md).
 Release runtime packaging uses `BUILD_TESTING=OFF` and the matching Qt kit;
 tests and native acceptance are separate checks.
+Local macOS builds default to the official shared Qt 6.12.0 kit and target
+macOS 14.4+. This avoids the external ICU/GLib dependency chain of Homebrew Qt;
+see [SDK setup](development.md#dependencies).
 
 Runtime/SFX builders compile private snapshots from the official repository and
 revision recorded in [the baseline](upstream-baseline.json).
@@ -35,7 +38,8 @@ license inputs. macOS binaries are thinned to the native architecture and stripp
 then signed inside out using an ad-hoc signature, including the bundled 7-Zip
 engine/module/SFX. SFX checksum metadata is refreshed after these transformations.
 Frameworks and the app are signed last; `codesign --verify --deep --strict` must
-pass before ZIP creation. This follows htopQt's signing flow. Developer ID,
+pass before ZIP creation. Local `build-app.sh` installations use the same runtime
+compaction and signing. This follows htopQt's signing flow. Developer ID,
 notarization and Windows Authenticode are not configured.
 
 `./scripts/release.sh patch` (also `minor`, `major` or an explicit larger version)

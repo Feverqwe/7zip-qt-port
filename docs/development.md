@@ -95,10 +95,15 @@ or final license/distribution acceptance; see [packaging scope](ci.md).
   production builds do not. The two private-bus tests set the discovered libdbus
   directory in their own loader environment for official Qt kits.
 
-On macOS with Homebrew:
+macOS builds target macOS 14.4+ and use the official shared Qt 6.12.0 kit,
+matching the runner version. Install the macOS desktop Qt Base SDK (including
+private headers) with the [Qt installer](https://www.qt.io/development/download-qt-installer-oss)
+under `build/qt`; the default kit path is `build/qt/6.12.0/macos`.
+For an SDK installed elsewhere, set `CMAKE_PREFIX_PATH` to its `macos` directory.
+Build and deploy with the same SDK. Homebrew supplies the other local tools:
 
 ```sh
-brew install cmake ninja qtbase sevenzip clang-format
+brew install cmake ninja sevenzip clang-format ccache
 ```
 
 On Linux, install CMake, Ninja, Qt 6 base development files, clang-format,
@@ -169,7 +174,11 @@ Runtime packages use Release builds with testing disabled; local checks remain
 unchanged. GitHub CI is absent by user decision; see [CI scope](ci.md).
 For a local application with its runtime dependencies, run `./scripts/build-app.sh`.
 It installs into `dist/` (`dist/Sevenzip.app` on macOS); intermediate build files
-remain in `build/`.
+remain in `build/`. The local runtime receives the same size optimizations as
+the archive payload, including native-architecture stripping and verified ad-hoc
+signing on macOS. Its size also depends on the selected Qt kit and its dependencies.
+The installation replaces the previous runtime only after preparation succeeds,
+so dependencies from an older Qt kit do not remain in `dist/`.
 To package an existing Release build, run `python3 scripts/package.py
 --qt-source <matching-qtbase.tar.xz> --qt-sha256 <checksum-file>`; add
 `--icu-license <license-file>` if the deployed Qt kit uses ICU. The script uses

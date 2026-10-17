@@ -6,5 +6,5 @@ cd "$project_root"
 
 python3 scripts/prepare-runtime.py
 ./scripts/build.sh release
-cmake --install build/release --prefix "$project_root/dist"
+python3 scripts/package.py --install-only "$project_root/dist"
 printf 'Application output: %s/dist\n' "$project_root"

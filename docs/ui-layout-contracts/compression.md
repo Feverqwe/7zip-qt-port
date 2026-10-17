@@ -12,10 +12,12 @@ Reference: pinned CompressDialog.rc Options NTFS group and COptionsDialog
 OnInit/OnOK. Symbolic links precede hard links, alternate streams and security;
 original handler flags control visibility. Time controls follow this group,
 with OK/Cancel/Help in the footer. Unix hides NTFS streams/security.
-source_link_storage writes EN/RU540×480/480×430 reports for actual TAR options.
-Four current macOS reports reviewed: visible links and footer bounds equal
-exposed bounds; compact checkboxes434 pixels wide exceed RU hints221/197.
-This establishes structure/usability, not rendered Windows pixel parity.
+source_link_storage requests EN/RU540×480/480×430 reports for actual TAR options;
+native font/control minima may enlarge those requests, with links and footer
+remaining fully exposed.
+Normal and compact TAR states must expose both link controls and the footer,
+with translated captions fitting their controls. This establishes
+structure/usability, not rendered Windows pixel parity.
 source_metadata_storage additionally checks WIM security/ADS and all visible
 time captions, Options/Add Cancel/OK/restart, and writes four Windows
 `source-metadata-wim-{language}-{width}` reports. Current EN/RU540×480/480×430

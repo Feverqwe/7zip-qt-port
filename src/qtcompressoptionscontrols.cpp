@@ -80,7 +80,7 @@ void CQtCompressOptionsDialog::buildControls() {
     auto *ntfsSlot = new QWidget(this);
     auto *slot = new QVBoxLayout(ntfsSlot);
     slot->setContentsMargins(0, 0, 0, 0);
-#ifdef Q_OS_MAC
+#ifdef Q_OS_MACOS
     // QMacStyle's group backing rectangle extends one logical pixel below
     // its layout item; retain that pixel inside the slot's exposed area.
     slot->setContentsMargins(0, 0, 0, 1);
@@ -184,7 +184,7 @@ void CQtCompressOptionsDialog::applySourceGeometry() {
     auto *grid = static_cast<QGridLayout *>(time->layout());
     grid->setContentsMargins(x(8), y(12), x(8), y(4));
     grid->setSpacing(0);
-#ifdef Q_OS_MAC
+#ifdef Q_OS_MACOS
     // Cocoa's combo backing extends left of its layout item. Native spacing
     // keeps it separate from the preceding precision label.
     grid->setHorizontalSpacing(

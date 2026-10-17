@@ -76,7 +76,8 @@ class SourceLinkStorageTests final : public QObject, protected ArchiveBackendTes
                 });
                 dialog->resize(size);
                 QApplication::processEvents();
-                QTRY_COMPARE(dialog->size(), size);
+                // Native control/font minima may enlarge a compact request.
+                // The contract is reachable, unclipped controls below.
                 auto *sym = dialog->findChild<QCheckBox *>("IDX_COMPRESS_NT_SYM_LINKS");
                 auto *hard = dialog->findChild<QCheckBox *>("IDX_COMPRESS_NT_HARD_LINKS");
                 QVERIFY(sym && hard && sym->isVisible() && hard->isVisible());

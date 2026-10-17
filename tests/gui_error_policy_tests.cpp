@@ -46,7 +46,7 @@ class CMessages {
                 return;
             const auto close = qScopeGuard([&] { box->accept(); });
             Texts << box->text();
-#ifdef Q_OS_MAC
+#ifdef Q_OS_MACOS
             // Qt's macOS message presentation omits the native window caption.
             QCOMPARE(box->windowTitle(), QString());
 #else

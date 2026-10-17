@@ -27,11 +27,8 @@ capabilities проверенного официального модуля. И�
 ## Быстрый старт
 
 Нужны C/C++17 compiler, CMake, Ninja, Qt 6 Widgets, `clang-format`
-и официальный `7zz`. На macOS:
-
-```sh
-brew install cmake ninja qtbase sevenzip clang-format
-```
+и официальный `7zz`. Для macOS 14.4+ используется официальный Qt SDK;
+установите зависимости по [инструкции настройки](docs/development.md#dependencies).
 
 Из корня репозитория:
 
