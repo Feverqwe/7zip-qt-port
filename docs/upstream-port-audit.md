@@ -33,6 +33,9 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 
 ## Новые изменения
 
+- [Фоновый приоритет завершившегося процесса](upstream-port-audit/background-process-exit.md)
+  — повторная проверка архива после включения фонового режима.
+
 - [Видимость платформенных настроек](upstream-port-audit/options-platform-visibility.md)
   — скрытие неподдерживаемых действий с сохранением исходных значений и Apply/Cancel.
 

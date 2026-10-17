@@ -21,6 +21,9 @@
 #include <QRegularExpression>
 #include <QSet>
 #include <QUuid>
+#ifndef Q_OS_WIN
+#include <cerrno>
+#endif
 
 ArchiveBackend::ArchiveBackend(QObject *parent, QString executable) : QObject(parent) {
     copyProgressTimer_.setInterval(33);
@@ -122,7 +125,15 @@ HRESULT ArchiveBackend::setBackground(bool background) {
         return S_OK;
     if (process_.state() != QProcess::Running)
         return E_FAIL;
-    return NProcessPriority::SetBackground(UInt32(process_.processId()), background);
+    const HRESULT result =
+        NProcessPriority::SetBackground(UInt32(process_.processId()), background);
+#ifndef Q_OS_WIN
+    // A short-lived child can exit before QProcess delivers finished(). There
+    // is no remaining process policy to change; keep its actual exit result.
+    if (result == HRESULT_FROM_WIN32(ESRCH))
+        return S_OK;
+#endif
+    return result;
 }
 
 void ArchiveBackend::start(Job job, const QStringList &arguments, const QString &workingDirectory) {

@@ -9,9 +9,11 @@
 #include "extractdialog.h"
 #include "fixtures/widget_dialogs.h"
 #include "layout_inspection.h"
+#include "processpriority.h"
 #include "qtlangcontrols.h"
 #include "source_extract_fixture.h"
 #include "window_state_support.h"
+#include <QScopeGuard>
 #include <QTreeWidget>
 
 namespace {
@@ -77,6 +79,55 @@ class ToolbarArchiveWorkflowTests final : public QObject, protected MainWindowTe
         version_ = catalog.version();
     }
     void init() { QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH")); }
+    void repeatedArchiveTesting_data() {
+        QTest::addColumn<QString>("format");
+        QTest::addColumn<bool>("opened");
+        QTest::addColumn<bool>("background");
+        for (const QString &format : {QStringLiteral("zip"), QStringLiteral("7z")})
+            for (bool opened : {false, true})
+                QTest::newRow(qPrintable(format + (opened ? "-opened" : "-selected")))
+                    << format << opened << false;
+        QTest::newRow("zip-selected-background") << QStringLiteral("zip") << false << true;
+    }
+    void repeatedArchiveTesting() {
+        QFETCH(QString, format);
+        QFETCH(bool, opened);
+        QFETCH(bool, background);
+        bool previousBackground = false;
+        QCOMPARE(NProcessPriority::GetBackground(0, previousBackground), S_OK);
+        const auto restorePriority =
+            qScopeGuard([&] { NProcessPriority::SetBackground(0, previousBackground); });
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString name = QStringLiteral("данные с пробелом.txt");
+        const QByteArray payload = QByteArray("archive test payload\n").repeated(10000);
+        QVERIFY(writeFile(fixture.filePath(name), payload));
+        const QString archive = fixture.filePath("archives/test." + format);
+        QVERIFY(QDir().mkpath(QFileInfo(archive).absolutePath()));
+        QVERIFY(makeArchive(fixture.path(), archive, format, name));
+        ArchiveBackend backend;
+        QCOMPARE(backend.loadCodecCatalog(module_, version_), S_OK);
+        MainWindow window(&backend);
+        window.show();
+        window.activateWindow();
+        QVERIFY(QTest::qWaitForWindowActive(&window));
+        auto *source = openPanel(window, 0, opened ? archive : QFileInfo(archive).absolutePath());
+        QTRY_COMPARE(source->rowCount(), 1);
+        source->selectRow(0);
+        QStringList errors, successes;
+        QTimer driver;
+        dialogs_.connectResponder(driver, &window,
+                                  [&] { dismissResults(dialogs_, errors, successes); });
+        driver.start(1);
+        for (int attempt = 0; attempt < 3; ++attempt) {
+            QVERIFY(action(window, "testArchiveAction")->isEnabled());
+            action(window, "testArchiveAction")->trigger();
+            QVERIFY2(errors.isEmpty(), qPrintable(errors.join('\n')));
+            QCOMPARE(successes.size(), attempt + 1);
+            if (background && attempt == 0)
+                QCOMPARE(NProcessPriority::SetBackground(0, true), S_OK);
+        }
+    }
     void filesystemToolbarFailureRestoresSource_data() {
         QTest::addColumn<unsigned>("pane");
         QTest::newRow("left") << 0u;
