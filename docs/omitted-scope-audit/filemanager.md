@@ -1318,9 +1318,12 @@ POSIX adds mounted volumes/network to its original Computer→`/` entry, as
 recorded by P1-11. GetMyDocsPath replaces the SHGetSpecialFolderPath platform
 service with QStandardPaths and preserves source path normalization. NT4 dynamic
 lookup, ANSI fallback and Windows CE build transport are outside supported Qt6
-desktop targets. Root icon indices are currently `-1`; Qt renders generic
-namespace icons rather than using source CSIDL helpers. This presentation
-boundary is incomplete for the address consumer, not proof of icon parity.
+desktop targets. At this2026-10-06 review, Root icon indices were `-1` and Qt
+rendered generic namespace icons. The subsequent
+[native namespace icon correction](../upstream-port-audit/p3-05-2026-10-10.md#p3-05--filemanager-services-and-native-namespace-icons-2026-10-10)
+restores the original Windows CSIDL helpers and both native image sizes through
+the QIcon bridge. Current17fab0f bodies retain that correction; POSIX still uses
+platform images. This does not establish full rendered icon parity.
 
 The ADS failure branch originally differed: RootFolder::BindToFolder converts
 failed CAltStreamsFolder::Init to E_INVALIDARG, while the adaptation exposed the

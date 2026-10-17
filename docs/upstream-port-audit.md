@@ -10,6 +10,10 @@
 
 [Original empty-prefix history policy and three-platform consumers](upstream-port-audit/p3-05-persisted-namespaces-2026-10-16.md).
 
+## P3-05.15 — Current native Copy and publication consumers (2026-10-17)
+
+[Открыть раздел](upstream-port-audit/p3-05-copy-native-2026-10-17.md).
+
 ## P3-05.15 — Retired archive proxies and Copy completion (2026-10-17)
 
 [Source lifetime correction, actual native crashes and integrated consumers](upstream-port-audit/p3-05-proxy-lifetime-2026-10-17.md).

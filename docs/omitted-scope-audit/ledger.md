@@ -7,6 +7,19 @@
 
 ### Current inventory refresh (2026-10-16)
 
+Product17fab0f is revalidated on2026-10-17 against all302 rows in
+`source-inventory-17fab0f.json`: every original blob/hash matches the full pin,
+every present local owner hash matches checkout, and all104 present cpp paths
+remain in CMake. The109-unit disposition remains8 exact/96 adapted/five absent.
+`copy-source-ledger-current-v149.json` retains this verification under the final
+availability evidence root. Eight FileManager callers changed since7dadf6d;
+their existing paths now delegate to the
+[shared source dialog geometry](../upstream-port-audit/p3-06-modal-geometry-2026-10-17.md).
+The shared Windows/Control/Dialog bodies lie outside this UI-only inventory and
+have their own scoped audit. No new UI module, revision or duplicate owner is
+introduced. Body dispositions and remaining native/rendered acceptance remain
+distinct from this physical inventory check.
+
 Committed product7dadf6d matches all302 owner hashes in
 `source-inventory-7dadf6d.json`, retaining the same109-unit disposition. It
 includes exactly the four Agent deltas described below; the worker's local Qt

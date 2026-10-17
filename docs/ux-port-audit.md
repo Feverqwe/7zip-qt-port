@@ -7,6 +7,9 @@
 Матрица различает текущие native launcher и delivery components и прежние full/native receipts.
 Checked означает только названную
 проверку; partial/unverified не дают итоговой приёмки P3-06.
+[Current Windows native Copy/publication](upstream-port-audit/p3-05-copy-native-2026-10-17.md)
+дополняет матрицу:9/9 suites,310Qt/0fail/0skip,800JSON; ADS/zone и actual
+archive/peer failure/Cancel/recovery consumers проверены на17fab0f.
 Clean-OS проверки Windows/macOS/Linux исключены из текущей приёмки по явному
 решению пользователя2026-10-15. Это waiver, а не свидетельство прохождения;
 package/relocation/native/rendered требования остаются в scope.
