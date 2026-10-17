@@ -68,7 +68,8 @@ retain their existing generic format-discovery and operation paths.
 Explicit adaptations for untrusted image streams:
 
 - Establish volume/cluster/extent bounds that Linux normally obtains from a
-  block device; reject unsupported major revisions and two-FAT/TexFAT volumes.
+  block device; reject unsupported major revisions. Two-FAT/TexFAT reads are
+  restricted to the clean-volume scope described below.
 - Preserve bounded FAT-chain counting before traversing root/child directories
   or extracting FAT-chained files; reject ancestor directory aliases/cycles.
 - Require complete filename/stream entry sets and matching entry-set checksums;
@@ -138,3 +139,71 @@ file; no device was mounted or formatted. UI geometry/rendered parity and long
 suites are outside this focused nonvisual validation. A full gate was not needed
 because the format module is isolated and its direct loader/backend consumers
 were covered.
+
+## Consistent TexFAT images (2026-10-17)
+
+The preceding single-FAT implementation was committed as `f356400`. This
+follow-up extends the same read-only engine module; it does not implement
+transaction replay or writes. The Linux source revision/baseline above is
+unchanged.
+
+Before implementation, complete bodies and consumers were compared again:
+`super.c::exfat_read_boot_sector`, `exfat_fs.h::FAT_ENT_OFFSET_SECTOR`,
+`fatent.c::__exfat_ent_get`/`exfat_ent_get`, `balloc.c::exfat_load_bitmap`/
+`exfat_allocate_bitmap`/`exfat_test_bitmap_range`, the root/directory and file
+cluster walkers, plus `dir.c`'s entry classification/validation. The selected
+Linux implementation stores two FAT offsets but reads FAT1 and selects only
+bitmap identifier zero; its bitmap loader assumes contiguous physical sectors.
+There is no usable active-pair selection implementation in that module to copy.
+
+The narrow additions implement the public Microsoft
+[exFAT specification](https://learn.microsoft.com/en-us/windows/win32/fileio/exfat-specification),
+sections 3.1.13.1, 3.1.16, 4, 7.1 and 7.10:
+
+- Retain `ActiveFat` from the **Main** Boot Sector; backup VolumeFlags are stale.
+  All FAT reads, including root and bitmap chains, use the selected FAT offset.
+- Enumerate and require the appropriate bitmap identifiers without duplicates;
+  load only the bitmap paired with the selected FAT. The inactive pair is stale
+  and is neither interpreted nor used as an error fallback.
+- Follow the active bitmap's FAT chain with the existing Linux chain walkers,
+  including fragmented bitmap extents. Bound its declared allocation by the
+  cluster heap; check chain length/cycles and the allocation of its actual
+  clusters rather than assuming a contiguous bitmap.
+- Continue skipping benign primary entries, including TexFAT Padding, through
+  the existing upstream `exfat_get_entry_type`/`exfat_readdir` branches. Unknown
+  critical secondary entries remain unsupported; security metadata is not
+  exposed or applied to extracted files.
+- Reject two-FAT images marked `VolumeDirty` or `MediaFailure`, and reject the
+  invalid single-FAT/second-active combination. Do not clear flags, switch pairs,
+  infer a replacement active pair or attempt repair.
+
+Here, consistent-image support means clean status flags plus the retained
+structural checks for the selected data view. It is not a proof of every
+filesystem invariant or validation/recovery of an interrupted transaction.
+
+The fixture set distinguishes the two copies with different data-cluster chains
+and bitmap contents, and deliberately gives backup VolumeFlags a different
+selection. Tests exercise either active pair, fragmented bitmaps with an
+allocation bit in a later bitmap cluster, 4096-byte sectors, padding, nested
+Unicode files and original-image preservation. Failure cases cover dirty/media
+status, missing/duplicate bitmap entries, active root/bitmap cycles, an
+unallocated active root, refusal to use stale data after an active-file error,
+and cancellation followed by reuse. The official process engine and
+`ArchiveBackend` exercise both choices with actual listing/test/extraction.
+
+Focused validation passed on macOS, Linux and Windows:
+
+- macOS: incremental build of `exfat_tests`, `exfat_backend_tests` and
+  `sevenzip_exfat_runtime`; `exfat` and `exfat_backend` passed, 44 Qt cases,
+  4.37 seconds. Local receipt: `build/review/texfat/local-last-test.log`.
+- Linux/Windows: `scripts/verify.py --tests '^(exfat|exfat_backend)$'
+  --platform all --skip-runtime` built the selected targets in the existing
+  guest worktrees and passed both suites, 1.12/3.95 seconds respectively.
+  Run receipt: `build/runners/hyperv/20261017T191621Z-00d9c19f/run.json`;
+  both guests verified source SHA-256
+  `9d79cb5628f8c0dd585c9e01f243779a4fdfcc14db8aa796b542140ceaea707a`.
+
+Validation used generated images, not real Windows CE volumes. No rendered UI,
+installed-package, full-suite or long-suite acceptance is claimed. Existing
+incremental builds and compiler caches were retained; no new archive transport
+or UI changes are involved.

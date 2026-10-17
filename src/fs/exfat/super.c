@@ -124,6 +124,7 @@ int exfat_read_boot_sector(struct super_block *sb)
 		(sbi->cluster_size_bits - DENTRY_SIZE_BITS);
 
 	sbi->vol_flags = le16_to_cpu(p_boot->vol_flags);
+	sbi->active_fat = sbi->vol_flags & VOLUME_ACTIVE_FAT;
 	sbi->vol_flags_persistent = sbi->vol_flags & (VOLUME_DIRTY | MEDIA_FAILURE);
 	sbi->clu_srch_ptr = EXFAT_FIRST_CLUSTER;
 

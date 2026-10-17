@@ -60,7 +60,8 @@ void ExfatFixture::fat(unsigned cluster, unsigned next) {
 }
 int ExfatFixture::rootOffset(int entry) const {
     const int perCluster = sectorSize / 32;
-    return clusterOffset(entry < perCluster ? 2 : 10) + (entry % perCluster) * 32;
+    const unsigned clusters[] = {2, 10, 11};
+    return clusterOffset(clusters[entry / perCluster]) + (entry % perCluster) * 32;
 }
 void ExfatFixture::refreshEntryChecksum(int entry) {
     const int count = quint8(image[rootOffset(entry) + 1]) + 1;
@@ -89,8 +90,8 @@ ExfatFixture::ExfatFixture(int logicalSector)
     std::copy_n("EXFAT   ", 8, image.data() + 3);
     set64(72, 512);
     set32(80, FatSector);
-    set32(84, 4);
-    set32(88, DataSector);
+    set32(84, fatSectors);
+    set32(88, dataSector);
     set32(92, 384);
     set32(96, 2);
     put16(image, 104, 0x100);
@@ -150,4 +151,87 @@ ExfatFixture::ExfatFixture(int logicalSector)
     std::copy_n("tail", 4, image.data() + clusterOffset(7));
     std::copy_n("end", 3, image.data() + clusterOffset(12));
     refreshBootChecksum();
+}
+
+void TexfatFixture::fatCopy(unsigned copy, unsigned cluster, unsigned next) {
+    set32((FatSector + copy * fatSectors) * sectorSize + cluster * 4, next);
+}
+
+int TexfatFixture::bitmapOffset(unsigned bitmap, unsigned cluster) const {
+    const unsigned byte = (cluster - 2) / 8;
+    const unsigned start = bitmap ? 13 : 3;
+    const unsigned tail = bitmap ? 15 : 14;
+    return clusterOffset(byte < unsigned(sectorSize) ? start : tail) + byte % sectorSize;
+}
+
+void TexfatFixture::allocated(unsigned bitmap, unsigned cluster, bool used) {
+    const int offset = bitmapOffset(bitmap, cluster);
+    const unsigned mask = 1u << ((cluster - 2) % 8);
+    image[offset] = char(used ? quint8(image[offset]) | mask : quint8(image[offset]) & ~mask);
+}
+
+TexfatFixture::TexfatFixture(unsigned activeFat, int logicalSector, bool fragmentedBitmaps)
+    : ExfatFixture(logicalSector) {
+    unsigned clusterCount = 384;
+    unsigned dataTail = 9;
+    if (fragmentedBitmaps) {
+        // A >512-byte bitmap needs multiple clusters. Move the original heap
+        // after two larger FATs and keep its logical cluster numbers intact.
+        QByteArray original = image;
+        image = QByteArray(8192 * sectorSize, '\0');
+        std::copy_n(original.constData(), 24 * sectorSize, image.data());
+        std::copy_n(original.constData() + FatSector * sectorSize, fatSectors * sectorSize,
+                    image.data() + FatSector * sectorSize);
+        const int originalHeap = dataSector * sectorSize;
+        dataSector = 256;
+        fatSectors = 64;
+        std::copy_n(original.constData() + originalHeap, 384 * sectorSize,
+                    image.data() + dataSector * sectorSize);
+        clusterCount = 8192 - dataSector;
+        set64(72, 8192);
+        set32(84, fatSectors);
+        set32(88, dataSector);
+        set32(92, clusterCount);
+        dataTail = 5000;
+        std::fill_n(image.data() + clusterOffset(dataTail), 188, 'B');
+        fat(5, dataTail);
+        fat(dataTail, 0xffffffff);
+        fat(3, 14);
+        fat(14, 0xffffffff);
+        fat(13, 15);
+        fat(15, 0xffffffff);
+        allocated(0, 14, true);
+        allocated(0, 15, true);
+        allocated(0, dataTail, true);
+    } else {
+        fat(13, 0xffffffff);
+    }
+    fat(10, 11);
+    fat(11, 0xffffffff);
+    allocated(0, 11, true);
+    allocated(0, 13, true);
+    const unsigned bitmapSize = (clusterCount + 7) / 8;
+    set64(rootOffset(0) + 24, bitmapSize);
+    const int second = rootOffset(31);
+    image[second] = char(0x81);
+    image[second + 1] = 1;
+    set32(second + 20, 13);
+    set64(second + 24, bitmapSize);
+    image[rootOffset(32)] = char(0xa1); // TexFAT padding: benign primary entry.
+    image[rootOffset(33)] = char(0xa2); // Legacy benign security-table descriptor.
+    for (unsigned byte = 0; byte < bitmapSize; ++byte) {
+        const unsigned cluster = byte * 8 + 2;
+        image[bitmapOffset(1, cluster)] = image[bitmapOffset(0, cluster)];
+    }
+    const int firstFat = FatSector * sectorSize;
+    std::copy_n(image.constData() + firstFat, fatSectors * sectorSize,
+                image.data() + firstFat + fatSectors * sectorSize);
+    const unsigned inactive = activeFat ^ 1;
+    fatCopy(inactive, 5, 8); // Old data would return the 'S' payload, not the new 'B'.
+    allocated(inactive, dataTail, false);
+    image[110] = 2;
+    put16(image, 106, quint16(activeFat));
+    refreshBootChecksum();
+    // Backup VolumeFlags are stale by definition; only the main copy is current.
+    put16(image, 12 * sectorSize + 106, quint16(inactive | 2));
 }

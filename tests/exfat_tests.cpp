@@ -135,17 +135,31 @@ class ExfatTests final : public QObject {
         QCOMPARE(create(&guid, &IID_IOutArchive, &writer), CLASS_E_CLASSNOTAVAILABLE);
         QVERIFY(!writer);
     }
+    void treeAndFileContents_data() {
+        QTest::addColumn<int>("layout");
+        QTest::newRow("exfat") << 0;
+        QTest::newRow("texfat-first") << 1;
+        QTest::newRow("texfat-second") << 2;
+        QTest::newRow("texfat-fragmented-bitmap-first") << 3;
+        QTest::newRow("texfat-fragmented-bitmap-second") << 4;
+        QTest::newRow("texfat-4096-byte-sector") << 5;
+    }
     void treeAndFileContents() {
-        QCOMPARE(open(fixture_.image), S_OK);
+        QFETCH(int, layout);
+        ExfatFixture fixture;
+        if (layout)
+            fixture = TexfatFixture(layout == 5 ? 1 : (layout - 1) % 2, layout == 5 ? 4096 : 512,
+                                    layout == 3 || layout == 4);
+        QCOMPARE(open(fixture.image), S_OK);
         UInt32 count = 0;
         QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
         QCOMPARE(count, 5u);
         const std::map<QString, QByteArray> expected{
-            {fixture_.fragmentedName, QByteArray(512, 'A') + QByteArray(188, 'B')},
-            {fixture_.longName, "end"},
+            {fixture.fragmentedName, QByteArray(fixture.sectorSize, 'A') + QByteArray(188, 'B')},
+            {fixture.longName, "end"},
             {"empty.txt", {}},
-            {fixture_.directoryName + '/' + fixture_.nestedName,
-             QByteArray("tail") + QByteArray(1020, '\0')}};
+            {fixture.directoryName + '/' + fixture.nestedName,
+             QByteArray("tail") + QByteArray(2 * fixture.sectorSize - 4, '\0')}};
         for (const auto &[name, bytes] : expected) {
             const UInt32 index = indexOf(name);
             QVERIFY2(index != UInt32(-1), qPrintable(name));
@@ -156,7 +170,7 @@ class ExfatTests final : public QObject {
             QCOMPARE(callback->output->bytes, bytes);
         }
         NWindows::NCOM::CPropVariant timestamp;
-        QCOMPARE(archive_->GetProperty(indexOf(fixture_.fragmentedName), kpidMTime, &timestamp),
+        QCOMPARE(archive_->GetProperty(indexOf(fixture.fragmentedName), kpidMTime, &timestamp),
                  S_OK);
         QCOMPARE(timestamp.vt, VARTYPE(VT_FILETIME));
         const quint64 ticks =
@@ -240,7 +254,83 @@ class ExfatTests final : public QObject {
         callback->output->fail = true;
         QCOMPARE(archive_->Extract(&index, 1, 0, callback), E_FAIL);
     }
+    void texfatRefusesInconsistentVolumes_data() {
+        QTest::addColumn<unsigned>("active");
+        QTest::addColumn<QString>("fault");
+        for (unsigned active : {0u, 1u})
+            for (const auto *fault :
+                 {"dirty", "media-failure", "missing-bitmap", "duplicate-bitmap",
+                  "active-root-cycle", "active-root-unallocated", "bitmap-cycle"}) {
+                const QByteArray row = QByteArray::number(active) + '-' + fault;
+                QTest::newRow(row.constData()) << active << QString::fromLatin1(fault);
+            }
+    }
+    void texfatRefusesInconsistentVolumes() {
+        QFETCH(unsigned, active);
+        QFETCH(QString, fault);
+        TexfatFixture fixture(active);
+        if (fault == "dirty")
+            fixture.image[106] = char(active | 2);
+        if (fault == "media-failure")
+            fixture.image[106] = char(active | 4);
+        if (fault == "missing-bitmap")
+            fixture.image[fixture.rootOffset(31)] = 1;
+        if (fault == "duplicate-bitmap")
+            fixture.image[fixture.rootOffset(31) + 1] = 0;
+        if (fault == "active-root-cycle")
+            fixture.fatCopy(active, 11, 2);
+        if (fault == "active-root-unallocated")
+            fixture.allocated(active, 2, false);
+        if (fault == "bitmap-cycle") {
+            const unsigned start = active ? 13 : 3;
+            fixture.fatCopy(active, start, start);
+        }
+        QVERIFY(open(fixture.image) != S_OK);
+        UInt32 count = 999;
+        QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, 0u);
+        QCOMPARE(open(fixture_.image), S_OK);
+    }
+    void texfatDoesNotRecoverFromInactivePair() {
+        TexfatFixture fixture(1);
+        // The inactive copy still has an acyclic chain, but its payload is stale.
+        fixture.fatCopy(1, 9, 5);
+        QCOMPARE(open(fixture.image), S_OK);
+        const UInt32 index = indexOf(fixture.fragmentedName);
+        QVERIFY(index != UInt32(-1));
+        CMyComPtr2<IArchiveExtractCallback, Extract> callback;
+        callback.Create_if_Empty();
+        QCOMPARE(archive_->Extract(&index, 1, 0, callback), S_OK);
+        QCOMPARE(callback->result, Int32(NArchive::NExtract::NOperationResult::kDataError));
+        QVERIFY(callback->output->bytes.isEmpty());
+    }
+    void texfatCancellation() {
+        TexfatFixture fixture(1);
+        CMyComPtr2<IArchiveOpenCallback, OpenProgress> progress;
+        progress.Create_if_Empty();
+        QCOMPARE(open(fixture.image, progress), E_ABORT);
+        QCOMPARE(open(fixture.image), S_OK);
+        const UInt32 index = indexOf(fixture.fragmentedName);
+        CMyComPtr2<IArchiveExtractCallback, Extract> callback;
+        callback.Create_if_Empty();
+        callback->cancel = true;
+        QCOMPARE(archive_->Extract(&index, 1, 0, callback), E_ABORT);
+        callback->cancel = false;
+        QCOMPARE(archive_->Extract(&index, 1, 0, callback), S_OK);
+        QCOMPARE(callback->result, Int32(NArchive::NExtract::NOperationResult::kOK));
+        QCOMPARE(callback->output->bytes, QByteArray(512, 'A') + QByteArray(188, 'B'));
+    }
+    void officialEngineListsTestsAndExtracts_data() {
+        QTest::addColumn<int>("active");
+        QTest::newRow("exfat") << -1;
+        QTest::newRow("texfat-first") << 0;
+        QTest::newRow("texfat-second") << 1;
+    }
     void officialEngineListsTestsAndExtracts() {
+        QFETCH(int, active);
+        ExfatFixture fixture;
+        if (active >= 0)
+            fixture = TexfatFixture(unsigned(active));
         QTemporaryDir runtime;
         QVERIFY(runtime.isValid());
         const QDir prepared(QString::fromUtf8(SEVENZIP_EXFAT_RUNTIME));
@@ -257,7 +347,7 @@ class ExfatTests final : public QObject {
         const QString image = runtime.filePath(QStringLiteral("образ 空.img"));
         QFile file(image);
         QVERIFY(file.open(QIODevice::WriteOnly));
-        QCOMPARE(file.write(fixture_.image), qint64(fixture_.image.size()));
+        QCOMPARE(file.write(fixture.image), qint64(fixture.image.size()));
         file.close();
         const auto hash = QCryptographicHash::hash(read(image), QCryptographicHash::Sha256);
         auto run = [&](const QStringList &arguments) {
@@ -273,15 +363,15 @@ class ExfatTests final : public QObject {
         };
         const auto listing = run({"l", "-slt", "--", image});
         QVERIFY2(listing.contains("Type = exFAT"), listing.constData());
-        QVERIFY2(listing.contains(fixture_.fragmentedName.toUtf8()), listing.constData());
+        QVERIFY2(listing.contains(fixture.fragmentedName.toUtf8()), listing.constData());
         const auto tested = run({"t", "--", image});
         QVERIFY2(tested.contains("Everything is Ok"), tested.constData());
         const QString output = runtime.filePath("output");
         const auto extracted = run({"x", "-o" + output, "--", image});
         QVERIFY2(extracted.contains("Everything is Ok"), extracted.constData());
-        QCOMPARE(read(QDir(output).filePath(fixture_.fragmentedName)),
+        QCOMPARE(read(QDir(output).filePath(fixture.fragmentedName)),
                  QByteArray(512, 'A') + QByteArray(188, 'B'));
-        QCOMPARE(read(QDir(output).filePath(fixture_.directoryName + '/' + fixture_.nestedName)),
+        QCOMPARE(read(QDir(output).filePath(fixture.directoryName + '/' + fixture.nestedName)),
                  QByteArray("tail") + QByteArray(1020, '\0'));
         QCOMPARE(QCryptographicHash::hash(read(image), QCryptographicHash::Sha256), hash);
     }

@@ -78,7 +78,9 @@ enum {
 #define FAT_ENT_SIZE (4)
 #define FAT_ENT_SIZE_BITS (2)
 #define FAT_ENT_OFFSET_SECTOR(sb, loc)                                                             \
-    (EXFAT_SB(sb)->FAT1_start_sector + (((u64)(loc) << FAT_ENT_SIZE_BITS) >> sb->s_blocksize_bits))
+    ((EXFAT_SB(sb)->active_fat ? EXFAT_SB(sb)->FAT2_start_sector                                   \
+                               : EXFAT_SB(sb)->FAT1_start_sector) +                                \
+     (((u64)(loc) << FAT_ENT_SIZE_BITS) >> sb->s_blocksize_bits))
 #define FAT_ENT_OFFSET_BYTE_IN_SECTOR(sb, loc)                                                     \
     (((loc) << FAT_ENT_SIZE_BITS) & (sb->s_blocksize - 1))
 
@@ -191,6 +193,7 @@ struct exfat_sb_info {
     unsigned int root_dir;             /* root dir cluster */
     unsigned int dentries_per_clu;     /* num of dentries per cluster */
     unsigned int vol_flags;            /* volume flags */
+    unsigned int active_fat;           /* Main Boot Sector's FAT/bitmap selection */
     unsigned int vol_flags_persistent; /* volume flags to retain */
     struct buffer_head *boot_bh;       /* buffer_head of BOOT sector */
 

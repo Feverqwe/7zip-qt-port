@@ -10,7 +10,15 @@
 class ExfatBackendTests final : public QObject {
     Q_OBJECT
   private slots:
+    void discoversBrowsesAndExtractsReadOnly_data() {
+        QTest::addColumn<int>("layout");
+        QTest::newRow("exfat") << -1;
+        QTest::newRow("texfat-first") << 0;
+        QTest::newRow("texfat-second") << 1;
+        QTest::newRow("texfat-fragmented-bitmap") << 2;
+    }
     void discoversBrowsesAndExtractsReadOnly() {
+        QFETCH(int, layout);
         QTemporaryDir runtime;
         QVERIFY(runtime.isValid());
         const QDir prepared(QString::fromUtf8(SEVENZIP_EXFAT_RUNTIME));
@@ -27,6 +35,8 @@ class ExfatBackendTests final : public QObject {
         QVERIFY(QFile::copy(QString::fromUtf8(SEVENZIP_EXFAT_MODULE),
                             runtime.filePath(QStringLiteral("Formats/формат 空") + suffix)));
         ExfatFixture fixture;
+        if (layout >= 0)
+            fixture = TexfatFixture(layout == 2 ? 1 : unsigned(layout), 512, layout == 2);
         const QString image = runtime.filePath(QStringLiteral("карта памяти 空.img"));
         QFile source(image);
         QVERIFY(source.open(QIODevice::WriteOnly));

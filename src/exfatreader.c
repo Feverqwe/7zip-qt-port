@@ -92,7 +92,8 @@ int exfat_open_volume(const struct exfat_source *source, struct exfat_volume **r
             sbi->num_sectors > (source->size >> v->sb.s_blocksize_bits) ||
             sbi->data_start_sector > sbi->num_sectors ||
             clusters > ((sbi->num_sectors - sbi->data_start_sector) >> sbi->sect_per_clus_bits) ||
-            boot->num_fats != 1 || le16_to_cpu(boot->vol_flags) & 1 ||
+            (boot->num_fats == 1 && sbi->active_fat) ||
+            (boot->num_fats == 2 && (sbi->vol_flags & (VOLUME_DIRTY | MEDIA_FAILURE))) ||
             boot->fs_revision[1] != 1)
             error = -EINVAL;
         else

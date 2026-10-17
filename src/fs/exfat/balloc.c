@@ -59,9 +59,9 @@ static int exfat_allocate_bitmap(struct super_block *sb,
 {
 	struct exfat_sb_info *sbi = EXFAT_SB(sb);
 	long long map_size;
-	unsigned int i, j, need_map_size;
-	sector_t sector, end, ra;
-	blkcnt_t ra_cnt = 0;
+	unsigned int i, j, need_map_size, map_clusters, cluster;
+	struct exfat_chain chain;
+	sector_t sector;
 
 	sbi->map_clu = le32_to_cpu(ep->dentry.bitmap.start_clu);
 	map_size = le64_to_cpu(ep->dentry.bitmap.size);
@@ -77,27 +77,42 @@ static int exfat_allocate_bitmap(struct super_block *sb,
 		if (need_map_size > map_size)
 			return -EIO;
 	}
+	if (map_size > exfat_cluster_to_bytes(sbi, EXFAT_DATA_CLUSTER_COUNT(sbi)) ||
+	    !is_valid_cluster(sbi, sbi->map_clu))
+		return -EIO;
+	map_clusters = exfat_bytes_to_cluster_round_up(sbi, map_size);
+	exfat_chain_set(&chain, sbi->map_clu, 0, ALLOC_FAT_CHAIN);
+	if (exfat_count_num_clusters(sb, &chain, &chain.size) ||
+	    chain.size < map_clusters)
+		return -EIO;
 	sbi->map_sectors = ((need_map_size - 1) >>
 			(sb->s_blocksize_bits)) + 1;
 	sbi->vol_amap = kvmalloc_objs(struct buffer_head *, sbi->map_sectors);
 	if (!sbi->vol_amap)
 		return -ENOMEM;
 
-	sector = ra = exfat_cluster_to_sector(sbi, sbi->map_clu);
-	end = sector + sbi->map_sectors - 1;
+	cluster = sbi->map_clu;
+	sector = exfat_cluster_to_sector(sbi, cluster);
 
 	for (i = 0; i < sbi->map_sectors; i++) {
-		/* Trigger the next readahead in advance. */
-		exfat_blk_readahead(sb, sector + i, &ra, &ra_cnt, end);
-
-		sbi->vol_amap[i] = sb_bread(sb, sector + i);
+		/* Allocation Bitmaps have FAT chains, including on TexFAT. */
+		if (i && !(i & (sbi->sect_per_clus - 1))) {
+			if (exfat_get_next_cluster(sb, &cluster))
+				goto err_out;
+			sector = exfat_cluster_to_sector(sbi, cluster);
+		}
+		sbi->vol_amap[i] = sb_bread(sb, sector++);
 		if (!sbi->vol_amap[i])
 			goto err_out;
 	}
 
-	if (exfat_test_bitmap_range(sb, sbi->map_clu,
-		exfat_bytes_to_cluster_round_up(sbi, map_size)) == false)
-		goto err_out;
+	cluster = sbi->map_clu;
+	for (j = 0; j < map_clusters; j++) {
+		if (!exfat_test_bitmap_range(sb, cluster, 1))
+			goto err_out;
+		if (j + 1 < map_clusters && exfat_get_next_cluster(sb, &cluster))
+			goto err_out;
+	}
 
 	return 0;
 
@@ -114,9 +129,11 @@ err_out:
 
 int exfat_load_bitmap(struct super_block *sb)
 {
-	unsigned int i, type;
+	unsigned int i, type, seen = 0;
 	struct exfat_chain clu;
 	struct exfat_sb_info *sbi = EXFAT_SB(sb);
+	struct exfat_dentry selected = {0};
+	const unsigned int expected = sbi->FAT1_start_sector == sbi->FAT2_start_sector ? 1 : 3;
 
 	exfat_chain_set(&clu, sbi->root_dir, 0, ALLOC_FAT_CHAIN);
 	while (clu.dir != EXFAT_EOF_CLUSTER) {
@@ -129,25 +146,31 @@ int exfat_load_bitmap(struct super_block *sb)
 				return -EIO;
 
 			type = exfat_get_entry_type(ep);
-			if (type == TYPE_BITMAP &&
-			    ep->dentry.bitmap.flags == 0x0) {
-				int err;
-
-				err = exfat_allocate_bitmap(sb, ep);
-				brelse(bh);
-				return err;
+			if (type == TYPE_BITMAP) {
+				unsigned int id = ep->dentry.bitmap.flags & 1;
+				if ((seen & (1u << id)) || !(expected & (1u << id))) {
+					brelse(bh);
+					return -EINVAL;
+				}
+				seen |= 1u << id;
+				if (id == sbi->active_fat)
+					memcpy(&selected, ep, sizeof(selected));
 			}
 			brelse(bh);
 
 			if (type == TYPE_UNUSED)
-				return -EINVAL;
+				goto load;
 		}
 
 		if (exfat_get_next_cluster(sb, &clu.dir))
 			return -EIO;
 	}
 
-	return -EINVAL;
+load:
+	if (seen != expected)
+		return -EINVAL;
+	/* The inactive FAT/bitmap are stale; never use them as repair fallbacks. */
+	return exfat_allocate_bitmap(sb, &selected);
 }
 
 void exfat_free_bitmap(struct exfat_sb_info *sbi)
