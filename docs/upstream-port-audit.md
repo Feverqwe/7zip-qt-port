@@ -6,6 +6,10 @@
 
 [Source boundary, sync/cache contract and focused validation](upstream-port-audit/developer-workflow-2026-10-17.md).
 
+## P3-05 — Source and integration closure (2026-10-17)
+
+[Source owners, final Copy/startup contracts and current focused checks](upstream-port-audit/p3-05-source-closure-2026-10-17.md).
+
 ## P3-05/P3-06 — Shared modal geometry and Copy presentation (2026-10-17)
 
 [Source CDialog policy, all callers and public regressions](upstream-port-audit/p3-06-modal-geometry-2026-10-17.md).

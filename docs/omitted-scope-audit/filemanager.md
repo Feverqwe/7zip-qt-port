@@ -1,5 +1,11 @@
 # Omitted source scope review — filemanager
 
+Current source/integration closure is recorded in the
+[P3-05 acceptance](../upstream-port-audit/p3-05-source-closure-2026-10-17.md).
+It reconciles the dated remaining-scope observations below with their later
+body/caller fixes and current checks. Whole native/rendered/cold acceptance
+remains separate; historical receipts keep their original boundaries.
+
 [Индекс](../omitted-scope-audit.md). Scope и свидетельства ниже сохраняют даты и ревизии; они не подтверждают текущий checkout.
 
 ### Native associated launcher and continuation (2026-10-10)

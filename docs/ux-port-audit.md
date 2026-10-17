@@ -4,6 +4,10 @@
 
 ## Current final acceptance matrix (2026-10-17)
 
+[P3-05 source/integration closure](upstream-port-audit/p3-05-source-closure-2026-10-17.md)
+завершена по актуальным body/caller receipts, inventory и focused3OS consumers:
+счёт44/47. Это не меняет partial/unverified native/rendered/cold claims ниже.
+
 [Source address/Root namespace contracts](upstream-port-audit/p3-05-address-root-2026-10-17.md)
 приняты по текущим3OS consumers и Windows device/ADS/UNC, обеим панелям и EN/RU.
 Исправлены shell attributes и потеря namespace в Back;48normal/compact address

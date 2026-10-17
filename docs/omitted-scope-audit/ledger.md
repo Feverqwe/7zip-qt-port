@@ -7,6 +7,13 @@
 
 ### Current inventory refresh (2026-10-16)
 
+The2026-10-17 `5d9cc8e` refresh verifies all302 original blobs and current
+committed owners again. Only the documented SysIconUtils path-icon adapter
+differs from the `e3b3c65` inventory;109cpp dispositions and104present CMake
+owners remain unchanged. The [P3-05 source closure](../upstream-port-audit/p3-05-source-closure-2026-10-17.md)
+records current source/integration acceptance separately from final native,
+rendered, cold and delivery claims.
+
 The2026-10-17 Options keyboard candidate rechecks all302 original/local rows;
 only OptionsDialog.cpp and SystemPage.cpp differ from product17fab0f.
 `source-inventory-options-keyboard-candidate-v185.json` retains their current
