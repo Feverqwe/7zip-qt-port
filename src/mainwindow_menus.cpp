@@ -191,6 +191,7 @@ void MainWindow::createViewOptions(QMenu *viewMenu) {
     flatView_->setChecked(flatDisk_);
     twoPanelsAction_ = viewMenu->addAction(QStringLiteral("Две панели"));
     twoPanelsAction_->setObjectName("twoPanelsAction");
+    twoPanelsAction_->setProperty("nativeCommandID", IDM_VIEW_TWO_PANELS);
     twoPanelsAction_->setCheckable(true);
     twoPanelsAction_->setChecked(app_.NumPanels == 2);
     twoPanelsAction_->setShortcut(QKeySequence(Qt::Key_F9));

@@ -33,6 +33,9 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 
 ## Новые изменения
 
+- [Язык главного меню](upstream-port-audit/menu-language.md)
+  — исходный перевод переключателя двух панелей при запуске и смене языка.
+
 - [Понятные подписи открытия](upstream-port-audit/open-menu-captions.md)
   — уточнение названий Qt-меню с сохранением расположения и исходных команд.
 

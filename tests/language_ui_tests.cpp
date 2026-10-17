@@ -11,6 +11,7 @@
 #include <QDialogButtonBox>
 #include <QLabel>
 #include <QListWidget>
+#include <QRegularExpression>
 #include <QScrollArea>
 #include <QScrollBar>
 #include <QStyleOptionButton>
@@ -33,6 +34,47 @@ class LanguageUiTests : public QObject, protected MainWindowTestSupport {
     }
 
   private slots:
+    void mainMenusFollowLanguageAtStartupAndAfterReload() {
+        ControlledBackend backend;
+        for (const char *initial : {"-", "ru"}) {
+            SaveRegLang(UString(initial), settingsPath());
+            MainWindow window(&backend);
+            window.show();
+            auto *panels = window.findChild<QAction *>("twoPanelsAction");
+            QVERIFY(panels);
+            const bool checked = panels->isChecked();
+            const QKeySequence shortcut = panels->shortcut();
+            auto verify = [&](const QString &language) {
+                auto *view = window.findChild<QMenu *>("viewMenu");
+                view->popup(window.mapToGlobal(QPoint(20, 40)));
+                QApplication::processEvents();
+                view->hide();
+                QCOMPARE(panels->text(),
+                         language == "ru" ? QStringLiteral("&2 Панели") : QString("&2 Panels"));
+                QCOMPARE(panels->isChecked(), checked);
+                QCOMPARE(panels->shortcut(), shortcut);
+                if (language != "ru") {
+                    const QRegularExpression cyrillic(QStringLiteral("[А-Яа-яЁё]"));
+                    for (QMenu *menu : window.findChildren<QMenu *>())
+                        for (QAction *action : menu->actions()) {
+                            // Bookmark paths are user content, independent of UI language.
+                            if (action->objectName().startsWith("openBookmark"))
+                                continue;
+                            QVERIFY2(!action->text().contains(cyrillic),
+                                     qPrintable(action->objectName() + ": " + action->text()));
+                        }
+                }
+            };
+            verify(initial);
+            for (const char *language : {"-", "ru", "-", "missing"}) {
+                SaveRegLang(UString(language), settingsPath());
+                ReloadLang(settingsPath());
+                QtNotifyLanguageChanged();
+                verify(language);
+            }
+        }
+    }
+
     void toolbarTooltipsRetainSourceTextAfterActionChanges() {
         QTemporaryDir directory;
         QVERIFY(directory.isValid());
