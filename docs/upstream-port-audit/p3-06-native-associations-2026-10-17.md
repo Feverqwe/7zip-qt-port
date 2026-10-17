@@ -78,6 +78,12 @@ previous signal-only event queue. Public Cocoa events do not become physical
 Finder evidence. A refreshed package/manual retry is still required for that
 specific failed user workflow.
 
+The subsequent5ccf3f1 package retry is successful: the user reports the archive
+opens, but also an ordinary directory window. This replaces the old E_FAIL
+with a concrete remaining initial-launch UX correction; it does not establish
+single-window acceptance. [Delivery and native identity/default observations](p3-04-native-associations-delivery-2026-10-17.md)
+retain the exact artifact and observation boundaries.
+
 ## Checks and limits
 
 Current macOS focused five suites pass in0.85s: associated_window, system_page,

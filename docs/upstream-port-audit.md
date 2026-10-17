@@ -32,7 +32,8 @@
 
 ## P3-04 — Current source/Copy delivery (2026-10-17)
 
-[Current Compression Options correction in three private Release packages](upstream-port-audit/p3-04-compression-options-delivery-2026-10-17.md).
+[Current native association corrections in three private Release packages](upstream-port-audit/p3-04-native-associations-delivery-2026-10-17.md).
+[Previous Compression Options delivery](upstream-port-audit/p3-04-compression-options-delivery-2026-10-17.md).
 [Previous Options footer/Control delivery](upstream-port-audit/p3-04-options-delivery-2026-10-17.md).
 
 [Current native icon/System packages and relocation/dependency checks](upstream-port-audit/p3-04-native-icons-delivery-2026-10-17.md).
