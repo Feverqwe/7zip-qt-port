@@ -4,6 +4,13 @@
 
 ## Current final acceptance matrix (2026-10-17)
 
+[Copy/Move runtime comparison](upstream-port-audit/p3-06-copy-runtime-2026-10-17.md)
+добавляет actual original EN/RU initial/compact и24/24 native Qt pairs на3OS,
+исправление узкой Browse20DLU и по6 focused suites/101Qt плюс native14Qt/24JSON.
+Проверены declared structure/state/fit и отдельный keyboard workflow; XCB —
+Xvfb/Openbox. Pixels/physical input/OS panels и остальные parent claims ниже
+этой ограниченной приёмкой не закрываются.
+
 [P3-05 source/integration closure](upstream-port-audit/p3-05-source-closure-2026-10-17.md)
 завершена по актуальным body/caller receipts, inventory и focused3OS consumers:
 счёт44/47. Это не меняет partial/unverified native/rendered/cold claims ниже.

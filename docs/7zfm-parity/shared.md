@@ -675,7 +675,7 @@ Compress extraction также содержит IDD_COMPRESS_OPTIONS; этот �
 
 | Диалог / эталон | Проверенный результат и оставшееся расхождение |
 | --- | --- |
-| Copy/Move, CopyDialog.rc/.cpp | Ресурсный контракт проходит: шесть controls, Copy/Move, 440×250 и 340×220. Адаптации: scrolling summary вместо static, Qt footer и Unicode ellipsis. |
+| Copy/Move, CopyDialog.rc/.cpp | Ресурсный контракт и [actual runtime8×3](../upstream-port-audit/p3-06-copy-runtime-2026-10-17.md) проходят: шесть controls, EN/RU, initial/compact; исходная узкая Browse восстановлена. Адаптации: scrolling summary вместо static, Qt footer и Unicode ellipsis; pixel/physical-input parity отдельно. |
 | Имя/маска/создание папки, ComboDialog.rc/.cpp | Prompt → editable combo → OK/Cancel; начальное Value, raw OK, Cancel и геометрия 360×150/260×150 проверены. Пока нет отдельного ресурсного контракта. |
 | Split/Combine, SplitDialog.rc/.cpp и PanelSplitFile.cpp | Destination/Browse → volume size → footer; error/normal и 2/3/5 частей, normal/compact проверены. Inline error заменяет MessageBox, папка выбирается native Qt dialog. |
 | История/свойства, ListViewDialog.rc/.cpp | Один/два столбца, header, footer, Copy/Delete/Enter/detail и 540×360/360×240 проверены. Перенесена settings-driven one-click/hover ветка через Qt adapter; набор свойств ограничен snapshot. |

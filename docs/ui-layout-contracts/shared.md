@@ -2067,6 +2067,8 @@ Reference: upstream `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
 Implemented view: `src/CPP/7zip/UI/FileManager/CopyDialog.cpp`.
 
 - Destination label precedes the editable path; Browse stays to its right.
+- Browse retains the original twenty-DLU utility-button width instead of the
+  native style's ordinary push-button minimum, leaving the row for the path.
 - Initial client follows CopyDialog.rc336×160DLU with Qt font mapping and native
   minimum protection. Source NormalizeSize(true) applies once at first native
   Show when the frame overlaps and exceeds the work area. EN/RU Copy/Move

@@ -127,6 +127,9 @@ class CopyDialogTests : public QObject {
         QApplication::processEvents();
         dialog.setProperty("uiInspection_state", move ? "move-compact" : "copy-compact");
         inspectSourceFrame(dialog, tag + "-compact");
+        // GuiCommon.rc bxsDots: preserve the source utility-button width,
+        // independently of the platform's standard push-button minimum.
+        QCOMPARE(browse->width(), QtDialogUnits(dialog.font()).pixels(QSize(20, 0)).width());
         const QSet<QWidget *> allowed{path, path->lineEdit(), browse,
                                       buttons->button(QDialogButtonBox::Ok),
                                       buttons->button(QDialogButtonBox::Cancel)};

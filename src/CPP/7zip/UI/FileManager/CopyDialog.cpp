@@ -81,6 +81,7 @@ bool CCopyDialog::OnInit() {
     auto *browse = new QPushButton("…", this);
     browse->setObjectName("copyBrowseButton");
     QtBindLangText(browse, IDS_SET_FOLDER, "Select folder", true);
+    browse->setFixedWidth(QtDialogUnits(font()).pixels(QSize(20, 0)).width());
     pathRow->addWidget(browse);
     layout->addLayout(pathRow);
     // Native SS_LEFTNOWORDWRAP shows a bounded summary. Qt scrolling keeps long
