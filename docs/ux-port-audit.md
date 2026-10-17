@@ -11,6 +11,9 @@ pending indexed/bundle icon и Cancel с неизменными native revisions
 associations4/4 PASS. Independent original Windows40-row EN/RU inventory совпадает
 с четырьмя Qt состояниями по всем колонкам/порядку без отличий. Installed mutation/consent и
 общий native/cold scope остаются открытыми; поставка требует обновления.
+Follow-up native image oracle также проверяет все40 initial images на Windows/
+macOS × четыре состояния:18 registered images и22 empty per state,0diff;
+System registration, app branding и screenshot pixel parity этим не принимаются.
 
 [Native Linux System icons](upstream-port-audit/p3-06-system-native-2026-10-17.md)
 дополняют проверенный scope реальными GIO file/theme images и source
