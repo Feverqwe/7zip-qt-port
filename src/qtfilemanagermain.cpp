@@ -6,6 +6,9 @@
 #include "qtfilemanagerstartup.h"
 #include "qtlinkservices.h"
 #include "qtmemorylockservices.h"
+#ifdef Q_OS_MACOS
+#include "qtapplicationstartup.h"
+#endif
 #ifdef _WIN32
 #include "../third_party/7zip/C/Alloc.h"
 #endif
@@ -47,10 +50,10 @@ int RunSevenzipDesktop(QApplication &application) {
     QObject::connect(&associatedFiles, &QtAssociationFileOpen::OpenRequested, &application,
                      [](const QString &path) { OpenSevenzipAssociatedFile(path); });
 #ifdef Q_OS_MACOS
-    // Cocoa delivers initial openFiles during application launch. Qt's public
-    // dispatcher initializes NSApplication and delivers those events here,
-    // before a normal directory window is created. Later events retain their
-    // independent window/backend route.
+    // Cocoa delivers initial documents before didFinishLaunching. Await that
+    // native transaction; a single processEvents flush can return too early.
+    if (!QtWaitForMacApplicationLaunch())
+        return 0;
     QCoreApplication::processEvents(QEventLoop::ExcludeUserInputEvents);
     const bool associatedStartup = associatedFiles.Activate();
 #else

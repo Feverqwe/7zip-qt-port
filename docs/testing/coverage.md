@@ -1828,6 +1828,13 @@ retains the first. Normal/compact widget JSON covers the affected window states.
 The separate process entry probe uses the same desktop route for ordinary and
 command-line archive startup. Public Qt events do not establish physical Finder
 acceptance.
+
+`macos_document_startup` observes actual main in a unique private bundle receiving
+a native NSWorkspace document request. It checks one archive window, ordinary
+LaunchServices/CLI startup and source preservation, then unregisters/removes its
+own bundle/extension. Its RED detects the extra directory window missed by
+directly posted Qt events. It never changes real ZIP defaults or automates Finder.
+
 `windows_system_registration` exercises actual source Options Cancel/Apply/Clear
 against a unique owned HKCU extension, native ShellExecute recipient/Unicode
 bytes and external-change refusal. It also checks that Options/Cancel creates

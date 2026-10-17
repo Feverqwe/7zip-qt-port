@@ -127,6 +127,10 @@ sevenzip_share_port_objects(sevenzip_native_menu_presentation src/qtnativeshellm
 sevenzip_share_port_objects(sevenzip_gui_entry src/qtguicommand.h src/qtguimain.cpp)
 sevenzip_share_port_objects(sevenzip_file_manager_entry src/qtfilemanagerstartup.h
     src/qtfilemanagermain.cpp)
+if(APPLE)
+    target_sources(sevenzip_file_manager_entry PRIVATE
+        src/qtapplicationstartup.h src/qtapplicationstartup_mac.mm)
+endif()
 
 sevenzip_share_port_objects(sevenzip_compress_source src/CPP/7zip/UI/GUI/CompressDialog.h
     src/CPP/7zip/UI/GUI/CompressDialog.cpp)

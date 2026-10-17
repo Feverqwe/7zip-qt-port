@@ -3245,6 +3245,25 @@ if(BUILD_TESTING)
     add_test(NAME associated_window COMMAND associated_window_tests -silent)
     set_tests_properties(associated_window PROPERTIES TIMEOUT 30 ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/associated-window.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
+    if(APPLE)
+        add_library(mac_document_main OBJECT src/main.cpp)
+        target_compile_definitions(mac_document_main PRIVATE main=SevenzipDesktopMain)
+        target_include_directories(mac_document_main PRIVATE src)
+        target_link_libraries(mac_document_main PRIVATE ${metadata_ui_libraries})
+        qt_add_executable(mac_document_entry_probe tests/fixtures/mac_document_entry_probe.cpp
+            src/qtfilemanagermain.cpp src/qtguimain.cpp ${metadata_ui_sources}
+            $<TARGET_OBJECTS:mac_document_main>)
+        target_include_directories(mac_document_entry_probe PRIVATE src tests)
+        target_link_libraries(mac_document_entry_probe PRIVATE ${metadata_ui_libraries})
+        add_executable(mac_document_launcher tests/fixtures/mac_document_launcher.mm)
+        target_link_libraries(mac_document_launcher PRIVATE "-framework AppKit")
+        add_test(NAME macos_document_startup COMMAND ${Python3_EXECUTABLE}
+            "${CMAKE_CURRENT_SOURCE_DIR}/tests/mac_document_startup_test.py"
+            --probe "$<TARGET_FILE:mac_document_entry_probe>"
+            --launcher "$<TARGET_FILE:mac_document_launcher>")
+        set_tests_properties(macos_document_startup PROPERTIES TIMEOUT 90
+            RESOURCE_LOCK sevenzip_native_ui)
+    endif()
     qt_add_executable(archive_metadata_ui_tests tests/archive_metadata_ui_tests.cpp ${metadata_ui_sources})
     target_include_directories(archive_metadata_ui_tests PRIVATE src tests)
     target_link_libraries(archive_metadata_ui_tests PRIVATE ${metadata_ui_libraries})

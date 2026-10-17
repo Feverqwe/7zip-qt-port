@@ -39,6 +39,16 @@ count remain open until their actual prerequisites are accepted.
 
 ### Current receipts
 
+[Native launch completion](upstream-port-audit/p3-06-associated-bootstrap-2026-10-17.md#native-launch-completion-correction)
+fixes the reproduced late macOS document: a single event flush returned before
+openFiles/didFinishLaunching. Actual main's native regression is RED2 windows
+without the wait, then GREEN1 archive window; ordinary/CLI startup also pass.
+Mac focused4/4 and Cocoa6Qt pass; Linux/Windows direct consumers3/3 each pass.
+Three normal/compact widget JSON reports remain valid. The live manual process
+was build/dev and already contained the earlier desktop entry, so an old binary
+alone did not explain the failure. ZIP is restored to Archive Utility. Packages
+and physical Finder retry for the new completion correction remain pending.
+
 [Current Windows registration scopes](upstream-port-audit/p3-06-windows-registration-2026-10-17.md)
 check native HKCU/HKLM Apply/Clear/recipient, Limited HKLM refusal and fix
 unwanted empty UserChoice creation during detection. Final scoped administrator

@@ -18,7 +18,7 @@
 
 [Actual Windows ShellExecute regression, manual macOS registration/open failure and corrected three-platform event consumers](upstream-port-audit/p3-06-native-associations-2026-10-17.md).
 
-[Initial macOS document launch: one archive window, repeated documents and restored ZIP preference](upstream-port-audit/p3-06-associated-bootstrap-2026-10-17.md).
+[Actual-main macOS launch completion, late-document RED/GREEN and restored ZIP preference](upstream-port-audit/p3-06-associated-bootstrap-2026-10-17.md#native-launch-completion-correction).
 
 [Windows HKCU/HKLM native registration, privilege refusal and nonmutating detection](upstream-port-audit/p3-06-windows-registration-2026-10-17.md).
 
