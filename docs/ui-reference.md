@@ -10,7 +10,8 @@ Windows rendering or real OS association writes.
 To collect rendered Windows sizes, control IDs, fonts and optional PNGs from
 official 7zFM, use the [Windows capture guide](windows-ui-reference.md) and
 `scripts/capture-7zfm-reference.ps1`. Its runtime JSON is a separate schema,
-not yet an input to the RC/Qt comparator below.
+not an input to the RC/Qt comparator below. For direct runtime comparison with
+native Qt reports, use the [agent JSON comparator](ui-runtime-comparison.md).
 
 The [2026-10-15 System menu receipt](upstream-port-audit/p3-03-2026-10-15.md#p3-03p3-06--current-rendered-windows-system-menu-2026-10-15)
 compares the pinned running 7zFM with the current Qt shell-menu bridge. All20

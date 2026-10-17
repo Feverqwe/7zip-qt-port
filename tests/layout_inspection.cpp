@@ -2,6 +2,7 @@
 #include <QScreen>
 
 #include <QAbstractButton>
+#include <QApplication>
 #include <QComboBox>
 #include <QDir>
 #include <QFile>
@@ -14,6 +15,7 @@
 #include <QMenu>
 #include <QPixmap>
 #include <QStyle>
+#include <QSysInfo>
 #include <QToolButton>
 #include <QWidget>
 
@@ -145,7 +147,25 @@ static QJsonObject describe(const QWidget &widget, const QWidget &root) {
 }
 
 QString dump(const QWidget &root) {
-    return QString::fromUtf8(QJsonDocument(describe(root, root)).toJson());
+    auto report = describe(root, root);
+    report["capture"] = QJsonObject{{"schema", 1},
+                                    {"platform", QSysInfo::kernelType()},
+                                    {"qpa", QApplication::platformName()},
+                                    {"qtVersion", qVersion()},
+                                    {"devicePixelRatio", root.devicePixelRatioF()},
+                                    {"logicalDpi", root.logicalDpiX()},
+                                    {"fontFamily", root.font().family()},
+                                    {"fontPointSize", root.font().pointSizeF()},
+                                    {"coordinateSpace", "root-client-logical-pixels"}};
+    for (const QString &key : {QStringLiteral("language"), QStringLiteral("state")}) {
+        const QVariant value = root.property(qPrintable("uiInspection_" + key));
+        if (value.isValid()) {
+            auto capture = report["capture"].toObject();
+            capture[key] = value.toString();
+            report["capture"] = capture;
+        }
+    }
+    return QString::fromUtf8(QJsonDocument(report).toJson(QJsonDocument::Compact));
 }
 
 bool writeReport(QWidget &root, const QString &tag) {
@@ -158,7 +178,7 @@ bool writeReport(QWidget &root, const QString &tag) {
     QFile file(directory + "/" + tag + ".json");
     if (!file.open(QIODevice::WriteOnly))
         return false;
-    const QByteArray data = QJsonDocument(describe(root, root)).toJson(QJsonDocument::Compact);
+    const QByteArray data = dump(root).toUtf8();
     if (file.write(data) != data.size() || !file.flush())
         return false;
     return qEnvironmentVariable("SEVENZIP_CAPTURE_SCREENSHOTS") != "1" ||

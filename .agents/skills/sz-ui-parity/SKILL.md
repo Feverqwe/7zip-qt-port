@@ -1,6 +1,6 @@
 ---
 name: sz-ui-parity
-description: Compare Sevenzip Desktop Qt dialogs with upstream 7zFM resources and reviewed C++ state behavior. Use for UI parity audits, layout ports and extending resource-to-widget contracts; excludes pixel parity without a Windows runtime reference.
+description: Compare Sevenzip Desktop Qt dialogs with upstream 7zFM resources, reviewed C++ state behavior and native Windows/Linux/macOS runtime geometry. Use for UI parity audits, layout ports and resource-to-widget contracts; excludes pixel parity without a Windows runtime reference.
 ---
 
 # Compare the 7zFM UI
@@ -8,6 +8,17 @@ description: Compare Sevenzip Desktop Qt dialogs with upstream 7zFM resources an
 Use [docs/ui-reference.md](../../../docs/ui-reference.md) for commands, supported
 resource syntax and the contract schema. Run scripts from the repository root.
 The working example is `docs/ui-reference/copy-dialog.contract.json`.
+
+For requested native runtime comparison, follow
+[the agent comparison workflow](../../../docs/ui-runtime-comparison.md).
+Use `scripts/compare_ui_runtime.py` to consume the original Windows capture and
+current native Qt reports through a scenario matrix. Read its JSON errors,
+measurements, adaptations and missing coverage; retain exit status for automation.
+The Copy/Move matrix generator is the initial supported scenario. Extending to
+other dialogs requires reviewed runtime control mappings and scenario producers.
+Do not substitute resource-template/offscreen reports for native evidence or
+shrink the requested platform/state matrix to obtain a passing result.
+Passing tool regressions does not establish application UI acceptance.
 
 Read the exact upstream `.rc`, its shared includes, associated `.cpp` handlers
 and relevant callers before writing a contract. Extract a reference with the

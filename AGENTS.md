@@ -136,6 +136,9 @@ For layout/text/visibility/resize changes, first use the affected
 and current-build widget JSON; inspect grouping, order, sizes, clipping and states.
 Add missing geometry coverage when practical. Backend/nonvisual logic/tests/docs
 do not require appearance inspection.
+For requested runtime comparison with original 7zFM across Windows/Linux/macOS,
+use the [agent JSON comparator](docs/ui-runtime-comparison.md) and `sz-ui-parity`.
+Keep missing platform/state evidence explicit; a tool-test PASS is not UI acceptance.
 Screenshots are a fallback for unresolved fonts/icons/colors/style or a user
 request; capture only the affected view (`SEVENZIP_CAPTURE_SCREENSHOTS=1`).
 Resources prove structure, not pixels. Identify the concrete reference; without

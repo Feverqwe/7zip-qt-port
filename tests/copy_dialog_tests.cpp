@@ -119,10 +119,13 @@ class CopyDialogTests : public QObject {
         QCOMPARE(info->focusPolicy(), Qt::NoFocus); // Original static has no WS_TABSTOP.
         QCOMPARE(info->toPlainText(), summary);
         const QString tag = QString("copy-source-frame-%1").arg(QTest::currentDataTag());
+        dialog.setProperty("uiInspection_language", russian ? "ru" : "en");
+        dialog.setProperty("uiInspection_state", move ? "move-initial" : "copy-initial");
         inspectSourceFrame(dialog, tag + "-initial");
         dialog.showNormal();
         dialog.resize(340, 220);
         QApplication::processEvents();
+        dialog.setProperty("uiInspection_state", move ? "move-compact" : "copy-compact");
         inspectSourceFrame(dialog, tag + "-compact");
         const QSet<QWidget *> allowed{path, path->lineEdit(), browse,
                                       buttons->button(QDialogButtonBox::Ok),

@@ -23,6 +23,7 @@
 | Контролы, состояния, normal/compact геометрия и widget JSON | [UI contracts](ui-layout-contracts.md) |
 | Извлечение ресурсов и resource-to-widget comparison | [UI reference tooling](ui-reference.md) |
 | Сбор настоящего Windows runtime reference | [Windows reference](windows-ui-reference.md) |
+| Машинное сравнение runtime-геометрии оригинала и native Qt на трёх ОС | [Runtime comparison](ui-runtime-comparison.md) |
 | Общие Windows/Linux runners, transport и snapshot checks | [Hyper-V runners](hyperv-runners.md) |
 | Локальные runtime artifacts, scope CI и границы native acceptance | [CI scope](ci.md) |
 | Локальная память, проверка старых свидетельств и handoff | [Memory protocol](agent-memory.md) |

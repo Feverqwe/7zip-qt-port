@@ -9,22 +9,26 @@
     "CPP/7zip/UI/FileManager/CopyDialog.cpp": "e1422d0bfb1a5bb68706ae0a128c1f64658e4ec7467feb84231812083c652b9a"
   },
   "controls": {
-    "IDT_COPY": {"selector": {"name": "copyDestinationLabel"}},
-    "IDC_COPY": {"selector": {"name": "copyDestination"}},
+    "IDT_COPY": {"runtimeControlId": 100, "selector": {"name": "copyDestinationLabel"}},
+    "IDC_COPY": {"runtimeControlId": 101, "selector": {"name": "copyDestination"}},
     "IDB_COPY_SET_PATH": {
+      "runtimeControlId": 102,
       "selector": {"name": "copyBrowseButton"},
       "textAdaptation": "Unicode ellipsis replaces three ASCII dots."
     },
     "IDT_COPY_INFO": {
+      "runtimeControlId": 103,
       "selector": {"name": "copySelectionInfo"},
       "qtClass": "QPlainTextEdit",
       "classAdaptation": "Read-only scrolling summary replaces static text; see docs/ui-layout-contracts.md."
     },
     "IDOK": {
+      "runtimeControlId": 1,
       "selector": {"within": "copyButtons", "class": "QPushButton", "text": ["OK", "&OK", "ОК", "&ОК"]},
       "textAdaptation": "Qt standard button text follows platform/localization."
     },
     "IDCANCEL": {
+      "runtimeControlId": 2,
       "selector": {"within": "copyButtons", "class": "QPushButton", "text": ["Cancel", "&Cancel", "Отмена", "&Отмена"]},
       "textAdaptation": "Qt standard button text follows platform/localization."
     }
