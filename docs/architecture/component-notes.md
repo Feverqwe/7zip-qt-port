@@ -656,7 +656,9 @@ retains its immutable codec catalog lease. Archive opening has its existing owne
 IQtAssociationServices performs pre-write revision checks and synchronizes aliases
 sharing a native type after its own successful mutation. Native platforms own
 Win registry/notifications, Linux GIO desktop MIME services and macOS NSWorkspace
-completion/history. Options invokes them only on explicit Apply, with reentrant
+completion/history. Windows revision detection traverses missing preference
+keys without creating them; UserChoice remains owned by Windows Settings.
+Options invokes mutations only on explicit Apply, with reentrant
 dialog actions disabled while a native completion is pending. Tests inject fake
 registration boundaries. GUI code neither writes OS registration directly nor
 builds archive process arguments for this workflow.

@@ -1830,8 +1830,12 @@ command-line archive startup. Public Qt events do not establish physical Finder
 acceptance.
 `windows_system_registration` exercises actual source Options Cancel/Apply/Clear
 against a unique owned HKCU extension, native ShellExecute recipient/Unicode
-bytes and external-change refusal. It removes its keys and does not mutate
-ordinary archive associations, HKLM or protected UserChoice. These cover the
+bytes and external-change refusal. It also checks that Options/Cancel creates
+no missing FileExts/UserChoice keys. Explicit machine-registration opt-in adds
+the same native HKLM workflow on a scoped administrator token or verifies denial
+on a Limited token; ordinary runs retain only HKCU. Both hives' owned fixture
+keys and native usage metadata are removed and verified. It does not mutate
+ordinary archive associations or protected UserChoice. These cover the
 [observed native failures](../upstream-port-audit/p3-06-native-associations-2026-10-17.md)
 that signal-only and fake-service tests could not detect.
 

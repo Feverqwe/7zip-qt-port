@@ -43,7 +43,10 @@ The fresh macOS app and unchanged owned Unicode ZIP/payload are prepared at
 Before this retry, the user's requested ZIP default restoration completes via
 native AppKit and independent query confirms Archive Utility. Automated Cocoa
 entry coverage establishes one initial archive window and independent repeated
-documents; physical Finder acceptance remains pending.
+documents. The subsequent user Finder retry reports the extra window remains:
+physical single-window acceptance FAILED despite the public-event test PASS.
+Immediate own-process queries find no running Sevenzip process to establish
+the exact executed bundle independently. ZIP default remains Archive Utility.
 
 Evidence: `build/review/goal-delivery-d0a74dc/`. Disposable validation extractions
 and root one-shot scripts are removed after archiving the scripts; checked

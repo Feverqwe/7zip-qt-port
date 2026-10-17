@@ -12,7 +12,10 @@ namespace {
 QByteArray registryRevision(unsigned group, const UString &ext,
                             const NRegistryAssoc::CShellExtInfo &info) {
     const QString root = group == 0 ? "HKEY_CURRENT_USER" : "HKEY_LOCAL_MACHINE";
-    QSettings classes(root + "\\Software\\Classes", QSettings::NativeFormat);
+    // QSettings opens its registry root for writing even when only reading.
+    // Anchor it at the existing hive and traverse missing keys read-only.
+    QSettings classes(root, QSettings::NativeFormat);
+    classes.beginGroup("Software/Classes");
     QByteArray data;
     QDataStream stream(&data, QIODevice::WriteOnly);
     const QString extension = QString::fromWCharArray(ext.Ptr());
@@ -26,10 +29,9 @@ QByteArray registryRevision(unsigned group, const UString &ext,
         classes.endGroup();
     }
     if (group == 0) {
-        QSettings choice(
-            root + "\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\FileExts\\." +
-                extension + "\\UserChoice",
-            QSettings::NativeFormat);
+        QSettings choice(root, QSettings::NativeFormat);
+        choice.beginGroup("Software/Microsoft/Windows/CurrentVersion/Explorer/FileExts/." +
+                          extension + "/UserChoice");
         for (const QString &key : choice.allKeys())
             stream << key << choice.value(key);
     }

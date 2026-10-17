@@ -25,7 +25,7 @@ existence does not make every current workflow or platform checked.
 | Browse and temporary files | [Original populated views, keyboard probes and native three-OS consumers](upstream-port-audit/p3-06-source-browsers-2026-10-16.md) | Native folder/save OS panels use the separately accepted manual scenes; Xvfb evidence is not a physical desktop observation. |
 | Shared input, Split/Combine destination and About | [Original EN/RU views, source callbacks and native consumers](upstream-port-audit/p3-06-primitives-2026-10-16.md) | Composite owner checks retain their revisions; they are not a new whole-product gate. |
 | Properties/History lists, Link and normal/total Benchmark | [Ten original states and three-OS component checks](upstream-port-audit/p3-06-secondary-dialogs-2026-10-16.md) | POSIX Junction/WSL capability differences and native modal chrome remain explicit. |
-| Six Options pages, Apply/Cancel, language and keyboard | [Frame](upstream-port-audit/p3-06-options-2026-10-16.md), [keyboard](upstream-port-audit/p3-06-options-keyboard-2026-10-17.md), [footer/manual Control](upstream-port-audit/p3-06-options-control-2026-10-17.md), [live System](upstream-port-audit/p3-06-system-live-2026-10-17.md), [GIO workflow](upstream-port-audit/p3-06-system-native-2026-10-17.md), [native mutation/opening](upstream-port-audit/p3-06-native-associations-2026-10-17.md) | Windows unique-extension HKCU mutation/recipient and manual Mac ZIP assignment/restoration are checked separately. HKLM/protected UserChoice and corrected packaged Finder opening remain outside that acceptance. |
+| Six Options pages, Apply/Cancel, language and keyboard | [Frame](upstream-port-audit/p3-06-options-2026-10-16.md), [keyboard](upstream-port-audit/p3-06-options-keyboard-2026-10-17.md), [footer/manual Control](upstream-port-audit/p3-06-options-control-2026-10-17.md), [live System](upstream-port-audit/p3-06-system-live-2026-10-17.md), [GIO workflow](upstream-port-audit/p3-06-system-native-2026-10-17.md), [native mutation/opening](upstream-port-audit/p3-06-native-associations-2026-10-17.md), [Windows scopes](upstream-port-audit/p3-06-windows-registration-2026-10-17.md) | Windows unique-extension HKCU/HKLM mutation/recipient and manual Mac ZIP assignment/restoration are checked separately. Protected UserChoice/OS Settings selection remains open; packaged Finder retry still reports an extra window. |
 | External application/desktop integration | [Finder acceptance](porting-checklist/p3.md), [Explorer transfer/Escape](upstream-port-audit/p3-03-native-drag-fixtures-2026-10-16.md#physical-windows-explorer-recipient-2026-10-17), [editor completion](upstream-port-audit/p3-03-editor-stability-2026-10-16.md), [source closure](upstream-port-audit/p3-05-source-closure-2026-10-17.md) | Keep OS-recipient, command-dispatch and synthetic-widget evidence separate. Unrelated dialog changes do not invalidate unchanged accepted Finder transport. |
 
 No additional unpaired desktop dialog family is identified by this reconciliation.
@@ -39,11 +39,19 @@ count remain open until their actual prerequisites are accepted.
 
 ### Current receipts
 
+[Current Windows registration scopes](upstream-port-audit/p3-06-windows-registration-2026-10-17.md)
+check native HKCU/HKLM Apply/Clear/recipient, Limited HKLM refusal and fix
+unwanted empty UserChoice creation during detection. Final scoped administrator
+1/1 and Limited direct-consumer4/4 pass,42Qt total without failures/skips.
+Current private packagesd0a74dc predate this Windows correction.
+
 [Current initial-document delivery](upstream-port-audit/p3-04-associated-bootstrap-delivery-2026-10-17.md)
 packagesd0a74dc on three OS with1056 exact inputs, relocation15/14/14,
 payload/license/SFX/dependency/private-ABI/native-icon checks PASS. Cocoa6Qt
 checks the corrected single initial window and independent repeated documents;
-the fresh physical Finder retry is pending. ZIP was restored to Archive Utility
+the fresh physical Finder retry FAILED: the user still sees an extra window.
+The exact manually executed bundle cannot be independently recovered because
+no Sevenzip process remains at inspection. ZIP was restored to Archive Utility
 at the user's request and independently queried before that retry.
 
 [Current native-association delivery](upstream-port-audit/p3-04-native-associations-delivery-2026-10-17.md)
@@ -61,7 +69,8 @@ file-open во время discovery (`E_FAIL`). Реальные HKCU Apply/Clea
 public native window workflow проходят; user ZIP assignment/restoration принят
 отдельно от failed opening на пакете7a8592f. Обновлённые пакеты5ccf3f1 и ручной
 retry закрывают E_FAIL. Исправление лишнего initial directory window проходит
-Cocoa6Qt и focused guest checks; обновлённый packaged Finder retry ещё впереди.
+Cocoa6Qt и focused guest checks, но обновлённый packaged Finder retry всё ещё
+сообщает лишнее окно; фактический native launch требует дальнейшего разбора.
 
 [Current Compression Options delivery](upstream-port-audit/p3-04-compression-options-delivery-2026-10-17.md)
 packages product7a8592f on three OS:1056 exact inputs, Release/OFF,

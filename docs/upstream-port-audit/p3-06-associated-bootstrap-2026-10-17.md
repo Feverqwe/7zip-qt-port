@@ -68,6 +68,11 @@ generated and no other file type is changed.
 Evidence: `build/review/associated-bootstrap-*.log`,
 `build/review/associated-bootstrap-native-reports/` and the owned manual fixture
 `/private/tmp/sevenzip-system-registration-5ccf3f1/`. Refreshed packaged Finder
-opening remains pending. HKLM/UserChoice, remaining native workflows and Windows
+opening was retried by the user and FAILED: the extra window remains. No owned
+Sevenzip process remains in the immediate native process queries, so the
+executed bundle path cannot be independently confirmed. ZIP still resolves to
+Archive Utility. The public posted-event regression is insufficient to accept
+actual LaunchServices startup; further native event-order diagnosis is required.
+HKLM/UserChoice, remaining native workflows and Windows
 cold cause/stability are separate open acceptance scopes. Parent count44/47
 is unchanged; no push, publication or upstream edit.
