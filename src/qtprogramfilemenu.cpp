@@ -8,6 +8,28 @@
 #include "qtlanguageservices.h"
 #include <QScopedValueRollback>
 
+void QtClarifyOpenCommands(QMenu &menu) {
+    for (QAction *action : menu.actions()) {
+        const unsigned id = action->property("nativeCommandID").toUInt();
+        switch (id) {
+        case IDM_OPEN_INSIDE:
+            action->setText(QtLocalText("Open as archive", "Открыть как архив"));
+            break;
+        case IDM_OPEN_OUTSIDE:
+            action->setText(
+                QtLocalText("Open in external application", "Открыть во внешнем приложении"));
+            break;
+        case IDM_OPEN_INSIDE_ONE:
+        case IDM_OPEN_INSIDE_PARSER:
+            action->setText(
+                id == IDM_OPEN_INSIDE_ONE
+                    ? QtLocalText("Single archive layer (*)", "Один уровень архива (*)")
+                    : QtLocalText("Parse file as archive (#)", "Разобрать файл как архив (#)"));
+            break;
+        }
+    }
+}
+
 QtProgramFileMenu::QtProgramFileMenu(MainWindow &window)
     : _window(window), _menu(*window.findChild<QMenu *>("fileMenu")) {
     _source = _menu.actions();
@@ -67,6 +89,7 @@ void QtProgramFileMenu::Activate() {
             action->setEnabled(action->isEnabled() && item.enabled);
         }
     }
+    QtClarifyOpenCommands(_menu);
 }
 
 bool QtProgramFileMenu::CanInvoke(unsigned id) const {

@@ -30,14 +30,20 @@ modal Add uses the source fixed-selection dialog. Windows email commands follow
 the same native Add/update capabilities and retained MAPI workflow; Unix email
 remains unavailable. The native_shell_email consumer checks all three original
 email rows in EN/RU at980×620/640×400, including geometry and Unicode filenames.
+Opening captions in the Qt File and panel context menus explain archive
+navigation, external applications and independent windows. The original order,
+groups, shortcuts and command routing remain intact. Specialist `*`, `#` and
+`#:e` entries retain their markers with explanatory captions. This requested
+text adaptation also applies to the forced-format submenu; the native Windows
+Explorer extension retains its original source captions.
 No additional separator is inserted by Qt between plugins and CFileMenu: the
 corresponding source append-separator block is commented out.
 shell_menu_window checks actual popup/independent Open success, forced-type
 refusal, password cancel and selection result. It checks each submenu action
 rectangle, order and text width at EN/RU980×620/640×400 and writes four
-shell-menu-en/ru-980/640 JSON reports. Current macOS submenu bounds are172×115
-EN and201×115 RU, fully exposed; their nested Open-as menu is intentionally
-hidden until activated. One affected EN submenu PNG was inspected specifically
+shell-menu-en/ru-980/640 JSON reports. The nested Open-as menu is hidden until
+activated; separate reports check its explanatory captions when opened.
+One affected EN submenu PNG was inspected specifically
 for the source bitmap mask/rendering. These checks do not establish rendered
 Windows pixel parity or complete native-extension UX acceptance.
 

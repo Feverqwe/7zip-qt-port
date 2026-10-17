@@ -8,6 +8,9 @@ class CPanel;
 class MainWindow;
 class QtFileManagerShellMenu;
 
+// Presentation only; actions retain their source command IDs and dispatch.
+void QtClarifyOpenCommands(QMenu &menu);
+
 // Retains the original program-menu plugin context through source dispatch.
 // Static resource actions and disposable shell rows have separate ownership.
 class QtProgramFileMenu final {

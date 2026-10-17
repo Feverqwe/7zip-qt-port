@@ -33,6 +33,9 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 
 ## Новые изменения
 
+- [Понятные подписи открытия](upstream-port-audit/open-menu-captions.md)
+  — уточнение названий Qt-меню с сохранением расположения и исходных команд.
+
 - [Выбор архива через меню File](upstream-port-audit/open-archive-picker.md)
   — запрошенное расширение интерфейса и повторное использование открытия архива.
 

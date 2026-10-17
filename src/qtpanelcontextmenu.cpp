@@ -100,6 +100,7 @@ unsigned QtPanelContextMenu::Track(int x, int y) {
             blockers.push_back(std::make_unique<QSignalBlocker>(action));
         }
     }
+    QtClarifyOpenCommands(state.popup);
     // Track returns the source ID; shared QAction shortcuts must not dispatch
     // before OnContextMenu chooses its plugin/file-command branch.
     QAction *chosen;

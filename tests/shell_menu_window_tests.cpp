@@ -325,6 +325,37 @@ class ShellMenuWindowTests final : public QObject, protected MainWindowTestSuppo
             QVERIFY(open && test && compress);
             QVERIFY(open->isEnabled() && test->isEnabled());
             QVERIFY(compress->isEnabled());
+            // Captions distinguish the opening modes without moving commands.
+            auto *inside = action(window, "openInsideAction");
+            auto *outside = action(window, "openOutsideAction");
+            QVERIFY(menu->actions().contains(inside));
+            QVERIFY(menu->actions().contains(outside));
+            const bool russian = language == "ru";
+            QCOMPARE(inside->text(), russian ? QStringLiteral("Открыть как архив")
+                                             : QStringLiteral("Open as archive"));
+            QCOMPARE(outside->text(), russian ? QStringLiteral("Открыть во внешнем приложении")
+                                              : QStringLiteral("Open in external application"));
+            int previous = menu->actions().indexOf(inside);
+            for (const char *name : {"openInsideOneAction", "openInsideParserAction"}) {
+                auto *mode = action(window, name);
+                const int index = menu->actions().indexOf(mode);
+                QVERIFY(index > previous);
+                previous = index;
+            }
+            QVERIFY(menu->actions().indexOf(outside) > previous);
+            QVERIFY(menu->actions().contains(action(window, "openArchiveAction")));
+            auto *newWindow = findVerb(*menu, "SevenZipOpen");
+            auto *openAs = findVerb(*menu, "SevenZip.OpenWithType.");
+            QVERIFY(newWindow && openAs && openAs->menu());
+            QCOMPARE(newWindow->text(), russian ? QStringLiteral("Открыть архив в новом окне")
+                                                : QStringLiteral("Open archive in new window"));
+            QVERIFY(openAs->text() != newWindow->text());
+            for (auto *mode : {inside, outside, action(window, "openInsideOneAction"),
+                               action(window, "openInsideParserAction")}) {
+                const QRect rect = menu->actionGeometry(mode);
+                QVERIFY(menu->rect().contains(rect));
+                QVERIFY(menu->fontMetrics().horizontalAdvance(mode->text()) < rect.width());
+            }
             if (program) {
                 QCOMPARE(menu->actions().first(), root);
                 const auto actions = menu->actions();
@@ -359,6 +390,16 @@ class ShellMenuWindowTests final : public QObject, protected MainWindowTestSuppo
                                     .arg(language == "ru" ? "ru" : "en")
                                     .arg(size.width());
             QVERIFY(UiInspection::writeReport(*child, tag));
+            auto *formats = openAs->menu();
+            formats->popup(child->mapToGlobal(child->actionGeometry(openAs).topRight()));
+            QCoreApplication::processEvents();
+            for (auto *format : formats->actions()) {
+                const QRect rect = formats->actionGeometry(format);
+                QVERIFY(formats->rect().contains(rect));
+                QVERIFY(formats->fontMetrics().horizontalAdvance(format->text()) < rect.width());
+            }
+            QVERIFY(UiInspection::writeReport(*formats, tag + "-formats"));
+            formats->close();
             child->close();
             menu->close();
             inspected = true;
