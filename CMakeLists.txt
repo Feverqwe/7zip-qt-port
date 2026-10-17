@@ -8,6 +8,7 @@ include(CTest)
 
 find_package(Qt6 REQUIRED COMPONENTS Widgets)
 find_package(Threads REQUIRED)
+include(cmake/Exfat.cmake)
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR (APPLE AND BUILD_TESTING))
     find_package(Qt6 REQUIRED COMPONENTS DBus)
     add_library(sevenzip_launcher STATIC src/qtlauncherprogress.cpp src/qtlauncherprogress.h)
@@ -552,6 +553,7 @@ set_target_properties(sevenzip_desktop PROPERTIES
     MACOSX_BUNDLE TRUE
     WIN32_EXECUTABLE TRUE
 )
+sevenzip_deploy_exfat()
 if(APPLE)
     include(cmake/MacAssociationBundle.cmake)
 endif()
@@ -1393,6 +1395,7 @@ if(BUILD_TESTING)
     add_test(NAME compression COMMAND compression_tests -silent)
     get_target_property(compression_order_sources compression_tests SOURCES)
     list(REMOVE_ITEM compression_order_sources tests/compression_tests.cpp)
+    target_sources(exfat_backend_tests PRIVATE ${compression_order_sources})
     qt_add_executable(compression_error_policy_tests tests/compression_error_policy_tests.cpp
         tests/layout_inspection.cpp ${compression_order_sources})
     target_include_directories(compression_error_policy_tests PRIVATE src tests)

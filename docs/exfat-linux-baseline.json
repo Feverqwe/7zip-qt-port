@@ -1,0 +1,32 @@
+{
+  "repository": "https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git",
+  "revision": "58161ead29e50d70a317ea26b472e0c7508e69da",
+  "files": {
+    "fs/exfat/Kconfig": "70090f80455ced4875951c3b15f23f1f8c15aec6653fdb33b8dd6f4ba675e965",
+    "fs/exfat/Makefile": "3b6dfc41811e15b2d50efe1690642588dbe983e8b6cce47d709240ec7286da0d",
+    "fs/exfat/balloc.c": "dc584527d8651f10f471152738d0543eed5cc30c27889361e72162551a3b8115",
+    "fs/exfat/cache.c": "3950de5166028a5d846729813d21617cb3c23076e6d789e9e25de4f7b286b494",
+    "fs/exfat/dir.c": "86a43e85e304b7a2d8cf9b56d9e7c3f25c5817f653e1d56125e04cbc6fe6d99f",
+    "fs/exfat/exfat_fs.h": "099e002807cfef05db4dedf8ea452a1e87b7697aedcf4665b13ba4aa271dd3f2",
+    "fs/exfat/exfat_raw.h": "e9ba0f0a0b5e5e6ede6c10cebbc22fb879d827e25f1dbcc9a7fbfcb88934b08d",
+    "fs/exfat/fatent.c": "4d6c4c7e4c446e9ad61ec0146cb8f6732c17c8e1a07cd730a3b6cafd1bb33fe4",
+    "fs/exfat/file.c": "b34bb5bad5a15f18ef7cf4b030178d582f514a67c5425a6eb87cfdef933d111d",
+    "fs/exfat/inode.c": "d38c95b29abc864a51c606267f62f8424d38183db893eb676eb760ea6df93a8d",
+    "fs/exfat/iomap.c": "bb910c009b8b357bc1c20894eba1d8d1f6785f23c7012f2f56f4bcd7c82e8fd6",
+    "fs/exfat/iomap.h": "28cf5a3eeaee0db0dad48bace8369968c2b2552d6983bd22cfa495d000b6a8ac",
+    "fs/exfat/misc.c": "9cdaae3838d7ef00d7d1a4d539912459ca5befe9cc4cd9a28cb78d56bf6cdd7d",
+    "fs/exfat/namei.c": "8faafe3a8cd3ad1e6e8cbf97155a2d710d2d94db89ef808bbdae64d61a6b5246",
+    "fs/exfat/nls.c": "e3e414139a9b4241480cd31f4c974a3c43b349d0091920c96c2373fcb2150468",
+    "fs/exfat/super.c": "fb3e72dce49a7b9cd5918ebdefdab0ac8cbf3df762d4c7d1cd0444ab344f33a3",
+    "LICENSES/preferred/GPL-2.0": "8780e78a1a737e127f25a65f6d95269bffd36158dc261114de7859b490bfc5aa"
+  },
+  "adapted": [
+    "dir.c",
+    "fatent.c",
+    "super.c",
+    "balloc.c",
+    "misc.c",
+    "exfat_fs.h",
+    "exfat_raw.h"
+  ]
+}

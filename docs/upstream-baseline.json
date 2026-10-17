@@ -86,6 +86,7 @@
     "third_party/7zip/C/XzIn.c",
     "third_party/7zip/C/ZstdDec.c",
     "third_party/7zip/C/ZstdDec.h",
+    "third_party/7zip/CPP/7zip/Archive/ArchiveExports.cpp",
     "third_party/7zip/CPP/7zip/Archive/Common/FindSignature.cpp",
     "third_party/7zip/CPP/7zip/Archive/Common/FindSignature.h",
     "third_party/7zip/CPP/7zip/Archive/Common/HandlerOut.cpp",

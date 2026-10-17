@@ -23,6 +23,9 @@ install(FILES "${SEVENZIP_WINDOWS_RUNTIME}/runtime.json"
     DESTINATION share/sevenzip-desktop)
 install(FILES "${SEVENZIP_WINDOWS_RUNTIME}/LICENSE.txt"
     DESTINATION share/licenses/sevenzip-desktop/7zip)
+install(TARGETS sevenzip_exfat RUNTIME DESTINATION bin/Formats LIBRARY DESTINATION bin/Formats)
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/preferred/GPL-2.0"
+    DESTINATION share/licenses/sevenzip-desktop/sevenzip-exfat)
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE"
     DESTINATION share/licenses/sevenzip-desktop/sevenzip-desktop)
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/build/sfx/7z.sfx"
