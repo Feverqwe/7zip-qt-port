@@ -82,6 +82,7 @@ void MainWindow::createFileActions(QMenu *menu, QToolBar *toolbar) {
     properties_->setShortcut(QKeySequence(Qt::ALT | Qt::Key_Return));
     exitAction_ = new QAction("Выход", this);
     exitAction_->setObjectName("exitAction");
+    exitAction_->setMenuRole(QAction::QuitRole);
     exitAction_->setShortcut(QKeySequence::Quit);
 }
 

@@ -21,6 +21,27 @@ class ArchiveOwnerPresentation final : public IQtAppPresentation {
 class AppLifecycleWindowTests : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
   private slots:
+    void exitRemainsAvailableAfterRefresh() {
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        QFile file(fixture.filePath("имя с пробелом.txt"));
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        file.close();
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        window.show();
+        auto *address = window.findChild<QLineEdit *>("archivePath");
+        address->setText(fixture.path());
+        QTest::keyClick(address, Qt::Key_Return);
+        QTRY_COMPARE(table(window)->rowCount(), 1);
+        action(window, "refreshAction")->trigger();
+        QTRY_COMPARE(table(window)->rowCount(), 1);
+        auto *exit = action(window, "exitAction");
+        QTRY_VERIFY(exit->isEnabled());
+        exit->trigger();
+        QVERIFY(!window.isVisible());
+    }
+
     void hiddenCloseEndsApplicationLoop_data() {
         QTest::addColumn<bool>("peerVisible");
         QTest::addColumn<bool>("automaticQuit");
@@ -206,6 +227,7 @@ class AppLifecycleWindowTests : public QObject, protected MainWindowTestSupport 
         QVERIFY(guarded);
         QCOMPARE(backend.extractCalls, 0);
         QVERIFY(QFileInfo::exists(source.fileName()));
+        QTRY_VERIFY(action(window, "exitAction")->isEnabled());
         QVERIFY(window.close());
     }
     void closeSavesGeometryAndIgnoresQueuedCompletion() {
@@ -255,13 +277,19 @@ class AppLifecycleWindowTests : public QObject, protected MainWindowTestSupport 
         backend.queueListAction([&] {
             attempted = true;
             QVERIFY(!window.close());
+            auto *exit = action(window, "exitAction");
+            exit->setEnabled(true);
+            exit->trigger();
+            QVERIFY(window.isVisible());
             QVERIFY(window.isEnabled());
             backend.completeList({ArchiveEntry{"имя с пробелом.txt", 1, 1}});
         });
         window.openArchive(archive);
         QVERIFY(attempted);
         QCOMPARE(table(window)->rowCount(), 1);
-        QVERIFY(window.close());
+        QTRY_VERIFY(action(window, "exitAction")->isEnabled());
+        action(window, "exitAction")->trigger();
+        QVERIFY(!window.isVisible());
         QVERIFY(!backend.busy());
     }
 };

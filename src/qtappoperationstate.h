@@ -1,6 +1,7 @@
 #pragma once
 #include "CPP/7zip/UI/FileManager/Panel.h"
 #include <array>
+#include <functional>
 #include <memory>
 
 // Original FM/App/Panel operation guards surround synchronous modal calls.
@@ -15,6 +16,7 @@ class QtAppOperationState {
     void ContinueScanAfterSourceCall(unsigned panel);
     void Close();
     void ResetForCreate();
+    void SetCallFinishedCallback(std::function<void()> callback);
     Kind kind() const { return kind_; }
     bool active() const { return kind_ != Kind::Idle; }
     bool blocking() const { return kind_ == Kind::Open || kind_ == Kind::Operation; }
@@ -25,7 +27,7 @@ class QtAppOperationState {
 
       public:
         explicit CallScope(QtAppOperationState &owner) : owner_(owner) { ++owner_.calls_; }
-        ~CallScope() { --owner_.calls_; }
+        ~CallScope();
         CallScope(const CallScope &) = delete;
         CallScope &operator=(const CallScope &) = delete;
     };
@@ -41,4 +43,5 @@ class QtAppOperationState {
     Kind kind_ = Kind::Idle;
     bool closed_ = false;
     unsigned calls_ = 0;
+    std::function<void()> callFinished_;
 };

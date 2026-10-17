@@ -33,6 +33,9 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 
 ## Новые изменения
 
+- [Выход через меню macOS](upstream-port-audit/macos-quit-menu.md)
+  — системная роль существующей команды выхода.
+
 - [Проверка геометрии остальных диалогов](upstream-port-audit/dialog-layout-review.md)
   — native macOS EN/RU, resource-to-widget contracts и коррекция подписи Zone.Id.
 

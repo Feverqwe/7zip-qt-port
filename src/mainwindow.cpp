@@ -82,6 +82,13 @@ void MainWindow::createFileManagerWindow(const QtFileManagerStartup *startup, bo
         throw result;
     commands_ = std::make_unique<QtFileManagerCommands>(*this);
     commands_->AttachActions();
+    app_.QtOperations().SetCallFinishedCallback([this] {
+        // Availability can be published while a synchronous source caller
+        // still holds its close guard. Restore it after that caller unwinds.
+        if (!exitAction_->isEnabled())
+            QMetaObject::invokeMethod(
+                this, [this] { commands_->RefreshActions(); }, Qt::QueuedConnection);
+    });
     programFileMenu_ = std::make_unique<QtProgramFileMenu>(*this);
     drag_ = std::make_unique<QtFileManagerDrag>(*this);
     for (unsigned index = 0; index < kNumPanelsMax; ++index)

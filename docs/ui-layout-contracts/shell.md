@@ -68,6 +68,13 @@ calculation rows, separator, Generate and Test. Current root bounds287×92 EN/
 
 ### Main menu and toolbar (P0-09.1)
 
+On macOS the existing Exit command belongs in the native Sevenzip application
+menu with Cmd+Q, independent of the selected interface language. Other platforms
+retain the File-menu placement. Native menu placement is an OS adaptation;
+offscreen widget geometry cannot establish it.
+Exit must become available again after folder refresh and modal commands return;
+closing during a protected source call remains blocked.
+
 Source Panel.cpp::OnCreate creates status bars with WS_CHILD|WS_VISIBLE and no
 SBARS_SIZEGRIP; Windows/Control/StatusBar.h forwards those flags unchanged.
 Qt's per-panel and shared transient-message status bars must likewise have no

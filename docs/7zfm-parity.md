@@ -68,7 +68,7 @@ Options сохраняет исходные группы настроек и App
 | Область | Отличие и граница |
 | --- | --- |
 | Диалоги | Native fonts, button minima, chrome и scaling Qt могут менять размеры; группировка, состояния и доступность проверяются по [UI contracts](ui-layout-contracts.md) |
-| Клавиатура и меню | Platform key mapping, Cocoa global menu и физический Control требуют native проверок; offscreen-проверка их не заменяет |
+| Клавиатура и меню | На macOS команда выхода размещается в меню Sevenzip с Cmd+Q. Platform key mapping, Cocoa global menu и физический Control требуют native проверок; offscreen-проверка их не заменяет |
 | Выбор файлов и системные окна | Native OS panels проверяются отдельно от widget dialogs |
 | Файловая система | Links, junctions, ADS, security metadata и native namespaces зависят от ОС, файловой системы и прав |
 | Associations | Изменения регистрации не подтверждают защищённый OS-выбор приложения по умолчанию; Apply/Cancel и отказы проверяются отдельно |

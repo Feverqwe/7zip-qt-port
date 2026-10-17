@@ -1,4 +1,14 @@
 #include "qtappoperationstate.h"
+#include <utility>
+
+void QtAppOperationState::SetCallFinishedCallback(std::function<void()> callback) {
+    callFinished_ = std::move(callback);
+}
+
+QtAppOperationState::CallScope::~CallScope() {
+    if (--owner_.calls_ == 0 && !owner_.closed_ && owner_.callFinished_)
+        owner_.callFinished_();
+}
 
 bool QtAppOperationState::Begin(Kind kind, unsigned scanningPanels) {
     if (closed_)
