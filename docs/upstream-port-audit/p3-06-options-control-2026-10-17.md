@@ -60,8 +60,20 @@ Evidence: `build/review/goal-options-physical-control-20261017/`.
   are archived and removed from source. Original copies/fixtures are cleaned
   after exit; current failure/reference evidence and incremental builds remain.
 
-This closes the demonstrated Options key-routing/focus scenario. It does not
-close physical Mac input, full native/rendered/cold acceptance or Windows codec
-stability. Delivery40b3439 predates this correction and needs refresh after the
+This closes the demonstrated Options key-routing/focus scenario. The initial
+automation does not claim physical Mac input; the subsequent manual observation
+below covers that specific gesture. Full native/rendered/cold acceptance and
+Windows codec stability remain separate. Delivery40b3439 predates this correction and needs refresh after the
 remaining UI scope settles. P3-03/P3-04/P3-06 remain open at44/47. No push,
 publication or upstream modification occurs.
+
+## Manual macOS Control confirmation
+
+On2026-10-17 the user opened the current dev app built from product2a7303c and
+confirmed that Control+Tab and Control+Shift+Tab work both from a page field and
+after moving focus to Cancel. The requested workflow ends with Cancel, without
+applying Options. The response is “Оба варианта работают”. This confirms the
+actual hardware/OS modifier route for the corrected window-wide shortcuts,
+supplementing the Cocoa Qt-event regression. Language and geometry were not
+reported; no screenshot or agent-driven OS input was used. It does not extend
+this manual attestation to unrelated commands or dialog states.

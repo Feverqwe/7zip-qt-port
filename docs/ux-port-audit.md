@@ -7,8 +7,9 @@
 [Options footer/Cocoa Control routing](upstream-port-audit/p3-06-options-control-2026-10-17.md)
 исправляет два actual keyboard gaps по original footer reference: окно теперь
 переключает страницы из нижних кнопок и принимает physical-Control Qt events
-на Mac. RED→GREEN на3OS; native27/23/23Qt PASS. Physical Mac input и полный
-native/cold audit остаются открытыми; packages40b3439 ещё без этой коррекции.
+на Mac. RED→GREEN на3OS; native27/23/23Qt PASS. Пользователь затем подтвердил
+оба physical Control направления из поля и footer на текущей сборке2a7303c.
+Полный native/cold audit остаётся открытым; packages40b3439 ещё без коррекции.
 
 [Current delivery40b3439](upstream-port-audit/p3-04-native-icons-delivery-2026-10-17.md)
 обновляет три частных Release packages после System/app icon corrections,
