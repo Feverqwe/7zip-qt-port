@@ -56,6 +56,11 @@ Linux's subsequent full gate also passes323/323 with source guard passing
 
 ## Acceptance limit
 
+Subsequent [17fab0f whole gate](p3-03-windows-whole-2026-10-17.md) retains an
+actual external-codec failure: discovery returns timeout after5215ms under the
+unchanged5000ms application deadline. Probe18Qt passes; source/runtime guards
+and stock restoration pass. This does not establish a cold-loading cause or fix.
+
 Subsequent83163a4 Limited full snapshot `20261016T232701Z-2ae4ba88` (`v90`)
 completes325/342 executed suites in2462.20s,5366Qt/68fail/20skip. Fifteen suites
 fail privilege/setup requirements, including project_memory_setup symlink

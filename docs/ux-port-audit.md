@@ -7,6 +7,10 @@
 Матрица различает текущие native launcher и delivery components и прежние full/native receipts.
 Checked означает только названную
 проверку; partial/unverified не дают итоговой приёмки P3-06.
+[Windows whole17fab0f](upstream-port-audit/p3-03-windows-whole-2026-10-17.md)
+завершён327/343 executed PASS,16FAIL2298.39s:15 privilege/setup suites и
+actual external-codec timeout5215ms/5000ms. Probe18QtPASS, source/CMake restore,
+stock rebuild и1047product/1472compiled inputs verified; cold/final приёмка открыта.
 [Current Windows native Copy/publication](upstream-port-audit/p3-05-copy-native-2026-10-17.md)
 дополняет матрицу:9/9 suites,310Qt/0fail/0skip,800JSON; ADS/zone и actual
 archive/peer failure/Cancel/recovery consumers проверены на17fab0f.
