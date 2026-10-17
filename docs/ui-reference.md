@@ -13,7 +13,7 @@ official 7zFM, use the [Windows capture guide](windows-ui-reference.md) and
 not an input to the RC/Qt comparator below. For direct runtime comparison with
 native Qt reports, use the [agent JSON comparator](ui-runtime-comparison.md).
 
-The [2026-10-15 System menu receipt](upstream-port-audit/p3-03-2026-10-15.md#p3-03p3-06--current-rendered-windows-system-menu-2026-10-15)
+The [2026-10-15 System menu receipt](archive/qt-port/upstream-port-audit/p3-03-2026-10-15.md#p3-03p3-06--current-rendered-windows-system-menu-2026-10-15)
 compares the pinned running 7zFM with the current Qt shell-menu bridge. All20
 entries and their public states match. Inspected runtime screenshots retain
 Qt style differences in row/separator spacing and popup width; this establishes

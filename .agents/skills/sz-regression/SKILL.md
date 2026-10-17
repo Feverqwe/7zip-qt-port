@@ -6,7 +6,9 @@ description: Design or review regression tests for Sevenzip Desktop bug fixes, a
 # Sevenzip Desktop regression work
 
 Use [testing](../../../docs/testing.md) to select checks; search
-`docs/testing/` for the affected suite and inspect its current code/callers.
+[the scenario matrix](../../../docs/regression-matrix.md) for the affected suite
+and inspect its current code/callers. Historical coverage is under
+`docs/archive/qt-port/testing/`.
 Follow `AGENTS.md` for coverage, focused build/CTest
 wrappers, the full gate and reporting platform limits.
 

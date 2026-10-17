@@ -1,5 +1,10 @@
 # Text specifications and geometry checks — shared
 
+Контракты ниже используются при изменении соответствующего вида. Package IDs
+и датированные проверки указывают происхождение; завершённая приёмка и её
+ограничения описаны в [приёмке](../ux-port-audit.md). Новые receipts хранить
+в [audit](../upstream-port-audit.md), а здесь поддерживать наблюдаемые требования.
+
 [Индекс](../ui-layout-contracts.md). Scope и свидетельства ниже сохраняют даты и ревизии; они не подтверждают текущий checkout.
 
 ### Options initial frame (P3-06, 2026-10-16)
@@ -20,7 +25,7 @@ remain valid Qt resizing adaptations of the fixed original property sheet.
 Ctrl+Tab and reverse operate from the footer as well as page controls. Cocoa's
 physical Control route (Qt MetaModifier) must work without changing global
 modifier policy; use the existing Qt page-selection algorithm and source focus
-rule. [Original footer reference and native regression](../upstream-port-audit/p3-06-options-control-2026-10-17.md).
+rule. [Original footer reference and native regression](../archive/qt-port/upstream-port-audit/p3-06-options-control-2026-10-17.md).
 
 Reference: pinned `OptionsDialog.cpp`, `SystemPage.rc`, the other five page
 resources, `CPropertyPage::OnNotify`/`OnSetActive` and `MyPropertySheet`.
@@ -37,7 +42,7 @@ not reset an already focused field. A capability-disabled page can fall back to
 the tab bar. `options_keyboard` checks EN/RU at640×390 and520×380 (expanded to
 native minima), all four System availability masks and both six-page directions.
 Current widget JSON checks visible control bounds; public assertions check focus,
-selection and Cancel without association writes. [Source and native receipt](../upstream-port-audit/p3-06-options-keyboard-2026-10-17.md).
+selection and Cancel without association writes. [Source and native receipt](../archive/qt-port/upstream-port-audit/p3-06-options-keyboard-2026-10-17.md).
 
 ### Native System handler images (P3-06, 2026-10-17)
 
@@ -45,7 +50,7 @@ The application/window identity uses source FM.ico, matching original
 FM.cpp::InitInstance and GUI/FileManager IDI_ICON resources. The native Windows
 EXE and macOS bundle retain that image; Qt window chrome uses its supported
 sizes. This does not alter panel/footer geometry or file-type handler icons.
-[Native resource verification](../upstream-port-audit/p3-06-application-icon-2026-10-17.md).
+[Native resource verification](../archive/qt-port/upstream-port-audit/p3-06-application-icon-2026-10-17.md).
 
 Source `SystemPage.cpp::AddIcon/OnInit/RefreshListItem` and
 `SystemPage.h::CAssoc::GetIconIndex` choose the displayed handler image from the
@@ -56,12 +61,12 @@ command as an icon path. Distinct handlers sharing an executable remain distinct
 The existing label/buttons/list/footer geometry is unchanged. Private-XDG
 `linux_system_page_*` cases inspect EN/RU640×390/520×380 parent states and actual
 Critical/OK after an external-choice conflict; all required groups remain visible
-with a disabled explained all-users action. [Source/native acceptance](../upstream-port-audit/p3-06-system-native-2026-10-17.md).
+with a disabled explained all-users action. [Source/native acceptance](../archive/qt-port/upstream-port-audit/p3-06-system-native-2026-10-17.md).
 
 macOS pending Own uses the native application bundle image even when the codec
 manager supplies a nonempty module filename. `mac_system_page` checks the same
 four language/size variants and Other/Own/Clear/restored images without native
-registration writes. [Live Windows/macOS values and image receipt](../upstream-port-audit/p3-06-system-live-2026-10-17.md).
+registration writes. [Live Windows/macOS values and image receipt](../archive/qt-port/upstream-port-audit/p3-06-system-live-2026-10-17.md).
 
 ### Native Copy terminal errors (P3-05)
 
@@ -75,7 +80,7 @@ copy_publication_order terminal reports at980×620/640×400. Error resize reques
 440×220/340×220 auto-fit to400×116 Mac,399×98 Linux and214×88 Windows for both
 requests; inspect actual visible text/OK bounds, not requested sizes. These
 32 reports/OS have no meaningful clipping and do not prove rendered Windows
-pixels or physical input. [Receipt](../upstream-port-audit.md#p3-05--native-copy-terminal-phases-and-retained-guards-2026-10-10).
+pixels or physical input. [Receipt](../archive/qt-port/upstream-port-audit.md#p3-05--native-copy-terminal-phases-and-retained-guards-2026-10-10).
 
 ### Rendered Add/Extract reference (P3-06, 2026-10-15)
 
@@ -87,13 +92,13 @@ their right inset. `source_compress_dialog::scrollBarKeepsItsOwnSpace`
 checks EN/RU native and simulated overlay styles, compact top/bottom states and
 expansion without scrolling. Cocoa640-wide requests may grow to651 for Russian
 labels; the footer stays exposed and Parameters remains reachable.
-[Correction and checks](../upstream-port-audit/p3-06-add-scroll-2026-10-15.md).
+[Correction and checks](../archive/qt-port/upstream-port-audit/p3-06-add-scroll-2026-10-15.md).
 
 Rendered Add/Extract reference is separately available for original EN/RU initial
 states. Its fixed desktop geometry is not a compact resize contract; Qt keeps
 standard platform metrics and exposes compact Add content through scrolling with
 a visible footer. Current native Add/Extract consumers supply12 JSON per OS;
-Mac Extract may expand470-wide requests to554×343. [Reference/scope](../upstream-port-audit/p3-03-2026-10-15.md#p3-03p3-06--rendered-addextract-and-native-layout-consumers-2026-10-15).
+Mac Extract may expand470-wide requests to554×343. [Reference/scope](../archive/qt-port/upstream-port-audit/p3-03-2026-10-15.md#p3-03p3-06--rendered-addextract-and-native-layout-consumers-2026-10-15).
 
 ### Rename validation error (P3-05, 2026-10-15)
 
@@ -158,14 +163,14 @@ Trash failures reuse Panel.cpp's captioned HRESULT presentation; macOS exposes
 the caption as a heading because native window captions are omitted. The
 bounded source_delete consumers inspect both languages/panes at400×200 and
 300×180 probes:32 current JSON reports check reachable buttons and fitted text.
-Source scope/evidence are in the [receipt](../upstream-port-audit.md#p3-05--source-delete-lifecycle-2026-10-10);
+Source scope/evidence are in the [receipt](../archive/qt-port/upstream-port-audit.md#p3-05--source-delete-lifecycle-2026-10-10);
 these probes do not establish rendered Windows pixel parity.
 
 Find the affected dialog, command or plan ID with `rg -n` and read its contract
 before changing layout/text/visibility. [Commands and reports](#commands-and-reports)
 describes report generation; [UI reference tooling](../ui-reference.md) owns the
 resource-to-widget comparison procedure. These contracts specify controls and
-geometry, while [the checklist](../porting-checklist.md) owns current acceptance.
+geometry; [acceptance](../ux-port-audit.md) records the completed validation scope.
 
 ### Archive directory CRC projection (P3-05)
 
@@ -491,7 +496,7 @@ Rename editor in the same pane when the next events or resize are delivered.
 Cocoa table Rename reserves native focus-frame vertical margins inside the row.
 The visible QFocusFrame must fit both the viewport and that row's vertical band;
 the editor must retain its minimum text height. Icon-editor geometry is retained.
-[Native RED/GREEN and platform checks](../upstream-port-audit/p3-06-rename-focus-2026-10-16.md).
+[Native RED/GREEN and platform checks](../archive/qt-port/upstream-port-audit/p3-06-rename-focus-2026-10-16.md).
 
 Main-panel navigation contains one Parent button before the address field,
 matching original Panel.cpp. Every visible panel retains its own source status
@@ -499,7 +504,7 @@ fields. The global operation-feedback row is hidden while empty and appears for
 an operation/error message. Successful publication clears it; failed archive
 completion retains its diagnostic. Four EN/RU normal980×620/compact640×400
 one→two→one consumers inspect these groups and transient visibility.
-[Rendered/source and three-platform receipt](../upstream-port-audit/p3-06-main-chrome-2026-10-16.md).
+[Rendered/source and three-platform receipt](../archive/qt-port/upstream-port-audit/p3-06-main-chrome-2026-10-16.md).
 
 Rename completion uses original OnEndLabelEdit's saved selected names and raw
 prefix/name, focusing the new name on success and the old name on error/Cancel.
@@ -656,6 +661,8 @@ history entry, including after restart; Cancel is distinct from accepting it.
 Native Windows device/ADS/UNC bookmark/history/restart consumers inspect the
 owning address and list at980×620/640×400 and preserve the peer's draft.
 
+<a id="source-root-command-target-p3-0513-implementation-validation-active"></a>
+
 ### Source root command target (P3-05.13)
 
 Reference: pinned resource.rc IDM_OPEN_ROOT_FOLDER, MyLoadMenu, App.h inline
@@ -667,7 +674,7 @@ Do not substitute the separate root namespace's Computer/Documents/Network rows.
 Verify EN/RU normal/compact address/list/status geometry, command and both key
 routes, source provider choice, parent/back restoration, selection and input bytes.
 Current namespace consumers are recorded in the
-[address/Root acceptance](../upstream-port-audit/p3-05-address-root-2026-10-17.md).
+[address/Root acceptance](../archive/qt-port/upstream-port-audit/p3-05-address-root-2026-10-17.md).
 Full native/rendered parent acceptance remains separate.
 The integrated Qt command/key consumers use the retained source drive transition.
 The separate root namespace is reached through Parent; Back from a filesystem
@@ -677,6 +684,8 @@ Live EN→RU→EN updates both bound drive addresses and the focused window titl
 Preserve a pending address draft, existing drive rows and selection; verify both
 panels at normal/compact sizes. The header reload uses the source path/icon/title
 stage without adding history or enumerating the drive list again.
+
+<a id="source-address-dropdown-p3-0512-required-remaining-scope"></a>
 
 ### Source address dropdown (P3-05.12)
 
@@ -709,10 +718,12 @@ address/list must remain exposed in all four sizes/languages above. Namespace,
 Windows shell queries retain the requested source attributes, including the
 directory policy for an ADS colon. Current device/ADS/UNC selection, refusal,
 focus and closed-editor icon checks are recorded in the
-[address/Root acceptance](../upstream-port-audit/p3-05-address-root-2026-10-17.md).
+[address/Root acceptance](../archive/qt-port/upstream-port-audit/p3-05-address-root-2026-10-17.md).
 Full rendered icon/style acceptance remains with the parent workflow audit.
 
-### Source caption helpers (P3-05.10, validation active)
+<a id="source-caption-helpers-p3-0510-validation-active"></a>
+
+### Source caption helpers (P3-05.10)
 
 Reference: pinned LangUtils colon/remove-colon/window bodies and actual
 EditPage2/ProgressDialog2/BenchmarkDialog resources and OnInit callers.
@@ -726,7 +737,9 @@ apply. Current Mac48 EN/RU footer reports pass exposure, size hints, source
 captions and separation. Final native seven consumers and48 footer reports also
 pass, followed by final native full256PASS. Linux and rendered acceptance remain open.
 
-### Namespace Hash result consumers (P3-05.8, validation active)
+<a id="namespace-hash-result-consumers-p3-058-validation-active"></a>
+
+### Namespace Hash result consumers (P3-05.8)
 
 `namespace_hash` invokes original PanelCrc/HashGUI results for Windows private
 device and ADS fixtures. The existing ListView contract applies: two-column
@@ -748,7 +761,9 @@ compact sizes below and produces48 EN/RU footer reports per platform. Reports on
 2026-10-06 show visible, separate standard controls and exact source captions;
 rendered Windows parity and parent/final acceptance remain pending.
 
-### Source shell popup (P2-09, in progress)
+<a id="source-shell-popup-p2-09-in-progress"></a>
+
+### Source shell popup (P2-09)
 
 Reference: pinned PanelMenu.cpp::CreateFileMenu/CreateSevenZipMenu and Explorer
 ContextMenu.cpp::QueryContextMenu, including source MenuLogo.bmp. System is
@@ -829,7 +844,9 @@ ZIP controls wrap at300 pixels; NTFS views retain single-line mtime/ctime and
 380-pixel atime wrapping. Four current Windows WIM reports confirm480×430.
 Rendered Windows parity and existing Add language clipping remain P3 work.
 
-### Add metadata Options (P2-07, in progress)
+<a id="add-metadata-options-p2-07-in-progress"></a>
+
+### Add metadata Options (P2-07)
 
 Reference: pinned CompressDialog.rc Options NTFS group and COptionsDialog
 OnInit/OnOK. Symbolic links precede hard links, alternate streams and security;
@@ -881,7 +898,7 @@ scrolling and footer exposure, plus native-font source initial frames. A group
 frame may exceed a compact viewport; its native title rectangle and every child
 must each be fully reachable. Current native EN/RU reports on three OS and
 rendered original initial states are recorded in the
-[secondary-dialog receipt](../upstream-port-audit/p3-06-secondary-dialogs-2026-10-16.md).
+[secondary-dialog receipt](../archive/qt-port/upstream-port-audit/p3-06-secondary-dialogs-2026-10-16.md).
 Native font metrics, compact scrolling and modal chrome prevent a claim of
 complete rendered Windows pixel equality.
 
@@ -929,7 +946,7 @@ reachability. This is scroll-content geometry, not clipped text. P2-04 acceptanc
 is recorded in the audit; whole-plan platform/rendered checks remain P3.
 The current source-frame/grouping correction has36 native JSON per OS and ten
 original Windows EN/RU reference states across List/Link/Benchmark. See the
-[current receipt](../upstream-port-audit/p3-06-secondary-dialogs-2026-10-16.md)
+[current receipt](../archive/qt-port/upstream-port-audit/p3-06-secondary-dialogs-2026-10-16.md)
 for precise checks and deviations; the older console dimensions above retain
 their historical revision.
 
@@ -967,7 +984,9 @@ For resource-derived comparison and reviewed C++ states, see
 `ui_parity_copy` and `ui_parity_password` check fresh reports against pinned
 resource baselines.
 
-### File-list drag target (P1-16 WIP)
+<a id="file-list-drag-target-p1-16-wip"></a>
+
+### File-list drag target (P1-16)
 
 Reference: pinned `PanelDrag.cpp::PositionCursor`, its `LVIS_DROPHILITED`
 paint state, native right-drop popup pairs/masks and Copy-to-archive confirmation.
@@ -994,7 +1013,9 @@ structure and usability on the tested Qt platform, not pixel-level Windows parit
 
 ## Commands and reports
 
-### Alternate streams namespace (P2-06, active)
+<a id="alternate-streams-namespace-p2-06-active"></a>
+
+### Alternate streams namespace (P2-06)
 
 Reference: pinned FileManager.rc IDM_ALT_STREAMS and
 PanelFolderChange.cpp::OpenAltStreams, AltStreamsFolder properties and original
@@ -1025,7 +1046,7 @@ FieldsStayAtSizeHint style, with distinct `-size-hints` report tags. The lower
 memory usage/limit group is scrolled into view before asserting both Threads
 and memory visibility. Padding-only address-icon clipping has its separate
 glyph contract; it does not relax Add control bounds.
-[Native Add receipt and limits](../upstream-port-audit/p3-03-2026-10-15.md#p3-03p3-06--native-add-geometry-tab-traversal-and-display-fixtures-2026-10-15).
+[Native Add receipt and limits](../archive/qt-port/upstream-port-audit/p3-03-2026-10-15.md#p3-03p3-06--native-add-geometry-tab-traversal-and-display-fixtures-2026-10-15).
 
 P2-09 WIP correction 2026-10-03: desktop `IDD_COMPRESS` places
 Format/compression/memory/volumes/parameters/Options summary in the left column;
@@ -1163,7 +1184,7 @@ existing normal/compact navigation/filter/create/accept/Cancel tests remain.
 Parent/Create activate on Return/keypad Enter; Create cancellation leaves the
 filesystem unchanged. Initial focus remains the path edit. Bounded original
 EN/RU and current native results are in the
-[browser receipt](../upstream-port-audit/p3-06-source-browsers-2026-10-16.md).
+[browser receipt](../archive/qt-port/upstream-port-audit/p3-06-source-browsers-2026-10-16.md).
 
 ### Delete Temporary Files (P1-15.2)
 
@@ -1193,7 +1214,7 @@ focus-sensitive Enter policy are checked in `temp_cleanup`.
 temp_cleanup writes EN/RU900×580/500×320 temp-cleanup-*.json; footer/path/filter
 stay exposed, and the six-column list scrolls horizontally at compact width.
 Geometry/source structure and a bounded original EN/RU comparison are checked
-in the [current browser receipt](../upstream-port-audit/p3-06-source-browsers-2026-10-16.md).
+in the [current browser receipt](../archive/qt-port/upstream-port-audit/p3-06-source-browsers-2026-10-16.md).
 Named controls remain exposed at normal/compact sizes; full workflow/pixel parity
 is not inferred from those reports. Earlier P1-15 check.sh175/175 is historical.
 
@@ -1219,7 +1240,7 @@ Add/Extract button/F1 without applying pending state; compression_advanced check
 original Options Help. Existing Add760/640, Extract600/470 and Options640/520
 geometry reports cover the added Help footer. Current Qt usability is checked;
 the bounded About EN/RU source/rendered comparison and native font/compact checks
-are recorded in the [presentation receipt](../upstream-port-audit/p3-06-primitives-2026-10-16.md).
+are recorded in the [presentation receipt](../archive/qt-port/upstream-port-audit/p3-06-primitives-2026-10-16.md).
 Complete pixel parity remains unverified; P1-15 acceptance includes cleanup above.
 
 ### Live dialog language consumers (P1-14.2)
@@ -1295,7 +1316,7 @@ Menu checkbox rows and Folders radio rows retain the resource's10-DLU height /
 14-DLU pitch through a4-DLU gap mapped using the current font. Native QWidget
 frames must remain separate at normal/compact sizes. Options geometry waits for
 activation/configure and retains minimumSizeHint when a style requires a taller
-frame. The [native Options receipt](../upstream-port-audit/p3-06-options-spacing-2026-10-16.md)
+frame. The [native Options receipt](../archive/qt-port/upstream-port-audit/p3-06-options-spacing-2026-10-16.md)
 records RED/GREEN geometry and platform boundaries.
 
 Reference: pinned `FileManager/MenuPage.cpp`, `MenuPage2.rc` and
@@ -1351,7 +1372,7 @@ The existing advanced/timestamp/language suites retain persistence, Help and
 live-language coverage. Source visibility is applied before Qt computes its
 minimum; unsupported hidden NTFS controls do not force a compact minimum.
 
-[The current receipt](../upstream-port-audit/p3-06-compression-options-2026-10-17.md)
+[The current receipt](../archive/qt-port/upstream-port-audit/p3-06-compression-options-2026-10-17.md)
 maps all22 controls against eight actual original states and native reports on
 three OS. Raw Windows runtime comparison passes8/8. POSIX comparisons retain
 the expected Windows-only preserve-access/ADS/security state differences; they
@@ -1493,7 +1514,7 @@ the independent SevenZip group remains disabled. The upstream Win32 resource/sou
 establishes structure, not rendered pixel dimensions on macOS.
 Native popup fixtures observe the owned visible menu inside its nested loop,
 after activating the window/list, for mouse, keyboard and compact peer consumers.
-See the [current Cocoa receipt](../upstream-port-audit/p3-06-native-shell-2026-10-16.md).
+See the [current Cocoa receipt](../archive/qt-port/upstream-port-audit/p3-06-native-shell-2026-10-16.md).
 
 ### Two disk panels (P0-08.1)
 
@@ -1623,7 +1644,7 @@ and the public hide transition. Its initial-frame case checks growth between
 `QtDialogUnits` and may expand to Qt's minimum size. Responsive Qt layouts and
 native font metrics are deliberate adaptations of the fixed Win32 dialog;
 they do not imply identical pixel dimensions. Rendered reference evidence is
-recorded in the [P3-06 audit](../upstream-port-audit/p3-06-2026-10-15.md).
+recorded in the [P3-06 audit](../archive/qt-port/upstream-port-audit/p3-06-2026-10-15.md).
 Qt supplies one file icon; the optional second Windows EXE/ICO icon is omitted
 explicitly in the contract. Widths must fit labels and footer buttons without
 clipping. Default and native result IDs are checked behaviorally.
@@ -1657,7 +1678,7 @@ These checks establish
 structure and local Qt usability. Initial focus is Change allowed limit, as in
 the first source tab stop. Native PanelOpen integration is checked in P0-04.1.
 The bounded EN/RU original/current rendered comparison is recorded in the
-[source-prompts receipt](../upstream-port-audit/p3-06-source-prompts-2026-10-16.md);
+[source-prompts receipt](../archive/qt-port/upstream-port-audit/p3-06-source-prompts-2026-10-16.md);
 whole workflow and pixel equality are not established by those initial views.
 
 ```sh
@@ -1911,7 +1932,7 @@ is in `list_activation`; this adaptation does not change the geometry contract.
 `folder_history` verifies list/footer visibility and separation at 540×360
 and 360×240 and writes JSON reports. Qt geometry establishes structure and
 usability. The original rendered EN/RU history states are recorded in the
-[secondary-dialog receipt](../upstream-port-audit/p3-06-secondary-dialogs-2026-10-16.md);
+[secondary-dialog receipt](../archive/qt-port/upstream-port-audit/p3-06-secondary-dialogs-2026-10-16.md);
 widget geometry does not establish pixel equivalence or physical input.
 
 ## Hash results
@@ -1932,7 +1953,7 @@ HashCalcGUI invoke this same source presenter; current540/420 JSON reviewed
 ## Full text detail
 
 Reference: EditDialog.rc; source scope and baseline are recorded in the
-[properties audit](../upstream-port-audit.md#свойства-и-двухколоночный-список-2026-09-28).
+[properties audit](../archive/qt-port/upstream-port-audit.md#свойства-и-двухколоночный-список-2026-09-28).
 CEditDialog initially maps the336×256DLU client through the native Qt font,
 with eight-DLU root margins/gap and64×16DLU Close protected by its native hint.
 It requests the source resize/minimize/maximize capabilities without a title-bar
@@ -1953,7 +1974,7 @@ current-location footer. Archive Modified text remains sparse raw compatibility
 data until native time parsing; it is not a precision/timezone acceptance claim.
 
 Reference: ListViewDialog.rc; source scope and baseline are recorded in the
-[properties audit](../upstream-port-audit.md#свойства-и-двухколоночный-список-2026-09-28).
+[properties audit](../archive/qt-port/upstream-port-audit.md#свойства-и-двухколоночный-список-2026-09-28).
 Two columns (property/value) fill the body with a visible empty header,
 followed by OK/Cancel. No label form or custom selection title remains.
 The same496×336DLU source frame and native-font/margin/footer policy as folder
@@ -2020,7 +2041,7 @@ Reference: upstream `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
   reports reuse this contract; creation keeps the source first-component focus,
   alternative marks and distinct failure-refresh policy. Cancel preserves the
   pre-dialog state. Source provenance and checks are in the
-  [receipt](../upstream-port-audit.md#p3-05--source-create-filefolder-scenario-2026-10-10).
+  [receipt](../archive/qt-port/upstream-port-audit.md#p3-05--source-create-filefolder-scenario-2026-10-10).
 - ZIP comment uses source `PanelOperations.cpp::ChangeComment` with the focused
   item name and localized Comment in its title, localized IDS_COMMENT2 prompt
   and the existing raw property value. `native_comment_ui` checks EN/RU at the
@@ -2190,7 +2211,7 @@ checkbox text and footer remain exposed at normal/compact sizes. Requested
 Russian470×330 expands to the style-dependent minimum (macOS525, Windows483
 pixels wide). The standalone Windows GUI consumer also checks public UIA
 exposure/enabled states and source caption. This does not establish original
-Win32 pixel parity; [the audit](../upstream-port-audit.md#p3-05--toolbar-extracttest-source-consumers-2026-10-07)
+Win32 pixel parity; [the audit](../archive/qt-port/upstream-port-audit.md#p3-05--toolbar-extracttest-source-consumers-2026-10-07)
 owns the platform evidence.
 
 Adaptations: the pinned desktop resource and Qt use combo boxes for modes.
@@ -2224,7 +2245,7 @@ Reference: the same upstream commit, `CPP/7zip/UI/GUI/CompressDialog.rc`,
   CompressDialog.cpp::OnInit attaches/populates both combos without testing
   target existence, matching CompressDialog.rc and the current Qt constructor.
   The new-target native Linux state is recorded in the
-  [native receipt](../upstream-port-audit.md#p3-03p3-04--native-linux-package-workflow-and-desktop-recovery-2026-10-14).
+  [native receipt](../archive/qt-port/upstream-port-audit.md#p3-03p3-04--native-linux-package-workflow-and-desktop-recovery-2026-10-14).
 - Compression controls retain level, method, dictionary, word size, solid block,
   CPU threads, and memory controls. Encryption retains the upstream order:
   password, confirmation, Show Password, method, Encrypt file names.

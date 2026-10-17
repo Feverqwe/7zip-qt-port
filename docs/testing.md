@@ -12,9 +12,9 @@
 - [UI и геометрия](testing/geometry.md): producer targets, состояния и widget JSON.
 - [UI contracts](ui-layout-contracts.md): требования к конкретному виду.
 
-Каталоги содержат накопленные свидетельства разных ревизий. Сопоставлять их
-с текущими tests/CMake и кодом; старое PASS или «unverified» не определяет
-текущую приёмку. Датированные результаты новых запусков писать в
+Состав suites и fixtures проверять по текущим tests/CMake и коду.
+Накопленные свидетельства переноса сохранены в [архиве](archive/README.md).
+Датированные результаты новых запусков писать в
 [source audit](upstream-port-audit.md), а здесь менять описание покрытия.
 
 ```sh
@@ -32,7 +32,7 @@ python3 scripts/verify.py navigation
 и правила замены или удаления проверок реализации — в
 [AGENTS.md](../AGENTS.md#test-usefulness).
 
-[Подробное покрытие и исторические stages](testing/coverage.md#what-to-test).
+[Подробное покрытие и исторические stages](archive/qt-port/testing/coverage.md#what-to-test).
 
 ## Выбор объёма проверки
 
@@ -90,4 +90,4 @@ outputs и compiler/runtime caches. Retention датированных snapshots
 
 ## Проверка компоновки Qt
 
-[Geometry suites и отчёты](testing/geometry.md#проверка-компоновки-qt).
+[Geometry suites и отчёты](testing/geometry.md).

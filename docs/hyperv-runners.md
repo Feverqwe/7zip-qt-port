@@ -103,7 +103,7 @@ were refreshed from htopQt's modified worktree on 2026-10-04 (base commit
 The source script's SHA256 was
 `f4f53f0123a503dcc4fb85f17821d79e1cf156f29cbe015b99d561b45b1903ba`.
 
-Current runner selection follows CI's Qt6.12.0. It explicitly sets
+Runner selection explicitly sets
 `CMAKE_PREFIX_PATH` and prepends the selected kit's bin directory:
 `/home/runner/sevenzip-desktop/tools/Qt/6.12.0/gcc_64` and
 `C:/runner/sevenzip-desktop/tools/Qt/6.12.0/msvc2022_64`.
@@ -111,10 +111,8 @@ Current runner selection follows CI's Qt6.12.0. It explicitly sets
 the kit before checks; the helper does not download Qt or change global PATH.
 The Linux project kit currently links to the already installed
 `/home/runner/htopQt/qt612-release-20261004/qt`, including QtDBus. Windows kit
-was installed with the repository's verified aqt adapter; both live probes
-confirm6.12.0. Linux full240/240 passed; Windows runtime validation is pending.
-Earlier systemQt6.4.2 and
-WindowsQt6.8.3 results below remain historical evidence, not Qt6.12 checks.
+was installed with the repository's verified aqt adapter. Use `probe` to confirm
+the live kit; prior probe/gate results are [historical evidence](archive/qt-port/workflow-evidence.md).
 
 The persistent worktree contains `runner-tmp`. Its process environment sets
 `TEMP`, `TMP` and `TMPDIR` there before MSVC setup and the interactive child.
@@ -128,7 +126,7 @@ an explicit platform selection and per-suite CTest overrides are retained.
 
 The existing private mount is `/mnt/sevenzip-desktop`, filesystem UUID
 `9fd6574a-fe35-4af5-82fc-f1b16d78afb8`. Its setup and old capacity samples are
-[historical evidence](history/hyperv-runner-evidence.md), not instructions to
+[historical evidence](archive/qt-port/history/hyperv-runner-evidence.md), not instructions to
 create a disk or proof of current free space. Apply the storage policy above.
 
 The ignored local `build/runners/hyperv/workspaces.json` selects the data root:
@@ -178,14 +176,14 @@ sets `SEVENZIP_RUNNER_EXPECT_NORMAL_PRIORITY=1` so `process_priority` also check
 the inherited CTest process context. This is scoped to the owned task, in both
 Limited and Highest modes; it changes no global scheduler or account setting.
 See [Microsoft's priority mapping](https://learn.microsoft.com/en-us/windows/win32/taskschd/tasksettings-priority)
-and the [native regression receipt](upstream-port-audit/p3-03-runner-priority-2026-10-16.md).
+and the [native regression receipt](archive/qt-port/upstream-port-audit/p3-03-runner-priority-2026-10-16.md).
 
 The 2026-10-10 native control diagnosis confirms this distinction: session 0's
 service window station reports flags 0 and an invisible desktop. A disposable
 Win32 window gains WS_VISIBLE after ShowWindow, yet IsWindowVisible remains
 false, just as for the actual Qt startup window. Do not replace the visibility
 assertion with a style-bit check to accept that environment. The
-[diagnostic receipt](upstream-port-audit.md#p3-03--windows-service-desktop-visibility-diagnosis-2026-10-10)
+[diagnostic receipt](archive/qt-port/upstream-port-audit.md#p3-03--windows-service-desktop-visibility-diagnosis-2026-10-10)
 records the tested snapshot and retained probes; an active logon is still
 required for interactive checks.
 
@@ -276,7 +274,7 @@ existing Windows credential was used only inside the host's anton process to
 enter the observed Runner console password form through Msvm_Keyboard. This
 normal login required no autologon, password reset, RDP enablement or reboot.
 Do not print credentials or include them in command arguments/logs. The
-[native acceptance receipt](upstream-port-audit.md#p3-03p3-04--native-linux-package-workflow-and-desktop-recovery-2026-10-14)
+[native acceptance receipt](archive/qt-port/upstream-port-audit.md#p3-03p3-04--native-linux-package-workflow-and-desktop-recovery-2026-10-14)
 records Session1 and the unchanged logon settings.
 
 After a Linux kernel update, missing matching `linux-cloud-tools-$(uname -r)`
@@ -382,14 +380,7 @@ SSH checks cover the project gate, not interactive desktop/Finder behavior,
 distribution or rendered Windows 7zFM parity. Historical ARM64 QEMU checks
 are separate evidence; those removed htopQt VMs are not the current runners.
 
-## Validation on 2026-10-03
+## Historical evidence
 
-[Historical evidence](history/hyperv-runner-evidence.md#validation-on-2026-10-03).
-
-## General entry point validation on 2026-10-03
-
-[Historical evidence](history/hyperv-runner-evidence.md#general-entry-point-validation-on-2026-10-03).
-
-## CLI refresh validation on 2026-10-04
-
-[Historical evidence](history/hyperv-runner-evidence.md#cli-refresh-validation-on-2026-10-04).
+Early runner, entry-point and CLI checks are retained in
+[the runner archive](archive/qt-port/history/hyperv-runner-evidence.md).

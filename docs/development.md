@@ -26,17 +26,15 @@ and builds unchanged `Bundles/SFXWin/makefile` with `PLATFORM`. Optional
 `-UpstreamCheckout` and `-OutputDirectory` select the read-only source and output.
 It writes `7z.sfx`, `7z.sfx.json` and `7z-LICENSE.txt`, refuses unowned/reparse-point
 artifacts, and never builds in the sibling checkout. The sidecar producer must
-match the Windows builder. Actual unchanged SFXWin compilation passes on
-Windows11 ARM64 with MSVC14.44 and SDK10.0.26100.0. Tools are installed in the
-local VM but require its
-scoped Visual Studio developer environment rather than the default SSH PATH.
+match the Windows builder. Use a scoped Visual Studio developer environment
+rather than relying on the default SSH PATH.
 `build.sh` requests process-local English MSVC diagnostics (`VSLANG=1033`)
 unless supplied by the caller. It also switches its console to UTF-8 and restores
 the previous code page on exit so CMake/Ninja parse `/showIncludes` reliably
 even when English compiler resources are not installed.
-An existing cache configured with a damaged localized prefix needs rebuilding
-from a clean build directory; changing the language alone cannot repair stored
-header dependencies. This setting does not change application language.
+This setting does not change application language. If stored header dependencies
+appear damaged, collect diagnostics before proposing a cache/build-tree repair;
+follow [cache retention](../AGENTS.md#validation-scope).
 
 External codecs require the official dynamic console client, not standalone
 `7zz`. `./scripts/build-codec-runtime.sh [upstream-checkout] [artifact-directory]`
@@ -52,7 +50,7 @@ The immutable codec image uses Qt's selected temporary directory to copy and
 load its module. That directory must permit writes and executable mappings.
 On Linux with a `noexec` default temporary filesystem, a process-scoped `TMPDIR`
 can select an approved private directory with those capabilities. The isolated
-[runtime check](upstream-port-audit.md#p3-04--isolated-linux-runtime-and-temporary-directory-contract-2026-10-10)
+[runtime check](archive/qt-port/upstream-port-audit.md#p3-04--isolated-linux-runtime-and-temporary-directory-contract-2026-10-10)
 verifies this override, cleanup and unchanged archives; it changes no system policy.
 Native regression fixtures also cache `SEVENZIP_CODEC_MODULE` in CMake. When
 preparing a fresh checkout or changing deployments, configure that variable to
@@ -60,13 +58,13 @@ the same pinned module, for example `cmake --preset dev
 -DSEVENZIP_CODEC_MODULE="$PWD/build/codec-runtime/7z.so"` on macOS/Linux
 (`7z.dll` on Windows), before building and running the gate. Copying runtime
 artifacts alone does not replace an already cached system-module path.
-Current package statuses belong in [the checklist](porting-checklist.md).
+Completed package evidence and its limits are linked from [acceptance](ux-port-audit.md).
 On Windows, `scripts/build-codec-runtime.ps1 -Architecture arm64` (or `x64`/`x86`)
 uses a matching developer environment and the same optional source/output arguments
 as the SFX builder. It compiles unchanged Console/Format7zF/Alone2 makefiles and
-produces `7z.exe`, `7z.dll`, `7zz.exe`, license and runtime manifest. All three
-compile on Windows11 ARM64; both clients report26.03. Do not install test-only
-codec fixtures in a production runtime.
+produces `7z.exe`, `7z.dll`, `7zz.exe`, license and runtime manifest.
+Do not install test-only codec fixtures in a production runtime. Earlier ARM64
+builder samples are retained in [the tooling archive](archive/qt-port/workflow-evidence.md).
 
 Windows CMake installation places the Qt application, original7zFM/7zG entry
 aliases, project shell DLL and official `7z.exe`/`7z.dll` runtime together in `bin`.
@@ -83,7 +81,7 @@ runtime directory at configure time.
 `build/windows-package`, then exercises its actual DLL and GUI helper with
 only package/system paths in the child process environment. Run it on the
 interactive Windows runner. This private test layout is not a release package
-or final license/distribution acceptance; those belong to P3-04.
+or final license/distribution acceptance; see [packaging scope](ci.md).
 
 ## Dependencies
 

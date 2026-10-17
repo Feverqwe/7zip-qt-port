@@ -198,8 +198,8 @@ Windows 7zFM is the reference for structure, commands, shortcuts and behavior.
 Before UI work, inspect exact upstream resources, handlers and callers; record
 necessary native-dialog, accessibility, scaling or OS adaptations in parity or
 architecture. Preserve the Windows layout where Qt permits and disable unfinished
-commands. [The UX audit](docs/ux-port-audit.md) tracks required corrections,
-including previously accepted scope.
+commands. [Acceptance boundaries](docs/ux-port-audit.md) distinguish completed
+UX evidence from checks needed for a new change.
 
 For layout/text/visibility/resize changes, first use the affected
 [text specification](docs/ui-layout-contracts.md), normal/compact geometry tests
@@ -213,19 +213,19 @@ Screenshots are a fallback for unresolved fonts/icons/colors/style or a user
 request; capture only the affected view (`SEVENZIP_CAPTURE_SCREENSHOTS=1`).
 Resources prove structure, not pixels. Identify the concrete reference; without
 a rendered Windows reference state that visual parity is unverified.
-Never claim cross-platform verification from one OS; three-platform CI remains
-part of the acceptance plan.
+Never claim cross-platform verification from one OS; report checked platforms
+and native scenarios explicitly. [CI scope](docs/ci.md) describes automation.
 
 ## Workflows and runners
 
 Use the matching skill in `.agents/skills/`; the
 [documentation map](docs/README.md) routes tasks to the relevant workflow.
-For requested port-plan work, use the [checklist](docs/porting-checklist.md)
-for statuses/step selection and the [plan](docs/porting-plan.md) for scope,
-dependencies and iteration/commit rules. Neither is an automatic backlog.
-Group related remaining work into complete integrated scenarios before editing;
+The Qt porting plan is complete. Its [archive](docs/archive/README.md) preserves
+scope, decisions and dated evidence; old statuses, next steps and iteration rules
+do not govern new work. Use the current request to choose the affected scenario.
+Group related work into complete integrated scenarios before editing;
 do not create separate iterations or commits for each helper, failure branch or
-regression. Follow the plan's iteration rules for implementation and validation.
+regression. Follow the source-comparison and focused-validation rules above.
 
 For Linux/Windows checks read [Hyper-V runners](docs/hyperv-runners.md) and the
 global `runners` skill. Use

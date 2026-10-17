@@ -1,81 +1,51 @@
 # Карта документации
 
-Каждый вид сведений имеет основной документ. В остальных местах оставляем
-краткое описание и ссылку; не переносим туда историю проверок и текущие счётчики.
-
-| Что нужно узнать или обновить | Основной документ |
-| --- | --- |
-| Обзор проекта и быстрый старт | [README](../README.md) |
-| Общие правила работы агента и source port | [AGENTS.md](../AGENTS.md) |
-| Scope пакетов, зависимости, размер итераций и критерии приёмки | [Правила плана](porting-plan.md), scope [P0](porting-plan/p0.md) / [P1](porting-plan/p1.md) / [P2](porting-plan/p2.md) / [P3](porting-plan/p3.md) |
-| Текущие статусы, счётчик и выбор следующего доступного шага | [Правила и счётчик](porting-checklist.md), таблицы [P0](porting-checklist/p0.md) / [P1](porting-checklist/p1.md) / [P2](porting-checklist/p2.md) / [P3](porting-checklist/p3.md) |
-| Короткое поручение продолжить план | [Стартовый запрос](porting-chat-prompt.md) |
-| Происхождение модулей, copied/adapted/omitted scope, причины отклонений и датированные свидетельства переноса | [Source audit](upstream-port-audit.md) |
-| Bodies/callers и границы omitted UI modules при итоговой сверке | [Omitted scope](omitted-scope-audit.md) |
-| Машиночитаемый baseline borrowed files | [Manifest](upstream-baseline.json) |
-| Процедура сравнения и обновления upstream | [Upstream update](upstream-update.md) |
-| Реальные сценарии, команды и платформенные ограничения | [7zFM parity](7zfm-parity.md) |
-| Обязательные открытые UX-коррекции | [UX audit](ux-port-audit.md) |
-| Владельцы компонентов, lifetime и границы UI/backend | [Архитектура](architecture.md) |
-| Установка, toolchain, сборка, запуск и native runtime | [Разработка](development.md) |
-| Поведение, покрытие и выбор регрессионных проверок | [Выбор проверок](testing.md), [покрытие suites](testing/coverage.md), [geometry](testing/geometry.md) |
-| Сценарий → source owner → CTest, критические отказы/Cancel/security | [Regression matrix](regression-matrix.md) |
-| Контролы, состояния, normal/compact геометрия и widget JSON | [UI contracts](ui-layout-contracts.md) |
-| Извлечение ресурсов и resource-to-widget comparison | [UI reference tooling](ui-reference.md) |
-| Сбор настоящего Windows runtime reference | [Windows reference](windows-ui-reference.md) |
-| Машинное сравнение runtime-геометрии оригинала и native Qt на трёх ОС | [Runtime comparison](ui-runtime-comparison.md) |
-| Общие Windows/Linux runners, transport и snapshot checks | [Hyper-V runners](hyperv-runners.md) |
-| Локальные runtime artifacts, scope CI и границы native acceptance | [CI scope](ci.md) |
-| Локальная память, проверка старых свидетельств и handoff | [Memory protocol](agent-memory.md) |
-
-Skills в `.agents/skills/` содержат профильные приёмы и ссылки на эти правила.
-Их assets задают начальные страницы локального vault; `.codex/` — экземпляр
-локальной памяти, а не ещё одна версия документации.
+Qt-портирование завершено; план и свидетельства переноса находятся
+в [архиве](archive/README.md). Для текущей работы выбирайте документ по задаче.
+Каждый факт имеет одного владельца; остальные документы ссылаются на него.
 
 ## Как выбрать минимальный контекст
 
-Начинать с `AGENTS.md` и индекса памяти, затем выбирать маршрут ниже.
-Audit, parity, UI contracts и omitted scope — индексы с прежними якорями;
-подробности лежат в одноимённых каталогах. Открывать раздел или найденный диапазон,
-а не весь каталог. Датированные записи не заменяют статусы в чеклисте.
+Агент начинает с [AGENTS.md](../AGENTS.md) и индекса локальной памяти, если он
+есть. Затем читает затронутый раздел, код и зависимости. Датированный результат
+проверки подтверждает только указанную ревизию, платформу и сценарий.
 
-| Задача | Что читать дальше |
+| Задача | Основной документ |
 | --- | --- |
-| Продолжить портирование | [Правила выбора](porting-checklist.md), строку ID в `docs/porting-checklist/<p0–p3>.md`, пакет в `docs/porting-plan/<p0–p3>.md` и [правила итерации](porting-plan.md#размер-итерации-и-коммита-уточнение-2026-10-07) |
-| Найти владельца или границу адаптера | [Разделы архитектуры](architecture.md#reading-guide), затем bodies/callers в коде |
-| Исправить поведение и выбрать проверки | [Regression matrix](regression-matrix.md), нужную suite в [coverage](testing/coverage.md), [команды сборки и тестов](development.md#local-commands) |
-| Изменить форму или layout | Контракт затронутого вида в [UI specifications](ui-layout-contracts.md), [resource tooling](ui-reference.md) и открытые коррекции в [UX audit](ux-port-audit.md) |
-| Сверить происхождение кода | [Manifest](upstream-baseline.json) и раздел audit по пути, символу или ID; для обновления — [процедуру](upstream-update.md) |
-| Проверить Windows/Linux | [Hyper-V runners](hyperv-runners.md); для долгих suites — [явный opt-in](development.md#long-suites) |
-| Обновить инструкции или память | [Memory protocol](agent-memory.md), нужный skill и его assets; продуктовые факты — в основном документе из таблицы выше |
+| Познакомиться с приложением | [README](../README.md) |
+| Настроить окружение, собрать, запустить или подготовить runtime | [Разработка](development.md) |
+| Выбрать проверки и убрать временные artifacts | [Testing](testing.md) |
+| Найти сценарий, source owner и регрессии | [Regression matrix](regression-matrix.md) |
+| Найти suite или UI producer | [Coverage](testing/coverage.md), [geometry](testing/geometry.md) |
+| Найти владельца и границы UI/backend | [Архитектура](architecture.md) |
+| Проверить поведение и отличия ОС | [Parity](7zfm-parity.md) |
+| Изменить layout, текст, видимость или resize | [UI contracts](ui-layout-contracts.md) |
+| Извлечь ресурсы и сравнить resource-to-widget | [UI reference tooling](ui-reference.md) |
+| Получить настоящий Windows reference | [Windows reference](windows-ui-reference.md) |
+| Сравнить native runtime-геометрию на трёх ОС | [Runtime comparison](ui-runtime-comparison.md) |
+| Проверить Linux/Windows на общих гостях | [Hyper-V runners](hyperv-runners.md) |
+| Собрать локальные пакеты или понять CI/release scope | [Packaging и CI](ci.md) |
+| Проверить происхождение исходников и причины адаптаций | [Source audit](upstream-port-audit.md), [решения по модулям](omitted-scope-audit.md) |
+| Сверить или обновить upstream | [Baseline manifest](upstream-baseline.json), [процедура обновления](upstream-update.md) |
+| Уточнить границы завершённой UX-приёмки | [Приёмка](ux-port-audit.md) |
+| Сохранить исследование или handoff | [Memory protocol](agent-memory.md) |
+| Найти завершённый план, старое решение или receipt | [Архив](archive/README.md) |
 
-Для поиска раздела без загрузки всего документа:
-
-```sh
-rg -n '^#{1,3} ' docs/architecture.md
-rg -n -F 'CAgent::Open' docs/upstream-port-audit/ docs/omitted-scope-audit/
-rg -n -F 'archive_transfer' docs/testing/ docs/regression-matrix.md
-```
-
-Читать найденный раздел и связанные зависимости, а не все совпадения подряд.
-При расхождении проверить текущий код, upstream и ревизию evidence; порядок
-разделов и исторические слова «active/accepted» не определяют текущую приёмку.
+Skills в `.agents/skills/` содержат профильные приёмы. `.codex/` хранит локальную
+память; её заметки не заменяют документы и не задают очередь задач.
 
 ## Как поддерживать документы
 
-- Менять основной документ, когда изменился соответствующий факт. В чеклисте
-  достаточно статуса, краткого результата и ссылки на подробный audit.
-- У индекса менять маршруты; содержание — в связанном тематическом файле.
-  Сохранять существующие якоря. Не накапливать receipts перед правилами выбора
-  работы, между архитектурными разделами или в кратком каталоге проверок.
-- Новые результаты проверок записывать с датой, ОС, ревизией/snapshot и scope
-  в соответствующем разделе audit; в testing описывать, что проверяют suites.
-  Ссылки из parity, architecture и UI contracts должны объяснять сценарий,
-  владельца или геометрию, а не повторять полный журнал приёмки.
-- Не удалять уникальные full commits, source symbols, omitted branches,
-  ограничения и причины отклонений ради сокращения текста. Исторические
-  инвентаризации находятся в [history/](history/); прошлые проверки
-  не подтверждают текущий checkout.
-- Стартовый запрос и README не закрепляют следующий ID или старый набор
-  результатов: выбирать работу по текущему чеклисту и фактическим capabilities.
-  Локальный индекс содержит ссылки на заметки; детали handoff остаются в заметке.
+- Обновлять основной документ только при изменении соответствующего факта.
+  В README оставлять назначение, использование и публичные ограничения;
+  внутренние детали описывать в профильном техническом документе.
+- Не дублировать код, конфигурационные списки, счётчики и журналы запусков.
+  Команды и test names проверять по текущим scripts/CMake/tests.
+- Новые source-решения и результаты проверок связывать из
+  [audit](upstream-port-audit.md), с датой, ревизией, ОС и scope.
+  В архитектуре, parity и UI contracts менять соответствующий контракт.
+- Сохранять уникальные commits, исходные символы, пропуски, ограничения
+  и причины отклонений. Завершённые планы и вытесненные исследования переносить
+  в архив с обновлением входящих и относительных ссылок.
+- Архив читать по конкретному символу или сценарию. Его прежние статусы,
+  правила итераций и «следующие шаги» не являются действующим поручением.

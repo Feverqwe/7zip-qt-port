@@ -8,13 +8,11 @@ and Windows/Linux acceptance uses [Hyper-V runners](hyperv-runners.md).
 Release runtime packaging uses `BUILD_TESTING=OFF` and the matching Qt kit;
 tests and native acceptance are separate checks.
 
-The official 7-Zip checkout stays pinned to
-`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17` from
-<https://github.com/ip7z/7zip.git>. Existing runtime/SFX builders compile private
-snapshots. `scripts/install-qt-windows.py` retains htopQt's aqtinstall 3.3.0
-adapter for Qt 6.12's compiler-specific repository layout. The removed workflow
-selected Python 3.12 and Ninja 1.12.1; these historical pins do not establish a
-currently running CI job.
+Runtime/SFX builders compile private snapshots from the official repository and
+revision recorded in [the baseline](upstream-baseline.json).
+`scripts/install-qt-windows.py` adapts aqtinstall to the selected Qt kit's
+compiler-specific repository layout. Pins from the removed workflow are
+[historical evidence](archive/qt-port/workflow-evidence.md).
 
 `scripts/package.py` archives a fresh CMake installation, never the checkout or
 build tree. Artifacts contain the application, retained entry aliases, official

@@ -16,9 +16,9 @@ Locate original code in the read-only `../7zip-upstream/CPP/7zip/`:
 `git blame` when history matters.
 
 Trace complete bodies, callers, supporting types and platform dependencies,
-not just resources or names. Search `docs/upstream-port-audit/` and
-`docs/omitted-scope-audit/` for the affected path/symbol, or use
-[the audit index](../../../docs/upstream-port-audit.md) for package receipts.
+not just resources or names. Search `docs/archive/qt-port/upstream-port-audit/`
+and `docs/archive/qt-port/omitted-scope-audit/` for baseline path/symbol decisions;
+new records are linked from [the audit index](../../../docs/upstream-port-audit.md).
 Follow `AGENTS.md` for port requirements.
 In a plan/review identify source revision/symbols, copied code and necessary
 adaptations; cite concrete paths/lines and verify findings in current code/tests.

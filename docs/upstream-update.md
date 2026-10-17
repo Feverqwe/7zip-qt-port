@@ -19,12 +19,7 @@ python3 scripts/upstream_baseline.py verify --upstream /tmp/7zip-update-review
 
 `verify` rejects missing/stale manifest entries, duplicate source owners,
 unknown revisions, new upstream counterparts for local-only paths, and changed
-bytes in exact files. It checks the complete tracked inventory. A temporary
-clone made with `git clone --no-hardlinks --no-checkout ../7zip-upstream` was
-also verified on macOS arm64 on 2026-09-30: 192 exact, 135 adapted and three
-local paths at commit `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. This
-proves the check does not depend on the original checkout location; it does
-not prove availability of the public remote during offline development.
+bytes in exact files. It checks the complete tracked inventory.
 
 Before changing a module, produce an old-to-proposed review:
 
@@ -47,12 +42,10 @@ well: a change there can still affect a copied dependency. Update the audit
 with old/new full revisions, source paths, retained adaptations, deferred
 changes and reason. Change the manifest default revision only if every recorded
 module moves together; otherwise add per-path `overrides`. Update parity docs
-when the workflow changes, add behavior regressions, run focused checks and
-`./scripts/check.sh` before a commit. A failed check leaves provenance at the
+when the workflow changes, add meaningful behavior regressions and run affected
+checks. Use `./scripts/check.sh` only for the broader integration risks defined
+in [AGENTS.md](../AGENTS.md#validation-scope). A failed check leaves provenance at the
 last validated revision.
 
-The review command was exercised in a disposable descendant of the recorded
-commit with synthetic changes to one adapted module (`NetFolder.cpp`) and one
-exact dependency (`Net.cpp`). It reported both old→new revisions and the
-separate review instructions; neither this repository nor the sibling upstream
-was changed by that demonstration. A real upstream update has not been applied.
+Early verification and synthetic-review evidence is preserved in
+[the tooling archive](archive/qt-port/workflow-evidence.md).

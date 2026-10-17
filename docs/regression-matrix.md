@@ -1,240 +1,87 @@
 # Regression and security traceability
 
-PanelItems provider/selection lifecycle: `panel_processing`, `panel_refresh_names`,
-`panel_refresh_completion` and `panel_parent_reload` cover providerless attachment
-followed by real-provider callbacks/release, unselected named focus, separate
-alternative marks and status, and public manual/timer reload with1/301-row/flat
-filesystem consumers. Native Win32 ListView state/mask evidence determines the
-SelectFocused contract; physical/native Properties exposure remains separate.
-The [receipt](upstream-port-audit.md#p3-05--panelitems-selection-and-provider-lifecycle-2026-10-10)
-records RED, three-platform direct consumers and normal/compact reports.
+Use this map to select the affected source owner and direct CTest consumers.
+Confirm current test registration, fixtures and platform conditions in code;
+the table is a navigation aid, not a test result or exhaustive run list.
+[Testing](testing.md) owns validation scope and commands. Slow suites require
+[explicit opt-in](development.md#long-suites), including when listed below.
 
-Native drag protocol: `drag_protocol` and `drag_drop_ui` cover original button,
-root/wait and actual popup Cancel paths. Windows `native_drag_protocol`,
-`native_drag_archive` and `native_drag_qt` cover original native wire/ownership,
-selected-byte Copy/Move/cancel, deferred archive bytes, retained receivers,
-closed-panel refusal and real Qt platform MIME. Mac full320/320 and focused16/16,
-Linux16/16, Windows19/19 pass. Source/runtime and153current-build reports are
-recorded in the [receipt](upstream-port-audit.md#p3-05--original-native-paneldrag-protocol-and-qt-consumers-2026-10-10).
-Physical pointer/Explorer and rendered acceptance remain separate.
-An additional Windows2/2 localized run proves reverse native formats through
-an independent Qt consumer process and COM proxy without product-code changes.
+Fixtures use disposable local data and public commands/signals. Do not use
+personal archives or live services. Source provenance and dated validation
+belong in [the audit](upstream-port-audit.md).
 
-Default drop effect: `drag_drop` checks source folder-kind/root/empty-source
-admission in both panes and Windows all-source case-insensitive drive/UNC
-prefix policy, including mixed sources and Drives highlights. Protected private
-Unicode bytes and existing modifier/refusal assertions accompany real
-Copy/Move/cancel, archive/native ADS and publication consumers. Mac/Linux/Windows
-focused14/14 pass; [receipt](upstream-port-audit.md#p3-05--source-default-drop-effect-and-panel-core-disposition-2026-10-10).
-SSH/offscreen success does not establish physical/OLE receiver acceptance.
+## Scenario and owner
 
-FM RAM lifetime: `file_manager_ram` covers the single startup platform query,
-immutable cached size/failure flag and real nested Open/Copy/Parent in both panes,
-including corrupt inner archives and protected Unicode/space payloads. Existing
-`source_extract_backend`, `source_extract_advanced`, `archive_item_open`,
-`nested_archive`, `nested_edit_chain`, `external_launch`, `app_lifecycle` and
-`file_manager_startup` remain direct error/cancellation/lifetime consumers.
-
-Panel edit/view source state: `panel_address_keys` covers both panes/EN-RU,
-table/icon, F9 draft preservation, Tab/Backtab and queued Control-W close.
-`flat_view` covers source Drives flat state through View activation and filesystem
-navigation, plus scan cancellation. Direct folder/selection/name/archive-sort/
-native-WIM consumers use public ChangeFlatMode and retain their assertions.
-Normal/compact geometry and protected private Unicode bytes accompany the
-[component receipt](upstream-port-audit.md#p3-05--panel-address-keys-and-source-view-state-2026-10-10).
-Popup exposure, native SendInput and rendered acceptance have separate evidence.
-
-FM platform dispatch: `language_ui` covers seven source toolbar captions and
-tooltips after language/selection changes; existing `main_shell`, toolbar,
-command-policy, placement/focus and lifecycle consumers cover the connected
-entry/window path. Windows startup has separate offscreen/native-QPA link-copy
-rows, with read-only apartment inspection in the native row. Native visibility
-and receiver/rendered acceptance remain separate; [receipt](upstream-port-audit.md#p3-05--fm-platform-dispatch-and-source-toolbar-text-2026-10-10).
-
-Archive source to native NTFS peer: `native_archive_ads_copy` covers nested ZIP
-source F5, Copy-dialog Cancel, overwrite Skip/Cancel and original F6 refusal,
-both panes/languages. It protects source/base/control ADS bytes and both provider
-bindings, selection/notifications and normal/compact Copy/main geometry. This
-uses actual native codecs and owned NTFS fixtures; platform skips and native
-desktop/rendered acceptance remain distinct.
-
-Startup platform callers: `native_toolbar_state` and `main_shell` cover default
-small-screen labels and explicit-mask precedence through source CApp and actual
-Qt screen/font transport. Windows `file_manager_startup` drops child privileges
-before the real entry, then checks link Copy, raw reparse data and protected
-bytes without Link dialog. `filesystem_link`, `link_dialog`, `link_command`,
-`source_link_extract`, `ui_copy_routing` and lifecycle/placement retain direct
-success/refusal/Cancel consumers. No account-policy grant or rendered acceptance
-is inferred; [receipt](upstream-port-audit.md#p3-05--startup-platform-consumers-and-toolbar-defaults-2026-10-10).
-
-Launch show/hidden-close: `window_placement` checks saved-state precedence,
-explicit commands and nonminimized geometry. `file_manager_startup` exercises
-Windows STARTUPINFO through production entry/archive binding;
-`app_lifecycle_window` checks actual event-loop exit, visible peers and disabled
-automatic quit. Private settings and Unicode/space archive bytes are protected.
-Offscreen state checks remain separate from native visibility/focus acceptance;
-see the [receipt](upstream-port-audit.md#p3-05--launch-show-command-and-hidden-window-close-2026-10-10).
-
-Filesystem-provider source branches: `native_fs_operations` and
-`fs_provider_command` cover stored-case Rename, F2/Escape, both panes/languages,
-selection/provider identity and normal/compact geometry. `fs_folder_copy`
-covers both Copy APIs with NTFS success/Skip/cancel/failure/folder diagnostics,
-base attributes/bytes, source preservation, native error text and extended-path
-retry. `ui_operations`, `ui_copy_routing`, `source_delete`, `link_command` and
-`alt_streams_command` retain their direct consumers. All fixtures are bounded
-and local; the [receipt](upstream-port-audit.md#p3-05--filesystem-provider-rename-and-ntfs-destination-consumers-2026-10-10)
-separates three-platform checks from excluded device/slow/network and rendered/
-installed/final acceptance.
-
-Source namespace images/services: `panel_item_icons` compares Windows CSIDL
-root/address icons and both native image-list sizes through public controls;
-`root_command` and `address_combo` cover navigation and EN/RU geometry.
-`verctrl`, Link, filesystem comments, update callbacks and association suites
-retain the reviewed services' direct consumers. Native data/image checks and
-the Windows popup-exposure failure are distinct results; baseline comparison
-and exact platform limits remain in the
-[source receipt](upstream-port-audit.md#p3-05--filemanager-services-and-native-namespace-icons-2026-10-10).
-
-Large-page startup/Settings/engine policy: `memory_lock`, `fm_settings`,
-`options_dialog`, `options_integration`, `archive_backend`, `archive_mutation`,
-`benchmark_lifecycle`, `native_benchmark`, `native_hash_workflow`, `file_manager_startup`,
-`app_lifecycle_window`, `window_placement`, `native_command_dispatch`.
-Deterministic recorder cases cover unsupported/disabled/risky/privilege-refused
-and successful source branches, persistence on refusal, Cancel/repeated Apply,
-protected account policy and source process-mode/Benchmark coupling. Owned
-helper-process transport checks remain separate from successful native allocation.
-Hash completion covers ordinary scheduling and completion already observed
-before waiting; both retain failure/cancellation results and exactly one signal.
-See the [source receipt](upstream-port-audit.md#p3-05--startup-settings-and-large-page-engine-policy-2026-10-10).
-
-Core Copy/CRC/Sort source disposition: `panel_sort` reproduces native Greek
-casing before numeric runs through archive/filesystem panels, descending
-selection retention and preserved bytes. Filesystem/archive/column/command
-sorting, App Copy routing, Extract/Update contracts, checksum/hash results,
-ListView/history/About and Copy dialog suites retain direct consumer coverage.
-Source body/adaptation boundaries are recorded in the
-[core receipt](upstream-port-audit.md#p3-05--core-copycrc-sort-and-results-reconciliation-2026-10-10).
-
-Temporary browser source commands: `temp_cleanup` covers public Ctrl+R and
-Ctrl+F3/F5/F6 refresh/sort transitions, retained current selection, Ctrl+A and
-unchanged owned Unicode/space file bytes alongside success/failure/Cancel and
-EN/RU geometry. `owned_temp` and `temp_detached_launch` retain identity/lease,
-protected external lifetime and exact detached-argument consumers. No device
-fixture or live user temp data is used.
-
-Source long-path picker and portable dialog boundaries: `source_browse_dialog`,
-`browse_dialog`, `combo_dialog`, `copy_dialog`, `volume_dialog`, `language_dialog`,
-`source_archive_browse`, `compression_format`. Owned long Unicode fixtures
-cover routing, filters/sort, parent/reload/create/activation, error and cancellation,
-raw names and output state. Geometry emits8 EN/RU normal/compact file/folder JSON.
-Normal native picker and source custom browser are distinct test paths; neither
-offscreen result establishes rendered Windows or final package acceptance.
-
-The ordinary picker additionally covers source Open-new-name and Save-existing
-without an extra confirmation, unchanged bytes/cwd and accepted-only publication.
-CommonDialog's original inherited DTO/filter contract is exercised by Browse
-and the real Compress/Edit consumers, rather than a separate Qt filter API.
-
-Password source DTO/process caller: `password_window`, `password_dialog`,
-`open_callback`, `update_callback`, `archive_progress`, `archive_opening`,
-`language_dialog`, `ui_archive_states`, `archive_backend`, `ui_parity_password`.
-Public raw empty/Unicode/spaces, source caching/ShowPassword, cancellation,
-reopen/reset, local encrypted failure/retry and redacted geometry are covered;
-see the [receipt](upstream-port-audit.md#p3-05--password-state-and-process-callers-2026-10-10).
-
-Operation prompt source lifetime/error-policy consumers: `extract_prompt`,
-`password_dialog`, `language_dialog`, `language_standard_buttons`,
-`native_rar_memory`, `native_extract_callback`, `archive_opening`,
-`update_callback`, `progress_dialog`, `ui_parity_overwrite`, `ui_parity_mem`.
-Public modal Close/Enter/Escape and invalid-limit suppression/correction retain
-source rows/results/fields; see the [receipt](upstream-port-audit.md#p3-05--operation-prompts-and-source-modal-lifetime-2026-10-10).
-
-This is the P3-02 scenario-to-owner-to-CTest register for the accepted P0–P2
-scope. [Testing](testing.md) owns fixture details and reproduction commands;
-[the checklist](porting-checklist.md) owns acceptance status. Test registration
-alone is not a passing result. Current three-platform results, actual Qt rows,
-skips and retained failure/retry evidence belong to P3-03. Native Finder and
-rendered Windows UX remain separate mandatory checks.
-
-All fixtures use disposable local data, official source/native providers or
-explicit process/callback fixtures. They do not use personal archives or live
-services. UI state tests exercise public commands and signals; no internal
-production access is added for this matrix.
-
-| Package / scenario | Functional owner and integration boundary | CTest consumers |
+| Scenario | Functional owner and integration boundary | CTest consumers |
 | --- | --- | --- |
-| P3-05.16 source window placement | InitInstance record/default/show/refusal/fallback, actual normal/maximized Close/restart, and source splitter coordinate/bounds/ratio/handle/F9 lifecycle | `window_placement`, `window_info`, `app_lifecycle_window`, `file_manager_startup`, `main_shell`, `persisted_location`, `panel_key`, `panel_creation_path`, `panel_folder_sync`, `native_command_dispatch`, `source_context_menu`, `native_toolbar_state`, `toolbar_archive_workflow`, `panel_activation`, `filesystem_selection_runtime`, `panel_sort_commands` |
-| P3-05 source context menu | CPanel OnContextMenu header/list/keyboard/empty/Cancel/numeric routing; captured owning pane, popup peer-focus/Close lifetime and actual source Create | `source_context_menu`, `panel_shell`, `shell_context`, `shell_menu_window`, `native_command_dispatch`, `source_create`, `panel_name_text` |
-| P3-05 PanelOperations/Comment | Complete worker/Create/Delete/Rename/Comment disposition; source-owned guarded publication, Cancel, failed reload/recovery and real ZIP/AES/nested writes | `filesystem_comment`, `native_comment_ui`, `native_comment`, `source_create`, `source_delete`, `panel_rename_state`, `panel_refresh_names`, `panel_refresh_notifications`, `panel_refresh_drop`, `panel_refresh_completion` |
-| P3-05 ViewSettings/Copy history | Source UStringVector/upper-case distinction, K/K persistence and CApp Cancel/accept/reopen; popup completion restores command availability; related binary settings/columns/toolbar consumers | `copy_dialog`, `app_copy_routing`, `view_settings_columns`, `settings`, `native_toolbar_state`, `list_settings_runtime`, `main_shell`, `persisted_location`, `fm_settings`, `toolbar_archive_workflow`, `source_context_menu` |
-| P3-05 six Options pages/Apply errors | Source PSNRET_NOERROR after association error continues later pages; Settings PSNRET_INVALID and MyMessages policy remain | `options_integration`, `options_dialog`, `system_page`, `menu_page`, `language`, `language_ui`, `options_window`, `association_services` |
-| P3-05 source selection lifecycle | CPanel owns mask dialog/default/Cancel/application; source index/mark loops, both panes/modes, inactive owner and independent peer | `source_selection`, `panel_selection`, `ui_state`, `flat_view`, `combo_dialog`, `panel_key`, `panel_item_changed` |
-| P3-05 source Rename activation | Source focused-row RenameFile and parent/read-only OnBeginLabelEdit; table/icon editor, Escape and operated marks independent of focus | `panel_rename_state`, `panel_key`, `panel_item_changed`, `panel_name_text`, `ui_operations`, `alt_streams_command` |
-| P3-05 source Delete lifecycle | CPanel confirmation/accepted-result refresh and one source error, No/Cancel early return, partial bytes/provider/peer and deferred guards; Move transaction retains explicit-index seam | `source_delete`, `ui_operations`, `native_fs_operations`, `panel_key`, `alt_streams_command`, `archive_transfer_backup` |
-| P3-05 source Create File/Folder | CPanel owns complete dialog/validation/operation/refresh and first-component focus; alternative marks, collision, Cancel and deferred-scan guards | `source_create`, `large_list_window`, `ui_operations`, `panel_key`, `alt_streams_command` |
-| P3-05 source Split/Combine | CApp selection/peer destination and native plans; UInt64/Trim, contiguous prefix/empty parts, NIO/preallocation, progress and joined transactional failure/cancel | `volume_dialog`, `volume_workflow`, `volume_operations`, `combine_names`, `worker_window_progress` |
-| P3-05 filesystem comparator/cache | Source CFSFolder::CompareItems and IFolderCompare binding; actual FileTable/CPanel sorting, raw versus visible comments, metadata failure/cache/reload, selection and bytes | `panel_filesystem_sort`, `fs_folder`, `panel_sort`, `panel_archive_sort`, `panel_column_sort`, `filesystem_reload` |
-| P3-05 compression method/control states | Source method IDs, Copy/unknown dictionary, empty/Auto controls, TAR memory visibility; Store success/failure/Cancel and exact bytes | `compression_method_state`, `compression_profile_selection`, `source_compress_dialog`, `codec_creation_ui` |
-| P3-05 GUI path/history consumers | Source CompressDialog/ExtractDialog Trim, path resolution, shared UString uniqueness; EN/RU Create/list/Extract, SplitDest, Cancel, settings and exact bytes | `dialog_path_rules`, `compression_path`, `extract_dialog`, `split_destination` |
-| P3-05 archive directory property projection | Source GetProperty, CalculateSizes and CompareItems; list/Properties/error/retry, native ZIP/7z sort/Refresh/selection and byte preservation | `agent_property_projection`, `native_column_workflow`, `source_properties`, `panel_column_sort` |
-| P3-05 Agent provider lifecycle/metadata | Source Close/ReOpen/LoadItems, fresh binding after repair; ZIP/WIM proxy Cancel/retry; source written-count descriptor policy | `agent_lifecycle`, `agent_opening`, `archive_property_catalog` |
-| P3-05 source Agent opening/factory | CArchiveFolderManager/CAgent Open and binding; backend reader/catalog and stream lease; S_FALSE diagnostics, progress/Cancel, Extract/Test/error bytes | `agent_opening`, `agent_folder`, `archive_opening`, `archive_open_options`, `archive_property_catalog` |
-| P0-01 source inventory | Per-module audit and baseline | `upstream_inventory`, `upstream_baseline` |
-| P0-02 independent panels | CApp/CPanel; Qt per-window operation state | `app_state`, `panel_runtime`, `binding_lifecycle` |
-| P0-03 availability and dispatch | CApp/WndProc/PanelMenu; QtFileManagerCommands | `native_command_dispatch`, `command_policy_runtime`, `menu_policy` |
-| P0-04 address/parent/nested rollback | PanelFolder/PanelOpen; native folder binding | `native_navigation_window`, `panel_navigation`, `ui_navigation`, `nested_archive` |
-| P0-05 filesystem/flat enumeration | FSFolder/PanelItems; scanner/model projection | `fs_folder`, `filesystem_scanner`, `flat_view` |
-| P0-06 columns/sort/time/refresh | PanelSort/PanelItems; Qt header/viewport adapter | `panel_columns`, `panel_sort`, `panel_auto_refresh`, `view_settings_columns` |
-| P0-04/06 native publication failure and open guard handoff | CPanel::OnReload/OpenItem/OpenAsArc_Index; QtFolderProjection and Copy completion | `native_renderer_failure`, `native_renderer_copy`, `panel_item_icons` |
-| P0-04/P1-09 native nested stream/memory/disk open, publication failure, confirmed Cancel and retry | Original Agent::GetStream/OpenItemInArchive; Qt native item-order/module lease and deferred guard handoff | `native_nested_stream`, `native_nested_memory`, `native_nested_disk`, `nested_archive`, `nested_edit_chain` |
-| P1-08 native external editor update with publication failure and actual writer retry | PanelItemOpen::OnOpenItemChanged; Agent CopyFromFile/UpdateOneFile/CommonUpdate and Qt terminal publication/focus | `native_external_2`, `native_external_301`, `archive_external_edit` |
-| P0-07 focus/marks/keyboard/mouse | PanelSelect/PanelKey; shared hover adapter | `panel_key`, `panel_key_source`, `panel_selection`, `list_settings_runtime`, `list_activation` |
-| P0-08 two-panel focus/persistence | CApp/Panel; MainWindow projection | `panel_focus`, `panel_runtime`, `window_info`, `ui_copy_same` |
-| P0-09 menu/toolbar/context/status | MyLoadMenu/PanelMenu/PanelListNotify; Qt presentation | `main_shell`, `view_menu`, `panel_shell`, `native_toolbar_state`, `file_menu_policy` |
-| P0-10 progress/pause/background/cancel | CProgressDialog/CProgressSync; process/worker transport | `progress_dialog`, `progress_cancel`, `progress_priority_failure`, `process_pause`, `worker_checkpoint` |
-| P0-11 conflict decisions/rollback | OverwriteDialog/AutoRenamePath/FSFolderCopy; transaction | `extract_prompt`, `file_transfer`, `file_transfer_direct` |
-| P0-12 selected/root/batch Ask | ExtractGUI/ExtractCallback/PanelCopy; ArchiveBackend path guard | `source_extract_backend`, `source_extract_contract`, `extraction_options`, `ui_operations` |
-| P0-12/P3-05 toolbar Extract/Test in both panes, archive Copy To, one/multiple filesystem archives, Cancel, corrupt archive, caption/language/focus | CApp/CPanel ExtractArchives/TestArchives; CompressCall2/ExtractGUI/ExtractDialog; QtShellArchiveServices backend bridge | `toolbar_archive_workflow`, `shell_archive_services`, `language_dialog`, `ui_navigation`, `ui_archive_states`, Windows `native_gui_workflow` |
-| P1-01 disk/archive transfer routes | CApp::OnCopy/PanelCopy/Agent; backend snapshot/rollback | `ui_operations`, `ui_copy_same`, `archive_transfer_backup`, `source_update_backend` |
-| P1-01 bound archive destination publication and rollback/reopen recovery | CApp::OnCopy/RefreshListCtrl; CAgent::Close and caller-supplied backup close service; physical ReOpen/fallback | `copy_archive_refresh`, `interarchive_recovery`, `archive_transfer_backup`, `ui_operations` |
-| P1-01 bound filesystem Copy/Move publication, both panes and deferred lists | CApp::OnCopy/OnReload; retained CFSFolder worker and per-pane scan guards | `ui_copy_routing`, `filesystem_scanner`, `filesystem_reload` |
-| P1-02 copy/merge/cross-volume Move | FSFolderCopy/CCopyStateIO; exclusive transaction | `fs_folder_copy`, `file_transfer`, `file_transfer_direct`, `worker_window_progress` |
-| P1-03 create/rename/delete/trash/comments | Panel/FSFolder/FileDir; native trash service | `filesystem_operations`, `native_fs_operations`, `ui_operations`, `filesystem_comment` |
-| P1-04 archive mutation/publish | ArchiveFolder/AgentOut; ArchiveBackend native/CLI transport | `source_update_backend`, `archive_mutation`, `codec_update`, `ui_archive_states` |
-| P1-04 native F2 Rename writer/publication/retry and guarded periodic status | PanelOperations::OnEndLabelEdit; Agent RenameItem/CommonUpdate; Qt rename/timer/status projection | `native_rename_2`, `native_rename_301`, `panel_rename_state`, `panel_processing`, `panel_refresh_completion` |
-| P1-05 Add/update/path modes | CompressDialog/UpdateGUI/UpdatePair; Qt controls/backend | `source_compress_dialog`, `shell_update_window`, `ui_update_modes`, `source_update_backend` |
-| P1-06 archive volumes | CArchiveLink/CMultiOutStream; leased volume publication | `archive_volume_creation`, `volume_workflow`, `ui_archive_volumes` |
-| P1-07 options/memory/deletion lifecycle | COptionsDialog/CompressDialog/Update; Qt control/worker bridge | `compression_advanced`, `compression_memory`, `compression_limit`, `archive_creation_lifecycle` |
-| P1-08 external View/Edit/Diff/VerCtrl | PanelItemOpen/EditItem/VerCtrl; OS process and GUI delivery | `archive_external_edit`, `archive_external_lifetime`, `archive_external_security`, `external_editors_ui`, `verctrl` |
-| P1-09 nested parent write chain | PanelItemOpen/AgentOut; retained resource/parent publication | `nested_edit_chain`, `nested_update`, `owned_temp_publication` |
-| P1-09 changed native Parent: Yes/No/Cancel, actual writer failure/Cancel, ignored publication error, retry and spool cleanup | OpenParentArchiveFolder/CloseOneLevel/OpenParentFolder; original CopyFromFile and non-owning Qt callback publication | `native_parent_publication`, `panel_navigation`, `nested_edit_chain` |
-| P1-10 properties/raw/folder size | PropertyName/PropIDUtils/Agent/Panel; typed native property projection, retained native levels/catalog diagnostics | `source_properties`, `native_archive_properties`, `properties_runtime`, `property_formatting`, `folder_size_view` |
-| P1-11 root/mount/network/Browse/device image | RootFolder/FSDrives/NetFolder; platform mount service and original device CopyTo | `root_navigation`, `volume_mount`, `network_folder`, `browse_dialog`, `fs_drives_device`, `fs_drives_device_ui`, `native_network_navigation` (Windows) |
-| P1-12 Options Apply/Cancel | OptionsDialog/*Page; Qt page container | `options_dialog`, `options_integration`, `options_window`, `fm_settings` |
-| P1-13 Edit/Menu policies | EditPage/MenuPage/RegistryContextMenu; OS registration service | `external_editors_ui`, `menu_page`, `context_menu_settings`, `shell_registry` |
-| P1-14 language/fallback/focus | CLang/LangUtils/*Dialog; Qt LanguageChange/bindings | `language`, `language_ui`, `language_dialog`, `language_standard_buttons`, `language_focus`, `language_source_update` |
-| P1-15 Help/About/temp cleanup | HelpUtils/AboutDialog/TempFiles; CHM viewer and owned leases | `help_source`, `help_ui`, `temp_cleanup`, `owned_temp`, `temp_detached_launch` |
-| P1-16 panel/archive drag | PanelDrag/CompressCall2; QDrag/MIME/leased materialization; native bound writer/publication/refusal/retry | `drag_drop`, `drag_archive`, `drag_drop_ui`, `drag_drop_add_ui`, `source_drop_add`, `native_drop_publication` |
-| P1-17 ZIP item comment | ArchiveFolder/Zip writer; retained native writer callback | `native_comment`, `native_comment_ui`, `native_zip_writer` |
-| P1-18 real decoder RAM request | RAR handler/OpenCallback/ExtractCallback; backend callback bridge | `native_rar_memory`, `native_rar_ui`, `open_callback` |
-| P2-01 formats/capabilities/KeepName | LoadCodecs/OpenArchive/Agent; immutable provider leases | `codec_catalog`, `codec_capabilities`, `codec_commands_ui`, `native_open_commands` |
-| P2-02 SFX/external modules | WriteSfxModule/LoadCodecs; official module identity/publication | `sfx_creation`, `sfx_lifecycle`, `external_codecs`, `codec_probe` |
-| P2-03 CRC/Hash/Test | HashCalc/HashGUI/ExtractGUI; native providers and results view | `native_hash_workflow`, `native_hash_ui`, `hash_results`, `shell_archive_services` |
-| P2-04 Benchmark | Bench/BenchmarkDialog; Qt controls and worker lifetime | `native_benchmark`, `benchmark_command`, `benchmark_lifecycle` |
-| P2-05 links/junctions/metadata | FileIO/FileDir/Reparse/LinkDialog; native platform bridge | `filesystem_link`, `link_command`, `source_link_storage`, `source_metadata_storage` |
-| P2-06 ADS/proxy2 and source zone policy | RootFolder/AltStreamsFolder/AgentProxy/CCopyStateIO/PanelCopy; official engine metadata transport | `alt_streams_folder`, `alt_streams_command`, `alt_streams_archive_ui`, Windows `native_zone_copy`, `source_properties`, `native_update_path` |
-| P2-07 absolute/ElimDup/security extraction | ArchiveExtractCallback/FileDir; backend bounded-path/link guard | `source_extract_advanced`, `source_link_extract`, `extraction_options`, `archive_metadata_ui` |
-| P2-08 associations/open events | RegistryAssociations/SystemPage; per-user native APIs; native handler image and pending/Apply/Cancel/conflict preservation | `association_services`, `association_file_open`, `system_page`, Linux `linux_system_page_*`/`linux_association_clear_*`, `file_manager_startup` |
-| P2-09 native shell/menu/GUI integration | ContextMenu/MyLoadMenu/CompressCall; COM/HMENU/process services | `shell_context`, `shell_menu_window`, `shell_update_gui`, `shell_registry`; Windows `native_menu_integration`, `native_shell_data`, `native_system_menu`, `native_gui_workflow` |
-| P2-10 bounded progress/list/lifetime | Source enumeration/copy/hash/split; Qt worker scheduling | `large_list_window`, `worker_progress`, `worker_window_progress`, `archive_preparation`, `archive_volume_creation` |
-| P2-11 one authoritative implementation | Source DTO/properties/volumes/Sync; reviewed integration boundaries | Direct consumers in [the glue register](upstream-port-audit.md#explicit-root-file-scope-258-paths-reviewed-component-register); all-target compilation |
+| source window placement | InitInstance record/default/show/refusal/fallback, actual normal/maximized Close/restart, and source splitter coordinate/bounds/ratio/handle/F9 lifecycle | `window_placement`, `window_info`, `app_lifecycle_window`, `file_manager_startup`, `main_shell`, `persisted_location`, `panel_key`, `panel_creation_path`, `panel_folder_sync`, `native_command_dispatch`, `source_context_menu`, `native_toolbar_state`, `toolbar_archive_workflow`, `panel_activation`, `filesystem_selection_runtime`, `panel_sort_commands` |
+| source context menu | CPanel OnContextMenu header/list/keyboard/empty/Cancel/numeric routing; captured owning pane, popup peer-focus/Close lifetime and actual source Create | `source_context_menu`, `panel_shell`, `shell_context`, `shell_menu_window`, `native_command_dispatch`, `source_create`, `panel_name_text` |
+| PanelOperations/Comment | Complete worker/Create/Delete/Rename/Comment disposition; source-owned guarded publication, Cancel, failed reload/recovery and real ZIP/AES/nested writes | `filesystem_comment`, `native_comment_ui`, `native_comment`, `source_create`, `source_delete`, `panel_rename_state`, `panel_refresh_names`, `panel_refresh_notifications`, `panel_refresh_drop`, `panel_refresh_completion` |
+| ViewSettings/Copy history | Source UStringVector/upper-case distinction, K/K persistence and CApp Cancel/accept/reopen; popup completion restores command availability; related binary settings/columns/toolbar consumers | `copy_dialog`, `app_copy_routing`, `view_settings_columns`, `settings`, `native_toolbar_state`, `list_settings_runtime`, `main_shell`, `persisted_location`, `fm_settings`, `toolbar_archive_workflow`, `source_context_menu` |
+| six Options pages/Apply errors | Source PSNRET_NOERROR after association error continues later pages; Settings PSNRET_INVALID and MyMessages policy remain | `options_integration`, `options_dialog`, `system_page`, `menu_page`, `language`, `language_ui`, `options_window`, `association_services` |
+| source selection lifecycle | CPanel owns mask dialog/default/Cancel/application; source index/mark loops, both panes/modes, inactive owner and independent peer | `source_selection`, `panel_selection`, `ui_state`, `flat_view`, `combo_dialog`, `panel_key`, `panel_item_changed` |
+| source Rename activation | Source focused-row RenameFile and parent/read-only OnBeginLabelEdit; table/icon editor, Escape and operated marks independent of focus | `panel_rename_state`, `panel_key`, `panel_item_changed`, `panel_name_text`, `ui_operations`, `alt_streams_command` |
+| source Delete lifecycle | CPanel confirmation/accepted-result refresh and one source error, No/Cancel early return, partial bytes/provider/peer and deferred guards; Move transaction retains explicit-index seam | `source_delete`, `ui_operations`, `native_fs_operations`, `panel_key`, `alt_streams_command`, `archive_transfer_backup` |
+| source Create File/Folder | CPanel owns complete dialog/validation/operation/refresh and first-component focus; alternative marks, collision, Cancel and deferred-scan guards | `source_create`, `large_list_window`, `ui_operations`, `panel_key`, `alt_streams_command` |
+| source Split/Combine | CApp selection/peer destination and native plans; UInt64/Trim, contiguous prefix/empty parts, NIO/preallocation, progress and joined transactional failure/cancel | `volume_dialog`, `volume_workflow`, `volume_operations`, `combine_names`, `worker_window_progress` |
+| filesystem comparator/cache | Source CFSFolder::CompareItems and IFolderCompare binding; actual FileTable/CPanel sorting, raw versus visible comments, metadata failure/cache/reload, selection and bytes | `panel_filesystem_sort`, `fs_folder`, `panel_sort`, `panel_archive_sort`, `panel_column_sort`, `filesystem_reload` |
+| compression method/control states | Source method IDs, Copy/unknown dictionary, empty/Auto controls, TAR memory visibility; Store success/failure/Cancel and exact bytes | `compression_method_state`, `compression_profile_selection`, `source_compress_dialog`, `codec_creation_ui` |
+| GUI path/history consumers | Source CompressDialog/ExtractDialog Trim, path resolution, shared UString uniqueness; EN/RU Create/list/Extract, SplitDest, Cancel, settings and exact bytes | `dialog_path_rules`, `compression_path`, `extract_dialog`, `split_destination` |
+| archive directory property projection | Source GetProperty, CalculateSizes and CompareItems; list/Properties/error/retry, native ZIP/7z sort/Refresh/selection and byte preservation | `agent_property_projection`, `native_column_workflow`, `source_properties`, `panel_column_sort` |
+| Agent provider lifecycle/metadata | Source Close/ReOpen/LoadItems, fresh binding after repair; ZIP/WIM proxy Cancel/retry; source written-count descriptor policy | `agent_lifecycle`, `agent_opening`, `archive_property_catalog` |
+| source Agent opening/factory | CArchiveFolderManager/CAgent Open and binding; backend reader/catalog and stream lease; S_FALSE diagnostics, progress/Cancel, Extract/Test/error bytes | `agent_opening`, `agent_folder`, `archive_opening`, `archive_open_options`, `archive_property_catalog` |
+| source inventory | Per-module audit and baseline | `upstream_inventory`, `upstream_baseline` |
+| independent panels | CApp/CPanel; Qt per-window operation state | `app_state`, `panel_runtime`, `binding_lifecycle` |
+| availability and dispatch | CApp/WndProc/PanelMenu; QtFileManagerCommands | `native_command_dispatch`, `command_policy_runtime`, `menu_policy` |
+| address/parent/nested rollback | PanelFolder/PanelOpen; native folder binding | `native_navigation_window`, `panel_navigation`, `ui_navigation`, `nested_archive` |
+| filesystem/flat enumeration | FSFolder/PanelItems; scanner/model projection | `fs_folder`, `filesystem_scanner`, `flat_view` |
+| columns/sort/time/refresh | PanelSort/PanelItems; Qt header/viewport adapter | `panel_columns`, `panel_sort`, `panel_auto_refresh`, `view_settings_columns` |
+| native publication failure and open guard handoff | CPanel::OnReload/OpenItem/OpenAsArc_Index; QtFolderProjection and Copy completion | `native_renderer_failure`, `native_renderer_copy`, `panel_item_icons` |
+| native nested stream/memory/disk open, publication failure, confirmed Cancel and retry | Original Agent::GetStream/OpenItemInArchive; Qt native item-order/module lease and deferred guard handoff | `native_nested_stream`, `native_nested_memory`, `native_nested_disk`, `nested_archive`, `nested_edit_chain` |
+| native external editor update with publication failure and actual writer retry | PanelItemOpen::OnOpenItemChanged; Agent CopyFromFile/UpdateOneFile/CommonUpdate and Qt terminal publication/focus | `native_external_2`, `native_external_301`, `archive_external_edit` |
+| focus/marks/keyboard/mouse | PanelSelect/PanelKey; shared hover adapter | `panel_key`, `panel_key_source`, `panel_selection`, `list_settings_runtime`, `list_activation` |
+| two-panel focus/persistence | CApp/Panel; MainWindow projection | `panel_focus`, `panel_runtime`, `window_info`, `ui_copy_same` |
+| menu/toolbar/context/status | MyLoadMenu/PanelMenu/PanelListNotify; Qt presentation | `main_shell`, `view_menu`, `panel_shell`, `native_toolbar_state`, `file_menu_policy` |
+| progress/pause/background/cancel | CProgressDialog/CProgressSync; process/worker transport | `progress_dialog`, `progress_cancel`, `progress_priority_failure`, `process_pause`, `worker_checkpoint` |
+| conflict decisions/rollback | OverwriteDialog/AutoRenamePath/FSFolderCopy; transaction | `extract_prompt`, `file_transfer`, `file_transfer_direct` |
+| selected/root/batch Ask | ExtractGUI/ExtractCallback/PanelCopy; ArchiveBackend path guard | `source_extract_backend`, `source_extract_contract`, `extraction_options`, `ui_operations` |
+| toolbar Extract/Test in both panes, archive Copy To, one/multiple filesystem archives, Cancel, corrupt archive, caption/language/focus | CApp/CPanel ExtractArchives/TestArchives; CompressCall2/ExtractGUI/ExtractDialog; QtShellArchiveServices backend bridge | `toolbar_archive_workflow`, `shell_archive_services`, `language_dialog`, `ui_navigation`, `ui_archive_states`, Windows `native_gui_workflow` |
+| disk/archive transfer routes | CApp::OnCopy/PanelCopy/Agent; backend snapshot/rollback | `ui_operations`, `ui_copy_same`, `archive_transfer_backup`, `source_update_backend` |
+| bound archive destination publication and rollback/reopen recovery | CApp::OnCopy/RefreshListCtrl; CAgent::Close and caller-supplied backup close service; physical ReOpen/fallback | `copy_archive_refresh`, `interarchive_recovery`, `archive_transfer_backup`, `ui_operations` |
+| bound filesystem Copy/Move publication, both panes and deferred lists | CApp::OnCopy/OnReload; retained CFSFolder worker and per-pane scan guards | `ui_copy_routing`, `filesystem_scanner`, `filesystem_reload` |
+| copy/merge/cross-volume Move | FSFolderCopy/CCopyStateIO; exclusive transaction | `fs_folder_copy`, `file_transfer`, `file_transfer_direct`, `worker_window_progress` |
+| create/rename/delete/trash/comments | Panel/FSFolder/FileDir; native trash service | `filesystem_operations`, `native_fs_operations`, `ui_operations`, `filesystem_comment` |
+| archive mutation/publish | ArchiveFolder/AgentOut; ArchiveBackend native/CLI transport | `source_update_backend`, `archive_mutation`, `codec_update`, `ui_archive_states` |
+| native F2 Rename writer/publication/retry and guarded periodic status | PanelOperations::OnEndLabelEdit; Agent RenameItem/CommonUpdate; Qt rename/timer/status projection | `native_rename_2`, `native_rename_301`, `panel_rename_state`, `panel_processing`, `panel_refresh_completion` |
+| Add/update/path modes | CompressDialog/UpdateGUI/UpdatePair; Qt controls/backend | `source_compress_dialog`, `shell_update_window`, `ui_update_modes`, `source_update_backend` |
+| archive volumes | CArchiveLink/CMultiOutStream; leased volume publication | `archive_volume_creation`, `volume_workflow`, `ui_archive_volumes` |
+| options/memory/deletion lifecycle | COptionsDialog/CompressDialog/Update; Qt control/worker bridge | `compression_advanced`, `compression_memory`, `compression_limit`, `archive_creation_lifecycle` |
+| external View/Edit/Diff/VerCtrl | PanelItemOpen/EditItem/VerCtrl; OS process and GUI delivery | `archive_external_edit`, `archive_external_lifetime`, `archive_external_security`, `external_editors_ui`, `verctrl` |
+| nested parent write chain | PanelItemOpen/AgentOut; retained resource/parent publication | `nested_edit_chain`, `nested_update`, `owned_temp_publication` |
+| changed native Parent: Yes/No/Cancel, actual writer failure/Cancel, ignored publication error, retry and spool cleanup | OpenParentArchiveFolder/CloseOneLevel/OpenParentFolder; original CopyFromFile and non-owning Qt callback publication | `native_parent_publication`, `panel_navigation`, `nested_edit_chain` |
+| properties/raw/folder size | PropertyName/PropIDUtils/Agent/Panel; typed native property projection, retained native levels/catalog diagnostics | `source_properties`, `native_archive_properties`, `properties_runtime`, `property_formatting`, `folder_size_view` |
+| root/mount/network/Browse/device image | RootFolder/FSDrives/NetFolder; platform mount service and original device CopyTo | `root_navigation`, `volume_mount`, `network_folder`, `browse_dialog`, `fs_drives_device`, `fs_drives_device_ui`, `native_network_navigation` (Windows) |
+| Options Apply/Cancel | OptionsDialog/*Page; Qt page container | `options_dialog`, `options_integration`, `options_window`, `fm_settings` |
+| Edit/Menu policies | EditPage/MenuPage/RegistryContextMenu; OS registration service | `external_editors_ui`, `menu_page`, `context_menu_settings`, `shell_registry` |
+| language/fallback/focus | CLang/LangUtils/*Dialog; Qt LanguageChange/bindings | `language`, `language_ui`, `language_dialog`, `language_standard_buttons`, `language_focus`, `language_source_update` |
+| Help/About/temp cleanup | HelpUtils/AboutDialog/TempFiles; CHM viewer and owned leases | `help_source`, `help_ui`, `temp_cleanup`, `owned_temp`, `temp_detached_launch` |
+| panel/archive drag | PanelDrag/CompressCall2; QDrag/MIME/leased materialization; native bound writer/publication/refusal/retry | `drag_drop`, `drag_archive`, `drag_drop_ui`, `drag_drop_add_ui`, `source_drop_add`, `native_drop_publication` |
+| ZIP item comment | ArchiveFolder/Zip writer; retained native writer callback | `native_comment`, `native_comment_ui`, `native_zip_writer` |
+| real decoder RAM request | RAR handler/OpenCallback/ExtractCallback; backend callback bridge | `native_rar_memory`, `native_rar_ui`, `open_callback` |
+| formats/capabilities/KeepName | LoadCodecs/OpenArchive/Agent; immutable provider leases | `codec_catalog`, `codec_capabilities`, `codec_commands_ui`, `native_open_commands` |
+| SFX/external modules | WriteSfxModule/LoadCodecs; official module identity/publication | `sfx_creation`, `sfx_lifecycle`, `external_codecs`, `codec_probe` |
+| CRC/Hash/Test | HashCalc/HashGUI/ExtractGUI; native providers and results view | `native_hash_workflow`, `native_hash_ui`, `hash_results`, `shell_archive_services` |
+| Benchmark | Bench/BenchmarkDialog; Qt controls and worker lifetime | `native_benchmark`, `benchmark_command`, `benchmark_lifecycle` |
+| links/junctions/metadata | FileIO/FileDir/Reparse/LinkDialog; native platform bridge | `filesystem_link`, `link_command`, `source_link_storage`, `source_metadata_storage` |
+| ADS/proxy2 and source zone policy | RootFolder/AltStreamsFolder/AgentProxy/CCopyStateIO/PanelCopy; official engine metadata transport | `alt_streams_folder`, `alt_streams_command`, `alt_streams_archive_ui`, Windows `native_zone_copy`, `source_properties`, `native_update_path` |
+| absolute/ElimDup/security extraction | ArchiveExtractCallback/FileDir; backend bounded-path/link guard | `source_extract_advanced`, `source_link_extract`, `extraction_options`, `archive_metadata_ui` |
+| associations/open events | RegistryAssociations/SystemPage; per-user native APIs; native handler image and pending/Apply/Cancel/conflict preservation | `association_services`, `association_file_open`, `system_page`, Linux `linux_system_page_*`/`linux_association_clear_*`, `file_manager_startup` |
+| native shell/menu/GUI integration | ContextMenu/MyLoadMenu/CompressCall; COM/HMENU/process services | `shell_context`, `shell_menu_window`, `shell_update_gui`, `shell_registry`; Windows `native_menu_integration`, `native_shell_data`, `native_system_menu`, `native_gui_workflow` |
+| bounded progress/list/lifetime | Source enumeration/copy/hash/split; Qt worker scheduling | `large_list_window`, `worker_progress`, `worker_window_progress`, `archive_preparation`, `archive_volume_creation` |
+| one authoritative implementation | Source DTO/properties/volumes/Sync; reviewed integration boundaries | Direct consumers in [the glue register](archive/qt-port/upstream-port-audit.md#explicit-root-file-scope-258-paths-reviewed-component-register); all-target compilation |
 
-The new `archive_workflow` fixture connects create/list/selected extraction,
-local editing, rejected unsafe replacement, successful update, relist/Test,
-full extraction and canceled/successful filesystem Move in one backend lifetime,
-for ZIP and 7z. It verifies member sizes and exact bytes, retained members,
-original disk sources, unchanged archive during transfer, and private-stage
-cleanup. It adds transition coverage to the separate operation regressions.
+
+## Failure and security behavior
 
 | Critical failure / security property | Concrete public regression |
 | --- | --- |
@@ -257,14 +104,12 @@ cleanup. It adds transition coverage to the separate operation regressions.
 | Create source validation order, suppressible errors, unconditional memory/small-volume refusal and real writer recovery | `compression_error_policy` (EN/RU, disabled password controls, unknown-RAM fallback, unchanged settings/input and normal/compact message geometry); `source_archive_browse`, `compression_encryption`, `compression_limit`, `gui_error_policy` |
 | Saved compression values restore source nearest/clamped dictionary/order/solid and unavailable-thread behavior | `compression_profile_selection` (EN/RU, Cancel/restart, real accepted Create/list/test/extract and exact bytes); `compression_preferences`, `compression_dictionary`, `compression_order`, `compression_solid`, `compression_resources` |
 
-Windows privileged link/security fixtures and ordinary-token COM registration
-have different requirements; native desktop tests require session1. Linux/macOS
-do not support every Windows ADS/NT-security/COM service. Actual compiled slots
-and data rows, with explicit platform applicability, must be checked before
-acceptance; a passing executable that skips its required fixture is insufficient.
-Windows native network coverage now uses its own current-user isolated share
-fixture in `network_folder`; acceptance and retained history belong to P3-03.5.
-The Unix mounted-share fixture remains separate. POSIX-only skip rows do not
-replace Windows required coverage; device fixtures fail when their prerequisites
-cannot be exercised.
-Finder drag-out cannot be accepted using fake receivers or these Qt tests.
+
+Native desktop, privilege, filesystem and recipient prerequisites must be checked
+for the selected platform. A skipped required fixture does not establish acceptance.
+Finder/Explorer recipients, OS panels and physical input have separate scopes.
+See [geometry](testing/geometry.md) for layout checks and
+[acceptance boundaries](ux-port-audit.md) for the completed port.
+
+The [historical matrix](archive/qt-port/regression-matrix.md) retains component
+receipts and original platform results.
