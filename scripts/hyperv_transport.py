@@ -16,7 +16,9 @@ def sync_command(record, platform, source, root):
     if platform == "windows":
         target = "/c/" + root.removeprefix("C:/")
         server = WINDOWS_RSYNC
-    return ["rsync", "--recursive", "--links", "--perms", "--times", "--checksum",
+    # Changed contents acquire the receiver's current modification time. A local
+    # edit can predate the object built from the previous immutable snapshot.
+    return ["rsync", "--recursive", "--links", "--perms", "--checksum",
             "--compress", "--compress-level=1",
             "--delete-delay", "--delay-updates", "--stats", "--no-whole-file",
             *["--exclude=" + name for name in PROTECTED],

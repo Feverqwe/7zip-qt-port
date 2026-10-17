@@ -5,12 +5,16 @@
 #include "fixtures/widget_dialogs.h"
 #include "layout_inspection.h"
 #include "processpriority.h"
+#include "qtexternalprocess.h"
 #include <QApplication>
+#include <QDeadlineTimer>
 #include <QLabel>
 #include <QLineEdit>
 #include <QMessageBox>
 #include <QProgressBar>
 #include <QPushButton>
+#include <QSaveFile>
+#include <QScopeGuard>
 
 namespace {
 class CControlledTransport : public ArchiveBackend {
@@ -40,6 +44,57 @@ class ArchiveProgressTests : public QObject, protected ArchiveBackendTestSupport
     Q_OBJECT
     WidgetDialogFixture widgetDialogs_;
   private slots:
+    void controlsAfterChildExitPreserveOperationResult_data() {
+        QTest::addColumn<int>("exitCode");
+        QTest::newRow("success") << 0;
+        QTest::newRow("failure") << 2;
+    }
+    void controlsAfterChildExitPreserveOperationResult() {
+        QFETCH(int, exitCode);
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString archive = fixture.filePath(QStringLiteral("архив с пробелом.zip"));
+        writeFile(archive, "process control fixture");
+        qputenv("SEVENZIP_TEST_HELPER", "control-exit");
+        qputenv("SEVENZIP_CONTROL_FIXTURE", fixture.path().toUtf8());
+        qputenv("SEVENZIP_CONTROL_EXIT_CODE", QByteArray::number(exitCode));
+        const auto restore = qScopeGuard([] {
+            qunsetenv("SEVENZIP_TEST_HELPER");
+            qunsetenv("SEVENZIP_CONTROL_FIXTURE");
+            qunsetenv("SEVENZIP_CONTROL_EXIT_CODE");
+        });
+        ArchiveBackend backend(nullptr, QCoreApplication::applicationFilePath());
+        QSignalSpy finished(&backend, &ArchiveBackend::finished);
+        bool exited = false;
+        HRESULT pause = E_FAIL, background = E_FAIL;
+        connect(&backend, &ArchiveBackend::engineStarted, &backend, [&] {
+            // Keep Qt's completion notification pending while the OS child exits.
+            QFile pidFile(fixture.filePath("pid"));
+            QDeadlineTimer deadline(5000);
+            while (!pidFile.open(QIODevice::ReadOnly) && !deadline.hasExpired())
+                QThread::msleep(1);
+            const UInt32 pid = pidFile.readAll().toUInt();
+            QVERIFY(pid != 0);
+            QtNativeProcessServices services;
+            std::unique_ptr<IQtProcessHandle> child(services.OpenProcess(pid));
+            QVERIFY(child);
+            writeFile(fixture.filePath("exit"), "release");
+            while (child->Status() == QtProcessStatus::Running && !deadline.hasExpired())
+                QThread::msleep(1);
+            exited = child->Status() == QtProcessStatus::Exited;
+            QVERIFY(exited);
+            pause = backend.setPaused(true);
+            background = backend.setBackground(true);
+        });
+        backend.testSourceArchive(archive, {});
+        QTRY_COMPARE(finished.size(), 1);
+        QVERIFY(exited);
+        QCOMPARE(pause, S_OK);
+        QCOMPARE(background, S_OK);
+        QCOMPARE(finished[0][0].toBool(), exitCode == 0);
+        QCOMPARE(backend.lastResult(), exitCode == 0 ? S_OK : E_FAIL);
+        QVERIFY(!backend.busy());
+    }
     void ownedEnginePasswordCallback_data() {
         QTest::addColumn<bool>("accept");
         QTest::addColumn<bool>("empty");
@@ -329,6 +384,21 @@ class ArchiveProgressTests : public QObject, protected ArchiveBackendTestSupport
 
 int main(int argc, char **argv) {
     const QByteArray helperMode = qgetenv("SEVENZIP_TEST_HELPER");
+    if (helperMode == "control-exit") {
+        QCoreApplication app(argc, argv);
+        const QDir fixture(qEnvironmentVariable("SEVENZIP_CONTROL_FIXTURE"));
+        QSaveFile pid(fixture.filePath("pid"));
+        if (!pid.open(QIODevice::WriteOnly))
+            return 3;
+        pid.write(QByteArray::number(QCoreApplication::applicationPid()));
+        if (!pid.commit())
+            return 3;
+        QDeadlineTimer deadline(5000);
+        while (!QFileInfo::exists(fixture.filePath("exit")) && !deadline.hasExpired())
+            QThread::msleep(1);
+        return deadline.hasExpired() ? 3
+                                     : qEnvironmentVariableIntValue("SEVENZIP_CONTROL_EXIT_CODE");
+    }
     if (helperMode.startsWith("progress-password")) {
         QCoreApplication app(argc, argv);
         writeOutput("Enter password:");

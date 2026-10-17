@@ -21,7 +21,9 @@
 #include <QRegularExpression>
 #include <QSet>
 #include <QUuid>
-#ifndef Q_OS_WIN
+#ifdef Q_OS_WIN
+#include "Windows/ProcessUtils.h"
+#else
 #include <cerrno>
 #endif
 
@@ -114,7 +116,29 @@ HRESULT ArchiveBackend::setPaused(bool paused) {
     }
     if (process_.state() != QProcess::Running)
         return E_FAIL;
-    return processPause_.SetPaused(paused);
+    return processControlResult(processPause_.SetPaused(paused));
+}
+
+HRESULT ArchiveBackend::processControlResult(HRESULT result) const {
+    if (result == S_OK)
+        return S_OK;
+    // A short-lived child can exit before QProcess delivers finished(). There
+    // is no remaining child to control; keep its actual exit result.
+#ifdef Q_OS_WIN
+    const UInt32 pid = UInt32(process_.processId());
+    if (pid != 0) {
+        NWindows::CProcess child;
+        if (child.Open(SYNCHRONIZE, false, pid)) {
+            if (::WaitForSingleObject(child, 0) == WAIT_OBJECT_0)
+                return S_OK;
+        } else if (::GetLastError() == ERROR_INVALID_PARAMETER)
+            return S_OK;
+    }
+#else
+    if (result == HRESULT_FROM_WIN32(ESRCH))
+        return S_OK;
+#endif
+    return result;
 }
 
 HRESULT ArchiveBackend::setBackground(bool background) {
@@ -125,15 +149,8 @@ HRESULT ArchiveBackend::setBackground(bool background) {
         return S_OK;
     if (process_.state() != QProcess::Running)
         return E_FAIL;
-    const HRESULT result =
-        NProcessPriority::SetBackground(UInt32(process_.processId()), background);
-#ifndef Q_OS_WIN
-    // A short-lived child can exit before QProcess delivers finished(). There
-    // is no remaining process policy to change; keep its actual exit result.
-    if (result == HRESULT_FROM_WIN32(ESRCH))
-        return S_OK;
-#endif
-    return result;
+    return processControlResult(
+        NProcessPriority::SetBackground(UInt32(process_.processId()), background));
 }
 
 void ArchiveBackend::start(Job job, const QStringList &arguments, const QString &workingDirectory) {

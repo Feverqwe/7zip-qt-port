@@ -35,8 +35,11 @@ Do not use `--delete-excluded`. A SHA256 manifest verifies every supplied source
 file/link before the command runs; unsafe external links are refused. The
 manifest describes code at invocation start, not edits made during the run.
 Matching files are skipped, including on repeated runs. The archive-mode subset
-`-rlpt` preserves recursive content, links, permissions and times; owner/group
+`-rlp` preserves recursive content, links and permissions; owner/group
 and special-device replication are deliberately omitted across Linux/Windows.
+Changed files receive the guest's current modification time so incremental
+builds detect edits made before an earlier snapshot finished compiling.
+Unchanged contents retain their existing guest timestamps and build outputs.
 
 After confirmed command exit the lock is released, including on a normal test
 failure. An interrupted or disconnected invocation retains it if execution

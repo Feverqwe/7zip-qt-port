@@ -273,6 +273,7 @@ class ArchiveBackend : public QObject {
         SourceExtract
     };
     void start(Job job, const QStringList &arguments, const QString &workingDirectory = {});
+    HRESULT processControlResult(HRESULT result) const;
     void complete(int exitCode, QProcess::ExitStatus status);
     bool advanceProcessJob(Job completed);
     bool failProcessJob(Job completed, int exitCode, QProcess::ExitStatus status);

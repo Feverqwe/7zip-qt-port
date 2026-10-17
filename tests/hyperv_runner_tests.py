@@ -109,6 +109,21 @@ class RunnerTests(unittest.TestCase):
                 path = destination / name
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text("preserve")
+            # Reproduce a source edit made before an earlier snapshot finished
+            # building. Synchronizing its old mtime must not hide changed code.
+            build = destination / "build"
+            (build / "render.py").write_text(
+                "from pathlib import Path\n"
+                "Path('result').write_text(Path('../src/current').read_text())\n"
+                "with Path('runs').open('a') as log: log.write('built\\n')\n")
+            python = Path(sys.executable).as_posix().replace("$", "$$")
+            (build / "build.ninja").write_text(
+                f'rule render\n  command = "{python}" render.py\n'
+                'build result: render ../src/current\n')
+            def build_result():
+                subprocess.run(["ninja", "-C", str(build)], check=True, capture_output=True)
+                return (build / "result").read_text()
+            self.assertEqual(build_result(), "old")
             record = {"ssh_argv": ["ssh", "fixture"], "ip": "fixture"}
             command = hyperv_transport.sync_command(record, "linux", source, str(destination))
             # Run the production reconciliation flags locally, without SSH.
@@ -124,11 +139,15 @@ class RunnerTests(unittest.TestCase):
             result = subprocess.run(command, check=True, capture_output=True)
             self.assertEqual((destination / "src/current").read_text(), "new", repr((command, result.stdout, result.stderr)))
             self.assertFalse((destination / "src/deleted").exists())
+            self.assertEqual(build_result(), "new")
             for name in ("build/object.o", ".git/index", "runner-tmp/active", "upstream/config"):
                 self.assertEqual((destination / name).read_text(), "preserve")
             second = subprocess.run(command, check=True, capture_output=True)
             self.assertRegex(second.stdout.decode("utf-8", errors="replace"),
                              r"Number of (?:regular )?files transferred: 0")
+            runs = (build / "runs").read_bytes()
+            self.assertEqual(build_result(), "new")
+            self.assertEqual((build / "runs").read_bytes(), runs)
 
     def test_lock_serializes_sync_and_keeps_unconfirmed_or_wrong_owner(self):
         with tempfile.TemporaryDirectory() as temporary:
