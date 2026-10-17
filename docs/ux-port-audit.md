@@ -8,7 +8,8 @@
 добавляют40 actual catalog rows в четырёх native состояниях Windows/macOS,
 pending indexed/bundle icon и Cancel с неизменными native revisions. Исправлен
 значок Own на macOS; regression RED4→GREEN, Cocoa6Qt/12JSON, Options10/10 и
-associations4/4 PASS. Original row comparison, installed mutation/consent и
+associations4/4 PASS. Independent original Windows40-row EN/RU inventory совпадает
+с четырьмя Qt состояниями по всем колонкам/порядку без отличий. Installed mutation/consent и
 общий native/cold scope остаются открытыми; поставка требует обновления.
 
 [Native Linux System icons](upstream-port-audit/p3-06-system-native-2026-10-17.md)
