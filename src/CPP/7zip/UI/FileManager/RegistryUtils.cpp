@@ -61,7 +61,7 @@ QString FmSettingsPath() {
     // and its in-process shell DLL on the same project settings owner.
     const QString directory =
         QDir(QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation))
-            .filePath("Sevenzip Desktop");
+            .filePath("Sevenzip");
 #else
     const QString directory = QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation);
 #endif

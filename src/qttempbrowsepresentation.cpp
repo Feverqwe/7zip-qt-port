@@ -137,7 +137,7 @@ void CBrowseDialog2::BuildControls() {
     _filterCombo->setMinimumHeight(units.pixels(QSize(0, 14)).height());
     _filterCombo->setProperty("sourceControlID", IDC_BROWSE2_FILTER);
     _filterCombo->addItem(
-        QtLocalText("Sevenzip Desktop owned temporary files", "Временные файлы Sevenzip Desktop"));
+        QtLocalText("Sevenzip owned temporary files", "Временные файлы Sevenzip"));
     _filterCombo->setEnabled(false);
     layout->addWidget(_filterCombo);
     layout->addSpacing(margin.height());

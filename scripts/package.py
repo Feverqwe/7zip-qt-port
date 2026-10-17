@@ -173,12 +173,12 @@ def main():
         install = stage / name
         subprocess.run(["cmake", "--install", str(args.build_dir), "--prefix", str(install)], check=True)
         if system == "Darwin":
-            bundle = install / "sevenzip_desktop.app"
+            bundle = install / "Sevenzip.app"
             # Build aliases are copies; installed aliases share the actual application.
             for alias in ("7zFM", "7zG"):
                 path = bundle / "Contents/MacOS" / alias
                 path.unlink(missing_ok=True)
-                path.symlink_to("sevenzip_desktop")
+                path.symlink_to("Sevenzip")
             notices = bundle / "Contents/Resources/Notices"
         else:
             notices = install / "share/licenses/sevenzip-desktop"

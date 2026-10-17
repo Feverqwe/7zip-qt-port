@@ -11,7 +11,7 @@
 int main(int argc, char *argv[]) {
     QApplication app(argc, argv);
     app.setWindowIcon(QIcon(QStringLiteral(":/upstream/7zip/UI/FileManager/FM.ico")));
-    app.setApplicationName("Sevenzip Desktop");
+    app.setApplicationName("Sevenzip");
     app.setDesktopFileName(QString::fromLatin1(NDesktopIdentity::kFileName));
 #ifdef Q_OS_WIN
     const QString guiName = QStringLiteral("7zG.exe");

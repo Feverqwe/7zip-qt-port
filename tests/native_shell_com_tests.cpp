@@ -64,13 +64,13 @@ class NativeShellComTests final : public QObject {
         } restore{oldName, overridePath};
         QStandardPaths::setTestModeEnabled(true);
         qunsetenv("SEVENZIP_SETTINGS_PATH");
-        QCoreApplication::setApplicationName("Sevenzip Desktop");
+        QCoreApplication::setApplicationName("Sevenzip");
         const QString project = FmSettingsPath();
         QCoreApplication::setApplicationName("Explorer host fixture");
         QCOMPARE(FmSettingsPath(), project);
         QCOMPARE(project,
                  QDir(QStandardPaths::writableLocation(QStandardPaths::GenericConfigLocation))
-                     .filePath("Sevenzip Desktop/toolbar.ini"));
+                     .filePath("Sevenzip/toolbar.ini"));
     }
 
     void factoryInterfaceIdentityAndUnload() {

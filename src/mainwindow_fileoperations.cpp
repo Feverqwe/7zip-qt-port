@@ -48,7 +48,7 @@ void MainWindow::transferFiles(const QStringList &sources, const QString &destin
         QFileInfo(destinationDirectory).isSymLink() || sources.isEmpty() ||
         (directPath && sources.size() != 1)) {
         QMessageBox::warning(
-            this, "Sevenzip Desktop",
+            this, "Sevenzip",
             QtLocalText("The destination folder is unavailable.", "Папка назначения недоступна."));
         return;
     }
@@ -239,7 +239,7 @@ void MainWindow::executeCopyDestination(bool move, bool copyToSame, unsigned sou
             archiveMoveStage_ = ArchiveMoveStage::None;
             archiveMovePaths_.clear();
             transferDestinationPanel_.reset();
-            QMessageBox::warning(this, "Sevenzip Desktop",
+            QMessageBox::warning(this, "Sevenzip",
                                  QtLocalText("The destination folder is unavailable.",
                                              "Папка назначения недоступна."));
             return;

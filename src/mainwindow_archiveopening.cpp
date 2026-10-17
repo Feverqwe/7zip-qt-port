@@ -113,7 +113,7 @@ HRESULT MainWindow::openArchiveAs(const QString &path, const QString &type) {
                                  : ToQString(HResultToMessage(result));
     statusBar()->showMessage(message);
     if (result != S_OK && result != E_ABORT)
-        QMessageBox::warning(this, QStringLiteral("Sevenzip Desktop"), message);
+        QMessageBox::warning(this, QStringLiteral("Sevenzip"), message);
     return panel.IsArcFolder() ? result : result == S_OK ? S_FALSE : result;
 }
 

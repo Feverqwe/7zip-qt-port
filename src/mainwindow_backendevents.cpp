@@ -117,7 +117,7 @@ void MainWindow::backendFinished(bool ok, const QString &message, HRESULT result
         return;
     statusBar()->showMessage(resultMessage);
     if (!ok && !hadProgress && !messageDisplayed && !canceled)
-        QMessageBox::warning(this, "Sevenzip Desktop", resultMessage);
+        QMessageBox::warning(this, "Sevenzip", resultMessage);
 }
 
 bool MainWindow::startPendingArchiveMove(bool ok) {

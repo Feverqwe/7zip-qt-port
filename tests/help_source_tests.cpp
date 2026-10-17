@@ -121,7 +121,7 @@ class HelpSourceTests : public QObject {
         QVERIFY(!dialog.findChild<QLabel *>("aboutLogo")->pixmap().isNull());
         QVERIFY(dialog.findChild<QLabel *>("aboutApplicationVersion")
                     ->text()
-                    .contains("Sevenzip Desktop 0.1.0"));
+                    .contains("Sevenzip 0.1.0"));
         QDesktopServices::setUrlHandler("https", this, "openUrl");
         QVERIFY(!dialog.OnButtonClicked(999, nullptr));
         QVERIFY(dialog.OnButtonClicked(IDB_ABOUT_HOMEPAGE, nullptr));

@@ -30,9 +30,10 @@ set_source_files_properties("${sevenzip_bundle_icon}" PROPERTIES
     GENERATED TRUE MACOSX_PACKAGE_LOCATION Resources)
 target_sources(sevenzip_desktop PRIVATE "${sevenzip_bundle_icon}")
 set_target_properties(sevenzip_desktop PROPERTIES
+    OUTPUT_NAME "Sevenzip"
     MACOSX_BUNDLE_ICON_FILE FM.icns
     MACOSX_BUNDLE_INFO_PLIST "${CMAKE_CURRENT_BINARY_DIR}/macos-bundle.plist.in"
     MACOSX_BUNDLE_GUI_IDENTIFIER "org.sevenzip-desktop"
-    MACOSX_BUNDLE_BUNDLE_NAME "Sevenzip Desktop"
+    MACOSX_BUNDLE_BUNDLE_NAME "Sevenzip"
     MACOSX_BUNDLE_SHORT_VERSION_STRING "${PROJECT_VERSION}"
     MACOSX_BUNDLE_BUNDLE_VERSION "${PROJECT_VERSION}")

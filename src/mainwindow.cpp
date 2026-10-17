@@ -26,7 +26,7 @@ MainWindow::MainWindow(ArchiveBackend *backend, std::function<bool(const QUrl &)
     }
     backend_ = backend ? backend : new ArchiveBackend(this);
     ReloadLang(toolbarSettingsPath());
-    setWindowTitle("Sevenzip Desktop");
+    setWindowTitle("Sevenzip");
     resize(980, 620);
     folderManager_ = new QtArchiveFolderManager(*backend_);
     associatedFileServices_ = std::make_unique<QtAssociatedFileServices>(

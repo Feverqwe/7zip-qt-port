@@ -1,4 +1,5 @@
 /build/
+/dist/
 /ui-reports/
 /cmake-build-*/
 /.idea/

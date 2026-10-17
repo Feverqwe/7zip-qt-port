@@ -1,4 +1,4 @@
-# Sevenzip Desktop
+# Sevenzip
 
 Кроссплатформенный перенос Windows 7-Zip File Manager для Windows, macOS и Linux.
 Функциональная основа переносится из исходного кода 7-Zip; интерфейс и обвязка
@@ -41,11 +41,20 @@ brew install cmake ninja qtbase sevenzip clang-format
 ```
 
 `check.sh` проверяет формат C++, собирает приложение и запускает CTest.
-На macOS откройте `build/dev/sevenzip_desktop.app`; из терминала:
+На macOS откройте `build/dev/Sevenzip.app`; из терминала:
 
 ```sh
-build/dev/sevenzip_desktop.app/Contents/MacOS/sevenzip_desktop /path/to/archive.7z
+build/dev/Sevenzip.app/Contents/MacOS/Sevenzip /path/to/archive.7z
 ```
+
+Для Release без сборки тестовых программ:
+
+```sh
+./scripts/build-app.sh
+```
+
+На macOS готовое приложение находится в `dist/Sevenzip.app`.
+Промежуточные файлы сборки остаются в `build/`.
 
 `7zz` должен находиться в `PATH`; на macOS также проверяются стандартные
 пути Homebrew. Зависимости других платформ, подготовка native codec/SFX runtime,
@@ -71,6 +80,6 @@ build/dev/sevenzip_desktop.app/Contents/MacOS/sevenzip_desktop /path/to/archive.
 Лицензии перенесённых исходников сохранены в
 [third_party/7zip/License.txt](third_party/7zip/License.txt).
 У Qt Widgets доступны LGPLv3/GPLv2 и коммерческая лицензия.
-Собственный Qt/UI и integration-код Sevenzip Desktop распространяется под
+Собственный Qt/UI и integration-код Sevenzip распространяется под
 [MIT](LICENSE). Эта лицензия не заменяет лицензии перенесённого 7-Zip,
 Qt и остальных зависимостей; их notices сохраняются отдельно.

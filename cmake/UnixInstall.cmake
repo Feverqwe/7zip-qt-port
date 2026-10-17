@@ -1,7 +1,7 @@
 # Install an explicit runtime payload; never copy the checkout or build tree.
 if(APPLE)
-    set(runtime_destination sevenzip_desktop.app/Contents/Resources/7zip)
-    set(notices_destination sevenzip_desktop.app/Contents/Resources/Notices)
+    set(runtime_destination Sevenzip.app/Contents/Resources/7zip)
+    set(notices_destination Sevenzip.app/Contents/Resources/Notices)
     install(TARGETS sevenzip_desktop BUNDLE DESTINATION .)
 else()
     set(runtime_destination bin)

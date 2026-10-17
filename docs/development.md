@@ -6,8 +6,8 @@ Qt build as Core/Gui/Widgets; on distribution SDKs this can be a separate privat
 development package. `qtnativepanelkeys.cpp` uses Qt's native keyboard-layout
 mapping instead of maintaining another platform key map. This private API has
 no ABI compatibility guarantee: build and deploy against the same Qt module
-build, and rebuild the application when changing it. CMake retains Qt's warning
-and rejects a missing matching private SDK. Bundled packages must carry that
+build, and rebuild the application when changing it. CMake suppresses Qt's generic
+private-module warning and rejects a missing matching private SDK. Bundled packages must carry that
 same Qt runtime; this adds no separate runtime module.
 
 Native console SFX can be built from the recorded official baseline with
@@ -128,7 +128,8 @@ come from generated CMake/CTest registrations, including executable arguments
 and fixture producers; their names are not guessed from suite names. An empty
 enabled selection fails. Slow suites retain their explicit opt-in requirement.
 `--plan` configures and prints the selection without building, testing or
-preparing runtime. `--preset release` selects the existing Release tree.
+preparing runtime. Verification uses the `dev` preset by default; the `release`
+preset disables test programs for application-only builds.
 
 `verify.py` keeps `build/<preset>/verify-result.json` with the selection,
 targets, result and time spent on runtime/configuration/selection/build/tests.
@@ -166,6 +167,9 @@ worktree/toolchain. The option does not delete artifacts from older builds.
 
 Runtime packages use Release builds with testing disabled; local checks remain
 unchanged. GitHub CI is absent by user decision; see [CI scope](ci.md).
+For a local application with its runtime dependencies, run `./scripts/build-app.sh`.
+It installs into `dist/` (`dist/Sevenzip.app` on macOS); intermediate build files
+remain in `build/`.
 To package an existing Release build, run `python3 scripts/package.py
 --qt-source <matching-qtbase.tar.xz> --qt-sha256 <checksum-file>`; add
 `--icu-license <license-file>` if the deployed Qt kit uses ICU. The script uses
@@ -225,7 +229,7 @@ The build script configures the preset and applies platform toolchain workaround
 without targets it builds everything. Requirements for focused/full validation,
 repeat runs and docs-only changes are in [AGENTS.md](../AGENTS.md#validation-and-ui-reference).
 
-Run the built app on macOS from `build/dev/sevenzip_desktop.app/Contents/MacOS/sevenzip_desktop`, on Linux from `build/dev/sevenzip_desktop`, or on Windows from `build/dev/sevenzip_desktop.exe`. Build outputs are ignored. The development preset exports `compile_commands.json` for clangd and editor navigation.
+Run the built app on macOS from `build/dev/Sevenzip.app/Contents/MacOS/Sevenzip`, on Linux from `build/dev/sevenzip_desktop`, or on Windows from `build/dev/sevenzip_desktop.exe`. Build outputs are ignored. The development preset exports `compile_commands.json` for clangd and editor navigation.
 
 Some Apple Command Line Tools installations contain C++ standard headers inside the macOS SDK but omit them from Clang's default include path. `scripts/build.sh` detects this and sets `CPLUS_INCLUDE_PATH` only for that build process; it does not alter system files.
 

@@ -195,6 +195,8 @@ target_compile_definitions(sevenzip_name_sort PRIVATE SEVENZIP_NAME_SORT_ONLY)
 target_include_directories(sevenzip_name_sort PUBLIC src)
 target_link_libraries(sevenzip_name_sort PUBLIC Qt6::Core sevenzip_common)
 
+# The private API dependency is intentional; require the matching Qt build below.
+set(QT_NO_PRIVATE_MODULE_WARNING ON)
 if(NOT TARGET Qt6::GuiPrivate)
     find_package(Qt6GuiPrivate ${Qt6Gui_VERSION} EXACT QUIET CONFIG
         HINTS "${Qt6Gui_DIR}/../Qt6GuiPrivate")
