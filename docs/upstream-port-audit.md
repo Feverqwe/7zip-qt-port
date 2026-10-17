@@ -34,7 +34,7 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 ## Новые изменения
 
 - [Отложенные события файлового списка](upstream-port-audit/qt-list-events.md)
-  — отмена hover-выделения при блокировке списка.
+  — отмена hover при блокировке и завершение Shift-выделения до следующего нажатия.
 
 - [Управление асинхронными фазами](upstream-port-audit/qt-phase-controls.md)
   — сохранение Pause при смене CLI-процесса или worker.

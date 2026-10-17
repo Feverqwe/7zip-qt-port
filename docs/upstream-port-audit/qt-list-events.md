@@ -36,3 +36,28 @@ logs were retained. Elevated interactive retry `20261017T214219Z-ca306c5e`
 passed `temp_cleanup`. Both guests reused `current` and compiler caches.
 These are focused behavior checks, without a full gate, slow suites or a
 rendered Windows comparison.
+
+## Shift selection and subsequent keys
+
+Reviewed complete `PanelSelect.cpp::OnArrowWithShift/OnShiftSelectMessage`,
+`PanelKey.cpp` arrow/modifier branches and the native `CMyListView::OnMessage`
+default-control dispatch and `kShiftSelectMessage` handler in `Panel.cpp`.
+The port's source selection bodies retain the original mark/range decisions;
+MainWindow adapts key notifications and the two Qt views share selection.
+
+The zero-time Qt callback could run after another key moved focus. A reproduced
+Shift+Down followed immediately by unmodified Down marked the third file,
+although the unmodified move must only change focus. The adapter now invokes
+the active Qt view's default arrow handling once, then completes the existing
+source range handler before returning from that key. Lifetime guards retain
+the captured window/panel relationship; no deferred range callback survives
+navigation or focus changes. The two small default-key forwarding methods stay
+in the existing widget adapters, rather than creating another selection owner.
+No source selection algorithm or modifier branch is replaced or omitted.
+
+macOS arm64 / Qt 6.12, based on `36faf34`: the table regression failed before
+the fix. It now checks all four list views; `panel_key`, `panel_selection`,
+`panel_selected_state` and `panel_focus` passed (4/4) after incremental application
+and test builds. Run `20261017T214346Z-34a2c2bd` passed those same four suites
+on Linux x64 and interactive Windows x64 / Qt 6.12, reusing `current` builds
+and compiler caches. There are no layout, text, visibility or resize changes.

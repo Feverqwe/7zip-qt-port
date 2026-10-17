@@ -16,6 +16,7 @@ class FileTable : public QTableWidget {
   public:
     explicit FileTable(int rows, int columns, QWidget *parent = nullptr);
     void setFullRowHighlight(bool enabled);
+    void handleDefaultKeyPress(QKeyEvent *event);
     bool fullRowHighlight() const { return fullRowHighlight_; }
     bool filesystem = true;
     CPanel *sourcePanel = nullptr;
@@ -60,6 +61,7 @@ class FileIconList final : public QListView {
   public:
     using QListView::QListView;
     void SetListViewMode(int mode);
+    void handleDefaultKeyPress(QKeyEvent *event);
     std::function<void()> dragStarter;
 
   protected:

@@ -13,6 +13,52 @@ class PanelKeyTests final : public QObject, protected MainWindowTestSupport {
 
   private slots:
     void init() { QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH")); }
+    void shiftSelectionDoesNotIncludeFollowingUnmodifiedMove_data() {
+        QTest::addColumn<int>("mode");
+        for (int mode = 0; mode < 4; ++mode)
+            QTest::newRow(qPrintable(QString::number(mode))) << mode;
+    }
+    void shiftSelectionDoesNotIncludeFollowingUnmodifiedMove() {
+        QFETCH(int, mode);
+        QSettings settings(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"), QSettings::IniFormat);
+        settings.setValue("FM/AlternativeSelection", true);
+        settings.sync();
+        const auto restore = qScopeGuard([&] {
+            settings.remove("FM/AlternativeSelection");
+            settings.sync();
+        });
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        openListedArchive(window, backend, fixture.filePath("marks.zip"),
+                          {ArchiveEntry{"a.txt", 1, 1}, ArchiveEntry{"b.txt", 2, 2},
+                           ArchiveEntry{"c.txt", 3, 3}});
+        window.show();
+        auto *view = window.findChild<QTableWidget *>("archiveTable");
+        QTRY_COMPARE(view->rowCount(), 3);
+        auto *modeAction = action(window, qPrintable(QString("viewMode%1Action").arg(mode)));
+        QTRY_VERIFY(modeAction->isEnabled());
+        modeAction->trigger();
+        auto *target = mode == 3 ? static_cast<QAbstractItemView *>(view)
+                                 : window.findChild<QListView *>("iconList");
+        target->setFocus();
+        QTRY_VERIFY(target->hasFocus());
+        view->setCurrentCell(0, 0);
+        action(window, "deselectAllAction")->trigger();
+        const auto arrow = mode <= 1 ? Qt::Key_Right : Qt::Key_Down;
+        QKeyEvent shiftDown(QEvent::KeyPress, arrow, Qt::ShiftModifier);
+        QKeyEvent down(QEvent::KeyPress, arrow, Qt::NoModifier);
+        QApplication::sendEvent(target, &shiftDown);
+        QCOMPARE(view->currentRow(), 1);
+        QApplication::sendEvent(target, &down);
+        QCOMPARE(view->currentRow(), 2);
+        QApplication::processEvents();
+        CPanel *panel = static_cast<FileTable *>(view)->sourcePanel;
+        for (int row = 0; row < 3; ++row)
+            QCOMPARE(panel->IsItemMarked(view->item(row, 0)->data(Qt::UserRole + 6).toUInt()),
+                     row < 2);
+    }
     void archiveOpenDisablesBothPanelAddresses() {
         QTemporaryDir fixture;
         QVERIFY(fixture.isValid());

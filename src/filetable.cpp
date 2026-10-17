@@ -287,6 +287,8 @@ void FileTable::startDrag(Qt::DropActions actions) {
     else
         QTableWidget::startDrag(actions);
 }
+void FileTable::handleDefaultKeyPress(QKeyEvent *event) { QTableWidget::keyPressEvent(event); }
+void FileIconList::handleDefaultKeyPress(QKeyEvent *event) { QListView::keyPressEvent(event); }
 void FileIconList::startDrag(Qt::DropActions actions) {
     if (dragStarter)
         dragStarter();

@@ -145,12 +145,19 @@ bool MainWindow::handlePanelListKey(QKeyEvent *key) {
                                          app_);
     if (panel._mySelectMode && mods.testFlag(Qt::ShiftModifier) && arrow &&
         (key->key() == Qt::Key_Down || !mods.testFlag(Qt::AltModifier))) {
-        QTimer::singleShot(0, &panel, [this, owner = QPointer<CPanel>(&panel)] {
-            if (owner && !app_.QtOperations().closed()) {
-                owner->OnShiftSelectMessage();
-                refreshActions();
-            }
-        });
+        // Complete this key's Qt focus movement before applying the source
+        // range. A queued timer can otherwise observe a later key's focus.
+        const QPointer<MainWindow> window(this);
+        const QPointer<CPanel> owner(&panel);
+        if (viewStack_->currentWidget() == table_)
+            static_cast<FileTable *>(table_)->handleDefaultKeyPress(key);
+        else
+            static_cast<FileIconList *>(iconList_)->handleDefaultKeyPress(key);
+        if (window && owner && !app_.QtOperations().closed()) {
+            owner->OnShiftSelectMessage();
+            refreshActions();
+        }
+        return true;
     }
     if (key->key() != Qt::Key_Control && key->key() != Qt::Key_Shift && key->key() != Qt::Key_Alt)
         refreshActions();
