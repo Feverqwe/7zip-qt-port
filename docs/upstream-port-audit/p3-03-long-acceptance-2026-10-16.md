@@ -235,3 +235,22 @@ progress while retaining all rows and individual/application deadlines.
 The repeated Windows codec-discovery 5000 ms failures are tracked separately
 under P3-03.8; a passing long matrix would not close them. No final P3 parent
 or three-platform acceptance is established by these receipts.
+
+## All-eleven macOS/Linux acceptance (test83163a4 / product7dadf6d)
+
+The complete current macOS run passes11/11 in1265.86s,2100Qt/0fail/0skip:
+`mac-current-all-long-v98`. All1471 captured compiled source/configuration inputs
+match committed test revision `83163a47f8c5895c8c92d89d96e29c262fe6531d`.
+All eight official runtime/SFX hashes match before/after. The suite set exactly
+matches all eleven entries in `cmake/SlowTests.cmake`; none is omitted or replaced
+with a representative row. This supersedes earlier Mac long results for current
+source acceptance, while preserving their failures and corrected-fixture history.
+Linux snapshot `20261016T233608Z-f98e0528` also passes11/11 in1191.36s,
+2100Qt/0fail/0skip,
+with all1471 compiled inputs matching the same committed test revision and
+source/configuration/runtime guards passing. Current Windows all-eleven acceptance
+and the independent cold/native/rendered parent requirements remain open. These
+receipts precede the subsequent shared CDialog/Copy presentation correction;
+its focused/current/native consumers are required separately. Windows replay
+`20261017T004810Z-11bf0cbe` is running with that product correction, all eleven
+long suites and unchanged per-case/application deadlines.
