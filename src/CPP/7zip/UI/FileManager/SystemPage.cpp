@@ -176,6 +176,7 @@ bool CSystemPage::OnInit(IFolderManager *manager) {
 void CSystemPage::RefreshAvailability() {
     for (unsigned g = 0; g < 2; g++) {
         auto *button = g == 0 ? _current : _all;
+        button->setVisible(_services && _services->CanApply(g));
         bool available = false;
         FOR_VECTOR(i, _extDB.Exts) {
             const bool supported = _services && _services->CanApplyFormat(g, _extDB.Exts[i].Ext);

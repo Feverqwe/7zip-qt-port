@@ -33,6 +33,9 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 
 ## Новые изменения
 
+- [Видимость платформенных настроек](upstream-port-audit/options-platform-visibility.md)
+  — скрытие неподдерживаемых действий с сохранением исходных значений и Apply/Cancel.
+
 - [Относительные ссылки справки](upstream-port-audit/help-relative-links.md)
   — переходы из Add к описаниям Method и SFX внутри корня справки.
 

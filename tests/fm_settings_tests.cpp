@@ -2,6 +2,7 @@
 #include "layout_inspection.h"
 #include <QCheckBox>
 #include <QDialogButtonBox>
+#include <QLabel>
 #include <QSettings>
 #include <QTemporaryDir>
 #include <QtTest>
@@ -80,12 +81,19 @@ class FmSettingsTests : public QObject {
                   "largePagesOption", "extractMemoryLabel", "extractMemorySpin"}) {
                 auto *control = page.findChild<QWidget *>(name);
                 QVERIFY(control);
+                if (QString(name) == "largePagesOption" && !IsLargePageSupported()) {
+                    QVERIFY(control->isHidden());
+                    continue;
+                }
                 QVERIFY(UiInspection::fullyVisible(*control, page));
                 if (qobject_cast<QCheckBox *>(control))
                     QVERIFY(control->width() >= control->sizeHint().width());
                 else
                     QVERIFY(control->width() >= control->minimumSizeHint().width());
-                QVERIFY(control->height() >= control->sizeHint().height());
+                if (auto *label = qobject_cast<QLabel *>(control); label && label->wordWrap())
+                    QVERIFY(UiInspection::labelFits(*label));
+                else
+                    QVERIFY(control->height() >= control->sizeHint().height());
                 if (previous)
                     QVERIFY(UiInspection::bounds(*previous, page).bottom() <
                             UiInspection::bounds(*control, page).top());

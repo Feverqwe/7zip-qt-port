@@ -123,12 +123,15 @@ class CompressionAdvancedTests final : public QObject {
         QVERIFY(check(dialog, "IDX_COMPRESS_CTIME")->isEnabled());
         check(dialog, "IDX_COMPRESS_CTIME")->click();
         auto *buttons = dialog.findChild<QDialogButtonBox *>("compressOptionsButtons");
-        for (QWidget *widget :
-             {static_cast<QWidget *>(precision),
-              static_cast<QWidget *>(check(dialog, "IDX_COMPRESS_CTIME")),
-              static_cast<QWidget *>(check(dialog, "IDX_COMPRESS_PRESERVE_ATIME")),
-              static_cast<QWidget *>(buttons)})
+        for (QWidget *widget : {static_cast<QWidget *>(precision),
+                                static_cast<QWidget *>(check(dialog, "IDX_COMPRESS_CTIME")),
+                                static_cast<QWidget *>(buttons)})
             QVERIFY(UiInspection::fullyVisible(*widget, dialog));
+#ifdef Q_OS_WIN
+        QVERIFY(UiInspection::fullyVisible(*check(dialog, "IDX_COMPRESS_PRESERVE_ATIME"), dialog));
+#else
+        QVERIFY(check(dialog, "IDX_COMPRESS_PRESERVE_ATIME")->isHidden());
+#endif
         QVERIFY(UiInspection::separate(*dialog.findChild<QGroupBox *>("IDG_COMPRESS_TIME"),
                                        *buttons, dialog));
         QVERIFY(UiInspection::writeReport(

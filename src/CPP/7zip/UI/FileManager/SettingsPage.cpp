@@ -92,6 +92,8 @@ CSettingsPage::CSettingsPage(const QString &settingsPath, QWidget *parent, bool 
     memoryRow->addWidget(ramLabel);
     memoryRow->addStretch();
     layout->addLayout(memoryRow);
+    // Keep the source settings and memory rows together when the sheet grows.
+    layout->addStretch();
     connect(_memSet, &QCheckBox::toggled, this, [this](bool checked) {
         if (!_initMode) {
             _memx_wasChanged = true;
@@ -130,6 +132,8 @@ bool CSettingsPage::OnInit() {
     _showSystemMenu->setChecked(_settings.ShowSystemMenu);
     const QtMemoryLockServices nativeMemoryLock;
     const auto &memoryLock = _memoryLockServices ? *_memoryLockServices : nativeMemoryLock;
+    _largePages->setVisible(memoryLock.IsSupported());
+    _largePages->setEnabled(memoryLock.IsSupported());
     if (memoryLock.IsSupported())
         _largePages->setChecked(ReadLockMemoryEnable(_settingsPath));
     else

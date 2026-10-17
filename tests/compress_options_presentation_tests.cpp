@@ -67,8 +67,8 @@ class CompressOptionsPresentationTests final : public QObject {
 
   private slots:
     void initTestCase() { QVERIFY(settings_.isValid()); }
-    void sourceInitialFrame_data() { data(); }
-    void sourceInitialFrame() {
+    void contentSizedInitialFrame_data() { data(); }
+    void contentSizedInitialFrame() {
         QFETCH(QString, language);
         QFETCH(QString, format);
         NCompression::CFormatOptions profile;
@@ -79,8 +79,15 @@ class CompressOptionsPresentationTests final : public QObject {
         show(dialog);
         QVERIFY(UiInspection::writeReport(
             dialog, QString("compress-options-source-%1-%2-initial").arg(format, language)));
-        QCOMPARE(dialog.size(), UiInspection::normalizedInitialClientSize(
-                                    dialog, QtDialogUnits(dialog.font()).pixels({256, 248})));
+        QVERIFY(dialog.height() <= dialog.sizeHint().height());
+        if (!dialog.findChild<QGroupBox *>("IDG_COMPRESS_NTFS")->isVisible()) {
+            const auto *info = dialog.findChild<QLabel *>("IDT_COMPRESS_TIME_INFO");
+            QVERIFY(UiInspection::bounds(*info, dialog).top() <=
+                    2 * info->fontMetrics().lineSpacing());
+        }
+#ifndef Q_OS_WIN
+        QVERIFY(dialog.findChild<QCheckBox *>("IDX_COMPRESS_PRESERVE_ATIME")->isHidden());
+#endif
         for (auto *group : dialog.findChildren<QGroupBox *>())
             if (group->isVisible())
                 QVERIFY2(UiInspection::fullyVisible(*group, dialog),
@@ -125,7 +132,7 @@ class CompressOptionsPresentationTests final : public QObject {
             auto *box = dialog.findChild<QCheckBox *>(name);
             QVERIFY(box);
             if (box->isVisible()) {
-                QCOMPARE(box->text(), QString(":"));
+                QVERIFY(!box->text().isEmpty() && box->text() != ":");
                 QVERIFY(!box->accessibleName().isEmpty());
             }
         }
@@ -169,10 +176,10 @@ class CompressOptionsPresentationTests final : public QObject {
                 const QSize text = box->fontMetrics().size(Qt::TextShowMnemonic, box->text());
                 QVERIFY2(text.width() <= contents.width() && text.height() <= contents.height(),
                          qPrintable(box->objectName()));
-                if (box->text() == ":") {
+                if (box->objectName().endsWith("_SET")) {
                     const QRect indicator =
                         box->style()->subElementRect(QStyle::SE_CheckBoxIndicator, &option, box);
-                    // A tall grid row must not separate the ':' from its checkbox.
+                    // A tall grid row must not separate its caption from the checkbox.
                     QVERIFY2(qAbs(indicator.center().y() - contents.center().y()) <=
                                  qMax(2, box->fontMetrics().height() / 4),
                              qPrintable(box->objectName()));

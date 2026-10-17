@@ -67,6 +67,10 @@ registration writes. [Live Windows/macOS values and image receipt](../archive/qt
 
 ### Shell Menu page (P2-09, accepted)
 
+Current platform policy: unsupported shell-registration controls and the Zone
+label/combo are hidden. Missing Windows DLLs still disable their registration
+controls. See [platform visibility](../upstream-port-audit/options-platform-visibility.md).
+
 Reference: pinned MenuPage2.rc and source CShellDll discovery/OnApply.
 Native then other-bitness integration checkboxes precede cascaded/icons/root
 duplication controls, Zone row and scrollable command list. Missing DLL disables
@@ -189,8 +193,8 @@ Zone label/combo, Context menu items label and the 14-row checkable list.
 P2-09.3 now enables Cascaded/Icons/ElimDup and the list for the retained source
 in-app consumers. Windows registration controls discover adjacent original-name
 7-zip.dll/7-zip32.dll/7-zip64.dll and disable missing modules; Unix registration
-stays unavailable with an explicit capability reason. Zone is
-enabled on Windows; on POSIX it is disabled with a Windows-only explanation.
+controls are hidden. Zone is
+enabled on Windows; on POSIX its label and combo are hidden.
 The source default is `* No`; existing custom integer values remain selectable.
 Qt scrolls the list and uses a persistent OK/Cancel/Apply footer.
 
@@ -200,6 +204,10 @@ the list and footer remain exposed. No rendered Windows reference is available;
 geometry checks establish Qt structure/usability on the locally tested OS only.
 
 ## File list settings
+
+При увеличении окна Settings флажки, подпись лимита памяти и строка ввода
+остаются компактной группой сверху. Свободная высота остаётся под группой,
+а подпись не растягивается и не отдаляет поле ввода.
 
 Options applies pages in source System/Menu/Folders/Edit/Settings/Language order.
 An association error shows one Critical message without changing the current tab
@@ -222,18 +230,18 @@ a shown `..` remains excluded from operated indices. Ctrl-click starts a new
 anchor. Selection colours, single focused row, totals and peer state stay in
 sync after direct restoration, menu Refresh and timer reload.
 The page has no heading absent from the resource.
-Large pages are capability-gated Windows controls; source extraction-memory
+Large pages are hidden when unsupported; source extraction-memory
 edit validation preserves raw input until Apply. The six-page property sheet
 keeps System/Menu/Folders/Edit/Settings/Language order. Original OptionsDialog
 and Windows/Control/PropertyPage.cpp set the initial page to System (nStartPage0);
 the Qt container now follows that state. Ctrl+Tab/Shift+Ctrl+Tab move between
 pages using Qt's tab-bar focus; the Tab cycle reaches the visible page and may
 visit the footer first on Windows. Pending input
-survives switching; unavailable native capabilities remain disabled within pages.
+survives switching; unsupported platform actions are hidden within pages.
 This establishes structure and interaction, not pixel correspondence.
 Folders follows pinned FoldersPage2.rc: working-folder label, system/current/
 specified radios, path/Browse row, removable-only checkbox. Path and Browse are
-enabled only for specified mode. POSIX removable-only is disabled until the
+enabled only for specified mode. POSIX removable-only is hidden until the
 platform owner supplies drive-type support. `options_dialog` checks640×390 and
 520×380 JSON/geometry, native mode order and separated footer. The height grows
 from350 because Settings now has minimum361 with its additional source controls.

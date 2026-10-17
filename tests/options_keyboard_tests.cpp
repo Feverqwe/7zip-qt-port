@@ -148,6 +148,8 @@ class OptionsKeyboardTests final : public QObject {
         QVERIFY(current && all && list);
         QCOMPARE(current->isEnabled(), bool(availability & 1));
         QCOMPARE(all->isEnabled(), bool(availability & 2));
+        QCOMPARE(current->isVisible(), bool(availability & 1));
+        QCOMPARE(all->isVisible(), bool(availability & 2));
         QCOMPARE(current->focusPolicy(), Qt::StrongFocus);
         QCOMPARE(all->focusPolicy(), Qt::StrongFocus);
         QList<QWidget *> stops;
@@ -185,7 +187,8 @@ class OptionsKeyboardTests final : public QObject {
             if (button->isEnabled())
                 QVERIFY(visited.contains(button));
         for (QWidget *control : QList<QWidget *>{current, all, list})
-            QVERIFY(UiInspection::fullyVisible(*control, dialog));
+            if (control->isEnabled())
+                QVERIFY(UiInspection::fullyVisible(*control, dialog));
         QVERIFY(UiInspection::writeReport(dialog, QString("options-system-focus-%1-%2-%3")
                                                       .arg(language)
                                                       .arg(size.width())

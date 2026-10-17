@@ -8,6 +8,7 @@ class IQtMenuPageServices {
   public:
     virtual ~IQtMenuPageServices() = default;
     virtual bool CommandsAvailable() const = 0;
+    virtual bool ShellIntegrationSupported() const { return true; }
     virtual bool Is64Bit() const = 0;
     virtual bool OtherBitnessAvailable() const = 0;
     virtual FString GetModuleDirPrefix() const = 0;

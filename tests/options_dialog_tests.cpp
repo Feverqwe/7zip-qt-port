@@ -6,6 +6,7 @@
 #include <QCheckBox>
 #include <QDialogButtonBox>
 #include <QFileDialog>
+#include <QLabel>
 #include <QLineEdit>
 #include <QMessageBox>
 #include <QPushButton>
@@ -46,7 +47,7 @@ class OptionsDialogTests : public QObject {
         dialog.findChild<QTabWidget *>("optionsPages")->setCurrentIndex(4);
         dialog.show();
         QVERIFY(QTest::qWaitForWindowActive(&dialog));
-        for (QSize size : {QSize(640, 390), QSize(520, 380)}) {
+        for (QSize size : {QSize(640, 390), QSize(520, 380), QSize(640, 720), QSize(900, 800)}) {
             dialog.resize(size);
             QApplication::processEvents();
             QTRY_COMPARE(dialog.size(), size.expandedTo(dialog.minimumSizeHint()));
@@ -56,6 +57,10 @@ class OptionsDialogTests : public QObject {
                   "singleClickOption", "alternativeSelectionOption", "showSystemMenuOption",
                   "largePagesOption", "extractMemoryLabel", "extractMemorySpin"}) {
                 auto *control = dialog.findChild<QWidget *>(name);
+                if (QString(name) == "largePagesOption" && !IsLargePageSupported()) {
+                    QVERIFY(control->isHidden());
+                    continue;
+                }
                 QVERIFY(control && UiInspection::fullyVisible(*control, dialog));
                 if (previous)
                     QVERIFY(UiInspection::bounds(*previous, dialog).bottom() <
@@ -63,6 +68,13 @@ class OptionsDialogTests : public QObject {
                 previous = control;
             }
             auto *spin = dialog.findChild<QWidget *>("extractMemorySpin");
+            auto *label = dialog.findChild<QLabel *>("extractMemoryLabel");
+            // Growing the sheet must leave free space below the settings,
+            // rather than stretching the label and separating its input row.
+            QVERIFY(label->height() <= label->heightForWidth(label->width()));
+            const int memoryGap = UiInspection::bounds(*spin, dialog).top() -
+                                  UiInspection::bounds(*label, dialog).bottom();
+            QVERIFY(memoryGap <= 2 * label->fontMetrics().lineSpacing());
             auto *ram = dialog.findChild<QWidget *>("extractMemoryRam");
             auto *enabled = dialog.findChild<QCheckBox *>("extractMemorySet");
             QVERIFY(UiInspection::fullyVisible(*ram, dialog));
@@ -287,6 +299,12 @@ class OptionsDialogTests : public QObject {
             for (const char *name :
                  {"workSystem", "workCurrent", "workSpecified", "workPath", "workRemovableOnly"}) {
                 auto *control = dialog.findChild<QWidget *>(name);
+#ifndef _WIN32
+                if (QString(name) == "workRemovableOnly") {
+                    QVERIFY(control->isHidden());
+                    continue;
+                }
+#endif
                 QVERIFY(control && UiInspection::fullyVisible(*control, dialog));
                 if (previous)
                     QVERIFY2(

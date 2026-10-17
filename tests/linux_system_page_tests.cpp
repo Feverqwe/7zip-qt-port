@@ -88,7 +88,7 @@ class LinuxSystemPageTests final : public QObject {
         QVERIFY(zip && seven);
         const QString tag = "linux-system-" + QString::fromLatin1(QTest::currentDataTag());
         auto inspect = [&](const QString &state) {
-            for (QWidget *widget : QList<QWidget *>{list, current, all, buttons})
+            for (QWidget *widget : QList<QWidget *>{list, current, buttons})
                 if (!UiInspection::fullyVisible(*widget, dialog))
                     return false;
             dialog.setProperty("uiInspection_language", language == "ru" ? "ru" : "en");
@@ -101,6 +101,7 @@ class LinuxSystemPageTests final : public QObject {
         QCOMPARE(iconColor(*seven), QColor(30, 70, 220));
         QVERIFY(current->isEnabled());
         QVERIFY(!all->isEnabled());
+        QVERIFY(all->isHidden());
         QVERIFY(!all->toolTip().isEmpty());
         QVERIFY(zip->text(2).isEmpty());
         QCOMPARE(list->headerItem()->text(1), platform->CurrentUserName());

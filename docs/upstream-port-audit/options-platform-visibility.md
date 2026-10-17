@@ -1,0 +1,82 @@
+# Видимость платформенных настроек
+
+2026-10-17. По запросу пользователя неподдерживаемые настройки скрыты.
+
+## Исходники и границы переноса
+
+Source repository: <https://github.com/ip7z/7zip>, commit
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`.
+Сверены `CPP/7zip/UI/FileManager/OptionsDialog.cpp`, `SettingsPage.cpp`,
+`FoldersPage.cpp`, `MenuPage.cpp`, `SystemPage.cpp`, связанные headers и
+`SettingsPage2.rc`, `FoldersPage2.rc`, `MenuPage2.rc`, `SystemPage.rc`.
+
+Сохранены перенесённые OnInit/OnApply, группы и порядок страниц, исходные
+значения и границы сохранения. Новых алгоритмов архивных операций нет.
+Изменения ограничены Qt presentation и существующими platform services:
+
+- Settings: large pages видимы только при поддержке memory-lock service.
+- Folders: removable-only скрыт на POSIX, где исходная проверка типа диска
+  не используется; сохранённое значение не сбрасывается.
+- Menu: Win32 shell registration скрыта на POSIX независимо от наличия файлов
+  с DLL-именами. Windows сохраняет исходное отключение отсутствующих модулей
+  и скрытие недоступной другой разрядности.
+- Menu: неподдерживаемый Zone.Id скрыт вместе с подписью. Cascaded, Icons,
+  Eliminate duplication и список команд остаются доступны своим in-app consumers.
+- System: недоступная группе операция регистрации скрывает её кнопку `+`.
+  Колонки текущих ассоциаций остаются для просмотра. Ограничения отдельных
+  форматов сохраняют исходные отказы; алгоритм выбора и Apply не меняется.
+
+Адаптация отличается от исходного Windows property sheet только видимостью
+платформенных действий. Дополнительного omitted source scope нет; прежние
+границы модулей и Win32-to-Qt адаптации остаются в базовом аудите.
+
+## Проверки
+
+macOS arm64 / Qt 6.12.0: затронутые test targets собраны incremental.
+Focused CTest: `fm_settings`, `memory_lock`, `menu_page`, `options_dialog`,
+`options_keyboard`, `options_integration`, `system_page`, `ui_parity_system`,
+`mac_system_page`, `language_ui` — PASS (10 suites). Первый sandbox-запуск
+`memory_lock` прерван Cocoa из-за отсутствия экрана; повтор с offscreen — PASS.
+
+Native Cocoa direct consumers: Settings/Folders geometry (4 QtTest results),
+Menu capabilities/geometry (3), EN/RU retranslation/geometry (3), Options keyboard
+(27) — PASS. Просмотрены текущие JSON normal/compact 640×390/520×380:
+скрытые shell/Zone/large-pages/removable элементы не занимают строк; список меню,
+поля памяти/пути и footer полностью открыты, RU подписи помещаются. System
+с одним доступным действием сохраняет кнопку над своей колонкой и полный список;
+четыре маски доступности проверены клавиатурным suite. Скриншоты не требовались.
+
+Регрессии расширяют существующие сценарии видимости, геометрии, сохранения
+настроек и фокуса; исходный resource contract доступного fake System не изменён.
+Windows/Linux runtime и rendered Windows pixel parity этой правкой не установлены.
+
+### Коррекция растяжения Settings после пользовательского скриншота
+
+Исходный `SettingsPage2.rc` располагает подпись лимита и spin в соседних строках.
+Qt VBox без нижнего stretch распределял лишнюю высоту между подписью и строкой
+памяти; прежняя проверка полной видимости не обнаруживала этот разрыв.
+Свободная высота теперь отводится под группу настроек, до отдельного footer.
+OnInit/OnApply и платформенная видимость не меняются.
+
+Регрессия Settings дополнена размерами 640×720 и 900×800, проверяет отсутствие
+растянутой подписи и близость строки ввода. Проверка переносимого QLabel
+в standalone Settings оценивает размещение текста при текущей ширине.
+macOS: приложение пересобрано; `fm_settings`, `options_dialog`,
+`options_keyboard`, `language_ui` — PASS (после исправления проверки переносов
+повторены первые два). Native Cocoa Settings — PASS, текущие JSON и скриншот
+увеличенного 640×720 просмотрены: подпись и ввод рядом, пустое место ниже.
+900×900 заменён на 900×800, поскольку macOS ограничивает высоту текущим экраном.
+
+### Повторный обзор остальных страниц
+
+По следующему запросу проверены все шесть страниц Options: EN/RU,
+640×390, 520×380 и 640×720. Просмотрены 36 current-build Cocoa JSON и снимки
+затронутых страниц. Аналогичного растяжения остальных форм не обнаружено:
+Folders/Edit удерживают строки сверху, System/Menu/Language расширяют списки.
+У исходных EditPage2.rc/LangPage.rc и текущих Qt layouts проверены назначение
+свободного места и порядок элементов; функциональный перенос не менялся.
+
+Существующий `language_ui` теперь включает System и увеличенное окно,
+проверяет сохранение верхних координат элементов при росте высоты с той же
+шириной и фактическую смену языка. CTest `language_ui` — PASS. Нативный запуск
+использует тот же изолированный `build/dev/language_ui.ini`, что и CTest.

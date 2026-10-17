@@ -61,9 +61,9 @@ CFoldersPage::CFoldersPage(const QString &settingsPath, QWidget *parent)
                        "Use for removable drives only");
     _forRemovable->setObjectName("workRemovableOnly");
 #ifndef _WIN32
-    // Existing source WorkDir drive-type branch is Windows-only. Keep its value
-    // without offering an inactive command on POSIX; platform owner P2-05.
+    // The source WorkDir drive-type branch is Windows-only. Retain its value.
     _forRemovable->setEnabled(false);
+    _forRemovable->hide();
     QtBindLocalToolTip(_forRemovable, "Removable-drive detection is available on Windows.",
                        "Определение сменных носителей доступно в Windows.");
 #endif

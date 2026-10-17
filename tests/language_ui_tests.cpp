@@ -261,6 +261,7 @@ class LanguageUiTests : public QObject, protected MainWindowTestSupport {
                                   Q_ARG(int, precision->currentIndex()));
         explicitArchiveTime->click();
         const QString englishPrecision = precision->currentText();
+        const QString englishOverride = explicitArchiveTime->text();
         const QString englishInfo = dialog.findChild<QLabel *>("IDT_COMPRESS_TIME_INFO")->text();
         for (const char *lang : {"ru", "-"}) {
             SaveRegLang(UString(lang), settingsPath());
@@ -271,10 +272,12 @@ class LanguageUiTests : public QObject, protected MainWindowTestSupport {
             QVERIFY(explicitArchiveTime->isChecked());
             QVERIFY(!profile.IsSet_TimePrec());
             if (QString(lang) == "ru") {
+                QVERIFY(explicitArchiveTime->text() != englishOverride);
                 QVERIFY(precision->currentText() != englishPrecision);
                 QVERIFY(dialog.findChild<QLabel *>("IDT_COMPRESS_TIME_INFO")->text() !=
                         englishInfo);
             } else {
+                QCOMPARE(explicitArchiveTime->text(), englishOverride);
                 QCOMPARE(precision->currentText(), englishPrecision);
                 QCOMPARE(dialog.findChild<QLabel *>("IDT_COMPRESS_TIME_INFO")->text(), englishInfo);
             }
@@ -511,23 +514,23 @@ class LanguageUiTests : public QObject, protected MainWindowTestSupport {
             SaveRegLang(UString(language), settingsPath());
             ReloadLang(settingsPath());
             QtNotifyLanguageChanged();
+            QCOMPARE(dialog.windowTitle(),
+                     QString(language) == "ru" ? QStringLiteral("Настройки") : QString("Options"));
             QCOMPARE(editor->text(), command);
             QCOMPARE(grid->isChecked(), checked);
             QCOMPARE(items->item(0)->checkState(), itemState);
             QVERIFY(items->isEnabled());
             QVERIFY(items->toolTip().isEmpty());
 #ifndef _WIN32
-            QCOMPARE(dialog.findChild<QCheckBox *>("workRemovableOnly")->toolTip(),
-                     QString(language) == "ru"
-                         ? QStringLiteral("Определение сменных носителей доступно в Windows.")
-                         : QString("Removable-drive detection is available on Windows."));
+            QVERIFY(dialog.findChild<QCheckBox *>("workRemovableOnly")->isHidden());
 #endif
             QVERIFY(dialog.findChild<QDialogButtonBox *>("settingsButtons")
                         ->button(QDialogButtonBox::Apply)
                         ->isEnabled());
-            for (QSize size : {QSize(640, 390), QSize(520, 380)}) {
+            QHash<QWidget *, int> normalTops;
+            for (QSize size : {QSize(640, 390), QSize(520, 380), QSize(640, 720)}) {
                 dialog.resize(size);
-                for (int page = 1; page < pages->count(); page++) {
+                for (int page = 0; page < pages->count(); page++) {
                     pages->setCurrentIndex(page);
                     QApplication::processEvents();
                     for (auto *control : pages->currentWidget()->findChildren<QWidget *>()) {
@@ -536,6 +539,13 @@ class LanguageUiTests : public QObject, protected MainWindowTestSupport {
                             continue;
                         QVERIFY2(UiInspection::fullyVisible(*control, dialog),
                                  qPrintable(control->objectName()));
+                        // Extra height belongs below forms or inside their lists,
+                        // rather than between a caption and its input.
+                        const int top = UiInspection::bounds(*control, dialog).top();
+                        if (size == QSize(640, 390))
+                            normalTops.insert(control, top);
+                        else if (size == QSize(640, 720))
+                            QCOMPARE(top, normalTops.value(control));
                         if (qobject_cast<QCheckBox *>(control))
                             QVERIFY2(control->sizeHint().width() <= control->width(),
                                      qPrintable(control->objectName()));
@@ -543,9 +553,12 @@ class LanguageUiTests : public QObject, protected MainWindowTestSupport {
                             QVERIFY2(UiInspection::labelFits(*control),
                                      qPrintable(control->objectName()));
                     }
+                    const QString dimensions =
+                        size.height() > 390 ? QString("%1x%2").arg(size.width()).arg(size.height())
+                                            : QString::number(size.width());
                     QVERIFY(UiInspection::writeReport(dialog, QString("options-language-%1-%2-%3")
                                                                   .arg(language)
-                                                                  .arg(size.width())
+                                                                  .arg(dimensions)
                                                                   .arg(page)));
                 }
             }

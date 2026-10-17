@@ -47,7 +47,6 @@ CQtCompressOptionsDialog::CQtCompressOptionsDialog(QWidget *parent) : QDialog(pa
     QtBindLangText(this, IDB_COMPRESS_OPTIONS, "Options");
     buildControls();
     applySourceGeometry();
-    resize(QtDialogUnits(font()).pixels(QSize(256, 248)));
 }
 
 void CQtCompressOptionsDialog::buildControls() {
@@ -68,14 +67,18 @@ void CQtCompressOptionsDialog::buildControls() {
         if (text.isEmpty())
             box->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
         registerControl(id, name, box);
+        if (text.isEmpty()) {
+            box->setText(QtLocalText("Set", "Задать"));
+            QtBindLocalToolTip(box, "Override the format default for this option.",
+                               "Задать значение вместо настройки формата по умолчанию.");
+        }
         if (!text.isEmpty())
             QtBindResourceText(box, id, text);
         connect(box, &QCheckBox::clicked, this, [this, id, box] { OnButtonClicked(id, box); });
         return box;
     };
-    // The fixed source template reserves this area even when NTFS is hidden.
-    // Its empty space can contract in the accessible compact Qt view.
     auto *ntfsSlot = new QWidget(this);
+    ntfsSlot->setObjectName("compressOptionsNtfsSlot");
     auto *slot = new QVBoxLayout(ntfsSlot);
     slot->setContentsMargins(0, 0, 0, 0);
 #ifdef Q_OS_MACOS
@@ -102,7 +105,7 @@ void CQtCompressOptionsDialog::buildControls() {
     ntfsLayout->setRowStretch(4, 1);
     slot->addWidget(ntfs);
     slot->addStretch();
-    layout->addWidget(ntfsSlot, 1);
+    layout->addWidget(ntfsSlot);
     auto *info = new QLabel(this);
     registerControl(IDT_COMPRESS_TIME_INFO, "IDT_COMPRESS_TIME_INFO", info);
     info->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
@@ -144,7 +147,6 @@ void CQtCompressOptionsDialog::buildControls() {
     int row = 1;
     for (const auto &item : rows) {
         auto *set = checkbox(item.set, item.setName, {}, time);
-        set->setProperty("languageToolTip", true);
         QtBindLangText(set, item.value, {}, true);
         grid->addWidget(set, row, 0);
         grid->addWidget(checkbox(item.value, item.valueName, item.text, time), row, 1, 1, 2);
@@ -154,11 +156,13 @@ void CQtCompressOptionsDialog::buildControls() {
                               "Do not change source files last access time", time);
 #ifndef Q_OS_WIN
     preserve->setEnabled(false);
+    preserve->hide();
     QtBindLocalToolTip(preserve, "The official engine supports this option only on Windows.",
                        "Официальный движок поддерживает эту опцию только в Windows.");
 #endif
     grid->addWidget(preserve, row, 0, 1, 3);
     layout->addWidget(time);
+    layout->addStretch();
     layout->addSpacing(QtDialogUnits(font()).pixels(QSize(0, 6)).height());
     auto *buttons = new QtLangButtonBox(
         QDialogButtonBox::Ok | QDialogButtonBox::Cancel | QDialogButtonBox::Help, this);
@@ -185,21 +189,24 @@ void CQtCompressOptionsDialog::applySourceGeometry() {
     auto *ntfsGrid = static_cast<QGridLayout *>(ntfs->layout());
     for (int row = 0; row < 4; ++row)
         ntfsGrid->setRowMinimumHeight(row, y(14));
-    ntfs->setMinimumHeight(y(72));
     auto *time = static_cast<QGroupBox *>(GetItem(IDG_COMPRESS_TIME));
     auto *grid = static_cast<QGridLayout *>(time->layout());
     grid->setContentsMargins(x(8), y(12), x(8), y(4));
     grid->setSpacing(0);
+    grid->setHorizontalSpacing(x(6));
 #ifdef Q_OS_MACOS
     // Cocoa's combo backing extends left of its layout item. Native spacing
     // keeps it separate from the preceding precision label.
-    grid->setHorizontalSpacing(
-        qMax(0, style()->layoutSpacing(QSizePolicy::Label, QSizePolicy::ComboBox, Qt::Horizontal)));
+    grid->setHorizontalSpacing(qMax(
+        x(6), style()->layoutSpacing(QSizePolicy::Label, QSizePolicy::ComboBox, Qt::Horizontal)));
 #endif
     grid->setColumnMinimumWidth(0, x(18));
     grid->setColumnStretch(1, 1);
     for (int row = 0; row < 6; ++row)
         grid->setRowMinimumHeight(row, y(row < 4 ? 14 : 20));
+#ifndef Q_OS_WIN
+    grid->setRowMinimumHeight(5, 0);
+#endif
     auto *precision = static_cast<QComboBox *>(GetItem(IDC_COMPRESS_TIME_PREC));
     precision->setFixedWidth(qMax(x(76), precision->minimumSizeHint().width()));
     auto *buttons = findChild<QDialogButtonBox *>("compressOptionsButtons");
@@ -216,6 +223,11 @@ void CQtCompressOptionsDialog::setVisible(bool visible) {
     if (initialize) {
         initialized_ = true;
         OnInit();
+        // Size after applying format/platform visibility, without reserving
+        // space for groups that the user cannot use.
+        if (!testAttribute(Qt::WA_Resized))
+            adjustSize();
+        NormalizePosition();
     }
     QDialog::setVisible(visible);
     if (initialize)
@@ -243,8 +255,14 @@ bool CQtCompressOptionsDialog::focusNextPrevChild(bool next) {
                         next ? Qt::TabFocusReason : Qt::BacktabFocusReason);
 }
 void CQtCompressOptionsDialog::changeEvent(QEvent *event) {
-    if (event->type() == QEvent::LanguageChange && initialized_)
+    if (event->type() == QEvent::LanguageChange && initialized_) {
         OnLanguageChange();
+        // Resource bindings retain the descriptive accessible option names.
+        // The visible override caption is shared by these source controls.
+        for (unsigned id : {IDX_COMPRESS_PREC_SET, IDX_COMPRESS_MTIME_SET, IDX_COMPRESS_CTIME_SET,
+                            IDX_COMPRESS_ATIME_SET, IDX_COMPRESS_ZTIME_SET})
+            static_cast<QCheckBox *>(GetItem(id))->setText(QtLocalText("Set", "Задать"));
+    }
     QDialog::changeEvent(event);
 }
 QWidget *CQtCompressOptionsDialog::GetItem(unsigned id) const { return controls_.value(id); }
@@ -265,6 +283,7 @@ void CQtCompressOptionsDialog::ShowItem_Bool(unsigned id, bool visible) {
                 row, visible ? QtDialogUnits(font()).pixels(QSize(0, 14)).height() : 0);
         }
     if (id == IDG_COMPRESS_NTFS) {
+        GetItem(id)->parentWidget()->setVisible(visible);
         // Source NTFS metadata views have a wider compact contract (480px).
         // Keep their original one-line mtime/ctime captions; the narrower ZIP
         // time-only view needs wrapping to fit its 440px contract on Windows.
@@ -275,6 +294,15 @@ void CQtCompressOptionsDialog::ShowItem_Bool(unsigned id, bool visible) {
             QtReloadLangTexts(*control);
         }
     }
+    const unsigned timeIds[] = {IDX_COMPRESS_MTIME, IDX_COMPRESS_CTIME, IDX_COMPRESS_ATIME,
+                                IDX_COMPRESS_ZTIME};
+    for (int row = 0; row < 4; ++row)
+        if (id == timeIds[row]) {
+            auto *grid = static_cast<QGridLayout *>(GetItem(IDG_COMPRESS_TIME)->layout());
+            grid->setRowMinimumHeight(
+                row + 1,
+                visible ? QtDialogUnits(font()).pixels(QSize(0, row < 3 ? 14 : 20)).height() : 0);
+        }
 }
 void CQtCompressOptionsDialog::EnableItem(unsigned id, bool enabled) {
     GetItem(id)->setEnabled(enabled);

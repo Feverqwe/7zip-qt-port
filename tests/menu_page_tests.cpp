@@ -177,6 +177,9 @@ class MenuPageTests : public QObject {
         QVERIFY(QTest::qWaitForWindowActive(&dialog));
         auto *zone = dialog.findChild<QComboBox *>("menuZone");
         QCOMPARE(zone->isEnabled(), IsZonePropagationSupported());
+        QCOMPARE(zone->isVisible(), IsZonePropagationSupported());
+        QCOMPARE(dialog.findChild<QWidget *>("menuZoneLabel")->isVisible(),
+                 IsZonePropagationSupported());
         QCOMPARE(zone->count(), 3);
         QCOMPARE(zone->currentText(), QString("* No"));
         auto *items = dialog.findChild<QListWidget *>("menuItems");
@@ -212,6 +215,14 @@ class MenuPageTests : public QObject {
                  {"shellIntegration", "shellIntegration32", "cascadedMenu", "menuIcons",
                   "menuElimDup", "menuZone", "menuItemsLabel", "menuItems"}) {
                 auto *control = dialog.findChild<QWidget *>(name);
+                const bool unsupported =
+                    (QString(name).startsWith("shellIntegration") &&
+                     !CreateNativeMenuPageServices()->ShellIntegrationSupported()) ||
+                    (QString(name) == "menuZone" && !IsZonePropagationSupported());
+                if (unsupported) {
+                    QVERIFY(control->isHidden());
+                    continue;
+                }
                 QVERIFY(UiInspection::fullyVisible(*control, dialog));
                 if (previous)
                     QVERIFY2(
@@ -222,8 +233,9 @@ class MenuPageTests : public QObject {
                     QVERIFY2(control->width() >= control->sizeHint().width(), name);
                 previous = control;
             }
-            QVERIFY(UiInspection::separate(*dialog.findChild<QWidget *>("menuZoneLabel"), *zone,
-                                           dialog));
+            if (zone->isVisible())
+                QVERIFY(UiInspection::separate(*dialog.findChild<QWidget *>("menuZoneLabel"), *zone,
+                                               dialog));
             QVERIFY(
                 UiInspection::separate(*items, *dialog.findChild<QDialogButtonBox *>(), dialog));
             QVERIFY(

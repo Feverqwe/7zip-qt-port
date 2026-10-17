@@ -64,6 +64,13 @@ class CNativeMenuPage final : public IQtMenuPageServices {
   public:
     explicit CNativeMenuPage(bool commands) : _commands(commands) {}
     bool CommandsAvailable() const override { return _commands; }
+    bool ShellIntegrationSupported() const override {
+#ifdef _WIN32
+        return true;
+#else
+        return false;
+#endif
+    }
     bool Is64Bit() const override { return sizeof(void *) == 8; }
     bool OtherBitnessAvailable() const override {
 #ifdef _WIN32

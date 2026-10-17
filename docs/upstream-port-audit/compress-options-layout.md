@@ -36,3 +36,36 @@ have exposed visible controls and fitting labels; RU TAR requests resolve to
 PASS; `python3 scripts/package.py --install-only dist` refreshed the local app,
 and `codesign --verify --deep --strict dist/Sevenzip.app` passed. No full or slow
 suite was run for this presentation-only change.
+
+## Компактное окно по запросу пользователя — 2026-10-18
+
+Повторно сверены исходный `CompressOptionsDialog.rc` и перенесённые
+`COptionsDialog::CheckButton_BoolBox/SetPrec/SetTimeMAC/OnInit/OnOK`, обработчики
+переключателей и Qt presentation. Baseline и upstream repository выше сохраняются.
+
+Пользовательский скриншот показал ненужный пустой резерв скрытого NTFS и неясные
+флажки `:`. Разрешённое отличие от фиксированного Windows шаблона:
+начальный размер рассчитывается после capability visibility по содержимому;
+скрытая группа NTFS и скрытые временные строки не резервируют место.
+Ручной размер сохраняется, дополнительная высота остаётся ниже групп.
+Видимый NTFS также занимает высоту своих доступных строк.
+Флажки явного значения подписаны Set/Задать с пояснением о переопределении
+значения формата по умолчанию; descriptive accessible names сохранены.
+Windows-only preserve-access скрыт на POSIX, его сохранённое значение не меняется.
+
+Алгоритмы, BoolPair default/explicit state, supported-format branches,
+порядок параметров, Apply/Cancel и исходные символы сохранены.
+Нового functional scope и omitted source нет; изменения ограничены Qt layout,
+подписями и существующей platform boundary. Прежний fixed-size regression
+заменён проверкой компактности видимого содержимого; проверка фокуса и
+клавиатурного изменения параметров сохранена.
+
+macOS arm64 / Qt 6.12.0: incremental dev и Release target `sevenzip_desktop`
+собраны. Focused CTest 5/5 PASS: `compress_options_presentation`,
+`compression_advanced`, `compression_timestamp`, `source_link_storage`,
+`language_ui`. Native Cocoa presentation 18/18 PASS для четырёх форматов EN/RU;
+18 текущих JSON без clipping видимых controls/labels. Просмотрены affected
+screenshots, в том числе initial 7z и WIM RU: нет скрытого верхнего резерва,
+группы имеют высоту по строкам, подписи и footer полностью видны.
+Смена языка проверяет также видимую подпись переключателей явного значения.
+Windows/Linux в этой коррекции не запускались.

@@ -100,9 +100,11 @@ class MemoryLockTests : public QObject {
         const QString path = fixture.filePath(QStringLiteral("настройки 空 memory.ini"));
         MemoryLockRecorder services;
         CSettingsPage page(path, nullptr, false, &services);
+        page.show();
         auto *option = page.findChild<QCheckBox *>("largePagesOption");
         QVERIFY(option);
         QVERIFY(option->isEnabled());
+        QVERIFY(option->isVisible());
         QCOMPARE(page.OnApply(), 0L);
         QVERIFY(services.calls.isEmpty());
         QVERIFY(!QFileInfo::exists(path));
@@ -125,14 +127,16 @@ class MemoryLockTests : public QObject {
         QVERIFY(services.calls.isEmpty());
         QVERIFY(ReadLockMemoryEnable(path));
     }
-    void unsupportedSettingsStayDisabled() {
+    void unsupportedSettingsStayHiddenAndPreserved() {
         QTemporaryDir fixture;
         const QString path = fixture.filePath("memory.ini");
         MemoryLockRecorder services;
         services.supported = false;
         SaveLockMemoryEnable(true, path);
         CSettingsPage page(path, nullptr, false, &services);
+        page.show();
         auto *option = page.findChild<QCheckBox *>("largePagesOption");
+        QVERIFY(option->isHidden());
         QVERIFY(!option->isEnabled());
         option->setChecked(true);
         QCOMPARE(page.OnApply(), 0L);

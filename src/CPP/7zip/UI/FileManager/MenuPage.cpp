@@ -106,6 +106,8 @@ CMenuPage::CMenuPage(const QString &settingsPath, QWidget *parent, bool zoneSupp
     _zoneCombo->setObjectName("menuZone");
     _zoneCombo->setProperty("sourceControlID", IDC_SYSTEM_ZONE);
     _zoneCombo->setEnabled(zoneSupported);
+    _zoneCombo->setVisible(zoneSupported);
+    zoneLabel->setVisible(zoneSupported);
     if (!zoneSupported)
         QtBindLocalToolTip(_zoneCombo, "Zone.Identifier propagation is available on Windows.",
                            "Перенос Zone.Identifier доступен в Windows.");
@@ -242,7 +244,8 @@ bool CMenuPage::OnInit() {
         CShellDll &dll = _dlls[d];
         dll.wasChanged = false;
         auto *control = ShellControl(dll.ctrl);
-        if (_services && !_services->Is64Bit() && d != 0 && !_services->OtherBitnessAvailable()) {
+        if (!_services || !_services->ShellIntegrationSupported() ||
+            (!_services->Is64Bit() && d != 0 && !_services->OtherBitnessAvailable())) {
             control->hide();
             dll.Path.Empty();
             continue;

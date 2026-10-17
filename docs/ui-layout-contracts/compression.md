@@ -196,19 +196,20 @@ after volumes, then an Options button with the native summary. At 760×720 and
 640×480 the form scrolls to these controls while the confirmation footer remains
 visible. `compression_advanced` writes `archive-advanced-760/640.json`.
 
-Options uses the source256×248DLU initial client, protected by native control
+Options sizes its initial client to visible content, protected by native control
 minimums. It keeps resource grouping/order: optional NTFS controls, format time info,
 Time group with explicit/default precision and modification/creation/access/time
 of archive rows, preserve-access checkbox, then OK/Cancel/Help. Explicit/default
-checkboxes retain the source `:` caption and descriptive accessible names.
+checkboxes use the local Set/Задать caption and descriptive accessible names;
+their tooltip explains the override of the format default.
 Native capability policy hides unsupported NTFS
 controls; ZIP UNIX/DOS precision hides creation/access rows. Archive mtime is
-enabled. Preserve access is enabled on Windows and disabled with a reason on
+enabled. Preserve access is enabled on Windows and hidden on
 POSIX; Help and F1 open the source Options topic through the application service.
 
-The NTFS group retains its source72DLU minimum with native control protection.
-The initial layout keeps unused NTFS space above Time when the group is hidden;
-native control minima and compact resizing can reduce that empty space. Time rows retain source
+The NTFS group fits its visible rows with native control protection.
+Hidden NTFS groups and unsupported time rows leave no reserved space.
+Extra height after manual resizing remains below the groups. Time rows retain source
 order/spacing with native minimum protection for wrapped captions. Cocoa gives
 the NTFS slot one extra logical pixel for its native group backing and uses
 control-dependent horizontal spacing to separate the combo backing from its label.
