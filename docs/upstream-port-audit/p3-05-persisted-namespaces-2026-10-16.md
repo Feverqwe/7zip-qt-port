@@ -73,3 +73,75 @@ This receipt closes the previously missing native namespace/history coverage
 and root-history defect. Parent source/UX/platform acceptance, rendered state
 comparison and repeated Windows cold-codec failures remain separately tracked;
 packages built from product `a2254e5` precede this functional fix and need refresh.
+
+## Current source-contract acceptance (2026-10-17)
+
+Product sources remain `e3b3c652d4d2489d9143f3002c498057d6bd3c38`; the current
+test/documentation parent is `8a14b67`. Reinspection of pinned upstream
+`PanelFolderChange.cpp::SetBookmark/OpenBookmark/FoldersHistory` and the current
+adaptation confirms that the original stored source prefix, reverse history
+rebuild, selected item and Cancel distinction remain authoritative. The Qt
+caller still records an empty root prefix and distinguishes accepted empty text
+from null Cancel. No source module, dependency, algorithm or copied scope changes
+in this validation iteration.
+
+The integrated selection is `native_navigation_window`, `root_navigation`,
+`address_combo`, `panel_address_keys`, `root_command`, `persisted_location`,
+`panel_key_source` and `window_placement`. These cover both panes, EN/RU,
+filesystem and real nested archives, source Root/Parent/bookmark/history routes,
+focus, preserved control bytes and normal/maximized/splitter Close/restart.
+Only these direct consumers are built and run through the project wrappers;
+the declined `copy_archive_refresh` and other slow suites are not selected.
+
+| Platform/current snapshot | Result |
+| --- | --- |
+| macOS Cocoa v210 |8/8 PASS31.58s,173Qt/0fail/0skip,171JSON/0PNG |
+| Linux v211, `20261017T082805Z-af151aa6` |default8/8 PASS14.18s,163Qt/0fail/10skip; XCB8/8 PASS17.97s,173Qt/0fail/0skip |
+| Windows native v212, `20261017T082807Z-693951ca` |8/8 PASS69.80s,171Qt/0fail/0skip,167JSON/0PNG |
+
+All eight test owners match current checkout bytes on all three OSes;
+source-input and configuration-restoration guards pass. XCB uses private
+Xvfb/Openbox; it does not claim physical-console input. Current root history
+reports additionally check24 views across three OSes: EN/RU initial/restart at
+540×360 and360×240. The tree and visible footer controls are enabled and fully visible.
+The empty history item's content is asserted by the public workflow test,
+because generic widget JSON does not serialize tree items.
+Linux default's ten skips are the native right-Control layout-mapping rows
+without the corresponding offscreen QPA support; all ten execute in XCB.
+Windows has two fewer RootNavigation rows because the POSIX-only namespace
+cases are not compiled there, rather than skipped or counted as passes.
+
+The rendered original EN/RU Folder History reference and shared ListView frame
+remain in the [secondary-dialog receipt](p3-06-secondary-dialogs-2026-10-16.md).
+Current reports establish the Qt contract and fit, not pixel equivalence or
+physical OS input. Final native/rendered/cold-platform acceptance remains with
+P3-03/P3-06; these checks do not silently close the other source-navigation IDs.
+
+Ignored evidence root remains the one above, with `mac-navigation-native-v210`,
+`mac-navigation-history-geometry-v210.json` and
+`linux-final-navigation-v211-evidence`, `windows-final-navigation-v212-evidence`
+and `navigation-current-input-proof-v212.json`;
+`navigation-history-geometry-three-os-v212.json` records the24 fit inspections.
+The scoped Windows namespace fixture v213 runs at
+`20261017T083349Z-711e7c30`:1/1 PASS9.46s,14Qt/0fail/0skip,24JSON/0PNG.
+Its actual token guard confirms Session1, Elevated=True, Normal priority32,
+and a single selected suite, `native_persisted_locations`. Every device/ADS/UNC
+row for both panes and EN/RU executes, including successful explicit removal
+of each current-SID-only share. Device scope remains enumeration, with no raw
+IO or new disk. Source/configuration guards pass. The four current source and
+fixture input hashes match the checkout. All24 namespace reports retain enabled,
+fully visible owning addresses and lists at980×620/640×400.
+Evidence is `windows-final-persisted-native-v213-evidence` and
+`persisted-native-geometry-v213.json` under the same root.
+
+P3-05.14 is accepted for its source-prefix/bookmark/history/nested-location
+contract. The earlier [source migration receipt](p3-05-2026-10-06.md#p3-0514--persisted-source-location-consumers-required-scope-2026-10-06)
+retains the original RED, legacy stored-path conversion, open-chain reuse and
+outer-archive fallback after restart; this acceptance does not claim automatic
+reopening of a closed inner chain. Current native namespace and history gaps
+are covered above. Whole native/rendered/cold acceptance and the other remaining
+source IDs retain their own requirements; no parent package counter changes.
+
+The previously refreshed [e3b3c65 packages](p3-04-2026-10-16.md#delivery-after-options-keyboard-activation-e3b3c65)
+already contain the root-history fix on all three OSes. This validation and
+documentation-only iteration adds no product delta requiring another package.

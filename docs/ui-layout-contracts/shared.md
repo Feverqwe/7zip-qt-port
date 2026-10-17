@@ -1856,7 +1856,9 @@ confirmation. Modified selection clicks do not activate. Interaction coverage
 is in `list_activation`; this adaptation does not change the geometry contract.
 `folder_history` verifies list/footer visibility and separation at 540×360
 and 360×240 and writes JSON reports. Qt geometry establishes structure and
-usability; rendered Windows parity remains unverified.
+usability. The original rendered EN/RU history states are recorded in the
+[secondary-dialog receipt](../upstream-port-audit/p3-06-secondary-dialogs-2026-10-16.md);
+widget geometry does not establish pixel equivalence or physical input.
 
 ## Hash results
 
