@@ -33,6 +33,7 @@ void ArchiveBackend::add(const QString &archive, const QStringList &sources) {
                                          "Другая операция ещё выполняется."));
         return;
     }
+    lastResult_ = E_FAIL;
     if (!restoreListedArchive(archive)) {
         emit finished(false, QtLocalText("Open the archive and inspect its contents first.",
                                          "Сначала откройте архив и проверьте его содержимое."));
@@ -170,6 +171,12 @@ bool ArchiveBackend::prepareMutation(const QString &archive) {
 void ArchiveBackend::remove(const QString &archive, const QStringList &paths) {
     if (paths.isEmpty())
         return;
+    if (busy()) {
+        emit finished(false, QtLocalText("Another operation is still running.",
+                                         "Другая операция ещё выполняется."));
+        return;
+    }
+    lastResult_ = E_FAIL;
     if (!restoreListedArchive(archive)) {
         emit finished(false, QtLocalText("Open the archive and inspect its contents first.",
                                          "Сначала откройте архив и проверьте его содержимое."));
@@ -197,6 +204,12 @@ void ArchiveBackend::remove(const QString &archive, const QStringList &paths) {
 
 void ArchiveBackend::renameEntry(const QString &archive, const QString &oldName,
                                  const QString &newName) {
+    if (busy()) {
+        emit finished(false, QtLocalText("Another operation is still running.",
+                                         "Другая операция ещё выполняется."));
+        return;
+    }
+    lastResult_ = E_FAIL;
     const QString oldPath = mutationPath(oldName);
     const QString newPath = mutationPath(newName);
     if (!restoreListedArchive(archive)) {
@@ -266,6 +279,12 @@ void ArchiveBackend::renameEntry(const QString &archive, const QString &oldName,
 
 void ArchiveBackend::replaceEntry(const QString &archive, const QString &entry,
                                   const QString &sourceRoot) {
+    if (busy()) {
+        emit finished(false, QtLocalText("Another operation is still running.",
+                                         "Другая операция ещё выполняется."));
+        return;
+    }
+    lastResult_ = E_FAIL;
     if (!restoreListedArchive(archive)) {
         emit finished(false, QtLocalText("Open the archive and inspect its contents first.",
                                          "Сначала откройте архив и проверьте его содержимое."));

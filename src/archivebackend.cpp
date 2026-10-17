@@ -390,6 +390,8 @@ void ArchiveBackend::extract(const QString &archive, const QString &destination,
                                          QStringLiteral("Другая операция ещё выполняется.")));
         return;
     }
+    lastResult_ = E_FAIL;
+    cancelled_ = false;
     if (!restoreListedArchive(archive)) {
         emit finished(
             false,
@@ -499,6 +501,7 @@ void ArchiveBackend::test(const QString &archive, const QString &password) {
                                          QStringLiteral("Другая операция ещё выполняется.")));
         return;
     }
+    lastResult_ = E_FAIL;
     if (!restoreListedArchive(archive)) {
         emit finished(
             false,

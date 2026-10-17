@@ -66,6 +66,7 @@ void ArchiveBackend::create(const QString &archive, const QStringList &sources,
                                          "Другая операция ещё выполняется."));
         return;
     }
+    lastResult_ = E_FAIL;
     if (sources.isEmpty()) {
         lastResult_ = E_INVALIDARG;
         emit finished(false, QtLocalText("Select source files or folders.",

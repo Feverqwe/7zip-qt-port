@@ -11,6 +11,65 @@ class ArchiveBackendTests : public QObject, protected ArchiveBackendTestSupport 
     Q_OBJECT
 
   private slots:
+    void rejectedRequestDoesNotReusePreviousResult_data() {
+        QTest::addColumn<QString>("operation");
+        QTest::addColumn<bool>("cancelled");
+        for (const char *operation :
+             {"create", "extract", "test", "add", "remove", "rename", "replace"})
+            for (bool cancelled : {false, true})
+                QTest::newRow(qPrintable(
+                    QString("%1-after-%2").arg(operation, cancelled ? "cancel" : "success")))
+                    << QString::fromLatin1(operation) << cancelled;
+    }
+    void rejectedRequestDoesNotReusePreviousResult() {
+        QFETCH(QString, operation);
+        QFETCH(bool, cancelled);
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString archive = fixture.filePath(QStringLiteral("архив с пробелом.zip"));
+        writeFile(archive, "unchanged archive fixture");
+        qputenv("SEVENZIP_TEST_HELPER", "listing");
+        qputenv("SEVENZIP_TEST_LISTING", "Type = zip\n----------\nPath = a.txt\nSize = 1\n\n");
+        const auto restore = qScopeGuard([] {
+            qunsetenv("SEVENZIP_TEST_HELPER");
+            qunsetenv("SEVENZIP_TEST_LISTING");
+        });
+        ArchiveBackend backend(nullptr, QCoreApplication::applicationFilePath());
+        backend.list(archive);
+        await(backend, true);
+        QCOMPARE(backend.lastResult(), S_OK);
+        if (cancelled) {
+            const auto cancellation = connect(&backend, &ArchiveBackend::engineStarted, &backend,
+                                              &ArchiveBackend::cancel);
+            backend.testSourceArchive(archive, {});
+            await(backend, false);
+            disconnect(cancellation);
+            QCOMPARE(backend.lastResult(), E_ABORT);
+        }
+        QSignalSpy refused(&backend, &ArchiveBackend::finished);
+        if (operation == "create")
+            backend.create(archive, {archive}); // Refuse an occupied output.
+        else if (operation == "extract")
+            backend.extract(archive, fixture.filePath("output"), {"missing.txt"});
+        else if (operation == "test")
+            backend.test(fixture.filePath("unlisted.zip"));
+        else if (operation == "add")
+            backend.add(archive, {});
+        else if (operation == "remove")
+            backend.remove(archive, {"missing.txt"});
+        else if (operation == "rename")
+            backend.renameEntry(archive, "missing.txt", "renamed.txt");
+        else
+            backend.replaceEntry(archive, "missing.txt", fixture.path());
+        QCOMPARE(refused.size(), 1);
+        QVERIFY(!refused[0][0].toBool());
+        QVERIFY(FAILED(backend.lastResult()));
+        QVERIFY(backend.lastResult() != E_ABORT);
+        QVERIFY(!backend.busy());
+        QFile original(archive);
+        QVERIFY(original.open(QIODevice::ReadOnly));
+        QCOMPARE(original.readAll(), QByteArray("unchanged archive fixture"));
+    }
     void nativePathListingFailure_data() {
         QTest::addColumn<QString>("error");
         QTest::addColumn<HRESULT>("result");

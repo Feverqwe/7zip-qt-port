@@ -36,6 +36,41 @@ class ExtractionOptionsTests : public QObject {
     }
 
   private slots:
+    void askOverwriteAfterCancelledProcessCanSucceed() {
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString name = QStringLiteral("файл с пробелом.txt");
+        const QString source = fixture.filePath(name);
+        const QString archive = fixture.filePath("fixture.zip");
+        const QString output = fixture.filePath("output");
+        writeFile(source, "new archive bytes");
+        QVERIFY(QDir().mkpath(output));
+        writeFile(QDir(output).filePath(name), "old bytes");
+        ArchiveBackend backend;
+        backend.create(archive, {source});
+        await(backend, true);
+        backend.list(archive);
+        await(backend, true);
+        const auto cancellation =
+            connect(&backend, &ArchiveBackend::engineStarted, &backend, &ArchiveBackend::cancel);
+        backend.testSourceArchive(archive, {});
+        await(backend, false);
+        disconnect(cancellation);
+        QCOMPARE(backend.lastResult(), E_ABORT);
+        QSignalSpy requested(&backend, &ArchiveBackend::overwriteRequired);
+        connect(&backend, &ArchiveBackend::overwriteRequired, &backend,
+                [&] { backend.provideOverwriteAnswer(NOverwriteAnswer::kYes); });
+        QSignalSpy finished(&backend, &ArchiveBackend::finished);
+        ExtractionOptions options;
+        options.overwriteMode = ExtractionOptions::OverwriteMode::Ask;
+        backend.extract(archive, output, {}, {}, options);
+        QTRY_COMPARE(finished.size(), 1);
+        QVERIFY2(finished[0][0].toBool(), qPrintable(finished[0][1].toString()));
+        QCOMPARE(requested.size(), 1);
+        QCOMPARE(readFile(QDir(output).filePath(name)), QByteArray("new archive bytes"));
+        QCOMPARE(backend.lastResult(), S_OK);
+        QVERIFY(!backend.busy());
+    }
     void currentFolderValidationUsesOutputRelativePath() {
         QTemporaryDir temp;
         QVERIFY(temp.isValid());
