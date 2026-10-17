@@ -21,6 +21,21 @@
 #include <QTextTable>
 #include <QTimer>
 #include <QtTest>
+#include <cmath>
+
+namespace {
+qreal textContrast(const QColor &foreground, const QColor &background) {
+    const auto luminance = [](const QColor &color) {
+        const auto linear = [](qreal value) {
+            return value <= 0.04045 ? value / 12.92 : std::pow((value + 0.055) / 1.055, 2.4);
+        };
+        return 0.2126 * linear(color.redF()) + 0.7152 * linear(color.greenF()) +
+               0.0722 * linear(color.blueF());
+    };
+    const qreal first = luminance(foreground), second = luminance(background);
+    return (qMax(first, second) + 0.05) / (qMin(first, second) + 0.05);
+}
+} // namespace
 
 class HelpSourceTests : public QObject {
     Q_OBJECT
@@ -28,6 +43,90 @@ class HelpSourceTests : public QObject {
   public slots:
     void openUrl(const QUrl &url) { openedUrl = url; }
   private slots:
+    void tableParameterNamesStayReadable() {
+        QWidget parent;
+        ShowHelpWindow("cmdline/switches/method.htm#7Z", &parent);
+        auto *window = parent.findChild<QDialog *>("helpWindow");
+        auto *browser = window->findChild<QTextBrowser *>("helpBrowser");
+        const QString parameter = "{N}={MethodID}[:param1][:param2][..]";
+        for (QSize size : {QSize(760, 560), QSize(420, 300)}) {
+            window->resize(size);
+            QApplication::processEvents();
+            const auto token = browser->document()->find(parameter);
+            QVERIFY(!token.isNull());
+            QTextCursor first = token;
+            first.setPosition(token.selectionStart());
+            QTextCursor last = token;
+            last.setPosition(token.selectionEnd() - 1);
+            QCOMPARE(browser->cursorRect(first).top(), browser->cursorRect(last).top());
+            const auto *table = token.currentTable();
+            const auto header = table->cellAt(0, table->columns() - 1);
+            first = header.firstCursorPosition();
+            last = header.lastCursorPosition();
+            last.movePosition(QTextCursor::PreviousCharacter);
+            QCOMPARE(browser->cursorRect(first).top(), browser->cursorRect(last).top());
+            browser->setTextCursor(last);
+            browser->ensureCursorVisible();
+            QVERIFY(browser->cursorRect(last).left() < browser->viewport()->width());
+            const int horizontal = browser->horizontalScrollBar()->value();
+            browser->scrollToAnchor("7Z");
+            browser->horizontalScrollBar()->setValue(horizontal);
+            QVERIFY(UiInspection::writeReport(
+                *window, QString("help-method-table-right-%1").arg(size.width())));
+            browser->horizontalScrollBar()->setValue(0);
+            browser->scrollToAnchor("7Z");
+            QVERIFY(UiInspection::writeReport(*window,
+                                              QString("help-method-table-%1").arg(size.width())));
+        }
+        window->close();
+    }
+    void commandBlocksPreserveSourceText_data() {
+        QTest::addColumn<QString>("topic");
+        QTest::newRow("syntax") << "cmdline/syntax.htm";
+        QTest::newRow("examples") << "cmdline/commands/add.htm";
+        QTest::newRow("nested-examples") << "cmdline/switches/method.htm#SevenZipYV";
+        QTest::newRow("indented-examples") << "cmdline/switches/method.htm#MemUse";
+    }
+    void commandBlocksPreserveSourceText() {
+        QFETCH(QString, topic);
+        QWidget parent;
+        ShowHelpWindow(topic.toUtf8().constData(), &parent);
+        auto *browser = parent.findChild<QTextBrowser *>("helpBrowser");
+        QTextBrowser reference;
+        reference.setSource(browser->source());
+        // Presentation must retain the upstream whitespace and line structure,
+        // including PRE blocks nested inside table cells and definitions.
+        QCOMPARE(browser->toPlainText(), reference.toPlainText());
+        auto *window = parent.findChild<QDialog *>("helpWindow");
+        for (QSize size : {QSize(760, 560), QSize(420, 300)}) {
+            window->resize(size);
+            browser->scrollToAnchor(browser->source().fragment());
+            const QString needle = topic.contains("SevenZipYV") ? "yv=1600"
+                                   : topic.contains("MemUse")   ? "memuse=p60"
+                                                                : "";
+            if (!needle.isEmpty()) {
+                const auto code = browser->document()->find(needle);
+                QVERIFY(!code.isNull());
+                browser->setTextCursor(code);
+                browser->ensureCursorVisible();
+                browser->verticalScrollBar()->setValue(browser->verticalScrollBar()->value() +
+                                                       browser->cursorRect(code).center().y() -
+                                                       browser->viewport()->height() / 2);
+                QVERIFY(textContrast(code.charFormat().foreground().color(),
+                                     code.blockFormat().background().color()) >= 4.5);
+                auto caret = browser->textCursor();
+                caret.clearSelection();
+                browser->setTextCursor(caret);
+            }
+            QApplication::processEvents();
+            QVERIFY(UiInspection::fullyVisible(*browser, *window));
+            QVERIFY(UiInspection::fullyVisible(*window->findChild<QDialogButtonBox *>(), *window));
+            QVERIFY(UiInspection::writeReport(
+                *window,
+                QString("help-code-%1-%2").arg(QTest::currentDataTag()).arg(size.width())));
+        }
+        window->close();
+    }
     void aboutKeepsNaturalSourceLogo() {
         CAboutDialog dialog;
         const QPixmap source(":/upstream/7zip/About/7zipLogo.ico");
@@ -299,8 +398,10 @@ class HelpSourceTests : public QObject {
             QCOMPARE(cursor.currentTable()->cellAt(cursor).format().background().color(),
                      colors.color(QPalette::Base));
             cursor = browser->document()->find("Creation");
-            QCOMPARE(cursor.currentTable()->cellAt(cursor).format().background().color(),
-                     colors.color(QPalette::AlternateBase));
+            const QColor header =
+                cursor.currentTable()->cellAt(cursor).format().background().color();
+            QVERIFY(header != colors.color(QPalette::Base));
+            QVERIFY(textContrast(colors.color(QPalette::Text), header) >= 4.5);
             cursor = browser->document()->find("ZIP", 0, QTextDocument::FindWholeWords);
             QVERIFY(cursor.charFormat().isAnchor());
             QCOMPARE(cursor.charFormat().foreground().color(), colors.color(QPalette::Link));
@@ -311,19 +412,25 @@ class HelpSourceTests : public QObject {
                 QVERIFY(UiInspection::fullyVisible(*browser, *window));
                 QVERIFY(UiInspection::writeReport(
                     *window, QString("help-theme-%1-%2").arg(dark).arg(size.width())));
+                browser->setSource(QUrl("qrc:/upstream/7zip/Help/cmdline/syntax.htm"));
+                const auto syntax = browser->document()->find("expression1");
+                QVERIFY(!syntax.isNull());
+                QVERIFY(syntax.blockFormat().background().color() != colors.color(QPalette::Base));
+                QVERIFY(textContrast(syntax.charFormat().foreground().color(),
+                                     syntax.blockFormat().background().color()) >= 4.5);
+                QCOMPARE(syntax.charFormat().foreground().color(), colors.color(QPalette::Text));
+                QVERIFY(browser->toPlainText().contains(
+                    "expression1 | expression2 | ... | expressionN"));
+                browser->verticalScrollBar()->setValue(0);
+                QVERIFY(UiInspection::writeReport(
+                    *window, QString("help-syntax-%1-%2").arg(dark).arg(size.width())));
+                browser->backward();
             }
         }
         browser->backward();
         QVERIFY(browser->toPlainText().contains("Welcome to 7-Zip"));
         browser->forward();
         QCOMPARE(browser->source(), source);
-        browser->setSource(QUrl("qrc:/upstream/7zip/Help/cmdline/syntax.htm"));
-        auto cursor = browser->document()->find("expression1");
-        QVERIFY(!cursor.isNull());
-        QCOMPARE(cursor.blockFormat().background().color(),
-                 QApplication::palette().color(QPalette::AlternateBase));
-        QCOMPARE(cursor.charFormat().foreground().color(),
-                 QApplication::palette().color(QPalette::Text));
         window->close();
     }
     void unavailableTopicIsObservableAndDoesNotOpenWindow() {

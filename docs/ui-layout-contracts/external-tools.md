@@ -58,8 +58,15 @@ QTextBrowser replaces Win32 CHM presentation, retaining pages/links/fragments.
 Help follows the application palette, including already open topics. Page,
 table and syntax backgrounds, text and links remain readable in light/dark
 palettes; theme changes preserve the topic, fragment, history and scroll position.
-Original HTML, typography and layout remain unchanged. `help_source` checks
-palette transitions and writes normal/compact `help-theme-*` widget reports.
+Original HTML and content structure remain unchanged. Tables use a thin shared
+grid, a distinct header and more cell padding. Command blocks use a continuous
+theme-colored surface and readable monospace text, including links inside code.
+Source line breaks and whitespace remain intact; long lines scroll horizontally.
+Legacy fixed-width table columns size to their contents, keeping parameter names
+and headers intact. Percentage columns retain their source proportions; a narrow
+view can scroll horizontally to reach the description column.
+`help_source` checks palette transitions and writes
+normal/compact `help-theme-*` and `help-syntax-*` widget reports.
 help_source writes EN/RU760×560/420×300 help-*.json: browser, Back and standard
 Close remain exposed. AboutDialog.rc/source is the structural reference for
 About360×330/300×310 EN/RU: logo, version/date/copyright/free-software, footer

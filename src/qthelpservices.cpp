@@ -15,18 +15,63 @@
 #include <QTextBlock>
 #include <QTextBrowser>
 #include <QTextDocument>
+#include <QTextTable>
 #include <QUrl>
 #include <QVBoxLayout>
 
 static void InitHelpResources() { Q_INIT_RESOURCE(upstream_help); }
 
 namespace {
-// Qt presentation adapter for the original CHM pages. Retain their stylesheet's
-// layout and typography, replacing only its fixed light-theme color tokens.
+void FitHelpTableColumns(QTextFrame *frame) {
+    const auto keepCellLines = [](const QTextTableCell &cell) {
+        auto cursor = cell.firstCursorPosition();
+        cursor.setPosition(cell.lastCursorPosition().position(), QTextCursor::KeepAnchor);
+        QTextBlockFormat block;
+        block.setNonBreakableLines(true);
+        cursor.mergeBlockFormat(block);
+    };
+    for (auto *child : frame->childFrames()) {
+        if (auto *table = qobject_cast<QTextTable *>(child)) {
+            auto format = table->format();
+            auto widths = format.columnWidthConstraints();
+            bool changed = false;
+            for (qsizetype column = 0; column < widths.size(); ++column) {
+                auto &width = widths[column];
+                if (width.type() == QTextLength::FixedLength) {
+                    width = QTextLength(QTextLength::VariableLength, 0);
+                    changed = true;
+                    for (int row = 0; row < table->rows(); ++row) {
+                        const auto cell = table->cellAt(row, int(column));
+                        if (cell.columnSpan() != 1)
+                            continue;
+                        keepCellLines(cell);
+                    }
+                }
+            }
+            if (changed) {
+                // These source widths are declared on header cells. Preserve
+                // readable header words when the table scrolls in a narrow view.
+                for (int column = 0; column < table->columns(); ++column)
+                    keepCellLines(table->cellAt(0, column));
+                format.setColumnWidthConstraints(widths);
+                table->setFormat(format);
+            }
+        }
+        FitHelpTableColumns(child);
+    }
+}
+
+// Qt presentation adapter for the original CHM pages, with palette colors and
+// a small reading stylesheet for tables and command blocks.
 class HelpBrowser final : public QTextBrowser {
   public:
     HelpBrowser(QWidget *parent, const QUrl &root) : QTextBrowser(parent) {
-        connect(this, &QTextBrowser::sourceChanged, this, [this, root] { resolveHelpLinks(root); });
+        connect(this, &QTextBrowser::sourceChanged, this, [this, root] {
+            resolveHelpLinks(root);
+            // Legacy pixel widths can be smaller than a parameter name with
+            // the current font/padding. Let Qt size those columns by content.
+            FitHelpTableColumns(document()->rootFrame());
+        });
     }
 
   protected:
@@ -93,17 +138,53 @@ class HelpBrowser final : public QTextBrowser {
         }
     }
 
-    QByteArray themedStyle(const QByteArray &css) const {
+    QByteArray themedStyle(QByteArray css) const {
+        // Append to the original stylesheet so upstream selectors/classes,
+        // semantic emphasis and alignments remain available.
+        css += R"css(
+table {
+    border-collapse: collapse;
+    border: 1px solid #999999;
+    background: #ffffff;
+    margin-top: 12px;
+    margin-bottom: 16px;
+}
+th, td {
+    border: 1px solid #999999;
+    padding: 7px 10px;
+    font-size: 100%;
+}
+th { background: #cccccc; }
+pre, pre *, code {
+    font-family: "Menlo", "Consolas", "DejaVu Sans Mono", monospace;
+    font-size: medium;
+}
+pre, pre.syntax, pre.example {
+    background: #dddddd;
+    margin-top: 0px;
+    margin-bottom: 0px;
+    margin-left: 10px;
+    margin-right: 10px;
+    white-space: pre;
+}
+)css";
         const QPalette colors = palette();
+        const QColor base = colors.color(QPalette::Base);
+        const QColor text = colors.color(QPalette::Text);
+        const auto blend = [base, text](qreal amount) {
+            return QColor::fromRgbF(base.redF() * (1 - amount) + text.redF() * amount,
+                                    base.greenF() * (1 - amount) + text.greenF() * amount,
+                                    base.blueF() * (1 - amount) + text.blueF() * amount);
+        };
         const bool dark =
             colors.color(QPalette::Base).lightness() < colors.color(QPalette::Text).lightness();
         // Substitute in one pass: palette colors may equal another source token.
         const QHash<QByteArray, QColor> replacements = {
             {"#ffffff", colors.color(QPalette::Base)},
             {"#000000", colors.color(QPalette::Text)},
-            {"#999999", colors.color(QPalette::Mid)},
-            {"#cccccc", colors.color(QPalette::AlternateBase)},
-            {"#dddddd", colors.color(QPalette::AlternateBase)},
+            {"#999999", blend(0.22)},
+            {"#cccccc", blend(0.08)},
+            {"#dddddd", blend(0.08)},
             {"#0066ff", colors.color(QPalette::Link)},
             {"#996600", colors.color(QPalette::LinkVisited)},
             {"#cc9900", colors.color(QPalette::Link)},
