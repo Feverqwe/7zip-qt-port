@@ -33,6 +33,8 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 
 ## Новые изменения
 
+- [Стабильные колонки Add](upstream-port-audit/add-dialog-stable-columns.md)
+  — смена параметров без сжатия окна и перемещения остальных полей.
 
 - [Открытие перетащенного архива](upstream-port-audit/archive-drop-open.md)
   — запрошенное отличие от исходного действия упаковки внешних файлов.

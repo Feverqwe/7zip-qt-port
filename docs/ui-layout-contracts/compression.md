@@ -66,6 +66,13 @@ resource baselines.
 
 ### Add archive naming metadata (P2-01)
 
+At a fixed window size, changing format, compression level/method, dictionary,
+word/solid size, threads or memory limit must preserve both column boundaries
+and the positions of the remaining controls. Unsupported memory/header options
+leave their space reserved, as in the source dialog. Long memory values remain
+readable within their column. Manual resizing and language/font changes may
+adapt the layout to the available space.
+
 Native adaptation,2026-10-15: outer margins follow source m8 using current
 dialog base units; both columns grow their nonfixed fields, including all six
 shared-width compression combos. Complete combo/group widget rectangles must

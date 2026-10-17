@@ -11,6 +11,7 @@
 #include <QScopeGuard>
 #include <QScrollArea>
 #include <QScrollBar>
+#include <QStyleOptionComboBox>
 #include <QTimer>
 #include <QtTest>
 
@@ -131,6 +132,96 @@ class SourceCompressDialogTests final : public QObject {
         QCOMPARE(bar->maximum(), 0);
         QVERIFY(!bar->isVisible());
         QVERIFY(UiInspection::writeReport(dialog, tag + "-expanded"));
+    }
+    void selectionsKeepColumnGeometry_data() {
+        QTest::addColumn<QString>("language");
+        QTest::addColumn<QSize>("size");
+        for (const QString &language : {QString("-"), QString("ru")})
+            for (const QSize size : {QSize(760, 720), QSize(640, 480)})
+                QTest::newRow(qPrintable(language + QString::number(size.width())))
+                    << language << size;
+    }
+    void selectionsKeepColumnGeometry() {
+        QFETCH(QString, language);
+        QFETCH(QSize, size);
+        const QString settings = qEnvironmentVariable("SEVENZIP_SETTINGS_PATH");
+        QFile::remove(settings);
+        SaveRegLang(UString(language.toStdWString().c_str()), settings);
+        ReloadLang(settings);
+        QTemporaryDir fixture;
+        const QString input = fixture.filePath(QStringLiteral("данные 空.txt"));
+        QFile file(input);
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        QCOMPARE(file.write("layout fixture"), qint64(14));
+        file.close();
+        CreateArchiveDialog dialog(fixture.path(), {input}, nullptr, _catalog);
+        dialog.resize(size);
+        dialog.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&dialog));
+        QApplication::processEvents();
+        auto *left = dialog.findChild<QWidget *>("archiveCompressionColumn");
+        auto *right = dialog.findChild<QWidget *>("archiveEncryptionColumn");
+        const QSize initial = dialog.size();
+        const QRect leftBounds = UiInspection::bounds(*left, dialog);
+        const QRect rightBounds = UiInspection::bounds(*right, dialog);
+        const char *fields[] = {
+            "archiveFormat",         "compressionLevel",       "compressionMethod",
+            "compressionDictionary", "compressionWordSize",    "compressionSolidBlock",
+            "compressionThreads",    "compressionMemoryLimit", "archiveVolumeSize",
+            "archiveParameters",     "archiveAdvancedOptions", "archiveUpdateMode",
+            "archivePathMode",       "archiveEncryption"};
+        QList<QRect> fieldBounds;
+        for (const char *name : fields)
+            fieldBounds.append(UiInspection::bounds(*dialog.findChild<QWidget *>(name), dialog));
+        int step = 0;
+        const auto inspect = [&] {
+            QApplication::processEvents();
+            const QString tag = QString("source-add-stable-%1-%2-%3")
+                                    .arg(language == "ru" ? "ru" : "en")
+                                    .arg(size.width())
+                                    .arg(step++);
+            QVERIFY(UiInspection::writeReport(dialog, tag));
+            QCOMPARE(dialog.size(), initial);
+            QCOMPARE(UiInspection::bounds(*left, dialog).left(), leftBounds.left());
+            QCOMPARE(left->size(), leftBounds.size());
+            QCOMPARE(UiInspection::bounds(*right, dialog).left(), rightBounds.left());
+            QCOMPARE(right->size(), rightBounds.size());
+            for (int i = 0; i < fieldBounds.size(); ++i) {
+                auto *control = dialog.findChild<QWidget *>(fields[i]);
+                if (control->isVisible()) {
+                    QCOMPARE(UiInspection::bounds(*control, dialog), fieldBounds[i]);
+                    if (auto *combo = qobject_cast<QComboBox *>(control);
+                        combo && !combo->isEditable()) {
+                        QStyleOptionComboBox option;
+                        option.initFrom(combo);
+                        const QRect contents = combo->style()->subControlRect(
+                            QStyle::CC_ComboBox, &option, QStyle::SC_ComboBoxEditField, combo);
+                        QVERIFY2(combo->fontMetrics().horizontalAdvance(combo->currentText()) <=
+                                     contents.width(),
+                                 qPrintable(combo->objectName()));
+                    }
+                }
+            }
+            for (auto *label : dialog.findChildren<QLabel *>())
+                if (label->isVisible())
+                    QVERIFY2(UiInspection::labelFits(*label), qPrintable(label->objectName()));
+        };
+        for (const char *name : {"compressionLevel", "compressionMethod", "compressionDictionary",
+                                 "compressionWordSize", "compressionSolidBlock",
+                                 "compressionThreads", "compressionMemoryLimit"}) {
+            auto *combo = dialog.findChild<QComboBox *>(name);
+            const int original = combo->currentIndex();
+            combo->setCurrentIndex(combo->count() - 1);
+            inspect();
+            combo->setCurrentIndex(original);
+            inspect();
+        }
+        auto *format = dialog.findChild<QComboBox *>("archiveFormat");
+        for (const char *name : {"zip", "tar", "xz", "gzip", "wim", "7z"}) {
+            QVERIFY(format->findText(name) >= 0);
+            format->setCurrentText(name);
+            inspect();
+        }
     }
     void originalMethodSelection() {
         QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));

@@ -6,6 +6,7 @@ void CreateArchiveDialog::createEncryptionOptions(QFormLayout *form) {
     auto *group = new QGroupBox("Шифрование", this);
     group->setObjectName("archiveEncryptionGroup");
     encryptionForm_ = new QFormLayout(group);
+    encryptionForm_->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
     encryptionForm_->setRowWrapPolicy(QFormLayout::WrapAllRows);
     password_ = new QLineEdit(group);
     password_->setObjectName("archivePassword");
@@ -33,7 +34,7 @@ void CreateArchiveDialog::createEncryptionOptions(QFormLayout *form) {
     encryptHeaders_ = new QCheckBox("Шифровать имена файлов", group);
     encryptHeaders_->setObjectName("archiveEncryptHeaders");
     encryptHeaders_->setChecked(m_RegistryInfo.EncryptHeaders);
-    encryptionForm_->addRow(encryptHeaders_);
+    encryptionForm_->addRow(reserveControlSpace(encryptHeaders_));
     form->addRow(group);
     connect(showPassword_, &QCheckBox::toggled, this, &CreateArchiveDialog::UpdatePasswordControl);
     connect(format_, &QComboBox::currentTextChanged, this,

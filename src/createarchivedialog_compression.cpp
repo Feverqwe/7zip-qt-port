@@ -38,13 +38,15 @@ void CreateArchiveDialog::createCompressionOptions(QFormLayout *form) {
     compressionForm->addRow("Потоки CPU:", cpuRow);
     memoryUsage_ = new QLabel(compression);
     memoryUsage_->setObjectName("compressionMemoryUsage");
+    memoryUsage_->setWordWrap(true);
     auto *memoryRow = new QWidget(compression);
     auto *memoryLayout = new QHBoxLayout(memoryRow);
     memoryLayout->setContentsMargins(0, 0, 0, 0);
     memUse_ = new QComboBox(memoryRow);
     memUse_->setObjectName("compressionMemoryLimit");
-    memoryLayout->addWidget(memoryUsage_);
-    memoryLayout->addWidget(memUse_, 1);
+    memUse_->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    memoryLayout->addWidget(memoryUsage_, 1);
+    memoryLayout->addWidget(memUse_);
     memoryRow->setFocusProxy(memUse_);
     // IDT_COMPRESS_MEMORY is above the usage/limit row in CompressDialog.rc.
     // Keep all three source values visible rather than hiding limit/RAM in a tooltip.
@@ -52,9 +54,10 @@ void CreateArchiveDialog::createCompressionOptions(QFormLayout *form) {
     memoryGroup->setObjectName("compressionMemoryGroup");
     auto *memoryForm = new QFormLayout(memoryGroup);
     memoryForm->setContentsMargins(0, 0, 0, 0);
+    memoryForm->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
     memoryForm->setRowWrapPolicy(QFormLayout::WrapAllRows);
     memoryForm->addRow("Память для сжатия:", memoryRow);
-    compressionForm->addRow(memoryGroup);
+    compressionForm->addRow(reserveControlSpace(memoryGroup));
     decompressionMemory_ = new QLabel(compression);
     decompressionMemory_->setObjectName("compressionDecompressionMemory");
     decompressionMemory_->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
@@ -68,7 +71,7 @@ void CreateArchiveDialog::createCompressionOptions(QFormLayout *form) {
     decompressionLabel->setObjectName("compressionDecompressionLabel");
     decompressionRow->addWidget(decompressionLabel);
     decompressionRow->addWidget(decompressionMemory_, 1);
-    compressionForm->addRow(decompressionGroup);
+    compressionForm->addRow(reserveControlSpace(decompressionGroup));
     registryFormat_ = format_->currentText();
     connect(format_, &QComboBox::currentTextChanged, this, [this] {
         SaveOptionsInMem();

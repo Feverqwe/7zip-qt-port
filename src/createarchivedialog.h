@@ -48,6 +48,8 @@ class CreateArchiveDialog : public QDialog {
 
   private:
     void createArchiveForm(QVBoxLayout *layout);
+    void stabilizeColumnWidths();
+    static QWidget *reserveControlSpace(QWidget *control);
     void createCompressionOptions(QFormLayout *form);
     void createEncryptionOptions(QFormLayout *form);
     void createVolumeOptions(QFormLayout *form);

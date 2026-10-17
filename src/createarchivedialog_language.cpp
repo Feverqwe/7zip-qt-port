@@ -110,9 +110,13 @@ void CreateArchiveDialog::ReloadLanguageItems() {
 }
 
 void CreateArchiveDialog::changeEvent(QEvent *event) {
-    if (event->type() == QEvent::LanguageChange && buttons_) {
-        ReloadLanguageItems();
-        SetMemoryUsage();
+    if ((event->type() == QEvent::LanguageChange || event->type() == QEvent::FontChange) &&
+        buttons_) {
+        if (event->type() == QEvent::LanguageChange) {
+            ReloadLanguageItems();
+            SetMemoryUsage();
+        }
+        stabilizeColumnWidths();
     }
     QDialog::changeEvent(event);
 }

@@ -99,6 +99,11 @@ CreateArchiveDialog::CreateArchiveDialog(const QString &directory,
     // allocated column/scroll area. Keep the complete source controls exposed.
     for (auto *combo : findChildren<QComboBox *>())
         combo->setAttribute(Qt::WA_LayoutUsesWidgetRect);
+    for (auto *combo : {format_, level_, method_, dictionary_, wordSize_, solidBlock_, threads_,
+                        memUse_, updateMode_, pathMode_, encryption_}) {
+        combo->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
+        combo->setMinimumContentsLength(combo == memUse_ ? 6 : 10);
+    }
     for (auto *group : findChildren<QGroupBox *>())
         group->setAttribute(Qt::WA_LayoutUsesWidgetRect);
     // Source MY_CHECKBOX/PushButton controls participate in Tab traversal.
@@ -108,6 +113,7 @@ CreateArchiveDialog::CreateArchiveDialog(const QString &directory,
     BindLanguage();
     if (fixedSources_)
         initializeSourceControls(sourceDialog->Info);
+    stabilizeColumnWidths();
     // Size the source form to its controls rather than reserving the height
     // of the former file picker. Leave room for the native window frame and
     // taskbar; the options can scroll on a smaller screen, the footer cannot.
@@ -123,6 +129,33 @@ CreateArchiveDialog::CreateArchiveDialog(const QString &directory,
     // and selects its text. Qt's scroll hierarchy needs an explicit adapter.
     name_->setFocus(Qt::OtherFocusReason);
     name_->selectAll();
+}
+
+void CreateArchiveDialog::stabilizeColumnWidths() {
+    // Keep the value row steady when the memory figures use one or two lines.
+    memoryUsage_->setMinimumHeight(2 * memoryUsage_->fontMetrics().lineSpacing());
+    // Source gSize/g4xs do not depend on the currently selected method/value.
+    // Capture native/translated minima once, retaining normal manual resizing.
+    for (const char *name : {"archiveCompressionColumn", "archiveEncryptionColumn"}) {
+        auto *column = findChild<QWidget *>(name);
+        column->ensurePolished();
+        column->setMinimumWidth(0);
+        column->setMinimumWidth(column->minimumSizeHint().width());
+    }
+}
+
+QWidget *CreateArchiveDialog::reserveControlSpace(QWidget *control) {
+    // QFormLayout collapses hidden rows. Keep the source rectangle through a
+    // visible slot whose box layout retains the hidden control's native size.
+    auto *slot = new QWidget(control->parentWidget());
+    auto *layout = new QVBoxLayout(slot);
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->setSpacing(0);
+    auto policy = control->sizePolicy();
+    policy.setRetainSizeWhenHidden(true);
+    control->setSizePolicy(policy);
+    layout->addWidget(control);
+    return slot;
 }
 
 void CreateArchiveDialog::createArchiveForm(QVBoxLayout *layout) {
