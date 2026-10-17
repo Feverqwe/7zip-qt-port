@@ -35,7 +35,26 @@ namespace {
 // Ctrl+Tab, rather than retaining a previous Qt child or focusing the tab bar.
 class QtOptionsPages final : public QTabWidget {
   public:
-    using QTabWidget::QTabWidget;
+    explicit QtOptionsPages(QWidget *parent) : QTabWidget(parent) {
+        const Qt::KeyboardModifier controls[] = {
+            Qt::ControlModifier,
+#ifdef Q_OS_MACOS
+            Qt::MetaModifier, // Physical Control under Cocoa's default modifier mapping.
+#endif
+        };
+        for (const auto control : controls)
+            for (const bool reverse : {false, true}) {
+                const auto shift = reverse ? Qt::ShiftModifier : Qt::NoModifier;
+                auto *shortcut = new QShortcut(
+                    QKeySequence(QKeyCombination(control | shift, Qt::Key_Tab)), this);
+                connect(shortcut, &QShortcut::activated, this, [this, shift] {
+                    // Window context includes the footer. Keep Qt's own
+                    // enabled/visible-page selection and our source focus rule.
+                    QKeyEvent event(QEvent::KeyPress, Qt::Key_Tab, Qt::ControlModifier | shift);
+                    keyPressEvent(&event);
+                });
+            }
+    }
     void focusInitialControl() {
         QWidget *page = currentWidget();
         if (page) {

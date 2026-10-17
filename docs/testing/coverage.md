@@ -1393,6 +1393,10 @@ tab stops and footer reachability across EN/RU, normal/compact frames and four
 association-availability masks. Six-page keyboard activation preserves pending
 values, focuses the selected radio member and selects the first text field.
 Hide/show retains focus and Cancel performs no association writes. Native Windows
+routing also covers Ctrl+Tab/reverse from the footer; macOS additionally checks
+the physical Control modifier route, including Backtab, alongside existing
+logical Control cases. [Original footer reference and current native checks](../upstream-port-audit/p3-06-options-control-2026-10-17.md)
+distinguish Qt events from physical hardware input. Native Windows
 runs use the Windows QPA and UI resource lock; Cocoa/XCB runs are separately
 recorded in the [component receipt](../upstream-port-audit/p3-06-options-keyboard-2026-10-17.md).
 `options_dialog` verifies the source initial System page and exact page order,

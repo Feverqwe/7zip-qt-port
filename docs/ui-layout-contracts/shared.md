@@ -17,6 +17,11 @@ remain valid Qt resizing adaptations of the fixed original property sheet.
 
 ### Options keyboard activation (P3-06, 2026-10-17)
 
+Ctrl+Tab and reverse operate from the footer as well as page controls. Cocoa's
+physical Control route (Qt MetaModifier) must work without changing global
+modifier policy; use the existing Qt page-selection algorithm and source focus
+rule. [Original footer reference and native regression](../upstream-port-audit/p3-06-options-control-2026-10-17.md).
+
 Reference: pinned `OptionsDialog.cpp`, `SystemPage.rc`, the other five page
 resources, `CPropertyPage::OnNotify`/`OnSetActive` and `MyPropertySheet`.
 Initial System focus is the first enabled source tab stop: current-user `+`,

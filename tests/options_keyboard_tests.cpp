@@ -26,14 +26,24 @@ class OptionsKeyboardTests final : public QObject {
     void sourcePageActivation_data() {
         QTest::addColumn<QString>("language");
         QTest::addColumn<QSize>("size");
+        QTest::addColumn<Qt::KeyboardModifiers>("control");
         for (const QString &language : {QString("-"), QString("ru")})
             for (const QSize size : {QSize(640, 390), QSize(520, 380)})
                 QTest::newRow(qPrintable(QString("%1-%2").arg(language).arg(size.width())))
-                    << language << size;
+                    << language << size << Qt::KeyboardModifiers(Qt::ControlModifier);
+#ifdef Q_OS_MACOS
+        // Cocoa maps the physical Control key to MetaModifier by default.
+        for (const QString &language : {QString("-"), QString("ru")})
+            for (const QSize size : {QSize(640, 390), QSize(520, 380)})
+                QTest::newRow(
+                    qPrintable(QString("physical-control-%1-%2").arg(language).arg(size.width())))
+                    << language << size << Qt::KeyboardModifiers(Qt::MetaModifier);
+#endif
     }
     void sourcePageActivation() {
         QFETCH(QString, language);
         QFETCH(QSize, size);
+        QFETCH(Qt::KeyboardModifiers, control);
         QTemporaryDir fixture;
         const QString settings = fixture.filePath("activation.ini");
         SaveRegLang(UString(language.toStdWString().c_str()), settings);
@@ -70,10 +80,12 @@ class OptionsKeyboardTests final : public QObject {
         for (int direction : {1, -1})
             for (int step = 0; step < 6; ++step) {
                 const int target = (pages->currentIndex() + direction + 6) % 6;
-                Qt::KeyboardModifiers modifiers = Qt::ControlModifier;
+                Qt::KeyboardModifiers modifiers = control;
                 if (direction < 0)
                     modifiers |= Qt::ShiftModifier;
-                QTest::keyClick(dialog.focusWidget(), Qt::Key_Tab, modifiers);
+                const Qt::Key key =
+                    control == Qt::MetaModifier && direction < 0 ? Qt::Key_Backtab : Qt::Key_Tab;
+                QTest::keyClick(dialog.focusWidget(), key, modifiers);
                 QCOMPARE(pages->currentIndex(), target);
                 QCOMPARE(dialog.focusWidget(), expected(target));
                 QVERIFY(dialog.focusWidget()->isVisible());
@@ -82,12 +94,24 @@ class OptionsKeyboardTests final : public QObject {
                 QCOMPARE(editor->text(), QString("pending editor --wait"));
                 if (target == 3)
                     QCOMPARE(viewer->selectedText(), viewer->text());
-                QVERIFY(UiInspection::writeReport(dialog, QString("options-activation-%1-%2-%3-%4")
-                                                              .arg(language)
-                                                              .arg(size.width())
-                                                              .arg(direction)
-                                                              .arg(target)));
+                QVERIFY(UiInspection::writeReport(
+                    dialog, QString("options-activation-%1-%2-%3-%4")
+                                    .arg(language)
+                                    .arg(size.width())
+                                    .arg(direction)
+                                    .arg(target) +
+                                (control == Qt::MetaModifier ? "-physical-control" : QString())));
             }
+        auto *footer = dialog.findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Cancel);
+        for (int direction : {1, -1, -1}) {
+            footer->setFocus();
+            QCOMPARE(dialog.focusWidget(), footer);
+            const int target = (pages->currentIndex() + direction + 6) % 6;
+            QTest::keyClick(footer, Qt::Key_Tab,
+                            control | (direction < 0 ? Qt::ShiftModifier : Qt::NoModifier));
+            QCOMPARE(pages->currentIndex(), target);
+            QCOMPARE(dialog.focusWidget(), expected(target));
+        }
         dialog.reject();
         QCOMPARE(associations->writes, 0);
         QCOMPARE(associations->notifications, 0);

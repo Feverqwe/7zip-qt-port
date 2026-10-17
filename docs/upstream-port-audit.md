@@ -122,6 +122,8 @@ own acceptance boundaries.
 
 ## P3-06 — Options source keyboard activation (2026-10-17)
 
+[Current window-wide footer/Cocoa Control routing and original runtime reference](upstream-port-audit/p3-06-options-control-2026-10-17.md).
+
 [Initial focus, source tab stops and property-page activation](upstream-port-audit/p3-06-options-keyboard-2026-10-17.md).
 Original Windows physical-keyboard reference and current focused native checks
 cover this component on three OS; live association values/icons remain separate.
