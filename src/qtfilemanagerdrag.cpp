@@ -1,6 +1,7 @@
 #include "qtfilemanagerdrag.h"
 #include "7zip/UI/FileManager/resource.h"
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
+#include "archivecodeccatalog.h"
 #include "archiveprogressoperation.h"
 #include "filetable.h"
 #include "mainwindow.h"
@@ -187,6 +188,17 @@ static DWORD DropKeys(const QDropEvent &drop) {
 HRESULT QtFileManagerDrag::ExecuteDrop(CDataObject *data, DWORD keys, const QPoint &position,
                                        DWORD &effect) {
     auto &target = window_.app_.DropTarget();
+    const QString archive = ArchiveToOpen(data, keys);
+    if (!archive.isEmpty()) {
+        CPanel *const panel = target.TargetPanel();
+        target.ClearState();
+        for (unsigned i = 0; i < kNumPanelsMax; ++i)
+            if (panel == &window_.app_.Panels[i])
+                window_.activatePanelUi(i);
+        // Opening never transfers ownership of the dropped file to the target.
+        effect = DROPEFFECT_COPY;
+        return window_.openArchiveAs(archive, {});
+    }
     CPanel *const owner = target.TargetPanel();
     const unsigned index = unsigned(target.TargetPanelIndex);
     std::optional<CSelectedState> refreshSelection;
@@ -200,6 +212,28 @@ HRESULT QtFileManagerDrag::ExecuteDrop(CDataObject *data, DWORD keys, const QPoi
         window_.appPresentation_->RequestListFocus(index);
     }
     return result;
+}
+
+QString QtFileManagerDrag::ArchiveToOpen(CDataObject *data, DWORD keys) const {
+    if (active_ || data != &external_ || menuDrag_ || (keys & (MK_RBUTTON | MK_MBUTTON)))
+        return {};
+    const auto &target = window_.app_.DropTarget();
+    const CPanel *panel = target.TargetPanel();
+    if (!panel || !panel->IsFSFolder())
+        return {};
+    UInt32 flags = 0;
+    if (data->ReadTransferFlags(flags))
+        return {}; // Preserve the native 7-Zip transfer protocol.
+    UStringVector names;
+    if (data->GetData(names) != S_OK || names.Size() != 1)
+        return {};
+    const QString path = ToQString(names.Front());
+    const QFileInfo file(path);
+    const auto catalog = window_.backend_->codecCatalog();
+    if (!file.isFile() || file.isSymLink() || !catalog || catalog->result() != S_OK ||
+        catalog->nativeCodecs().FindFormatForArchiveName(names.Front()) < 0)
+        return {};
+    return path;
 }
 
 bool QtFileManagerDrag::HandleDropEvent(QWidget &widget, QEvent &event) {
@@ -228,6 +262,8 @@ bool QtFileManagerDrag::HandleDropEvent(QWidget &widget, QEvent &event) {
     }
     const QPoint position = widget.mapToGlobal(drop.position().toPoint());
     const DWORD keys = DropKeys(drop);
+    if (event.type() == QEvent::DragEnter)
+        menuDrag_ = (keys & (MK_RBUTTON | MK_MBUTTON)) != 0;
     DWORD effect = 0;
     if (drop.possibleActions() & Qt::CopyAction)
         effect |= DROPEFFECT_COPY;

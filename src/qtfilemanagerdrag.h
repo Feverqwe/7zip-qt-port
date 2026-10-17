@@ -32,6 +32,7 @@ class QtFileManagerDrag final : public QObject,
   private:
     bool HandleDropEvent(QWidget &, QEvent &);
     HRESULT ExecuteDrop(CDataObject *, DWORD keys, const QPoint &position, DWORD &effect);
+    QString ArchiveToOpen(CDataObject *, DWORD keys) const;
     CDataObject *ReadData(const QMimeData &);
     bool HandleRightDrag(QWidget &, QEvent &);
     void SuspendHover(bool suspended);
@@ -41,6 +42,7 @@ class QtFileManagerDrag final : public QObject,
     QPointer<QtNativePanelDragConverter> nativeConverter_;
 #endif
     bool active_ = false, revoked_ = false;
+    bool menuDrag_ = false;
     QPointer<QWidget> rightPressWidget_;
     QPoint rightPressPosition_;
     bool contextDeferred_ = false, rightDragConsumed_ = false;

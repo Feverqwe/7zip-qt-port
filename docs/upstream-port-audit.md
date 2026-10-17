@@ -33,6 +33,10 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 
 ## Новые изменения
 
+
+- [Открытие перетащенного архива](upstream-port-audit/archive-drop-open.md)
+  — запрошенное отличие от исходного действия упаковки внешних файлов.
+
 - [Выход через меню macOS](upstream-port-audit/macos-quit-menu.md)
   — системная роль существующей команды выхода.
 
