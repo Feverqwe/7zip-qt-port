@@ -7,6 +7,13 @@
 
 ### Current inventory refresh (2026-10-16)
 
+The2026-10-17 Options keyboard candidate rechecks all302 original/local rows;
+only OptionsDialog.cpp and SystemPage.cpp differ from product17fab0f.
+`source-inventory-options-keyboard-candidate-v185.json` retains their current
+hashes under the final availability evidence root. The109-unit disposition and
+unique owners remain unchanged. [Keyboard presentation scope and dependencies](../upstream-port-audit/p3-06-options-keyboard-2026-10-17.md)
+do not change source Apply bodies or introduce another implementation.
+
 Product17fab0f is revalidated on2026-10-17 against all302 rows in
 `source-inventory-17fab0f.json`: every original blob/hash matches the full pin,
 every present local owner hash matches checkout, and all104 present cpp paths

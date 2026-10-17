@@ -83,6 +83,12 @@ records explicit XCB cancellation and source-defined OLE early cancellation.
 
 [Whole gate failure, source proof and bounded editor traces](upstream-port-audit/p3-03-editor-stability-2026-10-16.md).
 
+## P3-06 — Options source keyboard activation (2026-10-17)
+
+[Initial focus, source tab stops and property-page activation](upstream-port-audit/p3-06-options-keyboard-2026-10-17.md).
+Original Windows physical-keyboard reference and current focused native checks
+cover this component on three OS; live association values/icons remain separate.
+
 ## P3-06 — Options source initial frame (2026-10-16)
 
 [Source frame, rendered reference and regressions](upstream-port-audit/p3-06-options-2026-10-16.md).

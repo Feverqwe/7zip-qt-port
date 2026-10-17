@@ -1381,8 +1381,15 @@ are superseded by those passing results; raw listing names remain preserved.
 `options_integration` covers the six-page Options container as a whole using
 public controls and an isolated association service. Cancel, OK and Apply then
 Cancel verify committed/pending values, language, menu, editor, work folder and
-list settings, association calls, callback counts and restart. Keyboard page
-switching preserves pending input and keeps focus reachable in the active page.
+list settings, association calls, callback counts and restart. Shared isolated
+page services live in `fixtures/options_page_fixture.h`.
+`options_keyboard` separately checks source initial focus, forward/reverse System
+tab stops and footer reachability across EN/RU, normal/compact frames and four
+association-availability masks. Six-page keyboard activation preserves pending
+values, focuses the selected radio member and selects the first text field.
+Hide/show retains focus and Cancel performs no association writes. Native Windows
+runs use the Windows QPA and UI resource lock; Cocoa/XCB runs are separately
+recorded in the [component receipt](../upstream-port-audit/p3-06-options-keyboard-2026-10-17.md).
 `options_dialog` verifies the source initial System page and exact page order,
 memory validation and Settings/Folders geometry. `options_window` verifies real
 refresh of both panels and selection retention. Run these with their page,

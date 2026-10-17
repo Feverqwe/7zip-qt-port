@@ -15,6 +15,25 @@ initial-size contract. Existing explicit640×390/520×380 normal/compact probes
 remain valid Qt resizing adaptations of the fixed original property sheet.
 
 
+### Options keyboard activation (P3-06, 2026-10-17)
+
+Reference: pinned `OptionsDialog.cpp`, `SystemPage.rc`, the other five page
+resources, `CPropertyPage::OnNotify`/`OnSetActive` and `MyPropertySheet`.
+Initial System focus is the first enabled source tab stop: current-user `+`,
+all-users `+`, then the association list. Tab and Backtab retain that order;
+enabled footer buttons and the tab bar remain reachable. Map existing button
+tab stops to Qt StrongFocus under Cocoa's restricted native button policy;
+preserve intentional NoFocus controls and the OS keyboard preference.
+
+Ctrl+Tab and reverse activate the new page's first enabled source control.
+An exclusive radio group uses its selected enabled member; an initial text field
+selects its contents. Pending values survive page switching and hide/show does
+not reset an already focused field. A capability-disabled page can fall back to
+the tab bar. `options_keyboard` checks EN/RU at640×390 and520×380 (expanded to
+native minima), all four System availability masks and both six-page directions.
+Current widget JSON checks visible control bounds; public assertions check focus,
+selection and Cancel without association writes. [Source and native receipt](../upstream-port-audit/p3-06-options-keyboard-2026-10-17.md).
+
 ### Native Copy terminal errors (P3-05)
 
 Reference App.cpp::OnCopy, PanelCopy.cpp::CopyTo/ProcessVirt and

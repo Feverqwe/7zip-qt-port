@@ -15,6 +15,15 @@ targeted keyboard probes are available; pixel equality is not claimed.
 
 [Открыть раздел](7zfm-parity/shared.md#list-link-and-benchmark-source-presentation-2026-10-16).
 
+## Options: клавиатурная активация (P3-06, 2026-10-17)
+
+Qt preserves the original first-enabled tab stop on initial System opening and
+after keyboard page switching, including selected radio members and text-field
+selection. Existing source button tab stops use StrongFocus on Cocoa; native
+keyboard preferences and intentional NoFocus controls remain intact. A page
+with no enabled native capabilities falls back to its tab bar. [Reference and
+three-platform checks](upstream-port-audit/p3-06-options-keyboard-2026-10-17.md).
+
 ## Options: начальный размер окна (P3-06, 2026-10-16)
 
 [Открыть раздел](7zfm-parity/shared.md#options-начальный-размер-окна-p3-06-2026-10-16).

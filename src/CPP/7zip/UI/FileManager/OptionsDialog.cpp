@@ -13,17 +13,67 @@
 #include "qtdialogunits.h"
 #include "qtfmoptionsdialog.h"
 #include "qtlangcontrols.h"
+#include <QButtonGroup>
 #include <QCloseEvent>
 #include <QDialogButtonBox>
 #include <QEvent>
+#include <QKeyEvent>
+#include <QLineEdit>
 #include <QMessageBox>
+#include <QPointer>
 #include <QPushButton>
+#include <QRadioButton>
 #include <QScopeGuard>
 #include <QScopedValueRollback>
 #include <QShortcut>
 #include <QTabBar>
 #include <QTabWidget>
 #include <QVBoxLayout>
+
+namespace {
+// The native property sheet activates the new page's first tab stop after
+// Ctrl+Tab, rather than retaining a previous Qt child or focusing the tab bar.
+class QtOptionsPages final : public QTabWidget {
+  public:
+    using QTabWidget::QTabWidget;
+    void focusInitialControl() {
+        QWidget *page = currentWidget();
+        if (page) {
+            for (QWidget *control = page->nextInFocusChain(); control != page;
+                 control = control->nextInFocusChain()) {
+                if (!page->isAncestorOf(control) || !control->isVisibleTo(page) ||
+                    !control->isEnabled() || !(control->focusPolicy() & Qt::TabFocus))
+                    continue;
+                if (auto *radio = qobject_cast<QRadioButton *>(control);
+                    radio && radio->group() && radio->group()->exclusive()) {
+                    if (auto *checked = radio->group()->checkedButton();
+                        checked && checked->isEnabled())
+                        control = checked;
+                }
+                QPointer<QWidget> target(control);
+                control->setFocus(Qt::OtherFocusReason);
+                if (auto *edit = qobject_cast<QLineEdit *>(target.data()))
+                    edit->selectAll();
+                return;
+            }
+        }
+        tabBar()->setFocus(Qt::TabFocusReason); // No enabled page controls on this platform.
+    }
+
+  private:
+    void keyPressEvent(QKeyEvent *event) override {
+        QPointer<QTabWidget> alive(this);
+        const int before = currentIndex();
+        const bool cycle = event->matches(QKeySequence::NextChild) ||
+                           event->matches(QKeySequence::PreviousChild) ||
+                           ((event->key() == Qt::Key_Tab || event->key() == Qt::Key_Backtab) &&
+                            (event->modifiers() & (Qt::ControlModifier | Qt::MetaModifier)));
+        QTabWidget::keyPressEvent(event); // Qt owns page selection and platform key bindings.
+        if (alive && cycle && event->isAccepted() && currentIndex() != before)
+            focusInitialControl();
+    }
+};
+} // namespace
 
 QtFmOptionsDialog::QtFmOptionsDialog(const QString &settingsPath, QWidget *parent,
                                      IFolderManager *manager,
@@ -33,8 +83,9 @@ QtFmOptionsDialog::QtFmOptionsDialog(const QString &settingsPath, QWidget *paren
     ReloadLang(settingsPath);
     QtBindLangText(this, IDS_OPTIONS, "Options");
     auto *layout = new QVBoxLayout(this);
-    auto *pages = new QTabWidget(this);
+    auto *pages = new QtOptionsPages(this);
     pages->setObjectName("optionsPages");
+    pages->tabBar()->setFocusPolicy(Qt::StrongFocus); // Native property-sheet WS_TABSTOP.
     _editPage = new CEditPage(settingsPath, pages);
     _foldersPage = new CFoldersPage(settingsPath, pages);
     _settingsPage = new CSettingsPage(settingsPath, pages, true);
@@ -61,6 +112,10 @@ QtFmOptionsDialog::QtFmOptionsDialog(const QString &settingsPath, QWidget *paren
                                         QDialogButtonBox::Apply | QDialogButtonBox::Help,
                                     this);
     _buttons->setObjectName("settingsButtons");
+    // Keep existing source tab stops under QMacStyle's restricted button policy.
+    for (auto *button : findChildren<QAbstractButton *>())
+        if (button->focusPolicy() & Qt::TabFocus)
+            button->setFocusPolicy(Qt::StrongFocus);
     layout->addWidget(_buttons);
     connect(_buttons, &QDialogButtonBox::accepted, this, &QtFmOptionsDialog::accept);
     connect(_buttons, &QDialogButtonBox::rejected, this, &QtFmOptionsDialog::reject);
@@ -92,6 +147,8 @@ QtFmOptionsDialog::QtFmOptionsDialog(const QString &settingsPath, QWidget *paren
     const QSize outer(margins.left() + margins.right(),
                       margins.top() + margins.bottom() + footerHeight);
     resize((sourcePage + tabChrome + outer).expandedTo(minimumSizeHint()));
+    // MyPropertySheet/WM_INITDIALOG focuses the initial page's first tab stop.
+    pages->focusInitialControl();
 }
 
 CFmSettings QtFmOptionsDialog::settings() const { return _settingsPage->settings(); }

@@ -86,8 +86,10 @@ CSystemPage::CSystemPage(IFolderManager *manager, std::shared_ptr<IQtAssociation
     buttons->setColumnStretch(2, 1);
     _current = new QPushButton("+", this);
     _current->setObjectName("systemCurrent");
+    _current->setFocusPolicy(Qt::StrongFocus);
     _all = new QPushButton("+", this);
     _all->setObjectName("systemAll");
+    _all->setFocusPolicy(Qt::StrongFocus);
     buttons->addWidget(_current, 0, 1, Qt::AlignHCenter);
     buttons->addWidget(_all, 0, 2, Qt::AlignHCenter);
     layout->addLayout(buttons);

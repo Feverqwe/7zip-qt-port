@@ -2,6 +2,7 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/SystemPage.h"
 #include "Common/MyCom.h"
+#include "fixtures/options_page_fixture.h"
 #include "layout_inspection.h"
 #include "qtfmoptionsdialog.h"
 #include <QCheckBox>
@@ -23,43 +24,8 @@
 #include <QtTest>
 
 namespace {
-class COptionsManager final : public IFolderManager, public CMyUnknownImp {
-    Z7_COM_UNKNOWN_IMP_1(IFolderManager)
-  public:
-    Z7_COM7F_IMF(OpenFolderFile(IInStream *, const wchar_t *, const wchar_t *, IFolderFolder **,
-                                IProgress *))
-    override { return E_NOTIMPL; }
-    Z7_COM7F_IMF(GetExtensions(BSTR *extensions)) override {
-        return StringToBstr(UString(L"zip"), extensions);
-    }
-    Z7_COM7F_IMF(GetIconPath(const wchar_t *, BSTR *path, Int32 *index)) override {
-        *index = 0;
-        return StringToBstr(UString(L"/fixture/sevenzip"), path);
-    }
-};
-class COptionsAssociations final : public IQtAssociationServices {
-  public:
-    int writes = 0;
-    int notifications = 0;
-    LONG failure = 0;
-    bool CanApply(unsigned) const override { return true; }
-    QString UnavailableReason(unsigned) const override { return {}; }
-    UString OwnIconPath() const override { return UString(L"/fixture/sevenzip"); }
-    bool Read(unsigned, const UString &, NRegistryAssoc::CShellExtInfo &info) override {
-        info = NRegistryAssoc::CShellExtInfo();
-        return true;
-    }
-    LONG Add(unsigned, const UString &, const NRegistryAssoc::CShellExtInfo &, const UString &,
-             const UString &, const UString &, int) override {
-        ++writes;
-        return failure;
-    }
-    LONG Delete(unsigned, const UString &, const NRegistryAssoc::CShellExtInfo &) override {
-        ++writes;
-        return failure;
-    }
-    void NotifyChanged() override { ++notifications; }
-};
+using OptionsPageFixture::COptionsAssociations;
+using OptionsPageFixture::COptionsManager;
 QString text(const UString &value) { return QString::fromWCharArray(value.Ptr()); }
 } // namespace
 
@@ -141,38 +107,6 @@ class OptionsIntegrationTests final : public QObject {
             dialog.reject();
             QCOMPARE(associations->writes, 0);
         }
-    }
-    void keyboardPageSwitchKeepsPendingInputAndVisibleFocus() {
-        QTemporaryDir fixture;
-        QtFmOptionsDialog dialog(fixture.filePath("options.ini"));
-        dialog.show();
-        auto *pages = dialog.findChild<QTabWidget *>("optionsPages");
-        pages->setCurrentIndex(3);
-        auto *editor = dialog.findChild<QLineEdit *>("editorCommand");
-        editor->setText("pending editor --wait");
-        editor->setFocus();
-        QTest::keyClick(editor, Qt::Key_Tab, Qt::ControlModifier);
-        QCOMPARE(pages->currentIndex(), 4);
-        QTest::keyClick(pages, Qt::Key_Tab, Qt::ControlModifier | Qt::ShiftModifier);
-        QCOMPARE(pages->currentIndex(), 3);
-        QCOMPARE(editor->text(), QString("pending editor --wait"));
-        auto *tabs = pages->findChild<QTabBar *>();
-        QCOMPARE(dialog.focusWidget(), tabs);
-        // Native Qt styles may visit the footer before entering the page.
-        bool enteredPage = false;
-        for (int i = 0; i < 16 && !enteredPage; ++i) {
-            auto *focused = dialog.focusWidget();
-            QVERIFY(focused && focused->isVisible());
-            QTest::keyClick(focused, Qt::Key_Tab);
-            focused = dialog.focusWidget();
-            QVERIFY(focused && focused->isVisible());
-            enteredPage = pages->currentWidget()->isAncestorOf(focused);
-        }
-        QVERIFY(enteredPage);
-        dialog.reject();
-        UString saved;
-        ReadRegEditor(true, saved, fixture.filePath("options.ini"));
-        QVERIFY(saved.IsEmpty());
     }
     void allPagesApplyCancelAndRestart_data() {
         QTest::addColumn<int>("finish");
