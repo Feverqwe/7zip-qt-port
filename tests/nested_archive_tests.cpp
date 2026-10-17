@@ -1,4 +1,5 @@
 #include "CPP/7zip/UI/FileManager/OverwriteDialog.h"
+#include "dot_path_cpio_fixture.h"
 #include "mainwindow.h"
 
 #include <QAction>
@@ -86,6 +87,73 @@ class NestedArchiveTests : public QObject {
     Q_OBJECT
 
   private slots:
+    void extractsDotFolderInNestedPayload_data() {
+        QTest::addColumn<bool>("selectedOnly");
+        QTest::newRow("whole-folder") << false;
+        QTest::newRow("selected-app") << true;
+    }
+    void extractsDotFolderInNestedPayload() {
+        QFETCH(bool, selectedOnly);
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString cpio = fixture.filePath("Payload~");
+        QFile file(cpio);
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        const QByteArray bytes = DotPathCpioFixture();
+        QCOMPARE(file.write(bytes), qint64(bytes.size()));
+        file.close();
+        QVERIFY(QDir().mkpath(fixture.filePath("temp.pkg")));
+        const auto make = [&](const QStringList &arguments) {
+            QProcess process;
+            process.setWorkingDirectory(fixture.path());
+            process.start(QStandardPaths::findExecutable("7zz"), arguments);
+            return process.waitForFinished(30000) && process.exitCode() == 0;
+        };
+        QVERIFY(make({"a", "-tgzip", "temp.pkg/Payload.gz", "Payload~"}));
+        QVERIFY(QFile::rename(fixture.filePath("temp.pkg/Payload.gz"),
+                              fixture.filePath("temp.pkg/Payload")));
+        QVERIFY(make({"a", "-tzip", "installer.zip", "temp.pkg"}));
+        ArchiveBackend backend;
+        MainWindow window(&backend);
+        window.show();
+        auto *table = window.findChild<QTableWidget *>("archiveTable");
+        auto *inside = window.findChild<QAction *>("openInsideAction");
+        QVERIFY(table && inside);
+        window.openArchive(fixture.filePath("installer.zip"));
+        const auto row = [&](const QString &name) {
+            for (int i = 0; i < table->rowCount(); ++i)
+                if (table->item(i, 0) && table->item(i, 0)->text() == name)
+                    return i;
+            return -1;
+        };
+        for (const QString &name : {"temp.pkg", "Payload", "Payload~", "."}) {
+            QTRY_VERIFY2(row(name) >= 0, qPrintable(name));
+            table->selectRow(row(name));
+            table->setCurrentCell(row(name), 0);
+            inside->trigger();
+        }
+        QTRY_VERIFY(row("ProxyBridge.app") >= 0 && row("._ProxyBridge.app") >= 0);
+        table->clearSelection();
+        if (selectedOnly)
+            table->selectRow(row("ProxyBridge.app"));
+        QString errors;
+        QTimer dismiss;
+        connect(&dismiss, &QTimer::timeout, &window, [&] {
+            for (QWidget *widget : QApplication::topLevelWidgets())
+                if (auto *box = qobject_cast<QMessageBox *>(widget); box && box->isVisible()) {
+                    errors += box->text();
+                    box->accept();
+                }
+        });
+        dismiss.start(1);
+        const QString output = fixture.filePath("output");
+        window.extractTo(output, selectedOnly);
+        QVERIFY2(errors.isEmpty(), qPrintable(errors));
+        QFile extracted(QDir(output).filePath(QStringLiteral("ProxyBridge.app/имя 空.txt")));
+        QVERIFY(extracted.open(QIODevice::ReadOnly));
+        QCOMPARE(extracted.readAll(), QByteArray("payload bytes"));
+        QCOMPARE(QFileInfo::exists(QDir(output).filePath("._ProxyBridge.app")), !selectedOnly);
+    }
     void opensArchiveWithoutRecognizedExtension() {
         QTemporaryDir dir;
         QVERIFY(dir.isValid());

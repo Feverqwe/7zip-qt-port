@@ -1,3 +1,5 @@
+#include "CPP/7zip/UI/Common/ExtractingFilePath.h"
+#include "Common/Wildcard.h"
 #include "archivebackend.h"
 #include "qtlanguageservices.h"
 
@@ -173,8 +175,14 @@ bool ArchiveBackend::validateExtraction(const QString &destination, const QStrin
                        safePath(boundedPath.mid(colon + 1)) &&
                        !boundedPath.mid(colon + 1).contains('/');
 #endif
-        if ((!safeStream && !nativeStream && !safePath(boundedPath)) ||
-            (entry.link && !nativeSource) || (streamFolder && !safeStream)) {
+        // A dot denotes the current directory in CPIO/TAR paths. Check every
+        // other raw component before source correction can erase traversal.
+        QStringList checkedParts = boundedPath.split('/');
+        checkedParts.removeAll(QStringLiteral("."));
+        const bool safeRelative =
+            (entry.directory && checkedParts.isEmpty()) || safePath(checkedParts.join('/'));
+        if ((!safeStream && !nativeStream && !safeRelative) || (entry.link && !nativeSource) ||
+            (streamFolder && !safeStream)) {
             *error = QtLocalText("Archive contains an unsafe path or link: %1",
                                  QStringLiteral("Архив содержит небезопасный путь или ссылку: %1"))
                          .arg(entry.path);
@@ -194,6 +202,13 @@ bool ArchiveBackend::validateExtraction(const QString &destination, const QStrin
             relative.remove(0, prefix.size());
         } else if (options.pathMode == ExtractionOptions::PathMode::NoPaths)
             relative = relative.section('/', -1);
+        if (!safeStream && !nativeStream) {
+            UStringVector parts;
+            SplitPathToParts(UString(relative.toStdWString().c_str()), parts);
+            Correct_FsPath(false, false, parts, entry.directory);
+            relative = QString::fromWCharArray(MakePathFromParts(parts).Ptr());
+            relative.replace('\\', '/');
+        }
         const QString key = relative.normalized(QString::NormalizationForm_C).toCaseFolded();
         if (names.contains(key)) {
             *error = QtLocalText("Archive contains conflicting names: %1",

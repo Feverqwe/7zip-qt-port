@@ -3,6 +3,7 @@
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "Common/StringConvert.h"
 #include "archive_backend_test_support.h"
+#include "dot_path_cpio_fixture.h"
 #include "qtmemorylockservices.h"
 #include <QScopeGuard>
 
@@ -522,6 +523,34 @@ class ArchiveBackendTests : public QObject, protected ArchiveBackendTestSupport 
         QVERIFY(!result.at(0).toBool());
         QVERIFY(result.at(1).toString().contains("7zz"));
     }
+    void dotPathsInCpio_data() {
+        QTest::addColumn<bool>("currentFolder");
+        QTest::newRow("full-paths") << false;
+        QTest::newRow("current-paths") << true;
+    }
+    void dotPathsInCpio() {
+        QFETCH(bool, currentFolder);
+        QTemporaryDir fixture;
+        const QString archive = fixture.filePath("Payload.cpio");
+        writeFile(archive, DotPathCpioFixture());
+        ArchiveBackend backend;
+        backend.list(archive);
+        await(backend, true);
+        const QString leaf = QStringLiteral("имя 空.txt");
+        ExtractionOptions options;
+        QStringList selected;
+        if (currentFolder) {
+            options.pathMode = ExtractionOptions::PathMode::CurrentPaths;
+            options.currentFolder = "./ProxyBridge.app";
+            selected << options.currentFolder + '/' + leaf;
+        }
+        const QString destination = fixture.filePath("output");
+        backend.extract(archive, destination, selected, {}, options);
+        await(backend, true);
+        QFile extracted(QDir(destination).filePath("ProxyBridge.app/" + leaf));
+        QVERIFY(extracted.open(QIODevice::ReadOnly));
+        QCOMPARE(extracted.readAll(), QByteArray("payload bytes"));
+    }
     void unsafePath() {
         QTemporaryDir temp;
         QVERIFY(temp.isValid());
@@ -546,6 +575,7 @@ class ArchiveBackendTests : public QObject, protected ArchiveBackendTestSupport 
     void unsafeListing_data() {
         QTest::addColumn<QByteArray>("listing");
         QTest::newRow("parent") << QByteArray("Path = ../escape.txt\nSize = 1\n\n");
+        QTest::newRow("dot-parent") << QByteArray("Path = ./../escape.txt\nSize = 1\n\n");
         QTest::newRow("backslash parent")
             << QByteArray("Path = folder\\..\\escape.txt\nSize = 1\n\n");
         QTest::newRow("drive") << QByteArray("Path = C:\\escape.txt\nSize = 1\n\n");
@@ -556,6 +586,10 @@ class ArchiveBackendTests : public QObject, protected ArchiveBackendTestSupport 
         QTest::newRow("hard link") << QByteArray("Path = link\nHard Link = target\n\n");
         QTest::newRow("duplicate")
             << QByteArray("Path = same.txt\nSize = 1\n\nPath = SAME.TXT\nSize = 1\n\n");
+        QTest::newRow("dot-duplicate")
+            << QByteArray("Path = ./same.txt\nSize = 1\n\nPath = same.txt\nSize = 1\n\n");
+        QTest::newRow("dot-file-parent")
+            << QByteArray("Path = ./parent\nSize = 1\n\nPath = parent/child\nSize = 1\n\n");
         QTest::newRow("unicode normalization")
             << (QStringLiteral("Path = café.txt\n\nPath = cafe\u0301.txt\n\n").toLocal8Bit());
         QTest::newRow("file parent")

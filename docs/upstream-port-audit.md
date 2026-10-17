@@ -33,6 +33,10 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 
 ## Новые изменения
 
+- [Относительные пути с `.` при распаковке](upstream-port-audit/dot-extraction-paths.md)
+  — исправление предварительного отказа для CPIO payload и повторное использование
+  исходной коррекции путей.
+
 При изменении перенесённого модуля добавлять сюда ссылку на отдельную запись
 в `docs/upstream-port-audit/`. Указывать дату, retrievable source repository,
 полный commit, пути/символы, copied/adapted/omitted scope, зависимости и причины

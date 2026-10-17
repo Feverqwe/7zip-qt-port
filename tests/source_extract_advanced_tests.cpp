@@ -4,6 +4,7 @@
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "CPP/7zip/UI/GUI/ExtractDialog.h"
 #include "archivecodeccatalog.h"
+#include "dot_path_cpio_fixture.h"
 #include "layout_inspection.h"
 #include "native_link_fixture.h"
 #include "native_security_fixture.h"
@@ -215,6 +216,31 @@ class SourceExtractAdvancedTests final : public QObject {
 #ifdef SEVENZIP_CODEC_MODULE
         QTest::newRow("native-handler") << true;
 #endif
+    }
+    void dotPathsInCpio_data() { rootEliminationAndMetadata_data(); }
+    void dotPathsInCpio() {
+        QFETCH(bool, native);
+        QTemporaryDir input, output;
+        const QString archive = input.filePath("Payload.cpio");
+        QVERIFY(writeFile(archive, DotPathCpioFixture()));
+        ArchiveBackend backend;
+        if (native) {
+#ifdef SEVENZIP_CODEC_MODULE
+            const QString module = QString::fromUtf8(SEVENZIP_CODEC_MODULE);
+            ArchiveCodecCatalog probe(module, 0);
+            QCOMPARE(probe.result(), S_OK);
+            QCOMPARE(backend.loadCodecCatalog(module, probe.version()), S_OK);
+#endif
+        }
+        CErrorDismissal dismissal;
+        ExtractionOptions options;
+        options.overwriteMode = ExtractionOptions::OverwriteMode::SkipExisting;
+        const auto result =
+            RunQtArchiveBatchExtract(backend, {archive}, output.path(), {}, options, nullptr);
+        QCOMPARE(result.Result, S_OK);
+        QVERIFY(result.CallbackOK);
+        QCOMPARE(readFile(output.filePath(QStringLiteral("ProxyBridge.app/имя 空.txt"))),
+                 QByteArray("payload bytes"));
     }
     void rootEliminationAndMetadata() {
         QFETCH(bool, native);
