@@ -123,7 +123,8 @@ harness failures and are excluded from accepted checks. Persistent builds/caches
 and failure/reference evidence are retained; completed one-shot source scripts
 are archived and removed.
 
-The existing2a7303c private packages precede this correction; refresh follows
-the remaining UI acceptance reconciliation. Windows cold timing and the final
+The preceding2a7303c private packages predate this correction; the subsequent
+[three-platform7a8592f refresh](p3-04-compression-options-delivery-2026-10-17.md)
+includes it. Windows cold timing and the final
 native workflow matrix remain P3-03/P3-06 prerequisites. The count stays44/47;
 no push, publication, upstream or VM/disk configuration change occurs.

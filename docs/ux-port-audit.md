@@ -4,12 +4,53 @@
 
 ## Current final acceptance matrix (2026-10-17)
 
+### Resource/workflow reconciliation after Compression Options
+
+At `7a8592f`, the desktop includes in the pinned FileManager `resource.rc`,
+GUI `resource.rc`/`resource2.rc`/`resource3.rc`, menu groups and toolbar callers
+are reconciled with the component receipts below. Source bodies and dependency
+dispositions remain owned by the [existing ledger](omitted-scope-audit/ledger.md);
+this table maps acceptance evidence, rather than creating another source inventory.
+String-only property resources and CE/legacy/standalone entrypoints retain their
+ledger dispositions. A receipt checks its stated states and revision; its mere
+existence does not make every current workflow or platform checked.
+
+| Applicable scene | Existing source/native/reference evidence | Remaining boundary |
+| --- | --- | --- |
+| File/Edit/View/Favorites/Tools/Help; archive/standard toolbars; one/two panels | [Main chrome](upstream-port-audit/p3-06-main-chrome-2026-10-16.md), [native shell](upstream-port-audit/p3-06-native-shell-2026-10-16.md), [address/Root](upstream-port-audit/p3-05-address-root-2026-10-17.md) | Qt action/state and native widget checks are distinct from Cocoa global-menu OS input. The later original main-window reference supersedes the shell receipt's missing-reference statement. |
+| Copy/Move destination, both panes and publication | [24 runtime pairs](upstream-port-audit/p3-06-copy-runtime-2026-10-17.md), [native publication](upstream-port-audit/p3-05-copy-native-2026-10-17.md), [source closure](upstream-port-audit/p3-05-source-closure-2026-10-17.md) | Declined expanded `copy_archive_refresh` matrix remains unverified; accepted smaller/eleven-long contracts are retained. |
+| Add, Extract and child metadata Options | [Add/Extract reference](ui-layout-contracts/shared.md#rendered-addextract-reference-p3-06-2026-10-15), [Add gutter/manual check](upstream-port-audit/p3-06-add-scroll-2026-10-15.md), [Compression Options](upstream-port-audit/p3-06-compression-options-2026-10-17.md) | Latest Options component has current native three-OS coverage and refreshed packages. Existing original initial views do not cover every conditional archive-format state. |
+| Overwrite, Progress and operation Messages | [Rendered reference](upstream-port-audit/p3-06-2026-10-15.md), [shared modal consumers](upstream-port-audit/p3-06-modal-geometry-2026-10-17.md), [prompts](upstream-port-audit/p3-06-source-prompts-2026-10-16.md) | Retain the documented fonts/minima/button-order adaptations and separate actual operation/error/Cancel coverage. No pixel-equality claim. |
+| Password, Memory and Edit prompts | [Original focus/defaults and native consumers](upstream-port-audit/p3-06-source-prompts-2026-10-16.md), [widget workflows](upstream-port-audit/p3-03-widget-dialog-fixtures-2026-10-16.md) | Qt widget responders do not establish native NSAlert acceptance; the user's accepted message scenes retain their exact scope. |
+| Browse and temporary files | [Original populated views, keyboard probes and native three-OS consumers](upstream-port-audit/p3-06-source-browsers-2026-10-16.md) | Native folder/save OS panels use the separately accepted manual scenes; Xvfb evidence is not a physical desktop observation. |
+| Shared input, Split/Combine destination and About | [Original EN/RU views, source callbacks and native consumers](upstream-port-audit/p3-06-primitives-2026-10-16.md) | Composite owner checks retain their revisions; they are not a new whole-product gate. |
+| Properties/History lists, Link and normal/total Benchmark | [Ten original states and three-OS component checks](upstream-port-audit/p3-06-secondary-dialogs-2026-10-16.md) | POSIX Junction/WSL capability differences and native modal chrome remain explicit. |
+| Six Options pages, Apply/Cancel, language and keyboard | [Frame](upstream-port-audit/p3-06-options-2026-10-16.md), [keyboard](upstream-port-audit/p3-06-options-keyboard-2026-10-17.md), [footer/manual Control](upstream-port-audit/p3-06-options-control-2026-10-17.md), [live System](upstream-port-audit/p3-06-system-live-2026-10-17.md), [GIO workflow](upstream-port-audit/p3-06-system-native-2026-10-17.md) | Read-only live Windows/macOS values/icons and private-XDG mutation do not prove installed own-handler registration or native OS consent. |
+| External application/desktop integration | [Finder acceptance](porting-checklist/p3.md), [Explorer transfer/Escape](upstream-port-audit/p3-03-native-drag-fixtures-2026-10-16.md#physical-windows-explorer-recipient-2026-10-17), [editor completion](upstream-port-audit/p3-03-editor-stability-2026-10-16.md), [source closure](upstream-port-audit/p3-05-source-closure-2026-10-17.md) | Keep OS-recipient, command-dispatch and synthetic-widget evidence separate. Unrelated dialog changes do not invalidate unchanged accepted Finder transport. |
+
+No additional unpaired desktop dialog family is identified by this reconciliation.
+It does not close P3-06: installed registration/consent and the remaining complete
+native workflow acceptance still need their stated evidence, while Windows cold
+discovery remains P3-03.8. Existing passing component checks need not be repeated
+solely to replace an older generic “full audit open” sentence. A new implementation
+iteration requires a concrete source gap or observable failure; a stronger auxiliary
+oracle alone does not expand mandatory scope. The three parent packages and44/47
+count remain open until their actual prerequisites are accepted.
+
+### Current receipts
+
+[Current Compression Options delivery](upstream-port-audit/p3-04-compression-options-delivery-2026-10-17.md)
+packages product7a8592f on three OS:1056 exact inputs, Release/OFF,
+relocation15/14/14, payload/licenses/SFX and fresh dependency/private-ABI checks
+PASS. This supersedes the package-refresh prerequisite in the older component
+receipts below. Their remaining cold/native boundaries are unchanged.
+
 [Add Options presentation/keyboard](upstream-port-audit/p3-06-compression-options-2026-10-17.md)
 закрывает найденный resource-frame/colon/focus gap дочернего COptionsDialog.
 Actual original8states и source first-Tab сверены с native3OS; focused5/5,
 95Qt и native14Qt PASS на каждой ОС. Windows raw comparison8/8; POSIX сохраняет
 24 ожидаемых Windows-only state differences, без иных расхождений.
-Packages2a7303c предшествуют этой коррекции; общий native/cold scope открыт.
+Current packages7a8592f include this correction; общий native/cold scope открыт.
 
 [Current default gates](upstream-port-audit/p3-03-final-default-2026-10-17.md)
 на product2a7303c: Mac329/330, Linux331/332 и Windows Limited331/348 executed
@@ -203,7 +244,7 @@ native Windows и rendered reference этим не подтверждены.
 | Нативные dialogs/shortcuts/icons/drag/registration/FS | partial: историческая ручная Finder-проверка принята отдельно; Cocoa keyboard notification protocol0–9 проверен, physical input/full native обход не проверены | partial: delivery8d56d8d Copy/Overwrite/Language/PCManFM drag/Escape; Release2f8e194 GIO workflow проверен; corrected keyboard XTest1/native consumers7/7; full native scope открыт | partial: active console Session1; corrected keyboard consumers7/7,143Qt/0fail/0skip; original Limited reference also suppresses physical RightCtrlShift0, positive1/AltShift0 PASS; current full/native acceptance открыт |
 | Наблюдение текущего приложения через Computer Use | manual alternative: пользователь выбрал ручную проверку; Add gutter и Save/Folder EN/RU select/cancel подтверждены для1f5e16a. Прямой Computer Use не разрешён; остальной native scope открыт | partial: current package/affected views наблюдались через Hyper-V console API; полный rendered audit открыт | unverified: console доступна, полный обход текущего приложения не принят |
 | Сверка с отрисованным Windows 7zFM того же pin | partial: current Cocoa Add/Extract2/2 PASS9Qt/12JSON; Windows initial EN/RU reference available, grouping/fit checked; no Mac PNG or full rendered/input acceptance | partial: current XCB Add/Extract2/2 PASS9Qt/12JSON/12PNG; representative normal/compact views inspected against four original initial states; full rendered audit open | partial: four pinned original Add/Extract EN/RU initial views inspected, current Qt2/2 PASS9Qt/12JSON/12PNG; grouping/order/labels/fit match with documented Qt metrics/scroll adaptation, not pixel equality. Earlier System menu20entries/states/icons remains bounded evidence; full audit open |
-| Runtime packages; clean-OS scope исключён пользователем2026-10-15 | checked: [delivery2a7303c](upstream-port-audit/p3-04-options-delivery-2026-10-17.md), Release/relocation15,1056 exact inputs, notices/signature/Mach-O/privateABI; source ICNS unchanged, previous strict raw/native pixel failure retained, no pixel-parity claim | checked: та же delivery2a7303c, Release/relocation14,1056 exact inputs, notices/SFX/fresh ELF/privateABI; Xvfb GUI smoke, clean OS waived | checked: та же delivery2a7303c, Release/relocation14,1056 exact inputs, notices/SFX/CRT/PE/trusted-system resolution и fresh packaged icon/mask equality; clean OS waived |
+| Runtime packages; clean-OS scope исключён пользователем2026-10-15 | checked: [delivery7a8592f](upstream-port-audit/p3-04-compression-options-delivery-2026-10-17.md), Release/relocation15,1056 exact inputs, notices/signature/Mach-O/privateABI; source ICNS unchanged, previous strict raw/native pixel failure retained, no pixel-parity claim | checked: та же delivery7a8592f, Release/relocation14,1056 exact inputs, notices/SFX/fresh ELF/privateABI; Xvfb GUI smoke, clean OS waived | checked: та же delivery7a8592f, Release/relocation14,1056 exact inputs, notices/SFX/CRT/PE/trusted-system resolution и fresh packaged icon/mask equality; clean OS waived |
 | Cold/stable Windows, итоговая трёхплатформенная приёмка | partial: полный native scope остаётся открытым | partial: current broad XCB235/235560.14s,4505Qt/0fail/37skip closes prior broad fixture failures for its snapshot; subsequent localized consumers retain their receipts | partial: current2a7303c whole external_codecs13Qt/codec_probe18Qt/process_pause4Qt PASS. Historical5215ms and later deadline failures retained under unchanged5000ms application deadline; cause/cold stability unresolved, full native scope open |
 | GitHub CI | N/A по явному решению пользователя сохранить удаление workflow | N/A по тому же решению | N/A по тому же решению |
 
