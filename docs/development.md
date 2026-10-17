@@ -217,6 +217,10 @@ Windows ccache uses CMake 3.25+ with embedded MSVC `/Z7` debug information;
 the project runners provide that toolchain. `verify-result.json` records actual
 compiler launchers and ccache hit/miss deltas without resetting shared statistics.
 
+Validation reuses the existing incremental build and compiler cache. Full/release
+checks do not imply a cold build; clearing or bypassing the cache requires an
+explicit user request under [the validation rules](../AGENTS.md#validation-scope).
+
 Build specific targets with `./scripts/build.sh dev <target> [target ...]` and run
 focused cases with `./scripts/ctest.sh --preset dev -R '<test-name-regex>' --output-on-failure`.
 The build script configures the preset and applies platform toolchain workarounds;

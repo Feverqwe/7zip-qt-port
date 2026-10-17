@@ -35,6 +35,36 @@ For upstream updates follow [the update procedure](docs/upstream-update.md):
 compare a separate snapshot, review dependencies/omissions and retain local fixes.
 Keep adaptations narrow; account for formatting separately from functional changes.
 
+### Porting order: source comparison before runtime acceptance
+
+1. Before implementation or acceptance runs, compare the selected upstream module
+   with the current port: complete bodies, callers, types, dependencies, resources,
+   handlers and significant branches. Identify missing code, stubs, independent
+   replacements and disconnected consumers from source, rather than discovering
+   them one at a time through runtime failures. Reuse the existing audit for scope;
+   do not create another inventory.
+2. Use upstream files with their headers/resources/dependencies as inventory units.
+   Port and connect the dependencies needed for a complete component or scenario;
+   copying an isolated file is not completion. Preserve usable upstream code and
+   limit adaptations to the required Qt/platform boundaries.
+3. Resolve source-visible gaps in the selected scenario together in the same
+   iteration, or record a concrete blocker under the plan's scope rules. Do not
+   launch a known-incomplete scenario merely to demonstrate a failure already
+   established by missing code. Targeted diagnostic runs remain useful when they
+   resolve an actual uncertainty about behavior or integration.
+4. After implementation, compare the changed scope with upstream again for omitted
+   branches and unconnected callers, then build affected targets and run focused
+   behavior/integration checks. Incremental compilation and diagnostic checks are
+   allowed during implementation; this order does not require a whole-project
+   source audit before each check.
+5. Regressions protect observable behavior. An actual pre-fix failing run is useful
+   to establish reproduction or test sensitivity, but is not mandatory ceremony
+   for an obvious missing implementation. Do not add source-text assertions or
+   trivial tests as a substitute for behavior checks.
+6. Report source-port completeness separately from runtime validation, including
+   omissions/adaptations and checked platforms. Passing tests do not prove complete
+   source transfer; source similarity does not prove a working platform adaptation.
+
 ## Context and memory
 
 Read `.codex/memory/README.md` at task start if present, then only relevant notes.
@@ -80,7 +110,35 @@ Preserve unrelated working-tree changes and other tasks' memory entries.
 
 ## Validation and UI reference
 
-For behavior changes, add a regression that fails without the fix.
+### Test usefulness
+
+- Before adding a test, identify the concrete observable failure it detects and
+  why existing coverage is insufficient. Adding code does not itself justify a
+  new test. A useful test detects incorrect behavior and survives safe refactoring
+  that preserves the public contract.
+- Do not test mere implementation presence: source text, private symbol names,
+  internal call order, file/key existence, trivial getters/assignments, or copies
+  of current constants/configuration values. Check configuration through its
+  effect on behavior; pin a value only when the value itself is an established
+  compatibility, security or public-interface requirement.
+- Prefer operation results, public signals/contracts, error handling, boundaries
+  and reproducible regressions. For example, verify that Cancel leaves settings
+  unchanged, rather than checking that a Cancel handler exists in source.
+- When working in an area with implementation-mirroring tests, replace them with
+  behavior checks or remove redundant assertions/tests while preserving useful
+  coverage. Do not preserve accidental implementation details merely to satisfy
+  an old test. Keep this cleanup scoped to the affected area.
+- Do not remove a behavior test merely because the tested code now exists or the
+  test passes: callers, dependencies and event handling can regress its result.
+  For a simple change with no meaningful new regression to cover, use sufficient
+  existing checks, a build or a focused manual check instead of inventing a test.
+
+### Validation scope
+
+For behavior changes, cover the concrete observable bug or risk with a regression
+that fails without the fix; reuse sufficient existing coverage rather than adding
+trivial or implementation-mirroring tests. A pre-fix failing run follows the
+[porting order](#porting-order-source-comparison-before-runtime-acceptance).
 Archive-operation changes cover success, failure and cancellation, with
 Unicode/spaces and malicious paths where relevant; never use real user archives
 or live services. Build affected targets and run focused tests/direct consumers
@@ -102,6 +160,18 @@ It checks repository C++ formatting, builds all targets and runs the default
 CTest set, excluding tests labeled `slow`. Do not repeat a passing full gate
 on unchanged code. After localized follow-up edits rerun affected checks;
 repeat the full gate only if the same broader-risk criteria apply.
+
+All validation, including full/release gates on local and remote platforms, must
+reuse the existing incremental build and compiler cache. Do not clear or bypass
+`ccache`, select an empty cache directory, unset compiler launchers, force cache
+misses, or delete/recreate build trees merely to obtain a clean validation run.
+Do not change flags, timestamps or toolchain settings solely to invalidate cached
+outputs. A request for a full check does not authorize a cold build or cache reset;
+those require an explicit user request. Normal cache misses caused by necessary
+source/configuration/toolchain changes are allowed. If cache corruption is
+suspected, collect diagnostics and report the evidence before requesting a
+specific repair; suspicion alone does not authorize clearing caches.
+
 Docs/instruction-only changes need `git diff --check`.
 Fix failures caused by the task and report unverified platforms.
 Use [development](docs/development.md#local-commands) for wrapper/toolchain details

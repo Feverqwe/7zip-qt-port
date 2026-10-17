@@ -345,7 +345,10 @@ scoped to the check process. The helper does not change shared packages or toolc
 Both guests build with four jobs and run CTest sequentially.
 
 Ccache is selected automatically by `build.sh` for C/C++ (and Objective-C++
-where applicable). Linux has `/usr/bin/ccache` 4.9.1; Windows has project-owned
+where applicable). All runner checks, including full gates, follow the
+[cache-preserving validation rules](../AGENTS.md#validation-scope); a full-check
+request does not authorize clearing or bypassing ccache or recreating build trees.
+Linux has `/usr/bin/ccache` 4.9.1; Windows has project-owned
 `C:/runner/sevenzip-desktop/tools/ccache/ccache.exe` 4.14.1, installed on request
 on 2026-10-17 from the [official release](https://ccache.dev/download.html).
 The Windows ZIP SHA256 is
