@@ -148,6 +148,14 @@ Slow suites исключены из default gates по AGENTS.md. Пользов
 все11 на3OS; failing historical runs, corrected affected passes и текущие
 all-eleven replays различаются в [long receipt](upstream-port-audit/p3-03-long-acceptance-2026-10-16.md).
 
+[Copy publication widget fixtures](upstream-port-audit/p3-03-copy-widget-fixtures-2026-10-17.md)
+дополняют текущую матрицу: шесть native suites на каждой ОС, по100Qt/0fail/0skip
+и320JSON/0PNG; Mac/Linux default также6/6PASS. Producte3b3c65 сохранён.
+Новый12-й slow `copy_archive_refresh` пользователь явно отказался запускать;
+его полный current native matrix остаётся unverified, предложенный responder
+сохранён вне проверенного коммита. Эти widget-проверки не заменяют physical
+input, native OS panels или оставшийся rendered обход.
+
 [Bounded native editor coverage](upstream-port-audit/p3-03-native-editor-coverage-2026-10-16.md)
 закрывает coverage всех48 Cocoa refused-update rows тремя16-row запусками;
 исходный aggregate90s timeout сохраняется отдельно. Wholeeditor default/native

@@ -45,6 +45,33 @@ hashes match snapshot and protected producer after validation in both runs.
 All11 slow suites remain excluded from these focused diagnostics; their
 separately requested three-platform acceptance retains its recorded scope.
 
+## Direct native-call observation, v209
+
+Run `20261017T082215Z-2c2c7520` executes only `codec_probe`. A zero-delay
+instance of its existing own-process `DelayedProcessStart` fixture observes
+the first deadline regression; subsequent intentional600ms rows retain their
+own instances. No arguments, process flags, environment or application/state
+deadlines change. The observer skips `Sleep(0)`, starts timing after the entry
+stderr flush and preserves Win32 last-error across logging. It is removed after
+the probe's worker has joined. This is temporary snapshot instrumentation, not
+a product hook or a system-wide observer.
+
+The whole probe passes18Qt/0fail/0skip. In the first50ms deadline regression,
+native `CreateProcessW` returns successfully after532ms. The Qt started signal
+and `process.start` return have the same recorded millisecond tick as the native
+return; worker admission has the full50ms budget. This run therefore separates
+the native boundary from Qt's post-call work, but does not reproduce the
+earlier8594ms refusal or establish its cause. Passing this instrumented run is
+not a cold-stability fix; no additional identical replay is needed to make that
+limitation clear. `external_codecs` is not selected in v209.
+
+All three instrumented files are restored, generated CTest commands match their
+stock configuration, the stock target rebuild passes and all eight runtime/SFX
+hashes match both snapshot and protected producer. Collected evidence is
+`windows-final-codec-phases-v209-evidence/` under the ignored root below.
+Preflight removes only obsolete objects from the completed v192 compile-only
+failure, retaining source, executable artifacts and failure logs; host D: is OK.
+
 ## Harness failures and retained evidence
 
 `v189` (`20261017T071827Z-026e7e4e`) fails before tests on a private Python
