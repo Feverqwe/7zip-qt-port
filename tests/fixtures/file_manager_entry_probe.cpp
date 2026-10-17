@@ -89,7 +89,7 @@ int main(int argc, char **argv) {
         timedOut = true;
         application.quit();
     });
-    const int result = RunSevenzipFileManager(application);
+    const int result = RunSevenzipDesktop(application);
     observer.stop();
     const QJsonObject report{{"bound", bound},
                              {"refusal", refusal},

@@ -1,5 +1,6 @@
 #include "archivebackend.h"
 #include "fixtures/widget_dialogs.h"
+#include "layout_inspection.h"
 #include "mainwindow.h"
 #include "qtassociationfileopen.h"
 #include "qtfilemanagerstartup.h"
@@ -135,6 +136,83 @@ class AssociatedWindowTests final : public QObject {
         QVERIFY(!backend->busy());
         QCOMPARE(readCompleted.count(), 0);
     }
+#ifdef Q_OS_MACOS
+    void initialDocumentLaunchOmitsDirectoryWindowAndRetainsLaterDocuments() {
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString archive = SourceExtractFixture::makeArchive(fixture.path(), "launch bytes");
+        QVERIFY(!archive.isEmpty());
+        const auto original = SourceExtractFixture::readFile(archive);
+        const auto closeWindows = qScopeGuard([&] {
+            for (QWidget *widget : QApplication::topLevelWidgets())
+                if (auto *window = dynamic_cast<MainWindow *>(widget))
+                    delete window;
+        });
+        QCoreApplication::postEvent(qApp, new QFileOpenEvent(archive));
+        int initialCount = -1, finalCount = -1;
+        bool timedOut = false, firstRetained = false, reportsWritten = true;
+        QPointer<MainWindow> first;
+        QTimer observer, watchdog;
+        QObject responder;
+        QString error;
+        dialogs_.respond(responder, [&](QDialog &dialog) {
+            if (auto *message = qobject_cast<QMessageBox *>(&dialog)) {
+                error = message->text();
+                message->accept();
+                qApp->quit();
+            }
+        });
+        connect(&observer, &QTimer::timeout, this, [&] {
+            QList<MainWindow *> visible;
+            for (auto *widget : QApplication::topLevelWidgets())
+                if (auto *window = dynamic_cast<MainWindow *>(widget);
+                    window && window->isVisible())
+                    visible.append(window);
+            int archives = 0;
+            for (auto *window : visible) {
+                auto *table = window->findChild<QTableWidget *>("archiveTable");
+                if (table && table->rowCount() == 1 && table->item(0, 0)->text() == "inside") {
+                    ++archives;
+                    if (!first)
+                        first = window;
+                }
+            }
+            if (archives == 1 && initialCount == -1) {
+                initialCount = visible.size();
+                reportsWritten &=
+                    UiInspection::writeReport(*first, "associated-launch-first-normal");
+                first->resize(640, 400);
+                QCoreApplication::postEvent(qApp, new QFileOpenEvent(archive));
+            } else if (archives == 2) {
+                finalCount = visible.size();
+                firstRetained = first && visible.contains(first.data());
+                for (auto *window : visible)
+                    reportsWritten &= UiInspection::writeReport(
+                        *window, window == first ? "associated-launch-first-compact"
+                                                 : "associated-launch-second-normal");
+                observer.stop();
+                qApp->quit();
+            }
+        });
+        watchdog.setSingleShot(true);
+        connect(&watchdog, &QTimer::timeout, this, [&] {
+            timedOut = true;
+            qApp->quit();
+        });
+        observer.start(10);
+        watchdog.start(10000);
+        QCOMPARE(RunSevenzipDesktop(*qApp), 0);
+        observer.stop();
+        watchdog.stop();
+        QVERIFY2(error.isEmpty(), qPrintable(error));
+        QVERIFY(!timedOut);
+        QCOMPARE(initialCount, 1);
+        QCOMPARE(finalCount, 2);
+        QVERIFY(firstRetained);
+        QVERIFY(reportsWritten);
+        QCOMPARE(SourceExtractFixture::readFile(archive), original);
+    }
+#endif
 };
 QTEST_MAIN(AssociatedWindowTests)
 #include "associated_window_tests.moc"

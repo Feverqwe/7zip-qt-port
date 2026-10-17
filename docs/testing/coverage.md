@@ -1822,6 +1822,12 @@ it never invokes LaunchServices registration or a system default-app setter.
 Manager windows with native codec discovery and a real ZIP. It protects archive
 opening after discovery, error presentation without starting a read, and joined
 close/cancellation. Archive/source bytes and the surviving peer view are checked.
+On macOS it also runs the actual desktop event loop with an initial document:
+exactly one archive window must appear, a later document adds a second and
+retains the first. Normal/compact widget JSON covers the affected window states.
+The separate process entry probe uses the same desktop route for ordinary and
+command-line archive startup. Public Qt events do not establish physical Finder
+acceptance.
 `windows_system_registration` exercises actual source Options Cancel/Apply/Clear
 against a unique owned HKCU extension, native ShellExecute recipient/Unicode
 bytes and external-change refusal. It removes its keys and does not mutate

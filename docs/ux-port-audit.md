@@ -43,8 +43,9 @@ count remain open until their actual prerequisites are accepted.
 packages5ccf3f1 on three OS with1056 exact inputs, relocation15/14/14 and fresh
 payload/license/SFX/dependency/private-ABI checks PASS. Manual Finder retry opens
 the ZIP without E_FAIL, but also creates an extra directory window. This is a
-concrete remaining launch UX correction; post-retry default intent/restoration
-is being clarified, and source/window evidence does not identify the actual
+concrete launch UX correction, now covered by the [desktop entry fix](upstream-port-audit/p3-06-associated-bootstrap-2026-10-17.md).
+At the user's request ZIP is restored to Archive Utility, independently queried
+after native completion. Source/window evidence does not identify the actual
 terminated process's bundle URL independently.
 
 [Native association workflow](upstream-port-audit/p3-06-native-associations-2026-10-17.md)
@@ -52,7 +53,8 @@ terminated process's bundle URL independently.
 file-open во время discovery (`E_FAIL`). Реальные HKCU Apply/Clear/recipient и
 public native window workflow проходят; user ZIP assignment/restoration принят
 отдельно от failed opening на пакете7a8592f. Обновлённые пакеты5ccf3f1 и ручной
-retry закрывают E_FAIL; лишнее initial directory window ещё требует исправления.
+retry закрывают E_FAIL. Исправление лишнего initial directory window проходит
+Cocoa6Qt и focused guest checks; обновлённый packaged Finder retry ещё впереди.
 
 [Current Compression Options delivery](upstream-port-audit/p3-04-compression-options-delivery-2026-10-17.md)
 packages product7a8592f on three OS:1056 exact inputs, Release/OFF,

@@ -672,7 +672,10 @@ File Manager entry adapter creates an additional MainWindow/backend for each
 native request and waits for its codec discovery before calling openPath.
 Discovery failure is reported without an archive read; window closure joins
 its owned work. An activation does not replace an active operation in another
-window. macOS document declarations derive from the pinned source
+window. The desktop entry collects initial Cocoa document events before choosing
+ordinary directory startup, so a document launch creates only its archive
+window. Later documents retain independent windows; normal command-line startup
+continues through the source FM entry. macOS document declarations derive from the pinned source
 association resource; Alternate rank does not select an OS default application.
 
 P2-07: source Common/Extract owns root elimination;

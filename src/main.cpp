@@ -1,6 +1,5 @@
 #include "desktopidentity.h"
 #include "mainwindow.h"
-#include "qtassociationfileopen.h"
 #include "qtfilemanagerstartup.h"
 #include "qtguicommand.h"
 
@@ -25,12 +24,8 @@ int main(int argc, char *argv[]) {
 #endif
     if (entryName.compare(guiName, Qt::CaseInsensitive) == 0)
         return RunSevenzipGUI(app);
-    QtAssociationFileOpen associatedFiles(app);
-    QObject::connect(&associatedFiles, &QtAssociationFileOpen::OpenRequested, &app,
-                     [](const QString &path) { OpenSevenzipAssociatedFile(path); });
-    associatedFiles.Activate();
     if (!app.arguments().contains("--smoke-test"))
-        return RunSevenzipFileManager(app);
+        return RunSevenzipDesktop(app);
     MainWindow window;
     QTimer::singleShot(0, &app, &QCoreApplication::quit);
     return app.exec();

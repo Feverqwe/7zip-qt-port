@@ -36,5 +36,6 @@ int WinMain(const std::function<int()> &main2);
 class QApplication;
 class MainWindow;
 class QString;
-int RunSevenzipFileManager(QApplication &application);
+int RunSevenzipFileManager(QApplication &application, bool associatedStartup = false);
+int RunSevenzipDesktop(QApplication &application);
 MainWindow *OpenSevenzipAssociatedFile(const QString &path);

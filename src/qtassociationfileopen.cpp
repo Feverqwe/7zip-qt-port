@@ -11,13 +11,14 @@ void QtAssociationFileOpen::Dispatch(const QString &path) {
     QTimer::singleShot(0, this, [this, path] { emit OpenRequested(path); });
 }
 
-void QtAssociationFileOpen::Activate() {
+bool QtAssociationFileOpen::Activate() {
     if (_ready)
-        return;
+        return false;
     _ready = true;
     const QStringList pending = std::move(_pending);
     for (const auto &path : pending)
         Dispatch(path);
+    return !pending.isEmpty();
 }
 
 bool QtAssociationFileOpen::eventFilter(QObject *watched, QEvent *event) {

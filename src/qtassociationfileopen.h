@@ -14,7 +14,7 @@ class QtAssociationFileOpen final : public QObject {
 
   public:
     explicit QtAssociationFileOpen(QObject &source);
-    void Activate();
+    bool Activate();
 
   signals:
     void OpenRequested(const QString &path);

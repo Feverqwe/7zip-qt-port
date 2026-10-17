@@ -3235,7 +3235,8 @@ if(BUILD_TESTING)
     list(REMOVE_ITEM metadata_ui_sources tests/ui_update_modes_tests.cpp)
     get_target_property(metadata_ui_libraries ui_update_modes_tests LINK_LIBRARIES)
     qt_add_executable(associated_window_tests tests/associated_window_tests.cpp
-        tests/fixtures/widget_dialogs.cpp src/qtfilemanagermain.cpp ${metadata_ui_sources})
+        tests/fixtures/widget_dialogs.cpp tests/layout_inspection.cpp
+        src/qtfilemanagermain.cpp ${metadata_ui_sources})
     target_include_directories(associated_window_tests PRIVATE src tests)
     target_link_libraries(associated_window_tests PRIVATE ${metadata_ui_libraries})
     target_compile_definitions(associated_window_tests PRIVATE
@@ -3243,7 +3244,7 @@ if(BUILD_TESTING)
     add_dependencies(associated_window_tests codec_probe_fixture)
     add_test(NAME associated_window COMMAND associated_window_tests -silent)
     set_tests_properties(associated_window PROPERTIES TIMEOUT 30 ENVIRONMENT
-        "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/associated-window.ini")
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/associated-window.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     qt_add_executable(archive_metadata_ui_tests tests/archive_metadata_ui_tests.cpp ${metadata_ui_sources})
     target_include_directories(archive_metadata_ui_tests PRIVATE src tests)
     target_link_libraries(archive_metadata_ui_tests PRIVATE ${metadata_ui_libraries})
