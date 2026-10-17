@@ -121,3 +121,28 @@ its source/binaries/logs, newest/active runs and all protected producers. No
 disk creation/growth, cache flushing, Defender change, WPR/ETL export, deadline
 relaxation or upstream modification is part of this investigation. Final
 Windows cold stability remains open.
+
+## First execution after an authorized guest reboot
+
+Run `20261017T171918Z-82c643e3` tests product56c01ba / documentation6fc84c7
+after a fresh boot of the existing runner-windows guest. The user authorized
+the graceful guest reboot and subsequent console login. The guest's boot epoch
+changes from1792011374.6563091 to1792257316.137739; SSH identity and the runner
+console session are verified. No host reboot, forced application termination,
+authentication-policy change or automatic-login configuration is used.
+
+The three targets were built before reboot in the existing incremental tree.
+The first codec suite after login is `external_codecs`:13Qt PASS in4656ms
+(CTest1/1,5.69s). It is followed by `process_pause`:4Qt PASS in1412ms and
+`codec_probe`:18Qt PASS in8724ms. All35 checks pass without failures or skips;
+the5000ms application deadline remains unchanged. No build or runtime
+preparation occurs after reboot. All1486 prepared source hashes and17 executable,
+DLL/configuration hashes match after execution; the final uptime is299437ms.
+
+This establishes the bounded first-after-boot scenario for that revision.
+It does not establish the cause of the earlier8–9s native process/loader stalls
+or erase their failed receipts. Final stability acceptance remains open.
+Actual LastTest logs, preparation/boot guards and results are retained under
+`build/review/goal-postboot-codec-20261017/acceptance/`; the one-off driver is
+archived in that task directory and removed from scripts. Post-run host storage
+is OK; existing guest build trees, runtime and compiler caches are preserved.
