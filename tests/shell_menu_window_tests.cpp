@@ -3,9 +3,11 @@
 #include "7zip/UI/Explorer/ContextMenuFlags.h"
 #include "CPP/7zip/UI/FileManager/PasswordDialog.h"
 #include "archivecodeccatalog.h"
+#include "fixtures/widget_dialogs.h"
 #include "layout_inspection.h"
 #include "window_state_support.h"
 #include <QClipboard>
+#include <QFileDialog>
 #include <QMenuBar>
 #include <QScopeGuard>
 
@@ -41,6 +43,7 @@ class ShellMenuWindowTests final : public QObject, protected MainWindowTestSuppo
     Q_OBJECT
     QString engine_, module_;
     quint32 version_ = 0;
+    WidgetDialogFixture widgetDialogs_;
 
   private slots:
 #ifdef Q_OS_WIN
@@ -139,6 +142,67 @@ class ShellMenuWindowTests final : public QObject, protected MainWindowTestSuppo
         QVERIFY(ready[0][0].toBool());
         version_ = backend.codecCatalog()->version();
 #endif
+    }
+    void archivePicker_data() {
+        QTest::addColumn<QString>("outcome");
+        for (const QString &outcome : {QString("open"), QString("cancel"), QString("invalid")})
+            QTest::newRow(qPrintable(outcome)) << outcome;
+    }
+    void archivePicker() {
+        QFETCH(QString, outcome);
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        CurrentDirectoryGuard guard;
+        QVERIFY(QDir::setCurrent(fixture.path()));
+        QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+        const QString name = QStringLiteral("содержимое 密碼.txt");
+        QVERIFY(write(fixture.filePath(name), "picker payload"));
+        const QString archive = fixture.filePath(QStringLiteral("архив с пробелами.zip"));
+        QProcess create;
+        create.setWorkingDirectory(fixture.path());
+        create.start(engine_, {"a", "-tzip", archive, name});
+        QVERIFY(create.waitForFinished());
+        QCOMPARE(create.exitCode(), 0);
+        ArchiveBackend backend(nullptr, engine_);
+        QCOMPARE(backend.loadCodecCatalog(module_, version_), S_OK);
+        MainWindow window(&backend);
+        window.show();
+        QTRY_VERIFY(rowNamed(window, name) >= 0);
+        auto *open = action(window, "openArchiveAction");
+        auto *menu = window.findChild<QMenu *>("fileMenu");
+        QVERIFY(QMetaObject::invokeMethod(menu, "aboutToShow", Qt::DirectConnection));
+        QVERIFY(menu->actions().contains(open));
+        QVERIFY(open->isEnabled());
+        bool shown = false, error = false;
+        QTimer responder;
+        widgetDialogs_.connectResponder(responder, &window, [&] {
+            auto *dialog = widgetDialogs_.activeDialog();
+            if (auto *picker = qobject_cast<QFileDialog *>(dialog)) {
+                shown = true;
+                if (outcome == "cancel")
+                    picker->reject();
+                else {
+                    picker->setFocus();
+                    if (outcome == "invalid")
+                        picker->selectNameFilter(picker->nameFilters().last());
+                    picker->selectFile(outcome == "invalid" ? fixture.filePath(name) : archive);
+                    QMetaObject::invokeMethod(picker, "accept", Qt::DirectConnection);
+                }
+            } else if (auto *message = qobject_cast<QMessageBox *>(dialog)) {
+                error = true;
+                message->accept();
+            }
+        });
+        responder.start(5);
+        open->trigger();
+        responder.stop();
+        QVERIFY(shown);
+        QCOMPARE(error, outcome == "invalid");
+        QTRY_VERIFY(rowNamed(window, name) >= 0);
+        if (outcome == "open") {
+            QVERIFY(rowNamed(window, QFileInfo(archive).fileName()) < 0);
+        } else
+            QTRY_VERIFY(rowNamed(window, QFileInfo(archive).fileName()) >= 0);
     }
     void nativeOpenKeepsExplicitTypeAndCancellation_data() {
         QTest::addColumn<QString>("outcome");
@@ -269,9 +333,8 @@ class ShellMenuWindowTests final : public QObject, protected MainWindowTestSuppo
                         actions.indexOf(action(window, "selectedPropertiesAction")));
                 QCOMPARE(actions.last(), action(window, "exitAction"));
                 for (const char *name :
-                     {"openArchiveAction", "createArchiveAction", "addArchiveAction",
-                      "extractSelectedAction", "operationJournalAction", "builtinTextViewAction",
-                      "builtinTextEditAction"})
+                     {"createArchiveAction", "addArchiveAction", "extractSelectedAction",
+                      "operationJournalAction", "builtinTextViewAction", "builtinTextEditAction"})
                     QVERIFY(!actions.contains(window.findChild<QAction *>(name)));
                 QVERIFY(UiInspection::writeReport(*menu, QString("program-file-menu-%1-%2")
                                                              .arg(language == "ru" ? "ru" : "en")

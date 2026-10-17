@@ -13,7 +13,7 @@ class CPanel;
 // Native menu policy is recomputed for execution, never read from QAction state.
 class QtFileManagerCommands final : public IQtFileManagerMenuCommandServices {
   public:
-    enum Extension : unsigned { Back = 1000 };
+    enum Extension : unsigned { Back = 1000, OpenArchivePicker };
     explicit QtFileManagerCommands(MainWindow &window);
     void AttachActions();
     void RefreshActions();

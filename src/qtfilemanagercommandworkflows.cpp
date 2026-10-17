@@ -10,6 +10,7 @@
 #include "mainwindow.h"
 #include "qtbenchmarkservices.h"
 #include "qtfilemanagercommands.h"
+#include "qtlangcontrols.h"
 #include "qtprogramfilemenu.h"
 #include <QScopedValueRollback>
 
@@ -111,6 +112,17 @@ void QtFileManagerCommands::ExtractArchives() { window_.extractArchives(); }
 void QtFileManagerCommands::TestArchives() { window_.testArchive(); }
 bool QtFileManagerCommands::ExecuteExtensionCommand(unsigned id) {
     switch (id) {
+    case OpenArchivePicker: {
+        const QString directory = window_.state_ == MainWindow::State::Viewing
+                                      ? QFileInfo(window_.archive_).absolutePath()
+                                      : window_.directory_;
+        const QString path = QFileDialog::getOpenFileName(
+            &window_, QtLocalText("Open archive", QStringLiteral("Открыть архив")), directory,
+            window_.backend_->openDialogFilter());
+        if (!path.isEmpty())
+            window_.openArchive(path);
+        break;
+    }
     case Back:
         window_.goBack();
         break;

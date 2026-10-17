@@ -273,6 +273,11 @@ void MainWindow::rebuildSourceMenus() {
     auto *file = findChild<QMenu *>("fileMenu");
     auto *hash = findChild<QMenu *>("hashMenu");
     reset(file);
+    auto *openArchive = file->addAction(QString());
+    openArchive->setObjectName("openArchiveAction");
+    QtBindLocalText(openArchive, "Open archive…", QStringLiteral("Открыть архив…"));
+    openArchive->setShortcut(QKeySequence::Open);
+    file->addSeparator();
     for (QAction *action : {openItem_, openInside_, openInsideOne_, openInsideParser_, openOutside_,
                             viewFile_, editFile_})
         file->addAction(action);

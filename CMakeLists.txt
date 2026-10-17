@@ -3515,7 +3515,7 @@ if(BUILD_TESTING)
             nested_edit_chain_tests archive_external_edit_tests archive_external_security_tests
             archive_external_lifetime_tests checksum_tests source_link_storage_tests
             options_dialog_tests system_page_tests flat_view_tests filesystem_reload_tests
-            toolbar_archive_workflow_tests shell_update_window_tests source_drop_add_tests
+            toolbar_archive_workflow_tests shell_update_window_tests shell_menu_window_tests source_drop_add_tests
             native_hash_ui_tests native_rar_ui_tests panel_list_key_tests source_context_menu_tests
             panel_copy_reload_tests native_drop_publication_tests
             copy_publication_order_tests native_parent_publication_tests panel_key_source_tests)

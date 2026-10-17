@@ -53,21 +53,20 @@ native Windows/Linux execution remain separate acceptance requirements.
 
 ### Open archive picker (P2-01)
 
-Historical P2-01 extension, removed2026-10-04 during P2-09 UX correction:
-original IDM_MENU has no independent Open archive/Ctrl+O command. MainWindow's
-picker action/consumer is removed; source Open/Open Inside and address navigation
-remain. BrowseDialog/codec filter unit checks still validate their reusable
-component, and do not imply that an extra File-menu entry is justified.
+File → Open archive… opens the native OS file picker. Its shortcut is Cmd+O
+on macOS and Ctrl+O on Windows/Linux. This user-requested extension supplements
+source Open/Open Inside and address navigation; the original IDM_MENU has no
+independent archive picker command.
 
-Reference: pinned BrowseDialog.cpp/CBrowseInfo and FilePlugins.cpp extension
-database. Qt uses the native OS file picker; archive masks project matching native
-handler metadata followed by All files, or only All files when metadata is absent.
-The picker retains filter order/index, Unicode paths and .001 selection.
-`browse_dialog` checks EN/RU filter presentation and selection with explicit test
-fixtures; `codec_catalog` checks the actual metadata masks and failure fallback.
-The OS-owned picker is a documented platform adaptation, not a Windows pixel
-reference. Actual MainWindow startup/error/command integration and full P2-01
-gate passed188/188(74.09s), macOS arm64 Qt6.11.2 2026-10-02.
+The picker starts in the current filesystem folder or the open archive's
+containing folder. Archive masks come from native handler metadata, followed by
+All files; without metadata only All files is offered. Cancel preserves the
+current location. Accepted files use the existing archive opening, password and
+error workflow. The command is unavailable during blocking archive operations
+and modal dialogs. EN/RU normal/compact File-menu geometry is covered by
+`shell_menu_window`, along with Unicode/spaces selection, cancel and invalid-file
+handling. `browse_dialog` and `codec_catalog` cover reusable filters. Native OS
+panels and physical shortcuts require separate platform acceptance.
 
 For long/super paths the original custom Browse fallback retains its top
 Parent/Create/folder row, three-column list, path edit, conditional filter and

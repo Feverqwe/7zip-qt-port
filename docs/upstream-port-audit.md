@@ -33,6 +33,9 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 
 ## Новые изменения
 
+- [Выбор архива через меню File](upstream-port-audit/open-archive-picker.md)
+  — запрошенное расширение интерфейса и повторное использование открытия архива.
+
 - [Относительные пути с `.` при распаковке](upstream-port-audit/dot-extraction-paths.md)
   — исправление предварительного отказа для CPIO payload и повторное использование
   исходной коррекции путей.
