@@ -19,6 +19,8 @@
 
 ```sh
 rg -n -F 'archive_transfer' docs/testing/ tests/ docs/regression-matrix.md
+python3 scripts/verify.py --list
+python3 scripts/verify.py navigation
 ./scripts/build.sh dev <targets>
 ./scripts/ctest.sh --preset dev -R '<regex>' --output-on-failure
 ```
@@ -71,6 +73,11 @@ rg -n -F 'archive_transfer' docs/testing/ tests/ docs/regression-matrix.md
 у более старых завершённых запусков удаляются тяжёлые воспроизводимые данные,
 но остаются небольшие логи и metadata. Кратко фиксировать удалённые пути;
 при нехватке места — также свободное место до и после очистки.
+
+Новые remote checks используют одну постоянную `current` директорию на госте;
+не создавать отдельные build trees для запусков. Сохранять её incremental
+outputs и compiler/runtime caches. Retention датированных snapshots выше
+относится к старым запускам; новые run IDs обозначают только локальные логи.
 
 ## Проверка компоновки Qt
 

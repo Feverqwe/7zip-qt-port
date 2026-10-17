@@ -41,7 +41,7 @@ header dependencies. This setting does not change application language.
 External codecs require the official dynamic console client, not standalone
 `7zz`. `./scripts/build-codec-runtime.sh [upstream-checkout] [artifact-directory]`
 builds unchanged `UI/Console` and `Bundles/Format7zF` from the pinned source
-snapshot into `build/codec-runtime` on macOS/Linux. It produces `7z`, `7z.so`,
+snapshot into `build/codec-runtime` on macOS/Linux. It produces `7z`, `7zz`, `7z.so`,
 license and source/version/SHA records, and refuses unowned artifacts. The Debug
 app uses this prepared runtime when present; deployed builds look beside the app
 or in `Resources/7zip`. `SEVENZIP_ENGINE_PATH` explicitly selects an engine;
@@ -112,6 +112,50 @@ MSVC2022/Qt6.12.0 kit; see [runtime artifacts and CI scope](ci.md). Point
 
 ## Local commands
 
+For a focused correction, use one command to configure, build the selected
+targets and run their CTest suites (including required fixtures):
+
+```sh
+python3 scripts/verify.py --list
+python3 scripts/verify.py navigation
+python3 scripts/verify.py options --plan
+python3 scripts/verify.py --tests '^address_combo$'
+python3 scripts/verify.py navigation --platform all
+```
+
+Profiles in `scripts/verify-profiles.json` define scenario scope and whether a
+Windows desktop is needed. They are starting points: extend the selection for
+other affected consumers. `--tests` overrides a profile's CTest regex. Targets
+come from generated CMake/CTest registrations, including executable arguments
+and fixture producers; their names are not guessed from suite names. An empty
+enabled selection fails. Slow suites retain their explicit opt-in requirement.
+`--plan` configures and prints the selection without building, testing or
+preparing runtime. `--preset release` selects the existing Release tree.
+
+`verify.py` keeps `build/<preset>/verify-result.json` with the selection,
+targets, result and time spent on runtime/configuration/selection/build/tests.
+It uses `build.sh --configure-only`, then `build.sh --build-only <targets>` to
+avoid configuring twice. Both modes retain the build wrapper's toolchain setup;
+the latter requires an existing CMake cache. Plan output uses `verify-plan.json`
+and preserves the last verification result. The build wrapper checks the
+requested options/environment and cache signature; when unchanged, Ninja checks
+CMake inputs/globs and regenerates only when needed, before test selection.
+Changed wrapper/preset/options/environment or an externally edited CMake cache
+triggers normal configuration. Incremental builds retain the same directory.
+
+Runtime preparation uses `python3 scripts/prepare-runtime.py`: the official
+builders run only when the pinned upstream revision/repository, builder code,
+compiler/toolchain fingerprint or an artifact hash changes. A failed build does
+not publish a cache hit. The Unix runtime builder also supplies pinned `7zz`.
+`--skip-runtime` on verify uses the existing runtime instead. When the prepared
+module exists, `build.sh` configures its exact path, replacing a stale cached
+system module. The sibling upstream checkout stays read-only.
+
+Remote verification uses the same command in the single persistent guest
+worktree; see [sync, locks and recovery](hyperv-runners.md#persistent-worktree).
+There are no per-run source/build directories on the guests. Distinct run IDs
+identify local logs and timing records only.
+
 Shared Linux/Windows runners enable `SEVENZIP_COMPACT_TEST_BINARIES=ON`.
 The build wrapper forwards this environment setting to the CMake option of the
 same name. Linux test executables omit linked DWARF debug sections; MSVC test
@@ -120,7 +164,7 @@ distinct function addresses. Compiler debug information, Debug assertions and
 runtime checks are retained, as are production application symbols. Ordinary
 local builds default to OFF. For debugger work, rebuild the affected test with
 `SEVENZIP_COMPACT_TEST_BINARIES=OFF ./scripts/build.sh dev <target>` in the same
-snapshot/toolchain. The option does not delete artifacts from older builds.
+worktree/toolchain. The option does not delete artifacts from older builds.
 
 Runtime packages use Release builds with testing disabled; local checks remain
 unchanged. GitHub CI is absent by user decision; see [CI scope](ci.md).
@@ -169,6 +213,9 @@ retention across the supported Bash versions.
 
 If `ccache` is installed, `build.sh` automatically uses it for C, C++ and Objective-C++ compilation, including builds started by `check.sh`. Install it with `brew install ccache` on macOS or your package manager on Linux. It speeds up recompilation after a clean build or branch switch; Ninja already skips unchanged files, and the full CTest suite still runs on every `check.sh` invocation.
 On macOS the script defaults `CCACHE_DIR` to `/private/tmp/sevenzip-desktop-ccache`, which is writable in the local sandbox and reuses the existing cache. Set `CCACHE_DIR` before running the script to use another directory.
+Windows ccache uses CMake 3.25+ with embedded MSVC `/Z7` debug information;
+the project runners provide that toolchain. `verify-result.json` records actual
+compiler launchers and ccache hit/miss deltas without resetting shared statistics.
 
 Build specific targets with `./scripts/build.sh dev <target> [target ...]` and run
 focused cases with `./scripts/ctest.sh --preset dev -R '<test-name-regex>' --output-on-failure`.
@@ -206,8 +253,9 @@ SEVENZIP_INCLUDE_SLOW_TESTS=1 ./scripts/check.sh
 SEVENZIP_INCLUDE_SLOW_TESTS=1 python3 scripts/hyperv-runner.py check all --interactive --elevated
 ```
 
-Remote focused checks must build their targets in the same snapshot before
-CTest; follow [Hyper-V runners](hyperv-runners.md). A default gate does not
+Remote focused checks must build their targets after source synchronization in
+the persistent worktree; use `verify.py` or follow [Hyper-V runners](hyperv-runners.md).
+A default gate does not
 establish acceptance of excluded slow suites.
 
 ## Automation
@@ -224,9 +272,9 @@ python3 scripts/hyperv-runner.py check windows
 Add `--preset release` to run Debug's full gate followed by the Release build
 and CTest. The helper uses the global `runners` skill's authenticated readiness
 command, starts only the requested guest if needed, and discovers its current
-DHCP address. Host storage stays on `D:\runner`; project snapshots and logs
-use separate Sevenzip guest directories. See [Hyper-V runners](hyperv-runners.md)
-for toolchains, pinned engine preparation, snapshot scope and validation results.
+DHCP address. Host storage stays on `D:\runner`; each guest reuses the single
+Sevenzip `current` worktree. See [Hyper-V runners](hyperv-runners.md)
+for toolchains, pinned engine caching, source sync scope and validation results.
 This is project integration glue; upstream 7zFM has no runner implementation.
 
 The old `scripts/runner.py` wrapper is retained for explicitly selected local

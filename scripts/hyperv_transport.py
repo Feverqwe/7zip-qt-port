@@ -1,53 +1,45 @@
-"""Transfer immutable source snapshots; each run owns its destination."""
+"""Synchronize source into the single locked guest worktree, preserving outputs."""
 
 import json
-import re
 import shlex
-
-from hyperv_workspace import DEFAULT_ROOTS, LINUX_DATA_ROOT
+import subprocess
 
 WINDOWS_RSYNC = "C:/runner/sevenzip-desktop/tools/rsync/msys64/usr/bin/rsync.exe"
+PROTECTED = ("/.git/", "/build/", "/ui-reports/", "/runner-tmp/", "/upstream/", "/check.log", "/check.cmd",
+             "/runner-command.sh", "/interactive-exit.txt", "/interactive-session.txt",
+             "/.runner-owner.json", "/.runner-complete")
 
 
-def previous_snapshot(state, platform, workspace=None):
-    root = workspace or DEFAULT_ROOTS[platform]
-    if root != DEFAULT_ROOTS[platform] and not (platform == "linux" and root == LINUX_DATA_ROOT):
-        raise ValueError("Invalid project workspace for rsync basis")
-    prefix = root + "/"
-    for path in sorted(state.glob(f"*/{platform}/run.json"), reverse=True):
-        try:
-            record = json.loads(path.read_text())
-        except (ValueError, OSError):
-            continue
-        directory = record.get("directory", "")
-        if (record.get("status") == "passed" and record.get("transport") == "rsync"
-                and directory.startswith(prefix)
-                and re.fullmatch(r"[0-9]{8}T[0-9]{6}Z-[0-9a-f]{8}", directory[len(prefix):])):
-            return directory
-    return None
-
-
-def transfer(record, platform, archive, root, mode, previous, invoke, remote, output):
-    options = record["ssh_argv"][1:-1]
-    if mode == "scp":
-        invoke(["scp", *options, str(archive),
-                f"runner@{record['ip']}:{root}/{archive.name}"], **output)
-        return
-    if previous:
-        source = previous + "/" + archive.name
-        destination = root + "/" + archive.name
-        if platform == "windows":
-            remote(record, f"if (Test-Path '{source}') {{ Copy-Item '{source}' '{destination}' }}\n",
-                   **output)
-        else:
-            remote(record, f"if test -f {shlex.quote(source)}; then "
-                   f"cp {shlex.quote(source)} {shlex.quote(destination)}; fi\n", **output)
+def sync_command(record, platform, source, root):
     target = root
     server = "rsync"
     if platform == "windows":
-        # MSYS2 maps /c/... to the guest's C: drive. SSH still uses Windows OpenSSH.
         target = "/c/" + root.removeprefix("C:/")
         server = WINDOWS_RSYNC
-    invoke(["rsync", "--times", "--checksum", "--partial", "--stats", "--no-whole-file",
+    return ["rsync", "--recursive", "--links", "--perms", "--times", "--checksum",
+            "--compress", "--compress-level=1",
+            "--delete-delay", "--delay-updates", "--stats", "--no-whole-file",
+            *["--exclude=" + name for name in PROTECTED],
+            "--exclude=__pycache__/", "--exclude=*.pyc", "--exclude=.DS_Store",
             "--rsync-path=" + server, "-e", shlex.join(record["ssh_argv"][:-1]),
-            str(archive), f"runner@{record['ip']}:{target}/{archive.name}"], **output)
+            str(source) + "/", f"runner@{record['ip']}:{target}/"]
+
+
+def collect_logs(record, root, directory, command, token, invoke, output):
+    def download(source, name):
+        invoke(["scp", *record["ssh_argv"][1:-1], f"runner@{record['ip']}:{root}/{source}",
+                str(directory / name)], stdout=output, stderr=subprocess.STDOUT)
+
+    download("check.log", "check.log")
+    if not command or len(command) < 2 or command[1] != "scripts/verify.py":
+        return {}
+    preset = (command + [""])[command.index("--preset") + 1] if "--preset" in command else "dev"
+    if preset not in ("dev", "release"):
+        raise ValueError("Invalid verification preset")
+    name = "verify-plan.json" if "--plan" in command else "verify-result.json"
+    download(f"build/{preset}/{name}", name)
+    verification = json.loads((directory / name).read_text())
+    if verification.get("run_token") == token:
+        return {"verification": verification}
+    (directory / name).unlink()
+    return {"verification_error": "Report belongs to another invocation"}

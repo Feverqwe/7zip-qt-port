@@ -18,7 +18,7 @@ mkdir -p "$artifact_dir"
 python3 - "$artifact_dir" <<'PY'
 import json, pathlib, sys
 directory = pathlib.Path(sys.argv[1])
-files = [directory / name for name in ("7z", "7z.so", "runtime.json", "LICENSE.txt")]
+files = [directory / name for name in ("7z", "7zz", "7z.so", "runtime.json", "LICENSE.txt")]
 if any(path.exists() or path.is_symlink() for path in files):
     if any(path.is_symlink() for path in files):
         raise SystemExit("Refusing to replace a symlink codec runtime")
@@ -35,7 +35,7 @@ if [[ "$(uname -s)" == Darwin ]]; then
     export CPLUS_INCLUDE_PATH="$task_codec_sdk/usr/include/c++/v1${CPLUS_INCLUDE_PATH:+:$CPLUS_INCLUDE_PATH}"
   fi
 fi
-for source in CPP/7zip/UI/Console CPP/7zip/Bundles/Format7zF; do
+for source in CPP/7zip/UI/Console CPP/7zip/Bundles/Format7zF CPP/7zip/Bundles/Alone2; do
   make -s -C "$snapshot/$source" -f makefile.gcc \
     CC="${CC:-cc}" CXX="${CXX:-c++}" LFLAGS_STRIP= -j4
 done
@@ -44,6 +44,7 @@ import hashlib, json, pathlib, platform, re, shutil, sys
 baseline = json.loads(pathlib.Path(sys.argv[1]).read_text())
 snapshot, output = map(pathlib.Path, sys.argv[2:])
 sources = {"7z": "CPP/7zip/UI/Console/_o/7z",
+           "7zz": "CPP/7zip/Bundles/Alone2/_o/7zz",
            "7z.so": "CPP/7zip/Bundles/Format7zF/_o/7z.so"}
 header = (snapshot / "C/7zVersion.h").read_text()
 major, minor = [int(re.search(r"#define MY_VER_" + name + r"\s+(\d+)", header)[1])

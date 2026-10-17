@@ -1,12 +1,9 @@
-"""Run a snapshot's Windows gate in the logged-on runner's desktop session."""
+"""Run the persistent Windows worktree in the logged-on desktop session."""
 
 import base64
-import re
-
-
 def interactive_command(root, elevated=False):
-    if not re.fullmatch(r"C:/runner/sevenzip-desktop/runs/[0-9]{8}T[0-9]{6}Z-[0-9a-f]{8}", root):
-        raise ValueError("Interactive task requires a project-owned snapshot directory")
+    if root != "C:/runner/sevenzip-desktop/runs/current":
+        raise ValueError("Interactive task requires the persistent project worktree")
     # check.cmd supplies the same toolchain, engine, environment and command as
     # the SSH path. Only the Windows logon session changes; no shell UI or app
     # visibility workaround is injected into the product or its tests.
@@ -38,7 +35,8 @@ try {{
 exit $code
 """
     encoded = base64.b64encode(child.encode("utf-16le")).decode()
-    return f"""$taskName='Sevenzip-check-'+[guid]::NewGuid().ToString('N')
+    return f"""Remove-Item '{root}/interactive-exit.txt','{root}/interactive-session.txt' -Force -ErrorAction SilentlyContinue
+$taskName='Sevenzip-check-'+[guid]::NewGuid().ToString('N')
 $user=[Security.Principal.WindowsIdentity]::GetCurrent().Name
 $action=New-ScheduledTaskAction -Execute 'powershell.exe' -Argument '-NoProfile -EncodedCommand {encoded}'
 $principal=New-ScheduledTaskPrincipal -UserId $user -LogonType Interactive -RunLevel {run_level}

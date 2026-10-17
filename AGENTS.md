@@ -157,9 +157,12 @@ regression. Follow the plan's iteration rules for implementation and validation.
 For Linux/Windows checks read [Hyper-V runners](docs/hyperv-runners.md) and the
 global `runners` skill. Use
 `python3 scripts/hyperv-runner.py run <linux|windows|all> -- <project-script> [args]`
-or `check all` with shared x64 guests. Stage new task files before syncing;
-each invocation has a fresh build, so a CTest invocation must build its targets
-in the same snapshot. Runner docs own transport/readiness/storage details.
+or `check all` with shared x64 guests. Prefer `python3 scripts/verify.py <profile>
+--platform <linux|windows|all>` for focused checks. Each guest uses one locked
+`current` worktree and persistent build directories; rsync includes current
+tracked and nonignored new source files and deletes removed source files.
+Build selected targets after synchronization before running CTest; do not create
+per-run build directories. Runner docs own transport/readiness/storage details.
 Do not create or attach new virtual disks to the runners. When space is low,
 clean obsolete project runs, build outputs and temporary data under the retention
 and active-run safeguards in [Hyper-V runners](docs/hyperv-runners.md).

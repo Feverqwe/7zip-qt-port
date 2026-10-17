@@ -3,7 +3,56 @@
 Sevenzip Desktop reuses `runner-linux` and `runner-windows` on Windows 11
 Hyper-V host `192.168.1.14`, host SSH account `anton`. VM storage stays under
 `D:\runner`; Windows guest `C:` is inside its VHDX on that disk. These are the
-same shared x64 guests used by htopQt, with separate project snapshot directories.
+same shared x64 guests used by htopQt, with one persistent Sevenzip worktree
+per platform. Run IDs identify logs, not new source/build directories.
+
+## Persistent worktree
+
+User instruction, 2026-10-17: synchronize the local current code into one guest
+directory and reuse its build outputs; do not create per-run build directories.
+This supersedes the former fresh-snapshot instructions, including the global
+runners skill's default fresh-directory workflow.
+
+The selected workspace root contains `current/`, with `build/dev`, `build/release`,
+runtime and temporary files retained there. Existing dated runs are historical;
+the retention policy below still applies to their disposable payloads. Preserve
+`current`, its incremental outputs, compiler caches and any active lock.
+
+Before transfer, an atomic `current.lock` directory reserves the entire cycle,
+including synchronization, build/tests and log retrieval. A second invocation
+fails with the owner run ID before touching source. An existing nonempty
+`current` without the project ownership marker is refused.
+
+`rsync --checksum --compress --compress-level=1 --delete-delay --delay-updates`
+reconciles an immutable local
+copy of the current worktree. It includes modified tracked files and nonignored
+new files in the allowlisted source/resource/test/doc/script directories and
+top-level build configuration. Deleted files disappear remotely. No staging or
+commit is required. Local `.git`, `.codex`, credentials, build outputs and other
+ignored state are not sent. The guest's `.git/`, `build/`, `ui-reports/`,
+`runner-tmp/`, `upstream/` and runner control/log files are protected from deletion.
+Do not use `--delete-excluded`. A SHA256 manifest verifies every supplied source
+file/link before the command runs; unsafe external links are refused. The
+manifest describes code at invocation start, not edits made during the run.
+Matching files are skipped, including on repeated runs. The archive-mode subset
+`-rlpt` preserves recursive content, links, permissions and times; owner/group
+and special-device replication are deliberately omitted across Linux/Windows.
+
+After confirmed command exit the lock is released, including on a normal test
+failure. An interrupted or disconnected invocation retains it if execution
+completion is unknown. Interrupting the client is not guaranteed cancellation
+of guest processes. Inspect with:
+
+```sh
+python3 scripts/hyperv-runner.py status all
+python3 scripts/hyperv-runner.py recover windows
+```
+
+`recover` only releases the recorded owner's lock when its completion marker
+matches. It never steals a live/unknown lock. If synchronization or the shell
+died before writing completion, inspect guest processes, scheduled tasks and
+the recorded owner before manually releasing that exact abandoned lock; age
+alone is insufficient. The next normal sync repairs a partial source transfer.
 
 ## Storage policy (user instruction, 2026-10-07)
 
@@ -34,10 +83,10 @@ insufficient, report the remaining capacity requirement; do not add a disk.
 
 ## Runner configuration and evidence
 
-Fresh Linux and Windows runs enable compact test binaries through the build
+Linux and Windows runs enable compact test binaries through the build
 wrapper; [development](development.md#local-commands) describes the retained
 diagnostics and the opt-out for debugger rebuilds. This reduces per-run artifacts;
-completed snapshots still require the storage cleanup policy above.
+historical completed snapshots still require the storage cleanup policy above.
 Default runner gates also exclude tests labeled `slow`. Long suites require an
 explicit request and opt-in as described in AGENTS.md; do not count excluded
 matrices as platform acceptance.
@@ -67,10 +116,9 @@ confirm6.12.0. Linux full240/240 passed; Windows runtime validation is pending.
 Earlier systemQt6.4.2 and
 WindowsQt6.8.3 results below remain historical evidence, not Qt6.12 checks.
 
-Every fresh snapshot creates its own `runner-tmp` directory before extraction.
-Its process environment sets `TEMP`, `TMP` and `TMPDIR` there, including Windows
-archive extraction, MSVC setup and the interactive scheduled-task child.
-Temporary files stay with that run and are excluded from its Git snapshot.
+The persistent worktree contains `runner-tmp`. Its process environment sets
+`TEMP`, `TMP` and `TMPDIR` there before MSVC setup and the interactive child.
+Temporary files stay in the project workspace and are excluded from its Git baseline.
 This does not change global environment variables, move old files or delete
 completed runs; capacity still needs a live preflight before substantial builds.
 Linux SSH checks default `QT_QPA_PLATFORM` to `offscreen` when it is unset;
@@ -97,7 +145,7 @@ The ignored local `build/runners/hyperv/workspaces.json` selects the data root:
 
 Without this file, both legacy roots remain the defaults. The loader accepts
 only these project roots and canonical UUIDs. A selected data workspace checks
-the actual mounted filesystem UUID before creating a snapshot or transferring
+the actual mounted filesystem UUID before acquiring the worktree or transferring
 source; a missing or different mount fails without falling back to the OS disk.
 Rsync basis selection stays within the selected workspace. Each run records its
 directory and required UUID. The helper does not create, format or mount disks.
@@ -117,7 +165,7 @@ Native Windows window/focus/Properties checks need the logged-on user's desktop,
 not SSH's session0. Use `check windows --interactive`, `check all --interactive`,
 or `run windows --interactive -- <project-script> [args]`. The runner creates a
 unique `Sevenzip-check-...` scheduled task with the current runner identity and
-an InteractiveToken, runs the same snapshot `check.cmd`/toolchain there, records
+an InteractiveToken, runs the worktree's `check.cmd`/toolchain there, records
 the session and exit code, then removes the completed task. It needs an existing
 active runner logon; it does not log in, supply credentials or fall back to a
 noninteractive desktop. Linux in `all` keeps its normal path. Session0 runs may
@@ -144,7 +192,7 @@ required for interactive checks.
 Full Windows gates also include privileged native symlink/security fixtures.
 Use `check windows --interactive --elevated` or `check all --interactive --elevated`
 for those gates; custom validation wrappers accept the same flags before `--`.
-`--elevated` selects `Highest` for this snapshot's owned scheduled task and checks
+`--elevated` selects `Highest` for this invocation's owned scheduled task and checks
 the actual administrator token before running the command. Session evidence
 records requested run level and actual elevation. The default interactive mode
 keeps `Limited`; noninteractive/Linux-only elevation requests are rejected.
@@ -170,25 +218,20 @@ python3 scripts/hyperv-runner.py run linux -- scripts/build.sh dev
 python3 scripts/hyperv-runner.py run all --skip-runtime -- scripts/check_ui_parity.py --help
 ```
 
-Scripts must be indexed project files in the synced directories, with paths
+Scripts must be nonignored project files in the synced directories, with paths
 relative to the project root. `.sh` uses Bash on both platforms (Git Bash on
 Windows); `.py` uses the guest Python; `.ps1` is supported for Windows only.
 Arguments after `--` are passed literally, including spaces, Unicode and shell
-metacharacters. Scripts run from the snapshot root in the existing platform
-toolchain environment. `--skip-runtime` skips engine/SFX compilation when the
+metacharacters. Scripts run from `current` in the existing platform
+toolchain environment. `--skip-runtime` skips engine/SFX preparation when the
 selected script does not need it; by default runtime preparation is retained.
 Each action has its own `--help` and accepts only its applicable runner options.
 `--preset` is accepted only by the `check` shortcut; `run` passes build/test options through
 the script arguments. `scripts/build.sh` takes `dev` or `release` positionally.
 
-The default transport is `rsync` over the verified SSH connection. The local
-snapshot is an uncompressed `source.tar`; the latest successful rsync run's
-archive is copied into the new guest run directory as a private delta basis.
-Rsync transfers changed blocks, then the guest verifies the full archive SHA256
-before extraction. The previous run is untouched, concurrent runs have separate
-destinations, and deleted source files cannot survive extraction into the fresh
-directory. The first run sends the full archive. `--transport scp` selects the
-original gzip archive transport and does not require rsync.
+The source transport is directory rsync over the verified SSH connection, with
+deletion/protection and locking as described [above](#persistent-worktree).
+Archive/scp source transport is removed. Scp is used only to retrieve logs.
 
 Windows rsync 3.5.1 (protocol 33) was installed on request on 2026-10-03 in
 `C:\runner\sevenzip-desktop\tools\rsync\msys64`, using the
@@ -202,24 +245,22 @@ MSVC and Qt, and is used only for transport; builds retain Git Bash and MSVC.
 Linux uses its installed `/usr/bin/rsync`; the Mac client needs `rsync` in PATH.
 Checks do not install or upgrade packages automatically.
 
-`all` creates and hashes the source archive once, then runs the two guests in
+`all` materializes and hashes current source once, then runs the two guests in
 parallel. Failure on one guest does not prevent the other from completing.
 The command exits nonzero if either fails. Each platform has `run.json`, a local
 `transport.log`, and a downloaded full `check.log` when available under
 `build/runners/hyperv/<run-id>/<platform>/`; the parent `run.json` records the
-shared snapshot hash, source revision, command and aggregate result. Failure
+shared manifest hash, source revision, command, phase timings and aggregate result. Failure
 output includes the last 20 log lines with a platform prefix. Log retrieval
 errors are recorded separately from script results.
 `probe all` also checks both guests in parallel, printing each guest's captured
 output as one block and returning nonzero if either probe fails. Preparation
 errors captured by discovery are retained in the run record and transport log.
 
-Every invocation uses a fresh snapshot and build directory; it does not reuse
-an earlier build. A script invoking CTest must build its targets first in that
-same invocation, for example in a project script that calls `build.sh` followed
-by `ctest.sh`. There is no `--run-id` reuse mode yet. Interrupting the client is
-not a guaranteed remote process cancellation; parallel workers may finish
-before the client exits. No automatic remote cleanup is performed.
+Every invocation reuses `current/build/<preset>`. CTest still needs its targets
+built after synchronization: use `verify.py`, or a script calling `build.sh`
+followed by `ctest.sh`. There is no per-run build mode. Temporary local source
+copies are removed after transfer/execution; only logs and metadata get run IDs.
 
 The global skill at `~/.codex/skills/runners` must be installed. Its
 `scripts/hyperv_ready.py <platform> --start` starts only the requested existing
@@ -247,30 +288,27 @@ The same receipt records the temporary real-console Xorg/Openbox/PCManFM scope.
 Linux bulk TypeText lost input events in that setup; paced TypeKey input and
 inspection of the actual destination preceded the accepted transfer.
 
-Each check creates a fresh `/home/runner/sevenzip-desktop/runs/<id>` or
-`C:\runner\sevenzip-desktop\runs\<id>`. The SHA256-verified archive contains
-current tracked project sources, resources, tests, docs, skills and build
-configuration, including modifications and excluding deleted files. Add new
-files to the Git index before running; the runner and its transport helper are
-included explicitly.
-Untracked project files are listed as omitted with a reminder to use `git add`;
-selecting an untracked script is rejected before runner startup. Ignored state
-and the project's `.git` are excluded.
+Each check updates `<selected-workspace>/current`, normally
+`/home/runner/sevenzip-desktop/runs/current` or
+`C:\runner\sevenzip-desktop\runs\current`. Source scope, untracked files and
+exclusions are specified in [the synchronization contract](#persistent-worktree).
 
 The helper also includes an upstream Git bundle at the exact revision recorded
 in `docs/upstream-baseline.json`. `--upstream /path/to/7zip` overrides the default
 read-only sibling checkout. A temporary local mirror creates the bundle ref;
 the original checkout's refs, index and files remain untouched. No upstream
-network fetch is needed. The guest clones the bundle into snapshot-local
-`upstream/` and uses existing project builders to prepare dynamic engine,
-codec module and SFX. Linux also builds standalone `7zz` from `Bundles/Alone2`;
-Windows's runtime builder produces it. All runtime binaries match the guest
-architecture and pinned source. Environment changes apply only to this check.
+network fetch is needed. Bundles are cached locally by revision. The guest keeps
+a bare `upstream/` object store and fetches the supplied bundle only when its
+pinned commit is missing. `prepare-runtime.py` verifies a toolchain/builder/source
+fingerprint and artifact hashes before reusing the dynamic engine, codec module,
+standalone client and SFX. Misses invoke the official project builders; temporary
+upstream build trees are removed by those builders. All runtime binaries match
+the guest architecture and pinned source. Environment changes are process-local.
 
 Before transfer, the helper checks actual local staged/worktree diffs for
-whitespace errors. The guest creates a snapshot-local Git commit for the full
+whitespace errors. The guest updates its local Git baseline for the full
 gate, so original upstream notices with historical whitespace are baseline
-content rather than newly staged additions. The client Git state is unchanged. Runtime
+content rather than newly staged additions. The client's Git index is unchanged. Runtime
 preparation and `scripts/check.sh` write to `check.log` in the guest directory.
 `--preset release` runs the full Debug gate first, then Release build/CTest;
 an earlier failure stops later stages. Connection records and per-run SHA256,
@@ -306,6 +344,19 @@ htopQt's clang-cl selection is not inherited. PATH and Qt/module discovery are
 scoped to the check process. The helper does not change shared packages or toolchains.
 Both guests build with four jobs and run CTest sequentially.
 
+Ccache is selected automatically by `build.sh` for C/C++ (and Objective-C++
+where applicable). Linux has `/usr/bin/ccache` 4.9.1; Windows has project-owned
+`C:/runner/sevenzip-desktop/tools/ccache/ccache.exe` 4.14.1, installed on request
+on 2026-10-17 from the [official release](https://ccache.dev/download.html).
+The Windows ZIP SHA256 is
+`6219f3865ca59aec41ee4b678df171d5d35855ecb2b6dbbbd20690b3a68af7b4`;
+`tools/ccache/installation.json` records its URL/hash. A real MSVC two-compile
+probe produced one miss followed by one direct hit. Windows PATH changes are
+scoped to the runner environment. MSVC uses embedded `/Z7` debug information
+through CMake CMP0141, retaining debug information while allowing cached objects.
+Project caches live at `<project-root>/cache/ccache`, outside `runs/current`,
+with a process-local 2GB limit. No existing shared compiler cache is deleted.
+
 Sevenzip uses clang-format 23.1.2, matching the local source formatting. Version
 18 in htopQt's environment rejects existing source formatting before compilation.
 Separate Python virtual environments contain the pinned PyPI formatter under
@@ -316,16 +367,13 @@ To recreate the formatter, run the guest's `python3 -m venv <directory>` (Window
 `C:\runner\htopqt\Python\python.exe -m venv <directory>`), then that venv's
 Python with `-m pip install --no-cache-dir clang-format==23.1.2`.
 
-Offline transport tests run with `python3 tests/hyperv_runner_tests.py`; they
-check Unicode/spaced filenames, modified/deleted/untracked content, exact pinned
-bundle retrieval without upstream mutation, local whitespace rejection, large
-Windows scripts through SSH stdin, Linux failure exit/log propagation, and
-failed/interrupted run records.
-They also cover a shared snapshot with independent platform failures and
-literal command argument transport through Linux and the Windows Bash payload.
-An actual local rsync delta fixture checks reconstructed bytes and preservation
-of the previous basis; transport tests require local Bash, Git and rsync.
-Runner orchestration tests remain outside the application's CTest gate.
+`python3 scripts/verify.py tooling` runs the registered offline workflow, runner,
+runtime-cache, CTest selection and output suites. They cover a first build with
+missing executables, fixture closure, incremental reuse, empty/slow selections,
+Unicode/current/untracked/deleted source, actual rsync deletion and protected
+outputs, lock ownership/completion and failure/context/quoting behavior. These
+tests use temporary deterministic local fixtures and no VM/network access;
+they require Bash, Git, CMake/Ninja, a compiler and rsync.
 
 SSH checks cover the project gate, not interactive desktop/Finder behavior,
 distribution or rendered Windows 7zFM parity. Historical ARM64 QEMU checks

@@ -4,6 +4,10 @@ set -euo pipefail
 project_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$project_root"
 preset="${1:-dev}"
+build_only=0
+if [[ "${2:-}" == --build-only ]]; then
+  build_only=1
+fi
 
 # Keep MSVC /showIncludes encoding consistent even without English language resources.
 if [[ "${OS:-}" == Windows_NT ]]; then
@@ -22,23 +26,64 @@ fi
 compiler_cache=""
 if command -v ccache >/dev/null 2>&1; then
   compiler_cache="$(command -v ccache)"
+  if [[ "${OS:-}" == Windows_NT ]]; then
+    compiler_cache="$(cygpath -m "$compiler_cache")"
+  fi
   if [[ -z "${CCACHE_DIR:-}" && "$(uname -s)" == Darwin ]]; then
     export CCACHE_DIR=/private/tmp/sevenzip-desktop-ccache
   fi
 fi
 
 configure() {
+  if [[ "$build_only" == 1 ]]; then
+    if [[ ! -f "$project_root/build/$preset/CMakeCache.txt" ]]; then
+      printf 'Configure %s before using --build-only.\n' "$preset" >&2
+      exit 2
+    fi
+    return
+  fi
+  if [[ "${OS:-}" == Windows_NT && -n "$compiler_cache" ]]; then
+    # MSVC shared /Zi databases cannot be cached. Embedded /Z7 retains debug
+    # information in each object and lets ccache restore complete outputs.
+    set -- -DCMAKE_POLICY_DEFAULT_CMP0141=NEW -DCMAKE_MSVC_DEBUG_INFORMATION_FORMAT=Embedded "$@"
+  fi
+  local runtime_directory="${SEVENZIP_CODEC_MODULE_DIR:-$project_root/build/codec-runtime}"
+  local runtime_module="$runtime_directory/7z.so"
+  if [[ "${OS:-}" == Windows_NT ]]; then
+    runtime_module="$runtime_directory/7z.dll"
+  fi
+  if [[ -f "$runtime_module" ]]; then
+    set -- "-DSEVENZIP_CODEC_MODULE=$runtime_module" "$@"
+  fi
   if [[ -n "${SEVENZIP_COMPACT_TEST_BINARIES:-}" ]]; then
     set -- "-DSEVENZIP_COMPACT_TEST_BINARIES=$SEVENZIP_COMPACT_TEST_BINARIES" "$@"
   fi
   if [[ -n "$compiler_cache" ]]; then
-    cmake --preset "$preset" --log-level=WARNING \
+    set -- \
       "-DCMAKE_C_COMPILER_LAUNCHER=$compiler_cache" \
       "-DCMAKE_CXX_COMPILER_LAUNCHER=$compiler_cache" \
-      "-DCMAKE_OBJCXX_COMPILER_LAUNCHER=$compiler_cache" "$@" >/dev/null
+      "-DCMAKE_OBJCXX_COMPILER_LAUNCHER=$compiler_cache" "$@"
+  fi
+  local cache_file="$project_root/build/$preset/CMakeCache.txt"
+  local signature_file="$project_root/build/$preset/.configure-signature"
+  local requested_signature
+  requested_signature="$(printf '%q ' "$preset" "$@" \
+    "${CMAKE_PREFIX_PATH:-}" "${CC:-}" "${CXX:-}" "${OBJCXX:-}" \
+    "${CFLAGS:-}" "${CXXFLAGS:-}" "${OBJCXXFLAGS:-}" "${LDFLAGS:-}" \
+    "${CMAKE_TOOLCHAIN_FILE:-}" "${SDKROOT:-}" "${CPLUS_INCLUDE_PATH:-}" \
+    "$(cksum "$project_root/scripts/build.sh" "$project_root/CMakePresets.json")" | cksum)"
+  local existing_signature=""
+  if [[ -f "$cache_file" && -f "$signature_file" && -f "build/$preset/build.ninja" ]]; then
+    existing_signature="$(printf '%s\n%s\n' "$requested_signature" "$(cksum "$cache_file")")"
+  fi
+  if [[ -n "$existing_signature" && "$(cat "$signature_file")" == "$existing_signature" ]]; then
+    # Ninja owns CMake input/glob dependencies. Regenerate only when needed,
+    # before CTest selection; this target does not compile the application.
+    cmake --build --preset "$preset" --target build.ninja -- --quiet
   else
     cmake --preset "$preset" --log-level=WARNING "$@" >/dev/null
   fi
+  printf '%s\n%s\n' "$requested_signature" "$(cksum "$cache_file")" > "$signature_file"
 }
 
 if [[ "$preset" != dev && "$preset" != release ]]; then
@@ -68,6 +113,16 @@ fi
 
 if [[ "$#" -gt 0 ]]; then
   shift
+fi
+if [[ "$build_only" == 1 ]]; then
+  shift
+fi
+if [[ "${1:-}" == --configure-only ]]; then
+  if [[ "$#" != 1 ]]; then
+    printf '%s: --configure-only does not accept targets.\n' "$0" >&2
+    exit 2
+  fi
+  exit 0
 fi
 if [[ "$#" -gt 0 ]]; then
   cmake --build --preset "$preset" --target "$@" -- --quiet
