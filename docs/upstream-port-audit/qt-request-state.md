@@ -44,6 +44,7 @@ suites passed on macOS and Linux x64 / Qt 6.12. Run
 Windows x64 as well: `archive_backend`, `archive_mutation`, `extraction_options`,
 `archive_creation_lifecycle`, `source_update_backend` and `archive_progress`.
 The broader Windows run passed 18/19; its sole failure was an unrelated Options
-resize expectation, being investigated separately. Linux/Windows used the
+resize expectation. The [test-only correction](options-platform-visibility.md#переносимость-геометрической-проверки--2026-10-18)
+passed separately in run `20261017T215830Z-4e302ed8`. Linux/Windows used the
 persistent `current` worktree and compiler caches; Windows symlink fixtures
 used the existing elevated task mode. No full/slow gate was run.

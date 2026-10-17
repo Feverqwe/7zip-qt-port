@@ -242,9 +242,10 @@ This establishes structure and interaction, not pixel correspondence.
 Folders follows pinned FoldersPage2.rc: working-folder label, system/current/
 specified radios, path/Browse row, removable-only checkbox. Path and Browse are
 enabled only for specified mode. POSIX removable-only is hidden until the
-platform owner supplies drive-type support. `options_dialog` checks640×390 and
-520×380 JSON/geometry, native mode order and separated footer. The height grows
-from350 because Settings now has minimum361 with its additional source controls.
+platform owner supplies drive-type support. `options_dialog` requests640×390 and
+520×380 and checks actual JSON/geometry, native mode order and separated footer.
+Qt height-for-width and native window constraints can change the actual client
+size; checks use the exposed controls rather than a fixed height calculation.
 `options_dialog` also checks Settings memory row grouping and input focus after
 invalid Apply, writes options-settings JSON at both sizes. `options_integration`
 checks all-six-page Apply/OK/Cancel/restart and visible keyboard focus;

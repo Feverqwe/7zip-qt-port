@@ -80,3 +80,27 @@ Folders/Edit удерживают строки сверху, System/Menu/Languag
 проверяет сохранение верхних координат элементов при росте высоты с той же
 шириной и фактическую смену языка. CTest `language_ui` — PASS. Нативный запуск
 использует тот же изолированный `build/dev/language_ui.ini`, что и CTest.
+
+### Переносимость геометрической проверки — 2026-10-18
+
+Follow-up проверки Qt-адаптации обнаружили хрупкое ожидание в
+`options_dialog::settingsGeometryAndKeyboardSpin`: точный размер окна
+приравнивался к запросу, расширенному только до minimumSizeHint. На Windows
+при ширине 640 hint давал высоту 390, а heightForWidth и фактическая геометрия
+требовали 512. Запрос 900×800 также получил допустимый native client 900×749;
+расчёт по доступной области QWidget не воспроизводил ограничение оконной системы.
+
+Сверены исходные SettingsPage2.rc/OptionsDialog/PropertyPage и текущие Qt
+layouts/контракт Settings. Product code и перенос OnInit/OnApply не менялись.
+Убрано только сравнение точного client size, проверявшее расчёт Qt/WM.
+Сохранены все четыре исходных запроса, видимость, порядок, отсутствие
+пересечений, реальная высота подписи и зазор до поля памяти. Отдельные JSON
+`options-settings-<width>x<height>` сохраняют каждый запрос и фактические bounds.
+
+macOS arm64 и Linux x64 / Qt 6.12 offscreen: `options_dialog` PASS. Windows x64
+/ Qt 6.12, QPA windows в интерактивной сессии: PASS; remote receipt
+`20261017T215830Z-4e302ed8`. Просмотрены 12 актуальных JSON: четыре размера на
+каждой ОС. Settings и footer полностью видимы; при росте высоты координаты
+группы настроек не расходятся. Windows compact states имеют высоту 512,
+large state — 749; macOS/Linux сохранили запрошенные размеры. Доказана
+геометрия Qt controls на этих платформах, без rendered Windows 7zFM reference.

@@ -128,6 +128,17 @@ Apply/Cancel, Settings validation refusal, продолжение Apply друг
 Рендеренное сравнение с Windows 7zFM, физический ввод и полный/slow gate
 в эту проверку не входят.
 
+Итог runtime-проверки: приложение и выбранные targets собраны incremental;
+19 focused suites команд/настроек/навигации/lifetime/backend прошли на macOS
+arm64 и Linux x64 / Qt 6.12. Windows x64 прошёл 18 из них в том же batch
+`20261017T214943Z-5b5325cd`; последний `options_dialog` прошёл после коррекции
+хрупкого test-only resize expectation в `20261017T215830Z-4e302ed8`.
+[Геометрическое свидетельство](upstream-port-audit/options-platform-visibility.md#переносимость-геометрической-проверки--2026-10-18)
+разделяет реальные bounds и запрошенные размеры. Отдельные focused receipts
+для controls и событий списка связаны выше. Кэши и постоянные build trees
+сохранены. Проверка названных границ завершена; это ограниченная source/behavior
+проверка, сохраняющая описанные в базовом аудите платформенные ограничения.
+
 - [Понятные подписи открытия](upstream-port-audit/open-menu-captions.md)
   — уточнение названий Qt-меню с сохранением расположения и исходных команд.
 

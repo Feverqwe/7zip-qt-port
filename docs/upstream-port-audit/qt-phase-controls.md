@@ -57,4 +57,5 @@ under `build/runners/hyperv/` with those run IDs.
 
 These are focused source/build/behavior checks. No full gate or slow suites
 were run. This change does not alter layout; rendered Windows UI comparison
-is outside this validation. The broader Qt adaptation audit remains in progress.
+is outside this validation. The broader Qt adaptation review and its limits are
+recorded in the [audit index](../upstream-port-audit.md#проверка-границ-qt-адаптации--2026-10-18).
