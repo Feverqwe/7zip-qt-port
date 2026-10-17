@@ -47,6 +47,11 @@ The existing label/buttons/list/footer geometry is unchanged. Private-XDG
 Critical/OK after an external-choice conflict; all required groups remain visible
 with a disabled explained all-users action. [Source/native acceptance](../upstream-port-audit/p3-06-system-native-2026-10-17.md).
 
+macOS pending Own uses the native application bundle image even when the codec
+manager supplies a nonempty module filename. `mac_system_page` checks the same
+four language/size variants and Other/Own/Clear/restored images without native
+registration writes. [Live Windows/macOS values and image receipt](../upstream-port-audit/p3-06-system-live-2026-10-17.md).
+
 ### Native Copy terminal errors (P3-05)
 
 Reference App.cpp::OnCopy, PanelCopy.cpp::CopyTo/ProcessVirt and

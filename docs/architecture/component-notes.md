@@ -661,6 +661,11 @@ dialog actions disabled while a native completion is pending. Tests inject fake
 registration boundaries. GUI code neither writes OS registration directly nor
 builds archive process arguments for this workflow.
 
+Native association adapters may supply a decoded handler image separately from
+its executable/resource path. Linux resolves desktop-entry GIcon metadata;
+macOS supplies the own application's bundle image. Source SystemPage retains
+selection and image-index policy, including the original Windows indexed loader.
+
 QtAssociationFileOpen retains native application file events until the UI
 consumer is connected, then dispatches local paths asynchronously. main.cpp
 uses an additional MainWindow and its existing openPath/backend owner for each

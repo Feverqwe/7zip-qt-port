@@ -1795,6 +1795,12 @@ It checks the row's decoded image and retained preference bytes, alongside EN/RU
 normal/compact widget/message reports. The format manager is a two-extension
 fixture; full catalog/installed native values and pixel parity remain separate.
 The Options profile and both component wrappers include these cases.
+On macOS, `mac_system_page` uses the native bundle-icon provider with an injected
+registration boundary: a nonempty codec-module path must not replace the pending
+Own image; Clear/restoration and Cancel preserve state without native writes.
+Four EN/RU normal/compact cases provide widget reports. The same wrappers and
+Options profile include it. [Current native catalog/read-only evidence](../upstream-port-audit/p3-06-system-live-2026-10-17.md)
+covers actual Windows/macOS values separately from these deterministic fixtures.
 codec_catalog checks real original association resource
 extensions and case-insensitive icon lookup through QtArchiveFolderManager,
 independently of the broader Open filter aliases. ui_parity_system runs the

@@ -4,12 +4,19 @@
 
 ## Current final acceptance matrix (2026-10-17)
 
+[Live System values and macOS bundle image](upstream-port-audit/p3-06-system-live-2026-10-17.md)
+добавляют40 actual catalog rows в четырёх native состояниях Windows/macOS,
+pending indexed/bundle icon и Cancel с неизменными native revisions. Исправлен
+значок Own на macOS; regression RED4→GREEN, Cocoa6Qt/12JSON, Options10/10 и
+associations4/4 PASS. Original row comparison, installed mutation/consent и
+общий native/cold scope остаются открытыми; поставка требует обновления.
+
 [Native Linux System icons](upstream-port-audit/p3-06-system-native-2026-10-17.md)
 дополняют проверенный scope реальными GIO file/theme images и source
 pending/Apply/Cancel/external-conflict workflow в private XDG: native12Qt/28JSON,
 включая actual Options Critical/OK и сохранённые внешние preferences. Пять
-неизменённых native Options suites проходят на3OS по69Qt/86JSON; Windows/macOS
-live values/icons и общий native/cold walkthrough этим не принимаются.
+неизменённых native Options suites проходят на3OS по69Qt/86JSON; последующий
+Windows/macOS read-only scope принят отдельно выше, общий native/cold walkthrough открыт.
 Пакеты09a6f6d ниже ещё не включают эту source-коррекцию.
 
 [Copy/Move runtime comparison](upstream-port-audit/p3-06-copy-runtime-2026-10-17.md)

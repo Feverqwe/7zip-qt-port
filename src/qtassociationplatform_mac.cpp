@@ -2,8 +2,12 @@
 #include "qtassociationplatform.h"
 #include "qtlangcontrols.h"
 #include "qtmacassociationnative.h"
+#include <QCoreApplication>
 #include <QCryptographicHash>
 #include <QDir>
+#include <QFileIconProvider>
+#include <QFileInfo>
+#include <QGuiApplication>
 #include <QHash>
 #include <QSettings>
 #include <QStandardPaths>
@@ -24,6 +28,13 @@ class MacAssociationPlatform final : public IQtAssociationPlatform {
     }
     UString OwnIconPath() const override {
         return UString(QtMacOwnBundlePath().toStdWString().c_str());
+    }
+    QIcon OwnIcon() const override {
+        if (!qobject_cast<QGuiApplication *>(QCoreApplication::instance()))
+            return {};
+        const QFileInfo bundle(QtMacOwnBundlePath());
+        return bundle.isDir() && bundle.suffix() == "app" ? QFileIconProvider().icon(bundle)
+                                                          : QIcon();
     }
     LONG Read(unsigned group, const UString &ext, QtAssociationRecord &record) override {
         if (group != 0)

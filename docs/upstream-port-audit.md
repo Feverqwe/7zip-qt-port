@@ -14,6 +14,8 @@
 
 [GIO images, source state/Apply/Cancel/refusal and three-platform fallback checks](upstream-port-audit/p3-06-system-native-2026-10-17.md).
 
+[Windows/macOS live catalog values, Cancel and native macOS bundle image](upstream-port-audit/p3-06-system-live-2026-10-17.md).
+
 ## P3-04 — Current source/Copy delivery (2026-10-17)
 
 [Committed inputs, three Release artifacts and fresh dependency/relocation checks](upstream-port-audit/p3-04-copy-delivery-2026-10-17.md).
