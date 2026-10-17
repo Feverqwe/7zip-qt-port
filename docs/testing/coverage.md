@@ -1787,6 +1787,14 @@ executable identity, foreign-executable rejection, Add→Clear/no-default,
 Clear/retained other default, unrelated MIME preferences and independent
 `gio mime` queries. They touch no global desktop entries/defaults.
 `scripts/check-associations.sh` builds these and their direct source consumers.
+`linux_system_page_*` additionally uses real GIO in separate private XDG processes:
+distinct file/theme/own icons with a shared quoted Unicode executable, native
+handler values and group availability, source pending cycles, Apply, Cancel/
+reopen and external-choice ERROR_RETRY through the parent Options presenter.
+It checks the row's decoded image and retained preference bytes, alongside EN/RU
+normal/compact widget/message reports. The format manager is a two-extension
+fixture; full catalog/installed native values and pixel parity remain separate.
+The Options profile and both component wrappers include these cases.
 codec_catalog checks real original association resource
 extensions and case-insensitive icon lookup through QtArchiveFolderManager,
 independently of the broader Open filter aliases. ui_parity_system runs the

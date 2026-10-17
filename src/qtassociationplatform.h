@@ -5,6 +5,7 @@
 
 struct QtAssociationRecord {
     NRegistryAssoc::CShellExtInfo info;
+    QIcon icon;
     QByteArray revision;
     // Extensions can share one native MIME type/UTType mutation domain.
     // Empty means this extension has independent registration state.
@@ -21,6 +22,7 @@ class IQtAssociationPlatform {
     virtual QString ApplyExplanation(unsigned) const { return {}; }
     virtual QString CurrentUserName() const { return {}; }
     virtual UString OwnIconPath() const = 0;
+    virtual QIcon OwnIcon() const { return {}; }
     virtual LONG Read(unsigned group, const UString &ext, QtAssociationRecord &record) = 0;
     virtual LONG Write(unsigned group, const UString &ext, bool associate,
                        const QtAssociationRecord &expected, const UString &title,

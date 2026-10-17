@@ -101,9 +101,10 @@ int main(int argc, char **argv) {
     executable.replace('%', "%%");
     if (!write(fixture.filePath("data/applications/sevenzip_desktop.desktop"),
                "[Desktop Entry]\nType=Application\nName=Sevenzip test\nExec=\"" +
-                   executable.toUtf8() + "\" %F\n") ||
+                   executable.toUtf8() + "\" %F\nIcon=application-x-executable\n") ||
         !write(fixture.filePath("data/applications/Other.desktop"),
-               "[Desktop Entry]\nType=Application\nName=Other\nExec=/usr/bin/true %F\n"))
+               "[Desktop Entry]\nType=Application\nName=Other\nExec=/usr/bin/true %F\n"
+               "Icon=application-x-executable\n"))
         return 2;
     QByteArray preferences =
         "# unrelated preference\n[Default Applications]\ntext/plain=Other.desktop;\n";

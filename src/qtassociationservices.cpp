@@ -69,6 +69,11 @@ class QtAssociationServices final : public IQtAssociationServices {
     UString OwnIconPath() const override {
         return platform_ ? platform_->OwnIconPath() : UString();
     }
+    QIcon OwnIcon() const override { return platform_ ? platform_->OwnIcon() : QIcon(); }
+    QIcon AssociationIcon(unsigned group, const UString &ext) const override {
+        const auto found = observed_.constFind(key(group, ext));
+        return found == observed_.cend() ? QIcon() : found->icon;
+    }
     bool Read(unsigned group, const UString &ext, NRegistryAssoc::CShellExtInfo &info) override {
         if (!platform_)
             return false;

@@ -10,6 +10,10 @@
 
 [Source Browse width, actual original states and three-platform native comparison](upstream-port-audit/p3-06-copy-runtime-2026-10-17.md).
 
+## P3-06 — Native Linux System associations and icons (2026-10-17)
+
+[GIO images, source state/Apply/Cancel/refusal and three-platform fallback checks](upstream-port-audit/p3-06-system-native-2026-10-17.md).
+
 ## P3-04 — Current source/Copy delivery (2026-10-17)
 
 [Committed inputs, three Release artifacts and fresh dependency/relocation checks](upstream-port-audit/p3-04-copy-delivery-2026-10-17.md).

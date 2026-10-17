@@ -421,6 +421,11 @@ FM INI values; Cancel discards only pending changes.
 System association errors are presented without vetoing later pages or OK, as
 source PSNRET_NOERROR requires. Settings invalid input still vetoes acceptance
 and selects Settings. Its error uses the retained MyMessages policy.
+Association platform snapshots can supply native images independently of handler
+identity and revision. Linux supplies desktop-entry GIcon metadata through the
+typed service; source SystemPage still owns state and image-index selection.
+Other platforms retain the existing indexed-module/file-icon fallback. GUI-less
+association callers keep their detection/mutation boundary without rendering.
 Source CSettingsPage owns RAM limit validation and capability-gated large pages;
 QtMemoryLimitSpin adapts only edit/arrows. IQtMemoryLockServices adapts the original
 FM startup and Settings token/LSA calls to unchanged native Windows services.

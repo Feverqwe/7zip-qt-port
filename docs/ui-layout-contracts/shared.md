@@ -34,6 +34,19 @@ native minima), all four System availability masks and both six-page directions.
 Current widget JSON checks visible control bounds; public assertions check focus,
 selection and Cancel without association writes. [Source and native receipt](../upstream-port-audit/p3-06-options-keyboard-2026-10-17.md).
 
+### Native System handler images (P3-06, 2026-10-17)
+
+Source `SystemPage.cpp::AddIcon/OnInit/RefreshListItem` and
+`SystemPage.h::CAssoc::GetIconIndex` choose the displayed handler image from the
+source association state. A pending own selection uses the application image;
+Clear removes it, and returning to Other restores that handler's image. Linux
+adapts desktop-entry file/theme icons through GIO rather than treating an Exec
+command as an icon path. Distinct handlers sharing an executable remain distinct.
+The existing label/buttons/list/footer geometry is unchanged. Private-XDG
+`linux_system_page_*` cases inspect EN/RU640×390/520×380 parent states and actual
+Critical/OK after an external-choice conflict; all required groups remain visible
+with a disabled explained all-users action. [Source/native acceptance](../upstream-port-audit/p3-06-system-native-2026-10-17.md).
+
 ### Native Copy terminal errors (P3-05)
 
 Reference App.cpp::OnCopy, PanelCopy.cpp::CopyTo/ProcessVirt and

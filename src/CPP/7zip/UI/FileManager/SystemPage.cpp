@@ -42,7 +42,11 @@ CSysString CModifiedExtInfo::GetString() const {
     return CSysString(s);
 }
 
-int CSystemPage::AddIcon(const UString &iconPath, int iconIndex) {
+int CSystemPage::AddIcon(const UString &iconPath, int iconIndex, const QIcon &nativeIcon) {
+    if (!nativeIcon.isNull()) {
+        _imageList.Add(nativeIcon);
+        return (int)(_numIcons++);
+    }
     if (iconPath.IsEmpty())
         return -1;
     if (iconIndex == -1)
@@ -143,7 +147,7 @@ bool CSystemPage::OnInit(IFolderManager *manager) {
         const CPluginToIcon &plug = extInfo.Plugins[0];
         assoc.SevenZipImageIndex =
             AddIcon(plug.IconPath.IsEmpty() && _services ? _services->OwnIconPath() : plug.IconPath,
-                    plug.IconIndex);
+                    plug.IconIndex, _services ? _services->OwnIcon() : QIcon());
         auto *item = new QTreeWidgetItem(_listView);
         item->setText(0, QString::fromWCharArray(extInfo.Ext.Ptr()));
         for (unsigned g = 0; g < 2; g++) {
@@ -151,7 +155,9 @@ bool CSystemPage::OnInit(IFolderManager *manager) {
             if (_services)
                 _services->Read(g, extInfo.Ext, mi);
             mi.SetState(OwnFormatIconPath(i));
-            mi.ImageIndex = AddIcon(mi.IconPath, mi.IconIndex);
+            mi.ImageIndex =
+                AddIcon(mi.IconPath, mi.IconIndex,
+                        _services ? _services->AssociationIcon(g, extInfo.Ext) : QIcon());
             item->setText(int(g + 1),
                           QString::fromWCharArray(GetUnicodeString(mi.GetString()).Ptr()));
         }
@@ -332,7 +338,9 @@ LONG CSystemPage::OnApply() {
                 CModifiedExtInfo detected;
                 if (_services->Read(g, _extDB.Exts[realIndex].Ext, detected)) {
                     detected.SetState(OwnFormatIconPath(realIndex));
-                    detected.ImageIndex = AddIcon(detected.IconPath, detected.IconIndex);
+                    detected.ImageIndex =
+                        AddIcon(detected.IconPath, detected.IconIndex,
+                                _services->AssociationIcon(g, _extDB.Exts[realIndex].Ext));
                     _items[realIndex].Pair[g] = detected;
                     RefreshListItem(g, listIndex);
                 }

@@ -67,7 +67,7 @@ class CSystemPage : public QWidget {
     QLabel *_label;
     bool _needSave = false;
     unsigned GetRealIndex(unsigned listIndex) const { return listIndex; }
-    int AddIcon(const UString &path, int iconIndex);
+    int AddIcon(const UString &path, int iconIndex, const QIcon &nativeIcon = {});
     UString OwnFormatIconPath(unsigned realIndex) const;
     void RefreshAvailability();
     void RefreshListItem(unsigned group, unsigned listIndex);

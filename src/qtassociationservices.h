@@ -1,5 +1,6 @@
 #pragma once
 #include "CPP/7zip/UI/FileManager/RegistryAssociations.h"
+#include <QIcon>
 #include <QString>
 
 // Platform services borrowed by the source System page. Registration is called
@@ -14,6 +15,8 @@ class IQtAssociationServices {
     virtual QString CurrentUserName() const { return {}; }
     virtual bool RefreshNativeStateAfterApply() const { return false; }
     virtual UString OwnIconPath() const = 0;
+    virtual QIcon OwnIcon() const { return {}; }
+    virtual QIcon AssociationIcon(unsigned, const UString &) const { return {}; }
     virtual bool Read(unsigned group, const UString &ext, NRegistryAssoc::CShellExtInfo &info) = 0;
     virtual LONG Add(unsigned group, const UString &ext,
                      const NRegistryAssoc::CShellExtInfo &expected, const UString &title,

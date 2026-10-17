@@ -7,6 +7,7 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QGuiApplication>
 #include <QMimeDatabase>
 #include <QStandardPaths>
 #include <QVector>
@@ -46,6 +47,29 @@ App ownApp() {
         QFileInfo(QCoreApplication::applicationFilePath()).canonicalFilePath())
         app.reset();
     return app;
+}
+
+QIcon nativeIcon(GIcon *icon) {
+    // GIO's handler icon is independent of its Exec command. In particular,
+    // desktop entries sharing an executable may have distinct file/theme icons.
+    if (!icon || !qobject_cast<QGuiApplication *>(QCoreApplication::instance()))
+        return {};
+    if (G_IS_FILE_ICON(icon)) {
+        const std::unique_ptr<gchar, decltype(&g_free)> path(
+            g_file_get_path(g_file_icon_get_file(G_FILE_ICON(icon))), &g_free);
+        return path ? QIcon(QString::fromUtf8(path.get())) : QIcon();
+    }
+    if (G_IS_THEMED_ICON(icon)) {
+        const gchar *const *names = g_themed_icon_get_names(G_THEMED_ICON(icon));
+        for (; names && *names; ++names) {
+            const QIcon image = QIcon::fromTheme(QString::fromUtf8(*names));
+            if (!image.isNull())
+                return image;
+        }
+    }
+    if (G_IS_EMBLEMED_ICON(icon))
+        return nativeIcon(g_emblemed_icon_get_icon(G_EMBLEMED_ICON(icon)));
+    return {};
 }
 LONG result(gboolean success, GError *error) {
     LONG code = success                                                                     ? 0
@@ -120,6 +144,10 @@ class LinuxAssociationPlatform final : public IQtAssociationPlatform {
     UString OwnIconPath() const override {
         return UString(QCoreApplication::applicationFilePath().toStdWString().c_str());
     }
+    QIcon OwnIcon() const override {
+        const App app = ownApp();
+        return app ? nativeIcon(g_app_info_get_icon(app.get())) : QIcon();
+    }
     LONG Read(unsigned group, const UString &ext, QtAssociationRecord &record) override {
         if (group != 0)
             return 50;
@@ -128,6 +156,7 @@ class LinuxAssociationPlatform final : public IQtAssociationPlatform {
             return 50; // Never claim application/octet-stream for an unknown extension.
         App app(g_app_info_get_default_for_type(type.constData(), false), &g_object_unref);
         const QString id = app ? QString::fromUtf8(g_app_info_get_id(app.get())) : QString();
+        record.icon = app ? nativeIcon(g_app_info_get_icon(app.get())) : QIcon();
         record.info.ProgramKey = GetSystemString(
             UString((id == desktopId() ? QString("7-Zip.desktop") : id).toStdWString().c_str()));
         record.info.IconPath = app ? UString(QString::fromUtf8(g_app_info_get_executable(app.get()))

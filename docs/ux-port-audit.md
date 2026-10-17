@@ -4,6 +4,14 @@
 
 ## Current final acceptance matrix (2026-10-17)
 
+[Native Linux System icons](upstream-port-audit/p3-06-system-native-2026-10-17.md)
+дополняют проверенный scope реальными GIO file/theme images и source
+pending/Apply/Cancel/external-conflict workflow в private XDG: native12Qt/28JSON,
+включая actual Options Critical/OK и сохранённые внешние preferences. Пять
+неизменённых native Options suites проходят на3OS по69Qt/86JSON; Windows/macOS
+live values/icons и общий native/cold walkthrough этим не принимаются.
+Пакеты09a6f6d ниже ещё не включают эту source-коррекцию.
+
 [Copy/Move runtime comparison](upstream-port-audit/p3-06-copy-runtime-2026-10-17.md)
 добавляет actual original EN/RU initial/compact и24/24 native Qt pairs на3OS,
 исправление узкой Browse20DLU и по6 focused suites/101Qt плюс native14Qt/24JSON.

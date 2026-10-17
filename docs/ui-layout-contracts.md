@@ -10,6 +10,10 @@
 
 [Открыть раздел](ui-layout-contracts/shared.md#native-copy-terminal-errors-p3-05).
 
+### Native System handler images (P3-06)
+
+[Открыть раздел](ui-layout-contracts/shared.md#native-system-handler-images-p3-06-2026-10-17).
+
 ### Refresh focus and alternative marks (P3-05)
 
 [Открыть раздел](ui-layout-contracts/shared.md#refresh-focus-and-alternative-marks-p3-05).
