@@ -28,6 +28,9 @@ current Windows full/cold/native остаются открытыми. [Паке�
 проверены на3OS с1047 exact inputs и relocation15/14/14.
 Эти изменения не заменяют оставшийся полный native/rendered обход и не
 устанавливают причину исторических Windows cold delays.
+[Physical Windows Explorer Copy/Escape](upstream-port-audit/p3-03-native-drag-fixtures-2026-10-16.md#physical-windows-explorer-recipient-2026-10-17)
+теперь проходят на17fab0f с точным Unicode/space именем, bytes и неизменным
+архивом; это отдельный проверенный native сценарий, не полная приёмка.
 Overwrite/font-DLU коррекция проверена как отдельный компонент:
 [rendered reference, регрессии и gates](upstream-port-audit/p3-06-2026-10-15.md).
 Текущий продукт1f5e16a также содержит [Add gutter correction](upstream-port-audit/p3-06-add-scroll-2026-10-15.md):

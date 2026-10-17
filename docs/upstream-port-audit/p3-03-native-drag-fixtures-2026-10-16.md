@@ -47,3 +47,37 @@ Mac v31/v32 receipts, actual failed/passing guest v31/v32 receipts, NOSPC log,
 source hashes and `linux-old-full-products-cleanup.json`. This closes the scoped
 XCB fixture blocker; it does not reclassify the earlier230/235 broad-native run
 as235/235. Current broad acceptance and P3-03/05/06 parents remain open.
+
+## Physical Windows Explorer recipient (2026-10-17)
+
+Product `17fab0f86d7706795f7f5cea62a98c277c75d5ee` now passes actual archive
+drag-out Copy and Escape into separate UUID-owned Windows Explorer folders.
+Windows11Pro x64, Qt6.12.0/VisualStudio2022 17.14, official engine baseline above;
+interactive snapshot `20261017T033718Z-6d4ebc6c`, Session1, Limited,
+Elevated=False, Normal priority. No product code or source algorithm changes.
+The reused native executable's producer matches all1047 committed product
+inputs; executable SHA256
+`85f28b83fb04b57c8c96bd3aaa5021b351adf3f063c45de0ac6defd2be9ef640`.
+
+The disposable ZIP contains `Sevenzip payload ü 空.txt`. UI Automation confirms
+the source archive address/row and owned Explorer content. Before input,
+WindowFromPoint/GetAncestor must identify the exact owned source and destination
+windows; all pointer movement, button transitions and Escape use Win32 SendInput.
+Copy delivers exact bytes, SHA256
+`aa7f8ddaefb9c7e79c35dd5ba8bae91735bc5e8be31e5dfb0e2e922bc36b6e0e`;
+Escape leaves its destination empty. Both preserve the source ZIP hash and keep
+the source application alive. Completion and cleanup close only fixture-owned
+windows/processes; Explorer itself and unrelated windows remain untouched.
+
+Earlier attempts expose runner-console occlusion and stop before input; one
+earlier unguarded attempt times out and is not accepted. Showing both owned
+windows above the console resolves the fixture prerequisite. An initial passing
+run uses a misdecoded fixture name; the explicit UTF-8 replay above verifies
+the intended Unicode name and bytes. Source/configuration guards pass.
+
+Evidence in the final availability root:
+`windows-final-explorer-drag-v148-evidence/`, including pointer ownership,
+Copy/Escape results, exact Unicode payload proof, source/product hash receipts
+and application logs. This proves a real external OLE recipient, rather than
+the earlier synthetic cancellation alone. It does not prove every native
+failure/lifetime state, cold stability, full rendered parity or parent acceptance.
