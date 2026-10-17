@@ -73,6 +73,8 @@ duplication controls, Zone row and scrollable command list. Missing DLL disables
 its checkbox; a 32-bit process without another shell hides only the other-bitness
 control. Explicit Apply runs other view first and resets each check to a fresh
 registration query, including failure. Cancel initiates no registration.
+The Zone caption uses the available row width and remains on one line when it
+fits. At smaller widths it may wrap without overlapping the combo or list.
 menu_page checks these states through a fake module/registry service and writes
 menu-shell EN/RU640×390/520×380 reports. Four current macOS reports reviewed:
 compact498-wide controls accommodate the391-wide RU bitness hint; Zone label

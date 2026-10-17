@@ -99,7 +99,7 @@ CMenuPage::CMenuPage(const QString &settingsPath, QWidget *parent, bool zoneSupp
     auto *zoneRow = new QHBoxLayout;
     auto *zoneLabel = new QLabel("Propagate Zone.Id stream:", this);
     zoneLabel->setObjectName("menuZoneLabel");
-    zoneLabel->setProperty("languageWrapWidth", 160);
+    zoneLabel->setWordWrap(true);
     zoneLabel->setProperty("sourceControlID", IDT_SYSTEM_ZONE);
     QtBindResourceText(zoneLabel, IDT_SYSTEM_ZONE, "Propagate Zone.Id stream:");
     _zoneCombo = new QComboBox(this);
@@ -110,8 +110,7 @@ CMenuPage::CMenuPage(const QString &settingsPath, QWidget *parent, bool zoneSupp
         QtBindLocalToolTip(_zoneCombo, "Zone.Identifier propagation is available on Windows.",
                            "Перенос Zone.Identifier доступен в Windows.");
     zoneLabel->setBuddy(_zoneCombo);
-    zoneRow->addWidget(zoneLabel);
-    zoneRow->addStretch();
+    zoneRow->addWidget(zoneLabel, 1);
     zoneRow->addWidget(_zoneCombo);
     layout->addLayout(zoneRow);
     auto *itemsLabel = new QLabel("Context menu items:", this);

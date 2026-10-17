@@ -33,11 +33,17 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 
 ## Новые изменения
 
+- [Проверка геометрии остальных диалогов](upstream-port-audit/dialog-layout-review.md)
+  — native macOS EN/RU, resource-to-widget contracts и коррекция подписи Zone.Id.
+
 - [Язык главного меню](upstream-port-audit/menu-language.md)
   — исходный перевод переключателя двух панелей при запуске и смене языка.
 
 - [Понятные подписи открытия](upstream-port-audit/open-menu-captions.md)
   — уточнение названий Qt-меню с сохранением расположения и исходных команд.
+
+- [Разметка дополнительных параметров архива](upstream-port-audit/compress-options-layout.md)
+  — выравнивание флажков, перенос подписи и исходные строки NTFS.
 
 - [Выбор архива через меню File](upstream-port-audit/open-archive-picker.md)
   — запрошенное расширение интерфейса и повторное использование открытия архива.

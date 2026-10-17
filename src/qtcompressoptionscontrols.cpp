@@ -60,15 +60,13 @@ void CQtCompressOptionsDialog::buildControls() {
             widget->setProperty("languageWrapWidth", 300);
         if (id == IDX_COMPRESS_MTIME || id == IDX_COMPRESS_CTIME || id == IDX_COMPRESS_ATIME)
             widget->setProperty("languageWrapWidth", 300);
-        if (id == IDT_COMPRESS_TIME_PREC)
-            widget->setProperty("languageWrapWidth", 160);
         if (id >= IDX_COMPRESS_NT_SYM_LINKS && id <= IDX_COMPRESS_PRESERVE_ATIME)
             QtBindLangText(widget, id);
     };
     const auto checkbox = [&](unsigned id, const char *name, const QString &text, QWidget *parent) {
         auto *box = new QCheckBox(text.isEmpty() ? QStringLiteral(":") : text, parent);
         if (text.isEmpty())
-            box->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Preferred);
+            box->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
         registerControl(id, name, box);
         if (!text.isEmpty())
             QtBindResourceText(box, id, text);
@@ -88,16 +86,20 @@ void CQtCompressOptionsDialog::buildControls() {
     slot->setSpacing(0);
     auto *ntfs = new QGroupBox("NTFS", ntfsSlot);
     registerControl(IDG_COMPRESS_NTFS, "IDG_COMPRESS_NTFS", ntfs);
-    auto *ntfsLayout = new QVBoxLayout(ntfs);
-    ntfsLayout->setSpacing(3);
+    auto *ntfsLayout = new QGridLayout(ntfs);
     ntfsLayout->addWidget(checkbox(IDX_COMPRESS_NT_SYM_LINKS, "IDX_COMPRESS_NT_SYM_LINKS",
-                                   "Store symbolic links", ntfs));
+                                   "Store symbolic links", ntfs),
+                          0, 0);
     ntfsLayout->addWidget(checkbox(IDX_COMPRESS_NT_HARD_LINKS, "IDX_COMPRESS_NT_HARD_LINKS",
-                                   "Store hard links", ntfs));
+                                   "Store hard links", ntfs),
+                          1, 0);
     ntfsLayout->addWidget(checkbox(IDX_COMPRESS_NT_ALT_STREAMS, "IDX_COMPRESS_NT_ALT_STREAMS",
-                                   "Store alternate data streams", ntfs));
+                                   "Store alternate data streams", ntfs),
+                          2, 0);
     ntfsLayout->addWidget(
-        checkbox(IDX_COMPRESS_NT_SECUR, "IDX_COMPRESS_NT_SECUR", "Store file security", ntfs));
+        checkbox(IDX_COMPRESS_NT_SECUR, "IDX_COMPRESS_NT_SECUR", "Store file security", ntfs), 3,
+        0);
+    ntfsLayout->setRowStretch(4, 1);
     slot->addWidget(ntfs);
     slot->addStretch();
     layout->addWidget(ntfsSlot, 1);
@@ -115,6 +117,7 @@ void CQtCompressOptionsDialog::buildControls() {
     QtBindLocalText(GetItem(IDX_COMPRESS_PREC_SET), "Set time precision", "Задать точность времени",
                     true);
     auto *precisionLabel = new QLabel("Timestamp precision:", time);
+    precisionLabel->setWordWrap(true);
     registerControl(IDT_COMPRESS_TIME_PREC, "IDT_COMPRESS_TIME_PREC", precisionLabel);
     QtBindResourceText(precisionLabel, IDT_COMPRESS_TIME_PREC, "Timestamp precision:");
     grid->addWidget(precisionLabel, 0, 1);
@@ -179,7 +182,10 @@ void CQtCompressOptionsDialog::applySourceGeometry() {
     ntfs->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
     ntfs->layout()->setContentsMargins(x(8), y(12), x(8), y(4));
     ntfs->layout()->setSpacing(0);
-    ntfs->setMinimumHeight(qMax(y(72), ntfs->minimumSizeHint().height()));
+    auto *ntfsGrid = static_cast<QGridLayout *>(ntfs->layout());
+    for (int row = 0; row < 4; ++row)
+        ntfsGrid->setRowMinimumHeight(row, y(14));
+    ntfs->setMinimumHeight(y(72));
     auto *time = static_cast<QGroupBox *>(GetItem(IDG_COMPRESS_TIME));
     auto *grid = static_cast<QGridLayout *>(time->layout());
     grid->setContentsMargins(x(8), y(12), x(8), y(4));
@@ -250,6 +256,14 @@ bool CQtCompressOptionsDialog::IsButtonCheckedBool(unsigned id) const {
 }
 void CQtCompressOptionsDialog::ShowItem_Bool(unsigned id, bool visible) {
     GetItem(id)->setVisible(visible);
+    const unsigned ntfsIds[] = {IDX_COMPRESS_NT_SYM_LINKS, IDX_COMPRESS_NT_HARD_LINKS,
+                                IDX_COMPRESS_NT_ALT_STREAMS, IDX_COMPRESS_NT_SECUR};
+    for (int row = 0; row < 4; ++row)
+        if (id == ntfsIds[row]) {
+            auto *grid = static_cast<QGridLayout *>(GetItem(IDG_COMPRESS_NTFS)->layout());
+            grid->setRowMinimumHeight(
+                row, visible ? QtDialogUnits(font()).pixels(QSize(0, 14)).height() : 0);
+        }
     if (id == IDG_COMPRESS_NTFS) {
         // Source NTFS metadata views have a wider compact contract (480px).
         // Keep their original one-line mtime/ctime captions; the narrower ZIP

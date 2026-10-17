@@ -14,6 +14,7 @@
 #include <QComboBox>
 #include <QDialogButtonBox>
 #include <QFileInfo>
+#include <QLabel>
 #include <QListWidget>
 #include <QPushButton>
 #include <QScopeGuard>
@@ -90,6 +91,10 @@ class MenuPageTests : public QObject {
             SaveRegLang(oldLanguage, fixture.filePath("language.ini"));
             ReloadLang(fixture.filePath("language.ini"));
         });
+        // Exercise native-sized text even when offscreen defaults to a small font.
+        QFont font = page.font();
+        font.setPointSize(13);
+        page.setFont(font);
         for (const char *language : {"-", "ru"}) {
             SaveRegLang(UString(language), fixture.filePath("language.ini"));
             ReloadLang(fixture.filePath("language.ini"));
@@ -117,6 +122,21 @@ class MenuPageTests : public QObject {
                         QVERIFY(control->width() >= control->sizeHint().width());
                     previous = control;
                 }
+                auto *zoneLabel = page.findChild<QLabel *>("menuZoneLabel");
+                auto *zoneCombo = page.findChild<QComboBox *>("menuZone");
+                const QFontMetrics metrics(zoneLabel->font());
+                const int singleLineWidth =
+                    metrics.horizontalAdvance(zoneLabel->text().simplified());
+                const int available = UiInspection::bounds(*zoneCombo, page).left() -
+                                      UiInspection::bounds(*zoneLabel, page).left();
+                if (available >= singleLineWidth) {
+                    // Leave a caption on one line when the row has room for it.
+                    QVERIFY(zoneLabel->width() >= singleLineWidth);
+                    QVERIFY(metrics.size(Qt::TextShowMnemonic, zoneLabel->text()).height() <=
+                            metrics.height());
+                }
+                QVERIFY(UiInspection::labelFits(*zoneLabel));
+                QVERIFY(UiInspection::separate(*zoneLabel, *zoneCombo, page));
             }
         }
     }

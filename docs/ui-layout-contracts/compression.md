@@ -18,6 +18,10 @@ remaining fully exposed.
 Normal and compact TAR states must expose both link controls and the footer,
 with translated captions fitting their controls. This establishes
 structure/usability, not rendered Windows pixel parity.
+Explicit-value checkboxes keep their colon beside the indicator even in tall
+rows. The precision caption wraps only when the available width requires it.
+NTFS rows keep their source order and spacing when unsupported rows are hidden.
+The fixed source group areas remain reserved; this is not a compact redesign.
 source_metadata_storage additionally checks WIM security/ADS and all visible
 time captions, Options/Add Cancel/OK/restart, and writes four Windows
 `source-metadata-wim-{language}-{width}` reports. Current EN/RU540×480/480×430

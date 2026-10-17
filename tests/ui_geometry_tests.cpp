@@ -101,6 +101,8 @@ class UiGeometryTests final : public QObject {
         CreateArchiveDialog dialog(directory_.path());
         dialog.show();
         QVERIFY(QTest::qWaitForWindowActive(&dialog));
+        // Nested native form layouts can settle after the first activation.
+        QApplication::processEvents();
         QVERIFY(UiInspection::writeReport(dialog, "create-default"));
         QVERIFY(dialog.screen()->availableGeometry().contains(dialog.frameGeometry()));
         QVERIFY(footerFits(dialog));

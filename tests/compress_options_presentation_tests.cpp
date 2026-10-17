@@ -22,7 +22,8 @@ class CompressOptionsPresentationTests final : public QObject {
         QTest::addColumn<QString>("language");
         QTest::addColumn<QString>("format");
         for (const QString language : {QString("en"), QString("ru")})
-            for (const QString format : {QString("7z"), QString("zip"), QString("wim")})
+            for (const QString format :
+                 {QString("7z"), QString("zip"), QString("wim"), QString("tar")})
                 QTest::newRow(qPrintable(format + '-' + language)) << language << format;
     }
     CCompressDialog owner(NCompression::CFormatOptions &profile, const QString &format,
@@ -39,7 +40,15 @@ class CompressOptionsPresentationTests final : public QObject {
         if (format == "zip")
             result.ArcInfo.TimeFlags |= TIME_PREC_TO_ARC_FLAGS_MASK(NFileTimeType::kUnix) |
                                         TIME_PREC_TO_ARC_FLAGS_MASK(NFileTimeType::kDOS);
-        result.SymLinks.Supported = result.HardLinks.Supported = format == "wim";
+        if (format == "tar") {
+            result.MethodID = NCompressDialog::kGnu;
+            result.ArcInfo.Flags = NArcInfoFlags::kMTime | NArcInfoFlags::kMTime_Default;
+            result.ArcInfo.TimeFlags = TIME_PREC_TO_ARC_FLAGS_MASK(NFileTimeType::kWindows) |
+                                       TIME_PREC_TO_ARC_FLAGS_MASK(NFileTimeType::kUnix) |
+                                       TIME_PREC_TO_ARC_FLAGS_MASK(NFileTimeType::k1ns) |
+                                       TIME_PREC_TO_ARC_FLAGS_TIME_DEFAULT(NFileTimeType::kUnix);
+        }
+        result.SymLinks.Supported = result.HardLinks.Supported = format == "wim" || format == "tar";
 #ifdef Q_OS_WIN
         result.AltStreams.Supported = result.NtSecurity.Supported = format == "wim";
 #endif
@@ -79,12 +88,21 @@ class CompressOptionsPresentationTests final : public QObject {
         QVERIFY(UiInspection::separate(*dialog.findChild<QLabel *>("IDT_COMPRESS_TIME_PREC"),
                                        *dialog.findChild<QComboBox *>("IDC_COMPRESS_TIME_PREC"),
                                        dialog));
-        const char *first = format == "wim"   ? "IDX_COMPRESS_NT_SYM_LINKS"
-                            : format == "zip" ? "IDX_COMPRESS_PREC_SET"
-                                              : "IDX_COMPRESS_CTIME_SET";
-        const char *next = format == "wim"   ? "IDX_COMPRESS_NT_HARD_LINKS"
-                           : format == "zip" ? "IDX_COMPRESS_CTIME_SET"
-                                             : "IDX_COMPRESS_ATIME_SET";
+        auto *precisionLabel = dialog.findChild<QLabel *>("IDT_COMPRESS_TIME_PREC");
+        const QFontMetrics metrics(precisionLabel->font());
+        if (precisionLabel->width() >=
+            metrics.horizontalAdvance(precisionLabel->text().simplified())) {
+            // A caption that fits must not retain a forced line break.
+            QVERIFY(metrics.size(Qt::TextShowMnemonic, precisionLabel->text()).height() <=
+                    metrics.height());
+            QVERIFY(UiInspection::labelFits(*precisionLabel));
+        }
+        const char *first = (format == "wim" || format == "tar") ? "IDX_COMPRESS_NT_SYM_LINKS"
+                            : format == "zip"                    ? "IDX_COMPRESS_PREC_SET"
+                                                                 : "IDX_COMPRESS_CTIME_SET";
+        const char *next = (format == "wim" || format == "tar") ? "IDX_COMPRESS_NT_HARD_LINKS"
+                           : format == "zip"                    ? "IDX_COMPRESS_CTIME_SET"
+                                                                : "IDX_COMPRESS_ATIME_SET";
         auto *firstControl = dialog.findChild<QCheckBox *>(first);
         auto *nextControl = dialog.findChild<QCheckBox *>(next);
         QCOMPARE(dialog.focusWidget(), firstControl);
@@ -129,7 +147,9 @@ class CompressOptionsPresentationTests final : public QObject {
                 dialog, QString("compress-options-source-zip-%1-unix").arg(language)));
         }
         dialog.setProperty("uiInspection_state", "compress-options-" + format + "-compact");
-        dialog.resize(format == "wim" ? QSize(480, 560) : QSize(440, 340));
+        dialog.resize(format == "wim"   ? QSize(480, 560)
+                      : format == "tar" ? QSize(480, 430)
+                                        : QSize(440, 340));
         QApplication::processEvents();
         QVERIFY(UiInspection::writeReport(
             dialog, QString("compress-options-source-%1-%2-compact").arg(format, language)));
@@ -149,6 +169,14 @@ class CompressOptionsPresentationTests final : public QObject {
                 const QSize text = box->fontMetrics().size(Qt::TextShowMnemonic, box->text());
                 QVERIFY2(text.width() <= contents.width() && text.height() <= contents.height(),
                          qPrintable(box->objectName()));
+                if (box->text() == ":") {
+                    const QRect indicator =
+                        box->style()->subElementRect(QStyle::SE_CheckBoxIndicator, &option, box);
+                    // A tall grid row must not separate the ':' from its checkbox.
+                    QVERIFY2(qAbs(indicator.center().y() - contents.center().y()) <=
+                                 qMax(2, box->fontMetrics().height() / 4),
+                             qPrintable(box->objectName()));
+                }
             }
         auto *buttons = dialog.findChild<QDialogButtonBox *>();
         QVERIFY(UiInspection::fullyVisible(*buttons, dialog));
