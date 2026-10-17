@@ -2,7 +2,7 @@
 
 <a id="current-final-acceptance-matrix-2026-10-10"></a>
 
-## Current final acceptance matrix (2026-10-16)
+## Current final acceptance matrix (2026-10-17)
 
 Матрица различает текущие native launcher и delivery components и прежние full/native receipts.
 Checked означает только названную
@@ -10,6 +10,21 @@ Checked означает только названную
 Clean-OS проверки Windows/macOS/Linux исключены из текущей приёмки по явному
 решению пользователя2026-10-15. Это waiver, а не свидетельство прохождения;
 package/relocation/native/rendered требования остаются в scope.
+Текущие source-коррекции [Agent lifetime](upstream-port-audit/p3-05-proxy-lifetime-2026-10-17.md)
+и [worker deadline](upstream-port-audit/p3-03-codec-deadline-2026-10-17.md)
+проверены с actual RED/public regressions. Product7dadf6d имеет current Mac/Linux
+default gates и свежие bounded packages; tests83163a4 исправляют только native
+fixtures и aggregate budgets. Все11long на83163a4 проходят на macOS/Linux:
+2100Qt/0fail/0skip на каждой ОС. Windows Limited fullv90 завершён325/342
+executed PASS,17FAIL2462.20s:15 privilege/setup suites и2 cold codec failures
+(6800/7200ms при исходном5000ms). Windows all11 replay ещё не завершён;
+scope и evidence — в [длительном receipt](upstream-port-audit/p3-03-long-acceptance-2026-10-16.md).
+Последующий [общий CDialog/Copy компонент](upstream-port-audit/p3-06-modal-geometry-2026-10-17.md)
+проверен полными Mac325/325 и Linux324/324 gates, текущими Cocoa/XCB consumers
+и22 выполненными Windows focused suites. Windows resource fixture follow-up,
+all11 replay и обновление пакетов остаются открытыми.
+Эти изменения не заменяют оставшийся полный native/rendered обход и не
+устанавливают причину исторических Windows cold delays.
 Overwrite/font-DLU коррекция проверена как отдельный компонент:
 [rendered reference, регрессии и gates](upstream-port-audit/p3-06-2026-10-15.md).
 Текущий продукт1f5e16a также содержит [Add gutter correction](upstream-port-audit/p3-06-add-scroll-2026-10-15.md):
@@ -97,13 +112,13 @@ native Windows и rendered reference этим не подтверждены.
 
 | Область приёмки | macOS arm64 | Linux x64 | Windows x64 |
 | --- | --- | --- | --- |
-| Default format/build/CTest | checked: filesystem fixture full324/324349.06s,5191Qt/0fail/66skip; localized column-paint default/native26QtPASS | checked: current producta2254e5 default323/323515.14s,5183Qt/0fail/66skip; stock source guard verified | partial: current Limited323/341 executed2632.07s,18failed suites,5360Qt/68fail/20skip; fourteen privileged fixture suites plus paint/codec/physical-key failures. Separate device suite disabled;11slow excluded. Current paint fixture default/nativePASS; remaining failures open |
+| Default format/build/CTest | checked: modal component full325/325268.61s,5233Qt/0fail/66skip; later test-only lifecycle27Qt default/Cocoa PASS | checked: modal component full324/324525.49s,5225Qt/0fail/66skip; latest lifecycle27Qt XCB PASS; source/config guards verified | partial:83163a4 Limited325/342 executed PASS,17FAIL2462.20s. Modal component22focused executed PASS, resource fixture follow-up pending. Separate disabled device suite/no-new-disk narrowing and11slow exclusions retained |
 | Исходные модули, headers/resources/callers | partial: [109 source receipts](omitted-scope-audit.md#109-unit-source-receipt-ledger-2026-10-10); identified launcher/continuation gap corrected, whole workflow acceptance open | partial: общий source scope тот же; POSIX no-handle consumers checked | partial: original native launcher and real handle/disk/browser/archive consumers checked; whole acceptance open |
 | EN/RU, normal/compact, команды и workflow | partial: автоматические contracts/regressions проходят; полный нативный обход не принят | partial: current package на реальной консоли, EN/RU/two-panel normal/compact, Options/Copy и create/open/test/extract проверены; полный обход открыт | partial: выполненные focused consumers/JSON; current interactive gate и полный обход не приняты |
 | Нативные dialogs/shortcuts/icons/drag/registration/FS | partial: историческая ручная Finder-проверка принята отдельно; Cocoa keyboard notification protocol0–9 проверен, physical input/full native обход не проверены | partial: delivery8d56d8d Copy/Overwrite/Language/PCManFM drag/Escape; Release2f8e194 GIO workflow проверен; corrected keyboard XTest1/native consumers7/7; full native scope открыт | partial: active console Session1; corrected keyboard consumers7/7,143Qt/0fail/0skip; original Limited reference also suppresses physical RightCtrlShift0, positive1/AltShift0 PASS; current full/native acceptance открыт |
 | Наблюдение текущего приложения через Computer Use | manual alternative: пользователь выбрал ручную проверку; Add gutter и Save/Folder EN/RU select/cancel подтверждены для1f5e16a. Прямой Computer Use не разрешён; остальной native scope открыт | partial: current package/affected views наблюдались через Hyper-V console API; полный rendered audit открыт | unverified: console доступна, полный обход текущего приложения не принят |
 | Сверка с отрисованным Windows 7zFM того же pin | partial: current Cocoa Add/Extract2/2 PASS9Qt/12JSON; Windows initial EN/RU reference available, grouping/fit checked; no Mac PNG or full rendered/input acceptance | partial: current XCB Add/Extract2/2 PASS9Qt/12JSON/12PNG; representative normal/compact views inspected against four original initial states; full rendered audit open | partial: four pinned original Add/Extract EN/RU initial views inspected, current Qt2/2 PASS9Qt/12JSON/12PNG; grouping/order/labels/fit match with documented Qt metrics/scroll adaptation, not pixel equality. Earlier System menu20entries/states/icons remains bounded evidence; full audit open |
-| Runtime packages; clean-OS scope исключён пользователем2026-10-15 | checked in bounded delivery scope:a2254e5 Release/relocation15/15,1047 product inputs, notices/signature/Mach-O/private ABI; manual pickers retain1f5e16a revision, Rename/messages accepted for a2254e5; clean OS waived | checked in bounded delivery scope:a2254e5 Release/relocation14/14,1047 product inputs, notices/SFX/ELF/private ABI. Prior physical Rename/GIO proofs retain original artifacts; clean OS waived | checked in bounded delivery scope:a2254e5 Release/relocation14/14,1047 product inputs, five CRT DLLs/notices,26 PE/345 imports/55 freshly resolved trusted system names; clean OS waived |
+| Runtime packages; clean-OS scope исключён пользователем2026-10-15 | checked in bounded delivery scope:7dadf6d Release/relocation15/15,1047 exact product inputs, notices/signature/Mach-O/private ABI; manual pickers retain1f5e16a revision, Rename/messages accepted for a2254e5; clean OS waived | checked in bounded delivery scope:7dadf6d Release/relocation14/14,1047 exact product inputs,38 Qt licenses/notices/SFX/fresh ELF/private ABI. Prior physical Rename/GIO proofs retain original artifacts; clean OS waived | checked in earlier bounded delivery scope:a2254e5 Release/relocation14/14,1047 product inputs, five CRT DLLs/notices,26 PE/345 imports/55 freshly resolved trusted system names; current7dadf6d refresh remains required; clean OS waived |
 | Cold/stable Windows, итоговая трёхплатформенная приёмка | partial: полный native scope остаётся открытым | partial: current broad XCB235/235560.14s,4505Qt/0fail/37skip closes prior broad fixture failures for its snapshot; subsequent localized two-suite default/native60QtPASS | partial: cadb215 full342/342 PASS retained; current Limited full retains codec ready6650ms/process8950ms versus5000ms and physical-1 failure. Cause/cold stability unresolved; full native scope open |
 | GitHub CI | N/A по явному решению пользователя сохранить удаление workflow | N/A по тому же решению | N/A по тому же решению |
 
@@ -116,7 +131,9 @@ representative editor checks; полная96-row editor matrix достигае�
 предшествует последней локальной security-wait коррекции; affected follow-up
 проверяет изменённый consumer на3OS.
 
-Slow suites исключены из default gates по AGENTS.md и не объявляются принятыми.
+Slow suites исключены из default gates по AGENTS.md. Пользователь явно разрешил
+все11 на3OS; failing historical runs, corrected affected passes и текущие
+all-eleven replays различаются в [long receipt](upstream-port-audit/p3-03-long-acceptance-2026-10-16.md).
 
 [Bounded native editor coverage](upstream-port-audit/p3-03-native-editor-coverage-2026-10-16.md)
 закрывает coverage всех48 Cocoa refused-update rows тремя16-row запусками;

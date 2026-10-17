@@ -5,6 +5,7 @@
 #include "Common/IntToString.h"
 #include "LangUtils.h"
 #include "MessagesDialogRes.h"
+#include "qtdialogscreenservices.h"
 #include "qtdialogunits.h"
 #include "qtlangcontrols.h"
 #include "qtlistview.h"
@@ -44,6 +45,7 @@ bool CMessagesDialog::OnInit() {
 
     _messageList.SetColumnWidthAuto(0);
     _messageList.SetColumnWidthAuto(1);
+    QtNormalizeDialogSize(*this);
     OnSize(width(), height());
     return true;
 }

@@ -19,6 +19,7 @@
 #include "Windows/FileName.h"
 #include "Windows/PropVariantConv.h"
 #include "Windows/TimeUtils.h"
+#include "qtdialogscreenservices.h"
 #include "qtdialogunits.h"
 #include "qtfilelisthover.h"
 #include "qtlangbuttonbox.h"
@@ -297,6 +298,7 @@ void CBrowseDialog::OnInit() {
     setTabOrder(create, _list);
     _pathEdit->setFocus();
     resize(units.pixels(QSize(272, 336)).expandedTo(minimumSizeHint()));
+    QtNormalizeDialogSize(*this);
 }
 
 bool CBrowseDialog::eventFilter(QObject *watched, QEvent *event) {

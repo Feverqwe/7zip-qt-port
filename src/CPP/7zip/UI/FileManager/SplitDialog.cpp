@@ -11,6 +11,7 @@
 #include "SplitUtils.h"
 #include "ViewSettings.h"
 #include "Windows/FileName.h"
+#include "qtdialogscreenservices.h"
 #include "qtdialogunits.h"
 #include "qtlangbuttonbox.h"
 #include "qtlangcontrols.h"
@@ -28,6 +29,8 @@ CSplitDialog::CSplitDialog(const QString &filePath, const QString &path, QWidget
 }
 
 bool CSplitDialog::OnInit() {
+    setWindowFlag(Qt::WindowMinMaxButtonsHint);
+    setWindowFlag(Qt::WindowContextHelpButtonHint, false);
     setObjectName("splitDialog");
     if (!FilePath.isEmpty())
         setProperty("languageSuffix", ' ' + FilePath);
@@ -80,6 +83,7 @@ bool CSplitDialog::OnInit() {
     _pathCombo->setFocus();
     _pathCombo->lineEdit()->selectAll();
     resize(QtDialogUnits(font()).pixels(QSize(304, 112)).expandedTo(minimumSizeHint()));
+    QtNormalizeDialogSize(*this);
     return true;
 }
 

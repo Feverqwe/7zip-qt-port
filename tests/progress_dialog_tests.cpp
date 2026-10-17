@@ -54,6 +54,9 @@ class ProgressDialogTests : public QObject {
     }
     void initialUnknownStateAndSourceCommands() {
         CProgressDialog dialog(nullptr, L"Обновление");
+        QVERIFY(dialog.windowFlags().testFlag(Qt::WindowMinimizeButtonHint));
+        QVERIFY(dialog.windowFlags().testFlag(Qt::WindowMaximizeButtonHint));
+        QVERIFY(!dialog.windowFlags().testFlag(Qt::WindowContextHelpButtonHint));
         dialog.show();
         QTRY_COMPARE(text(dialog, "IDT_PROGRESS_ELAPSED_VAL"), QString("00:00:00"));
         QCOMPARE(text(dialog, "IDT_PROGRESS_TOTAL_VAL"), QString());

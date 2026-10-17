@@ -1,4 +1,5 @@
 #include "layout_inspection.h"
+#include <QScreen>
 
 #include <QAbstractButton>
 #include <QComboBox>
@@ -17,6 +18,15 @@
 #include <QWidget>
 
 namespace UiInspection {
+QSize normalizedInitialClientSize(const QWidget &widget, const QSize &resourceClient) {
+    QSize expected = resourceClient.expandedTo(widget.minimumSizeHint());
+    const QRect work = widget.screen()->availableGeometry();
+    if (widget.frameGeometry().intersects(work)) {
+        const QSize frame = widget.frameGeometry().size() - widget.size();
+        expected = expected.boundedTo(work.size() - frame).expandedTo(widget.minimumSizeHint());
+    }
+    return expected;
+}
 QRect bounds(const QWidget &widget, const QWidget &root) {
     return QRect(widget.mapTo(&root, QPoint()), widget.size());
 }

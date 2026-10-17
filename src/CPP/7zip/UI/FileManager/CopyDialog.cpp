@@ -8,6 +8,8 @@
 #include "BrowseDialog.h"
 #include "ViewSettings.h"
 #include "Windows/FileName.h"
+#include "qtdialogscreenservices.h"
+#include "qtdialogunits.h"
 #include "qtlangcontrols.h"
 
 #include "qtlangbuttonbox.h"
@@ -53,9 +55,12 @@ void CCopyDialog::BindLanguage(UInt32 titleID, UInt32 promptID, const QString &t
 }
 
 bool CCopyDialog::OnInit() {
+    setWindowFlag(Qt::WindowMinMaxButtonsHint);
+    setWindowFlag(Qt::WindowContextHelpButtonHint, false);
     setObjectName("copyDialog");
     setWindowTitle(ToQString(Title));
-    resize(440, 250);
+    // CopyDialog.rc: xc=320, yc=144; GuiCommon.rc adds m=8 on each side.
+    resize(QtDialogUnits(font()).pixels(QSize(336, 160)));
     auto *layout = new QVBoxLayout(this);
     auto *label = new QLabel(ToQString(Static), this);
     label->setObjectName("copyDestinationLabel");
@@ -84,6 +89,8 @@ bool CCopyDialog::OnInit() {
     info->setObjectName("copySelectionInfo");
     QtBindLangText(info, IDS_PROPERTIES, "Properties", true);
     info->setReadOnly(true);
+    // Native IDT_COPY_INFO is static, not a separate keyboard tab stop.
+    info->setFocusPolicy(Qt::NoFocus);
     info->setFrameShape(QFrame::NoFrame);
     info->setLineWrapMode(QPlainTextEdit::NoWrap);
     layout->addWidget(info, 1);
@@ -93,6 +100,7 @@ bool CCopyDialog::OnInit() {
     connect(buttons, &QDialogButtonBox::accepted, this, &CCopyDialog::OnOK);
     connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
     connect(browse, &QPushButton::clicked, this, &CCopyDialog::OnButtonSetPath);
+    QtNormalizeDialogSize(*this, true);
     _path->setFocus();
     _path->lineEdit()->selectAll();
     return true;

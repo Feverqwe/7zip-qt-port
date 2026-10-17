@@ -2,6 +2,7 @@
 #include "7zip/UI/FileManager/ProgressDialog2Res.h"
 #include "7zip/UI/FileManager/resourceGui.h"
 #include "CPP/7zip/UI/FileManager/ViewSettings.h"
+#include "qtdialogscreenservices.h"
 #include "qtdialogunits.h"
 #include "qtlistview.h"
 #include <QApplication>
@@ -58,6 +59,8 @@ void CQtProgressDialog::AddControl(unsigned id, const char *name, QWidget *widge
 }
 
 CQtProgressDialog::CQtProgressDialog(QWidget *parent) : QDialog(parent) {
+    setWindowFlag(Qt::WindowMinMaxButtonsHint);
+    setWindowFlag(Qt::WindowContextHelpButtonHint, false);
     setObjectName("progressDialog");
     const QtDialogUnits units(font());
     _unitX = units.horizontalScale();
@@ -124,7 +127,7 @@ CQtProgressDialog::CQtProgressDialog(QWidget *parent) : QDialog(parent) {
 QWidget *CQtProgressDialog::GetItem(unsigned id) const { return _controls.value(id); }
 qintptr CQtProgressDialog::CreateModal(QWidget *parent) {
     if (parentWidget() != parent)
-        setParent(parent, Qt::Dialog);
+        setParent(parent, windowFlags());
     return exec();
 }
 void CQtProgressDialog::End(qintptr result) { done(int(result)); }
@@ -208,19 +211,7 @@ void CQtProgressDialog::ClipboardSetText(const UString &text) {
     QApplication::clipboard()->setText(ToQString(text));
 }
 void CQtProgressDialog::NormalizeSize(bool fullNormalize) {
-    const QRect workRect = screen()->availableGeometry();
-    const QRect rect = frameGeometry();
-    if (!rect.intersects(workRect) ||
-        (rect.width() <= workRect.width() && rect.height() <= workRect.height()))
-        return;
-    if (fullNormalize) {
-        showMaximized();
-        return;
-    }
-    QRect normalized = rect;
-    normalized.setSize(rect.size().boundedTo(workRect.size()));
-    normalized.moveCenter(workRect.center());
-    setGeometry(normalized);
+    QtNormalizeDialogSize(*this, fullNormalize);
 }
 
 QIcon CQtProgressDialog::LoadIcon(int id) {

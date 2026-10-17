@@ -224,6 +224,7 @@ add_library(sevenzip_panel STATIC src/CPP/7zip/UI/FileManager/App.cpp
     src/CPP/7zip/UI/FileManager/SplitUtils.cpp src/CPP/7zip/UI/FileManager/SplitUtils.h
     src/CPP/7zip/UI/FileManager/CopyDialog.cpp src/CPP/7zip/UI/FileManager/CopyDialog.h
     src/CPP/Windows/Control/Dialog.cpp src/CPP/Windows/Control/Dialog.h
+    src/qtdialogscreenservices.cpp src/qtdialogscreenservices.h
     src/CPP/Windows/CommonDialog.cpp src/CPP/Windows/CommonDialog.h
     src/CPP/7zip/UI/FileManager/MyLoadMenu.cpp src/CPP/7zip/UI/FileManager/MyLoadMenu.h
     src/qtfilemenuservices.h src/qtfilemanagercommandservices.h
@@ -1202,6 +1203,11 @@ if(BUILD_TESTING)
     target_link_libraries(panel_copy_info_tests PRIVATE sevenzip_panel Qt6::Test)
     add_test(NAME panel_copy_info COMMAND panel_copy_info_tests -silent)
     set_tests_properties(panel_copy_info PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+    qt_add_executable(dialog_size_tests tests/dialog_size_tests.cpp)
+    target_include_directories(dialog_size_tests PRIVATE src)
+    target_link_libraries(dialog_size_tests PRIVATE sevenzip_panel Qt6::Test)
+    add_test(NAME dialog_size COMMAND dialog_size_tests -silent)
+    set_tests_properties(dialog_size PROPERTIES ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
     qt_add_executable(copy_dialog_tests tests/copy_dialog_tests.cpp tests/layout_inspection.cpp)
     target_include_directories(copy_dialog_tests PRIVATE src tests)
     target_link_libraries(copy_dialog_tests PRIVATE Qt6::Widgets Qt6::Test sevenzip_panel)
@@ -2361,7 +2367,6 @@ foreach(engine_consumer IN LISTS engine_consumer_targets)
             src/qtfilemanagerdrag.cpp src/qtfilemanagerdrag.h src/qtfilemanagerdragpresentation.cpp
             src/qtfilemanagerdraginput.cpp
             src/mainwindow_twopanel.cpp
-            src/qtdialogscreenservices.cpp src/qtdialogscreenservices.h
             src/qtfilemenuprojection.cpp src/qtfilemenuprojection.h)
     endif()
     if("src/archivebackend.cpp" IN_LIST engine_consumer_sources)
@@ -2374,10 +2379,7 @@ foreach(engine_consumer IN LISTS engine_consumer_targets)
         target_link_libraries(${engine_consumer} PRIVATE sevenzip_filesystem)
     endif()
     if("src/createarchivedialog.cpp" IN_LIST engine_consumer_sources)
-        if(NOT "src/mainwindow.cpp" IN_LIST engine_consumer_sources)
-            target_sources(${engine_consumer} PRIVATE src/qtdialogscreenservices.cpp
-                src/qtdialogscreenservices.h)
-        endif()
+        target_link_libraries(${engine_consumer} PRIVATE sevenzip_panel)
         target_sources(${engine_consumer} PRIVATE src/createarchivedialog_language.cpp)
         target_sources(${engine_consumer} PRIVATE src/createarchivedialog_volumes.cpp
             src/createarchivedialog_advanced.cpp src/createarchivedialog_formats.cpp
@@ -3421,7 +3423,7 @@ if(BUILD_TESTING AND WIN32)
             native_renderer_failure native_renderer_copy interarchive_refresh panel_creation_publication
             source_compress_dialog source_extract_advanced source_browse_dialog shell_archive_services shell_menu_window shell_update_window
             compression compression_advanced compression_path dialog_path_rules compression_error_policy compression_profile_selection compression_method_state compression_preferences compression_resources language_ui
-            codec_commands_ui codec_creation_ui ui_geometry
+            codec_commands_ui codec_creation_ui ui_geometry dialog_size
             filesystem_selection_runtime ui_operations ui_copy_same ui_copy_routing app_copy_routing ui_update_modes archive_metadata_ui source_drop_add
             drag_drop_add_ui modal_refresh_window
             main_shell panel_shell panel_key window_placement panel_key_source panel_list_load panel_item_icons panel_name_text archive_rename_window panel_copy_reload copy_publication_order filesystem_reload address_navigation panel_parent_reload panel_folder_sync native_archive_properties filesystem_comment fs_drives_device_ui namespace_hash native_network_navigation native_persisted_locations address_combo panel_address_keys root_command persisted_location ui_navigation ui_archive_states ui_archive_volumes

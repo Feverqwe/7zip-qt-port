@@ -15,6 +15,7 @@
 #include "Windows/FileName.h"
 #include "Windows/PropVariantConv.h"
 #include "Windows/TimeUtils.h"
+#include "qtdialogscreenservices.h"
 #include "qtlangcontrols.h"
 #include "qtownedtempidentity.h"
 #include <QApplication>
@@ -844,6 +845,7 @@ bool CBrowseDialog2::OnKeyDown(QKeyEvent *keyDownInfo) {
 int CBrowseDialog2::Create() {
     _topDirPrefix = TempFolderPath;
     setWindowTitle(QtPath(Title));
+    QtNormalizeDialogSize(*this);
     const HRESULT res = Reload(TempFolderPath, UString());
     if (res != S_OK)
         MessageBox_HResError(this, res, TempFolderPath);

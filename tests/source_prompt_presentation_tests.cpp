@@ -25,8 +25,10 @@ class SourcePromptPresentationTests final : public QObject {
     static void inspect(QDialog &view, const QSize &source, bool resizable, const QString &tag) {
         QApplication::processEvents();
         QVERIFY(UiInspection::writeReport(view, tag));
-        QCOMPARE(view.size(),
-                 QtDialogUnits(view.font()).pixels(source).expandedTo(view.minimumSizeHint()));
+        const QSize resourceClient = QtDialogUnits(view.font()).pixels(source);
+        QCOMPARE(view.size(), resizable
+                                  ? UiInspection::normalizedInitialClientSize(view, resourceClient)
+                                  : resourceClient.expandedTo(view.minimumSizeHint()));
         QCOMPARE(view.windowFlags().testFlag(Qt::WindowMinMaxButtonsHint), resizable);
         QVERIFY(!view.windowFlags().testFlag(Qt::WindowContextHelpButtonHint));
         for (auto *button : view.findChildren<QPushButton *>()) {

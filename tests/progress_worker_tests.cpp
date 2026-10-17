@@ -130,6 +130,7 @@ class ProgressWorkerTests : public QObject {
         QFETCH(int, mode);
         QFETCH(bool, request);
         QFETCH(bool, visible);
+        QWidget parent;
         CWorker worker;
         worker.Mode = mode;
         worker.RequestCreation = request;
@@ -137,7 +138,11 @@ class ProgressWorkerTests : public QObject {
         worker.DisableUserQuestions = true;
         CShowObserver observer;
         worker.installEventFilter(&observer);
-        QCOMPARE(worker.Create(L"Wait mode"), S_OK);
+        QCOMPARE(worker.Create(L"Wait mode", &parent), S_OK);
+        QCOMPARE(worker.parentWidget(), visible ? &parent : nullptr);
+        QVERIFY(worker.windowFlags().testFlag(Qt::WindowMinimizeButtonHint));
+        QVERIFY(worker.windowFlags().testFlag(Qt::WindowMaximizeButtonHint));
+        QVERIFY(!worker.windowFlags().testFlag(Qt::WindowContextHelpButtonHint));
         QVERIFY(worker.NativeWorker);
         QVERIFY(worker.ThreadFinishedOK);
         QCOMPARE(observer.Shows > 0, visible);

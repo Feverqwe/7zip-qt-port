@@ -1,5 +1,6 @@
 #include "qtlinkcontrols.h"
 #include "7zip/UI/FileManager/LinkDialogRes.h"
+#include "qtdialogscreenservices.h"
 #include "qtdialogunits.h"
 #include "qtlangcontrols.h"
 #include "qtlinkservices.h"
@@ -149,6 +150,7 @@ bool CQtLinkWindow::IsButtonCheckedBool(unsigned id) const {
     const auto *radio = qobject_cast<QRadioButton *>(GetItem(id));
     return radio && radio->isEnabled() && radio->isChecked();
 }
+void CQtLinkWindow::NormalizeSize() { QtNormalizeDialogSize(*this); }
 qintptr CQtLinkWindow::Create(unsigned, QWidget *parent) {
     QtInitializeLinkPlatform();
     if (parent)

@@ -4,6 +4,7 @@
 // ES_READONLY/ES_MULTILINE/WS_HSCROLL/WS_VSCROLL/ES_WANTRETURN are retained.
 #include "EditDialog.h"
 #include "ViewSettings.h"
+#include "qtdialogscreenservices.h"
 #include "qtdialogunits.h"
 #include "qtlangbuttonbox.h"
 #include <QKeyEvent>
@@ -40,6 +41,7 @@ bool CEditDialog::OnInit() {
     layout->addWidget(buttons);
     connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
     resize(units.pixels(QSize(336, 256)).expandedTo(minimumSizeHint()));
+    QtNormalizeDialogSize(*this);
     close->setFocus();
     return true;
 }

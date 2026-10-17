@@ -41,9 +41,8 @@ class ListViewDialogTests : public QObject {
         QVERIFY(UiInspection::writeReport(
             dialog, QString("list-source-initial-%1-%2").arg(language).arg(columns)));
         QVERIFY(dialog.windowFlags().testFlag(Qt::WindowMinMaxButtonsHint));
-        QCOMPARE(dialog.size(), QtDialogUnits(dialog.font())
-                                    .pixels(QSize(496, 336))
-                                    .expandedTo(dialog.minimumSizeHint()));
+        QCOMPARE(dialog.size(), UiInspection::normalizedInitialClientSize(
+                                    dialog, QtDialogUnits(dialog.font()).pixels(QSize(496, 336))));
         auto *list = dialog.findChild<QTreeWidget *>();
         QVERIFY(list);
         QCOMPARE(list->isHeaderHidden(), columns == 1);

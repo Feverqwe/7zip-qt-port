@@ -28,6 +28,9 @@ class VolumeDialogTests : public QObject {
             font.setPointSize(points);
             QApplication::setFont(font);
             CSplitDialog dialog(QStringLiteral("файл 空.bin"), "/temporary/destination");
+            QVERIFY(dialog.windowFlags().testFlag(Qt::WindowMinimizeButtonHint));
+            QVERIFY(dialog.windowFlags().testFlag(Qt::WindowMaximizeButtonHint));
+            QVERIFY(!dialog.windowFlags().testFlag(Qt::WindowContextHelpButtonHint));
             dialog.show();
             QApplication::processEvents();
             auto *path = dialog.findChild<QComboBox *>("volumeDestination");

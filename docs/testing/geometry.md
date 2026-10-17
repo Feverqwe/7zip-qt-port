@@ -4,6 +4,11 @@
 
 ## Проверка компоновки Qt
 
+`dialog_size` checks the shared source CDialog work-area and parent-position
+branches, hidden construction and one-shot first-Show lifecycle. `copy_dialog`
+adds EN/RU Copy/Move at9/12/32pt, source initial/compact geometry and public
+Tab/Enter/Escape behavior. [Source scope and evidence](../upstream-port-audit/p3-06-modal-geometry-2026-10-17.md).
+
 Archive/browser/password/progress tests use the scoped public-Qt
 `WidgetDialogFixture` to wait for a dialog's nested loop, exposure and activation
 before inspecting or answering it. Queued responders remain usable across nested

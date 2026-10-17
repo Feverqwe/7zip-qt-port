@@ -97,9 +97,9 @@ class TempCleanupTests : public QObject {
             QCOMPARE(dialog->objectName(), QString("tempBrowseDialog"));
             QVERIFY(UiInspection::writeReport(*dialog,
                                               QString("temp-source-initial-%1").arg(language)));
-            QCOMPARE(dialog->size(), QtDialogUnits(dialog->font())
-                                         .pixels(QSize(466, 344))
-                                         .expandedTo(dialog->minimumSizeHint()));
+            QCOMPARE(dialog->size(),
+                     UiInspection::normalizedInitialClientSize(
+                         *dialog, QtDialogUnits(dialog->font()).pixels(QSize(466, 344))));
             QVERIFY(dialog->windowFlags().testFlag(Qt::WindowMinMaxButtonsHint));
             QVERIFY(!dialog->windowFlags().testFlag(Qt::WindowContextHelpButtonHint));
             auto *parent = dialog->findChild<QPushButton *>("tempParent");

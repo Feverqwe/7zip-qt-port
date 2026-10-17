@@ -23,6 +23,9 @@ class ComboDialogTests : public QObject {
             font.setPointSize(points);
             QApplication::setFont(font);
             CComboDialog dialog("Create Folder", "Folder name:", QStringLiteral("папка 空"));
+            QVERIFY(dialog.windowFlags().testFlag(Qt::WindowMinimizeButtonHint));
+            QVERIFY(dialog.windowFlags().testFlag(Qt::WindowMaximizeButtonHint));
+            QVERIFY(!dialog.windowFlags().testFlag(Qt::WindowContextHelpButtonHint));
             dialog.show();
             QApplication::processEvents();
             if (points == 8)

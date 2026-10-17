@@ -4,8 +4,17 @@
 #pragma once
 #include "qtdialogscreenservices.h"
 
+class QWidget;
+
 namespace NWindows {
 namespace NControl {
+class CDialog {
+  public:
+    static void NormalizeSize(QWidget &window, const IQtDialogScreenServices &services,
+                              bool fullNormalize = false);
+    static void NormalizePosition(QWidget &window, const IQtDialogScreenServices &services,
+                                  const IQtDialogScreenServices &parentServices);
+};
 bool IsDialogSizeOK(int xSize, int ySize, const IQtDialogScreenServices &services);
-}
+} // namespace NControl
 } // namespace NWindows

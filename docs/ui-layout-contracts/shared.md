@@ -2040,11 +2040,19 @@ Reference: upstream `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
 Implemented view: `src/CPP/7zip/UI/FileManager/CopyDialog.cpp`.
 
 - Destination label precedes the editable path; Browse stays to its right.
+- Initial client follows CopyDialog.rc336×160DLU with Qt font mapping and native
+  minimum protection. Source NormalizeSize(true) applies once at first native
+  Show when the frame overlaps and exceeds the work area. EN/RU Copy/Move
+  regressions cover9/12/32pt initial/compact states. Source resizable chrome
+  requests minimize/maximize, subject to native modal-window conventions.
 - Selection counts and known sizes precede the source path and first five
   relative names; a larger selection ends with an ellipsis. Folder names end
   in a separator. The summary stays below the destination and above OK/Cancel.
 - Names preserve line boundaries. Read-only scrolling makes the displayed
   summary and long filenames reachable without enlarging the footer.
+  The summary has no Tab stop, as the original static control; destination,
+  Browse and footer remain keyboard targets. Enter preserves raw destination
+  spaces/Unicode; Escape preserves the original public value.
 - At 440×250 and 340×220 in Copy and Move states, the label fits, path and
   Browse do not overlap, the selection area and footer stay fully visible,
   and OK/Cancel remain separate. Qt may enforce its style minimum size.

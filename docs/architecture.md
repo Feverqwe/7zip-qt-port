@@ -536,6 +536,12 @@ destination history through QSettings. Its original UStringVector interfaces and
 IsEqualTo_NoCase/Delete/Insert algorithm own comparison and ordering; CApp retains
 the20-entry limit. QStringList is used only for settings storage and the Copy
 dialog presentation boundary. Source-distinct K/K history values survive reopen.
+The same owner supplies mirrored `NWindows::NControl::CDialog` size/position
+policy and `qtdialogscreenservices` transport. Qt defers initialization geometry
+to first native Show through a one-shot event filter; later user changes remain.
+Progress, Benchmark, Link and standalone Compress consumers reuse this owner.
+Source scope and native conventions are recorded in the
+[modal geometry audit](upstream-port-audit/p3-06-modal-geometry-2026-10-17.md).
 Source FM.cpp::InitInstance owns Position/Panels admission, creation ordering and
 normal/maximized show policy. IQtFileManagerInitServices supplies widget geometry,
 creation and placement transport; MainWindow construction remains hidden until
@@ -568,8 +574,8 @@ The partial `CCompressDialog` owns name/extension transitions, path resolution
 and archive history confirmation; `CreateArchiveDialog` supplies combo/directory
 snapshots. `NCompression::CInfo` persists ArcPaths and ArcType.
 The Add presentation uses `QtDialogScreenServices` for source dialog-unit outer
-margins. CMake shares that existing service through `sevenzip_dialog_screen`
-with both main-window and standalone Add consumers. Native widget rectangles,
+margins. CMake's `sevenzip_dialog_screen` object group is supplied by
+`sevenzip_panel` to main-window and standalone Add consumers. Native widget rectangles,
 explicit form-field growth and button StrongFocus preserve source control
 exposure, equal combo widths and Tab traversal across platform styles.
 Both dialog owners use the source UString::Trim and FileName/FileDir path

@@ -1,5 +1,6 @@
 #include "qtcompressoptionscontrols.h"
 #include "7zip/UI/GUI/CompressDialogRes.h"
+#include "qtdialogscreenservices.h"
 #include "qtlangbuttonbox.h"
 #include "qtlangcontrols.h"
 #include <QCheckBox>
@@ -190,10 +191,5 @@ void CQtCompressOptionsDialog::EnableItem(unsigned id, bool enabled) {
 void CQtCompressOptionsDialog::SetItemText(unsigned id, const UString &text) {
     static_cast<QLabel *>(GetItem(id))->setText(QString::fromWCharArray(text.Ptr()));
 }
-void CQtCompressOptionsDialog::NormalizePosition() {
-    // Qt supplies dialog placement; clamp only if that placement lies outside
-    // the current screen, matching the native platform-service responsibility.
-    if (screen() && !screen()->availableGeometry().intersects(frameGeometry()))
-        move(screen()->availableGeometry().center() - rect().center());
-}
+void CQtCompressOptionsDialog::NormalizePosition() { QtNormalizeDialogPosition(*this); }
 bool CQtCompressOptionsDialog::OnButtonClicked(unsigned, QWidget *) { return false; }

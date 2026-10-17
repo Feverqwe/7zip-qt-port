@@ -90,8 +90,8 @@ class CQtBenchmarkWindow : public QDialog {
     QWidget *GetFocus() const;
     UInt32 GetTickCount() const;
     void SendMsg_NextDlgCtl_CtlId(unsigned id);
-    void NormalizeSize(bool) {}
-    void NormalizePosition() {}
+    void NormalizeSize(bool fullNormalize);
+    void NormalizePosition();
     quintptr SetTimer(quintptr id, unsigned milliseconds);
     void KillTimer(quintptr);
     void Attach(QWidget *) { postsEnabled_ = false; }

@@ -1,5 +1,6 @@
 #include "qtbenchmarkcontrols.h"
 #include "7zip/UI/GUI/BenchmarkDialogRes.h"
+#include "qtdialogscreenservices.h"
 #include "qtdialogunits.h"
 #include "qtlangcontrols.h"
 #include "qtmodalresult.h"
@@ -330,6 +331,10 @@ void CQtBenchmarkWindow::EnableItem(unsigned id, bool enabled) {
 }
 QWidget *CQtBenchmarkWindow::GetFocus() const { return QApplication::focusWidget(); }
 UInt32 CQtBenchmarkWindow::GetTickCount() const { return UInt32(clock_.elapsed()); }
+void CQtBenchmarkWindow::NormalizeSize(bool fullNormalize) {
+    QtNormalizeDialogSize(*this, fullNormalize);
+}
+void CQtBenchmarkWindow::NormalizePosition() { QtNormalizeDialogPosition(*this); }
 void CQtBenchmarkWindow::SendMsg_NextDlgCtl_CtlId(unsigned id) {
     if (auto *view = GetItem(id))
         view->setFocus();

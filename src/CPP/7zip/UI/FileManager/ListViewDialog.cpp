@@ -6,6 +6,7 @@
 #include "PropertyName.h"
 #include "RegistryUtils.h"
 #include "ViewSettings.h"
+#include "qtdialogscreenservices.h"
 #include "qtdialogunits.h"
 #include "qtlangbuttonbox.h"
 #include "qtlangcontrols.h"
@@ -104,6 +105,7 @@ bool CListViewDialog::OnInit() {
     else
         connect(_listView, &QTreeWidget::itemDoubleClicked, this, &CListViewDialog::OnEnter);
     resize(units.pixels(QSize(496, 336)).expandedTo(minimumSizeHint()));
+    QtNormalizeDialogSize(*this);
     _listView->setFocus();
     return true;
 }

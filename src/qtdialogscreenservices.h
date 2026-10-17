@@ -3,6 +3,8 @@
 #include <QSize>
 
 class QWidget;
+void QtNormalizeDialogSize(QWidget &window, bool fullNormalize = false);
+void QtNormalizeDialogPosition(QWidget &window);
 class IQtDialogScreenServices {
   public:
     virtual ~IQtDialogScreenServices() = default;

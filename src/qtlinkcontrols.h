@@ -34,7 +34,7 @@ class CQtLinkWindow : public QDialog {
     void SetItemText(unsigned id, const UString &text);
     void CheckRadioButton(unsigned first, unsigned last, unsigned checked);
     bool IsButtonCheckedBool(unsigned id) const;
-    void NormalizeSize() {}
+    void NormalizeSize();
     void End(int result) { done(result); }
     qintptr Create(unsigned resource, QWidget *parent);
     void resizeEvent(QResizeEvent *event) override;
