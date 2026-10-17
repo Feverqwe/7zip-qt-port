@@ -3411,7 +3411,9 @@ if(BUILD_TESTING)
             browse_dialog_tests nested_update_tests archive_progress_tests progress_cancel_tests
             nested_edit_chain_tests archive_external_edit_tests archive_external_security_tests
             archive_external_lifetime_tests checksum_tests source_link_storage_tests
-            options_dialog_tests system_page_tests flat_view_tests filesystem_reload_tests)
+            options_dialog_tests system_page_tests flat_view_tests filesystem_reload_tests
+            panel_copy_reload_tests native_drop_publication_tests
+            copy_publication_order_tests native_parent_publication_tests)
         target_sources(${sevenzip_widget_dialog_target} PRIVATE tests/fixtures/widget_dialogs.cpp)
     endforeach()
 endif()
@@ -3472,4 +3474,12 @@ if(BUILD_TESTING AND WIN32)
     # 98 Qt checks in 173.32s. Apply the same whole-matrix reserve.
     set_tests_properties(panel_creation_publication PROPERTIES TIMEOUT 540)
     set_tests_properties(native_renderer_copy PROPERTIES TIMEOUT 360)
+endif()
+
+if(APPLE AND TEST copy_archive_refresh)
+    # Cocoa completed 89 of 192 workflows in 120s with no row failures.
+    # Apply the same twice-extrapolated full-matrix reserve as Windows:
+    # 120 * 192 / 89 * 2, rounded up to a minute. This suite is opt-in slow;
+    # individual state waits and application deadlines remain unchanged.
+    set_tests_properties(copy_archive_refresh PROPERTIES TIMEOUT 540)
 endif()

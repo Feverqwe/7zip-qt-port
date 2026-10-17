@@ -2,6 +2,7 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/PropertyName.h"
 #include "archivecodeccatalog.h"
+#include "fixtures/window_activation.h"
 #include "layout_inspection.h"
 #include "property_projection_support.h"
 #include "schema_folder.h"
@@ -169,7 +170,7 @@ class NativeColumnWorkflowTests final : public QObject, protected MainWindowTest
         QCOMPARE(backend.loadCodecCatalog(module_, version_), S_OK);
         MainWindow window(&backend);
         window.show();
-        QVERIFY(QTest::qWaitForWindowActive(&window));
+        QVERIFY(WindowActivation::waitForActive(window));
         action(window, "twoPanelsAction")->trigger();
         navigate(window, 1 - pane, files);
         navigate(window, pane, files);
@@ -205,8 +206,7 @@ class NativeColumnWorkflowTests final : public QObject, protected MainWindowTest
         QVERIFY(panel.GetColumns().FindItem_for_PropID(kpidPackSize) >= 0);
         list.horizontalHeader()->resizeSection(0, 213);
         inspect(window, list, peer, "archive");
-        window.activateWindow();
-        QVERIFY(QTest::qWaitForWindowActive(&window));
+        QVERIFY(WindowActivation::waitForActive(window));
         focusPath(window, pane);
         action(window, "openRootAction")->trigger();
         auto *spec = new SchemaFolder;
@@ -328,7 +328,7 @@ class NativeColumnWorkflowTests final : public QObject, protected MainWindowTest
         MainWindow window(&backend);
         window.resize(980, 620);
         window.show();
-        QVERIFY(QTest::qWaitForWindowActive(&window));
+        QVERIFY(WindowActivation::waitForActive(window));
         action(window, "twoPanelsAction")->trigger();
         focusPath(window, pane);
         window.openArchive(archive);

@@ -187,6 +187,14 @@ suites observed above 30 seconds on macOS; other platforms may differ.
 Agents run these only on an explicit request for long tests or the exhaustive
 suite, following [AGENTS.md](../AGENTS.md#validation-and-ui-reference).
 
+`copy_archive_refresh` is also opt-in: its full native matrix has192 workflows.
+The corrected Cocoa fixture completed89 without row failures before the120s
+whole-suite cap. Its macOS cap is540s, using twice the extrapolated full time
+rounded to a minute; Windows retains its measured360s cap. This changes neither
+individual state waits nor the application codec-discovery deadline.
+Its new full three-platform replay was explicitly declined on2026-10-17;
+earlier receipts retain their original revision and scope. Exclusion is not PASS.
+
 ```sh
 # Only long suites:
 SEVENZIP_INCLUDE_SLOW_TESTS=1 ./scripts/ctest.sh --preset dev -L slow --output-on-failure

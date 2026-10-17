@@ -2,6 +2,8 @@
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "copydialog.h"
 #include "filesystemscanner.h"
+#include "fixtures/widget_dialogs.h"
+#include "fixtures/window_activation.h"
 #include "layout_inspection.h"
 #include "panel_load_folder.h"
 #include "window_state_support.h"
@@ -9,6 +11,7 @@
 
 class PanelCopyReloadTests final : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
+    WidgetDialogFixture dialogs_;
   private slots:
     void init() { QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH")); }
     void copyCompletionSurvivesPeerLoadFailure_data() {
@@ -51,7 +54,7 @@ class PanelCopyReloadTests final : public QObject, protected MainWindowTestSuppo
         ControlledBackend backend;
         MainWindow window(&backend);
         window.show();
-        QVERIFY(QTest::qWaitForWindowActive(&window));
+        QVERIFY(WindowActivation::waitForActive(window));
         action(window, "twoPanelsAction")->trigger();
         auto *peerUi = window.findChild<QWidget *>(QString("filePanel%1").arg(1 - sourceIndex));
         auto *peerView =
@@ -115,9 +118,9 @@ class PanelCopyReloadTests final : public QObject, protected MainWindowTestSuppo
         QMetaObject::Connection restart;
         bool restarted = false;
         QTimer driver;
-        connect(&driver, &QTimer::timeout, &window, [&] {
+        dialogs_.connectResponder(driver, &window, [&] {
             if (auto *dialog = window.findChild<CopyDialog *>("copyDialog");
-                dialog && dialog->isVisible() && !submitted) {
+                dialog && dialogs_.ready(*dialog) && !submitted) {
                 submitted = true;
                 if (phase == "worker") {
                     restart =
@@ -145,7 +148,7 @@ class PanelCopyReloadTests final : public QObject, protected MainWindowTestSuppo
                 dialog->accept();
             }
             for (QWidget *widget : QApplication::topLevelWidgets())
-                if (auto *box = qobject_cast<QMessageBox *>(widget); box && box->isVisible()) {
+                if (auto *box = qobject_cast<QMessageBox *>(widget); box && dialogs_.ready(*box)) {
                     shown = box->text();
                     box->accept();
                 }
@@ -179,8 +182,7 @@ class PanelCopyReloadTests final : public QObject, protected MainWindowTestSuppo
         QVERIFY(sourceView->selectionModel()->selectedRows().isEmpty());
         QVERIFY(sourceView->sourcePanel->ShouldProcessNotifications());
         QVERIFY(peerView->sourcePanel->ShouldProcessNotifications());
-        window.activateWindow();
-        QVERIFY(QTest::qWaitForWindowActive(&window));
+        QVERIFY(WindowActivation::waitForActive(window));
         QTRY_VERIFY(sourceView->hasFocus());
         QCOMPARE(QDir::cleanPath(window.windowTitle()), input);
         QCOMPARE(peerView->sourcePanel->GetFolder(), (IFolderFolder *)folder);

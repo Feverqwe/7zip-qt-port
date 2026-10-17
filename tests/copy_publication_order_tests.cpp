@@ -3,6 +3,8 @@
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "Windows/PropVariant.h"
 #include "copydialog.h"
+#include "fixtures/widget_dialogs.h"
+#include "fixtures/window_activation.h"
 #include "layout_inspection.h"
 #include "window_state_support.h"
 #include <QLayout>
@@ -75,6 +77,7 @@ class CopyPhaseFolder final : public IFolderFolder, public IFolderOperations, pu
 
 class CopyPublicationOrderTests final : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
+    WidgetDialogFixture dialogs_;
     static FileTable *openPanel(MainWindow &window, unsigned index, const QString &path) {
         auto *ui = window.findChild<QWidget *>(QString("filePanel%1").arg(index));
         auto *address = ui->findChild<QLineEdit *>("archivePath");
@@ -121,7 +124,7 @@ class CopyPublicationOrderTests final : public QObject, protected MainWindowTest
         ControlledBackend backend;
         MainWindow window(&backend);
         window.show();
-        QVERIFY(QTest::qWaitForWindowActive(&window));
+        QVERIFY(WindowActivation::waitForActive(window));
         action(window, "twoPanelsAction")->trigger();
         auto *peer = openPanel(window, 1 - pane, output);
         QTRY_COMPARE(peer->rowCount(), 1);
@@ -153,7 +156,7 @@ class CopyPublicationOrderTests final : public QObject, protected MainWindowTest
         QList<int> peerRowsAtError;
         QList<unsigned> sourceLoadsAtError;
         QTimer driver;
-        connect(&driver, &QTimer::timeout, &window, [&] {
+        dialogs_.connectResponder(driver, &window, [&] {
             if (auto *dialog = window.findChild<CopyDialog *>("copyDialog");
                 dialog && dialog->isVisible() && !submitted) {
                 submitted = true;
@@ -161,7 +164,7 @@ class CopyPublicationOrderTests final : public QObject, protected MainWindowTest
                 dialog->accept();
             }
             for (auto *widget : QApplication::topLevelWidgets())
-                if (auto *box = qobject_cast<QMessageBox *>(widget); box && box->isVisible()) {
+                if (auto *box = qobject_cast<QMessageBox *>(widget); box && dialogs_.ready(*box)) {
                     errors << box->text();
                     errorTitles << box->windowTitle();
                     errorIcons << box->icon();
@@ -217,8 +220,7 @@ class CopyPublicationOrderTests final : public QObject, protected MainWindowTest
         QVERIFY(source->selectionModel()->selectedRows().isEmpty());
         QVERIFY(source->sourcePanel->ShouldProcessNotifications());
         QVERIFY(peer->sourcePanel->ShouldProcessNotifications());
-        window.activateWindow();
-        QVERIFY(QTest::qWaitForWindowActive(&window));
+        QVERIFY(WindowActivation::waitForActive(window));
         QTRY_VERIFY(source->hasFocus());
         QCOMPARE(source->sourcePanel->GetFolder(), folder.Interface());
         for (const QSize size : {QSize(980, 620), QSize(640, 400)}) {

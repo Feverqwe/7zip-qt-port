@@ -2,6 +2,8 @@
 #include "CPP/7zip/UI/Agent/Agent.h"
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
+#include "fixtures/widget_dialogs.h"
+#include "fixtures/window_activation.h"
 #include "layout_inspection.h"
 #include "native_property_failure_runtime.h"
 #include "qtfilemanagerstartup.h"
@@ -10,13 +12,13 @@
 
 class NativeParentPublicationTests final : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
+    WidgetDialogFixture dialogs_;
     NativePropertyFailureRuntime runtime_;
     QTemporaryDir seeds_;
 
     void renameChild(MainWindow &window, QWidget &owner, FileTable &list, bool icons) {
         auto &panel = *list.sourcePanel;
-        window.activateWindow();
-        QVERIFY(QTest::qWaitForWindowActive(&window));
+        QVERIFY(WindowActivation::waitForActive(window));
         auto *view =
             icons ? static_cast<QAbstractItemView *>(owner.findChild<QListView *>("iconList"))
                   : &list;
@@ -32,12 +34,11 @@ class NativeParentPublicationTests final : public QObject, protected MainWindowT
         QVERIFY(runtime_.armWriter(S_OK, false));
         QStringList errors;
         QTimer close;
-        connect(&close, &QTimer::timeout, &window, [&] {
-            if (auto *box = qobject_cast<QMessageBox *>(QApplication::activeModalWidget())) {
+        dialogs_.connectResponder(close, &window, [&] {
+            if (auto *box = qobject_cast<QMessageBox *>(dialogs_.activeDialog())) {
                 errors << box->text();
                 box->accept();
-            } else if (auto *progress =
-                           dynamic_cast<CProgressDialog *>(QApplication::activeModalWidget())) {
+            } else if (auto *progress = dynamic_cast<CProgressDialog *>(dialogs_.activeDialog())) {
                 auto *button = progress->findChild<QPushButton *>("IDCANCEL");
                 if (button && button->property("languageID").toUInt() == IDS_CLOSE)
                     button->click();
@@ -174,8 +175,7 @@ class NativeParentPublicationTests final : public QObject, protected MainWindowT
         startup.NeedOpenArc = true;
         MainWindow window(&backend, {}, nullptr, &startup);
         window.show();
-        window.activateWindow();
-        QVERIFY(QTest::qWaitForWindowActive(&window));
+        QVERIFY(WindowActivation::waitForActive(window));
         auto *owner = window.findChild<QWidget *>(QString("filePanel%1").arg(pane));
         auto *list = static_cast<FileTable *>(owner->findChild<QTableWidget *>("archiveTable"));
         auto *peer = window.findChild<QWidget *>(QString("filePanel%1").arg(1 - pane));
@@ -212,14 +212,14 @@ class NativeParentPublicationTests final : public QObject, protected MainWindowT
         QPointer<QMessageBox> closingError;
         QPointer<QPushButton> pendingButton;
         QTimer responder, driver;
-        connect(&responder, &QTimer::timeout, &window, [&] {
+        dialogs_.connectResponder(responder, &window, [&] {
             if (scenario >= 2 && !injected && !runtime_.writerReceipts().isEmpty()) {
                 injected = true;
                 QVERIFY(runtime_.arm(count == 301 ? 257 : 0, HRESULT(rendered), count));
                 if (written != E_ABORT)
                     QVERIFY(runtime_.armWriter(written, false));
             }
-            if (auto *box = qobject_cast<QMessageBox *>(QApplication::activeModalWidget())) {
+            if (auto *box = qobject_cast<QMessageBox *>(dialogs_.activeDialog())) {
                 if (box->objectName() == "modifiedArchiveQuestion") {
                     prompted = true;
                     box->button(answer)->click();
@@ -234,12 +234,13 @@ class NativeParentPublicationTests final : public QObject, protected MainWindowT
             }
         });
         connect(&driver, &QTimer::timeout, &window, [&] {
-            // Cocoa hides the Qt widget before its native modal loop unwinds.
-            // Wait for that error's destruction before driving its parent.
+            // These responders use widget dialogs. A hidden, accepted error
+            // can outlive its modal loop without blocking its parent.
+            if (closingError && !closingError->isVisible())
+                closingError.clear();
             if (closingError || pendingButton)
                 return;
-            if (auto *progress =
-                    dynamic_cast<CProgressDialog *>(QApplication::activeModalWidget())) {
+            if (auto *progress = dynamic_cast<CProgressDialog *>(dialogs_.activeDialog())) {
                 auto *button = progress->findChild<QPushButton *>("IDCANCEL");
                 const bool close = button && button->property("languageID").toUInt() == IDS_CLOSE;
                 const bool cancel =
@@ -307,8 +308,7 @@ class NativeParentPublicationTests final : public QObject, protected MainWindowT
                      : SourceExtractFixture::readFile(seeds_.filePath("inner archive 空.7z")));
         inspect(window, "published");
         QVERIFY(runtime_.clear());
-        window.activateWindow();
-        QVERIFY(QTest::qWaitForWindowActive(&window));
+        QVERIFY(WindowActivation::waitForActive(window));
         auto *view =
             icons ? static_cast<QAbstractItemView *>(owner->findChild<QListView *>("iconList"))
                   : list;

@@ -3,6 +3,8 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "fixtures/drag_event_position.h"
+#include "fixtures/widget_dialogs.h"
+#include "fixtures/window_activation.h"
 #include "layout_inspection.h"
 #include "native_property_failure_runtime.h"
 #include "qtfilemanagerstartup.h"
@@ -14,6 +16,7 @@
 
 class NativeDropPublicationTests final : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
+    WidgetDialogFixture dialogs_;
     NativePropertyFailureRuntime runtime_;
     QTemporaryDir seeds_;
 
@@ -141,8 +144,7 @@ class NativeDropPublicationTests final : public QObject, protected MainWindowTes
         MainWindow window(&backend, {}, nullptr, &startup);
         const auto resetControls = qScopeGuard([&] { runtime_.clear(); });
         window.show();
-        window.activateWindow();
-        QVERIFY(QTest::qWaitForWindowActive(&window));
+        QVERIFY(WindowActivation::waitForActive(window));
         auto *owner = window.findChild<QWidget *>(QString("filePanel%1").arg(pane));
         auto *list = static_cast<FileTable *>(owner->findChild<QTableWidget *>("archiveTable"));
         auto &panel = *list->sourcePanel;
@@ -172,7 +174,7 @@ class NativeDropPublicationTests final : public QObject, protected MainWindowTes
         bool confirmed = false, injected = false, cancelled = false, retrying = false;
         QStringList errors;
         QTimer responder, cancelDriver;
-        connect(&responder, &QTimer::timeout, &window, [&] {
+        dialogs_.connectResponder(responder, &window, [&] {
             if (!injected && !runtime_.writerReceipts().isEmpty()) {
                 injected = true;
                 QVERIFY(runtime_.arm(count == 301 ? 257 : 0, retrying ? S_OK : HRESULT(rendered),
@@ -180,7 +182,7 @@ class NativeDropPublicationTests final : public QObject, protected MainWindowTes
                 if (retrying || written != E_ABORT)
                     QVERIFY(runtime_.armWriter(retrying ? S_OK : written, false));
             }
-            auto *modal = QApplication::activeModalWidget();
+            auto *modal = dialogs_.activeDialog();
             if (auto *box = qobject_cast<QMessageBox *>(modal)) {
                 if (box->objectName() == "progressCancelQuestion")
                     box->button(QMessageBox::Yes)->click();
@@ -205,8 +207,7 @@ class NativeDropPublicationTests final : public QObject, protected MainWindowTes
         // Cancel opens a nested question. A separate timer must answer it;
         // the timer slot performing click() cannot re-enter itself.
         connect(&cancelDriver, &QTimer::timeout, &window, [&] {
-            if (auto *progress =
-                    dynamic_cast<CProgressDialog *>(QApplication::activeModalWidget())) {
+            if (auto *progress = dynamic_cast<CProgressDialog *>(dialogs_.activeDialog())) {
                 auto *button = progress->findChild<QPushButton *>("IDCANCEL");
                 if (button && injected && !retrying && written == E_ABORT && !cancelled) {
                     cancelled = true;
@@ -257,8 +258,7 @@ class NativeDropPublicationTests final : public QObject, protected MainWindowTes
         }
         inspect(window, "published");
         QVERIFY(runtime_.clear());
-        window.activateWindow();
-        QVERIFY(QTest::qWaitForWindowActive(&window));
+        QVERIFY(WindowActivation::waitForActive(window));
         view->setFocus();
         QTRY_COMPARE(window.focusWidget(), static_cast<QWidget *>(view));
         QTest::keyClick(view, Qt::Key_R, Qt::ControlModifier);
@@ -272,7 +272,7 @@ class NativeDropPublicationTests final : public QObject, protected MainWindowTes
         inspect(window, "recovered");
         if (!succeeded) {
             window.activateWindow();
-            QVERIFY(QTest::qWaitForWindowActive(&window));
+            QVERIFY(WindowActivation::waitForActive(window));
             view->setFocus();
             QTRY_COMPARE(window.focusWidget(), static_cast<QWidget *>(view));
             retrying = true;

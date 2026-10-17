@@ -163,7 +163,7 @@ Copy APIs with NTFS success/Skip/progress-cancel/failure and folder diagnostics.
 Cancellation retains the source and original partial-stream policy. Fixtures
 also check native Windows error text and the source extended-path Copy retry.
 They are temporary, bounded and independent of real archives/network/device data.
-These tests are focused default suites; the11 slow suites remain opt-in.
+These tests are focused default suites; slow matrices remain opt-in.
 
 `memory_lock` covers original startup capability/saved-option/risk admission,
 privilege success/refusal, ignored account-right Add failure and preserved prior
@@ -656,7 +656,12 @@ focus, terminal notify/redraw/enabled controls, unchanged failure archives and
 7zz-extracted control/payload bytes. Normal/compact reports inspect both panes.
 Without the native module the transport matrix contains96 cases. Run unsandboxed
 for native update filesystem access. Interarchive rollback and native-platform
-acceptance remain separate required consumers.
+acceptance remain separate required consumers. This full matrix is labeled
+`slow`: native Cocoa completed89 of192 workflows without a row failure before
+its120s whole-suite cap. The measured macOS budget follows the same reserve
+policy as Windows; state waits and application deadlines are unchanged.
+The newly classified full replay was declined by the user on2026-10-17;
+the current complete matrix remains unverified rather than accepted.
 
 `archive_reload_command` checks 64 real ZIP/7z QAction/Ctrl+R consumers across
 both panes, EN/RU, table/icon and standard/alternative selection. Model removal
