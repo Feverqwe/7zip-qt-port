@@ -1,0 +1,262 @@
+# Archive opening and extraction
+
+[Все UI-спецификации](../ui-layout-contracts.md). Разделы сохраняют исходные требования,
+якоря и границы датированных свидетельств. Новые результаты проверок —
+в [source audit](../upstream-port-audit.md).
+
+### Rendered Add/Extract reference (P3-06, 2026-10-15)
+
+Add's compact form reserves a separate gutter for its non-transient scroll bar;
+it must not cover fields or fade while scrolling is required. Native/translated
+minimum widths include that gutter. The bar reaches the right window edge;
+the source right margin separates it from the form, and footer buttons retain
+their right inset. `source_compress_dialog::scrollBarKeepsItsOwnSpace`
+checks EN/RU native and simulated overlay styles, compact top/bottom states and
+expansion without scrolling. Cocoa640-wide requests may grow to651 for Russian
+labels; the footer stays exposed and Parameters remains reachable.
+[Correction and checks](../archive/qt-port/upstream-port-audit/p3-06-add-scroll-2026-10-15.md).
+
+Rendered Add/Extract reference is separately available for original EN/RU initial
+states. Its fixed desktop geometry is not a compact resize contract; Qt keeps
+standard platform metrics and exposes compact Add content through scrolling with
+a visible footer. Current native Add/Extract consumers supply12 JSON per OS;
+Mac Extract may expand470-wide requests to554×343. [Reference/scope](../archive/qt-port/upstream-port-audit/p3-03-2026-10-15.md#p3-03p3-06--rendered-addextract-and-native-layout-consumers-2026-10-15).
+
+### Changed nested archive Parent (P3-05.15)
+
+Parent uses the source modified-archive Yes/No/Cancel question. No and Cancel
+both exit and delete the spool without changing the outer archive. Yes updates
+the original outer item; writer failure/Cancel retains the modified spool and
+reports the source update error, but still returns to the outer folder.
+Parent ignores its final Refresh HRESULT. Failed publication leaves an empty,
+enabled list; Ctrl+R recovers that same outer provider. Check native2/301-row
+outer archives with disk-extracted children, both panes, EN/RU, table/icon and selection modes using representative
+cases at980×620/640×400. Peer bytes/provider and subsequent filesystem OnTimer
+must survive. These checks do not establish rendered Windows parity.
+
+### Native nested opening (P3-05.15)
+
+OpenItemInArchive keeps original preferred provider stream, bounded memory
+extraction and disk extraction paths. Native provider streams use original Agent
+index mapping and keep the module/resource alive while read or seek is possible.
+All successful opens ignore the subsequent Refresh result as upstream does;
+S_FALSE/E_FAIL/E_ABORT during child row publication must not add a dialog.
+Failed publication is empty/enabled; Ctrl+R restores the same child provider.
+Parent restores the original outer provider/focused child name and removes its
+owned spool. Source timer/notify/redraw remain usable, including filesystem
+navigation and OnTimer afterwards. Check2/301 child rows, both panes, EN/RU,
+table/icon and standard/alternative selection at980×620/640×400. Inspect failed
+and recovered address/list groups; original archives and peer bytes stay intact.
+Native open cancellation must retain the outer provider/rows and release owned
+temporary files without a stale refresh or extra error. Rendered Windows and
+native Windows/Linux execution remain separate acceptance requirements.
+
+### Open archive picker (P2-01)
+
+Historical P2-01 extension, removed2026-10-04 during P2-09 UX correction:
+original IDM_MENU has no independent Open archive/Ctrl+O command. MainWindow's
+picker action/consumer is removed; source Open/Open Inside and address navigation
+remain. BrowseDialog/codec filter unit checks still validate their reusable
+component, and do not imply that an extra File-menu entry is justified.
+
+Reference: pinned BrowseDialog.cpp/CBrowseInfo and FilePlugins.cpp extension
+database. Qt uses the native OS file picker; archive masks project matching native
+handler metadata followed by All files, or only All files when metadata is absent.
+The picker retains filter order/index, Unicode paths and .001 selection.
+`browse_dialog` checks EN/RU filter presentation and selection with explicit test
+fixtures; `codec_catalog` checks the actual metadata masks and failure fallback.
+The OS-owned picker is a documented platform adaptation, not a Windows pixel
+reference. Actual MainWindow startup/error/command integration and full P2-01
+gate passed188/188(74.09s), macOS arm64 Qt6.11.2 2026-10-02.
+
+For long/super paths the original custom Browse fallback retains its top
+Parent/Create/folder row, three-column list, path edit, conditional filter and
+OK/Cancel footer. Its source initial client is272×336DLU, with8DLU margins/gaps,
+exact24DLU top-button widths with16DLU minimum height and64×16DLU footer
+buttons with native caption protection. Path/filter heights have14DLU minimums.
+Hidden FolderMode filter retains its vacant row; Cocoa uses its actual widget
+rectangle to preserve that source space. It requests source minimize/maximize/
+resize without context-help. Source demonstration rows initialize column widths
+through content autosizing, including the native icon slot.
+`source_browse_dialog` checks the initial EN/RU frame and visible controls;
+existing normal/compact navigation/filter/create/accept/Cancel tests remain.
+Parent/Create activate on Return/keypad Enter; Create cancellation leaves the
+filesystem unchanged. Initial focus remains the path edit. Bounded original
+EN/RU and current native results are in the
+[browser receipt](../archive/qt-port/upstream-port-audit/p3-06-source-browsers-2026-10-16.md).
+
+### Source extraction prompts (P0-04.1 prerequisite)
+
+`extract_prompt` produces OverwriteDialog reports at 700×440 / 560×440 with
+extra buttons shown/hidden, and MemDialog reports at 700×460 / 560×460 with
+limit editing disabled/enabled. `ui_parity_overwrite` / `ui_parity_mem` run
+that current-build producer fixture before comparing pinned RC contracts.
+
+Overwrite order is destination notice, question start, old file icon/details,
+question end, new file icon/details, then two rows of Yes/Yes to all/Auto rename
+and No/No to all/Cancel. Source ReduceString, byte size and timestamp formatting
+remain native. No is the default when requested; extra actions hide together.
+The footer is a compact block aligned right. Five standard buttons have equal
+native-text widths; Auto Rename uses the source 104/64 width proportion, enlarged
+if its translated text requires it. Cancel has a standard width and aligns with
+Auto Rename's right edge. Hidden extra buttons retain their resource columns and
+gaps, so Yes/No/Cancel do not move. File details start beside the top of each icon.
+`overwrite_layout` covers EN/RU, normal/compact widths, extra-action visibility
+and the public hide transition. Its initial-frame case checks growth between
+8pt and 12pt fonts: the source 356×216 dialog-unit frame maps through
+`QtDialogUnits` and may expand to Qt's minimum size. Responsive Qt layouts and
+native font metrics are deliberate adaptations of the fixed Win32 dialog;
+they do not imply identical pixel dimensions. Rendered reference evidence is
+recorded in the [P3-06 audit](../archive/qt-port/upstream-port-audit/p3-06-2026-10-15.md).
+Qt supplies one file icon; the optional second Windows EXE/ICO icon is omitted
+explicitly in the contract. Widths must fit labels and footer buttons without
+clipping. Default and native result IDs are checked behaviorally.
+
+Memory initially maps the336×216DLU client through its native font/minimum
+hint, with eight-DLU root margins,72DLU message area and62DLU Action group.
+The limit edit/spinner pair occupies50DLU with native minimum protection,
+indented10DLU from the root margin; GB follows after8DLU. Remember has a10DLU
+inset from the radio buttons. Continue/Cancel are64×16DLU with native caption
+protection, with a minimum10DLU gap after Action. The source has no minimize/
+maximize/context-help title-bar buttons.
+Memory order is native requirement/limit/RAM message, change-limit checkbox,
+independent edit/spinner and GB label, Action group containing Allow/Skip and
+Remember, Continue/Cancel. Source RAM-dependent default and spinner range,
+text validation, NeedSave/Remember/SkipArc and cancellation are preserved.
+The text field remains independent of the spinner range, including source
+acceptance of zero; invalid text does not close the dialog.
+Invalid-limit errors use source MyMessages' Critical/OK and 7-Zip title, with
+user-question suppression; macOS hides QMessageBox titles. The pending dialog
+and raw text remain available for correction in either policy state.
+Qt spinner buttons adapt the original edit/up-down pair, preserving
+the original `UDS_ALIGNRIGHT` paired width and `UDS_ARROWKEYS` keyboard path:
+enabled buddy edit ↑/↓ invokes the same step operation as the buttons; disabled
+input is unchanged. Up/down buttons are not independent tab stops. The raw text
+parser and source range policy remain separate. Native button-box optical
+margins may shift its backing widget by one pixel; source footer gaps are
+asserted through public layout-item geometry, with actual control visibility
+checked separately. This corresponds to Qt's
+[QWidgetItem rectangle conversion](https://github.com/qt/qtbase/blob/6.12/src/widgets/kernel/qlayoutitem.cpp#L456).
+These checks establish
+structure and local Qt usability. Initial focus is Change allowed limit, as in
+the first source tab stop. Native PanelOpen integration is checked in P0-04.1.
+The bounded EN/RU original/current rendered comparison is recorded in the
+[source-prompts receipt](../archive/qt-port/upstream-port-audit/p3-06-source-prompts-2026-10-16.md);
+whole workflow and pixel equality are not established by those initial views.
+
+```sh
+./scripts/build.sh dev ui_geometry_tests
+ctest --preset dev -R '^ui_geometry$' --output-on-failure
+```
+
+CTest writes reports to `build/dev/ui-reports/`. `tests/layout_inspection.h`
+also supports other Qt tests through `UiInspection::writeReport(widget, tag)`.
+`SEVENZIP_UI_REPORT_DIR` overrides the output directory; standalone test runs
+default to `ui-reports/` in the current directory. `ui_layout`, `extract_dialog`,
+and `compression_preferences` now write JSON instead of mandatory PNGs.
+Older screenshot-producing tests have not all been migrated.
+
+Each JSON object contains class, object name, visible/enabled state, bounds in
+root coordinates (`[x,y,width,height]`), exposed bounds after ancestor clipping,
+size hint, and nested children in Qt object order. Static labels, button text,
+group titles, and noneditable combo selections are included. Editable values
+are omitted, including passwords in show-password mode. Static labels can still
+contain generated paths; reports use disposable fixtures and are local artifacts.
+Object-tree order is not tab order: use geometry for spatial relationships.
+
+`fullyVisible` checks ancestor clipping, not occlusion by another sibling or
+window. `separate` checks specified pairs; container/child overlap is intentional.
+`labelFits` uses Qt size hints/height-for-width, not pixel analysis. Scrolled
+content can be clipped until brought into view. Avoid blanket overlap or
+visibility assertions on the entire widget tree.
+
+For an unresolved rendering question:
+
+```sh
+SEVENZIP_CAPTURE_SCREENSHOTS=1 ctest --preset dev -R '^ui_geometry$' --output-on-failure
+```
+
+This writes optional PNGs next to the JSON. Open only the affected screenshot.
+
+## Extract dialog
+
+Reference: upstream commit `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
+`CPP/7zip/UI/GUI/ExtractDialog.rc`, desktop `IDD_EXTRACT`.
+Implemented view: `src/CPP/7zip/UI/GUI/ExtractDialog.cpp`.
+
+- Destination label and editable history occupy the top; Browse is on the right.
+- Below the destination, the left column contains the optional folder-name
+  row, path mode, root-duplication checkbox, and overwrite mode in that order.
+  The password group is right of the modes, with Password and Show Password.
+  Restore file security is below it; Unix disables it with a platform reason.
+- Toggling `extractNameEnable` hides/shows the folder-name field without
+  obscuring modes or confirmation buttons.
+- OK, Cancel and Help stay visible,
+  distinct, and inside the window at requested sizes 640×360 and 470×330;
+  Qt may expand to its style-dependent minimum size. Static labels fit.
+
+P2-07 source_extract_advanced additionally checks EN/RU700×390/600×340 exposed
+controls, checkbox width and source grouping/order. Four JSON reports reviewed
+2026-10-03: compact modes are286 pixels wide, Russian ElimDup requires285;
+inspected bounds equal exposedBounds. Rendered Windows parity is unverified.
+
+The source caller supplies the full single-archive path in the window caption;
+multiple archives use the plain Extract caption. Language changes preserve
+that path and pending input. Eliminate duplication remains enabled independently
+of the caller. The source resource has no destination hint.
+
+`dialog_path_rules` adds EN/RU × split on/off Create/Extract Cancel/confirm
+reports at 700×390/600×340 (Extract) and 760×720/640×480 (Create).
+It asserts complete destination, mode, password, duplication and visible
+folder-name fields, archive-name input and footer exposure. Source grouping and
+conditional folder-name visibility remain as above. Editable values are checked
+by the workflow, not inferred from redacted JSON; native separators and NBSP
+preservation change values without introducing controls or captions.
+
+Current 2026-10-07 toolbar, language and advanced Extract/Copy reports were
+reviewed on macOS, native Windows Qt and Linux. The mode/password columns,
+checkbox text and footer remain exposed at normal/compact sizes. Requested
+Russian470×330 expands to the style-dependent minimum (macOS525, Windows483
+pixels wide). The standalone Windows GUI consumer also checks public UIA
+exposure/enabled states and source caption. This does not establish original
+Win32 pixel parity; [the audit](../archive/qt-port/upstream-port-audit.md#p3-05--toolbar-extracttest-source-consumers-2026-10-07)
+owns the platform evidence.
+
+Adaptations: the pinned desktop resource and Qt use combo boxes for modes.
+Help uses the source topic. The blank folder-name checkbox uses an accessible
+tooltip; Qt layouts and platform button ordering replace Win32 positioning.
+See `docs/7zfm-parity.md` for
+behavioral limitations. The tests check these relationships rather than hardcoded
+pixel coordinates or native button ordering.
+
+## Archive password prompt
+
+Reference: upstream `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
+`CPP/7zip/UI/FileManager/PasswordDialog.cpp/.h/.rc` (`IDD_PASSWORD`).
+`CPasswordDialog` shows a prompt, password edit, Show Password, then OK/Cancel.
+Initial client is216×88DLU, with eight-DLU root margins. The prompt is8DLU
+high, the edit begins at20DLU with14DLU minimum height, and Show Password begins
+at42DLU with10DLU minimum height. Footer buttons are64×16DLU protected by native
+metrics and use native standard-button ordering.
+The minimum gap from Show Password to the footer layout item is12DLU; native
+button-box optical margins remain platform geometry. The source has no minimize,
+maximize or context-help title-bar buttons. Compact Qt resize remains an
+accessibility adaptation of the fixed original form.
+Initial focus is the password edit. Initial Password/ShowPassword are applied before display. Toggling copies the
+current edit into public state, then changes echo mode without changing its text,
+as in ReadControls/SetTextSpec. OK/Enter commit raw text; the caller discards a
+rejected dialog and keeps the existing backend cancellation policy.
+
+`password_dialog` checks masked/shown states at 360×170 and 260×170, control
+order, label fitting, footer visibility and separation. `ui_parity_password`
+maps all five resource controls to these current-build reports. Behavioral tests
+cover initial values, Unicode/spaces, show/hide, OK/Enter and Cancel. Editable
+password values stay out of reports. Russian captions and Qt button ordering
+are documented adaptations. Windows rendering remains unverified.
+
+`password_window` adds current-build 360×170/260×170 reports for accepted
+Unicode, surrounding spaces and empty text during source archive opening.
+It also checks the subsequent asynchronous process prompt, raw-value reuse,
+Cancel/reopen and reset on another archive. `open_callback`/`update_callback`
+cover empty and supplementary Unicode through the portable UString/BSTR boundary.
+These add caller coverage; the resource layout and labels are unchanged.

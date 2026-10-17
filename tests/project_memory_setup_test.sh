@@ -13,9 +13,9 @@ git -C "$fixture" init --quiet
 setup_script="$fixture/.agents/skills/sz-setup/scripts/setup.sh"
 
 sh "$setup_script"
-test -s "$fixture/.codex/memory/README.md"
-test -s "$fixture/.codex/templates/handoff.md"
-test -L "$fixture/.codex/docs"
+# Documentation aliases must expose current files, not stale copied content.
+printf 'Updated project documentation\n' > "$fixture/docs/README.md"
+cmp "$fixture/docs/README.md" "$fixture/.codex/docs/README.md"
 if git -C "$fixture" config --local --get core.hooksPath; then
   echo 'Setup unexpectedly installed Git hooks.' >&2
   exit 1

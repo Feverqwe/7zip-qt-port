@@ -1,0 +1,394 @@
+# Shared dialogs and operation feedback
+
+[Все UI-спецификации](../ui-layout-contracts.md). Разделы сохраняют исходные требования,
+якоря и границы датированных свидетельств. Новые результаты проверок —
+в [source audit](../upstream-port-audit.md).
+
+### Standard source dialog buttons (P3-05.9, accepted button scope)
+
+Reference: pinned LangUtils.cpp::kLangPairs/LangSetDlgItems, GuiCommon.rc and
+each dialog's resource/OnInit caller. Selected 7-Zip language controls OK,
+Cancel, Yes, No, Close, Help and Continue. Missing entries keep the resource
+caption; Memory uses IDCONTINUE. Hot reload preserves roles and pending input.
+Options property-sheet/native dialogs retain their platform language owner.
+`language_standard_buttons` checks twelve source consumers at their normal/
+compact sizes below and produces48 EN/RU footer reports per platform. Reports on all three platforms reviewed
+2026-10-06 show visible, separate standard controls and exact source captions;
+rendered Windows parity and parent/final acceptance remain pending.
+
+### Shared ListView: Properties and Folder History (P3-06)
+
+Reference: pinned FileManager/ListViewDialog.rc and OnInit/OnEnter/OnOK callers.
+Initial client is496×336DLU with native font/minimum protection; root margins
+and footer gap are8DLU, buttons64×16DLU with native caption protection. Preserve
+one-column hidden History header and the blank two-column Properties header.
+Native standard-button ordering is retained. `list_view_dialog` writes EN/RU
+source-initial and540×360/360×240 reports, checking exposed list/footer without
+changing stored full values, clipboard/detail or acceptance behavior.
+
+### Link (P2-05)
+
+Reference: pinned FileManager/LinkDialog.rc and source OnInit/OnButton_Link.
+Initial client is304×230DLU, mapped with the native Qt font and protected
+minimum sizes. Root margins are8DLU; Browse is20DLU wide. Source path labels
+start at8/48DLU vertically, Current target at78, Link Type at104 with90DLU
+height. The footer uses64×16DLU buttons with native caption protection.
+The source resizable/minimize/maximize capabilities are requested through Qt
+window flags; native window managers may suppress modal title-bar controls.
+The resource has no context-help title-bar button.
+Link from combo/browse precedes Link to combo/browse and current target text.
+Link Type contains Hard→File Symbolic→Directory Symbolic→Junction→WSL in source
+order. Link is the default footer button, followed by Cancel. Qt scrolls the
+content at compact sizes; desktop-only Junction/WSL remain visibly disabled on
+POSIX with a platform reason. Source radio/type choices and errors remain owned
+by CLinkDialog; Qt controls bind original captions and LangSetDlgItems maps
+IDCANCEL to its source language entry.
+Radio captions use the existing220-pixel language wrapping binding so native
+Windows EN/RU font metrics do not force horizontal clipping at360 pixels.
+`link_dialog` writes EN/RU520×500/360×300 JSON and checks named controls after
+scrolling and footer exposure, plus native-font source initial frames. A group
+frame may exceed a compact viewport; its native title rectangle and every child
+must each be fully reachable. Current native EN/RU reports on three OS and
+rendered original initial states are recorded in the
+[secondary-dialog receipt](../archive/qt-port/upstream-port-audit/p3-06-secondary-dialogs-2026-10-16.md).
+Native font metrics, compact scrolling and modal chrome prevent a claim of
+complete rendered Windows pixel equality.
+
+### Benchmark (P2-04)
+
+Reference: pinned `CPP/7zip/UI/GUI/BenchmarkDialog.rc` and its source state bodies.
+POSIX failed/empty affinity uses original System.h normalized processor fallback
+in the hardware-threads leading CPU count and choice limits; that count must not
+be zero or retain InitST's one when a larger processor count is available.
+Windows retains its native source helper. These system failures do not change
+grouping or controls.
+Dictionary/memory precede CPU threads, then Size→Speed→CPU Usage→Rating / Usage→
+Rating columns; Compressing and Decompressing retain Current/Resulting rows.
+Elapsed/Passes and Total Rating precede CPU/version/system information. In the
+normal resource, Restart/Stop belong to the upper right of the left control
+pane; Help/Cancel remain in that pane's footer. The separate static log begins
+at the top of the right column and spans the normal dialog height. It uses
+plain, nonwrapping dialog-font text, not the total mode's fixed-font edit.
+Compressing/Decompressing are group boxes; resource RTEXT metric headers and
+values are right-aligned. Initial clients are488×264DLU normal and376×276DLU
+total, with Qt font/minimum-size protection. Current tests assert these initial
+frames, roles/grouping, footer placement, right alignment and logical focus.
+Source normal logical tab order is Restart→Stop→Help→Cancel→Dictionary→Threads→
+Passes, with Restart initially focused. Total initially focuses its console.
+Both source templates request minimize/maximize/resizable style and no
+context-help title-bar button; Qt retains native modal-chrome conventions.
+Total mode has elapsed time and a fixed-font console. Qt scrolls the normal control pane at
+compact sizes and replaces Win32 rectangles/font setup with Qt layout services.
+
+`benchmark_lifecycle` writes source-initial and normal/total EN/RU JSON at960×650 and640×400,
+checks all named labels/inputs after scrolling, fixed footer exposure and live
+language changes. Historical reports on all three OS were reviewed2026-10-03: normal compact
+controls scroll vertically/horizontally, metrics captions fit; buttons remain
+fully exposed. Total console is618×326 compact and938×576 normal. Cancel/Help use
+the original standard language mapping402/409; control IDs2/9 are not language
+IDs. No screenshot or rendered Windows reference has been used to claim pixel
+parity. Windows spanning group/error/system labels retain natural width; wrapped
+source text updates also set its required height, since a grid span's height
+calculation otherwise assumes the wider span. The Windows console is618×332
+compact/938×582normal; Linux618×330/938×580. Lower system rows are expected below
+the initial compact viewport and are tested after scrolling. Current Windows
+960×650 reports also leave3px of the empty final SYS2 row below the initial
+viewport; its label fits and the same per-control scrolling check verifies
+reachability. This is scroll-content geometry, not clipped text. P2-04 acceptance
+is recorded in the audit; whole-plan platform/rendered checks remain P3.
+The current source-frame/grouping correction has36 native JSON per OS and ten
+original Windows EN/RU reference states across List/Link/Benchmark. See the
+[current receipt](../archive/qt-port/upstream-port-audit/p3-06-secondary-dialogs-2026-10-16.md)
+for precise checks and deviations; the older console dimensions above retain
+their historical revision.
+
+## Commands and reports
+
+## Folder history list
+
+Reference: `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
+`CPP/7zip/UI/FileManager/ListViewDialog.rc/.cpp` and
+`PanelFolderChange.cpp::CPanel::FoldersHistory`.
+The single-column list fills the resizable body; OK/Cancel sit below it.
+Its initial496×336DLU frame,8DLU margins/list-footer gap and64×16DLU footer
+buttons use the native Qt font and protect native minimum sizes. Native button
+ordering is retained. Source minimize/maximize/resizable capabilities are
+requested with Qt flags; no context-help title-bar button is added.
+There is no separate Delete button in the reference. Delete affects all
+selected rows, Ctrl+A/C copy/select, Enter confirms the focused path.
+Long paths remain reachable through scrolling, without eliding stored text.
+SingleClick changes activation to one click and enables hover selection without
+confirmation. Modified selection clicks do not activate. Interaction coverage
+is in `list_activation`; this adaptation does not change the geometry contract.
+`folder_history` verifies list/footer visibility and separation at 540×360
+and 360×240 and writes JSON reports. Qt geometry establishes structure and
+usability. The original rendered EN/RU history states are recorded in the
+[secondary-dialog receipt](../archive/qt-port/upstream-port-audit/p3-06-secondary-dialogs-2026-10-16.md);
+widget geometry does not establish pixel equivalence or physical input.
+
+## Hash results
+
+The native HashGUI result presenter uses the same ListViewDialog resource and
+two-column property/value body. Its title is «Контрольные суммы»; source bundle
+rows include the filename, byte size and requested digest. It starts without
+selected rows and retains the native DeleteIsAllowed flag. OK/Cancel remain
+below the list. `hash_results` checks exact source-generated rows against a
+CRC32 fixture, title/state and unclipped, separate list/footer/buttons at
+540×360 and 420×360; reports are `hash-results-540`/`hash-results-420`.
+Horizontal scrolling remains available for long Unicode names/values. This
+checks Qt structure/usability, not rendered Windows pixel parity. The complete
+hash command/file workflow is connected and accepted in P2-03. PanelCrc and
+HashCalcGUI invoke this same source presenter; current540/420 JSON reviewed
+2026-10-03, macOS full gate199/199 and Windows13/Linux focused consumers passed.
+
+## Full text detail
+
+Reference: EditDialog.rc; source scope and baseline are recorded in the
+[properties audit](../archive/qt-port/upstream-port-audit.md#свойства-и-двухколоночный-список-2026-09-28).
+CEditDialog initially maps the336×256DLU client through the native Qt font,
+with eight-DLU root margins/gap and64×16DLU Close protected by its native hint.
+It requests the source resize/minimize/maximize capabilities without a title-bar
+context-help button. CEditDialog has one read-only multiline
+edit above Close, with both scroll directions and no automatic wrapping.
+Text/Title are copied without truncation. Close has initial focus and is the
+default button: initial Enter closes. Tab reaches the edit, where Enter remains
+inside the edit (ES_WANTRETURN). Geometry: 480×320 and 320×240,
+visible, separate text area and footer. Coverage is described in
+[testing](../testing.md). Rendered Windows parity remains unverified.
+
+## Selected properties
+
+Window Properties now reads the bound source folder/operated indices. File
+packed size is visible for filesystem and archive owners; empty source values
+are omitted. Rows follow the source property catalog, with the existing full
+current-location footer. Archive Modified text remains sparse raw compatibility
+data until native time parsing; it is not a precision/timezone acceptance claim.
+
+Reference: ListViewDialog.rc; source scope and baseline are recorded in the
+[properties audit](../archive/qt-port/upstream-port-audit.md#свойства-и-двухколоночный-список-2026-09-28).
+Two columns (property/value) fill the body with a visible empty header,
+followed by OK/Cancel. No label form or custom selection title remains.
+The same496×336DLU source frame and native-font/margin/footer policy as folder
+history apply; header visibility remains controlled by NumColumns.
+The value shown in the list is limited to 1024 upstream wchar_t units,
+then ` ...`; CRLF/LF become spaces. Copy and Enter/double-click detail
+use the full value. Delete is disabled for properties.
+Geometry: list/header/footer at 540×360 and 360×240, long Unicode paths and
+horizontal scrolling. Test coverage is described in [testing](../testing.md).
+`panel_property` writes `typed-properties-540` and `typed-properties-360` reports
+with source typed maximum-size and multiline error values. List/header/footer
+remain visible and separated; names/values remain two columns, long values use
+the existing source truncation/detail contract and error LF displays as spaces.
+Only structural Qt usability is verified; a rendered Windows reference
+was unavailable.
+
+`properties_runtime` produces `properties-runtime-flat*-mode*-*.json`,
+`properties-directory-flat*-mode*-*.json` and
+`properties-summary-flat*-mode*-*.json` for file, directory and aggregate states
+in all normal/flat/four-view combinations at 540×360 and 360×240. The same list,
+empty two-column header and separate visible OK/Cancel footer apply to each.
+
+## GUI early error messages
+
+The standard early GUI errors have no custom upstream dialog resource:
+UpdateGUI::ShowDialog and ExtractGUI call Explorer/MyMessages' MessageBox
+presentation. `gui_error_policy` checks the corresponding Qt Critical/OK boxes
+at requested 480×220/320×160 in EN/RU, including fitted message labels and visible
+OK controls; each of the six visible states emits two current-build JSON reports.
+Suppressed states emit no box. Qt owns any minimum size adjustment and native
+button placement; macOS omits the window caption. The original hardcoded English
+texts remain unchanged. This is a standard message adaptation, not rendered
+Windows pixel parity or a contract for custom Extract/Compress dialog geometry.
+Current macOS boxes auto-fit to 228/304×116, Linux to 204/274×98 and Windows to
+293/400×96 for writer/output errors respectively. Both requested sizes resolve
+to these platform sizes, with fitted labels and visible/enabled OK; the requested
+compact width does not override QMessageBox's standard fit policy.
+
+## Shared name/mask dialog
+
+Reference: upstream `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
+`CPP/7zip/UI/FileManager/ComboDialog.cpp/.rc` and
+`BrowseDialog.cpp::Dlg_CreateFolder`. Implemented view: `ComboDialog.cpp`.
+
+- The prompt precedes one editable combo, with OK/Cancel at the bottom.
+  Initial Value remains visible after populating ordered Strings.
+- The initial frame follows the256×80 DLU source client template through the
+  native font and Qt minimum-size protection; it scales with the font instead
+  of retaining an arbitrary360×150px initial size. Explicit normal/compact
+  resizing below remains a separate adaptation.
+- Folder/file creation uses source title, prompt and default-name language IDs;
+  selection masks use the same view with their own prompts.
+- CPanel::SelectSpec owns the Select/Deselect titles, mask prompt, initial `*`
+  and Cancel return. `source_selection` checks both languages/panes and standard/
+  alternative marks, with32 current360×150/260×150 Combo reports. The same
+  source owner handles an inactive-pane direct call without changing its peer.
+- OnOK preserves raw text, including spaces and an empty value. Validation
+  belongs to the calling operation. Cancel leaves the public Value unchanged.
+- `combo_dialog` checks folder/file/mask views at 360×150 and 260×150:
+  fitted prompt, reachable combo/footer, control order and separate buttons.
+  JSON reports accompany the checks; screenshots remain optional.
+- `source_create` exercises actual CreateFolder/CreateFile callers in both
+  panes/languages and normal/flat views. Forty-eight current 360×150/260×150
+  reports reuse this contract; creation keeps the source first-component focus,
+  alternative marks and distinct failure-refresh policy. Cancel preserves the
+  pre-dialog state. Source provenance and checks are in the
+  [receipt](../archive/qt-port/upstream-port-audit.md#p3-05--source-create-filefolder-scenario-2026-10-10).
+- ZIP comment uses source `PanelOperations.cpp::ChangeComment` with the focused
+  item name and localized Comment in its title, localized IDS_COMMENT2 prompt
+  and the existing raw property value. `native_comment_ui` checks EN/RU at the
+  same two sizes: current comment-en/ru-360/260 JSON reports preserve prompt,
+  editable combo and separately reachable OK/Cancel. titleID=0 preserves the
+  caller's dynamic title; source language ID0 is the application name.
+- Original Set Comment Error/HRESULT remains the error presentation. On macOS,
+  which omits QMessageBox window captions, the caption is the visible message
+  heading and HRESULT detail is informative text. Tests exercise real writer
+  refusal on both languages and ordinary/AES ZIP. Comment now uses the shared
+  source panel HRESULT/caption helper; its source-owned refresh follows the
+  error, while dialog Cancel returns before refresh. Existing Combo JSON and
+  normal/compact geometry consumers retain the same controls and text contract.
+- Filesystem comments use the same source dialog, focused name/title and
+  IDS_COMMENT2 prompt. `filesystem_comment` checks existing value, EN/RU,
+  normal360×150/compact260×150, File Comment and Ctrl+Z, OK and Escape, selected
+  rows and unchanged file bytes. Eight filesystem-comment-en/ru-0/1-360/260 JSON
+  show a fitted prompt, editable combo and separately visible/enabled OK/Cancel.
+  The source FSFolder writer trims the accepted comment; ZIP's raw whitespace
+  behavior remains separate. No new dialog or rendered Windows parity is claimed.
+  The source Escape/Cancel path does not reload the folder. An externally added
+  item while the dialog is open remains unpublished until explicit Refresh;
+  selection, focus, provider and peer rows stay intact. Accepted Comment reaches
+  the source reload phase even after operation failure. Load failure/cancellation
+  leaves no stale rows and releases guards; a later explicit Refresh recovers.
+  Preserve the original ignored reload-result policy in this operation caller.
+  Inspect both panes in EN/RU at 980×620/640×400 after Cancel and terminal load.
+
+Qt layouts replace OnSize. Plain-text wrapping handles Qt label rendering;
+the native AddString behavior is adapted by restoring initial edit text after
+Qt populates the combo. Windows rendering was unavailable; geometry establishes
+structure/usability on the tested macOS Qt platform.
+
+## Split and Combine dialogs
+
+Reference: upstream `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
+`CPP/7zip/UI/FileManager/SplitDialog.rc`, `SplitDialog.cpp::{OnInit, OnOK,
+OnButtonSetPath}`, and `PanelSplitFile.cpp::CApp::Combine` with `CopyDialog.rc`.
+Implemented views: `SplitDialog.cpp` and the existing `CopyDialog.cpp`.
+
+- Split puts the destination label above its editable combo, with Browse on
+  the right. The volume-size label and editable preset combo follow below.
+  The source filename is appended to the window title, as in OnInit.
+- The source initial client template is304×112DLU. The volume combo remains
+  left-aligned at96DLU, including after resize; Browse uses20DLU width with a
+  native minimum hit target and the source `...` caption. Only the destination
+  combo expands horizontally.
+  Font mapping and Qt minimum sizes protect labels/footer on each platform.
+- OK/Cancel remain at the bottom. Invalid volume input opens the source
+  Critical/7-Zip/OK modal message and keeps Split open, including accept().
+  OK or Escape dismisses only the message; raw input remains available for retry.
+- Combine uses the original shared Copy dialog: destination, Browse,
+  read-only scrolling summary and footer. The summary lists the count and
+  size, source prefix, first two names, ellipsis when needed and final name.
+- `volume_dialog` checks normal/compact Split at 480×240 and 340×240 in
+  normal/error states, and Combine at 480×250 and 340×250 with 2/3/5 parts.
+  It writes JSON and verifies order, reachable controls, fitted labels,
+  separated path/Browse and separate OK/Cancel.
+
+Qt layouts replace OnSize arithmetic; Qt native folder browsing replaces
+MyBrowseForFolder. The earlier inline-error adaptation is removed2026-10-10;
+no extra error control exists in the source resource. Separate current-build
+message JSON checks Critical/plain text/OK and native auto-fit; macOS ignores
+its caption. `language_dialog` also checks English/Russian prompts and raw input
+across language changes. Windows volume/language consumers use native QPA/fonts
+and the existing UI resource lock. The original parser and partial-failure
+vector remain authoritative; invalid submission starts no operation or directory.
+Reports establish structure/usability on macOS; a rendered Windows reference
+was unavailable and pixel-level parity remains unverified.
+
+## Progress dialog and modal lifecycle
+
+Reference: upstream `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
+ProgressDialog2.rc/ProgressDialog2a.rc (`IDD_PROGRESS`) and the complete handlers
+and statistic/message dependencies in ProgressDialog2.cpp. Keep the original
+two statistic columns: elapsed/remaining/files/file-total/errors on the left;
+total/speed/processed/packed/ratio on the right. Below them, status, two-line
+directory/name, progress bar, two-column error list, then Background/Pause/Cancel
+in that order. Percentage belongs in the title; hide text inside the bar.
+
+Initially errors label/value/list are hidden. New messages show all three and
+use source numbered first lines and unnumbered continuations; copy selected
+rows or all rows if none selected. ShowCompressionInfo=false hides packed and
+ratio labels/values without rearranging the source groups. Pause changes to
+Continue, prefixes the title and freezes timer rendering/elapsed accumulation;
+resume preserves elapsed time. Files-progress scales by count, while speed
+remains byte based. Unknown totals clear size/remaining totals according to
+the original cached state. Native endpoint/unknown/overflow behavior is retained.
+
+Source OnSize controls geometry through Qt font-DLU/rect/move services; round
+line height upward to fit QLabel text. Source NormalizeSize only handles
+oversized windows/work-area overlap; it does not supply a minimum size.
+Normal 760×450 and compact 640×380 geometry tests check every visible control,
+text/button fitting and footer/list separation. `ui_parity_progress` maps all
+26 IDs to 24 JSON reports across compression/errors/paused, native priority and finish-Close
+states. Captions follow source language bindings; clipboard shortcuts also accept macOS Meta.
+Background is the source default button and receives initial focus when native
+priority capability is available; Enter on focused Pause toggles pause instead.
+Real priority failure restores the previous caption/title and reports a source
+Sync error. Cancel uses source YES/NO/CANCEL and Escape-as-Cancel, temporarily
+pausing and restoring prior pause. Native completion while the question is open
+is deferred until the answer; completed errors hide Pause/Background and focus
+the default Close button. Native message boxes use plain text. Their Qt platform
+layout is checked separately from the 26-control source resource; macOS ignores
+message-box window titles. Source MB_YESNOCANCEL and success MB_OK have no icon
+flags: both Qt boxes use NoIcon; MB_ICONERROR uses Critical. Cancel's existing
+normal/compact answer matrix checks the public icon. Final-error/success reports
+request480×200/320×200, but native QMessageBox auto-fit determines actual sizes;
+these requests do not establish two distinct rendered sizes. On Windows all
+four progress-report producers and Cancel use the native QPA/font database,
+as the main dialog already does. The offscreen plugin's missing-font fallback
+metrics are unsuitable for application geometry. Add in an open archive was the first operation consumer
+under P0-10.1. P0-10.2 connects the other current archive, filesystem and volume
+operations. Filesystem/volume workers expose cancellation and real background
+priority, but Pause is disabled because they have no worker pause capability.
+
+MessagesDialog.rc (`IDD_MESSAGES`) uses a two-column numbered/message list and
+Close footer,456×176DLU initial client and resize/minimize/maximize capabilities
+without context-help. Assigning a parent must preserve those source flags.
+Close has initial focus, matching the first resource tab stop.
+The Qt source port preserves AddMessageDirect/AddMessage and the
+OnInit/OnSize control flow; `IDL_MESSAGE` is above `IDOK` at 760×450 and
+640×380. Current-build JSON confirms both controls are visible, separated and
+within the dialog. Create follows the source modal lifetime until Close/Enter
+(IDOK) or Escape (IDCANCEL), retaining the stack-owned PanelDrag message vector.
+The independent File-menu journal was removed under P2-09. Font-DLU scaling
+may enlarge the Close button to its Qt size hint. Windows rendered appearance
+remains unverified.
+No Windows rendered reference; geometry does not establish pixel parity.
+The original IconID branch loads the exact FM.ico through a Qt ID/resource
+service, including native 16/32/48 frames; default negative IDs preserve the
+existing icon. Image decoding tests do not verify Windows title-bar rendering.
+
+When extending a view, update its specification and add the relevant geometric
+relationship or conditional state to its focused test. Add contracts for other
+views as they are changed rather than rewriting all UI tests at once.
+
+Create compression method states follow pinned CompressDialog.cpp/.h/.rc:
+Store has empty dictionary/order/solid selectors, with threads still available
+according to the original no-method policy. TAR GNU/POSIX has empty numeric and
+thread selectors and hides both memory rows. GZip has its single Auto dictionary
+and no threads/solid choices. An unrecognized external method retains empty
+dictionary/order and unknown memory values; it does not borrow Copy's zero.
+Empty selectors remain visible and disabled. Returning to ordinary 7z restores
+the choices and memory rows. The two memory QWidget wrappers are presentation
+containers, not additional resource groups. `compression_method_state` probes
+EN/RU at760×720/640×480, reaches each field by scrolling and writes28 JSON reports.
+These establish conditional visibility, row order, text fit and footer geometry;
+original rendered Windows appearance remains unverified.
+
+Create validation messages retain the original native call policy: password,
+Browse/path and invalid-volume errors use MyMessages' suppressible Critical/OK
+box with the 7-Zip caption; memory refusal uses unconditional Critical/OK, and
+the small-volume question uses unconditional Yes/No/Cancel. Qt/macOS omits the
+message-box caption. `compression_error_policy` checks EN/RU at requested
+480×220/320×160 with Qt auto-fit, full label text and reachable buttons. These
+standard platform boxes have no separate CompressDialog.rc control group.
+Their JSON is geometry evidence; rendered original Windows appearance and native
+desktop input remain separate acceptance requirements.

@@ -16,4 +16,4 @@ Check conclusions against current code/tests and upstream provenance, following
 `AGENTS.md`. Promote durable findings to the owning document and link from
 memory; do not create another status or migration-debt registry.
 
-Use `$sz-setup` only when the local vault needs initialization or refresh.
+Use `$sz-setup` only when local memory needs initialization or refresh.

@@ -25,7 +25,7 @@ copied/adapted/omitted scope, зависимости, причины адапт�
 Искать старое обоснование по upstream-пути или символу:
 
 ```sh
-rg -n -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ docs/archive/qt-port/omitted-scope-audit/
+rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ docs/archive/qt-port/omitted-scope-audit/
 ```
 
 ## Новые изменения

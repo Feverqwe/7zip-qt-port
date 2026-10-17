@@ -1,4 +1,4 @@
 interface:
   display_name: 'Set up Sevenzip context'
-  short_description: 'Prepare Obsidian vault and task memory'
-  default_prompt: 'Use $sz-setup to initialize the local project vault and development hooks.'
+  short_description: 'Prepare local Markdown memory for agents'
+  default_prompt: 'Use $sz-setup to initialize local task memory and documentation links.'

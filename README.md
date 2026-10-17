@@ -62,7 +62,7 @@ build/dev/sevenzip_desktop.app/Contents/MacOS/sevenzip_desktop /path/to/archive.
 
 Локальная память необязательна. Команда
 `sh .agents/skills/sz-setup/scripts/setup.sh` создаёт игнорируемый Git
-Obsidian vault `.codex/` со ссылками на документацию и сохраняет существующие
+каталог памяти `.codex/` со ссылками на документацию и сохраняет существующие
 заметки при повторном запуске. Порядок чтения и handoff —
 в [протоколе памяти](docs/agent-memory.md).
 
