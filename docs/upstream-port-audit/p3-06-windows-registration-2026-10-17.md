@@ -74,7 +74,7 @@ Windows-only adapter/target changes do not require macOS/Linux appearance runs;
 their platform implementations are unchanged. Full/slow suites are not repeated
 for this bounded registry boundary. Existing incremental trees/cache are reused.
 
-Current private packagesd0a74dc predate this correction. The manual macOS retry
+The previous private packagesd0a74dc predate this correction. The manual macOS retry
 still reports an extra window; its posted-event test is insufficient for native
 startup acceptance. A native explicit-app LaunchServices diagnostic records the
 selected d0a74dc bundle URL and one owned onscreen window, but its metadata
@@ -82,3 +82,40 @@ does not prove that it is the archive window or replace the negative Finder
 result. ZIP remains Archive Utility. UserChoice/OS Settings selection, macOS
 startup, remaining native workflows and Windows cold cause/stability remain
 open. Count44/47; no push, publication, upstream or VM/disk changes.
+
+## Private delivery after the correction
+
+Product `aae78760798bd6741542727e6479d588d9698858` is now packaged on all
+three OS using the existing Release/BUILD_TESTING=OFF trees and compiler caches.
+All1056 selected product/build inputs match committed blobs before and after
+packaging. Only the Windows platform source differs from the preceding d0a74dc
+input set; macOS/Linux behavior is unchanged. This refresh includes the verified
+Windows nonmutating-detection correction and does not resolve the failed Finder
+window scenario.
+
+| Artifact | Bytes | SHA256 | Relocated scenarios |
+| --- | ---: | --- | ---: |
+| macOS arm64 ZIP | 12,536,542 | `9afb4af9adb05b2483f8c9205fbd4aeb094f3c54f692f68d620dcafd9704c5b7` | 15 PASS |
+| Linux x64 tar.gz | 34,217,977 | `fa78f25fcc14c65670caf83b5cfd1cee6eac6010292f26b9fdd6f55330df584f` | 14 PASS |
+| Windows x64 ZIP | 28,576,933 | `29dc1af2cf161e20b6ec8e597e25e37c042fd5d6f315da75aa1f2620ce719733` | 14 PASS |
+
+Fresh payload/license/notices/SFX/hash checks pass, including38 pinned Qt
+licenses and macOS strict ad-hoc signatures. Relocated GUI ZIP/7z operations
+and engine list cover Unicode/spaces, empty/binary bytes, broken archives,
+missing modules and source preservation. Fresh dependency inspection resolves
+11 Mach-O objects/127 loads, bundled private Qt symbols, four Linux Qt libraries
+with relative runpaths,26 PE objects/345 imports/zero delay imports and55 trusted
+external Windows system DLL names. Eight official engine/SFX inputs remain
+unchanged per OS; both protected guest producers are reverified. Source ICNS
+bytes and native packaged Windows executable icon color/masks pass their
+existing bounded checks; no pixel equality claim is added.
+
+Guest package run `20261017T160231Z-fa374edf` passes on both OS; Limited native
+PE icon run `20261017T160419Z-36355668` passes. The first local collector calls
+use an unresolved run placeholder and fail before network or output creation;
+collection from the actual completed run then passes. This local harness error
+is retained separately from product acceptance. Evidence is
+`build/review/goal-delivery-aae7876/`. Disposable extractions and root one-shot
+scripts are removed after archiving; current manual fixtures, archives/proofs,
+incremental trees and caches are retained. Storage before/after remains OK.
+Clean-OS/GitHub exclusions and the open native/cold prerequisites are unchanged.

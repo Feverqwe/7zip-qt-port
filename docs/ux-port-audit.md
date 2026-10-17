@@ -43,9 +43,11 @@ count remain open until their actual prerequisites are accepted.
 check native HKCU/HKLM Apply/Clear/recipient, Limited HKLM refusal and fix
 unwanted empty UserChoice creation during detection. Final scoped administrator
 1/1 and Limited direct-consumer4/4 pass,42Qt total without failures/skips.
-Current private packagesd0a74dc predate this Windows correction.
+Current private packagesaae7876 include this Windows correction:1056 committed
+inputs match, relocation15/14/14 and fresh payload/license/SFX/dependency/private
+ABI/native-icon checks pass. macOS behavior is unchanged from d0a74dc.
 
-[Current initial-document delivery](upstream-port-audit/p3-04-associated-bootstrap-delivery-2026-10-17.md)
+[Previous initial-document delivery](upstream-port-audit/p3-04-associated-bootstrap-delivery-2026-10-17.md)
 packagesd0a74dc on three OS with1056 exact inputs, relocation15/14/14,
 payload/license/SFX/dependency/private-ABI/native-icon checks PASS. Cocoa6Qt
 checks the corrected single initial window and independent repeated documents;
