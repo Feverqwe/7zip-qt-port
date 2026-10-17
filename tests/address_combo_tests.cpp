@@ -1,8 +1,12 @@
 #include "7zip/UI/FileManager/resource.h"
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
+#include "CPP/7zip/UI/FileManager/SysIconUtils.h"
 #include "address_popup_support.h"
 #include "external_editor_fixture.h"
+#include "fixtures/native_shell_icon.h"
+#include "fixtures/window_activation.h"
 #include "layout_inspection.h"
+#include "qtpaneladdresscombo.h"
 #include "window_state_support.h"
 #include <QFileIconProvider>
 #include <QStyle>
@@ -11,6 +15,57 @@
 class AddressComboTests final : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
   private slots:
+#ifdef Q_OS_WIN
+    void shellPathIconUsesRequestedAttributes() {
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString path = fixture.filePath(QStringLiteral("icon файл 空.txt"));
+        QVERIFY(ExternalEditorFixture::write(path, "unchanged"));
+        CExtToIconMap icons;
+        for (DWORD attributes : {DWORD(FILE_ATTRIBUTE_DIRECTORY), DWORD(FILE_ATTRIBUTE_ARCHIVE)}) {
+            const auto expected = NativeShellIcon::image(path, attributes);
+            QVERIFY(!expected.isNull());
+            const int index = icons.GetPathIconIndex(ToUString(path), attributes);
+            QCOMPARE(icons.GetIcon(index).pixmap(16, 16).toImage(), expected);
+            QCOMPARE(icons.GetPathIconIndex(ToUString(path), attributes), index);
+        }
+        QCOMPARE(ExternalEditorFixture::read(path), QByteArray("unchanged"));
+    }
+#endif
+    void currentIconPreservesAlternateStreamColon_data() {
+        QTest::addColumn<QString>("delimiter");
+        QTest::newRow("archive-directory-separator") << QString("/");
+        QTest::newRow("alternate-stream-colon") << QString(":");
+    }
+    void currentIconPreservesAlternateStreamColon() {
+        QFETCH(QString, delimiter);
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString path = fixture.filePath(QStringLiteral("base файл 空.txt"));
+        QVERIFY(ExternalEditorFixture::write(path, "unchanged"));
+        CObjectVector<CPanelItem> items;
+        CPanel panel(path + delimiter, items);
+        QtPanelAddressCombo combo(panel, [](const QString &, bool) { return S_OK; }, nullptr);
+        combo.ShowCurrentPath(path + delimiter, false);
+        auto *current = combo.lineEdit()->findChild<QAction *>("currentAddressIcon");
+        QVERIFY(current);
+        QVERIFY(current->isVisible());
+        QVERIFY(!current->icon().isNull());
+#ifdef Q_OS_WIN
+        const QImage expected = NativeShellIcon::image(delimiter == ":" ? path + delimiter : path,
+                                                       delimiter == ":" ? FILE_ATTRIBUTE_DIRECTORY
+                                                                        : FILE_ATTRIBUTE_ARCHIVE);
+#else
+        const QIcon expectedIcon = delimiter == ":"
+                                       ? QFileIconProvider().icon(QFileIconProvider::Folder)
+                                       : QFileIconProvider().icon(QFileInfo(path));
+        const QImage expected = expectedIcon.pixmap(16, 16).toImage();
+#endif
+        QVERIFY(!expected.isNull());
+        QCOMPARE(current->icon().pixmap(16, 16).toImage(), expected);
+        QCOMPARE(combo.currentText(), path + delimiter);
+        QCOMPARE(ExternalEditorFixture::read(path), QByteArray("unchanged"));
+    }
     void init() {
         const QString settings = qEnvironmentVariable("SEVENZIP_SETTINGS_PATH");
         QVERIFY(!settings.isEmpty());
@@ -49,7 +104,7 @@ class AddressComboTests final : public QObject, protected MainWindowTestSupport 
         ControlledBackend backend;
         MainWindow window(&backend);
         window.show();
-        QVERIFY(QTest::qWaitForWindowActive(&window));
+        QVERIFY(WindowActivation::waitForActive(window));
         auto *address = window.findChild<QLineEdit *>("archivePath");
         address->setFocus();
         address->setText(fixture.path());
@@ -70,8 +125,7 @@ class AddressComboTests final : public QObject, protected MainWindowTestSupport 
         QApplication::processEvents();
         QVERIFY(view->isVisible());
         combo->hidePopup();
-        window.activateWindow();
-        QVERIFY(QTest::qWaitForWindowActive(&window));
+        QVERIFY(WindowActivation::waitForActive(window));
         QTRY_VERIFY(table(window)->hasFocus());
         QVERIFY(file.open(QIODevice::ReadOnly));
         QCOMPARE(file.readAll(), QByteArray("preserved"));
@@ -103,7 +157,7 @@ class AddressComboTests final : public QObject, protected MainWindowTestSupport 
         MainWindow window(&backend);
         window.resize(size);
         window.show();
-        QVERIFY(QTest::qWaitForWindowActive(&window));
+        QVERIFY(WindowActivation::waitForActive(window));
         auto *address = window.findChild<QLineEdit *>("archivePath");
         QVERIFY(address);
         address->setText(child);
@@ -182,7 +236,7 @@ class AddressComboTests final : public QObject, protected MainWindowTestSupport 
         ArchiveBackend backend;
         MainWindow window(&backend);
         window.show();
-        QVERIFY(QTest::qWaitForWindowActive(&window));
+        QVERIFY(WindowActivation::waitForActive(window));
         window.openArchive(nested ? outer : archive);
         auto *address = window.findChild<QLineEdit *>("archivePath");
         auto *combo = window.findChild<QComboBox *>("pathCombo");
@@ -264,7 +318,7 @@ class AddressComboTests final : public QObject, protected MainWindowTestSupport 
         ControlledBackend backend;
         MainWindow window(&backend);
         window.show();
-        QVERIFY(QTest::qWaitForWindowActive(&window));
+        QVERIFY(WindowActivation::waitForActive(window));
         auto *refresh = action(window, "autoRefreshAction");
         QVERIFY(refresh);
         if (refresh->isChecked())
@@ -296,8 +350,7 @@ class AddressComboTests final : public QObject, protected MainWindowTestSupport 
         QVERIFY(!QTest::currentTestFailed());
         // Offscreen popup closure drops window activation. Re-activate only the
         // test window; do not supply the list focus that the source handler owns.
-        window.activateWindow();
-        QVERIFY(QTest::qWaitForWindowActive(&window));
+        QVERIFY(WindowActivation::waitForActive(window));
         QTRY_COMPARE(address->text(), QFileInfo(fixture.path()).canonicalFilePath());
         QTRY_VERIFY2(
             table(window)->hasFocus(),
@@ -329,7 +382,7 @@ class AddressComboTests final : public QObject, protected MainWindowTestSupport 
         ControlledBackend backend;
         MainWindow window(&backend);
         window.show();
-        QVERIFY(QTest::qWaitForWindowActive(&window));
+        QVERIFY(WindowActivation::waitForActive(window));
         action(window, "twoPanelsAction")->trigger();
         QWidget *panels[] = {window.findChild<QWidget *>("filePanel0"),
                              window.findChild<QWidget *>("filePanel1")};
@@ -369,8 +422,7 @@ class AddressComboTests final : public QObject, protected MainWindowTestSupport 
                                     .arg(address->text(), rows.join(" | "))));
             QVERIFY(combo->findText(i == 0 ? QStringLiteral("右") : QStringLiteral("левый")) < 0);
             combo->hidePopup();
-            window.activateWindow();
-            QVERIFY(QTest::qWaitForWindowActive(&window));
+            QVERIFY(WindowActivation::waitForActive(window));
             address->setFocus();
             QTRY_VERIFY(address->hasFocus());
             address->setText(QStringLiteral("uncommitted address"));

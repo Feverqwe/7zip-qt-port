@@ -1,5 +1,7 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
+#include "fixtures/widget_dialogs.h"
+#include "fixtures/window_activation.h"
 #include "layout_inspection.h"
 #include "qtlangcontrols.h"
 #include "window_state_support.h"
@@ -11,6 +13,7 @@
 
 class PanelKeySourceTests final : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
+    WidgetDialogFixture dialogs_;
 
     static bool rightControlDigit(QWidget *view, bool shift, int digit) {
 #ifdef Q_OS_WIN
@@ -128,8 +131,7 @@ class PanelKeySourceTests final : public QObject, protected MainWindowTestSuppor
         ControlledBackend backend;
         MainWindow window(&backend);
         window.show();
-        window.activateWindow();
-        QVERIFY(QTest::qWaitForWindowActive(&window));
+        QVERIFY(WindowActivation::waitForActive(window));
         action(window, "viewMode3Action")->trigger();
         openListedArchive(window, backend, fixture.filePath("клавиши 空.zip"),
                           {{"alpha name.txt", 1, 1}, {"бета 空.txt", 1, 1}});
@@ -141,8 +143,7 @@ class PanelKeySourceTests final : public QObject, protected MainWindowTestSuppor
         else
             list->clearSelection();
         QApplication::clipboard()->setText(QStringLiteral("clipboard sentinel"));
-        window.activateWindow();
-        QVERIFY(QTest::qWaitForWindowActive(&window));
+        QVERIFY(WindowActivation::waitForActive(window));
         list->setFocus();
         QTRY_VERIFY(list->hasFocus());
         if (key == Qt::Key_C || key == Qt::Key_Insert)
@@ -192,8 +193,7 @@ class PanelKeySourceTests final : public QObject, protected MainWindowTestSuppor
         ControlledBackend backend;
         MainWindow window(&backend);
         window.show();
-        window.activateWindow();
-        QVERIFY(QTest::qWaitForWindowActive(&window));
+        QVERIFY(WindowActivation::waitForActive(window));
         auto *right = window.findChild<QWidget *>("filePanel1");
         if (!right || !right->isVisible())
             action(window, "twoPanelsAction")->trigger();
@@ -223,8 +223,7 @@ class PanelKeySourceTests final : public QObject, protected MainWindowTestSuppor
         action(window, qPrintable(QStringLiteral("viewMode%1Action").arg(mode)))->trigger();
         auto *view = mode == 3 ? static_cast<QWidget *>(list)
                                : static_cast<QWidget *>(owner->findChild<QListView *>("iconList"));
-        window.activateWindow();
-        QVERIFY(QTest::qWaitForWindowActive(&window));
+        QVERIFY(WindowActivation::waitForActive(window));
         view->setFocus();
         QTRY_VERIFY(view->hasFocus());
         list->setCurrentCell(0, 0);
@@ -281,8 +280,7 @@ class PanelKeySourceTests final : public QObject, protected MainWindowTestSuppor
         ControlledBackend backend;
         MainWindow window(&backend);
         window.show();
-        window.activateWindow();
-        QVERIFY(QTest::qWaitForWindowActive(&window));
+        QVERIFY(WindowActivation::waitForActive(window));
         auto *address = window.findChild<QLineEdit *>("archivePath");
         auto *list = table(window);
         address->setText(saved);
@@ -303,8 +301,7 @@ class PanelKeySourceTests final : public QObject, protected MainWindowTestSuppor
         openListedArchive(window, backend, fixture.filePath("nested source.zip"),
                           {{"inner.zip", 1, 1}});
         QTRY_COMPARE(list->rowCount(), 1);
-        window.activateWindow();
-        QVERIFY(QTest::qWaitForWindowActive(&window));
+        QVERIFY(WindowActivation::waitForActive(window));
         list->setFocus();
         list->setCurrentCell(0, 0);
         const int opens = backend.listCalls;
@@ -342,8 +339,7 @@ class PanelKeySourceTests final : public QObject, protected MainWindowTestSuppor
         ControlledBackend backend;
         MainWindow window(&backend);
         window.show();
-        window.activateWindow();
-        QVERIFY(QTest::qWaitForWindowActive(&window));
+        QVERIFY(WindowActivation::waitForActive(window));
         auto *address = window.findChild<QLineEdit *>("archivePath");
         auto *list = table(window);
         address->setText(saved);
@@ -393,8 +389,7 @@ class PanelKeySourceTests final : public QObject, protected MainWindowTestSuppor
                           {{"protected name.txt", 1, 1}});
         auto *list = table(window);
         QTRY_COMPARE(list->rowCount(), 1);
-        window.activateWindow();
-        QVERIFY(QTest::qWaitForWindowActive(&window));
+        QVERIFY(WindowActivation::waitForActive(window));
         list->setFocus();
         QTRY_VERIFY(list->hasFocus());
         list->setCurrentCell(0, 0);
@@ -435,8 +430,7 @@ class PanelKeySourceTests final : public QObject, protected MainWindowTestSuppor
                           {{"alpha.txt", 1, 1}, {"beta.bin", 2, 2}});
         auto *list = table(window);
         QTRY_COMPARE(list->rowCount(), 2);
-        window.activateWindow();
-        QVERIFY(QTest::qWaitForWindowActive(&window));
+        QVERIFY(WindowActivation::waitForActive(window));
         list->setFocus();
         QTest::keyClick(list, Qt::Key_F6,
                         Qt::ControlModifier | Qt::AltModifier | Qt::ShiftModifier);
@@ -460,10 +454,10 @@ class PanelKeySourceTests final : public QObject, protected MainWindowTestSuppor
               Qt::KeyboardModifiers(Qt::ControlModifier | Qt::ShiftModifier)}) {
             int confirmations = 0;
             QTimer timer;
-            connect(&timer, &QTimer::timeout, &window, [&] {
+            dialogs_.connectResponder(timer, &window, [&] {
                 for (QWidget *widget : QApplication::topLevelWidgets())
                     if (auto *box = qobject_cast<QMessageBox *>(widget);
-                        box && box->isVisible() && box->button(QMessageBox::No)) {
+                        box && dialogs_.ready(*box) && box->button(QMessageBox::No)) {
                         ++confirmations;
                         box->button(QMessageBox::No)->click();
                     }

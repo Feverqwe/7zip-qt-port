@@ -100,9 +100,17 @@ int CExtToIconMap::GetPathIconIndex(const UString &path, DWORD attrib) {
         return found.value();
     if (_pathIcons.size() >= (1u << 16))
         return GetIconIndex(attrib, path);
+#ifdef _WIN32
+    Int32 systemIndex;
+    QIcon icon;
+    if (Shell_GetFileInfo_SysIconIndex_for_Path_return_HRESULT(us2fs(path), attrib, &systemIndex) ==
+        S_OK)
+        icon = GetSystemIcon(systemIndex);
+#else
     QFileIconProvider provider;
     const QFileInfo info(key.first);
     QIcon icon = info.exists() ? provider.icon(info) : QIcon();
+#endif
     if (icon.isNull())
         return GetIconIndex(attrib, path);
     const int index = _icons.size();

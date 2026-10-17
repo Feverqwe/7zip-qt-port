@@ -2663,6 +2663,16 @@ if(BUILD_TESTING)
     set_tests_properties(persisted_location PROPERTIES TIMEOUT 60 ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/persisted-location.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     if(WIN32)
+        qt_add_executable(native_address_navigation_tests tests/native_address_navigation_tests.cpp
+            tests/fixtures/native_network_share.cpp tests/fixtures/widget_dialogs.cpp
+            tests/layout_inspection.cpp ${options_window_sources})
+        target_include_directories(native_address_navigation_tests PRIVATE src tests)
+        target_link_libraries(native_address_navigation_tests PRIVATE ${options_window_libraries}
+            netapi32 advapi32)
+        add_test(NAME native_address_navigation COMMAND native_address_navigation_tests -silent)
+        set_tests_properties(native_address_navigation PROPERTIES TIMEOUT 90 RUN_SERIAL TRUE
+            RESOURCE_LOCK sevenzip_native_ui ENVIRONMENT
+            "QT_QPA_PLATFORM=windows;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/native-address-navigation.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
         qt_add_executable(native_persisted_locations_tests tests/native_persisted_locations_tests.cpp
             tests/fixtures/native_network_share.cpp tests/fixtures/native_network_share.h
             tests/fixtures/widget_dialogs.cpp tests/layout_inspection.cpp ${options_window_sources})
@@ -3413,7 +3423,7 @@ if(BUILD_TESTING)
             archive_external_lifetime_tests checksum_tests source_link_storage_tests
             options_dialog_tests system_page_tests flat_view_tests filesystem_reload_tests
             panel_copy_reload_tests native_drop_publication_tests
-            copy_publication_order_tests native_parent_publication_tests)
+            copy_publication_order_tests native_parent_publication_tests panel_key_source_tests)
         target_sources(${sevenzip_widget_dialog_target} PRIVATE tests/fixtures/widget_dialogs.cpp)
     endforeach()
 endif()

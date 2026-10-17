@@ -102,7 +102,11 @@ void MainWindow::goRoot(bool remember, RootLocation location) {
     if (app_.QtOperations().closed() || state_ == State::Loading || state_ == State::Operating)
         return;
     QtAppOperationState::CallScope call(app_.QtOperations());
-    if (remember && state_ == State::Filesystem && !directory_.isEmpty())
+    std::optional<QString> previousNamespace;
+    if (remember && state_ == State::Namespace) {
+        if (auto *folder = app_.GetFocusedPanel().GetFolder())
+            previousNamespace = ToQString(GetFolderPath(folder));
+    } else if (remember && state_ == State::Filesystem && !directory_.isEmpty())
         history_.append(directory_);
     else if (remember && state_ == State::Viewing && !returnDirectory_.isEmpty())
         history_.append(returnDirectory_);
@@ -111,5 +115,10 @@ void MainWindow::goRoot(bool remember, RootLocation location) {
         app_.OpenRootFolder();
     else
         app_.GetFocusedPanel().OpenRootFolder();
+    if (previousNamespace) {
+        if (auto *folder = app_.GetFocusedPanel().GetFolder();
+            folder && *previousNamespace != ToQString(GetFolderPath(folder)))
+            history_.append(*previousNamespace);
+    }
     renderBoundFolder();
 }

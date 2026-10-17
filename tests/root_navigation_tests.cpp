@@ -74,6 +74,14 @@ class RootNavigationTests final : public QObject, protected MainWindowTestSuppor
                 window, QSysInfo::productType() +
                             QStringLiteral("-network-%1x%2").arg(size.width()).arg(size.height())));
         }
+        const QString network = address->text();
+        action(window, "openRootAction")->trigger();
+        QVERIFY(static_cast<FileTable *>(view)->sourcePanel->IsFSDrivesFolder());
+        action(window, "openRootAction")->trigger();
+        action(window, "parentFolderAction")->trigger();
+        QVERIFY(address->text().isEmpty());
+        action(window, "backAction")->trigger();
+        QTRY_COMPARE(address->text(), network);
         action(window, "backAction")->trigger();
         QCOMPARE(view->rowCount(), 3);
     }

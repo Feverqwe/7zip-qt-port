@@ -663,9 +663,13 @@ records the bounded Windows reference and three-OS geometry follow-up.
 
 ## P3-05.13 — source root-command target (implementation validation active, 2026-10-06)
 
+Current source-contract acceptance: [address/Root namespace consumers, 2026-10-17](upstream-port-audit/p3-05-address-root-2026-10-17.md).
+
 [Открыть раздел](upstream-port-audit/p3-05-2026-10-06.md#p3-0513--source-root-command-target-implementation-validation-active-2026-10-06).
 
 ## P3-05.12 — RootFolder/address consumer reconciliation (implementation validation active, 2026-10-06)
+
+Current source-contract acceptance: [address/Root namespace consumers, 2026-10-17](upstream-port-audit/p3-05-address-root-2026-10-17.md).
 
 [Открыть раздел](upstream-port-audit/p3-05-2026-10-06.md#p3-0512--rootfolderaddress-consumer-reconciliation-implementation-validation-active-2026-10-06).
 

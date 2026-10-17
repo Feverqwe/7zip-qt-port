@@ -627,7 +627,7 @@ history entry, including after restart; Cancel is distinct from accepting it.
 Native Windows device/ADS/UNC bookmark/history/restart consumers inspect the
 owning address and list at980×620/640×400 and preserve the peer's draft.
 
-### Source root command target (P3-05.13, implementation validation active)
+### Source root command target (P3-05.13)
 
 Reference: pinned resource.rc IDM_OPEN_ROOT_FOLDER, MyLoadMenu, App.h inline
 OpenRootFolder, PanelFolderChange::OpenDrivesFolder and Panel.cpp list WM_CHAR.
@@ -637,7 +637,9 @@ It closes archive links and uses the focused panel, leaving the peer intact.
 Do not substitute the separate root namespace's Computer/Documents/Network rows.
 Verify EN/RU normal/compact address/list/status geometry, command and both key
 routes, source provider choice, parent/back restoration, selection and input bytes.
-Native device/UNC and rendered Windows acceptance remain separate requirements.
+Current namespace consumers are recorded in the
+[address/Root acceptance](../upstream-port-audit/p3-05-address-root-2026-10-17.md).
+Full native/rendered parent acceptance remains separate.
 The integrated Qt command/key consumers use the retained source drive transition.
 The separate root namespace is reached through Parent; Back from a filesystem
 location restores its actual stored namespace prefix. After source selection
@@ -647,7 +649,7 @@ Preserve a pending address draft, existing drive rows and selection; verify both
 panels at normal/compact sizes. The header reload uses the source path/icon/title
 stage without adding history or enumerating the drive list again.
 
-### Source address dropdown (P3-05.12, required remaining scope)
+### Source address dropdown (P3-05.12)
 
 Reference: pinned PanelFolderChange.cpp::LoadFullPathAndShow,
 OnComboBoxCommand and AddComboBoxItem, with RootFolder names and source path
@@ -675,7 +677,11 @@ shows its file icon, with extension fallback for a virtual nested archive. Paren
 navigation restores the corresponding outer archive or filesystem icon. Qt uses
 a leading QLineEdit action for the original ComboBoxEx edit image; the action and
 address/list must remain exposed in all four sizes/languages above. Namespace,
-UNC, Windows device and rendered icon/style acceptance still need native checks.
+Windows shell queries retain the requested source attributes, including the
+directory policy for an ADS colon. Current device/ADS/UNC selection, refusal,
+focus and closed-editor icon checks are recorded in the
+[address/Root acceptance](../upstream-port-audit/p3-05-address-root-2026-10-17.md).
+Full rendered icon/style acceptance remains with the parent workflow audit.
 
 ### Source caption helpers (P3-05.10, validation active)
 

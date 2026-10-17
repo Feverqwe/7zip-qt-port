@@ -4,6 +4,12 @@
 
 ## Current final acceptance matrix (2026-10-17)
 
+[Source address/Root namespace contracts](upstream-port-audit/p3-05-address-root-2026-10-17.md)
+приняты по текущим3OS consumers и Windows device/ADS/UNC, обеим панелям и EN/RU.
+Исправлены shell attributes и потеря namespace в Back;48normal/compact address
+reports/crops проверены с оригинальными closed-editor видами. Это bounded
+приёмка P3-05.12/.13; полный native/rendered/cold scope ниже остаётся открытым.
+
 Матрица различает текущие native launcher и delivery components и прежние full/native receipts.
 Checked означает только названную
 проверку; partial/unverified не дают итоговой приёмки P3-06.
