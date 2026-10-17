@@ -10,6 +10,10 @@
 
 [Source Browse width, actual original states and three-platform native comparison](upstream-port-audit/p3-06-copy-runtime-2026-10-17.md).
 
+## P3-04 — Current source/Copy delivery (2026-10-17)
+
+[Committed inputs, three Release artifacts and fresh dependency/relocation checks](upstream-port-audit/p3-04-copy-delivery-2026-10-17.md).
+
 ## P3-05 — Source and integration closure (2026-10-17)
 
 [Source owners, final Copy/startup contracts and current focused checks](upstream-port-audit/p3-05-source-closure-2026-10-17.md).
