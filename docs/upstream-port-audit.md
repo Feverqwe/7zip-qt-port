@@ -24,6 +24,8 @@
 
 [Windows HKCU/HKLM native registration, privilege refusal and nonmutating detection](upstream-port-audit/p3-06-windows-registration-2026-10-17.md).
 
+[Source registration contract and the separate unverified Windows Settings UI](upstream-port-audit/p3-06-windows-registration-2026-10-17.md#registration-contract-reconciliation).
+
 ## P3-03/P3-06 — Copy/Move runtime comparison (2026-10-17)
 
 [Source Browse width, actual original states and three-platform native comparison](upstream-port-audit/p3-06-copy-runtime-2026-10-17.md).

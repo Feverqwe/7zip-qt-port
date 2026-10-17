@@ -25,12 +25,13 @@ existence does not make every current workflow or platform checked.
 | Browse and temporary files | [Original populated views, keyboard probes and native three-OS consumers](upstream-port-audit/p3-06-source-browsers-2026-10-16.md) | Native folder/save OS panels use the separately accepted manual scenes; Xvfb evidence is not a physical desktop observation. |
 | Shared input, Split/Combine destination and About | [Original EN/RU views, source callbacks and native consumers](upstream-port-audit/p3-06-primitives-2026-10-16.md) | Composite owner checks retain their revisions; they are not a new whole-product gate. |
 | Properties/History lists, Link and normal/total Benchmark | [Ten original states and three-OS component checks](upstream-port-audit/p3-06-secondary-dialogs-2026-10-16.md) | POSIX Junction/WSL capability differences and native modal chrome remain explicit. |
-| Six Options pages, Apply/Cancel, language and keyboard | [Frame](upstream-port-audit/p3-06-options-2026-10-16.md), [keyboard](upstream-port-audit/p3-06-options-keyboard-2026-10-17.md), [footer/manual Control](upstream-port-audit/p3-06-options-control-2026-10-17.md), [live System](upstream-port-audit/p3-06-system-live-2026-10-17.md), [GIO workflow](upstream-port-audit/p3-06-system-native-2026-10-17.md), [native mutation/opening](upstream-port-audit/p3-06-native-associations-2026-10-17.md), [Windows scopes](upstream-port-audit/p3-06-windows-registration-2026-10-17.md) | Windows unique-extension HKCU/HKLM mutation/recipient and manual Mac ZIP assignment/restoration are checked separately. Protected UserChoice/OS Settings selection remains open; current Finder retry is accepted in the bounded receipt below. |
+| Six Options pages, Apply/Cancel, language and keyboard | [Frame](upstream-port-audit/p3-06-options-2026-10-16.md), [keyboard](upstream-port-audit/p3-06-options-keyboard-2026-10-17.md), [footer/manual Control](upstream-port-audit/p3-06-options-control-2026-10-17.md), [live System](upstream-port-audit/p3-06-system-live-2026-10-17.md), [GIO workflow](upstream-port-audit/p3-06-system-native-2026-10-17.md), [native mutation/opening](upstream-port-audit/p3-06-native-associations-2026-10-17.md), [Windows scopes](upstream-port-audit/p3-06-windows-registration-2026-10-17.md) | Windows unique-extension HKCU/HKLM mutation/recipient and manual Mac ZIP assignment/restoration are checked separately. Protected default selection in OS Settings is unverified OS UI, outside the source System registration contract; current Finder retry is accepted in the bounded receipt below. |
 | External application/desktop integration | [Finder acceptance](porting-checklist/p3.md), [Explorer transfer/Escape](upstream-port-audit/p3-03-native-drag-fixtures-2026-10-16.md#physical-windows-explorer-recipient-2026-10-17), [editor completion](upstream-port-audit/p3-03-editor-stability-2026-10-16.md), [source closure](upstream-port-audit/p3-05-source-closure-2026-10-17.md) | Keep OS-recipient, command-dispatch and synthetic-widget evidence separate. Unrelated dialog changes do not invalidate unchanged accepted Finder transport. |
 
 No additional unpaired desktop dialog family is identified by this reconciliation.
-It does not close P3-06: installed registration/consent and the remaining complete
-native workflow acceptance still need their stated evidence, while Windows cold
+It does not close P3-06: native installed registration and macOS consent now have
+their bounded receipts; the remaining complete native workflow acceptance still
+needs its stated evidence, while Windows cold
 discovery remains P3-03.8. Existing passing component checks need not be repeated
 solely to replace an older generic “full audit open” sentence. A new implementation
 iteration requires a concrete source gap or observable failure; a stronger auxiliary
@@ -38,6 +39,16 @@ oracle alone does not expand mandatory scope. The three parent packages and44/47
 count remain open until their actual prerequisites are accepted.
 
 ### Current receipts
+
+[Manual macOS global-menu follow-up](upstream-port-audit/p3-06-native-shell-2026-10-16.md#manual-macos-global-menu-follow-up-2026-10-17)
+on the fresh private56c01ba bundle confirms View one/two panels and Tools →
+Options → Cancel, including focus return to the file list. This adds actual OS
+menu delivery for those commands to the existing Qt action/state checks.
+
+[Windows registration contract](upstream-port-audit/p3-06-windows-registration-2026-10-17.md#registration-contract-reconciliation)
+retains the source's two-hive Classes registration, not a UserChoice writer or
+Settings chooser. The native registration contract is checked; operating the
+protected-default OS UI remains unverified and is not an omitted product command.
 
 [Native launch completion](upstream-port-audit/p3-06-associated-bootstrap-2026-10-17.md#native-launch-completion-correction)
 fixes the reproduced late macOS document: a single event flush returned before

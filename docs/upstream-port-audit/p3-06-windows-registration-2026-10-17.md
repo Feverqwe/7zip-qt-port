@@ -5,6 +5,29 @@ native HKLM registration scenario and fixes a detected preference-read side
 effect. It does not establish Windows Settings/UserChoice selection or close
 the parent acceptance packages.
 
+## Registration contract reconciliation
+
+Rechecked at product56c01ba/docs3e9f372 against the same full upstream baseline
+below: SystemPage OnInit/OnApply, RegistryAssociations ReadFromRegistry/Add/Delete,
+their headers, registry wrappers and current Qt services/platform consumers.
+The source reads and changes the two Classes registrations, reports errors and
+notifies the shell. It has no UserChoice writer, Windows Settings launcher or
+default-selection consent workflow. The adapted Windows registry bodies retain
+those paths and control flow. The Qt adapter adds a read-only UserChoice revision
+to reject a stale decision; it does not turn that preference into a write target.
+The visible Apply explanation distinguishes registering a handler from choosing
+the effective default app.
+
+The native Apply/Clear/recipient, refusal, Cancel and external-change evidence
+below establishes the implemented System registration contract. Operating Windows
+Settings to select an effective protected default remains unverified OS UI; it
+is not an omitted upstream command or a required new product feature. This
+clarifies the earlier generic “UserChoice/OS Settings open” boundary without
+claiming that this OS workflow passed. No existing system default is changed
+for this reconciliation, and no new test is needed for a documentation/source
+scope decision. The independent Windows cold and remaining native acceptance
+requirements are retained.
+
 ## Source review and correction
 
 Baseline https://github.com/ip7z/7zip.git at

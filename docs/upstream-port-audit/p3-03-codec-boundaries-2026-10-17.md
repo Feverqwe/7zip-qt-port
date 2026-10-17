@@ -72,6 +72,34 @@ hashes match both snapshot and protected producer. Collected evidence is
 Preflight removes only obsolete objects from the completed v192 compile-only
 failure, retaining source, executable artifacts and failure logs; host D: is OK.
 
+## Actual GUI executable context, 2026-10-17
+
+Run `20261017T170249Z-94f35cce` observes the actual product56c01ba Windows GUI
+entry, rather than the console QtTest process. Rechecked its main/desktop/backend
+discovery consumers, catalog/image owners and the pinned Qt6.12 process body.
+Qt selects CREATE_NO_WINDOW when GetConsoleWindow is null; no product flag
+override is needed. Temporary own-process observation uses the existing
+zero-delay native fixture, preserving arguments, flags and Win32 last error.
+
+The executable's PE subsystem is GUI. A real MainWindow becomes visible; its
+native CreateProcessW call has parentConsole=0, flags134218752 and succeeds
+in39842 microseconds. Discovery returns S_OK with a catalog, without timeout or
+cancellation, and the application quits through a queued Qt call after delivery.
+The original5000ms discovery deadline remains unchanged. This establishes the
+actual GUI context and rejects a blind “add CREATE_NO_WINDOW” correction; it
+does not reproduce or explain the historical nine-second delay. Comparison with
+the earlier console timing is warm/order-confounded, not causal evidence.
+
+All four temporarily instrumented files are restored; the stock application
+target rebuild succeeds. All1058 product/build inputs and eight runtime/SFX
+hashes match afterwards. The existing incremental tree/compiler cache is reused.
+Only the completed package run's hash-verified disposable extraction is removed;
+artifacts, references and failure evidence are retained. Host storage before/after
+is OK. No security setting, VM lifecycle, process flags, deadline, global observer,
+cache flush or upstream source is changed. Evidence remains in
+`build/review/goal-gui-context-20261017/`; the one-off driver is archived there
+and removed from scripts. Windows cold cause/stability remains open.
+
 ## Harness failures and retained evidence
 
 `v189` (`20261017T071827Z-026e7e4e`) fails before tests on a private Python

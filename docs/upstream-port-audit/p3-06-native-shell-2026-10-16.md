@@ -62,3 +62,14 @@ Ignored evidence root `build/review/final-availability-8e9343b-20261014` retains
 `mac-final-shell-full-gate.log`/`mac-final-shell-full-LastTest.log`.
 Historical failed attempts remain distinguishable
 from final passing consumers. No push/publication/upstream changes occur.
+
+## Manual macOS global-menu follow-up, 2026-10-17
+
+The user checks the fresh private56c01ba bundle through macOS's global menu
+bar: View switches one/two panels, Tools → Options opens settings, and Cancel
+returns focus to the file list. Both commands and focus restoration pass by
+manual attestation. This closes the concrete OS-menu delivery gap for those
+commands, complementing the Qt action/order/state fixtures above. It does not
+claim hardware traversal of every menu item, screenshots or pixel equality.
+The source menu/command owners retain their baseline and the current main-chrome
+receipt; no code, resource or archive-operation behavior changes in this follow-up.
