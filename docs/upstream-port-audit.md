@@ -20,6 +20,8 @@
 
 ## P3-04 — Current source/Copy delivery (2026-10-17)
 
+[Current native icon/System packages and relocation/dependency checks](upstream-port-audit/p3-04-native-icons-delivery-2026-10-17.md).
+
 [Committed inputs, three Release artifacts and fresh dependency/relocation checks](upstream-port-audit/p3-04-copy-delivery-2026-10-17.md).
 
 ## P3-05 — Source and integration closure (2026-10-17)
