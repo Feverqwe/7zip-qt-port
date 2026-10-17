@@ -10,6 +10,7 @@
 #include "qtlangcontrols.h"
 #include <QApplication>
 #include <QCoreApplication>
+#include <QDir>
 #include <QFileIconProvider>
 #include <QFileInfo>
 #include <QGridLayout>
@@ -288,7 +289,7 @@ void CSystemPage::ChangeState(unsigned group) {
 
 static UString GetProgramCommand() {
     UString s('"');
-    s += QCoreApplication::applicationFilePath().toStdWString().c_str();
+    s += QDir::toNativeSeparators(QCoreApplication::applicationFilePath()).toStdWString().c_str();
     s += "\" \"%1\"";
     return s;
 }

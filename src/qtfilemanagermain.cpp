@@ -9,7 +9,37 @@
 #include "../third_party/7zip/C/Alloc.h"
 #endif
 #include <QEventLoop>
+#include <QFileInfo>
 #include <QScopeGuard>
+#include <memory>
+
+MainWindow *OpenSevenzipAssociatedFile(const QString &path) {
+    auto backend = std::make_unique<ArchiveBackend>();
+    QtFileManagerStartup startup;
+    startup.FullPath = QFileInfo(path).absolutePath().toStdWString().c_str();
+    auto receiver = std::make_unique<MainWindow>(backend.get(), std::function<bool(const QUrl &)>{},
+                                                 nullptr, &startup);
+    receiver->setAttribute(Qt::WA_DeleteOnClose);
+    auto *window = receiver.get();
+    auto *service = backend.get();
+    service->setParent(window);
+    backend.release();
+    // The original independent FM launch loads its codec owner before opening
+    // the requested archive. A macOS file-open event must honor that same
+    // prerequisite without sharing another window's operation state.
+    QObject::connect(
+        service, &ArchiveBackend::codecCatalogReady, window,
+        [window, path](bool success, const QString &message) {
+            if (success)
+                window->openPath(path);
+            else
+                QMessageBox::critical(window, QStringLiteral("7-Zip"), message);
+        },
+        Qt::SingleShotConnection);
+    window->show();
+    service->discoverCodecCatalog();
+    return receiver.release();
+}
 
 int RunSevenzipFileManager(QApplication &application) {
     return NQtFileManager::WinMain([&] {

@@ -27,15 +27,7 @@ int main(int argc, char *argv[]) {
         return RunSevenzipGUI(app);
     QtAssociationFileOpen associatedFiles(app);
     QObject::connect(&associatedFiles, &QtAssociationFileOpen::OpenRequested, &app,
-                     [](const QString &path) {
-                         // LaunchServices can target an already busy application.
-                         // Match Windows' independent association launch by giving
-                         // the request its own window/backend/operation lifetime.
-                         auto *receiver = new MainWindow;
-                         receiver->setAttribute(Qt::WA_DeleteOnClose);
-                         receiver->openPath(path);
-                         receiver->show();
-                     });
+                     [](const QString &path) { OpenSevenzipAssociatedFile(path); });
     associatedFiles.Activate();
     if (!app.arguments().contains("--smoke-test"))
         return RunSevenzipFileManager(app);

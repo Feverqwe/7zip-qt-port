@@ -34,4 +34,7 @@ const QtFileManagerRamInfo &GetRamInfo();
 int WinMain(const std::function<int()> &main2);
 } // namespace NQtFileManager
 class QApplication;
+class MainWindow;
+class QString;
 int RunSevenzipFileManager(QApplication &application);
+MainWindow *OpenSevenzipAssociatedFile(const QString &path);

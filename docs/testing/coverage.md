@@ -1818,6 +1818,17 @@ MainWindow opening with a deterministic backend. macos_association_bundle reads
 only the built Info.plist/executable and checks source extensions/Viewer/Alternate;
 it never invokes LaunchServices registration or a system default-app setter.
 
+`associated_window` connects early/repeated events to real independent File
+Manager windows with native codec discovery and a real ZIP. It protects archive
+opening after discovery, error presentation without starting a read, and joined
+close/cancellation. Archive/source bytes and the surviving peer view are checked.
+`windows_system_registration` exercises actual source Options Cancel/Apply/Clear
+against a unique owned HKCU extension, native ShellExecute recipient/Unicode
+bytes and external-change refusal. It removes its keys and does not mutate
+ordinary archive associations, HKLM or protected UserChoice. These cover the
+[observed native failures](../upstream-port-audit/p3-06-native-associations-2026-10-17.md)
+that signal-only and fake-service tests could not detect.
+
 Final macOS check.sh: formatting/all-target build/219 tests PASS67.46s;
 later localized username/time-caption checks9/9PASS3.21s. Windows12/12PASS25.26s,
 Linux12/12PASS3.17s on shared x64 Hyper-V guests. Twelve current System JSON

@@ -667,10 +667,12 @@ macOS supplies the own application's bundle image. Source SystemPage retains
 selection and image-index policy, including the original Windows indexed loader.
 
 QtAssociationFileOpen retains native application file events until the UI
-consumer is connected, then dispatches local paths asynchronously. main.cpp
-uses an additional MainWindow and its existing openPath/backend owner for each
-native request, so an association activation does not replace an active operation
-in another window. macOS document declarations derive from the pinned source
+consumer is connected, then dispatches local paths asynchronously. The existing
+File Manager entry adapter creates an additional MainWindow/backend for each
+native request and waits for its codec discovery before calling openPath.
+Discovery failure is reported without an archive read; window closure joins
+its owned work. An activation does not replace an active operation in another
+window. macOS document declarations derive from the pinned source
 association resource; Alternate rank does not select an OS default application.
 
 P2-07: source Common/Extract owns root elimination;

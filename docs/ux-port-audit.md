@@ -25,7 +25,7 @@ existence does not make every current workflow or platform checked.
 | Browse and temporary files | [Original populated views, keyboard probes and native three-OS consumers](upstream-port-audit/p3-06-source-browsers-2026-10-16.md) | Native folder/save OS panels use the separately accepted manual scenes; Xvfb evidence is not a physical desktop observation. |
 | Shared input, Split/Combine destination and About | [Original EN/RU views, source callbacks and native consumers](upstream-port-audit/p3-06-primitives-2026-10-16.md) | Composite owner checks retain their revisions; they are not a new whole-product gate. |
 | Properties/History lists, Link and normal/total Benchmark | [Ten original states and three-OS component checks](upstream-port-audit/p3-06-secondary-dialogs-2026-10-16.md) | POSIX Junction/WSL capability differences and native modal chrome remain explicit. |
-| Six Options pages, Apply/Cancel, language and keyboard | [Frame](upstream-port-audit/p3-06-options-2026-10-16.md), [keyboard](upstream-port-audit/p3-06-options-keyboard-2026-10-17.md), [footer/manual Control](upstream-port-audit/p3-06-options-control-2026-10-17.md), [live System](upstream-port-audit/p3-06-system-live-2026-10-17.md), [GIO workflow](upstream-port-audit/p3-06-system-native-2026-10-17.md) | Read-only live Windows/macOS values/icons and private-XDG mutation do not prove installed own-handler registration or native OS consent. |
+| Six Options pages, Apply/Cancel, language and keyboard | [Frame](upstream-port-audit/p3-06-options-2026-10-16.md), [keyboard](upstream-port-audit/p3-06-options-keyboard-2026-10-17.md), [footer/manual Control](upstream-port-audit/p3-06-options-control-2026-10-17.md), [live System](upstream-port-audit/p3-06-system-live-2026-10-17.md), [GIO workflow](upstream-port-audit/p3-06-system-native-2026-10-17.md), [native mutation/opening](upstream-port-audit/p3-06-native-associations-2026-10-17.md) | Windows unique-extension HKCU mutation/recipient and manual Mac ZIP assignment/restoration are checked separately. HKLM/protected UserChoice and corrected packaged Finder opening remain outside that acceptance. |
 | External application/desktop integration | [Finder acceptance](porting-checklist/p3.md), [Explorer transfer/Escape](upstream-port-audit/p3-03-native-drag-fixtures-2026-10-16.md#physical-windows-explorer-recipient-2026-10-17), [editor completion](upstream-port-audit/p3-03-editor-stability-2026-10-16.md), [source closure](upstream-port-audit/p3-05-source-closure-2026-10-17.md) | Keep OS-recipient, command-dispatch and synthetic-widget evidence separate. Unrelated dialog changes do not invalidate unchanged accepted Finder transport. |
 
 No additional unpaired desktop dialog family is identified by this reconciliation.
@@ -38,6 +38,13 @@ oracle alone does not expand mandatory scope. The three parent packages and44/47
 count remain open until their actual prerequisites are accepted.
 
 ### Current receipts
+
+[Native association workflow](upstream-port-audit/p3-06-native-associations-2026-10-17.md)
+исправляет Windows registry command (`/` давал ShellExecute error5) и macOS
+file-open во время discovery (`E_FAIL`). Реальные HKCU Apply/Clear/recipient и
+public native window workflow проходят; user ZIP assignment/restoration принят
+отдельно от failed opening на пакете7a8592f. Исправление требует обновления
+пакетов и повторной проверки этого конкретного Finder workflow.
 
 [Current Compression Options delivery](upstream-port-audit/p3-04-compression-options-delivery-2026-10-17.md)
 packages product7a8592f on three OS:1056 exact inputs, Release/OFF,
