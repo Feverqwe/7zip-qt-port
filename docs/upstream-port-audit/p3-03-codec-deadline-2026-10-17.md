@@ -56,6 +56,12 @@ Linux's subsequent full gate also passes323/323 with source guard passing
 
 ## Acceptance limit
 
+The [subsequent boundary diagnostics](p3-03-codec-boundaries-2026-10-17.md)
+reproduce process-start and native-load delays with immediate worker admission
+and restored stock sources. The stdio/no-op-hook run passes external13Qt but
+fails the deadline regression after an8594ms creation-to-started interval.
+Its remaining native-call/post-call boundary is explicit; no causal fix is claimed.
+
 Subsequent [17fab0f whole gate](p3-03-windows-whole-2026-10-17.md) retains an
 actual external-codec failure: discovery returns timeout after5215ms under the
 unchanged5000ms application deadline. Probe18Qt passes; source/runtime guards

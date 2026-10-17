@@ -83,6 +83,11 @@ records explicit XCB cancellation and source-defined OLE early cancellation.
 
 [Whole gate failure, source proof and bounded editor traces](upstream-port-audit/p3-03-editor-stability-2026-10-16.md).
 
+## P3-03.8 — Current Windows codec execution boundaries (2026-10-17)
+
+[Worker admission, process creation and native-load phase evidence](upstream-port-audit/p3-03-codec-boundaries-2026-10-17.md).
+Actual failed runs preserve original deadlines; native-call cause remains open.
+
 ## P3-06 — Options source keyboard activation (2026-10-17)
 
 [Initial focus, source tab stops and property-page activation](upstream-port-audit/p3-06-options-keyboard-2026-10-17.md).
