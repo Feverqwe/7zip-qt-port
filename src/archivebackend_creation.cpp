@@ -54,7 +54,7 @@ bool ArchiveBackend::startCreationDeletion() {
     creationLifecycle_->Progress = [this, progressGeneration, caption](const QString &path, bool) {
         postWorkerProgress(progressGeneration, 100, caption.arg(path));
     };
-    creationLifecycle_->beginDeletion();
+    startWorkerPhase(*creationLifecycle_, [this] { creationLifecycle_->beginDeletion(); });
     return true;
 }
 
@@ -265,7 +265,7 @@ void ArchiveBackend::create(const QString &archive, const QStringList &sources,
         };
         job_ = Job::CreatePrepare;
         cancelled_ = false;
-        creationLifecycle_->start();
+        startWorkerPhase(*creationLifecycle_);
         return;
     }
     const CreateStage first = createStages_.takeFirst();

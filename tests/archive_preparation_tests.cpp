@@ -8,6 +8,27 @@
 class ArchivePreparationTests final : public QObject {
     Q_OBJECT
   private slots:
+    void joinedCancelBeforeWorkerLaunchReleasesPreparation() {
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString archive = fixture.filePath("source.zip");
+        QFile input(archive);
+        QVERIFY(input.open(QIODevice::WriteOnly));
+        QCOMPARE(input.write("original"), qint64(8));
+        input.close();
+        const QString output = fixture.filePath("canceled.zip");
+        ArchiveBackend backend(nullptr, "/missing/preparation-engine");
+        QSignalSpy finished(&backend, &ArchiveBackend::finished);
+        connect(&backend, &ArchiveBackend::phaseStarted, &backend, &ArchiveBackend::cancelAndWait);
+        backend.updateSourcePlan(archive, {}, output, "zip", {});
+        QCOMPARE(finished.size(), 1);
+        QVERIFY(!finished[0][0].toBool());
+        QCOMPARE(backend.lastResult(), E_ABORT);
+        QVERIFY(!backend.busy());
+        QVERIFY(!QFileInfo::exists(output));
+        QApplication::processEvents();
+        QCOMPARE(finished.size(), 1);
+    }
     void joinedCancelThenRestartRejectsOldCompletion() {
         QTemporaryDir fixture;
         const QString archive = fixture.filePath("source.zip");

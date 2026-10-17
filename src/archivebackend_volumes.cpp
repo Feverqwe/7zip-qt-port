@@ -40,7 +40,7 @@ void ArchiveBackend::startVolumeOutput() {
     });
     emit progress(0, caption);
     if (volumeOutput_ && volumeGeneration_ == generation)
-        volumeOutput_->start();
+        startWorkerPhase(*volumeOutput_);
 }
 
 void ArchiveBackend::finishVolumeOutput() {

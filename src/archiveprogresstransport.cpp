@@ -7,11 +7,13 @@ ArchiveProgressTransport::ArchiveProgressTransport(CProgressDialog &dialog, Arch
                                                    bool nativeWorker)
     : _dialog(dialog), _backend(backend), _nativeWorker(nativeWorker) {
     _dialog.AttachTransport(this);
-    connect(&backend, &ArchiveBackend::engineStarted, this, [this] {
+    connect(&backend, &ArchiveBackend::phaseStarted, this, [this] {
         bool background;
         HRESULT result = NProcessPriority::GetBackground(0, background);
         if (result == S_OK && background)
             result = _backend.setBackground(true);
+        if (result == S_OK)
+            result = _backend.setPaused(_dialog.Sync.Get_Paused());
         if (result != S_OK) {
             _dialog.Sync.AddError_Code_Name(result, nullptr);
             _backend.cancel();

@@ -60,7 +60,7 @@ void ArchiveBackend::hashMethods(const QStringList &paths, const QStringList &me
     });
     cancelled_ = false;
     job_ = Job::Hash;
-    hashOperation_->start();
+    startWorkerPhase(*hashOperation_);
 }
 
 void ArchiveBackend::finishHashOperation() {

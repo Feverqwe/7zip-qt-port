@@ -23,7 +23,8 @@ void ArchiveBackend::prepareArchiveCopy(const QString &source, const QString &ou
     cancelled_ = false;
     job_ = Job::CopyPrepare;
     copyProgressTimer_.start();
-    copyPreparation_->start();
+    if (!startWorkerPhase(*copyPreparation_))
+        return;
     // Last operation: a progress consumer may synchronously cancel/join/delete.
     emit progress(0, copyProgressDetail_);
 }

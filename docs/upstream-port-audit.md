@@ -33,6 +33,9 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 
 ## Новые изменения
 
+- [Управление асинхронными фазами](upstream-port-audit/qt-phase-controls.md)
+  — сохранение Pause при смене CLI-процесса или worker.
+
 - [Режимы файлового списка](upstream-port-audit/small-icons-layout.md)
   — Small/Large Icons, размеры по шрифту, активная прокрутка и задержка наведения.
 

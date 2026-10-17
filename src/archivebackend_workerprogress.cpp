@@ -1,5 +1,22 @@
 #include "archivebackend.h"
 #include <QMutexLocker>
+#include <QPointer>
+#include <QThread>
+
+bool ArchiveBackend::startWorkerPhase(QThread &worker, std::function<void()> launch) {
+    const QPointer<ArchiveBackend> owner(this);
+    const QPointer<QThread> pending(&worker);
+    // Apply the dialog's retained controls before the new worker can do I/O.
+    // A synchronous control failure can cancel/join and release this worker.
+    emit phaseStarted();
+    if (!owner || !pending)
+        return false;
+    if (launch)
+        launch();
+    else
+        pending->start();
+    return true;
+}
 
 // External-worker transport: like original CProgressSync's mutex snapshot and
 // CProgressDialog's timer, retain the latest state instead of posting every

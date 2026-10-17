@@ -37,6 +37,7 @@ ArchiveBackend::ArchiveBackend(QObject *parent, QString executable) : QObject(pa
     process_.setProgram(executable);
     configuredEngine_ = executable;
     process_.setProcessChannelMode(QProcess::MergedChannels);
+    connect(this, &ArchiveBackend::engineStarted, this, &ArchiveBackend::phaseStarted);
     connect(&process_, &QProcess::started, this, [this] {
         processPause_.Attach(UInt32(process_.processId()));
         if (!cancelled_)

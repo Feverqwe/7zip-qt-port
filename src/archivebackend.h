@@ -27,6 +27,7 @@ class ArchiveCodecProbe;
 class ArchiveNativeOpen;
 class QtOwnedTempDir;
 class QtArchiveTransferBackup;
+class QThread;
 struct IOpenCallbackUI;
 struct IUpdateCallbackUI2;
 struct CUpdateOptions;
@@ -237,6 +238,7 @@ class ArchiveBackend : public QObject {
     void overwriteRequired(const QString &existing, const ArchiveEntry &incoming);
     void dismissOverwriteRequested();
     void engineStarted();
+    void phaseStarted();
     void codecCatalogReady(bool success, const QString &message);
 
   private:
@@ -359,6 +361,7 @@ class ArchiveBackend : public QObject {
     int workerProgressPercent_ = 0;
     QString workerProgressPath_;
     quint64 beginWorkerProgress();
+    bool startWorkerPhase(QThread &worker, std::function<void()> launch = {});
     void postWorkerProgress(quint64 generation, int percent, const QString &path);
     void reportWorkerProgress();
     void finishWorkerProgress();

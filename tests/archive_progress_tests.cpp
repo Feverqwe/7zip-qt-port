@@ -2,6 +2,7 @@
 #include "CPP/7zip/UI/FileManager/PasswordDialog.h"
 #include "archive_backend_test_support.h"
 #include "archiveprogressoperation.h"
+#include "archiveprogresstransport.h"
 #include "fixtures/widget_dialogs.h"
 #include "layout_inspection.h"
 #include "processpriority.h"
@@ -21,6 +22,7 @@ class CControlledTransport : public ArchiveBackend {
   public:
     bool Active = false;
     bool Paused = false;
+    bool Cancelled = false;
     HRESULT PauseResult = S_OK;
     bool busy() const override { return Active; }
     HRESULT setPaused(bool value) override {
@@ -29,6 +31,7 @@ class CControlledTransport : public ArchiveBackend {
         return PauseResult;
     }
     HRESULT setBackground(bool) override { return E_FAIL; }
+    void cancel() override { Cancelled = true; }
     void Start() {
         Active = true;
         emit progress(42, QStringLiteral("папка/файл с пробелом.txt"));
@@ -44,6 +47,75 @@ class ArchiveProgressTests : public QObject, protected ArchiveBackendTestSupport
     Q_OBJECT
     WidgetDialogFixture widgetDialogs_;
   private slots:
+    void newEngineRetainsPauseOrReportsFailure_data() {
+        QTest::addColumn<bool>("failure");
+        QTest::newRow("paused") << false;
+        QTest::newRow("pause-failure") << true;
+    }
+    void newEngineRetainsPauseOrReportsFailure() {
+        QFETCH(bool, failure);
+        CControlledTransport backend;
+        CProgressDialog dialog;
+        ArchiveProgressTransport transport(dialog, backend);
+        backend.Active = true;
+        dialog.Sync.Set_Paused(true);
+        backend.PauseResult = failure ? E_FAIL : S_OK;
+        emit backend.engineStarted();
+        QCOMPARE(backend.Paused, !failure);
+        QCOMPARE(backend.Cancelled, failure);
+        QCOMPARE(dialog.Sync.Messages.Size(), unsigned(failure ? 1 : 0));
+        QVERIFY(dialog.Sync.Get_Paused());
+        if (!failure) {
+            QCOMPARE(transport.SetPaused(false), S_OK);
+            QVERIFY(!backend.Paused);
+        }
+    }
+    void creationPhasesRetainPause_data() {
+        QTest::addColumn<int>("pausedPhase");
+        QTest::newRow("scan") << 1;
+        QTest::newRow("engine") << 2;
+        QTest::newRow("volumes") << 3;
+        QTest::newRow("delete-inputs") << 4;
+    }
+    void creationPhasesRetainPause() {
+        QFETCH(int, pausedPhase);
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString source = fixture.filePath(QStringLiteral("источник с пробелом.txt"));
+        const QString archive = fixture.filePath(QStringLiteral("архив с пробелом.7z"));
+        writeFile(source, QByteArray(1024 * 1024, 'x'));
+        ArchiveBackend backend;
+        CProgressDialog dialog;
+        QSignalSpy finished(&backend, &ArchiveBackend::finished);
+        int phase = 0;
+        bool observedPause = false;
+        // Model an outstanding pause at the transition, before the transport
+        // binds the new process/worker to the existing operation controls.
+        connect(&backend, &ArchiveBackend::phaseStarted, &dialog, [&] {
+            if (++phase != pausedPhase)
+                return;
+            dialog.Sync.Set_Paused(true);
+            QTimer::singleShot(150, &dialog, [&] {
+                observedPause = finished.isEmpty() && QFileInfo::exists(source);
+                if (pausedPhase == 3)
+                    observedPause = observedPause && !QFileInfo::exists(archive + ".001");
+                dialog.Sync.Set_Paused(false);
+                QCOMPARE(backend.setPaused(false), S_OK);
+            });
+        });
+        ArchiveProgressTransport transport(dialog, backend);
+        CompressionOptions options;
+        options.DeleteAfterCompressing = true;
+        options.VolumeSizes.Add(1024 * 1024);
+        backend.create(archive, {source}, {}, false, options);
+        QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 15000);
+        QVERIFY(observedPause);
+        QCOMPARE(phase, 4);
+        QVERIFY2(finished[0][0].toBool(), qPrintable(finished[0][1].toString()));
+        QVERIFY(QFileInfo::exists(archive + ".001"));
+        QVERIFY(!QFileInfo::exists(source));
+        QVERIFY(!backend.busy());
+    }
     void controlsAfterChildExitPreserveOperationResult_data() {
         QTest::addColumn<int>("exitCode");
         QTest::newRow("success") << 0;
