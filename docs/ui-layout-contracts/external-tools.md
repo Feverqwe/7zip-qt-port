@@ -55,6 +55,11 @@ is not inferred from those reports. Earlier P1-15 check.sh175/175 is historical.
 References: pinned HelpUtils/MyLoadMenu/CompressDialog topic calls and exact
 official26.03 CHM HTML/CSS with release provenance in resources/7zip.
 QTextBrowser replaces Win32 CHM presentation, retaining pages/links/fragments.
+Help follows the application palette, including already open topics. Page,
+table and syntax backgrounds, text and links remain readable in light/dark
+palettes; theme changes preserve the topic, fragment, history and scroll position.
+Original HTML, typography and layout remain unchanged. `help_source` checks
+palette transitions and writes normal/compact `help-theme-*` widget reports.
 help_source writes EN/RU760×560/420×300 help-*.json: browser, Back and standard
 Close remain exposed. AboutDialog.rc/source is the structural reference for
 About360×330/300×310 EN/RU: logo, version/date/copyright/free-software, footer

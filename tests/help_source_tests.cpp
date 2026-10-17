@@ -13,8 +13,12 @@
 #include <QMessageBox>
 #include <QPushButton>
 #include <QScopeGuard>
+#include <QScrollBar>
 #include <QTemporaryDir>
 #include <QTextBrowser>
+#include <QTextDocument>
+#include <QTextFrame>
+#include <QTextTable>
 #include <QTimer>
 #include <QtTest>
 
@@ -206,6 +210,72 @@ class HelpSourceTests : public QObject {
                     *window, QString("help-%1-%2").arg(language).arg(size.width())));
             }
         }
+        window->close();
+    }
+    void helpFollowsPaletteWithoutLosingNavigation() {
+        const QPalette original = QApplication::palette();
+        const auto restore = qScopeGuard([&] { QApplication::setPalette(original); });
+        QWidget parent;
+        ShowHelpWindow("start.htm", &parent);
+        auto *window = parent.findChild<QDialog *>("helpWindow");
+        auto *browser = window->findChild<QTextBrowser *>("helpBrowser");
+        browser->anchorClicked(QUrl("general/formats.htm#zip"));
+        const QUrl source = browser->source();
+        const QString text = browser->toPlainText();
+        for (bool dark : {true, false, true}) {
+            QPalette colors = original;
+            colors.setColor(QPalette::Base, QColor(dark ? "#202326" : "#ffffff"));
+            colors.setColor(QPalette::Text, QColor(dark ? "#e8eaed" : "#202326"));
+            colors.setColor(QPalette::AlternateBase, QColor(dark ? "#2c3035" : "#edf0f3"));
+            colors.setColor(QPalette::Link, QColor(dark ? "#8cbcff" : "#205bb0"));
+            colors.setColor(QPalette::Window, QColor(dark ? "#272b30" : "#f1f2f4"));
+            colors.setColor(QPalette::WindowText, colors.color(QPalette::Text));
+            colors.setColor(QPalette::Button, colors.color(QPalette::Window));
+            colors.setColor(QPalette::ButtonText, colors.color(QPalette::Text));
+            colors.setColor(QPalette::Mid, QColor(dark ? "#50565f" : "#b0b6be"));
+            QApplication::processEvents();
+            browser->verticalScrollBar()->setValue(40);
+            const int scroll = browser->verticalScrollBar()->value();
+            QApplication::setPalette(colors);
+            QApplication::processEvents();
+            QCOMPARE(browser->source(), source);
+            QCOMPARE(browser->toPlainText(), text);
+            QCOMPARE(browser->verticalScrollBar()->value(), scroll);
+            QCOMPARE(browser->document()->rootFrame()->frameFormat().background().color(),
+                     colors.color(QPalette::Base));
+            auto cursor = browser->document()->find("Supported formats");
+            QVERIFY(!cursor.isNull());
+            QCOMPARE(cursor.charFormat().foreground().color(), colors.color(QPalette::Text));
+            cursor = browser->document()->find("BZIP2");
+            QVERIFY(cursor.currentTable());
+            QCOMPARE(cursor.currentTable()->cellAt(cursor).format().background().color(),
+                     colors.color(QPalette::Base));
+            cursor = browser->document()->find("Creation");
+            QCOMPARE(cursor.currentTable()->cellAt(cursor).format().background().color(),
+                     colors.color(QPalette::AlternateBase));
+            cursor = browser->document()->find("ZIP", 0, QTextDocument::FindWholeWords);
+            QVERIFY(cursor.charFormat().isAnchor());
+            QCOMPARE(cursor.charFormat().foreground().color(), colors.color(QPalette::Link));
+            browser->verticalScrollBar()->setValue(0);
+            for (QSize size : {QSize(760, 560), QSize(420, 300)}) {
+                window->resize(size);
+                QApplication::processEvents();
+                QVERIFY(UiInspection::fullyVisible(*browser, *window));
+                QVERIFY(UiInspection::writeReport(
+                    *window, QString("help-theme-%1-%2").arg(dark).arg(size.width())));
+            }
+        }
+        browser->backward();
+        QVERIFY(browser->toPlainText().contains("Welcome to 7-Zip"));
+        browser->forward();
+        QCOMPARE(browser->source(), source);
+        browser->setSource(QUrl("qrc:/upstream/7zip/Help/cmdline/syntax.htm"));
+        auto cursor = browser->document()->find("expression1");
+        QVERIFY(!cursor.isNull());
+        QCOMPARE(cursor.blockFormat().background().color(),
+                 QApplication::palette().color(QPalette::AlternateBase));
+        QCOMPARE(cursor.charFormat().foreground().color(),
+                 QApplication::palette().color(QPalette::Text));
         window->close();
     }
     void unavailableTopicIsObservableAndDoesNotOpenWindow() {

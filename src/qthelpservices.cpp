@@ -6,14 +6,85 @@
 #include <QDialog>
 #include <QDialogButtonBox>
 #include <QDir>
+#include <QEvent>
 #include <QFile>
+#include <QHash>
 #include <QMessageBox>
 #include <QPushButton>
+#include <QScrollBar>
 #include <QTextBrowser>
+#include <QTextDocument>
 #include <QUrl>
 #include <QVBoxLayout>
 
 static void InitHelpResources() { Q_INIT_RESOURCE(upstream_help); }
+
+namespace {
+// Qt presentation adapter for the original CHM pages. Retain their stylesheet's
+// layout and typography, replacing only its fixed light-theme color tokens.
+class HelpBrowser final : public QTextBrowser {
+  public:
+    explicit HelpBrowser(QWidget *parent) : QTextBrowser(parent) {}
+
+  protected:
+    QVariant loadResource(int type, const QUrl &url) override {
+        const QVariant resource = QTextBrowser::loadResource(type, url);
+        if (type != QTextDocument::StyleSheetResource || url.fileName() != "style.css" ||
+            !resource.isValid())
+            return resource;
+        const QByteArray css = resource.toByteArray();
+        styles.insert(url, css);
+        return themedStyle(css);
+    }
+
+    void changeEvent(QEvent *event) override {
+        QTextBrowser::changeEvent(event);
+        if (event->type() != QEvent::PaletteChange || source().isEmpty())
+            return;
+        for (auto it = styles.cbegin(); it != styles.cend(); ++it)
+            document()->addResource(QTextDocument::StyleSheetResource, it.key(),
+                                    themedStyle(it.value()));
+        const int scroll = verticalScrollBar()->value();
+        const int horizontalScroll = horizontalScrollBar()->value();
+        reload();
+        verticalScrollBar()->setValue(scroll);
+        horizontalScrollBar()->setValue(horizontalScroll);
+    }
+
+  private:
+    QByteArray themedStyle(const QByteArray &css) const {
+        const QPalette colors = palette();
+        const bool dark =
+            colors.color(QPalette::Base).lightness() < colors.color(QPalette::Text).lightness();
+        // Substitute in one pass: palette colors may equal another source token.
+        const QHash<QByteArray, QColor> replacements = {
+            {"#ffffff", colors.color(QPalette::Base)},
+            {"#000000", colors.color(QPalette::Text)},
+            {"#999999", colors.color(QPalette::Mid)},
+            {"#cccccc", colors.color(QPalette::AlternateBase)},
+            {"#dddddd", colors.color(QPalette::AlternateBase)},
+            {"#0066ff", colors.color(QPalette::Link)},
+            {"#996600", colors.color(QPalette::LinkVisited)},
+            {"#cc9900", colors.color(QPalette::Link)},
+            {"#C00000", QColor(dark ? "#ff9b8e" : "#a52a21")},
+            {"#F00000", QColor(dark ? "#ff9b8e" : "#a52a21")},
+            {"#228B22", QColor(dark ? "#8fc99a" : "#26723b")}};
+        QByteArray result;
+        for (qsizetype i = 0; i < css.size();) {
+            const auto color = replacements.constFind(css.mid(i, 7));
+            if (css[i] == '#' && color != replacements.cend()) {
+                result += color.value().name().toLatin1();
+                i += 7;
+            } else {
+                result += css[i++];
+            }
+        }
+        return result;
+    }
+
+    QHash<QUrl, QByteArray> styles;
+};
+} // namespace
 
 FString QtHelpModuleDirPrefix() {
     const auto path = (QCoreApplication::applicationDirPath() + '/').toStdWString();
@@ -48,7 +119,7 @@ void QtOpenHelpTopic(const QString &topic, QWidget *parent, const QString &root)
     QtBindLocalText(window, "7-Zip Help", "Справка 7-Zip");
     window->resize(760, 560);
     auto *layout = new QVBoxLayout(window);
-    auto *browser = new QTextBrowser(window);
+    auto *browser = new HelpBrowser(window);
     browser->setObjectName("helpBrowser");
     browser->setOpenLinks(false);
     layout->addWidget(browser, 1);

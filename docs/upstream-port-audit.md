@@ -33,6 +33,9 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 
 ## Новые изменения
 
+- [Тема встроенной справки](upstream-port-audit/help-theme.md)
+  — адаптация цветов исходных страниц к палитре приложения.
+
 - [Стабильные колонки Add](upstream-port-audit/add-dialog-stable-columns.md)
   — смена параметров без сжатия окна и перемещения остальных полей.
 
