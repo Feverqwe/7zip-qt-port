@@ -7,11 +7,11 @@
 #include "archivecodeccatalog.h"
 #include "copydialog.h"
 #include "extractdialog.h"
+#include "fixtures/widget_dialogs.h"
 #include "layout_inspection.h"
 #include "qtlangcontrols.h"
 #include "source_extract_fixture.h"
 #include "window_state_support.h"
-#include <QScopedValueRollback>
 #include <QTreeWidget>
 
 namespace {
@@ -23,8 +23,8 @@ bool makeArchive(const QString &directory, const QString &path, const QString &t
     process.start(QStandardPaths::findExecutable("7zz"), {"a", "-t" + type, "--", path, name});
     return process.waitForFinished(10000) && process.exitCode() == 0;
 }
-void dismissResults(QStringList &errors, QStringList &successes) {
-    if (auto *widget = QApplication::activeModalWidget()) {
+void dismissResults(WidgetDialogFixture &dialogs, QStringList &errors, QStringList &successes) {
+    if (auto *widget = dialogs.activeDialog()) {
         if (auto *box = qobject_cast<QMessageBox *>(widget)) {
             // Source ProgressDialog2 success MB_OK carries no icon flags.
             if (box->objectName() == "progressFinalMessage" && box->icon() == QMessageBox::NoIcon)
@@ -50,6 +50,7 @@ void dismissResults(QStringList &errors, QStringList &successes) {
 
 class ToolbarArchiveWorkflowTests final : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
+    WidgetDialogFixture dialogs_;
     QString module_;
     quint32 version_ = 0;
     static FileTable *openPanel(MainWindow &window, unsigned pane, const QString &path) {
@@ -96,6 +97,7 @@ class ToolbarArchiveWorkflowTests final : public QObject, protected MainWindowTe
         QCOMPARE(backend.loadCodecCatalog(module_, version_), S_OK);
         MainWindow window(&backend);
         window.show();
+        window.activateWindow();
         QVERIFY(QTest::qWaitForWindowActive(&window));
         action(window, "twoPanelsAction")->trigger();
         auto *source = openPanel(window, pane, input);
@@ -106,18 +108,14 @@ class ToolbarArchiveWorkflowTests final : public QObject, protected MainWindowTe
         source->setFocus();
         CMyComPtr<IFolderFolder> provider = source->sourcePanel->GetFolder();
         QStringList errors, successes;
-        bool handling = false;
         QTimer driver;
-        connect(&driver, &QTimer::timeout, &window, [&] {
-            if (handling)
-                return;
-            const QScopedValueRollback<bool> guard(handling, true);
-            if (auto *dialog = dynamic_cast<ExtractDialog *>(QApplication::activeModalWidget())) {
+        dialogs_.connectResponder(driver, &window, [&] {
+            if (auto *dialog = dynamic_cast<ExtractDialog *>(dialogs_.activeDialog())) {
                 dialog->findChild<QCheckBox *>("extractNameEnable")->setChecked(false);
                 dialog->findChild<QComboBox *>("extractDestination")->setEditText(output);
                 dialog->accept();
             }
-            dismissResults(errors, successes);
+            dismissResults(dialogs_, errors, successes);
         });
         driver.start(1);
         for (const char *command : {"extractArchiveAction", "testArchiveAction"}) {
@@ -159,6 +157,7 @@ class ToolbarArchiveWorkflowTests final : public QObject, protected MainWindowTe
         QCOMPARE(backend.loadCodecCatalog(module_, version_), S_OK);
         MainWindow window(&backend);
         window.show();
+        window.activateWindow();
         QVERIFY(QTest::qWaitForWindowActive(&window));
         action(window, "twoPanelsAction")->trigger();
         auto *peer = openPanel(window, 1 - pane, output);
@@ -172,13 +171,9 @@ class ToolbarArchiveWorkflowTests final : public QObject, protected MainWindowTe
         CMyComPtr<IFolderFolder> provider = source->sourcePanel->GetFolder();
         QString modalName;
         QString destination;
-        bool handling = false;
         QTimer driver;
-        connect(&driver, &QTimer::timeout, &window, [&] {
-            if (handling)
-                return;
-            const QScopedValueRollback<bool> guard(handling, true);
-            if (auto *dialog = qobject_cast<QDialog *>(QApplication::activeModalWidget())) {
+        dialogs_.connectResponder(driver, &window, [&] {
+            if (auto *dialog = qobject_cast<QDialog *>(dialogs_.activeDialog())) {
                 modalName = dialog->objectName();
                 if (auto *copy = dynamic_cast<CopyDialog *>(dialog)) {
                     destination = copy->destination();
@@ -227,6 +222,7 @@ class ToolbarArchiveWorkflowTests final : public QObject, protected MainWindowTe
         QCOMPARE(backend.loadCodecCatalog(module_, version_), S_OK);
         MainWindow window(&backend);
         window.show();
+        window.activateWindow();
         QVERIFY(QTest::qWaitForWindowActive(&window));
         action(window, "twoPanelsAction")->trigger();
         auto *source = openPanel(window, pane, input);
@@ -250,15 +246,11 @@ class ToolbarArchiveWorkflowTests final : public QObject, protected MainWindowTe
         QString caption;
         bool seen = false;
         bool canceled = true;
-        bool handling = false;
         QStringList errors;
         QStringList successes;
         QTimer driver;
-        connect(&driver, &QTimer::timeout, &window, [&] {
-            if (handling)
-                return;
-            const QScopedValueRollback<bool> guard(handling, true);
-            if (auto *dialog = dynamic_cast<ExtractDialog *>(QApplication::activeModalWidget())) {
+        dialogs_.connectResponder(driver, &window, [&] {
+            if (auto *dialog = dynamic_cast<ExtractDialog *>(dialogs_.activeDialog())) {
                 seen = true;
                 caption = dialog->windowTitle();
                 if (canceled)
@@ -271,7 +263,7 @@ class ToolbarArchiveWorkflowTests final : public QObject, protected MainWindowTe
                     dialog->accept();
                 }
             }
-            dismissResults(errors, successes);
+            dismissResults(dialogs_, errors, successes);
         });
         driver.start(1);
         action(window, "extractArchiveAction")->trigger();

@@ -10,6 +10,8 @@
 
 [Three-platform original full results and focused default/native correction](upstream-port-audit/p3-03-final-default-2026-10-17.md).
 
+[Modal source-panel ownership, native widget responders and bounded Cocoa matrices](upstream-port-audit/p3-03-owner-publication-2026-10-17.md).
+
 ## P3-06 — Add Options source presentation and keyboard workflow (2026-10-17)
 
 [Source COptions frame/captions, actual original focus/Tab and current three-platform consumers](upstream-port-audit/p3-06-compression-options-2026-10-17.md).

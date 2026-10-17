@@ -5,6 +5,7 @@
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "archivecodeccatalog.h"
 #include "fixtures/drag_event_position.h"
+#include "fixtures/window_activation.h"
 #include "qttrashservice.h"
 #include "window_state_support.h"
 #include <QProcess>
@@ -49,7 +50,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         address->setText(temp.path());
         QTest::keyClick(address, Qt::Key_Return);
         window.show();
-        QVERIFY(QTest::qWaitForWindowActive(&window));
+        QVERIFY(WindowActivation::waitForActive(window));
         table(window)->selectRow(filesystemRow(window, QStringLiteral("исходный.txt")));
         action(window, "renameAction")->trigger();
         auto *editor = qobject_cast<QLineEdit *>(QApplication::focusWidget());
@@ -95,7 +96,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         address->setText(temp.path());
         QTest::keyClick(address, Qt::Key_Return);
         window.show();
-        QCoreApplication::processEvents();
+        QVERIFY(WindowActivation::waitForActive(window));
 
         QString confirmation;
         bool approve = true;
@@ -183,7 +184,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         address->setText(temp.path());
         QTest::keyClick(address, Qt::Key_Return);
         window.show();
-        QCoreApplication::processEvents();
+        QVERIFY(WindowActivation::waitForActive(window));
 
         const auto answer = [&window](const char *actionName, const QString &name, bool accept) {
             QTimer::singleShot(0, &window, [&window, name, accept] {
@@ -240,7 +241,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         QTest::keyClick(address, Qt::Key_Return);
         window.resize(width, 380);
         window.show();
-        QVERIFY(QTest::qWaitForWindowActive(&window));
+        QVERIFY(WindowActivation::waitForActive(window));
         action(window, qPrintable(QStringLiteral("viewMode%1Action").arg(mode)))->trigger();
         table(window)->selectRow(filesystemRow(window, QStringLiteral("папка с пробелом")));
         action(window, "renameAction")->trigger();
@@ -273,7 +274,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         leftPath->setText(sourceDir);
         QTest::keyClick(leftPath, Qt::Key_Return);
         window.show();
-        QCoreApplication::processEvents();
+        QVERIFY(WindowActivation::waitForActive(window));
         auto *leftTable = left->findChild<QTableWidget *>("archiveTable");
         QTRY_VERIFY(leftTable->rowCount() > 0);
 
@@ -360,8 +361,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         auto *right = window.findChild<QWidget *>("filePanel1");
         QVERIFY(right);
         auto *rightTable = right->findChild<QTableWidget *>("archiveTable");
-        window.activateWindow();
-        QApplication::processEvents();
+        QVERIFY(WindowActivation::waitForActive(window));
         rightTable->setFocus();
         QTRY_VERIFY(rightTable->hasFocus());
         auto *rightPath = right->findChild<QLineEdit *>("archivePath");
@@ -577,11 +577,10 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         QVERIFY(QFileInfo::exists(copied));
 
         window.show();
-        QCoreApplication::processEvents();
+        QVERIFY(WindowActivation::waitForActive(window));
         const int copiedRow = filesystemRow(window, QStringLiteral("имя с пробелом.txt"));
         table(window)->selectRow(copiedRow);
-        window.activateWindow();
-        QCoreApplication::processEvents();
+        QVERIFY(WindowActivation::waitForActive(window));
         table(window)->setFocus();
         QTRY_VERIFY(table(window)->hasFocus());
         table(window)->item(copiedRow, 1)->setText(temp.filePath("forged-rename.txt"));
@@ -781,8 +780,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         auto *right = window.findChild<QWidget *>("filePanel1");
         QVERIFY(right);
         auto *rightTable = right->findChild<QTableWidget *>("archiveTable");
-        window.activateWindow();
-        QApplication::processEvents();
+        QVERIFY(WindowActivation::waitForActive(window));
         rightTable->setFocus();
         QTRY_VERIFY(rightTable->hasFocus());
         window.openArchive(archive);
@@ -793,8 +791,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
                                      return false;
                                  })(),
                                  10000);
-        window.activateWindow();
-        QApplication::processEvents();
+        QVERIFY(WindowActivation::waitForActive(window));
         leftTable->setFocus();
         QTRY_VERIFY(leftTable->hasFocus());
         QVERIFY(sourceRow >= 0);
@@ -916,21 +913,20 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         auto *leftTable = left->findChild<QTableWidget *>("archiveTable");
         action(window, "twoPanelsAction")->trigger();
         QVERIFY(action(window, "twoPanelsAction")->isChecked());
+        QVERIFY(WindowActivation::waitForActive(window));
         leftTable->setFocus();
         QTRY_VERIFY(leftTable->hasFocus());
         window.openArchive(sourceArchive);
         auto *right = window.findChild<QWidget *>("filePanel1");
         QVERIFY(right);
         auto *rightTable = right->findChild<QTableWidget *>("archiveTable");
-        window.activateWindow();
-        QApplication::processEvents();
+        QVERIFY(WindowActivation::waitForActive(window));
         rightTable->setFocus();
         QTRY_VERIFY(rightTable->hasFocus());
         window.openArchive(targetArchive);
         QTRY_VERIFY_WITH_TIMEOUT(
             rightTable->rowCount() == 1 && rightTable->item(0, 0)->text() == "keep.txt", 10000);
-        window.activateWindow();
-        QApplication::processEvents();
+        QVERIFY(WindowActivation::waitForActive(window));
         leftTable->setFocus();
         QTRY_VERIFY(leftTable->hasFocus());
         const auto rowFor = [leftTable](const QString &name) {
@@ -1078,24 +1074,24 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         });
         answerPassword.start(1);
         window.show();
+        QVERIFY(WindowActivation::waitForActive(window));
         action(window, "twoPanelsAction")->trigger();
         QVERIFY(action(window, "twoPanelsAction")->isChecked());
         auto *left = window.findChild<QWidget *>("filePanel0");
         auto *leftTable = left->findChild<QTableWidget *>("archiveTable");
+        QVERIFY(WindowActivation::waitForActive(window));
         leftTable->setFocus();
         QTRY_VERIFY(leftTable->hasFocus());
         window.openArchive(sourceArchive);
         auto *right = window.findChild<QWidget *>("filePanel1");
         auto *rightTable = right->findChild<QTableWidget *>("archiveTable");
-        window.activateWindow();
-        QApplication::processEvents();
+        QVERIFY(WindowActivation::waitForActive(window));
         rightTable->setFocus();
         QTRY_VERIFY(rightTable->hasFocus());
         window.openArchive(targetArchive);
         QTRY_VERIFY_WITH_TIMEOUT(
             rightTable->rowCount() == 1 && rightTable->item(0, 0)->text() == "keep.txt", 10000);
-        window.activateWindow();
-        QApplication::processEvents();
+        QVERIFY(WindowActivation::waitForActive(window));
         leftTable->setFocus();
         QTRY_VERIFY(leftTable->hasFocus());
         QCOMPARE(leftTable->rowCount(), 1);
@@ -1169,6 +1165,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         ArchiveBackend backend(nullptr, engine);
         MainWindow window(&backend);
         window.show();
+        QVERIFY(WindowActivation::waitForActive(window));
         action(window, "twoPanelsAction")->trigger();
         QVERIFY(action(window, "twoPanelsAction")->isChecked());
         auto *left = window.findChild<QWidget *>("filePanel0");
@@ -1179,14 +1176,12 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         QTRY_VERIFY(leftTable->rowCount() == 1 && leftTable->item(0, 0)->text() == "inner.zip");
         auto *right = window.findChild<QWidget *>("filePanel1");
         auto *rightTable = right->findChild<QTableWidget *>("archiveTable");
-        window.activateWindow();
-        QApplication::processEvents();
+        QVERIFY(WindowActivation::waitForActive(window));
         rightTable->setFocus();
         QTRY_VERIFY(rightTable->hasFocus());
         window.openArchive(targetArchive);
         QTRY_VERIFY(rightTable->rowCount() == 1 && rightTable->item(0, 0)->text() == "keep.txt");
-        window.activateWindow();
-        QApplication::processEvents();
+        QVERIFY(WindowActivation::waitForActive(window));
         leftTable->setFocus();
         QTRY_VERIFY(leftTable->hasFocus());
         leftTable->selectRow(0);
@@ -1775,7 +1770,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         MainWindow window(&backend);
         window.openArchive(archive);
         window.show();
-        QCoreApplication::processEvents();
+        QVERIFY(WindowActivation::waitForActive(window));
         QTRY_VERIFY(action(window, "createFolderAction")->isEnabled());
         QTimer::singleShot(0, &window, [&window] {
             auto *dialog = window.findChild<CComboDialog *>("comboDialog");
@@ -1848,7 +1843,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         passwordAnswer.start(1);
         window.openArchive(archive);
         window.show();
-        QCoreApplication::processEvents();
+        QVERIFY(WindowActivation::waitForActive(window));
         QTRY_VERIFY(action(window, "createFolderAction")->isEnabled());
         QTimer::singleShot(0, &window, [&window] {
             auto *dialog = window.findChild<CComboDialog *>("comboDialog");

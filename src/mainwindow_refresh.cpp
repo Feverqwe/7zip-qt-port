@@ -25,6 +25,9 @@ HRESULT MainWindow::reloadPanelPresentation(unsigned index, const CSelectedState
         CPanel::CDisableNotify notify(app_.Panels[index]);
         activatePanelUi(index);
     }
+    // A native modal close can restore peer focus while the Qt projection is
+    // held on this command owner. Source RefreshListCtrl reloads its own panel.
+    app_.SetFocusedPanel(index);
     const auto restore = qScopeGuard([&] {
         if (index != original) {
             activatePanelUi(original);

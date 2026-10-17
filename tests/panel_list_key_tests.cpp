@@ -2,12 +2,14 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "archivecodeccatalog.h"
+#include "fixtures/widget_dialogs.h"
 #include "window_state_support.h"
 #include <QStandardPaths>
 #include <QTreeWidget>
 
 class PanelListKeyTests final : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
+    WidgetDialogFixture dialogs_;
     static QByteArray read(const QString &path) {
         QFile file(path);
         return file.open(QIODevice::ReadOnly) ? file.readAll() : QByteArray();
@@ -121,12 +123,11 @@ class PanelListKeyTests final : public QObject, protected MainWindowTestSupport 
         QTRY_COMPARE(list->rowCount(), 3);
         QStringList errors;
         QTimer dismiss;
-        connect(&dismiss, &QTimer::timeout, &window, [&] {
-            if (auto *box = qobject_cast<QMessageBox *>(QApplication::activeModalWidget())) {
+        dialogs_.connectResponder(dismiss, &window, [&] {
+            if (auto *box = qobject_cast<QMessageBox *>(dialogs_.activeDialog())) {
                 errors << box->text();
                 box->accept();
-            } else if (auto *progress =
-                           dynamic_cast<CProgressDialog *>(QApplication::activeModalWidget())) {
+            } else if (auto *progress = dynamic_cast<CProgressDialog *>(dialogs_.activeDialog())) {
                 auto *close = progress->findChild<QPushButton *>("IDCANCEL");
                 if (close && close->property("languageID").toUInt() == IDS_CLOSE)
                     close->click();
@@ -180,12 +181,11 @@ class PanelListKeyTests final : public QObject, protected MainWindowTestSupport 
         QVERIFY(list->isEnabled());
         QStringList errors;
         QTimer dismiss;
-        connect(&dismiss, &QTimer::timeout, &window, [&] {
-            if (auto *box = qobject_cast<QMessageBox *>(QApplication::activeModalWidget())) {
+        dialogs_.connectResponder(dismiss, &window, [&] {
+            if (auto *box = qobject_cast<QMessageBox *>(dialogs_.activeDialog())) {
                 errors << box->text();
                 box->accept();
-            } else if (auto *progress =
-                           dynamic_cast<CProgressDialog *>(QApplication::activeModalWidget())) {
+            } else if (auto *progress = dynamic_cast<CProgressDialog *>(dialogs_.activeDialog())) {
                 if (auto *messages = progress->findChild<QTreeWidget *>("IDL_PROGRESS_MESSAGES"))
                     for (int row = 0; row < messages->topLevelItemCount(); ++row)
                         errors << messages->topLevelItem(row)->text(1);

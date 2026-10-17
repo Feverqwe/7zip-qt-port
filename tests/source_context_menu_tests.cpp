@@ -1,12 +1,15 @@
 #include "CPP/7zip/UI/FileManager/ComboDialog.h"
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
+#include "fixtures/widget_dialogs.h"
+#include "fixtures/window_activation.h"
 #include "layout_inspection.h"
 #include "window_state_support.h"
 #include <QScopeGuard>
 
 class SourceContextMenuTests final : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
+    WidgetDialogFixture dialogs_;
     static FileTable *openPanel(MainWindow &window, unsigned pane, const QString &path) {
         auto *ui = window.findChild<QWidget *>(QString("filePanel%1").arg(pane));
         auto *address = ui->findChild<QLineEdit *>("archivePath");
@@ -63,7 +66,7 @@ class SourceContextMenuTests final : public QObject, protected MainWindowTestSup
         ControlledBackend backend;
         MainWindow window(&backend);
         window.show();
-        QVERIFY(QTest::qWaitForWindowActive(&window));
+        QVERIFY(WindowActivation::waitForActive(window));
         action(window, "twoPanelsAction")->trigger();
         auto *owner = openPanel(window, pane, fixture.path());
         QTRY_COMPARE(owner->rowCount(), 1);
@@ -168,13 +171,12 @@ class SourceContextMenuTests final : public QObject, protected MainWindowTestSup
         }
         bool menuObserved = false, dialogObserved = false;
         QTimer answer;
-        connect(&answer, &QTimer::timeout, &window, [&] {
-            if (auto *dialog = window.findChild<CComboDialog *>("comboDialog"))
-                if (dialog->isVisible()) {
-                    dialogObserved = true;
-                    dialog->findChild<QComboBox *>("comboValue")->setEditText(created);
-                    dialog->accept();
-                }
+        dialogs_.connectResponder(answer, &window, [&] {
+            if (auto *dialog = qobject_cast<CComboDialog *>(dialogs_.activeDialog())) {
+                dialogObserved = true;
+                dialog->findChild<QComboBox *>("comboValue")->setEditText(created);
+                dialog->accept();
+            }
         });
         answer.start(5);
         QTimer::singleShot(0, &window, [&] {
@@ -246,7 +248,7 @@ class SourceContextMenuTests final : public QObject, protected MainWindowTestSup
         ControlledBackend backend;
         MainWindow window(&backend);
         window.show();
-        QVERIFY(QTest::qWaitForWindowActive(&window));
+        QVERIFY(WindowActivation::waitForActive(window));
         action(window, "twoPanelsAction")->trigger();
         auto *owner = openPanel(window, 0, fixture.path());
         QTRY_COMPARE(owner->rowCount(), showDots ? 1 : 0);

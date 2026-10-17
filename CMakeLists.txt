@@ -3491,11 +3491,20 @@ if(BUILD_TESTING AND (MSVC OR CMAKE_SYSTEM_NAME STREQUAL "Linux"))
 endif()
 
 if(BUILD_TESTING)
+    qt_add_executable(widget_dialog_fixture_tests tests/widget_dialog_fixture_tests.cpp
+        tests/fixtures/widget_dialogs.cpp)
+    target_include_directories(widget_dialog_fixture_tests PRIVATE tests)
+    target_link_libraries(widget_dialog_fixture_tests PRIVATE Qt6::Widgets Qt6::Test)
+    add_test(NAME widget_dialog_fixture COMMAND widget_dialog_fixture_tests -silent)
+    set_tests_properties(widget_dialog_fixture PROPERTIES TIMEOUT 10
+        RESOURCE_LOCK sevenzip_native_ui ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
     foreach(sevenzip_widget_dialog_target IN ITEMS
             browse_dialog_tests nested_update_tests archive_progress_tests progress_cancel_tests
             nested_edit_chain_tests archive_external_edit_tests archive_external_security_tests
             archive_external_lifetime_tests checksum_tests source_link_storage_tests
             options_dialog_tests system_page_tests flat_view_tests filesystem_reload_tests
+            toolbar_archive_workflow_tests shell_update_window_tests source_drop_add_tests
+            native_hash_ui_tests native_rar_ui_tests panel_list_key_tests source_context_menu_tests
             panel_copy_reload_tests native_drop_publication_tests
             copy_publication_order_tests native_parent_publication_tests panel_key_source_tests)
         target_sources(${sevenzip_widget_dialog_target} PRIVATE tests/fixtures/widget_dialogs.cpp)

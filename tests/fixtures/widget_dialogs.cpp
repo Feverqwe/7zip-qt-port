@@ -2,6 +2,7 @@
 #include <QApplication>
 #include <QEvent>
 #include <QPointer>
+#include <QScopeGuard>
 #include <QThread>
 #include <QTimer>
 #include <QWindow>
@@ -21,8 +22,10 @@ bool WidgetDialogFixture::eventFilter(QObject *watched, QEvent *event) {
     if (event->type() == QEvent::Show)
         if (auto *dialog = qobject_cast<QDialog *>(watched)) {
             if (!showLevels_.contains(dialog))
-                connect(dialog, &QObject::destroyed, this,
-                        [this, dialog] { showLevels_.remove(dialog); });
+                connect(dialog, &QObject::destroyed, this, [this, dialog] {
+                    showLevels_.remove(dialog);
+                    answering_.remove(dialog);
+                });
             showLevels_.insert(dialog, QThread::currentThread()->loopLevel());
         }
     return QObject::eventFilter(watched, event);
@@ -35,6 +38,7 @@ bool WidgetDialogFixture::ready(QDialog &dialog) const {
         !dialog.windowHandle()->isExposed())
         return false;
     if (!dialog.isActiveWindow()) {
+        dialog.raise();
         dialog.activateWindow();
         return false;
     }
@@ -61,13 +65,24 @@ void WidgetDialogFixture::respond(QObject &context, std::function<void(QDialog &
 }
 
 void WidgetDialogFixture::connectResponder(QTimer &timer, QObject *context,
-                                           std::function<void()> callback) const {
+                                           std::function<void()> callback) {
     const QPointer<QTimer> liveTimer(&timer);
+    const QPointer<WidgetDialogFixture> fixture(this);
     connect(
         &timer, &QTimer::timeout, context,
-        [liveTimer, callback = std::move(callback)] {
-            if (liveTimer && liveTimer->isActive())
-                callback();
+        [fixture, liveTimer, callback = std::move(callback)] {
+            if (!fixture || !liveTimer || !liveTimer->isActive())
+                return;
+            auto *dialog = qobject_cast<QDialog *>(QApplication::activeModalWidget());
+            if (dialog && fixture->answering_.contains(dialog))
+                return;
+            if (dialog)
+                fixture->answering_.insert(dialog);
+            const auto release = qScopeGuard([fixture, dialog] {
+                if (fixture)
+                    fixture->answering_.remove(dialog);
+            });
+            callback();
         },
         Qt::QueuedConnection);
 }

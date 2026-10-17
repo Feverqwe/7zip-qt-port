@@ -75,6 +75,7 @@ class SourceSelectionTests final : public QObject, protected MainWindowTestSuppo
         ControlledBackend backend;
         MainWindow window(&backend);
         window.show();
+        window.activateWindow();
         QVERIFY(QTest::qWaitForWindowActive(&window));
         action(window, "twoPanelsAction")->trigger();
         auto *peer = openPanel(window, 1 - pane, peerDirectory.path());

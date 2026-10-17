@@ -261,6 +261,13 @@ popup return in its existing bounded rows. `list_settings_runtime` also checks
 availability after Cancel and actually opens Options again after closing a second
 window. No retry or added readiness wait hides a stale disabled QAction.
 
+`widget_dialog_fixture` reproduces reentry while a dialog-answer callback processes
+events: the parent is answered once, and its distinct nested question is still
+answered. Existing context-menu rows also detect Create File reaching disk while
+its owner's catalog/list stays stale after native modal focus restoration; peer
+contents and automatic-refresh isolation remain checked. See the
+[native owner/fixture receipt](../upstream-port-audit/p3-03-owner-publication-2026-10-17.md).
+
 `filesystem_comment::sourceCommentOwnsPublication` exercises the public source
 reload-presentation contract: Cancel does not publish; accepted Comment publishes
 once under source guards with the captured focused name and same provider.

@@ -5,12 +5,12 @@
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "archivecodeccatalog.h"
 #include "createarchivedialog.h"
+#include "fixtures/widget_dialogs.h"
 #include "layout_inspection.h"
 #include "source_extract_fixture.h"
 #include "window_state_support.h"
 #include <QScrollArea>
 #include <QScrollBar>
-#include <QSignalBlocker>
 
 namespace {
 QAction *findVerb(QMenu &menu, const QString &verb) {
@@ -50,6 +50,7 @@ void prepareSettings(const QString &language = "-") {
 
 class ShellUpdateWindowTests final : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
+    WidgetDialogFixture dialogs_;
     QString _module, _engine;
     quint32 _version = 0;
   private slots:
@@ -159,16 +160,16 @@ class ShellUpdateWindowTests final : public QObject, protected MainWindowTestSup
         QCOMPARE(backend.loadCodecCatalog(_module, _version), S_OK);
         MainWindow window(&backend);
         window.show();
+        window.activateWindow();
+        QVERIFY(QTest::qWaitForWindowActive(&window));
         auto *view = table(window);
         QTRY_VERIFY(rowNamed(window, name) >= 0);
         view->selectRow(rowNamed(window, name));
         QSignalSpy processes(&backend, &ArchiveBackend::engineStarted);
         QStringList errors;
         QTimer dismissal;
-        connect(&dismissal, &QTimer::timeout, [&] {
-            if (auto *dialog =
-                    qobject_cast<CreateArchiveDialog *>(QApplication::activeModalWidget())) {
-                const QSignalBlocker preventReentry(&dismissal);
+        dialogs_.connectResponder(dismissal, &window, [&] {
+            if (auto *dialog = qobject_cast<CreateArchiveDialog *>(dialogs_.activeDialog())) {
                 QVERIFY(QTest::qWaitForWindowActive(dialog));
                 QVERIFY(!dialog->findChild<QListWidget *>("availableSources"));
                 QCOMPARE(dialog->sources(), QStringList{fixture.filePath(name)});
@@ -225,13 +226,12 @@ class ShellUpdateWindowTests final : public QObject, protected MainWindowTestSup
                     dialog->findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Ok)->click();
                 return;
             }
-            if (auto *box = qobject_cast<QMessageBox *>(QApplication::activeModalWidget())) {
+            if (auto *box = qobject_cast<QMessageBox *>(dialogs_.activeDialog())) {
                 errors.append(box->text());
                 box->accept();
                 return;
             }
-            if (auto *progress =
-                    dynamic_cast<CProgressDialog *>(QApplication::activeModalWidget())) {
+            if (auto *progress = dynamic_cast<CProgressDialog *>(dialogs_.activeDialog())) {
                 auto *button = progress->findChild<QPushButton *>("IDCANCEL");
                 if (button && button->property("languageID").toUInt() == IDS_CLOSE)
                     button->click();
@@ -366,6 +366,8 @@ class ShellUpdateWindowTests final : public QObject, protected MainWindowTestSup
         MainWindow window(&backend);
         window.resize(size);
         window.show();
+        window.activateWindow();
+        QVERIFY(QTest::qWaitForWindowActive(&window));
         auto *view = table(window);
         QTRY_VERIFY(rowNamed(window, name) >= 0);
         view->selectRow(rowNamed(window, name));

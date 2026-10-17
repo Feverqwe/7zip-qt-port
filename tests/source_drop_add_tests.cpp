@@ -3,12 +3,14 @@
 #include "archivecodeccatalog.h"
 #include "createarchivedialog.h"
 #include "fixtures/drag_event_position.h"
+#include "fixtures/widget_dialogs.h"
 #include "source_extract_fixture.h"
 #include "window_state_support.h"
 #include <QScopeGuard>
 
 class SourceDropAddTests final : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
+    WidgetDialogFixture dialogs_;
     QString module_, engine_;
     quint32 version_ = 0;
   private slots:
@@ -50,6 +52,8 @@ class SourceDropAddTests final : public QObject, protected MainWindowTestSupport
         QCOMPARE(backend.loadCodecCatalog(module_, version_), S_OK);
         MainWindow window(&backend);
         window.show();
+        window.activateWindow();
+        QVERIFY(QTest::qWaitForWindowActive(&window));
         auto *address = window.findChild<QLineEdit *>("archivePath");
         address->setText(QFileInfo(output).absolutePath());
         emit address->returnPressed();
@@ -58,9 +62,8 @@ class SourceDropAddTests final : public QObject, protected MainWindowTestSupport
         bool shown = false;
         QStringList errors;
         QTimer answer;
-        connect(&answer, &QTimer::timeout, &window, [&] {
-            if (auto *dialog =
-                    qobject_cast<CreateArchiveDialog *>(QApplication::activeModalWidget())) {
+        dialogs_.connectResponder(answer, &window, [&] {
+            if (auto *dialog = qobject_cast<CreateArchiveDialog *>(dialogs_.activeDialog())) {
                 shown = true;
                 const auto reject = qScopeGuard([&] {
                     if (dialog->isVisible())
@@ -75,11 +78,10 @@ class SourceDropAddTests final : public QObject, protected MainWindowTestSupport
                     dialog->findChild<QLineEdit *>("archiveName")->setText(output);
                     dialog->findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Ok)->click();
                 }
-            } else if (auto *box = qobject_cast<QMessageBox *>(QApplication::activeModalWidget())) {
+            } else if (auto *box = qobject_cast<QMessageBox *>(dialogs_.activeDialog())) {
                 errors.append(box->text());
                 box->accept();
-            } else if (auto *progress =
-                           dynamic_cast<CProgressDialog *>(QApplication::activeModalWidget())) {
+            } else if (auto *progress = dynamic_cast<CProgressDialog *>(dialogs_.activeDialog())) {
                 auto *button = progress->findChild<QPushButton *>("IDCANCEL");
                 if (button && button->property("languageID").toUInt() == IDS_CLOSE)
                     button->click();

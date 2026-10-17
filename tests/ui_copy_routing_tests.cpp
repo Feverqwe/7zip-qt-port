@@ -1,6 +1,7 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/OverwriteDialog.h"
 #include "copydialog.h"
+#include "fixtures/window_activation.h"
 #include "layout_inspection.h"
 #include "window_state_support.h"
 #include <QProcess>
@@ -155,7 +156,7 @@ class UiCopyRoutingTests final : public QObject, protected MainWindowTestSupport
         ArchiveBackend backend;
         MainWindow window(&backend);
         window.show();
-        QVERIFY(QTest::qWaitForWindowActive(&window));
+        QVERIFY(WindowActivation::waitForActive(window));
         action(window, "twoPanelsAction")->trigger();
         auto *sourceView = openPanel(window, sourceIndex, input);
         QTRY_VERIFY(action(window, "refreshAction")->isEnabled());
@@ -166,6 +167,7 @@ class UiCopyRoutingTests final : public QObject, protected MainWindowTestSupport
             static_cast<FileTable *>(view)->sourcePanel->Set_AutoRefresh_Mode(false);
         peerView->selectRow(row(*peerView, "seed.txt"));
         sourceView->selectRow(row(*sourceView, name));
+        QVERIFY(WindowActivation::waitForActive(window));
         sourceView->setFocus();
         QTRY_VERIFY(sourceView->hasFocus());
         bool seen = false;
@@ -245,14 +247,13 @@ class UiCopyRoutingTests final : public QObject, protected MainWindowTestSupport
         ArchiveBackend backend;
         MainWindow window(&backend);
         window.show();
-        QVERIFY(QTest::qWaitForWindowActive(&window));
+        QVERIFY(WindowActivation::waitForActive(window));
         QTableWidget *view = openPanel(window, 0, source);
         QTRY_COMPARE(static_cast<FileTable *>(view)->sourcePanel->GetParentFolders().Size(),
                      archive ? 1u : 0u);
         QTRY_VERIFY(action(window, "refreshAction")->isEnabled());
         QTRY_COMPARE(view->rowCount(), 2);
-        window.activateWindow();
-        QVERIFY(QTest::qWaitForWindowActive(&window));
+        QVERIFY(WindowActivation::waitForActive(window));
         view->setCurrentCell(0, 0);
         view->clearSelection();
         static_cast<FileTable *>(view)->sourcePanel->KillSelection();
@@ -349,7 +350,7 @@ class UiCopyRoutingTests final : public QObject, protected MainWindowTestSupport
         ArchiveBackend backend;
         MainWindow window(&backend);
         window.show();
-        QVERIFY(QTest::qWaitForWindowActive(&window));
+        QVERIFY(WindowActivation::waitForActive(window));
         action(window, "twoPanelsAction")->trigger();
         QVERIFY(action(window, "twoPanelsAction")->isChecked());
         QTableWidget *sourceView = openPanel(window, sourceIndex, source);
@@ -367,8 +368,7 @@ class UiCopyRoutingTests final : public QObject, protected MainWindowTestSupport
         CMyComPtr<IFolderFolder> targetProvider =
             static_cast<FileTable *>(targetView)->sourcePanel->GetFolder();
         targetView->selectRow(row(*targetView, "seed.txt"));
-        window.activateWindow();
-        QVERIFY(QTest::qWaitForWindowActive(&window));
+        QVERIFY(WindowActivation::waitForActive(window));
         const int firstRow = row(*sourceView, first);
         const int secondRow = row(*sourceView, second);
         QVERIFY(firstRow >= 0 && secondRow >= 0);
@@ -416,8 +416,7 @@ class UiCopyRoutingTests final : public QObject, protected MainWindowTestSupport
         QTRY_VERIFY_WITH_TIMEOUT(sourceView->selectionModel()->selectedRows().isEmpty(), 1000);
         // The offscreen plugin loses its active window on modal close. Restore
         // activation only; the source continuation must have remembered focus.
-        window.activateWindow();
-        QVERIFY(QTest::qWaitForWindowActive(&window));
+        QVERIFY(WindowActivation::waitForActive(window));
         QTRY_VERIFY_WITH_TIMEOUT(sourceView->hasFocus(), 1000);
         QCOMPARE(QDir::cleanPath(QDir::fromNativeSeparators(window.windowTitle())),
                  QDir::cleanPath(QDir::fromNativeSeparators(source)));

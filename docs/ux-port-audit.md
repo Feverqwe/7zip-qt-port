@@ -4,6 +4,13 @@
 
 ## Current final acceptance matrix (2026-10-17)
 
+[Modal command ownership and native widget follow-up](upstream-port-audit/p3-03-owner-publication-2026-10-17.md)
+corrects Create File publication on Cocoa while preserving the captured panel.
+Current both-pane EN/RU table/icon scenarios pass on three native platforms;
+widget responders and162 bounded Cocoa recovery/drop rows have separate actual
+receipts. These checks do not replace OS-panel, physical-input or pixel evidence.
+Product56c01ba packages precede this correction and need delivery refresh.
+
 ### Resource/workflow reconciliation after Compression Options
 
 At `7a8592f`, the desktop includes in the pinned FileManager `resource.rc`,

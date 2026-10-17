@@ -1,5 +1,6 @@
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "archivecodeccatalog.h"
+#include "fixtures/widget_dialogs.h"
 #include "rar_memory_fixture.h"
 #include "window_state_support.h"
 
@@ -26,6 +27,7 @@ QByteArray read(const QString &path) {
 
 class NativeRarUiTests final : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
+    WidgetDialogFixture dialogs_;
     QString engine_, module_;
     quint32 version_ = 0;
   private slots:
@@ -75,13 +77,12 @@ class NativeRarUiTests final : public QObject, protected MainWindowTestSupport {
         table(window)->selectRow(0);
         QStringList errors;
         QTimer responder;
-        connect(&responder, &QTimer::timeout, this, [&] {
-            if (auto *box = qobject_cast<QMessageBox *>(QApplication::activeModalWidget())) {
+        dialogs_.connectResponder(responder, this, [&] {
+            if (auto *box = qobject_cast<QMessageBox *>(dialogs_.activeDialog())) {
                 if (box->icon() == QMessageBox::Critical || box->icon() == QMessageBox::Warning)
                     errors.append(box->text());
                 box->accept();
-            } else if (auto *dialog =
-                           dynamic_cast<CProgressDialog *>(QApplication::activeModalWidget())) {
+            } else if (auto *dialog = dynamic_cast<CProgressDialog *>(dialogs_.activeDialog())) {
                 auto *pause = dialog->findChild<QPushButton *>("IDB_PAUSE");
                 if (pause && !pause->isVisible())
                     dialog->findChild<QPushButton *>("IDCANCEL")->click();
@@ -119,8 +120,8 @@ class NativeRarUiTests final : public QObject, protected MainWindowTestSupport {
         QTRY_COMPARE(table(window)->rowCount(), 2);
         bool refused = false;
         QTimer responder;
-        connect(&responder, &QTimer::timeout, this, [&] {
-            if (auto *box = qobject_cast<QMessageBox *>(QApplication::activeModalWidget())) {
+        dialogs_.connectResponder(responder, this, [&] {
+            if (auto *box = qobject_cast<QMessageBox *>(dialogs_.activeDialog())) {
                 refused = QDir::fromNativeSeparators(box->text()).contains("../escape.bin");
                 box->accept();
             }

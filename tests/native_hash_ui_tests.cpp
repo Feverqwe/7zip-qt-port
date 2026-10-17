@@ -1,9 +1,11 @@
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "archivecodeccatalog.h"
+#include "fixtures/widget_dialogs.h"
 #include "window_state_support.h"
 
 class NativeHashUiTests final : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
+    WidgetDialogFixture dialogs_;
     QString engine_, module_;
     quint32 version_ = 0;
   private slots:
@@ -60,13 +62,12 @@ class NativeHashUiTests final : public QObject, protected MainWindowTestSupport 
         QSignalSpy engines(&backend, &ArchiveBackend::engineStarted);
         QStringList errors;
         QTimer responder;
-        connect(&responder, &QTimer::timeout, this, [&] {
-            if (auto *box = qobject_cast<QMessageBox *>(QApplication::activeModalWidget())) {
+        dialogs_.connectResponder(responder, this, [&] {
+            if (auto *box = qobject_cast<QMessageBox *>(dialogs_.activeDialog())) {
                 if (box->icon() == QMessageBox::Warning || box->icon() == QMessageBox::Critical)
                     errors.append(box->text());
                 box->accept();
-            } else if (auto *dialog =
-                           dynamic_cast<CProgressDialog *>(QApplication::activeModalWidget())) {
+            } else if (auto *dialog = dynamic_cast<CProgressDialog *>(dialogs_.activeDialog())) {
                 auto *pause = dialog->findChild<QPushButton *>("IDB_PAUSE");
                 if (pause && !pause->isVisible()) {
                     FOR_VECTOR(i, dialog->Sync.Messages)

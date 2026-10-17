@@ -16,6 +16,13 @@ class NativeParentPublicationTests final : public QObject, protected MainWindowT
     NativePropertyFailureRuntime runtime_;
     QTemporaryDir seeds_;
 
+    static bool readyToClose(CProgressDialog &progress) {
+        auto *button = progress.findChild<QPushButton *>("IDCANCEL");
+        auto *messages = progress.findChild<QWidget *>("IDL_PROGRESS_MESSAGES");
+        return button && button->text() == ToQString(LangString(IDS_CLOSE)) && messages &&
+               messages->isVisible();
+    }
+
     void renameChild(MainWindow &window, QWidget &owner, FileTable &list, bool icons) {
         auto &panel = *list.sourcePanel;
         QVERIFY(WindowActivation::waitForActive(window));
@@ -40,7 +47,7 @@ class NativeParentPublicationTests final : public QObject, protected MainWindowT
                 box->accept();
             } else if (auto *progress = dynamic_cast<CProgressDialog *>(dialogs_.activeDialog())) {
                 auto *button = progress->findChild<QPushButton *>("IDCANCEL");
-                if (button && button->property("languageID").toUInt() == IDS_CLOSE)
+                if (button && readyToClose(*progress))
                     button->click();
             }
         });
@@ -242,9 +249,9 @@ class NativeParentPublicationTests final : public QObject, protected MainWindowT
                 return;
             if (auto *progress = dynamic_cast<CProgressDialog *>(dialogs_.activeDialog())) {
                 auto *button = progress->findChild<QPushButton *>("IDCANCEL");
-                const bool close = button && button->property("languageID").toUInt() == IDS_CLOSE;
-                const bool cancel =
-                    !close && button && injected && written == E_ABORT && !cancelled;
+                const bool close = readyToClose(*progress);
+                const bool cancel = button && button->text() != ToQString(LangString(IDS_CLOSE)) &&
+                                    injected && written == E_ABORT && !cancelled;
                 if (!close && !cancel)
                     return;
                 pendingButton = button;
@@ -257,6 +264,10 @@ class NativeParentPublicationTests final : public QObject, protected MainWindowT
                                        pendingButton.clear();
                                        if (!button || !progress || closingError ||
                                            QApplication::activeModalWidget() != progress)
+                                           return;
+                                       if (cancel
+                                               ? button->text() == ToQString(LangString(IDS_CLOSE))
+                                               : !readyToClose(*progress))
                                            return;
                                        if (cancel)
                                            cancelled = true;
