@@ -182,6 +182,28 @@ class ListActivationTests : public QObject {
         for (const char *action : {"wheel", "disable", "hide-show", "close"})
             QTest::newRow(action) << QString::fromLatin1(action);
     }
+    void disablingWidgetCancelsPendingHover_data() {
+        QTest::addColumn<bool>("reenable");
+        QTest::newRow("disabled") << false;
+        QTest::newRow("disable-enable") << true;
+    }
+    void disablingWidgetCancelsPendingHover() {
+        QFETCH(bool, reenable);
+        CListViewDialog dialog;
+        prepare(dialog, true);
+        auto *list = dialog.findChild<QTreeWidget *>();
+        move(list, 1);
+        list->setEnabled(false);
+        if (reenable)
+            list->setEnabled(true);
+        QTest::qWait(1200);
+        QCOMPARE(list->currentItem(), list->topLevelItem(0));
+        QVERIFY(dialog.isVisible());
+        QCOMPARE(dialog.FocusedItemIndex, -1);
+        list->setEnabled(true);
+        move(list, 2);
+        QTRY_COMPARE(list->currentItem(), list->topLevelItem(2));
+    }
     void hoverCancelsBeforeDelayedSelection() {
         QFETCH(QString, action);
         auto dialog = std::make_unique<CListViewDialog>();

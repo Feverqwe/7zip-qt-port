@@ -10,8 +10,8 @@
 QtFileListHover::QtFileListHover(QAbstractItemView &view) : QObject(&view), view_(&view) {
     timer_.setSingleShot(true);
     connect(&timer_, &QTimer::timeout, this, [this] {
-        if (!enabled_ || suspended_ || !view_ || !view_->isVisible() || !index_.isValid() ||
-            view_->indexAt(position_).siblingAtColumn(0) != index_ ||
+        if (!enabled_ || suspended_ || !view_ || !view_->isEnabled() || !view_->isVisible() ||
+            !index_.isValid() || view_->indexAt(position_).siblingAtColumn(0) != index_ ||
             QApplication::mouseButtons() != Qt::NoButton ||
             QApplication::keyboardModifiers() != Qt::NoModifier)
             return;
@@ -39,11 +39,12 @@ bool QtFileListHover::eventFilter(QObject *watched, QEvent *event) {
     if (!view_ || watched != view_->viewport())
         return false;
     if (event->type() == QEvent::Leave || event->type() == QEvent::MouseButtonPress ||
-        event->type() == QEvent::Wheel || event->type() == QEvent::Hide) {
+        event->type() == QEvent::Wheel || event->type() == QEvent::Hide ||
+        event->type() == QEvent::EnabledChange) {
         Cancel();
         return false;
     }
-    if (event->type() != QEvent::MouseMove || !enabled_ || suspended_)
+    if (event->type() != QEvent::MouseMove || !enabled_ || suspended_ || !view_->isEnabled())
         return false;
     const auto *mouse = static_cast<QMouseEvent *>(event);
     position_ = mouse->position().toPoint();
