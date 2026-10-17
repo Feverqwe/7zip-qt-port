@@ -33,6 +33,9 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 
 ## Новые изменения
 
+- [Относительные ссылки справки](upstream-port-audit/help-relative-links.md)
+  — переходы из Add к описаниям Method и SFX внутри корня справки.
+
 - [Тема встроенной справки](upstream-port-audit/help-theme.md)
   — адаптация цветов исходных страниц к палитре приложения.
 

@@ -212,6 +212,38 @@ class HelpSourceTests : public QObject {
         }
         window->close();
     }
+    void addHelpCrossChapterLinks_data() {
+        QTest::addColumn<QString>("caption");
+        QTest::addColumn<QString>("topic");
+        QTest::addColumn<QString>("content");
+        QTest::newRow("method") << "-m (Method)" << "method.htm"
+                                << "Specifies the compression method.";
+        QTest::newRow("sfx") << "-sfx (Create SFX archive)" << "sfx.htm"
+                             << "Creates self extracting archive.";
+    }
+    void addHelpCrossChapterLinks() {
+        QFETCH(QString, caption);
+        QFETCH(QString, topic);
+        QFETCH(QString, content);
+        QWidget parent;
+        ShowHelpWindow("fm/plugins/7-zip/add.htm#options", &parent);
+        auto *window = parent.findChild<QDialog *>("helpWindow");
+        QVERIFY(window);
+        auto *browser = window->findChild<QTextBrowser *>("helpBrowser");
+        const QUrl source = browser->source();
+        const auto link = browser->document()->find(caption);
+        QVERIFY(!link.isNull());
+        QVERIFY(link.charFormat().isAnchor());
+        browser->anchorClicked(QUrl(link.charFormat().anchorHref()));
+        QCOMPARE(browser->source().path(), "/upstream/7zip/Help/cmdline/switches/" + topic);
+        QVERIFY2(browser->toPlainText().contains(content), qPrintable(browser->toPlainText()));
+        browser->backward();
+        QCOMPARE(browser->source(), source);
+        QVERIFY(browser->toPlainText().contains("Add to Archive"));
+        browser->forward();
+        QVERIFY(browser->toPlainText().contains(content));
+        window->close();
+    }
     void helpFollowsPaletteWithoutLosingNavigation() {
         const QPalette original = QApplication::palette();
         const auto restore = qScopeGuard([&] { QApplication::setPalette(original); });

@@ -127,13 +127,28 @@ void QtOpenHelpTopic(const QString &topic, QWidget *parent, const QString &root)
         root.isEmpty() ? QUrl("qrc:/upstream/7zip/Help/" + fileName) : QUrl::fromLocalFile(path);
     source.setFragment(relative.fragment());
     browser->setSource(source);
-    QObject::connect(browser, &QTextBrowser::anchorClicked, window, [browser](const QUrl &url) {
-        const QUrl target = browser->source().resolved(url);
-        if (target.scheme() == "http" || target.scheme() == "https")
-            QDesktopServices::openUrl(target);
-        else if (target.scheme() == browser->source().scheme())
-            browser->setSource(target);
-    });
+    const QUrl helpRoot = root.isEmpty() ? QUrl("qrc:/upstream/7zip/Help/")
+                                         : QUrl::fromLocalFile(QDir(root).absolutePath() + '/');
+    QObject::connect(
+        browser, &QTextBrowser::anchorClicked, window, [browser, helpRoot](const QUrl &url) {
+            QUrl target = browser->source().resolved(url);
+            if (url.isRelative() && url.authority().isEmpty()) {
+                // Resolve within the CHM namespace, so excess ../ segments stop at
+                // its root rather than escaping the resource/installation prefix.
+                QUrl member;
+                member.setScheme("help");
+                member.setPath('/' + browser->source().path().mid(helpRoot.path().size()));
+                const QUrl resolved = member.resolved(url);
+                target = helpRoot;
+                target.setPath(helpRoot.path() + resolved.path().mid(1).toLower());
+                target.setFragment(resolved.fragment());
+                target.setQuery(resolved.query());
+            }
+            if (target.scheme() == "http" || target.scheme() == "https")
+                QDesktopServices::openUrl(target);
+            else if (target.scheme() == browser->source().scheme())
+                browser->setSource(target);
+        });
     auto *buttons = new QDialogButtonBox(QDialogButtonBox::Close, window);
     auto *back = buttons->addButton(QString(), QDialogButtonBox::ActionRole);
     QtBindLocalText(back, "Back", "Назад");
