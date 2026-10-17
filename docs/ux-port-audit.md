@@ -4,6 +4,62 @@
 
 ## Current final acceptance matrix (2026-10-17)
 
+### Final acceptance of product3a0b3b7
+
+The mandatory P0–P3 plan is accepted in the requested scope:47/47 parent
+packages. This is the current acceptance record; dated component receipts below
+retain their original revision, failures and status at execution. Source transfer
+and runtime evidence are assessed separately.
+
+- **Source — checked:** the [P3-05 closure](upstream-port-audit/p3-05-source-closure-2026-10-17.md)
+  reconciles the existing109-unit ledger, dependencies and applicable callers.
+  The subsequent [modal-owner correction](upstream-port-audit/p3-03-owner-publication-2026-10-17.md)
+  preserves the original panel-owned refresh at its Qt boundary. No known
+  mandatory source branch or disconnected consumer remains in that ledger.
+- **Three-platform validation — checked/composite:** the
+  [full-gate receipt](upstream-port-audit/p3-03-final-default-2026-10-17.md)
+  retains the original full failures and checked caption/privilege supplements.
+  Later startup, registration and widget consumers have their own current
+  receipts. The modal-owner iteration passes19 default/native suites on each
+  Linux/Windows guest,381Qt per execution; macOS19 default suites, its native
+  composite and all162 recovery/drop rows are recorded separately. The older
+  interrupted native inventory's stale LastTest is excluded. No original failed
+  full or aggregate run is renamed PASS.
+- **Cold Windows/GUI — checked within the recorded runs:**
+  [first-after-reboot acceptance](upstream-port-audit/p3-03-codec-boundaries-2026-10-17.md#first-execution-after-an-authorized-guest-reboot)
+  passes35Qt with unchanged prepared binaries and5000ms deadline, starting with
+  external_codecs before any other codec suite. The actual GUI launch context
+  and current relocated package workflows also pass. These satisfy P3-03.8's
+  execution criterion. The cause of historical8–9s Windows native process/loader
+  delays remains unestablished; a causal product fix is not claimed.
+- **Native UX — checked in the stated scenes:** the table below links original
+  Windows references, native three-OS widget consumers, actual Finder/Explorer
+  recipients, manual OS pickers/messages, physical Cocoa Control, global-menu
+  commands and registration/recipient checks. Rendered initial views have their
+  stated conditional-state limits. Pixel equality is unverified; native font,
+  chrome, scaling and platform-capability adaptations remain explicit.
+- **Delivery — checked:** [product3a0b3b7 packages](upstream-port-audit/p3-04-owner-publication-delivery-2026-10-17.md)
+  have1058 exact committed inputs, relocation15/14/14, fresh payload/notices/
+  licenses/dependency/private-ABI/icon proofs. All builds reuse persistent trees
+  and compiler caches. ZIP viewer/all roles are independently confirmed as
+  Archive Utility after validation. Signing beyond local ad-hoc verification and
+  public distribution are outside this acceptance.
+
+**User exclusions, unverified:** GitHub workflow/public CI and clean-OS runs are
+excluded by the recorded user decisions; new/attached VHD scenarios are not run.
+The declined twelfth slow suite `copy_archive_refresh` remains unverified. Its
+source/workflow contracts have the separately accepted bounded checks; the
+earlier eleven long-suite receipts retain their actual revisions. These
+validation exclusions do not stand for omitted product implementations.
+Protected Windows default selection in OS Settings is unverified OS UI outside
+the original Classes registration contract. The manual Finder bundle URL was
+not independently captured after its process exited; its user attestation and
+the exact-identity native startup regression retain separate scopes.
+
+P3-03, P3-04 and P3-06 are therefore accepted against their plan criteria and
+the explicit user exclusions. The result makes no whole-product pixel-equality,
+unlimited Windows timing-stability or unexecuted-platform/scenario claim.
+
 [Modal command ownership and native widget follow-up](upstream-port-audit/p3-03-owner-publication-2026-10-17.md)
 corrects Create File publication on Cocoa while preserving the captured panel.
 Current both-pane EN/RU table/icon scenarios pass on three native platforms;
@@ -23,7 +79,7 @@ String-only property resources and CE/legacy/standalone entrypoints retain their
 ledger dispositions. A receipt checks its stated states and revision; its mere
 existence does not make every current workflow or platform checked.
 
-| Applicable scene | Existing source/native/reference evidence | Remaining boundary |
+| Applicable scene | Existing source/native/reference evidence | Boundary of evidence |
 | --- | --- | --- |
 | File/Edit/View/Favorites/Tools/Help; archive/standard toolbars; one/two panels | [Main chrome](upstream-port-audit/p3-06-main-chrome-2026-10-16.md), [native shell](upstream-port-audit/p3-06-native-shell-2026-10-16.md), [address/Root](upstream-port-audit/p3-05-address-root-2026-10-17.md) | Qt action/state and native widget checks are distinct from Cocoa global-menu OS input. The later original main-window reference supersedes the shell receipt's missing-reference statement. |
 | Copy/Move destination, both panes and publication | [24 runtime pairs](upstream-port-audit/p3-06-copy-runtime-2026-10-17.md), [native publication](upstream-port-audit/p3-05-copy-native-2026-10-17.md), [source closure](upstream-port-audit/p3-05-source-closure-2026-10-17.md) | Declined expanded `copy_archive_refresh` matrix remains unverified; accepted smaller/eleven-long contracts are retained. |
@@ -37,14 +93,12 @@ existence does not make every current workflow or platform checked.
 | External application/desktop integration | [Finder acceptance](porting-checklist/p3.md), [Explorer transfer/Escape](upstream-port-audit/p3-03-native-drag-fixtures-2026-10-16.md#physical-windows-explorer-recipient-2026-10-17), [editor completion](upstream-port-audit/p3-03-editor-stability-2026-10-16.md), [source closure](upstream-port-audit/p3-05-source-closure-2026-10-17.md) | Keep OS-recipient, command-dispatch and synthetic-widget evidence separate. Unrelated dialog changes do not invalidate unchanged accepted Finder transport. |
 
 No additional unpaired desktop dialog family is identified by this reconciliation.
-It does not close P3-06: native installed registration and macOS consent now have
-their bounded receipts; the remaining complete native workflow acceptance still
-needs its stated evidence, while Windows cold
-discovery remains P3-03.8. Existing passing component checks need not be repeated
-solely to replace an older generic “full audit open” sentence. A new implementation
-iteration requires a concrete source gap or observable failure; a stronger auxiliary
-oracle alone does not expand mandatory scope. The three parent packages and44/47
-count remain open until their actual prerequisites are accepted.
+Native registration/consent, the remaining Cocoa workflow failures, current private
+delivery and the fresh-boot Windows criterion now have their stated evidence above.
+Existing passing component checks are carried with their unchanged source scope;
+their original revision and limits remain visible. A future implementation
+iteration requires a concrete source gap or observable failure; an additional
+auxiliary oracle alone does not expand the accepted mandatory scope.
 
 ### Current receipts
 

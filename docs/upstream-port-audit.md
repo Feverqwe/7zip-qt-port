@@ -2,6 +2,8 @@
 
 Индекс provenance и датированных receipts. Найдите путь, символ или ID в заголовках ниже и откройте нужный раздел. Полные commits, dependencies, copied/adapted/omitted scope и результаты сохранены в тематических файлах. Текущие статусы — в [чеклисте](porting-checklist.md), baseline — в [manifest](upstream-baseline.json). Новые receipts добавлять к своему пакету в этом каталоге и связывать из индекса.
 
+[Итоговая приёмка product3a0b3b7:47/47 в согласованном объёме, actual evidence и исключения](ux-port-audit.md#final-acceptance-of-product3a0b3b7).
+
 ## Developer workflow — Persistent runners and focused verification (2026-10-17)
 
 [Source boundary, sync/cache contract and focused validation](upstream-port-audit/developer-workflow-2026-10-17.md).

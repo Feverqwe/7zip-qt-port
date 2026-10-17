@@ -49,5 +49,5 @@ fixtures and current failure/reference evidence are preserved. Host D: storage
 is checked OK. No VM/disk changes, push, publication or upstream modification.
 
 This completes the bounded delivery refresh. Clean-OS/GitHub exclusions and
-remaining parent acceptance are reconciled in the
+parent acceptance are reconciled in the
 [current matrix](../ux-port-audit.md#current-final-acceptance-matrix-2026-10-10).

@@ -1,5 +1,11 @@
 # P3-03.8 — Current Windows codec execution boundaries (2026-10-17)
 
+The [final acceptance record](../ux-port-audit.md#final-acceptance-of-product3a0b3b7)
+accepts the bounded cold/GUI execution criterion using the first-after-reboot
+receipt below and current delivery. The historical delay's cause remains
+unestablished. Dated diagnostics below retain their original failed results and
+the acceptance status at that point; they are not causal-fix claims.
+
 This is diagnostic evidence, not a cold-stability fix. Product inputs retain
 `e3b3c652d4d2489d9143f3002c498057d6bd3c38`; upstream remains read-only at
 https://github.com/ip7z/7zip.git commit
