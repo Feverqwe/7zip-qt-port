@@ -59,10 +59,15 @@ class FileTable : public QTableWidget {
 class FileIconList final : public QListView {
   public:
     using QListView::QListView;
+    void SetListViewMode(int mode);
     std::function<void()> dragStarter;
 
   protected:
     void startDrag(Qt::DropActions actions) override;
+    void changeEvent(QEvent *event) override;
+
+  private:
+    int mode_ = -1;
 };
 
 class ArchiveTableItem : public QTableWidgetItem {

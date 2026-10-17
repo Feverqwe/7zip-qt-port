@@ -2,10 +2,13 @@
 
 #include <QApplication>
 #include <QMouseEvent>
+#include <QStyle>
+#ifdef Q_OS_WIN
+#include <QtCore/qt_windows.h>
+#endif
 
 QtFileListHover::QtFileListHover(QAbstractItemView &view) : QObject(&view), view_(&view) {
     timer_.setSingleShot(true);
-    timer_.setInterval(400);
     connect(&timer_, &QTimer::timeout, this, [this] {
         if (!enabled_ || suspended_ || !view_ || !view_->isVisible() || !index_.isValid() ||
             view_->indexAt(position_).siblingAtColumn(0) != index_ ||
@@ -50,7 +53,14 @@ bool QtFileListHover::eventFilter(QObject *watched, QEvent *event) {
         Cancel();
     } else if (current != index_) {
         index_ = current;
-        timer_.start();
+        int delay = view_->style()->styleHint(QStyle::SH_ToolTip_WakeUpDelay, nullptr, view_);
+#ifdef Q_OS_WIN
+        // The source ListView uses the system hover timeout by default.
+        UINT hoverTime;
+        if (SystemParametersInfoW(SPI_GETMOUSEHOVERTIME, 0, &hoverTime, 0))
+            delay = int(hoverTime);
+#endif
+        timer_.start(qMax(0, delay));
     }
     return false;
 }

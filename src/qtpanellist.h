@@ -19,6 +19,7 @@ class QtPanelList {
         if (editLabel_)
             editLabel_(row);
     }
+    void SetPresentationView(QAbstractItemView *view) { presentationView_ = view; }
     bool IsBound() const { return view_ && view_->model() && view_->selectionModel(); }
     int GetItemCount() const;
     int GetSelectedCount() const;
@@ -44,10 +45,13 @@ class QtPanelList {
     void Invalidate() {
         if (view_)
             view_->viewport()->update();
+        if (presentationView_ && presentationView_ != view_)
+            presentationView_->viewport()->update();
     }
 
   private:
     QPointer<QAbstractItemView> view_;
+    QPointer<QAbstractItemView> presentationView_;
     SortColumnResolver sortColumn_;
     std::function<void(int)> editLabel_;
 };

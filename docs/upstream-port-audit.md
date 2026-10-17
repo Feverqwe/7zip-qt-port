@@ -33,6 +33,9 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 
 ## Новые изменения
 
+- [Режимы файлового списка](upstream-port-audit/small-icons-layout.md)
+  — Small/Large Icons, размеры по шрифту, активная прокрутка и задержка наведения.
+
 - [Фоновый приоритет завершившегося процесса](upstream-port-audit/background-process-exit.md)
   — повторная проверка архива после включения фонового режима.
 

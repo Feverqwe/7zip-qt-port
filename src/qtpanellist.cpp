@@ -1,6 +1,7 @@
 #include "qtpanellist.h"
 #include <QBrush>
 #include <QItemSelectionModel>
+#include <QListView>
 #include <QTableView>
 
 int QtPanelList::GetItemCount() const { return IsBound() ? view_->model()->rowCount() : 0; }
@@ -91,8 +92,13 @@ void QtPanelList::SetFocusedItem(int row) {
                                              QItemSelectionModel::NoUpdate);
 }
 void QtPanelList::EnsureVisible(int row) {
-    if (row >= 0 && row < GetItemCount())
-        view_->scrollTo(view_->model()->index(row, 0));
+    if (!IsBound() || row < 0 || row >= GetItemCount())
+        return;
+    auto *view = presentationView_ && presentationView_->model() == view_->model()
+                     ? presentationView_.data()
+                     : view_.data();
+    const auto *list = qobject_cast<QListView *>(view);
+    view->scrollTo(view->model()->index(row, list ? list->modelColumn() : 0));
 }
 
 void QtPanelList::SortItems(PROPID property, bool ascending, Int32 raw) {

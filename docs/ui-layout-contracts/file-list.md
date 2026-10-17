@@ -4,6 +4,28 @@
 якоря и границы датированных свидетельств. Новые результаты проверок —
 в [source audit](../upstream-port-audit.md).
 
+### Icon views
+
+Small Icons places each filename to the right of its icon and fills rows before
+wrapping. Icons and labels fit inside separate, nonoverlapping cells; long names
+may elide horizontally, while the full text height remains visible. Switching
+from Large Icons or List preserves this arrangement and the shared selection.
+Large Icons places wrapped labels below the icons. Cell geometry accommodates
+the platform icon and two lines of the active font; longer names remain available
+through the full-path tooltip. Font/style changes recalculate geometry, and
+resizing reflows entries. Native focus/text margins must fit inside each cell.
+Commands that reveal a focused item scroll the visible list, including when
+the table sharing its model is hidden.
+
+Check normal/compact windows and an enlarged list font through `ui_layout`;
+`icon-layout-*` reports describe the surrounding widgets. Item paint geometry
+is checked separately by the suite. `panel_selection` checks explicit scrolling
+after Insert; list activation/settings suites cover hover cancellation and
+selection without opening. Windows uses the system hover timeout; other
+platforms use the Qt style's tooltip wake-up delay. FullRow remains a
+name-only/full-row highlight policy. This does not establish rendered Windows
+pixel parity. [Source review](../upstream-port-audit/small-icons-layout.md).
+
 ### Rename validation error (P3-05, 2026-10-15)
 
 Source OnEndLabelEdit rejects an invalid filesystem name with the shared HRESULT

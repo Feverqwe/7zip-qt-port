@@ -286,12 +286,7 @@ void MainWindow::setViewMode(int mode) {
     viewMode_ = mode;
     viewActions_[mode]->setChecked(true);
     if (mode != 3) {
-        iconList_->setViewMode(mode == 2 ? QListView::ListMode : QListView::IconMode);
-        iconList_->setIconSize(mode == 0 ? QSize(48, 48) : QSize(16, 16));
-        iconList_->setGridSize(mode == 0 ? QSize(140, 82) : mode == 1 ? QSize(180, 26) : QSize());
-        iconList_->setFlow(mode == 2 ? QListView::TopToBottom : QListView::LeftToRight);
-        iconList_->setWrapping(true);
-        iconList_->setMovement(QListView::Static);
+        static_cast<FileIconList *>(iconList_)->SetListViewMode(mode);
         // Qt's Static movement resets dragEnabled. The shared file-list policy
         // still permits exporting entries through the native drag controller.
         iconList_->setDragEnabled(table_->dragEnabled());

@@ -2,6 +2,7 @@
 #include "CPP/7zip/UI/FileManager/Panel.h"
 #include "CPP/7zip/UI/FileManager/PanelSort.h"
 
+#include <QEvent>
 #include <QHeaderView>
 #include <QKeyEvent>
 #include <QMimeData>
@@ -57,6 +58,14 @@ bool sameColumnIdentity(const CPropColumn &left, const CPropColumn &right) {
 class FileRowDelegate final : public QStyledItemDelegate {
   public:
     using QStyledItemDelegate::QStyledItemDelegate;
+    QSize sizeHint(const QStyleOptionViewItem &option, const QModelIndex &index) const override {
+        const QSize size = QStyledItemDelegate::sizeHint(option, index);
+        const auto *list = qobject_cast<QListView *>(parent());
+        // ListMode otherwise paints the full size hint across adjacent grid cells.
+        if (list && list->viewMode() == QListView::ListMode && list->gridSize().isValid())
+            return size.boundedTo(list->gridSize());
+        return size;
+    }
     void updateEditorGeometry(QWidget *editor, const QStyleOptionViewItem &option,
                               const QModelIndex &index) const override {
         QStyledItemDelegate::updateEditorGeometry(editor, option, index);
@@ -85,6 +94,14 @@ class FileRowDelegate final : public QStyledItemDelegate {
     void paint(QPainter *painter, const QStyleOptionViewItem &original,
                const QModelIndex &index) const override {
         QStyleOptionViewItem option(original);
+        const auto *list = qobject_cast<QListView *>(parent());
+        if (list && list->viewMode() == QListView::IconMode) {
+            // Native styles can extend the label's focus/text area beyond
+            // the content rect. Reserve that margin inside the icon cell.
+            const int margin =
+                list->style()->pixelMetric(QStyle::PM_FocusFrameHMargin, &option, list);
+            option.rect.adjust(margin, 0, -margin, 0);
+        }
         const QVariant foreground = index.data(Qt::ForegroundRole);
         if (foreground.isValid())
             option.palette.setColor(QPalette::HighlightedText,
@@ -275,6 +292,37 @@ void FileIconList::startDrag(Qt::DropActions actions) {
         dragStarter();
     else
         QListView::startDrag(actions);
+}
+
+void FileIconList::SetListViewMode(int mode) {
+    mode_ = mode;
+    setViewMode(mode == 0 ? QListView::IconMode : QListView::ListMode);
+    const int icon = style()->pixelMetric(
+        mode == 0 ? QStyle::PM_LargeIconSize : QStyle::PM_SmallIconSize, nullptr, this);
+    setIconSize(QSize(icon, icon));
+    const QFontMetrics metrics = fontMetrics();
+    const int margin = qMax(2, style()->pixelMetric(QStyle::PM_FocusFrameHMargin, nullptr, this));
+    // Native LVS_ICON wraps labels. Keep room for two lines using the active
+    // platform's icon/font metrics, rather than a fixed pixel-height cell.
+    const int width = qMax(icon + 2 * margin, 12 * metrics.averageCharWidth() + 2 * margin);
+    setGridSize(mode == 0   ? QSize(width, icon + 2 * metrics.lineSpacing() + 3 * margin)
+                : mode == 1 ? QSize(qMax(180, width), qMax(icon, metrics.height()) + 2 * margin)
+                            : QSize());
+    setWordWrap(mode == 0);
+    setFlow(mode == 2 ? QListView::TopToBottom : QListView::LeftToRight);
+    setWrapping(true);
+    setResizeMode(QListView::Adjust);
+    setMovement(QListView::Static);
+}
+
+void FileIconList::changeEvent(QEvent *event) {
+    QListView::changeEvent(event);
+    if (mode_ >= 0 &&
+        (event->type() == QEvent::FontChange || event->type() == QEvent::StyleChange)) {
+        const bool drag = dragEnabled();
+        SetListViewMode(mode_);
+        setDragEnabled(drag);
+    }
 }
 
 QVariant ArchiveTableItem::data(int role) const {

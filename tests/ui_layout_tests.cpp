@@ -13,9 +13,11 @@
 #include <QMenu>
 #include <QPixmap>
 #include <QPlainTextEdit>
+#include <QProxyStyle>
 #include <QPushButton>
 #include <QStackedWidget>
 #include <QStatusBar>
+#include <QStyleOptionViewItem>
 #include <QSysInfo>
 #include <QTableWidget>
 #include <QTemporaryDir>
@@ -23,6 +25,31 @@
 #include <QToolBar>
 #include <QToolButton>
 #include <QtTest>
+
+class ItemLayoutStyle final : public QProxyStyle {
+  public:
+    struct Item {
+        QRect bounds, icon, text;
+        int textHeight;
+        QString label;
+    };
+    mutable QList<Item> items;
+
+    void drawControl(ControlElement element, const QStyleOption *option, QPainter *painter,
+                     const QWidget *widget = nullptr) const override {
+        if (element == CE_ItemViewItem) {
+            if (const auto *item = qstyleoption_cast<const QStyleOptionViewItem *>(option)) {
+                const auto *view = qobject_cast<const QAbstractItemView *>(widget);
+                const QRect cell =
+                    view && item->index.isValid() ? view->visualRect(item->index) : item->rect;
+                items.append({cell, subElementRect(SE_ItemViewItemDecoration, item, widget),
+                              subElementRect(SE_ItemViewItemText, item, widget),
+                              item->fontMetrics.height(), item->text});
+            }
+        }
+        QProxyStyle::drawControl(element, option, painter, widget);
+    }
+};
 
 class MainWindowLayoutTests : public QObject {
     Q_OBJECT
@@ -277,8 +304,6 @@ class MainWindowLayoutTests : public QObject {
             action->trigger();
             QCOMPARE(stack->currentWidget(), static_cast<QWidget *>(list));
             QVERIFY(action->isChecked());
-            QCOMPARE(list->viewMode(), mode == 2 ? QListView::ListMode : QListView::IconMode);
-            QCOMPARE(list->iconSize(), mode == 0 ? QSize(48, 48) : QSize(16, 16));
         }
         QVERIFY(table->rowCount() > 0);
         list->selectionModel()->select(list->model()->index(0, 0),
@@ -298,6 +323,101 @@ class MainWindowLayoutTests : public QObject {
         QCOMPARE(reopened.findChild<QStackedWidget *>("fileViewStack")->currentIndex(), 1);
         QVERIFY(reopened.findChild<QAction *>("viewMode1Action")->isChecked());
         QVERIFY(QDir::setCurrent(original));
+        QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+    }
+
+    void iconModesKeepLabelsInsideCells_data() {
+        QTest::addColumn<QSize>("windowSize");
+        QTest::addColumn<bool>("largeFont");
+        QTest::addColumn<int>("mode");
+        for (int mode : {0, 1}) {
+            const QString prefix = mode == 0 ? "large-" : "small-";
+            QTest::newRow(qPrintable(prefix + "normal")) << QSize(980, 620) << false << mode;
+            QTest::newRow(qPrintable(prefix + "compact")) << QSize(640, 400) << false << mode;
+            QTest::newRow(qPrintable(prefix + "compact-large-font"))
+                << QSize(640, 400) << true << mode;
+        }
+    }
+
+    void iconModesKeepLabelsInsideCells() {
+        QFETCH(QSize, windowSize);
+        QFETCH(bool, largeFont);
+        QFETCH(int, mode);
+        QTemporaryDir temporary;
+        QVERIFY(temporary.isValid());
+        const QString original = QDir::currentPath();
+        const auto restoreDirectory = qScopeGuard([&] { QDir::setCurrent(original); });
+        QVERIFY(QDir::setCurrent(temporary.path()));
+        for (int i = 0; i < 12; ++i) {
+            QFile file(temporary.filePath(QStringLiteral("Длинное имя файла %1.txt").arg(i)));
+            QVERIFY(file.open(QIODevice::WriteOnly));
+        }
+
+        ItemLayoutStyle style;
+        MainWindow window;
+        auto *list = window.findChild<QListView *>("iconList");
+        QVERIFY(list);
+        list->setStyle(&style);
+        window.resize(windowSize);
+        window.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&window));
+        // Exercise both transitions: vertical labels and column-flow lists
+        // must not leave their layout behind when returning to Small Icons.
+        for (int precedingMode : {mode == 0 ? 1 : 0, 2}) {
+            auto *preceding =
+                window.findChild<QAction *>(QStringLiteral("viewMode%1Action").arg(precedingMode));
+            auto *icons = window.findChild<QAction *>(QStringLiteral("viewMode%1Action").arg(mode));
+            QTRY_VERIFY_WITH_TIMEOUT(preceding->isEnabled(), 15000);
+            preceding->trigger();
+            QTRY_VERIFY_WITH_TIMEOUT(icons->isEnabled(), 15000);
+            icons->trigger();
+            if (largeFont) {
+                QFont font = list->font();
+                font.setPixelSize(28);
+                list->setFont(font);
+            }
+            list->doItemsLayout();
+            QCoreApplication::processEvents();
+            style.items.clear();
+            const QPixmap rendered = list->viewport()->grab();
+            QVERIFY(!rendered.isNull());
+            QVERIFY(!style.items.isEmpty());
+            for (const auto &item : style.items) {
+                QString geometry;
+                QDebug(&geometry) << "cell" << item.bounds << "icon" << item.icon << "text"
+                                  << item.text << "label" << item.label;
+                QVERIFY2(item.bounds.contains(item.icon), "Icon is clipped by its cell");
+                QVERIFY2(item.bounds.contains(item.text), qPrintable(geometry));
+                QVERIFY2(item.text.height() >= item.textHeight,
+                         qPrintable(QString("Filename height %1, font height %2, cell height %3")
+                                        .arg(item.text.height())
+                                        .arg(item.textHeight)
+                                        .arg(item.bounds.height())));
+                if (mode == 0) {
+                    QVERIFY2(item.icon.bottom() < item.text.top(),
+                             "Filename must be below the icon");
+                    if (item.label.startsWith(QStringLiteral("Длинное")))
+                        QVERIFY2(item.text.height() >= 2 * item.textHeight,
+                                 "Large Icons must wrap long filenames");
+                } else
+                    QVERIFY2(item.icon.right() < item.text.left(), "Filename must follow the icon");
+            }
+            const QRect first = list->visualRect(list->model()->index(0, 0));
+            const QRect second = list->visualRect(list->model()->index(1, 0));
+            QCOMPARE(first.top(), second.top());
+            QVERIFY2(first.right() < second.left(),
+                     qPrintable(QString("Overlapping cells: %1,%2 %3x%4 and %5,%6 %7x%8")
+                                    .arg(first.x())
+                                    .arg(first.y())
+                                    .arg(first.width())
+                                    .arg(first.height())
+                                    .arg(second.x())
+                                    .arg(second.y())
+                                    .arg(second.width())
+                                    .arg(second.height())));
+        }
+        QVERIFY(UiInspection::writeReport(
+            window, "icon-layout-" + QString::fromLatin1(QTest::currentDataTag())));
         QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
     }
 };

@@ -5,12 +5,24 @@
 #include <QApplication>
 #include <QMouseEvent>
 #include <QPlainTextEdit>
+#include <QProxyStyle>
 #include <QTemporaryDir>
 #include <QTimer>
 #include <QTreeWidget>
 #include <QWheelEvent>
 #include <QtTest>
 #include <memory>
+
+class HoverDelayStyle final : public QProxyStyle {
+  public:
+    int delay = 0;
+    int styleHint(StyleHint hint, const QStyleOption *option = nullptr,
+                  const QWidget *widget = nullptr,
+                  QStyleHintReturn *data = nullptr) const override {
+        return hint == SH_ToolTip_WakeUpDelay ? delay
+                                              : QProxyStyle::styleHint(hint, option, widget, data);
+    }
+};
 
 class ListActivationTests : public QObject {
     Q_OBJECT
@@ -51,6 +63,27 @@ class ListActivationTests : public QObject {
     }
 
   private slots:
+    void hoverUsesThePlatformStyleDelay() {
+#ifdef Q_OS_WIN
+        QSKIP("Windows uses the system mouse hover timeout rather than the Qt style");
+#else
+        HoverDelayStyle style;
+        CListViewDialog dialog;
+        prepare(dialog, true);
+        auto *list = dialog.findChild<QTreeWidget *>();
+        list->setStyle(&style);
+        style.delay = 20;
+        move(list, 1);
+        QTRY_COMPARE_WITH_TIMEOUT(list->currentItem(), list->topLevelItem(1), 250);
+        style.delay = 600;
+        move(list, 2);
+        QTest::qWait(300);
+        QCOMPARE(list->currentItem(), list->topLevelItem(1));
+        QTRY_COMPARE(list->currentItem(), list->topLevelItem(2));
+        QVERIFY(dialog.isVisible());
+#endif
+    }
+
     void historyActivation_data() {
         QTest::addColumn<bool>("singleClick");
         QTest::newRow("single") << true;

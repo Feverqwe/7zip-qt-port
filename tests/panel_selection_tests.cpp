@@ -1,5 +1,7 @@
 #include "CPP/7zip/UI/FileManager/Panel.h"
 #include "CPP/Common/Wildcard.h"
+#include <QListView>
+#include <QScrollBar>
 #include <QTableWidget>
 #include <QtTest>
 
@@ -38,6 +40,39 @@ class PanelSelectionTests final : public QObject {
     }
 
   private slots:
+    void insertScrollsTheVisibleList() {
+        CObjectVector<CPanelItem> entries;
+        QTableWidget table(100, 1);
+        for (int row = 0; row < 100; ++row) {
+            CPanelItem item;
+            item.RelPath = QString("file %1.txt").arg(row);
+            entries.Add(item);
+            auto *cell = new QTableWidgetItem(item.RelPath);
+            cell->setData(Qt::UserRole + 6, row);
+            table.setItem(row, 0, cell);
+        }
+        table.setSelectionBehavior(QAbstractItemView::SelectRows);
+        CPanel panel(QStringLiteral("/tmp/"), entries);
+        panel.AttachSelectionView(&table);
+        QListView list;
+        list.setModel(table.model());
+        list.setSelectionModel(table.selectionModel());
+        // Explicit EnsureVisible must work independently of Qt auto-scrolling
+        // currentIndex changes, including after focus was restored offscreen.
+        list.setAutoScroll(false);
+        list.resize(240, 120);
+        panel.AttachPresentation(&list, nullptr);
+        list.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&list));
+        table.setCurrentCell(80, 0);
+        list.verticalScrollBar()->setValue(0);
+        const QModelIndex next = list.model()->index(81, 0);
+        QVERIFY(!list.viewport()->rect().intersects(list.visualRect(next)));
+        panel.OnInsert();
+        QCOMPARE(table.currentRow(), 81);
+        QVERIFY(list.viewport()->rect().contains(list.visualRect(next)));
+    }
+
     void upstreamWildcardRules() {
         QVERIFY(DoesWildcardMatchName(u"", u""));
         QVERIFY(!DoesWildcardMatchName(u"", u"a"));

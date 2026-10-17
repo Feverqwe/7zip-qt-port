@@ -311,6 +311,7 @@ void CPanel::AttachPresentation(QWidget *list, QWidget *address) {
     if (_headerComboBox)
         _headerComboBox->removeEventFilter(this);
     _listView = list;
+    _selectionList.SetPresentationView(qobject_cast<QAbstractItemView *>(list));
     _headerComboBox = address;
     if (_listView)
         _listView->installEventFilter(this);
