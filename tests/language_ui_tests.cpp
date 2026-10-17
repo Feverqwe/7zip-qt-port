@@ -239,7 +239,7 @@ class LanguageUiTests : public QObject, protected MainWindowTestSupport {
             for (QSize size : {QSize(520, 400), QSize(440, 340)}) {
                 dialog.resize(size);
                 QApplication::processEvents();
-                QTRY_COMPARE(dialog.size(), size);
+                QTRY_COMPARE(dialog.size(), size.expandedTo(dialog.minimumSizeHint()));
                 QVERIFY(UiInspection::writeReport(
                     dialog, QString("language-advanced-%1-%2").arg(lang).arg(size.width())));
                 for (auto *label : dialog.findChildren<QLabel *>())

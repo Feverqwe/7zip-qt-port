@@ -10,6 +10,10 @@
 
 [Three-platform original full results and focused default/native correction](upstream-port-audit/p3-03-final-default-2026-10-17.md).
 
+## P3-06 — Add Options source presentation and keyboard workflow (2026-10-17)
+
+[Source COptions frame/captions, actual original focus/Tab and current three-platform consumers](upstream-port-audit/p3-06-compression-options-2026-10-17.md).
+
 ## P3-03/P3-06 — Copy/Move runtime comparison (2026-10-17)
 
 [Source Browse width, actual original states and three-platform native comparison](upstream-port-audit/p3-06-copy-runtime-2026-10-17.md).

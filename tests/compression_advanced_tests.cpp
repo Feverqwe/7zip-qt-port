@@ -94,7 +94,7 @@ class CompressionAdvancedTests final : public QObject {
         dialog.resize(size);
         dialog.show();
         QCoreApplication::processEvents();
-        QCOMPARE(dialog.size(), size);
+        QCOMPARE(dialog.size(), size.expandedTo(dialog.minimumSizeHint()));
         auto *precision = dialog.findChild<QComboBox *>("IDC_COMPRESS_TIME_PREC");
         QCOMPARE(precision->count(), format == "zip" ? 3 : 1);
         QVERIFY(!dialog.findChild<QGroupBox *>("IDG_COMPRESS_NTFS")->isVisible());

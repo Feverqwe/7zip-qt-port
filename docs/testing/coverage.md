@@ -3250,6 +3250,15 @@ Creation/access metadata restoration remains a separate extraction/platform scop
 real decoder RAM requests remain P1-18;
 no cross-platform result is inferred from the macOS run.
 
+`compress_options_presentation` checks the source initial frame, visible explicit
+value captions/accessibility names, native group/combo fitting and compact
+footer access in EN/RU for7z/ZIP/WIM. Initial focus and Tab/Backtab follow the
+observed original controls; Space/Down changes ZIP precision and dependent time
+visibility, Cancel preserves the profile, and Return after reopening publishes
+archive time through the source OK handler. It uses no real user files/services.
+Native producers and raw platform-specific runtime differences are recorded in
+the [current presentation receipt](../upstream-port-audit/p3-06-compression-options-2026-10-17.md).
+
 P1-06.1: `archive_volume_creation` creates real ZIP/7z numbered archives using
 variable 64/128 KiB sizes, two source roots and Unicode/space names. Official
 engine test/extract validates round-trip bytes; protected cases check wrong

@@ -1422,6 +1422,13 @@ if(BUILD_TESTING)
     add_test(NAME compression_advanced COMMAND compression_advanced_tests -silent)
     set_tests_properties(compression_advanced PROPERTIES TIMEOUT 60 ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
+    qt_add_executable(compress_options_presentation_tests tests/compress_options_presentation_tests.cpp
+        tests/layout_inspection.cpp ${compression_order_sources})
+    target_include_directories(compress_options_presentation_tests PRIVATE src tests)
+    target_link_libraries(compress_options_presentation_tests PRIVATE sevenzip_panel Qt6::Test)
+    add_test(NAME compress_options_presentation COMMAND compress_options_presentation_tests -silent)
+    set_tests_properties(compress_options_presentation PROPERTIES TIMEOUT 30 ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     qt_add_executable(archive_volume_creation_tests tests/archive_volume_creation_tests.cpp
         tests/layout_inspection.cpp ${compression_order_sources})
     target_include_directories(archive_volume_creation_tests PRIVATE src tests)

@@ -1,6 +1,7 @@
 #include "qtcompressoptionscontrols.h"
 #include "7zip/UI/GUI/CompressDialogRes.h"
 #include "qtdialogscreenservices.h"
+#include "qtdialogunits.h"
 #include "qtlangbuttonbox.h"
 #include "qtlangcontrols.h"
 #include <QCheckBox>
@@ -13,6 +14,7 @@
 #include <QPushButton>
 #include <QScreen>
 #include <QShortcut>
+#include <QStyle>
 #include <QVBoxLayout>
 
 void CQtCompressCombo::Attach(QWidget *widget) { view_ = static_cast<QComboBox *>(widget); }
@@ -44,7 +46,8 @@ CQtCompressOptionsDialog::CQtCompressOptionsDialog(QWidget *parent) : QDialog(pa
     setObjectName("compressOptionsDialog");
     QtBindLangText(this, IDB_COMPRESS_OPTIONS, "Options");
     buildControls();
-    resize(520, 400);
+    applySourceGeometry();
+    resize(QtDialogUnits(font()).pixels(QSize(256, 248)));
 }
 
 void CQtCompressOptionsDialog::buildControls() {
@@ -63,7 +66,7 @@ void CQtCompressOptionsDialog::buildControls() {
             QtBindLangText(widget, id);
     };
     const auto checkbox = [&](unsigned id, const char *name, const QString &text, QWidget *parent) {
-        auto *box = new QCheckBox(text, parent);
+        auto *box = new QCheckBox(text.isEmpty() ? QStringLiteral(":") : text, parent);
         if (text.isEmpty())
             box->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Preferred);
         registerControl(id, name, box);
@@ -72,7 +75,18 @@ void CQtCompressOptionsDialog::buildControls() {
         connect(box, &QCheckBox::clicked, this, [this, id, box] { OnButtonClicked(id, box); });
         return box;
     };
-    auto *ntfs = new QGroupBox("NTFS", this);
+    // The fixed source template reserves this area even when NTFS is hidden.
+    // Its empty space can contract in the accessible compact Qt view.
+    auto *ntfsSlot = new QWidget(this);
+    auto *slot = new QVBoxLayout(ntfsSlot);
+    slot->setContentsMargins(0, 0, 0, 0);
+#ifdef Q_OS_MAC
+    // QMacStyle's group backing rectangle extends one logical pixel below
+    // its layout item; retain that pixel inside the slot's exposed area.
+    slot->setContentsMargins(0, 0, 0, 1);
+#endif
+    slot->setSpacing(0);
+    auto *ntfs = new QGroupBox("NTFS", ntfsSlot);
     registerControl(IDG_COMPRESS_NTFS, "IDG_COMPRESS_NTFS", ntfs);
     auto *ntfsLayout = new QVBoxLayout(ntfs);
     ntfsLayout->setSpacing(3);
@@ -84,11 +98,15 @@ void CQtCompressOptionsDialog::buildControls() {
                                    "Store alternate data streams", ntfs));
     ntfsLayout->addWidget(
         checkbox(IDX_COMPRESS_NT_SECUR, "IDX_COMPRESS_NT_SECUR", "Store file security", ntfs));
-    layout->addWidget(ntfs);
+    slot->addWidget(ntfs);
+    slot->addStretch();
+    layout->addWidget(ntfsSlot, 1);
     auto *info = new QLabel(this);
     registerControl(IDT_COMPRESS_TIME_INFO, "IDT_COMPRESS_TIME_INFO", info);
+    info->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
     layout->addWidget(info);
     auto *time = new QGroupBox("Time", this);
+    time->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
     registerControl(IDG_COMPRESS_TIME, "IDG_COMPRESS_TIME", time);
     QtBindResourceText(time, IDG_COMPRESS_TIME, "Time");
     auto *grid = new QGridLayout(time);
@@ -138,7 +156,7 @@ void CQtCompressOptionsDialog::buildControls() {
 #endif
     grid->addWidget(preserve, row, 0, 1, 3);
     layout->addWidget(time);
-    layout->addStretch();
+    layout->addSpacing(QtDialogUnits(font()).pixels(QSize(0, 6)).height());
     auto *buttons = new QtLangButtonBox(
         QDialogButtonBox::Ok | QDialogButtonBox::Cancel | QDialogButtonBox::Help, this);
     buttons->setObjectName("compressOptionsButtons");
@@ -150,14 +168,73 @@ void CQtCompressOptionsDialog::buildControls() {
     layout->addWidget(buttons);
 }
 
+void CQtCompressOptionsDialog::applySourceGeometry() {
+    const QtDialogUnits units(font());
+    const auto x = [&](int value) { return units.pixels(QSize(value, 0)).width(); };
+    const auto y = [&](int value) { return units.pixels(QSize(0, value)).height(); };
+    auto *root = static_cast<QVBoxLayout *>(layout());
+    root->setContentsMargins(x(8), y(8), x(8), y(8));
+    root->setSpacing(y(6));
+    auto *ntfs = static_cast<QGroupBox *>(GetItem(IDG_COMPRESS_NTFS));
+    ntfs->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
+    ntfs->layout()->setContentsMargins(x(8), y(12), x(8), y(4));
+    ntfs->layout()->setSpacing(0);
+    ntfs->setMinimumHeight(qMax(y(72), ntfs->minimumSizeHint().height()));
+    auto *time = static_cast<QGroupBox *>(GetItem(IDG_COMPRESS_TIME));
+    auto *grid = static_cast<QGridLayout *>(time->layout());
+    grid->setContentsMargins(x(8), y(12), x(8), y(4));
+    grid->setSpacing(0);
+#ifdef Q_OS_MAC
+    // Cocoa's combo backing extends left of its layout item. Native spacing
+    // keeps it separate from the preceding precision label.
+    grid->setHorizontalSpacing(
+        qMax(0, style()->layoutSpacing(QSizePolicy::Label, QSizePolicy::ComboBox, Qt::Horizontal)));
+#endif
+    grid->setColumnMinimumWidth(0, x(18));
+    grid->setColumnStretch(1, 1);
+    for (int row = 0; row < 6; ++row)
+        grid->setRowMinimumHeight(row, y(row < 4 ? 14 : 20));
+    auto *precision = static_cast<QComboBox *>(GetItem(IDC_COMPRESS_TIME_PREC));
+    precision->setFixedWidth(qMax(x(76), precision->minimumSizeHint().width()));
+    auto *buttons = findChild<QDialogButtonBox *>("compressOptionsButtons");
+    for (auto *button : buttons->buttons()) {
+        button->setMinimumWidth(qMax(x(64), button->sizeHint().width()));
+        button->setMinimumHeight(qMax(y(16), button->sizeHint().height()));
+    }
+}
+
 void CQtCompressOptionsDialog::setVisible(bool visible) {
     // Apply source capability visibility before Qt computes the initial
     // minimum size, so a hidden NTFS group does not enlarge compact dialogs.
-    if (visible && !initialized_) {
+    const bool initialize = visible && !initialized_;
+    if (initialize) {
         initialized_ = true;
         OnInit();
     }
     QDialog::setVisible(visible);
+    if (initialize)
+        focusControl(this, true, Qt::OtherFocusReason);
+}
+
+bool CQtCompressOptionsDialog::focusControl(QWidget *start, bool next, Qt::FocusReason reason) {
+    // Win32's dialog manager traverses visible, enabled WS_TABSTOP controls.
+    // Keep that source contract even when the native Qt style prefers only
+    // text inputs for keyboard traversal. Qt still owns the actual tab chain.
+    QWidget *control = start;
+    do {
+        control = next ? control->nextInFocusChain() : control->previousInFocusChain();
+        if (isAncestorOf(control) && control->isVisibleTo(this) && control->isEnabled() &&
+            (control->focusPolicy() & Qt::TabFocus)) {
+            control->setFocus(reason);
+            return true;
+        }
+    } while (control != start);
+    return false;
+}
+
+bool CQtCompressOptionsDialog::focusNextPrevChild(bool next) {
+    return focusControl(focusWidget() ? focusWidget() : this, next,
+                        next ? Qt::TabFocusReason : Qt::BacktabFocusReason);
 }
 void CQtCompressOptionsDialog::changeEvent(QEvent *event) {
     if (event->type() == QEvent::LanguageChange && initialized_)

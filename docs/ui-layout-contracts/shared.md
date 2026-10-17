@@ -1323,20 +1323,39 @@ after volumes, then an Options button with the native summary. At 760×720 and
 640×480 the form scrolls to these controls while the confirmation footer remains
 visible. `compression_advanced` writes `archive-advanced-760/640.json`.
 
-Options keeps resource grouping/order: optional NTFS controls, format time info,
+Options uses the source256×248DLU initial client, protected by native control
+minimums. It keeps resource grouping/order: optional NTFS controls, format time info,
 Time group with explicit/default precision and modification/creation/access/time
 of archive rows, preserve-access checkbox, then OK/Cancel/Help. Explicit/default
-checkboxes have accessible names. Native capability policy hides unsupported NTFS
+checkboxes retain the source `:` caption and descriptive accessible names.
+Native capability policy hides unsupported NTFS
 controls; ZIP UNIX/DOS precision hides creation/access rows. Archive mtime is
 enabled. Preserve access is enabled on Windows and disabled with a reason on
 POSIX; Help and F1 open the source Options topic through the application service.
 
-`compression-options-{zip|7z}-{520|440}.json` covers actual 520×400 and 440×340
-sizes, exposed controls and footer. Current Qt reports show small explicit-value
-checkboxes beside their labels, no clipping and separate confirmation buttons.
-Source visibility is applied before Qt computes minimum size so hidden NTFS
-controls cannot enlarge the compact dialog. No rendered Windows reference was
-available; these checks establish structure and usability on macOS only.
+The NTFS group retains its source72DLU minimum with native control protection.
+The initial layout keeps unused NTFS space above Time when the group is hidden;
+native control minima and compact resizing can reduce that empty space. Time rows retain source
+order/spacing with native minimum protection for wrapped captions. Cocoa gives
+the NTFS slot one extra logical pixel for its native group backing and uses
+control-dependent horizontal spacing to separate the combo backing from its label.
+Normal/compact requested sizes expand to actual native minima; text and controls
+must remain exposed, rather than fit an impossible fixed-height request.
+
+`compress_options_presentation` writes14 current reports:7z/ZIP/WIM × EN/RU ×
+initial/compact, plus ZIP Unix precision. Initial focus and first Tab match the
+actual original runtime:CTime→ATime explicit, Precision→CTime explicit, and
+symbolic→hard links respectively. Backtab reverses that transition. Space/Down,
+Cancel/reopen and Return→OK retain the source default/explicit and commit rules.
+The existing advanced/timestamp/language suites retain persistence, Help and
+live-language coverage. Source visibility is applied before Qt computes its
+minimum; unsupported hidden NTFS controls do not force a compact minimum.
+
+[The current receipt](../upstream-port-audit/p3-06-compression-options-2026-10-17.md)
+maps all22 controls against eight actual original states and native reports on
+three OS. Raw Windows runtime comparison passes8/8. POSIX comparisons retain
+the expected Windows-only preserve-access/ADS/security state differences; they
+are not exact Windows-state passes. No pixel or physical Mac-input claim.
 
 Timestamp entries follow source SetPrec, including no selected item when the
 handler's default precision is absent from its supported mask. Inserting entries
