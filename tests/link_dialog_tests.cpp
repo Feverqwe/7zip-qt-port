@@ -112,9 +112,9 @@ class LinkDialogTests final : public QObject {
             QVERIFY(UiInspection::writeReport(
                 dialog, QString("link-source-frame-%1-%2").arg(language).arg(size.width())));
             QVERIFY(dialog.windowFlags().testFlag(Qt::WindowMinMaxButtonsHint));
-            QCOMPARE(dialog.size(), QtDialogUnits(dialog.font())
-                                        .pixels(QSize(304, 230))
-                                        .expandedTo(dialog.minimumSizeHint()));
+            QCOMPARE(dialog.size(),
+                     UiInspection::normalizedInitialClientSize(
+                         dialog, QtDialogUnits(dialog.font()).pixels(QSize(304, 230))));
             dialog.resize(size);
             QApplication::processEvents();
             // Focused editable combos can asynchronously scroll themselves into view.

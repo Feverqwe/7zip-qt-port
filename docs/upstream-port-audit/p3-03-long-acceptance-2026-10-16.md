@@ -252,5 +252,34 @@ source/configuration/runtime guards passing. Current Windows all-eleven acceptan
 and the independent cold/native/rendered parent requirements remain open. These
 receipts precede the subsequent shared CDialog/Copy presentation correction;
 its focused/current/native consumers are required separately. Windows replay
-`20261017T004810Z-11bf0cbe` is running with that product correction, all eleven
-long suites and unchanged per-case/application deadlines.
+`20261017T004810Z-11bf0cbe` completes successfully as recorded below.
+
+## Current shared-geometry product: all eleven PASS on three OS
+
+Product `17fab0f86d7706795f7f5cea62a98c277c75d5ee` changes the Copy/Progress
+presentation used by the long matrices, so their complete consumers are rerun
+after that source commit. Every OS passes all11 suites,2100Qt/0fail/0skip:
+
+| OS | Receipt / snapshot | Elapsed |
+| --- | --- | --- |
+| macOS | `mac-modal-all-long-v131` | 1152.21s |
+| Linux | `20261017T014526Z-cf81710e`, `linux-final-modal-all-long-v132-evidence` | 1244.37s |
+| Windows | `20261017T004810Z-11bf0cbe`, `windows-final-modal-and-all-long-v115-evidence` | 3186.24s |
+
+The suite sets match all eleven entries of `cmake/SlowTests.cmake`. Source,
+configuration and official runtime guards pass; no rows or individual/application
+deadlines are relaxed. Mac/Linux match all1472 committed source/config inputs.
+Windows matches all1047 committed product inputs and1471 current source inputs;
+its sole difference is the earlier dialog_size lifecycle fixture, which is not
+compiled by any long target. Subsequent Limited `20261017T020419Z-214b8347`
+matches all1472 inputs and passes8/8 focused suites106Qt/0fail/0skip, including
+the latest dialog_size and the previously unbuilt archive_progress fixture with
+ui_parity_progress. The earlier combined driver's modalExitCode8 is retained:
+two fixture-dependent tests did not run even though all22 executed suites passed.
+It is not reported as an unqualified combined-driver PASS.
+
+These results establish the explicitly requested long scope, not final P3
+acceptance. The independent Windows cold-discovery failures, default-gate
+privilege split, remaining native/rendered workflow scope and current Windows
+package refresh remain separate. A later Link geometry assertion correction is
+test-only and does not change any long target or product input.

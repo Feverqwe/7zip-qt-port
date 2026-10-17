@@ -56,6 +56,18 @@ Linux's subsequent full gate also passes323/323 with source guard passing
 
 ## Acceptance limit
 
+Subsequent83163a4 Limited full snapshot `20261016T232701Z-2ae4ba88` (`v90`)
+completes325/342 executed suites in2462.20s,5366Qt/68fail/20skip. Fifteen suites
+fail privilege/setup requirements, including project_memory_setup symlink
+creation and the two native local-share consumers. Two cold failures remain:
+external_codecs init readiness6800ms and codec_probe failure-mode native-query
+entry7200ms against the original5000ms waits. The separately disabled device
+suite's empty command is excluded from executed-pass totals. Eleven slow suites
+are excluded; the existing no-new-disk subset constraints remain. Source/CMake
+restoration and stock reconfigure/rebuild pass. Complete receipt:
+`windows-final-current-full-v90-evidence/` under the final availability root.
+This gate precedes the shared CDialog/Copy presentation correction.
+
 This fixes deadline correctness independently of the unresolved cold stability
 requirement. The earlier and current-probe global-only handler timeout is
 retained in [timing evidence](p3-03-codec-timing-2026-10-16.md) and the

@@ -107,7 +107,26 @@ Windows Limited `v115` passes all22 executed focused suites in110.19s. The
 unbuilt required archive_progress fixture and ui_parity_progress do not run;
 they are not counted as passes. All11 long suites then run in the same sealed
 snapshot. Completion and the targeted fixture follow-up remain pending.
-Windows resource-fixture follow-up and final parent acceptance remain open.
+At this point the Windows resource-fixture follow-up and final parent acceptance
+remain open; the completed follow-up is recorded next.
+
+The completed Windows Limited follow-up `20261017T020419Z-214b8347` (`v125`)
+passes8/8,106Qt/0fail/0skip and matches all1472 committed17fab0f inputs. This
+includes archive_progress, both maintained RC comparisons and the final lifecycle
+fixture. All eleven explicitly requested long suites then pass on three OS;
+their complete source/runtime guards and2100Qt per-OS totals are in the
+[long receipt](p3-03-long-acceptance-2026-10-16.md#current-shared-geometry-product-all-eleven-pass-on-three-os).
+
+Scoped Highest `20261017T023947Z-02ce4198` (`v134`) passes14/15 suites and
+retains four Link frame failures: the default Windows offscreen work area is
+smaller than the resource template. Link's old assertion likewise omitted source
+NormalizeSize(false). Its test-only expectation now uses the existing normalized
+client helper; source product bytes are unchanged. Windows Highest
+`20261017T024840Z-b13ff6e1` (`v136`) passes16Qt/0fail/0skip; macOS default and
+native Cocoa `v137` each pass16Qt. All private link/source bytes and guards are
+retained. No passing full gate is repeated for this localized test correction.
+Linux `20261017T025540Z-f2e1be79` (`v138`) also passes16Qt/0fail/0skip with
+source guard passing. The corrected expectation is therefore verified on3OS.
 
 These regressions
 do not establish pixel equality or physical OS keyboard behavior. Existing
