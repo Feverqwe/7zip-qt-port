@@ -9,7 +9,8 @@ corrects Create File publication on Cocoa while preserving the captured panel.
 Current both-pane EN/RU table/icon scenarios pass on three native platforms;
 widget responders and162 bounded Cocoa recovery/drop rows have separate actual
 receipts. These checks do not replace OS-panel, physical-input or pixel evidence.
-Product56c01ba packages precede this correction and need delivery refresh.
+[Current3a0b3b7 packages](upstream-port-audit/p3-04-owner-publication-delivery-2026-10-17.md)
+include this correction, with1058 exact committed inputs and relocation15/14/14.
 
 ### Resource/workflow reconciliation after Compression Options
 

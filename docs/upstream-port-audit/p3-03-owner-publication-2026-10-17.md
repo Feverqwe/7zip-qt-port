@@ -89,4 +89,5 @@ compiler caches and current review/failure evidence are preserved.
 Source completeness and runtime validation remain separate. This iteration
 corrects one Qt boundary and validates its consumers; it does not close the
 remaining parent acceptance automatically. Product56c01ba packages precede the
-reload correction and require refresh before final delivery acceptance.
+reload correction; the [subsequent3a0b3b7 delivery](p3-04-owner-publication-delivery-2026-10-17.md)
+contains this checked correction on all three OS.

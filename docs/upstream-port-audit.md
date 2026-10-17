@@ -42,6 +42,8 @@
 
 ## P3-04 — Current source/Copy delivery (2026-10-17)
 
+[Current3a0b3b7 packages, exact committed inputs and fresh relocation/dependency/icon checks](upstream-port-audit/p3-04-owner-publication-delivery-2026-10-17.md).
+
 [Current nonmutating Windows detection in three private Release packages](upstream-port-audit/p3-06-windows-registration-2026-10-17.md#private-delivery-after-the-correction).
 [Previous initial-document delivery](upstream-port-audit/p3-04-associated-bootstrap-delivery-2026-10-17.md).
 [Previous native association delivery](upstream-port-audit/p3-04-native-associations-delivery-2026-10-17.md).
