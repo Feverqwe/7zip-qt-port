@@ -18,6 +18,7 @@
 #include <QDirIterator>
 #include <QFile>
 #include <QFileInfo>
+#include <QPointer>
 #include <QRegularExpression>
 #include <QSet>
 #include <QUuid>
@@ -548,27 +549,39 @@ void ArchiveBackend::cancel() {
     if (volumeOutput_)
         volumeOutput_->cancel();
     pendingPassword_.clear();
-    if (overwritePromptActive_)
+    if (overwritePromptActive_) {
+        const QPointer<ArchiveBackend> owner(this);
         emit dismissOverwriteRequested();
+        if (!owner)
+            return;
+    }
     extractQueue_.clear();
     if (process_.state() != QProcess::NotRunning)
         process_.kill();
 }
 
 void ArchiveBackend::cancelAndWait() {
+    const QPointer<ArchiveBackend> owner(this);
     if (busy())
         cancel();
+    if (!owner)
+        return;
+    // Finish only the current native phase. Its terminal signal can release
+    // this owner or start another operation, which this call must not join.
     if (copyPreparation_) {
         copyPreparation_->wait();
         finishCopyPreparation();
+        return;
     }
     if (hashOperation_) {
         hashOperation_->wait();
         finishHashOperation();
+        return;
     }
     if (creationLifecycle_ && (job_ == Job::CreatePrepare || job_ == Job::CreateDeleteInputs)) {
         creationLifecycle_->wait();
         finishCreationLifecycle();
+        return;
     }
     if (volumeOutput_) {
         if (!volumeOutput_->isRunning() && !volumeOutput_->isFinished()) {
@@ -578,10 +591,13 @@ void ArchiveBackend::cancelAndWait() {
         }
         volumeOutput_->wait();
         finishVolumeOutput();
+        return;
     }
     if (process_.state() != QProcess::NotRunning) {
         process_.kill();
         process_.waitForFinished(-1);
+        if (!owner)
+            return;
     }
     processPause_.ResetAfterExit();
 }

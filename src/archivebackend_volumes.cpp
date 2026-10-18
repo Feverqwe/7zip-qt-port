@@ -4,6 +4,7 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QPointer>
 #include <QRegularExpression>
 
 bool ArchiveBackend::checkVolumeTargets(const QString &archive, QString *error) {
@@ -38,8 +39,9 @@ void ArchiveBackend::startVolumeOutput() {
         if (volumeOutput_ && volumeGeneration_ == generation)
             finishVolumeOutput();
     });
+    const QPointer<ArchiveBackend> owner(this);
     emit progress(0, caption);
-    if (volumeOutput_ && volumeGeneration_ == generation)
+    if (owner && volumeOutput_ && volumeGeneration_ == generation)
         startWorkerPhase(*volumeOutput_);
 }
 

@@ -1,13 +1,169 @@
 #include "archivebackend.h"
 #include <QElapsedTimer>
 #include <QFile>
+#include <QPointer>
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QtTest>
+#include <memory>
 
 class WorkerProgressTests final : public QObject {
     Q_OBJECT
   private slots:
+    void joinedCopyCancellationDoesNotJoinReplacementHash() {
+        QTemporaryDir fixture;
+        const QString source = fixture.filePath("source.zip");
+        QFile file(source);
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        QCOMPARE(file.write("123456789"), qint64(9));
+        file.close();
+        ArchiveBackend backend;
+        QSignalSpy completed(&backend, &ArchiveBackend::finished);
+        connect(&backend, &ArchiveBackend::finished, this, [&](bool, const QString &) {
+            if (completed.size() == 1)
+                backend.hashMethods({source}, {"CRC32"});
+        });
+        backend.updateSourcePlan(source, {}, fixture.filePath("cancelled.zip"), "zip", {});
+        backend.cancelAndWait();
+        QCOMPARE(completed.size(), 1);
+        QVERIFY(!completed.first().first().toBool());
+        QVERIFY(backend.busy());
+        QTRY_COMPARE(completed.size(), 2);
+        QVERIFY(completed.last().first().toBool());
+        QVERIFY(!backend.busy());
+        QCOMPARE(backend.lastResult(), HRESULT(S_OK));
+    }
+    void joinedCancellationMayReleaseBackend_data() {
+        QTest::addColumn<bool>("copy");
+        QTest::newRow("copy-preparation") << true;
+        QTest::newRow("hash") << false;
+    }
+    void joinedCancellationMayReleaseBackend() {
+        QFETCH(bool, copy);
+        QTemporaryDir fixture;
+        const QString source = fixture.filePath("source.zip");
+        QFile file(source);
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        QCOMPARE(file.write("original"), qint64(8));
+        file.close();
+        auto backend = std::make_unique<ArchiveBackend>();
+        int completions = 0;
+        connect(backend.get(), &ArchiveBackend::finished, this, [&](bool ok, const QString &) {
+            QVERIFY(!ok);
+            ++completions;
+            backend.reset();
+        });
+        connect(backend.get(), &ArchiveBackend::phaseStarted, this,
+                [&] { backend->cancelAndWait(); });
+        const QString output = fixture.filePath("cancelled.zip");
+        if (copy)
+            backend->updateSourcePlan(source, {}, output, "zip", {});
+        else
+            backend->hashMethods({source}, {"CRC32"});
+        QVERIFY(!backend);
+        QCOMPARE(completions, 1);
+        QVERIFY(!QFileInfo::exists(output));
+        QVERIFY(file.open(QIODevice::ReadOnly));
+        QCOMPARE(file.readAll(), QByteArray("original"));
+    }
+    void hashOutputMayReleaseBackend() {
+        QTemporaryDir fixture;
+        const QString path = fixture.filePath(QStringLiteral("имя с пробелом.txt"));
+        QFile file(path);
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        QCOMPARE(file.write("123456789"), qint64(9));
+        file.close();
+        auto backend = std::make_unique<ArchiveBackend>();
+        QPointer<ArchiveBackend> retained(backend.get());
+        int outputs = 0;
+        connect(backend.get(), &ArchiveBackend::outputReceived, this, [&](const QString &line) {
+            QVERIFY(line.contains("CBF43926"));
+            ++outputs;
+            backend.reset();
+        });
+        backend->hashMethods({path}, {"CRC32", "SHA256"});
+        QTRY_VERIFY(retained.isNull());
+        QCOMPARE(outputs, 1);
+        QVERIFY(file.open(QIODevice::ReadOnly));
+        QCOMPARE(file.readAll(), QByteArray("123456789"));
+    }
+    void reentrantFailureDoesNotRemoveCompletedHashSummary() {
+        QTemporaryDir fixture;
+        const QString path = fixture.filePath("input.txt");
+        QFile file(path);
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        QCOMPARE(file.write("123456789"), qint64(9));
+        file.close();
+        ArchiveBackend backend;
+        QSignalSpy completed(&backend, &ArchiveBackend::finished);
+        QStringList output;
+        connect(&backend, &ArchiveBackend::outputReceived, this, [&](const QString &line) {
+            output.append(line);
+            if (output.size() == 1)
+                backend.hashMethods({path}, {"unsupported-test-method"});
+        });
+        backend.hashMethods({path}, {"CRC32"});
+        QTRY_COMPARE(completed.size(), 2);
+        QCOMPARE(output.size(), 2);
+        QVERIFY(output.last().contains("CBF43926"));
+        QVERIFY(!completed.first().first().toBool());
+        QVERIFY(completed.last().first().toBool());
+        QVERIFY(!backend.busy());
+        QVERIFY(backend.lastResult() != S_OK);
+    }
+    void preparationProgressRetainsDetailAcrossJoinedCancellation() {
+        QTemporaryDir fixture;
+        const QString source = fixture.filePath(QStringLiteral("source 空 with spaces.zip"));
+        QFile file(source);
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        QCOMPARE(file.write("original"), qint64(8));
+        file.close();
+        ArchiveBackend backend(nullptr, fixture.filePath("missing-engine"));
+        QSignalSpy completed(&backend, &ArchiveBackend::finished);
+        QString before, after;
+        connect(&backend, &ArchiveBackend::progress, this, [&](int, const QString &detail) {
+            before = detail;
+            backend.cancelAndWait();
+        });
+        connect(&backend, &ArchiveBackend::progress, this,
+                [&](int, const QString &detail) { after = detail; });
+        const QString output = fixture.filePath("cancelled.zip");
+        backend.updateSourcePlan(source, {}, output, "zip", {});
+        QCOMPARE(completed.size(), 1);
+        QVERIFY(!completed.first().first().toBool());
+        QVERIFY(before.contains(source));
+        QCOMPARE(after, before);
+        QCOMPARE(backend.lastResult(), HRESULT(E_ABORT));
+        QVERIFY(!backend.busy());
+        QVERIFY(!QFileInfo::exists(output));
+    }
+    void volumeProgressMayReleaseBackendBeforeWorkerLaunch() {
+        QTemporaryDir fixture;
+        const QString path = fixture.filePath(QStringLiteral("источник.txt"));
+        QFile file(path);
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        QCOMPARE(file.write("123456789"), qint64(9));
+        file.close();
+        auto backend = std::make_unique<ArchiveBackend>();
+        QPointer<ArchiveBackend> retained(backend.get());
+        connect(backend.get(), &ArchiveBackend::progress, this, [&](int, const QString &detail) {
+            if (detail ==
+                QCoreApplication::translate("archivebackend_volumes", "Creating archive volumes"))
+                backend.reset();
+        });
+        CompressionOptions options;
+        options.Level = 0;
+        options.VolumeSizes.Add(64);
+        backend->create(fixture.filePath("cancelled.7z"), {path}, {}, false, options);
+        QTRY_VERIFY_WITH_TIMEOUT(retained.isNull(), 15000);
+        QVERIFY(QDir(fixture.path()).entryList({"cancelled.7z*"}, QDir::Files).isEmpty());
+        QVERIFY(
+            QDir(fixture.path())
+                .entryList({".sevenzip-*"}, QDir::AllEntries | QDir::Hidden | QDir::NoDotAndDotDot)
+                .isEmpty());
+        QVERIFY(file.open(QIODevice::ReadOnly));
+        QCOMPARE(file.readAll(), QByteArray("123456789"));
+    }
     void hashBurstKeepsResultsAndBoundsGuiDelivery() {
         QTemporaryDir fixture;
         QVERIFY(fixture.isValid());

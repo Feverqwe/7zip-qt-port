@@ -26,12 +26,15 @@ void ArchiveBackend::prepareArchiveCopy(const QString &source, const QString &ou
     if (!startWorkerPhase(*copyPreparation_))
         return;
     // Last operation: a progress consumer may synchronously cancel/join/delete.
-    emit progress(0, copyProgressDetail_);
+    const QString detail = copyProgressDetail_;
+    emit progress(0, detail);
 }
 
 void ArchiveBackend::reportCopyPreparation() {
-    if (job_ == Job::CopyPrepare && copyPreparation_)
-        emit progress(copyPreparation_->percent(), copyProgressDetail_);
+    if (job_ == Job::CopyPrepare && copyPreparation_) {
+        const QString detail = copyProgressDetail_;
+        emit progress(copyPreparation_->percent(), detail);
+    }
 }
 
 void ArchiveBackend::finishCopyPreparation() {

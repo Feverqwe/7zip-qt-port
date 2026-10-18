@@ -9,6 +9,7 @@
 #include "qtlanguageservices.h"
 #include <QDir>
 #include <QFileInfo>
+#include <QPointer>
 
 void ArchiveBackend::hashMethods(const QStringList &paths, const QStringList &methods) {
     if (busy()) {
@@ -72,21 +73,31 @@ void ArchiveBackend::finishHashOperation() {
     lastResult_ = operation->Result;
     if (cancelled_)
         lastResult_ = E_ABORT;
+    const HRESULT result = lastResult_;
     job_ = Job::None;
-    const bool ok = lastResult_ == S_OK && operation->Bundle.NumErrors == 0;
-    if (lastResult_ != E_ABORT) {
-        for (const QString &line : operation->Output)
+    const bool ok = result == S_OK && operation->Bundle.NumErrors == 0;
+    const QPointer<ArchiveBackend> owner(this);
+    if (result != E_ABORT) {
+        for (const QString &line : operation->Output) {
             emit outputReceived(line);
-        for (const QString &error : operation->Errors)
+            if (!owner)
+                return;
+        }
+        for (const QString &error : operation->Errors) {
             emit outputReceived(error);
-        if (lastResult_ == S_OK) {
+            if (!owner)
+                return;
+        }
+        if (result == S_OK) {
             UString results;
             AddHashBundleRes(results, operation->Bundle);
             emit outputReceived(QString::fromWCharArray(results.Ptr()));
+            if (!owner)
+                return;
         }
     }
     emit finished(ok, ok ? QtLocalText("Checksums calculated.", "Контрольные суммы рассчитаны.")
-                      : lastResult_ == E_ABORT
+                      : result == E_ABORT
                           ? QtLocalText("Operation canceled.", "Операция отменена.")
                           : QtLocalText("Checksum calculation failed.",
                                         "Расчёт контрольных сумм завершился с ошибками."));
