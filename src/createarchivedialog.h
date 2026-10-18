@@ -47,7 +47,7 @@ class CreateArchiveDialog : public QDialog {
     CompressionOptions compressionOptions() const;
 
   private:
-    void createArchiveForm(QVBoxLayout *layout);
+    void createArchiveForm(QVBoxLayout *layout, QVBoxLayout *windowLayout);
     void stabilizeColumnWidths();
     static QWidget *reserveControlSpace(QWidget *control);
     void createCompressionOptions(QFormLayout *form);

@@ -68,9 +68,11 @@ resource baselines.
 
 Reference: pinned CompressDialog.cpp/rc and UpdateGUI.cpp::ShowDialog.
 The Archive folder prefix and editable name/browse share a left edge to the right
-of the Archive caption; the caption sits between the prefix and name rows.
-The prefix may wrap at compact widths. Display separators are native and do not
-change the underlying path. The initial filename is selected for editing.
+of the Archive caption; the caption aligns with the editable name.
+The destination stays visible above the scrolling options. Long folder prefixes
+elide in the middle, with the complete path in a tooltip. Display separators are
+native and do not change the underlying path. The initial filename is selected
+for editing; Tab moves from the name to Browse.
 
 Format, compression, memory, volumes, parameters and the Options summary occupy
 the left column; Update mode, Path mode, Options and Encryption occupy the right.

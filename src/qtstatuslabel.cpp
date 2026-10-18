@@ -3,7 +3,8 @@
 #include <QPainter>
 #include <QToolTip>
 
-QtStatusLabel::QtStatusLabel(QWidget *parent) : QLabel(parent) {
+QtStatusLabel::QtStatusLabel(QWidget *parent, Qt::TextElideMode elideMode)
+    : QLabel(parent), elideMode_(elideMode) {
     setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Preferred);
 }
 
@@ -19,7 +20,7 @@ void QtStatusLabel::paintEvent(QPaintEvent *event) {
     QPainter painter(this);
     painter.setPen(palette().color(QPalette::WindowText));
     painter.drawText(contentsRect(), alignment(),
-                     fontMetrics().elidedText(text(), Qt::ElideRight, contentsRect().width()));
+                     fontMetrics().elidedText(text(), elideMode_, contentsRect().width()));
 }
 
 bool QtStatusLabel::event(QEvent *event) {

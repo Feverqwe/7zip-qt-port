@@ -9,6 +9,7 @@
 #include "qtguimessages.h"
 #include "qtlangbuttonbox.h"
 #include "qtlangcontrols.h"
+#include "qtstatuslabel.h"
 #include <QEvent>
 #include <QProxyStyle>
 #include <QScreen>
@@ -90,7 +91,7 @@ CreateArchiveDialog::CreateArchiveDialog(const QString &directory,
     else
         archiveNameState_.DirPrefix = currentDirectory_;
     prepareInitialSources(initialSources);
-    createArchiveForm(contentLayout);
+    createArchiveForm(contentLayout, layout);
     scroll->setWidget(content);
     layout->addWidget(scroll);
     createFooter(layout);
@@ -120,8 +121,10 @@ CreateArchiveDialog::CreateArchiveDialog(const QString &directory,
     const QMargins margins = layout->contentsMargins();
     const int width =
         qMax(640, content->minimumSizeHint().width() + margins.left() + margins.right());
-    const int height = content->sizeHint().height() + buttons_->sizeHint().height() +
-                       layout->spacing() + margins.top() + margins.bottom();
+    const int height = content->sizeHint().height() +
+                       findChild<QWidget *>("archiveNameField")->sizeHint().height() +
+                       buttons_->sizeHint().height() + 2 * layout->spacing() + margins.top() +
+                       margins.bottom();
     const int frameHeight = 2 * style()->pixelMetric(QStyle::PM_TitleBarHeight);
     const QSize available = screen()->availableGeometry().size() - QSize(0, frameHeight);
     resize(QSize(width, height).boundedTo(available).expandedTo(minimumSizeHint()));
@@ -158,21 +161,20 @@ QWidget *CreateArchiveDialog::reserveControlSpace(QWidget *control) {
     return slot;
 }
 
-void CreateArchiveDialog::createArchiveForm(QVBoxLayout *layout) {
+void CreateArchiveDialog::createArchiveForm(QVBoxLayout *layout, QVBoxLayout *windowLayout) {
     auto *form = new QFormLayout;
     auto *archiveField = new QWidget(this);
     archiveField->setObjectName("archiveNameField");
-    auto *fieldLayout = new QVBoxLayout(archiveField);
-    fieldLayout->setContentsMargins(0, 0, 0, 0);
-    archiveFolder_ =
-        new QLabel(QDir::toNativeSeparators(archiveNameState_.DirPrefix), archiveField);
+    auto *fieldLayout = new QGridLayout(archiveField);
+    fieldLayout->setContentsMargins(0, 0, windowLayout->contentsMargins().left(), 0);
+    archiveFolder_ = new QtStatusLabel(archiveField, Qt::ElideMiddle);
+    archiveFolder_->setText(QDir::toNativeSeparators(archiveNameState_.DirPrefix));
     archiveFolder_->setObjectName("archiveFolder");
     archiveFolder_->setTextFormat(Qt::PlainText);
-    archiveFolder_->setWordWrap(true);
     // A Windows prefix can be one unbreakable word. It must not impose its
     // full text width on the scroll content and clip the actual inputs.
     archiveFolder_->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
-    fieldLayout->addWidget(archiveFolder_);
+    fieldLayout->addWidget(archiveFolder_, 0, 1);
     auto *archiveRow = new QWidget(this);
     archiveRow->setObjectName("archivePathRow");
     auto *archiveLayout = new QHBoxLayout(archiveRow);
@@ -190,22 +192,23 @@ void CreateArchiveDialog::createArchiveForm(QVBoxLayout *layout) {
     archiveLayout->addWidget(archivePath_, 1);
     auto *browse = new QPushButton("...", archiveRow);
     browse->setObjectName("archiveBrowse");
+    browse->setAttribute(Qt::WA_LayoutUsesWidgetRect);
     // GuiCommon.rc's bxsDots is a narrow browse button, not a footer button.
     browse->setFixedWidth(
         qMax(browse->sizeHint().height(), browse->fontMetrics().averageCharWidth() * 5));
     archiveLayout->addWidget(browse);
     archiveRow->setFocusProxy(archivePath_);
-    fieldLayout->addWidget(archiveRow);
+    fieldLayout->addWidget(archiveRow, 1, 1);
     auto *archiveLabel = new QLabel("Архив:", this);
     archiveLabel->setObjectName("archiveLabel");
     archiveLabel->setBuddy(archivePath_);
     archiveLabel->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
-    // CompressDialog.rc: folder and combo share xArcFolderOffs; the caption
-    // remains in the left column of this two-line field.
-    auto *archiveHeader = new QHBoxLayout;
-    archiveHeader->addWidget(archiveLabel, 0, Qt::AlignVCenter);
-    archiveHeader->addWidget(archiveField, 1);
-    form->addRow(archiveHeader);
+    // Preserve the source folder/name split and align the caption to the
+    // combo row. Keep the destination visible while compact options scroll.
+    fieldLayout->addWidget(archiveLabel, 1, 0, Qt::AlignVCenter);
+    fieldLayout->setColumnStretch(1, 1);
+    windowLayout->addWidget(archiveField);
+    QWidget::setTabOrder(archivePath_, browse);
     format_ = new QComboBox(this);
     format_->setObjectName("archiveFormat");
     populateArchiveFormats();

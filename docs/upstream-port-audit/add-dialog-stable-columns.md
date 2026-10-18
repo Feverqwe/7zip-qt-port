@@ -1,5 +1,22 @@
 # Stable Add columns — 2026-10-17
 
+## Destination header review — 2026-10-18
+
+Screenshot review rechecked `CompressDialog.rc` folder/caption/combo/Browse
+rectangles and `CompressDialog.cpp::SetArcPathFields`, initial name selection,
+Browse and history activation against the Qt consumers. The source naming,
+folder/name split and path resolution remain unchanged. The Qt adaptation now
+keeps the destination above the compact options scroll area, aligns Archive to
+the combo row and preserves native control rectangles for Browse alignment.
+The folder uses middle elision with a full-text tooltip instead of wrapping.
+Tab from the editable name reaches Browse, and capture scenarios focus the
+control named by each report. These are presentation adaptations; no upstream
+algorithm or command branch is added or omitted. The existing elided label is
+reused with a selectable elision mode; status labels retain right elision.
+Validation covers normal/compact geometry, path behavior and status painting on
+macOS/Qt 6.12, plus native Cocoa light/dark screenshots. Windows/Linux and a
+rendered Windows reference remain unverified.
+
 Source reference: <https://github.com/ip7z/7zip.git>, commit
 `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`.
 

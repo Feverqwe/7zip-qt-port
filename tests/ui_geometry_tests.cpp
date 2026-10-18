@@ -137,6 +137,17 @@ class UiGeometryTests final : public QObject {
             QVERIFY(compression && encryption);
             auto *archivePath = dialog->findChild<QComboBox *>("archivePath");
             QVERIFY(archivePath);
+            auto *folder = dialog->findChild<QLabel *>("archiveFolder");
+            auto *caption = dialog->findChild<QLabel *>("archiveLabel");
+            auto *browse = dialog->findChild<QPushButton *>("archiveBrowse");
+            QVERIFY(folder && caption && browse);
+            const QRect captionBounds = UiInspection::bounds(*caption, *dialog);
+            const QRect pathBounds = UiInspection::bounds(*archivePath, *dialog);
+            QVERIFY(qAbs(captionBounds.center().y() - pathBounds.center().y()) <= 1);
+            QVERIFY(UiInspection::fullyVisible(*folder, *dialog));
+            archivePath->setFocus();
+            QTest::keyClick(archivePath, Qt::Key_Tab);
+            QTRY_VERIFY(browse->hasFocus());
             // CompressDialog.rc: encryption stays to the right of compression
             // at both sizes. Reachability alone passed the previous stacked UI.
             QVERIFY(UiInspection::bounds(*compression, *dialog).right() <
@@ -148,14 +159,20 @@ class UiGeometryTests final : public QObject {
                 QVERIFY2(control, name);
                 // ensureWidgetVisible can accept an already exposed input-method
                 // cursor before applying margins. Probe the whole control instead.
-                const QRect rect(control->mapTo(scroll->widget(), QPoint()), control->size());
-                scroll->ensureVisible(rect.center().x(), rect.center().y(), rect.width() / 2 + 16,
-                                      rect.height() / 2 + 16);
+                control->setFocus(Qt::TabFocusReason);
+                if (scroll->widget()->isAncestorOf(control)) {
+                    const QRect rect(control->mapTo(scroll->widget(), QPoint()), control->size());
+                    scroll->ensureVisible(rect.center().x(), rect.center().y(),
+                                          rect.width() / 2 + 16, rect.height() / 2 + 16);
+                }
                 QApplication::processEvents();
                 QVERIFY(UiInspection::writeReport(*dialog, tag + "-" + name));
                 QVERIFY2(
                     UiInspection::fullyVisible(*control, *dialog),
                     qPrintable(QString::fromLatin1(name) + "\n" + UiInspection::dump(*dialog)));
+                QVERIFY(UiInspection::fullyVisible(*folder, *dialog));
+                QVERIFY(UiInspection::fullyVisible(*caption, *dialog));
+                QVERIFY(UiInspection::fullyVisible(*archivePath, *dialog));
             }
             for (const QString &format : {QString("7z"), QString("zip")}) {
                 dialog->findChild<QComboBox *>("archiveFormat")->setCurrentText(format);
