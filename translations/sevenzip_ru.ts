@@ -4,7 +4,7 @@
     <context>
         <name>AboutDialog</name>
         <message>
-            <location filename="../src/CPP/7zip/UI/FileManager/AboutDialog.cpp" line="+65" />
+            <location filename="../src/CPP/7zip/UI/FileManager/AboutDialog.cpp" line="+67" />
             <source>An independent file manager based on 7‑Zip.</source>
             <translation>Независимый файловый менеджер на основе 7‑Zip.</translation>
         </message>
@@ -426,6 +426,11 @@
             <location filename="../src/qtprogresscontrols.cpp" line="+183" />
             <source>Details</source>
             <translation>Подробности</translation>
+        </message>
+        <message>
+            <location filename="../src/CPP/7zip/UI/FileManager/AboutDialog.cpp" line="-18" />
+            <source>Close</source>
+            <translation>Закрыть</translation>
         </message>
     </context>
     <context>
@@ -5879,18 +5884,18 @@ Application modules:
     <context>
         <name>qthelpservices</name>
         <message>
-            <location filename="../src/qthelpservices.cpp" line="+251" />
+            <location filename="../src/qthelpservices.cpp" line="+253" />
             <location line="+8" />
             <source>7-Zip Help</source>
             <translation>Справка 7-Zip</translation>
         </message>
         <message>
-            <location line="+22" />
+            <location line="+24" />
             <source>Back</source>
             <translation>Назад</translation>
         </message>
         <message>
-            <location line="-29" />
+            <location line="-31" />
             <source>Help topic is unavailable: %1</source>
             <translation>Раздел справки недоступен: %1</translation>
         </message>

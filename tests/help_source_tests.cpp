@@ -16,6 +16,7 @@
 #include <QPushButton>
 #include <QScopeGuard>
 #include <QScrollBar>
+#include <QStyleOptionButton>
 #include <QTemporaryDir>
 #include <QTextBrowser>
 #include <QTextDocument>
@@ -317,8 +318,18 @@ class HelpSourceTests : public QObject {
                     QTRY_VERIFY2(UiInspection::labelFits(*label), qPrintable(label->objectName()));
                 }
                 for (auto *button : dialog.findChildren<QPushButton *>()) {
-                    QVERIFY(UiInspection::fullyVisible(*button, dialog));
-                    QVERIFY(button->width() >= button->sizeHint().width());
+                    QTRY_VERIFY(UiInspection::fullyVisible(*button, dialog));
+                    const auto captionFits = [button] {
+                        QStyleOptionButton option;
+                        option.initFrom(button);
+                        option.text = button->text();
+                        const QRect contents = button->style()->subElementRect(
+                            QStyle::SE_PushButtonContents, &option, button);
+                        return button->fontMetrics()
+                                   .size(Qt::TextShowMnemonic, button->text())
+                                   .width() <= contents.width();
+                    };
+                    QTRY_VERIFY2(captionFits(), qPrintable(button->objectName()));
                 }
                 const auto *heading = dialog.findChild<QLabel *>("aboutApplicationName");
                 QVERIFY(UiInspection::bounds(*heading, dialog).bottom() <
@@ -364,14 +375,18 @@ class HelpSourceTests : public QObject {
         QVERIFY(window);
         auto *browser = window->findChild<QTextBrowser *>("helpBrowser");
         QVERIFY(browser);
+        auto *back = window->findChild<QPushButton *>("helpBack");
+        QVERIFY(!back->isEnabled());
         QCOMPARE(browser->source().path(), QString("/upstream/7zip/Help/fm/index.htm"));
         QVERIFY(browser->toPlainText().contains("File Manager"));
         browser->anchorClicked(QUrl("options.htm#language"));
         QCOMPARE(browser->source().path(), QString("/upstream/7zip/Help/fm/options.htm"));
         QCOMPARE(browser->source().fragment(), QString("language"));
         QVERIFY(browser->toPlainText().contains("Language"));
-        browser->backward();
+        QVERIFY(back->isEnabled());
+        back->click();
         QCOMPARE(browser->source().path(), QString("/upstream/7zip/Help/fm/index.htm"));
+        QVERIFY(!back->isEnabled());
         window->close();
     }
     void sourceContextAndLanguageGeometry() {

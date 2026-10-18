@@ -22,13 +22,15 @@ layout with Sevenzip's own application name, release and independent-port
 description. A separate 7-Zip group retains source version/CPU,
 explicitly labeled upstream date, original copyright and free-software text,
 license and upstream-homepage actions. The footer adds the project repository
-link and retains OK/default Return. Local EN/RU captions replace upstream captions
-only where product identity or attribution context requires different text.
+link and retains default Return (the redesign caption is Close). Local EN/RU
+captions replace upstream captions only where product identity or attribution
+context requires different text.
 Font-based sizing protects both descriptions across a live language switch.
 The presentation refinement places the release beside a larger application
 heading and replaces the
 group-box border with a palette-based attribution panel. Flat link buttons keep
-their actions and native focus handling; OK remains the native default button.
+their actions and native focus handling; confirmation remains the native default
+button.
 No new brand artwork or external font dependency is introduced.
 
 No new upstream functional code was copied. The original logo and exact resource

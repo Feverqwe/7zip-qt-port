@@ -92,6 +92,9 @@ release and project link. A separate 7-Zip section retains the upstream version,
 release date, copyright, license and homepage. The original About logo and
 layout are replaced by this explicitly requested product identity.
 [Source comparison and validation](upstream-port-audit/about-product-identity.md).
+The redesigned frame uses shared spacing and Close with the original default
+confirmation role. Help keeps the bundled HTML and existing navigation inside
+the same shared frame; no article replacement or shortened topic list is added.
 
 Контекстное меню сохраняет доступность команд выбранной панели при переходах
 фокуса; после отмены подтверждения Drop команды снова доступны.

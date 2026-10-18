@@ -772,3 +772,66 @@ ccache сохранены, root гостей только current; full/slow и 
 не проверялись. Реальный Windows reference для pixel parity не получен.
 Оболочка справки/About, оставшиеся случаи каталога и общая приёмка остаются
 в active goal; эта итерация не означает завершение всего плана.
+
+## Итерация 15: справка и About
+
+Источник: https://github.com/ip7z/7zip.git, текущий upstream
+`9128b80e3a471108678e2b3ec3c985861c8d7b0f`, baseline
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. Сверены HelpUtils.cpp/.h,
+AboutDialog.cpp/.h/.rc и зависимости MyVersion/CpuArch/LoadCodecs/GuiCommon.rc,
+Qt help/about callers и адаптер bundled CHM HTML. Исходные OnInit с codec error,
+OnHelp/start.htm, homepage dispatch и сведения об upstream сохранены.
+Заменённая раньше продуктовая идентичность About остаётся текущей; исходный
+логотип/геометрия не возвращаются. Нового upstream functional code не копировалось.
+
+Обе оболочки используют QtCreateDialogLayout с общими outer/footer интервалами.
+Help сохраняет существующие статьи, HTML/CSS adaptation, URL/fragment resolution,
+history, external links и предупреждение недоступной темы. Browser получает
+начальный фокус; Back остаётся связанным с actual history. Close использует
+прежнюю native роль через существующий QtLangButtonBox. Не добавлены макетные
+статьи, сокращённая sidebar-навигация или другой renderer.
+
+About сохраняет Sevenzip/version/project URL и отдельную 7-Zip attribution panel
+с версией/CPU/датой/copyright/free-software notice/license/homepage. Внутренние
+интервалы identity panel не заменены outer frame. Caption Close локализован,
+но прежняя OK/Accept роль и default Return сохранены; Escape/window close
+не меняются. Footer вынесен в общий frame. Styled project link создаётся сразу
+с конечным footer parent: создание style binding до reparent читало старую
+палитру при parent PaletteChange и нарушало контраст живого окна. Существующая
+регрессия воспроизвела это; глобальный semantic palette service не менялся.
+
+Help regression теперь использует реальную кнопку Back и проверяет её
+availability/history, вместо прямого вызова backward. Сохранены проверки
+исходного текста PRE, длинных таблиц, внутренних/внешних ссылок, fragment/topic,
+language reload, missing topic, codec error, default Return и полного About
+attribution. Проверка width>=sizeHint для кнопок About заменена помещением
+реальной надписи в native contents с ожиданием queued layout после перевода.
+Нативные Help/About tests на Windows включены в существующую QPA/resource lock
+группу; отдельного lifecycle или storage не добавлено.
+
+Native F1 диагностика показала, что ранний isActiveWindow мог пройти до
+QApplication::activeWindow/focus: клавиша отправлялась при пустом active window
+(иногда ApplicationInactive), и Shortcut event не возникал. Help UI использует
+существующий WindowActivation fixture, проверяет actual active window перед
+оконным вводом и дожидается появления справки. Обработчики F1 приложения не
+менялись. Тест имеет private settings fallback при прямом запуске; временный
+trace удалён, созданный ранним диагностическим запуском test-only config убран.
+
+macOS: приложение и три focused targets собраны, help_source/help_ui/
+language_standard_buttons — 3/3 PASS. Cocoa Help/About EN/RU normal/compact в
+light/dark — 54/54 test functions PASS; после уточнения caption-fit повторены
+оба help_source прогона — 46/46 PASS. Native help_ui — 8/8 PASS, включая
+окончательную активацию окон/F1. Просмотрены текущие JSON/PNG обоих окон и
+actual theme metadata в прежнем review. HTML, таблицы/PRE и ссылки сохранены.
+
+Linux: первоначальные четыре suites со startup — 4/4 PASS; адресные проверки
+последующих test-fixture изменений также проходят. Windows: startup и standard
+buttons прошли первоначально; после замены жёсткого sizeHint assertion native
+help_source PASS (`20261018T191814Z-f7780b96`), окончательный native help_ui PASS
+(`20261018T193256Z-985cc3fd`). Общий исходный run —
+`20261018T191306Z-85e5cf79`; native F1 диагностика —
+`20261018T193019Z-166f3f4c`. Текущие Windows JSON подтверждают windows QPA,
+видимые Help browser/footer и About footer с полной надписью Close.
+Current/build/ccache сохранены; full/slow, физические клавиатуры, VoiceOver и
+полная приёмка каталога не выполнялись. Browse/temporary формы и оставшиеся
+расхождения каталога ещё требуют общей сверки; goal остаётся active.

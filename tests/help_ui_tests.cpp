@@ -1,16 +1,32 @@
 #include "createarchivedialog.h"
 #include "extractdialog.h"
 #include "fixtures/options_presentation.h"
+#include "fixtures/window_activation.h"
 #include "qtfmoptionsdialog.h"
 #include "window_state_support.h"
 #include <QSettings>
 #include <QTabWidget>
 #include <QTextBrowser>
 #include <QTimer>
+#include <QWindow>
 
 class HelpUiTests : public QObject {
     Q_OBJECT
+    QTemporaryDir privateSettings_;
+    QByteArray previousSettings_;
   private slots:
+    void initTestCase() {
+        QVERIFY(privateSettings_.isValid());
+        previousSettings_ = qgetenv("SEVENZIP_SETTINGS_PATH");
+        if (previousSettings_.isEmpty())
+            qputenv("SEVENZIP_SETTINGS_PATH", privateSettings_.filePath("help.ini").toUtf8());
+    }
+    void cleanupTestCase() {
+        if (previousSettings_.isNull())
+            qunsetenv("SEVENZIP_SETTINGS_PATH");
+        else
+            qputenv("SEVENZIP_SETTINGS_PATH", previousSettings_);
+    }
     void init() { QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH")); }
     void optionsHelpRoutesEachNativePageWithoutApplying() {
         const QString settingsPath = qEnvironmentVariable("SEVENZIP_SETTINGS_PATH");
@@ -43,9 +59,9 @@ class HelpUiTests : public QObject {
         }
         OptionsPresentation::show(dialog, command);
         dialog.activateWindow();
-        QTRY_VERIFY(dialog.isActiveWindow());
+        QVERIFY(WindowActivation::waitForActive(dialog));
         command->setFocus();
-        QTest::keyClick(command, Qt::Key_F1);
+        QTest::keyClick(dialog.windowHandle(), Qt::Key_F1);
         auto *help = dialog.findChild<QDialog *>("helpWindow");
         QVERIFY(help && help->isVisible());
         QCOMPARE(help->findChild<QTextBrowser *>("helpBrowser")->source().fragment(),
@@ -64,19 +80,25 @@ class HelpUiTests : public QObject {
         CreateArchiveDialog add(fixture.path());
         add.show();
         add.activateWindow();
-        QTRY_VERIFY(add.isActiveWindow());
+        QVERIFY(WindowActivation::waitForActive(add));
         auto *name = add.findChild<QLineEdit *>("archiveName");
         QVERIFY(name);
         name->setText(QStringLiteral("новый архив с пробелом"));
         const auto showHelp = [keyboard](QDialog &dialog, const QString &topic) {
             auto *buttons = dialog.findChild<QDialogButtonBox *>();
-            if (keyboard)
-                QTest::keyClick(&dialog, Qt::Key_F1);
-            else
+            if (keyboard) {
+                if (!WindowActivation::waitForActive(dialog) ||
+                    !QTest::qWaitFor([&] { return QApplication::activeWindow() == &dialog; }))
+                    return false;
+                QTest::keyClick(dialog.windowHandle(), Qt::Key_F1);
+            } else
                 buttons->button(QDialogButtonBox::Help)->click();
-            auto *help = dialog.findChild<QDialog *>("helpWindow");
-            if (!help || !help->isVisible())
+            if (!QTest::qWaitFor([&] {
+                    auto *help = dialog.findChild<QDialog *>("helpWindow");
+                    return help && help->isVisible();
+                }))
                 return false;
+            auto *help = dialog.findChild<QDialog *>("helpWindow");
             const bool matches = help->findChild<QTextBrowser *>("helpBrowser")->source().path() ==
                                  "/upstream/7zip/Help/fm/plugins/7-zip/" + topic;
             help->close();
@@ -88,7 +110,7 @@ class HelpUiTests : public QObject {
         ExtractDialog extract(fixture.path(), {});
         extract.show();
         extract.activateWindow();
-        QTRY_VERIFY(extract.isActiveWindow());
+        QVERIFY(WindowActivation::waitForActive(extract));
         auto *destination = extract.findChild<QComboBox *>("extractDestination");
         destination->setEditText(fixture.filePath(QStringLiteral("папка с пробелом")));
         auto *password = extract.findChild<QLineEdit *>("extractPassword");
@@ -128,16 +150,18 @@ class HelpUiTests : public QObject {
         MainWindow window;
         window.show();
         window.activateWindow();
-        QTRY_VERIFY(window.isActiveWindow());
+        QVERIFY(WindowActivation::waitForActive(window));
         auto *action = window.findChild<QAction *>("helpContentsAction");
         QVERIFY(action && action->isEnabled());
         QCOMPARE(action->shortcut(), QKeySequence(Qt::Key_F1));
-        if (keyboard)
-            QTest::keyClick(&window, Qt::Key_F1);
-        else
+        if (keyboard) {
+            QTRY_COMPARE(QApplication::activeWindow(), &window);
+            QTest::keyClick(window.windowHandle(), Qt::Key_F1);
+        } else
             action->trigger();
+        QTRY_VERIFY(window.findChild<QDialog *>("helpWindow") &&
+                    window.findChild<QDialog *>("helpWindow")->isVisible());
         auto *help = window.findChild<QDialog *>("helpWindow");
-        QVERIFY(help && help->isVisible());
         auto *browser = help->findChild<QTextBrowser *>("helpBrowser");
         QCOMPARE(browser->source().path(), QString("/upstream/7zip/Help/fm/index.htm"));
         QVERIFY(browser->toPlainText().contains("File Manager"));

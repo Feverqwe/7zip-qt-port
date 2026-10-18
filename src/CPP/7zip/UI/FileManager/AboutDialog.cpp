@@ -7,6 +7,7 @@
 #include "../Common/LoadCodecs.h"
 #include "7zip/MyVersion.h"
 #include "HelpUtils.h"
+#include "qtdialoglayout.h"
 #include "qtdialogunits.h"
 #include "qtlangbuttonbox.h"
 #include "qtlangcontrols.h"
@@ -36,9 +37,10 @@ static void StyleAboutLink(QPushButton &button) {
 CAboutDialog::CAboutDialog(QWidget *parent, const CCodecs *codecs)
     : QDialog(parent), codecs_(codecs) {
     setObjectName("aboutDialog");
-    auto *layout = new QVBoxLayout(this);
+    auto *footerWidget = new QWidget(this);
+    footerWidget->setObjectName("aboutActions");
+    auto *layout = QtCreateDialogLayout(*this, *footerWidget);
     const int gap = qMax(8, fontMetrics().height() / 2);
-    layout->setContentsMargins(3 * gap, 3 * gap, 3 * gap, 3 * gap);
     layout->setSpacing(gap);
     auto *heading = new QHBoxLayout;
     auto *title = new QLabel("Sevenzip", this);
@@ -102,6 +104,7 @@ CAboutDialog::CAboutDialog(QWidget *parent, const CCodecs *codecs)
     connect(license, &QPushButton::clicked, this,
             [this] { ShowHelpWindow("general/license.htm", this); });
     auto *buttons = new QtLangButtonBox(QDialogButtonBox::Ok, this);
+    buttons->SetAcceptText("DialogRedesign", QT_TRANSLATE_NOOP("DialogRedesign", "Close"));
     auto *homepage = new QPushButton("www.7-zip.org", upstream);
     homepage->setObjectName("aboutHomepage");
     StyleAboutLink(*homepage);
@@ -116,20 +119,19 @@ CAboutDialog::CAboutDialog(QWidget *parent, const CCodecs *codecs)
     upstreamLayout->addSpacing(gap / 2);
     upstreamLayout->addLayout(upstreamLinks);
     layout->addWidget(upstream);
-    layout->addSpacing(gap);
     layout->addStretch();
-    auto *project = new QPushButton(this);
+    auto *project = new QPushButton(footerWidget);
     project->setObjectName("aboutProjectHomepage");
     QtBindLocalText(project, "AboutDialog", QT_TRANSLATE_NOOP("AboutDialog", "Project website"));
     StyleAboutLink(*project);
     connect(project, &QPushButton::clicked, this,
             [] { QDesktopServices::openUrl(QUrl("https://github.com/Feverqwe/7zip-qt-port")); });
-    auto *footer = new QHBoxLayout;
+    auto *footer = new QHBoxLayout(footerWidget);
+    footer->setContentsMargins(0, 0, 0, 0);
     footer->setSpacing(QtDialogUnits(font()).pixels(QSize(8, 0)).width());
     footer->addWidget(project);
     footer->addStretch();
     footer->addWidget(buttons);
-    layout->addLayout(footer);
     auto *help = new QShortcut(QKeySequence(Qt::Key_F1), this);
     connect(help, &QShortcut::activated, this, &CAboutDialog::OnHelp);
     OnInit();
@@ -137,7 +139,7 @@ CAboutDialog::CAboutDialog(QWidget *parent, const CCodecs *codecs)
     ok->setFocus();
     // The wrapping label lets the layout derive its height from the active translation.
     const int width = QtDialogUnits(font()).pixels(QSize(160, 0)).width();
-    const QMargins margins = layout->contentsMargins();
+    const QMargins margins = this->layout()->contentsMargins();
     description->setMinimumWidth(qMax(1, width - margins.left() - margins.right()));
     adjustSize();
 }

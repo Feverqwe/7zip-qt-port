@@ -1,5 +1,7 @@
 #include "qthelpservices.h"
 #include "Common/StringConvert.h"
+#include "qtdialoglayout.h"
+#include "qtlangbuttonbox.h"
 #include "qtlangcontrols.h"
 #include "qtsemanticcolors.h"
 #include <QCoreApplication>
@@ -258,7 +260,9 @@ void QtOpenHelpTopic(const QString &topic, QWidget *parent, const QString &root)
     window->setObjectName("helpWindow");
     QtBindLocalText(window, "qthelpservices", QT_TRANSLATE_NOOP("qthelpservices", "7-Zip Help"));
     window->resize(760, 560);
-    auto *layout = new QVBoxLayout(window);
+    auto *buttons = new QtLangButtonBox(QDialogButtonBox::Close, window);
+    buttons->setObjectName("helpButtons");
+    auto *layout = QtCreateDialogLayout(*window, *buttons);
     const QUrl helpRoot = root.isEmpty() ? QUrl("qrc:/upstream/7zip/Help/")
                                          : QUrl::fromLocalFile(QDir(root).absolutePath() + '/');
     auto *browser = new HelpBrowser(window, helpRoot);
@@ -276,13 +280,13 @@ void QtOpenHelpTopic(const QString &topic, QWidget *parent, const QString &root)
         else if (target.scheme() == browser->source().scheme())
             browser->setSource(target);
     });
-    auto *buttons = new QDialogButtonBox(QDialogButtonBox::Close, window);
     auto *back = buttons->addButton(QString(), QDialogButtonBox::ActionRole);
+    back->setObjectName("helpBack");
     QtBindLocalText(back, "qthelpservices", QT_TRANSLATE_NOOP("qthelpservices", "Back"));
     back->setEnabled(false);
     QObject::connect(browser, &QTextBrowser::backwardAvailable, back, &QPushButton::setEnabled);
     QObject::connect(back, &QPushButton::clicked, browser, &QTextBrowser::backward);
     QObject::connect(buttons, &QDialogButtonBox::rejected, window, &QDialog::close);
-    layout->addWidget(buttons);
     window->show();
+    browser->setFocus(Qt::OtherFocusReason);
 }

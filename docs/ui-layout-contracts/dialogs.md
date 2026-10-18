@@ -13,10 +13,26 @@ caption; Memory uses IDCONTINUE. Hot reload preserves roles and pending input.
 The approved redesign replaces generic OK with the result of Copy/Move/Combine,
 Split and password Continue, using application catalogs and the same button role.
 Options property-sheet/native dialogs retain their platform language owner.
+About uses Close with the original confirmation role and default Return.
 `language_standard_buttons` checks twelve source consumers at their normal/
 compact sizes below and produces48 EN/RU footer reports per platform. Reports on all three platforms reviewed
 2026-10-06 show visible, separate standard controls and exact source captions;
 rendered Windows parity and parent/final acceptance remain pending.
+
+### Help and About: shared frame (redesign, 2026-10-18)
+
+Help retains the original bundled HTML, links, fragment navigation, history,
+text and horizontal/vertical scrolling. Only its Qt window uses the shared
+content/footer spacing; Back follows actual browser history and Close keeps
+its native role. Initial focus enters the reading area. Language changes keep
+the current topic, and missing topics retain the existing warning.
+
+About retains Sevenzip identity/version/project link and complete 7-Zip
+attribution, release, copyright, license and homepage. Its content and footer
+use the shared frame, with Close as the visible confirmation caption. Return
+still accepts the dialog; Escape and window close preserve their existing result.
+Native palette changes must restyle links in the existing window. Internal
+attribution padding remains independent of the outer dialog frame.
 
 ### Shared ListView: Properties and Folder History (P3-06)
 
