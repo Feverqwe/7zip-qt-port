@@ -39,6 +39,9 @@ ArchiveBackend::ArchiveBackend(QObject *parent, QString executable) : QObject(pa
 }
 
 ArchiveBackend::~ArchiveBackend() {
+    // Joining is cleanup here: finished receivers must not start a continuation
+    // while the backend and its worker owners are being destroyed.
+    blockSignals(true);
     codecProbe_.reset();
     // QProcess can emit readyRead/finished during destruction. Stop callbacks
     // while their buffers and operation state are still alive.

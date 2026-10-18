@@ -59,7 +59,29 @@ were retained. Runner evidence: `20261018T113232Z-9c89461f` and
 `20261018T113421Z-8165d044`. Final partial macOS ASan worker_progress run:
 11 passed, 0 failed, 799 ms.
 
-This scope does not establish safety of all process-output, listing or overwrite
-callbacks; those remaining transport notifications require their own
-source/behavior audit. No UI layout/text change or slow-suite acceptance is
-claimed, and no whole-project gate was run for this focused adapter correction.
+Process-output, listing and overwrite callbacks have their separate
+[ownership audit](process-notifications.md). No UI layout/text change,
+slow-suite acceptance or whole-project gate is claimed here.
+
+## Destruction and pipeline continuations — 2026-10-18
+
+The backend destructor reused joined cancellation, which published finished
+while the backend's owners were being destroyed. A connected pipeline could
+start another operation at that point. Both copy-preparation and hash baselines
+actually started a separate next backend during destruction (two failed rows,
+3 ms). Starting work on the dying backend itself could also leave a live worker
+for member destruction; the regression uses a separate owner to demonstrate the
+unwanted continuation safely.
+
+The original CApp::ReleaseApp stops all panel processing before releasing
+owners. MainWindow::quiesceOperations already disconnects presentation consumers
+before joining work. The backend now blocks its workflow signals at destructor
+entry before any join. Explicit cancelAndWait keeps its result notifications
+and supported continuation behavior; the existing reentrant cancel/restart
+cases remain enabled. Native worker algorithms and resource cleanup are intact.
+
+Application builds and six focused suites passed on macOS (3.24 s), Linux
+(7.36 s) and Windows (16.23 s); runner `20261018T121239Z-278677db`.
+Both new destruction rows and the existing explicit-cancel/restart, publication,
+process-notification and closed-window cases are included. Build trees and
+compiler caches were reused; no new sanitizer or full-gate acceptance is claimed.

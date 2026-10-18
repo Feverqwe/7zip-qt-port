@@ -10,6 +10,40 @@
 class WorkerProgressTests final : public QObject {
     Q_OBJECT
   private slots:
+    void destructionDoesNotStartPipelineContinuation_data() {
+        QTest::addColumn<bool>("copy");
+        QTest::newRow("copy-preparation") << true;
+        QTest::newRow("hash") << false;
+    }
+    void destructionDoesNotStartPipelineContinuation() {
+        QFETCH(bool, copy);
+        QTemporaryDir fixture;
+        const QString path = fixture.filePath(QStringLiteral("источник 空.zip"));
+        QFile file(path);
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        QCOMPARE(file.write("123456789"), qint64(9));
+        file.close();
+        ArchiveBackend next;
+        auto backend = std::make_unique<ArchiveBackend>();
+        int continuations = 0;
+        connect(backend.get(), &ArchiveBackend::finished, this, [&](bool, const QString &) {
+            ++continuations;
+            next.hashMethods({path}, {"CRC32"});
+            next.setPaused(true);
+        });
+        const QString output = fixture.filePath("cancelled.zip");
+        if (copy)
+            backend->updateSourcePlan(path, {}, output, "zip", {});
+        else
+            backend->hashMethods({path}, {"SHA256"});
+        QCOMPARE(backend->setPaused(true), HRESULT(S_OK));
+        backend.reset();
+        QCOMPARE(continuations, 0);
+        QVERIFY(!next.busy());
+        QVERIFY(!QFileInfo::exists(output));
+        QVERIFY(file.open(QIODevice::ReadOnly));
+        QCOMPARE(file.readAll(), QByteArray("123456789"));
+    }
     void joinedCopyCancellationDoesNotJoinReplacementHash() {
         QTemporaryDir fixture;
         const QString source = fixture.filePath("source.zip");
