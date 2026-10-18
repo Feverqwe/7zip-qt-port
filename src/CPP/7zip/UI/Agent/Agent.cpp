@@ -103,7 +103,7 @@ CProxyItem CAgentFolder::GetItem(unsigned index) const {
 }
 
 bool CAgentFolder::IsBound() const {
-    if (_closedArchivePath || !_agentSpec ||
+    if (_closedArchivePath || !_agentSpec || !_agentSpec->_archiveLink.IsOpen ||
         _proxyGeneration != _agentSpec->_proxyGeneration.load())
         return false;
     return _proxy2 ? _proxyDirIndex < _proxy2->Dirs.Size()
@@ -169,6 +169,8 @@ Z7_COM7F_IMF(CAgentFolder::GetNumberOfItems(UInt32 *numItems)) {
     }
 
 Z7_COM7F_IMF2(UInt64, CAgentFolder::GetItemSize(const UInt32 index)) {
+    if (!IsBound() || index >= GetNumberOfItems())
+        return 0;
     unsigned arcIndex;
     if (_proxy2) {
         SET_realIndex_AND_dir_2 arcIndex = dir->Items[realIndex];
@@ -200,6 +202,10 @@ Z7_COM7F_IMF2(UInt64, CAgentFolder::GetItemSize(const UInt32 index)) {
 }
 
 Z7_COM7F_IMF(CAgentFolder::GetItemName(UInt32 index, const wchar_t **name, unsigned *len)) {
+    *name = nullptr;
+    *len = 0;
+    if (!IsBound() || index >= GetNumberOfItems())
+        return E_INVALIDARG;
     if (_proxy2) {
         SET_realIndex_AND_dir_2 unsigned arcIndex = dir->Items[realIndex];
         const CProxyFile2 &item = _proxy2->Files[arcIndex];
@@ -229,6 +235,8 @@ Z7_COM7F_IMF(CAgentFolder::GetItemName(UInt32 index, const wchar_t **name, unsig
 Z7_COM7F_IMF(CAgentFolder::GetItemPrefix(UInt32 index, const wchar_t **name, unsigned *len)) {
     *name = NULL;
     *len = 0;
+    if (!IsBound() || index >= GetNumberOfItems())
+        return E_INVALIDARG;
 #ifdef Z7_AGENT_PROXY2_USE_DIR_PATH_PREFIX
     if (!_flatMode)
         return S_OK;
@@ -262,6 +270,8 @@ Z7_COM7F_IMF(CAgentFolder::GetItemPrefix(UInt32 index, const wchar_t **name, uns
 }
 
 UString CAgentFolder::GetName(UInt32 index) const {
+    if (!IsBound() || index >= GetNumberOfItems())
+        return UString();
     if (_proxy2) {
         const CProxyItem item = GetItem(index);
         const CProxyDir2 *dir = &_proxy2->Dirs[item.DirIndex];
@@ -289,6 +299,8 @@ void CAgentFolder::GetPrefix(UInt32 index, UString &prefix) const {
 }
 
 UString CAgentFolder::GetFullPrefix(const UInt32 index) const {
+    if (!IsBound() || index >= GetNumberOfItems())
+        return UString();
     unsigned foldIndex = _proxyDirIndex;
     if (_flatMode)
         foldIndex = _items[index].DirIndex;
@@ -618,6 +630,8 @@ int CAgentFolder::CompareItems2(UInt32 index1, UInt32 index2, PROPID propID, Int
 Z7_COM7F_IMF2(Int32, CAgentFolder::CompareItems(UInt32 index1, UInt32 index2, PROPID propID,
                                                 Int32 propIsRaw)) {
     try {
+        if (!IsBound() || index1 >= GetNumberOfItems() || index2 >= GetNumberOfItems())
+            return 0;
         if (_proxy2)
             return CompareItems2(index1, index2, propID, propIsRaw);
 
@@ -821,6 +835,8 @@ HRESULT CAgentFolder::BindToAltStreams_Internal(unsigned proxyDirIndex,
 Z7_COM7F_IMF(CAgentFolder::BindToAltStreams(UInt32 index, IFolderFolder **resultFolder)) {
     COM_TRY_BEGIN
     *resultFolder = nullptr;
+    if (!IsBound())
+        return E_FAIL;
     if (!_proxy2)
         return S_OK;
     if (_proxy2->IsAltDir(_proxyDirIndex))
@@ -860,6 +876,8 @@ Z7_COM7F_IMF(CAgentFolder::BindToAltStreams(UInt32 index, IFolderFolder **result
 Z7_COM7F_IMF(CAgentFolder::BindToAltStreams(const wchar_t *name, IFolderFolder **resultFolder)) {
     COM_TRY_BEGIN
     *resultFolder = nullptr;
+    if (!IsBound())
+        return E_FAIL;
     if (!_proxy2)
         return S_OK;
     if (_proxy2->IsAltDir(_proxyDirIndex))
@@ -881,6 +899,8 @@ Z7_COM7F_IMF(CAgentFolder::BindToAltStreams(const wchar_t *name, IFolderFolder *
 
 Z7_COM7F_IMF(CAgentFolder::AreAltStreamsSupported(UInt32 index, Int32 *isSupported)) {
     *isSupported = BoolToInt(false);
+    if (!IsBound())
+        return E_FAIL;
     if (!_proxy2)
         return S_OK;
     if (_proxy2->IsAltDir(_proxyDirIndex))
@@ -940,6 +960,9 @@ Z7_COM7F_IMF(CAgentFolder::BindToParentFolder(IFolderFolder **resultFolder)) {
 }
 
 Z7_COM7F_IMF(CAgentFolder::GetStream(UInt32 index, ISequentialInStream **stream)) {
+    *stream = nullptr;
+    if (!IsBound() || index >= GetNumberOfItems())
+        return E_INVALIDARG;
     Z7_DECL_CMyComPtr_QI_FROM(IInArchiveGetStream, getStream, _agentSpec->GetArchive());
     if (!getStream)
         return S_OK;
@@ -1286,24 +1309,26 @@ Z7_COM7F_IMF(CAgentFolder::GetRawPropInfo(UInt32 index, BSTR *name, PROPID *prop
 
 Z7_COM7F_IMF(CAgentFolder::GetRawProp(UInt32 index, PROPID propID, const void **data,
                                       UInt32 *dataSize, UInt32 *propType)) {
+    *data = nullptr;
+    *dataSize = 0;
+    *propType = 0;
+    if (!IsBound() || index >= GetNumberOfItems())
+        return E_INVALIDARG;
     CMyComPtr<IInArchive> archive = _agentSpec ? _agentSpec->GetArchive() : nullptr;
     CMyComPtr<IArchiveGetRawProps> rawProps;
     if (archive)
         archive.QueryInterface(IID_IArchiveGetRawProps, &rawProps);
     if (rawProps) {
-        if (!IsBound() || index >= GetNumberOfItems())
-            return E_INVALIDARG;
         const int arcIndex = GetRealIndex(index);
         if (arcIndex >= 0)
             return rawProps->GetRawProp(unsigned(arcIndex), propID, data, dataSize, propType);
     }
-    *data = nullptr;
-    *dataSize = 0;
-    *propType = 0;
     return S_OK;
 }
 
 int CAgentFolder::GetRealIndex(unsigned index) const {
+    if (!IsBound() || index >= GetNumberOfItems())
+        return -1;
     if (!_flatMode) {
         if (_proxy2)
             return (int)_proxy2->GetRealIndex(_proxyDirIndex, index);
@@ -1565,6 +1590,9 @@ Z7_COM7F_IMF(CAgent::ReOpen(IArchiveOpenCallback *openArchiveCallback)) {
 
 Z7_COM7F_IMF(CAgent::Close()) {
     COM_TRY_BEGIN
+    // Close can release handler-owned names before ReOpen replaces the proxies.
+    // Retire every published folder, including if closing a later volume fails.
+    ++_proxyGeneration;
     return _archiveLink.Close();
     COM_TRY_END
 }
@@ -1694,6 +1722,10 @@ HRESULT CAgent::ReadItems() {
 Z7_COM7F_IMF(CAgent::BindToRootFolder(IFolderFolder **resultFolder)) {
     COM_TRY_BEGIN
     *resultFolder = NULL;
+    // Source initial-open failures can publish an empty diagnostic folder.
+    // A previously closed/reopened owner must not revive retired proxies.
+    if (!_archiveLink.IsOpen && _proxyGeneration.load() != 0)
+        return E_FAIL;
     if (!_archiveLink.Arcs.IsEmpty()) {
         RINOK(ReadItems())
     }
@@ -1764,6 +1796,9 @@ Z7_COM7F_IMF(CAgentFolder::Extract(const UInt32 *indices, UInt32 numItems, Int32
                                    const wchar_t *path, Int32 testMode,
                                    IFolderArchiveExtractCallback *extractCallback2)) {
     COM_TRY_BEGIN
+
+    if (!IsBound())
+        return E_FAIL;
 
     if (!testMode && _agentSpec->_isHashHandler)
         return E_NOTIMPL;

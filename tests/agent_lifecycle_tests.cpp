@@ -50,6 +50,55 @@ class AgentLifecycleTests final : public QObject, protected ArchiveBackendTestSu
     Q_OBJECT
     QString engine_;
 
+    static void verifyRetiredFolder(IFolderFolder &folder, IArchiveFolder &extract,
+                                    IFolderOperations &operations, bool compareItems) {
+        UInt32 count = 99;
+        QVERIFY(FAILED(folder.GetNumberOfItems(&count)));
+        QCOMPARE(count, 0u);
+        CMyComPtr<IFolderGetItemName> names;
+        QCOMPARE(folder.QueryInterface(IID_IFolderGetItemName, (void **)&names), S_OK);
+        const wchar_t *name = L"old name";
+        unsigned length = 8;
+        QVERIFY(FAILED(names->GetItemName(0, &name, &length)));
+        QVERIFY(!name);
+        QCOMPARE(length, 0u);
+        QVERIFY(FAILED(names->GetItemPrefix(0, &name, &length)));
+        QVERIFY(!name);
+        QCOMPARE(names->GetItemSize(0), UInt64(0));
+        if (compareItems) {
+            CMyComPtr<IFolderCompare> compare;
+            QCOMPARE(folder.QueryInterface(IID_IFolderCompare, (void **)&compare), S_OK);
+            QCOMPARE(compare->CompareItems(0, 1, kpidName, 0), Int32(0));
+        }
+        CMyComPtr<IFolderAltStreams> streams;
+        QCOMPARE(folder.QueryInterface(IID_IFolderAltStreams, (void **)&streams), S_OK);
+        Int32 supported = 1;
+        QVERIFY(FAILED(streams->AreAltStreamsSupported(UInt32(-1), &supported)));
+        QCOMPARE(supported, Int32(0));
+        CMyComPtr<IFolderFolder> alternate;
+        QVERIFY(FAILED(streams->BindToAltStreams(UInt32(-1), &alternate)));
+        QVERIFY(!alternate);
+        QVERIFY(FAILED(streams->BindToAltStreams(L"", &alternate)));
+        QVERIFY(!alternate);
+        CMyComPtr<IInArchiveGetStream> itemStreams;
+        QCOMPARE(folder.QueryInterface(IID_IInArchiveGetStream, (void **)&itemStreams), S_OK);
+        CMyComPtr<ISequentialInStream> stream;
+        QVERIFY(FAILED(itemStreams->GetStream(0, &stream)));
+        QVERIFY(!stream);
+        const UInt32 index = 0;
+        QVERIFY(FAILED(extract.Extract(&index, 1, 0, 0, NExtract::NPathMode::kNoPaths,
+                                       NExtract::NOverwriteMode::kAsk, nullptr, 1, nullptr)));
+        QVERIFY(FAILED(operations.CreateFolder(L"must not be created", nullptr)));
+        NWindows::NCOM::CPropVariant comment(L"must not be written");
+        QVERIFY(FAILED(operations.SetProperty(0, kpidComment, &comment, nullptr)));
+        CMyComPtr<IArchiveGetRawProps> raw;
+        QCOMPARE(folder.QueryInterface(IID_IArchiveGetRawProps, (void **)&raw), S_OK);
+        const void *data = nullptr;
+        UInt32 size = 0, type = 0;
+        QVERIFY(FAILED(raw->GetRawProp(0, kpidCRC, &data, &size, &type)));
+        QVERIFY(!data);
+    }
+
     HRESULT run(ArchiveBackend &backend, const std::function<HRESULT()> &operation) {
         std::atomic<bool> finished{false};
         HRESULT result = E_FAIL;
@@ -100,6 +149,7 @@ class AgentLifecycleTests final : public QObject, protected ArchiveBackendTestSu
         const QString input = temporary.filePath(directory + '/' + name);
         const QByteArray payload("unchanged\0binary", 16);
         writeFile(input, payload);
+        writeFile(temporary.filePath(directory + "/other.txt"), QByteArray("control"));
         const QString path = temporary.filePath(QStringLiteral("архив 空.") + format);
         QProcess process;
         process.setWorkingDirectory(temporary.path());
@@ -135,6 +185,16 @@ class AgentLifecycleTests final : public QObject, protected ArchiveBackendTestSu
         QCOMPARE(root->BindToFolder(nativeDirectory.c_str(), &child), S_OK);
         QVERIFY(child);
         QCOMPARE(child->LoadItems(), S_OK);
+        CMyComPtr<IArchiveFolder> rootExtract, childExtract;
+        QCOMPARE(root.QueryInterface(IID_IArchiveFolder, &rootExtract), S_OK);
+        QCOMPARE(child.QueryInterface(IID_IArchiveFolder, &childExtract), S_OK);
+        CMyComPtr<IFolderOperations> rootOperations, childOperations;
+        QCOMPARE(root.QueryInterface(IID_IFolderOperations, &rootOperations), S_OK);
+        QCOMPARE(child.QueryInterface(IID_IFolderOperations, &childOperations), S_OK);
+        CMyComPtr<IFolderCompare> compare;
+        QCOMPARE(child.QueryInterface(IID_IFolderCompare, &compare), S_OK);
+        QVERIFY(compare->CompareItems(0, 1, kpidName, 0) != 0);
+        compare.Release();
         CMyComPtr<IGetFolderArcProps> getter;
         CMyComPtr<IFolderArcProps> properties;
         CMyComPtr<IInFolderArchive> archive;
@@ -150,6 +210,15 @@ class AgentLifecycleTests final : public QObject, protected ArchiveBackendTestSu
         // the original LoadItems refuses a closed link before reading either.
         QCOMPARE(root->LoadItems(), E_FAIL);
         QCOMPARE(child->LoadItems(), E_FAIL);
+        verifyRetiredFolder(*root, *rootExtract, *rootOperations, false);
+        if (QTest::currentTestFailed())
+            return;
+        verifyRetiredFolder(*child, *childExtract, *childOperations, true);
+        if (QTest::currentTestFailed())
+            return;
+        CMyComPtr<IFolderFolder> closedRoot;
+        QVERIFY(FAILED(archive->BindToRootFolder(&closedRoot)));
+        QVERIFY(!closedRoot);
         QVERIFY(QFile::remove(path));
         const HRESULT failure = run(backend, [&] { return archive->ReOpen(nullptr); });
         QVERIFY(failure != S_OK);
@@ -157,6 +226,12 @@ class AgentLifecycleTests final : public QObject, protected ArchiveBackendTestSu
         // must short-circuit before consulting those invalidated pointers.
         QCOMPARE(root->LoadItems(), E_FAIL);
         QCOMPARE(child->LoadItems(), E_FAIL);
+        verifyRetiredFolder(*root, *rootExtract, *rootOperations, false);
+        if (QTest::currentTestFailed())
+            return;
+        verifyRetiredFolder(*child, *childExtract, *childOperations, true);
+        if (QTest::currentTestFailed())
+            return;
         NWindows::NCOM::CPropVariant stalePath;
         QCOMPARE(root->GetFolderProperty(kpidPath, &stalePath), E_FAIL);
         QCOMPARE(child->GetFolderProperty(kpidPath, &stalePath), E_FAIL);
@@ -170,8 +245,18 @@ class AgentLifecycleTests final : public QObject, protected ArchiveBackendTestSu
         QVERIFY(repaired);
         QCOMPARE(root->GetFolderProperty(kpidPath, &stalePath), E_FAIL);
         QCOMPARE(child->GetFolderProperty(kpidPath, &stalePath), E_FAIL);
+        verifyRetiredFolder(*root, *rootExtract, *rootOperations, false);
+        if (QTest::currentTestFailed())
+            return;
+        verifyRetiredFolder(*child, *childExtract, *childOperations, true);
+        if (QTest::currentTestFailed())
+            return;
         root.Release();
         child.Release();
+        rootExtract.Release();
+        childExtract.Release();
+        rootOperations.Release();
+        childOperations.Release();
         getter.Release();
         mode.Release();
         properties.Release();
@@ -181,9 +266,14 @@ class AgentLifecycleTests final : public QObject, protected ArchiveBackendTestSu
         QCOMPARE(child->LoadItems(), S_OK);
         UInt32 count = 0;
         QCOMPARE(child->GetNumberOfItems(&count), S_OK);
-        QCOMPARE(count, UInt32(1));
+        QCOMPARE(count, UInt32(2));
+        UInt32 payloadIndex = 0;
+        NWindows::NCOM::CPropVariant firstName;
+        QCOMPARE(child->GetProperty(0, kpidName, &firstName), S_OK);
+        if (QString::fromWCharArray(firstName.bstrVal) != name)
+            payloadIndex = 1;
         NWindows::NCOM::CPropVariant size;
-        QCOMPARE(child->GetProperty(0, kpidSize, &size), S_OK);
+        QCOMPARE(child->GetProperty(payloadIndex, kpidSize, &size), S_OK);
         QCOMPARE(size.vt, VARTYPE(VT_UI8));
         QCOMPARE(size.uhVal.QuadPart, UInt64(payload.size()));
         QFile original(input);

@@ -47,3 +47,41 @@ do not alter product layout or key dispatch. Icon widget reports now survive
 temporary fixture cleanup in the regular UI report directory.
 The final `ui_layout` rerun passed on all three platforms after this report-path
 change; current compact large-font widget JSON was reviewed on macOS and Windows.
+
+## Retired interfaces and retained codec catalog
+
+The subsequent lifetime review compared complete Agent close/reopen, proxy,
+binding, extraction and update entry points with the same upstream revision,
+including their panel text, sorting, properties and stream consumers. Upstream
+FileManager releases its old folder interfaces around reopening; the Qt bridge
+can retain them across rollback and asynchronous publication. The adapted owner
+must therefore reject access through every retired interface.
+
+Close now retires all published folders before releasing handler-owned names.
+Fast name, prefix, size, comparison, ADS and stream entry points check the existing
+binding generation, as do extraction and update entry points that previously
+touched stale state before their common guard. Closed owners cannot publish a
+fresh root backed by retired proxies. The initial-open diagnostic-folder branch
+and its S_FALSE result remain preserved. No upstream proxy walk, sorting rule,
+archive algorithm or dependency is replaced or omitted.
+
+The Qt reopen adapter also retains the archive's original codec catalog instead
+of consulting the backend's replaceable discovery result. The source opener
+already receives its owning CCodecs; the existing Qt overload supplies that same
+ownership boundary. A failing module discovery must not remove native WIM parent
+and stream capabilities from an already open archive.
+
+Expanded behavior regressions cover ZIP/WIM root and child interfaces in normal
+and flat modes after Close, failed ReOpen and successful ReOpen, plus WIM reopen,
+parent hierarchy, ADS support and extracted bytes after failed catalog replacement.
+Before the fixes, all four closed-folder cases remained readable, and WIM reopen
+after catalog replacement failed with E_NOTIMPL.
+
+The application built and all 15 focused archive ownership, property, stream,
+update/extract and interarchive recovery suites passed on macOS arm64, Linux x64
+and Windows x64 with Qt 6.12. Partial AddressSanitizer builds of Agent.cpp,
+ArchiveFolderOut.cpp and the lifecycle suite passed all eight cases on macOS and
+Windows. Qt, codec modules and remaining dependencies were not instrumented.
+Clang's static analyzer reported no findings for Agent.cpp. These checks validate
+the selected lifecycle scenarios; no full gate, opt-in slow suite or visual
+comparison was run for this nonvisual change.

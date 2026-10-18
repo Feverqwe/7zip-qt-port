@@ -196,6 +196,26 @@ class NativeFolderOpeningTests final : public QObject {
         QCOMPARE(opening.Folder->GetNumberOfItems(&listed), S_OK);
         QCOMPARE(listed, count);
         extractToMemory(archive, QByteArray("tree bytes"));
+
+        QCOMPARE(backend.loadCodecCatalog(fixture.filePath("missing module"), version_), E_FAIL);
+        CMyComPtr<IFolderFolder> reopened;
+        QCOMPARE(ReOpenArchiveFolder(*folder, {}, nullptr, &reopened, false, UString()), S_OK);
+        CMyComPtr<IFolderAltStreams> reopenedStreams;
+        QCOMPARE(reopened.QueryInterface(IID_IFolderAltStreams, &reopenedStreams), S_OK);
+        supported = 0;
+        QCOMPARE(reopenedStreams->AreAltStreamsSupported(UInt32(-1), &supported), S_OK);
+        QCOMPARE(supported, Int32(1));
+        raw.Release();
+        QCOMPARE(archive.QueryInterface(IID_IArchiveGetRawProps, &raw), S_OK);
+        hasParent = false;
+        for (UInt32 index = 0; index < count; ++index) {
+            UInt32 parent = 0, type = 0;
+            QCOMPARE(raw->GetParent(index, &parent, &type), S_OK);
+            hasParent |= parent != UInt32(-1);
+            QVERIFY(parent == UInt32(-1) || parent < count);
+        }
+        QVERIFY(hasParent);
+        extractToMemory(archive, QByteArray("tree bytes"));
     }
 
     void nativeWimComparatorUsesTreeNamesSizesAndRawHashes() {

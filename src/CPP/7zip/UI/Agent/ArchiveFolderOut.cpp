@@ -381,6 +381,8 @@ HRESULT CAgentFolder::CopyFrom(Int32 moveMode, const wchar_t *fromFolderPath,
                                const wchar_t *const *itemsPaths, UInt32 numItems,
                                IProgress *progress) throw() {
     COM_TRY_BEGIN
+    if (!IsBound())
+        return E_FAIL;
     {
         RINOK(_agentSpec->SetFiles(fromFolderPath, itemsPaths, numItems))
         return CommonUpdateOperation(AGENT_OP_Uni, (moveMode != 0), NULL,
@@ -394,6 +396,8 @@ Z7_COM7F_IMF(CAgentFolder::UpdateFrom(const wchar_t *fromFolderPath,
                                      const NUpdateArchive::CActionSet &actionSet,
                                      IProgress *progress)) {
     COM_TRY_BEGIN
+    if (!IsBound())
+        return E_FAIL;
     RINOK(_agentSpec->SetFiles(fromFolderPath, itemsPaths, numItems))
     return CommonUpdateOperation(AGENT_OP_Uni, false, NULL, &actionSet, NULL, 0, progress);
     COM_TRY_END
@@ -404,6 +408,8 @@ Z7_COM7F_IMF(CAgentFolder::UpdateFromPaths(const wchar_t *const *itemsPaths, UIn
                                           NWildcard::ECensorPathMode pathMode,
                                           IProgress *progress)) {
     COM_TRY_BEGIN
+    if (!IsBound())
+        return E_FAIL;
     RINOK(_agentSpec->SetFiles(L"", itemsPaths, numItems))
     const auto previous = _agentSpec->GuiPathMode;
     _agentSpec->GuiPathMode = pathMode;
@@ -430,6 +436,8 @@ Z7_COM7F_IMF(CAgentFolder::Delete(const UInt32 *indices, UInt32 numItems, IProgr
 
 Z7_COM7F_IMF(CAgentFolder::CreateFolder(const wchar_t *name, IProgress *progress)) {
     COM_TRY_BEGIN
+    if (!IsBound())
+        return E_FAIL;
     if (_isAltStreamFolder)
         return E_NOTIMPL;
     if (_proxy2) {
@@ -452,6 +460,8 @@ Z7_COM7F_IMF(CAgentFolder::Rename(UInt32 index, const wchar_t *newName, IProgres
 Z7_COM7F_IMF(CAgentFolder::SetProperty(UInt32 index, PROPID propID, const PROPVARIANT *value,
                                        IProgress *progress)) {
     COM_TRY_BEGIN
+    if (!IsBound())
+        return E_FAIL;
     if (propID != kpidComment || value->vt != VT_BSTR)
         return E_NOTIMPL;
     if (!_agentSpec ||
