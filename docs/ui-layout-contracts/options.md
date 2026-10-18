@@ -123,8 +123,9 @@ uses Qt text wrapping for the original long source words at compact width.
 Reachability of all scrolling Add controls, current message forms and source
 accelerator/buddy review form the accepted P1-14.2 scope. These reports do not
 establish rendered Windows parity.
-Progress reports cover EN/RU760×450/640×380 paused/background state and retain
-source two-column grouping. Properties reports cover540×360/360×240 with the
+Progress reports cover EN/RU760×450/640×380 paused/background state with the
+approved overview/Details grouping; source values and control states remain.
+Properties reports cover540×360/360×240 with the
 existing table, rows and selection. Built-in viewer/editor reports cover760×560/
 420×300 while preserving pending content; editable text is omitted from JSON.
 

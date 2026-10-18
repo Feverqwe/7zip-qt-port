@@ -8,8 +8,11 @@
 #include <QMessageBox>
 #include <QProgressBar>
 #include <QPushButton>
+#include <QScrollArea>
+#include <QScrollBar>
 #include <QTest>
 #include <QTimer>
+#include <QToolButton>
 #include <QTreeWidget>
 
 namespace {
@@ -281,15 +284,27 @@ class ProgressDialogTests : public QObject {
         if (errors)
             QTRY_VERIFY(messages(dialog)->isVisible());
         QApplication::processEvents();
-        QCOMPARE(dialog.size(), size);
+        QCOMPARE(dialog.size(), size.expandedTo(dialog.minimumSizeHint()));
         const QString tag =
             QString("progress-dialog-%1-%2-%3").arg(size.width()).arg(compression).arg(errors);
-        QVERIFY(UiInspection::writeReport(dialog, tag));
-        for (const QWidget *widget :
-             dialog.findChildren<QWidget *>(QString(), Qt::FindDirectChildrenOnly)) {
-            if (!widget->isVisible())
+        QVERIFY(UiInspection::writeReport(dialog, tag + "-collapsed"));
+        auto *details = dialog.findChild<QToolButton *>("progressDetailsToggle");
+        auto *total = dialog.findChild<QLabel *>("IDT_PROGRESS_TOTAL_VAL");
+        QVERIFY(!total->isVisible());
+        details->click();
+        QApplication::processEvents();
+        auto *scroll = dialog.findChild<QScrollArea *>("progressControlsScroll");
+        for (QWidget *widget : dialog.findChildren<QWidget *>()) {
+            if (!widget->isVisible() || (widget->objectName().isEmpty()))
                 continue;
+            if (!qobject_cast<const QLabel *>(widget) && !qobject_cast<const QPushButton *>(widget))
+                continue;
+            scroll->ensureWidgetVisible(widget);
+            QApplication::processEvents();
             QVERIFY2(UiInspection::fullyVisible(*widget, dialog), qPrintable(widget->objectName()));
+            if (scroll->isAncestorOf(widget) && scroll->verticalScrollBar()->isVisible())
+                QVERIFY2(UiInspection::separate(*widget, *scroll->verticalScrollBar(), dialog),
+                         qPrintable(widget->objectName()));
             if (qobject_cast<const QLabel *>(widget) &&
                 !text(dialog, qPrintable(widget->objectName())).isEmpty())
                 QVERIFY2(UiInspection::labelFits(*widget), qPrintable(widget->objectName()));
@@ -302,20 +317,31 @@ class ProgressDialogTests : public QObject {
         }
         auto *bar = dialog.findChild<QProgressBar *>("IDC_PROGRESS1");
         auto *file = dialog.findChild<QLabel *>("IDT_PROGRESS_FILE_NAME");
-        QVERIFY(file->geometry().bottom() < bar->geometry().top());
+        QVERIFY(bar->geometry().bottom() < file->geometry().top());
         auto *background = dialog.findChild<QPushButton *>("IDB_PROGRESS_BACKGROUND");
         auto *cancel = dialog.findChild<QPushButton *>("IDCANCEL");
         QVERIFY(background->geometry().right() < pause(dialog)->geometry().left());
         QVERIFY(pause(dialog)->geometry().right() < cancel->geometry().left());
-        QVERIFY(messages(dialog)->geometry().bottom() < cancel->geometry().top());
+        if (errors)
+            QVERIFY(UiInspection::bounds(*messages(dialog), dialog).bottom() <
+                    UiInspection::bounds(*cancel, dialog).top());
         QCOMPARE(dialog.findChild<QLabel *>("IDT_PROGRESS_PACKED")->isVisible(), compression);
         QCOMPARE(dialog.findChild<QLabel *>("IDT_PROGRESS_RATIO")->isVisible(), compression);
         QCOMPARE(dialog.findChild<QLabel *>("IDT_PROGRESS_ERRORS")->isVisible(), errors);
+        QVERIFY(UiInspection::writeReport(dialog, tag));
         pause(dialog)->click();
         QCOMPARE(pause(dialog)->text(), QStringLiteral("&Continue"));
-        QVERIFY(pause(dialog)->sizeHint().width() <= pause(dialog)->width());
+        QTRY_VERIFY(pause(dialog)->sizeHint().width() <= pause(dialog)->width());
         QVERIFY(dialog.windowTitle().startsWith(QStringLiteral("Paused ")));
         QVERIFY(UiInspection::writeReport(dialog, tag + "-paused"));
+        details->click();
+        QVERIFY(!total->isVisible());
+        pause(dialog)->click();
+        dialog.Sync.Set_NumBytesTotal(2048);
+        QTRY_COMPARE(total->text(), QString("2048"));
+        details->click();
+        QVERIFY(total->isVisible());
+        QCOMPARE(total->text(), QString("2048"));
     }
 };
 

@@ -469,123 +469,14 @@ bool CProgressDialog::OnInit() {
     return true;
 }
 
-static const UINT kIDs[] = {IDT_PROGRESS_ELAPSED,
-                            IDT_PROGRESS_ELAPSED_VAL,
-                            IDT_PROGRESS_REMAINING,
-                            IDT_PROGRESS_REMAINING_VAL,
-                            IDT_PROGRESS_FILES,
-                            IDT_PROGRESS_FILES_VAL,
-                            0,
-                            IDT_PROGRESS_FILES_TOTAL,
-                            IDT_PROGRESS_ERRORS,
-                            IDT_PROGRESS_ERRORS_VAL,
-                            IDT_PROGRESS_TOTAL,
-                            IDT_PROGRESS_TOTAL_VAL,
-                            IDT_PROGRESS_SPEED,
-                            IDT_PROGRESS_SPEED_VAL,
-                            IDT_PROGRESS_PROCESSED,
-                            IDT_PROGRESS_PROCESSED_VAL,
-                            IDT_PROGRESS_PACKED,
-                            IDT_PROGRESS_PACKED_VAL,
-                            IDT_PROGRESS_RATIO,
-                            IDT_PROGRESS_RATIO_VAL};
-
-bool CProgressDialog::OnSize(int xSize, int ySize) {
-    int sY;
-    int sStep;
-    int mx, my;
-    {
-        CQtProgressRect r;
-        GetClientRectOfItem(IDT_PROGRESS_ELAPSED, r);
-        mx = r.left;
-        my = r.top;
-        sY = r.bottom - r.top;
-        GetClientRectOfItem(IDT_PROGRESS_REMAINING, r);
-        sStep = r.top - my;
-    }
-    update();
-    const int xSizeClient = xSize - mx * 2;
-    {
-        unsigned i;
-        for (i = 800; i > 40; i = i * 9 / 10)
-            if (Units_To_Pixels_X((int)i) <= xSizeClient)
-                break;
-        _numReduceSymbols = i / 4;
-    }
-    int yPos = ySize - my - _buttonSizeY;
-    ChangeSubWindowSizeX(GetItem(IDT_PROGRESS_STATUS), xSize - mx * 2);
-    ChangeSubWindowSizeX(GetItem(IDT_PROGRESS_FILE_NAME), xSize - mx * 2);
-    ChangeSubWindowSizeX(GetItem(IDC_PROGRESS1), xSize - mx * 2);
-    int bSizeX = _buttonSizeX;
-    int mx2 = mx;
-    for (;; mx2--) {
-        const int bSize2 = bSizeX * 3 + mx2 * 2;
-        if (bSize2 <= xSizeClient)
+bool CProgressDialog::OnSize(int /*xSize*/, int /*ySize*/) {
+    // Qt layouts own geometry; retain the source width-to-string reduction.
+    const int xSizeClient = GetItem(IDC_PROGRESS1)->width();
+    unsigned i;
+    for (i = 800; i > 40; i = i * 9 / 10)
+        if (Units_To_Pixels_X((int)i) <= xSizeClient)
             break;
-        if (mx2 < 5) {
-            bSizeX = (xSizeClient - mx2 * 2) / 3;
-            break;
-        }
-    }
-    if (bSizeX < 2)
-        bSizeX = 2;
-    {
-        CQtProgressRect r;
-        GetClientRectOfItem(IDL_PROGRESS_MESSAGES, r);
-        const int y = r.top;
-        int ySize2 = yPos - my - y;
-        const int kMinYSize = _buttonSizeY + _buttonSizeY * 3 / 4;
-        int xx = xSize - mx * 2;
-        if (ySize2 < kMinYSize) {
-            ySize2 = kMinYSize;
-            if (xx > bSizeX * 2)
-                xx -= bSizeX;
-        }
-        _messageList.Move(mx, y, xx, ySize2);
-    }
-    {
-        int xPos = xSize - mx;
-        xPos -= bSizeX;
-        MoveItem(2, xPos, yPos, bSizeX, _buttonSizeY);
-        xPos -= (mx2 + bSizeX);
-        MoveItem(IDB_PAUSE, xPos, yPos, bSizeX, _buttonSizeY);
-        xPos -= (mx2 + bSizeX);
-        MoveItem(IDB_PROGRESS_BACKGROUND, xPos, yPos, bSizeX, _buttonSizeY);
-    }
-    int valueSize;
-    int labelSize;
-    int padSize;
-    labelSize = Units_To_Pixels_X(MY_PROGRESS_LABEL_UNITS_MIN);
-    valueSize = Units_To_Pixels_X(MY_PROGRESS_VAL_UNITS);
-    padSize = Units_To_Pixels_X(MY_PROGRESS_PAD_UNITS);
-    const int requiredSize = (labelSize + valueSize) * 2 + padSize;
-    int gSize;
-    {
-        if (requiredSize < xSizeClient) {
-            const int incr = (xSizeClient - requiredSize) / 3;
-            labelSize += incr;
-        } else
-            labelSize = (xSizeClient - valueSize * 2 - padSize) / 2;
-        if (labelSize < 0)
-            labelSize = 0;
-        gSize = labelSize + valueSize;
-        padSize = xSizeClient - gSize * 2;
-    }
-    labelSize = gSize - valueSize;
-    yPos = my;
-    for (unsigned i = 0; i < Z7_ARRAY_SIZE(kIDs); i += 2) {
-        int x = mx;
-        const unsigned kNumColumn1Items = 5 * 2;
-        if (i >= kNumColumn1Items) {
-            if (i == kNumColumn1Items)
-                yPos = my;
-            x = mx + gSize + padSize;
-        }
-        if (kIDs[i] != 0)
-            MoveItem(kIDs[i], x, yPos, labelSize, sY);
-        MoveItem(kIDs[i + 1], x + labelSize, yPos, valueSize, sY);
-        yPos += sStep;
-    }
+    _numReduceSymbols = i / 4;
     return false;
 }
 
@@ -1106,9 +997,10 @@ bool CProgressDialog::OnExternalCloseMessage() {
     UpdateStatInfo(true);
     SetItemText(IDCANCEL, LangString(IDS_CLOSE));
     QtBindLangText(GetItem(IDCANCEL), IDS_CLOSE);
-    SetDefaultButton(IDCANCEL);
     HideItem(IDB_PROGRESS_BACKGROUND);
     HideItem(IDB_PAUSE);
+    // QDialogButtonBox rebuilds its focus chain when action buttons disappear.
+    SetDefaultButton(IDCANCEL);
     ProcessWasFinished_GuiVirt();
     bool thereAreMessages;
     CProgressFinalMessage fm;

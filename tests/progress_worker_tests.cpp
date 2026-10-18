@@ -206,13 +206,14 @@ class ProgressWorkerTests : public QObject {
                              .arg(close->hasFocus())
                              .arg(worker.focusWidget() ? worker.focusWidget()->objectName()
                                                        : QString("none"));
-            geometry = worker.size() == size && UiInspection::fullyVisible(*close, worker) &&
+            const bool report = UiInspection::writeReport(
+                worker, QString("progress-worker-%1-errors-close").arg(size.width()));
+            geometry = worker.size() == size.expandedTo(worker.minimumSizeHint()) &&
+                       UiInspection::fullyVisible(*close, worker) &&
                        close->sizeHint().width() <= close->width() &&
                        !worker.findChild<QPushButton *>("IDB_PROGRESS_BACKGROUND")->isVisible() &&
                        !worker.findChild<QPushButton *>("IDB_PAUSE")->isVisible() &&
-                       worker.findChild<QLabel *>("IDT_PROGRESS_ERRORS")->isVisible() &&
-                       UiInspection::writeReport(
-                           worker, QString("progress-worker-%1-errors-close").arg(size.width()));
+                       worker.findChild<QLabel *>("IDT_PROGRESS_ERRORS")->isVisible() && report;
             QTest::keyClick(close, Qt::Key_Return);
         });
         timer.start(10);
@@ -285,5 +286,6 @@ class ProgressWorkerTests : public QObject {
     }
 };
 
-QTEST_MAIN(ProgressWorkerTests)
+#include "review_test_main.h"
+SEVENZIP_UI_TEST_MAIN(ProgressWorkerTests)
 #include "progress_worker_tests.moc"

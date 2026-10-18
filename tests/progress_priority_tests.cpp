@@ -53,7 +53,7 @@ class ProgressPriorityTests : public QObject {
         QCOMPARE(background->text(), QStringLiteral("&Foreground"));
         QVERIFY(dialog.windowTitle().contains(QStringLiteral("Background")));
         QVERIFY(main.windowTitle().contains(QStringLiteral("Background")));
-        QVERIFY(background->sizeHint().width() <= background->width());
+        QTRY_VERIFY(background->sizeHint().width() <= background->width());
         QVERIFY(UiInspection::fullyVisible(*background, dialog));
         QVERIFY(UiInspection::writeReport(
             dialog, QString("progress-priority-%1-background").arg(size.width())));

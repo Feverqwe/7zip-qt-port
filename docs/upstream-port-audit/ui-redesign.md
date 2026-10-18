@@ -475,3 +475,64 @@ Windows interactive и Linux: те же 12 focused suites PASS; run
 Full/slow, VoiceOver, физические клавиатуры, новая sheet-модальность и сравнение
 с отрисованным оригинальным Windows 7zFM не проверялись. Остальные семейства
 и общая приёмка редизайна остаются в active goal.
+
+## Итерация 10: окно выполнения
+
+Источник: https://github.com/ip7z/7zip.git, baseline
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`; текущий upstream
+`9128b80e3a471108678e2b3ec3c985861c8d7b0f`.
+Сопоставлены `CPP/7zip/UI/FileManager/ProgressDialog2.cpp/.h`,
+`ProgressDialog2.rc/ProgressDialog2a.rc/ProgressDialog2Res.h`, GuiCommon и Qt
+progress controls/transport/wait services. Рассмотрены callers CProgressThreadVirt,
+archive operation и filesystem/volume worker bridges, source statistic/converter,
+messages/copy, Pause/priority, cancel question, completion and taskbar branches.
+
+В Qt presentation статус, bar и двухстрочный путь предшествуют основным
+счётчикам времени/файлов. Source file-total находится рядом с обработанным числом;
+errors label/value и numbered message list остаются вне Details. Раскрываемый
+блок содержит все исходные total/speed/processed/packed/ratio controls. Скрытые
+поля продолжают получать source updates; ShowCompressionInfo сохраняет свои
+условия. Значения выровнены справа. EN/RU Details использует application catalog.
+
+Согласованная замена геометрии: общий dialog layout, нативный QDialogButtonBox,
+scrollable overview/details и отдельный растягиваемый error list. Компактная
+форма сохраняет footer; начальная высота следует collapsed content. Отдельный
+gutter защищает значения от overlay scrollbar. Source OnSize сохраняет алгоритм
+выбора _numReduceSymbols по доступной ширине; прямоугольники и DLU-позиционирование
+заменены layouts. Повторная source-сверка подтверждает, что statistic formatting,
+progress converter/cache, source messages/full clipboard, синхронизация, workers,
+приоритет, pause/stop, final messages и taskbar не переписаны.
+
+Native проверка выявила Qt-специфичную потерю Close focus: скрытие ActionRole
+кнопок перестраивает QDialogButtonBox focus chain. SetDefaultButton теперь идёт
+после HideItem Background/Pause, до прежнего completion callback. Это изменение
+только presentation-порядка; modal results и source finish/cancel branches
+сохранены. Исходная worker-регрессия воспроизводила потерю фокуса до исправления.
+Scroll viewport не получает отдельную остановку Tab; Details и сообщения
+остаются доступны с клавиатуры. Повторная активация не принуждает новый фокус.
+
+Geometry scenario расширен проверкой достижимости каждого раскрытого поля,
+неперекрытия scrollbar, обновления скрытого счётчика и его значения после открытия.
+Существующие suites сохраняют реальные success/failure/cancel, Unicode archive,
+pause/background failure и finished-error Close. Native fitting ожидает Qt layout
+events вместо проверки прежнего размера кнопки сразу после изменения подписи.
+Worker geometry допускает minimumSizeHint и пишет report также при ошибке фокуса.
+Language/worker review producers теперь применяют запрошенную тему; проверяется
+фактический colorScheme в JSON. Contract сохраняет mapping всех 26 source IDs и
+24 state reports; координаты скрытого списка и свернутых Details не закрепляются.
+Тела новых UI-блоков рассмотрены как единое построение presentation в существующем
+адаптере; functional owner или второй form engine не добавлен.
+
+macOS: приложение и прямые потребители собраны; 15 focused suites PASS.
+Cocoa EN/RU, collapsed/expanded, paused и finished-error Close в light/dark —
+36/36 test functions PASS; фактические темы подтверждены metadata, текущие JSON
+и снимки просмотрены в прежнем `build/dev/ui-redesign-review`.
+Linux — 13 focused suites PASS; Windows interactive — 12 PASS (платформенные
+наборы различаются). Итоговый run `20261018T170337Z-a16ca9fe`, включая source
+26-ID/24-report contract. Первоначальные focus и hidden-list relation failures
+устранены и перепроверены. Current/build/compiler cache сохранены; obsolete
+payload-каталогов нет, после проверок host D: имеет около 647 GiB свободно.
+Полный gate и slow suites не требуются этим presentation-изменением и не запускались.
+VoiceOver, физические клавиатуры, новый sheet behavior и отрисованный оригинальный
+Windows reference не проверялись. Benchmark, настройки, остальные формы и общая
+приёмка редизайна остаются в active goal.

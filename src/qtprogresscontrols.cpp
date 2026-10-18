@@ -2,16 +2,25 @@
 #include "7zip/UI/FileManager/ProgressDialog2Res.h"
 #include "7zip/UI/FileManager/resourceGui.h"
 #include "CPP/7zip/UI/FileManager/ViewSettings.h"
+#include "qtdialoglayout.h"
 #include "qtdialogscreenservices.h"
 #include "qtdialogunits.h"
+#include "qtdisclosure.h"
+#include "qtlangcontrols.h"
 #include "qtlistview.h"
 #include <QApplication>
 #include <QClipboard>
+#include <QDialogButtonBox>
+#include <QGridLayout>
 #include <QLabel>
 #include <QMessageBox>
 #include <QProgressBar>
 #include <QPushButton>
 #include <QScreen>
+#include <QScrollArea>
+#include <QStyle>
+#include <QToolButton>
+#include <QVBoxLayout>
 #include <cmath>
 
 namespace {
@@ -50,11 +59,8 @@ int CQtProgressListView::GetNextSelectedItem(int index) const {
 }
 int CQtProgressListView::GetItemCount() const { return _view->topLevelItemCount(); }
 
-void CQtProgressDialog::AddControl(unsigned id, const char *name, QWidget *widget, int x, int y,
-                                   int width, int height) {
+void CQtProgressDialog::AddControl(unsigned id, const char *name, QWidget *widget) {
     widget->setObjectName(QString::fromLatin1(name));
-    widget->setGeometry(int(std::round(x * _unitX)), int(std::round(y * _unitY)),
-                        int(std::round(width * _unitX)), int(std::round(height * _unitY)));
     _controls.insert(id, widget);
 }
 
@@ -64,64 +70,140 @@ CQtProgressDialog::CQtProgressDialog(QWidget *parent) : QDialog(parent) {
     setObjectName("progressDialog");
     const QtDialogUnits units(font());
     _unitX = units.horizontalScale();
-    _unitY = units.verticalScale();
     _clock.start();
-    auto addLabel = [this](unsigned id, const char *name, const QString &text, int x, int y,
-                           int width, int height, bool right) {
+    auto addLabel = [this](unsigned id, const char *name, const QString &text, bool right) {
         auto *label = new QLabel(text, this);
         label->setTextFormat(Qt::PlainText);
+        label->setMinimumHeight(label->fontMetrics().height());
         label->setAlignment((right ? Qt::AlignRight : Qt::AlignLeft) | Qt::AlignTop);
-        AddControl(id, name, label, x, y, width, height);
+        AddControl(id, name, label);
     };
-#define LABEL(id, text, x, y) addLabel(id, #id, QStringLiteral(text), x, y, 90, 8, false)
-    LABEL(IDT_PROGRESS_ELAPSED, "Elapsed time:", 8, 8);
-    LABEL(IDT_PROGRESS_REMAINING, "Remaining time:", 8, 19);
-    LABEL(IDT_PROGRESS_FILES, "Files:", 8, 30);
-    LABEL(IDT_PROGRESS_ERRORS, "Errors:", 8, 52);
-    LABEL(IDT_PROGRESS_TOTAL, "Total size:", 206, 8);
-    LABEL(IDT_PROGRESS_SPEED, "Speed:", 206, 19);
-    LABEL(IDT_PROGRESS_PROCESSED, "Processed:", 206, 30);
-    LABEL(IDT_PROGRESS_PACKED, "Compressed size:", 206, 41);
-    LABEL(IDT_PROGRESS_RATIO, "Compression ratio:", 206, 52);
+#define LABEL(id, text) addLabel(id, #id, QStringLiteral(text), false)
+    LABEL(IDT_PROGRESS_ELAPSED, "Elapsed time:");
+    LABEL(IDT_PROGRESS_REMAINING, "Remaining time:");
+    LABEL(IDT_PROGRESS_FILES, "Files:");
+    LABEL(IDT_PROGRESS_ERRORS, "Errors:");
+    LABEL(IDT_PROGRESS_TOTAL, "Total size:");
+    LABEL(IDT_PROGRESS_SPEED, "Speed:");
+    LABEL(IDT_PROGRESS_PROCESSED, "Processed:");
+    LABEL(IDT_PROGRESS_PACKED, "Compressed size:");
+    LABEL(IDT_PROGRESS_RATIO, "Compression ratio:");
 #undef LABEL
-#define VALUE(id, x, y) addLabel(id, #id, QString(), x, y, 72, 8, true)
-    VALUE(IDT_PROGRESS_ELAPSED_VAL, 98, 8);
-    VALUE(IDT_PROGRESS_REMAINING_VAL, 98, 19);
-    VALUE(IDT_PROGRESS_FILES_VAL, 98, 30);
-    VALUE(IDT_PROGRESS_FILES_TOTAL, 98, 41);
-    VALUE(IDT_PROGRESS_ERRORS_VAL, 98, 52);
-    VALUE(IDT_PROGRESS_TOTAL_VAL, 296, 8);
-    VALUE(IDT_PROGRESS_SPEED_VAL, 296, 19);
-    VALUE(IDT_PROGRESS_PROCESSED_VAL, 296, 30);
-    VALUE(IDT_PROGRESS_PACKED_VAL, 296, 41);
-    VALUE(IDT_PROGRESS_RATIO_VAL, 296, 52);
+#define VALUE(id) addLabel(id, #id, QString(), true)
+    VALUE(IDT_PROGRESS_ELAPSED_VAL);
+    VALUE(IDT_PROGRESS_REMAINING_VAL);
+    VALUE(IDT_PROGRESS_FILES_VAL);
+    VALUE(IDT_PROGRESS_FILES_TOTAL);
+    VALUE(IDT_PROGRESS_ERRORS_VAL);
+    VALUE(IDT_PROGRESS_TOTAL_VAL);
+    VALUE(IDT_PROGRESS_SPEED_VAL);
+    VALUE(IDT_PROGRESS_PROCESSED_VAL);
+    VALUE(IDT_PROGRESS_PACKED_VAL);
+    VALUE(IDT_PROGRESS_RATIO_VAL);
 #undef VALUE
-    addLabel(IDT_PROGRESS_STATUS, "IDT_PROGRESS_STATUS", {}, 8, 64, 360, 8, false);
-    addLabel(IDT_PROGRESS_FILE_NAME, "IDT_PROGRESS_FILE_NAME", {}, 8, 76, 360, 24, false);
+    addLabel(IDT_PROGRESS_STATUS, "IDT_PROGRESS_STATUS", {}, false);
+    addLabel(IDT_PROGRESS_FILE_NAME, "IDT_PROGRESS_FILE_NAME", {}, false);
     auto *bar = new QProgressBar(this);
     bar->setTextVisible(false);
     bar->setRange(0, 100);
     bar->setValue(0);
-    AddControl(IDC_PROGRESS1, "IDC_PROGRESS1", bar, 8, 100, 360, 16);
+    AddControl(IDC_PROGRESS1, "IDC_PROGRESS1", bar);
     auto *messages = new CListView(this);
     messages->setHeaderHidden(true);
     messages->setColumnCount(2);
     messages->setTextElideMode(Qt::ElideNone);
-    AddControl(IDL_PROGRESS_MESSAGES, "IDL_PROGRESS_MESSAGES", messages, 8, 124, 360, 48);
+    AddControl(IDL_PROGRESS_MESSAGES, "IDL_PROGRESS_MESSAGES", messages);
     auto *background = new QPushButton(QStringLiteral("&Background"), this);
     background->setAutoDefault(true);
     background->setDefault(true); // Source DEFPUSHBUTTON.
-    AddControl(IDB_PROGRESS_BACKGROUND, "IDB_PROGRESS_BACKGROUND", background, 112, 180, 80, 16);
+    AddControl(IDB_PROGRESS_BACKGROUND, "IDB_PROGRESS_BACKGROUND", background);
     auto *pause = new QPushButton(QStringLiteral("&Pause"), this);
     pause->setAutoDefault(true);
-    AddControl(IDB_PAUSE, "IDB_PAUSE", pause, 200, 180, 80, 16);
+    AddControl(IDB_PAUSE, "IDB_PAUSE", pause);
     auto *cancel = new QPushButton(QStringLiteral("Cancel"), this);
     cancel->setAutoDefault(true);
-    AddControl(kCancelID, "IDCANCEL", cancel, 288, 180, 80, 16);
+    AddControl(kCancelID, "IDCANCEL", cancel);
+    auto *buttons = new QDialogButtonBox(this);
+    buttons->setObjectName("progressButtons");
+    buttons->addButton(background, QDialogButtonBox::ActionRole);
+    buttons->addButton(pause, QDialogButtonBox::ActionRole);
+    buttons->addButton(cancel, QDialogButtonBox::RejectRole);
+    auto *outer = QtCreateDialogLayout(*this, *buttons);
+    auto *body = new QWidget(this);
+    auto *content = new QVBoxLayout(body);
+    // Match the other scrolling forms: reserve a gutter for native overlays.
+    content->setContentsMargins(0, 0, style()->pixelMetric(QStyle::PM_ScrollBarExtent), 0);
+    content->setSpacing(8);
+    content->addWidget(GetItem(IDT_PROGRESS_STATUS));
+    content->addWidget(bar);
+    auto *file = static_cast<QLabel *>(GetItem(IDT_PROGRESS_FILE_NAME));
+    file->setMinimumHeight(fontMetrics().height() * 2);
+    file->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Minimum);
+    content->addWidget(file);
+    auto *mainStats = new QGridLayout;
+    mainStats->setHorizontalSpacing(12);
+    mainStats->setVerticalSpacing(8);
+    mainStats->setColumnStretch(1, 1);
+    const unsigned mainLabels[] = {IDT_PROGRESS_ELAPSED, IDT_PROGRESS_REMAINING, IDT_PROGRESS_FILES,
+                                   IDT_PROGRESS_ERRORS};
+    const unsigned mainValues[] = {IDT_PROGRESS_ELAPSED_VAL, IDT_PROGRESS_REMAINING_VAL,
+                                   IDT_PROGRESS_FILES_VAL, IDT_PROGRESS_ERRORS_VAL};
+    for (int row = 0; row < 4; ++row) {
+        mainStats->addWidget(GetItem(mainLabels[row]), row, 0);
+        if (row == 2) {
+            auto *files = new QHBoxLayout;
+            files->setSpacing(0);
+            files->addStretch();
+            files->addWidget(GetItem(IDT_PROGRESS_FILES_VAL));
+            files->addWidget(GetItem(IDT_PROGRESS_FILES_TOTAL));
+            mainStats->addLayout(files, row, 1);
+        } else
+            mainStats->addWidget(GetItem(mainValues[row]), row, 1);
+    }
+    content->addLayout(mainStats);
+    auto *detailsBody = new QWidget(body);
+    auto *stats = new QGridLayout(detailsBody);
+    stats->setContentsMargins(24, 0, 0, 0);
+    stats->setHorizontalSpacing(12);
+    stats->setVerticalSpacing(8);
+    stats->setColumnStretch(1, 1);
+    const unsigned labels[] = {IDT_PROGRESS_TOTAL, IDT_PROGRESS_SPEED, IDT_PROGRESS_PROCESSED,
+                               IDT_PROGRESS_PACKED, IDT_PROGRESS_RATIO};
+    const unsigned values[] = {IDT_PROGRESS_TOTAL_VAL, IDT_PROGRESS_SPEED_VAL,
+                               IDT_PROGRESS_PROCESSED_VAL, IDT_PROGRESS_PACKED_VAL,
+                               IDT_PROGRESS_RATIO_VAL};
+    for (int row = 0; row < 5; ++row) {
+        stats->addWidget(GetItem(labels[row]), row, 0);
+        stats->addWidget(GetItem(values[row]), row, 1);
+    }
+    auto *details = new QtDisclosure(detailsBody, body);
+    details->setObjectName("progressDetailsSection");
+    details->button()->setObjectName("progressDetailsToggle");
+    QtBindLocalText(details->button(), "DialogRedesign",
+                    QT_TRANSLATE_NOOP("DialogRedesign", "Details"));
+    content->addWidget(details);
+    content->addStretch();
+    auto *scroll = new QScrollArea(this);
+    scroll->setObjectName("progressControlsScroll");
+    scroll->setFrameShape(QFrame::NoFrame);
+    scroll->setFocusPolicy(Qt::NoFocus);
+    scroll->setWidgetResizable(true);
+    scroll->setWidget(body);
+    // Keep the overview reachable when the independent error list appears.
+    // Expanding Details scrolls within this area instead of moving the footer.
+    scroll->setMinimumHeight(body->minimumSizeHint().height());
+    outer->addWidget(scroll, 1);
+    messages->setMinimumHeight(fontMetrics().height() * 4);
+    outer->addWidget(messages, 1);
+    GetItem(IDT_PROGRESS_STATUS)->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
+    setTabOrder(details->button(), messages);
     setTabOrder(messages, background);
     setTabOrder(background, pause);
     setTabOrder(pause, cancel);
-    resize(int(std::round(376 * _unitX)), int(std::round(204 * _unitY)));
+    GetItem(IDT_PROGRESS_ERRORS)->hide();
+    GetItem(IDT_PROGRESS_ERRORS_VAL)->hide();
+    messages->hide();
+    resize(QSize(560, minimumSizeHint().height()).expandedTo(minimumSizeHint()));
 }
 
 QWidget *CQtProgressDialog::GetItem(unsigned id) const { return _controls.value(id); }

@@ -427,5 +427,6 @@ class LanguageDialogTests final : public QObject {
         cancel->click();
     }
 };
-QTEST_MAIN(LanguageDialogTests)
+#include "review_test_main.h"
+SEVENZIP_UI_TEST_MAIN(LanguageDialogTests)
 #include "language_dialog_tests.moc"

@@ -325,7 +325,7 @@
         <name>DialogRedesign</name>
         <message>
             <location filename="../src/CPP/7zip/UI/FileManager/CopyDialog.cpp" line="+59" />
-            <location filename="../src/CPP/7zip/UI/FileManager/EditDialog.cpp" line="+39" />
+            <location filename="../src/CPP/7zip/UI/FileManager/EditDialog.cpp" line="+42" />
             <location filename="../src/CPP/7zip/UI/FileManager/ListViewDialog.cpp" line="+106" />
             <source>Copy</source>
             <translation>Копировать</translation>
@@ -391,9 +391,14 @@
             <translation>Сохранить</translation>
         </message>
         <message>
-            <location filename="../src/CPP/7zip/UI/FileManager/ListViewDialog.cpp" line="+7" />
+            <location filename="../src/CPP/7zip/UI/FileManager/ListViewDialog.cpp" line="+9" />
             <source>Open</source>
             <translation>Открыть</translation>
+        </message>
+        <message>
+            <location filename="../src/qtprogresscontrols.cpp" line="+181" />
+            <source>Details</source>
+            <translation>Подробности</translation>
         </message>
     </context>
     <context>
@@ -4044,7 +4049,7 @@ Check charset encoding and -scs switch.</source>
         </message>
         <message>
             <location line="+296" />
-            <location filename="../src/CPP/7zip/UI/FileManager/ProgressDialog2.cpp" line="+1285" />
+            <location filename="../src/CPP/7zip/UI/FileManager/ProgressDialog2.cpp" line="+1176" />
             <location filename="../src/CPP/Windows/ErrorMsg.cpp" line="+146" />
             <source>Error #%1</source>
             <translation>Ошибка № %1</translation>
@@ -4073,8 +4078,8 @@ Check charset encoding and -scs switch.</source>
         <message>
             <location filename="../src/CPP/7zip/UI/Explorer/ContextMenu.cpp" line="+1035" />
             <location filename="../src/CPP/7zip/UI/FileManager/FM.cpp" line="+58" />
-            <location filename="../src/CPP/7zip/UI/FileManager/ProgressDialog2.cpp" line="-1067" />
-            <location line="+1069" />
+            <location filename="../src/CPP/7zip/UI/FileManager/ProgressDialog2.cpp" line="-958" />
+            <location line="+960" />
             <source>Error</source>
             <translation>Ошибка</translation>
         </message>

@@ -319,26 +319,30 @@ was unavailable and pixel-level parity remains unverified.
 
 Reference: upstream `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
 ProgressDialog2.rc/ProgressDialog2a.rc (`IDD_PROGRESS`) and the complete handlers
-and statistic/message dependencies in ProgressDialog2.cpp. Keep the original
-two statistic columns: elapsed/remaining/files/file-total/errors on the left;
-total/speed/processed/packed/ratio on the right. Below them, status, two-line
-directory/name, progress bar, two-column error list, then Background/Pause/Cancel
-in that order. Percentage belongs in the title; hide text inside the bar.
+and statistic/message dependencies in ProgressDialog2.cpp. The approved redesign
+shows status, progress bar and the two-line directory/name first, then elapsed,
+remaining and the completed/total file count. Errors stay in the overview and an
+independent two-column message list. Details reveals total/speed/processed/packed/
+ratio in a label/value grid with right-aligned values. Background/Pause/Cancel
+use the common footer with native button roles. Percentage belongs in the title;
+hide text inside the bar.
 
 Initially errors label/value/list are hidden. New messages show all three and
 use source numbered first lines and unnumbered continuations; copy selected
 rows or all rows if none selected. ShowCompressionInfo=false hides packed and
-ratio labels/values without rearranging the source groups. Pause changes to
+ratio labels/values inside Details. Collapsing Details does not stop statistics
+updates, change pause or hide errors. Pause changes to
 Continue, prefixes the title and freezes timer rendering/elapsed accumulation;
 resume preserves elapsed time. Files-progress scales by count, while speed
 remains byte based. Unknown totals clear size/remaining totals according to
 the original cached state. Native endpoint/unknown/overflow behavior is retained.
 
-Source OnSize controls geometry through Qt font-DLU/rect/move services; round
-line height upward to fit QLabel text. Source NormalizeSize only handles
-oversized windows/work-area overlap; it does not supply a minimum size.
-Normal 760×450 and compact 640×380 geometry tests check every visible control,
-text/button fitting and footer/list separation. `ui_parity_progress` maps all
+Qt layouts and native size hints own geometry; source OnSize retains its
+width-dependent string reduction. The overview/details area scrolls at compact
+sizes; the error list and footer remain outside that viewport. Initial height
+follows the collapsed content. Source NormalizeSize retains work-area protection.
+Normal 760×450 and compact 640×380 geometry tests check collapsed/expanded states,
+reachability, text/button fitting and footer/list separation. `ui_parity_progress` maps all
 26 IDs to 24 JSON reports across compression/errors/paused, native priority and finish-Close
 states. Captions follow source language bindings; clipboard shortcuts also accept macOS Meta.
 Background is the source default button and receives initial focus when native
