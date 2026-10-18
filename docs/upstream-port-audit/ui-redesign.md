@@ -990,3 +990,40 @@ fixtures. Cocoa-specific adapter не меняет их modality. Incremental tr
 EN/RU input и итоговый completion audit остаются отдельными проверками.
 Параллельные HTML/catalog правки пользователь подтвердил как эксперимент;
 они не входят в эту Qt-итерацию и не заменяют согласованный план.
+
+## Итерация 19: доступность раскрываемых секций
+
+Источник и baseline перенесённых модулей остаются прежними:
+https://github.com/ip7z/7zip.git,
+`9128b80e3a471108678e2b3ec3c985861c8d7b0f`.
+QtDisclosure — ранее согласованное Qt-представление, отсутствующее в исходных
+Win32 resource groups. Повторно проверены его toggle/visibility boundary и
+потребители Add/Extract, Progress, Settings; параметры и source handlers
+по-прежнему принадлежат существующим формам. Нового upstream-кода не копировалось,
+baseline и полнота переноса операций этой итерацией не меняются.
+
+Обнаруженный дефект воспроизведён через публичный QAccessible: заголовок не
+сообщал expandable/collapsed/expanded, хотя раскрывал содержимое. Узкий адаптер
+на публичном QAccessibleWidget сообщает эти состояния и уведомляет об изменении;
+press вызывает прежний button click. Qt владеет временем жизни интерфейса.
+Имя следует текущей подписи или явно заданному accessibleName. Геометрия,
+рисование шеврона, значения, сводки и source control flow не менялись.
+Контракт API сверён с [Qt accessibility documentation](https://doc.qt.io/qt-6/qaccessible.html).
+
+Новая regression до исправления падала на отсутствующем expandable. После
+исправления проверяет assistive press, программное раскрытие и Space, сохранение
+Unicode/пробелов черновика, смену имени и disabled guard. macOS: приложение и
+affected targets собраны; disclosure_accessibility, source_create,
+source_extract_advanced, progress_dialog, fm_settings, options_keyboard — 6/6 PASS.
+Windows/Linux: те же шесть suites и application_starts — 7/7 на каждой ОС,
+run `20261018T203348Z-5e7e0133`; Windows interactive elevated для существующих
+source fixtures. Incremental trees/cache сохранены. Перед запуском оба runner
+unlocked, корни содержали только current, устаревших snapshot payloads не было;
+host/guest space достаточно. Full/slow не запускались: изменение покрыто общим
+контролом и прямыми потребителями, геометрия не менялась.
+
+По прямому указанию пользователя проверки продолжаются только внутри Qt.
+VoiceOver и физические EN/RU раскладки остаются непроверенными; результат
+QAccessible не выдаётся за нативную screen-reader приёмку. Приватная dev-сессия
+завершилась, её disposable settings/fixtures удалены; пользовательская dist-сессия
+не изменялась. Параллельные изменения плана и HTML-концепта сохранены отдельно.

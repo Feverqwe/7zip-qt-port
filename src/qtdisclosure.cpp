@@ -1,5 +1,7 @@
 #include "qtdisclosure.h"
+#include <QAccessibleWidget>
 #include <QFrame>
+#include <QKeySequence>
 #include <QLabel>
 #include <QPainterPath>
 #include <QStyleOptionToolButton>
@@ -8,6 +10,48 @@
 #include <QVBoxLayout>
 
 namespace {
+class AccessibleDisclosure final : public QAccessibleWidget {
+  public:
+    explicit AccessibleDisclosure(QToolButton *button)
+        : QAccessibleWidget(button, QAccessible::Button) {}
+
+    QString text(QAccessible::Text type) const override {
+        if (type == QAccessible::Name && widget()->accessibleName().isEmpty())
+            return button()->text();
+        return QAccessibleWidget::text(type);
+    }
+
+    QAccessible::State state() const override {
+        auto result = QAccessibleWidget::state();
+        result.expandable = true;
+        result.expanded = button()->isChecked();
+        result.collapsed = !result.expanded;
+        return result;
+    }
+
+    QStringList actionNames() const override {
+        auto result = QAccessibleWidget::actionNames();
+        result.prepend(pressAction());
+        return result;
+    }
+
+    void doAction(const QString &action) override {
+        if (action == pressAction())
+            button()->click();
+        else
+            QAccessibleWidget::doAction(action);
+    }
+
+    QStringList keyBindingsForAction(const QString &action) const override {
+        if (action == pressAction())
+            return {QKeySequence(Qt::Key_Space).toString(QKeySequence::NativeText)};
+        return QAccessibleWidget::keyBindingsForAction(action);
+    }
+
+  private:
+    QToolButton *button() const { return static_cast<QToolButton *>(widget()); }
+};
+
 class DisclosureButton final : public QToolButton {
   public:
     using QToolButton::QToolButton;
@@ -63,6 +107,8 @@ class DisclosureButton final : public QToolButton {
 QtDisclosure::QtDisclosure(QWidget *content, QWidget *parent)
     : QWidget(parent), content_(content), button_(new DisclosureButton(this)),
       summary_(new QLabel(this)) {
+    // Qt owns the interface for the lifetime of this button.
+    QAccessible::registerAccessibleInterface(new AccessibleDisclosure(button_));
     auto *layout = new QVBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);
     layout->setSpacing(8);
@@ -90,6 +136,11 @@ QtDisclosure::QtDisclosure(QWidget *content, QWidget *parent)
     connect(button_, &QToolButton::toggled, this, [this](bool expanded) {
         button_->setArrowType(expanded ? Qt::DownArrow : Qt::RightArrow);
         content_->setVisible(expanded);
+        QAccessible::State changed;
+        changed.expanded = true;
+        changed.collapsed = true;
+        QAccessibleStateChangeEvent event(button_, changed);
+        QAccessible::updateAccessibility(&event);
     });
 }
 

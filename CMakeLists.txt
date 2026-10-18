@@ -749,6 +749,11 @@ if(BUILD_TESTING)
     target_include_directories(combo_dialog_tests PRIVATE tests)
     target_link_libraries(combo_dialog_tests PRIVATE sevenzip_panel Qt6::Test)
     add_test(NAME combo_dialog COMMAND combo_dialog_tests -silent)
+    qt_add_executable(disclosure_accessibility_tests tests/disclosure_accessibility_tests.cpp)
+    target_link_libraries(disclosure_accessibility_tests PRIVATE sevenzip_panel Qt6::Test)
+    add_test(NAME disclosure_accessibility COMMAND disclosure_accessibility_tests -silent)
+    set_tests_properties(disclosure_accessibility PROPERTIES TIMEOUT 15
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
     qt_add_executable(context_dialog_tests tests/context_dialog_tests.cpp tests/layout_inspection.cpp
         src/CPP/7zip/UI/FileManager/SplitDialog.cpp)
     target_include_directories(context_dialog_tests PRIVATE tests)

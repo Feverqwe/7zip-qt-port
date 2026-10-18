@@ -19,6 +19,15 @@ compact sizes below and produces48 EN/RU footer reports per platform. Reports on
 2026-10-06 show visible, separate standard controls and exact source captions;
 rendered Windows parity and parent/final acceptance remain pending.
 
+### Disclosure accessibility (redesign, 2026-10-18)
+
+Expandable sections expose their current expanded/collapsed state through Qt
+accessibility. Their accessible press action and Space operate the same header
+button and preserve pending values. Disabled headers cannot change the section.
+Accessible names follow the current translated caption unless explicitly supplied.
+State changes notify accessibility clients; this Qt contract does not establish
+screen-reader announcements on a particular platform.
+
 ### Contextual modality on macOS (redesign, 2026-10-18)
 
 Contextual name/mask/comment, Copy/Move/Combine, Split, Link, password, memory,
