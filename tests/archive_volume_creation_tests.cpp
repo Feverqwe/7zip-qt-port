@@ -16,6 +16,7 @@
 #include <QStandardPaths>
 #include <QTemporaryDir>
 #include <QTimer>
+#include <QToolButton>
 #include <QtTest>
 
 namespace {
@@ -411,6 +412,9 @@ class ArchiveVolumeCreationTests final : public QObject {
         volume->setEditText("64K 128K");
         dialog.resize(width, height);
         dialog.show();
+        auto *advanced = dialog.findChild<QToolButton *>("archiveAdvancedToggle");
+        QVERIFY(advanced);
+        advanced->click();
         QCoreApplication::processEvents();
         auto *scroll = dialog.findChild<QScrollArea *>("archiveOptionsScrollArea");
         scroll->ensureWidgetVisible(volume);

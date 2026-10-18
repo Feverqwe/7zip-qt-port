@@ -10,6 +10,7 @@
 #include <QDir>
 #include <QFile>
 #include <QFileInfo>
+#include <QScopeGuard>
 
 namespace {
 class CVolumeProgress final : public ICompressProgressInfo, public CMyUnknownImp {
@@ -80,6 +81,7 @@ HRESULT QtArchiveVolumeOutput::createVolumes() {
         if (QFileInfo::exists(sfxTarget_) || QFileInfo(sfxTarget_).isSymLink())
             return E_FAIL;
     }
+    QStringList destinations;
     for (unsigned i = 1; i <= count; ++i) {
         RINOK(checkpoint())
         const QString suffix = QString::number(i).rightJustified(3, '0');
@@ -90,26 +92,37 @@ HRESULT QtArchiveVolumeOutput::createVolumes() {
                     .arg(destination);
             return E_FAIL;
         }
+        destinations.append(destination);
     }
+    if (!sfxModule_.isEmpty())
+        destinations.append(sfxTarget_);
+    qsizetype publishedCount = 0;
+    auto rollback = qScopeGuard([&] {
+        for (qsizetype i = 0; i < publishedCount; ++i)
+            QFile::remove(destinations[i]);
+    });
     for (unsigned i = 1; i <= count; ++i) {
         RINOK(checkpoint())
         const QString suffix = QString::number(i).rightJustified(3, '0');
-        const QString destination = target_ + '.' + suffix;
+        const QString &destination = destinations[i - 1];
         if (!QFile::rename(prefix + suffix, destination)) {
             Error =
                 QCoreApplication::translate("qtarchivevolumeoutput", "Could not save volume: %1")
                     .arg(destination);
             return E_FAIL;
         }
-        PublishedPaths.append(destination);
+        ++publishedCount;
     }
     RINOK(checkpoint())
     if (!sfxModule_.isEmpty()) {
         if (!QFile::rename(stagedSfx, sfxTarget_))
             return E_FAIL;
-        PublishedPaths.append(sfxTarget_);
+        ++publishedCount;
     }
-    return checkpoint();
+    RINOK(checkpoint())
+    PublishedPaths.swap(destinations);
+    rollback.dismiss();
+    return S_OK;
 }
 
 void QtArchiveVolumeOutput::run() {

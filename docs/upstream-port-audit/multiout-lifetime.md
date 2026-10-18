@@ -52,3 +52,46 @@ on macOS/Linux and failed Options geometry on Windows before archive writes,
 as in the earlier constructor-only snapshot; that UI scenario is not accepted.
 The upstream baseline verifier passed after the header move. No full gate,
 opt-in slow matrix or rendered UI comparison has been run for this focused change.
+
+## Qt volume publication owners
+
+The follow-up review found the same ownership ordering at the Qt boundaries.
+QtVolumeTransaction created its stage before recording either path, and appended
+to a separate rollback list after each successful rename. QtArchiveVolumeOutput
+also appended published names after renaming. A throwing list allocation could
+therefore leave a created or published file outside cleanup accounting.
+
+Both adapters now prepare the owning names before filesystem changes. Failed
+or throwing stage creation removes its pending records without deleting an
+unowned collision path. Successful publication advances a scalar count over
+the prepared names; the archive-output worker rolls that prefix back on failure
+or cancellation and transfers the complete result with a list swap on success.
+No path registration allocates after its file has been published.
+
+Reviewed the complete adapters, VolumeOperation split/combine callers and the
+source CThreadSplit/CThreadCombine bodies and types in PanelSplitFile, together
+with the existing CMultiOutStream/CopyStream consumers. Upstream has no Qt
+transaction/publication service to reuse: its workers write directly through
+NIO. Those source algorithms, naming, reads/writes, preallocation and progress
+branches remain unchanged; these corrections are confined to existing Qt
+publication/rollback boundaries. No new source omission or dependency was added.
+
+The allocation gaps are established by source review; no failure injection or
+standalone Qt reproducer was used. Existing operation suites exercise Unicode
+paths, success, occupied destinations, cancellation, rollback and SFX consumers.
+The volume geometry test was also corrected to open the redesigned Additional
+section before inspecting its volume field. It retains its visibility, footer
+separation and parameter-validation checks; it no longer assumes the field is
+visible inside a collapsed section.
+
+Focused acceptance used existing incremental builds and compiler caches on
+macOS arm64, Linux x64 and Windows x64 / Qt 6.12. volume_operations,
+volume_workflow and sfx_lifecycle passed on all three systems in the initial
+batch; archive_volume_creation passed its 24 operation cases but failed the
+two stale collapsed-section geometry cases on each system. Guest run:
+`20261018T133852Z-dfbd7a5c`. After correcting only the test preparation,
+archive_volume_creation passed completely on macOS (3.13 s), Linux (3.53 s)
+and Windows (7.61 s), guest run `20261018T134052Z-3493c8b8`.
+The unchanged passing suites were not repeated. Generated widget reports cover
+the normal/compact volume-field checks; no new appearance change, screenshot
+comparison, full gate or opt-in slow suite is claimed.

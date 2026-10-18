@@ -8,7 +8,7 @@
 class QtVolumeTransaction final {
     QStringList targets_;
     QStringList staged_;
-    QStringList published_;
+    qsizetype publishedCount_ = 0;
     bool committed_ = false;
     QString failedPath_;
 
