@@ -64,3 +64,44 @@ arm64 и Linux x64 / Qt 6.12. Windows x64 прошёл 18 из них в том 
 для controls и событий списка связаны выше. Кэши и постоянные build trees
 сохранены. Проверка названных границ завершена; это ограниченная source/behavior
 проверка, сохраняющая описанные в базовом аудите платформенные ограничения.
+
+## Проверка предупреждений о владении — 2026-10-18
+
+Дополнительная проверка выполнена после `217c2b0`, по upstream
+`9128b80e3a471108678e2b3ec3c985861c8d7b0f` из того же репозитория.
+Сопоставлены полные тела Rar5Handler и EnumDirItems с единым форматированием:
+у первого различаются notices/includes, у второго также перевод диагностик.
+Алгоритмы и их зависимости для этой проверки не изменялись.
+
+Предупреждение анализатора в RAR5 не учитывает связь Create и Code:
+оба caller сначала проверяют успешный Create для того же item, а IsEncrypted
+и создание filterStream используют одну crypto extra record. COM-владелец
+filterStream сохраняет raw filterStreamSpec до завершения распаковки.
+Инициализацию указателя для подавления предупреждения не добавляли.
+
+Для EnumDirItems проверены построение/удаление prefix chains, shrink vectors
+и consumers в AgentOut, Update, HashCalc и QtArchiveCreationLifecycle.
+Успешно опубликованный item ссылается на существующий prefix либо использует
+корневой индекс; пустая ветвь удаляет свой prefix без оставшихся items.
+Исключение при добавлении prefix прерывает перечисление до использования
+результата. Wildcard::CheckPath сохраняет границы индексов через разность длин;
+исходные vectors владеют строками на протяжении проверки. Подтверждённого
+нарушения владения в этих предупреждениях не установлено.
+
+Отдельно просмотрены QObject-владельцы menu action groups, Help shortcut,
+queued callable contexts, отложенные rename/focus/hover события, leased temp
+registry и native/Qt file-transfer callbacks. Родители, retained payloads,
+контекст доставки и close/join сохраняют соответствующие объекты; уничтожение
+окна отсоединяет consumers до освобождения provider. Это проверка названных
+границ, а не доказательство безопасности произвольного удаления QObject
+из любого пользовательского callback.
+
+Без новых production-правок прошли существующие owned_temp,
+owned_temp_publication, archive_creation_lifecycle, native_rar_memory и
+source_delete: macOS arm64 5/5 (7,52 с), Linux x64 5/5 (9,68 с), Windows x64
+5/5 (45,83 с), Qt 6.12. Guest run: `20261018T124841Z-7bdfff4c`;
+Windows link fixtures выполнялись с elevated desktop. Постоянные сборки и
+compiler caches сохранены. RAR-проверки подтверждают свои compressed/memory
+сценарии; шифрованный RAR здесь проверен по исходникам, без нового runtime
+свидетельства. Инъекция отказов, минимальный пример Qt, full/slow gate и
+новая визуальная приёмка не выполнялись. Общий аудит проекта продолжается.
