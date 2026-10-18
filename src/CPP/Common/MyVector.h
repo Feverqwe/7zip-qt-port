@@ -1,11 +1,15 @@
 // Common/MyVector.h
+// Adapted from 7-Zip 9128b80e3a471108678e2b3ec3c985861c8d7b0f.
+// Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 
+// Preserve borrowed source formatting; functional adaptations are formatted narrowly.
+// clang-format off
 #ifndef ZIP7_INC_COMMON_MY_VECTOR_H
 #define ZIP7_INC_COMMON_MY_VECTOR_H
 
 #include <string.h>
 
-#include "Common.h"
+#include "Common/Common.h"
 
 const unsigned k_VectorSizeMax = ((unsigned)1 << 31) - 1;
 
@@ -508,12 +512,11 @@ public:
   void ClearAndReserve(unsigned newCapacity) { Clear(); _v.ClearAndReserve(newCapacity); }
 
   CObjectVector() {}
-  CObjectVector(const CObjectVector &v)
-  {
-    const unsigned size = v.Size();
-    _v.ConstructReserve(size);
-    for (unsigned i = 0; i < size; i++)
-      AddInReserved(v[i]);
+  CObjectVector(const CObjectVector &v) : CObjectVector() {
+      const unsigned size = v.Size();
+      _v.ConstructReserve(size);
+      for (unsigned i = 0; i < size; i++)
+          AddInReserved(v[i]);
   }
   CObjectVector& operator=(const CObjectVector &v)
   {
@@ -762,3 +765,4 @@ public:
 #define FOR_VECTOR(_i_, _v_) for (unsigned _i_ = 0; _i_ < (_v_).Size(); _i_++)
 
 #endif
+// clang-format on

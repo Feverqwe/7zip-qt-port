@@ -113,7 +113,8 @@ void QtArchiveFileResource::AttachReopenService(ArchiveBackend &backend, const Q
         CNativeOpenProgress nativeProgress(nativeProgressCallback,
                                            openCallback ? openCallback->Callback : nullptr);
         std::shared_ptr<ArchiveNativeOpen> nativeOpen;
-        RINOK(backend.openNativeArchive(_codecs, path, format, &nativeProgress, nativeOpen, nullptr))
+        RINOK(
+            backend.openNativeArchive(_codecs, path, format, &nativeProgress, nativeOpen, nullptr))
         QString password;
         CMyComPtr<ICryptoGetTextPassword2> crypto;
         if (callback)

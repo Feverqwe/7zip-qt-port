@@ -18,6 +18,10 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 include(CTest)
 
+# Relocated source headers must also resolve from unchanged upstream headers
+# spelling MyVector.h, ../Common/MyVector.h or ../../Common/MyVector.h.
+include_directories(src/CPP src/CPP/Common src/CPP/Windows src/CPP/7zip/Common)
+
 find_package(Qt6 REQUIRED COMPONENTS Widgets)
 find_package(Threads REQUIRED)
 include(cmake/Exfat.cmake)
@@ -581,6 +585,11 @@ file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/PackageInfo.json"
 
 if(BUILD_TESTING)
     find_package(Qt6 REQUIRED COMPONENTS Test)
+    add_executable(object_vector_lifetime_tests tests/object_vector_lifetime_tests.cpp)
+    target_include_directories(object_vector_lifetime_tests PRIVATE src/CPP third_party/7zip/CPP)
+    set_target_properties(object_vector_lifetime_tests PROPERTIES AUTOMOC OFF AUTOUIC OFF)
+    add_test(NAME object_vector_lifetime COMMAND object_vector_lifetime_tests)
+    set_tests_properties(object_vector_lifetime PROPERTIES TIMEOUT 15)
     qt_add_executable(drag_drop_tests tests/drag_drop_tests.cpp tests/panel_load_folder.cpp)
     target_link_libraries(drag_drop_tests PRIVATE sevenzip_panel Qt6::Test)
     add_test(NAME drag_drop COMMAND drag_drop_tests -silent)
