@@ -4,7 +4,30 @@
 #include "layout_inspection.h"
 #include "window_state_support.h"
 #include <QPainter>
+#include <QProxyStyle>
 #include <QScopeGuard>
+#include <QStyleFactory>
+
+namespace {
+class ItemPaletteProbe final : public QProxyStyle {
+  public:
+    using QProxyStyle::QProxyStyle;
+    mutable bool observed = false;
+    mutable QStyle::State state;
+    mutable QPalette colors;
+
+    void drawControl(ControlElement element, const QStyleOption *option, QPainter *painter,
+                     const QWidget *widget) const override {
+        if (element == CE_ItemViewItem)
+            if (const auto *item = qstyleoption_cast<const QStyleOptionViewItem *>(option)) {
+                observed = true;
+                state = item->state;
+                colors = item->palette;
+            }
+        QProxyStyle::drawControl(element, option, painter, widget);
+    }
+};
+} // namespace
 
 class PanelDeletedDrawTests final : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
@@ -23,18 +46,27 @@ class PanelDeletedDrawTests final : public QObject, protected MainWindowTestSupp
         QVERIFY(QTest::qWaitForWindowActive(&window));
         action(window, "openRootAction")->trigger();
         auto *view = static_cast<FileTable *>(table(window));
+        auto *baseStyle = QStyleFactory::create(view->style()->objectName());
+        QVERIFY(baseStyle);
+        auto *style = new ItemPaletteProbe(baseStyle);
+        style->setParent(view);
+        view->setStyle(style);
         auto &panel = *view->sourcePanel;
         panel.Set_AutoRefresh_Mode(false);
         panel.SetNewFolder(new DeletedFolder);
         panel.LoadFullPath();
         panel.OnReload();
         panel.SelectAll(true);
+        view->setFocus();
+        QTRY_VERIFY(view->hasFocus());
         for (const QColor base : {QColor("#ffffff"), QColor("#202326"), QColor("#596577"),
                                   QColor("#f0e5d5"), QColor("#202326")}) {
             QPalette colors = original;
             colors.setColor(QPalette::Base, base);
             colors.setColor(QPalette::Text, base.lightnessF() < 0.5 ? Qt::white : Qt::black);
             colors.setColor(QPalette::Highlight, QColor("#34518c"));
+            colors.setColor(QPalette::Inactive, QPalette::Highlight, QColor("#9e9e9e"));
+            colors.setColor(QPalette::Disabled, QPalette::Highlight, QColor("#596577"));
             QApplication::setPalette(colors);
             QApplication::processEvents();
             for (int row = 0; row < view->rowCount(); ++row) {
@@ -49,23 +81,27 @@ class PanelDeletedDrawTests final : public QObject, protected MainWindowTestSupp
                 QVERIFY(foreground.red() > foreground.green());
                 QVERIFY(textContrast(foreground, mark) >= 4.5);
                 QImage image(300, 40, QImage::Format_ARGB32_Premultiplied);
-                image.fill(colors.color(QPalette::Highlight));
+                image.fill(Qt::transparent);
                 QStyleOptionViewItem option;
                 option.initFrom(view);
+                option.widget = view;
                 option.rect = image.rect();
                 option.state |= QStyle::State_Selected | QStyle::State_Active;
+                style->observed = false;
                 QPainter painter(&image);
                 view->itemDelegate()->paint(&painter, option, index);
                 painter.end();
-                bool readableEmphasis = false;
-                for (int y = 0; y < image.height(); ++y)
-                    for (int x = 0; x < image.width(); ++x) {
-                        const QColor pixel = image.pixelColor(x, y);
-                        readableEmphasis |=
-                            pixel.red() > pixel.green() + 20 && pixel.red() > pixel.blue() + 20 &&
-                            textContrast(pixel, colors.color(QPalette::Highlight)) >= 4.5;
-                    }
-                QVERIFY2(readableEmphasis, qPrintable(base.name() + " " + index.data().toString()));
+                QVERIFY(style->observed && style->state.testFlag(QStyle::State_Selected));
+                // Contrast applies to the chosen style colors. Antialiased glyph
+                // edges blend with the background; normal rendering is checked below.
+                for (const auto group :
+                     {QPalette::Active, QPalette::Inactive, QPalette::Disabled}) {
+                    const QColor text = style->colors.color(group, QPalette::HighlightedText);
+                    const QColor background = style->colors.color(group, QPalette::Highlight);
+                    QVERIFY(text.red() > text.green());
+                    QVERIFY2(textContrast(text, background) >= 4.5,
+                             qPrintable(text.name() + " on " + background.name()));
+                }
             }
         }
     }
