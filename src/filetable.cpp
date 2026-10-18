@@ -1,6 +1,7 @@
 #include "filetable.h"
 #include "CPP/7zip/UI/FileManager/Panel.h"
 #include "CPP/7zip/UI/FileManager/PanelSort.h"
+#include "qtsemanticcolors.h"
 
 #include <QEvent>
 #include <QHeaderView>
@@ -102,12 +103,14 @@ class FileRowDelegate final : public QStyledItemDelegate {
                 list->style()->pixelMetric(QStyle::PM_FocusFrameHMargin, &option, list);
             option.rect.adjust(margin, 0, -margin, 0);
         }
-        const QVariant foreground = index.data(Qt::ForegroundRole);
-        if (foreground.isValid())
-            option.palette.setColor(QPalette::HighlightedText,
-                                    qvariant_cast<QBrush>(foreground).color());
         if (index.data(Qt::UserRole + 19).toBool())
             option.state |= QStyle::State_Selected;
+        const QVariant foreground = index.data(Qt::ForegroundRole);
+        if (foreground.isValid())
+            option.palette.setColor(
+                QPalette::HighlightedText,
+                QtSemanticColors::readable(qvariant_cast<QBrush>(foreground).color(),
+                                           option.palette.color(QPalette::Highlight)));
         auto *table = dynamic_cast<const FileTable *>(parent());
         const int primary = table ? table->columnForVisibleProperty(0) : -1;
         if (!table || table->fullRowHighlight() || index.column() == (primary < 0 ? 0 : primary)) {
@@ -328,6 +331,10 @@ void FileIconList::changeEvent(QEvent *event) {
 }
 
 QVariant ArchiveTableItem::data(int role) const {
+    if (role == Qt::BackgroundRole && QTableWidgetItem::data(QtPanelList::MarkedRole).toBool()) {
+        if (const auto *table = tableWidget())
+            return QBrush(QtSemanticColors::marked(table->palette()));
+    }
     if (role == Qt::DecorationRole && column() != 0) {
         const auto *table = dynamic_cast<const FileTable *>(tableWidget());
         if (table && column() == table->columnForVisibleProperty(0))
@@ -346,7 +353,12 @@ QVariant ArchiveTableItem::data(int role) const {
         // property body retains its exception policy; failed paint uses the palette.
         try {
             const QColor color = table->sourcePanel->OnCustomDraw(index.toUInt());
-            return color.isValid() ? QVariant(QBrush(color)) : QVariant();
+            if (!color.isValid())
+                return {};
+            const QVariant background = data(Qt::BackgroundRole);
+            return QBrush(QtSemanticColors::readable(
+                color, background.isValid() ? qvariant_cast<QBrush>(background).color()
+                                            : table->palette().color(QPalette::Base)));
         } catch (...) {
             return {};
         }

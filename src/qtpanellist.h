@@ -8,6 +8,7 @@
 
 class QtPanelList {
   public:
+    static constexpr int MarkedRole = Qt::UserRole + 20;
     using SortColumnResolver = std::function<int(PROPID, Int32)>;
     void Attach(QAbstractItemView *view, SortColumnResolver sortColumn = {},
                 std::function<void(int)> editLabel = {}) {

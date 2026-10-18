@@ -113,9 +113,7 @@ class PanelRefreshCompletionTests final : public QObject, protected MainWindowTe
             const UInt32 source = table->item(int(i), 0)->data(Qt::UserRole + 6).toUInt();
             const bool marked = i <= 4 && source != UInt32(-1);
             QVERIFY(panel.IsItemMarked(source) == marked);
-            QCOMPARE(table->item(int(i), 0)->data(Qt::BackgroundRole).value<QBrush>().color() ==
-                         QColor(255, 192, 192),
-                     marked);
+            QCOMPARE(table->item(int(i), 0)->data(Qt::BackgroundRole).isValid(), marked);
         }
         QCOMPARE(table->currentRow(), 4);
         QCOMPARE(table->selectionModel()->selectedRows().size(), 1);

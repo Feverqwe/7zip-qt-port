@@ -10,6 +10,7 @@
 #include "qtdialogunits.h"
 #include "qtlangbuttonbox.h"
 #include "qtlangcontrols.h"
+#include "qtsemanticcolors.h"
 #include <QDesktopServices>
 #include <QFontDatabase>
 #include <QFrame>
@@ -40,7 +41,7 @@ static QSize IdentityMinimumSize(const QLabel &application, int width, const QSt
 static void StyleAboutLink(QPushButton &button) {
     button.setFlat(true);
     button.setCursor(Qt::PointingHandCursor);
-    button.setStyleSheet("QPushButton { color: palette(link); }");
+    QtSemanticColors::styleLink(button);
 }
 
 CAboutDialog::CAboutDialog(QWidget *parent, const CCodecs *codecs)
@@ -63,8 +64,7 @@ CAboutDialog::CAboutDialog(QWidget *parent, const CCodecs *codecs)
     application->setObjectName("aboutApplicationVersion");
     application->setFont(QFontDatabase::systemFont(QFontDatabase::FixedFont));
     application->setMargin(gap / 2);
-    application->setStyleSheet(
-        "QLabel { background-color: rgba(128, 128, 128, 24); border-radius: 5px; }");
+    QtSemanticColors::styleSurface(*application, 5);
     heading->addWidget(application, 0, Qt::AlignVCenter);
     layout->addLayout(heading);
     auto *description = new QLabel(this);
@@ -81,10 +81,7 @@ CAboutDialog::CAboutDialog(QWidget *parent, const CCodecs *codecs)
     auto *upstream = new QFrame(this);
     upstream->setObjectName("aboutUpstream");
     upstream->setAccessibleName("7-Zip");
-    // A translucent neutral surface follows the actual window background;
-    // macOS AlternateBase can remain bright even in its dark appearance.
-    upstream->setStyleSheet("QFrame#aboutUpstream { background-color: rgba(128, 128, 128, 24); "
-                            "border-radius: 10px; }");
+    QtSemanticColors::styleSurface(*upstream, 10);
     auto *upstreamLayout = new QVBoxLayout(upstream);
     upstreamLayout->setContentsMargins(2 * gap, 2 * gap, 2 * gap, 2 * gap);
     upstreamLayout->setSpacing(gap / 2);

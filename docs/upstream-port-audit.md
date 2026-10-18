@@ -33,6 +33,9 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 
 ## Новые изменения
 
+- [Адаптивные цвета интерфейса](upstream-port-audit/adaptive-colors.md)
+  — общие семантические цвета, фон справки как у окна и обновление открытых видов.
+
 - [Общий каталог кодеков в native workers](upstream-port-audit/codec-thread-ownership.md)
   — исходный атомарный COM-счётчик для владельца, разделяемого окнами.
 

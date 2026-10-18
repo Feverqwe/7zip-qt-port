@@ -58,6 +58,9 @@ QTextBrowser replaces Win32 CHM presentation, retaining pages/links/fragments.
 Help follows the application palette, including already open topics. Page,
 table and syntax backgrounds, text and links remain readable in light/dark
 palettes; theme changes preserve the topic, fragment, history and scroll position.
+The page and browser viewport share the Help window background. Table headers,
+code surfaces and semantic text accents adapt to that background, including
+colored system palettes.
 Original HTML and content structure remain unchanged. Tables use a thin shared
 grid, a distinct header and more cell padding. Command blocks use a continuous
 theme-colored surface and readable monospace text, including links inside code.

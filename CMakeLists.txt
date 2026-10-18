@@ -222,6 +222,7 @@ target_link_libraries(sevenzip_native_keys PRIVATE Qt6::GuiPrivate)
 set_target_properties(sevenzip_native_keys PROPERTIES AUTOMOC OFF AUTOUIC OFF)
 
 add_library(sevenzip_panel STATIC src/CPP/7zip/UI/FileManager/App.cpp
+    src/qtsemanticcolors.cpp src/qtsemanticcolors.h
     src/qtmemorylockservices.cpp src/qtmemorylockservices.h
     src/CPP/7zip/UI/FileManager/PanelCrc.cpp
     src/CPP/7zip/UI/Common/ArchiveName.cpp

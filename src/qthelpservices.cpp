@@ -1,6 +1,7 @@
 #include "qthelpservices.h"
 #include "Common/StringConvert.h"
 #include "qtlangcontrols.h"
+#include "qtsemanticcolors.h"
 #include <QCoreApplication>
 #include <QDesktopServices>
 #include <QDialog>
@@ -66,6 +67,8 @@ void FitHelpTableColumns(QTextFrame *frame) {
 class HelpBrowser final : public QTextBrowser {
   public:
     HelpBrowser(QWidget *parent, const QUrl &root) : QTextBrowser(parent) {
+        setBackgroundRole(QPalette::Window);
+        viewport()->setBackgroundRole(QPalette::Window);
         connect(this, &QTextBrowser::sourceChanged, this, [this, root] {
             resolveHelpLinks(root);
             // Legacy pixel widths can be smaller than a parameter name with
@@ -169,28 +172,23 @@ pre, pre.syntax, pre.example {
 }
 )css";
         const QPalette colors = palette();
-        const QColor base = colors.color(QPalette::Base);
-        const QColor text = colors.color(QPalette::Text);
-        const auto blend = [base, text](qreal amount) {
-            return QColor::fromRgbF(base.redF() * (1 - amount) + text.redF() * amount,
-                                    base.greenF() * (1 - amount) + text.greenF() * amount,
-                                    base.blueF() * (1 - amount) + text.blueF() * amount);
-        };
-        const bool dark =
-            colors.color(QPalette::Base).lightness() < colors.color(QPalette::Text).lightness();
+        const QColor base = colors.color(QPalette::Window);
+        const QColor text = colors.color(QPalette::WindowText);
+        const QColor surface = QtSemanticColors::surface(colors, QPalette::Window);
+        const QColor link = QtSemanticColors::readable(colors.color(QPalette::Link), base);
         // Substitute in one pass: palette colors may equal another source token.
         const QHash<QByteArray, QColor> replacements = {
-            {"#ffffff", colors.color(QPalette::Base)},
-            {"#000000", colors.color(QPalette::Text)},
-            {"#999999", blend(0.22)},
-            {"#cccccc", blend(0.08)},
-            {"#dddddd", blend(0.08)},
-            {"#0066ff", colors.color(QPalette::Link)},
-            {"#996600", colors.color(QPalette::LinkVisited)},
-            {"#cc9900", colors.color(QPalette::Link)},
-            {"#C00000", QColor(dark ? "#ff9b8e" : "#a52a21")},
-            {"#F00000", QColor(dark ? "#ff9b8e" : "#a52a21")},
-            {"#228B22", QColor(dark ? "#8fc99a" : "#26723b")}};
+            {"#ffffff", base},
+            {"#000000", text},
+            {"#999999", QtSemanticColors::border(colors, QPalette::Window)},
+            {"#cccccc", surface},
+            {"#dddddd", surface},
+            {"#0066ff", QtSemanticColors::readable(link, surface)},
+            {"#996600", QtSemanticColors::readable(colors.color(QPalette::LinkVisited), base)},
+            {"#cc9900", QtSemanticColors::readable(link, surface)},
+            {"#C00000", QtSemanticColors::error(surface)},
+            {"#F00000", QtSemanticColors::error(surface)},
+            {"#228B22", QtSemanticColors::success(base)}};
         QByteArray result;
         for (qsizetype i = 0; i < css.size();) {
             const auto color = replacements.constFind(css.mid(i, 7));

@@ -99,12 +99,9 @@ class PanelCellTextTests final : public QObject, protected MainWindowTestSupport
         };
         const auto selectionConnection = connect(
             view->selectionModel(), &QItemSelectionModel::selectionChanged, &window, observe);
-        const auto paintConnection =
-            connect(view->model(), &QAbstractItemModel::dataChanged, &window,
-                    [&](const QModelIndex &, const QModelIndex &, const QList<int> &roles) {
-                        if (roles.contains(Qt::BackgroundRole))
-                            observe();
-                    });
+        const auto paintConnection = connect(
+            view->model(), &QAbstractItemModel::dataChanged, &window,
+            [&](const QModelIndex &, const QModelIndex &, const QList<int> &) { observe(); });
         const auto disconnectObservers = qScopeGuard([&] {
             disconnect(selectionConnection);
             disconnect(paintConnection);

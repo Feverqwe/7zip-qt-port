@@ -4,6 +4,7 @@
 #include "CPP/7zip/UI/FileManager/HelpUtils.h"
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
+#include "color_contrast.h"
 #include "layout_inspection.h"
 #include "qthelpservices.h"
 #include "qtlangcontrols.h"
@@ -22,21 +23,6 @@
 #include <QTextTable>
 #include <QTimer>
 #include <QtTest>
-#include <cmath>
-
-namespace {
-qreal textContrast(const QColor &foreground, const QColor &background) {
-    const auto luminance = [](const QColor &color) {
-        const auto linear = [](qreal value) {
-            return value <= 0.04045 ? value / 12.92 : std::pow((value + 0.055) / 1.055, 2.4);
-        };
-        return 0.2126 * linear(color.redF()) + 0.7152 * linear(color.greenF()) +
-               0.0722 * linear(color.blueF());
-    };
-    const qreal first = luminance(foreground), second = luminance(background);
-    return (qMax(first, second) + 0.05) / (qMin(first, second) + 0.05);
-}
-} // namespace
 
 class HelpSourceTests : public QObject {
     Q_OBJECT
@@ -44,6 +30,38 @@ class HelpSourceTests : public QObject {
   public slots:
     void openUrl(const QUrl &url) { openedUrl = url; }
   private slots:
+    void aboutPaletteChangesRestyleOpenDialog() {
+        const QPalette original = QApplication::palette();
+        const auto restore = qScopeGuard([&] { QApplication::setPalette(original); });
+        CAboutDialog dialog;
+        dialog.show();
+        auto *attribution = dialog.findChild<QWidget *>("aboutUpstream");
+        QColor previous;
+        for (const QColor window :
+             {QColor("#f1f2f4"), QColor("#202326"), QColor("#596577"), QColor("#f0e5d5")}) {
+            QPalette colors = original;
+            colors.setColor(QPalette::Window, window);
+            colors.setColor(QPalette::WindowText,
+                            window.lightnessF() < 0.5 ? Qt::white : Qt::black);
+            // Deliberately unsuitable on some surfaces: the link tone must adapt.
+            colors.setColor(QPalette::Link, QColor("#34518c"));
+            QApplication::setPalette(colors);
+            QApplication::processEvents();
+            const QPixmap rendered = attribution->grab();
+            const QColor surface = rendered.toImage().pixelColor(
+                qRound(12 * rendered.devicePixelRatio()), qRound(12 * rendered.devicePixelRatio()));
+            QVERIFY(surface != previous && surface != window);
+            previous = surface;
+            for (auto *label : attribution->findChildren<QLabel *>())
+                QVERIFY(textContrast(label->palette().color(QPalette::WindowText), surface) >= 4.5);
+            for (auto *button : dialog.findChildren<QPushButton *>()) {
+                if (button->isFlat())
+                    QVERIFY(textContrast(button->palette().color(QPalette::ButtonText),
+                                         button->parentWidget() == attribution ? surface
+                                                                               : window) >= 4.5);
+            }
+        }
+    }
     void tableParameterNamesStayReadable() {
         QWidget parent;
         ShowHelpWindow("cmdline/switches/method.htm#7Z", &parent);
@@ -407,13 +425,15 @@ class HelpSourceTests : public QObject {
         browser->anchorClicked(QUrl("general/formats.htm#zip"));
         const QUrl source = browser->source();
         const QString text = browser->toPlainText();
-        for (bool dark : {true, false, true}) {
+        for (const QColor background : {QColor("#202326"), QColor("#f1f2f4"), QColor("#596577"),
+                                        QColor("#f0e5d5"), QColor("#202326")}) {
+            const bool dark = background.lightnessF() < 0.5;
             QPalette colors = original;
             colors.setColor(QPalette::Base, QColor(dark ? "#202326" : "#ffffff"));
             colors.setColor(QPalette::Text, QColor(dark ? "#e8eaed" : "#202326"));
             colors.setColor(QPalette::AlternateBase, QColor(dark ? "#2c3035" : "#edf0f3"));
             colors.setColor(QPalette::Link, QColor(dark ? "#8cbcff" : "#205bb0"));
-            colors.setColor(QPalette::Window, QColor(dark ? "#272b30" : "#f1f2f4"));
+            colors.setColor(QPalette::Window, background);
             colors.setColor(QPalette::WindowText, colors.color(QPalette::Text));
             colors.setColor(QPalette::Button, colors.color(QPalette::Window));
             colors.setColor(QPalette::ButtonText, colors.color(QPalette::Text));
@@ -427,22 +447,24 @@ class HelpSourceTests : public QObject {
             QCOMPARE(browser->toPlainText(), text);
             QCOMPARE(browser->verticalScrollBar()->value(), scroll);
             QCOMPARE(browser->document()->rootFrame()->frameFormat().background().color(),
-                     colors.color(QPalette::Base));
+                     window->palette().color(QPalette::Window));
+            QCOMPARE(browser->viewport()->palette().color(browser->viewport()->backgroundRole()),
+                     window->palette().color(QPalette::Window));
             auto cursor = browser->document()->find("Supported formats");
             QVERIFY(!cursor.isNull());
             QCOMPARE(cursor.charFormat().foreground().color(), colors.color(QPalette::Text));
             cursor = browser->document()->find("BZIP2");
             QVERIFY(cursor.currentTable());
             QCOMPARE(cursor.currentTable()->cellAt(cursor).format().background().color(),
-                     colors.color(QPalette::Base));
+                     colors.color(QPalette::Window));
             cursor = browser->document()->find("Creation");
             const QColor header =
                 cursor.currentTable()->cellAt(cursor).format().background().color();
-            QVERIFY(header != colors.color(QPalette::Base));
-            QVERIFY(textContrast(colors.color(QPalette::Text), header) >= 4.5);
+            QVERIFY(header != colors.color(QPalette::Window));
+            QVERIFY(textContrast(colors.color(QPalette::WindowText), header) >= 4.5);
             cursor = browser->document()->find("ZIP", 0, QTextDocument::FindWholeWords);
             QVERIFY(cursor.charFormat().isAnchor());
-            QCOMPARE(cursor.charFormat().foreground().color(), colors.color(QPalette::Link));
+            QVERIFY(textContrast(cursor.charFormat().foreground().color(), background) >= 4.5);
             browser->verticalScrollBar()->setValue(0);
             for (QSize size : {QSize(760, 560), QSize(420, 300)}) {
                 window->resize(size);
@@ -453,7 +475,7 @@ class HelpSourceTests : public QObject {
                 browser->setSource(QUrl("qrc:/upstream/7zip/Help/cmdline/syntax.htm"));
                 const auto syntax = browser->document()->find("expression1");
                 QVERIFY(!syntax.isNull());
-                QVERIFY(syntax.blockFormat().background().color() != colors.color(QPalette::Base));
+                QVERIFY(syntax.blockFormat().background().color() != background);
                 QVERIFY(textContrast(syntax.charFormat().foreground().color(),
                                      syntax.blockFormat().background().color()) >= 4.5);
                 QCOMPARE(syntax.charFormat().foreground().color(), colors.color(QPalette::Text));

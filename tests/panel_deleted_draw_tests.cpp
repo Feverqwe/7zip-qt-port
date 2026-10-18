@@ -1,11 +1,74 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
+#include "color_contrast.h"
 #include "deleted_folder.h"
 #include "layout_inspection.h"
 #include "window_state_support.h"
+#include <QPainter>
+#include <QScopeGuard>
 
 class PanelDeletedDrawTests final : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
   private slots:
+    void livePaletteKeepsMarksAndDeletedTextReadable() {
+        const QPalette original = QApplication::palette();
+        const auto restore = qScopeGuard([&] { QApplication::setPalette(original); });
+        const QString settings = qEnvironmentVariable("SEVENZIP_SETTINGS_PATH");
+        QFile::remove(settings);
+        CFmSettings preferences;
+        preferences.AlternativeSelection = true;
+        preferences.Save(settings);
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        window.show();
+        QVERIFY(QTest::qWaitForWindowActive(&window));
+        action(window, "openRootAction")->trigger();
+        auto *view = static_cast<FileTable *>(table(window));
+        auto &panel = *view->sourcePanel;
+        panel.Set_AutoRefresh_Mode(false);
+        panel.SetNewFolder(new DeletedFolder);
+        panel.LoadFullPath();
+        panel.OnReload();
+        panel.SelectAll(true);
+        for (const QColor base : {QColor("#ffffff"), QColor("#202326"), QColor("#596577"),
+                                  QColor("#f0e5d5"), QColor("#202326")}) {
+            QPalette colors = original;
+            colors.setColor(QPalette::Base, base);
+            colors.setColor(QPalette::Text, base.lightnessF() < 0.5 ? Qt::white : Qt::black);
+            colors.setColor(QPalette::Highlight, QColor("#34518c"));
+            QApplication::setPalette(colors);
+            QApplication::processEvents();
+            for (int row = 0; row < view->rowCount(); ++row) {
+                const auto index = view->model()->index(row, 0);
+                const QColor mark = index.data(Qt::BackgroundRole).value<QBrush>().color();
+                QVERIFY(mark.isValid() && mark != base);
+                QVERIFY(textContrast(colors.color(QPalette::Text), mark) >= 4.5);
+                QVERIFY(panel.IsItemMarked(index.data(Qt::UserRole + 6).toUInt()));
+                if (index.data(Qt::UserRole + 6).toUInt() != 0)
+                    continue;
+                const QColor foreground = index.data(Qt::ForegroundRole).value<QBrush>().color();
+                QVERIFY(foreground.red() > foreground.green());
+                QVERIFY(textContrast(foreground, mark) >= 4.5);
+                QImage image(300, 40, QImage::Format_ARGB32_Premultiplied);
+                image.fill(colors.color(QPalette::Highlight));
+                QStyleOptionViewItem option;
+                option.initFrom(view);
+                option.rect = image.rect();
+                option.state |= QStyle::State_Selected | QStyle::State_Active;
+                QPainter painter(&image);
+                view->itemDelegate()->paint(&painter, option, index);
+                painter.end();
+                bool readableEmphasis = false;
+                for (int y = 0; y < image.height(); ++y)
+                    for (int x = 0; x < image.width(); ++x) {
+                        const QColor pixel = image.pixelColor(x, y);
+                        readableEmphasis |=
+                            pixel.red() > pixel.green() + 20 && pixel.red() > pixel.blue() + 20 &&
+                            textContrast(pixel, colors.color(QPalette::Highlight)) >= 4.5;
+                    }
+                QVERIFY2(readableEmphasis, qPrintable(base.name() + " " + index.data().toString()));
+            }
+        }
+    }
     void owningProviderColorsDeletedItems_data() {
         QTest::addColumn<unsigned>("pane");
         QTest::addColumn<bool>("russian");
@@ -78,19 +141,24 @@ class PanelDeletedDrawTests final : public QObject, protected MainWindowTestSupp
         peerView->sourcePanel->Set_AutoRefresh_Mode(false);
         const int peerRows = peerView->rowCount();
         for (int column = 0; column < view->columnCount(); ++column) {
-            QCOMPARE(qvariant_cast<QBrush>(view->item(deletedRow, column)->data(Qt::ForegroundRole))
-                         .color(),
-                     QColor(255, 0, 0));
+            const QColor foreground =
+                view->item(deletedRow, column)->data(Qt::ForegroundRole).value<QBrush>().color();
+            const QColor background = alternative ? view->item(deletedRow, column)
+                                                        ->data(Qt::BackgroundRole)
+                                                        .value<QBrush>()
+                                                        .color()
+                                                  : view->palette().color(QPalette::Base);
+            QVERIFY(foreground.red() > foreground.green());
+            QVERIFY(foreground.red() > foreground.blue());
+            QVERIFY(textContrast(foreground, background) >= 4.5);
             QVERIFY(!view->item(ordinaryRow, column)->data(Qt::ForegroundRole).isValid());
         }
         QCOMPARE(
             qvariant_cast<QBrush>(iconView->model()->index(deletedRow, 0).data(Qt::ForegroundRole))
                 .color(),
-            QColor(255, 0, 0));
+            view->item(deletedRow, 0)->data(Qt::ForegroundRole).value<QBrush>().color());
         if (alternative)
-            QCOMPARE(
-                qvariant_cast<QBrush>(view->item(deletedRow, 0)->data(Qt::BackgroundRole)).color(),
-                QColor(255, 192, 192));
+            QVERIFY(view->item(deletedRow, 0)->data(Qt::BackgroundRole).isValid());
         const unsigned queries = spec->deletedQueries;
         {
             CPanel::CDisableNotify guard(panel);
@@ -121,12 +189,12 @@ class PanelDeletedDrawTests final : public QObject, protected MainWindowTestSupp
             for (int y = 0; y < rendered.height() && !redText; ++y)
                 for (int x = 0; x < rendered.width(); ++x) {
                     const QColor pixel = rendered.pixelColor(x, y);
-                    if (pixel.red() > 200 && pixel.green() < 80 && pixel.blue() < 80) {
+                    if (pixel.red() > pixel.green() * 1.4 && pixel.red() > pixel.blue() * 1.4) {
                         redText = true;
                         break;
                     }
                 }
-            QVERIFY2(redText, "Source red foreground must survive standard selected-text paint");
+            QVERIFY2(redText, "Deleted-item emphasis must survive selected-text paint");
             QVERIFY(UiInspection::writeReport(
                 window,
                 QString("deleted-draw-%1-%2").arg(QTest::currentDataTag()).arg(size.width())));

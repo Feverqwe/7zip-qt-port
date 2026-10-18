@@ -1,5 +1,4 @@
 #include "qtpanellist.h"
-#include <QBrush>
 #include <QItemSelectionModel>
 #include <QListView>
 #include <QTableView>
@@ -69,11 +68,10 @@ void QtPanelList::SelectOnly(int row) {
 void QtPanelList::SetItemMarked(int row, bool marked) {
     if (!IsBound() || row < 0 || row >= GetItemCount())
         return;
-    const QVariant brush = marked ? QVariant(QBrush(QColor(255, 192, 192))) : QVariant();
     for (int column = 0; column < view_->model()->columnCount(); ++column) {
         const QModelIndex index = view_->model()->index(row, column);
-        if (index.data(Qt::BackgroundRole) != brush)
-            view_->model()->setData(index, brush, Qt::BackgroundRole);
+        if (index.data(MarkedRole).toBool() != marked)
+            view_->model()->setData(index, marked, MarkedRole);
     }
 }
 void QtPanelList::SetSingleSelection(bool enabled) {

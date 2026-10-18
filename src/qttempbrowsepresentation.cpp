@@ -41,6 +41,12 @@ class BrowseRow final : public QTreeWidgetItem {
 
   public:
     BrowseRow(CBrowseDialog2 &dialog, QTreeWidget *list) : QTreeWidgetItem(list), _dialog(dialog) {}
+    QVariant data(int column, int role) const override {
+        if (column == 0 && role == Qt::ForegroundRole &&
+            !QTreeWidgetItem::data(0, Qt::UserRole + 1).toString().isEmpty() && treeWidget())
+            return treeWidget()->palette().brush(QPalette::Disabled, QPalette::Text);
+        return QTreeWidgetItem::data(column, role);
+    }
 };
 class BrowseAppearance final : public QStyledItemDelegate {
     bool _fullRow, _grid;
@@ -276,7 +282,6 @@ void CBrowseDialog2::PopulateRows(const UStringVector &selected, const UString &
                                   "Защищён: завершение внешнего приложения не подтверждено");
             row->setToolTip(0, reason);
             row->setData(0, Qt::UserRole + 1, reason);
-            row->setForeground(0, palette().color(QPalette::Disabled, QPalette::Text));
         }
         row->setSelected(selected.FindInSorted(name) != -1);
         if (focused == name && !cursor)
