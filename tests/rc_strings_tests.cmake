@@ -8,7 +8,7 @@ set(second_resource "${TEST_ROOT}/second.rc")
 file(WRITE "${second_resource}" "STRINGTABLE DISCARDABLE\nBEGIN\n IDS_GAMMA \"Gamma\"\nEND\n")
 set(inputs "${resource};${second_resource}")
 execute_process(COMMAND "${CMAKE_COMMAND}" "-DRESOURCE_FILES=${inputs}" "-DOUTPUT_FILE=${output}"
-    -P "${PROJECT_ROOT}/scripts/rc_strings.cmake" RESULT_VARIABLE status)
+    -P "${PROJECT_ROOT}/scripts/lib/rc_strings.cmake" RESULT_VARIABLE status)
 if(NOT status EQUAL 0)
     message(FATAL_ERROR "Valid source STRINGTABLE rejected")
 endif()
@@ -20,7 +20,7 @@ if(NOT content MATCHES "IDS_ALPHA, L\"Alpha\"" OR
 endif()
 file(SHA256 "${output}" initial_hash)
 execute_process(COMMAND "${CMAKE_COMMAND}" "-DRESOURCE_FILES=${inputs}" "-DOUTPUT_FILE=${output}"
-    -P "${PROJECT_ROOT}/scripts/rc_strings.cmake" RESULT_VARIABLE status)
+    -P "${PROJECT_ROOT}/scripts/lib/rc_strings.cmake" RESULT_VARIABLE status)
 file(SHA256 "${output}" repeated_hash)
 if(NOT status EQUAL 0 OR NOT initial_hash STREQUAL repeated_hash)
     message(FATAL_ERROR "Repeated generation must preserve content")
@@ -35,7 +35,7 @@ foreach(invalid IN ITEMS unsupported unterminated missing_table)
         file(WRITE "${second_resource}" "LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US\n")
     endif()
     execute_process(COMMAND "${CMAKE_COMMAND}" "-DRESOURCE_FILES=${inputs}" "-DOUTPUT_FILE=${output}"
-        -P "${PROJECT_ROOT}/scripts/rc_strings.cmake" RESULT_VARIABLE status
+        -P "${PROJECT_ROOT}/scripts/lib/rc_strings.cmake" RESULT_VARIABLE status
         OUTPUT_QUIET ERROR_QUIET)
     file(SHA256 "${output}" after_hash)
     if(status EQUAL 0 OR NOT initial_hash STREQUAL after_hash)
@@ -48,14 +48,14 @@ set(mixed_resource "${TEST_ROOT}/mixed.rc")
 set(mixed_fixture "IDR_MENU MENU\nBEGIN\n MENUITEM \"ignored presentation\", IDM_TEST\nEND\nSTRINGTABLE\nBEGIN\n IDS_MIXED \"line\\n{0}\"\nEND\nIDB_TEST BITMAP \"ignored.bmp\"\n")
 file(WRITE "${mixed_resource}" "${mixed_fixture}")
 execute_process(COMMAND "${CMAKE_COMMAND}" "-DRESOURCE_FILES=${mixed_resource}"
-    "-DOUTPUT_FILE=${output}" -P "${PROJECT_ROOT}/scripts/rc_strings.cmake"
+    "-DOUTPUT_FILE=${output}" -P "${PROJECT_ROOT}/scripts/lib/rc_strings.cmake"
     RESULT_VARIABLE status OUTPUT_QUIET ERROR_QUIET)
 if(status EQUAL 0)
     message(FATAL_ERROR "Mixed resource must require explicit extraction mode")
 endif()
 execute_process(COMMAND "${CMAKE_COMMAND}" "-DRESOURCE_FILES=${mixed_resource}"
     "-DMIXED_RESOURCE_FILES=${mixed_resource}" "-DOUTPUT_FILE=${output}"
-    -P "${PROJECT_ROOT}/scripts/rc_strings.cmake" RESULT_VARIABLE status)
+    -P "${PROJECT_ROOT}/scripts/lib/rc_strings.cmake" RESULT_VARIABLE status)
 file(READ "${output}" content)
 if(NOT status EQUAL 0 OR NOT content MATCHES "IDS_MIXED" OR
    content MATCHES "MENUITEM" OR content MATCHES "IDB_TEST")
@@ -64,7 +64,7 @@ endif()
 file(SHA256 "${output}" mixed_hash)
 execute_process(COMMAND "${CMAKE_COMMAND}" "-DRESOURCE_FILES=${mixed_resource}"
     "-DMIXED_RESOURCE_FILES=${mixed_resource}" "-DOUTPUT_FILE=${output}"
-    -P "${PROJECT_ROOT}/scripts/rc_strings.cmake" RESULT_VARIABLE status)
+    -P "${PROJECT_ROOT}/scripts/lib/rc_strings.cmake" RESULT_VARIABLE status)
 file(SHA256 "${output}" repeated_hash)
 if(NOT status EQUAL 0 OR NOT mixed_hash STREQUAL repeated_hash)
     message(FATAL_ERROR "Repeated mixed-resource extraction must preserve content")
@@ -82,7 +82,7 @@ foreach(invalid IN ITEMS unsupported unterminated missing_table undeclared)
     endif()
     execute_process(COMMAND "${CMAKE_COMMAND}" "-DRESOURCE_FILES=${mixed_resource}"
         "-DMIXED_RESOURCE_FILES=${mixed_inputs}" "-DOUTPUT_FILE=${output}"
-        -P "${PROJECT_ROOT}/scripts/rc_strings.cmake" RESULT_VARIABLE status
+        -P "${PROJECT_ROOT}/scripts/lib/rc_strings.cmake" RESULT_VARIABLE status
         OUTPUT_QUIET ERROR_QUIET)
     file(SHA256 "${output}" after_hash)
     if(status EQUAL 0 OR NOT mixed_hash STREQUAL after_hash)
@@ -93,7 +93,7 @@ endforeach()
 set(brace_resource "${TEST_ROOT}/brace.rc")
 file(WRITE "${brace_resource}" "STRINGTABLE DISCARDABLE\n{\n IDS_BRACE \"Brace {0}\"\n}\n")
 execute_process(COMMAND "${CMAKE_COMMAND}" "-DRESOURCE_FILES=${brace_resource}"
-    "-DOUTPUT_FILE=${output}" -P "${PROJECT_ROOT}/scripts/rc_strings.cmake"
+    "-DOUTPUT_FILE=${output}" -P "${PROJECT_ROOT}/scripts/lib/rc_strings.cmake"
     RESULT_VARIABLE status)
 file(READ "${output}" content)
 string(FIND "${content}" "{IDS_BRACE, L\"Brace {0}\"}" brace_entry)
@@ -110,7 +110,7 @@ foreach(invalid IN ITEMS wrong_end wrong_brace nested)
         file(WRITE "${brace_resource}" "STRINGTABLE\n{\n STRINGTABLE\n}\n")
     endif()
     execute_process(COMMAND "${CMAKE_COMMAND}" "-DRESOURCE_FILES=${brace_resource}"
-        "-DOUTPUT_FILE=${output}" -P "${PROJECT_ROOT}/scripts/rc_strings.cmake"
+        "-DOUTPUT_FILE=${output}" -P "${PROJECT_ROOT}/scripts/lib/rc_strings.cmake"
         RESULT_VARIABLE status OUTPUT_QUIET ERROR_QUIET)
     file(SHA256 "${output}" after_hash)
     if(status EQUAL 0 OR NOT brace_hash STREQUAL after_hash)

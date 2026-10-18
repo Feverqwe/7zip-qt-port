@@ -47,9 +47,9 @@ set(resource_strings_header "${CMAKE_CURRENT_BINARY_DIR}/ResourceStrings.h")
 add_custom_command(OUTPUT "${resource_strings_header}"
     COMMAND "${CMAKE_COMMAND}" "-DRESOURCE_FILES=${property_name_resource};${extract_resource};${file_manager_resource};${progress_resource};${update_resource};${overwrite_resource};${gui_resource};${explorer_resource};${language_resource};${codec_icon_resource}"
         "-DMIXED_RESOURCE_FILES=${file_manager_resource};${progress_resource};${overwrite_resource};${explorer_resource};${language_resource};${codec_icon_resource}"
-        "-DOUTPUT_FILE=${resource_strings_header}" -P "${CMAKE_CURRENT_SOURCE_DIR}/scripts/rc_strings.cmake"
+        "-DOUTPUT_FILE=${resource_strings_header}" -P "${CMAKE_CURRENT_SOURCE_DIR}/scripts/lib/rc_strings.cmake"
     DEPENDS "${property_name_resource}" "${extract_resource}" "${file_manager_resource}"
-        "${progress_resource}" "${update_resource}" "${overwrite_resource}" "${gui_resource}" "${explorer_resource}" "${language_resource}" "${codec_icon_resource}" scripts/rc_strings.cmake
+        "${progress_resource}" "${update_resource}" "${overwrite_resource}" "${gui_resource}" "${explorer_resource}" "${language_resource}" "${codec_icon_resource}" scripts/lib/rc_strings.cmake
     VERBATIM)
 
 qt_standard_project_setup()

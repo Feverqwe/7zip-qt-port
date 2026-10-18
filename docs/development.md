@@ -121,12 +121,13 @@ targets and run their CTest suites (including required fixtures):
 ```sh
 python3 scripts/verify.py --list
 python3 scripts/verify.py navigation
+python3 scripts/verify.py archive-open
 python3 scripts/verify.py options --plan
 python3 scripts/verify.py --tests '^address_combo$'
 python3 scripts/verify.py navigation --platform all
 ```
 
-Profiles in `scripts/verify-profiles.json` define scenario scope and whether a
+Profiles in `scripts/config/verify-profiles.json` define scenario scope and whether a
 Windows desktop is needed. They are starting points: extend the selection for
 other affected consumers. `--tests` overrides a profile's CTest regex. Targets
 come from generated CMake/CTest registrations, including executable arguments
@@ -135,6 +136,9 @@ enabled selection fails. Slow suites retain their explicit opt-in requirement.
 `--plan` configures and prints the selection without building, testing or
 preparing runtime. Verification uses the `dev` preset by default; the `release`
 preset disables test programs for application-only builds.
+
+Keep command entrypoints in `scripts/`, shared implementation and build helpers
+in `scripts/lib/`, and scenario configuration in `scripts/config/`.
 
 `verify.py` keeps `build/<preset>/verify-result.json` with the selection,
 targets, result and time spent on runtime/configuration/selection/build/tests.
@@ -171,7 +175,7 @@ local builds default to OFF. For debugger work, rebuild the affected test with
 worktree/toolchain. The option does not delete artifacts from older builds.
 
 Runtime packages use Release builds with testing disabled; local checks remain
-unchanged. GitHub CI is absent by user decision; see [CI scope](ci.md).
+unchanged. GitHub Actions builds release packages; see [CI scope](ci.md).
 For a local application with its runtime dependencies, run `./scripts/build-app.sh`.
 It installs into `dist/` (`dist/Sevenzip.app` on macOS); intermediate build files
 remain in `build/`. The local runtime receives the same size optimizations as
@@ -275,9 +279,9 @@ establish acceptance of excluded slow suites.
 
 ## Automation
 
-The maintainer uses shared x64 Hyper-V guests on a privately configured Windows
-host. These optional commands require the local `runners` skill and authenticated
-access; contributors can build and test locally without them:
+Remote checks use the hosts and toolchains in
+[local runner configuration](runner-configuration.md). These optional commands
+require authenticated SSH access; contributors can build and test locally without them:
 
 ```sh
 python3 scripts/hyperv-runner.py probe linux
@@ -287,10 +291,9 @@ python3 scripts/hyperv-runner.py check windows
 ```
 
 Add `--preset release` to run Debug's full gate followed by the Release build
-and CTest. The helper uses the global `runners` skill's authenticated readiness
-command, starts only the requested guest if needed, and discovers its current
-DHCP address. Host storage stays on `D:\runner`; each guest reuses the single
-Sevenzip `current` worktree. See [Hyper-V runners](hyperv-runners.md)
+and CTest. The helper uses either the configured SSH connection or an optional
+readiness command for VM startup and address discovery. Each guest reuses its
+configured Sevenzip `current` worktree. See [Hyper-V runners](hyperv-runners.md)
 for toolchains, pinned engine caching, source sync scope and validation results.
 This is project integration glue; upstream 7zFM has no runner implementation.
 

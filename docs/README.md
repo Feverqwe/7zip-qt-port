@@ -24,7 +24,7 @@ evidence applies only to the recorded revision, platform and scenario.
 | Extract resources and compare them with widgets | [UI reference tooling](ui-reference.md) |
 | Capture an original Windows reference | [Windows reference](windows-ui-reference.md) |
 | Compare native runtime geometry across three operating systems | [Runtime comparison](ui-runtime-comparison.md) |
-| Validate Linux/Windows on shared guests | [Hyper-V runners](hyperv-runners.md) |
+| Configure remote hosts and validate Linux/Windows | [Local configuration](runner-configuration.md), [runner workflows](hyperv-runners.md) |
 | Build local packages or understand CI/release scope | [Packaging and CI](ci.md) |
 | Check source provenance and adaptation decisions | [Source audit](upstream-port-audit.md), [module decisions](omitted-scope-audit.md) |
 | Compare or update upstream | [Baseline manifest](upstream-baseline.json), [update procedure](upstream-update.md) |

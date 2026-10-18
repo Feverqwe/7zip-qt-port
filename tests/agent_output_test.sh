@@ -4,7 +4,7 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 fixture="$(mktemp -d "${TMPDIR:-/tmp}/sevenzip-output-test.XXXXXX")"
 trap 'rm -rf "$fixture"' EXIT
-export SEVENZIP_OUTPUT_HELPER="$repo_root/scripts/agent-output.sh"
+export SEVENZIP_OUTPUT_HELPER="$repo_root/scripts/lib/agent-output.sh"
 export TMPDIR="$fixture"
 
 compact_success="$(CODEX_SESSION_ID=test SEVENZIP_SCRIPT_OUTPUT=auto bash -c '

@@ -2,13 +2,19 @@
 [CmdletBinding()]
 param([string]$UpstreamCheckout = 'upstream')
 $ErrorActionPreference = 'Stop'
+$project = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
+$expectedHost = $env:SEVENZIP_WINDOWS_RUNNER_HOST
+if (-not $expectedHost) {
+    $python = if ($env:SEVENZIP_RUNNER_PYTHON) { $env:SEVENZIP_RUNNER_PYTHON } else { 'python' }
+    $expectedHost = & $python (Join-Path $PSScriptRoot 'lib/runner_config.py') windows-host
+    if ($LASTEXITCODE -ne 0) { throw 'Configure the Windows test host in runners.local.json.' }
+}
 $compilerDirectory = [IO.Path]::GetDirectoryName((Get-Command cl.exe -ErrorAction Stop).Source)
 $env:PATH = "$compilerDirectory;$env:PATH"
-if ($env:OS -ne 'Windows_NT' -or $env:COMPUTERNAME -ne 'RUNNER-WINDOWS' -or
+if ($env:OS -ne 'Windows_NT' -or $env:COMPUTERNAME -ne $expectedHost -or
     $env:VSCMD_ARG_TGT_ARCH -ne 'x64') {
     throw 'Use the authorized x64 Windows runner developer environment.'
 }
-$project = [IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
 $baseline = Get-Content -LiteralPath (Join-Path $project 'docs/upstream-baseline.json') -Raw |
     ConvertFrom-Json
 $revision = [string]$baseline.revision

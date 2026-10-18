@@ -170,7 +170,8 @@ Null не означает отсутствие текста. `dpiAwareness`: 0 
 ## Pinned runtime System menu reference
 
 `scripts/check-native-menu-reference.sh` проверяет affected File/System popup
-на разрешённом RUNNER-WINDOWS x64 с активным desktop:
+на настроенном Windows x64 runner с активным desktop
+([local configuration](runner-configuration.md)):
 
 ```bash
 python3 scripts/hyperv-runner.py run windows --interactive -- scripts/check-native-menu-reference.sh

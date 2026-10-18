@@ -1,0 +1,25 @@
+{
+  "schema": 1,
+  "runners": {
+    "linux": {
+      "ssh": ["ssh", "sevenzip-linux"],
+      "workspace": {"root": "/srv/sevenzip/runs"},
+      "python": "python3",
+      "qt_prefix": "/opt/Qt/6.12.0/gcc_64",
+      "path": ["/opt/build-tools/bin"],
+      "ccache_dir": "/srv/sevenzip/cache/ccache",
+      "rsync": "rsync"
+    },
+    "windows": {
+      "ssh": ["ssh", "sevenzip-windows"],
+      "computer_name": "BUILD-WINDOWS",
+      "workspace": {"root": "D:/build/sevenzip/runs"},
+      "python": "D:/tools/Python/python.exe",
+      "qt_prefix": "D:/tools/Qt/6.12.0/msvc2022_64",
+      "vcvars": "D:/tools/VS/VC/Auxiliary/Build/vcvars64.bat",
+      "path": ["D:/tools/ccache", "D:/tools/formatter/Scripts", "D:/tools/Python", "D:/tools/Python/Scripts", "D:/tools/Git/bin"],
+      "ccache_dir": "D:/build/sevenzip/cache/ccache",
+      "rsync": "D:/tools/msys64/usr/bin/rsync.exe"
+    }
+  }
+}

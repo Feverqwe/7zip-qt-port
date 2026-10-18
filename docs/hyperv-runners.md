@@ -1,11 +1,11 @@
 # Hyper-V runners
 
-Sevenzip Desktop reuses `runner-linux` and `runner-windows` on a private Windows 11
-Hyper-V host configured through the maintainer's local `runners` skill. Host
-addresses and SSH credentials belong in local configuration. VM storage stays under
-`D:\runner`; Windows guest `C:` is inside its VHDX on that disk. These are the
-same shared x64 guests used by htopQt, with one persistent Sevenzip worktree
-per platform. Run IDs identify logs, not new source/build directories.
+Connections, machine names, workspaces and tools are selected through
+[local runner configuration](runner-configuration.md). The helper supports
+direct SSH or an optional VM discovery command, with one persistent Sevenzip
+worktree per platform. Run IDs identify logs, not new source/build directories.
+The maintainer's existing shared Hyper-V guests and storage are recorded below;
+their identities and paths are not defaults for other installations.
 
 ## Persistent worktree
 
@@ -107,15 +107,12 @@ were refreshed from htopQt's modified worktree on 2026-10-04 (base commit
 The source script's SHA256 was
 `f4f53f0123a503dcc4fb85f17821d79e1cf156f29cbe015b99d561b45b1903ba`.
 
-Runner selection explicitly sets
-`CMAKE_PREFIX_PATH` and prepends the selected kit's bin directory:
-`/home/runner/sevenzip-desktop/tools/Qt/6.12.0/gcc_64` and
-`C:/runner/sevenzip-desktop/tools/Qt/6.12.0/msvc2022_64`.
+Runner selection sets `CMAKE_PREFIX_PATH` and prepends the kit and tool
+directories from local configuration.
 `probe` queries that kit's qmake rather than the system default. Install/select
 the kit before checks; the helper does not download Qt or change global PATH.
-The Linux project kit currently links to the already installed
-`/home/runner/htopQt/qt612-release-20261004/qt`, including QtDBus. Windows kit
-was installed with the repository's verified aqt adapter. Use `probe` to confirm
+The maintainer's Linux kit includes QtDBus; the Windows kit was installed with
+the repository's verified aqt adapter. Use `probe` to confirm
 the live kit; prior probe/gate results are [historical evidence](archive/qt-port/workflow-evidence.md).
 
 The persistent worktree contains `runner-tmp`. Its process environment sets
@@ -126,31 +123,14 @@ completed runs; capacity still needs a live preflight before substantial builds.
 Linux SSH checks default `QT_QPA_PLATFORM` to `offscreen` when it is unset;
 an explicit platform selection and per-suite CTest overrides are retained.
 
-### Linux project data volume
+### Workspace and Linux data volume
 
-The existing private mount is `/mnt/sevenzip-desktop`, filesystem UUID
-`9fd6574a-fe35-4af5-82fc-f1b16d78afb8`. Its setup and old capacity samples are
-[historical evidence](archive/qt-port/history/hyperv-runner-evidence.md), not instructions to
-create a disk or proof of current free space. Apply the storage policy above.
-
-The ignored local `build/runners/hyperv/workspaces.json` selects the data root:
-
-```json
-{
-  "linux": {
-    "root": "/mnt/sevenzip-desktop/runs",
-    "filesystem_uuid": "9fd6574a-fe35-4af5-82fc-f1b16d78afb8"
-  },
-  "windows": {"root": "C:/runner/sevenzip-desktop/runs"}
-}
-```
-
-Without this file, both legacy roots remain the defaults. The loader accepts
-only these project roots and canonical UUIDs. A selected data workspace checks
-the actual mounted filesystem UUID before acquiring the worktree or transferring
-source; a missing or different mount fails without falling back to the OS disk.
-Rsync basis selection stays within the selected workspace. Each run records its
-directory and required UUID. The helper does not create, format or mount disks.
+The local configuration explicitly selects each workspace. An optional Linux
+mount/UUID pair is checked before acquiring the worktree or transferring source;
+a missing or different mount fails without falling back to another disk.
+See [configuration and migration](runner-configuration.md). The helper does not
+create, format or mount disks. Prior mount setup and capacity samples remain
+[historical evidence](archive/qt-port/history/hyperv-runner-evidence.md).
 
 ```sh
 python3 scripts/hyperv-runner.py probe linux
@@ -264,12 +244,11 @@ built after synchronization: use `verify.py`, or a script calling `build.sh`
 followed by `ctest.sh`. There is no per-run build mode. Temporary local source
 copies are removed after transfer/execution; only logs and metadata get run IDs.
 
-The global skill at `~/.codex/skills/runners` must be installed. Its
-`scripts/hyperv_ready.py <platform> --start` starts only the requested existing
-guest when Off, rediscovers DHCP and verifies authenticated guest identity.
-The project helper uses the returned `ssh_argv`, strict host-key checking,
-the Mac key `~/.ssh/id_ed25519` and stable guest keys in
-`~/.ssh/known_hosts_codex_runners`. Keys and credentials are never transferred.
+An optional readiness command can start an existing VM, rediscover its address
+and verify guest identity. The maintainer uses the separately installed runners
+skill; direct SSH configurations do not require it. The helper uses the
+configured SSH argument array and normal host-key verification. Keys and
+credentials are never transferred.
 
 ## Source and runtime scope
 

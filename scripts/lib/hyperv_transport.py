@@ -3,8 +3,8 @@
 import json
 import shlex
 import subprocess
+from .runner_config import runner_config
 
-WINDOWS_RSYNC = "C:/runner/sevenzip-desktop/tools/rsync/msys64/usr/bin/rsync.exe"
 PROTECTED = ("/.git/", "/build/", "/ui-reports/", "/runner-tmp/", "/upstream/", "/check.log", "/check.cmd",
              "/runner-command.sh", "/interactive-exit.txt", "/interactive-session.txt",
              "/.runner-owner.json", "/.runner-complete")
@@ -12,10 +12,13 @@ PROTECTED = ("/.git/", "/build/", "/ui-reports/", "/runner-tmp/", "/upstream/", 
 
 def sync_command(record, platform, source, root):
     target = root
-    server = "rsync"
     if platform == "windows":
-        target = "/c/" + root.removeprefix("C:/")
-        server = WINDOWS_RSYNC
+        target = "/" + root[0].lower() + root[2:]
+    server = (record.get("config") or runner_config(platform))["rsync"]
+    if platform == "linux":
+        server = shlex.quote(server)
+    elif " " in server:
+        server = '"' + server + '"'
     # Changed contents acquire the receiver's current modification time. A local
     # edit can predate the object built from the previous immutable snapshot.
     return ["rsync", "--recursive", "--links", "--perms", "--checksum",
@@ -24,12 +27,13 @@ def sync_command(record, platform, source, root):
             *["--exclude=" + name for name in PROTECTED],
             "--exclude=__pycache__/", "--exclude=*.pyc", "--exclude=.DS_Store",
             "--rsync-path=" + server, "-e", shlex.join(record["ssh_argv"][:-1]),
-            str(source) + "/", f"runner@{record['ip']}:{target}/"]
+            str(source) + "/", f"{record['ssh_argv'][-1]}:{target}/"]
 
 
 def collect_logs(record, root, directory, command, token, invoke, output):
     def download(source, name):
-        invoke(["scp", *record["ssh_argv"][1:-1], f"runner@{record['ip']}:{root}/{source}",
+        options = ["-P" if arg == "-p" else arg for arg in record["ssh_argv"][1:-1]]
+        invoke(["scp", *options, f"{record['ssh_argv'][-1]}:{root}/{source}",
                 str(directory / name)], stdout=output, stderr=subprocess.STDOUT)
 
     download("check.log", "check.log")

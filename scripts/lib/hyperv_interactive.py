@@ -1,9 +1,11 @@
 """Run the persistent Windows worktree in the logged-on desktop session."""
 
 import base64
+from .runner_config import runner_config
+
 def interactive_command(root, elevated=False):
-    if root != "C:/runner/sevenzip-desktop/runs/current":
-        raise ValueError("Interactive task requires the persistent project worktree")
+    if root != runner_config("windows")["workspace"]["root"] + "/current":
+        raise ValueError("Interactive task requires the configured persistent worktree")
     # check.cmd supplies the same toolchain, engine, environment and command as
     # the SSH path. Only the Windows logon session changes; no shell UI or app
     # visibility workaround is injected into the product or its tests.

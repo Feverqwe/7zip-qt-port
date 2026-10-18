@@ -14,18 +14,14 @@ import tempfile
 import time
 import uuid
 
-from hyperv_interactive import interactive_command
-from hyperv_source import stage_tree
-from hyperv_transport import collect_logs, sync_command
-from hyperv_workspace import load_workspaces, mount_guard
+from lib.hyperv_interactive import interactive_command
+from lib.hyperv_source import stage_tree
+from lib.hyperv_transport import collect_logs, sync_command
+from lib.hyperv_workspace import load_workspaces, mount_guard
+from lib.runner_config import load_config, runner_config
 
 ROOT = Path(__file__).resolve().parents[1]
 STATE = ROOT / "build/runners/hyperv"
-READY = Path.home() / ".codex/skills/runners/scripts/hyperv_ready.py"
-QT_VERSION = "6.12.0"
-QT_KITS = {"linux": f"/home/runner/sevenzip-desktop/tools/Qt/{QT_VERSION}/gcc_64",
-           "windows": f"C:/runner/sevenzip-desktop/tools/Qt/{QT_VERSION}/msvc2022_64"}
-WINDOWS_PYTHON = "C:/runner/htopqt/Python/python.exe"
 
 
 def invoke(args, **kwargs):
@@ -40,23 +36,31 @@ def powershell(script):
 
 
 def discover(platform):
-    result = invoke([sys.executable, str(READY), platform, "--start"], capture_output=True)
-    record = json.loads(result.stdout)
-    record.update(name=record["vm"], id=record["vm_id"])
+    config = runner_config(platform)
+    if "ready_command" in config:
+        result = invoke(config["ready_command"], capture_output=True)
+        record = json.loads(result.stdout)
+    else:
+        record = {"ssh_argv": config["ssh"], "vm": platform}
+    if (not isinstance(record, dict) or not isinstance(record.get("vm"), str)
+            or not isinstance(record.get("ssh_argv"), list) or len(record["ssh_argv"]) < 2
+            or not all(isinstance(arg, str) and arg for arg in record["ssh_argv"])):
+        raise ValueError("Readiness command must return vm and a nonempty ssh_argv array")
+    record.update(platform=platform, config=config, name=record["vm"], id=record.get("vm_id"))
     STATE.mkdir(parents=True, exist_ok=True)
     (STATE / f"{platform}.json").write_text(json.dumps(record, indent=2) + "\n")
     return record
 
 
 def remote(record, script, **kwargs):
-    windows = record["name"] == "runner-windows"
+    windows = record["platform"] == "windows"
     return invoke([*record["ssh_argv"], powershell(
         "& ([ScriptBlock]::Create([Console]::In.ReadToEnd()))") if windows else "bash -se"],
         input=script, **kwargs)
 
 
 def lock_command(record, root, token, action, **kwargs):
-    code = (ROOT / "scripts/hyperv_lock.py").read_text()
+    code = (ROOT / "scripts/lib/hyperv_lock.py").read_text()
     if action == "recover":
         code += f"\nroot=Path({root!r})\nrecord=json.loads((root.with_name(root.name+'.lock')/'owner.json').read_text())\n"
         code += "operate(root, record['token'], 'release-completed')\n"
@@ -64,10 +68,10 @@ def lock_command(record, root, token, action, **kwargs):
         code += f"\noperate({root!r}, {token!r}, {action!r})\n"
     encoded = base64.b64encode(code.encode()).decode()
     statement = f"import base64; exec(base64.b64decode('{encoded}'))"
-    if record["name"] == "runner-windows":
-        script = f"& '{WINDOWS_PYTHON}' -c \"{statement}\"\nif ($LASTEXITCODE -ne 0) {{ exit $LASTEXITCODE }}\n"
+    if record["platform"] == "windows":
+        script = f"& '{record['config']['python']}' -c \"{statement}\"\nif ($LASTEXITCODE -ne 0) {{ exit $LASTEXITCODE }}\n"
     else:
-        script = "python3 -c " + shlex.quote(statement) + "\n"
+        script = shlex.quote(record["config"]["python"]) + " -c " + shlex.quote(statement) + "\n"
     return remote(record, script, **kwargs)
 
 
@@ -82,6 +86,7 @@ def command_payload(preset, command):
 def execute_check(record, platform, preset, digest, root, token, command=None,
                   prepare_runtime=True, output=None, interactive=False, elevated=False):
     import os
+    config = record.get("config") or runner_config(platform)
     include_slow = os.environ.get("SEVENZIP_INCLUDE_SLOW_TESTS", "0")
     if include_slow not in ("0", "1"):
         raise ValueError("SEVENZIP_INCLUDE_SLOW_TESTS must be 0 or 1")
@@ -96,41 +101,42 @@ export TMPDIR="$PWD/runner-tmp" TMP="$PWD/runner-tmp" TEMP="$PWD/runner-tmp"
 export QT_QPA_PLATFORM="${{QT_QPA_PLATFORM:-offscreen}}"
 export CMAKE_BUILD_PARALLEL_LEVEL=4 SEVENZIP_SCRIPT_OUTPUT=compact
 export SEVENZIP_COMPACT_TEST_BINARIES=ON SEVENZIP_INCLUDE_SLOW_TESTS={include_slow}
-export CMAKE_PREFIX_PATH="{QT_KITS['linux']}"
-export PATH="{QT_KITS['linux']}/bin:/home/runner/sevenzip-desktop/tools/formatter/bin:$PATH"
+export CMAKE_PREFIX_PATH={shlex.quote(config['qt_prefix'])}
+export PATH={shlex.quote(':'.join([config['qt_prefix'] + '/bin', *config['path']]))}:"$PATH"
 export LIBGL_ALWAYS_SOFTWARE=1 SEVENZIP_CTEST_JOBS=1
 export PYTHONUTF8=1 PYTHONIOENCODING=utf-8
 export SEVENZIP_RUN_TOKEN={token}
-export CCACHE_DIR=/home/runner/sevenzip-desktop/cache/ccache
+export CCACHE_DIR={shlex.quote(config['ccache_dir'])}
 export CCACHE_MAXSIZE=2G
 set +e
 (
 set -e
 df -Pk .
-python3 scripts/hyperv_source.py {digest}
+{shlex.quote(config['python'])} scripts/lib/hyperv_source.py {digest}
 git init -q
 printf '%s\\n' {' '.join(shlex.quote('/' + name) for name in excludes)} > .git/info/exclude
 git add -A
 git diff --cached --quiet || git -c user.name='Runner worktree' -c user.email='runner@example.invalid' commit -qm 'Current source'
 """
         if prepare_runtime:
-            script += 'python3 scripts/prepare-runtime.py --upstream "$PWD/upstream"\nexport SEVENZIP_RUNTIME_PREPARED=1\n'
+            script += shlex.quote(config['python']) + ' scripts/prepare-runtime.py --upstream "$PWD/upstream"\nexport SEVENZIP_RUNTIME_PREPARED=1\n'
         script += ('export PATH="$PWD/build/codec-runtime:$PATH"\n'
                    'export SEVENZIP_CODEC_MODULE_DIR="$PWD/build/codec-runtime"\n' + payload)
         script += f") > check.log 2>&1\ncode=$?\nprintf '%s\\n' '{token}' > .runner-complete\ntail -n 80 check.log\nexit \"$code\"\n"
     else:
-        kit = "C:/runner/htopqt"
         commands = ['@echo off', *[f'set "{key}={root}/runner-tmp"' for key in ("TEMP", "TMP", "TMPDIR")],
-                    f'call "{kit}/VS/VC/Auxiliary/Build/vcvars64.bat"', 'if errorlevel 1 exit /b %errorlevel%',
-                    f'set "PATH={root}/build/codec-runtime;C:/runner/sevenzip-desktop/tools/ccache;C:/runner/sevenzip-desktop/tools/formatter/Scripts;{kit}/Python;{kit}/Python/Scripts;{kit}/Git/bin;{QT_KITS["windows"]}/bin;%PATH%"',
-                    'set "CCACHE_DIR=C:/runner/sevenzip-desktop/cache/ccache"', 'set "CCACHE_MAXSIZE=2G"',
-                    f'set "CMAKE_PREFIX_PATH={QT_KITS["windows"]}"', 'set "CC=cl.exe"', 'set "CXX=cl.exe"',
+                    f'call "{config["vcvars"]}"', 'if errorlevel 1 exit /b %errorlevel%',
+                    f'set "PATH={root}/build/codec-runtime;{";".join(config["path"])};{config["qt_prefix"]}/bin;%PATH%"',
+                    f'set "CCACHE_DIR={config["ccache_dir"]}"', 'set "CCACHE_MAXSIZE=2G"',
+                    f'set "CMAKE_PREFIX_PATH={config["qt_prefix"]}"', 'set "CC=cl.exe"', 'set "CXX=cl.exe"',
+                    f'set "SEVENZIP_WINDOWS_RUNNER_HOST={config["computer_name"]}"',
+                    f'set "SEVENZIP_RUNNER_PYTHON={config["python"]}"',
                     'set "CMAKE_BUILD_PARALLEL_LEVEL=4"', 'set "SEVENZIP_COMPACT_TEST_BINARIES=ON"',
                     f'set "SEVENZIP_INCLUDE_SLOW_TESTS={include_slow}"', 'set "SEVENZIP_SCRIPT_OUTPUT=compact"',
                     'set "SEVENZIP_CTEST_JOBS=1"', f'set "SEVENZIP_CODEC_MODULE_DIR={root}/build/codec-runtime"',
                     'set "PYTHONUTF8=1"', 'set "PYTHONIOENCODING=utf-8"',
                     f'set "SEVENZIP_RUN_TOKEN={token}"',
-                    f'cd /d "{root}"', f'python scripts/hyperv_source.py {digest}',
+                    f'cd /d "{root}"', f'"{config["python"]}" scripts/lib/hyperv_source.py {digest}',
                     'if errorlevel 1 exit /b %errorlevel%', 'git init -q', 'if errorlevel 1 exit /b %errorlevel%',
                     'git config core.autocrlf false', 'if errorlevel 1 exit /b %errorlevel%']
         commands += [f'{">" if i == 0 else ">>"}.git/info/exclude echo /{name}' for i, name in enumerate(excludes)]
@@ -138,7 +144,7 @@ git diff --cached --quiet || git -c user.name='Runner worktree' -c user.email='r
                      'git diff --cached --quiet || git -c user.name="Runner worktree" -c user.email="runner@example.invalid" commit -qm "Current source"',
                      'if errorlevel 1 exit /b %errorlevel%']
         if prepare_runtime:
-            commands += ['python scripts/prepare-runtime.py --upstream upstream',
+            commands += [f'"{config["python"]}" scripts/prepare-runtime.py --upstream upstream',
                          'if errorlevel 1 exit /b %errorlevel%', 'set "SEVENZIP_RUNTIME_PREPARED=1"']
         commands += ['bash runner-command.sh', 'exit /b %errorlevel%']
         batch = base64.b64encode(("\r\n".join(commands) + "\r\n").encode()).decode()
@@ -162,7 +168,7 @@ def script_command(arguments, platforms):
     path = Path(arguments[0])
     if path.is_absolute() or ".." in path.parts or not (ROOT / path).is_file():
         raise ValueError("Script must be an existing project-relative path")
-    from hyperv_source import source_name
+    from lib.hyperv_source import source_name
     if not source_name(path.as_posix()):
         raise ValueError("Script is outside synchronized source directories")
     ignored = subprocess.run(["git", "check-ignore", "-q", "--", str(path)], cwd=ROOT)
@@ -179,7 +185,7 @@ def run_platform(platform, local, source, digest, preset, command, prepare_runti
                  interactive=False, elevated=False, workspace=None):
     directory = local / platform
     directory.mkdir()
-    workspace = workspace or load_workspaces(STATE)[platform]
+    workspace = workspace or load_workspaces()[platform]
     root = workspace["root"] + "/current"
     token = local.name
     result = {"platform": platform, "sha256": digest, "status": "running", "transport": "rsync",
@@ -202,8 +208,8 @@ def run_platform(platform, local, source, digest, preset, command, prepare_runti
             invoke(sync_command(record, platform, source, root), **transport)
             result["seconds"]["sync"] = round(time.monotonic() - started, 3)
             resolved = list(command) if command else None
-            if resolved and resolved[0] == "python" and platform == "linux":
-                resolved[0] = "python3"
+            if resolved and resolved[0] == "python":
+                resolved[0] = record["config"]["python"]
             launched = True
             started = time.monotonic()
             try:
@@ -255,7 +261,9 @@ def run_platforms(platforms, preset, upstream, command=None, prepare_runtime=Tru
                   interactive=False, elevated=False):
     if elevated and (not interactive or "windows" not in platforms):
         raise ValueError("Elevated fixtures require an interactive Windows guest")
-    workspaces = load_workspaces(STATE)
+    workspaces = load_workspaces()
+    if set(platforms) - set(workspaces):
+        raise ValueError("A selected runner has no local configuration")
     stamp = datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     local = STATE / (stamp + "-" + uuid.uuid4().hex[:8])
     local.mkdir(parents=True)
@@ -288,17 +296,16 @@ def run_platforms(platforms, preset, upstream, command=None, prepare_runtime=Tru
 
 def probe_platform(platform):
     record = discover(platform)
+    config = record["config"]
+    path = [config["qt_prefix"] + "/bin", *config["path"]]
     if platform == "linux":
-        script = ("set -euo pipefail\nuname -a\ncmake --version\ngcc --version\n"
-                  "ccache --version\n"
-                  f"{QT_KITS['linux']}/bin/qmake -query QT_VERSION\n"
-                  "/home/runner/sevenzip-desktop/tools/formatter/bin/clang-format --version\n")
+        script = (f'export PATH={shlex.quote(":".join(path))}:"$PATH"\n'
+                  "set -euo pipefail\nuname -a\ncmake --version\nc++ --version\n"
+                  "ccache --version\nqmake -query QT_VERSION\nclang-format --version\n")
     else:
-        script = "Get-CimInstance Win32_OperatingSystem | Select Caption,Version,OSArchitecture | ConvertTo-Json; "
-        for tool in ["C:/runner/htopqt/Python/Scripts/cmake.exe --version",
-                     "C:/runner/sevenzip-desktop/tools/ccache/ccache.exe --version",
-                     f"{QT_KITS['windows']}/bin/qmake.exe -query QT_VERSION",
-                     "C:/runner/sevenzip-desktop/tools/formatter/Scripts/clang-format.exe --version"]:
+        script = f"$env:PATH='{';'.join(path)};'+$env:PATH; "
+        script += "Get-CimInstance Win32_OperatingSystem | Select Caption,Version,OSArchitecture | ConvertTo-Json; "
+        for tool in ["cmake --version", "ccache --version", "qmake -query QT_VERSION", "clang-format --version"]:
             script += f"& {tool}; if ($LASTEXITCODE -ne 0) {{ exit $LASTEXITCODE }}; "
     return remote(record, script, capture_output=True)
 
@@ -361,12 +368,14 @@ def parse_arguments(argv):
 
 def main():
     args = parse_arguments(sys.argv[1:])
+    if set(args.platforms) - set(load_config()):
+        raise ValueError("A selected runner has no local configuration")
     if args.action == "probe":
         return probe_platforms(args.platforms)
     if args.action in ("status", "recover"):
         for platform in args.platforms:
             record = discover(platform)
-            workspace = load_workspaces(STATE)[platform]
+            workspace = load_workspaces()[platform]
             if "filesystem_uuid" in workspace:
                 remote(record, mount_guard(workspace))
             lock_command(record, workspace["root"] + "/current", "", args.action)

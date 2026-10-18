@@ -21,6 +21,8 @@ def sha(path):
 
 def source_name(name):
     path = PurePosixPath(name)
+    if path.parts[:2] == ("scripts", "config") and path.name.endswith(".local.json"):
+        return False
     return (not path.is_absolute() and ".." not in path.parts and bool(path.parts)
             and (path.parts[0] in SOURCE_DIRS or name in SOURCE_FILES or name == "upstream.bundle"))
 

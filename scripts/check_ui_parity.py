@@ -6,7 +6,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from ui_reference import extract
+from lib.ui_reference import extract
 
 
 def read(path):

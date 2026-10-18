@@ -12,7 +12,7 @@ case "${CODEX_SANDBOX:-}" in
     ;;
 esac
 
-source "$project_root/scripts/agent-output.sh"
+source "$project_root/scripts/lib/agent-output.sh"
 sevenzip_setup_output 'check.sh (format)'
 
 if [[ "$#" -ne 0 ]]; then

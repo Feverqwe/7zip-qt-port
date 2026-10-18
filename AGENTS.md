@@ -227,10 +227,11 @@ Group related work into complete integrated scenarios before editing;
 do not create separate iterations or commits for each helper, failure branch or
 regression. Follow the source-comparison and focused-validation rules above.
 
-For Linux/Windows checks read [Hyper-V runners](docs/hyperv-runners.md) and the
-global `runners` skill. Use
+For Linux/Windows checks read [runner configuration](docs/runner-configuration.md)
+and [runner workflows](docs/hyperv-runners.md). Read the global `runners` skill
+when using its Hyper-V discovery command. Use
 `python3 scripts/hyperv-runner.py run <linux|windows|all> -- <project-script> [args]`
-or `check all` with shared x64 guests. Prefer `python3 scripts/verify.py <profile>
+or `check all` with configured guests. Prefer `python3 scripts/verify.py <profile>
 --platform <linux|windows|all>` for focused checks. Each guest uses one locked
 `current` worktree and persistent build directories; rsync includes current
 tracked and nonignored new source files and deletes removed source files.

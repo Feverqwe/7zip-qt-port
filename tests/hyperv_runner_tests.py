@@ -12,17 +12,16 @@ import subprocess
 import sys
 import tempfile
 import unittest
-from unittest.mock import patch
+import uuid
+from unittest.mock import Mock, patch
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 spec = importlib.util.spec_from_file_location("hyperv_runner", ROOT / "scripts/hyperv-runner.py")
 runner = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(runner)
-import hyperv_lock
-import hyperv_source
-import hyperv_transport
-import hyperv_workspace
+from lib import hyperv_lock, hyperv_source, hyperv_transport, hyperv_workspace
+from lib.runner_config import load_config
 
 
 def git(root, *args):
@@ -30,6 +29,21 @@ def git(root, *args):
 
 
 class RunnerTests(unittest.TestCase):
+    def setUp(self):
+        self.rsync = shutil.which("rsync")
+        if os.name == "nt" and not self.rsync:
+            try:
+                self.rsync = load_config()["windows"]["rsync"]
+            except (OSError, ValueError, KeyError):
+                pass
+        temporary = tempfile.TemporaryDirectory(prefix="runner config ")
+        self.addCleanup(temporary.cleanup)
+        self.config_path = Path(temporary.name) / "runners.local.json"
+        shutil.copy2(ROOT / "scripts/config/runners.example.json", self.config_path)
+        environment = patch.dict(os.environ, {"SEVENZIP_RUNNER_CONFIG": str(self.config_path)})
+        environment.start()
+        self.addCleanup(environment.stop)
+
     def source_fixture(self, root):
         project, upstream = root / "project", root / "upstream"
         for path in (project, upstream):
@@ -63,6 +77,8 @@ class RunnerTests(unittest.TestCase):
             (project / "build/secret").write_text("excluded")
             (project / ".codex").mkdir()
             (project / ".codex/private").write_text("excluded")
+            (project / "scripts/config").mkdir(parents=True)
+            (project / "scripts/config/runners.local.json").write_text("private connection settings")
             (upstream / "source").write_text("uncommitted; do not change")
             before = git(upstream, "status", "--porcelain")
             destination = root / "stage"
@@ -75,6 +91,7 @@ class RunnerTests(unittest.TestCase):
             self.assertFalse((destination / "src/ignored-secret").exists())
             self.assertFalse((destination / "build").exists())
             self.assertFalse((destination / ".codex").exists())
+            self.assertFalse((destination / "scripts/config/runners.local.json").exists())
             self.assertEqual(before, git(upstream, "status", "--porcelain"))
             (destination / "src/changed.cpp").write_text("tampered")
             with self.assertRaises(ValueError):
@@ -94,6 +111,8 @@ class RunnerTests(unittest.TestCase):
                 hyperv_source.stage_tree(project, upstream, destination, root / "cache")
 
     def test_rsync_deletes_stale_source_preserves_outputs_and_checks_same_mtime_content(self):
+        if not self.rsync:
+            self.skipTest("rsync is not installed or configured")
         with tempfile.TemporaryDirectory(prefix="sync Юникод ") as temporary:
             root = Path(temporary)
             source, destination = root / "source", root / "current"
@@ -132,7 +151,7 @@ class RunnerTests(unittest.TestCase):
             command = [arg for arg in command if not arg.startswith("--rsync-path=")]
             command[-1] = str(destination) + "/"
             if os.name == "nt":
-                command[0] = hyperv_transport.WINDOWS_RSYNC
+                command[0] = self.rsync
                 for index in (-2, -1):
                     path = Path(command[index]).as_posix()
                     command[index] = "/" + path[0].lower() + path[2:] + "/"
@@ -178,12 +197,14 @@ class RunnerTests(unittest.TestCase):
     def test_workspace_configuration_and_missing_mount_fail_before_sync(self):
         with tempfile.TemporaryDirectory() as temporary:
             state = Path(temporary)
-            valid = {"linux": {"root": hyperv_workspace.LINUX_DATA_ROOT,
-                               "filesystem_uuid": "9fd6574a-fe35-4af5-82fc-f1b16d78afb8"},
-                     "windows": {"root": hyperv_workspace.DEFAULT_ROOTS["windows"]}}
-            config = state / "workspaces.json"
-            config.write_text(json.dumps(valid))
-            self.assertEqual(hyperv_workspace.load_workspaces(state), valid)
+            valid = {"linux": {"root": "/mnt/custom-data/sevenzip/runs", "mount": "/mnt/custom-data",
+                               "filesystem_uuid": str(uuid.uuid4())},
+                     "windows": {"root": "D:/build/sevenzip/runs"}}
+            settings = {"schema": 1, "runners": load_config()}
+            for platform in valid:
+                settings["runners"][platform]["workspace"] = valid[platform]
+            self.config_path.write_text(json.dumps(settings))
+            self.assertEqual(hyperv_workspace.load_workspaces(), valid)
             record = {"name": "runner-linux", "ssh_argv": ["ssh", "fixture"], "ip": "fixture"}
             with patch.object(runner, "discover", return_value=record), \
                     patch.object(runner, "remote", side_effect=subprocess.CalledProcessError(1, "mount")), \
@@ -193,20 +214,69 @@ class RunnerTests(unittest.TestCase):
                 self.assertEqual(result["status"], "failed")
                 lock.assert_not_called()
                 invoke.assert_not_called()
-            for invalid in ("/unowned", "/mnt/sevenzip-desktop/runs/../other"):
+            for invalid in ("/unowned", "/mnt/custom-data/runs/../other"):
                 valid["linux"]["root"] = invalid
-                config.write_text(json.dumps(valid))
+                settings["runners"]["linux"]["workspace"] = valid["linux"]
+                self.config_path.write_text(json.dumps(settings))
                 with self.assertRaises(ValueError):
-                    hyperv_workspace.load_workspaces(state)
+                    hyperv_workspace.load_workspaces()
+
+    def test_missing_config_fails_before_connecting(self):
+        self.config_path.unlink()
+        with patch.object(runner, "invoke") as invoke:
+            with self.assertRaisesRegex(ValueError, "configuration missing"):
+                runner.discover("linux")
+            invoke.assert_not_called()
+
+    def test_connections_use_configured_alias_port_and_nondefault_windows_drive(self):
+        settings = {"schema": 1, "runners": load_config()}
+        settings["runners"]["windows"]["ssh"] = ["ssh", "-p", "2222", "builder@custom-host"]
+        self.config_path.write_text(json.dumps(settings))
+        with patch.object(runner, "STATE", self.config_path.parent / "state"):
+            record = runner.discover("windows")
+        record["name"] = "custom-builder"
+        command = hyperv_transport.sync_command(record, "windows", Path("source"), "D:/build/custom/runs/current")
+        self.assertEqual(command[-1], "builder@custom-host:/d/build/custom/runs/current/")
+        with patch.object(runner, "invoke") as invoke:
+            runner.remote(record, "Write-Output configured")
+            self.assertIn("powershell.exe", invoke.call_args.args[0][-1])
+        invoke = Mock()
+        hyperv_transport.collect_logs(record, "D:/build/custom/runs/current", Path("logs"),
+                                      None, "token", invoke, None)
+        command = invoke.call_args.args[0]
+        self.assertEqual(command[:4], ["scp", "-P", "2222", "builder@custom-host:D:/build/custom/runs/current/check.log"])
+
+    def test_custom_readiness_command_supplies_connection_without_fixed_vm_names(self):
+        provider = self.config_path.parent / "discover.py"
+        provider.write_text("print(" + repr(json.dumps({"vm": "my-build-vm", "vm_id": "fixture",
+                            "ssh_argv": ["ssh", "my-dynamic-host"]})) + ")\n")
+        settings = {"schema": 1, "runners": load_config()}
+        config = settings["runners"]["linux"]
+        config.pop("ssh")
+        config["ready_command"] = [sys.executable, str(provider)]
+        self.config_path.write_text(json.dumps(settings))
+        with patch.object(runner, "STATE", self.config_path.parent / "state"):
+            record = runner.discover("linux")
+        command = hyperv_transport.sync_command(record, "linux", Path("source"), config["workspace"]["root"] + "/current")
+        self.assertTrue(command[-1].startswith("my-dynamic-host:"))
+
+    def test_windows_host_guard_uses_configuration_and_rejects_a_different_machine(self):
+        expected = load_config()["windows"]["computer_name"]
+        for host, succeeds in ((expected.lower(), True), ("other-host", False)):
+            environment = dict(os.environ, COMPUTERNAME=host, SEVENZIP_RUNNER_PYTHON=sys.executable)
+            environment.pop("SEVENZIP_WINDOWS_RUNNER_HOST", None)
+            result = subprocess.run(["bash", "-c", "source scripts/lib/windows-runner.sh; sevenzip_require_windows_runner"],
+                                    cwd=ROOT, env=environment, text=True, capture_output=True)
+            self.assertEqual(result.returncode == 0, succeeds, result.stderr)
 
     def test_failed_command_keeps_exit_code_literal_args_context_and_completion(self):
         with tempfile.TemporaryDirectory(prefix="runner Юникод ") as temporary:
             root = Path(temporary)
-            (root / "scripts").mkdir()
-            shutil.copy2(ROOT / "scripts/hyperv_source.py", root / "scripts/hyperv_source.py")
+            (root / "scripts/lib").mkdir(parents=True)
+            shutil.copy2(ROOT / "scripts/lib/hyperv_source.py", root / "scripts/lib/hyperv_source.py")
             (root / "scripts/fixture.sh").write_text('printf "%s\\n" "$@" "$TEMP" "$QT_QPA_PLATFORM"\nexit 23\n')
             records = {name: {"sha256": hyperv_source.sha(root / name), "executable": bool((root / name).stat().st_mode & 0o111)}
-                       for name in ("scripts/hyperv_source.py", "scripts/fixture.sh")}
+                       for name in ("scripts/lib/hyperv_source.py", "scripts/fixture.sh")}
             manifest = root / hyperv_source.MANIFEST
             manifest.write_text(json.dumps(records))
             args = ["space name", "Юникод", "$(touch injected)", "a'b", "", "first\nsecond"]

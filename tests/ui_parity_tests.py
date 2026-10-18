@@ -9,7 +9,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
 from check_ui_parity import compare
-from ui_reference import behavior_symbols, parse_dialogs, preprocess
+from lib.ui_reference import behavior_symbols, parse_dialogs, preprocess
 
 
 class ResourceTests(unittest.TestCase):

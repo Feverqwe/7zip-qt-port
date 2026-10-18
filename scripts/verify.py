@@ -141,7 +141,7 @@ def parse_args(argv, profiles):
 
 
 def main(argv=None):
-    profiles = json.loads((ROOT / "scripts/verify-profiles.json").read_text())
+    profiles = json.loads((ROOT / "scripts/config/verify-profiles.json").read_text())
     args = parse_args(sys.argv[1:] if argv is None else argv, profiles)
     if args.list:
         for name, profile in profiles.items():

@@ -14,7 +14,7 @@ python3 scripts/verify.py <profile>
 python3 scripts/verify.py <profile> --platform all
 ```
 
-Актуальный состав профилей хранит `scripts/verify-profiles.json`; `--plan`
+Актуальный состав профилей хранит `scripts/config/verify-profiles.json`; `--plan`
 показывает выбранные CTest suites и targets. Профиль не заменяет оценку влияния.
 Для сценария вне профилей используйте `--tests '<regex>'` или wrappers из
 [development](../development.md#local-commands).

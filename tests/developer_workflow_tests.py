@@ -15,9 +15,9 @@ ROOT = Path(__file__).resolve().parents[1]
 
 class WorkflowTests(unittest.TestCase):
     def fixture(self, root):
-        (root / "scripts").mkdir()
+        (root / "scripts/config").mkdir(parents=True)
         (root / "cmake").mkdir()
-        for name in ("build.sh", "ctest.sh", "verify.py", "verify-profiles.json"):
+        for name in ("build.sh", "ctest.sh", "verify.py", "config/verify-profiles.json"):
             shutil.copy2(ROOT / "scripts" / name, root / "scripts" / name)
         shutil.copy2(ROOT / "cmake/DeveloperWorkflow.cmake", root / "cmake/DeveloperWorkflow.cmake")
         shutil.copy2(ROOT / "cmake/ReadCTestCommands.cmake", root / "cmake/ReadCTestCommands.cmake")
