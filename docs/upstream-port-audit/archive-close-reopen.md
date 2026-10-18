@@ -85,3 +85,33 @@ Windows. Qt, codec modules and remaining dependencies were not instrumented.
 Clang's static analyzer reported no findings for Agent.cpp. These checks validate
 the selected lifecycle scenarios; no full gate, opt-in slow suite or visual
 comparison was run for this nonvisual change.
+
+## Item streams and property consumers — follow-up review
+
+Reviewed the complete Qt item-stream wrapper, archive property transport,
+native-property mapping, raw panel-property implementation and reopen adapter,
+with resource/header owners, Agent GetStream and archive-to-archive transfer
+callers. The wrapper retains its resource before native stream interfaces;
+destruction releases those interfaces before the resource/catalog lease.
+Raw property buffers belong to the retained metadata or native handler and
+are consumed under its existing open/bound lifetime. Reopen replaces the
+property binding after native metadata is available. The source update stream
+is copied within the joined operation; source deletion and destination rollback
+follow completion of that copy.
+
+The source Agent GetStream and native TAR/FAT/NTFS/Ext stream constructors were
+inspected at the revision above to distinguish retained input/handler references
+from data validity after Close. Keeping a COM reference does not establish a
+right to use a handler's invalidated data after explicit Close. No current
+caller requiring that unsupported lifetime was established, and no speculative
+stream snapshot or delayed-close policy was added. No new confirmed ownership
+defect or omitted source branch was found in this selected scenario.
+
+Existing agent_stream_update, agent_stream_copy_ui and native_archive_properties
+passed together with verctrl on macOS arm64 (4/4, 7.20 s), Linux x64 (4/4,
+6.77 s) and Windows x64 (4/4, 20.85 s), Qt 6.12, guest run
+`20261018T134937Z-6240522b`. Filesystem ADS update rows remain Windows-only;
+macOS/Linux skip those rows while exercising archive ADS. The targets rebuilt
+incrementally with existing caches. No new production code/test, allocation
+injection, standalone Qt reproducer, full/slow gate or visual acceptance was
+part of this follow-up.
