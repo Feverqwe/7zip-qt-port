@@ -7,8 +7,6 @@
 #include "qtlanguageservices.h"
 #include "qtprogramfilemenu.h"
 #include <QScopedValueRollback>
-#include <QSignalBlocker>
-#include <vector>
 
 struct QtPanelContextMenu::Impl {
     MainWindow &window;
@@ -77,9 +75,25 @@ void QtPanelContextMenu::CreatePopup() {
 }
 IQtFileMenuServices &QtPanelContextMenu::Menu() { return impl_->projection; }
 IQtPanelPluginMenuServices &QtPanelContextMenu::Plugins() { return impl_->shell; }
+
+static QAction *AppendCommand(QMenu &menu, const QAction &source, bool enabled) {
+    auto *action = menu.addAction(source.icon(), source.text());
+    action->setObjectName(source.objectName());
+    action->setProperty("nativeCommandID", source.property("nativeCommandID"));
+    action->setShortcuts(source.shortcuts());
+    action->setShortcutContext(Qt::WidgetShortcut);
+    action->setCheckable(source.isCheckable());
+    action->setChecked(source.isChecked());
+    action->setVisible(source.isVisible());
+    action->setEnabled(enabled);
+    return action;
+}
+
 unsigned QtPanelContextMenu::Track(int x, int y) {
     auto &state = *impl_;
-    std::vector<std::unique_ptr<QSignalBlocker>> blockers;
+    // Native TrackPopupMenu owns separate rows and returns only a command ID.
+    // Keep their state independent of the main-menu projection during popup
+    // focus events, while source notification guards are held.
     for (const auto &entry : state.projection.items) {
         if (entry.source.IsSeparator()) {
             state.popup.addSeparator();
@@ -88,21 +102,16 @@ unsigned QtPanelContextMenu::Track(int x, int y) {
         if (entry.source.wID == 0) {
             auto *hash = state.popup.addMenu(QStringLiteral("CRC"));
             hash->setObjectName("contextHashMenu");
-            for (QAction *action : state.window.findChild<QMenu *>("hashMenu")->actions()) {
-                hash->addAction(action);
-                blockers.push_back(std::make_unique<QSignalBlocker>(action));
-            }
+            for (QAction *action : state.window.findChild<QMenu *>("hashMenu")->actions())
+                AppendCommand(*hash, *action, action->isEnabled());
             continue;
         }
         if (QAction *action = state.actions.value(entry.source.wID)) {
-            state.popup.addAction(action);
-            action->setEnabled(action->isEnabled() && entry.enabled);
-            blockers.push_back(std::make_unique<QSignalBlocker>(action));
+            AppendCommand(state.popup, *action, action->isEnabled() && entry.enabled);
         }
     }
     QtClarifyOpenCommands(state.popup);
-    // Track returns the source ID; shared QAction shortcuts must not dispatch
-    // before OnContextMenu chooses its plugin/file-command branch.
+    // OnContextMenu dispatches the chosen ID after the popup guards restore.
     QAction *chosen;
     const unsigned owner = state.window.app_.GetFocusedPanelIndex();
     {

@@ -10,6 +10,12 @@
 class SourceContextMenuTests final : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
     WidgetDialogFixture dialogs_;
+    static QAction *menuAction(QMenu &menu, const char *name) {
+        for (QAction *action : menu.actions())
+            if (action->objectName() == QLatin1String(name))
+                return action;
+        return nullptr;
+    }
     static FileTable *openPanel(MainWindow &window, unsigned pane, const QString &path) {
         auto *ui = window.findChild<QWidget *>(QString("filePanel%1").arg(pane));
         auto *address = ui->findChild<QLineEdit *>("archivePath");
@@ -140,9 +146,10 @@ class SourceContextMenuTests final : public QObject, protected MainWindowTestSup
                     cancelled = true;
                     QVERIFY(!window.close());
                     QVERIFY(window.isVisible());
-                    auto *open = action(window, "openItemAction");
-                    auto *rename = action(window, "renameAction");
-                    auto *create = action(window, "createFileAction");
+                    auto *open = menuAction(*menu, "openItemAction");
+                    auto *rename = menuAction(*menu, "renameAction");
+                    auto *create = menuAction(*menu, "createFileAction");
+                    QVERIFY(open && rename && create);
                     QVERIFY(menu->actions().indexOf(open) >= 0);
                     QVERIFY(menu->actions().indexOf(open) < menu->actions().indexOf(rename));
                     QVERIFY(menu->actions().indexOf(rename) < menu->actions().indexOf(create));
@@ -186,7 +193,8 @@ class SourceContextMenuTests final : public QObject, protected MainWindowTestSup
             const auto close = qScopeGuard([&] { menu->close(); });
             menuObserved = true;
             QCOMPARE(menu->objectName(), QString("panelContextMenu"));
-            auto *create = action(window, "createFileAction");
+            auto *create = menuAction(*menu, "createFileAction");
+            QVERIFY(create);
             QVERIFY(menu->actions().contains(create));
             QVERIFY(create->isEnabled());
             menu->setActiveAction(create);
@@ -258,6 +266,7 @@ class SourceContextMenuTests final : public QObject, protected MainWindowTestSup
         }
         auto *peer = openPanel(window, 1, peerDirectory.path());
         QTRY_COMPARE(peer->rowCount(), showDots ? 1 : 0);
+        QTRY_VERIFY(owner->isEnabled() && peer->isEnabled());
         peer->setFocus();
         bool observed = false;
         QTimer cancel;
@@ -268,8 +277,11 @@ class SourceContextMenuTests final : public QObject, protected MainWindowTestSup
             cancel.stop();
             const auto close = qScopeGuard([&] { menu->close(); });
             observed = true;
-            QVERIFY(!action(window, "renameAction")->isEnabled());
-            QVERIFY(action(window, "createFileAction")->isEnabled());
+            auto *rename = menuAction(*menu, "renameAction");
+            auto *create = menuAction(*menu, "createFileAction");
+            QVERIFY(rename && create);
+            QVERIFY(!rename->isEnabled());
+            QVERIFY(create->isEnabled());
             QVERIFY(UiInspection::writeReport(
                 *menu, QString("source-context-empty-%1-%2").arg(showDots).arg(language)));
             QTest::keyClick(menu, Qt::Key_Escape);

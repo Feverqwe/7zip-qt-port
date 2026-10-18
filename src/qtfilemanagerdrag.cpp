@@ -293,6 +293,7 @@ bool QtFileManagerDrag::HandleDropEvent(QWidget &widget, QEvent &event) {
     if (event.type() == QEvent::Drop) {
         external_.NativeData.reset();
         SuspendHover(active_);
+        window_.refreshActions();
     }
     return true;
 }

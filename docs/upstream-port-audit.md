@@ -33,6 +33,9 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 
 ## Новые изменения
 
+- [Доступность команд popup и Drop](upstream-port-audit/popup-command-state.md)
+  — сохранение состояния контекстного меню и восстановление Copy после отмены Drop.
+
 - [Обновление upstream до 26.04](upstream-port-audit/upstream-26.04.md)
   — перенос source changes, обновление engine/SFX и ресурсов справки.
 

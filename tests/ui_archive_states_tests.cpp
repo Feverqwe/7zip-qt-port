@@ -292,6 +292,8 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
         window.findChild<QLineEdit *>("archivePath")->setText(temp.path());
         QTest::keyClick(window.findChild<QLineEdit *>("archivePath"), Qt::Key_Return);
         auto *view = table(window);
+        QTRY_VERIFY(filesystemRow(window, name) >= 0);
+        QTRY_VERIFY(action(window, "refreshAction")->isEnabled());
         QStringList commands;
         QHash<QString, bool> enabled;
         auto capture = [&] {
@@ -306,8 +308,11 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
             });
         };
         capture();
-        QVERIFY(QMetaObject::invokeMethod(view, "customContextMenuRequested", Qt::DirectConnection,
-                                          Q_ARG(QPoint, QPoint(5, view->rowHeight(0) / 2))));
+        QVERIFY(QMetaObject::invokeMethod(
+            view, "customContextMenuRequested", Qt::DirectConnection,
+            Q_ARG(
+                QPoint,
+                view->visualRect(view->model()->index(filesystemRow(window, name), 0)).center())));
         QVERIFY(commands.contains("Rena&me"));
         QVERIFY(commands.contains("&Copy To..."));
         QVERIFY(commands.contains("Create Folder"));

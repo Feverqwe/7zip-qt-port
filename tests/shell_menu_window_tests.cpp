@@ -316,6 +316,12 @@ class ShellMenuWindowTests final : public QObject, protected MainWindowTestSuppo
         bool inspected = false;
         const auto inspect = [&](QMenu *menu) {
             QVERIFY(menu);
+            const auto command = [menu](const char *name) -> QAction * {
+                for (QAction *action : menu->actions())
+                    if (action->objectName() == QLatin1String(name))
+                        return action;
+                return nullptr;
+            };
             auto *root = menu->findChild<QAction *>("sevenZipContextGroup");
             QVERIFY(root && root->menu() && root->isEnabled());
             QVERIFY(!root->icon().isNull());
@@ -326,8 +332,9 @@ class ShellMenuWindowTests final : public QObject, protected MainWindowTestSuppo
             QVERIFY(open->isEnabled() && test->isEnabled());
             QVERIFY(compress->isEnabled());
             // Captions distinguish the opening modes without moving commands.
-            auto *inside = action(window, "openInsideAction");
-            auto *outside = action(window, "openOutsideAction");
+            auto *inside = command("openInsideAction");
+            auto *outside = command("openOutsideAction");
+            QVERIFY(inside && outside);
             QVERIFY(menu->actions().contains(inside));
             QVERIFY(menu->actions().contains(outside));
             const bool russian = language == "ru";
@@ -337,21 +344,22 @@ class ShellMenuWindowTests final : public QObject, protected MainWindowTestSuppo
                                               : QStringLiteral("Open in external application"));
             int previous = menu->actions().indexOf(inside);
             for (const char *name : {"openInsideOneAction", "openInsideParserAction"}) {
-                auto *mode = action(window, name);
+                auto *mode = command(name);
+                QVERIFY(mode);
                 const int index = menu->actions().indexOf(mode);
                 QVERIFY(index > previous);
                 previous = index;
             }
             QVERIFY(menu->actions().indexOf(outside) > previous);
-            QVERIFY(menu->actions().contains(action(window, "openArchiveAction")));
+            QVERIFY(command("openArchiveAction"));
             auto *newWindow = findVerb(*menu, "SevenZipOpen");
             auto *openAs = findVerb(*menu, "SevenZip.OpenWithType.");
             QVERIFY(newWindow && openAs && openAs->menu());
             QCOMPARE(newWindow->text(), russian ? QStringLiteral("Открыть архив в новом окне")
                                                 : QStringLiteral("Open archive in new window"));
             QVERIFY(openAs->text() != newWindow->text());
-            for (auto *mode : {inside, outside, action(window, "openInsideOneAction"),
-                               action(window, "openInsideParserAction")}) {
+            for (auto *mode : {inside, outside, command("openInsideOneAction"),
+                               command("openInsideParserAction")}) {
                 const QRect rect = menu->actionGeometry(mode);
                 QVERIFY(menu->rect().contains(rect));
                 QVERIFY(menu->fontMetrics().horizontalAdvance(mode->text()) < rect.width());
