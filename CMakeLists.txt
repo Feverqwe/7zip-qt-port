@@ -409,7 +409,7 @@ add_library(sevenzip_filesystem STATIC
     third_party/7zip/CPP/7zip/UI/Common/UpdateProduce.cpp
     src/qtarchivedeleteinputs.cpp src/qtarchivedeleteinputs.h
     src/qtarchivecreationlifecycle.cpp src/qtarchivecreationlifecycle.h
-    src/CPP/7zip/Common/MultiOutStream.cpp
+    src/CPP/7zip/Common/MultiOutStream.cpp src/CPP/7zip/Common/MultiOutStream.h
     src/qtarchivevolumeoutput.cpp src/qtarchivevolumeoutput.h
     src/CPP/7zip/UI/Common/ArchiveExtractCallback.cpp src/CPP/7zip/UI/Common/ArchiveExtractCallback.h
     src/CPP/7zip/UI/Common/Extract.cpp src/CPP/7zip/UI/Common/Extract.h
@@ -1453,6 +1453,10 @@ if(BUILD_TESTING)
     target_include_directories(archive_volume_creation_tests PRIVATE src tests)
     target_link_libraries(archive_volume_creation_tests PRIVATE Qt6::Widgets Qt6::Test sevenzip_panel)
     add_test(NAME archive_volume_creation COMMAND archive_volume_creation_tests -silent)
+    add_executable(multiout_lifecycle_tests tests/multiout_lifecycle_tests.cpp)
+    target_link_libraries(multiout_lifecycle_tests PRIVATE sevenzip_filesystem)
+    add_test(NAME multiout_lifecycle COMMAND multiout_lifecycle_tests)
+    set_tests_properties(multiout_lifecycle PROPERTIES TIMEOUT 15)
     set_tests_properties(archive_volume_creation PROPERTIES TIMEOUT 60 ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     qt_add_executable(archive_creation_lifecycle_tests tests/archive_creation_lifecycle_tests.cpp

@@ -1,9 +1,11 @@
 // MultiOutStream.h
+// Adapted from 7-Zip 9128b80e3a471108678e2b3ec3c985861c8d7b0f.
+// Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 
 #ifndef ZIP7_INC_MULTI_OUT_STREAM_H
 #define ZIP7_INC_MULTI_OUT_STREAM_H
 
-#include "FileStreams.h"
+#include "7zip/Common/FileStreams.h"
 
 Z7_CLASS_IMP_COM_2(
   CMultiOutStream
@@ -144,7 +146,7 @@ public:
   bool FinalVol_WasReopen;
   bool NeedDelete;
 
-  CMultiOutStream() {}
+  CMultiOutStream() { InitLinkedList(); }
   ~CMultiOutStream();
   void Init(const CRecordVector<UInt64> &sizes);
   bool SetMTime_Final(const CFiTime &mTime);

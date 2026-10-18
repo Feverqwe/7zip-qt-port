@@ -266,18 +266,28 @@ HRESULT CMultiOutStream::CreateNewStream(UInt64 newSize) {
 
     if (NFind::DoesFileExist_Raw(path))
         return HRESULT_FROM_WIN32(ERROR_ALREADY_EXISTS);
-    if (!CreateTempFile2(path, false, s.Postfix, &s.StreamSpec->File))
-        return GetLastError_noZero_HRESULT();
-
     s.Start = GetGlobalOffset_for_NewStream();
     s.Pos = 0;
     s.RealSize = 0;
 
     const unsigned index = Streams.Add(s);
+    CVolStream &created = Streams[index];
+    // Allocate the owning record before creating a file. Until creation
+    // succeeds it is not linked and must not participate in file deletion.
+    try {
+        if (!CreateTempFile2(path, false, created.Postfix, &created.StreamSpec->File)) {
+            const HRESULT result = GetLastError_noZero_HRESULT();
+            Streams.DeleteBack();
+            return result;
+        }
+    } catch (...) {
+        Streams.DeleteBack();
+        throw;
+    }
     InsertToLinkedList(index);
 
     if (newSize != 0)
-        return s.SetSize2(newSize);
+        return created.SetSize2(newSize);
     return S_OK;
 }
 

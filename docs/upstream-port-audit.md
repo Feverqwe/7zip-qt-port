@@ -33,6 +33,9 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 
 ## Новые изменения
 
+- [Владение файлами и состояние volume writer](upstream-port-audit/multiout-lifetime.md)
+  — очистка при отказе выделения памяти и корректное усечение предвыделенных томов.
+
 - [Откат Windows Pause при нехватке памяти](upstream-port-audit/process-pause-ownership.md)
   — владение handles и suspend increments до операций, способных выбросить исключение.
 
