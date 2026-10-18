@@ -31,7 +31,7 @@ bool CComboDialog::OnInit() {
     auto *buttons = new QtLangButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
     buttons->setObjectName("comboButtons");
     auto *layout = QtCreateDialogLayout(*this, *buttons);
-    auto *staticControl = new QLabel(ToQString(Static), this);
+    auto *staticControl = new QtWrappingLabel(ToQString(Static), this);
     staticControl->setObjectName("comboPrompt");
     staticControl->setTextFormat(Qt::PlainText);
     staticControl->setWordWrap(true);

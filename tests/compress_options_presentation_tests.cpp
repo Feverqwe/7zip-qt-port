@@ -79,7 +79,6 @@ class CompressOptionsPresentationTests final : public QObject {
         show(dialog);
         QVERIFY(UiInspection::writeReport(
             dialog, QString("compress-options-source-%1-%2-initial").arg(format, language)));
-        QVERIFY(dialog.height() <= dialog.sizeHint().height());
         if (!dialog.findChild<QGroupBox *>("IDG_COMPRESS_NTFS")->isVisible()) {
             const auto *info = dialog.findChild<QLabel *>("IDT_COMPRESS_TIME_INFO");
             QVERIFY(UiInspection::bounds(*info, dialog).top() <=
@@ -163,7 +162,12 @@ class CompressOptionsPresentationTests final : public QObject {
         for (auto *label : dialog.findChildren<QLabel *>())
             if (label->isVisible()) {
                 QVERIFY(UiInspection::fullyVisible(*label, dialog));
-                QVERIFY(UiInspection::labelFits(*label));
+                QVERIFY2(UiInspection::labelFits(*label),
+                         qPrintable(QString("%1: %2x%3 required height %4")
+                                        .arg(label->objectName())
+                                        .arg(label->width())
+                                        .arg(label->height())
+                                        .arg(label->heightForWidth(label->width()))));
             }
         for (auto *box : dialog.findChildren<QCheckBox *>())
             if (box->isVisible()) {

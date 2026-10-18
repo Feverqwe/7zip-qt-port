@@ -138,7 +138,12 @@ class ComboDialogTests : public QObject {
         auto *combo = dialog.findChild<QComboBox *>("comboValue");
         auto *buttons = dialog.findChild<QDialogButtonBox *>("comboButtons");
         QVERIFY(UiInspection::fullyVisible(*label, dialog));
-        QVERIFY(UiInspection::labelFits(*label));
+        QVERIFY2(UiInspection::labelFits(*label),
+                 qPrintable(QString("%1: %2x%3 required height %4")
+                                .arg(label->objectName())
+                                .arg(label->width())
+                                .arg(label->height())
+                                .arg(label->heightForWidth(label->width()))));
         QVERIFY(UiInspection::fullyVisible(*combo, dialog));
         QVERIFY(UiInspection::fullyVisible(*buttons, dialog));
         QVERIFY(UiInspection::bounds(*label, dialog).bottom() <

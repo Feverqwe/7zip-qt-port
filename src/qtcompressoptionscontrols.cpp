@@ -1,6 +1,7 @@
 #include "qtcompressoptionscontrols.h"
 #include "7zip/UI/GUI/CompressDialogRes.h"
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
+#include "qtdialoglayout.h"
 #include "qtdialogscreenservices.h"
 #include "qtdialogunits.h"
 #include "qtlangbuttonbox.h"
@@ -122,7 +123,7 @@ void CQtCompressOptionsDialog::buildControls() {
     grid->addWidget(checkbox(IDX_COMPRESS_PREC_SET, "IDX_COMPRESS_PREC_SET", {}, time), 0, 0);
     QtBindLocalText(GetItem(IDX_COMPRESS_PREC_SET), "qtcompressoptionscontrols",
                     QT_TRANSLATE_NOOP("qtcompressoptionscontrols", "Set time precision"), true);
-    auto *precisionLabel = new QLabel("Timestamp precision:", time);
+    auto *precisionLabel = new QtWrappingLabel("Timestamp precision:", time);
     precisionLabel->setWordWrap(true);
     registerControl(IDT_COMPRESS_TIME_PREC, "IDT_COMPRESS_TIME_PREC", precisionLabel);
     QtBindResourceText(precisionLabel, IDT_COMPRESS_TIME_PREC, "Timestamp precision:");

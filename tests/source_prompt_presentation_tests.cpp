@@ -40,7 +40,12 @@ class SourcePromptPresentationTests final : public QObject {
             if (!label->isVisible())
                 continue;
             QVERIFY2(UiInspection::fullyVisible(*label, view), qPrintable(label->objectName()));
-            QVERIFY2(UiInspection::labelFits(*label), qPrintable(label->objectName()));
+            QVERIFY2(UiInspection::labelFits(*label),
+                     qPrintable(QString("%1: %2x%3 required height %4")
+                                    .arg(label->objectName())
+                                    .arg(label->width())
+                                    .arg(label->height())
+                                    .arg(label->heightForWidth(label->width()))));
         }
     }
 

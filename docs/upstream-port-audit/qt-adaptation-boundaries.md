@@ -290,3 +290,41 @@ panel_key прошёл на macOS arm64, Linux x64 и Windows x64 / Qt 6.12;
 guest batches — `20261018T143721Z-ea996e90` и
 `20261018T144745Z-441ad471`. Исправление относится к тестовому responder,
 а не является новым свидетельством ошибки времени жизни приложения.
+
+## Длинные подписи в компактных формах
+
+Windows-прогон воспроизвёл обрезание comboPrompt, memMessage и подписи точности
+времени в Options. Например, длинной подписи при ширине 228 требовалось 54
+пикселя высоты при выделенных 50, русскому сообщению памяти — 110 при 93.
+Сопоставлены полные ComboDialog.cpp/.h/.rc, MemDialog.cpp/.h/.rc и
+CompressDialog COptionsDialog с CompressOptionsDialog.rc из
+<https://github.com/ip7z/7zip.git>, commit
+`9128b80e3a471108678e2b3ec3c985861c8d7b0f`, текущие Qt constructors и callers.
+Исходные решения, значения и OnOK/Cancel не меняются; исходные Win32 resources
+не предоставляют Qt height-for-width adaptation.
+
+Узкий QtWrappingLabel в существующем dialog-layout adapter включает требуемую
+при текущей ширине высоту перенесённого текста в layout minimum и обновляет
+геометрию при изменении ширины. Используется только у трёх затронутых подписей.
+QObject-владельцы, buddy/accessibility bindings и source module boundaries
+сохранены; дополнительный upstream код не копировался. Одна смена size policy
+оказалась недостаточной и в итоговую правку не вошла.
+
+Существующие source_prompt_presentation, combo_dialog,
+compress_options_presentation, language_dialog и language_ui прошли на macOS
+arm64, Linux x64 и Windows x64 / Qt 6.12. Guest runs:
+`20261018T145954Z-975d9c67` и `20261018T145940Z-a999a69e`;
+неудача отдельного palette test в последнем batch сюда не включается.
+Из проверки Options убрано ограничение высоты через внутренний unconstrained
+sizeHint; проверки видимости, текста, порядка и клавиатурного поведения
+сохранены. Регрессии существовали до исправления и воспроизвели ошибку на Windows.
+
+Три затронутых producer дополнительно прошли с native Cocoa QPA; просмотрены
+34 текущих widget JSON, видимые подписи помещаются целиком. Это EN/RU и
+normal/compact состояния указанных форм, без новых screenshots и без сравнения
+с рендеренным оригинальным Windows 7zFM. Для macOS использована локальная
+HIG-выжимка от 2026-10-18: официальный Layout HTML требует JavaScript,
+а Markdown endpoint не удалось прочитать доступным инструментом.
+Финальные пять production units, включая последнюю правку shortcuts,
+перепроверены Clang с текущими SDK/флагами: ошибок/предупреждений нет,
+исходники во время этого прохода не менялись. Build trees и ccache сохранены.

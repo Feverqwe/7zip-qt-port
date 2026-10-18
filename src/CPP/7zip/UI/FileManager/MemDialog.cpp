@@ -7,6 +7,7 @@
 #include "LangUtils.h"
 #include "Windows/ErrorMsg.h"
 #include "Windows/System.h"
+#include "qtdialoglayout.h"
 #include "qtdialogunits.h"
 #include "qtguimessages.h"
 #include "qtlangbuttonbox.h"
@@ -33,7 +34,7 @@ void CMemDialog::BuildPresentation() {
     const QSize margin = units.pixels(QSize(8, 8));
     layout->setContentsMargins(margin.width(), margin.height(), margin.width(), margin.height());
     layout->setSpacing(0);
-    auto *message = new QLabel(this);
+    auto *message = new QtWrappingLabel(this);
     message->setObjectName("memMessage");
     message->setTextFormat(Qt::PlainText);
     message->setWordWrap(true);

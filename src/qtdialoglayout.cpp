@@ -1,5 +1,6 @@
 #include "qtdialoglayout.h"
 #include <QDialogButtonBox>
+#include <QResizeEvent>
 #include <QVBoxLayout>
 #include <QWidget>
 
@@ -12,4 +13,17 @@ QVBoxLayout *QtCreateDialogLayout(QWidget &window, QDialogButtonBox &buttons) {
     frame->addLayout(content, 1);
     frame->addWidget(&buttons);
     return content;
+}
+
+QSize QtWrappingLabel::minimumSizeHint() const {
+    QSize hint = QLabel::minimumSizeHint();
+    if (wordWrap() && testAttribute(Qt::WA_Resized))
+        hint.setHeight(qMax(hint.height(), heightForWidth(width())));
+    return hint;
+}
+
+void QtWrappingLabel::resizeEvent(QResizeEvent *event) {
+    QLabel::resizeEvent(event);
+    if (event->oldSize().width() != event->size().width())
+        updateGeometry();
 }
