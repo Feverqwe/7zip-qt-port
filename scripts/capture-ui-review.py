@@ -25,9 +25,10 @@ def gallery(output, runs):
             report = esc(shot["report"], quote=True)
             cards.append(
                 f'<article data-group="{esc(run["id"], quote=True)}" '
-                f'data-scheme="{run["scheme"]}" data-search="{esc(title.lower(), quote=True)}">'
-                f'<a href="{image}"><img loading="lazy" src="{image}" alt="{esc(title)}"></a>'
-                f'<p>{esc(title)}</p><small>{esc(shot["qpa"])} · '
+                f'data-scheme="{run["scheme"]}" data-search="{esc((title + " " + shot["image"]).lower(), quote=True)}">'
+                f'<a class="shot" href="{image}" data-name="{image}" data-title="{esc(title, quote=True)}" '
+                f'data-report="{report}"><img loading="lazy" src="{image}" alt="{esc(title)}"></a>'
+                f'<p>{esc(title)}</p><p class="filename">{image}</p><small>{esc(shot["qpa"])} · '
                 f'{shot["size"][0]}×{shot["size"][1]} · '
                 f'<a href="{report}">widget JSON</a></small></article>'
             )
@@ -43,18 +44,59 @@ main {display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap
 article {border:1px solid GrayText;border-radius:8px;padding:1rem;min-width:0}
 img {width:100%;height:280px;object-fit:contain;object-position:top;background:Canvas}
 p {overflow-wrap:anywhere;margin:.6rem 0}small {color:GrayText}[hidden]{display:none}
+.filename {font-family:ui-monospace,monospace;font-size:.85rem;user-select:all}
+button,select {font:inherit;padding:.45rem;cursor:pointer}
+dialog {box-sizing:border-box;width:100vw;height:100dvh;max-width:none;max-height:none;
+margin:0;border:0;padding:0;background:Canvas;color:CanvasText}
+dialog[open] {display:flex;flex-direction:column} dialog::backdrop {background:#000b}
+.toolbar {padding:.65rem 1rem;border-bottom:1px solid GrayText;display:flex;gap:.6rem;align-items:center;flex-wrap:wrap}
+.identity {flex:1;min-width:200px}.identity p {margin:0}.identity .filename {font-size:1rem}
+#stage {flex:1;min-height:0;overflow:auto;display:grid;place-items:center;padding:1rem;background:color-mix(in srgb,Canvas,GrayText 12%)}
+#stage img {width:100%;height:100%;min-height:0;min-width:0;object-fit:contain;object-position:center}
+#stage.actual {display:block}#stage.actual img {width:auto;height:auto;max-width:none;max-height:none;display:block;margin:auto}
+body.viewing {overflow:hidden}#position {white-space:nowrap}
 </style><header><h1>Sevenzip · ревью адаптивных цветов</h1>
-<p>Нативные Qt-окна на локальных тестовых данных. Нажмите снимок для полного размера.
+<p>Нажмите снимок или «Открыть первый» и листайте кнопками ← → на клавиатуре.
+Имя и путь каждого снимка показаны для ваших пометок. Ссылка в адресной строке сохраняет выбранный снимок.
+Нативные Qt-окна на локальных тестовых данных.
 Системные настройки ОС не менялись. Снимки показывают клиентскую область окон;
 нативные панели выбора ОС и заголовки окон сюда не входят.</p>
 <p>STATUS</p><details><summary>Сведения о сборе</summary><pre>DETAILS</pre></details>
 <select id="group" aria-label="Группа окон"><option value="">Все окна</option>GROUPS</select>
 <select id="scheme" aria-label="Тема"><option value="">Обе темы</option><option>light</option><option>dark</option></select>
 <input type="search" placeholder="Поиск: окно, en, ru…" aria-label="Поиск снимков">
-<p id="count"></p></header><main>CARDS</main><script>
+<p><button id="first">Открыть первый</button> <span id="count"></span></p></header><main>CARDS</main>
+<dialog id="viewer" aria-label="Просмотр снимков"><div class="toolbar">
+<button id="prev" aria-label="Предыдущий снимок">←</button><span id="position"></span>
+<button id="next" aria-label="Следующий снимок">→</button>
+<div class="identity"><p id="filename" class="filename"></p><p id="caption"></p></div>
+<button id="copy">Копировать имя</button><button id="zoom" aria-pressed="false">Масштаб 100%</button>
+<a id="original" target="_blank" rel="noopener">PNG</a><a id="report" target="_blank" rel="noopener">JSON</a>
+<button id="close" aria-label="Закрыть просмотр">Закрыть · Esc</button></div>
+<div id="stage"><img id="full" alt=""></div></dialog><script>
 const input=document.querySelector('input'), group=document.querySelector('#group'), scheme=document.querySelector('#scheme'), cards=[...document.querySelectorAll('article')];
-function filter(){let n=0;const q=input.value.toLowerCase();for(const c of cards){c.hidden=!c.dataset.search.includes(q)||(group.value&&c.dataset.group!==group.value)||(scheme.value&&c.dataset.scheme!==scheme.value);if(!c.hidden)n++;}document.querySelector('#count').textContent=`${n} / ${cards.length} снимков`;}
-input.addEventListener('input',filter);group.addEventListener('change',filter);scheme.addEventListener('change',filter);filter();</script></html>"""
+const viewer=document.querySelector('#viewer'),stage=document.querySelector('#stage'),full=document.querySelector('#full');
+const links=cards.map(c=>c.querySelector('.shot'));let current=null;
+function visible(){return links.filter(a=>!a.closest('article').hidden);}
+function filter(){const q=input.value.toLowerCase();for(const c of cards){c.hidden=!c.dataset.search.includes(q)||(group.value&&c.dataset.group!==group.value)||(scheme.value&&c.dataset.scheme!==scheme.value);}const n=visible().length;document.querySelector('#count').textContent=`${n} / ${cards.length} снимков`;document.querySelector('#first').disabled=!n;}
+function show(a){if(!a)return;current=a;const list=visible(),i=list.indexOf(a);full.src=a.href;full.alt=a.dataset.title;
+document.querySelector('#filename').textContent=a.dataset.name;document.querySelector('#caption').textContent=a.dataset.title;
+document.querySelector('#position').textContent=`${i+1} / ${list.length}`;
+document.querySelector('#prev').disabled=i<=0;document.querySelector('#next').disabled=i>=list.length-1;
+document.querySelector('#original').href=a.href;document.querySelector('#report').href=a.dataset.report;
+document.querySelector('#copy').textContent='Копировать имя';stage.scrollTop=stage.scrollLeft=0;
+history.replaceState(null,'','#shot='+encodeURIComponent(a.dataset.name));
+if(!viewer.open){viewer.showModal();document.body.classList.add('viewing');}}
+function move(step){const list=visible();show(list[list.indexOf(current)+step]);}
+function fromHash(){if(!location.hash.startsWith('#shot='))return;let name;try{name=decodeURIComponent(location.hash.slice(6));}catch{return;}
+const a=links.find(a=>a.dataset.name===name);if(a){if(a.closest('article').hidden){input.value=group.value=scheme.value='';filter();}show(a);}}
+links.forEach(a=>a.addEventListener('click',e=>{if(e.ctrlKey||e.metaKey||e.shiftKey||e.altKey)return;e.preventDefault();show(a);}));
+document.querySelector('#first').onclick=()=>show(visible()[0]);document.querySelector('#prev').onclick=()=>move(-1);document.querySelector('#next').onclick=()=>move(1);
+document.querySelector('#close').onclick=()=>viewer.close();viewer.addEventListener('close',()=>{if(viewer.open)return;document.body.classList.remove('viewing');history.replaceState(null,'',location.pathname+location.search);current?.focus();});
+document.querySelector('#zoom').onclick=e=>{const actual=stage.classList.toggle('actual');e.currentTarget.setAttribute('aria-pressed',actual);e.currentTarget.textContent=actual?'Вписать в окно':'Масштаб 100%';};
+document.querySelector('#copy').onclick=async e=>{const name=current.dataset.name;try{await navigator.clipboard.writeText(name);e.target.textContent='Скопировано';}catch{const selection=getSelection(),range=document.createRange();range.selectNodeContents(document.querySelector('#filename'));selection.removeAllRanges();selection.addRange(range);e.target.textContent='Нажмите Ctrl+C / ⌘C';}};
+viewer.addEventListener('keydown',e=>{if(e.ctrlKey||e.metaKey||e.altKey)return;if(e.key==='ArrowLeft'){e.preventDefault();move(-1);}else if(e.key==='ArrowRight'){e.preventDefault();move(1);}else if(e.key==='Home'){e.preventDefault();show(visible()[0]);}else if(e.key==='End'){e.preventDefault();show(visible().at(-1));}});
+input.addEventListener('input',filter);group.addEventListener('change',filter);scheme.addEventListener('change',filter);window.addEventListener('hashchange',fromHash);filter();fromHash();</script></html>"""
     document = document.replace("STATUS", html.escape(status))
     document = document.replace("DETAILS", html.escape("\n".join(problems) or "См. manifest.json и журналы сценариев."))
     document = document.replace("CARDS", "\n".join(cards))
@@ -96,7 +138,13 @@ def main():
     parser.add_argument("--schemes", nargs="+", choices=["light", "dark"], default=["light", "dark"])
     parser.add_argument("--output", type=Path)
     parser.add_argument("--list", action="store_true")
+    parser.add_argument("--gallery-only", action="store_true", help="Rebuild gallery from existing manifest without capturing windows")
     args = parser.parse_args()
+    if args.gallery_only:
+        output = (args.output or ROOT / "build/dev/ui-theme-review").resolve()
+        gallery(output, json.loads((output / "manifest.json").read_text(encoding="utf-8"))["runs"])
+        print(f'Review: {output / "index.html"}')
+        return 0
     selected = [row for row in catalog if not args.only or row["id"] in args.only]
     if args.list:
         for row in selected:
