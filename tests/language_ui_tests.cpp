@@ -630,7 +630,7 @@ class LanguageUiTests : public QObject, protected MainWindowTestSupport {
         SaveRegLang(UString("de"), settingsPath());
         ReloadLang(settingsPath(), directory.path());
         QtNotifyLanguageChanged();
-        QCOMPARE(openInside->text(), QString("&Inside\tCtrl+PgDown"));
+        QCOMPARE(openInside->text(), QString("&Inside"));
         QCOMPARE(window.findChild<QAction *>("openInsideOneAction")->text(), QString("Inside *"));
         QCOMPARE(window.findChild<QAction *>("openInsideParserAction")->text(),
                  QString("Inside #"));

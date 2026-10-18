@@ -27,6 +27,8 @@ void MainWindow::updatePanelModifier(const QKeyEvent &key) {
 }
 
 bool MainWindow::overridePanelKey(const QKeyEvent &key) const {
+    if (panelShortcut(key) || reservedPanelKey(key))
+        return true;
     const auto mods = key.modifiers();
     if (mods.testFlag(Qt::MetaModifier))
         return false;
@@ -66,6 +68,8 @@ bool MainWindow::handlePanelKey(QObject *watched, QKeyEvent *key) {
                       (iconList_ && watched == iconList_->viewport());
     if (!address && !list)
         return false;
+    if (list && isPanelEditorFocused())
+        return false;
     if (address) {
         if (key->key() == Qt::Key_Return || key->key() == Qt::Key_Enter ||
             key->key() == Qt::Key_Escape) {
@@ -99,6 +103,13 @@ bool MainWindow::handlePanelListKey(QKeyEvent *key) {
     // Original Panel.cpp::OnNotify suppresses LVN_KEYDOWN with other list
     // notifications while a source reload/update owns the provider.
     if (!panel.ShouldProcessNotifications())
+        return true;
+    if (QAction *action = panelShortcut(*key)) {
+        if (action->isEnabled() && action->isVisible())
+            action->trigger();
+        return true;
+    }
+    if (reservedPanelKey(*key))
         return true;
     const auto mods = key->modifiers();
     const int virtualKey = QtPanelVirtualKey(*key);

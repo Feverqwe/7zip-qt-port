@@ -238,3 +238,68 @@ macOS: приложение и два прямых потребителя соб
 состояния в `build/dev/ui-redesign-review`. В существующие сценарии добавлен
 только report раскрытого состояния, без фиксации пиксельных размеров тестом.
 Windows/Linux и VoiceOver для этой правки не проверены.
+
+## Итерация 6: современные сочетания
+
+Источник: https://github.com/ip7z/7zip.git,
+commit `9128b80e3a471108678e2b3ec3c985861c8d7b0f`.
+Сопоставлены целиком upstream PanelKey.cpp, CMyListView::OnMessage,
+CMyComboBoxEdit::OnMessage, основной menu resource и соответствующие Qt dispatch,
+command bindings, guards, context copies, language/toolbar consumers. Повторная
+сверка сохранила Shift-F5/F6, выбор, clipboard, keypad, сортировку и оставшиеся
+bookmark/path variants вне явно согласованных переназначений.
+
+Назначения сосредоточены в Qt-представлении команд по
+[схеме](../ui-shortcuts-design.md). Операционные тела CPanel и исходные command
+owners не изменены. Новые сочетания файлового списка проходят существующие
+closed/busy/provider/modal guards и проверки доступности; недоступное действие
+поглощает своё сочетание, не передавая его прежней команде. Inline editor и
+адрес сохраняют собственный ввод, Return и Undo. Фокус пути выбирает текст,
+не раскрывая историю. Закрытие использует существующий command 8.
+Основное назначение отображается самим QAction; toolbar Info получает подсказку
+от Properties, поскольку upstream привязывает обе кнопки к IDM_PROPERTIES.
+
+Намеренные различия относительно Windows 7zFM: Command/Control-Shift архивные
+действия; macOS Return — rename, Command-Down — open, Command-Backspace — delete;
+Control/Command-N и Z освобождены. Windows/Linux Alt-Up/Left — навигация,
+синхронизация остаётся через Alt-Shift. Shift-2 переключает панели, сохраняя
+Alt-Shift-2 для записи закладки. Удаление без корзины на macOS сохраняется
+через исходное действие с Shift, без нового Command-Shift-Backspace.
+Полная схема и остальные варианты описаны в её владельце, без дублирования тут.
+
+Native command decoding использует Qt QKeyMapper для букв и цифр текущей
+раскладки, не event.text(). Нативный Cocoa-прогон обнаружил исключение Qt:
+virtual key 0 физической A не выдаёт варианты. Проверены установленный private
+header Qt 6.12.0 и [тело QAppleKeyMapper](https://github.com/qt/qtbase/blob/dev/src/gui/platform/darwin/qapplekeymapper.mm).
+Узкая macOS-адаптация разрешает только этот нулевой код через текущую системную
+Command-layer (TIS/UCKeyTranslate), без таблицы букв и изменения глобальной
+раскладки. Это platform input service, нового upstream-алгоритма операции нет.
+
+Регрессии проверяют ровно один Copy/Move с правильной исходной/целевой панелью,
+отмену без изменения файлов, Create/Open/Up/path, две панели, недоступную Add,
+редактор имени, reserved keys, clipboard и modal/window isolation. Существующие
+archive workflows вызываются новыми Add/Extract/Test сочетаниями с прежними
+проверками результата. В прямых потребителях обновлены устаревшие назначения;
+modal responders ожидают видимого окна. Синтетические modifiers освобождаются
+между взаимодействиями, чтобы не загрязнять следующий сценарий.
+
+macOS: приложение и affected targets собраны; 15 focused-наборов PASS.
+Cocoa panel_shortcut в light/dark PASS; native Cyrillic logical-key protocol
+для Copy, код A=0, main_shell и language_ui PASS. Сохранены текущие widget JSON
+и снимки в `build/dev/ui-redesign-review`. Протокольные события не доказывают
+физическую EN/RU клавиатуру; реальная смена раскладки, keyboard без F-ряда,
+VoiceOver и Linux desktop conflicts остаются отдельной проверкой.
+
+Linux: 15/15 focused-наборов PASS; после финальных input/fixture изменений
+пять прямых потребителей PASS. Windows interactive: первый прогон 13/15,
+затем исправлены native Shift-2 (единое декодирование виртуальной цифры с
+bookmark path) и ожидание готового QMessageBox через общий widget fixture;
+пять затронутых наборов PASS. Native Windows-цифры проверены протокольными
+событиями, старые physical right-Control 1/8/9 также прошли через SendInput.
+Сценарий удаления здесь проверяет Qt widget-подтверждение, не системную панель.
+На Cocoa тесту сохранения закладки исправлено сравнение /var и /private/var
+как одной реальной папки; 13 вариантов событий для закладок PASS в обеих темах.
+Runners используют прежний current и compiler cache; obsolete source-delete
+fixtures после timeout не обнаружены. Full/slow suites не запускались.
+Финальная версия теста закладок с каноническим fixture path также отдельно
+прошла на Linux и Windows после повторной синхронизации и сборки target.

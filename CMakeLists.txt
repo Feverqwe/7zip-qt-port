@@ -225,6 +225,9 @@ endif()
 add_library(sevenzip_native_keys STATIC src/qtnativepanelkeys.cpp src/qtnativepanelkeys.h)
 target_include_directories(sevenzip_native_keys PUBLIC src)
 target_link_libraries(sevenzip_native_keys PRIVATE Qt6::GuiPrivate)
+if(APPLE)
+    target_link_libraries(sevenzip_native_keys PRIVATE "-framework Carbon")
+endif()
 set_target_properties(sevenzip_native_keys PROPERTIES AUTOMOC OFF AUTOUIC OFF)
 
 add_library(sevenzip_panel STATIC src/CPP/7zip/UI/FileManager/App.cpp
@@ -2446,6 +2449,7 @@ foreach(engine_consumer IN LISTS engine_consumer_targets)
             src/mainwindow_propertyinvalidation.cpp
             src/mainwindow_columns.cpp src/mainwindow_refresh.cpp
             src/mainwindow_panelkey.cpp src/qtpanelkey.h
+            src/mainwindow_shortcuts.cpp
             src/mainwindow_close.cpp src/qtfilemanagerwindowservices.h
             src/mainwindow_startup.cpp src/qtfilemanagerinitservices.h
             src/qtfilemanagersplitter.cpp src/qtfilemanagersplitter.h
@@ -3483,6 +3487,13 @@ if(BUILD_TESTING)
     get_target_property(panel_folder_sync_sources panel_key_tests SOURCES)
     list(REMOVE_ITEM panel_folder_sync_sources tests/panel_key_tests.cpp)
     get_target_property(panel_folder_sync_libraries panel_key_tests LINK_LIBRARIES)
+    qt_add_executable(panel_shortcut_tests tests/panel_shortcut_tests.cpp
+        ${panel_folder_sync_sources})
+    target_include_directories(panel_shortcut_tests PRIVATE src tests)
+    target_link_libraries(panel_shortcut_tests PRIVATE ${panel_folder_sync_libraries})
+    add_test(NAME panel_shortcut COMMAND panel_shortcut_tests -silent)
+    set_tests_properties(panel_shortcut PROPERTIES TIMEOUT 60 ENVIRONMENT
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/panel-shortcut.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     qt_add_executable(panel_folder_sync_tests tests/panel_folder_sync_tests.cpp
         ${panel_folder_sync_sources})
     target_include_directories(panel_folder_sync_tests PRIVATE src tests)
@@ -3591,7 +3602,7 @@ if(BUILD_TESTING)
             options_dialog_tests system_page_tests flat_view_tests filesystem_reload_tests
             toolbar_archive_workflow_tests shell_update_window_tests shell_menu_window_tests source_drop_add_tests
             native_hash_ui_tests native_rar_ui_tests panel_list_key_tests source_context_menu_tests
-            panel_copy_reload_tests native_drop_publication_tests
+            panel_copy_reload_tests native_drop_publication_tests panel_shortcut_tests source_delete_tests
             copy_publication_order_tests native_parent_publication_tests panel_key_source_tests)
         target_sources(${sevenzip_widget_dialog_target} PRIVATE tests/fixtures/widget_dialogs.cpp)
     endforeach()

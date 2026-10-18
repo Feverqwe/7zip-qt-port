@@ -82,6 +82,7 @@ void MainWindow::createFileManagerWindow(const QtFileManagerStartup *startup, bo
         throw result;
     commands_ = std::make_unique<QtFileManagerCommands>(*this);
     commands_->AttachActions();
+    configureShortcuts();
     app_.QtOperations().SetCallFinishedCallback([this] {
         // Availability can be published while a synchronous source caller
         // still holds its close guard. Restore it after that caller unwinds.

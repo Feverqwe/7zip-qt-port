@@ -5,6 +5,7 @@
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "archivecodeccatalog.h"
 #include "fixtures/drag_event_position.h"
+#include "fixtures/panel_keys.h"
 #include "fixtures/progress_dialog.h"
 #include "fixtures/window_activation.h"
 #include "qttrashservice.h"
@@ -142,7 +143,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         table(window)->setFocus();
         confirmation.clear();
         dialogTimer.start(1);
-        QTest::keyClick(table(window), Qt::Key_Delete, Qt::ShiftModifier);
+        PanelKeys::deletePermanently(table(window), action(window, "deleteAction"));
         dialogTimer.stop();
         QVERIFY(confirmation.contains(QStringLiteral("навсегда.txt")));
         QVERIFY(!QFileInfo::exists(temp.filePath(QStringLiteral("навсегда.txt"))));

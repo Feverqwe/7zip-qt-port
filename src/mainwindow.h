@@ -197,6 +197,11 @@ class MainWindow : public QMainWindow {
     bool handlePanelKey(QObject *watched, QKeyEvent *key);
     bool handlePanelListKey(QKeyEvent *key);
     bool overridePanelKey(const QKeyEvent &key) const;
+    void configureShortcuts();
+    QAction *panelShortcut(const QKeyEvent &key) const;
+    bool reservedPanelKey(const QKeyEvent &key) const;
+    bool isPanelEditorFocused() const;
+    QList<QAction *> panelShortcutActions_;
     void updatePanelModifier(const QKeyEvent &key);
     void handleSelectionClick(int row);
     HRESULT showDirectory(const QString &path, bool remember, bool sourceAlreadyBound = false,

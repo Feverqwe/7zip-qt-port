@@ -169,8 +169,10 @@ visible panels. `panel_key` writes `two-panel-disk-table-640.json`,
 fully visible at 980×620 and 640×400. JSON confirms Qt structure and clipping
 only; rendered Windows parity remains unverified.
 
-`panel_folder_sync` extends this contract with Alt+Up (same folder) and
-Alt+Left/Right (focused child or parent). Source focus remains in its panel;
+`panel_folder_sync` extends this contract with Alt+Shift+Up (same folder) and
+Alt+Shift+Left/Right (focused child or parent). The modern primary navigation
+keys are defined in [the shortcut scheme](../ui-shortcuts-design.md).
+Source focus remains in its panel;
 the destination's pending list is disabled until source indices, sorting and
 selection are coherent. Its address remains available during Scan. Commands
 on the ready source panel remain available. Each panel publishes independently;

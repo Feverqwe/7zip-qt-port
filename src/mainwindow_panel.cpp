@@ -92,6 +92,8 @@ void MainWindow::createFilePanel(QMenu *editMenu, unsigned index) {
     panelUi_[index].container = central;
     central->setObjectName(QStringLiteral("filePanel%1").arg(index));
     panelSplitter_->insertWidget(static_cast<int>(index), central);
+    table_->addActions(panelShortcutActions_);
+    iconList_->addActions(panelShortcutActions_);
     app_.GetFocusedPanel().SetListViewMode(app_.GetFocusedPanel().GetListViewMode());
     statusBar()->setSizeGripEnabled(false);
     if (index == 0) {
@@ -191,8 +193,6 @@ void MainWindow::createPanelActions(QMenu *editMenu) {
     table_->addAction(parent_);
     selectAll_ = new QAction(table_);
     selectAll_->setObjectName("selectAllAction");
-    selectAll_->setShortcut(QKeySequence::SelectAll);
-    selectAll_->setShortcutContext(Qt::WidgetShortcut);
     table_->addAction(selectAll_);
     selectAll_->setText("Select All");
     editMenu->addAction(selectAll_);

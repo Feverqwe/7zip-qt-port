@@ -1,4 +1,5 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
+#include "fixtures/panel_keys.h"
 #include "layout_inspection.h"
 #include "window_state_support.h"
 
@@ -140,7 +141,7 @@ class PanelParentReloadTests final : public QObject, protected MainWindowTestSup
             QCOMPARE(QDir::cleanPath(QDir::fromNativeSeparators(address->text())), folder);
             view->setFocus();
             QVERIFY(action(window, "openItemAction")->isEnabled());
-            QTest::keyClick(view, Qt::Key_Return);
+            PanelKeys::openSelection(view);
             QTRY_COMPARE(QDir::cleanPath(QDir::fromNativeSeparators(address->text())),
                          fixture.path());
         }

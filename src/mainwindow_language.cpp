@@ -15,6 +15,15 @@ void MainWindow::reloadLangItems() {
     if (app_.QtOperations().closed())
         return;
     MyLoadMenu(*menuBar(), true);
+    // Qt renders the active primary shortcut. Retain manually described
+    // bookmark keys, but remove obsolete resource hints from rebound actions.
+    for (QAction *action : findChildren<QAction *>()) {
+        if (action->shortcuts().isEmpty() && action->objectName() != "commentAction")
+            continue;
+        const int tab = action->text().indexOf('\t');
+        if (tab >= 0)
+            action->setText(action->text().left(tab));
+    }
     refreshBookmarks();
     QtReloadLangTexts(*this);
     refreshToolbarTexts();
@@ -112,7 +121,9 @@ void MainWindow::refreshToolbarTexts() {
                                         : QString::fromWCharArray(text);
             button->setText(caption);
             button->setAccessibleName(caption);
-            const QString shortcut = action->shortcut().toString(QKeySequence::NativeText);
+            const QString shortcut =
+                (action == infoAction_ ? properties_->shortcut() : action->shortcut())
+                    .toString(QKeySequence::NativeText);
             button->setToolTip(
                 shortcut.isEmpty() ? caption : QStringLiteral("%1 (%2)").arg(caption, shortcut));
         }

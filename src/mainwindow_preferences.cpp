@@ -260,6 +260,11 @@ bool MainWindow::eventFilter(QObject *watched, QEvent *event) {
     if ((watched == path_ || watched == pathCombo_) && event->type() == QEvent::ShortcutOverride) {
         const auto *key = static_cast<QKeyEvent *>(event);
         const auto mods = key->modifiers();
+        if (key->key() == Qt::Key_Return || key->key() == Qt::Key_Enter ||
+            key->key() == Qt::Key_Escape) {
+            event->accept();
+            return true;
+        }
         // Deliver the edit subclass's keys before application QAction shortcuts.
         if (!(mods & (Qt::MetaModifier | Qt::AltModifier)) &&
             ((key->key() == Qt::Key_W && mods.testFlag(Qt::ControlModifier)) ||
@@ -268,7 +273,7 @@ bool MainWindow::eventFilter(QObject *watched, QEvent *event) {
             return true;
         }
     }
-    if (listControl && event->type() == QEvent::ShortcutOverride) {
+    if (listControl && !isPanelEditorFocused() && event->type() == QEvent::ShortcutOverride) {
         const auto *key = static_cast<QKeyEvent *>(event);
         if (overridePanelKey(*key)) {
             event->accept();

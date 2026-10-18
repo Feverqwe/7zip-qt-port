@@ -5,6 +5,7 @@
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "archivecodeccatalog.h"
 #include "createarchivedialog.h"
+#include "fixtures/panel_keys.h"
 #include "fixtures/widget_dialogs.h"
 #include "layout_inspection.h"
 #include "source_extract_fixture.h"
@@ -165,6 +166,8 @@ class ShellUpdateWindowTests final : public QObject, protected MainWindowTestSup
         QVERIFY(QTest::qWaitForWindowActive(&window));
         auto *view = table(window);
         QTRY_VERIFY(rowNamed(window, name) >= 0);
+        QTRY_VERIFY(view->isEnabled());
+        view->setCurrentCell(rowNamed(window, name), 0);
         view->selectRow(rowNamed(window, name));
         QSignalSpy processes(&backend, &ArchiveBackend::engineStarted);
         QStringList errors;
@@ -260,7 +263,9 @@ class ShellUpdateWindowTests final : public QObject, protected MainWindowTestSup
             auto *add = action(window, "toolbarAddAction");
             QVERIFY(add->isEnabled());
             invoked = true;
-            add->trigger();
+            view->setFocus();
+            QTRY_VERIFY(view->hasFocus());
+            PanelKeys::command(view, Qt::Key_A, Qt::ControlModifier | Qt::ShiftModifier);
         } else if (program) {
             auto *menu = window.findChild<QMenu *>("fileMenu");
             QVERIFY(menu);

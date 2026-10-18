@@ -3,6 +3,8 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
+#include "fixtures/panel_keys.h"
+#include "fixtures/widget_dialogs.h"
 #include "layout_inspection.h"
 #include "qttrashservice.h"
 #include "window_state_support.h"
@@ -10,6 +12,7 @@
 
 class SourceDeleteTests final : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
+    WidgetDialogFixture dialogs_;
     class Trash final : public IQtTrashService {
       public:
         int calls = 0;
@@ -147,10 +150,12 @@ class SourceDeleteTests final : public QObject, protected MainWindowTestSupport 
         bool sourceDefault = false;
         QString title, message;
         bool reports = true;
-        QTimer::singleShot(0, &window, [&] {
-            auto *box = qobject_cast<QMessageBox *>(QApplication::activeModalWidget());
+        QTimer refusal;
+        dialogs_.connectResponder(refusal, &window, [&] {
+            auto *box = qobject_cast<QMessageBox *>(dialogs_.activeDialog());
             if (!box)
                 return;
+            refusal.stop();
             observed = true;
             sourceDefault = box->defaultButton() == box->button(QMessageBox::Yes);
             title = box->windowTitle();
@@ -169,7 +174,13 @@ class SourceDeleteTests final : public QObject, protected MainWindowTestSupport 
                 external.write("external bytes");
             box->button(cancel ? QMessageBox::Cancel : QMessageBox::No)->click();
         });
+        refusal.start(5);
+#ifdef Q_OS_MACOS
+        PanelKeys::command(view, Qt::Key_Backspace, Qt::ControlModifier);
+#else
         action(window, "deleteAction")->trigger();
+#endif
+        refusal.stop();
         QVERIFY(observed);
         QVERIFY(sourceDefault);
 #ifndef Q_OS_MACOS
@@ -278,8 +289,8 @@ class SourceDeleteTests final : public QObject, protected MainWindowTestSupport 
         bool reports = true;
         QString errorTitle;
         QTimer responder;
-        connect(&responder, &QTimer::timeout, &window, [&] {
-            auto *box = qobject_cast<QMessageBox *>(QApplication::activeModalWidget());
+        dialogs_.connectResponder(responder, &window, [&] {
+            auto *box = qobject_cast<QMessageBox *>(dialogs_.activeDialog());
             if (!box)
                 return;
             if (auto *yes = box->button(QMessageBox::Yes)) {
@@ -313,7 +324,7 @@ class SourceDeleteTests final : public QObject, protected MainWindowTestSupport 
         } else if (recycle)
             action(window, "deleteAction")->trigger();
         else {
-            QTest::keyClick(view, Qt::Key_Delete, Qt::ShiftModifier);
+            PanelKeys::deletePermanently(view, action(window, "deleteAction"));
             QTest::keyRelease(view, Qt::Key_Shift);
         }
         responder.stop();
@@ -375,16 +386,21 @@ class SourceDeleteTests final : public QObject, protected MainWindowTestSupport 
         view->setCurrentCell(0, 0);
         view->setFocus();
         const QString removed = view->item(0, 0)->data(Qt::UserRole + 3).toString();
-        QTimer::singleShot(0, &window, [&] {
-            if (auto *box = qobject_cast<QMessageBox *>(QApplication::activeModalWidget()))
+        QTimer answer;
+        dialogs_.connectResponder(answer, &window, [&] {
+            if (auto *box = qobject_cast<QMessageBox *>(dialogs_.activeDialog())) {
+                answer.stop();
                 QTest::keyClick(box, Qt::Key_Return);
+            }
         });
+        answer.start(5);
         if (recycle)
             action(window, "deleteAction")->trigger();
         else {
-            QTest::keyClick(view, Qt::Key_Delete, Qt::ShiftModifier);
+            PanelKeys::deletePermanently(view, action(window, "deleteAction"));
             QTest::keyRelease(view, Qt::Key_Shift);
         }
+        answer.stop();
         QVERIFY(!panel.ShouldProcessNotifications());
         QTRY_VERIFY(view->isEnabled() && view->rowCount() == 257);
         QVERIFY(panel.ShouldProcessNotifications());

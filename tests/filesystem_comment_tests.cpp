@@ -389,7 +389,7 @@ class FilesystemCommentTests final : public QObject, protected MainWindowTestSup
             QVERIFY(QTest::qWaitForWindowActive(&window));
             table(window)->setFocus();
             QTRY_VERIFY(table(window)->hasFocus());
-            QTest::keyClick(table(window), Qt::Key_Z, Qt::ControlModifier);
+            action(window, "commentAction")->trigger();
             QTRY_VERIFY(observed);
         } else
             action(window, "commentAction")->trigger();

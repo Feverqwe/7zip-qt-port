@@ -45,14 +45,12 @@ void MainWindow::createFileActions(QMenu *menu, QToolBar *toolbar) {
     openItem_->setObjectName("openItemAction");
     openInside_ = menu->addAction("Open &Inside");
     openInside_->setObjectName("openInsideAction");
-    openInside_->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_PageDown));
     openInsideOne_ = new QAction("Open Inside *", this);
     openInsideOne_->setObjectName("openInsideOneAction");
     openInsideParser_ = new QAction("Open Inside #", this);
     openInsideParser_->setObjectName("openInsideParserAction");
     openOutside_ = menu->addAction("Open O&utside");
     openOutside_->setObjectName("openOutsideAction");
-    openOutside_->setShortcut(QKeySequence(Qt::SHIFT | Qt::Key_Return));
     toolbarAdd_ = toolbar->addAction("Add");
     toolbarAdd_->setObjectName("toolbarAddAction");
     extract_ = toolbar->addAction("Extract");
@@ -73,17 +71,13 @@ void MainWindow::createFileActions(QMenu *menu, QToolBar *toolbar) {
     rename_->setObjectName("renameAction");
     viewFile_ = menu->addAction("View");
     viewFile_->setObjectName("viewFileAction");
-    viewFile_->setShortcut(QKeySequence(Qt::Key_F3));
     editFile_ = menu->addAction("&Edit");
     editFile_->setObjectName("editFileAction");
-    editFile_->setShortcut(QKeySequence(Qt::Key_F4));
     properties_ = menu->addAction("P&roperties");
     properties_->setObjectName("selectedPropertiesAction");
-    properties_->setShortcut(QKeySequence(Qt::ALT | Qt::Key_Return));
     exitAction_ = new QAction("E&xit", this);
     exitAction_->setObjectName("exitAction");
     exitAction_->setMenuRole(QAction::QuitRole);
-    exitAction_->setShortcut(QKeySequence::Quit);
 }
 
 void MainWindow::createFileExtras(QMenu *menu, QToolBar *toolbar) {
@@ -104,14 +98,8 @@ void MainWindow::createFileExtras(QMenu *menu, QToolBar *toolbar) {
     }
     createFolder_ = menu->addAction("Create Folder");
     createFolder_->setObjectName("createFolderAction");
-    createFolder_->setShortcut(QKeySequence(Qt::Key_F7));
     createFile_ = menu->addAction("Create File");
     createFile_->setObjectName("createFileAction");
-    createFile_->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_N));
-    copy_->setShortcut(QKeySequence(Qt::Key_F5));
-    move_->setShortcut(QKeySequence(Qt::Key_F6));
-    remove_->setShortcut(QKeySequence::Delete);
-    rename_->setShortcut(QKeySequence(Qt::Key_F2));
     infoAction_ = toolbar->addAction("Info");
     infoAction_->setObjectName("archiveInfoAction");
     toolbarAdd_->setIcon(toolbarIcon(0));
@@ -133,7 +121,6 @@ void MainWindow::createViewModes(QMenu *viewMenu) {
         action->setObjectName(QStringLiteral("viewMode%1Action").arg(index));
         action->setCheckable(true);
         action->setActionGroup(viewGroup);
-        action->setShortcut(QKeySequence(Qt::CTRL | (Qt::Key_1 + index)));
         viewActions_[index] = action;
     }
 }
@@ -161,7 +148,6 @@ void MainWindow::createViewOptions(QMenu *viewMenu) {
         action->setObjectName(QStringLiteral("sort%1Action").arg(index));
         action->setCheckable(true);
         action->setActionGroup(sortGroup);
-        action->setShortcut(QKeySequence(Qt::CTRL | (Qt::Key_F3 + index)));
         sortActions_[index] = action;
     }
     sortActions_[0]->setChecked(true);
@@ -200,7 +186,6 @@ void MainWindow::createViewOptions(QMenu *viewMenu) {
     twoPanelsAction_->setProperty("nativeCommandID", IDM_VIEW_TWO_PANELS);
     twoPanelsAction_->setCheckable(true);
     twoPanelsAction_->setChecked(app_.NumPanels == 2);
-    twoPanelsAction_->setShortcut(QKeySequence(Qt::Key_F9));
     connect(twoPanelsAction_, &QAction::triggered, this, [this] { togglePanels(); });
     viewMenu->addSeparator();
     createToolbarOptions(viewMenu);
@@ -208,14 +193,12 @@ void MainWindow::createViewOptions(QMenu *viewMenu) {
     root_->setObjectName("openRootAction");
     refresh_ = viewMenu->addAction("&Refresh");
     refresh_->setObjectName("refreshAction");
-    refresh_->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_R));
     autoRefreshAction_ = viewMenu->addAction(QStringLiteral("Auto Refresh"));
     autoRefreshAction_->setObjectName(QStringLiteral("autoRefreshAction"));
     autoRefreshAction_->setCheckable(true);
     autoRefreshAction_->setChecked(app_.Get_AutoRefresh_Mode());
     foldersHistory_ = viewMenu->addAction("Folders History...");
     foldersHistory_->setObjectName("foldersHistoryAction");
-    foldersHistory_->setShortcut(QKeySequence(Qt::ALT | Qt::Key_F12));
 }
 
 void MainWindow::applyFlatView(bool enabled) {
@@ -283,7 +266,6 @@ void MainWindow::rebuildSourceMenus() {
     openArchive->setObjectName("openArchiveAction");
     QtBindLocalText(openArchive, "mainwindow_menus",
                     QT_TRANSLATE_NOOP("mainwindow_menus", "Open archive…"));
-    openArchive->setShortcut(QKeySequence::Open);
     file->addSeparator();
     for (QAction *action : {openItem_, openInside_, openInsideOne_, openInsideParser_, openOutside_,
                             viewFile_, editFile_})
@@ -369,7 +351,6 @@ void MainWindow::rebuildSourceMenus() {
 
     auto *help = findChild<QMenu *>("helpMenu");
     unavailable(help, QStringLiteral("Contents..."), "helpContentsAction", IDM_HELP_CONTENTS);
-    findChild<QAction *>("helpContentsAction")->setShortcut(QKeySequence(Qt::Key_F1));
     help->addSeparator();
     unavailable(help, QStringLiteral("About 7-Zip..."), "aboutAction", IDM_ABOUT);
 }

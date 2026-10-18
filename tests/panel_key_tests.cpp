@@ -629,6 +629,10 @@ class PanelKeyTests final : public QObject, protected MainWindowTestSupport {
         const QString parentPath = address->text();
         for (auto modifiers :
              {Qt::NoModifier, Qt::ControlModifier, Qt::ShiftModifier, Qt::AltModifier}) {
+#ifdef Q_OS_MACOS
+            if (modifiers == Qt::ControlModifier)
+                continue; // Command-Backspace is the redesigned Delete command.
+#endif
             table->selectRow(0);
             table->setCurrentCell(0, 0);
             action(window, "openItemAction")->trigger();
@@ -747,8 +751,11 @@ class PanelKeyTests final : public QObject, protected MainWindowTestSupport {
         int dialogs = 0;
         const QString name = QStringLiteral("новый файл.txt");
         const auto pressCreate = [&](QWidget *target, bool accept) {
-            QTimer::singleShot(0, &window, [&window, &dialogs, &name, accept] {
-                if (auto *dialog = window.findChild<QDialog *>("comboDialog")) {
+            QTimer responder;
+            connect(&responder, &QTimer::timeout, &window, [&] {
+                if (auto *dialog = qobject_cast<QDialog *>(QApplication::activeModalWidget());
+                    dialog && dialog->objectName() == "comboDialog" && dialog->isVisible()) {
+                    responder.stop();
                     ++dialogs;
                     dialog->findChild<QComboBox *>("comboValue")->setEditText(name);
                     if (accept)
@@ -757,8 +764,10 @@ class PanelKeyTests final : public QObject, protected MainWindowTestSupport {
                         dialog->reject();
                 }
             });
+            responder.start(5);
             target->setFocus();
             QTest::keyClick(target, Qt::Key_F4, Qt::ShiftModifier);
+            responder.stop();
             QApplication::processEvents();
         };
         pressCreate(view, false);

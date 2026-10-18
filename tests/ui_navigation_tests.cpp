@@ -1,4 +1,5 @@
 #include "7zip/UI/FileManager/resource.h"
+#include "fixtures/panel_keys.h"
 #include "layout_inspection.h"
 #include "window_state_support.h"
 #include <QScopeGuard>
@@ -170,7 +171,7 @@ class MainWindowNavigationTests : public QObject, protected MainWindowTestSuppor
                 view->setCurrentCell(row, 0);
         }
         QVERIFY(action(window, "openItemAction")->isEnabled());
-        QTest::keyClick(view, Qt::Key_Return);
+        PanelKeys::openSelection(view);
         QCOMPARE(QFileInfo(opened.toLocalFile()).canonicalFilePath(),
                  QFileInfo(plain.fileName()).canonicalFilePath());
         QCOMPARE(address->text(), QFileInfo(temp.path()).canonicalFilePath());
@@ -179,7 +180,7 @@ class MainWindowNavigationTests : public QObject, protected MainWindowTestSuppor
                 view->setCurrentCell(row, 0);
         }
         QVERIFY(action(window, "openItemAction")->isEnabled());
-        QTest::keyClick(view, Qt::Key_Return);
+        PanelKeys::openSelection(view);
         QCOMPARE(address->text(),
                  QFileInfo(temp.filePath(QStringLiteral("папка с пробелом"))).canonicalFilePath());
         QTest::keyClick(view, Qt::Key_Backspace);
@@ -199,13 +200,13 @@ class MainWindowNavigationTests : public QObject, protected MainWindowTestSuppor
             QVERIFY(!action(window, "parentFolderAction")->isEnabled());
             QVERIFY(!action(window, "selectAllAction")->isEnabled());
         });
-        QTest::keyClick(view, Qt::Key_Return);
+        PanelKeys::openSelection(view);
         pressSelectAll(view);
         QCOMPARE(view->selectionModel()->selectedRows().size(), 2);
         QCOMPARE(action(window, "copyAction")->isEnabled(), true);
         view->clearSelection();
         view->setCurrentCell(rowWithPath(window, QStringLiteral("папка")), 0);
-        QTest::keyClick(view, Qt::Key_Return);
+        PanelKeys::openSelection(view);
         QVERIFY(address->text().endsWith(QStringLiteral(" / папка")));
         QCOMPARE(view->rowCount(), 1);
         view->setCurrentCell(0, 0);

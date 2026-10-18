@@ -266,9 +266,6 @@ class MainShellTests final : public QObject {
             QVERIFY(action);
             QVERIFY(!action->isEnabled());
         }
-        auto *comment = window.findChild<QAction *>("commentAction");
-        QVERIFY(comment);
-        QCOMPARE(comment->shortcut(), QKeySequence(Qt::CTRL | Qt::Key_Z));
         auto *streams = window.findChild<QAction *>("altStreamsAction");
         QVERIFY(streams);
 #ifdef Q_OS_WIN
@@ -285,8 +282,6 @@ class MainShellTests final : public QObject {
                  QKeySequence(Qt::Key_F3));
         QCOMPARE(window.findChild<QAction *>("editFileAction")->shortcut(),
                  QKeySequence(Qt::Key_F4));
-        QCOMPARE(window.findChild<QAction *>("twoPanelsAction")->shortcut(),
-                 QKeySequence(Qt::Key_F9));
     }
 
     void toolbarCommandsFitBothSizes_data() {

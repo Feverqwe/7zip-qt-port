@@ -7,6 +7,7 @@
 #include "archivecodeccatalog.h"
 #include "copydialog.h"
 #include "extractdialog.h"
+#include "fixtures/panel_keys.h"
 #include "fixtures/widget_dialogs.h"
 #include "layout_inspection.h"
 #include "processpriority.h"
@@ -121,7 +122,8 @@ class ToolbarArchiveWorkflowTests final : public QObject, protected MainWindowTe
         driver.start(1);
         for (int attempt = 0; attempt < 3; ++attempt) {
             QVERIFY(action(window, "testArchiveAction")->isEnabled());
-            action(window, "testArchiveAction")->trigger();
+            source->setFocus();
+            PanelKeys::command(source, Qt::Key_T, Qt::ControlModifier | Qt::ShiftModifier);
             QVERIFY2(errors.isEmpty(), qPrintable(errors.join('\n')));
             QCOMPARE(successes.size(), attempt + 1);
             if (background && attempt == 0)
@@ -317,12 +319,14 @@ class ToolbarArchiveWorkflowTests final : public QObject, protected MainWindowTe
             dismissResults(dialogs_, errors, successes);
         });
         driver.start(1);
-        action(window, "extractArchiveAction")->trigger();
+        source->setFocus();
+        PanelKeys::command(source, Qt::Key_E, Qt::ControlModifier | Qt::ShiftModifier);
         QVERIFY(seen);
         QVERIFY(!QFileInfo::exists(output));
         canceled = false;
         seen = false;
-        action(window, "extractArchiveAction")->trigger();
+        source->setFocus();
+        PanelKeys::command(source, Qt::Key_E, Qt::ControlModifier | Qt::ShiftModifier);
         QVERIFY(seen);
         QCOMPARE(caption.normalized(QString::NormalizationForm_C),
                  (QtLangText(IDD_EXTRACT, "Extract") +
@@ -335,7 +339,8 @@ class ToolbarArchiveWorkflowTests final : public QObject, protected MainWindowTe
         if (multiple)
             QCOMPARE(readFile(QDir(output).filePath("second/" + name)), payload);
         successes.clear();
-        action(window, "testArchiveAction")->trigger();
+        source->setFocus();
+        PanelKeys::command(source, Qt::Key_T, Qt::ControlModifier | Qt::ShiftModifier);
         QVERIFY2(errors.isEmpty(), qPrintable(errors.join('\n')));
         QCOMPARE(successes.size(), 1);
         QVERIFY(successes[0].contains(QtLangText(IDS_MESSAGE_NO_ERRORS)));

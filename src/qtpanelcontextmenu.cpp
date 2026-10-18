@@ -82,6 +82,7 @@ static QAction *AppendCommand(QMenu &menu, const QAction &source, bool enabled) 
     action->setObjectName(source.objectName());
     action->setProperty("nativeCommandID", source.property("nativeCommandID"));
     action->setShortcuts(source.shortcuts());
+    action->setShortcutVisibleInContextMenu(source.isShortcutVisibleInContextMenu());
     action->setShortcutContext(Qt::WidgetShortcut);
     action->setCheckable(source.isCheckable());
     action->setChecked(source.isChecked());

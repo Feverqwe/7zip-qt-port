@@ -113,8 +113,7 @@ class PanelKeySourceTests final : public QObject, protected MainWindowTestSuppor
         QTest::addColumn<Qt::KeyboardModifiers>("modifiers");
         QTest::newRow("copy-selected-names")
             << int(Qt::Key_C) << Qt::KeyboardModifiers(Qt::ControlModifier);
-        QTest::newRow("ctrl-shift-select-all")
-            << int(Qt::Key_A) << Qt::KeyboardModifiers(Qt::ControlModifier | Qt::ShiftModifier);
+        QTest::newRow("select-all") << int(Qt::Key_A) << Qt::KeyboardModifiers(Qt::ControlModifier);
         QTest::newRow("ctrl-w-close")
             << int(Qt::Key_W) << Qt::KeyboardModifiers(Qt::ControlModifier);
         QTest::newRow("copy-extra-modifiers")
@@ -122,10 +121,18 @@ class PanelKeySourceTests final : public QObject, protected MainWindowTestSuppor
             << Qt::KeyboardModifiers(Qt::ControlModifier | Qt::ShiftModifier | Qt::AltModifier);
         QTest::newRow("copy-insert")
             << int(Qt::Key_Insert) << Qt::KeyboardModifiers(Qt::ControlModifier);
+#ifdef Q_OS_MACOS
+        QTest::newRow("native-cyrillic-copy")
+            << 0x0421 << Qt::KeyboardModifiers(Qt::ControlModifier);
+#endif
     }
     void originalKeys() {
         QFETCH(int, key);
         QFETCH(Qt::KeyboardModifiers, modifiers);
+        const bool native = key == 0x0421;
+        if (native && QApplication::platformName() != "cocoa")
+            QSKIP("Requires native Cocoa keyboard-layout mapping");
+        const bool copy = key == Qt::Key_C || key == Qt::Key_Insert || native;
         QTemporaryDir fixture;
         QVERIFY(fixture.isValid());
         ControlledBackend backend;
@@ -138,7 +145,7 @@ class PanelKeySourceTests final : public QObject, protected MainWindowTestSuppor
         auto *list = table(window);
         QTRY_COMPARE(list->rowCount(), 2);
         list->setCurrentCell(0, 0);
-        if (key == Qt::Key_C || key == Qt::Key_Insert)
+        if (copy)
             list->selectAll();
         else
             list->clearSelection();
@@ -146,10 +153,19 @@ class PanelKeySourceTests final : public QObject, protected MainWindowTestSuppor
         QVERIFY(WindowActivation::waitForActive(window));
         list->setFocus();
         QTRY_VERIFY(list->hasFocus());
-        if (key == Qt::Key_C || key == Qt::Key_Insert)
+        if (copy)
             QCOMPARE(list->selectionModel()->selectedRows().size(), 2);
-        QTest::keyClick(list, static_cast<Qt::Key>(key), modifiers);
-        if (key == Qt::Key_C || key == Qt::Key_Insert)
+        if (native) {
+            QKeyEvent override(QEvent::ShortcutOverride, key, modifiers, 0, 8, 1u << 20);
+            override.ignore();
+            QApplication::sendEvent(list, &override);
+            QVERIFY(override.isAccepted());
+            QKeyEvent press(QEvent::KeyPress, key, modifiers, 0, 8, 1u << 20);
+            QApplication::sendEvent(list, &press);
+            QTest::keyRelease(list, Qt::Key_Control);
+        } else
+            QTest::keyClick(list, static_cast<Qt::Key>(key), modifiers);
+        if (copy)
             QCOMPARE(QApplication::clipboard()->text(),
                      QStringLiteral("alpha name.txt\r\nбета 空.txt"));
         else if (key == Qt::Key_A)
@@ -227,7 +243,7 @@ class PanelKeySourceTests final : public QObject, protected MainWindowTestSuppor
         view->setFocus();
         QTRY_VERIFY(view->hasFocus());
         list->setCurrentCell(0, 0);
-        QTest::keyClick(view, Qt::Key_A, Qt::ControlModifier | Qt::ShiftModifier);
+        QTest::keyClick(view, Qt::Key_A, Qt::ControlModifier);
         CRecordVector<UInt32> selected;
         auto *source = static_cast<FileTable *>(list)->sourcePanel;
         source->Get_ItemIndices_Selected(selected);
@@ -330,8 +346,9 @@ class PanelKeySourceTests final : public QObject, protected MainWindowTestSuppor
         const int slot = digit - Qt::Key_0;
         QTemporaryDir fixture;
         QVERIFY(fixture.isValid());
-        const QString saved = fixture.filePath(QStringLiteral("правая клавиша 空"));
-        const QString other = fixture.filePath("other location");
+        const QDir root(QFileInfo(fixture.path()).canonicalFilePath());
+        const QString saved = root.filePath(QStringLiteral("правая клавиша 空"));
+        const QString other = root.filePath("other location");
         QVERIFY(QDir().mkpath(saved));
         QVERIFY(QDir().mkpath(other));
         ControlledBackend backend;
@@ -345,8 +362,18 @@ class PanelKeySourceTests final : public QObject, protected MainWindowTestSuppor
         QTRY_VERIFY(list->isEnabled());
         list->setFocus();
         QTRY_VERIFY(list->hasFocus());
-        QVERIFY(nativeNotification ? nativeDigitNotification(list, true, digit)
-                                   : rightControlDigit(list, true, digit));
+        if (digit == Qt::Key_2) {
+            QVERIFY(nativeNotification ? nativeDigitNotification(list, true, digit)
+                                       : rightControlDigit(list, true, digit));
+            QTRY_VERIFY(action(window, "twoPanelsAction")->isChecked());
+            QTRY_VERIFY(action(window, "twoPanelsAction")->isEnabled());
+            action(window, "twoPanelsAction")->trigger();
+            QTRY_VERIFY(!action(window, "twoPanelsAction")->isChecked());
+            list->setFocus();
+            QTest::keyClick(list, Qt::Key_2, Qt::AltModifier | Qt::ShiftModifier);
+        } else
+            QVERIFY(nativeNotification ? nativeDigitNotification(list, true, digit)
+                                       : rightControlDigit(list, true, digit));
         const QString settingsPath = qEnvironmentVariable("SEVENZIP_SETTINGS_PATH");
         const auto stored = [&] {
             return QSettings(settingsPath, QSettings::IniFormat)
@@ -466,7 +493,11 @@ class PanelKeySourceTests final : public QObject, protected MainWindowTestSuppor
             timer.start(1);
             QTest::keyClick(list, Qt::Key_Delete, modifiers);
             timer.stop();
+#ifdef Q_OS_MACOS
+            QCOMPARE(confirmations, 0);
+#else
             QCOMPARE(confirmations, 1);
+#endif
             QVERIFY(file.open(QIODevice::ReadOnly));
             QCOMPARE(file.readAll(), QByteArray("unchanged"));
             file.close();
