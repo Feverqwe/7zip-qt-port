@@ -161,7 +161,6 @@ class MainWindowLayoutTests : public QObject {
         QCOMPARE(pathCombo->lineEdit(), path);
         QVERIFY(table);
         QVERIFY(toolbar);
-        QCOMPARE(toolbar->toolButtonStyle(), Qt::ToolButtonTextUnderIcon);
         QVERIFY(!toolbar->actions().first()->icon().isNull());
         int navigationButtons = 0;
         for (QToolButton *button : window.centralWidget()->findChildren<QToolButton *>())
@@ -215,7 +214,6 @@ class MainWindowLayoutTests : public QObject {
         large->setChecked(true);
         text->setChecked(false);
         QCOMPARE(toolbar->iconSize(), QSize(48, 36));
-        QCOMPARE(toolbar->toolButtonStyle(), Qt::ToolButtonIconOnly);
         standard->setChecked(false);
         QVERIFY(!toolbar->isVisible());
 

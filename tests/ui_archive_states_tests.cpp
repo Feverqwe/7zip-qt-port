@@ -306,10 +306,15 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
             QTimer::singleShot(0, &window, [&] {
                 auto *menu = qobject_cast<QMenu *>(QApplication::activePopupWidget());
                 QVERIFY(menu);
-                for (QAction *item : menu->actions()) {
-                    commands << item->text();
-                    enabled.insert(item->text(), item->isEnabled());
-                }
+                const auto collect = [&](auto &&self, QMenu &current) -> void {
+                    for (QAction *item : current.actions()) {
+                        commands << item->text();
+                        enabled.insert(item->text(), item->isEnabled());
+                        if (item->menu())
+                            self(self, *item->menu());
+                    }
+                };
+                collect(collect, *menu);
                 menu->close();
             });
         };
@@ -385,6 +390,8 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
         auto *address = window.findChild<QLineEdit *>("archivePath");
         auto *combo = window.findChild<QComboBox *>("pathCombo");
         QVERIFY(address && combo);
+        address->setFocus();
+        QTRY_VERIFY(address->hasFocus());
         address->setText(folder);
         QTest::keyClick(address, Qt::Key_Return);
         QCOMPARE(address->text(), QFileInfo(folder).canonicalFilePath());

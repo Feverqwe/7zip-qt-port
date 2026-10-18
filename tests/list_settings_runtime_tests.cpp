@@ -136,15 +136,21 @@ class ListSettingsRuntimeTests final : public QObject, protected MainWindowTestS
             menuInspected = true;
             const auto close = qScopeGuard([&] { menu->close(); });
             bool found = false;
-            for (QAction *item : menu->actions()) {
+            const auto inspect = [&](auto &&self, QMenu &current) -> void {
+                for (QAction *item : current.actions()) {
 #ifdef Q_OS_WIN
-                found |= item->objectName() == QStringLiteral("systemContextGroup") &&
-                         item->isEnabled() && item->menu() && !item->menu()->actions().isEmpty();
+                    found |= item->objectName() == QStringLiteral("systemContextGroup") &&
+                             item->isEnabled() && item->menu() &&
+                             !item->menu()->actions().isEmpty();
 #else
                 found |= item->objectName() == QStringLiteral("systemContextGroup") &&
                          !item->isEnabled();
 #endif
-            }
+                    if (item->menu())
+                        self(self, *item->menu());
+                }
+            };
+            inspect(inspect, *menu);
             QVERIFY(found);
             menu->close();
         });
