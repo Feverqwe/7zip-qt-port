@@ -17,6 +17,9 @@ QAction *menuAction(QMenu &menu, const char *name) {
     for (QAction *action : menu.actions())
         if (action->objectName() == QLatin1String(name))
             return action;
+        else if (action->menu())
+            if (auto *found = menuAction(*action->menu(), name))
+                return found;
     return nullptr;
 }
 } // namespace
@@ -107,24 +110,24 @@ class PanelShellTests final : public QObject, protected MainWindowTestSupport {
         };
         inspectContextMenu(
             leftTable, leftTable->visualItemRect(leftTable->item(0, 0)).center(), [&](QMenu *menu) {
-                QCOMPARE(menu->actions().first()->objectName(),
-                         QStringLiteral("systemContextGroup"));
+                auto *system = menuAction(*menu, "systemContextGroup");
+                QVERIFY(system);
 #ifdef Q_OS_WIN
-                QVERIFY(menu->actions().first()->isEnabled());
-                QVERIFY(menu->actions().first()->menu());
-                QVERIFY(!menu->actions().first()->menu()->actions().isEmpty());
+                QVERIFY(system->isEnabled());
+                QVERIFY(system->menu());
+                QVERIFY(!system->menu()->actions().isEmpty());
 #else
-            QVERIFY(!menu->actions().first()->isEnabled());
+            QVERIFY(!system->isEnabled());
 #endif
-                QCOMPARE(menu->actions().at(1)->objectName(),
-                         QStringLiteral("sevenZipContextGroup"));
-                QVERIFY(!menu->actions().at(1)->isEnabled());
+                auto *sevenZip = menuAction(*menu, "sevenZipContextGroup");
+                QVERIFY(sevenZip && !sevenZip->isEnabled());
                 auto *open = menuAction(*menu, "openItemAction");
                 auto *rename = menuAction(*menu, "renameAction");
                 auto *create = menuAction(*menu, "createFolderAction");
                 QVERIFY(open && rename && create);
                 QVERIFY(menu->actions().indexOf(open) < menu->actions().indexOf(rename));
-                QVERIFY(menu->actions().indexOf(rename) < menu->actions().indexOf(create));
+                auto *more = menu->findChild<QMenu *>("moreCommandsMenu");
+                QVERIFY(more && more->actions().contains(create));
                 QVERIFY(!menuAction(*menu, "exitAction"));
                 QVERIFY(UiInspection::writeReport(*menu, QStringLiteral("panel-context-disk")));
             });

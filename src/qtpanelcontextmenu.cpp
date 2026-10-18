@@ -4,6 +4,7 @@
 #include "qtdialogscreenservices.h"
 #include "qtfilemanagershellmenu.h"
 #include "qtfilemenuprojection.h"
+#include "qtlangcontrols.h"
 #include "qtlanguageservices.h"
 #include "qtprogramfilemenu.h"
 #include <QScopedValueRollback>
@@ -102,6 +103,8 @@ unsigned QtPanelContextMenu::Track(int x, int y) {
         if (entry.source.wID == 0) {
             auto *hash = state.popup.addMenu(QStringLiteral("CRC"));
             hash->setObjectName("contextHashMenu");
+            QtBindLocalText(hash->menuAction(), "CommandMenus",
+                            QT_TRANSLATE_NOOP("CommandMenus", "Checksums"));
             for (QAction *action : state.window.findChild<QMenu *>("hashMenu")->actions())
                 AppendCommand(*hash, *action, action->isEnabled());
             continue;
@@ -111,6 +114,7 @@ unsigned QtPanelContextMenu::Track(int x, int y) {
         }
     }
     QtClarifyOpenCommands(state.popup);
+    QtGroupFileCommands(state.popup, true);
     // OnContextMenu dispatches the chosen ID after the popup guards restore.
     QAction *chosen;
     const unsigned owner = state.window.app_.GetFocusedPanelIndex();

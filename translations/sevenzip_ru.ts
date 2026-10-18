@@ -38,6 +38,7 @@
         <name>ArchiveRedesign</name>
         <message>
             <location filename="../src/CPP/7zip/UI/GUI/ExtractDialog.cpp" line="+72" />
+            <location filename="../src/mainwindow_language.cpp" line="+111" />
             <source>Extract</source>
             <translation>Распаковать</translation>
         </message>
@@ -250,6 +251,51 @@
             <location line="-478" />
             <source>This temporary item is active, protected, or no longer owned. Refresh the list.</source>
             <translation>Этот временный объект используется, защищён или больше не принадлежит приложению. Обновите список.</translation>
+        </message>
+    </context>
+    <context>
+        <name>CommandMenus</name>
+        <message>
+            <location filename="../src/mainwindow_menus.cpp" line="+94" />
+            <location filename="../src/qtpanelcontextmenu.cpp" line="+107" />
+            <source>Checksums</source>
+            <translation>Контрольные суммы</translation>
+        </message>
+        <message>
+            <location line="+79" />
+            <location line="+14" />
+            <source>Time format</source>
+            <translation>Формат времени</translation>
+        </message>
+        <message>
+            <location line="+148" />
+            <source>Presentation</source>
+            <translation>Представление</translation>
+        </message>
+        <message>
+            <location line="+6" />
+            <source>Sort by</source>
+            <translation>Сортировка</translation>
+        </message>
+        <message>
+            <location filename="../src/qtprogramfilemenu.cpp" line="+105" />
+            <source>Open as</source>
+            <translation>Открыть как</translation>
+        </message>
+        <message>
+            <location line="+9" />
+            <source>Create</source>
+            <translation>Создать</translation>
+        </message>
+        <message>
+            <location line="+10" />
+            <source>More</source>
+            <translation>Ещё</translation>
+        </message>
+        <message>
+            <location line="+4" />
+            <source>Advanced</source>
+            <translation>Дополнительно</translation>
         </message>
     </context>
     <context>
@@ -582,7 +628,7 @@ Are you sure you want to split archive into such volumes?</source>
     <context>
         <name>PanelSplitter</name>
         <message>
-            <location filename="../src/qtfilemanagersplitter.cpp" line="+16" />
+            <location filename="../src/qtfilemanagersplitter.cpp" line="+24" />
             <source>Resize file panels</source>
             <translation>Изменить размеры файловых панелей</translation>
         </message>
@@ -5259,7 +5305,7 @@ Application modules:
     <context>
         <name>mainwindow_language</name>
         <message>
-            <location filename="../src/mainwindow_language.cpp" line="+28" />
+            <location filename="../src/mainwindow_language.cpp" line="-83" />
             <source>Order</source>
             <translation>Порядок</translation>
         </message>
@@ -5272,7 +5318,7 @@ Application modules:
     <context>
         <name>mainwindow_menus</name>
         <message>
-            <location filename="../src/mainwindow_menus.cpp" line="+14" />
+            <location filename="../src/mainwindow_menus.cpp" line="-327" />
             <source>Archive</source>
             <translation>Архив</translation>
         </message>
@@ -5282,7 +5328,7 @@ Application modules:
             <translation>Назад</translation>
         </message>
         <message>
-            <location line="+238" />
+            <location line="+244" />
             <source>Open archive…</source>
             <translation>Открыть архив…</translation>
         </message>
@@ -5348,22 +5394,22 @@ Application modules:
     <context>
         <name>qtarchivevolumeoutput</name>
         <message>
-            <location filename="../src/qtarchivevolumeoutput.cpp" line="+129" />
+            <location filename="../src/qtarchivevolumeoutput.cpp" line="+142" />
             <source>Could not create archive volumes.</source>
             <translation>Не удалось создать архивные тома.</translation>
         </message>
         <message>
-            <location line="-29" />
+            <location line="-32" />
             <source>Could not save volume: %1</source>
             <translation>Не удалось сохранить том: %1</translation>
         </message>
         <message>
-            <location line="+28" />
+            <location line="+31" />
             <source>Operation canceled.</source>
             <translation>Операция отменена.</translation>
         </message>
         <message>
-            <location line="-39" />
+            <location line="-50" />
             <source>Volume already exists: %1</source>
             <translation>Том уже существует: %1</translation>
         </message>
@@ -5491,54 +5537,54 @@ Application modules:
     <context>
         <name>qtfiletransfertransaction</name>
         <message>
-            <location filename="../src/qtfiletransfertransaction.cpp" line="+248" />
+            <location filename="../src/qtfiletransfertransaction.cpp" line="+261" />
             <source> Some items may have been moved.</source>
             <translation> Часть объектов могла быть перемещена.</translation>
         </message>
         <message>
-            <location line="+64" />
+            <location line="+65" />
             <source>Cannot replace a file with a folder or a folder with a file: %1</source>
             <translation>Нельзя заменить файл папкой или папку файлом: %1</translation>
         </message>
         <message>
-            <location line="-179" />
-            <location line="+94" />
+            <location line="-191" />
+            <location line="+105" />
             <source>Could not delete source after copying: %1</source>
             <translation>Не удалось удалить источник после копирования: %1</translation>
         </message>
         <message>
-            <location line="+122" />
+            <location line="+123" />
             <source>Could not find an available name: %1</source>
             <translation>Не удалось подобрать свободное имя: %1</translation>
         </message>
         <message>
-            <location line="+48" />
+            <location line="+67" />
             <source>Could not finish transfer: %1</source>
             <translation>Не удалось завершить перенос: %1</translation>
         </message>
         <message>
-            <location line="-279" />
+            <location line="-310" />
             <source>Could not merge folders: %1</source>
             <translation>Не удалось слить папки: %1</translation>
         </message>
         <message>
-            <location line="+258" />
+            <location line="+286" />
             <source>Could not move item: %1</source>
             <translation>Не удалось переместить объект: %1</translation>
         </message>
         <message>
-            <location line="+16" />
+            <location line="+17" />
             <source>Could not preserve the previous item: %1</source>
             <translation>Не удалось сохранить прежний объект: %1</translation>
         </message>
         <message>
-            <location line="-11" />
+            <location line="-12" />
             <location line="+4" />
             <source>Destination changed during transfer: %1</source>
             <translation>Назначение изменилось во время переноса: %1</translation>
         </message>
         <message>
-            <location line="-114" />
+            <location line="-131" />
             <source>Items copied.</source>
             <translation>Объекты скопированы.</translation>
         </message>
@@ -5548,24 +5594,24 @@ Application modules:
             <translation>Объекты перемещены.</translation>
         </message>
         <message>
-            <location line="-240" />
+            <location line="-251" />
             <location line="+105" />
             <location line="+16" />
             <location line="+11" />
-            <location line="+62" />
-            <location line="+82" />
+            <location line="+66" />
+            <location line="+90" />
             <location line="+37" />
-            <location line="+42" />
+            <location line="+58" />
             <source>Operation canceled.</source>
             <translation>Операция отменена.</translation>
         </message>
         <message>
-            <location line="-117" />
+            <location line="-134" />
             <source>Some files skipped; sources retained.</source>
             <translation>Часть файлов пропущена; источники сохранены.</translation>
         </message>
         <message>
-            <location line="-72" />
+            <location line="-83" />
             <source>Source or destination unavailable, or the name is already in use.</source>
             <translation>Источник или назначение недоступны либо имя уже занято.</translation>
         </message>

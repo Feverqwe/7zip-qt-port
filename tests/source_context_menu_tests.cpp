@@ -14,6 +14,9 @@ class SourceContextMenuTests final : public QObject, protected MainWindowTestSup
         for (QAction *action : menu.actions())
             if (action->objectName() == QLatin1String(name))
                 return action;
+            else if (action->menu())
+                if (auto *found = menuAction(*action->menu(), name))
+                    return found;
         return nullptr;
     }
     static FileTable *openPanel(MainWindow &window, unsigned pane, const QString &path) {
@@ -152,7 +155,8 @@ class SourceContextMenuTests final : public QObject, protected MainWindowTestSup
                     QVERIFY(open && rename && create);
                     QVERIFY(menu->actions().indexOf(open) >= 0);
                     QVERIFY(menu->actions().indexOf(open) < menu->actions().indexOf(rename));
-                    QVERIFY(menu->actions().indexOf(rename) < menu->actions().indexOf(create));
+                    auto *more = menu->findChild<QMenu *>("moreCommandsMenu");
+                    QVERIFY(more && more->actions().contains(create));
                     QVERIFY(
                         UiInspection::writeReport(*menu, QString("source-context-%1-%2-%3-%4-%5")
                                                              .arg(pane)
@@ -195,10 +199,17 @@ class SourceContextMenuTests final : public QObject, protected MainWindowTestSup
             QCOMPARE(menu->objectName(), QString("panelContextMenu"));
             auto *create = menuAction(*menu, "createFileAction");
             QVERIFY(create);
-            QVERIFY(menu->actions().contains(create));
+            auto *more = menu->findChild<QMenu *>("moreCommandsMenu");
+            QVERIFY(more && more->actions().contains(create));
             QVERIFY(create->isEnabled());
-            menu->setActiveAction(create);
-            QTest::keyClick(menu, Qt::Key_Return);
+            menu->setActiveAction(more->menuAction());
+            QTest::keyClick(menu, Qt::Key_Right);
+            QApplication::processEvents();
+            QVERIFY(more->isVisible());
+            QVERIFY(UiInspection::writeReport(
+                *more, QString("source-context-more-%1-%2-%3").arg(pane).arg(language).arg(icons)));
+            more->setActiveAction(create);
+            QTest::keyClick(more, Qt::Key_Return);
         });
         const QModelIndex index = view->model()->index(0, 0);
         const QPoint point = view->visualRect(index).center();

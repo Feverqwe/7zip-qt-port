@@ -169,3 +169,55 @@ file-transfer изменении исправлен его владельцем;
 Windows/Linux, физические раскладки и VoiceOver пока не проверены.
 Перегруппировка File/View/context меню, новые основные сочетания и окончательный
 выбор современных иконок остаются в дальнейшей области редизайна.
+
+## Итерация 5: File/View/context меню
+
+Источник: https://github.com/ip7z/7zip.git,
+`9128b80e3a471108678e2b3ec3c985861c8d7b0f`.
+Сопоставлены resource.rc::IDM_MENU, MyLoadMenu.cpp::CFileMenu::Load,
+OnMenuActivating (File/View, включая timestamp examples/UTC),
+PanelMenu.cpp::CreateFileMenu/OnContextMenu и вызов plugin command с текущими
+портированными телами, QtProgramFileMenu, QtPanelContextMenu и построением меню.
+Проверены source filtering, read-only/hash/ADS/small-screen ветви, diff/version
+control, hash submenu, plugin ownership и захват вызвавшей меню панели.
+
+Исходные функциональные тела не изменены. Новый QtGroupFileCommands работает
+после исходной projection: перемещает существующие QAction в Open as/Create/
+Advanced либо context More. Контекстные QAction остаются отдельными копиями,
+возвращающими прежний ID через QMenu::exec; центральной диспетчеризацией по-прежнему
+владеет CApp. Все hash-алгоритмы сохранены, неизвестные plugin/extension строки
+включаются в редкую группу. Системные подменю перемещены целиком с сохранением
+внутреннего порядка и прежних callback/owner объектов. Вложенные группы
+присоединены к существующему disposable-row lifecycle; исходный плоский
+SourceActions остаётся инвентарём для filtering и контекстных копий.
+
+View получает Presentation/Sort by, прежние action groups и checked-state
+сохраняются. Подпись Time format устанавливается presentation adapter после
+исходного OnMenuActivating; сами актуальные примеры времени, точность и UTC
+не менялись. Добавлены восемь EN/RU подписей. Новые назначения клавиш не входят
+в эту итерацию. Размер helper рассмотрен: классификация и размещение относятся
+к одному представлению, функциональная политика остаётся в CFileMenu.
+
+Повторное сравнение scope: все известные ветви исходного отбора сохранены;
+нет новой capability-таблицы и переопределения enabled-state. Старые проверки
+плоского расположения заменены поиском по дереву и реальным выбором подменю.
+source_context_menu создаёт файл через More в правильной панели для table/icons,
+EN/RU; View выбирается через Presentation без смены режима соседней панели.
+Повторное открытие, stale plugin actions, source paths/providers и данные
+сохраняют прежние проверки. В прямом shell_update consumer обновлён сценарий
+раскрытия Add/password, оставшийся от прежней формы; SFX/password/volumes/Cancel
+по-прежнему проверяются результатом операции. Failure cleanup закрывает форму,
+чтобы ошибка проверки не запускала повторяющийся modal responder.
+
+macOS: приложение и affected targets собраны. main_shell, panel_shell,
+source_context_menu, shell_menu_window, file_menu_policy, view_menu, language_ui
+PASS; shell_update_window после обновления consumer PASS отдельно (10,50 s).
+Первый shell-menu запуск использовал Homebrew 7zz 26.03 с модулем 26.04;
+для связанных проверок PATH направлен на существующий согласованный
+`build/codec-runtime` 26.04, без пересоздания runtime/cache/build.
+Cocoa File/context/View и новые подменю проверены EN/RU normal/compact в
+light/dark; реальные nested Create/View команды PASS. Native shell-menu
+normal EN / compact RU и stale rebuild PASS отдельно в текущей системной теме.
+Проверены текущие widget JSON и снимки в `build/dev/ui-redesign-review`.
+Windows/Linux native integration, физические раскладки и VoiceOver остаются
+непроверенными; новые shortcuts и остальные семейства окон ещё предстоят.

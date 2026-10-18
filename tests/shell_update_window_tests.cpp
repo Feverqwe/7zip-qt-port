@@ -11,6 +11,7 @@
 #include "window_state_support.h"
 #include <QScrollArea>
 #include <QScrollBar>
+#include <QToolButton>
 
 namespace {
 QAction *findVerb(QMenu &menu, const QString &verb) {
@@ -170,12 +171,19 @@ class ShellUpdateWindowTests final : public QObject, protected MainWindowTestSup
         QTimer dismissal;
         dialogs_.connectResponder(dismissal, &window, [&] {
             if (auto *dialog = qobject_cast<CreateArchiveDialog *>(dialogs_.activeDialog())) {
+                const auto dismissOnFailure = qScopeGuard([&] {
+                    if (dialog->isVisible())
+                        dialog->reject();
+                });
                 QVERIFY(QTest::qWaitForWindowActive(dialog));
                 QCOMPARE(dialog->sources(), QStringList{fixture.filePath(name)});
                 if (nested)
                     dialog->findChild<QLineEdit *>("archiveName")
                         ->setText(fixture.filePath(target));
                 if (sfx) {
+                    auto *advanced = dialog->findChild<QToolButton *>("archiveAdvancedToggle");
+                    QVERIFY(advanced);
+                    advanced->setChecked(true);
                     auto *control = dialog->findChild<QCheckBox *>("archiveSfx");
                     if (!control || !control->isEnabled())
                         dialog->reject();
@@ -201,11 +209,21 @@ class ShellUpdateWindowTests final : public QObject, protected MainWindowTestSup
                     QVERIFY(UiInspection::writeReport(*dialog, "source-" + type));
                     auto *scroll = dialog->findChild<QScrollArea *>("archiveOptionsScrollArea");
                     QVERIFY(scroll);
-                    scroll->verticalScrollBar()->setValue(scroll->verticalScrollBar()->maximum());
+                    scroll->ensureWidgetVisible(control);
                     QCoreApplication::processEvents();
-                    QVERIFY(UiInspection::fullyVisible(
-                        *dialog->findChild<QCheckBox *>("archiveEncryptHeaders"), *dialog));
+                    QVERIFY(UiInspection::fullyVisible(*control, *dialog));
                     QVERIFY(UiInspection::writeReport(*dialog, "source-" + type + "-bottom"));
+                    if (protectedSfx) {
+                        auto *headers = dialog->findChild<QCheckBox *>("archiveEncryptHeaders");
+                        scroll->ensureWidgetVisible(headers);
+                        QCoreApplication::processEvents();
+                        QVERIFY(UiInspection::fullyVisible(*headers, *dialog));
+                        QVERIFY(UiInspection::writeReport(*dialog, "source-" + type + "-password"));
+                    } else {
+                        QVERIFY(
+                            !dialog->findChild<QCheckBox *>("archivePasswordEnabled")->isChecked());
+                        QVERIFY(dialog->password().isEmpty());
+                    }
                 }
                 if (!requestedFormat.isEmpty()) {
                     auto *format = dialog->findChild<QComboBox *>("archiveFormat");

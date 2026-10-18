@@ -7,6 +7,134 @@
 #include "qtfilemenuprojection.h"
 #include "qtlangcontrols.h"
 #include <QScopedValueRollback>
+#include <algorithm>
+
+QList<QAction *> QtGroupFileCommands(QMenu &menu, bool contextMenu) {
+    QList<QAction *> prefix, picker, open, modes, editors, frequent, create, rare, hash, properties,
+        exit;
+    for (QAction *action : menu.actions()) {
+        menu.removeAction(action);
+        if (action->isSeparator())
+            continue;
+        const unsigned id = action->property("nativeCommandID").toUInt();
+        if (action->objectName() == "openArchiveAction")
+            picker.append(action);
+        else if (action->menu() && (action->menu()->objectName() == "hashMenu" ||
+                                    action->menu()->objectName() == "contextHashMenu"))
+            hash.append(action);
+        else {
+            switch (id) {
+            case IDM_OPEN:
+                open.append(action);
+                break;
+            case IDM_OPEN_INSIDE:
+            case IDM_OPEN_INSIDE_ONE:
+            case IDM_OPEN_INSIDE_PARSER:
+            case IDM_OPEN_OUTSIDE:
+                modes.append(action);
+                break;
+            case IDM_FILE_VIEW:
+            case IDM_FILE_EDIT:
+                editors.append(action);
+                break;
+            case IDM_RENAME:
+            case IDM_COPY_TO:
+            case IDM_MOVE_TO:
+            case IDM_DELETE:
+                frequent.append(action);
+                break;
+            case IDM_CREATE_FOLDER:
+            case IDM_CREATE_FILE:
+            case IDM_LINK:
+                create.append(action);
+                break;
+            case IDM_SPLIT:
+            case IDM_COMBINE:
+            case IDM_COMMENT:
+            case IDM_ALT_STREAMS:
+            case IDM_DIFF:
+            case IDM_VER_EDIT:
+            case IDM_VER_COMMIT:
+            case IDM_VER_REVERT:
+            case IDM_VER_DIFF:
+                rare.append(action);
+                break;
+            case IDM_PROPERTIES:
+                properties.append(action);
+                break;
+            case 8:
+                exit.append(action);
+                break; // Source IDCLOSE.
+            default:
+                prefix.append(action);
+                break; // Preserve plugin/extension rows.
+            }
+        }
+    }
+    QList<QAction *> disposable;
+    const auto append = [](QMenu &target, const QList<QAction *> &actions) {
+        for (QAction *action : actions)
+            if (action)
+                target.addAction(action);
+            else
+                target.addSeparator();
+    };
+    const auto separator = [&] {
+        if (!menu.actions().isEmpty())
+            disposable.append(menu.addSeparator());
+    };
+    const auto group = [&](const char *name, const char *text, const QList<QAction *> &actions) {
+        const bool hasVisibleAction =
+            std::any_of(actions.cbegin(), actions.cend(),
+                        [](QAction *action) { return action && action->isVisible(); });
+        if (!hasVisibleAction)
+            return;
+        auto *sub = new QMenu(&menu);
+        sub->setObjectName(QString::fromLatin1(name));
+        QtBindLocalText(sub->menuAction(), "CommandMenus", text);
+        append(*sub, actions);
+        menu.addMenu(sub);
+        disposable.append(sub->menuAction());
+    };
+    if (contextMenu) {
+        picker.append(modes);
+        modes = picker;
+    } else
+        append(menu, picker);
+    append(menu, open);
+    group("openAsMenu", QT_TRANSLATE_NOOP("CommandMenus", "Open as"), modes);
+    if (!contextMenu) {
+        separator();
+        append(menu, editors);
+    }
+    separator();
+    append(menu, frequent);
+    separator();
+    if (!contextMenu)
+        group("createMenu", QT_TRANSLATE_NOOP("CommandMenus", "Create"), create);
+    append(menu, hash);
+    if (contextMenu) {
+        QList<QAction *> more = editors;
+        more.append(nullptr);
+        more.append(create);
+        more.append(nullptr);
+        more.append(rare);
+        more.append(nullptr);
+        more.append(prefix);
+        group("moreCommandsMenu", QT_TRANSLATE_NOOP("CommandMenus", "More"), more);
+    } else {
+        rare.append(nullptr);
+        rare.append(prefix);
+        group("advancedCommandsMenu", QT_TRANSLATE_NOOP("CommandMenus", "Advanced"), rare);
+    }
+    separator();
+    append(menu, properties);
+    if (!exit.isEmpty()) {
+        separator();
+        append(menu, exit);
+    }
+    return disposable;
+}
 
 void QtClarifyOpenCommands(QMenu &menu) {
     for (QAction *action : menu.actions()) {
@@ -92,6 +220,7 @@ void QtProgramFileMenu::Activate() {
         }
     }
     QtClarifyOpenCommands(_menu);
+    _dynamic.append(QtGroupFileCommands(_menu, false));
 }
 
 bool QtProgramFileMenu::CanInvoke(unsigned id) const {

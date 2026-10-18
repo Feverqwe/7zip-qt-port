@@ -72,7 +72,10 @@ class ViewMenuTests final : public QObject, protected MainWindowTestSupport {
         NWindows::NTime::GetCurUtcFileTime(now);
         char expected[64];
         QVERIFY(ConvertUtcFileTimeToString(now, expected, kTimestampPrintLevel_DAY));
-        QCOMPARE(time->title(), QString::fromLatin1(expected));
+        QCOMPARE(time->title(), QCoreApplication::translate("CommandMenus", "Time format"));
+        QVERIFY(action(window, "timestampLevel0Action")
+                    ->text()
+                    .startsWith(QString::fromLatin1(expected)));
         const int levels[] = {kTimestampPrintLevel_DAY, kTimestampPrintLevel_MIN,
                               kTimestampPrintLevel_SEC, kTimestampPrintLevel_NTFS,
                               kTimestampPrintLevel_NS};
@@ -88,7 +91,18 @@ class ViewMenuTests final : public QObject, protected MainWindowTestSupport {
         QCOMPARE(peer->sourcePanel->_timestampLevel, kTimestampPrintLevel_NS);
         utc->trigger();
         const bool utcValue = g_Timestamp_Show_UTC;
-        action(window, "viewMode1Action")->trigger();
+        const auto peerMode = peer->sourcePanel->GetListViewMode();
+        openView(window);
+        auto *appearance = view->findChild<QMenu *>("appearanceMenu");
+        QVERIFY(appearance);
+        view->setActiveAction(appearance->menuAction());
+        QTest::keyClick(view, Qt::Key_Right);
+        QApplication::processEvents();
+        QVERIFY(appearance->isVisible());
+        appearance->setActiveAction(action(window, "viewMode1Action"));
+        QTest::keyClick(appearance, Qt::Key_Return);
+        QCOMPARE(source->sourcePanel->GetListViewMode(), 1u);
+        QCOMPARE(peer->sourcePanel->GetListViewMode(), peerMode);
         action(window, "sort3Action")->trigger();
         source->sourcePanel->SortItemsWithPropID(kpidCTime);
         openView(window);
@@ -123,6 +137,16 @@ class ViewMenuTests final : public QObject, protected MainWindowTestSupport {
             QVERIFY(UiInspection::writeReport(window, tag + "-main"));
             QVERIFY(UiInspection::writeReport(*view, tag));
             view->hide();
+            for (const char *name : {"appearanceMenu", "sortMenu"}) {
+                auto *sub = view->findChild<QMenu *>(name);
+                QVERIFY(sub);
+                sub->popup(window.mapToGlobal(QPoint(30, 50)));
+                QApplication::processEvents();
+                for (auto *entry : sub->actions())
+                    QVERIFY(sub->rect().contains(sub->actionGeometry(entry)));
+                QVERIFY(UiInspection::writeReport(*sub, tag + '-' + sub->objectName()));
+                sub->hide();
+            }
             time->popup(window.mapToGlobal(QPoint(30, 50)));
             QApplication::processEvents();
             QVERIFY(UiInspection::writeReport(*time, tag + "-time"));
@@ -142,5 +166,6 @@ class ViewMenuTests final : public QObject, protected MainWindowTestSupport {
     }
 };
 
-QTEST_MAIN(ViewMenuTests)
+#include "review_test_main.h"
+SEVENZIP_UI_TEST_MAIN(ViewMenuTests)
 #include "view_menu_tests.moc"

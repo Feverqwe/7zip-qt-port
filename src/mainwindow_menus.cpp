@@ -90,6 +90,8 @@ void MainWindow::createFileExtras(QMenu *menu, QToolBar *toolbar) {
     auto *hashMenu = menu->addMenu("CRC");
     hashMenu->setObjectName("hashMenu");
     hashMenu->menuAction()->setObjectName("hashMenu");
+    QtBindLocalText(hashMenu->menuAction(), "CommandMenus",
+                    QT_TRANSLATE_NOOP("CommandMenus", "Checksums"));
     const QStringList hashLabels = {"CRC-32",   "CRC-64",   "XXH64",   "MD5",
                                     "SHA-1",    "SHA-256",  "SHA-384", "SHA-512",
                                     "SHA3-256", "BLAKE2sp", "*"};
@@ -167,6 +169,8 @@ void MainWindow::createViewOptions(QMenu *viewMenu) {
     timeMenu->setObjectName(QStringLiteral("timestampMenu"));
     timeMenu->menuAction()->setObjectName("timestampMenu");
     timeMenu->menuAction()->setProperty("nativeCommandID", IDM_VIEW_TIME_POPUP);
+    QtBindLocalText(timeMenu->menuAction(), "CommandMenus",
+                    QT_TRANSLATE_NOOP("CommandMenus", "Time format"));
     auto *timeGroup = new QActionGroup(timeMenu);
     for (unsigned i = 0; i < 5; ++i) {
         QAction *action = timeMenu->addAction(QString());
@@ -178,8 +182,10 @@ void MainWindow::createViewOptions(QMenu *viewMenu) {
     utcTimeAction_ = timeMenu->addAction(QStringLiteral("UTC"));
     utcTimeAction_->setObjectName(QStringLiteral("timestampUtcAction"));
     utcTimeAction_->setCheckable(true);
-    connect(viewMenu, &QMenu::aboutToShow, this,
-            [this, viewMenu] { OnMenuActivating(*menuBar(), *viewMenu, 2, app_); });
+    connect(viewMenu, &QMenu::aboutToShow, this, [this, viewMenu, timeMenu] {
+        OnMenuActivating(*menuBar(), *viewMenu, 2, app_);
+        timeMenu->setTitle(QCoreApplication::translate("CommandMenus", "Time format"));
+    });
     viewMenu->addSeparator();
     QSettings settings(toolbarSettingsPath(), QSettings::IniFormat);
     fileListSettings_.Load(toolbarSettingsPath());
@@ -323,16 +329,25 @@ void MainWindow::rebuildSourceMenus() {
     auto *time = findChild<QMenu *>("timestampMenu");
     auto *toolbars = findChild<QMenu *>("toolbarsMenu");
     reset(view);
+    auto *appearance = view->addMenu(QString());
+    appearance->setObjectName("appearanceMenu");
+    QtBindLocalText(appearance->menuAction(), "CommandMenus",
+                    QT_TRANSLATE_NOOP("CommandMenus", "Presentation"));
     for (QAction *action : viewActions_)
-        view->addAction(action);
-    view->addSeparator();
+        appearance->addAction(action);
+    auto *sort = view->addMenu(QString());
+    sort->setObjectName("sortMenu");
+    QtBindLocalText(sort->menuAction(), "CommandMenus",
+                    QT_TRANSLATE_NOOP("CommandMenus", "Sort by"));
     for (QAction *action : sortActions_)
-        view->addAction(action);
+        sort->addAction(action);
     view->addSeparator();
     view->addAction(flatView_);
     view->addAction(twoPanelsAction_);
+    view->addSeparator();
     view->addMenu(time);
     view->addMenu(toolbars);
+    view->addSeparator();
     for (QAction *action : {root_, up_, foldersHistory_, refresh_, autoRefreshAction_})
         view->addAction(action);
 

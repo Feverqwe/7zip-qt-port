@@ -12,6 +12,16 @@
 #include <QScopeGuard>
 
 namespace {
+QAction *findCommand(QMenu &menu, const char *name) {
+    for (auto *action : menu.actions()) {
+        if (action->objectName() == QLatin1String(name))
+            return action;
+        if (action->menu())
+            if (auto *found = findCommand(*action->menu(), name))
+                return found;
+    }
+    return nullptr;
+}
 QAction *findVerb(QMenu &menu, const QString &verb) {
     for (auto *action : menu.actions()) {
         if (action->property("shellVerb").toString() == verb)
@@ -80,14 +90,14 @@ class ShellMenuWindowTests final : public QObject, protected MainWindowTestSuppo
         auto *menu = window.findChild<QMenu *>("fileMenu");
         menu->popup(window.mapToGlobal(QPoint(0, window.menuBar()->height())));
         QApplication::processEvents();
-        auto *system = menu->findChild<QMenu *>();
-        for (auto *row : menu->actions())
-            if (row->objectName() == "systemContextGroup")
-                system = row->menu();
+        auto *systemRow = findCommand(*menu, "systemContextGroup");
+        QVERIFY(systemRow);
+        auto *system = systemRow->menu();
         QVERIFY(system);
-        QCOMPARE(menu->actions().first()->objectName(), QString("systemContextGroup"));
+        auto *advanced = menu->findChild<QMenu *>("advancedCommandsMenu");
+        QVERIFY(advanced && advanced->actions().contains(systemRow));
         QVERIFY(!system->actions().isEmpty());
-        system->popup(menu->mapToGlobal(menu->actionGeometry(menu->actions().first()).topRight()));
+        system->popup(menu->mapToGlobal(QPoint(menu->width(), 0)));
         QApplication::processEvents();
         QVERIFY(UiInspection::writeReport(
             *menu, QString("native-system-root-%1-%2").arg(language).arg(size.width())));
@@ -124,8 +134,7 @@ class ShellMenuWindowTests final : public QObject, protected MainWindowTestSuppo
         QVERIFY(!QApplication::activeModalWidget());
         QFile::remove(fixture.filePath(name));
         QVERIFY(QMetaObject::invokeMethod(menu, "aboutToShow", Qt::DirectConnection));
-        for (auto *row : menu->actions())
-            QVERIFY(row->objectName() != "systemContextGroup");
+        QVERIFY(!findCommand(*menu, "systemContextGroup"));
     }
 #endif
     void initTestCase() {
@@ -316,12 +325,7 @@ class ShellMenuWindowTests final : public QObject, protected MainWindowTestSuppo
         bool inspected = false;
         const auto inspect = [&](QMenu *menu) {
             QVERIFY(menu);
-            const auto command = [menu](const char *name) -> QAction * {
-                for (QAction *action : menu->actions())
-                    if (action->objectName() == QLatin1String(name))
-                        return action;
-                return nullptr;
-            };
+            const auto command = [menu](const char *name) { return findCommand(*menu, name); };
             auto *root = menu->findChild<QAction *>("sevenZipContextGroup");
             QVERIFY(root && root->menu() && root->isEnabled());
             QVERIFY(!root->icon().isNull());
@@ -331,26 +335,28 @@ class ShellMenuWindowTests final : public QObject, protected MainWindowTestSuppo
             QVERIFY(open && test && compress);
             QVERIFY(open->isEnabled() && test->isEnabled());
             QVERIFY(compress->isEnabled());
-            // Captions distinguish the opening modes without moving commands.
+            // The opening modes remain available together in their submenu.
             auto *inside = command("openInsideAction");
             auto *outside = command("openOutsideAction");
             QVERIFY(inside && outside);
-            QVERIFY(menu->actions().contains(inside));
-            QVERIFY(menu->actions().contains(outside));
+            auto *opening = menu->findChild<QMenu *>("openAsMenu");
+            QVERIFY(opening);
+            QVERIFY(opening->actions().contains(inside));
+            QVERIFY(opening->actions().contains(outside));
             const bool russian = language == "ru";
             QCOMPARE(inside->text(), russian ? QStringLiteral("Открыть как архив")
                                              : QStringLiteral("Open as archive"));
             QCOMPARE(outside->text(), russian ? QStringLiteral("Открыть во внешнем приложении")
                                               : QStringLiteral("Open in external application"));
-            int previous = menu->actions().indexOf(inside);
+            int previous = opening->actions().indexOf(inside);
             for (const char *name : {"openInsideOneAction", "openInsideParserAction"}) {
                 auto *mode = command(name);
                 QVERIFY(mode);
-                const int index = menu->actions().indexOf(mode);
+                const int index = opening->actions().indexOf(mode);
                 QVERIFY(index > previous);
                 previous = index;
             }
-            QVERIFY(menu->actions().indexOf(outside) > previous);
+            QVERIFY(opening->actions().indexOf(outside) > previous);
             QVERIFY(command("openArchiveAction"));
             auto *newWindow = findVerb(*menu, "SevenZipOpen");
             auto *openAs = findVerb(*menu, "SevenZip.OpenWithType.");
@@ -358,16 +364,19 @@ class ShellMenuWindowTests final : public QObject, protected MainWindowTestSuppo
             QCOMPARE(newWindow->text(), russian ? QStringLiteral("Открыть архив в новом окне")
                                                 : QStringLiteral("Open archive in new window"));
             QVERIFY(openAs->text() != newWindow->text());
+            opening->popup(menu->mapToGlobal(QPoint(menu->width(), 0)));
+            QApplication::processEvents();
             for (auto *mode : {inside, outside, command("openInsideOneAction"),
                                command("openInsideParserAction")}) {
-                const QRect rect = menu->actionGeometry(mode);
-                QVERIFY(menu->rect().contains(rect));
-                QVERIFY(menu->fontMetrics().horizontalAdvance(mode->text()) < rect.width());
+                const QRect rect = opening->actionGeometry(mode);
+                QVERIFY(opening->rect().contains(rect));
+                QVERIFY(opening->fontMetrics().horizontalAdvance(mode->text()) < rect.width());
             }
+            opening->hide();
             if (program) {
-                QCOMPARE(menu->actions().first(), root);
+                auto *advanced = menu->findChild<QMenu *>("advancedCommandsMenu");
+                QVERIFY(advanced && advanced->actions().contains(root));
                 const auto actions = menu->actions();
-                QVERIFY(actions.indexOf(root) < actions.indexOf(action(window, "openItemAction")));
                 QVERIFY(actions.indexOf(action(window, "openItemAction")) <
                         actions.indexOf(action(window, "selectedPropertiesAction")));
                 QCOMPARE(actions.last(), action(window, "exitAction"));

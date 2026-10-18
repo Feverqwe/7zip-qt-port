@@ -4,6 +4,28 @@
 якоря и границы датированных свидетельств. Новые результаты проверок —
 в [source audit](../upstream-port-audit.md).
 
+## Согласованная группировка меню
+
+«Файл» оставляет частые действия на первом уровне, варианты открытия —
+в «Открыть как», создание папки/файла/ссылки — в «Создать», остальные операции
+и системные расширения — в «Дополнительно». Все алгоритмы контрольных сумм
+остаются в отдельном подменю. Контекстное меню использует те же варианты
+открытия и контрольные суммы, а редкие действия и расширения собирает в «Ещё».
+В «Вид» режимы представления и сортировка находятся в подменю; навигация,
+две панели, плоский вид и обновление остаются доступны непосредственно.
+«Формат времени» имеет постоянную подпись, исходные актуальные примеры и UTC
+сохраняются внутри. Эти изменения заменяют прежнее требование плоского RC-порядка.
+
+Группировка применяется после исходного отбора/проверок доступности и сохраняет
+command ID, состояние и обработчики. Главный File-menu сохраняет QAction;
+контекстный popup сохраняет независимые копии. Системные подменю сохраняют
+внутренний исходный порядок и lifetime. Повторное открытие не дублирует команды,
+новые неизвестные расширения также остаются доступными в редкой группе.
+`source_context_menu` проверяет реальное создание файла через вложенное «Ещё»
+в вызвавшей меню панели; `view_menu` выбирает представление через подменю
+и проверяет состояние обеих панелей. EN/RU normal/compact reports включают
+новые подменю, доступность команд и сохранность провайдеров/данных.
+
 <a id="namespace-hash-result-consumers-p3-058-validation-active"></a>
 
 ### Namespace Hash result consumers (P3-05.8)
@@ -31,13 +53,14 @@ the same native Add/update capabilities and retained MAPI workflow; Unix email
 remains unavailable. The native_shell_email consumer checks all three original
 email rows in EN/RU at980×620/640×400, including geometry and Unicode filenames.
 Opening captions in the Qt File and panel context menus explain archive
-navigation, external applications and independent windows. The original order,
-groups, shortcuts and command routing remain intact. Specialist `*`, `#` and
+navigation, external applications and independent windows. Internal extension
+order, shortcuts and command routing remain intact; the agreed grouping above
+changes their placement in File/context menus. Specialist `*`, `#` and
 `#:e` entries retain their markers with explanatory captions. This requested
 text adaptation also applies to the forced-format submenu; the native Windows
 Explorer extension retains its original source captions.
-No additional separator is inserted by Qt between plugins and CFileMenu: the
-corresponding source append-separator block is commented out.
+The source append-separator block remains commented out; presentation separators
+between the redesigned groups belong to the Qt layout.
 shell_menu_window checks actual popup/independent Open success, forced-type
 refusal, password cancel and selection result. It checks each submenu action
 rectangle, order and text width at EN/RU980×620/640×400 and writes four
@@ -97,8 +120,8 @@ reflect the focused source panel and shared UTC flag. Source view/sort/two-panel
 flat/toolbar/auto-refresh checks are projected without executing commands.
 `view_menu` covers both panes and EN/RU at980×620 and640×400, writing24
 `view-menu-*-main.json`, `view-menu-*.json` and `view-menu-*-time.json` reports.
-Both addresses and the actual visible table/icon lists must fit. Menu order and
-action bindings are retained; reports do not establish rendered Windows parity.
+Both addresses and the actual visible table/icon lists must fit. Command bindings
+are retained in the new groups; reports do not establish rendered Windows parity.
 For the closed address's decorative image, verify the complete painted glyph.
 Qt6.12 Cocoa can clip one transparent pixel of its QLineEdit side-widget padding
 while exposing the full16×16 logical icon. Reports retain strict widget bounds
@@ -109,7 +132,7 @@ popup visibility until Hide, while a newer editor/peer interaction supersedes it
 Reference: `CPP/7zip/UI/FileManager/resource.rc::IDM_MENU`,
 `App.cpp::g_ArchiveButtons/g_StandardButtons` and `MyLoadMenu.cpp` at
 `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. Six top-level menus follow
-File/Edit/View/Favorites/Tools/Help. File follows the RC command groups;
+File/Edit/View/Favorites/Tools/Help. File retains the RC command set;
 independent Qt archive-workflow aliases have been removed. Unsupported source commands remain
 visible disabled. Archive and Standard toolbar groups use the seven exact
 large/small BMP pairs and source mask; text/size/visibility derive from the
