@@ -159,12 +159,14 @@
  #sevenzip-design .macos .settings-stage .dialog-title {display:none}
  #sevenzip-design .macos.settings-view .app {max-width:680px;margin-inline:auto}
  #sevenzip-design .macos .settingsnav {padding:0 0 12px;gap:4px}
- #sevenzip-design .macos .settingsnav .product-button {box-shadow:none;background:transparent;border-color:transparent}
+ #sevenzip-design .macos .settingsnav .settings-links .product-button {box-shadow:none;background:transparent;border-color:transparent}
  #sevenzip-design .macos .settingsnav .current {background:var(--sz-secondary);border-color:var(--sz-stroke)}
  #sevenzip-design .macos .settings-body {gap:20px}
  #sevenzip-design .macos .settings-detail {margin:0}
- #sevenzip-design .macos .settings-detail summary {align-items:flex-start}
- #sevenzip-design .macos .settings-detail-title {display:grid;gap:4px;min-width:0;flex:1}
+ #sevenzip-design .macos .mac-disclosure.settings-detail>summary {align-items:flex-start;min-height:0}
+ #sevenzip-design .macos .mac-disclosure.settings-detail>.form {padding-top:4px;line-height:1.5}
+ #sevenzip-design .macos .mac-disclosure.settings-detail>summary>svg {position:relative;top:.15em}
+ #sevenzip-design .macos .settings-detail-title {display:grid;gap:4px;min-width:0;flex:1;line-height:1.5}
  #sevenzip-design .macos .settings-description {font-weight:400}
  #sevenzip-design .macos .settings-change {font-weight:400}
  #sevenzip-design .macos .archive-types {display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px}
@@ -272,7 +274,63 @@
  @media(max-width:520px) {#sevenzip-design .macos .help-layout {grid-template-columns:1fr}#sevenzip-design .macos .help-topics {border:0;border-bottom:1px solid var(--sz-stroke);padding:0 0 12px}#sevenzip-design .macos .time-override {grid-template-columns:minmax(0,1fr)}#sevenzip-design .macos .review {gap:8px}}
  @media(max-width:520px) {#sevenzip-design .macos .comparison {grid-template-columns:1fr}#sevenzip-design .macos .decision-actions {grid-template-columns:1fr}#sevenzip-design .macos .report-actions {flex-wrap:wrap}}
  @media(max-width:700px) {#sevenzip-design .macos .dialog-stage {padding:12px}#sevenzip-design .macos .simple-add .columns {grid-template-columns:1fr}#sevenzip-design .macos .titlebar {padding-inline:12px}}
- @media(max-width:420px) {#sevenzip-design .macos .simple-add .password-body,#sevenzip-design .macos .simple-add .advanced-body {padding-left:0}#sevenzip-design .macos .dialog-stage {padding:8px}#sevenzip-design .macos .simple-add .section-box summary {grid-template-columns:16px minmax(0,1fr)}#sevenzip-design .macos .advanced-summary {grid-column:2/-1}}
+ /* Revised concept: compact rows, small disclosures and direct settings navigation. */
+ #sevenzip-design .macos .simple-add {gap:16px}
+ #sevenzip-design .macos .dialog:has(.simple-add) {display:flex;flex-direction:column}
+ #sevenzip-design .macos .dialog:has(.simple-add)>.content {max-height:540px;overflow:auto;min-height:0}
+ #sevenzip-design .macos .dialog:has(.simple-add)>.footer {flex-shrink:0;padding-top:12px}
+ #sevenzip-design .macos .simple-add .columns {grid-template-columns:minmax(0,1fr);gap:8px}
+ #sevenzip-design .macos .simple-add .field {grid-template-columns:164px minmax(0,1fr);align-items:center;gap:12px}
+ #sevenzip-design .macos .simple-add .field>span:first-child {line-height:1.35}
+ #sevenzip-design .macos .simple-add .password-body {padding-left:24px}
+ #sevenzip-design .macos .simple-add .advanced-options {border:0;padding:0;gap:0}
+ #sevenzip-design .macos .simple-add .archive-section {border-top:1px solid var(--sz-stroke);padding:10px 0}
+ #sevenzip-design .macos .simple-add .archive-section>summary {grid-template-columns:16px minmax(0,1fr) auto;font-weight:500}
+ #sevenzip-design .macos .simple-add .archive-section .advanced-body {padding:12px 0 4px 24px;gap:16px}
+ #sevenzip-design .macos .simple-add .archive-section .form {gap:8px}
+ #sevenzip-design .macos .simple-add .archive-section .section-change {font-size:12px;font-weight:400}
+ #sevenzip-design .macos .simple-add .archive-section[open] .section-change {display:none}
+ #sevenzip-design .macos .simple-add .compression-memory {line-height:1.5}
+ #sevenzip-design .macos .simple-add .advanced-body>.group+.group {border:0;padding-top:0}
+ #sevenzip-design .macos.settings-view .app {max-width:780px}
+ #sevenzip-design .macos.settings-view .settings-stage .dialog>.content {padding:0;gap:0}
+ #sevenzip-design .macos .settings-layout {display:grid;grid-template-columns:172px auto minmax(0,1fr);grid-template-rows:1fr auto;min-height:440px}
+ #sevenzip-design .macos .settingsnav {grid-column:1;grid-row:1/3;display:flex;flex-direction:column;align-items:stretch;padding:16px 10px 20px;background:var(--sz-secondary);border-right:1px solid var(--sz-stroke)}
+ #sevenzip-design .macos .settings-links {display:grid;gap:4px}
+ #sevenzip-design .macos .settingsnav .settings-links .product-button {justify-content:flex-start;white-space:normal;text-align:left;padding:7px 10px}
+ #sevenzip-design .macos .settings-sidebar-help {grid-column:2;grid-row:2;display:flex;align-items:flex-end;padding:12px 0 20px 24px}
+ #sevenzip-design .macos .settings-sidebar-help .help {align-self:auto}
+ #sevenzip-design .macos .settings-actions {grid-column:3;grid-row:2;border:0;padding:12px 24px 20px 8px}
+ #sevenzip-design .macos .settingsnav .current {background:var(--sz-accent);color:var(--sz-on-accent);border-color:transparent}
+ #sevenzip-design .macos .settings-panel {grid-column:2/-1;grid-row:1;min-width:0;padding:20px 24px 24px}
+ #sevenzip-design .macos .settings-heading {font:600 17px/1.3 system-ui;margin:0 0 20px}
+ #sevenzip-design .macos .settings-body {gap:16px}
+ #sevenzip-design .macos .settings-intro {margin:0;line-height:1.5}
+ #sevenzip-design .macos .settings-body .field {grid-template-columns:minmax(0,1fr)}
+ #sevenzip-design .macos .settings-body .dependent {padding-left:24px}
+ #sevenzip-design .macos .settings-body .dependent .product-input {max-width:130px}
+ #sevenzip-design .macos .format-list {max-height:310px;overflow:auto;border:1px solid var(--sz-stroke);border-radius:6px;background:var(--sz-surface)}
+ #sevenzip-design .macos .association-table {width:100%;border-collapse:collapse;text-align:left}
+ #sevenzip-design .macos .association-table th {position:sticky;top:0;background:var(--sz-secondary);color:var(--sz-subtle);font-size:12px;font-weight:500;padding:8px 12px}
+ #sevenzip-design .macos .association-table td {padding:9px 12px;border-top:1px solid var(--sz-stroke)}
+ #sevenzip-design .macos .association-table th:last-child,#sevenzip-design .macos .association-table td:last-child {text-align:center;width:100px}
+ #sevenzip-design .macos .association-table label {display:flex;align-items:baseline;justify-content:space-between;gap:12px;cursor:pointer}
+ #sevenzip-design .macos .format-extension {font-size:12px}
+ #sevenzip-design .macos .association-table input {accent-color:var(--sz-accent);cursor:pointer}
+ #sevenzip-design .macos .association-controls {display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+ #sevenzip-design .macos .association-count {margin-left:auto}
+ #sevenzip-design .macos .format-empty {padding:16px;margin:0;line-height:1.5}
+ #sevenzip-design .macos .settings-detail[open] .settings-description,#sevenzip-design .macos .settings-detail[open] .settings-change {display:none}
+ @media(max-width:560px) {
+  #sevenzip-design .macos .settings-layout {grid-template-columns:38px minmax(0,1fr);grid-template-rows:auto 1fr auto}
+  #sevenzip-design .macos .settingsnav {grid-column:1/-1;grid-row:1;border-right:0;border-bottom:1px solid var(--sz-stroke);padding:10px}
+  #sevenzip-design .macos .settings-links {display:flex;flex-wrap:wrap;gap:4px}
+  #sevenzip-design .macos .settings-sidebar-help {grid-column:1;grid-row:3;border-right:0;background:transparent;padding:12px 0 16px 16px}
+  #sevenzip-design .macos .settings-panel {grid-column:1/-1;grid-row:2;padding:16px}
+  #sevenzip-design .macos .settings-actions {grid-column:2;grid-row:3;padding:12px 16px 16px 8px}
+  #sevenzip-design .macos .simple-add .field {grid-template-columns:minmax(0,1fr);gap:4px}
+ }
+ @media(max-width:420px) {#sevenzip-design .macos .simple-add .password-body,#sevenzip-design .macos .simple-add .archive-section .advanced-body {padding-left:0}#sevenzip-design .macos .dialog-stage {padding:8px}#sevenzip-design .macos .simple-add .archive-section>summary {grid-template-columns:16px minmax(0,1fr)}#sevenzip-design .macos .section-change {grid-column:2/-1}}
 </style>
 <script>
 (()=>{
@@ -300,18 +358,24 @@
     ${check('Шифровать имена файлов',true)}
    </div>
   </section>
-  <details class="section-box advanced-options"><summary class="cursor-interaction">${icon('chevron-right')}<span>Дополнительные параметры</span><span class="advanced-summary text-small" aria-live="polite">Стандартные</span></summary>
+  <div class="advanced-options form">
+  <details class="section-box archive-section compression-section" open><summary class="cursor-interaction">${icon('chevron-right')}<span>Параметры сжатия</span><span class="section-change hint" aria-live="polite"></span></summary>
    <div class="advanced-body">
-    <fieldset class="group"><legend>Сжатие</legend><div class="columns">
+    <fieldset class="group"><legend class="sr-only">Параметры сжатия</legend><div class="form">
      ${field('Метод сжатия','LZMA2',['LZMA2','LZMA','PPMd'])}${field('Размер словаря','32 МБ',['16 МБ','32 МБ','64 МБ'])}
      ${field('Размер слова','32',['32','64','128'])}${field('Размер блока','Непрерывный',['Непрерывный','1 ГБ','4 ГБ'])}${field('Число потоков','8',['2','4','8'])}
     </div>${field('Лимит памяти для сжатия','80%',['50%','80%','90%','4 ГБ','8 ГБ'])}<div class="hint text-small compression-memory">Память для сжатия: 387 МБ · Для распаковки: 34 МБ · RAM: 16 ГБ</div></fieldset>
-    <fieldset class="group"><legend>Тома и параметры</legend>${field('Разбить на тома, байт','')}${field('Параметры командной строки','')}</fieldset>
-    <fieldset class="group"><legend>Обновление и пути</legend>${field('Режим обновления','Добавить и заменить',['Добавить и заменить','Обновить','Синхронизировать'])}${field('Режим путей','Относительные пути',['Относительные пути','Полные пути'])}</fieldset>
-    <fieldset class="group"><legend>Действия с файлами</legend>${check('Создать SFX-архив')}${check('Сжимать открытые файлы')}${check('Удалить файлы после сжатия')}</fieldset>
-    <div>${btn('Настройки…')}</div>
    </div>
   </details>
+  <details class="section-box archive-section"><summary class="cursor-interaction">${icon('chevron-right')}<span>Параметры файлов</span><span class="section-change hint" aria-live="polite"></span></summary><div class="advanced-body">
+    <fieldset class="group"><legend>Обновление и пути</legend>${field('Режим обновления','Добавить и заменить',['Добавить и заменить','Обновить','Синхронизировать'])}${field('Режим путей','Относительные пути',['Относительные пути','Полные пути'])}</fieldset>
+    <fieldset class="group"><legend>Действия с файлами</legend>${check('Создать SFX-архив')}${check('Сжимать открытые файлы')}${check('Удалить файлы после сжатия')}</fieldset>
+    <div>${btn('Настройки метаданных…','','metadata-options')}</div>
+   </div>
+  </details>
+  <details class="section-box archive-section"><summary class="cursor-interaction">${icon('chevron-right')}<span>Разделение на тома</span><span class="section-change hint" aria-live="polite"></span></summary><div class="advanced-body">${field('Размер тома','')}<span class="hint text-small">Например, 100 МБ или 2 ГБ. Оставьте пустым, чтобы создать один файл.</span></div></details>
+  <details class="section-box archive-section"><summary class="cursor-interaction">${icon('chevron-right')}<span>Параметры командной строки</span><span class="section-change hint" aria-live="polite"></span></summary><div class="advanced-body">${field('Параметры','')}<span class="hint text-small">Дополнительные параметры для опытных пользователей.</span></div></details>
+  </div>
  </div>`,true).replace('>ОК</button>','>Создать архив</button>');
  const catalog=[
   ['main','Главное окно','Файловый менеджер','QMainWindow'],
@@ -340,19 +404,21 @@
   ['text','Подробный текстовый отчёт','Результаты и отчёты','editDialog'],
   ['benchmark','Таблица — тестирование','Результаты и отчёты','IDD_BENCH'],
   ['benchmark-total','Полный тест — консоль','Результаты и отчёты','IDD_BENCH_TOTAL'],
-  ['settings-system','Настройки · Интеграция','Настройки','settingsDialog/systemPage'],
-  ['settings-folders','Настройки · Дополнительно','Настройки','settingsDialog/foldersPage'],
+  ['settings-system','Настройки · Открытие файлов','Настройки','settingsDialog/systemPage'],
+  ['settings-folders','Настройки · Временные файлы','Настройки','settingsDialog/foldersPage'],
   ['settings-editor','Настройки · Внешние приложения','Настройки','settingsDialog/editorPage'],
   ['settings-view','Настройки · Основные','Настройки','settingsDialog/settingsPage'],
   ['settings-language','Настройки · Сведения о переводе','Настройки','settingsDialog/languagePage'],
+  ['settings-memory','Настройки · Память','Настройки','settingsDialog/settingsPage'],
+  ['settings-list','Настройки · Список файлов','Настройки','settingsDialog/settingsPage'],
   ['help','Справка','Справка и сообщения','helpWindow'],
   ['about','О приложении','Справка и сообщения','aboutDialog'],
   ['error','Ошибка операции','Справка и сообщения','errors/QMessageBox'],
   ['split-error','Неверный размер тома','Справка и сообщения','splitVolumeError']
  ];
  const screenNames=[...catalog.map(r=>r.slice(0,2)),['tokens','Отступы и компоненты']];
- const settingsIds={'Основные':'settings-view','Интеграция':'settings-system','Дополнительно':'settings-folders'};
- const settingsRoutes={'settings-view':{page:'Основные'},'settings-language':{page:'Основные',detail:'translation'},'settings-system':{page:'Интеграция'},'settings-folders':{page:'Дополнительно'},'settings-editor':{page:'Дополнительно',detail:'apps'}};
+ const settingsIds={'Основные':'settings-view','Открытие файлов':'settings-system','Память':'settings-memory','Временные файлы':'settings-folders','Приложения':'settings-editor','Список файлов':'settings-list'};
+ const settingsRoutes={...Object.fromEntries(Object.entries(settingsIds).map(([page,id])=>[id,{page}])),'settings-language':{page:'Основные',detail:'translation'}};
  const isSettings=id=>id.startsWith('settings-');
  const stateOptions={
   main:['Таблица','Крупные значки','Отмеченные и удалённые','Переименование'],
@@ -392,10 +458,18 @@
  const settingsDisclosure=(key,title,description,body)=>`<details class="mac-disclosure settings-detail" data-settings-detail="${key}"><summary class="cursor-interaction">${icon('chevron-right')}<span class="settings-detail-title">${title}<span class="hint settings-description">${description}</span></span><span class="hint settings-change" aria-live="polite"></span></summary><div class="form">${body}</div></details>`;
  const settingsPages={
   'Основные':()=>`${field('Оформление','Как в системе',['Как в системе','Светлое','Тёмное'])}${field('Язык интерфейса','Как в системе',['Как в системе','Русский','English','Deutsch','Français','日本語'])}${settingsDisclosure('translation','О переводе','Сведения об установленном переводе','<span class="hint">Русский · Russian<br>Перевод интерфейса Sevenzip и 7-Zip</span>')}`,
-  'Интеграция':()=>`<fieldset class="group"><legend>Открывать архивы в Sevenzip</legend><span class="hint">Выберите типы файлов, для которых Sevenzip будет приложением по умолчанию.</span><div class="archive-types">${[['7z','Архивы 7z'],['zip','Архивы ZIP']].map(r=>`<label class="check"><input type="checkbox" class="association-choice" checked><span>${r[1]} <span class="hint">· .${r[0]}</span></span></label>`).join('')}</div>${settingsDisclosure('types','Другие форматы','TAR, GZip, RAR и другие поддерживаемые типы',`<div class="archive-types">${[['tar','TAR'],['gz','GZip'],['rar','RAR']].map(r=>`<label class="check"><input type="checkbox" class="association-choice"><span>${r[1]} <span class="hint">· .${r[0]}</span></span></label>`).join('')}</div>`)}<div class="association-controls">${btn('Выбрать все','','associations-all')}${btn('Снять выбор','','associations-none')}</div></fieldset>`,
-  'Дополнительно':()=>`${settingsDisclosure('memory','Память для распаковки','Ограничение ресурсов при открытии больших архивов',`<label class="check"><input class="enable-next" type="checkbox"><span>Задать лимит памяти</span></label><div class="dependent">${field('Лимит, ГБ','4')}<span class="hint">Из 16 ГБ оперативной памяти</span></div>`)}${settingsDisclosure('work','Временные файлы','Системная временная папка',`${radio('work-folder','Системная временная папка',true)}${radio('work-folder','Текущая папка')}${radio('work-folder','Указанная папка')}<div class="work-path">${pathField('Путь рабочей папки','Документы / Временные архивы')}</div>${check('Использовать только для съёмных дисков')}`)}${settingsDisclosure('apps','Внешние приложения','Просмотр, редактирование и сравнение файлов',`${pathField('Просмотр','/System/Applications/TextEdit.app')}${pathField('Редактор','')}${pathField('Сравнение','')}<span class="hint">Можно указать программу и аргументы командной строки.</span>`)}${settingsDisclosure('compatibility','Привычное поведение','Редкие настройки списка файлов',`${check('Показывать элемент «..»',true)}${check('Показывать реальные значки файлов',true)}${check('Выделять всю строку',true)}${check('Показывать разделители')}${check('Открывать одним щелчком')}${check('Альтернативный режим пометки')}${check('Показывать системное меню',true)}`)}`
+  'Открытие файлов':()=>`<p class="settings-intro hint">Выберите типы файлов, которые нужно открывать в Sevenzip.</p><label class="field wide"><span class="sr-only">Поиск формата</span><input class="product-input format-search" type="search" placeholder="Поиск по названию или расширению" aria-label="Поиск формата"></label><div class="format-list"><table class="association-table"><thead><tr><th scope="col">Тип файла</th><th scope="col">В Sevenzip</th></tr></thead><tbody>${[['7z','Архив 7z',true],['zip','Архив ZIP',true],['rar','Архив RAR'],['tar','Архив TAR'],['gz','GZip'],['bz2','BZip2'],['xz','XZ'],['wim','Образ WIM'],['iso','Образ диска ISO'],['cab','Архив CAB']].map(([ext,name,on])=>`<tr data-format="${ext} ${name.toLowerCase()}"><td><label for="format-${ext}">${name}<span class="hint format-extension">.${ext}</span></label></td><td><input id="format-${ext}" type="checkbox" class="association-choice" aria-label="Открывать .${ext} в Sevenzip" ${on?'checked':''}></td></tr>`).join('')}</tbody></table><p class="format-empty hint" hidden>Форматы не найдены. Попробуйте другое название или расширение.</p></div><div class="association-controls">${btn('Выбрать все','','associations-all')}${btn('Снять выбор','','associations-none')}<span class="hint text-small association-count" aria-live="polite">Выбрано: 2</span></div>`,
+  'Память':()=>`<p class="settings-intro hint">Ограничьте использование оперативной памяти при распаковке больших архивов.</p><label class="check"><input class="enable-next" type="checkbox"><span>Задать лимит памяти</span></label><div class="dependent form">${field('Лимит, ГБ','4')}<span class="hint text-small">На этом компьютере: 16 ГБ</span></div>`,
+  'Временные файлы':()=>`<p class="settings-intro hint">Выберите, где хранить временные файлы при работе с архивами.</p><fieldset class="group"><legend>Рабочая папка</legend>${radio('work-folder','Системная временная папка',true)}${radio('work-folder','Текущая папка')}${radio('work-folder','Указанная папка')}<div class="work-path">${pathField('Папка','Документы / Временные архивы')}</div></fieldset>${check('Использовать только для съёмных дисков')}`,
+  'Приложения':()=>`<p class="settings-intro hint">Программы для просмотра, редактирования и сравнения файлов из архива.</p>${pathField('Просмотр','/System/Applications/TextEdit.app')}${pathField('Редактор','')}${pathField('Сравнение','')}<span class="hint text-small">Можно указать программу и аргументы командной строки.</span>`,
+  'Список файлов':()=>`<fieldset class="group"><legend>Отображение</legend>${check('Показывать элемент «..»',true)}${check('Показывать реальные значки файлов',true)}${check('Выделять всю строку',true)}${check('Показывать разделители')}</fieldset><fieldset class="group"><legend>Управление</legend>${check('Открывать одним щелчком')}${check('Альтернативный режим пометки')}${check('Показывать системное меню',true)}</fieldset>`
  };
- const macSettings=(page='Основные')=>dialog('Настройки',`<nav class="settingsnav" aria-label="Разделы настроек">${Object.keys(settingsPages).map(x=>`<button type="button" class="product-button cursor-interaction ${x===page?'current':''}" data-settings-page="${x}" aria-pressed="${x===page}">${x}</button>`).join('')}</nav><div class="settings-body form" aria-live="polite">${settingsPages[page]()}</div>`,true).replace('>ОК</button>','>Сохранить</button>').replace(btn('Отмена'),`<button type="button" class="product-button cursor-interaction settings-apply" disabled>Применить</button>${btn('Отмена')}`);
+ const macSettings=(page='Основные')=>dialog('Настройки',`<div class="settings-layout">
+  <nav class="settingsnav" aria-label="Разделы настроек"><div class="settings-links">${Object.keys(settingsPages).map(x=>`<button type="button" class="product-button cursor-interaction ${x===page?'current':''}" data-settings-page="${x}" aria-pressed="${x===page}">${x}</button>`).join('')}</div></nav>
+  <section class="settings-panel"><h2 class="settings-heading">${page}</h2><div class="settings-body form">${settingsPages[page]()}</div></section>
+  <div class="settings-sidebar-help">${btn('Справка','','help')}</div>
+  <div class="footer settings-actions"><button type="button" class="product-button cursor-interaction settings-apply" disabled>Применить</button>${btn('Отмена')}${btn('Сохранить','','primary')}</div>
+ </div>`,true).replace(footer(),'');
  const macExtract=()=>dialog('Распаковать архив',`
   <label class="field wide"><span>Папка назначения</span><span class="inputrow"><input class="product-input" value="Документы / Проект">${btn('Выбрать…')}</span></label>
   <div><label class="check"><input class="extract-subfolder" type="checkbox" checked><span>Создать подпапку</span></label><div class="extract-dependent">${field('Имя подпапки','Проект')}</div></div>
@@ -460,7 +534,7 @@
    <div class="stage"><div class="app"><div class="titlebar"></div><div class="screen"></div></div></div></div>`;
   const product=variant.querySelector('.prototype'), screen=variant.querySelector('.screen');
   product.classList.toggle('macos',macos);
-  const state={screen:'settings-view',two:false,split:.5,margin:16,row:28,radius:5,samples:{}};
+  const state={screen:'add',two:false,split:.5,margin:16,row:28,radius:5,samples:{}};
   function geometry(){product.style.setProperty('--pad',state.margin+'px');product.style.setProperty('--row',state.row+'px');product.style.setProperty('--round',state.radius+'px')}
   const settingsCache=new Map(),backStack=[],drafts=new Map();let settingsPage='Основные',helpStack=[],pendingBrowse=null;
   let panelDrag=null;
@@ -631,16 +705,18 @@
    const method=advanced.querySelector('select');
    if(method.dataset.format!==format){const methods=format==='7z'?['LZMA2','LZMA','PPMd']:format==='zip'?['Deflate','Deflate64','BZip2','LZMA','PPMd']:format==='wim'?['Без сжатия','XPRESS','LZX']:['Не применяется'];method.innerHTML=methods.map((m,i)=>`<option ${i===0?'selected':''}>${m}</option>`).join('');method.dataset.format=format}
    const noCompression=format==='tar';
-   form.querySelectorAll('.advanced-body fieldset:first-child select').forEach(c=>c.disabled=noCompression);
+   form.querySelectorAll('.compression-section select').forEach(c=>c.disabled=noCompression);
    form.querySelector('.compression-memory').hidden=noCompression;
    [...form.querySelectorAll('.advanced-body input[type=checkbox]')].forEach(c=>{const label=c.closest('label').textContent;if(label.includes('SFX')){c.disabled=format!=='7z'||sample()==='SFX недоступен';c.setAttribute('data-tooltip',c.disabled?'Нет совместимого SFX-модуля для выбранного формата':'Создать самораспаковывающийся архив')}if(label.includes('открытые файлы')){c.disabled=true;c.setAttribute('data-tooltip','Параметр недоступен на macOS')}});
-   const changes=[...advanced.querySelectorAll('input,select')].filter(c=>!c.disabled).filter(c=>c.type==='checkbox'?c.checked!==c.defaultChecked:c.tagName==='SELECT'?c.value!==[...c.options].find(o=>o.defaultSelected)?.value:c.value!==c.defaultValue);
-   advanced.querySelector('.advanced-summary').dataset.changed=String(changes.length>0);
-   advanced.querySelector('.advanced-summary').textContent=changes.length?changes.map(c=>c.closest('label').querySelector('span').textContent+(c.type==='checkbox'?'':': '+c.value)).join(' · '):'Стандартные';
+   advanced.querySelectorAll('.archive-section').forEach(section=>{
+    const changed=[...section.querySelectorAll('input,select')].filter(c=>!c.disabled).some(c=>c.type==='checkbox'?c.checked!==c.defaultChecked:c.tagName==='SELECT'?c.value!==([...c.options].find(o=>o.defaultSelected)||c.options[0])?.value:c.value!==c.defaultValue);
+    section.querySelector('.section-change').textContent=changed?'Изменено':'';
+   });
   }
-  function markSettingsChange(e){const detail=e.target.closest('.settings-detail');if(detail)detail.querySelector('.settings-change').textContent='Изменено';const apply=screen.querySelector('.settings-apply');if(apply)apply.disabled=false}
-  screen.addEventListener('change',e=>{updateAdd();updateExtract();updateDependencies();markSettingsChange(e)});
-  screen.addEventListener('input',e=>{updateAdd();updateDependencies();screen.querySelectorAll('input').forEach(i=>i.setCustomValidity(''));markSettingsChange(e)});
+  function updateFormats(){const search=screen.querySelector('.format-search');if(!search)return;const query=search.value.trim().toLowerCase().replace(/^\./,'');let visible=0;screen.querySelectorAll('[data-format]').forEach(row=>{row.hidden=!row.dataset.format.includes(query);if(!row.hidden)visible++});screen.querySelector('.format-empty').hidden=visible>0;screen.querySelector('.association-count').textContent=`Выбрано: ${screen.querySelectorAll('.association-choice:checked').length}`}
+  function markSettingsChange(e){if(!isSettings(state.screen)||e.target.classList.contains('format-search'))return;const detail=e.target.closest('.settings-detail');if(detail)detail.querySelector('.settings-change').textContent='Изменено';const apply=screen.querySelector('.settings-apply');if(apply)apply.disabled=false}
+  screen.addEventListener('change',e=>{updateAdd();updateExtract();updateDependencies();updateFormats();markSettingsChange(e)});
+  screen.addEventListener('input',e=>{updateAdd();updateDependencies();updateFormats();screen.querySelectorAll('input').forEach(i=>i.setCustomValidity(''));markSettingsChange(e)});
   variant.querySelector('.screen-picker').addEventListener('change',e=>{backStack.length=0;state.screen=e.target.value;render();save()});
   variant.querySelector('.state-picker').addEventListener('change',e=>{state.samples[state.screen]=e.target.value;render();save()});
   variant.querySelector('.previous-screen').addEventListener('click',()=>{const at=catalog.findIndex(r=>r[0]===state.screen);if(at>0)navigateTo(catalog[at-1][0])});
@@ -712,7 +788,8 @@
    if(button.classList.contains('menu-back')){closeSubmenu(true);return}
    if(button.dataset.submenu){showSubmenu(button);return}
    if(button.classList.contains('settings-apply')){button.textContent='Применено';button.disabled=true;return}
-   if(button.classList.contains('associations-all')||button.classList.contains('associations-none')){screen.querySelectorAll('.association-choice').forEach(c=>c.checked=button.classList.contains('associations-all'));screen.querySelector('.settings-apply').disabled=false;return}
+   if(button.classList.contains('associations-all')||button.classList.contains('associations-none')){screen.querySelectorAll('.association-choice').forEach(c=>c.checked=button.classList.contains('associations-all'));updateFormats();screen.querySelector('.settings-apply').disabled=false;return}
+   if(button.classList.contains('metadata-options')){openView('format-options');return}
    if(button.classList.contains('temp-remove')){if(sample()==='Файл используется'){screen.querySelector('.temp-error').hidden=false;return}screen.querySelectorAll('.temp-select:checked').forEach(c=>c.closest('tr').remove());const count=screen.querySelectorAll('.temp-select').length;screen.querySelector('.temp-status').textContent=count?`Осталось файлов: ${count}`:'Временных файлов нет';screen.querySelector('.empty-list').hidden=!!count;button.disabled=!screen.querySelector('.temp-select:checked');return}
    if(button.classList.contains('temp-refresh')){drafts.delete(state.screen+'|'+sample());render();return}
    if(button.classList.contains('temp-up')||button.classList.contains('browse-up')){const input=screen.querySelector('.field input');if(input)input.value='Документы';return}
@@ -722,7 +799,7 @@
    if(button.classList.contains('benchmark-stop')){screen.querySelector('.benchmark-state').textContent='Остановлено';button.disabled=true;return}
    if(button.classList.contains('benchmark-restart')){screen.querySelector('.benchmark-state').textContent='Выполняется';screen.querySelector('.benchmark-stop').disabled=false;return}
    const page=button.dataset.settingsPage;
-   if(page){const body=screen.querySelector('.settings-body');settingsCache.set(settingsPage,[...body.childNodes]);settingsPage=page;if(settingsCache.has(page))body.replaceChildren(...settingsCache.get(page));else body.innerHTML=settingsPages[page]();screen.querySelectorAll('[data-settings-page]').forEach(b=>{b.classList.toggle('current',b===button);b.setAttribute('aria-pressed',String(b===button))});state.screen=settingsIds[page];variant.querySelector('.screen-picker').value=state.screen;variant.querySelector('.review-position').textContent=`${catalog.findIndex(r=>r[0]===state.screen)+1} / ${catalog.length}`;updateDependencies();save();return}
+   if(page){const body=screen.querySelector('.settings-body');settingsCache.set(settingsPage,[...body.childNodes]);settingsPage=page;if(settingsCache.has(page))body.replaceChildren(...settingsCache.get(page));else body.innerHTML=settingsPages[page]();screen.querySelector('.settings-heading').textContent=page;screen.querySelectorAll('[data-settings-page]').forEach(b=>{b.classList.toggle('current',b===button);b.setAttribute('aria-pressed',String(b===button))});state.screen=settingsIds[page];variant.querySelector('.screen-picker').value=state.screen;variant.querySelector('.review-position').textContent=`${catalog.findIndex(r=>r[0]===state.screen)+1} / ${catalog.length}`;updateDependencies();updateFormats();save();return}
    const text=button.dataset.command||button.textContent.trim(),target={'Добавить':'add','Извлечь':'extract','Копировать':'copy','Переместить':'copy','Удалить':'delete','Информация':'properties','Тестировать':'progress','Настройки…':'format-options','Обзор…':'browse','Выбрать…':'browse'}[text];
    if(button.classList.contains('help')){openView('help');return}
    if(target){if(text==='Переместить')state.samples.copy='Перемещение';if(text==='Копировать')state.samples.copy='Копирование';if(target==='browse'){const input=button.parentElement.querySelector('input');pendingBrowse=input?{key:state.screen+'|'+sample(),index:[...screen.querySelectorAll('input,select,textarea')].indexOf(input)}:null;state.samples.browse='Выбор папки'}openView(target)}

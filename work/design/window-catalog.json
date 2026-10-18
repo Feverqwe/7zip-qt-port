@@ -1,5 +1,5 @@
 {
-  "description": "36 review representations, including menus and separate Combine/Hash workflows; components are outside this count. Source keys identify functional owners, not separate windows or tabs. Current Qt reports accompany the browser mockups; platform omissions are explicit.",
+  "description": "Review representations, including menus and separate workflows. Source keys identify functional owners, not separate windows or tabs. The revised archive/settings concept is a draft for review; source reports describe the existing Qt implementation and do not validate the revised layout. Platform omissions are explicit.",
   "gallery": "build/dev/ui-theme-review/manifest.json",
   "windows": [
     {
@@ -190,11 +190,11 @@
     },
     {
       "id": "settings-system",
-      "title": "Настройки · Интеграция",
+      "title": "Настройки · Открытие файлов",
       "group": "Настройки",
       "sourceKey": "settingsDialog/systemPage",
       "sourceReport": "macos/light/settings-sections/settings-integration-choices.json",
-      "conceptSection": "Интеграция"
+      "conceptSection": "Открытие файлов"
     },
     {
       "id": "settings-menu",
@@ -211,11 +211,11 @@
     },
     {
       "id": "settings-folders",
-      "title": "Настройки · Дополнительно",
+      "title": "Настройки · Временные файлы",
       "group": "Настройки",
       "sourceKey": "settingsDialog/foldersPage",
       "sourceReport": "macos/light/settings-sections/settings-advanced-collapsed.json",
-      "conceptSection": "Дополнительно"
+      "conceptSection": "Временные файлы"
     },
     {
       "id": "settings-editor",
@@ -223,8 +223,7 @@
       "group": "Настройки",
       "sourceKey": "settingsDialog/editorPage",
       "sourceReport": "macos/light/settings-sections/settings-external-apps-expanded.json",
-      "conceptSection": "Дополнительно",
-      "conceptDisclosure": "apps"
+      "conceptSection": "Приложения"
     },
     {
       "id": "settings-view",
@@ -242,6 +241,22 @@
       "sourceReport": "macos/light/settings-sections/settings-translation-expanded.json",
       "conceptSection": "Основные",
       "conceptDisclosure": "translation"
+    },
+    {
+      "id": "settings-memory",
+      "title": "Настройки · Память",
+      "group": "Настройки",
+      "sourceKey": "settingsDialog/settingsPage",
+      "sourceReport": null,
+      "conceptSection": "Память"
+    },
+    {
+      "id": "settings-list",
+      "title": "Настройки · Список файлов",
+      "group": "Настройки",
+      "sourceKey": "settingsDialog/settingsPage",
+      "sourceReport": null,
+      "conceptSection": "Список файлов"
     },
     {
       "id": "help",
