@@ -1,0 +1,743 @@
+<div id="sevenzip-design">
+  <section data-variant="macOS" aria-label="Концепт для macOS"></section>
+</div>
+<style>
+ #sevenzip-design .prototype {color-scheme:light dark;--sz-surface:light-dark(#ffffff,#252527);--sz-window:light-dark(#f5f5f7,#2c2c2e);--sz-secondary:light-dark(#e9e9ec,#202022);--sz-text:light-dark(#1d1d1f,#f2f2f5);--sz-subtle:light-dark(#626267,#b5b5bd);--sz-stroke:light-dark(#c9c9cf,#48484d);--sz-accent:light-dark(#0068d9,#0a64d7);--sz-on-accent:light-dark(#ffffff,#ffffff);--sz-button:light-dark(#ffffff,#444448);--sz-shadow:light-dark(rgb(0 0 0 / .12),rgb(0 0 0 / .35));--sz-error:light-dark(#b42318,#ff9089)}
+ #sevenzip-design .prototype {--pad:16px;--gap:8px;--section:20px;--control:30px;--row:28px;--round:4px;--focus:var(--sz-accent);font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:var(--sz-text)}
+ #sevenzip-design .prototype.relaxed {--pad:24px;--gap:12px;--section:24px;--control:34px;--row:34px;--round:6px}
+ #sevenzip-design .review {display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:8px 0 16px}
+ #sevenzip-design .review select {max-width:100%}
+ #sevenzip-design .stage {min-height:0}
+ #sevenzip-design .app {border:1px solid var(--sz-stroke);border-radius:8px;background:var(--sz-surface);overflow:hidden;min-width:0}
+ #sevenzip-design .titlebar {display:flex;justify-content:space-between;gap:12px;align-items:center;padding:12px var(--pad);background:var(--sz-secondary);border-bottom:1px solid var(--sz-stroke);font-weight:500}
+ #sevenzip-design .titlebar span:last-child {color:var(--sz-subtle);font-weight:400}
+ #sevenzip-design .menu {display:flex;gap:20px;flex-wrap:wrap;padding:8px var(--pad);border-bottom:1px solid var(--sz-stroke)}
+ #sevenzip-design .menu span {white-space:nowrap}
+ #sevenzip-design .tools {display:flex;gap:4px;flex-wrap:wrap;padding:8px var(--pad);border-bottom:1px solid var(--sz-stroke);align-items:center}
+ #sevenzip-design .product-button {font:inherit;color:inherit;border:1px solid var(--sz-stroke);border-radius:var(--round);background:var(--sz-surface);padding:4px 12px;min-height:var(--control);display:inline-flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap}
+ #sevenzip-design .product-button:hover {background:var(--sz-secondary)}
+ #sevenzip-design .product-button:disabled {color:var(--sz-subtle);opacity:.5}
+ #sevenzip-design .product-button.primary {background:var(--focus);border-color:var(--focus);color:var(--sz-on-accent)}
+ #sevenzip-design .tools .product-button {border-color:transparent;background:transparent;padding:6px 10px}
+ #sevenzip-design .tools .product-button:hover {background:var(--sz-secondary)}
+ #sevenzip-design .relaxed .tools .product-button {flex-direction:column;gap:6px;min-width:74px}
+ #sevenzip-design .tools .divider {height:28px;width:1px;background:var(--sz-stroke);margin:0 8px}
+ #sevenzip-design svg {flex-shrink:0}
+ #sevenzip-design .address {display:flex;gap:8px;align-items:center;padding:12px var(--pad)}
+ #sevenzip-design .path {display:flex;align-items:center;gap:8px;border:1px solid var(--sz-stroke);border-radius:var(--round);min-height:var(--control);padding:0 10px;flex:1;min-width:0;background:var(--sz-surface)}
+ #sevenzip-design .path span {overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+ #sevenzip-design .panes {display:grid;grid-template-columns:minmax(0,1fr);gap:0}
+ #sevenzip-design .panes.two {grid-template-columns:minmax(0,var(--split-left,1fr)) 8px minmax(0,var(--split-right,1fr))}
+ #sevenzip-design .peer {min-width:0;display:flex}
+ #sevenzip-design .panes>.pane,#sevenzip-design .peer>.pane {display:flex;flex-direction:column}
+ #sevenzip-design .peer>.pane {width:100%}
+ #sevenzip-design .pane .filespace {flex:1;min-height:110px}
+ #sevenzip-design .pane .status {margin-top:auto}
+ #sevenzip-design .file-table-scroll {overflow:auto;min-width:0}
+ #sevenzip-design .panes.two .filetable {min-width:360px}
+ #sevenzip-design .panel-splitter {align-self:stretch;min-width:0;width:8px;padding:0;border:0;background:var(--sz-secondary);display:flex;justify-content:center;align-items:center;cursor:col-resize;touch-action:none;user-select:none}
+ #sevenzip-design .panel-splitter>span {height:28px;width:2px;border-radius:1px;background:var(--sz-stroke)}
+ #sevenzip-design .panel-splitter:hover,#sevenzip-design .resizing-panels .panel-splitter {background:color-mix(in srgb,var(--sz-accent) 20%,var(--sz-secondary))}
+ #sevenzip-design .resizing-panels {user-select:none;cursor:col-resize}
+ #sevenzip-design .panes.two .pane+ .pane {border-left:1px solid var(--sz-stroke)}
+ #sevenzip-design .pane {min-width:0}
+ #sevenzip-design .filetable {width:100%;border-collapse:collapse;text-align:left}
+ #sevenzip-design .filetable th {font-weight:400;color:var(--sz-subtle);background:var(--sz-secondary);border-block:1px solid var(--sz-stroke)}
+ #sevenzip-design .filetable td,#sevenzip-design .filetable th {padding:0 12px;height:var(--row);white-space:nowrap}
+ #sevenzip-design .filetable td:first-child,#sevenzip-design .filetable th:first-child {padding-left:var(--pad)}
+ #sevenzip-design .filetable td:nth-child(2),#sevenzip-design .filetable th:nth-child(2) {text-align:right;font-variant-numeric:tabular-nums}
+ #sevenzip-design .filetable tbody tr {outline-offset:-2px}
+ #sevenzip-design .filetable tbody tr:hover {background:var(--sz-secondary)}
+ #sevenzip-design .filetable tbody tr.selected {background:color-mix(in srgb,var(--focus) 15%,var(--sz-surface));color:var(--sz-text)}
+ #sevenzip-design .filetable .filename {display:flex;align-items:center;gap:8px;min-height:var(--row)}
+ #sevenzip-design .filetable .filename svg {color:var(--sz-subtle)}
+ #sevenzip-design .filetable .selected .filename svg {color:var(--focus)}
+ #sevenzip-design .panes.two .datecol {display:none}
+ #sevenzip-design .filespace {height:110px}
+ #sevenzip-design .status {display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;border-top:1px solid var(--sz-stroke);padding:8px var(--pad);color:var(--sz-subtle)}
+ #sevenzip-design .dialog-stage {padding:var(--pad);background:var(--sz-secondary);min-height:620px;display:flex;align-items:flex-start;justify-content:center}
+ #sevenzip-design .dialog {--dialog-pad:16px;width:100%;max-width:860px;background:var(--sz-surface);border:1px solid var(--sz-stroke);border-radius:8px;overflow:hidden}
+ #sevenzip-design .dialog.narrow {max-width:620px}
+ #sevenzip-design .dialog-title {padding:12px var(--dialog-pad);border-bottom:1px solid var(--sz-stroke);font-weight:500}
+ #sevenzip-design .content {padding:var(--pad);display:grid;gap:var(--section)}
+ #sevenzip-design .dialog>.content {padding:var(--dialog-pad)}
+ #sevenzip-design .dialog>.footer {padding-inline:var(--dialog-pad)}
+ #sevenzip-design .columns {display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:24px;align-items:start}
+ #sevenzip-design .form {display:grid;gap:var(--gap)}
+ #sevenzip-design .field {display:grid;grid-template-columns:minmax(110px,.9fr) minmax(0,1fr);gap:var(--gap);align-items:center}
+ #sevenzip-design .relaxed .field {grid-template-columns:minmax(0,1fr);gap:4px}
+ #sevenzip-design .columns>div.form:last-child>.field {grid-template-columns:minmax(0,1fr);gap:4px}
+ #sevenzip-design .field.wide {grid-template-columns:minmax(0,1fr);gap:6px}
+ #sevenzip-design .field>span {min-width:0}
+ #sevenzip-design .product-input,#sevenzip-design .product-select {font:inherit;color:var(--sz-text);background:var(--sz-surface);border:1px solid var(--sz-stroke);border-radius:var(--round);min-height:var(--control);padding:3px 8px;width:100%;min-width:0;box-sizing:border-box}
+ #sevenzip-design .product-select {padding-right:20px}
+ #sevenzip-design .inputrow {display:flex;align-items:center;gap:8px;min-width:0}
+ #sevenzip-design .inputrow input {flex:1;width:0}
+ #sevenzip-design .group {display:grid;gap:var(--gap);margin:0;padding:0;border:0;min-width:0}
+ #sevenzip-design .group legend {padding:0 0 8px;font-weight:500}
+ #sevenzip-design .simple-add .field {grid-template-columns:minmax(0,1fr);gap:6px}
+ #sevenzip-design .simple-add {gap:24px}
+ #sevenzip-design .simple-add .columns {grid-template-columns:repeat(2,minmax(0,1fr))}
+ #sevenzip-design .simple-add .section-box {border:1px solid var(--sz-stroke);border-radius:var(--round);padding:0;min-width:0}
+ #sevenzip-design .simple-add .section-box>.check,#sevenzip-design .simple-add .section-box summary {display:grid;grid-template-columns:16px minmax(0,1fr) auto;gap:12px;align-items:center;box-sizing:border-box;min-height:56px;padding:12px 16px;margin:0;font-weight:500}
+ #sevenzip-design .simple-add .section-box>.check input {margin:0}
+ #sevenzip-design .simple-add .section-box summary {list-style:none}
+ #sevenzip-design .simple-add .section-box summary::-webkit-details-marker {display:none}
+ #sevenzip-design .simple-add details[open]>summary svg {transform:rotate(90deg)}
+ #sevenzip-design .simple-add .advanced-body {display:grid;gap:24px;padding:16px;border-top:1px solid var(--sz-stroke)}
+ #sevenzip-design .simple-add .advanced-summary,#sevenzip-design .simple-add .password-summary {font-weight:400;color:var(--sz-subtle);overflow-wrap:anywhere}
+ #sevenzip-design .simple-add .advanced-summary[data-changed="true"] {grid-column:2/-1}
+ #sevenzip-design .simple-add .password-body {display:grid;gap:12px;padding:16px;border-top:1px solid var(--sz-stroke)}
+ #sevenzip-design .simple-add .minor-title {font-weight:500;margin-bottom:4px}
+ @media(max-width:700px) {#sevenzip-design .simple-add .columns {grid-template-columns:1fr}}
+ @media(max-width:520px) {#sevenzip-design .simple-add .advanced-summary,#sevenzip-design .simple-add .password-summary {grid-column:2/-1}}
+ #sevenzip-design .check {display:flex;align-items:flex-start;gap:8px;min-height:24px}
+ #sevenzip-design .check input {accent-color:var(--focus);margin:4px 0 0;flex-shrink:0}
+ #sevenzip-design .footer {display:flex;gap:8px;align-items:center;justify-content:flex-end;padding:12px var(--pad);border-top:1px solid var(--sz-stroke);flex-wrap:wrap}
+ #sevenzip-design .footer .help {margin-right:auto}
+ #sevenzip-design .hint {color:var(--sz-subtle)}
+ #sevenzip-design .stats {display:grid;grid-template-columns:1fr 1fr;gap:12px 32px;font-variant-numeric:tabular-nums}
+ #sevenzip-design .stat {display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+ #sevenzip-design .meter {height:8px;background:var(--sz-secondary);border-radius:4px;overflow:hidden}
+ #sevenzip-design .meter>div {height:100%;width:62%;background:var(--focus)}
+ #sevenzip-design .progresshead {display:flex;justify-content:space-between;gap:12px}
+ #sevenzip-design .settingsnav {display:flex;flex-wrap:wrap;gap:4px;padding:12px var(--pad);border-bottom:1px solid var(--sz-stroke)}
+ #sevenzip-design .settingsnav .current {background:var(--sz-secondary);border-color:var(--sz-stroke)}
+ #sevenzip-design .tokenlist {display:grid;grid-template-columns:1fr 1fr;gap:24px}
+ #sevenzip-design .token {display:flex;align-items:center;gap:12px;min-height:36px}
+ #sevenzip-design .spacebar {height:8px;background:var(--focus);opacity:.65;flex-shrink:0}
+ #sevenzip-design .sampleline {display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+ #sevenzip-design .swatch {width:24px;height:24px;border:1px solid var(--sz-stroke);border-radius:4px;display:inline-block;vertical-align:middle;margin-right:8px}
+ #sevenzip-design [hidden] {display:none!important}
+ @media(max-width:700px) {#sevenzip-design .columns,#sevenzip-design .tokenlist {grid-template-columns:1fr}#sevenzip-design .datecol {display:none}#sevenzip-design .panes.two {grid-template-columns:minmax(0,var(--split-left,1fr)) 8px minmax(0,var(--split-right,1fr))}#sevenzip-design .panes.two .pane+.pane {border-left:0;border-top:1px solid var(--sz-stroke)}#sevenzip-design .menu {gap:12px}#sevenzip-design .tools .divider {display:none}#sevenzip-design .prototype {--pad:12px}#sevenzip-design .prototype.relaxed {--pad:16px}#sevenzip-design .stage {min-height:0}}
+ @media(max-width:420px) {#sevenzip-design .field {grid-template-columns:1fr;gap:4px}#sevenzip-design .stats {grid-template-columns:1fr}#sevenzip-design .dialog-stage {padding:8px}#sevenzip-design .typecol {display:none}#sevenzip-design .filetable td,#sevenzip-design .filetable th {padding-inline:8px}}
+ @media(pointer:coarse) {#sevenzip-design .product-button,#sevenzip-design .product-input,#sevenzip-design .product-select {min-height:44px}#sevenzip-design .check {min-height:44px}}
+ #sevenzip-design .macos {--control:28px;--round:5px;--section:20px;font-size:13px;line-height:1.4}
+ #sevenzip-design .macos .app {border-radius:10px;background:var(--sz-window)}
+ #sevenzip-design .macos .titlebar {justify-content:flex-start;min-height:28px;gap:16px;background:var(--sz-window);padding:10px 16px}
+ #sevenzip-design .macos .titlebar span:last-child {color:var(--sz-text);font-weight:500}
+ #sevenzip-design .macos .window-lights {display:flex;gap:8px;flex-shrink:0}
+ #sevenzip-design .macos .window-lights b {width:11px;height:11px;border:1px solid var(--sz-stroke);border-radius:50%;background:var(--sz-secondary)}
+ #sevenzip-design .macos .menu {display:none}
+ #sevenzip-design .macos .system-menu {display:flex;flex-wrap:wrap;gap:16px;align-items:center;padding:6px 8px;margin-bottom:12px;color:var(--sz-text)}
+ #sevenzip-design .macos .system-menu button {font:inherit;color:inherit;background:none;border:0;padding:0}
+ #sevenzip-design .macos .app-menu {position:relative}
+ #sevenzip-design .macos .app-menu>summary {list-style:none;font-weight:600}
+ #sevenzip-design .macos .app-menu>summary::-webkit-details-marker {display:none}
+ #sevenzip-design .macos .app-menu>div {position:absolute;top:100%;left:0;z-index:5;min-width:200px;padding:8px;border:1px solid var(--sz-stroke);border-radius:6px;background:var(--sz-window);box-shadow:0 4px 12px var(--sz-shadow)}
+ #sevenzip-design .macos .app-menu button {padding:6px 8px;display:flex;width:100%;justify-content:space-between;gap:20px}
+ #sevenzip-design .macos .tools {padding:8px 12px;background:var(--sz-window);gap:4px}
+ #sevenzip-design .macos .tools .product-button {flex-direction:row;min-width:28px;gap:6px;padding:4px 8px;border-color:transparent;background:transparent;box-shadow:none}
+ #sevenzip-design .macos .tools .product-button:hover,#sevenzip-design .macos .tools .product-button:focus-visible {background:var(--sz-secondary)}
+ #sevenzip-design .macos .tools .divider {height:20px;margin:0 4px}
+ #sevenzip-design .macos .product-button {background:var(--sz-button);box-shadow:0 1px 1px var(--sz-shadow);min-height:26px;padding:3px 12px}
+ #sevenzip-design .macos .product-button.primary {background:var(--sz-accent);color:var(--sz-on-accent);border-color:var(--sz-accent)}
+ #sevenzip-design .macos .product-input,#sevenzip-design .macos .product-select {min-height:28px;padding-block:3px}
+ #sevenzip-design .macos .dialog-stage {display:flex;flex-direction:column;align-items:center;gap:16px;padding:12px 20px 28px;background:var(--sz-secondary);min-height:570px}
+ #sevenzip-design .macos .parent-context {align-self:stretch;display:flex;gap:8px;align-items:center;color:var(--sz-subtle);padding:0 0 4px}
+ #sevenzip-design .macos .dialog {max-width:600px;background:var(--sz-window);border-radius:10px;box-shadow:0 8px 24px var(--sz-shadow)}
+ #sevenzip-design .macos .dialog-title {border:0;padding:16px 16px 0;font-weight:600}
+ #sevenzip-design .macos .dialog>.content {padding:16px;gap:20px}
+ #sevenzip-design .macos .dialog>.footer {border:0;padding:0 16px 16px;gap:8px}
+ #sevenzip-design .macos .help {border-radius:50%;width:22px;min-height:22px;padding:0;flex-shrink:0;align-self:center}
+ #sevenzip-design .macos .simple-add {gap:20px}
+ #sevenzip-design .macos .simple-add .columns {gap:12px 20px}
+ #sevenzip-design .macos .simple-add .section-box {border:0;border-radius:0}
+ #sevenzip-design .macos .simple-add .section-box>.check,#sevenzip-design .macos .simple-add .section-box summary {min-height:28px;padding:0;gap:8px;font-weight:400}
+ #sevenzip-design .macos .simple-add .section-box>.check {grid-template-columns:16px minmax(0,1fr)}
+ #sevenzip-design .macos .password-summary {display:none}
+ #sevenzip-design .macos .simple-add .password-body {border:0;padding:12px 0 0 24px;gap:12px}
+ #sevenzip-design .macos .simple-add .advanced-options {border-top:1px solid var(--sz-stroke);padding-top:12px}
+ #sevenzip-design .macos .simple-add .advanced-body {padding:16px 0 0 24px;border:0;gap:20px}
+ #sevenzip-design .macos .simple-add .advanced-summary {font-size:12px}
+ #sevenzip-design .macos .advanced-body>.group+.group {border-top:1px solid var(--sz-stroke);padding-top:16px}
+ #sevenzip-design .macos .group legend {font-weight:600}
+ #sevenzip-design .macos .dialog-stage.settings-stage {background:var(--sz-window);padding:0;min-height:0;justify-content:flex-start}
+ #sevenzip-design .macos .settings-stage .dialog {max-width:none;border:0;border-radius:0;box-shadow:none}
+ #sevenzip-design .macos .settings-stage .dialog {min-height:0;display:flex;flex-direction:column}
+ #sevenzip-design .macos .settings-stage .dialog>.content {align-content:start}
+ #sevenzip-design .macos .settings-stage .dialog-title {display:none}
+ #sevenzip-design .macos.settings-view .app {max-width:680px;margin-inline:auto}
+ #sevenzip-design .macos .settingsnav {padding:0 0 12px;gap:4px}
+ #sevenzip-design .macos .settingsnav .product-button {box-shadow:none;background:transparent;border-color:transparent}
+ #sevenzip-design .macos .settingsnav .current {background:var(--sz-secondary);border-color:var(--sz-stroke)}
+ #sevenzip-design .macos .settings-body {gap:20px}
+ #sevenzip-design .macos .settings-detail {margin:0}
+ #sevenzip-design .macos .settings-detail summary {align-items:flex-start}
+ #sevenzip-design .macos .settings-detail-title {display:grid;gap:4px;min-width:0;flex:1}
+ #sevenzip-design .macos .settings-description {font-weight:400}
+ #sevenzip-design .macos .settings-change {font-weight:400}
+ #sevenzip-design .macos .archive-types {display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px}
+ #sevenzip-design .macos .inline-error {color:var(--sz-error);margin:0}
+ #sevenzip-design .macos .field-error {border-color:var(--sz-error)}
+ #sevenzip-design .macos .keyboard-note {color:var(--sz-subtle);margin-right:auto}
+ #sevenzip-design .macos .mac-disclosure {border-top:1px solid var(--sz-stroke);padding-top:12px;min-width:0}
+ #sevenzip-design .macos .mac-disclosure summary {display:flex;align-items:center;gap:8px;list-style:none;min-height:28px}
+ #sevenzip-design .macos .mac-disclosure summary::-webkit-details-marker {display:none}
+ #sevenzip-design .macos .mac-disclosure[open]>summary svg {transform:rotate(90deg)}
+ #sevenzip-design .macos .mac-disclosure>.form,#sevenzip-design .macos .mac-disclosure>.stats {padding:12px 0 0 24px}
+ #sevenzip-design .macos .extract-dependent {padding-left:24px}
+ #sevenzip-design .macos .extract-password-body {display:grid;gap:12px;padding:12px 0 0 24px}
+ #sevenzip-design .macos .operation-actions {display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+ #sevenzip-design .macos .operation-actions>button:first-child {margin-right:auto}
+ #sevenzip-design .macos .progresshead {align-items:baseline;font-weight:500}
+ #sevenzip-design .macos .operation-file {overflow-wrap:anywhere;color:var(--sz-subtle)}
+ #sevenzip-design .macos .report-dialog {max-width:820px}
+ #sevenzip-design .macos .data-region {border:1px solid var(--sz-stroke);border-radius:5px;background:var(--sz-surface);max-height:340px;overflow:auto;min-width:0}
+ #sevenzip-design .macos .data-table {border-collapse:collapse;width:100%;text-align:left;font-variant-numeric:tabular-nums}
+ #sevenzip-design .macos .data-table th {font-weight:500;color:var(--sz-subtle);background:var(--sz-secondary);position:sticky;top:0}
+ #sevenzip-design .macos .data-table th,#sevenzip-design .macos .data-table td {padding:7px 10px;border-bottom:1px solid var(--sz-stroke);vertical-align:top;overflow-wrap:anywhere}
+ #sevenzip-design .macos .data-table tr:last-child td {border-bottom:0}
+ #sevenzip-design .macos .property-table th {width:30%;min-width:84px;background:transparent;position:static}
+ #sevenzip-design .macos .property-table td {white-space:pre-wrap;word-break:break-word}
+ #sevenzip-design .macos .number {text-align:right;white-space:nowrap}
+ #sevenzip-design .macos .numeric-table {min-width:720px}
+ #sevenzip-design .macos .log-table {table-layout:fixed}
+ #sevenzip-design .macos .log-table th:first-child {width:32px}
+ #sevenzip-design .macos .log-table td:first-child {color:var(--sz-subtle)}
+ #sevenzip-design .macos .log-message {display:grid;gap:4px}
+ #sevenzip-design .macos .log-path {color:var(--sz-subtle);overflow-wrap:anywhere}
+ #sevenzip-design .macos .report-console {box-sizing:border-box;display:block;width:100%;min-height:260px;resize:vertical;font:12px/1.6 ui-monospace,SFMono-Regular,Menlo,monospace;white-space:pre;overflow:auto;color:var(--sz-text);background:var(--sz-surface);padding:12px;border:1px solid var(--sz-stroke);border-radius:5px}
+ #sevenzip-design .macos .report-toolbar {display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+ #sevenzip-design .macos .report-actions {display:flex;align-items:center;flex-wrap:wrap;justify-content:flex-end;gap:8px;padding:0 16px 16px}
+ #sevenzip-design .macos .report-actions .leading {margin-right:auto}
+ #sevenzip-design .macos .alert-dialog {max-width:440px}
+ #sevenzip-design .macos .alert-heading {display:flex;align-items:center;gap:12px;font-weight:600}
+ #sevenzip-design .macos .alert-heading svg {width:28px;height:28px;color:var(--sz-subtle)}
+ #sevenzip-design .macos .alert-dialog .dialog-title {display:none}
+ #sevenzip-design .macos .alert-dialog .content {padding-top:20px}
+ #sevenzip-design .macos .alert-text {margin:0;overflow-wrap:anywhere}
+ #sevenzip-design .macos .comparison {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}
+ #sevenzip-design .macos .comparison>div {display:grid;gap:6px;min-width:0;overflow-wrap:anywhere}
+ #sevenzip-design .macos .comparison strong {font-weight:500}
+ #sevenzip-design .macos .comparison small {font:inherit;color:var(--sz-subtle)}
+ #sevenzip-design .macos .decision-actions {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+ #sevenzip-design .macos .decision-actions .product-button {white-space:normal}
+ #sevenzip-design .macos .sample-notice {color:var(--sz-subtle)}
+ #sevenzip-design .review {align-items:flex-end}
+ #sevenzip-design .review>* {max-width:100%;min-width:0}
+ #sevenzip-design .review-position {padding-bottom:8px;white-space:nowrap}
+ #sevenzip-design .macos .selection-summary {padding:12px;display:grid;gap:8px}
+ #sevenzip-design .macos .selection-summary>div {display:flex;gap:8px;align-items:flex-start;overflow-wrap:anywhere}
+ #sevenzip-design .macos .selection-summary span {min-width:0;overflow-wrap:anywhere}
+ #sevenzip-design .macos .dependent {padding:8px 0 0 24px}
+ #sevenzip-design .macos .numeric-input {max-width:140px}
+ #sevenzip-design .macos input:disabled,#sevenzip-design .macos select:disabled {opacity:.5}
+ #sevenzip-design .macos .time-override {display:grid;grid-template-columns:84px minmax(0,1fr);gap:12px}
+ #sevenzip-design .macos .list-choice {font:inherit;color:var(--sz-text);background:transparent;border:0;display:flex;align-items:center;gap:8px;text-align:left;padding:7px 10px;width:100%;min-width:0;overflow-wrap:anywhere;border-radius:3px}
+ #sevenzip-design .macos .list-choice.selected {background:color-mix(in srgb,var(--sz-accent) 15%,var(--sz-surface))}
+ #sevenzip-design .macos .list-choice:hover {background:var(--sz-secondary)}
+ #sevenzip-design .macos .choice-list {padding:4px}
+ #sevenzip-design .macos .browse-table td:first-child {padding:0}
+ #sevenzip-design .macos .empty-list {padding:40px 16px;text-align:center;color:var(--sz-subtle)}
+ #sevenzip-design .macos .help-layout {display:grid;grid-template-columns:180px minmax(0,1fr);gap:24px}
+ #sevenzip-design .macos .help-topics {border-right:1px solid var(--sz-stroke);padding-right:12px}
+ #sevenzip-design .macos .help-article {overflow-wrap:anywhere}
+ #sevenzip-design .macos .help-article h3 {font:600 15px/1.5 system-ui;margin:0 0 12px}
+ #sevenzip-design .macos .help-article p {margin:0}
+ #sevenzip-design .macos .about-identity {display:flex;gap:16px;align-items:center}
+ #sevenzip-design .macos .about-identity>svg {width:48px;height:48px;color:var(--sz-subtle)}
+ #sevenzip-design .macos .about-identity>div,#sevenzip-design .macos .about-upstream {display:grid;gap:6px}
+ #sevenzip-design .macos .about-identity strong {font-size:21px;font-weight:600}
+ #sevenzip-design .macos .about-upstream {padding:12px;background:var(--sz-secondary);border-radius:6px;overflow-wrap:anywhere}
+ #sevenzip-design .macos.about-view .app {max-width:440px;margin-inline:auto}
+ #sevenzip-design .macos.report-view .app {max-width:920px;margin-inline:auto}
+ #sevenzip-design .macos .menu-scene {display:grid}
+ #sevenzip-design .macos .menu-underlay,#sevenzip-design .macos .menu-stack {grid-area:1/1}
+ #sevenzip-design .macos .menu-underlay {opacity:.45;pointer-events:none;min-width:0}
+ #sevenzip-design .macos .menu-stack {z-index:1;align-self:start;display:flex;align-items:flex-start;gap:4px;min-width:0;width:calc(100% - 32px);margin:16px}
+ #sevenzip-design .macos .native-menu,#sevenzip-design .macos .submenu-holder {flex:none;width:min(300px,100%);padding:5px;border:1px solid var(--sz-stroke);border-radius:6px;background:var(--sz-window);box-shadow:0 4px 12px var(--sz-shadow);box-sizing:border-box;min-width:0}
+ #sevenzip-design .macos .submenu-holder {width:min(280px,100%);margin-top:var(--submenu-top,0px)}
+ #sevenzip-design .macos .menu-stack.compact.has-submenu>.native-menu {display:none}
+ #sevenzip-design .macos .menu-stack.compact .submenu-holder {margin-top:0}
+ #sevenzip-design .macos .submenu-holder>.menu-back {display:none}
+ #sevenzip-design .macos .menu-stack.compact .menu-back {display:flex}
+ #sevenzip-design .macos .menu-action {display:flex;justify-content:space-between;gap:16px;width:100%;padding:4px 8px;font:inherit;text-align:left;color:var(--sz-text);background:transparent;border:0;border-radius:4px}
+ #sevenzip-design .macos .menu-action span {overflow-wrap:anywhere;min-width:0}
+ #sevenzip-design .macos .menu-action:not(:disabled):hover {background:var(--sz-accent);color:var(--sz-on-accent)}
+ #sevenzip-design .macos .menu-action[aria-expanded=true] {background:var(--sz-secondary)}
+ #sevenzip-design .macos .menu-action:not(:disabled):hover .hint {color:inherit}
+ #sevenzip-design .macos .menu-action:disabled {opacity:.4}
+ #sevenzip-design .macos .native-menu hr,#sevenzip-design .macos .submenu-holder hr {border:0;border-top:1px solid var(--sz-stroke);margin:5px}
+ #sevenzip-design .macos .icon-grid {display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:16px;padding:16px}
+ #sevenzip-design .macos .icon-item {display:grid;gap:8px;justify-items:center;text-align:center;overflow-wrap:anywhere;min-width:0}
+ #sevenzip-design .macos .icon-item svg {width:36px;height:36px;color:var(--sz-subtle)}
+ #sevenzip-design .macos .deleted-file {color:var(--sz-subtle);text-decoration:line-through}
+ #sevenzip-design .macos .marked-file {font-weight:600}
+ #sevenzip-design .macos .association-controls {display:flex;align-items:center;justify-content:flex-end;gap:8px;flex-wrap:wrap}
+ #sevenzip-design .macos .association-table th,#sevenzip-design .macos .association-table td {white-space:normal}
+ #sevenzip-design .macos .language-info {min-height:120px;white-space:pre-wrap}
+ #sevenzip-design .macos .progress-log {max-height:180px}
+ #sevenzip-design .macos .progress-paused .meter>div {background:var(--sz-subtle)}
+ @media(max-width:520px) {#sevenzip-design .macos .help-layout {grid-template-columns:1fr}#sevenzip-design .macos .help-topics {border:0;border-bottom:1px solid var(--sz-stroke);padding:0 0 12px}#sevenzip-design .macos .time-override {grid-template-columns:minmax(0,1fr)}#sevenzip-design .macos .review {gap:8px}}
+ @media(max-width:520px) {#sevenzip-design .macos .comparison {grid-template-columns:1fr}#sevenzip-design .macos .decision-actions {grid-template-columns:1fr}#sevenzip-design .macos .report-actions {flex-wrap:wrap}}
+ @media(max-width:700px) {#sevenzip-design .macos .dialog-stage {padding:12px}#sevenzip-design .macos .simple-add .columns {grid-template-columns:1fr}#sevenzip-design .macos .titlebar {padding-inline:12px}}
+ @media(max-width:420px) {#sevenzip-design .macos .simple-add .password-body,#sevenzip-design .macos .simple-add .advanced-body {padding-left:0}#sevenzip-design .macos .dialog-stage {padding:8px}#sevenzip-design .macos .simple-add .section-box summary {grid-template-columns:16px minmax(0,1fr)}#sevenzip-design .macos .advanced-summary {grid-column:2/-1}}
+</style>
+<script>
+(()=>{
+ const root=document.getElementById('sevenzip-design');
+ const icon=name=>`<i data-lucide="${name}" aria-hidden="true"></i>`;
+ const btn=(text,ico='',extra='')=>`<button type="button" class="product-button cursor-interaction ${extra}">${ico?icon(ico):''}${text}</button>`;
+ const field=(label,value,options)=>`<label class="field"><span>${label}</span>${options?`<select class="product-select" aria-label="${label}">${options.map(x=>`<option${x===value?' selected':''}>${x}</option>`).join('')}</select>`:`<input class="product-input" value="${value}">`}</label>`;
+ const check=(label,on=false)=>`<label class="check"><input type="checkbox" ${on?'checked':''}><span>${label}</span></label>`;
+ const footer=()=>`<div class="footer">${btn('Справка','','help')}${btn('Отмена')}${btn('ОК','','primary')}</div>`;
+ const dialog=(title,body,narrow=false)=>`<div class="dialog-stage"><div class="dialog ${narrow?'narrow':''}"><div class="dialog-title">${title}</div><div class="content">${body}</div>${footer()}</div></div>`;
+ const files=[['..','','','corner-left-up'],['Документы','','Папка','folder'],['Фото','','Папка','folder'],['Исходники','','Папка','folder'],['Проект.7z','128,4 МБ','Архив 7z','archive'],['Материалы.zip','42,8 МБ','Архив ZIP','archive'],['Описание.txt','2,4 КБ','Текст','file-text'],['Список.csv','18,2 КБ','Таблица','file-spreadsheet'],['Лицензия.txt','1,1 КБ','Текст','file-text']];
+ function pane(second=false){return `<div class="pane"><div class="address">${btn('','arrow-up') }<div class="path">${icon(second?'archive':'folder')}<span>${second?'Проект.7z /':'Домашняя / Документы / Проект'}</span>${icon('chevron-down')}</div></div><table class="filetable"><thead><tr><th>Имя ↑</th><th>Размер</th><th class="typecol">Тип</th><th class="datecol">Изменён</th></tr></thead><tbody>${files.map((r,i)=>`<tr class="cursor-interaction ${i===4?'selected':''}" data-file="${r[0]}"><td><span class="filename">${icon(r[3])}${r[0]}</span></td><td>${r[1]}</td><td class="typecol">${r[2]}</td><td class="datecol">${i?'18.10.2026 12:40':''}</td></tr>`).join('')}</tbody></table><div class="filespace"></div><div class="status"><span data-selection>Выделен 1 из 8</span><span>128,4 МБ</span></div></div>`}
+ const toolButton=(label,name,showText=false,shortcut='')=>`<button type="button" class="product-button cursor-interaction" data-command="${label}" aria-label="${label}" data-tooltip="${label}${shortcut?' · '+shortcut:''}">${icon(name)}${showText?`<span>${label}</span>`:''}</button>`;
+ const main=()=>`<div class="menu"><span>Файл</span><span>Правка</span><span>Вид</span><span>Избранное</span><span>Сервис</span><span>Справка</span></div><div class="tools" role="group" aria-label="Команды файлового менеджера">${toolButton('Добавить','plus',true,'⇧⌘A')}${toolButton('Извлечь','folder-output',true,'⇧⌘E')}${toolButton('Тестировать','check',false,'⇧⌘T')}<span class="divider"></span>${toolButton('Копировать','copy',false,'⇧⌘C')}${toolButton('Переместить','move-right',false,'⇧⌘M')}${toolButton('Удалить','trash-2',false,'⌘⌫')}${toolButton('Информация','info')}</div><div class="panes">${pane()}<button type="button" class="panel-splitter" role="separator" aria-label="Изменить ширину панелей" aria-orientation="vertical" aria-valuemin="20" aria-valuemax="80" aria-valuenow="50" data-tooltip="Перетащите для изменения ширины. Двойной щелчок — поровну." hidden><span aria-hidden="true"></span></button><div class="peer" hidden>${pane(true)}</div></div>`;
+ const add=()=>dialog('Добавить к архиву',`<div class="simple-add form">
+  ${field('Имя архива','Проект.7z')}
+  <label class="field"><span>Папка назначения</span><span class="inputrow"><input class="product-input" value="Документы / Проект">${btn('Обзор…')}</span></label>
+  <div class="columns">${field('Формат архива','7z',['7z','zip','tar','wim'])}${field('Уровень сжатия','Нормальный',['Без сжатия','Быстрый','Нормальный','Максимальный','Ультра'])}</div>
+  <section class="section-box" aria-label="Защита паролем">
+   <label class="check"><input class="password-toggle" type="checkbox" aria-expanded="false"><span>Защитить паролем</span><span class="password-summary text-small">Выключено</span></label>
+   <div class="password-body" hidden>
+    <div class="columns">${field('Пароль','')}${field('Повтор пароля','')}</div>
+    <label class="check"><input class="show-password" type="checkbox"><span>Показать пароль</span></label>
+    ${field('Метод шифрования','AES-256',['AES-256'])}
+    ${check('Шифровать имена файлов',true)}
+   </div>
+  </section>
+  <details class="section-box advanced-options"><summary class="cursor-interaction">${icon('chevron-right')}<span>Дополнительные параметры</span><span class="advanced-summary text-small" aria-live="polite">Стандартные</span></summary>
+   <div class="advanced-body">
+    <fieldset class="group"><legend>Сжатие</legend><div class="columns">
+     ${field('Метод сжатия','LZMA2',['LZMA2','LZMA','PPMd'])}${field('Размер словаря','32 МБ',['16 МБ','32 МБ','64 МБ'])}
+     ${field('Размер слова','32',['32','64','128'])}${field('Размер блока','Непрерывный',['Непрерывный','1 ГБ','4 ГБ'])}${field('Число потоков','8',['2','4','8'])}
+    </div>${field('Лимит памяти для сжатия','80%',['50%','80%','90%','4 ГБ','8 ГБ'])}<div class="hint text-small compression-memory">Память для сжатия: 387 МБ · Для распаковки: 34 МБ · RAM: 16 ГБ</div></fieldset>
+    <fieldset class="group"><legend>Тома и параметры</legend>${field('Разбить на тома, байт','')}${field('Параметры командной строки','')}</fieldset>
+    <fieldset class="group"><legend>Обновление и пути</legend>${field('Режим обновления','Добавить и заменить',['Добавить и заменить','Обновить','Синхронизировать'])}${field('Режим путей','Относительные пути',['Относительные пути','Полные пути'])}</fieldset>
+    <fieldset class="group"><legend>Действия с файлами</legend>${check('Создать SFX-архив')}${check('Сжимать открытые файлы')}${check('Удалить файлы после сжатия')}</fieldset>
+    <div>${btn('Настройки…')}</div>
+   </div>
+  </details>
+ </div>`,true).replace('>ОК</button>','>Создать архив</button>');
+ const catalog=[
+  ['main','Главное окно','Файловый менеджер','QMainWindow'],
+  ['file-menu','Меню «Файл»','Файловый менеджер','fileMenu'],
+  ['view-menu','Меню «Вид»','Файловый менеджер','viewMenu'],
+  ['context-menu','Контекстное меню','Файловый менеджер','panelContextMenu'],
+  ['copy','Копирование и перемещение','Файловые операции','copyDialog'],
+  ['split','Разделение файла','Файловые операции','splitDialog'],
+  ['combine','Объединение частей файла','Файловые операции','copyDialog / Combine'],
+  ['rename','Имя, создание и выделение','Файловые операции','comboDialog'],
+  ['delete','Подтверждение удаления','Файловые операции','delete-confirmation/QMessageBox'],
+  ['link','Создание ссылки','Файловые операции','IDD_LINK'],
+  ['browse','Выбор файла или папки','Файловые операции','browseDialog'],
+  ['history','История папок','Файловые операции','foldersHistoryDialog'],
+  ['temporary','Временные файлы','Файловые операции','tempBrowseDialog'],
+  ['add','Добавить к архиву','Архивы','createArchiveDialog'],
+  ['format-options','Метаданные и время','Архивы','compressOptionsDialog'],
+  ['extract','Распаковать архив','Архивы','extractDialog'],
+  ['password','Ввод пароля','Архивы','passwordDialog'],
+  ['memory','Недостаточно памяти','Архивы','memDialog'],
+  ['overwrite','Конфликт файлов','Архивы','overwriteDialog'],
+  ['progress','Ход операции','Архивы','progressDialog'],
+  ['messages','Журнал сообщений','Результаты и отчёты','operationMessagesDialog'],
+  ['properties','Свойства объектов','Результаты и отчёты','selectedPropertiesDialog'],
+  ['hash','Контрольные суммы','Результаты и отчёты','ListViewDialog / Hash results'],
+  ['text','Подробный текстовый отчёт','Результаты и отчёты','editDialog'],
+  ['benchmark','Таблица — тестирование','Результаты и отчёты','IDD_BENCH'],
+  ['benchmark-total','Полный тест — консоль','Результаты и отчёты','IDD_BENCH_TOTAL'],
+  ['settings-system','Настройки · Интеграция','Настройки','settingsDialog/systemPage'],
+  ['settings-folders','Настройки · Дополнительно','Настройки','settingsDialog/foldersPage'],
+  ['settings-editor','Настройки · Внешние приложения','Настройки','settingsDialog/editorPage'],
+  ['settings-view','Настройки · Основные','Настройки','settingsDialog/settingsPage'],
+  ['settings-language','Настройки · Сведения о переводе','Настройки','settingsDialog/languagePage'],
+  ['help','Справка','Справка и сообщения','helpWindow'],
+  ['about','О приложении','Справка и сообщения','aboutDialog'],
+  ['error','Ошибка операции','Справка и сообщения','errors/QMessageBox'],
+  ['split-error','Неверный размер тома','Справка и сообщения','splitVolumeError']
+ ];
+ const screenNames=[...catalog.map(r=>r.slice(0,2)),['tokens','Отступы и компоненты']];
+ const settingsIds={'Основные':'settings-view','Интеграция':'settings-system','Дополнительно':'settings-folders'};
+ const settingsRoutes={'settings-view':{page:'Основные'},'settings-language':{page:'Основные',detail:'translation'},'settings-system':{page:'Интеграция'},'settings-folders':{page:'Дополнительно'},'settings-editor':{page:'Дополнительно',detail:'apps'}};
+ const isSettings=id=>id.startsWith('settings-');
+ const stateOptions={
+  main:['Таблица','Крупные значки','Отмеченные и удалённые'],
+  add:['7z','ZIP','TAR','SFX недоступен'],
+  'format-options':['7z','ZIP · Unix','ZIP · DOS','WIM','TAR'],
+  copy:['Копирование','Перемещение'],
+  rename:['Переименовать','Создать папку','Создать файл','Выделить по маске','Комментарий'],
+  delete:['Обычное удаление','Безвозвратное удаление'],
+  browse:['Выбор папки','Выбор архива'],
+  overwrite:['Несколько файлов','Один файл','Конфликт папок'],
+  progress:['Выполняется','Пауза','Есть ошибки','Завершено с ошибками','Неизвестный объём'],
+  messages:['С ошибками','Длинные сообщения','Без ошибок'],
+  properties:['Один файл','Несколько объектов','Длинное значение'],
+  text:['Отчёт','Лицензия 7-Zip','Длинный текст'],
+  password:['Обычный ввод','Неверный пароль'],
+  temporary:['Есть файлы','Файл используется','Пусто'],
+  error:['Повреждённый архив','Нет доступа','Нет места на диске'],
+  benchmark:['Выполняется','Ошибка теста']
+ };
+ const reportFooter=(label='Закрыть')=>`<div class="report-actions"><button type="button" class="product-button cursor-interaction leading copy-report">Копировать</button>${btn(label,'','dismiss-report')}</div>`;
+ function reportDialog(title,body,wide=false){return dialog(title,body,true).replace(footer(),reportFooter()).replace('class="dialog narrow"',`class="dialog narrow ${wide?'report-dialog':''}"`)}
+ const logMessages=[
+  ['Ошибка данных','Фото / Лето / Поездка на Байкал / Панорама озера.jpg'],
+  ['Не удаётся открыть файл: доступ запрещён','Документы / Финансовый отчёт / Итоги за октябрь.xlsx'],
+  ['Не удаётся найти часть пути','Материалы / Длинное имя папки с дополнительными материалами / Исходники / Редакция после согласования / Описание.txt']
+ ];
+ const macMessages=()=>reportDialog('Сообщения операции',`<div class="report-toolbar"><span>Распаковка завершена с ошибками</span><span class="hint">Сообщений: 3</span></div><div class="data-region"><table class="data-table log-table"><thead><tr><th scope="col">№</th><th scope="col">Сообщение</th></tr></thead><tbody>${logMessages.map((r,i)=>`<tr><td>${i+1}</td><td><div class="log-message"><span>${r[0]}</span><span class="log-path">${r[1]}</span></div></td></tr>`).join('')}</tbody></table></div>`,true);
+ const propertyRows=[['Имя','Проект.7z'],['Расположение','Документы / Рабочие материалы / Проект'],['Тип','7z'],['Размер','134 637 158 байт'],['Размер без сжатия','1 246 352 600 байт'],['Файлов','400'],['Изменён','18.10.2026 12:40:08'],['Метод','LZMA2:25'],['Зашифрован','Нет'],['CRC32','CBF43926'],['SHA-256','9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08'],['Комментарий','Исходники, документы и изображения проекта.\nДлинные значения доступны полностью.']];
+ const macProperties=()=>reportDialog('Свойства · Проект.7z',`<div class="data-region"><table class="data-table property-table"><tbody>${propertyRows.map(r=>`<tr><th scope="row">${r[0]}</th><td>${r[1]}</td></tr>`).join('')}</tbody></table></div>`);
+ const macBenchmark=()=>reportDialog('Тестирование производительности',`<div class="columns">${field('Размер словаря','32 МБ',['16 МБ','32 МБ','64 МБ'])}${field('Число потоков','8',['2','4','8'])}</div><div class="report-toolbar"><span class="hint">Память: 387 МБ</span><span class="hint">Пример результатов</span></div><div class="data-region"><table class="data-table numeric-table"><thead><tr><th>Операция</th><th>Результат</th><th class="number">Размер, КБ</th><th class="number">Скорость, КБ/с</th><th class="number">Загрузка, %</th><th class="number">Рейтинг / загрузка</th><th class="number">Рейтинг, MIPS</th></tr></thead><tbody>${[['Упаковка','Текущий','32 768','48 200','782','6 164','48 200'],['Упаковка','Итоговый','32 768','47 816','779','6 138','47 816'],['Распаковка','Текущий','32 768','522 400','795','7 492','59 561'],['Распаковка','Итоговый','32 768','518 230','791','7 470','59 090']].map(r=>`<tr>${r.map((x,i)=>`<td class="${i>1?'number':''}">${x}</td>`).join('')}</tr>`).join('')}</tbody></table></div><div class="stats"><div class="stat"><span class="hint">Прошло</span><span>00:12</span></div><div class="stat"><span class="hint">Проходов</span><span>3</span></div><div class="stat"><span class="hint">Общий рейтинг</span><span>53 453 MIPS</span></div></div><div class="operation-actions">${btn('Перезапуск','','benchmark-restart')}${btn('Стоп','','benchmark-stop')}<span class="hint benchmark-state" aria-live="polite">Выполняется</span></div>`,true);
+ const consoleLines=['7-Zip · Проверка архива','', 'Архив: Документы / Проект.7z','Тип: 7z','Метод: LZMA2:25','',...logMessages.flatMap((r,i)=>[`${i+1}. ${r[0]}`,`   ${r[1]}`]),'', 'Файлов: 400','Проверено: 397','Ошибок: 3'];
+ const macText=()=>reportDialog('Подробный отчёт',`<textarea class="report-console" readonly spellcheck="false" aria-label="Полный текст отчёта">${consoleLines.join('\n')}</textarea>` ,true);
+ const macRename=()=>dialog('Переименовать',`<span class="hint">Документы / Проект</span>${field('Новое имя','Описание проекта.txt')}`,true).replace('>ОК</button>','>Переименовать</button>');
+ const macOverwrite=()=>dialog('Заменить существующий файл?',`<p class="alert-text">В папке назначения уже есть файл «Описание проекта.txt».</p><div class="comparison"><div><strong>Существующий файл</strong><span>Описание проекта.txt</span><small>2,4 КБ · 17.10.2026 10:15</small></div><div><strong>Файл из архива</strong><span>Описание проекта.txt</span><small>3,1 КБ · 18.10.2026 12:40</small></div></div><div class="decision-actions">${btn('Заменить','','decision')}${btn('Заменить все','','decision')}${btn('Автопереименование','','decision')}${btn('Пропустить','','decision')}${btn('Пропустить все','','decision')}${btn('Отмена','','dismiss-report')}</div>`,true).replace(footer(),'');
+ const macError=()=>dialog('Ошибка',`<div class="alert-heading">${icon('triangle-alert')}<span>Не удалось открыть архив</span></div><p class="alert-text">Файл «Проект.7z» повреждён или имеет неподдерживаемый формат.</p><p class="alert-text hint">Проверьте, что файл полностью скачан и доступны все части многотомного архива.</p><details class="mac-disclosure"><summary class="cursor-interaction">${icon('chevron-right')}Подробности</summary><div class="form"><span class="log-path">Документы / Проект.7z</span><span>Не удаётся открыть файл как архив.</span></div></details>`,true).replace('class="dialog narrow"','class="dialog narrow alert-dialog"').replace(footer(),`<div class="report-actions">${btn('Закрыть','','dismiss-report')}</div>`);
+ const views=[];
+ const settingsDisclosure=(key,title,description,body)=>`<details class="mac-disclosure settings-detail" data-settings-detail="${key}"><summary class="cursor-interaction">${icon('chevron-right')}<span class="settings-detail-title">${title}<span class="hint settings-description">${description}</span></span><span class="hint settings-change" aria-live="polite"></span></summary><div class="form">${body}</div></details>`;
+ const settingsPages={
+  'Основные':()=>`${field('Оформление','Как в системе',['Как в системе','Светлое','Тёмное'])}${field('Язык интерфейса','Как в системе',['Как в системе','Русский','English','Deutsch','Français','日本語'])}${settingsDisclosure('translation','О переводе','Сведения об установленном переводе','<span class="hint">Русский · Russian<br>Перевод интерфейса Sevenzip и 7-Zip</span>')}`,
+  'Интеграция':()=>`<fieldset class="group"><legend>Открывать архивы в Sevenzip</legend><span class="hint">Выберите типы файлов, для которых Sevenzip будет приложением по умолчанию.</span><div class="archive-types">${[['7z','Архивы 7z'],['zip','Архивы ZIP']].map(r=>`<label class="check"><input type="checkbox" class="association-choice" checked><span>${r[1]} <span class="hint">· .${r[0]}</span></span></label>`).join('')}</div>${settingsDisclosure('types','Другие форматы','TAR, GZip, RAR и другие поддерживаемые типы',`<div class="archive-types">${[['tar','TAR'],['gz','GZip'],['rar','RAR']].map(r=>`<label class="check"><input type="checkbox" class="association-choice"><span>${r[1]} <span class="hint">· .${r[0]}</span></span></label>`).join('')}</div>`)}<div class="association-controls">${btn('Выбрать все','','associations-all')}${btn('Снять выбор','','associations-none')}</div></fieldset>`,
+  'Дополнительно':()=>`${settingsDisclosure('memory','Память для распаковки','Ограничение ресурсов при открытии больших архивов',`<label class="check"><input class="enable-next" type="checkbox"><span>Задать лимит памяти</span></label><div class="dependent">${field('Лимит, ГБ','4')}<span class="hint">Из 16 ГБ оперативной памяти</span></div>`)}${settingsDisclosure('work','Временные файлы','Системная временная папка',`${radio('work-folder','Системная временная папка',true)}${radio('work-folder','Текущая папка')}${radio('work-folder','Указанная папка')}<div class="work-path">${pathField('Путь рабочей папки','Документы / Временные архивы')}</div>${check('Использовать только для съёмных дисков')}`)}${settingsDisclosure('apps','Внешние приложения','Просмотр, редактирование и сравнение файлов',`${pathField('Просмотр','/System/Applications/TextEdit.app')}${pathField('Редактор','')}${pathField('Сравнение','')}<span class="hint">Можно указать программу и аргументы командной строки.</span>`)}${settingsDisclosure('compatibility','Привычное поведение','Редкие настройки списка файлов',`${check('Показывать элемент «..»',true)}${check('Показывать реальные значки файлов',true)}${check('Выделять всю строку',true)}${check('Показывать разделители')}${check('Открывать одним щелчком')}${check('Альтернативный режим пометки')}${check('Показывать системное меню',true)}`)}`
+ };
+ const macSettings=(page='Основные')=>dialog('Настройки',`<nav class="settingsnav" aria-label="Разделы настроек">${Object.keys(settingsPages).map(x=>`<button type="button" class="product-button cursor-interaction ${x===page?'current':''}" data-settings-page="${x}" aria-pressed="${x===page}">${x}</button>`).join('')}</nav><div class="settings-body form" aria-live="polite">${settingsPages[page]()}</div>`,true).replace('>ОК</button>','>Сохранить</button>').replace(btn('Отмена'),`<button type="button" class="product-button cursor-interaction settings-apply" disabled>Применить</button>${btn('Отмена')}`);
+ const macExtract=()=>dialog('Распаковать архив',`
+  <label class="field wide"><span>Папка назначения</span><span class="inputrow"><input class="product-input" value="Документы / Проект">${btn('Выбрать…')}</span></label>
+  <div><label class="check"><input class="extract-subfolder" type="checkbox" checked><span>Создать подпапку</span></label><div class="extract-dependent">${field('Имя подпапки','Проект')}</div></div>
+  ${field('Если файл уже существует','Запросить подтверждение',['Запросить подтверждение','Перезаписать','Пропустить','Переименовать'])}
+  <div><label class="check"><input class="extract-password" type="checkbox" aria-expanded="false"><span>Архив защищён паролем</span></label><div class="extract-password-body" hidden>${field('Пароль','')}<label class="check"><input class="extract-show" type="checkbox"><span>Показать пароль</span></label></div></div>
+  <details class="mac-disclosure"><summary class="cursor-interaction">${icon('chevron-right')}Дополнительные параметры</summary><div class="form">${field('Режим путей','Полные пути',['Полные пути','Без путей','Абсолютные пути'])}${check('Устранить дублирование корневой папки',true)}<label class="check"><input type="checkbox" disabled><span>Устанавливать права доступа <span class="hint">· только Windows</span></span></label></div></details>
+ `,true).replace('>ОК</button>','>Распаковать</button>');
+ const macProgress=()=>dialog('Создание архива',`
+  <div class="progresshead"><span>Проект.7z</span><span>62%</span></div>
+  <div class="meter" role="progressbar" aria-label="Сжатие" aria-valuenow="62" aria-valuemin="0" aria-valuemax="100"><div></div></div>
+  <div class="operation-file">Исходники / Интерфейс / ГлавноеОкно.cpp</div>
+  <div class="stats"><div class="stat"><span class="hint">Прошло</span><span>00:24</span></div><div class="stat"><span class="hint">Осталось</span><span>00:15</span></div></div>
+  <div class="hint">Обработано 248 из 400 файлов · Ошибок: 0</div>
+  <details class="mac-disclosure"><summary class="cursor-interaction">${icon('chevron-right')}Подробности</summary><div class="stats">${[['Общий размер','1,87 ГБ'],['Скорость','48,2 МБ/с'],['Обработано','1,16 ГБ'],['Размер архива','128,4 МБ'],['Сжатие','11%']].map(r=>`<div class="stat"><span class="hint">${r[0]}</span><span>${r[1]}</span></div>`).join('')}</div></details>
+  <div class="operation-actions">${btn('В фоне')}${btn('Пауза','','pause-button')}${btn('Отмена')}</div>
+ `,true).replace(footer(),'');
+ function macTokens(){return `<div class="content"><div class="tokenlist"><fieldset class="group"><legend>Форма</legend><div class="token">16 · от края диалога</div><div class="token">8–12 · связанные поля</div><div class="token">20 · смысловые группы</div><div class="token">24 · отступ зависимых настроек</div><div class="hint">Рабочие ориентиры концепта, не норматив Apple.</div></fieldset><fieldset class="group"><legend>Действия</legend><div class="sampleline">${btn('Отмена')}${btn('Создать архив','','primary')}</div><div>Основное действие справа</div><div class="hint">Return — подтверждение · Esc — отмена</div></fieldset><fieldset class="group"><legend>Группировка</legend>${check('Защитить паролем')}<details class="mac-disclosure"><summary class="cursor-interaction">${icon('chevron-right')}Дополнительные параметры</summary><div class="form">${field('Размер словаря','32 МБ',['32 МБ','64 МБ'])}</div></details></fieldset><fieldset class="group"><legend>Состояния</legend>${field('Имя архива','Проект.7z')}<div class="sampleline"><button class="product-button" disabled>Недоступно</button><span class="hint">Системные цвета и шрифт</span></div><div class="hint">В Qt окончательные размеры определят QStyle и содержимое.</div></fieldset></div></div>`}
+ const licenseText="  7-Zip\n  ~~~~~\n  License for use and distribution\n  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n\n  7-Zip Copyright (C) 1999-2026 Igor Pavlov.\n\n  The licenses for files are:\n\n    - 7z.dll:\n         - The \"GNU LGPL\" as main license for most of the code\n         - The \"GNU LGPL\" with \"unRAR license restriction\" for some code\n         - The \"BSD 3-clause License\" for some code\n         - The \"BSD 2-clause License\" for some code\n    - All other files: the \"GNU LGPL\".\n\n  Redistributions in binary form must reproduce related license information from this file.\n\n  Note:\n    You can use 7-Zip on any computer, including a computer in a commercial\n    organization. You don't need to register or pay for 7-Zip.\n\n\nGNU LGPL information\n--------------------\n\n    This library is free software; you can redistribute it and/or\n    modify it under the terms of the GNU Lesser General Public\n    License as published by the Free Software Foundation; either\n    version 2.1 of the License, or (at your option) any later version.\n\n    This library is distributed in the hope that it will be useful,\n    but WITHOUT ANY WARRANTY; without even the implied warranty of\n    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU\n    Lesser General Public License for more details.\n\n    You can receive a copy of the GNU Lesser General Public License from\n    http://www.gnu.org/\n\n\n\n\nBSD 3-clause License in 7-Zip code\n----------------------------------\n\n  The \"BSD 3-clause License\" is used for the following code in 7z.dll\n    1) LZFSE data decompression.\n       That code was derived from the code in the \"LZFSE compression library\" developed by Apple Inc,\n       that also uses the \"BSD 3-clause License\".\n    2) ZSTD data decompression.\n       that code was developed using original zstd decoder code as reference code.\n       The original zstd decoder code was developed by Facebook Inc,\n       that also uses the \"BSD 3-clause License\".\n\n  Copyright (c) 2015-2016, Apple Inc. All rights reserved.\n  Copyright (c) Facebook, Inc. All rights reserved.\n  Copyright (c) 2023-2026 Igor Pavlov.\n\nText of the \"BSD 3-clause License\"\n----------------------------------\n\nRedistribution and use in source and binary forms, with or without modification,\nare permitted provided that the following conditions are met:\n\n1. Redistributions of source code must retain the above copyright notice, this\n   list of conditions and the following disclaimer.\n\n2. Redistributions in binary form must reproduce the above copyright notice,\n   this list of conditions and the following disclaimer in the documentation\n   and/or other materials provided with the distribution.\n\n3. Neither the name of the copyright holder nor the names of its contributors may\n   be used to endorse or promote products derived from this software without\n   specific prior written permission.\n\nTHIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS \"AS IS\" AND\nANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED\nWARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE\nDISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR\nANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES\n(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;\nLOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON\nANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT\n(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS\nSOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n\n---\n\n\n\n\nBSD 2-clause License in 7-Zip code\n----------------------------------\n\n  The \"BSD 2-clause License\" is used for the XXH64 code in 7-Zip.\n\n  XXH64 code in 7-Zip was derived from the original XXH64 code developed by Yann Collet.\n\n  Copyright (c) 2012-2021 Yann Collet.\n  Copyright (c) 2023-2026 Igor Pavlov.\n\nText of the \"BSD 2-clause License\"\n----------------------------------\n\nRedistribution and use in source and binary forms, with or without modification,\nare permitted provided that the following conditions are met:\n\n1. Redistributions of source code must retain the above copyright notice, this\n   list of conditions and the following disclaimer.\n\n2. Redistributions in binary form must reproduce the above copyright notice,\n   this list of conditions and the following disclaimer in the documentation\n   and/or other materials provided with the distribution.\n\nTHIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS \"AS IS\" AND\nANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED\nWARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE\nDISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR\nANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES\n(INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;\nLOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON\nANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT\n(INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS\nSOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.\n\n---\n\n\n\n\nunRAR license restriction\n-------------------------\n\nThe decompression engine for RAR archives was developed using source\ncode of unRAR program.\nAll copyrights to original unRAR code are owned by Alexander Roshal.\n\nThe license for original unRAR code has the following restriction:\n\n  The unRAR sources cannot be used to re-create the RAR compression algorithm,\n  which is proprietary. Distribution of modified unRAR sources in separate form\n  or as a part of other software is permitted, provided that it is clearly\n  stated in the documentation and source comments that the code may\n  not be used to develop a RAR (WinRAR) compatible archiver.\n\n--\n";
+ const goButton=(label,target)=>`<button type="button" class="product-button cursor-interaction" data-go="${target}">${label}</button>`;
+ const pathField=(label,value)=>`<label class="field wide"><span>${label}</span><span class="inputrow"><input class="product-input" value="${value}">${goButton('Выбрать…','browse')}</span></label>`;
+ const radio=(name,label,checked=false,disabled=false)=>`<label class="check"><input type="radio" name="${name}" ${checked?'checked':''} ${disabled?'disabled':''}><span>${label}${disabled?' <span class="hint">· недоступно на macOS</span>':''}</span></label>`;
+ const taskDialog=(title,body,action)=>dialog(title,body,true).replace('>ОК</button>',`>${action}</button>`);
+ const transferNames=['Документы / Описание проекта.txt','Фото / Панорама озера.jpg','Исходники / ГлавноеОкно.cpp','Материалы / Таблица расчётов.csv'];
+ const copySummary=()=>`<div class="data-region selection-summary"><span class="hint">Выбрано 4 файла · 128,4 МБ</span>${transferNames.map(x=>`<div>${icon('file')}<span>${x}</span></div>`).join('')}</div>`;
+ const macCopy=(moving=false)=>taskDialog(moving?'Переместить файлы':'Копировать файлы',`${pathField(moving?'Переместить в':'Копировать в','Документы / Копия проекта')}${copySummary()}`,moving?'Переместить':'Копировать');
+ const macSplit=()=>taskDialog('Разделить файл',`<div class="hint">Проект.7z · 128,4 МБ</div>${pathField('Папка для частей файла','Документы / Части')}<label class="field"><span>Размер тома, байт</span><input class="product-input volume-size" value="10M" list="volume-presets"><datalist id="volume-presets">${['10M','100M','650M','700M','4092M'].map(x=>`<option value="${x}">`).join('')}</datalist></label><span class="hint">Будут созданы файлы Проект.7z.001, Проект.7z.002 и далее.</span>`,'Разделить');
+ const macCombine=()=>taskDialog('Объединить файлы',`${pathField('Сохранить результат в','Документы / Проект.7z')}<div class="data-region selection-summary"><span class="hint">Найдено 4 части · 128,4 МБ</span>${['Проект.7z.001','Проект.7z.002','Проект.7z.003','Проект.7z.004'].map(x=>`<div>${icon('file')}<span>${x}</span></div>`).join('')}</div>`,'Объединить');
+ const macPassword=()=>taskDialog('Пароль для архива',`<div class="hint">Проект.7z</div>${field('Пароль','')}<label class="check"><input class="prompt-password-show" type="checkbox"><span>Показать пароль</span></label><p class="inline-error password-prompt-error" role="alert" hidden>Неверный пароль. Попробуйте ещё раз.</p>`,'Продолжить');
+ const macMemory=()=>taskDialog('Архиву требуется больше памяти',`<p class="alert-text">Для распаковки требуется 4 ГБ. Текущий разрешённый лимит — 2 ГБ.</p><div class="stats"><div class="stat"><span class="hint">Необходимо</span><span>4 ГБ</span></div><div class="stat"><span class="hint">Доступно RAM</span><span>16 ГБ</span></div></div><fieldset class="group"><legend>Что сделать</legend>${radio('memory-action','Разрешить распаковку этого архива',true)}${radio('memory-action','Пропустить этот архив')}</fieldset><div><label class="check"><input class="enable-next" type="checkbox"><span>Изменить лимит для следующих операций</span></label><div class="dependent form">${field('Новый лимит, ГБ','4')}<span class="hint">Из 16 ГБ оперативной памяти</span></div></div>${check('Повторять выбранное действие для текущей операции')}`,'Продолжить');
+ const overrideRow=(label,on=true,forced=false)=>`<div class="time-override"><label class="check"><input class="override-enable" type="checkbox" aria-label="Задать явно: ${label}" ${forced?'checked':''}><span>Задать</span></label><label class="check"><input class="override-value" type="checkbox" ${on?'checked':''} ${forced?'':'disabled'}><span>${label}</span></label></div>`;
+ function macFormatOptions(format='7z'){
+  const zip=format.startsWith('ZIP'),dos=format.includes('DOS'),links=format==='TAR'||format==='WIM';
+  return taskDialog('Параметры формата',`<div class="hint">Формат архива: ${zip?'ZIP':format}</div>${links?`<fieldset class="group"><legend>Ссылки</legend>${check('Сохранять символьные ссылки',true)}${check('Сохранять жёсткие ссылки',true)}</fieldset>`:''}<fieldset class="group"><legend>Отметки времени</legend>${zip?`<label class="check"><input class="enable-next" type="checkbox"><span>Задать точность времени</span></label><div class="dependent">${field('Точность',dos?'2 сек · DOS':'1 сек · Unix',['1 сек · Unix','2 сек · DOS','100 нс · Windows'])}</div>`:''}${overrideRow('Сохранять время изменения файлов',true)}${!dos&&format!=='TAR'?overrideRow('Сохранять время создания файлов')+overrideRow('Сохранять время последнего доступа'):''}${overrideRow('Установить время архива по самому новому файлу',false)}</fieldset>`,'Сохранить');
+ }
+ const macLink=()=>taskDialog('Создать ссылку',`${pathField('Источник ссылки','Документы / Проект')}${pathField('Путь создаваемой ссылки','Документы / Ссылка на проект')}<fieldset class="group"><legend>Тип ссылки</legend>${radio('link-type','Жёсткая ссылка',true)}${radio('link-type','Символьная ссылка на файл')}${radio('link-type','Символьная ссылка на папку')}${radio('link-type','Точка соединения (Junction)',false,true)}${radio('link-type','Ссылка WSL',false,true)}</fieldset>`,'Создать ссылку');
+ const folderRows=['Проект','Рабочие материалы','Фото','Архивы'];
+ const browseRows=(archive=false)=>`<div class="data-region"><table class="data-table browse-table"><thead><tr><th>Имя</th><th>Тип</th><th class="number">Размер</th></tr></thead><tbody>${[...folderRows.map(x=>[x,'Папка','']),...(archive?[['Проект.7z','Архив 7z','128,4 МБ'],['Материалы.zip','Архив ZIP','42,8 МБ']]:[])].map((r,i)=>`<tr><td><button type="button" class="list-choice cursor-interaction ${i===0?'selected':''}" data-choice="${r[0]}">${icon(r[1]==='Папка'?'folder':'archive')}${r[0]}</button></td><td>${r[1]}</td><td class="number">${r[2]}</td></tr>`).join('')}</tbody></table></div>`;
+ const macBrowse=(archive=false)=>taskDialog(archive?'Выбрать архив':'Выбрать папку',`<div class="report-toolbar">${btn('На уровень вверх','arrow-up','browse-up')}${btn('Новая папка','folder-plus','browse-new')}</div><div class="path">${icon('folder')}<span>Домашняя / Документы</span></div>${browseRows(archive)}${field(archive?'Имя файла':'Папка','Проект')}${field('Тип файлов',archive?'Архивы':'Папки',archive?['Архивы','Все файлы']:['Папки'])}`,'Выбрать');
+ const macHistory=()=>taskDialog('История папок',`<div class="data-region"><div class="choice-list">${['Домашняя / Документы / Проект','Домашняя / Загрузки','Документы / Архивы / Проект.7z / Исходники','Общий диск / Каталог с длинным названием / Рабочие материалы'].map((x,i)=>`<button type="button" class="list-choice cursor-interaction ${i===0?'selected':''}" data-choice="${x}">${icon('folder')}<span>${x}</span></button>`).join('')}</div></div>`,'Открыть');
+ const macTemporary=()=>reportDialog('Временные файлы Sevenzip',`<div class="report-toolbar"><div class="sampleline">${btn('Удалить','trash-2','temp-remove')}${btn('Обновить','rotate-cw','temp-refresh')}</div>${btn('На уровень вверх','arrow-up','temp-up')}</div>${field('Папка','Временные файлы / Sevenzip') }<div class="data-region"><table class="data-table temp-table"><thead><tr><th>Имя</th><th class="number">Размер</th><th>Изменён</th></tr></thead><tbody>${[['7zO1234 / Описание.txt','2,4 КБ'],['7zO4567 / Панорама озера.jpg','4,8 МБ'],['7zO9012 / Материалы.docx','128 КБ']].map((r,i)=>`<tr><td><label class="check"><input class="temp-select" type="checkbox" ${i===0?'checked':''}><span>${r[0]}</span></label></td><td class="number">${r[1]}</td><td>18.10.2026 12:40</td></tr>`).join('')}</tbody></table><div class="empty-list" hidden>Временных файлов нет</div></div><div class="temp-status hint" aria-live="polite">Выбран 1 файл · Всего 3 файла</div><div class="inline-error temp-error" role="alert" hidden>Файл используется другим приложением. Закройте его и повторите удаление.</div>` ,true);
+ const macDelete=(permanent=false)=>dialog(permanent?'Удалить файлы безвозвратно?':'Переместить файлы в Корзину?',`<p class="alert-text">Выбрано 4 файла, 128,4 МБ.</p>${copySummary()}<p class="alert-text hint">${permanent?'Восстановить эти файлы из Корзины не получится.':'Файлы можно будет восстановить из Корзины.'}</p>`,true).replace(footer(),`<div class="report-actions">${btn('Отмена','','dismiss-report')}<button type="button" class="product-button cursor-interaction confirm-delete">${permanent?'Удалить безвозвратно':'В Корзину'}</button></div>`);
+ const macSplitError=()=>dialog('Неверный размер тома',`<div class="alert-heading">${icon('triangle-alert')}<span>Укажите корректный размер тома</span></div><p class="alert-text">Значение «10X» не удалось распознать. Введите размер в байтах или используйте обозначения K, M, G.</p><p class="hint alert-text">Например: 10485760 или 10M.</p>`,true).replace('class="dialog narrow"','class="dialog narrow alert-dialog"').replace(footer(),`<div class="report-actions">${goButton('Исправить размер','split')}</div>`);
+ const macHashes=()=>reportDialog('Контрольные суммы',`<div class="hint">Проект.7z · 128,4 МБ</div><div class="data-region"><table class="data-table property-table"><tbody>${[['CRC32','CBF43926'],['CRC64','995DC9BBDF1939FA'],['SHA-1','a9993e364706816aba3e25717850c26c9cd0d89d'],['SHA-256','9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08'],['Файлов','1'],['Общий размер','134 637 158 байт']].map(r=>`<tr><th scope="row">${r[0]}</th><td>${r[1]}</td></tr>`).join('')}</tbody></table></div>`);
+ const macBenchmarkTotal=()=>reportDialog('Полный тест производительности',`<div class="report-toolbar"><span class="hint">Прошло: 00:12</span><span class="hint">Пример вывода</span></div><textarea class="report-console" readonly spellcheck="false" aria-label="Консоль полного теста">7-Zip 26.04 (arm64)\nCPU: Apple Silicon · 8 потоков\n\nМетод      Упаковка, MIPS    Распаковка, MIPS\nLZMA2              47 816              59 090\nLZMA               32 194              42 817\nDeflate            41 786              98 416\nBZip2              21 052              30 818\nPPMd               24 107              27 316\n\nПроходов: 3\nТест выполняется…</textarea>`,true);
+ const helpTopics={'Начало работы':['Sevenzip — файловый менеджер','Выберите файлы в главном окне. Для упаковки нажмите «Добавить», для распаковки откройте архив и нажмите «Извлечь».'], 'Создание архива':['Создание архива','Укажите имя, папку назначения и формат архива. Уровень сжатия задаёт соотношение времени работы и размера результата. Дополнительные параметры доступны в раскрывающемся разделе.'], 'Распаковка':['Распаковка архива','Выберите папку назначения. Режим путей определяет размещение вложенных файлов, а режим перезаписи — обработку совпадающих имён.'], 'Пароли':['Защита архива','Для зашифрованного архива потребуется пароль. Возможность скрывать имена файлов зависит от формата.'], 'Горячие клавиши':['Клавиатурное управление','Tab и Shift–Tab перемещают фокус. Escape отменяет диалог. Command–Comma открывает настройки.']};
+ const macHelp=()=>reportDialog('Справка Sevenzip',`<div class="report-toolbar">${btn('Назад','arrow-left','help-back')}<span class="hint">Локальная справка</span></div><div class="help-layout"><nav class="help-topics" aria-label="Темы справки">${Object.keys(helpTopics).map((x,i)=>`<button type="button" class="list-choice cursor-interaction ${i===0?'selected':''}" data-topic="${x}">${x}</button>`).join('')}</nav><article class="help-article"><h3>${helpTopics['Начало работы'][0]}</h3><p>${helpTopics['Начало работы'][1]}</p></article></div>`,true).replace(reportFooter(),`<div class="report-actions">${btn('Закрыть','','dismiss-report')}</div>`);
+ const macAbout=()=>reportDialog('О Sevenzip',`<div class="about-identity">${icon('archive')}<div><strong>Sevenzip</strong><span class="hint">Версия 0.1.3</span></div></div><p class="alert-text">Независимый файловый менеджер на основе 7-Zip.</p><a href="https://github.com/Feverqwe/7zip-qt-port" target="_blank" rel="noopener">Сайт проекта</a><div class="about-upstream"><strong>7-Zip 26.04 · arm64</strong><span class="hint">Дата выпуска: 5 октября 2026</span><span>Copyright © 1999–2026 Igor Pavlov</span><span class="hint">7-Zip является свободно распространяемой программой.</span></div><div class="sampleline">${goButton('Лицензия 7-Zip','text')}<a href="https://www.7-zip.org/" target="_blank" rel="noopener">www.7-zip.org</a></div>`,false).replace(reportFooter(),`<div class="report-actions">${btn('Закрыть','','dismiss-report')}</div>`);
+ const fileMenuRows=[['Открыть архив…','browse','⌘O'],['Открыть','browse','⌘↓'],['Открыть как','submenu:open'],null,['Просмотр','text'],['Редактировать','text'],null,['Переименовать','rename','↩'],['Копировать в…','copy','⇧⌘C'],['Переместить в…','copy','⇧⌘M'],['Удалить','delete','⌘⌫'],null,['Создать','submenu:create'],['Контрольные суммы','submenu:hash'],['Дополнительно','submenu:tools'],null,['Свойства','properties','⌘I']];
+ const viewMenuRows=[['Представление','submenu:appearance','Таблица'],['Сортировка','submenu:sort','Имя'],null,['Две панели','main','⇧⌘2'],['Плоский вид','main'],null,['Формат времени','submenu:time'],['Панели инструментов','submenu:toolbar'],null,['Корневая папка','main'],['На уровень вверх','main','⌘↑'],['История папок…','history'],null,['Обновить','main','⌘R'],['Обновлять автоматически','main','✓']];
+ const contextRows=[['Открыть','browse','⌘↓'],['Открыть как','submenu:contextOpen'],null,['Копировать в…','copy','⇧⌘C'],['Переместить в…','copy','⇧⌘M'],['Переименовать','rename','↩'],['Удалить','delete','⌘⌫'],null,['Контрольные суммы','submenu:hash'],['Ещё','submenu:contextMore'],null,['Свойства','properties','⌘I']];
+ const openRows=[['Открыть как архив','browse'],['Один уровень архива (*)','browse'],['Разобрать файл как архив (#)','browse'],null,['Открыть во внешнем приложении','main']];
+ const createRows=[['Создать папку','rename','⇧⌘N'],['Создать файл','rename'],['Ссылка…','link']];
+ const toolsRows=[['Разделить файл…','split'],['Объединить файлы…','combine'],null,['Комментарий…','rename'],['Альтернативные потоки','disabled']];
+ const submenuRows={open:openRows,contextOpen:[['Открыть архив…','browse','⌘O'],...openRows],create:createRows,tools:toolsRows,contextMore:[['Просмотр','text'],['Редактировать','text'],null,...createRows,null,...toolsRows,null,['7-Zip · системная интеграция','disabled']],appearance:[['Крупные значки','main'],['Мелкие значки','main'],['Список','main'],['Таблица','main','✓']],sort:[['Имя','main','✓'],['Тип','main'],['Изменён','main'],['Размер','main'],['Без сортировки','main']],hash:[['CRC32','hash'],['CRC64','hash'],['SHA-1','hash'],['SHA-256','hash'],['SHA-512','hash'],['Все алгоритмы','hash'],null,['Создать файл контрольных сумм','hash'],['Проверить контрольные суммы','hash']],time:[['Локальное время','main','✓'],['UTC','main'],['Показывать секунды','main'],['Полная точность','main']],toolbar:[['Архив','main','✓'],['Стандартная','main','✓'],['Крупные кнопки','main'],['Подписи кнопок','main','✓']]};
+ function menuItems(rows){return rows.map(r=>r?`<button type="button" class="menu-action cursor-interaction" ${r[1]==='disabled'?'disabled':r[1]?.startsWith('submenu:')?`data-submenu="${r[1].slice(8)}" aria-expanded="false" aria-haspopup="true"`:`data-go="${r[1]||'main'}"`}><span>${r[0]}</span><span class="hint">${r[1]?.startsWith('submenu:')?(r[2]?r[2]+' ': '')+'›':r[2]||''}</span></button>`:'<hr>').join('')}
+ function macMenu(kind){const rows=kind==='file-menu'?fileMenuRows:kind==='view-menu'?viewMenuRows:contextRows;return `<div class="menu-scene"><div class="menu-underlay">${main()}</div><div class="menu-stack"><div class="native-menu" aria-label="${kind==='file-menu'?'Файл':kind==='view-menu'?'Вид':'Контекстное меню'}">${menuItems(rows)}</div><div class="submenu-holder" hidden></div></div></div>`}
+ root.querySelectorAll('[data-variant]').forEach((variant,index)=>{
+  const relaxed=true,macos=variant.dataset.variant==='macOS';
+  const options=[...new Set(catalog.map(r=>r[2]))].map(group=>`<optgroup label="${group}">${catalog.filter(r=>r[2]===group).map(r=>`<option value="${r[0]}">${r[1]}</option>`).join('')}</optgroup>`).join('');
+  variant.innerHTML=`<div class="prototype relaxed" aria-label="${variant.dataset.variant}">
+   <div class="review"><button type="button" class="btn previous-screen" aria-label="Предыдущее окно">←</button><label class="form-label">Окно <select class="form-select screen-picker">${options}<optgroup label="Дизайн"><option value="tokens">Отступы и компоненты</option></optgroup></select></label><button type="button" class="btn next-screen" aria-label="Следующее окно">→</button><span class="review-position text-small text-muted" aria-live="polite"></span><label class="form-label state-field" hidden>Состояние <select class="form-select state-picker"></select></label><label class="form-check"><input class="form-check-input two-toggle" type="checkbox"><span class="form-check-label">Две панели</span></label></div>
+   <div class="stage"><div class="app"><div class="titlebar"></div><div class="screen"></div></div></div></div>`;
+  const product=variant.querySelector('.prototype'), screen=variant.querySelector('.screen');
+  product.classList.toggle('macos',macos);
+  const state={screen:'settings-view',two:false,split:.5,margin:16,row:28,radius:5,samples:{}};
+  function geometry(){product.style.setProperty('--pad',state.margin+'px');product.style.setProperty('--row',state.row+'px');product.style.setProperty('--round',state.radius+'px')}
+  const settingsCache=new Map(),backStack=[],drafts=new Map();let settingsPage='Основные',helpStack=[],pendingBrowse=null;
+  let panelDrag=null;
+  const sample=()=>state.samples[state.screen]||stateOptions[state.screen]?.[0]||'';
+  function splitBounds(panes){const available=Math.max(1,panes.getBoundingClientRect().width-8),minimum=Math.min(180,available/2);return {available,min:minimum/available,max:1-minimum/available}}
+  function layoutPanels(){
+   const panes=screen.querySelector('.panes.two');if(!panes)return;
+   const bounds=splitBounds(panes),value=Math.max(bounds.min,Math.min(bounds.max,state.split));
+   panes.style.setProperty('--split-left',value+'fr');panes.style.setProperty('--split-right',(1-value)+'fr');
+   const handle=panes.querySelector('.panel-splitter');
+   handle.setAttribute('aria-valuemin',String(Math.round(bounds.min*100)));handle.setAttribute('aria-valuemax',String(Math.round(bounds.max*100)));handle.setAttribute('aria-valuenow',String(Math.round(value*100)));handle.setAttribute('aria-valuetext',`Левая панель ${Math.round(value*100)}%, правая ${Math.round((1-value)*100)}%`);handle.setAttribute('aria-disabled',String(bounds.max-bounds.min<.01));
+  }
+  function changeSplit(value){const panes=screen.querySelector('.panes.two');if(!panes)return;const bounds=splitBounds(panes);state.split=Math.max(bounds.min,Math.min(bounds.max,value));layoutPanels()}
+  screen.addEventListener('pointerdown',e=>{const handle=e.target.closest('.panel-splitter');if(!handle||e.button!==0||handle.getAttribute('aria-disabled')==='true')return;e.preventDefault();panelDrag={id:e.pointerId,handle};handle.setPointerCapture(e.pointerId);product.classList.add('resizing-panels')});
+  screen.addEventListener('pointermove',e=>{if(!panelDrag||panelDrag.id!==e.pointerId)return;const panes=panelDrag.handle.closest('.panes'),bounds=splitBounds(panes);changeSplit((e.clientX-panes.getBoundingClientRect().left-4)/bounds.available)});
+  function finishPanelDrag(e){if(!panelDrag||panelDrag.id!==e.pointerId)return;const drag=panelDrag;panelDrag=null;product.classList.remove('resizing-panels');if(drag.handle.hasPointerCapture(drag.id))drag.handle.releasePointerCapture(drag.id);save()}
+  screen.addEventListener('pointerup',finishPanelDrag);screen.addEventListener('pointercancel',finishPanelDrag);screen.addEventListener('lostpointercapture',finishPanelDrag);
+  screen.addEventListener('dblclick',e=>{if(e.target.closest('.panel-splitter')){state.split=.5;layoutPanels();save()}});
+  screen.addEventListener('keydown',e=>{if(!e.target.closest('.panel-splitter'))return;const panes=screen.querySelector('.panes.two');if(!panes)return;const bounds=splitBounds(panes),step=e.shiftKey ? 0.1 : 0.02;let value=state.split;if(e.key==='ArrowLeft')value-=step;else if(e.key==='ArrowRight')value+=step;else if(e.key==='Home')value=bounds.min;else if(e.key==='End')value=bounds.max;else return;e.preventDefault();changeSplit(value);save()});
+  window.addEventListener('resize',layoutPanels);
+  function layoutMenu(){
+   const stack=screen.querySelector('.menu-stack');if(!stack)return;
+   stack.classList.toggle('compact',stack.clientWidth<584);
+   const trigger=stack.querySelector('.native-menu [aria-expanded=true]');
+   const top=trigger&&!stack.classList.contains('compact')?trigger.getBoundingClientRect().top-stack.querySelector('.native-menu').getBoundingClientRect().top:0;
+   stack.style.setProperty('--submenu-top',Math.round(top)+'px');
+  }
+  function closeSubmenu(focus=false){const stack=screen.querySelector('.menu-stack');if(!stack)return;const trigger=stack.querySelector('.native-menu [aria-expanded=true]');stack.querySelectorAll('[data-submenu]').forEach(b=>b.setAttribute('aria-expanded','false'));stack.classList.remove('has-submenu');stack.querySelector('.submenu-holder').hidden=true;if(focus)trigger?.focus()}
+  function showSubmenu(button,focus=false){
+   const stack=button.closest('.menu-stack'),holder=stack.querySelector('.submenu-holder');
+   stack.querySelectorAll('[data-submenu]').forEach(b=>b.setAttribute('aria-expanded',String(b===button)));
+   holder.innerHTML=`<button type="button" class="menu-action menu-back cursor-interaction">‹ Назад</button>${menuItems(submenuRows[button.dataset.submenu])}`;
+   holder.setAttribute('aria-label',button.firstElementChild.textContent);holder.hidden=false;stack.classList.add('has-submenu');layoutMenu();
+   if(focus)holder.querySelector('.menu-action:not(.menu-back):not(:disabled)')?.focus();
+  }
+  screen.addEventListener('pointerover',e=>{const b=e.target.closest('.native-menu>.menu-action');if(!b||b.contains(e.relatedTarget))return;if(b.dataset.submenu)showSubmenu(b);else closeSubmenu()});
+  window.addEventListener('resize',layoutMenu);
+  function render(){
+   product.classList.toggle('settings-view',isSettings(state.screen));
+   product.classList.toggle('report-view',['messages','properties','hash','benchmark','benchmark-total','text','temporary','help'].includes(state.screen));
+   product.classList.toggle('about-view',state.screen==='about');
+   const at=catalog.findIndex(r=>r[0]===state.screen);
+   variant.querySelector('.review-position').textContent=at<0?'Образцы':`${at+1} / ${catalog.length}`;
+   variant.querySelector('.previous-screen').disabled=at<=0;
+   variant.querySelector('.next-screen').disabled=at===catalog.length-1;
+   const states=stateOptions[state.screen]||[];
+   variant.querySelector('.state-field').hidden=!states.length;
+   variant.querySelector('.state-picker').innerHTML=states.map(x=>`<option ${sample()===x?'selected':''}>${x}</option>`).join('');
+   variant.querySelector('.two-toggle').closest('label').hidden=state.screen!=='main';
+   const screens={main,add,extract:macExtract,progress:macProgress,messages:macMessages,properties:macProperties,benchmark:macBenchmark,text:macText,rename:macRename,overwrite:macOverwrite,error:macError,tokens:macTokens,
+    'file-menu':()=>macMenu('file-menu'),'view-menu':()=>macMenu('view-menu'),'context-menu':()=>macMenu('context-menu'),
+    copy:()=>macCopy(sample()==='Перемещение'),split:macSplit,combine:macCombine,
+    delete:()=>macDelete(sample()==='Безвозвратное удаление'),link:macLink,browse:()=>macBrowse(sample()==='Выбор архива'),history:macHistory,temporary:macTemporary,
+    'format-options':()=>macFormatOptions(sample()),password:macPassword,memory:macMemory,hash:macHashes,'benchmark-total':macBenchmarkTotal,help:macHelp,about:macAbout,'split-error':macSplitError,
+    ...Object.fromEntries(Object.entries(settingsRoutes).map(([id,route])=>[id,()=>macSettings(route.page)]))};
+   screen.innerHTML=screens[state.screen]();
+   const panes=screen.querySelector('.panes');if(panes){panes.classList.toggle('two',state.two);screen.querySelector('.peer').hidden=!state.two;screen.querySelector('.panel-splitter').hidden=!state.two;panes.querySelectorAll('.filetable').forEach(table=>{const wrapper=document.createElement('div');wrapper.className='file-table-scroll';table.before(wrapper);wrapper.append(table)})}
+   screen.querySelectorAll('button').forEach(b=>{if(!b.textContent.trim()&&!b.hasAttribute('aria-label'))b.setAttribute('aria-label','На уровень вверх')});
+   screen.querySelectorAll('input').forEach(i=>{if(i.closest('.field')?.textContent.includes('пароля')||i.closest('.field')?.textContent.trim().startsWith('Пароль'))i.type='password'});
+   screen.querySelectorAll('input[type=radio]').forEach(r=>r.name=r.name+'-'+index);
+   if(macos){
+    product.querySelector('.system-menu')?.remove();
+    product.querySelector('.stage').insertAdjacentHTML('afterbegin',`<nav class="system-menu" aria-label="Строка меню macOS"><details class="app-menu"><summary class="cursor-interaction">Sevenzip</summary><div><button type="button" class="open-settings cursor-interaction"><span>Настройки…</span><span>⌘,</span></button><button type="button" data-go="about">О Sevenzip</button><button type="button" data-go="main"><span>Завершить Sevenzip</span><span>⌘Q</span></button></div></details><button type="button" data-go="file-menu">Файл</button><span>Правка</span><button type="button" data-go="view-menu">Вид</button><span>Избранное</span><button type="button" data-go="benchmark">Сервис</button><button type="button" data-go="help">Справка</button></nav>`);
+    const standalone=isSettings(state.screen)||['messages','properties','hash','benchmark','benchmark-total','text','temporary','help','about'].includes(state.screen);
+    product.querySelector('.titlebar').innerHTML=`<span class="window-lights" aria-hidden="true"><b></b><b></b><b></b></span><span>${isSettings(state.screen)?'Настройки':standalone?screenNames.find(r=>r[0]===state.screen)[1]:state.screen==='tokens'?'Компоненты':'Проект — Sevenzip'}</span>`;
+    const stage=screen.querySelector('.dialog-stage');
+    if(stage){
+     if(standalone){stage.classList.add('settings-stage');if(isSettings(state.screen)){settingsPage=settingsRoutes[state.screen].page;const body=screen.querySelector('.settings-body');if(settingsCache.has(settingsPage))body.replaceChildren(...settingsCache.get(settingsPage));const detail=body.querySelector(`[data-settings-detail="${settingsRoutes[state.screen].detail}"]`);if(detail)detail.open=true}}
+     else stage.insertAdjacentHTML('afterbegin',`<div class="parent-context">${icon('folder')}<span>Документы / Проект · 8 объектов</span></div>`);
+    }
+    screen.querySelectorAll('.help').forEach(b=>{b.textContent='?';b.setAttribute('aria-label','Справка по текущему окну')});
+    const dlg=screen.querySelector('.dialog');if(dlg){dlg.setAttribute('role',standalone?'region':['error','overwrite','delete','split-error'].includes(state.screen)?'alertdialog':'dialog');dlg.setAttribute('aria-label',dlg.querySelector('.dialog-title').textContent)}
+   }
+   applySample();
+   const draft=drafts.get(state.screen+'|'+sample());
+   if(draft&&screen.querySelector('.simple-add')){const format=screen.querySelector('.simple-add .columns select'),at=[...screen.querySelectorAll('input,select,textarea')].indexOf(format);if(draft.fields[at])format.value=draft.fields[at].value;updateAdd()}
+   if(draft){screen.querySelectorAll('input,select,textarea').forEach((c,i)=>{const v=draft.fields[i];if(v){c.value=v.value;c.checked=v.checked}});screen.querySelectorAll('.content details').forEach((c,i)=>c.open=!!draft.open[i])}
+   if(globalThis.lucide)lucide.createIcons({attrs:{width:16,height:16}});
+   geometry();updateAdd();updateExtract();updateDependencies();layoutPanels();layoutMenu();
+  }
+  function captureDraft(){if(isSettings(state.screen)){const body=screen.querySelector('.settings-body');if(body)settingsCache.set(settingsPage,[...body.childNodes])}drafts.set(state.screen+'|'+sample(),{fields:[...screen.querySelectorAll('input,select,textarea')].map(c=>({value:c.value,checked:c.checked})),open:[...screen.querySelectorAll('.content details')].map(d=>d.open)})}
+  function navigateTo(name,remember=true){if(remember)captureDraft();state.screen=name;variant.querySelector('.screen-picker').value=name;render();save()}
+  function openView(name){if(name==='settings')name='settings-view';backStack.push(state.screen.endsWith('-menu')?'main':state.screen);navigateTo(name)}
+  function closeView(){drafts.delete(state.screen+'|'+sample());navigateTo(backStack.pop()||'main',false)}
+  function applySample(){
+   const selected=sample();
+   if(state.screen==='main'){
+    if(selected==='Крупные значки')screen.querySelectorAll('.pane').forEach(p=>{p.querySelector('.filetable').outerHTML=`<div class="icon-grid">${files.slice(1).map(r=>`<div class="icon-item">${icon(r[3])}<span>${r[0]}</span></div>`).join('')}</div>`;p.querySelector('.filespace').remove()});
+    if(selected==='Отмеченные и удалённые')screen.querySelectorAll('.pane').forEach(p=>{const rows=p.querySelectorAll('tbody tr');rows[5].classList.add('deleted-file');rows[6].classList.add('marked-file');rows[7].classList.add('marked-file')});
+   }
+   if(state.screen==='add'){
+    const format=screen.querySelector('.simple-add .columns select'),name=screen.querySelector('.simple-add>.field input');
+    format.value=selected==='ZIP'?'zip':selected==='TAR'?'tar':'7z';name.value=format.value==='7z'?'Проект.7z':format.value==='zip'?'Проект.zip':'Проект.tar';
+   }
+   if(state.screen==='rename'){
+    const configs={'Переименовать':['Переименовать','Новое имя','Описание проекта.txt','Переименовать'],'Создать папку':['Создать папку','Имя папки','Новая папка','Создать'],'Создать файл':['Создать файл','Имя файла','Новый файл.txt','Создать'],'Выделить по маске':['Выделить файлы','Маска имён','*.txt','Выделить'],'Комментарий':['Комментарий к файлу','Комментарий','Исходники и документы проекта','Сохранить']};
+    const c=configs[selected]||configs['Переименовать'];screen.querySelector('.dialog-title').textContent=c[0];const field=screen.querySelector('.field');field.querySelector('span').textContent=c[1];field.querySelector('input').value=c[2];screen.querySelector('.primary').textContent=c[3];
+   }
+   if(state.screen==='password')screen.querySelector('.password-prompt-error').hidden=selected!=='Неверный пароль';
+   if(state.screen==='overwrite'){
+    const buttons=screen.querySelectorAll('.decision');if(selected==='Один файл')[1,2,4].forEach(i=>buttons[i].disabled=true);
+    if(selected==='Конфликт папок'){screen.querySelector('.dialog-title').textContent='Папка уже существует';screen.querySelector('.alert-text').textContent='Папка назначения уже содержит папку «Проект». Объединить её содержимое с папкой из архива?';screen.querySelectorAll('.comparison>div>span').forEach(x=>x.textContent='Проект');screen.querySelectorAll('.comparison small').forEach(x=>x.textContent='Папка · 18.10.2026 12:40');buttons[2].disabled=true;buttons[0].textContent='Объединить';buttons[1].textContent='Объединить все'}
+   }
+   if(state.screen==='progress'){
+    if(selected==='Пауза'){screen.querySelector('.pause-button').textContent='Продолжить';screen.querySelector('.dialog').classList.add('progress-paused');screen.querySelector('.dialog-title').textContent='Пауза · Создание архива'}
+    if(selected==='Есть ошибки'||selected==='Завершено с ошибками'){const actions=screen.querySelector('.operation-actions');actions.insertAdjacentHTML('beforebegin',`<div class="data-region progress-log"><table class="data-table log-table"><tbody>${logMessages.map((r,i)=>`<tr><td>${i+1}</td><td><div class="log-message"><span>${r[0]}</span><span class="log-path">${r[1]}</span></div></td></tr>`).join('')}</tbody></table></div>`);screen.querySelector('.content>.hint').textContent='Обработано 248 из 400 файлов · Ошибок: 3'}
+    if(selected==='Завершено с ошибками'){screen.querySelector('.dialog-title').textContent='Операция завершена с ошибками';screen.querySelector('.progresshead span:last-child').textContent='100%';screen.querySelector('.meter>div').style.width='100%';screen.querySelector('.meter').setAttribute('aria-valuenow','100');screen.querySelector('.operation-actions').innerHTML=`${goButton('Все сообщения','messages')}${btn('Закрыть','','dismiss-report')}`}
+    if(selected==='Неизвестный объём'){screen.querySelector('.progresshead span:last-child').textContent='Объём неизвестен';screen.querySelector('.meter').removeAttribute('aria-valuenow');screen.querySelector('.meter>div').style.width='33%';screen.querySelectorAll('.stats .stat')[1].innerHTML='<span class="hint">Осталось</span><span>Неизвестно</span>';screen.querySelector('.content>.hint').textContent='Обработано 248 файлов · Ошибок: 0'}
+   }
+   if(state.screen==='messages'){
+    if(selected==='Без ошибок'){screen.querySelector('.report-toolbar').innerHTML='<span>Операция завершена успешно</span><span class="hint">Сообщений: 0</span>';screen.querySelector('.data-region').innerHTML='<div class="empty-list">Ошибок и предупреждений нет</div>'}
+    if(selected==='Длинные сообщения'){const body=screen.querySelector('tbody');body.innerHTML=Array.from({length:12},(_,i)=>`<tr><td>${i+1}</td><td><div class="log-message"><span>Не удаётся открыть файл: доступ запрещён</span><span class="log-path">${'Каталог с длинным именем / '.repeat(6)}Файл ${i+1}.txt</span></div></td></tr>`).join('');screen.querySelector('.report-toolbar .hint').textContent='Сообщений: 12'}
+   }
+   if(state.screen==='properties'){
+    if(selected==='Несколько объектов')screen.querySelector('tbody').innerHTML=[['Выбрано','4 файла и 2 папки'],['Общий размер','134 637 158 байт'],['Расположение','Документы / Проект'],['Изменён','18.10.2026 12:40:08']].map(r=>`<tr><th scope="row">${r[0]}</th><td>${r[1]}</td></tr>`).join('');
+    if(selected==='Длинное значение')screen.querySelector('tbody tr:last-child td').textContent='Комментарий к файлу. '.repeat(80);
+   }
+   if(state.screen==='temporary'){
+    if(selected==='Пусто'){screen.querySelector('tbody').innerHTML='';screen.querySelector('.empty-list').hidden=false;screen.querySelector('.temp-status').textContent='Временных файлов нет';screen.querySelector('.temp-remove').disabled=true}
+    if(selected==='Файл используется')screen.querySelector('.temp-error').hidden=false;
+   }
+   if(state.screen==='error'&&selected!=='Повреждённый архив'){
+    const denied=selected==='Нет доступа';screen.querySelector('.alert-heading span').textContent=denied?'Нет доступа к файлу':'Недостаточно места на диске';const text=screen.querySelectorAll('.alert-text');text[0].textContent=denied?'Не удалось открыть «Проект.7z»: доступ запрещён.':'Не удалось записать архив в папку назначения.';text[1].textContent=denied?'Проверьте права доступа к файлу и папке.':'Освободите место на диске или выберите другую папку назначения.';
+   }
+   if(state.screen==='benchmark'&&selected==='Ошибка теста'){screen.querySelector('.content').insertAdjacentHTML('beforeend','<div class="inline-error" role="alert">Недостаточно памяти для выбранного словаря. Уменьшите размер словаря и перезапустите тест.</div>');screen.querySelector('.benchmark-state').textContent='Остановлено';screen.querySelector('.benchmark-stop').disabled=true}
+   if(state.screen==='benchmark'){
+    screen.querySelectorAll('.stats .stat')[1].outerHTML=field('Число проходов','3',['1','3','5','10']);
+    screen.querySelector('.content').insertAdjacentHTML('beforeend','<div class="hint text-small">Apple Silicon · 8 потоков<br>macOS · arm64 · 7-Zip 26.04<br>Демонстрационные данные тестирования</div>');
+   }
+   if(state.screen==='text'&&state.samples.text==='Лицензия 7-Zip'){screen.querySelector('.report-console').value=licenseText;screen.querySelector('.titlebar')?.remove();product.querySelector('.titlebar span:last-child').textContent='Лицензия 7-Zip'}
+   if(state.screen==='text'&&sample()==='Длинный текст')screen.querySelector('.report-console').value=Array.from({length:200},(_,i)=>`${i+1}. Документы / Папка с очень длинным именем / Рабочие материалы / Описание проекта.txt — проверено`).join('\n');
+   if(state.screen==='help'){helpStack=[];screen.querySelector('.help-back').disabled=true}
+   screen.querySelectorAll('.dialog').forEach(d=>d.setAttribute('aria-label',d.querySelector('.dialog-title').textContent));
+  }
+  function updateDependencies(){
+   screen.querySelectorAll('.dependent .field input').forEach(c=>{if(c.closest('label').textContent.toLowerCase().includes('лимит')){c.type='number';c.min='1';c.step='1';c.classList.add('numeric-input')}});
+   screen.querySelectorAll('.enable-next').forEach(c=>{const body=c.closest('label').nextElementSibling;if(body)body.querySelectorAll('input,select,button').forEach(x=>x.disabled=!c.checked)});
+   screen.querySelectorAll('.time-override').forEach(row=>row.querySelector('.override-value').disabled=!row.querySelector('.override-enable').checked);
+   const work=screen.querySelector('.work-path');if(work){const specified=screen.querySelectorAll('input[type=radio]')[2].checked;work.querySelectorAll('input,button').forEach(x=>x.disabled=!specified)}
+   if(state.screen==='password'){const input=screen.querySelector('.field input');input.type=screen.querySelector('.prompt-password-show').checked?'text':'password'}
+   if(isSettings(state.screen)){const apply=screen.querySelector('.settings-apply');if(apply)apply.textContent='Применить'}
+  }
+  function updateExtract(){
+   if(!macos||state.screen!=='extract')return;
+   const sub=screen.querySelector('.extract-subfolder');screen.querySelector('.extract-dependent input').disabled=!sub.checked;
+   const toggle=screen.querySelector('.extract-password'),body=screen.querySelector('.extract-password-body');
+   body.hidden=!toggle.checked;toggle.setAttribute('aria-expanded',String(toggle.checked));
+   const input=body.querySelector('.field input');input.disabled=body.hidden;input.type=body.querySelector('.extract-show').checked?'text':'password';
+  }
+  function inheritView(source){if(state.screen===source.screen&&state.two===source.two)return;state.screen=source.screen;state.two=source.two;variant.querySelector('.screen-picker').value=state.screen;variant.querySelector('.two-toggle').checked=state.two;render()}
+  views.push(inheritView);
+  function save(){views.forEach(inherit=>inherit(state));if(window.openai?.setWidgetState)window.openai.setWidgetState({modelContent:{variant:variant.dataset.variant,...state}}).catch(()=>{})}
+  function updateAdd(){
+   const form=screen.querySelector('.simple-add');if(!form)return;
+   const format=form.querySelector('.columns select').value;
+   const toggle=form.querySelector('.password-toggle'),body=form.querySelector('.password-body');
+   const supported=format==='7z'||format==='zip';
+   toggle.disabled=!supported;
+   body.hidden=!toggle.checked||!supported;
+   toggle.setAttribute('aria-expanded',String(!body.hidden));
+   const summary=form.querySelector('.password-summary');
+   summary.textContent=supported?(body.hidden?'Выключено':'Включено'):'Недоступно для '+format;
+   body.querySelectorAll('input,select').forEach(c=>c.disabled=body.hidden);
+   body.querySelectorAll('.field input').forEach(c=>c.type=form.querySelector('.show-password').checked?'text':'password');
+   const names=body.querySelector('.check:last-child input');names.disabled=body.hidden||format!=='7z';
+   const advanced=form.querySelector('.advanced-options');
+   const method=advanced.querySelector('select');
+   if(method.dataset.format!==format){const methods=format==='7z'?['LZMA2','LZMA','PPMd']:format==='zip'?['Deflate','Deflate64','BZip2','LZMA','PPMd']:format==='wim'?['Без сжатия','XPRESS','LZX']:['Не применяется'];method.innerHTML=methods.map((m,i)=>`<option ${i===0?'selected':''}>${m}</option>`).join('');method.dataset.format=format}
+   const noCompression=format==='tar';
+   form.querySelectorAll('.advanced-body fieldset:first-child select').forEach(c=>c.disabled=noCompression);
+   form.querySelector('.compression-memory').hidden=noCompression;
+   [...form.querySelectorAll('.advanced-body input[type=checkbox]')].forEach(c=>{const label=c.closest('label').textContent;if(label.includes('SFX')){c.disabled=format!=='7z'||sample()==='SFX недоступен';c.setAttribute('data-tooltip',c.disabled?'Нет совместимого SFX-модуля для выбранного формата':'Создать самораспаковывающийся архив')}if(label.includes('открытые файлы')){c.disabled=true;c.setAttribute('data-tooltip','Параметр недоступен на macOS')}});
+   const changes=[...advanced.querySelectorAll('input,select')].filter(c=>!c.disabled).filter(c=>c.type==='checkbox'?c.checked!==c.defaultChecked:c.tagName==='SELECT'?c.value!==[...c.options].find(o=>o.defaultSelected)?.value:c.value!==c.defaultValue);
+   advanced.querySelector('.advanced-summary').dataset.changed=String(changes.length>0);
+   advanced.querySelector('.advanced-summary').textContent=changes.length?changes.map(c=>c.closest('label').querySelector('span').textContent+(c.type==='checkbox'?'':': '+c.value)).join(' · '):'Стандартные';
+  }
+  function markSettingsChange(e){const detail=e.target.closest('.settings-detail');if(detail)detail.querySelector('.settings-change').textContent='Изменено';const apply=screen.querySelector('.settings-apply');if(apply)apply.disabled=false}
+  screen.addEventListener('change',e=>{updateAdd();updateExtract();updateDependencies();markSettingsChange(e)});
+  screen.addEventListener('input',e=>{updateAdd();updateDependencies();screen.querySelectorAll('input').forEach(i=>i.setCustomValidity(''));markSettingsChange(e)});
+  variant.querySelector('.screen-picker').addEventListener('change',e=>{backStack.length=0;state.screen=e.target.value;render();save()});
+  variant.querySelector('.state-picker').addEventListener('change',e=>{state.samples[state.screen]=e.target.value;render();save()});
+  variant.querySelector('.previous-screen').addEventListener('click',()=>{const at=catalog.findIndex(r=>r[0]===state.screen);if(at>0)navigateTo(catalog[at-1][0])});
+  variant.querySelector('.next-screen').addEventListener('click',()=>{const at=catalog.findIndex(r=>r[0]===state.screen);if(at<catalog.length-1)navigateTo(catalog[at+1][0])});
+  variant.querySelector('.two-toggle').addEventListener('change',e=>{state.two=e.target.checked;render();save()});
+  function confirm(){
+   if(!macos)return;
+   if(state.screen==='add'||state.screen==='extract'){
+    screen.querySelector('.inline-error')?.remove();screen.querySelectorAll('.field-error').forEach(i=>i.classList.remove('field-error'));
+    const fields=[...screen.querySelectorAll('.content input.product-input')].filter(i=>!i.disabled);
+    let invalid=fields.slice(0,state.screen==='add'?2:1).find(i=>!i.value.trim()),message='Укажите имя и папку назначения.';
+    if(!invalid&&state.screen==='add'&&screen.querySelector('.password-toggle').checked){const passwords=[...screen.querySelectorAll('.password-body .field input')];if(!passwords[0].value||passwords[0].value!==passwords[1].value){invalid=passwords[1];message='Введите пароль и повторите его без изменений.'}}
+    if(invalid){invalid.classList.add('field-error');const error=document.createElement('p');error.className='inline-error';error.setAttribute('role','alert');error.textContent=message;invalid.closest('.field').append(error);invalid.focus();return}
+    navigateTo('progress');
+   }else if(state.screen==='rename'){
+    const input=screen.querySelector('.field input');if(!input.value.trim()){input.setCustomValidity('Введите имя файла.');input.reportValidity();return}closeView();
+   }else if(isSettings(state.screen)){settingsCache.clear();closeView()}
+   else if(state.screen==='password'){
+    const input=screen.querySelector('.field input');if(!input.value){input.setCustomValidity('Введите пароль.');input.reportValidity();return}navigateTo('progress');
+   }else if(state.screen==='split'){
+    const value=screen.querySelector('.volume-size').value.trim();if(!value||value==='10X'){openView('split-error');return}navigateTo('progress');
+   }else if(['copy','combine','memory','link'].includes(state.screen))navigateTo('progress');
+   else if(state.screen==='browse'){
+    const value=screen.querySelector('.field input').value;
+    if(pendingBrowse){const draft=drafts.get(pendingBrowse.key);if(draft?.fields[pendingBrowse.index])draft.fields[pendingBrowse.index].value='Документы / '+value;pendingBrowse=null}
+    closeView();
+   }else if(state.screen==='history')navigateTo('main');
+   else if(state.screen==='format-options')closeView();
+  }
+  product.addEventListener('click',e=>{
+   if(e.target.closest('.open-settings')){openView('settings-view');return}
+   const trigger=e.target.closest('[data-go]');if(trigger&&!trigger.disabled){
+    if(trigger.dataset.go==='browse'){const input=trigger.parentElement.querySelector('input');pendingBrowse=input?{key:state.screen+'|'+sample(),index:[...screen.querySelectorAll('input,select,textarea')].indexOf(input)}:null}
+    if(trigger.dataset.go==='browse')state.samples.browse=pendingBrowse?'Выбор папки':'Выбор архива';
+    if(trigger.textContent.includes('Переместить'))state.samples.copy='Перемещение';
+    if(trigger.textContent.includes('Создать папку'))state.samples.rename='Создать папку';
+    if(trigger.textContent.includes('Создать файл'))state.samples.rename='Создать файл';
+    if(trigger.textContent.includes('Комментарий'))state.samples.rename='Комментарий';
+    if(trigger.textContent.includes('Крупные значки'))state.samples.main='Крупные значки';
+    if(trigger.textContent.includes('Таблица')||trigger.textContent==='Список')state.samples.main='Таблица';
+    if(trigger.textContent.includes('Две панели'))state.two=!state.two;
+    if(trigger.textContent.includes('Лицензия 7-Zip'))state.samples.text='Лицензия 7-Zip';
+    openView(trigger.dataset.go)
+   }
+  });
+  screen.addEventListener('click',e=>{
+   const row=e.target.closest('tr[data-file]');if(row){row.closest('tbody').querySelectorAll('tr').forEach(r=>r.classList.toggle('selected',r===row));row.closest('.pane').querySelector('[data-selection]').textContent=row.dataset.file}
+   const button=e.target.closest('button');if(!button)return;
+   if(button.classList.contains('copy-report')){
+    const console=screen.querySelector('.report-console'),table=screen.querySelector('.data-table');const text=console?console.value:table?.innerText||'';
+    const copied=()=>{button.textContent='Скопировано'};
+    const fallback=()=>{let area=screen.querySelector('.copy-buffer');if(!area){area=document.createElement('textarea');area.className='report-console copy-buffer';area.setAttribute('aria-label','Текст для копирования — нажмите Command C');screen.querySelector('.content').append(area)}area.value=text;area.focus();area.select();button.textContent='Выделено — ⌘C'};
+    if(navigator.clipboard?.writeText)navigator.clipboard.writeText(text).then(copied,fallback);else fallback();return;
+   }
+   if(button.dataset.go)return;
+   if(button.classList.contains('dismiss-report')){closeView();return}
+   if(button.classList.contains('decision')){navigateTo('progress');return}
+   if(button.classList.contains('confirm-delete')){navigateTo('progress');return}
+   if(button.classList.contains('list-choice')&&!button.dataset.topic){screen.querySelectorAll('.list-choice').forEach(b=>b.classList.toggle('selected',b===button));const input=screen.querySelector('.field input');if(input)input.value=button.dataset.choice;return}
+   if(button.classList.contains('menu-back')){closeSubmenu(true);return}
+   if(button.dataset.submenu){showSubmenu(button);return}
+   if(button.classList.contains('settings-apply')){button.textContent='Применено';button.disabled=true;return}
+   if(button.classList.contains('associations-all')||button.classList.contains('associations-none')){screen.querySelectorAll('.association-choice').forEach(c=>c.checked=button.classList.contains('associations-all'));screen.querySelector('.settings-apply').disabled=false;return}
+   if(button.classList.contains('temp-remove')){if(sample()==='Файл используется'){screen.querySelector('.temp-error').hidden=false;return}screen.querySelectorAll('.temp-select:checked').forEach(c=>c.closest('tr').remove());const count=screen.querySelectorAll('.temp-select').length;screen.querySelector('.temp-status').textContent=count?`Осталось файлов: ${count}`:'Временных файлов нет';screen.querySelector('.empty-list').hidden=!!count;button.disabled=!screen.querySelector('.temp-select:checked');return}
+   if(button.classList.contains('temp-refresh')){drafts.delete(state.screen+'|'+sample());render();return}
+   if(button.classList.contains('temp-up')||button.classList.contains('browse-up')){const input=screen.querySelector('.field input');if(input)input.value='Документы';return}
+   if(button.classList.contains('browse-new')){state.samples.rename='Создать папку';openView('rename');return}
+   if(button.dataset.topic){const article=screen.querySelector('.help-article');helpStack.push(article.innerHTML);const t=helpTopics[button.dataset.topic];article.innerHTML=`<h3>${t[0]}</h3><p>${t[1]}</p>`;screen.querySelectorAll('[data-topic]').forEach(b=>b.classList.toggle('selected',b===button));screen.querySelector('.help-back').disabled=false;return}
+   if(button.classList.contains('help-back')){const previous=helpStack.pop();if(previous)screen.querySelector('.help-article').innerHTML=previous;button.disabled=!helpStack.length;return}
+   if(button.classList.contains('benchmark-stop')){screen.querySelector('.benchmark-state').textContent='Остановлено';button.disabled=true;return}
+   if(button.classList.contains('benchmark-restart')){screen.querySelector('.benchmark-state').textContent='Выполняется';screen.querySelector('.benchmark-stop').disabled=false;return}
+   const page=button.dataset.settingsPage;
+   if(page){const body=screen.querySelector('.settings-body');settingsCache.set(settingsPage,[...body.childNodes]);settingsPage=page;if(settingsCache.has(page))body.replaceChildren(...settingsCache.get(page));else body.innerHTML=settingsPages[page]();screen.querySelectorAll('[data-settings-page]').forEach(b=>{b.classList.toggle('current',b===button);b.setAttribute('aria-pressed',String(b===button))});state.screen=settingsIds[page];variant.querySelector('.screen-picker').value=state.screen;variant.querySelector('.review-position').textContent=`${catalog.findIndex(r=>r[0]===state.screen)+1} / ${catalog.length}`;updateDependencies();save();return}
+   const text=button.dataset.command||button.textContent.trim(),target={'Добавить':'add','Извлечь':'extract','Копировать':'copy','Переместить':'copy','Удалить':'delete','Информация':'properties','Тестировать':'progress','Настройки…':'format-options','Обзор…':'browse','Выбрать…':'browse'}[text];
+   if(button.classList.contains('help')){openView('help');return}
+   if(target){if(text==='Переместить')state.samples.copy='Перемещение';if(text==='Копировать')state.samples.copy='Копирование';if(target==='browse'){const input=button.parentElement.querySelector('input');pendingBrowse=input?{key:state.screen+'|'+sample(),index:[...screen.querySelectorAll('input,select,textarea')].indexOf(input)}:null;state.samples.browse='Выбор папки'}openView(target)}
+   else if(button.classList.contains('pause-button')){state.samples.progress=text==='Пауза'?'Пауза':'Выполняется';captureDraft();render();save()}
+   else if(macos&&button.classList.contains('primary'))confirm();
+   else if(text==='Отмена'||text==='ОК'){settingsCache.clear();closeView()}
+   else if(macos&&text==='В фоне')navigateTo('main');
+  });
+  product.addEventListener('keydown',e=>{
+   if(!macos)return;
+   if(e.metaKey&&e.key===','){e.preventDefault();openView('settings-view');return}
+   if(e.key==='Escape'&&screen.querySelector('.menu-stack.has-submenu')){e.preventDefault();closeSubmenu(true);return}
+   if(e.key==='Escape'&&product.querySelector('.app-menu[open]')){e.preventDefault();product.querySelector('.app-menu').open=false;return}
+   if((e.key==='Escape'||(e.metaKey&&e.key==='.'))&&!['main','tokens'].includes(state.screen)){e.preventDefault();settingsCache.clear();closeView();return}
+   if(e.key==='ArrowRight'&&e.target.closest('[data-submenu]')){e.preventDefault();showSubmenu(e.target.closest('[data-submenu]'),true);return}
+   if(e.key==='ArrowLeft'&&e.target.closest('.submenu-holder')){e.preventDefault();closeSubmenu(true);return}
+   if(['ArrowDown','ArrowUp'].includes(e.key)&&e.target.closest('.native-menu,.submenu-holder')){const parent=e.target.closest('.native-menu,.submenu-holder'),choices=[...parent.querySelectorAll('button:not(:disabled)')].filter(b=>b.offsetParent!==null);const at=choices.indexOf(e.target.closest('button'));const next=choices[(at+(e.key==='ArrowDown'?1:-1)+choices.length)%choices.length];if(next){e.preventDefault();next.focus()}return}
+   if(e.key==='Enter'&&(isSettings(state.screen)||['add','extract','rename','copy','split','combine','link','browse','history','memory','password','format-options'].includes(state.screen))&&!e.target.closest('button,select,summary,textarea')){e.preventDefault();confirm()}
+  });
+  const saved=window.openai?.widgetState?.modelContent;if(screenNames.some(x=>x[0]===saved?.screen)){state.screen=saved.screen;state.two=!!saved.two;state.split=typeof saved.split==='number'&&Number.isFinite(saved.split)?Math.max(.05,Math.min(.95,saved.split)):.5;state.samples=saved.samples&&typeof saved.samples==='object'?saved.samples:{};variant.querySelector('.screen-picker').value=state.screen;variant.querySelector('.two-toggle').checked=state.two}
+  render();
+  variant.querySelector('.screen-picker').value=state.screen;
+  updateAdd();
+  if(globalThis.Tweak){const tweak=new Tweak({container:product,onChange:()=>{geometry();save()}});tweak.addSlider(state,'margin',{label:'Край окна',min:8,max:32,step:4,unit:'px'});tweak.addSlider(state,'row',{label:'Строка списка',min:24,max:40,step:2,unit:'px'});tweak.addSlider(state,'radius',{label:'Скругление полей',min:0,max:8,step:1,unit:'px'})}
+  window.addEventListener('openai:set_globals',e=>{const s=e.detail?.globals?.widgetState?.modelContent;if(!screenNames.some(x=>x[0]===s?.screen))return;inheritView({screen:s.screen,two:!!s.two})});
+ });
+})();
+</script>

@@ -20,6 +20,7 @@ evidence applies only to the recorded revision, platform and scenario.
 | Find workflows, source owners and regressions | [Regression matrix](regression-matrix.md) |
 | Find a test suite or UI data producer | [Coverage](testing/coverage.md), [geometry](testing/geometry.md) |
 | Understand UI/backend ownership and boundaries | [Architecture](architecture.md) |
+| Implement the proposed interface simplification and redesign | [Redesign plan](ui-redesign-plan.md) |
 | Check behavior and platform differences | [Parity](7zfm-parity.md) |
 | Change layout, text, visibility or resizing | [UI contracts](ui-layout-contracts.md) |
 | Extract resources and compare them with widgets | [UI reference tooling](ui-reference.md) |

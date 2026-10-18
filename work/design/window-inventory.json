@@ -1,0 +1,3346 @@
+[
+  {
+    "key": "QMainWindow",
+    "title": "Главное окно и меню",
+    "source": "macos/light/main/source-panel-chrome-ru-980-0.json",
+    "controls": [
+      {
+        "class": "QComboBox",
+        "enabled": true,
+        "name": "pathCombo"
+      },
+      {
+        "class": "QLineEdit",
+        "enabled": true,
+        "name": "archivePath"
+      },
+      {
+        "class": "QTableWidget",
+        "enabled": true,
+        "name": "archiveTable"
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "selectedItemsStatus",
+        "text": "Выделено объектов: 0 / 28"
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "selectedSizeStatus",
+        "text": ""
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "focusedSizeStatus",
+        "text": ""
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "focusedDateStatus",
+        "text": ""
+      }
+    ]
+  },
+  {
+    "key": "fileMenu",
+    "title": "Главное окно и меню",
+    "source": "macos/light/main/main-shell-fileMenu-640x400.json",
+    "controls": [
+      {
+        "actions": [
+          {
+            "bounds": [
+              0,
+              4,
+              225,
+              18
+            ],
+            "enabled": true,
+            "fullyVisible": true,
+            "separator": false,
+            "shellVerb": "",
+            "submenu": false,
+            "text": "Open archive…"
+          },
+          {
+            "bounds": [
+              0,
+              22,
+              225,
+              12
+            ],
+            "enabled": true,
+            "fullyVisible": true,
+            "separator": true,
+            "shellVerb": "",
+            "submenu": false,
+            "text": ""
+          },
+          {
+            "bounds": [
+              0,
+              34,
+              225,
+              18
+            ],
+            "enabled": false,
+            "fullyVisible": true,
+            "separator": false,
+            "shellVerb": "",
+            "submenu": false,
+            "text": "&Open"
+          },
+          {
+            "bounds": [
+              0,
+              52,
+              225,
+              18
+            ],
+            "enabled": true,
+            "fullyVisible": true,
+            "separator": false,
+            "shellVerb": "",
+            "submenu": false,
+            "text": "Open as archive"
+          },
+          {
+            "bounds": [
+              0,
+              70,
+              225,
+              18
+            ],
+            "enabled": true,
+            "fullyVisible": true,
+            "separator": false,
+            "shellVerb": "",
+            "submenu": false,
+            "text": "Single archive layer (*)"
+          },
+          {
+            "bounds": [
+              0,
+              88,
+              225,
+              18
+            ],
+            "enabled": true,
+            "fullyVisible": true,
+            "separator": false,
+            "shellVerb": "",
+            "submenu": false,
+            "text": "Parse file as archive (#)"
+          },
+          {
+            "bounds": [
+              0,
+              106,
+              225,
+              18
+            ],
+            "enabled": false,
+            "fullyVisible": true,
+            "separator": false,
+            "shellVerb": "",
+            "submenu": false,
+            "text": "Open in external application"
+          },
+          {
+            "bounds": [
+              0,
+              124,
+              225,
+              18
+            ],
+            "enabled": false,
+            "fullyVisible": true,
+            "separator": false,
+            "shellVerb": "",
+            "submenu": false,
+            "text": "&View"
+          },
+          {
+            "bounds": [
+              0,
+              142,
+              225,
+              18
+            ],
+            "enabled": false,
+            "fullyVisible": true,
+            "separator": false,
+            "shellVerb": "",
+            "submenu": false,
+            "text": "&Edit"
+          },
+          {
+            "bounds": [
+              0,
+              160,
+              225,
+              12
+            ],
+            "enabled": true,
+            "fullyVisible": true,
+            "separator": true,
+            "shellVerb": "",
+            "submenu": false,
+            "text": ""
+          },
+          {
+            "bounds": [
+              0,
+              172,
+              225,
+              18
+            ],
+            "enabled": true,
+            "fullyVisible": true,
+            "separator": false,
+            "shellVerb": "",
+            "submenu": false,
+            "text": "Rena&me"
+          },
+          {
+            "bounds": [
+              0,
+              190,
+              225,
+              18
+            ],
+            "enabled": true,
+            "fullyVisible": true,
+            "separator": false,
+            "shellVerb": "",
+            "submenu": false,
+            "text": "&Copy To..."
+          },
+          {
+            "bounds": [
+              0,
+              208,
+              225,
+              18
+            ],
+            "enabled": true,
+            "fullyVisible": true,
+            "separator": false,
+            "shellVerb": "",
+            "submenu": false,
+            "text": "&Move To..."
+          },
+          {
+            "bounds": [
+              0,
+              226,
+              225,
+              18
+            ],
+            "enabled": false,
+            "fullyVisible": true,
+            "separator": false,
+            "shellVerb": "",
+            "submenu": false,
+            "text": "&Delete"
+          },
+          {
+            "bounds": [
+              0,
+              244,
+              225,
+              12
+            ],
+            "enabled": true,
+            "fullyVisible": true,
+            "separator": true,
+            "shellVerb": "",
+            "submenu": false,
+            "text": ""
+          },
+          {
+            "bounds": [
+              0,
+              256,
+              225,
+              18
+            ],
+            "enabled": false,
+            "fullyVisible": true,
+            "separator": false,
+            "shellVerb": "",
+            "submenu": false,
+            "text": "&Split file..."
+          },
+          {
+            "bounds": [
+              0,
+              274,
+              225,
+              18
+            ],
+            "enabled": false,
+            "fullyVisible": true,
+            "separator": false,
+            "shellVerb": "",
+            "submenu": false,
+            "text": "Com&bine files..."
+          },
+          {
+            "bounds": [
+              0,
+              292,
+              225,
+              12
+            ],
+            "enabled": true,
+            "fullyVisible": true,
+            "separator": true,
+            "shellVerb": "",
+            "submenu": false,
+            "text": ""
+          },
+          {
+            "bounds": [
+              0,
+              304,
+              225,
+              18
+            ],
+            "enabled": false,
+            "fullyVisible": true,
+            "separator": false,
+            "shellVerb": "",
+            "submenu": false,
+            "text": "P&roperties"
+          },
+          {
+            "bounds": [
+              0,
+              322,
+              225,
+              18
+            ],
+            "enabled": true,
+            "fullyVisible": true,
+            "separator": false,
+            "shellVerb": "",
+            "submenu": false,
+            "text": "Comme&nt..."
+          },
+          {
+            "bounds": [
+              0,
+              340,
+              225,
+              18
+            ],
+            "enabled": true,
+            "fullyVisible": true,
+            "separator": false,
+            "shellVerb": "",
+            "submenu": true,
+            "text": "CRC"
+          },
+          {
+            "bounds": [
+              0,
+              358,
+              225,
+              12
+            ],
+            "enabled": true,
+            "fullyVisible": true,
+            "separator": true,
+            "shellVerb": "",
+            "submenu": false,
+            "text": ""
+          },
+          {
+            "bounds": [
+              0,
+              370,
+              225,
+              18
+            ],
+            "enabled": true,
+            "fullyVisible": true,
+            "separator": false,
+            "shellVerb": "",
+            "submenu": false,
+            "text": "Create Folder"
+          },
+          {
+            "bounds": [
+              0,
+              388,
+              225,
+              18
+            ],
+            "enabled": true,
+            "fullyVisible": true,
+            "separator": false,
+            "shellVerb": "",
+            "submenu": false,
+            "text": "Create File"
+          },
+          {
+            "bounds": [
+              0,
+              406,
+              225,
+              12
+            ],
+            "enabled": true,
+            "fullyVisible": true,
+            "separator": true,
+            "shellVerb": "",
+            "submenu": false,
+            "text": ""
+          },
+          {
+            "bounds": [
+              0,
+              418,
+              225,
+              18
+            ],
+            "enabled": false,
+            "fullyVisible": true,
+            "separator": false,
+            "shellVerb": "",
+            "submenu": false,
+            "text": "Link"
+          },
+          {
+            "bounds": [
+              0,
+              436,
+              225,
+              18
+            ],
+            "enabled": false,
+            "fullyVisible": true,
+            "separator": false,
+            "shellVerb": "",
+            "submenu": false,
+            "text": "&Alternate Streams"
+          },
+          {
+            "bounds": [
+              0,
+              454,
+              225,
+              12
+            ],
+            "enabled": true,
+            "fullyVisible": true,
+            "separator": true,
+            "shellVerb": "",
+            "submenu": false,
+            "text": ""
+          },
+          {
+            "bounds": [
+              0,
+              466,
+              225,
+              18
+            ],
+            "enabled": true,
+            "fullyVisible": true,
+            "separator": false,
+            "shellVerb": "",
+            "submenu": false,
+            "text": "E&xit"
+          }
+        ],
+        "class": "QMenu",
+        "enabled": true,
+        "name": "fileMenu"
+      }
+    ]
+  },
+  {
+    "key": "viewMenu",
+    "title": "Главное окно и меню",
+    "source": "macos/light/main/main-shell-viewMenu-640x400.json",
+    "controls": [
+      {
+        "actions": [
+          {
+            "bounds": [
+              0,
+              4,
+              138,
+              18
+            ],
+            "enabled": true,
+            "fullyVisible": true,
+            "separator": false,
+            "shellVerb": "",
+            "submenu": false,
+            "text": "Lar&ge Icons"
+          },
+          {
+            "bounds": [
+              0,
+              22,
+              138,
+              18
+            ],
+            "enabled": true,
+            "fullyVisible": true,
+            "separator": false,
+            "shellVerb": "",
+            "submenu": false,
+            "text": "S&mall Icons"
+          },
+          {
+            "bounds": [
+              0,
+              40,
+              138,
+              18
+            ],
+            "enabled": true,
+            "fullyVisible": true,
+            "separator": false,
+            "shellVerb": "",
+            "submenu": false,
+            "text": "&List"
+          },
+          {
+            "bounds": [
+              0,
+              58,
+              138,
+              18
+            ],
+            "enabled": true,
+            "fullyVisible": true,
+            "separator": false,
+            "shellVerb": "",
+            "submenu": false,
+            "text": "&Details"
+          },
+          {
+            "bounds": [
+              0,
+              76,
+              138,
+              12
+            ],
+            "enabled": true,
+            "fullyVisible": true,
+            "separator": true,
+            "shellVerb": "",
+            "submenu": false,
+            "text": ""
+          },
+          {
+            "bounds": [
+              0,
+              88,
+              138,
+              18
+            ],
+            "enabled": true,
+            "fullyVisible": true,
+            "separator": false,
+            "shellVerb": "",
+            "submenu": false,
+            "text": "Name"
+          },
+          {
+            "bounds": [
+              0,
+              106,
+              138,
+              18
+            ],
+            "enabled": true,
+            "fullyVisible": true,
+            "separator": false,
+            "shellVerb": "",
+            "submenu": false,
+            "text": "Type"
+          },
+          {
+            "bounds": [
+              0,
+              124,
+              138,
+              18
+            ],
+            "enabled": true,
+            "fullyVisible": true,
+            "separator": false,
+            "shellVerb": "",
+            "submenu": false,
+            "text": "Modified"
+          },
+          {
+            "bounds": [
+              0,
+              142,
+              138,
+              18
+            ],
+            "enabled": true,
+            "fullyVisible": true,
+            "separator": false,
+            "shellVerb": "",
+            "submenu": false,
+            "text": "Size"
+          },
+          {
+            "bounds": [
+              0,
+              160,
+              138,
+              18
+            ],
+            "enabled": true,
+            "fullyVisible": true,
+            "separator": false,
+            "shellVerb": "",
+            "submenu": false,
+            "text": "Unsorted"
+          },
+          {
+            "bounds": [
+              0,
+              178,
+              138,
+              12
+            ],
+            "enabled": true,
+            "fullyVisible": true,
+            "separator": true,
+            "shellVerb": "",
+            "submenu": false,
+            "text": ""
+          },
+          {
+            "bounds": [
+              0,
+              190,
+              138,
+              18
+            ],
+            "enabled": true,
+            "fullyVisible": true,
+            "separator": false,
+            "shellVerb": "",
+            "submenu": false,
+            "text": "Flat View"
+          },
+          {
+            "bounds": [
+              0,
+              208,
+              138,
+              18
+            ],
+            "enabled": true,
+            "fullyVisible": true,
+            "separator": false,
+            "shellVerb": "",
+            "submenu": false,
+            "text": "&2 Panels"
+          },
+          {
+            "bounds": [
+              0,
+              226,
+              138,
+              18
+            ],
+            "enabled": true,
+            "fullyVisible": true,
+            "separator": false,
+            "shellVerb": "",
+            "submenu": true,
+            "text": "2026-10-18"
+          },
+          {
+            "bounds": [
+              0,
+              244,
+              138,
+              18
+            ],
+            "enabled": true,
+            "fullyVisible": true,
+            "separator": false,
+            "shellVerb": "",
+            "submenu": true,
+            "text": "&Toolbars"
+          },
+          {
+            "bounds": [
+              0,
+              262,
+              138,
+              18
+            ],
+            "enabled": true,
+            "fullyVisible": true,
+            "separator": false,
+            "shellVerb": "",
+            "submenu": false,
+            "text": "Open Root Folder"
+          },
+          {
+            "bounds": [
+              0,
+              280,
+              138,
+              18
+            ],
+            "enabled": true,
+            "fullyVisible": true,
+            "separator": false,
+            "shellVerb": "",
+            "submenu": false,
+            "text": "Up One Level"
+          },
+          {
+            "bounds": [
+              0,
+              298,
+              138,
+              18
+            ],
+            "enabled": true,
+            "fullyVisible": true,
+            "separator": false,
+            "shellVerb": "",
+            "submenu": false,
+            "text": "Folders History..."
+          },
+          {
+            "bounds": [
+              0,
+              316,
+              138,
+              18
+            ],
+            "enabled": true,
+            "fullyVisible": true,
+            "separator": false,
+            "shellVerb": "",
+            "submenu": false,
+            "text": "&Refresh"
+          },
+          {
+            "bounds": [
+              0,
+              334,
+              138,
+              18
+            ],
+            "enabled": true,
+            "fullyVisible": true,
+            "separator": false,
+            "shellVerb": "",
+            "submenu": false,
+            "text": "Auto Refresh"
+          }
+        ],
+        "class": "QMenu",
+        "enabled": true,
+        "name": "viewMenu"
+      }
+    ]
+  },
+  {
+    "key": "panelContextMenu",
+    "title": "Контекстное меню",
+    "source": "macos/light/context-menu/source-context-0-ru-0-640-0.json",
+    "controls": [
+      {
+        "actions": [
+          {
+            "bounds": [
+              0,
+              4,
+              272,
+              18
+            ],
+            "enabled": false,
+            "fullyVisible": true,
+            "separator": false,
+            "shellVerb": "SevenZip",
+            "submenu": true,
+            "text": "7-Zip"
+          },
+          {
+            "bounds": [
+              0,
+              22,
+              272,
+              18
+            ],
+            "enabled": true,
+            "fullyVisible": true,
+            "separator": false,
+            "shellVerb": "",
+            "submenu": false,
+            "text": "Открыть архив…"
+          },
+          {
+            "bounds": [
+              0,
+              40,
+              272,
+              12
+            ],
+            "enabled": true,
+            "fullyVisible": true,
+            "separator": true,
+            "shellVerb": "",
+            "submenu": false,
+            "text": ""
+          },
+          {
+            "bounds": [
+              0,
+              52,
+              272,
+              18
+            ],
+            "enabled": true,
+            "fullyVisible": true,
+            "separator": false,
+            "shellVerb": "",
+            "submenu": false,
+            "text": "&Открыть"
+          },
+          {
+            "bounds": [
+              0,
+              70,
+              272,
+              18
+            ],
+            "enabled": true,
+            "fullyVisible": true,
+            "separator": false,
+            "shellVerb": "",
+            "submenu": false,
+            "text": "Открыть как архив"
+          },
+          {
+            "bounds": [
+              0,
+              88,
+              272,
+              18
+            ],
+            "enabled": true,
+            "fullyVisible": true,
+            "separator": false,
+            "shellVerb": "",
+            "submenu": false,
+            "text": "Один уровень архива (*)"
+          },
+          {
+            "bounds": [
+              0,
+              106,
+              272,
+              18
+            ],
+            "enabled": true,
+            "fullyVisible": true,
+            "separator": false,
+            "shellVerb": "",
+            "submenu": false,
+            "text": "Разобрать файл как архив (#)"
+          },
+          {
+            "bounds": [
+              0,
+              124,
+              272,
+              18
+            ],
+            "enabled": true,
+            "fullyVisible": true,
+            "separator": false,
+            "shellVerb": "",
+            "submenu": false,
+            "text": "Открыть во внешнем приложении"
+          },
+          {
+            "bounds": [
+              0,
+              142,
+              272,
+              18
+            ],
+            "enabled": true,
+            "fullyVisible": true,
+            "separator": false,
+            "shellVerb": "",
+            "submenu": false,
+            "text": "Просмотр"
+          },
+          {
+            "bounds": [
+              0,
+              160,
+              272,
+              18
+            ],
+            "enabled": true,
+            "fullyVisible": true,
+            "separator": false,
+            "shellVerb": "",
+            "submenu": false,
+            "text": "&Редактировать"
+          },
+          {
+            "bounds": [
+              0,
+              178,
+              272,
+              12
+            ],
+            "enabled": true,
+            "fullyVisible": true,
+            "separator": true,
+            "shellVerb": "",
+            "submenu": false,
+            "text": ""
+          },
+          {
+            "bounds": [
+              0,
+              190,
+              272,
+              18
+            ],
+            "enabled": true,
+            "fullyVisible": true,
+            "separator": false,
+            "shellVerb": "",
+            "submenu": false,
+            "text": "Переи&меновать"
+          },
+          {
+            "bounds": [
+              0,
+              208,
+              272,
+              18
+            ],
+            "enabled": true,
+            "fullyVisible": true,
+            "separator": false,
+            "shellVerb": "",
+            "submenu": false,
+            "text": "&Копировать в..."
+          },
+          {
+            "bounds": [
+              0,
+              226,
+              272,
+              18
+            ],
+            "enabled": true,
+            "fullyVisible": true,
+            "separator": false,
+            "shellVerb": "",
+            "submenu": false,
+            "text": "&Переместить в..."
+          },
+          {
+            "bounds": [
+              0,
+              244,
+              272,
+              18
+            ],
+            "enabled": true,
+            "fullyVisible": true,
+            "separator": false,
+            "shellVerb": "",
+            "submenu": false,
+            "text": "&Удалить"
+          },
+          {
+            "bounds": [
+              0,
+              262,
+              272,
+              12
+            ],
+            "enabled": true,
+            "fullyVisible": true,
+            "separator": true,
+            "shellVerb": "",
+            "submenu": false,
+            "text": ""
+          },
+          {
+            "bounds": [
+              0,
+              274,
+              272,
+              18
+            ],
+            "enabled": true,
+            "fullyVisible": true,
+            "separator": false,
+            "shellVerb": "",
+            "submenu": false,
+            "text": "Ра&збить файл..."
+          },
+          {
+            "bounds": [
+              0,
+              292,
+              272,
+              18
+            ],
+            "enabled": false,
+            "fullyVisible": true,
+            "separator": false,
+            "shellVerb": "",
+            "submenu": false,
+            "text": "О&бъединить файлы..."
+          },
+          {
+            "bounds": [
+              0,
+              310,
+              272,
+              12
+            ],
+            "enabled": true,
+            "fullyVisible": true,
+            "separator": true,
+            "shellVerb": "",
+            "submenu": false,
+            "text": ""
+          },
+          {
+            "bounds": [
+              0,
+              322,
+              272,
+              18
+            ],
+            "enabled": true,
+            "fullyVisible": true,
+            "separator": false,
+            "shellVerb": "",
+            "submenu": false,
+            "text": "Сво&йства"
+          },
+          {
+            "bounds": [
+              0,
+              340,
+              272,
+              18
+            ],
+            "enabled": true,
+            "fullyVisible": true,
+            "separator": false,
+            "shellVerb": "",
+            "submenu": false,
+            "text": "Комме&нтарий..."
+          },
+          {
+            "bounds": [
+              0,
+              358,
+              272,
+              18
+            ],
+            "enabled": true,
+            "fullyVisible": true,
+            "separator": false,
+            "shellVerb": "",
+            "submenu": true,
+            "text": "CRC"
+          },
+          {
+            "bounds": [
+              0,
+              376,
+              272,
+              12
+            ],
+            "enabled": true,
+            "fullyVisible": true,
+            "separator": true,
+            "shellVerb": "",
+            "submenu": false,
+            "text": ""
+          },
+          {
+            "bounds": [
+              0,
+              388,
+              272,
+              18
+            ],
+            "enabled": true,
+            "fullyVisible": true,
+            "separator": false,
+            "shellVerb": "",
+            "submenu": false,
+            "text": "&Создать Папку"
+          },
+          {
+            "bounds": [
+              0,
+              406,
+              272,
+              18
+            ],
+            "enabled": true,
+            "fullyVisible": true,
+            "separator": false,
+            "shellVerb": "",
+            "submenu": false,
+            "text": "Созд&ать Файл"
+          },
+          {
+            "bounds": [
+              0,
+              424,
+              272,
+              12
+            ],
+            "enabled": true,
+            "fullyVisible": true,
+            "separator": true,
+            "shellVerb": "",
+            "submenu": false,
+            "text": ""
+          },
+          {
+            "bounds": [
+              0,
+              436,
+              272,
+              18
+            ],
+            "enabled": true,
+            "fullyVisible": true,
+            "separator": false,
+            "shellVerb": "",
+            "submenu": false,
+            "text": "Ссылка"
+          },
+          {
+            "bounds": [
+              0,
+              454,
+              272,
+              18
+            ],
+            "enabled": false,
+            "fullyVisible": true,
+            "separator": false,
+            "shellVerb": "",
+            "submenu": false,
+            "text": "&Альтернативные Потоки"
+          }
+        ],
+        "class": "QMenu",
+        "enabled": true,
+        "name": "panelContextMenu"
+      }
+    ]
+  },
+  {
+    "key": "createArchiveDialog",
+    "title": "Создание архива и дополнительные параметры, EN/RU",
+    "source": "macos/light/compression-language/language-add-ru-760.json",
+    "controls": [
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "archiveLabel",
+        "text": "&Архив:"
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "archiveFolder",
+        "text": "/var/folders/zh/35p9zk4j7q17_n8k3q479zmh0000gn/T/language_ui_tests-EMUqIO"
+      },
+      {
+        "class": "QComboBox",
+        "enabled": true,
+        "name": "archivePath"
+      },
+      {
+        "class": "QLineEdit",
+        "enabled": true,
+        "name": "archiveName"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "archiveBrowse",
+        "text": "..."
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "",
+        "text": "&Формат архива:"
+      },
+      {
+        "class": "QComboBox",
+        "enabled": true,
+        "name": "archiveFormat",
+        "text": "7z"
+      },
+      {
+        "class": "QComboBox",
+        "enabled": true,
+        "name": "compressionLevel",
+        "text": "9 - Ультра"
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "",
+        "text": "&Уровень сжатия:"
+      },
+      {
+        "class": "QComboBox",
+        "enabled": true,
+        "name": "compressionMethod",
+        "text": "*  LZMA2"
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "",
+        "text": "&Метод сжатия:"
+      },
+      {
+        "class": "QComboBox",
+        "enabled": true,
+        "name": "compressionDictionary",
+        "text": "3840 MB"
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "",
+        "text": "Размер &словаря:"
+      },
+      {
+        "class": "QComboBox",
+        "enabled": true,
+        "name": "compressionWordSize",
+        "text": "*  64"
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "",
+        "text": "Размер с&лова:"
+      },
+      {
+        "class": "QComboBox",
+        "enabled": true,
+        "name": "compressionSolidBlock",
+        "text": "*  16 GB"
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "",
+        "text": "Размер блока:"
+      },
+      {
+        "class": "QComboBox",
+        "enabled": true,
+        "name": "compressionThreads",
+        "text": "*  2"
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "compressionHardwareThreads",
+        "text": "/ 10"
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "",
+        "text": "Число потоков:"
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "",
+        "text": "Объем памяти для упаковки:"
+      },
+      {
+        "class": "QComboBox",
+        "enabled": true,
+        "name": "compressionMemoryLimit",
+        "text": "*  80%"
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "compressionMemoryUsage",
+        "text": "39 GB / 13108 MB / 16384 MB"
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "compressionDecompressionLabel",
+        "text": "Объем памяти для распаковки:"
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "compressionDecompressionMemory",
+        "text": "3842 MB"
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "",
+        "text": "Разбить на &тома размером (в байтах):"
+      },
+      {
+        "class": "QComboBox",
+        "enabled": true,
+        "name": "archiveVolumeSize"
+      },
+      {
+        "class": "QLineEdit",
+        "enabled": true,
+        "name": ""
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "",
+        "text": "&Параметры:"
+      },
+      {
+        "class": "QLineEdit",
+        "enabled": true,
+        "name": "archiveParameters"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "archiveAdvancedOptions",
+        "text": "Настройки"
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "archiveAdvancedSummary",
+        "text": ""
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "",
+        "text": "&Режим изменения:"
+      },
+      {
+        "class": "QComboBox",
+        "enabled": true,
+        "name": "archiveUpdateMode",
+        "text": "Добавить и заменить"
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "",
+        "text": "Пути к файлам:"
+      },
+      {
+        "class": "QComboBox",
+        "enabled": true,
+        "name": "archivePathMode",
+        "text": "Относительные пути"
+      },
+      {
+        "class": "QGroupBox",
+        "enabled": true,
+        "name": "archiveLifecycleOptions",
+        "text": "&Опции"
+      },
+      {
+        "class": "QCheckBox",
+        "enabled": false,
+        "name": "archiveSfx",
+        "text": "Создать SF&X-архив"
+      },
+      {
+        "class": "QCheckBox",
+        "enabled": false,
+        "name": "archiveSharedFiles",
+        "text": "Сжимать открытые для записи файлы"
+      },
+      {
+        "class": "QCheckBox",
+        "enabled": true,
+        "name": "archiveDeleteAfterCompression",
+        "text": "Удалять файлы после сжатия"
+      },
+      {
+        "class": "QGroupBox",
+        "enabled": true,
+        "name": "archiveEncryptionGroup",
+        "text": "Шифрование"
+      },
+      {
+        "class": "QLineEdit",
+        "enabled": true,
+        "name": "archivePassword"
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "",
+        "text": "&Введите пароль:"
+      },
+      {
+        "class": "QLineEdit",
+        "enabled": true,
+        "name": "archivePasswordConfirmation"
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "",
+        "text": "Повторите пароль:"
+      },
+      {
+        "class": "QCheckBox",
+        "enabled": true,
+        "name": "archiveShowPassword",
+        "text": "&Показать пароль"
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "archiveEncryptionMethodLabel",
+        "text": "Метод шифрования:"
+      },
+      {
+        "class": "QComboBox",
+        "enabled": true,
+        "name": "archiveEncryption",
+        "text": "AES-256"
+      },
+      {
+        "class": "QCheckBox",
+        "enabled": true,
+        "name": "archiveEncryptHeaders",
+        "text": "&Шифровать имена файлов"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "",
+        "text": "OK"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "",
+        "text": "Отмена"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "",
+        "text": "Помощь"
+      }
+    ]
+  },
+  {
+    "key": "compressOptionsDialog",
+    "title": "Создание архива и дополнительные параметры, EN/RU",
+    "source": "macos/light/compression-language/language-advanced-ru-520.json",
+    "controls": [
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "IDT_COMPRESS_TIME_INFO",
+        "text": "Тип: zip"
+      },
+      {
+        "class": "QGroupBox",
+        "enabled": true,
+        "name": "IDG_COMPRESS_TIME",
+        "text": "Время"
+      },
+      {
+        "class": "QCheckBox",
+        "enabled": true,
+        "name": "IDX_COMPRESS_PREC_SET",
+        "text": "Задать"
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "IDT_COMPRESS_TIME_PREC",
+        "text": "Точность отметок времени:"
+      },
+      {
+        "class": "QComboBox",
+        "enabled": true,
+        "name": "IDC_COMPRESS_TIME_PREC",
+        "text": "1 сек : Unix"
+      },
+      {
+        "class": "QCheckBox",
+        "enabled": false,
+        "name": "IDX_COMPRESS_MTIME",
+        "text": "Сохранять время изменения файлов"
+      },
+      {
+        "class": "QCheckBox",
+        "enabled": true,
+        "name": "IDX_COMPRESS_ZTIME_SET",
+        "text": "Задать"
+      },
+      {
+        "class": "QCheckBox",
+        "enabled": true,
+        "name": "IDX_COMPRESS_ZTIME",
+        "text": "Уcтановить время архива по времени самого\nнового файла"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "",
+        "text": "OK"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "",
+        "text": "Отмена"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "",
+        "text": "Помощь"
+      }
+    ]
+  },
+  {
+    "key": "copyDialog",
+    "title": "Основные диалоги, EN/RU",
+    "source": "macos/light/common-dialogs/standard-buttons-copy-ru-440.json",
+    "controls": [
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "copyDestinationLabel",
+        "text": "Копировать в:"
+      },
+      {
+        "class": "QComboBox",
+        "enabled": true,
+        "name": "copyDestination"
+      },
+      {
+        "class": "QLineEdit",
+        "enabled": true,
+        "name": ""
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "copyBrowseButton",
+        "text": "…"
+      },
+      {
+        "class": "QPlainTextEdit",
+        "enabled": true,
+        "name": "copySelectionInfo"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "",
+        "text": "OK"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "",
+        "text": "Отмена"
+      }
+    ]
+  },
+  {
+    "key": "splitDialog",
+    "title": "Основные диалоги, EN/RU",
+    "source": "macos/light/common-dialogs/standard-buttons-split-ru-480.json",
+    "controls": [
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "splitPathLabel",
+        "text": "&Разбить в:"
+      },
+      {
+        "class": "QComboBox",
+        "enabled": true,
+        "name": "volumeDestination"
+      },
+      {
+        "class": "QLineEdit",
+        "enabled": true,
+        "name": ""
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "volumeBrowse",
+        "text": "..."
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "splitVolumeLabel",
+        "text": "Разбить на &тома размером (в байтах):"
+      },
+      {
+        "class": "QComboBox",
+        "enabled": true,
+        "name": "volumeSize"
+      },
+      {
+        "class": "QLineEdit",
+        "enabled": true,
+        "name": ""
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "",
+        "text": "OK"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "",
+        "text": "Отмена"
+      }
+    ]
+  },
+  {
+    "key": "splitVolumeError",
+    "title": "Разделение и объединение файлов",
+    "source": "macos/light/split-combine/split-invalid-volume-340.json",
+    "controls": [
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "qt_msgboxex_icon_label",
+        "text": ""
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "qt_msgbox_label",
+        "text": "Incorrect volume size"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "",
+        "text": "OK"
+      }
+    ]
+  },
+  {
+    "key": "foldersHistoryDialog",
+    "title": "Свойства и история папок",
+    "source": "macos/light/properties-history/list-source-initial-ru-1.json",
+    "controls": [
+      {
+        "class": "QTreeWidget",
+        "enabled": true,
+        "name": "foldersHistoryList"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "",
+        "text": "OK"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "",
+        "text": "Отмена"
+      }
+    ]
+  },
+  {
+    "key": "selectedPropertiesDialog",
+    "title": "Свойства выбранных объектов",
+    "source": "macos/light/selected-properties/properties-540.json",
+    "controls": [
+      {
+        "class": "QTreeWidget",
+        "enabled": true,
+        "name": "propertiesList"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "",
+        "text": "OK"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "",
+        "text": "Отмена"
+      }
+    ]
+  },
+  {
+    "key": "settingsDialog/systemPage",
+    "title": "Настройки: все шесть страниц, EN/RU",
+    "source": "macos/light/options-pages/options-activation---640--1-0-physical-control.json",
+    "controls": [
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "systemAssociateLabel",
+        "text": "Associate 7-Zip with:"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "systemCurrent",
+        "text": "+"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "systemAll",
+        "text": "+"
+      },
+      {
+        "class": "QTreeWidget",
+        "enabled": true,
+        "name": "systemAssociations"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "",
+        "text": "OK"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "",
+        "text": "Cancel"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "",
+        "text": "Help"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "",
+        "text": "Apply"
+      }
+    ]
+  },
+  {
+    "key": "settingsDialog/menuPage",
+    "title": "Настройки: все шесть страниц, EN/RU",
+    "source": "macos/light/options-pages/options-activation-ru-640--1-1-physical-control.json",
+    "controls": [
+      {
+        "class": "QCheckBox",
+        "enabled": true,
+        "name": "cascadedMenu",
+        "text": "Каскадное контекстное меню"
+      },
+      {
+        "class": "QCheckBox",
+        "enabled": true,
+        "name": "menuIcons",
+        "text": "Иконки в контекстном меню"
+      },
+      {
+        "class": "QCheckBox",
+        "enabled": true,
+        "name": "menuElimDup",
+        "text": "Устранить дублирование корневой папки"
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "menuItemsLabel",
+        "text": "Элементы контекстного меню:"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "",
+        "text": "OK"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "",
+        "text": "Cancel"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "",
+        "text": "Help"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "",
+        "text": "Apply"
+      }
+    ]
+  },
+  {
+    "key": "settingsDialog/foldersPage",
+    "title": "Настройки: все шесть страниц, EN/RU",
+    "source": "macos/light/options-pages/options-activation-ru-640--1-2-physical-control.json",
+    "controls": [
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "",
+        "text": "&Рабочая папка"
+      },
+      {
+        "class": "QRadioButton",
+        "enabled": true,
+        "name": "workSystem",
+        "text": "&Системная временная папка"
+      },
+      {
+        "class": "QRadioButton",
+        "enabled": true,
+        "name": "workCurrent",
+        "text": "&Текущая"
+      },
+      {
+        "class": "QRadioButton",
+        "enabled": true,
+        "name": "workSpecified",
+        "text": "&Задать:"
+      },
+      {
+        "class": "QLineEdit",
+        "enabled": false,
+        "name": "workPath"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": false,
+        "name": "workPathBrowse",
+        "text": "…"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "",
+        "text": "OK"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "",
+        "text": "Cancel"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "",
+        "text": "Help"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "",
+        "text": "Apply"
+      }
+    ]
+  },
+  {
+    "key": "settingsDialog/editorPage",
+    "title": "Настройки: все шесть страниц, EN/RU",
+    "source": "macos/light/options-pages/options-activation---640--1-3-physical-control.json",
+    "controls": [
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "",
+        "text": "&View:"
+      },
+      {
+        "class": "QLineEdit",
+        "enabled": true,
+        "name": "viewerCommand"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "viewerCommandBrowse",
+        "text": "…"
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "",
+        "text": "&Editor:"
+      },
+      {
+        "class": "QLineEdit",
+        "enabled": true,
+        "name": "editorCommand"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "editorCommandBrowse",
+        "text": "…"
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "",
+        "text": "&Diff:"
+      },
+      {
+        "class": "QLineEdit",
+        "enabled": true,
+        "name": "diffCommand"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "diffCommandBrowse",
+        "text": "…"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "",
+        "text": "OK"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "",
+        "text": "Cancel"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "",
+        "text": "Help"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "",
+        "text": "Apply"
+      }
+    ]
+  },
+  {
+    "key": "settingsDialog/settingsPage",
+    "title": "Настройки: все шесть страниц, EN/RU",
+    "source": "macos/light/options-pages/options-activation-ru-640--1-4-physical-control.json",
+    "controls": [
+      {
+        "class": "QCheckBox",
+        "enabled": true,
+        "name": "showDotsOption",
+        "text": "Показывать элемент \"..\""
+      },
+      {
+        "class": "QCheckBox",
+        "enabled": true,
+        "name": "realFileIconsOption",
+        "text": "Показывать реальные иконки файлов"
+      },
+      {
+        "class": "QCheckBox",
+        "enabled": true,
+        "name": "fullRowOption",
+        "text": "Курсор на всю строку"
+      },
+      {
+        "class": "QCheckBox",
+        "enabled": true,
+        "name": "gridOption",
+        "text": "Показывать разделители"
+      },
+      {
+        "class": "QCheckBox",
+        "enabled": true,
+        "name": "singleClickOption",
+        "text": "Открывать одним щелчком"
+      },
+      {
+        "class": "QCheckBox",
+        "enabled": true,
+        "name": "alternativeSelectionOption",
+        "text": "Альтернативный режим пометки"
+      },
+      {
+        "class": "QCheckBox",
+        "enabled": true,
+        "name": "showSystemMenuOption",
+        "text": "Показывать системное меню"
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "extractMemoryLabel",
+        "text": "Разрешенный лимит использования оперативной памяти (RAM) для распаковки:"
+      },
+      {
+        "class": "QCheckBox",
+        "enabled": true,
+        "name": "extractMemorySet",
+        "text": ":"
+      },
+      {
+        "class": "QLineEdit",
+        "enabled": false,
+        "name": "extractMemoryEdit"
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "extractMemoryRam",
+        "text": "GB / 16 GB (RAM)"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "",
+        "text": "OK"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "",
+        "text": "Cancel"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "",
+        "text": "Help"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "",
+        "text": "Apply"
+      }
+    ]
+  },
+  {
+    "key": "settingsDialog/languagePage",
+    "title": "Настройки: все шесть страниц, EN/RU",
+    "source": "macos/light/options-pages/options-activation---640--1-5-physical-control.json",
+    "controls": [
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "languageLabel",
+        "text": "Language:"
+      },
+      {
+        "class": "QComboBox",
+        "enabled": true,
+        "name": "languageChoice",
+        "text": "English : English  ---"
+      },
+      {
+        "class": "QPlainTextEdit",
+        "enabled": true,
+        "name": "languageInfo"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "",
+        "text": "OK"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "",
+        "text": "Cancel"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "",
+        "text": "Help"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "",
+        "text": "Apply"
+      }
+    ]
+  },
+  {
+    "key": "errors/QMessageBox",
+    "title": "Сообщения об ошибках GUI",
+    "source": "macos/light/errors/gui-error-output-0-0---320.json",
+    "controls": [
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "qt_msgboxex_icon_label",
+        "text": ""
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "qt_msgbox_label",
+        "text": "Incorrect output directory path"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "",
+        "text": "OK"
+      }
+    ]
+  },
+  {
+    "key": "comboDialog",
+    "title": "Создание файла и каталога",
+    "source": "macos/light/create-name/source-create-0-0-ru-0-360.json",
+    "controls": [
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "comboPrompt",
+        "text": "Имя папки:"
+      },
+      {
+        "class": "QComboBox",
+        "enabled": true,
+        "name": "comboValue"
+      },
+      {
+        "class": "QLineEdit",
+        "enabled": true,
+        "name": ""
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "",
+        "text": "OK"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "",
+        "text": "Отмена"
+      }
+    ]
+  },
+  {
+    "key": "delete-confirmation/QMessageBox",
+    "title": "Подтверждение удаления",
+    "source": "macos/light/delete-confirmation/source-delete-refused-0---0-300.json",
+    "controls": [
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "qt_msgboxex_icon_label",
+        "text": ""
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "qt_msgbox_label",
+        "text": "Are you sure you want to delete 'keep 空 with spaces.bin'?"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "",
+        "text": "&Yes"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "",
+        "text": "&No"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "",
+        "text": "Cancel"
+      }
+    ]
+  },
+  {
+    "key": "memDialog",
+    "title": "Основные диалоги, EN/RU",
+    "source": "macos/light/common-dialogs/standard-buttons-memory-ru-700.json",
+    "controls": [
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "memMessage",
+        "text": "Операция требует большой объем оперативной памяти (RAM).\n    4 GB : требуемый объем оперативной памяти\n    4 GB : разрешенный лимит использования оперативной памяти"
+      },
+      {
+        "class": "QCheckBox",
+        "enabled": true,
+        "name": "memSaveLimit",
+        "text": "Изменить разрешенный лимит для следующих операций"
+      },
+      {
+        "class": "QLineEdit",
+        "enabled": false,
+        "name": "memLimit"
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "memGB",
+        "text": "GB / 16 GB (RAM)"
+      },
+      {
+        "class": "QGroupBox",
+        "enabled": true,
+        "name": "memAction",
+        "text": "Действие"
+      },
+      {
+        "class": "QRadioButton",
+        "enabled": true,
+        "name": "memAllow",
+        "text": "Разрешить распаковку архива"
+      },
+      {
+        "class": "QRadioButton",
+        "enabled": true,
+        "name": "memSkip",
+        "text": "Пропустить распаковку архива"
+      },
+      {
+        "class": "QCheckBox",
+        "enabled": true,
+        "name": "memRemember",
+        "text": "Повторять выбранное действие для текущей операции"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "",
+        "text": "&Продолжить"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "",
+        "text": "Отмена"
+      }
+    ]
+  },
+  {
+    "key": "operationMessagesDialog",
+    "title": "Пароль, память, текст и сообщения",
+    "source": "macos/light/source-prompts/source-prompt-initial-ru-3.json",
+    "controls": [
+      {
+        "class": "QTreeWidget",
+        "enabled": true,
+        "name": "IDL_MESSAGE"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "IDOK",
+        "text": "&Закрыть"
+      }
+    ]
+  },
+  {
+    "key": "overwriteDialog",
+    "title": "Подтверждение перезаписи",
+    "source": "macos/light/overwrite/overwrite-layout-ru-700-0.json",
+    "controls": [
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "overwriteHeader",
+        "text": "Папка уже содержит обрабатываемый файл."
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "overwriteQuestionBegin",
+        "text": "Заменить существующий файл"
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "overwriteOldFileIcon",
+        "text": ""
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "overwriteOldFile",
+        "text": "/destination/каталог 文件/\nold.txt\n12345 байтов : 12 KiB\n"
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "overwriteQuestionEnd",
+        "text": "следующим файлом?"
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "overwriteNewFileIcon",
+        "text": ""
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "overwriteNewFile",
+        "text": "/source/каталог 文件/\nnew.txt\n67890 байтов : 66 KiB\n"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "overwriteYes",
+        "text": "&Да"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": false,
+        "name": "overwriteYesAll",
+        "text": "Да для &всех"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": false,
+        "name": "overwriteRename",
+        "text": "Переименовать автом."
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "overwriteNo",
+        "text": "&Нет"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": false,
+        "name": "overwriteNoAll",
+        "text": "Нет для в&сех"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "overwriteCancel",
+        "text": "Отмена"
+      }
+    ]
+  },
+  {
+    "key": "passwordDialog",
+    "title": "Пароль, память, текст и сообщения",
+    "source": "macos/light/source-prompts/source-prompt-initial-ru-1.json",
+    "controls": [
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "passwordPrompt",
+        "text": "&Введите пароль:"
+      },
+      {
+        "class": "QLineEdit",
+        "enabled": true,
+        "name": "passwordEdit"
+      },
+      {
+        "class": "QCheckBox",
+        "enabled": true,
+        "name": "passwordShow",
+        "text": "&Показать пароль"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "",
+        "text": "OK"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "",
+        "text": "Отмена"
+      }
+    ]
+  },
+  {
+    "key": "progressDialog",
+    "title": "Ход операции, ошибки и пауза",
+    "source": "macos/light/progress/progress-dialog-760-0-0-paused.json",
+    "controls": [
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "IDT_PROGRESS_ELAPSED",
+        "text": "Elapsed time:"
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "IDT_PROGRESS_REMAINING",
+        "text": "Remaining time:"
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "IDT_PROGRESS_FILES",
+        "text": "Files:"
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "IDT_PROGRESS_TOTAL",
+        "text": "Total size:"
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "IDT_PROGRESS_SPEED",
+        "text": "Speed:"
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "IDT_PROGRESS_PROCESSED",
+        "text": "Processed:"
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "IDT_PROGRESS_ELAPSED_VAL",
+        "text": ""
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "IDT_PROGRESS_REMAINING_VAL",
+        "text": ""
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "IDT_PROGRESS_FILES_VAL",
+        "text": ""
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "IDT_PROGRESS_FILES_TOTAL",
+        "text": ""
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "IDT_PROGRESS_TOTAL_VAL",
+        "text": ""
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "IDT_PROGRESS_SPEED_VAL",
+        "text": ""
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "IDT_PROGRESS_PROCESSED_VAL",
+        "text": ""
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "IDT_PROGRESS_STATUS",
+        "text": ""
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "IDT_PROGRESS_FILE_NAME",
+        "text": ""
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "IDB_PROGRESS_BACKGROUND",
+        "text": "&Background"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "IDB_PAUSE",
+        "text": "&Continue"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "IDCANCEL",
+        "text": "Cancel"
+      }
+    ]
+  },
+  {
+    "key": "helpWindow",
+    "title": "Справка и About, EN/RU",
+    "source": "macos/light/help/help-ru-760.json",
+    "controls": [
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "",
+        "text": "Close"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": false,
+        "name": "",
+        "text": "Назад"
+      }
+    ]
+  },
+  {
+    "key": "extractDialog",
+    "title": "Основные диалоги, EN/RU",
+    "source": "macos/light/common-dialogs/standard-buttons-extract-ru-640.json",
+    "controls": [
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "extractDestinationLabel",
+        "text": "&Распаковать в:"
+      },
+      {
+        "class": "QComboBox",
+        "enabled": true,
+        "name": "extractDestination"
+      },
+      {
+        "class": "QLineEdit",
+        "enabled": true,
+        "name": ""
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "extractBrowseButton",
+        "text": "…"
+      },
+      {
+        "class": "QCheckBox",
+        "enabled": true,
+        "name": "extractNameEnable",
+        "text": ""
+      },
+      {
+        "class": "QLineEdit",
+        "enabled": true,
+        "name": "extractPathName"
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "extractPathModeLabel",
+        "text": "Пути к файлам:"
+      },
+      {
+        "class": "QComboBox",
+        "enabled": true,
+        "name": "extractPathMode",
+        "text": "Полные пути"
+      },
+      {
+        "class": "QCheckBox",
+        "enabled": true,
+        "name": "extractElimDup",
+        "text": "Устранить дублирование корневой папки"
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "extractOverwriteModeLabel",
+        "text": "Перезапись:"
+      },
+      {
+        "class": "QComboBox",
+        "enabled": true,
+        "name": "extractOverwriteMode",
+        "text": "С подтверждением"
+      },
+      {
+        "class": "QGroupBox",
+        "enabled": true,
+        "name": "",
+        "text": "&Пароль"
+      },
+      {
+        "class": "QLineEdit",
+        "enabled": true,
+        "name": "extractPassword"
+      },
+      {
+        "class": "QCheckBox",
+        "enabled": true,
+        "name": "extractShowPassword",
+        "text": "&Показать пароль"
+      },
+      {
+        "class": "QCheckBox",
+        "enabled": false,
+        "name": "extractNtSecurity",
+        "text": "Устанавливать права доступа"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "",
+        "text": "OK"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "",
+        "text": "Отмена"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "",
+        "text": "Помощь"
+      }
+    ]
+  },
+  {
+    "key": "browseDialog",
+    "title": "Встроенный выбор файла или каталога",
+    "source": "macos/light/browse/source-browse-ru-560-0.json",
+    "controls": [
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "browseParent",
+        "text": ""
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "browseCreateFolder",
+        "text": ""
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "browseFolder",
+        "text": "/var/folders/zh/35p9zk4j7q17_n…th-spaces-and-another-segment/"
+      },
+      {
+        "class": "QTreeWidget",
+        "enabled": true,
+        "name": "browseList"
+      },
+      {
+        "class": "QLineEdit",
+        "enabled": true,
+        "name": "browsePath"
+      },
+      {
+        "class": "QComboBox",
+        "enabled": true,
+        "name": "browseFilter",
+        "text": "Archives"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "",
+        "text": "OK"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "",
+        "text": "Отмена"
+      }
+    ]
+  },
+  {
+    "key": "editDialog",
+    "title": "Пароль, память, текст и сообщения",
+    "source": "macos/light/source-prompts/source-prompt-initial-ru-0.json",
+    "controls": [
+      {
+        "class": "QPlainTextEdit",
+        "enabled": true,
+        "name": "editText"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "",
+        "text": "&Закрыть"
+      }
+    ]
+  },
+  {
+    "key": "IDD_BENCH",
+    "title": "Тест производительности: обычный и полный",
+    "source": "macos/light/benchmark/benchmark-normal-ru-960.json",
+    "controls": [
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "IDT_BENCH_DICTIONARY",
+        "text": "Размер &словаря:"
+      },
+      {
+        "class": "QComboBox",
+        "enabled": true,
+        "name": "IDC_BENCH_DICTIONARY",
+        "text": "256 KB"
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "IDT_BENCH_MEMORY",
+        "text": "Объем памяти:"
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "IDT_BENCH_MEMORY_VAL",
+        "text": "7 MB / 32 MB"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "IDB_RESTART",
+        "text": "Перезапуск"
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "IDT_BENCH_NUM_THREADS",
+        "text": "Число потоков:"
+      },
+      {
+        "class": "QComboBox",
+        "enabled": true,
+        "name": "IDC_BENCH_NUM_THREADS",
+        "text": "1"
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "IDT_BENCH_HARDWARE_THREADS",
+        "text": "/ 10"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "IDB_STOP",
+        "text": "Стоп"
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "IDT_BENCH_SIZE",
+        "text": "Размер"
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "IDT_BENCH_SPEED",
+        "text": "Скорость"
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "IDT_BENCH_USAGE_LABEL",
+        "text": "Нагрузка"
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "IDT_BENCH_RPU_LABEL",
+        "text": "Рейтинг / Нагр."
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "IDT_BENCH_RATING_LABEL",
+        "text": "Рейтинг"
+      },
+      {
+        "class": "QGroupBox",
+        "enabled": true,
+        "name": "IDG_BENCH_COMPRESSING",
+        "text": "Упаковка"
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "IDT_BENCH_CURRENT",
+        "text": "Текущий"
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "benchmarkValue170",
+        "text": "..."
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "benchmarkValue110",
+        "text": "..."
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "benchmarkValue114",
+        "text": "..."
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "benchmarkValue116",
+        "text": "..."
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "benchmarkValue112",
+        "text": "..."
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "IDT_BENCH_RESULTING",
+        "text": "Итоговый"
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "benchmarkValue171",
+        "text": "..."
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "benchmarkValue111",
+        "text": "..."
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "benchmarkValue115",
+        "text": "..."
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "benchmarkValue117",
+        "text": "..."
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "benchmarkValue113",
+        "text": "..."
+      },
+      {
+        "class": "QGroupBox",
+        "enabled": true,
+        "name": "IDG_BENCH_DECOMPRESSING",
+        "text": "Распаковка"
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "IDT_BENCH_CURRENT2",
+        "text": "Текущий"
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "benchmarkValue172",
+        "text": "..."
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "benchmarkValue118",
+        "text": "..."
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "benchmarkValue122",
+        "text": "..."
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "benchmarkValue124",
+        "text": "..."
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "benchmarkValue120",
+        "text": "..."
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "IDT_BENCH_RESULTING2",
+        "text": "Итоговый"
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "benchmarkValue173",
+        "text": "..."
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "benchmarkValue119",
+        "text": "..."
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "benchmarkValue123",
+        "text": "..."
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "benchmarkValue125",
+        "text": "..."
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "benchmarkValue121",
+        "text": "..."
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "IDT_BENCH_ERROR_MESSAGE",
+        "text": ""
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "IDT_BENCH_ELAPSED",
+        "text": "Прошло:"
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "IDT_BENCH_ELAPSED_VAL",
+        "text": "0 s"
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "IDT_BENCH_PASSES",
+        "text": "Проходов:"
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "IDT_BENCH_PASSES_VAL",
+        "text": ""
+      },
+      {
+        "class": "QComboBox",
+        "enabled": true,
+        "name": "IDC_BENCH_NUM_PASSES",
+        "text": "1"
+      },
+      {
+        "class": "QGroupBox",
+        "enabled": true,
+        "name": "IDG_BENCH_TOTAL_RATING",
+        "text": "Общий рейтинг"
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "IDT_BENCH_TOTAL_USAGE_VAL",
+        "text": "..."
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "IDT_BENCH_TOTAL_RPU_VAL",
+        "text": "..."
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "IDT_BENCH_TOTAL_RATING_VAL",
+        "text": "..."
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "IDT_BENCH_CPU",
+        "text": "Apple M5 10C10T"
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "IDT_BENCH_CPU_FEATURE",
+        "text": "Darwin : 27.0.0 : Darwin Kernel Version 27.0.0: Tue Aug 11 21:02:59 PDT 2026; root:xnu-13432.1.9~1/RELEASE_ARM64_T8142 : arm64 :  PageSize:16KB"
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "IDT_BENCH_VER",
+        "text": "7-Zip 26.04 (arm64)"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "IDHELP",
+        "text": "Помощь"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "IDCANCEL",
+        "text": "Отмена"
+      }
+    ]
+  },
+  {
+    "key": "IDD_BENCH_TOTAL",
+    "title": "Тест производительности: обычный и полный",
+    "source": "macos/light/benchmark/benchmark-total-ru-960.json",
+    "controls": [
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "IDT_BENCH_ELAPSED",
+        "text": "Прошло:"
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "IDT_BENCH_ELAPSED_VAL",
+        "text": "0 s"
+      },
+      {
+        "class": "QPlainTextEdit",
+        "enabled": true,
+        "name": "IDE_BENCH2_EDIT"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "IDHELP",
+        "text": "Помощь"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "IDCANCEL",
+        "text": "Отмена"
+      }
+    ]
+  },
+  {
+    "key": "IDD_LINK",
+    "title": "Создание ссылки",
+    "source": "macos/light/link/link-initial-ru-520.json",
+    "controls": [
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "IDT_LINK_PATH_FROM",
+        "text": "Источник:"
+      },
+      {
+        "class": "QComboBox",
+        "enabled": true,
+        "name": "IDC_LINK_PATH_FROM"
+      },
+      {
+        "class": "QLineEdit",
+        "enabled": true,
+        "name": ""
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "IDB_LINK_PATH_FROM",
+        "text": "..."
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "IDT_LINK_PATH_TO",
+        "text": "Цель:"
+      },
+      {
+        "class": "QComboBox",
+        "enabled": true,
+        "name": "IDC_LINK_PATH_TO"
+      },
+      {
+        "class": "QLineEdit",
+        "enabled": true,
+        "name": ""
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "IDB_LINK_PATH_TO",
+        "text": "..."
+      },
+      {
+        "class": "QGroupBox",
+        "enabled": true,
+        "name": "IDG_LINK_TYPE",
+        "text": "Тип ссылки"
+      },
+      {
+        "class": "QRadioButton",
+        "enabled": true,
+        "name": "IDR_LINK_TYPE_HARD",
+        "text": "Жесткая ссылка"
+      },
+      {
+        "class": "QRadioButton",
+        "enabled": true,
+        "name": "IDR_LINK_TYPE_SYM_FILE",
+        "text": "Символьная ссылка (Файл)"
+      },
+      {
+        "class": "QRadioButton",
+        "enabled": true,
+        "name": "IDR_LINK_TYPE_SYM_DIR",
+        "text": "Символьная ссылка (Папка)"
+      },
+      {
+        "class": "QRadioButton",
+        "enabled": false,
+        "name": "IDR_LINK_TYPE_JUNCTION",
+        "text": "Точка соединения (Junction)"
+      },
+      {
+        "class": "QRadioButton",
+        "enabled": false,
+        "name": "IDR_LINK_TYPE_WSL",
+        "text": "WSL"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "IDB_LINK_LINK",
+        "text": "Связать"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "IDCANCEL",
+        "text": "Отмена"
+      }
+    ]
+  },
+  {
+    "key": "tempBrowseDialog",
+    "title": "Удаление временных файлов",
+    "source": "macos/light/temporary-files/temp-cleanup-ru-900.json",
+    "controls": [
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "tempDelete",
+        "text": "Удалить"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "tempRefresh",
+        "text": "О&бновить"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": false,
+        "name": "tempParent",
+        "text": ""
+      },
+      {
+        "class": "QLineEdit",
+        "enabled": true,
+        "name": "tempPath"
+      },
+      {
+        "class": "QTreeWidget",
+        "enabled": true,
+        "name": "tempList"
+      },
+      {
+        "class": "QComboBox",
+        "enabled": false,
+        "name": "tempFilter",
+        "text": "Временные файлы Sevenzip"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "tempClose",
+        "text": "&Закрыть"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "tempHelp",
+        "text": "Помощь"
+      }
+    ]
+  },
+  {
+    "key": "aboutDialog",
+    "title": "Основные диалоги, EN/RU",
+    "source": "macos/light/common-dialogs/standard-buttons-about-ru-360.json",
+    "controls": [
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "aboutApplicationName",
+        "text": "Sevenzip"
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "aboutApplicationVersion",
+        "text": "0.1.3"
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "aboutDescription",
+        "text": "Независимый файловый менеджер на основе 7‑Zip."
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "aboutText101",
+        "text": "На основе 7-Zip 26.04 (arm64)"
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "aboutText102",
+        "text": "Дата выпуска 7-Zip: 2026-10-05"
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "aboutText2901",
+        "text": "7-Zip является свободно распространяемой программой."
+      },
+      {
+        "class": "QLabel",
+        "enabled": true,
+        "name": "aboutUpstreamCopyright",
+        "text": "Copyright (c) 1999-2026 Igor Pavlov"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "aboutLicense",
+        "text": "Лицензия 7-Zip"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "aboutHomepage",
+        "text": "www.7-zip.org"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "",
+        "text": "OK"
+      },
+      {
+        "class": "QPushButton",
+        "enabled": true,
+        "name": "aboutProjectHomepage",
+        "text": "Сайт проекта"
+      }
+    ]
+  }
+]

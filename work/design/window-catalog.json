@@ -1,0 +1,268 @@
+{
+  "description": "36 review representations: the 34 unique gallery keys plus separate Combine and Hash workflows; components are outside this count. Browser mockups, not native Qt runtime acceptance. Settings now show six review states within three sections; source keys identify original owners, not separate tabs.",
+  "gallery": "build/dev/ui-theme-review/manifest.json",
+  "windows": [
+    {
+      "id": "main",
+      "title": "Главное окно",
+      "group": "Файловый менеджер",
+      "sourceKey": "QMainWindow",
+      "sourceReport": "macos/light/main/source-panel-chrome-ru-980-0.json"
+    },
+    {
+      "id": "file-menu",
+      "title": "Меню «Файл»",
+      "group": "Файловый менеджер",
+      "sourceKey": "fileMenu",
+      "sourceReport": "macos/light/main/main-shell-fileMenu-640x400.json"
+    },
+    {
+      "id": "view-menu",
+      "title": "Меню «Вид»",
+      "group": "Файловый менеджер",
+      "sourceKey": "viewMenu",
+      "sourceReport": "macos/light/main/main-shell-viewMenu-640x400.json"
+    },
+    {
+      "id": "context-menu",
+      "title": "Контекстное меню",
+      "group": "Файловый менеджер",
+      "sourceKey": "panelContextMenu",
+      "sourceReport": "macos/light/context-menu/source-context-0-ru-0-640-0.json"
+    },
+    {
+      "id": "copy",
+      "title": "Копирование и перемещение",
+      "group": "Файловые операции",
+      "sourceKey": "copyDialog",
+      "sourceReport": "macos/light/common-dialogs/standard-buttons-copy-ru-440.json"
+    },
+    {
+      "id": "split",
+      "title": "Разделение файла",
+      "group": "Файловые операции",
+      "sourceKey": "splitDialog",
+      "sourceReport": "macos/light/common-dialogs/standard-buttons-split-ru-480.json"
+    },
+    {
+      "id": "combine",
+      "title": "Объединение частей файла",
+      "group": "Файловые операции",
+      "sourceKey": "copyDialog / Combine",
+      "sourceReport": "macos/light/split-combine/combine-3-480.json"
+    },
+    {
+      "id": "rename",
+      "title": "Имя, создание и выделение",
+      "group": "Файловые операции",
+      "sourceKey": "comboDialog",
+      "sourceReport": "macos/light/create-name/source-create-0-0-ru-0-360.json"
+    },
+    {
+      "id": "delete",
+      "title": "Подтверждение удаления",
+      "group": "Файловые операции",
+      "sourceKey": "delete-confirmation/QMessageBox",
+      "sourceReport": "macos/light/delete-confirmation/source-delete-refused-0---0-300.json"
+    },
+    {
+      "id": "link",
+      "title": "Создание ссылки",
+      "group": "Файловые операции",
+      "sourceKey": "IDD_LINK",
+      "sourceReport": "macos/light/link/link-initial-ru-520.json"
+    },
+    {
+      "id": "browse",
+      "title": "Выбор файла или папки",
+      "group": "Файловые операции",
+      "sourceKey": "browseDialog",
+      "sourceReport": "macos/light/browse/source-browse-ru-560-0.json"
+    },
+    {
+      "id": "history",
+      "title": "История папок",
+      "group": "Файловые операции",
+      "sourceKey": "foldersHistoryDialog",
+      "sourceReport": "macos/light/properties-history/list-source-initial-ru-1.json"
+    },
+    {
+      "id": "temporary",
+      "title": "Временные файлы",
+      "group": "Файловые операции",
+      "sourceKey": "tempBrowseDialog",
+      "sourceReport": "macos/light/temporary-files/temp-cleanup-ru-900.json"
+    },
+    {
+      "id": "add",
+      "title": "Добавить к архиву",
+      "group": "Архивы",
+      "sourceKey": "createArchiveDialog",
+      "sourceReport": "macos/light/compression-language/language-add-ru-760.json"
+    },
+    {
+      "id": "format-options",
+      "title": "Метаданные и время",
+      "group": "Архивы",
+      "sourceKey": "compressOptionsDialog",
+      "sourceReport": "macos/light/compression-language/language-advanced-ru-520.json"
+    },
+    {
+      "id": "extract",
+      "title": "Распаковать архив",
+      "group": "Архивы",
+      "sourceKey": "extractDialog",
+      "sourceReport": "macos/light/common-dialogs/standard-buttons-extract-ru-640.json"
+    },
+    {
+      "id": "password",
+      "title": "Ввод пароля",
+      "group": "Архивы",
+      "sourceKey": "passwordDialog",
+      "sourceReport": "macos/light/source-prompts/source-prompt-initial-ru-1.json"
+    },
+    {
+      "id": "memory",
+      "title": "Недостаточно памяти",
+      "group": "Архивы",
+      "sourceKey": "memDialog",
+      "sourceReport": "macos/light/common-dialogs/standard-buttons-memory-ru-700.json"
+    },
+    {
+      "id": "overwrite",
+      "title": "Конфликт файлов",
+      "group": "Архивы",
+      "sourceKey": "overwriteDialog",
+      "sourceReport": "macos/light/overwrite/overwrite-layout-ru-700-0.json"
+    },
+    {
+      "id": "progress",
+      "title": "Ход операции",
+      "group": "Архивы",
+      "sourceKey": "progressDialog",
+      "sourceReport": "macos/light/progress/progress-dialog-760-0-0-paused.json"
+    },
+    {
+      "id": "messages",
+      "title": "Журнал сообщений",
+      "group": "Результаты и отчёты",
+      "sourceKey": "operationMessagesDialog",
+      "sourceReport": "macos/light/source-prompts/source-prompt-initial-ru-3.json"
+    },
+    {
+      "id": "properties",
+      "title": "Свойства объектов",
+      "group": "Результаты и отчёты",
+      "sourceKey": "selectedPropertiesDialog",
+      "sourceReport": "macos/light/selected-properties/properties-540.json"
+    },
+    {
+      "id": "hash",
+      "title": "Контрольные суммы",
+      "group": "Результаты и отчёты",
+      "sourceKey": "ListViewDialog / Hash results",
+      "sourceReport": "macos/light/hash-results/hash-results-540.json"
+    },
+    {
+      "id": "text",
+      "title": "Подробный текстовый отчёт",
+      "group": "Результаты и отчёты",
+      "sourceKey": "editDialog",
+      "sourceReport": "macos/light/source-prompts/source-prompt-initial-ru-0.json"
+    },
+    {
+      "id": "benchmark",
+      "title": "Таблица — тестирование",
+      "group": "Результаты и отчёты",
+      "sourceKey": "IDD_BENCH",
+      "sourceReport": "macos/light/benchmark/benchmark-normal-ru-960.json"
+    },
+    {
+      "id": "benchmark-total",
+      "title": "Полный тест — консоль",
+      "group": "Результаты и отчёты",
+      "sourceKey": "IDD_BENCH_TOTAL",
+      "sourceReport": "macos/light/benchmark/benchmark-total-ru-960.json"
+    },
+    {
+      "id": "settings-system",
+      "title": "Настройки · Интеграция",
+      "group": "Настройки",
+      "sourceKey": "settingsDialog/systemPage",
+      "sourceReport": "macos/light/options-pages/options-activation---640--1-0-physical-control.json",
+      "conceptSection": "Интеграция"
+    },
+    {
+      "id": "settings-menu",
+      "title": "Настройки · Системное меню",
+      "group": "Настройки",
+      "sourceKey": "settingsDialog/menuPage",
+      "sourceReport": "macos/light/options-pages/options-activation-ru-640--1-1-physical-control.json",
+      "conceptSection": "Интеграция",
+      "conceptVisible": false,
+      "omissionReason": "Explorer menu integration is unsupported on macOS; omit the section and its review navigation entry."
+    },
+    {
+      "id": "settings-folders",
+      "title": "Настройки · Дополнительно",
+      "group": "Настройки",
+      "sourceKey": "settingsDialog/foldersPage",
+      "sourceReport": "macos/light/options-pages/options-activation-ru-640--1-2-physical-control.json",
+      "conceptSection": "Дополнительно"
+    },
+    {
+      "id": "settings-editor",
+      "title": "Настройки · Внешние приложения",
+      "group": "Настройки",
+      "sourceKey": "settingsDialog/editorPage",
+      "sourceReport": "macos/light/options-pages/options-activation---640--1-3-physical-control.json",
+      "conceptSection": "Дополнительно",
+      "conceptDisclosure": "apps"
+    },
+    {
+      "id": "settings-view",
+      "title": "Настройки · Основные",
+      "group": "Настройки",
+      "sourceKey": "settingsDialog/settingsPage",
+      "sourceReport": "macos/light/options-pages/options-activation-ru-640--1-4-physical-control.json",
+      "conceptSection": "Основные"
+    },
+    {
+      "id": "settings-language",
+      "title": "Настройки · Сведения о переводе",
+      "group": "Настройки",
+      "sourceKey": "settingsDialog/languagePage",
+      "sourceReport": "macos/light/options-pages/options-activation---640--1-5-physical-control.json",
+      "conceptSection": "Основные",
+      "conceptDisclosure": "translation"
+    },
+    {
+      "id": "help",
+      "title": "Справка",
+      "group": "Справка и сообщения",
+      "sourceKey": "helpWindow",
+      "sourceReport": "macos/light/help/help-ru-760.json"
+    },
+    {
+      "id": "about",
+      "title": "О приложении",
+      "group": "Справка и сообщения",
+      "sourceKey": "aboutDialog",
+      "sourceReport": "macos/light/common-dialogs/standard-buttons-about-ru-360.json"
+    },
+    {
+      "id": "error",
+      "title": "Ошибка операции",
+      "group": "Справка и сообщения",
+      "sourceKey": "errors/QMessageBox",
+      "sourceReport": "macos/light/errors/gui-error-output-0-0---320.json"
+    },
+    {
+      "id": "split-error",
+      "title": "Неверный размер тома",
+      "group": "Справка и сообщения",
+      "sourceKey": "splitVolumeError",
+      "sourceReport": "macos/light/split-combine/split-invalid-volume-340.json"
+    }
+  ]
+}
