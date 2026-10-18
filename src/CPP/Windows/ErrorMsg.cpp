@@ -11,6 +11,7 @@
 #include "Windows/ErrorMsg.h"
 #include "qtdiagnostictext.h"
 #include "qttranslationcatalog.h"
+#include <memory>
 
 #ifdef _WIN32
 #if !defined(_UNICODE)
@@ -40,6 +41,7 @@ static bool MyFormatMessage(DWORD errorCode, UString &message) {
                                 FORMAT_MESSAGE_IGNORE_INSERTS,
                             NULL, errorCode, 0, (LPTSTR)&msgBuf, 0, NULL) == 0)
             return false;
+        const std::unique_ptr<void, decltype(&LocalFree)> buffer(msgBuf, &LocalFree);
         message = GetUnicodeString((LPCTSTR)msgBuf);
     } else
 #endif
@@ -48,9 +50,9 @@ static bool MyFormatMessage(DWORD errorCode, UString &message) {
                                  FORMAT_MESSAGE_IGNORE_INSERTS,
                              NULL, errorCode, 0, (LPWSTR)&msgBuf, 0, NULL) == 0)
             return false;
+        const std::unique_ptr<void, decltype(&LocalFree)> buffer(msgBuf, &LocalFree);
         message = (LPCWSTR)msgBuf;
     }
-    ::LocalFree(msgBuf);
     return true;
 
 #else // _WIN32

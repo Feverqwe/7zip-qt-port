@@ -53,3 +53,22 @@ launcher_progress and taskbar_adapter (5/5, 1.07 s), run
 launcher fixtures use a private bus. Affected targets were rebuilt with the
 existing compiler caches/build trees. These platform-specific changes do not
 establish macOS runtime acceptance or a whole-project/full/slow gate.
+
+## Windows error-message buffers
+
+The subsequent complete ErrorMsg.cpp review found the same source gap in both
+native FormatMessage branches: LocalFree followed an allocating UString copy.
+Each successful API result now has a local unique_ptr using LocalFree before
+conversion begins. Source formatting, unknown-code fallback, newline trimming,
+translation adapters and platform branches are retained. The original module at
+the source revision above has the same manual-release ordering;
+[FormatMessageW](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-formatmessagew)
+specifies LocalFree for its allocated result. No allocation failure was injected
+and no synthetic assertion-only test was added; existing public error consumers
+already exercise native and unknown errors.
+
+Windows x64 / Qt 6.12 rebuilt targets and passed native_services,
+native_language_host, language, progress_sync, progress_worker and
+native_shell_com (6/6, 6.21 s), run `20261018T132010Z-1d877580`, with its existing
+build/cache. The modified branches are Windows-only; this receipt does not add
+macOS/Linux runtime or global application acceptance.
