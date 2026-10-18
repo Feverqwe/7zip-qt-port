@@ -25,7 +25,7 @@ class DisclosureButton final : public QToolButton {
         QStylePainter painter(this);
         // Native toolbar arrows can shrink the glyph differently by direction.
         // Use one font-scaled chevron, rotating it without changing its bounds.
-        const qreal extent = qMax(8, fontMetrics().capHeight());
+        const qreal extent = qMax(6.0, fontMetrics().capHeight() * 0.75);
         const QRect slot = QStyle::visualRect(layoutDirection(), rect(),
                                               QRect(2, 0, qRound(extent + 4), height()));
         painter.save();
@@ -38,15 +38,16 @@ class DisclosureButton final : public QToolButton {
         painter.setPen(
             QPen(option.palette.color(isEnabled() ? QPalette::Active : QPalette::Disabled,
                                       QPalette::ButtonText),
-                 qMax(1.5, extent / 6), Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+                 qMax(1.0, extent / 6), Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
         QPainterPath chevron;
         chevron.moveTo(-extent / 4, -extent / 2);
         chevron.lineTo(extent / 4, 0);
         chevron.lineTo(-extent / 4, extent / 2);
         painter.drawPath(chevron);
         painter.restore();
-        const QRect label = QStyle::visualRect(layoutDirection(), rect(),
-                                               rect().adjusted(qRound(extent + 12), 0, 0, 0));
+        const QRect label =
+            QStyle::visualRect(layoutDirection(), rect(),
+                               rect().adjusted(qMax(8, fontMetrics().capHeight()) + 12, 0, 0, 0));
         style()->drawItemText(&painter, label, Qt::AlignLeading | Qt::AlignVCenter, option.palette,
                               isEnabled(), text(), QPalette::ButtonText);
         if (hasFocus()) {

@@ -239,6 +239,15 @@ macOS: приложение и два прямых потребителя соб
 только report раскрытого состояния, без фиксации пиксельных размеров тестом.
 Windows/Linux и VoiceOver для этой правки не проверены.
 
+Повторное уточнение размера: контур уменьшен относительно cap height подписи,
+линия стала тоньше; размер кнопки и положение текста сохранены. Меняется только
+отрисовка общего QtDisclosure, обработчики Add/Extract и upstream-поведение
+не затронуты. Приложение и оба прямых потребителя собраны; focused
+`source_compress_dialog|extract_dialog` — 2/2 PASS. Cocoa EN/RU light/dark —
+16/16 test functions PASS; актуальные widget JSON и снимки collapsed/expanded
+проверены в прежнем каталоге review. Windows/Linux и VoiceOver для этого
+уточнения не проверены.
+
 ## Итерация 6: современные сочетания
 
 Источник: https://github.com/ip7z/7zip.git,
