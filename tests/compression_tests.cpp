@@ -17,6 +17,7 @@
 #include <QSpinBox>
 #include <QTemporaryDir>
 #include <QTimer>
+#include <QToolButton>
 #include <QtTest>
 
 class CompressionTests : public QObject {
@@ -137,6 +138,9 @@ class CompressionTests : public QObject {
         QVERIFY(method->findText("PPMd") >= 0);
         QCOMPARE(method->currentText(), QStringLiteral("*  Deflate"));
         QVERIFY(!solidBlock->isEnabled());
+        auto *passwordEnabled = dialog.findChild<QCheckBox *>("archivePasswordEnabled");
+        QVERIFY(passwordEnabled);
+        passwordEnabled->click();
         encryption->setCurrentIndex(1);
         QVERIFY(password->isEnabled());
         QVERIFY(confirmation->isEnabled());
@@ -150,6 +154,11 @@ class CompressionTests : public QObject {
         QTemporaryDir temp;
         QVERIFY(temp.isValid());
         CreateArchiveDialog dialog(temp.path());
+        auto *advanced = dialog.findChild<QToolButton *>("archiveAdvancedToggle");
+        auto *passwordEnabled = dialog.findChild<QCheckBox *>("archivePasswordEnabled");
+        QVERIFY(advanced && passwordEnabled);
+        advanced->click();
+        passwordEnabled->click();
         dialog.resize(640, 480);
         dialog.show();
         QCoreApplication::processEvents();
@@ -188,6 +197,9 @@ class CompressionTests : public QObject {
         auto *scroll = dialog.findChild<QScrollArea *>();
         auto *buttons = dialog.findChild<QDialogButtonBox *>();
         QVERIFY(mode && pathMode && level && scroll && buttons);
+        auto *advanced = dialog.findChild<QToolButton *>("archiveAdvancedToggle");
+        QVERIFY(advanced);
+        advanced->click();
         QCOMPARE(pathMode->currentData().toInt(), int(NWildcard::k_RelatPath));
         QCOMPARE(dialog.compressionOptions().UpdateMode, NCompressDialog::NUpdateMode::kAdd);
         for (const QSize size : {QSize(760, 720), QSize(640, 480)}) {

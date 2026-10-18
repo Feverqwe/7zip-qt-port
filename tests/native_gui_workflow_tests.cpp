@@ -110,6 +110,36 @@ QStringList AccessibleNames(HWND window, QHash<QString, bool> *exposed = nullptr
     }
     return names;
 }
+
+bool EnableAccessibleToggle(HWND window, const wchar_t *name) {
+    const HRESULT initialized = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
+    const auto uninitialize = qScopeGuard([&] {
+        if (SUCCEEDED(initialized))
+            CoUninitialize();
+    });
+    CMyComPtr<IUIAutomation> automation;
+    if (FAILED(automation.CoCreateInstance(__uuidof(CUIAutomation), __uuidof(IUIAutomation))))
+        return false;
+    VARIANT value{};
+    value.vt = VT_BSTR;
+    value.bstrVal = SysAllocString(name);
+    const auto clear = qScopeGuard([&] { VariantClear(&value); });
+    if (!value.bstrVal)
+        return false;
+    CMyComPtr<IUIAutomationElement> root, element;
+    CMyComPtr<IUIAutomationCondition> condition;
+    CMyComPtr<IUnknown> pattern;
+    CMyComPtr<IUIAutomationTogglePattern> toggle;
+    if (FAILED(automation->ElementFromHandle(window, &root)) ||
+        FAILED(automation->CreatePropertyCondition(UIA_NamePropertyId, value, &condition)) ||
+        FAILED(root->FindFirst(TreeScope_Descendants, condition, &element)) || !element ||
+        FAILED(element->GetCurrentPattern(UIA_TogglePatternId, &pattern)) || !pattern ||
+        FAILED(pattern.QueryInterface(__uuidof(IUIAutomationTogglePattern), &toggle)))
+        return false;
+    ToggleState state;
+    return SUCCEEDED(toggle->get_CurrentToggleState(&state)) &&
+           (state == ToggleState_On || SUCCEEDED(toggle->Toggle()));
+}
 } // namespace
 
 class NativeGUIWorkflowTests final : public QObject {
@@ -249,6 +279,8 @@ class NativeGUIWorkflowTests final : public QObject {
         QVERIFY(GetWindowTextW(dialog.window, caption, 1024) > 0);
         QCOMPARE(QString::fromWCharArray(caption),
                  "Extract : " + QDir::toNativeSeparators(archive));
+        QTRY_VERIFY_WITH_TIMEOUT(EnableAccessibleToggle(dialog.window, L"Advanced settings"), 5000);
+        QTRY_VERIFY_WITH_TIMEOUT(EnableAccessibleToggle(dialog.window, L"Use a password"), 5000);
         QHash<QString, bool> exposed;
         for (const QString &name : {QString("Path mode:"), QString("Overwrite mode:"),
                                     QString("Eliminate duplication of root folder"),

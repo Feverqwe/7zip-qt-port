@@ -228,3 +228,34 @@ AppKit completion и Linux launcher/taskbar consumers; их runtime-ограни
 всех ошибок. Общая runtime-проверка и разбор её сбоев продолжаются; slow suites,
 полное sanitizer-покрытие зависимостей и визуальное сравнение с оригинальным
 Windows 7zFM этим аудитом не установлены.
+
+## Проверки Add/Extract после изменения представления
+
+Общий gate выявил проверки прежнего двухколоночного вида и постоянно открытых
+полей. Они сопоставлены с текущими конструкторами, исходными CompressDialog /
+ExtractDialog resources и обработчиками upstream
+`9128b80e3a471108678e2b3ec3c985861c8d7b0f`, а также с
+[согласованным редизайном](ui-redesign.md). Производственные алгоритмы здесь
+не менялись. Проверки расширенного состояния теперь явно открывают Advanced и
+пароль; сохраняются проверки полной видимости, текста, порядка, параметров и
+результатов операций. На POSIX проверяется согласованное скрытие неподдерживаемых
+Windows-настроек. Прокрутка в source_compress_dialog раскрывает весь combo,
+а не только его input-method cursor rectangle.
+
+compression, codec_creation_ui, compression_order, compression_dictionary,
+compression_method_state, compression_memory, compression_limit,
+compression_solid, sfx_creation, source_extract_advanced, dialog_path_rules,
+source_compress_dialog, ui_geometry и language_focus прошли адресные проверки
+на macOS arm64, Linux x64 и Windows x64 / Qt 6.12. Linux run
+`20261018T143721Z-ea996e90`, Windows run `20261018T144745Z-441ad471`.
+Остальные сбои этих batch не считаются приёмкой и разбираются отдельно.
+Использованы существующие incremental targets и compiler caches.
+
+Windows дополнительно прошёл native_gui_workflow и source_metadata_storage.
+Native cancellation-сценарий раскрывает настройки через UI Automation перед
+проверкой доступности полей, затем закрывает форму и проверяет неизменность
+частных входов/отсутствие результата. WIM-проверка допускает расширение окна
+по native font minima, сохраняя полную видимость контролов, Options/Add
+Cancel/OK/restart и фактическое сохранение ADS/security в архиве. Геометрические
+проверки и native accessibility не устанавливают rendered pixel parity с
+оригинальным Windows 7zFM. Сбои остальных областей общего gate ещё не закрыты.

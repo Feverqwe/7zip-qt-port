@@ -217,7 +217,10 @@ class SourceCompressDialogTests final : public QObject {
                 auto *control = dialog.findChild<QComboBox *>(name);
                 if (!control->isVisible())
                     continue;
-                scroll->ensureWidgetVisible(control);
+                // Reveal the whole field, rather than its input-method cursor rectangle.
+                const QRect rect(control->mapTo(scroll->widget(), QPoint()), control->size());
+                scroll->ensureVisible(rect.center().x(), rect.center().y(), rect.width() / 2 + 16,
+                                      rect.height() / 2 + 16);
                 QApplication::processEvents();
                 QVERIFY2(UiInspection::fullyVisible(*control, dialog), name);
                 QStyleOptionComboBox option;

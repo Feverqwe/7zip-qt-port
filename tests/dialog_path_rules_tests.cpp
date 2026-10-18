@@ -12,11 +12,19 @@
 #include <QPushButton>
 #include <QSignalSpy>
 #include <QTemporaryDir>
+#include <QToolButton>
 #include <QtTest>
 
 namespace {
 QString normalized(const QString &path) { return QDir::fromNativeSeparators(path); }
 void reports(QDialog &dialog, const QString &tag, bool extract) {
+    if (extract) {
+        auto *advanced = dialog.findChild<QToolButton *>("extractAdvancedToggle");
+        auto *passwordEnabled = dialog.findChild<QCheckBox *>("extractPasswordEnabled");
+        QVERIFY(advanced && passwordEnabled);
+        advanced->setChecked(true);
+        passwordEnabled->setChecked(true);
+    }
     dialog.show();
     for (const QSize size :
          extract ? QList<QSize>{{700, 390}, {600, 340}} : QList<QSize>{{760, 720}, {640, 480}}) {

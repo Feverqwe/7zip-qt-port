@@ -15,6 +15,7 @@
 #include <QSignalSpy>
 #include <QStandardPaths>
 #include <QTemporaryDir>
+#include <QToolButton>
 #include <QtTest>
 
 namespace {
@@ -248,6 +249,9 @@ class SfxCreationTests final : public QObject {
         auto *shared = dialog.findChild<QCheckBox *>("archiveSharedFiles");
         auto *remove = dialog.findChild<QCheckBox *>("archiveDeleteAfterCompression");
         QVERIFY(format && method && sfx && name && shared && remove);
+        auto *advanced = dialog.findChild<QToolButton *>("archiveAdvancedToggle");
+        QVERIFY(advanced);
+        advanced->click();
         format->setCurrentText("7z");
         QVERIFY(sfx->isEnabled());
         name->setText(QStringLiteral("пакет 空.7z"));
@@ -270,16 +274,26 @@ class SfxCreationTests final : public QObject {
         QVERIFY(UiInspection::writeReport(dialog, "sfx-options-" + language + "-" +
                                                       QString::number(size.width())));
         for (const auto *control : {sfx, shared, remove}) {
+#ifndef Q_OS_WIN
+            if (control == shared) {
+                QVERIFY(!control->isVisible());
+                continue;
+            }
+#endif
             QVERIFY2(UiInspection::fullyVisible(*control, dialog),
                      qPrintable(control->objectName()));
             QVERIFY2(control->width() >= control->sizeHint().width(),
                      qPrintable(control->objectName()));
             QVERIFY(control->height() >= control->sizeHint().height());
         }
-        QVERIFY(UiInspection::bounds(*sfx, dialog).bottom() <
-                UiInspection::bounds(*shared, dialog).top());
-        QVERIFY(UiInspection::bounds(*shared, dialog).bottom() <
-                UiInspection::bounds(*remove, dialog).top());
+        if (shared->isVisible()) {
+            QVERIFY(UiInspection::bounds(*sfx, dialog).bottom() <
+                    UiInspection::bounds(*shared, dialog).top());
+            QVERIFY(UiInspection::bounds(*shared, dialog).bottom() <
+                    UiInspection::bounds(*remove, dialog).top());
+        } else
+            QVERIFY(UiInspection::bounds(*sfx, dialog).bottom() <
+                    UiInspection::bounds(*remove, dialog).top());
         sfx->setChecked(false);
         QCOMPARE(name->text(), QStringLiteral("пакет 空.7z"));
         QVERIFY(method->findText("BZip2") >= 0);

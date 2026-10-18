@@ -1,6 +1,7 @@
 #include "archivecodeccatalog.h"
 #include "createarchivedialog.h"
 #include "layout_inspection.h"
+#include <QCheckBox>
 #include <QScrollArea>
 #include <QSignalSpy>
 #include <QStandardPaths>
@@ -84,9 +85,12 @@ class CodecCreationUiTests final : public QObject {
                                           type + "-creation-top-" + QString::number(size.width())));
         auto *group = dialog.findChild<QGroupBox *>("archiveEncryptionGroup");
         QCOMPARE(group->isEnabled(), encrypt);
-        scroll->ensureWidgetVisible(group);
-        QApplication::processEvents();
-        QVERIFY(UiInspection::fullyVisible(*group, dialog));
+        QCOMPARE(group->isVisible(), encrypt);
+        if (encrypt) {
+            scroll->ensureWidgetVisible(group);
+            QApplication::processEvents();
+            QVERIFY(UiInspection::fullyVisible(*group, dialog));
+        }
         auto *buttons = dialog.findChild<QDialogButtonBox *>();
         QVERIFY(UiInspection::fullyVisible(*buttons, dialog));
         QVERIFY(
@@ -128,6 +132,9 @@ class CodecCreationUiTests final : public QObject {
         auto *types = multiple.findChild<QComboBox *>("archiveFormat");
         QCOMPARE(types->findText("gzip"), -1);
         types->setCurrentText("7z");
+        auto *passwordEnabled = multiple.findChild<QCheckBox *>("archivePasswordEnabled");
+        QVERIFY(passwordEnabled && passwordEnabled->isEnabled());
+        passwordEnabled->click();
         QVERIFY(multiple.findChild<QLineEdit *>("archivePassword")->isEnabled());
         QCOMPARE(multiple.compressionOptions().format, QStringLiteral("7z"));
         QVERIFY(

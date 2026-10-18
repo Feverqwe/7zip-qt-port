@@ -8,6 +8,7 @@
 #include <QScrollArea>
 #include <QSignalSpy>
 #include <QTemporaryDir>
+#include <QToolButton>
 #include <QtTest>
 
 class CompressionMethodStateTests final : public QObject {
@@ -118,6 +119,9 @@ class CompressionMethodStateTests final : public QObject {
             QCOMPARE(memory->text(), QString("?"));
             QCOMPARE(decompress->text(), QString("?"));
         }
+        auto *advanced = dialog.findChild<QToolButton *>("archiveAdvancedToggle");
+        QVERIFY(advanced);
+        advanced->click();
         dialog.show();
         QCOMPARE(combo(dialog, "compressionMemoryLimit")->isVisible(), !tar);
         QCOMPARE(memory->isVisible(), !tar);

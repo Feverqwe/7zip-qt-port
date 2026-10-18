@@ -51,11 +51,10 @@ NTFS rows keep their source order and spacing when unsupported rows are hidden.
 The fixed source group areas remain reserved; this is not a compact redesign.
 source_metadata_storage additionally checks WIM security/ADS and all visible
 time captions, Options/Add Cancel/OK/restart, and writes four Windows
-`source-metadata-wim-{language}-{width}` reports. Current EN/RU540×480/480×430
-reports reviewed: RU compact hint475×423 fits480×430, ADS397×18/security301×18
-fit434-wide controls; last-access337×32 fits414×32; footer458×20 fully exposed.
-Only the last-access caption wraps additionally for WIM; 3px vertical gaps keep
-all source groups and controls reachable at compact sizes without reordering.
+`source-metadata-wim-{language}-{width}` reports. Native font/control minima may
+enlarge the requested normal or compact size for WIM as well as TAR. Supported
+metadata controls, translated time captions and the footer must remain fully
+exposed, without clipping or reordering the source groups.
 
 ### SFX Options group (P2-02)
 

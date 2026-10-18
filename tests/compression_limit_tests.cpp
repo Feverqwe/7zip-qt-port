@@ -7,6 +7,7 @@
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QTimer>
+#include <QToolButton>
 #include <QtTest>
 #include <algorithm>
 
@@ -96,6 +97,9 @@ class CompressionLimitTests final : public QObject {
         // Inject a parsed zero-byte choice to exercise OnOK independent of physical RAM.
         limit->addItem("0 B", "0b");
         limit->setCurrentIndex(limit->count() - 1);
+        auto *advanced = dialog.findChild<QToolButton *>("archiveAdvancedToggle");
+        QVERIFY(advanced);
+        advanced->click();
         dialog.show();
         bool rejectedForMemory = false;
         QTimer::singleShot(0, &dialog, [&] {
@@ -143,6 +147,9 @@ class CompressionLimitTests final : public QObject {
         QVERIFY(limit);
         limit->addItem("0 B", "0b");
         limit->setCurrentIndex(limit->count() - 1);
+        auto *advanced = dialog.findChild<QToolButton *>("archiveAdvancedToggle");
+        QVERIFY(advanced);
+        advanced->click();
         dialog.show();
         bool rejected = false;
         QTimer::singleShot(0, &dialog, [&] {

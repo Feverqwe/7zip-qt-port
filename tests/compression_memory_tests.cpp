@@ -4,6 +4,7 @@
 #include <QScrollArea>
 #include <QSignalSpy>
 #include <QTemporaryDir>
+#include <QToolButton>
 #include <QtTest>
 
 class CompressionMemoryTests final : public QObject {
@@ -45,6 +46,9 @@ class CompressionMemoryTests final : public QObject {
             QCOMPARE(dictionary->itemText(0), QStringLiteral("*  500 KB"));
         }
         QCOMPARE(dialog.compressionOptions().Dict64, UInt64(-1));
+        auto *advanced = dialog.findChild<QToolButton *>("archiveAdvancedToggle");
+        QVERIFY(advanced);
+        advanced->click();
         dialog.show();
         dictionary->setCurrentIndex(0);
         for (QSize size : {QSize(760, 720), QSize(640, 480)}) {
@@ -86,6 +90,9 @@ class CompressionMemoryTests final : public QObject {
             QCOMPARE(dictionary->itemText(0), QStringLiteral("*  %1").arg(sizeText));
             QCOMPARE(dialog.compressionOptions().Dict64, UInt64(-1));
         }
+        auto *advanced = dialog.findChild<QToolButton *>("archiveAdvancedToggle");
+        QVERIFY(advanced);
+        advanced->click();
         dialog.show();
         for (QSize size : {QSize(760, 720), QSize(640, 480)}) {
             dialog.resize(size);

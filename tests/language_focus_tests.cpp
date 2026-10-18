@@ -6,6 +6,7 @@
 #include <QScrollArea>
 #include <QSignalSpy>
 #include <QTemporaryDir>
+#include <QToolButton>
 #include <QtTest>
 
 class LanguageFocusTests : public QObject {
@@ -35,6 +36,9 @@ class LanguageFocusTests : public QObject {
             if (label->buddy() == parameters)
                 parametersLabel = label;
         QVERIFY(show && parameters && password && parametersLabel);
+        auto *advanced = dialog.findChild<QToolButton *>("archiveAdvancedToggle");
+        QVERIFY(advanced);
+        advanced->click();
         QCOMPARE(show->text(), QStringLiteral("&Показать пароль"));
         QCOMPARE(parametersLabel->text(), QStringLiteral("&Параметры:"));
         password->setText(QStringLiteral("pending secret 密碼"));

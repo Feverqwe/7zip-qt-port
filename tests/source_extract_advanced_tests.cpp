@@ -16,6 +16,7 @@
 #include <QPushButton>
 #include <QTemporaryDir>
 #include <QTimer>
+#include <QToolButton>
 #include <QtTest>
 
 namespace {
@@ -181,6 +182,11 @@ class SourceExtractAdvancedTests final : public QObject {
         ReloadLang(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
         QtNotifyLanguageChanged();
         CExtractDialog dialog(_settings.path(), {});
+        auto *advanced = dialog.findChild<QToolButton *>("extractAdvancedToggle");
+        auto *passwordEnabled = dialog.findChild<QCheckBox *>("extractPasswordEnabled");
+        QVERIFY(advanced && passwordEnabled);
+        advanced->click();
+        passwordEnabled->click();
         dialog.resize(size);
         dialog.show();
         QApplication::processEvents();
@@ -188,6 +194,12 @@ class SourceExtractAdvancedTests final : public QObject {
                                  "extractOverwriteMode", "extractPassword"}) {
             auto *control = dialog.findChild<QWidget *>(name);
             QVERIFY(control);
+#ifndef Q_OS_WIN
+            if (control->objectName() == "extractNtSecurity") {
+                QVERIFY(!control->isVisible());
+                continue;
+            }
+#endif
             QVERIFY2(UiInspection::fullyVisible(*control, dialog), name);
             if (auto *button = qobject_cast<QCheckBox *>(control))
                 QVERIFY2(button->width() >= button->sizeHint().width(), name);
@@ -197,11 +209,10 @@ class SourceExtractAdvancedTests final : public QObject {
         auto *overwrite = dialog.findChild<QWidget *>("extractOverwriteMode");
         QVERIFY(UiInspection::bounds(*mode, dialog).bottom() <
                 UiInspection::bounds(*elim, dialog).top());
-        QVERIFY(UiInspection::bounds(*elim, dialog).bottom() <
-                UiInspection::bounds(*overwrite, dialog).top());
+        QVERIFY(UiInspection::bounds(*overwrite, dialog).bottom() <
+                UiInspection::bounds(*mode, dialog).top());
 #ifndef Q_OS_WIN
         QVERIFY(!dialog.findChild<QCheckBox *>("extractNtSecurity")->isEnabled());
-        QVERIFY(!dialog.findChild<QCheckBox *>("extractNtSecurity")->toolTip().isEmpty());
 #endif
         QVERIFY(UiInspection::writeReport(
             dialog, QString("extract-advanced-%1-%2").arg(language).arg(size.width())));

@@ -4,6 +4,7 @@
 #include <QScrollArea>
 #include <QSignalSpy>
 #include <QTemporaryDir>
+#include <QToolButton>
 #include <QtTest>
 
 class CompressionOrderTests final : public QObject {
@@ -22,6 +23,9 @@ class CompressionOrderTests final : public QObject {
         QCOMPARE(dialog.compressionOptions().Order, UInt32(-1));
         QVERIFY(word->itemText(0).contains("64"));
         word->setCurrentIndex(0);
+        auto *advanced = dialog.findChild<QToolButton *>("archiveAdvancedToggle");
+        QVERIFY(advanced);
+        advanced->click();
         dialog.show();
         for (QSize size : {QSize(760, 720), QSize(640, 480)}) {
             dialog.resize(size);
@@ -65,6 +69,9 @@ class CompressionOrderTests final : public QObject {
         dialog.findChild<QComboBox *>("compressionMethod")->setCurrentText(methodName);
         QVERIFY(word->itemText(0).contains("128"));
         QCOMPARE(dialog.compressionOptions().Order, UInt32(-1));
+        auto *advanced = dialog.findChild<QToolButton *>("archiveAdvancedToggle");
+        QVERIFY(advanced);
+        advanced->click();
         dialog.show();
         for (QSize size : {QSize(760, 720), QSize(640, 480)}) {
             dialog.resize(size);
@@ -109,6 +116,9 @@ class CompressionOrderTests final : public QObject {
             QCOMPARE(dialog.compressionOptions().Order, UInt32(-1));
         }
         word->setCurrentIndex(word->count() - 1);
+        auto *advanced = dialog.findChild<QToolButton *>("archiveAdvancedToggle");
+        QVERIFY(advanced);
+        advanced->click();
         dialog.show();
         for (QSize size : {QSize(760, 720), QSize(640, 480)}) {
             dialog.resize(size);

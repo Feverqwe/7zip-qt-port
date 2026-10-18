@@ -2,6 +2,7 @@
 #include "extractdialog.h"
 #include "layout_inspection.h"
 
+#include <QCheckBox>
 #include <QDialogButtonBox>
 #include <QDir>
 #include <QFile>
@@ -12,6 +13,7 @@
 #include <QScrollArea>
 #include <QScrollBar>
 #include <QTemporaryDir>
+#include <QToolButton>
 #include <QtTest>
 #include <memory>
 
@@ -121,6 +123,13 @@ class UiGeometryTests final : public QObject {
             dialog = std::make_unique<CreateArchiveDialog>(directory_.path());
         else
             dialog = std::make_unique<ExtractDialog>(directory_.path(), QStringList{});
+        auto *advanced = dialog->findChild<QToolButton *>(create ? "archiveAdvancedToggle"
+                                                                 : "extractAdvancedToggle");
+        auto *passwordEnabled = dialog->findChild<QCheckBox *>(create ? "archivePasswordEnabled"
+                                                                      : "extractPasswordEnabled");
+        QVERIFY(advanced && passwordEnabled);
+        advanced->click();
+        passwordEnabled->click();
         dialog->resize(requestedSize);
         dialog->show();
         QApplication::processEvents();
@@ -143,15 +152,13 @@ class UiGeometryTests final : public QObject {
             QVERIFY(folder && caption && browse);
             const QRect captionBounds = UiInspection::bounds(*caption, *dialog);
             const QRect pathBounds = UiInspection::bounds(*archivePath, *dialog);
-            QVERIFY(qAbs(captionBounds.center().y() - pathBounds.center().y()) <= 1);
+            QVERIFY(captionBounds.bottom() < pathBounds.top());
             QVERIFY(UiInspection::fullyVisible(*folder, *dialog));
             archivePath->setFocus();
             QTest::keyClick(archivePath, Qt::Key_Tab);
             QTRY_VERIFY(browse->hasFocus());
-            // CompressDialog.rc: encryption stays to the right of compression
-            // at both sizes. Reachability alone passed the previous stacked UI.
-            QVERIFY(UiInspection::bounds(*compression, *dialog).right() <
-                    UiInspection::bounds(*encryption, *dialog).left());
+            QVERIFY(UiInspection::bounds(*encryption, *dialog).bottom() <
+                    UiInspection::bounds(*compression, *dialog).top());
             for (const char *name : {"archiveFormat", "compressionLevel", "compressionMethod",
                                      "compressionMemoryLimit", "archivePassword",
                                      "archivePasswordConfirmation", "archiveBrowse"}) {
@@ -178,8 +185,8 @@ class UiGeometryTests final : public QObject {
                 dialog->findChild<QComboBox *>("archiveFormat")->setCurrentText(format);
                 QApplication::processEvents();
                 QVERIFY2(footerFits(*dialog), qPrintable(UiInspection::dump(*dialog)));
-                QVERIFY(UiInspection::bounds(*compression, *dialog).right() <
-                        UiInspection::bounds(*encryption, *dialog).left());
+                QVERIFY(UiInspection::bounds(*encryption, *dialog).bottom() <
+                        UiInspection::bounds(*compression, *dialog).top());
                 auto *methodLabel = dialog->findChild<QLabel *>("archiveEncryptionMethodLabel");
                 auto *method = dialog->findChild<QComboBox *>("archiveEncryption");
                 QVERIFY(methodLabel && method);
@@ -202,10 +209,10 @@ class UiGeometryTests final : public QObject {
             QVERIFY(UiInspection::separate(*destination, *browse, *dialog));
             QVERIFY(UiInspection::bounds(*destination, *dialog).bottom() <
                     UiInspection::bounds(*pathMode, *dialog).top());
-            QVERIFY(UiInspection::bounds(*pathMode, *dialog).bottom() <
-                    UiInspection::bounds(*overwrite, *dialog).top());
-            QVERIFY(UiInspection::bounds(*pathMode, *dialog).right() <
-                    UiInspection::bounds(*password, *dialog).left());
+            QVERIFY(UiInspection::bounds(*overwrite, *dialog).bottom() <
+                    UiInspection::bounds(*password, *dialog).top());
+            QVERIFY(UiInspection::bounds(*password, *dialog).bottom() <
+                    UiInspection::bounds(*pathMode, *dialog).top());
             auto *nameEnabled = dialog->findChild<QCheckBox *>("extractNameEnable");
             auto *folderName = dialog->findChild<QLineEdit *>("extractPathName");
             QVERIFY(nameEnabled && folderName);
