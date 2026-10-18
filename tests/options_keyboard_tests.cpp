@@ -86,7 +86,8 @@ class OptionsKeyboardTests final : public QObject {
                                                       .arg(direction)
                                                       .arg(target)));
             }
-        auto *footer = dialog.findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Cancel);
+        auto *footer = dialog.findChild<QDialogButtonBox *>("settingsButtons")
+                           ->button(QDialogButtonBox::Cancel);
         footer->setFocus();
         const int target = (pages->currentIndex() + 1) % pages->count();
         QTest::keyClick(footer, Qt::Key_Tab, control);
@@ -160,6 +161,7 @@ class OptionsKeyboardTests final : public QObject {
         }
         QVERIFY(visited.contains(dialog.findChild<QComboBox *>("languageChoice")));
         auto *footer = dialog.findChild<QDialogButtonBox *>("settingsButtons");
+        QVERIFY(visited.contains(dialog.findChild<QPushButton *>("settingsHelp")));
         QStringList focusTrace;
         for (auto *widget : visited)
             focusTrace.append(QString::fromLatin1(widget->metaObject()->className()) + ':' +

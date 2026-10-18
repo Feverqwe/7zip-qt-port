@@ -139,10 +139,24 @@ class UiGeometryTests final : public QObject {
         dialog->show();
         QApplication::processEvents();
         const QString tag = QString::fromLatin1(QTest::currentDataTag());
+        // A native window manager can acknowledge minimum-size changes after
+        // the first layout pass. Check usable controls rather than its exact
+        // choice of client size.
+        const auto contentsFit = [&] {
+            if (!footerFits(*dialog))
+                return false;
+            if (!create)
+                for (const char *name :
+                     {"extractDestination", "extractPathName", "extractOverwriteMode",
+                      "extractPassword", "extractShowPassword", "extractPathMode"})
+                    if (auto *control = dialog->findChild<QWidget *>(name);
+                        !control || !UiInspection::fullyVisible(*control, *dialog) ||
+                        control->height() < control->minimumSizeHint().height())
+                        return false;
+            return true;
+        };
+        QTRY_VERIFY2(contentsFit(), qPrintable(UiInspection::dump(*dialog)));
         QVERIFY(UiInspection::writeReport(*dialog, tag));
-        const QByteArray diagnosis = UiInspection::dump(*dialog).toUtf8();
-        QCOMPARE(dialog->size(), requestedSize.expandedTo(dialog->minimumSizeHint()));
-        QVERIFY2(footerFits(*dialog), diagnosis.constData());
         if (create) {
             auto *scroll = dialog->findChild<QScrollArea *>("archiveOptionsScrollArea");
             QVERIFY(scroll);

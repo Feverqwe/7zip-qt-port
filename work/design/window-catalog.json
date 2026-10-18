@@ -1,5 +1,5 @@
 {
-  "description": "Review representations, including menus and separate workflows. Source keys identify functional owners, not separate windows or tabs. The revised archive/settings concept is a draft for review; source reports describe the existing Qt implementation and do not validate the revised layout. Platform omissions are explicit.",
+  "description": "Review representations, including menus and separate workflows. Source keys identify functional owners, not separate windows or tabs. Source reports link the implemented Qt views; their capture metadata and the source audit record validation scope. Platform omissions are explicit.",
   "gallery": "build/dev/ui-theme-review/manifest.json",
   "windows": [
     {
@@ -205,7 +205,7 @@
       "runtimePlatforms": [
         "windows"
       ],
-      "conceptSection": "Интеграция",
+      "conceptSection": "Команды Проводника",
       "conceptVisible": false,
       "omissionReason": "Explorer menu integration is unsupported on macOS; omit the section and its review navigation entry."
     },
@@ -214,7 +214,7 @@
       "title": "Настройки · Временные файлы",
       "group": "Настройки",
       "sourceKey": "settingsDialog/foldersPage",
-      "sourceReport": "macos/light/settings-sections/settings-advanced-collapsed.json",
+      "sourceReport": "macos/light/settings-sections/settings-navigation-ru-780-3.json",
       "conceptSection": "Временные файлы"
     },
     {
@@ -247,7 +247,7 @@
       "title": "Настройки · Память",
       "group": "Настройки",
       "sourceKey": "settingsDialog/settingsPage",
-      "sourceReport": null,
+      "sourceReport": "macos/light/settings-sections/settings-navigation-ru-780-2.json",
       "conceptSection": "Память"
     },
     {
@@ -255,7 +255,7 @@
       "title": "Настройки · Список файлов",
       "group": "Настройки",
       "sourceKey": "settingsDialog/settingsPage",
-      "sourceReport": null,
+      "sourceReport": "macos/light/settings-sections/settings-navigation-ru-780-5.json",
       "conceptSection": "Список файлов"
     },
     {

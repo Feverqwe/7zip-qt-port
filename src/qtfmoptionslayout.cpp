@@ -158,7 +158,9 @@ void QtFmOptionsDialog::buildSections() {
     auto *info = _langPage->findChild<QPlainTextEdit *>("languageInfo");
     _langPage->layout()->removeWidget(info);
     auto *metadata = new QWidget;
-    fields(metadata)->addWidget(info);
+    auto *metadataLayout = fields(metadata);
+    metadataLayout->setContentsMargins(24, 0, 0, 0);
+    metadataLayout->addWidget(info);
     info->setMinimumHeight(info->fontMetrics().lineSpacing() * 4);
     _langPage->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Maximum);
     basic->addWidget(_langPage);
@@ -166,22 +168,19 @@ void QtFmOptionsDialog::buildSections() {
                     QT_TRANSLATE_NOOP("SettingsRedesign", "Interface language"));
     auto *translation = new QWidget(general);
     auto *translationLayout = fields(translation);
-    translationLayout->setSpacing(4);
-    _translationGroup = new QtDisclosure(metadata, translation);
-    _translationGroup->setObjectName("translationDetails");
-    QtBindLocalText(_translationGroup->button(), "SettingsRedesign",
-                    QT_TRANSLATE_NOOP("SettingsRedesign", "About translation"));
-    translationLayout->addWidget(_translationGroup);
     auto *description = new QLabel(translation);
+    description->setObjectName("translationDescription");
     description->setWordWrap(true);
     description->setContentsMargins(24, 0, 0, 0);
     description->setForegroundRole(QPalette::PlaceholderText);
     QtBindLocalText(
         description, "SettingsRedesign",
         QT_TRANSLATE_NOOP("SettingsRedesign", "Information about the installed translation"));
-    connect(_translationGroup->button(), &QToolButton::toggled, description,
-            [description](bool expanded) { description->setVisible(!expanded); });
-    translationLayout->addWidget(description);
+    _translationGroup = new QtDisclosure(metadata, translation, description);
+    _translationGroup->setObjectName("translationDetails");
+    QtBindLocalText(_translationGroup->button(), "SettingsRedesign",
+                    QT_TRANSLATE_NOOP("SettingsRedesign", "About translation"));
+    translationLayout->addWidget(_translationGroup);
     basic->addWidget(translation);
     section(_sections, "generalSection", QT_TRANSLATE_NOOP("SettingsRedesign", "General"), 2101,
             general);
@@ -269,8 +268,15 @@ void QtFmOptionsDialog::buildSections() {
     _frame->addWidget(_navigationPanel, 0, 0, 2, 1);
     _frame->addWidget(_navigationDivider, 0, 1, 2, 1);
     _frame->addWidget(_sections, 0, 2);
-    _buttons->setContentsMargins(24, 12, 24, 20);
-    _frame->addWidget(_buttons, 1, 2);
+    _footer = new QWidget(this);
+    _footer->setObjectName("settingsFooter");
+    auto *footer = new QHBoxLayout(_footer);
+    footer->setContentsMargins(24, 12, 24, 20);
+    footer->setSpacing(16);
+    footer->addWidget(_helpButtons);
+    footer->addStretch();
+    footer->addWidget(_buttons);
+    _frame->addWidget(_footer, 1, 2);
     _frame->setColumnStretch(2, 1);
     _frame->setRowStretch(0, 1);
     refreshSectionSummaries();
@@ -322,9 +328,8 @@ void QtFmOptionsDialog::updateNavigationGeometry() {
     if (compact == _compact)
         return;
     _compact = compact;
-    for (auto *widget :
-         {_navigationPanel, static_cast<QWidget *>(_navigationDivider), _compactNavigationPanel,
-          static_cast<QWidget *>(_sections), static_cast<QWidget *>(_buttons)})
+    for (auto *widget : {_navigationPanel, static_cast<QWidget *>(_navigationDivider),
+                         _compactNavigationPanel, static_cast<QWidget *>(_sections), _footer})
         _frame->removeWidget(widget);
     _navigationPanel->setVisible(!compact);
     _navigationDivider->setVisible(!compact);
@@ -332,12 +337,12 @@ void QtFmOptionsDialog::updateNavigationGeometry() {
     if (compact) {
         _frame->addWidget(_compactNavigationPanel, 0, 0, 1, 3);
         _frame->addWidget(_sections, 1, 0, 1, 3);
-        _frame->addWidget(_buttons, 2, 0, 1, 3);
+        _frame->addWidget(_footer, 2, 0, 1, 3);
     } else {
         _frame->addWidget(_navigationPanel, 0, 0, 2, 1);
         _frame->addWidget(_navigationDivider, 0, 1, 2, 1);
         _frame->addWidget(_sections, 0, 2);
-        _frame->addWidget(_buttons, 1, 2);
+        _frame->addWidget(_footer, 1, 2);
     }
     _frame->setRowStretch(0, compact ? 0 : 1);
     _frame->setRowStretch(1, compact ? 1 : 0);

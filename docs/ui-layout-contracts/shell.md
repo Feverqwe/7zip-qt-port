@@ -134,17 +134,17 @@ Reference: `CPP/7zip/UI/FileManager/resource.rc::IDM_MENU`,
 `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. Six top-level menus follow
 File/Edit/View/Favorites/Tools/Help. File retains the RC command set;
 independent Qt archive-workflow aliases have been removed. Unsupported source commands remain
-visible disabled. Archive and Standard toolbar groups use the seven exact
-large/small BMP pairs and source mask; text/size/visibility derive from the
-native toolbar flags. `main_shell` asserts menu action order, IDs, shortcuts,
-enabled state, active-panel routing and resource icons, then writes
+visible disabled. The original Archive and Standard toolbar reference used seven
+large/small bitmap pairs; the approved vector adaptation is described below.
+Text/size/visibility derive from the native toolbar flags. `main_shell` checks
+command identity, shortcuts, availability, active-panel routing and rendering, then writes
 `main-shell-980x620.json`, `main-shell-640x400.json` and File/View popup reports
 for both sizes. Qt QMenu may scroll when its source command list exceeds the
 available screen; JSON records its geometry and action tests cover non-widget
 QActions. The Windows rendered menu is not yet available for pixel comparison.
 
-Resource-pixel checks explicitly request DPR1 and retain both original BMP sizes;
-native rendering can choose the appropriate high-DPI resource.
+Command icon checks render palette changes and display density; application and
+native namespace icon checks retain their separate source-resource contracts.
 
 Redesign adaptation: Add and Extract show text beside their icons when the
 existing button-label preference is enabled. Test, Copy, Move, Delete and Info

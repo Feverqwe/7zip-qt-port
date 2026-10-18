@@ -9,7 +9,9 @@ class QToolButton;
 class QtDisclosure final : public QWidget {
     Q_OBJECT
   public:
-    explicit QtDisclosure(QWidget *content, QWidget *parent = nullptr);
+    // A collapsed description occupies the same slot as the expanded content.
+    explicit QtDisclosure(QWidget *content, QWidget *parent = nullptr,
+                          QWidget *description = nullptr);
     QToolButton *button() const { return button_; }
     void setExpanded(bool expanded);
     bool isExpanded() const;
@@ -17,6 +19,7 @@ class QtDisclosure final : public QWidget {
 
   private:
     QWidget *content_;
+    QWidget *description_;
     QToolButton *button_;
     QLabel *summary_;
 };

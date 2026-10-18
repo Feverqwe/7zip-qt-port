@@ -50,7 +50,8 @@ class OptionsIntegrationTests final : public QObject {
         QVERIFY(UiInspection::writeReport(dialog, "settings-format-search-initial"));
         auto *search = dialog.findChild<QLineEdit *>("associationSearch");
         auto *tree = dialog.findChild<QTreeWidget *>("associationChoices");
-        auto *apply = dialog.findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Apply);
+        auto *apply = dialog.findChild<QDialogButtonBox *>("settingsButtons")
+                          ->button(QDialogButtonBox::Apply);
         for (const QString &query : {QString("ZIP"), QString(".tar"), QString("no such format")}) {
             search->setText(query);
             QVERIFY(!apply->isEnabled());
@@ -146,9 +147,23 @@ class OptionsIntegrationTests final : public QObject {
         QVERIFY(OptionsPresentation::show(dialog, "fullRowOption"));
         QVERIFY(UiInspection::writeReport(dialog, "settings-advanced-collapsed"));
         QVERIFY(OptionsPresentation::show(dialog, "languageChoice"));
+        dialog.resize(780, 560);
+        QApplication::processEvents();
+        auto *description = dialog.findChild<QLabel *>("translationDescription");
+        QVERIFY(description);
+        const auto descriptionStart =
+            description->mapTo(&dialog, description->contentsRect().topLeft());
         QVERIFY(UiInspection::writeReport(dialog, "settings-general"));
         QVERIFY(OptionsPresentation::show(dialog, "languageInfo"));
+        QCOMPARE(dialog.findChild<QWidget *>("languageInfo")->mapTo(&dialog, QPoint()),
+                 descriptionStart);
+        QVERIFY(!description->isVisible());
         QVERIFY(UiInspection::writeReport(dialog, "settings-translation-expanded"));
+        dialog.findChild<QtDisclosure *>("translationDetails")->setExpanded(false);
+        QApplication::processEvents();
+        QVERIFY(description->isVisible());
+        QCOMPARE(description->mapTo(&dialog, description->contentsRect().topLeft()),
+                 descriptionStart);
         QVERIFY(OptionsPresentation::show(dialog, editor));
         QCOMPARE(editor->text(), QString("custom editor --wait"));
         dialog.apply();
@@ -223,6 +238,11 @@ class OptionsIntegrationTests final : public QObject {
                 dialog.resize(size);
                 QApplication::processEvents();
                 auto *navigation = dialog.findChild<QListWidget *>("settingsNavigation");
+                auto *help = dialog.findChild<QPushButton *>("settingsHelp");
+                auto *buttons = dialog.findChild<QDialogButtonBox *>("settingsButtons");
+                QVERIFY(UiInspection::fullyVisible(*help, dialog));
+                QVERIFY(UiInspection::bounds(*help, dialog).right() <
+                        UiInspection::bounds(*buttons, dialog).left());
                 if (!navigation->isVisible())
                     navigation = dialog.findChild<QListWidget *>("settingsSectionChoice");
                 QVERIFY(navigation->isVisible());
@@ -275,7 +295,8 @@ class OptionsIntegrationTests final : public QObject {
         dialog.show();
         auto *pages = dialog.findChild<QTabWidget *>("optionsPages");
         QCOMPARE(pages->currentIndex(), 0);
-        auto *apply = dialog.findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Apply);
+        auto *apply = dialog.findChild<QDialogButtonBox *>("settingsButtons")
+                          ->button(QDialogButtonBox::Apply);
         QVERIFY(!apply->isEnabled());
         int applied = 0;
         dialog.Applied = [&](const CFmSettings &) { ++applied; };
@@ -390,7 +411,7 @@ class OptionsIntegrationTests final : public QObject {
         QCOMPARE(restarted.findChild<QTabWidget *>("optionsPages")->currentIndex(), 0);
         QCOMPARE(restarted.findChild<QLineEdit *>("editorCommand")->text(),
                  finish == 0 ? QString() : editor);
-        QVERIFY(!restarted.findChild<QDialogButtonBox *>()
+        QVERIFY(!restarted.findChild<QDialogButtonBox *>("settingsButtons")
                      ->button(QDialogButtonBox::Apply)
                      ->isEnabled());
         QSettings saved(path, QSettings::IniFormat);

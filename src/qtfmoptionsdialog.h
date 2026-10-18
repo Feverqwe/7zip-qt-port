@@ -31,6 +31,8 @@ class QtFmOptionsDialog final : public QDialog {
     bool _applying = false;
     Qt::ColorScheme _appliedColorScheme = Qt::ColorScheme::Unknown;
     QDialogButtonBox *_buttons;
+    QDialogButtonBox *_helpButtons;
+    QWidget *_footer;
     QTabWidget *_sections;
     QPointer<QWidget> _helpContext;
     QListWidget *_navigation;

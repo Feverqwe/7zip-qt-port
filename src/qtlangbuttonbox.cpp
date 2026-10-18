@@ -66,7 +66,11 @@ void QtLangButtonBox::ReloadText() {
         help->setAccessibleName(caption);
         help->setToolTip(caption);
         help->setText(QStringLiteral("?"));
+        help->setIcon({});
         help->setAutoDefault(false);
+#ifdef Q_OS_MACOS
+        help->setAttribute(Qt::WA_LayoutUsesWidgetRect);
+#endif
         help->setFixedWidth(help->sizeHint().height());
     }
 }
@@ -75,6 +79,7 @@ void QtLangButtonBox::changeEvent(QEvent *event) {
     QDialogButtonBox::changeEvent(event);
     // Qt resets standard captions in its base handler, after the window filter.
     if (event->type() == QEvent::LanguageChange ||
-        (event->type() == QEvent::FontChange && compactHelp_))
+        ((event->type() == QEvent::FontChange || event->type() == QEvent::StyleChange) &&
+         compactHelp_))
         ReloadText();
 }

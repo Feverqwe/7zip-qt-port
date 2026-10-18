@@ -104,9 +104,9 @@ class DisclosureButton final : public QToolButton {
 };
 } // namespace
 
-QtDisclosure::QtDisclosure(QWidget *content, QWidget *parent)
-    : QWidget(parent), content_(content), button_(new DisclosureButton(this)),
-      summary_(new QLabel(this)) {
+QtDisclosure::QtDisclosure(QWidget *content, QWidget *parent, QWidget *description)
+    : QWidget(parent), content_(content), description_(description),
+      button_(new DisclosureButton(this)), summary_(new QLabel(this)) {
     // Qt owns the interface for the lifetime of this button.
     QAccessible::registerAccessibleInterface(new AccessibleDisclosure(button_));
     auto *layout = new QVBoxLayout(this);
@@ -133,12 +133,16 @@ QtDisclosure::QtDisclosure(QWidget *content, QWidget *parent)
     summary_->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
     header->addWidget(summary_, 1, Qt::AlignVCenter);
     layout->addLayout(header);
+    if (description_)
+        layout->addWidget(description_);
     layout->addWidget(content_);
     content_->hide();
     summary_->hide();
     connect(button_, &QToolButton::toggled, this, [this](bool expanded) {
         button_->setArrowType(expanded ? Qt::DownArrow : Qt::RightArrow);
         content_->setVisible(expanded);
+        if (description_)
+            description_->setVisible(!expanded);
         summary_->setVisible(!expanded && !summary_->text().isEmpty());
         QAccessible::State changed;
         changed.expanded = true;

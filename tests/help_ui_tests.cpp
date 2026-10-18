@@ -45,7 +45,7 @@ class HelpUiTests : public QObject {
             if (!OptionsPresentation::show(dialog, controls[i]))
                 continue; // Unsupported native integration has no user surface.
             dialog.findChild<QWidget *>(controls[i])->setFocus();
-            buttons->button(QDialogButtonBox::Help)->click();
+            dialog.findChild<QPushButton *>("settingsHelp")->click();
             auto *help = dialog.findChild<QDialog *>("helpWindow");
             QVERIFY(help && help->isVisible());
             auto *browser = help->findChild<QTextBrowser *>("helpBrowser");

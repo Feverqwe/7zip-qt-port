@@ -103,6 +103,10 @@ void CreateArchiveDialog::createCommandLineOptions(QFormLayout *form) {
 
 void CreateArchiveDialog::createAdvancedOptions(QFormLayout *form) {
     advanced_ = new QPushButton("&Parameters:", this);
+    advanced_->setSizePolicy(QSizePolicy::Maximum, QSizePolicy::Fixed);
+#ifdef Q_OS_MACOS
+    advanced_->setAttribute(Qt::WA_LayoutUsesWidgetRect);
+#endif
     advanced_->setObjectName("archiveAdvancedOptions");
     form->addRow(advanced_);
     updateAdvancedSummary();

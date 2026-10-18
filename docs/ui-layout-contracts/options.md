@@ -7,8 +7,10 @@
 ### Redesigned settings surface (2026-10-19)
 
 General contains appearance and language; translation information is disclosed
-on request. Opening files contains one searchable list of formats. Search matches
-displayed names and extensions without changing the draft or enabling Apply.
+on request. The translation description and expanded source information start
+at the same position; disclosure does not add a spacer or move the header.
+Opening files contains one searchable list of formats. Search matches displayed
+names and extensions without changing the draft or enabling Apply.
 Select all and Clear selection act on the whole list regardless of the filter;
 the selected count covers all formats. An empty search has an explanation.
 Advanced associations retains the original state matrix and all-users scope
@@ -24,8 +26,10 @@ preserves its previous external handler.
 Navigation occupies a sidebar through the footer height. In a narrow window it
 wraps above the content with complete section names in the same order. Each page
 has a heading and can scroll while the native Apply/Cancel/Save/? footer stays
-accessible. Initial focus is Appearance. Ctrl+Tab/Control+Tab on Cocoa and the
-reverse route work from fields and footer, activate the next visible section
+accessible. The compact Help control stays at the leading edge of the footer;
+the other actions keep their platform button order in a separate group.
+Initial focus is Appearance. Ctrl+Tab/Control+Tab on Cocoa and the reverse route
+work from fields and footer, activate the next visible section
 and focus an enabled control there. Help/F1 routes to the focused source group;
 using the footer retains that context. The help button retains its accessible
 name and tooltip. Source algorithms and original defaults
@@ -69,10 +73,15 @@ selection and Cancel without association writes. [Source and native receipt](../
 ### Appearance preference (redesign, 2026-10-18)
 
 Appearance offers Follow system, Light and Dark through the native Qt theme
-preference. The choice is a draft until Apply or OK succeeds; Cancel discards
+preference. The choice is a draft until Apply or Save succeeds; Cancel discards
 unapplied changes. Invalid memory input keeps the appearance draft unapplied.
-Applying updates existing windows, and the saved preference is restored at
+Where Qt supports overriding the platform scheme, applying updates existing
+windows; the saved preference is restored at
 application startup. Changing language preserves the pending choice.
+Qt documents this as a [platform hint](https://doc.qt.io/qt-6/qstylehints.html#colorScheme-prop).
+A minimal XCB environment can report an
+unknown scheme and ignore an explicit override; it retains its actual native
+palette rather than receiving a separate application theme.
 
 Appearance is the first keyboard control in General. Six source page owners
 continue to own the settings behind the task pages.

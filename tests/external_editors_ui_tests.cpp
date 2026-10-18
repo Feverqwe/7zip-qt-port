@@ -49,8 +49,8 @@ class ExternalEditorsUiTests final : public QObject, protected MainWindowTestSup
         SaveRegEditor(false, UString(L"viewer --old"), settings);
         for (bool apply : {false, true}) {
             QtFmOptionsDialog dialog(settings);
-            auto *applyButton =
-                dialog.findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Apply);
+            auto *applyButton = dialog.findChild<QDialogButtonBox *>("settingsButtons")
+                                    ->button(QDialogButtonBox::Apply);
             QVERIFY(!applyButton->isEnabled());
             auto *pages = dialog.findChild<QTabWidget *>("optionsPages");
             OptionsPresentation::show(dialog, "viewerCommand");
@@ -72,13 +72,15 @@ class ExternalEditorsUiTests final : public QObject, protected MainWindowTestSup
                     QVERIFY(UiInspection::fullyVisible(*browse, dialog));
                     QVERIFY(UiInspection::separate(*edit, *browse, dialog));
                 }
-                QVERIFY(
-                    UiInspection::fullyVisible(*dialog.findChild<QDialogButtonBox *>(), dialog));
+                QVERIFY(UiInspection::fullyVisible(
+                    *dialog.findChild<QDialogButtonBox *>("settingsButtons"), dialog));
                 QVERIFY(UiInspection::writeReport(
                     dialog, QString("external-editor-options-%1").arg(size.width())));
             }
             if (apply) {
-                dialog.findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Apply)->click();
+                dialog.findChild<QDialogButtonBox *>("settingsButtons")
+                    ->button(QDialogButtonBox::Apply)
+                    ->click();
                 QVERIFY(!applyButton->isEnabled());
                 QVERIFY(dialog.isVisible());
                 dialog.findChild<QLineEdit *>("viewerCommand")->setText("discarded after Apply");

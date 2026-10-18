@@ -47,7 +47,9 @@ class OptionsWindowTests : public QObject, protected MainWindowTestSupport {
             QVERIFY(write(left + "/new-left.txt") && write(right + "/new-right.txt"));
             dialog->findChild<QCheckBox *>("showDotsOption")->setChecked(true);
             dialog->findChild<QCheckBox *>("gridOption")->setChecked(true);
-            dialog->findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Apply)->click();
+            dialog->findChild<QDialogButtonBox *>("settingsButtons")
+                ->button(QDialogButtonBox::Apply)
+                ->click();
             applied = true;
             dialog->findChild<QCheckBox *>("gridOption")->setChecked(false);
             dialog->reject();

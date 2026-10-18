@@ -203,7 +203,8 @@ class MenuPageTests : public QObject {
             QVERIFY(control->isEnabled());
             QVERIFY(control->toolTip().isEmpty());
         }
-        auto *apply = dialog.findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Apply);
+        auto *apply = dialog.findChild<QDialogButtonBox *>("settingsButtons")
+                          ->button(QDialogButtonBox::Apply);
         auto *cascaded = dialog.findChild<QCheckBox *>("cascadedMenu");
         QTest::mouseClick(cascaded, Qt::LeftButton, Qt::NoModifier,
                           QPoint(10, cascaded->height() / 2));
@@ -238,8 +239,8 @@ class MenuPageTests : public QObject {
             if (zone->isVisible())
                 QVERIFY(UiInspection::separate(*dialog.findChild<QWidget *>("menuZoneLabel"), *zone,
                                                dialog));
-            QVERIFY(
-                UiInspection::separate(*items, *dialog.findChild<QDialogButtonBox *>(), dialog));
+            QVERIFY(UiInspection::separate(
+                *items, *dialog.findChild<QDialogButtonBox *>("settingsButtons"), dialog));
             QVERIFY(
                 UiInspection::writeReport(dialog, QString("options-menu-%1").arg(size.width())));
         }

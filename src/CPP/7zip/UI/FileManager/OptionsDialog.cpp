@@ -134,11 +134,13 @@ QtFmOptionsDialog::QtFmOptionsDialog(const QString &settingsPath, QWidget *paren
     for (unsigned i = 0; i < 6; i++) {
         pagePointers[i]->setProperty("sourcePageID", pageIDs[i]);
     }
-    auto *buttons = new QtLangButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel |
-                                            QDialogButtonBox::Apply | QDialogButtonBox::Help,
-                                        this);
+    auto *helpButtons = new QtLangButtonBox(QDialogButtonBox::Help, this);
+    helpButtons->UseCompactHelp();
+    helpButtons->button(QDialogButtonBox::Help)->setObjectName("settingsHelp");
+    _helpButtons = helpButtons;
+    auto *buttons = new QtLangButtonBox(
+        QDialogButtonBox::Ok | QDialogButtonBox::Cancel | QDialogButtonBox::Apply, this);
     buttons->SetAcceptText("SettingsRedesign", QT_TRANSLATE_NOOP("SettingsRedesign", "Save"));
-    buttons->UseCompactHelp();
     _buttons = buttons;
     _buttons->setObjectName("settingsButtons");
     buildSections();
@@ -153,7 +155,7 @@ QtFmOptionsDialog::QtFmOptionsDialog(const QString &settingsPath, QWidget *paren
             button->setFocusPolicy(Qt::StrongFocus);
     connect(_buttons, &QDialogButtonBox::accepted, this, &QtFmOptionsDialog::accept);
     connect(_buttons, &QDialogButtonBox::rejected, this, &QtFmOptionsDialog::reject);
-    connect(_buttons, &QDialogButtonBox::helpRequested, this, &QtFmOptionsDialog::showPageHelp);
+    connect(_helpButtons, &QDialogButtonBox::helpRequested, this, &QtFmOptionsDialog::showPageHelp);
     auto *help = new QShortcut(QKeySequence(Qt::Key_F1), this);
     connect(help, &QShortcut::activated, this, &QtFmOptionsDialog::showPageHelp);
     connect(_buttons->button(QDialogButtonBox::Apply), &QPushButton::clicked, this,

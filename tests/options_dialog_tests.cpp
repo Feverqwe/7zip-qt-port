@@ -76,7 +76,7 @@ class OptionsDialogTests : public QObject {
             QVERIFY(UiInspection::fullyVisible(*ram, dialog));
             QVERIFY(UiInspection::separate(*enabled, *spin, dialog));
             QVERIFY(UiInspection::separate(*spin, *ram, dialog));
-            auto *buttons = dialog.findChild<QDialogButtonBox *>();
+            auto *buttons = dialog.findChild<QDialogButtonBox *>("settingsButtons");
             QVERIFY(UiInspection::fullyVisible(*buttons, dialog));
             QVERIFY(UiInspection::separate(*spin, *buttons, dialog));
             QVERIFY(UiInspection::writeReport(
@@ -157,7 +157,9 @@ class OptionsDialogTests : public QObject {
                 error->accept();
                 QVERIFY(report);
             });
-        dialog.findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Ok)->click();
+        dialog.findChild<QDialogButtonBox *>("settingsButtons")
+            ->button(QDialogButtonBox::Ok)
+            ->click();
         QCOMPARE(dialog.isVisible(), !valid);
         QCOMPARE(errorShown, !valid && !disabled);
         if (errorShown) {
@@ -174,12 +176,14 @@ class OptionsDialogTests : public QObject {
             auto *focused = dialog.focusWidget();
             QVERIFY2(focused == edit || focused == dialog.findChild<QWidget *>("extractMemorySpin"),
                      focused ? qPrintable(focused->objectName()) : "No pending focus widget");
-            QVERIFY(dialog.findChild<QDialogButtonBox *>()
+            QVERIFY(dialog.findChild<QDialogButtonBox *>("settingsButtons")
                         ->button(QDialogButtonBox::Apply)
                         ->isEnabled());
             QCOMPARE(edit->text(), text);
             edit->setText("2");
-            dialog.findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Ok)->click();
+            dialog.findChild<QDialogButtonBox *>("settingsButtons")
+                ->button(QDialogButtonBox::Ok)
+                ->click();
             QCOMPARE(dialog.result(), int(QDialog::Accepted));
             QCOMPARE(NExtract::Read_LimitGB(settings), UInt32(2));
         }
@@ -228,7 +232,7 @@ class OptionsDialogTests : public QObject {
         auto *path = dialog.findChild<QLineEdit *>("workPath");
         auto *browse = dialog.findChild<QPushButton *>("workPathBrowse");
         QVERIFY(!path->isEnabled() && !browse->isEnabled());
-        auto *buttons = dialog.findChild<QDialogButtonBox *>();
+        auto *buttons = dialog.findChild<QDialogButtonBox *>("settingsButtons");
         auto *applyButton = buttons->button(QDialogButtonBox::Apply);
         QVERIFY(!applyButton->isEnabled());
         dialog.show();
@@ -314,7 +318,8 @@ class OptionsDialogTests : public QObject {
             QVERIFY(UiInspection::writeReport(dialog, "settings-folders-review"));
             QVERIFY(UiInspection::fullyVisible(*browse, dialog));
             QVERIFY(UiInspection::separate(*path, *browse, dialog));
-            QVERIFY(UiInspection::fullyVisible(*dialog.findChild<QDialogButtonBox *>(), dialog));
+            QVERIFY(UiInspection::fullyVisible(
+                *dialog.findChild<QDialogButtonBox *>("settingsButtons"), dialog));
             QVERIFY(
                 UiInspection::writeReport(dialog, QString("options-folders-%1").arg(size.width())));
         }
