@@ -362,6 +362,23 @@ class NativeFolderOpeningTests final : public QObject {
         QCOMPARE(QString::fromWCharArray(altName.bstrVal), QStringLiteral("поток δ"));
         QCOMPARE(reopened->GetProperty(0, kpidIsAltStream, &isAlt), S_OK);
         QCOMPARE(isAlt.boolVal, VARIANT_TRUE);
+        // Rollback must close the physical reader before replacing its file.
+        // The next open must retain the ADS folder even when raw names belonged
+        // to the now-closed native handler.
+        auto *reopenedSpec = dynamic_cast<CAgentFolder *>(reopened.Interface());
+        QVERIFY(reopenedSpec);
+        QCOMPARE(reopenedSpec->CloseArchive(), S_OK);
+        QCOMPARE(GetFolderPath(reopened), streamFolderPath);
+        CMyComPtr<IFolderFolder> afterClose;
+        QCOMPARE(
+            ReOpenArchiveFolder(*reopenedSpec, QString(), nullptr, &afterClose, false, UString()),
+            S_OK);
+        QCOMPARE(GetFolderPath(afterClose), streamFolderPath);
+        QCOMPARE(afterClose->LoadItems(), S_OK);
+        QCOMPARE(afterClose->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, UInt32(1));
+        QCOMPARE(afterClose->GetProperty(0, kpidName, &altName), S_OK);
+        QCOMPARE(QString::fromWCharArray(altName.bstrVal), QStringLiteral("поток δ"));
         QFile verify(base);
         QVERIFY(verify.open(QIODevice::ReadOnly));
         QCOMPARE(verify.readAll(), QByteArray("main bytes"));

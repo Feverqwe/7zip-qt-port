@@ -33,6 +33,9 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 
 ## Новые изменения
 
+- [Папка архива после отката Move](upstream-port-audit/archive-close-reopen.md)
+  — сохранение пути ADS до закрытия native handler на Windows.
+
 - [Application and upstream versions](upstream-port-audit/application-version.md)
   — release identity includes the original 7-Zip source version in About and build metadata.
 

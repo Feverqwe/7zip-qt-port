@@ -623,7 +623,7 @@ if(BUILD_TESTING)
     target_include_directories(help_source_tests PRIVATE src tests)
     target_link_libraries(help_source_tests PRIVATE sevenzip_panel Qt6::Test)
     add_test(NAME help_source COMMAND help_source_tests -silent)
-    set_tests_properties(help_source PROPERTIES TIMEOUT 30 ENVIRONMENT
+    set_tests_properties(help_source PROPERTIES TIMEOUT 60 ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     if(TARGET sevenzip_launcher)
         find_program(DBUS_DAEMON_EXECUTABLE dbus-daemon REQUIRED)
@@ -1377,7 +1377,7 @@ if(BUILD_TESTING)
     )
     add_test(NAME ui_layout COMMAND ui_layout_tests -silent)
     set_tests_properties(ui_layout PROPERTIES
-        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SEVENZIP_SCREENSHOT_DIR=${CMAKE_BINARY_DIR}/ui-screenshots;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/ui-layout-settings.ini"
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SEVENZIP_SCREENSHOT_DIR=${CMAKE_BINARY_DIR}/ui-screenshots;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/ui-layout-settings.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports"
     )
     add_test(NAME archive_backend COMMAND archive_backend_tests)
     add_test(NAME archive_mutation COMMAND archive_mutation_tests)

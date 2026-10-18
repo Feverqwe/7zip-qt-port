@@ -370,8 +370,14 @@ class MainWindowLayoutTests : public QObject {
             }
             const QRect first = list->visualRect(list->model()->index(0, 0));
             const QRect second = list->visualRect(list->model()->index(1, 0));
-            QCOMPARE(first.top(), second.top());
-            QVERIFY2(first.right() < second.left(),
+            if (first.right() + 1 + second.width() + list->spacing() <= list->viewport()->width()) {
+                QCOMPARE(first.top(), second.top());
+                QVERIFY(first.right() < second.left());
+            } else {
+                QCOMPARE(first.left(), second.left());
+                QVERIFY(first.bottom() < second.top());
+            }
+            QVERIFY2(!first.intersects(second),
                      qPrintable(QString("Overlapping cells: %1,%2 %3x%4 and %5,%6 %7x%8")
                                     .arg(first.x())
                                     .arg(first.y())

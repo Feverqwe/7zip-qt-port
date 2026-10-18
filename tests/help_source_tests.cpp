@@ -67,8 +67,16 @@ class HelpSourceTests : public QObject {
             last.movePosition(QTextCursor::PreviousCharacter);
             QCOMPARE(browser->cursorRect(first).top(), browser->cursorRect(last).top());
             browser->setTextCursor(last);
-            browser->ensureCursorVisible();
-            QVERIFY(browser->cursorRect(last).left() < browser->viewport()->width());
+            // Qt can publish the document's new scroll range on the next event
+            // turn, after laying out the nonbreaking table cells.
+            QTRY_VERIFY2((browser->ensureCursorVisible(),
+                          browser->cursorRect(last).left() < browser->viewport()->width()),
+                         qPrintable(QString("cursor %1, viewport %2, document %3, scroll %4/%5")
+                                        .arg(browser->cursorRect(last).left())
+                                        .arg(browser->viewport()->width())
+                                        .arg(browser->document()->size().width())
+                                        .arg(browser->horizontalScrollBar()->value())
+                                        .arg(browser->horizontalScrollBar()->maximum())));
             const int horizontal = browser->horizontalScrollBar()->value();
             browser->scrollToAnchor("7Z");
             browser->horizontalScrollBar()->setValue(horizontal);

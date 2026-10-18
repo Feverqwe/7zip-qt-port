@@ -43,6 +43,7 @@ class AgentStreamCopyUiTests final : public QObject, protected MainWindowTestSup
                          const QString &destination, bool move, bool cancel, const QString &tag,
                          bool *deleteConfirmed = nullptr,
                          QMessageBox::StandardButton deleteAnswer = QMessageBox::Yes) {
+        QTRY_VERIFY(source.isEnabled());
         const int index = row(source, name);
         QVERIFY(index >= 0);
         source.clearSelection();
@@ -99,10 +100,12 @@ class AgentStreamCopyUiTests final : public QObject, protected MainWindowTestSup
         QVERIFY2(errors.isEmpty(), qPrintable(errors.join('\n')));
         QTRY_VERIFY(action(window, "refreshAction")->isEnabled());
     }
-    static void verifySelection(FileTable &target, const CSelectedState &before) {
+    static void verifySelection(FileTable &target, const CSelectedState &before,
+                                const char *stage) {
+        QTRY_VERIFY(target.isEnabled());
         CSelectedState actual;
         target.sourcePanel->SaveSelectedState(actual);
-        QCOMPARE(actual.SelectedNames.Size(), before.SelectedNames.Size());
+        QVERIFY2(actual.SelectedNames.Size() == before.SelectedNames.Size(), stage);
         QCOMPARE(actual.SelectedNames.Size(), 1u);
         QCOMPARE(ToQString(actual.SelectedNames[0]), ToQString(before.SelectedNames[0]));
         QCOMPARE(ToQString(actual.FocusedName), ToQString(before.FocusedName));
@@ -169,11 +172,13 @@ class AgentStreamCopyUiTests final : public QObject, protected MainWindowTestSup
         const QString owner = QStringLiteral("файл δ with space.bin");
         const QString oldStream = QStringLiteral("поток δ");
         QTRY_VERIFY(row(*target, owner) >= 0);
+        QTRY_VERIFY(target->isEnabled());
         target->selectRow(row(*target, owner));
         target->setCurrentCell(row(*target, owner), 0);
         QTRY_VERIFY(action(window, "altStreamsAction")->isEnabled());
         action(window, "altStreamsAction")->trigger();
         QTRY_VERIFY(row(*target, oldStream) >= 0);
+        QTRY_VERIFY(target->isEnabled());
         CMyComPtr<IFolderFolder> provider = target->sourcePanel->GetFolder();
         QVERIFY(dynamic_cast<CAgentFolder *>(provider.Interface()));
         target->sourcePanel->SelectAll(false);
@@ -196,7 +201,9 @@ class AgentStreamCopyUiTests final : public QObject, protected MainWindowTestSup
         QCOMPARE(readFile(archive), original);
         QCOMPARE(readFile(QDir(input).filePath(copied)), bytes);
         QCOMPARE(readFile(inputArchive), sourceBefore);
-        verifySelection(*target, targetSelection);
+        verifySelection(*target, targetSelection, "after Copy dialog Cancel");
+        if (QTest::currentTestFailed())
+            return;
         if (sourceArchive) {
             const QByteArray targetBeforeMove = readFile(archive);
             bool asked = false;
@@ -209,7 +216,9 @@ class AgentStreamCopyUiTests final : public QObject, protected MainWindowTestSup
             QCOMPARE(readFile(inputArchive), sourceBefore);
             QTRY_VERIFY(row(*target, moved) < 0);
             QTRY_VERIFY(row(*source, moved) >= 0);
-            verifySelection(*target, targetSelection);
+            verifySelection(*target, targetSelection, "after Move rollback");
+            if (QTest::currentTestFailed())
+                return;
             // Rollback deliberately reopens the restored physical archive.
             provider = target->sourcePanel->GetFolder();
         }
@@ -241,7 +250,9 @@ class AgentStreamCopyUiTests final : public QObject, protected MainWindowTestSup
         QCOMPARE(target->sourcePanel->GetFolder(), provider.Interface());
         QVERIFY(row(*target, oldStream) >= 0);
         QTRY_COMPARE(source->rowCount(), sourceRows - 1);
-        verifySelection(*target, targetSelection);
+        verifySelection(*target, targetSelection, "after Copy and Move");
+        if (QTest::currentTestFailed())
+            return;
         QVERIFY(source->sourcePanel->ShouldProcessNotifications() &&
                 target->sourcePanel->ShouldProcessNotifications());
         QVERIFY(source->isEnabled() && target->isEnabled());

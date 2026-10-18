@@ -103,7 +103,8 @@ CProxyItem CAgentFolder::GetItem(unsigned index) const {
 }
 
 bool CAgentFolder::IsBound() const {
-    if (!_agentSpec || _proxyGeneration != _agentSpec->_proxyGeneration.load())
+    if (_closedArchivePath || !_agentSpec ||
+        _proxyGeneration != _agentSpec->_proxyGeneration.load())
         return false;
     return _proxy2 ? _proxyDirIndex < _proxy2->Dirs.Size()
                    : _proxy && _proxyDirIndex < _proxy->Dirs.Size();
@@ -963,6 +964,11 @@ Z7_COM7F_IMF(CAgentFolder::GetStream(UInt32 index, ISequentialInStream **stream)
 Z7_COM7F_IMF(CAgentFolder::GetFolderProperty(PROPID propID, PROPVARIANT *value)) {
     COM_TRY_BEGIN
     if (!IsBound()) {
+        if (propID == kpidPath && _closedArchivePath) {
+            NWindows::NCOM::CPropVariant path(_closedArchivePath->Prefix);
+            path.Detach(value);
+            return S_OK;
+        }
         // The source type is independent of the directory proxy. Qt still
         // needs it to render an archive whose native reopen has failed.
         if (propID == kpidType && _agentSpec) {
@@ -1567,14 +1573,31 @@ IUnknown *CAgentFolder::GetEngineResource() const {
     return _agentSpec ? _agentSpec->GetEngineResource() : nullptr;
 }
 
-HRESULT CAgentFolder::CloseArchive() { return _agentSpec ? _agentSpec->Close() : E_FAIL; }
+HRESULT CAgentFolder::CloseArchive() {
+    COM_TRY_BEGIN
+    if (!_closedArchivePath) {
+        if (!IsBound())
+            return E_FAIL;
+        CClosedArchivePath path;
+        // As in CommonUpdateOperation, save FolderItem before closing the
+        // handler: Windows proxy names can borrow its raw-property memory.
+        GetPathParts(path.Parts, path.IsAltStreamFolder);
+        NWindows::NCOM::CPropVariant prefix;
+        RINOK(GetFolderProperty(kpidPath, &prefix))
+        if (prefix.vt == VT_BSTR)
+            path.Prefix = prefix.bstrVal;
+        _closedArchivePath = std::move(path);
+    }
+    return _agentSpec->Close();
+    COM_TRY_END
+}
 
 HRESULT CAgentFolder::ReOpen(IArchiveOpenCallback *callback, IFolderFolder **folder) {
     COM_TRY_BEGIN
     if (!folder)
         return E_INVALIDARG;
     *folder = nullptr;
-    if (!IsBound())
+    if (!_closedArchivePath && !IsBound())
         return E_FAIL;
     UStringVector pathParts;
     bool isAltStreamFolder = false;

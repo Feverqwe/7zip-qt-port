@@ -142,6 +142,12 @@ class CAgentFolder final : public IFolderFolder,
     const CProxyArc *_proxy = nullptr;
     const CProxyArc2 *_proxy2 = nullptr;
     UInt64 _proxyGeneration = 0;
+    struct CClosedArchivePath {
+        UStringVector Parts;
+        UString Prefix;
+        bool IsAltStreamFolder = false;
+    };
+    std::optional<CClosedArchivePath> _closedArchivePath;
     bool _isAltStreamFolder = false;
     unsigned _proxyDirIndex = 0;
     bool _flatMode = false;

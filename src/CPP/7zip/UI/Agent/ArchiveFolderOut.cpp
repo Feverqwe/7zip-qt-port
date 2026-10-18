@@ -18,6 +18,11 @@ using namespace NFile;
 using namespace NDir;
 
 void CAgentFolder::GetPathParts(UStringVector &pathParts, bool &isAltStreamFolder) {
+    if (_closedArchivePath) {
+        pathParts = _closedArchivePath->Parts;
+        isAltStreamFolder = _closedArchivePath->IsAltStreamFolder;
+        return;
+    }
     bool isChangedPath = false;
     if (_proxy2)
         _proxy2->GetDirPathParts(_proxyDirIndex, pathParts, isAltStreamFolder);

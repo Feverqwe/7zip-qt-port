@@ -285,11 +285,13 @@ class PanelKeySourceTests final : public QObject, protected MainWindowTestSuppor
         auto *list = table(window);
         address->setText(saved);
         QTest::keyClick(address, Qt::Key_Return);
+        QTRY_VERIFY(list->isEnabled());
         list->setFocus();
         QTRY_VERIFY(list->hasFocus());
         QTest::keyClick(list, Qt::Key_1, Qt::ControlModifier | Qt::AltModifier | Qt::ShiftModifier);
         address->setText(other);
         QTest::keyClick(address, Qt::Key_Return);
+        QTRY_VERIFY(list->isEnabled());
         list->setFocus();
         QTest::keyClick(list, Qt::Key_1, Qt::ControlModifier | Qt::AltModifier);
         QTRY_COMPARE(QFileInfo(address->text()).canonicalFilePath(), saved);
@@ -340,6 +342,7 @@ class PanelKeySourceTests final : public QObject, protected MainWindowTestSuppor
         auto *list = table(window);
         address->setText(saved);
         QTest::keyClick(address, Qt::Key_Return);
+        QTRY_VERIFY(list->isEnabled());
         list->setFocus();
         QTRY_VERIFY(list->hasFocus());
         QVERIFY(nativeNotification ? nativeDigitNotification(list, true, digit)
@@ -354,6 +357,7 @@ class PanelKeySourceTests final : public QObject, protected MainWindowTestSuppor
         QCOMPARE(QDir::cleanPath(QDir::fromNativeSeparators(stored()[slot])), saved);
         address->setText(other);
         QTest::keyClick(address, Qt::Key_Return);
+        QTRY_VERIFY(list->isEnabled());
         list->setFocus();
         QTRY_VERIFY(list->hasFocus());
         QVERIFY(nativeNotification ? nativeDigitNotification(list, false, digit)
@@ -361,6 +365,7 @@ class PanelKeySourceTests final : public QObject, protected MainWindowTestSuppor
         QTRY_COMPARE(QFileInfo(address->text()).canonicalFilePath(), saved);
         address->setText(other);
         QTest::keyClick(address, Qt::Key_Return);
+        QTRY_VERIFY(list->isEnabled());
         list->setFocus();
         QTest::keyClick(list, Qt::Key_1, Qt::ControlModifier);
         QCOMPARE(QFileInfo(address->text()).canonicalFilePath(), other);
