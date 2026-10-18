@@ -5,14 +5,16 @@
 #include "Common/IntToString.h"
 #include "LangUtils.h"
 #include "MessagesDialogRes.h"
+#include "qtdialoglayout.h"
 #include "qtdialogscreenservices.h"
 #include "qtdialogunits.h"
 #include "qtlangcontrols.h"
 #include "qtlistview.h"
+#include <QDialogButtonBox>
 #include <QEvent>
 #include <QPushButton>
 #include <QResizeEvent>
-#include <cmath>
+#include <QVBoxLayout>
 
 void CMessagesDialog::AddMessageDirect(const wchar_t *message) {
     const unsigned i = unsigned(_messageList.GetItemCount());
@@ -50,16 +52,9 @@ bool CMessagesDialog::OnInit() {
     return true;
 }
 
-bool CMessagesDialog::OnSize(int xSize, int ySize) {
-    const int mx = int(std::round(8 * _unitX));
-    const int my = int(std::round(8 * _unitY));
-    const int bx = _close->width();
-    const int by = _close->height();
-    const int y = ySize - my - by;
-    const int x = xSize - mx - bx;
-
-    _close->setGeometry(x, y, bx, by);
-    _list->setGeometry(mx, my, xSize - mx * 2, y - my * 2);
+bool CMessagesDialog::OnSize(int, int) {
+    // Qt owns resize geometry; the source notification path remains connected.
+    layout()->activate();
     return false;
 }
 
@@ -69,8 +64,6 @@ CMessagesDialog::CMessagesDialog(QWidget *parent) : QDialog(parent) {
     setWindowFlag(Qt::WindowContextHelpButtonHint, false);
     QtBindResourceText(this, IDD_MESSAGES, "7-Zip: Diagnostic messages");
     const QtDialogUnits units(font());
-    _unitX = units.horizontalScale();
-    _unitY = units.verticalScale();
     _list = new CListView(this);
     _list->setObjectName("IDL_MESSAGE");
     _list->setColumnCount(2);
@@ -79,10 +72,12 @@ CMessagesDialog::CMessagesDialog(QWidget *parent) : QDialog(parent) {
     QtBindResourceText(_close, IDS_CLOSE, "&Close");
     _close->setObjectName("IDOK");
     _close->setDefault(true);
+    auto *buttons = new QDialogButtonBox(this);
+    buttons->addButton(_close, QDialogButtonBox::AcceptRole);
+    auto *content = QtCreateDialogLayout(*this, *buttons);
+    content->addWidget(_list, 1);
     connect(_close, &QPushButton::clicked, this, &QDialog::accept);
-    resize(int(std::round(456 * _unitX)), int(std::round(176 * _unitY)));
-    _close->resize(qMax(int(std::round(64 * _unitX)), _close->sizeHint().width()),
-                   qMax(int(std::round(16 * _unitY)), _close->sizeHint().height()));
+    resize(units.pixels(QSize(456, 176)).expandedTo(minimumSizeHint()));
 }
 
 INT_PTR CMessagesDialog::Create(QWidget *parent) {
@@ -106,8 +101,6 @@ void CMessagesDialog::resizeEvent(QResizeEvent *event) {
 void CMessagesDialog::changeEvent(QEvent *event) {
     if (event->type() == QEvent::LanguageChange && _initialized) {
         _list->headerItem()->setText(1, QtLangText(IDS_MESSAGE));
-        _close->resize(qMax(int(std::round(64 * _unitX)), _close->sizeHint().width()),
-                       qMax(int(std::round(16 * _unitY)), _close->sizeHint().height()));
         OnSize(width(), height());
     }
     QDialog::changeEvent(event);

@@ -15,8 +15,6 @@ class CMessagesDialog : public QDialog {
     CQtProgressListView _messageList;
     CListView *_list;
     QPushButton *_close;
-    double _unitX;
-    double _unitY;
     bool _initialized = false;
 
     void AddMessageDirect(const wchar_t *message);

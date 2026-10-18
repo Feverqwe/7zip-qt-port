@@ -33,6 +33,9 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 
 ## Новые изменения
 
+- [Редизайн интерфейса](upstream-port-audit/ui-redesign.md)
+  — поэтапная адаптация представления с сохранением исходных владельцев и поведения.
+
 - [Владельцы process/listing/overwrite уведомлений](upstream-port-audit/process-notifications.md)
   — срок жизни Qt-транспорта и данных сигнала при удалении, отмене и повторном запросе.
 

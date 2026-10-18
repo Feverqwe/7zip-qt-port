@@ -301,6 +301,7 @@ add_library(sevenzip_panel STATIC src/CPP/7zip/UI/FileManager/App.cpp
     src/qtcallbackpassword.cpp src/qtcallbackpassword.h
     src/qtprogresscontrols.cpp src/qtprogresscontrols.h
     src/qtdialogunits.cpp src/qtdialogunits.h
+    src/qtdialoglayout.cpp src/qtdialoglayout.h
     src/qtpanellist.cpp src/qtpanellist.h
     src/qtpanelfolder.cpp src/qtpanelfolderraw.cpp src/qtpanelfolder.h
     src/CPP/7zip/UI/FileManager/App.h src/CPP/7zip/UI/FileManager/Panel.cpp

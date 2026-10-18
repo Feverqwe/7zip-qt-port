@@ -4,6 +4,7 @@
 // converts only at widget boundaries. OnOK keeps the raw value.
 #include "ComboDialog.h"
 #include "ViewSettings.h"
+#include "qtdialoglayout.h"
 #include "qtdialogscreenservices.h"
 #include "qtdialogunits.h"
 #include "qtlangbuttonbox.h"
@@ -27,7 +28,9 @@ bool CComboDialog::OnInit() {
     setWindowFlag(Qt::WindowContextHelpButtonHint, false);
     setObjectName("comboDialog");
     setWindowTitle(ToQString(Title));
-    auto *layout = new QVBoxLayout(this);
+    auto *buttons = new QtLangButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
+    buttons->setObjectName("comboButtons");
+    auto *layout = QtCreateDialogLayout(*this, *buttons);
     auto *staticControl = new QLabel(ToQString(Static), this);
     staticControl->setObjectName("comboPrompt");
     staticControl->setTextFormat(Qt::PlainText);
@@ -50,14 +53,12 @@ bool CComboDialog::OnInit() {
     _comboBox->setEditText(ToQString(Value));
     layout->addWidget(_comboBox);
     layout->addStretch(1);
-    auto *buttons = new QtLangButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
-    buttons->setObjectName("comboButtons");
-    layout->addWidget(buttons);
     connect(buttons, &QDialogButtonBox::accepted, this, &CComboDialog::OnOK);
     connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
     _comboBox->setFocus();
     _comboBox->lineEdit()->selectAll();
-    resize(QtDialogUnits(font()).pixels(QSize(256, 80)).expandedTo(minimumSizeHint()));
+    resize(QSize(QtDialogUnits(font()).pixels(QSize(256, 0)).width(), minimumSizeHint().height())
+               .expandedTo(minimumSizeHint()));
     QtNormalizeDialogSize(*this);
     return true;
 }

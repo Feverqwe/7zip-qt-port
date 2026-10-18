@@ -121,6 +121,9 @@ class ComboDialogTests : public QObject {
                 << QString("Создать файл") << QString("Имя файла:") << width;
             QTest::newRow(qPrintable(QStringLiteral("mask-%1").arg(width)))
                 << QString("Выделить") << QString("Маска:") << width;
+            QTest::newRow(qPrintable(QStringLiteral("long-prompt-%1").arg(width)))
+                << QString("Создать папку")
+                << QString("Введите имя новой папки для выбранного расположения:") << width;
         }
     }
     void geometry() {
@@ -149,5 +152,6 @@ class ComboDialogTests : public QObject {
                                                   .arg(width)));
     }
 };
-QTEST_MAIN(ComboDialogTests)
+#include "review_test_main.h"
+SEVENZIP_UI_TEST_MAIN(ComboDialogTests)
 #include "combo_dialog_tests.moc"

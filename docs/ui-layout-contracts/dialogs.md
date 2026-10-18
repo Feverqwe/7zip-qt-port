@@ -215,10 +215,10 @@ Reference: upstream `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
 
 - The prompt precedes one editable combo, with OK/Cancel at the bottom.
   Initial Value remains visible after populating ordered Strings.
-- The initial frame follows the256×80 DLU source client template through the
-  native font and Qt minimum-size protection; it scales with the font instead
-  of retaining an arbitrary360×150px initial size. Explicit normal/compact
-  resizing below remains a separate adaptation.
+- The redesigned initial frame retains a font-scaled preferred width, while
+  height follows the prompt, editable field and native actions. Long prompts
+  can wrap and enlarge the minimum height. Explicit normal/compact resizing
+  below remains a separate adaptation.
 - Folder/file creation uses source title, prompt and default-name language IDs;
   selection masks use the same view with their own prompts.
 - CPanel::SelectSpec owns the Select/Deselect titles, mask prompt, initial `*`
@@ -357,13 +357,27 @@ Close footer,456×176DLU initial client and resize/minimize/maximize capabilitie
 without context-help. Assigning a parent must preserve those source flags.
 Close has initial focus, matching the first resource tab stop.
 The Qt source port preserves AddMessageDirect/AddMessage and the
-OnInit/OnSize control flow; `IDL_MESSAGE` is above `IDOK` at 760×450 and
+OnInit/OnSize notification path; `IDL_MESSAGE` is above `IDOK` at 760×450 and
 640×380. Current-build JSON confirms both controls are visible, separated and
 within the dialog. Create follows the source modal lifetime until Close/Enter
 (IDOK) or Escape (IDCANCEL), retaining the stack-owned PanelDrag message vector.
 The independent File-menu journal was removed under P2-09. Font-DLU scaling
 may enlarge the Close button to its Qt size hint. Windows rendered appearance
 remains unverified.
+
+### Redesign: shared form and diagnostic layout (2026-10-18)
+
+The approved [redesign](../ui-redesign-plan.md) replaces presentation geometry
+for Combo and Messages with a shared content/footer layout. Combo retains its
+label above the editable history control, raw accepted value, initial selection
+and Cancel semantics; initial height fits content instead of a resource-height
+spacer. Long prompts wrap without covering the input or actions. Both dialogs
+use the project outer/footer spacing with native control size hints. Messages
+retains numbered rows, modal result codes, Close default/focus and font-scaled
+initial report capacity. Its list grows while the footer remains visible.
+This is an intentional layout adaptation; other source-based dialog contracts
+remain unchanged. Evidence and checked platforms are in the
+[redesign audit](../upstream-port-audit/ui-redesign.md).
 No Windows rendered reference; geometry does not establish pixel parity.
 The original IconID branch loads the exact FM.ico through a Qt ID/resource
 service, including native 16/32/48 frames; default negative IDs preserve the
