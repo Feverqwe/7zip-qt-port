@@ -381,6 +381,13 @@ This is an intentional layout adaptation; other source-based dialog contracts
 remain unchanged. Evidence and checked platforms are in the
 [redesign audit](../upstream-port-audit/ui-redesign.md).
 No Windows rendered reference; geometry does not establish pixel parity.
+
+Combo's confirmation caption follows the source operation identity: Create for
+folder/file creation, Select/Deselect for mask selection and Save for a comment.
+Unknown generic uses retain OK. These captions update on language change without
+resetting the input or caller-built item title; the native OK role, Return,
+Cancel and raw-value acceptance remain unchanged. Rename stays inline in the
+file list, following its source scenario.
 The original IconID branch loads the exact FM.ico through a Qt ID/resource
 service, including native 16/32/48 frames; default negative IDs preserve the
 existing icon. Image decoding tests do not verify Windows title-bar rendering.

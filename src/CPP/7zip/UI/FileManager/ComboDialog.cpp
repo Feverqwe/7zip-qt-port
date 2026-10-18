@@ -3,6 +3,7 @@
 // Qt layouts replace Win32 OnSize/control attachment; original portable state
 // converts only at widget boundaries. OnOK keeps the raw value.
 #include "ComboDialog.h"
+#include "7zip/UI/FileManager/resource.h"
 #include "ViewSettings.h"
 #include "qtdialoglayout.h"
 #include "qtdialogscreenservices.h"
@@ -77,6 +78,17 @@ void CComboDialog::BindLanguage(UInt32 titleID, UInt32 promptID) {
         QtBindLangText(this, titleID, ToQString(Title));
     QtBindLangText(findChild<QLabel *>("comboPrompt"), promptID, ToQString(Static));
     QtBindLangText(_comboBox, promptID, ToQString(Static), true);
+    auto *buttons = static_cast<QtLangButtonBox *>(findChild<QDialogButtonBox *>("comboButtons"));
+    // Callers identify the source operation with resource IDs; translated
+    // window captions and caller-built comment titles are not command keys.
+    if (titleID == IDS_CREATE_FOLDER || titleID == IDS_CREATE_FILE)
+        buttons->SetAcceptText("DialogRedesign", QT_TRANSLATE_NOOP("DialogRedesign", "Create"));
+    else if (titleID == IDS_SELECT)
+        buttons->SetAcceptText("DialogRedesign", QT_TRANSLATE_NOOP("DialogRedesign", "Select"));
+    else if (titleID == IDS_DESELECT)
+        buttons->SetAcceptText("DialogRedesign", QT_TRANSLATE_NOOP("DialogRedesign", "Deselect"));
+    else if (promptID == IDS_COMMENT2)
+        buttons->SetAcceptText("DialogRedesign", QT_TRANSLATE_NOOP("DialogRedesign", "Save"));
 }
 
 QString CComboDialog::value() const {

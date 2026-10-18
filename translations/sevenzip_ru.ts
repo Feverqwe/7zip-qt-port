@@ -397,6 +397,22 @@
             <translation>Создать ссылку</translation>
         </message>
         <message>
+            <location filename="../src/CPP/7zip/UI/FileManager/ComboDialog.cpp" line="+85" />
+            <source>Create</source>
+            <translation>Создать</translation>
+        </message>
+        <message>
+            <location line="+2" />
+            <source>Select</source>
+            <translation>Выделить</translation>
+        </message>
+        <message>
+            <location line="+2" />
+            <source>Deselect</source>
+            <translation>Снять выделение</translation>
+        </message>
+        <message>
+            <location line="+2" />
             <location filename="../src/qtcompressoptionscontrols.cpp" line="-17" />
             <source>Save</source>
             <translation>Сохранить</translation>
@@ -760,7 +776,7 @@ Are you sure you want to split archive into such volumes?</source>
             <translation>Оформление</translation>
         </message>
         <message>
-            <location line="+223" />
+            <location line="+224" />
             <source>Follow system</source>
             <translation>Как в системе</translation>
         </message>
@@ -775,7 +791,7 @@ Are you sure you want to split archive into such volumes?</source>
             <translation>Тёмное</translation>
         </message>
         <message>
-            <location filename="../src/qtfmoptionslayout.cpp" line="+51" />
+            <location filename="../src/qtfmoptionslayout.cpp" line="+61" />
             <source>Standard settings</source>
             <translation>Стандартные настройки</translation>
         </message>

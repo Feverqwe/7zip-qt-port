@@ -20,6 +20,7 @@
 #include <QCheckBox>
 #include <QClipboard>
 #include <QComboBox>
+#include <QDialogButtonBox>
 #include <QLabel>
 #include <QLineEdit>
 #include <QPushButton>
@@ -253,6 +254,54 @@ class LanguageDialogTests final : public QObject {
         }
         copy.accept();
         QCOMPARE(ToQString(copy.Value), QStringLiteral(" /pending path 密碼 "));
+    }
+    void comboActionLanguageAndConfirmation_data() {
+        QTest::addColumn<quint32>("titleID");
+        QTest::addColumn<quint32>("promptID");
+        QTest::addColumn<QString>("english");
+        QTest::addColumn<QString>("russian");
+        QTest::newRow("folder") << quint32(IDS_CREATE_FOLDER) << quint32(IDS_CREATE_FOLDER_NAME)
+                                << QString("Create") << QStringLiteral("Создать");
+        QTest::newRow("file") << quint32(IDS_CREATE_FILE) << quint32(IDS_CREATE_FILE_NAME)
+                              << QString("Create") << QStringLiteral("Создать");
+        QTest::newRow("select") << quint32(IDS_SELECT) << quint32(IDS_SELECT_MASK)
+                                << QString("Select") << QStringLiteral("Выделить");
+        QTest::newRow("deselect") << quint32(IDS_DESELECT) << quint32(IDS_SELECT_MASK)
+                                  << QString("Deselect") << QStringLiteral("Снять выделение");
+        QTest::newRow("comment") << quint32(0) << quint32(IDS_COMMENT2) << QString("Save")
+                                 << QStringLiteral("Сохранить");
+    }
+    void comboActionLanguageAndConfirmation() {
+        QFETCH(quint32, titleID);
+        QFETCH(quint32, promptID);
+        QFETCH(QString, english);
+        QFETCH(QString, russian);
+        language("-");
+        const QString itemTitle = QStringLiteral("файл 空.txt : Comment");
+        CComboDialog dialog(titleID ? QtLangText(titleID) : itemTitle, QtLangText(promptID),
+                            "initial");
+        dialog.BindLanguage(titleID, promptID);
+        auto *combo = dialog.findChild<QComboBox *>("comboValue");
+        const QString draft = QStringLiteral("  pending 空 value  ");
+        combo->setEditText(draft);
+        auto *buttons = dialog.findChild<QDialogButtonBox *>("comboButtons");
+        auto *accept = buttons->button(QDialogButtonBox::Ok);
+        QCOMPARE(accept->text(), english);
+        language("ru");
+        QCOMPARE(accept->text(), russian);
+        QCOMPARE(combo->currentText(), draft);
+        if (!titleID)
+            QCOMPARE(dialog.windowTitle(), itemTitle);
+        for (int width : {360, 260})
+            inspect(dialog, QString("combo-action-%1-ru").arg(QTest::currentDataTag()), width, 150);
+        language("-");
+        QCOMPARE(accept->text(), english);
+        QCOMPARE(combo->currentText(), draft);
+        for (int width : {360, 260})
+            inspect(dialog, QString("combo-action-%1-en").arg(QTest::currentDataTag()), width, 150);
+        accept->click();
+        QCOMPARE(dialog.result(), int(QDialog::Accepted));
+        QCOMPARE(ToQString(dialog.Value), draft);
     }
     void overwriteMemoryPreserveDecisions() {
         COverwriteDialog overwrite;

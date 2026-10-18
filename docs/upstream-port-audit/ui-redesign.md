@@ -735,3 +735,40 @@ Full/slow, VoiceOver, физические раскладки, новая sheet-
 functions PASS. Устаревшие task-owned снимки шести вкладок и разобранного
 geometry failure удалены. Текущий Windows Menu JSON подтверждает windows QPA,
 достижимую через прокрутку таблицу команд и полностью видимый footer.
+
+## Итерация 14: результатные действия общей формы ввода
+
+Источник: https://github.com/ip7z/7zip.git, текущий upstream
+`9128b80e3a471108678e2b3ec3c985861c8d7b0f`, baseline
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. Сверены ComboDialog.cpp/.h/.rc,
+GuiCommon.rc OK_CANCEL, BrowseDialog::Dlg_CreateFolder, PanelOperations::CreateFile/
+CreateFolder/ChangeComment, PanelSelect::SelectSpec и соответствующие
+Qt callers, raw-value/validation/Cancel и language/button services. В исходном
+Combo нет отдельной функциональной реализации действий: он возвращает Value,
+а операции выполняют callers. Rename остаётся исходным inline-сценарием списка.
+
+Изменён только BindLanguage presentation: устойчивые source IDs выбирают
+Create/Select/Deselect/Save через существующий QtLangButtonBox::SetAcceptText.
+Не анализируются переведённые window titles или текст пользователя; titleID=0
+продолжает сохранять динамический заголовок комментария. Generic неизвестные
+использования оставляют OK. Native OK role, OnOK, Strings order, raw Value,
+focus, accepted/rejected codes и все source operation bodies неизменны.
+В upstream такого уточнения caption нет; это согласованная UX-адаптация.
+
+Существующий language suite расширен пятью реальными operation identities:
+EN→RU→EN сохраняет draft, caller-built title и соответствующее действие;
+подтверждение через кнопку возвращает тот же Unicode/raw текст. Normal/compact
+геометрия проверяется для обоих языков. Исходные success/error/Cancel сценарии
+создания, выделения, комментариев и source browser остаются прямыми потребителями.
+
+macOS: приложение и шесть focused targets собраны; combo_dialog,
+language_dialog, source_create, source_selection, filesystem_comment и
+source_browse_dialog — 6/6 PASS. После добавления EN geometry report
+language_dialog повторён PASS. Cocoa пять сценариев EN/RU normal/compact в
+light/dark — 14/14 test functions PASS; текущие JSON/PNG просмотрены, actual
+theme metadata подтверждены. Linux и Windows interactive: те же шесть suites
+и application_starts — 7/7 PASS, run `20261018T190407Z-6a5a46e4`. Current/build/
+ccache сохранены, root гостей только current; full/slow и физические клавиатуры
+не проверялись. Реальный Windows reference для pixel parity не получен.
+Оболочка справки/About, оставшиеся случаи каталога и общая приёмка остаются
+в active goal; эта итерация не означает завершение всего плана.
