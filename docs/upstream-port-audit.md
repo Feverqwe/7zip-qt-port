@@ -33,6 +33,9 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 
 ## Новые изменения
 
+- [Владение shell-подменю при отказе вставки](upstream-port-audit/shell-menu-ownership.md)
+  — передача native/Qt menu tree только после успешной вставки в родителя.
+
 - [Редизайн интерфейса](upstream-port-audit/ui-redesign.md)
   — поэтапная адаптация представления с сохранением исходных владельцев и поведения.
 

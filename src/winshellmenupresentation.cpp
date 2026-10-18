@@ -21,29 +21,28 @@ HRESULT InsertNativeShellMenu(HMENU menu, UINT position, const NQtShellMenu::CMe
         item.fType = entry.Type == NQtShellMenu::kSeparator ? MFT_SEPARATOR : MFT_STRING;
         item.wID = entry.ID;
         item.StringValue = entry.Text;
+        NWindows::CMenu submenu;
+        NWindows::CMenuDestroyer destroy(submenu);
         if (entry.Bitmap && bitmap) {
             // Original MyInsertMenu/MyAddSubMenu use unchecked menu bitmaps.
             item.fMask |= MIIM_CHECKMARKS;
             item.hbmpUnchecked = bitmap;
         }
         if (entry.SubMenu) {
-            NWindows::CMenu submenu;
             if (!submenu.CreatePopup())
                 return HRESULT_FROM_WIN32(GetLastError());
-            NWindows::CMenuDestroyer destroy(submenu);
             const HRESULT result = InsertNativeShellMenu(submenu, 0, *entry.SubMenu, bitmap);
             if (FAILED(result)) {
                 return result;
             }
-            item.hSubMenu = submenu.Detach();
+            item.hSubMenu = submenu;
             item.fMask |= MIIM_SUBMENU;
         }
         if (!native.InsertItem(position++, true, item)) {
             const DWORD error = GetLastError();
-            if (item.hSubMenu)
-                DestroyMenu(item.hSubMenu);
             return HRESULT_FROM_WIN32(error);
         }
+        submenu.Detach();
         // The receiving HMENU now owns the inserted submenu. Its bitmaps stay
         // owned by the context object, as in upstream CZipContextMenu.
     }

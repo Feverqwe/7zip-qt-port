@@ -495,9 +495,12 @@ HRESULT CZipContextMenu::QueryContextMenu(CMenuHandle *hMenu, UINT indexMenu, UI
                 ) {
                     CMenu subMenu;
                     if (!hMenu || subMenu.CreatePopup()) {
+                        CMenuDestroyer subMenuDestroyer;
+                        subMenuDestroyer.Attach(subMenu);
                         MyAddSubMenu(_commandMap, kOpenCascadedVerb, popupMenu, subIndex++,
                                      currentCommandID++, LangString(IDS_CONTEXT_OPEN), subMenu,
                                      bitmap);
+                        subMenuDestroyer.Disable();
                         _commandMap.Back().CtxCommandType = CtxCommandType_OpenRoot;
 
                         UINT subIndex2 = 0;
@@ -735,11 +738,11 @@ HRESULT CZipContextMenu::QueryContextMenu(CMenuHandle *hMenu, UINT indexMenu, UI
         if (ci.Cascaded.Val) {
             CMenu menu;
             menu.Attach(hMenu);
-            menuDestroyer.Disable();
             MyAddSubMenu(_commandMap, kMainVerb, menu, indexMenu++, currentCommandID++,
                          (UString) "7-Zip",
                          popupMenu, // popupMenu.Detach(),
                          bitmap);
+            menuDestroyer.Disable();
         } else {
             // popupMenu.Detach();
             indexMenu = subIndex;
@@ -754,12 +757,12 @@ HRESULT CZipContextMenu::QueryContextMenu(CMenuHandle *hMenu, UINT indexMenu, UI
             // !_isMenuForFM && // 21.04: we don't hide CRC SHA menu in 7-Zip FM
             needCrc && currentCommandID + 1 < commandIDLast) {
             CMenu subMenu;
-            // CMenuDestroyer menuDestroyer_CRC;
+            CMenuDestroyer menuDestroyer_CRC;
 
             UINT subIndex_CRC = 0;
 
             if (!hMenu || subMenu.CreatePopup()) {
-                // menuDestroyer_CRC.Attach(subMenu);
+                menuDestroyer_CRC.Attach(subMenu);
                 const bool insertHashMenuTo7zipMenu =
                     (ci.Cascaded.Val && (contextMenuFlags & NContextMenuFlags::kCRC_Cascaded) != 0);
 
@@ -777,6 +780,7 @@ HRESULT CZipContextMenu::QueryContextMenu(CMenuHandle *hMenu, UINT indexMenu, UI
                     MyAddSubMenu(_commandMap, kCheckSumCascadedVerb, menu, indexInParent++,
                                  currentCommandID++, (UString) "CRC SHA", subMenu,
                                  /* insertHashMenuTo7zipMenu ? NULL : */ bitmap);
+                    menuDestroyer_CRC.Disable();
                     _commandMap.Back().CtxCommandType = CtxCommandType_CrcRoot;
                     if (!insertHashMenuTo7zipMenu)
                         indexMenu = indexInParent;

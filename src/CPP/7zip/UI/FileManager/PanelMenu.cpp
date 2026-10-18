@@ -281,10 +281,14 @@ void CPanel::CreateSystemMenu(HMENU menuSpec, bool showExtendedVerbs,
             CMenuItem menuItem;
             menuItem.fMask = MIIM_SUBMENU | MIIM_TYPE | MIIM_ID;
             menuItem.fType = MFT_STRING;
-            menuItem.hSubMenu = popupMenu.Detach();
-            menuDestroyer.Disable();
+            menuItem.hSubMenu = popupMenu;
             LangString(IDS_SYSTEM, menuItem.StringValue);
-            menu.InsertItem(0, true, menuItem);
+            // The receiving menu owns the tree only after insertion succeeds.
+            // Keep cleanup armed through label allocation and native refusal.
+            if (menu.InsertItem(0, true, menuItem)) {
+                popupMenu.Detach();
+                menuDestroyer.Disable();
+            }
         }
         /*
         if (Cmd < 100 && Cmd != 0)

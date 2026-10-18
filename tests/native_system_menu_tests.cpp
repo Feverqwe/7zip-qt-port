@@ -132,6 +132,40 @@ class NativeSystemMenuTests final : public QObject {
         QCOMPARE(menu.GetItemCount(), 0);
         QVERIFY(!context);
     }
+
+    void rejectedSystemGroupInsertionReleasesNativeMenus() {
+        NWindows::NCOM::CComInitializer initialized;
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        QFile file(fixture.filePath(QStringLiteral("selected файл.txt")));
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        file.close();
+        CMyComPtr<IFolderFolder> folder = new NFsFolder::CFSFolder(fixture.path());
+        QCOMPARE(folder->LoadItems(), S_OK);
+        CPanel panel(folder);
+        panel.LoadFullPath();
+        CRecordVector<UInt32> selected;
+        selected.Add(0);
+        const auto create = [&](bool validParent) {
+            NWindows::CMenu menu;
+            NWindows::CMenuDestroyer destroy(menu);
+            if (validParent && !menu.CreatePopup())
+                return false;
+            CMyComPtr<IContextMenu> context;
+            panel.CreateSystemMenu(menu, false, selected, context);
+            return bool(context) && (!validParent || menu.GetItemCount() == 1);
+        };
+        // Warm native shell providers before measuring this process's USER
+        // resources. A null destination rejects insertion of the generated
+        // group; its complete submenu tree must still be released.
+        for (unsigned i = 0; i < 3; ++i)
+            QVERIFY(create(true));
+        const DWORD before = GetGuiResources(GetCurrentProcess(), GR_USEROBJECTS);
+        for (unsigned i = 0; i < 3; ++i)
+            QVERIFY(create(false));
+        QTRY_COMPARE(GetGuiResources(GetCurrentProcess(), GR_USEROBJECTS), before);
+        QVERIFY(create(true));
+    }
 };
 
 QTEST_GUILESS_MAIN(NativeSystemMenuTests)
