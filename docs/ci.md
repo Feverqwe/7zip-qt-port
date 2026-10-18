@@ -1,9 +1,11 @@
 # Local runtime artifacts and CI scope
 
-The GitHub workflow was removed in `96daee8de9f82374a4548e6dff2bd47a6fe5a891`.
-On 2026-10-10 the user explicitly chose to preserve that deletion. There is no
-active GitHub build, artifact upload or automatic release configuration in this
-checkout. Local validation uses [focused checks and a full gate when needed](development.md#local-commands),
+The [release workflow](../.github/workflows/release.yml), adapted from htopQt,
+builds Windows x64, Linux x64 and macOS arm64 on `v*` tags. The tag must match
+the CMake application version. After all builds succeed, it publishes runtime
+archives and `SHA256SUMS.txt` in a GitHub Release with generated release notes.
+Manual dispatch builds Actions artifacts without publishing a release.
+Local validation uses [focused checks and a full gate when needed](development.md#local-commands),
 and Windows/Linux acceptance uses [Hyper-V runners](hyperv-runners.md).
 Release runtime packaging uses `BUILD_TESTING=OFF` and the matching Qt kit;
 tests and native acceptance are separate checks.
@@ -28,8 +30,8 @@ metadata alongside the application. Qt deploy tools resolve the
 linked libraries and plugins. System libraries remain platform dependencies.
 Windows packages copy the imported VC CRT DLL dependency closure from the
 installed redistributable, with its notices, instead of shipping a CRT installer.
-The resulting `build/packages/sevenzip-desktop-*.zip` and `*.tar.gz` stay local.
-Packaging does not upload artifacts or publish a release.
+The resulting archives are written to `build/packages`.
+The packaging script itself does not upload artifacts or publish a release.
 
 Matching Qt source archives are checksum-verified private inputs for extracting
 license texts only; they are never copied into runtime artifacts. The ICU notice
@@ -49,6 +51,10 @@ commit it, create an annotated `vX.Y.Z` tag, and atomically push branch and tag 
 files, commits or tags. `--check-tag vX.Y.Z` checks the version locally.
 Running this helper publishes Git refs; importing it does not run a release.
 
-There is no workflow file for actionlint or a GitHub run to validate. Native,
-rendered and clean-environment package acceptance remain separate from local
-compilation and relocation checks.
+The workflow builds the pinned official engine and SFX before packaging, using
+the source repository and revision from the baseline. Release CI builds and
+deploys runtime payloads; it does not run CTest or native acceptance scenarios.
+Actions artifacts are retained for seven days, including successful platforms
+when another build fails. Only the publish job receives `contents: write`.
+Native, rendered and clean-environment package acceptance remain separate
+from hosted release builds and local compilation/relocation checks.

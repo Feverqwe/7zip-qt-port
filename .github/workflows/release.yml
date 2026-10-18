@@ -1,0 +1,181 @@
+name: Release Build
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  QT_VERSION: '6.12.0'
+  CMAKE_BUILD_PARALLEL_LEVEL: '4'
+
+jobs:
+  build:
+    name: Build ${{ matrix.platform }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: linux-x64
+            runner: ubuntu-24.04
+            qt-host: linux
+            qt-arch: linux_gcc_64
+            qt-archives: qtbase qtwayland qtsvg icu
+            cmake-args: ''
+            targets: sevenzip_desktop
+          - platform: windows-x64
+            runner: windows-2022
+            qt-host: windows
+            qt-arch: win64_msvc2022_64
+            qt-archives: qtbase
+            cmake-args: ''
+            targets: sevenzip_desktop sevenzip_shell
+          - platform: macos-arm64
+            runner: macos-15
+            qt-host: mac
+            qt-arch: clang_64
+            qt-archives: qtbase
+            cmake-args: '-DCMAKE_OSX_DEPLOYMENT_TARGET=14.4'
+            targets: sevenzip_desktop
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.14'
+      - name: Check release tag against application version
+        if: github.event_name == 'push' && github.ref_type == 'tag'
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: python3 scripts/release.py --check-tag "$RELEASE_TAG"
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake ninja-build pkg-config \
+            libgl1-mesa-dev libegl1-mesa-dev libxkbcommon-dev libxkbcommon-x11-0 \
+            libxcb-cursor0 libxcb-icccm4 libxcb-image0 libxcb-keysyms1 \
+            libxcb-render-util0 libxcb-xinerama0 libxcb-xkb1 \
+            libwayland-client0 libwayland-cursor0 libwayland-egl1 \
+            libglib2.0-dev patchelf
+      - name: Configure Windows toolchain
+        if: runner.os == 'Windows'
+        uses: ilammy/msvc-dev-cmd@v1
+        with:
+          arch: x64
+      - name: Install macOS build tools
+        if: runner.os == 'macOS'
+        run: brew install ninja
+      - name: Install official Qt kit
+        if: runner.os != 'Windows'
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: ${{ env.QT_VERSION }}
+          host: ${{ matrix.qt-host }}
+          arch: ${{ matrix.qt-arch }}
+          archives: ${{ matrix.qt-archives }}
+          cache: true
+      - name: Install official Windows Qt kit
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python -m pip install aqtinstall==3.3.0 py7zr==1.1.0
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python scripts/install-qt-windows.py --version "$env:QT_VERSION" --outputdir "$env:GITHUB_WORKSPACE/Qt"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $qt = Join-Path $env:GITHUB_WORKSPACE "Qt/$env:QT_VERSION/msvc2022_64"
+          "QT_ROOT_DIR=$qt" >> $env:GITHUB_ENV
+          "$qt/bin" >> $env:GITHUB_PATH
+      - name: Select installed Qt and fetch corresponding source
+        run: |
+          echo "CMAKE_PREFIX_PATH=$QT_ROOT_DIR" >> "$GITHUB_ENV"
+          python3 scripts/ci-qt-source.py
+      - name: Fetch pinned official 7-Zip source
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          import subprocess
+          baseline = json.loads(Path('docs/upstream-baseline.json').read_text())
+          upstream = 'build/release-upstream'
+          subprocess.run(['git', 'init', '--bare', upstream], check=True)
+          subprocess.run(['git', '-C', upstream, 'fetch', '--depth=1',
+                          baseline['repository'], baseline['revision']], check=True)
+          PY
+      - name: Build official engine and SFX
+        run: python3 scripts/prepare-runtime.py --upstream build/release-upstream
+      - name: Build Release
+        run: |
+          cmake --preset release ${{ matrix.cmake-args }}
+          cmake --build --preset release --target ${{ matrix.targets }}
+      - name: Package Unix runtime
+        if: runner.os != 'Windows'
+        run: |
+          python3 scripts/package.py \
+            --qt-source "build/qt-source/qtbase-everywhere-src-${QT_VERSION}.tar.xz" \
+            --qt-sha256 "build/qt-source/qtbase-everywhere-src-${QT_VERSION}.tar.xz.sha256" \
+            --icu-license build/qt-source/icu-73.2-LICENSE
+      - name: Package Windows runtime
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $crt = Join-Path $env:VCToolsRedistDir 'x64/Microsoft.VC143.CRT'
+          $notices = Join-Path $env:VSINSTALLDIR 'Licenses/1033/Redist.txt'
+          python scripts/package.py `
+            --qt-source "build/qt-source/qtbase-everywhere-src-$env:QT_VERSION.tar.xz" `
+            --qt-sha256 "build/qt-source/qtbase-everywhere-src-$env:QT_VERSION.tar.xz.sha256" `
+            --icu-license build/qt-source/icu-73.2-LICENSE `
+            --vc-runtime "$crt" --vc-notices "$notices"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@v7
+        with:
+          name: sevenzip-desktop-${{ matrix.platform }}
+          path: |
+            build/packages/*.zip
+            build/packages/*.tar.gz
+            !build/packages/*-source.*
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 7
+  publish:
+    needs: build
+    if: github.event_name == 'push' && github.ref_type == 'tag'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: sevenzip-desktop-*
+          path: dist
+          merge-multiple: true
+      - name: Verify all platform archives and create checksums
+        working-directory: dist
+        run: |
+          test "$(find . -maxdepth 1 -name 'sevenzip-desktop-*-windows-x86_64.zip' | wc -l)" -eq 1
+          test "$(find . -maxdepth 1 -name 'sevenzip-desktop-*-linux-x86_64.tar.gz' | wc -l)" -eq 1
+          test "$(find . -maxdepth 1 -name 'sevenzip-desktop-*-darwin-arm64.zip' | wc -l)" -eq 1
+          test "$(find . -maxdepth 1 -name '*-source.*' | wc -l)" -eq 0
+          sha256sum ./*.zip ./*.tar.gz > SHA256SUMS.txt
+      - name: Publish complete GitHub Release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ github.ref_name }}
+          name: Release ${{ github.ref_name }}
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+          files: |
+            dist/*.zip
+            dist/*.tar.gz
+            dist/SHA256SUMS.txt

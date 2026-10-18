@@ -78,7 +78,7 @@ def release(choice, remote, dry_run):
         print(f"Push failed; local release commit and {tag} retained. Retry: git {' '.join(push)}",
               file=sys.stderr)
         raise
-    print(f"Pushed {tag}; GitHub Actions will build runtime artifacts for all platforms.")
+    print(f"Pushed {tag}; GitHub Actions will build and publish all platforms.")
 
 
 def main():
