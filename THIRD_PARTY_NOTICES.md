@@ -11,9 +11,10 @@ sources. Retain their copyright and license notices when redistributing them.
 | Brotli decoder and 7-Zip codec adaptation | [Brotli MIT license](third_party/brotli/LICENSE) and [7zip-zstd LGPL notice](third_party/brotli/7zip-zstd-LICENSE.txt); see the [source audit](docs/upstream-port-audit.md). |
 | Tooling adapted from htopQt | GPL-2.0-or-later; [retained project notice](third_party/htopqt/LICENSE), [GPL text](third_party/linux/LICENSES/preferred/GPL-2.0). Includes the borrowed release, packaging, Qt installation/source-fetching and Hyper-V tooling described in [CI](docs/ci.md) and [runner provenance](docs/hyperv-runners.md#runner-configuration-and-evidence). |
 | libarchive RAR test data | [Retained license](tests/fixtures/rar/libarchive-COPYING.txt) and [fixture provenance](tests/fixtures/rar/README.md). Test data is not shipped as an application dependency. |
+| Lucide command/navigation icons | SVG geometry adapted to native Qt paths; [ISC and Feather MIT notices](third_party/lucide/LICENSE), [source provenance](docs/upstream-port-audit/ui-redesign.md#итерация-22-контурные-значки-команд). |
 
-Qt and other runtime dependencies keep their own licenses. Qt Base translations
-are merged from the matching SDK; the corresponding official
+Qt and other runtime dependencies keep their own licenses.
+Qt Base translations are merged from the matching SDK; the corresponding official
 [Qt Translations source](https://download.qt.io/official_releases/qt/6.12/6.12.0/submodules/qttranslations-everywhere-src-6.12.0.tar.xz)
 and source provenance are recorded in the [localization audit](docs/upstream-port-audit/qt-linguist.md).
 Runtime packages

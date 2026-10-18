@@ -317,6 +317,7 @@ add_library(sevenzip_panel STATIC src/CPP/7zip/UI/FileManager/App.cpp
     src/CPP/7zip/UI/FileManager/PanelMenu.cpp
     src/CPP/7zip/UI/FileManager/PropertyName.cpp src/CPP/7zip/UI/FileManager/PropertyName.h
     src/qtlangcontrols.cpp src/qtlangcontrols.h
+    src/qtcommandicons.cpp src/qtcommandicons.h
     src/qtpaneladdresscombo.cpp src/qtpaneladdresscombo.h
     src/qtlangbuttonbox.cpp src/qtlangbuttonbox.h
     src/qtstatuslabel.cpp src/qtstatuslabel.h

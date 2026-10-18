@@ -21,6 +21,46 @@ class MainShellTests final : public QObject {
     Q_OBJECT
 
   private slots:
+    void commandIconsFollowPaletteAndScale() {
+        const auto original = QApplication::palette();
+        const auto restore = qScopeGuard([&] { QApplication::setPalette(original); });
+        MainWindow window;
+        const char *commands[] = {"toolbarAddAction", "extractArchiveAction", "testArchiveAction",
+                                  "copyAction",       "moveAction",           "deleteAction",
+                                  "archiveInfoAction"};
+        for (const QColor color : {QColor("#23485a"), QColor("#e4d9ca")}) {
+            auto palette = original;
+            palette.setColor(QPalette::Active, QPalette::ButtonText, color);
+            palette.setColor(QPalette::Disabled, QPalette::ButtonText, QColor("#83919c"));
+            QApplication::setPalette(palette);
+            for (const char *command : commands)
+                for (const auto mode : {QIcon::Normal, QIcon::Disabled})
+                    for (const qreal dpr : {1.0, 2.0}) {
+                        const QIcon icon = window.findChild<QAction *>(command)->icon();
+                        const auto pixmap = icon.pixmap(QSize(24, 24), dpr, mode);
+                        QCOMPARE(pixmap.deviceIndependentSize(), QSizeF(24, 24));
+                        const auto image = pixmap.toImage();
+                        const QColor expected =
+                            mode == QIcon::Disabled
+                                ? palette.color(QPalette::Disabled, QPalette::ButtonText)
+                                : color;
+                        QRect ink;
+                        for (int y = 0; y < image.height(); ++y)
+                            for (int x = 0; x < image.width(); ++x) {
+                                const auto pixel = image.pixelColor(x, y);
+                                if (pixel.alpha() < 128)
+                                    continue;
+                                ink |= QRect(x, y, 1, 1);
+                                QVERIFY(qAbs(pixel.red() - expected.red()) <= 1);
+                                QVERIFY(qAbs(pixel.green() - expected.green()) <= 1);
+                                QVERIFY(qAbs(pixel.blue() - expected.blue()) <= 1);
+                            }
+                        QVERIFY(ink.width() >= 10 * dpr);
+                        QVERIFY(ink.height() >= 6 * dpr);
+                        QVERIFY(image.rect().adjusted(1, 1, -1, -1).contains(ink));
+                    }
+        }
+    }
     void elidedStatusUsesInactiveAndDisabledColors() {
         QWidget window;
         window.resize(240, 120);

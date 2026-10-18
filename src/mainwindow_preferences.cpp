@@ -5,6 +5,7 @@
 #include "CPP/7zip/UI/FileManager/SysIconUtils.h"
 #include "mainwindow.h"
 #include "qtapppresentation.h"
+#include "qtcommandicons.h"
 #include "qtlanguageservices.h"
 #include "qtlocationfolder.h"
 #include "qtpanelcontextmenu.h"
@@ -109,21 +110,12 @@ void MainWindow::sortIndicatorChanged(unsigned index, int column, Qt::SortOrder 
 }
 
 QIcon MainWindow::toolbarIcon(int kind) {
-    // App.cpp's g_ArchiveButtons/g_StandardButtons use the large bitmap first
-    // and the small *2 bitmap second. Magenta is the source image-list mask.
-    static const char *const names[] = {"Add", "Extract", "Test", "Copy", "Move", "Delete", "Info"};
-    if (kind < 0 || kind >= int(std::size(names)))
+    static const QtCommandIcon symbols[] = {
+        QtCommandIcon::Add,  QtCommandIcon::Extract, QtCommandIcon::Test, QtCommandIcon::Copy,
+        QtCommandIcon::Move, QtCommandIcon::Delete,  QtCommandIcon::Info};
+    if (kind < 0 || kind >= int(std::size(symbols)))
         return {};
-    QIcon icon;
-    for (const QString &suffix : {QStringLiteral("2"), QString()}) {
-        QPixmap pixmap(QStringLiteral(":/upstream/7zip/UI/FileManager/%1%2.bmp")
-                           .arg(QString::fromLatin1(names[kind]), suffix));
-        if (pixmap.isNull())
-            continue;
-        pixmap.setMask(pixmap.createMaskFromColor(Qt::magenta, Qt::MaskInColor));
-        icon.addPixmap(pixmap);
-    }
-    return icon;
+    return QtCommandSymbol(symbols[kind]);
 }
 
 QString MainWindow::toolbarSettingsPath() { return FmSettingsPath(); }

@@ -153,7 +153,9 @@ current native shortcut. The label preference can still hide the primary
 captions; toolbar group visibility and large/small icons keep their existing
 owners and saved values. Buttons use native hover/focus rendering and support
 keyboard focus. The Extract caption uses the same translation as the redesigned
-Extract dialog. Upstream icon assets remain in use for this iteration.
+Extract dialog. Command/navigation symbols now adapt local Lucide vectors,
+following the current palette in normal/disabled states and at display density.
+Native file, namespace and application icons retain their original owners.
 `main_shell` checks all seven buttons fit EN/RU at normal/compact widths and
 checks keyboard invocation against the active panel and cancellation.
 `language_ui` checks names/tooltips after language, selection and shortcut

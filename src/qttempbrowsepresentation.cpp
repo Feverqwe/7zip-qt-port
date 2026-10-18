@@ -10,6 +10,7 @@
 #include "Common/StringConvert.h"
 #include "Windows/PropVariantConv.h"
 #include "Windows/TimeUtils.h"
+#include "qtcommandicons.h"
 #include "qtdialoglayout.h"
 #include "qtfilelisthover.h"
 #include "qtlangbuttonbox.h"
@@ -94,9 +95,11 @@ void CBrowseDialog2::BuildControls() {
     _delete = new QPushButton(this);
     _delete->setObjectName("tempDelete");
     _delete->setProperty("sourceControlID", IDS_BUTTON_DELETE);
+    _delete->setIcon(QtCommandSymbol(QtCommandIcon::Delete));
     QtBindResourceText(_delete, IDS_BUTTON_DELETE, "Delete");
     auto *refresh = new QPushButton(this);
     refresh->setObjectName("tempRefresh");
+    refresh->setIcon(QtCommandSymbol(QtCommandIcon::Refresh));
     refresh->setProperty("sourceControlID", IDM_VIEW_REFRESH);
     QtBindResourceText(refresh, IDM_VIEW_REFRESH, "Refresh");
     commands->addWidget(_delete);
@@ -106,7 +109,7 @@ void CBrowseDialog2::BuildControls() {
     auto *path = new QHBoxLayout;
     path->setSpacing(8);
     _parent = new QPushButton(this);
-    _parent->setIcon(style()->standardIcon(QStyle::SP_FileDialogToParent));
+    _parent->setIcon(QtCommandSymbol(QtCommandIcon::Parent));
     _parent->setObjectName("tempParent");
     _parent->setProperty("sourceControlID", IDB_BROWSE2_PARENT);
     _parent->setProperty("languageToolTip", true);

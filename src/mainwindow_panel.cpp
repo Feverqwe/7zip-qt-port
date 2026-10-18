@@ -1,6 +1,7 @@
 #include "CPP/7zip/UI/FileManager/PanelSort.h"
 #include "CPP/7zip/UI/FileManager/PropertyName.h"
 #include "mainwindow.h"
+#include "qtcommandicons.h"
 #include "qtfilelisthover.h"
 #include "qtfilemanagerdrag.h"
 #include "qtlangcontrols.h"
@@ -18,10 +19,9 @@ void MainWindow::createFilePanel(QMenu *editMenu, unsigned index) {
     {
         auto *button = new QToolButton(central);
         button->setDefaultAction(up_);
-        // Panel.cpp's parent toolbar uses the standard VIEW_PARENTFOLDER image,
-        // without its longer View menu caption. Qt supplies the platform arrow.
+        // Keep the source parent command without its longer View menu caption.
         const auto updateIcon = [this, button] {
-            button->setIcon(style()->standardIcon(QStyle::SP_ArrowUp));
+            button->setIcon(QtCommandSymbol(QtCommandIcon::Parent));
         };
         updateIcon();
         // QAction::changed also projects its empty menu icon to QToolButton.

@@ -1172,3 +1172,64 @@ Linux: 12/12 suites (`20261018T215837Z-8a15ce18`), help_ui
 пиксельного совпадения Windows/Linux. Использованы прежние build trees/cache;
 guest roots содержали только current, свободно 62 ГиБ Linux и 44,7 ГиБ Windows.
 Все прогоны завершены, locks освобождены; dist и пользовательская сессия не менялись.
+
+## Итерация 22: контурные значки команд
+
+19 октября 2026. Сверены исходные `App.cpp` CButtonInfo,
+g_ArchiveButtons/g_StandardButtons/SetButtonText и создание toolbar, ресурсные
+IDB_* пары, Panel.cpp VIEW_PARENTFOLDER и его QAction projection в Qt.
+Для диалогов сопоставлены BrowseDialog OnInit/parent/create handlers и ресурсы,
+BrowseDialog2 и Qt temp presentation. Источник — https://github.com/ip7z/7zip.git,
+`9128b80e3a471108678e2b3ec3c985861c8d7b0f`; baseline перенесённых модулей
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. Повторный diff подтверждает:
+изменились только setIcon и поставщик графики; обработчики, ID, доступность,
+локализация и владение командами не переписаны. Исходные bitmap resources
+сохранены как часть baseline, но новые команды их не используют.
+
+Векторная графика адаптирована из https://github.com/lucide-icons/lucide,
+полная ревизия `1ef60af944de207e0d5176905a0759ba12e6ee8d`:
+`icons/plus.svg`, `folder-output.svg`, `check.svg`, `copy.svg`, `move-right.svg`,
+`trash.svg`, `info.svg`, `arrow-up.svg`, `folder-plus.svg`, `rotate-cw.svg`.
+Канонический trash в этой ревизии соответствует прежнему trash-2 концепта.
+Геометрия перенесена в QPainterPath, SVG arcs — в дуги/кривые Qt; это адаптация
+ресурса, без собственного SVG parser или новой runtime-зависимости. Размеры,
+round cap/join и stroke сохраняют единый язык набора. Сохранена полная исходная
+ISC/Feather MIT LICENSE, включённая в notices для macOS/Linux/Windows installs.
+Никакая графика не загружается приложением из сети.
+
+QtCommandSymbol создаёт масштабируемый QIconEngine: текущие ButtonText,
+Disabled и Selected цвета читаются при рисовании, физическая плотность задаётся
+scaledPixmap. На toolbar сохранены семь исходных действий, подписи двух основных
+и существующие preferences размеров/групп/текста. Тот же renderer используется
+у перехода вверх в обеих панелях, встроенном Browse и очистке временных файлов;
+создание папки, удаление и обновление получили соответствующие образы концепта.
+File/namespace/system/application icons не входят в замену; native shell menu
+brand bitmap также сохраняет прежнее назначение.
+
+Отрисованный HTML main сопоставлен с текущими Cocoa main/Browse/temp captures:
+образы команд, outline, отсутствие лишних рамок, disabled states и подписи.
+Снимки обычного/компактного EN/RU в light/dark обновлены в текущей галерее.
+Нативные размеры контролов сохранены, масштаб символа определяется заданным
+QIcon size и плотностью экрана. Рамки фокуса остаются у нативного контрола.
+
+Регрессия рисует реальные QAction icons из MainWindow при двух палитрах,
+normal/disabled и 1×/2×: проверяет цвет непрозрачных штрихов, непустую графику,
+логический размер и отсутствие clipping. Она обнаруживает прежние статичные
+bitmap colours и неверный HiDPI contract без проверки имён ресурсов/файлов.
+macOS: приложение собрано, десять focused suites PASS, включая toolbar geometry,
+keyboard commands, Browse/temp, language и native file/namespace consumers.
+Native Cocoa main/browse/temporary-files light/dark captures PASS; просмотрены
+все три затронутых вида. Full/slow не запускались: изменён только поставщик
+графики и прямые потребители. VoiceOver/физические клавиатуры по-прежнему отложены.
+
+Windows/Linux: `20261018T221311Z-b1854a6a`, Linux10/10 PASS; Windows9/10 PASS.
+Windows temp_cleanup повторён штатным interactive/elevated fixture:
+`20261018T221545Z-c113e8cd`, PASS. Первый запуск не имел права создания тестовых
+symlinks; код удаления/защиты и тестовые сценарии ради него не изменялись.
+Все десять выбранных наборов проверены на трёх ОС, Windows — на активном desktop.
+Приложения собраны; оригинальный Windows pixel reference не использовался:
+визуальный reference этой адаптации — согласованный HTML, inspected runtime — Cocoa.
+Build/cache сохранены; перед прогонами guest roots содержали только current,
+свободно Linux62 и Windows44,7 ГиБ. Прогоны завершены, locks освобождены.
+Пользовательская dist-сессия не обновлялась. Общий goal требует отдельной
+сверки всех требований плана перед объявлением завершения.

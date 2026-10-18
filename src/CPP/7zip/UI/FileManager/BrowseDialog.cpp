@@ -19,6 +19,7 @@
 #include "Windows/FileName.h"
 #include "Windows/PropVariantConv.h"
 #include "Windows/TimeUtils.h"
+#include "qtcommandicons.h"
 #include "qtdialoglayout.h"
 #include "qtdialogscreenservices.h"
 #include "qtfilelisthover.h"
@@ -173,13 +174,13 @@ void CBrowseDialog::OnInit() {
     auto *top = new QHBoxLayout;
     top->setSpacing(8);
     auto *parent = new QPushButton(this);
-    parent->setIcon(style()->standardIcon(QStyle::SP_FileDialogToParent));
+    parent->setIcon(QtCommandSymbol(QtCommandIcon::Parent));
     parent->setObjectName("browseParent");
     parent->setProperty("languageToolTip", true);
     QtBindLangText(parent, IDM_OPEN_PARENT_FOLDER, {}, true);
     parent->setAutoDefault(true);
     auto *create = new QPushButton(this);
-    create->setIcon(style()->standardIcon(QStyle::SP_FileDialogNewFolder));
+    create->setIcon(QtCommandSymbol(QtCommandIcon::NewFolder));
     create->setObjectName("browseCreateFolder");
     create->setProperty("languageToolTip", true);
     QtBindLangText(create, IDM_CREATE_FOLDER, {}, true);
