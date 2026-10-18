@@ -33,6 +33,9 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 
 ## Новые изменения
 
+- [Откат Windows Pause при нехватке памяти](upstream-port-audit/process-pause-ownership.md)
+  — владение handles и suspend increments до операций, способных выбросить исключение.
+
 - [Владелец отложенного Rename](upstream-port-audit/deferred-rename-owner.md)
   — привязка завершения редактора к исходной панели, папке и элементу списка.
 

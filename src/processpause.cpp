@@ -1,6 +1,8 @@
 #include "processpause.h"
 #ifdef _WIN32
+#include "Windows/Handle.h"
 #include "Windows/Thread.h"
+#include <new>
 #include <tlhelp32.h>
 #include <vector>
 #else
@@ -40,9 +42,11 @@ struct CProcessPause::CState {
     }
     HRESULT Suspend() {
         for (unsigned pass = 0; pass != 3; ++pass) {
-            HANDLE snapshot = ::CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
-            if (snapshot == INVALID_HANDLE_VALUE)
+            HANDLE snapshotHandle = ::CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
+            if (snapshotHandle == INVALID_HANDLE_VALUE)
                 return HRESULT_FROM_WIN32(::GetLastError());
+            NWindows::CHandle snapshot;
+            snapshot.Attach(snapshotHandle);
             THREADENTRY32 entry{};
             entry.dwSize = sizeof(entry);
             bool added = false;
@@ -57,6 +61,7 @@ struct CProcessPause::CState {
                             known = true;
                     if (known)
                         continue;
+                    auto thread = std::make_unique<NWindows::CThread>();
                     HANDLE handle = ::OpenThread(THREAD_SUSPEND_RESUME | THREAD_QUERY_INFORMATION,
                                                  FALSE, entry.th32ThreadID);
                     if (!handle) {
@@ -66,20 +71,28 @@ struct CProcessPause::CState {
                         result = HRESULT_FROM_WIN32(error);
                         break;
                     }
-                    auto thread = std::make_unique<NWindows::CThread>();
                     thread->Attach(handle);
-                    if (thread->Suspend() == DWORD(-1)) {
+                    const DWORD owner = ::GetProcessIdOfThread(handle);
+                    if (owner == 0) {
                         result = HRESULT_FROM_WIN32(::GetLastError());
                         break;
                     }
+                    if (owner != ProcessId)
+                        continue; // A snapshot thread ID can be recycled before OpenThread.
+                    // Tracking can allocate. Own the rollback entry before adding
+                    // our suspend increment, so allocation failure cannot strand it.
                     Threads.push_back({entry.th32ThreadID, std::move(thread)});
+                    if (Threads.back().Thread->Suspend() == DWORD(-1)) {
+                        result = HRESULT_FROM_WIN32(::GetLastError());
+                        Threads.pop_back();
+                        break;
+                    }
                     added = true;
                 } while (::Thread32Next(snapshot, &entry));
                 if (result == S_OK && ::GetLastError() != ERROR_NO_MORE_FILES)
                     result = HRESULT_FROM_WIN32(::GetLastError());
             } else
                 result = HRESULT_FROM_WIN32(::GetLastError());
-            ::CloseHandle(snapshot);
             if (result != S_OK)
                 return result;
             if (!added) {
@@ -119,7 +132,12 @@ HRESULT CProcessPause::SetPaused(bool paused) {
 #ifdef _WIN32
     if (!paused)
         return _state->Resume();
-    const HRESULT result = _state->Suspend();
+    HRESULT result;
+    try {
+        result = _state->Suspend();
+    } catch (const std::bad_alloc &) {
+        result = E_OUTOFMEMORY;
+    }
     if (result != S_OK) {
         const HRESULT rollback = _state->Resume();
         return rollback == S_OK ? result : rollback;
