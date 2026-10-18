@@ -33,6 +33,9 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 
 ## Новые изменения
 
+- [Владельцы результатов platform lookup](upstream-port-audit/platform-result-ownership.md)
+  — очистка STRRET/GIO результатов при исключении и проверка ADS/launcher boundaries.
+
 - [Смена владельца native drag-сессии](upstream-port-audit/native-drag-session.md)
   — прежний MIME-объект не очищает данные следующего перетаскивания.
 

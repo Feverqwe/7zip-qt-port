@@ -2,6 +2,7 @@
 #include "Common/MyCom.h"
 #include "Common/StringConvert.h"
 #include "Windows/COM.h"
+#include "Windows/MemoryGlobal.h"
 #include "Windows/Shell.h"
 #include <QFile>
 #include <QTemporaryDir>
@@ -280,6 +281,25 @@ class NativeShellDataTests final : public QObject {
                  S_OK);
         UStringVector paths;
         QCOMPARE(NWindows::NShell::DataObject_GetData_HDROP_or_IDLIST_Names(data, paths), S_OK);
+        QCOMPARE(paths.Size(), unsigned(1));
+        QCOMPARE(QDir::cleanPath(QDir::fromNativeSeparators(QString::fromWCharArray(paths[0]))),
+                 path);
+        // Exercise the real shell's IDLIST fallback as well: the ordinary data
+        // object above can satisfy CF_HDROP without resolving any STRRET names.
+        SelectionData idListOnly;
+        {
+            FORMATETC format = {CLIPFORMAT(RegisterClipboardFormatW(L"Shell IDList Array")),
+                                nullptr, DVASPECT_CONTENT, -1, TYMED_HGLOBAL};
+            NWindows::NCOM::CStgMedium medium;
+            QCOMPARE(data->GetData(&format, &medium), S_OK);
+            QCOMPARE(medium.tymed, DWORD(TYMED_HGLOBAL));
+            NWindows::NMemory::CGlobalLock lock(medium.hGlobal);
+            QVERIFY(lock.GetPointer());
+            idListOnly.idList = QByteArray(static_cast<const char *>(lock.GetPointer()),
+                                           qsizetype(GlobalSize(medium.hGlobal)));
+        }
+        QCOMPARE(NWindows::NShell::DataObject_GetData_HDROP_or_IDLIST_Names(&idListOnly, paths),
+                 S_OK);
         QCOMPARE(paths.Size(), unsigned(1));
         QCOMPARE(QDir::cleanPath(QDir::fromNativeSeparators(QString::fromWCharArray(paths[0]))),
                  path);

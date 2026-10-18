@@ -176,22 +176,22 @@ class LinuxAssociationPlatform final : public IQtAssociationPlatform {
             return 5;
         if (preferences.isOpen()) {
             const QByteArray contents = preferences.readAll();
-            GKeyFile *keys = g_key_file_new();
-            if (!g_key_file_load_from_data(keys, contents.constData(), contents.size(),
+            const std::unique_ptr<GKeyFile, decltype(&g_key_file_free)> keys(g_key_file_new(),
+                                                                             &g_key_file_free);
+            if (!g_key_file_load_from_data(keys.get(), contents.constData(), contents.size(),
                                            G_KEY_FILE_NONE, nullptr)) {
-                g_key_file_free(keys);
                 return 31;
             }
             for (const char *groupName :
                  {"Default Applications", "Added Associations", "Removed Associations"}) {
-                gchar *value = g_key_file_get_value(keys, groupName, type.constData(), nullptr);
+                const std::unique_ptr<gchar, decltype(&g_free)> value(
+                    g_key_file_get_value(keys.get(), groupName, type.constData(), nullptr),
+                    &g_free);
                 if (value) {
                     revision += groupName;
-                    revision += value;
-                    g_free(value);
+                    revision += value.get();
                 }
             }
-            g_key_file_free(keys);
         }
         record.revision = QCryptographicHash::hash(revision, QCryptographicHash::Sha256);
         record.scope = "linux:0:" + type;

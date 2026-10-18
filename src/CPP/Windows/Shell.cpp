@@ -9,6 +9,7 @@
 #include "Windows/COM.h"
 #include "Windows/FileName.h"
 #include "Windows/MemoryGlobal.h"
+#include <memory>
 
 #ifndef _UNICODE
 extern bool g_IsNT;
@@ -313,8 +314,10 @@ static HRESULT DataObject_GetData_IDLIST(IDataObject *dataObject, UStringVector 
         */
         if (strret.uType != STRRET_WSTR)
             return E_INVALIDARG;
+        const std::unique_ptr<wchar_t, decltype(&CoTaskMemFree)> name(strret.pOleStr,
+                                                                      &CoTaskMemFree);
         ODS_U(strret.pOleStr)
-        path = strret.pOleStr;
+        path = name.get();
         // the path could have super path prefix "\\\\?\\"
         // we can remove super path prefix here, if we don't need that prefix
 #ifdef Z7_LONG_PATH
@@ -322,7 +325,6 @@ static HRESULT DataObject_GetData_IDLIST(IDataObject *dataObject, UStringVector 
         NFile::NName::If_IsSuperPath_RemoveSuperPrefix(path);
 #endif
         names.AddInReserved(path);
-        CoTaskMemFree(strret.pOleStr);
     }
 
     ODS_(Print_Number(cida->cidl, "CFSTR_SHELLIDLIST END"))
