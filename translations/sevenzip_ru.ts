@@ -248,6 +248,16 @@
             <source>%1T Frequency (MHz):</source>
             <translation>%1 пот.: частота (МГц):</translation>
         </message>
+        <message>
+            <location filename="../src/qtbenchmarkmetrics.cpp" line="+19" />
+            <source>Result</source>
+            <translation>Результат</translation>
+        </message>
+        <message>
+            <location line="+1" />
+            <source>Operation</source>
+            <translation>Операция</translation>
+        </message>
     </context>
     <context>
         <name>BrowseDialog2</name>
@@ -327,6 +337,7 @@
             <location filename="../src/CPP/7zip/UI/FileManager/CopyDialog.cpp" line="+59" />
             <location filename="../src/CPP/7zip/UI/FileManager/EditDialog.cpp" line="+42" />
             <location filename="../src/CPP/7zip/UI/FileManager/ListViewDialog.cpp" line="+106" />
+            <location filename="../src/qtbenchmarkcontrols.cpp" line="+149" />
             <source>Copy</source>
             <translation>Копировать</translation>
         </message>
@@ -396,7 +407,7 @@
             <translation>Открыть</translation>
         </message>
         <message>
-            <location filename="../src/qtprogresscontrols.cpp" line="+181" />
+            <location filename="../src/qtprogresscontrols.cpp" line="+183" />
             <source>Details</source>
             <translation>Подробности</translation>
         </message>
@@ -4049,7 +4060,7 @@ Check charset encoding and -scs switch.</source>
         </message>
         <message>
             <location line="+296" />
-            <location filename="../src/CPP/7zip/UI/FileManager/ProgressDialog2.cpp" line="+1176" />
+            <location filename="../src/CPP/7zip/UI/FileManager/ProgressDialog2.cpp" line="+1177" />
             <location filename="../src/CPP/Windows/ErrorMsg.cpp" line="+146" />
             <source>Error #%1</source>
             <translation>Ошибка № %1</translation>
@@ -4078,13 +4089,13 @@ Check charset encoding and -scs switch.</source>
         <message>
             <location filename="../src/CPP/7zip/UI/Explorer/ContextMenu.cpp" line="+1035" />
             <location filename="../src/CPP/7zip/UI/FileManager/FM.cpp" line="+58" />
-            <location filename="../src/CPP/7zip/UI/FileManager/ProgressDialog2.cpp" line="-958" />
-            <location line="+960" />
+            <location filename="../src/CPP/7zip/UI/FileManager/ProgressDialog2.cpp" line="-959" />
+            <location line="+961" />
             <source>Error</source>
             <translation>Ошибка</translation>
         </message>
         <message>
-            <location filename="../src/CPP/7zip/UI/FileManager/ProgressDialog2.cpp" line="-188" />
+            <location filename="../src/CPP/7zip/UI/FileManager/ProgressDialog2.cpp" line="-189" />
             <source>Progress Error</source>
             <translation>Ошибка выполнения операции</translation>
         </message>

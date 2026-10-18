@@ -2,6 +2,7 @@
 #include "qtbenchmarkservices.h"
 #include <atomic>
 #include <chrono>
+#include <string>
 #include <thread>
 
 class FixtureBenchmarkServices : public IQtBenchmarkServices {
@@ -9,6 +10,7 @@ class FixtureBenchmarkServices : public IQtBenchmarkServices {
     size_t Ram = size_t(32) << 20;
     HRESULT Result = S_OK;
     bool Hold = false;
+    std::string Output = "Fixture native benchmark output";
     std::atomic<unsigned> Calls{0}, Active{0}, Canceled{0};
     bool GetRamSize(size_t &size) const override {
         size = Ram;
@@ -31,7 +33,7 @@ class FixtureBenchmarkServices : public IQtBenchmarkServices {
         info.PackSize = UInt64(1) << 18;
         info.NumIterations = 1;
         if (print) {
-            print->Print("Fixture native benchmark output");
+            print->Print(Output.c_str());
             print->NewLine();
         }
         do {

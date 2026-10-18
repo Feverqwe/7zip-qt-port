@@ -265,6 +265,7 @@ add_library(sevenzip_panel STATIC src/CPP/7zip/UI/FileManager/App.cpp
     src/qtcompresscallservices.h
     src/qtupdateguiservices.h
     src/qtbenchmarkcontrols.cpp src/qtbenchmarkcontrols.h
+    src/qtbenchmarkmetrics.cpp
     src/CPP/7zip/UI/FileManager/LinkDialog.cpp src/CPP/7zip/UI/FileManager/LinkDialog.h
     src/qtlinkcontrols.cpp src/qtlinkcontrols.h
     src/CPP/7zip/UI/FileManager/ExtractCallback.cpp src/CPP/7zip/UI/FileManager/ExtractCallback.h

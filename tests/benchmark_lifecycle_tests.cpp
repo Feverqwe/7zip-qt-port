@@ -5,22 +5,23 @@
 #include "benchmark_services_fixture.h"
 #include "layout_inspection.h"
 #include "qtbenchmarkcontrols.h"
-#include "qtdialogunits.h"
 #include "qtlangcontrols.h"
 #include <QApplication>
+#include <QClipboard>
 #include <QDialog>
-#include <QGroupBox>
+#include <QDialogButtonBox>
 #include <QLabel>
 #include <QMessageBox>
+#include <QMimeData>
 #include <QPlainTextEdit>
 #include <QPushButton>
 #include <QScopeGuard>
 #include <QScrollArea>
 #include <QScrollBar>
-#include <QStyleOptionGroupBox>
 #include <QTextBrowser>
 #include <QTimer>
 #include <QtTest>
+#include <memory>
 
 class BenchmarkLifecycleTests final : public QObject {
     Q_OBJECT
@@ -71,32 +72,20 @@ class BenchmarkLifecycleTests final : public QObject {
             QVERIFY(UiInspection::writeReport(
                 *view, QString("benchmark-source-initial-%1-%2").arg(language).arg(total)));
             QVERIFY(view->windowFlags().testFlag(Qt::WindowMinMaxButtonsHint));
-            const QSize source = total ? QSize(376, 276) : QSize(488, 264);
-            QCOMPARE(
-                view->size(),
-                QtDialogUnits(view->font()).pixels(source).expandedTo(view->minimumSizeHint()));
             if (total) {
                 QCOMPARE(view->focusWidget(), view->findChild<QPlainTextEdit *>("IDE_BENCH2_EDIT"));
                 return;
             }
-            auto *log = view->findChild<QLabel *>("IDT_BENCH_LOG");
+            auto *log = view->findChild<QPlainTextEdit *>("IDT_BENCH_LOG");
             QVERIFY(log);
             auto *scroll = view->findChild<QScrollArea *>("benchmarkControlsScroll");
             QVERIFY(scroll);
-            QCOMPARE(scroll->horizontalScrollBar()->maximum(), 0);
-            QVERIFY(!log->wordWrap());
-            QVERIFY(view->findChild<QGroupBox *>("IDG_BENCH_COMPRESSING"));
-            QVERIFY(view->findChild<QGroupBox *>("IDG_BENCH_DECOMPRESSING"));
-            const QRect logBounds(log->mapTo(view, QPoint()), log->size());
+            QVERIFY(log->isReadOnly());
             for (const char *name : {"IDB_RESTART", "IDB_STOP", "IDHELP", "IDCANCEL"}) {
                 auto *button = view->findChild<QPushButton *>(name);
                 QVERIFY(button);
                 QVERIFY2(UiInspection::fullyVisible(*button, *view), name);
-                const QRect bounds(button->mapTo(view, QPoint()), button->size());
-                if (log->isVisible())
-                    QVERIFY2(bounds.right() < logBounds.left(), name);
-                if (log->isVisible() && QString::fromLatin1(name) == "IDB_RESTART")
-                    QVERIFY(logBounds.top() <= bounds.top());
+                QVERIFY(UiInspection::separate(*button, *scroll, *view));
             }
             for (const QString &name : {QStringLiteral("IDT_BENCH_SIZE"),
                                         QString("benchmarkValue%1").arg(IDT_BENCH_COMPRESS_SIZE1),
@@ -109,9 +98,13 @@ class BenchmarkLifecycleTests final : public QObject {
             QWidget *focused = view->focusWidget();
             for (const char *name :
                  {"IDB_STOP", "IDHELP", "IDCANCEL", "IDC_BENCH_DICTIONARY", "IDC_BENCH_NUM_THREADS",
-                  "IDC_BENCH_NUM_PASSES", "IDB_RESTART"}) {
+                  "IDC_BENCH_NUM_PASSES", "benchmarkControlsScroll", "IDT_BENCH_LOG",
+                  "copyReportButton", "IDB_RESTART"}) {
+                if (!view->findChild<QWidget *>(name)->isVisible())
+                    continue;
                 QWidget *next = focused->nextInFocusChain();
-                while (next != focused && !(next->focusPolicy() & Qt::TabFocus))
+                while (next != focused &&
+                       (!(next->focusPolicy() & Qt::TabFocus) || !next->isVisible()))
                     next = next->nextInFocusChain();
                 QCOMPARE(next, view->findChild<QWidget *>(name));
                 focused = next;
@@ -230,8 +223,8 @@ class BenchmarkLifecycleTests final : public QObject {
                         QVERIFY(button->width() >= button->sizeHint().width());
                         if (QString(name) == "IDCANCEL")
                             QCOMPARE(button->text(), QString(language) == "ru"
-                                                         ? QStringLiteral("Отмена")
-                                                         : QString("Cancel"));
+                                                         ? QStringLiteral("&Закрыть")
+                                                         : QString("&Close"));
                     }
                     if (total) {
                         QVERIFY(UiInspection::fullyVisible(
@@ -241,26 +234,11 @@ class BenchmarkLifecycleTests final : public QObject {
                         for (QWidget *control : scroll->widget()->findChildren<QWidget *>()) {
                             if (control->objectName().isEmpty() || !control->isVisible())
                                 continue;
-                            if (auto *group = qobject_cast<QGroupBox *>(control)) {
-                                // A source group frame can exceed a compact viewport;
-                                // its title and each child control must remain reachable.
-                                QStyleOptionGroupBox option;
-                                option.initFrom(group);
-                                option.text = group->title();
-                                const QRect title = group->style()->subControlRect(
-                                    QStyle::CC_GroupBox, &option, QStyle::SC_GroupBoxLabel, group);
-                                const QPoint center =
-                                    group->mapTo(scroll->widget(), title.center());
-                                scroll->ensureVisible(center.x(), center.y(), title.width() / 2 + 5,
-                                                      title.height() / 2 + 5);
-                                QApplication::processEvents();
-                                QVERIFY(scroll->viewport()->rect().contains(
-                                    QRect(group->mapTo(scroll->viewport(), title.topLeft()),
-                                          title.size())));
-                                continue;
-                            }
                             scroll->ensureWidgetVisible(control, 5, 10);
                             QApplication::processEvents();
+                            if (!UiInspection::fullyVisible(*control, *view))
+                                QVERIFY(UiInspection::writeReport(*view,
+                                                                  "benchmark-unreachable-control"));
                             QVERIFY2(UiInspection::fullyVisible(*control, *view),
                                      qPrintable(control->objectName()));
                             if (qobject_cast<QLabel *>(control)) {
@@ -272,6 +250,13 @@ class BenchmarkLifecycleTests final : public QObject {
                             }
                         }
                         scroll->verticalScrollBar()->setValue(0);
+                        scroll->horizontalScrollBar()->setValue(0);
+                        if (scroll->horizontalScrollBar()->maximum() > 0) {
+                            scroll->setFocus();
+                            QTest::keyClick(scroll, Qt::Key_Right);
+                            QVERIFY(scroll->horizontalScrollBar()->value() > 0);
+                            scroll->horizontalScrollBar()->setValue(0);
+                        }
                     }
                     QVERIFY(UiInspection::writeReport(*view, QString("benchmark-%1-%2-%3")
                                                                  .arg(total ? "total" : "normal")
@@ -304,7 +289,18 @@ class BenchmarkLifecycleTests final : public QObject {
     }
     void fixedSourceMetricsAndTotalConsole() {
         QFETCH(bool, total);
+        auto *clipboard = QApplication::clipboard();
+        auto saved = std::make_unique<QMimeData>();
+        if (clipboard->mimeData())
+            for (const QString &format : clipboard->mimeData()->formats())
+                saved->setData(format, clipboard->mimeData()->data(format));
+        const auto restore = qScopeGuard([&] { clipboard->setMimeData(saved.release()); });
         FixtureBenchmarkServices service;
+        const QString longOutput = QStringLiteral("Fixture native benchmark output ") +
+                                   QString(2000, QChar('x')) +
+                                   QStringLiteral(" файл 😀\nnext line");
+        if (total)
+            service.Output = longOutput.toUtf8().toStdString();
         QString size, speed, usage, console;
         QTimer responder;
         connect(&responder, &QTimer::timeout, this, [&] {
@@ -322,14 +318,47 @@ class BenchmarkLifecycleTests final : public QObject {
                 speed = view->findChild<QLabel *>("benchmarkValue111")->text();
                 usage = view->findChild<QLabel *>("IDT_BENCH_TOTAL_USAGE_VAL")->text();
             }
-            view->reject();
+            responder.stop();
+            const auto close = qScopeGuard([view] { view->reject(); });
+            auto *copy = view->findChild<QPushButton *>("copyReportButton");
+            copy->click();
+            if (total) {
+                QCOMPARE(clipboard->text(), console);
+                auto *edit = view->findChild<QPlainTextEdit *>("IDE_BENCH2_EDIT");
+                QTRY_VERIFY(edit->horizontalScrollBar()->maximum() > 0);
+                auto cursor = edit->textCursor();
+                cursor.setPosition(0);
+                cursor.setPosition(10, QTextCursor::KeepAnchor);
+                edit->setTextCursor(cursor);
+                copy->click();
+                QCOMPARE(clipboard->text(), console.left(10));
+                QCOMPARE(edit->textCursor().selectedText(), console.left(10));
+            } else {
+                QVERIFY(clipboard->text().contains(size));
+                QVERIFY(clipboard->text().contains(speed));
+                QVERIFY(clipboard->text().contains(usage));
+                const QString title = view->findChild<QLabel *>("IDG_BENCH_TOTAL_RATING")->text();
+                bool foundTotal = false;
+                for (const QString &line : clipboard->text().split('\n')) {
+                    if (!line.startsWith(title + '\t'))
+                        continue;
+                    const QStringList cells = line.split('\t');
+                    QCOMPARE(cells.size(), 7);
+                    QCOMPARE(cells[4], usage);
+                    foundTotal = true;
+                }
+                QVERIFY(foundTotal);
+            }
+            QVERIFY(view->isVisible());
+            QVERIFY(UiInspection::writeReport(*view, total ? "benchmark-completed-total"
+                                                           : "benchmark-completed-normal"));
         });
         responder.start(1);
         QCOMPARE(Benchmark(nullptr, properties(total), 1, nullptr, &service), S_OK);
         QCOMPARE(service.Calls.load(), 1u);
         QCOMPARE(service.Active.load(), 0u);
         if (total)
-            QVERIFY(console.contains("Fixture native benchmark output"));
+            QVERIFY(console.contains(longOutput));
         else {
             QCOMPARE(size, QString("1 MB"));
             QCOMPARE(speed, QString("1024 KB/s"));

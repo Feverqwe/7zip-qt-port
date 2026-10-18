@@ -536,3 +536,72 @@ payload-каталогов нет, после проверок host D: имее�
 VoiceOver, физические клавиатуры, новый sheet behavior и отрисованный оригинальный
 Windows reference не проверялись. Benchmark, настройки, остальные формы и общая
 приёмка редизайна остаются в active goal.
+
+## Итерация 11: обе формы benchmark
+
+Источник: https://github.com/ip7z/7zip.git, baseline
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`; текущий upstream
+`9128b80e3a471108678e2b3ec3c985861c8d7b0f`.
+Сверены `CPP/7zip/UI/GUI/BenchmarkDialog.rc/.h/.cpp`, source control IDs и
+desktop/total resources, OnInit, параметры/зависимые значения, Start/Restart/Stop,
+OnCancel, completion/UpdateGui и command handlers. Рассмотрены entry Benchmark,
+Qt benchmark services, реальный engine caller и lifecycle/command consumers.
+Зависимости ресурсов — `CPP/7zip/UI/GUI/BenchmarkDialogRes.h` и
+`CPP/7zip/GuiCommon.rc`; Qt layout/language/clipboard services заменяют только
+платформенную границу.
+Ресурсы UNDER_CE по-прежнему не являются desktop-формами.
+
+Изменён CQtBenchmarkWindow presentation adapter; functional BenchmarkDialog.cpp
+и официальный benchmark engine не менялись. Dictionary/threads подписаны над
+полями, память находится рядом; Current/Resulting строки обеих операций и все
+Size/Speed/Usage/RPU/Rating значения объединены в одну grid-таблицу. Source Total
+Rating находится под соответствующими числовыми колонками. Pass limit, elapsed,
+сведения о CPU/системе/версии, исходные ошибки и накопленный лог сохранены.
+GroupBox заменены подписями строк; обработчики продолжают обращаться к тем же IDs.
+
+Общая строка действий использует нативные размеры и роли: Copy/Restart/Stop/
+Help/Close в обычном режиме и Copy/Help/Close в полном. Close вызывает прежний
+source OnCancel с ожиданием worker. Initial focus остаётся у Restart либо total
+console; фокус Stop при выключении по-прежнему возвращается через source handler.
+Tab включает параметры, scroll viewport, непустой лог и footer; стрелки позволяют
+прокручивать широкую таблицу. Отдельная старая компоновка не сохраняется.
+
+Лог перемещён под таблицу и заменён read-only QPlainTextEdit; total console
+остаётся исходным текстовым потребителем. Оба используют NoWrap, две прокрутки
+и системную fixed-font family с прежним размером текста. Пустой лог скрыт.
+При широкой таблице CPU/системные строки и лог ограничены шириной viewport;
+wrapped labels получают высоту по фактической ширине, поскольку QGridLayout
+может оценить spanning label по более широкому grid. Эта проблема воспроизведена
+в Windows/Linux geometry и устранена в Qt boundary. Gutter сохраняет место
+для native overlay scrollbar; footer остаётся вне прокручиваемого отчёта.
+
+В upstream нет команды экспорта всего GUI-отчёта в clipboard. Qt Copy собирает
+уже отформатированные source labels, параметры, сведения и полный лог; вычисления
+метрик и AddRatingsLine не дублируются. Табличные строки сохраняют пустые колонки
+span-ячеек при копировании TSV. Total Copy использует полное либо выделенное
+содержимое консоли, не меняет выделение/worker и не закрывает окно; пустой вывод
+не очищает clipboard. Это согласованное дополнение presentation из концепта.
+
+Таблица/summary/copy выделены в qtbenchmarkmetrics.cpp у того же UI-владельца,
+с CMake-регистрацией. Файлы presentation остаются сфокусированными; нового
+хранилища результатов, владельца worker или formatter для вычислений нет.
+Повторная сверка подтверждает подключение всех исходных values/callers и прежние
+memory refusal, restart, stop, cancel/join, frequency/history и total-output branches.
+
+Существующая регрессия расширена полным/selected copy длинного Unicode-вывода,
+положением total values в скопированных колонках, keyboard scrolling и сохранением
+открытого окна. Сохранены actual engine/command, отказ памяти, ошибки, перезапуск,
+остановка/join, affinity fallback и hot locale проверки. Старые DLU/frame/group
+assertions заменены видимостью, достижимостью, выравниванием и результатом.
+
+macOS: приложение и три focused targets собраны; benchmark_lifecycle,
+benchmark_command и native_benchmark — 3/3 PASS. Cocoa lifecycle EN/RU normal/
+compact и completed states в light/dark — 36/36 test functions PASS; фактические
+темы подтверждены JSON metadata, текущие снимки/JSON просмотрены в прежнем review.
+Linux и Windows interactive: те же три focused suites — 3/3 PASS; итоговый run
+`20261018T173147Z-068f9719`. Windows affinity fallback cases корректно исключены:
+там используется исходный native helper. Первоначальные CPU geometry/wrapping
+failures устранены и перепроверены на обеих ОС. Current/build/cache сохранены;
+старых payload-каталогов нет, host D: имеет около 647 GiB свободно.
+Full/slow, физические клавиатуры, VoiceOver и отрисованный Windows reference для
+этого редизайна не проверялись. Settings и общая приёмка остаются в active goal.

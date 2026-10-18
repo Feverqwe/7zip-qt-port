@@ -68,48 +68,37 @@ in the hardware-threads leading CPU count and choice limits; that count must not
 be zero or retain InitST's one when a larger processor count is available.
 Windows retains its native source helper. These system failures do not change
 grouping or controls.
-Dictionary/memory precede CPU threads, then Size→Speed→CPU Usage→Rating / Usage→
-Rating columns; Compressing and Decompressing retain Current/Resulting rows.
-Elapsed/Passes and Total Rating precede CPU/version/system information. In the
-normal resource, Restart/Stop belong to the upper right of the left control
-pane; Help/Cancel remain in that pane's footer. The separate static log begins
-at the top of the right column when nonempty. An empty log reserves no column,
-allowing metrics to use the available width. It uses
-plain, nonwrapping dialog-font text, not the total mode's fixed-font edit.
-Compressing/Decompressing are group boxes; resource RTEXT metric headers and
-values are right-aligned. Initial clients are488×264DLU normal and376×276DLU
-total, with Qt font/minimum-size protection. Current tests assert these initial
-frames, roles/grouping, footer placement, right alignment and logical focus.
-Source normal logical tab order is Restart→Stop→Help→Cancel→Dictionary→Threads→
-Passes, with Restart initially focused. Total initially focuses its console.
+The approved redesign places Dictionary/CPU threads above their fields, with
+Memory alongside them. One table contains Operation/Result and the original
+Size→Speed→CPU Usage→Rating / Usage→Rating columns. Compressing/Decompressing keep
+Current/Resulting rows; Total Rating shares the numeric columns. Values and
+numeric headers are right-aligned. Elapsed/Passes and the source pass limit
+precede the log and CPU/version/system information.
+The common footer holds Copy/Restart/Stop/Help/Close in normal mode and
+Copy/Help/Close in total mode, using native button roles and content sizes.
+Close calls the existing source cancellation/join workflow. Restart remains
+initially focused in normal mode; total mode initially focuses its console.
+Tab includes parameters, scroll viewport, nonempty log and footer actions.
 Both source templates request minimize/maximize/resizable style and no
 context-help title-bar button; Qt retains native modal-chrome conventions.
-Total mode has elapsed time and a fixed-font console. Qt scrolls the normal control pane at
-compact heights and protects the minimum width needed by its metrics. System
-information wraps in the available column width, with a gutter beside overlay
-scrollbars. Qt replaces Win32 rectangles/font setup with Qt layout services.
+Both log and total console are read-only, use the system monospaced family at
+the dialog text size and preserve horizontal/vertical scrolling without wrapping.
+The normal log appears beneath the table when nonempty. Copy exports full
+formatted source metrics, parameters, metadata and log; table columns retain
+alignment when pasted as tab-separated text. Total Copy uses selected or full
+console text and is disabled while empty. Neither copy action closes the window.
+The normal report scrolls in both directions at compact sizes; keyboard arrows
+scroll its focused viewport. System information wraps; a gutter protects it
+from overlay scrollbars. The common footer remains exposed.
 
 `benchmark_lifecycle` writes source-initial and normal/total EN/RU JSON at960×650 and640×400,
-checks all named labels/inputs after scrolling, fixed footer exposure and live
-language changes. Historical reports on all three OS were reviewed2026-10-03: normal compact
-controls scroll vertically/horizontally, metrics captions fit; buttons remain
-fully exposed. Total console is618×326 compact and938×576 normal. Cancel/Help use
-the original standard language mapping402/409; control IDs2/9 are not language
-IDs. No screenshot or rendered Windows reference has been used to claim pixel
-parity. Windows spanning group/error/system labels retain natural width; wrapped
-source text updates also set its required height, since a grid span's height
-calculation otherwise assumes the wider span. The Windows console is618×332
-compact/938×582normal; Linux618×330/938×580. Lower system rows are expected below
-the initial compact viewport and are tested after scrolling. Current Windows
-960×650 reports also leave3px of the empty final SYS2 row below the initial
-viewport; its label fits and the same per-control scrolling check verifies
-reachability. This is scroll-content geometry, not clipped text. P2-04 acceptance
-is recorded in the audit; whole-plan platform/rendered checks remain P3.
-The current source-frame/grouping correction has36 native JSON per OS and ten
-original Windows EN/RU reference states across List/Link/Benchmark. See the
-[current receipt](../archive/qt-port/upstream-port-audit/p3-06-secondary-dialogs-2026-10-16.md)
-for precise checks and deviations; the older console dimensions above retain
-their historical revision.
+checks named labels/inputs after scrolling, footer exposure, keyboard traversal,
+live language changes, long Unicode copy and source worker lifecycle. Lower system
+rows may be below the compact viewport and remain reachable by scrolling.
+Historical original Windows comparisons are retained in the
+[secondary-dialog receipt](../archive/qt-port/upstream-port-audit/p3-06-secondary-dialogs-2026-10-16.md);
+they do not establish rendered parity for the approved redesign. Current scope
+and platform validation are recorded in the [redesign audit](../upstream-port-audit/ui-redesign.md).
 
 ## Commands and reports
 

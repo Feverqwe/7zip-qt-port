@@ -13,6 +13,7 @@ class QLabel;
 class QPushButton;
 class QGridLayout;
 class QHBoxLayout;
+class QDialogButtonBox;
 
 class CQtBenchmarkCombo {
     QComboBox *view_ = nullptr;
@@ -60,7 +61,10 @@ class CQtBenchmarkWindow : public QDialog {
     void BuildControls(bool totalMode);
     void BuildNormalControls(QHBoxLayout *body);
     QGridLayout *BuildParameters();
-    QHBoxLayout *BuildFooter();
+    QDialogButtonBox *BuildFooter(bool totalMode);
+    void CopyReport();
+    void UpdateWrappedWidths(int width);
+    QGridLayout *metrics_ = nullptr;
     QGridLayout *BuildMetrics();
     QGridLayout *BuildSummary();
     QLabel *label(unsigned id, const char *name, const QString &text = {});
@@ -98,6 +102,7 @@ class CQtBenchmarkWindow : public QDialog {
     qintptr Create(unsigned resource, QWidget *parent);
     void closeEvent(QCloseEvent *event) override;
     void resizeEvent(QResizeEvent *event) override;
+    bool eventFilter(QObject *object, QEvent *event) override;
 
   public:
     bool PostMsg(unsigned message, quintptr wparam);
