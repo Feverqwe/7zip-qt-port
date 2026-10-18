@@ -422,3 +422,56 @@ fixtures. На macOS/Linux Windows-only metadata cases корректно иск
 Runners сохранили current/build/cache, свободное место проверено; старых payload
 каталогов нет. Full/slow, VoiceOver, физические клавиатуры и новый sheet behavior
 не проверялись. Остальные семейства окон и общая приёмка редизайна ещё в работе.
+
+## Итерация 9: свойства, контрольные суммы и полный текст
+
+Источник: https://github.com/ip7z/7zip.git, полный baseline
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`; текущий upstream
+`9128b80e3a471108678e2b3ec3c985861c8d7b0f`.
+Сопоставлены полные `CPP/7zip/UI/FileManager/EditDialog.cpp/.h/.rc`,
+`ListViewDialog.cpp/.h/.rc`, source selection/clipboard/detail/delete/activation
+и modal-result branches, Qt CListView adapter и зависимые ресурсы GuiCommon.
+Проверены вызывающие `PanelMenu.cpp::CPanel::Properties`,
+`PanelFolderChange.cpp::CPanel::FoldersHistory` и
+`UI/GUI/HashGUI.cpp::ShowHashResults`/`CHashCallbackGUI`.
+
+Qt presentation использует общий dialog layout: расширяемая область текста или
+таблицы и нативные content-sized кнопки. В отчёте Copy/Close заменяют OK/Cancel;
+Close сохраняет исходный OK result и focused index, Escape — прежний Cancel.
+История сохраняет Accept/Cancel roles и транзакцию, OK подписан Open.
+Скрытый одноколоночный и пустой двухколоночный header, изменение ширины колонок,
+полное выделение строк и горизонтальная прокрутка сохранены.
+
+У upstream нет отдельной кнопки Copy all; новый presentation-путь формирует
+индексы всех строк только при отсутствии выделения и передаёт их прежнему
+сериализатору CopyToClipboard. Выделение не меняется; Control+C/Insert сохраняют
+исходную семантику. Полные Values, display-only truncation/newline normalization,
+Enter/Alt+Enter detail, DeleteIsAllowed и синхронное удаление Strings/Values
+не менялись. После удаления последней строки Copy недоступен и не очищает
+clipboard. Нет второго форматтера свойств или реализации вычисления хешей.
+
+Полный текст остаётся plain/read-only/NoWrap с обеими прокрутками и ES_WANTRETURN.
+Системная fixed-font family сохраняет исходный размер текста. Copy использует
+выделенный либо полный текст, не закрывает окно и не меняет выделение.
+Close изначально имеет фокус/default; Tab проходит edit→Copy→Close.
+Повторная source-сверка подтверждает неизменность генераторов данных,
+source callers, активации, сохранения истории и полных значений.
+
+Новая регрессия проверяет копирование длинного Unicode/multiline значения,
+выделенных строк и пустого списка после Delete; текстовый сценарий расширен
+копированием literal full/selected текста. Существующие проверки подтверждают
+Cancel истории, открытие полного значения, исходные результаты хешей, locale
+reload, focus/default и normal/compact geometry. Удалена фиксация старого DLU
+размера ListView; полезные проверки видимости и достижимости сохранены.
+
+macOS: приложение и прямые потребители собраны, 12 focused suites PASS.
+Cocoa Edit/List/Hash в light/dark — 38/38 test functions PASS; EN/RU footer reload
+проверен существующим language suite. Просмотрены актуальные widget JSON и
+снимки normal/compact в прежнем `build/dev/ui-redesign-review`.
+Windows interactive и Linux: те же 12 focused suites PASS; run
+`20261018T164309Z-fe8cc8a3`. Current worktrees и compiler caches сохранены,
+старых payload-каталогов нет; до запуска свободно около 648 GiB на host D:,
+63 GiB в Linux и 45 GiB в Windows.
+Full/slow, VoiceOver, физические клавиатуры, новая sheet-модальность и сравнение
+с отрисованным оригинальным Windows 7zFM не проверялись. Остальные семейства
+и общая приёмка редизайна остаются в active goal.

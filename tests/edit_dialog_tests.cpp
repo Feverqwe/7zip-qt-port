@@ -1,11 +1,16 @@
 #include "CPP/7zip/UI/FileManager/EditDialog.h"
 #include "CPP/7zip/UI/FileManager/ViewSettings.h"
 #include "layout_inspection.h"
+#include <QApplication>
+#include <QClipboard>
 #include <QDialogButtonBox>
+#include <QMimeData>
 #include <QPlainTextEdit>
 #include <QPushButton>
+#include <QScopeGuard>
 #include <QScrollBar>
 #include <QtTest>
+#include <memory>
 
 class EditDialogTests : public QObject {
     Q_OBJECT
@@ -32,6 +37,12 @@ class EditDialogTests : public QObject {
         }
     }
     void displaysRawUnicodeTextWithoutInterpretationOrEditing() {
+        auto *clipboard = QApplication::clipboard();
+        auto saved = std::make_unique<QMimeData>();
+        if (clipboard->mimeData())
+            for (const QString &type : clipboard->mimeData()->formats())
+                saved->setData(type, clipboard->mimeData()->data(type));
+        const auto restore = qScopeGuard([&] { clipboard->setMimeData(saved.release()); });
         CEditDialog dialog;
         dialog.Title = ToUString(QStringLiteral("Свойство 😀"));
         const QString raw = QStringLiteral("<b>имя с пробелом 😀</b>\nsecond line");
@@ -48,6 +59,16 @@ class EditDialogTests : public QObject {
         QTest::keyClick(edit, Qt::Key_Return);
         QVERIFY(dialog.isVisible());
         QCOMPARE(ToQString(dialog.Text), raw);
+        auto *copy = dialog.findChild<QPushButton *>("copyReportButton");
+        copy->click();
+        QCOMPARE(clipboard->text(), raw);
+        auto cursor = edit->textCursor();
+        cursor.setPosition(0);
+        cursor.setPosition(raw.indexOf('\n'), QTextCursor::KeepAnchor);
+        edit->setTextCursor(cursor);
+        copy->click();
+        QCOMPARE(clipboard->text(), raw.section('\n', 0, 0));
+        QVERIFY(dialog.isVisible());
         dialog.findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Close)->click();
         QCOMPARE(dialog.result(), int(QDialog::Rejected));
         QVERIFY(!dialog.isVisible());
@@ -82,5 +103,6 @@ class EditDialogTests : public QObject {
         QVERIFY(UiInspection::writeReport(dialog, QString("edit-dialog-%1").arg(size.width())));
     }
 };
-QTEST_MAIN(EditDialogTests)
+#include "review_test_main.h"
+SEVENZIP_UI_TEST_MAIN(EditDialogTests)
 #include "edit_dialog_tests.moc"

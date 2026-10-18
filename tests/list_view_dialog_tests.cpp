@@ -7,11 +7,14 @@
 #include <QApplication>
 #include <QClipboard>
 #include <QDialogButtonBox>
+#include <QMimeData>
 #include <QPlainTextEdit>
 #include <QPushButton>
+#include <QScopeGuard>
 #include <QTimer>
 #include <QTreeWidget>
 #include <QtTest>
+#include <memory>
 
 class ListViewDialogTests : public QObject {
     Q_OBJECT
@@ -41,8 +44,6 @@ class ListViewDialogTests : public QObject {
         QVERIFY(UiInspection::writeReport(
             dialog, QString("list-source-initial-%1-%2").arg(language).arg(columns)));
         QVERIFY(dialog.windowFlags().testFlag(Qt::WindowMinMaxButtonsHint));
-        QCOMPARE(dialog.size(), UiInspection::normalizedInitialClientSize(
-                                    dialog, QtDialogUnits(dialog.font()).pixels(QSize(496, 336))));
         auto *list = dialog.findChild<QTreeWidget *>();
         QVERIFY(list);
         QCOMPARE(list->isHeaderHidden(), columns == 1);
@@ -63,6 +64,12 @@ class ListViewDialogTests : public QObject {
     }
 
     void twoColumnsNormalizeAndTruncateDisplayOnly() {
+        auto *clipboard = QApplication::clipboard();
+        auto saved = std::make_unique<QMimeData>();
+        if (clipboard->mimeData())
+            for (const QString &type : clipboard->mimeData()->formats())
+                saved->setData(type, clipboard->mimeData()->data(type));
+        const auto restore = qScopeGuard([&] { clipboard->setMimeData(saved.release()); });
         CListViewDialog dialog;
         dialog.NumColumns = 2;
         dialog.Strings.Add(UString("multiline"));
@@ -85,6 +92,47 @@ class ListViewDialogTests : public QObject {
 #else
         QCOMPARE(QApplication::clipboard()->text(), "long: " + raw + "\n");
 #endif
+    }
+
+    void copyButtonUsesFullValuesAndPreservesSelection() {
+        auto *clipboard = QApplication::clipboard();
+        auto saved = std::make_unique<QMimeData>();
+        if (clipboard->mimeData())
+            for (const QString &type : clipboard->mimeData()->formats())
+                saved->setData(type, clipboard->mimeData()->data(type));
+        const auto restore = qScopeGuard([&] { clipboard->setMimeData(saved.release()); });
+        CListViewDialog dialog;
+        dialog.NumColumns = 2;
+        dialog.DeleteIsAllowed = true;
+        const QString raw = QString(1200, QChar('x')) + QStringLiteral("\n😀 tail");
+        dialog.Strings.Add(UString("long"));
+        dialog.Values.Add(ToUString(raw));
+        dialog.Strings.Add(UString("other"));
+        dialog.Values.Add(UString("value"));
+        dialog.OnInit();
+        dialog.show();
+        auto *list = dialog.findChild<QTreeWidget *>();
+        auto *copy = dialog.findChild<QPushButton *>("copyReportButton");
+        const QString newline =
+#ifdef _WIN32
+            "\r\n";
+#else
+            "\n";
+#endif
+        copy->click();
+        QCOMPARE(clipboard->text(), "long: " + raw + newline + "other: value" + newline);
+        QVERIFY(list->selectedItems().isEmpty());
+        list->setCurrentItem(list->topLevelItem(0));
+        copy->click();
+        QCOMPARE(clipboard->text(), "long: " + raw + newline);
+        QCOMPARE(list->selectedItems().size(), 1);
+        QTest::keyClick(list, Qt::Key_A, Qt::ControlModifier);
+        QTest::keyClick(list, Qt::Key_Delete);
+        clipboard->setText("keep clipboard");
+        copy->click();
+        QCOMPARE(clipboard->text(), QString("keep clipboard"));
+        dialog.findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Close)->click();
+        QCOMPARE(dialog.result(), int(QDialog::Accepted));
     }
 
     void enterInPropertiesOpensFullValueWithoutAcceptingList() {

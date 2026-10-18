@@ -70,7 +70,7 @@
             <translation>Защитить паролем</translation>
         </message>
         <message>
-            <location filename="../src/qtcompressoptionscontrols.cpp" line="+105" />
+            <location filename="../src/qtcompressoptionscontrols.cpp" line="+107" />
             <source>Links and metadata</source>
             <translation>Ссылки и метаданные</translation>
         </message>
@@ -80,7 +80,7 @@
             <translation>Ссылки</translation>
         </message>
         <message>
-            <location line="+99" />
+            <location line="+100" />
             <source>Format options</source>
             <translation>Параметры формата</translation>
         </message>
@@ -325,6 +325,8 @@
         <name>DialogRedesign</name>
         <message>
             <location filename="../src/CPP/7zip/UI/FileManager/CopyDialog.cpp" line="+59" />
+            <location filename="../src/CPP/7zip/UI/FileManager/EditDialog.cpp" line="+39" />
+            <location filename="../src/CPP/7zip/UI/FileManager/ListViewDialog.cpp" line="+106" />
             <source>Copy</source>
             <translation>Копировать</translation>
         </message>
@@ -387,6 +389,11 @@
             <location filename="../src/qtcompressoptionscontrols.cpp" line="-17" />
             <source>Save</source>
             <translation>Сохранить</translation>
+        </message>
+        <message>
+            <location filename="../src/CPP/7zip/UI/FileManager/ListViewDialog.cpp" line="+7" />
+            <source>Open</source>
+            <translation>Открыть</translation>
         </message>
     </context>
     <context>
@@ -5555,7 +5562,7 @@ Application modules:
     <context>
         <name>qtcompressoptionscontrols</name>
         <message>
-            <location filename="../src/qtcompressoptionscontrols.cpp" line="-113" />
+            <location filename="../src/qtcompressoptionscontrols.cpp" line="-114" />
             <source>Override the format default for this option.</source>
             <translation>Задать значение вместо настройки формата по умолчанию.</translation>
         </message>

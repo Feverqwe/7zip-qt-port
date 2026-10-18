@@ -8,8 +8,8 @@
 #include "RegistryUtils.h"
 #include "ViewSettings.h"
 #include "qtdiagnostictext.h"
+#include "qtdialoglayout.h"
 #include "qtdialogscreenservices.h"
-#include "qtdialogunits.h"
 #include "qtlangbuttonbox.h"
 #include "qtlangcontrols.h"
 #include "qtlistview.h"
@@ -54,11 +54,6 @@ bool CListViewDialog::OnInit() {
     setWindowFlag(Qt::WindowMinMaxButtonsHint);
     setWindowFlag(Qt::WindowContextHelpButtonHint, false);
     setWindowTitle(ToQString(Title));
-    const QtDialogUnits units(font());
-    const QSize margin = units.pixels(QSize(8, 8));
-    auto *layout = new QVBoxLayout(this);
-    layout->setContentsMargins(margin.width(), margin.height(), margin.width(), margin.height());
-    layout->setSpacing(margin.height());
     _listView = new CListView(this);
     _listView->setObjectName(NumColumns > 1 ? "propertiesList" : "foldersHistoryList");
     _listView->setColumnCount((int)NumColumns);
@@ -100,17 +95,28 @@ bool CListViewDialog::OnInit() {
     if (NumColumns > 1)
         _listView->SetColumnWidthAuto(1);
     StringsWereChanged = false;
-    layout->addWidget(_listView);
-    auto *buttons = new QtLangButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
+    const bool report = NumColumns > 1;
+    auto *buttons = new QtLangButtonBox(
+        report ? QDialogButtonBox::Close : QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
     buttons->setObjectName("listViewButtons");
-    buttons->layout()->setSpacing(margin.width());
-    for (auto *button : buttons->buttons()) {
-        button->setFixedWidth(qMax(units.pixels(QSize(64, 0)).width(), button->sizeHint().width()));
-        button->setMinimumHeight(units.pixels(QSize(0, 16)).height());
+    if (report) {
+        auto *copy = buttons->addButton(QString(), QDialogButtonBox::ActionRole);
+        copy->setObjectName("copyReportButton");
+        copy->setEnabled(!Strings.IsEmpty());
+        QtBindLocalText(copy, "DialogRedesign", QT_TRANSLATE_NOOP("DialogRedesign", "Copy"));
+        connect(copy, &QPushButton::clicked, this,
+                [this] { CopyToClipboard(_listView->selectedItems().isEmpty()); });
+        buttons->button(QDialogButtonBox::Close)->setDefault(true);
+        QWidget::setTabOrder(_listView, copy);
+        QWidget::setTabOrder(copy, buttons->button(QDialogButtonBox::Close));
+        // Report callers retain the original OK result and focused row on Close.
+        connect(buttons, &QDialogButtonBox::rejected, this, &CListViewDialog::OnOK);
+    } else {
+        buttons->SetAcceptText("DialogRedesign", QT_TRANSLATE_NOOP("DialogRedesign", "Open"));
+        connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
     }
-    layout->addWidget(buttons);
+    QtCreateDialogLayout(*this, *buttons)->addWidget(_listView, 1);
     connect(buttons, &QDialogButtonBox::accepted, this, &CListViewDialog::OnOK);
-    connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
     if (st.SingleClick)
         connect(_listView, &QTreeWidget::itemClicked, this, [this] {
             const auto modifiers = QApplication::keyboardModifiers();
@@ -119,7 +125,7 @@ bool CListViewDialog::OnInit() {
         });
     else
         connect(_listView, &QTreeWidget::itemDoubleClicked, this, &CListViewDialog::OnEnter);
-    resize(units.pixels(QSize(496, 336)).expandedTo(minimumSizeHint()));
+    resize((report ? QSize(640, 420) : QSize(560, 360)).expandedTo(minimumSizeHint()));
     QtNormalizeDialogSize(*this);
     _listView->setFocus();
     return true;
@@ -183,9 +189,13 @@ void CListViewDialog::changeEvent(QEvent *event) {
     QDialog::changeEvent(event);
 }
 
-void CListViewDialog::CopyToClipboard() {
+void CListViewDialog::CopyToClipboard(bool all) {
     CUIntVector indexes;
-    ListView_GetSelected(*_listView, indexes);
+    if (all) {
+        for (unsigned i = 0; i < Strings.Size(); ++i)
+            indexes.Add(i);
+    } else
+        ListView_GetSelected(*_listView, indexes);
     UString s;
     FOR_VECTOR(i, indexes) {
         unsigned index = indexes[i];
@@ -249,6 +259,8 @@ void CListViewDialog::DeleteItems() {
     if (focusedIndex >= 0)
         _listView->SetItemState_FocusedSelected(focusedIndex);
     _listView->SetColumnWidthAuto(0);
+    if (auto *copy = findChild<QPushButton *>("copyReportButton"))
+        copy->setEnabled(!Strings.IsEmpty());
 }
 
 void CListViewDialog::OnEnter() {

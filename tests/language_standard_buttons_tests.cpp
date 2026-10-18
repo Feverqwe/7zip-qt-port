@@ -97,6 +97,9 @@ class LanguageStandardButtonsTests final : public QObject {
                 else if (button == QDialogButtonBox::Ok && name == "compress-options")
                     QCOMPARE(control->text(),
                              russian ? QStringLiteral("Сохранить") : QString("Save"));
+                else if (button == QDialogButtonBox::Ok && name == "list")
+                    QCOMPARE(control->text(),
+                             russian ? QStringLiteral("Открыть") : QString("Open"));
                 else if (button == QDialogButtonBox::Ok && name == "copy")
                     QCOMPARE(control->text(),
                              russian ? QStringLiteral("Копировать") : QString("Copy"));

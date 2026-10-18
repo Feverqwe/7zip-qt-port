@@ -21,10 +21,12 @@ rendered Windows parity and parent/final acceptance remain pending.
 ### Shared ListView: Properties and Folder History (P3-06)
 
 Reference: pinned FileManager/ListViewDialog.rc and OnInit/OnEnter/OnOK callers.
-Initial client is496×336DLU with native font/minimum protection; root margins
-and footer gap are8DLU, buttons64×16DLU with native caption protection. Preserve
-one-column hidden History header and the blank two-column Properties header.
-Native standard-button ordering is retained. `list_view_dialog` writes EN/RU
+The approved redesign uses the shared dialog layout and native content-sized
+buttons. Reports have Copy/Close; Folder History has Open/Cancel. Preserve
+one-column hidden History header and the blank, resizable two-column Properties
+header. Copy uses the full selected values, or all rows when nothing is selected;
+an empty report cannot overwrite the clipboard. Native button ordering is retained.
+`list_view_dialog` writes EN/RU
 source-initial and540×360/360×240 reports, checking exposed list/footer without
 changing stored full values, clipboard/detail or acceptance behavior.
 
@@ -116,9 +118,8 @@ their historical revision.
 Reference: `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
 `CPP/7zip/UI/FileManager/ListViewDialog.rc/.cpp` and
 `PanelFolderChange.cpp::CPanel::FoldersHistory`.
-The single-column list fills the resizable body; OK/Cancel sit below it.
-Its initial496×336DLU frame,8DLU margins/list-footer gap and64×16DLU footer
-buttons use the native Qt font and protect native minimum sizes. Native button
+The single-column list fills the resizable body; Open/Cancel sit below it.
+It uses the shared dialog layout and native content-sized buttons. Native button
 ordering is retained. Source minimize/maximize/resizable capabilities are
 requested with Qt flags; no context-help title-bar button is added.
 There is no separate Delete button in the reference. Delete affects all
@@ -126,7 +127,8 @@ selected rows, Ctrl+A/C copy/select, Enter confirms the focused path.
 Long paths remain reachable through scrolling, without eliding stored text.
 SingleClick changes activation to one click and enables hover selection without
 confirmation. Modified selection clicks do not activate. Interaction coverage
-is in `list_activation`; this adaptation does not change the geometry contract.
+is in `list_activation`. Cancel leaves stored history unchanged; Open retains
+the source history update and focused-path navigation.
 `folder_history` verifies list/footer visibility and separation at 540×360
 and 360×240 and writes JSON reports. Qt geometry establishes structure and
 usability. The original rendered EN/RU history states are recorded in the
@@ -138,8 +140,9 @@ widget geometry does not establish pixel equivalence or physical input.
 The native HashGUI result presenter uses the same ListViewDialog resource and
 two-column property/value body. Its title is «Контрольные суммы»; source bundle
 rows include the filename, byte size and requested digest. It starts without
-selected rows and retains the native DeleteIsAllowed flag. OK/Cancel remain
-below the list. `hash_results` checks exact source-generated rows against a
+selected rows and retains the native DeleteIsAllowed flag. Copy/Close remain
+below the list, using the shared report layout and full-value copy behavior.
+`hash_results` checks exact source-generated rows against a
 CRC32 fixture, title/state and unclipped, separate list/footer/buttons at
 540×360 and 420×360; reports are `hash-results-540`/`hash-results-420`.
 Horizontal scrolling remains available for long Unicode names/values. This
@@ -152,14 +155,16 @@ HashCalcGUI invoke this same source presenter; current540/420 JSON reviewed
 
 Reference: EditDialog.rc; source scope and baseline are recorded in the
 [properties audit](../archive/qt-port/upstream-port-audit.md#свойства-и-двухколоночный-список-2026-09-28).
-CEditDialog initially maps the336×256DLU client through the native Qt font,
-with eight-DLU root margins/gap and64×16DLU Close protected by its native hint.
+CEditDialog uses the shared redesigned dialog layout and native button sizes.
 It requests the source resize/minimize/maximize capabilities without a title-bar
 context-help button. CEditDialog has one read-only multiline
-edit above Close, with both scroll directions and no automatic wrapping.
+edit above Copy/Close, with both scroll directions and no automatic wrapping.
+Its system monospaced font preserves the dialog text size. Copy uses selected
+text, or the full text when nothing is selected, without closing the dialog.
 Text/Title are copied without truncation. Close has initial focus and is the
 default button: initial Enter closes. Tab reaches the edit, where Enter remains
-inside the edit (ES_WANTRETURN). Geometry: 480×320 and 320×240,
+inside the edit (ES_WANTRETURN). Tab then reaches Copy and Close.
+Geometry: 480×320 and 320×240,
 visible, separate text area and footer. Coverage is described in
 [testing](../testing.md). Rendered Windows parity remains unverified.
 

@@ -13,7 +13,7 @@ class CListViewDialog : public QDialog {
     Q_OBJECT
     CListView *_listView = nullptr;
     void OnOK();
-    void CopyToClipboard();
+    void CopyToClipboard(bool all = false);
     void DeleteItems();
     void ShowItemInfo();
     void OnEnter();

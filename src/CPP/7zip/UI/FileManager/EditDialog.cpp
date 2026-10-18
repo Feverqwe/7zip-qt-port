@@ -4,9 +4,13 @@
 // ES_READONLY/ES_MULTILINE/WS_HSCROLL/WS_VSCROLL/ES_WANTRETURN are retained.
 #include "EditDialog.h"
 #include "ViewSettings.h"
+#include "qtdialoglayout.h"
 #include "qtdialogscreenservices.h"
-#include "qtdialogunits.h"
 #include "qtlangbuttonbox.h"
+#include "qtlangcontrols.h"
+#include <QApplication>
+#include <QClipboard>
+#include <QFontDatabase>
 #include <QKeyEvent>
 #include <QPlainTextEdit>
 #include <QPushButton>
@@ -18,29 +22,37 @@ bool CEditDialog::OnInit() {
     setObjectName("editDialog");
     setWindowFlag(Qt::WindowMinMaxButtonsHint);
     setWindowFlag(Qt::WindowContextHelpButtonHint, false);
-    const QtDialogUnits units(font());
-    const QSize margin = units.pixels(QSize(8, 8));
-    auto *layout = new QVBoxLayout(this);
-    layout->setContentsMargins(margin.width(), margin.height(), margin.width(), margin.height());
-    layout->setSpacing(margin.height());
     _edit = new QPlainTextEdit(this);
     _edit->setObjectName("editText");
+    QFont reportFont = _edit->font();
+    reportFont.setFamilies(QFontDatabase::systemFont(QFontDatabase::FixedFont).families());
+    reportFont.setStyleHint(QFont::Monospace);
+    _edit->setFont(reportFont);
     _edit->setReadOnly(true);
     _edit->setLineWrapMode(QPlainTextEdit::NoWrap);
     _edit->setTabChangesFocus(true);
     _edit->installEventFilter(this);
     setWindowTitle(ToQString(Title));
     _edit->setPlainText(ToQString(Text));
-    layout->addWidget(_edit);
     auto *buttons = new QtLangButtonBox(QDialogButtonBox::Close, this);
     buttons->setObjectName("editButtons");
+    auto *copy = buttons->addButton(QString(), QDialogButtonBox::ActionRole);
+    copy->setObjectName("copyReportButton");
+    copy->setEnabled(!_edit->toPlainText().isEmpty());
+    QtBindLocalText(copy, "DialogRedesign", QT_TRANSLATE_NOOP("DialogRedesign", "Copy"));
+    connect(copy, &QPushButton::clicked, this, [this] {
+        if (_edit->textCursor().hasSelection())
+            _edit->copy();
+        else
+            QApplication::clipboard()->setText(_edit->toPlainText());
+    });
     auto *close = buttons->button(QDialogButtonBox::Close);
     close->setDefault(true);
-    close->setFixedWidth(qMax(units.pixels(QSize(64, 0)).width(), close->sizeHint().width()));
-    close->setMinimumHeight(units.pixels(QSize(0, 16)).height());
-    layout->addWidget(buttons);
+    QtCreateDialogLayout(*this, *buttons)->addWidget(_edit, 1);
+    QWidget::setTabOrder(_edit, copy);
+    QWidget::setTabOrder(copy, close);
     connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
-    resize(units.pixels(QSize(336, 256)).expandedTo(minimumSizeHint()));
+    resize(QSize(640, 420).expandedTo(minimumSizeHint()));
     QtNormalizeDialogSize(*this);
     close->setFocus();
     return true;

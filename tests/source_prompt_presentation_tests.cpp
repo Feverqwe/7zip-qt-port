@@ -26,7 +26,7 @@ class SourcePromptPresentationTests final : public QObject {
         QApplication::processEvents();
         QVERIFY(UiInspection::writeReport(view, tag));
         const QSize resourceClient = QtDialogUnits(view.font()).pixels(source);
-        if (view.objectName() != "memDialog" && view.objectName() != "passwordDialog")
+        if (view.objectName() == "operationMessagesDialog")
             QCOMPARE(view.size(),
                      resizable ? UiInspection::normalizedInitialClientSize(view, resourceClient)
                                : resourceClient.expandedTo(view.minimumSizeHint()));
