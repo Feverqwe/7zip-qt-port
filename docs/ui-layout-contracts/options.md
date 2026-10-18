@@ -121,8 +121,8 @@ Add760×720/640×480 and advanced520×400/440×340. Add content uses its existin
 scroll viewport; the footer remains exposed. Advanced archive-time checkbox
 uses Qt text wrapping for the original long source words at compact width.
 Reachability of all scrolling Add controls, current message forms and source
-accelerator/buddy review form the accepted P1-14.2 scope. The final full gate
-passed170/170 on macOS; these reports do not establish rendered Windows parity.
+accelerator/buddy review form the accepted P1-14.2 scope. These reports do not
+establish rendered Windows parity.
 Progress reports cover EN/RU760×450/640×380 paused/background state and retain
 source two-column grouping. Properties reports cover540×360/360×240 with the
 existing table, rows and selection. Built-in viewer/editor reports cover760×560/

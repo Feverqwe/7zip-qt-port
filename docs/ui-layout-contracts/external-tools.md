@@ -48,12 +48,12 @@ stay exposed, and the six-column list scrolls horizontally at compact width.
 Geometry/source structure and a bounded original EN/RU comparison are checked
 in the [current browser receipt](../archive/qt-port/upstream-port-audit/p3-06-source-browsers-2026-10-16.md).
 Named controls remain exposed at normal/compact sizes; full workflow/pixel parity
-is not inferred from those reports. Earlier P1-15 check.sh175/175 is historical.
+is not inferred from those reports.
 
 ### Offline Help and About (P1-15.1)
 
 References: pinned HelpUtils/MyLoadMenu/CompressDialog topic calls and exact
-official26.03 CHM HTML/CSS with release provenance in resources/7zip.
+official CHM HTML/CSS with [pinned release provenance](../../resources/7zip/help-provenance.json).
 QTextBrowser replaces Win32 CHM presentation, retaining pages/links/fragments.
 Help follows the application palette, including already open topics. Page,
 table and syntax backgrounds, text and links remain readable in light/dark

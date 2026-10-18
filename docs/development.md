@@ -208,7 +208,7 @@ in [AGENTS.md](../AGENTS.md#validation-and-ui-reference) apply. Before each batc
 follow [artifact retention](testing.md#test-artifact-retention). The wrappers do
 not automatically prune old runs; the agent performs the scoped cleanup.
 
-`check.sh` checks formatting, builds with the development CMake preset, and runs CTest with long suites excluded. Both `check.sh` and `ctest.sh` run up to four tests in parallel by default. CTest resource locks serialize tests that write to the shared UI report or screenshot directories. Set `SEVENZIP_CTEST_JOBS=1` for a sequential run or another positive number to change concurrency; `CTEST_PARALLEL_LEVEL` and an explicit `--parallel` argument to `ctest.sh` also take precedence. CTest reports failed suites through `--output-on-failure` and continues running the remaining suites. For a release build, run `./scripts/build.sh release` and `./scripts/ctest.sh --preset release --output-on-failure`.
+`check.sh` checks formatting, builds with the development CMake preset, and runs CTest with long suites excluded. Both `check.sh` and `ctest.sh` run up to four tests in parallel by default. CTest resource locks serialize tests that write to the shared UI report or screenshot directories. Set `SEVENZIP_CTEST_JOBS=1` for a sequential run or another positive number to change concurrency; `CTEST_PARALLEL_LEVEL` and an explicit `--parallel` argument to `ctest.sh` also take precedence. CTest reports failed suites through `--output-on-failure` and continues running the remaining suites. For a release build, run `./scripts/build.sh release`. The Release preset disables testing; run tests with the `dev` preset.
 
 Long suites are excluded by default, including focused `-R` selections;
 see [opt-in commands](#long-suites). Agents follow the explicit-request rule
@@ -290,8 +290,10 @@ python3 scripts/hyperv-runner.py check linux
 python3 scripts/hyperv-runner.py check windows
 ```
 
-Add `--preset release` to run Debug's full gate followed by the Release build
-and CTest. The helper uses either the configured SSH connection or an optional
+For a separate Release build, use
+`python3 scripts/hyperv-runner.py run all -- scripts/build.sh release`.
+Run tests with the `dev` preset; Release disables test targets.
+The helper uses either the configured SSH connection or an optional
 readiness command for VM startup and address discovery. Each guest reuses its
 configured Sevenzip `current` worktree. See [Hyper-V runners](hyperv-runners.md)
 for toolchains, pinned engine caching, source sync scope and validation results.

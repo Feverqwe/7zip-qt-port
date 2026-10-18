@@ -18,7 +18,6 @@
 | --- | --- |
 | Исходный scope, зависимости и правила итераций | [План](qt-port/porting-plan.md) |
 | Закрытые пакеты и подшаги | [Чеклист](qt-port/porting-checklist.md) |
-| Прежний запрос на продолжение плана | [Шаблон](qt-port/porting-chat-prompt.md) |
 | Происхождение кода, адаптации, причины пропусков и проверки | [Source audit](qt-port/upstream-port-audit.md) |
 | Bodies/callers и решения по исходным модулям | [Source ledger](qt-port/omitted-scope-audit.md) |
 | История сценариев и платформенных отличий | [Parity](qt-port/7zfm-parity.md) |
@@ -34,3 +33,8 @@
 Текущий машинный baseline остаётся в [manifest](../upstream-baseline.json).
 Новые инструкции и действующие контракты поддерживаются в рабочих документах;
 исторические receipts не дописываются новыми результатами.
+
+## Other historical records
+
+- [Runner installations and desktop/network diagnoses](runner-environment-2026-10-18.md).
+- [Add dialog layout investigations and intermediate validation](add-dialog-layout-history.md).

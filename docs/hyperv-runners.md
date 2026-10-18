@@ -4,8 +4,8 @@ Connections, machine names, workspaces and tools are selected through
 [local runner configuration](runner-configuration.md). The helper supports
 direct SSH or an optional VM discovery command, with one persistent Sevenzip
 worktree per platform. Run IDs identify logs, not new source/build directories.
-The maintainer's existing shared Hyper-V guests and storage are recorded below;
-their identities and paths are not defaults for other installations.
+Historical installation records are linked from the archive; use local
+configuration for the identities and paths of your installation.
 
 ## Persistent worktree
 
@@ -63,7 +63,7 @@ alone is insufficient. The next normal sync repairs a partial source transfer.
 Do not create or attach new virtual disks, including VHD/VHDX files, to solve
 capacity problems. Do not grow disks, repartition or reformat volumes without
 a separate user request. Use the existing configured volumes; the historical
-data-disk creation recorded below is not authorization to repeat it.
+data-disk creation recorded in the archive is not authorization to repeat it.
 
 Before each new validation batch, inspect completed runs and remove obsolete
 Sevenzip Desktop run payloads, build outputs and temporary data under the
@@ -98,22 +98,14 @@ The helper forwards `SEVENZIP_INCLUDE_SLOW_TESTS` (0 by default; only 0/1 are
 accepted) to both guest environments. Prefix a specifically requested exhaustive
 runner command with `SEVENZIP_INCLUDE_SLOW_TESTS=1` to opt in.
 
-The helper starts from htopQt's `scripts/hyperv-runner.py` at commit
-`f57b93a72d765f738a6b779b4b3c94e16c0ef64a`, adapted for Sevenzip resources,
-MSVC, pinned engine builders, formatter and SSH stdin transport.
-CLI, parallel probes, shared Bash command payload and discovery-error reporting
-were refreshed from htopQt's modified worktree on 2026-10-04 (base commit
-`56320ebb4d62b3bac83f38719278cae6a5c454c1`), retaining these Sevenzip adaptations.
-The source script's SHA256 was
-`f4f53f0123a503dcc4fb85f17821d79e1cf156f29cbe015b99d561b45b1903ba`.
+Runner script provenance is retained in the [dated environment record](archive/runner-environment-2026-10-18.md#runner-script-provenance).
 
 Runner selection sets `CMAKE_PREFIX_PATH` and prepends the kit and tool
 directories from local configuration.
 `probe` queries that kit's qmake rather than the system default. Install/select
 the kit before checks; the helper does not download Qt or change global PATH.
-The maintainer's Linux kit includes QtDBus; the Windows kit was installed with
-the repository's verified aqt adapter. Use `probe` to confirm
-the live kit; prior probe/gate results are [historical evidence](archive/qt-port/workflow-evidence.md).
+Use `probe` to confirm the live kit; prior probe/gate results are
+[historical evidence](archive/qt-port/workflow-evidence.md).
 
 The persistent worktree contains `runner-tmp`. Its process environment sets
 `TEMP`, `TMP` and `TMPDIR` there before MSVC setup and the interactive child.
@@ -139,8 +131,7 @@ python3 scripts/hyperv-runner.py probe all
 python3 scripts/hyperv-runner.py check linux
 python3 scripts/hyperv-runner.py check windows
 python3 scripts/hyperv-runner.py check all
-python3 scripts/hyperv-runner.py check linux --preset release
-python3 scripts/hyperv-runner.py check windows --preset release
+python3 scripts/hyperv-runner.py run all -- scripts/build.sh release
 ```
 
 Native Windows window/focus/Properties checks need the logged-on user's desktop,
@@ -162,14 +153,8 @@ Limited and Highest modes; it changes no global scheduler or account setting.
 See [Microsoft's priority mapping](https://learn.microsoft.com/en-us/windows/win32/taskschd/tasksettings-priority)
 and the [native regression receipt](archive/qt-port/upstream-port-audit/p3-03-runner-priority-2026-10-16.md).
 
-The 2026-10-10 native control diagnosis confirms this distinction: session 0's
-service window station reports flags 0 and an invisible desktop. A disposable
-Win32 window gains WS_VISIBLE after ShowWindow, yet IsWindowVisible remains
-false, just as for the actual Qt startup window. Do not replace the visibility
-assertion with a style-bit check to accept that environment. The
-[diagnostic receipt](archive/qt-port/upstream-port-audit.md#p3-03--windows-service-desktop-visibility-diagnosis-2026-10-10)
-records the tested snapshot and retained probes; an active logon is still
-required for interactive checks.
+The [service-desktop diagnosis](archive/qt-port/upstream-port-audit.md#p3-03--windows-service-desktop-visibility-diagnosis-2026-10-10)
+explains why hidden windows in session 0 cannot establish UI acceptance.
 
 Full Windows gates also include privileged native symlink/security fixtures.
 Use `check windows --interactive --elevated` or `check all --interactive --elevated`
@@ -215,16 +200,9 @@ The source transport is directory rsync over the verified SSH connection, with
 deletion/protection and locking as described [above](#persistent-worktree).
 Archive/scp source transport is removed. Scp is used only to retrieve logs.
 
-Windows rsync 3.5.1 (protocol 33) was installed on request on 2026-10-03 in
-`C:\runner\sevenzip-desktop\tools\rsync\msys64`, using the
-[official MSYS2 portable setup](https://www.msys2.org/docs/ci/#other-systems)
-and signed `pacman` packages (`pacman --noconfirm -Syu rsync`). The downloaded
-official `msys2-base-x86_64-latest.tar.xz` had SHA256
-`51612cb7ee5117b68bf342fb7885212537e19c2aa6bb8b989ba5498f39efcb22`.
-The helper addresses `usr/bin/rsync.exe` explicitly and maps destination paths
-to `/c/runner/...`. Its MSYS2 installation is separate from htopQt's Git Bash,
-MSVC and Qt, and is used only for transport; builds retain Git Bash and MSVC.
-Linux uses its installed `/usr/bin/rsync`; the Mac client needs `rsync` in PATH.
+Install rsync on the client and both guests, then select the guest executable
+paths in [local configuration](runner-configuration.md). Windows transport uses
+MSYS-compatible destination paths; builds use the configured Bash and MSVC tools.
 Checks do not install or upgrade packages automatically.
 
 `all` materializes and hashes current source once, then runs the two guests in
@@ -252,27 +230,12 @@ credentials are never transferred.
 
 ## Source and runtime scope
 
-Native desktop availability is separate from SSH readiness. On2026-10-14 the
-existing Windows credential was used only inside the host's anton process to
-enter the observed Runner console password form through Msvm_Keyboard. This
-normal login required no autologon, password reset, RDP enablement or reboot.
-Do not print credentials or include them in command arguments/logs. The
-[native acceptance receipt](archive/qt-port/upstream-port-audit.md#p3-03p3-04--native-linux-package-workflow-and-desktop-recovery-2026-10-14)
-records Session1 and the unchanged logon settings.
+Native desktop availability is separate from SSH readiness. Interactive checks
+require an active desktop session as described above. Historical login and network
+diagnoses are retained in the [environment record](archive/runner-environment-2026-10-18.md#desktop-and-network-recovery).
 
-After a Linux kernel update, missing matching `linux-cloud-tools-$(uname -r)`
-can make hv-kvp-daemon fail and leave Hyper-V's reported IP list empty even
-while guest SSH works. Verify the exact VM MAC/host ARP mapping and pinned SSH
-identity before a fallback connection; do not guess a new address or reconfigure
-networking. On2026-10-14 installing the missing6.8.0-146 package restored KVP.
-The same receipt records the temporary real-console Xorg/Openbox/PCManFM scope.
-Linux bulk TypeText lost input events in that setup; paced TypeKey input and
-inspection of the actual destination preceded the accepted transfer.
-
-Each check updates `<selected-workspace>/current`, normally
-`/home/runner/sevenzip-desktop/runs/current` or
-`C:\runner\sevenzip-desktop\runs\current`. Source scope, untracked files and
-exclusions are specified in [the synchronization contract](#persistent-worktree).
+Each check updates `<selected-workspace>/current`. Source scope, untracked files
+and exclusions are specified in [the synchronization contract](#persistent-worktree).
 
 The helper also includes an upstream Git bundle at the exact revision recorded
 in `docs/upstream-baseline.json`. `--upstream /path/to/7zip` overrides the default
@@ -291,8 +254,8 @@ whitespace errors. The guest updates its local Git baseline for the full
 gate, so original upstream notices with historical whitespace are baseline
 content rather than newly staged additions. The client's Git index is unchanged. Runtime
 preparation and `scripts/check.sh` write to `check.log` in the guest directory.
-`--preset release` runs the full Debug gate first, then Release build/CTest;
-an earlier failure stops later stages. Connection records and per-run SHA256,
+Use the `dev` preset for tests and `run ... -- scripts/build.sh release` for
+a Release build; the Release preset disables test targets. Connection records and per-run SHA256,
 project revision, directory, preset and status stay in ignored
 `build/runners/hyperv/` on the Mac. Local source/toolchain preparation failures
 may occur before a remote run record exists. No automatic cleanup, VM creation,
@@ -300,56 +263,22 @@ package installation, shutdown or publishing is performed.
 
 ## Toolchains
 
-Both guests use the external `Runner LAN` switch. HTTPS probes on 2026-10-03
-returned HTTP 200 from PyPI (`/simple/clang-format/`) and GitHub on both guests.
-`https://download.qt.io/` timed out on both guests with an explicit IPv4
-12-second limit; Linux's default address selection also timed out after 20 seconds.
-External connectivity is available, but package sources must be checked
-individually before provisioning. Formatter installation can now use guest pip
-directly when PyPI is reachable; the earlier Mac wheel transfer was a setup
-workaround. The pinned upstream bundle remains intentional: each gate uses
-the recorded revision without depending on an external Git server.
-
-Linux: Ubuntu 24.04.5 LTS x86_64, GCC 13.3, Qt base/DBus 6.4.2,
-CMake 3.28.3, Ninja, Git/Python and DBus daemon. P2-08 association services
-require `pkg-config` and `libglib2.0-dev` (GIO); these build dependencies were
-installed on the shared Linux runner on 2026-10-03 without upgrading existing
-packages. GIO is 2.80.0 there.
-Software rendering is selected for this guest without an accelerated GPU.
-
-Windows: Windows 11 Pro 10.0.26300 x64, MSVC 2022 Build Tools,
-Qt 6.8.3 `msvc2022_64`, Python/CMake/Ninja and Git Bash. The installed shared
-toolchain is under `C:\runner\htopqt`: `VS`, `Python`, `Git`,
-`Qt\6.8.3\msvc2022_64`. Sevenzip uses `vcvars64.bat` and `cl.exe` for C/C++;
-htopQt's clang-cl selection is not inherited. PATH and Qt/module discovery are
-scoped to the check process. The helper does not change shared packages or toolchains.
-Both guests build with four jobs and run CTest sequentially.
+Select installed Qt, compiler, formatter and build tools through
+[local configuration](runner-configuration.md), and use `probe` to inspect the
+selected kit. Install dependencies before running checks; the helper does not
+provision toolchains. Linux builds need the dependencies listed in
+[development](development.md). Historical kit versions and installation records
+are retained in the [environment record](archive/runner-environment-2026-10-18.md#toolchain-installations).
 
 Ccache is selected automatically by `build.sh` for C/C++ (and Objective-C++
 where applicable). All runner checks, including full gates, follow the
 [cache-preserving validation rules](../AGENTS.md#validation-scope); a full-check
 request does not authorize clearing or bypassing ccache or recreating build trees.
-Linux has `/usr/bin/ccache` 4.9.1; Windows has project-owned
-`C:/runner/sevenzip-desktop/tools/ccache/ccache.exe` 4.14.1, installed on request
-on 2026-10-17 from the [official release](https://ccache.dev/download.html).
-The Windows ZIP SHA256 is
-`6219f3865ca59aec41ee4b678df171d5d35855ecb2b6dbbbd20690b3a68af7b4`;
-`tools/ccache/installation.json` records its URL/hash. A real MSVC two-compile
-probe produced one miss followed by one direct hit. Windows PATH changes are
-scoped to the runner environment. MSVC uses embedded `/Z7` debug information
-through CMake CMP0141, retaining debug information while allowing cached objects.
-Project caches live at `<project-root>/cache/ccache`, outside `runs/current`,
-with a process-local 2GB limit. No existing shared compiler cache is deleted.
-
-Sevenzip uses clang-format 23.1.2, matching the local source formatting. Version
-18 in htopQt's environment rejects existing source formatting before compilation.
-Separate Python virtual environments contain the pinned PyPI formatter under
-`/home/runner/sevenzip-desktop/tools/formatter` and
-`C:\runner\sevenzip-desktop\tools\formatter`. Initial Linux provisioning also
-installed `python3-venv`; existing compilers/Qt and htopQt's formatter remain in place.
-To recreate the formatter, run the guest's `python3 -m venv <directory>` (Windows:
-`C:\runner\htopqt\Python\python.exe -m venv <directory>`), then that venv's
-Python with `-m pip install --no-cache-dir clang-format==23.1.2`.
+Keep compiler caches outside the synchronized source tree and select their
+paths through local configuration. MSVC uses embedded `/Z7` debug information
+through CMake CMP0141 so cached objects retain debugging information.
+Use a formatter compatible with the repository's formatting configuration,
+in a separate tool environment when other projects require a different version.
 
 `python3 scripts/verify.py tooling` runs the registered offline workflow, runner,
 runtime-cache, CTest selection and output suites. They cover a first build with
