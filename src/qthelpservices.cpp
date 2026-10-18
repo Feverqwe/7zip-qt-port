@@ -72,8 +72,9 @@ class HelpBrowser final : public QTextBrowser {
         setBackgroundRole(QPalette::Window);
         viewport()->setBackgroundRole(QPalette::Window);
         window()->installEventFilter(this);
-        connect(this, &QTextBrowser::sourceChanged, this, [this, root] {
-            resolveHelpLinks(root);
+        connect(this, &QTextBrowser::sourceChanged, this, [this, root](const QUrl &url) {
+            // source() can still name the previous history entry in this signal.
+            resolveHelpLinks(root, url);
             // Legacy pixel widths can be smaller than a parameter name with
             // the current font/padding. Let Qt size those columns by content.
             FitHelpTableColumns(document()->rootFrame());
@@ -125,12 +126,12 @@ class HelpBrowser final : public QTextBrowser {
         horizontalScrollBar()->setValue(horizontalScroll);
     }
 
-    void resolveHelpLinks(const QUrl &root) {
+    void resolveHelpLinks(const QUrl &root, const QUrl &source) {
         // QTextBrowser resolves hrefs before emitting anchorClicked, so resolve
         // them inside the CHM namespace before mouse/keyboard activation.
         QUrl member;
         member.setScheme("help");
-        member.setPath('/' + source().path().mid(root.path().size()));
+        member.setPath('/' + source.path().mid(root.path().size()));
         struct Link {
             int start;
             int length;

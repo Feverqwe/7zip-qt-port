@@ -389,6 +389,52 @@ class HelpSourceTests : public QObject {
         QVERIFY(!back->isEnabled());
         window->close();
     }
+    void firstLinkLoadsDestination_data() {
+        QTest::addColumn<QString>("topic");
+        QTest::addColumn<QString>("caption");
+        QTest::addColumn<QString>("content");
+        QTest::addColumn<QString>("destination");
+        QTest::newRow("chapter") << "start.htm" << "General information about 7-Zip"
+                                 << "The main features of 7-Zip" << "general/index.htm";
+        QTest::newRow("same-directory") << "fm/index.htm" << "Options Dialog Box"
+                                        << "Language" << "fm/options.htm";
+        QTest::newRow("nested-directory") << "cmdline/index.htm" << "Command Line syntax"
+                                          << "expression1" << "cmdline/syntax.htm";
+        QTest::newRow("fragment") << "fm/options.htm" << "Language Page"
+                                  << "Options Dialog Box" << "fm/options.htm#language";
+    }
+    void firstLinkLoadsDestination() {
+        QFETCH(QString, topic);
+        QFETCH(QString, caption);
+        QFETCH(QString, content);
+        QFETCH(QString, destination);
+        QWidget parent;
+        ShowHelpWindow(qPrintable(topic), &parent);
+        auto *window = parent.findChild<QDialog *>("helpWindow");
+        auto *browser = window->findChild<QTextBrowser *>("helpBrowser");
+        QVERIFY(QTest::qWaitForWindowExposed(window));
+        const QUrl source = browser->source();
+        const QString initialText = browser->toPlainText();
+        for (int attempt = 0; attempt < 2; ++attempt) {
+            auto link = browser->document()->find(caption);
+            QVERIFY(!link.isNull());
+            browser->setTextCursor(link);
+            browser->ensureCursorVisible();
+            QApplication::processEvents();
+            link.setPosition(link.selectionStart() + 2);
+            const QPoint click = browser->cursorRect(link).center();
+            QVERIFY(!browser->anchorAt(click).isEmpty());
+            QTest::mouseClick(browser->viewport(), Qt::LeftButton, Qt::NoModifier, click);
+            QApplication::processEvents();
+            QCOMPARE(browser->source(), QUrl("qrc:/upstream/7zip/Help/" + destination));
+            QVERIFY2(browser->toPlainText().contains(content), qPrintable(browser->toPlainText()));
+            browser->backward();
+            QApplication::processEvents();
+            QCOMPARE(browser->source(), source);
+            QCOMPARE(browser->toPlainText(), initialText);
+        }
+        window->close();
+    }
     void sourceContextAndLanguageGeometry() {
         QTemporaryDir fixture;
         const QString settings = fixture.filePath("language.ini");
