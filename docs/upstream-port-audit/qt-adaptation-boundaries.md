@@ -190,3 +190,41 @@ Windows/Linux-only translation units не входят в эту compile databas
 Новые инъекции отказов, минимальный пример Qt, полный gate, slow suites и
 рендеренное сравнение с оригинальным 7zFM не выполнялись. Общая проверка
 полноты аудита проекта остаётся незавершённой.
+
+## Согласование областей аудита времени жизни
+
+Проверка использует существующий
+[компонентный реестр P2-11](../archive/qt-port/upstream-port-audit/p2-11.md#functionalcomponent-review-register).
+Его историческая приёмка сама по себе не подтверждает текущую ревизию.
+Последующие проверки владельцев соотносятся с его областями следующим образом:
+
+| Области реестра | Проверенные границы и текущее свидетельство |
+| --- | --- |
+| P, H — окно, панели, представления | Публикация папки/строк, поколения, индексы и hover рассмотрены выше; [Rename](deferred-rename-owner.md) удерживает исходного владельца, [смена языка после Close](closed-language-event.md) прекращает обращение к освобождённой панели. |
+| C, S, K — параметры и создание | Состояние source-диалогов, профили и consumers проверены вместе с DTO; [каталог кодеков](codec-thread-ownership.md) удерживается native workers, [volume writer](multiout-lifetime.md) и Qt-публикация томов имеют владельцев до передачи результата. |
+| U, V, R — native open/update/transfer | [Close/ReOpen и свойства](archive-close-reopen.md), пакетная распаковка выше, retained catalog/link и callbacks просмотрены до join; заимствованные имена не переживают исходного handler. |
+| J — backend и transport | [Process/listing/overwrite notifications](process-notifications.md), [внешние процессы](external-process-ownership.md), [фазы](qt-phase-controls.md) и [состояние запроса](qt-request-state.md) проверены с отменой, завершением и повторным запуском. |
+| W, F — workers и файловые операции | [Ожидание перезаписи](worker-prompt-cancellation.md), [Pause](process-pause-ownership.md), [транзакционный перенос](file-transfer-ownership.md), checkpoints и shutdown проверены вместе с их непосредственными consumers. |
+| B — общие зависимости | Общие source object groups сохраняют авторитетные реализации; [object vector](object-vector-ownership.md) и общий COM-владелец кодеков проверены как зависимости нескольких компонентов. |
+
+Платформенные владельцы проверялись отдельно от macOS compile database:
+[Shell/GIO/native error buffers](platform-result-ownership.md),
+[native drag](native-drag-session.md), [shell menus](shell-menu-ownership.md),
+[COM server locks](native-shell-server-lock.md) и [POSIX files](linux-file-close.md).
+Просмотрены также Windows association adapter, ADS folder, shell presentation,
+AppKit completion и Linux launcher/taskbar consumers; их runtime-ограничения
+остаются в соответствующих свидетельствах. Отсутствие platform-only модуля
+в macOS анализе не считается его статической проверкой.
+
+После появления новых сочетаний клавиш дополнительно проанализированы десять
+новых/изменённых production translation units с текущими macOS SDK/флагами.
+Ошибок разбора и изменений файлов во время прохода нет. Три предупреждения
+совпадают с ранее разобранными Qt callable/QActionGroup owners; новых нет.
+Полные тела нового shortcut adapter и его panel/editor/close consumers
+просмотрены: действия сохраняют исходных QObject-владельцев, callbacks имеют
+контекст окна. Нового подтверждённого дефекта времени жизни не установлено.
+
+Это согласование source-проверок по областям, а не доказательство отсутствия
+всех ошибок. Общая runtime-проверка и разбор её сбоев продолжаются; slow suites,
+полное sanitizer-покрытие зависимостей и визуальное сравнение с оригинальным
+Windows 7zFM этим аудитом не установлены.
