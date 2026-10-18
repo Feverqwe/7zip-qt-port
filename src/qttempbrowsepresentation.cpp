@@ -25,6 +25,7 @@
 #include <QPainter>
 #include <QPushButton>
 #include <QShortcut>
+#include <QStyle>
 #include <QStyledItemDelegate>
 #include <QTreeWidget>
 #include <QVBoxLayout>
@@ -105,7 +106,8 @@ void CBrowseDialog2::BuildControls() {
     layout->addSpacing(units.pixels(QSize(0, 5)).height());
     auto *path = new QHBoxLayout;
     path->setSpacing(units.pixels(QSize(4, 0)).width());
-    _parent = new QPushButton("<--", this);
+    _parent = new QPushButton(this);
+    _parent->setIcon(style()->standardIcon(QStyle::SP_FileDialogToParent));
     _parent->setObjectName("tempParent");
     _parent->setProperty("sourceControlID", IDB_BROWSE2_PARENT);
     QtBindLocalText(_parent, "Parent folder", "Родительская папка", true);

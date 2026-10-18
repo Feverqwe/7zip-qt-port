@@ -37,6 +37,11 @@ Windows/Linux and rendered Windows parity were not rerun for this correction.
 
 ## Review gallery: action availability and browser icons — 2026-10-18
 
+Follow-up: the same parent-folder icon also replaces `<--` in the temporary-file
+browser. `BrowseDialog2.rc`, parent-button dispatch and `OpenParentFolder` were
+rechecked; navigation boundaries, localized accessible name and focus remain.
+The temp-cleanup consumer and Cocoa light/dark review captures cover the change.
+
 Compared `OverwriteDialog::OnInit` and its callers/answer mapping with the
 native extra-button visibility branch, plus `BrowseDialog.rc` and parent/create
 handlers. At the user's request, unavailable batch overwrite actions remain
