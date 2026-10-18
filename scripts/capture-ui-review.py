@@ -48,6 +48,11 @@ def review_metadata(output, run, shot):
 
 
 def gallery(output, runs):
+    platforms = {row["id"]: row.get("platforms")
+                 for row in json.loads(CATALOG.read_text(encoding="utf-8"))}
+    hosts = {"macos": "Darwin", "windows": "Windows", "linux": "Linux"}
+    runs = [run for run in runs if not platforms.get(run["id"]) or
+            hosts.get(run["host"]) in platforms[run["id"]]]
     cards = []
     for run in runs:
         for shot in run["captures"]:
@@ -71,7 +76,7 @@ def gallery(output, runs):
     status = "Все выбранные сценарии сняты." if not problems else "Есть незавершённые сценарии."
     document = """<!doctype html><html lang="ru"><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Sevenzip — ревью тем</title><style>
+<title>Sevenzip — ревью интерфейса</title><style>
 :root {color-scheme:light dark;font-family:system-ui,sans-serif}
 body {margin:2rem;line-height:1.5} header {max-width:75rem} h1 {margin-bottom:.3rem}
 input[type=search] {font:inherit;padding:.6rem;width:min(36rem,90%);margin:1rem 0}
@@ -90,7 +95,7 @@ dialog[open] {display:flex;flex-direction:column} dialog::backdrop {background:#
 #stage img {width:100%;height:100%;min-height:0;min-width:0;object-fit:contain;object-position:center}
 #stage.actual {display:block}#stage.actual img {width:auto;height:auto;max-width:none;max-height:none;display:block;margin:auto}
 body.viewing {overflow:hidden}#position {white-space:nowrap}
-</style><header><h1>Sevenzip · ревью адаптивных цветов</h1>
+</style><header><h1>Sevenzip · ревью интерфейса</h1>
 <p>Нажмите снимок или «Открыть первый» и листайте кнопками ← → на клавиатуре.
 Имя и путь каждого снимка показаны для ваших пометок. Ссылка в адресной строке сохраняет выбранный снимок.
 Нативные Qt-окна на локальных тестовых данных.
@@ -198,6 +203,7 @@ def main():
     qpa = {"Darwin": "cocoa", "Windows": "windows", "Linux": "xcb"}[system]
     output = (args.output or ROOT / "build/dev/ui-theme-review").resolve()
     output.mkdir(parents=True, exist_ok=True)
+    selected = [row for row in selected if system in row.get("platforms", [system])]
     targets = list(dict.fromkeys(row["target"] for row in selected))
     subprocess.run([sys.executable, "scripts/prepare-runtime.py"], cwd=ROOT, check=True)
     subprocess.run(["bash", "scripts/build.sh", "dev", *targets], cwd=ROOT, check=True)

@@ -355,11 +355,11 @@
  const settingsRoutes={'settings-view':{page:'Основные'},'settings-language':{page:'Основные',detail:'translation'},'settings-system':{page:'Интеграция'},'settings-folders':{page:'Дополнительно'},'settings-editor':{page:'Дополнительно',detail:'apps'}};
  const isSettings=id=>id.startsWith('settings-');
  const stateOptions={
-  main:['Таблица','Крупные значки','Отмеченные и удалённые'],
+  main:['Таблица','Крупные значки','Отмеченные и удалённые','Переименование'],
   add:['7z','ZIP','TAR','SFX недоступен'],
   'format-options':['7z','ZIP · Unix','ZIP · DOS','WIM','TAR'],
   copy:['Копирование','Перемещение'],
-  rename:['Переименовать','Создать папку','Создать файл','Выделить по маске','Комментарий'],
+  rename:['Создать папку','Создать файл','Выделить по маске','Комментарий'],
   delete:['Обычное удаление','Безвозвратное удаление'],
   browse:['Выбор папки','Выбор архива'],
   overwrite:['Несколько файлов','Один файл','Конфликт папок'],
@@ -385,7 +385,7 @@
  const macBenchmark=()=>reportDialog('Тестирование производительности',`<div class="columns">${field('Размер словаря','32 МБ',['16 МБ','32 МБ','64 МБ'])}${field('Число потоков','8',['2','4','8'])}</div><div class="report-toolbar"><span class="hint">Память: 387 МБ</span><span class="hint">Пример результатов</span></div><div class="data-region"><table class="data-table numeric-table"><thead><tr><th>Операция</th><th>Результат</th><th class="number">Размер, КБ</th><th class="number">Скорость, КБ/с</th><th class="number">Загрузка, %</th><th class="number">Рейтинг / загрузка</th><th class="number">Рейтинг, MIPS</th></tr></thead><tbody>${[['Упаковка','Текущий','32 768','48 200','782','6 164','48 200'],['Упаковка','Итоговый','32 768','47 816','779','6 138','47 816'],['Распаковка','Текущий','32 768','522 400','795','7 492','59 561'],['Распаковка','Итоговый','32 768','518 230','791','7 470','59 090']].map(r=>`<tr>${r.map((x,i)=>`<td class="${i>1?'number':''}">${x}</td>`).join('')}</tr>`).join('')}</tbody></table></div><div class="stats"><div class="stat"><span class="hint">Прошло</span><span>00:12</span></div><div class="stat"><span class="hint">Проходов</span><span>3</span></div><div class="stat"><span class="hint">Общий рейтинг</span><span>53 453 MIPS</span></div></div><div class="operation-actions">${btn('Перезапуск','','benchmark-restart')}${btn('Стоп','','benchmark-stop')}<span class="hint benchmark-state" aria-live="polite">Выполняется</span></div>`,true);
  const consoleLines=['7-Zip · Проверка архива','', 'Архив: Документы / Проект.7z','Тип: 7z','Метод: LZMA2:25','',...logMessages.flatMap((r,i)=>[`${i+1}. ${r[0]}`,`   ${r[1]}`]),'', 'Файлов: 400','Проверено: 397','Ошибок: 3'];
  const macText=()=>reportDialog('Подробный отчёт',`<textarea class="report-console" readonly spellcheck="false" aria-label="Полный текст отчёта">${consoleLines.join('\n')}</textarea>` ,true);
- const macRename=()=>dialog('Переименовать',`<span class="hint">Документы / Проект</span>${field('Новое имя','Описание проекта.txt')}`,true).replace('>ОК</button>','>Переименовать</button>');
+ const macRename=()=>dialog('Создать папку',`<span class="hint">Документы / Проект</span>${field('Имя папки','Новая папка')}`,true).replace('>ОК</button>','>Создать</button>');
  const macOverwrite=()=>dialog('Заменить существующий файл?',`<p class="alert-text">В папке назначения уже есть файл «Описание проекта.txt».</p><div class="comparison"><div><strong>Существующий файл</strong><span>Описание проекта.txt</span><small>2,4 КБ · 17.10.2026 10:15</small></div><div><strong>Файл из архива</strong><span>Описание проекта.txt</span><small>3,1 КБ · 18.10.2026 12:40</small></div></div><div class="decision-actions">${btn('Заменить','','decision')}${btn('Заменить все','','decision')}${btn('Автопереименование','','decision')}${btn('Пропустить','','decision')}${btn('Пропустить все','','decision')}${btn('Отмена','','dismiss-report')}</div>`,true).replace(footer(),'');
  const macError=()=>dialog('Ошибка',`<div class="alert-heading">${icon('triangle-alert')}<span>Не удалось открыть архив</span></div><p class="alert-text">Файл «Проект.7z» повреждён или имеет неподдерживаемый формат.</p><p class="alert-text hint">Проверьте, что файл полностью скачан и доступны все части многотомного архива.</p><details class="mac-disclosure"><summary class="cursor-interaction">${icon('chevron-right')}Подробности</summary><div class="form"><span class="log-path">Документы / Проект.7z</span><span>Не удаётся открыть файл как архив.</span></div></details>`,true).replace('class="dialog narrow"','class="dialog narrow alert-dialog"').replace(footer(),`<div class="report-actions">${btn('Закрыть','','dismiss-report')}</div>`);
  const views=[];
@@ -548,6 +548,7 @@
   function applySample(){
    const selected=sample();
    if(state.screen==='main'){
+    if(selected==='Переименование'){const row=screen.querySelector('tr.selected[data-file]'),name=row.querySelector('.filename');name.lastChild.remove();const input=document.createElement('input');input.className='product-input inline-rename';input.value=row.dataset.file;input.setAttribute('aria-label','Новое имя');input.style.minWidth='0';input.style.width='100%';name.append(input);requestAnimationFrame(()=>{input.focus();input.select()})}
     if(selected==='Крупные значки')screen.querySelectorAll('.pane').forEach(p=>{p.querySelector('.filetable').outerHTML=`<div class="icon-grid">${files.slice(1).map(r=>`<div class="icon-item">${icon(r[3])}<span>${r[0]}</span></div>`).join('')}</div>`;p.querySelector('.filespace').remove()});
     if(selected==='Отмеченные и удалённые')screen.querySelectorAll('.pane').forEach(p=>{const rows=p.querySelectorAll('tbody tr');rows[5].classList.add('deleted-file');rows[6].classList.add('marked-file');rows[7].classList.add('marked-file')});
    }
@@ -556,8 +557,8 @@
     format.value=selected==='ZIP'?'zip':selected==='TAR'?'tar':'7z';name.value=format.value==='7z'?'Проект.7z':format.value==='zip'?'Проект.zip':'Проект.tar';
    }
    if(state.screen==='rename'){
-    const configs={'Переименовать':['Переименовать','Новое имя','Описание проекта.txt','Переименовать'],'Создать папку':['Создать папку','Имя папки','Новая папка','Создать'],'Создать файл':['Создать файл','Имя файла','Новый файл.txt','Создать'],'Выделить по маске':['Выделить файлы','Маска имён','*.txt','Выделить'],'Комментарий':['Комментарий к файлу','Комментарий','Исходники и документы проекта','Сохранить']};
-    const c=configs[selected]||configs['Переименовать'];screen.querySelector('.dialog-title').textContent=c[0];const field=screen.querySelector('.field');field.querySelector('span').textContent=c[1];field.querySelector('input').value=c[2];screen.querySelector('.primary').textContent=c[3];
+    const configs={'Создать папку':['Создать папку','Имя папки','Новая папка','Создать'],'Создать файл':['Создать файл','Имя файла','Новый файл.txt','Создать'],'Выделить по маске':['Выделить файлы','Маска имён','*.txt','Выделить'],'Комментарий':['Комментарий к файлу','Комментарий','Исходники и документы проекта','Сохранить']};
+    const c=configs[selected]||configs['Создать папку'];screen.querySelector('.dialog-title').textContent=c[0];const field=screen.querySelector('.field');field.querySelector('span').textContent=c[1];field.querySelector('input').value=c[2];screen.querySelector('.primary').textContent=c[3];
    }
    if(state.screen==='password')screen.querySelector('.password-prompt-error').hidden=selected!=='Неверный пароль';
    if(state.screen==='overwrite'){
@@ -682,8 +683,17 @@
     if(trigger.textContent.includes('Таблица')||trigger.textContent==='Список')state.samples.main='Таблица';
     if(trigger.textContent.includes('Две панели'))state.two=!state.two;
     if(trigger.textContent.includes('Лицензия 7-Zip'))state.samples.text='Лицензия 7-Zip';
+    if(trigger.textContent.includes('Переименовать')){state.samples.main='Переименование';openView('main');return}
     openView(trigger.dataset.go)
    }
+  });
+  screen.addEventListener('keydown',e=>{
+   if(!e.target.matches('.inline-rename'))return;
+   if(e.key!=='Enter'&&e.key!=='Escape')return;
+   e.preventDefault();e.stopPropagation();const input=e.target,row=input.closest('tr');
+   if(e.key==='Enter'&&!input.value.trim()){input.setCustomValidity('Введите имя файла.');input.reportValidity();return}
+   const name=e.key==='Escape'?row.dataset.file:input.value;row.dataset.file=name;input.replaceWith(document.createTextNode(name));
+   state.samples.main='Таблица';save();
   });
   screen.addEventListener('click',e=>{
    const row=e.target.closest('tr[data-file]');if(row){row.closest('tbody').querySelectorAll('tr').forEach(r=>r.classList.toggle('selected',r===row));row.closest('.pane').querySelector('[data-selection]').textContent=row.dataset.file}

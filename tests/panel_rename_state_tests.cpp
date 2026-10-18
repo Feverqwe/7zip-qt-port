@@ -424,5 +424,6 @@ class PanelRenameStateTests final : public QObject, protected MainWindowTestSupp
         }
     }
 };
-QTEST_MAIN(PanelRenameStateTests)
+#include "review_test_main.h"
+SEVENZIP_UI_TEST_MAIN(PanelRenameStateTests)
 #include "panel_rename_state_tests.moc"

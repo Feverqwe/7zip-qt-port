@@ -28,6 +28,10 @@ pixel parity. [Source review](../upstream-port-audit/small-icons-layout.md).
 
 ### Rename validation error (P3-05, 2026-10-15)
 
+Rename edits the name inline in the active table/icon list. On macOS, the editor
+and its native focus ring must remain inside the viewport, including the first
+icon column; resize and Escape retain the source selection and file bytes.
+
 Source OnEndLabelEdit rejects an invalid filesystem name with the shared HRESULT
 error: Critical icon, source7-Zip caption (macOS omits native captions), plain
 formatted E_INVALIDARG and OK. It keeps the original name/selection and peer

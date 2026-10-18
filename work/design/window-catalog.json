@@ -1,5 +1,5 @@
 {
-  "description": "36 review representations: the 34 unique gallery keys plus separate Combine and Hash workflows; components are outside this count. Browser mockups, not native Qt runtime acceptance. Settings now show six review states within three sections; source keys identify original owners, not separate tabs.",
+  "description": "36 review representations, including menus and separate Combine/Hash workflows; components are outside this count. Source keys identify functional owners, not separate windows or tabs. Current Qt reports accompany the browser mockups; platform omissions are explicit.",
   "gallery": "build/dev/ui-theme-review/manifest.json",
   "windows": [
     {
@@ -7,7 +7,10 @@
       "title": "Главное окно",
       "group": "Файловый менеджер",
       "sourceKey": "QMainWindow",
-      "sourceReport": "macos/light/main/source-panel-chrome-ru-980-0.json"
+      "sourceReport": "macos/light/main/source-panel-chrome-ru-980-0.json",
+      "stateReports": {
+        "inlineRename": "macos/light/inline-rename/rename-activation-0-0-0-980.json"
+      }
     },
     {
       "id": "file-menu",
@@ -56,7 +59,8 @@
       "title": "Имя, создание и выделение",
       "group": "Файловые операции",
       "sourceKey": "comboDialog",
-      "sourceReport": "macos/light/create-name/source-create-0-0-ru-0-360.json"
+      "sourceReport": "macos/light/create-name/source-create-0-0-ru-0-360.json",
+      "runtimeNote": "Creation, selection masks and comments use this form. Rename is an inline editor in the main file list, shown as a main-window state in the concept."
     },
     {
       "id": "delete",
@@ -98,21 +102,21 @@
       "title": "Добавить к архиву",
       "group": "Архивы",
       "sourceKey": "createArchiveDialog",
-      "sourceReport": "macos/light/compression-language/language-add-ru-760.json"
+      "sourceReport": "macos/light/add-sections/redesign-add-collapsed-ru.json"
     },
     {
       "id": "format-options",
       "title": "Метаданные и время",
       "group": "Архивы",
       "sourceKey": "compressOptionsDialog",
-      "sourceReport": "macos/light/compression-language/language-advanced-ru-520.json"
+      "sourceReport": "macos/light/format-options/compress-options-source-7z-ru-initial.json"
     },
     {
       "id": "extract",
       "title": "Распаковать архив",
       "group": "Архивы",
       "sourceKey": "extractDialog",
-      "sourceReport": "macos/light/common-dialogs/standard-buttons-extract-ru-640.json"
+      "sourceReport": "macos/light/extract-sections/redesign-extract-collapsed-ru.json"
     },
     {
       "id": "password",
@@ -140,7 +144,7 @@
       "title": "Ход операции",
       "group": "Архивы",
       "sourceKey": "progressDialog",
-      "sourceReport": "macos/light/progress/progress-dialog-760-0-0-paused.json"
+      "sourceReport": "macos/light/progress/progress-dialog-760-0-0-collapsed.json"
     },
     {
       "id": "messages",
@@ -189,7 +193,7 @@
       "title": "Настройки · Интеграция",
       "group": "Настройки",
       "sourceKey": "settingsDialog/systemPage",
-      "sourceReport": "macos/light/options-pages/options-activation---640--1-0-physical-control.json",
+      "sourceReport": "macos/light/settings-sections/settings-integration-choices.json",
       "conceptSection": "Интеграция"
     },
     {
@@ -197,7 +201,10 @@
       "title": "Настройки · Системное меню",
       "group": "Настройки",
       "sourceKey": "settingsDialog/menuPage",
-      "sourceReport": "macos/light/options-pages/options-activation-ru-640--1-1-physical-control.json",
+      "sourceReport": null,
+      "runtimePlatforms": [
+        "windows"
+      ],
       "conceptSection": "Интеграция",
       "conceptVisible": false,
       "omissionReason": "Explorer menu integration is unsupported on macOS; omit the section and its review navigation entry."
@@ -207,7 +214,7 @@
       "title": "Настройки · Дополнительно",
       "group": "Настройки",
       "sourceKey": "settingsDialog/foldersPage",
-      "sourceReport": "macos/light/options-pages/options-activation-ru-640--1-2-physical-control.json",
+      "sourceReport": "macos/light/settings-sections/settings-advanced-collapsed.json",
       "conceptSection": "Дополнительно"
     },
     {
@@ -215,7 +222,7 @@
       "title": "Настройки · Внешние приложения",
       "group": "Настройки",
       "sourceKey": "settingsDialog/editorPage",
-      "sourceReport": "macos/light/options-pages/options-activation---640--1-3-physical-control.json",
+      "sourceReport": "macos/light/settings-sections/settings-external-apps-expanded.json",
       "conceptSection": "Дополнительно",
       "conceptDisclosure": "apps"
     },
@@ -224,7 +231,7 @@
       "title": "Настройки · Основные",
       "group": "Настройки",
       "sourceKey": "settingsDialog/settingsPage",
-      "sourceReport": "macos/light/options-pages/options-activation-ru-640--1-4-physical-control.json",
+      "sourceReport": "macos/light/settings-sections/settings-general.json",
       "conceptSection": "Основные"
     },
     {
@@ -232,7 +239,7 @@
       "title": "Настройки · Сведения о переводе",
       "group": "Настройки",
       "sourceKey": "settingsDialog/languagePage",
-      "sourceReport": "macos/light/options-pages/options-activation---640--1-5-physical-control.json",
+      "sourceReport": "macos/light/settings-sections/settings-translation-expanded.json",
       "conceptSection": "Основные",
       "conceptDisclosure": "translation"
     },
@@ -264,5 +271,7 @@
       "sourceKey": "splitVolumeError",
       "sourceReport": "macos/light/split-combine/split-invalid-volume-340.json"
     }
-  ]
+  ],
+  "reviewRevision": "6ee7db6ba2bd0c55727340cf5a7db9fb08405f1c",
+  "reviewScope": "Current macOS Cocoa light/dark gallery; per-run revision and working-tree digest are in the manifest. Windows-only shell menu is omitted on macOS; this is not cross-platform visual acceptance."
 }

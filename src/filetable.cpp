@@ -79,6 +79,12 @@ class FileRowDelegate final : public QStyledItemDelegate {
                               const QModelIndex &index) const override {
         QStyledItemDelegate::updateEditorGeometry(editor, option, index);
 #ifdef Q_OS_MACOS
+        // Leave room for Cocoa's external focus ring inside an icon/list cell.
+        if (qobject_cast<QListView *>(parent()) && editor->testAttribute(Qt::WA_MacShowFocusRect)) {
+            const int margin =
+                editor->style()->pixelMetric(QStyle::PM_FocusFrameHMargin, nullptr, editor);
+            editor->setGeometry(editor->geometry().adjusted(margin, 0, -margin, 0));
+        }
         if (qobject_cast<QTableWidget *>(parent()) &&
             editor->testAttribute(Qt::WA_MacShowFocusRect)) {
             // Cocoa paints QFocusFrame outside the editor. Keep its vertical

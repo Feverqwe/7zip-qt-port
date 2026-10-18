@@ -895,3 +895,50 @@ Runs: `20261018T195207Z-93fca917`, `20261018T195449Z-5325cb41`.
 Current/build/ccache сохранены; устаревших отдельных guest worktrees не найдено.
 Rendered original Windows pixel parity, native Linux appearance, VoiceOver,
 sheet-modality и общая приёмка каталога этой итерацией не установлены.
+
+## Итерация 17: актуальный каталог и inline-переименование
+
+Каталог сверён с текущими владельцами всех 36 представлений. В macOS 35 записей
+ссылаются на текущие Cocoa reports; Windows-only menu owner сохранён с явным
+omission вместо ссылки на старую несуществующую вкладку. Шесть исходных owners
+настроек связаны с состояниями трёх разделов и раскрытых групп. Инвентарь
+пересобран из видимых контролов этих reports с revision/theme/font metadata;
+он остаётся снимком, а не новым контрактом внутреннего устройства.
+
+Сборщик включает новые Add/Extract collapsed/password/expanded, Settings groups,
+protected temp и actual inline rename. Платформенная область учитывается и при
+сборе, и при отображении старого manifest; устаревшие macOS menu-page captures
+удалены. HTML-концепт больше не показывает отдельный Rename dialog: ввод идёт
+в строке главного списка с Enter/Escape; короткая форма сохранена для Create,
+Select и Comment. Wrapper обновлён из того же исходника. Браузерные проверки
+подтвердили commit/cancel inline input, загрузку галереи, фильтры и viewer.
+
+Native rename capture выявил обрезание QFocusFrame на первой колонке значков:
+рамка выходила на 3px за viewport. После source comparison добавлен только
+горизонтальный inset редактора QListView на macOS по PM_FocusFrameHMargin;
+исходные алгоритмы и Qt deferred ownership не менялись. Сверены upstream
+PanelOperations.cpp OnBeginLabelEdit/OnEndLabelEdit/RenameFile, PanelListNotify
+LVN handlers и текущие mainwindow_rename/filetable/mainwindow_panel callers.
+Источник https://github.com/ip7z/7zip.git,
+`9128b80e3a471108678e2b3ec3c985861c8d7b0f`; baseline не изменён, functional
+source не копировался и ветви не исключались. Editor всё ещё использует source
+validation/operation/error/refresh selection. Существующий native regression
+воспроизвёл выход рамки; новый test ради наличия helper не добавлялся.
+Review entry point включён у этого target для фактического light/dark выбора.
+
+Текущая Cocoa галерея: 37 producers × две темы, 1022 снимка состояний, без
+незавершённых producer runs. Это дополнительные состояния, не 1022 разных окна
+и не 37 независимых классов. В initial pass один dark selection run потерял
+активацию окна; отдельный повтор прошёл, диагностический лог сохранён.
+Оба native rename повтора после fix прошли, включая table/icon, обе панели,
+alternative marks, links, resize и Escape. Просмотрены текущие native ring
+images и widget/theme metadata; все ссылки каталога разрешаются.
+
+macOS app и прямые targets собраны; panel_rename_state/ui_layout/deferred_rename
+3/3 PASS. Linux/Windows app + те же suites — 4/4 на каждой ОС, run
+`20261018T200703Z-0addec14`; Windows interactive elevated для symlink fixtures.
+Сохранены incremental current/build/cache; места достаточно, старых guest
+worktrees нет. Полный gate и slow matrices не требовались для этого локального
+geometry fix. Галерея — macOS evidence; native Linux appearance, оригинальные
+Windows pixels, VoiceOver, physical layouts и modality требуют отдельной
+проверки, goal остаётся active.
