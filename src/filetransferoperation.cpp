@@ -18,8 +18,13 @@ FileTransferOperation::FileTransferOperation(QStringList sources, QString destin
 }
 
 void FileTransferOperation::cancel() {
-    canceled_ = true;
-    overwriteCondition_.wakeAll();
+    {
+        // Pair the stop flag with the wait predicate: a wake between its check
+        // and wait() must not be lost during a synchronous close-time join.
+        QMutexLocker lock(&overwriteMutex_);
+        canceled_ = true;
+        overwriteCondition_.wakeAll();
+    }
     emit dismissOverwriteRequested();
 }
 

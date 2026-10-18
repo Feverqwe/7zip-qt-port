@@ -438,51 +438,62 @@ class FileTransferTests : public QObject {
         QVERIFY(QFileInfo::exists(original.fileName()));
     }
 
+    void noToAllAndCancelDuringPromptLeaveSourcesUntouched_data() {
+        QTest::addColumn<bool>("cancel");
+        QTest::addColumn<bool>("queued");
+        QTest::newRow("skip-before-wait") << false << false;
+        QTest::newRow("cancel-before-wait") << true << false;
+        QTest::newRow("skip-from-gui") << false << true;
+        QTest::newRow("cancel-from-gui") << true << true;
+    }
+
     void noToAllAndCancelDuringPromptLeaveSourcesUntouched() {
-        for (bool cancel : {false, true}) {
-            QTemporaryDir temp;
-            QVERIFY(temp.isValid());
-            QVERIFY(QDir(temp.path()).mkdir("destination"));
-            QStringList sources;
-            for (const QString &name : {QStringLiteral("first"), QStringLiteral("second")}) {
-                QFile source(temp.filePath(name));
-                QVERIFY(source.open(QIODevice::WriteOnly));
-                source.write("new");
-                source.close();
-                QFile target(temp.filePath("destination/" + name));
-                QVERIFY(target.open(QIODevice::WriteOnly));
-                target.write("old");
-                target.close();
-                sources << source.fileName();
-            }
-            FileTransferOperation copy(sources, temp.filePath("destination"), false);
-            QSignalSpy requested(&copy, &FileTransferOperation::overwriteRequested);
-            QSignalSpy result(&copy, &FileTransferOperation::result);
-            connect(
-                &copy, &FileTransferOperation::overwriteRequested, &copy,
-                [&copy, cancel](const QString &, const QString &) {
-                    if (cancel)
-                        copy.cancel();
-                    else
-                        copy.submitOverwriteAnswer(NOverwriteAnswer::kNoToAll);
-                },
-                Qt::DirectConnection);
-            copy.start();
-            QVERIFY(copy.wait(30000));
-            QTRY_COMPARE(result.size(), 1);
-            QCOMPARE(result.first().first().toBool(), !cancel);
-            QCOMPARE(requested.size(), 1);
-            for (const QString &source : sources) {
-                QVERIFY(QFile::exists(source));
-                QFile target(temp.filePath("destination/" + QFileInfo(source).fileName()));
-                QVERIFY(target.open(QIODevice::ReadOnly));
-                QCOMPARE(target.readAll(), QByteArray("old"));
-            }
-            QCOMPARE(QDir(temp.filePath("destination"))
-                         .entryList(QDir::AllEntries | QDir::NoDotAndDotDot)
-                         .size(),
-                     2);
+        QFETCH(bool, cancel);
+        QFETCH(bool, queued);
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        QVERIFY(QDir(temp.path()).mkdir("destination"));
+        QStringList sources;
+        for (const QString &name : {QStringLiteral("first"), QStringLiteral("second")}) {
+            QFile source(temp.filePath(name));
+            QVERIFY(source.open(QIODevice::WriteOnly));
+            source.write("new");
+            source.close();
+            QFile target(temp.filePath("destination/" + name));
+            QVERIFY(target.open(QIODevice::WriteOnly));
+            target.write("old");
+            target.close();
+            sources << source.fileName();
         }
+        FileTransferOperation copy(sources, temp.filePath("destination"), false);
+        QSignalSpy requested(&copy, &FileTransferOperation::overwriteRequested);
+        QSignalSpy result(&copy, &FileTransferOperation::result);
+        connect(
+            &copy, &FileTransferOperation::overwriteRequested, &copy,
+            [&copy, cancel](const QString &, const QString &) {
+                if (cancel)
+                    copy.cancel();
+                else
+                    copy.submitOverwriteAnswer(NOverwriteAnswer::kNoToAll);
+            },
+            queued ? Qt::QueuedConnection : Qt::DirectConnection);
+        copy.start();
+        QTRY_COMPARE(result.size(), 1);
+        QVERIFY(copy.wait(30000));
+        QCOMPARE(result.first().first().toBool(), !cancel);
+        QCOMPARE(copy.resultKind(), cancel ? FileTransferOperation::ResultKind::Canceled
+                                           : FileTransferOperation::ResultKind::Success);
+        QCOMPARE(requested.size(), 1);
+        for (const QString &source : sources) {
+            QVERIFY(QFile::exists(source));
+            QFile target(temp.filePath("destination/" + QFileInfo(source).fileName()));
+            QVERIFY(target.open(QIODevice::ReadOnly));
+            QCOMPARE(target.readAll(), QByteArray("old"));
+        }
+        QCOMPARE(QDir(temp.filePath("destination"))
+                     .entryList(QDir::AllEntries | QDir::NoDotAndDotDot)
+                     .size(),
+                 2);
     }
 
     void upstreamFolderCopyCountsHiddenFilesAndEmptyDirectories() {
