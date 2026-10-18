@@ -4,12 +4,14 @@
 #include "qtownedtempdir.h"
 
 #include <QFile>
+#include <QPointer>
+#include <utility>
 
 bool ArchiveBackend::advanceProcessJob(Job completed) {
     if (completed == Job::ExtractCheck) {
         pendingPassword_ = extractPassword_;
-        start(Job::Extract, extractArguments_);
-        extractArguments_.clear();
+        const QStringList arguments = std::exchange(extractArguments_, QStringList());
+        start(Job::Extract, arguments);
         return true;
     }
     if (completed == Job::Extract && !extractQueue_.isEmpty()) {
@@ -123,11 +125,18 @@ void ArchiveBackend::complete(int exitCode, QProcess::ExitStatus status) {
     processPause_.ResetAfterExit();
     if (job_ == Job::None)
         return;
-    consumeOutput(process_.readAll(), true);
-    if (job_ == Job::SourceExtract)
-        consumeOutput(process_.readAllStandardError(), true);
-    pendingPassword_.clear();
+    const QPointer<ArchiveBackend> owner(this);
+    const auto transport = process_;
     const Job completed = job_;
+    consumeOutput(transport->readAll(), true);
+    if (!owner || process_ != transport || job_ != completed)
+        return;
+    if (completed == Job::SourceExtract) {
+        consumeOutput(transport->readAllStandardError(), true);
+        if (!owner || process_ != transport || job_ != completed)
+            return;
+    }
+    pendingPassword_.clear();
     job_ = Job::None;
     if (completed == Job::SourceExtract)
         sourceExtractSelection_.reset();
@@ -158,10 +167,15 @@ void ArchiveBackend::complete(int exitCode, QProcess::ExitStatus status) {
          completed == Job::ReplaceAdd) &&
         !publishProcessMutation())
         return;
-    if (completed == Job::List)
-        finishProcessListing();
     lastResult_ = S_OK;
+    if (completed == Job::List) {
+        finishProcessListing();
+        if (!owner)
+            return;
+    }
     emit progress(100, QString());
+    if (!owner)
+        return;
     emit finished(
         true,
         completed == Job::List

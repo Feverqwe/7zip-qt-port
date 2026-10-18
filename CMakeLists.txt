@@ -1267,6 +1267,11 @@ if(BUILD_TESTING)
     qt_add_executable(archive_mutation_tests tests/archive_mutation_tests.cpp src/CPP/7zip/UI/GUI/CompressDialog.cpp src/CPP/7zip/UI/GUI/CompressDialog.h src/archivebackend.cpp src/archivebackend_validation.cpp src/archivebackend_mutations.cpp src/archivebackend_listing.cpp src/archivebackend.h)
     get_target_property(archive_preparation_sources archive_mutation_tests SOURCES)
     list(REMOVE_ITEM archive_preparation_sources tests/archive_mutation_tests.cpp)
+    qt_add_executable(process_notification_tests tests/process_notification_tests.cpp ${archive_preparation_sources})
+    target_include_directories(process_notification_tests PRIVATE src)
+    target_link_libraries(process_notification_tests PRIVATE sevenzip_location Qt6::Test)
+    add_test(NAME process_notification COMMAND process_notification_tests -silent)
+    set_tests_properties(process_notification PROPERTIES TIMEOUT 30)
     qt_add_executable(archive_preparation_tests tests/archive_preparation_tests.cpp ${archive_preparation_sources})
     target_include_directories(archive_preparation_tests PRIVATE src)
     target_link_libraries(archive_preparation_tests PRIVATE sevenzip_location Qt6::Test)
@@ -2451,6 +2456,7 @@ foreach(engine_consumer IN LISTS engine_consumer_targets)
     endif()
     if("src/archivebackend.cpp" IN_LIST engine_consumer_sources)
         target_sources(${engine_consumer} PRIVATE src/archivebackend_sourceupdate.cpp src/archivebackend_sourceplan.cpp
+            src/archivebackend_process.cpp
             src/archivebackend_sourceextract.cpp src/archivebackend_volumes.cpp
             src/archivebackend_creation.cpp src/archivebackend_hash.cpp src/archivebackend_preparation.cpp
             src/archivebackend_workerprogress.cpp src/archivebackend_transfer.cpp

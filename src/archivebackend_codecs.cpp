@@ -123,7 +123,7 @@ HRESULT ArchiveBackend::loadCodecCatalog(const QString &module, quint32 engineVe
     std::shared_ptr<const ArchiveCodecCatalog> catalog =
         std::make_shared<ArchiveCodecCatalog>(module, engineVersion);
     const HRESULT result = catalog->result();
-    process_.setProgram(configuredEngine_);
+    process_->setProgram(configuredEngine_);
     std::atomic_store(&codecCatalog_, std::move(catalog));
     return result;
 }
@@ -271,10 +271,10 @@ bool ArchiveBackend::discoverCodecCatalog(const QString &module) {
             this,
             [this, result = std::move(result)] {
                 codecDiscoveryActive_ = false;
-                process_.setProgram(!codecDiscoveryCancelled_ && result.result == S_OK &&
-                                            !result.catalog->runtimeEngine().isEmpty()
-                                        ? result.catalog->runtimeEngine()
-                                        : configuredEngine_);
+                process_->setProgram(!codecDiscoveryCancelled_ && result.result == S_OK &&
+                                             !result.catalog->runtimeEngine().isEmpty()
+                                         ? result.catalog->runtimeEngine()
+                                         : configuredEngine_);
                 std::atomic_store(&codecCatalog_, codecDiscoveryCancelled_
                                                       ? std::shared_ptr<const ArchiveCodecCatalog>()
                                                       : result.catalog);

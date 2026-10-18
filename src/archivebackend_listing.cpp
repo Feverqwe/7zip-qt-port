@@ -1,5 +1,6 @@
 #include "7zip/PropID.h"
 #include "archivebackend.h"
+#include <QPointer>
 
 #include <QDir>
 #include <QDirIterator>
@@ -195,6 +196,9 @@ void ArchiveBackend::finishProcessListing() {
     const QFileInfo listedFile(archive_);
     listedSourceArchives_.insert(archive_, {listedFile.size(), listedFile.lastModified(),
                                             listedFile.metadataChangeTime(), entries_, encrypted_});
+    const auto entries = entries_;
+    const QPointer<ArchiveBackend> owner(this);
     emit infoReady(info);
-    emit entriesReady(entries_);
+    if (owner)
+        emit entriesReady(entries);
 }

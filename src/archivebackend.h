@@ -275,6 +275,7 @@ class ArchiveBackend : public QObject {
         SourceExtract
     };
     void start(Job job, const QStringList &arguments, const QString &workingDirectory = {});
+    std::shared_ptr<QProcess> makeProcess(const QString &executable);
     HRESULT processControlResult(HRESULT result) const;
     void complete(int exitCode, QProcess::ExitStatus status);
     bool advanceProcessJob(Job completed);
@@ -317,7 +318,7 @@ class ArchiveBackend : public QObject {
     bool restoreListedArchive(const QString &archive);
     void startListing(const QString &archive, const QString &password, const QString &format);
 
-    QProcess process_;
+    std::shared_ptr<QProcess> process_;
     QString configuredEngine_;
     std::unique_ptr<QtOwnedTempDir> sourceExtractSelection_;
     std::shared_ptr<const ArchiveCodecCatalog> codecCatalog_;

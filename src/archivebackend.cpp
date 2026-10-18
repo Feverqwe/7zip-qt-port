@@ -1,7 +1,5 @@
 #include "archivebackend.h"
-#include "CPP/7zip/UI/Common/CompressCall.h"
 #include "CPP/7zip/UI/Common/IFileExtractCallback.h"
-#include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "archivecodeccatalog.h"
 #include "archivecodecprobe.h"
 #include "archiveenginelocation.h"
@@ -14,12 +12,12 @@
 #include "qtlanguageservices.h"
 
 #include "qtownedtempdir.h"
+#include <QCoreApplication>
 #include <QDir>
 #include <QDirIterator>
 #include <QFile>
 #include <QFileInfo>
 #include <QPointer>
-#include <QRegularExpression>
 #include <QSet>
 #include <QUuid>
 #ifdef Q_OS_WIN
@@ -35,56 +33,18 @@ ArchiveBackend::ArchiveBackend(QObject *parent, QString executable) : QObject(pa
     connect(&workerProgressTimer_, &QTimer::timeout, this, &ArchiveBackend::reportWorkerProgress);
     if (executable.isEmpty())
         executable = FindArchiveEngine();
-    process_.setProgram(executable);
     configuredEngine_ = executable;
-    process_.setProcessChannelMode(QProcess::MergedChannels);
+    process_ = makeProcess(executable);
     connect(this, &ArchiveBackend::engineStarted, this, &ArchiveBackend::phaseStarted);
-    connect(&process_, &QProcess::started, this, [this] {
-        processPause_.Attach(UInt32(process_.processId()));
-        if (!cancelled_)
-            emit engineStarted();
-    });
-    connect(&process_, &QProcess::readyRead, this, [this] { consumeOutput(process_.readAll()); });
-    connect(&process_, &QProcess::readyReadStandardError, this, [this] {
-        if (job_ == Job::SourceExtract)
-            consumeOutput(process_.readAllStandardError());
-    });
-    connect(&process_, qOverload<int, QProcess::ExitStatus>(&QProcess::finished), this,
-            &ArchiveBackend::complete);
-    connect(&process_, &QProcess::errorOccurred, this, [this](QProcess::ProcessError error) {
-        if (error == QProcess::FailedToStart && job_ != Job::None) {
-            processPause_.ResetAfterExit();
-            if (job_ == Job::Create || job_ == Job::Add || job_ == Job::Delete ||
-                job_ == Job::Rename || job_ == Job::ReplaceDelete || job_ == Job::ReplaceAdd ||
-                job_ == Job::SourceUpdate || job_ == Job::SourcePlanDelete ||
-                job_ == Job::SourcePlanFiles || job_ == Job::SourcePlanDirectories ||
-                job_ == Job::SourcePlanRename || job_ == Job::SourceMutation ||
-                job_ == Job::SourceExtract)
-                QFile::remove(createTemporary_);
-            job_ = Job::None;
-            sourceExtractSelection_.reset();
-            extractQueue_.clear();
-            extractArguments_.clear();
-            pendingPassword_.clear();
-            createStages_.clear();
-            createPassword_.clear();
-            extractPassword_.clear();
-            sourcePlanPassword_.clear();
-            emit finished(false,
-                          QCoreApplication::translate(
-                              "archivebackend",
-                              "Could not start 7zz. Install official 7zz and add it to PATH."));
-        }
-    });
 }
 
 ArchiveBackend::~ArchiveBackend() {
     codecProbe_.reset();
     // QProcess can emit readyRead/finished during destruction. Stop callbacks
     // while their buffers and operation state are still alive.
-    disconnect(&process_, nullptr, this, nullptr);
+    disconnect(process_.get(), nullptr, this, nullptr);
     cancelAndWait();
-    if (process_.state() == QProcess::NotRunning &&
+    if (process_->state() == QProcess::NotRunning &&
         (job_ == Job::Create || job_ == Job::Add || job_ == Job::Delete || job_ == Job::Rename ||
          job_ == Job::ReplaceDelete || job_ == Job::ReplaceAdd || job_ == Job::SourceUpdate ||
          job_ == Job::SourcePlanDelete || job_ == Job::SourcePlanFiles ||
@@ -116,7 +76,7 @@ HRESULT ArchiveBackend::setPaused(bool paused) {
         volumeOutput_->setPaused(paused);
         return S_OK;
     }
-    if (process_.state() != QProcess::Running)
+    if (process_->state() != QProcess::Running)
         return E_FAIL;
     return processControlResult(processPause_.SetPaused(paused));
 }
@@ -127,7 +87,7 @@ HRESULT ArchiveBackend::processControlResult(HRESULT result) const {
     // A short-lived child can exit before QProcess delivers finished(). There
     // is no remaining child to control; keep its actual exit result.
 #ifdef Q_OS_WIN
-    const UInt32 pid = UInt32(process_.processId());
+    const UInt32 pid = UInt32(process_->processId());
     if (pid != 0) {
         NWindows::CProcess child;
         if (child.Open(SYNCHRONIZE, false, pid)) {
@@ -149,114 +109,15 @@ HRESULT ArchiveBackend::setBackground(bool background) {
     if (copyPreparation_ || hashOperation_ || volumeOutput_ || job_ == Job::CreatePrepare ||
         job_ == Job::CreateDeleteInputs)
         return S_OK;
-    if (process_.state() != QProcess::Running)
+    if (process_->state() != QProcess::Running)
         return E_FAIL;
     return processControlResult(
-        NProcessPriority::SetBackground(UInt32(process_.processId()), background));
-}
-
-void ArchiveBackend::start(Job job, const QStringList &arguments, const QString &workingDirectory) {
-    if (busy()) {
-        emit finished(false, QCoreApplication::translate("archivebackend",
-                                                         "Another operation is still running."));
-        return;
-    }
-    job_ = job;
-    lastResult_ = E_FAIL;
-    output_.clear();
-    listingOutput_.clear();
-    pendingOutput_.clear();
-    cancelled_ = false;
-    passwordPrompted_ = false;
-    process_.setWorkingDirectory(workingDirectory);
-    process_.setProcessChannelMode(job == Job::SourceExtract ? QProcess::SeparateChannels
-                                                             : QProcess::MergedChannels);
-    process_.setStandardOutputFile(job == Job::SourceExtract ? createTemporary_ : QString());
-    QStringList processArguments = arguments;
-    processArguments.insert(1, "-sccUTF-8");
-    if (IsLargePageSupported()) {
-        UString switches;
-        AddLagePagesSwitch(switches, FmSettingsPath());
-        if (!switches.IsEmpty())
-            processArguments.insert(1, QString::fromWCharArray(switches).trimmed());
-    }
-    process_.setArguments(processArguments);
-    process_.start();
-    if (!pendingPassword_.isEmpty())
-        providePassword(pendingPassword_);
-}
-
-void ArchiveBackend::providePassword(const QString &password) {
-    if (!busy())
-        return;
-    pendingPassword_ = password;
-    if (job_ == Job::ExtractCheck)
-        extractPassword_ = password;
-    process_.write(password.toUtf8() + '\n');
+        NProcessPriority::SetBackground(UInt32(process_->processId()), background));
 }
 
 void ArchiveBackend::provideOverwriteAnswer(int answer) {
     if (overwritePromptActive_)
         overwriteAnswer_ = answer;
-}
-
-void ArchiveBackend::consumeLine(const QByteArray &line) {
-    QString text = QString::fromUtf8(line);
-    text.remove(QLatin1Char('\b'));
-    text = text.trimmed();
-    if (!pendingPassword_.isEmpty())
-        text.replace(pendingPassword_, QCoreApplication::translate("archivebackend", "[hidden]"));
-    if (text.isEmpty())
-        return;
-    output_ += text + '\n';
-    emit outputReceived(text);
-    static const QRegularExpression percent(R"((?:^|\s)(\d{1,3})%)");
-    auto match = percent.globalMatch(text);
-    int value = -1;
-    QString detail;
-    while (match.hasNext()) {
-        const auto found = match.next();
-        value = found.captured(1).toInt();
-        detail = text.mid(found.capturedEnd()).trimmed();
-    }
-    if (value >= 0 && value <= 100) {
-        if (detail.startsWith('+') || detail.startsWith('-'))
-            detail = detail.mid(1).trimmed();
-        emit progress(value, detail);
-    } else if (text.startsWith("+ ") || text.startsWith("- ")) {
-        emit progress(-1, text.mid(2).trimmed());
-    }
-}
-
-void ArchiveBackend::consumeOutput(const QByteArray &chunk, bool flush) {
-    // Metadata must retain spaces, blank/multiline values and fragmented UTF-8.
-    // The existing trimmed/redacted progress journal is a separate presentation.
-    if (job_ == Job::List)
-        listingOutput_ += chunk;
-    pendingOutput_ += chunk;
-    if (!passwordPrompted_ && pendingPassword_.isEmpty() &&
-        (pendingOutput_.contains("Enter password:") ||
-         pendingOutput_.contains("Enter password (will not be echoed):"))) {
-        passwordPrompted_ = true;
-        emit passwordRequired();
-    }
-    qsizetype start = 0;
-    while (true) {
-        const qsizetype cr = pendingOutput_.indexOf('\r', start);
-        const qsizetype lf = pendingOutput_.indexOf('\n', start);
-        const qsizetype end = cr < 0 ? lf : (lf < 0 ? cr : qMin(cr, lf));
-        if (end < 0)
-            break;
-        if (end > start)
-            consumeLine(pendingOutput_.mid(start, end - start));
-        start = end + 1;
-    }
-    if (start > 0)
-        pendingOutput_.remove(0, start);
-    if (flush && !pendingOutput_.isEmpty()) {
-        consumeLine(pendingOutput_);
-        pendingOutput_.clear();
-    }
 }
 
 void ArchiveBackend::list(const QString &archive, const QString &password) {
@@ -309,7 +170,9 @@ bool ArchiveBackend::prepareAskExtraction(const QString &outputDirectory,
                                           QStringList *replaceEntries, QStringList *renameEntries) {
     enum class Mode { Ask, Skip, Overwrite, Rename };
     Mode mode = Mode::Ask;
-    for (const ArchiveEntry &entry : entries_) {
+    const auto incoming = entries_;
+    const QPointer<ArchiveBackend> owner(this);
+    for (const ArchiveEntry &entry : incoming) {
         if (entry.directory || (!selected.isEmpty() && !selected.contains(entry.path)))
             continue;
         QString relative = entry.path;
@@ -323,6 +186,8 @@ bool ArchiveBackend::prepareAskExtraction(const QString &outputDirectory,
             overwritePromptActive_ = true;
             overwriteAnswer_ = -1;
             emit overwriteRequired(target, entry);
+            if (!owner)
+                return false;
             overwritePromptActive_ = false;
             if (cancelled_ || overwriteAnswer_ == NOverwriteAnswer::kCancel) {
                 cancelled_ = false;
@@ -554,12 +419,13 @@ void ArchiveBackend::cancel() {
             return;
     }
     extractQueue_.clear();
-    if (process_.state() != QProcess::NotRunning)
-        process_.kill();
+    if (process_->state() != QProcess::NotRunning)
+        process_->kill();
 }
 
 void ArchiveBackend::cancelAndWait() {
     const QPointer<ArchiveBackend> owner(this);
+    const auto transport = process_;
     if (busy())
         cancel();
     if (!owner)
@@ -591,10 +457,10 @@ void ArchiveBackend::cancelAndWait() {
         finishVolumeOutput();
         return;
     }
-    if (process_.state() != QProcess::NotRunning) {
-        process_.kill();
-        process_.waitForFinished(-1);
-        if (!owner)
+    if (transport->state() != QProcess::NotRunning) {
+        transport->kill();
+        transport->waitForFinished(-1);
+        if (!owner || process_ != transport)
             return;
     }
     processPause_.ResetAfterExit();
