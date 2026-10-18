@@ -260,32 +260,42 @@ HRESULT ArchiveBackend::extractNativeArchive(const std::shared_ptr<ArchiveNative
 bool ArchiveBackend::discoverCodecCatalog(const QString &module) {
     if (busy())
         return false;
-    if (!codecProbe_)
-        codecProbe_ = std::make_unique<ArchiveCodecProbe>();
-    codecDiscoveryActive_ = true;
-    codecDiscoveryCancelled_ = false;
-    return codecProbe_->Start(configuredEngine_, module, [this](ArchiveCodecProbeResult result) {
-        // Delivery is queued so a UI receiver can close/delete the backend
-        // without deleting the probe's QProcess during its finished callback.
-        QMetaObject::invokeMethod(
-            this,
-            [this, result = std::move(result)] {
-                codecDiscoveryActive_ = false;
-                process_->setProgram(!codecDiscoveryCancelled_ && result.result == S_OK &&
-                                             !result.catalog->runtimeEngine().isEmpty()
-                                         ? result.catalog->runtimeEngine()
-                                         : configuredEngine_);
-                std::atomic_store(&codecCatalog_, codecDiscoveryCancelled_
-                                                      ? std::shared_ptr<const ArchiveCodecCatalog>()
-                                                      : result.catalog);
-                emit codecCatalogReady(!codecDiscoveryCancelled_ && result.result == S_OK,
-                                       codecDiscoveryCancelled_ ? QCoreApplication::translate(
-                                                                      "archivebackend_codecs",
-                                                                      "Codec discovery cancelled.")
-                                                                : result.error);
-            },
-            Qt::QueuedConnection);
-    });
+    try {
+        if (!codecProbe_)
+            codecProbe_ = std::make_unique<ArchiveCodecProbe>();
+        const bool started =
+            codecProbe_->Start(configuredEngine_, module, [this](ArchiveCodecProbeResult result) {
+                // Keep UI receivers outside the probe's completion frame so
+                // closing the backend cannot invalidate that delivery's owner.
+                QMetaObject::invokeMethod(
+                    this,
+                    [this, result = std::move(result)] {
+                        codecDiscoveryActive_ = false;
+                        process_->setProgram(!codecDiscoveryCancelled_ && result.result == S_OK &&
+                                                     !result.catalog->runtimeEngine().isEmpty()
+                                                 ? result.catalog->runtimeEngine()
+                                                 : configuredEngine_);
+                        std::atomic_store(&codecCatalog_,
+                                          codecDiscoveryCancelled_
+                                              ? std::shared_ptr<const ArchiveCodecCatalog>()
+                                              : result.catalog);
+                        emit codecCatalogReady(
+                            !codecDiscoveryCancelled_ && result.result == S_OK,
+                            codecDiscoveryCancelled_
+                                ? QCoreApplication::translate("archivebackend_codecs",
+                                                              "Codec discovery cancelled.")
+                                : result.error);
+                    },
+                    Qt::QueuedConnection);
+            });
+        if (started) {
+            codecDiscoveryActive_ = true;
+            codecDiscoveryCancelled_ = false;
+        }
+        return started;
+    } catch (...) {
+        return false;
+    }
 }
 
 HRESULT ArchiveBackend::loadHashProviders(CExternalCodecs &providers) const {

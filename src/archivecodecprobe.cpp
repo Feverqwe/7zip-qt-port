@@ -6,8 +6,10 @@
 #include <QFileInfo>
 #include <QProcess>
 #include <QRegularExpression>
+#include <QScopeGuard>
 #include <QStandardPaths>
 #include <atomic>
+#include <new>
 
 namespace {
 QString FindModule(const QString &program) {
@@ -182,23 +184,50 @@ bool ArchiveCodecProbe::Start(const QString &engine, const QString &module,
                               int timeoutMs) {
     if (active_)
         return false;
-    active_ = true;
-    completion_ = std::move(completion);
-    work_ = std::make_shared<Work>(timeoutMs);
-    const auto work = work_;
-    loader_.reset(QThread::create([work, engine, module] {
-        work->result = Discover(engine, module, work);
-        // Native DLL calls cannot be interrupted safely. Account for their
-        // elapsed time before queueing the joined result back to the GUI.
-        work->Stopped();
-    }));
-    connect(loader_.get(), &QThread::finished, this, [this, work] {
-        loader_->wait();
-        loader_.reset();
-        Complete(std::move(work->result));
-    });
-    loader_->start();
-    return true;
+    try {
+        const auto work = std::make_shared<Work>(timeoutMs);
+        std::unique_ptr<QThread> loader(QThread::create([work, engine, module] {
+            try {
+                work->result = Discover(engine, module, work);
+            } catch (const std::bad_alloc &) {
+                work->result.result = E_OUTOFMEMORY;
+            } catch (...) {
+                work->result.result = E_FAIL;
+            }
+            // Native DLL calls cannot be interrupted safely. Account for their
+            // elapsed time before queueing the joined result back to the GUI.
+            work->Stopped();
+        }));
+        const auto stopUnpublished = qScopeGuard([&] {
+            if (loader) {
+                work->cancelled = true;
+                loader->wait();
+            }
+        });
+        auto *thread = loader.get();
+        connect(
+            thread, &QThread::finished, this,
+            [this, work, thread] {
+                if (loader_.get() != thread || work_ != work)
+                    return;
+                loader_->wait();
+                loader_.reset();
+                Complete(std::move(work->result));
+            },
+            Qt::QueuedConnection);
+        loader->start();
+        if (!loader->isRunning() && !loader->isFinished())
+            return false;
+        // Publish only fully prepared owners. Queued delivery cannot consume
+        // this state until Start has returned to the owning event loop.
+        completion_ = std::move(completion);
+        work_ = work;
+        loader_ = std::move(loader);
+        active_ = true;
+        return true;
+    } catch (...) {
+        return false;
+    }
 }
 
 void ArchiveCodecProbe::Cancel() {

@@ -26,6 +26,7 @@ class ArchiveCodecProbe final : public QObject {
   public:
     explicit ArchiveCodecProbe(QObject *parent = nullptr);
     ~ArchiveCodecProbe() override;
+    // Reject active or failed startup without publishing a partial operation.
     bool Start(const QString &engine, const QString &module,
                std::function<void(ArchiveCodecProbeResult)> completion, int timeoutMs = 5000);
     void Cancel();
