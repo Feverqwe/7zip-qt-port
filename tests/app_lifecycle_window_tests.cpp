@@ -1,5 +1,6 @@
 #include "qtarchivefoldermanager.h"
 #include "window_state_support.h"
+#include <QEvent>
 #include <QScopeGuard>
 
 namespace {
@@ -21,6 +22,27 @@ class ArchiveOwnerPresentation final : public IQtAppPresentation {
 class AppLifecycleWindowTests : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
   private slots:
+    void languageEventAfterCloseRetainsQuiescentWindow() {
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        QFile file(fixture.filePath("item.txt"));
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        QCOMPARE(file.write("retained"), qint64(8));
+        file.close();
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        auto *address = window.findChild<QLineEdit *>("archivePath");
+        address->setText(fixture.path());
+        QTest::keyClick(address, Qt::Key_Return);
+        QTRY_COMPARE(table(window)->rowCount(), 1);
+        QVERIFY(window.close());
+        const int reads = backend.listCalls;
+        QEvent language(QEvent::LanguageChange);
+        QApplication::sendEvent(&window, &language);
+        QVERIFY(!window.isVisible());
+        QVERIFY(!backend.busy());
+        QCOMPARE(backend.listCalls, reads);
+    }
     void exitRemainsAvailableAfterRefresh() {
         QTemporaryDir fixture;
         QVERIFY(fixture.isValid());

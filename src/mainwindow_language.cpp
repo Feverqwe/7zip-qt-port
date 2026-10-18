@@ -12,6 +12,8 @@
 #include <QToolButton>
 
 void MainWindow::reloadLangItems() {
+    if (app_.QtOperations().closed())
+        return;
     app_.ReloadLangItems();
     MyLoadMenu(*menuBar(), true);
     refreshBookmarks();
