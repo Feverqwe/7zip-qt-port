@@ -9,7 +9,8 @@ import shutil
 import subprocess
 import tempfile
 
-SOURCE_DIRS = {".agents", "cmake", "docs", "scripts", "src", "tests", "third_party", "resources"}
+SOURCE_DIRS = {".agents", "cmake", "docs", "scripts", "src", "tests", "third_party", "resources",
+               "translations"}
 SOURCE_FILES = {".clang-format", ".gitattributes", ".gitignore", "AGENTS.md", "CMakeLists.txt",
                 "CMakePresets.json", "LICENSE", "README.md", "upstream.lock.json", "windows-runtime.lock.json"}
 MANIFEST = ".runner-source.json"

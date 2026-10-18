@@ -72,6 +72,9 @@ class RunnerTests(unittest.TestCase):
             (project / "src/changed.cpp").write_text("new")
             (project / "src/deleted.cpp").unlink()
             (project / "src/Юникод $(touch injected).cpp").write_text("new file")
+            (project / "translations").mkdir()
+            catalog = project / "translations/fixture.ts"
+            catalog.write_text("current translation input")
             (project / "src/ignored-secret").write_text("excluded")
             (project / "build").mkdir()
             (project / "build/secret").write_text("excluded")
@@ -86,6 +89,7 @@ class RunnerTests(unittest.TestCase):
             digest = hyperv_source.stage_tree(project, upstream, destination, root / "cache")
             hyperv_source.verify_tree(destination, digest)
             self.assertEqual((destination / "src/changed.cpp").read_text(), "new")
+            self.assertEqual((destination / "translations/fixture.ts").read_text(), catalog.read_text())
             self.assertTrue((destination / "src/Юникод $(touch injected).cpp").exists())
             self.assertFalse((destination / "src/deleted.cpp").exists())
             self.assertFalse((destination / "src/ignored-secret").exists())
@@ -93,7 +97,7 @@ class RunnerTests(unittest.TestCase):
             self.assertFalse((destination / ".codex").exists())
             self.assertFalse((destination / "scripts/config/runners.local.json").exists())
             self.assertEqual(before, git(upstream, "status", "--porcelain"))
-            (destination / "src/changed.cpp").write_text("tampered")
+            (destination / "translations/fixture.ts").write_text("tampered")
             with self.assertRaises(ValueError):
                 hyperv_source.verify_tree(destination, digest)
 

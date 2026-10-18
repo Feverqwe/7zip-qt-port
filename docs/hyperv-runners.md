@@ -28,7 +28,9 @@ fails with the owner run ID before touching source. An existing nonempty
 reconciles an immutable local
 copy of the current worktree. It includes modified tracked files and nonignored
 new files in the allowlisted source/resource/test/doc/script directories and
-top-level build configuration. Deleted files disappear remotely. No staging or
+top-level build configuration. Translation catalogs travel with the application
+sources so localized checks use the same build inputs on every platform.
+Deleted files disappear remotely. No staging or
 commit is required. Local `.git`, `.codex`, credentials, build outputs and other
 ignored state are not sent. The guest's `.git/`, `build/`, `ui-reports/`,
 `runner-tmp/`, `upstream/` and runner control/log files are protected from deletion.
