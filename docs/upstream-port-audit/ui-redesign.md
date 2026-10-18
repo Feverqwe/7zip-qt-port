@@ -648,3 +648,90 @@ appearance_settings и fm_settings — 2/2 PASS на обеих ОС
 и существующую native UI resource lock. Linux offscreen подтверждает транзакцию
 и геометрию, но не смену палитры оконного окружения. Full/slow, VoiceOver,
 отрисованный upstream Windows reference и все 36 состояний не проверялись.
+
+## Итерация 13: три раздела настроек
+
+Источник: https://github.com/ip7z/7zip.git, текущий upstream
+`9128b80e3a471108678e2b3ec3c985861c8d7b0f`, baseline
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. Сопоставлены OptionsDialog.cpp,
+SettingsPage, SystemPage, MenuPage, FoldersPage, EditPage и LangPage с их
+headers/resources/handlers, RegistryUtils, ZipRegistry, page callers, native
+association/menu services и существующая property-sheet keyboard adaptation.
+UNDER_CE resources не являются desktop-сценарием.
+
+Qt-компоновка теперь объединяет шесть исходных владельцев в General,
+Integration и Advanced. Функциональные OnInit/OnApply, Browse, flags/defaults,
+RAM calculation, privilege, menu command flags, language metadata и native
+registration/error branches сохранены. Presentation вынесен в
+qtfmoptionslayout.cpp; отдельного draft/store/apply pipeline нет. Подгруппы
+SettingsPage передаются в общую форму; source owner остаётся жив до закрытия.
+Сворачивание меняет только видимость. Сводки читают реальные controls и dirty
+состояние владельцев, включая непустые внешние команды, путь временных файлов,
+лимит памяти и выбранные флаги списка. Они сохраняют смысл после Apply/reopen.
+
+General показывает оформление/язык и раскрываемые сведения о переводе.
+Advanced раскрывает память, временные файлы, внешние программы и привычное
+поведение списка. Параметры не удалены, исходные defaults не заменены.
+Ошибочная память раскрывает соответствующую группу и фокусирует поле.
+Ctrl+Tab/reverse используют прежний Qt page selection и first-enabled focus,
+включая физический Control на Cocoa. Help/F1 сохраняет контекст исходной группы
+при переходе к footer; HTML-справка не переработана.
+
+SystemPage сохраняет исходные CAssoc/Pair, ChangeState и OnApply целиком;
+добавлены только обновления presentation. qtsystempagepresentation.cpp выводит
+7z/ZIP сразу и полный source format inventory через Other formats. Checkbox
+проецирует Own/not Own через прежний Clear/Other/Own cycle: при необходимости
+переходит через Other, не переписывая state algorithm. Полный исходный цикл,
+mixed-selection buttons, handler labels/icons и поддерживаемый all-users scope
+остаются в Advanced associations. Недоступная all-users колонка скрыта.
+Новое checkbox-представление — согласованная Qt UX-адаптация; upstream содержит
+трёхсостоянийный list control, но не такой checkbox surface. Форматы и команды
+берутся из исходных владельцев, а не из сокращённых примеров HTML.
+
+MenuPage остаётся владельцем всех команд/Zone/shell bitness branches.
+При отсутствии ShellIntegrationSupported вся группа отсутствует. Если нет
+ни association capability, ни shell integration, нет и пункта Integration.
+Отсутствие прав для поддерживаемой Windows операции по-прежнему возвращается
+через исходный native error flow. Адаптеры и архивный backend не изменены.
+
+Общий frame/footer использует нативные роли и прокручиваемые секции. Вложенная
+scroll surface не заливается белым поверх нативного tab pane; сводки используют
+системный secondary foreground. Native layout items Cocoa исключают внешние
+focus/shadow margins кнопки: нижний native layout margin оставлен внутри
+раскрываемого содержимого, чтобы Browse не выходил за его границы. Между
+переключателем памяти и вводом задан общий интервал, устранивший native overlap.
+
+Behavior coverage сохраняет Apply/Cancel/OK/reopen, частичное source применение
+при ошибке памяти/ассоциаций, native conflict и отсутствие регистрации при
+Cancel. Добавлены Other→Own/Own→Clear/повторный Own через checkbox, сохранение
+скрытого draft и его сводки после reopening. Прежние жёсткие six-tab/initial
+20-row/frame assertions заменены доступностью реальных полей через раскрытие
+и прокрутку. Full Keyboard Access включается только внутри соответствующего
+теста с восстановлением; приложение не меняет системную keyboard policy.
+Добавлен русский перевод и EN/RU numerus для новых сводок.
+
+macOS: приложение и затронутые targets собраны; 14 focused scopes прошли
+(13 offscreen/startup и memory_lock отдельно native вне sandbox). После
+геометрических исправлений десять непосредственно затронутых suites повторены
+успешно. Cocoa integration/keyboard и выбранные geometry/language сценарии в
+light/dark — 74/74 test functions PASS. Просмотрены актуальные JSON и снимки
+General, Advanced collapsed/expanded, translation, форматов и association matrix,
+памяти/временной папки в прежнем `build/dev/ui-redesign-review`; фактические темы
+подтверждены capture metadata. Native OS keyboard policy сохранена.
+
+Linux: первоначальные 14/14 и итоговые 10/10 PASS. Windows: первоначальные
+13/14, затем после исправления folder reachability и включения menu_page в native
+Windows QPA/resource lock — итоговые 10/10 PASS. Финальный run
+`20261018T185422Z-741da083`; исходный широкий
+`20261018T184611Z-a0c8cb93`. Остальные четыре неизменённых потребителя прошли
+в широком прогоне. Гостевые current/build/cache сохранены, лишних root payloads
+нет; Linux около63GiB, Windows около48GB и host около647GiB свободно.
+Нативная регистрация реальных пользовательских ассоциаций не выполнялась:
+поведенческие изменения проверены через fake services и прежние native tests.
+Full/slow, VoiceOver, физические раскладки, новая sheet-модальность и полная
+36-state приёмка не выполнены; goal остаётся active.
+
+Дополнительно обновлены native Appearance reports новой формы — 5/5 Cocoa
+functions PASS. Устаревшие task-owned снимки шести вкладок и разобранного
+geometry failure удалены. Текущий Windows Menu JSON подтверждает windows QPA,
+достижимую через прокрутку таблицу команд и полностью видимый footer.

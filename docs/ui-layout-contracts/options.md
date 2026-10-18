@@ -4,17 +4,38 @@
 якоря и границы датированных свидетельств. Новые результаты проверок —
 в [source audit](../upstream-port-audit.md).
 
-### Options initial frame (P3-06, 2026-10-16)
+### Redesigned settings surface (2026-10-18)
+
+General contains appearance and language; translation information is disclosed
+on request. Integration presents archive-format choices, with 7z/ZIP first and
+the complete remaining format list in Other formats. Advanced associations
+retains the source state matrix, mixed-selection cycle and supported all-users
+scope. Unsupported scope columns and shell-menu groups are hidden. If neither
+association nor shell integration is supported, Integration has no navigation item.
+
+Advanced contains disclosed memory, temporary-file, external-application and
+list-behavior groups. Their summaries reflect actual draft values and mark
+pending changes; saved nondefault values remain described after reopening.
+Collapsing or switching sections preserves every draft. The original six page
+owners retain their validation, persistence and native registration services.
+Invalid memory input selects Advanced, expands Memory and focuses its input.
+
+Each section can scroll while the native Apply/Cancel/OK/Help footer stays
+accessible. Initial focus is Appearance. Ctrl+Tab/Control+Tab on Cocoa and the
+reverse route work from fields and footer, activate the next visible section
+and focus an enabled control there. Help/F1 routes to the focused source group;
+using the footer retains that context. Source algorithms and original defaults
+are unchanged. This surface supersedes the old six-page container geometry.
+
+### Original Options frame reference (P3-06, 2026-10-16)
 
 Original `OptionsDialog.cpp`/`MyPropertySheet` use the largest desktop page
 template. `GuiCommon.rc` supplies300×280 content DLU plus eight-DLU margins:
 316×296 DLU for System/Menu/Settings/Language. Editor/Folders are shorter.
-The initial Qt sheet must map that source page through its native font, adding
-native tab/footer and outer-layout chrome. The rendered pinned Windows System
-page exposes more than20 rows; an initial fake one-format page must retain that
-viewport capacity at8pt/12pt and in EN/RU. A fixed640×390 frame is not that source
-initial-size contract. Existing explicit640×390/520×380 normal/compact probes
-remain valid Qt resizing adaptations of the fixed original property sheet.
+The rendered pinned Windows System page exposes more than20 rows. This records
+the original property-sheet reference; the redesigned General start page has
+no association table. Existing640×390/520×380 normal/compact probes now check
+reachable controls through disclosure and scrolling, with an exposed footer.
 
 
 ### Options keyboard activation (P3-06, 2026-10-17)
@@ -26,18 +47,18 @@ rule. [Original footer reference and native regression](../archive/qt-port/upstr
 
 Reference: pinned `OptionsDialog.cpp`, `SystemPage.rc`, the other five page
 resources, `CPropertyPage::OnNotify`/`OnSetActive` and `MyPropertySheet`.
-Initial System focus is the first enabled source tab stop: current-user `+`,
+In the original System page, the first enabled source tab stop is current-user `+`,
 all-users `+`, then the association list. Tab and Backtab retain that order;
 enabled footer buttons and the tab bar remain reachable. Map existing button
 tab stops to Qt StrongFocus under Cocoa's restricted native button policy;
 preserve intentional NoFocus controls and the OS keyboard preference.
 
-Ctrl+Tab and reverse activate the new page's first enabled source control.
+The redesigned sections retain the first-enabled-control focus rule.
 An exclusive radio group uses its selected enabled member; an initial text field
 selects its contents. Pending values survive page switching and hide/show does
 not reset an already focused field. A capability-disabled page can fall back to
-the tab bar. `options_keyboard` checks EN/RU at640×390 and520×380 (expanded to
-native minima), all four System availability masks and both six-page directions.
+the tab bar. `options_keyboard` checks EN/RU at640×390 and520×380,
+all four System availability masks and navigation in both directions.
 Current widget JSON checks visible control bounds; public assertions check focus,
 selection and Cancel without association writes. [Source and native receipt](../archive/qt-port/upstream-port-audit/p3-06-options-keyboard-2026-10-17.md).
 
@@ -49,9 +70,8 @@ unapplied changes. Invalid memory input keeps the appearance draft unapplied.
 Applying updates existing windows, and the saved preference is restored at
 application startup. Changing language preserves the pending choice.
 
-Appearance is currently the first keyboard control on the Settings page. The
-three-section General/Integration/Advanced organization from the redesign plan
-is still pending; the six source page owners and their other behavior remain.
+Appearance is the first keyboard control in General. Six source page owners
+continue to own the settings behind the three presentation sections.
 
 ### Native System handler images (P3-06, 2026-10-17)
 

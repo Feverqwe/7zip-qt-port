@@ -1,5 +1,6 @@
 #include "createarchivedialog.h"
 #include "extractdialog.h"
+#include "fixtures/options_presentation.h"
 #include "qtfmoptionsdialog.h"
 #include "window_state_support.h"
 #include <QSettings>
@@ -15,7 +16,6 @@ class HelpUiTests : public QObject {
         const QString settingsPath = qEnvironmentVariable("SEVENZIP_SETTINGS_PATH");
         QtFmOptionsDialog dialog(settingsPath);
         dialog.show();
-        auto *pages = dialog.findChild<QTabWidget *>("optionsPages");
         auto *buttons = dialog.findChild<QDialogButtonBox *>("settingsButtons");
         auto *command = dialog.findChild<QLineEdit *>("viewerCommand");
         command->setText("pending viewer %1");
@@ -23,10 +23,14 @@ class HelpUiTests : public QObject {
         const QStringList keysBefore = QSettings(settingsPath, QSettings::IniFormat).allKeys();
         const QStringList fragments = {"system", "sevenZip", "folders",
                                        "editor", "settings", "language"};
-        for (int i = 0; i < pages->count(); ++i) {
-            pages->setCurrentIndex(i);
+        const char *controls[] = {"systemAssociations", "menuItems",        "workSystem",
+                                  "viewerCommand",      "extractMemorySet", "languageChoice"};
+        for (int i = 0; i < fragments.size(); ++i) {
+            if (!OptionsPresentation::show(dialog, controls[i]))
+                continue; // Unsupported native integration has no user surface.
+            dialog.findChild<QWidget *>(controls[i])->setFocus();
             buttons->button(QDialogButtonBox::Help)->click();
-            auto *help = pages->widget(i)->findChild<QDialog *>("helpWindow");
+            auto *help = dialog.findChild<QDialog *>("helpWindow");
             QVERIFY(help && help->isVisible());
             auto *browser = help->findChild<QTextBrowser *>("helpBrowser");
             QCOMPARE(browser->source().path(), QString("/upstream/7zip/Help/fm/options.htm"));
@@ -37,11 +41,12 @@ class HelpUiTests : public QObject {
             QVERIFY(buttons->button(QDialogButtonBox::Apply)->isEnabled());
             QCOMPARE(QSettings(settingsPath, QSettings::IniFormat).allKeys(), keysBefore);
         }
-        pages->setCurrentIndex(3);
+        OptionsPresentation::show(dialog, command);
         dialog.activateWindow();
         QTRY_VERIFY(dialog.isActiveWindow());
+        command->setFocus();
         QTest::keyClick(command, Qt::Key_F1);
-        auto *help = pages->widget(3)->findChild<QDialog *>("helpWindow");
+        auto *help = dialog.findChild<QDialog *>("helpWindow");
         QVERIFY(help && help->isVisible());
         QCOMPARE(help->findChild<QTextBrowser *>("helpBrowser")->source().fragment(),
                  QString("editor"));

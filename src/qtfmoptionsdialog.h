@@ -1,6 +1,7 @@
 #pragma once
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include <QDialog>
+#include <QPointer>
 #include <functional>
 #include <memory>
 struct IFolderManager;
@@ -12,8 +13,10 @@ class CSettingsPage;
 class CMenuPage;
 class CLangPage;
 class QDialogButtonBox;
+class QTabWidget;
+class QtDisclosure;
 
-// Qt property-sheet services for the native six-page OptionsDialog container.
+// Three presentation sections retain the six source state/apply owners.
 class QtFmOptionsDialog final : public QDialog {
     Q_OBJECT
     CEditPage *_editPage;
@@ -25,6 +28,16 @@ class QtFmOptionsDialog final : public QDialog {
     bool _applying = false;
     Qt::ColorScheme _appliedColorScheme = Qt::ColorScheme::Unknown;
     QDialogButtonBox *_buttons;
+    QTabWidget *_sections;
+    QPointer<QWidget> _helpContext;
+    QtDisclosure *_memoryGroup;
+    QtDisclosure *_listGroup;
+    QtDisclosure *_foldersGroup;
+    QtDisclosure *_editGroup;
+    QtDisclosure *_menuGroup = nullptr;
+    void buildSections();
+    void refreshSectionSummaries();
+    void revealControl(QWidget *control);
     void updateApplyButton();
     void changeEvent(QEvent *event) override;
     void reloadLangItems();

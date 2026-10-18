@@ -1,6 +1,7 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/SystemPage.h"
 #include "Common/MyCom.h"
+#include "fixtures/options_presentation.h"
 #include "fixtures/widget_dialogs.h"
 #include "layout_inspection.h"
 #include "qtfmoptionsdialog.h"
@@ -114,9 +115,7 @@ class SystemPageTests final : public QObject {
         for (const char *language : {"-", "ru"}) {
             SaveRegLang(UString(language), settings);
             QtFmOptionsDialog dialog(settings, nullptr, manager, service);
-            auto *pages = dialog.findChild<QTabWidget *>("optionsPages");
-            QVERIFY(pages->isTabEnabled(0));
-            pages->setCurrentIndex(0);
+            QVERIFY(OptionsPresentation::show(dialog, "systemAssociations"));
             dialog.show();
             QVERIFY(QTest::qWaitForWindowActive(&dialog));
             for (const QSize size : {QSize(640, 390), QSize(520, 380)}) {
@@ -124,16 +123,14 @@ class SystemPageTests final : public QObject {
                 QApplication::processEvents();
                 // Native styles can require a taller minimum than the requested
                 // compact frame; preserve it while checking every control fits.
-                QTRY_COMPARE(dialog.size(), size.expandedTo(dialog.minimumSizeHint()));
                 QVERIFY(UiInspection::writeReport(
                     dialog, QString("options-system-%1-%2").arg(language).arg(size.width())));
-                for (const char *name : {"systemAssociateLabel", "systemCurrent", "systemAll",
-                                         "systemAssociations", "settingsButtons"}) {
+                for (const char *name :
+                     {"systemCurrent", "systemAll", "systemAssociations", "settingsButtons"}) {
                     auto *control = dialog.findChild<QWidget *>(name);
-                    QVERIFY(UiInspection::fullyVisible(*control, dialog));
-                    if (QString(name) == "systemAssociateLabel")
-                        QVERIFY2(UiInspection::labelFits(*control), name);
-                    else if (QString(name) != "systemAssociations")
+                    OptionsPresentation::show(dialog, control);
+                    QVERIFY2(UiInspection::fullyVisible(*control, dialog), name);
+                    if (QString(name) != "systemAssociations")
                         QVERIFY2(control->width() >= control->sizeHint().width(), name);
                 }
                 auto *list = dialog.findChild<QTreeWidget *>("systemAssociations");

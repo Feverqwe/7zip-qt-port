@@ -20,6 +20,9 @@ class CSettingsPage : public QDialog {
     const IQtMemoryLockServices *_memoryLockServices;
     QCheckBox *_showDots;
     QComboBox *_appearance;
+    QWidget *_appearanceControls;
+    QWidget *_memoryControls;
+    QWidget *_listControls;
     void reloadAppearanceText();
     void changeEvent(QEvent *event) override;
     QCheckBox *_showRealFileIcons;
@@ -43,6 +46,11 @@ class CSettingsPage : public QDialog {
     void OnNotifyHelp();
     void accept() override;
     CFmSettings settings() const { return _settings; }
+    QWidget *appearanceControls() const { return _appearanceControls; }
+    QWidget *memoryControls() const { return _memoryControls; }
+    QWidget *listControls() const { return _listControls; }
+    bool IsMemoryModified() const { return _memx_wasChanged || _largePages_wasChanged; }
+    bool IsListModified() const { return _wasChanged; }
     bool IsModified() const {
         return _wasChanged || _largePages_wasChanged || _memx_wasChanged || _appearanceChanged;
     }

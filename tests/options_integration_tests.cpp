@@ -3,12 +3,14 @@
 #include "CPP/7zip/UI/FileManager/SystemPage.h"
 #include "Common/MyCom.h"
 #include "fixtures/options_page_fixture.h"
+#include "fixtures/options_presentation.h"
 #include "layout_inspection.h"
 #include "qtfmoptionsdialog.h"
 #include <QCheckBox>
 #include <QComboBox>
 #include <QDialogButtonBox>
 #include <QFont>
+#include <QLabel>
 #include <QLineEdit>
 #include <QListWidget>
 #include <QMessageBox>
@@ -20,6 +22,7 @@
 #include <QTabWidget>
 #include <QTemporaryDir>
 #include <QTimer>
+#include <QToolButton>
 #include <QTreeWidget>
 #include <QtTest>
 
@@ -32,6 +35,88 @@ QString text(const UString &value) { return QString::fromWCharArray(value.Ptr())
 class OptionsIntegrationTests final : public QObject {
     Q_OBJECT
   private slots:
+    void formatChoicesUseSourceStatesAndApplyOnlyOnConfirmation() {
+        QTemporaryDir fixture;
+        auto *formats = new COptionsManager;
+        formats->Extensions = UString(L"7z zip tar");
+        CMyComPtr<IFolderManager> manager = formats;
+        auto services = std::make_shared<COptionsAssociations>();
+        services->otherHandler = true;
+        const QString path = fixture.filePath("formats.ini");
+        {
+            QtFmOptionsDialog dialog(path, nullptr, manager, services);
+            dialog.show();
+            auto *zip = dialog.findChild<QCheckBox *>("association-zip");
+            QVERIFY(OptionsPresentation::show(dialog, zip));
+            QVERIFY(UiInspection::writeReport(dialog, "settings-integration-choices"));
+            QVERIFY(!zip->isChecked());
+            for (int i = 0; i < 3; ++i) {
+                QTest::keyClick(zip, Qt::Key_Space);
+                QCOMPARE(zip->isChecked(), i != 1);
+            }
+            auto *tree = dialog.findChild<QTreeWidget *>("systemAssociations");
+            for (int i = 0; i < tree->topLevelItemCount(); ++i)
+                if (tree->topLevelItem(i)->text(0) == "zip")
+                    QCOMPARE(tree->topLevelItem(i)->text(1), QString("7-Zip"));
+            QVERIFY(OptionsPresentation::show(dialog, "association-tar"));
+            dialog.findChild<QCheckBox *>("association-tar")->click();
+            QVERIFY(UiInspection::writeReport(dialog, "settings-integration-other-formats"));
+            auto *other = dialog.findChild<QtDisclosure *>("otherFormats");
+            other->setExpanded(false);
+            QVERIFY(!dialog.findChild<QCheckBox *>("association-tar")->isVisible());
+            QVERIFY(!other->findChild<QLabel *>("disclosureSummary")->text().isEmpty());
+            QVERIFY(OptionsPresentation::show(dialog, tree));
+            QVERIFY(UiInspection::writeReport(dialog, "settings-integration-association-details"));
+            dialog.reject();
+        }
+        QCOMPARE(services->writes, 0);
+        QtFmOptionsDialog applied(path, nullptr, manager, services);
+        for (const char *name : {"association-7z", "association-zip", "association-tar"})
+            applied.findChild<QCheckBox *>(name)->click();
+        applied.apply();
+        QCOMPARE(services->writes, 3);
+        QVERIFY(!applied.findChild<QDialogButtonBox *>("settingsButtons")
+                     ->button(QDialogButtonBox::Apply)
+                     ->isEnabled());
+        applied.findChild<QCheckBox *>("association-tar")->click();
+        applied.apply();
+        QCOMPARE(services->writes, 4);
+    }
+    void collapsedGroupsKeepDraftAndDescribeNondefaultValues() {
+        QTemporaryDir fixture;
+        const QString path = fixture.filePath("groups.ini");
+        QtFmOptionsDialog dialog(path);
+        dialog.show();
+        QVERIFY(OptionsPresentation::show(dialog, "editorCommand"));
+        auto *editor = dialog.findChild<QLineEdit *>("editorCommand");
+        editor->setText("custom editor --wait");
+        QVERIFY(UiInspection::writeReport(dialog, "settings-external-apps-expanded"));
+        auto *apps = dialog.findChild<QtDisclosure *>("externalAppsDetails");
+        apps->setExpanded(false);
+        QTRY_VERIFY(UiInspection::fullyVisible(
+            *dialog.findChild<QtDisclosure *>("listBehaviorDetails")->button(), dialog));
+        QVERIFY(UiInspection::writeReport(dialog, "settings-advanced-collapsed"));
+        QVERIFY(apps->findChild<QLabel *>("disclosureSummary")->text().contains(editor->text()));
+        QVERIFY(OptionsPresentation::show(dialog, "languageChoice"));
+        QVERIFY(UiInspection::writeReport(dialog, "settings-general"));
+        QVERIFY(OptionsPresentation::show(dialog, "languageInfo"));
+        QVERIFY(UiInspection::writeReport(dialog, "settings-translation-expanded"));
+        QVERIFY(OptionsPresentation::show(dialog, editor));
+        QCOMPARE(editor->text(), QString("custom editor --wait"));
+        apps->setExpanded(false);
+        dialog.apply();
+        dialog.reject();
+        QtFmOptionsDialog reopened(path);
+        auto *summary = reopened.findChild<QtDisclosure *>("externalAppsDetails")
+                            ->findChild<QLabel *>("disclosureSummary");
+        QVERIFY(summary->text().contains("custom editor --wait"));
+        QVERIFY(!reopened.findChild<QtDisclosure *>("externalAppsDetails")->isExpanded());
+        reopened.findChild<QLineEdit *>("editorCommand")->setText("discarded");
+        reopened.reject();
+        QtFmOptionsDialog retained(path);
+        QCOMPARE(retained.findChild<QLineEdit *>("editorCommand")->text(),
+                 QString("custom editor --wait"));
+    }
     void sourceInitialFrame_data() {
         QTest::addColumn<QString>("language");
         QTest::newRow("en") << QString("-");
@@ -41,7 +126,6 @@ class OptionsIntegrationTests final : public QObject {
         QFETCH(QString, language);
         const QFont originalFont = QApplication::font();
         const auto restoreFont = qScopeGuard([&] { QApplication::setFont(originalFont); });
-        int smallHeight = 0;
         for (int points : {8, 12}) {
             QFont font = originalFont;
             font.setPointSize(points);
@@ -56,26 +140,19 @@ class OptionsIntegrationTests final : public QObject {
             QApplication::processEvents();
             auto *pages = dialog.findChild<QTabWidget *>("optionsPages");
             QCOMPARE(pages->currentIndex(), 0);
-            auto *list = dialog.findChild<QTreeWidget *>("systemAssociations");
-            QVERIFY(list && list->topLevelItemCount() == 1);
-            const int rowHeight = list->sizeHintForRow(0);
-            QVERIFY(rowHeight > 0);
-            // The rendered original System page exposes more than twenty rows.
-            // Its source page template remains full-height even with one format.
-            const int rows = list->viewport()->height() / rowHeight;
-            QVERIFY2(rows >= 20,
-                     qPrintable(QString("Only %1 initial rows at %2pt").arg(rows).arg(points)));
-            if (points == 8)
-                smallHeight = dialog.height();
-            else
-                QVERIFY(dialog.height() > smallHeight);
+            QVERIFY(UiInspection::fullyVisible(*dialog.findChild<QComboBox *>("appearanceChoice"),
+                                               dialog));
+            QVERIFY(UiInspection::fullyVisible(*dialog.findChild<QComboBox *>("languageChoice"),
+                                               dialog));
+            QVERIFY(!dialog.findChild<QWidget *>("systemAssociations")->isVisible());
             QVERIFY(UiInspection::writeReport(
                 dialog, QString("options-initial-%1-%2").arg(language).arg(points)));
             dialog.resize(520, 380);
             QApplication::processEvents();
             QVERIFY(UiInspection::fullyVisible(
                 *dialog.findChild<QDialogButtonBox *>("settingsButtons"), dialog));
-            QVERIFY(UiInspection::fullyVisible(*list, dialog));
+            QVERIFY(UiInspection::fullyVisible(*dialog.findChild<QComboBox *>("appearanceChoice"),
+                                               dialog));
             dialog.reject();
             QCOMPARE(associations->writes, 0);
             QCOMPARE(associations->notifications, 0);
@@ -87,7 +164,6 @@ class OptionsIntegrationTests final : public QObject {
         QFont font = originalFont;
         font.setPointSize(12);
         QApplication::setFont(font);
-        int initialWidth = 0;
         for (const char *language : {"-", "ru"}) {
             QTemporaryDir fixture;
             const QString settings = fixture.filePath("options.ini");
@@ -97,13 +173,9 @@ class OptionsIntegrationTests final : public QObject {
             QtFmOptionsDialog dialog(settings, nullptr, manager, associations);
             dialog.show();
             QApplication::processEvents();
-            // Both rendered source languages use the same page dimensions.
-            // Their tab titles fit inside that page; they must not add another
-            // content-width difference to its native border/chrome.
-            if (!initialWidth)
-                initialWidth = dialog.width();
-            else
-                QCOMPARE(dialog.width(), initialWidth);
+            auto *pages = dialog.findChild<QTabWidget *>("optionsPages");
+            for (int i = 0; i < pages->count(); ++i)
+                QVERIFY(pages->tabBar()->tabRect(i).right() <= pages->tabBar()->width());
             dialog.reject();
             QCOMPARE(associations->writes, 0);
         }
@@ -147,21 +219,20 @@ class OptionsIntegrationTests final : public QObject {
         QCOMPARE(types->topLevelItemCount(), 1);
         types->topLevelItem(0)->setSelected(true);
         dialog.findChild<QPushButton *>("systemCurrent")->click();
-        pages->setCurrentIndex(1);
         dialog.findChild<QCheckBox *>("cascadedMenu")->click();
-        pages->setCurrentIndex(2);
+        OptionsPresentation::show(dialog, "workSpecified");
         dialog.findChild<QRadioButton *>("workSpecified")->click();
         const QString work = fixture.filePath("рабочая папка");
         dialog.findChild<QLineEdit *>("workPath")->setText(work);
-        pages->setCurrentIndex(3);
+        OptionsPresentation::show(dialog, "editorCommand");
         const QString editor = QStringLiteral("\"/fixture/editor 空\" --wait");
         auto *command = dialog.findChild<QLineEdit *>("editorCommand");
         command->setText(editor);
         command->setFocus();
         QCOMPARE(dialog.focusWidget(), command);
-        pages->setCurrentIndex(4);
+        OptionsPresentation::show(dialog, "gridOption");
         dialog.findChild<QCheckBox *>("gridOption")->setChecked(true);
-        pages->setCurrentIndex(5);
+        OptionsPresentation::show(dialog, "languageChoice");
         auto *language = dialog.findChild<QComboBox *>("languageChoice");
         QVERIFY(language->count() > 1);
         const int russian = language->findText(QString::fromUtf8("Русский"), Qt::MatchContains);
@@ -195,7 +266,8 @@ class OptionsIntegrationTests final : public QObject {
             if (finish == 3) {
                 QVERIFY(dialog.isVisible());
                 QCOMPARE(dialog.result(), int(QDialog::Rejected));
-                QCOMPARE(pages->currentIndex(), 4);
+                QCOMPARE(pages->currentWidget()->objectName(), QString("advancedSection"));
+                QVERIFY(dialog.findChild<QtDisclosure *>("memoryDetails")->isExpanded());
                 QCOMPARE(memory->text(), QString("not-a-number"));
                 QCOMPARE(NExtract::Read_LimitGB(path), UInt32(-1));
                 UString committedEditor;
@@ -228,8 +300,9 @@ class OptionsIntegrationTests final : public QObject {
         QCOMPARE(associations->notifications, finish == 0 ? 0 : 1);
         QCOMPARE(types->topLevelItem(0)->text(1),
                  finish != 0 && failure != 0 ? QString() : QString("7-Zip"));
-        // Only source memory validation selects a different page.
-        QCOMPARE(pages->currentIndex(), finish == 3 ? 4 : 5);
+        // Memory validation reveals the input; other applies keep the section.
+        QCOMPARE(pages->currentWidget()->objectName(),
+                 finish == 3 ? QString("advancedSection") : QString("generalSection"));
         UString savedEditor;
         ReadRegEditor(true, savedEditor, path);
         QCOMPARE(text(savedEditor), finish == 0 ? QString() : editor);
@@ -261,5 +334,6 @@ class OptionsIntegrationTests final : public QObject {
         ReloadLang(path);
     }
 };
-QTEST_MAIN(OptionsIntegrationTests)
+#include "review_test_main.h"
+SEVENZIP_UI_TEST_MAIN(OptionsIntegrationTests)
 #include "options_integration_tests.moc"

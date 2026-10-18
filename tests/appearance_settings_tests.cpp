@@ -1,5 +1,6 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "fixtures/options_page_fixture.h"
+#include "fixtures/options_presentation.h"
 #include "layout_inspection.h"
 #include "qtfmoptionsdialog.h"
 #include "qtlangcontrols.h"
@@ -120,7 +121,7 @@ class AppearanceSettingsTests final : public QObject {
         CMyComPtr<IFolderManager> manager = new COptionsManager;
         auto services = std::make_shared<COptionsAssociations>();
         QtFmOptionsDialog dialog(path(), nullptr, manager, services);
-        dialog.findChild<QTabWidget *>("optionsPages")->setCurrentIndex(4);
+        OptionsPresentation::show(dialog, "appearanceChoice");
         dialog.show();
         QVERIFY(QTest::qWaitForWindowExposed(&dialog));
         choose(dialog, Qt::ColorScheme::Light);

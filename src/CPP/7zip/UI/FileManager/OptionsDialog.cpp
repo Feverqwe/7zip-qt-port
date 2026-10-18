@@ -1,6 +1,6 @@
 // Adapted from 7-Zip OptionsDialog.cpp (0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
-// Qt property-sheet container: original page order and initial System page.
+// Qt presentation groups the original six state/apply owners into three sections.
 #include "7zip/UI/FileManager/resource.h"
 #include "EditPage.h"
 #include "FoldersPage.h"
@@ -11,8 +11,10 @@
 #include "SystemPage.h"
 #include "qtassociationplatform.h"
 #include "qtdialogunits.h"
+#include "qtdisclosure.h"
 #include "qtfmoptionsdialog.h"
 #include "qtlangcontrols.h"
+#include <QApplication>
 #include <QButtonGroup>
 #include <QCloseEvent>
 #include <QDialogButtonBox>
@@ -20,11 +22,13 @@
 #include <QKeyEvent>
 #include <QLineEdit>
 #include <QMessageBox>
+#include <QPlainTextEdit>
 #include <QPointer>
 #include <QPushButton>
 #include <QRadioButton>
 #include <QScopeGuard>
 #include <QScopedValueRollback>
+#include <QScrollArea>
 #include <QShortcut>
 #include <QStyleHints>
 #include <QTabBar>
@@ -102,42 +106,39 @@ QtFmOptionsDialog::QtFmOptionsDialog(const QString &settingsPath, QWidget *paren
     setObjectName("settingsDialog");
     ReloadLang(settingsPath);
     QtBindLangText(this, IDS_OPTIONS, "Options");
-    auto *layout = new QVBoxLayout(this);
     auto *pages = new QtOptionsPages(this);
+    _sections = pages;
     pages->setObjectName("optionsPages");
     pages->tabBar()->setFocusPolicy(Qt::StrongFocus); // Native property-sheet WS_TABSTOP.
-    _editPage = new CEditPage(settingsPath, pages);
-    _foldersPage = new CFoldersPage(settingsPath, pages);
-    _settingsPage = new CSettingsPage(settingsPath, pages, true);
+    _editPage = new CEditPage(settingsPath, this);
+    _foldersPage = new CFoldersPage(settingsPath, this);
+    _settingsPage = new CSettingsPage(settingsPath, this, true);
     _appliedColorScheme = _settingsPage->settings().ColorScheme;
-    _menuPage = new CMenuPage(settingsPath, pages);
-    _langPage = new CLangPage(settingsPath, pages);
+    _menuPage = new CMenuPage(settingsPath, this);
+    _langPage = new CLangPage(settingsPath, this);
     if (!associations)
         associations = CreateQtAssociationServices(CreateNativeAssociationPlatform());
-    _systemPage = new CSystemPage(manager, std::move(associations), pages);
-    // OptionsDialog's pageIDs/pagePointers, retaining source order and IDs.
+    _systemPage = new CSystemPage(manager, std::move(associations), this);
+    // Retain source owner IDs for help/resource provenance, not navigation.
     const unsigned pageIDs[] = {2200, 2300, 2400, 2103, 2500, 2101};
     QWidget *pagePointers[] = {_systemPage, _menuPage,     _foldersPage,
                                _editPage,   _settingsPage, _langPage};
-    const QString titles[] = {"System", "7-Zip", "Folders", "Editor", "Settings", "Language"};
     for (unsigned i = 0; i < 6; i++) {
-        auto *page = pagePointers[i] ? pagePointers[i] : new QWidget(pages);
-        page->setProperty("sourcePageID", pageIDs[i]);
-        pages->addTab(page, QtLangText(pageIDs[i], titles[i]));
-        pages->setTabEnabled(int(i), pagePointers[i] != nullptr);
+        pagePointers[i]->setProperty("sourcePageID", pageIDs[i]);
     }
-    // MyPropertySheet sets nStartPage = 0 for both native character variants.
-    pages->setCurrentIndex(0);
-    layout->addWidget(pages);
     _buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel |
                                         QDialogButtonBox::Apply | QDialogButtonBox::Help,
                                     this);
     _buttons->setObjectName("settingsButtons");
+    buildSections();
+    connect(qApp, &QApplication::focusChanged, this, [this](QWidget *, QWidget *now) {
+        if (now && _sections->isAncestorOf(now))
+            _helpContext = now;
+    });
     // Keep existing source tab stops under QMacStyle's restricted button policy.
     for (auto *button : findChildren<QAbstractButton *>())
         if (button->focusPolicy() & Qt::TabFocus)
             button->setFocusPolicy(Qt::StrongFocus);
-    layout->addWidget(_buttons);
     connect(_buttons, &QDialogButtonBox::accepted, this, &QtFmOptionsDialog::accept);
     connect(_buttons, &QDialogButtonBox::rejected, this, &QtFmOptionsDialog::reject);
     connect(_buttons, &QDialogButtonBox::helpRequested, this, &QtFmOptionsDialog::showPageHelp);
@@ -152,41 +153,32 @@ QtFmOptionsDialog::QtFmOptionsDialog(const QString &settingsPath, QWidget *paren
     connect(_langPage, &CLangPage::Changed, this, &QtFmOptionsDialog::updateApplyButton);
     connect(_systemPage, &CSystemPage::Changed, this, &QtFmOptionsDialog::updateApplyButton);
     updateApplyButton();
-    // MyPropertySheet uses the largest source page: GuiCommon.rc's 300x280
-    // content DLU plus two eight-DLU margins. Qt supplies its native chrome.
-    QSize pageHint;
-    for (auto *page : pagePointers)
-        if (page)
-            pageHint = pageHint.expandedTo(page->sizeHint());
-    const QSize tabHint = pages->tabBar()->sizeHint();
-    const QSize contentHint(qMax(pageHint.width(), tabHint.width()), pageHint.height());
-    const QSize tabChrome = (pages->sizeHint() - contentHint).expandedTo(QSize(0, 0));
-    QSize sourcePage = QtDialogUnits(font()).pixels(QSize(316, 296));
-    sourcePage.setWidth(qMax(sourcePage.width(), tabHint.width()));
-    const QMargins margins = layout->contentsMargins();
-    const int footerHeight = layout->spacing() + _buttons->sizeHint().height();
-    const QSize outer(margins.left() + margins.right(),
-                      margins.top() + margins.bottom() + footerHeight);
-    resize((sourcePage + tabChrome + outer).expandedTo(minimumSizeHint()));
-    // MyPropertySheet/WM_INITDIALOG focuses the initial page's first tab stop.
+    resize(QSize(fontMetrics().averageCharWidth() * 80, fontMetrics().lineSpacing() * 28)
+               .expandedTo(minimumSizeHint()));
     pages->focusInitialControl();
 }
 
 CFmSettings QtFmOptionsDialog::settings() const { return _settingsPage->settings(); }
 void QtFmOptionsDialog::showPageHelp() {
-    auto *page = findChild<QTabWidget *>("optionsPages")->currentWidget();
-    if (page == _systemPage)
-        _systemPage->OnNotifyHelp();
-    else if (page == _editPage)
+    QWidget *context = focusWidget();
+    if (!context || !_sections->isAncestorOf(context))
+        context = _helpContext;
+    const auto inside = [context](QWidget *owner) { return owner && owner->isAncestorOf(context); };
+    if (inside(_editGroup))
         _editPage->OnNotifyHelp();
-    else if (page == _foldersPage)
+    else if (inside(_foldersGroup))
         _foldersPage->OnNotifyHelp();
-    else if (page == _settingsPage)
+    else if (inside(_memoryGroup) || inside(_listGroup) ||
+             inside(_settingsPage->appearanceControls()))
         _settingsPage->OnNotifyHelp();
-    else if (page == _menuPage)
+    else if (inside(_menuGroup))
         _menuPage->OnNotifyHelp();
-    else if (page == _langPage)
+    else if (_sections->currentWidget()->objectName() == "generalSection")
         _langPage->OnNotifyHelp();
+    else if (_sections->currentWidget()->objectName() == "integrationSection")
+        _systemPage->OnNotifyHelp();
+    else
+        _settingsPage->OnNotifyHelp();
 }
 void QtFmOptionsDialog::apply() {
     if (_applying)
@@ -213,8 +205,7 @@ void QtFmOptionsDialog::apply() {
     _foldersPage->OnApply();
     _editPage->OnApply();
     if (_settingsPage->OnApply() != 0) {
-        findChild<QTabWidget *>("optionsPages")->setCurrentWidget(_settingsPage);
-        _settingsPage->setFocus();
+        revealControl(findChild<QWidget *>("extractMemorySpin"));
         updateApplyButton();
         return;
     }
@@ -236,16 +227,19 @@ void QtFmOptionsDialog::updateApplyButton() {
         ->setEnabled(_editPage->IsModified() || _foldersPage->IsModified() ||
                      _settingsPage->IsModified() || _menuPage->IsModified() ||
                      _langPage->IsModified() || _systemPage->IsModified());
+    refreshSectionSummaries();
 }
 void QtFmOptionsDialog::reloadLangItems() {
     QtReloadLangTexts(*this);
     _menuPage->ReloadLangItems();
     _systemPage->ReloadLangItems();
     auto *pages = findChild<QTabWidget *>("optionsPages");
-    const QString titles[] = {"System", "7-Zip", "Folders", "Editor", "Settings", "Language"};
     for (int i = 0; i < pages->count(); i++)
         pages->setTabText(
-            i, QtLangText(pages->widget(i)->property("sourcePageID").toUInt(), titles[i]));
+            i, QCoreApplication::translate(
+                   "SettingsRedesign",
+                   pages->widget(i)->property("sectionTitle").toByteArray().constData()));
+    refreshSectionSummaries();
 }
 void QtFmOptionsDialog::changeEvent(QEvent *event) {
     if (event->type() == QEvent::LanguageChange && _langPage)

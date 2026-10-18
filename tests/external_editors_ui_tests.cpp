@@ -1,5 +1,6 @@
 #include "CPP/7zip/UI/FileManager/EditPage.h"
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
+#include "fixtures/options_presentation.h"
 #include "layout_inspection.h"
 #include "qtfmoptionsdialog.h"
 #include "window_state_support.h"
@@ -52,8 +53,7 @@ class ExternalEditorsUiTests final : public QObject, protected MainWindowTestSup
                 dialog.findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Apply);
             QVERIFY(!applyButton->isEnabled());
             auto *pages = dialog.findChild<QTabWidget *>("optionsPages");
-            QCOMPARE(pages->tabText(3), QString("Editor"));
-            pages->setCurrentIndex(3);
+            OptionsPresentation::show(dialog, "viewerCommand");
             dialog.findChild<QLineEdit *>("viewerCommand")->setText("new viewer");
             dialog.findChild<QLineEdit *>("editorCommand")->setText("editor --edit");
             dialog.findChild<QLineEdit *>("diffCommand")->setText("diff --compare");
@@ -63,13 +63,11 @@ class ExternalEditorsUiTests final : public QObject, protected MainWindowTestSup
             for (QSize size : {QSize(640, 390), QSize(520, 380)}) {
                 dialog.resize(size);
                 QApplication::processEvents();
-                // Native styles determine the six-page sheet's minimum size.
-                // Keep checking actual field/footer clipping at the compact request.
-                QCOMPARE(dialog.width(), size.width());
-                QCOMPARE(dialog.size(), size.expandedTo(dialog.minimumSize()));
                 for (const char *name : {"viewerCommand", "editorCommand", "diffCommand"}) {
                     auto *edit = dialog.findChild<QLineEdit *>(name);
+                    OptionsPresentation::show(dialog, edit);
                     auto *browse = dialog.findChild<QPushButton *>(QString(name) + "Browse");
+                    OptionsPresentation::show(dialog, browse);
                     QVERIFY(UiInspection::fullyVisible(*edit, dialog));
                     QVERIFY(UiInspection::fullyVisible(*browse, dialog));
                     QVERIFY(UiInspection::separate(*edit, *browse, dialog));

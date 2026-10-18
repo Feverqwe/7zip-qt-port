@@ -5,11 +5,13 @@
 #include "RegistryAssociations.h"
 #include "qtassociationservices.h"
 #include <QIcon>
+#include <QList>
 #include <QWidget>
 #include <memory>
 class QTreeWidget;
 class QPushButton;
 class QLabel;
+class QCheckBox;
 
 enum EExtState { kExtState_Clear = 0, kExtState_Other, kExtState_7Zip };
 struct CModifiedExtInfo : public NRegistryAssoc::CShellExtInfo {
@@ -66,6 +68,9 @@ class CSystemPage : public QWidget {
     QPushButton *_all;
     QLabel *_label;
     bool _needSave = false;
+    QList<QCheckBox *> _formatChoices;
+    void RefreshFormatChoices();
+    void SelectFormat(unsigned index, bool selected);
     unsigned GetRealIndex(unsigned listIndex) const { return listIndex; }
     int AddIcon(const UString &path, int iconIndex, const QIcon &nativeIcon = {});
     UString OwnFormatIconPath(unsigned realIndex) const;
@@ -84,6 +89,8 @@ class CSystemPage : public QWidget {
     void OnNotifyHelp();
     void ReloadLangItems();
     bool IsModified() const { return _needSave; }
+    bool IntegrationAvailable() const;
+    void SimplifyPresentation();
 
   signals:
     void Changed();

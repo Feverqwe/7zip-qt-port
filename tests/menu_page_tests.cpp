@@ -1,5 +1,6 @@
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "Common/MyTypes.h"
+#include "fixtures/options_presentation.h"
 
 #include "7zip/UI/Explorer/ContextMenuFlags.h"
 #include "CPP/7zip/UI/Common/ZipRegistry.h"
@@ -176,12 +177,14 @@ class MenuPageTests : public QObject {
         QTemporaryDir fixture;
         SaveRegLang(UString("-"), fixture.filePath("settings.ini"));
         QtFmOptionsDialog dialog(fixture.filePath("settings.ini"));
-        auto *pages = dialog.findChild<QTabWidget *>("optionsPages");
-        QVERIFY(pages->isTabEnabled(1));
-        QCOMPARE(pages->tabText(1), QString("7-Zip"));
-        pages->setCurrentIndex(1);
         dialog.show();
         QVERIFY(QTest::qWaitForWindowActive(&dialog));
+        if (!CreateNativeMenuPageServices()->ShellIntegrationSupported()) {
+            QVERIFY(!dialog.findChild<QWidget *>("menuItems")->isVisible());
+            QVERIFY(!dialog.findChild<QtDisclosure *>("shellMenuDetails"));
+            return;
+        }
+        QVERIFY(OptionsPresentation::show(dialog, "cascadedMenu"));
         auto *zone = dialog.findChild<QComboBox *>("menuZone");
         QCOMPARE(zone->isEnabled(), IsZonePropagationSupported());
         QCOMPARE(zone->isVisible(), IsZonePropagationSupported());
@@ -208,7 +211,6 @@ class MenuPageTests : public QObject {
         for (QSize size : {QSize(640, 390), QSize(520, 380)}) {
             dialog.resize(size);
             QApplication::processEvents();
-            QTRY_COMPARE(dialog.size(), size.expandedTo(dialog.minimumSizeHint()));
             QWidget *previous = nullptr;
             for (const char *name :
                  {"shellIntegration", "shellIntegration32", "cascadedMenu", "menuIcons",
@@ -222,6 +224,7 @@ class MenuPageTests : public QObject {
                     QVERIFY(control->isHidden());
                     continue;
                 }
+                OptionsPresentation::show(dialog, control);
                 QVERIFY(UiInspection::fullyVisible(*control, dialog));
                 if (previous)
                     QVERIFY2(

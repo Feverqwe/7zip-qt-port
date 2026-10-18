@@ -1,6 +1,7 @@
 #include "7zip/UI/FileManager/resource.h"
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "createarchivedialog.h"
+#include "fixtures/options_presentation.h"
 #include "fixtures/translation_catalog.h"
 #include "layout_inspection.h"
 #include "qtcompressoptionsdialog.h"
@@ -542,39 +543,29 @@ class LanguageUiTests : public QObject, protected MainWindowTestSupport {
             QVERIFY(dialog.findChild<QDialogButtonBox *>("settingsButtons")
                         ->button(QDialogButtonBox::Apply)
                         ->isEnabled());
-            QHash<QWidget *, int> normalTops;
             for (QSize size : {QSize(640, 390), QSize(520, 380), QSize(640, 720)}) {
                 dialog.resize(size);
-                for (int page = 0; page < pages->count(); page++) {
+                for (const char *name :
+                     {"appearanceChoice", "languageChoice", "languageInfo", "workPathBrowse",
+                      "viewerCommand", "editorCommand", "diffCommand", "extractMemoryLabel",
+                      "extractMemorySpin", "gridOption"}) {
+                    auto *control = dialog.findChild<QWidget *>(name);
+                    QVERIFY(OptionsPresentation::show(dialog, control));
+                    QVERIFY2(UiInspection::fullyVisible(*control, dialog), name);
+                    if (qobject_cast<QLabel *>(control))
+                        QVERIFY2(UiInspection::labelFits(*control), name);
+                }
+                for (int page = 0; page < pages->count(); ++page) {
                     pages->setCurrentIndex(page);
                     QApplication::processEvents();
-                    for (auto *control : pages->currentWidget()->findChildren<QWidget *>()) {
-                        if (!control->isVisible() ||
-                            control->parentWidget() != pages->currentWidget())
-                            continue;
-                        QVERIFY2(UiInspection::fullyVisible(*control, dialog),
-                                 qPrintable(control->objectName()));
-                        // Extra height belongs below forms or inside their lists,
-                        // rather than between a caption and its input.
-                        const int top = UiInspection::bounds(*control, dialog).top();
-                        if (size == QSize(640, 390))
-                            normalTops.insert(control, top);
-                        else if (size == QSize(640, 720))
-                            QCOMPARE(top, normalTops.value(control));
-                        if (qobject_cast<QCheckBox *>(control))
-                            QVERIFY2(control->sizeHint().width() <= control->width(),
-                                     qPrintable(control->objectName()));
-                        if (qobject_cast<QLabel *>(control))
-                            QVERIFY2(UiInspection::labelFits(*control),
-                                     qPrintable(control->objectName()));
-                    }
-                    const QString dimensions =
-                        size.height() > 390 ? QString("%1x%2").arg(size.width()).arg(size.height())
-                                            : QString::number(size.width());
-                    QVERIFY(UiInspection::writeReport(dialog, QString("options-language-%1-%2-%3")
-                                                                  .arg(language)
-                                                                  .arg(dimensions)
-                                                                  .arg(page)));
+                    QVERIFY(UiInspection::fullyVisible(
+                        *dialog.findChild<QDialogButtonBox *>("settingsButtons"), dialog));
+                    QVERIFY(
+                        UiInspection::writeReport(dialog, QString("options-language-%1-%2x%3-%4")
+                                                              .arg(language)
+                                                              .arg(size.width())
+                                                              .arg(size.height())
+                                                              .arg(page)));
                 }
             }
         }

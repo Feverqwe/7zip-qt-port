@@ -35,6 +35,15 @@ CSettingsPage::CSettingsPage(const QString &settingsPath, QWidget *parent, bool 
         setWindowFlags(Qt::Widget);
     QtBindResourceText(this, IDD_SETTINGS, "Settings");
     auto *layout = new QVBoxLayout(this);
+    const auto group = [this, layout](QWidget *&content) {
+        content = new QWidget(this);
+        auto *fields = new QVBoxLayout(content);
+        fields->setContentsMargins(0, 0, 0, 0);
+        fields->setSpacing(8);
+        layout->addWidget(content);
+        return fields;
+    };
+    auto *appearanceLayout = group(_appearanceControls);
     auto *appearanceLabel = new QLabel(this);
     appearanceLabel->setObjectName("appearanceLabel");
     QtBindLocalText(appearanceLabel, "SettingsRedesign",
@@ -43,14 +52,15 @@ CSettingsPage::CSettingsPage(const QString &settingsPath, QWidget *parent, bool 
     _appearance->setObjectName("appearanceChoice");
     appearanceLabel->setBuddy(_appearance);
     reloadAppearanceText();
-    layout->addWidget(appearanceLabel);
-    layout->addWidget(_appearance);
+    appearanceLayout->addWidget(appearanceLabel);
+    appearanceLayout->addWidget(_appearance);
     connect(_appearance, &QComboBox::currentIndexChanged, this, [this] {
         if (!_initMode) {
             _appearanceChanged = true;
             Changed();
         }
     });
+    auto *listLayout = group(_listControls);
     _showDots = new QCheckBox(this);
     QtBindResourceText(_showDots, IDX_SETTINGS_SHOW_DOTS, "Show \"..\" item");
     _showDots->setObjectName(QStringLiteral("showDotsOption"));
@@ -76,13 +86,14 @@ CSettingsPage::CSettingsPage(const QString &settingsPath, QWidget *parent, bool 
     _showSystemMenu->setObjectName(QStringLiteral("showSystemMenuOption"));
     for (auto *control : {_showDots, _showRealFileIcons, _fullRow, _showGrid, _singleClick,
                           _alternativeSelection, _showSystemMenu}) {
-        layout->addWidget(control);
+        listLayout->addWidget(control);
         connect(control, &QCheckBox::toggled, this, &CSettingsPage::OnButtonClicked);
     }
+    auto *memoryLayout = group(_memoryControls);
     _largePages = new QCheckBox(this);
     QtBindResourceText(_largePages, IDX_SETTINGS_LARGE_PAGES, "Use &large memory pages");
     _largePages->setObjectName("largePagesOption");
-    layout->addWidget(_largePages);
+    memoryLayout->addWidget(_largePages);
     connect(_largePages, &QCheckBox::toggled, this, [this] {
         if (!_initMode) {
             _largePages_wasChanged = true;
@@ -94,8 +105,9 @@ CSettingsPage::CSettingsPage(const QString &settingsPath, QWidget *parent, bool 
                        "Maximum amount of RAM memory usage allowed to unpack archives:");
     memoryLabel->setObjectName("extractMemoryLabel");
     memoryLabel->setWordWrap(true);
-    layout->addWidget(memoryLabel);
+    memoryLayout->addWidget(memoryLabel);
     auto *memoryRow = new QHBoxLayout;
+    memoryRow->setSpacing(12);
     _memSet = new QCheckBox(":", this);
     _memSet->setObjectName("extractMemorySet");
     QtBindLangText(_memSet, IDT_MEM_USAGE_EXTRACT, {}, true);
@@ -110,7 +122,7 @@ CSettingsPage::CSettingsPage(const QString &settingsPath, QWidget *parent, bool 
     memoryRow->addWidget(_memSpin);
     memoryRow->addWidget(ramLabel);
     memoryRow->addStretch();
-    layout->addLayout(memoryRow);
+    memoryLayout->addLayout(memoryRow);
     // Keep the source settings and memory rows together when the sheet grows.
     layout->addStretch();
     connect(_memSet, &QCheckBox::toggled, this, [this](bool checked) {

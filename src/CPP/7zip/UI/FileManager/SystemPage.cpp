@@ -197,6 +197,7 @@ void CSystemPage::RefreshAvailability() {
                 : QCoreApplication::translate(
                       "SystemPage", "No supported formats are available for association changes."));
     }
+    RefreshFormatChoices();
 }
 
 UString CSystemPage::OwnFormatIconPath(unsigned realIndex) const {
@@ -220,6 +221,7 @@ void CSystemPage::RefreshListItem(unsigned group, unsigned listIndex) {
     const int imageIndex = assoc.GetIconIndex();
     _listView->topLevelItem(int(listIndex))
         ->setIcon(0, imageIndex == -1 ? QIcon() : _imageList[(unsigned)imageIndex]);
+    RefreshFormatChoices();
 }
 
 void CSystemPage::ChangeState(unsigned group, const CUIntVector &requested) {

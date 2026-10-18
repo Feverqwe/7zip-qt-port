@@ -1,5 +1,6 @@
 #include "CPP/7zip/UI/Common/WorkDir.h"
 #include "Common/StringConvert.h"
+#include "fixtures/options_presentation.h"
 #include "fixtures/widget_dialogs.h"
 #include "layout_inspection.h"
 #include "qtfmoptionsdialog.h"
@@ -32,7 +33,7 @@ class OptionsDialogTests : public QObject {
     void settingsGeometryAndKeyboardSpin() {
         QTemporaryDir fixture;
         QtFmOptionsDialog dialog(fixture.filePath("options.ini"));
-        dialog.findChild<QTabWidget *>("optionsPages")->setCurrentIndex(4);
+        OptionsPresentation::show(dialog, "extractMemorySpin");
         dialog.show();
         QVERIFY(QTest::qWaitForWindowActive(&dialog));
         for (QSize size : {QSize(640, 390), QSize(520, 380), QSize(640, 720), QSize(900, 800)}) {
@@ -50,8 +51,10 @@ class OptionsDialogTests : public QObject {
                     QVERIFY(control->isHidden());
                     continue;
                 }
-                QVERIFY(control && UiInspection::fullyVisible(*control, dialog));
-                if (previous)
+                QVERIFY(control);
+                OptionsPresentation::show(dialog, control);
+                QVERIFY(UiInspection::fullyVisible(*control, dialog));
+                if (previous && previous->parentWidget() == control->parentWidget())
                     QVERIFY(UiInspection::bounds(*previous, dialog).bottom() <
                             UiInspection::bounds(*control, dialog).top());
                 previous = control;
@@ -66,6 +69,7 @@ class OptionsDialogTests : public QObject {
             QVERIFY(memoryGap <= 2 * label->fontMetrics().lineSpacing());
             auto *ram = dialog.findChild<QWidget *>("extractMemoryRam");
             auto *enabled = dialog.findChild<QCheckBox *>("extractMemorySet");
+            QVERIFY(UiInspection::writeReport(dialog, "settings-memory-review"));
             QVERIFY(UiInspection::fullyVisible(*ram, dialog));
             QVERIFY(UiInspection::separate(*enabled, *spin, dialog));
             QVERIFY(UiInspection::separate(*spin, *ram, dialog));
@@ -89,7 +93,7 @@ class OptionsDialogTests : public QObject {
     void foldersBrowseCancelPreservesPath() {
         QTemporaryDir fixture;
         QtFmOptionsDialog dialog(fixture.filePath("options.ini"));
-        dialog.findChild<QTabWidget *>("optionsPages")->setCurrentIndex(2);
+        OptionsPresentation::show(dialog, "workSystem");
         dialog.show();
         QVERIFY(QTest::qWaitForWindowActive(&dialog));
         dialog.findChild<QRadioButton *>("workSpecified")->click();
@@ -217,7 +221,7 @@ class OptionsDialogTests : public QObject {
         old.Save(settings);
         QtFmOptionsDialog dialog(settings);
         auto *pages = dialog.findChild<QTabWidget *>("optionsPages");
-        pages->setCurrentIndex(2);
+        OptionsPresentation::show(dialog, "workSystem");
         auto *path = dialog.findChild<QLineEdit *>("workPath");
         auto *browse = dialog.findChild<QPushButton *>("workPathBrowse");
         QVERIFY(!path->isEnabled() && !browse->isEnabled());
@@ -275,13 +279,13 @@ class OptionsDialogTests : public QObject {
         }
         QtFmOptionsDialog dialog(settings);
         QVERIFY(dialog.findChild<QRadioButton *>("workSystem")->isChecked());
-        dialog.findChild<QTabWidget *>("optionsPages")->setCurrentIndex(2);
+        OptionsPresentation::show(dialog, "workSystem");
         dialog.show();
         QVERIFY(QTest::qWaitForWindowActive(&dialog));
         for (QSize size : {QSize(640, 390), QSize(520, 380)}) {
             dialog.resize(size);
             QApplication::processEvents();
-            QTRY_COMPARE(dialog.size(), size.expandedTo(dialog.minimumSizeHint()));
+            OptionsPresentation::show(dialog, "workPathBrowse");
             QWidget *previous = nullptr;
             for (const char *name :
                  {"workSystem", "workCurrent", "workSpecified", "workPath", "workRemovableOnly"}) {
@@ -292,6 +296,7 @@ class OptionsDialogTests : public QObject {
                     continue;
                 }
 #endif
+                OptionsPresentation::show(dialog, control);
                 QVERIFY(control && UiInspection::fullyVisible(*control, dialog));
                 if (previous)
                     QVERIFY2(
@@ -302,6 +307,8 @@ class OptionsDialogTests : public QObject {
             }
             auto *path = dialog.findChild<QLineEdit *>("workPath");
             auto *browse = dialog.findChild<QPushButton *>("workPathBrowse");
+            OptionsPresentation::show(dialog, browse);
+            QVERIFY(UiInspection::writeReport(dialog, "settings-folders-review"));
             QVERIFY(UiInspection::fullyVisible(*browse, dialog));
             QVERIFY(UiInspection::separate(*path, *browse, dialog));
             QVERIFY(UiInspection::fullyVisible(*dialog.findChild<QDialogButtonBox *>(), dialog));

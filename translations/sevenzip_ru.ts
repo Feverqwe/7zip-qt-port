@@ -699,7 +699,7 @@ Are you sure you want to split archive into such volumes?</source>
     <context>
         <name>OptionsDialog</name>
         <message>
-            <location filename="../src/CPP/7zip/UI/FileManager/OptionsDialog.cpp" line="+208" />
+            <location filename="../src/CPP/7zip/UI/FileManager/OptionsDialog.cpp" line="+200" />
             <source>7-Zip</source>
             <translation>7-Zip</translation>
         </message>
@@ -755,12 +755,12 @@ Are you sure you want to split archive into such volumes?</source>
     <context>
         <name>SettingsRedesign</name>
         <message>
-            <location filename="../src/CPP/7zip/UI/FileManager/SettingsPage.cpp" line="+41" />
+            <location filename="../src/CPP/7zip/UI/FileManager/SettingsPage.cpp" line="+50" />
             <source>Appearance</source>
             <translation>Оформление</translation>
         </message>
         <message>
-            <location line="+221" />
+            <location line="+223" />
             <source>Follow system</source>
             <translation>Как в системе</translation>
         </message>
@@ -773,6 +773,111 @@ Are you sure you want to split archive into such volumes?</source>
             <location line="+2" />
             <source>Dark</source>
             <translation>Тёмное</translation>
+        </message>
+        <message>
+            <location filename="../src/qtfmoptionslayout.cpp" line="+51" />
+            <source>Standard settings</source>
+            <translation>Стандартные настройки</translation>
+        </message>
+        <message>
+            <location line="+2" />
+            <location filename="../src/qtsystempagepresentation.cpp" line="+50" />
+            <location line="+5" />
+            <source>Changed</source>
+            <translation>Изменено</translation>
+        </message>
+        <message>
+            <location line="+20" />
+            <source>About translation</source>
+            <translation>О переводе</translation>
+        </message>
+        <message>
+            <location line="+2" />
+            <source>General</source>
+            <translation>Основные</translation>
+        </message>
+        <message>
+            <location line="+11" />
+            <source>File Explorer commands</source>
+            <translation>Команды Проводника</translation>
+        </message>
+        <message>
+            <location line="+6" />
+            <source>Integration</source>
+            <translation>Интеграция</translation>
+        </message>
+        <message>
+            <location line="+9" />
+            <source>Memory for extraction</source>
+            <translation>Память для распаковки</translation>
+        </message>
+        <message>
+            <location line="+2" />
+            <source>Temporary files</source>
+            <translation>Временные файлы</translation>
+        </message>
+        <message>
+            <location line="+2" />
+            <source>External applications</source>
+            <translation>Внешние приложения</translation>
+        </message>
+        <message>
+            <location line="+2" />
+            <source>Familiar behavior</source>
+            <translation>Привычное поведение</translation>
+        </message>
+        <message>
+            <location line="+2" />
+            <source>Advanced</source>
+            <translation>Дополнительно</translation>
+        </message>
+        <message>
+            <location line="+11" />
+            <source>Memory limit: %1 GB</source>
+            <translation>Лимит памяти: %1 ГБ</translation>
+        </message>
+        <message numerus="yes">
+            <location line="+35" />
+            <source>%n commands</source>
+            <translation>
+                <numerusform>%n команда</numerusform>
+                <numerusform>%n команды</numerusform>
+                <numerusform>%n команд</numerusform>
+            </translation>
+        </message>
+        <message numerus="yes">
+            <location filename="../src/qtsystempagepresentation.cpp" line="-3" />
+            <source>%n selected formats</source>
+            <translation>
+                <numerusform>Выбран %n формат</numerusform>
+                <numerusform>Выбрано %n формата</numerusform>
+                <numerusform>Выбрано %n форматов</numerusform>
+            </translation>
+        </message>
+        <message>
+            <location line="+15" />
+            <source>Change selected</source>
+            <translation>Изменить выбранные</translation>
+        </message>
+        <message>
+            <location line="+1" />
+            <source>All users</source>
+            <translation>Все пользователи</translation>
+        </message>
+        <message>
+            <location line="+7" />
+            <source>Open archives with Sevenzip</source>
+            <translation>Открывать архивы в Sevenzip</translation>
+        </message>
+        <message>
+            <location line="+23" />
+            <source>Other formats</source>
+            <translation>Другие форматы</translation>
+        </message>
+        <message>
+            <location line="+6" />
+            <source>Advanced associations</source>
+            <translation>Дополнительные параметры ассоциаций</translation>
         </message>
     </context>
     <context>
@@ -4440,7 +4545,7 @@ Use `Revert` to recover timestamp.</source>
             <translation>Нет доступных форматов для изменения ассоциаций.</translation>
         </message>
         <message>
-            <location line="+115" />
+            <location line="+117" />
             <source>%1 Archive</source>
             <translation>Архив %1</translation>
         </message>

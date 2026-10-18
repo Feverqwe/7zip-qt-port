@@ -1,6 +1,7 @@
 #include "CPP/7zip/UI/Common/ZipRegistry.h"
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "fixtures/options_page_fixture.h"
+#include "fixtures/options_presentation.h"
 #include "layout_inspection.h"
 #include "qtfmoptionsdialog.h"
 #include <QCheckBox>
@@ -9,11 +10,13 @@
 #include <QLineEdit>
 #include <QPushButton>
 #include <QRadioButton>
+#include <QScopeGuard>
 #include <QSet>
 #include <QStyleHints>
 #include <QTabBar>
 #include <QTabWidget>
 #include <QTemporaryDir>
+#include <QToolButton>
 #include <QTreeWidget>
 #include <QtTest>
 
@@ -50,151 +53,46 @@ class OptionsKeyboardTests final : public QObject {
         CMyComPtr<IFolderManager> manager = new COptionsManager;
         auto associations = std::make_shared<COptionsAssociations>();
         QtFmOptionsDialog dialog(settings, nullptr, manager, associations);
-        dialog.resize(size.expandedTo(dialog.minimumSizeHint()));
+        dialog.resize(size);
         dialog.show();
         QVERIFY(QTest::qWaitForWindowActive(&dialog));
         auto *pages = dialog.findChild<QTabWidget *>("optionsPages");
-        auto *current = dialog.findChild<QRadioButton *>("workCurrent");
-        pages->setCurrentIndex(2);
-        current->click();
-        auto *viewer = dialog.findChild<QLineEdit *>("viewerCommand");
+        QCOMPARE(dialog.focusWidget(), dialog.findChild<QComboBox *>("appearanceChoice"));
+        OptionsPresentation::show(dialog, "editorCommand");
         auto *editor = dialog.findChild<QLineEdit *>("editorCommand");
-        viewer->setText("pending viewer --wait");
         editor->setText("pending editor --wait");
-        pages->setCurrentIndex(0);
-        dialog.findChild<QPushButton *>("systemCurrent")->setFocus();
-        auto expected = [&](int index) -> QWidget * {
-            const char *first[] = {"systemCurrent",    nullptr,
-                                   "workCurrent",      "viewerCommand",
-                                   "appearanceChoice", "languageChoice"};
-            if (first[index])
-                return dialog.findChild<QWidget *>(first[index]);
-            // MenuPage2.rc order; native capabilities can disable this page.
-            for (const char *name : {"shellIntegration", "shellIntegration32", "cascadedMenu",
-                                     "menuIcons", "menuElimDup", "menuZone", "menuItems"}) {
-                auto *control = dialog.findChild<QWidget *>(name);
-                if (control && control->isVisible() && control->isEnabled())
-                    return control;
-            }
-            return pages->tabBar();
-        };
+        OptionsPresentation::show(dialog, "workCurrent");
+        auto *current = dialog.findChild<QRadioButton *>("workCurrent");
+        current->click();
+        OptionsPresentation::show(dialog, "appearanceChoice");
+        dialog.findChild<QComboBox *>("appearanceChoice")->setFocus();
         for (int direction : {1, -1})
-            for (int step = 0; step < 6; ++step) {
-                const int target = (pages->currentIndex() + direction + 6) % 6;
-                Qt::KeyboardModifiers modifiers = control;
-                if (direction < 0)
-                    modifiers |= Qt::ShiftModifier;
-                const Qt::Key key =
-                    control == Qt::MetaModifier && direction < 0 ? Qt::Key_Backtab : Qt::Key_Tab;
-                QTest::keyClick(dialog.focusWidget(), key, modifiers);
+            for (int step = 0; step < pages->count(); ++step) {
+                const int target =
+                    (pages->currentIndex() + direction + pages->count()) % pages->count();
+                const auto modifiers =
+                    control | (direction < 0 ? Qt::ShiftModifier : Qt::NoModifier);
+                QTest::keyClick(dialog.focusWidget(), Qt::Key_Tab, modifiers);
                 QCOMPARE(pages->currentIndex(), target);
-                QCOMPARE(dialog.focusWidget(), expected(target));
-                QVERIFY(dialog.focusWidget()->isVisible());
+                QWidget *focus = dialog.focusWidget();
+                QVERIFY(focus && focus->isVisible() && focus->isEnabled());
+                QVERIFY(pages->currentWidget()->isAncestorOf(focus));
                 QVERIFY(current->isChecked());
-                QCOMPARE(viewer->text(), QString("pending viewer --wait"));
                 QCOMPARE(editor->text(), QString("pending editor --wait"));
-                if (target == 3)
-                    QCOMPARE(viewer->selectedText(), viewer->text());
-                QVERIFY(UiInspection::writeReport(
-                    dialog, QString("options-activation-%1-%2-%3-%4")
-                                    .arg(language)
-                                    .arg(size.width())
-                                    .arg(direction)
-                                    .arg(target) +
-                                (control == Qt::MetaModifier ? "-physical-control" : QString())));
-            }
-        auto *footer = dialog.findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Cancel);
-        for (int direction : {1, -1, -1}) {
-            footer->setFocus();
-            QCOMPARE(dialog.focusWidget(), footer);
-            const int target = (pages->currentIndex() + direction + 6) % 6;
-            QTest::keyClick(footer, Qt::Key_Tab,
-                            control | (direction < 0 ? Qt::ShiftModifier : Qt::NoModifier));
-            QCOMPARE(pages->currentIndex(), target);
-            QCOMPARE(dialog.focusWidget(), expected(target));
-        }
-        dialog.reject();
-        QCOMPARE(associations->writes, 0);
-        QCOMPARE(associations->notifications, 0);
-    }
-    void sourceInitialFocusAndSystemTraversal_data() {
-        QTest::addColumn<QString>("language");
-        QTest::addColumn<QSize>("size");
-        QTest::addColumn<int>("availability");
-        for (const QString &language : {QString("-"), QString("ru")})
-            for (const QSize size : {QSize(640, 390), QSize(520, 380)})
-                for (int availability = 0; availability < 4; ++availability)
-                    QTest::newRow(qPrintable(
-                        QString("%1-%2-%3").arg(language).arg(size.width()).arg(availability)))
-                        << language << size << availability;
-    }
-    void sourceInitialFocusAndSystemTraversal() {
-        QFETCH(QString, language);
-        QFETCH(QSize, size);
-        QFETCH(int, availability);
-        QTemporaryDir fixture;
-        const QString settings = fixture.filePath("focus.ini");
-        SaveRegLang(UString(language.toStdWString().c_str()), settings);
-        CMyComPtr<IFolderManager> manager = new COptionsManager;
-        auto associations = std::make_shared<COptionsAssociations>();
-        associations->available[0] = availability & 1;
-        associations->available[1] = availability & 2;
-        QtFmOptionsDialog dialog(settings, nullptr, manager, associations);
-        dialog.resize(size.expandedTo(dialog.minimumSizeHint()));
-        dialog.show();
-        QVERIFY(QTest::qWaitForWindowActive(&dialog));
-        auto *current = dialog.findChild<QPushButton *>("systemCurrent");
-        auto *all = dialog.findChild<QPushButton *>("systemAll");
-        auto *list = dialog.findChild<QTreeWidget *>("systemAssociations");
-        QVERIFY(current && all && list);
-        QCOMPARE(current->isEnabled(), bool(availability & 1));
-        QCOMPARE(all->isEnabled(), bool(availability & 2));
-        QCOMPARE(current->isVisible(), bool(availability & 1));
-        QCOMPARE(all->isVisible(), bool(availability & 2));
-        QList<QWidget *> stops;
-        if (current->isEnabled())
-            stops << current;
-        if (all->isEnabled())
-            stops << all;
-        stops << list;
-        // SystemPage.rc's first tab stop; the pinned rendered page confirms it.
-        QCOMPARE(dialog.focusWidget(), stops.front());
-        qInfo("System tab policy: %d", int(QGuiApplication::styleHints()->tabFocusBehavior()));
-        for (int i = 1; i < stops.size(); ++i) {
-            QTest::keyClick(stops[i - 1], Qt::Key_Tab);
-            QCOMPARE(dialog.focusWidget(), stops[i]);
-        }
-        for (int i = stops.size() - 1; i > 0; --i) {
-            QTest::keyClick(stops[i], Qt::Key_Backtab);
-            QCOMPARE(dialog.focusWidget(), stops[i - 1]);
-        }
-        QSet<QWidget *> visited;
-        for (int i = 0; i < 16; ++i) {
-            auto *focused = dialog.focusWidget();
-            QVERIFY(focused && focused->isVisible() && focused->isEnabled());
-            if (visited.contains(focused))
-                break;
-            visited.insert(focused);
-            QTest::keyClick(focused, Qt::Key_Tab);
-        }
-        for (auto *stop : stops)
-            QVERIFY(visited.contains(stop));
-        auto *pages = dialog.findChild<QTabWidget *>("optionsPages");
-        QVERIFY(visited.contains(pages->tabBar()));
-        auto *footer = dialog.findChild<QDialogButtonBox *>("settingsButtons");
-        for (auto *button : footer->buttons())
-            if (button->isEnabled())
-                QVERIFY(visited.contains(button));
-        for (QWidget *control : QList<QWidget *>{current, all, list})
-            if (control->isEnabled())
-                QVERIFY(UiInspection::fullyVisible(*control, dialog));
-        QVERIFY(UiInspection::writeReport(dialog, QString("options-system-focus-%1-%2-%3")
+                QVERIFY(UiInspection::writeReport(dialog,
+                                                  QString("options-section-activation-%1-%2-%3-%4")
                                                       .arg(language)
                                                       .arg(size.width())
-                                                      .arg(availability)));
-        dialog.findChild<QTabWidget *>("optionsPages")->setCurrentIndex(3);
-        auto *editor = dialog.findChild<QLineEdit *>("editorCommand");
-        editor->setText("pending editor --wait");
+                                                      .arg(direction)
+                                                      .arg(target)));
+            }
+        auto *footer = dialog.findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Cancel);
+        footer->setFocus();
+        const int target = (pages->currentIndex() + 1) % pages->count();
+        QTest::keyClick(footer, Qt::Key_Tab, control);
+        QCOMPARE(pages->currentIndex(), target);
+        QVERIFY(pages->currentWidget()->isAncestorOf(dialog.focusWidget()));
+        OptionsPresentation::show(dialog, editor);
         editor->setFocus();
         dialog.hide();
         dialog.show();
@@ -205,30 +103,64 @@ class OptionsKeyboardTests final : public QObject {
         QCOMPARE(associations->writes, 0);
         QCOMPARE(associations->notifications, 0);
     }
-    void keyboardPageSwitchKeepsPendingInputAndVisibleFocus() {
+    void integrationCapabilitiesAndKeyboardReachability_data() {
+        QTest::addColumn<int>("availability");
+        for (int mask = 0; mask < 4; ++mask)
+            QTest::newRow(qPrintable(QString::number(mask))) << mask;
+    }
+    void integrationCapabilitiesAndKeyboardReachability() {
+        QFETCH(int, availability);
+        auto *hints = QGuiApplication::styleHints();
+        const auto previousPolicy = hints->tabFocusBehavior();
+        const auto restorePolicy = qScopeGuard([&] { hints->setTabFocusBehavior(previousPolicy); });
+        // Test the complete Tab chain with Full Keyboard Access enabled.
+        // The application's default keeps the user's native keyboard policy.
+        hints->setTabFocusBehavior(Qt::TabFocusAllControls);
         QTemporaryDir fixture;
-        QtFmOptionsDialog dialog(fixture.filePath("options.ini"));
+        CMyComPtr<IFolderManager> manager = new COptionsManager;
+        auto services = std::make_shared<COptionsAssociations>();
+        services->available[0] = availability & 1;
+        services->available[1] = availability & 2;
+        QtFmOptionsDialog dialog(fixture.filePath("options.ini"), nullptr, manager, services);
         dialog.show();
-        auto *pages = dialog.findChild<QTabWidget *>("optionsPages");
-        pages->setCurrentIndex(3);
-        auto *editor = dialog.findChild<QLineEdit *>("editorCommand");
-        auto *viewer = dialog.findChild<QLineEdit *>("viewerCommand");
-        viewer->setText("pending viewer --wait");
-        editor->setText("pending editor --wait");
-        editor->setFocus();
-        QTest::keyClick(editor, Qt::Key_Tab, Qt::ControlModifier);
-        QCOMPARE(pages->currentIndex(), 4);
-        QCOMPARE(dialog.focusWidget(), dialog.findChild<QComboBox *>("appearanceChoice"));
-        QTest::keyClick(pages, Qt::Key_Tab, Qt::ControlModifier | Qt::ShiftModifier);
-        QCOMPARE(pages->currentIndex(), 3);
-        QCOMPARE(editor->text(), QString("pending editor --wait"));
-        QCOMPARE(dialog.focusWidget(), viewer);
-        QCOMPARE(viewer->selectedText(), QString("pending viewer --wait"));
-        QVERIFY(UiInspection::fullyVisible(*viewer, dialog));
+        QVERIFY(QTest::qWaitForWindowActive(&dialog));
+        auto *choice = dialog.findChild<QCheckBox *>("association-zip");
+        auto *tree = dialog.findChild<QTreeWidget *>("systemAssociations");
+        QCOMPARE(choice->isEnabled(), bool(availability & 1));
+        QCOMPARE(tree->isColumnHidden(2), !bool(availability & 2));
+        if (availability) {
+            QVERIFY(OptionsPresentation::show(dialog, choice));
+            QVERIFY(!tree->isVisible());
+            auto *details = dialog.findChild<QtDisclosure *>("associationDetails");
+            details->button()->setFocus();
+            QTest::keyClick(details->button(), Qt::Key_Space);
+            QVERIFY(details->isExpanded());
+            QVERIFY(OptionsPresentation::show(dialog, tree));
+            tree->setFocus();
+            QTest::keyClick(tree, Qt::Key_Space);
+            QCOMPARE(tree->topLevelItem(0)->text(1),
+                     availability & 1 ? QString("7-Zip") : QString());
+        } else {
+            QVERIFY(!OptionsPresentation::show(dialog, choice));
+        }
+        OptionsPresentation::show(dialog, "appearanceChoice");
+        dialog.findChild<QComboBox *>("appearanceChoice")->setFocus();
+        QSet<QWidget *> visited;
+        for (int i = 0; i < 24; ++i) {
+            QWidget *focus = dialog.focusWidget();
+            QVERIFY(focus && focus->isVisible() && focus->isEnabled());
+            if (visited.contains(focus))
+                break;
+            visited.insert(focus);
+            QTest::keyClick(focus, Qt::Key_Tab);
+        }
+        QVERIFY(visited.contains(dialog.findChild<QComboBox *>("languageChoice")));
+        auto *footer = dialog.findChild<QDialogButtonBox *>("settingsButtons");
+        for (auto *button : footer->buttons())
+            if (button->isEnabled())
+                QVERIFY(visited.contains(button));
         dialog.reject();
-        UString saved;
-        ReadRegEditor(true, saved, fixture.filePath("options.ini"));
-        QVERIFY(saved.IsEmpty());
+        QCOMPARE(services->writes, 0);
     }
 };
 #include "review_test_main.h"

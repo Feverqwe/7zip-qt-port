@@ -51,6 +51,11 @@ failures must remain visible to the owning operation rather than silently changi
 the workflow. Platform menu, association, file picker and application-startup
 services stay behind narrow adapters.
 
+Settings presentation combines those six owners into three sections. Disclosure
+and summaries read the owners' live controls; they do not maintain another draft
+or persistence layer. Format checkboxes project the source association states
+through the original state transition; advanced controls retain its full cycle.
+
 Interface text is owned by Qt Linguist catalogs. The language service discovers
 catalogs; module-owned translators support the GUI and the native shell host,
 including DLL unload before its host application exits. Upstream resource IDs

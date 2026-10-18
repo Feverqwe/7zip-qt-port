@@ -53,6 +53,7 @@ class CMenuPage : public QWidget {
     void OnNotifyHelp();
     long OnApply();
     bool IsModified() const;
+    bool IntegrationSupported() const;
     void ReloadLangItems();
 
   signals:

@@ -156,6 +156,10 @@ bool CMenuPage::IsModified() const {
            _flags_Changed;
 }
 
+bool CMenuPage::IntegrationSupported() const {
+    return _services && _services->ShellIntegrationSupported();
+}
+
 QCheckBox *CMenuPage::ShellControl(unsigned id) const {
     return findChild<QCheckBox *>(id == IDX_SYSTEM_INTEGRATE_TO_MENU ? "shellIntegration"
                                                                      : "shellIntegration32");

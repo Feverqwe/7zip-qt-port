@@ -13,6 +13,25 @@
     </message>
 </context>
 <context>
+    <name>SettingsRedesign</name>
+    <message numerus="yes">
+        <location filename="../src/qtfmoptionslayout.cpp" line="+155"/>
+        <source>%n commands</source>
+        <translation>
+            <numerusform>%n command</numerusform>
+            <numerusform>%n commands</numerusform>
+        </translation>
+    </message>
+    <message numerus="yes">
+        <location filename="../src/qtsystempagepresentation.cpp" line="+52"/>
+        <source>%n selected formats</source>
+        <translation>
+            <numerusform>%n selected format</numerusform>
+            <numerusform>%n selected formats</numerusform>
+        </translation>
+    </message>
+</context>
+<context>
     <name>SevenZip</name>
     <message numerus="yes">
         <location filename="../src/qtupstreamtranslations.h" line="+287"/>
