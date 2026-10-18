@@ -7,6 +7,8 @@
 
 #include "7zip/Common/FileStreams.h"
 
+// Preserve the upstream COM class macro and borrowed source formatting.
+// clang-format off
 Z7_CLASS_IMP_COM_2(
   CMultiOutStream
   , IOutStream
@@ -160,3 +162,4 @@ public:
 };
 
 #endif
+// clang-format on

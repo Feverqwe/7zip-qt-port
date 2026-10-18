@@ -2,6 +2,8 @@
 // Adapted from 7-Zip 9128b80e3a471108678e2b3ec3c985861c8d7b0f.
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 
+// Preserve borrowed source formatting; functional adaptations are formatted narrowly.
+// clang-format off
 #include "StdAfx.h"
 
 #ifdef Z7_DEVICE_FILE
@@ -1195,3 +1197,4 @@ bool COutFile::SetMTime(const CFiTime *mTime) throw()
 
 
 #endif
+// clang-format on
