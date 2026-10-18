@@ -1,5 +1,6 @@
 #include "layout_inspection.h"
 #include "mainwindow.h"
+#include "qtfilemanagerstartup.h"
 
 #include <QCoreApplication>
 #include <QDir>
@@ -31,6 +32,7 @@ class ItemLayoutStyle final : public QProxyStyle {
         QRect bounds, icon, text;
         int textHeight;
         QString label;
+        Qt::Alignment alignment;
     };
     mutable QList<Item> items;
 
@@ -43,7 +45,7 @@ class ItemLayoutStyle final : public QProxyStyle {
                     view && item->index.isValid() ? view->visualRect(item->index) : item->rect;
                 items.append({cell, subElementRect(SE_ItemViewItemDecoration, item, widget),
                               subElementRect(SE_ItemViewItemText, item, widget),
-                              item->fontMetrics.height(), item->text});
+                              item->fontMetrics.height(), item->text, item->displayAlignment});
             }
         }
         QProxyStyle::drawControl(element, option, painter, widget);
@@ -318,15 +320,29 @@ class MainWindowLayoutTests : public QObject {
             QFile file(temporary.filePath(QStringLiteral("Длинное имя файла %1.txt").arg(i)));
             QVERIFY(file.open(QIODevice::WriteOnly));
         }
+        QVERIFY(QDir(temporary.path()).mkdir(QStringLiteral("Folder")));
+        QFile shortName(temporary.filePath(QStringLiteral("Short.txt")));
+        QVERIFY(shortName.open(QIODevice::WriteOnly));
+        shortName.close();
 
         ItemLayoutStyle style;
-        MainWindow window;
+        QtFileManagerStartup startup;
+        startup.FullPath = UString(temporary.path().toStdWString().c_str());
+        MainWindow window(nullptr, {}, nullptr, &startup);
         auto *list = window.findChild<QListView *>("iconList");
         QVERIFY(list);
         list->setStyle(&style);
         window.resize(windowSize);
         window.show();
         QVERIFY(QTest::qWaitForWindowExposed(&window));
+        QTRY_VERIFY(list->model()->rowCount() >= 12);
+        QTRY_VERIFY([&] {
+            for (int row = 0; row < list->model()->rowCount(); ++row)
+                if (list->model()->index(row, 0).data().toString().startsWith(
+                        QStringLiteral("Длинное")))
+                    return true;
+            return false;
+        }());
         // Exercise both transitions: vertical labels and column-flow lists
         // must not leave their layout behind when returning to Small Icons.
         for (int precedingMode : {mode == 0 ? 1 : 0, 2}) {
@@ -360,6 +376,8 @@ class MainWindowLayoutTests : public QObject {
                                         .arg(item.textHeight)
                                         .arg(item.bounds.height())));
                 if (mode == 0) {
+                    QVERIFY2(item.alignment.testFlag(Qt::AlignHCenter),
+                             "Large Icons filenames must be centered below their icons");
                     QVERIFY2(item.icon.bottom() < item.text.top(),
                              "Filename must be below the icon");
                     if (item.label.startsWith(QStringLiteral("Длинное")))

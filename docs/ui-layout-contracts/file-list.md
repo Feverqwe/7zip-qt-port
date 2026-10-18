@@ -10,7 +10,7 @@ Small Icons places each filename to the right of its icon and fills rows before
 wrapping. Icons and labels fit inside separate, nonoverlapping cells; long names
 may elide horizontally, while the full text height remains visible. Switching
 from Large Icons or List preserves this arrangement and the shared selection.
-Large Icons places wrapped labels below the icons. Cell geometry accommodates
+Large Icons centers wrapped labels below the icons. Cell geometry accommodates
 the platform icon and two lines of the active font; longer names remain available
 through the full-path tooltip. Font/style changes recalculate geometry, and
 resizing reflows entries. Native focus/text margins must fit inside each cell.

@@ -38,6 +38,18 @@ Cocoa extends its text subelement to the left, which otherwise clips labels
 in the first column. The existing FileIconList/delegate boundary was kept for
 this focused correction rather than splitting the shared adapter module.
 
+Screenshot review follow-up: Large Icons now overrides the shared table's
+left-aligned filename role at the Qt delegate boundary, centering wrapped
+captions beneath each icon. Small Icons and Details retain their existing
+alignment. Upstream `kStyles` and `CPanel::SetListViewMode` still delegate this
+presentation to native `LVS_ICON`; no source command logic changes.
+The geometry producer explicitly opens its disposable fixture instead of
+allowing saved panel paths to replace the intended long-filename scenario.
+Native Cocoa light/dark capture runs pass the affected layout methods;
+the full local `ui_layout` run also reports unrelated Extract-title language
+and column-persistence failures in the concurrently edited working tree.
+Windows/Linux and rendered Windows reference comparison remain unverified.
+
 Single-click tracking now queries the Windows system mouse-hover timeout on
 each new target. On other platforms, which have no upstream implementation,
 the Qt style's tooltip wake-up delay provides the hover timing adaptation.

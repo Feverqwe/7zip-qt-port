@@ -59,6 +59,14 @@ bool sameColumnIdentity(const CPropColumn &left, const CPropColumn &right) {
 class FileRowDelegate final : public QStyledItemDelegate {
   public:
     using QStyledItemDelegate::QStyledItemDelegate;
+    void initStyleOption(QStyleOptionViewItem *option, const QModelIndex &index) const override {
+        QStyledItemDelegate::initStyleOption(option, index);
+        const auto *list = qobject_cast<QListView *>(parent());
+        // The shared table model aligns names to the left. LVS_ICON labels
+        // belong below the icon, centered within their own cell.
+        if (list && list->viewMode() == QListView::IconMode)
+            option->displayAlignment = Qt::AlignHCenter | Qt::AlignTop;
+    }
     QSize sizeHint(const QStyleOptionViewItem &option, const QModelIndex &index) const override {
         const QSize size = QStyledItemDelegate::sizeHint(option, index);
         const auto *list = qobject_cast<QListView *>(parent());
