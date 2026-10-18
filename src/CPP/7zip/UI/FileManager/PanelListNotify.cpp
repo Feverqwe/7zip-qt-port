@@ -7,6 +7,7 @@
 #include "Panel.h"
 #include "Windows/PropVariant.h"
 #include "Windows/PropVariantConv.h"
+#include "qtdiagnostictext.h"
 #include <QColor>
 #include <QItemSelectionModel>
 #include <vector>
@@ -165,8 +166,8 @@ CPanelStatus CPanel::Refresh_StatusBar() const {
     CRecordVector<UInt32> indices;
     Get_ItemIndices_Operated(indices);
 
-    status.selectedItems =
-        QStringLiteral("%1 / %2").arg(indices.Size()).arg(_selectedStatusVector.Size());
+    status.selectedCount = int(indices.Size());
+    status.totalCount = int(_selectedStatusVector.Size());
     if (!indices.IsEmpty()) {
         UInt64 totalSize = 0;
         FOR_VECTOR(i, indices)
@@ -298,7 +299,8 @@ QString CPanel::GetItemText(UInt32 itemIndex, const CPropColumn &property) const
     NWindows::NCOM::CPropVariant prop;
     const HRESULT result = _folder->GetProperty(itemIndex, propID, &prop);
     if (result != S_OK)
-        return QStringLiteral("Error: ");
+        return QString::fromWCharArray(
+            QtDiagnosticText(QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Error: ")));
     if ((prop.vt == VT_UI8 || prop.vt == VT_UI4 || prop.vt == VT_UI2) && IsSizeProp(propID)) {
         UInt64 value = 0;
         ConvertPropVariantToUInt64(prop, value);

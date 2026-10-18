@@ -84,7 +84,7 @@ void CRootFolder::Init() {
     _iconIndices[ROOT_INDEX_VOLUMES] = Shell_GetFileInfo_SysIconIndex_for_CSIDL(CSIDL_DRIVES);
 #endif
 #ifndef USE_WIN_PATHS
-    const auto mounts = QtLocalText("Volumes", "Тома").toStdWString();
+    const auto mounts = QCoreApplication::translate("RootFolder", "Volumes").toStdWString();
     _names[ROOT_INDEX_MOUNTS] = mounts.c_str();
     _iconIndices[ROOT_INDEX_MOUNTS] = -1;
     _names[ROOT_INDEX_NETWORK] = RootFolder_GetName_Network(_iconIndices[ROOT_INDEX_NETWORK]);

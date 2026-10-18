@@ -6,6 +6,7 @@
 #include "Windows/PropVariant.h"
 #include "Windows/PropVariantConv.h"
 #include "layout_inspection.h"
+#include "qtlangcontrols.h"
 
 #include <QAbstractButton>
 #include <QDialogButtonBox>
@@ -173,9 +174,41 @@ class PanelPropertyTests : public QObject {
         render(props, dialog);
         QCOMPARE(value(dialog, "Ошибки"), QStringLiteral("Ошибка в заголовках : Неверный пароль?"));
         QCOMPARE(value(dialog, "Предупреждения"), QStringLiteral("Ошибка CRC\n0x80000000"));
-        QCOMPARE(value(dialog, "Open WARNING:"),
-                 QString("Cannot open the file as expected archive type"));
+        QCOMPARE(value(dialog, "ПРЕДУПРЕЖДЕНИЕ при открытии:"),
+                 QString::fromUtf8("Не удалось открыть файл как архив ожидаемого типа"));
         QCOMPARE(value(dialog, "Тип Ошибки"), QString("7z"));
+        QVERIFY(dialog.OnInit());
+        auto *list = dialog.findChild<QTreeWidget *>("propertiesList");
+        QVERIFY(list);
+        const auto warnings =
+            list->findItems(QString::fromUtf8("ПРЕДУПРЕЖДЕНИЕ при открытии:"), Qt::MatchExactly);
+        QCOMPARE(warnings.size(), 1);
+        auto *warning = warnings.first();
+        warning->setSelected(true);
+        QTemporaryDir languageDirectory;
+        const QString settings = languageDirectory.filePath("language.ini");
+        for (const char *language : {"-", "ru"}) {
+            SaveRegLang(UString(language), settings);
+            ReloadLang(settings);
+            QtNotifyLanguageChanged();
+            QVERIFY(warning->isSelected());
+            QCOMPARE(warning->text(0),
+                     QString::fromUtf8(language[0] == 'r' ? "ПРЕДУПРЕЖДЕНИЕ при открытии:"
+                                                          : "Open WARNING:"));
+            QCOMPARE(value(dialog, warning->text(0)),
+                     QString::fromUtf8(language[0] == 'r'
+                                           ? "Не удалось открыть файл как архив ожидаемого типа"
+                                           : "Cannot open the file as expected archive type"));
+            for (const QSize size : {QSize(540, 360), QSize(360, 240)}) {
+                dialog.resize(size);
+                dialog.show();
+                QApplication::processEvents();
+                QVERIFY(UiInspection::fullyVisible(*list, dialog));
+                QVERIFY(UiInspection::writeReport(
+                    dialog,
+                    QString("expected-type-warning-%1-%2").arg(language).arg(size.width())));
+            }
+        }
         CObjectVector<TestProperty> invalid;
         invalid.Add({kpidErrorFlags, L"", CPropVariant(L"invalid")});
         CListViewDialog badDialog;

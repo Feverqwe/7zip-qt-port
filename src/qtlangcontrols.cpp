@@ -8,6 +8,7 @@
 #include <QGroupBox>
 #include <QLabel>
 #include <QLineEdit>
+#include <QLocale>
 #include <QTextLayout>
 #include <QVariant>
 #include <QWidget>
@@ -15,6 +16,14 @@
 QString QtLangText(UInt32 id, const QString &englishFallback) {
     const UString s = LangString(id);
     return s.IsEmpty() ? englishFallback : QString::fromWCharArray(s);
+}
+
+void QtBindMemoryLimitUnitText(QObject *object, bool ramDefined, quint64 ramGB) {
+    if (ramDefined)
+        QtBindLocalText(object, "MemoryUnits", QT_TRANSLATE_NOOP("MemoryUnits", "GB / %1 GB (RAM)"),
+                        false, {QLocale().toString(ramGB)});
+    else
+        QtBindLocalText(object, "MemoryUnits", QT_TRANSLATE_NOOP("MemoryUnits", "GB"));
 }
 
 QString QtWrapControlText(const QWidget &widget, const QString &text) {
@@ -55,18 +64,27 @@ class QtLangCaption final : public IQtLangDialogControls, public IQtLangWindowTe
 };
 
 void SetText(QObject *object) {
+    const auto translate = [object](const char *property, const char *contextProperty,
+                                    bool withArguments) {
+        const QByteArray context = object->property(contextProperty).toByteArray();
+        const QByteArray source = object->property(property).toByteArray();
+        QString text = QCoreApplication::translate(context.constData(), source.constData());
+        if (withArguments)
+            for (const QString &argument : object->property("languageArguments").toStringList())
+                text = text.arg(argument);
+        return text;
+    };
     if (auto *widget = qobject_cast<QWidget *>(object))
         if (object->property("languageToolTipEnglish").isValid())
-            widget->setToolTip(QtLocalText(object->property("languageToolTipEnglish").toString(),
-                                           object->property("languageToolTipRussian").toString()));
+            widget->setToolTip(
+                translate("languageToolTipEnglish", "languageToolTipContext", false));
     const QVariant id = object->property("languageID");
     const QVariant local = object->property("languageLocalEnglish");
     if (!id.isValid() && !local.isValid())
         return;
-    QString text =
-        id.isValid()
-            ? QtLangText(id.toUInt(), object->property("languageFallback").toString())
-            : QtLocalText(local.toString(), object->property("languageLocalRussian").toString());
+    QString text = id.isValid()
+                       ? QtLangText(id.toUInt(), object->property("languageFallback").toString())
+                       : translate("languageLocalEnglish", "languageContext", true);
     if (id.isValid()) {
         const UInt32 languageID = id.toUInt();
         const QVariant resource = object->property("languageResourceCaption");
@@ -165,19 +183,20 @@ void QtBindStandardResourceText(QObject *object, UInt32 controlID, const QString
     SetText(object);
 }
 
-void QtBindLocalText(QObject *object, const QString &english, const QString &russian,
-                     bool accessibleOnly) {
-    object->setProperty("languageLocalEnglish", english);
-    object->setProperty("languageLocalRussian", russian);
+void QtBindLocalText(QObject *object, const char *context, const char *sourceText,
+                     bool accessibleOnly, const QStringList &arguments) {
+    object->setProperty("languageLocalEnglish", QByteArray(sourceText));
+    object->setProperty("languageContext", QByteArray(context));
+    object->setProperty("languageArguments", arguments);
     object->setProperty("languageID", QVariant());
     object->setProperty("languageAccessibleOnly", accessibleOnly);
     InstallLanguageFilter(object);
     SetText(object);
 }
 
-void QtBindLocalToolTip(QObject *object, const QString &english, const QString &russian) {
-    object->setProperty("languageToolTipEnglish", english);
-    object->setProperty("languageToolTipRussian", russian);
+void QtBindLocalToolTip(QObject *object, const char *context, const char *sourceText) {
+    object->setProperty("languageToolTipEnglish", QByteArray(sourceText));
+    object->setProperty("languageToolTipContext", QByteArray(context));
     InstallLanguageFilter(object);
     SetText(object);
 }

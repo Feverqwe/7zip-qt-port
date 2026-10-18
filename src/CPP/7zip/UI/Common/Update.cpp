@@ -3,9 +3,10 @@
 // Adapted from 7-Zip 0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17.
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 
-// #include  <stdio.h>
+// #include <stdio.h>
 
 #include "Update.h"
+#include "qtdiagnostictext.h"
 
 #include "Common/StringConvert.h"
 
@@ -40,7 +41,7 @@ using namespace NDir;
 
 HRESULT PrepareSfxModule(FString &module, const FString &baseFolder, CUpdateErrorInfo &errorInfo) {
     if (module.IsEmpty()) {
-        errorInfo.Message = "SFX file is not specified";
+        errorInfo.Message = QT_TRANSLATE_NOOP("SevenZipDiagnostics", "SFX file is not specified");
         return E_FAIL;
     }
     bool found = false;
@@ -53,7 +54,9 @@ HRESULT PrepareSfxModule(FString &module, const FString &baseFolder, CUpdateErro
     }
     if (!found) {
         if (!NFind::DoesFileExist_FollowLink(module))
-            return errorInfo.SetFromLastError("cannot find specified SFX module", module);
+            return errorInfo.SetFromLastError(
+                QT_TRANSLATE_NOOP("SevenZipDiagnostics", "cannot find specified SFX module"),
+                module);
     }
     return S_OK;
 }
@@ -69,11 +72,13 @@ HRESULT WriteSfxModule(const FString &module, const FString &realPath,
     CInFileStream *sfxStreamSpec = new CInFileStream;
     CMyComPtr<IInStream> sfxStream(sfxStreamSpec);
     if (!sfxStreamSpec->Open(module))
-        return errorInfo.SetFromLastError("cannot open SFX module", module);
+        return errorInfo.SetFromLastError(
+            QT_TRANSLATE_NOOP("SevenZipDiagnostics", "cannot open SFX module"), module);
     COutFileStream *outStreamSpec2 = new COutFileStream;
     CMyComPtr<ISequentialOutStream> sfxOutStream = outStreamSpec2;
     if (!outStreamSpec2->Create_NEW(realPath))
-        return errorInfo.SetFromLastError("cannot open file", realPath);
+        return errorInfo.SetFromLastError(
+            QT_TRANSLATE_NOOP("SevenZipDiagnostics", "cannot open file"), realPath);
     return WriteSfxStream(sfxStream, sfxOutStream, outStreamSpec2);
 }
 
@@ -188,11 +193,11 @@ HRESULT UpdateArchive(const CDirItems &dirItems, const CByteBuffer &processedIte
     return S_OK;
 }
 
-static const char *const kUpdateIsNotSupoorted =
-    "update operations are not supported for this archive";
+static const char *const kUpdateIsNotSupoorted = QT_TRANSLATE_NOOP(
+    "SevenZipDiagnostics", "update operations are not supported for this archive");
 
-static const char *const kUpdateIsNotSupported_MultiVol =
-    "Updating for multivolume archives is not implemented";
+static const char *const kUpdateIsNotSupported_MultiVol = QT_TRANSLATE_NOOP(
+    "SevenZipDiagnostics", "Updating for multivolume archives is not implemented");
 
 using namespace NWindows;
 using namespace NCOM;
@@ -766,7 +771,8 @@ if (options.VolumesSizes.Size() == 0) {
         }
 
         if (!isOK)
-            return errorInfo.SetFromLastError("cannot open file", realPath);
+            return errorInfo.SetFromLastError(
+                QT_TRANSLATE_NOOP("SevenZipDiagnostics", "cannot open file"), realPath);
     }
 } else {
     if (options.StdOutMode)
@@ -798,7 +804,8 @@ if (options.SfxMode) {
     CInFileStream *sfxStreamSpec = new CInFileStream;
     CMyComPtr<IInStream> sfxStream(sfxStreamSpec);
     if (!sfxStreamSpec->Open(options.SfxModule))
-        return errorInfo.SetFromLastError("cannot open SFX module", options.SfxModule);
+        return errorInfo.SetFromLastError(
+            QT_TRANSLATE_NOOP("SevenZipDiagnostics", "cannot open SFX module"), options.SfxModule);
 
     CMyComPtr<ISequentialOutStream> sfxOutStream;
     COutFileStream *outStreamSpec2 = NULL;
@@ -809,7 +816,8 @@ if (options.SfxMode) {
         sfxOutStream = outStreamSpec2;
         const FString realPath = us2fs(archivePath.GetFinalPath());
         if (!outStreamSpec2->Create_NEW(realPath))
-            return errorInfo.SetFromLastError("cannot open file", realPath);
+            return errorInfo.SetFromLastError(
+                QT_TRANSLATE_NOOP("SevenZipDiagnostics", "cannot open file"), realPath);
     }
 
     {
@@ -854,7 +862,7 @@ HRESULT result = outArchive->UpdateItems(tailStream, updatePairs2.Size(), update
 RINOK(result)
 
 if (!updateCallbackSpec->AreAllFilesClosed()) {
-    errorInfo.Message = "There are unclosed input files:";
+    errorInfo.Message = QT_TRANSLATE_NOOP("SevenZipDiagnostics", "There are unclosed input files:");
     errorInfo.FileNames = updateCallbackSpec->_openFiles_Paths;
     return E_FAIL;
 }
@@ -1143,24 +1151,26 @@ HRESULT UpdateArchive(CCodecs *codecs, const CObjectVector<COpenType> &types,
 
     if (cmdArcPath2.IsEmpty()) {
         if (options.MethodMode.Type.FormatIndex < 0)
-            throw "type of archive is not specified";
+            throw QT_TRANSLATE_NOOP("SevenZipDiagnostics", "type of archive is not specified");
     } else {
         NFind::CFileInfo fi;
         if (!fi.Find_FollowLink(us2fs(arcPath))) {
             if (renameMode)
-                throw "can't find archive";
+                throw QT_TRANSLATE_NOOP("SevenZipDiagnostics", "can't find archive");
             if (options.MethodMode.Type.FormatIndex < 0) {
                 if (!options.SetArcPath(codecs, cmdArcPath2))
                     return E_NOTIMPL;
             }
         } else {
             if (fi.IsDir())
-                return errorInfo.SetFromError_DWORD("There is a folder with the name of archive",
-                                                    us2fs(arcPath),
+                return errorInfo.SetFromError_DWORD(
+                    QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                                      "There is a folder with the name of archive"),
+                    us2fs(arcPath),
 #ifdef _WIN32
-                                                    ERROR_ACCESS_DENIED
+                    ERROR_ACCESS_DENIED
 #else
-                                                    EISDIR
+                    EISDIR
 #endif
                 );
 #ifdef _WIN32
@@ -1170,11 +1180,13 @@ HRESULT UpdateArchive(CCodecs *codecs, const CObjectVector<COpenType> &types,
 
             if (!options.StdOutMode && options.UpdateArchiveItself)
                 if (fi.IsReadOnly()) {
-                    return errorInfo.SetFromError_DWORD("The file is read-only", us2fs(arcPath),
+                    return errorInfo.SetFromError_DWORD(
+                        QT_TRANSLATE_NOOP("SevenZipDiagnostics", "The file is read-only"),
+                        us2fs(arcPath),
 #ifdef _WIN32
-                                                        ERROR_ACCESS_DENIED
+                        ERROR_ACCESS_DENIED
 #else
-                                                        EACCES
+                        EACCES
 #endif
                     );
                 }
@@ -1236,7 +1248,8 @@ HRESULT UpdateArchive(CCodecs *codecs, const CObjectVector<COpenType> &types,
 
             if (arc.ErrorInfo.ThereIsTail) {
                 // errorInfo.SystemError = (DWORD)E_NOTIMPL;
-                errorInfo.Message = "There is some data block after the end of the archive";
+                errorInfo.Message = QT_TRANSLATE_NOOP(
+                    "SevenZipDiagnostics", "There is some data block after the end of the archive");
                 return E_NOTIMPL;
             }
             if (options.MethodMode.Type.FormatIndex < 0) {
@@ -1315,7 +1328,7 @@ HRESULT UpdateArchive(CCodecs *codecs, const CObjectVector<COpenType> &types,
 
             if (res != S_OK) {
                 if (res != E_ABORT)
-                    errorInfo.Message = "Scanning error";
+                    errorInfo.Message = QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Scanning error");
                 return res;
             }
 
@@ -1395,7 +1408,8 @@ HRESULT UpdateArchive(CCodecs *codecs, const CObjectVector<COpenType> &types,
                 const FString phyPath = dirItems.GetPhyPath(i);
                 if (phyPath == path) {
                     UString s;
-                    s = "It is not allowed to include archive to itself";
+                    s = QtDiagnosticText(QT_TRANSLATE_NOOP(
+                        "SevenZipDiagnostics", "It is not allowed to include archive to itself"));
                     s.Add_LF();
                     s += fs2us(path);
                     throw s;
@@ -1416,7 +1430,8 @@ HRESULT UpdateArchive(CCodecs *codecs, const CObjectVector<COpenType> &types,
             const FString path = us2fs(ap.GetFinalPath());
             if (NFind::DoesFileOrDirExist(path)) {
                 errorInfo.SystemError = ERROR_FILE_EXISTS;
-                errorInfo.Message = "The file already exists";
+                errorInfo.Message =
+                    QT_TRANSLATE_NOOP("SevenZipDiagnostics", "The file already exists");
                 errorInfo.FileNames.Add(path);
                 return errorInfo.Get_HRESULT_Error();
             }
@@ -1510,7 +1525,9 @@ HRESULT UpdateArchive(CCodecs *codecs, const CObjectVector<COpenType> &types,
             if (thereIsInArchive) {
                 // attrib = NFind::GetFileAttrib(us2fs(arcPath));
                 if (!DeleteFileAlways(us2fs(arcPath)))
-                    return errorInfo.SetFromLastError("cannot delete the file", us2fs(arcPath));
+                    return errorInfo.SetFromLastError(
+                        QT_TRANSLATE_NOOP("SevenZipDiagnostics", "cannot delete the file"),
+                        us2fs(arcPath));
             }
 
             UInt64 totalArcSize = 0;
@@ -1530,7 +1547,8 @@ HRESULT UpdateArchive(CCodecs *codecs, const CObjectVector<COpenType> &types,
 
             if (!MyMoveFile_with_Progress(tempPath, us2fs(arcPath), &prox)) {
                 errorInfo.SystemError = ::GetLastError();
-                errorInfo.Message = "cannot move the file";
+                errorInfo.Message =
+                    QT_TRANSLATE_NOOP("SevenZipDiagnostics", "cannot move the file");
                 if (errorInfo.SystemError == ERROR_INVALID_PARAMETER) {
                     if (totalArcSize > (UInt32)(Int32)-1) {
                         // bool isFsDetected = false;
@@ -1538,7 +1556,8 @@ HRESULT UpdateArchive(CCodecs *codecs, const CObjectVector<COpenType> &types,
                         // !isFsDetected)
                         {
                             errorInfo.Message.Add_LF();
-                            errorInfo.Message += "Archive file size exceeds 4 GB";
+                            errorInfo.Message += QT_TRANSLATE_NOOP(
+                                "SevenZipDiagnostics", "Archive file size exceeds 4 GB");
                         }
                     }
                 }
@@ -1577,7 +1596,8 @@ HRESULT UpdateArchive(CCodecs *codecs, const CObjectVector<COpenType> &types,
     if (options.EMailMode) {
         NDLL::CLibrary mapiLib;
         if (!mapiLib.Load(FTEXT("Mapi32.dll"))) {
-            errorInfo.SetFromLastError("cannot load Mapi32.dll");
+            errorInfo.SetFromLastError(
+                QT_TRANSLATE_NOOP("SevenZipDiagnostics", "cannot load Mapi32.dll"));
             return errorInfo.Get_HRESULT_Error();
         }
 
@@ -1589,7 +1609,8 @@ HRESULT UpdateArchive(CCodecs *codecs, const CObjectVector<COpenType> &types,
             const FString finalPath = us2fs(ap.GetFinalPath());
             FString arcPath2;
             if (!MyGetFullPathName(finalPath, arcPath2))
-                return errorInfo.SetFromLastError("GetFullPathName error", finalPath);
+                return errorInfo.SetFromLastError(
+                    QT_TRANSLATE_NOOP("SevenZipDiagnostics", "GetFullPathName error"), finalPath);
             fullPaths.Add(arcPath2);
         }
 
@@ -1652,7 +1673,8 @@ HRESULT UpdateArchive(CCodecs *codecs, const CObjectVector<COpenType> &types,
             const LPMAPISENDMAIL sendMail =
                 Z7_GET_PROC_ADDRESS(LPMAPISENDMAIL, mapiLib.Get_HMODULE(), "MAPISendMail");
             if (!sendMail) {
-                errorInfo.SetFromLastError("7-Zip cannot find MAPISendMail function");
+                errorInfo.SetFromLastError(QT_TRANSLATE_NOOP(
+                    "SevenZipDiagnostics", "7-Zip cannot find MAPISendMail function"));
                 return errorInfo.Get_HRESULT_Error();
             }
 

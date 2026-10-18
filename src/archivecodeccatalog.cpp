@@ -26,8 +26,8 @@ ArchiveCodecCatalog::ArchiveCodecCatalog(const QString &module, UInt32 expectedV
     if (!engineLibraries.isEmpty()) {
         image_ = std::make_unique<ArchiveCodecImage>();
         if (!image_->prepare(module, engine)) {
-            error_ = QtLocalText("Could not prepare the codec runtime snapshot.",
-                                 "Не удалось подготовить снимок модулей движка.");
+            error_ = QCoreApplication::translate("archivecodeccatalog",
+                                                 "Could not prepare the codec runtime snapshot.");
             return;
         }
         nativeModule = image_->module();
@@ -42,16 +42,17 @@ ArchiveCodecCatalog::ArchiveCodecCatalog(const QString &module, UInt32 expectedV
         codecs_->Libs.IsEmpty() || codecs_->Formats.IsEmpty()) {
         result_ = E_FAIL;
         if (error_.isEmpty())
-            error_ = message.IsEmpty()
-                         ? QtLocalText("The official 7-Zip codec module is unavailable.",
-                                       "Официальный модуль форматов 7-Zip недоступен.")
-                         : QString::fromWCharArray(message.Ptr());
+            error_ =
+                message.IsEmpty()
+                    ? QCoreApplication::translate("archivecodeccatalog",
+                                                  "The official 7-Zip codec module is unavailable.")
+                    : QString::fromWCharArray(message.Ptr());
     } else {
         version_ = codecs_->Libs[0].Version;
         if (!version_ || (expectedVersion && version_ != expectedVersion)) {
             result_ = E_FAIL;
-            error_ = QtLocalText("7zz and the codec module have different versions.",
-                                 "Версии 7zz и модуля форматов различаются.");
+            error_ = QCoreApplication::translate(
+                "archivecodeccatalog", "7zz and the codec module have different versions.");
         }
     }
     if (result_ != S_OK) {
@@ -98,8 +99,8 @@ HRESULT ArchiveCodecCatalog::loadEnginePlugins(const QString &module,
         canonicalLibraries.append(QFileInfo(library).canonicalFilePath());
     const QString mainPath = QFileInfo(module).canonicalFilePath();
     if (!mainPath.isEmpty() && !canonicalLibraries.contains(mainPath)) {
-        error_ = QtLocalText("The engine uses a different codec module.",
-                             "Движок использует другой модуль форматов.");
+        error_ = QCoreApplication::translate("archivecodeccatalog",
+                                             "The engine uses a different codec module.");
         return E_FAIL;
     }
     const QString baseFolder = image_->baseFolder();
@@ -122,10 +123,10 @@ HRESULT ArchiveCodecCatalog::loadEnginePlugins(const QString &module,
         error.Path = us2fs(original.toStdWString().c_str());
     }
     if (!sameDeployment) {
-        error_ = QtLocalText("The engine and application loaded different plugins.",
-                             "Движок и приложение загрузили разные плагины.");
-        error_ += '\n' + QtLocalText("Engine modules:\n%1\nApplication modules:\n%2",
-                                     "Модули движка:\n%1\nМодули приложения:\n%2")
+        error_ = QCoreApplication::translate(
+            "archivecodeccatalog", "The engine and application loaded different plugins.");
+        error_ += '\n' + QCoreApplication::translate(
+                             "archivecodeccatalog", "Engine modules:\n%1\nApplication modules:\n%2")
                              .arg(canonicalLibraries.join('\n'), loadedLibraries.join('\n'));
         UString message;
         codecs_->GetCodecsErrorMessage(message);

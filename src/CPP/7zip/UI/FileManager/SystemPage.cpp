@@ -126,7 +126,7 @@ void CSystemPage::ReloadLangItems() {
     QtReloadLangTexts(*this);
     QString userName = _services ? _services->CurrentUserName() : QString();
     if (userName.isEmpty())
-        userName = QtLocalText("Current User", "Текущий пользователь");
+        userName = QCoreApplication::translate("SystemPage", "Current User");
     _listView->setHeaderLabels({QtLangText(IDS_PROP_FILE_TYPE, "File type"), userName,
                                 QtLangText(IDS_SYSTEM_ALL_USERS, "All users")});
     _current->setAccessibleName(_listView->headerItem()->text(1));
@@ -186,16 +186,16 @@ void CSystemPage::RefreshAvailability() {
                 supported ? QString()
                 : _services && !_services->CanApply(g)
                     ? _services->UnavailableReason(g)
-                    : QtLocalText("Association changes are unavailable for this format.",
-                                  "Изменение ассоциации для этого формата недоступно."));
+                    : QCoreApplication::translate(
+                          "SystemPage", "Association changes are unavailable for this format."));
         }
         button->setEnabled(available);
         button->setToolTip(
             available ? _services->ApplyExplanation(g)
             : _services && !_services->CanApply(g)
                 ? _services->UnavailableReason(g)
-                : QtLocalText("No supported formats are available for association changes.",
-                              "Нет доступных форматов для изменения ассоциаций."));
+                : QCoreApplication::translate(
+                      "SystemPage", "No supported formats are available for association changes."));
     }
 }
 
@@ -309,8 +309,10 @@ LONG CSystemPage::OnApply() {
             if (mi.OldState != mi.State) {
                 LONG res2 = 0;
                 if (mi.State == kExtState_7Zip) {
-                    UString title = extInfo.Ext;
-                    title += " Archive";
+                    UString title(QCoreApplication::translate("SystemPage", "%1 Archive")
+                                      .arg(QString::fromWCharArray(extInfo.Ext))
+                                      .toStdWString()
+                                      .c_str());
                     const CPluginToIcon &plug = extInfo.Plugins[0];
                     res2 = _services->Add(g, extInfo.Ext, mi, title, command, plug.IconPath,
                                           plug.IconIndex);

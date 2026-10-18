@@ -16,6 +16,7 @@
 #include "SplitDialog.h"
 #include "SplitUtils.h"
 #include "Windows/FileName.h"
+#include "qtdiagnostictext.h"
 #include "qtvolumeio.h"
 #include "qtvolumeservices.h"
 #include <QDir>
@@ -26,7 +27,8 @@ using namespace NWindows;
 using namespace NFile;
 using namespace NDir;
 
-static const char *const g_Message_FileWriteError = "File write error";
+static const char *const g_Message_FileWriteError =
+    QT_TRANSLATE_NOOP("SevenZipDiagnostics", "File write error");
 
 void CVolSeqName::SetNumDigits(UInt64 numVolumes) {
     ChangedPart = "000";
@@ -327,7 +329,8 @@ void CApp::Split(IQtVolumeServices &services) {
 
     NFind::CFileInfo fileInfo;
     if (!fileInfo.Find(us2fs(srcPath + itemName))) {
-        srcPanel.MessageBox_Error(L"Cannot find file");
+        srcPanel.MessageBox_Error(
+            QtDiagnosticText(QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Cannot find file")));
         return;
     }
     if (fileInfo.Size <= splitDialog.VolumeSizes.FrontItem()) {
@@ -336,10 +339,8 @@ void CApp::Split(IQtVolumeServices &services) {
     }
     const UInt64 numVolumes = GetNumberOfVolumes(fileInfo.Size, splitDialog.VolumeSizes);
     if (numVolumes >= 100) {
-        wchar_t s[32];
-        ConvertUInt64ToString(numVolumes, s);
         if (QMessageBox::question(_window, ToQString(LangString(IDS_SPLIT_CONFIRM_TITLE)),
-                                  ToQString(MyFormatNew(IDS_SPLIT_CONFIRM_MESSAGE, s)),
+                                  ToQString(MyFormatNew(IDS_SPLIT_CONFIRM_MESSAGE, numVolumes)),
                                   QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel) !=
             QMessageBox::Yes)
             return;
@@ -420,7 +421,8 @@ void CApp::Combine(IQtVolumeServices &services) {
         }
 
         if (combiner.TotalSize == 0) {
-            srcPanel.MessageBox_Error(L"No data");
+            srcPanel.MessageBox_Error(
+                QtDiagnosticText(QT_TRANSLATE_NOOP("SevenZipDiagnostics", "No data")));
             return;
         }
 

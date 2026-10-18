@@ -69,9 +69,10 @@ void CQtCompressOptionsDialog::buildControls() {
             box->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
         registerControl(id, name, box);
         if (text.isEmpty()) {
-            box->setText(QtLocalText("Set", "Задать"));
-            QtBindLocalToolTip(box, "Override the format default for this option.",
-                               "Задать значение вместо настройки формата по умолчанию.");
+            box->setText(QCoreApplication::translate("qtcompressoptionscontrols", "Set"));
+            QtBindLocalToolTip(box, "qtcompressoptionscontrols",
+                               QT_TRANSLATE_NOOP("qtcompressoptionscontrols",
+                                                 "Override the format default for this option."));
         }
         if (!text.isEmpty())
             QtBindResourceText(box, id, text);
@@ -119,8 +120,8 @@ void CQtCompressOptionsDialog::buildControls() {
     auto *grid = new QGridLayout(time);
     grid->setVerticalSpacing(3);
     grid->addWidget(checkbox(IDX_COMPRESS_PREC_SET, "IDX_COMPRESS_PREC_SET", {}, time), 0, 0);
-    QtBindLocalText(GetItem(IDX_COMPRESS_PREC_SET), "Set time precision", "Задать точность времени",
-                    true);
+    QtBindLocalText(GetItem(IDX_COMPRESS_PREC_SET), "qtcompressoptionscontrols",
+                    QT_TRANSLATE_NOOP("qtcompressoptionscontrols", "Set time precision"), true);
     auto *precisionLabel = new QLabel("Timestamp precision:", time);
     precisionLabel->setWordWrap(true);
     registerControl(IDT_COMPRESS_TIME_PREC, "IDT_COMPRESS_TIME_PREC", precisionLabel);
@@ -159,8 +160,10 @@ void CQtCompressOptionsDialog::buildControls() {
 #ifndef Q_OS_WIN
     preserve->setEnabled(false);
     preserve->hide();
-    QtBindLocalToolTip(preserve, "The official engine supports this option only on Windows.",
-                       "Официальный движок поддерживает эту опцию только в Windows.");
+    QtBindLocalToolTip(
+        preserve, "qtcompressoptionscontrols",
+        QT_TRANSLATE_NOOP("qtcompressoptionscontrols",
+                          "The official engine supports this option only on Windows."));
 #endif
     grid->addWidget(preserve, row, 0, 1, 3);
     layout->addWidget(time);
@@ -257,7 +260,8 @@ void CQtCompressOptionsDialog::changeEvent(QEvent *event) {
         // The visible override caption is shared by these source controls.
         for (unsigned id : {IDX_COMPRESS_PREC_SET, IDX_COMPRESS_MTIME_SET, IDX_COMPRESS_CTIME_SET,
                             IDX_COMPRESS_ATIME_SET, IDX_COMPRESS_ZTIME_SET})
-            static_cast<QCheckBox *>(GetItem(id))->setText(QtLocalText("Set", "Задать"));
+            static_cast<QCheckBox *>(GetItem(id))
+                ->setText(QCoreApplication::translate("qtcompressoptionscontrols", "Set"));
     }
     QDialog::changeEvent(event);
 }

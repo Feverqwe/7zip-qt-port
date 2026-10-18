@@ -1,6 +1,7 @@
 #include "CPP/7zip/UI/FileManager/PasswordDialog.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "external_editor_fixture.h"
+#include "fixtures/progress_dialog.h"
 #include "fixtures/widget_dialogs.h"
 #include "window_state_support.h"
 #include <QScopeGuard>
@@ -62,7 +63,7 @@ class ArchiveExternalSecurityTests final : public QObject, protected MainWindowT
                 box->accept();
             else if (auto *progress = dynamic_cast<CProgressDialog *>(modal)) {
                 auto *close = progress->findChild<QPushButton *>("IDCANCEL");
-                if (close && close->text().contains(QStringLiteral("Close")))
+                if (TestProgressDialog::IsCloseButton(close))
                     close->click();
             }
         });
@@ -118,7 +119,7 @@ class ArchiveExternalSecurityTests final : public QObject, protected MainWindowT
                     box->accept();
             } else if (auto *progress = dynamic_cast<CProgressDialog *>(modal)) {
                 auto *close = progress->findChild<QPushButton *>("IDCANCEL");
-                if (close && close->text().contains(QStringLiteral("Close")))
+                if (TestProgressDialog::IsCloseButton(close))
                     close->click();
             }
         });

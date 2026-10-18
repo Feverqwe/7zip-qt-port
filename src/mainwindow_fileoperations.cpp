@@ -47,9 +47,9 @@ void MainWindow::transferFiles(const QStringList &sources, const QString &destin
     if (state_ != State::Filesystem || !QFileInfo(destinationDirectory).isDir() ||
         QFileInfo(destinationDirectory).isSymLink() || sources.isEmpty() ||
         (directPath && sources.size() != 1)) {
-        QMessageBox::warning(
-            this, "Sevenzip",
-            QtLocalText("The destination folder is unavailable.", "Папка назначения недоступна."));
+        QMessageBox::warning(this, "Sevenzip",
+                             QCoreApplication::translate("mainwindow_fileoperations",
+                                                         "The destination folder is unavailable."));
         return;
     }
     fileTransfer_ =
@@ -207,10 +207,10 @@ void MainWindow::executeCopyDestination(bool move, bool copyToSame, unsigned sou
                 archiveMovePaths_.clear();
                 transferDestinationPanel_.reset();
                 if (!handled)
-                    QMessageBox::warning(
-                        this, QtLangText(IDS_COPYING),
-                        QtLocalText("Source extraction is unavailable for this archive.",
-                                    "Исходное извлечение для этого архива недоступно."));
+                    QMessageBox::warning(this, QtLangText(IDS_COPYING),
+                                         QCoreApplication::translate(
+                                             "mainwindow_fileoperations",
+                                             "Source extraction is unavailable for this archive."));
             }
             return;
         }
@@ -239,9 +239,10 @@ void MainWindow::executeCopyDestination(bool move, bool copyToSame, unsigned sou
             archiveMoveStage_ = ArchiveMoveStage::None;
             archiveMovePaths_.clear();
             transferDestinationPanel_.reset();
-            QMessageBox::warning(this, "Sevenzip",
-                                 QtLocalText("The destination folder is unavailable.",
-                                             "Папка назначения недоступна."));
+            QMessageBox::warning(
+                this, "Sevenzip",
+                QCoreApplication::translate("mainwindow_fileoperations",
+                                            "The destination folder is unavailable."));
             return;
         }
         previousState_ = state_;
@@ -276,9 +277,10 @@ bool MainWindow::transferToArchivePanel(const QString &destination, bool move,
         return false;
     auto *folder = dynamic_cast<CAgentFolder *>(target.GetFolder());
     if (!folder || target.GetParentFolders().Size() != 1 || target.IsThereReadOnlyFolder()) {
-        QMessageBox::warning(this, QtLangText(IDS_COPYING),
-                             QtLocalText("Writing to this archive folder is unavailable.",
-                                         "Запись в эту папку архива недоступна."));
+        QMessageBox::warning(
+            this, QtLangText(IDS_COPYING),
+            QCoreApplication::translate("mainwindow_fileoperations",
+                                        "Writing to this archive folder is unavailable."));
         return true;
     }
     UStringVector names;
@@ -312,8 +314,10 @@ bool MainWindow::transferToArchivePanel(const QString &destination, bool move,
         if (move)
             appPresentation_->RefreshCopyPanel(sourceIndex);
         statusBar()->showMessage(
-            move ? QtLocalText("Items moved into the archive.", "Объекты перемещены в архив.")
-                 : QtLocalText("Items copied into the archive.", "Объекты скопированы в архив."));
+            move ? QCoreApplication::translate("mainwindow_fileoperations",
+                                               "Items moved into the archive.")
+                 : QCoreApplication::translate("mainwindow_fileoperations",
+                                               "Items copied into the archive."));
     } else if (result != E_ABORT) {
         QMessageBox::warning(this, QtLangText(IDS_COPYING),
                              QString::fromWCharArray(HResultToMessage(result).Ptr()));

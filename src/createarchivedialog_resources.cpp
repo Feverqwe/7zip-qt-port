@@ -53,11 +53,12 @@ void CreateArchiveDialog::SetMemoryUsage() {
                                                                  decompressMemory, mu, system_));
     memoryUsage_->setToolTip(
         mu.IsDefined || system_.RamSizeDefined
-            ? QtLocalText("Limit: %1 / RAM: %2", "Лимит: %1 / RAM: %2")
+            ? QCoreApplication::translate("createarchivedialog_resources", "Limit: %1 / RAM: %2")
                   .arg(NCompressDialog::AddMemUsage(NCompressDialog::Get_MemUse_Bytes(mu, system_)),
                        system_.RamSizeDefined ? NCompressDialog::AddMemUsage(system_.RamSize)
-                                              : QtLocalText("unknown", "не определена"))
-            : QtLocalText("RAM size is unknown", "Размер RAM не определён"));
+                                              : QCoreApplication::translate(
+                                                    "createarchivedialog_resources", "unknown"))
+            : QCoreApplication::translate("createarchivedialog_resources", "RAM size is unknown"));
 }
 
 NCompression::CMemUse CreateArchiveDialog::Get_MemUse_Spec() const {

@@ -21,22 +21,22 @@ class FormatUtilsTests : public QObject {
         QCOMPARE(text(NumberToString(number)), expected);
     }
 
-    void originalPlaceholderReplacement_data() {
+    void qtPlaceholderReplacement_data() {
         QTest::addColumn<QString>("format");
         QTest::addColumn<QString>("argument");
         QTest::addColumn<QString>("expected");
-        QTest::newRow("unicode-space") << QString("File '{0}'") << QStringLiteral("архив й.7z")
+        QTest::newRow("unicode-space") << QString("File '%1'") << QStringLiteral("архив й.7z")
                                        << QStringLiteral("File 'архив й.7z'");
-        QTest::newRow("multiple") << QString("{0}/{0}\n{1} %1") << QStringLiteral("имя")
-                                  << QStringLiteral("имя/имя\n{1} %1");
-        QTest::newRow("empty-argument") << QString("a{0}{0}b") << QString() << QString("ab");
+        QTest::newRow("multiple") << QString("%1/%1\n{1} %2") << QStringLiteral("имя")
+                                  << QStringLiteral("имя/имя\n{1} %2");
+        QTest::newRow("empty-argument") << QString("a%1%1b") << QString() << QString("ab");
         QTest::newRow("no-placeholder")
             << QString("{1} literal") << QString("unused") << QString("{1} literal");
         QTest::newRow("literal-placeholder-argument")
-            << QString("{0}{0}") << QString("{0}") << QString("{0}{0}");
+            << QString("%1%1") << QString("%1 {0}") << QString("%1 {0}%1 {0}");
         QTest::newRow("empty-format") << QString() << QString("unused") << QString();
     }
-    void originalPlaceholderReplacement() {
+    void qtPlaceholderReplacement() {
         QFETCH(QString, format);
         QFETCH(QString, argument);
         QFETCH(QString, expected);

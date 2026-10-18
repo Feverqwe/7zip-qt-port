@@ -69,7 +69,7 @@ HRESULT MainWindow::openArchiveAs(const QString &path, const QString &type) {
     const QFileInfo file(path);
     if (!file.isFile() || file.isSymLink()) {
         statusBar()->showMessage(
-            QtLocalText("File not found: ", QStringLiteral("Файл не найден: ")) + path);
+            QCoreApplication::translate("mainwindow_archiveopening", "File not found: ") + path);
         return E_INVALIDARG;
     }
     filesystemScanner_->cancel();
@@ -107,10 +107,11 @@ HRESULT MainWindow::openArchiveAs(const QString &path, const QString &type) {
     else
         showDirectory(returnDirectory_, false);
     if (result == E_ABORT)
-        message = QtLocalText("Operation canceled.", QStringLiteral("Операция отменена."));
+        message = QCoreApplication::translate("mainwindow_archiveopening", "Operation canceled.");
     else if (message.isEmpty())
-        message = result == S_OK ? QtLocalText("Archive opened.", QStringLiteral("Архив открыт."))
-                                 : ToQString(HResultToMessage(result));
+        message = result == S_OK
+                      ? QCoreApplication::translate("mainwindow_archiveopening", "Archive opened.")
+                      : ToQString(HResultToMessage(result));
     statusBar()->showMessage(message);
     if (result != S_OK && result != E_ABORT)
         QMessageBox::warning(this, QStringLiteral("Sevenzip"), message);

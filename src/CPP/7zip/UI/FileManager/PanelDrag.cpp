@@ -8,6 +8,7 @@
 #include "Common/StringConvert.h"
 #include "MessagesDialog.h"
 #include "Windows/FileName.h"
+#include "qtdiagnostictext.h"
 #include "qtownedtempregistry.h"
 #include "qtpaneldragmodel.h"
 
@@ -178,7 +179,8 @@ void CPanel::OnDrag(bool isRightButton) {
         dataObjectSpec->UsePreGlobal = false;
     } else {
         if (!tempDirectory.Create(FTEXT("7zE"))) {
-            MessageBox_Error(L"Can't create temp folder");
+            MessageBox_Error(QtDiagnosticText(
+                QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Can't create temp folder")));
             return;
         }
         dirPrefix = fs2us(tempDirectory.GetPath());

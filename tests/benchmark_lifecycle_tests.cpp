@@ -364,16 +364,29 @@ class BenchmarkLifecycleTests final : public QObject {
     }
     void memoryRefusalAndEngineFailure_data() {
         QTest::addColumn<bool>("memory");
-        QTest::newRow("memory-refusal") << true;
-        QTest::newRow("engine-failure") << false;
+        QTest::addColumn<QString>("language");
+        QTest::addColumn<HRESULT>("result");
+        QTest::addColumn<QString>("expected");
+        QTest::newRow("memory-refusal") << true << QString("-") << S_OK << QString();
+        QTest::newRow("engine-failure") << false << QString("-") << E_FAIL << QString();
+        QTest::newRow("decoding-en")
+            << false << QString("-") << S_FALSE << QString("ERROR: Decoding error");
+        QTest::newRow("decoding-ru") << false << QString("ru") << S_FALSE
+                                     << QString::fromUtf8("ОШИБКА: Ошибка декодирования");
     }
     void memoryRefusalAndEngineFailure() {
         QFETCH(bool, memory);
+        QFETCH(QString, language);
+        QFETCH(HRESULT, result);
+        QFETCH(QString, expected);
+        SaveRegLang(UString(language.toStdWString().c_str()),
+                    qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+        ReloadLang(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
         FixtureBenchmarkServices service;
         if (memory)
             service.Ram = size_t(1) << 20;
         else
-            service.Result = E_FAIL;
+            service.Result = result;
         QStringList errors;
         QTimer responder;
         connect(&responder, &QTimer::timeout, this, [&] {
@@ -386,6 +399,8 @@ class BenchmarkLifecycleTests final : public QObject {
         responder.start(1);
         QCOMPARE(Benchmark(nullptr, properties(), 1, nullptr, &service), S_OK);
         QVERIFY(!errors.isEmpty());
+        if (!expected.isEmpty())
+            QVERIFY2(errors.contains(expected), qPrintable(errors.join('\n')));
         QCOMPARE(service.Calls.load(), memory ? 0u : 1u);
         QCOMPARE(service.Active.load(), 0u);
     }

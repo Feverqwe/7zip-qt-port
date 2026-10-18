@@ -13,21 +13,21 @@
 
 void ArchiveBackend::hashMethods(const QStringList &paths, const QStringList &methods) {
     if (busy()) {
-        emit finished(false, QtLocalText("Another operation is still running.",
-                                         "Другая операция ещё выполняется."));
+        emit finished(false, QCoreApplication::translate("archivebackend_hash",
+                                                         "Another operation is still running."));
         return;
     }
     lastResult_ = E_INVALIDARG;
     if (paths.isEmpty() || methods.isEmpty()) {
-        emit finished(false, QtLocalText("No files or hash method selected.",
-                                         "Не выбраны файлы или метод хеширования."));
+        emit finished(false, QCoreApplication::translate("archivebackend_hash",
+                                                         "No files or hash method selected."));
         return;
     }
     for (const QString &path : paths) {
         const QFileInfo info(path);
         if (!info.exists() || info.isSymLink()) {
-            emit finished(false, QtLocalText("File is missing or is a link: %1",
-                                             "Файл отсутствует или является ссылкой: %1")
+            emit finished(false, QCoreApplication::translate("archivebackend_hash",
+                                                             "File is missing or is a link: %1")
                                      .arg(path));
             return;
         }
@@ -44,7 +44,7 @@ void ArchiveBackend::hashMethods(const QStringList &paths, const QStringList &me
     }
     if (lastResult_ != S_OK) {
         emit finished(
-            false, QtLocalText("Unsupported hash method.", "Неподдерживаемый метод хеширования."));
+            false, QCoreApplication::translate("archivebackend_hash", "Unsupported hash method."));
         return;
     }
     hashOperation_ = std::make_unique<QtArchiveHashOperation>(paths, methods, catalog);
@@ -96,11 +96,12 @@ void ArchiveBackend::finishHashOperation() {
                 return;
         }
     }
-    emit finished(ok, ok ? QtLocalText("Checksums calculated.", "Контрольные суммы рассчитаны.")
-                      : result == E_ABORT
-                          ? QtLocalText("Operation canceled.", "Операция отменена.")
-                          : QtLocalText("Checksum calculation failed.",
-                                        "Расчёт контрольных сумм завершился с ошибками."));
+    emit finished(
+        ok,
+        ok ? QCoreApplication::translate("archivebackend_hash", "Checksums calculated.")
+        : result == E_ABORT
+            ? QCoreApplication::translate("archivebackend_hash", "Operation canceled.")
+            : QCoreApplication::translate("archivebackend_hash", "Checksum calculation failed."));
 }
 
 HRESULT ArchiveBackend::validateNativeHashReads(const ArchiveNativeOpen &reader,

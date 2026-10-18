@@ -10,6 +10,7 @@
 #include <QDialogButtonBox>
 #include <QFileInfo>
 #include <QLabel>
+#include <QLocale>
 #include <QPlainTextEdit>
 #include <QPushButton>
 #include <QScopeGuard>
@@ -212,7 +213,7 @@ class VolumeDialogTests : public QObject {
                 ToUString(QStringLiteral("часть с пробелом.%1").arg(i, 3, 10, QLatin1Char('0')))));
         const QString info = ToQString(combiner.GetInfo());
         QVERIFY(info.contains(QStringLiteral("Files: %1").arg(count)));
-        QVERIFY(info.contains("1 234 bytes"));
+        QVERIFY(info.contains(QLocale().toString(1234) + " bytes"));
         QVERIFY(info.contains("\n/parts/"));
         QVERIFY(info.contains(ToQString(fs2us(combiner.Names.Front()))));
         QVERIFY(info.contains(ToQString(fs2us(combiner.Names[1]))));
@@ -222,7 +223,7 @@ class VolumeDialogTests : public QObject {
             QVERIFY(!info.contains(ToQString(fs2us(combiner.Names[2]))));
         CCopyDialog dialog("Объединить файлы часть.001", "Объединить в:", "/output", info);
         auto *summary = dialog.findChild<QPlainTextEdit *>("copySelectionInfo");
-        QCOMPARE(summary->toPlainText(), info);
+        QCOMPARE(summary->toPlainText(), QString(info).replace(QChar::Nbsp, QLatin1Char(' ')));
         QVERIFY(summary->isReadOnly());
         for (int width : {480, 340}) {
             dialog.resize(width, 250);

@@ -1,9 +1,12 @@
 #include "7zip/UI/FileManager/resource.h"
+#include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/MyLoadMenu.h"
+#include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "CPP/Windows/Control/Dialog.h"
 #include "Common/StringConvert.h"
 #include "qtfilemenuservices.h"
 #include <QFile>
+#include <QScopeGuard>
 #include <QTemporaryDir>
 #include <QtTest>
 
@@ -132,9 +135,25 @@ class FileMenuPolicyTests : public QObject {
         QCOMPARE(menu.disabled(),
                  QList<unsigned>({IDM_OPEN, IDM_COPY_TO, IDM_FILE_EDIT, IDM_CREATE_FOLDER}));
     }
+    void configuredDiffAndVersionControlUseOriginalFileAttributes_data() {
+        QTest::addColumn<QString>("language");
+        QTest::addColumn<QString>("commit");
+        QTest::newRow("en") << QString("-") << QString("Ver Commit");
+        QTest::newRow("ru") << QString("ru") << QString::fromUtf8("Зафиксировать изменения");
+    }
     void configuredDiffAndVersionControlUseOriginalFileAttributes() {
+        QFETCH(QString, language);
+        QFETCH(QString, commit);
         QTemporaryDir fixture;
         QVERIFY(fixture.isValid());
+        const QString settings = fixture.filePath("language.ini");
+        const auto restore = qScopeGuard([&] {
+            SaveRegLang(UString("-"), settings);
+            ReloadLang(settings);
+        });
+        LoadLangOneTime();
+        SaveRegLang(UString(language.toStdWString().c_str()), settings);
+        ReloadLang(settings);
         const QString path = fixture.filePath(QStringLiteral("имя с пробелом.txt"));
         QFile file(path);
         QVERIFY(file.open(QIODevice::WriteOnly));
@@ -150,6 +169,9 @@ class FileMenuPolicyTests : public QObject {
         policy.Load(menu, 0);
         QVERIFY(menu.ids().contains(IDM_DIFF));
         QVERIFY(menu.ids().contains(IDM_VER_COMMIT));
+        QCOMPARE(
+            QString::fromWCharArray(menu.items[menu.ids().indexOf(IDM_VER_COMMIT)].StringValue),
+            commit);
         QVERIFY(!menu.ids().contains(IDM_VER_EDIT));
         QVERIFY(file.setPermissions(QFileDevice::ReadOwner));
         menu.items.clear();

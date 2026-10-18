@@ -12,6 +12,7 @@
 #include "qtlangcontrols.h"
 #include "qtsemanticcolors.h"
 #include <QDesktopServices>
+#include <QEvent>
 #include <QFontDatabase>
 #include <QFrame>
 #include <QHBoxLayout>
@@ -25,18 +26,6 @@
 static const UInt32 kLangIDs[] = {IDT_ABOUT_INFO};
 #define kHomePageURL "https://www.7-zip.org/"
 #define kHelpTopic "start.htm"
-
-static QSize IdentityMinimumSize(const QLabel &application, int width, const QString &english,
-                                 const QString &russian) {
-    QLabel measure;
-    measure.setFont(application.font());
-    measure.setTextFormat(Qt::PlainText);
-    measure.setWordWrap(true);
-    measure.setText(english);
-    const int englishHeight = measure.heightForWidth(width);
-    measure.setText(russian);
-    return QSize(width, qMax(englishHeight, measure.heightForWidth(width)));
-}
 
 static void StyleAboutLink(QPushButton &button) {
     button.setFlat(true);
@@ -71,9 +60,9 @@ CAboutDialog::CAboutDialog(QWidget *parent, const CCodecs *codecs)
     description->setObjectName("aboutDescription");
     description->setWordWrap(true);
     description->setTextFormat(Qt::PlainText);
-    const QString english = "An independent file manager based on 7‑Zip.";
-    const QString russian = "Независимый файловый менеджер на основе 7‑Zip.";
-    QtBindLocalText(description, english, russian);
+    QtBindLocalText(
+        description, "AboutDialog",
+        QT_TRANSLATE_NOOP("AboutDialog", "An independent file manager based on 7‑Zip."));
     layout->addWidget(description);
     QFont captionFont = font();
     captionFont.setPointSizeF(captionFont.pointSizeF() * 0.9);
@@ -108,7 +97,7 @@ CAboutDialog::CAboutDialog(QWidget *parent, const CCodecs *codecs)
     upstreamLayout->insertWidget(2, copyright);
     auto *license = new QPushButton(upstream);
     license->setObjectName("aboutLicense");
-    QtBindLocalText(license, "7-Zip license", "Лицензия 7-Zip");
+    QtBindLocalText(license, "AboutDialog", QT_TRANSLATE_NOOP("AboutDialog", "7-Zip license"));
     StyleAboutLink(*license);
     connect(license, &QPushButton::clicked, this,
             [this] { ShowHelpWindow("general/license.htm", this); });
@@ -131,7 +120,7 @@ CAboutDialog::CAboutDialog(QWidget *parent, const CCodecs *codecs)
     layout->addStretch();
     auto *project = new QPushButton(this);
     project->setObjectName("aboutProjectHomepage");
-    QtBindLocalText(project, "Project website", "Сайт проекта");
+    QtBindLocalText(project, "AboutDialog", QT_TRANSLATE_NOOP("AboutDialog", "Project website"));
     StyleAboutLink(*project);
     connect(project, &QPushButton::clicked, this,
             [] { QDesktopServices::openUrl(QUrl("https://github.com/Feverqwe/7zip-qt-port")); });
@@ -146,12 +135,29 @@ CAboutDialog::CAboutDialog(QWidget *parent, const CCodecs *codecs)
     OnInit();
     ok->setDefault(true);
     ok->setFocus();
-    // Fit both supported translations before initial display or a live switch.
+    // The wrapping label lets the layout derive its height from the active translation.
     const int width = QtDialogUnits(font()).pixels(QSize(160, 0)).width();
     const QMargins margins = layout->contentsMargins();
-    description->setMinimumSize(IdentityMinimumSize(
-        *description, qMax(1, width - margins.left() - margins.right()), english, russian));
+    description->setMinimumWidth(qMax(1, width - margins.left() - margins.right()));
     adjustSize();
+}
+
+void CAboutDialog::UpdateMinimumHeight() {
+    if (layout() && layout()->hasHeightForWidth()) {
+        layout()->invalidate();
+        setMinimumHeight(layout()->totalHeightForWidth(width()));
+    }
+}
+
+void CAboutDialog::changeEvent(QEvent *event) {
+    QDialog::changeEvent(event);
+    if (event->type() == QEvent::LanguageChange || event->type() == QEvent::FontChange)
+        UpdateMinimumHeight();
+}
+
+void CAboutDialog::resizeEvent(QResizeEvent *event) {
+    QDialog::resizeEvent(event);
+    UpdateMinimumHeight();
 }
 
 bool CAboutDialog::OnInit() {
@@ -161,14 +167,15 @@ bool CAboutDialog::OnInit() {
         if (!s.IsEmpty())
             QMessageBox::critical(parentWidget(), "7-Zip", QString::fromWCharArray(s.Ptr()));
     }
-    QtBindLocalText(this, "About Sevenzip", "О программе Sevenzip");
+    QtBindLocalText(this, "AboutDialog", QT_TRANSLATE_NOOP("AboutDialog", "About Sevenzip"));
     for (UInt32 id : kLangIDs)
         QtBindResourceText(findChild<QLabel *>(QString("aboutText%1").arg(id)), id,
                            "7-Zip is free software");
     QtBindLocalText(findChild<QLabel *>(QString("aboutText%1").arg(IDT_ABOUT_VERSION)),
-                    "Based on 7-Zip " MY_VERSION_CPU, "На основе 7-Zip " MY_VERSION_CPU);
-    QtBindLocalText(findChild<QLabel *>(QString("aboutText%1").arg(IDT_ABOUT_DATE)),
-                    "7-Zip release: " MY_DATE, "Дата выпуска 7-Zip: " MY_DATE);
+                    "AboutDialog", QT_TRANSLATE_NOOP("AboutDialog", "Based on 7-Zip %1"), false,
+                    {MY_VERSION_CPU});
+    QtBindLocalText(findChild<QLabel *>(QString("aboutText%1").arg(IDT_ABOUT_DATE)), "AboutDialog",
+                    QT_TRANSLATE_NOOP("AboutDialog", "7-Zip release: %1"), false, {MY_DATE});
     // Qt positions the modal child relative to its parent.
     return true;
 }

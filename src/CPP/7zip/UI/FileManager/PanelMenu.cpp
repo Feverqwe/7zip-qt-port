@@ -22,6 +22,7 @@
 #include "Windows/FileName.h"
 #include "Windows/PropVariant.h"
 #include "Windows/PropVariantConv.h"
+#include "qtdiagnostictext.h"
 #include "qtfilemenuservices.h"
 #include "qtlangcontrols.h"
 #include "qtpanelcontextmenuservices.h"
@@ -571,11 +572,22 @@ static void AddPropertyString(PROPID propID, const wchar_t *nameBSTR,
         }
 
         if (!val.IsEmpty()) {
-            if (propID == kpidErrorType)
-                AddPropertyPair(L"Open WARNING:", L"Cannot open the file as expected archive type",
-                                dialog);
+            if (propID == kpidErrorType) {
+                const char *name = QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Open WARNING:");
+                const char *value = QT_TRANSLATE_NOOP(
+                    "SevenZipDiagnostics", "Cannot open the file as expected archive type");
+                AddPropertyPair(QtDiagnosticText(name), QtDiagnosticText(value), dialog);
+                dialog.QtBindDiagnosticRow(dialog.Strings.Size() - 1, name, value);
+            }
             AddPropertyPair(GetNameOfProperty(propID, nameBSTR), val, dialog);
             dialog.QtBindPropertyName(dialog.Strings.Size() - 1, propID, nameBSTR);
+            const unsigned row = dialog.Strings.Size() - 1;
+            if (propID == kpidErrorFlags || propID == kpidWarningFlags)
+                dialog.QtBindArchiveFlagsValue(row, GetOpenArcErrorFlags(prop));
+            else if (propID == kpidError || propID == kpidWarning) {
+                dialog.QtBindArchiveDiagnosticValue(row, val);
+                dialog.Values[row] = QtArchiveDiagnosticText(val);
+            }
         }
     }
 }
@@ -683,9 +695,9 @@ void CPanel::Properties(const CRecordVector<UInt32> &operatedIndices,
                 numFiles++;
         }
         {
-            wchar_t temp[32];
-            ConvertUInt32ToString(operatedIndices.Size(), temp);
-            AddPropertyPair(L"", MyFormatNew(LangString(IDS_N_SELECTED_ITEMS), temp), message);
+            const std::wstring selected =
+                QtSelectedItemsText(int(operatedIndices.Size())).toStdWString();
+            AddPropertyPair(L"", UString(selected.c_str()), message);
         }
         if (numDirs != 0)
             AddPropertyString(kpidNumSubDirs, numDirs, message);

@@ -177,7 +177,8 @@ HRESULT ArchiveBackend::updateSourceArchive(
 #else
                 errorInfo.SystemError = EACCES;
 #endif
-                errorInfo.Message = "Could not make the SFX archive executable";
+                errorInfo.Message = QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                                                      "Could not make the SFX archive executable");
                 errorInfo.FileNames.Add(us2fs(output));
                 return errorInfo.Get_HRESULT_Error();
             }
@@ -278,10 +279,10 @@ bool ArchiveBackend::discoverCodecCatalog(const QString &module) {
                                                       ? std::shared_ptr<const ArchiveCodecCatalog>()
                                                       : result.catalog);
                 emit codecCatalogReady(!codecDiscoveryCancelled_ && result.result == S_OK,
-                                       codecDiscoveryCancelled_
-                                           ? QtLocalText("Codec discovery cancelled.",
-                                                         "Поиск модуля форматов отменён.")
-                                           : result.error);
+                                       codecDiscoveryCancelled_ ? QCoreApplication::translate(
+                                                                      "archivebackend_codecs",
+                                                                      "Codec discovery cancelled.")
+                                                                : result.error);
             },
             Qt::QueuedConnection);
     });
@@ -320,7 +321,8 @@ void ArchiveBackend::cancelCodecDiscovery() {
 }
 
 QString ArchiveBackend::openDialogFilter() const {
-    const QString allFiles = QtLocalText("All files", "Все файлы") + " (*)";
+    const QString allFiles =
+        QCoreApplication::translate("archivebackend_codecs", "All files") + " (*)";
     const auto catalog = codecCatalog();
     if (!catalog || catalog->result() != S_OK)
         return allFiles;
@@ -329,7 +331,8 @@ QString ArchiveBackend::openDialogFilter() const {
         masks.append("*." + extension);
     if (masks.isEmpty())
         return allFiles;
-    return QtLocalText("Archives", "Архивы") + " (" + masks.join(' ') + ");;" + allFiles;
+    return QCoreApplication::translate("archivebackend_codecs", "Archives") + " (" +
+           masks.join(' ') + ");;" + allFiles;
 }
 
 bool ArchiveBackend::supportsArchiveUpdate(const QString &format) const {
@@ -391,7 +394,8 @@ bool ArchiveBackend::selectCreationFormat(const QString &archive, const QStringL
             }
         }
     }
-    error = QtLocalText("No archive creation engine is available for this format and selection.",
-                        "Для этого формата и выбранных источников нет модуля создания архива.");
+    error = QCoreApplication::translate(
+        "archivebackend_codecs",
+        "No archive creation engine is available for this format and selection.");
     return false;
 }

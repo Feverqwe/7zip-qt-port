@@ -65,7 +65,7 @@ class PanelShellTests final : public QObject, protected MainWindowTestSupport {
         QVERIFY(leftPanel);
         auto *leftTable = leftPanel->findChild<QTableWidget *>("archiveTable");
         QTRY_COMPARE(status(leftPanel, "selectedItemsStatus")->text(),
-                     QStringLiteral("0 / 1 object(s) selected"));
+                     QStringLiteral("Selected: 0 / 1"));
         QCOMPARE(leftTable->rowCount(), 1);
         QVERIFY(!leftTable->item(0, 0)->icon().isNull());
         QIcon sourceIcon;
@@ -76,7 +76,7 @@ class PanelShellTests final : public QObject, protected MainWindowTestSupport {
         leftTable->selectRow(0);
         leftTable->setCurrentCell(0, 0);
         QTRY_COMPARE(status(leftPanel, "selectedItemsStatus")->text(),
-                     QStringLiteral("1 / 1 object(s) selected"));
+                     QStringLiteral("Selected: 1 / 1"));
         QCOMPARE(status(leftPanel, "selectedSizeStatus")->text(), QStringLiteral("7"));
         QCOMPARE(status(leftPanel, "focusedSizeStatus")->text(), QStringLiteral("7"));
         QVERIFY(!status(leftPanel, "focusedDateStatus")->text().isEmpty());
@@ -136,12 +136,12 @@ class PanelShellTests final : public QObject, protected MainWindowTestSupport {
         QVERIFY(rightPanel && rightPanel->isVisible());
         auto *rightTable = rightPanel->findChild<QTableWidget *>("archiveTable");
         QTRY_COMPARE(status(rightPanel, "selectedItemsStatus")->text(),
-                     QStringLiteral("0 / 1 object(s) selected"));
+                     QStringLiteral("Selected: 0 / 1"));
         rightTable->selectRow(0);
         rightTable->setCurrentCell(0, 0);
         rightTable->setFocus();
         QTRY_COMPARE(status(rightPanel, "selectedItemsStatus")->text(),
-                     QStringLiteral("1 / 1 object(s) selected"));
+                     QStringLiteral("Selected: 1 / 1"));
         QCOMPARE(status(rightPanel, "selectedSizeStatus")->text(), QStringLiteral("12"));
         QCOMPARE(status(leftPanel, "selectedSizeStatus")->text(), QStringLiteral("7"));
         for (const QSize size : {QSize(980, 620), QSize(640, 400)}) {

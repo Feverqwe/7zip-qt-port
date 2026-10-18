@@ -254,10 +254,11 @@ P1-12.2 evidence is recorded in the port audit.
 and 340×390, writing current-build settings JSON reports. Rendered Windows
 parity remains unverified.
 
-Language reference: pinned `LangPage.rc`, `LangPage.cpp` and original26.03
-`Lang/en.ttt`/`Lang/ru.txt` (asset baseline in resources/7zip/provenance.json).
-The page keeps language label, combo and read-only scrollable native metadata
-report in source order. `language` checks600×320/480×280; `language_ui` writes
+Language reference: pinned `LangPage.rc`/`LangPage.cpp`; imported translation
+provenance is in resources/7zip/provenance.json. Qt Linguist catalogs replace
+native language files. The page keeps the label, combo and read-only scrollable
+language/locale report in source order; catalog completion is reviewed with
+the translation tools. `language` checks600×320/480×280; `language_ui` writes
 `options-language-*-*.json` for the other five Options pages at640×390 and
 520×380 in English/Russian, verifies bounds, checkbox widths and wrapped label
 height. Reports reviewed2026-10-01 on macOS: largest shell-bitness RU caption

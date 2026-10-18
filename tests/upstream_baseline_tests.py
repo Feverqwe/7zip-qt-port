@@ -82,6 +82,20 @@ class UpstreamBaselineTests(unittest.TestCase):
         self.assertIn("src/" + self.source + "` (adapted", report)
         self.assertIn("`" + self.old + "` → `" + new + "`", report)
 
+    def test_source_move_can_be_verified_before_staging(self):
+        destination = "src/CPP/Windows/Net.cpp"
+        (self.port / destination).parent.mkdir(parents=True)
+        (self.port / self.exact).rename(self.port / destination)
+        self.manifest["exact"] = []
+        self.manifest["adapted"] = sorted([*self.manifest["adapted"], destination])
+        self.manifest_path.write_text(json.dumps(self.manifest))
+        data = baseline.load_manifest(self.manifest_path)
+        baseline.verify(data, self.upstream)
+        # New worktree files still require provenance.
+        data["adapted"].remove(destination)
+        with self.assertRaisesRegex(ValueError, "Inventory mismatch: unrecorded="):
+            baseline.verify(data, self.upstream)
+
 
 if __name__ == "__main__":
     unittest.main()

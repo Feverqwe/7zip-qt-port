@@ -1,4 +1,5 @@
 #include "qtassociationplatform.h"
+#include "qtlanguageservices.h"
 #include <QHash>
 
 namespace {
@@ -52,7 +53,9 @@ class QtAssociationServices final : public IQtAssociationServices {
         return CanApply(group) && observed_.contains(key(group, ext));
     }
     QString UnavailableReason(unsigned group) const override {
-        return platform_ ? platform_->UnavailableReason(group) : QString("No association service");
+        return platform_
+                   ? platform_->UnavailableReason(group)
+                   : QCoreApplication::translate("qtassociationservices", "No association service");
     }
     QString ApplyExplanation(unsigned group) const override {
         return platform_ ? platform_->ApplyExplanation(group) : QString();

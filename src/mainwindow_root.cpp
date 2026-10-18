@@ -50,7 +50,7 @@ HRESULT MainWindow::renderRootFolder(bool updateAddress) {
             statusBar()->clearMessage();
         else
             statusBar()->showMessage(
-                QtLocalText("Could not read root folder.", "Не удалось прочитать корневую папку."));
+                QCoreApplication::translate("mainwindow_root", "Could not read root folder."));
         return result;
     };
     HRESULT result = panel.LoadListItems();

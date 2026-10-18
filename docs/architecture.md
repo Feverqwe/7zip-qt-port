@@ -51,6 +51,14 @@ failures must remain visible to the owning operation rather than silently changi
 the workflow. Platform menu, association, file picker and application-startup
 services stay behind narrow adapters.
 
+Interface text is owned by Qt Linguist catalogs. The language service discovers
+catalogs; module-owned translators support the GUI and the native shell host,
+including DLL unload before its host application exits. Upstream resource IDs
+remain an adapter boundary to those catalogs. Standard Qt widget catalogs
+are merged at build time. Presentation bindings retain source/context for live
+retranslation; namespace icons are selected by resource identity. See
+[localization](localization.md) for contributor commands.
+
 ## Filesystem and volume workers
 
 Original filesystem, copy and volume modules own operation plans and results.

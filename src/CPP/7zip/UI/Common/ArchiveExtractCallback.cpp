@@ -3,6 +3,7 @@
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 
 #include "7zip/UI/Common/StdAfx.h"
+#include "qtdiagnostictext.h"
 
 #undef sprintf
 #undef printf
@@ -44,23 +45,33 @@ using namespace NWindows;
 using namespace NFile;
 using namespace NDir;
 
-static const char *const kCantAutoRename = "Cannot create file with auto name";
-static const char *const kCantRenameFile = "Cannot rename existing file";
-static const char *const kCantDeleteOutputFile = "Cannot delete output file";
-static const char *const kCantDeleteOutputDir = "Cannot delete output folder";
-static const char *const kCantOpenOutFile = "Cannot open output file";
+static const char *const kCantAutoRename =
+    QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Cannot create file with auto name");
+static const char *const kCantRenameFile =
+    QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Cannot rename existing file");
+static const char *const kCantDeleteOutputFile =
+    QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Cannot delete output file");
+static const char *const kCantDeleteOutputDir =
+    QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Cannot delete output folder");
+static const char *const kCantOpenOutFile =
+    QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Cannot open output file");
 #ifndef Z7_SFX
-static const char *const kCantOpenInFile = "Cannot open input file";
+static const char *const kCantOpenInFile =
+    QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Cannot open input file");
 #endif
-static const char *const kCantSetFileLen = "Cannot set length for output file";
+static const char *const kCantSetFileLen =
+    QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Cannot set length for output file");
 #ifdef SUPPORT_LINKS
-static const char *const kCantCreateHardLink = "Cannot create hard link";
-static const char *const kCantCreateSymLink = "Cannot create symbolic link";
-static const char *const k_HardLink_to_SymLink_Ignored = "Hard link to symbolic link was ignored";
+static const char *const kCantCreateHardLink =
+    QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Cannot create hard link");
+static const char *const kCantCreateSymLink =
+    QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Cannot create symbolic link");
+static const char *const k_HardLink_to_SymLink_Ignored =
+    QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Hard link to symbolic link was ignored");
 static const char *const k_CantDelete_File_for_SymLink =
-    "Cannot delete file for symbolic link creation";
+    QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Cannot delete file for symbolic link creation");
 static const char *const k_CantDelete_Dir_for_SymLink =
-    "Cannot delete directory for symbolic link creation";
+    QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Cannot delete directory for symbolic link creation");
 #endif
 
 static const unsigned k_LinkDataSize_LIMIT = 1 << 12;
@@ -491,7 +502,9 @@ void CArchiveExtractCallback::CreateComplexDirectory(const UStringVector &dirPat
 
             if (isFinalDir && !NFile::NFind::DoesDirExist(fullPath)) {
                 _itemFailure = true;
-                SendMessageError_with_Error(hres, "Cannot create folder", fullPath);
+                SendMessageError_with_Error(
+                    hres, QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Cannot create folder"),
+                    fullPath);
                 // need_SetAttrib = false;
             }
         }
@@ -541,14 +554,14 @@ HRESULT CArchiveExtractCallback::CheckQtLinkPolicy(const FString &path, const FS
 }
 
 HRESULT CArchiveExtractCallback::SendMessageError(const char *message, const FString &path) const {
-    UString s(message);
+    UString s = QtDiagnosticText(message);
     AddPathToMessage(s, path);
     return _extractCallback2->MessageError(s);
 }
 
 HRESULT CArchiveExtractCallback::SendMessageError_with_Error(HRESULT errorCode, const char *message,
                                                              const FString &path) const {
-    UString s(message);
+    UString s = QtDiagnosticText(message);
     if (errorCode != S_OK) {
         s += " : ";
         s += NError::MyFormatMessage(errorCode);
@@ -566,7 +579,7 @@ HRESULT CArchiveExtractCallback::SendMessageError_with_LastError(const char *mes
 HRESULT CArchiveExtractCallback::SendMessageError2(HRESULT errorCode, const char *message,
                                                    const FString &path1,
                                                    const FString &path2) const {
-    UString s(message);
+    UString s = QtDiagnosticText(message);
     if (errorCode != 0) {
         s += " : ";
         s += NError::MyFormatMessage(errorCode);
@@ -896,7 +909,8 @@ void CArchiveExtractCallback::SetOwner() {
     if (_fi.Owner.Id_Defined && _fi.Group.Id_Defined) {
         // printf("\n SetOwner() %s\n", path.Ptr());
         if (my_chown(path, _fi.Owner.Id, _fi.Group.Id) != 0)
-            SendMessageError_with_LastError("Cannot set owner", path);
+            SendMessageError_with_LastError(
+                QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Cannot set owner"), path);
     }
 }
 
@@ -1487,8 +1501,9 @@ HRESULT CArchiveExtractCallback::GetExtractStream(CMyComPtr<ISequentialOutStream
 
             res = _outFileStreamSpec->SeekToBegin_bool();
             if (!res) {
-                RINOK(SendMessageError_with_LastError("Cannot seek to begin of file",
-                                                      fullProcessedPath))
+                RINOK(SendMessageError_with_LastError(
+                    QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Cannot seek to begin of file"),
+                    fullProcessedPath))
             }
         } // PreAllocateOutFile
 
@@ -2010,7 +2025,9 @@ HRESULT CArchiveExtractCallback::SetLink(const FString &fullProcessedPath_from,
 
     NIO::COutFile outFile;
     if (!outFile.Create_NEW(fullProcessedPath_from))
-        return SendMessageError("Cannot create temporary link file", fullProcessedPath_from);
+        return SendMessageError(
+            QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Cannot create temporary link file"),
+            fullProcessedPath_from);
 #if 0 // 1 for debug
   // here we can write link path to temporary link file placeholder,
   // but empty placeholder is better, because we don't want to get any non-empty data instead of link file.
@@ -2035,7 +2052,9 @@ CArchiveExtractCallback::DeleteLinkFileAlways_or_RemoveEmptyDir(const FString &p
         } else {
             // link file placeholder must be empty
             if (checkThatFileIsEmpty && !fi.IsOsSymLink() && fi.Size != 0)
-                return SendMessageError("Temporary link file is not empty", path);
+                return SendMessageError(
+                    QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Temporary link file is not empty"),
+                    path);
             if (DeleteFileAlways(path))
                 return S_OK;
         }
@@ -2115,10 +2134,11 @@ static HRESULT SetLink2(const CArchiveExtractCallback &callback, const CPostLink
         }
         const char *message = NULL;
         if (isDang)
-            message = "Dangerous link path was ignored";
+            message = QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Dangerous link path was ignored");
         else if (level <= k_DangLevel_MAX_for_Link_over_Link &&
                  !CheckLinkPath_in_FS(callback._dirPathPrefix_Full, postLink, relativePathPrefix))
-            message = "Dangerous link via another link was ignored";
+            message = QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                                        "Dangerous link via another link was ignored");
         if (message)
             return callback.SendMessageError2(0, // errorCode
                                               message, us2fs(postLink.item_Path),
@@ -2132,7 +2152,9 @@ static HRESULT SetLink2(const CArchiveExtractCallback &callback, const CPostLink
         // relatPath == link.LinkPath
         // we get absolute link path for target:
         if (!NName::GetFullPath(callback._dirPathPrefix_Full, us2fs(link.LinkPath), target))
-            return callback.SendMessageError("Incorrect link path", us2fs(link.LinkPath));
+            return callback.SendMessageError(
+                QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Incorrect link path"),
+                us2fs(link.LinkPath));
         // (target) is (_dirPathPrefix_Full + relatPath)
     } else {
         // link.isRelative == true
@@ -2140,7 +2162,8 @@ static HRESULT SetLink2(const CArchiveExtractCallback &callback, const CPostLink
         target = us2fs(link.LinkPath);
     }
     if (target.IsEmpty())
-        return callback.SendMessageError("Empty link", fullProcessedPath_from);
+        return callback.SendMessageError(QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Empty link"),
+                                         fullProcessedPath_from);
     if (!link.Is_HardLink())
         RINOK(callback.CheckQtLinkPolicy(fullProcessedPath_from, target, link.isRelative))
 
@@ -2209,7 +2232,9 @@ static HRESULT SetLink2(const CArchiveExtractCallback &callback, const CPostLink
     } else
         FillLinkData_WinLink(data, fs2us(target), link.LinkType != k_LinkType_Junction);
     if (data.Size() == 0)
-        return callback.SendMessageError("Cannot fill link data", us2fs(postLink.item_Path));
+        return callback.SendMessageError(
+            QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Cannot fill link data"),
+            us2fs(postLink.item_Path));
     /*
     if (NtReparse_Size != data.Size() || memcmp(NtReparse_Data, data, data.Size()) != 0)
       SendMessageError("reconstructed Reparse is different", fs2us(target));
@@ -2218,8 +2243,9 @@ static HRESULT SetLink2(const CArchiveExtractCallback &callback, const CPostLink
         // we check that reparse data is correct, but we ignore attr.MinorError.
         CReparseAttr attr;
         if (!attr.Parse(data, data.Size()))
-            return callback.SendMessageError("Internal error for symbolic link file",
-                                             us2fs(postLink.item_Path));
+            return callback.SendMessageError(
+                QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Internal error for symbolic link file"),
+                us2fs(postLink.item_Path));
     }
 #endif
 
@@ -2423,11 +2449,15 @@ HRESULT CArchiveExtractCallback::CloseReparseAndFile() {
                                  ? link.Parse_from_LinuxData(_outMemBuf, reparseSize)
                                  : link.Parse_from_WindowsReparseData(_outMemBuf, reparseSize);
             if (!needSetReparse)
-                res = SendMessageError("Incorrect reparse stream", us2fs(_item.Path));
+                res = SendMessageError(
+                    QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Incorrect reparse stream"),
+                    us2fs(_item.Path));
             // (link.LinkPath) uses system path separator.
             // windows: (link.LinkPath) doesn't contain linux separator (slash).
         } else {
-            res = SendMessageError("Unknown reparse stream", us2fs(_item.Path));
+            res =
+                SendMessageError(QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Unknown reparse stream"),
+                                 us2fs(_item.Path));
         }
         if (!needSetReparse && _outFileStream) {
             const HRESULT res2 = WriteStream(_outFileStream, _outMemBuf, reparseSize);
@@ -2453,7 +2483,8 @@ HRESULT CArchiveExtractCallback::CloseReparseAndFile() {
             // in Linux   : we must delete empty file before symbolic link creation
             // in Windows : we can create symbolic link even without file deleting
             if (!DeleteFileAlways(_diskFilePath)) {
-                RINOK(SendMessageError_with_LastError("can't delete file", _diskFilePath))
+                RINOK(SendMessageError_with_LastError(
+                    QT_TRANSLATE_NOOP("SevenZipDiagnostics", "can't delete file"), _diskFilePath))
             }
             {
                 bool linkWasSet = false;
@@ -2488,7 +2519,8 @@ static void SetAttrib_Base(const FString &path, const CProcessedFileInfo &fi,
         // printf("\nSetFileAttrib_PosixHighDetect: %s: hex:%x\n", s.Ptr(), _fi.Attrib);
         if (!SetFileAttrib_PosixHighDetect(path, fi.Attrib)) {
             // do we need error message here in Windows and in posix?
-            callback.SendMessageError_with_LastError("Cannot set file attribute", path);
+            callback.SendMessageError_with_LastError(
+                QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Cannot set file attribute"), path);
         }
     }
 }
@@ -2813,8 +2845,9 @@ HRESULT CArchiveExtractCallback::SetPostLinks() const {
                 const CProcessedFileInfo &fi = link.item_FileInfo;
                 if (fi.Owner.Id_Defined && fi.Group.Id_Defined) {
                     if (my_chown_Link(link.fullProcessedPath_from, fi.Owner.Id, fi.Group.Id) != 0)
-                        SendMessageError_with_LastError("Cannot set owner",
-                                                        link.fullProcessedPath_from);
+                        SendMessageError_with_LastError(
+                            QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Cannot set owner"),
+                            link.fullProcessedPath_from);
                 }
             }
 #endif

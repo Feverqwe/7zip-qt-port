@@ -29,7 +29,7 @@ def main():
     installer.QtArchives = WindowsArchives
     return installer.Cli().run([
         "install-qt", "windows", "desktop", args.version, "win64_msvc2022_64",
-        "--outputdir", str(args.outputdir), "--archives", "qtbase"])
+        "--outputdir", str(args.outputdir), "--archives", "qtbase", "qttools", "qttranslations"])
 
 
 if __name__ == "__main__":

@@ -1,10 +1,13 @@
 #include "7zip/UI/GUI/ExtractRes.h"
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/PasswordDialog.h"
+#include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "CPP/7zip/UI/FileManager/UpdateCallback100.h"
 #include <QApplication>
 #include <QLabel>
 #include <QLineEdit>
+#include <QScopeGuard>
+#include <QTemporaryDir>
 #include <QThread>
 #include <QTimer>
 #include <QtTest>
@@ -112,7 +115,24 @@ class UpdateCallbackTests : public QObject {
         progress.Sync.Set_Paused(false);
         QCOMPARE(open.SetCompleted(nullptr, nullptr), HRESULT(S_OK));
     }
+    void moveStatusAndPasswordReuse_data() {
+        QTest::addColumn<QString>("language");
+        QTest::addColumn<QString>("prefix");
+        QTest::newRow("en") << QString("-") << QString("33% : 1 MiB / 3 MiB");
+        QTest::newRow("ru") << QString("ru") << QString::fromUtf8("33% : 1 МиБ / 3 МиБ");
+    }
     void moveStatusAndPasswordReuse() {
+        QFETCH(QString, language);
+        QFETCH(QString, prefix);
+        QTemporaryDir directory;
+        QVERIFY(directory.isValid());
+        const QString settings = directory.filePath("move-language.ini");
+        const auto restore = qScopeGuard([&] {
+            SaveRegLang(UString("-"), settings);
+            ReloadLang(settings);
+        });
+        SaveRegLang(UString(language.toStdWString().c_str()), settings);
+        ReloadLang(settings);
         CProgressDialog progress;
         CUpdateCallback100Imp callback;
         callback.ProgressDialog = &progress;
@@ -121,7 +141,7 @@ class UpdateCallbackTests : public QObject {
         auto &crypto = static_cast<ICryptoGetTextPassword2 &>(callback);
         QCOMPARE(move.MoveArc_Start(L"temp файл", L"архив с пробелом", 3 << 20, 2), HRESULT(S_OK));
         QCOMPARE(move.MoveArc_Progress(3 << 20, 1 << 20), HRESULT(S_OK));
-        QVERIFY(text(progress.Sync._status).startsWith(QStringLiteral("33% : 1 MiB / 3 MiB")));
+        QVERIFY(text(progress.Sync._status).startsWith(prefix));
         QCOMPARE(text(progress.Sync._filePath), QStringLiteral("архив с пробелом"));
         const UInt64 large = UInt64(1) << 60;
         QCOMPARE(move.MoveArc_Progress(large, large / 2), HRESULT(S_OK));

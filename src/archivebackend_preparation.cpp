@@ -7,8 +7,8 @@
 void ArchiveBackend::prepareArchiveCopy(const QString &source, const QString &output,
                                         std::function<void()> continuation) {
     if (busy()) {
-        emit finished(false, QtLocalText("Another operation is still running.",
-                                         "Другая операция ещё выполняется."));
+        emit finished(false, QCoreApplication::translate("archivebackend_preparation",
+                                                         "Another operation is still running."));
         return;
     }
     copyPreparation_ = std::make_unique<QtArchiveCopyPreparation>(source, output);
@@ -56,10 +56,11 @@ void ArchiveBackend::finishCopyPreparation() {
         sourcePlanSwitches_.clear();
         // A refused publication can leave a caller-owned collision at this path.
         createTemporary_.clear();
-        const QString error = lastResult_ == E_ABORT
-                                  ? QtLocalText("Operation canceled.", "Операция отменена.")
-                                  : QtLocalText("Could not prepare a copy of the archive.",
-                                                "Не удалось подготовить копию архива.");
+        const QString error =
+            lastResult_ == E_ABORT
+                ? QCoreApplication::translate("archivebackend_preparation", "Operation canceled.")
+                : QCoreApplication::translate("archivebackend_preparation",
+                                              "Could not prepare a copy of the archive.");
         emit finished(false, error);
         return;
     }

@@ -9,6 +9,7 @@
 #include "Windows/ErrorMsg.h"
 
 #include "UpdateCallbackAgent.h"
+#include "qtdiagnostictext.h"
 
 using namespace NWindows;
 
@@ -69,7 +70,7 @@ HRESULT CUpdateCallbackAgent::OpenFileError(const FString &path, DWORD systemErr
         }
 
         if (Callback) {
-            UString s("WARNING: ");
+            UString s = QtDiagnosticText(QT_TRANSLATE_NOOP("SevenZipDiagnostics", "WARNING: "));
             s += NError::MyFormatMessage(systemError);
             s += ": ";
             s += fs2us(path);
@@ -89,7 +90,7 @@ HRESULT CUpdateCallbackAgent::ReadingFileError(const FString &path, DWORD system
         if (Callback2) {
             RINOK(Callback2->ReadingFileError(fs2us(path), hres))
         } else if (Callback) {
-            UString s("ERROR: ");
+            UString s = QtDiagnosticText(QT_TRANSLATE_NOOP("SevenZipDiagnostics", "ERROR: "));
             s += NError::MyFormatMessage(systemError);
             s += ": ";
             s += fs2us(path);

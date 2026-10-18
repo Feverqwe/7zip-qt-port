@@ -15,7 +15,7 @@ bool ArchiveBackend::checkVolumeTargets(const QString &archive, QString *error) 
                                                       QDir::System | QDir::NoDotAndDotDot))
         if (pattern.match(name).hasMatch()) {
             *error =
-                QtLocalText("Volume already exists: %1", QStringLiteral("Том уже существует: %1"))
+                QCoreApplication::translate("archivebackend_volumes", "Volume already exists: %1")
                     .arg(target.dir().filePath(name));
             return false;
         }
@@ -30,7 +30,7 @@ void ArchiveBackend::startVolumeOutput() {
     const quint64 generation = ++volumeGeneration_;
     const quint64 progressGeneration = beginWorkerProgress();
     const QString caption =
-        QtLocalText("Creating archive volumes", QStringLiteral("Создание архивных томов"));
+        QCoreApplication::translate("archivebackend_volumes", "Creating archive volumes");
     volumeOutput_->Progress = [this, progressGeneration, caption](quint64 done, quint64 total) {
         const int percent = total ? int(100.0 * double(done) / double(total)) : 0;
         postWorkerProgress(progressGeneration, percent, caption);
@@ -54,7 +54,7 @@ void ArchiveBackend::finishVolumeOutput() {
     if (cancelled_)
         lastResult_ = E_ABORT;
     const QString error =
-        cancelled_ ? QtLocalText("Operation canceled.", QStringLiteral("Операция отменена."))
+        cancelled_ ? QCoreApplication::translate("archivebackend_volumes", "Operation canceled.")
                    : volumeOutput_->Error;
     volumeOutput_.reset();
     QFile::remove(createTemporary_);
@@ -63,7 +63,7 @@ void ArchiveBackend::finishVolumeOutput() {
     if (lastResult_ == S_OK && startCreationDeletion())
         return;
     emit finished(lastResult_ == S_OK, lastResult_ == S_OK
-                                           ? QtLocalText("Archive volumes created.",
-                                                         QStringLiteral("Архивные тома созданы."))
+                                           ? QCoreApplication::translate("archivebackend_volumes",
+                                                                         "Archive volumes created.")
                                            : error);
 }

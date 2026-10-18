@@ -56,10 +56,9 @@ HRESULT QtArchiveCreationLifecycle::scan() {
         return result;
     FOR_VECTOR(i, inputs_.DirItems.Items) {
         if (inputs_.DirItems.Items[i].AreReparseData() && !inputs_.SymLinks.Val) {
-            Error = QtLocalText(
-                "Deleting inputs after compression is unavailable for sources containing links.",
-                QStringLiteral(
-                    "Удаление после сжатия для источников со ссылками пока недоступно."));
+            Error = QCoreApplication::translate(
+                "qtarchivecreationlifecycle",
+                "Deleting inputs after compression is unavailable for sources containing links.");
             return E_NOTIMPL;
         }
     }
@@ -86,8 +85,8 @@ void QtArchiveCreationLifecycle::run() {
         Result = E_OUTOFMEMORY;
     }
     if (Result != S_OK && Error.isEmpty())
-        Error = Result == E_ABORT
-                    ? QtLocalText("Operation canceled.", QStringLiteral("Операция отменена."))
-                    : QtLocalText("Could not process input files.",
-                                  QStringLiteral("Не удалось обработать исходные файлы."));
+        Error = Result == E_ABORT ? QCoreApplication::translate("qtarchivecreationlifecycle",
+                                                                "Operation canceled.")
+                                  : QCoreApplication::translate("qtarchivecreationlifecycle",
+                                                                "Could not process input files.");
 }

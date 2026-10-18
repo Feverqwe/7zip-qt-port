@@ -3,18 +3,18 @@
 #include "createarchivedialog.h"
 
 void CreateArchiveDialog::createEncryptionOptions(QFormLayout *form) {
-    auto *group = new QGroupBox("Шифрование", this);
+    auto *group = new QGroupBox("Encryption", this);
     group->setObjectName("archiveEncryptionGroup");
     encryptionForm_ = new QFormLayout(group);
     encryptionForm_->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
     encryptionForm_->setRowWrapPolicy(QFormLayout::WrapAllRows);
     password_ = new QLineEdit(group);
     password_->setObjectName("archivePassword");
-    encryptionForm_->addRow("Пароль:", password_);
+    encryptionForm_->addRow("Password", password_);
     passwordConfirmation_ = new QLineEdit(group);
     passwordConfirmation_->setObjectName("archivePasswordConfirmation");
-    encryptionForm_->addRow("Повторите пароль:", passwordConfirmation_);
-    showPassword_ = new QCheckBox("Показать пароль", group);
+    encryptionForm_->addRow("Reenter password:", passwordConfirmation_);
+    showPassword_ = new QCheckBox("&Show password", group);
     showPassword_->setObjectName("archiveShowPassword");
     showPassword_->setChecked(m_RegistryInfo.ShowPassword);
     encryptionForm_->addRow(showPassword_);
@@ -25,13 +25,13 @@ void CreateArchiveDialog::createEncryptionOptions(QFormLayout *form) {
     auto *methodRow = new QWidget(group);
     auto *methodLayout = new QHBoxLayout(methodRow);
     methodLayout->setContentsMargins(0, 0, 0, 0);
-    auto *methodLabel = new QLabel("Метод:", methodRow);
+    auto *methodLabel = new QLabel("Method", methodRow);
     methodLabel->setObjectName("archiveEncryptionMethodLabel");
     methodLabel->setBuddy(encryption_);
     methodLayout->addWidget(methodLabel);
     methodLayout->addWidget(encryption_, 1);
     encryptionForm_->addRow(methodRow);
-    encryptHeaders_ = new QCheckBox("Шифровать имена файлов", group);
+    encryptHeaders_ = new QCheckBox("Encrypt file &names", group);
     encryptHeaders_->setObjectName("archiveEncryptHeaders");
     encryptHeaders_->setChecked(m_RegistryInfo.EncryptHeaders);
     encryptionForm_->addRow(reserveControlSpace(encryptHeaders_));

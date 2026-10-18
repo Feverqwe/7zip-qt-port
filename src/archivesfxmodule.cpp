@@ -55,8 +55,8 @@ bool ArchiveSfxModule::MakeExecutable(const QString &path) {
 }
 ArchiveSfxModule ArchiveSfxModule::Read(const QString &path, quint32 expectedVersion) {
     ArchiveSfxModule result;
-    result.error_ = QtLocalText("The official SFX module is missing or incompatible.",
-                                "Официальный модуль SFX отсутствует или несовместим.");
+    result.error_ = QCoreApplication::translate(
+        "archivesfxmodule", "The official SFX module is missing or incompatible.");
     FString module = us2fs(path.toStdWString().c_str());
     CUpdateErrorInfo error;
     if (PrepareSfxModule(module, FString(), error) != S_OK)

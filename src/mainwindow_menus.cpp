@@ -7,80 +7,80 @@
 #include "qtlangcontrols.h"
 
 QMenu *MainWindow::createMenusAndToolbar() {
-    auto *menu = menuBar()->addMenu("Файл");
+    auto *menu = menuBar()->addMenu("&File");
     menu->setObjectName("fileMenu");
-    auto *toolbar = addToolBar("Архив");
+    auto *toolbar = addToolBar("Archive");
     toolbar->setObjectName("archiveToolbar");
-    QtBindLocalText(toolbar, "Archive", QStringLiteral("Архив"));
+    QtBindLocalText(toolbar, "mainwindow_menus", QT_TRANSLATE_NOOP("mainwindow_menus", "Archive"));
     toolbar->setMovable(false);
     toolbar->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
     toolbar->setIconSize(QSize(24, 24));
     createFileActions(menu, toolbar);
     createFileExtras(menu, toolbar);
-    auto *editMenu = menuBar()->addMenu("Правка");
+    auto *editMenu = menuBar()->addMenu("&Edit");
     editMenu->setObjectName("editMenu");
-    auto *viewMenu = menuBar()->addMenu("Вид");
+    auto *viewMenu = menuBar()->addMenu("&View");
     viewMenu->setObjectName("viewMenu");
     createViewModes(viewMenu);
     viewMenu->addSeparator();
-    auto *favoritesMenu = menuBar()->addMenu("Избранное");
+    auto *favoritesMenu = menuBar()->addMenu("F&avorites");
     favoritesMenu->setObjectName("favoritesMenu");
-    auto *toolsMenu = menuBar()->addMenu("Сервис");
+    auto *toolsMenu = menuBar()->addMenu("&Tools");
     toolsMenu->setObjectName("toolsMenu");
-    settingsAction_ = toolsMenu->addAction("Настройки…");
+    settingsAction_ = toolsMenu->addAction("&Options...");
     settingsAction_->setObjectName("settingsAction");
-    menuBar()->addMenu("Справка")->setObjectName("helpMenu");
+    menuBar()->addMenu("&Help")->setObjectName("helpMenu");
     createFavoritesMenu(favoritesMenu);
     createViewOptions(viewMenu);
     return editMenu;
 }
 
 void MainWindow::createFileActions(QMenu *menu, QToolBar *toolbar) {
-    back_ = new QAction("Назад", this);
+    back_ = new QAction("Back", this);
     back_->setObjectName("backAction");
-    QtBindLocalText(back_, "Back", QStringLiteral("Назад"));
-    up_ = new QAction("Вверх", this);
+    QtBindLocalText(back_, "mainwindow_menus", QT_TRANSLATE_NOOP("mainwindow_menus", "Back"));
+    up_ = new QAction("Up", this);
     up_->setObjectName("upAction");
-    openItem_ = new QAction("Открыть", this);
+    openItem_ = new QAction("&Open", this);
     openItem_->setObjectName("openItemAction");
-    openInside_ = menu->addAction("Открыть внутри");
+    openInside_ = menu->addAction("Open &Inside");
     openInside_->setObjectName("openInsideAction");
     openInside_->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_PageDown));
-    openInsideOne_ = new QAction("Открыть внутри *", this);
+    openInsideOne_ = new QAction("Open Inside *", this);
     openInsideOne_->setObjectName("openInsideOneAction");
-    openInsideParser_ = new QAction("Открыть внутри #", this);
+    openInsideParser_ = new QAction("Open Inside #", this);
     openInsideParser_->setObjectName("openInsideParserAction");
-    openOutside_ = menu->addAction("Открыть снаружи");
+    openOutside_ = menu->addAction("Open O&utside");
     openOutside_->setObjectName("openOutsideAction");
     openOutside_->setShortcut(QKeySequence(Qt::SHIFT | Qt::Key_Return));
-    toolbarAdd_ = toolbar->addAction("Добавить");
+    toolbarAdd_ = toolbar->addAction("Add");
     toolbarAdd_->setObjectName("toolbarAddAction");
-    extract_ = toolbar->addAction("Извлечь");
+    extract_ = toolbar->addAction("Extract");
     extract_->setObjectName("extractArchiveAction");
-    test_ = toolbar->addAction("Тест");
+    test_ = toolbar->addAction("Test");
     test_->setObjectName("testArchiveAction");
-    copy_ = toolbar->addAction("Копировать");
+    copy_ = toolbar->addAction("Copy");
     copy_->setObjectName("copyAction");
-    move_ = toolbar->addAction("Переместить");
+    move_ = toolbar->addAction("Move");
     move_->setObjectName("moveAction");
-    remove_ = toolbar->addAction("Удалить");
+    remove_ = toolbar->addAction("&Delete");
     remove_->setObjectName("deleteAction");
-    split_ = menu->addAction("Разбить файл…");
+    split_ = menu->addAction("&Split file...");
     split_->setObjectName("splitFileAction");
-    combine_ = menu->addAction("Объединить файлы…");
+    combine_ = menu->addAction("Com&bine files...");
     combine_->setObjectName("combineFilesAction");
-    rename_ = menu->addAction("Переименовать…");
+    rename_ = menu->addAction("Rena&me");
     rename_->setObjectName("renameAction");
-    viewFile_ = menu->addAction("Просмотреть");
+    viewFile_ = menu->addAction("View");
     viewFile_->setObjectName("viewFileAction");
     viewFile_->setShortcut(QKeySequence(Qt::Key_F3));
-    editFile_ = menu->addAction("Редактировать");
+    editFile_ = menu->addAction("&Edit");
     editFile_->setObjectName("editFileAction");
     editFile_->setShortcut(QKeySequence(Qt::Key_F4));
-    properties_ = menu->addAction("Свойства…");
+    properties_ = menu->addAction("P&roperties");
     properties_->setObjectName("selectedPropertiesAction");
     properties_->setShortcut(QKeySequence(Qt::ALT | Qt::Key_Return));
-    exitAction_ = new QAction("Выход", this);
+    exitAction_ = new QAction("E&xit", this);
     exitAction_->setObjectName("exitAction");
     exitAction_->setMenuRole(QAction::QuitRole);
     exitAction_->setShortcut(QKeySequence::Quit);
@@ -100,17 +100,17 @@ void MainWindow::createFileExtras(QMenu *menu, QToolBar *toolbar) {
         action->setObjectName(QStringLiteral("hash%1Action").arg(hashMethods[index]));
         hashActions_[index] = action;
     }
-    createFolder_ = menu->addAction("Создать папку…");
+    createFolder_ = menu->addAction("Create Folder");
     createFolder_->setObjectName("createFolderAction");
     createFolder_->setShortcut(QKeySequence(Qt::Key_F7));
-    createFile_ = menu->addAction("Создать файл…");
+    createFile_ = menu->addAction("Create File");
     createFile_->setObjectName("createFileAction");
     createFile_->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_N));
     copy_->setShortcut(QKeySequence(Qt::Key_F5));
     move_->setShortcut(QKeySequence(Qt::Key_F6));
     remove_->setShortcut(QKeySequence::Delete);
     rename_->setShortcut(QKeySequence(Qt::Key_F2));
-    infoAction_ = toolbar->addAction("Информация");
+    infoAction_ = toolbar->addAction("Info");
     infoAction_->setObjectName("archiveInfoAction");
     toolbarAdd_->setIcon(toolbarIcon(0));
     extract_->setIcon(toolbarIcon(1));
@@ -125,7 +125,7 @@ void MainWindow::createFileExtras(QMenu *menu, QToolBar *toolbar) {
 
 void MainWindow::createViewModes(QMenu *viewMenu) {
     auto *viewGroup = new QActionGroup(this);
-    const QStringList viewLabels = {"Крупные значки", "Мелкие значки", "Список", "Подробности"};
+    const QStringList viewLabels = {"Lar&ge Icons", "S&mall Icons", "&List", "Details"};
     for (int index = 0; index < viewLabels.size(); ++index) {
         QAction *action = viewMenu->addAction(viewLabels[index]);
         action->setObjectName(QStringLiteral("viewMode%1Action").arg(index));
@@ -137,7 +137,7 @@ void MainWindow::createViewModes(QMenu *viewMenu) {
 }
 
 void MainWindow::createFavoritesMenu(QMenu *favoritesMenu) {
-    auto *addFavoriteMenu = favoritesMenu->addMenu("Добавить папку в избранное как");
+    auto *addFavoriteMenu = favoritesMenu->addMenu("&Add folder to Favorites as");
     addFavoriteMenu->setObjectName("addFavoriteMenu");
     addFavoriteMenu->menuAction()->setObjectName("addFavoriteMenu");
     for (int index = 0; index < 10; ++index) {
@@ -153,8 +153,7 @@ void MainWindow::createFavoritesMenu(QMenu *favoritesMenu) {
 
 void MainWindow::createViewOptions(QMenu *viewMenu) {
     auto *sortGroup = new QActionGroup(this);
-    const QStringList sortLabels = {"По имени", "По типу", "По дате", "По размеру",
-                                    "Без сортировки"};
+    const QStringList sortLabels = {"By Name", "By Type", "By Date", "By Size", "Unsorted"};
     for (int index = 0; index < sortLabels.size(); ++index) {
         QAction *action = viewMenu->addAction(sortLabels[index]);
         action->setObjectName(QStringLiteral("sort%1Action").arg(index));
@@ -164,7 +163,7 @@ void MainWindow::createViewOptions(QMenu *viewMenu) {
         sortActions_[index] = action;
     }
     sortActions_[0]->setChecked(true);
-    auto *timeMenu = viewMenu->addMenu(QStringLiteral("Время"));
+    auto *timeMenu = viewMenu->addMenu(QStringLiteral("Time"));
     timeMenu->setObjectName(QStringLiteral("timestampMenu"));
     timeMenu->menuAction()->setObjectName("timestampMenu");
     timeMenu->menuAction()->setProperty("nativeCommandID", IDM_VIEW_TIME_POPUP);
@@ -186,11 +185,11 @@ void MainWindow::createViewOptions(QMenu *viewMenu) {
     fileListSettings_.Load(toolbarSettingsPath());
     flatDisk_ = settings.value("view/flatDisk", false).toBool();
     flatArchive_ = settings.value("view/flatArchive", false).toBool();
-    flatView_ = viewMenu->addAction("Плоский вид");
+    flatView_ = viewMenu->addAction("Flat View");
     flatView_->setObjectName("flatViewAction");
     flatView_->setCheckable(true);
     flatView_->setChecked(flatDisk_);
-    twoPanelsAction_ = viewMenu->addAction(QStringLiteral("Две панели"));
+    twoPanelsAction_ = viewMenu->addAction(QStringLiteral("Two Panels"));
     twoPanelsAction_->setObjectName("twoPanelsAction");
     twoPanelsAction_->setProperty("nativeCommandID", IDM_VIEW_TWO_PANELS);
     twoPanelsAction_->setCheckable(true);
@@ -199,16 +198,16 @@ void MainWindow::createViewOptions(QMenu *viewMenu) {
     connect(twoPanelsAction_, &QAction::triggered, this, [this] { togglePanels(); });
     viewMenu->addSeparator();
     createToolbarOptions(viewMenu);
-    root_ = viewMenu->addAction("Открыть корневую папку");
+    root_ = viewMenu->addAction("Open Root Folder");
     root_->setObjectName("openRootAction");
-    refresh_ = viewMenu->addAction("Обновить");
+    refresh_ = viewMenu->addAction("&Refresh");
     refresh_->setObjectName("refreshAction");
     refresh_->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_R));
-    autoRefreshAction_ = viewMenu->addAction(QStringLiteral("Автоматическое обновление"));
+    autoRefreshAction_ = viewMenu->addAction(QStringLiteral("Auto Refresh"));
     autoRefreshAction_->setObjectName(QStringLiteral("autoRefreshAction"));
     autoRefreshAction_->setCheckable(true);
     autoRefreshAction_->setChecked(app_.Get_AutoRefresh_Mode());
-    foldersHistory_ = viewMenu->addAction("История папок…");
+    foldersHistory_ = viewMenu->addAction("Folders History...");
     foldersHistory_->setObjectName("foldersHistoryAction");
     foldersHistory_->setShortcut(QKeySequence(Qt::ALT | Qt::Key_F12));
 }
@@ -235,7 +234,7 @@ void MainWindow::applyFlatView(bool enabled) {
 }
 
 void MainWindow::createToolbarOptions(QMenu *viewMenu) {
-    auto *toolbarsMenu = viewMenu->addMenu("Панели инструментов");
+    auto *toolbarsMenu = viewMenu->addMenu("&Toolbars");
     toolbarsMenu->setObjectName("toolbarsMenu");
     toolbarsMenu->menuAction()->setObjectName("toolbarsMenu");
     auto addToolbarOption = [this, toolbarsMenu](const QString &title, const char *name,
@@ -247,13 +246,12 @@ void MainWindow::createToolbarOptions(QMenu *viewMenu) {
         return option;
     };
     archiveToolbarOption_ =
-        addToolbarOption("Архивная панель", "archiveToolbarOption", app_.ShowArchiveToolbar);
+        addToolbarOption("Archive Toolbar", "archiveToolbarOption", app_.ShowArchiveToolbar);
     standardToolbarOption_ =
-        addToolbarOption("Стандартная панель", "standardToolbarOption", app_.ShowStandardToolbar);
-    largeButtonsOption_ =
-        addToolbarOption("Крупные значки", "largeButtonsOption", app_.LargeButtons);
+        addToolbarOption("Standard Toolbar", "standardToolbarOption", app_.ShowStandardToolbar);
+    largeButtonsOption_ = addToolbarOption("Lar&ge Icons", "largeButtonsOption", app_.LargeButtons);
     buttonTextOption_ =
-        addToolbarOption("Подписи кнопок", "buttonTextOption", app_.ShowButtonsLables);
+        addToolbarOption("Show Buttons Text", "buttonTextOption", app_.ShowButtonsLables);
     updateToolbar();
 }
 
@@ -277,7 +275,8 @@ void MainWindow::rebuildSourceMenus() {
     reset(file);
     auto *openArchive = file->addAction(QString());
     openArchive->setObjectName("openArchiveAction");
-    QtBindLocalText(openArchive, "Open archive…", QStringLiteral("Открыть архив…"));
+    QtBindLocalText(openArchive, "mainwindow_menus",
+                    QT_TRANSLATE_NOOP("mainwindow_menus", "Open archive…"));
     openArchive->setShortcut(QKeySequence::Open);
     file->addSeparator();
     for (QAction *action : {openItem_, openInside_, openInsideOne_, openInsideParser_, openOutside_,
@@ -291,16 +290,16 @@ void MainWindow::rebuildSourceMenus() {
     file->addAction(combine_);
     file->addSeparator();
     file->addAction(properties_);
-    unavailable(file, QStringLiteral("Комментарий…"), "commentAction", IDM_COMMENT);
+    unavailable(file, QStringLiteral("Comme&nt..."), "commentAction", IDM_COMMENT);
     file->addMenu(hash);
-    diffFiles_ = file->addAction(QStringLiteral("&Сравнить"));
+    diffFiles_ = file->addAction(QStringLiteral("&Diff"));
     diffFiles_->setObjectName("diffAction");
     file->addSeparator();
     file->addAction(createFolder_);
     file->addAction(createFile_);
     file->addSeparator();
-    unavailable(file, QStringLiteral("Ссылка…"), "linkAction", IDM_LINK);
-    unavailable(file, QStringLiteral("Альтернативные потоки"), "altStreamsAction", IDM_ALT_STREAMS);
+    unavailable(file, QStringLiteral("Link"), "linkAction", IDM_LINK);
+    unavailable(file, QStringLiteral("&Alternate Streams"), "altStreamsAction", IDM_ALT_STREAMS);
     file->addSeparator();
     file->addAction(exitAction_);
     const char *verCtrlNames[] = {"verEditAction", "verCommitAction", "verRevertAction",
@@ -349,13 +348,13 @@ void MainWindow::rebuildSourceMenus() {
     reset(tools);
     tools->addAction(settingsAction_);
     tools->addSeparator();
-    unavailable(tools, QStringLiteral("Тест производительности"), "benchmarkAction", IDM_BENCHMARK);
+    unavailable(tools, QStringLiteral("Benchmark"), "benchmarkAction", IDM_BENCHMARK);
     tools->addSeparator();
-    unavailable(tools, QStringLiteral("Удалить временные файлы…"), "tempDirAction", IDM_TEMP_DIR);
+    unavailable(tools, QStringLiteral("Delete Temporary Files..."), "tempDirAction", IDM_TEMP_DIR);
 
     auto *help = findChild<QMenu *>("helpMenu");
-    unavailable(help, QStringLiteral("Содержание…"), "helpContentsAction", IDM_HELP_CONTENTS);
+    unavailable(help, QStringLiteral("Contents..."), "helpContentsAction", IDM_HELP_CONTENTS);
     findChild<QAction *>("helpContentsAction")->setShortcut(QKeySequence(Qt::Key_F1));
     help->addSeparator();
-    unavailable(help, QStringLiteral("О 7-Zip…"), "aboutAction", IDM_ABOUT);
+    unavailable(help, QStringLiteral("About 7-Zip..."), "aboutAction", IDM_ABOUT);
 }

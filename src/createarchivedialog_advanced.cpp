@@ -7,7 +7,7 @@
 void CreateArchiveDialog::createLifecycleOptions(QFormLayout *form) {
     // CompressDialog.rc: right-hand Options group, SFX, Shared, Delete,
     // preceding Encryption.
-    auto *group = new QGroupBox("Параметры", this);
+    auto *group = new QGroupBox("&Parameters:", this);
     group->setObjectName("archiveLifecycleOptions");
     auto *layout = new QVBoxLayout(group);
     sfx_ = new QCheckBox(group);
@@ -17,15 +17,16 @@ void CreateArchiveDialog::createLifecycleOptions(QFormLayout *form) {
     layout->addWidget(sfx_);
     connect(sfx_, &QCheckBox::toggled, this, &CreateArchiveDialog::toggleSfx);
     updateSfxControls();
-    sharedFiles_ = new QCheckBox("Сжимать открытые для записи файлы", group);
+    sharedFiles_ = new QCheckBox("Compress shared files", group);
     sharedFiles_->setObjectName("archiveSharedFiles");
 #ifndef Q_OS_WIN
     sharedFiles_->setEnabled(false);
-    QtBindLocalToolTip(sharedFiles_, "File sharing restrictions apply only on Windows.",
-                       "Ограничение совместного доступа к файлам используется только в Windows.");
+    QtBindLocalToolTip(sharedFiles_, "createarchivedialog_advanced",
+                       QT_TRANSLATE_NOOP("createarchivedialog_advanced",
+                                         "File sharing restrictions apply only on Windows."));
 #endif
     layout->addWidget(sharedFiles_);
-    deleteAfterCompressing_ = new QCheckBox("Удалить файлы после сжатия", group);
+    deleteAfterCompressing_ = new QCheckBox("Delete files after compression", group);
     deleteAfterCompressing_->setObjectName("archiveDeleteAfterCompression");
     layout->addWidget(deleteAfterCompressing_);
     form->addRow(group);
@@ -37,13 +38,14 @@ void CreateArchiveDialog::createAdvancedOptions(QFormLayout *form) {
     parameters_ = new QLineEdit(this);
     parameters_->setObjectName("archiveParameters");
     parameters_->setText(QString::fromWCharArray(Get_FormatOptions().Options.Ptr()));
-    QtBindLocalToolTip(parameters_, "Method parameters, for example: tm=off or mt=2.",
-                       "Параметры метода, например: tm=off или mt=2.");
+    QtBindLocalToolTip(parameters_, "createarchivedialog_advanced",
+                       QT_TRANSLATE_NOOP("createarchivedialog_advanced",
+                                         "Method parameters, for example: tm=off or mt=2."));
     auto *parametersForm = new QFormLayout;
     parametersForm->setRowWrapPolicy(QFormLayout::WrapAllRows);
-    parametersForm->addRow("Параметры:", parameters_);
+    parametersForm->addRow("&Parameters:", parameters_);
     form->addRow(parametersForm);
-    advanced_ = new QPushButton("Параметры…", this);
+    advanced_ = new QPushButton("&Parameters:", this);
     advanced_->setObjectName("archiveAdvancedOptions");
     auto *row = new QHBoxLayout;
     row->addWidget(advanced_, 0);

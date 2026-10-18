@@ -1,12 +1,15 @@
 #include "CPP/7zip/UI/Agent/Agent.h"
 #include "CPP/7zip/UI/FileManager/FileFolderPluginOpen.h"
+#include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/Panel.h"
 #include "CPP/7zip/UI/FileManager/PropertyName.h"
+#include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "Windows/PropVariant.h"
 #include "layout_inspection.h"
 #include "property_projection_support.h"
 #include "qtarchivefileresource.h"
 #include "qtarchivefoldermanager.h"
+#include "qtlangcontrols.h"
 #include "qtlocationfolder.h"
 #include <QApplication>
 #include <QClipboard>
@@ -153,6 +156,13 @@ class SourcePropertiesTests final : public QObject {
     void fullArchiveValueAndLevels() {
         QFETCH(QSize, size);
         QTemporaryDir fixture;
+        const QString languageSettings = fixture.filePath("language.ini");
+        const auto restoreLanguage = qScopeGuard([&] {
+            SaveRegLang(UString("-"), languageSettings);
+            ReloadLang(languageSettings);
+        });
+        SaveRegLang(UString("-"), languageSettings);
+        ReloadLang(languageSettings);
         const QString path = fixture.filePath("owned metadata archive");
         QVERIFY(write(path, "transport fixture"));
         const QString full = fullValue();
@@ -195,6 +205,19 @@ class SourcePropertiesTests final : public QObject {
         QVERIFY(!rows.isEmpty());
         list->setCurrentItem(rows.front());
         QVERIFY(rows.front()->text(1).endsWith(" ..."));
+        const QString englishFlags = value(dialog, name(kpidErrorFlags));
+        for (const char *language : {"ru", "-"}) {
+            SaveRegLang(UString(language), languageSettings);
+            ReloadLang(languageSettings);
+            QtNotifyLanguageChanged();
+            QCOMPARE(list->currentItem(), rows.front());
+            if (QString(language) == "ru")
+                QVERIFY(value(dialog, name(kpidErrorFlags)) != englishFlags);
+            else
+                QCOMPARE(value(dialog, name(kpidErrorFlags)), englishFlags);
+            QCOMPARE(agent->_archiveLink.NonOpen_ErrorInfo.ErrorFlags,
+                     UInt32(kpv_ErrorFlags_CrcError));
+        }
         QTest::keyClick(list, Qt::Key_Insert, Qt::ControlModifier);
         QVERIFY(QApplication::clipboard()->text().startsWith("Comment: " + full));
         bool detail = false;

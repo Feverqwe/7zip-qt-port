@@ -1,6 +1,8 @@
 #include "7zip/UI/GUI/CompressDialogRes.h"
 #include "archivebackend.h"
 #include "createarchivedialog.h"
+#include <QLocale>
+#include <QScopeGuard>
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QtTest>
@@ -9,6 +11,9 @@ class CompressionResourceTests final : public QObject {
     Q_OBJECT
   private slots:
     void displayedMemoryIncludesLimitAndRam() {
+        const QLocale originalLocale;
+        const auto restore = qScopeGuard([&] { QLocale::setDefault(originalLocale); });
+        QLocale::setDefault(QLocale::c());
         NCompressDialog::CSystemInfo system;
         system.RamSizeDefined = true;
         system.RamSize = UInt64(8) << 30;

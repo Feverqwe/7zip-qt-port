@@ -50,7 +50,8 @@ void MainWindow::createFilePanel(QMenu *editMenu, unsigned index) {
     path_->installEventFilter(this);
     pathCombo_->installEventFilter(this);
     path_->setProperty("languagePlaceholder", true);
-    QtBindLocalText(path_, "Path to folder or archive", "Путь к папке или архиву", true);
+    QtBindLocalText(path_, "mainwindow_panel",
+                    QT_TRANSLATE_NOOP("mainwindow_panel", "Path to folder or archive"), true);
     navigation->addWidget(pathCombo_);
     layout->addLayout(navigation);
     createFileTable(central);
@@ -117,10 +118,11 @@ void MainWindow::createFileTable(QWidget *central) {
                               kpidMTime, kpidExtension, kpidNoProperty};
     fileTable->rawProperties.resize(7);
     table_->setObjectName("archiveTable");
-    QtBindLocalText(table_, "File list", "Список файлов", true);
+    QtBindLocalText(table_, "mainwindow_panel", QT_TRANSLATE_NOOP("mainwindow_panel", "File list"),
+                    true);
     table_->verticalHeader()->hide();
     table_->setHorizontalHeaderLabels(
-        {"Имя", "Путь", "Размер", "Сжатый", "Изменён", "Тип", "Порядок"});
+        {"Name", "Path", "Size", "Packed Size", "Modified", "Type", "Order"});
     for (int column : {2, 3, 4})
         table_->horizontalHeaderItem(column)->setData(Qt::InitialSortOrderRole,
                                                       Qt::DescendingOrder);
@@ -192,19 +194,19 @@ void MainWindow::createPanelActions(QMenu *editMenu) {
     selectAll_->setShortcut(QKeySequence::SelectAll);
     selectAll_->setShortcutContext(Qt::WidgetShortcut);
     table_->addAction(selectAll_);
-    selectAll_->setText("Выделить всё");
+    selectAll_->setText("Select All");
     editMenu->addAction(selectAll_);
-    deselectAll_ = editMenu->addAction("Снять выделение");
+    deselectAll_ = editMenu->addAction("Deselect All");
     deselectAll_->setObjectName("deselectAllAction");
-    invertSelection_ = editMenu->addAction("Инвертировать выделение");
+    invertSelection_ = editMenu->addAction("Invert Selection");
     invertSelection_->setObjectName("invertSelectionAction");
-    selectMask_ = editMenu->addAction("Выделить по маске…");
+    selectMask_ = editMenu->addAction("Select...");
     selectMask_->setObjectName("selectMaskAction");
-    deselectMask_ = editMenu->addAction("Снять выделение по маске…");
+    deselectMask_ = editMenu->addAction("Deselect...");
     deselectMask_->setObjectName("deselectMaskAction");
-    selectType_ = editMenu->addAction("Выделить по типу");
+    selectType_ = editMenu->addAction("Select by Type");
     selectType_->setObjectName("selectTypeAction");
-    deselectType_ = editMenu->addAction("Снять выделение по типу");
+    deselectType_ = editMenu->addAction("Deselect by Type");
     deselectType_->setObjectName("deselectTypeAction");
     rebuildSourceMenus();
 }
@@ -212,7 +214,8 @@ void MainWindow::createPanelActions(QMenu *editMenu) {
 void MainWindow::createIconList(QWidget *central) {
     iconList_ = new FileIconList(central);
     iconList_->setObjectName("iconList");
-    QtBindLocalText(iconList_, "File list", "Список файлов", true);
+    QtBindLocalText(iconList_, "mainwindow_panel",
+                    QT_TRANSLATE_NOOP("mainwindow_panel", "File list"), true);
     iconList_->setModel(table_->model());
     iconList_->setItemDelegate(CreateFileRowDelegate(iconList_));
     iconList_->setModelColumn(0);
@@ -264,7 +267,7 @@ void MainWindow::appendParentEntry() {
         item->setData(Qt::UserRole + 6, quint32(-1));
         if (column == 0) {
             item->setIcon(QApplication::style()->standardIcon(QStyle::SP_DirIcon));
-            item->setToolTip(QtLocalText("Parent folder", "Родительская папка"));
+            item->setToolTip(QCoreApplication::translate("mainwindow_panel", "Parent folder"));
         }
         table_->setItem(row, column, item);
     }

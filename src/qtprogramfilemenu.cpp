@@ -5,7 +5,7 @@
 #include "qtdialogscreenservices.h"
 #include "qtfilemanagershellmenu.h"
 #include "qtfilemenuprojection.h"
-#include "qtlanguageservices.h"
+#include "qtlangcontrols.h"
 #include <QScopedValueRollback>
 
 void QtClarifyOpenCommands(QMenu &menu) {
@@ -13,18 +13,20 @@ void QtClarifyOpenCommands(QMenu &menu) {
         const unsigned id = action->property("nativeCommandID").toUInt();
         switch (id) {
         case IDM_OPEN_INSIDE:
-            action->setText(QtLocalText("Open as archive", "Открыть как архив"));
+            QtBindLocalText(action, "qtprogramfilemenu",
+                            QT_TRANSLATE_NOOP("qtprogramfilemenu", "Open as archive"));
             break;
         case IDM_OPEN_OUTSIDE:
-            action->setText(
-                QtLocalText("Open in external application", "Открыть во внешнем приложении"));
+            QtBindLocalText(action, "qtprogramfilemenu",
+                            QT_TRANSLATE_NOOP("qtprogramfilemenu", "Open in external application"));
             break;
         case IDM_OPEN_INSIDE_ONE:
         case IDM_OPEN_INSIDE_PARSER:
-            action->setText(
+            QtBindLocalText(
+                action, "qtprogramfilemenu",
                 id == IDM_OPEN_INSIDE_ONE
-                    ? QtLocalText("Single archive layer (*)", "Один уровень архива (*)")
-                    : QtLocalText("Parse file as archive (#)", "Разобрать файл как архив (#)"));
+                    ? QT_TRANSLATE_NOOP("qtprogramfilemenu", "Single archive layer (*)")
+                    : QT_TRANSLATE_NOOP("qtprogramfilemenu", "Parse file as archive (#)"));
             break;
         }
     }

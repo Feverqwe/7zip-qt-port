@@ -16,6 +16,7 @@
 #include <QMessageBox>
 #include <QPushButton>
 #include <QRadioButton>
+#include <QScopeGuard>
 #include <QScrollArea>
 #include <QScrollBar>
 #include <QStyleOptionButton>
@@ -318,7 +319,27 @@ class LinkDialogTests final : public QObject {
 #endif
         QVERIFY(!QFileInfo(path).isSymLink());
     }
+    void refusesHidingExistingBytes_data() {
+        QTest::addColumn<QString>("language");
+        QTest::addColumn<QString>("expected");
+        QTest::newRow("en") << QString("-")
+                            << QString(
+                                   "WARNING: reparse point will hide the data of existing file");
+        QTest::newRow("ru")
+            << QString("ru")
+            << QString::fromUtf8(
+                   "ПРЕДУПРЕЖДЕНИЕ: точка повторной обработки скроет данные существующего файла");
+    }
     void refusesHidingExistingBytes() {
+        QFETCH(QString, language);
+        QFETCH(QString, expected);
+        const QString settings = qEnvironmentVariable("SEVENZIP_SETTINGS_PATH");
+        const auto restore = qScopeGuard([&] {
+            SaveRegLang(UString("-"), settings);
+            ReloadLang(settings);
+        });
+        SaveRegLang(UString(language.toStdWString().c_str()), settings);
+        ReloadLang(settings);
         QTemporaryDir directory;
         const QString path = directory.filePath("existing.txt");
         QFile file(path);
@@ -331,7 +352,7 @@ class LinkDialogTests final : public QObject {
         QCOMPARE(
             run(dialog, path, directory.filePath("missing"), IDR_LINK_TYPE_SYM_FILE, false, &error),
             int(QDialog::Rejected));
-        QVERIFY(error.contains("hide the data"));
+        QCOMPARE(error, expected + '\n' + QDir::toNativeSeparators(path));
         QVERIFY(file.open(QIODevice::ReadOnly));
         QCOMPARE(file.readAll(), QByteArray("preserve"));
     }

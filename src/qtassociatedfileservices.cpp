@@ -96,8 +96,9 @@ HRESULT QtAssociatedFileServices::StartApplication(const UString &dir, const USt
     if (opened)
         return S_OK;
     QMessageBox box(
-        QMessageBox::Warning, QtLocalText("Open file", "Открыть файл"),
-        QtLocalText("Could not open file: %1", "Не удалось открыть файл: %1").arg(ToQString(path)),
+        QMessageBox::Warning, QCoreApplication::translate("qtassociatedfileservices", "Open file"),
+        QCoreApplication::translate("qtassociatedfileservices", "Could not open file: %1")
+            .arg(ToQString(path)),
         QMessageBox::Ok, window);
     box.setObjectName("externalFileOpenError");
     box.setTextFormat(Qt::PlainText);

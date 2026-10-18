@@ -200,7 +200,7 @@ void CQtBenchmarkWindow::BuildNormalControls(QHBoxLayout *body) {
         if (i == 0 || i == 2)
             view->setAlignment(Qt::AlignRight | Qt::AlignTop);
         if (i == 0)
-            grid->addWidget(view, 4, 0, 1, 2, Qt::AlignRight);
+            grid->addWidget(view, 4, 0, 1, 2);
         else if (i == 1 || i == 2) {
             view->setAlignment((i == 2 ? Qt::AlignRight : Qt::AlignLeft) | Qt::AlignTop);
             grid->addWidget(view, 5, i - 1);

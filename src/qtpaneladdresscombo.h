@@ -15,12 +15,12 @@ class IQtPanelAddressCombo {
     virtual ~IQtPanelAddressCombo() = default;
     virtual void ResetContent() = 0;
     virtual void InsertItem(const UString &name, int iconIndex, unsigned indent,
-                            bool namespaceItem) = 0;
+                            UInt32 namespaceID) = 0;
     virtual int GetCurSel() const = 0;
     virtual void SetCurSel(int index) = 0;
     virtual int GetIconIndex(const UString &path, DWORD attributes) = 0;
     virtual int GetPathIconIndex(const UString &path, DWORD attributes) = 0;
-    virtual int GetNamespaceIconIndex(const UString &name) = 0;
+    virtual int GetNamespaceIconIndex(UInt32 namespaceID) = 0;
     virtual void SetCurrentIcon(int index) = 0;
     virtual void GetLogicalDriveStrings(FStringVector &paths) = 0;
     virtual UString GetText() const = 0;
@@ -36,12 +36,12 @@ class QtPanelAddressCombo final : public QComboBox, public IQtPanelAddressCombo 
     void showPopup() override;
     void ResetContent() override;
     void InsertItem(const UString &name, int iconIndex, unsigned indent,
-                    bool namespaceItem) override;
+                    UInt32 namespaceID) override;
     int GetCurSel() const override;
     void SetCurSel(int index) override;
     int GetIconIndex(const UString &path, DWORD attributes) override;
     int GetPathIconIndex(const UString &path, DWORD attributes) override;
-    int GetNamespaceIconIndex(const UString &name) override;
+    int GetNamespaceIconIndex(UInt32 namespaceID) override;
     void SetCurrentIcon(int index) override;
     void ShowCurrentPath(const QString &displayPath, bool addToHistory);
     void ReloadCurrentPath();

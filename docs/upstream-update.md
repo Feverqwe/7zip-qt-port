@@ -1,7 +1,7 @@
 # Reviewing an upstream 7-Zip update
 
 The complete current baseline is [upstream-baseline.json](upstream-baseline.json).
-It records the official repository, full default commit and every tracked
+It records the official repository, full default commit and every
 borrowed path. `exact` files under `third_party/7zip/` must match the original
 bytes; `adapted` files under `src/` retain their original relative path but need
 code review; `local` headers have no upstream counterpart at their current
@@ -19,7 +19,9 @@ python3 scripts/upstream_baseline.py verify --upstream /tmp/7zip-update-review
 
 `verify` rejects missing/stale manifest entries, duplicate source owners,
 unknown revisions, new upstream counterparts for local-only paths, and changed
-bytes in exact files. It checks the complete tracked inventory.
+bytes in exact files. It checks the current working-tree inventory, including
+nonignored new sources and excluding deleted files, so source moves can be
+reviewed before staging.
 
 Before changing a module, produce an old-to-proposed review:
 

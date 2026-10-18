@@ -1,5 +1,6 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "layout_inspection.h"
+#include "qtlangcontrols.h"
 #include "schema_folder.h"
 #include "window_state_support.h"
 #include <QPersistentModelIndex>
@@ -209,12 +210,29 @@ class PanelCellTextTests final : public QObject, protected MainWindowTestSupport
             QCOMPARE(spec->countQueries, queries);
             spec->crcResult = result;
             spec->rawResult = result;
-            QCOMPARE(uncached(*view, generic), QString("Error: "));
+            QCOMPARE(uncached(*view, generic), QString::fromUtf8(russian ? "Ошибка: " : "Error: "));
             QCOMPARE(uncached(*view, raw), QString());
             QCOMPARE(spec->countQueries, queries);
             spec->crcResult = spec->rawResult = S_OK;
         }
         spec->items->countResult = S_OK;
+        spec->crcResult = E_FAIL;
+        auto *errorItem = view->item(0, generic);
+        const QString initialError = uncached(*view, generic);
+        {
+            CPanel::CDisableNotify guard(panel);
+            SaveRegLang(UString(russian ? L"-" : L"ru"), settings);
+            ReloadLang(settings);
+            QtNotifyLanguageChanged();
+            QCOMPARE(errorItem->text(), initialError);
+        }
+        QCOMPARE(errorItem->text(), QString::fromUtf8(russian ? "Error: " : "Ошибка: "));
+        QCOMPARE(view->item(0, generic), errorItem);
+        QCOMPARE(view->selectionModel()->selectedRows().size(), 2);
+        spec->crcResult = S_OK;
+        SaveRegLang(UString(russian ? L"ru" : L"-"), settings);
+        ReloadLang(settings);
+        QtNotifyLanguageChanged();
         QCOMPARE(uncached(*view, generic), QString("12345678"));
         QCOMPARE(uncached(*view, raw), QString("DEADBEEF"));
         const unsigned rawQueries = spec->rawQueries;

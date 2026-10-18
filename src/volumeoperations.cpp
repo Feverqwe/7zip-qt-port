@@ -6,6 +6,7 @@
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "CPP/7zip/UI/FileManager/SplitUtils.h"
 #include "CPP/7zip/UI/FileManager/ViewSettings.h"
+#include "qtdiagnostictext.h"
 #include "qtlangcontrols.h"
 #include "qtlanguageservices.h"
 #include "qtvolumetransaction.h"
@@ -72,23 +73,22 @@ VolumeParts VolumeOperation::inspectParts(const QString &firstPart, QString *err
         return {};
     }
     if (combiner.TotalSize == 0) {
-        *error = "No data";
+        *error = QCoreApplication::translate("volumeoperations", "No data");
         return {};
     }
     VolumeParts result;
     FOR_VECTOR(i, combiner.Names) {
         const QString path = ToQString(prefix + fs2us(combiner.Names[i]));
         if (QFileInfo(path).isSymLink()) {
-            *error = QtLocalText("File part is unavailable: %1",
-                                 QStringLiteral("Часть файла недоступна: %1"))
+            *error = QCoreApplication::translate("volumeoperations", "File part is unavailable: %1")
                          .arg(path);
             return {};
         }
         result.paths << path;
     }
     if (combiner.TotalSize > UInt64(std::numeric_limits<qint64>::max())) {
-        *error = QtLocalText("Part sizes are unavailable or too large.",
-                             QStringLiteral("Размер частей недоступен или слишком велик."));
+        *error = QCoreApplication::translate("volumeoperations",
+                                             "Part sizes are unavailable or too large.");
         return {};
     }
     result.totalSize = qint64(combiner.TotalSize);
@@ -113,20 +113,19 @@ bool VolumeOperation::process(QtVolumeWorker &worker, QString *error) {
         result = mode_ == Mode::Split ? static_cast<CThreadSplit &>(worker).ProcessVirt()
                                       : static_cast<CThreadCombine &>(worker).ProcessVirt();
     } catch (const char *message) {
-        *error = QString::fromLatin1(message);
+        *error = QString::fromWCharArray(QtDiagnosticText(message));
         return false;
     } catch (...) {
-        *error = QStringLiteral("Volume operation failed");
+        *error = QCoreApplication::translate("volumeoperations", "Volume operation failed");
         return false;
     }
     if (canceled_ || result == E_ABORT) {
-        *error = QtLocalText("Operation canceled.", QStringLiteral("Операция отменена."));
+        *error = QCoreApplication::translate("volumeoperations", "Operation canceled.");
         return false;
     }
     if (result != S_OK) {
         if (mode_ == Mode::Combine && !worker.ErrorPaths.IsEmpty())
-            *error = QtLocalText("File part is unavailable: %1",
-                                 QStringLiteral("Часть файла недоступна: %1"))
+            *error = QCoreApplication::translate("volumeoperations", "File part is unavailable: %1")
                          .arg(ToQString(worker.ErrorPaths.Back()));
         else {
             *error = ToQString(HResultToMessage(result));
@@ -142,16 +141,15 @@ bool VolumeOperation::split(QString *error) {
     const QFileInfo source(source_);
     CThreadSplit spliter;
     if (invalidSizes_) {
-        *error = QtLocalText("Volume size must be positive.",
-                             QStringLiteral("Размер тома должен быть положительным."));
+        *error = QCoreApplication::translate("volumeoperations", "Volume size must be positive.");
         return false;
     }
     spliter.VolumeSizes = volumeSizes_;
     if (!source.isFile() || source.isSymLink() || !QFileInfo(destination_).isDir() ||
         QFileInfo(destination_).isSymLink() || spliter.VolumeSizes.IsEmpty() ||
         UInt64(source.size()) <= spliter.VolumeSizes.FrontItem()) {
-        *error = QtLocalText("File or volume size is unavailable for splitting.",
-                             QStringLiteral("Файл или размер тома недоступен для разделения."));
+        *error = QCoreApplication::translate("volumeoperations",
+                                             "File or volume size is unavailable for splitting.");
         return false;
     }
     spliter.FilePath = us2fs(ToUString(source_));
@@ -168,14 +166,13 @@ bool VolumeOperation::split(QString *error) {
         return false;
     const QFileInfo after(source_);
     if (!after.isFile() || after.isSymLink() || after.size() != source.size()) {
-        *error = QtLocalText("Source file changed while splitting.",
-                             QStringLiteral("Исходный файл изменился во время разделения."));
+        *error =
+            QCoreApplication::translate("volumeoperations", "Source file changed while splitting.");
         return false;
     }
     if (!transaction.publish()) {
-        *error =
-            QtLocalText("Could not save part: %1", QStringLiteral("Не удалось сохранить часть: %1"))
-                .arg(transaction.failedPath());
+        *error = QCoreApplication::translate("volumeoperations", "Could not save part: %1")
+                     .arg(transaction.failedPath());
         return false;
     }
     return true;
@@ -193,9 +190,8 @@ bool VolumeOperation::combine(QString *error) {
     const QFileInfo target(destination_);
     if (!QFileInfo(target.absolutePath()).isDir() || QFileInfo::exists(destination_) ||
         target.isSymLink()) {
-        *error =
-            QtLocalText("Destination folder is unavailable or the file already exists.",
-                        QStringLiteral("Папка назначения недоступна или файл уже существует."));
+        *error = QCoreApplication::translate(
+            "volumeoperations", "Destination folder is unavailable or the file already exists.");
         return false;
     }
     QList<qint64> sizes;
@@ -206,8 +202,7 @@ bool VolumeOperation::combine(QString *error) {
     combiner.TotalSize = nativePlan_ ? totalSize_ : UInt64(parts.totalSize);
     for (const QString &path : parts.paths) {
         if (!QFileInfo(path).isFile() || QFileInfo(path).isSymLink()) {
-            *error = QtLocalText("File part is unavailable: %1",
-                                 QStringLiteral("Часть файла недоступна: %1"))
+            *error = QCoreApplication::translate("volumeoperations", "File part is unavailable: %1")
                          .arg(path);
             return false;
         }
@@ -223,15 +218,13 @@ bool VolumeOperation::combine(QString *error) {
     for (qsizetype i = 0; i < parts.paths.size(); ++i) {
         const QFileInfo after(parts.paths[i]);
         if (!after.isFile() || after.isSymLink() || after.size() != sizes[i]) {
-            *error =
-                QtLocalText("File part changed: %1", QStringLiteral("Часть файла изменилась: %1"))
-                    .arg(parts.paths[i]);
+            *error = QCoreApplication::translate("volumeoperations", "File part changed: %1")
+                         .arg(parts.paths[i]);
             return false;
         }
     }
     if (!transaction.publish()) {
-        *error = QtLocalText("Could not save combined file.",
-                             QStringLiteral("Не удалось сохранить объединённый файл."));
+        *error = QCoreApplication::translate("volumeoperations", "Could not save combined file.");
         return false;
     }
     return true;
@@ -241,7 +234,7 @@ void VolumeOperation::run() {
     QString error;
     const bool ok = mode_ == Mode::Split ? split(&error) : combine(&error);
     emit result(ok, ok ? (mode_ == Mode::Split
-                              ? QtLocalText("File split.", QStringLiteral("Файл разделён."))
-                              : QtLocalText("Files combined.", QStringLiteral("Файлы объединены.")))
+                              ? QCoreApplication::translate("volumeoperations", "File split.")
+                              : QCoreApplication::translate("volumeoperations", "Files combined."))
                        : error);
 }

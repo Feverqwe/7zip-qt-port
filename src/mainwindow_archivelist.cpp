@@ -232,8 +232,7 @@ void MainWindow::showPanelStatus(unsigned index, const CPanelStatus &status) {
     const auto &labels = panelUi_[index].statusLabels;
     if (!labels[0])
         return;
-    labels[0]->setText(
-        ToQString(MyFormatNew(app_.LangString_N_SELECTED_ITEMS, ToUString(status.selectedItems))));
+    labels[0]->setText(QtSelectionStatusText(status.selectedCount, status.totalCount));
     labels[1]->setText(status.selectedSize);
     labels[2]->setText(status.focusedSize);
     labels[3]->setText(status.focusedDate);

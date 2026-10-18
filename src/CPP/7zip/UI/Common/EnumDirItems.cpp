@@ -3,6 +3,7 @@
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 
 #include "7zip/UI/Common/StdAfx.h"
+#include "qtdiagnostictext.h"
 
 #include <wchar.h>
 // #include <stdio.h>
@@ -1294,7 +1295,8 @@ HRESULT CDirItems::FillDeviceSizes() {
 
 #endif
 
-static const char *const kCannotFindArchive = "Cannot find archive";
+static const char *const kCannotFindArchive =
+    QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Cannot find archive");
 
 HRESULT EnumerateDirItemsAndSort(NWildcard::CCensor &censor,
                                  NWildcard::ECensorPathMode censorPathMode,
@@ -1344,7 +1346,9 @@ HRESULT EnumerateDirItemsAndSort(NWildcard::CCensor &censor,
         sortedPaths.AddInReserved(fs2us(paths[index]));
         sortedFullPaths.AddInReserved(fullPaths[index]);
         if (i > 0 && CompareFileNames(sortedFullPaths[i], sortedFullPaths[i - 1]) == 0)
-            throw CMessagePathException("Duplicate archive path:", sortedFullPaths[i]);
+            throw CMessagePathException(
+                QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Duplicate archive path:"),
+                sortedFullPaths[i]);
     }
 
     return S_OK;
@@ -1421,7 +1425,7 @@ void ConvertToLongNames(NWildcard::CCensor &censor) {
 #endif
 
 CMessagePathException::CMessagePathException(const char *a, const wchar_t *u) {
-    (*this) += a;
+    (*this) += QtDiagnosticText(a);
     if (u) {
         Add_LF();
         (*this) += u;

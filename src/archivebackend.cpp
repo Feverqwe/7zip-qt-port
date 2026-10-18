@@ -70,10 +70,10 @@ ArchiveBackend::ArchiveBackend(QObject *parent, QString executable) : QObject(pa
             createPassword_.clear();
             extractPassword_.clear();
             sourcePlanPassword_.clear();
-            emit finished(
-                false, QtLocalText("Could not start 7zz. Install official 7zz and add it to PATH.",
-                                   QStringLiteral("Не удалось запустить 7zz. Установите "
-                                                  "официальный 7zz и добавьте его в PATH.")));
+            emit finished(false,
+                          QCoreApplication::translate(
+                              "archivebackend",
+                              "Could not start 7zz. Install official 7zz and add it to PATH."));
         }
     });
 }
@@ -157,8 +157,8 @@ HRESULT ArchiveBackend::setBackground(bool background) {
 
 void ArchiveBackend::start(Job job, const QStringList &arguments, const QString &workingDirectory) {
     if (busy()) {
-        emit finished(false, QtLocalText("Another operation is still running.",
-                                         QStringLiteral("Другая операция ещё выполняется.")));
+        emit finished(false, QCoreApplication::translate("archivebackend",
+                                                         "Another operation is still running."));
         return;
     }
     job_ = job;
@@ -205,7 +205,7 @@ void ArchiveBackend::consumeLine(const QByteArray &line) {
     text.remove(QLatin1Char('\b'));
     text = text.trimmed();
     if (!pendingPassword_.isEmpty())
-        text.replace(pendingPassword_, QtLocalText("[hidden]", QStringLiteral("[скрыто]")));
+        text.replace(pendingPassword_, QCoreApplication::translate("archivebackend", "[hidden]"));
     if (text.isEmpty())
         return;
     output_ += text + '\n';
@@ -270,8 +270,8 @@ void ArchiveBackend::openFolder(const QString &archive, const QString &format,
             CObjectVector<COpenType> types;
             if (!catalog->parseOpenTypes(format, types)) {
                 lastResult_ = E_INVALIDARG;
-                emit finished(false, QtLocalText("Invalid archive open type: %1",
-                                                 "Неверный режим открытия архива: %1")
+                emit finished(false, QCoreApplication::translate("archivebackend",
+                                                                 "Invalid archive open type: %1")
                                          .arg(format));
                 return;
             }
@@ -286,8 +286,8 @@ void ArchiveBackend::openFolder(const QString &archive, const QString &format,
 void ArchiveBackend::startListing(const QString &archive, const QString &password,
                                   const QString &format) {
     if (busy()) {
-        emit finished(false, QtLocalText("Another operation is still running.",
-                                         QStringLiteral("Другая операция ещё выполняется.")));
+        emit finished(false, QCoreApplication::translate("archivebackend",
+                                                         "Another operation is still running."));
         return;
     }
     archive_ = QFileInfo(archive).absoluteFilePath();
@@ -327,8 +327,8 @@ bool ArchiveBackend::prepareAskExtraction(const QString &outputDirectory,
             if (cancelled_ || overwriteAnswer_ == NOverwriteAnswer::kCancel) {
                 cancelled_ = false;
                 lastResult_ = E_ABORT;
-                emit finished(false, QtLocalText("Operation canceled.",
-                                                 QStringLiteral("Операция отменена.")));
+                emit finished(false,
+                              QCoreApplication::translate("archivebackend", "Operation canceled."));
                 return false;
             }
             switch (overwriteAnswer_) {
@@ -348,8 +348,8 @@ bool ArchiveBackend::prepareAskExtraction(const QString &outputDirectory,
                 break;
             default:
                 lastResult_ = E_FAIL;
-                emit finished(false, QtLocalText("Overwrite decision is unavailable.",
-                                                 QStringLiteral("Решение о замене недоступно.")));
+                emit finished(false, QCoreApplication::translate(
+                                         "archivebackend", "Overwrite decision is unavailable."));
                 return false;
             }
         }
@@ -387,23 +387,23 @@ void ArchiveBackend::extract(const QString &archive, const QString &destination,
                              const QStringList &selected, const QString &password,
                              const ExtractionOptions &options) {
     if (busy()) {
-        emit finished(false, QtLocalText("Another operation is still running.",
-                                         QStringLiteral("Другая операция ещё выполняется.")));
+        emit finished(false, QCoreApplication::translate("archivebackend",
+                                                         "Another operation is still running."));
         return;
     }
     lastResult_ = E_FAIL;
     cancelled_ = false;
     if (!restoreListedArchive(archive)) {
         emit finished(
-            false,
-            QtLocalText("Open the archive and inspect its contents first.",
-                        QStringLiteral("Сначала откройте архив и проверьте его содержимое.")));
+            false, QCoreApplication::translate("archivebackend",
+                                               "Open the archive and inspect its contents first."));
         return;
     }
     if (options.pathMode == ExtractionOptions::PathMode::AbsolutePaths || options.ElimDup.Val ||
         options.NtSecurity.Val) {
-        emit finished(false, QtLocalText("These extraction options require the source workflow.",
-                                         "Эти параметры извлечения требуют исходного сценария."));
+        emit finished(
+            false, QCoreApplication::translate(
+                       "archivebackend", "These extraction options require the source workflow."));
         return;
     }
     QStringList selectedEntries;
@@ -421,10 +421,10 @@ void ArchiveBackend::extract(const QString &archive, const QString &destination,
             }
         }
         if (!found) {
-            emit finished(false,
-                          QtLocalText("Selected file is missing from the archive: %1",
-                                      QStringLiteral("Выбранный файл отсутствует в архиве: %1"))
-                              .arg(name));
+            emit finished(
+                false, QCoreApplication::translate("archivebackend",
+                                                   "Selected file is missing from the archive: %1")
+                           .arg(name));
             return;
         }
     }
@@ -436,12 +436,11 @@ void ArchiveBackend::extract(const QString &archive, const QString &destination,
     const QString outputDirectory = QFileInfo(destination).absoluteFilePath();
     if (!QDir().mkpath(outputDirectory) ||
         !validateExtraction(destination, selectedEntries, options, &validationError)) {
-        emit finished(false,
-                      validationError.isEmpty()
-                          ? QtLocalText("Could not create destination folder: %1",
-                                        QStringLiteral("Не удалось создать папку назначения: %1"))
-                                .arg(destination)
-                          : validationError);
+        emit finished(false, validationError.isEmpty()
+                                 ? QCoreApplication::translate(
+                                       "archivebackend", "Could not create destination folder: %1")
+                                       .arg(destination)
+                                 : validationError);
         return;
     }
     extractQueue_.clear();
@@ -498,16 +497,15 @@ void ArchiveBackend::extract(const QString &archive, const QString &destination,
 
 void ArchiveBackend::test(const QString &archive, const QString &password) {
     if (busy()) {
-        emit finished(false, QtLocalText("Another operation is still running.",
-                                         QStringLiteral("Другая операция ещё выполняется.")));
+        emit finished(false, QCoreApplication::translate("archivebackend",
+                                                         "Another operation is still running."));
         return;
     }
     lastResult_ = E_FAIL;
     if (!restoreListedArchive(archive)) {
         emit finished(
-            false,
-            QtLocalText("Open the archive and inspect its contents first.",
-                        QStringLiteral("Сначала откройте архив и проверьте его содержимое.")));
+            false, QCoreApplication::translate("archivebackend",
+                                               "Open the archive and inspect its contents first."));
         return;
     }
     pendingPassword_ = password;
@@ -516,15 +514,15 @@ void ArchiveBackend::test(const QString &archive, const QString &password) {
 
 void ArchiveBackend::testSourceArchive(const QString &archive, const QString &password) {
     if (busy()) {
-        emit finished(false, QtLocalText("Another operation is still running.",
-                                         QStringLiteral("Другая операция ещё выполняется.")));
+        emit finished(false, QCoreApplication::translate("archivebackend",
+                                                         "Another operation is still running."));
         return;
     }
     const QFileInfo file(archive);
     if (!file.isFile() || file.isSymLink()) {
         lastResult_ = E_INVALIDARG;
-        emit finished(false, QtLocalText("Source archive is unavailable.",
-                                         QStringLiteral("Исходный архив недоступен.")));
+        emit finished(
+            false, QCoreApplication::translate("archivebackend", "Source archive is unavailable."));
         return;
     }
     archive_ = file.absoluteFilePath();
@@ -587,7 +585,7 @@ void ArchiveBackend::cancelAndWait() {
         if (!volumeOutput_->isRunning() && !volumeOutput_->isFinished()) {
             volumeOutput_->Result = E_ABORT;
             volumeOutput_->Error =
-                QtLocalText("Operation canceled.", QStringLiteral("Операция отменена."));
+                QCoreApplication::translate("archivebackend", "Operation canceled.");
         }
         volumeOutput_->wait();
         finishVolumeOutput();

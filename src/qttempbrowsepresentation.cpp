@@ -110,14 +110,16 @@ void CBrowseDialog2::BuildControls() {
     _parent->setIcon(style()->standardIcon(QStyle::SP_FileDialogToParent));
     _parent->setObjectName("tempParent");
     _parent->setProperty("sourceControlID", IDB_BROWSE2_PARENT);
-    QtBindLocalText(_parent, "Parent folder", "Родительская папка", true);
+    QtBindLocalText(_parent, "qttempbrowsepresentation",
+                    QT_TRANSLATE_NOOP("qttempbrowsepresentation", "Parent folder"), true);
     path->addWidget(_parent);
     _pathEdit = new QLineEdit(this);
     _pathEdit->setReadOnly(true);
     _pathEdit->setMinimumHeight(units.pixels(QSize(0, 14)).height());
     _pathEdit->setObjectName("tempPath");
     _pathEdit->setProperty("sourceControlID", IDT_BROWSE2_FOLDER);
-    QtBindLocalText(_pathEdit, "Temporary folder", "Временная папка", true);
+    QtBindLocalText(_pathEdit, "qttempbrowsepresentation",
+                    QT_TRANSLATE_NOOP("qttempbrowsepresentation", "Temporary folder"), true);
     path->addWidget(_pathEdit, 1);
     layout->addLayout(path);
     layout->addSpacing(units.pixels(QSize(0, 3)).height());
@@ -135,6 +137,7 @@ void CBrowseDialog2::BuildControls() {
     _list->setItemDelegate(new BrowseAppearance(st.FullRow, st.ShowGrid, _list));
     auto *hover = new QtFileListHover(*_list);
     hover->SetEnabled(st.SingleClick);
+    ReloadLanguagePresentation();
     InitializeColumns();
     _list->installEventFilter(this);
     _list->setContextMenuPolicy(Qt::CustomContextMenu);
@@ -145,7 +148,7 @@ void CBrowseDialog2::BuildControls() {
     _filterCombo->setMinimumHeight(units.pixels(QSize(0, 14)).height());
     _filterCombo->setProperty("sourceControlID", IDC_BROWSE2_FILTER);
     _filterCombo->addItem(
-        QtLocalText("Sevenzip owned temporary files", "Временные файлы Sevenzip"));
+        QCoreApplication::translate("qttempbrowsepresentation", "Sevenzip owned temporary files"));
     _filterCombo->setEnabled(false);
     layout->addWidget(_filterCombo);
     layout->addSpacing(margin.height());
@@ -166,9 +169,6 @@ void CBrowseDialog2::BuildControls() {
     resize(units.pixels(QSize(466, 344)).expandedTo(minimumSizeHint()));
 }
 void CBrowseDialog2::InitializeColumns() {
-    _list->setHeaderLabels({QtLangText(IDS_PROP_NAME), QtLangText(IDS_PROP_MTIME),
-                            QtLangText(IDS_PROP_SIZE), QtLangText(IDS_PROP_FILES),
-                            QtLangText(IDS_PROP_FOLDERS), QtLangText(IDS_PROP_NAME) + "-2"});
     _list->header()->setStretchLastSection(false);
     _list->header()->setSectionsClickable(true);
     auto *sample = new QTreeWidgetItem(_list, {"123456789012345678901234567", "2009-09-09 09:09:09",
@@ -231,9 +231,6 @@ void CBrowseDialog2::PopulateRows(const UStringVector &selected, const UString &
     _list->clear();
     _parent->setEnabled(!IsExactTempFolder(DirPrefix));
     _pathEdit->setText(Text(DirPrefix));
-    _list->setHeaderLabels({QtLangText(IDS_PROP_NAME), QtLangText(IDS_PROP_MTIME),
-                            QtLangText(IDS_PROP_SIZE), QtLangText(IDS_PROP_FILES),
-                            QtLangText(IDS_PROP_FOLDERS), QtLangText(IDS_PROP_NAME) + "-2"});
     QTreeWidgetItem *cursor = nullptr;
     if (_showDots && _topDirPrefix != DirPrefix) {
         auto *parent = new BrowseRow(*this, _list);
@@ -264,9 +261,7 @@ void CBrowseDialog2::PopulateRows(const UStringVector &selected, const UString &
             *tail = 0;
         }
         row->setText(2, QString::fromWCharArray(size));
-        if (fi.IsOsSymLink())
-            row->setText(3, "Link");
-        else if (bi.NumFiles != 0)
+        if (!fi.IsOsSymLink() && bi.NumFiles != 0)
             row->setText(3, QString::number(bi.NumFiles) + (bi.WasInterrupted ? "+" : ""));
         if (bi.NumDirs != 0)
             row->setText(4, QString::number(bi.NumDirs) + (bi.WasInterrupted ? "+" : ""));
@@ -274,21 +269,11 @@ void CBrowseDialog2::PopulateRows(const UStringVector &selected, const UString &
             row->setText(5, Text(fs2us(_files[bi.SubFileIndex].Name)));
         for (int column : {2, 3, 4})
             row->setTextAlignment(column, Qt::AlignRight | Qt::AlignVCenter);
-        const auto &owner = _owners[i];
-        if (owner.active || owner.externallyProtected) {
-            const QString reason =
-                owner.active
-                    ? QtLocalText("In use by an active operation or session",
-                                  "Используется текущей операцией или сеансом")
-                    : QtLocalText("Protected: external application completion is unconfirmed",
-                                  "Защищён: завершение внешнего приложения не подтверждено");
-            row->setToolTip(0, reason);
-            row->setData(0, Qt::UserRole + 1, reason);
-        }
         row->setSelected(selected.FindInSorted(name) != -1);
         if (focused == name && !cursor)
             cursor = row;
     }
+    ReloadLanguagePresentation();
     _list->sortItems(0, Qt::AscendingOrder);
     if (!cursor && _list->topLevelItemCount() > 0) {
         cursor = _list->topLevelItem(0);
@@ -307,6 +292,48 @@ void CBrowseDialog2::PopulateRows(const UStringVector &selected, const UString &
 int CBrowseDialog2::GetRealItemIndex(int row) const {
     auto *item = _list->topLevelItem(row);
     return item ? item->data(0, Qt::UserRole).toInt() : -1;
+}
+
+void CBrowseDialog2::ReloadLanguagePresentation() {
+    if (property("sourceTitleLanguageID").isValid()) {
+        QString title =
+            QtLangText(property("sourceTitleLanguageID").toUInt(), "Delete Temporary Files");
+        title.remove("...");
+        setWindowTitle(title);
+    }
+    if (_filterCombo && _filterCombo->count())
+        _filterCombo->setItemText(0, QCoreApplication::translate("qttempbrowsepresentation",
+                                                                 "Sevenzip owned temporary files"));
+    if (!_list)
+        return;
+    _list->setHeaderLabels({QtLangText(IDS_PROP_NAME), QtLangText(IDS_PROP_MTIME),
+                            QtLangText(IDS_PROP_SIZE), QtLangText(IDS_PROP_FILES),
+                            QtLangText(IDS_PROP_FOLDERS), QtLangText(IDS_PROP_NAME) + "-2"});
+    for (int row = 0; row < _list->topLevelItemCount(); ++row) {
+        auto *item = _list->topLevelItem(row);
+        const int index = item->data(0, Qt::UserRole).toInt();
+        if (index < 0 || unsigned(index) >= _items.Size())
+            continue;
+        if (_files[_items[index].MainFileIndex].IsOsSymLink())
+            item->setText(3, QtLangText(IDM_LINK));
+        const auto &owner = _owners[index];
+        QString reason;
+        if (owner.active)
+            reason = QCoreApplication::translate("qttempbrowsepresentation",
+                                                 "In use by an active operation or session");
+        else if (owner.externallyProtected)
+            reason = QCoreApplication::translate(
+                "qttempbrowsepresentation",
+                "Protected: external application completion is unconfirmed");
+        item->setToolTip(0, reason);
+        item->setData(0, Qt::UserRole + 1, reason);
+    }
+}
+
+void CBrowseDialog2::changeEvent(QEvent *event) {
+    QDialog::changeEvent(event);
+    if (event->type() == QEvent::LanguageChange)
+        ReloadLanguagePresentation();
 }
 void CBrowseDialog2::GetSelected_RealIndexes(CUIntVector &vector) {
     vector.Clear();

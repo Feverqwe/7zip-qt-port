@@ -17,7 +17,12 @@ class CAboutDialog : public QDialog {
     bool OnButtonClicked(unsigned buttonID, QWidget *buttonHWND);
     int Create() { return exec(); }
 
+  protected:
+    void changeEvent(QEvent *event) override;
+    void resizeEvent(QResizeEvent *event) override;
+
   private:
+    void UpdateMinimumHeight();
     const CCodecs *codecs_ = nullptr; // Caller retains the immutable catalog lease.
 };
 

@@ -1,6 +1,7 @@
 #include "CPP/7zip/UI/FileManager/Panel.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "archivebackend.h"
+#include "fixtures/progress_dialog.h"
 #include "fixtures/widget_dialogs.h"
 #include "qtarchivefoldermanager.h"
 #include "source_extract_fixture.h"
@@ -91,7 +92,7 @@ class NestedUpdateTests final : public QObject {
             }
             if (auto *progress = dynamic_cast<CProgressDialog *>(widgetDialogs_.activeDialog())) {
                 auto *close = progress->findChild<QPushButton *>("IDCANCEL");
-                if (close && close->text().contains(QStringLiteral("Close")))
+                if (TestProgressDialog::IsCloseButton(close))
                     close->click();
             }
         });

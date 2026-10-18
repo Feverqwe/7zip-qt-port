@@ -248,15 +248,15 @@ void QtOpenHelpTopic(const QString &topic, QWidget *parent, const QString &root)
     if (!relative.isRelative() || fileName.startsWith('/') || fileName.contains("..") ||
         !QFile::exists(path)) {
         QMessageBox::warning(
-            parent, QtLocalText("7-Zip Help", "Справка 7-Zip"),
-            QtLocalText("Help topic is unavailable: %1", "Раздел справки недоступен: %1")
+            parent, QCoreApplication::translate("qthelpservices", "7-Zip Help"),
+            QCoreApplication::translate("qthelpservices", "Help topic is unavailable: %1")
                 .arg(topic));
         return;
     }
     auto *window = new QDialog(parent);
     window->setAttribute(Qt::WA_DeleteOnClose);
     window->setObjectName("helpWindow");
-    QtBindLocalText(window, "7-Zip Help", "Справка 7-Zip");
+    QtBindLocalText(window, "qthelpservices", QT_TRANSLATE_NOOP("qthelpservices", "7-Zip Help"));
     window->resize(760, 560);
     auto *layout = new QVBoxLayout(window);
     const QUrl helpRoot = root.isEmpty() ? QUrl("qrc:/upstream/7zip/Help/")
@@ -278,7 +278,7 @@ void QtOpenHelpTopic(const QString &topic, QWidget *parent, const QString &root)
     });
     auto *buttons = new QDialogButtonBox(QDialogButtonBox::Close, window);
     auto *back = buttons->addButton(QString(), QDialogButtonBox::ActionRole);
-    QtBindLocalText(back, "Back", "Назад");
+    QtBindLocalText(back, "qthelpservices", QT_TRANSLATE_NOOP("qthelpservices", "Back"));
     back->setEnabled(false);
     QObject::connect(browser, &QTextBrowser::backwardAvailable, back, &QPushButton::setEnabled);
     QObject::connect(back, &QPushButton::clicked, browser, &QTextBrowser::backward);

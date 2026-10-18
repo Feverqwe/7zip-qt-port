@@ -1,6 +1,7 @@
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "archivecodeccatalog.h"
 #include "createarchivedialog.h"
+#include "fixtures/progress_dialog.h"
 #include "fixtures/widget_dialogs.h"
 #include "layout_inspection.h"
 #include "window_state_support.h"
@@ -44,7 +45,7 @@ class CMessageAnswers {
                     box->accept();
             } else if (widget && widget->objectName() == "progressDialog") {
                 auto *close = widget->findChild<QPushButton *>("IDCANCEL");
-                if (close && close->text().contains("Close"))
+                if (TestProgressDialog::IsCloseButton(close))
                     close->click();
             }
         });

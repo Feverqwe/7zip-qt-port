@@ -1,4 +1,5 @@
 #include "CPP/7zip/UI/FileManager/PasswordDialog.h"
+#include "fixtures/progress_dialog.h"
 #include "window_state_support.h"
 #include <QTreeWidget>
 
@@ -35,7 +36,7 @@ class CDialogAnswers {
                     if (messages && messages->isVisible() && messages->topLevelItemCount() > 0)
                         ++Errors;
                     auto *close = widget->findChild<QPushButton *>("IDCANCEL");
-                    if (close && close->text().contains(QStringLiteral("Close")))
+                    if (TestProgressDialog::IsCloseButton(close))
                         QTimer::singleShot(20, close, &QPushButton::click);
                 }
             }

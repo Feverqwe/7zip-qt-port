@@ -58,6 +58,8 @@ class CBrowseDialog2 : public QDialog {
     void InitializeColumns();
     void ConnectControls(QDialogButtonBox *buttons, QPushButton *refresh);
     void PopulateRows(const UStringVector &selected, const UString &focused);
+    void ReloadLanguagePresentation();
+    void changeEvent(QEvent *event) override;
     void UpdateDeleteAvailability();
     int GetRealItemIndex(int row) const;
     void GetSelected_RealIndexes(CUIntVector &vector);

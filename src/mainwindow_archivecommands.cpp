@@ -151,16 +151,16 @@ bool MainWindow::extractWithSource(const QString &destination, bool onlySelected
             return false; // At archive root, the existing full-path transport is equivalent.
         QMessageBox::warning(
             this, QtLangText(IDS_COPYING),
-            QtLocalText("Source extraction is unavailable for this archive.",
-                        QStringLiteral("Исходное извлечение для этого архива недоступно.")));
+            QCoreApplication::translate("mainwindow_archivecommands",
+                                        "Source extraction is unavailable for this archive."));
         return true;
     }
     const bool nativeRar = resource && resource->HasNativeRarReader();
     if (nativeRar && !resource->HasNativeExtractService()) {
         QMessageBox::warning(
             this, QtLangText(IDS_PROGRESS_EXTRACTING),
-            QtLocalText("Source extraction is unavailable for this archive.",
-                        QStringLiteral("Исходное извлечение для этого архива недоступно.")));
+            QCoreApplication::translate("mainwindow_archivecommands",
+                                        "Source extraction is unavailable for this archive."));
         return true;
     }
     if (!resource || !resource->HasExtractService() || !backend_->hasListedSourceArchive(archive_))
@@ -199,8 +199,8 @@ bool MainWindow::extractWithSource(const QString &destination, bool onlySelected
             QMessageBox::warning(
                 this, QtLangText(IDS_PROGRESS_EXTRACTING),
                 validationError.isEmpty()
-                    ? QtLocalText("Could not create destination folder: %1",
-                                  QStringLiteral("Не удалось создать папку назначения: %1"))
+                    ? QCoreApplication::translate("mainwindow_archivecommands",
+                                                  "Could not create destination folder: %1")
                           .arg(destination)
                     : validationError);
             return true;
@@ -223,12 +223,14 @@ bool MainWindow::extractWithSource(const QString &destination, bool onlySelected
             }
             const bool ok = result.Result == S_OK && result.CallbackOK;
             const QString message =
-                ok ? QtLocalText("Extraction completed.", QStringLiteral("Извлечение завершено."))
+                ok ? QCoreApplication::translate("mainwindow_archivecommands",
+                                                 "Extraction completed.")
                 : result.Result == E_ABORT
-                    ? QtLocalText("Operation canceled.", QStringLiteral("Операция отменена."))
+                    ? QCoreApplication::translate("mainwindow_archivecommands",
+                                                  "Operation canceled.")
                 : result.Result == S_OK
-                    ? QtLocalText("Extraction completed with errors.",
-                                  QStringLiteral("Извлечение завершено с ошибками."))
+                    ? QCoreApplication::translate("mainwindow_archivecommands",
+                                                  "Extraction completed with errors.")
                     : QString::fromWCharArray(HResultToMessage(result.Result));
             backendFinished(ok, message, result.Result, result.MessageWasDisplayed);
             return true;
@@ -284,9 +286,9 @@ bool MainWindow::extractWithSource(const QString &destination, bool onlySelected
         }
         const bool ok = result == S_OK && messages.IsEmpty();
         QString message =
-            ok ? QtLocalText("Extraction completed.", QStringLiteral("Извлечение завершено."))
+            ok ? QCoreApplication::translate("mainwindow_archivecommands", "Extraction completed.")
             : result == E_ABORT
-                ? QtLocalText("Operation canceled.", QStringLiteral("Операция отменена."))
+                ? QCoreApplication::translate("mainwindow_archivecommands", "Operation canceled.")
                 : QString::fromWCharArray(HResultToMessage(result));
         if (!messages.IsEmpty())
             message = ToQString(messages[0]);
@@ -310,8 +312,8 @@ void MainWindow::testArchive() {
     if (resource && resource->HasNativeRarReader() && !resource->HasNativeExtractService()) {
         QMessageBox::warning(
             this, QtLangText(IDS_PROGRESS_TESTING),
-            QtLocalText("Source extraction is unavailable for this archive.",
-                        QStringLiteral("Исходное извлечение для этого архива недоступно.")));
+            QCoreApplication::translate("mainwindow_archivecommands",
+                                        "Source extraction is unavailable for this archive."));
         return;
     }
     if (resource && resource->HasExtractService() && backend_->hasListedSourceArchive(archive_)) {

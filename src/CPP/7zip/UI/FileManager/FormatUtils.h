@@ -10,5 +10,6 @@ UString NumberToString(UInt64 number);
 
 UString MyFormatNew(const UString &format, const UString &argument);
 UString MyFormatNew(UINT resourceID, const UString &argument);
+UString MyFormatNew(UINT resourceID, UInt64 count);
 
 #endif

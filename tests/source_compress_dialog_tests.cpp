@@ -202,7 +202,12 @@ class SourceCompressDialogTests final : public QObject {
                 }
             }
             for (auto *label : dialog.findChildren<QLabel *>())
-                if (label->isVisible())
+                if (label->isVisible() && label->objectName() == "archiveFolder") {
+                    // Long destination prefixes deliberately elide in the
+                    // fixed header; they must not clip the editable name.
+                    QVERIFY(UiInspection::fullyVisible(*label, dialog));
+                    QVERIFY(label->height() >= label->fontMetrics().height());
+                } else if (label->isVisible())
                     QVERIFY2(UiInspection::labelFits(*label), qPrintable(label->objectName()));
         };
         for (const char *name : {"compressionLevel", "compressionMethod", "compressionDictionary",
@@ -310,7 +315,11 @@ class SourceCompressDialogTests final : public QObject {
         QVERIFY(caption);
         const int captionCenter = UiInspection::bounds(*caption, dialog).center().y();
         QVERIFY(captionCenter > UiInspection::bounds(*folder, dialog).center().y());
-        QVERIFY(captionCenter < UiInspection::bounds(*archiveRow, dialog).center().y());
+        // The caption belongs to the editable-name row. Native font metrics
+        // may place its center on either side of that row's exact midpoint.
+        const QRect archiveBounds = UiInspection::bounds(*archiveRow, dialog);
+        QVERIFY(captionCenter >= archiveBounds.top());
+        QVERIFY(captionCenter <= archiveBounds.bottom());
         const auto formatBounds =
             UiInspection::bounds(*dialog.findChild<QComboBox *>("archiveFormat"), dialog);
         // Desktop g1x/g1xs align the six compression combo rows. Memory's

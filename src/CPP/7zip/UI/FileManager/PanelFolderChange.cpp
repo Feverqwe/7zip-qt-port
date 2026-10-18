@@ -171,13 +171,13 @@ void CPanel::LoadFullPathAndShow(IQtPanelAddressCombo &header, const UString &di
         if (rootPrefixSize == 0 && path[0] != '\\') {
             int iconIndex = -1;
             UString name_Computer = RootFolder_GetName_Computer(iconIndex);
-            iconIndex = header.GetNamespaceIconIndex(name_Computer);
+            iconIndex = header.GetNamespaceIconIndex(IDS_COMPUTER);
             name_Computer.Add_PathSepar();
             if (path == name_Computer || path.IsEqualTo("\\\\?\\"))
                 iconIndex_Current = iconIndex;
             else {
                 UString name = RootFolder_GetName_Network(iconIndex);
-                iconIndex = header.GetNamespaceIconIndex(name);
+                iconIndex = header.GetNamespaceIconIndex(IDS_NETWORK);
                 name.Add_PathSepar();
                 if (path == name)
                     iconIndex_Current = iconIndex;
@@ -636,8 +636,8 @@ bool CPanel::OnNotifyComboBoxEndEdit(QtAddressEditReason reason, IQtPanelAddress
 }
 
 void CPanel::AddComboBoxItem(IQtPanelAddressCombo &header, const UString &name, int iconIndex,
-                             unsigned indent, bool addToList) {
-    header.InsertItem(name, iconIndex, indent, addToList);
+                             unsigned indent, bool addToList, UInt32 namespaceID) {
+    header.InsertItem(name, iconIndex, indent, namespaceID);
     if (addToList) {
         UString s = name;
         s.Add_PathSepar();
@@ -772,10 +772,10 @@ bool CPanel::OnComboBoxCommand(QtAddressCommand code, IQtPanelAddressCombo &head
             int iconIndex;
             const UString name = RootFolder_GetName_Documents(iconIndex);
             // iconIndex = -1; // for debug
-            AddComboBoxItem(header, name, iconIndex, 0, true);
+            AddComboBoxItem(header, name, iconIndex, 0, true, IDS_DOCUMENTS);
         }
 #endif
-        AddComboBoxItem(header, name_Computer, iconIndex_Computer, 0, true);
+        AddComboBoxItem(header, name_Computer, iconIndex_Computer, 0, true, IDS_COMPUTER);
 #ifndef _WIN32
         {
             CRootFolder root;
@@ -783,7 +783,7 @@ bool CPanel::OnComboBoxCommand(QtAddressCommand code, IQtPanelAddressCombo &head
             NWindows::NCOM::CPropVariant name;
             static_cast<IFolderFolder &>(root).GetProperty(1, kpidName, &name);
             if (name.vt == VT_BSTR)
-                AddComboBoxItem(header, UString(name.bstrVal), -1, 0, true);
+                AddComboBoxItem(header, UString(name.bstrVal), -1, 0, true, UInt32(-1));
         }
 #endif
         {
@@ -805,7 +805,7 @@ bool CPanel::OnComboBoxCommand(QtAddressCommand code, IQtPanelAddressCombo &head
         {
             int iconIndex;
             const UString name = RootFolder_GetName_Network(iconIndex);
-            AddComboBoxItem(header, name, iconIndex, 0, true);
+            AddComboBoxItem(header, name, iconIndex, 0, true, IDS_NETWORK);
         }
 
 #endif

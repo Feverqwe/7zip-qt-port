@@ -18,6 +18,7 @@
 #include <QKeyEvent>
 #include <QLabel>
 #include <QLineEdit>
+#include <QLocale>
 #include <QPushButton>
 #include <QRadioButton>
 #include <QToolButton>
@@ -213,9 +214,10 @@ void CMemDialog::reject() { done(IDCANCEL); }
 static void AddSize_GB(UString &s, UInt32 size_GB, UInt32 id) {
     s.Add_LF();
     s += "    ";
-    s.Add_UInt32(size_GB);
-    s += " GB : ";
-    AddLangString(s, id);
+    s += UString(QCoreApplication::translate("MemoryUnits", "%1 GB : %2")
+                     .arg(QLocale().toString(size_GB), QString::fromWCharArray(LangString(id)))
+                     .toStdWString()
+                     .c_str());
 }
 
 void CMemDialog::AddInfoMessage_To_String(UString &s, const UInt32 *ramSize_GB) {
@@ -226,8 +228,10 @@ void CMemDialog::AddInfoMessage_To_String(UString &s, const UInt32 *ramSize_GB) 
         AddSize_GB(s, *ramSize_GB, IDS_MEM_RAM_SIZE);
     if (!FilePath.IsEmpty()) {
         s.Add_LF();
-        s += "File: ";
-        s += FilePath;
+        s += UString(QCoreApplication::translate("MemDialog", "File: %1")
+                         .arg(QString::fromWCharArray(FilePath))
+                         .toStdWString()
+                         .c_str());
     }
 }
 
@@ -242,15 +246,7 @@ bool CMemDialog::OnInit() {
     const bool is_Allowed = (!ramSize_defined || ramSize > ((UInt64)Required_GB << 30));
     _messageRam_GB = is_Allowed ? 0 : ramSize_GB;
     ReloadInfoMessage(is_Allowed ? NULL : &ramSize_GB);
-    {
-        UString s("GB");
-        if (ramSize_defined) {
-            s += " / ";
-            s.Add_UInt32(ramSize_GB);
-            s += " GB (RAM)";
-        }
-        SetItemText(IDT_MEM_GB, s);
-    }
+    QtBindMemoryLimitUnitText(_controls.value(IDT_MEM_GB), ramSize_defined, ramSize_GB);
     const UINT valMin = 1;
     UINT valMax = 64;
     if (ramSize_defined) {

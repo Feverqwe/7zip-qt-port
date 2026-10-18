@@ -197,14 +197,13 @@ void QtFmOptionsDialog::apply() {
     if (associationError != 0) {
         const QString message =
             associationError == 1237
-                ? QtLocalText("An association changed outside the application. Review the "
-                              "refreshed state and try again.",
-                              "Ассоциация изменена другим приложением. Проверьте обновлённое "
-                              "состояние и повторите действие.")
-                : QtLocalText("Unable to change the association (error %1).",
-                              "Не удалось изменить ассоциацию (ошибка %1).")
+                ? QCoreApplication::translate("OptionsDialog",
+                                              "An association changed outside the application. "
+                                              "Review the refreshed state and try again.")
+                : QCoreApplication::translate("OptionsDialog",
+                                              "Unable to change the association (error %1).")
                       .arg(associationError);
-        QMessageBox::critical(this, QtLocalText("7-Zip", "7-Zip"), message);
+        QMessageBox::critical(this, QCoreApplication::translate("OptionsDialog", "7-Zip"), message);
     }
     // Source SystemPage reports an association error and returns
     // PSNRET_NOERROR, so the property sheet still applies the other pages.

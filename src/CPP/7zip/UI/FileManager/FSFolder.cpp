@@ -869,7 +869,7 @@ bool CFSFolder::CreateFolder(const QString &name) {
     QString absPath;
     GetAbsPath(name, absPath);
     ErrorMessage =
-        QtLocalText("Could not create folder: %1", "Не удалось создать папку: %1").arg(absPath);
+        QCoreApplication::translate("FSFolder", "Could not create folder: %1").arg(absPath);
     return false;
 }
 
@@ -878,7 +878,7 @@ bool CFSFolder::CreateFile(const QString &name) {
         QString absPath;
         GetAbsPath(name, absPath);
         ErrorMessage =
-            QtLocalText("Could not create file: %1", "Не удалось создать файл: %1").arg(absPath);
+            QCoreApplication::translate("FSFolder", "Could not create file: %1").arg(absPath);
         return false;
     }
     return true;
@@ -887,8 +887,7 @@ bool CFSFolder::CreateFile(const QString &name) {
 bool CFSFolder::Rename(UInt32 index, const QString &newName) {
     if (Rename(index, newName.toStdWString().c_str(), nullptr) != S_OK) {
         ErrorMessage =
-            QtLocalText("Could not rename item: %1", "Не удалось переименовать объект: %1")
-                .arg(newName);
+            QCoreApplication::translate("FSFolder", "Could not rename item: %1").arg(newName);
         return false;
     }
     return true;
@@ -915,8 +914,7 @@ bool CFSFolder::Delete(const UInt32 *indices, UInt32 numItems) {
     if (Delete(indices, numItems, progress) == S_OK)
         return true;
     if (ErrorMessage.isEmpty())
-        ErrorMessage = QtLocalText("Could not delete selected items.",
-                                   "Не удалось удалить выбранные объекты.");
+        ErrorMessage = QCoreApplication::translate("FSFolder", "Could not delete selected items.");
     return false;
 }
 
@@ -1001,7 +999,7 @@ Z7_COM7F_IMF(CFSFolder::Delete(const UInt32 *indices, UInt32 numItems, IProgress
                 result = NWindows::NFile::NDir::DeleteFileAlways(path);
         }
         if (!result) {
-            ErrorMessage = QtLocalText("Could not delete: ", "Не удалось удалить: ") +
+            ErrorMessage = QCoreApplication::translate("FSFolder", "Could not delete: ") +
                            QtPath(_path + GetRelPath(Files[index]));
             return GetLastError_noZero_HRESULT();
         }

@@ -142,18 +142,20 @@ void QtFileManagerShellMenu::Render(QMenu &menu, const NQtShellMenu::CMenuHandle
         }
         if (command.CommandInternalID == CZipContextMenu::kOpen) {
             if (command.ArcType.IsEmpty())
-                action->setText(
-                    QtLocalText("Open archive in new window", "Открыть архив в новом окне"));
+                action->setText(QCoreApplication::translate("qtfilemanagershellmenu",
+                                                            "Open archive in new window"));
             else if (command.ArcType == UString(L"*"))
-                action->setText(QtLocalText("Single archive layer (*)", "Один уровень архива (*)"));
+                action->setText(QCoreApplication::translate("qtfilemanagershellmenu",
+                                                            "Single archive layer (*)"));
             else if (command.ArcType == UString(L"#"))
-                action->setText(
-                    QtLocalText("Parse file as archive (#)", "Разобрать файл как архив (#)"));
+                action->setText(QCoreApplication::translate("qtfilemanagershellmenu",
+                                                            "Parse file as archive (#)"));
             else if (command.ArcType == UString(L"#:e"))
                 action->setText(
-                    QtLocalText("Scan every byte (#:e)", "Поиск с каждого байта (#:e)"));
+                    QCoreApplication::translate("qtfilemanagershellmenu", "Scan every byte (#:e)"));
         } else if (command.Verb == UString(L"SevenZip.OpenWithType."))
-            action->setText(QtLocalText("Open in new window as", "Открыть в новом окне как"));
+            action->setText(
+                QCoreApplication::translate("qtfilemanagershellmenu", "Open in new window as"));
         action->setProperty("shellCommandID", entry.ID);
         if (entry.Bitmap) {
             QPixmap bitmap(QStringLiteral(":/upstream/7zip/UI/Explorer/MenuLogo.bmp"));
@@ -260,7 +262,8 @@ void QtFileManagerShellMenu::CreateSystemMenu(CPanel &panel, bool extended,
 #else
     (void)panel;
     (void)extended;
-    auto *action = new QAction(QtLocalText("System", "Система"), &_menu);
+    auto *action =
+        new QAction(QCoreApplication::translate("qtfilemanagershellmenu", "System"), &_menu);
     action->setObjectName("systemContextGroup");
     action->setEnabled(false);
     _menu.insertAction(_menu.actions().isEmpty() ? nullptr : _menu.actions().first(), action);

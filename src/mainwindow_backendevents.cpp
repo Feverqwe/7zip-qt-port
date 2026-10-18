@@ -93,10 +93,10 @@ void MainWindow::backendFinished(bool ok, const QString &message, HRESULT result
     QString resultMessage = message;
     if (archiveMoveStage_ == ArchiveMoveStage::Removing)
         resultMessage =
-            ok ? QtLocalText("Items moved out of archive.",
-                             QStringLiteral("Объекты перемещены из архива."))
-               : QtLocalText("Files extracted but not deleted from archive. ",
-                             QStringLiteral("Файлы извлечены, но не удалены из архива. ")) +
+            ok ? QCoreApplication::translate("mainwindow_backendevents",
+                                             "Items moved out of archive.")
+               : QCoreApplication::translate("mainwindow_backendevents",
+                                             "Files extracted but not deleted from archive. ") +
                      message;
     if (archiveMoveStage_ != ArchiveMoveStage::None) {
         archiveMoveStage_ = ArchiveMoveStage::None;
@@ -125,9 +125,8 @@ bool MainWindow::startPendingArchiveMove(bool ok) {
         archiveMoveStage_ = ArchiveMoveStage::Removing;
         updatingArchive_ = true;
         closeProgressDialog();
-        begin(
-            QtLocalText("Deleting moved entries", QStringLiteral("Удаление перемещённых записей")),
-            archive_);
+        begin(QCoreApplication::translate("mainwindow_backendevents", "Deleting moved entries"),
+              archive_);
         backend_->remove(archive_, archiveMovePaths_);
         return true;
     }

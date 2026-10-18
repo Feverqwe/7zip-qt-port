@@ -1,3 +1,4 @@
+#include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "Common/MyTypes.h"
 
 #include "7zip/UI/Explorer/ContextMenuFlags.h"
@@ -59,6 +60,10 @@ class CShellServices final : public IQtMenuPageServices {
 class MenuPageTests : public QObject {
     Q_OBJECT
   private slots:
+    void init() {
+        SaveRegLang(UString("-"), qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+        ReloadLang(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+    }
     void sourceShellApplyRequeriesAfterFailure() {
         QTemporaryDir fixture;
         auto services = std::make_shared<CShellServices>();
@@ -169,6 +174,7 @@ class MenuPageTests : public QObject {
     }
     void capabilitiesAndGeometry() {
         QTemporaryDir fixture;
+        SaveRegLang(UString("-"), fixture.filePath("settings.ini"));
         QtFmOptionsDialog dialog(fixture.filePath("settings.ini"));
         auto *pages = dialog.findChild<QTabWidget *>("optionsPages");
         QVERIFY(pages->isTabEnabled(1));

@@ -18,6 +18,7 @@
 #include "Windows/FileFind.h"
 #include "Windows/FileName.h"
 #include "Windows/System.h"
+#include "qtdiagnostictext.h"
 #include "qtfilemanagercommandservices.h"
 #include "qtfilemanagerinitservices.h"
 #include "qtfilemanagersplitter.h"
@@ -35,7 +36,7 @@ static void ErrorMessage(const wchar_t *s) {
     QMessageBox::critical(nullptr, QStringLiteral("7-Zip"), QString::fromWCharArray(s));
 }
 
-static void ErrorMessage(const char *s) { ErrorMessage(GetUnicodeString(s)); }
+static void ErrorMessage(const char *s) { ErrorMessage(QtDiagnosticText(s)); }
 
 extern bool g_LargePagesMode;
 
@@ -177,12 +178,11 @@ int NQtFileManager::WinMain(const std::function<int()> &main2) {
         ErrorMessage(s);
         return 1;
     } catch (int v) {
-        AString e("Error: ");
-        e.Add_UInt32((unsigned)v);
-        ErrorMessage(e);
+        ErrorMessage(
+            QtDiagnosticText(QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Error: %1"), (unsigned)v));
         return 1;
     } catch (...) {
-        ErrorMessage("Unknown error");
+        ErrorMessage(QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Unknown error"));
         return 1;
     }
 }
@@ -237,7 +237,7 @@ void CheckFileManagerStartup(HRESULT res, const QtFileManagerStartup &startup,
     const bool needOpenArc = startup.NeedOpenArc;
     const UString &fullPath = startup.FullPath;
     if ((needOpenArc && !openRes.ArchiveIsOpened) || res != S_OK) {
-        UString m("Error");
+        UString m = QtDiagnosticText(QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Error"));
         if (res == S_FALSE || res == S_OK)
             m = MyFormatNew(openRes.Encrypted ? IDS_CANT_OPEN_ENCRYPTED_ARCHIVE
                                               : IDS_CANT_OPEN_ARCHIVE,

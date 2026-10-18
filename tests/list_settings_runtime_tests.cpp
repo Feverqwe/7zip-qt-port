@@ -71,7 +71,11 @@ class ListSettingsRuntimeTests final : public QObject, protected MainWindowTestS
     Q_OBJECT
 
   private slots:
-    void init() { QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH")); }
+    void init() {
+        QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+        SaveRegLang(UString("-"), qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+        ReloadLang(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+    }
 
     void optionsParentRowAndContextMenu() {
         QTemporaryDir temp;

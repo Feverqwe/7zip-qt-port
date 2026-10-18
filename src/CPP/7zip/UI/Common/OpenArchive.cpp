@@ -31,6 +31,7 @@
 
 #include "7zip/UI/Common/DefaultName.h"
 #include "OpenArchive.h"
+#include "qtdiagnostictext.h"
 
 #ifndef Z7_SFX
 #include "7zip/UI/Common/SetProperties.h"
@@ -1187,14 +1188,20 @@ HRESULT CArc::ReadBasicProps(IInArchive *archive, UInt64 startPos, HRESULT openR
         NCOM::CPropVariant prop;
         RINOK(archive->GetArchiveProperty(kpidError, &prop))
         if (prop.vt != VT_EMPTY)
-            ErrorInfo.ErrorMessage = (prop.vt == VT_BSTR ? prop.bstrVal : L"Unknown error");
+            ErrorInfo.ErrorMessage =
+                (prop.vt == VT_BSTR
+                     ? UString(prop.bstrVal)
+                     : QtDiagnosticText(QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Unknown error")));
     }
 
     {
         NCOM::CPropVariant prop;
         RINOK(archive->GetArchiveProperty(kpidWarning, &prop))
         if (prop.vt != VT_EMPTY)
-            ErrorInfo.WarningMessage = (prop.vt == VT_BSTR ? prop.bstrVal : L"Unknown warning");
+            ErrorInfo.WarningMessage =
+                (prop.vt == VT_BSTR ? UString(prop.bstrVal)
+                                    : QtDiagnosticText(QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                                                                         "Unknown warning")));
     }
 
     if (openRes == S_OK || ErrorInfo.IsArc_After_NonOpen()) {

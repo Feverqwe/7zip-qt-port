@@ -77,8 +77,9 @@ QWidget *CQtLinkWindow::BuildLinkTypes() {
 #ifndef _WIN32
         if (i >= 3) {
             radio->setEnabled(false);
-            QtBindLocalToolTip(radio, "This link type is available only on Windows.",
-                               "Этот тип ссылки доступен только в Windows.");
+            QtBindLocalToolTip(radio, "qtlinkcontrols",
+                               QT_TRANSLATE_NOOP("qtlinkcontrols",
+                                                 "This link type is available only on Windows."));
         }
 #endif
         types->addWidget(radio);

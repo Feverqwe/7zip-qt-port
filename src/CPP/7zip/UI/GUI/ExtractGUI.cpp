@@ -31,13 +31,15 @@
 #include "../FileManager/ViewSettings.h"
 #include "7zip/UI/FileManager/PropertyNameRes.h"
 #include "CPP/7zip/UI/GUI/resource2.h"
+#include "qtdiagnostictext.h"
 #include "qtguimessages.h"
 
 using namespace NWindows;
 using namespace NFile;
 using namespace NDir;
 
-static const wchar_t *const kIncorrectOutDir = L"Incorrect output directory path";
+static const char *const kIncorrectOutDir =
+    QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Incorrect output directory path");
 
 #ifndef Z7_SFX
 
@@ -190,7 +192,7 @@ HRESULT ExtractGUI(
         if (showDialog) {
             FString outputDirFull;
             if (!MyGetFullPathName(outputDir, outputDirFull)) {
-                ShowErrorMessageQt(hwndParent, kIncorrectOutDir);
+                ShowErrorMessageQt(hwndParent, QtDiagnosticText(kIncorrectOutDir));
                 messageWasDisplayed = true;
                 return E_FAIL;
             }
@@ -226,7 +228,7 @@ HRESULT ExtractGUI(
 #endif
         }
         if (!MyGetFullPathName(outputDir, options.OutputDir)) {
-            ShowErrorMessageQt(hwndParent, kIncorrectOutDir);
+            ShowErrorMessageQt(hwndParent, QtDiagnosticText(kIncorrectOutDir));
             messageWasDisplayed = true;
             return E_FAIL;
         }

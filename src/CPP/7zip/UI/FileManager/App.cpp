@@ -19,6 +19,7 @@
 #include "Windows/FileName.h"
 #include "Windows/PropVariant.h"
 #include "Windows/PropVariantConv.h"
+#include "qtdiagnostictext.h"
 #include "qtfilemanagercommandservices.h"
 #include "qtpaneldragmodel.h"
 #include "qtpanelfolder.h"
@@ -34,8 +35,6 @@ CApp::CApp() : _qtOperations(Panels) {
 }
 
 CApp::~CApp() { ReleaseApp(); }
-
-void CApp::ReloadLangItems() { LangString(IDS_N_SELECTED_ITEMS, LangString_N_SELECTED_ITEMS); }
 
 struct CButtonInfo {
     int CommandID;
@@ -228,7 +227,8 @@ void CApp::OnCopy(bool move, bool copyToSame, unsigned srcPanelIndex) {
     bool possibleToUseDestPanel = false;
     if (CompareFileNames(destPath, destPanel.GetFsPath()) == 0) {
         if (NumPanels == 1 || CompareFileNames(destPath, srcPanel.GetFsPath()) == 0) {
-            srcPanel.MessageBox_Error(L"Cannot copy files onto itself");
+            srcPanel.MessageBox_Error(QtDiagnosticText(
+                QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Cannot copy files onto itself")));
             return;
         }
         if (destPanel.DoesItSupportOperations())
@@ -689,9 +689,7 @@ CPanel::CPanel(IFolderFolder *folder) {
         _currentFolderPrefix = GetFolderPath(_folder);
 }
 
-static void AddSizeValue(UString &s, UInt64 size) {
-    s += MyFormatNew(IDS_FILE_SIZE, ToUString(ConvertSizeToString(size)));
-}
+static void AddSizeValue(UString &s, UInt64 size) { s += MyFormatNew(IDS_FILE_SIZE, size); }
 
 static void AddValuePair1(UString &s, UINT resourceID, UInt64 size) {
     AddLangString(s, resourceID);

@@ -8,13 +8,15 @@
     {
       "path": "License.txt",
       "sha256": "519ac0a4bded9c18ea02e0afb71f663d8c47373bd9facd3ac96a79f51d77765d"
-    },
+    }
+  ],
+  "translation_import": [
     {
-      "path": "Lang/en.ttt",
+      "archive_path": "Lang/en.ttt",
       "sha256": "c218145bb039e1fd042fb1f5425b634a4bdc1f40b13801e33ed36cfdbda063ed"
     },
     {
-      "path": "Lang/ru.txt",
+      "archive_path": "Lang/ru.txt",
       "sha256": "3e76bc88db5cb108cf8750b01bdabbb3772dbf2bf14592c6ab18b7339817d6ee"
     }
   ]

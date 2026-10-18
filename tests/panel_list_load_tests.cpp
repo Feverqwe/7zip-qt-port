@@ -2,6 +2,7 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/Panel.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
+#include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "Windows/PropVariant.h"
 #include "layout_inspection.h"
 #include "panel_load_folder.h"
@@ -35,7 +36,11 @@ class PanelListLoadTests final : public QObject, protected MainWindowTestSupport
         return shown;
     }
   private slots:
-    void init() { QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH")); }
+    void init() {
+        QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+        SaveRegLang(UString("-"), qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+        ReloadLang(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+    }
     void filesystemReloadPreservesProviderResult_data() {
         QTest::addColumn<unsigned>("sourceIndex");
         QTest::addColumn<QString>("caller");

@@ -21,6 +21,7 @@
 #include "OpenCallback.h"
 #include "PropertyName.h"
 #include "qtarchivestreamopen.h"
+#include "qtdiagnostictext.h"
 
 using namespace NWindows;
 
@@ -200,7 +201,7 @@ static void GetFolderError(CMyComPtr<IFolderFolder> &folder, UString &open_Error
             m += " : ";
             m += GetNameOfProperty(kpidError, L"Error");
             m += " : ";
-            m += lev.Error;
+            m += QtArchiveDiagnosticText(lev.Error);
         }
 
         if (!lev.ErrorFlags.IsEmpty()) {

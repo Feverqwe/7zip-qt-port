@@ -6,20 +6,10 @@
 class QComboBox;
 class QPlainTextEdit;
 
-struct CLangInfo {
-    unsigned NumLines;
-    UString Name;
-    UStringVector Comments;
-    UStringVector MissingLines;
-    UStringVector ExtraLines;
-};
-
 class CLangPage : public QWidget {
     Q_OBJECT
     QComboBox *_langCombo;
     QPlainTextEdit *_info;
-    CObjectVector<CLangInfo> _langs;
-    unsigned NumLangLines_EN = 0;
     bool _needSave = false;
     QString _settingsPath;
     QString _directory;
@@ -37,4 +27,7 @@ class CLangPage : public QWidget {
 
   signals:
     void Changed();
+
+  protected:
+    void changeEvent(QEvent *event) override;
 };

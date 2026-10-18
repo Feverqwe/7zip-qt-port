@@ -1,3 +1,5 @@
+#include "CPP/7zip/UI/FileManager/LangUtils.h"
+#include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "window_state_support.h"
 
 #include <QScrollBar>
@@ -22,6 +24,8 @@ class PanelAutoRefreshTests final : public QObject, protected MainWindowTestSupp
         QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
         QSettings settings(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"), QSettings::IniFormat);
         settings.remove(QStringLiteral("view/autoRefresh"));
+        SaveRegLang(UString("-"), qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+        ReloadLang(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
     }
 
     void detectsChangesAndPreservesSelectionAndScroll() {

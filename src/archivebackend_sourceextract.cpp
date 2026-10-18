@@ -8,15 +8,15 @@ void ArchiveBackend::extractSourceEntry(const QString &archive, const QString &e
                                         const QString &output, const QString &format,
                                         const QString &password, bool isAltStream) {
     if (busy()) {
-        emit finished(false, QtLocalText("Another operation is still running.",
-                                         "Другая операция ещё выполняется."));
+        emit finished(false, QCoreApplication::translate("archivebackend_sourceextract",
+                                                         "Another operation is still running."));
         return;
     }
     lastResult_ = E_FAIL;
     if (entry.isEmpty() || entry.contains(QChar(0)) || !QFileInfo(archive).isFile() ||
         output.isEmpty() || QFileInfo::exists(output) || format.contains(QChar(0))) {
-        emit finished(false, QtLocalText("Invalid extraction file or stream.",
-                                         "Недопустимый файл или поток извлечения."));
+        emit finished(false, QCoreApplication::translate("archivebackend_sourceextract",
+                                                         "Invalid extraction file or stream."));
         return;
     }
     archive_ = QFileInfo(archive).absoluteFilePath();
@@ -41,9 +41,9 @@ void ArchiveBackend::extractSourceEntry(const QString &archive, const QString &e
         if (entry.contains('\n') || entry.contains('\r') || !sourceExtractSelection_->isValid() ||
             !list.open(QIODevice::WriteOnly) || list.write(bytes) != bytes.size()) {
             sourceExtractSelection_.reset();
-            emit finished(false,
-                          QtLocalText("Cannot prepare exact archive item selection.",
-                                      "Не удалось подготовить точный выбор элемента архива."));
+            emit finished(
+                false, QCoreApplication::translate("archivebackend_sourceextract",
+                                                   "Cannot prepare exact archive item selection."));
             return;
         }
         arguments.append({"-scsUTF-8", "-i@" + list.fileName()});

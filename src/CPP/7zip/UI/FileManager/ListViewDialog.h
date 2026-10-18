@@ -3,8 +3,10 @@
 #pragma once
 
 #include "Common/MyString.h"
+#include <QByteArray>
 #include <QDialog>
 #include <QHash>
+#include <QVariant>
 
 class CListView;
 class CListViewDialog : public QDialog {
@@ -22,12 +24,17 @@ class CListViewDialog : public QDialog {
         bool HasFallback;
     };
     QHash<unsigned, CPropertyNameBinding> _propertyNameBindings;
+    QHash<unsigned, QPair<QByteArray, QByteArray>> _diagnosticBindings;
+    QHash<unsigned, QVariant> _archiveValueBindings;
     void changeEvent(QEvent *event) override;
 
   public:
     explicit CListViewDialog(QWidget *parent = nullptr);
     bool OnInit();
     void QtBindPropertyName(unsigned row, UInt32 id, const wchar_t *fallback);
+    void QtBindDiagnosticRow(unsigned row, const char *name, const char *value);
+    void QtBindArchiveDiagnosticValue(unsigned row, const UString &source);
+    void QtBindArchiveFlagsValue(unsigned row, UInt32 flags);
     void accept() override;
     UString Title;
     QString SettingsPath;

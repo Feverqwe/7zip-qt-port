@@ -6,8 +6,10 @@
 #include <QCryptographicHash>
 #include <QElapsedTimer>
 #include <QFile>
+#include <QLocale>
 #include <QMessageBox>
 #include <QProcess>
+#include <QScopeGuard>
 #include <QScrollArea>
 #include <QSettings>
 #include <QSignalSpy>
@@ -379,7 +381,11 @@ class ArchiveVolumeCreationTests final : public QObject {
             QTimer::singleShot(0, &dialog, [answer] {
                 auto *message = qobject_cast<QMessageBox *>(QApplication::activeModalWidget());
                 QVERIFY(message);
-                QVERIFY(message->text().contains("65536"));
+                const auto close = qScopeGuard([&] {
+                    if (message->isVisible())
+                        message->reject();
+                });
+                QVERIFY(message->text().contains(QLocale().toString(65536)));
                 message->button(answer)->click();
             });
             ok->click();

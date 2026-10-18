@@ -4,6 +4,7 @@
 #include "Common/StdAfx.h"
 
 #include "Wildcard.h"
+#include "qtdiagnostictext.h"
 #include <QString>
 #include <string>
 
@@ -579,7 +580,7 @@ static unsigned GetNumPrefixParts(const UStringVector &pathParts) {
 void CCensor::AddItem(ECensorPathMode pathMode, bool include, const UString &path,
                       const CCensorPathProps &props) {
     if (path.IsEmpty())
-        throw "Empty file path";
+        throw QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Empty file path");
 
     UStringVector pathParts;
     SplitPathToParts(path, pathParts);

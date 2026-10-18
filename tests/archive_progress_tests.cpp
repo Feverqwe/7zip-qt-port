@@ -3,6 +3,7 @@
 #include "archive_backend_test_support.h"
 #include "archiveprogressoperation.h"
 #include "archiveprogresstransport.h"
+#include "fixtures/progress_dialog.h"
 #include "fixtures/widget_dialogs.h"
 #include "layout_inspection.h"
 #include "processpriority.h"
@@ -253,7 +254,7 @@ class ArchiveProgressTests : public QObject, protected ArchiveBackendTestSupport
                 // External I/O may finish after a pause request. Completion must
                 // not strand the bridge in cooperative CheckStop.
                 backend.Finish();
-            } else if (stage == 1 && close->text() == QStringLiteral("&Close")) {
+            } else if (stage == 1 && TestProgressDialog::IsCloseButton(close)) {
                 stage = 2;
                 geometry =
                     operation.size() == size && close->isDefault() &&
@@ -360,7 +361,7 @@ class ArchiveProgressTests : public QObject, protected ArchiveBackendTestSupport
                 return; // Let source finish leave the message's nested event loop.
             auto *close = operation.findChild<QPushButton *>("IDCANCEL");
             if (operation.isVisible() && widgetDialogs_.activeDialog() == &operation && close &&
-                close->text() == QStringLiteral("&Close"))
+                TestProgressDialog::IsCloseButton(close))
                 close->click();
         });
         responder.start();

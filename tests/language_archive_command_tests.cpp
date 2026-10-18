@@ -65,7 +65,7 @@ class LanguageArchiveCommandTests final : public QObject {
                 QVERIFY(
                     message.contains(QString::fromWCharArray(LangString(IDS_MEM_RAM_SIZE).Ptr())));
                 QVERIFY(message.contains(
-                    "0 MB : " +
+                    QString::fromUtf8(name[0] == 'r' ? "0 МБ : " : "0 MB : ") +
                     QString::fromWCharArray(LangString(IDS_MEM_USAGE_LIMIT_SET_BY_7ZIP).Ptr())));
                 QVERIFY(message.endsWith(QString::fromWCharArray(LangString(IDS_MEM_ERROR).Ptr())));
                 QVERIFY(dialog.isVisible());

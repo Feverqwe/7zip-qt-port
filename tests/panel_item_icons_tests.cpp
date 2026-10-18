@@ -1,4 +1,5 @@
 #include "7zip/PropID.h"
+#include "7zip/UI/FileManager/resource.h"
 #include "CPP/7zip/UI/FileManager/RootFolder.h"
 #include "CPP/7zip/UI/FileManager/SysIconUtils.h"
 #include "Windows/PropVariant.h"
@@ -46,6 +47,18 @@ class PanelItemIconsTests final : public QObject, protected MainWindowTestSuppor
         QSKIP("Windows shell image lists provide the native icon sizes.");
 #endif
     }
+    void namespaceIconsDoNotDependOnCaption() {
+        CMyComPtr<IFolderFolder> folder = new CRootFolder;
+        CPanel panel(folder);
+        QtPanelAddressCombo address(panel, [](const QString &, bool) { return S_OK; }, nullptr);
+        address.InsertItem(UString("same caption"), -1, 0, IDS_COMPUTER);
+        address.InsertItem(UString("changed caption"), -1, 0, IDS_COMPUTER);
+        address.InsertItem(UString("same caption"), -1, 0, IDS_NETWORK);
+        const auto first = address.itemIcon(0).pixmap(16, 16).toImage();
+        QVERIFY(!first.isNull());
+        QCOMPARE(first, address.itemIcon(1).pixmap(16, 16).toImage());
+        QVERIFY(first != address.itemIcon(2).pixmap(16, 16).toImage());
+    }
     void nativeRootNamespaceIcons() {
 #ifdef _WIN32
         CMyComPtr<IFolderFolder> folder = new CRootFolder;
@@ -74,11 +87,12 @@ class PanelItemIconsTests final : public QObject, protected MainWindowTestSuppor
             NWindows::NCOM::CPropVariant name;
             QCOMPARE(folder->GetProperty(item, kpidName, &name), S_OK);
             QCOMPARE(name.vt, VARTYPE(VT_BSTR));
-            address.InsertItem(UString(name.bstrVal), info.iIcon, 0, true);
+            const UInt32 namespaceID[] = {IDS_COMPUTER, IDS_DOCUMENTS, IDS_NETWORK};
+            address.InsertItem(UString(name.bstrVal), info.iIcon, 0, namespaceID[item]);
             QCOMPARE(address.itemIcon(item).pixmap(16, 16).toImage(),
                      native.pixmap(16, 16).toImage());
             if (item != 1) {
-                address.SetCurrentIcon(address.GetNamespaceIconIndex(UString(name.bstrVal)));
+                address.SetCurrentIcon(address.GetNamespaceIconIndex(namespaceID[item]));
                 const auto *current =
                     address.lineEdit()->findChild<QAction *>("currentAddressIcon");
                 QVERIFY(current);

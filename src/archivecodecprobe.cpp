@@ -141,8 +141,8 @@ ArchiveCodecProbeResult ArchiveCodecProbe::Discover(const QString &engine,
         return result;
     if (process.error() == QProcess::FailedToStart ||
         process.exitStatus() != QProcess::NormalExit || process.exitCode() != 0) {
-        result.error = QtLocalText("Could not determine the version of official 7zz.",
-                                   "Не удалось определить версию официального 7zz.");
+        result.error = QCoreApplication::translate(
+            "archivecodecprobe", "Could not determine the version of official 7zz.");
     } else if (const UInt32 version = EngineVersion(output)) {
         const QStringList libraries = EngineLibraries(output);
         const QString deployment =
@@ -155,12 +155,12 @@ ArchiveCodecProbeResult ArchiveCodecProbe::Discover(const QString &engine,
             result.result = result.catalog->result();
             result.error = result.catalog->error();
         } catch (...) {
-            result.error = QtLocalText("Could not load codec metadata.",
-                                       "Не удалось загрузить сведения о форматах.");
+            result.error =
+                QCoreApplication::translate("archivecodecprobe", "Could not load codec metadata.");
         }
     } else
-        result.error = QtLocalText("The 7zz version banner is missing or invalid.",
-                                   "Строка версии 7zz отсутствует или некорректна.");
+        result.error = QCoreApplication::translate("archivecodecprobe",
+                                                   "The 7zz version banner is missing or invalid.");
     return result;
 }
 
@@ -212,8 +212,8 @@ void ArchiveCodecProbe::Complete(ArchiveCodecProbeResult result) {
         result.result = E_ABORT;
         result.error =
             work_->timedOut
-                ? QtLocalText("Codec discovery timed out.", "Истекло время поиска модуля форматов.")
-                : QtLocalText("Codec discovery cancelled.", "Поиск модуля форматов отменён.");
+                ? QCoreApplication::translate("archivecodecprobe", "Codec discovery timed out.")
+                : QCoreApplication::translate("archivecodecprobe", "Codec discovery cancelled.");
     }
     active_ = false;
     const auto completion = std::move(completion_);

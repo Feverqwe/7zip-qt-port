@@ -24,7 +24,8 @@ HRESULT MainWindow::showDirectory(const QString &path, bool remember, bool sourc
     QtAppOperationState::CallScope call(app_.QtOperations());
     const QFileInfo info(path);
     if (!info.isDir()) {
-        statusBar()->showMessage(QtLocalText("Folder not found: ", "Папка не найдена: ") + path);
+        statusBar()->showMessage(
+            QCoreApplication::translate("mainwindow_filelist", "Folder not found: ") + path);
         path_->setText(state_ == State::Viewing ? archiveDisplayPath() : directory_);
         return E_FAIL;
     }
@@ -131,7 +132,7 @@ HRESULT MainWindow::startFilesystemListing(bool sourceAlreadyBound, bool updateA
             statusBar()->clearMessage();
         else
             statusBar()->showMessage(
-                QtLocalText("Could not read folder.", "Не удалось прочитать папку."));
+                QCoreApplication::translate("mainwindow_filelist", "Could not read folder."));
     }
     return result;
 }
@@ -249,7 +250,8 @@ HRESULT MainWindow::navigateTo(const QString &path, bool sourceAddress) {
         }
         renderBoundFolder();
         if (result != S_OK && result != E_ABORT)
-            statusBar()->showMessage(QtLocalText("Path not found: ", "Путь не найден: ") + path);
+            statusBar()->showMessage(
+                QCoreApplication::translate("mainwindow_filelist", "Path not found: ") + path);
         return result;
     }
     return S_OK;

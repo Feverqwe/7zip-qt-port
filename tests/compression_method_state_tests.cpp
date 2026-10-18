@@ -110,8 +110,9 @@ class CompressionMethodStateTests final : public QObject {
         auto *memory = dialog.findChild<QLabel *>("compressionMemoryUsage");
         auto *decompress = dialog.findChild<QLabel *>("compressionDecompressionMemory");
         if (store) {
-            QVERIFY(memory->text().startsWith("1 MB"));
-            QCOMPARE(decompress->text(), QString("1 MB"));
+            const QString oneMegabyte = QString::fromUtf8(language == "ru" ? "1 МБ" : "1 MB");
+            QVERIFY(memory->text().startsWith(oneMegabyte));
+            QCOMPARE(decompress->text(), oneMegabyte);
         }
         if (scenario == "external") {
             QCOMPARE(memory->text(), QString("?"));

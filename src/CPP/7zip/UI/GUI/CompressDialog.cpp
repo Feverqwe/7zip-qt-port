@@ -17,12 +17,14 @@
 #include "Windows/FileName.h"
 #include "Windows/System.h"
 #include "qtcompressoptionsdialog.h"
+#include "qtdiagnostictext.h"
 #include "qtguimessages.h"
 #include <QCollator>
 #include <QComboBox>
 #include <QDir>
 #include <QFileInfo>
 #include <QLabel>
+#include <QLocale>
 #include <QMessageBox>
 
 static const unsigned kHistorySize = 20;
@@ -104,8 +106,10 @@ static void AddSize_MB(UString &s, UInt64 size) {
     const UInt64 v2 = size + ((UInt32)1 << 20) - 1;
     if (size < v2)
         size = v2;
-    s.Add_UInt64(size >> 20);
-    s += " MB : ";
+    s += UString(QCoreApplication::translate("MemoryUnits", "%1 MB : ")
+                     .arg(QLocale().toString(qulonglong(size >> 20)))
+                     .toStdWString()
+                     .c_str());
 }
 
 static void AddSize_MB_id(UString &s, UInt64 size, UInt32 id) {
@@ -302,7 +306,8 @@ static const char *const k_DontSave_Exts = "xpi odt ods docx xlsx ";
 bool CCompressDialog::OnButtonSetArchive(QWidget *parent, const BrowseFileHandler &browse) {
     QString qtPath;
     if (!GetFinalPath_Smart(qtPath)) {
-        ShowErrorMessageQt(parent, L"Incorrect archive path");
+        ShowErrorMessageQt(parent, QtDiagnosticText(QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                                                                      "Incorrect archive path")));
         return false;
     }
     UString path(qtPath.toStdWString().c_str());
@@ -1422,18 +1427,18 @@ QString AddMemUsage(UInt64 v) {
     const char *post;
     if (v <= ((UInt64)16 << 30)) {
         v = (v + (1 << 20) - 1) >> 20;
-        post = "MB";
+        post = QT_TRANSLATE_NOOP("MemoryUnits", "%1 MB");
     } else if (v <= ((UInt64)64 << 40)) {
         v = (v + (1 << 30) - 1) >> 30;
-        post = "GB";
+        post = QT_TRANSLATE_NOOP("MemoryUnits", "%1 GB");
     } else {
         const UInt64 v2 = v + ((UInt64)1 << 40) - 1;
         if (v <= v2)
             v = v2;
         v >>= 40;
-        post = "TB";
+        post = QT_TRANSLATE_NOOP("MemoryUnits", "%1 TB");
     }
-    return QString::number(v) + QLatin1Char(' ') + QString::fromLatin1(post);
+    return QCoreApplication::translate("MemoryUnits", post).arg(QLocale().toString(qulonglong(v)));
 }
 
 static void AddMemSize(QString &res, UInt64 size) {

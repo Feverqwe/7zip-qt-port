@@ -25,7 +25,7 @@ void ArchiveBackend::finishCreationLifecycle() {
     if (cancelled_)
         lastResult_ = E_ABORT;
     const QString error =
-        cancelled_ ? QtLocalText("Operation canceled.", QStringLiteral("Операция отменена."))
+        cancelled_ ? QCoreApplication::translate("archivebackend_creation", "Operation canceled.")
                    : creationLifecycle_->Error;
     job_ = Job::None;
     if (lastResult_ != S_OK) {
@@ -41,7 +41,8 @@ void ArchiveBackend::finishCreationLifecycle() {
         start(Job::Create, first.arguments, first.directory);
     } else {
         creationLifecycle_.reset();
-        emit finished(true, QtLocalText("Archive created.", QStringLiteral("Архив создан.")));
+        emit finished(true,
+                      QCoreApplication::translate("archivebackend_creation", "Archive created."));
     }
 }
 
@@ -50,7 +51,7 @@ bool ArchiveBackend::startCreationDeletion() {
         return false;
     job_ = Job::CreateDeleteInputs;
     const quint64 progressGeneration = beginWorkerProgress();
-    const QString caption = QtLocalText("Deleting: %1", QStringLiteral("Удаление: %1"));
+    const QString caption = QCoreApplication::translate("archivebackend_creation", "Deleting: %1");
     creationLifecycle_->Progress = [this, progressGeneration, caption](const QString &path, bool) {
         postWorkerProgress(progressGeneration, 100, caption.arg(path));
     };
@@ -62,15 +63,15 @@ void ArchiveBackend::create(const QString &archive, const QStringList &sources,
                             const QString &password, bool encryptHeaders,
                             const CompressionOptions &options) {
     if (busy()) {
-        emit finished(false, QtLocalText("Another operation is still running.",
-                                         "Другая операция ещё выполняется."));
+        emit finished(false, QCoreApplication::translate("archivebackend_creation",
+                                                         "Another operation is still running."));
         return;
     }
     lastResult_ = E_FAIL;
     if (sources.isEmpty()) {
         lastResult_ = E_INVALIDARG;
-        emit finished(false, QtLocalText("Select source files or folders.",
-                                         "Выберите файлы или папки для архива."));
+        emit finished(false, QCoreApplication::translate("archivebackend_creation",
+                                                         "Select source files or folders."));
         return;
     }
     QString suffix, formatError;
@@ -99,11 +100,11 @@ void ArchiveBackend::create(const QString &archive, const QStringList &sources,
         if (suffix != "7z" || !NCompressDialog::IsMethodSupportedBySfx(method) ||
             !module.available()) {
             lastResult_ = E_INVALIDARG;
-            emit finished(
-                false, module.available()
-                           ? QtLocalText("The selected format or method is not supported by SFX.",
-                                         "Выбранный формат или метод не поддерживается SFX.")
-                           : module.error());
+            emit finished(false, module.available()
+                                     ? QCoreApplication::translate(
+                                           "archivebackend_creation",
+                                           "The selected format or method is not supported by SFX.")
+                                     : module.error());
             return;
         }
         validatedSfxModule = module.path();
@@ -112,10 +113,10 @@ void ArchiveBackend::create(const QString &archive, const QStringList &sources,
     }
     const QFileInfo target(archive);
     if (!QFileInfo(target.absolutePath()).isDir() || target.exists() || target.isSymLink()) {
-        emit finished(false,
-                      QtLocalText("Destination folder not found or archive already exists: %1",
-                                  "Папка назначения не найдена или архив уже существует: %1")
-                          .arg(target.absoluteFilePath()));
+        emit finished(false, QCoreApplication::translate(
+                                 "archivebackend_creation",
+                                 "Destination folder not found or archive already exists: %1")
+                                 .arg(target.absoluteFilePath()));
         return;
     }
     FOR_VECTOR(i, options.VolumeSizes) {
@@ -155,9 +156,9 @@ void ArchiveBackend::create(const QString &archive, const QStringList &sources,
     for (const QString &source : sources) {
         const QFileInfo info(source);
         if (!info.exists() && !(options.SymLinks.Val && info.isSymLink())) {
-            emit finished(
-                false, QtLocalText("File or folder not found: %1", "Файл или папка не найдены: %1")
-                           .arg(source));
+            emit finished(false, QCoreApplication::translate("archivebackend_creation",
+                                                             "File or folder not found: %1")
+                                     .arg(source));
             return;
         }
         const QString absolute = QDir::fromNativeSeparators(info.absoluteFilePath());
@@ -171,8 +172,9 @@ void ArchiveBackend::create(const QString &archive, const QStringList &sources,
             const QRegularExpression rootPattern(R"(^(?:[A-Za-z]:/|//[^/]+/[^/]+/))");
             const auto match = rootPattern.match(absolute);
             if (!match.hasMatch()) {
-                emit finished(false, QtLocalText("Could not determine the source root.",
-                                                 "Не удалось определить корень источника."));
+                emit finished(false,
+                              QCoreApplication::translate("archivebackend_creation",
+                                                          "Could not determine the source root."));
                 return;
             }
             directory = match.captured();
@@ -184,23 +186,24 @@ void ArchiveBackend::create(const QString &archive, const QStringList &sources,
             directory = QDir::rootPath();
             logical = absolute;
         } else {
-            emit finished(false, QtLocalText("Invalid archive path mode.",
-                                             "Недопустимый режим путей архива."));
+            emit finished(false, QCoreApplication::translate("archivebackend_creation",
+                                                             "Invalid archive path mode."));
             return;
         }
         if (logical.isEmpty() || logical.contains('*') || logical.contains('?') ||
             logical.startsWith('@') ||
             (options.PathMode != NWildcard::k_AbsPath && !sourceUpdatePathIsSafe(logical))) {
-            emit finished(false,
-                          QtLocalText("Invalid source path: %1", "Недопустимый путь источника: %1")
-                              .arg(source));
+            emit finished(false, QCoreApplication::translate("archivebackend_creation",
+                                                             "Invalid source path: %1")
+                                     .arg(source));
             return;
         }
         const QString key = logical.normalized(QString::NormalizationForm_C).toCaseFolded();
         if (logicalNames.contains(key)) {
-            emit finished(false, QtLocalText("Sources produce the same archive name: %1",
-                                             "Источники дают одинаковое имя в архиве: %1")
-                                     .arg(logical));
+            emit finished(false,
+                          QCoreApplication::translate("archivebackend_creation",
+                                                      "Sources produce the same archive name: %1")
+                              .arg(logical));
             return;
         }
         logicalNames.insert(key);
@@ -213,9 +216,9 @@ void ArchiveBackend::create(const QString &archive, const QStringList &sources,
                 QDir(info.canonicalFilePath()).relativeFilePath(target.absoluteFilePath());
             if (relative == "." || (relative != ".." && !relative.startsWith("../") &&
                                     !QDir::isAbsolutePath(relative))) {
-                emit finished(false,
-                              QtLocalText("Cannot save the archive inside the selected folder.",
-                                          "Нельзя сохранять архив внутри выбранной папки."));
+                emit finished(false, QCoreApplication::translate(
+                                         "archivebackend_creation",
+                                         "Cannot save the archive inside the selected folder."));
                 return;
             }
         }

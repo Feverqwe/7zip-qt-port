@@ -17,6 +17,7 @@ class FileTable : public QTableWidget {
     explicit FileTable(int rows, int columns, QWidget *parent = nullptr);
     void setFullRowHighlight(bool enabled);
     void handleDefaultKeyPress(QKeyEvent *event);
+    void invalidateLanguageText();
     bool fullRowHighlight() const { return fullRowHighlight_; }
     bool filesystem = true;
     CPanel *sourcePanel = nullptr;
@@ -73,6 +74,8 @@ class FileIconList final : public QListView {
 };
 
 class ArchiveTableItem : public QTableWidgetItem {
+    friend class FileTable;
+
   public:
     using QTableWidgetItem::QTableWidgetItem;
     QVariant data(int role) const override;
@@ -82,4 +85,5 @@ class ArchiveTableItem : public QTableWidgetItem {
   private:
     mutable QVariant sourceText_;
     mutable bool sourceTextDefined_ = false;
+    mutable bool sourceTextStale_ = false;
 };

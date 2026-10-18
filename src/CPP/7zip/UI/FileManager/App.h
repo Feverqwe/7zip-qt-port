@@ -80,8 +80,6 @@ class CApp {
     CPanelCallbackImp m_PanelCallbackImp[kNumPanelsMax];
     CPanel Panels[kNumPanelsMax];
     CIntVector _timestampLevels;
-    UString LangString_N_SELECTED_ITEMS;
-    void ReloadLangItems();
 
     HRESULT Create(QWidget *window, const UString &mainPath, const UString &arcFormat,
                    int xSizes[2], bool needOpenArc, COpenResult &openRes,

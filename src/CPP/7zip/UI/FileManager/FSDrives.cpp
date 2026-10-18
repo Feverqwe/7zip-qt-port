@@ -96,8 +96,11 @@ static HRESULT CopyFileSpec(CFSTR fromPath, CFSTR toPath, bool writeToDisk, UInt
 
 static const Byte kProps[] = {kpidName,       kpidTotalSize,  kpidFreeSpace,  kpidType,
                               kpidVolumeName, kpidFileSystem, kpidClusterSize};
-static const char *const kDriveTypes[] = {"Unknown", "No Root Dir", "Removable", "Fixed",
-                                          "Remote",  "CD-ROM",      "RAM disk"};
+static const char *const kDriveTypes[] = {
+    QT_TRANSLATE_NOOP("FSDrives", "Unknown"),   QT_TRANSLATE_NOOP("FSDrives", "No Root Dir"),
+    QT_TRANSLATE_NOOP("FSDrives", "Removable"), QT_TRANSLATE_NOOP("FSDrives", "Fixed"),
+    QT_TRANSLATE_NOOP("FSDrives", "Remote"),    QT_TRANSLATE_NOOP("FSDrives", "CD-ROM"),
+    QT_TRANSLATE_NOOP("FSDrives", "RAM disk")};
 
 Z7_COM7F_IMF(CFSDrives::LoadItems()) {
     COM_TRY_BEGIN
@@ -228,7 +231,9 @@ Z7_COM7F_IMF(CFSDrives::GetProperty(UInt32 itemIndex, PROPID propID, PROPVARIANT
         break;
     case kpidType:
         if (di.DriveType < Z7_ARRAY_SIZE(kDriveTypes))
-            prop = kDriveTypes[di.DriveType];
+            prop = UString(QCoreApplication::translate("FSDrives", kDriveTypes[di.DriveType])
+                               .toStdWString()
+                               .c_str());
         break;
     case kpidVolumeName:
         prop = di.VolumeName;
@@ -300,7 +305,7 @@ IMP_IFolderFolder_Props(CFSDrives)
     case kpidPath:
 #ifndef _WIN32
     {
-        const auto name = QtLocalText("Volumes", "Тома").toStdWString();
+        const auto name = QCoreApplication::translate("FSDrives", "Volumes").toStdWString();
         prop = UString(name.c_str()) + WCHAR_PATH_SEPARATOR;
     } break;
 #endif

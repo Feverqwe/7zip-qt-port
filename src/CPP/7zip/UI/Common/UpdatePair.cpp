@@ -1,5 +1,6 @@
 // UpdatePair.cpp
 
+#include "qtdiagnostictext.h"
 #include <time.h>
 // #include <stdio.h>
 
@@ -89,14 +90,16 @@ static int MyCompareTime(unsigned prec, const CFiTime &f1, const CArcTime &a2) {
     return MyCompare(v1, v2);
 }
 
-static const char *const k_Duplicate_inArc_Message = "Duplicate filename in archive:";
-static const char *const k_Duplicate_inDir_Message = "Duplicate filename on disk:";
-static const char *const k_NotCensoredCollision_Message =
-    "Internal file name collision (file on disk, file in archive):";
+static const char *const k_Duplicate_inArc_Message =
+    QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Duplicate filename in archive:");
+static const char *const k_Duplicate_inDir_Message =
+    QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Duplicate filename on disk:");
+static const char *const k_NotCensoredCollision_Message = QT_TRANSLATE_NOOP(
+    "SevenZipDiagnostics", "Internal file name collision (file on disk, file in archive):");
 
 Z7_ATTR_NORETURN
 static void ThrowError(const char *message, const UString &s1, const UString &s2) {
-    UString m(message);
+    UString m = QtDiagnosticText(message);
     m.Add_LF();
     m += s1;
     m.Add_LF();

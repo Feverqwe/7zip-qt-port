@@ -33,12 +33,6 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 
 ## Новые изменения
 
-- [Владельцы уведомлений native workers](upstream-port-audit/native-worker-notifications.md)
-  — удаление backend, сохранение payload/result и граница синхронной отмены.
-
-- [Нулевое начальное число потоков benchmark](upstream-port-audit/benchmark-starting-threads.md)
-  — отказ до неограниченного роста таблицы потоков.
-
 - [Владельцы внешних процессов при исключении](upstream-port-audit/external-process-ownership.md)
   — OS handles, запуск и регистрация editor worker с сохранением временной копии.
 
@@ -59,6 +53,9 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 
 - [Владелец отложенного Rename](upstream-port-audit/deferred-rename-owner.md)
   — привязка завершения редактора к исходной панели, папке и элементу списка.
+
+- [Миграция на Qt Linguist](upstream-port-audit/qt-linguist.md)
+  — каталоги Qt-текстов, live bindings и границы незавершённой миграции.
 
 - [Адаптивные цвета интерфейса](upstream-port-audit/adaptive-colors.md)
   — общие семантические цвета, фон справки как у окна и обновление открытых видов.

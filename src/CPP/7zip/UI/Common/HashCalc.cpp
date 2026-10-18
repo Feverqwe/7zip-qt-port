@@ -23,6 +23,7 @@
 #include "EnumDirItems.h"
 #include "HashCalc.h"
 #include "LoadCodecs.h"
+#include "qtdiagnostictext.h"
 
 using namespace NWindows;
 
@@ -86,7 +87,7 @@ HRESULT CHashBundle::SetMethods(DECL_EXTERNAL_CODECS_LOC_VARS const UStringVecto
         AString name;
         RINOK(CreateHasher(EXTERNAL_CODECS_LOC_VARS ids[i], name, hasher))
         if (!hasher)
-            throw "Can't create hasher";
+            throw QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Can't create hasher");
         const COneMethodInfo &m = methods[i];
         {
             CMyComPtr<ICompressSetCoderProperties> scp;
@@ -415,7 +416,7 @@ HRESULT HashCalc(DECL_EXTERNAL_CODECS_LOC_VARS const NWildcard::CCensor &censor,
 
         if (res != S_OK) {
             if (res != E_ABORT)
-                errorInfo = "Scanning error";
+                errorInfo = QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Scanning error");
             return res;
         }
         RINOK(callback->FinishScanning(dirItems.Stat))

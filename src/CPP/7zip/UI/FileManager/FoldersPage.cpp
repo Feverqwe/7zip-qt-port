@@ -64,8 +64,9 @@ CFoldersPage::CFoldersPage(const QString &settingsPath, QWidget *parent)
     // The source WorkDir drive-type branch is Windows-only. Retain its value.
     _forRemovable->setEnabled(false);
     _forRemovable->hide();
-    QtBindLocalToolTip(_forRemovable, "Removable-drive detection is available on Windows.",
-                       "Определение сменных носителей доступно в Windows.");
+    QtBindLocalToolTip(
+        _forRemovable, "FoldersPage",
+        QT_TRANSLATE_NOOP("FoldersPage", "Removable-drive detection is available on Windows."));
 #endif
     layout->addWidget(_forRemovable, 5, 0, 1, 2);
     layout->setColumnStretch(0, 1);

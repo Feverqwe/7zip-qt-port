@@ -29,32 +29,36 @@ QString mutationPath(const QString &path) {
 
 void ArchiveBackend::add(const QString &archive, const QStringList &sources) {
     if (busy()) {
-        emit finished(false, QtLocalText("Another operation is still running.",
-                                         "Другая операция ещё выполняется."));
+        emit finished(false, QCoreApplication::translate("archivebackend_mutations",
+                                                         "Another operation is still running."));
         return;
     }
     lastResult_ = E_FAIL;
     if (!restoreListedArchive(archive)) {
-        emit finished(false, QtLocalText("Open the archive and inspect its contents first.",
-                                         "Сначала откройте архив и проверьте его содержимое."));
+        emit finished(
+            false, QCoreApplication::translate("archivebackend_mutations",
+                                               "Open the archive and inspect its contents first."));
         return;
     }
     if (encrypted_) {
-        emit finished(false, QtLocalText("Adding to a protected archive is currently unavailable.",
-                                         "Добавление в защищённый архив пока недоступно."));
+        emit finished(false, QCoreApplication::translate(
+                                 "archivebackend_mutations",
+                                 "Adding to a protected archive is currently unavailable."));
         return;
     }
     const QFileInfo target(archive);
     if (!listed_ || target.absoluteFilePath() != archive_ || !target.isFile() ||
         target.isSymLink() || sources.isEmpty()) {
-        emit finished(false, QtLocalText("Open an existing archive and select sources.",
-                                         "Откройте существующий архив и выберите источники."));
+        emit finished(false,
+                      QCoreApplication::translate("archivebackend_mutations",
+                                                  "Open an existing archive and select sources."));
         return;
     }
     const QString suffix = target.suffix().toLower();
     if (suffix != "7z" && suffix != "zip") {
-        emit finished(false, QtLocalText("Only .7z and .zip archives are supported.",
-                                         "Поддерживаются только архивы .7z и .zip."));
+        emit finished(false,
+                      QCoreApplication::translate("archivebackend_mutations",
+                                                  "Only .7z and .zip archives are supported."));
         return;
     }
     QString root = QFileInfo(sources.first()).absolutePath();
@@ -86,9 +90,9 @@ void ArchiveBackend::add(const QString &archive, const QStringList &sources) {
         if (!info.exists() || info.isSymLink() || relative == ".." || relative.startsWith("../") ||
             QDir::isAbsolutePath(relative) ||
             info.absoluteFilePath() == target.absoluteFilePath()) {
-            emit finished(
-                false,
-                QtLocalText("Source unavailable: %1", "Недоступный источник: %1").arg(source));
+            emit finished(false, QCoreApplication::translate("archivebackend_mutations",
+                                                             "Source unavailable: %1")
+                                     .arg(source));
             return;
         }
         QStringList paths = {relative};
@@ -97,8 +101,9 @@ void ArchiveBackend::add(const QString &archive, const QStringList &sources) {
                 QDir(info.canonicalFilePath()).relativeFilePath(target.absoluteFilePath());
             if (destination == "." || (destination != ".." && !destination.startsWith("../") &&
                                        !QDir::isAbsolutePath(destination))) {
-                emit finished(false, QtLocalText("The archive is inside the selected folder.",
-                                                 "Архив находится внутри выбранной папки."));
+                emit finished(false, QCoreApplication::translate(
+                                         "archivebackend_mutations",
+                                         "The archive is inside the selected folder."));
                 return;
             }
             QDirIterator iterator(info.absoluteFilePath(),
@@ -108,9 +113,10 @@ void ArchiveBackend::add(const QString &archive, const QStringList &sources) {
             while (iterator.hasNext()) {
                 iterator.next();
                 if (iterator.fileInfo().isSymLink()) {
-                    emit finished(false, QtLocalText("Sources must not contain links: %1",
-                                                     "Источники не должны содержать ссылки: %1")
-                                             .arg(iterator.filePath()));
+                    emit finished(false,
+                                  QCoreApplication::translate("archivebackend_mutations",
+                                                              "Sources must not contain links: %1")
+                                      .arg(iterator.filePath()));
                     return;
                 }
                 paths << QDir(root).relativeFilePath(iterator.filePath());
@@ -118,17 +124,17 @@ void ArchiveBackend::add(const QString &archive, const QStringList &sources) {
         }
         for (const QString &path : paths) {
             if (!safePath(path)) {
-                emit finished(
-                    false, QtLocalText("Unsafe source name: %1", "Небезопасное имя источника: %1")
-                               .arg(path));
+                emit finished(false, QCoreApplication::translate("archivebackend_mutations",
+                                                                 "Unsafe source name: %1")
+                                         .arg(path));
                 return;
             }
             const QString key = path.normalized(QString::NormalizationForm_C).toCaseFolded();
             if (existing.contains(key) || incoming.contains(key)) {
-                emit finished(false,
-                              QtLocalText("Name already exists in the archive or selection: %1",
-                                          "Имя уже есть в архиве или выборе: %1")
-                                  .arg(path));
+                emit finished(false, QCoreApplication::translate(
+                                         "archivebackend_mutations",
+                                         "Name already exists in the archive or selection: %1")
+                                         .arg(path));
                 return;
             }
             incoming.insert(key);
@@ -148,16 +154,17 @@ void ArchiveBackend::add(const QString &archive, const QStringList &sources) {
 
 bool ArchiveBackend::prepareMutation(const QString &archive) {
     if (busy()) {
-        emit finished(false, QtLocalText("Another operation is still running.",
-                                         "Другая операция ещё выполняется."));
+        emit finished(false, QCoreApplication::translate("archivebackend_mutations",
+                                                         "Another operation is still running."));
         return false;
     }
     const QFileInfo target(archive);
     const QString suffix = target.suffix().toLower();
     if (!restoreListedArchive(archive) || !target.isFile() || target.isSymLink() || encrypted_ ||
         (suffix != "7z" && suffix != "zip")) {
-        emit finished(false, QtLocalText("Open an unencrypted .7z or .zip archive.",
-                                         "Откройте незашифрованный архив .7z или .zip."));
+        emit finished(false,
+                      QCoreApplication::translate("archivebackend_mutations",
+                                                  "Open an unencrypted .7z or .zip archive."));
         return false;
     }
     createTarget_ = target.absoluteFilePath();
@@ -172,14 +179,15 @@ void ArchiveBackend::remove(const QString &archive, const QStringList &paths) {
     if (paths.isEmpty())
         return;
     if (busy()) {
-        emit finished(false, QtLocalText("Another operation is still running.",
-                                         "Другая операция ещё выполняется."));
+        emit finished(false, QCoreApplication::translate("archivebackend_mutations",
+                                                         "Another operation is still running."));
         return;
     }
     lastResult_ = E_FAIL;
     if (!restoreListedArchive(archive)) {
-        emit finished(false, QtLocalText("Open the archive and inspect its contents first.",
-                                         "Сначала откройте архив и проверьте его содержимое."));
+        emit finished(
+            false, QCoreApplication::translate("archivebackend_mutations",
+                                               "Open the archive and inspect its contents first."));
         return;
     }
     QSet<QString> known;
@@ -188,9 +196,9 @@ void ArchiveBackend::remove(const QString &archive, const QStringList &paths) {
     for (const QString &path : paths) {
         if (!known.contains(mutationPath(path)) || !safePath(path) || path.contains('*') ||
             path.contains('?') || path.startsWith('@')) {
-            emit finished(
-                false,
-                QtLocalText("Archive item not found: %1", "Объект архива не найден: %1").arg(path));
+            emit finished(false, QCoreApplication::translate("archivebackend_mutations",
+                                                             "Archive item not found: %1")
+                                     .arg(path));
             return;
         }
     }
@@ -205,16 +213,17 @@ void ArchiveBackend::remove(const QString &archive, const QStringList &paths) {
 void ArchiveBackend::renameEntry(const QString &archive, const QString &oldName,
                                  const QString &newName) {
     if (busy()) {
-        emit finished(false, QtLocalText("Another operation is still running.",
-                                         "Другая операция ещё выполняется."));
+        emit finished(false, QCoreApplication::translate("archivebackend_mutations",
+                                                         "Another operation is still running."));
         return;
     }
     lastResult_ = E_FAIL;
     const QString oldPath = mutationPath(oldName);
     const QString newPath = mutationPath(newName);
     if (!restoreListedArchive(archive)) {
-        emit finished(false, QtLocalText("Open the archive and inspect its contents first.",
-                                         "Сначала откройте архив и проверьте его содержимое."));
+        emit finished(
+            false, QCoreApplication::translate("archivebackend_mutations",
+                                               "Open the archive and inspect its contents first."));
         return;
     }
     bool found = false;
@@ -239,14 +248,15 @@ void ArchiveBackend::renameEntry(const QString &archive, const QString &oldName,
         const QString key = path.normalized(QString::NormalizationForm_C).toCaseFolded();
         if (member) {
             if (!safePath(entry.path) || entry.link) {
-                emit finished(
-                    false, QtLocalText("Unsafe archive item: %1", "Небезопасный объект архива: %1")
-                               .arg(entry.path));
+                emit finished(false, QCoreApplication::translate("archivebackend_mutations",
+                                                                 "Unsafe archive item: %1")
+                                         .arg(entry.path));
                 return;
             }
             if (renamed.contains(key)) {
-                emit finished(false, QtLocalText("The name already exists in the archive.",
-                                                 "Имя уже есть в архиве."));
+                emit finished(
+                    false, QCoreApplication::translate("archivebackend_mutations",
+                                                       "The name already exists in the archive."));
                 return;
             }
             renamed.insert(key);
@@ -257,16 +267,17 @@ void ArchiveBackend::renameEntry(const QString &archive, const QString &oldName,
         oldPath.startsWith('@') || newPath.contains('*') || newPath.contains('?') ||
         newPath.startsWith('@') || oldPath == newPath ||
         oldPath.section('/', 0, -2) != newPath.section('/', 0, -2)) {
-        emit finished(false, QtLocalText("Renaming this item is unavailable.",
-                                         "Переименование этого объекта недоступно."));
+        emit finished(false, QCoreApplication::translate("archivebackend_mutations",
+                                                         "Renaming this item is unavailable."));
         return;
     }
     const QString targetKey = newPath.normalized(QString::NormalizationForm_C).toCaseFolded();
     for (const QString &key : existing) {
         if (renamed.contains(key) ||
             (directory && (key == targetKey || key.startsWith(targetKey + '/')))) {
-            emit finished(false, QtLocalText("The name already exists in the archive.",
-                                             "Имя уже есть в архиве."));
+            emit finished(false,
+                          QCoreApplication::translate("archivebackend_mutations",
+                                                      "The name already exists in the archive."));
             return;
         }
     }
@@ -280,14 +291,15 @@ void ArchiveBackend::renameEntry(const QString &archive, const QString &oldName,
 void ArchiveBackend::replaceEntry(const QString &archive, const QString &entry,
                                   const QString &sourceRoot) {
     if (busy()) {
-        emit finished(false, QtLocalText("Another operation is still running.",
-                                         "Другая операция ещё выполняется."));
+        emit finished(false, QCoreApplication::translate("archivebackend_mutations",
+                                                         "Another operation is still running."));
         return;
     }
     lastResult_ = E_FAIL;
     if (!restoreListedArchive(archive)) {
-        emit finished(false, QtLocalText("Open the archive and inspect its contents first.",
-                                         "Сначала откройте архив и проверьте его содержимое."));
+        emit finished(
+            false, QCoreApplication::translate("archivebackend_mutations",
+                                               "Open the archive and inspect its contents first."));
         return;
     }
     bool found = false;
@@ -295,23 +307,25 @@ void ArchiveBackend::replaceEntry(const QString &archive, const QString &entry,
         found |= item.path == entry && !item.directory && !item.link;
     if (!found || !safePath(entry) || entry.contains('*') || entry.contains('?') ||
         entry.startsWith('@')) {
-        emit finished(false, QtLocalText("This archive file cannot be replaced.",
-                                         "Этот файл архива нельзя заменить."));
+        emit finished(false, QCoreApplication::translate("archivebackend_mutations",
+                                                         "This archive file cannot be replaced."));
         return;
     }
     const QDir root(sourceRoot);
     const QFileInfo source(root.filePath(entry));
     if (!root.exists() || !source.isFile() || source.isSymLink() ||
         !source.canonicalFilePath().startsWith(root.canonicalPath() + '/')) {
-        emit finished(false, QtLocalText("Modified file not found.", "Изменённый файл не найден."));
+        emit finished(false, QCoreApplication::translate("archivebackend_mutations",
+                                                         "Modified file not found."));
         return;
     }
     QString part = root.absolutePath();
     for (const QString &component : entry.split('/')) {
         part = QDir(part).filePath(component);
         if (QFileInfo(part).isSymLink()) {
-            emit finished(false, QtLocalText("Links in temporary files are not allowed.",
-                                             "Ссылки во временном файле запрещены."));
+            emit finished(false,
+                          QCoreApplication::translate("archivebackend_mutations",
+                                                      "Links in temporary files are not allowed."));
             return;
         }
     }
@@ -328,8 +342,8 @@ void ArchiveBackend::replaceEntry(const QString &archive, const QString &entry,
 bool ArchiveBackend::publishProcessMutation() {
     if (!QFile::rename(createTarget_, addBackup_)) {
         QFile::remove(createTemporary_);
-        emit finished(false, QtLocalText("Could not replace archive: %1",
-                                         QStringLiteral("Не удалось заменить архив: %1"))
+        emit finished(false, QCoreApplication::translate("archivebackend_mutations",
+                                                         "Could not replace archive: %1")
                                  .arg(createTarget_));
         return false;
     }
@@ -337,13 +351,12 @@ bool ArchiveBackend::publishProcessMutation() {
         const bool restored = QFile::rename(addBackup_, createTarget_);
         QFile::remove(createTemporary_);
         emit finished(
-            false, restored
-                       ? QtLocalText("Could not save updated archive: %1",
-                                     QStringLiteral("Не удалось сохранить обновлённый архив: %1"))
-                             .arg(createTarget_)
-                       : QtLocalText("Could not restore archive. Backup: %1",
-                                     QStringLiteral("Не удалось восстановить архив. Копия: %1"))
-                             .arg(addBackup_));
+            false, restored ? QCoreApplication::translate("archivebackend_mutations",
+                                                          "Could not save updated archive: %1")
+                                  .arg(createTarget_)
+                            : QCoreApplication::translate("archivebackend_mutations",
+                                                          "Could not restore archive. Backup: %1")
+                                  .arg(addBackup_));
         return false;
     }
     QFile::remove(addBackup_);

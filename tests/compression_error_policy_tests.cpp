@@ -148,7 +148,8 @@ class CompressionErrorPolicyTests final : public QObject {
             name->setText(QString("../").repeated(256) + "refused.zip");
             if (scenario == "path-before-volume")
                 volume->setEditText("invalid volume");
-            expected = "Incorrect archive path";
+            expected = QString::fromUtf8(language == "ru" ? "Неверный путь к архиву"
+                                                          : "Incorrect archive path");
         }
         const QByteArray before = SourceExtractFixture::readFile(_settings);
         const QString tag =

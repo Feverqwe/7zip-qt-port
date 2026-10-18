@@ -133,18 +133,20 @@ class NativeCommentUiTests final : public QObject, protected MainWindowTestSuppo
                 else
                     dialog->accept();
             } else if (auto *box = qobject_cast<QMessageBox *>(widget)) {
+                const auto close = qScopeGuard([box] { box->accept(); });
                 if (box->icon() == QMessageBox::Critical)
                     errors.append(box->text());
                 if (box->objectName() == "panelArchiveError") {
 #ifdef Q_OS_MACOS
-                    QCOMPARE(box->text(), QStringLiteral("Set Comment Error"));
+                    QCOMPARE(box->text(),
+                             QString::fromUtf8(language == "ru" ? "Ошибка записи комментария"
+                                                                : "Set Comment Error"));
                     QVERIFY(!box->informativeText().isEmpty());
 #else
-                    QCOMPARE(box->windowTitle(), QStringLiteral("Set Comment Error"));
+                    QCOMPARE(box->windowTitle(), QString::fromUtf8(language == "ru" ? "Ошибка записи комментария" : "Set Comment Error"));
                     QVERIFY(!box->text().isEmpty());
 #endif
                 }
-                box->accept();
             }
         });
         responder.start();

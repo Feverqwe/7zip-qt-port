@@ -1,5 +1,6 @@
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "Common/StringConvert.h"
+#include "fixtures/progress_dialog.h"
 #include "layout_inspection.h"
 #include <QLabel>
 #include <QLayout>
@@ -190,7 +191,7 @@ class ProgressWorkerTests : public QObject {
         QTimer timer;
         connect(&timer, &QTimer::timeout, &worker, [&] {
             auto *close = worker.findChild<QPushButton *>("IDCANCEL");
-            if (close->text() != QStringLiteral("&Close"))
+            if (!TestProgressDialog::IsCloseButton(close))
                 return;
             // A worker can finish before the modal window's activation event.
             // Observe its settled focus before sending Enter; keep a bounded

@@ -85,7 +85,8 @@ or final license/distribution acceptance; see [packaging scope](ci.md).
 
 ## Dependencies
 
-- C and C++17 compiler, CMake 3.21+, Ninja, Qt 6 Widgets, Git, clang-format
+- C and C++17 compiler, CMake 3.21+, Ninja, Qt 6 Widgets, LinguistTools and
+  Qt Base translations, Git, clang-format
 - Python 3.9+ for CTest UI-reference checks (standard library only); clang/GCC
   additionally for extracting resources, not for comparing stored references
 - Official `7zz`, or the prepared dynamic `7z`/module runtime for external codecs

@@ -21,7 +21,7 @@ void MainWindow::configureColumns(bool initialized) {
     fileTable->visibleColumnIndices.clear();
     QStringList labels;
     for (PROPID id : fileTable->propertyIds)
-        labels << (id == kpidNoProperty ? QtLocalText("Order", "Порядок")
+        labels << (id == kpidNoProperty ? QCoreApplication::translate("mainwindow_columns", "Order")
                                         : QString::fromWCharArray(GetNameOfProperty(id, nullptr)));
     FOR_VECTOR(i, columns) {
         const CPropColumn &prop = columns[i];

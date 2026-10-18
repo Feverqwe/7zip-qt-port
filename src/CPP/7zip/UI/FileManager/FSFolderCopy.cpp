@@ -9,6 +9,7 @@
 #include "Windows/ErrorMsg.h"
 #include "Windows/FileName.h"
 #include "Windows/TimeUtils.h"
+#include "qtdiagnostictext.h"
 #include "qtlanguageservices.h"
 #include "qtlinkservices.h"
 #include <QDir>
@@ -16,7 +17,8 @@
 #include <QFileInfo>
 
 namespace NFsFolder {
-static const char *const k_CannotCopyDirToAltStream = "Cannot copy folder as alternate stream";
+static const char *const k_CannotCopyDirToAltStream =
+    QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Cannot copy folder as alternate stream");
 
 static HRESULT SendMessageError(IFolderOperationsExtractCallback *callback, const wchar_t *message,
                                 const FString &fileName) {
@@ -28,7 +30,7 @@ static HRESULT SendMessageError(IFolderOperationsExtractCallback *callback, cons
 
 static HRESULT SendMessageError(IFolderOperationsExtractCallback *callback, const char *message,
                                 const FString &fileName) {
-    return SendMessageError(callback, MultiByteToUnicodeString(message), fileName);
+    return SendMessageError(callback, QtDiagnosticText(message), fileName);
 }
 
 static DWORD Return_LastError_or_FAIL() {
@@ -95,7 +97,7 @@ HRESULT CCopyStateIO::MyCopyFile(CFSTR inPath, CFSTR outPath, DWORD attrib) {
                 return S_OK;
             }
             if (written != num) {
-                ErrorMessage = QtLocalText("Write error", "Ошибка записи");
+                ErrorMessage = QCoreApplication::translate("FSFolderCopy", "Write error");
                 return S_OK;
             }
             CurrentSize += num;
@@ -159,12 +161,12 @@ bool IsDestChild(const QString &src, const QString &dest) {
 bool CCopyState::CallProgress() {
     const UInt64 completed = StartPos;
     if (Callback && Callback->SetCompleted(&completed) != S_OK) {
-        ErrorMessage = QtLocalText("Operation canceled.", "Операция отменена.");
+        ErrorMessage = QCoreApplication::translate("FSFolderCopy", "Operation canceled.");
         return false;
     }
     if (!Progress || Progress(StartPos))
         return true;
-    ErrorMessage = QtLocalText("Operation canceled.", "Операция отменена.");
+    ErrorMessage = QCoreApplication::translate("FSFolderCopy", "Operation canceled.");
     return false;
 }
 
@@ -237,8 +239,8 @@ bool CCopyState::CopyFile_Sys(const QString &oldFile, const QString &newFile,
     }
     ErrorMessage =
         ProgressResult == S_OK
-            ? QtLocalText("Could not copy file: %1", "Не удалось скопировать файл: %1").arg(oldFile)
-            : QtLocalText("Operation canceled.", "Операция отменена.");
+            ? QCoreApplication::translate("FSFolderCopy", "Could not copy file: %1").arg(oldFile)
+            : QCoreApplication::translate("FSFolderCopy", "Operation canceled.");
     return false;
 #else
     CCopyStateIO state2;
@@ -253,16 +255,15 @@ bool CCopyState::CopyFile_Sys(const QString &oldFile, const QString &newFile,
     if (!state2.MyCopyFile(oldFile, newFile, attrib)) {
         if (!targetExistedBefore)
             QFile::remove(newFile);
-        ErrorMessage = QtLocalText("Operation canceled.", "Операция отменена.");
+        ErrorMessage = QCoreApplication::translate("FSFolderCopy", "Operation canceled.");
         return false;
     }
     if (state2.ErrorFileIndex >= 0 || !state2.ErrorMessage.isEmpty()) {
         if (!targetExistedBefore)
             QFile::remove(newFile);
         const QString errorName = state2.ErrorFileIndex == 0 ? oldFile : newFile;
-        ErrorMessage =
-            QtLocalText("File read or write error: %1", "Ошибка чтения или записи файла: %1")
-                .arg(errorName);
+        ErrorMessage = QCoreApplication::translate("FSFolderCopy", "File read or write error: %1")
+                           .arg(errorName);
         return false;
     }
     StartPos += state2.CurrentSize;
@@ -296,10 +297,10 @@ bool CCopyState::MoveFile_Sys(const QString &oldFile, const QString &newFile,
     const bool moved = NWindows::NFile::NDir::MyMoveFile_with_Progress(
         us2fs(oldWide.c_str()), us2fs(newWide.c_str()), &progress);
     if (ProgressResult != S_OK)
-        ErrorMessage = QtLocalText("Operation canceled.", "Операция отменена.");
+        ErrorMessage = QCoreApplication::translate("FSFolderCopy", "Operation canceled.");
     else if (!moved)
-        ErrorMessage = QtLocalText("Could not move item: %1", "Не удалось переместить объект: %1")
-                           .arg(oldFile);
+        ErrorMessage =
+            QCoreApplication::translate("FSFolderCopy", "Could not move item: %1").arg(oldFile);
     if (moved)
         StartPos += FileSize;
     return moved;
@@ -320,16 +321,17 @@ bool CopyFile_Ask(CCopyState &state, const QString &srcPath, const QFileInfo &sr
     const auto caseSensitivity = Qt::CaseSensitive;
 #endif
     if (QString::compare(destPath, srcPath, caseSensitivity) == 0) {
-        state.ErrorMessage = QtLocalText("Cannot copy file onto itself: %1",
-                                         "Нельзя скопировать файл в самого себя: %1")
-                                 .arg(destPath);
+        state.ErrorMessage =
+            QCoreApplication::translate("FSFolderCopy", "Cannot copy file onto itself: %1")
+                .arg(destPath);
         return false;
     }
 
     const bool isLink = QtIsFileSystemLink(srcPath);
     if (!isLink && (!srcFileInfo.exists() || !srcFileInfo.isFile()))
         return ReportError(
-            state, QtLocalText("Source unavailable: %1", "Источник недоступен: %1").arg(srcPath));
+            state,
+            QCoreApplication::translate("FSFolderCopy", "Source unavailable: %1").arg(srcPath));
 
     QString destPathNew = destPath;
     if (state.Callback) {
@@ -338,7 +340,7 @@ bool CopyFile_Ask(CCopyState &state, const QString &srcPath, const QFileInfo &sr
         if (!nativeInfo.Find(us2fs(wide.c_str())))
             return ReportError(
                 state,
-                QtLocalText("Source unavailable: %1", "Источник недоступен: %1").arg(srcPath));
+                QCoreApplication::translate("FSFolderCopy", "Source unavailable: %1").arg(srcPath));
         CMyComBSTR destPathResult;
         Int32 writeAskResult = 0;
         FILETIME sourceTime;
@@ -348,23 +350,25 @@ bool CopyFile_Ask(CCopyState &state, const QString &srcPath, const QFileInfo &sr
         if (state.Callback->AskWrite(sourceWide.c_str(), BoolToInt(false), &sourceTime,
                                      &nativeInfo.Size, destWide.c_str(), &destPathResult,
                                      &writeAskResult) != S_OK)
-            return ReportError(state, QtLocalText("Operation canceled.", "Операция отменена."));
+            return ReportError(state,
+                               QCoreApplication::translate("FSFolderCopy", "Operation canceled."));
         if (!IntToBool(writeAskResult)) {
             if (state.TotalSize >= nativeInfo.Size) {
                 state.TotalSize -= nativeInfo.Size;
                 if (state.Callback->SetTotal(state.TotalSize) != S_OK)
-                    return ReportError(state,
-                                       QtLocalText("Operation canceled.", "Операция отменена."));
+                    return ReportError(
+                        state, QCoreApplication::translate("FSFolderCopy", "Operation canceled."));
             }
             return state.CallProgress();
         }
         destPathNew = QString::fromWCharArray((LPCOLESTR)destPathResult);
         if (state.Callback->SetCurrentFilePath(sourceWide.c_str()) != S_OK)
-            return ReportError(state, QtLocalText("Operation canceled.", "Операция отменена."));
+            return ReportError(state,
+                               QCoreApplication::translate("FSFolderCopy", "Operation canceled."));
     } else if (QFileInfo::exists(destPath) || QFileInfo(destPath).isSymLink()) {
         return ReportError(
-            state,
-            QtLocalText("Destination unavailable: %1", "Назначение недоступно: %1").arg(destPath));
+            state, QCoreApplication::translate("FSFolderCopy", "Destination unavailable: %1")
+                       .arg(destPath));
     }
     if (state.CurrentFile)
         state.CurrentFile(srcPath);
@@ -374,18 +378,18 @@ bool CopyFile_Ask(CCopyState &state, const QString &srcPath, const QFileInfo &sr
         bool copied = state.MoveMode && QtRenameFileSystemEntry(srcPath, destPathNew);
         if (!copied) {
             if (!QtCopyFileSystemLink(srcPath, destPathNew))
-                return ReportError(state, QtLocalText("Could not copy link: %1",
-                                                      "Не удалось скопировать ссылку: %1")
-                                              .arg(srcPath));
+                return ReportError(
+                    state, QCoreApplication::translate("FSFolderCopy", "Could not copy link: %1")
+                               .arg(srcPath));
             if (!state.CallProgress()) {
                 QtRemoveFileSystemEntry(destPathNew);
                 return false;
             }
             if (state.MoveMode && !QtRemoveFileSystemEntry(srcPath)) {
                 QtRemoveFileSystemEntry(destPathNew);
-                return ReportError(state, QtLocalText("Could not move link: %1",
-                                                      "Не удалось переместить ссылку: %1")
-                                              .arg(srcPath));
+                return ReportError(
+                    state, QCoreApplication::translate("FSFolderCopy", "Could not move link: %1")
+                               .arg(srcPath));
             }
         }
         NWindows::NFile::NFind::CFileInfo info;
@@ -405,7 +409,7 @@ bool CopyFile_Ask(CCopyState &state, const QString &srcPath, const QFileInfo &sr
         if (!sourceInfo.Find(from))
             return ReportError(
                 state,
-                QtLocalText("Source unavailable: %1", "Источник недоступен: %1").arg(srcPath));
+                QCoreApplication::translate("FSFolderCopy", "Source unavailable: %1").arg(srcPath));
         state.ProgressResult = state2.MyCopyFile(
             from, to, state.IsAltStreamsDest ? DWORD(-1) : sourceInfo.GetWinAttrib());
         if (state.ProgressResult != S_OK)
@@ -426,9 +430,9 @@ bool CopyFile_Ask(CCopyState &state, const QString &srcPath, const QFileInfo &sr
                             : state.CopyFile_Sys(srcPath, destPathNew, srcFileInfo.permissions());
     if (!copied) {
         if (state.ErrorMessage.isEmpty())
-            state.ErrorMessage = QtLocalText("Could not copy or move link: %1",
-                                             "Не удалось скопировать или переместить ссылку: %1")
-                                     .arg(srcPath);
+            state.ErrorMessage =
+                QCoreApplication::translate("FSFolderCopy", "Could not copy or move link: %1")
+                    .arg(srcPath);
         return ReportError(state, state.ErrorMessage);
     }
     return state.CallProgress();
@@ -446,22 +450,24 @@ bool CopyFolder(CCopyState &state, const QString &srcPath, const QString &destPa
     if (!state.CallProgress())
         return false;
     if (IsDestChild(srcPath, destPath)) {
-        state.ErrorMessage = QtLocalText("Cannot copy folder onto itself: %1",
-                                         "Нельзя скопировать папку в саму себя: %1")
-                                 .arg(destPath);
+        state.ErrorMessage =
+            QCoreApplication::translate("FSFolderCopy", "Cannot copy folder onto itself: %1")
+                .arg(destPath);
         return false;
     }
     const QFileInfo source(srcPath);
     if (!source.exists() || !source.isDir() || source.isSymLink() || !source.isReadable())
         return ReportError(
-            state, QtLocalText("Source unavailable: %1", "Источник недоступен: %1").arg(srcPath));
+            state,
+            QCoreApplication::translate("FSFolderCopy", "Source unavailable: %1").arg(srcPath));
     NWindows::NFile::NFind::CFileInfo metadata;
     const FString nativeSource = us2fs(QDir::toNativeSeparators(srcPath).toStdWString().c_str());
     const FString nativeDestination =
         us2fs(QDir::toNativeSeparators(destPath).toStdWString().c_str());
     if (!metadata.Find(nativeSource) || metadata.IsOsSymLink())
         return ReportError(
-            state, QtLocalText("Source unavailable: %1", "Источник недоступен: %1").arg(srcPath));
+            state,
+            QCoreApplication::translate("FSFolderCopy", "Source unavailable: %1").arg(srcPath));
     const bool destinationExisted = QFileInfo::exists(destPath);
     if (state.MoveMode && state.MoveFile_Sys(srcPath, destPath, source.permissions()))
         return true;
@@ -469,7 +475,7 @@ bool CopyFolder(CCopyState &state, const QString &srcPath, const QString &destPa
         !(state.Callback ? QDir().mkpath(destPath) : QDir().mkdir(destPath)))
         return ReportError(
             state,
-            QtLocalText("Cannot create folder: %1", "Не удалось создать папку: %1").arg(destPath));
+            QCoreApplication::translate("FSFolderCopy", "Cannot create folder: %1").arg(destPath));
 
     NWindows::NFile::NFind::CEnumerator enumerator;
     const std::wstring sourceWide = QDir::toNativeSeparators(srcPath).toStdWString();
@@ -482,17 +488,17 @@ bool CopyFolder(CCopyState &state, const QString &srcPath, const QString &destPa
 #ifdef _WIN32
         if (!enumerator.Next(fi, found))
             return ReportError(
-                state, QtLocalText("Could not read folder: %1", "Не удалось прочитать папку: %1")
+                state, QCoreApplication::translate("FSFolderCopy", "Could not read folder: %1")
                            .arg(srcPath));
 #else
         NWindows::NFile::NFind::CDirEntry entry;
         if (!enumerator.Next(entry, found))
             return ReportError(
-                state, QtLocalText("Could not read folder: %1", "Не удалось прочитать папку: %1")
+                state, QCoreApplication::translate("FSFolderCopy", "Could not read folder: %1")
                            .arg(srcPath));
         if (found && !enumerator.Fill_FileInfo(entry, fi, false))
             return ReportError(
-                state, QtLocalText("Could not read folder: %1", "Не удалось прочитать папку: %1")
+                state, QCoreApplication::translate("FSFolderCopy", "Could not read folder: %1")
                            .arg(srcPath));
 #endif
         if (!found)
@@ -515,13 +521,13 @@ bool CopyFolder(CCopyState &state, const QString &srcPath, const QString &destPa
                                             &metadata.MTime) ||
          !NWindows::NFile::NDir::SetFileAttrib_PosixHighDetect(nativeDestination,
                                                                metadata.GetWinAttrib())))
-        return ReportError(state, QtLocalText("Could not preserve folder metadata: %1",
-                                              "Не удалось сохранить метаданные папки: %1")
+        return ReportError(state, QCoreApplication::translate(
+                                      "FSFolderCopy", "Could not preserve folder metadata: %1")
                                       .arg(destPath));
     if (state.MoveMode && !QDir().rmdir(srcPath))
         return ReportError(
             state,
-            QtLocalText("Cannot remove folder: %1", "Не удалось удалить папку: %1").arg(srcPath));
+            QCoreApplication::translate("FSFolderCopy", "Cannot remove folder: %1").arg(srcPath));
     return true;
 }
 
@@ -638,7 +644,9 @@ HRESULT CopyFileSystemItems(const UStringVector &itemsPaths, const FString &dest
         const FString path = us2fs(itemsPaths[i]);
         NWindows::NFile::NFind::CFileInfo fi;
         if (!fi.Find(path)) {
-            const UString error = UString(L"Cannot find the file : ") + itemsPaths[i];
+            const UString error = QtDiagnosticText(QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                                                                     "Cannot find the file : ")) +
+                                  itemsPaths[i];
             RINOK(callback->ShowMessage(error))
             continue;
         }

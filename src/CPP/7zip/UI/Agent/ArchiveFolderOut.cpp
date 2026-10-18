@@ -11,6 +11,7 @@
 #include "Common/ComTry.h"
 #include "qtarchivedeleteinputs.h"
 #include "qtarchivefileresource.h"
+#include "qtdiagnostictext.h"
 #include <QScopeGuard>
 
 using namespace NWindows;
@@ -367,7 +368,7 @@ HRESULT CAgentFolder::CommonUpdateOperation(AGENT_OP operation, bool moveMode,
 
     } catch (const UString &s) {
         if (updateCallback100) {
-            UString s2("Error: ");
+            UString s2 = QtDiagnosticText(QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Error: "));
             s2 += s;
             RINOK(updateCallback100->UpdateErrorMessage(s2))
             return E_FAIL;

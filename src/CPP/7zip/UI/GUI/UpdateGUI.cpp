@@ -12,6 +12,7 @@
 #include "UpdateCallbackGUI.h"
 #include "Windows/DLL.h"
 #include "Windows/FileFind.h"
+#include "qtdiagnostictext.h"
 #include "qtguimessages.h"
 #include "qtupdateguiservices.h"
 
@@ -36,7 +37,7 @@ HRESULT CThreadUpdating::ProcessVirt() {
     HRESULT res =
         Services->UpdateArchive(codecs, *formatIndices, *cmdArcPath, *WildcardCensor, *Options, ei,
                                 UpdateCallbackGUI, UpdateCallbackGUI, needSetPath);
-    FinalMessage.ErrorMessage.Message = ei.Message.Ptr();
+    FinalMessage.ErrorMessage.Message = QtDiagnosticLines(ei.Message);
     ErrorPaths = ei.FileNames;
     if (res != S_OK)
         return res;
@@ -370,7 +371,7 @@ HRESULT ShowDialog(CCodecs *codecs, const CObjectVector<NWildcard::CCensorPath> 
                    CUpdateOptions &options, CUpdateCallbackGUI *callback, QWidget *hwndParent,
                    IQtUpdateGUIServices &services) {
     if (options.Commands.Size() != 1)
-        throw "It must be one command";
+        throw QT_TRANSLATE_NOOP("SevenZipDiagnostics", "It must be one command");
     CCompressDialog dialog;
     NCompressDialog::CInfo &di = dialog.Info;
     dialog.ArcFormats = &codecs->Formats;
@@ -383,7 +384,8 @@ HRESULT ShowDialog(CCodecs *codecs, const CObjectVector<NWildcard::CCensorPath> 
         di.FormatIndex = options.MethodMode.Type.FormatIndex;
     // This is the already-portioned source oneFile/format/name block.
     if (NCompressDialog::PrepareFormatSelection(dialog, *codecs, censor) != S_OK) {
-        ShowErrorMessageQt(hwndParent, L"No Update Engines");
+        ShowErrorMessageQt(hwndParent, QtDiagnosticText(QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                                                                          "No Update Engines")));
         return E_FAIL;
     }
     di.ArcPath = options.ArchivePath.GetPathWithoutExt();

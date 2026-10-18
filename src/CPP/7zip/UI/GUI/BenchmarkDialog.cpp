@@ -26,6 +26,7 @@
 #include "BenchmarkDialog.h"
 #include "qtbenchmarkcontrols.h"
 #include "qtbenchmarkservices.h"
+#include "qtdiagnostictext.h"
 #include <QMessageBox>
 #include <cwchar>
 
@@ -277,7 +278,7 @@ class CBenchmarkDialog : public CQtBenchmarkWindow {
     CObjectVector<CProperty> Props;
     IQtBenchmarkServices *Services = nullptr;
 
-    CSysString Bench2Text;
+    AString Bench2Text; // The Qt console consumes the report as UTF-8 on every platform.
 
     NWindows::CThread _thread;
     CThreadBenchmark _threadBenchmark;
@@ -297,7 +298,7 @@ class CBenchmarkDialog : public CQtBenchmarkWindow {
         QMessageBox::critical(this, QStringLiteral("7-Zip"), QString::fromWCharArray(message));
     }
     void MessageBoxError_Status(LPCWSTR message) {
-        UString s("ERROR: ");
+        UString s = QtDiagnosticText(QT_TRANSLATE_NOOP("SevenZipDiagnostics", "ERROR: "));
         s += message;
         MessageBoxError(s);
         SetItemText(IDT_BENCH_ERROR_MESSAGE, s);
@@ -726,7 +727,8 @@ void CBenchmarkDialog::StartBenchmark() {
     _timer = SetTimer(kTimerID, kTimerElapse);
     if (_thread.Create(CThreadBenchmark::MyThreadFunction, &_threadBenchmark) != 0) {
         MyKillTimer();
-        MessageBoxError_Status(L"Can't create thread");
+        MessageBoxError_Status(
+            QtDiagnosticText(QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Can't create thread")));
     }
     return;
 }
@@ -737,7 +739,8 @@ void CBenchmarkDialog::RestartBenchmark() {
 
     if (_thread.IsCreated()) {
         NeedRestart = true;
-        SendExit_Status(L"Stop for restart ...");
+        SendExit_Status(
+            QtDiagnosticText(QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Stop for restart ...")));
     } else
         StartBenchmark();
 }
@@ -759,7 +762,7 @@ void CBenchmarkDialog::OnStopButton() {
 
     WasStopped_in_GUI = true;
     if (_thread.IsCreated()) {
-        SendExit_Status(L"Stop ...");
+        SendExit_Status(QtDiagnosticText(QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Stop ...")));
     }
 }
 
@@ -772,7 +775,7 @@ void CBenchmarkDialog::OnCancel() {
     */
 
     if (_thread.IsCreated())
-        SendExit_Status(L"Cancel ...");
+        SendExit_Status(QtDiagnosticText(QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Cancel ...")));
     else
         CQtBenchmarkWindow::OnCancel();
 }
@@ -939,7 +942,8 @@ bool CBenchmarkDialog::OnMessage(UINT message, quintptr wParam, qintptr lParam) 
             MyKillTimer();
 
             if (_thread.Wait_Close() != 0) {
-                MessageBoxError_Status(L"Thread Wait Error");
+                MessageBoxError_Status(QtDiagnosticText(
+                    QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Thread Wait Error")));
             }
 
             if (!WasStopped_in_GUI) {
@@ -967,9 +971,11 @@ bool CBenchmarkDialog::OnMessage(UINT message, quintptr wParam, qintptr lParam) 
                 if (!WasStopped_in_GUI || res != E_ABORT) {
                     UString m;
                     if (res == S_FALSE)
-                        m = "Decoding error";
+                        m = QtDiagnosticText(
+                            QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Decoding error"));
                     else if (res == CLASS_E_CLASSNOTAVAILABLE)
-                        m = "Can't find 7z.dll";
+                        m = QtDiagnosticText(
+                            QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Can't find 7z.dll"));
                     else
                         m = HResultToMessage(res);
                     MessageBoxError_Status(m);
@@ -1066,11 +1072,13 @@ void CBenchmarkDialog::UpdateGui() {
         if (!RatingVector.IsEmpty()) {
             if (!s.IsEmpty())
                 s.Add_LF();
-            s += "Compr Decompr Total   CPU"
+            s += UString(QCoreApplication::translate("BenchmarkReport", "Compr Decompr Total   CPU")
+                             .toStdWString()
+                             .c_str());
 #ifdef PRINT_ITER_TIME
-                 "   Time"
+            s += UString(
+                QCoreApplication::translate("BenchmarkReport", "   Time").toStdWString().c_str());
 #endif
-                ;
             s.Add_LF();
         }
         // s += "GIPS    GIPS   GIPS    %   s"; s.Add_LF();
@@ -1256,8 +1264,10 @@ HRESULT CFreqCallback::AddCpuFreq(unsigned numThreads, UInt64 freq, UInt64 usage
             sync.NumFreqThreadsPrev = numThreads;
             if (!s.IsEmpty())
                 s.Add_LF();
-            s.Add_UInt32(numThreads);
-            s += "T Frequency (MHz):";
+            s += UString(QCoreApplication::translate("BenchmarkReport", "%1T Frequency (MHz):")
+                             .arg(numThreads)
+                             .toStdWString()
+                             .c_str());
             s.Add_LF();
         }
         s.Add_Space();
@@ -1588,7 +1598,8 @@ CBenchmarkDialog::~CBenchmarkDialog() {
         /* the following code will be not executed in normal code flow.
            it can be called, if there is some internal failure in dialog code. */
         Attach(NULL);
-        MessageBoxError(L"The flaw in benchmark thread code");
+        MessageBoxError(QtDiagnosticText(
+            QT_TRANSLATE_NOOP("SevenZipDiagnostics", "The flaw in benchmark thread code")));
         Sync.SendExit();
         _thread.Wait_Close();
     }

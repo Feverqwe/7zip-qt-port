@@ -3,9 +3,11 @@
 // Qt replaces Win32 controls/clipboard/OnSize and activation notifications.
 #include "ListViewDialog.h"
 #include "EditDialog.h"
+#include "ExtractCallback.h"
 #include "PropertyName.h"
 #include "RegistryUtils.h"
 #include "ViewSettings.h"
+#include "qtdiagnostictext.h"
 #include "qtdialogscreenservices.h"
 #include "qtdialogunits.h"
 #include "qtlangbuttonbox.h"
@@ -21,6 +23,18 @@ static const unsigned kOneStringMaxSize = 1024;
 static constexpr int kPropertyIDRole = Qt::UserRole + 14;
 static constexpr int kPropertyFallbackRole = Qt::UserRole + 15;
 static constexpr int kPropertyHasFallbackRole = Qt::UserRole + 16;
+static constexpr int kDiagnosticSourceRole = Qt::UserRole + 17;
+static constexpr int kArchiveValueRole = Qt::UserRole + 18;
+
+static UString ListValueText(UString value) {
+    if (value.Len() > kOneStringMaxSize) {
+        value.DeleteFrom(kOneStringMaxSize);
+        value += " ...";
+    }
+    value.Replace(L"\r\n", L" ");
+    value.Replace(L"\n", L" ");
+    return value;
+}
 
 static void ListView_GetSelected(CListView &listView, CUIntVector &vector) {
     vector.Clear();
@@ -58,9 +72,14 @@ bool CListViewDialog::OnInit() {
     if (st.SingleClick)
         _listView->SetSingleClickActivation(true);
     _listView->installEventFilter(this);
-    UString s;
     FOR_VECTOR(i, Strings) {
         _listView->InsertItem(i, Strings[i]);
+        const auto diagnostic = _diagnosticBindings.constFind(i);
+        if (diagnostic != _diagnosticBindings.cend()) {
+            auto *item = _listView->topLevelItem(int(i));
+            item->setData(0, kDiagnosticSourceRole, diagnostic->first);
+            item->setData(1, kDiagnosticSourceRole, diagnostic->second);
+        }
         const auto binding = _propertyNameBindings.constFind(i);
         if (binding != _propertyNameBindings.cend()) {
             auto *item = _listView->topLevelItem(int(i));
@@ -68,15 +87,11 @@ bool CListViewDialog::OnInit() {
             item->setData(0, kPropertyFallbackRole, ToQString(binding->Fallback));
             item->setData(0, kPropertyHasFallbackRole, binding->HasFallback);
         }
+        const auto archiveValue = _archiveValueBindings.constFind(i);
+        if (archiveValue != _archiveValueBindings.cend())
+            _listView->topLevelItem(int(i))->setData(1, kArchiveValueRole, *archiveValue);
         if (NumColumns > 1 && i < Values.Size()) {
-            s = Values[i];
-            if (s.Len() > kOneStringMaxSize) {
-                s.DeleteFrom(kOneStringMaxSize);
-                s += " ...";
-            }
-            s.Replace(L"\r\n", L" ");
-            s.Replace(L"\n", L" ");
-            _listView->SetSubItem(i, 1, s);
+            _listView->SetSubItem(i, 1, ListValueText(Values[i]));
         }
     }
     if (SelectFirst && Strings.Size() > 0)
@@ -115,10 +130,41 @@ void CListViewDialog::QtBindPropertyName(unsigned row, UInt32 id, const wchar_t 
         row, {id, fallback ? UString(fallback) : UString(), fallback != nullptr});
 }
 
+void CListViewDialog::QtBindDiagnosticRow(unsigned row, const char *name, const char *value) {
+    _diagnosticBindings.insert(row, {name, value});
+}
+
+void CListViewDialog::QtBindArchiveDiagnosticValue(unsigned row, const UString &source) {
+    _archiveValueBindings.insert(row, ToQString(source));
+}
+
+void CListViewDialog::QtBindArchiveFlagsValue(unsigned row, UInt32 flags) {
+    _archiveValueBindings.insert(row, QVariant::fromValue(quint32(flags)));
+}
+
 void CListViewDialog::changeEvent(QEvent *event) {
     if (event->type() == QEvent::LanguageChange && _listView) {
         for (int i = 0; i < _listView->topLevelItemCount(); ++i) {
             auto *item = _listView->topLevelItem(i);
+            const QVariant archiveValue = item->data(1, kArchiveValueRole);
+            if (archiveValue.isValid() && unsigned(i) < Values.Size()) {
+                const UString value =
+                    archiveValue.metaType().id() == QMetaType::UInt
+                        ? GetOpenArcErrorMessage(archiveValue.toUInt())
+                        : QtArchiveDiagnosticText(ToUString(archiveValue.toString()));
+                Values[unsigned(i)] = value;
+                item->setText(1, ToQString(ListValueText(value)));
+            }
+            for (int column = 0; column < 2; ++column) {
+                const QByteArray key = item->data(column, kDiagnosticSourceRole).toByteArray();
+                if (key.isEmpty())
+                    continue;
+                const UString text = QtDiagnosticText(key.constData());
+                auto &values = column == 0 ? Strings : Values;
+                if (unsigned(i) < values.Size())
+                    values[unsigned(i)] = text;
+                item->setText(column, ToQString(text));
+            }
             const QVariant id = item->data(0, kPropertyIDRole);
             if (!id.isValid())
                 continue;
@@ -131,6 +177,8 @@ void CListViewDialog::changeEvent(QEvent *event) {
             item->setText(0, ToQString(text));
         }
         _listView->SetColumnWidthAuto(0);
+        if (NumColumns > 1)
+            _listView->SetColumnWidthAuto(1);
     }
     QDialog::changeEvent(event);
 }

@@ -16,6 +16,7 @@
 #include "Common/StringConvert.h"
 #include "Windows/FileDir.h"
 #include "Windows/FileName.h"
+#include "qtdiagnostictext.h"
 #ifdef _WIN32
 #include "../FileManager/RegistryUtils.h"
 #include "Windows/DLL.h"
@@ -373,9 +374,7 @@ HRESULT CZipContextMenu::QueryContextMenu(CMenuHandle *hMenu, UINT indexMenu, UI
         // 19.01 : we changed from (currentCommandID) to (currentCommandID - commandIDFirst)
         // why it was so before?
 
-#ifdef Z7_LANG
         LoadLangOneTime();
-#endif
 
         CMenu popupMenu;
         CMenuDestroyer menuDestroyer;
@@ -1028,7 +1027,8 @@ HRESULT CZipContextMenu::InvokeCommandCommon(const CCommandMapItem &cmi) {
             break;
         }
     } catch (...) {
-        _services->ShowErrorMessage(UString(L"Error"));
+        _services->ShowErrorMessage(
+            QtDiagnosticText(QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Error")));
     }
     return S_OK;
 }

@@ -76,8 +76,9 @@ CMenuPage::CMenuPage(const QString &settingsPath, QWidget *parent, bool zoneSupp
         check->setProperty("sourceControlID", id);
         QtBindResourceText(check, id, text);
         check->setEnabled(false);
-        QtBindLocalToolTip(check, "Shell integration is unavailable in this build.",
-                           "Интеграция с оболочкой недоступна в этой сборке.");
+        QtBindLocalToolTip(
+            check, "MenuPage",
+            QT_TRANSLATE_NOOP("MenuPage", "Shell integration is unavailable in this build."));
         layout->addWidget(check);
         connect(check, &QCheckBox::clicked, this, [this, id] { OnButtonClicked(id); });
         return check;
@@ -94,7 +95,7 @@ CMenuPage::CMenuPage(const QString &settingsPath, QWidget *parent, bool zoneSupp
     for (auto *control : {_cascaded, _menuIcons, _elimDup}) {
         control->setEnabled(commandsAvailable);
         if (commandsAvailable)
-            QtBindLocalToolTip(control, {}, {});
+            QtBindLocalToolTip(control);
     }
     auto *zoneRow = new QHBoxLayout;
     auto *zoneLabel = new QLabel("Propagate Zone.Id stream:", this);
@@ -109,8 +110,9 @@ CMenuPage::CMenuPage(const QString &settingsPath, QWidget *parent, bool zoneSupp
     _zoneCombo->setVisible(zoneSupported);
     zoneLabel->setVisible(zoneSupported);
     if (!zoneSupported)
-        QtBindLocalToolTip(_zoneCombo, "Zone.Identifier propagation is available on Windows.",
-                           "Перенос Zone.Identifier доступен в Windows.");
+        QtBindLocalToolTip(
+            _zoneCombo, "MenuPage",
+            QT_TRANSLATE_NOOP("MenuPage", "Zone.Identifier propagation is available on Windows."));
     zoneLabel->setBuddy(_zoneCombo);
     zoneRow->addWidget(zoneLabel, 1);
     zoneRow->addWidget(_zoneCombo);
@@ -124,10 +126,11 @@ CMenuPage::CMenuPage(const QString &settingsPath, QWidget *parent, bool zoneSupp
     _listView->setObjectName("menuItems");
     _listView->setProperty("sourceControlID", IDL_SYSTEM_OPTIONS);
     _listView->setEnabled(commandsAvailable);
-    QtBindLocalToolTip(_listView, "Shell integration is unavailable in this build.",
-                       "Интеграция с оболочкой недоступна в этой сборке.");
+    QtBindLocalToolTip(
+        _listView, "MenuPage",
+        QT_TRANSLATE_NOOP("MenuPage", "Shell integration is unavailable in this build."));
     if (commandsAvailable)
-        QtBindLocalToolTip(_listView, {}, {});
+        QtBindLocalToolTip(_listView);
     _listView->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
     layout->addWidget(_listView, 1);
     connect(_zoneCombo, &QComboBox::currentIndexChanged, this,
@@ -261,7 +264,7 @@ bool CMenuPage::OnInit() {
             dll.prevValue = _services->CheckContextMenuHandler(fs2us(dll.Path), dll.wow);
             control->setChecked(dll.prevValue);
             control->setEnabled(true);
-            QtBindLocalToolTip(control, {}, {});
+            QtBindLocalToolTip(control);
         }
     }
     CContextMenuInfo ci;

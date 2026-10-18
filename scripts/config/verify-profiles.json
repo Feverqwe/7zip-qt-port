@@ -1,4 +1,10 @@
 {
+  "localization": {
+    "description": "Qt catalogs, live language changes, localized diagnostics and direct UI consumers",
+    "tests": "^(language|language_.*|native_language_host|native_shell_com|native_services|gui_error_policy|panel_cell_text|update_callback|compression_resources|benchmark_lifecycle|native_benchmark|source_properties|archive_error_properties|format_utils|native_extract_callback)$",
+    "runtime": true,
+    "interactive": true
+  },
   "navigation": {
     "description": "Panel paths, address bar, root commands and their direct window consumers",
     "tests": "^(root_navigation|root_command|persisted_location|address_navigation|address_combo|panel_address_keys|panel_key_source|ui_navigation|native_address_navigation)$",

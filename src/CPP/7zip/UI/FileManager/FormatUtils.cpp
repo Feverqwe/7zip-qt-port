@@ -3,6 +3,7 @@
 #include "FormatUtils.h"
 #include "Common/IntToString.h"
 #include "LangUtils.h"
+#include "qtlanguageservices.h"
 
 UString NumberToString(UInt64 number) {
     wchar_t numberString[32];
@@ -11,9 +12,12 @@ UString NumberToString(UInt64 number) {
 }
 
 UString MyFormatNew(const UString &format, const UString &argument) {
-    UString result = format;
-    result.Replace(L"{0}", argument);
-    return result;
+    const QString result = QString::fromWCharArray(format).arg(QString::fromWCharArray(argument));
+    return UString(result.toStdWString().c_str());
+}
+
+UString MyFormatNew(UINT resourceID, UInt64 count) {
+    return UString(QtTranslatedResourceCount(resourceID, count).toStdWString().c_str());
 }
 
 UString MyFormatNew(UINT resourceID, const UString &argument) {

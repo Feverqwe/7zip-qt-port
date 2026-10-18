@@ -1,5 +1,7 @@
+#include "7zip/PropID.h"
 #include "7zip/UI/FileManager/resourceGui.h"
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
+#include "CPP/7zip/UI/FileManager/PropertyName.h"
 #include "layout_inspection.h"
 #include "qtlangcontrols.h"
 #include "window_state_support.h"
@@ -9,10 +11,18 @@
 class LanguageMainDialogTests final : public QObject {
     Q_OBJECT
     QTemporaryDir fixture;
-    static QString messageText(const QTreeWidget *list) {
+    static QString sourceValues(const QTreeWidget *list) {
         QStringList lines;
-        for (int i = 0; i < list->topLevelItemCount(); ++i)
-            lines.append(list->topLevelItem(i)->text(1));
+        QStringList diagnosticNames;
+        for (PROPID id : {kpidError, kpidWarning, kpidErrorFlags, kpidWarningFlags})
+            diagnosticNames.append(QString::fromWCharArray(GetNameOfProperty(id, nullptr)));
+        for (int i = 0; i < list->topLevelItemCount(); ++i) {
+            const auto *item = list->topLevelItem(i);
+            // Diagnostic prose changes language; filenames, numeric metadata
+            // and unknown property data must remain the original source values.
+            if (!diagnosticNames.contains(item->text(0)))
+                lines.append(item->text(1));
+        }
         return lines.join('\n');
     }
     void language(const char *name) {
@@ -90,14 +100,14 @@ class LanguageMainDialogTests final : public QObject {
             const auto close = qScopeGuard([&] { dialog->reject(); });
             auto *list = dialog->findChild<QTreeWidget *>("propertiesList");
             QVERIFY(list);
-            const QString values = messageText(list);
+            const QString values = sourceValues(list);
             QVERIFY(values.contains(QStringLiteral("δ space.txt")));
             for (const char *name : {"-", "ru", "-"}) {
                 language(name);
                 const bool russian = QString(name) == "ru";
                 QCOMPARE(dialog->windowTitle(),
                          russian ? QStringLiteral("Свойства") : QString("Properties"));
-                QCOMPARE(messageText(list), values);
+                QCOMPARE(sourceValues(list), values);
                 QCOMPARE(backend.listCalls, calls);
                 QCOMPARE(backend.extractCalls, 0);
                 for (QSize size : {QSize(540, 360), QSize(360, 240)}) {

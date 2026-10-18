@@ -45,6 +45,7 @@ EXPORT_CODECS
 #include "Windows/PropVariant.h"
 
 #include "LoadCodecs.h"
+#include "qtdiagnostictext.h"
 
 #include "7zip/Common/RegisterArc.h"
 #include "7zip/Common/RegisterCodec.h"
@@ -521,7 +522,8 @@ HRESULT CCodecs::LoadDll(const FString &dllPath, bool needCheckDll, bool *loaded
             if (lastError != ERROR_BAD_EXE_FORMAT) {
                 CCodecError &error = Errors.AddNew();
                 error.Path = dllPath;
-                error.Message = "cannot load file as datafile library";
+                error.Message = QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                                                  "cannot load file as datafile library");
                 error.ErrorCode = HRESULT_FROM_WIN32(lastError);
             }
             return S_OK;
@@ -541,7 +543,8 @@ HRESULT CCodecs::LoadDll(const FString &dllPath, bool needCheckDll, bool *loaded
         if (!IsSupportedDll(lib)) {
             CCodecError &error = Errors.AddNew();
             error.Path = dllPath;
-            error.Message = "the module is not compatible with program";
+            error.Message = QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                                              "the module is not compatible with program");
         } else {
             if (loadedOK)
                 *loadedOK = true;
@@ -1171,7 +1174,7 @@ void CCodecs::GetCodecsErrorMessage(UString &s) const {
     s.Empty();
     FOR_VECTOR(i, Errors) {
         const CCodecError &ce = Errors[i];
-        s += "Codec Load Error: ";
+        s += QtDiagnosticText(QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Codec Load Error: "));
         s += fs2us(ce.Path);
         if (ce.ErrorCode != 0) {
             s += " : ";
@@ -1179,7 +1182,7 @@ void CCodecs::GetCodecsErrorMessage(UString &s) const {
         }
         if (!ce.Message.IsEmpty()) {
             s += " : ";
-            s += ce.Message;
+            s += QtDiagnosticText(ce.Message.Ptr());
         }
         s.Add_LF();
     }

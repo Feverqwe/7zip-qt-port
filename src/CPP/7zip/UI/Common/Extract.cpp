@@ -16,6 +16,7 @@
 #include "../Common/HashCalc.h"
 
 #include "Extract.h"
+#include "qtdiagnostictext.h"
 
 using namespace NWindows;
 using namespace NFile;
@@ -23,7 +24,7 @@ using namespace NDir;
 
 static void SetErrorMessage(const char *message, const FString &path, HRESULT errorCode,
                             UString &s) {
-    s = message;
+    s = QtDiagnosticText(message);
     s += " : ";
     s += NError::MyFormatMessage(errorCode);
     s += " : ";
@@ -171,7 +172,8 @@ static HRESULT DecompressArchive(CCodecs *codecs, const CArchiveLink &arcLink, U
     */
     else if (!CreateComplexDir(outDir)) {
         const HRESULT res = GetLastError_noZero_HRESULT();
-        SetErrorMessage("Cannot create output directory", outDir, res, errorMessage);
+        SetErrorMessage(QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Cannot create output directory"),
+                        outDir, res, errorMessage);
         return res;
     }
 
@@ -260,12 +262,15 @@ HRESULT Extract(
             const FString arcPath = us2fs(arcPaths[i]);
             if (!fi.Find_FollowLink(arcPath)) {
                 const HRESULT errorCode = GetLastError_noZero_HRESULT();
-                SetErrorMessage("Cannot find archive file", arcPath, errorCode, errorMessage);
+                SetErrorMessage(
+                    QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Cannot find archive file"), arcPath,
+                    errorCode, errorMessage);
                 return errorCode;
             }
             if (fi.IsDir()) {
                 HRESULT errorCode = E_FAIL;
-                SetErrorMessage("The item is a directory", arcPath, errorCode, errorMessage);
+                SetErrorMessage(QT_TRANSLATE_NOOP("SevenZipDiagnostics", "The item is a directory"),
+                                arcPath, errorCode, errorMessage);
                 return errorCode;
             }
         }
@@ -313,8 +318,9 @@ HRESULT Extract(
         } else {
             if (!fi.Find_FollowLink(us2fs(arcPath)) || fi.IsDir()) {
                 const HRESULT errorCode = GetLastError_noZero_HRESULT();
-                SetErrorMessage("Cannot find archive file", us2fs(arcPath), errorCode,
-                                errorMessage);
+                SetErrorMessage(
+                    QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Cannot find archive file"),
+                    us2fs(arcPath), errorCode, errorMessage);
                 return errorCode;
             }
         }

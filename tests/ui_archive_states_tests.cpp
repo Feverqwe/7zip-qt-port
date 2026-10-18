@@ -1,4 +1,6 @@
+#include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
+#include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "address_popup_support.h"
 #include "copydialog.h"
 #include "layout_inspection.h"
@@ -22,7 +24,11 @@ class MainWindowArchiveStatesTests : public QObject, protected MainWindowTestSup
     }
 
   private slots:
-    void init() { QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH")); }
+    void init() {
+        QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+        SaveRegLang(UString("-"), qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+        ReloadLang(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+    }
     void sourceToolbarCancelAndExtractionAdapterCancellation() {
         ControlledBackend backend;
         MainWindow window(&backend);

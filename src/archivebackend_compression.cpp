@@ -13,19 +13,22 @@ bool ArchiveBackend::compressionProperties(const QString &suffix, const QString 
     const auto *actionSet = NCompressDialog::FindUpdateActionSet(options.UpdateMode);
     if (options.DeleteAfterCompressing &&
         (!actionSet || CheckDeleteAfterCompressingActionSet(*actionSet) != S_OK)) {
-        *error = QtLocalText("Delete after compression is available only in Add and replace mode.",
-                             "Удаление после сжатия доступно только в режиме добавления и замены.");
+        *error = QCoreApplication::translate(
+            "archivebackend_compression",
+            "Delete after compression is available only in Add and replace mode.");
         return false;
     }
 #ifndef Q_OS_WIN
     if (options.NtSecurity.Val || options.AltStreams.Val) {
-        *error = QtLocalText("NTFS security and streams are available only on Windows.",
-                             "Защита NTFS и потоки доступны только в Windows.");
+        *error =
+            QCoreApplication::translate("archivebackend_compression",
+                                        "NTFS security and streams are available only on Windows.");
         return false;
     }
     if (options.PreserveATime.Def && options.PreserveATime.Val) {
-        *error = QtLocalText("The engine supports preserving access time only on Windows.",
-                             "Сохранение времени доступа поддерживается движком только в Windows.");
+        *error = QCoreApplication::translate(
+            "archivebackend_compression",
+            "The engine supports preserving access time only on Windows.");
         return false;
     }
 #endif
@@ -33,8 +36,9 @@ bool ArchiveBackend::compressionProperties(const QString &suffix, const QString 
     const QString requestedMethod = QString::fromWCharArray(options.Method.Ptr());
     if (options.Level > 9 || !(formatInfo.LevelsMask & (UInt32(1) << options.Level)) ||
         (!requestedMethod.isEmpty() && !methods.contains(requestedMethod))) {
-        *error = QtLocalText("Invalid compression parameters for the selected format.",
-                             "Недопустимые параметры сжатия для выбранного формата.");
+        *error =
+            QCoreApplication::translate("archivebackend_compression",
+                                        "Invalid compression parameters for the selected format.");
         return false;
     }
     const QString method = requestedMethod.isEmpty() ? (suffix == "7z" ? QStringLiteral("LZMA2")
@@ -64,8 +68,9 @@ bool ArchiveBackend::compressionProperties(const QString &suffix, const QString 
     const auto threadOptions = NCompressDialog::SetNumThreads2(
         suffix, methodID, UInt32(options.Level), dict, blockSizeLog, system, options.MemUsage);
     if (options.NumThreads != UInt32(-1) && !threadOptions.Values.contains(options.NumThreads)) {
-        *error = QtLocalText("The thread count is invalid for the selected compression method.",
-                             "Число потоков не подходит для выбранного метода сжатия.");
+        *error = QCoreApplication::translate(
+            "archivebackend_compression",
+            "The thread count is invalid for the selected compression method.");
         return false;
     }
     bool validSolid = !options.SolidIsSpecified;
@@ -92,10 +97,9 @@ bool ArchiveBackend::compressionProperties(const QString &suffix, const QString 
               .Values.contains(options.Order)) ||
         !validSolid ||
         (options.Level == 0 && (options.Dict64 != UInt64(-1) || options.Order != UInt32(-1)))) {
-        *error = QtLocalText("The dictionary, word or solid block size is invalid "
-                             "for the selected compression method.",
-                             "Размер словаря, слова или непрерывного блока не подходит "
-                             "для выбранного метода сжатия.");
+        *error = QCoreApplication::translate("archivebackend_compression",
+                                             "The dictionary, word or solid block size is invalid "
+                                             "for the selected compression method.");
         return false;
     }
     UInt64 decompressMemory;
@@ -112,8 +116,8 @@ bool ArchiveBackend::compressionProperties(const QString &suffix, const QString 
          options.EncryptionMethod.compare("AES256", Qt::CaseInsensitive) != 0) ||
         (suffix == "7z" && !options.EncryptionMethod.isEmpty()) ||
         (suffix == "zip" && encryptHeaders)) {
-        *error = QtLocalText("Invalid encryption method for the selected format.",
-                             "Недопустимый метод шифрования для выбранного формата.");
+        *error = QCoreApplication::translate("archivebackend_compression",
+                                             "Invalid encryption method for the selected format.");
         return false;
     }
     const auto passwordError =

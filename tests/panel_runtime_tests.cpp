@@ -1,4 +1,6 @@
 #include "7zip/PropID.h"
+#include "CPP/7zip/UI/FileManager/LangUtils.h"
+#include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "Common/MyCom.h"
 #include "Windows/PropVariant.h"
 #include "filesystemscanner.h"
@@ -37,6 +39,10 @@ class PanelRuntimeTests : public QObject, protected MainWindowTestSupport {
     }
 
   private slots:
+    void init() {
+        SaveRegLang(UString("-"), qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+        ReloadLang(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+    }
     void archiveMoveSummaryUsesBoundSourceProperties_data() { filesystemArchiveTransitions_data(); }
     void archiveMoveSummaryUsesBoundSourceProperties() {
         QFETCH(bool, flat);

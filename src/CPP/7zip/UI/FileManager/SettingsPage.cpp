@@ -144,13 +144,8 @@ bool CSettingsPage::OnInit() {
         UInt32 ramSize_GB = (UInt32)(((UInt64)ramSize + (1u << 29)) >> 30);
         if (ramSize_GB == 0)
             ramSize_GB = 1;
-        UString s("GB");
-        if (ramSize_defined) {
-            s += " / ";
-            s.Add_UInt64(ramSize_GB);
-            s += " GB (RAM)";
-        }
-        findChild<QLabel *>("extractMemoryRam")->setText(ToQString(s));
+        QtBindMemoryLimitUnitText(findChild<QLabel *>("extractMemoryRam"), ramSize_defined,
+                                  ramSize_GB);
         const unsigned valMin = 1;
         unsigned valMax = 64;
         if (ramSize_defined) {
@@ -170,7 +165,7 @@ bool CSettingsPage::OnInit() {
             EnableSpin(false);
         }
         _memSpin->setRange(valMin, valMax);
-        s.Empty();
+        UString s;
         s.Add_UInt32(limit);
         _memSpin->setText(ToQString(s));
     }

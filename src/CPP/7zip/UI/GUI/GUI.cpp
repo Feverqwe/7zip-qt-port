@@ -19,6 +19,7 @@
 #include "HashGUI.h"
 #include "UpdateCallbackGUI.h"
 #include "UpdateGUI.h"
+#include "qtdiagnostictext.h"
 #include "qtguicommand.h"
 #include "qtshellarchiveservices.h"
 #ifndef _WIN32
@@ -39,11 +40,12 @@ static void ErrorMessage(LPCWSTR message) {
     }
 }
 
-static void ErrorMessage(const char *s) { ErrorMessage(GetUnicodeString(s)); }
+static void ErrorMessage(const char *s) { ErrorMessage(QtDiagnosticText(s)); }
 
 static void ErrorLangMessage(UINT resourceID) { ErrorMessage(LangString(resourceID)); }
 
-static const char *const kNoFormats = "7-Zip cannot find the code that works with archives.";
+static const char *const kNoFormats = QT_TRANSLATE_NOOP(
+    "SevenZipDiagnostics", "7-Zip cannot find the code that works with archives.");
 
 static int ShowMemErrorMessage() {
     ErrorLangMessage(IDS_MEM_ERROR);
@@ -76,11 +78,13 @@ static int Main2(const QtGUIServiceFactory &factory) {
         commandStrings.Delete(0);
 #endif
     if (commandStrings.Size() == 0) {
+        const UString message =
+            QtDiagnosticText(QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Specify command"));
 #ifdef _WIN32
-        MessageBoxW(NULL, L"Specify command", L"7-Zip", 0);
+        MessageBoxW(NULL, message, L"7-Zip", 0);
 #else
         QMessageBox::information(nullptr, QStringLiteral("7-Zip"),
-                                 QStringLiteral("Specify command"));
+                                 QString::fromWCharArray(message));
 #endif
         return 0;
     }
@@ -118,7 +122,8 @@ static int Main2(const QtGUIServiceFactory &factory) {
                                         || options.Command.IsFromUpdateGroup())) {
 #ifdef Z7_EXTERNAL_CODECS
         if (!codecs->MainDll_ErrorPath.IsEmpty()) {
-            UString s("7-Zip cannot load module: ");
+            UString s = QtDiagnosticText(
+                QT_TRANSLATE_NOOP("SevenZipDiagnostics", "7-Zip cannot load module: "));
             s += fs2us(codecs->MainDll_ErrorPath);
             throw s;
         }
@@ -293,7 +298,7 @@ static int Main2(const QtGUIServiceFactory &factory) {
         }
         */
     } else {
-        throw "Unsupported command";
+        throw QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Unsupported command");
     }
     return 0;
 }
@@ -326,12 +331,11 @@ int SevenzipGUI(const QtGUIServiceFactory &factory) {
         ErrorMessage(s);
         return NExitCode::kFatalError;
     } catch (int v) {
-        AString e("Error: ");
-        e.Add_UInt32((unsigned)v);
-        ErrorMessage(e);
+        ErrorMessage(
+            QtDiagnosticText(QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Error: %1"), (unsigned)v));
         return NExitCode::kFatalError;
     } catch (...) {
-        ErrorMessage("Unknown error");
+        ErrorMessage(QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Unknown error"));
         return NExitCode::kFatalError;
     }
 }

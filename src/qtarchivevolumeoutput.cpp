@@ -86,7 +86,7 @@ HRESULT QtArchiveVolumeOutput::createVolumes() {
         const QString destination = target_ + '.' + suffix;
         if (QFileInfo::exists(destination) || QFileInfo(destination).isSymLink()) {
             Error =
-                QtLocalText("Volume already exists: %1", QStringLiteral("Том уже существует: %1"))
+                QCoreApplication::translate("qtarchivevolumeoutput", "Volume already exists: %1")
                     .arg(destination);
             return E_FAIL;
         }
@@ -96,9 +96,9 @@ HRESULT QtArchiveVolumeOutput::createVolumes() {
         const QString suffix = QString::number(i).rightJustified(3, '0');
         const QString destination = target_ + '.' + suffix;
         if (!QFile::rename(prefix + suffix, destination)) {
-            Error = QtLocalText("Could not save volume: %1",
-                                QStringLiteral("Не удалось сохранить том: %1"))
-                        .arg(destination);
+            Error =
+                QCoreApplication::translate("qtarchivevolumeoutput", "Could not save volume: %1")
+                    .arg(destination);
             return E_FAIL;
         }
         PublishedPaths.append(destination);
@@ -123,9 +123,10 @@ void QtArchiveVolumeOutput::run() {
             QFile::remove(path);
         PublishedPaths.clear();
         if (Error.isEmpty())
-            Error = Result == E_ABORT
-                        ? QtLocalText("Operation canceled.", QStringLiteral("Операция отменена."))
-                        : QtLocalText("Could not create archive volumes.",
-                                      QStringLiteral("Не удалось создать архивные тома."));
+            Error =
+                Result == E_ABORT
+                    ? QCoreApplication::translate("qtarchivevolumeoutput", "Operation canceled.")
+                    : QCoreApplication::translate("qtarchivevolumeoutput",
+                                                  "Could not create archive volumes.");
     }
 }

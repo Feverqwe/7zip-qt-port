@@ -134,12 +134,12 @@ class LinuxAssociationPlatform final : public IQtAssociationPlatform {
         return user ? QString::fromLocal8Bit(user->pw_name) : QString();
     }
     QString UnavailableReason(unsigned group) const override {
-        return group != 0
-                   ? QtLocalText(
-                         "All-users associations are managed by the system administrator.",
-                         "Ассоциациями всех пользователей управляет системный администратор.")
-                   : QtLocalText("Install the application desktop entry to change associations.",
-                                 "Для изменения ассоциаций установите desktop-файл приложения.");
+        return group != 0 ? QCoreApplication::translate(
+                                "qtassociationplatform_linux",
+                                "All-users associations are managed by the system administrator.")
+                          : QCoreApplication::translate(
+                                "qtassociationplatform_linux",
+                                "Install the application desktop entry to change associations.");
     }
     UString OwnIconPath() const override {
         return UString(QCoreApplication::applicationFilePath().toStdWString().c_str());

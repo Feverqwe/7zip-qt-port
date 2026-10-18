@@ -4,8 +4,8 @@
 
 #include "Common/ComTry.h"
 #include "Common/IntToString.h"
-#include "Common/Lang.h"
 #include "Common/StringConvert.h"
+#include "qtdiagnostictext.h"
 
 #include "CPP/Windows/FileDir.h"
 #include "Windows/ErrorMsg.h"
@@ -45,7 +45,7 @@ void CExtractCallbackImp::Init() {
     LangString(IDS_PROGRESS_EXTRACTING, _lang_Extracting);
     LangString(IDS_PROGRESS_TESTING, _lang_Testing);
     LangString(IDS_PROGRESS_SKIPPING, _lang_Skipping);
-    _lang_Reading = "Reading";
+    _lang_Reading = QtDiagnosticText(QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Reading"));
 
     NumArchiveErrors = 0;
     ThereAreMessageErrors = false;
@@ -250,7 +250,7 @@ Z7_COM7F_IMF(CExtractCallbackImp::MessageError(const wchar_t *s)) {
 
 HRESULT CExtractCallbackImp::MessageError(const char *message, const FString &path) {
     ThereAreMessageErrors = true;
-    ProgressDialog->Sync.AddError_Message_Name(GetUnicodeString(message), fs2us(path));
+    ProgressDialog->Sync.AddError_Message_Name(QtDiagnosticText(message), fs2us(path));
     return S_OK;
 }
 
@@ -341,8 +341,8 @@ void SetExtractErrorMessage(Int32 opRes, Int32 encrypted, const wchar_t *fileNam
         if (!msg.IsEmpty())
             s += msg;
         else {
-            s += "Error #";
-            s.Add_UInt32((UInt32)opRes);
+            s += QtDiagnosticText(QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Error #%1"),
+                                  (UInt32)opRes);
         }
 
         if (encrypted && opRes != NArchive::NExtract::NOperationResult::kWrongPassword) {
@@ -482,7 +482,7 @@ static void ErrorInfo_Print(UString &s, const CArcErrorInfo &er) {
         AddNewLineString(s, GetOpenArcErrorMessage(errorFlags));
 
     if (!er.ErrorMessage.IsEmpty())
-        AddNewLineString(s, er.ErrorMessage);
+        AddNewLineString(s, QtArchiveDiagnosticText(er.ErrorMessage));
 
     if (warningFlags != 0) {
         s += GetNameOfProperty(kpidWarningFlags, L"Warnings");
@@ -494,7 +494,7 @@ static void ErrorInfo_Print(UString &s, const CArcErrorInfo &er) {
     if (!er.WarningMessage.IsEmpty()) {
         s += GetNameOfProperty(kpidWarning, L"Warning");
         s += ": ";
-        s += er.WarningMessage;
+        s += QtArchiveDiagnosticText(er.WarningMessage);
         s.Add_LF();
     }
 }
@@ -663,7 +663,10 @@ Z7_COM7F_IMF(CExtractCallbackImp::AskWrite(const wchar_t *srcPath, Int32 srcIsFo
     if (destFileInfo.Find(destPathSys)) {
         if (srcIsFolderSpec) {
             if (!destFileInfo.IsDir()) {
-                RINOK(MessageError("Cannot replace file with folder with same name", destPathSys))
+                RINOK(MessageError(
+                    QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                                      "Cannot replace file with folder with same name"),
+                    destPathSys))
                 return E_ABORT;
             }
             *writeAnswer = BoolToInt(false);
@@ -671,7 +674,9 @@ Z7_COM7F_IMF(CExtractCallbackImp::AskWrite(const wchar_t *srcPath, Int32 srcIsFo
         }
 
         if (destFileInfo.IsDir()) {
-            RINOK(MessageError("Cannot replace folder with file with same name", destPathSys))
+            RINOK(MessageError(QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                                                 "Cannot replace folder with file with same name"),
+                               destPathSys))
             *writeAnswer = BoolToInt(false);
             return S_OK;
         }
@@ -718,7 +723,9 @@ Z7_COM7F_IMF(CExtractCallbackImp::AskWrite(const wchar_t *srcPath, Int32 srcIsFo
 
         if (OverwriteMode == NExtract::NOverwriteMode::kRename) {
             if (!AutoRenamePath(destPathSys)) {
-                RINOK(MessageError("Cannot create name for file", destPathSys))
+                RINOK(MessageError(
+                    QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Cannot create name for file"),
+                    destPathSys))
                 return E_ABORT;
             }
             destPathResultTemp = fs2us(destPathSys);
@@ -726,7 +733,9 @@ Z7_COM7F_IMF(CExtractCallbackImp::AskWrite(const wchar_t *srcPath, Int32 srcIsFo
             if (NFind::DoesFileExist_Raw(destPathSys))
                 if (!NDir::DeleteFileAlways(destPathSys))
                     if (GetLastError() != ERROR_FILE_NOT_FOUND) {
-                        RINOK(MessageError("Cannot delete output file", destPathSys))
+                        RINOK(MessageError(
+                            QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Cannot delete output file"),
+                            destPathSys))
                         return E_ABORT;
                     }
         }
@@ -997,7 +1006,7 @@ Z7_COM7F_IMF(CExtractCallbackImp::RequestMemoryUse(UInt32 flags, UInt32 indexTyp
         }
 
         if ((flags & NRequestMemoryUseFlags::k_NoErrorMessage) == 0) {
-            UString s("ERROR: ");
+            UString s = QtDiagnosticText(QT_TRANSLATE_NOOP("SevenZipDiagnostics", "ERROR: "));
             dialog.AddInfoMessage_To_String(s);
             s.Add_LF();
             // if (indexType == NArchive::NEventIndexType::kNoIndex)

@@ -51,11 +51,10 @@ class WindowsAssociationPlatform final : public IQtAssociationPlatform {
     }
     QString UnavailableReason(unsigned) const override { return {}; }
     QString ApplyExplanation(unsigned) const override {
-        return QtLocalText(
-            "Registers the 7-Zip handler. Windows may keep your default app choice; "
-            "choose the default app in Windows Settings if needed.",
-            "Регистрирует обработчик 7-Zip. Windows может сохранить выбранное приложение "
-            "по умолчанию; при необходимости измените его в настройках Windows.");
+        return QCoreApplication::translate(
+            "qtassociationplatform_win",
+            "Registers the 7-Zip handler. Windows may keep your default app choice; choose the "
+            "default app in Windows Settings if needed.");
     }
     UString OwnIconPath() const override {
         return UString(QDir::toNativeSeparators(QCoreApplication::applicationFilePath())

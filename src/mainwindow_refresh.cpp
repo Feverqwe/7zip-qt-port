@@ -63,8 +63,8 @@ HRESULT MainWindow::reloadPanelPresentation(unsigned index, const CSelectedState
         autoRefreshSnapshot_.insert(directory_, filesystemSignature(directory_));
         table_->clearSelection();
         table_->setRowCount(0);
-        statusBar()->showMessage(QtLocalText("Folder not found: ", "Папка не найдена: ") +
-                                 directory_);
+        statusBar()->showMessage(
+            QCoreApplication::translate("mainwindow_refresh", "Folder not found: ") + directory_);
         refreshActions();
         return loaded;
     }
@@ -143,10 +143,10 @@ void MainWindow::refreshCurrent(const CSelectedState *preserved) {
             // Native ReOpen releases the old proxy; never render stale folders.
             showDirectory(returnDirectory_, false);
             if (result != E_ABORT)
-                QMessageBox::warning(
-                    this, QStringLiteral("7-Zip"),
-                    QtLocalText("Could not update archive (%1).", "Не удалось обновить архив (%1).")
-                        .arg(quint32(result), 0, 16));
+                QMessageBox::warning(this, QStringLiteral("7-Zip"),
+                                     QCoreApplication::translate("mainwindow_refresh",
+                                                                 "Could not update archive (%1).")
+                                         .arg(quint32(result), 0, 16));
         }
     }
 }

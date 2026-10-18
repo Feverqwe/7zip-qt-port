@@ -159,7 +159,7 @@ void MainWindow::connectFilesystemScanner() {
                             }
                         }
                         statusBar()->showMessage(
-                            QtLocalText("Shown: %1 items…", "Показано: %1 объектов…")
+                            QCoreApplication::translate("mainwindow", "Shown: %1 items…")
                                 .arg(table_->rowCount()));
                     });
                 });
@@ -168,8 +168,9 @@ void MainWindow::connectFilesystemScanner() {
                 return;
             if (app_.QtOperations().closed())
                 return;
-            statusBar()->showMessage(QtLangText(IDS_SCANNING) +
-                                     QtLocalText(" %1 items", " %1 объектов").arg(count));
+            statusBar()->showMessage(
+                QtLangText(IDS_SCANNING) +
+                QCoreApplication::translate("mainwindow", " %1 items").arg(count));
         });
         connect(scanner, &FilesystemScanner::completed, this, [this, index] {
             withPanelProjection(index, [this] {
@@ -182,7 +183,7 @@ void MainWindow::connectFilesystemScanner() {
                 restoreAutoRefreshViewport();
                 setState(State::Filesystem);
                 statusBar()->showMessage(
-                    QtLocalText("%1 items", "%1 объектов").arg(table_->rowCount()));
+                    QCoreApplication::translate("mainwindow", "%1 items").arg(table_->rowCount()));
             });
         });
         connect(scanner, &FilesystemScanner::failed, this, [this, index](qint32 result) {
@@ -216,5 +217,5 @@ void MainWindow::failFilesystemListing(HRESULT result) {
         return;
     scanningDisk_ = false;
     setState(State::Filesystem);
-    statusBar()->showMessage(QtLocalText("Could not read folder.", "Не удалось прочитать папку."));
+    statusBar()->showMessage(QCoreApplication::translate("mainwindow", "Could not read folder."));
 }

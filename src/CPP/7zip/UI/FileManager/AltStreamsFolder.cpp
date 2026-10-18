@@ -25,6 +25,7 @@
 #include "PanelSort.h"
 
 #include "SysIconUtils.h"
+#include "qtdiagnostictext.h"
 
 using namespace NWindows;
 using namespace NFile;
@@ -388,7 +389,7 @@ static HRESULT SendMessageError(IFolderArchiveUpdateCallback *callback, const wc
 
 static HRESULT SendMessageError(IFolderOperationsExtractCallback *callback, const char *message,
                                 const FString &fileName) {
-    return SendMessageError(callback, MultiByteToUnicodeString(message), fileName);
+    return SendMessageError(callback, QtDiagnosticText(message), fileName);
 }
 
 /*
@@ -587,7 +588,9 @@ static HRESULT CopyStream(NFsFolder::CCopyStateIO &state, const FString &srcPath
                           const FString &destPathSpec, IFolderOperationsExtractCallback *callback) {
     FString destPath = destPathSpec;
     if (CompareFileNames(destPath, srcPath) == 0) {
-        RINOK(SendMessageError(callback, "Cannot copy file onto itself", destPath))
+        RINOK(SendMessageError(
+            callback, QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Cannot copy file onto itself"),
+            destPath))
         return E_ABORT;
     }
 

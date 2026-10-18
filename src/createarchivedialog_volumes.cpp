@@ -12,11 +12,13 @@ void CreateArchiveDialog::createVolumeOptions(QFormLayout *form) {
     volume_->setInsertPolicy(QComboBox::NoInsert);
     AddVolumeItems(*volume_);
     volume_->setCurrentIndex(-1);
-    QtBindLocalToolTip(volume_, "For example: 10M or 10M 20M. Leave empty for a single archive.",
-                       "Например: 10M или 10M 20M. Пустое поле — один архив.");
+    QtBindLocalToolTip(
+        volume_, "createarchivedialog_volumes",
+        QT_TRANSLATE_NOOP("createarchivedialog_volumes",
+                          "For example: 10M or 10M 20M. Leave empty for a single archive."));
     auto *volumeForm = new QFormLayout;
     volumeForm->setRowWrapPolicy(QFormLayout::WrapAllRows);
-    volumeForm->addRow("Разбить на тома, байт:", volume_);
+    volumeForm->addRow("Split to volumes, bytes:", volume_);
     form->addRow(volumeForm);
 }
 
@@ -33,8 +35,7 @@ bool CreateArchiveDialog::checkVolumeSizes() {
     if (result == CCompressDialog::kConfirmSmallVolume)
         return QMessageBox::question(
                    this, "7-Zip",
-                   QString::fromWCharArray(
-                       MyFormatNew(IDS_SPLIT_CONFIRM, NumberToString(info.VolumeSizes.Back()))),
+                   QString::fromWCharArray(MyFormatNew(IDS_SPLIT_CONFIRM, info.VolumeSizes.Back())),
                    QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel) == QMessageBox::Yes;
     return true;
 }

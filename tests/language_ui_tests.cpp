@@ -1,6 +1,7 @@
 #include "7zip/UI/FileManager/resource.h"
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "createarchivedialog.h"
+#include "fixtures/translation_catalog.h"
 #include "layout_inspection.h"
 #include "qtcompressoptionsdialog.h"
 #include "qtfmoptionsdialog.h"
@@ -612,11 +613,8 @@ class LanguageUiTests : public QObject, protected MainWindowTestSupport {
         const QString favoriteSlot = favorite->actions().first()->text();
         const QString originalRename = window.findChild<QAction *>("renameAction")->text();
         QTemporaryDir directory;
-        QFile file(directory.filePath("partial.txt"));
-        QVERIFY(file.open(QIODevice::WriteOnly));
-        file.write(";!@Lang2@!UTF-8!\n0\n7-Zip\nPartial\nPartial\n541\n&Inside\n");
-        file.close();
-        SaveRegLang(UString("partial"), settingsPath());
+        QVERIFY(WriteTranslationCatalog(directory.path(), {{541, "&Inside"}}));
+        SaveRegLang(UString("de"), settingsPath());
         ReloadLang(settingsPath(), directory.path());
         QtNotifyLanguageChanged();
         QCOMPARE(openInside->text(), QString("&Inside\tCtrl+PgDown"));

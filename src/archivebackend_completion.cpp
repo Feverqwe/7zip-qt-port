@@ -84,8 +84,8 @@ bool ArchiveBackend::failProcessJob(Job completed, int exitCode, QProcess::ExitS
             completed == Job::SourcePlanDirectories || completed == Job::SourceMutation ||
             completed == Job::SourcePlanRename || completed == Job::SourceExtract)
             QFile::remove(createTemporary_);
-        emit finished(false,
-                      QtLocalText("Operation canceled.", QStringLiteral("Операция отменена.")));
+        emit finished(
+            false, QCoreApplication::translate("archivebackend_completion", "Operation canceled."));
         return true;
     }
     if (status != QProcess::NormalExit || exitCode != 0) {
@@ -107,14 +107,13 @@ bool ArchiveBackend::failProcessJob(Job completed, int exitCode, QProcess::ExitS
             output_.contains(QStringLiteral("Wrong password"), Qt::CaseInsensitive);
         const QString detail = output_.trimmed().right(600);
         emit finished(
-            false,
-            wrongPassword
-                ? QtLocalText("Wrong password or damaged encrypted archive.",
-                              QStringLiteral("Неверный пароль или повреждённый защищённый архив."))
-                : QtLocalText("7zz exited with code %1. %2",
-                              QStringLiteral("7zz завершился с кодом %1. %2"))
-                      .arg(exitCode)
-                      .arg(detail));
+            false, wrongPassword
+                       ? QCoreApplication::translate("archivebackend_completion",
+                                                     "Wrong password or damaged encrypted archive.")
+                       : QCoreApplication::translate("archivebackend_completion",
+                                                     "7zz exited with code %1. %2")
+                             .arg(exitCode)
+                             .arg(detail));
         return true;
     }
     return false;
@@ -140,15 +139,16 @@ void ArchiveBackend::complete(int exitCode, QProcess::ExitStatus status) {
     if (completed == Job::Create && createNativeSfx_ &&
         !ArchiveSfxModule::MakeExecutable(createTemporary_)) {
         QFile::remove(createTemporary_);
-        emit finished(false, QtLocalText("Could not make the SFX archive executable.",
-                                         "Не удалось назначить SFX-архиву право исполнения."));
+        emit finished(false,
+                      QCoreApplication::translate("archivebackend_completion",
+                                                  "Could not make the SFX archive executable."));
         return;
     }
 #endif
     if (completed == Job::Create && !QFile::rename(createTemporary_, createTarget_)) {
         QFile::remove(createTemporary_);
-        emit finished(false, QtLocalText("Could not save new archive: %1",
-                                         QStringLiteral("Не удалось сохранить новый архив: %1"))
+        emit finished(false, QCoreApplication::translate("archivebackend_completion",
+                                                         "Could not save new archive: %1")
                                  .arg(createTarget_));
         return;
     }
@@ -164,20 +164,21 @@ void ArchiveBackend::complete(int exitCode, QProcess::ExitStatus status) {
     emit progress(100, QString());
     emit finished(
         true,
-        completed == Job::List ? QtLocalText("Archive opened.", QStringLiteral("Архив открыт."))
+        completed == Job::List
+            ? QCoreApplication::translate("archivebackend_completion", "Archive opened.")
         : completed == Job::Extract
-            ? QtLocalText("Extraction completed.", QStringLiteral("Извлечение завершено."))
+            ? QCoreApplication::translate("archivebackend_completion", "Extraction completed.")
         : completed == Job::Test
-            ? QtLocalText("No errors found.", QStringLiteral("Ошибок при проверке не найдено."))
+            ? QCoreApplication::translate("archivebackend_completion", "No errors found.")
         : completed == Job::Hash
-            ? QtLocalText("Checksums calculated.", QStringLiteral("Контрольные суммы рассчитаны."))
+            ? QCoreApplication::translate("archivebackend_completion", "Checksums calculated.")
         : completed == Job::Create
-            ? QtLocalText("Archive created.", QStringLiteral("Архив создан."))
-        : completed == Job::Delete ? QtLocalText("Items deleted from archive.",
-                                                 QStringLiteral("Объекты удалены из архива."))
+            ? QCoreApplication::translate("archivebackend_completion", "Archive created.")
+        : completed == Job::Delete ? QCoreApplication::translate("archivebackend_completion",
+                                                                 "Items deleted from archive.")
         : completed == Job::Rename
-            ? QtLocalText("Item renamed.", QStringLiteral("Объект переименован."))
+            ? QCoreApplication::translate("archivebackend_completion", "Item renamed.")
         : completed == Job::ReplaceAdd
-            ? QtLocalText("File updated in archive.", QStringLiteral("Файл обновлён в архиве."))
-            : QtLocalText("Files added.", QStringLiteral("Файлы добавлены.")));
+            ? QCoreApplication::translate("archivebackend_completion", "File updated in archive.")
+            : QCoreApplication::translate("archivebackend_completion", "Files added."));
 }

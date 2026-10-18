@@ -75,6 +75,39 @@ class TempCleanupTests : public QObject {
         QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
         ReloadLang(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
     }
+    void liveLanguageChangePreservesLinkSelection() {
+        QTemporaryDir owned, outside;
+        QVERIFY(owned.isValid() && outside.isValid());
+        const QString link = owned.filePath("translated link");
+        QVERIFY(CreateNativeSymbolicLink(link, outside.path()));
+        QVERIFY(inactive(owned.path()));
+        bool observed = false;
+        QTimer::singleShot(0, qApp, [&] {
+            auto *dialog = dynamic_cast<CBrowseDialog2 *>(QApplication::activeModalWidget());
+            QVERIFY(dialog);
+            const auto close = qScopeGuard([&] { dialog->reject(); });
+            auto *list = dialog->findChild<QTreeWidget *>("tempList");
+            select(*dialog, owned.path());
+            QTest::keyClick(list, Qt::Key_Return);
+            select(*dialog, link);
+            auto *item = row(*dialog, link);
+            QVERIFY(item && item->isSelected());
+            const QString settings = qEnvironmentVariable("SEVENZIP_SETTINGS_PATH");
+            for (const char *code : {"ru", "-"}) {
+                SaveRegLang(UString(code), settings);
+                ReloadLang(settings);
+                QtNotifyLanguageChanged();
+                QCOMPARE(item->text(3),
+                         QByteArray(code) == "ru" ? QStringLiteral("Ссылка") : QString("Link"));
+                QCOMPARE(list->currentItem(), item);
+                QCOMPARE(list->selectedItems(), QList<QTreeWidgetItem *>({item}));
+            }
+            observed = true;
+        });
+        MyBrowseForTempFolder(nullptr);
+        QVERIFY(observed);
+        QVERIFY(QFileInfo(link).isSymLink());
+    }
     void sourceInitialFrame_data() {
         QTest::addColumn<QString>("language");
         QTest::newRow("en") << QString("-");

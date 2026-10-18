@@ -1,6 +1,7 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "createarchivedialog.h"
+#include "fixtures/translation_catalog.h"
 #include "qtlangcontrols.h"
 #include <QScrollArea>
 #include <QSignalSpy>
@@ -114,19 +115,14 @@ class LanguageFocusTests : public QObject {
         ReloadLang(settingsPath());
         QtNotifyLanguageChanged();
         QVERIFY(level->currentText() != englishLevel);
-        QFile partial(directory.filePath("partial.txt"));
-        QVERIFY(partial.open(QIODevice::WriteOnly));
-        QVERIFY(partial.write(";!@Lang2@!UTF-8!\n0\n7-Zip\nPartial\nPartial\n4000\nPartial Add\n") >
-                0);
-        partial.close();
-        SaveRegLang(UString("partial"), settingsPath());
+        QVERIFY(WriteTranslationCatalog(directory.path(), {{4000, "Partial Add"}}));
+        QFile partial(directory.filePath("sevenzip_de.qm"));
+        SaveRegLang(UString("de"), settingsPath());
         ReloadLang(settingsPath(), directory.path());
         QtNotifyLanguageChanged();
         QCOMPARE(dialog.windowTitle(), QString("Partial Add"));
         QCOMPARE(level->currentText(), englishLevel);
-        QVERIFY(partial.open(QIODevice::WriteOnly | QIODevice::Truncate));
-        QVERIFY(partial.write(";!@Lang2@!UTF-8!\n0\n7-Zip\nPartial\nPartial\n4000\n\n") > 0);
-        partial.close();
+        QVERIFY(WriteTranslationCatalog(directory.path(), {{4000, {}}}));
         ReloadLang(settingsPath(), directory.path());
         QtNotifyLanguageChanged();
         QCOMPARE(dialog.windowTitle(), QString("Add to Archive"));

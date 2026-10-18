@@ -1,4 +1,6 @@
 #include "CPP/7zip/UI/Common/Bench.h"
+#include "CPP/7zip/UI/FileManager/LangUtils.h"
+#include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "CPP/7zip/UI/GUI/BenchmarkDialog.h"
 #include "archivebackend.h"
 #include "archivecodeccatalog.h"
@@ -7,8 +9,10 @@
 #include <QLabel>
 #include <QMessageBox>
 #include <QPushButton>
+#include <QScopeGuard>
 #include <QSignalSpy>
 #include <QStandardPaths>
+#include <QTemporaryDir>
 #include <QTimer>
 #include <QtTest>
 
@@ -56,14 +60,40 @@ class NativeBenchmarkTests final : public QObject {
         QVERIFY2(ready[0][0].toBool(), qPrintable(ready[0][1].toString()));
 #endif
     }
+    void sourceCallbacksExposeActualEngineResults_data() {
+        QTest::addColumn<QString>("language");
+        QTest::newRow("en") << QString("-");
+        QTest::newRow("ru") << QString("ru");
+    }
     void sourceCallbacksExposeActualEngineResults() {
+        QFETCH(QString, language);
+        QTemporaryDir languageDirectory;
+        QVERIFY(languageDirectory.isValid());
+        const QString settings = languageDirectory.filePath("language.ini");
+        const auto restore = qScopeGuard([&] {
+            SaveRegLang(UString("-"), settings);
+            ReloadLang(settings);
+        });
+        SaveRegLang(UString(language.toStdWString().c_str()), settings);
+        ReloadLang(settings);
+        class Report final : public IBenchPrintCallback {
+          public:
+            QString Text;
+            void Print(const char *text) override { Text += QString::fromUtf8(text); }
+            void NewLine() override { Text += '\n'; }
+            HRESULT CheckBreak() override { return S_OK; }
+        } report;
         const auto catalog = backend_.codecCatalog();
         CExternalCodecs providers;
         providers.GetCodecs =
             static_cast<ICompressCodecsInfo *>(&const_cast<CCodecs &>(catalog->nativeCodecs()));
         QCOMPARE(providers.Load(), S_OK);
         BenchResults results;
-        QCOMPARE(Bench(&providers, nullptr, &results, boundedProperties(), 1, false), S_OK);
+        QCOMPARE(Bench(&providers, &report, &results, boundedProperties(), 1, false), S_OK);
+        const QString heading = QString::fromUtf8(language == "ru" ? "1 поток: частота ЦП (МГц):"
+                                                                   : "1T CPU Freq (MHz):");
+        QVERIFY2(report.Text.contains(heading), qPrintable(report.Text));
+        QVERIFY2(!report.Text.contains(QChar::ReplacementCharacter), qPrintable(report.Text));
         QVERIFY(results.EncCalls > 0);
         QVERIFY(results.DecCalls > 0);
         QVERIFY(results.Enc.Get_UnpackSize_Full() > 0);

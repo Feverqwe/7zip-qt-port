@@ -20,6 +20,7 @@
 #include "Windows/System.h"
 
 #include "7zip/Common/MultiOutStream.h"
+#include "qtdiagnostictext.h"
 
 using namespace NWindows;
 using namespace NFile;
@@ -124,7 +125,7 @@ void CMultiOutStream::Init(const CRecordVector<UInt64> &sizes) {
     // if (Sizes.IsEmpty()) throw "no volume sizes";
     const UInt64 size = Sizes.Back();
     if (size == 0)
-        throw "zero size last volume";
+        throw QT_TRANSLATE_NOOP("SevenZipDiagnostics", "zero size last volume");
 
     if (i == Sizes.Size())
         if ((_absLimit - sum) / size >= (k_NumVols_MAX - i))

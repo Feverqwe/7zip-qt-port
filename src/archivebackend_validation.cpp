@@ -36,9 +36,10 @@ bool ArchiveBackend::validateExtractionOutput(const QString &destination, const 
     const QString relative = QDir(root).relativeFilePath(output);
     if ((relative == "." && !directory) || relative == ".." || relative.startsWith("../") ||
         QDir::isAbsolutePath(relative) || (relative != "." && !safePath(relative))) {
-        *error = QtLocalText("Extraction path is outside the destination folder: %1",
-                             "Путь извлечения находится вне папки назначения: %1")
-                     .arg(path);
+        *error =
+            QCoreApplication::translate("archivebackend_validation",
+                                        "Extraction path is outside the destination folder: %1")
+                .arg(path);
         return false;
     }
     QString candidate = output;
@@ -52,9 +53,10 @@ bool ArchiveBackend::validateExtractionOutput(const QString &destination, const 
 #endif
         if ((existing.isSymLink() && !systemAlias) ||
             (existing.exists() && (leaf && !directory ? !existing.isFile() : !existing.isDir()))) {
-            *error = QtLocalText("Destination path is occupied by a file or link: %1",
-                                 "Путь назначения занят файлом или ссылкой: %1")
-                         .arg(candidate);
+            *error =
+                QCoreApplication::translate("archivebackend_validation",
+                                            "Destination path is occupied by a file or link: %1")
+                    .arg(candidate);
             return false;
         }
         const QString parent = existing.absolutePath();
@@ -73,8 +75,8 @@ bool ArchiveBackend::validateExtractionStreamOutput(const QString &destination, 
     if (colon > output.lastIndexOf('/')) {
         const QString name = output.mid(colon + 1);
         if (!safePath(name) || name.contains('/')) {
-            *error = QtLocalText("Unsafe alternate stream name",
-                                 QStringLiteral("Небезопасное имя потока"));
+            *error = QCoreApplication::translate("archivebackend_validation",
+                                                 "Unsafe alternate stream name");
             return false;
         }
         const QString base = output.left(colon);
@@ -88,8 +90,8 @@ bool ArchiveBackend::validateExtraction(const QString &destination, const QStrin
                                         const ExtractionOptions &options, QString *error,
                                         bool nativeSource, const QString &sourceFolder) const {
     if (destination.trimmed().isEmpty()) {
-        *error = QtLocalText("Specify a destination folder.",
-                             QStringLiteral("Укажите папку назначения."));
+        *error = QCoreApplication::translate("archivebackend_validation",
+                                             "Specify a destination folder.");
         return false;
     }
     QFileInfo target(destination);
@@ -106,14 +108,14 @@ bool ArchiveBackend::validateExtraction(const QString &destination, const QStrin
         const bool systemAlias = false;
 #endif
         if (part.isSymLink() && !systemAlias) {
-            *error = QtLocalText("Destination path contains a link: %1",
-                                 QStringLiteral("Путь назначения содержит ссылку: %1"))
+            *error = QCoreApplication::translate("archivebackend_validation",
+                                                 "Destination path contains a link: %1")
                          .arg(ancestor);
             return false;
         }
         if (part.exists() && !part.isDir()) {
-            *error = QtLocalText("Destination path is occupied by a file: %1",
-                                 QStringLiteral("Путь назначения занят файлом: %1"))
+            *error = QCoreApplication::translate("archivebackend_validation",
+                                                 "Destination path is occupied by a file: %1")
                          .arg(ancestor);
             return false;
         }
@@ -147,8 +149,8 @@ bool ArchiveBackend::validateExtraction(const QString &destination, const QStrin
             // Reject traversal before cleanPath can erase it. The source path
             // algorithm keeps absolute prefixes only in kAbsPaths mode.
             if (entryPath.split('/').contains("..")) {
-                *error = QtLocalText("Archive contains an unsafe path: %1",
-                                     "Архив содержит небезопасный путь: %1")
+                *error = QCoreApplication::translate("archivebackend_validation",
+                                                     "Archive contains an unsafe path: %1")
                              .arg(entry.path);
                 return false;
             }
@@ -183,8 +185,8 @@ bool ArchiveBackend::validateExtraction(const QString &destination, const QStrin
             const QString prefix = currentFolder + (safeStream ? QString() : QString('/'));
             if (!relative.startsWith(prefix)) {
                 *error =
-                    QtLocalText("Item is outside the current archive folder: %1",
-                                QStringLiteral("Объект находится вне текущей папки архива: %1"))
+                    QCoreApplication::translate("archivebackend_validation",
+                                                "Item is outside the current archive folder: %1")
                         .arg(entry.path);
                 return false;
             }
@@ -201,8 +203,8 @@ bool ArchiveBackend::validateExtraction(const QString &destination, const QStrin
             (entry.directory && checkedParts.isEmpty()) || safePath(checkedParts.join('/'));
         if ((!safeStream && !nativeStream && !safeRelative) || (entry.link && !nativeSource) ||
             (streamFolder && !safeStream)) {
-            *error = QtLocalText("Archive contains an unsafe path or link: %1",
-                                 QStringLiteral("Архив содержит небезопасный путь или ссылку: %1"))
+            *error = QCoreApplication::translate("archivebackend_validation",
+                                                 "Archive contains an unsafe path or link: %1")
                          .arg(entry.path);
             return false;
         }
@@ -215,8 +217,8 @@ bool ArchiveBackend::validateExtraction(const QString &destination, const QStrin
         }
         const QString key = relative.normalized(QString::NormalizationForm_C).toCaseFolded();
         if (names.contains(key)) {
-            *error = QtLocalText("Archive contains conflicting names: %1",
-                                 QStringLiteral("Архив содержит конфликт имён: %1"))
+            *error = QCoreApplication::translate("archivebackend_validation",
+                                                 "Archive contains conflicting names: %1")
                          .arg(entry.path);
             return false;
         }
@@ -232,16 +234,17 @@ bool ArchiveBackend::validateExtraction(const QString &destination, const QStrin
             const bool finalFile = index == parts.size() - 1 && !entry.directory;
             if (existing.isSymLink() ||
                 (existing.exists() && (finalFile ? !existing.isFile() : !existing.isDir()))) {
-                *error = QtLocalText("Destination path is occupied by a file or link: %1",
-                                     QStringLiteral("Путь назначения занят файлом или ссылкой: %1"))
+                *error = QCoreApplication::translate(
+                             "archivebackend_validation",
+                             "Destination path is occupied by a file or link: %1")
                              .arg(candidate);
                 return false;
             }
         }
         if (QFileInfo(candidate).exists() && !entry.directory &&
             options.overwriteMode == ExtractionOptions::OverwriteMode::RejectExisting) {
-            *error = QtLocalText("Already exists in the destination folder: %1",
-                                 QStringLiteral("В папке назначения уже существует: %1"))
+            *error = QCoreApplication::translate("archivebackend_validation",
+                                                 "Already exists in the destination folder: %1")
                          .arg(entry.path);
             return false;
         }
@@ -251,8 +254,8 @@ bool ArchiveBackend::validateExtraction(const QString &destination, const QStrin
         while (parent.contains('/')) {
             parent = parent.section('/', 0, -2);
             if (files.contains(parent)) {
-                *error = QtLocalText("Archive contains a file/folder conflict: %1",
-                                     QStringLiteral("Архив содержит конфликт файла и папки: %1"))
+                *error = QCoreApplication::translate("archivebackend_validation",
+                                                     "Archive contains a file/folder conflict: %1")
                              .arg(name);
                 return false;
             }

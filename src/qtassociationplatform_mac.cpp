@@ -20,11 +20,12 @@ class MacAssociationPlatform final : public IQtAssociationPlatform {
     bool CanApply(unsigned group) const override { return group == 0 && QtMacCanSetAssociation(); }
     QString CurrentUserName() const override { return QtMacCurrentUserName(); }
     QString UnavailableReason(unsigned group) const override {
-        return group != 0
-                   ? QtLocalText("macOS supports associations for the current user only.",
-                                 "macOS поддерживает ассоциации только текущего пользователя.")
-                   : QtLocalText("An application bundle and macOS 12 or later are required.",
-                                 "Требуется application bundle и macOS 12 или новее.");
+        return group != 0 ? QCoreApplication::translate(
+                                "qtassociationplatform_mac",
+                                "macOS supports associations for the current user only.")
+                          : QCoreApplication::translate(
+                                "qtassociationplatform_mac",
+                                "An application bundle and macOS 12 or later are required.");
     }
     UString OwnIconPath() const override {
         return UString(QtMacOwnBundlePath().toStdWString().c_str());

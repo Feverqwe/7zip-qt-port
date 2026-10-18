@@ -287,7 +287,8 @@ void CBrowseDialog2::OnDelete() {
                 s2.Add_LF();
             }
         }
-        UString s = MyFormatNew(messageID, messageParam);
+        UString s = indices.Size() == 1 ? MyFormatNew(messageID, messageParam)
+                                        : MyFormatNew(messageID, UInt64(indices.Size()));
         if (!s2.IsEmpty()) {
             s.Add_LF();
             s.Add_LF();
@@ -309,10 +310,9 @@ void CBrowseDialog2::OnDelete() {
         auto lease = QtOwnedTempRegistry().ClaimForDeletion(_owners[index]);
         if (!lease || !OwnedPath(_owners[index], QtPath(fs2us(fullPath)), QtPath(TempFolderPath))) {
             QMessageBox::warning(this, "7-Zip",
-                                 QtLocalText("This temporary item is active, protected, or no "
-                                             "longer owned. Refresh the list.",
-                                             "Этот временный объект используется, защищён или "
-                                             "больше не принадлежит приложению. Обновите список."));
+                                 QCoreApplication::translate(
+                                     "BrowseDialog2", "This temporary item is active, protected, "
+                                                      "or no longer owned. Refresh the list."));
             return;
         }
         if (fi.IsDir())
@@ -559,9 +559,9 @@ void CBrowseDialog2::OnItemEnter() {
     const UString fullPath = DirPrefix + fs2us(file.Name);
     if (file.IsOsSymLink() ||
         !OwnedPath(_owners[realIndex], QtPath(fullPath), QtPath(TempFolderPath))) {
-        QMessageBox::warning(this, "7-Zip",
-                             QtLocalText("Link opening was blocked by 7-Zip.",
-                                         "Открытие ссылки заблокировано 7-Zip."));
+        QMessageBox::warning(
+            this, "7-Zip",
+            QCoreApplication::translate("BrowseDialog2", "Link opening was blocked by 7-Zip."));
         return;
     }
     bool needExternal = true;
@@ -720,9 +720,9 @@ void CBrowseDialog2::OpenOutside(const UString &path, const QtOwnedTempEntry &ow
         opened = (_opener ? _opener : QDesktopServices::openUrl)(QUrl::fromLocalFile(QtPath(path)));
     if (!opened) {
         lease->ExternalFinished();
-        QMessageBox::warning(this, "7-Zip",
-                             QtLocalText("Could not open the temporary item.",
-                                         "Не удалось открыть временный объект."));
+        QMessageBox::warning(
+            this, "7-Zip",
+            QCoreApplication::translate("BrowseDialog2", "Could not open the temporary item."));
     }
     lease.reset(); // Show unconfirmed external protection after this launch lease ends.
     Reload_WithErrorMessage();
@@ -788,8 +788,8 @@ void CBrowseDialog2::OnContextMenu(const QPoint &position) {
             const CFileInfo &file = _files[_items[indices[0]].MainFileIndex];
             if (file.IsOsSymLink()) {
                 QMessageBox::warning(this, "7-Zip",
-                                     QtLocalText("Link opening was blocked by 7-Zip.",
-                                                 "Открытие ссылки заблокировано 7-Zip."));
+                                     QCoreApplication::translate(
+                                         "BrowseDialog2", "Link opening was blocked by 7-Zip."));
                 return;
             }
             fullPath += fs2us(file.Name);
@@ -858,6 +858,7 @@ void MyBrowseForTempFolder(QWidget *owner, std::function<bool(const QUrl &)> ope
         return;
     }
     CBrowseDialog2 dialog(owner, std::move(opener));
+    dialog.setProperty("sourceTitleLanguageID", IDM_TEMP_DIR);
     LangString_OnlyFromLangFile(IDM_TEMP_DIR, dialog.Title);
     dialog.Title.Replace(L"...", L"");
     if (dialog.Title.IsEmpty())

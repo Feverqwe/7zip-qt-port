@@ -5,7 +5,7 @@
 #include <windows.h>
 
 int wmain(int argc, wchar_t **argv) {
-    if (argc != 3)
+    if (argc != 4)
         return 2;
     const HRESULT initialized = CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);
     if (FAILED(initialized))
@@ -55,7 +55,7 @@ int wmain(int argc, wchar_t **argv) {
     if (canUnload() != S_FALSE)
         return 13;
     title = nullptr;
-    if (child->GetTitle(nullptr, &title) != S_OK || !title || !*title)
+    if (child->GetTitle(nullptr, &title) != S_OK || !title || wcscmp(title, argv[3]) != 0)
         return 14;
     CoTaskMemFree(title);
     child->Release();

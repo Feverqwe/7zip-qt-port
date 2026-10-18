@@ -15,6 +15,7 @@ evidence applies only to the recorded revision, platform and scenario.
 | Learn about the application | [README](../README.md) |
 | Report a bug, contribute or check licenses | [Contributing](../CONTRIBUTING.md), [security](../SECURITY.md), [licenses](../THIRD_PARTY_NOTICES.md) |
 | Set up, build, run or prepare runtime dependencies | [Development](development.md) |
+| Update interface translations | [Localization](localization.md) |
 | Select checks and clean up temporary artifacts | [Testing](testing.md) |
 | Find workflows, source owners and regressions | [Regression matrix](regression-matrix.md) |
 | Find a test suite or UI data producer | [Coverage](testing/coverage.md), [geometry](testing/geometry.md) |

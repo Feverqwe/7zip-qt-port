@@ -16,6 +16,7 @@
 #include "Panel.h"
 #include "UpdateCallback100.h"
 #include "Windows/ErrorMsg.h"
+#include "qtdiagnostictext.h"
 #include "qtfolderpropertycapabilities.h"
 #include "qtprogresstransport.h"
 #include "qttrashservice.h"
@@ -155,12 +156,16 @@ void CPanel::ChangeComment() {
     op.Index = realIndex;
     op.Name = dlg.Value;
     op.DisableUserQuestions = true;
-    const HRESULT result = op.DoOperation(*this, LangString(IDS_COMMENT), L"Set Comment Error");
+    const HRESULT result = op.DoOperation(
+        *this, LangString(IDS_COMMENT),
+        QtDiagnosticText(QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Set Comment Error")));
     if (result != S_OK && result != E_ABORT) {
         if (result == E_NOINTERFACE)
             MessageBox_Error_UnsupportOperation();
         else
-            MessageBox_Error_HRESULT_Caption(result, L"Set Comment Error");
+            MessageBox_Error_HRESULT_Caption(
+                result,
+                QtDiagnosticText(QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Set Comment Error")));
     }
     // The original reaches RefreshListCtrl here even after operation errors.
     RefreshListCtrl(state);
@@ -353,7 +358,9 @@ HRESULT CPanel::DeleteItems(bool toRecycleBin, IQtTrashService &trash, CSelected
     // The source shell branch presents the platform confirmation itself. Qt's
     // native trash API does not, so use the same source prompt for both modes.
     const QString title = ToQString(LangString(titleID));
-    const QString message = ToQString(MyFormatNew(messageID, messageParam));
+    const QString message =
+        ToQString(indices.Size() == 1 ? MyFormatNew(messageID, messageParam)
+                                      : MyFormatNew(messageID, UInt64(indices.Size())));
     if (QMessageBox::question(GetParent(), title, message,
                               QMessageBox::Yes | QMessageBox::No | QMessageBox::Cancel,
                               QMessageBox::Yes) != QMessageBox::Yes)

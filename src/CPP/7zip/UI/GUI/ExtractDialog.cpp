@@ -91,12 +91,13 @@ CExtractDialog::CExtractDialog(const QString &initialPath, const QStringList &hi
     _nameEnable = new QCheckBox(this);
     _nameEnable->setObjectName("extractNameEnable");
     _nameEnable->setProperty("languageToolTip", true);
-    QtBindLocalText(_nameEnable, "Append destination folder name", "Добавить имя папки назначения",
-                    true);
+    QtBindLocalText(_nameEnable, "ExtractDialog",
+                    QT_TRANSLATE_NOOP("ExtractDialog", "Append destination folder name"), true);
     _pathName = new QLineEdit(this);
     _pathName->setObjectName("extractPathName");
     _pathName->setProperty("languagePlaceholder", true);
-    QtBindLocalText(_pathName, "Destination folder name", "Имя папки назначения", true);
+    QtBindLocalText(_pathName, "ExtractDialog",
+                    QT_TRANSLATE_NOOP("ExtractDialog", "Destination folder name"), true);
     nameRow->addWidget(_nameEnable);
     nameRow->addWidget(_pathName, 1);
     modeColumn->addLayout(nameRow);
@@ -144,8 +145,9 @@ CExtractDialog::CExtractDialog(const QString &initialPath, const QStringList &hi
     QtBindResourceText(_ntSecurity, IDX_EXTRACT_NT_SECUR, "Restore file security");
 #ifndef Q_OS_WIN
     _ntSecurity->setEnabled(false);
-    QtBindLocalToolTip(_ntSecurity, "Windows file security is unavailable on this platform.",
-                       "Права доступа Windows недоступны на этой платформе.");
+    QtBindLocalToolTip(_ntSecurity, "ExtractDialog",
+                       QT_TRANSLATE_NOOP("ExtractDialog",
+                                         "Windows file security is unavailable on this platform."));
 #endif
     metadataColumn->addWidget(_ntSecurity);
     metadataColumn->addStretch();

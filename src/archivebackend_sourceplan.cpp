@@ -11,21 +11,23 @@ bool ArchiveBackend::validateSourcePlan(const QString &archive, const SourceUpda
                                         const QString &password,
                                         const std::optional<CompressionOptions> &options) {
     if (options && !options->VolumeSizes.IsEmpty()) {
-        emit finished(false, QtLocalText("Updating archive volumes is not supported.",
-                                         "Обновление архивных томов не поддерживается."));
+        emit finished(false,
+                      QCoreApplication::translate("archivebackend_sourceplan",
+                                                  "Updating archive volumes is not supported."));
         return false;
     }
     const QFileInfo input(archive);
     const QFileInfo result(output);
     if (!supportsArchiveUpdate(format) || !input.isFile() || input.isSymLink() || result.exists() ||
         result.isSymLink()) {
-        emit finished(false, QtLocalText("Invalid archive update request.",
-                                         "Недопустимый запрос на обновление архива."));
+        emit finished(false, QCoreApplication::translate("archivebackend_sourceplan",
+                                                         "Invalid archive update request."));
         return false;
     }
     if (!password.isEmpty() && !plan.allowProtected) {
-        emit finished(false, QtLocalText("Protected archive update has not been confirmed.",
-                                         "Обновление защищённого архива не подтверждено."));
+        emit finished(
+            false, QCoreApplication::translate("archivebackend_sourceplan",
+                                               "Protected archive update has not been confirmed."));
         return false;
     }
     const QDir fileRoot(plan.fileRoot);
@@ -33,39 +35,40 @@ bool ArchiveBackend::validateSourcePlan(const QString &archive, const SourceUpda
     if ((!plan.files.isEmpty() && (!fileRoot.exists() || QFileInfo(plan.fileRoot).isSymLink())) ||
         (!plan.directories.isEmpty() &&
          (!directoryRoot.exists() || QFileInfo(plan.directoryRoot).isSymLink()))) {
-        emit finished(false, QtLocalText("Prepared sources are unavailable.",
-                                         "Подготовленные источники недоступны."));
+        emit finished(false, QCoreApplication::translate("archivebackend_sourceplan",
+                                                         "Prepared sources are unavailable."));
         return false;
     }
     for (const QString &path : plan.removed + plan.removedDirectories + plan.retainedPaths)
         if (!sourceUpdatePathIsSafe(path, plan.allowAbsolute) || path.contains('*') ||
             path.contains('?') || path.startsWith('@')) {
-            emit finished(false, QtLocalText("Unsafe archive update path.",
-                                             "Небезопасный путь обновления архива."));
+            emit finished(false, QCoreApplication::translate("archivebackend_sourceplan",
+                                                             "Unsafe archive update path."));
             return false;
         }
     for (const QStringList *group : {&plan.files, &plan.directories})
         for (const QString &path : *group)
             if (!sourceUpdatePathIsSafe(path) || path.contains('*') || path.contains('?') ||
                 path.startsWith('@')) {
-                emit finished(false, QtLocalText("Unsafe archive update path.",
-                                                 "Небезопасный путь обновления архива."));
+                emit finished(false, QCoreApplication::translate("archivebackend_sourceplan",
+                                                                 "Unsafe archive update path."));
                 return false;
             }
     for (const auto &rename : plan.renames)
         if (!sourceUpdatePathIsSafe(rename.first) ||
             !sourceUpdatePathIsSafe(rename.second, plan.allowAbsolute) ||
             (!plan.files.contains(rename.first) && !plan.directories.contains(rename.first))) {
-            emit finished(false, QtLocalText("Unsafe update rename.",
-                                             "Небезопасное переименование обновления."));
+            emit finished(false, QCoreApplication::translate("archivebackend_sourceplan",
+                                                             "Unsafe update rename."));
             return false;
         }
     for (const QString &path : plan.files) {
         const QFileInfo staged(fileRoot.filePath(path));
         if (!staged.isFile() || staged.isSymLink() ||
             !staged.canonicalFilePath().startsWith(fileRoot.canonicalPath() + '/')) {
-            emit finished(false, QtLocalText("The update file has not been prepared.",
-                                             "Файл обновления не подготовлен."));
+            emit finished(false,
+                          QCoreApplication::translate("archivebackend_sourceplan",
+                                                      "The update file has not been prepared."));
             return false;
         }
     }
@@ -73,8 +76,9 @@ bool ArchiveBackend::validateSourcePlan(const QString &archive, const SourceUpda
         const QFileInfo staged(directoryRoot.filePath(path));
         if (!staged.isDir() || staged.isSymLink() ||
             !staged.canonicalFilePath().startsWith(directoryRoot.canonicalPath() + '/')) {
-            emit finished(false, QtLocalText("The update folder has not been prepared.",
-                                             "Папка обновления не подготовлена."));
+            emit finished(false,
+                          QCoreApplication::translate("archivebackend_sourceplan",
+                                                      "The update folder has not been prepared."));
             return false;
         }
     }
@@ -114,8 +118,8 @@ void ArchiveBackend::updateSourcePlan(const QString &archive, const SourceUpdate
                                       const QString &password,
                                       const std::optional<CompressionOptions> &options) {
     if (busy()) {
-        emit finished(false, QtLocalText("Another operation is still running.",
-                                         "Другая операция ещё выполняется."));
+        emit finished(false, QCoreApplication::translate("archivebackend_sourceplan",
+                                                         "Another operation is still running."));
         return;
     }
     lastResult_ = E_FAIL;
@@ -158,8 +162,8 @@ void ArchiveBackend::updateSourcePlan(const QString &archive, const SourceUpdate
         else {
             lastResult_ = S_OK;
             sourcePlanPassword_.clear();
-            emit finished(true, QtLocalText("The archive does not need updating.",
-                                            "Архив не требует обновления."));
+            emit finished(true, QCoreApplication::translate("archivebackend_sourceplan",
+                                                            "The archive does not need updating."));
         }
     });
 }

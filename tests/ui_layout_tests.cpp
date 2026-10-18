@@ -1,3 +1,5 @@
+#include "CPP/7zip/UI/FileManager/LangUtils.h"
+#include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "layout_inspection.h"
 #include "mainwindow.h"
 #include "qtfilemanagerstartup.h"
@@ -56,7 +58,11 @@ class MainWindowLayoutTests : public QObject {
     Q_OBJECT
 
   private slots:
-    void initTestCase() { QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH")); }
+    void init() {
+        QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+        SaveRegLang(UString("-"), qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+        ReloadLang(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+    }
 
     void splitAndCombineCommandsFollowSelection() {
         QTemporaryDir temp;

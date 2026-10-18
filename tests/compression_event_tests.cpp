@@ -216,8 +216,9 @@ class CompressionEventTests final : public QObject {
         bool refused = false;
         QTimer::singleShot(0, &dialog, [&] {
             if (auto *message = qobject_cast<QMessageBox *>(QApplication::activeModalWidget())) {
-                refused =
-                    message->icon() == QMessageBox::Critical && message->text().contains("50 MB");
+                refused = message->icon() == QMessageBox::Critical &&
+                          message->text().contains(
+                              QString::fromUtf8(language == "ru" ? "50 МБ" : "50 MB"));
                 message->accept();
             }
         });

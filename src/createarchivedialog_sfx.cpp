@@ -24,13 +24,17 @@ void CreateArchiveDialog::updateSfxControls() {
     }
     sfx_->setEnabled(available);
     if (!sfxModule_.available())
-        QtBindLocalToolTip(sfx_, "An official SFX module for this platform is unavailable.",
-                           "Официальный модуль SFX для этой платформы недоступен.");
+        QtBindLocalToolTip(
+            sfx_, "createarchivedialog_sfx",
+            QT_TRANSLATE_NOOP("createarchivedialog_sfx",
+                              "An official SFX module for this platform is unavailable."));
     else if (!sourceSupported)
-        QtBindLocalToolTip(sfx_, "The selected format or method does not support SFX.",
-                           "Выбранный формат или метод не поддерживает SFX.");
+        QtBindLocalToolTip(
+            sfx_, "createarchivedialog_sfx",
+            QT_TRANSLATE_NOOP("createarchivedialog_sfx",
+                              "The selected format or method does not support SFX."));
     else
-        QtBindLocalToolTip(sfx_, QString(), QString());
+        QtBindLocalToolTip(sfx_);
 }
 
 void CreateArchiveDialog::toggleSfx(bool enabled) {

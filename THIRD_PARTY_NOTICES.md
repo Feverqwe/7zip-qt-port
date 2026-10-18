@@ -12,7 +12,11 @@ sources. Retain their copyright and license notices when redistributing them.
 | Tooling adapted from htopQt | GPL-2.0-or-later; [retained project notice](third_party/htopqt/LICENSE), [GPL text](third_party/linux/LICENSES/preferred/GPL-2.0). Includes the borrowed release, packaging, Qt installation/source-fetching and Hyper-V tooling described in [CI](docs/ci.md) and [runner provenance](docs/hyperv-runners.md#runner-configuration-and-evidence). |
 | libarchive RAR test data | [Retained license](tests/fixtures/rar/libarchive-COPYING.txt) and [fixture provenance](tests/fixtures/rar/README.md). Test data is not shipped as an application dependency. |
 
-Qt and other runtime dependencies keep their own licenses. Runtime packages
+Qt and other runtime dependencies keep their own licenses. Qt Base translations
+are merged from the matching SDK; the corresponding official
+[Qt Translations source](https://download.qt.io/official_releases/qt/6.12/6.12.0/submodules/qttranslations-everywhere-src-6.12.0.tar.xz)
+and source provenance are recorded in the [localization audit](docs/upstream-port-audit/qt-linguist.md).
+Runtime packages
 include dependency notices; packaging details and signing limitations are in
 [CI and packaging](docs/ci.md). The repository's MIT license alone does not
 describe the licensing of an entire binary distribution.

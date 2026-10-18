@@ -14,7 +14,6 @@
 void MainWindow::reloadLangItems() {
     if (app_.QtOperations().closed())
         return;
-    app_.ReloadLangItems();
     MyLoadMenu(*menuBar(), true);
     refreshBookmarks();
     QtReloadLangTexts(*this);
@@ -26,7 +25,7 @@ void MainWindow::reloadLangItems() {
         for (int i = 0; i < files->columnCount(); i++) {
             if (files->propertyId(i) == kpidNoProperty) {
                 if (auto *header = files->horizontalHeaderItem(i))
-                    header->setText(QtLocalText("Order", "Порядок"));
+                    header->setText(QCoreApplication::translate("mainwindow_language", "Order"));
                 continue;
             }
             if (files->isRawProperty(i))
@@ -37,10 +36,32 @@ void MainWindow::reloadLangItems() {
                     files->propertyId(i), column ? column->Name.Ptr() : nullptr)));
             }
         }
+        files->invalidateLanguageText();
         for (int row = 0; row < files->rowCount(); ++row)
             if (auto *item = files->item(row, 0);
                 item && item->data(Qt::UserRole + 6).toUInt() == UInt32(-1))
-                item->setToolTip(QtLocalText("Parent folder", "Родительская папка"));
+                item->setToolTip(
+                    QCoreApplication::translate("mainwindow_language", "Parent folder"));
+        if (files->sourcePanel && files->sourcePanel->GetFolder() &&
+            files->sourcePanel->IsFSDrivesFolder()) {
+            const bool sorting = files->isSortingEnabled();
+            files->setSortingEnabled(false);
+            for (int column = 0; column < files->columnCount(); ++column) {
+                if (files->propertyId(column) != kpidType)
+                    continue;
+                for (int row = 0; row < files->rowCount(); ++row) {
+                    auto *item = files->item(row, column);
+                    if (!item)
+                        continue;
+                    NWindows::NCOM::CPropVariant type;
+                    if (files->sourcePanel->GetFolder()->GetProperty(
+                            item->data(Qt::UserRole + 6).toUInt(), kpidType, &type) == S_OK &&
+                        type.vt == VT_BSTR)
+                        item->setText(QString::fromWCharArray(type.bstrVal));
+                }
+            }
+            files->setSortingEnabled(sorting);
+        }
     }
     for (unsigned i = 0; i < kNumPanelsMax; i++) {
         if (auto *root = dynamic_cast<CRootFolder *>(app_.Panels[i].GetFolder())) {

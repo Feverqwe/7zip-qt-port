@@ -1,6 +1,7 @@
 // Adapted from 7-Zip CPP/7zip/UI/FileManager/ProgressDialog2.cpp (0766b73).
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 #include "ProgressDialog2.h"
+#include "qtdiagnostictext.h"
 #ifndef SEVENZIP_PROGRESS_SYNC_ONLY
 #include "7zip/UI/FileManager/ProgressDialog2Res.h"
 #include "7zip/UI/GUI/ExtractRes.h"
@@ -214,7 +215,7 @@ void CProgressSync::AddError_Message_Name(const wchar_t *message, const wchar_t 
 void CProgressSync::AddError_Code_Name(HRESULT systemError, const wchar_t *name) {
     UString s = NError::MyFormatMessage(systemError);
     if (systemError == 0)
-        s = "Error";
+        s = QtDiagnosticText(QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Error"));
     AddError_Message_Name(s, name);
 }
 #endif // SEVENZIP_PROGRESS_PRESENTATION_ONLY
@@ -1094,7 +1095,9 @@ qintptr CProgressDialog::Create(const UString &title, NWindows::CThread &thread,
     thread.Wait_Close();
     if (!MessagesDisplayed)
         if (!DisableUserQuestions)
-            MessageBox(wndParent, L"Progress Error", L"7-Zip", true);
+            MessageBox(wndParent,
+                       QtDiagnosticText(QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Progress Error")),
+                       L"7-Zip", true);
     return res;
 }
 
@@ -1277,12 +1280,11 @@ void CProgressThreadVirt::Process() {
     } catch (const UString &s) {
         m = s;
     } catch (const char *s) {
-        m = GetUnicodeString(s);
+        m = QtDiagnosticText(s);
     } catch (int v) {
-        m = "Error #";
-        m.Add_UInt32((unsigned)v);
+        m = QtDiagnosticText(QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Error #%1"), (unsigned)v);
     } catch (...) {
-        m = "Error";
+        m = QtDiagnosticText(QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Error"));
     }
     if (Result != E_ABORT) {
         if (m.IsEmpty() && Result != S_OK)

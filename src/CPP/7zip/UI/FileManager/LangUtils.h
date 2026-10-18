@@ -1,15 +1,13 @@
 // Adapted from 7-Zip CPP/7zip/UI/FileManager/LangUtils.h (0766b73).
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
-// Source language-file owner; Qt supplies directory and default-locale services.
+// Upstream resource-ID boundary; Qt supplies catalogs and locale selection.
 #ifndef ZIP7_INC_LANG_UTILS_H
 #define ZIP7_INC_LANG_UTILS_H
 
 #include "CPP/Windows/ResourceString.h"
-#include "Common/Lang.h"
 #include <QString>
 
 extern UString g_LangID;
-extern CLang g_Lang;
 class IQtLangDialogControls;
 class IQtLangWindowText;
 struct CIDLangPair {
@@ -22,9 +20,6 @@ void LangSetDlgItems_Colon(IQtLangDialogControls &dialog, const UInt32 *ids, uns
 void LangSetDlgItems_RemoveColon(IQtLangDialogControls &dialog, const UInt32 *ids,
                                  unsigned numItems);
 void LangSetWindowText(IQtLangWindowText &window, UInt32 langID);
-bool LangOpen(CLang &lang, CFSTR fileName);
-FString GetLangDirPrefix(const QString &directory = {});
-void Lang_GetShortNames_for_DefaultLang(AStringVector &names, unsigned &subLang);
 void LoadLangOneTime();
 void ReloadLang(const QString &settingsPath = {}, const QString &directory = {});
 UString LangString(UInt32 langID);

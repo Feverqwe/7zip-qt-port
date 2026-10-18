@@ -1,7 +1,9 @@
 #include "7zip/UI/FileManager/resource.h"
 #include "CPP/7zip/UI/FileManager/ComboDialog.h"
 #include "CPP/7zip/UI/FileManager/CopyDialog.h"
+#include "CPP/7zip/UI/FileManager/ExtractCallback.h"
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
+#include "CPP/7zip/UI/FileManager/ListViewDialog.h"
 #include "CPP/7zip/UI/FileManager/MemDialog.h"
 #include "CPP/7zip/UI/FileManager/MessagesDialog.h"
 #include "CPP/7zip/UI/FileManager/OverwriteDialog.h"
@@ -13,8 +15,10 @@
 #include "CPP/7zip/UI/GUI/ExtractDialog.h"
 #include "fixtures/split_dialog_prompt.h"
 #include "layout_inspection.h"
+#include "qtdiagnostictext.h"
 #include "qtlangcontrols.h"
 #include <QCheckBox>
+#include <QClipboard>
 #include <QComboBox>
 #include <QLabel>
 #include <QLineEdit>
@@ -106,6 +110,61 @@ class LanguageDialogTests final : public QObject {
   private slots:
     void init() { language("-"); }
     void cleanup() { language("-"); }
+    void externalReadPhaseUsesSelectedLanguage() {
+        for (const char *code : {"ru", "-"}) {
+            language(code);
+            CProgressDialog progress;
+            CExtractCallbackImp callback;
+            callback.ProgressDialog = &progress;
+            callback.Init();
+            QCOMPARE(
+                static_cast<IFolderArchiveExtractCallback &>(callback).PrepareOperation(
+                    L"Reading %1 空.part", 0, NArchive::NExtract::NAskMode::kReadExternal, nullptr),
+                HRESULT(S_OK));
+            progress.show();
+            QTRY_COMPARE(progress.findChild<QLabel *>("IDT_PROGRESS_STATUS")->text(),
+                         QString(code) == "ru" ? QStringLiteral("Чтение") : QString("Reading"));
+        }
+    }
+    void archiveDiagnosticValuesKeepPathsAndSelection() {
+        const UString missing(L"Missing volume : 32-bit overflow in headers %1 空.part");
+        const UString warning(
+            "32-bit overflow in headers 16-bit overflow for number of files in headers");
+        const UString unknown(L"plugin filename 32-bit overflow in headers %1 空.part");
+        CListViewDialog dialog;
+        dialog.NumColumns = 2;
+        dialog.Strings.Add(L"Error");
+        dialog.Values.Add(QtArchiveDiagnosticText(missing));
+        dialog.QtBindArchiveDiagnosticValue(0, missing);
+        dialog.Strings.Add(L"Warning");
+        dialog.Values.Add(QtArchiveDiagnosticText(warning));
+        dialog.QtBindArchiveDiagnosticValue(1, warning);
+        dialog.Strings.Add(L"Plugin");
+        dialog.Values.Add(unknown);
+        dialog.QtBindArchiveDiagnosticValue(2, unknown);
+        dialog.OnInit();
+        dialog.show();
+        auto *list = dialog.findChild<QTreeWidget *>("propertiesList");
+        auto *selected = list->topLevelItem(0);
+        list->setCurrentItem(selected);
+        for (const char *code : {"ru", "-"}) {
+            language(code);
+            const QString expected =
+                QString(code) == "ru"
+                    ? QStringLiteral("Отсутствует том: 32-bit overflow in headers %1 空.part")
+                    : QStringLiteral("Missing volume: 32-bit overflow in headers %1 空.part");
+            QCOMPARE(list->currentItem(), selected);
+            QCOMPARE(selected->text(1), expected);
+            QCOMPARE(ToQString(dialog.Values[0]), expected);
+            QCOMPARE(list->topLevelItem(2)->text(1), ToQString(unknown));
+            QVERIFY(list->topLevelItem(1)->text(1).contains(
+                QString(code) == "ru" ? QStringLiteral("16-разрядное переполнение")
+                                      : QStringLiteral("16-bit overflow")));
+            QTest::keyClick(list, Qt::Key_C, Qt::ControlModifier);
+            QVERIFY(QApplication::clipboard()->text().contains(expected));
+            inspect(dialog, QString("language-archive-diagnostic-%1").arg(code), 540, 360);
+        }
+    }
     void passwordPreservesPendingSecretAndFocus() {
         CPasswordDialog dialog;
         dialog.OnInit();
@@ -205,7 +264,10 @@ class LanguageDialogTests final : public QObject {
         const QString oldInfo = overwrite.findChild<QLabel *>("overwriteOldFile")->text();
         CMemDialog memory;
         memory.Required_GB = 0;
+        memory.FilePath = L"File: %1 файл 空 with spaces.bin";
         memory.OnInit();
+        const QString sourceMessage = memory.findChild<QLabel *>("memMessage")->text();
+        const QString sourceUnits = memory.findChild<QLabel *>("memGB")->text();
         memory.findChild<QCheckBox *>("memSaveLimit")->click();
         auto *limit = memory.findChild<QLineEdit *>("memLimit");
         limit->setText(" 007 pending ");
@@ -220,12 +282,18 @@ class LanguageDialogTests final : public QObject {
         QVERIFY(limit->isEnabled());
         QVERIFY(memory.findChild<QRadioButton *>("memSkip")->isChecked());
         QVERIFY(memory.findChild<QCheckBox *>("memRemember")->isChecked());
+        QVERIFY(memory.findChild<QLabel *>("memMessage")
+                    ->text()
+                    .contains(QString::fromUtf8("Файл: File: %1 файл 空 with spaces.bin")));
+        QVERIFY(memory.findChild<QLabel *>("memGB")->text().startsWith(QString::fromUtf8("ГБ")));
         for (int width : {700, 560}) {
             inspect(overwrite, "language-overwrite-ru", width, 440);
             inspect(memory, "language-memory-ru", width, 460);
         }
         language("-");
         QCOMPARE(overwrite.findChild<QLabel *>("overwriteOldFile")->text(), oldInfo);
+        QCOMPARE(memory.findChild<QLabel *>("memMessage")->text(), sourceMessage);
+        QCOMPARE(memory.findChild<QLabel *>("memGB")->text(), sourceUnits);
         for (int width : {700, 560}) {
             inspect(overwrite, "language-overwrite-en", width, 440);
             inspect(memory, "language-memory-en", width, 460);

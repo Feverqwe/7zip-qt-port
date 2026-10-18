@@ -24,9 +24,10 @@ bool MainWindow::transferBetweenArchivePanels(const QString &destination, bool m
     if (source.GetParentFolders().Size() != 1 || target.GetParentFolders().Size() != 1 ||
         QDir::cleanPath(archive_) == QDir::cleanPath(panelUi_[destinationIndex].archive) ||
         target.IsThereReadOnlyFolder()) {
-        QMessageBox::warning(this, QtLangText(IDS_COPYING),
-                             QtLocalText("Transfer between these archives is unavailable.",
-                                         "Перенос между этими архивами недоступен."));
+        QMessageBox::warning(
+            this, QtLangText(IDS_COPYING),
+            QCoreApplication::translate("mainwindow_archive_transfer",
+                                        "Transfer between these archives is unavailable."));
         return true;
     }
     if (indices.IsEmpty())
@@ -40,9 +41,10 @@ bool MainWindow::transferBetweenArchivePanels(const QString &destination, bool m
     if (move)
         rollback = backend_->saveArchiveTransferDestination(destinationArchive);
     if (move && !rollback) {
-        QMessageBox::warning(this, QtLangText(IDS_MOVING),
-                             QtLocalText("Could not save destination archive for rollback.",
-                                         "Не удалось сохранить целевой архив для отката."));
+        QMessageBox::warning(
+            this, QtLangText(IDS_MOVING),
+            QCoreApplication::translate("mainwindow_archive_transfer",
+                                        "Could not save destination archive for rollback."));
         return true;
     }
     {
@@ -72,11 +74,11 @@ bool MainWindow::transferBetweenArchivePanels(const QString &destination, bool m
             appPresentation_->CopyDestinationRefreshed(destinationIndex);
             activatePanelUi(sourceIndex);
             if (!restored) {
-                QMessageBox::warning(this, QtLangText(IDS_MOVING),
-                                     QtLocalText("Could not roll back destination archive. "
-                                                 "Check both archives.",
-                                                 "Не удалось откатить целевой архив. "
-                                                 "Проверьте оба архива."));
+                QMessageBox::warning(
+                    this, QtLangText(IDS_MOVING),
+                    QCoreApplication::translate(
+                        "mainwindow_archive_transfer",
+                        "Could not roll back destination archive. Check both archives."));
                 return true;
             }
         }
@@ -98,9 +100,10 @@ bool MainWindow::transferBetweenArchivePanels(const QString &destination, bool m
         appPresentation_->CopyDestinationRefreshed(destinationIndex);
         activatePanelUi(sourceIndex);
         statusBar()->showMessage(
-            move
-                ? QtLocalText("Items moved between archives.", "Объекты перемещены между архивами.")
-                : QtLocalText("Items copied into the archive.", "Объекты скопированы в архив."));
+            move ? QCoreApplication::translate("mainwindow_archive_transfer",
+                                               "Items moved between archives.")
+                 : QCoreApplication::translate("mainwindow_archive_transfer",
+                                               "Items copied into the archive."));
     } else if (result != E_ABORT) {
         QMessageBox::warning(this, QtLangText(IDS_COPYING),
                              QString::fromWCharArray(HResultToMessage(result).Ptr()));

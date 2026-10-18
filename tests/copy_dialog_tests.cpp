@@ -59,6 +59,10 @@ class CopyDialogTests : public QObject {
     }
 
   private slots:
+    void init() {
+        SaveRegLang(UString("-"), qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+        ReloadLang(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+    }
     void initTestCase() { QApplication::setAttribute(Qt::AA_DontUseNativeDialogs); }
 
     void sourceFrameAndKeyboard_data() {
@@ -117,7 +121,9 @@ class CopyDialogTests : public QObject {
         QVERIFY(path->hasFocus() || path->lineEdit()->hasFocus());
         QCOMPARE(path->lineEdit()->selectedText(), initial);
         QCOMPARE(info->focusPolicy(), Qt::NoFocus); // Original static has no WS_TABSTOP.
-        QCOMPARE(info->toPlainText(), summary);
+        // QTextDocument's plain-text export normalizes non-breaking spaces,
+        // including regional thousands separators in the summary.
+        QCOMPARE(info->toPlainText(), QString(summary).replace(QChar::Nbsp, QLatin1Char(' ')));
         const QString tag = QString("copy-source-frame-%1").arg(QTest::currentDataTag());
         dialog.setProperty("uiInspection_language", russian ? "ru" : "en");
         dialog.setProperty("uiInspection_state", move ? "move-initial" : "copy-initial");
@@ -305,7 +311,7 @@ class CopyDialogTests : public QObject {
                 UiInspection::bounds(*buttons, dialog).top());
         QVERIFY(UiInspection::separate(*buttons->button(QDialogButtonBox::Ok),
                                        *buttons->button(QDialogButtonBox::Cancel), dialog));
-        QCOMPARE(info->toPlainText(), summary);
+        QCOMPARE(info->toPlainText(), QString(summary).replace(QChar::Nbsp, QLatin1Char(' ')));
         QCOMPARE(info->toPlainText().split('\n').size(), kCopyDialog_NumInfoLines);
         info->moveCursor(QTextCursor::End);
         QCOMPARE(info->textCursor().blockNumber(), kCopyDialog_NumInfoLines - 1);

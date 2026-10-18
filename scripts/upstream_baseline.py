@@ -54,16 +54,17 @@ def load_manifest(path):
 
 
 def tracked_paths():
-    vendor = set(git(ROOT, "ls-files", "third_party/7zip/").decode().splitlines())
-    vendor.discard("third_party/7zip/README.md")
-    adapted = set(git(ROOT, "ls-files", "src/CPP/", "src/C/").decode().splitlines())
-    return vendor | adapted
+    paths = git(ROOT, "ls-files", "--cached", "--others", "--exclude-standard",
+                "third_party/7zip/", "src/CPP/", "src/C/").decode().splitlines()
+    return {path for path in paths
+            if path != "third_party/7zip/README.md" and (ROOT / path).is_file()}
 
 
 def check_inventory(data):
     recorded = set(data["exact"] + data["adapted"] + data["local"])
-    missing = tracked_paths() - recorded
-    stale = recorded - tracked_paths()
+    current = tracked_paths()
+    missing = current - recorded
+    stale = recorded - current
     if missing or stale:
         raise ValueError(f"Inventory mismatch: unrecorded={sorted(missing)}, stale={sorted(stale)}")
 
@@ -132,7 +133,7 @@ def main():
         data = load_manifest(args.manifest)
         if args.command == "inventory":
             check_inventory(data)
-            print("Recorded inventory matches tracked borrowed paths")
+            print("Recorded inventory matches current borrowed sources")
             return 0
         if not args.upstream:
             raise ValueError("Verify and review require --upstream")

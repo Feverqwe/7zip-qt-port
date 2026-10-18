@@ -57,6 +57,12 @@
 #include "7zip/Common/StreamUtils.h"
 
 #include "Bench.h"
+#include <QCoreApplication>
+#include <QString>
+
+static QByteArray BenchText(const char *source) {
+    return QCoreApplication::translate("BenchmarkReport", source).toUtf8();
+}
 
 using namespace NWindows;
 
@@ -2673,17 +2679,19 @@ AString GetProcessThreadsInfo(const NSystem::CProcessAffinity &ti) {
     if (ti.Groups.GroupSizes.Size() > 1 ||
         (ti.Groups.GroupSizes.Size() == 1 && ti.Groups.NumThreadsTotal != numSysThreads)) {
         s += " : ";
-        s.Add_UInt32(ti.Groups.GroupSizes.Size());
-        s += " groups : ";
+        s += QCoreApplication::translate("BenchmarkReport", "Processor groups: %1 : ")
+                 .arg(ti.Groups.GroupSizes.Size())
+                 .toUtf8()
+                 .constData();
         if (ti.Groups.NumThreadsTotal == numSysThreads) {
             s.Add_UInt32(ti.Groups.NumThreadsTotal);
-            s += " c : ";
+            s += BenchText(QT_TRANSLATE_NOOP("BenchmarkReport", " c : ")).constData();
         }
         UInt32 minSize, maxSize;
         ti.Groups.Get_GroupSize_Min_Max(minSize, maxSize);
         if (minSize == maxSize) {
             s.Add_UInt32(ti.Groups.GroupSizes[0]);
-            s += " c/g";
+            s += BenchText(QT_TRANSLATE_NOOP("BenchmarkReport", " c/g")).constData();
         } else
             FOR_VECTOR(i, ti.Groups.GroupSizes) {
                 if (i != 0)
@@ -2729,13 +2737,13 @@ void Add_LargePages_String(AString &s) {
 
 static void PrintRequirements(IBenchPrintCallback &f, const char *sizeString, bool size_Defined,
                               UInt64 size, const char *threadsString, UInt32 numThreads) {
-    f.Print("RAM ");
+    f.Print(BenchText(QT_TRANSLATE_NOOP("BenchmarkReport", "RAM ")).constData());
     f.Print(sizeString);
     if (size_Defined)
         PrintNumber(f, (size >> 20), 6);
     else
         f.Print("      ?");
-    f.Print(" MB");
+    f.Print(BenchText(QT_TRANSLATE_NOOP("BenchmarkReport", " MB")).constData());
 
 #ifdef Z7_LARGE_PAGES
     {
@@ -2836,13 +2844,13 @@ void CBenchCallbackToPrint::NewLine() { _file->NewLine(); }
 
 static void PrintLeft(IBenchPrintCallback &f, const char *s, unsigned size) {
     f.Print(s);
-    int numSpaces = (int)size - (int)MyStringLen(s);
+    int numSpaces = (int)size - (int)QString::fromUtf8(s).size();
     if (numSpaces > 0)
         PrintSpaces(f, (unsigned)numSpaces);
 }
 
 static void PrintRight(IBenchPrintCallback &f, const char *s, unsigned size) {
-    int numSpaces = (int)size - (int)MyStringLen(s);
+    int numSpaces = (int)size - (int)QString::fromUtf8(s).size();
     if (numSpaces > 0)
         PrintSpaces(f, (unsigned)numSpaces);
     f.Print(s);
@@ -3269,7 +3277,10 @@ static bool AreSameMethodNames(const char *fullName, const char *shortName) {
 }
 
 static void Print_Usage_and_Threads(IBenchPrintCallback &f, UInt64 usage, UInt32 threads) {
-    PrintRequirements(f, "usage:", true, usage, "Benchmark threads:   ", threads);
+    PrintRequirements(
+        f, BenchText(QT_TRANSLATE_NOOP("BenchmarkReport", "usage:")).constData(), true, usage,
+        BenchText(QT_TRANSLATE_NOOP("BenchmarkReport", "Benchmark threads:   ")).constData(),
+        threads);
 }
 
 static void Print_Delimiter(IBenchPrintCallback &f) { f.Print(" |"); }
@@ -3356,10 +3367,10 @@ HRESULT Bench(DECL_EXTERNAL_CODECS_LOC_VARS IBenchPrintCallback *printCallback,
             for (i = 0; i < props.Size(); i++) {
                 const CProperty &property = props[i];
                 printCallback->Print(" ");
-                printCallback->Print(GetAnsiString(property.Name));
+                printCallback->Print(UnicodeStringToMultiByte(property.Name, CP_UTF8));
                 if (!property.Value.IsEmpty()) {
                     printCallback->Print("=");
-                    printCallback->Print(GetAnsiString(property.Value));
+                    printCallback->Print(UnicodeStringToMultiByte(property.Value, CP_UTF8));
                 }
             }
             if (!props.IsEmpty())
@@ -3384,7 +3395,9 @@ HRESULT Bench(DECL_EXTERNAL_CODECS_LOC_VARS IBenchPrintCallback *printCallback,
                     if (!file.GetLength(len64))
                         return GetLastError_noZero_HRESULT();
                     if (printCallback) {
-                        printCallback->Print("file size =");
+                        printCallback->Print(
+                            BenchText(QT_TRANSLATE_NOOP("BenchmarkReport", "file size ="))
+                                .constData());
                         PrintNumber(*printCallback, len64, 0);
                         printCallback->NewLine();
                     }
@@ -3472,7 +3485,8 @@ HRESULT Bench(DECL_EXTERNAL_CODECS_LOC_VARS IBenchPrintCallback *printCallback,
                 specifiedFreq = (UInt64)freq32 * 1000000;
 
                 if (printCallback) {
-                    printCallback->Print("freq=");
+                    printCallback->Print(
+                        BenchText(QT_TRANSLATE_NOOP("BenchmarkReport", "freq=")).constData());
                     PrintNumber(*printCallback, freq32, 0);
                     printCallback->NewLine();
                 }
@@ -3501,7 +3515,7 @@ HRESULT Bench(DECL_EXTERNAL_CODECS_LOC_VARS IBenchPrintCallback *printCallback,
         AString s;
 
 #if 1 || !defined(Z7_MSC_VER_ORIGINAL) || (Z7_MSC_VER_ORIGINAL >= 1900)
-        s += "Compiler: ";
+        s += BenchText(QT_TRANSLATE_NOOP("BenchmarkReport", "Compiler: ")).constData();
         GetCompiler(s);
         printCallback->Print(s);
         printCallback->NewLine();
@@ -3514,7 +3528,8 @@ HRESULT Bench(DECL_EXTERNAL_CODECS_LOC_VARS IBenchPrintCallback *printCallback,
     }
 
     if (printCallback) {
-        printCallback->Print("1T CPU Freq (MHz):");
+        printCallback->Print(
+            BenchText(QT_TRANSLATE_NOOP("BenchmarkReport", "1T CPU Freq (MHz):")).constData());
     }
 
     if (printCallback || freqCallback) {
@@ -3567,7 +3582,9 @@ HRESULT Bench(DECL_EXTERNAL_CODECS_LOC_VARS IBenchPrintCallback *printCallback,
                                                     ));
                 if (start >= freq * 16) {
                     if (printCallback)
-                        printCallback->Print(" (Cmplx)");
+                        printCallback->Print(
+                            BenchText(QT_TRANSLATE_NOOP("BenchmarkReport", " (Cmplx)"))
+                                .constData());
                     if (!freqCallback) // we don't want complexity change for old gui lzma benchmark
                     {
                         needSetComplexity = true;
@@ -3613,7 +3630,9 @@ HRESULT Bench(DECL_EXTERNAL_CODECS_LOC_VARS IBenchPrintCallback *printCallback,
                 char s[128];
                 ConvertUInt64ToString(numThreads, s);
                 printCallback->Print(s);
-                printCallback->Print("T CPU Freq (MHz):");
+                printCallback->Print(
+                    BenchText(QT_TRANSLATE_NOOP("BenchmarkReport", "T CPU Freq (MHz):"))
+                        .constData());
             }
             UInt64 numMilCommands = 1 <<
 #ifdef _DEBUG
@@ -3698,8 +3717,11 @@ HRESULT Bench(DECL_EXTERNAL_CODECS_LOC_VARS IBenchPrintCallback *printCallback,
     if (printCallback) {
         printCallback->NewLine();
         printCallback->NewLine();
-        PrintRequirements(*printCallback, "size: ", ramSize_Defined, ramSize,
-                          "CPU hardware threads:", numCPUs);
+        PrintRequirements(
+            *printCallback, BenchText(QT_TRANSLATE_NOOP("BenchmarkReport", "size: ")).constData(),
+            ramSize_Defined, ramSize,
+            BenchText(QT_TRANSLATE_NOOP("BenchmarkReport", "CPU hardware threads:")).constData(),
+            numCPUs);
         printCallback->Print(GetProcessThreadsInfo(threadsInfo));
         printCallback->NewLine();
     }
@@ -3899,7 +3921,10 @@ HRESULT Bench(DECL_EXTERNAL_CODECS_LOC_VARS IBenchPrintCallback *printCallback,
         f.NewLine();
         for (unsigned line = 0; line < 3; line++) {
             f.NewLine();
-            f.Print(line == 0 ? "THRD" : line == 1 ? "    " : "Size");
+            f.Print(line == 0 ? BenchText(QT_TRANSLATE_NOOP("BenchmarkReport", "THRD")).constData()
+                    : line == 1
+                        ? "    "
+                        : BenchText(QT_TRANSLATE_NOOP("BenchmarkReport", "Size")).constData());
             FOR_VECTOR(ti, numThreadsVector) {
                 if (ti != 0)
                     Print_Delimiter(f);
@@ -3909,7 +3934,12 @@ HRESULT Bench(DECL_EXTERNAL_CODECS_LOC_VARS IBenchPrintCallback *printCallback,
                                 1 + kFieldSize_Usage + kFieldSize_CrcSpeed);
                 } else {
                     for (unsigned c = 0; c < numColumns; c++) {
-                        PrintRight(f, line == 1 ? "Usage" : "%", kFieldSize_Usage + 1);
+                        PrintRight(f,
+                                   line == 1
+                                       ? BenchText(QT_TRANSLATE_NOOP("BenchmarkReport", "Usage"))
+                                             .constData()
+                                       : "%",
+                                   kFieldSize_Usage + 1);
                         PrintRight(f, line == 1 ? "BW" : "MB/s", kFieldSize_CrcSpeed + 1);
                     }
                 }
@@ -4037,7 +4067,7 @@ HRESULT Bench(DECL_EXTERNAL_CODECS_LOC_VARS IBenchPrintCallback *printCallback,
         }
 
         if (numSteps != 0) {
-            f.Print("Avg:");
+            f.Print(BenchText(QT_TRANSLATE_NOOP("BenchmarkReport", "Avg:")).constData());
             for (unsigned ti = 0; ti < numThreadsVector.Size(); ti++) {
                 if (ti != 0)
                     Print_Delimiter(f);
@@ -4116,7 +4146,8 @@ HRESULT Bench(DECL_EXTERNAL_CODECS_LOC_VARS IBenchPrintCallback *printCallback,
             dict = (UInt64)1 << dicSizeLog;
 
             if (totalBenchMode && dicSizeLog != dicSizeLog_Main) {
-                f.Print("Dictionary reduced to: ");
+                f.Print(BenchText(QT_TRANSLATE_NOOP("BenchmarkReport", "Dictionary reduced to: "))
+                            .constData());
                 PrintNumber(f, dicSizeLog, 1);
                 f.NewLine();
             }
@@ -4154,23 +4185,35 @@ HRESULT Bench(DECL_EXTERNAL_CODECS_LOC_VARS IBenchPrintCallback *printCallback,
 
         if (use2Columns) {
             PrintSpaces(f, callback.NameFieldSize);
-            PrintRight(f, "Compressing", fileldSize);
+            PrintRight(f,
+                       BenchText(QT_TRANSLATE_NOOP("BenchmarkReport", "Compressing")).constData(),
+                       fileldSize);
             f.Print(kSep);
-            PrintRight(f, "Decompressing", fileldSize);
+            PrintRight(f,
+                       BenchText(QT_TRANSLATE_NOOP("BenchmarkReport", "Decompressing")).constData(),
+                       fileldSize);
         }
         f.NewLine();
-        PrintLeft(f, totalBenchMode ? "Method" : "Dict", callback.NameFieldSize);
+        PrintLeft(f,
+                  totalBenchMode
+                      ? BenchText(QT_TRANSLATE_NOOP("BenchmarkReport", "Method")).constData()
+                      : BenchText(QT_TRANSLATE_NOOP("BenchmarkReport", "Dict")).constData(),
+                  callback.NameFieldSize);
 
         int j;
 
         for (j = 0; j < 2; j++) {
-            PrintRight(f, "Speed", kFieldSize_Speed + 1);
-            PrintRight(f, "Usage", kFieldSize_Usage + 1);
+            PrintRight(f, BenchText(QT_TRANSLATE_NOOP("BenchmarkReport", "Speed")).constData(),
+                       kFieldSize_Speed + 1);
+            PrintRight(f, BenchText(QT_TRANSLATE_NOOP("BenchmarkReport", "Usage")).constData(),
+                       kFieldSize_Usage + 1);
             PrintRight(f, "R/U", kFieldSize_RU + 1);
-            PrintRight(f, "Rating", kFieldSize_Rating + 1);
+            PrintRight(f, BenchText(QT_TRANSLATE_NOOP("BenchmarkReport", "Rating")).constData(),
+                       kFieldSize_Rating + 1);
             if (showFreq) {
                 PrintRight(f, "E/U", kFieldSize_EU + 1);
-                PrintRight(f, "Effec", kFieldSize_Effec + 1);
+                PrintRight(f, BenchText(QT_TRANSLATE_NOOP("BenchmarkReport", "Effec")).constData(),
+                           kFieldSize_Effec + 1);
             }
             if (!use2Columns)
                 break;
@@ -4404,14 +4447,16 @@ HRESULT Bench(DECL_EXTERNAL_CODECS_LOC_VARS IBenchPrintCallback *printCallback,
         f.NewLine();
 
         if (use2Columns) {
-            PrintLeft(f, "Avr:", callback.NameFieldSize);
+            PrintLeft(f, BenchText(QT_TRANSLATE_NOOP("BenchmarkReport", "Avr:")).constData(),
+                      callback.NameFieldSize);
             PrintTotals(f, showFreq, cpuFreq, !totalBenchMode, callback.EncodeRes);
             f.Print(kSep);
             PrintTotals(f, showFreq, cpuFreq, !totalBenchMode, callback.DecodeRes);
             f.NewLine();
         }
 
-        PrintLeft(f, "Tot:", callback.NameFieldSize);
+        PrintLeft(f, BenchText(QT_TRANSLATE_NOOP("BenchmarkReport", "Tot:")).constData(),
+                  callback.NameFieldSize);
         CTotalBenchRes midRes;
         midRes = callback.EncodeRes;
         midRes.Update_With_Res(callback.DecodeRes);

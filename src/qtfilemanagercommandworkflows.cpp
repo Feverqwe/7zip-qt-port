@@ -117,8 +117,8 @@ bool QtFileManagerCommands::ExecuteExtensionCommand(unsigned id) {
                                       ? QFileInfo(window_.archive_).absolutePath()
                                       : window_.directory_;
         const QString path = QFileDialog::getOpenFileName(
-            &window_, QtLocalText("Open archive", QStringLiteral("Открыть архив")), directory,
-            window_.backend_->openDialogFilter());
+            &window_, QCoreApplication::translate("qtfilemanagercommandworkflows", "Open archive"),
+            directory, window_.backend_->openDialogFilter());
         if (!path.isEmpty())
             window_.openArchive(path);
         break;

@@ -5,6 +5,7 @@
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "archivecodeccatalog.h"
 #include "fixtures/drag_event_position.h"
+#include "fixtures/progress_dialog.h"
 #include "fixtures/window_activation.h"
 #include "qttrashservice.h"
 #include "window_state_support.h"
@@ -30,10 +31,12 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
     Q_OBJECT
 
   private slots:
-    void initTestCase() {
+    void init() {
         const QString settings = qEnvironmentVariable("SEVENZIP_SETTINGS_PATH");
         if (!settings.isEmpty())
             QFile::remove(settings);
+        SaveRegLang(UString("-"), qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+        ReloadLang(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
     }
 
     void inlineRenameCollisionRestoresSelection() {
@@ -733,6 +736,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
                 qunsetenv("SEVENZIP_SETTINGS_PATH");
         });
         qputenv("SEVENZIP_SETTINGS_PATH", fixture.filePath("transfer-settings.ini").toUtf8());
+        SaveRegLang(UString("-"), qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
         const QString disk = fixture.filePath("disk");
         const QString seed = fixture.filePath("seed");
         QVERIFY(QDir().mkpath(disk));
@@ -1131,6 +1135,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         const QString innerDir = fixture.filePath("inner");
         const QString outerDir = fixture.filePath("outer");
         const QString targetDir = fixture.filePath("target");
+        SaveRegLang(UString("-"), qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
         QVERIFY(QDir().mkpath(innerDir));
         QVERIFY(QDir().mkpath(outerDir));
         QVERIFY(QDir().mkpath(targetDir));
@@ -1672,7 +1677,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
                                 auto *close = progress
                                                   ? progress->findChild<QPushButton *>("IDCANCEL")
                                                   : nullptr;
-                                if (close && close->text().contains(QStringLiteral("Close")))
+                                if (TestProgressDialog::IsCloseButton(close))
                                     close->click();
                             });
                         }
@@ -1682,7 +1687,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
             }
             auto *progress = window.findChild<QDialog *>("progressDialog");
             auto *close = progress ? progress->findChild<QPushButton *>("IDCANCEL") : nullptr;
-            if (close && close->text().contains(QStringLiteral("Close"))) {
+            if (TestProgressDialog::IsCloseButton(close)) {
                 sawFailure = true;
                 if (!closeScheduled) {
                     closeScheduled = true;
@@ -1690,7 +1695,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
                         auto *progress = window.findChild<QDialog *>("progressDialog");
                         auto *close =
                             progress ? progress->findChild<QPushButton *>("IDCANCEL") : nullptr;
-                        if (close && close->text().contains(QStringLiteral("Close")))
+                        if (TestProgressDialog::IsCloseButton(close))
                             close->click();
                     });
                 }

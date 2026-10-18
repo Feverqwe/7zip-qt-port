@@ -77,9 +77,9 @@ bool ArchiveBackend::prepareSourceSelection(const QString &archive, const QStrin
             QDir::isAbsolutePath(relative) || !sourceUpdatePathIsSafe(relative) ||
             relative.contains('*') || relative.contains('?') || relative.startsWith('@') ||
             info.absoluteFilePath() == target.absoluteFilePath()) {
-            *error =
-                QtLocalText("Update source unavailable: %1", "Недоступный источник обновления: %1")
-                    .arg(source);
+            *error = QCoreApplication::translate("archivebackend_sourceupdate",
+                                                 "Update source unavailable: %1")
+                         .arg(source);
             return false;
         }
         if (info.isDir() && !info.isSymLink()) {
@@ -87,8 +87,8 @@ bool ArchiveBackend::prepareSourceSelection(const QString &archive, const QStrin
                 QDir(info.canonicalFilePath()).relativeFilePath(target.absoluteFilePath());
             if (nested == "." ||
                 (nested != ".." && !nested.startsWith("../") && !QDir::isAbsolutePath(nested))) {
-                *error = QtLocalText("The archive is inside the selected folder.",
-                                     "Архив находится внутри выбранной папки.");
+                *error = QCoreApplication::translate("archivebackend_sourceupdate",
+                                                     "The archive is inside the selected folder.");
                 return false;
             }
             QDirIterator iterator(info.absoluteFilePath(),
@@ -98,8 +98,8 @@ bool ArchiveBackend::prepareSourceSelection(const QString &archive, const QStrin
             while (iterator.hasNext()) {
                 iterator.next();
                 if (iterator.fileInfo().isSymLink() && !storeLinks) {
-                    *error = QtLocalText("Sources must not contain links: %1",
-                                         "Источники не должны содержать ссылки: %1")
+                    *error = QCoreApplication::translate("archivebackend_sourceupdate",
+                                                         "Sources must not contain links: %1")
                                  .arg(iterator.filePath());
                     return false;
                 }
@@ -116,16 +116,16 @@ void ArchiveBackend::updateSourceFile(const QString &archive, const QString &ent
                                       const QString &sourceRoot, const QString &output,
                                       const QString &format, const QString &password) {
     if (busy()) {
-        emit finished(false, QtLocalText("Another operation is still running.",
-                                         "Другая операция ещё выполняется."));
+        emit finished(false, QCoreApplication::translate("archivebackend_sourceupdate",
+                                                         "Another operation is still running."));
         return;
     }
     lastResult_ = E_FAIL;
     if (!supportsArchiveUpdate(format) || !sourceUpdatePathIsSafe(entry) ||
         !QFileInfo(archive).isFile() || !QFileInfo(QDir(sourceRoot).filePath(entry)).isFile() ||
         output.isEmpty() || QFileInfo::exists(output)) {
-        emit finished(false, QtLocalText("Invalid archive update file or path.",
-                                         "Недопустимый файл или путь обновления архива."));
+        emit finished(false, QCoreApplication::translate("archivebackend_sourceupdate",
+                                                         "Invalid archive update file or path."));
         return;
     }
     archive_ = QFileInfo(archive).absoluteFilePath();
@@ -150,8 +150,8 @@ void ArchiveBackend::updateSourceAdd(const QString &archive, const QStringList &
                                      const QString &sourceRoot, const QString &output,
                                      const QString &format, const QString &password) {
     if (busy()) {
-        emit finished(false, QtLocalText("Another operation is still running.",
-                                         "Другая операция ещё выполняется."));
+        emit finished(false, QCoreApplication::translate("archivebackend_sourceupdate",
+                                                         "Another operation is still running."));
         return;
     }
     lastResult_ = E_FAIL;
@@ -160,23 +160,24 @@ void ArchiveBackend::updateSourceAdd(const QString &archive, const QStringList &
     const QFileInfo root(sourceRoot);
     if (!supportsArchiveUpdate(format) || !input.isFile() || input.isSymLink() || result.exists() ||
         result.isSymLink() || !root.isDir() || root.isSymLink() || entries.isEmpty()) {
-        emit finished(false, QtLocalText("Invalid archive add request.",
-                                         "Недопустимый запрос на добавление в архив."));
+        emit finished(false, QCoreApplication::translate("archivebackend_sourceupdate",
+                                                         "Invalid archive add request."));
         return;
     }
     for (const QString &entry : entries) {
         if (!sourceUpdatePathIsSafe(entry) || entry.contains('*') || entry.contains('?') ||
             entry.startsWith('@')) {
-            emit finished(false, QtLocalText("Unsafe archive add path.",
-                                             "Небезопасный путь добавления в архив."));
+            emit finished(false, QCoreApplication::translate("archivebackend_sourceupdate",
+                                                             "Unsafe archive add path."));
             return;
         }
         const QFileInfo staged(QDir(root.absoluteFilePath()).filePath(entry));
         if ((!staged.isFile() && !staged.isDir()) || staged.isSymLink() ||
             // QFileInfo canonical paths use Qt separators on Windows too.
             !staged.canonicalFilePath().startsWith(root.canonicalFilePath() + '/')) {
-            emit finished(false, QtLocalText("The added file has not been prepared.",
-                                             "Файл добавления не подготовлен."));
+            emit finished(false,
+                          QCoreApplication::translate("archivebackend_sourceupdate",
+                                                      "The added file has not been prepared."));
             return;
         }
     }
@@ -195,8 +196,8 @@ void ArchiveBackend::updateSourceMutation(const QString &archive, const QString 
                                           const QStringList &paths, const QString &sourceRoot,
                                           const QString &password) {
     if (busy()) {
-        emit finished(false, QtLocalText("Another operation is still running.",
-                                         "Другая операция ещё выполняется."));
+        emit finished(false, QCoreApplication::translate("archivebackend_sourceupdate",
+                                                         "Another operation is still running."));
         return;
     }
     lastResult_ = E_FAIL;
@@ -204,29 +205,29 @@ void ArchiveBackend::updateSourceMutation(const QString &archive, const QString 
     const QFileInfo result(output);
     if (!supportsArchiveUpdate(format) || !input.isFile() || input.isSymLink() || result.exists() ||
         paths.isEmpty()) {
-        emit finished(false, QtLocalText("Invalid archive mutation request.",
-                                         "Недопустимый запрос на изменение архива."));
+        emit finished(false, QCoreApplication::translate("archivebackend_sourceupdate",
+                                                         "Invalid archive mutation request."));
         return;
     }
     for (const QString &path : paths) {
         if (!sourceUpdatePathIsSafe(path) || path.contains('*') || path.contains('?') ||
             path.startsWith('@')) {
-            emit finished(false,
-                          QtLocalText("Unsafe archive path.", "Небезопасный путь в архиве."));
+            emit finished(false, QCoreApplication::translate("archivebackend_sourceupdate",
+                                                             "Unsafe archive path."));
             return;
         }
     }
     if ((operation == SourceMutation::Rename && paths.size() != 2) ||
         (operation == SourceMutation::CreateFolder && paths.size() != 1) ||
         (operation != SourceMutation::CreateFolder && !sourceRoot.isEmpty())) {
-        emit finished(false, QtLocalText("Invalid archive mutation plan.",
-                                         "Недопустимый план изменения архива."));
+        emit finished(false, QCoreApplication::translate("archivebackend_sourceupdate",
+                                                         "Invalid archive mutation plan."));
         return;
     }
     if (operation == SourceMutation::CreateFolder &&
         !QFileInfo(QDir(sourceRoot).filePath(paths.front())).isDir()) {
-        emit finished(false, QtLocalText("The new folder has not been prepared.",
-                                         "Новая папка не подготовлена."));
+        emit finished(false, QCoreApplication::translate("archivebackend_sourceupdate",
+                                                         "The new folder has not been prepared."));
         return;
     }
     createTemporary_ = result.absoluteFilePath();

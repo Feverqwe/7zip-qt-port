@@ -16,6 +16,7 @@
 #include "7zip/UI/FileManager/resourceGui.h"
 #include "BrowseDialog.h"
 #include "LinkDialog.h"
+#include "qtdiagnostictext.h"
 
 #include "App.h"
 
@@ -47,11 +48,13 @@ static bool GetSymLink(CFSTR path, CReparseAttr &attr, UString &errorMessage) {
     CByteBuffer data2;
     FillLinkData(data2, attr.GetPath(), !attr.IsMountPoint(), attr.IsSymLink_WSL());
     if (data2.Size() == 0) {
-        errorMessage = "Cannot reproduce reparse point";
+        errorMessage = QtDiagnosticText(
+            QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Cannot reproduce reparse point"));
         return false;
     }
     if (data2 != buf) {
-        errorMessage = "mismatch for reproduced reparse point";
+        errorMessage = QtDiagnosticText(
+            QT_TRANSLATE_NOOP("SevenZipDiagnostics", "mismatch for reproduced reparse point"));
         return false;
     }
     return true;
@@ -101,7 +104,8 @@ bool CLinkDialog::OnInit() {
                     }
 
                 if (!res) {
-                    s.Insert(0, L"ERROR: ");
+                    s.Insert(0,
+                             QtDiagnosticText(QT_TRANSLATE_NOOP("SevenZipDiagnostics", "ERROR: ")));
                     if (!error.IsEmpty()) {
                         s += " : ";
                         s += error;
@@ -132,7 +136,7 @@ bool CLinkDialog::OnInit() {
                 UString destPath;
                 UString display;
                 if (!QtGetPosixLinkTarget(us2fs(FilePath), destPath)) {
-                    display = "ERROR: ";
+                    display = QtDiagnosticText(QT_TRANSLATE_NOOP("SevenZipDiagnostics", "ERROR: "));
                     display += NError::MyFormatMessage(GetLastError());
                 } else
                     display = destPath;
@@ -243,7 +247,8 @@ void CLinkDialog::OnButton_Link() {
 #endif
              info1.IsDir() != isDirLink) ||
             (finded2 && info2.IsDir() != isDirLink)) {
-            ShowError(L"Incorrect link type");
+            ShowError(
+                QtDiagnosticText(QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Incorrect link type")));
             return;
         }
 
@@ -254,7 +259,9 @@ void CLinkDialog::OnButton_Link() {
         }
     } else {
         if (finded1 && !info1.IsDir() && !info1.IsOsSymLink() && info1.Size != 0) {
-            UString s("WARNING: reparse point will hide the data of existing file");
+            UString s = QtDiagnosticText(
+                QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                                  "WARNING: reparse point will hide the data of existing file"));
             s.Add_LF();
             s += from;
             ShowError(s);
@@ -266,13 +273,14 @@ void CLinkDialog::OnButton_Link() {
         const bool isSymLink = (idb != IDR_LINK_TYPE_JUNCTION);
         FillLinkData(data, to, isSymLink, isWSL);
         if (data.Size() == 0) {
-            ShowError(L"Incorrect link");
+            ShowError(QtDiagnosticText(QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Incorrect link")));
             return;
         }
 
         CReparseAttr attr;
         if (!attr.Parse(data, data.Size())) {
-            ShowError(L"Internal conversion error");
+            ShowError(QtDiagnosticText(
+                QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Internal conversion error")));
             return;
         }
 

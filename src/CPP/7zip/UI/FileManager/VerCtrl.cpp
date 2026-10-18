@@ -6,6 +6,7 @@
 #include "Common/StringToInt.h"
 #include "Windows/FileFind.h"
 #include "Windows/FileName.h"
+#include "qtdiagnostictext.h"
 #include "qtverctrlfileservices.h"
 
 #include "App.h"
@@ -95,7 +96,8 @@ static void WriteFile(const FString &path, bool createAlways, const CFileDataInf
         return;
     }
     if (processedSize != fdi.Data.Size()) {
-        panel.MessageBox_Error(L"Write error");
+        panel.MessageBox_Error(
+            QtDiagnosticText(QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Write error")));
         return;
     }
     if (!outFile.SetTime(&fdi.Info.ftCreationTime, &fdi.Info.ftLastAccessTime,
@@ -173,7 +175,8 @@ void CApp::VerCtrl(unsigned id) {
 
     if (id == IDM_VER_EDIT) {
         if (!isReadOnly) {
-            panel.MessageBox_Error(L"File is not read-only");
+            panel.MessageBox_Error(QtDiagnosticText(
+                QT_TRANSLATE_NOOP("SevenZipDiagnostics", "File is not read-only")));
             return;
         }
 
@@ -254,15 +257,17 @@ void CApp::VerCtrl(unsigned id) {
     }
 
     if (isReadOnly) {
-        panel.MessageBox_Error(L"File is read-only");
+        panel.MessageBox_Error(
+            QtDiagnosticText(QT_TRANSLATE_NOOP("SevenZipDiagnostics", "File is read-only")));
         return;
     }
 
     if (id == IDM_VER_COMMIT) {
         if (sameData) {
             if (!sameTime) {
-                panel.MessageBox_Error(L"Same data, but different timestamps.\n"
-                                       L"Use `Revert` to recover timestamp.");
+                panel.MessageBox_Error(QtDiagnosticText(QT_TRANSLATE_NOOP(
+                    "SevenZipDiagnostics", "Same data, but different timestamps.\n"
+                                           "Use `Revert` to recover timestamp.")));
                 return;
             }
         }
@@ -317,7 +322,8 @@ void CApp::VerCtrl(unsigned id) {
 
     if (id == IDM_VER_REVERT) {
         if (!fdi2.IsOpen) {
-            panel.MessageBox_Error(L"No file to revert");
+            panel.MessageBox_Error(
+                QtDiagnosticText(QT_TRANSLATE_NOOP("SevenZipDiagnostics", "No file to revert")));
             return;
         }
         if (!sameData || !sameTime) {

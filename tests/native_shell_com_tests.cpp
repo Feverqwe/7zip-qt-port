@@ -1,3 +1,6 @@
+#include "Common/MyTypes.h"
+
+#include "7zip/UI/Explorer/ContextMenuFlags.h"
 #include "CPP/7zip/UI/Explorer/ContextMenu.h"
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "Common/MyCom.h"
@@ -7,6 +10,7 @@
 #include <QFileInfo>
 #include <QLibrary>
 #include <QProcess>
+#include <QProcessEnvironment>
 #include <QStandardPaths>
 #include <QTemporaryDir>
 #include <QtTest>
@@ -26,18 +30,37 @@ struct TaskString {
 class NativeShellComTests final : public QObject {
     Q_OBJECT
   private slots:
+    void actualNativeHostHasNoQtApplication_data() {
+        QTest::addColumn<QString>("language");
+        QTest::addColumn<QString>("caption");
+        QTest::newRow("en") << QString("-") << QString("Open archive");
+        QTest::newRow("ru") << QString("ru") << QString::fromUtf8("Открыть архив");
+    }
     void actualNativeHostHasNoQtApplication() {
+        QFETCH(QString, language);
+        QFETCH(QString, caption);
         QTemporaryDir fixture;
         QVERIFY(fixture.isValid());
+        const QString settings = fixture.filePath("language.ini");
+        SaveRegLang(UString(language.toStdWString().c_str()), settings);
+        CContextMenuInfo menuSettings;
+        menuSettings.Load(settings);
+        menuSettings.Flags_Def = true;
+        menuSettings.Flags = NContextMenuFlags::kOpen;
+        menuSettings.Cascaded.SetTrueTrue();
+        menuSettings.Save(settings);
         const QString path = fixture.filePath(QStringLiteral("host архив 密碼 space.zip"));
         QFile file(path);
         QVERIFY(file.open(QIODevice::WriteOnly));
         QCOMPARE(file.write("fixture"), qint64(7));
         file.close();
         QProcess host;
+        auto environment = QProcessEnvironment::systemEnvironment();
+        environment.insert("SEVENZIP_SETTINGS_PATH", settings);
+        host.setProcessEnvironment(environment);
         host.setProgram(QString::fromUtf8(NATIVE_SHELL_HOST));
         host.setArguments({QDir::toNativeSeparators(QString::fromUtf8(NATIVE_SHELL_LIBRARY)),
-                           QDir::toNativeSeparators(path)});
+                           QDir::toNativeSeparators(path), caption});
         host.start();
         QVERIFY(host.waitForStarted());
         QVERIFY(host.waitForFinished(30000));

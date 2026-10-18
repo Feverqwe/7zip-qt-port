@@ -21,14 +21,15 @@ bool QtFileTransferTransaction::removeEntry(const QString &path) {
 
 bool QtFileTransferTransaction::validateEntry(const QString &source, QString *error) {
     if (worker_.canceled_) {
-        *error = QtLocalText("Operation canceled.", "Операция отменена.");
+        *error = QCoreApplication::translate("qtfiletransfertransaction", "Operation canceled.");
         return false;
     }
     const QFileInfo info(source);
     if (QtIsFileSystemLink(source))
         return true;
     if (!info.exists() || (!info.isFile() && !info.isDir())) {
-        *error = QtLocalText("Source unavailable: %1", "Источник недоступен: %1").arg(source);
+        *error = QCoreApplication::translate("qtfiletransfertransaction", "Source unavailable: %1")
+                     .arg(source);
         return false;
     }
     if (!info.isDir())
@@ -114,7 +115,8 @@ bool QtFileTransferTransaction::mergeEntry(
     *error = !state.ErrorMessage.isEmpty() ? state.ErrorMessage : callback.errorMessage;
     if (!merged && error->isEmpty())
         *error =
-            QtLocalText("Could not merge folders: %1", "Не удалось слить папки: %1").arg(target);
+            QCoreApplication::translate("qtfiletransfertransaction", "Could not merge folders: %1")
+                .arg(target);
     return merged;
 }
 
@@ -123,12 +125,13 @@ bool QtFileTransferTransaction::removeMergedSource(const QString &source,
                                                    QString *error) {
     for (const QString &path : writtenSources) {
         if (worker_.canceled_) {
-            *error = QtLocalText("Operation canceled.", "Операция отменена.");
+            *error =
+                QCoreApplication::translate("qtfiletransfertransaction", "Operation canceled.");
             return false;
         }
         if (!worker_.adapter_.removeSource(path)) {
-            *error = QtLocalText("Could not delete source after copying: %1",
-                                 "Не удалось удалить источник после копирования: %1")
+            *error = QCoreApplication::translate("qtfiletransfertransaction",
+                                                 "Could not delete source after copying: %1")
                          .arg(path);
             return false;
         }
@@ -138,7 +141,8 @@ bool QtFileTransferTransaction::removeMergedSource(const QString &source,
                           QDirIterator::Subdirectories);
     while (iterator.hasNext()) {
         if (worker_.canceled_) {
-            *error = QtLocalText("Operation canceled.", "Операция отменена.");
+            *error =
+                QCoreApplication::translate("qtfiletransfertransaction", "Operation canceled.");
             return false;
         }
         directories << iterator.next();
@@ -149,7 +153,7 @@ bool QtFileTransferTransaction::removeMergedSource(const QString &source,
         QDir().rmdir(directory);
     QDir().rmdir(source); // Skipped files intentionally keep the source folder.
     if (worker_.canceled_) {
-        *error = QtLocalText("Operation canceled.", "Операция отменена.");
+        *error = QCoreApplication::translate("qtfiletransfertransaction", "Operation canceled.");
         return false;
     }
     return true;
@@ -165,8 +169,8 @@ QStringList QtFileTransferTransaction::prepareTargets(QString &error) const {
     QStringList targets;
     if (!destinationInfo.isDir() || destinationInfo.isSymLink() || worker_.sources_.isEmpty() ||
         (directPath && worker_.sources_.size() != 1))
-        error =
-            QtLocalText("The destination folder is unavailable.", "Папка назначения недоступна.");
+        error = QCoreApplication::translate("qtfiletransfertransaction",
+                                            "The destination folder is unavailable.");
     for (const QString &source : worker_.sources_) {
         if (!error.isEmpty())
             break;
@@ -183,8 +187,9 @@ QStringList QtFileTransferTransaction::prepareTargets(QString &error) const {
             QtIsFileSystemLink(target) || samePath || targets.contains(target) ||
             (!sourceLink && info.isDir() &&
              NFsFolder::IsDestChild(info.canonicalFilePath(), canonicalDestination)))
-            error = QtLocalText("Source or destination unavailable, or the name is already in use.",
-                                "Источник или назначение недоступны либо имя уже занято.");
+            error = QCoreApplication::translate(
+                "qtfiletransfertransaction",
+                "Source or destination unavailable, or the name is already in use.");
         targets << target;
     }
     return targets;
@@ -209,7 +214,8 @@ void QtFileTransferTransaction::finish(QList<Completed> &completed, QString &err
             if (!entry.copiedMove)
                 continue;
             if (worker_.canceled_) {
-                error = QtLocalText("Operation canceled.", "Операция отменена.");
+                error =
+                    QCoreApplication::translate("qtfiletransfertransaction", "Operation canceled.");
                 break;
             }
             if (entry.merged ? !removeMergedSource(entry.source, entry.writtenSources, &error)
@@ -218,8 +224,8 @@ void QtFileTransferTransaction::finish(QList<Completed> &completed, QString &err
                 // Retain the published copy so the remaining bytes stay available.
                 entry.sourceDeleted = true;
                 if (error.isEmpty())
-                    error = QtLocalText("Could not delete source after copying: %1",
-                                        "Не удалось удалить источник после копирования: %1")
+                    error = QCoreApplication::translate("qtfiletransfertransaction",
+                                                        "Could not delete source after copying: %1")
                                 .arg(entry.source);
                 break;
             }
@@ -238,9 +244,9 @@ void QtFileTransferTransaction::finish(QList<Completed> &completed, QString &err
                     QDir().rename(entry.backup, entry.target);
             }
             worker_.resultKind_ = FileTransferOperation::ResultKind::Failure;
-            emit worker_.result(false,
-                                error + QtLocalText(" Some items may have been moved.",
-                                                    " Часть объектов могла быть перемещена."));
+            emit worker_.result(
+                false, error + QCoreApplication::translate("qtfiletransfertransaction",
+                                                           " Some items may have been moved."));
             return;
         }
         for (const Completed &entry : completed)
@@ -251,16 +257,18 @@ void QtFileTransferTransaction::finish(QList<Completed> &completed, QString &err
                 return entry.merged && QFileInfo::exists(entry.source);
             });
         worker_.resultKind_ = FileTransferOperation::ResultKind::Success;
-        emit worker_.result(true, retainedSource
-                                      ? QtLocalText("Some files skipped; sources retained.",
-                                                    "Часть файлов пропущена; источники сохранены.")
-                                      : QtLocalText("Items moved.", "Объекты перемещены."));
+        emit worker_.result(
+            true, retainedSource
+                      ? QCoreApplication::translate("qtfiletransfertransaction",
+                                                    "Some files skipped; sources retained.")
+                      : QCoreApplication::translate("qtfiletransfertransaction", "Items moved."));
     } else {
         for (const Completed &entry : completed)
             if (!entry.backup.isEmpty())
                 removeEntry(entry.backup);
         worker_.resultKind_ = FileTransferOperation::ResultKind::Success;
-        emit worker_.result(true, QtLocalText("Items copied.", "Объекты скопированы."));
+        emit worker_.result(
+            true, QCoreApplication::translate("qtfiletransfertransaction", "Items copied."));
     }
 }
 
@@ -289,7 +297,7 @@ void QtFileTransferTransaction::run() {
     QList<Completed> completed;
     for (qsizetype i = 0; i < worker_.sources_.size() && error.isEmpty(); ++i) {
         if (worker_.canceled_) {
-            error = QtLocalText("Operation canceled.", "Операция отменена.");
+            error = QCoreApplication::translate("qtfiletransfertransaction", "Operation canceled.");
             break;
         }
         const QString source = worker_.sources_[i];
@@ -301,10 +309,10 @@ void QtFileTransferTransaction::run() {
             existingInfo.isDir() && sourceInfo.isDir() && !QtIsFileSystemLink(source);
         if (existingInfo.exists()) {
             if (existingInfo.isDir() != sourceInfo.isDir()) {
-                error =
-                    QtLocalText("Cannot replace a file with a folder or a folder with a file: %1",
-                                "Нельзя заменить файл папкой или папку файлом: %1")
-                        .arg(target);
+                error = QCoreApplication::translate(
+                            "qtfiletransfertransaction",
+                            "Cannot replace a file with a folder or a folder with a file: %1")
+                            .arg(target);
                 break;
             }
             if (merge) {
@@ -326,7 +334,8 @@ void QtFileTransferTransaction::run() {
                     overwriteMode = OverwriteMode::Rename;
                     break;
                 default:
-                    error = QtLocalText("Operation canceled.", "Операция отменена.");
+                    error = QCoreApplication::translate("qtfiletransfertransaction",
+                                                        "Operation canceled.");
                     break;
                 }
             }
@@ -337,8 +346,8 @@ void QtFileTransferTransaction::run() {
             if (!merge && overwriteMode == OverwriteMode::Rename) {
                 FString renamed = us2fs(target.toStdWString().c_str());
                 if (!AutoRenamePath(renamed)) {
-                    error = QtLocalText("Could not find an available name: %1",
-                                        "Не удалось подобрать свободное имя: %1")
+                    error = QCoreApplication::translate("qtfiletransfertransaction",
+                                                        "Could not find an available name: %1")
                                 .arg(target);
                     break;
                 }
@@ -363,28 +372,30 @@ void QtFileTransferTransaction::run() {
                       mergeEntry(source, stage, target, nestedAnswer, &writtenSources, &error))
                    : (renamed || copyEntry(source, stage, &error)));
         if (!staged && error.isEmpty())
-            error = QtLocalText("Could not move item: %1", "Не удалось переместить объект: %1")
-                        .arg(worker_.sources_[i]);
+            error =
+                QCoreApplication::translate("qtfiletransfertransaction", "Could not move item: %1")
+                    .arg(worker_.sources_[i]);
         if (error.isEmpty() && worker_.canceled_)
-            error = QtLocalText("Operation canceled.", "Операция отменена.");
+            error = QCoreApplication::translate("qtfiletransfertransaction", "Operation canceled.");
         if (error.isEmpty() && QFileInfo(target).isSymLink())
-            error = QtLocalText("Destination changed during transfer: %1",
-                                "Назначение изменилось во время переноса: %1")
+            error = QCoreApplication::translate("qtfiletransfertransaction",
+                                                "Destination changed during transfer: %1")
                         .arg(target);
         if (error.isEmpty() && QFileInfo::exists(target) && !mayReplace)
-            error = QtLocalText("Destination changed during transfer: %1",
-                                "Назначение изменилось во время переноса: %1")
+            error = QCoreApplication::translate("qtfiletransfertransaction",
+                                                "Destination changed during transfer: %1")
                         .arg(target);
         if (error.isEmpty() && QFileInfo::exists(target)) {
             // Keep the old entry until every source has published successfully.
             backup = target + suffix + QStringLiteral("-backup");
             if (!QDir().rename(target, backup))
-                error = QtLocalText("Could not preserve the previous item: %1",
-                                    "Не удалось сохранить прежний объект: %1")
+                error = QCoreApplication::translate("qtfiletransfertransaction",
+                                                    "Could not preserve the previous item: %1")
                             .arg(target);
         }
         if (error.isEmpty() && !QDir().rename(stage, target))
-            error = QtLocalText("Could not finish transfer: %1", "Не удалось завершить перенос: %1")
+            error = QCoreApplication::translate("qtfiletransfertransaction",
+                                                "Could not finish transfer: %1")
                         .arg(target);
         if (!error.isEmpty()) {
             if (renamed)

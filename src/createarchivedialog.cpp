@@ -199,7 +199,7 @@ void CreateArchiveDialog::createArchiveForm(QVBoxLayout *layout, QVBoxLayout *wi
     archiveLayout->addWidget(browse);
     archiveRow->setFocusProxy(archivePath_);
     fieldLayout->addWidget(archiveRow, 1, 1);
-    auto *archiveLabel = new QLabel("Архив:", this);
+    auto *archiveLabel = new QLabel("&Archive:", this);
     archiveLabel->setObjectName("archiveLabel");
     archiveLabel->setBuddy(archivePath_);
     archiveLabel->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
@@ -224,16 +224,16 @@ void CreateArchiveDialog::createArchiveForm(QVBoxLayout *layout, QVBoxLayout *wi
     {
         updateMode_ = new QComboBox(this);
         updateMode_->setObjectName("archiveUpdateMode");
-        updateMode_->addItem("Добавить и заменить", int(NCompressDialog::NUpdateMode::kAdd));
-        updateMode_->addItem("Обновить и добавить", int(NCompressDialog::NUpdateMode::kUpdate));
-        updateMode_->addItem("Обновить существующие", int(NCompressDialog::NUpdateMode::kFresh));
-        updateMode_->addItem("Синхронизировать", int(NCompressDialog::NUpdateMode::kSync));
+        updateMode_->addItem("Add and replace files", int(NCompressDialog::NUpdateMode::kAdd));
+        updateMode_->addItem("Update and add files", int(NCompressDialog::NUpdateMode::kUpdate));
+        updateMode_->addItem("Freshen existing files", int(NCompressDialog::NUpdateMode::kFresh));
+        updateMode_->addItem("Synchronize files", int(NCompressDialog::NUpdateMode::kSync));
     }
     pathMode_ = new QComboBox(this);
     pathMode_->setObjectName("archivePathMode");
-    pathMode_->addItem("Относительные пути", int(NWildcard::k_RelatPath));
-    pathMode_->addItem("Полные пути", int(NWildcard::k_FullPath));
-    pathMode_->addItem("Абсолютные пути", int(NWildcard::k_AbsPath));
+    pathMode_->addItem("Relative pathnames", int(NWildcard::k_RelatPath));
+    pathMode_->addItem("Full pathnames", int(NWildcard::k_FullPath));
+    pathMode_->addItem("Absolute paths", int(NWildcard::k_AbsPath));
     {
         // CompressDialog.rc places compression on the left and encryption on
         // the right. Keep both columns at compact sizes; scrolling keeps
@@ -253,12 +253,12 @@ void CreateArchiveDialog::createArchiveForm(QVBoxLayout *layout, QVBoxLayout *wi
         encryptionForm->setContentsMargins(0, 0, 0, 0);
         encryptionForm->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
         encryptionForm->setRowWrapPolicy(QFormLayout::WrapLongRows);
-        compressionForm->addRow("Формат:", format_);
+        compressionForm->addRow("Archive format:", format_);
         createCompressionOptions(compressionForm);
         createVolumeOptions(compressionForm);
         createAdvancedOptions(compressionForm);
-        encryptionForm->addRow("Режим обновления:", updateMode_);
-        encryptionForm->addRow("Режим путей:", pathMode_);
+        encryptionForm->addRow("Update mode:", updateMode_);
+        encryptionForm->addRow("Path mode:", pathMode_);
         createLifecycleOptions(encryptionForm);
         createEncryptionOptions(encryptionForm);
         columns->addWidget(compressionColumn, 1, Qt::AlignTop);
@@ -345,7 +345,10 @@ void CreateArchiveDialog::validateAndAccept() {
     if (resolved.isEmpty()) {
         // Original OnOK validates GetFinalPath_Smart only. Source scanning and
         // UpdateArchive own input errors and CreateComplexDir for new parents.
-        ShowErrorMessageQt(this, L"Incorrect archive path");
+        const std::wstring message =
+            QCoreApplication::translate("CreateArchiveDialog", "Incorrect archive path")
+                .toStdWString();
+        ShowErrorMessageQt(this, message.c_str());
         return;
     }
     if (!checkVolumeSizes())

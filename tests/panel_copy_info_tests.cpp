@@ -1,6 +1,7 @@
 #include "CPP/7zip/UI/FileManager/Panel.h"
 
 #include <QDir>
+#include <QLocale>
 #include <QTest>
 #include <limits>
 
@@ -41,11 +42,12 @@ class PanelCopyInfoTests : public QObject {
         indices.Add(2);
         const CPanel panel(QStringLiteral("archive.7z / вложенная/"), items);
         QCOMPARE(panel.GetItemsInfoString(indices),
-                 QStringLiteral("Folders: 1    ( 1 234 bytes )\n"
+                 QStringLiteral("Folders: 1    ( %1 bytes )\n"
                                 "Files: 2    ( 5 bytes )\n"
-                                "Size: 1 239 bytes\n\n"
+                                "Size: %2 bytes\n\n"
                                 "archive.7z / вложенная/\n"
-                                "  подпапка/папка") +
+                                "  подпапка/папка")
+                         .arg(QLocale().toString(1234), QLocale().toString(1239)) +
                      QDir::separator() + QStringLiteral("\n  имя с пробелом.txt\n  empty"));
         CRecordVector<UInt32> files;
         files.Add(2);
@@ -67,7 +69,7 @@ class PanelCopyInfoTests : public QObject {
         const CPanel panel("/folder/", items);
         const QString text = panel.GetItemsInfoString(indices);
         QVERIFY(text.startsWith("Folders: 2\nFiles: 1    ( 0 bytes )\n\n"));
-        QVERIFY(!text.contains("9 999"));
+        QVERIFY(!text.contains(QLocale().toString(9999)));
         QVERIFY(!text.contains("Size:"));
         indices.Clear();
         indices.Add(1);
@@ -85,13 +87,13 @@ class PanelCopyInfoTests : public QObject {
             indices.Add(i);
         }
         const CPanel panel("/folder/", items);
-        QCOMPARE(
-            panel.GetItemsInfoString(indices),
-            QString("Files: 7    ( 7 000 bytes )\n\n/folder/\n  0\n  1\n  2\n  3\n  4\n  ..."));
+        QCOMPARE(panel.GetItemsInfoString(indices),
+                 QString("Files: 7    ( %1 bytes )\n\n/folder/\n  0\n  1\n  2\n  3\n  4\n  ...")
+                     .arg(QLocale().toString(7000)));
         indices.DeleteBack();
         indices.DeleteBack();
         const QString five = panel.GetItemsInfoString(indices);
-        QVERIFY(five.startsWith("Files: 5    ( 5 000 bytes )"));
+        QVERIFY(five.startsWith(QString("Files: 5    ( %1 bytes )").arg(QLocale().toString(5000))));
         QVERIFY(five.endsWith("  4"));
         QVERIFY(!five.contains("..."));
     }

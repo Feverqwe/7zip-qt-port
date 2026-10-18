@@ -29,21 +29,21 @@ jobs:
             runner: ubuntu-24.04
             qt-host: linux
             qt-arch: linux_gcc_64
-            qt-archives: qtbase qtwayland qtsvg icu
+            qt-archives: qtbase qttools qttranslations qtwayland qtsvg icu
             cmake-args: ''
             targets: sevenzip_desktop
           - platform: windows-x64
             runner: windows-2022
             qt-host: windows
             qt-arch: win64_msvc2022_64
-            qt-archives: qtbase
+            qt-archives: qtbase qttools qttranslations
             cmake-args: ''
             targets: sevenzip_desktop sevenzip_shell
           - platform: macos-arm64
             runner: macos-15
             qt-host: mac
             qt-arch: clang_64
-            qt-archives: qtbase
+            qt-archives: qtbase qttools qttranslations
             cmake-args: '-DCMAKE_OSX_DEPLOYMENT_TARGET=14.4'
             targets: sevenzip_desktop
     defaults:

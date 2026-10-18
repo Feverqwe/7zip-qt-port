@@ -22,7 +22,7 @@ include(CTest)
 # spelling MyVector.h, ../Common/MyVector.h or ../../Common/MyVector.h.
 include_directories(src/CPP src/CPP/Common src/CPP/Windows src/CPP/7zip/Common)
 
-find_package(Qt6 REQUIRED COMPONENTS Widgets)
+find_package(Qt6 REQUIRED COMPONENTS Widgets LinguistTools)
 find_package(Threads REQUIRED)
 include(cmake/Exfat.cmake)
 include(cmake/Brotli.cmake)
@@ -82,6 +82,8 @@ target_link_libraries(sevenzip_hash_registration INTERFACE sevenzip_hash_registr
     $<TARGET_OBJECTS:sevenzip_hash_registry>)
 
 add_library(sevenzip_common STATIC third_party/7zip/C/Sort.c third_party/7zip/C/Alloc.c
+    src/qtdiagnostictext.cpp src/qtdiagnostictext.h
+    src/qttranslationcatalog.cpp src/qttranslationcatalog.h
     third_party/7zip/C/7zCrc.c third_party/7zip/C/7zCrcOpt.c third_party/7zip/C/CpuArch.c
     third_party/7zip/C/Sha1.c third_party/7zip/C/Sha1Opt.c
     third_party/7zip/C/Sha256.c third_party/7zip/C/Sha256Opt.c
@@ -105,7 +107,7 @@ add_library(sevenzip_common STATIC third_party/7zip/C/Sort.c third_party/7zip/C/
     third_party/7zip/CPP/7zip/UI/Common/DefaultName.cpp
     src/processpriority.cpp src/processpriority.h
     src/processpause.cpp src/processpause.h
-    third_party/7zip/C/Threads.c third_party/7zip/CPP/Windows/ErrorMsg.cpp
+    third_party/7zip/C/Threads.c src/CPP/Windows/ErrorMsg.cpp
     src/CPP/Windows/DLL.cpp src/CPP/Windows/DLL.h
     third_party/7zip/CPP/Common/StringToInt.cpp
     third_party/7zip/CPP/Common/MyString.cpp third_party/7zip/CPP/Common/IntToString.cpp
@@ -146,7 +148,7 @@ target_link_libraries(sevenzip_common PUBLIC sevenzip_hash_registration)
 target_link_libraries(sevenzip_common PUBLIC ${CMAKE_DL_LIBS})
 target_link_libraries(sevenzip_common PUBLIC Threads::Threads)
 target_sources(sevenzip_common PRIVATE
-    third_party/7zip/CPP/Common/CommandLineParser.cpp
+    src/CPP/Common/CommandLineParser.cpp
     third_party/7zip/CPP/Common/ListFileUtils.cpp
     src/CPP/7zip/UI/Common/ArchiveCommandLine.cpp)
 target_include_directories(sevenzip_common PRIVATE
@@ -399,10 +401,10 @@ add_library(sevenzip_filesystem STATIC
     src/qtarchivecopypreparation.cpp src/qtarchivecopypreparation.h
     src/archiveenginelocation.cpp src/archiveenginelocation.h
     src/qtownedtempdir.cpp src/qtownedtempdir.h
-    third_party/7zip/CPP/Common/Lang.cpp
     src/CPP/7zip/UI/FileManager/LangUtils.cpp src/CPP/7zip/UI/FileManager/LangUtils.h
     src/qtlangdialogcontrols.h
     src/qtlanguageservices.cpp src/qtlanguageservices.h
+    src/qtupstreamtranslations.h
     src/CPP/Windows/ResourceString.cpp src/CPP/Windows/ResourceString.h
     "${resource_strings_header}"
     src/CPP/7zip/UI/Common/WorkDir.cpp src/CPP/7zip/UI/Common/WorkDir.h
@@ -433,9 +435,6 @@ add_library(sevenzip_filesystem STATIC
     src/CPP/7zip/UI/FileManager/FSDrives.cpp src/CPP/7zip/UI/FileManager/FSDrives.h
     src/qtvolumemounts.cpp src/qtvolumemounts.h
     third_party/7zip/CPP/7zip/UI/Common/PropIDUtils.cpp)
-qt_add_resources(sevenzip_filesystem upstream_languages PREFIX "/upstream/7zip/Lang"
-    BASE "${CMAKE_CURRENT_SOURCE_DIR}/resources/7zip/Lang"
-    FILES resources/7zip/Lang/en.ttt resources/7zip/Lang/ru.txt)
 file(GLOB_RECURSE sevenzip_help_assets CONFIGURE_DEPENDS resources/7zip/Help/*.htm resources/7zip/Help/*.css)
 qt_add_resources(sevenzip_panel upstream_help PREFIX "/upstream/7zip/Help"
     BASE "${CMAKE_CURRENT_SOURCE_DIR}/resources/7zip/Help" FILES ${sevenzip_help_assets})
@@ -1263,7 +1262,7 @@ if(BUILD_TESTING)
     add_test(NAME copy_dialog COMMAND copy_dialog_tests -silent)
     set_tests_properties(copy_dialog PROPERTIES FIXTURES_SETUP ui_reference_copy)
     set_tests_properties(copy_dialog PROPERTIES ENVIRONMENT
-        "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports" TIMEOUT 30)
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/copy-dialog-settings.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports" TIMEOUT 30)
     qt_add_executable(archive_backend_tests tests/archive_backend_tests.cpp src/CPP/7zip/UI/GUI/CompressDialog.cpp src/CPP/7zip/UI/GUI/CompressDialog.h src/archivebackend.cpp src/archivebackend_validation.cpp src/archivebackend_mutations.cpp src/archivebackend_listing.cpp src/archivebackend.h)
     qt_add_executable(archive_mutation_tests tests/archive_mutation_tests.cpp src/CPP/7zip/UI/GUI/CompressDialog.cpp src/CPP/7zip/UI/GUI/CompressDialog.h src/archivebackend.cpp src/archivebackend_validation.cpp src/archivebackend_mutations.cpp src/archivebackend_listing.cpp src/archivebackend.h)
     get_target_property(archive_preparation_sources archive_mutation_tests SOURCES)
@@ -2520,6 +2519,10 @@ endif()
 
 if(BUILD_TESTING)
     qt_add_executable(language_tests tests/language_tests.cpp tests/layout_inspection.cpp)
+    qt_add_executable(native_language_host_tests tests/native_language_host_tests.cpp)
+    target_include_directories(native_language_host_tests PRIVATE src)
+    target_link_libraries(native_language_host_tests PRIVATE sevenzip_location Qt6::Test)
+    add_test(NAME native_language_host COMMAND native_language_host_tests -silent)
     get_target_property(language_backend_sources archive_backend_tests SOURCES)
     list(REMOVE_ITEM language_backend_sources tests/archive_backend_tests.cpp)
     get_target_property(language_backend_libraries archive_backend_tests LINK_LIBRARIES)
@@ -2529,7 +2532,7 @@ if(BUILD_TESTING)
     target_link_libraries(language_source_update_tests PRIVATE ${language_backend_libraries})
     add_test(NAME language_source_update COMMAND language_source_update_tests -silent)
     set_tests_properties(language_source_update PROPERTIES TIMEOUT 60)
-    target_include_directories(language_tests PRIVATE src tests)
+    target_include_directories(language_tests PRIVATE src src/CPP/7zip/UI/Common tests)
     target_link_libraries(language_tests PRIVATE sevenzip_location Qt6::Test)
     add_test(NAME language COMMAND language_tests -silent)
     set_tests_properties(language PROPERTIES TIMEOUT 60 RESOURCE_LOCK sevenzip_ui_artifacts
@@ -2707,7 +2710,7 @@ if(BUILD_TESTING)
     add_test(NAME menu_page COMMAND menu_page_tests -silent)
     set_tests_properties(menu_page PROPERTIES TIMEOUT 60
         RESOURCE_LOCK sevenzip_ui_artifacts ENVIRONMENT
-        "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
+        "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/menu-page-settings.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     qt_add_executable(options_dialog_tests tests/options_dialog_tests.cpp tests/layout_inspection.cpp)
     target_include_directories(options_dialog_tests PRIVATE src tests)
     target_link_libraries(options_dialog_tests PRIVATE sevenzip_location Qt6::Test)
@@ -2863,6 +2866,10 @@ if(BUILD_TESTING)
     qt_add_executable(language_focus_tests tests/language_focus_tests.cpp ${language_focus_sources})
     target_include_directories(language_focus_tests PRIVATE src tests)
     target_link_libraries(language_focus_tests PRIVATE ${language_focus_libraries})
+    foreach(catalog_fixture_consumer language_tests language_ui_tests language_focus_tests)
+        target_sources(${catalog_fixture_consumer} PRIVATE tests/fixtures/translation_catalog.cpp)
+        target_compile_definitions(${catalog_fixture_consumer} PRIVATE TEST_LRELEASE_PATH="$<TARGET_FILE:Qt6::lrelease>")
+    endforeach()
     add_test(NAME language_focus COMMAND language_focus_tests -silent)
     set_tests_properties(language_focus PROPERTIES TIMEOUT 30 ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/language_focus.ini")
@@ -3653,3 +3660,21 @@ if(BUILD_TESTING)
 endif()
 include(cmake/SharedWorkflowObjects.cmake)
 include(cmake/DeveloperWorkflow.cmake)
+
+# Extract every platform's presentation sources, including those omitted by the
+# current platform's target graph and sources shared through object libraries.
+file(GLOB_RECURSE sevenzip_translation_sources CONFIGURE_DEPENDS
+    src/*.cpp src/*.h src/*.mm)
+file(GLOB sevenzip_translation_catalogs CONFIGURE_DEPENDS translations/sevenzip_*.ts)
+list(REMOVE_ITEM sevenzip_translation_catalogs "${CMAKE_CURRENT_SOURCE_DIR}/translations/sevenzip_en.ts")
+qt_add_translations(sevenzip_filesystem
+    SOURCE_TARGETS sevenzip_filesystem
+    SOURCES ${sevenzip_translation_sources}
+    TS_FILES ${sevenzip_translation_catalogs}
+    PLURALS_TS_FILE translations/sevenzip_en.ts
+    MERGE_QT_TRANSLATIONS
+    QT_TRANSLATION_CATALOGS qtbase
+    RESOURCE_PREFIX "/translations"
+    LUPDATE_TARGET sevenzip_lupdate
+    LRELEASE_TARGET sevenzip_lrelease
+    LUPDATE_OPTIONS -no-obsolete -locations relative)

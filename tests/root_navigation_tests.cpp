@@ -47,6 +47,37 @@ class RootNavigationTests final : public QObject, protected MainWindowTestSuppor
         }
     }
 #ifndef Q_OS_WIN
+    void driveTypeHotSwitchPreservesRowsAndSelection() {
+        const QString settingsPath = qEnvironmentVariable("SEVENZIP_SETTINGS_PATH");
+        SaveRegLang(UString("-"), settingsPath);
+        ReloadLang(settingsPath);
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        action(window, "openRootAction")->trigger();
+        auto *view = static_cast<FileTable *>(table(window));
+        QVERIFY(view->sourcePanel->IsFSDrivesFolder());
+        QVERIFY(view->rowCount() > 0);
+        int typeColumn = -1;
+        for (int column = 0; column < view->columnCount(); ++column)
+            if (view->propertyId(column) == kpidType)
+                typeColumn = column;
+        QVERIFY(typeColumn >= 0);
+        auto *type = view->item(0, typeColumn);
+        auto *name = view->item(0, 0);
+        const QString originalName = name->text();
+        view->selectRow(0);
+        const int count = view->rowCount();
+        for (const char *language : {"ru", "-"}) {
+            SaveRegLang(UString(language), settingsPath);
+            ReloadLang(settingsPath);
+            QtNotifyLanguageChanged();
+            QCOMPARE(view->rowCount(), count);
+            QCOMPARE(view->item(name->row(), 0), name);
+            QCOMPARE(name->text(), originalName);
+            QVERIFY(name->isSelected());
+            QCOMPARE(type->text(), QString::fromUtf8(language[0] == 'r' ? "Локальный" : "Fixed"));
+        }
+    }
     void networkNamespaceOpensWithoutRemoteServices() {
         ControlledBackend backend;
         MainWindow window(&backend);

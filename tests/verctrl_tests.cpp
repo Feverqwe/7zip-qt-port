@@ -1,3 +1,4 @@
+#include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/OverwriteDialog.h"
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "Windows/FileFind.h"
@@ -55,7 +56,11 @@ void navigate(MainWindow &window, const QString &path) {
 class VerCtrlTests final : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
   private slots:
-    void init() { QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH")); }
+    void init() {
+        QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+        SaveRegLang(UString("-"), qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+        ReloadLang(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
+    }
     void backupCommitDiffAndVersionHistory() {
         QTemporaryDir fixture;
         const QString source = fixture.filePath("рабочая папка");
@@ -149,9 +154,9 @@ class VerCtrlTests final : public QObject, protected MainWindowTestSupport {
             QApplication::processEvents();
             asked = !dialog->ShowExtraButtons && dialog->DefaultButton_is_NO &&
                     dialog->findChild<QPushButton *>("overwriteNo")->isDefault() &&
-                    !dialog->findChild<QPushButton *>("overwriteYesAll")->isVisible() &&
-                    !dialog->findChild<QPushButton *>("overwriteNoAll")->isVisible() &&
-                    !dialog->findChild<QPushButton *>("overwriteRename")->isVisible();
+                    !dialog->findChild<QPushButton *>("overwriteYesAll")->isEnabled() &&
+                    !dialog->findChild<QPushButton *>("overwriteNoAll")->isEnabled() &&
+                    !dialog->findChild<QPushButton *>("overwriteRename")->isEnabled();
             for (auto *button : dialog->findChildren<QPushButton *>())
                 if (button->isVisible())
                     geometry &= UiInspection::fullyVisible(*button, *dialog);

@@ -2,6 +2,7 @@
 #include "Windows/PropVariant.h"
 #include "Windows/PropVariantConv.h"
 #include "qtpanelfolder.h"
+#include <QLocale>
 #include <QTableWidget>
 #include <QtTest>
 
@@ -159,7 +160,8 @@ class PanelFolderTests : public QObject {
         CRecordVector<UInt32> indices;
         indices.Add(0);
         QCOMPARE(panel.GetItemsInfoString(indices),
-                 QStringLiteral("Files: 1    ( 12 345 bytes )\n\n/folder/\n  внутри/файл.txt"));
+                 QStringLiteral("Files: 1    ( %1 bytes )\n\n/folder/\n  внутри/файл.txt")
+                     .arg(QLocale().toString(12345)));
     }
 
     void missingMetadataValueIsEmptyInsteadOfAnotherItemsValue() {

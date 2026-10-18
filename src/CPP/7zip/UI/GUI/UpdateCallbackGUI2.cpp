@@ -10,6 +10,8 @@
 #include "7zip/UI/GUI/resource3.h"
 
 #include "UpdateCallbackGUI2.h"
+#include <QCoreApplication>
+#include <QLocale>
 
 using namespace NWindows;
 
@@ -55,13 +57,18 @@ HRESULT CUpdateCallbackGUI2::MoveArc_UpdateStatus() {
     const bool totalDefined = (_arcMoving_total != 0 && _arcMoving_total != (UInt64)(Int64)-1);
     if (totalDefined || _arcMoving_current != 0) {
         s += " : ";
-        s.Add_UInt64(_arcMoving_current >> 20);
-        s += " MiB";
+        s += UString(QCoreApplication::translate("MemoryUnits", "%1 MiB")
+                         .arg(QLocale().toString(qulonglong(_arcMoving_current >> 20)))
+                         .toStdWString()
+                         .c_str());
     }
     if (totalDefined) {
         s += " / ";
-        s.Add_UInt64((_arcMoving_total + ((1 << 20) - 1)) >> 20);
-        s += " MiB";
+        s += UString(
+            QCoreApplication::translate("MemoryUnits", "%1 MiB")
+                .arg(QLocale().toString(qulonglong((_arcMoving_total + ((1 << 20) - 1)) >> 20)))
+                .toStdWString()
+                .c_str());
     }
 
     s += " : ";

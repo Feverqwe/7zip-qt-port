@@ -3,6 +3,7 @@
 // ArchiveCommandLine.cpp
 
 #include "Common/Common.h"
+#include "qtdiagnostictext.h"
 #undef printf
 #undef sprintf
 
@@ -359,12 +360,14 @@ static const unsigned kCommandIndex = 0;
 
 // static const char * const kUserErrorMessage  = "Incorrect command line";
 // static const char * const kCannotFindListFile = "Cannot find listfile";
-static const char *const kIncorrectListFile =
-    "Incorrect item in listfile.\nCheck charset encoding and -scs switch.";
-static const char *const kTerminalOutError = "I won't write compressed data to a terminal";
-static const char *const kSameTerminalError =
-    "I won't write data and program's messages to same stream";
-static const char *const kEmptyFilePath = "Empty file path";
+static const char *const kIncorrectListFile = QT_TRANSLATE_NOOP(
+    "SevenZipDiagnostics", "Incorrect item in listfile.\nCheck charset encoding and -scs switch.");
+static const char *const kTerminalOutError =
+    QT_TRANSLATE_NOOP("SevenZipDiagnostics", "I won't write compressed data to a terminal");
+static const char *const kSameTerminalError = QT_TRANSLATE_NOOP(
+    "SevenZipDiagnostics", "I won't write data and program's messages to same stream");
+static const char *const kEmptyFilePath =
+    QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Empty file path");
 
 bool CArcCommand::IsFromExtractGroup() const {
     switch ((int)CommandType) {
@@ -487,7 +490,8 @@ static void AddRenamePair(CObjectVector<CRenamePair> *renamePairs, const UString
             val += "-r";
         else if (type == NRecursedType::kWildcardOnlyRecursed)
             val += "-r0";
-        throw CArcCmdLineException("Unsupported rename command:", val);
+        throw CArcCmdLineException(
+            QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Unsupported rename command:"), val);
     }
 }
 #endif
@@ -504,7 +508,8 @@ static void AddToCensorFromListFile(CObjectVector<CRenamePair> *renamePairs,
     if (!ReadNamesFromListFile2(us2fs(fileName), names, codePage, lastError)) {
         if (lastError != 0) {
             UString m;
-            m = "The file operation error for listfile";
+            m = QtDiagnosticText(
+                QT_TRANSLATE_NOOP("SevenZipDiagnostics", "The file operation error for listfile"));
             m.Add_LF();
             m += NError::MyFormatMessage(lastError);
             throw CArcCmdLineException(m, fileName);
@@ -521,7 +526,7 @@ static void AddToCensorFromListFile(CObjectVector<CRenamePair> *renamePairs,
                           nop.WildcardMatching);
         }
 #else
-        throw "not implemented";
+        throw QT_TRANSLATE_NOOP("SevenZipDiagnostics", "not implemented");
 #endif
     } else
         FOR_VECTOR(i, names)
@@ -575,15 +580,17 @@ static void AddToCensorFromNonSwitchesStrings(CObjectVector<CRenamePair> *rename
                 oldIndex = -1;
             }
 #else
-            throw "not implemented";
+            throw QT_TRANSLATE_NOOP("SevenZipDiagnostics", "not implemented");
 #endif
         } else
             AddNameToCensor(censor, nop, s);
     }
 
     if (oldIndex != -1) {
-        throw CArcCmdLineException("There is no second file name for rename pair:",
-                                   nonSwitchStrings[(unsigned)oldIndex]);
+        throw CArcCmdLineException(
+            QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                              "There is no second file name for rename pair:"),
+            nonSwitchStrings[(unsigned)oldIndex]);
     }
 }
 
@@ -600,7 +607,8 @@ struct CEventSetEnd {
     }
 };
 
-static const char *const k_IncorrectMapCommand = "Incorrect Map command";
+static const char *const k_IncorrectMapCommand =
+    QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Incorrect Map command");
 
 static const char *ParseMapWithPaths(NWildcard::CCensor &censor, const UString &s2,
                                      const CNameOption &nop) {
@@ -617,21 +625,21 @@ static const char *ParseMapWithPaths(NWildcard::CCensor &censor, const UString &
     UInt32 size;
     if (!StringToUInt32(s.Ptr((unsigned)(pos + 1)), size) || size < sizeof(wchar_t) ||
         size > ((UInt32)1 << 31) || size % sizeof(wchar_t) != 0)
-        return "Unsupported Map data size";
+        return QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Unsupported Map data size");
 
     s.DeleteFrom((unsigned)pos);
     CFileMapping map;
     if (map.Open(FILE_MAP_READ, GetSystemString(s)) != 0)
-        return "Cannot open mapping";
+        return QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Cannot open mapping");
     const LPVOID data = map.Map(FILE_MAP_READ, 0, size);
     if (!data)
-        return "MapViewOfFile error";
+        return QT_TRANSLATE_NOOP("SevenZipDiagnostics", "MapViewOfFile error");
     CFileUnmapper unmapper(data);
 
     UString name;
     const wchar_t *p = (const wchar_t *)data;
     if (*p != 0) // data format marker
-        return "Unsupported Map data";
+        return QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Unsupported Map data");
     const UInt32 numChars = size / sizeof(wchar_t);
     for (UInt32 i = 1; i < numChars; i++) {
         const wchar_t c = p[i];
@@ -643,7 +651,7 @@ static const char *ParseMapWithPaths(NWildcard::CCensor &censor, const UString &
             name += c;
     }
     if (!name.IsEmpty())
-        return "Map data error";
+        return QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Map data error");
 
     return NULL;
 }
@@ -659,7 +667,7 @@ static void AddSwitchWildcardsToCensor(NWildcard::CCensor &censor, const UString
         unsigned pos = 0;
 
         if (name.Len() < kSomeCludePostStringMinSize) {
-            errorMessage = "Too short switch";
+            errorMessage = QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Too short switch");
             break;
         }
 
@@ -734,12 +742,12 @@ static void AddSwitchWildcardsToCensor(NWildcard::CCensor &censor, const UString
         }
 
         if (error) {
-            errorMessage = "inorrect switch";
+            errorMessage = QT_TRANSLATE_NOOP("SevenZipDiagnostics", "inorrect switch");
             break;
         }
 
         if (name.Len() < pos + kSomeCludeAfterRecursedPostStringMinSize) {
-            errorMessage = "Too short switch";
+            errorMessage = QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Too short switch");
             break;
         }
 
@@ -759,7 +767,8 @@ static void AddSwitchWildcardsToCensor(NWildcard::CCensor &censor, const UString
         }
 #endif
         else {
-            errorMessage = "Incorrect wildcard type marker";
+            errorMessage =
+                QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Incorrect wildcard type marker");
             break;
         }
     }
@@ -819,7 +828,8 @@ static bool ParseUpdateCommandString2(const UString &command, NUpdateArchive::CA
 static void ParseUpdateCommandString(CUpdateOptions &options,
                                      const UStringVector &updatePostStrings,
                                      const NUpdateArchive::CActionSet &defaultActionSet) {
-    const char *errorMessage = "incorrect update switch command";
+    const char *errorMessage =
+        QT_TRANSLATE_NOOP("SevenZipDiagnostics", "incorrect update switch command");
     unsigned i;
     for (i = 0; i < updatePostStrings.Size(); i++) {
         const UString &updateString = updatePostStrings[i];
@@ -894,9 +904,11 @@ static void SetAddCommandOptions(NCommandType::EEnum commandType, const CParser 
         FOR_VECTOR(i, sv) {
             UInt64 size;
             if (!ParseComplexSize(sv[i], size))
-                throw CArcCmdLineException("Incorrect volume size:", sv[i]);
+                throw CArcCmdLineException(
+                    QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Incorrect volume size:"), sv[i]);
             if (i == sv.Size() - 1 && size == 0)
-                throw CArcCmdLineException("zero size last volume is not allowed");
+                throw CArcCmdLineException(QT_TRANSLATE_NOOP(
+                    "SevenZipDiagnostics", "zero size last volume is not allowed"));
             options.VolumesSizes.Add(size);
         }
     }
@@ -984,7 +996,8 @@ void CArcCmdLineParser::Parse1(const UStringVector &commandStrings, CArcCmdLineO
         else {
             UInt32 v;
             if (!StringToUInt32(s, v))
-                throw CArcCmdLineException("Unsupported switch postfix -bb", s);
+                throw CArcCmdLineException(
+                    QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Unsupported switch postfix -bb"), s);
             options.LogLevel = (unsigned)v;
         }
     }
@@ -1060,7 +1073,9 @@ void CArcCmdLineParser::Parse1(const UStringVector &commandStrings, CArcCmdLineO
                     cmd = Z7_LARGE_PAGES_FLAG_NO_HUGEPAGE;
                     continue;
                 }
-                throw CArcCmdLineException("Unsupported switch postfix for -slp", s);
+                throw CArcCmdLineException(
+                    QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Unsupported switch postfix for -slp"),
+                    s);
             }
         }
 
@@ -1116,7 +1131,8 @@ void CArcCmdLineParser::Parse1(const UStringVector &commandStrings, CArcCmdLineO
         if (!s.IsEmpty()) {
             AString a;
             a.SetFromWStr_if_Ascii(s);
-            Parse1Log += "Set process affinity mask: ";
+            Parse1Log += QtDiagnosticText(
+                QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Set process affinity mask: "));
 
             bool isError = false;
 
@@ -1134,7 +1150,8 @@ void CArcCmdLineParser::Parse1(const UStringVector &commandStrings, CArcCmdLineO
             else {
 #ifndef _WIN64
                 if (v >= ((UInt64)1 << 32))
-                    throw CArcCmdLineException("unsupported value -stm", s);
+                    throw CArcCmdLineException(
+                        QT_TRANSLATE_NOOP("SevenZipDiagnostics", "unsupported value -stm"), s);
                 else
 #endif
                 {
@@ -1177,7 +1194,8 @@ void CArcCmdLineParser::Parse1(const UStringVector &commandStrings, CArcCmdLineO
 #endif // _WIN32
 
             if (isError)
-                throw CArcCmdLineException("Unsupported switch postfix -stm", s);
+                throw CArcCmdLineException(
+                    QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Unsupported switch postfix -stm"), s);
 
             Parse1Log.Add_LF();
         }
@@ -1213,7 +1231,8 @@ static Int32 FindCharset(const NCommandLineParser::CParser &parser, unsigned key
     const unsigned num = byteOnlyCodePages ? kNumByteOnlyCodePages : Z7_ARRAY_SIZE(g_CodePagePairs);
     for (unsigned i = 0;; i++) {
         if (i == num) // to disable warnings from different compilers
-            throw CArcCmdLineException("Unsupported charset:", name);
+            throw CArcCmdLineException(
+                QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Unsupported charset:"), name);
         const CCodePagePair &pair = g_CodePagePairs[i];
         if (name.IsEqualTo(pair.Name))
             return (Int32)pair.CodePage;
@@ -1271,10 +1290,12 @@ void CArcCmdLineParser::Parse2(CArcCmdLineOptions &options) {
     const UStringVector &nonSwitchStrings = parser.NonSwitchStrings;
     const unsigned numNonSwitchStrings = nonSwitchStrings.Size();
     if (numNonSwitchStrings < kMinNonSwitchWords)
-        throw CArcCmdLineException("The command must be specified");
+        throw CArcCmdLineException(
+            QT_TRANSLATE_NOOP("SevenZipDiagnostics", "The command must be specified"));
 
     if (!ParseArchiveCommand(nonSwitchStrings[kCommandIndex], options.Command))
-        throw CArcCmdLineException("Unsupported command:", nonSwitchStrings[kCommandIndex]);
+        throw CArcCmdLineException(QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Unsupported command:"),
+                                   nonSwitchStrings[kCommandIndex]);
 
     if (parser[NKey::kHash].ThereIs)
         options.HashMethods = parser[NKey::kHash].PostStrings;
@@ -1303,7 +1324,8 @@ void CArcCmdLineParser::Parse2(CArcCmdLineOptions &options) {
     if (parser[NKey::kExtractMemLimit].ThereIs) {
         const UString &s = parser[NKey::kExtractMemLimit].PostStrings[0];
         if (!ParseSizeString(s, options.ExtractOptions.NtOptions.MemLimit))
-            throw CArcCmdLineException("Unsupported -smemx:", s);
+            throw CArcCmdLineException(
+                QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Unsupported -smemx:"), s);
     }
 
     if (parser[NKey::kElimDup].ThereIs) {
@@ -1320,7 +1342,8 @@ void CArcCmdLineParser::Parse2(CArcCmdLineOptions &options) {
             if (s.IsEqualTo("2"))
                 censorPathMode = NWildcard::k_FullPath;
             else
-                throw CArcCmdLineException("Unsupported -spf:", s);
+                throw CArcCmdLineException(
+                    QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Unsupported -spf:"), s);
         }
     }
 
@@ -1344,7 +1367,8 @@ void CArcCmdLineParser::Parse2(CArcCmdLineOptions &options) {
         else if (s.IsEqualTo_Ascii_NoCase("2"))
             nop.MarkMode = NWildcard::kMark_StrictFile_IfWildcard;
         else
-            throw CArcCmdLineException("Unsupported -spm:", s);
+            throw CArcCmdLineException(
+                QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Unsupported -spm:"), s);
     }
 
     options.ConsoleCodePage = FindCharset(parser, NKey::kConsoleCharSet, true, -1);
@@ -1387,10 +1411,12 @@ void CArcCmdLineParser::Parse2(CArcCmdLineOptions &options) {
 
     if (thereIsArchiveName) {
         if (curCommandIndex >= numNonSwitchStrings)
-            throw CArcCmdLineException("Cannot find archive name");
+            throw CArcCmdLineException(
+                QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Cannot find archive name"));
         options.ArchiveName = nonSwitchStrings[curCommandIndex++];
         if (options.ArchiveName.IsEmpty())
-            throw CArcCmdLineException("Archive name cannot by empty");
+            throw CArcCmdLineException(
+                QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Archive name cannot by empty"));
 #ifdef _WIN32
 // options.ArchiveName.Replace(L'/', WCHAR_PATH_SEPARATOR);
 #endif
@@ -1469,7 +1495,10 @@ void CArcCmdLineParser::Parse2(CArcCmdLineOptions &options) {
                 UInt32 v = 9; // default value for "-snld" instead of default = 5 without "-snld".
                 if (!s.IsEmpty())
                     if (!StringToUInt32(s, v))
-                        throw CArcCmdLineException("Unsupported switch postfix -snld", s);
+                        throw CArcCmdLineException(
+                            QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                                              "Unsupported switch postfix -snld"),
+                            s);
                 nt.SymLinks_DangerousLevel = (unsigned)v;
             }
 
@@ -1495,7 +1524,8 @@ void CArcCmdLineParser::Parse2(CArcCmdLineOptions &options) {
                 else if (s.IsEqualTo("2"))
                     eo.ZoneMode = NExtract::NZoneIdMode::kOffice;
                 else
-                    throw CArcCmdLineException("Unsupported -snz:", s);
+                    throw CArcCmdLineException(
+                        QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Unsupported -snz:"), s);
             }
         }
 
@@ -1504,7 +1534,8 @@ void CArcCmdLineParser::Parse2(CArcCmdLineOptions &options) {
 
         // are there paths that look as non-relative (!Prefix.IsEmpty())
         if (!options.Censor.AllAreRelative())
-            throw CArcCmdLineException("Cannot use absolute pathnames for this command");
+            throw CArcCmdLineException(QT_TRANSLATE_NOOP(
+                "SevenZipDiagnostics", "Cannot use absolute pathnames for this command"));
 
         NWildcard::CCensor &arcCensor = options.arcCensor;
 
@@ -1590,7 +1621,8 @@ void CArcCmdLineParser::Parse2(CArcCmdLineOptions &options) {
         }
     } else if (options.Command.IsFromUpdateGroup()) {
         if (parser[NKey::kArInclude].ThereIs)
-            throw CArcCmdLineException("-ai switch is not supported for this command");
+            throw CArcCmdLineException(QT_TRANSLATE_NOOP(
+                "SevenZipDiagnostics", "-ai switch is not supported for this command"));
 
         CUpdateOptions &updateOptions = options.UpdateOptions;
 
@@ -1632,7 +1664,8 @@ void CArcCmdLineParser::Parse2(CArcCmdLineOptions &options) {
         updateOptions.SetArcMTime = parser[NKey::kSetArcMTime].ThereIs;
 
         if (updateOptions.StdOutMode && updateOptions.EMailMode)
-            throw CArcCmdLineException("stdout mode and email mode cannot be combined");
+            throw CArcCmdLineException(QT_TRANSLATE_NOOP(
+                "SevenZipDiagnostics", "stdout mode and email mode cannot be combined"));
 
         if (updateOptions.StdOutMode) {
             if (options.IsStdOutTerminal)
@@ -1649,14 +1682,17 @@ void CArcCmdLineParser::Parse2(CArcCmdLineOptions &options) {
 
         if (options.Command.CommandType == NCommandType::kRename)
             if (updateOptions.Commands.Size() != 1)
-                throw CArcCmdLineException("Only one archive can be created with rename command");
+                throw CArcCmdLineException(QT_TRANSLATE_NOOP(
+                    "SevenZipDiagnostics", "Only one archive can be created with rename command"));
     } else if (options.Command.CommandType == NCommandType::kBenchmark) {
         options.NumIterations = 1;
         options.NumIterations_Defined = false;
         if (curCommandIndex < numNonSwitchStrings) {
             if (!StringToUInt32(nonSwitchStrings[curCommandIndex], options.NumIterations))
-                throw CArcCmdLineException("Incorrect number of benchmark iterations",
-                                           nonSwitchStrings[curCommandIndex]);
+                throw CArcCmdLineException(
+                    QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                                      "Incorrect number of benchmark iterations"),
+                    nonSwitchStrings[curCommandIndex]);
             curCommandIndex++;
             options.NumIterations_Defined = true;
         }

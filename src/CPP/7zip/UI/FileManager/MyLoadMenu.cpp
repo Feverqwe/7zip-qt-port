@@ -15,6 +15,7 @@
 #include "qtfilemenuservices.h"
 #include "qtpanelpluginservices.h"
 #include <QAction>
+#include <QCoreApplication>
 #include <QMenu>
 #include <QMenuBar>
 #include <QSignalBlocker>
@@ -42,8 +43,10 @@ static const unsigned k_MenuID_SetBookmark = 810;
 static const unsigned k_MenuID_Time = IDM_VIEW_TIME;
 #define kFMHelpTopic "FM/index.htm"
 static const unsigned g_Zvc_IDs[] = {IDM_VER_EDIT, IDM_VER_COMMIT, IDM_VER_REVERT, IDM_VER_DIFF};
-static const char *const g_Zvc_Strings[] = {"Ver Edit (&1)", "Ver Commit", "Ver Revert",
-                                            "Ver Diff (&0)"};
+static const char *const g_Zvc_Strings[] = {QT_TRANSLATE_NOOP("VersionControl", "Ver Edit (&1)"),
+                                            QT_TRANSLATE_NOOP("VersionControl", "Ver Commit"),
+                                            QT_TRANSLATE_NOOP("VersionControl", "Ver Revert"),
+                                            QT_TRANSLATE_NOOP("VersionControl", "Ver Diff (&0)")};
 
 static unsigned GetSortControlID(PROPID propID) {
     switch (propID) {
@@ -82,8 +85,7 @@ static void CheckRadioItem(QMenu &menu, unsigned first, unsigned last, unsigned 
         CheckItemByID(menu, id, id == selected);
 }
 static bool Is_MenuItem_TimePopup(const QAction &item) {
-    return item.property("nativeCommandID").toUInt() == IDM_VIEW_TIME_POPUP ||
-           UString(item.text().toStdWString().c_str()).IsPrefixedBy_Ascii_NoCase("20");
+    return item.property("nativeCommandID").toUInt() == IDM_VIEW_TIME_POPUP;
 }
 
 void OnMenuActivating(QMenuBar &mainMenu, QMenu &hMenu, int position, CApp &g_App) {
@@ -189,8 +191,7 @@ static void MyChangeMenu(const QList<QAction *> &menu, unsigned menuID, unsigned
                     if (menuID == IDM_FAVORITES || (menuID == 0 && menuIndex == 3))
                         langID = IDM_ADD_TO_FAVORITES;
                     else if (menuID == IDM_VIEW || (menuID == 0 && menuIndex == 2)) {
-                        if (subMenu->objectName() == "timestampMenu" ||
-                            oldString.IsPrefixedBy_Ascii_NoCase("20"))
+                        if (subMenu->objectName() == "timestampMenu")
                             langID = IDM_VIEW_TIME_POPUP;
                         else
                             langID = IDM_VIEW_TOOLBARS;
@@ -246,7 +247,7 @@ static void MyChangeMenu(const QList<QAction *> &menu, unsigned menuID, unsigned
 void MyLoadMenu(QMenuBar &menu, bool needResetMenu) {
     // A reset changes text in place rather than destroying HMENU/QAction
     // objects. This preserves active shortcuts, signals and current state.
-    if (needResetMenu || !g_Lang.IsEmpty())
+    if (needResetMenu || g_LangID != L"-")
         MyChangeMenu(menu.actions(), 0, 0, 0);
 }
 
@@ -369,7 +370,9 @@ void CFileMenu::Load(IQtFileMenuServices &destMenu, unsigned startPos) {
                     if (id == IDM_VER_EDIT)
                         continue;
                 }
-                UString s(g_Zvc_Strings[k]);
+                UString s(QCoreApplication::translate("VersionControl", g_Zvc_Strings[k])
+                              .toStdWString()
+                              .c_str());
                 if (destMenu.AppendItem(id, s)) {
                     startPos++;
                     numRealItems = startPos;

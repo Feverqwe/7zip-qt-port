@@ -28,7 +28,8 @@ struct ResourceStringEntry {
 UString MyLoadString(UINT resourceID) {
     for (const auto &entry : kResourceStrings)
         if (entry.Id == resourceID)
-            return entry.Text;
+            return UString(
+                QString::fromWCharArray(entry.Text).replace("{0}", "%1").toStdWString().c_str());
     return QtEnglishLanguageString(resourceID);
 }
 

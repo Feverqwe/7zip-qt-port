@@ -181,7 +181,8 @@ struct CPanelProperty {
 
 // Four source status-bar parts; Qt presents them below the owning panel.
 struct CPanelStatus {
-    QString selectedItems;
+    int selectedCount = 0;
+    int totalCount = 0;
     QString selectedSize;
     QString focusedSize;
     QString focusedDate;
@@ -555,7 +556,7 @@ class CPanel : public QObject {
     bool OnNotifyComboBoxEndEdit(QtAddressEditReason reason, IQtPanelAddressCombo &header,
                                  bool &result);
     void AddComboBoxItem(IQtPanelAddressCombo &header, const UString &name, int iconIndex,
-                         unsigned indent, bool addToList);
+                         unsigned indent, bool addToList, UInt32 namespaceID = 0);
     void SetToRootFolder();
     HRESULT BindToPath(const UString &fullPath, const UString &arcFormat, COpenResult &openRes);
     HRESULT BindToPathAndRefresh(const UString &path);

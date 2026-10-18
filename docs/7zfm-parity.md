@@ -7,6 +7,12 @@ Qt заменяет presentation и платформенные services; арх�
 
 ## Основные сценарии
 
+Язык интерфейса выбирается из каталогов Qt Linguist. Исходные языковые `.txt`
+7-Zip заменены каталогами `.qm`; настройки English/Russian сохранены. Страница
+языка сохраняет порядок элементов и поведение Apply/Cancel, а область сведений
+показывает язык и локаль. Сведения о полноте перевода доступны в Qt Linguist.
+[Область миграции и проверки](upstream-port-audit/qt-linguist.md).
+
 About presents Sevenzip as an independent application, with its own name,
 release and project link. A separate 7-Zip section retains the upstream version,
 release date, copyright, license and homepage. The original About logo and

@@ -2,12 +2,14 @@
 #include "Common/MyTypes.h"
 #include "qtlanguageservices.h"
 #include <QString>
+#include <QStringList>
 class QObject;
 class QWidget;
 QString QtLangText(UInt32 id, const QString &englishFallback = {});
-void QtBindLocalText(QObject *object, const QString &english, const QString &russian,
-                     bool accessibleOnly = false);
-void QtBindLocalToolTip(QObject *object, const QString &english, const QString &russian);
+void QtBindLocalText(QObject *object, const char *context, const char *sourceText,
+                     bool accessibleOnly = false, const QStringList &arguments = {});
+void QtBindLocalToolTip(QObject *object, const char *context = "", const char *sourceText = "");
+void QtBindMemoryLimitUnitText(QObject *object, bool ramDefined, quint64 ramGB);
 // Presentation bindings retain original English captions and change text only.
 void QtBindLangText(QObject *object, UInt32 id, const QString &englishFallback = {},
                     bool accessibleOnly = false);

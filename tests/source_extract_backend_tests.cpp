@@ -6,6 +6,7 @@
 #include "CPP/7zip/UI/FileManager/Panel.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "archivebackend.h"
+#include "fixtures/progress_dialog.h"
 #include "qtarchivebackendrequest.h"
 #include "qtarchivebatchextract.h"
 #include "qtarchivefileresource.h"
@@ -378,7 +379,7 @@ class SourceExtractBackendTests final : public QObject {
                 auto *close = progress && progress->objectName() == "progressDialog"
                                   ? progress->findChild<QPushButton *>("IDCANCEL")
                                   : nullptr;
-                if (close && close->text().contains(QStringLiteral("Close")) && !closeScheduled) {
+                if (TestProgressDialog::IsCloseButton(close) && !closeScheduled) {
                     closeScheduled = true;
                     QTimer::singleShot(50, progress, [close] { close->click(); });
                 }

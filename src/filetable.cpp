@@ -145,6 +145,14 @@ FileTable::FileTable(int rows, int columns, QWidget *parent) : QTableWidget(rows
     horizontalHeader()->setSectionsClickable(true);
 }
 
+void FileTable::invalidateLanguageText() {
+    for (int row = 0; row < rowCount(); ++row)
+        for (int column = 0; column < columnCount(); ++column)
+            if (auto *cell = dynamic_cast<ArchiveTableItem *>(item(row, column)))
+                cell->sourceTextStale_ = true;
+    viewport()->update();
+}
+
 bool FileTable::takeSourceColumnClick() {
     auto *header = dynamic_cast<FileColumnHeader *>(horizontalHeader());
     if (!header)
@@ -394,13 +402,14 @@ QVariant ArchiveTableItem::data(int role) const {
         const CPropColumn *property = table->sourceColumn(col);
         if (index.isValid() && property && table->textFolder &&
             table->sourcePanel->GetFolder() == table->textFolder) {
-            if (!sourceTextDefined_) {
+            if (!sourceTextDefined_ || sourceTextStale_) {
                 sourceText_ = table->sourcePanel->GetItemText(index.toUInt(), *property);
                 if (col == 0)
                     sourceText_ = (QTableWidgetItem::data(Qt::UserRole + 5).toString() +
                                    sourceText_.toString())
                                       .normalized(QString::NormalizationForm_C);
                 sourceTextDefined_ = true;
+                sourceTextStale_ = false;
             }
             return sourceText_;
         }

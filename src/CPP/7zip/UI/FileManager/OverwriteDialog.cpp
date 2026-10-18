@@ -52,9 +52,7 @@ void COverwriteDialog::ReduceString(UString &s) {
 void AddSizeValue(UString &s, UInt64 value);
 void AddSizeValue(UString &s, UInt64 value) {
     {
-        wchar_t sz[32];
-        ConvertUInt64ToString(value, sz);
-        s += MyFormatNew(IDS_FILE_SIZE, sz);
+        s += MyFormatNew(IDS_FILE_SIZE, value);
     }
     if (value >= (1 << 10)) {
         char c;
