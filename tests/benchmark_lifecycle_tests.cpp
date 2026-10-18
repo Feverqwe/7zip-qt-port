@@ -93,8 +93,9 @@ class BenchmarkLifecycleTests final : public QObject {
                 QVERIFY(button);
                 QVERIFY2(UiInspection::fullyVisible(*button, *view), name);
                 const QRect bounds(button->mapTo(view, QPoint()), button->size());
-                QVERIFY2(bounds.right() < logBounds.left(), name);
-                if (QString::fromLatin1(name) == "IDB_RESTART")
+                if (log->isVisible())
+                    QVERIFY2(bounds.right() < logBounds.left(), name);
+                if (log->isVisible() && QString::fromLatin1(name) == "IDB_RESTART")
                     QVERIFY(logBounds.top() <= bounds.top());
             }
             for (const QString &name : {QStringLiteral("IDT_BENCH_SIZE"),

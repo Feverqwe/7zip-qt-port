@@ -87,21 +87,22 @@ EN/RU and current native results are in the
 ### Source extraction prompts (P0-04.1 prerequisite)
 
 `extract_prompt` produces OverwriteDialog reports at 700×440 / 560×440 with
-extra buttons shown/hidden, and MemDialog reports at 700×460 / 560×460 with
+extra buttons enabled/disabled, and MemDialog reports at 700×460 / 560×460 with
 limit editing disabled/enabled. `ui_parity_overwrite` / `ui_parity_mem` run
 that current-build producer fixture before comparing pinned RC contracts.
 
 Overwrite order is destination notice, question start, old file icon/details,
 question end, new file icon/details, then two rows of Yes/Yes to all/Auto rename
 and No/No to all/Cancel. Source ReduceString, byte size and timestamp formatting
-remain native. No is the default when requested; extra actions hide together.
+remain native. No is the default when requested; unavailable extra actions stay
+visible but disabled, as requested in the gallery review.
 The footer is a compact block aligned right. Five standard buttons have equal
 native-text widths; Auto Rename uses the source 104/64 width proportion, enlarged
 if its translated text requires it. Cancel has a standard width and aligns with
-Auto Rename's right edge. Hidden extra buttons retain their resource columns and
+Auto Rename's right edge. Disabled extra buttons retain their columns and
 gaps, so Yes/No/Cancel do not move. File details start beside the top of each icon.
-`overwrite_layout` covers EN/RU, normal/compact widths, extra-action visibility
-and the public hide transition. Its initial-frame case checks growth between
+`overwrite_layout` covers EN/RU, normal/compact widths, extra-action availability
+and reinitialization. Its initial-frame case checks growth between
 8pt and 12pt fonts: the source 356×216 dialog-unit frame maps through
 `QtDialogUnits` and may expand to Qt's minimum size. Responsive Qt layouts and
 native font metrics are deliberate adaptations of the fixed Win32 dialog;
@@ -111,9 +112,10 @@ Qt supplies one file icon; the optional second Windows EXE/ICO icon is omitted
 explicitly in the contract. Widths must fit labels and footer buttons without
 clipping. Default and native result IDs are checked behaviorally.
 
-Memory initially maps the336×216DLU client through its native font/minimum
-hint, with eight-DLU root margins,72DLU message area and62DLU Action group.
+Memory sizes its initial client to visible content, with eight-DLU root margins.
+The message is top-aligned; message and Action areas follow their content.
 The limit edit/spinner pair occupies50DLU with native minimum protection,
+with both arrow buttons fitting within the edit height,
 indented10DLU from the root margin; GB follows after8DLU. Remember has a10DLU
 inset from the radio buttons. Continue/Cancel are64×16DLU with native caption
 protection, with a minimum10DLU gap after Action. The source has no minimize/

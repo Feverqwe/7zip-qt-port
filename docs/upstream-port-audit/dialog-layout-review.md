@@ -1,5 +1,40 @@
 # Dialog layout review — 2026-10-17
 
+## Review gallery: compact forms and useful content — 2026-10-18
+
+Reviewed native LinkDialog.rc/OnInit/OnSize, MemDialog.rc/OnInit and spin
+handlers, CopyDialog.rc/OnInit, BenchmarkDialog.rc/OnSize and log consumers,
+and CompressOptionsDialog.rc with COptionsDialog::SetPrec/OnLanguageChange
+against their existing Qt control adapters. Baseline/repository below apply.
+The changes stay at these presentation boundaries; source calculations,
+path/link actions, timestamp policy, memory-limit validation and result mapping
+remain authoritative. No source algorithm or error branch is omitted.
+
+At the user's request, Link uses visible-content sizing and native minimums,
+does not reserve an empty current-target row, and fits all choices initially;
+the capture producer returns to the top after reachability checks. Memory
+prompts size to their message/actions, align the message to the top and keep
+both spin arrows within the edit height. Copy uses explicit source margins and
+input-aligned native rectangles. Normal Benchmark allocates empty-log space
+to metrics, protects their minimum width and wraps system information in the
+available area, leaving a gutter beside native overlay scrollbars. A populated
+log still appears; source-total output and metric calculations are unchanged.
+
+Compression Options identifies the archive format using the existing localized
+format caption, removes mnemonic markers from that display-only label, uses
+native footer hints, and avoids reserving heights for hidden time controls.
+Review producers retain width/compact stress checks but capture content-sized
+Options frames. The common-controls fixture now supplies real 7z timestamp
+capabilities instead of presenting an empty synthetic format. Two duplicate
+English-literal Copy assertions were removed from the field/commit regression;
+localized captions remain covered by language and standard-control suites.
+
+macOS arm64 / Qt 6.12: focused geometry, modal/keyboard, memory, path, timestamp
+and language consumers pass, including maintained Overwrite/Mem RC comparisons.
+The overwrite contract records the requested visible-but-disabled adaptation.
+Native Cocoa light/dark groups were refreshed and affected screenshots reviewed.
+Windows/Linux and rendered Windows parity were not rerun for this correction.
+
 ## Review gallery: action availability and browser icons — 2026-10-18
 
 Compared `OverwriteDialog::OnInit` and its callers/answer mapping with the

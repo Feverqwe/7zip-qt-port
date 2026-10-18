@@ -110,7 +110,7 @@ class ExtractPromptTests final : public QObject {
         dialog.OnInit();
         dialog.show();
         for (const auto *name : {"overwriteYesAll", "overwriteNoAll", "overwriteRename"})
-            QVERIFY(!dialog.findChild<QPushButton *>(name)->isVisible());
+            QVERIFY(!dialog.findChild<QPushButton *>(name)->isEnabled());
         QTest::keyClick(&dialog, Qt::Key_Escape);
         QCOMPARE(dialog.result(), IDCANCEL);
     }

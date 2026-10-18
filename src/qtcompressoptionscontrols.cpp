@@ -1,5 +1,6 @@
 #include "qtcompressoptionscontrols.h"
 #include "7zip/UI/GUI/CompressDialogRes.h"
+#include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "qtdialogscreenservices.h"
 #include "qtdialogunits.h"
 #include "qtlangbuttonbox.h"
@@ -109,6 +110,7 @@ void CQtCompressOptionsDialog::buildControls() {
     auto *info = new QLabel(this);
     registerControl(IDT_COMPRESS_TIME_INFO, "IDT_COMPRESS_TIME_INFO", info);
     info->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
+    info->setContentsMargins(0, 0, 0, QtDialogUnits(font()).pixels(QSize(0, 4)).height());
     layout->addWidget(info);
     auto *time = new QGroupBox("Time", this);
     time->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
@@ -191,7 +193,7 @@ void CQtCompressOptionsDialog::applySourceGeometry() {
         ntfsGrid->setRowMinimumHeight(row, y(14));
     auto *time = static_cast<QGroupBox *>(GetItem(IDG_COMPRESS_TIME));
     auto *grid = static_cast<QGridLayout *>(time->layout());
-    grid->setContentsMargins(x(8), y(12), x(8), y(4));
+    grid->setContentsMargins(x(8), y(6), x(8), y(4));
     grid->setSpacing(0);
     grid->setHorizontalSpacing(x(6));
 #ifdef Q_OS_MACOS
@@ -202,17 +204,11 @@ void CQtCompressOptionsDialog::applySourceGeometry() {
 #endif
     grid->setColumnMinimumWidth(0, x(18));
     grid->setColumnStretch(1, 1);
-    for (int row = 0; row < 6; ++row)
-        grid->setRowMinimumHeight(row, y(row < 4 ? 14 : 20));
-#ifndef Q_OS_WIN
-    grid->setRowMinimumHeight(5, 0);
-#endif
     auto *precision = static_cast<QComboBox *>(GetItem(IDC_COMPRESS_TIME_PREC));
     precision->setFixedWidth(qMax(x(76), precision->minimumSizeHint().width()));
     auto *buttons = findChild<QDialogButtonBox *>("compressOptionsButtons");
     for (auto *button : buttons->buttons()) {
-        button->setMinimumWidth(qMax(x(64), button->sizeHint().width()));
-        button->setMinimumHeight(qMax(y(16), button->sizeHint().height()));
+        button->setMinimumSize(button->sizeHint());
     }
 }
 
@@ -308,7 +304,11 @@ void CQtCompressOptionsDialog::EnableItem(unsigned id, bool enabled) {
     GetItem(id)->setEnabled(enabled);
 }
 void CQtCompressOptionsDialog::SetItemText(unsigned id, const UString &text) {
-    static_cast<QLabel *>(GetItem(id))->setText(QString::fromWCharArray(text.Ptr()));
+    QString value = QString::fromWCharArray(text.Ptr());
+    if (id == IDT_COMPRESS_TIME_INFO && value.contains(':'))
+        value = QtLangText(IDT_COMPRESS_FORMAT, "Archive format:").remove('&') +
+                value.mid(value.indexOf(':') + 1);
+    static_cast<QLabel *>(GetItem(id))->setText(value);
 }
 void CQtCompressOptionsDialog::NormalizePosition() { QtNormalizeDialogPosition(*this); }
 bool CQtCompressOptionsDialog::OnButtonClicked(unsigned, QWidget *) { return false; }

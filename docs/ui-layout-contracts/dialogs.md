@@ -29,26 +29,26 @@ changing stored full values, clipboard/detail or acceptance behavior.
 ### Link (P2-05)
 
 Reference: pinned FileManager/LinkDialog.rc and source OnInit/OnButton_Link.
-Initial client is304×230DLU, mapped with the native Qt font and protected
-minimum sizes. Root margins are8DLU; Browse is20DLU wide. Source path labels
-start at8/48DLU vertically, Current target at78, Link Type at104 with90DLU
-height. The footer uses64×16DLU buttons with native caption protection.
+Initial size follows visible controls and native minima. Root margins are8DLU;
+Browse is20DLU wide. Empty Current target text reserves no row, and native
+spacing separates paths and Link Type. The footer uses64×16DLU buttons with
+native caption protection.
 The source resizable/minimize/maximize capabilities are requested through Qt
 window flags; native window managers may suppress modal title-bar controls.
 The resource has no context-help title-bar button.
 Link from combo/browse precedes Link to combo/browse and current target text.
 Link Type contains Hard→File Symbolic→Directory Symbolic→Junction→WSL in source
 order. Link is the default footer button, followed by Cancel. Qt scrolls the
-content at compact sizes; desktop-only Junction/WSL remain visibly disabled on
+content when necessary; requested compact sizes expand to show the path inputs
+and all link choices. Desktop-only Junction/WSL remain visibly disabled on
 POSIX with a platform reason. Source radio/type choices and errors remain owned
 by CLinkDialog; Qt controls bind original captions and LangSetDlgItems maps
 IDCANCEL to its source language entry.
 Radio captions use the existing220-pixel language wrapping binding so native
 Windows EN/RU font metrics do not force horizontal clipping at360 pixels.
 `link_dialog` writes EN/RU520×500/360×300 JSON and checks named controls after
-scrolling and footer exposure, plus native-font source initial frames. A group
-frame may exceed a compact viewport; its native title rectangle and every child
-must each be fully reachable. Current native EN/RU reports on three OS and
+scrolling and footer exposure, plus native-font initial frames. Review captures
+return to the top after reachability probes. Historical native EN/RU reports and
 rendered original initial states are recorded in the
 [secondary-dialog receipt](../archive/qt-port/upstream-port-audit/p3-06-secondary-dialogs-2026-10-16.md).
 Native font metrics, compact scrolling and modal chrome prevent a claim of
@@ -67,7 +67,8 @@ Rating columns; Compressing and Decompressing retain Current/Resulting rows.
 Elapsed/Passes and Total Rating precede CPU/version/system information. In the
 normal resource, Restart/Stop belong to the upper right of the left control
 pane; Help/Cancel remain in that pane's footer. The separate static log begins
-at the top of the right column and spans the normal dialog height. It uses
+at the top of the right column when nonempty. An empty log reserves no column,
+allowing metrics to use the available width. It uses
 plain, nonwrapping dialog-font text, not the total mode's fixed-font edit.
 Compressing/Decompressing are group boxes; resource RTEXT metric headers and
 values are right-aligned. Initial clients are488×264DLU normal and376×276DLU
@@ -78,7 +79,9 @@ Passes, with Restart initially focused. Total initially focuses its console.
 Both source templates request minimize/maximize/resizable style and no
 context-help title-bar button; Qt retains native modal-chrome conventions.
 Total mode has elapsed time and a fixed-font console. Qt scrolls the normal control pane at
-compact sizes and replaces Win32 rectangles/font setup with Qt layout services.
+compact heights and protects the minimum width needed by its metrics. System
+information wraps in the available column width, with a gutter beside overlay
+scrollbars. Qt replaces Win32 rectangles/font setup with Qt layout services.
 
 `benchmark_lifecycle` writes source-initial and normal/total EN/RU JSON at960×650 and640×400,
 checks all named labels/inputs after scrolling, fixed footer exposure and live

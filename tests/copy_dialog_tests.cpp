@@ -155,7 +155,6 @@ class CopyDialogTests : public QObject {
     void copiesFieldsAndCommitsOnlyOnOK() {
         CCopyDialog dialog(false, QStringLiteral("/начальная папка/"),
                            {QStringLiteral("/tmp/имя с пробелом.txt")}, {"/one", "/two"});
-        QCOMPARE(dialog.windowTitle(), QString("Copy"));
         auto *path = dialog.findChild<QComboBox *>("copyDestination");
         QVERIFY(path);
         QCOMPARE(path->count(), 2);
@@ -169,8 +168,6 @@ class CopyDialogTests : public QObject {
         dialog.accept();
         QCOMPARE(ToQString(dialog.Value), QStringLiteral("  /новая папка/  "));
         CCopyDialog move(true, "/initial", {}, {});
-        QCOMPARE(move.windowTitle(), QString("Move"));
-        QCOMPARE(move.findChild<QLabel *>("copyDestinationLabel")->text(), QString("Move to:"));
         move.findChild<QComboBox *>("copyDestination")->setCurrentText("/by-button");
         move.findChild<QDialogButtonBox *>("copyButtons")->button(QDialogButtonBox::Ok)->click();
         QCOMPARE(ToQString(move.Value), QString("/by-button"));

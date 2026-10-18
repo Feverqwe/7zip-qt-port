@@ -20,6 +20,11 @@ namespace {
 class CBenchmarkControlsScroll final : public QScrollArea {
   public:
     using QScrollArea::QScrollArea;
+    QSize minimumSizeHint() const override {
+        QSize size = QScrollArea::minimumSizeHint();
+        size.setWidth(sizeHint().width());
+        return size;
+    }
     QSize sizeHint() const override {
         QSize size = QScrollArea::sizeHint();
         const int controls = widget() ? widget()->minimumSizeHint().width() : 0;
@@ -176,7 +181,7 @@ QGridLayout *CQtBenchmarkWindow::BuildParameters() {
 void CQtBenchmarkWindow::BuildNormalControls(QHBoxLayout *body) {
     auto *left = new QWidget(this);
     auto *grid = new QGridLayout(left);
-    grid->setContentsMargins(0, 0, 0, 0);
+    grid->setContentsMargins(0, 0, style()->pixelMetric(QStyle::PM_ScrollBarExtent), 0);
     grid->addLayout(BuildParameters(), 0, 0, 1, 2);
     grid->addLayout(BuildMetrics(), 1, 0, 1, 2);
     auto *error = rightLabel(IDT_BENCH_ERROR_MESSAGE, "IDT_BENCH_ERROR_MESSAGE");
@@ -189,15 +194,18 @@ void CQtBenchmarkWindow::BuildNormalControls(QHBoxLayout *body) {
                            "IDT_BENCH_SYS1", "IDT_BENCH_SYS2"};
     for (int i = 0; i < 5; ++i) {
         auto *view = label(info[i], names[i]);
+        if (i >= 3)
+            view->hide();
         view->setWordWrap(true);
         if (i == 0 || i == 2)
             view->setAlignment(Qt::AlignRight | Qt::AlignTop);
         if (i == 0)
             grid->addWidget(view, 4, 0, 1, 2, Qt::AlignRight);
-        else if (i == 1 || i == 2)
-            grid->addWidget(view, 5, i - 1, i == 2 ? Qt::AlignRight : Qt::AlignLeft);
-        else
-            grid->addWidget(view, i + 3, 0, Qt::AlignLeft);
+        else if (i == 1 || i == 2) {
+            view->setAlignment((i == 2 ? Qt::AlignRight : Qt::AlignLeft) | Qt::AlignTop);
+            grid->addWidget(view, 5, i - 1);
+        } else
+            grid->addWidget(view, i + 3, 0, 1, 2);
     }
     grid->setColumnStretch(0, 232);
     grid->setColumnStretch(1, 100);
@@ -213,16 +221,16 @@ void CQtBenchmarkWindow::BuildNormalControls(QHBoxLayout *body) {
     column->setContentsMargins(0, 0, 0, 0);
     column->addWidget(scroll, 1);
     column->addLayout(BuildFooter());
-    // Source normal OnSize grows only the log; compact Qt viewports scroll
-    // the left controls while retaining the source footer beside the log.
-    pane->setMaximumWidth(scroll->sizeHint().width());
-    body->addWidget(pane);
+    // Compact Qt viewports scroll the controls and retain the footer. Give
+    // useful metrics the available width until there is actual log output.
+    body->addWidget(pane, 3);
     auto *log = label(IDT_BENCH_LOG, "IDT_BENCH_LOG");
     log->setAlignment(Qt::AlignLeft | Qt::AlignTop);
     log->setTextFormat(Qt::PlainText);
     log->setTextInteractionFlags(Qt::NoTextInteraction);
     log->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Ignored);
     log->setMinimumWidth(QtDialogUnits(font()).pixels(QSize(20, 0)).width());
+    log->hide();
     body->addWidget(log, 1);
 }
 QGridLayout *CQtBenchmarkWindow::BuildMetrics() {
@@ -310,11 +318,8 @@ void CQtBenchmarkWindow::SetItemText(unsigned id, const UString &text) {
     const QString value = QString::fromWCharArray(text.Ptr());
     if (auto *label = qobject_cast<QLabel *>(GetItem(id))) {
         label->setText(value);
-        // A left-aligned spanning item has its natural width, whereas QGridLayout
-        // calculates its row height for the entire span. Retain the wrapped
-        // label's own required height after the original source updates text.
-        if (label->wordWrap())
-            label->setMinimumHeight(label->heightForWidth(label->sizeHint().width()));
+        if (id == IDT_BENCH_LOG || id == IDT_BENCH_SYS1 || id == IDT_BENCH_SYS2)
+            label->setVisible(!value.isEmpty());
     } else if (auto *edit = qobject_cast<QPlainTextEdit *>(GetItem(id)))
         edit->setPlainText(value);
 }

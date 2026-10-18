@@ -63,6 +63,9 @@ class LanguageStandardButtonsTests final : public QObject {
         if (name == "compress-options") {
             compression_.FormatOptions = &profile_;
             compression_.ArcInfo.Name = "7z";
+            compression_.ArcInfo.Flags = NArcInfoFlags::kCTime | NArcInfoFlags::kATime |
+                                         NArcInfoFlags::kMTime | NArcInfoFlags::kMTime_Default;
+            compression_.ArcInfo.TimeFlags = TIME_PREC_TO_ARC_FLAGS_MASK(NFileTimeType::kWindows);
             return std::make_unique<COptionsDialog>(&compression_);
         }
         if (name == "compress")
@@ -127,6 +130,10 @@ class LanguageStandardButtonsTests final : public QObject {
             dialog.resize(size.expandedTo(dialog.minimumSizeHint()));
             dialog.show();
             QApplication::processEvents();
+            if (name == "compress-options") {
+                dialog.resize(dialog.width(), dialog.minimumSizeHint().height());
+                QApplication::processEvents();
+            }
             auto *box = dialog.findChild<QDialogButtonBox *>();
             QVERIFY(box);
             QVERIFY(UiInspection::fullyVisible(*box, dialog));

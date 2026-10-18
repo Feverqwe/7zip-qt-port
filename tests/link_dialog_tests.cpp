@@ -17,6 +17,7 @@
 #include <QPushButton>
 #include <QRadioButton>
 #include <QScrollArea>
+#include <QScrollBar>
 #include <QStyleOptionButton>
 #include <QStyleOptionGroupBox>
 #include <QTemporaryDir>
@@ -112,10 +113,10 @@ class LinkDialogTests final : public QObject {
             QVERIFY(UiInspection::writeReport(
                 dialog, QString("link-source-frame-%1-%2").arg(language).arg(size.width())));
             QVERIFY(dialog.windowFlags().testFlag(Qt::WindowMinMaxButtonsHint));
-            QCOMPARE(dialog.size(),
-                     UiInspection::normalizedInitialClientSize(
-                         dialog, QtDialogUnits(dialog.font()).pixels(QSize(304, 230))));
-            dialog.resize(size);
+            QVERIFY(UiInspection::fullyVisible(*from, dialog));
+            QVERIFY(UiInspection::fullyVisible(*dialog.findChild<QGroupBox *>("IDG_LINK_TYPE"),
+                                               dialog));
+            dialog.resize(size.width(), qMin(size.height(), dialog.sizeHint().height()));
             QApplication::processEvents();
             // Focused editable combos can asynchronously scroll themselves into view.
             dialog.setFocus();
@@ -167,6 +168,9 @@ class LinkDialogTests final : public QObject {
             }
             for (const char *name : {"IDB_LINK_LINK", "IDCANCEL"})
                 QVERIFY(UiInspection::fullyVisible(*dialog.findChild<QPushButton *>(name), dialog));
+            scroll->verticalScrollBar()->setValue(0);
+            QApplication::processEvents();
+            QVERIFY(UiInspection::fullyVisible(*from, dialog));
             QVERIFY(UiInspection::writeReport(
                 dialog, QString("link-%1-%2").arg(language).arg(size.width())));
         });

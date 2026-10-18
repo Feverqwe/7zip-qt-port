@@ -127,6 +127,9 @@ Extra height after manual resizing remains below the groups. Time rows retain so
 order/spacing with native minimum protection for wrapped captions. Cocoa gives
 the NTFS slot one extra logical pixel for its native group backing and uses
 control-dependent horizontal spacing to separate the combo backing from its label.
+The format caption identifies the archive format. Hidden time rows reserve no
+empty height, and the footer uses native button sizing. Review captures show
+content-sized normal/compact forms after checking the requested widths.
 Normal/compact requested sizes expand to actual native minima; text and controls
 must remain exposed, rather than fit an impossible fixed-height request.
 

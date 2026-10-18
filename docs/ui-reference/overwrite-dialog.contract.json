@@ -123,7 +123,7 @@
         {
           "source": "CPP/7zip/UI/FileManager/OverwriteDialog.cpp",
           "symbol": "COverwriteDialog::OnInit",
-          "requirement": "Native grouping/order and state are retained at normal and compact sizes."
+          "requirement": "Keep native action grouping/order. User-requested Qt adaptation: unavailable batch actions remain visible but disabled instead of disappearing."
         }
       ],
       "assert": [
@@ -209,12 +209,12 @@
         },
         {
           "id": "IDB_YES_TO_ALL",
-          "property": "visible",
+          "property": "enabled",
           "equals": false
         },
         {
           "id": "IDB_AUTO_RENAME",
-          "property": "visible",
+          "property": "enabled",
           "equals": false
         },
         {
@@ -229,7 +229,7 @@
         },
         {
           "id": "IDB_NO_TO_ALL",
-          "property": "visible",
+          "property": "enabled",
           "equals": false
         },
         {

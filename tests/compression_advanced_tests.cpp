@@ -134,6 +134,8 @@ class CompressionAdvancedTests final : public QObject {
 #endif
         QVERIFY(UiInspection::separate(*dialog.findChild<QGroupBox *>("IDG_COMPRESS_TIME"),
                                        *buttons, dialog));
+        dialog.resize(dialog.width(), dialog.minimumSizeHint().height());
+        QCoreApplication::processEvents();
         QVERIFY(UiInspection::writeReport(
             dialog, QString("compression-options-%1-%2").arg(format).arg(size.width())));
         dialog.accept();

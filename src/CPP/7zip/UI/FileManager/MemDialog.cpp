@@ -36,7 +36,7 @@ void CMemDialog::BuildPresentation() {
     message->setObjectName("memMessage");
     message->setTextFormat(Qt::PlainText);
     message->setWordWrap(true);
-    message->setMinimumHeight(units.pixels(QSize(0, 72)).height());
+    message->setAlignment(Qt::AlignLeft | Qt::AlignTop);
     _controls.insert(IDT_MEM_MESSAGE, message);
     layout->addWidget(message);
     layout->addSpacing(units.pixels(QSize(0, 4)).height());
@@ -98,10 +98,12 @@ QWidget *CMemDialog::BuildLimitRow() {
         button->setArrowType(up ? Qt::UpArrow : Qt::DownArrow);
         button->setObjectName(up ? "memSpinUp" : "memSpinDown");
         button->setAutoRepeat(true);
+        button->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Ignored);
         arrows->addWidget(button);
         connect(button, &QToolButton::clicked, this, [this, up] { StepSpin(up); });
     }
     _controls.insert(IDC_MEM_SPIN, spin);
+    spin->setFixedHeight(edit->sizeHint().height());
     spin->setFixedWidth(qMax(units.pixels(QSize(8, 0)).width(), spin->sizeHint().width()));
     fields->addWidget(spin);
     pair->setFixedWidth(qMax(units.pixels(QSize(50, 0)).width(),
@@ -119,7 +121,6 @@ QWidget *CMemDialog::BuildLimitRow() {
 QWidget *CMemDialog::BuildActions() {
     const QtDialogUnits units(font());
     auto *group = new QGroupBox(this);
-    group->setMinimumHeight(units.pixels(QSize(0, 62)).height());
     QtBindResourceText(group, IDG_MEM_ACTION, "Action");
     group->setObjectName("memAction");
     auto *actions = new QVBoxLayout(group);
@@ -272,7 +273,7 @@ bool CMemDialog::OnInit() {
     const UINT buttonId = is_Allowed ? IDR_MEM_ACTION_ALLOW : IDR_MEM_ACTION_SKIP_ARC;
     static_cast<QRadioButton *>(_controls.value(buttonId))->setChecked(true);
     _controls.value(IDX_MEM_REMEMBER)->setVisible(ShowRemember);
-    resize(QtDialogUnits(font()).pixels(QSize(336, 216)).expandedTo(minimumSizeHint()));
+    adjustSize();
     _controls.value(IDX_MEM_SAVE_LIMIT)->setFocus();
     return true;
 }

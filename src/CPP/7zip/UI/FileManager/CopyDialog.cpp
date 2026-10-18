@@ -20,6 +20,7 @@
 #include <QLineEdit>
 #include <QPlainTextEdit>
 #include <QPushButton>
+#include <QTextDocument>
 #include <QVBoxLayout>
 
 CCopyDialog::CCopyDialog(const QString &title, const QString &label, const QString &path,
@@ -62,6 +63,9 @@ bool CCopyDialog::OnInit() {
     // CopyDialog.rc: xc=320, yc=144; GuiCommon.rc adds m=8 on each side.
     resize(QtDialogUnits(font()).pixels(QSize(336, 160)));
     auto *layout = new QVBoxLayout(this);
+    const QSize margin = QtDialogUnits(font()).pixels(QSize(8, 8));
+    layout->setContentsMargins(margin.width(), margin.height(), margin.width(), margin.height());
+    layout->setSpacing(QtDialogUnits(font()).pixels(QSize(0, 4)).height());
     auto *label = new QLabel(ToQString(Static), this);
     label->setObjectName("copyDestinationLabel");
     layout->addWidget(label);
@@ -70,6 +74,7 @@ bool CCopyDialog::OnInit() {
     _path->setObjectName("copyDestination");
     _path->setAccessibleName(ToQString(Static));
     _path->setEditable(true);
+    _path->setAttribute(Qt::WA_LayoutUsesWidgetRect);
     _path->setInsertPolicy(QComboBox::NoInsert);
     FOR_VECTOR(i, Strings)
     _path->addItem(ToQString(Strings[i]));
@@ -80,6 +85,7 @@ bool CCopyDialog::OnInit() {
     pathRow->addWidget(_path, 1);
     auto *browse = new QPushButton("…", this);
     browse->setObjectName("copyBrowseButton");
+    browse->setAttribute(Qt::WA_LayoutUsesWidgetRect);
     QtBindLangText(browse, IDS_SET_FOLDER, "Select folder", true);
     browse->setFixedWidth(QtDialogUnits(font()).pixels(QSize(20, 0)).width());
     pathRow->addWidget(browse);
@@ -90,6 +96,7 @@ bool CCopyDialog::OnInit() {
     info->setObjectName("copySelectionInfo");
     QtBindLangText(info, IDS_PROPERTIES, "Properties", true);
     info->setReadOnly(true);
+    info->document()->setDocumentMargin(0);
     // Native IDT_COPY_INFO is static, not a separate keyboard tab stop.
     info->setFocusPolicy(Qt::NoFocus);
     info->setFrameShape(QFrame::NoFrame);

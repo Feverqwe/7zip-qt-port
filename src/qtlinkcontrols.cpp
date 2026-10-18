@@ -11,6 +11,7 @@
 #include <QRadioButton>
 #include <QResizeEvent>
 #include <QScrollArea>
+#include <QStyle>
 #include <QVBoxLayout>
 
 QWidget *CQtLinkWindow::Register(unsigned id, const char *name, QWidget *view,
@@ -58,7 +59,7 @@ void CQtLinkWindow::AddPathRow(QVBoxLayout *layout, bool to) {
 QWidget *CQtLinkWindow::BuildLinkTypes() {
     const QtDialogUnits units(font());
     auto *group = new QGroupBox(this);
-    group->setMinimumHeight(units.pixels(QSize(0, 90)).height());
+    group->setAttribute(Qt::WA_LayoutUsesWidgetRect);
     Register(IDG_LINK_TYPE, "IDG_LINK_TYPE", group, "Link Type");
     auto *types = new QVBoxLayout(group);
     const unsigned ids[] = {IDR_LINK_TYPE_HARD, IDR_LINK_TYPE_SYM_FILE, IDR_LINK_TYPE_SYM_DIR,
@@ -96,19 +97,19 @@ void CQtLinkWindow::BuildControls() {
     outer->setSpacing(margin.height());
     auto *content = new QWidget(this);
     auto *layout = new QVBoxLayout(content);
-    layout->setContentsMargins(0, 0, 0, 0);
+    layout->setContentsMargins(0, 0, style()->pixelMetric(QStyle::PM_ScrollBarExtent), 0);
     layout->setSpacing(0);
     AddPathRow(layout, false);
-    layout->addSpacing(units.pixels(QSize(0, 14)).height());
+    layout->addSpacing(units.pixels(QSize(0, 6)).height());
     AddPathRow(layout, true);
     layout->addSpacing(units.pixels(QSize(0, 4)).height());
     auto *current = new QLabel(this);
     current->setWordWrap(true);
     current->setTextFormat(Qt::PlainText);
-    current->setMinimumHeight(units.pixels(QSize(0, 8)).height());
+    current->hide();
     Register(IDT_LINK_PATH_TO_CUR, "IDT_LINK_PATH_TO_CUR", current);
     layout->addWidget(current);
-    layout->addSpacing(units.pixels(QSize(0, 18)).height());
+    layout->addSpacing(units.pixels(QSize(0, 6)).height());
     layout->addWidget(BuildLinkTypes());
     layout->addStretch();
     auto *scroll = new QScrollArea(this);
@@ -116,6 +117,7 @@ void CQtLinkWindow::BuildControls() {
     scroll->setFrameShape(QFrame::NoFrame);
     scroll->setWidgetResizable(true);
     scroll->setWidget(content);
+    scroll->setMinimumHeight(content->minimumSizeHint().height());
     outer->addWidget(scroll, 1);
     auto *footer = new QHBoxLayout;
     footer->setSpacing(margin.width());
@@ -135,11 +137,14 @@ void CQtLinkWindow::BuildControls() {
     connect(cancel, &QPushButton::clicked, this, &QDialog::reject);
     footer->addWidget(cancel);
     outer->addLayout(footer);
-    resize(units.pixels(QSize(304, 230)).expandedTo(minimumSizeHint()));
+    resize(QSize(qMax(360, sizeHint().width()), sizeHint().height()).expandedTo(minimumSizeHint()));
 }
 void CQtLinkWindow::SetItemText(unsigned id, const UString &text) {
-    if (auto *label = qobject_cast<QLabel *>(GetItem(id)))
+    if (auto *label = qobject_cast<QLabel *>(GetItem(id))) {
         label->setText(QString::fromWCharArray(text.Ptr()));
+        if (id == IDT_LINK_PATH_TO_CUR)
+            label->setVisible(!text.IsEmpty());
+    }
 }
 void CQtLinkWindow::CheckRadioButton(unsigned first, unsigned last, unsigned checked) {
     for (unsigned id = first; id <= last; ++id)
