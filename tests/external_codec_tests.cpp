@@ -6,9 +6,12 @@
 #endif
 #include <QFile>
 #include <QScopeGuard>
+#include <QSemaphore>
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QtTest>
+#include <array>
+#include <future>
 
 namespace {
 #ifdef Q_OS_WIN
@@ -77,6 +80,47 @@ class ExternalCodecTests final : public QObject {
         QTest::addColumn<bool>("globalOnly");
         QTest::newRow("official-handler") << false;
         QTest::newRow("global-only-external-handler") << true;
+    }
+    void concurrentReadersRetainSharedCodecProviders() {
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QByteArray bytes("concurrent native readers\0payload", 33);
+        const QString source = fixture.filePath(QStringLiteral("имя 空 with spaces.bin"));
+        QFile input(source);
+        QVERIFY(input.open(QIODevice::WriteOnly));
+        QCOMPARE(input.write(bytes), qint64(bytes.size()));
+        input.close();
+        const QString path = fixture.filePath("shared.zip");
+        QProcess creator;
+        creator.start(engine_, {"a", "-tzip", "--", path, source});
+        QVERIFY(creator.waitForFinished(10000));
+        QCOMPARE(creator.exitCode(), 0);
+        QSemaphore start;
+        std::array<std::future<bool>, 2> readers;
+        for (auto &reader : readers)
+            reader = std::async(std::launch::async, [&, catalog = catalog_] {
+                start.acquire();
+                for (unsigned repeat = 0; repeat < 16; ++repeat) {
+                    CArchiveLink archive;
+                    if (catalog->openArchive(archive, path, "zip", nullptr) != S_OK)
+                        return false;
+                    CMyComPtr2_Create<IArchiveExtractCallback, CExtractToMemory> callback;
+                    if (archive.GetArc()->Archive->Extract(nullptr, UInt32(-1), 0, callback) !=
+                            S_OK ||
+                        callback->OperationResult != NArchive::NExtract::NOperationResult::kOK ||
+                        QByteArray(reinterpret_cast<const char *>(callback->Stream->GetBuffer()),
+                                   int(callback->Stream->GetSize())) != bytes)
+                        return false;
+                }
+                return true;
+            });
+        start.release(int(readers.size()));
+        for (auto &reader : readers)
+            QVERIFY(reader.get());
+        // The same retained providers remain usable after both workers release
+        // their readers, as when independent File Manager windows finish work.
+        CArchiveLink finalReader;
+        QCOMPARE(catalog_->openArchive(finalReader, path, "zip", nullptr), S_OK);
     }
     void realEngineAndLeasedNativeHandler() {
         QFETCH(bool, globalOnly);

@@ -33,6 +33,9 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 
 ## Новые изменения
 
+- [Общий каталог кодеков в native workers](upstream-port-audit/codec-thread-ownership.md)
+  — исходный атомарный COM-счётчик для владельца, разделяемого окнами.
+
 - [Отмена файлового worker в ожидании перезаписи](upstream-port-audit/worker-prompt-cancellation.md)
   — согласование отмены и пробуждения при завершении операции и окна.
 

@@ -49,10 +49,12 @@ Z7_EXTERNAL_CODECS
         b) call SetCodecs(compressCodecsInfo) function from DLL file
 */
 
+#include "7zip/UI/FileManager/MyCom2.h"
 #include "Common/ComTry.h"
 #include "Common/MyBuffer.h"
 #include "Common/MyCom.h"
 #include "Common/MyString.h"
+#include "Windows/Synchronization.h"
 
 #ifdef Z7_EXTERNAL_CODECS
 #include "CPP/Windows/DLL.h"
@@ -279,7 +281,10 @@ class CCodecs Z7_final :
 #endif
     public CMyUnknownImp {
 #ifdef Z7_EXTERNAL_CODECS
-    Z7_IFACES_IMP_UNK_2(ICompressCodecsInfo, IHashers)
+    // Independent Qt windows retain this immutable catalog from worker threads.
+    Z7_COM_UNKNOWN_IMP_2_MT(ICompressCodecsInfo, IHashers)
+    Z7_IFACE_COM7_IMP(ICompressCodecsInfo)
+    Z7_IFACE_COM7_IMP(IHashers)
 #else
     Z7_COM_UNKNOWN_IMP_0
 #endif // Z7_EXTERNAL_CODECS
