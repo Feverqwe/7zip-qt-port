@@ -1,5 +1,6 @@
 #include "filetransferoperation.h"
 #include "CPP/7zip/UI/Common/IFileExtractCallback.h"
+#include "Windows/ErrorMsg.h"
 #include "qtfiletransfertransaction.h"
 #include "qtlinkservices.h"
 #include <QMutexLocker>
@@ -56,4 +57,11 @@ int FileTransferOperation::askOverwrite(const QString &existing, const QString &
     return answer;
 }
 
-void FileTransferOperation::run() { QtFileTransferTransaction(*this).run(); }
+void FileTransferOperation::run() {
+    try {
+        QtFileTransferTransaction(*this).run();
+    } catch (...) {
+        resultKind_ = ResultKind::Failure;
+        emit result(false, QString::fromWCharArray(NWindows::NError::MyFormatMessage(E_FAIL)));
+    }
+}

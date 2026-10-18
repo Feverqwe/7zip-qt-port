@@ -21,6 +21,7 @@ class QtFileTransferTransaction final {
     FileTransferOperation &worker_;
     QStringList prepareTargets(QString &error) const;
     void finish(QList<Completed> &completed, QString &error);
+    void rollback(const QList<Completed> &completed);
     bool copyEntry(const QString &source, const QString &target, QString *error,
                    bool reportProgress = true);
     bool mergeEntry(const QString &source, const QString &stage, const QString &target,

@@ -84,6 +84,9 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 - [Отмена файлового worker в ожидании перезаписи](upstream-port-audit/worker-prompt-cancellation.md)
   — согласование отмены и пробуждения при завершении операции и окна.
 
+- [Владение файловым переносом при исключении](upstream-port-audit/file-transfer-ownership.md)
+  — откат stages и опубликованного пакета, сохранение копии после частичного удаления исходника.
+
 - [Папка архива после отката Move](upstream-port-audit/archive-close-reopen.md)
   — сохранение пути ADS до закрытия native handler на Windows.
 

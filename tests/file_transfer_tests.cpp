@@ -7,11 +7,78 @@
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QTest>
+#include <stdexcept>
 
 class FileTransferTests : public QObject {
     Q_OBJECT
 
   private slots:
+    void serviceExceptionPreservesMoveData_data() {
+        QTest::addColumn<bool>("duringDeletion");
+        QTest::newRow("staging") << false;
+        QTest::newRow("source-deletion") << true;
+    }
+
+    void serviceExceptionPreservesMoveData() {
+        QFETCH(bool, duringDeletion);
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        const QString destination = temp.filePath(QStringLiteral("назначение"));
+        QVERIFY(QDir().mkpath(destination));
+        const QString first = temp.filePath(QStringLiteral("первый файл.txt"));
+        const QString second = temp.filePath(QStringLiteral("второй файл.txt"));
+        const QString target = QDir(destination).filePath(QFileInfo(first).fileName());
+        for (const QString &path : {first, second, target}) {
+            QFile file(path);
+            QVERIFY(file.open(QIODevice::WriteOnly));
+            QCOMPARE(file.write(path.toUtf8()), qint64(path.toUtf8().size()));
+        }
+        FileTransferOperation::FileSystemAdapter adapter;
+        adapter.trySourceRename = [second, duringDeletion](const QString &source,
+                                                           const QString &stage) {
+            if (duringDeletion)
+                return false;
+            if (source == second)
+                throw std::runtime_error("source rename service failed");
+            return QDir().rename(source, stage);
+        };
+        adapter.removeSource = [](const QString &source) -> bool {
+            if (!QFile::remove(source))
+                return false;
+            throw std::runtime_error("source deletion service failed after removing a file");
+        };
+        FileTransferOperation move({first, second}, destination, true, nullptr, adapter);
+        connect(
+            &move, &FileTransferOperation::overwriteRequested, &move,
+            [&move](const QString &, const QString &) {
+                move.submitOverwriteAnswer(NOverwriteAnswer::kYes);
+            },
+            Qt::DirectConnection);
+        QSignalSpy result(&move, &FileTransferOperation::result);
+        move.start();
+        QVERIFY(move.wait(30000));
+        QTRY_COMPARE(result.size(), 1);
+        QVERIFY(!result.first().first().toBool());
+        QVERIFY(!result.first().at(1).toString().isEmpty());
+        QCOMPARE(move.resultKind(), FileTransferOperation::ResultKind::Failure);
+        for (const QString &source : {first, second}) {
+            QFile surviving(duringDeletion && source == first
+                                ? QDir(destination).filePath(QFileInfo(source).fileName())
+                                : source);
+            QVERIFY(surviving.open(QIODevice::ReadOnly));
+            QCOMPARE(surviving.readAll(), source.toUtf8());
+        }
+        if (!duringDeletion) {
+            QFile previous(target);
+            QVERIFY(previous.open(QIODevice::ReadOnly));
+            QCOMPARE(previous.readAll(), target.toUtf8());
+            QCOMPARE(QDir(destination).entryList(QDir::Files | QDir::Hidden).size(), 1);
+        } else {
+            QVERIFY(!QFileInfo::exists(first));
+            QVERIFY(QFileInfo::exists(second));
+        }
+    }
+
     void crossVolumeMovePublishesBeforeDeletingSource() {
         QTemporaryDir temp;
         QVERIFY(temp.isValid());

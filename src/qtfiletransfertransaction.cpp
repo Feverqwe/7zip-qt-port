@@ -3,6 +3,7 @@
 #include "CPP/7zip/UI/Common/IFileExtractCallback.h"
 #include "CPP/7zip/UI/FileManager/FSFolder.h"
 #include "Common/StringConvert.h"
+#include "Windows/ErrorMsg.h"
 #include "filetransferoperation.h"
 #include "qtfiletransfercopycallback.h"
 #include "qtlanguageservices.h"
@@ -12,6 +13,7 @@
 #include <QDirIterator>
 #include <QFile>
 #include <QFileInfo>
+#include <QScopeGuard>
 #include <QUuid>
 #include <algorithm>
 
@@ -195,17 +197,21 @@ QStringList QtFileTransferTransaction::prepareTargets(QString &error) const {
     return targets;
 }
 
+void QtFileTransferTransaction::rollback(const QList<Completed> &completed) {
+    for (qsizetype i = completed.size(); i > 0; --i) {
+        const Completed &entry = completed[i - 1];
+        if (worker_.move_ && !entry.copiedMove)
+            QDir().rename(entry.target, entry.source);
+        else
+            removeEntry(entry.target);
+        if (!entry.backup.isEmpty())
+            QDir().rename(entry.backup, entry.target);
+    }
+}
+
 void QtFileTransferTransaction::finish(QList<Completed> &completed, QString &error) {
     if (!error.isEmpty()) {
-        for (qsizetype i = completed.size(); i > 0; --i) {
-            const Completed &entry = completed[i - 1];
-            if (worker_.move_ && !entry.copiedMove)
-                QDir().rename(entry.target, entry.source);
-            else
-                removeEntry(entry.target);
-            if (!entry.backup.isEmpty())
-                QDir().rename(entry.backup, entry.target);
-        }
+        rollback(completed);
         worker_.resultKind_ = worker_.canceled_ ? FileTransferOperation::ResultKind::Canceled
                                                 : FileTransferOperation::ResultKind::Failure;
         emit worker_.result(false, error);
@@ -218,8 +224,15 @@ void QtFileTransferTransaction::finish(QList<Completed> &completed, QString &err
                     QCoreApplication::translate("qtfiletransfertransaction", "Operation canceled.");
                 break;
             }
-            if (entry.merged ? !removeMergedSource(entry.source, entry.writtenSources, &error)
-                             : !worker_.adapter_.removeSource(entry.source)) {
+            bool removed = false;
+            try {
+                removed = entry.merged
+                              ? removeMergedSource(entry.source, entry.writtenSources, &error)
+                              : worker_.adapter_.removeSource(entry.source);
+            } catch (...) {
+                error = QString::fromWCharArray(NWindows::NError::MyFormatMessage(E_FAIL));
+            }
+            if (!removed) {
                 // Recursive deletion can fail after removing some children.
                 // Retain the published copy so the remaining bytes stay available.
                 entry.sourceDeleted = true;
@@ -295,6 +308,7 @@ void QtFileTransferTransaction::run() {
     QString error;
     QStringList targets = prepareTargets(error);
     QList<Completed> completed;
+    auto rollbackBatch = qScopeGuard([&] { rollback(completed); });
     for (qsizetype i = 0; i < worker_.sources_.size() && error.isEmpty(); ++i) {
         if (worker_.canceled_) {
             error = QCoreApplication::translate("qtfiletransfertransaction", "Operation canceled.");
@@ -361,9 +375,25 @@ void QtFileTransferTransaction::run() {
         const QString stage = target + suffix;
         QString backup;
         QStringList writtenSources;
+        bool stageStarted = false;
+        bool renamed = false;
+        bool backupOwned = false;
+        bool published = false;
+        auto rollbackItem = qScopeGuard([&] {
+            if (!stageStarted)
+                return;
+            const QString &current = published ? target : stage;
+            if (renamed)
+                QDir().rename(current, source);
+            else
+                removeEntry(current);
+            if (backupOwned)
+                QDir().rename(backup, target);
+        });
         emit worker_.currentFile(worker_.sources_[i]);
         const bool valid = !worker_.move_ || validateEntry(source, &error);
-        const bool renamed =
+        stageStarted = valid;
+        renamed =
             valid && worker_.move_ && !merge && worker_.adapter_.trySourceRename(source, stage);
         const bool copiedMove = valid && worker_.move_ && !renamed;
         const bool staged =
@@ -388,26 +418,25 @@ void QtFileTransferTransaction::run() {
         if (error.isEmpty() && QFileInfo::exists(target)) {
             // Keep the old entry until every source has published successfully.
             backup = target + suffix + QStringLiteral("-backup");
-            if (!QDir().rename(target, backup))
+            backupOwned = QDir().rename(target, backup);
+            if (!backupOwned)
                 error = QCoreApplication::translate("qtfiletransfertransaction",
                                                     "Could not preserve the previous item: %1")
                             .arg(target);
         }
-        if (error.isEmpty() && !QDir().rename(stage, target))
-            error = QCoreApplication::translate("qtfiletransfertransaction",
-                                                "Could not finish transfer: %1")
-                        .arg(target);
-        if (!error.isEmpty()) {
-            if (renamed)
-                QDir().rename(stage, source);
-            else
-                removeEntry(stage);
-            if (!backup.isEmpty())
-                QDir().rename(backup, target);
-            break;
+        if (error.isEmpty()) {
+            published = QDir().rename(stage, target);
+            if (!published)
+                error = QCoreApplication::translate("qtfiletransfertransaction",
+                                                    "Could not finish transfer: %1")
+                            .arg(target);
         }
+        if (!error.isEmpty())
+            break;
         completed.append({source, target, backup, copiedMove, worker_.move_ && !copiedMove, merge,
                           writtenSources});
+        rollbackItem.dismiss();
     }
+    rollbackBatch.dismiss();
     finish(completed, error);
 }
