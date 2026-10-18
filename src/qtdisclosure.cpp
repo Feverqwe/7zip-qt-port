@@ -1,6 +1,7 @@
 #include "qtdisclosure.h"
 #include <QFrame>
 #include <QLabel>
+#include <QPainterPath>
 #include <QStyleOptionToolButton>
 #include <QStylePainter>
 #include <QToolButton>
@@ -11,26 +12,43 @@ class DisclosureButton final : public QToolButton {
   public:
     using QToolButton::QToolButton;
 
+    QSize sizeHint() const override {
+        return QSize(fontMetrics().horizontalAdvance(text()) + qMax(8, fontMetrics().capHeight()) +
+                         18,
+                     qMax(24, fontMetrics().height() + 8));
+    }
+
   protected:
     void paintEvent(QPaintEvent *) override {
         QStyleOptionToolButton option;
         initStyleOption(&option);
         QStylePainter painter(this);
-        // Keep the native glyph, but constrain its rect independently of the
-        // toolbar arrow size. The full button remains the interaction target.
-        QStyleOption arrow;
-        arrow.initFrom(this);
-        arrow.rect =
-            QStyle::visualRect(layoutDirection(), rect(), QRect(4, (height() - 8) / 2, 8, 8));
-        painter.drawPrimitive(isChecked() ? QStyle::PE_IndicatorArrowDown
-                                          : (layoutDirection() == Qt::RightToLeft
-                                                 ? QStyle::PE_IndicatorArrowLeft
-                                                 : QStyle::PE_IndicatorArrowRight),
-                              arrow);
-        option.features &= ~QStyleOptionToolButton::Arrow;
-        option.arrowType = Qt::NoArrow;
-        option.rect = QStyle::visualRect(layoutDirection(), rect(), rect().adjusted(16, 0, 0, 0));
-        painter.drawControl(QStyle::CE_ToolButtonLabel, option);
+        // Native toolbar arrows can shrink the glyph differently by direction.
+        // Use one font-scaled chevron, rotating it without changing its bounds.
+        const qreal extent = qMax(8, fontMetrics().capHeight());
+        const QRect slot = QStyle::visualRect(layoutDirection(), rect(),
+                                              QRect(2, 0, qRound(extent + 4), height()));
+        painter.save();
+        painter.setRenderHint(QPainter::Antialiasing);
+        painter.translate(QRectF(slot).center());
+        if (isChecked())
+            painter.rotate(90);
+        else if (layoutDirection() == Qt::RightToLeft)
+            painter.rotate(180);
+        painter.setPen(
+            QPen(option.palette.color(isEnabled() ? QPalette::Active : QPalette::Disabled,
+                                      QPalette::ButtonText),
+                 qMax(1.5, extent / 6), Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+        QPainterPath chevron;
+        chevron.moveTo(-extent / 4, -extent / 2);
+        chevron.lineTo(extent / 4, 0);
+        chevron.lineTo(-extent / 4, extent / 2);
+        painter.drawPath(chevron);
+        painter.restore();
+        const QRect label = QStyle::visualRect(layoutDirection(), rect(),
+                                               rect().adjusted(qRound(extent + 12), 0, 0, 0));
+        style()->drawItemText(&painter, label, Qt::AlignLeading | Qt::AlignVCenter, option.palette,
+                              isEnabled(), text(), QPalette::ButtonText);
         if (hasFocus()) {
             QStyleOptionFocusRect focus;
             focus.initFrom(this);
@@ -53,6 +71,7 @@ QtDisclosure::QtDisclosure(QWidget *content, QWidget *parent)
     separator->setForegroundRole(QPalette::Mid);
     layout->addWidget(separator);
     button_->setCheckable(true);
+    button_->setFont(font());
     button_->setAutoRaise(true);
     button_->setIconSize(QSize(10, 10));
     button_->setToolButtonStyle(Qt::ToolButtonTextBesideIcon);

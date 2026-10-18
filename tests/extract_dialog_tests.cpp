@@ -59,6 +59,8 @@ class ExtractDialogTests final : public QObject {
         enabled->click();
         QCOMPARE(dialog.password(), QStringLiteral("пароль 密碼"));
         advanced->click();
+        QApplication::processEvents();
+        QVERIFY(UiInspection::writeReport(dialog, "redesign-extract-expanded-" + language));
         pathMode(dialog)->setCurrentIndex(0);
         advanced->click();
         QCOMPARE(dialog.options().pathMode, ExtractionOptions::PathMode::FullPaths);

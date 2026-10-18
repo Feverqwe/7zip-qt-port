@@ -79,6 +79,8 @@ class SourceCompressDialogTests final : public QObject {
         QVERIFY(UiInspection::writeReport(dialog, "redesign-add-collapsed-" + language));
         QVERIFY(UiInspection::fullyVisible(*summary, dialog));
         advanced->click();
+        QApplication::processEvents();
+        QVERIFY(UiInspection::writeReport(dialog, "redesign-add-expanded-" + language));
         parameters->clear();
         const QString initialSummary = summary->text();
         parameters->setText("tm=off");
