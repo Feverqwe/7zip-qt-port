@@ -4,6 +4,7 @@
 #include "archivecodeccatalog.h"
 #include "archivesfxmodule.h"
 #include "createarchivedialog.h"
+#include "fixtures/archive_sections.h"
 #include "layout_inspection.h"
 #include "qtlangcontrols.h"
 #include <QCryptographicHash>
@@ -249,9 +250,7 @@ class SfxCreationTests final : public QObject {
         auto *shared = dialog.findChild<QCheckBox *>("archiveSharedFiles");
         auto *remove = dialog.findChild<QCheckBox *>("archiveDeleteAfterCompression");
         QVERIFY(format && method && sfx && name && shared && remove);
-        auto *advanced = dialog.findChild<QToolButton *>("archiveAdvancedToggle");
-        QVERIFY(advanced);
-        advanced->click();
+        ExpandArchiveSections(dialog);
         format->setCurrentText("7z");
         QVERIFY(sfx->isEnabled());
         name->setText(QStringLiteral("пакет 空.7z"));

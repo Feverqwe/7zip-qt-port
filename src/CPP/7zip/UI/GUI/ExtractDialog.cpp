@@ -325,11 +325,11 @@ void CExtractDialog::changeEvent(QEvent *event) {
 void CExtractDialog::UpdateAdvancedSummary() {
     if (!_advancedSection || _pathMode->currentIndex() < 0)
         return;
-    QStringList values{_pathMode->currentText()};
-    for (auto *check : {_elimDup, _ntSecurity})
-        if (check->isEnabled() && check->isChecked())
-            values.append(QString(check->text()).remove('&'));
-    _advancedSection->setSummary(values.join(QStringLiteral(" · ")));
+    const bool modified =
+        kPathModeButtonsVals[_pathMode->currentIndex()] != NExtract::NPathMode::kFullPaths ||
+        !_elimDup->isChecked() || (_ntSecurity->isEnabled() && _ntSecurity->isChecked());
+    _advancedSection->setSummary(
+        modified ? QCoreApplication::translate("ArchiveRedesign", "Modified") : QString());
 }
 
 void CExtractDialog::UpdatePasswordControl() {

@@ -9,8 +9,9 @@
 The [approved redesign](../ui-redesign-plan.md) replaces the fixed columns with
 one form: destination/history and browse, optional subfolder name, overwrite mode,
 optional password, then Advanced settings. Path mode and root-folder duplication
-remain effective when Advanced settings is collapsed, and its summary reflects
-their current values. Windows security is shown only on Windows.
+remain effective when Advanced settings is collapsed. A short Modified indicator
+identifies nondefault hidden options; expanded fields have no value summary.
+Windows security is shown only on Windows.
 
 A supplied password enables/reveals its section. Disabling the section excludes
 the password from the accepted request and retains its draft for re-enabling.

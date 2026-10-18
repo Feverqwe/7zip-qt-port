@@ -15,8 +15,9 @@ void CreateArchiveDialog::createEncryptionOptions(QVBoxLayout *form) {
     QtBindLocalText(group, "ArchiveRedesign",
                     QT_TRANSLATE_NOOP("ArchiveRedesign", "Protect with a password"), true);
     encryptionForm_ = new QFormLayout(group);
+    encryptionForm_->setContentsMargins(24, 0, 0, 4);
     encryptionForm_->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
-    encryptionForm_->setRowWrapPolicy(QFormLayout::WrapAllRows);
+    encryptionForm_->setRowWrapPolicy(QFormLayout::WrapLongRows);
     password_ = new QLineEdit(group);
     password_->setObjectName("archivePassword");
     encryptionForm_->addRow("Password", password_);
@@ -29,17 +30,9 @@ void CreateArchiveDialog::createEncryptionOptions(QVBoxLayout *form) {
     encryptionForm_->addRow(showPassword_);
     encryption_ = new QComboBox(group);
     encryption_->setObjectName("archiveEncryption");
-    // CompressDialog.rc keeps IDT_COMPRESS_ENCRYPTION_METHOD beside its
-    // combo; password labels remain above their full-width edits.
-    auto *methodRow = new QWidget(group);
-    auto *methodLayout = new QHBoxLayout(methodRow);
-    methodLayout->setContentsMargins(0, 0, 0, 0);
-    auto *methodLabel = new QLabel("Method", methodRow);
+    encryptionForm_->addRow("Encryption method:", encryption_);
+    auto *methodLabel = qobject_cast<QLabel *>(encryptionForm_->labelForField(encryption_));
     methodLabel->setObjectName("archiveEncryptionMethodLabel");
-    methodLabel->setBuddy(encryption_);
-    methodLayout->addWidget(methodLabel);
-    methodLayout->addWidget(encryption_, 1);
-    encryptionForm_->addRow(methodRow);
     encryptHeaders_ = new QCheckBox("Encrypt file &names", group);
     encryptHeaders_->setObjectName("archiveEncryptHeaders");
     encryptHeaders_->setChecked(m_RegistryInfo.EncryptHeaders);

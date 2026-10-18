@@ -1,6 +1,7 @@
 #include "qtdisclosure.h"
 #include <QAccessible>
 #include <QAccessibleActionInterface>
+#include <QLabel>
 #include <QLineEdit>
 #include <QToolButton>
 #include <QVBoxLayout>
@@ -16,6 +17,7 @@ class DisclosureAccessibilityTests final : public QObject {
         auto *section = new QtDisclosure(draft, &window);
         section->button()->setText("Advanced options");
         layout->addWidget(section);
+        section->setSummary(QStringLiteral("Изменено"));
         window.show();
         QCoreApplication::processEvents();
         auto *accessible = QAccessible::queryAccessibleInterface(section->button());
@@ -25,17 +27,23 @@ class DisclosureAccessibilityTests final : public QObject {
         QVERIFY(accessible->state().collapsed);
         QVERIFY(!accessible->state().expanded);
         QVERIFY(!draft->isVisible());
+        auto *summary = section->findChild<QLabel *>("disclosureSummary");
+        QVERIFY(summary->isVisible());
+        const int headerTop = section->button()->mapTo(&window, QPoint()).y();
         auto *actions = accessible->actionInterface();
         QVERIFY(actions);
         const QString press = QAccessibleActionInterface::pressAction();
         QVERIFY(actions->actionNames().contains(press));
         actions->doAction(press);
         QVERIFY(draft->isVisible());
+        QVERIFY(!summary->isVisible());
+        QCOMPARE(section->button()->mapTo(&window, QPoint()).y(), headerTop);
         QVERIFY(accessible->state().expanded);
         QVERIFY(!accessible->state().collapsed);
         draft->setText(QStringLiteral("  изменённый черновик  "));
         actions->doAction(press);
         QVERIFY(!draft->isVisible());
+        QVERIFY(summary->isVisible());
         QVERIFY(accessible->state().collapsed);
         section->setExpanded(true);
         QVERIFY(accessible->state().expanded);

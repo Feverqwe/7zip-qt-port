@@ -2,6 +2,7 @@
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "archivebackend.h"
 #include "createarchivedialog.h"
+#include "fixtures/archive_sections.h"
 #include "layout_inspection.h"
 #include <QCryptographicHash>
 #include <QElapsedTimer>
@@ -412,9 +413,7 @@ class ArchiveVolumeCreationTests final : public QObject {
         volume->setEditText("64K 128K");
         dialog.resize(width, height);
         dialog.show();
-        auto *advanced = dialog.findChild<QToolButton *>("archiveAdvancedToggle");
-        QVERIFY(advanced);
-        advanced->click();
+        ExpandArchiveSections(dialog);
         QCoreApplication::processEvents();
         auto *scroll = dialog.findChild<QScrollArea *>("archiveOptionsScrollArea");
         scroll->ensureWidgetVisible(volume);
@@ -426,6 +425,8 @@ class ArchiveVolumeCreationTests final : public QObject {
         QVERIFY(UiInspection::writeReport(dialog, "archive-volumes-" + QString::number(width)));
         const QByteArray original = readFile(settings_);
         volume->setEditText("0");
+        auto *section = dialog.findChild<QtDisclosure *>("archiveVolumesSection");
+        section->setExpanded(false);
         QTimer::singleShot(0, &dialog, [&] {
             auto *message = qobject_cast<QMessageBox *>(QApplication::activeModalWidget());
             QVERIFY(message);
@@ -434,6 +435,9 @@ class ArchiveVolumeCreationTests final : public QObject {
         footer->button(QDialogButtonBox::Ok)->click();
         QCOMPARE(dialog.result(), int(QDialog::Rejected));
         QCOMPARE(readFile(settings_), original);
+        QVERIFY(section->isExpanded());
+        QCoreApplication::processEvents();
+        QVERIFY(UiInspection::fullyVisible(*volume, dialog));
         volume->setEditText("64K 128K");
         footer->button(QDialogButtonBox::Ok)->click();
         QCOMPARE(dialog.result(), int(QDialog::Accepted));

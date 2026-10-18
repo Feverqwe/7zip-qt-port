@@ -1,5 +1,6 @@
 #include "archivebackend.h"
 #include "createarchivedialog.h"
+#include "fixtures/archive_sections.h"
 #include "layout_inspection.h"
 #include <QScrollArea>
 #include <QSignalSpy>
@@ -46,9 +47,7 @@ class CompressionMemoryTests final : public QObject {
             QCOMPARE(dictionary->itemText(0), QStringLiteral("*  500 KB"));
         }
         QCOMPARE(dialog.compressionOptions().Dict64, UInt64(-1));
-        auto *advanced = dialog.findChild<QToolButton *>("archiveAdvancedToggle");
-        QVERIFY(advanced);
-        advanced->click();
+        ExpandArchiveSections(dialog);
         dialog.show();
         dictionary->setCurrentIndex(0);
         for (QSize size : {QSize(760, 720), QSize(640, 480)}) {
@@ -90,9 +89,7 @@ class CompressionMemoryTests final : public QObject {
             QCOMPARE(dictionary->itemText(0), QStringLiteral("*  %1").arg(sizeText));
             QCOMPARE(dialog.compressionOptions().Dict64, UInt64(-1));
         }
-        auto *advanced = dialog.findChild<QToolButton *>("archiveAdvancedToggle");
-        QVERIFY(advanced);
-        advanced->click();
+        ExpandArchiveSections(dialog);
         dialog.show();
         for (QSize size : {QSize(760, 720), QSize(640, 480)}) {
             dialog.resize(size);

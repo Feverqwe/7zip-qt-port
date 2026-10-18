@@ -2,6 +2,7 @@
 #include "CPP/7zip/UI/GUI/UpdateGUI.h"
 #include "archivebackend.h"
 #include "createarchivedialog.h"
+#include "fixtures/archive_sections.h"
 #include "layout_inspection.h"
 
 #include <QCheckBox>
@@ -154,10 +155,9 @@ class CompressionTests : public QObject {
         QTemporaryDir temp;
         QVERIFY(temp.isValid());
         CreateArchiveDialog dialog(temp.path());
-        auto *advanced = dialog.findChild<QToolButton *>("archiveAdvancedToggle");
         auto *passwordEnabled = dialog.findChild<QCheckBox *>("archivePasswordEnabled");
-        QVERIFY(advanced && passwordEnabled);
-        advanced->click();
+        QVERIFY(passwordEnabled);
+        ExpandArchiveSections(dialog);
         passwordEnabled->click();
         dialog.resize(640, 480);
         dialog.show();
@@ -197,9 +197,7 @@ class CompressionTests : public QObject {
         auto *scroll = dialog.findChild<QScrollArea *>();
         auto *buttons = dialog.findChild<QDialogButtonBox *>();
         QVERIFY(mode && pathMode && level && scroll && buttons);
-        auto *advanced = dialog.findChild<QToolButton *>("archiveAdvancedToggle");
-        QVERIFY(advanced);
-        advanced->click();
+        ExpandArchiveSections(dialog);
         QCOMPARE(pathMode->currentData().toInt(), int(NWildcard::k_RelatPath));
         QCOMPARE(dialog.compressionOptions().UpdateMode, NCompressDialog::NUpdateMode::kAdd);
         for (const QSize size : {QSize(760, 720), QSize(640, 480)}) {

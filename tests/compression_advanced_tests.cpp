@@ -1,5 +1,6 @@
 #include "7zip/PropID.h"
 #include "createarchivedialog.h"
+#include "fixtures/archive_sections.h"
 #include "layout_inspection.h"
 #include "qtcompressoptionsdialog.h"
 #include <QDateTime>
@@ -241,10 +242,10 @@ class CompressionAdvancedTests final : public QObject {
         dialog.findChild<QComboBox *>("archiveFormat")->setCurrentText("zip");
         dialog.resize(size);
         dialog.show();
-        dialog.findChild<QToolButton *>("archiveAdvancedToggle")->setChecked(true);
+        ExpandArchiveSections(dialog);
         QCoreApplication::processEvents();
         QCOMPARE(dialog.size(), size);
-        auto *group = dialog.findChild<QGroupBox *>("archiveLifecycleOptions");
+        auto *group = dialog.findChild<QWidget *>("archiveLifecycleOptions");
         auto *shared = check(dialog, "archiveSharedFiles");
         auto *remove = check(dialog, "archiveDeleteAfterCompression");
         QVERIFY(group && shared && remove);
@@ -293,7 +294,7 @@ class CompressionAdvancedTests final : public QObject {
         CreateArchiveDialog dialog(fixture.path(), {source});
         dialog.resize(size);
         dialog.show();
-        dialog.findChild<QToolButton *>("archiveAdvancedToggle")->setChecked(true);
+        ExpandArchiveSections(dialog);
         auto *parameters = dialog.findChild<QLineEdit *>("archiveParameters");
         auto *advanced = dialog.findChild<QPushButton *>("archiveAdvancedOptions");
         auto *volume = dialog.findChild<QComboBox *>("archiveVolumeSize");

@@ -1,6 +1,7 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "createarchivedialog.h"
+#include "fixtures/archive_sections.h"
 #include "fixtures/translation_catalog.h"
 #include "qtlangcontrols.h"
 #include <QScrollArea>
@@ -36,9 +37,7 @@ class LanguageFocusTests : public QObject {
             if (label->buddy() == parameters)
                 parametersLabel = label;
         QVERIFY(show && parameters && password && parametersLabel);
-        auto *advanced = dialog.findChild<QToolButton *>("archiveAdvancedToggle");
-        QVERIFY(advanced);
-        advanced->click();
+        ExpandArchiveSections(dialog);
         QCOMPARE(show->text(), QStringLiteral("&Показать пароль"));
         QCOMPARE(parametersLabel->text(), QStringLiteral("&Параметры:"));
         password->setText(QStringLiteral("pending secret 密碼"));

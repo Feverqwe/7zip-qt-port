@@ -125,17 +125,21 @@ QtDisclosure::QtDisclosure(QWidget *content, QWidget *parent)
     button_->setArrowType(Qt::RightArrow);
     button_->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
     button_->setFocusPolicy(Qt::StrongFocus);
-    layout->addWidget(button_, 0, Qt::AlignLeading);
+    auto *header = new QHBoxLayout;
+    header->addWidget(button_, 0, Qt::AlignLeading | Qt::AlignTop);
     summary_->setTextFormat(Qt::PlainText);
     summary_->setWordWrap(true);
     summary_->setObjectName("disclosureSummary");
-    layout->addWidget(summary_);
+    summary_->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    header->addWidget(summary_, 1, Qt::AlignVCenter);
+    layout->addLayout(header);
     layout->addWidget(content_);
     content_->hide();
     summary_->hide();
     connect(button_, &QToolButton::toggled, this, [this](bool expanded) {
         button_->setArrowType(expanded ? Qt::DownArrow : Qt::RightArrow);
         content_->setVisible(expanded);
+        summary_->setVisible(!expanded && !summary_->text().isEmpty());
         QAccessible::State changed;
         changed.expanded = true;
         changed.collapsed = true;
@@ -148,5 +152,5 @@ void QtDisclosure::setExpanded(bool expanded) { button_->setChecked(expanded); }
 bool QtDisclosure::isExpanded() const { return button_->isChecked(); }
 void QtDisclosure::setSummary(const QString &text) {
     summary_->setText(text);
-    summary_->setVisible(!text.isEmpty());
+    summary_->setVisible(!isExpanded() && !text.isEmpty());
 }

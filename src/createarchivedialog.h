@@ -50,6 +50,7 @@ class CreateArchiveDialog : public QDialog {
 
   private:
     void createArchiveForm(QVBoxLayout *layout, QVBoxLayout *windowLayout);
+    void createOptionSections(QVBoxLayout *layout, QFormLayout *basic);
     void stabilizeColumnWidths();
     static QWidget *reserveControlSpace(QWidget *control);
     void createCompressionOptions(QFormLayout *form);
@@ -57,6 +58,7 @@ class CreateArchiveDialog : public QDialog {
     void updateRedesignSummary();
     void createVolumeOptions(QFormLayout *form);
     void createAdvancedOptions(QFormLayout *form);
+    void createCommandLineOptions(QFormLayout *form);
     void createLifecycleOptions(QFormLayout *form);
     void updateSfxControls();
     void toggleSfx(bool enabled);
@@ -105,14 +107,14 @@ class CreateArchiveDialog : public QDialog {
     QStringList selected_;
     QLineEdit *name_ = nullptr;
     QComboBox *archivePath_ = nullptr;
-    QLabel *archiveFolder_ = nullptr;
+    QLineEdit *archiveFolder_ = nullptr;
     QComboBox *format_ = nullptr;
     QComboBox *updateMode_ = nullptr;
     QComboBox *pathMode_ = nullptr;
     QComboBox *volume_ = nullptr;
     QLineEdit *parameters_ = nullptr;
     QPushButton *advanced_ = nullptr;
-    QLabel *advancedSummary_ = nullptr;
+    bool hasMetadataOptions_ = false;
     QCheckBox *sharedFiles_ = nullptr;
     QCheckBox *sfx_ = nullptr;
     ArchiveSfxModule sfxModule_;
@@ -136,7 +138,9 @@ class CreateArchiveDialog : public QDialog {
     QCheckBox *showPassword_ = nullptr;
     QCheckBox *encryptHeaders_ = nullptr;
     QCheckBox *passwordEnabled_ = nullptr;
-    QtDisclosure *advancedDisclosure_ = nullptr;
+    QtDisclosure *fileOptions_ = nullptr;
+    QtDisclosure *volumeOptions_ = nullptr;
+    QtDisclosure *commandLineOptions_ = nullptr;
     QFormLayout *encryptionForm_ = nullptr;
     QDialogButtonBox *buttons_ = nullptr;
 };

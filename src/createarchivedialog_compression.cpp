@@ -39,28 +39,29 @@ void CreateArchiveDialog::createCompressionOptions(QFormLayout *form) {
     memoryUsage_ = new QLabel(compression);
     memoryUsage_->setObjectName("compressionMemoryUsage");
     memoryUsage_->setWordWrap(true);
-    auto *memoryRow = new QWidget(compression);
-    auto *memoryLayout = new QHBoxLayout(memoryRow);
-    memoryLayout->setContentsMargins(0, 0, 0, 0);
-    memUse_ = new QComboBox(memoryRow);
-    memUse_->setObjectName("compressionMemoryLimit");
-    memUse_->setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
-    memoryLayout->addWidget(memoryUsage_, 1);
-    memoryLayout->addWidget(memUse_);
-    memoryRow->setFocusProxy(memUse_);
-    // IDT_COMPRESS_MEMORY is above the usage/limit row in CompressDialog.rc.
-    // Keep all three source values visible rather than hiding limit/RAM in a tooltip.
     auto *memoryGroup = new QWidget(compression);
     memoryGroup->setObjectName("compressionMemoryGroup");
     auto *memoryForm = new QFormLayout(memoryGroup);
     memoryForm->setContentsMargins(0, 0, 0, 0);
     memoryForm->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
-    memoryForm->setRowWrapPolicy(QFormLayout::WrapAllRows);
-    memoryForm->addRow("Memory usage for Compressing:", memoryRow);
-    compressionForm->addRow(reserveControlSpace(memoryGroup));
+    memoryForm->setRowWrapPolicy(QFormLayout::WrapLongRows);
+    auto *memoryRow = new QWidget(memoryGroup);
+    auto *memoryLayout = new QHBoxLayout(memoryRow);
+    memoryLayout->setContentsMargins(0, 0, 0, 0);
+    memUse_ = new QComboBox(memoryRow);
+    memUse_->setObjectName("compressionMemoryLimit");
+    memoryLayout->addWidget(memUse_, 1);
+    memoryRow->setFocusProxy(memUse_);
+    memoryForm->addRow("Compression memory limit:", memoryRow);
+    auto *memoryHint = new QHBoxLayout;
+    auto *usageLabel = new QLabel(memoryGroup);
+    QtBindLocalText(usageLabel, "ArchiveRedesign",
+                    QT_TRANSLATE_NOOP("ArchiveRedesign", "Compression:"));
+    memoryHint->addWidget(usageLabel);
+    memoryHint->addWidget(memoryUsage_, 1);
     decompressionMemory_ = new QLabel(compression);
     decompressionMemory_->setObjectName("compressionDecompressionMemory");
-    decompressionMemory_->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
+    decompressionMemory_->setAlignment(Qt::AlignLeading | Qt::AlignVCenter);
     // IDT_COMPRESS_MEMORY_DE spans the column independently of g0xs/g1xs.
     // Its caption must not widen the labels of the preceding combo rows.
     auto *decompressionGroup = new QWidget(compression);
@@ -69,9 +70,20 @@ void CreateArchiveDialog::createCompressionOptions(QFormLayout *form) {
     decompressionRow->setContentsMargins(0, 0, 0, 0);
     auto *decompressionLabel = new QLabel(compression);
     decompressionLabel->setObjectName("compressionDecompressionLabel");
+    QtBindLocalText(decompressionLabel, "ArchiveRedesign",
+                    QT_TRANSLATE_NOOP("ArchiveRedesign", "Extraction:"));
     decompressionRow->addWidget(decompressionLabel);
     decompressionRow->addWidget(decompressionMemory_, 1);
-    compressionForm->addRow(reserveControlSpace(decompressionGroup));
+    memoryHint->addWidget(decompressionGroup);
+    QFont hintFont = font();
+    if (hintFont.pointSizeF() > 0)
+        hintFont.setPointSizeF(hintFont.pointSizeF() * 0.9);
+    for (auto *label : {usageLabel, memoryUsage_, decompressionLabel, decompressionMemory_}) {
+        label->setFont(hintFont);
+        label->setForegroundRole(QPalette::PlaceholderText);
+    }
+    memoryForm->addRow(memoryHint);
+    compressionForm->addRow(reserveControlSpace(memoryGroup));
     registryFormat_ = format_->currentText();
     connect(format_, &QComboBox::currentTextChanged, this, [this] {
         SaveOptionsInMem();

@@ -4,8 +4,10 @@
 #include "7zip/UI/FileManager/resource.h"
 #include "7zip/UI/GUI/CompressDialogRes.h"
 #include "CPP/7zip/UI/FileManager/BrowseDialog.h"
+#include "CPP/7zip/UI/FileManager/ViewSettings.h"
 #include "CPP/7zip/UI/GUI/CompressDialog.h"
 #include "archivecodeccatalog.h"
+#include "qtdiagnostictext.h"
 #include "qtdialogscreenservices.h"
 #include "qtdisclosure.h"
 #include "qtguimessages.h"
@@ -86,7 +88,7 @@ CreateArchiveDialog::CreateArchiveDialog(const QString &directory,
     auto *content = new QWidget(scroll);
     auto *contentLayout = new QVBoxLayout(content);
     contentLayout->setContentsMargins(0, 0, horizontalMargin, 0);
-    contentLayout->setSpacing(20);
+    contentLayout->setSpacing(16);
     contentLayout->setAlignment(Qt::AlignTop);
     m_RegistryInfo.Load(compressionSettingsPath());
     fixedSources_ = sourceDialog != nullptr;
@@ -111,6 +113,12 @@ CreateArchiveDialog::CreateArchiveDialog(const QString &directory,
     }
     for (auto *group : findChildren<QGroupBox *>())
         group->setAttribute(Qt::WA_LayoutUsesWidgetRect);
+#ifdef Q_OS_MACOS
+    // Cocoa checkbox layout-item margins can extend a spanning form row
+    // beyond its group and scroll viewport.
+    for (auto *check : findChildren<QCheckBox *>())
+        check->setAttribute(Qt::WA_LayoutUsesWidgetRect);
+#endif
     // Source MY_CHECKBOX/PushButton controls participate in Tab traversal.
     // QMacStyle otherwise gives buttons only the restricted TabFocus policy.
     for (auto *button : findChildren<QAbstractButton *>())
@@ -150,8 +158,21 @@ void CreateArchiveDialog::stabilizeColumnWidths() {
     // Keep the value row steady when the memory figures use one or two lines.
     memoryUsage_->setMinimumHeight(2 * memoryUsage_->fontMetrics().lineSpacing());
     for (auto *label : findChildren<QLabel *>())
-        if (label != archiveFolder_)
-            label->setWordWrap(true);
+        label->setWordWrap(true);
+    const int labelWidth = fontMetrics().averageCharWidth() * 24;
+    for (auto *form : findChildren<QFormLayout *>()) {
+        if (form->rowWrapPolicy() == QFormLayout::WrapAllRows)
+            continue;
+        form->setLabelAlignment(Qt::AlignLeading | Qt::AlignVCenter);
+        form->setHorizontalSpacing(12);
+        form->setVerticalSpacing(8);
+        for (int row = 0; row < form->rowCount(); ++row)
+            if (auto *item = form->itemAt(row, QFormLayout::LabelRole))
+                if (auto *label = qobject_cast<QLabel *>(item->widget()))
+                    label->setFixedWidth(labelWidth);
+    }
+    findChild<QLabel *>("archiveLabel")->setFixedWidth(labelWidth);
+    findChild<QLabel *>("archiveFolderLabel")->setFixedWidth(labelWidth);
 }
 
 QWidget *CreateArchiveDialog::reserveControlSpace(QWidget *control) {
@@ -173,19 +194,17 @@ void CreateArchiveDialog::createArchiveForm(QVBoxLayout *layout, QVBoxLayout *wi
     auto *form = new QFormLayout(basic);
     form->setContentsMargins(0, 0, 0, 0);
     form->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
-    form->setRowWrapPolicy(QFormLayout::WrapAllRows);
+    form->setRowWrapPolicy(QFormLayout::WrapLongRows);
     auto *archiveField = new QWidget(this);
     archiveField->setObjectName("archiveNameField");
     auto *fieldLayout = new QGridLayout(archiveField);
     fieldLayout->setContentsMargins(0, 0, windowLayout->contentsMargins().left(), 0);
-    archiveFolder_ = new QtStatusLabel(archiveField, Qt::ElideMiddle);
+    archiveFolder_ = new QLineEdit(archiveField);
     archiveFolder_->setText(QDir::toNativeSeparators(archiveNameState_.DirPrefix));
     archiveFolder_->setObjectName("archiveFolder");
-    archiveFolder_->setTextFormat(Qt::PlainText);
-    // A Windows prefix can be one unbreakable word. It must not impose its
-    // full text width on the scroll content and clip the actual inputs.
-    archiveFolder_->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
-    fieldLayout->addWidget(archiveFolder_, 2, 0);
+    connect(archiveFolder_, &QLineEdit::textChanged, this, [this](const QString &folder) {
+        archiveNameState_.DirPrefix = QDir::fromNativeSeparators(folder);
+    });
     auto *archiveRow = new QWidget(this);
     archiveRow->setObjectName("archivePathRow");
     auto *archiveLayout = new QHBoxLayout(archiveRow);
@@ -201,25 +220,37 @@ void CreateArchiveDialog::createArchiveForm(QVBoxLayout *layout, QVBoxLayout *wi
     name_ = archivePath_->lineEdit();
     name_->setObjectName("archiveName");
     archiveLayout->addWidget(archivePath_, 1);
-    auto *browse = new QPushButton("...", archiveRow);
+    auto *folderRow = new QWidget(archiveField);
+    auto *folderLayout = new QHBoxLayout(folderRow);
+    folderLayout->setContentsMargins(0, 0, 0, 0);
+    folderLayout->addWidget(archiveFolder_, 1);
+    auto *browse = new QPushButton(folderRow);
     browse->setObjectName("archiveBrowse");
     browse->setAttribute(Qt::WA_LayoutUsesWidgetRect);
-    // GuiCommon.rc's bxsDots is a narrow browse button, not a footer button.
-    browse->setFixedWidth(
-        qMax(browse->sizeHint().height(), browse->fontMetrics().averageCharWidth() * 5));
-    archiveLayout->addWidget(browse);
+    QtBindLocalText(browse, "ArchiveRedesign", QT_TRANSLATE_NOOP("ArchiveRedesign", "Browse…"));
+    folderLayout->addWidget(browse);
     archiveRow->setFocusProxy(archivePath_);
-    fieldLayout->addWidget(archiveRow, 1, 0);
+    fieldLayout->addWidget(archiveRow, 0, 1);
+    fieldLayout->addWidget(folderRow, 1, 1);
     auto *archiveLabel = new QLabel("&Archive:", this);
     archiveLabel->setObjectName("archiveLabel");
     archiveLabel->setBuddy(archivePath_);
     archiveLabel->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
-    // Preserve the source folder/name split and align the caption to the
-    // combo row. Keep the destination visible while compact options scroll.
     fieldLayout->addWidget(archiveLabel, 0, 0);
-    fieldLayout->setColumnStretch(0, 1);
+    auto *folderLabel = new QLabel(archiveField);
+    folderLabel->setObjectName("archiveFolderLabel");
+    folderLabel->setBuddy(archiveFolder_);
+    QtBindLocalText(folderLabel, "ArchiveRedesign",
+                    QT_TRANSLATE_NOOP("ArchiveRedesign", "Destination folder"));
+    QtBindLocalText(archiveFolder_, "ArchiveRedesign",
+                    QT_TRANSLATE_NOOP("ArchiveRedesign", "Destination folder"), true);
+    fieldLayout->addWidget(folderLabel, 1, 0);
+    fieldLayout->setHorizontalSpacing(12);
+    fieldLayout->setVerticalSpacing(8);
+    fieldLayout->setColumnStretch(1, 1);
     windowLayout->addWidget(archiveField);
-    QWidget::setTabOrder(archivePath_, browse);
+    QWidget::setTabOrder(archivePath_, archiveFolder_);
+    QWidget::setTabOrder(archiveFolder_, browse);
     format_ = new QComboBox(basic);
     format_->setObjectName("archiveFormat");
     populateArchiveFormats();
@@ -245,36 +276,9 @@ void CreateArchiveDialog::createArchiveForm(QVBoxLayout *layout, QVBoxLayout *wi
     pathMode_->addItem("Relative pathnames", int(NWildcard::k_RelatPath));
     pathMode_->addItem("Full pathnames", int(NWildcard::k_FullPath));
     pathMode_->addItem("Absolute paths", int(NWildcard::k_AbsPath));
-    {
-        auto *compressionColumn = new QWidget(this);
-        compressionColumn->setObjectName("archiveCompressionColumn");
-        auto *compressionForm = new QFormLayout(compressionColumn);
-        compressionForm->setContentsMargins(0, 0, 0, 0);
-        // CompressDialog.rc gives the six combo rows a shared g1x/g1xs.
-        // Cocoa's default keeps each field at its individual size hint.
-        compressionForm->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
-        compressionForm->setRowWrapPolicy(QFormLayout::WrapAllRows);
-        form->addRow("Archive format:", format_);
-        createCompressionOptions(compressionForm);
-        const auto levelRow = compressionForm->takeRow(level_);
-        form->addRow(levelRow.labelItem->widget(), levelRow.fieldItem->widget());
-        level_->show();
-        delete levelRow.labelItem;
-        delete levelRow.fieldItem;
-        createVolumeOptions(compressionForm);
-        createAdvancedOptions(compressionForm);
-        compressionForm->addRow("Update mode:", updateMode_);
-        compressionForm->addRow("Path mode:", pathMode_);
-        createLifecycleOptions(compressionForm);
-        layout->addWidget(basic);
-        createEncryptionOptions(layout);
-        advancedDisclosure_ = new QtDisclosure(compressionColumn, layout->parentWidget());
-        advancedDisclosure_->setObjectName("archiveAdvancedSection");
-        advancedDisclosure_->button()->setObjectName("archiveAdvancedToggle");
-        QtBindLocalText(advancedDisclosure_->button(), "ArchiveRedesign",
-                        QT_TRANSLATE_NOOP("ArchiveRedesign", "Advanced settings"));
-        layout->addWidget(advancedDisclosure_);
-    }
+    layout->addWidget(basic);
+    createEncryptionOptions(layout);
+    createOptionSections(layout, form);
     for (auto *combo : findChildren<QComboBox *>())
         connect(combo, &QComboBox::currentTextChanged, this,
                 &CreateArchiveDialog::updateRedesignSummary);
@@ -287,12 +291,18 @@ void CreateArchiveDialog::createArchiveForm(QVBoxLayout *layout, QVBoxLayout *wi
         path.Format = format_->currentText();
         path.m_ArchivePath = name_->text();
         path.Info.SFXMode = sfx_ && sfx_->isChecked();
-        if (!path.OnButtonSetArchive(this))
+        QString target;
+        if (!path.GetFinalPath_Smart(target) || archiveFolder_->text().contains(QChar::Null)) {
+            ShowErrorMessageQt(this, QtDiagnosticText(QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                                                                        "Incorrect archive path")));
             return;
-        format_->setCurrentText(path.Format);
-        archiveNameState_.DirPrefix = path.DirPrefix;
-        archiveFolder_->setText(QDir::toNativeSeparators(path.DirPrefix));
-        name_->setText(path.m_ArchivePath);
+        }
+        UString folder;
+        if (MyBrowseForFolder(
+                this,
+                ToUString(QCoreApplication::translate("ArchiveRedesign", "Destination folder")),
+                ToUString(archiveFolder_->text()), folder))
+            archiveFolder_->setText(QDir::toNativeSeparators(ToQString(folder)));
     });
     connect(format_, &QComboBox::currentTextChanged, this, [this] {
         archiveNameState_.m_ArchivePath = name_->text();
@@ -335,6 +345,8 @@ void CreateArchiveDialog::createFooter(QVBoxLayout *layout) {
 }
 
 QString CreateArchiveDialog::archivePath() const {
+    if (archiveFolder_->text().contains(QChar::Null))
+        return {};
     CCompressDialog path;
     path.DirPrefix = archiveNameState_.DirPrefix;
     path.StartDirPrefix = StartDirPrefix;

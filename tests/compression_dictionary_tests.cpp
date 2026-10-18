@@ -1,5 +1,6 @@
 #include "archivebackend.h"
 #include "createarchivedialog.h"
+#include "fixtures/archive_sections.h"
 #include "layout_inspection.h"
 #include <QScrollArea>
 #include <QSignalSpy>
@@ -26,9 +27,7 @@ class CompressionDictionaryTests final : public QObject {
         QVERIFY(dictionary->itemText(0).contains("256 KB"));
         method->setCurrentText("LZMA");
         QCOMPARE(dialog.compressionOptions().Dict64, UInt64(-1));
-        auto *advanced = dialog.findChild<QToolButton *>("archiveAdvancedToggle");
-        QVERIFY(advanced);
-        advanced->click();
+        ExpandArchiveSections(dialog);
         dialog.show();
         for (QSize size : {QSize(760, 720), QSize(640, 480)}) {
             dialog.resize(size);

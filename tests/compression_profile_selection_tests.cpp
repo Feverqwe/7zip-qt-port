@@ -1,6 +1,7 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "createarchivedialog.h"
+#include "fixtures/archive_sections.h"
 #include "layout_inspection.h"
 #include <QScopeGuard>
 #include <QScrollArea>
@@ -105,7 +106,7 @@ class CompressionProfileSelectionTests final : public QObject {
                 QCOMPARE(solid->currentIndex(), -1);
             }
             if (restart == 0) {
-                dialog.findChild<QToolButton *>("archiveAdvancedToggle")->setChecked(true);
+                ExpandArchiveSections(dialog);
                 dialog.show();
                 for (const QSize size : {QSize(760, 720), QSize(640, 480)}) {
                     dialog.resize(size);

@@ -2,6 +2,7 @@
 #include "archivecodeccatalog.h"
 #include "createarchivedialog.h"
 #include "layout_inspection.h"
+#include <QScopeGuard>
 #include <QScrollArea>
 #include <QSettings>
 #include <QSignalSpy>
@@ -301,7 +302,7 @@ class CompressionPathTests final : public QObject {
         QVERIFY(QMetaObject::invokeMethod(combo, "activated", Q_ARG(int, 0)));
         QCOMPARE(dialog.findChild<QComboBox *>("archiveFormat")->currentText(), QString("zip"));
         QCOMPARE(combo->currentText(), QStringLiteral("готовый архив.ZIP"));
-        QCOMPARE(dialog.findChild<QLabel *>("archiveFolder")->text(),
+        QCOMPARE(dialog.findChild<QLineEdit *>("archiveFolder")->text(),
                  QDir::toNativeSeparators(dir_.path() + '/'));
         dialog.reject();
         NCompression::CInfo loaded;
@@ -311,11 +312,78 @@ class CompressionPathTests final : public QObject {
     }
     void archiveFolderUsesInitialPrefix() {
         CreateArchiveDialog dialog(dir_.path(), {source_});
-        QCOMPARE(dialog.findChild<QLabel *>("archiveFolder")->text(),
+        QCOMPARE(dialog.findChild<QLineEdit *>("archiveFolder")->text(),
                  QDir::toNativeSeparators(dir_.path()));
         submit(dialog);
         QCOMPARE(dialog.result(), int(QDialog::Accepted));
         QCOMPARE(QDir::fromNativeSeparators(dialog.target()), dir_.filePath("archive.7z"));
+    }
+    void editedDestinationUsesSourcePathResolution() {
+        QTemporaryDir destination;
+        QVERIFY(destination.isValid());
+        const QString folder = destination.filePath(QStringLiteral("папка with spaces 空"));
+        CreateArchiveDialog dialog(dir_.path(), {source_});
+        dialog.findChild<QLineEdit *>("archiveFolder")->setText(QDir::toNativeSeparators(folder));
+        dialog.findChild<QLineEdit *>("archiveName")->setText(QStringLiteral("данные.7z"));
+        submit(dialog);
+        QCOMPARE(dialog.result(), int(QDialog::Accepted));
+        QCOMPARE(QDir::fromNativeSeparators(dialog.target()),
+                 QDir(folder).filePath(QStringLiteral("данные.7z")));
+        QVERIFY(!QFileInfo::exists(folder));
+    }
+    void destinationPickerRetainsNameAndCancelDraft() {
+        QTemporaryDir destination;
+        QVERIFY(destination.isValid());
+        const bool nativeDisabled = QApplication::testAttribute(Qt::AA_DontUseNativeDialogs);
+        QApplication::setAttribute(Qt::AA_DontUseNativeDialogs);
+        const auto restore = qScopeGuard(
+            [&] { QApplication::setAttribute(Qt::AA_DontUseNativeDialogs, nativeDisabled); });
+        CreateArchiveDialog dialog(dir_.path(), {source_});
+        auto *name = dialog.findChild<QLineEdit *>("archiveName");
+        auto *folder = dialog.findChild<QLineEdit *>("archiveFolder");
+        auto *format = dialog.findChild<QComboBox *>("archiveFormat");
+        const QString draft = QStringLiteral("имя with spaces 空.7z");
+        name->setText(draft);
+        dialog.show();
+        for (bool accept : {true, false}) {
+            const QString previousFolder = folder->text();
+            bool observed = false;
+            QTimer answer;
+            connect(&answer, &QTimer::timeout, &dialog, [&] {
+                for (auto *widget : QApplication::topLevelWidgets()) {
+                    auto *picker = qobject_cast<QFileDialog *>(widget);
+                    if (!picker || !picker->isVisible())
+                        continue;
+                    answer.stop();
+                    observed = true;
+                    const auto close = qScopeGuard([&] {
+                        if (picker->isVisible())
+                            picker->reject();
+                    });
+                    QCOMPARE(picker->fileMode(), QFileDialog::Directory);
+                    if (accept) {
+                        picker->setDirectory(destination.path());
+                        picker->selectFile(destination.path());
+                        QVERIFY(QMetaObject::invokeMethod(picker, "accept"));
+                    } else {
+                        picker->setDirectory(dir_.path());
+                        picker->reject();
+                    }
+                    return;
+                }
+            });
+            answer.start(1);
+            dialog.findChild<QPushButton *>("archiveBrowse")->click();
+            answer.stop();
+            QVERIFY(observed);
+            QCOMPARE(name->text(), draft);
+            QCOMPARE(format->currentText(), QString("7z"));
+            if (accept)
+                QCOMPARE(QFileInfo(folder->text()).canonicalFilePath(),
+                         QFileInfo(destination.path()).canonicalFilePath());
+            else
+                QCOMPARE(folder->text(), previousFolder);
+        }
     }
     void realArchiveAndValidation() {
         CreateArchiveDialog dialog(dir_.path(), {source_});
@@ -342,15 +410,17 @@ class CompressionPathTests final : public QObject {
         QFile extracted(QDir(output).filePath(QFileInfo(source_).fileName()));
         QVERIFY(extracted.open(QIODevice::ReadOnly));
         QCOMPARE(extracted.readAll(), QByteArray("archive path regression"));
-        CreateArchiveDialog invalid(dir_.path(), {source_});
-        invalid.findChild<QLineEdit *>("archiveName")
-            ->setText(QStringLiteral("bad") + QChar::Null + "name.7z");
-        QTimer::singleShot(0, &invalid, [] {
-            if (auto *message = qobject_cast<QMessageBox *>(QApplication::activeModalWidget()))
-                message->accept();
-        });
-        submit(invalid);
-        QCOMPARE(invalid.result(), 0);
+        for (const char *field : {"archiveName", "archiveFolder"}) {
+            CreateArchiveDialog invalid(dir_.path(), {source_});
+            invalid.findChild<QLineEdit *>(field)->setText(QStringLiteral("bad") + QChar::Null +
+                                                           "name.7z");
+            QTimer::singleShot(0, &invalid, [] {
+                if (auto *message = qobject_cast<QMessageBox *>(QApplication::activeModalWidget()))
+                    message->accept();
+            });
+            submit(invalid);
+            QCOMPARE(invalid.result(), 0);
+        }
         NCompression::CInfo registry;
         registry.Load(settings_);
         QCOMPARE(registry.ArcPaths.Size(), unsigned(1));

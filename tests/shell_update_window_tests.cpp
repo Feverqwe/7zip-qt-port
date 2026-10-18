@@ -1,4 +1,5 @@
 #include "Common/MyTypes.h"
+#include "fixtures/archive_sections.h"
 
 #include "7zip/UI/Explorer/ContextMenuFlags.h"
 #include "7zip/UI/FileManager/ProgressDialog2Res.h"
@@ -184,9 +185,7 @@ class ShellUpdateWindowTests final : public QObject, protected MainWindowTestSup
                     dialog->findChild<QLineEdit *>("archiveName")
                         ->setText(fixture.filePath(target));
                 if (sfx) {
-                    auto *advanced = dialog->findChild<QToolButton *>("archiveAdvancedToggle");
-                    QVERIFY(advanced);
-                    advanced->setChecked(true);
+                    ExpandArchiveSections(*dialog);
                     auto *control = dialog->findChild<QCheckBox *>("archiveSfx");
                     if (!control || !control->isEnabled())
                         dialog->reject();

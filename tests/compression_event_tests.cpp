@@ -3,6 +3,7 @@
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "archivecodeccatalog.h"
 #include "createarchivedialog.h"
+#include "fixtures/archive_sections.h"
 #include "layout_inspection.h"
 #include <QScrollArea>
 #include <QSignalSpy>
@@ -160,7 +161,7 @@ class CompressionEventTests final : public QObject {
                                                 system));
         QCOMPARE(thread->itemText(0), NCompressDialog::Modify_Auto(QString("2")));
         dialog.show();
-        dialog.findChild<QToolButton *>("archiveAdvancedToggle")->setChecked(true);
+        ExpandArchiveSections(dialog);
         for (const QSize size : {QSize(760, 720), QSize(640, 480)}) {
             dialog.resize(size);
             QApplication::processEvents();

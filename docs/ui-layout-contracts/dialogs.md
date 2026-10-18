@@ -27,6 +27,8 @@ button and preserve pending values. Disabled headers cannot change the section.
 Accessible names follow the current translated caption unless explicitly supplied.
 State changes notify accessibility clients; this Qt contract does not establish
 screen-reader announcements on a particular platform.
+An expanded section hides its collapsed-state indicator. The header and chevron
+keep their position when that indicator disappears; expanding never clears a draft.
 
 ### Contextual modality on macOS (redesign, 2026-10-18)
 

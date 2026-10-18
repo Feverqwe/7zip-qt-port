@@ -2,6 +2,7 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "archivebackend.h"
 #include "createarchivedialog.h"
+#include "fixtures/archive_sections.h"
 #include "layout_inspection.h"
 #include <QScrollArea>
 #include <QSignalSpy>
@@ -97,9 +98,7 @@ class CompressionLimitTests final : public QObject {
         // Inject a parsed zero-byte choice to exercise OnOK independent of physical RAM.
         limit->addItem("0 B", "0b");
         limit->setCurrentIndex(limit->count() - 1);
-        auto *advanced = dialog.findChild<QToolButton *>("archiveAdvancedToggle");
-        QVERIFY(advanced);
-        advanced->click();
+        ExpandArchiveSections(dialog);
         dialog.show();
         bool rejectedForMemory = false;
         QTimer::singleShot(0, &dialog, [&] {
@@ -147,9 +146,7 @@ class CompressionLimitTests final : public QObject {
         QVERIFY(limit);
         limit->addItem("0 B", "0b");
         limit->setCurrentIndex(limit->count() - 1);
-        auto *advanced = dialog.findChild<QToolButton *>("archiveAdvancedToggle");
-        QVERIFY(advanced);
-        advanced->click();
+        ExpandArchiveSections(dialog);
         dialog.show();
         bool rejected = false;
         QTimer::singleShot(0, &dialog, [&] {

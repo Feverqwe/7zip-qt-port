@@ -5,6 +5,7 @@
 #include "CPP/7zip/UI/GUI/UpdateGUI.h"
 #include "archivecodeccatalog.h"
 #include "createarchivedialog.h"
+#include "fixtures/archive_sections.h"
 #include "layout_inspection.h"
 #include "qtshellarchiveservices.h"
 #include <QProxyStyle>
@@ -65,30 +66,64 @@ class SourceCompressDialogTests final : public QObject {
         CreateArchiveDialog dialog(fixture.path());
         dialog.show();
         QVERIFY(QTest::qWaitForWindowExposed(&dialog));
-        auto *advanced = dialog.findChild<QToolButton *>("archiveAdvancedToggle");
+        auto *compression = dialog.findChild<QToolButton *>("archiveCompressionToggle");
+        auto *advanced = dialog.findChild<QToolButton *>("archiveCommandLineToggle");
+        auto *files = dialog.findChild<QtDisclosure *>("archiveFileOptionsSection");
+        auto *volumes = dialog.findChild<QtDisclosure *>("archiveVolumesSection");
         auto *parameters = dialog.findChild<QLineEdit *>("archiveParameters");
         auto *enabled = dialog.findChild<QCheckBox *>("archivePasswordEnabled");
         auto *password = dialog.findChild<QLineEdit *>("archivePassword");
         auto *repeat = dialog.findChild<QLineEdit *>("archivePasswordConfirmation");
+        QVERIFY(compression && advanced && files && volumes);
+        QVERIFY(!compression->isChecked());
+        QVERIFY(!dialog.findChild<QComboBox *>("compressionMethod")->isVisible());
+        QVERIFY(!files->isExpanded());
+        QVERIFY(!volumes->isExpanded());
         QVERIFY(!advanced->isChecked());
         QVERIFY(!parameters->isVisible());
         QVERIFY(!enabled->isChecked());
         QApplication::processEvents();
-        auto *summary = dialog.findChild<QWidget *>("archiveAdvancedSection")
+        auto *summary = dialog.findChild<QWidget *>("archiveCommandLineSection")
                             ->findChild<QLabel *>("disclosureSummary");
         QVERIFY(UiInspection::writeReport(dialog, "redesign-add-collapsed-" + language));
-        QVERIFY(UiInspection::fullyVisible(*summary, dialog));
+        QVERIFY(!summary->isVisible());
         advanced->click();
         QApplication::processEvents();
         QVERIFY(UiInspection::writeReport(dialog, "redesign-add-expanded-" + language));
         parameters->clear();
         const QString initialSummary = summary->text();
         parameters->setText("tm=off");
+        QVERIFY(!summary->isVisible());
         advanced->click();
         QVERIFY(!parameters->isVisible());
         QCOMPARE(QString::fromWCharArray(dialog.compressionOptions().Options.Ptr()),
                  QString("tm=off"));
         QVERIFY(summary->text() != initialSummary);
+        QVERIFY(summary->isVisible());
+        volumes->setExpanded(true);
+        auto *volume = dialog.findChild<QComboBox *>("archiveVolumeSize");
+        volume->setEditText("64M 128M");
+        volumes->setExpanded(false);
+        files->setExpanded(true);
+        auto *mode = dialog.findChild<QComboBox *>("archiveUpdateMode");
+        mode->setCurrentIndex(mode->findData(int(NCompressDialog::NUpdateMode::kUpdate)));
+        files->setExpanded(false);
+        QCOMPARE(dialog.compressionOptions().UpdateMode, NCompressDialog::NUpdateMode::kUpdate);
+        QCOMPARE(volume->currentText(), QString("64M 128M"));
+        compression->click();
+        QVERIFY(dialog.findChild<QComboBox *>("compressionMethod")->isVisible());
+        auto *method = dialog.findChild<QComboBox *>("compressionMethod");
+        method->setCurrentIndex(method->count() - 1);
+        const QString chosenMethod = method->currentText();
+        compression->click();
+        QVERIFY(!dialog.findChild<QComboBox *>("compressionMethod")->isVisible());
+        QVERIFY(dialog.findChild<QtDisclosure *>("archiveCompressionSection")
+                    ->findChild<QLabel *>("disclosureSummary")
+                    ->isVisible());
+        compression->click();
+        QCOMPARE(method->currentText(), chosenMethod);
+        QCOMPARE(QString::fromWCharArray(dialog.compressionOptions().Options.Ptr()),
+                 QString("tm=off"));
         password->setText(QStringLiteral("черновик 密碼"));
         repeat->setText(password->text());
         QVERIFY(enabled->isChecked());
@@ -154,7 +189,7 @@ class SourceCompressDialogTests final : public QObject {
         CreateArchiveDialog dialog(fixture.path(), {}, nullptr, _catalog);
         dialog.resize(640, 480);
         dialog.show();
-        dialog.findChild<QToolButton *>("archiveAdvancedToggle")->setChecked(true);
+        ExpandArchiveSections(dialog);
         QCoreApplication::processEvents();
         auto *scroll = dialog.findChild<QScrollArea *>("archiveOptionsScrollArea");
         QVERIFY(scroll);
@@ -205,9 +240,9 @@ class SourceCompressDialogTests final : public QObject {
         dialog.show();
         QVERIFY(QTest::qWaitForWindowExposed(&dialog));
         auto *scroll = dialog.findChild<QScrollArea *>("archiveOptionsScrollArea");
-        auto *toggle = dialog.findChild<QToolButton *>("archiveAdvancedToggle");
+        auto *toggle = dialog.findChild<QToolButton *>("archiveCompressionToggle");
         QVERIFY(toggle);
-        toggle->click();
+        toggle->setChecked(true);
         int step = 0;
         const auto inspect = [&] {
             QApplication::processEvents();
@@ -331,16 +366,17 @@ class SourceCompressDialogTests final : public QObject {
         QVERIFY(name);
         QCOMPARE(name->selectedText(), name->text());
         QVERIFY(UiInspection::writeReport(dialog, reportTag));
-        auto *folder = dialog.findChild<QLabel *>("archiveFolder");
+        auto *folder = dialog.findChild<QLineEdit *>("archiveFolder");
         auto *archiveRow = dialog.findChild<QWidget *>("archivePathRow");
         QVERIFY(folder && archiveRow);
         auto *caption = dialog.findChild<QLabel *>("archiveLabel");
         QVERIFY(caption);
-        QVERIFY(UiInspection::bounds(*caption, dialog).bottom() <
-                UiInspection::bounds(*archiveRow, dialog).top());
+        QVERIFY(UiInspection::separate(*caption, *archiveRow, dialog));
+        QVERIFY(UiInspection::bounds(*caption, dialog).right() <
+                UiInspection::bounds(*archiveRow, dialog).left());
         QVERIFY(UiInspection::fullyVisible(*archiveRow, dialog));
         QVERIFY(UiInspection::fullyVisible(*folder, dialog));
-        dialog.findChild<QToolButton *>("archiveAdvancedToggle")->setChecked(true);
+        ExpandArchiveSections(dialog);
         QCoreApplication::processEvents();
         QCOMPARE(dialog.sources(), QStringList{path});
         auto *mode = dialog.findChild<QComboBox *>("archiveUpdateMode");

@@ -37,6 +37,62 @@
     <context>
         <name>ArchiveRedesign</name>
         <message>
+            <source>Metadata settings…</source>
+            <translation>Настройки метаданных…</translation>
+        </message>
+        <message>
+            <source>Password</source>
+            <translation>Пароль</translation>
+        </message>
+        <message>
+            <source>Repeat password</source>
+            <translation>Повтор пароля</translation>
+        </message>
+        <message>
+            <source>Archive name</source>
+            <translation>Имя архива</translation>
+        </message>
+        <message>
+            <source>Destination folder</source>
+            <translation>Папка назначения</translation>
+        </message>
+        <message>
+            <source>Browse…</source>
+            <translation>Обзор…</translation>
+        </message>
+        <message>
+            <source>Compression memory limit:</source>
+            <translation>Лимит памяти для сжатия:</translation>
+        </message>
+        <message>
+            <source>Compression:</source>
+            <translation>Сжатие:</translation>
+        </message>
+        <message>
+            <source>Extraction:</source>
+            <translation>Распаковка:</translation>
+        </message>
+        <message>
+            <source>Compression settings</source>
+            <translation>Параметры сжатия</translation>
+        </message>
+        <message>
+            <source>File settings</source>
+            <translation>Параметры файлов</translation>
+        </message>
+        <message>
+            <source>Split to volumes</source>
+            <translation>Разделение на тома</translation>
+        </message>
+        <message>
+            <source>Command-line settings</source>
+            <translation>Параметры командной строки</translation>
+        </message>
+        <message>
+            <source>Modified</source>
+            <translation>Изменено</translation>
+        </message>
+        <message>
             <location filename="../src/CPP/7zip/UI/GUI/ExtractDialog.cpp" line="+72" />
             <location filename="../src/mainwindow_language.cpp" line="+120" />
             <source>Extract</source>

@@ -8,23 +8,29 @@
 
 The [approved redesign](../ui-redesign-plan.md) supersedes the older two-column
 presentation requirements below for the Add form. Archive name/destination remain
-visible above the scrolling form, with the caption above the editable name.
+visible above the scrolling form as separate editable rows with leading labels.
+Destination edits use the existing source path resolver. Browse selects a folder
+through the existing folder picker, retaining the name and format; history can
+still restore the source folder/name/format split.
 Format and compression level are immediately available. Password protection has
 an explicit enable control; its dependent fields appear together, without a
 large framed heading. A source-supplied password enables the section. Turning
 protection off excludes the password/headers from the effective request while
 retaining the draft for re-enabling. Format support still comes from the source.
 
-Method, dictionary, order, solid size, threads, memory, volumes, parameters,
-update/path modes, lifecycle options and the existing metadata Options dialog
-are reachable through an Advanced settings disclosure. Collapsing it changes
-visibility only; options remain effective. Its summary reflects actual control
-values, including explicit memory/volume/update/path choices and active lifecycle
-options. Custom parameters are indicated without copying their arbitrary text
-into diagnostic reports. Password values never enter the summary.
+Compression settings contain method, dictionary, order, solid size, threads and
+memory. Separate sections contain file settings
+(update/path modes, lifecycle and the existing metadata Options dialog), volumes
+and command-line parameters. All four sections initially remain collapsed,
+including compression settings. Collapsing changes visibility only; options remain
+effective. Hidden nondefault compression/file settings, a volume specification or custom
+parameters receive a short Modified indicator. Expanded sections show their
+fields directly, without a value summary. An invalid volume specification
+reveals its section and returns focus to the field.
 
 The compact form keeps a separate scrollbar gutter and a visible native footer.
-Fields use labels above them and may reflow after a language/value change;
+Short settings use aligned label/field rows and wrap when needed; long parameter
+input keeps its label above it. Fields may reflow after a language/value change;
 fixed column rectangles are no longer a contract. Unsupported Windows shared-file
 controls are hidden on POSIX. Validation, saved format profiles, nested Options
 Cancel, SFX transitions and official-engine operations retain their source owners.

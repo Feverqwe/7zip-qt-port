@@ -696,6 +696,7 @@
       {
         "class": "QScrollArea",
         "name": "archiveOptionsScrollArea",
+        "text": "",
         "enabled": true
       },
       {
@@ -730,42 +731,62 @@
       },
       {
         "class": "QToolButton",
-        "name": "archiveAdvancedToggle",
-        "text": "Дополнительные параметры",
+        "name": "archiveCompressionToggle",
+        "text": "Параметры сжатия",
         "enabled": true
       },
       {
-        "class": "QLabel",
-        "name": "disclosureSummary",
-        "text": "Метод сжатия: *  LZMA2 · Размер словаря: *  32 MB · Число потоков: *  10 · Режим изменения: Добавить и заменить · Пути к файлам: Относительные пути",
+        "class": "QToolButton",
+        "name": "archiveFileOptionsToggle",
+        "text": "Параметры файлов",
         "enabled": true
       },
       {
-        "class": "QLabel",
-        "name": "archiveFolder",
-        "text": "/var/folders/zh/35p9zk4j7q17_n8k3q479zmh0000gn/T/source_compress_dialog_tests-hKoHdm",
+        "class": "QToolButton",
+        "name": "archiveVolumesToggle",
+        "text": "Разделение на тома",
         "enabled": true
       },
       {
-        "class": "QComboBox",
-        "name": "archivePath",
+        "class": "QToolButton",
+        "name": "archiveCommandLineToggle",
+        "text": "Параметры командной строки",
         "enabled": true
       },
       {
         "class": "QLineEdit",
-        "name": "archiveName",
+        "name": "archiveFolder",
+        "text": "",
         "enabled": true
       },
       {
         "class": "QPushButton",
         "name": "archiveBrowse",
-        "text": "...",
+        "text": "Обзор…",
+        "enabled": true
+      },
+      {
+        "class": "QComboBox",
+        "name": "archivePath",
+        "text": "",
+        "enabled": true
+      },
+      {
+        "class": "QLineEdit",
+        "name": "archiveName",
+        "text": "",
         "enabled": true
       },
       {
         "class": "QLabel",
         "name": "archiveLabel",
-        "text": "&Архив:",
+        "text": "Имя архива",
+        "enabled": true
+      },
+      {
+        "class": "QLabel",
+        "name": "archiveFolderLabel",
+        "text": "Папка назначения",
         "enabled": true
       },
       {
@@ -787,13 +808,32 @@
         "enabled": true
       }
     ],
-    "revision": "6ee7db6ba2bd0c55727340cf5a7db9fb08405f1c",
+    "revision": "70d333ee0883f59709ae9aae212e6a5f1647c8ed",
     "capture": {
-      "qpa": "cocoa",
       "colorScheme": "light",
-      "qtVersion": "6.12.0",
+      "coordinateSpace": "root-client-logical-pixels",
+      "devicePixelRatio": 2,
       "fontFamily": ".AppleSystemUIFont",
-      "fontPointSize": 13
+      "fontPointSize": 13,
+      "logicalDpi": 72,
+      "palette": {
+        "0": "#000000",
+        "10": "#ffffff",
+        "12": "#a5cdff",
+        "13": "#000000",
+        "14": "#094fd1",
+        "6": "#000000",
+        "9": "#ffffff"
+      },
+      "platform": "darwin",
+      "qpa": "cocoa",
+      "qtVersion": "6.12.0",
+      "requestedColorScheme": "light",
+      "schema": 1
+    },
+    "sourceState": {
+      "modified": true,
+      "diffSha256": "b4027349cc7172a9f2e5215fe20bb395e68913b37c7738c8ad742fea649ca97e"
     }
   },
   {
@@ -927,11 +967,13 @@
       {
         "class": "QComboBox",
         "name": "extractDestination",
+        "text": "",
         "enabled": true
       },
       {
         "class": "QLineEdit",
         "name": "",
+        "text": "",
         "enabled": true
       },
       {
@@ -949,6 +991,7 @@
       {
         "class": "QLineEdit",
         "name": "extractPathName",
+        "text": "",
         "enabled": true
       },
       {
@@ -974,21 +1017,34 @@
         "name": "extractAdvancedToggle",
         "text": "Дополнительные параметры",
         "enabled": true
-      },
-      {
-        "class": "QLabel",
-        "name": "disclosureSummary",
-        "text": "Полные пути · Устранить дублирование корневой папки",
-        "enabled": true
       }
     ],
-    "revision": "6ee7db6ba2bd0c55727340cf5a7db9fb08405f1c",
+    "revision": "70d333ee0883f59709ae9aae212e6a5f1647c8ed",
     "capture": {
-      "qpa": "cocoa",
       "colorScheme": "light",
-      "qtVersion": "6.12.0",
+      "coordinateSpace": "root-client-logical-pixels",
+      "devicePixelRatio": 2,
       "fontFamily": ".AppleSystemUIFont",
-      "fontPointSize": 13
+      "fontPointSize": 13,
+      "logicalDpi": 72,
+      "palette": {
+        "0": "#000000",
+        "10": "#ffffff",
+        "12": "#a5cdff",
+        "13": "#000000",
+        "14": "#094fd1",
+        "6": "#000000",
+        "9": "#ffffff"
+      },
+      "platform": "darwin",
+      "qpa": "cocoa",
+      "qtVersion": "6.12.0",
+      "requestedColorScheme": "light",
+      "schema": 1
+    },
+    "sourceState": {
+      "modified": true,
+      "diffSha256": "3c7d7ccaee258d4f0c1984b599749760a4f01bcfdc07f5bb6d190fefb07ef92d"
     }
   },
   {

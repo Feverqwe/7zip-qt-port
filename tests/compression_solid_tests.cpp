@@ -1,5 +1,6 @@
 #include "archivebackend.h"
 #include "createarchivedialog.h"
+#include "fixtures/archive_sections.h"
 #include "layout_inspection.h"
 #include <QScrollArea>
 #include <QSignalSpy>
@@ -26,9 +27,7 @@ class CompressionSolidTests final : public QObject {
         auto *dictionary = dialog.findChild<QComboBox *>("compressionDictionary");
         dictionary->setCurrentIndex(dictionary->findData(QVariant::fromValue(quint64(1 << 20))));
         QCOMPARE(dialog.compressionOptions().SolidBlockSize, quint64(-1));
-        auto *advanced = dialog.findChild<QToolButton *>("archiveAdvancedToggle");
-        QVERIFY(advanced);
-        advanced->click();
+        ExpandArchiveSections(dialog);
         dialog.show();
         for (UInt32 mode : {UInt32(-1), UInt32(0), UInt32(64)}) {
             block->setCurrentIndex(block->findData(mode));

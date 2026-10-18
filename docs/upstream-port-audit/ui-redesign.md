@@ -1027,3 +1027,71 @@ VoiceOver и физические EN/RU раскладки остаются не
 QAccessible не выдаётся за нативную screen-reader приёмку. Приватная dev-сессия
 завершилась, её disposable settings/fixtures удалены; пользовательская dist-сессия
 не изменялась. Параллельные изменения плана и HTML-концепта сохранены отдельно.
+
+## Итерация 20: архивные формы по обновлённому концепту
+
+18–19 октября 2026 пользователь разрешил внедрять обновлённый план, потребовал
+сверять Qt с концептом и уточнил: параметры сжатия тоже закрыты при первом показе.
+План, HTML и preview приведены к этому начальному состоянию. Новая навигация
+Settings и контурные иконки остаются отдельными незавершёнными сценариями.
+
+Источник: https://github.com/ip7z/7zip.git,
+`9128b80e3a471108678e2b3ec3c985861c8d7b0f`; baseline модулей не изменён.
+Сверены CompressDialog.h/.cpp/.rc: OnInit/OnOK, format/profile controls,
+GetFinalPath_Smart/SetArcPathFields, OnButtonSetArchive и вложенные Options с
+текущими construction/language/source/preferences callers. Для выбора папки
+сопоставлены BrowseDialog::MyBrowseForFolder, native/custom ветви и
+ExtractDialog::OnButtonSetPath. Нового upstream-кода не копировалось;
+функциональные тела операций, профилей, SFX и метаданных не переписывались.
+
+Прежние controls Add распределены по четырём независимым группам: сжатие, файлы,
+тома, командная строка. Все изначально закрыты. Формат, уровень, имя, папка и
+переключатель защиты видны сразу. Сворачивание сохраняет effective options и
+черновик; скрытые nondefault compression/file/volume/custom options имеют короткую отметку
+Modified. Extract также получил короткую отметку. Options открывает прежнюю
+транзакцию метаданных. Ошибочный размер тома раскрывает поле перед возвратом фокуса.
+
+Имя и редактируемая папка сохраняют исходные name/DirPrefix и GetFinalPath_Smart.
+Qt проверяет embedded NUL также в новом поле папки: Win32 text control не мог
+передать такую строку. Browse намеренно выбирает папку через существующий
+MyBrowseForFolder, сохраняя имя/формат. Прежний общий save picker заменён по
+концепту; формат остаётся в основной форме, история восстанавливает исходное
+разделение папки/имени/формата. OnButtonSetArchive/filter implementation сохранён.
+
+Сопоставление rendered HTML с Qt выявило и устранило первоначальные расхождения:
+readonly папка вместо отдельного поля, правое выравнивание, отсутствие внутреннего
+отступа групп, высокий блок памяти и длинные сводки. Теперь name/destination
+имеют отдельные строки, подписи выровнены слева, раскрытое содержимое отступает
+от заголовка. Лимит памяти — отдельная строка; исходные usage/limit/RAM и
+decompression значения показаны компактно под ней. Защита использует компактные
+строки. Modified находится справа в заголовке и скрыт при раскрытии; шеврон
+остаётся на первой строке. Native QComboBox/history, размеры и кнопки Qt сохранены.
+
+Регрессии проверяют effective options и password draft при смене групп,
+редактирование Unicode-папки через source path resolver, Directory picker
+success/Cancel без смены имени/формата и раскрытие ошибочного тома. Прежние tests
+открывают группы общим fixture. Проверка alignment constant заменена видимостью
+полного значения; pixel-exact центры нативных рамок — общей строкой текста.
+
+macOS: приложение собрано; 27 focused suites PASS. Подпись метаданных и новый
+picker fixture отдельно перепроверены. Cocoa light/dark проверка выявила выход
+spanning checkbox за край группы: узкая macOS WA_LayoutUsesWidgetRect adaptation
+устранила дефект. Archive-forms/compression-language после fix PASS в обеих темах;
+Add/Extract и прямые Settings disclosure consumers имеют актуальные Qt captures.
+Финальные ui_geometry/source_compress_dialog/language_ui/disclosure_accessibility
+после Cocoa fix — 4/4 PASS. Использован проектный engine26.04 и прежние runtime/cache.
+
+Windows/Linux: application_starts и 27 focused suites — 28/28 на каждой ОС,
+`20261018T210242Z-49fc9712`. Финальные path/geometry consumers и app — 3/3
+на каждой ОС (`20261018T211101Z-7aa3608f`), затем app/source_compress_dialog —
+2/2 (`20261018T211513Z-17f13d16`) после сверки отметки сжатия с концептом.
+Перепроверены и NUL в папке, и сохранение параметра при закрытии/открытии группы.
+Incremental current/build/cache сохранены. Guest roots содержали только current;
+устаревших payloads не было, место проверено. Full/slow не запускались: scope
+покрыт архивными формами и прямыми потребителями общего раскрытия.
+
+Отдельно закрыт пробел splitter-приёмки: window_placement/panel_key/panel_shell —
+3/3 на macOS, Windows и Linux; remote `20261018T203811Z-4a836ce6`.
+Проверены minimum/resize/keyboard/reset/toggle, пропорции, paths и фокус.
+VoiceOver и физические EN/RU клавиатуры отложены пользователем. Проверки и
+снимки выполнялись внутри Qt, без Computer Use.

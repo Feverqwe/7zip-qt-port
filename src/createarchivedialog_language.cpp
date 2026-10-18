@@ -17,9 +17,12 @@ void CreateArchiveDialog::BindLanguage() {
             if (QWidget *label = form->labelForField(field))
                 QtBindResourceText(label, id, caption);
     };
-    row(archivePath_, IDT_COMPRESS_ARCHIVE, "&Archive:");
-    row(findChild<QWidget *>("archivePathRow"), IDT_COMPRESS_ARCHIVE, "&Archive:");
-    QtBindResourceText(findChild<QLabel *>("archiveLabel"), IDT_COMPRESS_ARCHIVE, "&Archive:");
+    for (auto *widget :
+         {static_cast<QWidget *>(archivePath_), findChild<QWidget *>("archivePathRow"),
+          static_cast<QWidget *>(findChild<QLabel *>("archiveLabel"))})
+        QtBindLocalText(widget, "ArchiveRedesign",
+                        QT_TRANSLATE_NOOP("ArchiveRedesign", "Archive name"),
+                        widget != findChild<QLabel *>("archiveLabel"));
     QtBindResourceText(findChild<QPushButton *>("archiveBrowse"), IDS_COMPRESS_SET_ARCHIVE_BROWSE,
                        "Specify archive name", true);
     row(format_, IDT_COMPRESS_FORMAT, "Archive &format:");
@@ -31,25 +34,33 @@ void CreateArchiveDialog::BindLanguage() {
     row(wordSize_, IDT_COMPRESS_ORDER, "&Word size:");
     row(solidBlock_, IDT_COMPRESS_SOLID, "&Solid Block size:");
     row(threads_->parentWidget(), IDT_COMPRESS_THREADS, "Number of CPU &threads:");
-    row(memoryUsage_->parentWidget(), IDT_COMPRESS_MEMORY, "Memory usage for Compressing:");
     QtBindResourceText(threads_, IDT_COMPRESS_THREADS, "Number of CPU &threads:", true);
-    QtBindResourceText(memUse_, IDT_COMPRESS_MEMORY, "Memory usage for Compressing:", true);
-    row(decompressionMemory_, IDT_COMPRESS_MEMORY_DE, "Memory usage for Decompressing:");
-    QtBindResourceText(findChild<QLabel *>("compressionDecompressionLabel"), IDT_COMPRESS_MEMORY_DE,
-                       "Memory usage for Decompressing:");
+    QtBindLocalText(memUse_, "ArchiveRedesign",
+                    QT_TRANSLATE_NOOP("ArchiveRedesign", "Compression memory limit:"), true);
+    QtBindLocalText(memUse_->parentWidget(), "ArchiveRedesign",
+                    QT_TRANSLATE_NOOP("ArchiveRedesign", "Compression memory limit:"), true);
+    for (auto *form : findChildren<QFormLayout *>())
+        if (auto *label = form->labelForField(memUse_->parentWidget()))
+            QtBindLocalText(label, "ArchiveRedesign",
+                            QT_TRANSLATE_NOOP("ArchiveRedesign", "Compression memory limit:"));
     row(parameters_, IDT_COMPRESS_PARAMETERS, "Parameters:");
     row(volume_, IDT_SPLIT_TO_VOLUMES, "Split to &volumes, bytes:");
-    row(password_, IDT_PASSWORD_ENTER, "Enter &password:");
-    row(passwordConfirmation_, IDT_PASSWORD_REENTER, "Reenter password:");
+    for (const auto &entry :
+         {qMakePair(password_, QT_TRANSLATE_NOOP("ArchiveRedesign", "Password")),
+          qMakePair(passwordConfirmation_,
+                    QT_TRANSLATE_NOOP("ArchiveRedesign", "Repeat password"))}) {
+        QtBindLocalText(entry.first, "ArchiveRedesign", entry.second, true);
+        QtBindLocalText(encryptionForm_->labelForField(entry.first), "ArchiveRedesign",
+                        entry.second);
+    }
     row(encryption_, IDT_COMPRESS_ENCRYPTION_METHOD, "&Encryption method:");
     if (auto *label = findChild<QLabel *>("archiveEncryptionMethodLabel"))
         QtBindResourceText(label, IDT_COMPRESS_ENCRYPTION_METHOD, "&Encryption method:");
-    QtBindResourceText(advanced_, IDB_COMPRESS_OPTIONS, "Options");
+    QtBindLocalText(advanced_, "ArchiveRedesign",
+                    QT_TRANSLATE_NOOP("ArchiveRedesign", "Metadata settings…"));
     QtBindResourceText(sharedFiles_, IDX_COMPRESS_SHARED, "Compress shared files");
     QtBindResourceText(sfx_, IDX_COMPRESS_SFX, "Create SFX archive");
     QtBindResourceText(deleteAfterCompressing_, IDX_COMPRESS_DEL, "Delete files after compression");
-    QtBindResourceText(findChild<QGroupBox *>("archiveLifecycleOptions"), IDG_COMPRESS_OPTIONS,
-                       "Options");
     if (password_) {
         QtBindResourceText(showPassword_, IDX_PASSWORD_SHOW, "Show Password");
         QtBindResourceText(encryptHeaders_, IDX_COMPRESS_ENCRYPT_FILE_NAMES, "Encrypt file &names");

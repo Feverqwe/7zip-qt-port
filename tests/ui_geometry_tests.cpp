@@ -1,5 +1,6 @@
 #include "createarchivedialog.h"
 #include "extractdialog.h"
+#include "fixtures/archive_sections.h"
 #include "layout_inspection.h"
 
 #include <QCheckBox>
@@ -123,12 +124,16 @@ class UiGeometryTests final : public QObject {
             dialog = std::make_unique<CreateArchiveDialog>(directory_.path());
         else
             dialog = std::make_unique<ExtractDialog>(directory_.path(), QStringList{});
-        auto *advanced = dialog->findChild<QToolButton *>(create ? "archiveAdvancedToggle"
-                                                                 : "extractAdvancedToggle");
+        auto *advanced = dialog->findChild<QToolButton *>("extractAdvancedToggle");
         auto *passwordEnabled = dialog->findChild<QCheckBox *>(create ? "archivePasswordEnabled"
                                                                       : "extractPasswordEnabled");
-        QVERIFY(advanced && passwordEnabled);
-        advanced->click();
+        QVERIFY(passwordEnabled);
+        if (create)
+            ExpandArchiveSections(*dialog);
+        else {
+            QVERIFY(advanced);
+            advanced->click();
+        }
         passwordEnabled->click();
         dialog->resize(requestedSize);
         dialog->show();
@@ -146,16 +151,18 @@ class UiGeometryTests final : public QObject {
             QVERIFY(compression && encryption);
             auto *archivePath = dialog->findChild<QComboBox *>("archivePath");
             QVERIFY(archivePath);
-            auto *folder = dialog->findChild<QLabel *>("archiveFolder");
+            auto *folder = dialog->findChild<QLineEdit *>("archiveFolder");
             auto *caption = dialog->findChild<QLabel *>("archiveLabel");
             auto *browse = dialog->findChild<QPushButton *>("archiveBrowse");
             QVERIFY(folder && caption && browse);
             const QRect captionBounds = UiInspection::bounds(*caption, *dialog);
             const QRect pathBounds = UiInspection::bounds(*archivePath, *dialog);
-            QVERIFY(captionBounds.bottom() < pathBounds.top());
+            QVERIFY(captionBounds.right() < pathBounds.left());
             QVERIFY(UiInspection::fullyVisible(*folder, *dialog));
             archivePath->setFocus();
             QTest::keyClick(archivePath, Qt::Key_Tab);
+            QTRY_VERIFY(folder->hasFocus());
+            QTest::keyClick(folder, Qt::Key_Tab);
             QTRY_VERIFY(browse->hasFocus());
             QVERIFY(UiInspection::bounds(*encryption, *dialog).bottom() <
                     UiInspection::bounds(*compression, *dialog).top());
@@ -193,10 +200,16 @@ class UiGeometryTests final : public QObject {
                 const QRect labelBounds = UiInspection::bounds(*methodLabel, *dialog);
                 const QRect methodBounds = UiInspection::bounds(*method, *dialog);
                 QVERIFY(labelBounds.right() < methodBounds.left());
-                QVERIFY(qAbs(labelBounds.center().y() - methodBounds.center().y()) <= 1);
+                // Native combo backing can extend beyond its text line.
+                // Verify a shared reading line rather than identical frame centres.
+                QVERIFY(qAbs(labelBounds.center().y() - methodBounds.center().y()) <
+                        methodLabel->fontMetrics().height() / 2);
                 auto *memory = dialog->findChild<QLabel *>("compressionDecompressionMemory");
                 QVERIFY(memory);
-                QVERIFY(memory->alignment().testFlag(Qt::AlignRight));
+                scroll->ensureWidgetVisible(memory);
+                QApplication::processEvents();
+                QVERIFY(UiInspection::fullyVisible(*memory, *dialog));
+                QVERIFY(UiInspection::labelFits(*memory));
                 QVERIFY(UiInspection::writeReport(*dialog, tag + "-" + format));
             }
         } else {

@@ -4,6 +4,7 @@
 #include "CPP/7zip/UI/GUI/UpdateGUI.h"
 #include "archivecodeccatalog.h"
 #include "createarchivedialog.h"
+#include "fixtures/archive_sections.h"
 #include "layout_inspection.h"
 #include <QScrollArea>
 #include <QSignalSpy>
@@ -119,9 +120,7 @@ class CompressionMethodStateTests final : public QObject {
             QCOMPARE(memory->text(), QString("?"));
             QCOMPARE(decompress->text(), QString("?"));
         }
-        auto *advanced = dialog.findChild<QToolButton *>("archiveAdvancedToggle");
-        QVERIFY(advanced);
-        advanced->click();
+        ExpandArchiveSections(dialog);
         dialog.show();
         QCOMPARE(combo(dialog, "compressionMemoryLimit")->isVisible(), !tar);
         QCOMPARE(memory->isVisible(), !tar);
