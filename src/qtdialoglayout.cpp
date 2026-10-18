@@ -1,4 +1,5 @@
 #include "qtdialoglayout.h"
+#include <QPushButton>
 #include <QResizeEvent>
 #include <QVBoxLayout>
 #include <QWidget>
@@ -12,6 +13,12 @@ QVBoxLayout *QtCreateDialogLayout(QWidget &window, QWidget &footer) {
     frame->addLayout(content, 1);
     frame->addWidget(&footer);
     return content;
+}
+
+void QtSizeIconButton(QPushButton &button) {
+    const QSize native = button.sizeHint();
+    button.setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
+    button.setFixedWidth(qMax(native.width(), native.height()));
 }
 
 QSize QtWrappingLabel::minimumSizeHint() const {

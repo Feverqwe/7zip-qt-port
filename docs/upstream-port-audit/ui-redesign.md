@@ -835,3 +835,63 @@ help_source PASS (`20261018T191814Z-f7780b96`), окончательный nativ
 Current/build/ccache сохранены; full/slow, физические клавиатуры, VoiceOver и
 полная приёмка каталога не выполнялись. Browse/temporary формы и оставшиеся
 расхождения каталога ещё требуют общей сверки; goal остаётся active.
+
+## Итерация 16: встроенный выбор и временные файлы
+
+Источник: https://github.com/ip7z/7zip.git, текущий upstream
+`9128b80e3a471108678e2b3ec3c985861c8d7b0f`, baseline браузеров
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. Сопоставлены BrowseDialog.cpp/.h/.rc
+и BrowseDialog2.cpp/.h/.rc, ресурсы, OnInit, OnOK/FinishOnOK, Reload,
+parent/create/sort/key/context handlers и callers MyBrowseForFolder,
+CBrowseInfo::BrowseForFile, MyBrowseForTempFolder. Проверены зависимости
+FileName/Find/Dir, source vectors/formatting, Combo/Create Folder, LangUtils,
+Qt owned-temp leases и существующие delete/external-open guards. Между baseline
+и текущим upstream в этих модулях добавлены только lifetimebound annotations;
+новый functional source в этой итерации не копировался.
+
+Обе формы используют общую рамку и native footer. Встроенный long/super/device
+browser получил видимые Path/File type и caption Choose folder/Open/Save по
+существующему режиму; роль OK и source resolution не изменены. Скрытый folder
+filter больше не резервирует пустую строку. Native QFileDialog для обычных путей
+не менялся. Parent/Create Folder сохраняют QPushButton и focused Return,
+получили tooltips/accessibility с live translation. Общий helper ограничивает
+ширину по native sizeHint; первоначальный расчёт только от высоты/PM_ButtonMargin
+давал на Cocoa 32px кнопку с 8px contents для 16px icon. Native geometry check
+выявил это; окончательный размер сохраняет достаточную область иконки.
+
+Временная форма сохраняет все шесть source columns, selection, counters,
+sorting, context commands, readonly path, Help/Close, начальный Close focus и
+особый OnOK с actual list focus. Единственный disabled IDC_BROWSE2_FILTER
+заменён информационной сводкой: owned scope, selected/total и уже существующая
+причина защиты выбранного элемента. Upstream filter handler закомментирован,
+активного выбора/фильтра не было. Регистрация владельцев, обход каталогов,
+удаление, подтверждения, защита symlink/active/external и запуск файлов не
+переписаны; functional BrowseDialog2.cpp не менялся. После правки повторно
+сверены подключения footer/toolbar/list и сохранность source branches.
+
+В затронутых tests удалены проверки точного DLU-размера и скопированного
+source sample/ширин колонок. Проверяются видимость и отсутствие пересечений,
+помещение native icon, отсутствие пустой скрытой строки, mode captions,
+обновление реального выделения/статуса, объяснение disabled Delete и длинный
+русский текст при живой смене языка. Существующие проверки raw Unicode/пробелов,
+Cancel, фильтра, навигации, Return, сортировки, фактического удаления и guards
+сохранены. Temp test имеет private settings fallback для прямого native запуска.
+
+macOS: приложение и пять focused targets собраны; source_browse_dialog,
+temp_cleanup, browse_dialog, owned_temp, temp_detached_launch — 5/5 PASS.
+Cocoa полные source_browse/temp_cleanup в light/dark — 88/88 test functions
+PASS; финальное расширение protected EN/RU normal/compact — 6/6 PASS и
+повторный temp_cleanup CTest PASS. Просмотрены current-build JSON/PNG с actual
+light/dark metadata, 420×400 browser и 500×320 protected temp, без clipping.
+
+Linux: шесть suites со startup — PASS; финальные temp_cleanup/owned_temp —
+2/2 PASS. Windows: startup/browse/source_browse/temp_detached_launch прошли;
+owned_temp/temp_cleanup первоначально упали на создании symlink обычным token.
+Повтор с документированным interactive elevated test mode — 2/2 PASS,
+без изменения UAC/developer mode/прав пользователя. Temp включён в существующую
+native Windows QPA/resource-lock группу. Windows JSON подтверждает Segoe UI,
+windows QPA и полную видимость полей/footer/защитного статуса EN/RU compact.
+Runs: `20261018T195207Z-93fca917`, `20261018T195449Z-5325cb41`.
+Current/build/ccache сохранены; устаревших отдельных guest worktrees не найдено.
+Rendered original Windows pixel parity, native Linux appearance, VoiceOver,
+sheet-modality и общая приёмка каталога этой итерацией не установлены.

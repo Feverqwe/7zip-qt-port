@@ -292,7 +292,7 @@ Reference: upstream `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
 `FileManager/BrowseDialog.cpp/.rc`, `IDD_BROWSE`. The original custom browser
 is active for long/super/device paths; it is distinct from the normal native
 folder/file picker. Preserve Parent, Create Folder, current folder on the top
-row; single-selection Name/Modified/Size list; editable path, filter, OK/Cancel.
+row; single-selection Name/Modified/Size list; editable path, filter, accept/Cancel.
 Folder mode hides the filter; zero/one file filter disables it. Parent and
 directories remain before files regardless of sorting direction. Changing the
 filter reloads the list, keeping the source-selected filename where possible.
@@ -307,3 +307,13 @@ The current-folder caption elides in the middle; tooltip and accessible name
 retain the full source prefix, while the editable path keeps the raw value.
 Normal 560×640 and compact 420×400 reports check grouping/order, fitting labels,
 visible path/filter/footer and row values. Rendered Windows parity is unverified.
+
+The agreed redesign uses the shared dialog frame and a separate native footer.
+Path and file type have visible labels and accessible names. The accept caption
+is Choose folder, Open or Save according to the existing mode; its source role
+and resolution rules remain unchanged. A hidden folder filter reserves no empty
+row. Parent/Create Folder remain native push buttons with accessible names and
+tooltips, including live translation, and keep their focused Return behavior.
+Their widths respect native content minima rather than fixed source DLU widths.
+The initial frame scales with the font; compact resizing keeps fields and
+actions exposed while the list scrolls.

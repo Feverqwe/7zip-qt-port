@@ -19,8 +19,8 @@
 #include "Windows/FileName.h"
 #include "Windows/PropVariantConv.h"
 #include "Windows/TimeUtils.h"
+#include "qtdialoglayout.h"
 #include "qtdialogscreenservices.h"
-#include "qtdialogunits.h"
 #include "qtfilelisthover.h"
 #include "qtlangbuttonbox.h"
 #include "qtlangcontrols.h"
@@ -162,21 +162,25 @@ void CBrowseDialog::OnInit() {
     setWindowFlag(Qt::WindowMinMaxButtonsHint);
     setWindowFlag(Qt::WindowContextHelpButtonHint, false);
     setWindowTitle(Title.IsEmpty() ? QStringLiteral("7-Zip: Browse") : ToQString(Title));
-    const QtDialogUnits units(font());
-    const QSize margin = units.pixels(QSize(8, 8));
-    auto *layout = new QVBoxLayout(this);
-    layout->setContentsMargins(margin.width(), margin.height(), margin.width(), margin.height());
-    layout->setSpacing(margin.height());
+    auto *buttons = new QtLangButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
+    buttons->setObjectName("browseButtons");
+    buttons->SetAcceptText("DialogRedesign",
+                           FolderMode ? QT_TRANSLATE_NOOP("DialogRedesign", "Choose folder")
+                           : SaveMode ? QT_TRANSLATE_NOOP("DialogRedesign", "Save")
+                                      : QT_TRANSLATE_NOOP("DialogRedesign", "Open"));
+    auto *layout = QtCreateDialogLayout(*this, *buttons);
     auto *top = new QHBoxLayout;
-    top->setSpacing(margin.width());
+    top->setSpacing(8);
     auto *parent = new QPushButton(this);
     parent->setIcon(style()->standardIcon(QStyle::SP_FileDialogToParent));
     parent->setObjectName("browseParent");
+    parent->setProperty("languageToolTip", true);
     QtBindLangText(parent, IDM_OPEN_PARENT_FOLDER, {}, true);
     parent->setAutoDefault(true);
     auto *create = new QPushButton(this);
     create->setIcon(style()->standardIcon(QStyle::SP_FileDialogNewFolder));
     create->setObjectName("browseCreateFolder");
+    create->setProperty("languageToolTip", true);
     QtBindLangText(create, IDM_CREATE_FOLDER, {}, true);
     create->setAutoDefault(true);
     _folder = new QLabel(this);
@@ -207,38 +211,35 @@ void CBrowseDialog::OnInit() {
     layout->addWidget(_list, 1);
     _pathEdit = new QLineEdit(this);
     _pathEdit->setObjectName("browsePath");
-    _pathEdit->setMinimumHeight(units.pixels(QSize(0, 14)).height());
-    QtBindLangText(_pathEdit, IDS_PROP_NAME, {}, true);
+    auto *pathLabel = new QLabel(this);
+    pathLabel->setObjectName("browsePathLabel");
+    QtBindLangText(pathLabel, IDS_PROP_PATH, "Path");
+    QtBindLangText(_pathEdit, IDS_PROP_PATH, "Path", true);
+    pathLabel->setBuddy(_pathEdit);
+    layout->addWidget(pathLabel);
     layout->addWidget(_pathEdit);
     _filterCombo = new QComboBox(this);
     _filterCombo->setObjectName("browseFilter");
     _filterCombo->setAttribute(Qt::WA_LayoutUsesWidgetRect);
-    _filterCombo->setMinimumHeight(units.pixels(QSize(0, 14)).height());
-    auto filterPolicy = _filterCombo->sizePolicy();
-    filterPolicy.setRetainSizeWhenHidden(true);
-    _filterCombo->setSizePolicy(filterPolicy);
+    auto *filterLabel = new QLabel(this);
+    filterLabel->setObjectName("browseFilterLabel");
+    QtBindLangText(filterLabel, IDS_PROP_FILE_TYPE, "File type");
+    QtBindLangText(_filterCombo, IDS_PROP_FILE_TYPE, "File type", true);
+    filterLabel->setBuddy(_filterCombo);
     FOR_VECTOR(i, Filters)
     _filterCombo->addItem(ToQString(Filters[i].Description));
     if (Filters.Size() <= 1) {
-        if (FolderMode)
+        if (FolderMode) {
             _filterCombo->hide();
-        else
+            filterLabel->hide();
+        } else
             _filterCombo->setEnabled(false);
     }
     _filterCombo->setCurrentIndex((unsigned)FilterIndex < Filters.Size() ? FilterIndex : -1);
+    layout->addWidget(filterLabel);
     layout->addWidget(_filterCombo);
-    auto *buttons = new QtLangButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
-    buttons->setObjectName("browseButtons");
-    buttons->layout()->setSpacing(margin.width());
-    for (auto *button : {parent, create}) {
-        button->setFixedWidth(units.pixels(QSize(24, 0)).width());
-        button->setMinimumHeight(units.pixels(QSize(0, 16)).height());
-    }
-    for (auto *button : buttons->buttons()) {
-        button->setFixedWidth(qMax(units.pixels(QSize(64, 0)).width(), button->sizeHint().width()));
-        button->setMinimumHeight(units.pixels(QSize(0, 16)).height());
-    }
-    layout->addWidget(buttons);
+    for (auto *button : {parent, create})
+        QtSizeIconButton(*button);
     connect(buttons, &QDialogButtonBox::accepted, this, &CBrowseDialog::OnOK);
     connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
     connect(parent, &QPushButton::clicked, this, [this] { OnButtonClicked(IDB_BROWSE_PARENT); });
@@ -300,7 +301,8 @@ void CBrowseDialog::OnInit() {
     setTabOrder(parent, create);
     setTabOrder(create, _list);
     _pathEdit->setFocus();
-    resize(units.pixels(QSize(272, 336)).expandedTo(minimumSizeHint()));
+    resize(QSize(fontMetrics().averageCharWidth() * 80, fontMetrics().lineSpacing() * 28)
+               .expandedTo(minimumSizeHint()));
     QtNormalizeDialogSize(*this);
 }
 

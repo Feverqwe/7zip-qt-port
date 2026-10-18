@@ -22,9 +22,13 @@ with2/301 rows. Rendered Windows and current native3OS acceptance remain separat
 
 Reference: pinned BrowseDialog2.cpp/rc (dialog93), six Name/MTime/Size/Files/
 Folders/Name-2 columns. Controls retain Delete/Refresh, Parent/read-only path,
-list, disabled filter, Help/Close ordering. Owned membership replaces upstream's
+list, scope information and Help/Close ordering. Owned membership replaces upstream's
 7z[E/O/S]+eight-hex naming convention; active or unconfirmed external entries remain visible with an
-explanatory tooltip and disabled Delete. Enter navigates, Backspace returns,
+explanatory tooltip and disabled Delete. The agreed redesign also shows the
+selected/total count and the selected protected item's explanation below the
+list. This replaces the single disabled filter, which had no selectable
+alternative or active filtering handler. Live language changes preserve
+selection and update the explanation. Enter navigates, Backspace returns,
 Delete confirms eligible deletion, Ctrl+R refreshes, Ctrl+F3/F5/F6 sort by
 name/time/size and toggle direction while retaining selection. Plain F5 remains
 the Qt Refresh convenience. F1 opens fm/temp.htm, Escape
@@ -33,18 +37,17 @@ activate on Return; no permanent Enter default remains on non-button focus.
 Source OnOK only navigates with actual list focus; readonly-path Enter/public
 accept is a no-op. Tab order follows the resource, with disabled controls skipped.
 
-Initial client is466×344DLU, with8DLU root margins, source5/3DLU gaps between
-command/path/list rows and8DLU gaps around filter/footer. Delete/Refresh/footer
-buttons are64×16DLU with native caption protection; Parent is exactly24DLU wide
-with16DLU minimum height. Path/filter heights have14DLU minimums. Source sample
-strings initialize all six column widths through native content autosizing. The
-existing500×320 compact minimum remains a Qt accessibility adaptation.
+The frame uses the shared dialog margins and a separate native footer;
+the initial size scales with the font. Buttons and the read-only path respect
+native content minima. The scope/count/protection explanation wraps at compact
+width; the six-column list scrolls horizontally. Source sample strings still
+initialize column widths through native content autosizing.
 Source minimize/maximize/resize capabilities are requested without context-help;
 native window managers may suppress modal chrome. Initial EN/RU reports and
 focus-sensitive Enter policy are checked in `temp_cleanup`.
 
-temp_cleanup writes EN/RU900×580/500×320 temp-cleanup-*.json; footer/path/filter
-stay exposed, and the six-column list scrolls horizontally at compact width.
+temp_cleanup writes EN/RU900×580/500×320 temp-cleanup-* and temp-protected-*.json;
+footer/path/status remain exposed, including the long protected-item explanation.
 Geometry/source structure and a bounded original EN/RU comparison are checked
 in the [current browser receipt](../archive/qt-port/upstream-port-audit/p3-06-source-browsers-2026-10-16.md).
 Named controls remain exposed at normal/compact sizes; full workflow/pixel parity

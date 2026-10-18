@@ -4,7 +4,6 @@
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "CPP/7zip/UI/FileManager/ViewSettings.h"
 #include "layout_inspection.h"
-#include "qtdialogunits.h"
 #include <QApplication>
 #include <QComboBox>
 #include <QDialog>
@@ -19,7 +18,6 @@
 #include <QPushButton>
 #include <QScopeGuard>
 #include <QStyleOptionButton>
-#include <QStyleOptionViewItem>
 #include <QTemporaryDir>
 #include <QTimer>
 #include <QTreeWidget>
@@ -53,21 +51,6 @@ class SourceBrowseDialogTests final : public QObject {
         for (int i = 0; i < list.topLevelItemCount(); ++i)
             names.append(list.topLevelItem(i)->text(0));
         return names;
-    }
-    static bool sourceNameSampleFits(QTreeWidget &list) {
-        QStyleOptionViewItem option;
-        option.initFrom(&list);
-        option.font = list.font();
-        option.fontMetrics = QFontMetrics(option.font);
-        option.text = "123456789012345678901234567";
-        option.features = QStyleOptionViewItem::HasDisplay | QStyleOptionViewItem::HasDecoration;
-        const int icon = list.style()->pixelMetric(QStyle::PM_SmallIconSize, nullptr, &list);
-        option.decorationSize = QSize(icon, icon);
-        option.icon = list.style()->standardIcon(QStyle::SP_FileIcon);
-        option.rect = QRect(0, 0, list.columnWidth(0), qMax(icon, option.fontMetrics.height()) + 8);
-        const QRect contents =
-            list.style()->subElementRect(QStyle::SE_ItemViewItemText, &option, &list);
-        return option.fontMetrics.horizontalAdvance(option.text) <= contents.width();
     }
 
   private slots:
@@ -111,33 +94,34 @@ class SourceBrowseDialogTests final : public QObject {
             const auto close = qScopeGuard([&] { dialog->reject(); });
             QVERIFY(UiInspection::writeReport(*dialog,
                                               QString("browse-source-initial-%1").arg(language)));
-            QCOMPARE(dialog->size(), QtDialogUnits(dialog->font())
-                                         .pixels(QSize(272, 336))
-                                         .expandedTo(dialog->minimumSizeHint()));
             QVERIFY(dialog->windowFlags().testFlag(Qt::WindowMinMaxButtonsHint));
             QVERIFY(!dialog->windowFlags().testFlag(Qt::WindowContextHelpButtonHint));
             auto *list = dialog->findChild<QTreeWidget *>("browseList");
             QVERIFY(list);
-            QVERIFY(sourceNameSampleFits(*list));
+            QVERIFY(UiInspection::fullyVisible(*list, *dialog));
             auto *path = dialog->findChild<QLineEdit *>("browsePath");
-            QVERIFY(path->height() >= QtDialogUnits(dialog->font()).pixels(QSize(0, 14)).height());
+            QVERIFY(UiInspection::fullyVisible(*path, *dialog));
             auto *footer = dialog->findChild<QDialogButtonBox *>("browseButtons");
-            const QRect footerItem =
-                dialog->layout()->itemAt(dialog->layout()->indexOf(footer))->geometry();
-            const int gap = footerItem.top() - path->geometry().bottom() - 1;
-            QVERIFY(gap >= path->height() +
-                               2 * QtDialogUnits(dialog->font()).pixels(QSize(0, 8)).height());
+            const int gap = UiInspection::bounds(*footer, *dialog).top() -
+                            UiInspection::bounds(*path, *dialog).bottom() - 1;
+            QVERIFY(gap >= 0 && gap < path->height());
+            QVERIFY(!dialog->findChild<QWidget *>("browseFilterLabel")->isVisible());
             for (const char *name : {"browseParent", "browseCreateFolder"}) {
                 auto *button = dialog->findChild<QPushButton *>(name);
-                QCOMPARE(button->width(),
-                         QtDialogUnits(dialog->font()).pixels(QSize(24, 0)).width());
                 QStyleOptionButton option;
                 option.initFrom(button);
                 option.text = button->text();
                 const QRect contents =
                     button->style()->subElementRect(QStyle::SE_PushButtonContents, &option, button);
-                QVERIFY(button->fontMetrics().horizontalAdvance(button->text()) <=
-                        contents.width());
+                QVERIFY2(button->iconSize().width() <= contents.width(),
+                         qPrintable(QString("%1: icon %2, contents %3, button %4")
+                                        .arg(button->objectName())
+                                        .arg(button->iconSize().width())
+                                        .arg(contents.width())
+                                        .arg(button->width())));
+                QVERIFY(button->iconSize().height() <= contents.height());
+                QVERIFY(!button->accessibleName().isEmpty());
+                QVERIFY(!button->toolTip().isEmpty());
             }
             for (auto *button : dialog->findChildren<QPushButton *>())
                 QVERIFY(UiInspection::fullyVisible(*button, *dialog));
@@ -406,6 +390,10 @@ class SourceBrowseDialogTests final : public QObject {
         const QString name = QStringLiteral("  new 密碼 🗜.7z  ");
         QTimer::singleShot(0, [&] {
             if (auto *dialog = Dialog()) {
+                QCOMPARE(dialog->findChild<QDialogButtonBox *>("browseButtons")
+                             ->button(QDialogButtonBox::Ok)
+                             ->text(),
+                         QCoreApplication::translate("DialogRedesign", "Save"));
                 dialog->findChild<QLineEdit *>("browsePath")->setText(name);
                 dialog->accept();
             }
@@ -510,12 +498,22 @@ class SourceBrowseDialogTests final : public QObject {
             auto *buttons = dialog->findChild<QDialogButtonBox *>();
             auto *currentFolder = dialog->findChild<QLabel *>("browseFolder");
             QVERIFY(list && path && filter && buttons && currentFolder);
+            QCOMPARE(
+                buttons->button(QDialogButtonBox::Ok)->text(),
+                QCoreApplication::translate("DialogRedesign", folder ? "Choose folder" : "Open"));
             QVERIFY(UiInspection::fullyVisible(*currentFolder, *dialog));
             QVERIFY(UiInspection::labelFits(*currentFolder));
             QCOMPARE(currentFolder->accessibleName(), currentFolder->toolTip());
             QVERIFY(currentFolder->text().contains(QChar(0x2026)));
             for (QWidget *widget : QList<QWidget *>{list, path, buttons})
                 QVERIFY(UiInspection::fullyVisible(*widget, *dialog));
+            for (const char *name : {"browsePathLabel", "browseFilterLabel"}) {
+                auto *label = dialog->findChild<QLabel *>(name);
+                if (label->isVisible()) {
+                    QVERIFY(UiInspection::fullyVisible(*label, *dialog));
+                    QVERIFY(UiInspection::labelFits(*label));
+                }
+            }
             QVERIFY(UiInspection::bounds(*list, *dialog).bottom() <
                     UiInspection::bounds(*path, *dialog).top());
             QCOMPARE(filter->isVisible(), !folder);

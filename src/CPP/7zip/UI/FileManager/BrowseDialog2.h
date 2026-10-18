@@ -12,7 +12,7 @@
 class QTreeWidget;
 class QLineEdit;
 class QPushButton;
-class QComboBox;
+class QLabel;
 class QDialogButtonBox;
 class QKeyEvent;
 class QUrl;
@@ -48,7 +48,7 @@ class CBrowseDialog2 : public QDialog {
     QTreeWidget *_list = nullptr;
     QLineEdit *_pathEdit = nullptr;
     QPushButton *_delete = nullptr, *_parent = nullptr;
-    QComboBox *_filterCombo = nullptr;
+    QLabel *_scopeLabel = nullptr;
     int _sortIndex = 1;
     bool _ascending = true;
     bool _filePropsValid = true;

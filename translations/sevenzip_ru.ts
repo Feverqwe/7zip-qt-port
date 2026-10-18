@@ -412,12 +412,19 @@
             <translation>Снять выделение</translation>
         </message>
         <message>
-            <location line="+2" />
+            <location filename="../src/CPP/7zip/UI/FileManager/BrowseDialog.cpp" line="+168" />
+            <source>Choose folder</source>
+            <translation>Выбрать папку</translation>
+        </message>
+        <message>
+            <location line="+1" />
+            <location filename="../src/CPP/7zip/UI/FileManager/ComboDialog.cpp" line="+2" />
             <location filename="../src/qtcompressoptionscontrols.cpp" line="-17" />
             <source>Save</source>
             <translation>Сохранить</translation>
         </message>
         <message>
+            <location line="+1" />
             <location filename="../src/CPP/7zip/UI/FileManager/ListViewDialog.cpp" line="+9" />
             <source>Open</source>
             <translation>Открыть</translation>
@@ -5934,28 +5941,32 @@ Application modules:
     <context>
         <name>qttempbrowsepresentation</name>
         <message>
-            <location filename="../src/qttempbrowsepresentation.cpp" line="+322" />
+            <location filename="../src/qttempbrowsepresentation.cpp" line="+301" />
             <source>In use by an active operation or session</source>
             <translation>Используется текущей операцией или сеансом</translation>
         </message>
         <message>
-            <location line="-208" />
+            <location line="-187" />
             <source>Parent folder</source>
             <translation>Родительская папка</translation>
         </message>
         <message>
-            <location line="+211" />
+            <location line="+190" />
             <source>Protected: external application completion is unconfirmed</source>
             <translation>Защищён: завершение внешнего приложения не подтверждено</translation>
         </message>
         <message>
-            <location line="-174" />
-            <location line="+154" />
+            <location line="+34" />
             <source>Sevenzip owned temporary files</source>
             <translation>Временные файлы Sevenzip</translation>
         </message>
         <message>
-            <location line="-183" />
+            <location line="+4" />
+            <source>No Sevenzip temporary files</source>
+            <translation>Нет временных файлов Sevenzip</translation>
+        </message>
+        <message>
+            <location line="-221" />
             <source>Temporary folder</source>
             <translation>Временная папка</translation>
         </message>

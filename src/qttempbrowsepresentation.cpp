@@ -10,17 +10,18 @@
 #include "Common/StringConvert.h"
 #include "Windows/PropVariantConv.h"
 #include "Windows/TimeUtils.h"
-#include "qtdialogunits.h"
+#include "qtdialoglayout.h"
 #include "qtfilelisthover.h"
 #include "qtlangbuttonbox.h"
 #include "qtlangcontrols.h"
+#include "qtlanguageservices.h"
 #include <QApplication>
-#include <QComboBox>
 #include <QDialogButtonBox>
 #include <QFileIconProvider>
 #include <QFileInfo>
 #include <QHeaderView>
 #include <QKeyEvent>
+#include <QLabel>
 #include <QLineEdit>
 #include <QPainter>
 #include <QPushButton>
@@ -83,14 +84,13 @@ void CBrowseDialog2::BuildControls() {
     setObjectName("tempBrowseDialog");
     setWindowFlag(Qt::WindowMinMaxButtonsHint);
     setWindowFlag(Qt::WindowContextHelpButtonHint, false);
-    setMinimumSize(500, 320);
-    const QtDialogUnits units(font());
-    const QSize margin = units.pixels(QSize(8, 8));
-    auto *layout = new QVBoxLayout(this);
-    layout->setContentsMargins(margin.width(), margin.height(), margin.width(), margin.height());
-    layout->setSpacing(0);
+    auto *buttons = new QtLangButtonBox(QDialogButtonBox::Help | QDialogButtonBox::Close, this);
+    buttons->setObjectName("tempFooter");
+    buttons->button(QDialogButtonBox::Help)->setObjectName("tempHelp");
+    buttons->button(QDialogButtonBox::Close)->setObjectName("tempClose");
+    auto *layout = QtCreateDialogLayout(*this, *buttons);
     auto *commands = new QHBoxLayout;
-    commands->setSpacing(margin.width());
+    commands->setSpacing(8);
     _delete = new QPushButton(this);
     _delete->setObjectName("tempDelete");
     _delete->setProperty("sourceControlID", IDS_BUTTON_DELETE);
@@ -103,26 +103,24 @@ void CBrowseDialog2::BuildControls() {
     commands->addWidget(refresh);
     commands->addStretch();
     layout->addLayout(commands);
-    layout->addSpacing(units.pixels(QSize(0, 5)).height());
     auto *path = new QHBoxLayout;
-    path->setSpacing(units.pixels(QSize(4, 0)).width());
+    path->setSpacing(8);
     _parent = new QPushButton(this);
     _parent->setIcon(style()->standardIcon(QStyle::SP_FileDialogToParent));
     _parent->setObjectName("tempParent");
     _parent->setProperty("sourceControlID", IDB_BROWSE2_PARENT);
+    _parent->setProperty("languageToolTip", true);
     QtBindLocalText(_parent, "qttempbrowsepresentation",
                     QT_TRANSLATE_NOOP("qttempbrowsepresentation", "Parent folder"), true);
     path->addWidget(_parent);
     _pathEdit = new QLineEdit(this);
     _pathEdit->setReadOnly(true);
-    _pathEdit->setMinimumHeight(units.pixels(QSize(0, 14)).height());
     _pathEdit->setObjectName("tempPath");
     _pathEdit->setProperty("sourceControlID", IDT_BROWSE2_FOLDER);
     QtBindLocalText(_pathEdit, "qttempbrowsepresentation",
                     QT_TRANSLATE_NOOP("qttempbrowsepresentation", "Temporary folder"), true);
     path->addWidget(_pathEdit, 1);
     layout->addLayout(path);
-    layout->addSpacing(units.pixels(QSize(0, 3)).height());
     _list = new QTreeWidget(this);
     _list->setObjectName("tempList");
     _list->setProperty("sourceControlID", IDL_BROWSE2);
@@ -142,31 +140,16 @@ void CBrowseDialog2::BuildControls() {
     _list->installEventFilter(this);
     _list->setContextMenuPolicy(Qt::CustomContextMenu);
     layout->addWidget(_list, 1);
-    layout->addSpacing(margin.height());
-    _filterCombo = new QComboBox(this);
-    _filterCombo->setObjectName("tempFilter");
-    _filterCombo->setMinimumHeight(units.pixels(QSize(0, 14)).height());
-    _filterCombo->setProperty("sourceControlID", IDC_BROWSE2_FILTER);
-    _filterCombo->addItem(
-        QCoreApplication::translate("qttempbrowsepresentation", "Sevenzip owned temporary files"));
-    _filterCombo->setEnabled(false);
-    layout->addWidget(_filterCombo);
-    layout->addSpacing(margin.height());
-    auto *buttons = new QtLangButtonBox(QDialogButtonBox::Help | QDialogButtonBox::Close, this);
-    buttons->setObjectName("tempFooter");
-    buttons->button(QDialogButtonBox::Help)->setObjectName("tempHelp");
-    buttons->button(QDialogButtonBox::Close)->setObjectName("tempClose");
-    buttons->layout()->setSpacing(margin.width());
-    for (auto *button : {_delete, refresh, buttons->button(QDialogButtonBox::Help),
-                         buttons->button(QDialogButtonBox::Close)}) {
-        button->setFixedWidth(qMax(units.pixels(QSize(64, 0)).width(), button->sizeHint().width()));
-        button->setMinimumHeight(units.pixels(QSize(0, 16)).height());
-    }
-    _parent->setFixedWidth(units.pixels(QSize(24, 0)).width());
-    _parent->setMinimumHeight(units.pixels(QSize(0, 16)).height());
-    layout->addWidget(buttons);
+    _scopeLabel = new QtWrappingLabel(this);
+    _scopeLabel->setObjectName("tempScope");
+    _scopeLabel->setTextFormat(Qt::PlainText);
+    _scopeLabel->setWordWrap(true);
+    _scopeLabel->setForegroundRole(QPalette::PlaceholderText);
+    layout->addWidget(_scopeLabel);
+    QtSizeIconButton(*_parent);
     ConnectControls(buttons, refresh);
-    resize(units.pixels(QSize(466, 344)).expandedTo(minimumSizeHint()));
+    resize(QSize(fontMetrics().averageCharWidth() * 100, fontMetrics().lineSpacing() * 28)
+               .expandedTo(minimumSizeHint()));
 }
 void CBrowseDialog2::InitializeColumns() {
     _list->header()->setStretchLastSection(false);
@@ -222,8 +205,7 @@ void CBrowseDialog2::ConnectControls(QDialogButtonBox *buttons, QPushButton *ref
     setTabOrder(refresh, _parent);
     setTabOrder(_parent, _pathEdit);
     setTabOrder(_pathEdit, _list);
-    setTabOrder(_list, _filterCombo);
-    setTabOrder(_filterCombo, close);
+    setTabOrder(_list, close);
     close->setFocus();
 }
 void CBrowseDialog2::PopulateRows(const UStringVector &selected, const UString &focused) {
@@ -301,9 +283,6 @@ void CBrowseDialog2::ReloadLanguagePresentation() {
         title.remove("...");
         setWindowTitle(title);
     }
-    if (_filterCombo && _filterCombo->count())
-        _filterCombo->setItemText(0, QCoreApplication::translate("qttempbrowsepresentation",
-                                                                 "Sevenzip owned temporary files"));
     if (!_list)
         return;
     _list->setHeaderLabels({QtLangText(IDS_PROP_NAME), QtLangText(IDS_PROP_MTIME),
@@ -328,6 +307,7 @@ void CBrowseDialog2::ReloadLanguagePresentation() {
         item->setToolTip(0, reason);
         item->setData(0, Qt::UserRole + 1, reason);
     }
+    UpdateDeleteAvailability();
 }
 
 void CBrowseDialog2::changeEvent(QEvent *event) {
@@ -354,6 +334,22 @@ void CBrowseDialog2::UpdateDeleteAvailability() {
             enabled = false;
     }
     _delete->setEnabled(enabled);
+    if (_scopeLabel) {
+        QString status = QCoreApplication::translate("qttempbrowsepresentation",
+                                                     "Sevenzip owned temporary files");
+        status += '\n';
+        status += _items.IsEmpty()
+                      ? QCoreApplication::translate("qttempbrowsepresentation",
+                                                    "No Sevenzip temporary files")
+                      : QtSelectionStatusText(int(selected.Size()), int(_items.Size()));
+        if (!enabled)
+            for (auto *item : _list->selectedItems())
+                if (!item->toolTip(0).isEmpty()) {
+                    status += '\n' + item->toolTip(0);
+                    break;
+                }
+        _scopeLabel->setText(status);
+    }
 }
 void CBrowseDialog2::OnFocusChanged(QWidget *, QWidget *current) {
     if (current == _list || current == _pathEdit) {

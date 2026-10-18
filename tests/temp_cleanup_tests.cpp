@@ -4,15 +4,15 @@
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "layout_inspection.h"
 #include "native_link_fixture.h"
-#include "qtdialogunits.h"
 #include "qtlangcontrols.h"
+#include "qtlanguageservices.h"
 #include "qtownedtempdir.h"
-#include <QComboBox>
 #include <QContextMenuEvent>
 #include <QDesktopServices>
 #include <QFile>
 #include <QFileInfo>
 #include <QHeaderView>
+#include <QLabel>
 #include <QLineEdit>
 #include <QMenu>
 #include <QMessageBox>
@@ -30,8 +30,10 @@ class TempCleanupTests : public QObject {
     Q_OBJECT
     QUrl opened;
     QTemporaryDir registry_;
+    QTemporaryDir settings_;
     QByteArray oldRegistry_;
     bool hadRegistry_ = false;
+    bool privateSettings_ = false;
     static QTreeWidgetItem *row(CBrowseDialog2 &dialog, const QString &path) {
         auto *list = dialog.findChild<QTreeWidget *>("tempList");
         const QString name = QFileInfo(path).fileName().normalized(QString::NormalizationForm_C);
@@ -64,12 +66,19 @@ class TempCleanupTests : public QObject {
         hadRegistry_ = qEnvironmentVariableIsSet("SEVENZIP_OWNED_TEMP_REGISTRY");
         oldRegistry_ = qgetenv("SEVENZIP_OWNED_TEMP_REGISTRY");
         qputenv("SEVENZIP_OWNED_TEMP_REGISTRY", registry_.path().toUtf8());
+        if (!qEnvironmentVariableIsSet("SEVENZIP_SETTINGS_PATH")) {
+            QVERIFY(settings_.isValid());
+            qputenv("SEVENZIP_SETTINGS_PATH", settings_.filePath("settings.ini").toUtf8());
+            privateSettings_ = true;
+        }
     }
     void cleanupTestCase() {
         if (hadRegistry_)
             qputenv("SEVENZIP_OWNED_TEMP_REGISTRY", oldRegistry_);
         else
             qunsetenv("SEVENZIP_OWNED_TEMP_REGISTRY");
+        if (privateSettings_)
+            qunsetenv("SEVENZIP_SETTINGS_PATH");
     }
     void init() {
         QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
@@ -129,26 +138,26 @@ class TempCleanupTests : public QObject {
             const auto close = qScopeGuard([&] { dialog->reject(); });
             QVERIFY(UiInspection::writeReport(*dialog,
                                               QString("temp-source-initial-%1").arg(language)));
-            QCOMPARE(dialog->size(),
-                     UiInspection::normalizedInitialClientSize(
-                         *dialog, QtDialogUnits(dialog->font()).pixels(QSize(466, 344))));
             QVERIFY(dialog->windowFlags().testFlag(Qt::WindowMinMaxButtonsHint));
             QVERIFY(!dialog->windowFlags().testFlag(Qt::WindowContextHelpButtonHint));
             auto *parent = dialog->findChild<QPushButton *>("tempParent");
-            QCOMPARE(parent->width(), QtDialogUnits(dialog->font()).pixels(QSize(24, 0)).width());
             QStyleOptionButton option;
             option.initFrom(parent);
             option.text = parent->text();
             const QRect contents =
                 parent->style()->subElementRect(QStyle::SE_PushButtonContents, &option, parent);
-            QVERIFY(parent->fontMetrics().horizontalAdvance(parent->text()) <= contents.width());
+            QVERIFY(parent->iconSize().width() <= contents.width());
+            QVERIFY(parent->iconSize().height() <= contents.height());
+            QVERIFY(!parent->accessibleName().isEmpty());
+            QVERIFY(!parent->toolTip().isEmpty());
             QVERIFY(!dialog->findChild<QLineEdit *>("tempPath")->text().isEmpty());
             auto *list = dialog->findChild<QTreeWidget *>("tempList");
             QCOMPARE(list->columnCount(), 6);
             QCOMPARE(list->headerItem()->text(0), QtLangText(IDS_PROP_NAME));
-            QVERIFY(list->columnWidth(0) > list->columnWidth(2));
-            QVERIFY(list->columnWidth(5) > list->columnWidth(3));
-            QVERIFY(list->columnWidth(5) > list->columnWidth(4));
+            auto *scope = dialog->findChild<QLabel *>("tempScope");
+            QVERIFY(UiInspection::fullyVisible(*scope, *dialog));
+            QVERIFY(UiInspection::labelFits(*scope));
+            QVERIFY(UiInspection::separate(*list, *scope, *dialog));
             for (auto *button : dialog->findChildren<QPushButton *>()) {
                 QVERIFY(UiInspection::fullyVisible(*button, *dialog));
                 QCOMPARE(button->isDefault(), button->objectName() == "tempClose");
@@ -436,12 +445,33 @@ class TempCleanupTests : public QObject {
             auto *dialog = dynamic_cast<CBrowseDialog2 *>(QApplication::activeModalWidget());
             if (!dialog)
                 return;
+            const auto close = qScopeGuard([&] { dialog->reject(); });
             select(*dialog, active.path());
             activeDisabled = row(*dialog, active.path()) &&
                              !dialog->findChild<QPushButton *>("tempDelete")->isEnabled();
+            auto *scope = dialog->findChild<QLabel *>("tempScope");
+            QVERIFY(scope->text().contains(row(*dialog, active.path())->toolTip(0)));
+            QVERIFY(!row(*dialog, active.path())->toolTip(0).isEmpty());
             select(*dialog, protectedCopy.path());
             unknownDisabled = row(*dialog, protectedCopy.path()) &&
                               !dialog->findChild<QPushButton *>("tempDelete")->isEnabled();
+            QVERIFY(scope->text().contains(row(*dialog, protectedCopy.path())->toolTip(0)));
+            QVERIFY(!row(*dialog, protectedCopy.path())->toolTip(0).isEmpty());
+            for (const char *language : {"-", "ru"}) {
+                const QString settings = qEnvironmentVariable("SEVENZIP_SETTINGS_PATH");
+                SaveRegLang(UString(language), settings);
+                ReloadLang(settings);
+                QtNotifyLanguageChanged();
+                QVERIFY(scope->text().contains(row(*dialog, protectedCopy.path())->toolTip(0)));
+                for (const QSize size : {QSize(900, 580), QSize(500, 320)}) {
+                    dialog->resize(size);
+                    QApplication::processEvents();
+                    QVERIFY(UiInspection::fullyVisible(*scope, *dialog));
+                    QVERIFY(UiInspection::labelFits(*scope));
+                    QVERIFY(UiInspection::writeReport(
+                        *dialog, QString("temp-protected-%1-%2").arg(language).arg(size.width())));
+                }
+            }
             QTimer answers;
             connect(&answers, &QTimer::timeout, dialog, [&] {
                 if (auto *box = qobject_cast<QMessageBox *>(QApplication::activeModalWidget())) {
@@ -582,6 +612,10 @@ class TempCleanupTests : public QObject {
             }
             QTest::keyClick(list, Qt::Key_A, Qt::ControlModifier);
             QCOMPARE(list->selectedItems().size(), 3);
+            auto *scope = dialog->findChild<QLabel *>("tempScope");
+            QVERIFY(scope->text().contains(QtSelectionStatusText(3, 3)));
+            list->clearSelection();
+            QVERIFY(scope->text().contains(QtSelectionStatusText(0, 3)));
             observed = true;
         });
         MyBrowseForTempFolder(nullptr);
@@ -612,7 +646,7 @@ class TempCleanupTests : public QObject {
                     QApplication::processEvents();
                     for (auto *button : dialog->findChildren<QPushButton *>())
                         geometry = geometry && UiInspection::fullyVisible(*button, *dialog);
-                    for (const char *name : {"tempList", "tempPath", "tempFilter"})
+                    for (const char *name : {"tempList", "tempPath", "tempScope"})
                         geometry = geometry && UiInspection::fullyVisible(
                                                    *dialog->findChild<QWidget *>(name), *dialog);
                     reports =
