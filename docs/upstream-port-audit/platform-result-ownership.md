@@ -72,3 +72,31 @@ native_language_host, language, progress_sync, progress_worker and
 native_shell_com (6/6, 6.21 s), run `20261018T132010Z-1d877580`, with its existing
 build/cache. The modified branches are Windows-only; this receipt does not add
 macOS/Linux runtime or global application acceptance.
+
+## macOS association completion owner
+
+Reviewed the complete native association bridge, platform adapter, native header,
+SystemPage Apply consumer and Options Apply/reentry guards. The source
+RegistryAssociations module at the revision above uses synchronous Windows
+registry services; it has no reusable AppKit completion implementation. The
+macOS bridge is the required platform boundary; association decisions remain
+in the existing services and source page.
+
+The native completion block retains a shared QEventLoop. Its final captured
+owner can be released after the GUI caller returns; the previous default
+deleter therefore depended on the native block's release thread. The local
+deleter now calls deleteLater(), preserving shared lifetime while scheduling
+QObject destruction in its owning thread. Qt documents both the prohibition
+on direct deletion from another thread and the thread-safe deferred alternative
+in [QObject](https://doc.qt.io/qt-6/qobject.html#deleteLater).
+Result publication, queued quit, early completion, native errors and association
+selection are unchanged. No source branch or dependency was omitted.
+
+macOS / Qt 6.12 rebuilt the affected library and passed association_services,
+options_dialog, options_integration and options_keyboard (4/4, 1.70 s) using
+the existing incremental build/cache. These tests exercise isolated association
+services and their Options consumers; they do not establish runtime acceptance
+of AppKit's mutation callback or reproduce a native crash. No real user defaults
+were changed, no allocation failure was injected and no standalone Qt reproducer
+was created. The change is macOS-only; Linux/Windows and full/slow gates were
+not run for this iteration.

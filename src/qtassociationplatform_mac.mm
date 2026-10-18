@@ -40,7 +40,10 @@ long QtMacSetAssociation(const QString &extension, const QString &applicationPat
         if (!type || type.dynamic)
             return 50;
         NSURL *url = [NSURL fileURLWithPath:native(applicationPath)];
-        auto loop = std::make_shared<QEventLoop>();
+        // AppKit can release the captured owner after the GUI caller has returned.
+        // Always destroy the QObject in its owning thread.
+        auto loop = std::shared_ptr<QEventLoop>(new QEventLoop,
+                                                [](QEventLoop *value) { value->deleteLater(); });
         auto result = std::make_shared<std::atomic<long>>(31);
         auto completed = std::make_shared<std::atomic<bool>>(false);
         [[NSWorkspace sharedWorkspace]
