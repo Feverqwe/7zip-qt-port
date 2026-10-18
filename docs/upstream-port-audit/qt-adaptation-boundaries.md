@@ -154,3 +154,39 @@ ArchiveCodecImage и ArchiveSfxModule используют локальные ф
 owning строки/контейнеры и retained временную директорию при частично выполненном
 копировании. Эти source-проверки не выявили нового подтверждённого нарушения
 владения и не добавляют runtime-приёмку иных сценариев этих компонентов.
+
+## Модели списка и обновлённый анализ
+
+Повторно просмотрены полные FileTable/ArchiveTableItem, QtPanelList,
+QtFileListHover, QtPanelAddressCombo, QtFolderProjection и QtAppOperationState
+с заголовками, публикацией колонок/строк и source consumers PanelListNotify,
+PanelSort и PanelSelect. Отложенный hover хранит persistent index и проверяет
+его против текущего представления; публикация удерживает folder и прекращает
+старое поколение после callback. Таблица получает source-текст в рамках
+актуального panel/provider, сохраняя owning QVariant/QString. Адресные таймеры
+имеют QObject context; отложенный Rename повторно проверяет исходную папку и
+индекс. Нового подтверждённого дефекта в проверенных путях не установлено.
+
+panel_columns, panel_name_text, list_activation, address_combo и
+panel_address_keys прошли на macOS arm64 (5/5, 11,24 с), Linux x64
+(5/5, 16,53 с) и Windows x64 (5/5, 28,43 с), Qt 6.12, guest run
+`20261018T135402Z-8253eb6e`. Использованы существующие incremental targets и
+compiler caches. Новых тестов, production-правок или appearance changes нет.
+
+Clang-анализ обновлён для 288 production translation units из текущей macOS
+compile database с её SDK/флагами и существующим ccache. Ошибок разбора нет;
+результат содержит те же 47 диагностик в 31 единице, что прежний проход, без
+новых diagnostic identities. Перемещение MyVector.h учтено при сравнении.
+Полные plist-multi-file трассы сохранены также для предупреждений в заголовках:
+обычный plist не включает межфайловые пути. Во время основного прохода менялись
+два implementation-файла меню; они вместе с межфайловыми диагностическими
+единицами перепроверены отдельно (19 units, без ошибок и изменений исходников
+во время повторной проверки). Предупреждения по-прежнему оцениваются по
+контрактам и callers, а не считаются подтверждёнными ошибками автоматически.
+
+Это обновление macOS diagnostic evidence и проверка названных модельных границ.
+Windows/Linux-only translation units не входят в эту compile database;
+профильные runtime PASS не доказывают их полного статического анализа.
+Новые инъекции отказов, минимальный пример Qt, полный gate, slow suites и
+рендеренное сравнение с оригинальным 7zFM не выполнялись. Общая проверка
+полноты аудита проекта остаётся незавершённой.
