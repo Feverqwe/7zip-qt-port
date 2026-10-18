@@ -3447,6 +3447,8 @@ HRESULT Bench(DECL_EXTERNAL_CODECS_LOC_VARS IBenchPrintCallback *printCallback,
 
             if (name.IsEqualTo("mts")) {
                 RINOK(ParsePropToUInt32(UString(), propVariant, numThreads_Start))
+                if (numThreads_Start == 0)
+                    return E_INVALIDARG;
                 continue;
             }
 

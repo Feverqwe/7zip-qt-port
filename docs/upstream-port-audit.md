@@ -33,6 +33,9 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 
 ## Новые изменения
 
+- [Нулевое начальное число потоков benchmark](upstream-port-audit/benchmark-starting-threads.md)
+  — отказ до неограниченного роста таблицы потоков.
+
 - [Владельцы внешних процессов при исключении](upstream-port-audit/external-process-ownership.md)
   — OS handles, запуск и регистрация editor worker с сохранением временной копии.
 

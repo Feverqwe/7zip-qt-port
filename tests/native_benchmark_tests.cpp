@@ -72,6 +72,31 @@ class NativeBenchmarkTests final : public QObject {
         QVERIFY(results.Dec.GetUnpackSizeSpeed() > 0);
         QVERIFY(GetBenchMemoryUsage(1, 5, UInt64(1) << 18, false) < (UInt64(16) << 20));
     }
+    void zeroStartingThreadsRejectsBeforeBenchmarkWork() {
+        const auto catalog = backend_.codecCatalog();
+        CExternalCodecs providers;
+        providers.GetCodecs =
+            static_cast<ICompressCodecsInfo *>(&const_cast<CCodecs &>(catalog->nativeCodecs()));
+        QCOMPARE(providers.Load(), S_OK);
+        auto props = boundedProperties();
+        auto &method = props.AddNew();
+        method.Name = "m";
+        method.Value = "CRC32";
+        auto &start = props.AddNew();
+        start.Name = "mts";
+        start.Value = "0";
+        class StopBeforeWork final : public IBenchPrintCallback {
+          public:
+            void Print(const char *) override {}
+            void NewLine() override {}
+            // Bound a regression run on broken code before CPU calibration or
+            // the non-progressing thread-count loop can consume resources.
+            HRESULT CheckBreak() override { return E_ABORT; }
+        } report;
+        QCOMPARE(Bench(&providers, &report, nullptr, props, 1, false), E_INVALIDARG);
+        start.Value = "1";
+        QCOMPARE(Bench(&providers, &report, nullptr, props, 1, false), E_ABORT);
+    }
     void cancelStopsOriginalEngineCallback() {
         const auto catalog = backend_.codecCatalog();
         CExternalCodecs providers;
