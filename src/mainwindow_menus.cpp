@@ -13,7 +13,7 @@ QMenu *MainWindow::createMenusAndToolbar() {
     toolbar->setObjectName("archiveToolbar");
     QtBindLocalText(toolbar, "mainwindow_menus", QT_TRANSLATE_NOOP("mainwindow_menus", "Archive"));
     toolbar->setMovable(false);
-    toolbar->setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
+    toolbar->setToolButtonStyle(Qt::ToolButtonIconOnly);
     toolbar->setIconSize(QSize(24, 24));
     createFileActions(menu, toolbar);
     createFileExtras(menu, toolbar);

@@ -1,5 +1,6 @@
 #include "7zip/UI/FileManager/resource.h"
 #include "CPP/7zip/UI/FileManager/BrowseDialog2.h"
+#include "CPP/7zip/UI/FileManager/CopyDialog.h"
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "layout_inspection.h"
 #include "qtlangcontrols.h"
@@ -108,8 +109,11 @@ class MainShellTests final : public QObject {
         auto *option = window.findChild<QAction *>("buttonTextOption");
         QVERIFY(toolbar && option);
         QCOMPARE(option->isChecked(), labels);
-        QCOMPARE(toolbar->toolButtonStyle(),
-                 labels ? Qt::ToolButtonTextUnderIcon : Qt::ToolButtonIconOnly);
+        auto *add = qobject_cast<QToolButton *>(
+            toolbar->widgetForAction(window.findChild<QAction *>("toolbarAddAction")));
+        QVERIFY(add);
+        QCOMPARE(add->toolButtonStyle(),
+                 labels ? Qt::ToolButtonTextBesideIcon : Qt::ToolButtonIconOnly);
         QCOMPARE(ReadToolbarsMask(settings), UInt32(mask));
     }
 
@@ -285,37 +289,58 @@ class MainShellTests final : public QObject {
                  QKeySequence(Qt::Key_F9));
     }
 
-    void toolbarUsesUpstreamBitmapsAndFitsBothSizes() {
+    void toolbarCommandsFitBothSizes_data() {
+        QTest::addColumn<QString>("language");
+        QTest::newRow("en") << QStringLiteral("-");
+        QTest::newRow("ru") << QStringLiteral("ru");
+    }
+
+    void toolbarCommandsFitBothSizes() {
+        QFETCH(QString, language);
+        const QString settings = qEnvironmentVariable("SEVENZIP_SETTINGS_PATH");
+        const UString oldLanguage = g_LangID;
+        const auto restoreLanguage = qScopeGuard([&] {
+            SaveRegLang(oldLanguage, settings);
+            ReloadLang(settings);
+            QtNotifyLanguageChanged();
+        });
+        SaveRegLang(ToUString(language), settings);
+        ReloadLang(settings);
+        SaveToolbarsMask(13, settings);
         ControlledBackend backend;
         MainWindow window(&backend);
         auto *toolbar = window.findChild<QToolBar *>("archiveToolbar");
         QVERIFY(toolbar);
-        const char *names[] = {"Add", "Extract", "Test", "Copy", "Move", "Delete", "Info"};
         const char *actions[] = {"toolbarAddAction", "extractArchiveAction", "testArchiveAction",
                                  "copyAction",       "moveAction",           "deleteAction",
                                  "archiveInfoAction"};
         for (unsigned i = 0; i < 7; ++i) {
-            const QPixmap source(QStringLiteral(":/upstream/7zip/UI/FileManager/%1%2.bmp")
-                                     .arg(QString::fromLatin1(names[i]), QStringLiteral("2")));
-            QVERIFY(!source.isNull());
             auto *action = window.findChild<QAction *>(actions[i]);
             QVERIFY(action);
-            // Check resource pixels independently of the screen's scale.
-            // QIcon's default overload requests a native high-DPI pixmap.
-            const QPixmap actual = action->icon().pixmap(QSize(24, 24), 1.0);
-            QVERIFY(!actual.isNull());
-            QCOMPARE(actual.size(), QSize(24, 24));
-            QCOMPARE(actual.toImage().pixelColor(0, 0).alpha(), 0);
-            QVERIFY(action->icon().availableSizes().contains(QSize(24, 24)));
-            QVERIFY(action->icon().availableSizes().contains(QSize(48, 36)));
+            auto *button = qobject_cast<QToolButton *>(toolbar->widgetForAction(action));
+            QVERIFY(button);
+            QVERIFY(!button->accessibleName().isEmpty());
+            QVERIFY(button->toolTip().contains(button->accessibleName()));
+            if (!action->shortcut().isEmpty())
+                QVERIFY(button->toolTip().contains(
+                    action->shortcut().toString(QKeySequence::NativeText)));
+            QCOMPARE(button->toolButtonStyle(),
+                     i < 2 ? Qt::ToolButtonTextBesideIcon : Qt::ToolButtonIconOnly);
+            QVERIFY(!button->icon().pixmap(toolbar->iconSize()).isNull());
         }
         for (const QSize size : {QSize(980, 620), QSize(640, 400)}) {
             window.resize(size);
             window.show();
             QApplication::processEvents();
             QVERIFY(UiInspection::fullyVisible(*toolbar, window));
-            QVERIFY(UiInspection::writeReport(
-                window, QStringLiteral("main-shell-%1x%2").arg(size.width()).arg(size.height())));
+            for (const char *name : actions) {
+                auto *button = toolbar->widgetForAction(window.findChild<QAction *>(name));
+                QVERIFY(UiInspection::fullyVisible(*button, window));
+            }
+            QVERIFY(UiInspection::writeReport(window, QStringLiteral("main-shell-%1-%2x%3")
+                                                          .arg(language)
+                                                          .arg(size.width())
+                                                          .arg(size.height())));
             for (const char *name : {"fileMenu", "viewMenu"}) {
                 auto *menu = window.findChild<QMenu *>(name);
                 QVERIFY(menu);
@@ -333,11 +358,12 @@ class MainShellTests final : public QObject {
         QVERIFY(large);
         large->trigger();
         QCOMPARE(toolbar->iconSize(), QSize(48, 36));
-        QCOMPARE(window.findChild<QAction *>("toolbarAddAction")
-                     ->icon()
-                     .pixmap(QSize(48, 36), 1.0)
-                     .size(),
-                 QSize(48, 36));
+        for (const char *name : actions) {
+            auto *button = qobject_cast<QToolButton *>(
+                toolbar->widgetForAction(window.findChild<QAction *>(name)));
+            QVERIFY(UiInspection::fullyVisible(*button, window));
+            QVERIFY(!button->icon().pixmap(toolbar->iconSize()).isNull());
+        }
     }
 
     void fileMenuTracksTheFocusedPanelAfterToggleAndTab() {
@@ -380,6 +406,38 @@ class MainShellTests final : public QObject {
         rightTable->setFocus();
         QTRY_VERIFY(rename->isEnabled());
         QVERIFY(window.findChild<QMenu *>("fileMenu")->actions().contains(rename));
+        auto *copy = window.findChild<QAction *>("copyAction");
+        auto *toolbar = window.findChild<QToolBar *>("archiveToolbar");
+        auto *button = qobject_cast<QToolButton *>(toolbar->widgetForAction(copy));
+        QVERIFY(button && button->isEnabled());
+        window.activateWindow();
+        QVERIFY(QTest::qWaitForWindowActive(&window));
+        button->setFocus();
+        QTRY_VERIFY(button->hasFocus());
+        QSignalSpy invoked(copy, &QAction::triggered);
+        bool correctSource = false, correctDestination = false;
+        QTimer cancel;
+        connect(&cancel, &QTimer::timeout, &window, [&] {
+            if (auto *dialog = dynamic_cast<CCopyDialog *>(QApplication::activeModalWidget())) {
+                correctSource = ToQString(dialog->Info).contains(QStringLiteral("имя.txt"));
+                correctDestination = QFileInfo(dialog->destination()).canonicalFilePath() ==
+                                     QFileInfo(left).canonicalFilePath();
+                cancel.stop();
+                dialog->reject();
+            }
+        });
+        cancel.start(5);
+        QTest::keyClick(button, Qt::Key_Space);
+        QCOMPARE(invoked.size(), 1);
+        QVERIFY(correctSource && correctDestination);
+        QVERIFY(QFileInfo::exists(file.fileName()));
+        QVERIFY(!QFileInfo::exists(QDir(left).filePath(QStringLiteral("имя.txt"))));
+        QTRY_VERIFY(rightTable->isEnabled());
+        QApplication::processEvents();
+        window.activateWindow();
+        QVERIFY(QTest::qWaitForWindowActive(&window));
+        rightTable->setFocus();
+        QTRY_VERIFY(rightTable->hasFocus());
         QTest::keyClick(rightTable, Qt::Key_Tab);
         QTRY_VERIFY(leftTable->hasFocus());
         QVERIFY(!rename->isEnabled());

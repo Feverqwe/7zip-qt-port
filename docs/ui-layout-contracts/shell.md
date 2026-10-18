@@ -123,6 +123,20 @@ QActions. The Windows rendered menu is not yet available for pixel comparison.
 Resource-pixel checks explicitly request DPR1 and retain both original BMP sizes;
 native rendering can choose the appropriate high-DPI resource.
 
+Redesign adaptation: Add and Extract show text beside their icons when the
+existing button-label preference is enabled. Test, Copy, Move, Delete and Info
+use icons, with localized accessible names and tooltips that include their
+current native shortcut. The label preference can still hide the primary
+captions; toolbar group visibility and large/small icons keep their existing
+owners and saved values. Buttons use native hover/focus rendering and support
+keyboard focus. The Extract caption uses the same translation as the redesigned
+Extract dialog. Upstream icon assets remain in use for this iteration.
+`main_shell` checks all seven buttons fit EN/RU at normal/compact widths and
+checks keyboard invocation against the active panel and cancellation.
+`language_ui` checks names/tooltips after language, selection and shortcut
+changes. These checks replace fixed bitmap-size/corner-pixel assertions;
+safe icon changes are permitted by the redesign.
+
 ### Per-panel context and status (P0-09.2)
 
 `source_context_menu` also inspects both pane owners, EN/RU table/icon lists,

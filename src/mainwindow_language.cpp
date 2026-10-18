@@ -105,9 +105,16 @@ void MainWindow::refreshToolbarTexts() {
         if (auto *button = qobject_cast<QToolButton *>(toolbar->widgetForAction(action))) {
             UString text;
             SetButtonText(action->property("nativeCommandID").toInt(), text);
-            const QString caption = QString::fromWCharArray(text);
+            if (text.IsEmpty())
+                continue;
+            const QString caption = action == extract_
+                                        ? QCoreApplication::translate("ArchiveRedesign", "Extract")
+                                        : QString::fromWCharArray(text);
             button->setText(caption);
-            button->setToolTip(caption);
+            button->setAccessibleName(caption);
+            const QString shortcut = action->shortcut().toString(QKeySequence::NativeText);
+            button->setToolTip(
+                shortcut.isEmpty() ? caption : QStringLiteral("%1 (%2)").arg(caption, shortcut));
         }
 }
 

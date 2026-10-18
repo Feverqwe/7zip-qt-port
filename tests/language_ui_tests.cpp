@@ -118,9 +118,15 @@ class LanguageUiTests : public QObject, protected MainWindowTestSupport {
                     QVERIFY(action);
                     auto *button = qobject_cast<QToolButton *>(toolbar->widgetForAction(action));
                     QVERIFY(button);
-                    const QString expected = QString::fromWCharArray(LangString(ids[i]));
+                    const QString expected =
+                        i == 1 ? QCoreApplication::translate("ArchiveRedesign", "Extract")
+                               : QString::fromWCharArray(LangString(ids[i]));
                     QCOMPARE(button->text(), expected);
-                    QCOMPARE(button->toolTip(), expected);
+                    QCOMPARE(button->accessibleName(), expected);
+                    QVERIFY(button->toolTip().contains(expected));
+                    if (!action->shortcut().isEmpty())
+                        QVERIFY(button->toolTip().contains(
+                            action->shortcut().toString(QKeySequence::NativeText)));
                 }
             }
             for (const QSize size : {QSize(980, 620), QSize(640, 400)}) {
@@ -131,6 +137,13 @@ class LanguageUiTests : public QObject, protected MainWindowTestSupport {
                     window, QString("toolbar-text-%1-%2").arg(language).arg(size.width())));
             }
         }
+        auto *copy = window.findChild<QAction *>("copyAction");
+        auto *copyButton = qobject_cast<QToolButton *>(toolbar->widgetForAction(copy));
+        const auto originalShortcut = copy->shortcut();
+        const QKeySequence changedShortcut(Qt::CTRL | Qt::SHIFT | Qt::Key_C);
+        copy->setShortcut(changedShortcut);
+        QVERIFY(copyButton->toolTip().contains(changedShortcut.toString(QKeySequence::NativeText)));
+        copy->setShortcut(originalShortcut);
         QVERIFY(file.open(QIODevice::ReadOnly));
         QCOMPARE(file.readAll(), QByteArray("protected toolbar bytes"));
     }

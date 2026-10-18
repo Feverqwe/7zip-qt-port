@@ -129,3 +129,43 @@ Reports остаются в `build/dev/ui-redesign-review`.
 Windows/Linux runtime, физическая клавиатура и VoiceOver пока не проверены.
 Toolbar, меню и современные сочетания из этапа 4 остаются следующей работой;
 эта итерация не означает завершения главного окна.
+
+## Итерация 4: компактный toolbar главного окна
+
+Источник тот же: https://github.com/ip7z/7zip.git,
+`9128b80e3a471108678e2b3ec3c985861c8d7b0f`.
+До правки сопоставлены App.cpp::CButtonInfo, g_StandardButtons,
+g_ArchiveButtons, оба SetButtonText, AddButton, ReloadToolbars,
+SaveToolbarChanges и tooltip-ветви OnNotify с портом App.cpp и текущими
+mainwindow_menus/preferences/language adapters. Проверены AttachActions,
+AttachFileActions, refreshActions и CopyTo workflow; команды и source IDs
+остаются общими для toolbar и меню. Сохранены исходные bitmap assets,
+mask/default/visibility/size preferences и их storage owner.
+
+Согласованная presentation-адаптация: текст beside icon только у Add/Extract,
+остальные пять кнопок — icon-only. Выключение сохранённого labels-флага скрывает
+также эти подписи. Добавлены доступные имена, native shortcut в tooltip и
+StrongFocus; autoRaise оставляет hover/focus текущему стилю Qt. Подпись Extract
+использует уже существующий ArchiveRedesign-перевод, общий с Extract-диалогом.
+Существующее подключение QAction::changed обновляет подписи/подсказки;
+второе подключение и новый command dispatcher не добавлены.
+
+Повторная сверка: source button tables, capability/operation handlers и toolbar
+state не менялись; все семь прежних QAction остаются теми же экземплярами.
+Заменены хрупкие проверки имени ресурса/доступных bitmap размеров/углового
+пикселя на проверку отображения значков и доступности всех кнопок на экране.
+EN/RU проверка фиксирует согласованное различие двух основных и пяти остальных
+действий; language_ui проверяет актуальность tooltip после смены языка,
+выделения и shortcut. Keyboard Space вызывает один исходный Copy-диалог
+с файлом правой панели и назначением в левой; Cancel не создаёт копию.
+
+macOS: сборка приложения и direct consumers PASS; focused main_shell,
+panel_shell, view_menu, language_ui PASS. Cocoa EN/RU normal/compact,
+one/two panels и keyboard Copy/Cancel проверены; main_shell и language_ui
+повторены в light/dark. Текущие JSON подтверждают видимость всех семи кнопок
+при ширине 640, снимки toolbar просмотрены. Reports — прежний
+`build/dev/ui-redesign-review`. Временный compile failure в параллельном
+file-transfer изменении исправлен его владельцем; повторная сборка прошла.
+Windows/Linux, физические раскладки и VoiceOver пока не проверены.
+Перегруппировка File/View/context меню, новые основные сочетания и окончательный
+выбор современных иконок остаются в дальнейшей области редизайна.

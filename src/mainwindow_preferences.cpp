@@ -10,6 +10,7 @@
 #include "qtpanelcontextmenu.h"
 #include <QMouseEvent>
 #include <QSignalBlocker>
+#include <QToolButton>
 
 namespace {
 QString SavedSourcePath(QString path) {
@@ -181,8 +182,18 @@ void MainWindow::updateToolbar() {
     toolbar->widgetForAction(toolbarGroupSeparator_)->setVisible(archive && standard);
     toolbar->setVisible(archive || standard);
     toolbar->setIconSize(largeButtonsOption_->isChecked() ? QSize(48, 36) : QSize(24, 24));
-    toolbar->setToolButtonStyle(buttonTextOption_->isChecked() ? Qt::ToolButtonTextUnderIcon
-                                                               : Qt::ToolButtonIconOnly);
+    toolbar->setToolButtonStyle(Qt::ToolButtonIconOnly);
+    for (QAction *action : {toolbarAdd_, extract_, test_, copy_, move_, remove_, infoAction_}) {
+        if (auto *button = qobject_cast<QToolButton *>(toolbar->widgetForAction(action))) {
+            const bool primary = action == toolbarAdd_ || action == extract_;
+            button->setToolButtonStyle(primary && app_.ShowButtonsLables
+                                           ? Qt::ToolButtonTextBesideIcon
+                                           : Qt::ToolButtonIconOnly);
+            button->setAutoRaise(true);
+            button->setFocusPolicy(Qt::StrongFocus);
+        }
+    }
+    refreshToolbarTexts();
 }
 
 void MainWindow::showSettings() {
