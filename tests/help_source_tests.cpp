@@ -136,13 +136,7 @@ class HelpSourceTests : public QObject {
         }
         window->close();
     }
-    void aboutKeepsNaturalSourceLogo() {
-        CAboutDialog dialog;
-        const QPixmap source(":/upstream/7zip/About/7zipLogo.ico");
-        QVERIFY(!source.isNull());
-        QCOMPARE(dialog.findChild<QLabel *>("aboutLogo")->pixmap().size(), source.size());
-    }
-    void aboutInitialFrameScalesWithSourceFont() {
+    void aboutInitialFrameScalesWithFont() {
         const QFont originalFont = QApplication::font();
         const auto restoreFont = qScopeGuard([&] { QApplication::setFont(originalFont); });
         QSize smallFrame;
@@ -166,16 +160,6 @@ class HelpSourceTests : public QObject {
             QVERIFY(UiInspection::writeReport(dialog, QString("about-source-font-%1").arg(points)));
             dialog.reject();
         }
-    }
-    void aboutKeepsSourceFooterOrder() {
-        CAboutDialog dialog;
-        dialog.show();
-        QApplication::processEvents();
-        auto *homepage = dialog.findChild<QPushButton *>("aboutHomepage");
-        auto *ok = dialog.findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Ok);
-        QVERIFY(UiInspection::bounds(*homepage, dialog).right() <
-                UiInspection::bounds(*ok, dialog).left());
-        QCOMPARE(homepage->width(), ok->width());
     }
     void aboutInitialReturnClosesSourceDialog() {
         CAboutDialog dialog;
@@ -220,44 +204,87 @@ class HelpSourceTests : public QObject {
             QVERIFY(geometry);
         }
     }
-    void aboutSourceVersionLicenseHomepageAndGeometry() {
+    void aboutIdentityAttributionLinksAndGeometry_data() {
+        QTest::addColumn<bool>("dark");
+        QTest::addColumn<bool>("systemPalette");
+        QTest::newRow("system") << false << true;
+        QTest::newRow("light") << false << false;
+        QTest::newRow("dark") << true << false;
+    }
+    void aboutIdentityAttributionLinksAndGeometry() {
+        QFETCH(bool, dark);
+        QFETCH(bool, systemPalette);
+        const QPalette original = QApplication::palette();
+        const auto restorePalette = qScopeGuard([&] { QApplication::setPalette(original); });
+        QPalette colors = original;
+        colors.setColor(QPalette::Window, QColor(dark ? "#272b30" : "#f1f2f4"));
+        colors.setColor(QPalette::WindowText, QColor(dark ? "#e8eaed" : "#202326"));
+        // Native macOS can supply a bright AlternateBase in dark appearance.
+        colors.setColor(QPalette::AlternateBase, QColor(dark ? "#8e8e8e" : "#ffffff"));
+        colors.setColor(QPalette::Button, colors.color(QPalette::Window));
+        colors.setColor(QPalette::ButtonText, colors.color(QPalette::WindowText));
+        colors.setColor(QPalette::Link, QColor(dark ? "#8cbcff" : "#205bb0"));
+        if (!systemPalette)
+            QApplication::setPalette(colors);
         QTemporaryDir fixture;
         const QString settings = fixture.filePath("language.ini");
         CAboutDialog dialog;
         dialog.show();
         auto *version = dialog.findChild<QLabel *>("aboutText101");
-        QVERIFY(version->text().startsWith("7-Zip " MY_VERSION));
-        const QString sourceVersion = version->text();
-        QCOMPARE(dialog.findChild<QLabel *>("aboutText102")->text(), QString(MY_DATE));
-        QVERIFY(dialog.findChild<QLabel *>("aboutText2901")->alignment() & Qt::AlignTop);
-        QVERIFY(!dialog.findChild<QLabel *>("aboutLogo")->pixmap().isNull());
+        QVERIFY(version->text().contains("7-Zip " MY_VERSION));
+        QVERIFY(dialog.findChild<QLabel *>("aboutText102")->text().contains(MY_DATE));
+        QVERIFY(
+            dialog.findChild<QLabel *>("aboutUpstreamCopyright")->text().contains("Igor Pavlov"));
         auto *applicationVersion = dialog.findChild<QLabel *>("aboutApplicationVersion");
-        const QString expectedVersion =
-            QString("Sevenzip " SEVENZIP_DESKTOP_VERSION " (7-Zip " MY_VERSION ")");
-        QCOMPARE(applicationVersion->text().section('\n', 0, 0), expectedVersion);
+        QCOMPARE(applicationVersion->text(), QString(SEVENZIP_DESKTOP_VERSION));
         QDesktopServices::setUrlHandler("https", this, "openUrl");
+        const auto resetHandler = qScopeGuard([] { QDesktopServices::unsetUrlHandler("https"); });
         QVERIFY(!dialog.OnButtonClicked(999, nullptr));
-        QVERIFY(dialog.OnButtonClicked(IDB_ABOUT_HOMEPAGE, nullptr));
-        QDesktopServices::unsetUrlHandler("https");
+        dialog.findChild<QPushButton *>("aboutProjectHomepage")->click();
+        QCOMPARE(openedUrl, QUrl("https://github.com/Feverqwe/7zip-qt-port"));
+        dialog.findChild<QPushButton *>("aboutHomepage")->click();
         QCOMPARE(openedUrl, QUrl("https://www.7-zip.org/"));
         for (const char *language : {"-", "ru", "-"}) {
             SaveRegLang(UString(language), settings);
             ReloadLang(settings);
             QtNotifyLanguageChanged();
-            QCOMPARE(dialog.windowTitle(), QtLangText(IDD_ABOUT, "About 7-Zip"));
-            QCOMPARE(version->text(), sourceVersion);
-            QCOMPARE(applicationVersion->text().section('\n', 0, 0), expectedVersion);
+            QCOMPARE(
+                dialog.windowTitle(),
+                QString(language == QByteArray("ru") ? "О программе Sevenzip" : "About Sevenzip"));
+            QVERIFY(version->text().contains("7-Zip " MY_VERSION));
+            QCOMPARE(applicationVersion->text(), QString(SEVENZIP_DESKTOP_VERSION));
             for (QSize size : {QSize(360, 330), QSize(300, 310)}) {
                 dialog.resize(size);
-                QTRY_COMPARE(dialog.size(), size.expandedTo(dialog.minimumSizeHint()));
                 for (auto *label : dialog.findChildren<QLabel *>()) {
-                    QVERIFY(UiInspection::fullyVisible(*label, dialog));
-                    QVERIFY2(UiInspection::labelFits(*label), qPrintable(label->objectName()));
+                    // Language changes can queue a second layout pass for the
+                    // upstream group's newly wrapped free-software notice.
+                    QTRY_VERIFY(UiInspection::fullyVisible(*label, dialog));
+                    QTRY_VERIFY2(UiInspection::labelFits(*label), qPrintable(label->objectName()));
                 }
-                for (auto *button : dialog.findChildren<QPushButton *>())
+                for (auto *button : dialog.findChildren<QPushButton *>()) {
                     QVERIFY(UiInspection::fullyVisible(*button, dialog));
-                QVERIFY(UiInspection::writeReport(
-                    dialog, QString("about-%1-%2").arg(language).arg(size.width())));
+                    QVERIFY(button->width() >= button->sizeHint().width());
+                }
+                const auto *heading = dialog.findChild<QLabel *>("aboutApplicationName");
+                QVERIFY(UiInspection::bounds(*heading, dialog).bottom() <
+                        UiInspection::bounds(*version, dialog).top());
+                QVERIFY(UiInspection::separate(*heading, *applicationVersion, dialog));
+                auto *attribution = dialog.findChild<QWidget *>("aboutUpstream");
+                const QPixmap rendered = dialog.grab();
+                const QImage surface = rendered.toImage();
+                // Sample the empty top padding inside the rounded panel so
+                // contrast includes the stylesheet's painted background.
+                const QPoint sample = attribution->mapTo(&dialog, QPoint(12, 12));
+                const QColor background =
+                    surface.pixelColor(qRound(sample.x() * rendered.devicePixelRatio()),
+                                       qRound(sample.y() * rendered.devicePixelRatio()));
+                for (auto *label : attribution->findChildren<QLabel *>())
+                    QVERIFY(textContrast(label->palette().color(QPalette::WindowText),
+                                         background) >= 4.5);
+                QVERIFY(UiInspection::writeReport(dialog, QString("about-%1-%2-%3")
+                                                              .arg(language)
+                                                              .arg(size.width())
+                                                              .arg(QTest::currentDataTag())));
             }
         }
         dialog.findChild<QPushButton *>("aboutLicense")->click();

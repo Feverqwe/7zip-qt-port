@@ -45,6 +45,9 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 - [Application and upstream versions](upstream-port-audit/application-version.md)
   — release identity includes the original 7-Zip source version in About and build metadata.
 
+- [Independent About identity](upstream-port-audit/about-product-identity.md)
+  — Sevenzip presentation with a separate upstream attribution and license section.
+
 - [Доступность команд popup и Drop](upstream-port-audit/popup-command-state.md)
   — сохранение состояния контекстного меню и восстановление Copy после отмены Drop.
 

@@ -435,9 +435,6 @@ file(GLOB_RECURSE sevenzip_help_assets CONFIGURE_DEPENDS resources/7zip/Help/*.h
 qt_add_resources(sevenzip_panel upstream_help PREFIX "/upstream/7zip/Help"
     BASE "${CMAKE_CURRENT_SOURCE_DIR}/resources/7zip/Help" FILES ${sevenzip_help_assets})
 target_compile_definitions(sevenzip_panel PRIVATE SEVENZIP_DESKTOP_VERSION="${PROJECT_VERSION}")
-qt_add_resources(sevenzip_panel upstream_about PREFIX "/upstream/7zip/About"
-    BASE "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/UI/FileManager"
-    FILES third_party/7zip/CPP/7zip/UI/FileManager/7zipLogo.ico)
 if(WIN32)
     target_sources(sevenzip_filesystem PRIVATE third_party/7zip/CPP/Windows/Net.cpp
         third_party/7zip/CPP/Windows/Net.h)

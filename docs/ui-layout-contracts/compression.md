@@ -53,9 +53,9 @@ P2-02 About integration restores original codec-error message initialization.
 The retained catalog supplies source GetCodecsErrorMessage; a Qt critical message
 substitutes the original MessageBoxW/MB_ICONERROR. `help_source` checks exact source
 text and exposed/wrapped label with600×300/400×250 resize requests and writes
-`about-codec-error-600/400` JSON. About's local app caption now says official7-Zip
-engine; EN/RU360×330/300×310 JSON was reviewed with visible/fitting text. No
-rendered Windows reference is claimed for either standard Qt message or caption.
+`about-codec-error-600/400` JSON. About's product identity follows the
+[current About contract](external-tools.md#offline-help-and-about-p1-151).
+No rendered Windows reference is claimed for the standard Qt error message.
 The standard QMessageBox auto-fit resolves both requests to400×121 on this host;
 these reports prove fitting source text, not two distinct error-window sizes.
 

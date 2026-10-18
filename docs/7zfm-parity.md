@@ -7,10 +7,11 @@ Qt заменяет presentation и платформенные services; арх�
 
 ## Основные сценарии
 
-About identifies both the Sevenzip release and its upstream 7-Zip source version.
-This additional application identity is a Qt-port adaptation; the original
-7-Zip version, date, copyright, license and homepage remain available.
-[Source comparison and validation](upstream-port-audit/application-version.md).
+About presents Sevenzip as an independent application, with its own name,
+release and project link. A separate 7-Zip section retains the upstream version,
+release date, copyright, license and homepage. The original About logo and
+layout are replaced by this explicitly requested product identity.
+[Source comparison and validation](upstream-port-audit/about-product-identity.md).
 
 Контекстное меню сохраняет доступность команд выбранной панели при переходах
 фокуса; после отмены подтверждения Drop команды снова доступны.

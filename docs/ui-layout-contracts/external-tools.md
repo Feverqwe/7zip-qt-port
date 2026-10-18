@@ -68,27 +68,32 @@ view can scroll horizontally to reach the description column.
 `help_source` checks palette transitions and writes
 normal/compact `help-theme-*` and `help-syntax-*` widget reports.
 help_source writes EN/RU760×560/420×300 help-*.json: browser, Back and standard
-Close remain exposed. AboutDialog.rc/source is the structural reference for
-About360×330/300×310 EN/RU: logo, version/date/copyright/free-software, footer
-homepage/OK in source left-to-right order. The original ICO is110×63 and is
-displayed at its natural size, rather than independently reduced to64×36.
-OK owns initial keyboard focus/default Return. The source160×160DLU client
-template maps through the font; application version/license rows may extend it
-and protect the Qt minimum size. The free-software text is top-aligned inside
-its source42DLU area. The natural logo cannot shrink; the added identity row
-uses Qt's height-for-width measurement for both EN/RU and protects its minimum
-content width/height. These added rows are explicit adaptations.
-The application identity shows the Sevenzip release together with the upstream
-7-Zip source version. Both version numbers remain unchanged when switching the
-interface language; the explanatory text follows the selected language.
-help_source writes about-*.json; all text fits and controls remain exposed.
+Close remain exposed.
+
+About uses the requested independent Sevenzip identity rather than the original
+logo and layout. The application name and release precede its description.
+The release sits beside the application heading. A separate 7-Zip
+panel shows the source version, explicitly labeled
+upstream release date, original copyright and free-software notice, with license
+and upstream-homepage buttons. The project link and OK form the footer.
+The attribution panel and version badge follow the application palette; links
+use its link color, retain keyboard focus and leave OK as the native default
+button. Light/dark checks cover readable attribution and fitting controls.
+OK owns initial focus/default Return; F1 retains the source Help topic.
+Both versions remain unchanged across live language switches. Explanatory text,
+title and project/license captions follow the selected language. Normal and
+compact EN/RU resize requests expand to native font/control minima; all labels
+and buttons must remain exposed, with no clipped text. Larger fonts must enlarge
+the initial frame. `help_source` writes about-*.json and checks both link
+destinations, the offline license and Help, keyboard acceptance and codec errors.
+See the [identity adaptation](../upstream-port-audit/about-product-identity.md)
+for the source comparison and current validation scope.
 help_ui checks actual Contents/F1/modal About, source Options page callbacks and
 Add/Extract button/F1 without applying pending state; compression_advanced checks
 original Options Help. Existing Add760/640, Extract600/470 and Options640/520
-geometry reports cover the added Help footer. Current Qt usability is checked;
-the bounded About EN/RU source/rendered comparison and native font/compact checks
-are recorded in the [presentation receipt](../archive/qt-port/upstream-port-audit/p3-06-primitives-2026-10-16.md).
-Complete pixel parity remains unverified; P1-15 acceptance includes cleanup above.
+geometry reports cover the added Help footer. The earlier original-layout About
+comparison is retained in the [historical presentation receipt](../archive/qt-port/upstream-port-audit/p3-06-primitives-2026-10-16.md);
+it does not validate the new product layout.
 
 ## External editor settings
 
