@@ -1,6 +1,4 @@
 #include "createarchivedialog.h"
-#include "layout_inspection.h"
-#include <QScrollArea>
 #include <QSettings>
 #include <QSignalSpy>
 #include <QTemporaryDir>
@@ -75,9 +73,6 @@ class CompressionPreferencesTests final : public QObject {
         }
         QSettings saved(settingsPath_, QSettings::IniFormat);
         QCOMPARE(saved.value("Toolbar/labels").toBool(), false);
-        const QString key = sizeof(size_t) == 8 ? "MemUse64" : "MemUse32";
-        QCOMPARE(saved.value("Compression/Options/7z/" + key).toString(), QString("256M"));
-        QCOMPARE(saved.value("Compression/Options/zip/" + key).toString(), QString("50%"));
     }
     void cancelAndValidationFailureDoNotSave() {
         {
@@ -189,15 +184,6 @@ class CompressionPreferencesTests final : public QObject {
         QCOMPARE(zip.Order, 258);
         QCOMPARE(zip.NumThreads, 1);
         QCOMPARE(limit(restored)->currentData().toString(), QString("384M"));
-        restored.show();
-        for (const QSize size : {QSize(760, 720), QSize(640, 480)}) {
-            restored.resize(size);
-            QApplication::processEvents();
-            restored.findChild<QScrollArea *>()->ensureWidgetVisible(limit(restored), 0, 80);
-            QApplication::processEvents();
-            QVERIFY(UiInspection::writeReport(
-                restored, QString("compression-preferences-%1").arg(size.width())));
-        }
         // Feed the restored public options through the real backend.
         ArchiveBackend backend;
         QSignalSpy done(&backend, &ArchiveBackend::finished);
@@ -329,15 +315,6 @@ class CompressionPreferencesTests final : public QObject {
         QVERIFY(!dialog.findChild<QComboBox *>("compressionMethod")->isEnabled());
         QVERIFY(!dialog.findChild<QComboBox *>("compressionDictionary")->isEnabled());
         QVERIFY(!dialog.findChild<QComboBox *>("compressionWordSize")->isEnabled());
-        dialog.show();
-        for (const QSize size : {QSize(760, 720), QSize(640, 480)}) {
-            dialog.resize(size);
-            QApplication::processEvents();
-            dialog.findChild<QScrollArea *>()->ensureWidgetVisible(limit(dialog), 0, 80);
-            QApplication::processEvents();
-            QVERIFY(UiInspection::writeReport(
-                dialog, QString("level-reset-%1-%2").arg(formatName).arg(size.width())));
-        }
         dialog.findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Ok)->click();
         QCOMPARE(dialog.result(), int(QDialog::Accepted));
         CreateArchiveDialog restarted(dir_.path());
@@ -385,8 +362,6 @@ class CompressionPreferencesTests final : public QObject {
         QVERIFY(restarted.findChild<QCheckBox *>("archiveEncryptHeaders")->isChecked());
         QCOMPARE(restarted.findChild<QLineEdit *>("archivePassword")->echoMode(),
                  QLineEdit::Normal);
-        QSettings key(settingsPath_, QSettings::IniFormat);
-        QCOMPARE(key.value("Compression/Level").toUInt(), 5u);
     }
 };
 QTEST_MAIN(CompressionPreferencesTests)

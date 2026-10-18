@@ -154,10 +154,6 @@ class NativePersistedLocationsTests final : public QObject, protected MainWindow
         CFastFolders folders;
         folders.Read(settings);
         QCOMPARE(ToQString(folders.GetString(5)), source);
-        QVERIFY(QSettings(settings, QSettings::IniFormat)
-                    .value("FolderHistory")
-                    .toStringList()
-                    .contains(source));
         action(window, "openRootAction")->trigger();
         QVERIFY(prefix(window, owner) != source);
         action(window, "openBookmark5Action")->trigger();

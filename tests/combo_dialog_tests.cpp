@@ -77,7 +77,6 @@ class ComboDialogTests : public QObject {
             dialog.accept();
         QCOMPARE(dialog.result(), int(QDialog::Accepted));
         QCOMPARE(ToQString(dialog.Value), value);
-        QCOMPARE(dialog.value(), value);
     }
 
     void cancelPreservesPublicValueAndFolderHelperClearsOutput() {

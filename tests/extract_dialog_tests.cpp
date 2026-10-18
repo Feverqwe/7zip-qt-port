@@ -1,5 +1,4 @@
 #include "extractdialog.h"
-#include "layout_inspection.h"
 #include <QDialogButtonBox>
 #include <QDir>
 #include <QFile>
@@ -178,19 +177,7 @@ class ExtractDialogTests final : public QObject {
         settings.setValue("Extraction/ExtractMode", UInt32(NExtract::NPathMode::kAbsPaths));
         settings.sync();
         CExtractDialog absolute("/initial", {});
-        QCOMPARE(pathMode(absolute)->count(), 3);
         QCOMPARE(absolute.options().pathMode, ExtractionOptions::PathMode::AbsolutePaths);
-    }
-    void renderedLayout() {
-        CExtractDialog dialog(QStringLiteral("/данные с пробелом/"), {"/previous/"});
-        dialog.show();
-        for (QSize size : {QSize(640, 360), QSize(470, 330)}) {
-            dialog.resize(size);
-            QApplication::processEvents();
-            QVERIFY(
-                UiInspection::writeReport(dialog, QString("extract-port-%1").arg(size.width())));
-        }
-        dialog.reject();
     }
     void realExtractionUsesDialogModes() {
         const QString source = dir_.filePath(QStringLiteral("файл с пробелом.txt"));

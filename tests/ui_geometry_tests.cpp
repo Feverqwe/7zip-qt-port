@@ -137,8 +137,6 @@ class UiGeometryTests final : public QObject {
             QVERIFY(compression && encryption);
             auto *archivePath = dialog->findChild<QComboBox *>("archivePath");
             QVERIFY(archivePath);
-            QVERIFY(!dialog->findChild<QListWidget *>("availableSources"));
-            QVERIFY(!dialog->findChild<QListWidget *>("selectedSources"));
             // CompressDialog.rc: encryption stays to the right of compression
             // at both sizes. Reachability alone passed the previous stacked UI.
             QVERIFY(UiInspection::bounds(*compression, *dialog).right() <

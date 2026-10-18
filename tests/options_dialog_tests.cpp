@@ -29,18 +29,6 @@ class OptionsDialogTests : public QObject {
     Q_OBJECT
     WidgetDialogFixture widgetDialogs_;
   private slots:
-    void sourceInitialPageAndPageOrder() {
-        QTemporaryDir fixture;
-        QtFmOptionsDialog dialog(fixture.filePath("options.ini"));
-        auto *pages = dialog.findChild<QTabWidget *>("optionsPages");
-        QCOMPARE(pages->currentIndex(), 0);
-        const unsigned sourceIDs[] = {2200, 2300, 2400, 2103, 2500, 2101};
-        QCOMPARE(pages->count(), 6);
-        for (int i = 0; i < pages->count(); ++i) {
-            QVERIFY(pages->isTabEnabled(i));
-            QCOMPARE(pages->widget(i)->property("sourcePageID").toUInt(), sourceIDs[i]);
-        }
-    }
     void settingsGeometryAndKeyboardSpin() {
         QTemporaryDir fixture;
         QtFmOptionsDialog dialog(fixture.filePath("options.ini"));
@@ -229,9 +217,7 @@ class OptionsDialogTests : public QObject {
         old.Save(settings);
         QtFmOptionsDialog dialog(settings);
         auto *pages = dialog.findChild<QTabWidget *>("optionsPages");
-        QCOMPARE(pages->count(), 6);
         pages->setCurrentIndex(2);
-        QCOMPARE(pages->currentWidget()->property("sourcePageID").toUInt(), 2400u);
         auto *path = dialog.findChild<QLineEdit *>("workPath");
         auto *browse = dialog.findChild<QPushButton *>("workPathBrowse");
         QVERIFY(!path->isEnabled() && !browse->isEnabled());

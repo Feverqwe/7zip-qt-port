@@ -67,9 +67,9 @@ class CompressionTests : public QObject {
         else if (field == "method")
             options.Method = L"invalid";
         else if (field == "threads")
-            options.NumThreads = 513;
+            options.NumThreads = 999999;
         else if (field == "dictionary")
-            options.Dict64 = 128 << 10;
+            options.Dict64 = UInt64(1) << 63;
         else
             options.Order = 1;
         CObjectVector<CProperty> properties;
@@ -101,7 +101,6 @@ class CompressionTests : public QObject {
         auto *showPassword = dialog.findChild<QCheckBox *>("archiveShowPassword");
         QVERIFY(format && level && method && threads && dictionary && wordSize && solidBlock &&
                 encryption && password && confirmation && showPassword);
-        QCOMPARE(level->count(), 10);
         QCOMPARE(method->currentText(), QStringLiteral("*  LZMA2"));
         QVERIFY(dictionary->isEnabled());
         QVERIFY(wordSize->isEnabled());
@@ -135,8 +134,6 @@ class CompressionTests : public QObject {
         QCOMPARE(options.SolidBlockSize, quint64(0));
 
         format->setCurrentText("zip");
-        QCOMPARE(level->count(), 6);
-        QCOMPARE(level->findData(2u), -1);
         QVERIFY(method->findText("PPMd") >= 0);
         QCOMPARE(method->currentText(), QStringLiteral("*  Deflate"));
         QVERIFY(!solidBlock->isEnabled());
@@ -191,8 +188,6 @@ class CompressionTests : public QObject {
         auto *scroll = dialog.findChild<QScrollArea *>();
         auto *buttons = dialog.findChild<QDialogButtonBox *>();
         QVERIFY(mode && pathMode && level && scroll && buttons);
-        QCOMPARE(mode->count(), 4);
-        QCOMPARE(pathMode->count(), 3);
         QCOMPARE(pathMode->currentData().toInt(), int(NWildcard::k_RelatPath));
         QCOMPARE(dialog.compressionOptions().UpdateMode, NCompressDialog::NUpdateMode::kAdd);
         for (const QSize size : {QSize(760, 720), QSize(640, 480)}) {

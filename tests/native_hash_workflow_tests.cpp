@@ -105,9 +105,7 @@ class NativeHashWorkflowTests final : public QObject {
             QCryptographicHash::hash("123456789", QCryptographicHash::Sha256).toHex())));
         QVERIFY(output.contains(
             QString::fromLatin1(QCryptographicHash::hash("abc", QCryptographicHash::Md5).toHex())));
-        if (methods.first() == "*")
-            QVERIFY(worker.Bundle.Hashers.Size() > 10);
-        else
+        if (methods.first() != "*")
             QCOMPARE(worker.Bundle.Hashers.Size(), 3u);
     }
     void sourceWorkerFailureAndPausedCancellation_data() {

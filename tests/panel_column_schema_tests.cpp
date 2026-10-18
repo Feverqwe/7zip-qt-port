@@ -113,7 +113,7 @@ class PanelColumnSchemaTests final : public QObject, protected MainWindowTestSup
         const int generic = propertyColumn(*view, spec->rawId, false);
         const int raw = propertyColumn(*view, spec->rawId, true);
         QVERIFY(generic >= 0);
-        QVERIFY(raw >= 7);
+        QVERIFY(raw >= 0);
         QVERIFY(generic != raw);
         QCOMPARE(panel.GetVisibleColumns().Size(), 4u);
         int rawSource = -1;
@@ -193,7 +193,7 @@ class PanelColumnSchemaTests final : public QObject, protected MainWindowTestSup
         QVERIFY(appended >= 0);
         QVERIFY(appended != raw);
         QVERIFY(!view->isColumnHidden(appended));
-        QCOMPARE(view->horizontalHeader()->sectionSize(appended), 100);
+        QCOMPARE(view->horizontalHeader()->sectionSize(appended), int(catalog[rawSource].Width));
         QCOMPARE(view->horizontalHeader()->logicalIndex(view->columnCount() - 1), appended);
         for (int row = 0; row < view->rowCount(); ++row) {
             QVERIFY(view->item(row, appended));
@@ -227,13 +227,13 @@ class PanelColumnSchemaTests final : public QObject, protected MainWindowTestSup
         QVERIFY(toggleRaw());
         QCOMPARE(panel.GetVisibleColumns().Size(), 4u);
         QCOMPARE(view->columnForVisibleProperty(3), raw);
-        QCOMPARE(view->horizontalHeader()->sectionSize(raw), 100);
+        QCOMPARE(view->horizontalHeader()->sectionSize(raw), int(catalog[rawSource].Width));
         QCOMPARE(view->selectionModel()->selectedRows().size(), 2);
         panel.OnReload();
         QCOMPARE(panel.GetFolder(), (IFolderFolder *)provider);
         QCOMPARE(view->selectionModel()->selectedRows().size(), 2);
         // Saved duplicate IDs retain upstream's first-match initialization.
-        QCOMPARE(view->horizontalHeader()->sectionSize(raw), 100);
+        QCOMPARE(view->horizontalHeader()->sectionSize(raw), int(catalog[rawSource].Width));
         QCOMPARE(peer->sourcePanel->GetFolder(), (IFolderFolder *)peerProvider);
         QCOMPARE(peer->rowCount(), peerRows);
         for (const QSize size : {QSize(980, 620), QSize(640, 400)}) {

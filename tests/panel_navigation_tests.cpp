@@ -150,7 +150,6 @@ class PanelNavigationTests : public QObject {
         QVERIFY(manager->SawWorker);
         QVERIFY(!manager->SawStream);
         QCOMPARE(panel.GetParentFolders().Size(), unsigned(1));
-        QVERIFY(!panel.GetParentFolders().Back().ParentFolder);
         QCOMPARE(panel.GetParentFolders().Back().ParentFolderPath, diskPrefix);
         panel.LoadFullPath();
         QCOMPARE(QDir::fromNativeSeparators(ToQString(panel.GetCurrentFolderPrefix())),
@@ -281,7 +280,6 @@ class PanelNavigationTests : public QObject {
                                  ToUString(nonexistent), UString(), result),
                  HRESULT(S_OK));
         QVERIFY(manager->SawStream);
-        QVERIFY(panel.GetParentFolders().Back().IsVirtual);
         panel.CloseOpenFolders();
     }
 };

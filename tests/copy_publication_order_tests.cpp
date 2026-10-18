@@ -5,9 +5,7 @@
 #include "copydialog.h"
 #include "fixtures/widget_dialogs.h"
 #include "fixtures/window_activation.h"
-#include "layout_inspection.h"
 #include "window_state_support.h"
-#include <QLayout>
 
 namespace {
 // Use original filesystem byte operations behind the stream-route interface.
@@ -18,14 +16,10 @@ class CopyPhaseFolder final : public IFolderFolder, public IFolderOperations, pu
     Z7_COM_UNKNOWN_IMP_2(IFolderFolder, IFolderOperations)
   public:
     HRESULT terminal = S_OK;
-    unsigned loads = 0;
     explicit CopyPhaseFolder(const QString &path) : folder_(new NFsFolder::CFSFolder(path)) {
         folder_.QueryInterface(IID_IFolderOperations, &operations_);
     }
-    Z7_COM7F_IMF(LoadItems()) override {
-        ++loads;
-        return folder_->LoadItems();
-    }
+    Z7_COM7F_IMF(LoadItems()) override { return folder_->LoadItems(); }
     Z7_COM7F_IMF(GetNumberOfItems(UInt32 *count)) override {
         return folder_->GetNumberOfItems(count);
     }
@@ -146,15 +140,13 @@ class CopyPublicationOrderTests final : public QObject, protected MainWindowTest
         source->selectRow(payload);
         source->setFocus();
         QTRY_VERIFY(source->hasFocus());
-        const unsigned beforeLoads = spec->loads;
         bool submitted = false;
         QStringList errors;
         QStringList errorTitles;
         QList<QMessageBox::Icon> errorIcons;
         unsigned callerErrors = 0;
-        bool errorGeometry = true;
         QList<int> peerRowsAtError;
-        QList<unsigned> sourceLoadsAtError;
+        QList<int> sourceRowsAtError;
         QTimer driver;
         dialogs_.connectResponder(driver, &window, [&] {
             if (auto *dialog = window.findChild<CopyDialog *>("copyDialog");
@@ -170,17 +162,9 @@ class CopyPublicationOrderTests final : public QObject, protected MainWindowTest
                     errorIcons << box->icon();
                     if (box->objectName() == "panelArchiveError") {
                         ++callerErrors;
-                        for (const QSize size : {QSize(440, 220), QSize(340, 220)}) {
-                            box->resize(size);
-                            box->layout()->activate();
-                            errorGeometry &=
-                                UiInspection::writeReport(*box, QString("copy-phase-error-%1-%2")
-                                                                    .arg(QTest::currentDataTag())
-                                                                    .arg(size.width()));
-                        }
                     }
                     peerRowsAtError << peer->rowCount();
-                    sourceLoadsAtError << spec->loads;
+                    sourceRowsAtError << source->rowCount();
                     box->accept();
                 }
         });
@@ -204,12 +188,10 @@ class CopyPublicationOrderTests final : public QObject, protected MainWindowTest
         for (QMessageBox::Icon icon : errorIcons)
             QCOMPARE(icon, QMessageBox::Critical);
         QCOMPARE(callerErrors, result == E_INVALIDARG ? 1u : 0u);
-        QVERIFY(errorGeometry);
         for (int rows : peerRowsAtError)
             QCOMPARE(rows, 1);
-        for (unsigned loads : sourceLoadsAtError)
-            QCOMPARE(loads, beforeLoads);
-        QCOMPARE(spec->loads, beforeLoads + (move ? 1u : 0u));
+        for (int rows : sourceRowsAtError)
+            QCOMPARE(rows, 2);
         QCOMPARE(read(QDir(output).filePath(name)), bytes);
         QCOMPARE(QFileInfo::exists(QDir(input).filePath(name)), !move);
         if (!move)
@@ -223,13 +205,6 @@ class CopyPublicationOrderTests final : public QObject, protected MainWindowTest
         QVERIFY(WindowActivation::waitForActive(window));
         QTRY_VERIFY(source->hasFocus());
         QCOMPARE(source->sourcePanel->GetFolder(), folder.Interface());
-        for (const QSize size : {QSize(980, 620), QSize(640, 400)}) {
-            window.resize(size);
-            QApplication::processEvents();
-            QVERIFY(UiInspection::writeReport(
-                window,
-                QString("copy-phases-%1-%2").arg(QTest::currentDataTag()).arg(size.width())));
-        }
     }
 };
 

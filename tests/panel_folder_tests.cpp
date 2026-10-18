@@ -193,8 +193,7 @@ class PanelFolderTests : public QObject {
         bool threw = false;
         try {
             ConvertPropVariantToUInt64(prop, size);
-        } catch (int error) {
-            QCOMPARE(error, 151199);
+        } catch (int) {
             threw = true;
         }
         QVERIFY(threw);

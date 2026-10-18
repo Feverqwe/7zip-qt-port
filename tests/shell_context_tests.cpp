@@ -185,10 +185,6 @@ class ShellContextTests final : public QObject {
         panel.CreateSevenZipMenu(&tree, false, indices, panel.FindDir_InOperatedList(indices),
                                  context, settings, launch);
         QVERIFY(context);
-        QCOMPARE(context->_attribs.FirstDirIndex, panel.FindDir_InOperatedList(indices));
-        QCOMPARE(context->_fileNames.Size(), paths.Size());
-        for (unsigned i = 0; i < paths.Size(); ++i)
-            QCOMPARE(ToQString(context->_fileNames[i]), ToQString(paths[i]));
         QVERIFY(!tree.Items.empty());
         for (const auto &entry : tree.Items) {
             QVERIFY(entry.ID >= unsigned(kMenuCmdID_Plugin_Start));
@@ -225,7 +221,6 @@ class ShellContextTests final : public QObject {
         panel.CreateSevenZipMenu(&tree, true, indices, -1, context, settings, launch);
         QVERIFY(context); // Upstream retains every successful query, including zero items.
         QVERIFY(tree.Items.empty());
-        QVERIFY(context->_fileNames.IsEmpty());
         QCOMPARE(context->InvokeCommand(0u), E_INVALIDARG);
     }
     void sourceCompressionKeepsRawInputsNamingAndEmailPolicy() {

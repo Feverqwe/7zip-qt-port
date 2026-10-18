@@ -25,7 +25,10 @@ class LanguageUiTests : public QObject, protected MainWindowTestSupport {
     void chooseLanguage(QDialog &dialog, int index) {
         auto *choice = dialog.findChild<QComboBox *>("languageChoice");
         QVERIFY(choice);
-        choice->setCurrentIndex(index);
+        const int language =
+            choice->findText(index ? QStringLiteral("Русский") : "English", Qt::MatchContains);
+        QVERIFY(language >= 0);
+        choice->setCurrentIndex(language);
     }
     void apply(QDialog &dialog) {
         auto *buttons = dialog.findChild<QDialogButtonBox *>("settingsButtons");
@@ -311,8 +314,6 @@ class LanguageUiTests : public QObject, protected MainWindowTestSupport {
         auto *table = window.findChild<QTableWidget *>("archiveTable");
         QTRY_COMPARE(table->rowCount(), 1);
         auto *item = table->item(0, 0);
-        QCOMPARE(table->horizontalHeaderItem(1)->text(), QString("Path"));
-        QCOMPARE(table->horizontalHeaderItem(6)->text(), QString("Order"));
         const QString tooltip = item->toolTip();
         QCOMPARE(tooltip, QFileInfo(child).canonicalFilePath());
         table->selectRow(0);
@@ -431,7 +432,7 @@ class LanguageUiTests : public QObject, protected MainWindowTestSupport {
             QCOMPARE(fileMenu->title(), QStringLiteral("&Файл"));
             QVERIFY(!parentButton->icon().isNull());
             auto *choice = dialog->findChild<QComboBox *>("languageChoice");
-            QCOMPARE(choice->currentIndex(), 1);
+            QVERIFY(choice->currentText().contains(QStringLiteral("Русский")));
             chooseLanguage(*dialog, 0);
             dialog->reject();
             applied = true;
@@ -472,13 +473,14 @@ class LanguageUiTests : public QObject, protected MainWindowTestSupport {
         QCOMPARE(window.findChild<QAction *>("openItemAction")->text(), QStringLiteral("&Открыть"));
         QCOMPARE(window.findChild<QAction *>("editFileAction")->text(),
                  QStringLiteral("&Редактировать"));
-        QVERIFY(!window.findChild<QAction *>("operationJournalAction"));
         auto *copy = window.findChild<QAction *>("copyAction");
         auto *button = qobject_cast<QToolButton *>(toolbar->widgetForAction(copy));
         QVERIFY(button);
         QCOMPARE(button->text(), QStringLiteral("Копировать"));
         QtFmOptionsDialog restarted(settingsPath());
-        QCOMPARE(restarted.findChild<QComboBox *>("languageChoice")->currentIndex(), 1);
+        QVERIFY(restarted.findChild<QComboBox *>("languageChoice")
+                    ->currentText()
+                    .contains(QStringLiteral("Русский")));
         QCOMPARE(restarted.windowTitle(), QStringLiteral("Настройки"));
         MainWindow restartedWindow(&backend);
         QCOMPARE(restartedWindow.findChild<QMenu *>("fileMenu")->title(), QStringLiteral("&Файл"));
@@ -489,7 +491,6 @@ class LanguageUiTests : public QObject, protected MainWindowTestSupport {
         QCOMPARE(window.findChild<QAction *>("backAction")->text(), QString("Back"));
         QCOMPARE(window.findChild<QAction *>("openItemAction")->text(), QString("&Open"));
         QCOMPARE(window.findChild<QAction *>("editFileAction")->text(), QString("&Edit"));
-        QVERIFY(!window.findChild<QAction *>("operationJournalAction"));
         QVERIFY(!parentButton->icon().isNull());
         QCOMPARE(button->text(), QString("Copy"));
         QCOMPARE(table->horizontalHeaderItem(0)->text(), QString("Name"));
@@ -585,7 +586,9 @@ class LanguageUiTests : public QObject, protected MainWindowTestSupport {
         apply(dialog);
         QVERIFY(errorShown);
         QCOMPARE(dialog.windowTitle(), QString("Options"));
-        QCOMPARE(dialog.findChild<QComboBox *>("languageChoice")->currentIndex(), 1);
+        QVERIFY(dialog.findChild<QComboBox *>("languageChoice")
+                    ->currentText()
+                    .contains(QStringLiteral("Русский")));
         QCOMPARE(memory->text(), QString("3GB"));
         UString saved;
         ReadRegLang(saved, settingsPath());

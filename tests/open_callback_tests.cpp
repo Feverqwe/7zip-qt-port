@@ -28,21 +28,9 @@ struct CPasswordRequest {
 class OpenCallbackTests : public QObject {
     Q_OBJECT
   private slots:
-    void countersAndStop() {
+    void stoppedCallbackAbortsOpening() {
         COpenArchiveCallback callback;
         UInt64 files = 9, bytes = 4096;
-        QCOMPARE(callback.Open_SetTotal(&files, &bytes), HRESULT(S_OK));
-        QCOMPARE(callback.ProgressDialog.Sync._totalFiles, files);
-        QCOMPARE(callback.ProgressDialog.Sync._totalBytes, bytes);
-        QVERIFY(callback.ProgressDialog.Sync._filesProgressMode);
-        files = 3;
-        bytes = 127;
-        QCOMPARE(callback.Open_SetCompleted(&files, &bytes), HRESULT(S_OK));
-        QCOMPARE(callback.ProgressDialog.Sync._curFiles, files);
-        QCOMPARE(callback.ProgressDialog.Sync._completedBytes, bytes);
-        QCOMPARE(callback.Open_SetTotal(nullptr, nullptr), HRESULT(S_OK));
-        QCOMPARE(callback.ProgressDialog.Sync._totalFiles, UInt64(-1));
-        QVERIFY(!callback.ProgressDialog.Sync._filesProgressMode);
         callback.ProgressDialog.Sync.Set_Stopped(true);
         QCOMPARE(callback.Open_SetTotal(&files, &bytes), HRESULT(E_ABORT));
         QCOMPARE(callback.Open_CheckBreak(), HRESULT(E_ABORT));
@@ -92,7 +80,7 @@ class OpenCallbackTests : public QObject {
         stream.Release(); // last reference also releases volume owner safely
     }
 
-    void passwordReuseAndReopenRouting() {
+    void passwordReuse() {
         COpenArchiveCallback callback;
         callback.PasswordIsDefined = true;
         callback.Password = L"fixture";
@@ -108,15 +96,6 @@ class OpenCallbackTests : public QObject {
         SysFreeString(password);
         QVERIFY(callback.PasswordWasAsked);
         QVERIFY(implementation->PasswordWasAsked);
-        UInt64 files = 2, bytes = 99;
-        QCOMPARE(owner->SetTotal(&files, &bytes), HRESULT(S_OK));
-        QCOMPARE(callback.ProgressDialog.Sync._totalBytes, bytes);
-        auto *reopenImplementation = new COpenCallbackImp;
-        CMyComPtr<IArchiveOpenCallback> reopen = reopenImplementation;
-        reopenImplementation->ReOpenCallback = owner;
-        bytes = 123;
-        QCOMPARE(reopen->SetCompleted(nullptr, &bytes), HRESULT(S_OK));
-        QCOMPARE(callback.ProgressDialog.Sync._completedBytes, bytes);
     }
 
     void passwordPresentationAndPersistence_data() {

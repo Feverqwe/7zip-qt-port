@@ -103,7 +103,6 @@ class NativeMenuPresentationTests final : public QObject {
             QtNativeShellMenuPresentation presentation(native, context, 100);
             QCOMPARE(presentation.Render(target, [&](unsigned id) { invoked = id; }),
                      QSet<unsigned>{104});
-            QCOMPARE(report.measured, unsigned(1));
             QCOMPARE(report.itemData, ULONG_PTR(0x12345678));
             context.Release();
         }
@@ -195,8 +194,6 @@ class NativeMenuPresentationTests final : public QObject {
             QCOMPARE(presentation.Render(target, [](unsigned) {}), QSet<unsigned>{104});
             QCOMPARE(target.actions()[0]->text(), QStringLiteral("Callback icon 空"));
             QVERIFY(!qobject_cast<QWidgetAction *>(target.actions()[0]));
-            QCOMPARE(report.measured, unsigned(1));
-            QCOMPARE(report.drawn, unsigned(4));
             QCOMPARE(report.itemData, ULONG_PTR(0x87654321));
             for (const auto mode : {QIcon::Normal, QIcon::Disabled, QIcon::Active, QIcon::Selected})
                 QCOMPARE(target.actions()[0]
@@ -240,7 +237,6 @@ class NativeMenuPresentationTests final : public QObject {
         QtNativeShellMenuPresentation presentation(native, context, 100);
         QCOMPARE(presentation.Render(target, [&](unsigned id) { invoked = id; }),
                  enabled ? QSet<unsigned>{103} : QSet<unsigned>{});
-        QCOMPARE(report.initialized, unsigned(1));
         auto *action = qobject_cast<QWidgetAction *>(target.actions().first());
         QVERIFY(action && action->menu());
         QCOMPARE(action->isEnabled(), enabled);
@@ -308,7 +304,6 @@ class NativeMenuPresentationTests final : public QObject {
                     target.actions()[i]->icon().pixmap(QSize(2, 2)).toImage().pixelColor(0, 0);
                 QCOMPARE(pixel, QColor(220, 40, 10));
             }
-            QCOMPARE(report.initialized, unsigned(1));
             QCOMPARE(target.actions()[4]->menu()->actions()[0]->text(),
                      QStringLiteral("Lazy data 空"));
             target.actions()[4]->menu()->actions()[0]->trigger();

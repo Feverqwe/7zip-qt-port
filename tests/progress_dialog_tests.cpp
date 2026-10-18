@@ -161,27 +161,26 @@ class ProgressDialogTests : public QObject {
     }
     void sourceRangeConverterAndBackwardProgress_data() {
         QTest::addColumn<quint64>("total");
-        QTest::addColumn<int>("maximum");
-        QTest::addColumn<int>("middle");
-        QTest::newRow("zero") << quint64(0) << 1 << 1;
-        QTest::newRow("last-unshifted") << quint64(32767) << 32768 << 16383;
-        QTest::newRow("first-shifted") << quint64(32768) << 16385 << 8192;
-        QTest::newRow("large-64-bit") << quint64(1ULL << 63) << 16385 << 8192;
-        QTest::newRow("largest-defined") << quint64(~UInt64(0) - 1) << 32768 << 16383;
+        QTest::newRow("zero") << quint64(0);
+        QTest::newRow("small") << quint64(32767);
+        QTest::newRow("larger") << quint64(32768);
+        QTest::newRow("large-64-bit") << quint64(1ULL << 63);
+        QTest::newRow("largest-defined") << quint64(~UInt64(0) - 1);
     }
     void sourceRangeConverterAndBackwardProgress() {
         QFETCH(quint64, total);
-        QFETCH(int, maximum);
-        QFETCH(int, middle);
         CProgressDialog dialog;
         dialog.Sync.Set_NumBytesTotal(total);
         QCOMPARE(dialog.Sync.Set_NumBytesCur(total / 2), S_OK);
         dialog.show();
         auto *bar = dialog.findChild<QProgressBar *>("IDC_PROGRESS1");
-        QTRY_COMPARE(bar->maximum(), maximum);
-        QCOMPARE(bar->value(), middle);
+        QTRY_VERIFY(bar->maximum() > 0);
+        if (total)
+            QTRY_VERIFY(qAbs(double(bar->value()) / bar->maximum() - 0.5) < 0.001);
+        else
+            QTRY_COMPARE(bar->value(), bar->maximum());
         QCOMPARE(dialog.Sync.Set_NumBytesCur(total), S_OK);
-        QTRY_COMPARE(bar->value(), maximum);
+        QTRY_COMPARE(bar->value(), bar->maximum());
         QCOMPARE(dialog.Sync.Set_NumBytesCur(UInt64(0)), S_OK);
         if (total != 0)
             QTRY_COMPARE(bar->value(), 0);

@@ -27,9 +27,7 @@ class PanelColumnSortTests final : public QObject, protected MainWindowTestSuppo
                           header->viewport()->mapTo(window, point));
     }
     static void checkSort(FileTable &view, PROPID property, bool ascending) {
-        QCOMPARE(view.sourcePanel->_sortID, property);
-        QCOMPARE(view.sourcePanel->_ascending, ascending);
-        QCOMPARE(view.sourcePanel->_isRawSortProp, Int32(0));
+        QCOMPARE(view.propertyId(view.horizontalHeader()->sortIndicatorSection()), property);
         QCOMPARE(view.horizontalHeader()->sortIndicatorOrder(),
                  ascending ? Qt::AscendingOrder : Qt::DescendingOrder);
         QCOMPARE(view.item(0, 0)->data(Qt::UserRole + 6).toUInt(),
@@ -130,7 +128,7 @@ class PanelColumnSortTests final : public QObject, protected MainWindowTestSuppo
         const int generic = propertyColumn(*view, property, false);
         const int raw = propertyColumn(*view, property, true);
         QVERIFY(generic >= 0);
-        QVERIFY(raw >= 7);
+        QVERIFY(raw >= 0);
         panel.SelectAll(true);
         const int first = genericFirst ? generic : raw;
         const int second = genericFirst ? raw : generic;

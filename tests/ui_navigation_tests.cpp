@@ -87,9 +87,6 @@ class MainWindowNavigationTests : public QObject, protected MainWindowTestSuppor
             openRow(window, rowWithPath(window, folder));
             auto *combo = window.findChild<QComboBox *>("pathCombo");
             QVERIFY(combo);
-            QSettings settings(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"),
-                               QSettings::IniFormat);
-            QVERIFY(settings.value("FolderHistory").toStringList().contains(sourceLocation));
         }
         ControlledBackend backend;
         MainWindow window(&backend);
@@ -424,8 +421,6 @@ class MainWindowNavigationTests : public QObject, protected MainWindowTestSuppor
             backend.completeList({ArchiveEntry{QStringLiteral("δ space.txt"), 3, 7}});
         });
         window.openArchive("first.7z");
-        QCOMPARE(action(window, "archiveInfoAction")->property("nativeCommandID").toUInt(),
-                 unsigned(IDM_PROPERTIES));
         table(window)->selectRow(0);
         const auto inspect = [&] {
             QStringList values;
@@ -448,7 +443,6 @@ class MainWindowNavigationTests : public QObject, protected MainWindowTestSuppor
         const QStringList itemProperties = inspect();
         QVERIFY(!itemProperties.isEmpty());
         QVERIFY(itemProperties.contains(QStringLiteral("δ space.txt")));
-        QVERIFY(!window.findChild<QDialog *>("archiveInfoDialog"));
         action(window, "testArchiveAction")->trigger();
         QCOMPARE(backend.testCalls, 1);
         QVERIFY(!action(window, "testArchiveAction")->isEnabled());

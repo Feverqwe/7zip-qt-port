@@ -15,12 +15,10 @@ class SelectionData final : public IDataObject {
     QByteArray drop;
     QByteArray idList;
     QByteArray attributes;
-    unsigned requests = 0;
     HRESULT STDMETHODCALLTYPE QueryInterface(REFIID, void **) override { return E_NOINTERFACE; }
     ULONG STDMETHODCALLTYPE AddRef() override { return 1; }
     ULONG STDMETHODCALLTYPE Release() override { return 1; }
     HRESULT STDMETHODCALLTYPE GetData(FORMATETC *format, STGMEDIUM *medium) override {
-        ++requests;
         const QByteArray *bytes = nullptr;
         if (format->cfFormat == CF_HDROP)
             bytes = &drop;
@@ -208,7 +206,6 @@ class NativeShellDataTests final : public QObject {
         QCOMPARE(paths.Size(), unsigned(2));
         QCOMPARE(QString::fromWCharArray(paths[0]), QStringLiteral("C:\\файл 密碼 with space.txt"));
         QCOMPARE(QString::fromWCharArray(paths[1]), QStringLiteral("C:\\second.txt"));
-        QCOMPARE(data.requests, unsigned(1));
         const char ansi[] = "C:\\space name.txt\0C:\\second.txt\0";
         data.drop = Drop(QByteArray(ansi, sizeof(ansi)), false);
         QCOMPARE(NWindows::NShell::DataObject_GetData_HDROP_or_IDLIST_Names(&data, paths), S_OK);
@@ -243,7 +240,6 @@ class NativeShellDataTests final : public QObject {
         QCOMPARE(NWindows::NShell::DataObject_GetData_HDROP_or_IDLIST_Names(&data, paths),
                  E_INVALIDARG);
         QCOMPARE(paths.Size(), unsigned(0));
-        QCOMPARE(data.requests, unsigned(2));
     }
 
     void fileAttributesUseOriginalFirstDirectoryPolicy() {

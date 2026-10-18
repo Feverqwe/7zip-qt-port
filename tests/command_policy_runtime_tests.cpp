@@ -1,4 +1,3 @@
-#include "7zip/UI/FileManager/resource.h"
 #include "window_state_support.h"
 
 class CommandPolicyRuntimeTests : public QObject, protected MainWindowTestSupport {
@@ -59,7 +58,6 @@ class CommandPolicyRuntimeTests : public QObject, protected MainWindowTestSuppor
         window.openArchive(archive);
         table(window)->selectRow(0);
         QVERIFY(action(window, "editFileAction")->isEnabled());
-        QVERIFY(!window.findChild<QAction *>("builtinTextEditAction"));
         for (const char *name : {"moveAction"}) {
             auto *command = action(window, name);
             QVERIFY(!command->isEnabled());
@@ -113,7 +111,6 @@ class CommandPolicyRuntimeTests : public QObject, protected MainWindowTestSuppor
             view->item(row, 1)->setText("/missing/forged path");
         }
         auto *outside = action(window, "openOutsideAction");
-        QCOMPARE(outside->property("nativeCommandID").toUInt(), unsigned(IDM_OPEN_OUTSIDE));
         outside->trigger();
         opened.sort();
         paths.sort();

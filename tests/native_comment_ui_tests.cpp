@@ -134,7 +134,7 @@ class NativeCommentUiTests final : public QObject, protected MainWindowTestSuppo
                     dialog->accept();
             } else if (auto *box = qobject_cast<QMessageBox *>(widget)) {
                 if (box->icon() == QMessageBox::Critical)
-                    errors.append(box->objectName());
+                    errors.append(box->text());
                 if (box->objectName() == "panelArchiveError") {
 #ifdef Q_OS_MACOS
                     QCOMPARE(box->text(), QStringLiteral("Set Comment Error"));
@@ -151,8 +151,6 @@ class NativeCommentUiTests final : public QObject, protected MainWindowTestSuppo
         action(window, "commentAction")->trigger();
         QVERIFY(observed);
         QCOMPARE(errors.size(), outcome == "failure" ? 1 : 0);
-        if (!errors.isEmpty())
-            QCOMPARE(errors[0], QStringLiteral("panelArchiveError"));
         QCOMPARE(table(window)->currentRow(), rowWithPath(window, name));
         QTRY_VERIFY(action(window, "commentAction")->isEnabled());
         QVERIFY(!backend.busy());

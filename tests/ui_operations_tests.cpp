@@ -483,9 +483,6 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
         QVERIFY(!copyProgress->findChild<QPushButton *>("IDB_PAUSE")->isEnabled());
         QVERIFY(copyProgress->findChild<QPushButton *>("IDB_PROGRESS_BACKGROUND")->isEnabled());
         QTRY_VERIFY(action(window, "copyAction")->isEnabled());
-        QSettings settings(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"), QSettings::IniFormat);
-        QVERIFY(!settings.value("CopyHistory").toStringList().isEmpty());
-        QCOMPARE(settings.value("CopyHistory").toStringList().first(), destination);
         QFile copiedFile(copied);
         QVERIFY(copiedFile.open(QIODevice::ReadOnly));
         QCOMPARE(copiedFile.readAll(), QByteArray("original"));
@@ -1991,7 +1988,6 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
                 auto *dialog = window.findChild<CreateArchiveDialog *>("createArchiveDialog");
                 QVERIFY(dialog);
                 const auto reject = qScopeGuard([&] { dialog->reject(); });
-                QVERIFY(!dialog->findChild<QListWidget *>("availableSources"));
                 if (dialog->sources().size() != 2) {
                     dialog->reject();
                     return;

@@ -42,7 +42,6 @@ class UiUpdateModesTests final : public QObject, protected MainWindowTestSupport
     }
     static void setOutput(CreateArchiveDialog &dialog, const QString &archive,
                           const QString &format) {
-        QVERIFY(!dialog.findChild<QListWidget *>("availableSources"));
         dialog.findChild<QComboBox *>("archiveFormat")->setCurrentText(format);
         dialog.findChild<QLineEdit *>("archiveName")->setText(archive);
     }

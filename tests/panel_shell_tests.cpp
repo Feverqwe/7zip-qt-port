@@ -209,7 +209,6 @@ class PanelShellTests final : public QObject, protected MainWindowTestSupport {
             QVERIFY(menu->actions().contains(window.findChild<QAction *>("openItemAction")));
             QVERIFY(menu->actions().contains(window.findChild<QAction *>("copyAction")));
             QVERIFY(!menu->actions().contains(window.findChild<QAction *>("extractArchiveAction")));
-            QVERIFY(!window.findChild<QAction *>("addArchiveAction"));
             QVERIFY(!menu->findChild<QAction *>("systemContextGroup"));
             QVERIFY(!menu->actions().contains(window.findChild<QAction *>("exitAction")));
             QVERIFY(UiInspection::writeReport(*menu, QStringLiteral("panel-context-archive")));

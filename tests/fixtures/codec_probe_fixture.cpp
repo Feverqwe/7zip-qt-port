@@ -1,3 +1,4 @@
+#include "7zip/MyVersion.h"
 #include <QCoreApplication>
 #include <QFile>
 #include <QFileInfo>
@@ -11,11 +12,11 @@ int main(int argc, char **argv) {
         return 64;
     const QString mode = QFileInfo(args[0]).baseName();
     if (mode.contains("bad-banner"))
-        std::puts("7-Zip (z) 26.03invalid");
+        std::puts("7-Zip (z) " MY_VERSION "invalid");
     else if (mode.contains("wrong-version"))
         std::puts("7-Zip (z) 1.00 : fixture");
     else
-        std::puts("7-Zip (z) 26.03 : fixture");
+        std::puts("7-Zip (z) " MY_VERSION " : fixture");
     std::fflush(stdout);
     if (mode.contains("delayed")) {
         QTimer::singleShot(100, &app, [&app] {

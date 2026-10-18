@@ -164,7 +164,9 @@ class OptionsIntegrationTests final : public QObject {
         pages->setCurrentIndex(5);
         auto *language = dialog.findChild<QComboBox *>("languageChoice");
         QVERIFY(language->count() > 1);
-        language->setCurrentIndex(1);
+        const int russian = language->findText(QString::fromUtf8("Русский"), Qt::MatchContains);
+        QVERIFY(russian >= 0);
+        language->setCurrentIndex(russian);
         auto *memory = dialog.findChild<QLineEdit *>("extractMemoryEdit");
         if (finish == 3) {
             dialog.findChild<QCheckBox *>("extractMemorySet")->setChecked(true);

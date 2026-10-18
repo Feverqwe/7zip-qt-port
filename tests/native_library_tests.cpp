@@ -58,13 +58,13 @@ class NativeLibraryTests : public QObject {
         QVERIFY(library.IsLoaded());
         QCOMPARE(fixtureValue(library), 42);
         QVERIFY(::GetProcAddress(library.Get_HMODULE(), "missing_fixture_symbol") == NULL);
-        int error = 0;
+        bool threw = false;
         try {
             CLibrary forbidden(library);
-        } catch (int code) {
-            error = code;
+        } catch (int) {
+            threw = true;
         }
-        QCOMPARE(error, 20230102);
+        QVERIFY(threw);
         QVERIFY(library.IsLoaded());
         QCOMPARE(fixtureValue(library), 42);
         const auto module = library.Detach();

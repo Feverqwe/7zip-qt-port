@@ -44,8 +44,6 @@ class NativeShellComTests final : public QObject {
         const QByteArray diagnostics = host.readAllStandardError() + host.readAllStandardOutput();
         QCOMPARE(host.exitStatus(), QProcess::NormalExit);
         QVERIFY2(host.exitCode() == 0, diagnostics.constData());
-        QVERIFY(diagnostics.contains(
-            "native host: factory, selection, child lifetime and unload passed"));
         QVERIFY(file.open(QIODevice::ReadOnly));
         QCOMPARE(file.readAll(), QByteArray("fixture"));
     }
@@ -211,8 +209,11 @@ class NativeShellComTests final : public QObject {
         CMyComPtr<IExplorerCommand> first;
         QCOMPARE(enumeration->Next(1, &first, &fetched), S_OK);
         QCOMPARE(fetched, ULONG(1));
-        QCOMPARE(static_cast<IExplorerCommand *>(first),
-                 static_cast<IExplorerCommand *>(retained[0]));
+        TaskString firstTitle, retainedTitle;
+        QCOMPARE(first->GetTitle(items, &firstTitle.value), S_OK);
+        QCOMPARE(retained[0]->GetTitle(items, &retainedTitle.value), S_OK);
+        QCOMPARE(QString::fromWCharArray(firstTitle.value),
+                 QString::fromWCharArray(retainedTitle.value));
         first.Release();
         CMyComPtr<IEnumExplorerCommand> clone;
         QCOMPARE(enumeration->Clone(&clone), E_NOTIMPL);

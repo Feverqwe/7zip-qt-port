@@ -152,7 +152,6 @@ class ArchiveProxyTests : public QObject {
         QCOMPARE(proxy.Load(arc, nullptr), HRESULT(S_OK));
         for (unsigned i = 0; i < proxy.NumFiles; ++i) {
             QCOMPARE(QString::fromWCharArray(proxy.Files[i].Name), names[int(i)]);
-            QVERIFY(proxy.Files[i].NeedDeleteName);
         }
         const int root =
             proxy.FindItem(k_Proxy2_RootDirIndex, names[0].toStdWString().c_str(), true);

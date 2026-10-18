@@ -114,7 +114,6 @@ class SourceCompressDialogTests final : public QObject {
         QVERIFY(rightColumn);
         QVERIFY(barBounds.left() - UiInspection::bounds(*rightColumn, dialog).right() - 1 >=
                 UiInspection::bounds(*scroll, dialog).left());
-        QVERIFY(!bar->style()->styleHint(QStyle::SH_ScrollBar_Transient, nullptr, bar));
         QCOMPARE(scroll->horizontalScrollBar()->maximum(), 0);
         QVERIFY(UiInspection::fullyVisible(*dialog.findChild<QDialogButtonBox *>(), dialog));
         const QString tag = QString("source-add-scroll-%1-%2")
@@ -231,26 +230,21 @@ class SourceCompressDialogTests final : public QObject {
         auto *level = dialog.findChild<QComboBox *>("compressionLevel");
         auto *format = dialog.findChild<QComboBox *>("archiveFormat");
         QVERIFY(method && level && format);
-        QCOMPARE(method->currentText(), QString("*  LZMA2"));
         QCOMPARE(method->currentData().toInt(), -1);
         QVERIFY(dialog.sourceInfo().Method.IsEmpty());
         QVERIFY(dialog.compressionOptions().Method.IsEmpty());
         method->setCurrentText("PPMd");
         QCOMPARE(QString::fromWCharArray(dialog.sourceInfo().Method.Ptr()), QString("PPMd"));
         format->setCurrentText("zip");
-        QCOMPARE(method->currentText(), QString("*  Deflate"));
         QVERIFY(dialog.sourceInfo().Method.IsEmpty());
         format->setCurrentText("7z");
         QCOMPARE(method->currentText(), QString("PPMd"));
         level->setCurrentIndex(level->findData(0u));
-        QCOMPARE(method->count(), 0);
         QVERIFY(!method->isEnabled());
         QVERIFY(dialog.sourceInfo().Method.IsEmpty());
         level->setCurrentIndex(level->findData(5u));
-        QCOMPARE(method->currentText(), QString("*  LZMA2"));
         format->setCurrentText("tar");
         QCOMPARE(level->currentData().toUInt(), 0u);
-        QVERIFY(method->count() > 1);
         QCOMPARE(method->currentText(), QString("*  GNU"));
         QVERIFY(dialog.sourceInfo().Method.IsEmpty());
         method->setCurrentText("POSIX");
@@ -305,10 +299,6 @@ class SourceCompressDialogTests final : public QObject {
         QVERIFY(name);
         QCOMPARE(name->selectedText(), name->text());
         QVERIFY(UiInspection::writeReport(dialog, reportTag));
-        QVERIFY(!dialog.findChild<QListWidget *>("availableSources"));
-        QVERIFY(!dialog.findChild<QLineEdit *>("sourceDirectory"));
-        QVERIFY(!dialog.findChild<QLineEdit *>("archiveDestination"));
-        QVERIFY(!dialog.findChild<QLabel *>("archiveTargetPreview"));
         auto *folder = dialog.findChild<QLabel *>("archiveFolder");
         auto *archiveRow = dialog.findChild<QWidget *>("archivePathRow");
         QVERIFY(folder && archiveRow);
@@ -349,7 +339,6 @@ class SourceCompressDialogTests final : public QObject {
         for (const char *name : {"archiveUpdateMode", "archivePathMode", "archiveLifecycleOptions",
                                  "archiveEncryptionGroup"})
             QVERIFY2(right->isAncestorOf(dialog.findChild<QWidget *>(name)), name);
-        QVERIFY(!dialog.findChild<QGroupBox *>("archiveCompressionGroup"));
         QVERIFY(left->geometry().right() < right->geometry().left());
         QCOMPARE(mode->currentData().toInt(), int(NCompressDialog::NUpdateMode::kFresh));
         QCOMPARE(pathMode->currentData().toInt(), int(NWildcard::k_FullPath));

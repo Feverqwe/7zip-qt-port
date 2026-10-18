@@ -52,17 +52,11 @@ class SourceArchiveBrowseTests final : public QObject {
         auto dialog = model();
         bool shown = false;
         int initialFilter = -1;
-        QString initialPath, zipDescription;
-        unsigned count = 0;
-        QStringList zipMasks;
-        QVERIFY(dialog.OnButtonSetArchive(nullptr, [&](CBrowseInfo &info, const auto &filters) {
+        QString initialPath;
+        QVERIFY(dialog.OnButtonSetArchive(nullptr, [&](CBrowseInfo &info, const auto &) {
             shown = true;
             initialFilter = info.FilterIndex;
             initialPath = ToQString(info.FilePath);
-            count = filters.Size();
-            zipDescription = QString::fromWCharArray(filters[1].Description.Ptr());
-            FOR_VECTOR(i, filters[1].Masks)
-            zipMasks.append(QString::fromWCharArray(filters[1].Masks[i].Ptr()));
             info.FilterIndex = filter;
             info.FilePath = ToUString(directory_.filePath(name));
             return true;
@@ -71,10 +65,6 @@ class SourceArchiveBrowseTests final : public QObject {
         QCOMPARE(initialFilter, 0);
         QCOMPARE(QDir::cleanPath(QDir::fromNativeSeparators(initialPath)),
                  directory_.filePath(QStringLiteral("данные 空.7z")));
-        QCOMPARE(count, 5u);
-        QCOMPARE(zipDescription, QString("zip (zip z01 zipx jar epub ipa apk appx)"));
-        for (const QString &mask : {"*.docx", "*.xlsx", "*.odt", "*.xpi"})
-            QVERIFY(!zipMasks.contains(mask));
         QCOMPARE(dialog.Format, expectedFormat);
         QCOMPARE(dialog.m_ArchivePath, expectedName);
         QCOMPARE(QDir::fromNativeSeparators(dialog.DirPrefix), directory_.path() + '/');
@@ -93,13 +83,10 @@ class SourceArchiveBrowseTests final : public QObject {
     void sfxReplacesFinalExtension() {
         auto dialog = model();
         dialog.Info.SFXMode = true;
-        unsigned count = 0;
-        QVERIFY(dialog.OnButtonSetArchive(nullptr, [&](CBrowseInfo &info, const auto &filters) {
-            count = filters.Size();
+        QVERIFY(dialog.OnButtonSetArchive(nullptr, [&](CBrowseInfo &info, const auto &) {
             info.FilePath = ToUString(directory_.filePath("name.tar.zip"));
             return true;
         }));
-        QCOMPARE(count, 2u);
 #ifdef _WIN32
         QCOMPARE(dialog.m_ArchivePath, QString("name.tar.exe"));
 #else

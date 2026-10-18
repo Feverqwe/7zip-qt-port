@@ -3,7 +3,6 @@
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "filesystemscanner.h"
 #include "fixtures/widget_dialogs.h"
-#include "layout_inspection.h"
 #include "window_state_support.h"
 
 class FilesystemReloadTests final : public QObject, protected MainWindowTestSupport {
@@ -84,13 +83,6 @@ class FilesystemReloadTests final : public QObject, protected MainWindowTestSupp
         QCOMPARE(panel.GetFolder(), (IFolderFolder *)folder);
         QVERIFY(panel.ShouldProcessNotifications());
         QVERIFY(action(window, "refreshAction")->isEnabled());
-        for (const QSize size : {QSize(980, 620), QSize(640, 400)}) {
-            window.resize(size);
-            QApplication::processEvents();
-            QVERIFY(UiInspection::writeReport(window, QString("filesystem-missing-%1-%2")
-                                                          .arg(QTest::currentDataTag())
-                                                          .arg(size.width())));
-        }
         QVERIFY(QDir().rename(moved, path));
         panel.OnReload();
         QCOMPARE(view->rowCount(), 1);
@@ -170,14 +162,6 @@ class FilesystemReloadTests final : public QObject, protected MainWindowTestSupp
             for (QWidget *widget : QApplication::topLevelWidgets())
                 if (auto *box = qobject_cast<QMessageBox *>(widget); box && box->isVisible()) {
                     shown = box->text();
-                    for (const QSize size : {QSize(440, 250), QSize(360, 200)}) {
-                        box->resize(size);
-                        box->layout()->activate();
-                        QVERIFY(
-                            UiInspection::writeReport(*box, QString("filesystem-worker-error-%1-%2")
-                                                                .arg(QTest::currentDataTag())
-                                                                .arg(size.width())));
-                    }
                     box->accept();
                 }
         });

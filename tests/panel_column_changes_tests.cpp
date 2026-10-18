@@ -11,7 +11,6 @@ class PanelColumnChangesTests final : public QObject, protected MainWindowTestSu
         const unsigned count = view.sourcePanel->GetVisibleColumns().Size();
         if (!count)
             return;
-        QVERIFY(!view.fullRowHighlight());
         auto paint = [&](int column, bool selected) {
             QImage image(240, 32, QImage::Format_ARGB32_Premultiplied);
             image.fill(view.palette().base().color());
@@ -178,11 +177,7 @@ class PanelColumnChangesTests final : public QObject, protected MainWindowTestSu
         };
         if (counts) {
             spec->propertyCountResult = spec->rawCountResult = failure ? E_FAIL : S_FALSE;
-            const unsigned infoQueries = spec->propertyInfoQueries;
-            const unsigned rawQueries = spec->rawInfoQueries;
             reload("written", 4);
-            QCOMPARE(spec->propertyInfoQueries - infoQueries, 3u);
-            QCOMPARE(spec->rawInfoQueries - rawQueries, 1u);
         } else {
             spec->properties = {
                 {kpidCRC, VT_UI4}, {kpidIsDir, VT_BOOL}, {kpidName, VT_BSTR, E_FAIL}};

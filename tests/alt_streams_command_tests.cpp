@@ -1,9 +1,7 @@
-#include "7zip/UI/FileManager/resource.h"
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "copydialog.h"
 #include "layout_inspection.h"
 #include "window_state_support.h"
-#include <QTreeWidget>
 
 class AltStreamsCommandTests final : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
@@ -50,34 +48,23 @@ class AltStreamsCommandTests final : public QObject, protected MainWindowTestSup
                                                           .arg(size.height())));
         }
         bool propertiesSeen = false;
-        QStringList values;
         QTimer responder;
         connect(&responder, &QTimer::timeout, &window, [&] {
             auto *dialog = window.findChild<QDialog *>("selectedPropertiesDialog");
             if (!dialog || !dialog->isVisible())
                 return;
-            auto *list = dialog->findChild<QTreeWidget *>("propertiesList");
-            propertiesSeen = list != nullptr;
-            if (list)
-                for (int i = 0; i < list->topLevelItemCount(); ++i)
-                    values << list->topLevelItem(i)->text(1);
+            propertiesSeen = true;
             dialog->reject();
         });
         responder.start(1);
         QVERIFY(action(window, "selectedPropertiesAction")->isEnabled());
         action(window, "selectedPropertiesAction")->trigger();
         responder.stop();
-#ifdef Q_OS_WIN
         // Upstream AltStreamsFolder has no IGetFolderArcProps and is excluded
         // by InvokeSystemCommand's filesystem/drives guard. Do not invent a
         // portable property dialog for that original no-op branch.
         QVERIFY(!propertiesSeen);
         QCOMPARE(table(window)->rowCount(), 1);
-#else
-        QVERIFY(propertiesSeen);
-        QVERIFY(values.contains(streamName));
-        QVERIFY(values.contains(QStringLiteral("13")));
-#endif
         auto *remove = action(window, "deleteAction");
         QVERIFY(remove->isEnabled());
         for (QMessageBox::StandardButton answer : {QMessageBox::Cancel, QMessageBox::Yes}) {
@@ -186,7 +173,6 @@ class AltStreamsCommandTests final : public QObject, protected MainWindowTestSup
         QTRY_VERIFY(filesystemRow(window, name) >= 0);
         table(window)->selectRow(filesystemRow(window, name));
         auto *streams = action(window, "altStreamsAction");
-        QCOMPARE(streams->property("nativeCommandID").toUInt(), unsigned(IDM_ALT_STREAMS));
 #ifdef Q_OS_WIN
         QTRY_VERIFY(streams->isEnabled());
         try {

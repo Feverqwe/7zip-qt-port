@@ -134,9 +134,11 @@ class ViewMenuTests final : public QObject, protected MainWindowTestSupport {
         QVERIFY(peer->sourcePanel->ShouldProcessNotifications());
         QVERIFY(file.open(QIODevice::ReadOnly));
         QCOMPARE(file.readAll(), QByteArray("protected menu fixture"));
-        QSettings settings(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"), QSettings::IniFormat);
-        QCOMPARE(settings.value("view/timestampLevel").toInt(), kTimestampPrintLevel_NS);
-        QCOMPARE(settings.value("view/timestampUTC").toBool(), utcValue);
+        MainWindow reopened(&backend);
+        QVERIFY(QMetaObject::invokeMethod(reopened.findChild<QMenu *>("viewMenu"), "aboutToShow",
+                                          Qt::DirectConnection));
+        QVERIFY(action(reopened, "timestampLevel4Action")->isChecked());
+        QCOMPARE(action(reopened, "timestampUtcAction")->isChecked(), utcValue);
     }
 };
 

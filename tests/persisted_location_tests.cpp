@@ -134,10 +134,6 @@ class PersistedLocationTests final : public QObject, protected MainWindowTestSup
         action(window, "parentFolderAction")->trigger();
         QVERIFY(leftTable(window)->sourcePanel->IsRootFolder());
         QVERIFY(prefix(window).isEmpty());
-        QVERIFY(QSettings(settings, QSettings::IniFormat)
-                    .value("FolderHistory")
-                    .toStringList()
-                    .contains(QString()));
         action(window, "openRootAction")->trigger();
         openEmptyHistoryItem(window, "initial");
         QVERIFY(leftTable(window)->sourcePanel->IsRootFolder());

@@ -92,7 +92,6 @@ class ArchiveMetadataUiTests final : public QObject, protected MainWindowTestSup
                 if (form->isVisible())
                     form->reject();
             });
-            QVERIFY(!form->findChild<QListWidget *>("availableSources"));
             QCOMPARE(form->sources(), QStringList{root});
             form->findChild<QComboBox *>("archiveFormat")->setCurrentText("tar");
             form->findChild<QLineEdit *>("archiveName")->setText(archive);

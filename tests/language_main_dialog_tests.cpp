@@ -41,8 +41,6 @@ class LanguageMainDialogTests final : public QObject {
             QCOMPARE(window.statusBar()->currentMessage(),
                      QString(name) == "ru" ? QStringLiteral("Операция отменена.")
                                            : QString("Operation canceled."));
-            QVERIFY(!window.findChild<QAction *>("operationJournalAction"));
-            QVERIFY(!window.findChild<QDialog *>("operationMessagesDialog"));
         }
     }
     void cancellationUsesResultCodeInsteadOfMessageText() {
@@ -115,7 +113,6 @@ class LanguageMainDialogTests final : public QObject {
         });
         window.findChild<QAction *>("archiveInfoAction")->trigger();
         QVERIFY(inspected);
-        QVERIFY(!window.findChild<QDialog *>("archiveInfoDialog"));
     }
 };
 

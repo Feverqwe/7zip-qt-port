@@ -169,7 +169,7 @@ class CompressionOrderTests final : public QObject {
         QTest::addColumn<int>("invalidWord");
         QTest::addColumn<int>("validWord");
         QTest::newRow("Deflate64") << QString("Deflate64") << QString("zip") << 258 << 48;
-        QTest::newRow("PPMd-7z") << QString("PPMd") << QString("7z") << 9 << 32;
+        QTest::newRow("PPMd-7z") << QString("PPMd") << QString("7z") << 999999 << 32;
         QTest::newRow("PPMd-zip") << QString("PPMd") << QString("zip") << 17 << 16;
     }
     void invalidWordAndCancelPreserveDestination() {

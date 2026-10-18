@@ -124,7 +124,7 @@ class PropertiesTests : public QObject, protected MainWindowTestSupport {
         PropertyProjection dialog(panel, allIndices(folder));
         QCOMPARE(value(dialog, "Имя"), QStringLiteral("файл 😀.txt"));
         QCOMPARE(value(dialog, "Размер"), QString("12 345"));
-        QVERIFY(value(dialog, "Изменён").isNull());
+        QVERIFY(value(dialog, "Изменен").isNull());
         QCOMPARE(value(dialog, "Сжатый"), QString("3"));
         QCOMPARE(value(dialog, "Файлов"), QString("1")); // Source folder totals follow item.
         QCOMPARE(value(dialog, "Папок"), QString("0"));
@@ -175,21 +175,18 @@ class PropertiesTests : public QObject, protected MainWindowTestSupport {
         CPanel panel(folder);
         const auto indices = allIndices(folder);
         QCOMPARE(indices.Size(), unsigned(1));
-        int inspected = 0;
         auto inspect = [&] {
             PropertyProjection dialog(panel, indices);
             QCOMPARE(value(dialog, "Имя").normalized(QString::NormalizationForm_C), name);
             QCOMPARE(value(dialog, "Размер"), QString("7"));
             QCOMPARE(value(dialog, "Сжатый"), QString("7"));
             QVERIFY(!value(dialog, "Изменен").isEmpty());
-            ++inspected;
         };
         inspect(); // Also primes upstream's lazy packed-size cache on Windows.
         QVERIFY(file.open(QIODevice::WriteOnly | QIODevice::Truncate));
         QCOMPARE(file.write(QByteArray(23, 'x')), qint64(23));
         file.close();
         inspect(); // A row/QFileInfo reconstruction would incorrectly show 23.
-        QCOMPARE(inspected, 2);
         QVERIFY(QDir::setCurrent(original));
     }
 

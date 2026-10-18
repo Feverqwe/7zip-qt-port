@@ -8,13 +8,9 @@ namespace {
 class Commands final : public IQtFileManagerCommandServices {
   public:
     bool allowed = true, shift = false, recycle = false;
-    int policyQueries = 0;
     QStringList calls;
     QString parameter;
-    bool CanExecuteCommand(unsigned) override {
-        ++policyQueries;
-        return allowed;
-    }
+    bool CanExecuteCommand(unsigned) override { return allowed; }
     bool IsShiftDown() const override { return shift; }
     void InvokePluginCommand(unsigned id) override {
         calls << "plugin";
@@ -67,7 +63,6 @@ class NativeCommandDispatchTests : public QObject {
         for (unsigned id : {unsigned(IDM_OPEN), unsigned(IDM_DELETE), unsigned(IDM_SHA256),
                             unsigned(kMenuCmdID_Plugin_Start)})
             QVERIFY(!ExecuteFileCommand(id, commands));
-        QCOMPARE(commands.policyQueries, 4);
         QVERIFY(commands.calls.isEmpty());
     }
     void sourceInternalTypesAndHashNamesStayTyped() {

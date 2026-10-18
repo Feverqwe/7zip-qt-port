@@ -171,7 +171,6 @@ class ShellUpdateWindowTests final : public QObject, protected MainWindowTestSup
         dialogs_.connectResponder(dismissal, &window, [&] {
             if (auto *dialog = qobject_cast<CreateArchiveDialog *>(dialogs_.activeDialog())) {
                 QVERIFY(QTest::qWaitForWindowActive(dialog));
-                QVERIFY(!dialog->findChild<QListWidget *>("availableSources"));
                 QCOMPARE(dialog->sources(), QStringList{fixture.filePath(name)});
                 if (nested)
                     dialog->findChild<QLineEdit *>("archiveName")

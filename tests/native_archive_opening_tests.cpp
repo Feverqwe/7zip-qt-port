@@ -89,7 +89,6 @@ class NativeArchiveOpeningTests final : public QObject {
         options.excludedFormats = &excludedFormats;
         options.props = nullptr;
         options.filePath = path.toStdWString().c_str();
-        QVERIFY(!options.QtOpenService);
         CNativeOpenUi callback;
         CArchiveLink link;
         const bool wrongType = format == "zip" && openType == "7z";

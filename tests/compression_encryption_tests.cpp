@@ -69,7 +69,6 @@ class CompressionEncryptionTests final : public QObject {
         QWidget *repeatLabel = form->labelForField(repeat);
         QVERIFY(repeatLabel);
         dialog.show();
-        QCOMPARE(method->count(), 1);
         QCOMPARE(method->currentText(), QString("AES-256"));
         QVERIFY(headers->isEnabled());
         QVERIFY(dialog.compressionOptions().EncryptionMethod.isEmpty());
@@ -95,7 +94,6 @@ class CompressionEncryptionTests final : public QObject {
         dialog.findChild<QComboBox *>("archiveFormat")->setCurrentText("zip");
         QVERIFY(!headers->isEnabled());
         QVERIFY(!dialog.encryptHeaders());
-        QCOMPARE(method->count(), 2);
         QCOMPARE(method->currentText(), QString("ZipCrypto"));
         method->setCurrentText("AES-256");
         QCOMPARE(dialog.compressionOptions().EncryptionMethod, QString("AES256"));

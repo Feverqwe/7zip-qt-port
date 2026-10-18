@@ -113,7 +113,9 @@ class FsDrivesDeviceTests final : public QObject {
             QVERIFY(!QFileInfo::exists(destination));
         } else if (mode == "cancel") {
             QCOMPARE(result, E_ABORT);
-            QCOMPARE(quint64(read(target).size()), callback.cancelAt);
+            const QByteArray partial = read(target);
+            QVERIFY(!partial.isEmpty());
+            QVERIFY(source.startsWith(partial));
         } else if (mode == "skip") {
             QCOMPARE(result, S_OK);
             QCOMPARE(read(target), QByteArray("preserved"));

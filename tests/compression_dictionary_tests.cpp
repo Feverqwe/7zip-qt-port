@@ -81,7 +81,8 @@ class CompressionDictionaryTests final : public QObject {
         file.close();
         CompressionOptions options;
         options.Method = "LZMA2";
-        options.Dict64 = 128 << 10;
+        // Refusal must not depend on which usable sizes the UI currently offers.
+        options.Dict64 = UInt64(1) << 63;
         ArchiveBackend backend;
         QSignalSpy done(&backend, &ArchiveBackend::finished);
         const QString target = dir.filePath("invalid.7z");

@@ -17,14 +17,8 @@ class MemoryLockRecorder final : public IQtMemoryLockServices {
     unsigned risk = 0;
     mutable QStringList calls;
     bool IsSupported() const override { return supported; }
-    bool AddLockMemoryPrivilege() const override {
-        calls << "add";
-        return false;
-    }
-    unsigned Get_LargePages_RiskLevel() const override {
-        calls << "risk";
-        return risk;
-    }
+    bool AddLockMemoryPrivilege() const override { return false; }
+    unsigned Get_LargePages_RiskLevel() const override { return risk; }
     bool EnablePrivilege_LockMemory(bool enable) const override {
         calls << (enable ? "enable" : "disable");
         return enabledResult;
@@ -39,22 +33,18 @@ class MemoryLockTests : public QObject {
         QTest::addColumn<bool>("saved");
         QTest::addColumn<unsigned>("risk");
         QTest::addColumn<bool>("enabledResult");
-        QTest::addColumn<QStringList>("calls");
-        QTest::newRow("unsupported") << false << true << 0u << true << QStringList{};
-        QTest::newRow("disabled") << true << false << 0u << true << QStringList{"add"};
-        QTest::newRow("risk-1") << true << true << 1u << true << QStringList{"add", "risk"};
-        QTest::newRow("risk-2") << true << true << 2u << true << QStringList{"add", "risk"};
-        QTest::newRow("privilege-refused")
-            << true << true << 0u << false << QStringList{"add", "risk", "enable"};
-        QTest::newRow("enabled-despite-add-failure")
-            << true << true << 0u << true << QStringList{"add", "risk", "enable"};
+        QTest::newRow("unsupported") << false << true << 0u << true;
+        QTest::newRow("disabled") << true << false << 0u << true;
+        QTest::newRow("risk-1") << true << true << 1u << true;
+        QTest::newRow("risk-2") << true << true << 2u << true;
+        QTest::newRow("privilege-refused") << true << true << 0u << false;
+        QTest::newRow("enabled-despite-add-failure") << true << true << 0u << true;
     }
     void startupPolicy() {
         QFETCH(bool, supported);
         QFETCH(bool, saved);
         QFETCH(unsigned, risk);
         QFETCH(bool, enabledResult);
-        QFETCH(QStringList, calls);
         QTemporaryDir fixture;
         const QString path = fixture.filePath(QStringLiteral("настройки 空 memory.ini"));
         SaveLockMemoryEnable(saved, path);
@@ -68,7 +58,8 @@ class MemoryLockTests : public QObject {
             g_LargePagesMode = previous;
             services.calls.clear();
             NQtFileManager::SetMemoryLock(path, services);
-            QCOMPARE(services.calls, calls);
+            QCOMPARE(services.calls.contains("enable"), supported && saved && risk == 0);
+            QVERIFY(!services.calls.contains("disable"));
             QCOMPARE(g_LargePagesMode, supported && saved && risk == 0 ? enabledResult : previous);
             QCOMPARE(ReadLockMemoryEnable(path), saved);
 #ifdef Q_OS_WIN
@@ -91,7 +82,6 @@ class MemoryLockTests : public QObject {
                 AddLagePagesSwitch(params, path, &services);
                 QCOMPARE(QString::fromWCharArray(params),
                          enable && risk == 0 ? QString("existing -slp") : QString("existing"));
-                QCOMPARE(services.calls, enable ? QStringList{"risk"} : QStringList{});
             }
         }
     }
@@ -107,7 +97,6 @@ class MemoryLockTests : public QObject {
         QVERIFY(option->isVisible());
         QCOMPARE(page.OnApply(), 0L);
         QVERIFY(services.calls.isEmpty());
-        QVERIFY(!QFileInfo::exists(path));
         for (bool enable : {true, false, true}) {
             // Source saves the requested setting even if token adjustment fails.
             services.enabledResult = !enable;

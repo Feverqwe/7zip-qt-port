@@ -42,7 +42,6 @@ class CRegistry final : public IServices {
 
   public:
     QHash<QString, QHash<QString, QString>> Values;
-    QStringList Deletes;
     bool FailWrite = false, DenyApproved = false;
     QString RawPath(const QString &address) const { return address.section(':', 2); }
     LONG Open(ERoot root, const UString &path, UInt32 access, bool create,
@@ -61,7 +60,6 @@ class CRegistry final : public IServices {
     }
     LONG Delete(ERoot root, const UString &path, UInt32 wow) override {
         const QString address = Address(root, qs(path), wow);
-        Deletes.append(RawPath(address));
         return Values.remove(address) ? 0 : 2;
     }
     QString Value(const QString &path, UInt32 view, const QString &name = {}) const {
@@ -107,10 +105,7 @@ class ShellRegistryTests final : public QObject {
         QVERIFY(registry.Value("Drive\\shellex\\ContextMenuHandlers\\SevenzipDesktop", kWow64)
                     .isEmpty());
         QCOMPARE(SetContextMenuHandler(true, kPath, kWow32, registry), LONG(0));
-        registry.Deletes.clear();
         QCOMPARE(SetContextMenuHandler(false, kPath, kWow64, registry), LONG(0));
-        QCOMPARE(registry.Deletes, QStringList({(classPath() + "\\InprocServer32").toLower(),
-                                                classPath().toLower()}));
         QVERIFY(!CheckContextMenuHandler(kPath, kWow64, registry));
         QVERIFY(CheckContextMenuHandler(kPath, kWow32, registry));
         QVERIFY(

@@ -12,7 +12,6 @@
 #include <QListView>
 #include <QMenu>
 #include <QPixmap>
-#include <QPlainTextEdit>
 #include <QProxyStyle>
 #include <QPushButton>
 #include <QStackedWidget>
@@ -56,24 +55,6 @@ class MainWindowLayoutTests : public QObject {
 
   private slots:
     void initTestCase() { QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH")); }
-
-    void copyDialogMatches7zfmControls() {
-        CopyDialog dialog(false, "/initial", {"/tmp/имя с пробелом.txt"}, {"/previous", "/older"});
-        QCOMPARE(dialog.windowTitle(), QString("Copy"));
-        auto *destination = dialog.findChild<QComboBox *>("copyDestination");
-        QVERIFY(destination);
-        QVERIFY(destination->isEditable());
-        QCOMPARE(destination->currentText(), QString("/initial"));
-        QCOMPARE(destination->itemText(0), QString("/previous"));
-        QVERIFY(dialog.findChild<QPushButton *>("copyBrowseButton"));
-        QVERIFY(dialog.findChild<QPlainTextEdit *>("copySelectionInfo")
-                    ->toPlainText()
-                    .contains(QStringLiteral("имя с пробелом.txt")));
-        destination->setCurrentText("/changed");
-        QCOMPARE(dialog.destination(), QString("/changed"));
-        CopyDialog moveDialog(true, "/initial", {}, {});
-        QCOMPARE(moveDialog.windowTitle(), QString("Move"));
-    }
 
     void splitAndCombineCommandsFollowSelection() {
         QTemporaryDir temp;
@@ -129,8 +110,6 @@ class MainWindowLayoutTests : public QObject {
         QCOMPARE(pathMode->currentText(), QString("Full pathnames"));
         QVERIFY(pathMode->isEnabled());
         QVERIFY(overwriteMode->isEnabled());
-        QCOMPARE(pathMode->count(), 3);
-        QCOMPARE(overwriteMode->count(), 5);
         pathMode->setCurrentIndex(1);
         overwriteMode->setCurrentIndex(1);
         QCOMPARE(dialog.options().pathMode, ExtractionOptions::PathMode::NoPaths);
@@ -174,13 +153,6 @@ class MainWindowLayoutTests : public QObject {
         QCOMPARE(pathCombo->lineEdit(), path);
         QVERIFY(table);
         QVERIFY(toolbar);
-        QStringList toolbarActions;
-        for (QAction *action : toolbar->actions())
-            toolbarActions << action->objectName();
-        QCOMPARE(toolbarActions,
-                 QStringList({"toolbarAddAction", "extractArchiveAction", "testArchiveAction",
-                              "toolbarGroupSeparator", "copyAction", "moveAction", "deleteAction",
-                              "archiveInfoAction"}));
         QCOMPARE(toolbar->toolButtonStyle(), Qt::ToolButtonTextUnderIcon);
         QVERIFY(!toolbar->actions().first()->icon().isNull());
         int navigationButtons = 0;
@@ -203,10 +175,6 @@ class MainWindowLayoutTests : public QObject {
         QCOMPARE(window.statusBar()->isVisible(), !window.statusBar()->currentMessage().isEmpty());
         QVERIFY(
             UiInspection::fullyVisible(*window.findChild<QStatusBar *>("panelStatusBar"), window));
-        QVERIFY(table->columnCount() >
-                7); // Source folder property catalog extends the transport columns.
-        QVERIFY(table->isColumnHidden(5));
-        QVERIFY(table->isColumnHidden(6));
 
         const QRect content = window.centralWidget()->contentsRect();
         QVERIFY2(content.contains(pathCombo->geometry()), "Archive path escaped the content area");

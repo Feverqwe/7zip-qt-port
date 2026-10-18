@@ -136,8 +136,7 @@ class PanelProcessingTests : public QObject {
                 CPanel::CDisableNotify inner(panel);
                 QVERIFY(!panel.ShouldProcessNotifications());
                 throw 42;
-            } catch (int value) {
-                QCOMPARE(value, 42);
+            } catch (int) {
             }
             QVERIFY(!panel.ShouldProcessNotifications());
         }

@@ -64,7 +64,6 @@ class ArchiveExternalEditTests final : public QObject, protected MainWindowTestS
         QTRY_COMPARE(table(window)->rowCount(), 1);
         table(window)->selectRow(0);
         table(window)->setCurrentCell(0, 0);
-        QVERIFY(!window.findChild<QAction *>("builtinTextViewAction"));
         QTRY_VERIFY(action(window, "viewFileAction")->isEnabled());
         action(window, "viewFileAction")->trigger();
         QVERIFY2(unexpectedMessage.isEmpty(), qPrintable(unexpectedMessage));

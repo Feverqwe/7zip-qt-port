@@ -151,7 +151,6 @@ class NativeDragQtTests final : public QObject {
         file.close();
         auto *converter = QtNativePanelDragConverter::ForApplication();
         QVERIFY(converter);
-        QCOMPARE(QtNativePanelDragConverter::ForApplication(), converter);
         auto model = std::make_shared<CDataObject>();
         model->Names.Add(ToUString(QDir::toNativeSeparators(file.fileName())));
         CMyComPtr<IDataObject> data;

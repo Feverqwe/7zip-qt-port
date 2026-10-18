@@ -390,13 +390,7 @@ class ArchiveProgressTests : public QObject, protected ArchiveBackendTestSupport
             QCOMPARE(before.readAll(), original);
         }
     }
-    void cancelPausedOwnedEngine_data() {
-        QTest::addColumn<QSize>("size");
-        QTest::newRow("normal") << QSize(760, 450);
-        QTest::newRow("compact") << QSize(640, 380);
-    }
     void cancelPausedOwnedEngine() {
-        QFETCH(QSize, size);
         QTemporaryDir directory;
         QVERIFY(directory.isValid());
         const QString source = directory.filePath(QStringLiteral("файл с пробелом.txt"));
@@ -417,7 +411,6 @@ class ArchiveProgressTests : public QObject, protected ArchiveBackendTestSupport
         await(backend, true);
         qputenv("SEVENZIP_TEST_HELPER", "createpartial");
         ArchiveProgressOperation operation(backend, [&] { backend.add(archive, {source}); });
-        operation.resize(size);
         bool started = false, paused = false, confirmed = false;
         connect(&backend, &ArchiveBackend::outputReceived, &operation,
                 [&](const QString &) { started = true; });

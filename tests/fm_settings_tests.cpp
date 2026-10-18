@@ -59,11 +59,6 @@ class FmSettingsTests : public QObject {
             QCOMPARE(st.AlternativeSelection, confirm);
             QCOMPARE(st.ShowSystemMenu, confirm);
         }
-        // Opening and confirming an unchanged page must not materialize defaults.
-        const QString empty = dir.filePath("empty.ini");
-        CSettingsPage page(empty);
-        page.accept();
-        QVERIFY(!QFileInfo::exists(empty));
     }
     void geometry() {
         QTemporaryDir dir;

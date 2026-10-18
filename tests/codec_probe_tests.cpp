@@ -1,3 +1,4 @@
+#include "7zip/MyVersion.h"
 #include "archivecodecprobe.h"
 #include <QFile>
 #include <QFileInfo>
@@ -292,7 +293,7 @@ class CodecProbeTests : public QObject {
         if (mode == "matching") {
             QCOMPARE(result.result, S_OK);
             QVERIFY(result.catalog->canUpdate("zip"));
-            QCOMPARE(result.catalog->version(), UInt32((26 << 16) | 3));
+            QCOMPARE(result.catalog->version(), UInt32((MY_VER_MAJOR << 16) | MY_VER_MINOR));
         } else {
             QCOMPARE(result.result, E_FAIL);
             QVERIFY(result.catalog->extensions().isEmpty());

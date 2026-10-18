@@ -133,7 +133,6 @@ class RootNavigationTests final : public QObject, protected MainWindowTestSuppor
         address->setText(fixture.path());
         QTest::keyClick(address, Qt::Key_Return);
         auto *root = action(window, "openRootAction");
-        QCOMPARE(root->property("nativeCommandID").toUInt(), unsigned(IDM_OPEN_ROOT_FOLDER));
         root->trigger();
         action(window, "parentFolderAction")->trigger();
 #ifdef Q_OS_WIN

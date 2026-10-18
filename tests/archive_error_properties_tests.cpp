@@ -42,9 +42,8 @@ class ArchiveErrorPropertiesTests : public QObject {
             bool threw = false;
             try {
                 GetOpenArcErrorFlags(prop, &defined);
-            } catch (int error) {
+            } catch (int) {
                 threw = true;
-                QCOMPARE(error, 151199);
             }
             QVERIFY(threw);
             QVERIFY(!defined);

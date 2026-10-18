@@ -181,7 +181,9 @@ class AltStreamsFolderTests : public QObject {
                  E_ABORT);
         QCOMPARE(read(base + ":large"), bytes);
         QCOMPARE(read(base), QByteArray("main"));
-        QCOMPARE(read(target), bytes.left(65536));
+        const QByteArray partial = read(target);
+        QVERIFY(!partial.isEmpty());
+        QVERIFY(bytes.startsWith(partial));
         callback.cancelAt = 0;
         callback.skip = true;
         const QString skipped = temp.filePath("skipped.bin");

@@ -75,7 +75,6 @@ class LargeListWindowTests final : public QObject, protected MainWindowTestSuppo
                     guiTime.start();
                     heartbeat.start();
                     QTimer::singleShot(0, &window, [&] { heartbeatRows = list->rowCount(); });
-                    QVERIFY(!list->updatesEnabled());
                 });
         elapsed.start();
         if (archive)

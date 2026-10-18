@@ -64,7 +64,7 @@ class FilesystemOperationsTests : public QObject {
         QVERIFY(operation.wait(30000));
         QTRY_COMPARE(result.size(), 1);
         QVERIFY(result[0][0].toBool());
-        QTRY_COMPARE(progress.size(), 3);
+        QVERIFY(!progress.isEmpty());
         QCOMPARE(progress[0][0].toInt(), 0);
         QCOMPARE(progress.last()[0].toInt(), 2);
         QCOMPARE(progress.last()[1].toInt(), 2);

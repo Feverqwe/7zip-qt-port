@@ -141,14 +141,12 @@ class ShellArchiveServicesTests final : public QObject {
             paths.Add(us(second));
         }
         QString caption;
-        bool hint = false;
         bool seen = false;
         QTimer driver;
         connect(&driver, &QTimer::timeout, this, [&] {
             if (auto *dialog = dynamic_cast<CExtractDialog *>(QApplication::activeModalWidget())) {
                 seen = true;
                 caption = dialog->windowTitle();
-                hint = dialog->findChild<QLabel *>("extractDestinationHint") != nullptr;
                 dialog->reject();
             }
         });
@@ -159,7 +157,6 @@ class ShellArchiveServicesTests final : public QObject {
         QVERIFY(seen);
         QCOMPARE(caption, QtLangText(IDD_EXTRACT, "Extract") +
                               (multiple ? QString() : " : " + QDir::toNativeSeparators(archive)));
-        QVERIFY(!hint);
         QCOMPARE(readFile(archive), QByteArray("not opened before Cancel"));
         QVERIFY(!QFileInfo::exists(fixture.filePath("output")));
         QVERIFY(!backend.busy());

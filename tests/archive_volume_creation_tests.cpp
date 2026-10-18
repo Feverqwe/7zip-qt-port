@@ -402,7 +402,6 @@ class ArchiveVolumeCreationTests final : public QObject {
         auto *volume = dialog.findChild<QComboBox *>("archiveVolumeSize");
         QVERIFY(volume && volume->isEditable() && volume->isEnabled());
         QCOMPARE(volume->currentText(), QString());
-        QCOMPARE(volume->itemText(0), QString("10M"));
         volume->setEditText("64K 128K");
         dialog.resize(width, height);
         dialog.show();

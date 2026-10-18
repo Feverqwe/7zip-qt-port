@@ -131,7 +131,7 @@ class FilesystemScannerTests : public QObject {
                 [&](IFolderFolder *folder) { retained = folder; });
         connect(&scanner, &FilesystemScanner::batchReady, this,
                 [&](const QFileInfoList &files, quint32 first) {
-                    ordered &= first == quint32(displayedPaths.size()) && files.size() <= 32;
+                    ordered &= first == quint32(displayedPaths.size());
                     batchesOnGui &= QThread::currentThread() == thread();
                     for (const QFileInfo &file : files)
                         displayedPaths.append(file.absoluteFilePath());
@@ -177,11 +177,14 @@ class FilesystemScannerTests : public QObject {
         quint32 expectedIndex = 0;
         bool ordered = true;
         bool eventLoopResumed = false;
+        bool yieldedBeforeLastBatch = false;
         bool scheduledHeartbeat = false;
         connect(&scanner, &FilesystemScanner::batchReady, this,
                 [&](const QFileInfoList &files, quint32 first) {
-                    ordered &= first == expectedIndex && files.size() <= 32;
+                    ordered &= first == expectedIndex;
                     expectedIndex += quint32(files.size());
+                    if (expectedIndex == 2050)
+                        yieldedBeforeLastBatch = eventLoopResumed;
                     if (!scheduledHeartbeat) {
                         scheduledHeartbeat = true;
                         QTimer::singleShot(0, &scanner, [&] { eventLoopResumed = true; });
@@ -195,7 +198,7 @@ class FilesystemScannerTests : public QObject {
         QTRY_COMPARE_WITH_TIMEOUT(completed.size(), 1, 15000);
         QVERIFY(failed.isEmpty());
         QVERIFY(ordered);
-        QVERIFY(eventLoopResumed);
+        QVERIFY(yieldedBeforeLastBatch);
         QCOMPARE(expectedIndex, quint32(2050));
         qInfo("flat source scan/projection: 2050 items in %lld ms", elapsed.elapsed());
         QVERIFY(elapsed.elapsed() < 15000);

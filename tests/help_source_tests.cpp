@@ -1,3 +1,4 @@
+#include "7zip/MyVersion.h"
 #include "CPP/7zip/UI/Common/LoadCodecs.h"
 #include "CPP/7zip/UI/FileManager/AboutDialog.h"
 #include "CPP/7zip/UI/FileManager/HelpUtils.h"
@@ -130,7 +131,7 @@ class HelpSourceTests : public QObject {
     void aboutKeepsNaturalSourceLogo() {
         CAboutDialog dialog;
         const QPixmap source(":/upstream/7zip/About/7zipLogo.ico");
-        QCOMPARE(source.size(), QSize(110, 63));
+        QVERIFY(!source.isNull());
         QCOMPARE(dialog.findChild<QLabel *>("aboutLogo")->pixmap().size(), source.size());
     }
     void aboutInitialFrameScalesWithSourceFont() {
@@ -217,14 +218,13 @@ class HelpSourceTests : public QObject {
         CAboutDialog dialog;
         dialog.show();
         auto *version = dialog.findChild<QLabel *>("aboutText101");
-        QVERIFY(version->text().startsWith("7-Zip 26.03"));
+        QVERIFY(version->text().startsWith("7-Zip " MY_VERSION));
         const QString sourceVersion = version->text();
-        QCOMPARE(dialog.findChild<QLabel *>("aboutText102")->text(), QString("2026-09-03"));
+        QCOMPARE(dialog.findChild<QLabel *>("aboutText102")->text(), QString(MY_DATE));
         QVERIFY(dialog.findChild<QLabel *>("aboutText2901")->alignment() & Qt::AlignTop);
         QVERIFY(!dialog.findChild<QLabel *>("aboutLogo")->pixmap().isNull());
-        QVERIFY(dialog.findChild<QLabel *>("aboutApplicationVersion")
-                    ->text()
-                    .contains("Sevenzip 0.1.0"));
+        QCOMPARE(dialog.findChild<QLabel *>("aboutApplicationVersion")->text().section('\n', 0, 0),
+                 QString("Sevenzip " SEVENZIP_DESKTOP_VERSION));
         QDesktopServices::setUrlHandler("https", this, "openUrl");
         QVERIFY(!dialog.OnButtonClicked(999, nullptr));
         QVERIFY(dialog.OnButtonClicked(IDB_ABOUT_HOMEPAGE, nullptr));

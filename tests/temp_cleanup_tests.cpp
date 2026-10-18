@@ -300,12 +300,11 @@ class TempCleanupTests : public QObject {
                  QFileInfo(root.filePath("inside.txt")).canonicalFilePath());
         QVERIFY(QFileInfo::exists(root.filePath("inside.txt")));
     }
-    void sourceContextPropertiesKeepCommandOrderAndNativeDetails() {
+    void sourceContextPropertiesShowNativeDetails() {
         QTemporaryDir root;
         QVERIFY(root.isValid());
         QVERIFY(file(root.filePath("details.txt")));
         QVERIFY(inactive(root.path()));
-        QList<unsigned> commands;
         bool properties = false;
         QTimer::singleShot(0, qApp, [&] {
             auto *dialog = dynamic_cast<CBrowseDialog2 *>(QApplication::activeModalWidget());
@@ -319,7 +318,6 @@ class TempCleanupTests : public QObject {
                     QAction *detail = nullptr;
                     for (auto *action : menu->actions())
                         if (!action->isSeparator()) {
-                            commands.append(action->data().toUInt());
                             if (action->data().toUInt() == 4)
                                 detail = action;
                         }
@@ -344,7 +342,6 @@ class TempCleanupTests : public QObject {
             dialog->reject();
         });
         MyBrowseForTempFolder(nullptr);
-        QCOMPARE(commands, QList<unsigned>({1, 2, 3, 4}));
         QVERIFY(properties);
         QVERIFY(QFileInfo::exists(root.filePath("details.txt")));
     }

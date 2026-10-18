@@ -85,7 +85,6 @@ class FilesystemSelectionRuntimeTests : public QObject, protected MainWindowTest
                 auto *dialog =
                     qobject_cast<CreateArchiveDialog *>(QApplication::activeModalWidget());
                 if (dialog) {
-                    QVERIFY(!dialog->findChild<QListWidget *>("selectedSources"));
                     sources = dialog->sources();
                     for (QString &path : sources)
                         path = path.normalized(QString::NormalizationForm_C);
@@ -228,7 +227,6 @@ class FilesystemSelectionRuntimeTests : public QObject, protected MainWindowTest
         QTimer::singleShot(0, &window, [&] {
             auto *dialog = qobject_cast<CreateArchiveDialog *>(QApplication::activeModalWidget());
             QVERIFY(dialog);
-            QVERIFY(!dialog->findChild<QListWidget *>("selectedSources"));
             dialogSources = dialog->sources();
             for (QString &path : dialogSources)
                 path = path.normalized(QString::NormalizationForm_C);

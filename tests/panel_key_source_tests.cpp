@@ -288,10 +288,6 @@ class PanelKeySourceTests final : public QObject, protected MainWindowTestSuppor
         list->setFocus();
         QTRY_VERIFY(list->hasFocus());
         QTest::keyClick(list, Qt::Key_1, Qt::ControlModifier | Qt::AltModifier | Qt::ShiftModifier);
-        QSettings settings(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"), QSettings::IniFormat);
-        const auto bookmarkSlots = settings.value("FolderShortcuts").toStringList();
-        QCOMPARE(bookmarkSlots.size(), 2);
-        QCOMPARE(QDir::cleanPath(QDir::fromNativeSeparators(bookmarkSlots[1])), saved);
         address->setText(other);
         QTest::keyClick(address, Qt::Key_Return);
         list->setFocus();

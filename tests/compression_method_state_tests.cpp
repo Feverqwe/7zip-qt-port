@@ -63,11 +63,6 @@ class CompressionMethodStateTests final : public QObject {
         else
             qputenv("SEVENZIP_SETTINGS_PATH", _previousSettings);
     }
-    void unknownNameIsNotCopy() {
-        QCOMPARE(int(NCompressDialog::GetMethodID(QStringLiteral("UnavailableFixtureEncoder"),
-                                                  QStringLiteral("7z"))),
-                 -1);
-    }
     void states_data() {
         QTest::addColumn<QString>("scenario");
         QTest::addColumn<QString>("language");

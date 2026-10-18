@@ -1,7 +1,6 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/Panel.h"
 #include "external_editor_fixture.h"
-#include "layout_inspection.h"
 #include "window_state_support.h"
 
 class AddressNavigationTests final : public QObject, protected MainWindowTestSupport {
@@ -91,13 +90,6 @@ class AddressNavigationTests final : public QObject, protected MainWindowTestSup
         QVERIFY(view->sourcePanel->ShouldProcessNotifications());
         if (archive)
             QCOMPARE(ExternalEditorFixture::contents(zip, entry), QByteArray("archive control"));
-        for (const QSize size : {QSize(980, 620), QSize(640, 400)}) {
-            window.resize(size);
-            QApplication::processEvents();
-            QVERIFY(UiInspection::writeReport(window, QString("address-bound-reload-%1-%2")
-                                                          .arg(QTest::currentDataTag())
-                                                          .arg(size.width())));
-        }
     }
     void reloadPreservesTimerDraft_data() {
         QTest::addColumn<unsigned>("sourceIndex");
@@ -206,13 +198,6 @@ class AddressNavigationTests final : public QObject, protected MainWindowTestSup
             QCOMPARE(file.readAll(), pair.second);
         }
         QCOMPARE(backend.listCalls, 0);
-        for (const QSize size : {QSize(980, 620), QSize(640, 400)}) {
-            window.resize(size);
-            QApplication::processEvents();
-            QVERIFY(UiInspection::writeReport(
-                window,
-                QString("address-reload-%1-%2").arg(QTest::currentDataTag()).arg(size.width())));
-        }
     }
     void missingAddressUsesSourceAncestor_data() {
         QTest::addColumn<unsigned>("sourceIndex");
@@ -306,13 +291,6 @@ class AddressNavigationTests final : public QObject, protected MainWindowTestSup
         }
         QVERIFY(!QFileInfo::exists(QDir(parent).filePath(QStringLiteral("missing 文件"))));
         QCOMPARE(backend.listCalls, 0);
-        for (const QSize size : {QSize(980, 620), QSize(640, 400)}) {
-            window.resize(size);
-            QApplication::processEvents();
-            QVERIFY(UiInspection::writeReport(
-                window,
-                QString("address-missing-%1-%2").arg(QTest::currentDataTag()).arg(size.width())));
-        }
     }
 };
 

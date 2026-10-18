@@ -116,8 +116,6 @@ class SourceExtractBackendTests final : public QObject {
         QCOMPARE(parent->LoadItems(), S_OK);
         panel.OpenItemInArchive(0, true, false, false, false, L"zip");
         QCOMPARE(panel.GetParentFolders().Size(), 2u);
-        QVERIFY(!panel.GetParentFolders().Back().IsVirtual);
-        QVERIFY(panel.GetParentFolders().Back().NeedDelete);
         const QString ownedPath = ToQString(fs2us(panel.GetParentFolders().Back().FilePath));
         QCOMPARE(readFile(ownedPath), readFile(innerArchive));
         QCOMPARE(panel.GetParentFolders().Back().ParentFolder, parent);

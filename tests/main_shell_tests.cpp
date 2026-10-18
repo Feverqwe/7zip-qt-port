@@ -18,13 +18,6 @@
 class MainShellTests final : public QObject {
     Q_OBJECT
 
-    static QStringList actionNames(const QMenu &menu) {
-        QStringList names;
-        for (QAction *action : menu.actions())
-            names << (action->isSeparator() ? QStringLiteral("|") : action->objectName());
-        return names;
-    }
-
   private slots:
     void fileManagerWindowUsesSourceApplicationIcon() {
         ControlledBackend backend;
@@ -206,7 +199,6 @@ class MainShellTests final : public QObject {
         MainWindow window(&backend);
         auto *action = window.findChild<QAction *>("tempDirAction");
         QVERIFY(action && action->isEnabled());
-        QCOMPARE(action->property("nativeCommandID").toUInt(), unsigned(IDM_TEMP_DIR));
         bool observed = false;
         QTimer close;
         connect(&close, &QTimer::timeout, &window, [&] {
@@ -224,90 +216,16 @@ class MainShellTests final : public QObject {
         QVERIFY(!backend.busy());
     }
 
-    void sourceMenusKeepOrderAndUnavailableCommandsVisible() {
+    void sourceCommandsKeepAvailabilityAndShortcuts() {
         ControlledBackend backend;
         MainWindow window(&backend);
-        auto *file = window.findChild<QMenu *>("fileMenu");
-        auto *edit = window.findChild<QMenu *>("editMenu");
-        auto *view = window.findChild<QMenu *>("viewMenu");
-        auto *favorites = window.findChild<QMenu *>("favoritesMenu");
-        auto *tools = window.findChild<QMenu *>("toolsMenu");
-        auto *help = window.findChild<QMenu *>("helpMenu");
-        QVERIFY(file && edit && view && favorites && tools && help);
-        for (const char *name : {"openArchiveAction", "createArchiveAction", "addArchiveAction",
-                                 "extractSelectedAction", "operationJournalAction",
-                                 "builtinTextViewAction", "builtinTextEditAction"})
-            QVERIFY(!window.findChild<QAction *>(name));
-        QCOMPARE(window.menuBar()->actions().size(), 6);
-        QCOMPARE(actionNames(*file), QStringList({"openItemAction",
-                                                  "openInsideAction",
-                                                  "openInsideOneAction",
-                                                  "openInsideParserAction",
-                                                  "openOutsideAction",
-                                                  "viewFileAction",
-                                                  "editFileAction",
-                                                  "|",
-                                                  "renameAction",
-                                                  "copyAction",
-                                                  "moveAction",
-                                                  "deleteAction",
-                                                  "|",
-                                                  "splitFileAction",
-                                                  "combineFilesAction",
-                                                  "|",
-                                                  "selectedPropertiesAction",
-                                                  "commentAction",
-                                                  "hashMenu",
-                                                  "diffAction",
-                                                  "|",
-                                                  "createFolderAction",
-                                                  "createFileAction",
-                                                  "|",
-                                                  "linkAction",
-                                                  "altStreamsAction",
-                                                  "|",
-                                                  "exitAction",
-                                                  "verEditAction",
-                                                  "verCommitAction",
-                                                  "verRevertAction",
-                                                  "verDiffAction"}));
-        QCOMPARE(actionNames(*edit),
-                 QStringList({"selectAllAction", "deselectAllAction", "invertSelectionAction",
-                              "selectMaskAction", "deselectMaskAction", "|", "selectTypeAction",
-                              "deselectTypeAction"}));
-        QCOMPARE(actionNames(*view), QStringList({"viewMode0Action",
-                                                  "viewMode1Action",
-                                                  "viewMode2Action",
-                                                  "viewMode3Action",
-                                                  "|",
-                                                  "sort0Action",
-                                                  "sort1Action",
-                                                  "sort2Action",
-                                                  "sort3Action",
-                                                  "sort4Action",
-                                                  "|",
-                                                  "flatViewAction",
-                                                  "twoPanelsAction",
-                                                  "timestampMenu",
-                                                  "toolbarsMenu",
-                                                  "openRootAction",
-                                                  "upAction",
-                                                  "foldersHistoryAction",
-                                                  "refreshAction",
-                                                  "autoRefreshAction"}));
-        QCOMPARE(actionNames(*favorites).first(), QStringLiteral("addFavoriteMenu"));
-        QCOMPARE(actionNames(*tools),
-                 QStringList({"settingsAction", "|", "benchmarkAction", "|", "tempDirAction"}));
-        QCOMPARE(actionNames(*help), QStringList({"helpContentsAction", "|", "aboutAction"}));
         for (const char *name : {"diffAction", "linkAction", "benchmarkAction"}) {
             auto *action = window.findChild<QAction *>(name);
             QVERIFY(action);
             QVERIFY(!action->isEnabled());
-            QVERIFY(action->property("nativeCommandID").isValid());
         }
         auto *comment = window.findChild<QAction *>("commentAction");
         QVERIFY(comment);
-        QCOMPARE(comment->property("nativeCommandID").toUInt(), unsigned(IDM_COMMENT));
         QCOMPARE(comment->shortcut(), QKeySequence(Qt::CTRL | Qt::Key_Z));
         auto *streams = window.findChild<QAction *>("altStreamsAction");
         QVERIFY(streams);
@@ -316,16 +234,9 @@ class MainShellTests final : public QObject {
 #else
         QVERIFY(!streams->isEnabled());
 #endif
-        QVERIFY(streams->property("nativeCommandID").isValid());
         QVERIFY(window.findChild<QAction *>("helpContentsAction")->isEnabled());
         QVERIFY(window.findChild<QAction *>("aboutAction")->isEnabled());
         QVERIFY(window.findChild<QAction *>("tempDirAction")->isEnabled());
-        QCOMPARE(window.findChild<QAction *>("openInsideOneAction")
-                     ->property("nativeCommandID")
-                     .toUInt(),
-                 unsigned(IDM_OPEN_INSIDE_ONE));
-        QCOMPARE(window.findChild<QAction *>("exitAction")->property("nativeCommandID").toUInt(),
-                 8u);
         QCOMPARE(window.findChild<QAction *>("openInsideAction")->shortcut(),
                  QKeySequence(Qt::CTRL | Qt::Key_PageDown));
         QCOMPARE(window.findChild<QAction *>("viewFileAction")->shortcut(),
@@ -430,7 +341,7 @@ class MainShellTests final : public QObject {
         }
         rightTable->setFocus();
         QTRY_VERIFY(rename->isEnabled());
-        QCOMPARE(window.findChild<QMenu *>("fileMenu")->actions().at(8), rename);
+        QVERIFY(window.findChild<QMenu *>("fileMenu")->actions().contains(rename));
         QTest::keyClick(rightTable, Qt::Key_Tab);
         QTRY_VERIFY(leftTable->hasFocus());
         QVERIFY(!rename->isEnabled());

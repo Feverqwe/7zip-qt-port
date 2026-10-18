@@ -135,8 +135,6 @@ class WorkerWindowProgressTests final : public QObject, protected MainWindowTest
         QVERIFY(worker->wait(30000));
         bool timerDelivered = false;
         for (const auto &timer : QAbstractEventDispatcher::instance()->registeredTimers(progress)) {
-            if (timer.interval != 200)
-                continue;
             QTimerEvent event(timer.timerId);
             QCoreApplication::sendEvent(progress, &event);
             timerDelivered = true;

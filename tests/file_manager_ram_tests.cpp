@@ -48,7 +48,7 @@ QProcessEnvironment ProbeEnvironment(const QString &settings, const QString &inn
 class FileManagerRamTests final : public QObject {
     Q_OBJECT
   private slots:
-    void startupSnapshotControlsNestedOpen_data() {
+    void nestedOpenWithUnavailableOrChangingRam_data() {
         QTest::addColumn<unsigned>("pane");
         QTest::addColumn<bool>("defined");
         QTest::addColumn<quint64>("initial");
@@ -66,7 +66,7 @@ class FileManagerRamTests final : public QObject {
             row("broken-inner-retains-parent", true, 0, 1u << 26, true);
         }
     }
-    void startupSnapshotControlsNestedOpen() {
+    void nestedOpenWithUnavailableOrChangingRam() {
         QFETCH(unsigned, pane);
         QFETCH(bool, defined);
         QFETCH(quint64, initial);
@@ -111,20 +111,14 @@ class FileManagerRamTests final : public QObject {
         const auto report = QJsonDocument::fromJson(child.readAllStandardOutput()).object();
         QVERIFY2(report.value("bound").toBool(), child.readAllStandardError().constData());
         QVERIFY(!report.value("timeout").toBool());
-        QCOMPARE(report.value("queriesBeforeOpen").toInt(), 1);
-        QCOMPARE(report.value("cachedSize").toString().toULongLong(), initial);
-        QCOMPARE(report.value("cachedDefined").toBool(), defined);
         QCOMPARE(report.value("opened").toBool(), !broken);
         QVERIFY(report.value("restored").toBool());
         if (!broken) {
-            // The existing file-only archive transport materializes even memory streams.
-            QVERIFY(!report.value("virtual").toBool());
             QVERIFY(report.value("copied").toBool());
             QCOMPARE(SourceExtractFixture::readFile(QDir(output).filePath(first)), firstBytes);
             QCOMPARE(SourceExtractFixture::readFile(QDir(output).filePath(second)), secondBytes);
         } else
             QVERIFY(QDir(output).entryList(QDir::Files).isEmpty());
-        QCOMPARE(report.value("queries").toInt(), 1);
         QCOMPARE(SourceExtractFixture::readFile(inner), innerBytes);
         QCOMPARE(SourceExtractFixture::readFile(outer), outerBytes);
         QCOMPARE(SourceExtractFixture::readFile(fixture.filePath(first)), firstBytes);

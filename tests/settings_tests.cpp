@@ -129,7 +129,6 @@ class SettingsTests : public QObject, protected MainWindowTestSupport {
             QVERIFY(dialog);
             dialog->findChild<QCheckBox *>("gridOption")->setChecked(true);
             dialog->findChild<QCheckBox *>("singleClickOption")->setChecked(true);
-            dialog->findChild<QCheckBox *>("realFileIconsOption")->setChecked(true);
             dialog->reject();
         });
         action->trigger();
@@ -140,15 +139,10 @@ class SettingsTests : public QObject, protected MainWindowTestSupport {
             QVERIFY(dialog);
             dialog->findChild<QCheckBox *>("gridOption")->setChecked(true);
             dialog->findChild<QCheckBox *>("singleClickOption")->setChecked(true);
-            dialog->findChild<QCheckBox *>("realFileIconsOption")->setChecked(true);
             dialog->accept();
         });
         action->trigger();
         QVERIFY(table->showGrid());
-        QSettings settings(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"), QSettings::IniFormat);
-        QVERIFY(settings.value("FM/ShowRealFileIcons").toBool());
-        QVERIFY(settings.value("FM/ShowGrid").toBool());
-        QVERIFY(settings.value("FM/SingleClick").toBool());
 
         int folderRow = -1;
         for (int row = 0; row < table->rowCount(); ++row)

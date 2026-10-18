@@ -123,7 +123,6 @@ class CodecCreationUiTests final : public QObject {
         auto *format = dialog.findChild<QComboBox *>("archiveFormat");
         format->setCurrentIndex(format->findText("gzip"));
         QVERIFY(!dialog.findChild<QLineEdit *>("archivePassword")->isEnabled());
-        QVERIFY(!dialog.findChild<QListWidget *>("availableSources"));
         CreateArchiveDialog multiple(fixture_.path(), {source_, folder}, nullptr, catalog_);
         QCOMPARE(multiple.sources().size(), 2);
         auto *types = multiple.findChild<QComboBox *>("archiveFormat");
@@ -131,7 +130,6 @@ class CodecCreationUiTests final : public QObject {
         types->setCurrentText("7z");
         QVERIFY(multiple.findChild<QLineEdit *>("archivePassword")->isEnabled());
         QCOMPARE(multiple.compressionOptions().format, QStringLiteral("7z"));
-        QVERIFY(multiple.findChild<QComboBox *>("compressionMethod")->findText("*  LZMA2") >= 0);
         QVERIFY(
             multiple.findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Ok)->isEnabled());
     }

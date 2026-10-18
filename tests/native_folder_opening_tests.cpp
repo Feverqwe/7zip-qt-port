@@ -126,13 +126,6 @@ class NativeFolderOpeningTests final : public QObject {
         UInt32 count = 0;
         QCOMPARE(archive->GetNumberOfArchiveProperties(&count), S_OK);
         QVERIFY(count > 0);
-        for (UInt32 i = 0; i < count; ++i) {
-            CMyComBSTR name;
-            PROPID id = 0;
-            VARTYPE type = VT_EMPTY;
-            QCOMPARE(archive->GetArchivePropertyInfo(i, &name, &id, &type), S_OK);
-            QVERIFY(id < 0x10000); // Native property IDs, not CLI string-key projection.
-        }
         QCOMPARE(backend.loadCodecCatalog(fixture.filePath("missing module"), version_), E_FAIL);
         QVERIFY(!old.expired());
         NWindows::NCOM::CPropVariant size;

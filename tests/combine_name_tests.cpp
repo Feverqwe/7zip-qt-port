@@ -69,17 +69,6 @@ class CombineNameTests final : public QObject, protected MainWindowTestSupport {
             auto *dialog = window.findChild<QDialog *>("combineDialog");
             if (!dialog)
                 return;
-            if (first == ".001" &&
-                qEnvironmentVariableIntValue("SEVENZIP_CAPTURE_SCREENSHOTS") == 1) {
-                const QString screenshots = QDir::currentPath() + "/ui-screenshots";
-                QDir().mkpath(screenshots);
-                for (int width : {540, 360}) {
-                    dialog->resize(width, 340);
-                    QApplication::processEvents();
-                    QVERIFY(dialog->grab().save(
-                        screenshots + QStringLiteral("/combine-names-%1.png").arg(width)));
-                }
-            }
             dialog->findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Ok)->click();
         });
         combine->trigger();

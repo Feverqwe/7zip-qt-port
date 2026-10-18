@@ -234,7 +234,7 @@ class PanelRenameStateTests final : public QObject, protected MainWindowTestSupp
                                        QItemSelectionModel::Select | QItemSelectionModel::Rows);
         QCOMPARE(view->selectionModel()->selectedRows().size(), 2);
         bool errorShown = false;
-        QString errorObject, errorText;
+        QString errorText;
         QMessageBox::Icon errorIcon = QMessageBox::NoIcon;
         bool errorGeometry = true;
         QEventLoop errorDelivery;
@@ -243,7 +243,6 @@ class PanelRenameStateTests final : public QObject, protected MainWindowTestSupp
             for (QWidget *widget : QApplication::topLevelWidgets())
                 if (auto *box = qobject_cast<QMessageBox *>(widget); box && box->isVisible()) {
                     errorShown = true;
-                    errorObject = box->objectName();
                     errorText = box->text();
                     errorIcon = box->icon();
                     if (invalid && !box->testAttribute(Qt::WA_DontShowOnScreen)) {
@@ -286,7 +285,6 @@ class PanelRenameStateTests final : public QObject, protected MainWindowTestSupp
             QVERIFY(errorShown);
         }
         if (invalid) {
-            QCOMPARE(errorObject, QString("panelArchiveError"));
             QCOMPARE(errorIcon, QMessageBox::Critical);
             QCOMPARE(errorText, ToQString(HResultToMessage(E_INVALIDARG)));
             QVERIFY(errorGeometry);

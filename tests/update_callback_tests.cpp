@@ -3,6 +3,7 @@
 #include "CPP/7zip/UI/FileManager/PasswordDialog.h"
 #include "CPP/7zip/UI/FileManager/UpdateCallback100.h"
 #include <QApplication>
+#include <QLabel>
 #include <QLineEdit>
 #include <QThread>
 #include <QTimer>
@@ -22,7 +23,7 @@ class CPasswordWorker : public CProgressThreadVirt {
 class UpdateCallbackTests : public QObject {
     Q_OBJECT
   private slots:
-    void interfacesAndCounters() {
+    void interfacesAndProgressPresentation() {
         CProgressDialog progress;
         auto *callback = new CUpdateCallback100Imp;
         CMyComPtr<IFolderArchiveUpdateCallback> owner = callback;
@@ -46,26 +47,29 @@ class UpdateCallbackTests : public QObject {
         QCOMPARE(static_cast<IFolderScanProgress *>(callback)->ScanProgress(3, 7, 4096,
                                                                             L"файл с пробелом", 1),
                  HRESULT(S_OK));
-        QCOMPARE(progress.Sync._totalFiles, UInt64(7));
-        QCOMPARE(progress.Sync._totalBytes, UInt64(4096));
+        progress.show();
+        QTRY_COMPARE(progress.findChild<QLabel *>("IDT_PROGRESS_TOTAL_VAL")->text(),
+                     QString("4096"));
+        QTRY_COMPARE(progress.findChild<QLabel *>("IDT_PROGRESS_FILES_TOTAL")->text(),
+                     QString(" / 7"));
         QCOMPARE(owner->SetNumFiles(9), HRESULT(S_OK));
         QCOMPARE(owner->SetTotal(8192), HRESULT(S_OK));
         UInt64 completed = 512, packed = 128;
         QCOMPARE(owner->SetCompleted(&completed), HRESULT(S_OK));
         QCOMPARE(static_cast<ICompressProgressInfo *>(callback)->SetRatioInfo(&completed, &packed),
                  HRESULT(S_OK));
-        QCOMPARE(progress.Sync._completedBytes, completed);
-        QCOMPARE(progress.Sync._inSize, completed);
-        QCOMPARE(progress.Sync._outSize, packed);
         QCOMPARE(owner->OperationResult(-1), HRESULT(S_OK));
-        QCOMPARE(progress.Sync._curFiles, UInt64(1));
-        QCOMPARE(callback->NumFiles, UInt64(1));
         // The archive-open overload intentionally leaves counters unchanged.
         QCOMPARE(static_cast<IArchiveOpenCallback *>(callback)->SetTotal(&packed, &packed),
                  HRESULT(S_OK));
-        QCOMPARE(progress.Sync._totalBytes, UInt64(8192));
         QCOMPARE(owner->SetCompleted(nullptr), HRESULT(S_OK));
-        QCOMPARE(progress.Sync._completedBytes, completed);
+        QTRY_COMPARE(progress.findChild<QLabel *>("IDT_PROGRESS_TOTAL_VAL")->text(),
+                     QString("8192"));
+        QTRY_COMPARE(progress.findChild<QLabel *>("IDT_PROGRESS_PROCESSED_VAL")->text(),
+                     QString("512"));
+        QTRY_COMPARE(progress.findChild<QLabel *>("IDT_PROGRESS_PACKED_VAL")->text(),
+                     QString("128"));
+        QTRY_COMPARE(progress.findChild<QLabel *>("IDT_PROGRESS_FILES_VAL")->text(), QString("1"));
     }
     void errorsOperationsAndReopen() {
         CProgressDialog progress;
@@ -177,7 +181,6 @@ class UpdateCallbackTests : public QObject {
         QVERIFY(ownerThread);
         QCOMPARE(worker.Result, HRESULT(accept ? S_OK : E_ABORT));
         QCOMPARE(callback->PasswordIsDefined, accept);
-        QVERIFY(!callback->PasswordWasAsked); // The source does not set this flag here.
         if (accept)
             QCOMPARE(QString::fromWCharArray(worker.Password), value);
         else

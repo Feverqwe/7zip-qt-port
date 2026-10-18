@@ -69,7 +69,7 @@ class NativePropertiesWindowTests final : public QObject, protected MainWindowTe
         portableResponder.setInterval(10);
         bool portableShown = false;
         connect(&portableResponder, &QTimer::timeout, &window, [&] {
-            if (auto *dialog = window.findChild<QDialog *>("selectedPropertiesDialog")) {
+            if (auto *dialog = qobject_cast<QDialog *>(QApplication::activeModalWidget())) {
                 portableShown = true;
                 stop = true;
                 dialog->reject();
@@ -116,7 +116,7 @@ class NativePropertiesWindowTests final : public QObject, protected MainWindowTe
         QTimer responder;
         responder.setInterval(10);
         connect(&responder, &QTimer::timeout, &window, [&] {
-            if (auto *dialog = window.findChild<QDialog *>("selectedPropertiesDialog")) {
+            if (auto *dialog = qobject_cast<QDialog *>(QApplication::activeModalWidget())) {
                 portableShown = true;
                 dialog->reject();
             }

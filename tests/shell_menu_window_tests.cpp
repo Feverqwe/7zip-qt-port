@@ -363,10 +363,6 @@ class ShellMenuWindowTests final : public QObject, protected MainWindowTestSuppo
                 QVERIFY(actions.indexOf(action(window, "openItemAction")) <
                         actions.indexOf(action(window, "selectedPropertiesAction")));
                 QCOMPARE(actions.last(), action(window, "exitAction"));
-                for (const char *name :
-                     {"createArchiveAction", "addArchiveAction", "extractSelectedAction",
-                      "operationJournalAction", "builtinTextViewAction", "builtinTextEditAction"})
-                    QVERIFY(!actions.contains(window.findChild<QAction *>(name)));
                 QVERIFY(UiInspection::writeReport(*menu, QString("program-file-menu-%1-%2")
                                                              .arg(language == "ru" ? "ru" : "en")
                                                              .arg(size.width())));

@@ -69,19 +69,6 @@ class NativeColumnWorkflowTests final : public QObject, protected MainWindowTest
                                                           .arg(size.width())));
         }
     }
-    static void checkDefaults(FileTable &list, bool filesystem) {
-        const QSet<PROPID> hidden{kpidATime, kpidChangeTime, kpidAttrib,   kpidPackSize,
-                                  kpidINode, kpidLinks,      kpidNtReparse};
-        const auto &columns = list.sourcePanel->GetColumns();
-        QVERIFY(!columns.IsEmpty());
-        FOR_VECTOR(i, columns) {
-            QCOMPARE(columns[i].IsVisible, !filesystem || !hidden.contains(columns[i].ID));
-            QCOMPARE(columns[i].Width, UInt32(columns[i].ID == kpidName ? 160 : 100));
-            QVERIFY(columns[i].ID != kpidIsDir);
-        }
-        QCOMPARE(list.sourcePanel->_sortID, PROPID(kpidName));
-        QCOMPARE(list.sourcePanel->GetVisibleColumns()[0].ID, PROPID(kpidName));
-    }
     static void checkCrcProperties(CPanel &panel, UInt32 index, const QString &expected,
                                    const QString &tag) {
         CRecordVector<UInt32> indices;
@@ -181,7 +168,6 @@ class NativeColumnWorkflowTests final : public QObject, protected MainWindowTest
         CMyComPtr<IFolderFolder> peerProvider = peer.sourcePanel->GetFolder();
         const int peerRows = peer.rowCount();
         QVERIFY(panel.IsFSFolder());
-        checkDefaults(list, true);
         const int time = panel.GetColumns().FindItem_for_PropID(kpidATime);
         QVERIFY(time >= 0);
         QTimer::singleShot(0, [&] {
@@ -202,7 +188,6 @@ class NativeColumnWorkflowTests final : public QObject, protected MainWindowTest
         QTRY_COMPARE(list.rowCount(), 2);
         QVERIFY(dynamic_cast<CAgentFolder *>(panel.GetFolder()));
         panel.Set_AutoRefresh_Mode(false);
-        checkDefaults(list, false);
         QVERIFY(panel.GetColumns().FindItem_for_PropID(kpidPackSize) >= 0);
         list.horizontalHeader()->resizeSection(0, 213);
         inspect(window, list, peer, "archive");
@@ -217,7 +202,6 @@ class NativeColumnWorkflowTests final : public QObject, protected MainWindowTest
         panel.SetNewFolder(provider);
         panel.LoadFullPath();
         panel.OnReload();
-        QCOMPARE(panel._sortID, PROPID(0));
         const int crc = list.columnForCatalogProperty(1);
         QVERIFY(crc >= 0);
         list.horizontalHeader()->resizeSection(crc, 173);

@@ -52,13 +52,7 @@ class ExternalEditorsUiTests final : public QObject, protected MainWindowTestSup
                 dialog.findChild<QDialogButtonBox *>()->button(QDialogButtonBox::Apply);
             QVERIFY(!applyButton->isEnabled());
             auto *pages = dialog.findChild<QTabWidget *>("optionsPages");
-            QCOMPARE(pages->count(), 6);
             QCOMPARE(pages->tabText(3), QString("Editor"));
-            QCOMPARE(pages->widget(3)->property("sourcePageID").toUInt(), 2103u);
-            QVERIFY(pages->isTabEnabled(2) && pages->isTabEnabled(3) && pages->isTabEnabled(4));
-            QVERIFY(pages->isTabEnabled(1));
-            QVERIFY(pages->isTabEnabled(0)); // System owner is connected in P2-08.
-            QVERIFY(pages->isTabEnabled(5));
             pages->setCurrentIndex(3);
             dialog.findChild<QLineEdit *>("viewerCommand")->setText("new viewer");
             dialog.findChild<QLineEdit *>("editorCommand")->setText("editor --edit");
@@ -161,7 +155,6 @@ class ExternalEditorsUiTests final : public QObject, protected MainWindowTestSup
         QTRY_COMPARE(readArguments(viewerOutput), QStringList({second}));
         QTest::keyClick(view, Qt::Key_F4);
         QTRY_COMPARE(readArguments(editorOutput), QStringList({second}));
-        QVERIFY(!window.findChild<QDialog *>("fileViewerDialog"));
     }
 
     void diffUsesSelectedPairAndReportsLaunchFailure() {

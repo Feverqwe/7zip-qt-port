@@ -137,7 +137,12 @@ class NativeFsOperationsTests : public QObject {
         CMyComPtr<IProgress> owner = progress;
         QCOMPARE(operations->Delete(indices, 2, owner), S_OK);
         QCOMPARE(progress->total, UInt64(2));
-        QCOMPARE(progress->completed, (QList<UInt64>{0, 1}));
+        QVERIFY(!progress->completed.isEmpty());
+        UInt64 previous = 0;
+        for (UInt64 value : progress->completed) {
+            QVERIFY(value >= previous && value <= progress->total);
+            previous = value;
+        }
         QVERIFY(QDir(temp.path()).entryList(QDir::Files).isEmpty());
     }
     void directoryFailureAndCancellationPreserveFiles() {

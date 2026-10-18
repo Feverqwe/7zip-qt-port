@@ -313,13 +313,11 @@ class NativeDragProtocolTests final : public QObject {
         model->Names.Add(L"C:\\unprepared δ.txt");
         CMyComPtr<IDataObject> data;
         QCOMPARE(CreatePanelDragDataObject(model, &data), S_OK);
-        UStringVector names;
         STGMEDIUM medium{};
         auto format = Format(CF_HDROP);
         QCOMPARE(data->GetData(&format, &medium), E_ABORT);
         QCOMPARE(model->Copy_HRESULT, E_ABORT);
         QVERIFY(!model->Copy_WasCalled);
-        QVERIFY(names.IsEmpty());
     }
 };
 QTEST_MAIN(NativeDragProtocolTests)

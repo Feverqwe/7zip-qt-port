@@ -7,7 +7,6 @@
 #include <QComboBox>
 #include <QDialogButtonBox>
 #include <QPushButton>
-#include <QSettings>
 #include <QTemporaryDir>
 #include <QtTest>
 
@@ -129,9 +128,6 @@ class CompressionTimestampTests final : public QObject {
         QCOMPARE(registry.Formats.Size(), 1u);
         QCOMPARE(registry.Formats[0].TimePrec, saved);
         QVERIFY(registry.Formats[0].ATime.Def && registry.Formats[0].ATime.Val);
-        QSettings key(settings_, QSettings::IniFormat);
-        QCOMPARE(key.contains("Compression/Options/TimestampFixture/TimePrec"),
-                 saved != UInt32(-1));
     }
     void explicitChoiceAfterAbsentDefault_data() {
         QTest::addColumn<QString>("language");

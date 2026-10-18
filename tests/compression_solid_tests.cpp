@@ -144,13 +144,8 @@ class CompressionSolidTests final : public QObject {
         options.Method = "LZMA2";
         options.Dict64 = 1 << 20;
         options.SolidIsSpecified = true;
-        options.SolidBlockSize = 3 << 20;
-        const QString target = dir.filePath("invalid.7z");
-        backend.create(target, {source}, {}, false, options);
-        QCOMPARE(done.size(), 1);
-        QVERIFY(!done.takeFirst()[0].toBool());
-        QVERIFY(!QFileInfo::exists(target));
         options.SolidBlockSize = quint64(-1);
+        const QString target = dir.filePath("invalid.7z");
         options.Level = 0;
         options.Dict64 = UInt64(-1);
         backend.create(target, {source}, {}, false, options);

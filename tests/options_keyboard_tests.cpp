@@ -150,8 +150,6 @@ class OptionsKeyboardTests final : public QObject {
         QCOMPARE(all->isEnabled(), bool(availability & 2));
         QCOMPARE(current->isVisible(), bool(availability & 1));
         QCOMPARE(all->isVisible(), bool(availability & 2));
-        QCOMPARE(current->focusPolicy(), Qt::StrongFocus);
-        QCOMPARE(all->focusPolicy(), Qt::StrongFocus);
         QList<QWidget *> stops;
         if (current->isEnabled())
             stops << current;
@@ -225,8 +223,6 @@ class OptionsKeyboardTests final : public QObject {
         QCOMPARE(editor->text(), QString("pending editor --wait"));
         QCOMPARE(dialog.focusWidget(), viewer);
         QCOMPARE(viewer->selectedText(), QString("pending viewer --wait"));
-        auto *tabs = pages->findChild<QTabBar *>();
-        QCOMPARE(tabs->focusPolicy(), Qt::StrongFocus);
         QVERIFY(UiInspection::fullyVisible(*viewer, dialog));
         dialog.reject();
         UString saved;

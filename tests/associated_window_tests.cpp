@@ -1,6 +1,5 @@
 #include "archivebackend.h"
 #include "fixtures/widget_dialogs.h"
-#include "layout_inspection.h"
 #include "mainwindow.h"
 #include "qtassociationfileopen.h"
 #include "qtfilemanagerstartup.h"
@@ -150,7 +149,7 @@ class AssociatedWindowTests final : public QObject {
         });
         QCoreApplication::postEvent(qApp, new QFileOpenEvent(archive));
         int initialCount = -1, finalCount = -1;
-        bool timedOut = false, firstRetained = false, reportsWritten = true;
+        bool timedOut = false, firstRetained = false;
         QPointer<MainWindow> first;
         QTimer observer, watchdog;
         QObject responder;
@@ -179,17 +178,10 @@ class AssociatedWindowTests final : public QObject {
             }
             if (archives == 1 && initialCount == -1) {
                 initialCount = visible.size();
-                reportsWritten &=
-                    UiInspection::writeReport(*first, "associated-launch-first-normal");
-                first->resize(640, 400);
                 QCoreApplication::postEvent(qApp, new QFileOpenEvent(archive));
             } else if (archives == 2) {
                 finalCount = visible.size();
                 firstRetained = first && visible.contains(first.data());
-                for (auto *window : visible)
-                    reportsWritten &= UiInspection::writeReport(
-                        *window, window == first ? "associated-launch-first-compact"
-                                                 : "associated-launch-second-normal");
                 observer.stop();
                 qApp->quit();
             }
@@ -209,7 +201,6 @@ class AssociatedWindowTests final : public QObject {
         QCOMPARE(initialCount, 1);
         QCOMPARE(finalCount, 2);
         QVERIFY(firstRetained);
-        QVERIFY(reportsWritten);
         QCOMPARE(SourceExtractFixture::readFile(archive), original);
     }
 #endif

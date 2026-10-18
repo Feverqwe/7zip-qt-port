@@ -27,7 +27,6 @@ class PanelSortCommandsTests final : public QObject, protected MainWindowTestSup
         view->sourcePanel->SortItemsWithPropID(kpidSha1);
         QCOMPARE(view->horizontalHeader()->sortIndicatorSection(), column);
         QCOMPARE(view->horizontalHeader()->sortIndicatorOrder(), Qt::AscendingOrder);
-        QVERIFY(view->rawProperties[column]);
         QCOMPARE(view->item(0, 0)->data(Qt::UserRole + 3).toString(), entries[1].path);
         QCOMPARE(view->item(1, 0)->data(Qt::UserRole + 3).toString(), entries[2].path);
         QCOMPARE(view->item(2, 0)->data(Qt::UserRole + 3).toString(), entries[0].path);
@@ -103,8 +102,6 @@ class PanelSortCommandsTests final : public QObject, protected MainWindowTestSup
         auto *view = static_cast<FileTable *>(table(window));
         const int column = view->columnForProperty(property);
         QVERIFY(column >= 0);
-        QCOMPARE(view->horizontalHeaderItem(column)->data(Qt::InitialSortOrderRole).toInt(),
-                 int(Qt::DescendingOrder));
         view->setColumnHidden(column, false);
         window.resize(640, 400);
         window.show();
@@ -116,8 +113,6 @@ class PanelSortCommandsTests final : public QObject, protected MainWindowTestSup
             QPoint(header->sectionViewportPosition(column) + 10, header->height() / 2));
         QCOMPARE(header->sortIndicatorSection(), column);
         QCOMPARE(header->sortIndicatorOrder(), Qt::DescendingOrder);
-        QCOMPARE(view->sourcePanel->_sortID, PROPID(property));
-        QVERIFY(!view->sourcePanel->_ascending);
         for (const QSize size : {QSize(980, 620), QSize(640, 400)}) {
             window.resize(size);
             QApplication::processEvents();

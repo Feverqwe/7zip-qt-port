@@ -1,7 +1,6 @@
 #include "window_state_support.h"
 #include <QCheckBox>
 #include <QDialogButtonBox>
-#include <QSettings>
 
 class OptionsWindowTests : public QObject, protected MainWindowTestSupport {
     Q_OBJECT
@@ -63,9 +62,6 @@ class OptionsWindowTests : public QObject, protected MainWindowTestSupport {
         }
         QCOMPARE(leftTable->item(leftTable->currentRow(), 0)->text(), QString("left.txt"));
         QCOMPARE(rightTable->item(rightTable->currentRow(), 0)->text(), QString("right.txt"));
-        QSettings settings(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"), QSettings::IniFormat);
-        QVERIFY(settings.value("FM/ShowDots").toBool());
-        QVERIFY(settings.value("FM/ShowGrid").toBool());
     }
 };
 QTEST_MAIN(OptionsWindowTests)

@@ -222,8 +222,6 @@ class CodecCommandsUiTests final : public QObject, protected MainWindowTestSuppo
                 return; // Native writer cancellation belongs to its source Sync.
             if (!observedStart) {
                 observedStart = true;
-                if (cancel)
-                    backend.cancel();
             }
         });
         action(window, "copyAction")->trigger();

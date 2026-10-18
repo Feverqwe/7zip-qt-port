@@ -253,7 +253,6 @@ class NestedEditChainTests final : public QObject, protected MainWindowTestSuppo
                                "createFolderAction", "moveAction"})
             QVERIFY(!action(window, id)->isEnabled());
         QVERIFY(action(window, "editFileAction")->isEnabled());
-        QVERIFY(!window.findChild<QAction *>("builtinTextEditAction"));
         action(window, "editFileAction")->trigger();
         QTRY_VERIFY(QFileInfo(control + ".ready").size() > 0);
         const QString temporary = QString::fromUtf8(read(control + ".ready"));

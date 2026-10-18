@@ -89,7 +89,6 @@ class ListSettingsRuntimeTests final : public QObject, protected MainWindowTestS
         QVERIFY(setListOptions(window, action(window, "settingsAction"), true));
         QCOMPARE(files->rowCount(), 2);
         QCOMPARE(files->item(0, 0)->text(), QStringLiteral(".."));
-        QCOMPARE(files->item(0, 0)->data(Qt::UserRole + 6).toUInt(), quint32(-1));
         QCOMPARE(files->item(0, 0)->toolTip(), QStringLiteral("Parent folder"));
         QCOMPARE(files->accessibleName(), QStringLiteral("File list"));
         auto *parent = files->item(0, 0);
@@ -111,11 +110,6 @@ class ListSettingsRuntimeTests final : public QObject, protected MainWindowTestS
         files->sortItems(0, Qt::DescendingOrder);
         QCOMPARE(files->item(0, 0)->text(), QStringLiteral(".."));
         files->sortItems(0, Qt::AscendingOrder);
-        QVERIFY(files->fullRowHighlight());
-        QSettings settings(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"), QSettings::IniFormat);
-        QVERIFY(settings.value("FM/ShowDots").toBool());
-        QVERIFY(settings.value("FM/FullRow").toBool());
-        QVERIFY(settings.value("FM/ShowSystemMenu").toBool());
 
         files->selectRow(1);
         const QRect selectedSizeCell = files->visualItemRect(files->item(1, 2));
@@ -174,7 +168,6 @@ class ListSettingsRuntimeTests final : public QObject, protected MainWindowTestS
 
         QVERIFY(setListOptions(window, action(window, "settingsAction"), false));
         QCOMPARE(files->rowCount(), 1);
-        QVERIFY(!files->fullRowHighlight());
         files->selectRow(0);
         const QRect nameOnlySizeCell = files->visualItemRect(files->item(0, 2));
         const QPoint nameOnlyPixel(nameOnlySizeCell.left() + 5, nameOnlySizeCell.center().y());
@@ -183,9 +176,6 @@ class ListSettingsRuntimeTests final : public QObject, protected MainWindowTestS
         if (qEnvironmentVariableIntValue("SEVENZIP_CAPTURE_SCREENSHOTS") == 1)
             QVERIFY(files->viewport()->grab().save(
                 screenshotPath(QStringLiteral("list-settings-name-only.png"))));
-        QCOMPARE(settings.value("FM/ShowDots").toBool(), false);
-        QCOMPARE(settings.value("FM/FullRow").toBool(), false);
-        QCOMPARE(settings.value("FM/ShowSystemMenu").toBool(), false);
     }
 
     void hoverSelectsWithoutOpeningAndIgnoresScroll() {

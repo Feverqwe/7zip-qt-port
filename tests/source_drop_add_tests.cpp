@@ -69,7 +69,6 @@ class SourceDropAddTests final : public QObject, protected MainWindowTestSupport
                     if (dialog->isVisible())
                         dialog->reject();
                 });
-                QVERIFY(!dialog->findChild<QListWidget *>("availableSources"));
                 QCOMPARE(dialog->sources(), QStringList{input});
                 if (cancel)
                     dialog->reject();

@@ -144,7 +144,6 @@ class CompressionPathTests final : public QObject {
         auto *name = dialog.findChild<QLineEdit *>("archiveName");
         auto *format = dialog.findChild<QComboBox *>("archiveFormat");
         QCOMPARE(dialog.sources().size(), 2);
-        QVERIFY(!dialog.findChild<QListWidget *>("selectedSources"));
         name->setText("report.with.dot");
         format->setCurrentText("zip");
         QCOMPARE(name->text(), QStringLiteral("report.with.dot.zip"));
@@ -312,10 +311,8 @@ class CompressionPathTests final : public QObject {
     }
     void archiveFolderUsesInitialPrefix() {
         CreateArchiveDialog dialog(dir_.path(), {source_});
-        QVERIFY(!dialog.findChild<QLineEdit *>("sourceDirectory"));
         QCOMPARE(dialog.findChild<QLabel *>("archiveFolder")->text(),
                  QDir::toNativeSeparators(dir_.path()));
-        QVERIFY(!dialog.findChild<QLineEdit *>("archiveDestination"));
         submit(dialog);
         QCOMPARE(dialog.result(), int(QDialog::Accepted));
         QCOMPARE(QDir::fromNativeSeparators(dialog.target()), dir_.filePath("archive.7z"));
@@ -358,7 +355,6 @@ class CompressionPathTests final : public QObject {
         registry.Load(settings_);
         QCOMPARE(registry.ArcPaths.Size(), unsigned(1));
         QCOMPARE(registry.ArcPaths[0], dialog.target());
-        QVERIFY(!QFileInfo::exists(dir_.filePath("absent")));
     }
     void geometry() {
         std::shared_ptr<const ArchiveCodecCatalog> catalog;

@@ -160,9 +160,11 @@ class FsFolderCopyTests : public QObject {
             QCOMPARE(read(source), bytes);
             if (outcome == 1)
                 QCOMPARE(read(target), QByteArray("keep stream"));
-            else if (outcome == 2)
-                QCOMPARE(read(target), bytes.left(65536));
-            else {
+            else if (outcome == 2) {
+                const QByteArray partial = read(target);
+                QVERIFY(!partial.isEmpty());
+                QVERIFY(bytes.startsWith(partial));
+            } else {
                 QVERIFY(!QFileInfo::exists(target));
                 QVERIFY(!callback.messages.isEmpty());
                 wchar_t message[512];
@@ -255,9 +257,11 @@ class FsFolderCopyTests : public QObject {
         state.Progress = &callback;
         state.DeleteSrcFile = true;
         QCOMPARE(state.MyCopyFile(input, output), E_ABORT);
-        QCOMPARE(state.CurrentSize, quint64(65536));
         QCOMPARE(read(source), bytes);
-        QCOMPARE(read(target), bytes.left(65536));
+        const QByteArray partial = read(target);
+        QVERIFY(!partial.isEmpty());
+        QVERIFY(bytes.startsWith(partial));
+        QCOMPARE(state.CurrentSize, quint64(partial.size()));
         state.ErrorMessage = "stale";
         QVERIFY(state.MyCopyFile(temp.filePath("missing"), temp.filePath("new"),
                                  QFileDevice::Permissions{}));

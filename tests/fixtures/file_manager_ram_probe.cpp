@@ -17,13 +17,10 @@ QJsonObject OpenNested(FileTable &list, int row) {
     panel.Set_AutoRefresh_Mode(false);
     CMyComPtr<IFolderFolder> outer = panel.GetFolder();
     const UInt32 index = list.item(row, 0)->data(Qt::UserRole + 6).toUInt();
-    const unsigned queriesBeforeOpen = ramQueries;
-    const auto cached = NQtFileManager::GetRamInfo();
     panel.OpenItem(index, true, false, L"7z");
     const bool opened = panel.GetParentFolders().Size() == 2;
-    bool virtualFile = false, copied = false;
+    bool copied = false;
     if (opened) {
-        virtualFile = panel.GetParentFolders().Back().IsVirtual;
         UInt32 count = 0;
         const bool loaded = panel.GetFolder()->LoadItems() == S_OK &&
                             panel.GetFolder()->GetNumberOfItems(&count) == S_OK;
@@ -43,12 +40,8 @@ QJsonObject OpenNested(FileTable &list, int row) {
         panel.OpenParentFolder();
     }
     return {{"opened", opened},
-            {"virtual", virtualFile},
             {"copied", copied},
-            {"restored", panel.GetFolder() == outer && panel.GetParentFolders().Size() == 1},
-            {"queriesBeforeOpen", int(queriesBeforeOpen)},
-            {"cachedSize", QString::number(cached.Size)},
-            {"cachedDefined", cached.Defined}};
+            {"restored", panel.GetFolder() == outer && panel.GetParentFolders().Size() == 1}};
 }
 } // namespace
 
@@ -109,7 +102,6 @@ int main(int argc, char **argv) {
     const int result = RunSevenzipFileManager(application);
     report.insert("bound", bound);
     report.insert("timeout", timedOut);
-    report.insert("queries", int(ramQueries));
     const QByteArray bytes = QJsonDocument(report).toJson(QJsonDocument::Compact);
     std::fwrite(bytes.constData(), 1, static_cast<size_t>(bytes.size()), stdout);
     return timedOut ? 1 : result;

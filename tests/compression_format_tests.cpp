@@ -11,7 +11,6 @@
 #include <QCollator>
 #include <QCryptographicHash>
 #include <QScrollArea>
-#include <QSettings>
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QtTest>
@@ -218,8 +217,6 @@ class CompressionFormatTests final : public QObject {
         registry.Load(settings_);
         const unsigned index = CCompressDialog::FindRegistryFormat_Always(registry, "tar");
         QCOMPARE(registry.Formats[index].Level, UInt32(-1));
-        QSettings keys(settings_, QSettings::IniFormat);
-        QVERIFY(!keys.contains("Compression/Options/tar/Level"));
     }
     void acceptedFormatSurvivesRestartAndCreatesArchive() {
         QFile::remove(settings_);

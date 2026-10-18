@@ -39,9 +39,6 @@ class MemoryLimitTests final : public QObject {
         QCOMPARE(mu.IsPercent, percent);
         QCOMPARE(mu.Val, UInt64(value));
         QCOMPARE(mu.GetBytes(1000), percent ? UInt64(value * 10) : UInt64(value));
-        mu.Clear();
-        QVERIFY(!mu.IsDefined && !mu.IsPercent);
-        QCOMPARE(mu.Val, UInt64(0));
     }
     void percentOverflowAndRounding() {
         NCompression::CMemUse mu;

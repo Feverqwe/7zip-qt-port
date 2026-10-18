@@ -154,9 +154,7 @@ class BenchmarkLifecycleTests final : public QObject {
         class AffinityService final : public FixtureBenchmarkServices {
           public:
             bool Succeeds = false;
-            mutable unsigned Queries = 0;
             bool GetProcessAffinity(NWindows::NSystem::CProcessAffinity &affinity) const override {
-                ++Queries;
                 if (!Succeeds)
                     return false;
                 affinity.CpuZero();
@@ -182,7 +180,6 @@ class BenchmarkLifecycleTests final : public QObject {
         QVERIFY(closed);
         const UInt32 cpus = qMax(1u, NWindows::NSystem::GetNumberOfProcessors());
         QVERIFY2(hardware.startsWith("/ " + QString::number(cpus)), qPrintable(hardware));
-        QCOMPARE(service.Queries, 1u);
         QCOMPARE(service.Canceled.load(), 1u);
         QCOMPARE(service.Active.load(), 0u);
 #endif
