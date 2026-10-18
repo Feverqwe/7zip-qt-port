@@ -94,3 +94,38 @@ QtLangButtonBox поддерживает локализуемую подпись
 Windows/Linux, VoiceOver и новая sheet-модальность в этой итерации не проверены.
 Вложенный COptionsDialog сохраняет прежнее представление и исходную транзакцию;
 его отдельный редизайн и остальные окна остаются в scope следующих итераций.
+
+## Итерация 3: изменение размеров двух панелей
+
+Источник: https://github.com/ip7z/7zip.git,
+commit `9128b80e3a471108678e2b3ec3c985861c8d7b0f`.
+Сопоставлены полные тела `UI/FileManager/FM.cpp::CSplitterPos`, WM_CREATE,
+WM_LBUTTONDOWN/UP, WM_MOUSEMOVE, WM_SIZE, MoveSubWindows и SaveWindowInfo
+с портом FM.cpp, QtFileManagerSplitter и текущими create/toggle/close adapters.
+Проверены CApp::SwitchOnOffOnePanel и Qt-публикация видимости панелей.
+
+CSplitterPos, его bounds/ratio/rounding и существующее CWindowInfo-хранилище
+сохранены без изменений. Дополнение относится к presentation/input:
+клавиатурный фокус, Left/Right (Shift — крупнее), Return и двойной щелчок для
+равных долей. Этих keyboard/reset handlers в исходном splitter нет;
+это прямо согласованная адаптация редизайна, а не новая реализация его расчётов.
+Используются QSplitterHandle и системный focus primitive; EN/RU имя и tooltip
+проходят через текущий переводчик. Модели и навигация не пересоздаются.
+
+Qt minimum может временно ограничить рассчитанную позицию. При переключении
+панелей такая применённая геометрия больше не записывается поверх исходной
+предпочтительной пропорции. Явные drag/keyboard изменения используют SetPos.
+Повторная сверка scope: исходные расчёты/ветви сохранены, обработчики подключены
+к тому же экземпляру splitter, окно сохраняет позицию прежним путём.
+
+macOS: приложение и три focused targets собраны; CTest window_placement,
+panel_key, panel_shell — 3/3 PASS. Cocoa keyboard/reset/minimum/toggle и
+normal/compact окно проверены в light/dark; pointer drag сохраняет фокус,
+выделение, paths и модели обеих панелей. Проверены текущие JSON и RU-снимки
+главного окна: обе status strips выровнены, узкие таблицы прокручиваются.
+Native проверка выявила различие TabFocus/StrongFocus на macOS: сохранён
+StrongFocus для обхода с клавиатуры, pointer press возвращает прежний фокус.
+Reports остаются в `build/dev/ui-redesign-review`.
+Windows/Linux runtime, физическая клавиатура и VoiceOver пока не проверены.
+Toolbar, меню и современные сочетания из этапа 4 остаются следующей работой;
+эта итерация не означает завершения главного окна.

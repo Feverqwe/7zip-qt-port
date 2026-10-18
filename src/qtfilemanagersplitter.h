@@ -29,6 +29,8 @@ class QtFileManagerSplitter final : public QSplitter {
     int SourcePosition() const;
 
   protected:
+    QSplitterHandle *createHandle() override;
+    bool eventFilter(QObject *object, QEvent *event) override;
     void resizeEvent(QResizeEvent *event) override;
 
   private:
@@ -37,5 +39,6 @@ class QtFileManagerSplitter final : public QSplitter {
     bool initialized_ = false;
     int appliedWidth_ = -1;
     int appliedPosition_ = 0;
+    int appliedLeftSize_ = 0;
     bool appliedTwoPanels_ = false;
 };

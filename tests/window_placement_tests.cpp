@@ -2,6 +2,7 @@
 #include "layout_inspection.h"
 #include "qtfilemanagerinitservices.h"
 #include "qtfilemanagerstartup.h"
+#include "review_test_main.h"
 #include "window_state_support.h"
 #include <QScopeGuard>
 #include <QScreen>
@@ -239,6 +240,66 @@ class WindowPlacementTests final : public QObject, protected MainWindowTestSuppo
         QCOMPARE(splitter.SourcePosition(), 368);
     }
 
+    void splitterKeyboardAndEqualWidths() {
+        QtFileManagerSplitter splitter(nullptr);
+        QWidget left, right;
+        left.setFocusPolicy(Qt::StrongFocus);
+        right.setFocusPolicy(Qt::StrongFocus);
+        splitter.addWidget(&left);
+        splitter.addWidget(&right);
+        splitter.resize(980, 200);
+        splitter.show();
+        splitter.activateWindow();
+        QVERIFY(QTest::qWaitForWindowActive(&splitter));
+        splitter.Initialize(true, 300);
+        auto *handle = splitter.handle(1);
+        handle->setFocus();
+        QTRY_VERIFY(handle->hasFocus());
+        QTest::keyClick(handle, Qt::Key_Tab);
+        QTRY_VERIFY(!handle->hasFocus());
+        QTest::keyClick(QApplication::focusWidget(), Qt::Key_Backtab);
+        QTRY_VERIFY(handle->hasFocus());
+        const int before = splitter.sizes().value(0);
+        QTest::keyClick(handle, Qt::Key_Right);
+        QVERIFY(splitter.sizes().value(0) > before);
+        QTest::keyClick(handle, Qt::Key_Left);
+        QCOMPARE(splitter.sizes().value(0), before);
+        QTest::keyClick(handle, Qt::Key_Right, Qt::ShiftModifier);
+        QVERIFY(splitter.sizes().value(0) > before);
+        QTest::keyClick(handle, Qt::Key_Return);
+        QVERIFY(qAbs(splitter.sizes().value(0) - splitter.sizes().value(1)) <= 1);
+        QTest::keyClick(handle, Qt::Key_Left, Qt::ShiftModifier);
+        QVERIFY(splitter.sizes().value(0) < splitter.sizes().value(1));
+        QTest::mouseDClick(handle, Qt::LeftButton);
+        QVERIFY(qAbs(splitter.sizes().value(0) - splitter.sizes().value(1)) <= 1);
+        QVERIFY(handle->hasFocus());
+        QVERIFY(UiInspection::writeReport(splitter, "splitter-keyboard-equal"));
+    }
+
+    void splitterContentMinimumKeepsPreferredRatio() {
+        QtFileManagerSplitter splitter(nullptr);
+        QWidget left, right;
+        left.setMinimumWidth(240);
+        right.setMinimumWidth(240);
+        splitter.addWidget(&left);
+        splitter.addWidget(&right);
+        splitter.resize(980, 200);
+        splitter.show();
+        splitter.activateWindow();
+        QVERIFY(QTest::qWaitForWindowActive(&splitter));
+        splitter.Initialize(true, 300);
+        splitter.resize(500, 200);
+        QTRY_VERIFY(splitter.sizes().value(0) >= left.minimumWidth());
+        splitter.RememberPosition();
+        right.hide();
+        splitter.UpdateSourceLayout();
+        splitter.resize(980, 200);
+        right.show();
+        splitter.UpdateSourceLayout();
+        QTRY_VERIFY(qAbs(splitter.sizes().value(0) - 300) <= 2);
+        QVERIFY(splitter.sizes().value(1) >= right.minimumWidth());
+    }
+
     void splitterCoordinateAndResize() {
         QFETCH(int, initialWidth);
         const QString settings = qEnvironmentVariable("SEVENZIP_SETTINGS_PATH");
@@ -359,5 +420,5 @@ class WindowPlacementTests final : public QObject, protected MainWindowTestSuppo
     }
 };
 
-QTEST_MAIN(WindowPlacementTests)
+SEVENZIP_UI_TEST_MAIN(WindowPlacementTests)
 #include "window_placement_tests.moc"

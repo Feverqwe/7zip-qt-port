@@ -1,6 +1,7 @@
 #include "layout_inspection.h"
 #include "window_state_support.h"
 #include <QScopeGuard>
+#include <QSplitterHandle>
 
 extern bool g_CaseSensitive;
 
@@ -180,6 +181,31 @@ class PanelKeyTests final : public QObject, protected MainWindowTestSupport {
         QCOMPARE(rightTable->selectionModel()->selectedRows().size(), 1);
         QCOMPARE(QFileInfo(leftAddress->text()).canonicalFilePath(),
                  QFileInfo(left).canonicalFilePath());
+        // Resizing is presentation-only: neither panel is rebound or loses its
+        // selected item, and pointer dragging keeps focus in the active list.
+        window.activateWindow();
+        rightTable->setFocus();
+        QTRY_VERIFY(rightTable->hasFocus());
+        const QPersistentModelIndex leftSelected(leftTable->model()->index(leftFileRow, 0));
+        const QPersistentModelIndex rightSelected(rightTable->model()->index(rightFileRow, 0));
+        QSignalSpy leftReset(leftTable->model(), &QAbstractItemModel::modelReset);
+        QSignalSpy rightReset(rightTable->model(), &QAbstractItemModel::modelReset);
+        auto *splitter = window.findChild<QSplitter *>("filePanelSplitter");
+        QVERIFY(splitter);
+        auto *handle = splitter->handle(1);
+        const QPoint grip = handle->rect().center();
+        QTest::mousePress(handle, Qt::LeftButton, Qt::NoModifier, grip);
+        QTest::mouseMove(handle, grip + QPoint(40, 0));
+        QTest::mouseRelease(handle, Qt::LeftButton, Qt::NoModifier, grip + QPoint(40, 0));
+        QVERIFY(rightTable->hasFocus());
+        QVERIFY(leftSelected.isValid() && rightSelected.isValid());
+        QVERIFY(leftTable->selectionModel()->isSelected(leftSelected));
+        QVERIFY(rightTable->selectionModel()->isSelected(rightSelected));
+        QVERIFY(leftReset.isEmpty() && rightReset.isEmpty());
+        QCOMPARE(QFileInfo(rightAddress->text()).canonicalFilePath(),
+                 QFileInfo(right).canonicalFilePath());
+        leftTable->setFocus();
+        QTRY_VERIFY(leftTable->hasFocus());
         QFile added(QDir(right).filePath("added while inactive.txt"));
         QVERIFY(added.open(QIODevice::WriteOnly));
         added.close();

@@ -47,13 +47,13 @@
             <translation>Создать подпапку</translation>
         </message>
         <message>
-            <location line="+41" />
+            <location line="+42" />
             <source>Use a password</source>
             <translation>Использовать пароль</translation>
         </message>
         <message>
             <location line="+35" />
-            <location filename="../src/createarchivedialog.cpp" line="+264" />
+            <location filename="../src/createarchivedialog.cpp" line="+273" />
             <source>Advanced settings</source>
             <translation>Дополнительные параметры</translation>
         </message>
@@ -64,6 +64,7 @@
         </message>
         <message>
             <location filename="../src/createarchivedialog_encryption.cpp" line="+10" />
+            <location line="+6" />
             <source>Protect with a password</source>
             <translation>Защитить паролем</translation>
         </message>
@@ -254,7 +255,7 @@
     <context>
         <name>CreateArchiveDialog</name>
         <message>
-            <location filename="../src/createarchivedialog.cpp" line="+47" />
+            <location filename="../src/createarchivedialog.cpp" line="+49" />
             <source>Incorrect archive path</source>
             <translation>Неверный путь к архиву</translation>
         </message>
@@ -262,7 +263,7 @@
     <context>
         <name>ExtractDialog</name>
         <message>
-            <location filename="../src/CPP/7zip/UI/GUI/ExtractDialog.cpp" line="-71" />
+            <location filename="../src/CPP/7zip/UI/GUI/ExtractDialog.cpp" line="-72" />
             <source>Destination folder name</source>
             <translation>Имя папки назначения</translation>
         </message>
@@ -576,6 +577,19 @@ Are you sure you want to split archive into such volumes?</source>
             <location line="+4" />
             <source>Selected: %1 / %2</source>
             <translation>Выделено: %1 / %2</translation>
+        </message>
+    </context>
+    <context>
+        <name>PanelSplitter</name>
+        <message>
+            <location filename="../src/qtfilemanagersplitter.cpp" line="+16" />
+            <source>Resize file panels</source>
+            <translation>Изменить размеры файловых панелей</translation>
+        </message>
+        <message>
+            <location line="+3" />
+            <source>Drag or use Left/Right to resize panels. Double-click or press Return for equal widths.</source>
+            <translation>Перетаскивайте разделитель или используйте стрелки влево и вправо. Двойной щелчок или Return возвращает равные размеры.</translation>
         </message>
     </context>
     <context>
@@ -3895,7 +3909,7 @@ Check charset encoding and -scs switch.</source>
         <message>
             <location line="+296" />
             <location filename="../src/CPP/7zip/UI/FileManager/ProgressDialog2.cpp" line="+1285" />
-            <location filename="../src/CPP/Windows/ErrorMsg.cpp" line="+144" />
+            <location filename="../src/CPP/Windows/ErrorMsg.cpp" line="+146" />
             <source>Error #%1</source>
             <translation>Ошибка № %1</translation>
         </message>
@@ -4183,12 +4197,12 @@ Use `Revert` to recover timestamp.</source>
             <translation>Ошибка: </translation>
         </message>
         <message>
-            <location filename="../src/CPP/Windows/ErrorMsg.cpp" line="-117" />
+            <location filename="../src/CPP/Windows/ErrorMsg.cpp" line="-118" />
             <source>Internal Error: The failure in hardware (RAM or CPU), OS or program</source>
             <translation>Внутренняя ошибка: сбой оборудования (ОЗУ или ЦП), ОС или программы</translation>
         </message>
         <message>
-            <location line="+39" />
+            <location line="+40" />
             <source>E_NOTIMPL : Not implemented</source>
             <translation>E_NOTIMPL : Не реализовано</translation>
         </message>
@@ -5019,7 +5033,7 @@ Application modules:
     <context>
         <name>createarchivedialog_advanced</name>
         <message>
-            <location filename="../src/createarchivedialog_advanced.cpp" line="+27" />
+            <location filename="../src/createarchivedialog_advanced.cpp" line="+29" />
             <source>File sharing restrictions apply only on Windows.</source>
             <translation>Ограничение совместного доступа к файлам используется только в Windows.</translation>
         </message>

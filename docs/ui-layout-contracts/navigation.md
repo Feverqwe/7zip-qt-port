@@ -88,6 +88,16 @@ impose a larger Qt minimum to prevent clipped address/list controls. Current
 `splitter-source-{980,640}` JSON accompanies the normal/compact window cases;
 native pixel/frame comparison remains open.
 
+Redesign adaptation: the panel divider supports Tab/Shift–Tab focus,
+Left/Right adjustment (Shift for a larger step), and equal widths with Return
+or a left-button double-click. Pointer resizing keeps the previously focused
+list active; keyboard resizing keeps focus on the divider. A temporary content
+minimum must not replace the preferred split when switching to one panel and
+back. Panels stay non-collapsible; navigation, models and selection remain with
+their existing owners. The existing window-state storage remains authoritative.
+`window_placement` covers keyboard/reset and minimum/toggle restoration;
+`panel_key` checks selected items, model continuity, paths and pointer focus.
+
 ### Persisted source locations (P3-05.14, required scope)
 
 Reference: pinned PanelFolderChange SetBookmark/OpenBookmark/FoldersHistory,
