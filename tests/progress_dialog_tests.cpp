@@ -109,6 +109,7 @@ class ProgressDialogTests : public QObject {
                      QStringLiteral("/папка с пробелом/\nфайл.txt"));
             QCOMPARE(dialog.windowTitle(), QStringLiteral("50% Обновление архив с пробелом.7z"));
             QCOMPARE(main.windowTitle(), QStringLiteral("50% Архив 7-Zip"));
+            QVERIFY(UiInspection::writeReport(dialog, "progress-counters"));
             dialog.Sync.Set_FilePath(L"/папка с пробелом/", true);
             QTRY_COMPARE(text(dialog, "IDT_PROGRESS_FILE_NAME"),
                          QStringLiteral("/папка с пробелом/\n"));
@@ -318,5 +319,6 @@ class ProgressDialogTests : public QObject {
     }
 };
 
-QTEST_MAIN(ProgressDialogTests)
+#include "review_test_main.h"
+SEVENZIP_UI_TEST_MAIN(ProgressDialogTests)
 #include "progress_dialog_tests.moc"

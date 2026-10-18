@@ -310,5 +310,6 @@ class OptionsDialogTests : public QObject {
         }
     }
 };
-QTEST_MAIN(OptionsDialogTests)
+#include "review_test_main.h"
+SEVENZIP_UI_TEST_MAIN(OptionsDialogTests)
 #include "options_dialog_tests.moc"

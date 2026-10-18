@@ -6,6 +6,8 @@
 class QWidget;
 
 namespace UiInspection {
+// Optional process-only native appearance for screenshot producers.
+void configureReviewAppearance();
 QRect bounds(const QWidget &widget, const QWidget &root);
 bool fullyVisible(const QWidget &widget, const QWidget &root);
 // QLineEdit paints its decorative action glyph inside a padded side widget.

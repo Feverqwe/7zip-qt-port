@@ -140,5 +140,6 @@ class OverwriteLayoutTests final : public QObject {
     }
 };
 
-QTEST_MAIN(OverwriteLayoutTests)
+#include "review_test_main.h"
+SEVENZIP_UI_TEST_MAIN(OverwriteLayoutTests)
 #include "overwrite_layout_tests.moc"

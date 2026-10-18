@@ -131,5 +131,6 @@ class SourcePromptPresentationTests final : public QObject {
         ReloadLang(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
     }
 };
-QTEST_MAIN(SourcePromptPresentationTests)
+#include "review_test_main.h"
+SEVENZIP_UI_TEST_MAIN(SourcePromptPresentationTests)
 #include "source_prompt_presentation_tests.moc"

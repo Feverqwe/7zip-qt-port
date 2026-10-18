@@ -30,7 +30,10 @@ class PaletteStyle final : public QObject {
     Style kind_;
     int radius_;
     void update() {
-        const QPalette palette = widget_.parentWidget()->palette();
+        QPalette palette = widget_.parentWidget()->palette();
+        palette.setCurrentColorGroup(!widget_.isEnabled()       ? QPalette::Disabled
+                                     : widget_.isActiveWindow() ? QPalette::Active
+                                                                : QPalette::Inactive);
         const QString rule =
             kind_ == Style::Surface
                 ? QString("background-color: %1; border-radius: %2px;")
@@ -47,7 +50,8 @@ class PaletteStyle final : public QObject {
             widget_.setStyleSheet(style);
     }
     bool eventFilter(QObject *, QEvent *event) override {
-        if (event->type() == QEvent::PaletteChange)
+        if (event->type() == QEvent::PaletteChange || event->type() == QEvent::WindowActivate ||
+            event->type() == QEvent::WindowDeactivate || event->type() == QEvent::EnabledChange)
             update();
         return false;
     }
@@ -57,6 +61,7 @@ class PaletteStyle final : public QObject {
         : QObject(&widget), widget_(widget), kind_(kind), radius_(radius) {
         widget.installEventFilter(this);
         widget.parentWidget()->installEventFilter(this);
+        widget.window()->installEventFilter(this);
         update();
     }
 };

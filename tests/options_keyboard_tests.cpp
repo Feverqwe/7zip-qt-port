@@ -230,5 +230,6 @@ class OptionsKeyboardTests final : public QObject {
         QVERIFY(saved.IsEmpty());
     }
 };
-QTEST_MAIN(OptionsKeyboardTests)
+#include "review_test_main.h"
+SEVENZIP_UI_TEST_MAIN(OptionsKeyboardTests)
 #include "options_keyboard_tests.moc"

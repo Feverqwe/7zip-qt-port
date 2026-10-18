@@ -90,5 +90,6 @@ class HashResultsTests final : public QObject {
         }
     }
 };
-QTEST_MAIN(HashResultsTests)
+#include "review_test_main.h"
+SEVENZIP_UI_TEST_MAIN(HashResultsTests)
 #include "hash_results_tests.moc"

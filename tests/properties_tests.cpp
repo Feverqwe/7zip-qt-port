@@ -233,5 +233,6 @@ class PropertiesTests : public QObject, protected MainWindowTestSupport {
         QVERIFY(inspected);
     }
 };
-QTEST_MAIN(PropertiesTests)
+#include "review_test_main.h"
+SEVENZIP_UI_TEST_MAIN(PropertiesTests)
 #include "properties_tests.moc"

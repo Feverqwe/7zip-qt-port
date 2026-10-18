@@ -317,5 +317,6 @@ class CopyDialogTests : public QObject {
     }
 };
 
-QTEST_MAIN(CopyDialogTests)
+#include "review_test_main.h"
+SEVENZIP_UI_TEST_MAIN(CopyDialogTests)
 #include "copy_dialog_tests.moc"

@@ -3,6 +3,7 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "layout_inspection.h"
 #include "qtlangcontrols.h"
+#include "qtstatuslabel.h"
 #include "window_state_support.h"
 
 #include <QMenuBar>
@@ -19,6 +20,43 @@ class MainShellTests final : public QObject {
     Q_OBJECT
 
   private slots:
+    void elidedStatusUsesInactiveAndDisabledColors() {
+        QWidget window;
+        window.resize(240, 120);
+        QtStatusLabel label(&window);
+        label.setText(QString(30, QLatin1Char('M')));
+        QFont font = label.font();
+        font.setPointSize(24);
+        label.setFont(font);
+        label.setGeometry(10, 10, 100, 50);
+        QPalette colors = label.palette();
+        colors.setColor(QPalette::Window, Qt::white);
+        colors.setColor(QPalette::Active, QPalette::WindowText, QColor(170, 40, 40));
+        colors.setColor(QPalette::Inactive, QPalette::WindowText, QColor(40, 50, 170));
+        colors.setColor(QPalette::Disabled, QPalette::WindowText, QColor(40, 140, 50));
+        label.setPalette(colors);
+        label.setAutoFillBackground(true);
+        window.show();
+        QWidget other;
+        other.show();
+        other.activateWindow();
+        QVERIFY(QTest::qWaitForWindowActive(&other));
+        QVERIFY(!window.isActiveWindow());
+        for (bool enabled : {true, false}) {
+            label.setEnabled(enabled);
+            const QImage image = label.grab().toImage();
+            bool expectedText = false;
+            for (int y = 0; y < image.height(); ++y)
+                for (int x = 0; x < image.width(); ++x) {
+                    const QColor pixel = image.pixelColor(x, y);
+                    expectedText |=
+                        enabled
+                            ? pixel.blue() > pixel.red() + 50 && pixel.blue() > pixel.green() + 50
+                            : pixel.green() > pixel.red() + 50 && pixel.green() > pixel.blue() + 50;
+                }
+            QVERIFY(expectedText);
+        }
+    }
     void fileManagerWindowUsesSourceApplicationIcon() {
         ControlledBackend backend;
         MainWindow window(&backend);
@@ -348,5 +386,6 @@ class MainShellTests final : public QObject {
     }
 };
 
-QTEST_MAIN(MainShellTests)
+#include "review_test_main.h"
+SEVENZIP_UI_TEST_MAIN(MainShellTests)
 #include "main_shell_tests.moc"

@@ -363,5 +363,6 @@ class ExtractPromptTests final : public QObject {
         }
     }
 };
-QTEST_MAIN(ExtractPromptTests)
+#include "review_test_main.h"
+SEVENZIP_UI_TEST_MAIN(ExtractPromptTests)
 #include "extract_prompt_tests.moc"

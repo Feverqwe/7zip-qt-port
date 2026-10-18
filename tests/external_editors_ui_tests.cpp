@@ -284,6 +284,7 @@ int main(int argc, char **argv) {
     // native pickers; their OS windows are checked separately on the runner.
     QApplication::setAttribute(Qt::AA_DontUseNativeDialogs);
     QApplication app(argc, argv);
+    UiInspection::configureReviewAppearance();
     ExternalEditorsUiTests tests;
     return QTest::qExec(&tests, argc, argv);
 }

@@ -397,5 +397,6 @@ class SourceDeleteTests final : public QObject, protected MainWindowTestSupport 
         QCOMPARE(keep.readAll(), QByteArray("protected bytes"));
     }
 };
-QTEST_MAIN(SourceDeleteTests)
+#include "review_test_main.h"
+SEVENZIP_UI_TEST_MAIN(SourceDeleteTests)
 #include "source_delete_tests.moc"

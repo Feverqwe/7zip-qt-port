@@ -17,8 +17,7 @@ void QtStatusLabel::paintEvent(QPaintEvent *event) {
         return;
     }
     QPainter painter(this);
-    painter.setPen(
-        palette().color(isEnabled() ? QPalette::Active : QPalette::Disabled, QPalette::WindowText));
+    painter.setPen(palette().color(QPalette::WindowText));
     painter.drawText(contentsRect(), alignment(),
                      fontMetrics().elidedText(text(), Qt::ElideRight, contentsRect().width()));
 }

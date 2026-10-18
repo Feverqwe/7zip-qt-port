@@ -542,5 +542,6 @@ class SourceBrowseDialogTests final : public QObject {
         QVERIFY(observed);
     }
 };
-QTEST_MAIN(SourceBrowseDialogTests)
+#include "review_test_main.h"
+SEVENZIP_UI_TEST_MAIN(SourceBrowseDialogTests)
 #include "source_browse_dialog_tests.moc"

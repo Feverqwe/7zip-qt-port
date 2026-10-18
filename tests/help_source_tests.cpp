@@ -30,6 +30,43 @@ class HelpSourceTests : public QObject {
   public slots:
     void openUrl(const QUrl &url) { openedUrl = url; }
   private slots:
+    void inactiveWindowsUseTheirOwnPaletteGroup() {
+        CAboutDialog about;
+        QPalette colors = about.palette();
+        colors.setColor(QPalette::Active, QPalette::Window, QColor("#f1f2f4"));
+        colors.setColor(QPalette::Active, QPalette::WindowText, Qt::black);
+        colors.setColor(QPalette::Inactive, QPalette::Window, QColor("#202326"));
+        colors.setColor(QPalette::Inactive, QPalette::WindowText, Qt::white);
+        about.setPalette(colors);
+        about.show();
+        about.activateWindow();
+        QVERIFY(QTest::qWaitForWindowActive(&about));
+        ShowHelpWindow("start.htm", &about);
+        auto *help = about.findChild<QDialog *>("helpWindow");
+        help->setPalette(colors);
+        help->show();
+        help->activateWindow();
+        QVERIFY(QTest::qWaitForWindowActive(help));
+        auto *browser = help->findChild<QTextBrowser *>("helpBrowser");
+        const QUrl source = browser->source();
+        const QString text = browser->toPlainText();
+        QWidget other;
+        other.show();
+        other.activateWindow();
+        QVERIFY(QTest::qWaitForWindowActive(&other));
+        QVERIFY(!about.isActiveWindow() && !help->isActiveWindow());
+        QApplication::processEvents();
+        QCOMPARE(browser->source(), source);
+        QCOMPARE(browser->toPlainText(), text);
+        QCOMPARE(browser->document()->rootFrame()->frameFormat().background().color(),
+                 colors.color(QPalette::Inactive, QPalette::Window));
+        auto *panel = about.findChild<QWidget *>("aboutUpstream");
+        const QPixmap rendered = panel->grab();
+        const QColor surface = rendered.toImage().pixelColor(
+            qRound(12 * rendered.devicePixelRatio()), qRound(12 * rendered.devicePixelRatio()));
+        QVERIFY(textContrast(colors.color(QPalette::Inactive, QPalette::WindowText), surface) >=
+                4.5);
+    }
     void aboutPaletteChangesRestyleOpenDialog() {
         const QPalette original = QApplication::palette();
         const auto restore = qScopeGuard([&] { QApplication::setPalette(original); });
@@ -510,5 +547,6 @@ class HelpSourceTests : public QObject {
         QVERIFY(!parent.findChild<QDialog *>("helpWindow"));
     }
 };
-QTEST_MAIN(HelpSourceTests)
+#include "review_test_main.h"
+SEVENZIP_UI_TEST_MAIN(HelpSourceTests)
 #include "help_source_tests.moc"

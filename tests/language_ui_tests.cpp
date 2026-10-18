@@ -637,5 +637,6 @@ class LanguageUiTests : public QObject, protected MainWindowTestSupport {
         QCOMPARE(window.findChild<QAction *>("renameAction")->text(), originalRename);
     }
 };
-QTEST_MAIN(LanguageUiTests)
+#include "review_test_main.h"
+SEVENZIP_UI_TEST_MAIN(LanguageUiTests)
 #include "language_ui_tests.moc"

@@ -394,5 +394,6 @@ class MainWindowLayoutTests : public QObject {
     }
 };
 
-QTEST_MAIN(MainWindowLayoutTests)
+#include "review_test_main.h"
+SEVENZIP_UI_TEST_MAIN(MainWindowLayoutTests)
 #include "ui_layout_tests.moc"

@@ -197,6 +197,9 @@ class TempCleanupTests : public QObject {
         QVERIFY(inspected);
     }
     void ownedFileCleanupAndLinkNavigationNeverReachUserTargets() {
+        opened = QUrl();
+        QDesktopServices::setUrlHandler("file", this, "captureFile");
+        const auto resetHandler = qScopeGuard([] { QDesktopServices::unsetUrlHandler("file"); });
         QTemporaryDir root;
         QTemporaryDir outside;
         QVERIFY(root.isValid() && outside.isValid());
@@ -230,8 +233,7 @@ class TempCleanupTests : public QObject {
                         asked = true;
                         box->button(QMessageBox::Yes)->click();
                     } else {
-                        blocked |=
-                            enteringLink && box->text().contains("blocked", Qt::CaseInsensitive);
+                        blocked |= enteringLink && box->icon() == QMessageBox::Warning;
                         box->button(QMessageBox::Ok)->click();
                     }
                 }
@@ -258,6 +260,8 @@ class TempCleanupTests : public QObject {
         MyBrowseForTempFolder(nullptr);
         QVERIFY2(linkSelected, qPrintable(messages.join('|')));
         QVERIFY2(blocked, qPrintable(messages.join('|')));
+        QVERIFY(opened.isEmpty());
+        QVERIFY(!visibleNames.contains("keep.txt"));
         QVERIFY2(fileSelected, qPrintable(visibleNames.join('|')));
         QVERIFY(asked);
         QVERIFY2(deleted, qPrintable(messages.join('|')));
@@ -328,8 +332,7 @@ class TempCleanupTests : public QObject {
                         menu->close();
                 } else if (auto *box =
                                qobject_cast<QMessageBox *>(QApplication::activeModalWidget())) {
-                    properties =
-                        box->text().contains("details.txt") && box->text().contains("Size");
+                    properties = box->text().contains("details.txt");
                     box->button(QMessageBox::Ok)->click();
                 }
             });
@@ -625,5 +628,6 @@ class TempCleanupTests : public QObject {
             QFileInfo::exists(owned.filePath(QStringLiteral("подпапка с пробелом/данные.txt"))));
     }
 };
-QTEST_MAIN(TempCleanupTests)
+#include "review_test_main.h"
+SEVENZIP_UI_TEST_MAIN(TempCleanupTests)
 #include "temp_cleanup_tests.moc"

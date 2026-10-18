@@ -210,5 +210,6 @@ class CompressOptionsPresentationTests final : public QObject {
         QVERIFY(profile.SetArcMTime.Val);
     }
 };
-QTEST_MAIN(CompressOptionsPresentationTests)
+#include "review_test_main.h"
+SEVENZIP_UI_TEST_MAIN(CompressOptionsPresentationTests)
 #include "compress_options_presentation_tests.moc"

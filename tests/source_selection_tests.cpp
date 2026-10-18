@@ -172,5 +172,6 @@ class SourceSelectionTests final : public QObject, protected MainWindowTestSuppo
         }
     }
 };
-QTEST_MAIN(SourceSelectionTests)
+#include "review_test_main.h"
+SEVENZIP_UI_TEST_MAIN(SourceSelectionTests)
 #include "source_selection_tests.moc"

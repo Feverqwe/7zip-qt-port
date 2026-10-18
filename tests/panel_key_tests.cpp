@@ -932,10 +932,17 @@ class PanelKeyTests final : public QObject, protected MainWindowTestSupport {
             QTimer::singleShot(0, &window, [&] {
                 auto *dialog = window.findChild<QDialog *>("copyDialog");
                 QVERIFY(dialog);
-                QVERIFY(dialog->findChild<QPlainTextEdit *>("copySelectionInfo")
-                            ->toPlainText()
-                            .contains(QStringLiteral("Files: 2")));
-                dialog->reject();
+                const auto close = qScopeGuard([dialog] { dialog->reject(); });
+                const QString summary = dialog->findChild<QPlainTextEdit *>("copySelectionInfo")
+                                            ->toPlainText()
+                                            .normalized(QString::NormalizationForm_C);
+                for (int row : {1, 2})
+                    QVERIFY2(summary.contains(table->item(row, 0)->text().normalized(
+                                 QString::NormalizationForm_C)),
+                             qPrintable(summary));
+                QVERIFY2(!summary.contains(
+                             table->item(0, 0)->text().normalized(QString::NormalizationForm_C)),
+                         qPrintable(summary));
             });
             action(window, "copyAction")->trigger();
         }

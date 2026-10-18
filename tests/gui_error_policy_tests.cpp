@@ -174,5 +174,6 @@ class GuiErrorPolicyTests final : public QObject {
         QCOMPARE(SourceExtractFixture::readFile(input), QByteArray("unchanged archive bytes"));
     }
 };
-QTEST_MAIN(GuiErrorPolicyTests)
+#include "review_test_main.h"
+SEVENZIP_UI_TEST_MAIN(GuiErrorPolicyTests)
 #include "gui_error_policy_tests.moc"

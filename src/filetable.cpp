@@ -107,10 +107,11 @@ class FileRowDelegate final : public QStyledItemDelegate {
             option.state |= QStyle::State_Selected;
         const QVariant foreground = index.data(Qt::ForegroundRole);
         if (foreground.isValid())
-            option.palette.setColor(
-                QPalette::HighlightedText,
-                QtSemanticColors::readable(qvariant_cast<QBrush>(foreground).color(),
-                                           option.palette.color(QPalette::Highlight)));
+            for (const auto group : {QPalette::Active, QPalette::Inactive, QPalette::Disabled})
+                option.palette.setColor(
+                    group, QPalette::HighlightedText,
+                    QtSemanticColors::readable(qvariant_cast<QBrush>(foreground).color(),
+                                               option.palette.color(group, QPalette::Highlight)));
         auto *table = dynamic_cast<const FileTable *>(parent());
         const int primary = table ? table->columnForVisibleProperty(0) : -1;
         if (!table || table->fullRowHighlight() || index.column() == (primary < 0 ? 0 : primary)) {

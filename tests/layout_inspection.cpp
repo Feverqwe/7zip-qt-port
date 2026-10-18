@@ -15,11 +15,27 @@
 #include <QMenu>
 #include <QPixmap>
 #include <QStyle>
+#include <QStyleHints>
 #include <QSysInfo>
 #include <QToolButton>
 #include <QWidget>
 
 namespace UiInspection {
+void configureReviewAppearance() {
+    const QString requested = qEnvironmentVariable("SEVENZIP_REVIEW_COLOR_SCHEME");
+    if (requested.isEmpty())
+        return;
+    if (requested != "light" && requested != "dark" && requested != "system")
+        qFatal("SEVENZIP_REVIEW_COLOR_SCHEME must be light, dark or system");
+    const auto scheme = requested == "dark"    ? Qt::ColorScheme::Dark
+                        : requested == "light" ? Qt::ColorScheme::Light
+                                               : Qt::ColorScheme::Unknown;
+    QApplication::styleHints()->setColorScheme(scheme);
+    // Native theme updates are queued. No test fixture/timer exists yet.
+    QApplication::processEvents();
+    QApplication::sendPostedEvents();
+    QApplication::processEvents();
+}
 QSize normalizedInitialClientSize(const QWidget &widget, const QSize &resourceClient) {
     QSize expected = resourceClient.expandedTo(widget.minimumSizeHint());
     const QRect work = widget.screen()->availableGeometry();
@@ -157,6 +173,18 @@ QString dump(const QWidget &root) {
                                     {"fontFamily", root.font().family()},
                                     {"fontPointSize", root.font().pointSizeF()},
                                     {"coordinateSpace", "root-client-logical-pixels"}};
+    auto capture = report["capture"].toObject();
+    const auto scheme = QApplication::styleHints()->colorScheme();
+    capture["colorScheme"] = scheme == Qt::ColorScheme::Dark    ? "dark"
+                             : scheme == Qt::ColorScheme::Light ? "light"
+                                                                : "unknown";
+    capture["requestedColorScheme"] = qEnvironmentVariable("SEVENZIP_REVIEW_COLOR_SCHEME");
+    QJsonObject palette;
+    for (const auto &role : {QPalette::Window, QPalette::WindowText, QPalette::Base, QPalette::Text,
+                             QPalette::Highlight, QPalette::HighlightedText, QPalette::Link})
+        palette[QString::number(role)] = root.palette().color(role).name();
+    capture["palette"] = palette;
+    report["capture"] = capture;
     for (const QString &key : {QStringLiteral("language"), QStringLiteral("state")}) {
         const QVariant value = root.property(qPrintable("uiInspection_" + key));
         if (value.isValid()) {

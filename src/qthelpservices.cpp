@@ -69,6 +69,7 @@ class HelpBrowser final : public QTextBrowser {
     HelpBrowser(QWidget *parent, const QUrl &root) : QTextBrowser(parent) {
         setBackgroundRole(QPalette::Window);
         viewport()->setBackgroundRole(QPalette::Window);
+        window()->installEventFilter(this);
         connect(this, &QTextBrowser::sourceChanged, this, [this, root] {
             resolveHelpLinks(root);
             // Legacy pixel widths can be smaller than a parameter name with
@@ -90,11 +91,31 @@ class HelpBrowser final : public QTextBrowser {
 
     void changeEvent(QEvent *event) override {
         QTextBrowser::changeEvent(event);
-        if (event->type() != QEvent::PaletteChange || source().isEmpty())
+        if (event->type() == QEvent::PaletteChange)
+            refreshTheme();
+    }
+
+    bool eventFilter(QObject *object, QEvent *event) override {
+        if (event->type() == QEvent::WindowActivate || event->type() == QEvent::WindowDeactivate)
+            refreshTheme();
+        return QTextBrowser::eventFilter(object, event);
+    }
+
+  private:
+    void refreshTheme() {
+        if (source().isEmpty())
             return;
-        for (auto it = styles.cbegin(); it != styles.cend(); ++it)
-            document()->addResource(QTextDocument::StyleSheetResource, it.key(),
-                                    themedStyle(it.value()));
+        bool changed = false;
+        for (auto it = styles.cbegin(); it != styles.cend(); ++it) {
+            const QByteArray css = themedStyle(it.value());
+            if (document()->resource(QTextDocument::StyleSheetResource, it.key()).toByteArray() ==
+                css)
+                continue;
+            document()->addResource(QTextDocument::StyleSheetResource, it.key(), css);
+            changed = true;
+        }
+        if (!changed)
+            return;
         const int scroll = verticalScrollBar()->value();
         const int horizontalScroll = horizontalScrollBar()->value();
         reload();
@@ -102,7 +123,6 @@ class HelpBrowser final : public QTextBrowser {
         horizontalScrollBar()->setValue(horizontalScroll);
     }
 
-  private:
     void resolveHelpLinks(const QUrl &root) {
         // QTextBrowser resolves hrefs before emitting anchorClicked, so resolve
         // them inside the CHM namespace before mouse/keyboard activation.

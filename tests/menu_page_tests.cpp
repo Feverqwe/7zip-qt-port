@@ -279,5 +279,6 @@ class MenuPageTests : public QObject {
         QCOMPARE(info.WriteZone, UInt32(-1));
     }
 };
-QTEST_MAIN(MenuPageTests)
+#include "review_test_main.h"
+SEVENZIP_UI_TEST_MAIN(MenuPageTests)
 #include "menu_page_tests.moc"

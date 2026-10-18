@@ -140,5 +140,6 @@ class ListViewDialogTests : public QObject {
         QVERIFY(dialog.StringsWereChanged);
     }
 };
-QTEST_MAIN(ListViewDialogTests)
+#include "review_test_main.h"
+SEVENZIP_UI_TEST_MAIN(ListViewDialogTests)
 #include "list_view_dialog_tests.moc"

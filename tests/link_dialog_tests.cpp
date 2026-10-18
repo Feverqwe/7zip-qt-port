@@ -332,5 +332,6 @@ class LinkDialogTests final : public QObject {
         QCOMPARE(file.readAll(), QByteArray("preserve"));
     }
 };
-QTEST_MAIN(LinkDialogTests)
+#include "review_test_main.h"
+SEVENZIP_UI_TEST_MAIN(LinkDialogTests)
 #include "link_dialog_tests.moc"

@@ -193,5 +193,6 @@ class LanguageStandardButtonsTests final : public QObject {
     }
 };
 
-QTEST_MAIN(LanguageStandardButtonsTests)
+#include "review_test_main.h"
+SEVENZIP_UI_TEST_MAIN(LanguageStandardButtonsTests)
 #include "language_standard_buttons_tests.moc"

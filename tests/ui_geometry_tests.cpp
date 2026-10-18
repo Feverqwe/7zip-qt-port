@@ -208,5 +208,6 @@ class UiGeometryTests final : public QObject {
     }
 };
 
-QTEST_MAIN(UiGeometryTests)
+#include "review_test_main.h"
+SEVENZIP_UI_TEST_MAIN(UiGeometryTests)
 #include "ui_geometry_tests.moc"

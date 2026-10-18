@@ -85,5 +85,6 @@ class PasswordDialogTests final : public QObject {
         }
     }
 };
-QTEST_MAIN(PasswordDialogTests)
+#include "review_test_main.h"
+SEVENZIP_UI_TEST_MAIN(PasswordDialogTests)
 #include "password_dialog_tests.moc"

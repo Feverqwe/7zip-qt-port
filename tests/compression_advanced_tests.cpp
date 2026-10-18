@@ -499,5 +499,6 @@ class CompressionAdvancedTests final : public QObject {
                 .isEmpty());
     }
 };
-QTEST_MAIN(CompressionAdvancedTests)
+#include "review_test_main.h"
+SEVENZIP_UI_TEST_MAIN(CompressionAdvancedTests)
 #include "compression_advanced_tests.moc"

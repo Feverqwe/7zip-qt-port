@@ -328,5 +328,6 @@ class SystemPageTests final : public QObject {
         QCOMPARE(list->topLevelItem(2)->text(1), QString());
     }
 };
-QTEST_MAIN(SystemPageTests)
+#include "review_test_main.h"
+SEVENZIP_UI_TEST_MAIN(SystemPageTests)
 #include "system_page_tests.moc"

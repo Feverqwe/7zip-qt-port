@@ -240,5 +240,6 @@ class VolumeDialogTests : public QObject {
         QCOMPARE(ToQString(dialog.Value), QStringLiteral("/new destination"));
     }
 };
-QTEST_MAIN(VolumeDialogTests)
+#include "review_test_main.h"
+SEVENZIP_UI_TEST_MAIN(VolumeDialogTests)
 #include "volume_dialog_tests.moc"

@@ -389,5 +389,6 @@ class BenchmarkLifecycleTests final : public QObject {
         QCOMPARE(service.Active.load(), 0u);
     }
 };
-QTEST_MAIN(BenchmarkLifecycleTests)
+#include "review_test_main.h"
+SEVENZIP_UI_TEST_MAIN(BenchmarkLifecycleTests)
 #include "benchmark_lifecycle_tests.moc"

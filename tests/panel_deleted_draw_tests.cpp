@@ -184,6 +184,9 @@ class PanelDeletedDrawTests final : public QObject, protected MainWindowTestSupp
                 icons ? static_cast<QWidget &>(*iconView) : static_cast<QWidget &>(*view);
             QVERIFY(UiInspection::fullyVisible(visibleView, window));
             QVERIFY(UiInspection::fullyVisible(*address, window));
+            QVERIFY(UiInspection::writeReport(
+                window,
+                QString("deleted-draw-%1-%2").arg(QTest::currentDataTag()).arg(size.width())));
             const QImage rendered = visibleView.grab().toImage();
             bool redText = false;
             for (int y = 0; y < rendered.height() && !redText; ++y)
@@ -195,9 +198,6 @@ class PanelDeletedDrawTests final : public QObject, protected MainWindowTestSupp
                     }
                 }
             QVERIFY2(redText, "Deleted-item emphasis must survive selected-text paint");
-            QVERIFY(UiInspection::writeReport(
-                window,
-                QString("deleted-draw-%1-%2").arg(QTest::currentDataTag()).arg(size.width())));
         }
         spec->archiveHasDeleted = false;
         panel.OnReload();
@@ -248,5 +248,6 @@ class PanelDeletedDrawTests final : public QObject, protected MainWindowTestSupp
         }
     }
 };
-QTEST_MAIN(PanelDeletedDrawTests)
+#include "review_test_main.h"
+SEVENZIP_UI_TEST_MAIN(PanelDeletedDrawTests)
 #include "panel_deleted_draw_tests.moc"

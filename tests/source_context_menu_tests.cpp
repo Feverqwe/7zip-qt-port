@@ -296,5 +296,6 @@ class SourceContextMenuTests final : public QObject, protected MainWindowTestSup
         QCOMPARE(backend.extractCalls, 0);
     }
 };
-QTEST_MAIN(SourceContextMenuTests)
+#include "review_test_main.h"
+SEVENZIP_UI_TEST_MAIN(SourceContextMenuTests)
 #include "source_context_menu_tests.moc"

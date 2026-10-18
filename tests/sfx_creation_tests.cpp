@@ -307,5 +307,6 @@ class SfxCreationTests final : public QObject {
         QVERIFY(!missing.findChild<QCheckBox *>("archiveSfx")->isEnabled());
     }
 };
-QTEST_MAIN(SfxCreationTests)
+#include "review_test_main.h"
+SEVENZIP_UI_TEST_MAIN(SfxCreationTests)
 #include "sfx_creation_tests.moc"

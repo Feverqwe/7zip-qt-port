@@ -279,5 +279,6 @@ class SourceCreateTests final : public QObject, protected MainWindowTestSupport 
         QCOMPARE(keep.readAll(), QByteArray("protected bytes"));
     }
 };
-QTEST_MAIN(SourceCreateTests)
+#include "review_test_main.h"
+SEVENZIP_UI_TEST_MAIN(SourceCreateTests)
 #include "source_create_tests.moc"
