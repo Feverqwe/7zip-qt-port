@@ -4,27 +4,31 @@
 якоря и границы датированных свидетельств. Новые результаты проверок —
 в [source audit](../upstream-port-audit.md).
 
-### Redesigned settings surface (2026-10-18)
+### Redesigned settings surface (2026-10-19)
 
 General contains appearance and language; translation information is disclosed
-on request. Integration presents archive-format choices, with 7z/ZIP first and
-the complete remaining format list in Other formats. Advanced associations
-retains the source state matrix, mixed-selection cycle and supported all-users
-scope. Unsupported scope columns and shell-menu groups are hidden. If neither
-association nor shell integration is supported, Integration has no navigation item.
+on request. Opening files contains one searchable list of formats. Search matches
+displayed names and extensions without changing the draft or enabling Apply.
+Select all and Clear selection act on the whole list regardless of the filter;
+the selected count covers all formats. An empty search has an explanation.
+Advanced associations retains the original state matrix and all-users scope
+only where supported. An unsupported integration has no navigation item.
 
-Advanced contains disclosed memory, temporary-file, external-application and
-list-behavior groups. Their summaries reflect actual draft values and mark
-pending changes; saved nondefault values remain described after reopening.
-Collapsing or switching sections preserves every draft. The original six page
-owners retain their validation, persistence and native registration services.
-Invalid memory input selects Advanced, expands Memory and focuses its input.
+Memory, Temporary files, Applications and File list are separate task pages;
+the last groups display and control preferences. Supported File Explorer commands
+have a separate page. Switching pages preserves every draft. The original six
+owners retain validation, persistence and registration services. Invalid memory
+input selects Memory and focuses its input. Undoing an unapplied format choice
+preserves its previous external handler.
 
-Each section can scroll while the native Apply/Cancel/OK/Help footer stays
+Navigation occupies a sidebar through the footer height. In a narrow window it
+wraps above the content with complete section names in the same order. Each page
+has a heading and can scroll while the native Apply/Cancel/Save/? footer stays
 accessible. Initial focus is Appearance. Ctrl+Tab/Control+Tab on Cocoa and the
 reverse route work from fields and footer, activate the next visible section
 and focus an enabled control there. Help/F1 routes to the focused source group;
-using the footer retains that context. Source algorithms and original defaults
+using the footer retains that context. The help button retains its accessible
+name and tooltip. Source algorithms and original defaults
 are unchanged. This surface supersedes the old six-page container geometry.
 
 ### Original Options frame reference (P3-06, 2026-10-16)
@@ -57,7 +61,7 @@ The redesigned sections retain the first-enabled-control focus rule.
 An exclusive radio group uses its selected enabled member; an initial text field
 selects its contents. Pending values survive page switching and hide/show does
 not reset an already focused field. A capability-disabled page can fall back to
-the tab bar. `options_keyboard` checks EN/RU at640×390 and520×380,
+the visible section navigation. `options_keyboard` checks EN/RU at640×390 and520×380,
 all four System availability masks and navigation in both directions.
 Current widget JSON checks visible control bounds; public assertions check focus,
 selection and Cancel without association writes. [Source and native receipt](../archive/qt-port/upstream-port-audit/p3-06-options-keyboard-2026-10-17.md).
@@ -71,7 +75,7 @@ Applying updates existing windows, and the saved preference is restored at
 application startup. Changing language preserves the pending choice.
 
 Appearance is the first keyboard control in General. Six source page owners
-continue to own the settings behind the three presentation sections.
+continue to own the settings behind the task pages.
 
 ### Native System handler images (P3-06, 2026-10-17)
 

@@ -16,6 +16,11 @@ void QtLangButtonBox::SetAcceptText(const char *context, const char *source) {
     ReloadText();
 }
 
+void QtLangButtonBox::UseCompactHelp() {
+    compactHelp_ = true;
+    ReloadText();
+}
+
 QPushButton *QtLangButtonBox::Control(UInt32 controlID) const {
     if (controlID == acceptID_)
         return button(Ok);
@@ -56,11 +61,20 @@ void QtLangButtonBox::ReloadText() {
     if (auto *control = button(Ok); control && !acceptSource_.isEmpty())
         control->setText(
             QCoreApplication::translate(acceptContext_.constData(), acceptSource_.constData()));
+    if (auto *help = button(Help); help && compactHelp_) {
+        const QString caption = help->text().remove('&');
+        help->setAccessibleName(caption);
+        help->setToolTip(caption);
+        help->setText(QStringLiteral("?"));
+        help->setAutoDefault(false);
+        help->setFixedWidth(help->sizeHint().height());
+    }
 }
 
 void QtLangButtonBox::changeEvent(QEvent *event) {
     QDialogButtonBox::changeEvent(event);
     // Qt resets standard captions in its base handler, after the window filter.
-    if (event->type() == QEvent::LanguageChange)
+    if (event->type() == QEvent::LanguageChange ||
+        (event->type() == QEvent::FontChange && compactHelp_))
         ReloadText();
 }

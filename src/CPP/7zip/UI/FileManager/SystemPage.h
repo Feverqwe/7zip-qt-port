@@ -12,6 +12,7 @@ class QTreeWidget;
 class QPushButton;
 class QLabel;
 class QCheckBox;
+class QLineEdit;
 
 enum EExtState { kExtState_Clear = 0, kExtState_Other, kExtState_7Zip };
 struct CModifiedExtInfo : public NRegistryAssoc::CShellExtInfo {
@@ -69,7 +70,13 @@ class CSystemPage : public QWidget {
     QLabel *_label;
     bool _needSave = false;
     QList<QCheckBox *> _formatChoices;
+    QTreeWidget *_formatList = nullptr;
+    QLineEdit *_formatSearch = nullptr;
+    QLabel *_formatCount = nullptr;
+    QLabel *_formatEmpty = nullptr;
     void RefreshFormatChoices();
+    void FilterFormats();
+    void SelectFormats(bool selected);
     void SelectFormat(unsigned index, bool selected);
     unsigned GetRealIndex(unsigned listIndex) const { return listIndex; }
     int AddIcon(const UString &path, int iconIndex, const QIcon &nativeIcon = {});

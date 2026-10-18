@@ -8,6 +8,7 @@ class QtLangButtonBox final : public QDialogButtonBox, private IQtLangDialogCont
   public:
     QtLangButtonBox(StandardButtons buttons, QWidget *parent, UInt32 acceptID = IDOK);
     void SetAcceptText(const char *context, const char *source);
+    void UseCompactHelp();
 
   protected:
     void changeEvent(QEvent *event) override;
@@ -20,4 +21,5 @@ class QtLangButtonBox final : public QDialogButtonBox, private IQtLangDialogCont
     UInt32 acceptID_;
     QByteArray acceptContext_;
     QByteArray acceptSource_;
+    bool compactHelp_ = false;
 };

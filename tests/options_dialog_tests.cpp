@@ -55,12 +55,15 @@ class OptionsDialogTests : public QObject {
                 OptionsPresentation::show(dialog, control);
                 QVERIFY(UiInspection::fullyVisible(*control, dialog));
                 if (previous && previous->parentWidget() == control->parentWidget())
-                    QVERIFY(UiInspection::bounds(*previous, dialog).bottom() <
-                            UiInspection::bounds(*control, dialog).top());
+                    QVERIFY(UiInspection::separate(*previous, *control, dialog));
                 previous = control;
             }
             auto *spin = dialog.findChild<QWidget *>("extractMemorySpin");
-            auto *label = dialog.findChild<QLabel *>("extractMemoryLabel");
+            QLabel *label = nullptr;
+            for (auto *candidate : dialog.findChildren<QLabel *>())
+                if (candidate->buddy() == spin)
+                    label = candidate;
+            QVERIFY(label);
             // Growing the sheet must leave free space below the settings,
             // rather than stretching the label and separating its input row.
             QVERIFY(label->height() <= label->heightForWidth(label->width()));

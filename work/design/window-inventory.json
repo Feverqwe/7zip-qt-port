@@ -1897,7 +1897,7 @@
   },
   {
     "key": "settingsDialog/systemPage",
-    "title": "Настройки · Интеграция",
+    "title": "Настройки · Открытие файлов",
     "source": "macos/light/settings-sections/settings-integration-choices.json",
     "controls": [
       {
@@ -1907,36 +1907,64 @@
       },
       {
         "class": "QScrollArea",
-        "name": "integrationSection",
+        "name": "fileOpeningSection",
+        "enabled": true
+      },
+      {
+        "class": "QLabel",
+        "name": "settingsHeading",
+        "text": "Открытие файлов",
         "enabled": true
       },
       {
         "class": "QLabel",
         "name": "",
-        "text": "Открывать архивы в Sevenzip",
+        "text": "Выберите типы файлов, которые нужно открывать в Sevenzip.",
+        "enabled": true
+      },
+      {
+        "class": "QLineEdit",
+        "name": "associationSearch",
+        "enabled": true
+      },
+      {
+        "class": "QTreeWidget",
+        "name": "associationChoices",
         "enabled": true
       },
       {
         "class": "QCheckBox",
         "name": "association-7z",
-        "text": ".7z",
+        "text": "",
         "enabled": true
       },
       {
         "class": "QCheckBox",
         "name": "association-zip",
-        "text": ".zip",
+        "text": "",
         "enabled": true
       },
       {
-        "class": "QToolButton",
-        "name": "",
-        "text": "Другие форматы",
+        "class": "QCheckBox",
+        "name": "association-tar",
+        "text": "",
+        "enabled": true
+      },
+      {
+        "class": "QPushButton",
+        "name": "associationSelectAll",
+        "text": "Выбрать все",
+        "enabled": true
+      },
+      {
+        "class": "QPushButton",
+        "name": "associationClearAll",
+        "text": "Снять выбор",
         "enabled": true
       },
       {
         "class": "QLabel",
-        "name": "disclosureSummary",
+        "name": "associationCount",
         "text": "Выбрано 0 форматов",
         "enabled": true
       },
@@ -1949,7 +1977,7 @@
       {
         "class": "QPushButton",
         "name": "",
-        "text": "OK",
+        "text": "Сохранить",
         "enabled": true
       },
       {
@@ -1961,7 +1989,7 @@
       {
         "class": "QPushButton",
         "name": "",
-        "text": "Справка",
+        "text": "?",
         "enabled": true
       },
       {
@@ -1969,15 +1997,24 @@
         "name": "",
         "text": "Применить",
         "enabled": false
+      },
+      {
+        "class": "QListWidget",
+        "name": "settingsNavigation",
+        "enabled": true
       }
     ],
-    "revision": "6ee7db6ba2bd0c55727340cf5a7db9fb08405f1c",
+    "revision": "fac3e234df7a08b16dc52119360165cca64803c5",
     "capture": {
       "qpa": "cocoa",
       "colorScheme": "light",
       "qtVersion": "6.12.0",
       "fontFamily": ".AppleSystemUIFont",
       "fontPointSize": 13
+    },
+    "sourceState": {
+      "modified": true,
+      "diffSha256": "5fbd072e7be5b2b4a5b08ec43275b2018832c87ecfff6e476c5da123e784d346"
     }
   },
   {
@@ -1990,8 +2027,8 @@
   },
   {
     "key": "settingsDialog/foldersPage",
-    "title": "Настройки · Дополнительно",
-    "source": "macos/light/settings-sections/settings-advanced-collapsed.json",
+    "title": "Настройки · Временные файлы",
+    "source": "macos/light/settings-sections/settings-navigation-ru-780-3.json",
     "controls": [
       {
         "class": "QTabWidget",
@@ -2000,61 +2037,60 @@
       },
       {
         "class": "QScrollArea",
-        "name": "advancedSection",
-        "enabled": true
-      },
-      {
-        "class": "QToolButton",
-        "name": "",
-        "text": "Память для распаковки",
+        "name": "temporarySection",
         "enabled": true
       },
       {
         "class": "QLabel",
-        "name": "disclosureSummary",
-        "text": "Стандартные настройки",
-        "enabled": true
-      },
-      {
-        "class": "QToolButton",
-        "name": "",
+        "name": "settingsHeading",
         "text": "Временные файлы",
         "enabled": true
       },
       {
         "class": "QLabel",
-        "name": "disclosureSummary",
-        "text": "Системная временная папка",
-        "enabled": true
-      },
-      {
-        "class": "QToolButton",
         "name": "",
-        "text": "Внешние приложения",
+        "text": "Выберите, где хранить временные файлы при работе с архивами.",
         "enabled": true
       },
       {
         "class": "QLabel",
-        "name": "disclosureSummary",
-        "text": "Изменено · custom editor --wait",
-        "enabled": true
-      },
-      {
-        "class": "QToolButton",
         "name": "",
-        "text": "Привычное поведение",
+        "text": "&Рабочая папка",
         "enabled": true
       },
       {
-        "class": "QLabel",
-        "name": "disclosureSummary",
-        "text": "Стандартные настройки",
+        "class": "QRadioButton",
+        "name": "workSystem",
+        "text": "&Системная временная папка",
         "enabled": true
+      },
+      {
+        "class": "QRadioButton",
+        "name": "workCurrent",
+        "text": "&Текущая",
+        "enabled": true
+      },
+      {
+        "class": "QRadioButton",
+        "name": "workSpecified",
+        "text": "&Задать:",
+        "enabled": true
+      },
+      {
+        "class": "QLineEdit",
+        "name": "workPath",
+        "enabled": false
+      },
+      {
+        "class": "QPushButton",
+        "name": "workPathBrowse",
+        "text": "…",
+        "enabled": false
       },
       {
         "class": "QPushButton",
         "name": "",
-        "text": "OK",
+        "text": "Сохранить",
         "enabled": true
       },
       {
@@ -2066,29 +2102,38 @@
       {
         "class": "QPushButton",
         "name": "",
-        "text": "Справка",
+        "text": "?",
         "enabled": true
       },
       {
         "class": "QPushButton",
         "name": "",
         "text": "Применить",
+        "enabled": false
+      },
+      {
+        "class": "QListWidget",
+        "name": "settingsNavigation",
         "enabled": true
       }
     ],
-    "revision": "6ee7db6ba2bd0c55727340cf5a7db9fb08405f1c",
+    "revision": "fac3e234df7a08b16dc52119360165cca64803c5",
     "capture": {
       "qpa": "cocoa",
       "colorScheme": "light",
       "qtVersion": "6.12.0",
       "fontFamily": ".AppleSystemUIFont",
-      "fontPointSize": 13
+      "fontPointSize": 12
+    },
+    "sourceState": {
+      "modified": true,
+      "diffSha256": "5fbd072e7be5b2b4a5b08ec43275b2018832c87ecfff6e476c5da123e784d346"
     }
   },
   {
     "key": "settingsDialog/editorPage",
-    "title": "Настройки · Внешние приложения",
-    "source": "macos/light/settings-sections/settings-external-apps-expanded.json",
+    "title": "Настройки · Приложения",
+    "source": "macos/light/settings-sections/settings-navigation-ru-780-4.json",
     "controls": [
       {
         "class": "QTabWidget",
@@ -2097,43 +2142,19 @@
       },
       {
         "class": "QScrollArea",
-        "name": "advancedSection",
-        "enabled": true
-      },
-      {
-        "class": "QToolButton",
-        "name": "",
-        "text": "Память для распаковки",
+        "name": "applicationsSection",
         "enabled": true
       },
       {
         "class": "QLabel",
-        "name": "disclosureSummary",
-        "text": "Стандартные настройки",
-        "enabled": true
-      },
-      {
-        "class": "QToolButton",
-        "name": "",
-        "text": "Временные файлы",
+        "name": "settingsHeading",
+        "text": "Приложения",
         "enabled": true
       },
       {
         "class": "QLabel",
-        "name": "disclosureSummary",
-        "text": "Системная временная папка",
-        "enabled": true
-      },
-      {
-        "class": "QToolButton",
         "name": "",
-        "text": "Внешние приложения",
-        "enabled": true
-      },
-      {
-        "class": "QLabel",
-        "name": "disclosureSummary",
-        "text": "Изменено · custom editor --wait",
+        "text": "Программы для просмотра, редактирования и сравнения файлов из архива.",
         "enabled": true
       },
       {
@@ -2188,21 +2209,15 @@
         "enabled": true
       },
       {
-        "class": "QToolButton",
-        "name": "",
-        "text": "Привычное поведение",
-        "enabled": true
-      },
-      {
         "class": "QLabel",
-        "name": "disclosureSummary",
-        "text": "Стандартные настройки",
+        "name": "",
+        "text": "Можно указать программу и аргументы командной строки.",
         "enabled": true
       },
       {
         "class": "QPushButton",
         "name": "",
-        "text": "OK",
+        "text": "Сохранить",
         "enabled": true
       },
       {
@@ -2214,29 +2229,38 @@
       {
         "class": "QPushButton",
         "name": "",
-        "text": "Справка",
+        "text": "?",
         "enabled": true
       },
       {
         "class": "QPushButton",
         "name": "",
         "text": "Применить",
+        "enabled": false
+      },
+      {
+        "class": "QListWidget",
+        "name": "settingsNavigation",
         "enabled": true
       }
     ],
-    "revision": "6ee7db6ba2bd0c55727340cf5a7db9fb08405f1c",
+    "revision": "fac3e234df7a08b16dc52119360165cca64803c5",
     "capture": {
       "qpa": "cocoa",
       "colorScheme": "light",
       "qtVersion": "6.12.0",
       "fontFamily": ".AppleSystemUIFont",
-      "fontPointSize": 13
+      "fontPointSize": 12
+    },
+    "sourceState": {
+      "modified": true,
+      "diffSha256": "5fbd072e7be5b2b4a5b08ec43275b2018832c87ecfff6e476c5da123e784d346"
     }
   },
   {
     "key": "settingsDialog/settingsPage",
     "title": "Настройки · Основные",
-    "source": "macos/light/settings-sections/settings-general.json",
+    "source": "macos/light/settings-sections/settings-navigation-ru-780-0.json",
     "controls": [
       {
         "class": "QTabWidget",
@@ -2246,6 +2270,12 @@
       {
         "class": "QScrollArea",
         "name": "generalSection",
+        "enabled": true
+      },
+      {
+        "class": "QLabel",
+        "name": "settingsHeading",
+        "text": "Основные",
         "enabled": true
       },
       {
@@ -2263,7 +2293,7 @@
       {
         "class": "QLabel",
         "name": "languageLabel",
-        "text": "Язык:",
+        "text": "Язык интерфейса",
         "enabled": true
       },
       {
@@ -2279,9 +2309,15 @@
         "enabled": true
       },
       {
+        "class": "QLabel",
+        "name": "",
+        "text": "Сведения об установленном переводе",
+        "enabled": true
+      },
+      {
         "class": "QPushButton",
         "name": "",
-        "text": "OK",
+        "text": "Сохранить",
         "enabled": true
       },
       {
@@ -2293,23 +2329,32 @@
       {
         "class": "QPushButton",
         "name": "",
-        "text": "Справка",
+        "text": "?",
         "enabled": true
       },
       {
         "class": "QPushButton",
         "name": "",
         "text": "Применить",
+        "enabled": false
+      },
+      {
+        "class": "QListWidget",
+        "name": "settingsNavigation",
         "enabled": true
       }
     ],
-    "revision": "6ee7db6ba2bd0c55727340cf5a7db9fb08405f1c",
+    "revision": "fac3e234df7a08b16dc52119360165cca64803c5",
     "capture": {
       "qpa": "cocoa",
       "colorScheme": "light",
       "qtVersion": "6.12.0",
       "fontFamily": ".AppleSystemUIFont",
-      "fontPointSize": 13
+      "fontPointSize": 12
+    },
+    "sourceState": {
+      "modified": true,
+      "diffSha256": "5fbd072e7be5b2b4a5b08ec43275b2018832c87ecfff6e476c5da123e784d346"
     }
   },
   {
@@ -2329,6 +2374,12 @@
       },
       {
         "class": "QLabel",
+        "name": "settingsHeading",
+        "text": "Основные",
+        "enabled": true
+      },
+      {
+        "class": "QLabel",
         "name": "appearanceLabel",
         "text": "Оформление",
         "enabled": true
@@ -2342,7 +2393,7 @@
       {
         "class": "QLabel",
         "name": "languageLabel",
-        "text": "Язык:",
+        "text": "Язык интерфейса",
         "enabled": true
       },
       {
@@ -2365,7 +2416,7 @@
       {
         "class": "QPushButton",
         "name": "",
-        "text": "OK",
+        "text": "Сохранить",
         "enabled": true
       },
       {
@@ -2377,7 +2428,7 @@
       {
         "class": "QPushButton",
         "name": "",
-        "text": "Справка",
+        "text": "?",
         "enabled": true
       },
       {
@@ -2385,15 +2436,24 @@
         "name": "",
         "text": "Применить",
         "enabled": true
+      },
+      {
+        "class": "QListWidget",
+        "name": "settingsNavigation",
+        "enabled": true
       }
     ],
-    "revision": "6ee7db6ba2bd0c55727340cf5a7db9fb08405f1c",
+    "revision": "fac3e234df7a08b16dc52119360165cca64803c5",
     "capture": {
       "qpa": "cocoa",
       "colorScheme": "light",
       "qtVersion": "6.12.0",
       "fontFamily": ".AppleSystemUIFont",
       "fontPointSize": 13
+    },
+    "sourceState": {
+      "modified": true,
+      "diffSha256": "5fbd072e7be5b2b4a5b08ec43275b2018832c87ecfff6e476c5da123e784d346"
     }
   },
   {
@@ -2549,6 +2609,222 @@
       "qtVersion": "6.12.0",
       "fontFamily": ".AppleSystemUIFont",
       "fontPointSize": 13
+    }
+  },
+  {
+    "key": "settingsDialog/memory",
+    "title": "Настройки · Память",
+    "source": "macos/light/settings-sections/settings-navigation-ru-780-2.json",
+    "controls": [
+      {
+        "class": "QTabWidget",
+        "name": "optionsPages",
+        "enabled": true
+      },
+      {
+        "class": "QScrollArea",
+        "name": "memorySection",
+        "enabled": true
+      },
+      {
+        "class": "QLabel",
+        "name": "settingsHeading",
+        "text": "Память",
+        "enabled": true
+      },
+      {
+        "class": "QLabel",
+        "name": "extractMemoryLabel",
+        "text": "Ограничьте использование памяти при распаковке больших архивов.",
+        "enabled": true
+      },
+      {
+        "class": "QCheckBox",
+        "name": "extractMemorySet",
+        "text": "Задать лимит памяти",
+        "enabled": true
+      },
+      {
+        "class": "QLabel",
+        "name": "",
+        "text": "Лимит, ГБ",
+        "enabled": true
+      },
+      {
+        "class": "QtMemoryLimitSpin",
+        "name": "extractMemorySpin",
+        "enabled": false
+      },
+      {
+        "class": "QLineEdit",
+        "name": "extractMemoryEdit",
+        "enabled": false
+      },
+      {
+        "class": "QLabel",
+        "name": "extractMemoryRam",
+        "text": "На этом компьютере: 16 ГБ",
+        "enabled": true
+      },
+      {
+        "class": "QPushButton",
+        "name": "",
+        "text": "Сохранить",
+        "enabled": true
+      },
+      {
+        "class": "QPushButton",
+        "name": "",
+        "text": "Отмена",
+        "enabled": true
+      },
+      {
+        "class": "QPushButton",
+        "name": "",
+        "text": "?",
+        "enabled": true
+      },
+      {
+        "class": "QPushButton",
+        "name": "",
+        "text": "Применить",
+        "enabled": false
+      },
+      {
+        "class": "QListWidget",
+        "name": "settingsNavigation",
+        "enabled": true
+      }
+    ],
+    "revision": "fac3e234df7a08b16dc52119360165cca64803c5",
+    "capture": {
+      "qpa": "cocoa",
+      "colorScheme": "light",
+      "qtVersion": "6.12.0",
+      "fontFamily": ".AppleSystemUIFont",
+      "fontPointSize": 12
+    },
+    "sourceState": {
+      "modified": true,
+      "diffSha256": "5fbd072e7be5b2b4a5b08ec43275b2018832c87ecfff6e476c5da123e784d346"
+    }
+  },
+  {
+    "key": "settingsDialog/fileList",
+    "title": "Настройки · Список файлов",
+    "source": "macos/light/settings-sections/settings-navigation-ru-780-5.json",
+    "controls": [
+      {
+        "class": "QTabWidget",
+        "name": "optionsPages",
+        "enabled": true
+      },
+      {
+        "class": "QScrollArea",
+        "name": "fileListSection",
+        "enabled": true
+      },
+      {
+        "class": "QLabel",
+        "name": "settingsHeading",
+        "text": "Список файлов",
+        "enabled": true
+      },
+      {
+        "class": "QLabel",
+        "name": "",
+        "text": "Отображение",
+        "enabled": true
+      },
+      {
+        "class": "QCheckBox",
+        "name": "showDotsOption",
+        "text": "Показывать элемент \"..\"",
+        "enabled": true
+      },
+      {
+        "class": "QCheckBox",
+        "name": "realFileIconsOption",
+        "text": "Показывать реальные иконки файлов",
+        "enabled": true
+      },
+      {
+        "class": "QCheckBox",
+        "name": "fullRowOption",
+        "text": "Курсор на всю строку",
+        "enabled": true
+      },
+      {
+        "class": "QCheckBox",
+        "name": "gridOption",
+        "text": "Показывать разделители",
+        "enabled": true
+      },
+      {
+        "class": "QLabel",
+        "name": "",
+        "text": "Управление",
+        "enabled": true
+      },
+      {
+        "class": "QCheckBox",
+        "name": "singleClickOption",
+        "text": "Открывать одним щелчком",
+        "enabled": true
+      },
+      {
+        "class": "QCheckBox",
+        "name": "alternativeSelectionOption",
+        "text": "Альтернативный режим пометки",
+        "enabled": true
+      },
+      {
+        "class": "QCheckBox",
+        "name": "showSystemMenuOption",
+        "text": "Показывать системное меню",
+        "enabled": true
+      },
+      {
+        "class": "QPushButton",
+        "name": "",
+        "text": "Сохранить",
+        "enabled": true
+      },
+      {
+        "class": "QPushButton",
+        "name": "",
+        "text": "Отмена",
+        "enabled": true
+      },
+      {
+        "class": "QPushButton",
+        "name": "",
+        "text": "?",
+        "enabled": true
+      },
+      {
+        "class": "QPushButton",
+        "name": "",
+        "text": "Применить",
+        "enabled": false
+      },
+      {
+        "class": "QListWidget",
+        "name": "settingsNavigation",
+        "enabled": true
+      }
+    ],
+    "revision": "fac3e234df7a08b16dc52119360165cca64803c5",
+    "capture": {
+      "qpa": "cocoa",
+      "colorScheme": "light",
+      "qtVersion": "6.12.0",
+      "fontFamily": ".AppleSystemUIFont",
+      "fontPointSize": 12
+    },
+    "sourceState": {
+      "modified": true,
+      "diffSha256": "5fbd072e7be5b2b4a5b08ec43275b2018832c87ecfff6e476c5da123e784d346"
     }
   }
 ]

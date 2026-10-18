@@ -56,10 +56,11 @@ failures must remain visible to the owning operation rather than silently changi
 the workflow. Platform menu, association, file picker and application-startup
 services stay behind narrow adapters.
 
-Settings presentation combines those six owners into three sections. Disclosure
-and summaries read the owners' live controls; they do not maintain another draft
-or persistence layer. Format checkboxes project the source association states
-through the original state transition; advanced controls retain its full cycle.
+Settings presentation organizes those six owners into task pages with adaptive
+navigation. Controls read the owners' live draft without another persistence
+layer. Format search only filters the unified list; bulk selection covers the
+whole list. Checkboxes project the source association states through the original
+transition; advanced controls retain its full cycle and supported system scope.
 
 Interface text is owned by Qt Linguist catalogs. The language service discovers
 catalogs; module-owned translators support the GUI and the native shell host,

@@ -839,6 +839,102 @@ Are you sure you want to split archive into such volumes?</source>
     <context>
         <name>SettingsRedesign</name>
         <message>
+            <source>Interface language</source>
+            <translation>Язык интерфейса</translation>
+        </message>
+        <message>
+            <source>This computer: %1 GB</source>
+            <translation>На этом компьютере: %1 ГБ</translation>
+        </message>
+        <message>
+            <source>Choose where to keep temporary files when working with archives.</source>
+            <translation>Выберите, где хранить временные файлы при работе с архивами.</translation>
+        </message>
+        <message>
+            <source>Applications for viewing, editing and comparing archived files.</source>
+            <translation>Программы для просмотра, редактирования и сравнения файлов из архива.</translation>
+        </message>
+        <message>
+            <source>You can specify an application and command-line arguments.</source>
+            <translation>Можно указать программу и аргументы командной строки.</translation>
+        </message>
+        <message>
+            <source>Opening files</source>
+            <translation>Открытие файлов</translation>
+        </message>
+        <message>
+            <source>Memory</source>
+            <translation>Память</translation>
+        </message>
+        <message>
+            <source>Applications</source>
+            <translation>Приложения</translation>
+        </message>
+        <message>
+            <source>File list</source>
+            <translation>Список файлов</translation>
+        </message>
+        <message>
+            <source>Settings sections</source>
+            <translation>Разделы настроек</translation>
+        </message>
+        <message>
+            <source>Save</source>
+            <translation>Сохранить</translation>
+        </message>
+        <message>
+            <source>Display</source>
+            <translation>Отображение</translation>
+        </message>
+        <message>
+            <source>Controls</source>
+            <translation>Управление</translation>
+        </message>
+        <message>
+            <source>Limit memory when extracting large archives.</source>
+            <translation>Ограничьте использование памяти при распаковке больших архивов.</translation>
+        </message>
+        <message>
+            <source>Set a memory limit</source>
+            <translation>Задать лимит памяти</translation>
+        </message>
+        <message>
+            <source>Limit, GB</source>
+            <translation>Лимит, ГБ</translation>
+        </message>
+        <message>
+            <source>Information about the installed translation</source>
+            <translation>Сведения об установленном переводе</translation>
+        </message>
+        <message>
+            <source>Choose file types to open with Sevenzip.</source>
+            <translation>Выберите типы файлов, которые нужно открывать в Sevenzip.</translation>
+        </message>
+        <message>
+            <source>Search formats</source>
+            <translation>Поиск формата</translation>
+        </message>
+        <message>
+            <source>Search by name or extension</source>
+            <translation>Поиск по названию или расширению</translation>
+        </message>
+        <message>
+            <source>Open .%1 with Sevenzip</source>
+            <translation>Открывать .%1 в Sevenzip</translation>
+        </message>
+        <message>
+            <source>No matching formats. Try another name or extension.</source>
+            <translation>Форматы не найдены. Попробуйте другое название или расширение.</translation>
+        </message>
+        <message>
+            <source>Select all formats</source>
+            <translation>Выбрать все</translation>
+        </message>
+        <message>
+            <source>Clear selection</source>
+            <translation>Снять выбор</translation>
+        </message>
+        <message>
             <location filename="../src/CPP/7zip/UI/FileManager/SettingsPage.cpp" line="+50" />
             <source>Appearance</source>
             <translation>Оформление</translation>

@@ -1,6 +1,6 @@
 // Adapted from 7-Zip OptionsDialog.cpp (0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
-// Qt presentation groups the original six state/apply owners into three sections.
+// Qt task pages retain the original six state/apply owners.
 #include "7zip/UI/FileManager/resource.h"
 #include "EditPage.h"
 #include "FoldersPage.h"
@@ -13,14 +13,17 @@
 #include "qtdialogunits.h"
 #include "qtdisclosure.h"
 #include "qtfmoptionsdialog.h"
+#include "qtlangbuttonbox.h"
 #include "qtlangcontrols.h"
 #include <QApplication>
 #include <QButtonGroup>
 #include <QCloseEvent>
+#include <QComboBox>
 #include <QDialogButtonBox>
 #include <QEvent>
 #include <QKeyEvent>
 #include <QLineEdit>
+#include <QListWidget>
 #include <QMessageBox>
 #include <QPlainTextEdit>
 #include <QPointer>
@@ -81,7 +84,12 @@ class QtOptionsPages final : public QTabWidget {
                 return;
             }
         }
-        tabBar()->setFocus(Qt::TabFocusReason); // No enabled page controls on this platform.
+        for (const char *name : {"settingsNavigation", "settingsSectionChoice"})
+            if (auto *navigation = parentWidget()->findChild<QListWidget *>(name);
+                navigation && navigation->isVisible() && navigation->isEnabled()) {
+                navigation->setFocus(Qt::TabFocusReason);
+                return;
+            }
     }
 
   private:
@@ -126,11 +134,15 @@ QtFmOptionsDialog::QtFmOptionsDialog(const QString &settingsPath, QWidget *paren
     for (unsigned i = 0; i < 6; i++) {
         pagePointers[i]->setProperty("sourcePageID", pageIDs[i]);
     }
-    _buttons = new QDialogButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel |
-                                        QDialogButtonBox::Apply | QDialogButtonBox::Help,
-                                    this);
+    auto *buttons = new QtLangButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel |
+                                            QDialogButtonBox::Apply | QDialogButtonBox::Help,
+                                        this);
+    buttons->SetAcceptText("SettingsRedesign", QT_TRANSLATE_NOOP("SettingsRedesign", "Save"));
+    buttons->UseCompactHelp();
+    _buttons = buttons;
     _buttons->setObjectName("settingsButtons");
     buildSections();
+    reloadLangItems();
     connect(qApp, &QApplication::focusChanged, this, [this](QWidget *, QWidget *now) {
         if (now && _sections->isAncestorOf(now))
             _helpContext = now;
@@ -153,7 +165,7 @@ QtFmOptionsDialog::QtFmOptionsDialog(const QString &settingsPath, QWidget *paren
     connect(_langPage, &CLangPage::Changed, this, &QtFmOptionsDialog::updateApplyButton);
     connect(_systemPage, &CSystemPage::Changed, this, &QtFmOptionsDialog::updateApplyButton);
     updateApplyButton();
-    resize(QSize(fontMetrics().averageCharWidth() * 80, fontMetrics().lineSpacing() * 28)
+    resize(QSize(fontMetrics().averageCharWidth() * 95, fontMetrics().lineSpacing() * 32)
                .expandedTo(minimumSizeHint()));
     pages->focusInitialControl();
 }
@@ -164,18 +176,18 @@ void QtFmOptionsDialog::showPageHelp() {
     if (!context || !_sections->isAncestorOf(context))
         context = _helpContext;
     const auto inside = [context](QWidget *owner) { return owner && owner->isAncestorOf(context); };
-    if (inside(_editGroup))
+    const auto page = _sections->currentWidget()->property("sourcePageID").toUInt();
+    if (page == 2103)
         _editPage->OnNotifyHelp();
-    else if (inside(_foldersGroup))
+    else if (page == 2400)
         _foldersPage->OnNotifyHelp();
-    else if (inside(_memoryGroup) || inside(_listGroup) ||
-             inside(_settingsPage->appearanceControls()))
+    else if (page == 2500 || (page == 2101 && inside(_settingsPage->appearanceControls())))
         _settingsPage->OnNotifyHelp();
-    else if (inside(_menuGroup))
+    else if (page == 2300)
         _menuPage->OnNotifyHelp();
-    else if (_sections->currentWidget()->objectName() == "generalSection")
+    else if (page == 2101)
         _langPage->OnNotifyHelp();
-    else if (_sections->currentWidget()->objectName() == "integrationSection")
+    else if (page == 2200)
         _systemPage->OnNotifyHelp();
     else
         _settingsPage->OnNotifyHelp();
@@ -234,17 +246,23 @@ void QtFmOptionsDialog::reloadLangItems() {
     _menuPage->ReloadLangItems();
     _systemPage->ReloadLangItems();
     auto *pages = findChild<QTabWidget *>("optionsPages");
-    for (int i = 0; i < pages->count(); i++)
+    for (int i = 0; i < pages->count(); i++) {
         pages->setTabText(
             i, QCoreApplication::translate(
                    "SettingsRedesign",
                    pages->widget(i)->property("sectionTitle").toByteArray().constData()));
+        _navigation->item(i)->setText(pages->tabText(i));
+        _compactNavigation->item(i)->setText(pages->tabText(i));
+    }
     refreshSectionSummaries();
 }
 void QtFmOptionsDialog::changeEvent(QEvent *event) {
     if (event->type() == QEvent::LanguageChange && _langPage)
         reloadLangItems();
     QDialog::changeEvent(event);
+    if (event->type() == QEvent::LanguageChange || event->type() == QEvent::FontChange ||
+        event->type() == QEvent::PaletteChange)
+        updateNavigationGeometry();
 }
 void QtFmOptionsDialog::accept() {
     if (_applying)

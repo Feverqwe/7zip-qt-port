@@ -132,14 +132,18 @@ class OptionsKeyboardTests final : public QObject {
             QVERIFY(OptionsPresentation::show(dialog, choice));
             QVERIFY(!tree->isVisible());
             auto *details = dialog.findChild<QtDisclosure *>("associationDetails");
-            details->button()->setFocus();
-            QTest::keyClick(details->button(), Qt::Key_Space);
-            QVERIFY(details->isExpanded());
-            QVERIFY(OptionsPresentation::show(dialog, tree));
-            tree->setFocus();
-            QTest::keyClick(tree, Qt::Key_Space);
-            QCOMPARE(tree->topLevelItem(0)->text(1),
-                     availability & 1 ? QString("7-Zip") : QString());
+            if (availability & 2) {
+                details->button()->setFocus();
+                QTest::keyClick(details->button(), Qt::Key_Space);
+                QVERIFY(details->isExpanded());
+                QVERIFY(OptionsPresentation::show(dialog, tree));
+                tree->setFocus();
+                QTest::keyClick(tree, Qt::Key_Space);
+                QCOMPARE(tree->topLevelItem(0)->text(1),
+                         availability & 1 ? QString("7-Zip") : QString());
+            } else {
+                QVERIFY(!details->isVisible());
+            }
         } else {
             QVERIFY(!OptionsPresentation::show(dialog, choice));
         }
@@ -156,9 +160,18 @@ class OptionsKeyboardTests final : public QObject {
         }
         QVERIFY(visited.contains(dialog.findChild<QComboBox *>("languageChoice")));
         auto *footer = dialog.findChild<QDialogButtonBox *>("settingsButtons");
+        QStringList focusTrace;
+        for (auto *widget : visited)
+            focusTrace.append(QString::fromLatin1(widget->metaObject()->className()) + ':' +
+                              widget->objectName());
         for (auto *button : footer->buttons())
             if (button->isEnabled())
-                QVERIFY(visited.contains(button));
+                QVERIFY2(visited.contains(button),
+                         qPrintable(button->text() +
+                                    QString(" policy=%1 visible=%2 focus chain: ")
+                                        .arg(int(button->focusPolicy()))
+                                        .arg(button->isVisible()) +
+                                    focusTrace.join(',')));
         dialog.reject();
         QCOMPARE(services->writes, 0);
     }

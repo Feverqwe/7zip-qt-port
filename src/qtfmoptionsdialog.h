@@ -15,8 +15,11 @@ class CLangPage;
 class QDialogButtonBox;
 class QTabWidget;
 class QtDisclosure;
+class QListWidget;
+class QGridLayout;
+class QFrame;
 
-// Three presentation sections retain the six source state/apply owners.
+// Task pages retain the six source state/apply owners.
 class QtFmOptionsDialog final : public QDialog {
     Q_OBJECT
     CEditPage *_editPage;
@@ -30,12 +33,16 @@ class QtFmOptionsDialog final : public QDialog {
     QDialogButtonBox *_buttons;
     QTabWidget *_sections;
     QPointer<QWidget> _helpContext;
-    QtDisclosure *_memoryGroup;
-    QtDisclosure *_listGroup;
-    QtDisclosure *_foldersGroup;
-    QtDisclosure *_editGroup;
-    QtDisclosure *_menuGroup = nullptr;
+    QListWidget *_navigation;
+    QListWidget *_compactNavigation;
+    QWidget *_compactNavigationPanel;
+    QWidget *_navigationPanel;
+    QFrame *_navigationDivider;
+    QGridLayout *_frame = nullptr;
+    bool _compact = false;
+    QtDisclosure *_translationGroup;
     void buildSections();
+    void updateNavigationGeometry();
     void refreshSectionSummaries();
     void revealControl(QWidget *control);
     void updateApplyButton();
@@ -43,6 +50,7 @@ class QtFmOptionsDialog final : public QDialog {
     void reloadLangItems();
     void showPageHelp();
     void closeEvent(QCloseEvent *event) override;
+    void resizeEvent(QResizeEvent *event) override;
 
   public:
     std::function<void(const CFmSettings &)> Applied;
