@@ -275,7 +275,9 @@ establish acceptance of excluded slow suites.
 
 ## Automation
 
-Use the existing shared x64 Hyper-V guests on Windows host `192.168.1.14`:
+The maintainer uses shared x64 Hyper-V guests on a privately configured Windows
+host. These optional commands require the local `runners` skill and authenticated
+access; contributors can build and test locally without them:
 
 ```sh
 python3 scripts/hyperv-runner.py probe linux

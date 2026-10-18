@@ -1,0 +1,43 @@
+name: Bug report
+description: Report a reproducible problem
+body:
+  - type: markdown
+    attributes:
+      value: |
+        English and Russian are welcome. Search existing issues before submitting.
+        For suspected vulnerabilities, follow [SECURITY.md](https://github.com/Feverqwe/7zip-qt-port/blob/HEAD/SECURITY.md).
+        Use synthetic archives and remove private data from logs and attachments.
+  - type: input
+    id: version
+    attributes:
+      label: Application version or commit
+      placeholder: Release tag or full commit hash
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: OS version and architecture
+      placeholder: Windows / macOS / Linux, version, x64 / arm64
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Steps to reproduce
+      description: Include the archive format and a minimal synthetic sample when relevant.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Include the error message and relevant logs or screenshots.
+    validations:
+      required: true

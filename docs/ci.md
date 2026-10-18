@@ -1,5 +1,9 @@
 # Local runtime artifacts and CI scope
 
+Licensing of borrowed tooling and runtime components is summarized in
+[third-party notices](../THIRD_PARTY_NOTICES.md). The root MIT license does not
+replace the GPL license of tooling adapted from htopQt.
+
 The [release workflow](../.github/workflows/release.yml), adapted from htopQt,
 builds Windows x64, Linux x64 and macOS arm64 on `v*` tags. The tag must match
 the CMake application version. After all builds succeed, it publishes runtime

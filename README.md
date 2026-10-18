@@ -1,82 +1,102 @@
 # Sevenzip
 
-Кроссплатформенный перенос Windows 7-Zip File Manager для Windows, macOS и Linux.
-Функциональная основа переносится из исходного кода 7-Zip; интерфейс и обвязка
-используют C++17 / Qt 6 Widgets. Архивные форматы и сжатие обеспечивает
-официальный движок через native-модули и адаптер `7zz`.
+A cross-platform port of the Windows 7-Zip File Manager for Windows, macOS and
+Linux. The interface uses Qt 6 Widgets, and archive operations use the official
+7-Zip engine. This is an independent project and is not an official 7-Zip release.
 
-## Состояние проекта
+[Download](https://github.com/Feverqwe/7zip-qt-port/releases) ·
+[Report a bug](https://github.com/Feverqwe/7zip-qt-port/issues) ·
+[Contributing](CONTRIBUTING.md)
 
-Работают две панели, файловая и архивная навигация, вложенные архивы, история
-и избранное, режимы списка, сортировка и выделение. Перенесены файловые
-Copy/Move/Create/Rename/Delete, Split/Combine, свойства, внешние View/Edit/Diff,
-контрольные суммы, Benchmark, Help/About и страницы Options.
+## Installation
 
-Создание и изменение архивов используют исходные планы обновления, параметры
-сжатия, шифрование, тома и SFX. Доступные форматы и операции определяются
-capabilities проверенного официального модуля. Извлечение поддерживает исходные
-запросы пароля и перезаписи; ошибка или отмена может оставить уже извлечённые
-файлы. Обратная запись вложенного архива требует возможности записи всей цепочки.
-Платформенные metadata, links, ADS и associations имеют отдельные ограничения.
+Release archives are built for Windows x64, Linux x64 and macOS arm64.
+Extract the entire archive, keeping its directories and libraries together.
+On macOS, open `Sevenzip.app`; on Windows, run `bin/7zFM.exe`; on Linux,
+run `bin/7zFM`. macOS 14.4 or later is required.
 
-План Qt-портирования завершён. Проверенный объём и границы платформенной
-приёмки описаны в [приёмке](docs/ux-port-audit.md), доступные сценарии
-и ограничения — в [сверке с 7zFM](docs/7zfm-parity.md).
-Завершённый план и история проверок сохранены в [архиве](docs/archive/README.md).
+Packages do not have Windows Authenticode signatures or Apple Developer ID
+signing and notarization. macOS packages use an ad-hoc signature. Checksums
+are published alongside the archives in `SHA256SUMS.txt`.
 
-## Быстрый старт
+## Project status
 
-Нужны C/C++17 compiler, CMake, Ninja, Qt 6 Widgets, `clang-format`
-и официальный `7zz`. Для macOS 14.4+ используется официальный Qt SDK;
-установите зависимости по [инструкции настройки](docs/development.md#dependencies).
+The application supports dual panels, filesystem and archive navigation, nested
+archives, history, favorites, list views, sorting and selection. Features include
+file copy, move, create, rename and delete operations, split/combine, properties,
+external viewers, editors and diff tools, checksums, benchmarks and settings.
 
-Из корня репозитория:
+Archive creation and updates support compression settings, encryption, volumes
+and self-extracting archives. Available formats and operations depend on the
+selected engine. Extraction supports password and overwrite prompts; an error
+or cancellation may leave files that have already been extracted. Updating a
+nested archive requires write support throughout its containing archive chain.
+Platform metadata, links, alternate data streams and file associations have
+additional limitations.
+
+The project is in an early release stage. See the
+[acceptance scope](docs/ux-port-audit.md) for validation boundaries and the
+[7zFM comparison](docs/7zfm-parity.md) for supported workflows and limitations.
+
+## Building from source
+
+Clone the project and the official upstream sources:
+
+```sh
+git clone https://github.com/Feverqwe/7zip-qt-port.git
+cd 7zip-qt-port
+git clone https://github.com/ip7z/7zip.git ../7zip-upstream
+```
+
+You need C and C++17 compilers, CMake, Ninja, Qt 6 Widgets, `clang-format`
+and the official `7zz`. macOS builds use the official Qt SDK and target macOS
+14.4 or later. Follow the [dependency setup](docs/development.md#dependencies)
+for your platform.
+
+From the repository root:
 
 ```sh
 ./scripts/doctor.sh
 ./scripts/check.sh
 ```
 
-`check.sh` проверяет формат C++, собирает приложение и запускает CTest.
-На macOS откройте `build/dev/Sevenzip.app`; из терминала:
+`check.sh` checks C++ formatting, builds the application and runs the default
+test suite. On macOS, open `build/dev/Sevenzip.app`, or launch it from a terminal:
 
 ```sh
 build/dev/Sevenzip.app/Contents/MacOS/Sevenzip /path/to/archive.7z
 ```
 
-Для Release без сборки тестовых программ:
+To build a Release package without test executables:
 
 ```sh
 ./scripts/build-app.sh
 ```
 
-На macOS готовое приложение находится в `dist/Sevenzip.app`.
-Промежуточные файлы сборки остаются в `build/`.
+On macOS, the resulting application is `dist/Sevenzip.app`.
+Intermediate build files remain in `build/`.
 
-`7zz` должен находиться в `PATH`; на macOS также проверяются стандартные
-пути Homebrew. Зависимости других платформ, подготовка native codec/SFX runtime,
-выбор engine и команды отдельных targets описаны в
-[руководстве по разработке](docs/development.md).
-Для Windows/Linux проверок используются общие x64
-[Hyper-V runners](docs/hyperv-runners.md).
+Put `7zz` on `PATH`; standard Homebrew locations are also checked on macOS.
+See the [development guide](docs/development.md) for platform dependencies,
+codec and self-extracting runtime preparation, engine selection and focused
+build commands. Local builds and tests do not require access to the maintainer's
+infrastructure.
 
-## Документация и агент
+## Documentation
 
-[Карта документации](docs/README.md) связывает разработку, provenance,
-архитектуру, UI specifications и проверки. Правила работы — в
-[AGENTS.md](AGENTS.md), профильные workflows — в `.agents/skills/`.
+The [documentation map](docs/README.md) links development instructions, source
+provenance, architecture, UI specifications and testing. Repository conventions
+are in [AGENTS.md](AGENTS.md), with task-specific workflows in `.agents/skills/`.
 
-Локальная память необязательна. Команда
-`sh .agents/skills/sz-setup/scripts/setup.sh` создаёт игнорируемый Git
-каталог памяти `.codex/` со ссылками на документацию и сохраняет существующие
-заметки при повторном запуске. Порядок чтения и handoff —
-в [протоколе памяти](docs/agent-memory.md).
+Local agent memory is optional. Run
+`sh .agents/skills/sz-setup/scripts/setup.sh` to initialize the Git-ignored
+`.codex/` directory with documentation links. Running it again preserves existing
+notes. See the [memory protocol](docs/agent-memory.md) for reading and handoffs.
 
-## Лицензии
+## Licenses
 
-Лицензии перенесённых исходников сохранены в
-[third_party/7zip/License.txt](third_party/7zip/License.txt).
-У Qt Widgets доступны LGPLv3/GPLv2 и коммерческая лицензия.
-Собственный Qt/UI и integration-код Sevenzip распространяется под
-[MIT](LICENSE). Эта лицензия не заменяет лицензии перенесённого 7-Zip,
-Qt и остальных зависимостей; их notices сохраняются отдельно.
+This repository contains code under several licenses. [MIT](LICENSE) applies
+to original project code unless another license is specified. Ported 7-Zip code
+retains its own licenses; the exFAT module and tools adapted from htopQt use
+GPL-2.0-or-later. Qt and other dependencies retain their own terms.
+See [third-party notices](THIRD_PARTY_NOTICES.md).

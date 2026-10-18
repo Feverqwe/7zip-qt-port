@@ -1,7 +1,8 @@
 # Hyper-V runners
 
-Sevenzip Desktop reuses `runner-linux` and `runner-windows` on Windows 11
-Hyper-V host `192.168.1.14`, host SSH account `anton`. VM storage stays under
+Sevenzip Desktop reuses `runner-linux` and `runner-windows` on a private Windows 11
+Hyper-V host configured through the maintainer's local `runners` skill. Host
+addresses and SSH credentials belong in local configuration. VM storage stays under
 `D:\runner`; Windows guest `C:` is inside its VHDX on that disk. These are the
 same shared x64 guests used by htopQt, with one persistent Sevenzip worktree
 per platform. Run IDs identify logs, not new source/build directories.
