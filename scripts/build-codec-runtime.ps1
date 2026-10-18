@@ -14,7 +14,9 @@ if ($env:OS -ne 'Windows_NT') { throw 'Run this script on Windows.' }
 if (-not $Architecture -or $env:VSCMD_ARG_TGT_ARCH -ne $Architecture) {
     throw 'Choose a matching MSVC developer environment and -Architecture arm64, x64 or x86.'
 }
-foreach ($tool in @('git', 'tar', 'nmake', 'cl', 'link', 'rc')) {
+# Git Bash's GNU tar treats drive-letter paths as remote archive names.
+$tar = Join-Path $env:SystemRoot 'System32/tar.exe'
+foreach ($tool in @('git', $tar, 'nmake', 'cl', 'link', 'rc')) {
     $null = Get-Command $tool -ErrorAction Stop
 }
 function Invoke-Checked([string]$Program, [string[]]$Arguments) {
@@ -61,7 +63,7 @@ $null = New-Item -ItemType Directory -Path $snapshot
 try {
     $archive = Join-Path $snapshot 'source.tar'
     Invoke-Checked 'git' @('-C', $upstream, 'archive', "--output=$archive", $revision)
-    Invoke-Checked 'tar' @('-xf', $archive, '-C', $snapshot)
+    Invoke-Checked $tar @('-xf', $archive, '-C', $snapshot)
     $files = [ordered]@{}
     foreach ($name in $artifacts.Keys) {
         $bundle = Join-Path $snapshot $artifacts[$name]

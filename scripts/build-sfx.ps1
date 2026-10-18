@@ -16,7 +16,9 @@ if (-not $Architecture) { throw 'Choose -Architecture arm64, x64 or x86 in a mat
 if ($env:VSCMD_ARG_TGT_ARCH -ne $Architecture) {
     throw 'The MSVC developer environment must match -Architecture.'
 }
-foreach ($tool in @('git', 'tar', 'nmake', 'cl', 'link', 'rc')) {
+# Git Bash's GNU tar treats drive-letter paths as remote archive names.
+$tar = Join-Path $env:SystemRoot 'System32/tar.exe'
+foreach ($tool in @('git', $tar, 'nmake', 'cl', 'link', 'rc')) {
     $null = Get-Command $tool -ErrorAction Stop
 }
 function Invoke-Checked([string]$Program, [string[]]$Arguments) {
@@ -59,7 +61,7 @@ try {
     $archive = Join-Path $snapshot 'source.tar'
     # PowerShell 5.1 binary pipelines corrupt archives: let Git write the file.
     Invoke-Checked 'git' @('-C', $upstream, 'archive', "--output=$archive", $revision)
-    Invoke-Checked 'tar' @('-xf', $archive, '-C', $snapshot)
+    Invoke-Checked $tar @('-xf', $archive, '-C', $snapshot)
     $bundle = Join-Path $snapshot 'CPP/7zip/Bundles/SFXWin'
     Push-Location -LiteralPath $bundle
     try {

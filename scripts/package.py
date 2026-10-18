@@ -118,12 +118,10 @@ def compact_and_sign(bundle):
             thin = path.with_name(path.name + ".thin")
             subprocess.run(["lipo", str(path), "-thin", architecture, "-output", str(thin)], check=True)
             thin.replace(path)
-        signed = subprocess.run(["codesign", "--display", str(path)],
-                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        if signed.returncode == 0:
-            # These bytes are about to change; sign the finished payload below.
-            subprocess.run(["codesign", "--remove-signature", str(path)], check=True)
-        subprocess.run(["strip", "-x", str(path)], check=True)
+        # Removing a signature first can leave __LINKEDIT padding rejected by
+        # Xcode 16 strip. Let strip process the signed layout; sign_bundle
+        # replaces the invalidated signatures and verifies the final payload.
+        subprocess.run(["strip", "-x", "-no_code_signature_warning", str(path)], check=True)
     sign_bundle(bundle)
 
 
