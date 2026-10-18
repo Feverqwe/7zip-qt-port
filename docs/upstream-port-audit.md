@@ -33,6 +33,9 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 
 ## Новые изменения
 
+- [Владелец отложенного Rename](upstream-port-audit/deferred-rename-owner.md)
+  — привязка завершения редактора к исходной панели, папке и элементу списка.
+
 - [Адаптивные цвета интерфейса](upstream-port-audit/adaptive-colors.md)
   — общие семантические цвета, фон справки как у окна и обновление открытых видов.
 

@@ -54,8 +54,7 @@ HRESULT MainWindow::showDirectory(const QString &path, bool remember, bool sourc
         flatView_->setChecked(flatDisk_);
     }
     entries_.clear();
-    renameEditingItem_ = nullptr;
-    renameOriginalPath_.clear();
+    renameEdit_.reset();
     table_->clearSelection();
     table_->setSortingEnabled(false);
     table_->setRowCount(0);

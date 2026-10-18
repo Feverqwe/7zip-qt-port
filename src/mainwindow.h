@@ -50,6 +50,7 @@
 #include <QMessageBox>
 #include <QMimeData>
 #include <QPainter>
+#include <QPersistentModelIndex>
 #include <QPlainTextEdit>
 #include <QPointer>
 #include <QPushButton>
@@ -253,7 +254,16 @@ class MainWindow : public QMainWindow {
     void executeCopyDestination(bool move, bool copyToSame, unsigned sourceIndex,
                                 const QString &destination, const CRecordVector<UInt32> &indices,
                                 bool useDestPanel, bool useTemp);
+    struct RenameEdit {
+        unsigned Panel;
+        CMyComPtr<IFolderFolder> Folder;
+        QPersistentModelIndex Item;
+        quint32 SourceIndex;
+        QString Path;
+    };
+    void connectRenameEditor(QAbstractItemView &view);
     void beginRename(int row);
+    void finishDeferredRename(const RenameEdit &edit, const QString &name);
     void finishFilesystemRename(quint32 sourceIndex, const QString &originalPath,
                                 const QString &name);
     QStringList selectedArchivePaths();
@@ -399,9 +409,7 @@ class MainWindow : public QMainWindow {
     QAction *move_ = nullptr;
     QAction *remove_ = nullptr;
     QAction *rename_ = nullptr;
-    QTableWidgetItem *renameEditingItem_ = nullptr;
-    QString renameOriginalPath_;
-    quint32 renameSourceIndex_ = 0;
+    std::optional<RenameEdit> renameEdit_;
     bool renameActivationPending_ = false;
     QAction *split_ = nullptr;
     QAction *combine_ = nullptr;
