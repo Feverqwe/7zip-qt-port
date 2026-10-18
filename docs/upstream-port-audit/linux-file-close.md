@@ -55,3 +55,47 @@ The baseline verifier passed using a disposable index that represented both
 the FileIO move and the concurrent, unstaged CommandLineParser move; the real
 index excluded the latter from this commit. No full gate, opt-in slow matrix
 or rendered UI comparison was run for this nonvisual change.
+
+## POSIX output reuse and deferred metadata — 2026-10-18
+
+The subsequent complete FileIO.cpp/header review also covered Windows handle
+creation/close, device size/read buffers, read/write/seek, metadata and their
+FileStreams, MultiOutStream, extraction and filesystem consumers. The Windows
+association adapter retains local QSettings/string owners through registry
+revision collection and original registry operations; no new lifetime gap was
+established there. Windows close behavior was not changed to imitate Linux.
+
+The source POSIX COutFile open wrapper assigned the next Path before calling
+the base OpenBinary, whose nonvirtual Close bypassed COutFile's deferred
+metadata finalization. Reusing an output object therefore lost the first
+file's requested timestamp and could apply it to the second file. The same
+loss occurred when opening the next path failed. Both implicit-close cases
+failed on the macOS baseline; the explicit-close control passed.
+
+OpenBinary_forWrite_oflag now calls the existing COutFile::Close before
+changing Path, respects its failure, and clears the previous file's deferred
+metadata flags before accepting another output. The existing metadata, time
+conversion, OS I/O and error algorithms are retained; mode_for_Create is
+unchanged. This is a local ownership correction in the copied source, not a
+new filesystem implementation. No module, dependency or source branch was
+omitted; the borrowed formatting outside the small change is retained.
+
+The new public file_output_lifecycle suite reuses one output for two private
+files, checks their bytes and timestamps, and covers rejected reopening plus
+explicit Close. The fixture uses Unicode/spaces and ordinary local operations;
+there is no memory-failure injection or standalone Qt example. Windows runs
+the same cases as a control for its immediate metadata implementation.
+
+The application built on macOS arm64, Linux x64 and Windows x64 / Qt 6.12;
+guest application run `20261018T131613Z-d8054420`. file_output_lifecycle,
+multiout_lifecycle, filesystem_link and source_update_backend passed on all
+three platforms, with linux_file_close also passing on Linux
+(`20261018T131315Z-216007e4`). archive_volume_creation in that batch failed
+only its two normal/compact visibility assertions in the concurrently changing
+Add dialog; that suite is not accepted as a whole by this iteration.
+Additional archive_preparation, source_extract_backend and native_zip_writer
+suites passed on macOS (3/3, 0.78 s), Linux (3/3, 1.05 s) and Windows
+(3/3, 4.20 s), guest run `20261018T131502Z-e36fd2af`.
+Existing builds and compiler caches were reused. No full/slow gate or new
+appearance acceptance was run; the independent Add geometry failures remain
+explicit.

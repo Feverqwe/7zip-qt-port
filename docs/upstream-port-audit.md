@@ -57,8 +57,8 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 - [Владение при исключении копирования object vector](upstream-port-audit/object-vector-ownership.md)
   — освобождение уже скопированных владельцев при отказе очередного элемента.
 
-- [Владение дескриптором после ошибки Linux close](upstream-port-audit/linux-file-close.md)
-  — сохранение ошибки, защита повторно использованного дескриптора и очистка томов.
+- [Владение native-файлами при close и повторном открытии](upstream-port-audit/linux-file-close.md)
+  — ошибки Linux close, очистка томов и изоляция отложенных метаданных POSIX-выходов.
 
 - [Владение файлами и состояние volume writer](upstream-port-audit/multiout-lifetime.md)
   — очистка при отказе выделения памяти и корректное усечение предвыделенных томов.

@@ -983,6 +983,11 @@ bool CInFile::ReadFull(void *data, size_t size, size_t &processed) throw()
 
 bool COutFile::OpenBinary_forWrite_oflag(const char *name, int oflag)
 {
+  // Finalize the previous output while its path and deferred metadata still
+  // belong together. OpenBinary() alone only calls the base handle close.
+  if (!Close())
+    return false;
+  CTime_defined = ATime_defined = MTime_defined = mode_for_Close_defined = false;
   Path = name; // change it : set it only if open is success.
   return OpenBinary(name, oflag, mode_for_Create);
 }
