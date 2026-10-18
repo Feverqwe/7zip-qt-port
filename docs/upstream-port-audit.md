@@ -33,6 +33,9 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 
 ## Новые изменения
 
+- [Смена владельца native drag-сессии](upstream-port-audit/native-drag-session.md)
+  — прежний MIME-объект не очищает данные следующего перетаскивания.
+
 - [Владение shell-подменю при отказе вставки](upstream-port-audit/shell-menu-ownership.md)
   — передача native/Qt menu tree только после успешной вставки в родителя.
 

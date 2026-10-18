@@ -26,6 +26,7 @@ class QtNativePanelDragConverter final : public QObject, public QWindowsMimeConv
   private:
     mutable QByteArray token_;
     mutable std::shared_ptr<IQtNativeDragData> data_;
-    QPointer<const QMimeData> mime_;
+    mutable QPointer<const QMimeData> mime_;
+    QMetaObject::Connection mimeDestroyed_;
 };
 #endif

@@ -39,15 +39,17 @@ std::shared_ptr<IQtNativeDragData> QtNativePanelDragConverter::Read(const QMimeD
     if (token.isEmpty() || token != token_)
         return nullptr;
     if (mime_ != &mime) {
+        disconnect(mimeDestroyed_);
         mime_ = &mime;
-        connect(&mime, &QObject::destroyed, this, [this, source = &mime] {
-            if (!mime_ || mime_ == source)
+        mimeDestroyed_ = connect(&mime, &QObject::destroyed, this, [this, source = &mime, token] {
+            if (token_ == token && (!mime_ || mime_ == source))
                 Clear();
         });
     }
     return data_;
 }
 void QtNativePanelDragConverter::Clear() {
+    disconnect(mimeDestroyed_);
     token_.clear();
     data_.reset();
     mime_.clear();
@@ -76,8 +78,14 @@ QVariant QtNativePanelDragConverter::convertToMime(const QString &mime, IDataObj
                                                    QMetaType) const {
     if (!canConvertToMime(mime, data))
         return {};
-    data_ = ReadPanelDragDataObject(data);
-    token_ = QUuid::createUuid().toByteArray();
+    const auto converted = ReadPanelDragDataObject(data);
+    const auto token = QUuid::createUuid().toByteArray();
+    // A new conversion can precede Read of its MIME owner. Retire the old
+    // owner's cleanup before publishing the next retained native session.
+    disconnect(mimeDestroyed_);
+    mime_.clear();
+    token_ = token;
+    data_ = converted;
     return token_;
 }
 QString QtNativePanelDragConverter::mimeForFormat(const FORMATETC &format) const {

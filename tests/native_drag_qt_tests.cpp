@@ -141,6 +141,52 @@ class NativeDragQtTests final : public QObject {
         receiver.reset();
         QVERIFY(weak.expired());
     }
+    void retiredMimeCannotClearTheNextNativeSession_data() {
+        QTest::addColumn<bool>("retireBeforeRead");
+        QTest::newRow("before-next-read") << true;
+        QTest::newRow("after-next-read") << false;
+    }
+    void retiredMimeCannotClearTheNextNativeSession() {
+        QFETCH(bool, retireBeforeRead);
+        QtNativePanelDragConverter converter;
+        const FORMATETC format = {CF_HDROP, nullptr, DVASPECT_CONTENT, -1, TYMED_HGLOBAL};
+        const QString type = converter.mimeForFormat(format);
+        auto previous = std::make_unique<QMimeData>();
+        {
+            auto model = std::make_shared<CDataObject>();
+            model->Names.Add(L"C:\\previous δ.txt");
+            CMyComPtr<IDataObject> data;
+            QCOMPARE(CreatePanelDragDataObject(model, &data), S_OK);
+            previous->setData(type,
+                              converter.convertToMime(type, data, QMetaType::fromType<QByteArray>())
+                                  .toByteArray());
+            QVERIFY(converter.Read(*previous));
+        }
+        auto current = std::make_unique<QMimeData>();
+        auto model = std::make_shared<CDataObject>();
+        model->Names.Add(L"C:\\current 空 with spaces.txt");
+        std::weak_ptr<CDataObject> weak = model;
+        CMyComPtr<IDataObject> data;
+        QCOMPARE(CreatePanelDragDataObject(model, &data), S_OK);
+        current->setData(
+            type,
+            converter.convertToMime(type, data, QMetaType::fromType<QByteArray>()).toByteArray());
+        model.reset();
+        data.Release();
+        if (retireBeforeRead)
+            previous.reset();
+        auto receiver = converter.Read(*current);
+        QVERIFY(receiver);
+        previous.reset();
+        UStringVector names;
+        QCOMPARE(receiver->GetNames(names), S_OK);
+        QCOMPARE(names.Size(), unsigned(1));
+        QCOMPARE(ToQString(names[0]), QStringLiteral("C:\\current 空 with spaces.txt"));
+        current.reset();
+        QVERIFY(!weak.expired());
+        receiver.reset();
+        QVERIFY(weak.expired());
+    }
     void qtPlatformMimeRetainsOriginalNativeProtocol() {
         QCOMPARE(QGuiApplication::platformName(), QStringLiteral("windows"));
         QTemporaryDir fixture;
