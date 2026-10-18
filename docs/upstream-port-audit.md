@@ -33,6 +33,9 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 
 ## Новые изменения
 
+- [COM server locks native shell DLL](upstream-port-audit/native-shell-server-lock.md)
+  — запрет выгрузки модуля до освобождения всех LockServer-владельцев.
+
 - [Владельцы результатов platform lookup](upstream-port-audit/platform-result-ownership.md)
   — очистка STRRET/GIO результатов при исключении и проверка ADS/launcher boundaries.
 

@@ -11,6 +11,7 @@
 #include <QLibrary>
 #include <QProcess>
 #include <QProcessEnvironment>
+#include <QScopeGuard>
 #include <QStandardPaths>
 #include <QTemporaryDir>
 #include <QtTest>
@@ -154,6 +155,45 @@ class NativeShellComTests final : public QObject {
         enumeration.Release();
         QCOMPARE(canUnload(), S_OK);
         QVERIFY(library.unload());
+    }
+
+    void serverLocksRetainModuleAcrossFactoryLifetimes() {
+        NWindows::NCOM::CComInitializer initialized;
+        QLibrary library(QString::fromUtf8(NATIVE_SHELL_LIBRARY));
+        QVERIFY2(library.load(), qPrintable(library.errorString()));
+        const auto canUnload = reinterpret_cast<CanUnload>(library.resolve("DllCanUnloadNow"));
+        const auto getClass = reinterpret_cast<GetClass>(library.resolve("DllGetClassObject"));
+        QVERIFY(canUnload && getClass);
+        QCOMPARE(canUnload(), S_OK);
+        unsigned locks = 0;
+        const auto cleanup = qScopeGuard([&] {
+            {
+                CMyComPtr<IClassFactory> factory;
+                if (locks && getClass(kClass, IID_IClassFactory,
+                                      reinterpret_cast<void **>(&factory)) == S_OK)
+                    while (locks) {
+                        factory->LockServer(FALSE);
+                        --locks;
+                    }
+            }
+            library.unload();
+        });
+        CMyComPtr<IClassFactory> factory;
+        QCOMPARE(getClass(kClass, IID_IClassFactory, reinterpret_cast<void **>(&factory)), S_OK);
+        for (unsigned i = 0; i < 2; ++i) {
+            QCOMPARE(factory->LockServer(TRUE), S_OK);
+            ++locks;
+        }
+        factory.Release();
+        QCOMPARE(canUnload(), S_FALSE);
+        while (locks) {
+            QCOMPARE(getClass(kClass, IID_IClassFactory, reinterpret_cast<void **>(&factory)),
+                     S_OK);
+            QCOMPARE(factory->LockServer(FALSE), S_OK);
+            --locks;
+            factory.Release();
+            QCOMPARE(canUnload(), locks ? S_FALSE : S_OK);
+        }
     }
 
     void enumeratedChildrenOutliveRootAndRetainModule() {
