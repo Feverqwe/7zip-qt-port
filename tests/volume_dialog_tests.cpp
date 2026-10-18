@@ -20,7 +20,7 @@
 class VolumeDialogTests : public QObject {
     Q_OBJECT
   private slots:
-    void sourceInitialFrameAndFixedFields() {
+    void initialFieldsStayReadableAndResize() {
         const QFont originalFont = QApplication::font();
         const auto restoreFont = qScopeGuard([&] { QApplication::setFont(originalFont); });
         int smallHeight = 0;
@@ -37,17 +37,16 @@ class VolumeDialogTests : public QObject {
             auto *path = dialog.findChild<QComboBox *>("volumeDestination");
             auto *volume = dialog.findChild<QComboBox *>("volumeSize");
             auto *browse = dialog.findChild<QPushButton *>("volumeBrowse");
-            QCOMPARE(browse->text(), QString("..."));
             const int volumeWidth = volume->width();
             const int browseWidth = browse->width();
-            QVERIFY(volumeWidth < path->width());
-            QVERIFY(browseWidth <= browse->height() * 2);
+            for (QWidget *field : QList<QWidget *>{path, volume, browse})
+                QVERIFY(UiInspection::fullyVisible(*field, dialog));
             const int pathWidth = path->width();
             const int initialHeight = dialog.height();
             dialog.resize(dialog.width() + 180, dialog.height());
             // XCB's window manager publishes resize asynchronously.
             QTRY_VERIFY(path->width() > pathWidth);
-            QCOMPARE(volume->width(), volumeWidth);
+            QTRY_VERIFY(volume->width() > volumeWidth);
             QCOMPARE(browse->width(), browseWidth);
             QVERIFY(
                 UiInspection::writeReport(dialog, QString("split-source-fields-%1").arg(points)));

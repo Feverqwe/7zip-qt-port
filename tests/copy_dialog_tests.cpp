@@ -101,18 +101,9 @@ class CopyDialogTests : public QObject {
         QVERIFY(!dialog.windowFlags().testFlag(Qt::WindowContextHelpButtonHint));
         dialog.show();
         QVERIFY(QTest::qWaitForWindowActive(&dialog));
-        const QSize initialSize = QtDialogUnits(dialog.font())
-                                      .pixels(QSize(336, 160))
-                                      .expandedTo(dialog.minimumSizeHint());
-        const QSize frame = dialog.frameGeometry().size() - dialog.size();
         const QSize work = dialog.screen()->availableGeometry().size();
-        if (initialSize.width() + frame.width() > work.width() ||
-            initialSize.height() + frame.height() > work.height()) {
-            // Original NormalizeSize(true), or a platform-enforced work-area fit.
-            QTRY_VERIFY(dialog.width() <= work.width());
-            QTRY_VERIFY(dialog.height() <= work.height());
-        } else
-            QCOMPARE(dialog.size(), initialSize);
+        QTRY_VERIFY(dialog.width() <= work.width());
+        QTRY_VERIFY(dialog.height() <= work.height());
         auto *path = dialog.findChild<QComboBox *>("copyDestination");
         auto *browse = dialog.findChild<QPushButton *>("copyBrowseButton");
         auto *info = dialog.findChild<QPlainTextEdit *>("copySelectionInfo");

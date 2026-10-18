@@ -1,7 +1,9 @@
 #include "qtlinkcontrols.h"
 #include "7zip/UI/FileManager/LinkDialogRes.h"
+#include "qtdialoglayout.h"
 #include "qtdialogscreenservices.h"
 #include "qtdialogunits.h"
+#include "qtlangbuttonbox.h"
 #include "qtlangcontrols.h"
 #include "qtlinkservices.h"
 #include "qtmodalresult.h"
@@ -36,9 +38,8 @@ void CQtLinkWindow::AddPathRow(QVBoxLayout *layout, bool to) {
              to ? "Link to:" : "Link from:");
     label->setMinimumHeight(units.pixels(QSize(0, 8)).height());
     layout->addWidget(label);
-    layout->addSpacing(units.pixels(QSize(0, 2)).height());
     auto *row = new QHBoxLayout;
-    row->setSpacing(units.pixels(QSize(8, 0)).width());
+    row->setSpacing(8);
     auto *combo = new QComboBox(this);
     combo->setEditable(true);
     combo->setInsertPolicy(QComboBox::NoInsert);
@@ -87,30 +88,27 @@ QWidget *CQtLinkWindow::BuildLinkTypes() {
     return group;
 }
 void CQtLinkWindow::BuildControls() {
-    const QtDialogUnits units(font());
     setWindowFlag(Qt::WindowMinMaxButtonsHint);
     setWindowFlag(Qt::WindowContextHelpButtonHint, false);
     setObjectName("IDD_LINK");
     QtBindResourceText(this, IDD_LINK, "Link");
-    auto *outer = new QVBoxLayout(this);
-    const QSize margin = units.pixels(QSize(8, 8));
-    outer->setContentsMargins(margin.width(), margin.height(), margin.width(), margin.height());
-    outer->setSpacing(margin.height());
+    auto *buttons = new QtLangButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
+    buttons->setObjectName("linkButtons");
+    auto *outer = QtCreateDialogLayout(*this, *buttons);
     auto *content = new QWidget(this);
     auto *layout = new QVBoxLayout(content);
     layout->setContentsMargins(0, 0, style()->pixelMetric(QStyle::PM_ScrollBarExtent), 0);
-    layout->setSpacing(0);
+    layout->setSpacing(8);
     AddPathRow(layout, false);
-    layout->addSpacing(units.pixels(QSize(0, 6)).height());
+    layout->addSpacing(12);
     AddPathRow(layout, true);
-    layout->addSpacing(units.pixels(QSize(0, 4)).height());
     auto *current = new QLabel(this);
     current->setWordWrap(true);
     current->setTextFormat(Qt::PlainText);
     current->hide();
     Register(IDT_LINK_PATH_TO_CUR, "IDT_LINK_PATH_TO_CUR", current);
     layout->addWidget(current);
-    layout->addSpacing(units.pixels(QSize(0, 6)).height());
+    layout->addSpacing(12);
     layout->addWidget(BuildLinkTypes());
     layout->addStretch();
     auto *scroll = new QScrollArea(this);
@@ -120,24 +118,14 @@ void CQtLinkWindow::BuildControls() {
     scroll->setWidget(content);
     scroll->setMinimumHeight(content->minimumSizeHint().height());
     outer->addWidget(scroll, 1);
-    auto *footer = new QHBoxLayout;
-    footer->setSpacing(margin.width());
-    footer->addStretch();
-    auto *link = new QPushButton(this);
-    Register(IDB_LINK_LINK, "IDB_LINK_LINK", link, "Link");
+    auto *link = buttons->button(QDialogButtonBox::Ok);
+    Register(IDB_LINK_LINK, "IDB_LINK_LINK", link);
     link->setDefault(true);
     connect(link, &QPushButton::clicked, this,
             [this, link] { OnButtonClicked(IDB_LINK_LINK, link); });
-    footer->addWidget(link);
-    auto *cancel = new QPushButton(this);
+    auto *cancel = buttons->button(QDialogButtonBox::Cancel);
     Register(2, "IDCANCEL", cancel, "Cancel");
-    for (auto *button : {link, cancel}) {
-        button->setFixedWidth(qMax(units.pixels(QSize(64, 0)).width(), button->sizeHint().width()));
-        button->setMinimumHeight(units.pixels(QSize(0, 16)).height());
-    }
     connect(cancel, &QPushButton::clicked, this, &QDialog::reject);
-    footer->addWidget(cancel);
-    outer->addLayout(footer);
     resize(QSize(qMax(360, sizeHint().width()), sizeHint().height()).expandedTo(minimumSizeHint()));
 }
 void CQtLinkWindow::SetItemText(unsigned id, const UString &text) {
@@ -163,6 +151,9 @@ qintptr CQtLinkWindow::Create(unsigned, QWidget *parent) {
         setParent(parent, windowFlags());
     BuildControls();
     OnInit();
+    static_cast<QtLangButtonBox *>(findChild<QDialogButtonBox *>("linkButtons"))
+        ->SetAcceptText("DialogRedesign", QT_TRANSLATE_NOOP("DialogRedesign", "Create link"));
+    controls_.value(IDC_LINK_PATH_FROM)->setFocus();
     return exec();
 }
 void CQtLinkWindow::resizeEvent(QResizeEvent *event) {

@@ -370,14 +370,17 @@ Implemented view: `src/CPP/7zip/UI/FileManager/CopyDialog.cpp`.
 - Destination label precedes the editable path; Browse stays to its right.
 - Browse retains the original twenty-DLU utility-button width instead of the
   native style's ordinary push-button minimum, leaving the row for the path.
-- Initial client follows CopyDialog.rc336×160DLU with Qt font mapping and native
-  minimum protection. Source NormalizeSize(true) applies once at first native
+- The redesigned form uses the shared dialog margins/footer and sizes the
+  initial summary by its content area rather than the old RC frame.
+  Source NormalizeSize(true) applies once at first native
   Show when the frame overlaps and exceeds the work area. EN/RU Copy/Move
   regressions cover9/12/32pt initial/compact states. Source resizable chrome
   requests minimize/maximize, subject to native modal-window conventions.
 - Selection counts and known sizes precede the source path and first five
   relative names; a larger selection ends with an ellipsis. Folder names end
-  in a separator. The summary stays below the destination and above OK/Cancel.
+  in a separator. The summary stays below the destination and above the footer.
+  The primary action names Copy, Move or Combine according to the caller,
+  including live localization; its existing acceptance role is unchanged.
 - Names preserve line boundaries. Read-only scrolling makes the displayed
   summary and long filenames reachable without enlarging the footer.
   The summary has no Tab stop, as the original static control; destination,
@@ -385,7 +388,7 @@ Implemented view: `src/CPP/7zip/UI/FileManager/CopyDialog.cpp`.
   spaces/Unicode; Escape preserves the original public value.
 - At 440×250 and 340×220 in Copy and Move states, the label fits, path and
   Browse do not overlap, the selection area and footer stay fully visible,
-  and OK/Cancel remain separate. Qt may enforce its style minimum size.
+  and primary/Cancel remain separate. Qt may enforce its style minimum size.
 
 Adaptations: Qt layouts replace Win32 resize arithmetic; QPlainTextEdit with
 no wrapping replaces the static text. `CPanel::GetItemsInfoString` supplies

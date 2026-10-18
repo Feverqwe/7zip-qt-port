@@ -13,6 +13,7 @@
 #include <QFileInfo>
 #include <QGroupBox>
 #include <QLabel>
+#include <QLineEdit>
 #include <QMessageBox>
 #include <QPushButton>
 #include <QRadioButton>
@@ -93,6 +94,8 @@ class LinkDialogTests final : public QObject {
                 ~Close() { Dialog.reject(); }
             } close{dialog};
             auto *from = dialog.findChild<QComboBox *>("IDC_LINK_PATH_FROM");
+            QVERIFY(QTest::qWaitForWindowActive(&dialog));
+            QVERIFY(from->hasFocus() || from->lineEdit()->hasFocus());
             from->setEditText(QStringLiteral("pending link 空"));
             SaveRegLang(UString(language.toStdWString().c_str()),
                         qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));

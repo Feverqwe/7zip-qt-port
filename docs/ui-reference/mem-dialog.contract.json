@@ -101,9 +101,10 @@
       "b": "IDE_MEM_SPIN_EDIT"
     },
     {
-      "a": "IDE_MEM_SPIN_EDIT",
+      "a": "IDG_MEM_ACTION",
       "kind": "above",
-      "b": "IDG_MEM_ACTION"
+      "b": "IDX_MEM_SAVE_LIMIT",
+      "adaptation": "Approved redesign presents the current Allow/Skip decision before the optional limit for future operations."
     },
     {
       "a": "IDR_MEM_ACTION_ALLOW",
@@ -119,6 +120,16 @@
       "a": "IDR_MEM_ACTION_ALLOW",
       "kind": "above",
       "b": "IDR_MEM_ACTION_SKIP_ARC"
+    },
+    {
+      "a": "IDT_MEM_MESSAGE",
+      "kind": "above",
+      "b": "IDG_MEM_ACTION"
+    },
+    {
+      "a": "IDE_MEM_SPIN_EDIT",
+      "kind": "above",
+      "b": "IDX_MEM_REMEMBER"
     }
   ],
   "states": [
@@ -132,7 +143,7 @@
         {
           "source": "CPP/7zip/UI/FileManager/MemDialog.cpp",
           "symbol": "CMemDialog::OnInit",
-          "requirement": "Native grouping/order and state are retained at normal and compact sizes."
+          "requirement": "Source RAM/default/limit/remember state is retained with the current decision before future-limit settings."
         }
       ],
       "assert": [
@@ -268,7 +279,7 @@
         {
           "source": "CPP/7zip/UI/FileManager/MemDialog.cpp",
           "symbol": "CMemDialog::OnInit",
-          "requirement": "Native grouping/order and state are retained at normal and compact sizes."
+          "requirement": "Source RAM/default/limit/remember state is retained with the current decision before future-limit settings."
         }
       ],
       "assert": [

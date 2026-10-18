@@ -10,6 +10,8 @@ Reference: pinned LangUtils.cpp::kLangPairs/LangSetDlgItems, GuiCommon.rc and
 each dialog's resource/OnInit caller. Selected 7-Zip language controls OK,
 Cancel, Yes, No, Close, Help and Continue. Missing entries keep the resource
 caption; Memory uses IDCONTINUE. Hot reload preserves roles and pending input.
+The approved redesign replaces generic OK with the result of Copy/Move/Combine,
+Split and password Continue, using application catalogs and the same button role.
 Options property-sheet/native dialogs retain their platform language owner.
 `language_standard_buttons` checks twelve source consumers at their normal/
 compact sizes below and produces48 EN/RU footer reports per platform. Reports on all three platforms reviewed
@@ -29,16 +31,18 @@ changing stored full values, clipboard/detail or acceptance behavior.
 ### Link (P2-05)
 
 Reference: pinned FileManager/LinkDialog.rc and source OnInit/OnButton_Link.
-Initial size follows visible controls and native minima. Root margins are8DLU;
+Initial size follows visible controls and native minima. Root/footer use the
+shared redesigned dialog layout;
 Browse is20DLU wide. Empty Current target text reserves no row, and native
-spacing separates paths and Link Type. The footer uses64×16DLU buttons with
-native caption protection.
+spacing separates paths and Link Type. The footer uses a native QDialogButtonBox
+with content-sized Create link/Cancel actions.
 The source resizable/minimize/maximize capabilities are requested through Qt
 window flags; native window managers may suppress modal title-bar controls.
 The resource has no context-help title-bar button.
 Link from combo/browse precedes Link to combo/browse and current target text.
 Link Type contains Hard→File Symbolic→Directory Symbolic→Junction→WSL in source
-order. Link is the default footer button, followed by Cancel. Qt scrolls the
+order. Create link is the default footer button; button ordering follows the
+platform. Qt scrolls the
 content when necessary; requested compact sizes expand to show the path inputs
 and all link choices. Desktop-only Junction/WSL remain visibly disabled on
 POSIX with a platform reason. Source radio/type choices and errors remain owned

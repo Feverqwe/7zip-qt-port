@@ -65,37 +65,27 @@ class OverwriteLayoutTests final : public QObject {
         const QRect yesBounds = UiInspection::bounds(*yes, dialog);
         const QRect noBounds = UiInspection::bounds(*no, dialog);
         const QRect cancelBounds = UiInspection::bounds(*cancel, dialog);
-        QCOMPARE(yesBounds.left(), noBounds.left());
-        QCOMPARE(yes->width(), no->width());
-        QCOMPARE(yes->width(), cancel->width());
-        if (width == 700)
-            QVERIFY(yesBounds.left() > dialog.width() / 8);
         if (extra) {
-            const QRect renameBounds = UiInspection::bounds(*rename, dialog);
-            QCOMPARE(yes->width(), yesAll->width());
-            QCOMPARE(yesAll->width(), noAll->width());
-            QVERIFY(rename->width() > yes->width());
-            QCOMPARE(cancelBounds.right(), renameBounds.right());
-            QVERIFY(cancelBounds.left() > renameBounds.left());
-            QCOMPARE(UiInspection::bounds(*yesAll, dialog).left(),
-                     UiInspection::bounds(*noAll, dialog).left());
+            QVERIFY(yesAll->isVisible() && noAll->isVisible() && rename->isVisible());
+            QVERIFY(yesBounds.bottom() < noBounds.top());
             dialog.ShowExtraButtons = false;
             QVERIFY(dialog.OnInit());
             QApplication::processEvents();
             QVERIFY(UiInspection::writeReport(
                 dialog,
                 QString("overwrite-layout-%1-%2-%3-hidden").arg(language).arg(width).arg(extra)));
-            QCOMPARE(UiInspection::bounds(*yes, dialog), yesBounds);
-            QCOMPARE(UiInspection::bounds(*no, dialog), noBounds);
-            QCOMPARE(UiInspection::bounds(*cancel, dialog), cancelBounds);
         } else {
-            QVERIFY(yesAll->isVisible() && noAll->isVisible() && rename->isVisible());
-            QVERIFY(!yesAll->isEnabled() && !noAll->isEnabled() && !rename->isEnabled());
-            // Unavailable batch choices retain the action grid.
-            QVERIFY(cancelBounds.left() - yesBounds.right() > yes->width());
+            QVERIFY(yesBounds.right() < noBounds.left());
+            QVERIFY(noBounds.right() < cancelBounds.left());
         }
+        QVERIFY(!yesAll->isVisible() && !noAll->isVisible() && !rename->isVisible());
+        for (auto *first : {yes, no, cancel})
+            for (auto *second : {yes, no, cancel})
+                if (first != second)
+                    QVERIFY(UiInspection::separate(*first, *second, dialog));
         dialog.ShowExtraButtons = true;
         QVERIFY(dialog.OnInit());
+        QApplication::processEvents();
         QVERIFY(yesAll->isEnabled() && noAll->isEnabled() && rename->isEnabled());
         for (const auto *button : {yes, no, yesAll, noAll, rename, cancel})
             if (button->isVisible()) {
@@ -119,8 +109,7 @@ class OverwriteLayoutTests final : public QObject {
         }
     }
 
-    void initialFrameTracksNativeFontScale() {
-        QSize sizes[2];
+    void initialFrameKeepsControlsReadableAtLargerFont() {
         const int points[] = {8, 12};
         for (int i = 0; i < 2; ++i) {
             COverwriteDialog dialog;
@@ -134,13 +123,17 @@ class OverwriteLayoutTests final : public QObject {
             QVERIFY(dialog.OnInit());
             dialog.show();
             QApplication::processEvents();
-            sizes[i] = dialog.size();
+            for (auto *button : dialog.findChildren<QPushButton *>())
+                if (button->isVisible()) {
+                    QVERIFY(UiInspection::fullyVisible(*button, dialog));
+                    QVERIFY(button->width() >= button->sizeHint().width());
+                }
+            for (auto *label : dialog.findChildren<QLabel *>())
+                if (label->isVisible())
+                    QVERIFY(UiInspection::labelFits(*label));
             QVERIFY(UiInspection::writeReport(dialog,
                                               QString("overwrite-initial-font-%1").arg(points[i])));
         }
-        // The source DIALOG template uses font-relative dialog units.
-        QVERIFY(sizes[1].width() > sizes[0].width() * 5 / 4);
-        QVERIFY(sizes[1].height() > sizes[0].height() * 5 / 4);
     }
 };
 

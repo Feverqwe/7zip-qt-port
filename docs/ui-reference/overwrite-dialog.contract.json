@@ -19,7 +19,7 @@
       "selector": {
         "name": "overwriteQuestionBegin"
       },
-      "textAdaptation": "Russian Qt captions or dynamic native message/value replace the English resource literal."
+      "textAdaptation": "Approved redesign labels the existing/incoming file columns instead of splitting one question around vertical rows."
     },
     "IDI_OVERWRITE_OLD_FILE": {
       "selector": {
@@ -38,7 +38,7 @@
       "selector": {
         "name": "overwriteQuestionEnd"
       },
-      "textAdaptation": "Russian Qt captions or dynamic native message/value replace the English resource literal."
+      "textAdaptation": "Approved redesign labels the existing/incoming file columns instead of splitting one question around vertical rows."
     },
     "IDI_OVERWRITE_NEW_FILE": {
       "selector": {
@@ -57,13 +57,13 @@
       "selector": {
         "name": "overwriteYes"
       },
-      "textAdaptation": "Russian Qt captions or dynamic native message/value replace the English resource literal."
+      "textAdaptation": "Approved redesign names Replace/Skip actions explicitly; source answer ID and localization are preserved."
     },
     "IDB_YES_TO_ALL": {
       "selector": {
         "name": "overwriteYesAll"
       },
-      "textAdaptation": "Russian Qt captions or dynamic native message/value replace the English resource literal."
+      "textAdaptation": "Approved redesign names Replace/Skip actions explicitly; source answer ID and localization are preserved."
     },
     "IDB_AUTO_RENAME": {
       "selector": {
@@ -75,13 +75,13 @@
       "selector": {
         "name": "overwriteNo"
       },
-      "textAdaptation": "Russian Qt captions or dynamic native message/value replace the English resource literal."
+      "textAdaptation": "Approved redesign names Replace/Skip actions explicitly; source answer ID and localization are preserved."
     },
     "IDB_NO_TO_ALL": {
       "selector": {
         "name": "overwriteNoAll"
       },
-      "textAdaptation": "Russian Qt captions or dynamic native message/value replace the English resource literal."
+      "textAdaptation": "Approved redesign names Replace/Skip actions explicitly; source answer ID and localization are preserved."
     },
     "IDCANCEL": {
       "selector": {
@@ -103,8 +103,9 @@
     },
     {
       "a": "IDT_OVERWRITE_OLD_FILE_SIZE_TIME",
-      "kind": "above",
-      "b": "IDT_OVERWRITE_QUESTION_END"
+      "kind": "left_of",
+      "b": "IDT_OVERWRITE_NEW_FILE_SIZE_TIME",
+      "adaptation": "Approved redesign compares existing/incoming files side by side; source metadata and answer IDs remain unchanged."
     },
     {
       "a": "IDT_OVERWRITE_QUESTION_END",
@@ -123,7 +124,7 @@
         {
           "source": "CPP/7zip/UI/FileManager/OverwriteDialog.cpp",
           "symbol": "COverwriteDialog::OnInit",
-          "requirement": "Keep native action grouping/order. User-requested Qt adaptation: unavailable batch actions remain visible but disabled instead of disappearing."
+          "requirement": "Source answers and ShowExtraButtons visibility are retained in the approved redesigned comparison/footer."
         }
       ],
       "assert": [
@@ -241,6 +242,21 @@
           "id": "IDCANCEL",
           "property": "fullyVisible",
           "equals": true
+        },
+        {
+          "id": "IDB_NO_TO_ALL",
+          "property": "visible",
+          "equals": false
+        },
+        {
+          "id": "IDB_AUTO_RENAME",
+          "property": "visible",
+          "equals": false
+        },
+        {
+          "id": "IDB_YES_TO_ALL",
+          "property": "visible",
+          "equals": false
         }
       ]
     },
@@ -254,7 +270,7 @@
         {
           "source": "CPP/7zip/UI/FileManager/OverwriteDialog.cpp",
           "symbol": "COverwriteDialog::OnInit",
-          "requirement": "Native grouping/order and state are retained at normal and compact sizes."
+          "requirement": "Source answers and ShowExtraButtons visibility are retained in the approved redesigned comparison/footer."
         }
       ],
       "assert": [

@@ -26,7 +26,7 @@ class SourcePromptPresentationTests final : public QObject {
         QApplication::processEvents();
         QVERIFY(UiInspection::writeReport(view, tag));
         const QSize resourceClient = QtDialogUnits(view.font()).pixels(source);
-        if (view.objectName() != "memDialog")
+        if (view.objectName() != "memDialog" && view.objectName() != "passwordDialog")
             QCOMPARE(view.size(),
                      resizable ? UiInspection::normalizedInitialClientSize(view, resourceClient)
                                : resourceClient.expandedTo(view.minimumSizeHint()));
@@ -86,11 +86,8 @@ class SourcePromptPresentationTests final : public QObject {
             QCOMPARE(view.focusWidget(), view.findChild<QLineEdit *>("passwordEdit"));
             const QRect show =
                 UiInspection::bounds(*view.findChild<QCheckBox *>("passwordShow"), view);
-            // Native button-box optical margins can extend its backing widget
-            // into the spacer; assert the source gap between layout items.
             const QRect footer = view.layout()->itemAt(view.layout()->count() - 1)->geometry();
-            QVERIFY(footer.top() - show.bottom() - 1 >=
-                    QtDialogUnits(view.font()).pixels(QSize(0, 12)).height());
+            QVERIFY(footer.top() > show.bottom());
         } else if (kind == 2) {
             CMemDialog view;
             view.FilePath = L"fixture 文件.bin";
@@ -108,13 +105,14 @@ class SourcePromptPresentationTests final : public QObject {
             QCOMPARE(view.findChild<QLineEdit *>("memLimit")->alignment(),
                      Qt::Alignment(Qt::AlignCenter));
             auto *remember = view.findChild<QCheckBox *>("memRemember");
-            auto *allow = view.findChild<QRadioButton *>("memAllow");
-            QVERIFY(remember->mapTo(&view, QPoint()).x() - allow->mapTo(&view, QPoint()).x() >=
-                    QtDialogUnits(view.font()).pixels(QSize(10, 0)).width());
             const QRect group = UiInspection::bounds(*view.findChild<QWidget *>("memAction"), view);
             const QRect footer = view.layout()->itemAt(view.layout()->count() - 1)->geometry();
-            QVERIFY(footer.top() - group.bottom() - 1 >=
-                    QtDialogUnits(view.font()).pixels(QSize(0, 10)).height());
+            const QRect save =
+                UiInspection::bounds(*view.findChild<QCheckBox *>("memSaveLimit"), view);
+            QVERIFY(group.bottom() < save.top());
+            QVERIFY(UiInspection::bounds(*pair, view).bottom() <
+                    UiInspection::bounds(*remember, view).top());
+            QVERIFY(footer.top() > UiInspection::bounds(*remember, view).bottom());
         } else {
             QWidget owner;
             owner.show();

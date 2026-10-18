@@ -107,20 +107,18 @@ extra buttons enabled/disabled, and MemDialog reports at 700×460 / 560×460 wit
 limit editing disabled/enabled. `ui_parity_overwrite` / `ui_parity_mem` run
 that current-build producer fixture before comparing pinned RC contracts.
 
-Overwrite order is destination notice, question start, old file icon/details,
-question end, new file icon/details, then two rows of Yes/Yes to all/Auto rename
-and No/No to all/Cancel. Source ReduceString, byte size and timestamp formatting
-remain native. No is the default when requested; unavailable extra actions stay
-visible but disabled, as requested in the gallery review.
-The footer is a compact block aligned right. Five standard buttons have equal
-native-text widths; Auto Rename uses the source 104/64 width proportion, enlarged
-if its translated text requires it. Cancel has a standard width and aligns with
-Auto Rename's right edge. Disabled extra buttons retain their columns and
-gaps, so Yes/No/Cancel do not move. File details start beside the top of each icon.
+The redesign places existing/incoming file details side by side beneath the
+destination notice, with shared dialog margins and a compact footer aligned right.
+Replace/Replace all/Auto rename and Skip/Skip all/Cancel retain all six source
+result IDs. When batch answers are disallowed they are hidden and the remaining
+actions share one row. Source ReduceString, byte size and timestamp formatting
+are preserved. Skip is the default when No is requested by the source.
+Widths follow native text hints rather than fixed ratios; details start beside
+the top of each icon. The earlier gallery's disabled extra actions are superseded
+by this redesign, restoring the source's visibility condition.
 `overwrite_layout` covers EN/RU, normal/compact widths, extra-action availability
-and reinitialization. Its initial-frame case checks growth between
-8pt and 12pt fonts: the source 356×216 dialog-unit frame maps through
-`QtDialogUnits` and may expand to Qt's minimum size. Responsive Qt layouts and
+and reinitialization. Its initial-frame case checks readable controls at
+8pt and 12pt fonts. Responsive Qt layouts and
 native font metrics are deliberate adaptations of the fixed Win32 dialog;
 they do not imply identical pixel dimensions. Rendered reference evidence is
 recorded in the [P3-06 audit](../archive/qt-port/upstream-port-audit/p3-06-2026-10-15.md).
@@ -128,17 +126,16 @@ Qt supplies one file icon; the optional second Windows EXE/ICO icon is omitted
 explicitly in the contract. Widths must fit labels and footer buttons without
 clipping. Default and native result IDs are checked behaviorally.
 
-Memory sizes its initial client to visible content, with eight-DLU root margins.
-The message is top-aligned; message and Action areas follow their content.
+Memory sizes its initial client to visible content, using the shared dialog
+margins/footer. The message is top-aligned; message and Action follow their content.
 The limit edit/spinner pair occupies50DLU with native minimum protection,
 with both arrow buttons fitting within the edit height,
-indented10DLU from the root margin; GB follows after8DLU. Remember has a10DLU
-inset from the radio buttons. Continue/Cancel are64×16DLU with native caption
-protection, with a minimum10DLU gap after Action. The source has no minimize/
+indented below its controlling checkbox; GB follows the pair. Continue/Cancel
+use native caption metrics. The source has no minimize/
 maximize/context-help title-bar buttons.
-Memory order is native requirement/limit/RAM message, change-limit checkbox,
-independent edit/spinner and GB label, Action group containing Allow/Skip and
-Remember, Continue/Cancel. Source RAM-dependent default and spinner range,
+Memory order is requirement/limit/RAM message, Allow/Skip action group,
+change-limit checkbox, independent edit/spinner and GB label, Remember,
+then Continue/Cancel. Source RAM-dependent default and spinner range,
 text validation, NeedSave/Remember/SkipArc and cancellation are preserved.
 The text field remains independent of the spinner range, including source
 acceptance of zero; invalid text does not close the dialog.
@@ -251,13 +248,9 @@ pixel coordinates or native button ordering.
 
 Reference: upstream `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`,
 `CPP/7zip/UI/FileManager/PasswordDialog.cpp/.h/.rc` (`IDD_PASSWORD`).
-`CPasswordDialog` shows a prompt, password edit, Show Password, then OK/Cancel.
-Initial client is216×88DLU, with eight-DLU root margins. The prompt is8DLU
-high, the edit begins at20DLU with14DLU minimum height, and Show Password begins
-at42DLU with10DLU minimum height. Footer buttons are64×16DLU protected by native
-metrics and use native standard-button ordering.
-The minimum gap from Show Password to the footer layout item is12DLU; native
-button-box optical margins remain platform geometry. The source has no minimize,
+`CPasswordDialog` shows a prompt, password edit, Show Password, then Continue/Cancel.
+The redesign uses shared dialog margins/footer, a content-sized initial height
+and native control/button metrics and ordering. The source has no minimize,
 maximize or context-help title-bar buttons. Compact Qt resize remains an
 accessibility adaptation of the fixed original form.
 Initial focus is the password edit. Initial Password/ShowPassword are applied before display. Toggling copies the

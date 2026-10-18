@@ -24,8 +24,8 @@
     },
     "IDOK": {
       "runtimeControlId": 1,
-      "selector": {"within": "copyButtons", "class": "QPushButton", "text": ["OK", "&OK", "ОК", "&ОК"]},
-      "textAdaptation": "Qt standard button text follows platform/localization."
+      "selector": {"within": "copyButtons", "class": "QPushButton", "text": ["OK", "&OK", "ОК", "&ОК", "Copy", "Move", "Combine", "Копировать", "Переместить", "Объединить"]},
+      "textAdaptation": "Approved redesign names the caller's Copy/Move/Combine result while retaining the acceptance role."
     },
     "IDCANCEL": {
       "runtimeControlId": 2,

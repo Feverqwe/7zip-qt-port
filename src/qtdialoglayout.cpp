@@ -1,17 +1,16 @@
 #include "qtdialoglayout.h"
-#include <QDialogButtonBox>
 #include <QResizeEvent>
 #include <QVBoxLayout>
 #include <QWidget>
 
-QVBoxLayout *QtCreateDialogLayout(QWidget &window, QDialogButtonBox &buttons) {
+QVBoxLayout *QtCreateDialogLayout(QWidget &window, QWidget &footer) {
     auto *frame = new QVBoxLayout(&window);
     frame->setContentsMargins(16, 16, 16, 16);
     frame->setSpacing(16);
     auto *content = new QVBoxLayout;
     content->setSpacing(8);
     frame->addLayout(content, 1);
-    frame->addWidget(&buttons);
+    frame->addWidget(&footer);
     return content;
 }
 

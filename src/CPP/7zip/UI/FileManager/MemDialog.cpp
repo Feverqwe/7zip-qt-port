@@ -26,14 +26,13 @@
 #include <QVBoxLayout>
 
 void CMemDialog::BuildPresentation() {
-    const QtDialogUnits units(font());
     setObjectName("memDialog");
     setWindowFlag(Qt::WindowContextHelpButtonHint, false);
     QtBindResourceText(this, IDD_MEM, "Memory usage request");
-    auto *layout = new QVBoxLayout(this);
-    const QSize margin = units.pixels(QSize(8, 8));
-    layout->setContentsMargins(margin.width(), margin.height(), margin.width(), margin.height());
-    layout->setSpacing(0);
+    auto *buttons =
+        new QtLangButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this, IDCONTINUE);
+    buttons->setObjectName("memButtons");
+    auto *layout = QtCreateDialogLayout(*this, *buttons);
     auto *message = new QtWrappingLabel(this);
     message->setObjectName("memMessage");
     message->setTextFormat(Qt::PlainText);
@@ -41,32 +40,24 @@ void CMemDialog::BuildPresentation() {
     message->setAlignment(Qt::AlignLeft | Qt::AlignTop);
     _controls.insert(IDT_MEM_MESSAGE, message);
     layout->addWidget(message);
-    layout->addSpacing(units.pixels(QSize(0, 4)).height());
+    layout->addSpacing(12);
+    layout->addWidget(BuildActions());
+    layout->addSpacing(12);
     auto *save = new QCheckBox(this);
     QtBindResourceText(save, IDX_MEM_SAVE_LIMIT, "Change allowed limit for next operations");
     save->setObjectName("memSaveLimit");
-    save->setMinimumHeight(units.pixels(QSize(0, 10)).height());
     _controls.insert(IDX_MEM_SAVE_LIMIT, save);
     layout->addWidget(save);
     connect(save, &QCheckBox::toggled, this, &CMemDialog::EnableSpin);
-    layout->addSpacing(units.pixels(QSize(0, 6)).height());
     layout->addWidget(BuildLimitRow());
-    layout->addSpacing(units.pixels(QSize(0, 8)).height());
-    layout->addWidget(BuildActions());
-    layout->addSpacing(units.pixels(QSize(0, 10)).height());
-    layout->addStretch();
-    auto *buttons =
-        new QtLangButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this, IDCONTINUE);
-    buttons->setObjectName("memButtons");
+    auto *remember = new QCheckBox(this);
+    QtBindResourceText(remember, IDX_MEM_REMEMBER, "&Repeat selected action for current operation");
+    remember->setObjectName("memRemember");
+    _controls.insert(IDX_MEM_REMEMBER, remember);
+    layout->addWidget(remember);
     QtBindResourceText(buttons->button(QDialogButtonBox::Ok), 411, "Continue");
-    buttons->layout()->setSpacing(margin.width());
-    for (auto *button : buttons->buttons()) {
-        button->setFixedWidth(qMax(units.pixels(QSize(64, 0)).width(), button->sizeHint().width()));
-        button->setMinimumHeight(units.pixels(QSize(0, 16)).height());
-    }
     connect(buttons, &QDialogButtonBox::accepted, this, &CMemDialog::OnContinue);
     connect(buttons, &QDialogButtonBox::rejected, this, &CMemDialog::reject);
-    layout->addWidget(buttons);
 }
 
 QWidget *CMemDialog::BuildLimitRow() {
@@ -75,7 +66,7 @@ QWidget *CMemDialog::BuildLimitRow() {
     auto *row = new QHBoxLayout(view);
     row->setContentsMargins(0, 0, 0, 0);
     row->setSpacing(0);
-    row->addSpacing(units.pixels(QSize(10, 0)).width());
+    row->addSpacing(24);
     auto *pair = new QWidget(view);
     pair->setObjectName("memLimitPair");
     auto *fields = new QHBoxLayout(pair);
@@ -123,6 +114,7 @@ QWidget *CMemDialog::BuildLimitRow() {
 QWidget *CMemDialog::BuildActions() {
     const QtDialogUnits units(font());
     auto *group = new QGroupBox(this);
+    group->setFlat(true);
     QtBindResourceText(group, IDG_MEM_ACTION, "Action");
     group->setObjectName("memAction");
     auto *actions = new QVBoxLayout(group);
@@ -139,15 +131,6 @@ QWidget *CMemDialog::BuildActions() {
     _controls.insert(IDR_MEM_ACTION_SKIP_ARC, skip);
     actions->addWidget(allow);
     actions->addWidget(skip);
-    auto *remember = new QCheckBox(group);
-    QtBindResourceText(remember, IDX_MEM_REMEMBER, "&Repeat selected action for current operation");
-    remember->setObjectName("memRemember");
-    remember->setMinimumHeight(units.pixels(QSize(0, 10)).height());
-    _controls.insert(IDX_MEM_REMEMBER, remember);
-    auto *rememberRow = new QHBoxLayout;
-    rememberRow->addSpacing(units.pixels(QSize(10, 0)).width());
-    rememberRow->addWidget(remember);
-    actions->addLayout(rememberRow);
     return group;
 }
 

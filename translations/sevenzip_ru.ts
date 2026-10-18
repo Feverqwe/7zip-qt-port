@@ -38,7 +38,7 @@
         <name>ArchiveRedesign</name>
         <message>
             <location filename="../src/CPP/7zip/UI/GUI/ExtractDialog.cpp" line="+72" />
-            <location filename="../src/mainwindow_language.cpp" line="+111" />
+            <location filename="../src/mainwindow_language.cpp" line="+120" />
             <source>Extract</source>
             <translation>Распаковать</translation>
         </message>
@@ -256,19 +256,19 @@
     <context>
         <name>CommandMenus</name>
         <message>
-            <location filename="../src/mainwindow_menus.cpp" line="+94" />
-            <location filename="../src/qtpanelcontextmenu.cpp" line="+107" />
+            <location filename="../src/mainwindow_menus.cpp" line="+88" />
+            <location filename="../src/qtpanelcontextmenu.cpp" line="+108" />
             <source>Checksums</source>
             <translation>Контрольные суммы</translation>
         </message>
         <message>
-            <location line="+79" />
+            <location line="+71" />
             <location line="+14" />
             <source>Time format</source>
             <translation>Формат времени</translation>
         </message>
         <message>
-            <location line="+148" />
+            <location line="+144" />
             <source>Presentation</source>
             <translation>Представление</translation>
         </message>
@@ -304,6 +304,69 @@
             <location filename="../src/createarchivedialog.cpp" line="+49" />
             <source>Incorrect archive path</source>
             <translation>Неверный путь к архиву</translation>
+        </message>
+    </context>
+    <context>
+        <name>DialogRedesign</name>
+        <message>
+            <location filename="../src/CPP/7zip/UI/FileManager/CopyDialog.cpp" line="+59" />
+            <source>Copy</source>
+            <translation>Копировать</translation>
+        </message>
+        <message>
+            <location line="+2" />
+            <source>Move</source>
+            <translation>Переместить</translation>
+        </message>
+        <message>
+            <location line="+2" />
+            <source>Combine</source>
+            <translation>Объединить</translation>
+        </message>
+        <message>
+            <location filename="../src/CPP/7zip/UI/FileManager/OverwriteDialog.cpp" line="+160" />
+            <source>Existing file</source>
+            <translation>Существующий файл</translation>
+        </message>
+        <message>
+            <location line="+3" />
+            <source>Incoming file</source>
+            <translation>Новый файл</translation>
+        </message>
+        <message>
+            <location line="+27" />
+            <source>Replace</source>
+            <translation>Заменить</translation>
+        </message>
+        <message>
+            <location line="+2" />
+            <source>Skip</source>
+            <translation>Пропустить</translation>
+        </message>
+        <message>
+            <location line="+3" />
+            <source>Replace all</source>
+            <translation>Заменить все</translation>
+        </message>
+        <message>
+            <location line="+3" />
+            <source>Skip all</source>
+            <translation>Пропустить все</translation>
+        </message>
+        <message>
+            <location filename="../src/CPP/7zip/UI/FileManager/PasswordDialog.cpp" line="+33" />
+            <source>Continue</source>
+            <translation>Продолжить</translation>
+        </message>
+        <message>
+            <location filename="../src/CPP/7zip/UI/FileManager/SplitDialog.cpp" line="+41" />
+            <source>Split</source>
+            <translation>Разделить</translation>
+        </message>
+        <message>
+            <location filename="../src/qtlinkcontrols.cpp" line="+155" />
+            <source>Create link</source>
+            <translation>Создать ссылку</translation>
         </message>
     </context>
     <context>
@@ -527,7 +590,7 @@ Are you sure you want to split archive into such volumes?</source>
     <context>
         <name>MemDialog</name>
         <message>
-            <location filename="../src/CPP/7zip/UI/FileManager/MemDialog.cpp" line="+231" />
+            <location filename="../src/CPP/7zip/UI/FileManager/MemDialog.cpp" line="+216" />
             <source>File: %1</source>
             <translation>Файл: %1</translation>
         </message>
@@ -5131,7 +5194,7 @@ Application modules:
     <context>
         <name>mainwindow</name>
         <message>
-            <location filename="../src/mainwindow.cpp" line="+173" />
+            <location filename="../src/mainwindow.cpp" line="+174" />
             <source> %1 items</source>
             <translation> %1 объектов</translation>
         </message>
@@ -5318,7 +5381,7 @@ Application modules:
     <context>
         <name>mainwindow_menus</name>
         <message>
-            <location filename="../src/mainwindow_menus.cpp" line="-327" />
+            <location filename="../src/mainwindow_menus.cpp" line="-309" />
             <source>Archive</source>
             <translation>Архив</translation>
         </message>
@@ -5328,7 +5391,7 @@ Application modules:
             <translation>Назад</translation>
         </message>
         <message>
-            <location line="+244" />
+            <location line="+227" />
             <source>Open archive…</source>
             <translation>Открыть архив…</translation>
         </message>
@@ -5336,8 +5399,8 @@ Application modules:
     <context>
         <name>mainwindow_panel</name>
         <message>
-            <location filename="../src/mainwindow_panel.cpp" line="+121" />
-            <location line="+97" />
+            <location filename="../src/mainwindow_panel.cpp" line="+123" />
+            <location line="+95" />
             <source>File list</source>
             <translation>Список файлов</translation>
         </message>
@@ -5472,7 +5535,7 @@ Application modules:
     <context>
         <name>qtcompressoptionscontrols</name>
         <message>
-            <location filename="../src/qtcompressoptionscontrols.cpp" line="+74" />
+            <location filename="../src/qtcompressoptionscontrols.cpp" line="+75" />
             <source>Override the format default for this option.</source>
             <translation>Задать значение вместо настройки формата по умолчанию.</translation>
         </message>
@@ -5648,7 +5711,7 @@ Application modules:
     <context>
         <name>qtlinkcontrols</name>
         <message>
-            <location filename="../src/qtlinkcontrols.cpp" line="+81" />
+            <location filename="../src/qtlinkcontrols.cpp" line="-73" />
             <source>This link type is available only on Windows.</source>
             <translation>Этот тип ссылки доступен только в Windows.</translation>
         </message>

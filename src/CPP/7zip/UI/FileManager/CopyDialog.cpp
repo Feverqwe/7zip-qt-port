@@ -8,6 +8,7 @@
 #include "BrowseDialog.h"
 #include "ViewSettings.h"
 #include "Windows/FileName.h"
+#include "qtdialoglayout.h"
 #include "qtdialogscreenservices.h"
 #include "qtdialogunits.h"
 #include "qtlangcontrols.h"
@@ -53,6 +54,13 @@ void CCopyDialog::BindLanguage(UInt32 titleID, UInt32 promptID, const QString &t
     QtBindLangText(this, titleID, ToQString(Title));
     QtBindLangText(findChild<QLabel *>("copyDestinationLabel"), promptID, ToQString(Static));
     QtBindLangText(_path, promptID, ToQString(Static), true);
+    auto *buttons = static_cast<QtLangButtonBox *>(findChild<QDialogButtonBox *>("copyButtons"));
+    if (titleID == IDS_COPY)
+        buttons->SetAcceptText("DialogRedesign", QT_TRANSLATE_NOOP("DialogRedesign", "Copy"));
+    else if (titleID == IDS_MOVE)
+        buttons->SetAcceptText("DialogRedesign", QT_TRANSLATE_NOOP("DialogRedesign", "Move"));
+    else if (titleID == IDS_COMBINE)
+        buttons->SetAcceptText("DialogRedesign", QT_TRANSLATE_NOOP("DialogRedesign", "Combine"));
 }
 
 bool CCopyDialog::OnInit() {
@@ -60,13 +68,11 @@ bool CCopyDialog::OnInit() {
     setWindowFlag(Qt::WindowContextHelpButtonHint, false);
     setObjectName("copyDialog");
     setWindowTitle(ToQString(Title));
-    // CopyDialog.rc: xc=320, yc=144; GuiCommon.rc adds m=8 on each side.
-    resize(QtDialogUnits(font()).pixels(QSize(336, 160)));
-    auto *layout = new QVBoxLayout(this);
-    const QSize margin = QtDialogUnits(font()).pixels(QSize(8, 8));
-    layout->setContentsMargins(margin.width(), margin.height(), margin.width(), margin.height());
-    layout->setSpacing(QtDialogUnits(font()).pixels(QSize(0, 4)).height());
-    auto *label = new QLabel(ToQString(Static), this);
+    auto *buttons = new QtLangButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
+    buttons->setObjectName("copyButtons");
+    auto *layout = QtCreateDialogLayout(*this, *buttons);
+    auto *label = new QtWrappingLabel(ToQString(Static), this);
+    label->setWordWrap(true);
     label->setObjectName("copyDestinationLabel");
     layout->addWidget(label);
     auto *pathRow = new QHBoxLayout;
@@ -101,13 +107,12 @@ bool CCopyDialog::OnInit() {
     info->setFocusPolicy(Qt::NoFocus);
     info->setFrameShape(QFrame::NoFrame);
     info->setLineWrapMode(QPlainTextEdit::NoWrap);
+    info->setMinimumHeight(fontMetrics().lineSpacing() * 3);
     layout->addWidget(info, 1);
-    auto *buttons = new QtLangButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
-    buttons->setObjectName("copyButtons");
-    layout->addWidget(buttons);
     connect(buttons, &QDialogButtonBox::accepted, this, &CCopyDialog::OnOK);
     connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
     connect(browse, &QPushButton::clicked, this, &CCopyDialog::OnButtonSetPath);
+    resize(560, minimumSizeHint().height() + fontMetrics().lineSpacing() * 2);
     QtNormalizeDialogSize(*this, true);
     _path->setFocus();
     _path->lineEdit()->selectAll();

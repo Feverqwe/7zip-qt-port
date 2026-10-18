@@ -11,6 +11,7 @@
 #include "SplitUtils.h"
 #include "ViewSettings.h"
 #include "Windows/FileName.h"
+#include "qtdialoglayout.h"
 #include "qtdialogscreenservices.h"
 #include "qtdialogunits.h"
 #include "qtlangbuttonbox.h"
@@ -35,8 +36,12 @@ bool CSplitDialog::OnInit() {
     if (!FilePath.isEmpty())
         setProperty("languageSuffix", ' ' + FilePath);
     QtBindResourceText(this, IDD_SPLIT, "Split File");
-    auto *layout = new QVBoxLayout(this);
-    auto *pathLabel = new QLabel(this);
+    auto *buttons = new QtLangButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
+    buttons->setObjectName("splitButtons");
+    buttons->SetAcceptText("DialogRedesign", QT_TRANSLATE_NOOP("DialogRedesign", "Split"));
+    auto *layout = QtCreateDialogLayout(*this, *buttons);
+    auto *pathLabel = new QtWrappingLabel(this);
+    pathLabel->setWordWrap(true);
     QtBindResourceText(pathLabel, IDT_SPLIT_PATH, "&Split to:");
     pathLabel->setObjectName("splitPathLabel");
     layout->addWidget(pathLabel);
@@ -57,7 +62,9 @@ bool CSplitDialog::OnInit() {
         qMax(QtDialogUnits(font()).pixels(QSize(20, 0)).width(), browse->sizeHint().height()));
     row->addWidget(browse);
     layout->addLayout(row);
-    auto *volumeLabel = new QLabel(this);
+    layout->addSpacing(12);
+    auto *volumeLabel = new QtWrappingLabel(this);
+    volumeLabel->setWordWrap(true);
     QtBindResourceText(volumeLabel, IDT_SPLIT_VOLUME, "Split to &volumes,  bytes:");
     volumeLabel->setObjectName("splitVolumeLabel");
     layout->addWidget(volumeLabel);
@@ -67,12 +74,8 @@ bool CSplitDialog::OnInit() {
     _volumeCombo->setEditable(true);
     _volumeCombo->setInsertPolicy(QComboBox::NoInsert);
     volumeLabel->setBuddy(_volumeCombo);
-    _volumeCombo->setFixedWidth(QtDialogUnits(font()).pixels(QSize(96, 0)).width());
-    layout->addWidget(_volumeCombo, 0, Qt::AlignLeft);
-    layout->addStretch(1);
-    auto *buttons = new QtLangButtonBox(QDialogButtonBox::Ok | QDialogButtonBox::Cancel, this);
-    buttons->setObjectName("splitButtons");
-    layout->addWidget(buttons);
+    _volumeCombo->setMinimumContentsLength(12);
+    layout->addWidget(_volumeCombo);
     connect(buttons, &QDialogButtonBox::accepted, this, &CSplitDialog::OnOK);
     connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
     connect(browse, &QPushButton::clicked, this, &CSplitDialog::OnButtonSetPath);
@@ -82,7 +85,7 @@ bool CSplitDialog::OnInit() {
     _volumeCombo->setCurrentIndex(0);
     _pathCombo->setFocus();
     _pathCombo->lineEdit()->selectAll();
-    resize(QtDialogUnits(font()).pixels(QSize(304, 112)).expandedTo(minimumSizeHint()));
+    resize(QSize(480, minimumSizeHint().height()).expandedTo(minimumSizeHint()));
     QtNormalizeDialogSize(*this);
     return true;
 }

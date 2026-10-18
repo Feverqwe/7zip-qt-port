@@ -303,3 +303,67 @@ Runners используют прежний current и compiler cache; obsolete 
 fixtures после timeout не обнаружены. Full/slow suites не запускались.
 Финальная версия теста закладок с каноническим fixture path также отдельно
 прошла на Linux и Windows после повторной синхронизации и сборки target.
+
+## Итерация 7: короткие формы ввода и подтверждения
+
+Источник: https://github.com/ip7z/7zip.git. Сохранён существующий baseline модулей
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`; при работе сопоставлены текущие
+тела и ресурсы с checkout `9128b80e3a471108678e2b3ec3c985861c8d7b0f`.
+Область: FileManager CopyDialog, SplitDialog, PasswordDialog, MemDialog,
+OverwriteDialog и LinkDialog, их заголовки/Res/RC, GuiCommon.rc и Qt controls.
+Проверены callers CApp::OnCopy/Link, PanelSplitFile Combine, callback password,
+AskOverwrite и RequestMemoryUse, window/backend consumers. Используемые
+SplitUtils, пути, link services, память/formatting и source result IDs сохранены.
+
+Общая компоновка принимает QWidget footer, поэтому стандартный QDialogButtonBox
+и существующая сетка ответов используют одни внешние поля/интервал завершения.
+Copy/Move/Combine, Split, Password, Memory и Link подключены к ней. Высота
+небольших форм следует содержимому; native button hints заменяют жёсткие размеры.
+Copy сохраняет не редактируемую прокручиваемую сводку без Tab stop и исходную
+историю; Split даёт размеру тома растягиваться с окном. Source acceptance,
+проверка размеров томов, browse normalization и password Show/read/commit прежние.
+Основные подписи называют результат действия; EN-источники и RU-переводы
+находятся в DialogRedesign, роли и существующие сигналы не подменены.
+
+Memory переставляет Allow/Skip перед настройкой будущего лимита; Remember
+остаётся самостоятельным выбором ниже. RAM-dependent defaults/range, независимый
+текстовый ввод, проверка нуля/ошибок и Continue/Cancel не изменены. Link использует
+QDialogButtonBox с тем же исходным handler, без автоматического accept при ошибке;
+порядок кнопок теперь нативный, начальный фокус явно возвращён полю источника.
+POSIX Junction/WSL остаются disabled по прежнему
+контракту; исходные file/link classification и reparse операции не изменены.
+
+Overwrite показывает existing/incoming metadata рядом. Replace/Skip и варианты
+для всех возвращают прежние IDYES/IDNO/extra IDs; Auto Rename и Cancel сохранены.
+ShowExtraButtons=false снова скрывает пакетные ответы, как upstream, и укладывает
+остальные в одну строку. Сохранены ReduceString, byte/time formatting и source
+default No. Полная область кнопок учитывается grid на Cocoa, чтобы native optical
+margins не давали пересечение. Второй EXE/ICO icon остаётся прежним omission.
+
+После реализации повторно сверены исходные handlers: новых операционных ветвей
+и disconnected consumers в выбранной области нет. Большие BuildPresentation/OnInit
+рассмотрены: каждый строит одну форму; алгоритмы остаются в исходных владельцах.
+Выделен только уже используемый общий layout, универсальный form engine не добавлен.
+Строки, геометрические отношения и source mappings обновлены в существующих
+контрактах. Хрупкие проверки исходных DLU frames/пропорций заменены проверками
+читаемости, порядка, resize и сохранённого результата, без новых тестов констант.
+
+macOS: приложение и affected targets собраны; 17 focused suites PASS, затем
+финальный набор с четырьмя ui_parity контрактами — 21/21 PASS. Отдельно просмотрены ошибки
+и declared adaptations всех четырёх результатов: по четыре отчёта, без ошибок.
+Cocoa EN/RU normal/compact, начальные Password/Memory, Copy/Move/Combine, Split,
+Link, Overwrite/default/batch и hot language change прошли в light/dark.
+Просмотрены widget JSON и снимки в `build/dev/ui-redesign-review`.
+Новая sheet-модальность не вводилась; существующие modal lifetime/owners сохранены.
+VoiceOver и rendered original Windows pixel comparison не выполнялись.
+
+Linux: 21/21 focused suites PASS. Windows interactive с обычным токеном: 20/21,
+link_dialog прошёл отдельно с повышенным токеном, требуемым существующими
+symlink fixtures. Права учётной записи/UAC/developer-mode для этого не менялись.
+Последующая правка начального фокуса отдельно прошла в Link и его window consumer
+на macOS/Linux/Windows; Cocoa light/dark также PASS. Финальное скрытое состояние
+Memory не оставляет spacer перед footer: четыре прямых потребителя PASS на трёх
+ОС, нативные состояния с/без Remember проверены в light/dark.
+Сохраняются прежние current/build/cache; до прогонов проверены свободное место
+и отсутствие старых payload-каталогов (на обоих гостях только current).
+Full/slow suites не запускались.

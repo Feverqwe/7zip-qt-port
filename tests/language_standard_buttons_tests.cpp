@@ -94,6 +94,15 @@ class LanguageStandardButtonsTests final : public QObject {
                 else if (button == QDialogButtonBox::Ok && name == "extract")
                     QCOMPARE(control->text(),
                              russian ? QStringLiteral("Распаковать") : QString("Extract"));
+                else if (button == QDialogButtonBox::Ok && name == "copy")
+                    QCOMPARE(control->text(),
+                             russian ? QStringLiteral("Копировать") : QString("Copy"));
+                else if (button == QDialogButtonBox::Ok && name == "split")
+                    QCOMPARE(control->text(),
+                             russian ? QStringLiteral("Разделить") : QString("Split"));
+                else if (button == QDialogButtonBox::Ok && name == "password")
+                    QCOMPARE(control->text(),
+                             russian ? QStringLiteral("Продолжить") : QString("Continue"));
                 else
                     QCOMPARE(control->text(), expected(button, russian, name == "memory"));
             }

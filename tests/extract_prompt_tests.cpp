@@ -135,6 +135,8 @@ class ExtractPromptTests final : public QObject {
         dialog.ShowRemember = false;
         dialog.OnInit();
         dialog.show();
+        QApplication::processEvents();
+        QVERIFY(UiInspection::writeReport(dialog, "redesign-memory-no-remember"));
         auto *edit = dialog.findChild<QLineEdit *>("memLimit");
         auto *save = dialog.findChild<QCheckBox *>("memSaveLimit");
         QVERIFY(!edit->isEnabled());
