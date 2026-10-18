@@ -105,3 +105,30 @@ compiler caches сохранены. RAR-проверки подтверждаю�
 сценарии; шифрованный RAR здесь проверен по исходникам, без нового runtime
 свидетельства. Инъекция отказов, минимальный пример Qt, full/slow gate и
 новая визуальная приёмка не выполнялись. Общий аудит проекта продолжается.
+
+## Пакетная распаковка и ожидающие GUI-вызовы
+
+Дополнительно просмотрены полные QtArchiveBatchOpen/QtArchiveBatchExtract,
+QtArchiveFolderManager и QtShellArchiveServices с их заголовками, исходные
+ExtractGUI/Common Extract и граница join в ProgressDialog2. Сравнение полных
+ExtractGUI и Extract с upstream `9128b80e3a471108678e2b3ec3c985861c8d7b0f`
+после общего форматирования сохраняет source extraction loop, COM-владельцев,
+фильтрацию и учёт томов; отличия — Qt presentation, диагностики и уже учтённые
+open/progress/path-policy services. Новых omissions в проверяемом сценарии нет.
+
+Ссылки opener на параметры распаковки, native progress и output policy живут
+до завершения исходного worker. Native-open callback отсоединяется scope guard
+после Open; retained resource/catalog держат handler и его зависимости.
+QtExternalGuiCall, callback dialogs/password и их callers просмотрены вместе
+с pending/running/cancelled состояниями: ожидающий worker сохраняет captured
+данные до результата либо отменяет ещё не начатую доставку. Таймеры используют
+QObject context. Нового подтверждённого дефекта в этих границах не установлено.
+
+Существующие source_extract_backend, archive_open_options и external_gui_call
+прошли на macOS arm64 (3/3, 1,24 с), Linux x64 (3/3, 1,21 с), Windows x64
+(3/3, 3,79 с), Qt 6.12; guest run `20261018T133638Z-d15df4e8`.
+Проверки включают пакетную распаковку, отмену перезаписи и возврат исключения
+из GUI в ожидающий worker; прежние результаты других сценариев ими не заменяются.
+Сборки incremental и compiler caches сохранены. Новые тесты, инъекция отказов,
+реальные пользовательские архивы, full/slow gate и UI appearance acceptance
+для этой source-проверки не требовались и не выполнялись.
