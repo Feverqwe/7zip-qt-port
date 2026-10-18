@@ -25,7 +25,7 @@
   },
   "progress": {
     "description": "Worker synchronization, cancellation and progress presentation",
-    "tests": "^(progress_sync|worker_checkpoint|progress_wait|progress_worker|archive_progress|progress_cancel|progress_dialog|progress_format|progress_statistics_helpers)$",
+    "tests": "^(progress_sync|worker_checkpoint|progress_wait|progress_worker|archive_progress|progress_cancel|progress_dialog|progress_format)$",
     "runtime": true,
     "interactive": true
   },

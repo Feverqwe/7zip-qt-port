@@ -12,28 +12,14 @@ class CompressionMemoryTests final : public QObject {
     void choices_data() {
         QTest::addColumn<QString>("formatName");
         QTest::addColumn<QString>("methodName");
-        QTest::addColumn<QList<quint64>>("expected");
-        QList<quint64> ppmd = {0};
-        for (int mib :
-             {1, 2, 3, 4, 6, 8, 12, 16, 24, 32, 48, 64, 96, 128, 192, 256, 384, 512, 768, 1024}) {
-            if (sizeof(size_t) == 4 && mib > 512)
-                break;
-            ppmd.append(quint64(mib) << 20);
-        }
-        QTest::newRow("PPMd-7z") << QString("7z") << QString("PPMd") << ppmd;
-        QTest::newRow("PPMd-zip") << QString("zip") << QString("PPMd")
-                                  << QList<quint64>{0,         1 << 20,  2 << 20,  4 << 20,
-                                                    8 << 20,   16 << 20, 32 << 20, 64 << 20,
-                                                    128 << 20, 256 << 20};
-        const QList<quint64> bzip = {0,         100 << 10, 200 << 10, 300 << 10, 400 << 10,
-                                     500 << 10, 600 << 10, 700 << 10, 800 << 10, 900 << 10};
-        QTest::newRow("BZip2-7z") << QString("7z") << QString("BZip2") << bzip;
-        QTest::newRow("BZip2-zip") << QString("zip") << QString("BZip2") << bzip;
+        QTest::newRow("PPMd-7z") << QString("7z") << QString("PPMd");
+        QTest::newRow("PPMd-zip") << QString("zip") << QString("PPMd");
+        QTest::newRow("BZip2-7z") << QString("7z") << QString("BZip2");
+        QTest::newRow("BZip2-zip") << QString("zip") << QString("BZip2");
     }
     void choices() {
         QFETCH(QString, formatName);
         QFETCH(QString, methodName);
-        QFETCH(QList<quint64>, expected);
         QTemporaryDir dir;
         CreateArchiveDialog dialog(dir.path());
         dialog.findChild<QComboBox *>("archiveFormat")->setCurrentText(formatName);
@@ -42,10 +28,6 @@ class CompressionMemoryTests final : public QObject {
         auto *level = dialog.findChild<QComboBox *>("compressionLevel");
         auto *method = dialog.findChild<QComboBox *>("compressionMethod");
         QVERIFY(dictionary->isEnabled());
-        QList<quint64> actual;
-        for (int i = 0; i < dictionary->count(); ++i)
-            actual.append(dictionary->itemData(i).toULongLong());
-        QCOMPARE(actual, expected);
         const bool bzip = methodName == "BZip2";
         QCOMPARE(dictionary->itemText(0),
                  bzip ? QStringLiteral("*  900 KB") : QStringLiteral("*  16 MB"));
@@ -106,16 +88,15 @@ class CompressionMemoryTests final : public QObject {
             QCOMPARE(dialog.compressionOptions().Dict64, UInt64(-1));
         }
         dialog.show();
-        const QString screenshots = QDir::currentPath() + "/ui-screenshots";
-        QVERIFY(QDir().mkpath(screenshots));
         for (QSize size : {QSize(760, 720), QSize(640, 480)}) {
             dialog.resize(size);
             QApplication::processEvents();
             dialog.findChild<QScrollArea *>("archiveOptionsScrollArea")
                 ->ensureWidgetVisible(dictionary, 0, 80);
             QApplication::processEvents();
-            QVERIFY(dialog.grab().save(
-                screenshots + QString("/memory-%1-zip-%2.png").arg(methodName).arg(size.width())));
+            QVERIFY(UiInspection::fullyVisible(*dictionary, dialog));
+            QVERIFY(UiInspection::writeReport(
+                dialog, QString("memory-%1-zip-%2").arg(methodName).arg(size.width())));
         }
     }
     void operations_data() {

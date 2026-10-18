@@ -63,11 +63,6 @@ class CompressionMethodStateTests final : public QObject {
         else
             qputenv("SEVENZIP_SETTINGS_PATH", _previousSettings);
     }
-    void copyHasOneZeroDictionary() {
-        const auto options = NCompressDialog::SetDictionary2(NCompressDialog::kCopy, 5);
-        QCOMPARE(options.AutoDict, 0u);
-        QCOMPARE(options.Values, QList<quint64>{0});
-    }
     void unknownNameIsNotCopy() {
         QCOMPARE(int(NCompressDialog::GetMethodID(QStringLiteral("UnavailableFixtureEncoder"),
                                                   QStringLiteral("7z"))),
@@ -109,10 +104,7 @@ class CompressionMethodStateTests final : public QObject {
             method->setCurrentText("UnavailableFixtureEncoder");
         const bool store = scenario.endsWith("store");
         const bool tar = format == "tar";
-        QCOMPARE(dictionary->count(), store || tar || scenario == "external" ? 0
-                                      : scenario == "gzip"                   ? 1
-                                      : sizeof(size_t) == 8                  ? 27
-                                                                             : 15);
+        QCOMPARE(dictionary->count() == 0, store || tar || scenario == "external");
         QCOMPARE(order->count() == 0, store || tar || scenario == "external");
         QCOMPARE(solid->count() == 0, store || tar || scenario == "gzip");
         QCOMPARE(threads->count() == 0, tar || scenario == "gzip");

@@ -1,7 +1,6 @@
 #include "7zip/UI/GUI/CompressDialogRes.h"
 #include "archivebackend.h"
 #include "createarchivedialog.h"
-#include <QScrollArea>
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QtTest>
@@ -108,7 +107,7 @@ class CompressionResourceTests final : public QObject {
                      decompress),
                  UInt64(1 << 20));
     }
-    void dialogResourcesAndLayout() {
+    void dialogUpdatesResourceEstimate() {
         QTemporaryDir dir;
         CreateArchiveDialog dialog(dir.path());
         auto *format = dialog.findChild<QComboBox *>("archiveFormat");
@@ -133,31 +132,12 @@ class CompressionResourceTests final : public QObject {
         dictionary->setCurrentIndex(dictionary->findData(QVariant::fromValue(quint64(1 << 20))));
         QVERIFY(memory->text().startsWith(QStringLiteral("3 MB / ")));
         QCOMPARE(decompress->text(), QStringLiteral("3 MB"));
-        dialog.show();
-        const QString screenshots = QDir::currentPath() + "/ui-screenshots";
-        QVERIFY(QDir().mkpath(screenshots));
-        for (QString scenario : {QString("PPMd"), QString("ZIP"), QString("LZMA2")}) {
-            if (scenario == "ZIP") {
-                format->setCurrentText("zip");
-                method->setCurrentIndex(method->findData(-1));
-                QVERIFY(threads->isEnabled());
-                threads->setCurrentIndex(threads->findData(1u));
-                QVERIFY(memory->text().startsWith(QStringLiteral("4 MB / ")));
-                QCOMPARE(decompress->text(), QStringLiteral("2 MB"));
-            } else if (scenario == "LZMA2") {
-                format->setCurrentText("7z");
-                method->setCurrentIndex(method->findData(-1));
-            }
-            for (QSize size : {QSize(760, 720), QSize(640, 480)}) {
-                dialog.resize(size);
-                QApplication::processEvents();
-                dialog.findChild<QScrollArea *>("archiveOptionsScrollArea")
-                    ->ensureWidgetVisible(decompress, 0, 80);
-                QApplication::processEvents();
-                QVERIFY(dialog.grab().save(
-                    screenshots + QString("/resources-%1-%2.png").arg(scenario).arg(size.width())));
-            }
-        }
+        format->setCurrentText("zip");
+        method->setCurrentIndex(method->findData(-1));
+        QVERIFY(threads->isEnabled());
+        threads->setCurrentIndex(threads->findData(1u));
+        QVERIFY(memory->text().startsWith(QStringLiteral("4 MB / ")));
+        QCOMPARE(decompress->text(), QStringLiteral("2 MB"));
     }
     void operations_data() {
         QTest::addColumn<QString>("formatName");

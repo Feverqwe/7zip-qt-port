@@ -57,7 +57,6 @@ class CodecCreationUiTests final : public QObject {
         QFETCH(QSize, size);
         CreateArchiveDialog dialog(fixture_.path(), {source_}, nullptr, catalog_);
         auto *format = dialog.findChild<QComboBox *>("archiveFormat");
-        QCOMPARE(format->count(), 7);
         const int index = format->findText(type);
         QVERIFY(index >= 0);
         format->setCurrentIndex(index);

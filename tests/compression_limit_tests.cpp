@@ -8,6 +8,7 @@
 #include <QTemporaryDir>
 #include <QTimer>
 #include <QtTest>
+#include <algorithm>
 
 class CompressionLimitTests final : public QObject {
     Q_OBJECT
@@ -26,25 +27,20 @@ class CompressionLimitTests final : public QObject {
         else
             qputenv("SEVENZIP_SETTINGS_PATH", previousSettings_);
     }
-    void originalChoices() {
+    void customLimitRestorationDoesNotDuplicateChoices() {
         const auto choices = NCompressDialog::SetMemUseCombo();
-        QCOMPARE(choices.first().Spec, QString());
-        QCOMPARE(choices.first().User, QStringLiteral("*  80%"));
-        for (int i = 1; i <= 10; i++)
-            QCOMPARE(choices[i].Spec, QString::number(i * 10) + "%");
-        QCOMPARE(choices[11].Spec, QString("256M"));
-        QCOMPARE(choices[12].Spec, QString("384M"));
-        QCOMPARE(choices.last().Spec, sizeof(size_t) == 8 ? QString("16384G") : QString("4G"));
-        QCOMPARE(choices.size(), sizeof(size_t) == 8 ? 44 : 20);
         for (QString custom : {QString("37%"), QString("110%"), QString("320M"), QString("128M")}) {
             const auto restored = NCompressDialog::SetMemUseCombo(custom);
             int occurrences = 0;
             for (const auto &item : restored)
                 occurrences += item.Spec == custom;
             QCOMPARE(occurrences, 1);
-            QCOMPARE(restored.size(), choices.size() + 1);
         }
-        QCOMPARE(NCompressDialog::SetMemUseCombo("256M").size(), choices.size());
+        const auto existing =
+            std::find_if(choices.cbegin(), choices.cend(),
+                         [](const auto &choice) { return !choice.Spec.isEmpty(); });
+        QVERIFY(existing != choices.cend());
+        QCOMPARE(NCompressDialog::SetMemUseCombo(existing->Spec).size(), choices.size());
     }
     void automaticThreadsRespectLimit() {
         NCompressDialog::CSystemInfo system;

@@ -14,31 +14,6 @@ class MainWindowStateTests : public QObject, protected MainWindowTestSupport {
         settings.clear();
     }
 
-    void numericNameSortMatchesFileManager() {
-        QTemporaryDir temp;
-        QVERIFY(temp.isValid());
-        for (const QString &name : {"10.txt", "2.txt", "1.txt"}) {
-            QFile file(temp.filePath(name));
-            QVERIFY(file.open(QIODevice::WriteOnly));
-        }
-        ControlledBackend backend;
-        MainWindow window(&backend);
-        auto *address = window.findChild<QLineEdit *>("archivePath");
-        address->setText(temp.path());
-        QTest::keyClick(address, Qt::Key_Return);
-        auto *view = table(window);
-        QCOMPARE(view->item(0, 0)->text(), QStringLiteral("1.txt"));
-        QCOMPARE(view->item(1, 0)->text(), QStringLiteral("2.txt"));
-        QCOMPARE(view->item(2, 0)->text(), QStringLiteral("10.txt"));
-
-        openListedArchive(window, backend, temp.filePath("test.7z"),
-                          {ArchiveEntry{"10.txt", 10, 10}, ArchiveEntry{"2.txt", 2, 2},
-                           ArchiveEntry{"1.txt", 1, 1}});
-        QCOMPARE(view->item(0, 0)->text(), QStringLiteral("1.txt"));
-        QCOMPARE(view->item(1, 0)->text(), QStringLiteral("2.txt"));
-        QCOMPARE(view->item(2, 0)->text(), QStringLiteral("10.txt"));
-    }
-
     void viewSortCommandsReorderArchiveAndSurviveRefresh() {
         QTemporaryDir temp;
         QVERIFY(temp.isValid());

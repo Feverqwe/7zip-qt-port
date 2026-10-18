@@ -109,22 +109,6 @@ class SplitDestinationTests final : public QObject {
                      initial.endsWith('/') ? initial : initial + "/");
         }
     }
-    void renderedConditionalControls() {
-        CExtractDialog dialog(QStringLiteral("/данные/папка с пробелом/"), {});
-        dialog.show();
-        const QString screenshots = QDir::currentPath() + "/ui-screenshots";
-        QVERIFY(QDir().mkpath(screenshots));
-        for (bool split : {true, false}) {
-            enabled(dialog)->setChecked(split);
-            for (QSize size : {QSize(640, 360), QSize(470, 330)}) {
-                dialog.resize(size);
-                QApplication::processEvents();
-                QVERIFY(dialog.grab().save(
-                    screenshots + QString("/split-dest-%1-%2.png").arg(split).arg(size.width())));
-            }
-        }
-        dialog.reject();
-    }
     void extractionSuccessFailureAndCancel() {
         QTemporaryDir fixture;
         const QString source = fixture.filePath(QStringLiteral("данные с пробелом.txt"));

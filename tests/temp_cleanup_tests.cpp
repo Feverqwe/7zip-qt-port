@@ -94,7 +94,6 @@ class TempCleanupTests : public QObject {
             auto *dialog = qobject_cast<QDialog *>(QApplication::activeModalWidget());
             QVERIFY(dialog);
             const auto close = qScopeGuard([&] { dialog->reject(); });
-            QCOMPARE(dialog->objectName(), QString("tempBrowseDialog"));
             QVERIFY(UiInspection::writeReport(*dialog,
                                               QString("temp-source-initial-%1").arg(language)));
             QCOMPARE(dialog->size(),

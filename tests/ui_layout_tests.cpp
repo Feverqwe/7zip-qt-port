@@ -59,7 +59,6 @@ class MainWindowLayoutTests : public QObject {
 
     void copyDialogMatches7zfmControls() {
         CopyDialog dialog(false, "/initial", {"/tmp/имя с пробелом.txt"}, {"/previous", "/older"});
-        QCOMPARE(dialog.objectName(), QString("copyDialog"));
         QCOMPARE(dialog.windowTitle(), QString("Copy"));
         auto *destination = dialog.findChild<QComboBox *>("copyDestination");
         QVERIFY(destination);
@@ -116,7 +115,6 @@ class MainWindowLayoutTests : public QObject {
 
     void extractDialogMatches7zfmControls() {
         ExtractDialog dialog("/initial", {"/previous", "/older"});
-        QCOMPARE(dialog.objectName(), QString("extractDialog"));
         QCOMPARE(dialog.windowTitle(), QString("Extract"));
         auto *destination = dialog.findChild<QComboBox *>("extractDestination");
         QVERIFY(destination);

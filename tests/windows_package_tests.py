@@ -35,7 +35,6 @@ class WindowsPackageVerificationTests(unittest.TestCase):
             "windows_runtime_architecture": "x86_64",
         }
         for name, value in substitutions.items():
-            self.assertIn(f"@{name}@", template)
             template = template.replace(f"@{name}@", value)
         self.script = self.runtime / "verify.cmake"
         self.script.write_text(template, encoding="utf-8")

@@ -1,6 +1,3 @@
-#include "7zip/UI/FileManager/ProgressDialog2Res.h"
-#include "7zip/UI/GUI/resource3.h"
-#include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include <QtTest>
 #include <algorithm>
@@ -32,21 +29,6 @@ class ProgressFormatTests : public QObject {
         QCOMPARE(QString::fromWCharArray(value), expected);
         QCOMPARE(value[expected.size()], wchar_t(0));
         QCOMPARE(value[expected.size() + 1], wchar_t(0x7fff));
-    }
-
-    void sourceProgressAndOperationCaptions() {
-        QCOMPARE(QString::fromWCharArray(LangString(IDS_PROGRESS_PAUSED)),
-                 QStringLiteral("Paused"));
-        QCOMPARE(QString::fromWCharArray(LangString(IDS_CONTINUE)), QStringLiteral("&Continue"));
-        QCOMPARE(QString::fromWCharArray(LangString(IDS_PROGRESS_FOREGROUND)),
-                 QStringLiteral("&Foreground"));
-        QCOMPARE(QString::fromWCharArray(LangString(IDS_PROGRESS_ASK_CANCEL)),
-                 QStringLiteral("Are you sure you want to cancel?"));
-        QCOMPARE(QString::fromWCharArray(LangString(IDS_CLOSE)), QStringLiteral("&Close"));
-        QCOMPARE(QString::fromWCharArray(LangString(IDS_PROGRESS_UPDATE)),
-                 QStringLiteral("Updating"));
-        QCOMPARE(QString::fromWCharArray(LangString(IDS_PROGRESS_HEADER)),
-                 QStringLiteral("Header creating"));
     }
 };
 

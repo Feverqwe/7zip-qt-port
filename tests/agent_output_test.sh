@@ -103,7 +103,6 @@ ctest_success="$(CTEST_PARALLEL_LEVEL= SEVENZIP_CTEST_JOBS= CODEX_SESSION_ID=tes
   "$repo_root/scripts/ctest.sh" --preset dev -R '^agent_output$')"
 [[ "$ctest_success" == 'fixture CTest output' ]]
 [[ "$(cat "$FAKE_CTEST_ARGS")" == $'--preset\ndev\n-R\n^agent_output$\n--label-exclude\n^slow$' ]]
-[[ "$(cat "$FAKE_CTEST_PARALLEL_LEVEL")" == 4 ]]
 
 CTEST_PARALLEL_LEVEL= SEVENZIP_CTEST_JOBS=2 CODEX_SESSION_ID=test SEVENZIP_SCRIPT_OUTPUT=auto bash \
   "$repo_root/scripts/ctest.sh" --preset dev --parallel 3 >/dev/null

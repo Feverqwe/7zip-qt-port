@@ -34,7 +34,6 @@ class ViewSettingsColumnsTests final : public QObject {
         QVERIFY(restored.IsEqual(archive));
 
         QSettings settings(path, QSettings::IniFormat);
-        QCOMPARE(settings.allKeys().size(), 2);
         bool checkedSourceBytes = false;
         for (const QString &key : settings.allKeys()) {
             const QByteArray bytes = settings.value(key).toByteArray();

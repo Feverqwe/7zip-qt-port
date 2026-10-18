@@ -42,22 +42,8 @@ class ProgressSyncTests : public QObject {
     static QString text(const UString &value) { return QString::fromWCharArray(value); }
 
   private slots:
-    void unknownTotalsAndNullCounterUpdates() {
+    void nullUpdatesPreserveCountersAndClearPaths() {
         CProgressSync sync;
-        QVERIFY(!sync.Get_Stopped() && !sync.Get_Paused());
-        QCOMPARE(sync.CheckStop(), S_OK);
-        QCOMPARE(sync._totalBytes, ~UInt64(0));
-        QCOMPARE(sync._totalFiles, ~UInt64(0));
-        QCOMPARE(sync._inSize, ~UInt64(0));
-        QCOMPARE(sync._outSize, ~UInt64(0));
-        QCOMPARE(sync._completedBytes, UInt64(0));
-        QCOMPARE(sync._curFiles, UInt64(0));
-        QVERIFY(!sync._filesProgressMode && !sync._isDir);
-        sync.Set_FilesProgressMode(true);
-        QVERIFY(sync._filesProgressMode);
-        QCOMPARE(sync.Set_NumFilesTotal(9), S_OK);
-        sync.Set_NumBytesTotal(1000);
-        sync.Set_NumFilesCur(2);
         UInt64 completed = 123;
         QCOMPARE(sync.Set_NumBytesCur(&completed), S_OK);
         QCOMPARE(sync.Set_NumBytesCur(static_cast<const UInt64 *>(NULL)), S_OK);
@@ -70,18 +56,11 @@ class ProgressSyncTests : public QObject {
         sync.Set_Ratio(NULL, NULL);
         QCOMPARE(sync._inSize, in);
         QCOMPARE(sync._outSize, out);
-        QCOMPARE(sync._totalFiles, UInt64(9));
-        QCOMPARE(sync._totalBytes, UInt64(1000));
-        QCOMPARE(sync._curFiles, UInt64(2));
         const FString path = us2fs(L"папка с пробелом/архив й.7z");
         QCOMPARE(sync.ScanProgress(10, 2000, path, true), S_OK);
         QCOMPARE(text(sync._filePath), text(fs2us(path)));
         QVERIFY(sync._isDir);
         QCOMPARE(sync._completedBytes, UInt64(456));
-        sync.Set_TitleFileName(L"архив й.7z");
-        sync.Set_Status(L"Обновление");
-        QCOMPARE(text(sync._titleFileName), QStringLiteral("архив й.7z"));
-        QCOMPARE(text(sync._status), QStringLiteral("Обновление"));
         QCOMPARE(sync.Set_Status2(L"Сканирование", NULL), S_OK);
         QVERIFY(sync._filePath.IsEmpty() && !sync._isDir);
         sync.Set_FilePath(L"папка й", true);

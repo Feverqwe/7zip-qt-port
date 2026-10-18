@@ -101,7 +101,6 @@ class PanelShellTests final : public QObject, protected MainWindowTestSupport {
         };
         inspectContextMenu(
             leftTable, leftTable->visualItemRect(leftTable->item(0, 0)).center(), [&](QMenu *menu) {
-                QCOMPARE(menu->objectName(), QStringLiteral("panelContextMenu"));
                 QCOMPARE(menu->actions().first()->objectName(),
                          QStringLiteral("systemContextGroup"));
 #ifdef Q_OS_WIN

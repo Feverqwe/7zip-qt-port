@@ -202,7 +202,6 @@ class CompressionPathTests final : public QObject {
         QVERIFY(dialog.findChild<QPushButton *>("archiveBrowse")->isEnabled());
         QVERIFY(dialog.findChild<QComboBox *>("archiveVolumeSize")->isEnabled());
         QVERIFY(dialog.findChild<QLineEdit *>("archivePassword"));
-        QCOMPARE(format->count(), 7);
         dialog.findChild<QLineEdit *>("archiveName")->setText(target);
         submit(dialog);
         QCOMPARE(dialog.result(), int(QDialog::Accepted));

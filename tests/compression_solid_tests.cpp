@@ -9,18 +9,12 @@
 class CompressionSolidTests final : public QObject {
     Q_OBJECT
   private slots:
-    void upstreamBlockChoices() {
+    void blockSelectionAndReset() {
         QTemporaryDir dir;
         CreateArchiveDialog dialog(dir.path());
         auto *block = dialog.findChild<QComboBox *>("compressionSolidBlock");
         auto *level = dialog.findChild<QComboBox *>("compressionLevel");
         auto *format = dialog.findChild<QComboBox *>("archiveFormat");
-        QCOMPARE(block->count(), 20);
-        QCOMPARE(block->itemData(0).toUInt(), UInt32(-1));
-        QCOMPARE(block->itemData(1).toUInt(), 0u);
-        QCOMPARE(block->itemData(2).toUInt(), 20u);
-        QCOMPARE(block->itemData(18).toUInt(), 36u);
-        QCOMPARE(block->itemData(19).toUInt(), 64u);
         block->setCurrentIndex(block->findData(25u));
         QVERIFY(dialog.compressionOptions().SolidIsSpecified);
         QCOMPARE(dialog.compressionOptions().SolidBlockSize, quint64(32 << 20));

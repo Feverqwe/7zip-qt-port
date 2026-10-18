@@ -119,6 +119,27 @@ class ProgressDialogTests : public QObject {
         }
         QCOMPARE(main.windowTitle(), QString("7-Zip"));
     }
+    void displayedSizeUnits_data() {
+        QTest::addColumn<quint64>("bytes");
+        QTest::addColumn<QString>("expected");
+        QTest::newRow("zero") << quint64(0) << QString("0");
+        QTest::newRow("last-byte-unit") << quint64(99999) << QString("99999");
+        QTest::newRow("first-KB") << quint64(100000) << QString("97 KB");
+        QTest::newRow("last-KB") << quint64((100000ULL << 10) - 1) << QString("99999 KB");
+        QTest::newRow("first-MB") << quint64(100000ULL << 10) << QString("97 MB");
+        QTest::newRow("last-MB") << quint64((100000ULL << 20) - 1) << QString("99999 MB");
+        QTest::newRow("first-GB") << quint64(100000ULL << 20) << QString("97 GB");
+        QTest::newRow("largest-defined") << quint64(~UInt64(0) - 1) << QString("17179869183 GB");
+        QTest::newRow("unknown") << quint64(~UInt64(0)) << QString();
+    }
+    void displayedSizeUnits() {
+        QFETCH(quint64, bytes);
+        QFETCH(QString, expected);
+        CProgressDialog dialog;
+        QCOMPARE(dialog.Sync.Set_NumBytesCur(bytes), S_OK);
+        dialog.show();
+        QTRY_COMPARE(text(dialog, "IDT_PROGRESS_PROCESSED_VAL"), expected);
+    }
     void decompressingAndFilesProgress() {
         CProgressDialog dialog;
         dialog.CompressingMode = false;

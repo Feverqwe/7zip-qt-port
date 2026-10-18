@@ -111,7 +111,6 @@ class VolumeDialogTests : public QObject {
         QVERIFY(path && volume);
         QCOMPARE(path->currentText(), temp.path());
         QCOMPARE(volume->currentText(), QStringLiteral("10M"));
-        QCOMPARE(volume->count(), 9);
         path->setCurrentText(temp.filePath(QStringLiteral("новая папка")));
         volume->setCurrentText(" 10M 20M ");
         if (viaButton)

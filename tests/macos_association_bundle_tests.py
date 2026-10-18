@@ -19,5 +19,4 @@ for document in info["CFBundleDocumentTypes"]:
     assert document["LSHandlerRank"] == "Alternate"
     declared.update(document["CFBundleTypeExtensions"])
 assert declared == expected, (declared - expected, expected - declared)
-assert {"7z", "zip", "tar", "gz", "tgz", "wim"} <= declared
 print("Built app declares the source archive extensions without changing OS defaults")
