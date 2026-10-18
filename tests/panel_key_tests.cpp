@@ -371,16 +371,24 @@ class PanelKeyTests final : public QObject, protected MainWindowTestSupport {
             }
         QVERIFY(action(window, "copyAction")->isEnabled());
         for (const char *command : {"copyAction", "moveAction"}) {
-            QTimer::singleShot(0, &window, [&] {
-                auto *dialog = window.findChild<CopyDialog *>("copyDialog");
-                QVERIFY(dialog);
-                const QString destination =
-                    dialog->findChild<QComboBox *>("copyDestination")->currentText();
+            QTimer responder;
+            QString destination;
+            bool observed = false;
+            connect(&responder, &QTimer::timeout, &window, [&] {
+                auto *dialog = dynamic_cast<CopyDialog *>(QApplication::activeModalWidget());
+                if (!dialog || !dialog->isVisible())
+                    return;
+                responder.stop();
+                observed = true;
+                destination = dialog->destination();
                 dialog->reject();
-                QCOMPARE(QFileInfo(destination).canonicalFilePath(),
-                         QFileInfo(right).canonicalFilePath());
             });
+            responder.start(5);
             action(window, command)->trigger();
+            responder.stop();
+            QVERIFY(observed);
+            QCOMPARE(QFileInfo(destination).canonicalFilePath(),
+                     QFileInfo(right).canonicalFilePath());
         }
         window.activateWindow();
         QApplication::processEvents();
@@ -428,15 +436,23 @@ class PanelKeyTests final : public QObject, protected MainWindowTestSupport {
         QTRY_VERIFY(rightIcons->hasFocus());
         QVERIFY(action(window, "extractArchiveAction")->isEnabled());
         QVERIFY(action(window, "toolbarAddAction")->isEnabled());
-        QTimer::singleShot(0, &window, [&] {
-            auto *dialog = window.findChild<CopyDialog *>("copyDialog");
-            QVERIFY(dialog);
-            const QString destination = dialog->destination();
+        QTimer responder;
+        QString destination;
+        bool observed = false;
+        connect(&responder, &QTimer::timeout, &window, [&] {
+            auto *dialog = dynamic_cast<CopyDialog *>(QApplication::activeModalWidget());
+            if (!dialog || !dialog->isVisible())
+                return;
+            responder.stop();
+            observed = true;
+            destination = dialog->destination();
             dialog->reject();
-            QCOMPARE(QFileInfo(destination).canonicalFilePath(),
-                     QFileInfo(left).canonicalFilePath());
         });
+        responder.start(5);
         action(window, "extractArchiveAction")->trigger();
+        responder.stop();
+        QVERIFY(observed);
+        QCOMPARE(QFileInfo(destination).canonicalFilePath(), QFileInfo(left).canonicalFilePath());
         const QString leftArchive = fixture.filePath("left archive.zip");
         window.activateWindow();
         QApplication::processEvents();
