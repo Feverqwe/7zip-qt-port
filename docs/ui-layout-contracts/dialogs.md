@@ -19,6 +19,23 @@ compact sizes below and produces48 EN/RU footer reports per platform. Reports on
 2026-10-06 show visible, separate standard controls and exact source captions;
 rendered Windows parity and parent/final acceptance remain pending.
 
+### Contextual modality on macOS (redesign, 2026-10-18)
+
+Contextual name/mask/comment, Copy/Move/Combine, Split, Link, password, memory,
+overwrite, Add/Extract, format-options and file/folder pickers use window modality
+when they have a parent on macOS. Native Qt sheets block that owner while an
+independent window remains interactive. Parentless entry points retain their
+existing modal execution. Windows/Linux keep their existing modality.
+Return/Escape, source result codes, raw drafts and the caller's synchronous
+lifetime remain unchanged. Memory/Overwrite Cancel retains IDCANCEL.
+
+Nested cancellation leaves the parent form and its draft available; closing
+returns to the owner's previous control. Operation progress retains its existing
+application-modal policy and worker/callback lifetime. Help and reports receive
+no new modality from shared layout styling. `context_dialog` checks actual native
+AppKit sheet attachment, owner/peer input, nested Cancel and draft/focus retention;
+the worker password consumers separately check success, empty input and Cancel.
+
 ### Help and About: shared frame (redesign, 2026-10-18)
 
 Help retains the original bundled HTML, links, fragment navigation, history,

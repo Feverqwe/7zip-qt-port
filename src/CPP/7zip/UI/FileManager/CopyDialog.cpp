@@ -64,6 +64,7 @@ void CCopyDialog::BindLanguage(UInt32 titleID, UInt32 promptID, const QString &t
 }
 
 bool CCopyDialog::OnInit() {
+    QtUseContextDialogModality(*this);
     setWindowFlag(Qt::WindowMinMaxButtonsHint);
     setWindowFlag(Qt::WindowContextHelpButtonHint, false);
     setObjectName("copyDialog");

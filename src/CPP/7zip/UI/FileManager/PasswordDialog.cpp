@@ -25,6 +25,7 @@ void CPasswordDialog::SetTextSpec() {
 }
 
 bool CPasswordDialog::OnInit() {
+    QtUseContextDialogModality(*this);
     setObjectName("passwordDialog");
     setWindowFlag(Qt::WindowContextHelpButtonHint, false);
     QtBindResourceText(this, IDD_PASSWORD, "Enter password");

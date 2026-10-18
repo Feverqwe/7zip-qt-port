@@ -6,6 +6,7 @@
 #pragma once
 #include "CPP/7zip/UI/GUI/CompressDialog.h"
 #include "qtcompressoptionscontrols.h"
+#include "qtdialoglayout.h"
 
 class COptionsDialog : public CQtCompressOptionsDialog {
     struct CBoolBox {
@@ -77,6 +78,7 @@ class COptionsDialog : public CQtCompressOptionsDialog {
     int Create(QWidget *wndParent = nullptr) {
         if (wndParent)
             setParent(wndParent, windowFlags());
+        QtUseContextDialogModality(*this);
         return exec();
     }
 

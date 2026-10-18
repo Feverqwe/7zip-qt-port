@@ -64,6 +64,7 @@ void AddUniqueString(CObjectVector<QString> &list, const QString &s) {
 CExtractDialog::CExtractDialog(const QString &initialPath, const QStringList &history,
                                QWidget *parent)
     : QDialog(parent), DirPath(initialPath) {
+    QtUseContextDialogModality(*this);
     ElimDup.Val = true;
     setObjectName("extractDialog");
     QtBindResourceText(this, IDD_EXTRACT, "Extract");

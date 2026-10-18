@@ -3,6 +3,7 @@
 // Qt native picker replaces OPENFILENAME/ANSI/SDK transport. Source state,
 // filter ordering, mode, flags and accepted-only publication remain.
 #include "CommonDialog.h"
+#include "qtdialoglayout.h"
 #include <QFileDialog>
 
 namespace NWindows {
@@ -18,6 +19,7 @@ bool CCommonDialogInfo::CommonDlg_BrowseForFile(const wchar_t *lpstrInitialDir,
     QFileDialog dialog(hwndOwner, lpstrTitle ? QString::fromWCharArray(lpstrTitle) : QString(),
                        lpstrInitialDir ? QString::fromWCharArray(lpstrInitialDir) : QString(),
                        names.join(";;"));
+    QtUseContextDialogModality(dialog);
     // Source descriptions can already include their reviewed extension list.
     dialog.setOption(QFileDialog::HideNameFilterDetails, true);
     // Source flags omit OFN_FILEMUSTEXIST and OFN_OVERWRITEPROMPT. Callers

@@ -942,3 +942,51 @@ worktrees нет. Полный gate и slow matrices не требовались
 geometry fix. Галерея — macOS evidence; native Linux appearance, оригинальные
 Windows pixels, VoiceOver, physical layouts и modality требуют отдельной
 проверки, goal остаётся active.
+
+## Итерация 18: контекстные sheets на macOS
+
+Источник: https://github.com/ip7z/7zip.git,
+`9128b80e3a471108678e2b3ec3c985861c8d7b0f`; baseline модулей не изменён.
+Сверены Windows/Control/Dialog.cpp CModalDialog::Create/DialogBoxParam с Qt
+exec boundaries, parent/result ownership у Combo/Copy/Split/Password/Mem/
+Overwrite/Link и их ранее проверенными OnInit/accept/Cancel consumers.
+Проверены Add/Extract, COptionsDialog::Create, source Browse/CommonDialog
+и callback-password GUI-thread transport. Upstream Win32 modal owner не
+содержит Cocoa sheet adaptation; нового functional source не копировалось.
+Операции, validation, исходные ветви, sync results и worker lifetime сохранены.
+
+Контекстные формы явно выбирают WindowModal при наличии parent на macOS;
+это не побочный эффект shared layout. Progress сохраняет ApplicationModal,
+Help/отчёты не получают новой модальности. Parentless и Windows/Linux entry points
+сохраняют прежнюю политику. Native file picker получает тот же opt-in;
+folder picker теперь использует явный QFileDialog с прежними Directory/
+ShowDirsOnly, начальным путём, accepted-only output и cleanPath, чтобы задать
+window modality. Native renderer и source long/super/device fallback сохранены.
+
+Решение опирается на Qt QDialog/window-modality и Qt::Sheet documentation:
+рекомендуется setWindowModality вместо ручного Sheet window type. Страница Apple
+Sheets недоступна без JavaScript, её Markdown endpoint не ответил; использована
+локальная HIG-выжимка, проверенная 18 октября 2026. Браузерная имитация sheet не
+считается доказательством. Новая regression на Cocoa проверяет фактический
+NSWindow.sheetParent через узкий test-only AppKit observer и реальное Qt window
+input: owner action заблокирована, independent action доступна; после Cancel
+сохраняется черновик и прежний focus target. Вложенный password Cancel оставляет
+родительскую форму/Unicode-пробелы и последующее подтверждение работоспособными.
+Memory/Overwrite сохраняют IDCANCEL, а не Qt Rejected.
+
+macOS: приложение и все affected targets собраны; 13 direct suites PASS,
+source_create/source_selection/modal_refresh_window/language_focus — 4/4 PASS.
+Cocoa context_forms в light/dark — 20/20 test functions PASS, 14 current captures
+добавлены в существующую галерею. Source open callback, update worker и archive
+progress password callback нативно проверены отдельно: success/empty/Cancel,
+15/15 test functions PASS, без зависания owner thread или потери результата.
+Приватные fixtures/settings очищены после завершения.
+
+Linux/Windows: application_starts и 13 direct suites — 14/14 на каждой ОС,
+run `20261018T201836Z-800dcf60`; Windows interactive elevated для source symlink
+fixtures. Cocoa-specific adapter не меняет их modality. Incremental trees/cache
+сохранены, guest roots содержат только current. Full/slow не запускались:
+изменение покрыто contextual behavior и прямыми consumers. VoiceOver, physical
+EN/RU input и итоговый completion audit остаются отдельными проверками.
+Параллельные HTML/catalog правки пользователь подтвердил как эксперимент;
+они не входят в эту Qt-итерацию и не заменяют согласованный план.

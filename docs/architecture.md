@@ -45,6 +45,11 @@ decisions. Qt owns widget construction, native-font geometry, focus and signal
 transport. Shared geometry services adapt dialog units and work-area positioning;
 the [text specifications](ui-layout-contracts.md) own observable layout contracts.
 
+Contextual forms opt into parent-window modality on macOS through the shared
+presentation adapter. Layout construction itself does not make windows modal.
+Operation progress keeps its existing application-wide blocking policy;
+source synchronous dialog results and worker/callback ownership remain intact.
+
 Preferences are applied through the source Options/page owners. Cancel must
 preserve stored settings and registration state. Native capabilities and privilege
 failures must remain visible to the owning operation rather than silently changing

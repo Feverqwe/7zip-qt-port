@@ -30,6 +30,7 @@ CSplitDialog::CSplitDialog(const QString &filePath, const QString &path, QWidget
 }
 
 bool CSplitDialog::OnInit() {
+    QtUseContextDialogModality(*this);
     setWindowFlag(Qt::WindowMinMaxButtonsHint);
     setWindowFlag(Qt::WindowContextHelpButtonHint, false);
     setObjectName("splitDialog");

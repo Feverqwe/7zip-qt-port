@@ -1,4 +1,5 @@
 #include "createarchivedialog.h"
+#include "qtdialoglayout.h"
 
 #include "7zip/UI/FileManager/resource.h"
 #include "7zip/UI/GUI/CompressDialogRes.h"
@@ -65,6 +66,7 @@ CreateArchiveDialog::CreateArchiveDialog(const QString &directory,
                                          const CCompressDialog *sourceDialog)
     : QDialog(parent), currentDirectory_(directory), StartDirPrefix(directory),
       codecs_(std::move(codecs)) {
+    QtUseContextDialogModality(*this);
     setObjectName("createArchiveDialog");
     auto *layout = new QVBoxLayout(this);
     const int horizontalMargin = 16;

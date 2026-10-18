@@ -25,6 +25,7 @@ CComboDialog::CComboDialog(const QString &title, const QString &prompt, const QS
 }
 
 bool CComboDialog::OnInit() {
+    QtUseContextDialogModality(*this);
     setWindowFlag(Qt::WindowMinMaxButtonsHint);
     setWindowFlag(Qt::WindowContextHelpButtonHint, false);
     setObjectName("comboDialog");

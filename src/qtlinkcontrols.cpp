@@ -88,6 +88,7 @@ QWidget *CQtLinkWindow::BuildLinkTypes() {
     return group;
 }
 void CQtLinkWindow::BuildControls() {
+    QtUseContextDialogModality(*this);
     setWindowFlag(Qt::WindowMinMaxButtonsHint);
     setWindowFlag(Qt::WindowContextHelpButtonHint, false);
     setObjectName("IDD_LINK");

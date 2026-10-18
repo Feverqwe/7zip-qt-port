@@ -233,6 +233,7 @@ void COverwriteDialog::SetItemText(unsigned id, const UString &text) {
 }
 
 bool COverwriteDialog::OnInit() {
+    QtUseContextDialogModality(*this);
     if (_controls.isEmpty())
         BuildPresentation();
     SetFileInfoControl(OldFileInfo, IDT_OVERWRITE_OLD_FILE_SIZE_TIME, IDI_OVERWRITE_OLD_FILE,

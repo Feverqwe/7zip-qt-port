@@ -1,4 +1,5 @@
 #include "qtdialoglayout.h"
+#include <QDialog>
 #include <QPushButton>
 #include <QResizeEvent>
 #include <QVBoxLayout>
@@ -19,6 +20,15 @@ void QtSizeIconButton(QPushButton &button) {
     const QSize native = button.sizeHint();
     button.setSizePolicy(QSizePolicy::Fixed, QSizePolicy::Fixed);
     button.setFixedWidth(qMax(native.width(), native.height()));
+}
+
+void QtUseContextDialogModality(QDialog &dialog) {
+#ifdef Q_OS_MACOS
+    if (dialog.parentWidget())
+        dialog.setWindowModality(Qt::WindowModal);
+#else
+    Q_UNUSED(dialog);
+#endif
 }
 
 QSize QtWrappingLabel::minimumSizeHint() const {

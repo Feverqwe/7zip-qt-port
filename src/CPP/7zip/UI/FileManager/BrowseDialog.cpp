@@ -158,6 +158,7 @@ class BrowseRow final : public QTreeWidgetItem {
 };
 
 void CBrowseDialog::OnInit() {
+    QtUseContextDialogModality(*this);
     setObjectName("browseDialog");
     setWindowFlag(Qt::WindowMinMaxButtonsHint);
     setWindowFlag(Qt::WindowContextHelpButtonHint, false);
@@ -683,10 +684,13 @@ bool MyBrowseForFolder(QWidget *owner, const UString &title, const UString &path
         resultPath = dialog.FilePath;
         return true;
     }
-    const QString selected =
-        QFileDialog::getExistingDirectory(owner, ToQString(title), ToQString(path));
-    if (selected.isEmpty())
+    QFileDialog dialog(owner, ToQString(title), ToQString(path));
+    dialog.setFileMode(QFileDialog::Directory);
+    dialog.setOption(QFileDialog::ShowDirsOnly);
+    QtUseContextDialogModality(dialog);
+    if (dialog.exec() != QDialog::Accepted || dialog.selectedFiles().isEmpty())
         return false;
+    const QString selected = dialog.selectedFiles().front();
     resultPath = ToUString(QDir::cleanPath(selected));
     return true;
 }

@@ -220,6 +220,7 @@ void CMemDialog::AddInfoMessage_To_String(UString &s, const UInt32 *ramSize_GB) 
 }
 
 bool CMemDialog::OnInit() {
+    QtUseContextDialogModality(*this);
     if (_controls.isEmpty())
         BuildPresentation();
     size_t ramSize = (size_t)sizeof(size_t) << 29;
