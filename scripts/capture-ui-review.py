@@ -7,12 +7,44 @@ import json
 import os
 from pathlib import Path
 import platform
+import re
 import subprocess
 import sys
 from datetime import datetime, timezone
 
 ROOT = Path(__file__).resolve().parent.parent
 CATALOG = ROOT / "scripts/config/ui-review.json"
+
+
+def review_metadata(output, run, shot):
+    data = json.loads((output / shot["report"]).read_text(encoding="utf-8"))
+    captions = []
+    pages = []
+    def visit(node):
+        if node.get("visible") and node.get("class") in {
+            "QPushButton", "QToolButton", "QCheckBox", "QRadioButton", "QGroupBox"
+        }:
+            captions.append(node.get("text", ""))
+        if node.get("visible") and node.get("class") == "QMenu":
+            captions.extend(action.get("text", "") for action in node.get("actions", []))
+        if node.get("visible") and node.get("name", "").endswith("Page"):
+            pages.append(node["name"])
+        for child in node.get("children", []):
+            visit(child)
+    visit(data)
+    text = " ".join(captions)
+    language = data.get("capture", {}).get("language", "")
+    if language in {"-", "en"}:
+        language = "en"
+    elif language != "ru":
+        language = "ru" if re.search("[А-Яа-яЁё]", text) else (
+            "en" if re.search("[A-Za-z]{2}", text) else "unknown")
+    key = shot.get("window") or shot["class"]
+    if key in {"QDialog", "QMessageBox", "QWidget", "QMenu"}:
+        key = run["id"] + "/" + key
+    if pages:
+        key += "/" + ",".join(sorted(pages))
+    return language, key
 
 
 def gallery(output, runs):
@@ -23,12 +55,15 @@ def gallery(output, runs):
             esc = html.escape
             image = esc(shot["image"], quote=True)
             report = esc(shot["report"], quote=True)
+            language, key = review_metadata(output, run, shot)
             cards.append(
                 f'<article data-group="{esc(run["id"], quote=True)}" '
+                f'data-language="{language}" data-dialog="{esc(key, quote=True)}" '
+                f'data-width="{shot["size"][0]}" data-height="{shot["size"][1]}" '
                 f'data-scheme="{run["scheme"]}" data-search="{esc((title + " " + shot["image"]).lower(), quote=True)}">'
                 f'<a class="shot" href="{image}" data-name="{image}" data-title="{esc(title, quote=True)}" '
                 f'data-report="{report}"><img loading="lazy" src="{image}" alt="{esc(title)}"></a>'
-                f'<p>{esc(title)}</p><p class="filename">{image}</p><small>{esc(shot["qpa"])} · '
+                f'<p>{esc(title)}</p><p class="filename">{image}</p><small>{language} · {esc(shot["qpa"])} · '
                 f'{shot["size"][0]}×{shot["size"][1]} · '
                 f'<a href="{report}">widget JSON</a></small></article>'
             )
@@ -39,7 +74,7 @@ def gallery(output, runs):
 <title>Sevenzip — ревью тем</title><style>
 :root {color-scheme:light dark;font-family:system-ui,sans-serif}
 body {margin:2rem;line-height:1.5} header {max-width:75rem} h1 {margin-bottom:.3rem}
-input {font:inherit;padding:.6rem;width:min(36rem,90%);margin:1rem 0}
+input[type=search] {font:inherit;padding:.6rem;width:min(36rem,90%);margin:1rem 0}
 main {display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:1.5rem}
 article {border:1px solid GrayText;border-radius:8px;padding:1rem;min-width:0}
 img {width:100%;height:280px;object-fit:contain;object-position:top;background:Canvas}
@@ -64,6 +99,10 @@ body.viewing {overflow:hidden}#position {white-space:nowrap}
 <p>STATUS</p><details><summary>Сведения о сборе</summary><pre>DETAILS</pre></details>
 <select id="group" aria-label="Группа окон"><option value="">Все окна</option>GROUPS</select>
 <select id="scheme" aria-label="Тема"><option value="">Обе темы</option><option>light</option><option>dark</option></select>
+<select id="language" aria-label="Язык"><option value="">Все языки</option><option value="en">English</option><option value="ru">Русский</option><option value="unknown">Без языковой подписи</option></select>
+<p><label><input type="checkbox" id="unique"> Уникальные окна</label>
+<select id="size" aria-label="Размер для уникальных окон"><option value="normal">Обычный размер</option><option value="compact">Компактный размер</option></select>
+<small>Главное окно, меню, страницы настроек и диалоги — без повторов состояний. Язык выбирается отдельным фильтром.</small></p>
 <input type="search" placeholder="Поиск: окно, en, ru…" aria-label="Поиск снимков">
 <p><button id="first">Открыть первый</button> <span id="count"></span></p></header><main>CARDS</main>
 <dialog id="viewer" aria-label="Просмотр снимков"><div class="toolbar">
@@ -74,11 +113,16 @@ body.viewing {overflow:hidden}#position {white-space:nowrap}
 <a id="original" target="_blank" rel="noopener">PNG</a><a id="report" target="_blank" rel="noopener">JSON</a>
 <button id="close" aria-label="Закрыть просмотр">Закрыть · Esc</button></div>
 <div id="stage"><img id="full" alt=""></div></dialog><script>
-const input=document.querySelector('input'), group=document.querySelector('#group'), scheme=document.querySelector('#scheme'), cards=[...document.querySelectorAll('article')];
+const input=document.querySelector('input[type=search]'), group=document.querySelector('#group'), scheme=document.querySelector('#scheme'), cards=[...document.querySelectorAll('article')];
+const language=document.querySelector('#language'),unique=document.querySelector('#unique'),size=document.querySelector('#size');
 const viewer=document.querySelector('#viewer'),stage=document.querySelector('#stage'),full=document.querySelector('#full');
 const links=cards.map(c=>c.querySelector('.shot'));let current=null;
 function visible(){return links.filter(a=>!a.closest('article').hidden);}
-function filter(){const q=input.value.toLowerCase();for(const c of cards){c.hidden=!c.dataset.search.includes(q)||(group.value&&c.dataset.group!==group.value)||(scheme.value&&c.dataset.scheme!==scheme.value);}const n=visible().length;document.querySelector('#count').textContent=`${n} / ${cards.length} снимков`;document.querySelector('#first').disabled=!n;}
+function filter(){const q=input.value.toLowerCase();for(const c of cards){c.hidden=!c.dataset.search.includes(q)||(group.value&&c.dataset.group!==group.value)||(scheme.value&&c.dataset.scheme!==scheme.value)||(language.value&&c.dataset.language!==language.value);}
+if(unique.checked){const chosen=new Map();function score(c){const tag=c.querySelector('.shot').dataset.name;let quality=0;if(/initial|default|source-frame|main-shell-980|create-normal/.test(tag))quality+=10;if(/hidden|physical-control|clipped|large-font|archivePassword|archiveBrowse/.test(tag))quality-=20;if(c.dataset.group==='file-colors')quality-=10;return quality;}
+for(const c of cards.filter(c=>!c.hidden)){const key=c.dataset.dialog,old=chosen.get(key);const area=+c.dataset.width*+c.dataset.height,oldArea=old?(+old.dataset.width*+old.dataset.height):0;if(!old||score(c)>score(old)||(score(c)===score(old)&&(size.value==='normal'?area>oldArea:area<oldArea)))chosen.set(key,c);}
+const selected=new Set(chosen.values());for(const c of cards)if(!c.hidden)c.hidden=!selected.has(c);}
+const n=visible().length;document.querySelector('#count').textContent=`${n} / ${cards.length} снимков`;document.querySelector('#first').disabled=!n;}
 function show(a){if(!a)return;current=a;const list=visible(),i=list.indexOf(a);full.src=a.href;full.alt=a.dataset.title;
 document.querySelector('#filename').textContent=a.dataset.name;document.querySelector('#caption').textContent=a.dataset.title;
 document.querySelector('#position').textContent=`${i+1} / ${list.length}`;
@@ -89,14 +133,14 @@ history.replaceState(null,'','#shot='+encodeURIComponent(a.dataset.name));
 if(!viewer.open){viewer.showModal();document.body.classList.add('viewing');}}
 function move(step){const list=visible();show(list[list.indexOf(current)+step]);}
 function fromHash(){if(!location.hash.startsWith('#shot='))return;let name;try{name=decodeURIComponent(location.hash.slice(6));}catch{return;}
-const a=links.find(a=>a.dataset.name===name);if(a){if(a.closest('article').hidden){input.value=group.value=scheme.value='';filter();}show(a);}}
+const a=links.find(a=>a.dataset.name===name);if(a){if(a.closest('article').hidden){input.value=group.value=scheme.value=language.value='';unique.checked=false;filter();}show(a);}}
 links.forEach(a=>a.addEventListener('click',e=>{if(e.ctrlKey||e.metaKey||e.shiftKey||e.altKey)return;e.preventDefault();show(a);}));
 document.querySelector('#first').onclick=()=>show(visible()[0]);document.querySelector('#prev').onclick=()=>move(-1);document.querySelector('#next').onclick=()=>move(1);
 document.querySelector('#close').onclick=()=>viewer.close();viewer.addEventListener('close',()=>{if(viewer.open)return;document.body.classList.remove('viewing');history.replaceState(null,'',location.pathname+location.search);current?.focus();});
 document.querySelector('#zoom').onclick=e=>{const actual=stage.classList.toggle('actual');e.currentTarget.setAttribute('aria-pressed',actual);e.currentTarget.textContent=actual?'Вписать в окно':'Масштаб 100%';};
 document.querySelector('#copy').onclick=async e=>{const name=current.dataset.name;try{await navigator.clipboard.writeText(name);e.target.textContent='Скопировано';}catch{const selection=getSelection(),range=document.createRange();range.selectNodeContents(document.querySelector('#filename'));selection.removeAllRanges();selection.addRange(range);e.target.textContent='Нажмите Ctrl+C / ⌘C';}};
 viewer.addEventListener('keydown',e=>{if(e.ctrlKey||e.metaKey||e.altKey)return;if(e.key==='ArrowLeft'){e.preventDefault();move(-1);}else if(e.key==='ArrowRight'){e.preventDefault();move(1);}else if(e.key==='Home'){e.preventDefault();show(visible()[0]);}else if(e.key==='End'){e.preventDefault();show(visible().at(-1));}});
-input.addEventListener('input',filter);group.addEventListener('change',filter);scheme.addEventListener('change',filter);window.addEventListener('hashchange',fromHash);filter();fromHash();</script></html>"""
+input.addEventListener('input',filter);group.addEventListener('change',filter);scheme.addEventListener('change',()=>{if(unique.checked&&!scheme.value)scheme.value='light';filter();});language.addEventListener('change',filter);size.addEventListener('change',filter);unique.addEventListener('change',()=>{if(unique.checked)scheme.value ||= 'light';filter();});window.addEventListener('hashchange',fromHash);filter();fromHash();</script></html>"""
     document = document.replace("STATUS", html.escape(status))
     document = document.replace("DETAILS", html.escape("\n".join(problems) or "См. manifest.json и журналы сценариев."))
     document = document.replace("CARDS", "\n".join(cards))
