@@ -89,6 +89,10 @@ insufficient, report the remaining capacity requirement; do not add a disk.
 
 ## Runner configuration and evidence
 
+`CMAKE_BUILD_PARALLEL_LEVEL` is forwarded to guest builds when set to a positive
+integer. Use `1` when a guest runs out of memory during compilation; this
+retains its incremental build and compiler cache.
+
 Linux and Windows runs enable compact test binaries through the build
 wrapper; [development](development.md#local-commands) describes the retained
 diagnostics and the opt-out for debugger rebuilds. This reduces per-run artifacts;

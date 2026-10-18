@@ -278,7 +278,7 @@ class RunnerTests(unittest.TestCase):
             root = Path(temporary)
             (root / "scripts/lib").mkdir(parents=True)
             shutil.copy2(ROOT / "scripts/lib/hyperv_source.py", root / "scripts/lib/hyperv_source.py")
-            (root / "scripts/fixture.sh").write_text('printf "%s\\n" "$@" "$TEMP" "$QT_QPA_PLATFORM"\nexit 23\n')
+            (root / "scripts/fixture.sh").write_text('printf "%s\\n" "$@" "$TEMP" "$QT_QPA_PLATFORM" "$CMAKE_BUILD_PARALLEL_LEVEL"\nexit 23\n')
             records = {name: {"sha256": hyperv_source.sha(root / name), "executable": bool((root / name).stat().st_mode & 0o111)}
                        for name in ("scripts/lib/hyperv_source.py", "scripts/fixture.sh")}
             manifest = root / hyperv_source.MANIFEST
@@ -287,17 +287,27 @@ class RunnerTests(unittest.TestCase):
             def local_remote(record, script, **kwargs):
                 return subprocess.run(["bash", "-se"], input=script, text=True, check=True, capture_output=True)
             with patch.object(runner, "remote", local_remote), \
-                    patch.dict(os.environ, {"QT_QPA_PLATFORM": "offscreen"}):
+                    patch.dict(os.environ, {"QT_QPA_PLATFORM": "offscreen", "CMAKE_BUILD_PARALLEL_LEVEL": "1"}):
                 with self.assertRaises(subprocess.CalledProcessError) as error:
                     runner.execute_check({}, "linux", "dev", hyperv_source.sha(manifest), root.as_posix(), "token",
                                          ["bash", "scripts/fixture.sh", *args], False)
             self.assertEqual(error.exception.returncode, 23)
             log = (root / "check.log").read_text()
             self.assertIn("\n".join(args) + "\n", log)
-            self.assertTrue(log.endswith("/runner-tmp\noffscreen\n"))
+            self.assertTrue(log.endswith("/runner-tmp\noffscreen\n1\n"))
             self.assertEqual((root / ".runner-complete").read_text().strip(), "token")
             self.assertFalse((root / "injected").exists())
             self.assertEqual(git(root, "status", "--porcelain"), "")
+
+    def test_invalid_build_parallelism_is_rejected_before_remote_execution(self):
+        for platform in ("linux", "windows"):
+            for value in ("0", "-1", "", "1; touch injected"):
+                with self.subTest(platform=platform, value=value), \
+                        patch.dict(os.environ, {"CMAKE_BUILD_PARALLEL_LEVEL": value}), \
+                        patch.object(runner, "remote") as remote:
+                    with self.assertRaises(ValueError):
+                        runner.execute_check({}, platform, "dev", "hash", "/unused", "token", prepare_runtime=False)
+                    remote.assert_not_called()
 
     def test_custom_command_keeps_percent_variables_and_metacharacters_literal(self):
         payload = runner.command_payload("dev", ["printf", "%s\\n", "%PATH%", "$(touch injected)", "Юникод"])

@@ -90,6 +90,9 @@ def execute_check(record, platform, preset, digest, root, token, command=None,
     include_slow = os.environ.get("SEVENZIP_INCLUDE_SLOW_TESTS", "0")
     if include_slow not in ("0", "1"):
         raise ValueError("SEVENZIP_INCLUDE_SLOW_TESTS must be 0 or 1")
+    build_jobs = int(os.environ.get("CMAKE_BUILD_PARALLEL_LEVEL", "4"))
+    if build_jobs <= 0:
+        raise ValueError("CMAKE_BUILD_PARALLEL_LEVEL must be a positive integer")
     payload = command_payload(preset, command)
     excludes = ["build/", "runner-tmp/", "upstream/", "upstream.bundle", ".runner-*",
                 "check.log", "check.cmd", "runner-command.sh", "interactive-*.txt"]
@@ -99,7 +102,7 @@ cd {shlex.quote(root)}
 mkdir -p runner-tmp
 export TMPDIR="$PWD/runner-tmp" TMP="$PWD/runner-tmp" TEMP="$PWD/runner-tmp"
 export QT_QPA_PLATFORM="${{QT_QPA_PLATFORM:-offscreen}}"
-export CMAKE_BUILD_PARALLEL_LEVEL=4 SEVENZIP_SCRIPT_OUTPUT=compact
+export CMAKE_BUILD_PARALLEL_LEVEL={build_jobs} SEVENZIP_SCRIPT_OUTPUT=compact
 export SEVENZIP_COMPACT_TEST_BINARIES=ON SEVENZIP_INCLUDE_SLOW_TESTS={include_slow}
 export CMAKE_PREFIX_PATH={shlex.quote(config['qt_prefix'])}
 export PATH={shlex.quote(':'.join([config['qt_prefix'] + '/bin', *config['path']]))}:"$PATH"
@@ -131,7 +134,7 @@ git diff --cached --quiet || git -c user.name='Runner worktree' -c user.email='r
                     f'set "CMAKE_PREFIX_PATH={config["qt_prefix"]}"', 'set "CC=cl.exe"', 'set "CXX=cl.exe"',
                     f'set "SEVENZIP_WINDOWS_RUNNER_HOST={config["computer_name"]}"',
                     f'set "SEVENZIP_RUNNER_PYTHON={config["python"]}"',
-                    'set "CMAKE_BUILD_PARALLEL_LEVEL=4"', 'set "SEVENZIP_COMPACT_TEST_BINARIES=ON"',
+                    f'set "CMAKE_BUILD_PARALLEL_LEVEL={build_jobs}"', 'set "SEVENZIP_COMPACT_TEST_BINARIES=ON"',
                     f'set "SEVENZIP_INCLUDE_SLOW_TESTS={include_slow}"', 'set "SEVENZIP_SCRIPT_OUTPUT=compact"',
                     'set "SEVENZIP_CTEST_JOBS=1"', f'set "SEVENZIP_CODEC_MODULE_DIR={root}/build/codec-runtime"',
                     'set "PYTHONUTF8=1"', 'set "PYTHONIOENCODING=utf-8"',
