@@ -1,5 +1,20 @@
 # Dialog layout review — 2026-10-17
 
+## Review gallery: action availability and browser icons — 2026-10-18
+
+Compared `OverwriteDialog::OnInit` and its callers/answer mapping with the
+native extra-button visibility branch, plus `BrowseDialog.rc` and parent/create
+handlers. At the user's request, unavailable batch overwrite actions remain
+visible but disabled; the answer mapping and caller capability decision remain
+source-owned. Reinitialization restores availability. Browse replaces native
+resource text glyphs with Qt parent-folder/new-folder icons, retaining localized
+accessible names and the original navigation/create handlers. These are explicit
+Qt presentation differences; no source workflow branches are omitted.
+Focused macOS suites `overwrite_layout`, `source_browse_dialog` and
+`panel_deleted_draw` pass. Light/dark Cocoa captures for these groups are updated,
+including the previously stale icon-caption color gallery. Other platforms and
+rendered Windows parity remain unverified.
+
 ## Extract folder-name toggle — 2026-10-18
 
 Screenshot review compared desktop `ExtractDialog.rc` and the complete

@@ -89,10 +89,14 @@ class OverwriteLayoutTests final : public QObject {
             QCOMPARE(UiInspection::bounds(*no, dialog), noBounds);
             QCOMPARE(UiInspection::bounds(*cancel, dialog), cancelBounds);
         } else {
-            QVERIFY(!yesAll->isVisible() && !noAll->isVisible() && !rename->isVisible());
-            // Native HideItem retains the intervening resource columns.
+            QVERIFY(yesAll->isVisible() && noAll->isVisible() && rename->isVisible());
+            QVERIFY(!yesAll->isEnabled() && !noAll->isEnabled() && !rename->isEnabled());
+            // Unavailable batch choices retain the action grid.
             QVERIFY(cancelBounds.left() - yesBounds.right() > yes->width());
         }
+        dialog.ShowExtraButtons = true;
+        QVERIFY(dialog.OnInit());
+        QVERIFY(yesAll->isEnabled() && noAll->isEnabled() && rename->isEnabled());
         for (const auto *button : {yes, no, yesAll, noAll, rename, cancel})
             if (button->isVisible()) {
                 QVERIFY(UiInspection::fullyVisible(*button, dialog));

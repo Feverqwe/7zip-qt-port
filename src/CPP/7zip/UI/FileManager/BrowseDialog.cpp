@@ -36,6 +36,7 @@
 #include <QMessageBox>
 #include <QPushButton>
 #include <QSignalBlocker>
+#include <QStyle>
 #include <QTreeWidget>
 #include <QVBoxLayout>
 
@@ -168,11 +169,13 @@ void CBrowseDialog::OnInit() {
     layout->setSpacing(margin.height());
     auto *top = new QHBoxLayout;
     top->setSpacing(margin.width());
-    auto *parent = new QPushButton("<--", this);
+    auto *parent = new QPushButton(this);
+    parent->setIcon(style()->standardIcon(QStyle::SP_FileDialogToParent));
     parent->setObjectName("browseParent");
     QtBindLangText(parent, IDM_OPEN_PARENT_FOLDER, {}, true);
     parent->setAutoDefault(true);
-    auto *create = new QPushButton("+", this);
+    auto *create = new QPushButton(this);
+    create->setIcon(style()->standardIcon(QStyle::SP_FileDialogNewFolder));
     create->setObjectName("browseCreateFolder");
     QtBindLangText(create, IDM_CREATE_FOLDER, {}, true);
     create->setAutoDefault(true);

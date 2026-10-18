@@ -226,11 +226,9 @@ bool COverwriteDialog::OnInit() {
     SetFileInfoControl(NewFileInfo, IDT_OVERWRITE_NEW_FILE_SIZE_TIME, IDI_OVERWRITE_NEW_FILE,
                        IDI_OVERWRITE_NEW_FILE_2);
     UpdateButtonSizes();
-    if (!ShowExtraButtons) {
-        _controls.value(IDB_YES_TO_ALL)->hide();
-        _controls.value(IDB_NO_TO_ALL)->hide();
-        _controls.value(IDB_AUTO_RENAME)->hide();
-    }
+    // Keep the action grid legible when this caller disallows batch answers.
+    for (unsigned id : {IDB_YES_TO_ALL, IDB_NO_TO_ALL, IDB_AUTO_RENAME})
+        _controls.value(id)->setEnabled(ShowExtraButtons);
     auto *button = static_cast<QPushButton *>(_controls.value(DefaultButton_is_NO ? IDNO : IDYES));
     button->setDefault(true);
     button->setFocus();
