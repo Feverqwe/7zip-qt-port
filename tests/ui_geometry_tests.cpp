@@ -207,11 +207,26 @@ class UiGeometryTests final : public QObject {
             QVERIFY(UiInspection::bounds(*pathMode, *dialog).right() <
                     UiInspection::bounds(*password, *dialog).left());
             auto *nameEnabled = dialog->findChild<QCheckBox *>("extractNameEnable");
-            QVERIFY(nameEnabled);
-            for (bool enabled : {false, true}) {
+            auto *folderName = dialog->findChild<QLineEdit *>("extractPathName");
+            QVERIFY(nameEnabled && folderName);
+            nameEnabled->setChecked(true);
+            QApplication::processEvents();
+            const QString pendingName = folderName->text();
+            const QSize windowSize = dialog->size();
+            const QList<QWidget *> stableControls = {destination, browse,     pathMode,   overwrite,
+                                                     password,    folderName, nameEnabled};
+            QList<QRect> positions;
+            for (const auto *control : stableControls)
+                positions.append(UiInspection::bounds(*control, *dialog));
+            for (bool enabled : {false, true, false}) {
                 nameEnabled->setChecked(enabled);
                 QApplication::processEvents();
-                QCOMPARE(dialog->findChild<QWidget *>("extractPathName")->isVisible(), enabled);
+                QVERIFY(folderName->isVisible());
+                QCOMPARE(folderName->isEnabled(), enabled);
+                QCOMPARE(folderName->text(), pendingName);
+                QCOMPARE(dialog->size(), windowSize);
+                for (int i = 0; i < stableControls.size(); ++i)
+                    QCOMPARE(UiInspection::bounds(*stableControls[i], *dialog), positions[i]);
                 QVERIFY2(footerFits(*dialog), qPrintable(UiInspection::dump(*dialog)));
                 for (QWidget *control : {destination, browse, pathMode, overwrite, password})
                     QVERIFY2(UiInspection::fullyVisible(*control, *dialog),

@@ -188,8 +188,9 @@ Implemented view: `src/CPP/7zip/UI/GUI/ExtractDialog.cpp`.
   row, path mode, root-duplication checkbox, and overwrite mode in that order.
   The password group is right of the modes, with Password and Show Password.
   Restore file security is below it; Unix disables it with a platform reason.
-- Toggling `extractNameEnable` hides/shows the folder-name field without
-  obscuring modes or confirmation buttons.
+- The folder-name field stays visible when its checkbox is cleared, but becomes
+  disabled and does not contribute to the destination. Toggling preserves its
+  pending text and the positions of the other controls.
 - OK, Cancel and Help stay visible,
   distinct, and inside the window at requested sizes 640×360 and 470×330;
   Qt may expand to its style-dependent minimum size. Static labels fit.
@@ -208,7 +209,7 @@ of the caller. The source resource has no destination hint.
 reports at 700×390/600×340 (Extract) and 760×720/640×480 (Create).
 It asserts complete destination, mode, password, duplication and visible
 folder-name fields, archive-name input and footer exposure. Source grouping and
-conditional folder-name visibility remain as above. Editable values are checked
+conditional folder-name availability remain as above. Editable values are checked
 by the workflow, not inferred from redacted JSON; native separators and NBSP
 preservation change values without introducing controls or captions.
 

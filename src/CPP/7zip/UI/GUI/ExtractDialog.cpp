@@ -162,7 +162,9 @@ CExtractDialog::CExtractDialog(const QString &initialPath, const QStringList &hi
     connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
     connect(browse, &QPushButton::clicked, this, &CExtractDialog::OnButtonSetPath);
     connect(_showPassword, &QCheckBox::toggled, this, &CExtractDialog::UpdatePasswordControl);
-    connect(_nameEnable, &QCheckBox::toggled, _pathName, &QWidget::setVisible);
+    // Keep the source name row in place. Disabling preserves its caption,
+    // pending value and geometry while OnOK still obeys the checkbox.
+    connect(_nameEnable, &QCheckBox::toggled, _pathName, &QWidget::setEnabled);
     OnInit(history);
 }
 
@@ -252,7 +254,7 @@ void CExtractDialog::OnInit(const QStringList &history) {
         else
             _pathName->setText(pathName);
     } else
-        _pathName->hide();
+        _pathName->setEnabled(false);
     _path->setEditText(pathPrefix);
     for (unsigned i = 0; i < _info.Paths.Size() && i < kHistorySize; i++)
         _path->addItem(_info.Paths[i]);

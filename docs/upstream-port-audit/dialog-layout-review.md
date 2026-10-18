@@ -1,5 +1,28 @@
 # Dialog layout review — 2026-10-17
 
+## Extract folder-name toggle — 2026-10-18
+
+Screenshot review compared desktop `ExtractDialog.rc` and the complete
+`CExtractDialog::OnInit`, `OnButtonClicked` and `OnOK` with the current Qt
+constructor, initial state, destination preview, confirmation and persistence
+consumers. Source baseline/repository are recorded below. Native Windows hides
+the name edit in a fixed resource rectangle. Qt's equivalent visibility change
+collapsed that row and shifted the modes below it.
+
+The requested presentation correction keeps the name edit visible but disabled
+when SplitDest is off. Toggling retains pending text and control geometry;
+the source checkbox still controls whether the name contributes to the output
+path. Path splitting, normalization, history, persistence, cancellation and
+extraction algorithms are unchanged. This is an intentional Qt presentation
+difference from native Windows visibility, with no omitted functional branches.
+
+Normal/compact geometry now checks repeated toggles, unchanged rectangles,
+pending text and visible/enabled state. Existing split-destination and path-rule
+tests cover output paths and persistence. Focused macOS/Qt 6.12 suites:
+`ui_geometry`, `split_destination`, `extract_dialog`, `dialog_path_rules`.
+Native Cocoa light/dark screenshots are refreshed in the review gallery.
+Windows/Linux and rendered original 7zFM comparison remain unverified.
+
 Source reference: <https://github.com/ip7z/7zip.git>, commit
 `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. Working tree based on
 `b9d13fbca9f43fe3b9971e0a0ef6545b8fb99ec7`, with the preceding

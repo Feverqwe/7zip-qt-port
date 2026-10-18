@@ -81,7 +81,8 @@ class SplitDestinationTests final : public QObject {
         {
             CExtractDialog dialog(initial, {});
             enabled(dialog)->setChecked(false);
-            QVERIFY(name(dialog)->isHidden());
+            QVERIFY(!name(dialog)->isHidden());
+            QVERIFY(!name(dialog)->isEnabled());
             path(dialog)->setEditText(QStringLiteral("/другое место"));
             dialog.accept();
             QCOMPARE(QDir::fromNativeSeparators(dialog.destination()),
@@ -93,6 +94,7 @@ class SplitDestinationTests final : public QObject {
             QCOMPARE(path(restarted)->currentText(), initial);
             enabled(restarted)->setChecked(true);
             QVERIFY(!name(restarted)->isHidden());
+            QVERIFY(name(restarted)->isEnabled());
             restarted.reject();
         }
         CExtractDialog afterCancel(initial, {});
