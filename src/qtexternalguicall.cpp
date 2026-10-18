@@ -7,6 +7,7 @@
 #include <QTimer>
 #include <QWidget>
 #include <atomic>
+#include <exception>
 #include <memory>
 
 namespace {
@@ -16,6 +17,7 @@ struct Request {
     // record alive until completion; modal closure uses CanCloseNow.
     std::atomic_int phase{0};
     int result = 0;
+    std::exception_ptr error;
 };
 
 void Deliver(const std::shared_ptr<Request> &request, QObject *context,
@@ -25,15 +27,21 @@ void Deliver(const std::shared_ptr<Request> &request, QObject *context,
         request->ready.release();
         return;
     }
-    if (ready && !ready()) {
-        request->phase.store(0);
-        QTimer::singleShot(25, context, [request, context, body, ready] {
-            Deliver(request, context, body, ready);
-        });
-        return;
+    try {
+        if (ready && !ready()) {
+            request->phase.store(0);
+            QTimer::singleShot(25, context, [request, context, body, ready] {
+                Deliver(request, context, body, ready);
+            });
+            return;
+        }
+        request->phase.store(1);
+        request->result = body();
+    } catch (...) {
+        // Retire delivery even if readiness or rescheduling failed first.
+        request->phase.store(1);
+        request->error = std::current_exception();
     }
-    request->phase.store(1);
-    request->result = body();
     request->ready.release();
 }
 } // namespace
@@ -58,5 +66,7 @@ int QtExternalGuiCall(QWidget *window, CExitEventLauncher &launcher,
                 return 0;
         }
     }
+    if (request->error)
+        std::rethrow_exception(request->error);
     return request->result;
 }

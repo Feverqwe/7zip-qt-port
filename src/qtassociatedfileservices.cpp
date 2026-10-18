@@ -66,10 +66,11 @@ HRESULT QtAssociatedFileServices::StartApplicationKnown(const UString &dir, cons
     process = nullptr;
 #ifdef Q_OS_WIN
     if (!_opener) {
-        NWindows::CProcess native;
-        const HRESULT result = ::StartApplication(dir, path, window, native);
-        process = _processServices.Adopt(native);
-        return result;
+        return _processServices.StartNative(
+            [&](NWindows::CProcess &native) {
+                return ::StartApplication(dir, path, window, native);
+            },
+            process);
     }
 #endif
     return StartApplication(dir, path, window);

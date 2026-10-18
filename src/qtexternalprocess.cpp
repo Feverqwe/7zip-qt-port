@@ -13,6 +13,8 @@
 #include <TlHelp32.h>
 #else
 #include <cerrno>
+#include <condition_variable>
+#include <mutex>
 #include <spawn.h>
 #include <sys/wait.h>
 #include <thread>
@@ -42,6 +44,7 @@ class CWinProcessHandle final : public IQtProcessHandle {
 
   public:
     explicit CWinProcessHandle(HANDLE handle) { _process.Attach(handle); }
+    void Attach(HANDLE handle) { _process.Attach(handle); }
     UInt32 Id() const override { return GetProcessId(const_cast<NWindows::CProcess &>(_process)); }
     UString FileName() const override {
         // Resolve the API without changing the SDK target inherited by source
@@ -108,30 +111,67 @@ QtProcessStatus ReadProcessRecord(UInt32 id, CSnapshotProcess &record, QByteArra
     return QtProcessStatus::Running;
 }
 
+struct CChildReapState {
+    std::mutex Mutex;
+    std::condition_variable Ready;
+    pid_t Id = 0;
+    bool Released = false;
+
+    void Release(pid_t id) {
+        {
+            std::lock_guard<std::mutex> lock(Mutex);
+            Id = id;
+            Released = true;
+        }
+        Ready.notify_one();
+    }
+};
+
 class CPidProcessHandle final : public IQtProcessHandle {
     UInt32 _id = 0;
     UString _path;
     QByteArray _identity;
     bool _owned = false;
     bool _finished = false;
+    std::shared_ptr<CChildReapState> _reaper;
 
   public:
+    void PrepareReaper() {
+        auto state = std::make_shared<CChildReapState>();
+        std::thread worker([state] {
+            std::unique_lock<std::mutex> lock(state->Mutex);
+            state->Ready.wait(lock, [&] { return state->Released; });
+            const pid_t id = state->Id;
+            lock.unlock();
+            if (id > 0)
+                while (waitpid(id, nullptr, 0) < 0 && errno == EINTR) {
+                }
+        });
+        try {
+            worker.detach();
+        } catch (...) {
+            state->Release(0);
+            worker.join();
+            throw;
+        }
+        _reaper = std::move(state);
+    }
     void Attach(UInt32 id, const UString &path, const QByteArray &identity, bool owned) {
         _id = id;
+        _owned = owned;
         _path = path;
         _identity = identity;
-        _owned = owned;
+    }
+    void Own(UInt32 id) noexcept {
+        _id = id;
+        _owned = true;
     }
     ~CPidProcessHandle() override {
         // Closing a source process handle does not terminate the application.
-        // POSIX additionally needs to reap our child after an early GUI exit.
-        if (_owned && Status() != QtProcessStatus::Exited) {
-            const pid_t id = pid_t(_id);
-            std::thread([id] {
-                while (waitpid(id, nullptr, 0) < 0 && errno == EINTR) {
-                }
-            }).detach();
-        }
+        // Reserve reaping before launch: close/exception cleanup must neither
+        // allocate a thread nor wait for a running editor to exit.
+        if (_reaper)
+            _reaper->Release(_owned ? pid_t(_id) : 0);
     }
     UInt32 Id() const override { return _id; }
     UString FileName() const override { return _path; }
@@ -181,9 +221,11 @@ void QtNativeProcessServices::GetSnapshot(CObjectVector<CSnapshotProcess> &items
                                           const CRecordVector<UInt32> &roots) {
     items.Clear();
 #ifdef Q_OS_WIN
-    HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-    if (snapshot == INVALID_HANDLE_VALUE)
+    const HANDLE snapshotHandle = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
+    if (snapshotHandle == INVALID_HANDLE_VALUE)
         return;
+    NWindows::CHandle snapshot;
+    snapshot.Attach(snapshotHandle);
     PROCESSENTRY32W entry{};
     entry.dwSize = sizeof(entry);
     for (BOOL found = Process32FirstW(snapshot, &entry); found;
@@ -194,7 +236,7 @@ void QtNativeProcessServices::GetSnapshot(CObjectVector<CSnapshotProcess> &items
         item.Name = entry.szExeFile;
         items.Add(item);
     }
-    CloseHandle(snapshot);
+    snapshot.Close();
     // Toolhelp retains the creator's PID after it exits. A recycled PID can
     // otherwise make an unrelated older process look like an editor child.
     QHash<UInt32, std::optional<FILETIME>> creationTimes;
@@ -250,8 +292,10 @@ void QtNativeProcessServices::GetSnapshot(CObjectVector<CSnapshotProcess> &items
 
 IQtProcessHandle *QtNativeProcessServices::OpenProcess(UInt32 id) {
 #ifdef Q_OS_WIN
-    HANDLE handle = ::OpenProcess(SYNCHRONIZE | PROCESS_QUERY_LIMITED_INFORMATION, FALSE, id);
-    return handle ? new CWinProcessHandle(handle) : nullptr;
+    NWindows::CProcess process;
+    if (!process.Open(SYNCHRONIZE | PROCESS_QUERY_LIMITED_INFORMATION, false, id))
+        return nullptr;
+    return Adopt(process);
 #else
     CSnapshotProcess item;
     QByteArray identity;
@@ -266,6 +310,26 @@ IQtProcessHandle *QtNativeProcessServices::OpenProcess(UInt32 id) {
 #ifdef Q_OS_WIN
 IQtProcessHandle *QtNativeProcessServices::Adopt(NWindows::CProcess &process) {
     return (HANDLE)process ? new CWinProcessHandle(process.Detach()) : nullptr;
+}
+
+HRESULT
+QtNativeProcessServices::StartNative(const std::function<HRESULT(NWindows::CProcess &)> &start,
+                                     IQtProcessHandle *&process) {
+    process = nullptr;
+    auto owner = std::make_unique<CWinProcessHandle>(nullptr);
+    NWindows::CProcess native;
+    HRESULT result;
+    try {
+        result = start(native);
+    } catch (...) {
+        result = E_OUTOFMEMORY;
+    }
+    // Preserve a launched process even if its source launcher reported failure.
+    if ((HANDLE)native) {
+        owner->Attach(native.Detach());
+        process = owner.release();
+    }
+    return result;
 }
 #endif
 
@@ -283,13 +347,16 @@ HRESULT QtNativeProcessServices::Create(const UString &program, const UString &p
         param += paths[i];
         param.Add_Char('"');
     }
-    NWindows::CProcess native;
-    const WRes result = native.Create(program, param, nullptr);
-    if (result != 0)
-        return HRESULT_FROM_WIN32(result);
-    process = Adopt(native);
+    return StartNative(
+        [&](NWindows::CProcess &native) {
+            const WRes result = native.Create(program, param, nullptr);
+            return result == 0 ? S_OK : HRESULT_FROM_WIN32(result);
+        },
+        process);
 #else
     auto handle = std::make_unique<CPidProcessHandle>();
+    handle->Attach(0, program, QByteArray(), false);
+    handle->PrepareReaper();
     QList<QByteArray> bytes;
     bytes.append(QFile::encodeName(ToQString(program)));
     for (const QString &arg : QProcess::splitCommand(ToQString(parameters)))
@@ -320,10 +387,18 @@ HRESULT QtNativeProcessServices::Create(const UString &program, const UString &p
     posix_spawnattr_destroy(&attributes);
     if (result != 0)
         return HRESULT_FROM_WIN32(result);
-    CSnapshotProcess item;
-    QByteArray identity;
-    ReadProcessRecord(UInt32(pid), item, identity);
-    handle->Attach(UInt32(pid), program, identity, true);
+    // Retain the launched child before reading allocating metadata. A partial
+    // failure still returns its owner so the caller preserves the edited file.
+    handle->Own(UInt32(pid));
+    try {
+        CSnapshotProcess item;
+        QByteArray identity;
+        ReadProcessRecord(UInt32(pid), item, identity);
+        handle->Attach(UInt32(pid), program, identity, true);
+    } catch (...) {
+        process = handle.release();
+        return E_OUTOFMEMORY;
+    }
     process = handle.release();
 #endif
     return S_OK;

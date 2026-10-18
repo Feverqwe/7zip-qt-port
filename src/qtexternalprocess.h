@@ -1,6 +1,7 @@
 #pragma once
 #include "Common/MyString.h"
 #include "Common/MyVector.h"
+#include <functional>
 #ifdef _WIN32
 namespace NWindows {
 class CProcess;
@@ -49,6 +50,8 @@ class QtNativeProcessServices final : public IQtProcessServices {
     UInt32 CurrentProcessId() const override;
 #ifdef _WIN32
     IQtProcessHandle *Adopt(NWindows::CProcess &process);
+    HRESULT StartNative(const std::function<HRESULT(NWindows::CProcess &)> &start,
+                        IQtProcessHandle *&process);
 #endif
     HRESULT Create(const UString &program, const UString &parameters, const UStringVector &paths,
                    IQtProcessHandle *&process);

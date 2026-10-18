@@ -26,6 +26,7 @@
 #include "qtownedtempregistry.h"
 #include <QElapsedTimer>
 #include <QMessageBox>
+#include <QScopeGuard>
 #include <QWidget>
 #include <chrono>
 #include <thread>
@@ -79,12 +80,15 @@ class CChildProcesses {
         _ids.Clear();
     }
     void SetMainProcess(IQtProcessHandle *h) {
+        CMyUniquePtr<IQtProcessHandle> owner(h);
         const UInt32 id = h->Id();
         if (id != 0)
             _ids.AddToUniqueSorted(id);
         Path = h->FileName();
-        Handles.Add(h);
-        NeedWait.Add(true);
+        Handles.ReserveOnePosition();
+        NeedWait.ReserveOnePosition();
+        Handles.AddInReserved(owner.release());
+        NeedWait.AddInReserved(true);
     }
     void Update(bool needFindProcessByPath) {
         if (!Services)
@@ -113,11 +117,14 @@ class CChildProcesses {
                 if (isSameName || _ids.FindInSorted(sp.ParentId) >= 0)
                     needAdd = true;
                 if (needAdd) {
-                    IQtProcessHandle *hProcess = Services->OpenProcess(id);
+                    CMyUniquePtr<IQtProcessHandle> owner(Services->OpenProcess(id));
+                    IQtProcessHandle *hProcess = owner.get();
                     if (hProcess) {
                         _ids.AddToUniqueSorted(id);
-                        Handles.Add(hProcess);
-                        NeedWait.Add(true);
+                        Handles.ReserveOnePosition();
+                        NeedWait.ReserveOnePosition();
+                        Handles.AddInReserved(owner.release());
+                        NeedWait.AddInReserved(true);
                         wasAdded = true;
                     }
                 }
@@ -170,7 +177,7 @@ class CTmpProcessInfoRelease {
     }
 };
 
-static THREAD_FUNC_DECL MyThreadFunction(void *param) {
+static THREAD_FUNC_DECL MyThreadFunction(void *param) try {
     CMyUniquePtr<CTmpProcessInfo> tpi((CTmpProcessInfo *)param);
     CChildProcesses &processes = tpi->Processes;
     const bool mainProcessWasSet = !processes.Handles.IsEmpty();
@@ -310,6 +317,10 @@ static THREAD_FUNC_DECL MyThreadFunction(void *param) {
             tpi->DeleteDirAndFile();
     }
     return 0;
+} catch (...) {
+    // A failed snapshot/registration must not escape the native thread entry.
+    // The record's owners unwind; an unproven external lifetime keeps its copy.
+    return (THREAD_FUNC_RET_TYPE)(uintptr_t)1;
 }
 
 void CPanel::MessageBox_LastError() const {
@@ -1075,7 +1086,18 @@ void CPanel::OpenItemInArchive(unsigned index, bool tryInternal, bool tryExterna
         MessageBox_LastError();
         return;
     }
+    // Prepare allocating tracking metadata before an external program can own
+    // the copy. The process output remains guarded even inside launch errors.
+    tpi->FullPathFolderPrefix = _currentFolderPrefix;
+    tpi->RelPath = relPath;
     IQtProcessHandle *process = nullptr;
+    const auto closeProcess = qScopeGuard([&] {
+        if (process) {
+            tempDirectory.DisableDeleting();
+            tmpProcessInfoRelease._needDelete = false;
+            delete process;
+        }
+    });
     const HRESULT res = editMode
                             ? StartEditApplication(fs2us(tempFilePath), useEditor, GetParent(),
                                                    *_externalFileServices, _settingsPath, &process)
@@ -1092,13 +1114,14 @@ void CPanel::OpenItemInArchive(unsigned index, bool tryInternal, bool tryExterna
     tpi->Window = this;
     tpi->Parent = GetParent();
     tpi->ExternalServices = _externalFileServices;
-    tpi->FullPathFolderPrefix = _currentFolderPrefix;
     tpi->FileIndex = index;
-    tpi->RelPath = relPath;
     tpi->Launcher = _exitEventLauncher.get();
     tpi->Processes.Services = _externalFileServices->ProcessServices();
-    if (process)
-        tpi->Processes.SetMainProcess(process);
+    if (process) {
+        IQtProcessHandle *owned = process;
+        process = nullptr;
+        tpi->Processes.SetMainProcess(owned);
+    }
     ::CThread th;
     Thread_CONSTRUCT(&th) if (Thread_Create(&th, MyThreadFunction, tpi.get()) != 0) throw 271824;
     _exitEventLauncher->_threads.AddInReserved(th);

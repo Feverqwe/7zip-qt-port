@@ -19,38 +19,62 @@
 #include <QTreeWidget>
 #include <QtTest>
 #include <atomic>
+#include <new>
 
 using namespace ExternalEditorFixture;
 
 namespace {
 class CErrorHandle final : public IQtProcessHandle {
     std::atomic_bool &_closed;
+    bool _throwName;
+    bool _exited;
 
   public:
-    explicit CErrorHandle(std::atomic_bool &closed) : _closed(closed) {}
+    explicit CErrorHandle(std::atomic_bool &closed, bool throwName = false, bool exited = false)
+        : _closed(closed), _throwName(throwName), _exited(exited) {}
     ~CErrorHandle() override { _closed.store(true); }
     UInt32 Id() const override { return 100; }
-    UString FileName() const override { return UString(L"owned-fixture"); }
-    QtProcessStatus Status() override { return QtProcessStatus::Error; }
+    UString FileName() const override {
+        if (_throwName)
+            throw std::bad_alloc();
+        return UString(L"owned-fixture");
+    }
+    QtProcessStatus Status() override {
+        return _exited ? QtProcessStatus::Exited : QtProcessStatus::Error;
+    }
+};
+class CThrowingSnapshotServices final : public IQtProcessServices {
+  public:
+    void GetSnapshot(CObjectVector<CSnapshotProcess> &) override { throw std::bad_alloc(); }
+    IQtProcessHandle *OpenProcess(UInt32) override { return nullptr; }
+    UInt32 CurrentProcessId() const override { return 0; }
 };
 class CProcessService final : public IQtExternalFileServices {
     QtAssociatedFileServices _native{std::function<bool(const QUrl &)>()};
+    CThrowingSnapshotServices _snapshot;
 
   public:
     bool FailWait = false;
+    bool FailName = false;
+    bool FailSnapshot = false;
+    bool FailAfterLaunch = false;
     HRESULT LaunchResult = S_OK;
     std::atomic_bool Closed{false};
     QString Opened;
     HRESULT StartApplication(const UString &, const UString &, QWidget *) override {
         return E_NOTIMPL;
     }
-    IQtProcessServices *ProcessServices() override { return _native.ProcessServices(); }
+    IQtProcessServices *ProcessServices() override {
+        return FailSnapshot ? &_snapshot : _native.ProcessServices();
+    }
     HRESULT CreateKnownProcess(const UString &program, const UString &parameters,
                                const UStringVector &paths, QWidget *window,
                                IQtProcessHandle *&process) override {
         Opened = ToQString(paths[0]);
-        if (FailWait) {
-            process = new CErrorHandle(Closed);
+        if (FailWait || FailName || FailSnapshot || FailAfterLaunch) {
+            process = new CErrorHandle(Closed, FailName, FailSnapshot);
+            if (FailAfterLaunch)
+                throw std::bad_alloc();
             return LaunchResult;
         }
         return _native.CreateKnownProcess(program, parameters, paths, window, process);
@@ -239,6 +263,48 @@ class ArchiveExternalLifetimeTests final : public QObject {
         QCOMPARE(contents(archive, name), QByteArray("original"));
         if (waitError)
             QVERIFY(QDir(QFileInfo(service.Opened).absolutePath()).removeRecursively());
+    }
+    void registrationExceptions_data() {
+        QTest::addColumn<int>("failure");
+        QTest::newRow("main-handle-name") << 0;
+        QTest::newRow("worker-snapshot") << 1;
+        QTest::newRow("launch-with-handle") << 2;
+    }
+    void registrationExceptions() {
+        QFETCH(int, failure);
+        QTemporaryDir fixture;
+        const QString name = QStringLiteral("ошибка владельца.txt");
+        const QString archive = fixture.filePath("original.zip");
+        QVERIFY(write(fixture.filePath(name), "original"));
+        QVERIFY(createArchive(fixture.path(), archive, name));
+        SaveRegEditor(true, L"fixture-editor", settings());
+        ArchiveBackend backend;
+        CMyComPtr<IFolderManager> manager = new QtArchiveFolderManager(backend);
+        CProcessService service;
+        service.FailName = failure == 0;
+        service.FailSnapshot = failure == 1;
+        service.FailAfterLaunch = failure == 2;
+        CPanel panel;
+        QVERIFY(bind(panel, manager, service, archive));
+        const auto removeCopy = qScopeGuard([&] {
+            panel.ExitExternalWorkers(false);
+            if (!service.Opened.isEmpty())
+                QDir(QFileInfo(service.Opened).absolutePath()).removeRecursively();
+        });
+        if (failure != 1) {
+            QVERIFY_THROWS_EXCEPTION(std::bad_alloc, panel.EditItem(0, true));
+        } else {
+            panel.EditItem(0, true);
+        }
+        QTRY_VERIFY(service.Closed.load());
+        panel.ExitExternalWorkers(false);
+        QVERIFY(!service.Opened.isEmpty());
+        QCOMPARE(read(service.Opened), QByteArray("original"));
+        const auto owned = ownedDirectory(service.Opened);
+        QVERIFY(!owned.key.isEmpty());
+        QVERIFY(!owned.active && owned.externallyProtected);
+        QVERIFY(!QtOwnedTempRegistry().ClaimForDeletion(owned));
+        QCOMPARE(contents(archive, name), QByteArray("original"));
     }
 };
 int main(int argc, char **argv) {
