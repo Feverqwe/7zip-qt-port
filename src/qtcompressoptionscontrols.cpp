@@ -3,7 +3,6 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "qtdialoglayout.h"
 #include "qtdialogscreenservices.h"
-#include "qtdialogunits.h"
 #include "qtlangbuttonbox.h"
 #include "qtlangcontrols.h"
 #include <QCheckBox>
@@ -13,10 +12,7 @@
 #include <QGridLayout>
 #include <QGroupBox>
 #include <QLabel>
-#include <QPushButton>
-#include <QScreen>
 #include <QShortcut>
-#include <QStyle>
 #include <QVBoxLayout>
 
 void CQtCompressCombo::Attach(QWidget *widget) { view_ = static_cast<QComboBox *>(widget); }
@@ -48,12 +44,19 @@ CQtCompressOptionsDialog::CQtCompressOptionsDialog(QWidget *parent) : QDialog(pa
     setObjectName("compressOptionsDialog");
     QtBindLangText(this, IDB_COMPRESS_OPTIONS, "Options");
     buildControls();
-    applySourceGeometry();
 }
 
 void CQtCompressOptionsDialog::buildControls() {
-    auto *layout = new QVBoxLayout(this);
-    layout->setSpacing(3);
+    auto *content = new QWidget(this);
+    content->setObjectName("compressOptionsContent");
+    auto *layout = new QVBoxLayout(content);
+    layout->setContentsMargins(0, 0, 0, 0);
+#ifdef Q_OS_MACOS
+    // QMacStyle's group backing extends below its layout item. Keep that
+    // pixel inside the content widget even at the initial minimum height.
+    layout->setContentsMargins(0, 0, 0, 1);
+#endif
+    layout->setSpacing(8);
     const auto registerControl = [this](unsigned id, const char *name, QWidget *widget) {
         controls_.insert(id, widget);
         widget->setObjectName(name);
@@ -80,6 +83,11 @@ void CQtCompressOptionsDialog::buildControls() {
         connect(box, &QCheckBox::clicked, this, [this, id, box] { OnButtonClicked(id, box); });
         return box;
     };
+    auto *info = new QtWrappingLabel(content);
+    info->setWordWrap(true);
+    registerControl(IDT_COMPRESS_TIME_INFO, "IDT_COMPRESS_TIME_INFO", info);
+    layout->addWidget(info);
+    layout->addSpacing(12);
     auto *ntfsSlot = new QWidget(this);
     ntfsSlot->setObjectName("compressOptionsNtfsSlot");
     auto *slot = new QVBoxLayout(ntfsSlot);
@@ -91,8 +99,17 @@ void CQtCompressOptionsDialog::buildControls() {
 #endif
     slot->setSpacing(0);
     auto *ntfs = new QGroupBox("NTFS", ntfsSlot);
+    ntfs->setFlat(true);
+    ntfs->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
     registerControl(IDG_COMPRESS_NTFS, "IDG_COMPRESS_NTFS", ntfs);
+#ifdef Q_OS_WIN
+    QtBindLocalText(ntfs, "ArchiveRedesign",
+                    QT_TRANSLATE_NOOP("ArchiveRedesign", "Links and metadata"));
+#else
+    QtBindLocalText(ntfs, "ArchiveRedesign", QT_TRANSLATE_NOOP("ArchiveRedesign", "Links"));
+#endif
     auto *ntfsLayout = new QGridLayout(ntfs);
+    ntfsLayout->setVerticalSpacing(8);
     ntfsLayout->addWidget(checkbox(IDX_COMPRESS_NT_SYM_LINKS, "IDX_COMPRESS_NT_SYM_LINKS",
                                    "Store symbolic links", ntfs),
                           0, 0);
@@ -105,35 +122,35 @@ void CQtCompressOptionsDialog::buildControls() {
     ntfsLayout->addWidget(
         checkbox(IDX_COMPRESS_NT_SECUR, "IDX_COMPRESS_NT_SECUR", "Store file security", ntfs), 3,
         0);
-    ntfsLayout->setRowStretch(4, 1);
     slot->addWidget(ntfs);
-    slot->addStretch();
     layout->addWidget(ntfsSlot);
-    auto *info = new QLabel(this);
-    registerControl(IDT_COMPRESS_TIME_INFO, "IDT_COMPRESS_TIME_INFO", info);
-    info->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
-    info->setContentsMargins(0, 0, 0, QtDialogUnits(font()).pixels(QSize(0, 4)).height());
-    layout->addWidget(info);
     auto *time = new QGroupBox("Time", this);
+    time->setFlat(true);
     time->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
     registerControl(IDG_COMPRESS_TIME, "IDG_COMPRESS_TIME", time);
     QtBindResourceText(time, IDG_COMPRESS_TIME, "Time");
     auto *grid = new QGridLayout(time);
-    grid->setVerticalSpacing(3);
-    grid->addWidget(checkbox(IDX_COMPRESS_PREC_SET, "IDX_COMPRESS_PREC_SET", {}, time), 0, 0);
+    grid->setVerticalSpacing(8);
+    grid->setHorizontalSpacing(8);
+    grid->setColumnStretch(1, 1);
+    grid->addWidget(checkbox(IDX_COMPRESS_PREC_SET, "IDX_COMPRESS_PREC_SET", {}, time), 0, 0, 1, 3);
     QtBindLocalText(GetItem(IDX_COMPRESS_PREC_SET), "qtcompressoptionscontrols",
                     QT_TRANSLATE_NOOP("qtcompressoptionscontrols", "Set time precision"), true);
+    static_cast<QCheckBox *>(GetItem(IDX_COMPRESS_PREC_SET))
+        ->setText(QCoreApplication::translate("qtcompressoptionscontrols", "Set time precision"));
     auto *precisionLabel = new QtWrappingLabel("Timestamp precision:", time);
     precisionLabel->setWordWrap(true);
     registerControl(IDT_COMPRESS_TIME_PREC, "IDT_COMPRESS_TIME_PREC", precisionLabel);
     QtBindResourceText(precisionLabel, IDT_COMPRESS_TIME_PREC, "Timestamp precision:");
-    grid->addWidget(precisionLabel, 0, 1);
+    precisionLabel->setContentsMargins(24, 0, 0, 0);
+    grid->addWidget(precisionLabel, 1, 0, 1, 2);
     auto *precision = new QComboBox(time);
     precision->setSizeAdjustPolicy(QComboBox::AdjustToMinimumContentsLengthWithIcon);
-    precision->setMinimumContentsLength(10);
+    precision->setMinimumContentsLength(12);
+    precision->setAttribute(Qt::WA_LayoutUsesWidgetRect);
     registerControl(IDC_COMPRESS_TIME_PREC, "IDC_COMPRESS_TIME_PREC", precision);
     precisionLabel->setBuddy(precision);
-    grid->addWidget(precision, 0, 2);
+    grid->addWidget(precision, 1, 2);
     connect(precision, &QComboBox::activated, this,
             [this](int) { OnCommand(CBN_SELCHANGE, IDC_COMPRESS_TIME_PREC, 0); });
     struct CTimeRow {
@@ -148,7 +165,7 @@ void CQtCompressOptionsDialog::buildControls() {
                               "IDX_COMPRESS_ATIME", "Store last access time"},
                              {IDX_COMPRESS_ZTIME_SET, IDX_COMPRESS_ZTIME, "IDX_COMPRESS_ZTIME_SET",
                               "IDX_COMPRESS_ZTIME", "Set archive time to latest file time"}};
-    int row = 1;
+    int row = 2;
     for (const auto &item : rows) {
         auto *set = checkbox(item.set, item.setName, {}, time);
         QtBindLangText(set, item.value, {}, true);
@@ -169,51 +186,16 @@ void CQtCompressOptionsDialog::buildControls() {
     grid->addWidget(preserve, row, 0, 1, 3);
     layout->addWidget(time);
     layout->addStretch();
-    layout->addSpacing(QtDialogUnits(font()).pixels(QSize(0, 6)).height());
     auto *buttons = new QtLangButtonBox(
         QDialogButtonBox::Ok | QDialogButtonBox::Cancel | QDialogButtonBox::Help, this);
     buttons->setObjectName("compressOptionsButtons");
+    buttons->SetAcceptText("DialogRedesign", QT_TRANSLATE_NOOP("DialogRedesign", "Save"));
     connect(buttons, &QDialogButtonBox::helpRequested, this, [this] { OnHelp(); });
     auto *help = new QShortcut(QKeySequence(Qt::Key_F1), this);
     connect(help, &QShortcut::activated, this, [this] { OnHelp(); });
     connect(buttons, &QDialogButtonBox::accepted, this, &CQtCompressOptionsDialog::accept);
     connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
-    layout->addWidget(buttons);
-}
-
-void CQtCompressOptionsDialog::applySourceGeometry() {
-    const QtDialogUnits units(font());
-    const auto x = [&](int value) { return units.pixels(QSize(value, 0)).width(); };
-    const auto y = [&](int value) { return units.pixels(QSize(0, value)).height(); };
-    auto *root = static_cast<QVBoxLayout *>(layout());
-    root->setContentsMargins(x(8), y(8), x(8), y(8));
-    root->setSpacing(y(6));
-    auto *ntfs = static_cast<QGroupBox *>(GetItem(IDG_COMPRESS_NTFS));
-    ntfs->setSizePolicy(QSizePolicy::Preferred, QSizePolicy::Fixed);
-    ntfs->layout()->setContentsMargins(x(8), y(12), x(8), y(4));
-    ntfs->layout()->setSpacing(0);
-    auto *ntfsGrid = static_cast<QGridLayout *>(ntfs->layout());
-    for (int row = 0; row < 4; ++row)
-        ntfsGrid->setRowMinimumHeight(row, y(14));
-    auto *time = static_cast<QGroupBox *>(GetItem(IDG_COMPRESS_TIME));
-    auto *grid = static_cast<QGridLayout *>(time->layout());
-    grid->setContentsMargins(x(8), y(6), x(8), y(4));
-    grid->setSpacing(0);
-    grid->setHorizontalSpacing(x(6));
-#ifdef Q_OS_MACOS
-    // Cocoa's combo backing extends left of its layout item. Native spacing
-    // keeps it separate from the preceding precision label.
-    grid->setHorizontalSpacing(qMax(
-        x(6), style()->layoutSpacing(QSizePolicy::Label, QSizePolicy::ComboBox, Qt::Horizontal)));
-#endif
-    grid->setColumnMinimumWidth(0, x(18));
-    grid->setColumnStretch(1, 1);
-    auto *precision = static_cast<QComboBox *>(GetItem(IDC_COMPRESS_TIME_PREC));
-    precision->setFixedWidth(qMax(x(76), precision->minimumSizeHint().width()));
-    auto *buttons = findChild<QDialogButtonBox *>("compressOptionsButtons");
-    for (auto *button : buttons->buttons()) {
-        button->setMinimumSize(button->sizeHint());
-    }
+    QtCreateDialogLayout(*this, *buttons)->addWidget(content);
 }
 
 void CQtCompressOptionsDialog::setVisible(bool visible) {
@@ -223,6 +205,8 @@ void CQtCompressOptionsDialog::setVisible(bool visible) {
     if (initialize) {
         initialized_ = true;
         OnInit();
+        QtBindLocalText(this, "ArchiveRedesign",
+                        QT_TRANSLATE_NOOP("ArchiveRedesign", "Format options"));
         // Size after applying format/platform visibility, without reserving
         // space for groups that the user cannot use.
         if (!testAttribute(Qt::WA_Resized))
@@ -262,7 +246,9 @@ void CQtCompressOptionsDialog::changeEvent(QEvent *event) {
         for (unsigned id : {IDX_COMPRESS_PREC_SET, IDX_COMPRESS_MTIME_SET, IDX_COMPRESS_CTIME_SET,
                             IDX_COMPRESS_ATIME_SET, IDX_COMPRESS_ZTIME_SET})
             static_cast<QCheckBox *>(GetItem(id))
-                ->setText(QCoreApplication::translate("qtcompressoptionscontrols", "Set"));
+                ->setText(QCoreApplication::translate(
+                    "qtcompressoptionscontrols",
+                    id == IDX_COMPRESS_PREC_SET ? "Set time precision" : "Set"));
     }
     QDialog::changeEvent(event);
 }
@@ -275,35 +261,9 @@ bool CQtCompressOptionsDialog::IsButtonCheckedBool(unsigned id) const {
 }
 void CQtCompressOptionsDialog::ShowItem_Bool(unsigned id, bool visible) {
     GetItem(id)->setVisible(visible);
-    const unsigned ntfsIds[] = {IDX_COMPRESS_NT_SYM_LINKS, IDX_COMPRESS_NT_HARD_LINKS,
-                                IDX_COMPRESS_NT_ALT_STREAMS, IDX_COMPRESS_NT_SECUR};
-    for (int row = 0; row < 4; ++row)
-        if (id == ntfsIds[row]) {
-            auto *grid = static_cast<QGridLayout *>(GetItem(IDG_COMPRESS_NTFS)->layout());
-            grid->setRowMinimumHeight(
-                row, visible ? QtDialogUnits(font()).pixels(QSize(0, 14)).height() : 0);
-        }
     if (id == IDG_COMPRESS_NTFS) {
         GetItem(id)->parentWidget()->setVisible(visible);
-        // Source NTFS metadata views have a wider compact contract (480px).
-        // Keep their original one-line mtime/ctime captions; the narrower ZIP
-        // time-only view needs wrapping to fit its 440px contract on Windows.
-        for (const unsigned timeId : {IDX_COMPRESS_MTIME, IDX_COMPRESS_CTIME, IDX_COMPRESS_ATIME}) {
-            auto *control = GetItem(timeId);
-            control->setProperty("languageWrapWidth",
-                                 visible ? (timeId == IDX_COMPRESS_ATIME ? 380 : 0) : 300);
-            QtReloadLangTexts(*control);
-        }
     }
-    const unsigned timeIds[] = {IDX_COMPRESS_MTIME, IDX_COMPRESS_CTIME, IDX_COMPRESS_ATIME,
-                                IDX_COMPRESS_ZTIME};
-    for (int row = 0; row < 4; ++row)
-        if (id == timeIds[row]) {
-            auto *grid = static_cast<QGridLayout *>(GetItem(IDG_COMPRESS_TIME)->layout());
-            grid->setRowMinimumHeight(
-                row + 1,
-                visible ? QtDialogUnits(font()).pixels(QSize(0, row < 3 ? 14 : 20)).height() : 0);
-        }
 }
 void CQtCompressOptionsDialog::EnableItem(unsigned id, bool enabled) {
     GetItem(id)->setEnabled(enabled);

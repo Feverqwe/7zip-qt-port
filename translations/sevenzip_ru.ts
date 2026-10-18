@@ -69,6 +69,21 @@
             <source>Protect with a password</source>
             <translation>Защитить паролем</translation>
         </message>
+        <message>
+            <location filename="../src/qtcompressoptionscontrols.cpp" line="+105" />
+            <source>Links and metadata</source>
+            <translation>Ссылки и метаданные</translation>
+        </message>
+        <message>
+            <location line="+2" />
+            <source>Links</source>
+            <translation>Ссылки</translation>
+        </message>
+        <message>
+            <location line="+99" />
+            <source>Format options</source>
+            <translation>Параметры формата</translation>
+        </message>
     </context>
     <context>
         <name>BenchmarkReport</name>
@@ -334,7 +349,7 @@
             <translation>Новый файл</translation>
         </message>
         <message>
-            <location line="+27" />
+            <location line="+28" />
             <source>Replace</source>
             <translation>Заменить</translation>
         </message>
@@ -367,6 +382,11 @@
             <location filename="../src/qtlinkcontrols.cpp" line="+155" />
             <source>Create link</source>
             <translation>Создать ссылку</translation>
+        </message>
+        <message>
+            <location filename="../src/qtcompressoptionscontrols.cpp" line="-17" />
+            <source>Save</source>
+            <translation>Сохранить</translation>
         </message>
     </context>
     <context>
@@ -590,7 +610,7 @@ Are you sure you want to split archive into such volumes?</source>
     <context>
         <name>MemDialog</name>
         <message>
-            <location filename="../src/CPP/7zip/UI/FileManager/MemDialog.cpp" line="+216" />
+            <location filename="../src/CPP/7zip/UI/FileManager/MemDialog.cpp" line="+215" />
             <source>File: %1</source>
             <translation>Файл: %1</translation>
         </message>
@@ -5535,23 +5555,23 @@ Application modules:
     <context>
         <name>qtcompressoptionscontrols</name>
         <message>
-            <location filename="../src/qtcompressoptionscontrols.cpp" line="+75" />
+            <location filename="../src/qtcompressoptionscontrols.cpp" line="-113" />
             <source>Override the format default for this option.</source>
             <translation>Задать значение вместо настройки формата по умолчанию.</translation>
         </message>
         <message>
             <location line="-2" />
-            <location line="+192" />
             <source>Set</source>
             <translation>Задать</translation>
         </message>
         <message>
-            <location line="-140" />
+            <location line="+62" />
+            <location line="+2" />
             <source>Set time precision</source>
             <translation>Задать точность времени</translation>
         </message>
         <message>
-            <location line="+41" />
+            <location line="+43" />
             <source>The official engine supports this option only on Windows.</source>
             <translation>Официальный движок поддерживает эту опцию только в Windows.</translation>
         </message>

@@ -23,7 +23,6 @@ class CQtCompressOptionsDialog : public QDialog {
     QHash<unsigned, QWidget *> controls_;
     bool initialized_ = false;
     void buildControls();
-    void applySourceGeometry();
     bool focusControl(QWidget *start, bool next, Qt::FocusReason reason);
     void changeEvent(QEvent *event) override;
 

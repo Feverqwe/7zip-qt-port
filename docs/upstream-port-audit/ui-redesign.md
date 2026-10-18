@@ -367,3 +367,49 @@ Memory не оставляет spacer перед footer: четыре прямы
 Сохраняются прежние current/build/cache; до прогонов проверены свободное место
 и отсутствие старых payload-каталогов (на обоих гостях только current).
 Full/slow suites не запускались.
+
+## Итерация 8: вложенные параметры формата
+
+Источник: https://github.com/ip7z/7zip.git,
+существующий baseline COptionsDialog — `0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`;
+сверка с checkout `9128b80e3a471108678e2b3ec3c985861c8d7b0f`.
+Прочитаны CompressOptionsDialog.rc, CompressDialogRes.h/GuiCommon.rc, полные
+COptionsDialog Check/Get/Store_TimeBoxes, GetComboValue/AddPrec/SetPrec,
+SetTimeMAC, OnInit/OnCommand/OnButtonClicked/OnOK/OnHelp, объявления и callers
+основного Add/Qt advanced adapter. Сверены CArcInfoEx time flags, format profile,
+TAR method/ZIP precision branches и вложенная транзакция локальной копии profile.
+
+Изменён только Qt presentation adapter. Сведения о текущем формате/методе
+подняты над плоскими группами links/metadata и time. Общая компоновка даёт
+согласованные margins/footer и Save/Cancel/Help; удалены фиксированные высоты
+строк и ширина precision combo. Полная подпись Set time precision находится
+над зависимыми label/combo. Остальные Set/value пары, их accessible names,
+source IDs и поддержка скрытых значений сохранены. Новые EN/RU подписи хранятся
+в существующих application catalogs.
+
+Нет второй таблицы возможностей форматов: source ShowItem/Enable/Check по-прежнему
+определяют видимость и доступность. Не менялись precision items/default/custom,
+M/C/A/Z-time decisions, metadata bools, locale rebuild, Help/F1 и OnOK. Cancel
+не затрагивает Add draft; Save использует прежний nested commit. Метрики берутся
+из Qt controls; исходные labels могут переноситься. Extra height уходит под форму,
+не распределяется между группами. Существующий keyboard traversal сохраняет
+первый доступный source control и Tab/Shift-Tab. Cocoa group backing получает
+один логический пиксель внутри content, исключая обрезание на minimum height.
+
+Повторное сравнение после правки подтвердило подключения прежних handlers и
+неизменность их тел. Presentation buildControls остаётся одним сценарием
+построения формы; общая геометрия выделена в уже существующий dialog layout,
+новый functional owner или form engine не добавлялся. Regression resize проверяет,
+что заголовок не уезжает вниз при увеличении окна; существующие tests сохраняют
+keyboard enable/accept, Cancel, ZIP Unix/Windows/DOS, TAR, реальные metadata/link
+архивы и повторное открытие. Не добавлены проверки констант/наличия исходников.
+
+macOS: приложение и affected targets собраны, семь focused suites PASS.
+Cocoa EN/RU 7z/ZIP/TAR/WIM initial/compact, keyboard/precision transitions и hot
+language change в light/dark PASS; просмотрены widget JSON и снимки в прежнем
+`build/dev/ui-redesign-review`. Windows/Linux: те же семь focused suites PASS;
+Windows interactive elevated покрывает действительные WIM security/ADS и link
+fixtures. На macOS/Linux Windows-only metadata cases корректно исключены.
+Runners сохранили current/build/cache, свободное место проверено; старых payload
+каталогов нет. Full/slow, VoiceOver, физические клавиатуры и новый sheet behavior
+не проверялись. Остальные семейства окон и общая приёмка редизайна ещё в работе.

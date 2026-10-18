@@ -126,6 +126,8 @@ class CompressOptionsPresentationTests final : public QObject {
         COptionsDialog dialog(&compression);
         dialog.setProperty("uiInspection_language", language);
         show(dialog);
+        auto *formatInfo = dialog.findChild<QLabel *>("IDT_COMPRESS_TIME_INFO");
+        const int headerTop = UiInspection::bounds(*formatInfo, dialog).top();
         for (const char *name : {"IDX_COMPRESS_PREC_SET", "IDX_COMPRESS_CTIME_SET",
                                  "IDX_COMPRESS_ATIME_SET", "IDX_COMPRESS_ZTIME_SET"}) {
             auto *box = dialog.findChild<QCheckBox *>(name);
@@ -157,6 +159,7 @@ class CompressOptionsPresentationTests final : public QObject {
                       : format == "tar" ? QSize(480, 430)
                                         : QSize(440, 340));
         QApplication::processEvents();
+        QCOMPARE(UiInspection::bounds(*formatInfo, dialog).top(), headerTop);
         QVERIFY(UiInspection::writeReport(
             dialog, QString("compress-options-source-%1-%2-compact").arg(format, language)));
         for (auto *label : dialog.findChildren<QLabel *>())

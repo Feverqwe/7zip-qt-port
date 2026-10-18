@@ -35,26 +35,32 @@ The primary action is named Create archive, with live localization. Evidence:
 
 ### Add metadata Options (P2-07)
 
-Reference: pinned CompressDialog.rc Options NTFS group and COptionsDialog
+Reference: pinned CompressOptionsDialog.rc NTFS group and COptionsDialog
 OnInit/OnOK. Symbolic links precede hard links, alternate streams and security;
-original handler flags control visibility. Time controls follow this group,
-with OK/Cancel/Help in the footer. Unix hides NTFS streams/security.
+original handler flags control visibility. The redesign places real format/method
+information first, then lightweight links/metadata and time groups, with the shared
+dialog margins and Save/Cancel/Help footer. Unix hides NTFS streams/security and
+the metadata group disappears when unsupported. Initial size follows visible
+content; resizing keeps the header and fields at the top.
 source_link_storage requests EN/RU540×480/480×430 reports for actual TAR options;
 native font/control minima may enlarge those requests, with links and footer
 remaining fully exposed.
 Normal and compact TAR states must expose both link controls and the footer,
 with translated captions fitting their controls. This establishes
 structure/usability, not rendered Windows pixel parity.
-Explicit-value checkboxes keep their colon beside the indicator even in tall
-rows. The precision caption wraps only when the available width requires it.
-NTFS rows keep their source order and spacing when unsupported rows are hidden.
-The fixed source group areas remain reserved; this is not a compact redesign.
+Explicit-value checkboxes retain separate Set/default and stored-value state.
+Set time precision is a complete caption above its dependent label/combo; its
+label wraps only when needed. Other Set captions stay aligned with their
+indicators even in tall rows. Metadata controls keep source order, without
+reserving fixed heights for unavailable rows. Cancel preserves the Add draft;
+Save commits only the existing nested transaction, not an archive operation.
 source_metadata_storage additionally checks WIM security/ADS and all visible
 time captions, Options/Add Cancel/OK/restart, and writes four Windows
 `source-metadata-wim-{language}-{width}` reports. Native font/control minima may
 enlarge the requested normal or compact size for WIM as well as TAR. Supported
 metadata controls, translated time captions and the footer must remain fully
-exposed, without clipping or reordering the source groups.
+exposed without clipping. Format support, precision choices and timestamp
+transitions remain owned by the source rather than a second UI capability table.
 
 ### SFX Options group (P2-02)
 
