@@ -31,7 +31,8 @@ NCompressDialog::CInfo CreateArchiveDialog::sourceInfo() const {
     info.ArcPath = target().toStdWString().c_str();
     info.FormatIndex = codecs_ ? codecs_->formatIndex(options.format) : -1;
     info.Password = password();
-    info.EncryptHeadersIsAllowed = encryptHeaders_ && encryptHeaders_->isEnabled();
+    info.EncryptHeadersIsAllowed =
+        NCompressDialog::GetFormatInfo(format_->currentText()).EncryptFileNames_();
     info.EncryptHeaders = encryptHeaders();
     return info;
 }

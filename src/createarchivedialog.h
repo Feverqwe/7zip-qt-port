@@ -21,6 +21,8 @@
 #include <QSpinBox>
 #include <QVBoxLayout>
 
+class QtDisclosure;
+
 class CreateArchiveDialog : public QDialog {
     Q_OBJECT
 
@@ -51,7 +53,8 @@ class CreateArchiveDialog : public QDialog {
     void stabilizeColumnWidths();
     static QWidget *reserveControlSpace(QWidget *control);
     void createCompressionOptions(QFormLayout *form);
-    void createEncryptionOptions(QFormLayout *form);
+    void createEncryptionOptions(QVBoxLayout *form);
+    void updateRedesignSummary();
     void createVolumeOptions(QFormLayout *form);
     void createAdvancedOptions(QFormLayout *form);
     void createLifecycleOptions(QFormLayout *form);
@@ -132,6 +135,8 @@ class CreateArchiveDialog : public QDialog {
     QLineEdit *passwordConfirmation_ = nullptr;
     QCheckBox *showPassword_ = nullptr;
     QCheckBox *encryptHeaders_ = nullptr;
+    QCheckBox *passwordEnabled_ = nullptr;
+    QtDisclosure *advancedDisclosure_ = nullptr;
     QFormLayout *encryptionForm_ = nullptr;
     QDialogButtonBox *buttons_ = nullptr;
 };

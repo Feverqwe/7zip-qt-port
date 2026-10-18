@@ -1,4 +1,7 @@
+#include "CPP/7zip/UI/FileManager/LangUtils.h"
+#include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "extractdialog.h"
+#include "layout_inspection.h"
 #include <QDialogButtonBox>
 #include <QDir>
 #include <QFile>
@@ -7,6 +10,7 @@
 #include <QSettings>
 #include <QSignalSpy>
 #include <QTemporaryDir>
+#include <QToolButton>
 #include <QtTest>
 
 class ExtractDialogTests final : public QObject {
@@ -27,13 +31,58 @@ class ExtractDialogTests final : public QObject {
         return dialog.findChild<QComboBox *>("extractOverwriteMode");
     }
   private slots:
+    void optionalSectionsKeepDraftAndEffectiveOptions_data() {
+        QTest::addColumn<QString>("language");
+        QTest::newRow("en") << QString("-");
+        QTest::newRow("ru") << QString("ru");
+    }
+    void optionalSectionsKeepDraftAndEffectiveOptions() {
+        QFETCH(QString, language);
+        SaveRegLang(UString(language.toStdWString().c_str()), settings_);
+        ReloadLang(settings_);
+        CExtractDialog dialog(dir_.path(), {});
+        dialog.SetInitialOptions(NExtract::NPathMode::kNoPaths, NExtract::NOverwriteMode::kRename,
+                                 QStringLiteral("пароль 密碼"));
+        dialog.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&dialog));
+        auto *enabled = dialog.findChild<QCheckBox *>("extractPasswordEnabled");
+        auto *password = dialog.findChild<QLineEdit *>("extractPassword");
+        auto *advanced = dialog.findChild<QToolButton *>("extractAdvancedToggle");
+        QVERIFY(enabled->isChecked());
+        QVERIFY(!advanced->isChecked());
+        QApplication::processEvents();
+        QVERIFY(UiInspection::writeReport(dialog, "redesign-extract-password-" + language));
+        QCOMPARE(dialog.options().pathMode, ExtractionOptions::PathMode::NoPaths);
+        enabled->click();
+        QVERIFY(dialog.password().isEmpty());
+        QVERIFY(!password->isVisible());
+        enabled->click();
+        QCOMPARE(dialog.password(), QStringLiteral("пароль 密碼"));
+        advanced->click();
+        pathMode(dialog)->setCurrentIndex(0);
+        advanced->click();
+        QCOMPARE(dialog.options().pathMode, ExtractionOptions::PathMode::FullPaths);
+        QVERIFY(!pathMode(dialog)->isVisible());
+        enabled->click();
+        QApplication::processEvents();
+        QVERIFY(UiInspection::writeReport(dialog, "redesign-extract-collapsed-" + language));
+        dialog.accept();
+        QCOMPARE(dialog.Password, QString());
+        QCOMPARE(dialog.OverwriteMode, NExtract::NOverwriteMode::kRename);
+    }
+
     void initTestCase() {
         QVERIFY(dir_.isValid());
         oldSettings_ = qgetenv("SEVENZIP_SETTINGS_PATH");
         settings_ = dir_.filePath("extract.ini");
         qputenv("SEVENZIP_SETTINGS_PATH", settings_.toUtf8());
     }
-    void init() { QFile::remove(settings_); }
+    void init() {
+        QFile::remove(settings_);
+        SaveRegLang(UString("-"), settings_);
+        ReloadLang(settings_);
+        QFile::remove(settings_);
+    }
     void cleanupTestCase() {
         if (oldSettings_.isNull())
             qunsetenv("SEVENZIP_SETTINGS_PATH");
@@ -225,5 +274,6 @@ class ExtractDialogTests final : public QObject {
         QCOMPARE(existing.readAll(), QByteArray("archive content"));
     }
 };
-QTEST_MAIN(ExtractDialogTests)
+#include "review_test_main.h"
+SEVENZIP_UI_TEST_MAIN(ExtractDialogTests)
 #include "extract_dialog_tests.moc"

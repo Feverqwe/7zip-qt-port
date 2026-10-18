@@ -1,10 +1,19 @@
 // Qt presentation for CompressDialog.cpp password/encryption controls (0766b73).
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 #include "createarchivedialog.h"
+#include "qtlangcontrols.h"
 
-void CreateArchiveDialog::createEncryptionOptions(QFormLayout *form) {
-    auto *group = new QGroupBox("Encryption", this);
+void CreateArchiveDialog::createEncryptionOptions(QVBoxLayout *form) {
+    passwordEnabled_ = new QCheckBox(form->parentWidget());
+    passwordEnabled_->setObjectName("archivePasswordEnabled");
+    QtBindLocalText(passwordEnabled_, "ArchiveRedesign",
+                    QT_TRANSLATE_NOOP("ArchiveRedesign", "Protect with a password"));
+    form->addWidget(passwordEnabled_);
+    auto *group = new QGroupBox(this);
     group->setObjectName("archiveEncryptionGroup");
+    group->setFlat(true);
+    QtBindLocalText(group, "ArchiveRedesign",
+                    QT_TRANSLATE_NOOP("ArchiveRedesign", "Protect with a password"), true);
     encryptionForm_ = new QFormLayout(group);
     encryptionForm_->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
     encryptionForm_->setRowWrapPolicy(QFormLayout::WrapAllRows);
@@ -34,8 +43,19 @@ void CreateArchiveDialog::createEncryptionOptions(QFormLayout *form) {
     encryptHeaders_ = new QCheckBox("Encrypt file &names", group);
     encryptHeaders_->setObjectName("archiveEncryptHeaders");
     encryptHeaders_->setChecked(m_RegistryInfo.EncryptHeaders);
-    encryptionForm_->addRow(reserveControlSpace(encryptHeaders_));
-    form->addRow(group);
+    encryptionForm_->addRow(encryptHeaders_);
+    form->addWidget(group);
+    group->hide();
+    connect(passwordEnabled_, &QCheckBox::toggled, this, [this, group](bool enabled) {
+        group->setVisible(enabled && passwordEnabled_->isEnabled());
+        group->setEnabled(enabled && passwordEnabled_->isEnabled());
+    });
+    // A source-supplied password or programmatic restoration must never stay
+    // active in an invisible section. Unchecking keeps the draft, but excludes it.
+    connect(password_, &QLineEdit::textChanged, this, [this](const QString &value) {
+        if (!value.isEmpty())
+            passwordEnabled_->setChecked(true);
+    });
     connect(showPassword_, &QCheckBox::toggled, this, &CreateArchiveDialog::UpdatePasswordControl);
     connect(format_, &QComboBox::currentTextChanged, this,
             &CreateArchiveDialog::SetEncryptionMethod);
@@ -51,7 +71,10 @@ void CreateArchiveDialog::SetEncryptionMethod() {
     encryption_->addItems(dialog._encryptionMethod);
     encryption_->setCurrentIndex(dialog._encryptionMethod_Index);
     const auto &fi = NCompressDialog::GetFormatInfo(format_->currentText());
-    password_->parentWidget()->setEnabled(fi.Encrypt_());
+    passwordEnabled_->setEnabled(fi.Encrypt_());
+    passwordEnabled_->setVisible(fi.Encrypt_());
+    password_->parentWidget()->setEnabled(fi.Encrypt_() && passwordEnabled_->isChecked());
+    password_->parentWidget()->setVisible(fi.Encrypt_() && passwordEnabled_->isChecked());
     encryptHeaders_->setEnabled(fi.EncryptFileNames_());
     encryptHeaders_->setVisible(fi.EncryptFileNames_());
 }

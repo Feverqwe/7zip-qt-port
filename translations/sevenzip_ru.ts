@@ -35,6 +35,40 @@
         </message>
     </context>
     <context>
+        <name>ArchiveRedesign</name>
+        <message>
+            <location filename="../src/CPP/7zip/UI/GUI/ExtractDialog.cpp" line="+72" />
+            <source>Extract</source>
+            <translation>Распаковать</translation>
+        </message>
+        <message>
+            <location line="+30" />
+            <source>Create subfolder</source>
+            <translation>Создать подпапку</translation>
+        </message>
+        <message>
+            <location line="+41" />
+            <source>Use a password</source>
+            <translation>Использовать пароль</translation>
+        </message>
+        <message>
+            <location line="+35" />
+            <location filename="../src/createarchivedialog.cpp" line="+264" />
+            <source>Advanced settings</source>
+            <translation>Дополнительные параметры</translation>
+        </message>
+        <message>
+            <location filename="../src/createarchivedialog.cpp" line="+46" />
+            <source>Create archive</source>
+            <translation>Создать архив</translation>
+        </message>
+        <message>
+            <location filename="../src/createarchivedialog_encryption.cpp" line="+10" />
+            <source>Protect with a password</source>
+            <translation>Защитить паролем</translation>
+        </message>
+    </context>
+    <context>
         <name>BenchmarkReport</name>
         <message>
             <location filename="../src/CPP/7zip/UI/Common/Bench.cpp" line="+2682" />
@@ -220,7 +254,7 @@
     <context>
         <name>CreateArchiveDialog</name>
         <message>
-            <location filename="../src/createarchivedialog.cpp" line="+349" />
+            <location filename="../src/createarchivedialog.cpp" line="+47" />
             <source>Incorrect archive path</source>
             <translation>Неверный путь к архиву</translation>
         </message>
@@ -228,19 +262,9 @@
     <context>
         <name>ExtractDialog</name>
         <message>
-            <location filename="../src/CPP/7zip/UI/GUI/ExtractDialog.cpp" line="+95" />
-            <source>Append destination folder name</source>
-            <translation>Добавить имя папки назначения</translation>
-        </message>
-        <message>
-            <location line="+5" />
+            <location filename="../src/CPP/7zip/UI/GUI/ExtractDialog.cpp" line="-71" />
             <source>Destination folder name</source>
             <translation>Имя папки назначения</translation>
-        </message>
-        <message>
-            <location line="+49" />
-            <source>Windows file security is unavailable on this platform.</source>
-            <translation>Права доступа Windows недоступны на этой платформе.</translation>
         </message>
     </context>
     <context>
@@ -3897,7 +3921,7 @@ Check charset encoding and -scs switch.</source>
             <translation>Ошибка: %1</translation>
         </message>
         <message>
-            <location filename="../src/CPP/7zip/UI/Explorer/ContextMenu.cpp" line="+1031" />
+            <location filename="../src/CPP/7zip/UI/Explorer/ContextMenu.cpp" line="+1035" />
             <location filename="../src/CPP/7zip/UI/FileManager/FM.cpp" line="+58" />
             <location filename="../src/CPP/7zip/UI/FileManager/ProgressDialog2.cpp" line="-1067" />
             <location line="+1069" />
@@ -4137,7 +4161,7 @@ Use `Revert` to recover timestamp.</source>
             <translation>Нельзя скопировать файл на себя</translation>
         </message>
         <message>
-            <location filename="../src/CPP/7zip/UI/FileManager/PanelMenu.cpp" line="+576" />
+            <location filename="../src/CPP/7zip/UI/FileManager/PanelMenu.cpp" line="+580" />
             <source>Open WARNING:</source>
             <translation>ПРЕДУПРЕЖДЕНИЕ при открытии:</translation>
         </message>
@@ -4258,11 +4282,11 @@ Use `Revert` to recover timestamp.</source>
     <context>
         <name>archivebackend</name>
         <message>
-            <location filename="../src/archivebackend.cpp" line="+159" />
-            <location line="+129" />
-            <location line="+101" />
+            <location filename="../src/archivebackend.cpp" line="+153" />
+            <location line="+105" />
             <location line="+110" />
             <location line="+17" />
+            <location filename="../src/archivebackend_process.cpp" line="+81" />
             <source>Another operation is still running.</source>
             <translation>Другая операция ещё выполняется.</translation>
         </message>
@@ -4272,29 +4296,29 @@ Use `Revert` to recover timestamp.</source>
             <translation>Не удалось создать папку назначения: %1</translation>
         </message>
         <message>
-            <location line="-366" />
+            <location filename="../src/archivebackend_process.cpp" line="-10" />
             <source>Could not start 7zz. Install official 7zz and add it to PATH.</source>
             <translation>Не удалось запустить 7zz. Установите официальный 7zz и добавьте его в PATH.</translation>
         </message>
         <message>
-            <location line="+199" />
+            <location filename="../src/archivebackend.cpp" line="-171" />
             <source>Invalid archive open type: %1</source>
             <translation>Неверный режим открытия архива: %1</translation>
         </message>
         <message>
-            <location line="+125" />
+            <location line="+129" />
             <location line="+109" />
             <source>Open the archive and inspect its contents first.</source>
             <translation>Сначала откройте архив и проверьте его содержимое.</translation>
         </message>
         <message>
             <location line="-176" />
-            <location line="+245" />
+            <location line="+258" />
             <source>Operation canceled.</source>
             <translation>Операция отменена.</translation>
         </message>
         <message>
-            <location line="-225" />
+            <location line="-238" />
             <source>Overwrite decision is unavailable.</source>
             <translation>Решение о замене недоступно.</translation>
         </message>
@@ -4314,7 +4338,7 @@ Use `Revert` to recover timestamp.</source>
             <translation>Эти параметры извлечения требуют исходного сценария.</translation>
         </message>
         <message>
-            <location line="-197" />
+            <location filename="../src/archivebackend_process.cpp" line="+60" />
             <source>[hidden]</source>
             <translation>[скрыто]</translation>
         </message>
@@ -4322,7 +4346,7 @@ Use `Revert` to recover timestamp.</source>
     <context>
         <name>archivebackend_codecs</name>
         <message>
-            <location filename="../src/archivebackend_codecs.cpp" line="+145" />
+            <location filename="../src/archivebackend_codecs.cpp" line="+155" />
             <source>All files</source>
             <translation>Все файлы</translation>
         </message>
@@ -4332,12 +4356,12 @@ Use `Revert` to recover timestamp.</source>
             <translation>Архивы</translation>
         </message>
         <message>
-            <location line="-52" />
+            <location line="-59" />
             <source>Codec discovery cancelled.</source>
             <translation>Поиск модуля форматов отменён.</translation>
         </message>
         <message>
-            <location line="+115" />
+            <location line="+122" />
             <source>No archive creation engine is available for this format and selection.</source>
             <translation>Для этого формата и выбранных источников нет модуля создания архива.</translation>
         </message>
@@ -4345,12 +4369,12 @@ Use `Revert` to recover timestamp.</source>
     <context>
         <name>archivebackend_completion</name>
         <message>
-            <location filename="../src/archivebackend_completion.cpp" line="+113" />
+            <location filename="../src/archivebackend_completion.cpp" line="+115" />
             <source>7zz exited with code %1. %2</source>
             <translation>7zz завершился с кодом %1. %2</translation>
         </message>
         <message>
-            <location line="+63" />
+            <location line="+75" />
             <source>Archive created.</source>
             <translation>Архив создан.</translation>
         </message>
@@ -4365,7 +4389,7 @@ Use `Revert` to recover timestamp.</source>
             <translation>Контрольные суммы рассчитаны.</translation>
         </message>
         <message>
-            <location line="-31" />
+            <location line="-36" />
             <source>Could not make the SFX archive executable.</source>
             <translation>Не удалось назначить SFX-архиву право исполнения.</translation>
         </message>
@@ -4375,7 +4399,7 @@ Use `Revert` to recover timestamp.</source>
             <translation>Не удалось сохранить новый архив: %1</translation>
         </message>
         <message>
-            <location line="+20" />
+            <location line="+25" />
             <source>Extraction completed.</source>
             <translation>Извлечение завершено.</translation>
         </message>
@@ -4405,7 +4429,7 @@ Use `Revert` to recover timestamp.</source>
             <translation>Ошибок при проверке не найдено.</translation>
         </message>
         <message>
-            <location line="-84" />
+            <location line="-96" />
             <source>Operation canceled.</source>
             <translation>Операция отменена.</translation>
         </message>
@@ -4959,7 +4983,7 @@ Application modules:
     <context>
         <name>archivecodecprobe</name>
         <message>
-            <location filename="../src/archivecodecprobe.cpp" line="+216" />
+            <location filename="../src/archivecodecprobe.cpp" line="+245" />
             <source>Codec discovery cancelled.</source>
             <translation>Поиск модуля форматов отменён.</translation>
         </message>
@@ -4969,7 +4993,7 @@ Application modules:
             <translation>Истекло время поиска модуля форматов.</translation>
         </message>
         <message>
-            <location line="-71" />
+            <location line="-98" />
             <source>Could not determine the version of official 7zz.</source>
             <translation>Не удалось определить версию официального 7zz.</translation>
         </message>
@@ -4995,7 +5019,7 @@ Application modules:
     <context>
         <name>createarchivedialog_advanced</name>
         <message>
-            <location filename="../src/createarchivedialog_advanced.cpp" line="+25" />
+            <location filename="../src/createarchivedialog_advanced.cpp" line="+27" />
             <source>File sharing restrictions apply only on Windows.</source>
             <translation>Ограничение совместного доступа к файлам используется только в Windows.</translation>
         </message>

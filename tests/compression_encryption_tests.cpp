@@ -69,6 +69,7 @@ class CompressionEncryptionTests final : public QObject {
         QWidget *repeatLabel = form->labelForField(repeat);
         QVERIFY(repeatLabel);
         dialog.show();
+        dialog.findChild<QCheckBox *>("archivePasswordEnabled")->setChecked(true);
         QCOMPARE(method->currentText(), QString("AES-256"));
         QVERIFY(headers->isEnabled());
         QVERIFY(dialog.compressionOptions().EncryptionMethod.isEmpty());
@@ -109,6 +110,8 @@ class CompressionEncryptionTests final : public QObject {
         QVERIFY(restored.findChild<QCheckBox *>("archiveShowPassword")->isChecked());
         QVERIFY(restored.password().isEmpty());
         restored.findChild<QComboBox *>("archiveFormat")->setCurrentText("7z");
+        QVERIFY(!restored.encryptHeaders());
+        restored.findChild<QCheckBox *>("archivePasswordEnabled")->setChecked(true);
         QVERIFY(restored.encryptHeaders());
         QFile settings(settings_);
         QVERIFY(settings.open(QIODevice::ReadOnly));
@@ -231,6 +234,7 @@ class CompressionEncryptionTests final : public QObject {
         for (const QSize size : {QSize(760, 720), QSize(640, 480)}) {
             for (const bool shown : {false, true}) {
                 CreateArchiveDialog dialog(directory_.path());
+                dialog.findChild<QCheckBox *>("archivePasswordEnabled")->setChecked(true);
                 dialog.resize(size);
                 dialog.findChild<QCheckBox *>("archiveShowPassword")->setChecked(shown);
                 dialog.show();
@@ -251,5 +255,6 @@ class CompressionEncryptionTests final : public QObject {
         }
     }
 };
-QTEST_MAIN(CompressionEncryptionTests)
+#include "review_test_main.h"
+SEVENZIP_UI_TEST_MAIN(CompressionEncryptionTests)
 #include "compression_encryption_tests.moc"

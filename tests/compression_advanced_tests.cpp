@@ -10,6 +10,7 @@
 #include <QTextBrowser>
 #include <QTimeZone>
 #include <QTimer>
+#include <QToolButton>
 #include <QtTest>
 
 namespace {
@@ -240,6 +241,7 @@ class CompressionAdvancedTests final : public QObject {
         dialog.findChild<QComboBox *>("archiveFormat")->setCurrentText("zip");
         dialog.resize(size);
         dialog.show();
+        dialog.findChild<QToolButton *>("archiveAdvancedToggle")->setChecked(true);
         QCoreApplication::processEvents();
         QCOMPARE(dialog.size(), size);
         auto *group = dialog.findChild<QGroupBox *>("archiveLifecycleOptions");
@@ -249,18 +251,19 @@ class CompressionAdvancedTests final : public QObject {
         auto *scroll = dialog.findChild<QScrollArea *>("archiveOptionsScrollArea");
         scroll->ensureWidgetVisible(group);
         QCoreApplication::processEvents();
-        for (QWidget *widget : {static_cast<QWidget *>(group), static_cast<QWidget *>(shared),
-                                static_cast<QWidget *>(remove)})
+        for (QWidget *widget : {static_cast<QWidget *>(group), static_cast<QWidget *>(remove)})
             QVERIFY(UiInspection::fullyVisible(*widget, dialog));
-        QVERIFY(shared->width() >= shared->sizeHint().width());
         QVERIFY(remove->width() >= remove->sizeHint().width());
+#ifdef Q_OS_WIN
+        QVERIFY(UiInspection::fullyVisible(*shared, dialog));
+        QVERIFY(shared->width() >= shared->sizeHint().width());
         QVERIFY(UiInspection::bounds(*shared, dialog).bottom() <
                 UiInspection::bounds(*remove, dialog).top());
-#ifdef Q_OS_WIN
         QVERIFY(shared->isEnabled());
         shared->setChecked(true);
         QVERIFY(dialog.compressionOptions().OpenShareForWrite);
 #else
+        QVERIFY(!shared->isVisible());
         QVERIFY(!shared->isEnabled());
         QVERIFY(!shared->toolTip().isEmpty());
         QVERIFY(!dialog.compressionOptions().OpenShareForWrite);
@@ -290,6 +293,7 @@ class CompressionAdvancedTests final : public QObject {
         CreateArchiveDialog dialog(fixture.path(), {source});
         dialog.resize(size);
         dialog.show();
+        dialog.findChild<QToolButton *>("archiveAdvancedToggle")->setChecked(true);
         auto *parameters = dialog.findChild<QLineEdit *>("archiveParameters");
         auto *advanced = dialog.findChild<QPushButton *>("archiveAdvancedOptions");
         auto *volume = dialog.findChild<QComboBox *>("archiveVolumeSize");

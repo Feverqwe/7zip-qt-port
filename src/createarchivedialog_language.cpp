@@ -51,8 +51,6 @@ void CreateArchiveDialog::BindLanguage() {
     QtBindResourceText(findChild<QGroupBox *>("archiveLifecycleOptions"), IDG_COMPRESS_OPTIONS,
                        "Options");
     if (password_) {
-        QtBindResourceText(findChild<QGroupBox *>("archiveEncryptionGroup"),
-                           IDG_COMPRESS_ENCRYPTION, "Encryption");
         QtBindResourceText(showPassword_, IDX_PASSWORD_SHOW, "Show Password");
         QtBindResourceText(encryptHeaders_, IDX_COMPRESS_ENCRYPT_FILE_NAMES, "Encrypt file &names");
     }
@@ -115,6 +113,7 @@ void CreateArchiveDialog::changeEvent(QEvent *event) {
         if (event->type() == QEvent::LanguageChange) {
             ReloadLanguageItems();
             SetMemoryUsage();
+            updateRedesignSummary();
         }
         stabilizeColumnWidths();
     }

@@ -1,11 +1,18 @@
 #include "qtlangbuttonbox.h"
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
+#include <QCoreApplication>
 #include <QEvent>
 #include <QPushButton>
 #include <utility>
 
 QtLangButtonBox::QtLangButtonBox(StandardButtons buttons, QWidget *parent, UInt32 acceptID)
     : QDialogButtonBox(buttons, parent), acceptID_(acceptID) {
+    ReloadText();
+}
+
+void QtLangButtonBox::SetAcceptText(const char *context, const char *source) {
+    acceptContext_ = context;
+    acceptSource_ = source;
     ReloadText();
 }
 
@@ -46,6 +53,9 @@ void QtLangButtonBox::ReloadText() {
         if (auto *control = button(entry.first))
             control->setText(QString::fromLatin1(entry.second));
     LangSetDlgItems(*this, nullptr, 0);
+    if (auto *control = button(Ok); control && !acceptSource_.isEmpty())
+        control->setText(
+            QCoreApplication::translate(acceptContext_.constData(), acceptSource_.constData()));
 }
 
 void QtLangButtonBox::changeEvent(QEvent *event) {

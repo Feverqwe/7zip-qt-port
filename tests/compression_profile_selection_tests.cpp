@@ -6,6 +6,7 @@
 #include <QScrollArea>
 #include <QSignalSpy>
 #include <QTemporaryDir>
+#include <QToolButton>
 #include <QtTest>
 
 class CompressionProfileSelectionTests final : public QObject {
@@ -104,6 +105,7 @@ class CompressionProfileSelectionTests final : public QObject {
                 QCOMPARE(solid->currentIndex(), -1);
             }
             if (restart == 0) {
+                dialog.findChild<QToolButton *>("archiveAdvancedToggle")->setChecked(true);
                 dialog.show();
                 for (const QSize size : {QSize(760, 720), QSize(640, 480)}) {
                     dialog.resize(size);

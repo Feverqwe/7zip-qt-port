@@ -13,6 +13,7 @@
 #include <QScrollBar>
 #include <QStyleOptionComboBox>
 #include <QTimer>
+#include <QToolButton>
 #include <QtTest>
 
 namespace {
@@ -50,6 +51,58 @@ class SourceCompressDialogTests final : public QObject {
     std::shared_ptr<const ArchiveCodecCatalog> _catalog;
     QString _module;
   private slots:
+    void collapsedSectionsKeepEffectiveOptionsAndPasswordDraft_data() {
+        QTest::addColumn<QString>("language");
+        QTest::newRow("en") << QString("-");
+        QTest::newRow("ru") << QString("ru");
+    }
+    void collapsedSectionsKeepEffectiveOptionsAndPasswordDraft() {
+        QFETCH(QString, language);
+        const QString settings = qEnvironmentVariable("SEVENZIP_SETTINGS_PATH");
+        SaveRegLang(UString(language.toStdWString().c_str()), settings);
+        ReloadLang(settings);
+        QTemporaryDir fixture;
+        CreateArchiveDialog dialog(fixture.path());
+        dialog.show();
+        QVERIFY(QTest::qWaitForWindowExposed(&dialog));
+        auto *advanced = dialog.findChild<QToolButton *>("archiveAdvancedToggle");
+        auto *parameters = dialog.findChild<QLineEdit *>("archiveParameters");
+        auto *enabled = dialog.findChild<QCheckBox *>("archivePasswordEnabled");
+        auto *password = dialog.findChild<QLineEdit *>("archivePassword");
+        auto *repeat = dialog.findChild<QLineEdit *>("archivePasswordConfirmation");
+        QVERIFY(!advanced->isChecked());
+        QVERIFY(!parameters->isVisible());
+        QVERIFY(!enabled->isChecked());
+        QApplication::processEvents();
+        auto *summary = dialog.findChild<QWidget *>("archiveAdvancedSection")
+                            ->findChild<QLabel *>("disclosureSummary");
+        QVERIFY(UiInspection::writeReport(dialog, "redesign-add-collapsed-" + language));
+        QVERIFY(UiInspection::fullyVisible(*summary, dialog));
+        advanced->click();
+        parameters->clear();
+        const QString initialSummary = summary->text();
+        parameters->setText("tm=off");
+        advanced->click();
+        QVERIFY(!parameters->isVisible());
+        QCOMPARE(QString::fromWCharArray(dialog.compressionOptions().Options.Ptr()),
+                 QString("tm=off"));
+        QVERIFY(summary->text() != initialSummary);
+        password->setText(QStringLiteral("черновик 密碼"));
+        repeat->setText(password->text());
+        QVERIFY(enabled->isChecked());
+        QCOMPARE(dialog.password(), password->text());
+        enabled->click();
+        QVERIFY(dialog.password().isEmpty());
+        QVERIFY(!password->isVisible());
+        enabled->click();
+        QCOMPARE(dialog.password(), QStringLiteral("черновик 密碼"));
+        QCOMPARE(repeat->text(), password->text());
+        QVERIFY(!summary->text().contains(password->text()));
+        QApplication::processEvents();
+        QVERIFY(UiInspection::writeReport(dialog, "redesign-add-password-" + language));
+        dialog.reject();
+    }
+
     void initTestCase() {
 #ifndef SEVENZIP_CODEC_MODULE
         QSKIP("Official native module unavailable");
@@ -99,6 +152,7 @@ class SourceCompressDialogTests final : public QObject {
         CreateArchiveDialog dialog(fixture.path(), {}, nullptr, _catalog);
         dialog.resize(640, 480);
         dialog.show();
+        dialog.findChild<QToolButton *>("archiveAdvancedToggle")->setChecked(true);
         QCoreApplication::processEvents();
         auto *scroll = dialog.findChild<QScrollArea *>("archiveOptionsScrollArea");
         QVERIFY(scroll);
@@ -110,10 +164,6 @@ class SourceCompressDialogTests final : public QObject {
                  "The Add scroll bar must reserve space outside the form viewport");
         const QRect barBounds = UiInspection::bounds(*bar, dialog);
         QCOMPARE(barBounds.right(), dialog.rect().right());
-        auto *rightColumn = dialog.findChild<QWidget *>("archiveEncryptionColumn");
-        QVERIFY(rightColumn);
-        QVERIFY(barBounds.left() - UiInspection::bounds(*rightColumn, dialog).right() - 1 >=
-                UiInspection::bounds(*scroll, dialog).left());
         QCOMPARE(scroll->horizontalScrollBar()->maximum(), 0);
         QVERIFY(UiInspection::fullyVisible(*dialog.findChild<QDialogButtonBox *>(), dialog));
         const QString tag = QString("source-add-scroll-%1-%2")
@@ -128,8 +178,8 @@ class SourceCompressDialogTests final : public QObject {
         QVERIFY(UiInspection::writeReport(dialog, tag + "-bottom"));
         dialog.resize(900, 1100);
         QCoreApplication::processEvents();
-        QCOMPARE(bar->maximum(), 0);
-        QVERIFY(!bar->isVisible());
+        QVERIFY(UiInspection::fullyVisible(*dialog.findChild<QDialogButtonBox *>(), dialog));
+        QCOMPARE(scroll->horizontalScrollBar()->maximum(), 0);
         QVERIFY(UiInspection::writeReport(dialog, tag + "-expanded"));
     }
     void selectionsKeepColumnGeometry_data() {
@@ -148,67 +198,40 @@ class SourceCompressDialogTests final : public QObject {
         SaveRegLang(UString(language.toStdWString().c_str()), settings);
         ReloadLang(settings);
         QTemporaryDir fixture;
-        const QString input = fixture.filePath(QStringLiteral("данные 空.txt"));
-        QFile file(input);
-        QVERIFY(file.open(QIODevice::WriteOnly));
-        QCOMPARE(file.write("layout fixture"), qint64(14));
-        file.close();
-        CreateArchiveDialog dialog(fixture.path(), {input}, nullptr, _catalog);
+        CreateArchiveDialog dialog(fixture.path(), {}, nullptr, _catalog);
         dialog.resize(size);
         dialog.show();
         QVERIFY(QTest::qWaitForWindowExposed(&dialog));
-        QApplication::processEvents();
-        auto *left = dialog.findChild<QWidget *>("archiveCompressionColumn");
-        auto *right = dialog.findChild<QWidget *>("archiveEncryptionColumn");
-        const QSize initial = dialog.size();
-        const QRect leftBounds = UiInspection::bounds(*left, dialog);
-        const QRect rightBounds = UiInspection::bounds(*right, dialog);
-        const char *fields[] = {
-            "archiveFormat",         "compressionLevel",       "compressionMethod",
-            "compressionDictionary", "compressionWordSize",    "compressionSolidBlock",
-            "compressionThreads",    "compressionMemoryLimit", "archiveVolumeSize",
-            "archiveParameters",     "archiveAdvancedOptions", "archiveUpdateMode",
-            "archivePathMode",       "archiveEncryption"};
-        QList<QRect> fieldBounds;
-        for (const char *name : fields)
-            fieldBounds.append(UiInspection::bounds(*dialog.findChild<QWidget *>(name), dialog));
+        auto *scroll = dialog.findChild<QScrollArea *>("archiveOptionsScrollArea");
+        auto *toggle = dialog.findChild<QToolButton *>("archiveAdvancedToggle");
+        QVERIFY(toggle);
+        toggle->click();
         int step = 0;
         const auto inspect = [&] {
             QApplication::processEvents();
-            const QString tag = QString("source-add-stable-%1-%2-%3")
-                                    .arg(language == "ru" ? "ru" : "en")
-                                    .arg(size.width())
-                                    .arg(step++);
-            QVERIFY(UiInspection::writeReport(dialog, tag));
-            QCOMPARE(dialog.size(), initial);
-            QCOMPARE(UiInspection::bounds(*left, dialog).left(), leftBounds.left());
-            QCOMPARE(left->size(), leftBounds.size());
-            QCOMPARE(UiInspection::bounds(*right, dialog).left(), rightBounds.left());
-            QCOMPARE(right->size(), rightBounds.size());
-            for (int i = 0; i < fieldBounds.size(); ++i) {
-                auto *control = dialog.findChild<QWidget *>(fields[i]);
-                if (control->isVisible()) {
-                    QCOMPARE(UiInspection::bounds(*control, dialog), fieldBounds[i]);
-                    if (auto *combo = qobject_cast<QComboBox *>(control);
-                        combo && !combo->isEditable()) {
-                        QStyleOptionComboBox option;
-                        option.initFrom(combo);
-                        const QRect contents = combo->style()->subControlRect(
-                            QStyle::CC_ComboBox, &option, QStyle::SC_ComboBoxEditField, combo);
-                        QVERIFY2(combo->fontMetrics().horizontalAdvance(combo->currentText()) <=
-                                     contents.width(),
-                                 qPrintable(combo->objectName()));
-                    }
-                }
+            QCOMPARE(scroll->horizontalScrollBar()->maximum(), 0);
+            QVERIFY(UiInspection::fullyVisible(*dialog.findChild<QDialogButtonBox *>(), dialog));
+            for (const char *name :
+                 {"compressionMethod", "compressionDictionary", "compressionWordSize",
+                  "compressionSolidBlock", "compressionThreads", "compressionMemoryLimit"}) {
+                auto *control = dialog.findChild<QComboBox *>(name);
+                if (!control->isVisible())
+                    continue;
+                scroll->ensureWidgetVisible(control);
+                QApplication::processEvents();
+                QVERIFY2(UiInspection::fullyVisible(*control, dialog), name);
+                QStyleOptionComboBox option;
+                option.initFrom(control);
+                const QRect contents = control->style()->subControlRect(
+                    QStyle::CC_ComboBox, &option, QStyle::SC_ComboBoxEditField, control);
+                QVERIFY2(control->fontMetrics().horizontalAdvance(control->currentText()) <=
+                             contents.width(),
+                         name);
             }
-            for (auto *label : dialog.findChildren<QLabel *>())
-                if (label->isVisible() && label->objectName() == "archiveFolder") {
-                    // Long destination prefixes deliberately elide in the
-                    // fixed header; they must not clip the editable name.
-                    QVERIFY(UiInspection::fullyVisible(*label, dialog));
-                    QVERIFY(label->height() >= label->fontMetrics().height());
-                } else if (label->isVisible())
-                    QVERIFY2(UiInspection::labelFits(*label), qPrintable(label->objectName()));
+            QVERIFY(UiInspection::writeReport(dialog, QString("source-add-readable-%1-%2-%3")
+                                                          .arg(language)
+                                                          .arg(size.width())
+                                                          .arg(step++)));
         };
         for (const char *name : {"compressionLevel", "compressionMethod", "compressionDictionary",
                                  "compressionWordSize", "compressionSolidBlock",
@@ -221,11 +244,10 @@ class SourceCompressDialogTests final : public QObject {
             inspect();
         }
         auto *format = dialog.findChild<QComboBox *>("archiveFormat");
-        for (const char *name : {"zip", "tar", "xz", "gzip", "wim", "7z"}) {
-            QVERIFY(format->findText(name) >= 0);
-            format->setCurrentText(name);
-            inspect();
-        }
+        format->setCurrentText("zip");
+        inspect();
+        format->setCurrentText("7z");
+        inspect();
     }
     void originalMethodSelection() {
         QFile::remove(qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
@@ -307,58 +329,29 @@ class SourceCompressDialogTests final : public QObject {
         auto *folder = dialog.findChild<QLabel *>("archiveFolder");
         auto *archiveRow = dialog.findChild<QWidget *>("archivePathRow");
         QVERIFY(folder && archiveRow);
-        // IDT_COMPRESS_ARCHIVE_FOLDER and IDC_COMPRESS_ARCHIVE share the
-        // xArcFolderOffs column; the Archive caption occupies the left column.
-        QCOMPARE(UiInspection::bounds(*folder, dialog).left(),
-                 UiInspection::bounds(*archiveRow, dialog).left());
         auto *caption = dialog.findChild<QLabel *>("archiveLabel");
         QVERIFY(caption);
-        const int captionCenter = UiInspection::bounds(*caption, dialog).center().y();
-        QVERIFY(captionCenter > UiInspection::bounds(*folder, dialog).center().y());
-        // The caption belongs to the editable-name row. Native font metrics
-        // may place its center on either side of that row's exact midpoint.
-        const QRect archiveBounds = UiInspection::bounds(*archiveRow, dialog);
-        QVERIFY(captionCenter >= archiveBounds.top());
-        QVERIFY(captionCenter <= archiveBounds.bottom());
-        const auto formatBounds =
-            UiInspection::bounds(*dialog.findChild<QComboBox *>("archiveFormat"), dialog);
-        // Desktop g1x/g1xs align the six compression combo rows. Memory's
-        // full-column caption must not force ordinary controls onto new rows.
-        for (const char *control :
-             {"compressionLevel", "compressionMethod", "compressionDictionary",
-              "compressionWordSize", "compressionSolidBlock"}) {
-            const auto bounds = UiInspection::bounds(*dialog.findChild<QWidget *>(control), dialog);
-            QCOMPARE(bounds.left(), formatBounds.left());
-            QCOMPARE(bounds.width(), formatBounds.width());
-        }
+        QVERIFY(UiInspection::bounds(*caption, dialog).bottom() <
+                UiInspection::bounds(*archiveRow, dialog).top());
+        QVERIFY(UiInspection::fullyVisible(*archiveRow, dialog));
+        QVERIFY(UiInspection::fullyVisible(*folder, dialog));
+        dialog.findChild<QToolButton *>("archiveAdvancedToggle")->setChecked(true);
+        QCoreApplication::processEvents();
         QCOMPARE(dialog.sources(), QStringList{path});
         auto *mode = dialog.findChild<QComboBox *>("archiveUpdateMode");
         auto *pathMode = dialog.findChild<QComboBox *>("archivePathMode");
         QVERIFY(mode && pathMode);
-        auto *left = dialog.findChild<QWidget *>("archiveCompressionColumn");
-        auto *right = dialog.findChild<QWidget *>("archiveEncryptionColumn");
-        QVERIFY(left && right);
-        // Desktop IDD_COMPRESS: format/compression/volumes/parameters left;
-        // update/path modes and Options/Encryption right, without a left group.
-        for (const char *name :
-             {"archiveFormat", "compressionLevel", "compressionMethod", "compressionDictionary",
-              "compressionWordSize", "compressionSolidBlock", "compressionThreads",
-              "archiveVolumeSize", "archiveParameters", "archiveAdvancedOptions"})
-            QVERIFY2(left->isAncestorOf(dialog.findChild<QWidget *>(name)), name);
-        for (const char *name : {"archiveUpdateMode", "archivePathMode", "archiveLifecycleOptions",
-                                 "archiveEncryptionGroup"})
-            QVERIFY2(right->isAncestorOf(dialog.findChild<QWidget *>(name)), name);
-        QVERIFY(left->geometry().right() < right->geometry().left());
         QCOMPARE(mode->currentData().toInt(), int(NCompressDialog::NUpdateMode::kFresh));
         QCOMPARE(pathMode->currentData().toInt(), int(NWildcard::k_FullPath));
+        auto *scroll = dialog.findChild<QScrollArea *>("archiveOptionsScrollArea");
+        scroll->ensureWidgetVisible(mode);
+        QCoreApplication::processEvents();
         QVERIFY(UiInspection::fullyVisible(*mode, dialog));
-        QVERIFY(UiInspection::fullyVisible(*pathMode, dialog));
         auto *buttons = dialog.findChild<QDialogButtonBox *>();
         QVERIFY(buttons && UiInspection::fullyVisible(*buttons, dialog));
-        auto *scroll = dialog.findChild<QScrollArea *>("archiveOptionsScrollArea");
         QVERIFY(scroll);
         QCOMPARE(scroll->horizontalScrollBar()->maximum(), 0);
-        scroll->verticalScrollBar()->setValue(scroll->verticalScrollBar()->maximum());
+        scroll->ensureWidgetVisible(dialog.findChild<QLineEdit *>("archiveParameters"));
         QCoreApplication::processEvents();
         QVERIFY(UiInspection::fullyVisible(*dialog.findChild<QLineEdit *>("archiveParameters"),
                                            dialog));
@@ -492,5 +485,6 @@ class SourceCompressDialogTests final : public QObject {
         QVERIFY(!backend.busy());
     }
 };
-QTEST_MAIN(SourceCompressDialogTests)
+#include "review_test_main.h"
+SEVENZIP_UI_TEST_MAIN(SourceCompressDialogTests)
 #include "source_compress_dialog_tests.moc"

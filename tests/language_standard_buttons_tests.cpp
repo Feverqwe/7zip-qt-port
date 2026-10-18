@@ -87,8 +87,16 @@ class LanguageStandardButtonsTests final : public QObject {
         QVERIFY(box);
         for (auto button : {QDialogButtonBox::Ok, QDialogButtonBox::Cancel, QDialogButtonBox::Close,
                             QDialogButtonBox::Help})
-            if (auto *control = box->button(button))
-                QCOMPARE(control->text(), expected(button, russian, name == "memory"));
+            if (auto *control = box->button(button)) {
+                if (button == QDialogButtonBox::Ok && name == "compress")
+                    QCOMPARE(control->text(),
+                             russian ? QStringLiteral("Создать архив") : QString("Create archive"));
+                else if (button == QDialogButtonBox::Ok && name == "extract")
+                    QCOMPARE(control->text(),
+                             russian ? QStringLiteral("Распаковать") : QString("Extract"));
+                else
+                    QCOMPARE(control->text(), expected(button, russian, name == "memory"));
+            }
     }
     void inspect(QDialog &dialog, const QString &name, bool russian) {
         QSize normal(640, 480), compact(480, 400);

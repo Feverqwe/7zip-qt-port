@@ -302,6 +302,7 @@ add_library(sevenzip_panel STATIC src/CPP/7zip/UI/FileManager/App.cpp
     src/qtprogresscontrols.cpp src/qtprogresscontrols.h
     src/qtdialogunits.cpp src/qtdialogunits.h
     src/qtdialoglayout.cpp src/qtdialoglayout.h
+    src/qtdisclosure.cpp src/qtdisclosure.h
     src/qtpanellist.cpp src/qtpanellist.h
     src/qtpanelfolder.cpp src/qtpanelfolderraw.cpp src/qtpanelfolder.h
     src/CPP/7zip/UI/FileManager/App.h src/CPP/7zip/UI/FileManager/Panel.cpp
@@ -1420,7 +1421,7 @@ if(BUILD_TESTING)
     )
     add_test(NAME archive_backend COMMAND archive_backend_tests)
     add_test(NAME archive_mutation COMMAND archive_mutation_tests)
-    qt_add_executable(extract_dialog_tests tests/extract_dialog_tests.cpp
+    qt_add_executable(extract_dialog_tests tests/extract_dialog_tests.cpp tests/layout_inspection.cpp
         src/CPP/7zip/UI/GUI/CompressDialog.cpp src/archivebackend.cpp
         src/archivebackend_validation.cpp src/archivebackend_mutations.cpp src/archivebackend_listing.cpp)
     target_include_directories(extract_dialog_tests PRIVATE src)

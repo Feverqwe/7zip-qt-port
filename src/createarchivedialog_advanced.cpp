@@ -1,7 +1,9 @@
 #include "7zip/PropID.h"
+#include "7zip/UI/GUI/CompressDialogRes.h"
 #include "archivecodeccatalog.h"
 #include "createarchivedialog.h"
 #include "qtcompressoptionsdialog.h"
+#include "qtdisclosure.h"
 #include "qtlangcontrols.h"
 
 void CreateArchiveDialog::createLifecycleOptions(QFormLayout *form) {
@@ -9,6 +11,7 @@ void CreateArchiveDialog::createLifecycleOptions(QFormLayout *form) {
     // preceding Encryption.
     auto *group = new QGroupBox("&Parameters:", this);
     group->setObjectName("archiveLifecycleOptions");
+    group->setFlat(true);
     auto *layout = new QVBoxLayout(group);
     sfx_ = new QCheckBox(group);
     sfx_->setObjectName("archiveSfx");
@@ -21,6 +24,7 @@ void CreateArchiveDialog::createLifecycleOptions(QFormLayout *form) {
     sharedFiles_->setObjectName("archiveSharedFiles");
 #ifndef Q_OS_WIN
     sharedFiles_->setEnabled(false);
+    sharedFiles_->hide();
     QtBindLocalToolTip(sharedFiles_, "createarchivedialog_advanced",
                        QT_TRANSLATE_NOOP("createarchivedialog_advanced",
                                          "File sharing restrictions apply only on Windows."));
@@ -120,4 +124,39 @@ void CreateArchiveDialog::updateAdvancedSummary() {
     source.FormatOptions = &Get_FormatOptions();
     source.ShowOptionsString();
     advancedSummary_->setText(QString::fromWCharArray(source.OptionsString.Ptr()));
+    updateRedesignSummary();
+}
+
+void CreateArchiveDialog::updateRedesignSummary() {
+    if (!advancedDisclosure_)
+        return;
+    QStringList values;
+    const auto add = [&values](QWidget *control, UInt32 id, const QString &value) {
+        if (!control->isEnabled() || value.isEmpty())
+            return;
+        QString label = QtLangText(id);
+        label.remove('&');
+        label.remove(':');
+        values.append(label + ": " + value);
+    };
+    add(method_, IDT_COMPRESS_METHOD, method_->currentText());
+    add(dictionary_, IDT_COMPRESS_DICTIONARY, dictionary_->currentText());
+    if (wordSize_->currentData().toUInt())
+        add(wordSize_, IDT_COMPRESS_ORDER, wordSize_->currentText());
+    if (solidBlock_->currentData().toUInt() != UInt32(-1))
+        add(solidBlock_, IDT_COMPRESS_SOLID, solidBlock_->currentText());
+    add(threads_, IDT_COMPRESS_THREADS, threads_->currentText());
+    if (Get_MemUse_Spec().IsDefined)
+        add(memUse_, IDT_COMPRESS_MEMORY, memUse_->currentText());
+    add(volume_, IDT_SPLIT_TO_VOLUMES, volume_->currentText());
+    add(updateMode_, IDT_COMPRESS_UPDATE_MODE, updateMode_->currentText());
+    add(pathMode_, IDT_COMPRESS_PATH_MODE, pathMode_->currentText());
+    if (!parameters_->text().isEmpty())
+        values.append(QtLangText(IDT_COMPRESS_PARAMETERS).remove('&').remove(':'));
+    for (auto *check : {sfx_, sharedFiles_, deleteAfterCompressing_})
+        if (check->isEnabled() && check->isChecked())
+            values.append(QString(check->text()).remove('&'));
+    if (advancedSummary_ && !advancedSummary_->text().isEmpty())
+        values.append(advancedSummary_->text());
+    advancedDisclosure_->setSummary(values.join(QStringLiteral(" · ")));
 }

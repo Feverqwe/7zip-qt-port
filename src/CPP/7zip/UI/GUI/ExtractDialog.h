@@ -8,6 +8,8 @@
 #include <QDialog>
 #include <QLineEdit>
 
+class QtDisclosure;
+
 class CExtractDialog : public QDialog {
     Q_OBJECT
     QComboBox *_path = nullptr;
@@ -19,6 +21,9 @@ class CExtractDialog : public QDialog {
     QCheckBox *_showPassword = nullptr;
     QCheckBox *_elimDup = nullptr;
     QCheckBox *_ntSecurity = nullptr;
+    QCheckBox *_passwordEnable = nullptr;
+    QtDisclosure *_advancedSection = nullptr;
+    void UpdateAdvancedSummary();
     NExtract::CInfo _info;
     void OnInit(const QStringList &history);
     void OnOK();
@@ -44,7 +49,9 @@ class CExtractDialog : public QDialog {
     NExtract::NPathMode::EEnum PathMode = NExtract::NPathMode::kFullPaths;
     NExtract::NOverwriteMode::EEnum OverwriteMode = NExtract::NOverwriteMode::kAsk;
     QString destination() const;
-    QString password() const { return _passwordControl->text(); }
+    QString password() const {
+        return _passwordEnable->isChecked() ? _passwordControl->text() : QString();
+    }
     ExtractionOptions options() const;
     void OnHelp();
     void SetInitialOptions(NExtract::NPathMode::EEnum pathMode,

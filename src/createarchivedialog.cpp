@@ -6,6 +6,7 @@
 #include "CPP/7zip/UI/GUI/CompressDialog.h"
 #include "archivecodeccatalog.h"
 #include "qtdialogscreenservices.h"
+#include "qtdisclosure.h"
 #include "qtguimessages.h"
 #include "qtlangbuttonbox.h"
 #include "qtlangcontrols.h"
@@ -17,6 +18,7 @@
 #include <QScrollBar>
 #include <QShortcut>
 #include <QStyle>
+#include <QToolButton>
 
 namespace {
 // Compact Add is a form: its scroll bars need a separate gutter, including
@@ -65,14 +67,12 @@ CreateArchiveDialog::CreateArchiveDialog(const QString &directory,
       codecs_(std::move(codecs)) {
     setObjectName("createArchiveDialog");
     auto *layout = new QVBoxLayout(this);
-    // GuiCommon.rc uses an eight-dialog-unit outer margin. Native Cocoa's
-    // larger default would add horizontal scrolling at the compact size.
-    const QSize units = QtDialogScreenServices(this).GetDialogBaseUnits();
-    const int horizontalMargin = 8 * units.width() / 4;
-    const int verticalMargin = 8 * units.height() / 8;
+    const int horizontalMargin = 16;
+    const int verticalMargin = 16;
     // Put the scroll bar at the window edge; the source right margin belongs
     // between the form controls and that bar, not outside the scroll area.
     layout->setContentsMargins(horizontalMargin, verticalMargin, 0, verticalMargin);
+    layout->setSpacing(16);
     auto *scroll = new ArchiveFormScrollArea(this);
     scroll->setObjectName("archiveOptionsScrollArea");
     scroll->setWidgetResizable(true);
@@ -84,6 +84,8 @@ CreateArchiveDialog::CreateArchiveDialog(const QString &directory,
     auto *content = new QWidget(scroll);
     auto *contentLayout = new QVBoxLayout(content);
     contentLayout->setContentsMargins(0, 0, horizontalMargin, 0);
+    contentLayout->setSpacing(20);
+    contentLayout->setAlignment(Qt::AlignTop);
     m_RegistryInfo.Load(compressionSettingsPath());
     fixedSources_ = sourceDialog != nullptr;
     if (sourceDialog)
@@ -114,6 +116,7 @@ CreateArchiveDialog::CreateArchiveDialog(const QString &directory,
     BindLanguage();
     if (fixedSources_)
         initializeSourceControls(sourceDialog->Info);
+    updateRedesignSummary();
     stabilizeColumnWidths();
     // Size the source form to its controls rather than reserving the height
     // of the former file picker. Leave room for the native window frame and
@@ -121,10 +124,17 @@ CreateArchiveDialog::CreateArchiveDialog(const QString &directory,
     const QMargins margins = layout->contentsMargins();
     const int width =
         qMax(640, content->minimumSizeHint().width() + margins.left() + margins.right());
-    const int height = content->sizeHint().height() +
-                       findChild<QWidget *>("archiveNameField")->sizeHint().height() +
-                       buttons_->sizeHint().height() + 2 * layout->spacing() + margins.top() +
-                       margins.bottom();
+    const int contentWidth =
+        width - margins.left() - margins.right() - scroll->verticalScrollBar()->sizeHint().width();
+    // Reparenting fields and revealing the summary can leave cached spacing
+    // from construction. Recompute it before choosing the initial height.
+    contentLayout->invalidate();
+    const int contentHeight = contentLayout->hasHeightForWidth()
+                                  ? contentLayout->heightForWidth(contentWidth)
+                                  : content->sizeHint().height();
+    const int height =
+        contentHeight + findChild<QWidget *>("archiveNameField")->sizeHint().height() +
+        buttons_->sizeHint().height() + 2 * layout->spacing() + margins.top() + margins.bottom();
     const int frameHeight = 2 * style()->pixelMetric(QStyle::PM_TitleBarHeight);
     const QSize available = screen()->availableGeometry().size() - QSize(0, frameHeight);
     resize(QSize(width, height).boundedTo(available).expandedTo(minimumSizeHint()));
@@ -137,14 +147,9 @@ CreateArchiveDialog::CreateArchiveDialog(const QString &directory,
 void CreateArchiveDialog::stabilizeColumnWidths() {
     // Keep the value row steady when the memory figures use one or two lines.
     memoryUsage_->setMinimumHeight(2 * memoryUsage_->fontMetrics().lineSpacing());
-    // Source gSize/g4xs do not depend on the currently selected method/value.
-    // Capture native/translated minima once, retaining normal manual resizing.
-    for (const char *name : {"archiveCompressionColumn", "archiveEncryptionColumn"}) {
-        auto *column = findChild<QWidget *>(name);
-        column->ensurePolished();
-        column->setMinimumWidth(0);
-        column->setMinimumWidth(column->minimumSizeHint().width());
-    }
+    for (auto *label : findChildren<QLabel *>())
+        if (label != archiveFolder_)
+            label->setWordWrap(true);
 }
 
 QWidget *CreateArchiveDialog::reserveControlSpace(QWidget *control) {
@@ -162,7 +167,11 @@ QWidget *CreateArchiveDialog::reserveControlSpace(QWidget *control) {
 }
 
 void CreateArchiveDialog::createArchiveForm(QVBoxLayout *layout, QVBoxLayout *windowLayout) {
-    auto *form = new QFormLayout;
+    auto *basic = new QWidget(layout->parentWidget());
+    auto *form = new QFormLayout(basic);
+    form->setContentsMargins(0, 0, 0, 0);
+    form->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
+    form->setRowWrapPolicy(QFormLayout::WrapAllRows);
     auto *archiveField = new QWidget(this);
     archiveField->setObjectName("archiveNameField");
     auto *fieldLayout = new QGridLayout(archiveField);
@@ -174,7 +183,7 @@ void CreateArchiveDialog::createArchiveForm(QVBoxLayout *layout, QVBoxLayout *wi
     // A Windows prefix can be one unbreakable word. It must not impose its
     // full text width on the scroll content and clip the actual inputs.
     archiveFolder_->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
-    fieldLayout->addWidget(archiveFolder_, 0, 1);
+    fieldLayout->addWidget(archiveFolder_, 2, 0);
     auto *archiveRow = new QWidget(this);
     archiveRow->setObjectName("archivePathRow");
     auto *archiveLayout = new QHBoxLayout(archiveRow);
@@ -198,18 +207,18 @@ void CreateArchiveDialog::createArchiveForm(QVBoxLayout *layout, QVBoxLayout *wi
         qMax(browse->sizeHint().height(), browse->fontMetrics().averageCharWidth() * 5));
     archiveLayout->addWidget(browse);
     archiveRow->setFocusProxy(archivePath_);
-    fieldLayout->addWidget(archiveRow, 1, 1);
+    fieldLayout->addWidget(archiveRow, 1, 0);
     auto *archiveLabel = new QLabel("&Archive:", this);
     archiveLabel->setObjectName("archiveLabel");
     archiveLabel->setBuddy(archivePath_);
     archiveLabel->setAlignment(Qt::AlignLeft | Qt::AlignVCenter);
     // Preserve the source folder/name split and align the caption to the
     // combo row. Keep the destination visible while compact options scroll.
-    fieldLayout->addWidget(archiveLabel, 1, 0, Qt::AlignVCenter);
-    fieldLayout->setColumnStretch(1, 1);
+    fieldLayout->addWidget(archiveLabel, 0, 0);
+    fieldLayout->setColumnStretch(0, 1);
     windowLayout->addWidget(archiveField);
     QWidget::setTabOrder(archivePath_, browse);
-    format_ = new QComboBox(this);
+    format_ = new QComboBox(basic);
     format_->setObjectName("archiveFormat");
     populateArchiveFormats();
     if (!codecs_) {
@@ -235,10 +244,6 @@ void CreateArchiveDialog::createArchiveForm(QVBoxLayout *layout, QVBoxLayout *wi
     pathMode_->addItem("Full pathnames", int(NWildcard::k_FullPath));
     pathMode_->addItem("Absolute paths", int(NWildcard::k_AbsPath));
     {
-        // CompressDialog.rc places compression on the left and encryption on
-        // the right. Keep both columns at compact sizes; scrolling keeps
-        // the source form usable when the available screen is smaller.
-        auto *columns = new QHBoxLayout;
         auto *compressionColumn = new QWidget(this);
         compressionColumn->setObjectName("archiveCompressionColumn");
         auto *compressionForm = new QFormLayout(compressionColumn);
@@ -246,26 +251,35 @@ void CreateArchiveDialog::createArchiveForm(QVBoxLayout *layout, QVBoxLayout *wi
         // CompressDialog.rc gives the six combo rows a shared g1x/g1xs.
         // Cocoa's default keeps each field at its individual size hint.
         compressionForm->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
-        compressionForm->setRowWrapPolicy(QFormLayout::WrapLongRows);
-        auto *encryptionColumn = new QWidget(this);
-        encryptionColumn->setObjectName("archiveEncryptionColumn");
-        auto *encryptionForm = new QFormLayout(encryptionColumn);
-        encryptionForm->setContentsMargins(0, 0, 0, 0);
-        encryptionForm->setFieldGrowthPolicy(QFormLayout::AllNonFixedFieldsGrow);
-        encryptionForm->setRowWrapPolicy(QFormLayout::WrapLongRows);
-        compressionForm->addRow("Archive format:", format_);
+        compressionForm->setRowWrapPolicy(QFormLayout::WrapAllRows);
+        form->addRow("Archive format:", format_);
         createCompressionOptions(compressionForm);
+        const auto levelRow = compressionForm->takeRow(level_);
+        form->addRow(levelRow.labelItem->widget(), levelRow.fieldItem->widget());
+        level_->show();
+        delete levelRow.labelItem;
+        delete levelRow.fieldItem;
         createVolumeOptions(compressionForm);
         createAdvancedOptions(compressionForm);
-        encryptionForm->addRow("Update mode:", updateMode_);
-        encryptionForm->addRow("Path mode:", pathMode_);
-        createLifecycleOptions(encryptionForm);
-        createEncryptionOptions(encryptionForm);
-        columns->addWidget(compressionColumn, 1, Qt::AlignTop);
-        columns->addWidget(encryptionColumn, 1, Qt::AlignTop);
-        form->addRow(columns);
+        compressionForm->addRow("Update mode:", updateMode_);
+        compressionForm->addRow("Path mode:", pathMode_);
+        createLifecycleOptions(compressionForm);
+        layout->addWidget(basic);
+        createEncryptionOptions(layout);
+        advancedDisclosure_ = new QtDisclosure(compressionColumn, layout->parentWidget());
+        advancedDisclosure_->setObjectName("archiveAdvancedSection");
+        advancedDisclosure_->button()->setObjectName("archiveAdvancedToggle");
+        QtBindLocalText(advancedDisclosure_->button(), "ArchiveRedesign",
+                        QT_TRANSLATE_NOOP("ArchiveRedesign", "Advanced settings"));
+        layout->addWidget(advancedDisclosure_);
     }
-    layout->addLayout(form);
+    for (auto *combo : findChildren<QComboBox *>())
+        connect(combo, &QComboBox::currentTextChanged, this,
+                &CreateArchiveDialog::updateRedesignSummary);
+    for (auto *edit : findChildren<QLineEdit *>())
+        connect(edit, &QLineEdit::textChanged, this, &CreateArchiveDialog::updateRedesignSummary);
+    for (auto *check : findChildren<QCheckBox *>())
+        connect(check, &QCheckBox::toggled, this, &CreateArchiveDialog::updateRedesignSummary);
     connect(browse, &QPushButton::clicked, this, [this] {
         CCompressDialog path = archiveNameState_;
         path.Format = format_->currentText();
@@ -298,8 +312,11 @@ void CreateArchiveDialog::createArchiveForm(QVBoxLayout *layout, QVBoxLayout *wi
 }
 
 void CreateArchiveDialog::createFooter(QVBoxLayout *layout) {
-    buttons_ = new QtLangButtonBox(
+    auto *buttons = new QtLangButtonBox(
         QDialogButtonBox::Ok | QDialogButtonBox::Cancel | QDialogButtonBox::Help, this);
+    buttons_ = buttons;
+    buttons->SetAcceptText("ArchiveRedesign",
+                           QT_TRANSLATE_NOOP("ArchiveRedesign", "Create archive"));
     const auto showHelp = [this] {
         CCompressDialog dialog;
         dialog.OnHelp(this);
@@ -327,8 +344,10 @@ QString CreateArchiveDialog::archivePath() const {
 
 void CreateArchiveDialog::validateAndAccept() {
     if (password_) {
+        const bool protect = passwordEnabled_->isChecked();
         const auto error = CCompressDialog::CheckPassword(
-            password_->text(), passwordConfirmation_->text(), showPassword_->isChecked(),
+            protect ? password_->text() : QString(),
+            protect ? passwordConfirmation_->text() : QString(), showPassword_->isChecked(),
             format_->currentText(), GetEncryptionMethodSpec());
         if (error != CCompressDialog::kPasswordOK) {
             const UInt32 id = error == CCompressDialog::kPasswordUseAscii  ? IDS_PASSWORD_USE_ASCII

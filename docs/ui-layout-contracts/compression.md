@@ -4,6 +4,33 @@
 якоря и границы датированных свидетельств. Новые результаты проверок —
 в [source audit](../upstream-port-audit.md).
 
+## Redesign: Add form
+
+The [approved redesign](../ui-redesign-plan.md) supersedes the older two-column
+presentation requirements below for the Add form. Archive name/destination remain
+visible above the scrolling form, with the caption above the editable name.
+Format and compression level are immediately available. Password protection has
+an explicit enable control; its dependent fields appear together, without a
+large framed heading. A source-supplied password enables the section. Turning
+protection off excludes the password/headers from the effective request while
+retaining the draft for re-enabling. Format support still comes from the source.
+
+Method, dictionary, order, solid size, threads, memory, volumes, parameters,
+update/path modes, lifecycle options and the existing metadata Options dialog
+are reachable through an Advanced settings disclosure. Collapsing it changes
+visibility only; options remain effective. Its summary reflects actual control
+values, including explicit memory/volume/update/path choices and active lifecycle
+options. Custom parameters are indicated without copying their arbitrary text
+into diagnostic reports. Password values never enter the summary.
+
+The compact form keeps a separate scrollbar gutter and a visible native footer.
+Fields use labels above them and may reflow after a language/value change;
+fixed column rectangles are no longer a contract. Unsupported Windows shared-file
+controls are hidden on POSIX. Validation, saved format profiles, nested Options
+Cancel, SFX transitions and official-engine operations retain their source owners.
+The primary action is named Create archive, with live localization. Evidence:
+[redesign audit](../upstream-port-audit/ui-redesign.md).
+
 <a id="add-metadata-options-p2-07-in-progress"></a>
 
 ### Add metadata Options (P2-07)

@@ -8,6 +8,7 @@
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QTimer>
+#include <QToolButton>
 #include <QtTest>
 
 class CompressionEventTests final : public QObject {
@@ -159,6 +160,7 @@ class CompressionEventTests final : public QObject {
                                                 system));
         QCOMPARE(thread->itemText(0), NCompressDialog::Modify_Auto(QString("2")));
         dialog.show();
+        dialog.findChild<QToolButton *>("archiveAdvancedToggle")->setChecked(true);
         for (const QSize size : {QSize(760, 720), QSize(640, 480)}) {
             dialog.resize(size);
             QApplication::processEvents();

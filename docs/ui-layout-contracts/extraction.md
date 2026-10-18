@@ -4,6 +4,22 @@
 якоря и границы датированных свидетельств. Новые результаты проверок —
 в [source audit](../upstream-port-audit.md).
 
+## Redesign: Extract form
+
+The [approved redesign](../ui-redesign-plan.md) replaces the fixed columns with
+one form: destination/history and browse, optional subfolder name, overwrite mode,
+optional password, then Advanced settings. Path mode and root-folder duplication
+remain effective when Advanced settings is collapsed, and its summary reflects
+their current values. Windows security is shown only on Windows.
+
+A supplied password enables/reveals its section. Disabling the section excludes
+the password from the accepted request and retains its draft for re-enabling.
+Changing sections or browsing does not recreate controls or lose pending values.
+Source modes/force flags, history normalization, metadata bool-pair precedence,
+confirmation and Cancel persistence are unchanged. The primary action is Extract;
+the native button box preserves its roles and live translations.
+[Source scope and checks](../upstream-port-audit/ui-redesign.md).
+
 ### Rendered Add/Extract reference (P3-06, 2026-10-15)
 
 Add's compact form reserves a separate gutter for its non-transient scroll bar;
