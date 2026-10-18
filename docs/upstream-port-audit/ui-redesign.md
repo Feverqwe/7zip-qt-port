@@ -605,3 +605,46 @@ failures устранены и перепроверены на обеих ОС. 
 старых payload-каталогов нет, host D: имеет около 647 GiB свободно.
 Full/slow, физические клавиатуры, VoiceOver и отрисованный Windows reference для
 этого редизайна не проверялись. Settings и общая приёмка остаются в active goal.
+
+## Итерация 12: сохраняемое оформление приложения
+
+Источник: https://github.com/ip7z/7zip.git, текущий upstream
+`9128b80e3a471108678e2b3ec3c985861c8d7b0f`; baseline выбранных модулей
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`. Сопоставлены SettingsPage.cpp/.h/.rc,
+RegistryUtils.cpp/.h (CFmSettings), OptionsDialog.cpp и page callers, а также
+Qt entry point и существующий semantic palette consumer. Исходные семь флагов,
+порядок OnApply, privilege/memory branches и обработка ошибок сохранены.
+Старое частичное применение исходных флагов перед ошибкой памяти не изменено.
+
+В upstream нет используемой реализации выбора системного/светлого/тёмного
+оформления приложения. Для согласованного концепта добавлена Qt preference
+в CFmSettings и существующий settings store. Новая ветвь сохраняется после
+успешной проверки памяти; контейнер применяет изменённый подтверждённый выбор
+через QStyleHints. Entry point восстанавливает его до создания окон, включая
+GUI entry 7zG. Отдельного хранилища, QSS или таблицы цветов нет; существующие
+semantic colors получают нативную палитру. Unknown означает системный выбор.
+
+Открытие окна и неподтверждённый draft не меняют native preference. Cancel,
+Apply/reopen, ошибка памяти, сохранение соседнего флага и hot language reload
+покрыты поведенческими проверками с private settings и fake association service.
+Нативная проверка ожидает обновление палитры существующего окна: изменение
+style hint доставляет palette events асинхронно. Keyboard consumer учитывает
+новый первый контрол Settings. Удалено требование точного frame size из
+fm_settings: полезные проверки доступности полей/действий сохранены.
+
+Это завершённый сценарий оформления, необходимый для новых настроек.
+Трёхсекционная навигация и раскрываемые группы Settings ещё не реализованы.
+
+macOS: app и focused targets собраны; appearance_settings, options_dialog,
+options_integration, options_keyboard, fm_settings, options_window,
+list_settings_runtime, memory_lock и application_starts прошли. Нативный
+memory_lock перепроверен вне sandbox после отказа Cocoa создать экран внутри
+sandbox. Cocoa appearance — 5/5 test functions PASS; просмотрены applied-light/
+dark JSON и снимки в прежнем review, включая палитру существующего окна.
+Linux: девять тех же suites PASS. Windows: восемь PASS первоначально; точное
+равенство frame в fm_settings заменено проверками видимости, затем
+appearance_settings и fm_settings — 2/2 PASS на обеих ОС
+(`20261018T182215Z-9b78d8ba`). Appearance на Windows использует windows QPA
+и существующую native UI resource lock. Linux offscreen подтверждает транзакцию
+и геометрию, но не смену палитры оконного окружения. Full/slow, VoiceOver,
+отрисованный upstream Windows reference и все 36 состояний не проверялись.

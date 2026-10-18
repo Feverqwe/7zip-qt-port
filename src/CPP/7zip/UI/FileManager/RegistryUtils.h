@@ -27,6 +27,8 @@ struct CFmSettings {
     bool SingleClick;
     bool AlternativeSelection;
     bool ShowSystemMenu;
+    // Qt presentation preference; Unknown follows the native system theme.
+    Qt::ColorScheme ColorScheme = Qt::ColorScheme::Unknown;
 
     void Save(const QString &settingsPath) const;
     void Load(const QString &settingsPath);

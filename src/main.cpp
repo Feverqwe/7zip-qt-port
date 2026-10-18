@@ -1,3 +1,4 @@
+#include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "desktopidentity.h"
 #include "mainwindow.h"
 #include "qtfilemanagerstartup.h"
@@ -6,6 +7,7 @@
 #include <QApplication>
 #include <QFileInfo>
 #include <QIcon>
+#include <QStyleHints>
 #include <QTimer>
 
 int main(int argc, char *argv[]) {
@@ -14,6 +16,9 @@ int main(int argc, char *argv[]) {
     app.setApplicationName("Sevenzip");
     app.setApplicationVersion(QStringLiteral(SEVENZIP_DESKTOP_DISPLAY_VERSION));
     app.setDesktopFileName(QString::fromLatin1(NDesktopIdentity::kFileName));
+    CFmSettings settings;
+    settings.Load(FmSettingsPath());
+    app.styleHints()->setColorScheme(settings.ColorScheme);
 #ifdef Q_OS_WIN
     const QString guiName = QStringLiteral("7zG.exe");
     const QString entryName = QFileInfo(app.applicationFilePath()).fileName();

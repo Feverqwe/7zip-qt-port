@@ -41,6 +41,18 @@ native minima), all four System availability masks and both six-page directions.
 Current widget JSON checks visible control bounds; public assertions check focus,
 selection and Cancel without association writes. [Source and native receipt](../archive/qt-port/upstream-port-audit/p3-06-options-keyboard-2026-10-17.md).
 
+### Appearance preference (redesign, 2026-10-18)
+
+Appearance offers Follow system, Light and Dark through the native Qt theme
+preference. The choice is a draft until Apply or OK succeeds; Cancel discards
+unapplied changes. Invalid memory input keeps the appearance draft unapplied.
+Applying updates existing windows, and the saved preference is restored at
+application startup. Changing language preserves the pending choice.
+
+Appearance is currently the first keyboard control on the Settings page. The
+three-section General/Integration/Advanced organization from the redesign plan
+is still pending; the six source page owners and their other behavior remain.
+
 ### Native System handler images (P3-06, 2026-10-17)
 
 The application/window identity uses source FM.ico, matching original

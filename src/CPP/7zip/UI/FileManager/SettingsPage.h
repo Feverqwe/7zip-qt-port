@@ -5,6 +5,7 @@
 #include <QDialog>
 
 class QCheckBox;
+class QComboBox;
 class QtMemoryLimitSpin;
 class IQtMemoryLockServices;
 class CSettingsPage : public QDialog {
@@ -13,10 +14,14 @@ class CSettingsPage : public QDialog {
     bool _initMode = true;
     bool _largePages_wasChanged = false;
     bool _memx_wasChanged = false;
+    bool _appearanceChanged = false;
     CFmSettings _settings;
     QString _settingsPath;
     const IQtMemoryLockServices *_memoryLockServices;
     QCheckBox *_showDots;
+    QComboBox *_appearance;
+    void reloadAppearanceText();
+    void changeEvent(QEvent *event) override;
     QCheckBox *_showRealFileIcons;
     QCheckBox *_fullRow;
     QCheckBox *_showGrid;
@@ -38,7 +43,9 @@ class CSettingsPage : public QDialog {
     void OnNotifyHelp();
     void accept() override;
     CFmSettings settings() const { return _settings; }
-    bool IsModified() const { return _wasChanged || _largePages_wasChanged || _memx_wasChanged; }
+    bool IsModified() const {
+        return _wasChanged || _largePages_wasChanged || _memx_wasChanged || _appearanceChanged;
+    }
 
   signals:
     void Changed();

@@ -64,8 +64,9 @@ class OptionsKeyboardTests final : public QObject {
         pages->setCurrentIndex(0);
         dialog.findChild<QPushButton *>("systemCurrent")->setFocus();
         auto expected = [&](int index) -> QWidget * {
-            const char *first[] = {"systemCurrent", nullptr,          "workCurrent",
-                                   "viewerCommand", "showDotsOption", "languageChoice"};
+            const char *first[] = {"systemCurrent",    nullptr,
+                                   "workCurrent",      "viewerCommand",
+                                   "appearanceChoice", "languageChoice"};
             if (first[index])
                 return dialog.findChild<QWidget *>(first[index]);
             // MenuPage2.rc order; native capabilities can disable this page.
@@ -217,7 +218,7 @@ class OptionsKeyboardTests final : public QObject {
         editor->setFocus();
         QTest::keyClick(editor, Qt::Key_Tab, Qt::ControlModifier);
         QCOMPARE(pages->currentIndex(), 4);
-        QCOMPARE(dialog.focusWidget(), dialog.findChild<QCheckBox *>("showDotsOption"));
+        QCOMPARE(dialog.focusWidget(), dialog.findChild<QComboBox *>("appearanceChoice"));
         QTest::keyClick(pages, Qt::Key_Tab, Qt::ControlModifier | Qt::ShiftModifier);
         QCOMPARE(pages->currentIndex(), 3);
         QCOMPARE(editor->text(), QString("pending editor --wait"));

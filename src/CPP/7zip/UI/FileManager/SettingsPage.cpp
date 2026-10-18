@@ -16,9 +16,12 @@
 #include "qtmemorylimitspin.h"
 #include "qtmemorylockservices.h"
 #include <QCheckBox>
+#include <QComboBox>
 #include <QDialogButtonBox>
+#include <QEvent>
 #include <QHBoxLayout>
 #include <QLabel>
+#include <QSignalBlocker>
 #include <QVBoxLayout>
 
 #define kSettingsTopic "FM/options.htm#settings"
@@ -32,6 +35,22 @@ CSettingsPage::CSettingsPage(const QString &settingsPath, QWidget *parent, bool 
         setWindowFlags(Qt::Widget);
     QtBindResourceText(this, IDD_SETTINGS, "Settings");
     auto *layout = new QVBoxLayout(this);
+    auto *appearanceLabel = new QLabel(this);
+    appearanceLabel->setObjectName("appearanceLabel");
+    QtBindLocalText(appearanceLabel, "SettingsRedesign",
+                    QT_TRANSLATE_NOOP("SettingsRedesign", "Appearance"));
+    _appearance = new QComboBox(this);
+    _appearance->setObjectName("appearanceChoice");
+    appearanceLabel->setBuddy(_appearance);
+    reloadAppearanceText();
+    layout->addWidget(appearanceLabel);
+    layout->addWidget(_appearance);
+    connect(_appearance, &QComboBox::currentIndexChanged, this, [this] {
+        if (!_initMode) {
+            _appearanceChanged = true;
+            Changed();
+        }
+    });
     _showDots = new QCheckBox(this);
     QtBindResourceText(_showDots, IDX_SETTINGS_SHOW_DOTS, "Show \"..\" item");
     _showDots->setObjectName(QStringLiteral("showDotsOption"));
@@ -122,7 +141,9 @@ bool CSettingsPage::OnInit() {
     _wasChanged = false;
     _largePages_wasChanged = false;
     _memx_wasChanged = false;
+    _appearanceChanged = false;
     _settings.Load(_settingsPath);
+    _appearance->setCurrentIndex(_appearance->findData(int(_settings.ColorScheme)));
     _showDots->setChecked(_settings.ShowDots);
     _showRealFileIcons->setChecked(_settings.ShowRealFileIcons);
     _fullRow->setChecked(_settings.FullRow);
@@ -221,10 +242,35 @@ long CSettingsPage::OnApply() {
         NExtract::Save_LimitGB(_settingsPath, val);
         _memx_wasChanged = false;
     }
+    if (_appearanceChanged) {
+        _settings.ColorScheme = Qt::ColorScheme(_appearance->currentData().toInt());
+        _settings.Save(_settingsPath);
+        _appearanceChanged = false;
+    }
     return 0;
 }
 
 void CSettingsPage::accept() {
     if (OnApply() == 0)
         QDialog::accept();
+}
+
+void CSettingsPage::reloadAppearanceText() {
+    const QSignalBlocker blocked(_appearance);
+    const QVariant selected = _appearance->currentData();
+    _appearance->clear();
+    _appearance->addItem(QCoreApplication::translate("SettingsRedesign", "Follow system"),
+                         int(Qt::ColorScheme::Unknown));
+    _appearance->addItem(QCoreApplication::translate("SettingsRedesign", "Light"),
+                         int(Qt::ColorScheme::Light));
+    _appearance->addItem(QCoreApplication::translate("SettingsRedesign", "Dark"),
+                         int(Qt::ColorScheme::Dark));
+    if (selected.isValid())
+        _appearance->setCurrentIndex(_appearance->findData(selected));
+}
+
+void CSettingsPage::changeEvent(QEvent *event) {
+    QDialog::changeEvent(event);
+    if (event->type() == QEvent::LanguageChange)
+        reloadAppearanceText();
 }

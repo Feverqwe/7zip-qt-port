@@ -23,6 +23,7 @@ class QtFmOptionsDialog final : public QDialog {
     CLangPage *_langPage = nullptr;
     CSystemPage *_systemPage;
     bool _applying = false;
+    Qt::ColorScheme _appliedColorScheme = Qt::ColorScheme::Unknown;
     QDialogButtonBox *_buttons;
     void updateApplyButton();
     void changeEvent(QEvent *event) override;

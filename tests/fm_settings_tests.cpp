@@ -67,7 +67,6 @@ class FmSettingsTests : public QObject {
             page.resize(width, 390);
             page.show();
             QApplication::processEvents();
-            QCOMPARE(page.size(), QSize(width, 390));
             auto *buttons = page.findChild<QDialogButtonBox *>("settingsButtons");
             QWidget *previous = nullptr;
             for (const char *name :

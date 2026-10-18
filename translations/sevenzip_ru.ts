@@ -337,7 +337,7 @@
             <location filename="../src/CPP/7zip/UI/FileManager/CopyDialog.cpp" line="+59" />
             <location filename="../src/CPP/7zip/UI/FileManager/EditDialog.cpp" line="+42" />
             <location filename="../src/CPP/7zip/UI/FileManager/ListViewDialog.cpp" line="+106" />
-            <location filename="../src/qtbenchmarkcontrols.cpp" line="+149" />
+            <location filename="../src/qtbenchmarkcontrols.cpp" line="+148" />
             <source>Copy</source>
             <translation>Копировать</translation>
         </message>
@@ -699,7 +699,7 @@ Are you sure you want to split archive into such volumes?</source>
     <context>
         <name>OptionsDialog</name>
         <message>
-            <location filename="../src/CPP/7zip/UI/FileManager/OptionsDialog.cpp" line="+206" />
+            <location filename="../src/CPP/7zip/UI/FileManager/OptionsDialog.cpp" line="+208" />
             <source>7-Zip</source>
             <translation>7-Zip</translation>
         </message>
@@ -750,6 +750,29 @@ Are you sure you want to split archive into such volumes?</source>
             <location filename="../src/CPP/7zip/UI/FileManager/RootFolder.cpp" line="+87" />
             <source>Volumes</source>
             <translation>Тома</translation>
+        </message>
+    </context>
+    <context>
+        <name>SettingsRedesign</name>
+        <message>
+            <location filename="../src/CPP/7zip/UI/FileManager/SettingsPage.cpp" line="+41" />
+            <source>Appearance</source>
+            <translation>Оформление</translation>
+        </message>
+        <message>
+            <location line="+221" />
+            <source>Follow system</source>
+            <translation>Как в системе</translation>
+        </message>
+        <message>
+            <location line="+2" />
+            <source>Light</source>
+            <translation>Светлое</translation>
+        </message>
+        <message>
+            <location line="+2" />
+            <source>Dark</source>
+            <translation>Тёмное</translation>
         </message>
     </context>
     <context>

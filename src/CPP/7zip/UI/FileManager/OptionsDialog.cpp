@@ -26,6 +26,7 @@
 #include <QScopeGuard>
 #include <QScopedValueRollback>
 #include <QShortcut>
+#include <QStyleHints>
 #include <QTabBar>
 #include <QTabWidget>
 #include <QVBoxLayout>
@@ -108,6 +109,7 @@ QtFmOptionsDialog::QtFmOptionsDialog(const QString &settingsPath, QWidget *paren
     _editPage = new CEditPage(settingsPath, pages);
     _foldersPage = new CFoldersPage(settingsPath, pages);
     _settingsPage = new CSettingsPage(settingsPath, pages, true);
+    _appliedColorScheme = _settingsPage->settings().ColorScheme;
     _menuPage = new CMenuPage(settingsPath, pages);
     _langPage = new CLangPage(settingsPath, pages);
     if (!associations)
@@ -215,6 +217,11 @@ void QtFmOptionsDialog::apply() {
         _settingsPage->setFocus();
         updateApplyButton();
         return;
+    }
+    const auto colorScheme = _settingsPage->settings().ColorScheme;
+    if (colorScheme != _appliedColorScheme) {
+        QGuiApplication::styleHints()->setColorScheme(colorScheme);
+        _appliedColorScheme = colorScheme;
     }
     const bool languageChanged = _langPage->IsModified();
     _langPage->OnApply();

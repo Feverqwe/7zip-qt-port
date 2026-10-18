@@ -138,6 +138,7 @@ void CFmSettings::Save(const QString &settingsPath) const {
     SaveOption(key, kSingleClick, SingleClick);
     SaveOption(key, kAlternativeSelection, AlternativeSelection);
     SaveOption(key, kShowSystemMenu, ShowSystemMenu);
+    key.setValue("ColorScheme", int(ColorScheme));
 }
 
 void CFmSettings::Load(const QString &settingsPath) {
@@ -162,4 +163,10 @@ void CFmSettings::Load(const QString &settingsPath) {
     ReadOption(key, kSingleClick, SingleClick);
     ReadOption(key, kAlternativeSelection, AlternativeSelection);
     ReadOption(key, kShowSystemMenu, ShowSystemMenu);
+    bool valid = false;
+    const int scheme = key.value("ColorScheme").toInt(&valid);
+    ColorScheme =
+        valid && (scheme == int(Qt::ColorScheme::Light) || scheme == int(Qt::ColorScheme::Dark))
+            ? Qt::ColorScheme(scheme)
+            : Qt::ColorScheme::Unknown;
 }
