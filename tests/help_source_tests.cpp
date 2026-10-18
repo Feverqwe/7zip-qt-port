@@ -223,8 +223,10 @@ class HelpSourceTests : public QObject {
         QCOMPARE(dialog.findChild<QLabel *>("aboutText102")->text(), QString(MY_DATE));
         QVERIFY(dialog.findChild<QLabel *>("aboutText2901")->alignment() & Qt::AlignTop);
         QVERIFY(!dialog.findChild<QLabel *>("aboutLogo")->pixmap().isNull());
-        QCOMPARE(dialog.findChild<QLabel *>("aboutApplicationVersion")->text().section('\n', 0, 0),
-                 QString("Sevenzip " SEVENZIP_DESKTOP_VERSION));
+        auto *applicationVersion = dialog.findChild<QLabel *>("aboutApplicationVersion");
+        const QString expectedVersion =
+            QString("Sevenzip " SEVENZIP_DESKTOP_VERSION " (7-Zip " MY_VERSION ")");
+        QCOMPARE(applicationVersion->text().section('\n', 0, 0), expectedVersion);
         QDesktopServices::setUrlHandler("https", this, "openUrl");
         QVERIFY(!dialog.OnButtonClicked(999, nullptr));
         QVERIFY(dialog.OnButtonClicked(IDB_ABOUT_HOMEPAGE, nullptr));
@@ -236,6 +238,7 @@ class HelpSourceTests : public QObject {
             QtNotifyLanguageChanged();
             QCOMPARE(dialog.windowTitle(), QtLangText(IDD_ABOUT, "About 7-Zip"));
             QCOMPARE(version->text(), sourceVersion);
+            QCOMPARE(applicationVersion->text().section('\n', 0, 0), expectedVersion);
             for (QSize size : {QSize(360, 330), QSize(300, 310)}) {
                 dialog.resize(size);
                 QTRY_COMPARE(dialog.size(), size.expandedTo(dialog.minimumSizeHint()));

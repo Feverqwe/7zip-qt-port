@@ -78,6 +78,9 @@ and protect the Qt minimum size. The free-software text is top-aligned inside
 its source42DLU area. The natural logo cannot shrink; the added identity row
 uses Qt's height-for-width measurement for both EN/RU and protects its minimum
 content width/height. These added rows are explicit adaptations.
+The application identity shows the Sevenzip release together with the upstream
+7-Zip source version. Both version numbers remain unchanged when switching the
+interface language; the explanatory text follows the selected language.
 help_source writes about-*.json; all text fits and controls remain exposed.
 help_ui checks actual Contents/F1/modal About, source Options page callbacks and
 Add/Extract button/F1 without applying pending state; compression_advanced checks

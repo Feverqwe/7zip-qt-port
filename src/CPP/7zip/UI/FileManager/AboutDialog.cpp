@@ -68,10 +68,10 @@ CAboutDialog::CAboutDialog(QWidget *parent, const CCodecs *codecs)
     application->setObjectName("aboutApplicationVersion");
     application->setWordWrap(true);
     application->setTextFormat(Qt::PlainText);
-    const QString english =
-        "Sevenzip " SEVENZIP_DESKTOP_VERSION "\n7-Zip source port; uses the official 7-Zip engine.";
-    const QString russian = "Sevenzip " SEVENZIP_DESKTOP_VERSION
-                            "\nПорт исходников 7-Zip; использует официальный движок 7-Zip.";
+    const QString english = "Sevenzip " SEVENZIP_DESKTOP_DISPLAY_VERSION
+                            "\nBuilt from 7-Zip source code; uses the official 7-Zip engine.";
+    const QString russian = "Sevenzip " SEVENZIP_DESKTOP_DISPLAY_VERSION
+                            "\nПостроен на исходниках 7-Zip; использует официальный движок 7-Zip.";
     QtBindLocalText(application, english, russian);
     layout->addWidget(application);
     layout->addStretch();

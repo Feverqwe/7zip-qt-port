@@ -2,6 +2,18 @@ cmake_minimum_required(VERSION 3.21)
 
 project(sevenzip_desktop VERSION 0.1.3 LANGUAGES C CXX)
 
+set(sevenzip_version_header "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/C/7zVersion.h")
+set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${sevenzip_version_header}")
+file(STRINGS "${sevenzip_version_header}" sevenzip_version_line REGEX "^#define MY_VERSION_NUMBERS ")
+if(NOT sevenzip_version_line MATCHES "\"([0-9]+\\.[0-9]+)\"")
+    message(FATAL_ERROR "Cannot read the upstream 7-Zip version")
+endif()
+set(SEVENZIP_UPSTREAM_VERSION "${CMAKE_MATCH_1}")
+set(SEVENZIP_DESKTOP_DISPLAY_VERSION "${PROJECT_VERSION} (7-Zip ${SEVENZIP_UPSTREAM_VERSION})")
+set_property(SOURCE src/main.cpp src/CPP/7zip/UI/FileManager/AboutDialog.cpp
+    APPEND PROPERTY COMPILE_DEFINITIONS
+    SEVENZIP_DESKTOP_DISPLAY_VERSION="${SEVENZIP_DESKTOP_DISPLAY_VERSION}")
+
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 include(CTest)
@@ -567,7 +579,7 @@ else()
     include(cmake/UnixInstall.cmake)
 endif()
 file(GENERATE OUTPUT "${CMAKE_CURRENT_BINARY_DIR}/PackageInfo.json"
-    CONTENT "{\"version\":\"${PROJECT_VERSION}\",\"qt_version\":\"${Qt6_VERSION}\"}\n")
+    CONTENT "{\"version\":\"${PROJECT_VERSION}\",\"display_version\":\"${SEVENZIP_DESKTOP_DISPLAY_VERSION}\",\"upstream_version\":\"${SEVENZIP_UPSTREAM_VERSION}\",\"qt_version\":\"${Qt6_VERSION}\"}\n")
 
 if(BUILD_TESTING)
     find_package(Qt6 REQUIRED COMPONENTS Test)
