@@ -33,6 +33,9 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 
 ## Новые изменения
 
+- [Владение дескриптором после ошибки Linux close](upstream-port-audit/linux-file-close.md)
+  — сохранение ошибки, защита повторно использованного дескриптора и очистка томов.
+
 - [Владение файлами и состояние volume writer](upstream-port-audit/multiout-lifetime.md)
   — очистка при отказе выделения памяти и корректное усечение предвыделенных томов.
 

@@ -111,7 +111,7 @@ add_library(sevenzip_common STATIC third_party/7zip/C/Sort.c third_party/7zip/C/
     src/CPP/Windows/FileDir.cpp src/CPP/Windows/FileDir.h
     src/CPP/Windows/FileName.cpp
     third_party/7zip/CPP/Windows/FileFind.cpp
-    third_party/7zip/CPP/Windows/FileIO.cpp
+    src/CPP/Windows/FileIO.cpp
     third_party/7zip/CPP/Windows/TimeUtils.cpp
     third_party/7zip/CPP/7zip/Common/FileStreams.cpp
     third_party/7zip/CPP/7zip/Common/StreamUtils.cpp
@@ -1457,6 +1457,12 @@ if(BUILD_TESTING)
     target_link_libraries(multiout_lifecycle_tests PRIVATE sevenzip_filesystem)
     add_test(NAME multiout_lifecycle COMMAND multiout_lifecycle_tests)
     set_tests_properties(multiout_lifecycle PROPERTIES TIMEOUT 15)
+    if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+        add_executable(linux_file_close_tests tests/linux_file_close_tests.cpp)
+        target_link_libraries(linux_file_close_tests PRIVATE sevenzip_filesystem)
+        add_test(NAME linux_file_close COMMAND linux_file_close_tests)
+        set_tests_properties(linux_file_close PROPERTIES TIMEOUT 15)
+    endif()
     set_tests_properties(archive_volume_creation PROPERTIES TIMEOUT 60 ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     qt_add_executable(archive_creation_lifecycle_tests tests/archive_creation_lifecycle_tests.cpp

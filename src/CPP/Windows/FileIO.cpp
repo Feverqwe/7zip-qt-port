@@ -1,4 +1,6 @@
 // Windows/FileIO.cpp
+// Adapted from 7-Zip 9128b80e3a471108678e2b3ec3c985861c8d7b0f.
+// Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 
 #include "StdAfx.h"
 
@@ -824,18 +826,25 @@ bool CFileBase::OpenBinary(const char *name, int flags, mode_t mode)
   */
 }
 
-bool CFileBase::Close()
-{
-  if (_handle == -1)
+bool CFileBase::Close() {
+    if (_handle == -1)
+        return true;
+#ifdef __linux__
+    // Linux releases the descriptor even when close reports a delayed error.
+    // A retry could close an unrelated file that has reused the descriptor.
+    const int handle = _handle;
+    _handle = -1;
+    if (close(handle) != 0)
+#else
+    if (close(_handle) != 0)
+#endif
+        return false;
+    _handle = -1;
+    /*
+    IsDeviceFile = false;
+    SizeDefined = false;
+    */
     return true;
-  if (close(_handle) != 0)
-    return false;
-  _handle = -1;
-  /*
-  IsDeviceFile = false;
-  SizeDefined = false;
-  */
-  return true;
 }
 
 bool CFileBase::GetLength(UInt64 &length) const

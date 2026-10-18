@@ -178,10 +178,18 @@ FString CMultiOutStream::GetFilePath(unsigned index) {
 HRESULT CMultiOutStream::CloseStream(unsigned index) {
     CVolStream &s = Streams[index];
     if (s.Stream) {
+#ifdef __linux__
+        // File.Close relinquishes the descriptor on Linux even on error.
+        const HRESULT result = s.StreamSpec->Close();
+#else
         RINOK(s.StreamSpec->Close())
+#endif
         // the following two commands must be called together:
         s.Stream.Release();
         RemoveFromLinkedList(index);
+#ifdef __linux__
+        return result;
+#endif
     }
     return S_OK;
 }
@@ -189,14 +197,27 @@ HRESULT CMultiOutStream::CloseStream(unsigned index) {
 // we close stream and delete file, but we still keep item in Streams[] vector
 HRESULT CMultiOutStream::CloseStream_and_DeleteFile(unsigned index) {
     PRF(printf("\n====== %u, CloseStream_AndDelete \n", index))
+#ifdef __linux__
+    const HRESULT closeResult = CloseStream(index);
+#else
     RINOK(CloseStream(index))
+#endif
     FString path = GetFilePath(index);
     path += Streams[index].Postfix;
     // we can checki that file exist
     // if (NFind::DoesFileExist_Raw(path))
-    if (!DeleteFileAlways(path))
+    if (!DeleteFileAlways(path)) {
+#ifdef __linux__
+        if (closeResult != S_OK)
+            return closeResult;
+#endif
         return GetLastError_noZero_HRESULT();
+    }
+#ifdef __linux__
+    return closeResult;
+#else
     return S_OK;
+#endif
 }
 
 HRESULT CMultiOutStream::CloseStream_and_FinalRename(unsigned index) {
