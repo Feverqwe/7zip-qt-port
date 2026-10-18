@@ -1,9 +1,12 @@
 #include "7zip/Common/StreamObjects.h"
+#include "CPP/7zip/UI/Common/ArchiveExtractCallback.h"
 #include "CPP/7zip/UI/Common/HashCalc.h"
+#include "CPP/7zip/UI/FileManager/ExtractCallback.h"
 #include "CPP/7zip/UI/FileManager/ListViewDialog.h"
 #include "CPP/7zip/UI/GUI/HashGUI.h"
 #include "Windows/PropVariant.h"
 #include "qtarchivehashoperation.h"
+#include "qtpanelfolder.h"
 #include <QCryptographicHash>
 #include <QDir>
 #include <QFile>
@@ -75,6 +78,62 @@ class NativeHashWorkflowTests final : public QObject {
         return file.open(QIODevice::WriteOnly) && file.write(data) == data.size();
     }
   private slots:
+    void extractedDirectoryContributesToHash_data() {
+        QTest::addColumn<bool>("toStream");
+        QTest::newRow("filesystem") << false;
+        QTest::newRow("stream-callback") << true;
+    }
+    void extractedDirectoryContributesToHash() {
+        QFETCH(bool, toStream);
+        QTemporaryDir temporary;
+        QVERIFY(temporary.isValid());
+        const QString name = QStringLiteral("пустая папка 空");
+        CPanelItem item;
+        item.RelPath = name;
+        item.IsFolder = true;
+        CObjectVector<CPanelItem> items;
+        items.Add(item);
+        CMyComPtr<IFolderFolder> metadata =
+            new QtPanelFolder({}, items, QtPanelFolder::PropertyCatalog::ArchiveTransport);
+        CArc arc;
+        QCOMPARE(metadata.QueryInterface(IID_IInArchive, &arc.Archive), S_OK);
+        CHashBundle hash;
+        QCOMPARE(hash.SetMethods(nullptr, UStringVector()), S_OK);
+        CProgressDialog progress;
+        CMyComPtr2_Create<IFolderArchiveExtractCallback, CExtractCallbackImp> ui;
+        ui->ProgressDialog = &progress;
+        ui->Init();
+        ui->StreamMode = toStream;
+        if (toStream)
+            ui->SetHashMethods(&hash);
+        CMyComPtr2_Create<IArchiveExtractCallback, CArchiveExtractCallback> callback;
+        callback->InitForMulti(false, NExtract::NPathMode::kFullPaths,
+                               NExtract::NOverwriteMode::kAsk, NExtract::NZoneIdMode::kNone, false);
+        callback->InitBeforeNewArchive();
+        callback->Init(CExtractNtOptions(), nullptr, &arc, ui, false, false,
+                       us2fs(temporary.path().toStdWString().c_str()), UStringVector(), false, 0);
+        if (!toStream)
+            callback->SetHashMethods(&hash);
+        CMyComPtr<ISequentialOutStream> stream;
+        QCOMPARE(
+            callback.Interface()->GetStream(0, &stream, NArchive::NExtract::NAskMode::kExtract),
+            S_OK);
+        QCOMPARE(callback.Interface()->PrepareOperation(NArchive::NExtract::NAskMode::kExtract),
+                 S_OK);
+        QCOMPARE(
+            callback.Interface()->SetOperationResult(NArchive::NExtract::NOperationResult::kOK),
+            S_OK);
+        stream.Release();
+        QCOMPARE(callback->CloseArc(), S_OK);
+        QCOMPARE(hash.NumDirs, UInt64(1));
+        QCOMPARE(hash.NumFiles, UInt64(0));
+        QCOMPARE(hash.FilesSize, UInt64(0));
+        char namesHash[160];
+        hash.Hashers[0].WriteToString(k_HashCalc_Index_NamesSum, namesHash);
+        QVERIFY(QByteArray(namesHash) != QByteArray("00000000"));
+        if (!toStream)
+            QVERIFY(QDir(temporary.filePath(name)).exists());
+    }
     void filesystemMethodsAndScanTotals_data() {
         QTest::addColumn<QStringList>("methods");
         QTest::newRow("multiple") << QStringList{"CRC32", "SHA256", "MD5"};

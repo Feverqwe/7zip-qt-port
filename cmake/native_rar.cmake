@@ -1,6 +1,6 @@
 # Original RAR5/RAR7 decoder and handler support. The handler itself remains
 # the single original Rar5Handler.cpp in the forced hash/arc registration object.
-# Baseline: 0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17.
+# Baseline: docs/upstream-baseline.json.
 add_library(sevenzip_rar STATIC
     third_party/7zip/CPP/7zip/Archive/Common/FindSignature.cpp
     third_party/7zip/CPP/7zip/Archive/HandlerCont.cpp

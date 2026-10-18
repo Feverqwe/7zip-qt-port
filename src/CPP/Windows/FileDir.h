@@ -124,7 +124,7 @@ class CTempFile MY_UNCOPYABLE {
   public:
     CTempFile() : _mustBeDeleted(false) {}
     ~CTempFile() { Remove(); }
-    const FString &GetPath() const { return _path; }
+    const FString &GetPath() const Z7_lifetimebound { return _path; }
     bool Create(CFSTR pathPrefix, NIO::COutFile *outFile); // pathPrefix is not folder prefix
     const std::shared_ptr<QtOwnedTempLease> &OwnedLease() const { return _ownedLease; }
     bool CreateRandomInTempFolder(CFSTR namePrefix, NIO::COutFile *outFile);
@@ -141,7 +141,7 @@ class CTempDir MY_UNCOPYABLE {
   public:
     CTempDir() : _mustBeDeleted(false) {}
     ~CTempDir() { Remove(); }
-    const FString &GetPath() const { return _path; }
+    const FString &GetPath() const Z7_lifetimebound { return _path; }
     void DisableDeleting() { _mustBeDeleted = false; }
     const std::shared_ptr<QtOwnedTempLease> &OwnedLease() const { return _ownedLease; }
     bool Create(CFSTR namePrefix);

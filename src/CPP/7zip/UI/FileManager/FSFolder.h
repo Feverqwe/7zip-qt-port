@@ -39,7 +39,7 @@ struct CFsFolderStat {
     IProgress *Progress = nullptr;
     FString Path;
 
-    CFsFolderStat(const FString &path, IProgress *progress = nullptr)
+    CFsFolderStat(const FString &path, IProgress *progress Z7_lifetimebound = nullptr)
         : Progress(progress), Path(path) {}
     HRESULT Enumerate();
 };

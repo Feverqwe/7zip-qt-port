@@ -45,7 +45,7 @@ using namespace NName;
 using namespace NFind;
 
 extern UString HResultToMessage(HRESULT errorCode);
-wchar_t *Browse_ConvertSizeToString(UInt64 v, wchar_t *s);
+wchar_t *Browse_ConvertSizeToString(UInt64 v, wchar_t *s Z7_lifetimebound);
 
 namespace {
 const int kParentIndex = -1;
@@ -632,7 +632,7 @@ void CBrowseDialog::FinishOnOK() {
 } // namespace
 
 // Original shared list-size formatter used by BrowseDialog2.
-wchar_t *Browse_ConvertSizeToString(UInt64 v, wchar_t *s) {
+wchar_t *Browse_ConvertSizeToString(UInt64 v, wchar_t *s Z7_lifetimebound) {
     char c = 0;
     if (v >= ((UInt64)10000 << 20)) {
         v >>= 30;

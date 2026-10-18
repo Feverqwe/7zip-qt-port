@@ -411,7 +411,7 @@ class CPanel : public QObject {
         CPanel &_panel;
 
       public:
-        CDisableTimerProcessing(CPanel &panel) : _panel(panel) { Disable(); }
+        CDisableTimerProcessing(CPanel &panel Z7_lifetimebound) : _panel(panel) { Disable(); }
         ~CDisableTimerProcessing() { Restore(); }
         void Disable() {
             _processTimer = _panel._processTimer;
@@ -426,7 +426,10 @@ class CPanel : public QObject {
         CPanel *_panel;
 
       public:
-        CDisableTimerProcessing2(CPanel *panel) : _processTimer(true), _panel(panel) { Disable(); }
+        CDisableTimerProcessing2(CPanel *panel Z7_lifetimebound)
+            : _processTimer(true), _panel(panel) {
+            Disable();
+        }
         ~CDisableTimerProcessing2() { Restore(); }
         void Disable() {
             if (_panel) {
@@ -449,7 +452,7 @@ class CPanel : public QObject {
         CPanel &_panel;
 
       public:
-        CDisableNotify(CPanel &panel) : _panel(panel) { Disable(); }
+        CDisableNotify(CPanel &panel Z7_lifetimebound) : _panel(panel) { Disable(); }
         ~CDisableNotify() { Restore(); }
         void Disable() {
             _processNotify = _panel._processNotify;

@@ -1,5 +1,5 @@
 # Source ZIP handler and its codec/crypto/stream dependency closure.
-# Baseline: 0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17.
+# Baseline: docs/upstream-baseline.json.
 add_library(sevenzip_zip STATIC
     src/archiveexternalcodecs.cpp
     third_party/7zip/C/7zStream.c

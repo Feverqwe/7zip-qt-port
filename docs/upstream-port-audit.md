@@ -33,6 +33,9 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 
 ## Новые изменения
 
+- [Обновление upstream до 26.04](upstream-port-audit/upstream-26.04.md)
+  — перенос source changes, обновление engine/SFX и ресурсов справки.
+
 - [Состояние нового архивного запроса](upstream-port-audit/qt-request-state.md)
   — независимый результат отказа и повторное извлечение после отмены.
 

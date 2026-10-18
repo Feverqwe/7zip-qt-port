@@ -283,7 +283,7 @@ class CProgressCloser {
     CProgressDialog *_p;
 
   public:
-    CProgressCloser(CProgressDialog &p) : _p(&p) {}
+    CProgressCloser(CProgressDialog &p Z7_lifetimebound) : _p(&p) {}
     ~CProgressCloser() { _p->ProcessWasFinished(); }
 };
 
@@ -300,7 +300,7 @@ class CProgressThreadVirt : public CProgressDialog {
     void AddErrorPath(const FString &path) { ErrorPaths.Add(path); }
     HRESULT Create(const UString &title, QWidget *parentWindow = nullptr);
     CProgressThreadVirt() : Result(E_FAIL), ThreadFinishedOK(false) {}
-    CProgressMessageBoxPair &GetMessagePair(bool isError) {
+    CProgressMessageBoxPair &GetMessagePair(bool isError) Z7_lifetimebound {
         return isError ? FinalMessage.ErrorMessage : FinalMessage.OkMessage;
     }
 };

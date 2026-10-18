@@ -10,11 +10,44 @@
 extern bool g_CaseSensitive; // Existing source filename policy, platform default.
 
 namespace {
-class CParentProperties final : public IArchiveGetRawProps, public CMyUnknownImp {
-    Z7_COM_UNKNOWN_IMP_1(IArchiveGetRawProps)
+class CParentProperties final : public IArchiveGetRawProps,
+                                public IInArchive,
+                                public CMyUnknownImp {
+    Z7_COM_UNKNOWN_IMP_2(IArchiveGetRawProps, IInArchive)
   public:
     Z7_IFACE_COM7_IMP(IArchiveGetRawProps)
     bool InvalidParent = false;
+    CMyComPtr<IInArchive> Metadata;
+    Z7_COM7F_IMF(Open(IInStream *, const UInt64 *, IArchiveOpenCallback *)) override {
+        return E_NOTIMPL;
+    }
+    Z7_COM7F_IMF(Close()) override { return S_OK; }
+    Z7_COM7F_IMF(GetNumberOfItems(UInt32 *count)) override {
+        return Metadata->GetNumberOfItems(count);
+    }
+    Z7_COM7F_IMF(GetProperty(UInt32 index, PROPID id, PROPVARIANT *value)) override {
+        if (id != kpidIsAux)
+            return Metadata->GetProperty(index, id, value);
+        NWindows::NCOM::CPropVariant property(index == 1);
+        return property.Detach(value);
+    }
+    Z7_COM7F_IMF(Extract(const UInt32 *, UInt32, Int32, IArchiveExtractCallback *)) override {
+        return E_NOTIMPL;
+    }
+    Z7_COM7F_IMF(GetArchiveProperty(PROPID id, PROPVARIANT *value)) override {
+        return Metadata->GetArchiveProperty(id, value);
+    }
+    Z7_COM7F_IMF(GetNumberOfProperties(UInt32 *count)) override {
+        return Metadata->GetNumberOfProperties(count);
+    }
+    Z7_COM7F_IMF(GetPropertyInfo(UInt32 index, BSTR *name, PROPID *id, VARTYPE *type)) override {
+        return Metadata->GetPropertyInfo(index, name, id, type);
+    }
+    Z7_COM7F_IMF(GetNumberOfArchiveProperties(UInt32 *count)) override {
+        return Metadata->GetNumberOfArchiveProperties(count);
+    }
+    Z7_COM7F_IMF(GetArchivePropertyInfo(UInt32 index, BSTR *name, PROPID *id, VARTYPE *type))
+    override { return Metadata->GetArchivePropertyInfo(index, name, id, type); }
 };
 Z7_COM7F_IMF(CParentProperties::GetParent(UInt32 index, UInt32 *parent, UInt32 *type)) {
     *parent = InvalidParent ? 99 : index == 0 ? UInt32(-1) : index - 1;
@@ -57,6 +90,35 @@ class ArchiveProxyTests : public QObject {
         return proxy.Load(arc, nullptr);
     }
   private slots:
+    void auxiliaryDirectoryIsExcludedWithoutLosingItsChildren() {
+        CObjectVector<CPanelItem> items;
+        for (const auto *name : {"root", "auxiliary", "payload"}) {
+            CPanelItem item;
+            item.RelPath = name;
+            item.IsFolder = items.Size() < 2;
+            items.Add(item);
+        }
+        CMyComPtr<IFolderFolder> metadata =
+            new QtPanelFolder({}, items, QtPanelFolder::PropertyCatalog::ArchiveTransport);
+        auto *properties = new CParentProperties;
+        CMyComPtr<IArchiveGetRawProps> owner = properties;
+        QCOMPARE(metadata.QueryInterface(IID_IInArchive, &properties->Metadata), S_OK);
+        CArc arc;
+        QCOMPARE(owner.QueryInterface(IID_IInArchive, &arc.Archive), S_OK);
+        arc.GetRawProps = owner;
+        arc.Ask_Aux = true;
+        CProxyArc2 proxy;
+        QCOMPARE(proxy.Load(arc, nullptr), S_OK);
+        CUIntVector selected;
+        proxy.AddRealIndices_of_ArcItem(0, false, true, selected);
+        QCOMPARE(selected.Size(), 2u);
+        QCOMPARE(selected[0], 0u);
+        QCOMPARE(selected[1], 2u);
+        selected.Clear();
+        proxy.AddRealIndices_of_ArcItem(1, false, true, selected);
+        QCOMPARE(selected.Size(), 1u);
+        QCOMPARE(selected[0], 2u);
+    }
     void deepNativeParentTreeKeepsFlatSelectionWithoutRecursiveStack() {
         constexpr unsigned depth = 32768;
         CObjectVector<CPanelItem> items;

@@ -378,8 +378,9 @@ struct CUpdateProduceCallbackImp Z7_final : public IUpdateProduceCallback {
     CDirItemsStat *_stat;
     IUpdateCallbackUI *_callback;
 
-    CUpdateProduceCallbackImp(const CObjectVector<CArcItem> *a, CDirItemsStat *stat,
-                              IUpdateCallbackUI *callback)
+    CUpdateProduceCallbackImp(const CObjectVector<CArcItem> *a Z7_lifetimebound,
+                              CDirItemsStat *stat Z7_lifetimebound,
+                              IUpdateCallbackUI *callback Z7_lifetimebound)
         : _arcItems(a), _stat(stat), _callback(callback) {}
 
     virtual HRESULT ShowDeleteFile(unsigned arcIndex) Z7_override;
@@ -1080,7 +1081,7 @@ struct C_CopyFileProgress_to_IUpdateCallbackUI2 Z7_final : public ICopyFileProgr
         return res == S_OK ? PROGRESS_CONTINUE : PROGRESS_CANCEL;
     }
 
-    C_CopyFileProgress_to_IUpdateCallbackUI2(IUpdateCallbackUI2 *callback)
+    C_CopyFileProgress_to_IUpdateCallbackUI2(IUpdateCallbackUI2 *callback Z7_lifetimebound)
         : Callback(callback), CallbackResult(S_OK)
     // , Disable_Break(false)
     {}

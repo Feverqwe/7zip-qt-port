@@ -77,7 +77,8 @@ struct C_CopyFileProgress_to_FolderCallback_MoveArc Z7_final : public ICopyFileP
         return res == S_OK ? PROGRESS_CONTINUE : PROGRESS_CANCEL;
     }
 
-    C_CopyFileProgress_to_FolderCallback_MoveArc(IFolderArchiveUpdateCallback_MoveArc *callback)
+    C_CopyFileProgress_to_FolderCallback_MoveArc(
+        IFolderArchiveUpdateCallback_MoveArc *callback Z7_lifetimebound)
         : Callback(callback), CallbackResult(S_OK) {}
 };
 

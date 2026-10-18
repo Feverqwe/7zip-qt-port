@@ -80,7 +80,7 @@ class COptionsDialog : public CQtCompressOptionsDialog {
         return exec();
     }
 
-    COptionsDialog(CCompressDialog *cdLoc)
+    COptionsDialog(CCompressDialog *cdLoc Z7_lifetimebound)
         : cd(cdLoc)
     // , TimePrec(0)
     {

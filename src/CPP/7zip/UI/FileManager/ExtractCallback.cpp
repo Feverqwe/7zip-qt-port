@@ -763,9 +763,9 @@ static HRESULT GetItemBoolProp(IGetProp *getProp, PROPID propID, bool &result) {
     return S_OK;
 }
 
-Z7_COM7F_IMF(CExtractCallbackImp::GetStream7(const wchar_t *name, Int32 isDir,
-                                             ISequentialOutStream **outStream, Int32 askExtractMode,
-                                             IGetProp *getProp)) {
+Z7_COM7F_IMF(CExtractCallbackImp::GetStream7(const wchar_t *const name, const Int32 isDir,
+                                             ISequentialOutStream **outStream,
+                                             const Int32 askExtractMode, IGetProp *getProp)) {
     COM_TRY_BEGIN
     *outStream = NULL;
     _newVirtFileWasAdded = false;
@@ -796,8 +796,11 @@ Z7_COM7F_IMF(CExtractCallbackImp::GetStream7(const wchar_t *name, Int32 isDir,
     if (!ProcessAltStreams && _isAltStream)
         return S_OK;
 
-    if (isDir) // we don't support dir items extraction in this code
-        return S_OK;
+    /* if (isDir), we don't exit from function here because we still need to
+         initialize and use (_hashStream) to calculate Hash of dir name.
+       v.26.04 : we have commented incorrect code below:
+    // if (isDir) return S_OK; // v.24.09-v.26.03 used this incorrect function exit.
+    */
 
     if (askExtractMode != NArchive::NExtract::NAskMode::kExtract &&
         askExtractMode != NArchive::NExtract::NAskMode::kTest)
@@ -807,52 +810,55 @@ Z7_COM7F_IMF(CExtractCallbackImp::GetStream7(const wchar_t *name, Int32 isDir,
 
     CMyComPtr<ISequentialOutStream> outStreamLoc;
 
-    if (VirtFileSystem && askExtractMode == NArchive::NExtract::NAskMode::kExtract) {
-        if (!VirtFileSystemSpec->Files.IsEmpty())
-            VirtFileSystemSpec->MaxTotalAllocSize -= VirtFileSystemSpec->Files.Back().Data.Size();
-        CVirtFile &file = VirtFileSystemSpec->Files.AddNew();
-        _newVirtFileWasAdded = true;
-        // file.IsDir = _isFolder;
-        file.IsAltStream = _isAltStream;
-        file.WrittenSize = 0;
-        file.ExpectedSize = 0;
-        if (size_Defined)
-            file.ExpectedSize = size;
+    if (!_isFolder) // v.26.04 : we don't need dir item in VirtFileSystem
+        if (VirtFileSystem && askExtractMode == NArchive::NExtract::NAskMode::kExtract) {
+            if (!VirtFileSystemSpec->Files.IsEmpty())
+                VirtFileSystemSpec->MaxTotalAllocSize -=
+                    VirtFileSystemSpec->Files.Back().Data.Size();
+            CVirtFile &file = VirtFileSystemSpec->Files.AddNew();
+            _newVirtFileWasAdded = true;
+            // file.IsDir = _isFolder;
+            file.IsAltStream = _isAltStream;
+            file.WrittenSize = 0;
+            file.ExpectedSize = 0;
+            if (size_Defined)
+                file.ExpectedSize = size;
 
-        if (VirtFileSystemSpec->Index_of_MainExtractedFile_in_Files < 0)
-            if (!file.IsAltStream || VirtFileSystemSpec->IsAltStreamFile)
-                VirtFileSystemSpec->Index_of_MainExtractedFile_in_Files =
-                    (int)(VirtFileSystemSpec->Files.Size() - 1);
+            if (VirtFileSystemSpec->Index_of_MainExtractedFile_in_Files < 0)
+                if (!file.IsAltStream || VirtFileSystemSpec->IsAltStreamFile)
+                    VirtFileSystemSpec->Index_of_MainExtractedFile_in_Files =
+                        (int)(VirtFileSystemSpec->Files.Size() - 1);
 
-        /* if we open only AltStream, then (name) contains only name without "fileName:" prefix */
-        file.BaseName = name;
+            /* if we open only AltStream, then (name) contains only name without "fileName:" prefix
+             */
+            file.BaseName = name;
 
-        if (file.IsAltStream && !VirtFileSystemSpec->IsAltStreamFile &&
-            file.BaseName.IsPrefixedBy_NoCase(VirtFileSystemSpec->FileName)) {
-            const unsigned colonPos = VirtFileSystemSpec->FileName.Len();
-            if (file.BaseName[colonPos] == ':') {
-                file.ColonWasUsed = true;
-                file.AltStreamName = name + (size_t)colonPos + 1;
-                file.BaseName.DeleteFrom(colonPos);
-                if (Is_ZoneId_StreamName(file.AltStreamName)) {
-                    if (VirtFileSystemSpec->Index_of_ZoneBuf_AltStream_in_Files < 0)
-                        VirtFileSystemSpec->Index_of_ZoneBuf_AltStream_in_Files =
-                            (int)(VirtFileSystemSpec->Files.Size() - 1);
+            if (file.IsAltStream && !VirtFileSystemSpec->IsAltStreamFile &&
+                file.BaseName.IsPrefixedBy_NoCase(VirtFileSystemSpec->FileName)) {
+                const unsigned colonPos = VirtFileSystemSpec->FileName.Len();
+                if (file.BaseName[colonPos] == ':') {
+                    file.ColonWasUsed = true;
+                    file.AltStreamName = name + (size_t)colonPos + 1;
+                    file.BaseName.DeleteFrom(colonPos);
+                    if (Is_ZoneId_StreamName(file.AltStreamName)) {
+                        if (VirtFileSystemSpec->Index_of_ZoneBuf_AltStream_in_Files < 0)
+                            VirtFileSystemSpec->Index_of_ZoneBuf_AltStream_in_Files =
+                                (int)(VirtFileSystemSpec->Files.Size() - 1);
+                    }
                 }
             }
-        }
-        RINOK(GetTime(getProp, kpidCTime, file.CTime, file.CTime_Defined))
-        RINOK(GetTime(getProp, kpidATime, file.ATime, file.ATime_Defined))
-        RINOK(GetTime(getProp, kpidMTime, file.MTime, file.MTime_Defined)) {
-            NCOM::CPropVariant prop;
-            RINOK(getProp->GetProp(kpidAttrib, &prop))
-            if (prop.vt == VT_UI4) {
-                file.Attrib = prop.ulVal;
-                file.Attrib_Defined = true;
+            RINOK(GetTime(getProp, kpidCTime, file.CTime, file.CTime_Defined))
+            RINOK(GetTime(getProp, kpidATime, file.ATime, file.ATime_Defined))
+            RINOK(GetTime(getProp, kpidMTime, file.MTime, file.MTime_Defined)) {
+                NCOM::CPropVariant prop;
+                RINOK(getProp->GetProp(kpidAttrib, &prop))
+                if (prop.vt == VT_UI4) {
+                    file.Attrib = prop.ulVal;
+                    file.Attrib_Defined = true;
+                }
             }
+            outStreamLoc = VirtFileSystem;
         }
-        outStreamLoc = VirtFileSystem;
-    }
 
     if (_hashStream) {
         _hashStream->SetStream(outStreamLoc);
@@ -861,6 +867,14 @@ Z7_COM7F_IMF(CExtractCallbackImp::GetStream7(const wchar_t *name, Int32 isDir,
         _hashStream_WasUsed = true;
     }
 
+    /* if (_isFolder && _hashStream_WasUsed) the caller must call
+       PrepareOperation7() and SetOperationResult8() because
+       we need dir item processing for hash calculation for dir name.
+       We set hash stream to (*outStream) for dir item. This is an additional
+       marker far caller indicating the need for further processing with
+       PrepareOperation7() and SetOperationResult8().
+    */
+    // if (!_isFolder) // for debug : we can set NULL to *outStream for any dir.
     if (outStreamLoc)
         *outStream = outStreamLoc.Detach();
     return S_OK;

@@ -1,7 +1,7 @@
 # Borrowed 7-Zip sources
 
 Source: [official 7-Zip commit
-`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`](https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17).
+`9128b80e3a471108678e2b3ec3c985861c8d7b0f`](https://github.com/ip7z/7zip/tree/9128b80e3a471108678e2b3ec3c985861c8d7b0f).
 `docs/upstream-baseline.json` is the complete current file inventory;
 `python3 scripts/upstream_baseline.py verify --upstream <snapshot>` checks the
 exact bytes without requiring the original sibling checkout.
@@ -75,7 +75,7 @@ Additional portable filesystem dependencies:
 - `CPP/7zip/UI/FileManager/PropertyNameRes.h` and `PropertyName.rc`
 - `CPP/7zip/UI/GUI/ExtractRes.h` and `Extract.rc`
 
-All 192 recorded source/header/resource files, including `License.txt` from
+All recorded source/header/resource files, including `License.txt` from
 upstream `DOC/License.txt`, are retained byte for byte from the exact commit
 above. This local README is excluded from the baseline comparison.
 This provenance check does not establish runtime verification on all platforms.

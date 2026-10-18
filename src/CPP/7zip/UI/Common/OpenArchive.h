@@ -80,7 +80,8 @@ struct COpenType {
     bool MaxStartOffset_Defined;
     UInt64 MaxStartOffset;
 
-    const COpenSpecFlags &GetSpec(bool isForced, bool isMain, bool isUnknown) const {
+    const COpenSpecFlags &GetSpec(bool isForced, bool isMain,
+                                  bool isUnknown) const Z7_lifetimebound {
         return isForced ? SpecForcedType
                         : (isMain ? SpecMainType : (isUnknown ? SpecUnknownExt : SpecWrongExt));
     }
