@@ -32,8 +32,7 @@ Windows source device I/O уже существует, но не означае�
 
 Реализуется [первая версия](../direct-device-reading-plan.md).
 Первый компонент предоставляет stream-level discovery и native Ext-reader;
-пользовательский UI ещё не подключён. Добавлен native access macOS/Linux;
-платформенный адаптер Windows ещё не реализован.
+пользовательский UI ещё не подключён. Добавлен native access macOS/Linux/Windows.
 Это не завершённый пользовательский сценарий.
 
 ## Native access macOS
@@ -95,6 +94,34 @@ device number, размер и сектор; затем повторно све�
 службы или отказ policy возвращаются вызывающему коду. Размонтирование, изменение
 прав/политик и fallback к root-запуску GUI не выполняются.
 
+## Native access Windows
+
+Просмотрены upstream `CPP/7zip/UI/FileManager/FSDrives.cpp` (inventory,
+`BindToFolderSpec`, `CopyTo`), `CPP/Windows/FileIO.{h,cpp}` (`CFileBase::Create`,
+`CInFile::Open`, `CalcDeviceSize`, `ReadPart`) и
+`CPP/7zip/Common/FileStreams.{h,cpp}` (`CInFileStream::Read`). Их path-based
+открытие не предоставляет service boundary для уже разрешённого native handle
+или ограниченной elevated session. Локальная граница использует WinAPI,
+upstream `CPP/Windows/Handle.h` / `NWindows::CHandle` и общий sector-aligned
+device stream. Форматные обработчики и файловый менеджер не копируются в helper.
+Новых заимствованных тел в этой итерации нет; существующая baseline выше
+остаётся источником переиспользуемых заголовков.
+
+SetupDi и storage IOCTL предоставляют внешние whole disks, размер, сектор,
+PnP identity/arrival и счётчик смены съёмного носителя. Смонтированные Windows
+тома сопоставляются с physical disks через volume extents; неизвестное состояние
+сопоставления запрещает открытие. До и после read-only открытия повторяются
+проверки выбора; разделы не размонтируются.
+
+Если обычному процессу не хватает прав, `ShellExecuteEx` с `runas` запускает
+одноразовый `SevenzipDeviceReader.exe`. Частный локальный named pipe имеет ACL
+текущего пользователя/администраторов/SYSTEM; стороны проверяют kernel peer PID.
+Helper самостоятельно проверяет выбранное устройство, открывает его для чтения
+и обслуживает только ограниченные выровненные запросы чтения. При закрытии
+источника завершается elevated session. В helper нет парсеров архивов/ФС,
+назначения извлечения или операций записи. GUI не получает повышение прав.
+Helper устанавливается рядом с основным Windows executable.
+
 ## Проверки
 
 Образцы в `tests/fixtures/devices` создаются штатными `mke2fs`/`sfdisk` как
@@ -130,3 +157,14 @@ system/session bus: внешние/внутренние устройства, pa
 regular-file fd вместо block-device. Kernel sysfs используется только как
 источник метаданных сектора; содержимое физических устройств не читается.
 Нативный successful OpenDevice/block-fd и реальное окно polkit ещё не проверены.
+
+2026-10-19, Windows native access iteration: helper собран на Windows x64;
+`device_access_win`, `device_pipe_win`, `device_input`, `archive_device`,
+`native_archive_opening` PASS. После последнего уточнения mounted-state и
+cleanup pending I/O повторены два native suites. Проверены Unicode-file read,
+параллельные независимые readAt, освобождение handle, отказ write-only handle,
+stale selection, отмена до elevation, обмен через частный named pipe,
+ошибка/разрыв/неверный размер ответа и отмена pending read. Используются только
+обычные временные файлы и pipe; виртуальные диски не создаются и не подключаются.
+Реальный raw disk, UAC, privileged peer exchange и установленный Windows package
+ещё не проверены. UI остаётся следующим интеграционным компонентом.

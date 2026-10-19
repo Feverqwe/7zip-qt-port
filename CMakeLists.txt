@@ -74,6 +74,17 @@ if(APPLE)
     target_link_libraries(sevenzip_device_reader PRIVATE sevenzip_device_access)
     set_target_properties(sevenzip_device_reader PROPERTIES
         OUTPUT_NAME SevenzipDeviceReader AUTOMOC OFF AUTOUIC OFF)
+elseif(WIN32)
+    add_library(sevenzip_device_access STATIC
+        src/deviceaccess.h src/deviceaccess_win.h src/deviceaccess_win.cpp
+        src/devicehandle_win.cpp src/deviceauthclient_win.cpp src/devicepipe_win.cpp src/devicepipe_win.h)
+    target_include_directories(sevenzip_device_access PUBLIC src third_party/7zip/CPP)
+    target_link_libraries(sevenzip_device_access PUBLIC Qt6::Core setupapi cfgmgr32 advapi32 ole32 shell32)
+    set_target_properties(sevenzip_device_access PROPERTIES AUTOMOC OFF AUTOUIC OFF)
+    qt_add_executable(sevenzip_device_reader WIN32 src/devicereader_win.cpp)
+    target_link_libraries(sevenzip_device_reader PRIVATE sevenzip_device_access)
+    set_target_properties(sevenzip_device_reader PROPERTIES
+        OUTPUT_NAME SevenzipDeviceReader AUTOMOC OFF AUTOUIC OFF)
 elseif(CMAKE_SYSTEM_NAME STREQUAL "Linux")
     add_library(sevenzip_device_access STATIC
         src/deviceaccess.h src/deviceaccess_linux.cpp
@@ -575,6 +586,7 @@ target_link_libraries(sevenzip_desktop PRIVATE Qt6::Widgets)
 target_sources(sevenzip_desktop PRIVATE src/qtguimain.cpp src/qtfilemanagermain.cpp)
 if(WIN32)
     # Original resource.rc IDI_ICON entry, with build-local absolute paths.
+    add_dependencies(sevenzip_desktop sevenzip_device_reader)
     file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/application_icon.rc"
         "#include \"${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/UI/FileManager/resourceGui.h\"\nIDI_ICON ICON \"${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/UI/FileManager/FM.ico\"\n")
     set_source_files_properties("${CMAKE_CURRENT_BINARY_DIR}/application_icon.rc" PROPERTIES
@@ -3303,6 +3315,16 @@ if(BUILD_TESTING)
     target_link_libraries(device_input_tests PRIVATE sevenzip_filesystem Qt6::Test)
     add_test(NAME device_input COMMAND device_input_tests -silent)
     set_tests_properties(device_input PROPERTIES TIMEOUT 15)
+    if(WIN32)
+        qt_add_executable(device_access_win_tests tests/device_access_win_tests.cpp)
+        target_link_libraries(device_access_win_tests PRIVATE sevenzip_device_access Qt6::Test)
+        add_test(NAME device_access_win COMMAND device_access_win_tests -silent)
+        set_tests_properties(device_access_win PROPERTIES TIMEOUT 30)
+        qt_add_executable(device_pipe_win_tests tests/device_pipe_win_tests.cpp)
+        target_link_libraries(device_pipe_win_tests PRIVATE sevenzip_device_access Qt6::Test)
+        add_test(NAME device_pipe_win COMMAND device_pipe_win_tests -silent)
+        set_tests_properties(device_pipe_win PROPERTIES TIMEOUT 20)
+    endif()
     if(APPLE OR CMAKE_SYSTEM_NAME STREQUAL "Linux")
         qt_add_executable(device_access_tests tests/device_access_tests.cpp)
         target_link_libraries(device_access_tests PRIVATE sevenzip_device_access Qt6::Test)
