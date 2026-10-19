@@ -36,6 +36,9 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 
 ## Новые изменения
 
+- [cramfs sparse reads по Linux](upstream-port-audit/cramfs-linux.md)
+  — нулевые extents, исходный C++ sparse branch и provenance обоих engines.
+
 - [Прямое чтение устройств](upstream-port-audit/direct-devices.md)
   — потоковое открытие GPT/MBR/ext и границы первой версии.
 

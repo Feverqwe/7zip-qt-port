@@ -9,6 +9,12 @@ paths. `overrides` records full commits for individual modules if an update is
 applied incrementally. The function/branch scope and reasons for local changes
 remain in [the port audit](upstream-port-audit.md).
 
+`runtime_adapted` selects adapted engine modules for both dynamic and standalone
+runtime builds. Review these local changes during an upstream update as well;
+their compiled provenance and prepared-runtime cache include the source hashes.
+The builders refresh one owned source snapshot while retaining incremental
+compiler outputs. They do not compile in the upstream checkout.
+
 Start from a disposable Git snapshot of the official repository. The old
 `../7zip-upstream` checkout is not required, and it must not be modified:
 

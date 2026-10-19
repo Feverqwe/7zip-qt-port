@@ -38,8 +38,9 @@ follow [cache retention](../AGENTS.md#validation-scope).
 
 External codecs require the official dynamic console client, not standalone
 `7zz`. `./scripts/build-codec-runtime.sh [upstream-checkout] [artifact-directory]`
-builds unchanged `UI/Console` and `Bundles/Format7zF` from the pinned source
-snapshot into `build/codec-runtime` on macOS/Linux. It produces `7z`, `7zz`, `7z.so`,
+builds `UI/Console`, `Bundles/Format7zF` and `Bundles/Alone2` from the pinned source
+with the engine adaptations selected in the [baseline](upstream-baseline.json),
+into `build/codec-runtime` on macOS/Linux. It produces `7z`, `7zz`, `7z.so`,
 license and source/version/SHA records, and refuses unowned artifacts. The Debug
 app uses this prepared runtime when present; deployed builds look beside the app
 or in `Resources/7zip`. `SEVENZIP_ENGINE_PATH` explicitly selects an engine;
@@ -63,6 +64,12 @@ On Windows, `scripts/build-codec-runtime.ps1 -Architecture arm64` (or `x64`/`x86
 uses a matching developer environment and the same optional source/output arguments
 as the SFX builder. It compiles unchanged Console/Format7zF/Alone2 makefiles and
 produces `7z.exe`, `7z.dll`, `7zz.exe`, license and runtime manifest.
+Both codec-runtime builders retain their source/build directory across runs,
+preserve unchanged source timestamps and use the existing compiler cache when
+available. Runtime provenance records the adapted-source hashes; changing one
+invalidates the prepared-runtime cache. The sibling upstream remains read-only.
+For engine-only checks, `python3 scripts/prepare-runtime.py --codec-only`
+prepares both codec-runtime variants without building SFX.
 Do not install test-only codec fixtures in a production runtime. Earlier ARM64
 builder samples are retained in [the tooling archive](archive/qt-port/workflow-evidence.md).
 

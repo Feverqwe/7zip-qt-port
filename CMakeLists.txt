@@ -736,6 +736,10 @@ if(BUILD_TESTING)
     set_tests_properties(folder_history PROPERTIES ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     find_package(Python3 3.9 REQUIRED COMPONENTS Interpreter)
+    add_test(NAME cramfs COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/cramfs_tests.py
+        ${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime)
+    set_tests_properties(cramfs PROPERTIES TIMEOUT 45)
     add_test(NAME runtime_package COMMAND ${Python3_EXECUTABLE}
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/package_tests.py)
     add_test(NAME windows_package_verification COMMAND ${Python3_EXECUTABLE}

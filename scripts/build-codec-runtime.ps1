@@ -63,18 +63,20 @@ if ($existing.Count -gt 0) {
         throw 'Refusing to replace an unowned codec runtime.'
     }
 }
-$snapshot = Join-Path $output ('.build-runtime-' + [Guid]::NewGuid().ToString('N'))
-$null = New-Item -ItemType Directory -Path $snapshot
-try {
-    $archive = Join-Path $snapshot 'source.tar'
-    Invoke-Checked 'git' @('-C', $upstream, 'archive', "--output=$archive", $revision)
-    Invoke-Checked $tar @('-xf', $archive, '-C', $snapshot)
+$snapshot = Join-Path $output '.build-runtime'
+& {
+    Invoke-Checked 'python' @((Join-Path $scriptDirectory 'upstream_baseline.py'),
+        'runtime-snapshot', '--snapshot', $snapshot, '--upstream', $upstream)
     $files = [ordered]@{}
     foreach ($name in $artifacts.Keys) {
         $bundle = Join-Path $snapshot $artifacts[$name]
         Push-Location -LiteralPath $bundle
         try {
-            Invoke-Checked 'nmake' @('/nologo', '/f', 'makefile', "PLATFORM=$Architecture")
+            $makeArgs = @('/nologo', '/f', 'makefile', "PLATFORM=$Architecture")
+            if (Get-Command ccache.exe -ErrorAction SilentlyContinue) {
+                $makeArgs += 'CC=ccache cl'
+            }
+            Invoke-Checked 'nmake' $makeArgs
         } finally { Pop-Location }
         $built = Join-Path $bundle "$Architecture/$name"
         if (-not (Test-Path -LiteralPath $built -PathType Leaf)) { throw "Missing built $name." }
@@ -92,6 +94,7 @@ try {
         producer = 'sevenzip-desktop/build-codec-runtime-windows'
         repository = [string]$baseline.repository
         revision = $revision
+        adapted_sources = Get-Content -LiteralPath (Join-Path $snapshot 'runtime-adaptations.json') -Raw | ConvertFrom-Json
         system = 'Windows'
         architecture = @{ arm64 = 'arm64'; x64 = 'x86_64'; x86 = 'x86' }[$Architecture]
         version = ([int]$major.Groups[1].Value -shl 16) -bor [int]$minor.Groups[1].Value
@@ -107,6 +110,4 @@ try {
     Move-Item -LiteralPath $stagedManifest -Destination $manifest -Force
     Write-Output "Prepared official Windows codec runtime: $output"
     Write-Output "Upstream: $revision"
-} finally {
-    Remove-Item -LiteralPath $snapshot -Recurse -Force
 }

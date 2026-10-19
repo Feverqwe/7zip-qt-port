@@ -96,6 +96,32 @@ class UpstreamBaselineTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "Inventory mismatch: unrecorded="):
             baseline.verify(data, self.upstream)
 
+    def test_runtime_snapshot_updates_selected_sources_and_retains_incremental_outputs(self):
+        snapshot = pathlib.Path(self.temporary.name) / "runtime"
+        self.manifest["runtime_adapted"] = ["src/" + self.source]
+        baseline.prepare_runtime_snapshot(self.manifest, snapshot, self.upstream)
+        adapted = snapshot / self.source
+        self.assertEqual(adapted.read_bytes(), (self.port / ("src/" + self.source)).read_bytes())
+        self.assertEqual((snapshot / "CPP/Windows/Net.cpp").read_bytes(), b"exact body\n")
+        compiled = snapshot / "CPP/7zip/output.o"
+        compiled.write_bytes(b"cached compiler output")
+        before = adapted.stat().st_mtime_ns
+        baseline.prepare_runtime_snapshot(self.manifest, snapshot, self.upstream)
+        self.assertEqual(adapted.stat().st_mtime_ns, before)
+        (self.port / ("src/" + self.source)).write_bytes(b"new adapted input")
+        baseline.prepare_runtime_snapshot(self.manifest, snapshot, self.upstream)
+        self.assertEqual(adapted.read_bytes(), b"new adapted input")
+        self.assertEqual(compiled.read_bytes(), b"cached compiler output")
+
+    def test_runtime_snapshot_refuses_unowned_directory(self):
+        snapshot = pathlib.Path(self.temporary.name) / "runtime"
+        snapshot.mkdir()
+        private = snapshot / "user-file"
+        private.write_bytes(b"user data")
+        with self.assertRaisesRegex(ValueError, "unowned"):
+            baseline.prepare_runtime_snapshot(self.manifest, snapshot, self.upstream)
+        self.assertEqual(private.read_bytes(), b"user data")
+
 
 if __name__ == "__main__":
     unittest.main()

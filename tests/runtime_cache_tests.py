@@ -15,6 +15,32 @@ spec.loader.exec_module(runtime)
 
 
 class RuntimeCacheTests(unittest.TestCase):
+    def test_codec_only_preserves_sfx_and_full_runtime_cache(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            build = root / "build"
+            (build / "codec-runtime").mkdir(parents=True)
+            (build / "sfx").mkdir()
+            sfx = build / "sfx/module"
+            sfx.write_bytes(b"retained SFX")
+            full_stamp = build / "runtime-cache.json"
+            full_stamp.write_bytes(b"retained full-runtime cache")
+            def command(args, **kwargs):
+                if any("build-sfx" in str(arg) for arg in args):
+                    sfx.write_bytes(b"unwanted SFX rebuild")
+                (build / "codec-runtime/engine").write_bytes(b"adapted engine")
+                return subprocess.CompletedProcess(args, 0)
+            with patch.object(runtime, "fingerprint", return_value={"revision": "one"}), \
+                    patch.object(runtime, "artifact_paths", return_value=["codec-runtime/engine", "sfx/module"]), \
+                    patch.object(runtime.subprocess, "run", side_effect=command) as run:
+                runtime.prepare(root, root / "sibling", codec_only=True)
+                self.assertEqual((build / "codec-runtime/engine").read_bytes(), b"adapted engine")
+                self.assertEqual(sfx.read_bytes(), b"retained SFX")
+                self.assertEqual(full_stamp.read_bytes(), b"retained full-runtime cache")
+                run.reset_mock()
+                runtime.prepare(root, root / "sibling", codec_only=True)
+                run.assert_not_called()
+
     def test_relative_runner_upstream_prepares_bare_store_and_publishes_verified_hit(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

@@ -2,11 +2,13 @@
 """Verify the recorded 7-Zip source baseline and prepare an update review."""
 
 import argparse
+import hashlib
 import json
 import pathlib
 import re
 import subprocess
 import sys
+import tarfile
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -69,6 +71,66 @@ def check_inventory(data):
         raise ValueError(f"Inventory mismatch: unrecorded={sorted(missing)}, stale={sorted(stale)}")
 
 
+def prepare_runtime_snapshot(data, snapshot, upstream):
+    """Overlay only engine adaptations explicitly selected in the baseline."""
+    paths = data.get("runtime_adapted", [])
+    if not isinstance(paths, list) or paths != sorted(set(paths)) or set(paths) - set(data["adapted"]):
+        raise ValueError("Runtime sources must be selected adapted upstream modules")
+    snapshot.mkdir(parents=True, exist_ok=True)
+    owner = snapshot / ".sevenzip-runtime-source.json"
+    if snapshot.is_symlink() or (any(snapshot.iterdir()) and not owner.is_file()):
+        raise ValueError("Refusing an unowned runtime source directory")
+    previous = json.loads(owner.read_text()) if owner.exists() else {"files": []}
+    if previous.get("producer", "sevenzip-runtime-source") != "sevenzip-runtime-source":
+        raise ValueError("Unexpected runtime source owner")
+    if not owner.exists():
+        owner.write_text(json.dumps({"producer": "sevenzip-runtime-source", "files": []}) + "\n")
+    overlays = {source_path(path): ROOT / path for path in paths}
+    members = []
+    process = subprocess.Popen(["git", "-C", str(upstream), "archive", data["revision"]],
+                               stdout=subprocess.PIPE)
+    try:
+        with tarfile.open(fileobj=process.stdout, mode="r|") as archive:
+            for member in archive:
+                if member.isdir():
+                    continue
+                relative = pathlib.PurePosixPath(member.name)
+                if not member.isfile() or relative.is_absolute() or ".." in relative.parts:
+                    raise ValueError("Unsafe runtime source entry: " + member.name)
+                destination = snapshot / relative
+                source = overlays.get(member.name)
+                content = source.read_bytes() if source else archive.extractfile(member).read()
+                if destination.is_symlink() or (source and source.is_symlink()):
+                    raise ValueError("Refusing linked runtime source: " + member.name)
+                destination.parent.mkdir(parents=True, exist_ok=True)
+                if not destination.exists() or destination.read_bytes() != content:
+                    destination.write_bytes(content)
+                    destination.chmod(member.mode)
+                members.append(member.name)
+        if process.wait():
+            raise ValueError("Unable to retrieve pinned runtime source")
+    finally:
+        process.stdout.close()
+        if process.poll() is None:
+            process.terminate()
+            process.wait()
+    # Remove only previously owned source paths; retain all incremental outputs.
+    for name in set(previous["files"]) - set(members):
+        relative = pathlib.PurePosixPath(name)
+        if relative.is_absolute() or ".." in relative.parts:
+            raise ValueError("Unsafe previous runtime source entry")
+        (snapshot / relative).unlink(missing_ok=True)
+    owner.write_text(json.dumps({"producer": "sevenzip-runtime-source", "files": members}) + "\n")
+    hashes = {}
+    for path in paths:
+        source = ROOT / path
+        destination = snapshot / source_path(path)
+        if source.is_symlink() or destination.is_symlink() or not destination.is_file():
+            raise ValueError("Runtime adaptation requires regular source files: " + path)
+        hashes[path] = hashlib.sha256(source.read_bytes()).hexdigest()
+    (snapshot / "runtime-adaptations.json").write_text(json.dumps(hashes, indent=2) + "\n")
+
+
 def verify(data, upstream):
     check_inventory(data)
     revisions = {data["revision"], *data.get("overrides", {}).values()}
@@ -122,7 +184,8 @@ def review(data, upstream, new_revision, paths):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=("inventory", "verify", "review"))
+    parser.add_argument("command", choices=("inventory", "verify", "review", "runtime-snapshot"))
+    parser.add_argument("--snapshot", type=pathlib.Path)
     parser.add_argument("--upstream", type=pathlib.Path)
     parser.add_argument("--manifest", type=pathlib.Path, default=MANIFEST)
     parser.add_argument("--new-revision", help="Proposed upstream commit for review")
@@ -131,6 +194,11 @@ def main():
     args = parser.parse_args()
     try:
         data = load_manifest(args.manifest)
+        if args.command == "runtime-snapshot":
+            if not args.snapshot or not args.upstream:
+                raise ValueError("Runtime snapshot and upstream directories are required")
+            prepare_runtime_snapshot(data, args.snapshot, args.upstream)
+            return 0
         if args.command == "inventory":
             check_inventory(data)
             print("Recorded inventory matches current borrowed sources")

@@ -26,18 +26,27 @@ if any(path.exists() or path.is_symlink() for path in files):
     if not manifest.is_file() or json.loads(manifest.read_text()).get("producer") != "sevenzip-desktop/build-codec-runtime":
         raise SystemExit("Refusing to replace an unowned codec runtime")
 PY
-snapshot="$(mktemp -d "$artifact_dir/.build-runtime-XXXXXX")"
-trap 'rm -rf -- "$snapshot"' EXIT
-git -C "$upstream_checkout" archive "$revision" | tar -x -C "$snapshot"
+snapshot="$artifact_dir/.build-runtime"
+python3 "$project_root/scripts/upstream_baseline.py" runtime-snapshot \
+  --snapshot "$snapshot" --upstream "$upstream_checkout"
 if [[ "$(uname -s)" == Darwin ]]; then
   if ! printf '#include <type_traits>\n' | c++ -x c++ -std=c++17 -fsyntax-only - >/dev/null 2>&1; then
     task_codec_sdk="$(xcrun --show-sdk-path)"
     export CPLUS_INCLUDE_PATH="$task_codec_sdk/usr/include/c++/v1${CPLUS_INCLUDE_PATH:+:$CPLUS_INCLUDE_PATH}"
   fi
 fi
+task_runtime_cc="${CC:-cc}"
+task_runtime_cxx="${CXX:-c++}"
+if command -v ccache >/dev/null 2>&1; then
+  task_runtime_cc="ccache $task_runtime_cc"
+  task_runtime_cxx="ccache $task_runtime_cxx"
+fi
+if [[ "$(uname -s)" == Darwin ]]; then
+  export CCACHE_DIR="${CCACHE_DIR:-/private/tmp/sevenzip-desktop-ccache}"
+fi
 for source in CPP/7zip/UI/Console CPP/7zip/Bundles/Format7zF CPP/7zip/Bundles/Alone2; do
   make -s -C "$snapshot/$source" -f makefile.gcc \
-    CC="${CC:-cc}" CXX="${CXX:-c++}" LFLAGS_STRIP= -j4
+    CC="$task_runtime_cc" CXX="$task_runtime_cxx" LFLAGS_STRIP= -j4
 done
 python3 - "$project_root/docs/upstream-baseline.json" "$snapshot" "$artifact_dir" <<'PY'
 import hashlib, json, pathlib, platform, re, shutil, sys
@@ -54,6 +63,7 @@ files = {name: {"source": path, "sha256": hashlib.sha256((snapshot / path).read_
 manifest = {"schema": 1, "producer": "sevenzip-desktop/build-codec-runtime",
             "repository": baseline["repository"], "revision": baseline["revision"],
             "system": platform.system(), "architecture": platform.machine(),
+            "adapted_sources": json.loads((snapshot / "runtime-adaptations.json").read_text()),
             "version": (major << 16) | minor, "files": files}
 for name, source in sources.items():
     staged = snapshot / name
