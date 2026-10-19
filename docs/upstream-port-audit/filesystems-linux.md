@@ -71,12 +71,14 @@ GPT/MBR/APM проверяются как дополнительные форм�
 
 ## Свидетельства
 
-### ext2/3/4: sparse, trees и stream boundaries
+### ext2/3/4: sparse, metadata и inline data
 
 [Сравненный scope и исправления](ext-linux.md): classic sparse indirect paths,
 ограничения extent/каталогов, fast symlink с EA и передача ошибок потоков в обоих
-engines. Полная актуализация ext4 не завершена: inline data, современные metadata
-layouts, checksums и остальные найденные возможности остаются в общем scope.
+engines. Динамический движок также подключает Linux C-проверки metadata,
+полные inline data/каталоги, META_BG, BIGALLOC и современные descriptors.
+Полная актуализация ext4 не завершена: fscrypt/key service, fs-verity и оставшиеся
+feature/creator-OS read semantics остаются в общем scope.
 
 ### FAT12/16/32: BPB, имена и размер файла
 

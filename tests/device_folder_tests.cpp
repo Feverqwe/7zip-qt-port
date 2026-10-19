@@ -7,6 +7,7 @@
 #include "qtarchiveproperties.h"
 #include <QDir>
 #include <QFile>
+#include <QFileInfo>
 #include <QProcess>
 #include <QStandardPaths>
 #include <QTemporaryDir>
@@ -107,8 +108,13 @@ class DeviceFolderTests final : public QObject {
         QSKIP("Official module unavailable; direct-device folder integration unverified");
 #else
         module_ = QStringLiteral(SEVENZIP_CODEC_MODULE);
-        engine_ = QStandardPaths::findExecutable("7zz");
-        QVERIFY(!engine_.isEmpty());
+        engine_ = QFileInfo(module_).dir().filePath(
+#ifdef Q_OS_WIN
+            "7z.exe"
+#else
+            "7z"
+#endif
+        );
 #endif
     }
     void sourceFolderCopiesSelectedUnicodeFile_data() {

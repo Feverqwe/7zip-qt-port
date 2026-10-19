@@ -1,0 +1,55 @@
+{
+  "kernel": "6.8.0-146-generic",
+  "creator": "mke2fs 1.47.0 (5-Feb-2023)\n\tUsing EXT2FS Library version 1.47.0",
+  "images": {
+    "inline": {
+      "options": [
+        "-O",
+        "inline_data"
+      ],
+      "size": 33554432,
+      "sha256": "bb8e8da062790c9438b87b585873faaafbf67c6eb6fc8114a823ab947ff945d9"
+    },
+    "bigalloc": {
+      "options": [
+        "-O",
+        "bigalloc",
+        "-C",
+        "4096"
+      ],
+      "size": 33554432,
+      "sha256": "e068f2cf9e61948901da8c38681bb5e374729bd817bdf286716061aff4d51820"
+    },
+    "meta-bg": {
+      "options": [
+        "-O",
+        "meta_bg,^resize_inode",
+        "-g",
+        "1024"
+      ],
+      "size": 33554432,
+      "sha256": "89b9738620b5a62802dcae0234bc6bdabd7cf83e79f6383af77674f08a4f1302"
+    }
+  },
+  "creator_repository": "https://git.kernel.org/pub/scm/fs/ext2/e2fsprogs.git",
+  "base_options": [
+    "-q",
+    "-t",
+    "ext4",
+    "-b",
+    "1024",
+    "-I",
+    "256",
+    "-E",
+    "lazy_itable_init=0",
+    "-d",
+    "SOURCE",
+    "IMAGE",
+    "32768"
+  ],
+  "source_files": {
+    "данные 空.bin": "bytes(range(100))",
+    "big.bin": "bytes(range(256)) * 257"
+  },
+  "native_validation": "Read-only loop mount with ro,noload,nosuid,nodev,noexec; both files compared byte for byte; mounts and temporary images removed."
+}

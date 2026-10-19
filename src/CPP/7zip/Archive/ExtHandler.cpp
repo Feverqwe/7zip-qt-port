@@ -35,6 +35,10 @@
 
 #include "../Compress/CopyCoder.h"
 
+#ifdef SEVENZIP_LINUX_EXT
+#include "extreader.h"
+#endif
+
 using namespace NWindows;
 
 UInt32 LzhCrc16Update(UInt32 crc, const void *data, size_t size);
@@ -90,7 +94,11 @@ static UInt32 Crc32C_Calc(Byte const *data, size_t size)
 
 #define CRC16_INIT_VAL 0xFFFF
 
+#ifdef SEVENZIP_LINUX_EXT
+#define Crc16Update(value, data, size) crc16((UInt16)(value), (const Byte *)(data), size)
+#else
 #define Crc16Update(crc, data, size) LzhCrc16Update(crc, data, size)
+#endif
 
 static UInt32 Crc16Calc(Byte const *data, size_t size) {
     return Crc16Update(CRC16_INIT_VAL, data, size);
@@ -131,58 +139,60 @@ static const char *const g_FeatureCompat_Flags[] = {"DIR_PREALLOC",
                                                     ,
                                                     NULL // { 8, "EXCLUDE_BITMAP" // not in kernel
                                                     ,
-                                                    "SPARSE_SUPER2"};
+                                                    "SPARSE_SUPER2",
+                                                    "FAST_COMMIT",
+                                                    "STABLE_INODES",
+                                                    "ORPHAN_FILE"};
 
 #define EXT4_FEATURE_INCOMPAT_FILETYPE (1 << 1)
 #define EXT4_FEATURE_INCOMPAT_64BIT (1 << 7)
 
-static const char *const g_FeatureIncompat_Flags[] = {
-    "COMPRESSION",
-    "FILETYPE",
-    "RECOVER" /* Needs recovery */
-    ,
-    "JOURNAL_DEV" /* Journal device */
-    ,
-    "META_BG",
-    NULL,
-    "EXTENTS" /* extents support */
-    ,
-    "64BIT",
-    "MMP",
-    "FLEX_BG",
-    "EA_INODE" /* EA in inode */
-    ,
-    NULL,
-    "DIRDATA" /* data in dirent */
-    ,
-    "BG_USE_META_CSUM" /* use crc32c for bg */
-    ,
-    "LARGEDIR" /* >2GB or 3-lvl htree */
-    ,
-    "INLINE_DATA" /* data in inode */
-    ,
-    "ENCRYPT" // 16
-};
+static const char *const g_FeatureIncompat_Flags[] = {"COMPRESSION",
+                                                      "FILETYPE",
+                                                      "RECOVER" /* Needs recovery */
+                                                      ,
+                                                      "JOURNAL_DEV" /* Journal device */
+                                                      ,
+                                                      "META_BG",
+                                                      NULL,
+                                                      "EXTENTS" /* extents support */
+                                                      ,
+                                                      "64BIT",
+                                                      "MMP",
+                                                      "FLEX_BG",
+                                                      "EA_INODE" /* EA in inode */
+                                                      ,
+                                                      NULL,
+                                                      "DIRDATA" /* data in dirent */
+                                                      ,
+                                                      "CSUM_SEED" /* stored crc32c seed */
+                                                      ,
+                                                      "LARGEDIR" /* >2GB or 3-lvl htree */
+                                                      ,
+                                                      "INLINE_DATA" /* data in inode */
+                                                      ,
+                                                      "ENCRYPT", // 16
+                                                      "CASEFOLD"};
 
 static const UInt32 RO_COMPAT_GDT_CSUM = 1 << 4;
 static const UInt32 RO_COMPAT_METADATA_CSUM = 1 << 10;
 
 static const char *const g_FeatureRoCompat_Flags[] = {
-    "SPARSE_SUPER",  "LARGE_FILE",  "BTREE_DIR",    "HUGE_FILE", "GDT_CSUM",
-    "DIR_NLINK",     "EXTRA_ISIZE", "HAS_SNAPSHOT", "QUOTA",     "BIGALLOC",
-    "METADATA_CSUM", "REPLICA",     "READONLY" // 12
-};
+    "SPARSE_SUPER",  "LARGE_FILE",  "BTREE_DIR",    "HUGE_FILE",     "GDT_CSUM",
+    "DIR_NLINK",     "EXTRA_ISIZE", "HAS_SNAPSHOT", "QUOTA",         "BIGALLOC",
+    "METADATA_CSUM", "REPLICA",     "READONLY", // 12
+    "PROJECT",       NULL,          "VERITY",       "ORPHAN_PRESENT"};
 
 static const UInt32 k_NodeFlags_HUGE = (UInt32)1 << 18;
 static const UInt32 k_NodeFlags_EXTENTS = (UInt32)1 << 19;
 
 static const char *const g_NodeFlags[] = {
-    "SECRM",     "UNRM",    "COMPR",        "SYNC",     "IMMUTABLE",  "APPEND",
-    "NODUMP",    "NOATIME", "DIRTY",        "COMPRBLK", "NOCOMPR",    "ENCRYPT",
-    "INDEX",     "IMAGIC",  "JOURNAL_DATA", "NOTAIL",   "DIRSYNC",    "TOPDIR",
-    "HUGE_FILE", "EXTENTS", NULL,           "EA_INODE", "EOFBLOCKS",  NULL,
-    NULL,        NULL,      NULL,           NULL,       "INLINE_DATA" // 28
-};
+    "SECRM",       "UNRM",     "COMPR",        "SYNC",     "IMMUTABLE",   "APPEND",
+    "NODUMP",      "NOATIME",  "DIRTY",        "COMPRBLK", "NOCOMPR",     "ENCRYPT",
+    "INDEX",       "IMAGIC",   "JOURNAL_DATA", "NOTAIL",   "DIRSYNC",     "TOPDIR",
+    "HUGE_FILE",   "EXTENTS",  "VERITY",       "EA_INODE", "EOFBLOCKS",   NULL,
+    NULL,          "DAX",      NULL,           NULL,       "INLINE_DATA", // 28
+    "PROJINHERIT", "CASEFOLD", "RESERVED"};
 
 enum {
     k_Type_UNKNOWN,
@@ -216,7 +226,7 @@ struct CHeader {
     // UInt64 NumBlocksSuper;
     UInt64 NumFreeBlocks;
     UInt32 NumFreeInodes;
-    // UInt32 FirstDataBlock;
+    UInt32 FirstDataBlock;
 
     UInt32 BlocksPerGroup;
     UInt32 ClustersPerGroup;
@@ -265,7 +275,7 @@ struct CHeader {
     bool IsOldRev() const { return RevLevel == EXT4_GOOD_OLD_REV; }
 
     UInt64 GetNumGroups() const {
-        return (NumBlocks - (BlockBits == 10 ? 1 : 0) + BlocksPerGroup - 1) / BlocksPerGroup;
+        return (NumBlocks - FirstDataBlock + BlocksPerGroup - 1) / BlocksPerGroup;
     }
     UInt64 GetNumGroups2() const {
         return ((UInt64)NumInodes + InodesPerGroup - 1) / InodesPerGroup;
@@ -302,7 +312,9 @@ bool CHeader::Parse(const Byte *p) {
     LE_32(0x18, BlockBits)
     LE_32(0x1C, ClusterBits)
 
-    if (ClusterBits != 0 && BlockBits != ClusterBits)
+    const bool bigalloc = (Get32(p + 0x64) & 0x200) != 0;
+    if (bigalloc ? ClusterBits < BlockBits || ClusterBits > 28 - 10
+                 : ClusterBits != 0 && BlockBits != ClusterBits)
         return false;
 
     if (BlockBits > 16 - 10)
@@ -318,15 +330,16 @@ bool CHeader::Parse(const Byte *p) {
     if (NumInodes < 2 || NumInodes <= NumFreeInodes)
         return false;
 
-    UInt32 FirstDataBlock;
     LE_32(0x14, FirstDataBlock)
-    if (FirstDataBlock != (unsigned)(BlockBits == 10 ? 1 : 0))
+    if (FirstDataBlock != (unsigned)(BlockBits == 10 ? 1 : 0) &&
+        !(bigalloc && BlockBits == 10 && FirstDataBlock == 0))
         return false;
 
     LE_32(0x20, BlocksPerGroup)
     LE_32(0x24, ClustersPerGroup)
 
-    if (BlocksPerGroup != ClustersPerGroup)
+    if (bigalloc ? (UInt64)ClustersPerGroup << (ClusterBits + 10 - BlockBits) != BlocksPerGroup
+                 : BlocksPerGroup != ClustersPerGroup)
         return false;
     if (BlocksPerGroup == 0)
         return false;
@@ -530,6 +543,9 @@ struct CExtent {
 struct CExtTime {
     UInt32 Val;
     UInt32 Extra;
+#ifdef SEVENZIP_LINUX_EXT
+    bool Defined;
+#endif
 };
 
 struct CNode {
@@ -556,8 +572,13 @@ struct CNode {
     UInt64 FileAcl;
     UInt32 NumLinks;
     UInt32 Flags;
+    bool HugeBlocks;
 
     Byte Block[kNodeBlockFieldSize];
+#ifdef SEVENZIP_LINUX_EXT
+    UInt32 ChecksumSeed;
+    int InlineIndex;
+#endif
 
     void Construct() {
         ParentNode = -1;
@@ -565,9 +586,12 @@ struct CNode {
         SymLinkIndex = -1;
         DirIndex = -1;
         NumLinksCalced = 0;
+#ifdef SEVENZIP_LINUX_EXT
+        InlineIndex = -1;
+#endif
     }
 
-    bool IsFlags_HUGE() const { return (Flags & k_NodeFlags_HUGE) != 0; }
+    bool IsFlags_HUGE() const { return HugeBlocks; }
     bool IsFlags_EXTENTS() const { return (Flags & k_NodeFlags_EXTENTS) != 0; }
 
     bool IsDir() const { return MY_LIN_S_ISDIR(Mode); }
@@ -597,6 +621,7 @@ bool CNode::Parse(const Byte *p, const CHeader &_h) {
 
     LE_32(0x1C, NumBlocks)
     LE_32(0x20, Flags)
+    HugeBlocks = (_h.FeatureRoCompat & 8) != 0 && (Flags & k_NodeFlags_HUGE) != 0;
     if ((Flags & (k_NodeFlags_EXTENTS | ((UInt32)1 << 28))) ==
         (k_NodeFlags_EXTENTS | ((UInt32)1 << 28)))
         return false;
@@ -632,7 +657,8 @@ bool CNode::Parse(const Byte *p, const CHeader &_h) {
         // ext4:
         UInt32 numBlocksHigh;
         LE_16(0x74, numBlocksHigh)
-        NumBlocks |= (UInt64)numBlocksHigh << 32;
+        if (_h.FeatureRoCompat & 8)
+            NumBlocks |= (UInt64)numBlocksHigh << 32;
 
         HI_16(0x74 + 4, Uid)
         HI_16(0x74 + 6, Gid)
@@ -693,6 +719,47 @@ struct CItem {
 
 static const unsigned kNumTreeLevelsMax = 6; // must be >= 3
 
+#ifdef SEVENZIP_LINUX_EXT
+struct CExtVolume {
+    ext_volume *Ptr = NULL;
+    ~CExtVolume() { Reset(); }
+    void Reset() {
+        ext_linux_close(Ptr);
+        Ptr = NULL;
+    }
+};
+
+struct CInlineDirectory {
+    CByteBuffer Data;
+    size_t Used = 0;
+    size_t Last = 0;
+    static int Emit(void *opaque, uint32_t ino, unsigned type, const char *name, unsigned len) {
+        CInlineDirectory &dir = *static_cast<CInlineDirectory *>(opaque);
+        const size_t size = (8 + len + 3) & ~(size_t)3;
+        if (size > dir.Data.Size() - dir.Used)
+            return -1;
+        Byte *p = (Byte *)dir.Data + dir.Used;
+        memset(p, 0, size);
+        SetUi32(p, ino) SetUi16(p + 4, (UInt16)size) p[6] = (Byte)len;
+        // Linux dir_emit uses DT_*; the archive uses EXT4_FT_*.
+        const Byte types[] = {0, 5, 3, 0, 2, 0, 4, 0, 1, 0, 7, 0, 6};
+        p[7] = type < sizeof(types) ? types[type] : 0;
+        memcpy(p + 8, name, len);
+        dir.Last = dir.Used;
+        dir.Used += size;
+        return 0;
+    }
+};
+
+static void ImportTime(const ext_time &source, CExtTime &time) {
+    time.Val = (UInt32)source.seconds;
+    time.Extra =
+        (source.nsec << 2) |
+        ((UInt64)(source.seconds + ((source.seconds & 0x80000000) ? ((Int64)1 << 32) : 0)) >> 32);
+    time.Defined = source.defined != 0;
+}
+#endif
+
 // clang-format off
 Z7_CLASS_IMP_CHandler_IInArchive_2(
   IArchiveGetRawProps,
@@ -717,6 +784,11 @@ Z7_CLASS_IMP_CHandler_IInArchive_2(
   bool _isUTF;
 
   CHeader _h;
+#ifdef SEVENZIP_LINUX_EXT
+  CExtVolume _volume;
+  CObjectVector<CByteBuffer> _inlineData;
+  UInt32 _extentChecksumSeed;
+#endif
 
   IArchiveOpenCallback *_openCallback;
   UInt64 _totalRead;
@@ -1025,6 +1097,10 @@ HRESULT CHandler::Open2(IInStream *inStream) {
         RINOK(ReadStream_FALSE(inStream, buf, kHeaderSize))
         if (!_h.Parse(buf + kHeaderDataOffset))
             return S_FALSE;
+#ifdef SEVENZIP_LINUX_EXT
+        if (ext_linux_open(buf + kHeaderDataOffset, &_volume.Ptr) != 0)
+            return S_FALSE;
+#endif
         if (_h.BlockGroupNr != 0)
             return S_FALSE; // it's just copy of super block
     }
@@ -1042,9 +1118,9 @@ HRESULT CHandler::Open2(IInStream *inStream) {
 
         unsigned gdBits = 5;
         if (_h.Is64Bit()) {
-            if (_h.GdSize != 64)
+            if (_h.GdSize < 64 || _h.GdSize > 1024 || GetLog(_h.GdSize) < 0)
                 return S_FALSE;
-            gdBits = 6;
+            gdBits = (unsigned)GetLog(_h.GdSize);
         }
 
         _isArc = true;
@@ -1059,21 +1135,36 @@ HRESULT CHandler::Open2(IInStream *inStream) {
 
         CRecordVector<CGroupDescriptor> groups;
 
+        CByteBuffer gdBuf;
         {
             // ---------- Read groups ----------
 
             const size_t gdBufSize = (size_t)numGroups << gdBits;
             if ((gdBufSize >> gdBits) != numGroups)
                 return S_FALSE;
-            CByteBuffer gdBuf;
             gdBuf.Alloc(gdBufSize);
+#ifdef SEVENZIP_LINUX_EXT
+            const size_t blockSize = (size_t)1 << _h.BlockBits;
+            for (size_t offset = 0; offset < gdBufSize; offset += blockSize) {
+                const size_t size = MyMin(blockSize, gdBufSize - offset);
+                RINOK(SeekAndRead(
+                    inStream,
+                    ext_linux_descriptor_block(_volume.Ptr, (unsigned)(offset >> _h.BlockBits)),
+                    (Byte *)gdBuf + offset, size))
+            }
+#else
             RINOK(SeekAndRead(inStream, (_h.BlockBits <= 10 ? 2 : 1), gdBuf, gdBufSize))
+#endif
 
             const unsigned gd_Size = (unsigned)1 << gdBits;
             const Byte *p = gdBuf;
             for (unsigned i = 0; i < numGroups; i++, p += gd_Size) {
                 CGroupDescriptor gd;
                 gd.Parse(p, gd_Size);
+#ifdef SEVENZIP_LINUX_EXT
+                if (ext_linux_group_check(_volume.Ptr, i, p) != 0)
+                    return S_FALSE;
+#else
                 if (_h.UseMetadataChecksum()) {
                     // use CRC32c
                 } else if (_h.UseGdtChecksum()) {
@@ -1086,6 +1177,7 @@ HRESULT CHandler::Open2(IInStream *inStream) {
                     if (crc != gd.Checksum)
                         return S_FALSE;
                 }
+#endif
 
                 groups.Add(gd);
             }
@@ -1136,10 +1228,34 @@ HRESULT CHandler::Open2(IInStream *inStream) {
                     break;
 
                 const CGroupDescriptor &gd = groups[gi];
+#ifdef SEVENZIP_LINUX_EXT
+                if ((_h.UseGdtChecksum() || _h.UseMetadataChecksum()) && (gd.Flags & 1)) {
+                    const UInt32 count = MyMin(numNodes, _h.NumInodes - globalNodeIndex);
+                    globalNodeIndex += count;
+                    numEmpty_in_Maps += count;
+                    continue;
+                }
+#endif
 
                 PRF(printf("\n\ng%6d block = %6x\n", gi, (unsigned)gd.InodeTable));
 
                 RINOK(SeekAndRead(inStream, gd.InodeBitmap, nodesMap, blockSize))
+#ifdef SEVENZIP_LINUX_EXT
+                if (ext_linux_bitmap_check(_volume.Ptr,
+                                           (const Byte *)gdBuf + ((size_t)gi << gdBits), nodesMap,
+                                           1) != 0)
+                    return S_FALSE;
+                // Uninitialized block bitmaps are synthesized by the kernel.
+                if ((_h.UseGdtChecksum() || _h.UseMetadataChecksum()) && !(gd.Flags & 2)) {
+                    CByteBuffer blockMap;
+                    blockMap.Alloc(blockSize);
+                    RINOK(SeekAndRead(inStream, gd.BlockBitmap, blockMap, blockSize))
+                    if (ext_linux_bitmap_check(_volume.Ptr,
+                                               (const Byte *)gdBuf + ((size_t)gi << gdBits),
+                                               blockMap, 0) != 0)
+                        return S_FALSE;
+                }
+#endif
                 RINOK(SeekAndRead(inStream, gd.InodeTable, nodesData, nodesDataSize))
 
                 unsigned numEmpty_in_Map = 0;
@@ -1167,6 +1283,54 @@ HRESULT CHandler::Open2(IInStream *inStream) {
 
                     if (!node.Parse(p, _h))
                         return S_FALSE;
+#ifdef SEVENZIP_LINUX_EXT
+                    ext_node *linuxNode = NULL;
+                    ext_node_info info;
+                    if (ext_linux_inode_open(_volume.Ptr, globalNodeIndex + 1, p, &linuxNode,
+                                             &info) != 0)
+                        return S_FALSE;
+                    struct CNodeOwner {
+                        ext_node *Ptr;
+                        ~CNodeOwner() { ext_linux_inode_close(Ptr); }
+                    } owner{linuxNode};
+                    if (node.FileAcl) {
+                        CByteBuffer xattr;
+                        xattr.Alloc(blockSize);
+                        RINOK(SeekAndRead(inStream, node.FileAcl, xattr, blockSize))
+                        if (ext_linux_xattr_check(linuxNode, node.FileAcl, xattr) != 0)
+                            return S_FALSE;
+                    }
+                    node.ChecksumSeed = info.checksum_seed;
+                    node.FileSize = info.size;
+                    ImportTime(info.atime, node.ATime);
+                    ImportTime(info.mtime, node.MTime);
+                    ImportTime(info.change_time, node.ChangeTime);
+                    ImportTime(info.birth_time, node.CTime);
+                    if (info.inline_size) {
+                        CByteBuffer payload;
+                        if (node.IsDir()) {
+                            CInlineDirectory dir;
+                            dir.Data.Alloc(blockSize);
+                            memset(dir.Data, 0, blockSize);
+                            if (ext_linux_inline_directory(linuxNode, CInlineDirectory::Emit,
+                                                           &dir) != 0 ||
+                                dir.Used == 0)
+                                return S_FALSE;
+                            SetUi16(
+                                (Byte *)dir.Data + dir.Last + 4,
+                                (UInt16)(blockSize - dir.Last == 65536 ? 0 : blockSize - dir.Last))
+                                payload = dir.Data;
+                        } else {
+                            payload.Alloc((size_t)node.FileSize);
+                            if (ext_linux_inline_read(linuxNode, payload,
+                                                      (unsigned)node.FileSize) !=
+                                (int)node.FileSize)
+                                return S_FALSE;
+                        }
+                        node.InlineIndex = (int)_inlineData.Size();
+                        _inlineData.Add(payload);
+                    }
+#endif
 
                     // PRF(printf("\n %6d", (unsigned)n));
                     /*
@@ -1228,6 +1392,18 @@ HRESULT CHandler::Open2(IInStream *inStream) {
                     continue;
             }
             RINOK(ExtractNode((unsigned)nodeIndex, dataBuf))
+#ifdef SEVENZIP_LINUX_EXT
+            const CNode &dirNode = _nodes[nodeIndex];
+            if (dirNode.InlineIndex < 0 && _h.UseMetadataChecksum()) {
+                const size_t blockSize = (size_t)1 << _h.BlockBits;
+                if (dataBuf.Size() % blockSize != 0)
+                    return S_FALSE;
+                for (size_t offset = 0; offset < dataBuf.Size(); offset += blockSize)
+                    if (ext_linux_directory_check(_volume.Ptr, dirNode.ChecksumSeed, dirNode.Flags,
+                                                  (const Byte *)dataBuf + offset) != 0)
+                        return S_FALSE;
+            }
+#endif
             if (dataBuf.Size() == 0) {
                 // _headersError = true;
                 return S_FALSE;
@@ -1449,6 +1625,10 @@ Z7_COM7F_IMF(CHandler::Open(IInStream *stream, const UInt64 *, IArchiveOpenCallb
 // clang-format on
 
 void CHandler::ClearRefs() {
+#ifdef SEVENZIP_LINUX_EXT
+    _inlineData.Clear();
+    _volume.Reset();
+#endif
     _stream.Release();
     _items.Clear();
     _nodes.Clear();
@@ -1835,7 +2015,11 @@ Z7_COM7F_IMF(CHandler::GetRawProp(UInt32 index, PROPID propID, const void **data
 }
 
 static void ExtTimeToProp(const CExtTime &t, NCOM::CPropVariant &prop) {
+#ifdef SEVENZIP_LINUX_EXT
+    if (!t.Defined)
+#else
     if (t.Val == 0 && t.Extra == 0)
+#endif
         return;
 
     FILETIME ft;
@@ -2380,6 +2564,10 @@ HRESULT CHandler::FillExtents(const Byte *p, size_t size, CRecordVector<CExtent>
             return S_FALSE;
 
         RINOK(SeekAndRead(_stream, e.PhyLeaf, tempBuf, blockSize))
+#ifdef SEVENZIP_LINUX_EXT
+        if (ext_linux_extent_check(_volume.Ptr, _extentChecksumSeed, tempBuf) != 0)
+            return S_FALSE;
+#endif
         RINOK(FillExtents(tempBuf, blockSize, extents, eth.Depth, e.VirtBlock, next))
     }
 
@@ -2392,6 +2580,17 @@ HRESULT CHandler::GetStream_Node(unsigned nodeIndex, ISequentialInStream **strea
     *stream = NULL;
 
     const CNode &node = _nodes[nodeIndex];
+#ifdef SEVENZIP_LINUX_EXT
+    // fscrypt requires a key service; never expose encrypted bytes as file data.
+    if (node.Flags & 0x800)
+        return E_NOTIMPL;
+    if (node.InlineIndex >= 0) {
+        const CByteBuffer &payload = _inlineData[(unsigned)node.InlineIndex];
+        Create_BufInStream_WithNewBuffer(payload, payload.Size(), stream);
+        return S_OK;
+    }
+    _extentChecksumSeed = node.ChecksumSeed;
+#endif
 
     if (!node.IsFlags_EXTENTS()) {
         // Fast symlinks can account for an external EA block in i_blocks.
@@ -2496,6 +2695,12 @@ HRESULT CHandler::GetStream_Node(unsigned nodeIndex, ISequentialInStream **strea
 HRESULT CHandler::ExtractNode(unsigned nodeIndex, CByteBuffer &data) {
     data.Free();
     const CNode &node = _nodes[nodeIndex];
+#ifdef SEVENZIP_LINUX_EXT
+    if (node.IsDir() && node.InlineIndex >= 0) {
+        data = _inlineData[(unsigned)node.InlineIndex];
+        return S_OK;
+    }
+#endif
     size_t size = (size_t)node.FileSize;
     if (size != node.FileSize)
         return S_FALSE;
@@ -2638,8 +2843,9 @@ API_FUNC_IsArc IsArc_Ext_PhySize(const Byte *p, size_t size, UInt64 *phySize) {
 API_FUNC_IsArc IsArc_Ext(const Byte *p, size_t size);
 API_FUNC_IsArc IsArc_Ext(const Byte *p, size_t size) { return IsArc_Ext_PhySize(p, size, NULL); }
 
+#if defined(SEVENZIP_LINUX_EXT) || !defined(Z7_EXTERNAL_CODECS)
 static const Byte k_Signature[] = {0x53, 0xEF};
-
 REGISTER_ARC_I("Ext", "ext ext2 ext3 ext4 img", NULL, 0xC7, k_Signature, 0x438, 0, IsArc_Ext)
+#endif
 }
 }

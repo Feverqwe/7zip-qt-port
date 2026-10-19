@@ -6,9 +6,12 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import zlib
 from ext_fixture import Volume, NAME
+from ext_modern_fixture import ModernVolume
 
 RUNTIME = Path(sys.argv.pop(1))
+MODULE = Path(sys.argv.pop(1))
 SUFFIX = ".exe" if sys.platform == "win32" else ""
 
 
@@ -21,6 +24,8 @@ class ExtTests(unittest.TestCase):
         core = "7z.dll" if sys.platform == "win32" else "7z.so"
         for name in ("7z" + SUFFIX, "7zz" + SUFFIX, core):
             shutil.copy2(RUNTIME / name, cls.runtime / name)
+        (cls.runtime / "Formats").mkdir()
+        shutil.copy2(MODULE, cls.runtime / "Formats" / MODULE.name)
 
     def run_image(self, v, engine="7z", command="x", name=NAME):
         with tempfile.TemporaryDirectory(dir=self.runtime) as temporary:
@@ -44,6 +49,127 @@ class ExtTests(unittest.TestCase):
                     result = self.run_image(v, engine)
                     self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
                     self.assertEqual(result.stdout, v.read(0, v.size))
+
+    def test_modern_metadata_and_full_inline_payload(self):
+        # Linux C readers live in the dynamic format module; standalone 7zz
+        # retains the independent 7-Zip LGPL classic reader.
+        for engine in ("7z",):
+            for inline, seed, descriptor in ((False, False, 64), (False, True, 128),
+                                              (True, False, 64), (True, True, 128)):
+                with self.subTest(engine=engine, inline=inline, seed=seed, descriptor=descriptor):
+                    volume = ModernVolume(inline, seed, descriptor)
+                    result = self.run_image(volume, engine)
+                    self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                    expected = volume.payload if inline else volume.read(0, volume.size)
+                    self.assertEqual(result.stdout, expected)
+                    if inline:
+                        result = self.run_image(volume, engine, name="nested/alias.bin")
+                        self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                        self.assertEqual(result.stdout, expected)
+
+    def test_metadata_corruption_is_rejected(self):
+        for location in ("super", "group", "inode-map", "block-map", "inode", "dir", "extent"):
+            with self.subTest(location=location):
+                volume = ModernVolume()
+                offsets = {"super": 1024 + 120, "group": volume.gdt * 1024 + 12,
+                           "inode-map": volume.inode_map * 1024 + 1,
+                           "block-map": volume.block_map * 1024 + 4,
+                           "inode": volume.file_inode + 8, "dir": volume.root_block * 1024 + 40,
+                           "extent": volume.extent_blocks[0] * 1024 + 8}
+                volume.data[offsets[location]] ^= 1
+                result = self.run_image(volume)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(result.stdout, b"")
+
+    def test_indexed_directory_checksums_and_count_bounds(self):
+        volume = ModernVolume(indexed=True)
+        result = self.run_image(volume)
+        self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+        self.assertEqual(result.stdout, volume.read(0, volume.size))
+        for fault in ("root-checksum", "index-checksum", "count", "limit", "leaf-checksum"):
+            with self.subTest(fault=fault):
+                volume = ModernVolume(indexed=True)
+                if fault == "root-checksum":
+                    volume.data[volume.root_block * 1024 + 1020] ^= 1
+                elif fault == "index-checksum":
+                    volume.data[volume.index_blocks[1][0] * 1024 + 1020] ^= 1
+                elif fault == "leaf-checksum":
+                    volume.data[volume.dir_leaves[0] * 1024 + 1020] ^= 1
+                else:
+                    struct.pack_into("<H", volume.data, volume.root_block * 1024 +
+                                     (34 if fault == "count" else 32), 65535)
+                result = self.run_image(volume)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(result.stdout, b"")
+
+    def test_linux_creator_inline_bigalloc_and_distributed_descriptors(self):
+        fixtures = Path(__file__).parent / "fixtures" / "ext4"
+        for case in ("inline", "bigalloc", "meta-bg"):
+            with self.subTest(case=case):
+                class Image:
+                    data = zlib.decompress((fixtures / (case + ".ext4.zlib")).read_bytes())
+                for name, expected in ((NAME, bytes(range(100))), ("big.bin", bytes(range(256)) * 257)):
+                    result = self.run_image(Image, name=name)
+                    self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                    self.assertEqual(result.stdout, expected)
+
+    def test_inline_xattr_and_directory_corruption(self):
+        for fault in ("overlap", "value-size", "external", "missing-data", "record", "inode-number"):
+            with self.subTest(fault=fault):
+                volume = ModernVolume(inline=True)
+                if fault == "overlap":
+                    struct.pack_into("<H", volume.data, volume.file_inode + 166, 0)
+                elif fault == "value-size":
+                    volume.put32(volume.file_inode + 172, 1 << 25)
+                elif fault == "external":
+                    volume.put32(volume.file_inode + 168, 2)
+                elif fault == "missing-data":
+                    volume.data[volume.file_inode + 180] = ord("X")
+                elif fault == "record":
+                    struct.pack_into("<H", volume.data, volume.inline_dir_inode + 48, 55)
+                else:
+                    volume.put32(volume.inline_dir_inode + 44, 1000)
+                volume.refresh()
+                result = self.run_image(volume)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(result.stdout, b"")
+
+    def test_unknown_layout_and_encrypted_content_cannot_succeed(self):
+        for encrypted in (False, True):
+            with self.subTest(encrypted=encrypted):
+                volume = ModernVolume()
+                features = struct.unpack_from("<I", volume.data, 1024 + 96)[0]
+                volume.put32(1024 + 96, features | (0x10000 if encrypted else 1 << 31))
+                if encrypted:
+                    volume.put32(volume.file_inode + 32, (1 << 19) | 0x800)
+                volume.refresh()
+                result = self.run_image(volume)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(result.stdout, b"")
+
+    def test_external_xattr_checksum_and_value_bounds(self):
+        volume = ModernVolume()
+        volume.add_external_xattr()
+        result = self.run_image(volume)
+        self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+        self.assertEqual(result.stdout, volume.read(0, volume.size))
+        for fault in ("checksum", "header", "overlap"):
+            with self.subTest(fault=fault):
+                volume = ModernVolume()
+                volume.add_external_xattr()
+                start = volume.xattr_block * 1024
+                if fault == "checksum":
+                    volume.data[start + 16] ^= 1
+                elif fault == "header":
+                    volume.put32(start + 8, 2)
+                    volume.refresh()
+                else:
+                    struct.pack_into("<BBHIII", volume.data, start + 32, 4, 1, 8, 0, 64, 0)
+                    volume.data[start + 48:start + 52] = b"name"
+                    volume.refresh()
+                result = self.run_image(volume)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(result.stdout, b"")
 
     def test_complete_group_and_fast_symlink_with_xattr(self):
         for engine in ("7z", "7zz"):

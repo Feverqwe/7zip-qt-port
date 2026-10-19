@@ -12,12 +12,13 @@ class Volume:
     def __init__(self, layout="double-hole", block_bits=10, full_group=False):
         self.block_bits, self.block_size = block_bits, 1 << block_bits
         bs = self.block_size
+        self.inode_count = max(16, bs // 128)
         self.first = int(block_bits == 10)
         self.blocks = 1025 if full_group else 1024 if block_bits == 10 else 128
         self.data = bytearray(self.blocks * bs)
         self.gdt = self.first + 1
         self.block_map, self.inode_map, self.table = self.gdt + 1, self.gdt + 2, self.gdt + 3
-        self.root_block = self.table + (16 * 128 + bs - 1) // bs
+        self.root_block = self.table + (self.inode_count * 128 + bs - 1) // bs
         self.next_block = self.root_block + 1
         self.used = set(range(self.first, self.next_block))
         self.content = {}
@@ -148,10 +149,10 @@ class Volume:
     def superblock(self):
         allocated = set(range(1, 11)) | {12} | ({13} if self.link_inode is not None else set())
         s = 1024
-        for offset, value in ((0, 16), (4, self.blocks), (12, self.blocks - self.first - len(self.used)),
-                              (16, 16 - len(allocated)), (20, self.first),
+        for offset, value in ((0, self.inode_count), (4, self.blocks), (12, self.blocks - self.first - len(self.used)),
+                              (16, self.inode_count - len(allocated)), (20, self.first),
                               (24, self.block_bits - 10), (28, self.block_bits - 10),
-                              (32, 1024), (36, 1024), (40, 16), (76, 1), (84, 11),
+                              (32, 1024), (36, 1024), (40, self.inode_count), (76, 1), (84, 11),
                               (92, 8 if self.link_inode is not None else 0),
                               (96, 2 | ((1 << 6) if self.flags else 0)), (100, 2)):
             self.put32(s + offset, value)
@@ -160,7 +161,7 @@ class Volume:
         struct.pack_into("<H", self.data, s + 88, 128)
         struct.pack_into("<IIIHHH", self.data, self.gdt * self.block_size,
                          self.block_map, self.inode_map, self.table,
-                         self.blocks - self.first - len(self.used), 16 - len(allocated), 1)
+                         self.blocks - self.first - len(self.used), self.inode_count - len(allocated), 1)
         for block in self.used:
             bit = block - self.first
             self.data[self.block_map * self.block_size + bit // 8] |= 1 << (bit % 8)
@@ -169,7 +170,7 @@ class Volume:
             self.data[self.inode_map * self.block_size + bit // 8] |= 1 << (bit % 8)
         for bit in range(self.blocks - self.first, self.block_size * 8):
             self.data[self.block_map * self.block_size + bit // 8] |= 1 << (bit % 8)
-        for bit in range(16, self.block_size * 8):
+        for bit in range(self.inode_count, self.block_size * 8):
             self.data[self.inode_map * self.block_size + bit // 8] |= 1 << (bit % 8)
 
     def read(self, offset, length):
@@ -184,7 +185,24 @@ class Volume:
 
 
 if __name__ == "__main__":
-    v = Volume(sys.argv[1] if len(sys.argv) > 1 else "double-hole")
+    layout = sys.argv[1] if len(sys.argv) > 1 else "double-hole"
+    if layout.startswith("modern-inline") or layout == "modern-time":
+        from ext_modern_fixture import ModernVolume
+        v = ModernVolume(inline=layout.startswith("modern-inline"))
+        if layout == "modern-time":
+            struct.pack_into("<H", v.data, v.file_inode + 128, 12)
+            v.put32(v.file_inode + 8, 0)
+            v.put32(v.file_inode + 16, 0)
+            v.put32(v.file_inode + 136, (123456789 << 2) | 1)
+            # Outside extra_isize: this atime extension must be ignored.
+            v.put32(v.file_inode + 140, 1)
+            v.refresh()
+        if layout == "modern-inline-replacement":
+            v.payload = bytes(value ^ 0xFF for value in v.payload)
+            v.set_inline(v.file_inode, v.payload)
+            v.refresh()
+    else:
+        v = Volume(layout)
     if "--bundle" in sys.argv:
         samples = [{"offset": pos, "bytes": v.read(pos, 37).hex()}
                    for pos in (0, max(0, v.size - 17), 1010)]

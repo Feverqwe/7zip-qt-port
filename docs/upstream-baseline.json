@@ -423,6 +423,7 @@
     "third_party/7zip/CPP/Windows/TimeUtils.cpp",
     "third_party/7zip/CPP/Windows/TimeUtils.h",
     "third_party/7zip/CPP/Windows/WinDefs.h",
+    "third_party/7zip/DOC/copying.txt",
     "third_party/7zip/License.txt"
   ],
   "adapted": [

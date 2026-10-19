@@ -155,8 +155,8 @@ class ExtStreamTests final : public QObject {
     void initTestCase() { createArchive(); }
     void sparseStreamsRetainSourceAfterCloseAndRelease_data() {
         QTest::addColumn<QString>("layout");
-        for (const char *layout :
-             {"double-hole", "double-subtree", "triple", "triple-hole", "extent-tree"})
+        for (const char *layout : {"double-hole", "double-subtree", "triple", "triple-hole",
+                                   "extent-tree", "modern-inline"})
             QTest::newRow(layout) << QString::fromLatin1(layout);
     }
     void sparseStreamsRetainSourceAfterCloseAndRelease() {
@@ -178,7 +178,8 @@ class ExtStreamTests final : public QObject {
         QCOMPARE(sequential->QueryInterface(IID_IInStream, reinterpret_cast<void **>(&stream)),
                  S_OK);
         QCOMPARE(archive_->Close(), S_OK);
-        auto changed = data;
+        auto changed =
+            layout == "modern-inline" ? image(bundle("modern-inline-replacement")) : data;
         const auto start = changed.indexOf("head");
         if (start >= 0)
             changed[start] = 'Z';
@@ -257,6 +258,26 @@ class ExtStreamTests final : public QObject {
         failed->fail = false;
         QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
         QVERIFY(fileIndex() != UInt32(-1));
+    }
+    void partialTimestampExtensionsAndEpochZero() {
+        CMyComPtr<IInStream> input = new Input(image(bundle("modern-time")));
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        const auto index = fileIndex();
+        QVERIFY(index != UInt32(-1));
+        const auto time = [&](PROPID id, UInt64 expected) {
+            NWindows::NCOM::CPropVariant value;
+            QCOMPARE(archive_->GetProperty(index, id, &value), S_OK);
+            QCOMPARE(value.vt, VARTYPE(VT_FILETIME));
+            const UInt64 ticks =
+                (UInt64(value.filetime.dwHighDateTime) << 32) | value.filetime.dwLowDateTime;
+            QCOMPARE(ticks, expected);
+        };
+        const UInt64 unixEpoch = UInt64(11644473600) * 10000000;
+        time(kpidMTime, unixEpoch + (UInt64(1) << 32) * 10000000 + 1234567);
+        time(kpidATime, unixEpoch);
+        NWindows::NCOM::CPropVariant created;
+        QCOMPARE(archive_->GetProperty(index, kpidCTime, &created), S_OK);
+        QCOMPARE(created.vt, VARTYPE(VT_EMPTY));
     }
     void cleanupTestCase() { archive_.Release(); }
 };

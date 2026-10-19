@@ -1,10 +1,12 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "archivecodeccatalog.h"
+#include "archivecodecprobe.h"
 #include "deviceselectiondialog.h"
 #include "layout_inspection.h"
 #include "mainwindow.h"
 #include "qtlanguageservices.h"
 #include <QDialogButtonBox>
+#include <QFileInfo>
 #include <QHeaderView>
 #include <QPushButton>
 #include <QSignalSpy>
@@ -77,10 +79,22 @@ class DeviceUiTests final : public QObject {
 #ifndef SEVENZIP_CODEC_MODULE
         QSKIP("Official module unavailable; device UI integration unverified");
 #else
-        engine_ = QStandardPaths::findExecutable("7zz");
-        QVERIFY(!engine_.isEmpty());
         module_ = QStringLiteral(SEVENZIP_CODEC_MODULE);
-        catalog_ = std::make_shared<ArchiveCodecCatalog>(module_, 0);
+        engine_ = QFileInfo(module_).dir().filePath(
+#ifdef Q_OS_WIN
+            "7z.exe"
+#else
+            "7z"
+#endif
+        );
+        ArchiveCodecProbe probe;
+        bool done = false;
+        QVERIFY(probe.Start(engine_, module_, [&](auto result) {
+            catalog_ = result.catalog;
+            done = true;
+        }));
+        QTRY_VERIFY(done);
+        QVERIFY(catalog_);
         QCOMPARE(catalog_->result(), S_OK);
         QProcess gzip;
         gzip.start(engine_, {"x", "-so", "--", QStringLiteral(DEVICE_FIXTURE_DIR "/gpt.img.gz")});

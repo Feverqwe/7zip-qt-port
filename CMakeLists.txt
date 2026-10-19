@@ -27,6 +27,7 @@ find_package(Threads REQUIRED)
 include(cmake/Exfat.cmake)
 include(cmake/Cramfs.cmake)
 include(cmake/Fat.cmake)
+include(cmake/Ext.cmake)
 include(cmake/Erofs.cmake)
 include(cmake/Brotli.cmake)
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR (APPLE AND BUILD_TESTING))
@@ -621,6 +622,7 @@ set_target_properties(sevenzip_desktop PROPERTIES
 sevenzip_deploy_exfat()
 sevenzip_deploy_cramfs()
 sevenzip_deploy_fat()
+sevenzip_deploy_ext()
 sevenzip_deploy_erofs()
 sevenzip_deploy_brotli()
 if(APPLE)
@@ -748,22 +750,20 @@ if(BUILD_TESTING)
     set_tests_properties(fat PROPERTIES TIMEOUT 60)
     add_test(NAME ext COMMAND ${Python3_EXECUTABLE}
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/ext_tests.py
-        ${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime)
+        ${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime "$<TARGET_FILE:sevenzip_ext>")
     set_tests_properties(ext PROPERTIES TIMEOUT 45)
     qt_add_executable(ext_stream_tests tests/ext_stream_tests.cpp)
     target_include_directories(ext_stream_tests PRIVATE src third_party/7zip/CPP)
     target_link_libraries(ext_stream_tests PRIVATE sevenzip_filesystem Qt6::Test)
     if(WIN32)
-        set(sevenzip_ext_core "${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime/7z.dll")
         target_link_libraries(ext_stream_tests PRIVATE oleaut32)
-    else()
-        set(sevenzip_ext_core "${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime/7z.so")
     endif()
     target_compile_definitions(ext_stream_tests PRIVATE
-        "SEVENZIP_EXT_CORE=\"${sevenzip_ext_core}\""
+        "SEVENZIP_EXT_CORE=\"$<TARGET_FILE:sevenzip_ext>\""
         "SEVENZIP_EXT_PYTHON=\"${Python3_EXECUTABLE}\""
         "SEVENZIP_EXT_FIXTURE=\"${CMAKE_CURRENT_SOURCE_DIR}/tests/ext_fixture.py\"")
     add_test(NAME ext_stream COMMAND ext_stream_tests -silent)
+    add_dependencies(ext_stream_tests sevenzip_ext_runtime)
     set_tests_properties(ext_stream PROPERTIES TIMEOUT 45)
     add_test(NAME cramfs COMMAND ${Python3_EXECUTABLE}
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/cramfs_tests.py
@@ -3522,6 +3522,9 @@ if(BUILD_TESTING)
             "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\"")
     endif()
     add_test(NAME device_ui COMMAND device_ui_tests -silent)
+    foreach(ext_consumer archive_device_tests device_folder_tests device_ui_tests)
+        add_dependencies(${ext_consumer} sevenzip_ext_runtime)
+    endforeach()
     set_tests_properties(device_ui PROPERTIES TIMEOUT 90 RESOURCE_LOCK sevenzip_ui_artifacts
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/device-ui.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     if(APPLE)

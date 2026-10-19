@@ -1,0 +1,212 @@
+/* SPDX-License-Identifier: GPL-2.0-only */
+/* Archive-facing ownership and bounds for the transferred ext4 C readers. */
+#include "fs/ext4/ext4.h"
+#include "fs/ext4/xattr.h"
+#include "fs/ext4/ext4_extents.h"
+
+struct ext_volume { struct super_block sb; struct ext4_super_block raw; };
+struct ext_node { struct inode inode; };
+_Static_assert(sizeof(struct ext4_super_block) == 1024, "ext4 superblock layout");
+_Static_assert(sizeof(struct ext4_inode) == 160, "ext4 inode layout");
+
+int ext_linux_open(const void *superblock, struct ext_volume **result)
+{
+    struct ext_volume *volume;
+    struct ext4_sb_info *sbi;
+    u32 bits, desc, inode_size;
+    *result = NULL;
+    volume = calloc(1, sizeof(*volume));
+    if (!volume) return -ENOMEM;
+    memcpy(&volume->raw, superblock, sizeof(volume->raw));
+    sbi = &volume->sb.info;
+    sbi->s_sb = &volume->sb;
+    sbi->s_es = &volume->raw;
+    bits = le32_to_cpu(volume->raw.s_log_block_size);
+    if (le16_to_cpu(volume->raw.s_magic) != 0xEF53 || bits > 6) goto corrupt;
+    /* Linux ext4's supported incompatible features; unknown layouts cannot be read safely. */
+    if (le32_to_cpu(volume->raw.s_feature_incompat) &
+        ~(0x0002U | 0x0004U | 0x0010U | 0x0040U | 0x0080U | 0x0100U | 0x0200U |
+          0x0400U | 0x2000U | 0x4000U | 0x8000U | 0x10000U | 0x20000U)) goto corrupt;
+    volume->sb.s_blocksize_bits = bits + 10;
+    volume->sb.s_blocksize = 1024U << bits;
+    {
+        u32 cluster_bits = le32_to_cpu(volume->raw.s_log_cluster_size);
+        bool bigalloc = (le32_to_cpu(volume->raw.s_feature_ro_compat) & 0x200) != 0;
+        if (cluster_bits > 18 || (bigalloc ? cluster_bits < bits : cluster_bits != bits)) goto corrupt;
+        if (bigalloc && !(le32_to_cpu(volume->raw.s_feature_incompat) & 0x40)) goto corrupt;
+        if (!EXT4_CLUSTERS_PER_GROUP(&volume->sb) ||
+            ((u64)EXT4_CLUSTERS_PER_GROUP(&volume->sb) << (cluster_bits - bits)) !=
+                le32_to_cpu(volume->raw.s_blocks_per_group)) goto corrupt;
+    }
+    desc = ext4_has_feature_64bit(&volume->sb) ? le16_to_cpu(volume->raw.s_desc_size) : 32;
+    inode_size = le32_to_cpu(volume->raw.s_rev_level) ? le16_to_cpu(volume->raw.s_inode_size) : 128;
+    if (desc < (ext4_has_feature_64bit(&volume->sb) ? 64U : 32U) ||
+        desc > 1024 || (desc & (desc - 1)) ||
+        inode_size < 128 || inode_size > volume->sb.s_blocksize || (inode_size & (inode_size - 1))) goto corrupt;
+    if (EXT4_INODES_PER_GROUP(&volume->sb) > volume->sb.s_blocksize * 8 ||
+        EXT4_CLUSTERS_PER_GROUP(&volume->sb) > volume->sb.s_blocksize * 8) goto corrupt;
+    sbi->s_desc_size = desc;
+    sbi->s_desc_per_block = volume->sb.s_blocksize / desc;
+    sbi->s_inode_size = inode_size;
+    if (EXT4_INODES_PER_GROUP(&volume->sb) % (volume->sb.s_blocksize / inode_size) ||
+        (EXT4_CLUSTERS_PER_GROUP(&volume->sb) & 7)) goto corrupt;
+    if (ext4_has_feature_meta_bg(&volume->sb)) {
+        u64 blocks = le32_to_cpu(volume->raw.s_blocks_count_lo);
+        u32 per_group = le32_to_cpu(volume->raw.s_blocks_per_group);
+        u32 first = le32_to_cpu(volume->raw.s_first_data_block);
+        u64 groups;
+        if (ext4_has_feature_64bit(&volume->sb)) blocks |= (u64)le32_to_cpu(volume->raw.s_blocks_count_hi) << 32;
+        if (!per_group || blocks <= first) goto corrupt;
+        groups = (blocks - first + per_group - 1) / per_group;
+        if (le32_to_cpu(volume->raw.s_first_meta_bg) >
+            (groups + sbi->s_desc_per_block - 1) / sbi->s_desc_per_block) goto corrupt;
+    }
+    if (ext4_has_feature_metadata_csum(&volume->sb) && volume->raw.s_checksum_type != 1) goto corrupt;
+    if (!ext4_superblock_csum_verify(&volume->sb, &volume->raw)) goto corrupt;
+    sbi->s_csum_seed = ext4_has_feature_csum_seed(&volume->sb) ?
+        le32_to_cpu(volume->raw.s_checksum_seed) : ext4_chksum(~0U, volume->raw.s_uuid, 16);
+    *result = volume;
+    return 0;
+corrupt:
+    free(volume);
+    return -EFSCORRUPTED;
+}
+
+void ext_linux_close(struct ext_volume *volume) { free(volume); }
+uint64_t ext_linux_descriptor_block(struct ext_volume *volume, unsigned int number)
+{
+    return descriptor_loc(&volume->sb, volume->sb.s_blocksize == 1024 ? 1 : 0, number);
+}
+int ext_linux_group_check(struct ext_volume *volume, uint32_t group, const void *descriptor)
+{
+    return ext4_group_desc_csum_verify(&volume->sb, group, (struct ext4_group_desc *)descriptor) ? 0 : -EFSBADCRC;
+}
+int ext_linux_bitmap_check(struct ext_volume *volume, const void *descriptor, const void *bitmap, int inode_bitmap)
+{
+    struct buffer_head bh = { .b_data = (char *)bitmap, .b_size = volume->sb.s_blocksize };
+    int ok = inode_bitmap ? ext4_inode_bitmap_csum_verify(&volume->sb, (struct ext4_group_desc *)descriptor, &bh) :
+        ext4_block_bitmap_csum_verify(&volume->sb, (struct ext4_group_desc *)descriptor, &bh);
+    return ok ? 0 : -EFSBADCRC;
+}
+
+static struct ext_time base_time(__le32 base)
+{
+    struct ext_time result = { (int32_t)le32_to_cpu(base), 0, 1 };
+    return result;
+}
+static struct ext_time extra_time(__le32 base, __le32 extra)
+{
+    struct timespec64 ts = ext4_decode_extra_time(base, extra);
+    struct ext_time result = { ts.tv_sec, (u32)ts.tv_nsec, 1 };
+    return result;
+}
+#define DECODE_TIME(destination, field) do { \
+    (destination) = base_time(raw->field); \
+    if (EXT4_FITS_IN_INODE(raw, ei, field##_extra)) \
+        (destination) = extra_time(raw->field, raw->field##_extra); \
+} while (0)
+int ext_linux_inode_open(struct ext_volume *volume, uint32_t ino, const void *data,
+                        struct ext_node **result, struct ext_node_info *info)
+{
+    struct ext_node *node;
+    struct inode *inode;
+    struct ext4_inode_info *ei;
+    struct ext4_inode *raw;
+    struct ext4_iloc iloc;
+    __le32 inum = cpu_to_le32(ino);
+    unsigned int size = EXT4_INODE_SIZE(&volume->sb);
+    int error;
+    *result = NULL;
+    memset(info, 0, sizeof(*info));
+    node = calloc(1, sizeof(*node) + size);
+    if (!node) return -ENOMEM;
+    inode = &node->inode;
+    inode->i_sb = &volume->sb;
+    inode->i_ino = ino;
+    inode->raw.b_data = (char *)(node + 1);
+    inode->raw.b_size = size;
+    memcpy(inode->raw.b_data, data, size);
+    raw = (struct ext4_inode *)inode->raw.b_data;
+    ei = &inode->info;
+    ei->i_extra_isize = size > 128 ? le16_to_cpu(raw->i_extra_isize) : 0;
+    if ((ei->i_extra_isize & 3) || 128U + ei->i_extra_isize > size) goto corrupt;
+    ei->i_csum_seed = ext4_chksum(volume->sb.info.s_csum_seed, &inum, sizeof(inum));
+    ei->i_csum_seed = ext4_chksum(ei->i_csum_seed, &raw->i_generation, sizeof(raw->i_generation));
+    if (!ext4_inode_csum_verify(inode, raw, ei)) goto corrupt;
+    inode->flags = le32_to_cpu(raw->i_flags);
+    if ((inode->flags & (1U << 19)) && !(le32_to_cpu(volume->raw.s_feature_incompat) & 0x40)) goto corrupt;
+    if ((inode->flags & (1U << 28)) && !(le32_to_cpu(volume->raw.s_feature_incompat) & 0x8000)) goto corrupt;
+    if ((inode->flags & 0x1000U) && ext4_has_feature_metadata_csum(&volume->sb) &&
+        !(le32_to_cpu(volume->raw.s_feature_compat) & 0x20)) goto corrupt;
+    inode->i_size = le32_to_cpu(raw->i_size_lo);
+    if ((le16_to_cpu(raw->i_mode) & 0170000) == 0100000 ||
+        (le32_to_cpu(volume->raw.s_feature_incompat) & 0x4000))
+        inode->i_size |= (u64)le32_to_cpu(raw->i_size_high) << 32;
+    ext4_get_inode_loc(inode, &iloc);
+    if (EXT4_INODE_HAS_XATTR_SPACE(inode)) {
+        struct ext4_xattr_ibody_header *header = IHDR(inode, raw);
+        if (header->h_magic == cpu_to_le32(EXT4_XATTR_MAGIC)) {
+            error = xattr_check_inode(inode, header, ITAIL(inode, raw));
+            if (error) goto fail;
+            ei->xattr = true;
+        }
+    }
+    error = ext4_find_inline_data_nolock(inode);
+    if (error) goto fail;
+    if (inode->flags & (1U << 28)) {
+        if (!ei->i_inline_off || (inode->flags & (1U << 19))) goto corrupt;
+        if ((le16_to_cpu(raw->i_mode) & 0170000) != 0040000 && inode->i_size > ei->i_inline_size) goto corrupt;
+        info->inline_size = ei->i_inline_size;
+    }
+    info->size = inode->i_size;
+    info->checksum_seed = ei->i_csum_seed;
+    DECODE_TIME(info->atime, i_atime);
+    DECODE_TIME(info->mtime, i_mtime);
+    DECODE_TIME(info->change_time, i_ctime);
+    if (EXT4_FITS_IN_INODE(raw, ei, i_crtime)) { DECODE_TIME(info->birth_time, i_crtime); }
+    *result = node;
+    return 0;
+corrupt:
+    error = -EFSCORRUPTED;
+fail:
+    free(node);
+    return error;
+}
+#undef DECODE_TIME
+void ext_linux_inode_close(struct ext_node *node) { free(node); }
+int ext_linux_xattr_check(struct ext_node *node, uint64_t block, const void *data)
+{
+    struct buffer_head bh = { .b_data = (char *)data, .b_size = node->inode.i_sb->s_blocksize, .b_blocknr = block };
+    return __ext4_xattr_check_block(&node->inode, &bh, __func__, __LINE__);
+}
+int ext_linux_inline_read(struct ext_node *node, void *output, unsigned int size)
+{
+    struct ext4_iloc iloc;
+    ext4_get_inode_loc(&node->inode, &iloc);
+    return ext4_read_inline_data(&node->inode, output, size, &iloc);
+}
+int ext_linux_inline_directory(struct ext_node *node, ext_dir_emit emit, void *context)
+{
+    struct dir_private_info private = { .cookie = 1 };
+    struct file file = { &node->inode, &private };
+    struct dir_context ctx = { .emit = emit, .context = context };
+    int has_inline = 1;
+    int error = ext4_read_inline_dir(&file, &ctx, &has_inline);
+    return error ? error : ctx.error ? ctx.error : node->inode.error;
+}
+int ext_linux_extent_check(struct ext_volume *volume, uint32_t seed, const void *block)
+{
+    struct inode inode = { .i_sb = &volume->sb, .info = { .i_csum_seed = seed } };
+    struct ext4_extent_header *header = (struct ext4_extent_header *)block;
+    if (EXT4_EXTENT_TAIL_OFFSET(header) + sizeof(struct ext4_extent_tail) > volume->sb.s_blocksize) return -EFSCORRUPTED;
+    return ext4_extent_block_csum_verify(&inode, header) ? 0 : -EFSBADCRC;
+}
+int ext_linux_directory_check(struct ext_volume *volume, uint32_t seed, uint32_t flags, const void *block)
+{
+    struct inode inode = { .i_sb = &volume->sb, .flags = flags, .info = { .i_csum_seed = seed } };
+    struct buffer_head bh = { .b_data = (char *)block, .b_size = volume->sb.s_blocksize };
+    unsigned int len = ext4_rec_len_from_disk(((struct ext4_dir_entry *)block)->rec_len, volume->sb.s_blocksize);
+    if ((flags & 0x1000U) && (len == 12 || len == volume->sb.s_blocksize))
+        return ext4_dx_csum_verify(&inode, (struct ext4_dir_entry *)block) ? 0 : -EFSBADCRC;
+    return ext4_dirblock_csum_verify(&inode, &bh) ? 0 : -EFSBADCRC;
+}

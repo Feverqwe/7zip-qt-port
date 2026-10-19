@@ -59,10 +59,12 @@ QString Text(IInArchive *archive, UInt32 index, PROPID id) {
 HRESULT CheckFeatures(IInArchive *archive) {
     // Ask the official handler for its public feature descriptions. Unknown
     // features stay unsupported; no superblock parsing lives in this boundary.
-    const QSet<QString> incompatible{"FILETYPE", "EXTENTS", "64BIT", "FLEX_BG"};
-    const QSet<QString> readOnly{"SPARSE_SUPER", "LARGE_FILE",    "HUGE_FILE",
-                                 "GDT_CSUM",     "DIR_NLINK",     "EXTRA_ISIZE",
-                                 "QUOTA",        "METADATA_CSUM", "READONLY"};
+    const QSet<QString> incompatible{"FILETYPE", "EXTENTS",     "64BIT",    "FLEX_BG",
+                                     "META_BG",  "MMP",         "EA_INODE", "CSUM_SEED",
+                                     "LARGEDIR", "INLINE_DATA", "CASEFOLD"};
+    const QSet<QString> readOnly{"SPARSE_SUPER", "LARGE_FILE",  "HUGE_FILE", "GDT_CSUM",
+                                 "DIR_NLINK",    "EXTRA_ISIZE", "QUOTA",     "METADATA_CSUM",
+                                 "READONLY",     "BTREE_DIR",   "BIGALLOC",  "PROJECT"};
     UInt32 count = 0;
     RINOK(archive->GetNumberOfArchiveProperties(&count))
     bool checkedIncompatible = false, checkedReadOnly = false;

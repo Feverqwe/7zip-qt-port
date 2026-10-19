@@ -2,10 +2,14 @@
 #include "7zip/PropID.h"
 #include "Windows/PropVariant.h"
 #include "archivecodeccatalog.h"
+#include "archivecodecprobe.h"
 #include "archivedevice.h"
 #include "archivenativeopen.h"
 #include "deviceaccess.h"
 #include <QDir>
+#include <QFileInfo>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QProcess>
 #include <QStandardPaths>
 #include <QTemporaryDir>
@@ -123,9 +127,22 @@ class ArchiveDeviceTests final : public QObject {
 #ifndef SEVENZIP_CODEC_MODULE
         QSKIP("Official module unavailable; direct-device engine integration unverified");
 #else
-        engine_ = QStandardPaths::findExecutable("7zz");
-        QVERIFY(!engine_.isEmpty());
-        catalog_ = std::make_shared<ArchiveCodecCatalog>(QStringLiteral(SEVENZIP_CODEC_MODULE), 0);
+        const QString module = QStringLiteral(SEVENZIP_CODEC_MODULE);
+        engine_ = QFileInfo(module).dir().filePath(
+#ifdef Q_OS_WIN
+            "7z.exe"
+#else
+            "7z"
+#endif
+        );
+        ArchiveCodecProbe probe;
+        bool done = false;
+        QVERIFY(probe.Start(engine_, module, [&](auto result) {
+            catalog_ = result.catalog;
+            done = true;
+        }));
+        QTRY_VERIFY(done);
+        QVERIFY(catalog_);
         QVERIFY2(catalog_->result() == S_OK, qPrintable(catalog_->error()));
 #endif
     }
@@ -206,6 +223,54 @@ class ArchiveDeviceTests final : public QObject {
         QVERIFY(!reader);
         QCOMPARE(device.openPartition(2, nullptr, reader), E_INVALIDARG);
     }
+    void readsModernLinuxLayoutsFromDirectDevices_data() {
+        QTest::addColumn<QString>("layout");
+        for (const auto &name : {"inline", "bigalloc", "meta-bg"})
+            QTest::newRow(name) << QString::fromLatin1(name);
+    }
+    void readsModernLinuxLayoutsFromDirectDevices() {
+        QFETCH(QString, layout);
+        const QDir directory(QStringLiteral(DEVICE_FIXTURE_DIR "/../ext4"));
+        QFile manifest(directory.filePath("manifest.json"));
+        QVERIFY(manifest.open(QIODevice::ReadOnly));
+        const auto info = QJsonDocument::fromJson(manifest.readAll())
+                              .object()["images"]
+                              .toObject()[layout]
+                              .toObject();
+        QFile compressed(directory.filePath(layout + ".ext4.zlib"));
+        QVERIFY(compressed.open(QIODevice::ReadOnly));
+        const UInt32 size = UInt32(info["size"].toDouble());
+        QByteArray encoded;
+        for (int shift : {24, 16, 8, 0})
+            encoded.append(char(size >> shift));
+        encoded.append(compressed.readAll());
+        const auto bytes = qUncompress(encoded);
+        QCOMPARE(bytes.size(), qsizetype(size));
+        CMyComPtr<IInStream> input = new CDeviceInput(bytes);
+        ArchiveDevice device(catalog_);
+        QCOMPARE(device.inspect(input, size, "USB", nullptr), S_OK);
+        std::shared_ptr<ArchiveNativeOpen> reader;
+        QCOMPARE(device.openPartition(0, nullptr, reader), S_OK);
+        QVERIFY(reader);
+        UInt32 count = 0, index = UInt32(-1);
+        QCOMPARE(reader->arc().Archive->GetNumberOfItems(&count), S_OK);
+        for (UInt32 i = 0; i < count; ++i) {
+            NWindows::NCOM::CPropVariant path;
+            QCOMPARE(reader->arc().Archive->GetProperty(i, kpidPath, &path), S_OK);
+            if (path.vt == VT_BSTR &&
+                QString::fromWCharArray(path.bstrVal) == QStringLiteral("данные 空.bin"))
+                index = i;
+        }
+        QVERIFY(index != UInt32(-1));
+        auto *output = new CExtractUi;
+        CMyComPtr<IArchiveExtractCallback> callback = output;
+        QCOMPARE(reader->arc().Archive->Extract(&index, 1, 0, callback), S_OK);
+        QCOMPARE(output->ItemResult, Int32(NArchive::NExtract::NOperationResult::kOK));
+        QByteArray expected;
+        for (int i = 0; i < 100; ++i)
+            expected.append(char(i));
+        QCOMPARE(output->bytes(), expected);
+    }
     void rejectsPartitionsBeyondAuthorizedDeviceBoundary() {
         const QByteArray disk = fixture("mbr");
         QVERIFY(!disk.isEmpty());
@@ -223,19 +288,16 @@ class ArchiveDeviceTests final : public QObject {
         QTest::addColumn<int>("field");
         QTest::addColumn<int>("bit");
         QTest::newRow("journal-recovery") << 0x60 << 2;
-        QTest::newRow("inline-data") << 0x60 << 15;
         QTest::newRow("encryption") << 0x60 << 16;
-        QTest::newRow("unknown-incompatible") << 0x60 << 30;
-        QTest::newRow("bigalloc") << 0x64 << 9;
     }
     void refusesUnsupportedFeaturesOnlyForDirectDevices() {
         QFETCH(int, field);
         QFETCH(int, bit);
         QByteArray disk = fixture("ext4");
         QVERIFY(disk.size() > 2048);
-        // Controlled feature declarations in a generated filesystem fixture.
-        // The original handler must still open it, proving rejection below is
-        // the device policy rather than an incidental parser failure.
+        // Controlled declarations of recover/encrypt with no changed file data.
+        // Disable optional checksums so declaration changes reach device policy.
+        disk[1024 + 0x65] = char(quint8(disk[1024 + 0x65]) & ~4u);
         const int byte = 1024 + field + bit / 8;
         disk[byte] = char(quint8(disk[byte]) | (1u << (bit % 8)));
         QTemporaryDir directory;

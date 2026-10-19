@@ -76,6 +76,25 @@
     "fs/ext4/xattr_hurd.c": "4945880a4e788bf12e65be2e6c121177be49dfa6172b813c4c9eb72c823a33ec",
     "fs/ext4/xattr_security.c": "9ff6ed915a847cd4c2976f4d004ef99ce2d53adc718ec6db5a221825da29b4ac",
     "fs/ext4/xattr_trusted.c": "57eb676c2b9fd98765a013577fad3b23352f61e9e5f7aa2415e7ced731a6482b",
-    "fs/ext4/xattr_user.c": "9edb34db46c9d60cdefdfad8908fb476246f6fe17d1a71e1070f06532788224c"
-  }
+    "fs/ext4/xattr_user.c": "9edb34db46c9d60cdefdfad8908fb476246f6fe17d1a71e1070f06532788224c",
+    "lib/crc/crc16.c": "e2916771fef3d5a2bc6ae18740dffb2ded44e1e08e117a9c7d4b8bd27cd45fda",
+    "lib/crc/crc32-main.c": "83cf1aab62cf8a05e352fb4acc1fa8cda514ebd4f5601c95e42fa9126a7fb2cb",
+    "lib/crc/gen_crc32table.c": "b2d4fe27ca5ae1cdd14bc3fc2919b62568817dd9dccd9da8a35b41a24f3df3fe"
+  },
+  "adapted": [
+    "fs/ext4/balloc.c",
+    "fs/ext4/bitmap.c",
+    "fs/ext4/dir.c",
+    "fs/ext4/ext4.h",
+    "fs/ext4/ext4_extents.h",
+    "fs/ext4/extents.c",
+    "fs/ext4/inline.c",
+    "fs/ext4/inode.c",
+    "fs/ext4/namei.c",
+    "fs/ext4/super.c",
+    "fs/ext4/xattr.c",
+    "fs/ext4/xattr.h",
+    "lib/crc/crc16.c",
+    "lib/crc/crc32-main.c"
+  ]
 }

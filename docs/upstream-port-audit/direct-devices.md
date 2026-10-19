@@ -63,6 +63,14 @@ Upstream Ext публикует feature descriptions, но не применяе
 данных. Собственный superblock parser не добавляется; обычное открытие `.img`
 не получает это ограничение. Список проверяемых возможностей остаётся в коде.
 
+Актуализация ext по [Linux reference](ext-linux.md) подключает отдельный Ext
+format-модуль через штатное обнаружение движка. Direct-device open принимает
+реализованные современные metadata/inline layouts; encrypted content и journal
+recovery по-прежнему не публикуются как готовый reader. Новые creator fixtures
+проверяют извлечение точных байтов из inline, BIGALLOC и META_BG через
+авторизованный поток. Ключи fscrypt и fs-verity verification остаются в общем
+scope актуализации ext, а не считаются реализованными этим разрешением layouts.
+
 ## Выбор устройства и панель
 
 Перед подключением сравнены upstream `CPP/7zip/UI/FileManager/PanelItemOpen.cpp`
