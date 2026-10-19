@@ -150,6 +150,33 @@ class IsoTests(unittest.TestCase):
                     self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
                     self.assertEqual(result.stdout, expected)
 
+    def test_linux_read_policies_and_optional_dates(self):
+        from iso_policy_fixture import PROFILES
+        for kind, properties in PROFILES.items():
+            image, files = volume(kind)
+            for name, expected in files.items():
+                with self.subTest(kind=kind, name=name):
+                    result = self.run_image("7z", image, name, properties=properties)
+                    self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                    self.assertEqual(result.stdout, expected)
+
+    def test_filtered_bad_directory_is_not_traversed(self):
+        image = volume("policy-associated-bad")[0]
+        result = self.run_image("7z", image)
+        self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+        self.assertNotEqual(self.run_image("7z", image, properties=("showassoc",)).returncode, 0)
+
+    def test_invalid_read_policy_is_rejected(self):
+        for properties in (("hide=wrong",), ("sbsector",), ("sbsector=-1",), ("sbsector=4294967295",)):
+            with self.subTest(properties=properties):
+                self.assertNotEqual(self.run_image("7z", volume("plain")[0], properties=properties).returncode, 0)
+
+    def test_disabling_joliet_without_primary_is_rejected(self):
+        image = volume("policy-joliet-only")[0]
+        self.assertNotEqual(self.run_image("7z", image, properties=("nojoliet",)).returncode, 0)
+        image = volume("policy-norock-bad-primary")[0]
+        self.assertNotEqual(self.run_image("7z", image).returncode, 0)
+
     def test_zisofs_decoded_bytes(self):
         for kind in ("zisofs", "zisofs-shift0", "zisofs-pointer-boundary", "zisofs-expanding", "zisofs-small-sparse",
                      "zisofs-shift17", "zisofs-padding", "zisofs-header0", "zisofs-embedded-header",

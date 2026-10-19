@@ -11,6 +11,7 @@
 #include "../../Common/StreamUtils.h"
 #ifdef SEVENZIP_LINUX_ISO
 #include "../../../../isonames.h"
+#include "../../Common/MethodProps.h"
 #include "../../Common/StreamObjects.h"
 #include "IsoZisofs.h"
 #endif
@@ -32,6 +33,7 @@ Z7_COM7F_IMF(CHandler::SetProperties(const wchar_t *const *names, const PROPVARI
                                      UInt32 numProps)) {
     char mapping = 0;
     int charset = 0;
+    CReadOptions options;
     for (UInt32 i = 0; i < numProps; ++i) {
         const wchar_t *name = names[i];
         const PROPVARIANT &value = values[i];
@@ -57,12 +59,30 @@ Z7_COM7F_IMF(CHandler::SetProperties(const wchar_t *const *names, const PROPVARI
             charset = sevenzip_iso_charset(charsetName);
             if (charset < 0)
                 return E_INVALIDARG;
+        } else if (StringsAreEqualNoCase_Ascii(name, "norock")) {
+            RINOK(PROPVARIANT_to_bool(value, options.NoRock))
+        } else if (StringsAreEqualNoCase_Ascii(name, "nojoliet")) {
+            RINOK(PROPVARIANT_to_bool(value, options.NoJoliet))
+        } else if (StringsAreEqualNoCase_Ascii(name, "nocompress")) {
+            RINOK(PROPVARIANT_to_bool(value, options.NoCompress))
+        } else if (StringsAreEqualNoCase_Ascii(name, "hide")) {
+            RINOK(PROPVARIANT_to_bool(value, options.Hide))
+        } else if (StringsAreEqualNoCase_Ascii(name, "showassoc") ||
+                   StringsAreEqualNoCase_Ascii(name, "unhide")) {
+            RINOK(PROPVARIANT_to_bool(value, options.ShowAssociated))
+        } else if (StringsAreEqualNoCase_Ascii(name, "cruft")) {
+            RINOK(PROPVARIANT_to_bool(value, options.Cruft))
+        } else if (StringsAreEqualNoCase_Ascii(name, "sbsector")) {
+            if (value.vt != VT_UI4)
+                return E_INVALIDARG;
+            RINOK(ParsePropToUInt32(UString(), value, options.SbSector))
         } else if (!IsString1PrefixedByString2_NoCase_Ascii(name, "mt") &&
                    !IsString1PrefixedByString2_NoCase_Ascii(name, "memuse"))
             return E_INVALIDARG;
     }
     _archive.NameMapping = mapping;
     _archive.NameCharset = charset;
+    _archive.ReadOptions = options;
     return S_OK;
 }
 #endif
@@ -534,13 +554,14 @@ Z7_COM7F_IMF(CHandler::GetStream(UInt32 index, ISequentialInStream **stream)) {
 
         for (UInt32 i = 0; i < ref.NumExtents; i++) {
             const CDir &item2 = ref.Dir->_subItems[ref.Index + i];
-            if (item2.Size == 0)
+            const UInt64 size = _archive.GetExtentSize(ref, i, virtOffset);
+            if (size == 0)
                 continue;
             CSeekExtent se;
             se.Phy = _archive.GetDataPosition(item2);
             se.Virt = virtOffset;
             extentStream->Extents.Add(se);
-            virtOffset += item2.Size;
+            virtOffset += size;
         }
         if (virtOffset != ref.TotalSize)
             return S_FALSE;

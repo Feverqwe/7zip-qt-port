@@ -71,7 +71,7 @@ HRESULT CInArchive::ReadRock(CDirRecord &item, bool namesOnly) {
     item.RockHidden = result == -1;
     if (item.RockHidden)
         return S_OK;
-    item.RockDefined = _rockState.rock != 0;
+    item.RockDefined = !namesOnly || _rockState.rock != 0;
     item.RockName = name;
     item.RockLink = link;
     if (item.RockDefined && !namesOnly) {
@@ -166,11 +166,21 @@ HRESULT CInArchive::ReadName(CDirRecord &item) {
     return S_OK;
 }
 
-HRESULT CInArchive::SelectRockVolume() {
-    const int joliet = MainVolDescIndex;
-    MainVolDescIndex = 0;
-    const CVolumeDescriptor &primary = VolDescs[0];
-    _rockState.rock = 2;
+HRESULT CInArchive::SelectRockVolume(int primaryIndex, int joliet) {
+    if (joliet >= 0 && (primaryIndex < 0 || ReadOptions.NoRock)) {
+        MainVolDescIndex = joliet;
+        _rockState.rock = 0;
+        return S_OK;
+    }
+    if (primaryIndex < 0)
+        return S_FALSE;
+    MainVolDescIndex = primaryIndex;
+    const CVolumeDescriptor &primary = VolDescs[primaryIndex];
+    if (!primary.VolumeSpaceSize ||
+        (primary.LogicalBlockSize != 512 && primary.LogicalBlockSize != 1024 &&
+         primary.LogicalBlockSize != 2048))
+        return S_FALSE;
+    _rockState.rock = ReadOptions.NoRock ? 0 : 2;
     _rockState.rock_offset = -1;
     HRESULT result = S_FALSE;
     bool primaryIsDir = false;
@@ -191,7 +201,7 @@ HRESULT CInArchive::SelectRockVolume() {
     }
     if (result != S_OK && result != S_FALSE)
         return result;
-    const bool hasJoliet = joliet > 0 && VolDescs[joliet].IsJoliet();
+    const bool hasJoliet = joliet >= 0;
     const int choice =
         isofs_fill_super(&_rockState, result == S_OK ? 0 : -EIO, hasJoliet,
                          hasJoliet && VolDescs[joliet].RootDirRecord.GetDataBlock() !=

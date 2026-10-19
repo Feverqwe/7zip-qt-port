@@ -346,10 +346,71 @@ archive reader отклоняет такую цепочку. Interleave и не�
 overrides и cruft mount option не копируются. GPL code остаётся только в
 изолированном module; standalone engine сохраняет прежнее чтение ISO inode.
 
+## Выбор read path, legacy sizes и необязательные даты
+
+Сравнены полный option parse/default/assignment scope `inode.c`, выбор
+primary/Joliet и descriptor scan, `isofs_read_inode` до/после RR overrides,
+mapping loop `isofs_get_blocks` и filter в `do_isofs_readdir`. Переданы read
+options `norock`, `nojoliet`, `nocompress`, `hide`, `showassoc`/`unhide`, `cruft`
+и `sbsector`. Property loop использует существующие LGPL MethodProps helpers
+`PROPVARIANT_to_bool`/`ParsePropToUInt32` с их полными callers/dependencies.
+Их authoritative adaptation сохраняет mixed baseline
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17` из того же 7-Zip repository;
+StringToInt переиспользуется из текущего exact baseline. Второго bool/number
+parser не добавлено. Settings применяются атомарно; пустой SetProperties
+сбрасывает defaults следующего Open, а существующий extent map остаётся прежним.
+
+`norock` отключает также старый SUSP fallback handler, а не только Linux PX/NM.
+`nojoliet` исключает Joliet из root choice, сохраняя RR preference и fallback
+правила. File inode defaults/date projection применяется и без RR/Joliet.
+`nocompress` подключает исходную C ZF branch: caller получает хранимые bytes,
+включая испорченный zlib payload, без попытки декодировать их как zisofs.
+
+Исходная C flag predicate скрывает associated records по умолчанию; `showassoc`
+и его Linux alias `unhide` включают их. Hidden flag сам по себе не скрывает
+record, пока не задан `hide`. Predicate вызывается до metadata/name conversion
+и обхода child directory, поэтому скрытый повреждённый child не ломает каталог.
+Это Linux read defaults; standalone archive handler сохраняет прежнюю выдачу.
+
+`cruft` передаёт исходное `i_size &= 0x00ffffff` перед RR overrides. Полный
+declared section size сохраняется для mapping; EOF ограничивает физически
+используемый префикс. Один размер используется проверкой source/volume bounds,
+созданием stream и расчётом archive physical size. Directory sections аналогично
+ограничены собственным inode size; неиспользуемый tail не читается. Строгий
+режим без `cruft` сохраняет прежние проверки. `sbsector` сдвигает только начало
+descriptor scan (сектор +16…+99); addresses extents/boot catalog остаются
+абсолютными. Все вычисления start position — 64-bit, U32 value обязательна.
+High Sierra root record читается из выбранного descriptor sector.
+
+Primary определяется по type, а не позиции в vector; неизвестный supplementary
+перед ним не подменяет выбранный том. Первый Joliet-family descriptor фиксирует
+выбор дерева, включая неизвестный level и `nojoliet`; последующий descriptor
+не заменяет его. Joliet без primary допускается, если Joliet включён.
+`norock` выбирает Joliet до чтения primary inode/geometry, как `root_found`;
+без этого flag невалидная primary geometry остаётся ошибкой. Physical-size
+reporting использует выбранный том и фактически читаемые records, игнорируя
+невалидный размер неиспользуемого primary. Flags/reserved bytes и identifier
+descriptor root не подменяют validation его собственного dot inode.
+После фиксации выбора дерева сохраняется bounded поиск El Torito boot record:
+это существующая archive extension, которую Linux VFS не предоставляет.
+Поздние volume descriptors при этом не парсятся и не меняют выбор дерева.
+
+Kernel не использует descriptor dates для VFS inode times. Необязательные
+даты больше не могут отменить открытие корректного дерева: raw fields сохраняются,
+пустые и синтаксически повреждённые значения не публикуются как timestamps.
+Корректные long-form values используют уже перенесённый `util.c:iso_date`
+с GMT sanity, calendar normalization и hundredths. Source-visible strict
+ReadDigits gate standalone engine не меняется; C algorithm не переписан.
+
+Device TOC/session discovery, аппаратный mount block size, VFS permission/owner
+overrides и casefold lookup остаются OS services; они не читают дополнительные
+дисковые features в archive projection. Вместо device session ioctl доступен
+явный descriptor sector. Mutable VFS, запись и page cache не переносятся.
+
 ## Оставшийся scope
 
-Остаются descriptor-date/mount-option quirks,
-проверка остальных RR compatibility branches на производителях. Эти read features остаются задачей,
+Остаётся проверка остальных RR compatibility branches на производителях и
+завершающая сверка read scenario по всем source-visible ветвям. Эти read features остаются задачей,
 а не принятой окончательной границей совместимости. UDF ещё не проверен.
 Kernel VFS/mount services, запись и page cache не копируются.
 
@@ -442,6 +503,37 @@ macOS app build и фактический CMake install проверили exact
 ошибку повреждённого потока и GPL/LGPL/syscall/zlib notices; staging удалён.
 Source post-comparison и exact-source SHA-256 выполнены отдельно от runtime.
 Full/slow/UI/physical-device acceptance не выполнялась.
+
+Read-policy/descriptor iteration: CLI и ABI проверяют фильтрацию до обхода
+повреждённого child, showassoc/unhide и combined flags, primary/Joliet/RR
+selection, отключение ZF decode, legacy sizes с неиспользуемым invalid tail,
+ISO/HS descriptor sector и отказ при неверных параметрах. Дополнительно
+проверены supplementary перед primary, отсутствие primary, flags Joliet,
+первая Joliet-family запись и поздний boot record. Необязательные повреждённые
+даты не ломают backend listing/selected/source-entry extraction. API проверяет
+GMT/fractions/normalization и отсутствие timestamps для пустых/повреждённых
+fields, retained streams и стабильность текущего map после reset options.
+
+Native Linux 6.8.0-146 read-only mounts подтвердили 31 positive fixture case,
+два negative root-choice controls и отдельно уточнённое сочетание flags.
+Проверялись выбранный namespace/отсутствие filtered entries и payload bytes.
+Descriptor timestamp values и виртуальный El Torito stream не публикуются
+Linux VFS и проверены отдельно через archive ABI/CLI. Все образы generated-only;
+mounts и temporary files удалены.
+
+Focused seven-suite batch: 7/7 PASS на macOS arm64, Linux x64 и Windows
+x64/MSVC, Qt 6.12; descriptor-selection receipt
+`20261019T193927Z-91afd260`. Финальный macOS seven-suite batch после сохранения
+El Torito extension — 7/7 PASS; Linux/Windows `iso`/`iso_stream` — 2/2 PASS,
+receipt `20261019T194211Z-c58111ec`. Earlier policy/flags batches также прошли
+на трёх ОС; их green status не заменяет финальное source comparison.
+
+После реализации повторно сверены тела/branches/callers, bounded reads,
+physical-size consumers и LGPL/GPL/standalone boundaries; pinned source hashes
+проверены отдельно. macOS app target собран, actual CMake install проверил все
+31 read profile по extracted bytes, отказ неверных options и пять notices.
+Staging удалён. Full/slow/UI/physical-device acceptance не выполнялась;
+существующие incremental build trees и compiler caches сохранены.
 
 После уточнения fixtures и wide-mask предупреждения повторены `iso`/`iso_stream`
 на всех трёх ОС: 2/2 PASS, remote receipt `20261019T161535Z-d5535c87`.

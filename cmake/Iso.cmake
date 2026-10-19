@@ -3,6 +3,7 @@ add_library(sevenzip_iso MODULE
     src/CPP/7zip/Archive/Iso/IsoIn.cpp src/CPP/7zip/Archive/Iso/IsoHandler.cpp
     src/CPP/7zip/Archive/Iso/IsoRegister.cpp src/CPP/7zip/Archive/Iso/IsoLinux.cpp
     src/CPP/7zip/Archive/Iso/IsoZisofs.cpp
+    src/CPP/7zip/Common/MethodProps.cpp third_party/7zip/CPP/Common/StringToInt.cpp
     third_party/7zip/CPP/7zip/Archive/Iso/IsoHeader.cpp
     src/fs/isofs/rock.c src/fs/isofs/inode.c src/fs/isofs/util.c src/kernel/time/time.c src/exfatmodule.cpp
     src/fs/isofs/compress.c src/lib/zlib_inflate/inffast.c

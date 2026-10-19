@@ -155,6 +155,27 @@ class IsoStreamTests final : public QObject {
         }
         QFAIL("Prepared engine has no ISO handler");
     }
+
+    void readProperties(const QStringList &arguments) {
+        QVERIFY(arguments.size() <= 8);
+        CMyComPtr<ISetProperties> properties;
+        QCOMPARE(
+            archive_->QueryInterface(IID_ISetProperties, reinterpret_cast<void **>(&properties)),
+            S_OK);
+        UString storage[8];
+        const wchar_t *keys[8];
+        NWindows::NCOM::CPropVariant values[8];
+        for (qsizetype i = 0; i < arguments.size(); ++i) {
+            const QString key = arguments[i].section('=', 0, 0);
+            storage[i] = key.toStdWString().c_str();
+            keys[i] = storage[i];
+            if (key == "sbsector")
+                values[i] = UInt32(arguments[i].section('=', 1).toUInt());
+            else if (arguments[i].contains('='))
+                values[i] = arguments[i].section('=', 1).toStdWString().c_str();
+        }
+        QCOMPARE(properties->SetProperties(keys, values, UInt32(arguments.size())), S_OK);
+    }
     UInt32 index(const QString &name) {
         UInt32 count = 0;
         if (archive_->GetNumberOfItems(&count) != S_OK)
@@ -454,11 +475,26 @@ class IsoStreamTests final : public QObject {
     }
     void backendExtraction_data() {
         QTest::addColumn<QString>("kind");
-        for (const char *kind :
-             {"plain", "joliet", "block-512-tail", "xar", "multi", "multi-directory", "rock",
-              "rock-joliet", "zisofs", "zisofs-multi", "sierra", "sierra-multi",
-              "names-joliet-components", "names-joliet-surrogates", "names-joliet-long",
-              "directory-multi-child", "directory-multi-root", "directory-metadata"})
+        for (const char *kind : {"plain",
+                                 "joliet",
+                                 "block-512-tail",
+                                 "xar",
+                                 "multi",
+                                 "multi-directory",
+                                 "rock",
+                                 "rock-joliet",
+                                 "zisofs",
+                                 "zisofs-multi",
+                                 "sierra",
+                                 "sierra-multi",
+                                 "names-joliet-components",
+                                 "names-joliet-surrogates",
+                                 "names-joliet-long",
+                                 "directory-multi-child",
+                                 "directory-multi-root",
+                                 "directory-metadata",
+                                 "policy-date-malformed",
+                                 "policy-associated-bad"})
             QTest::newRow(kind) << QString::fromLatin1(kind);
     }
     void backendExtraction() {
@@ -502,6 +538,7 @@ class IsoStreamTests final : public QObject {
                     kind == "directory-metadata"
                 ? QString::fromUtf8("nested/данные 空.txt")
             : kind == "multi-directory" || kind == "directory-multi-child" ? "NESTED/LATE.BIN"
+            : kind == "policy-associated-bad"                              ? "BOOT.BIN"
             : kind == "directory-multi-root"                               ? "LATE.BIN"
                                                                            : "ALPHA.BIN";
         const QByteArray expected =
@@ -652,6 +689,108 @@ class IsoStreamTests final : public QObject {
         archive_.Release();
         check(retained, projected, 0, 4096);
         createArchive();
+    }
+    void readPolicies_data() {
+        QTest::addColumn<QString>("kind");
+        QTest::addColumn<QStringList>("properties");
+        const auto row = [](const char *kind, QStringList properties) {
+            QTest::newRow(kind) << QString::fromLatin1(kind) << properties;
+        };
+        row("policy-hidden", {});
+        row("policy-hide", {"hide"});
+        row("policy-associated", {});
+        row("policy-showassoc", {"showassoc"});
+        row("policy-unhide", {"unhide"});
+        row("policy-hidden-associated", {"hide", "showassoc"});
+        row("policy-associated-bad", {});
+        row("policy-nojoliet", {"nojoliet"});
+        row("policy-rock-nojoliet", {"nojoliet"});
+        row("policy-norock", {"norock"});
+        row("policy-norock-nojoliet", {"norock", "nojoliet"});
+        row("policy-norock-bad-px", {"norock"});
+        row("policy-nocompress", {"nocompress"});
+        row("policy-nocompress-bad", {"nocompress"});
+        row("policy-cruft", {"cruft"});
+        row("policy-cruft-multi", {"cruft"});
+        row("policy-sbsector", {"sbsector=512"});
+        row("policy-sbsector-sierra", {"sbsector=512"});
+        row("policy-leading-supplementary", {"nojoliet"});
+        row("policy-joliet-only", {});
+        row("policy-joliet-flags", {});
+        row("policy-first-joliet", {});
+        row("policy-unknown-joliet", {});
+        row("policy-descriptor-optional", {});
+        row("policy-norock-bad-primary", {"norock"});
+        row("policy-late-boot", {});
+    }
+    void readPolicies() {
+        QFETCH(QString, kind);
+        QFETCH(QStringList, properties);
+        readProperties(properties);
+        loadFixture(kind);
+        CMyComPtr<IInStream> input = new Input(bytes_);
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        const auto files = record_["files"].toObject();
+        for (auto entry = files.begin(); entry != files.end(); ++entry) {
+            QVERIFY2(index(entry.key()) != UInt32(-1), qPrintable(entry.key()));
+            check(stream(entry.key()), entry.key(), 0,
+                  QByteArray::fromBase64(entry.value().toString().toLatin1()).size());
+        }
+        if (kind == "policy-hide" || kind == "policy-hidden-associated" ||
+            kind == "policy-associated" || kind == "policy-associated-bad") {
+            QVERIFY(index("ALPHA.BIN") == UInt32(-1));
+            QVERIFY(index("NESTED") == UInt32(-1));
+        }
+        QString retainedName;
+        for (auto entry = files.begin(); entry != files.end(); ++entry)
+            if (!QByteArray::fromBase64(entry.value().toString().toLatin1()).isEmpty()) {
+                retainedName = entry.key();
+                break;
+            }
+        auto retained = stream(retainedName);
+        QVERIFY(retained);
+        if (kind.startsWith("policy-cruft")) {
+            // Changing the next-open options cannot change the current map.
+            names();
+            check(stream(retainedName), retainedName, 0, 4096);
+        }
+        QCOMPARE(archive_->Close(), S_OK);
+        check(retained, retainedName, 0, 4096);
+    }
+    void descriptorDates_data() {
+        QTest::addColumn<QString>("kind");
+        QTest::addColumn<int>("offset");
+        QTest::addColumn<bool>("normalize");
+        QTest::newRow("east") << QString("policy-date-east") << 52 << false;
+        QTest::newRow("invalid-zone") << QString("policy-date-invalid-zone") << 0 << false;
+        QTest::newRow("normalize") << QString("policy-date-normalize") << 0 << true;
+        QTest::newRow("malformed") << QString("policy-date-malformed") << 0 << false;
+        QTest::newRow("empty") << QString("policy-date-empty") << 0 << false;
+    }
+    void descriptorDates() {
+        QFETCH(QString, kind);
+        QFETCH(int, offset);
+        QFETCH(bool, normalize);
+        loadFixture(kind);
+        CMyComPtr<IInStream> input = new Input(bytes_);
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        for (PROPID property : {kpidCTime, kpidMTime}) {
+            NWindows::NCOM::CPropVariant value;
+            QCOMPARE(archive_->GetArchiveProperty(property, &value), S_OK);
+            if (kind.endsWith("malformed") || kind.endsWith("empty")) {
+                QCOMPARE(value.vt, VARTYPE(VT_EMPTY));
+                continue;
+            }
+            QCOMPARE(value.vt, VARTYPE(VT_FILETIME));
+            const auto date = QDateTime(QDate(2041, 1, 2), QTime(3, 4, 5), QTimeZone::UTC)
+                                  .addDays(normalize ? 30 : 0)
+                                  .addSecs(-offset * 15 * 60);
+            const UInt64 expected =
+                UInt64(date.toSecsSinceEpoch() + 11644473600LL) * 10000000 + 3700000;
+            QCOMPARE((UInt64(value.filetime.dwHighDateTime) << 32) | value.filetime.dwLowDateTime,
+                     expected);
+        }
+        check(stream("ALPHA.BIN"), "ALPHA.BIN", 0, 4096);
     }
     void linuxRecordingDates_data() {
         QTest::addColumn<QString>("kind");

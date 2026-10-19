@@ -88,3 +88,8 @@ struct timespec64 sevenzip_iso_date(unsigned char *date, int high_sierra)
 {
     return iso_date(date, high_sierra ? ISO_DATE_HIGH_SIERRA : 0);
 }
+
+struct timespec64 sevenzip_iso_long_date(unsigned char *date)
+{
+    return iso_date(date, ISO_DATE_LONG_FORM);
+}

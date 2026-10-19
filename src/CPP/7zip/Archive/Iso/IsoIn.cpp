@@ -11,6 +11,9 @@
 #include "../HandlerCont.h"
 
 #include "IsoIn.h"
+#ifdef SEVENZIP_LINUX_ISO
+#include "../../../../isonames.h"
+#endif
 
 namespace NArchive {
 namespace NIso {
@@ -173,6 +176,10 @@ unsigned CInArchive::ReadDigits(unsigned numDigits) {
 }
 
 void CInArchive::ReadDateTime(CDateTime &d) {
+#ifdef SEVENZIP_LINUX_ISO
+    d = CDateTime();
+    ReadBytes(d.Raw, sizeof(d.Raw));
+#else
     d.Year = (UInt16)ReadDigits(4);
     d.Month = (Byte)ReadDigits(2);
     d.Day = (Byte)ReadDigits(2);
@@ -181,6 +188,7 @@ void CInArchive::ReadDateTime(CDateTime &d) {
     d.Second = (Byte)ReadDigits(2);
     d.Hundredths = (Byte)ReadDigits(2);
     d.GmtOffset = (signed char)ReadByte();
+#endif
 }
 
 void CInArchive::ReadBootRecordDescriptor(CBootRecordDescriptor &d) {
@@ -228,7 +236,11 @@ void CInArchive::ReadDirRecord(CDirRecord &r, unsigned len, bool isJolietDescrip
           but (len == 34) is fixed for Descriptor Root Directory Record
           so we ignore idLen == 2 value in Joliet Descriptor.
     */
+#ifdef SEVENZIP_LINUX_ISO
+    if (isJolietDescriptor) // descriptor root identity comes from extent + XAR
+#else
     if (isJolietDescriptor && idLen == 2) // v26.03 : we support Joliet cases
+#endif
         idLen = 0;
     if (len < 33 || idLen > len - 33)
         throw CHeaderErrorException();
@@ -250,7 +262,11 @@ void CInArchive::ReadVolumeDescriptor(CVolumeDescriptor &d) {
     d.VolFlags = ReadByte();
     ReadBytes(d.SystemId, sizeof(d.SystemId));
     ReadBytes(d.VolumeId, sizeof(d.VolumeId));
+#ifdef SEVENZIP_LINUX_ISO
+    Skip(8);
+#else
     SkipZeros(8);
+#endif
     d.VolumeSpaceSize = ReadUInt32();
     ReadBytes(d.EscapeSequence, sizeof(d.EscapeSequence));
     d.VolumeSetSize = ReadUInt16();
@@ -269,7 +285,13 @@ void CInArchive::ReadVolumeDescriptor(CVolumeDescriptor &d) {
         // len == 48 is possible for Rock Ridge?
         len = 34; // we ignore (len) value from header because
                   // next field (VolumeSetId) always starts after 34 bytes
-        ReadDirRecord(d.RootDirRecord, len, d.IsJoliet());
+        ReadDirRecord(d.RootDirRecord, len,
+#ifdef SEVENZIP_LINUX_ISO
+                      true
+#else
+                      d.IsJoliet()
+#endif
+        );
     }
     ReadBytes(d.VolumeSetId, sizeof(d.VolumeSetId));
     ReadBytes(d.PublisherId, sizeof(d.PublisherId));
@@ -290,7 +312,11 @@ void CInArchive::ReadVolumeDescriptor(CVolumeDescriptor &d) {
         // v24.05: we ignore that field, because we don't know what exact values are allowed there
         // throw CHeaderErrorException();
     }
+#ifdef SEVENZIP_LINUX_ISO
+    Skip(1); // Linux ignores the reserved descriptor byte.
+#else
     SkipZeros(1); // (Reserved for future standardization)
+#endif
     ReadBytes(d.ApplicationUse, sizeof(d.ApplicationUse));
     // Most ISO contain zeros in the following field (reserved for future standardization).
     // But some ISO programs write some data to that area.
@@ -336,10 +362,39 @@ bool CInArchive::CheckRecord(const CDirRecord &record) const {
 bool CInArchive::CheckRef(const CRef &ref) const {
     if (!ref.Valid)
         return false;
-    for (UInt32 i = 0; i < ref.NumExtents; i++)
-        if (!CheckRecord(ref.Dir->_subItems[ref.Index + i]))
-            return false;
+    UInt64 offset = 0;
+    for (UInt32 i = 0; i < ref.NumExtents; i++) {
+        const CDirRecord &record = ref.Dir->_subItems[ref.Index + i];
+        const UInt64 size = GetExtentSize(ref, i, offset);
+        offset += size;
+        if (size == record.Size) {
+            if (!CheckRecord(record))
+                return false;
+        } else if (size) {
+            CDirRecord part = record;
+            part.Size = (UInt32)size;
+            if (!CheckRecord(part))
+                return false;
+        }
+    }
     return true;
+}
+
+UInt64 CInArchive::GetExtentSize(const CRef &ref, UInt32 index, UInt64 offset) const {
+    const UInt64 size = ref.Dir->_subItems[ref.Index + index].Size;
+#ifdef SEVENZIP_LINUX_ISO
+    const CDir &item = ref.Dir->_subItems[ref.Index];
+    if (_rockState.cruft && !item.IsDir() &&
+        !(item.RockDefined && (item.RockInode.i_mode & 0170000) == 0120000)) {
+        if (offset >= ref.TotalSize)
+            return 0;
+        if (size > ref.TotalSize - offset)
+            return ref.TotalSize - offset;
+    }
+#else
+    (void)offset;
+#endif
+    return size;
 }
 
 bool CInArchive::IsSupported(const CRef &ref) const {
@@ -445,9 +500,19 @@ HRESULT CInArchive::ReadDirRecords(CDir &d, bool root, const CRef *sections) {
                 && !_highSierra
 #endif
             )
-                IsSusp = subItem.CheckSusp(SuspSkipSize);
+                IsSusp =
 #ifdef SEVENZIP_LINUX_ISO
-            if (_rockState.rock && !IsJoliet() && !subItem.IsSystemItem()) {
+                    !ReadOptions.NoRock &&
+#endif
+                    subItem.CheckSusp(SuspSkipSize);
+#ifdef SEVENZIP_LINUX_ISO
+            if (!subItem.IsSystemItem() &&
+                !sevenzip_iso_visible(subItem.FileFlags, ReadOptions.Hide,
+                                      ReadOptions.ShowAssociated)) {
+                firstItem = false;
+                continue;
+            }
+            if (!subItem.IsSystemItem()) {
                 RINOK(ReadRock(subItem, subItem.IsDir()))
                 if (subItem.RockHidden) {
                     firstItem = false;
@@ -569,6 +634,11 @@ CRef CInArchive::ReadExtentGroup(CDir &d, unsigned &i) {
             }
         }
     }
+#ifdef SEVENZIP_LINUX_ISO
+    if (_rockState.cruft && !subItem.IsDir() &&
+        !(subItem.RockDefined && (subItem.RockInode.i_mode & 0170000) == 0120000))
+        ref.TotalSize &= 0x00ffffff;
+#endif
     return ref;
 }
 
@@ -685,9 +755,16 @@ void CInArchive::ReadBootInfo() {
 HRESULT CInArchive::Open2() {
     _position = 0;
     RINOK(InStream_GetSize_SeekToEnd(_stream, _fileSize))
-    if (_fileSize < kStartPos)
+    UInt64 descriptorBase = 0;
+#ifdef SEVENZIP_LINUX_ISO
+    descriptorBase = (UInt64)ReadOptions.SbSector;
+    int primaryIndex = -1, jolietIndex = -1;
+    bool descriptorsComplete = false;
+#endif
+    const UInt64 descriptorStart = descriptorBase * kBlockSize + kStartPos;
+    if (_fileSize < descriptorStart)
         return S_FALSE;
-    RINOK(_stream->Seek(kStartPos, STREAM_SEEK_SET, &_position))
+    RINOK(_stream->Seek(descriptorStart, STREAM_SEEK_SET, &_position))
 
     PhySize = _position;
     m_BufferPos = 0;
@@ -696,8 +773,25 @@ HRESULT CInArchive::Open2() {
 
     // Linux examines volume descriptor sectors 16 through 99.
     for (unsigned descriptor = 16; descriptor < 100; descriptor++) {
+#ifdef SEVENZIP_LINUX_ISO
+        // Tree choice is frozen at the first Joliet descriptor. Retain the
+        // archive's El Torito extension without parsing later volume metadata.
+        if (descriptorsComplete && (descriptorBase + descriptor + 1) * kBlockSize > _fileSize)
+            break;
+#endif
         Byte sig[7];
         ReadBytes(sig, 7);
+#ifdef SEVENZIP_LINUX_ISO
+        if (descriptorsComplete) {
+            const bool iso = CheckSignature(kSig_CD001, sig + 1);
+            if (iso && sig[0] == NVolDescType::kTerminator)
+                break;
+            if (!iso || sig[0] != NVolDescType::kBootRecord) {
+                Skip(kBlockSize - 7);
+                continue;
+            }
+        }
+#endif
 
         if (!CheckSignature(kSig_CD001, sig + 1)) {
 #ifdef SEVENZIP_LINUX_ISO
@@ -718,11 +812,11 @@ HRESULT CInArchive::Open2() {
                 vd.VolumeSequenceNumber = hs.volume_sequence_number;
                 memcpy(vd.SystemId, hs.system_id, sizeof(vd.SystemId));
                 memcpy(vd.VolumeId, hs.volume_id, sizeof(vd.VolumeId));
-                SeekToPosition((UInt64)descriptor * kBlockSize + hs.root_offset);
+                SeekToPosition((descriptorBase + descriptor) * kBlockSize + hs.root_offset);
                 const unsigned length = ReadByte();
                 if (length < 34)
                     return S_FALSE;
-                ReadDirRecord(vd.RootDirRecord, 34);
+                ReadDirRecord(vd.RootDirRecord, 34, true);
                 VolDescs.Clear();
                 VolDescs.Add(vd);
                 break;
@@ -753,7 +847,18 @@ HRESULT CInArchive::Open2() {
             if (sig[0] == NVolDescType::kPrimaryVol) {
                 // some burners write "Joliet" Escape Sequence to primary volume
                 memset(vd.EscapeSequence, 0, sizeof(vd.EscapeSequence));
+#ifdef SEVENZIP_LINUX_ISO
+                if (primaryIndex < 0)
+                    primaryIndex = (int)VolDescs.Size();
+#endif
             }
+#ifdef SEVENZIP_LINUX_ISO
+            else if (vd.EscapeSequence[0] == 0x25 && vd.EscapeSequence[1] == 0x2f) {
+                if (!ReadOptions.NoJoliet && vd.IsJoliet())
+                    jolietIndex = (int)VolDescs.Size();
+                descriptorsComplete = true;
+            }
+#endif
             VolDescs.Add(vd);
             break;
         }
@@ -765,12 +870,14 @@ HRESULT CInArchive::Open2() {
 
     if (VolDescs.IsEmpty())
         return S_FALSE;
+#ifdef SEVENZIP_LINUX_ISO
+    MainVolDescIndex = 0;
+    if (!_highSierra)
+        RINOK(SelectRockVolume(primaryIndex, jolietIndex))
+#else
     for (MainVolDescIndex = (int)VolDescs.Size() - 1; MainVolDescIndex > 0; MainVolDescIndex--)
         if (VolDescs[MainVolDescIndex].IsJoliet())
             break;
-#ifdef SEVENZIP_LINUX_ISO
-    if (!_highSierra)
-        RINOK(SelectRockVolume())
 #endif
     /* FIXME: some volume can contain Rock Ridge, that is better than
        Joliet volume. So we need some way to detect such case */
@@ -787,10 +894,14 @@ HRESULT CInArchive::Open2() {
 #endif
 
     {
+#ifdef SEVENZIP_LINUX_ISO
+        UpdatePhySize(0, vd.Get_VolumeSpaceSize_inBytes());
+#else
         FOR_VECTOR(i, VolDescs) {
             const CVolumeDescriptor &vd2 = VolDescs[i];
             UpdatePhySize(0, vd2.Get_VolumeSpaceSize_inBytes());
         }
+#endif
     }
 
     IsArc = true;
@@ -806,10 +917,13 @@ HRESULT CInArchive::Open2() {
     {
         FOR_VECTOR(i, Refs) {
             const CRef &ref = Refs[i];
+            UInt64 offset = 0;
             for (UInt32 j = 0; j < ref.NumExtents; j++) {
                 const CDir &item = ref.Dir->_subItems[ref.Index + j];
-                if (!item.IsDir() && item.Size != 0)
-                    UpdatePhySize(GetDataPosition(item), item.Size);
+                const UInt64 size = GetExtentSize(ref, j, offset);
+                offset += size;
+                if (!item.IsDir() && size != 0)
+                    UpdatePhySize(GetDataPosition(item), size);
             }
         }
     }
@@ -873,6 +987,8 @@ void CInArchive::Clear() {
     _highSierra = false;
     memset(&_rockState, 0, sizeof(_rockState));
     _rockState.rock_offset = -1;
+    _rockState.nocompress = ReadOptions.NoCompress;
+    _rockState.cruft = ReadOptions.Cruft;
     _rockResult = S_OK;
 #endif
     IsArc = false;

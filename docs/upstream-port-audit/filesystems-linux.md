@@ -84,8 +84,10 @@ Joliet/RR fallback и normal/Acorn/raw mapping подключены к Linux C r
 Собственные inode каталогов определяют metadata и Level 3 секции, включая root;
 родительские имена сохраняются независимо от inode metadata.
 Все Linux NLS charset modules подключены к Joliet, включая aliases и
-многобайтовые преобразования. Descriptor-date/mount compatibility, metadata
-и оставшиеся read semantics сохраняются в scope. UDF ещё не проверен.
+многобайтовые преобразования. Read-path options, legacy-size `cruft`, выбор
+descriptor sector и необязательные descriptor dates актуализированы.
+Оставшиеся RR producer branches и read semantics сохраняются в scope.
+UDF ещё не проверен.
 
 ### HFS+/HFSX: fork mapping и metadata reads
 

@@ -24,6 +24,7 @@ struct sevenzip_iso_high_sierra {
 };
 int isofs_high_sierra(const unsigned char *, struct sevenzip_iso_high_sierra *);
 struct timespec64 sevenzip_iso_date(unsigned char *, int);
+struct timespec64 sevenzip_iso_long_date(unsigned char *);
 struct sevenzip_iso_inode {
     struct super_block *i_sb;
     unsigned i_blkbits;
@@ -37,7 +38,7 @@ struct sevenzip_iso_inode {
     unsigned char i_file_format, i_format_parm[3];
 };
 struct sevenzip_iso_state {
-    int rock, rock_offset;
+    int rock, rock_offset, nocompress, cruft;
     uint32_t block_size, volume_blocks;
     void *context;
     int (*read)(void *, uint64_t, void *, size_t);

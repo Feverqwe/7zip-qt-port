@@ -15,6 +15,14 @@ namespace NIso {
 
 struct CUnexpectedEndException {};
 struct CHeaderErrorException {};
+#ifdef SEVENZIP_LINUX_ISO
+// Read-side fields of Linux isofs_options; device/VFS mount services stay outside the archive.
+struct CReadOptions {
+    bool NoRock = false, NoJoliet = false, NoCompress = false;
+    bool Hide = false, ShowAssociated = false, Cruft = false;
+    UInt32 SbSector = 0;
+};
+#endif
 
 struct CDir : public CDirRecord {
     CDir *Parent = NULL;
@@ -138,6 +146,9 @@ struct CDir : public CDirRecord {
 };
 
 struct CDateTime {
+#ifdef SEVENZIP_LINUX_ISO
+    Byte Raw[17];
+#endif
     UInt16 Year;
     Byte Month;
     Byte Day;
@@ -148,11 +159,34 @@ struct CDateTime {
     signed char GmtOffset; // min intervals from -48 (West) to +52 (East) recorded.
 
     bool NotSpecified() const {
+#ifdef SEVENZIP_LINUX_ISO
+        for (unsigned i = 0; i < 16; ++i)
+            if (Raw[i] != 0 && Raw[i] != '0' && Raw[i] != ' ')
+                return false;
+        return true;
+#else
         return Year == 0 && Month == 0 && Day == 0 && Hour == 0 && Minute == 0 && Second == 0 &&
                GmtOffset == 0;
+#endif
     }
 
     bool GetFileTime(NWindows::NCOM::CPropVariant &prop) const {
+#ifdef SEVENZIP_LINUX_ISO
+        if (NotSpecified())
+            return false;
+        for (unsigned i = 0; i < 16; ++i)
+            if (Raw[i] < '0' || Raw[i] > '9')
+                return false;
+        unsigned char date[17];
+        memcpy(date, Raw, sizeof(date));
+        const timespec64 time = sevenzip_iso_long_date(date);
+        if (time.tv_sec < -11644473600LL)
+            return false;
+        prop.SetAsTimeFrom_Ft64_Prec(UInt64(time.tv_sec + 11644473600LL) * 10000000 +
+                                         time.tv_nsec / 100,
+                                     k_PropVar_TimePrec_Base + 2);
+        return true;
+#else
         UInt64 v;
         const bool res =
             NWindows::NTime::GetSecondsSince1601(Year, Month, Day, Hour, Minute, Second, v);
@@ -164,6 +198,7 @@ struct CDateTime {
             prop.SetAsTimeFrom_Ft64_Prec(v, k_PropVar_TimePrec_Base + 2);
         }
         return res;
+#endif
     }
 };
 
@@ -239,8 +274,10 @@ struct CVolumeDescriptor {
     Byte ApplicationUse[512];
 
     bool IsJoliet() const {
+#ifndef SEVENZIP_LINUX_ISO
         if ((VolFlags & 1) != 0)
             return false;
+#endif
         const Byte b = EscapeSequence[2];
         return (EscapeSequence[0] == 0x25 && EscapeSequence[1] == 0x2F &&
                 (b == 0x40 || b == 0x43 || b == 0x45));
@@ -303,13 +340,14 @@ class CInArchive {
     HRESULT ReadRock(CDirRecord &, bool namesOnly = false);
     HRESULT ReadDirectory(CDir &);
     HRESULT ReadName(CDirRecord &);
-    HRESULT SelectRockVolume();
+    HRESULT SelectRockVolume(int primary, int joliet);
 #endif
 
   public:
 #ifdef SEVENZIP_LINUX_ISO
     char NameMapping = 0;
     int NameCharset = 0;
+    CReadOptions ReadOptions;
 #endif
     HRESULT Open(IInStream *inStream, IArchiveOpenCallback *openCallback);
     void Clear();
@@ -353,6 +391,7 @@ class CInArchive {
     UInt64 GetBootItemSize(unsigned index) const;
     bool CheckRecord(const CDirRecord &record) const;
     bool CheckRef(const CRef &ref) const;
+    UInt64 GetExtentSize(const CRef &ref, UInt32 index, UInt64 offset) const;
     bool IsSupported(const CRef &ref) const;
     UInt64 GetUnpackSize(const CRef &ref) const {
 #ifdef SEVENZIP_LINUX_ISO

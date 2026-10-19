@@ -6,6 +6,7 @@
 extern "C" {
 #endif
 int sevenzip_iso_charset(const char *);
+int sevenzip_iso_visible(unsigned char, int, int);
 int sevenzip_iso_name(const unsigned char *, size_t, const unsigned char *, size_t, unsigned char,
                       int, char, int, char[1024]);
 #ifdef __cplusplus

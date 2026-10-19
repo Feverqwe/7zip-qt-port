@@ -8,6 +8,9 @@ import zlib
 
 
 def volume(kind="plain"):
+    if kind.startswith("policy-"):
+        from iso_policy_fixture import volume as policy_volume
+        return policy_volume(kind)
     if kind.startswith("names-joliet-nls-"):
         from iso_nls_fixture import volume as nls_volume
         return nls_volume(kind)

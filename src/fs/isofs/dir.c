@@ -14,6 +14,14 @@
 #include "namecompat.h"
 #include "../nls/nls.h"
 
+/* do_isofs_readdir: filter flags before Rock Ridge/name conversion. */
+int sevenzip_iso_visible(unsigned char flags, int hide, int showassoc)
+{
+    if ((hide && (flags & 1)) || (!showassoc && (flags & 4)))
+        return 0;
+    return 1;
+}
+
 /* Read-service adapter: reconstruct the already bounded directory record for
  * the original Linux naming functions. Extra zero bytes bound their lookahead. */
 int sevenzip_iso_name(const unsigned char *name, size_t name_size,

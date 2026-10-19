@@ -785,6 +785,7 @@ static int read_rock_record(struct sevenzip_iso_state *state,
     sb.state = state;
     sb.s_rock = state->rock;
     sb.s_rock_offset = state->rock_offset;
+    sb.s_nocompress = state->nocompress;
     sb.s_nzones = state->volume_blocks;
     sb.block_size = state->block_size;
     memset(output, 0, sizeof(*output));
@@ -793,7 +794,9 @@ static int read_rock_record(struct sevenzip_iso_state *state,
     output->i_mode = (record->flags & 2) ? 0040555 : 0100555;
     output->i_nlink = 1;
     output->i_size = record->size;
-    output->i_blocks = (record->size + 511) >> 9;
+    if (state->cruft)
+        output->i_size &= 0x00ffffff;
+    output->i_blocks = (output->i_size + 511) >> 9;
     output->i_first_extent = (uint32_t)record->block;
     output->i_iget5_block = record->record_block;
     output->i_iget5_offset = record->record_offset;
@@ -932,5 +935,17 @@ int sevenzip_iso_directory(struct sevenzip_iso_state *state, uint32_t block, int
         if (result) return result;
     }
     for (i = 0; i < *count; ++i) total += sections[i].size;
+    if (state->cruft && output->i_size < total) {
+        uint64_t remaining = output->i_size;
+        for (i = 0; i < *count; ++i) {
+            if (sections[i].size > remaining) sections[i].size = (uint32_t)remaining;
+            remaining -= sections[i].size;
+            if (!remaining) {
+                *count = i + 1;
+                break;
+            }
+        }
+        return 0;
+    }
     return total == output->i_size ? 0 : -EIO;
 }
