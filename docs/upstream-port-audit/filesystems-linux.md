@@ -58,3 +58,20 @@ GPT/MBR/APM, LVM и контейнеры дисков не являются фа
 проверено место сборки engine. Функциональная проверка перечисленных
 обработчиков и EROFS ещё не завершена. Эта запись задаёт scope проверки,
 а не заявляет совместимость или полную передачу Linux drivers.
+
+### exFAT: отмена cached FAT traversal
+
+[Сравненный scope и regression](exfat-linux.md#cached-fat-cancellation-2026-10-19).
+Пропущенная проверка отмены — адаптация archive callback, а не изменение
+дискового алгоритма Linux. Существующие границы TexFAT и omitted scope сохранены.
+Проверка этого scenario не означает завершения всей таблицы выше.
+
+Проверки 2026-10-19: инкрементальная сборка модуля и consumers;
+`exfat`/`exfat_backend` PASS на macOS arm64/Qt 6.12 (2,07 с), Linux x64
+и Windows x64/MSVC/Qt 6.12. Remote receipt:
+`20261019T054117Z-8147988f`. Проверены экспортируемый ABI, реальный process
+engine и ArchiveBackend на generated images, включая прежние success/error/
+TexFAT/Unicode сценарии. Общие/slow suites, физические носители и UI в эту
+проверку не входят. Инкрементальные builds и compiler caches сохранены;
+одноразовых task fixtures после успешных запусков не осталось. Посторонние
+старые Windows runner-tmp fixtures не удалялись: принадлежность не установлена.

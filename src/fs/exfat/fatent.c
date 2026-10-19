@@ -39,6 +39,10 @@ int exfat_ent_get(struct super_block *sb, unsigned int loc,
 {
 	struct exfat_sb_info *sbi = EXFAT_SB(sb);
 
+	/* Cached FAT walks must also observe userspace cancellation. */
+	if (sb->poll && sb->poll(sb->context))
+		goto err;
+
 	if (!is_valid_cluster(sbi, loc)) {
 		exfat_fs_error_ratelimit(sb,
 			"invalid access to FAT (entry 0x%08x)",

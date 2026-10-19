@@ -21,6 +21,7 @@ class Input final : public IInStream, public CMyUnknownImp {
     UInt64 position_ = 0;
 
   public:
+    bool *cancelOnRead = nullptr;
     explicit Input(QByteArray bytes) : bytes_(std::move(bytes)) {}
     Z7_COM7F_IMF(Read(void *data, UInt32 size, UInt32 *processed)) override {
         const UInt64 remaining = position_ < UInt64(bytes_.size()) ? bytes_.size() - position_ : 0;
@@ -30,6 +31,8 @@ class Input final : public IInStream, public CMyUnknownImp {
         position_ += size;
         if (processed)
             *processed = size;
+        if (cancelOnRead)
+            *cancelOnRead = true;
         return S_OK;
     }
     Z7_COM7F_IMF(Seek(Int64 offset, UInt32 origin, UInt64 *position)) override {
@@ -253,6 +256,27 @@ class ExfatTests final : public QObject {
         callback->cancel = false;
         callback->output->fail = true;
         QCOMPARE(archive_->Extract(&index, 1, 0, callback), E_FAIL);
+    }
+    void cancelDuringCyclicFileChain() {
+        ExfatFixture broken;
+        broken.fat(9, 5);
+        auto *input = new Input(broken.image);
+        CMyComPtr<IInStream> stream = input;
+        QCOMPARE(archive_->Open(stream, nullptr, nullptr), S_OK);
+        const UInt32 index = indexOf(broken.fragmentedName);
+        QVERIFY(index != UInt32(-1));
+        CMyComPtr2<IArchiveExtractCallback, Extract> callback;
+        callback.Create_if_Empty();
+        // Request cancellation when the source returns data during extraction.
+        input->cancelOnRead = &callback->cancel;
+        QCOMPARE(archive_->Extract(&index, 1, 0, callback), E_ABORT);
+        QVERIFY(callback->output->bytes.isEmpty());
+        QCOMPARE(open(fixture_.image), S_OK);
+        const UInt32 good = indexOf(fixture_.fragmentedName);
+        callback->cancel = false;
+        QCOMPARE(archive_->Extract(&good, 1, 0, callback), S_OK);
+        QCOMPARE(callback->result, Int32(NArchive::NExtract::NOperationResult::kOK));
+        QCOMPARE(callback->output->bytes, QByteArray(512, 'A') + QByteArray(188, 'B'));
     }
     void texfatRefusesInconsistentVolumes_data() {
         QTest::addColumn<unsigned>("active");

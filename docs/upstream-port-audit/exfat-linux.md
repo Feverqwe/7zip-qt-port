@@ -207,3 +207,24 @@ Validation used generated images, not real Windows CE volumes. No rendered UI,
 installed-package, full-suite or long-suite acceptance is claimed. Existing
 incremental builds and compiler caches were retained; no new archive transport
 or UI changes are involved.
+
+## Cached FAT cancellation (2026-10-19)
+
+The [Linux filesystem review](filesystems-linux.md) revisited the same pinned
+Linux revision. For this scenario, complete bodies and callers were compared:
+`fatent.c::__exfat_ent_get`, `exfat_ent_get`, `exfat_count_num_clusters`,
+`exfat_fs.h::exfat_cluster_walk`/`exfat_chain_advance`, directory entry-set
+loading, bitmap chain consumers, and the local open/extract stream adapters.
+The upstream traversal, cluster validation, loop bound and buffer ownership are
+retained. The additional userspace adaptation checks the existing cancellation
+service in `exfat_ent_get`, including reads satisfied from its FAT-sector cache.
+Kernel traversal has no archive callback to copy; checking only in `sb_bread`
+left cached cyclic walks without a cancellation checkpoint.
+
+The ABI regression requests cancellation when input data returns during
+extraction of a file with a cyclic FAT chain. It requires `E_ABORT`, no published
+file bytes and successful reuse for a valid image. It does not assert a callback
+count or source structure. With the new checkpoint removed, the regression
+failed: extraction completed with a data-error result instead of cancellation.
+With the checkpoint restored, the focused ABI/backend suites passed on macOS.
+The remaining runtime/platform evidence is recorded in the review entry.
