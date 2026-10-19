@@ -32,8 +32,8 @@ Windows source device I/O уже существует, но не означае�
 
 Реализуется [первая версия](../direct-device-reading-plan.md).
 Первый компонент предоставляет stream-level discovery и native Ext-reader;
-пользовательский UI ещё не подключён. Добавлен native access macOS;
-платформенные адаптеры Windows/Linux ещё не реализованы.
+пользовательский UI ещё не подключён. Добавлен native access macOS/Linux;
+платформенный адаптер Windows ещё не реализован.
 Это не завершённый пользовательский сценарий.
 
 ## Native access macOS
@@ -72,6 +72,29 @@ original CLimitedInStream для логических границ/seek. У ка
 в .app и deploy tool обрабатывает его loader paths; штатная упаковка подписывает
 его ad hoc вместе с остальным пакетом.
 
+## Native access Linux
+
+Локальный адаптер использует системный UDisks2 ObjectManager для выбора внешних
+whole devices; уже существующий upstream FSDrives этой службы не использует.
+Отдельного Linux root-helper и разбора форматов в привилегированном процессе нет.
+Размер логического сектора читается из kernel sysfs, открытие выполняется
+через [Block.OpenDevice](https://storaged.org/doc/udisks2-api/latest/gdbus-org.freedesktop.UDisks2.Block.html)
+в режиме `r` с exclusive-open и close-on-exec. Системную авторизацию обслуживает
+polkit; noninteractive probe не разрешает показывать запрос прав.
+
+Идентичность объединяет Block/Drive identifiers, device number и времена
+обнаружения носителя из [Drive API](https://storaged.org/doc/udisks2-api/latest/gdbus-org.freedesktop.UDisks2.Drive.html).
+После получения fd проверяются native block-device type, read-only access mode,
+device number, размер и сектор; затем повторно сверяется inventory. Отдельные
+разделы, внутренние диски, смонтированные тома и активные kernel holders не
+предлагаются как доступный источник прямого чтения. Отмена ожидания не публикует
+поздний дескриптор; поздний ответ принадлежит QtDBus и освобождается им.
+Системный диалог polkit имеет собственное действие отмены.
+
+Этот путь требует доступного UDisks2 и системного агента авторизации. Отсутствие
+службы или отказ policy возвращаются вызывающему коду. Размонтирование, изменение
+прав/политик и fallback к root-запуску GUI не выполняются.
+
 ## Проверки
 
 Образцы в `tests/fixtures/devices` создаются штатными `mke2fs`/`sfdisk` как
@@ -97,3 +120,13 @@ private CMake install, ad hoc codesign verification и запуск устано
 helper без прав проверены. Helper использует QtCore из установленной .app.
 Системный диалог авторизации, successful root fd handoff и реальный raw disk
 не проверены; соответствие user workflow этим не установлено.
+
+2026-10-19, Linux native access iteration: `udisks_device`, `device_access`,
+`device_input`, `archive_device` PASS на настроенном Linux x64 runner.
+Протокольная проверка использует частную D-Bus-шину, а не пользовательскую
+system/session bus: внешние/внутренние устройства, partitions, busy/mounted,
+смена носителя, policy denial/dismissal, отмена preflight без последующего
+запроса прав, отмена pending authorization и отказ
+regular-file fd вместо block-device. Kernel sysfs используется только как
+источник метаданных сектора; содержимое физических устройств не читается.
+Нативный successful OpenDevice/block-fd и реальное окно polkit ещё не проверены.
