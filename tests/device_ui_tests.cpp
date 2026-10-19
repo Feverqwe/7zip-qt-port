@@ -275,15 +275,19 @@ class DeviceUiTests final : public QObject {
         QTest::addColumn<bool>("needsRecovery");
         QTest::addColumn<bool>("acceptRecovery");
         QTest::addColumn<QString>("copyCommand");
+        QTest::addColumn<bool>("nestedArchive");
         for (const QString &language : {"en", "ru"}) {
-            QTest::newRow(qPrintable(language)) << language << false << false << QString();
+            QTest::newRow(qPrintable(language)) << language << false << false << QString() << false;
             QTest::newRow(qPrintable(language + "-cancel-recovery"))
-                << language << true << false << QString();
+                << language << true << false << QString() << false;
             QTest::newRow(qPrintable(language + "-accept-recovery"))
-                << language << true << true << QString();
-            for (const QString &command : {"copyAction", "extractArchiveAction"})
-                QTest::newRow(qPrintable(language + '-' + command + "-timestamp"))
-                    << language << true << true << command;
+                << language << true << true << QString() << false;
+            for (const QString &command : {"copyAction", "extractArchiveAction"}) {
+                const bool nestedArchive = language == "en";
+                QTest::newRow(qPrintable(language + '-' + command +
+                                         (nestedArchive ? "-nested" : "-timestamp")))
+                    << language << true << true << command << nestedArchive;
+            }
         }
     }
     void menuToSourcePanelCopyRefreshAndParent() {
@@ -291,6 +295,7 @@ class DeviceUiTests final : public QObject {
         QFETCH(bool, needsRecovery);
         QFETCH(bool, acceptRecovery);
         QFETCH(QString, copyCommand);
+        QFETCH(bool, nestedArchive);
         SaveRegLang(UString(language == "en" ? L"-" : L"ru"),
                     qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
         auto bytes = std::make_shared<CDeviceBytes>(fixture_);
@@ -412,8 +417,20 @@ class DeviceUiTests final : public QObject {
             QVERIFY(QMetaObject::invokeMethod(table, "cellDoubleClicked", Qt::DirectConnection,
                                               Q_ARG(int, Row(*table, part)), Q_ARG(int, 0)));
         }
-        const QString name = copyCommand.isEmpty() ? QStringLiteral("данные с пробелом.txt")
-                                                   : QStringLiteral("2024-05-07T02:00:02Z.sql.gz");
+        QString name = copyCommand.isEmpty() ? QStringLiteral("данные с пробелом.txt")
+                                             : QStringLiteral("2024-05-07T02:00:02Z.sql.gz");
+        const QString outerName = name;
+        if (nestedArchive) {
+            QTRY_VERIFY(Row(*table, name) >= 0);
+            QVERIFY(QMetaObject::invokeMethod(table, "cellDoubleClicked", Qt::DirectConnection,
+                                              Q_ARG(int, Row(*table, name)), Q_ARG(int, 0)));
+            name.chop(3);
+#ifdef Q_OS_WIN
+            // The nameless gzip derives its name from the platform-corrected
+            // temporary file used when entering an archive from a device.
+            name.replace(':', '_');
+#endif
+        }
 #ifdef Q_OS_WIN
         const QString outputName = QString(name).replace(':', '_');
 #else
@@ -452,6 +469,8 @@ class DeviceUiTests final : public QObject {
         const QByteArray copiedBytes = copied.readAll();
         if (copyCommand.isEmpty())
             QCOMPARE(copiedBytes, QByteArray("device ext4 payload\n"));
+        else if (nestedArchive)
+            QCOMPARE(copiedBytes, QByteArray("SELECT 1;\n"));
         else {
             QVERIFY(!copiedBytes.isEmpty());
             QProcess gzip;
@@ -463,15 +482,25 @@ class DeviceUiTests final : public QObject {
         window.findChild<QAction *>("refreshAction")->trigger();
         QTRY_VERIFY(Row(*table, name) >= 0);
         QCOMPARE(badge->text(), badgeText);
+        if (nestedArchive) {
+            const QString allOutput = directory.filePath("whole-gzip");
+            window.extractTo(allOutput, false, {}, options);
+            QFile allCopied(allOutput + '/' + outputName);
+            QVERIFY(allCopied.open(QIODevice::ReadOnly));
+            QCOMPARE(allCopied.readAll(), copiedBytes);
+            window.findChild<QAction *>("parentFolderAction")->trigger();
+            QTRY_VERIFY(Row(*table, outerName) >= 0);
+        }
         for (int index = folders.size() - 1; index >= 0; --index) {
             window.findChild<QAction *>("parentFolderAction")->trigger();
             QTRY_VERIFY(Row(*table, folders[index]) >= 0);
         }
         const QString allOutput = directory.filePath("whole-filesystem");
         window.extractTo(allOutput, false, {}, options);
-        QFile allCopied(allOutput + '/' + folder + '/' + outputName);
+        QFile allCopied(allOutput + '/' + folder + '/' + outputName + (nestedArchive ? ".gz" : ""));
         QVERIFY(allCopied.open(QIODevice::ReadOnly));
-        QCOMPARE(allCopied.readAll(), copiedBytes);
+        if (!nestedArchive)
+            QCOMPARE(allCopied.readAll(), copiedBytes);
         window.findChild<QAction *>("parentFolderAction")->trigger();
         QTRY_VERIFY(!badge->isVisible());
         QVERIFY(QFileInfo::exists(copied.fileName()));

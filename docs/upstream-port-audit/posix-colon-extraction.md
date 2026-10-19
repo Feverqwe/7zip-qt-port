@@ -56,5 +56,6 @@ Disposable fixture generation was removed, incremental builds/caches retained.
 
 The user subsequently confirmed that copying/extracting the gzip file itself
 works. Entering that gzip inside the device and extracting its SQL member is a
-separate reported failure still under investigation; this receipt does not claim
-that nested-archive scenario was fixed by the filename correction.
+separate failure subsequently corrected by reusing the source default-path
+resolver; see [nested stream extraction](nameless-stream-extraction.md). The
+filename correction alone did not fix that scenario.

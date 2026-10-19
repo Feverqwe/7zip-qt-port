@@ -188,6 +188,9 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 - [Имена с двоеточиями при извлечении на POSIX](upstream-port-audit/posix-colon-extraction.md)
   — native ext4 RECOVER, F5/Extract и сохранение защиты путей/Windows ADS.
 
+- [Извлечение потоков без сохранённого имени](upstream-port-audit/nameless-stream-extraction.md)
+  — source default path для Copy/Extract из gzip, открытого внутри ext4.
+
 При изменении перенесённого модуля добавлять сюда ссылку на отдельную запись
 в `docs/upstream-port-audit/`. Указывать дату, retrievable source repository,
 полный commit, пути/символы, copied/adapted/omitted scope, зависимости и причины

@@ -129,6 +129,10 @@ IInArchive *CAgentFolder::GetArchiveProperties() const {
     return _agentSpec ? _agentSpec->GetArchive() : nullptr;
 }
 
+HRESULT CAgentFolder::GetArchiveItemPath(UInt32 index, UString &path) const {
+    return _agentSpec ? _agentSpec->GetArc().GetItem_Path(index, path) : E_FAIL;
+}
+
 Z7_COM7F_IMF(CAgentFolder::GetNumberOfItems(UInt32 *numItems)) {
     if (!IsBound()) {
         *numItems = 0;

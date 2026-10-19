@@ -114,6 +114,8 @@ class CAgentFolder final : public IFolderFolder,
     CProxyItem GetItem(unsigned index) const;
     // Read-only 7zz transport boundary for original archive-index Path queries.
     IInArchive *GetArchiveProperties() const;
+    // Resolve archive-index paths with the same defaults as source extraction.
+    HRESULT GetArchiveItemPath(UInt32 index, UString &path) const;
     // Borrowed engine service for Qt presentation; the source agent retains it.
     IUnknown *GetEngineResource() const;
     // File-only refresh bridge; native ReOpen and folder binding retain ownership.

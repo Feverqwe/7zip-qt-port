@@ -173,12 +173,13 @@ HRESULT MainWindow::renderBoundFolder(bool updateAddress) {
     UInt32 count = 0;
     if (metadata && metadata->GetNumberOfItems(&count) == S_OK) {
         for (UInt32 index = 0; index < count; ++index) {
-            NWindows::NCOM::CPropVariant path, directory;
-            metadata->GetProperty(index, kpidPath, &path);
+            UString path;
+            const HRESULT pathResult = folder->GetArchiveItemPath(index, path);
+            NWindows::NCOM::CPropVariant directory;
             metadata->GetProperty(index, kpidIsDir, &directory);
             ArchiveEntry entry;
-            if (path.vt == VT_BSTR)
-                entry.path = QDir::fromNativeSeparators(QString::fromWCharArray(path.bstrVal));
+            if (pathResult == S_OK)
+                entry.path = QDir::fromNativeSeparators(ToQString(path));
             entry.directory = directory.vt == VT_BOOL && directory.boolVal != VARIANT_FALSE;
             entries_.append(entry);
         }

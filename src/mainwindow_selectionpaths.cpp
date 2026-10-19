@@ -1,6 +1,4 @@
-#include "7zip/PropID.h"
 #include "Common/StringConvert.h"
-#include "Windows/PropVariant.h"
 #include "mainwindow.h"
 #include "qtlocationfolder.h"
 
@@ -57,14 +55,11 @@ QStringList MainWindow::archivePathsForIndices(const CRecordVector<UInt32> &indi
     // Preserve the 7zz selected-directory transport policy until source Extract
     // integration (P0-12); the original engine Extract passes false here.
     folder->GetRealIndices(indices.ConstData(), indices.Size(), false, true, realIndices);
-    IInArchive *properties = folder->GetArchiveProperties();
-    if (!properties)
-        return paths;
     FOR_VECTOR(i, realIndices) {
-        NWindows::NCOM::CPropVariant path;
-        if (properties->GetProperty(realIndices[i], kpidPath, &path) != S_OK || path.vt != VT_BSTR)
+        UString path;
+        if (folder->GetArchiveItemPath(realIndices[i], path) != S_OK || path.IsEmpty())
             return {};
-        paths << ToQString(UString(path.bstrVal));
+        paths << ToQString(path);
     }
     paths.removeDuplicates();
     return paths;
