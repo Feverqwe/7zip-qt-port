@@ -7,6 +7,9 @@
 
 ## Дополнительные форматы
 
+[Проверка файловых систем по Linux](upstream-port-audit/filesystems-linux.md)
+— текущий scope проверки существующих read handlers и добавления EROFS.
+
 [Read-only Brotli](upstream-port-audit/brotli.md) — Google C decoder,
 адаптация format handler, границы распаковки `.br` и проверки.
 
