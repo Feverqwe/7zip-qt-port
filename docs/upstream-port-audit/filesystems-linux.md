@@ -89,7 +89,10 @@ descriptor sector и необязательные descriptor dates актуал�
 RR producer layouts и оставшиеся read-side consumers сверены с pinned source;
 исправлены directory-name CE context и malformed TF fractions. Runtime
 проверки и отличия archive projection перечислены в ISO audit.
-UDF ещё не проверен; остальные строки общей задачи не закрываются этим результатом.
+[UDF allocation/EOF](udf-linux.md): short/long explicit и implicit sparse,
+логический EOF, bounded directory reads и metadata bootstrap проверены вместе
+для обоих engines. Полный UDF audit и остальные строки общей задачи остаются
+открытыми; продолжения allocation descriptors — следующий UDF scope.
 
 ### HFS+/HFSX: fork mapping и metadata reads
 

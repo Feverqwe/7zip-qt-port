@@ -804,6 +804,26 @@ if(BUILD_TESTING)
     add_test(NAME hfs_stream COMMAND hfs_stream_tests -silent)
     add_dependencies(hfs_stream_tests sevenzip_hfs_runtime)
     set_tests_properties(hfs_stream PROPERTIES TIMEOUT 45)
+    add_test(NAME udf COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/udf_tests.py
+        ${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime)
+    set_tests_properties(udf PROPERTIES TIMEOUT 60)
+    qt_add_executable(udf_stream_tests tests/udf_stream_tests.cpp)
+    target_include_directories(udf_stream_tests PRIVATE src third_party/7zip/CPP)
+    target_link_libraries(udf_stream_tests PRIVATE sevenzip_panel Qt6::Test)
+    if(WIN32)
+        target_link_libraries(udf_stream_tests PRIVATE oleaut32)
+        set(udf_core_name "7z.dll")
+    else()
+        set(udf_core_name "7z.so")
+    endif()
+    target_compile_definitions(udf_stream_tests PRIVATE
+        "SEVENZIP_UDF_CORE=\"${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime/${udf_core_name}\""
+        "SEVENZIP_UDF_RUNTIME=\"${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime\""
+        "SEVENZIP_UDF_PYTHON=\"${Python3_EXECUTABLE}\""
+        "SEVENZIP_UDF_FIXTURE=\"${CMAKE_CURRENT_SOURCE_DIR}/tests/udf_fixture.py\"")
+    add_test(NAME udf_stream COMMAND udf_stream_tests -silent)
+    set_tests_properties(udf_stream PROPERTIES TIMEOUT 45)
     add_test(NAME iso COMMAND ${Python3_EXECUTABLE}
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/iso_tests.py
         ${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime "$<TARGET_FILE:sevenzip_iso>")
@@ -1653,6 +1673,7 @@ if(BUILD_TESTING)
     target_sources(ntfs_stream_tests PRIVATE ${compression_order_sources})
     target_sources(hfs_stream_tests PRIVATE ${compression_order_sources})
     target_sources(iso_stream_tests PRIVATE ${compression_order_sources})
+    target_sources(udf_stream_tests PRIVATE ${compression_order_sources})
     target_sources(fat_module_tests PRIVATE ${compression_order_sources})
     target_sources(erofs_module_tests PRIVATE ${compression_order_sources})
     target_sources(brotli_tests PRIVATE ${compression_order_sources})

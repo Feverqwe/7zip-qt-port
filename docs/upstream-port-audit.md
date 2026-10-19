@@ -40,6 +40,8 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
   — fork mapping/metadata bounds, Linux C Unicode/hardlinks, wrappers и streams.
 - [ISO9660 по Linux](upstream-port-audit/isofs-linux.md)
   — logical blocks, XAR, multi-section directories и независимые extent streams.
+- [UDF по Linux](upstream-port-audit/udf-linux.md)
+  — sparse allocation, логический EOF, directory buffers и metadata bootstrap.
 - [NTFS по Linux](upstream-port-audit/ntfs-linux.md)
   — boot/MFT, attribute lists, sparse/compressed streams и Linux C LZNT1/LZX/XPRESS.
 

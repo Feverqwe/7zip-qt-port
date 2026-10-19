@@ -1,0 +1,29 @@
+{
+  "repository": "https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git",
+  "revision": "58161ead29e50d70a317ea26b472e0c7508e69da",
+  "files": {
+    "fs/udf/Kconfig": "85679f64ee09a5e32eda84a3462bb1fda3418c2db36d92e5a1f8f2f17deb4d9b",
+    "fs/udf/Makefile": "8f31e0b19a035a747d7b534f232c0b59a494309184e6f96eb70b3a0e14e43b48",
+    "fs/udf/balloc.c": "c7d6a1ac787784e3a7dfbe2d9c23bdd77b5573083c0ff05cdf8ab652ba80937b",
+    "fs/udf/dir.c": "fca92eabd4b69680ea97138d9a42468815ce3c2a91b383a8c2b46646de53b1f6",
+    "fs/udf/directory.c": "d910afff12e5b0d4b2e9246e49e63ea3d92d5f4c2a7273a31d7555330e918f24",
+    "fs/udf/ecma_167.h": "51e4ed9ebb7d0266ea6c58dda0afb48acbc682e63ff39722bc0fe54bb23eeb7e",
+    "fs/udf/file.c": "52009e9c6d4e89cc8929ea8ff6f9c2d77f47933bab4b9cbf236c69b1acf6efc7",
+    "fs/udf/ialloc.c": "f67e1001a22d672a98cfb0f40a178ae7a96a6e497ebb61504642f221b8640114",
+    "fs/udf/inode.c": "cf521e3bc1b31e0e13d241087846a6896336687d5e09685707520f4e1f7ad514",
+    "fs/udf/lowlevel.c": "813356293ad0c39d35a1b4f2ca590206a6fc962c1eabd0f0ba1e0ace421df1e5",
+    "fs/udf/misc.c": "1f38037d1c7e090429ecfd48b48233374cf58fe51716bd4f294b5688c561206f",
+    "fs/udf/namei.c": "c3582c1b7b6c2587420edac4540ed3c4aac8c5cbf38d12ab062f278a2534a6a9",
+    "fs/udf/osta_udf.h": "e6876c86d56206c9cecbfe48ce04a7359cf760ae1c98cc31ae59dc0879aee497",
+    "fs/udf/partition.c": "310669dd4d9707b07d6f7fe4c82703ba9249b04ff062f46b7d534501e0ae979a",
+    "fs/udf/super.c": "90199b27ae39b8af1d921850b196db0036e409a73c35226f39aa033c65f7dc3f",
+    "fs/udf/symlink.c": "a680076206be2cfad13a81d843303bab32f613a60e3f39d6033c1425d23fc477",
+    "fs/udf/truncate.c": "cd5c6d2cc7dd1463db60e88fca31a7da267c65394eef8e1ab58faf82300c4a04",
+    "fs/udf/udf_i.h": "bb2c7741525d0a026d1a3c4ff09e1eb018bd8d708f3c2c5fcc309f48b76aa9e9",
+    "fs/udf/udf_sb.h": "3716958d8c2ec8265a6f3912d0545a85b9783eb89687b4b34f8552ab1de5fecb",
+    "fs/udf/udfdecl.h": "5809f4da39dce0530c270d80f1774f17a1db534b2721cd505065e3bb4d6a2b2d",
+    "fs/udf/udfend.h": "3fff57108e88e5a03e093509d5a60af3797310653d2551312736b78e3f8efc5f",
+    "fs/udf/udftime.c": "fd52cfdadb8166f34bd7b69e8c027bce88b55a5a7d0a6e213e200a51ab5ab56e",
+    "fs/udf/unicode.c": "c6990308d7a32bb4cc101dc88fca044ffc9e35f798e45d1634012cd453bd4717"
+  }
+}
