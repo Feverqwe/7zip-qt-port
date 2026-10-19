@@ -77,7 +77,9 @@ GPT/MBR/APM проверяются как дополнительные форм�
 leaves, preallocation/EOF, границы metadata и forks, boot blocks/wrappers,
 циклы каталога, независимые streams и ошибки I/O. Добавлены Linux C Unicode
 conversion/casefold и hardlink lookup в отдельном GPL-модуле; backing forks,
-xattrs и inode metadata проходят ABI/backend. Дальнейший metadata/read audit
+xattrs и inode metadata проходят ABI/backend. Подключены Linux permission defaults,
+проверки catalog/thread records и catalog FinderInfo streams, включая hardlinks.
+Дальнейший metadata/read audit
 и classic HFS остаются в scope актуализации.
 
 ### NTFS: classic data reads и LZNT1

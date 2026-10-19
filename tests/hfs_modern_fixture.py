@@ -39,7 +39,37 @@ def volume(kind="modern"):
         files["HfsFixture/" + name + ":com.sevenzip.fixture"] = b"inline attribute content"
     for name in ("café", "각", "emoji 😃", "null-name", "slash:name", "single \u200dX"):
         files["HfsFixture/" + name.replace(':', '_')] = ("payload for " + name + "\n").encode() * 5
-    if kind == "modern-nul":
+    if kind == "modern-permissions":
+        for name in ("iNode20", "links"):
+            record = records[name]
+            put32(record + 32, 0)
+            put32(record + 36, 0)
+            struct.pack_into(">H", image, record + 42, 0)
+        image[records["iNode20"] + 40:records["iNode20"] + 42] = bytes((6, 3))
+        file_info = b"BINASZIP" + bytes(range(24))
+        folder_info = bytes(range(32))
+        image[records["iNode20"] + 48:records["iNode20"] + 80] = file_info
+        image[records["links"] + 48:records["links"] + 80] = folder_info
+        for name in ("alpha", "hard-alpha", "links/second-link"):
+            files["HfsFixture/" + name + ":com.apple.FinderInfo"] = file_info
+        files["HfsFixture/links:com.apple.FinderInfo"] = folder_info
+    elif kind == "modern-invalid-file-mode":
+        struct.pack_into(">H", image, records["iNode20"] + 42, 0o40755)
+    elif kind == "modern-invalid-dir-mode":
+        struct.pack_into(">H", image, records["links"] + 42, 0o100644)
+    elif kind.startswith("modern-thread-"):
+        thread = threads[get32(records["iNode20"] + 8)]
+        if kind == "modern-thread-parent":
+            put32(thread + 4, 2)
+        elif kind == "modern-thread-name":
+            image[thread + 23] = ord('1')
+        elif kind == "modern-thread-type":
+            struct.pack_into(">H", image, thread, 3)
+        elif kind == "modern-thread-length":
+            struct.pack_into(">H", image, thread + 8, 256)
+        else:
+            raise ValueError(kind)
+    elif kind == "modern-nul":
         key = keys["null-name"]
         replacement = "null\0name".encode("utf-16-be")
         image[key + 8:key + 8 + len(replacement)] = replacement
@@ -134,6 +164,8 @@ def volume(kind="modern"):
             if kind == "modern-binary-case":
                 key = keys["iNode20"]
                 image[key + 8:key + 22] = "INODE20".encode("utf-16-be")
+                thread = threads[get32(records["iNode20"] + 8)]
+                image[thread + 10:thread + 24] = "INODE20".encode("utf-16-be")
             blobs = [bytes(image[start:end]) for start, end in catalog_records]
             def binary_key(blob):
                 name_length = struct.unpack_from(">H", blob, 6)[0]

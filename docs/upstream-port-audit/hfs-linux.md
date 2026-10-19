@@ -1,8 +1,9 @@
-# HFS+: fork mapping, Unicode и hardlinks
+# HFS+: fork mapping, Unicode, hardlinks и metadata
 
 Работа входит в [общий scope актуализации по Linux](filesystems-linux.md).
 Исправлено существующее чтение HFS+/HFSX и их HFS wrappers; добавлены Linux
 Unicode read conversion и разрешение hardlinks через backing inode.
+Актуализированы permission defaults, catalog/thread validation и FinderInfo.
 Полная актуализация семейства HFS ещё не завершена.
 
 ## Источники и source comparison
@@ -48,6 +49,22 @@ directory, проверка create date, lookup `iNode%d` и возврат к �
 используют исходные disk names и Linux casefold/binary comparator с учётом HFSX.
 Write/delete/rename и inode
 publication не переносятся; archive adapter возвращает исходный catalog index.
+
+Дополнительно перенесены read bodies `inode.c:hfsplus_get_perms`,
+`bfind.c:hfsplus_brec_read_cat` и `xattr.c:hfsplus_getxattr_finder_info`.
+Сравнены их callers, catalog thread lookup в `catalog.c:hfsplus_find_cat`,
+типы в общем on-disk header, defaults в `options.c` и FinderInfo list/get paths.
+VFS inode/B-tree read services заменены уже прочитанными bounded catalog records;
+проверки типов, размеров, permission branches и 32-byte payload сохранены.
+Для архивного чтения приняты стабильные defaults UID/GID `0`, umask `0022`;
+mount credential overrides не предоставляются. Mutable VFS inode flags
+не публикуются: исходные BSD flags доступны как item characteristics.
+FinderInfo берётся из catalog, включая приоритет над одноимённым attribute-tree
+record; ненулевой payload перечисляется как alternate stream. Это соответствует
+Linux special xattr read/list, с исходным archive namespace без префикса `osx.`.
+Дополнительная проверка thread ID/parent/name/type выполняется сразу для всего
+перечисленного каталога. Linux ищет thread при обращении к inode; eager отказ
+в `Open` и проверка соответствия типа — адаптация архивного интерфейса.
 
 Этот Linux C компилируется только в отдельном GPL-2.0-only format module
 `sevenzip_hfs`, без unRAR. Его LGPL closure — исходные ArchiveExports,
@@ -103,6 +120,12 @@ private directory остаётся видимой как в исходном arc
   без успешного пустого файла; kernel date/chain guards сохраняются.
 - Публичные properties сообщают UID/GID, inode/link count и symlink target;
   symlink payload читается через тот же bounded fork stream.
+- Нулевой disk mode получает Linux defaults, несовместимый тип file/directory
+  отклоняется. Права и BSD flags hardlink aliases берутся у backing inode.
+- Catalog FinderInfo доступен как независимый 32-byte attribute stream для
+  файлов, каталогов и hardlink aliases; его bytes сохраняются после `Close`.
+- Некорректные размеры/типы catalog records и несогласованные thread records
+  отклоняются с очисткой опубликованного каталога.
 
 ## Проверки и оставшийся scope
 
@@ -148,7 +171,18 @@ decoder и чтение сжатого backing inode. Это 7-Zip extension, о
 Linux VFS evidence. Сборка и реальный install runtime на macOS проверены
 извлечением hardlinks, resource fork и Unicode/emoji файлов.
 
-Остаются расширение metadata/permissions и дальнейшее сравнение read branches.
+Metadata/permissions и thread validation проверены CLI/ABI/backend suites на
+macOS ARM64, Linux x64 и Windows x64, включая extraction security и provenance
+на всех трёх платформах (remote receipt `20261019T133324Z-075995b5`).
+Linux VFS дополнительно подтвердил defaults, UID/GID/link count и точные
+FinderInfo bytes файлов, каталога и трёх hardlink names на generated image.
+Шесть повреждённых вариантов сопоставлены отдельно: неверные file/directory
+modes и thread length дали EIO, неверные parent/name — ENOENT.
+Несовпадение thread type kernel 6.8 принимает; наш eager integrity check
+отклоняет этот случай. Все семь read-only loop images остались неизменны.
+Это не проверка принудительного применения immutable/append VFS flags.
+
+Остаются дальнейшее сравнение read branches и системных metadata services.
 Plain classic HFS исходный handler не читает: поддерживается только
 его wrapper с HFS+/HFSX; это отсутствие остаётся в общем scope работы.
 Apple decmpfs сохраняется как расширение 7-Zip, которое Linux hfsplus не

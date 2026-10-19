@@ -328,6 +328,10 @@ struct CItem {
     UInt32 Special;
     UInt32 FileType;
     UInt32 FileCreator;
+    Byte Permissions[16];
+    Byte FinderInfo[32];
+    Byte AdminFlags;
+    Byte OwnerFlags;
     unsigned DataIndex;
     bool PrivateDir;
     bool UnsupportedLink;
@@ -373,6 +377,15 @@ struct CAttr {
     // DataPos(0),
     {}
 };
+
+#ifdef SEVENZIP_LINUX_HFS
+struct CThread {
+    UInt32 ID;
+    UInt32 ParentID;
+    UInt16 Type;
+    CByteBuffer Name;
+};
+#endif
 
 #ifdef SEVENZIP_LINUX_HFS
 struct CNameIndexPair {
@@ -471,6 +484,7 @@ class CDatabase {
                         IInStream *inStream, IArchiveOpenCallback *progress);
     bool Parse_decmpgfs(unsigned attrIndex, CItem &item, bool &skip);
     HRESULT ResolveHardlinks();
+    HRESULT LoadMetadata();
 
   public:
     bool CheckFork(const CFork &fork) const;
@@ -568,6 +582,58 @@ HRESULT CDatabase::ResolveHardlinks() {
         }
     }
 #endif
+    return S_OK;
+}
+
+HRESULT CDatabase::LoadMetadata() {
+#ifdef SEVENZIP_LINUX_HFS
+    CBoolArr ready(Items.Size());
+    for (unsigned i = 0; i < Items.Size(); i++)
+        ready[i] = false;
+    FOR_VECTOR(i, Items) {
+        const unsigned index = Items[i].DataIndex;
+        if (ready[index])
+            continue;
+        ready[index] = true;
+        CItem &item = Items[index];
+        sevenzip_hfsplus_permissions permissions;
+        // Archive metadata has stable root credentials and the usual Linux umask,
+        // independent of the desktop process's credentials or mount overrides.
+        if (hfsplus_get_perms(item.Permissions, item.IsDir(), 0, 0, 0022, &permissions))
+            return S_FALSE;
+        item.OwnerID = permissions.owner;
+        item.GroupID = permissions.group;
+        item.FileMode = permissions.mode;
+        item.AdminFlags = permissions.rootflags;
+        item.OwnerFlags = permissions.userflags;
+    }
+#endif
+    CRecordVector<CIdIndexPair> finderAttrs;
+    FOR_VECTOR(i, Attrs) {
+        if (Attrs[i].Name.IsEqualTo("com.apple.FinderInfo")) {
+            CIdIndexPair pair;
+            pair.ID = Attrs[i].ID;
+            pair.Index = i;
+            finderAttrs.Add(pair);
+        }
+    }
+    finderAttrs.Sort2();
+    FOR_VECTOR(i, Items) {
+        const CItem &item = Items[i];
+        if (item.DataIndex != i)
+            continue;
+        const int attrIndex = FindItemIndex(finderAttrs, item.ID);
+        bool defined = false;
+        for (unsigned j = 0; j < sizeof(item.FinderInfo); j++)
+            defined |= item.FinderInfo[j] != 0;
+        if (!defined && attrIndex < 0)
+            continue;
+        CAttr &attr = attrIndex < 0 ? Attrs.AddNew() : Attrs[(unsigned)attrIndex];
+        attr.ID = item.ID;
+        attr.Name = "com.apple.FinderInfo";
+        attr.Fork_defined = false;
+        attr.Data.CopyFrom(item.FinderInfo, sizeof(item.FinderInfo));
+    }
     return S_OK;
 }
 
@@ -1127,6 +1193,9 @@ HRESULT CDatabase::LoadCatalog(const CFork &fork,
     CatalogCaseSensitive = Header.IsHfsX() && p[kNodeDescriptor_Size + 0x25] == 0xBC;
 
     CRecordVector<CIdIndexPair> IdToIndexMap;
+#ifdef SEVENZIP_LINUX_HFS
+    CObjectVector<CThread> threads;
+#endif
 
     const unsigned reserveSize = (unsigned)(Header.NumFolders + 1 + Header.NumFiles);
 
@@ -1194,6 +1263,20 @@ HRESULT CDatabase::LoadCatalog(const CFork &fork,
             if (recSize < 2)
                 return S_FALSE;
             UInt16 type = Get16(r);
+#ifdef SEVENZIP_LINUX_HFS
+            if (hfsplus_brec_read_cat(r, recSize))
+                return S_FALSE;
+            if (type == RECORD_TYPE_FOLDER_THREAD || type == RECORD_TYPE_FILE_THREAD) {
+                if (nameLen != 0)
+                    return S_FALSE;
+                CThread &thread = threads.AddNew();
+                thread.ID = parentID;
+                thread.ParentID = Get32(r + 4);
+                thread.Type = type;
+                thread.Name.CopyFrom(r + 8, recSize - 8);
+                continue;
+            }
+#endif
 
             if (type != RECORD_TYPE_FOLDER && type != RECORD_TYPE_FILE)
                 continue;
@@ -1250,6 +1333,16 @@ HRESULT CDatabase::LoadCatalog(const CFork &fork,
             item.Special = Get32(r + 0x2C);
             item.FileType = Get32(r + 0x30);
             item.FileCreator = Get32(r + 0x34);
+            memcpy(item.Permissions, r + 0x20, sizeof(item.Permissions));
+            item.AdminFlags = r[0x28];
+            item.OwnerFlags = r[0x29];
+#ifdef SEVENZIP_LINUX_HFS
+            if (hfsplus_getxattr_finder_info(r, recSize, item.FinderInfo,
+                                             sizeof(item.FinderInfo)) != 32)
+                return S_FALSE;
+#else
+            memcpy(item.FinderInfo, r + 0x30, sizeof(item.FinderInfo));
+#endif
 
             // const refIndex = Refs.Size();
             CIdIndexPair pair;
@@ -1297,6 +1390,7 @@ HRESULT CDatabase::LoadCatalog(const CFork &fork,
     if (Header.NumFiles != numFiles || Header.NumFolders + 1 != numFolders)
         HeadersError = true;
     RINOK(ResolveHardlinks())
+    RINOK(LoadMetadata())
 
     IdToIndexMap.Sort2();
     {
@@ -1304,6 +1398,32 @@ HRESULT CDatabase::LoadCatalog(const CFork &fork,
             if (IdToIndexMap[i - 1].ID == IdToIndexMap[i].ID)
                 return S_FALSE;
     }
+#ifdef SEVENZIP_LINUX_HFS
+    CRecordVector<CIdIndexPair> threadIds;
+    FOR_VECTOR(i, threads) {
+        CIdIndexPair pair;
+        pair.ID = threads[i].ID;
+        pair.Index = i;
+        threadIds.Add(pair);
+    }
+    threadIds.Sort2();
+    if (threads.Size() != Items.Size())
+        return S_FALSE;
+    for (unsigned i = 1; i < threadIds.Size(); i++)
+        if (threadIds[i - 1].ID == threadIds[i].ID)
+            return S_FALSE;
+    FOR_VECTOR(i, Items) {
+        const CItem &item = Items[i];
+        const int threadIndex = FindItemIndex(threadIds, item.ID);
+        if (threadIndex < 0)
+            return S_FALSE;
+        const CThread &thread = threads[(unsigned)threadIndex];
+        if (thread.ParentID != item.ParentID ||
+            thread.Type != (item.IsDir() ? RECORD_TYPE_FOLDER_THREAD : RECORD_TYPE_FILE_THREAD) ||
+            sevenzip_hfsplus_compare(thread.Name, item.DiskName, CatalogCaseSensitive) != 0)
+            return S_FALSE;
+    }
+#endif
 
     CBoolArr skipAttr(Attrs.Size());
     {
@@ -1667,13 +1787,17 @@ Z7_class_CHandler_final:
 };
 // clang-format on
 
+static const char *const g_BsdFlags[] = {
+    "User NoDump", "User Immutable",   "User Append",  NULL, NULL, NULL, NULL, NULL,
+    NULL,          "System Immutable", "System Append"};
+
 static const Byte kProps[] = {
     kpidPath,        kpidIsDir,       kpidSize,   kpidPackSize, kpidCTime, kpidMTime, kpidATime,
     kpidChangeTime,  kpidPosixAttrib, kpidUserId, kpidGroupId,  kpidINode, kpidLinks, kpidSymLink,
 #ifdef HFS_SHOW_ALT_STREAMS
     kpidIsAltStream,
 #endif
-    kpidMethod};
+    kpidMethod,      kpidCharacts};
 
 static const Byte kArcProps[] = {kpidMethod,    kpidCharacts, kpidClusterSize,
                                  kpidFreeSpace, kpidCTime,    kpidMTime};
@@ -1875,6 +1999,11 @@ Z7_COM7F_IMF(CHandler::GetProperty(UInt32 index, PROPID propID, PROPVARIANT *val
         break;
     case kpidUserId:
         prop = item.OwnerID;
+        break;
+    case kpidCharacts:
+        if (ref.IsItem())
+            FLAGS_TO_PROP(g_BsdFlags, (UInt32)item.OwnerFlags | ((UInt32)item.AdminFlags << 8),
+                          prop);
         break;
     case kpidGroupId:
         prop = item.GroupID;

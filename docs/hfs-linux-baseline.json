@@ -56,9 +56,12 @@
     "include/linux/hfs_common.h": "dded52469cd6d3661049a3877705484ec8c71726dda4a5150d1b3a93201d2fed"
   },
   "adapted": [
+    "fs/hfsplus/bfind.c",
     "fs/hfsplus/dir.c",
+    "fs/hfsplus/inode.c",
     "fs/hfsplus/tables.c",
-    "fs/hfsplus/unicode.c"
+    "fs/hfsplus/unicode.c",
+    "fs/hfsplus/xattr.c"
   ],
   "exact": []
 }

@@ -2,6 +2,7 @@
 add_library(sevenzip_hfs MODULE
     src/CPP/7zip/Archive/HfsHandler.cpp src/exfatmodule.cpp
     src/hfsreader.c src/fs/hfsplus/unicode.c src/fs/hfsplus/tables.c src/fs/hfsplus/dir.c
+    src/fs/hfsplus/inode.c src/fs/hfsplus/bfind.c src/fs/hfsplus/xattr.c
     third_party/7zip/CPP/7zip/Archive/ArchiveExports.cpp
     third_party/7zip/CPP/7zip/Common/StreamUtils.cpp
     third_party/7zip/CPP/7zip/Common/StreamObjects.cpp

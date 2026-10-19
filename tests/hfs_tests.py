@@ -61,7 +61,7 @@ class HfsTests(unittest.TestCase):
     def test_linux_unicode_and_hardlink_bytes(self):
         for kind in ("modern", "modern-nul", "modern-date", "modern-chain", "modern-hfsx",
                      "modern-case", "modern-xattr", "modern-metadata", "modern-binary",
-                     "modern-zlib", "modern-lzvn", "modern-hidden-case"):
+                     "modern-zlib", "modern-lzvn", "modern-hidden-case", "modern-permissions"):
             image, files = volume(kind)
             for name, expected in files.items():
                 with self.subTest(kind=kind, name=name):
@@ -80,6 +80,12 @@ class HfsTests(unittest.TestCase):
         result = self.run_image("7zz", volume("modern")[0], "HfsFixture/alpha")
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual(result.stdout, b"")
+
+    def test_linux_metadata_and_thread_failures(self):
+        for kind in ("modern-invalid-file-mode", "modern-invalid-dir-mode", "modern-thread-parent",
+                     "modern-thread-name", "modern-thread-type", "modern-thread-length"):
+            with self.subTest(kind=kind):
+                self.assertNotEqual(self.run_image("7z", volume(kind)[0]).returncode, 0)
 
     def test_corrupt_metadata_is_rejected(self):
         for kind in ("metadata-short-map", "leaf-height", "leaf-backlink", "leaf-offset",

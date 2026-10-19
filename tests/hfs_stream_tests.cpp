@@ -250,6 +250,38 @@ class HfsStreamTests final : public QObject {
         QCOMPARE(target.vt, VARTYPE(VT_BSTR));
         QCOMPARE(QString::fromWCharArray(target.bstrVal), QString("alpha"));
     }
+    void permissionsAndFinderInfo() {
+        loadFixture("modern-permissions");
+        CMyComPtr<IInStream> input = new Input(bytes_);
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        for (const QString &name :
+             {QString("HfsFixture/alpha"), QString("HfsFixture/hard-alpha"),
+              QString("HfsFixture/links/second-link"), QString("HfsFixture/links")}) {
+            for (const auto &property :
+                 {qMakePair(kpidUserId, UInt32(0)), qMakePair(kpidGroupId, UInt32(0)),
+                  qMakePair(kpidPosixAttrib,
+                            UInt32(name == "HfsFixture/links" ? 0040755 : 0100644)),
+                  qMakePair(kpidLinks, UInt32(name == "HfsFixture/links" ? 1 : 3))}) {
+                NWindows::NCOM::CPropVariant value;
+                QCOMPARE(archive_->GetProperty(index(name), property.first, &value), S_OK);
+                QCOMPARE(value.vt, VARTYPE(VT_UI4));
+                QCOMPARE(value.ulVal, property.second);
+            }
+        }
+        NWindows::NCOM::CPropVariant flags;
+        QCOMPARE(archive_->GetProperty(index("HfsFixture/alpha"), kpidCharacts, &flags), S_OK);
+        QCOMPARE(flags.vt, VARTYPE(VT_BSTR));
+        const QString text = QString::fromWCharArray(flags.bstrVal);
+        QVERIFY(text.contains("User NoDump"));
+        QVERIFY(text.contains("System Immutable"));
+        QVERIFY(text.contains("System Append"));
+        auto fileInfo = stream("HfsFixture/alpha:com.apple.FinderInfo");
+        auto folderInfo = stream("HfsFixture/links:com.apple.FinderInfo");
+        QVERIFY(fileInfo && folderInfo);
+        QCOMPARE(archive_->Close(), S_OK);
+        check(fileInfo, "HfsFixture/alpha:com.apple.FinderInfo", 0, 32);
+        check(folderInfo, "HfsFixture/links:com.apple.FinderInfo", 0, 32);
+    }
     void brokenBackingReportsDataError() {
         for (const char *kind : {"modern-missing", "modern-bounds", "modern-binary-case"}) {
             loadFixture(kind);
@@ -311,8 +343,11 @@ class HfsStreamTests final : public QObject {
         QCOMPARE(archive_->Close(), S_OK);
     }
     void failedOpenClearsCatalog() {
-        for (const char *kind : {"leaf-height", "metadata-short-map", "parent-cycle",
-                                 "wrapped-short", "modern-no-root"}) {
+        for (const char *kind :
+             {"leaf-height", "metadata-short-map", "parent-cycle", "wrapped-short",
+              "modern-no-root", "modern-invalid-file-mode", "modern-invalid-dir-mode",
+              "modern-thread-parent", "modern-thread-name", "modern-thread-type",
+              "modern-thread-length"}) {
             loadFixture(kind);
             CMyComPtr2<IInStream, Input> input;
             input.SetFromCls(new Input(bytes_));
@@ -337,7 +372,7 @@ class HfsStreamTests final : public QObject {
     void backendExtraction_data() {
         QTest::addColumn<QString>("kind");
         for (const char *kind : {"preallocated", "overflow-leaves", "extent-over-volume", "modern",
-                                 "modern-nul", "modern-zlib", "modern-lzvn"})
+                                 "modern-nul", "modern-zlib", "modern-lzvn", "modern-permissions"})
             QTest::newRow(kind) << QString::fromLatin1(kind);
     }
     void backendExtraction() {
@@ -404,6 +439,9 @@ class HfsStreamTests final : public QObject {
                         << QString::fromUtf8("HfsFixture/각");
                 if (kind == "modern-nul")
                     entries << QString::fromUtf8("HfsFixture/null␀name");
+                if (kind == "modern-permissions")
+                    entries << "HfsFixture/alpha:com.apple.FinderInfo"
+                            << "HfsFixture/links:com.apple.FinderInfo";
             }
             for (const QString &entry : entries) {
                 finished.clear();
