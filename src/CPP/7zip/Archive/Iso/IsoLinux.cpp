@@ -35,7 +35,7 @@ int CInArchive::RockRelocate(void *context, uint32_t block, sevenzip_iso_inode *
     return sevenzip_iso_relocated(&archive._rockState, block, output);
 }
 
-HRESULT CInArchive::ReadRock(CDirRecord &item) {
+HRESULT CInArchive::ReadRock(CDirRecord &item, bool namesOnly) {
     const CVolumeDescriptor &volume = VolDescs[MainVolDescIndex];
     _rockState.block_size = volume.LogicalBlockSize;
     _rockState.volume_blocks = volume.VolumeSpaceSize;
@@ -56,8 +56,10 @@ HRESULT CInArchive::ReadRock(CDirRecord &item) {
         record.record_offset = 0;
     }
     memcpy(record.date, &item.DateTime, 7);
-    char name[256], link[4096];
-    const int result = sevenzip_iso_rock(&_rockState, &record, 0, &item.RockInode, name, link);
+    char name[256], link[4096] = {};
+    const int result =
+        namesOnly ? sevenzip_iso_rock_name(&_rockState, &record, name)
+                  : sevenzip_iso_rock(&_rockState, &record, 0, &item.RockInode, name, link);
     // Linux callbacks seek the shared input; restore the physical end of the
     // existing metadata buffer without changing its logical cursor.
     const HRESULT restored = InStream_SeekSet(_stream, _position + m_BufferSize - m_BufferPos);
@@ -72,7 +74,7 @@ HRESULT CInArchive::ReadRock(CDirRecord &item) {
     item.RockDefined = _rockState.rock != 0;
     item.RockName = name;
     item.RockLink = link;
-    if (item.RockDefined) {
+    if (item.RockDefined && !namesOnly) {
         const unsigned type = item.RockInode.i_mode & 0170000;
         switch (type) {
         case 0040000:
@@ -93,6 +95,49 @@ HRESULT CInArchive::ReadRock(CDirRecord &item) {
             return S_FALSE;
         }
     }
+    return S_OK;
+}
+
+HRESULT CInArchive::ReadDirectory(CDir &directory) {
+    if (directory.DirectoryRead)
+        return S_OK;
+    const CVolumeDescriptor &volume = VolDescs[MainVolDescIndex];
+    const UInt64 block = directory.GetDataBlock();
+    if (block >= volume.VolumeSpaceSize ||
+        (volume.LogicalBlockSize != 512 && volume.LogicalBlockSize != 1024 &&
+         volume.LogicalBlockSize != 2048))
+        return S_FALSE;
+    _rockState.block_size = volume.LogicalBlockSize;
+    _rockState.volume_blocks = volume.VolumeSpaceSize;
+    _rockState.context = this;
+    _rockState.read = RockRead;
+    _rockState.relocate = RockRelocate;
+    _rockResult = S_OK;
+    sevenzip_iso_section sections[SEVENZIP_ISO_MAX_SECTIONS];
+    sevenzip_iso_inode inode{};
+    unsigned count = 0;
+    const int result =
+        sevenzip_iso_directory(&_rockState, (uint32_t)block, _highSierra, &inode, sections, &count);
+    const HRESULT restored = InStream_SeekSet(_stream, _position + m_BufferSize - m_BufferPos);
+    if (_rockResult != S_OK)
+        return _rockResult;
+    RINOK(restored)
+    if (result)
+        return result == -ENOMEM ? E_OUTOFMEMORY : S_FALSE;
+    for (unsigned i = 0; i < count; ++i) {
+        CDirRecord part = CDirRecord();
+        if (sections[i].block >= volume.VolumeSpaceSize)
+            return S_FALSE;
+        part.ExtentLocation = (UInt32)sections[i].block;
+        part.Size = sections[i].size;
+        part.InterleaveGapSize = sections[i].gap;
+        if (!CheckRecord(part) || part.InterleaveGapSize)
+            return S_FALSE;
+        directory.DirectorySections.Add(part);
+    }
+    directory.RockInode = inode;
+    directory.RockDefined = true;
+    directory.DirectoryRead = true;
     return S_OK;
 }
 
@@ -132,15 +177,12 @@ HRESULT CInArchive::SelectRockVolume() {
     try {
         if ((primary.LogicalBlockSize == 512 || primary.LogicalBlockSize == 1024 ||
              primary.LogicalBlockSize == 2048) &&
-            CheckRecord(primary.RootDirRecord)) {
-            SeekToPosition(GetDataPosition(primary.RootDirRecord));
-            const unsigned len = ReadByte();
-            if (len >= 34) {
-                CDirRecord root;
-                ReadDirRecord(root, len);
-                result = ReadRock(root);
-                primaryIsDir = root.IsDir();
-            }
+            primary.RootDirRecord.GetDataBlock() < primary.VolumeSpaceSize) {
+            CDir root;
+            (CDirRecord &)root = primary.RootDirRecord;
+            root.FileFlags |= NFileFlags::kDirectory;
+            result = ReadDirectory(root);
+            primaryIsDir = result == S_OK;
         }
     } catch (CUnexpectedEndException &) {
         result = S_FALSE;

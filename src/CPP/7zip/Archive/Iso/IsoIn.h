@@ -19,6 +19,10 @@ struct CHeaderErrorException {};
 struct CDir : public CDirRecord {
     CDir *Parent = NULL;
     CObjectVector<CDir> _subItems;
+#ifdef SEVENZIP_LINUX_ISO
+    CObjectVector<CDirRecord> DirectorySections;
+    bool DirectoryRead = false;
+#endif
 
     CDir() = default;
     CDir(const CDir &) = default;
@@ -44,6 +48,10 @@ struct CDir : public CDirRecord {
             }
         }
         Parent = NULL;
+#ifdef SEVENZIP_LINUX_ISO
+        DirectorySections.Clear();
+        DirectoryRead = false;
+#endif
     }
 
     AString GetPath(bool checkSusp, unsigned skipSize) const {
@@ -280,6 +288,8 @@ class CInArchive {
     CRef ReadExtentGroup(CDir &parent, unsigned &index);
     HRESULT ReadDir(CDir &d, unsigned level, const CRef *sections = NULL);
     HRESULT ReadDirRecords(CDir &d, bool root, const CRef *sections);
+    unsigned DirSectionCount(const CDir &d, const CRef *sections) const;
+    const CDirRecord &DirSection(const CDir &d, const CRef *sections, unsigned index) const;
     void CreateRefs(CDir &d);
 
     void ReadBootInfo();
@@ -290,7 +300,8 @@ class CInArchive {
     HRESULT _rockResult = S_OK;
     static int RockRead(void *, uint64_t, void *, size_t);
     static int RockRelocate(void *, uint32_t, sevenzip_iso_inode *);
-    HRESULT ReadRock(CDirRecord &);
+    HRESULT ReadRock(CDirRecord &, bool namesOnly = false);
+    HRESULT ReadDirectory(CDir &);
     HRESULT ReadName(CDirRecord &);
     HRESULT SelectRockVolume();
 #endif

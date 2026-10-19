@@ -81,6 +81,8 @@ relocation, inode metadata, RR-vs-Joliet выбор, Linux zisofs decompression,
 High Sierra и Linux recording dates. Актуализация ISO ещё не завершена:
 Joliet/RR fallback и normal/Acorn/raw mapping подключены к Linux C readers;
 глубокий обход, очистка дерева и выбор вложенного файла проверены вместе.
+Собственные inode каталогов определяют metadata и Level 3 секции, включая root;
+родительские имена сохраняются независимо от inode metadata.
 Дополнительные NLS charsets, metadata и оставшиеся read semantics сохраняются
 в scope. UDF ещё не проверен.
 

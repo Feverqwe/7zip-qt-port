@@ -224,7 +224,9 @@ class IsoStreamTests final : public QObject {
         QTest::addColumn<QString>("kind");
         for (const char *kind :
              {"plain", "multi", "multi-directory", "xar", "xar-directory", "block-512",
-              "block-1024", "block-512-tail", "sierra", "sierra-xar", "sierra-multi"})
+              "block-1024", "block-512-tail", "sierra", "sierra-xar", "sierra-multi",
+              "directory-root-size", "directory-parent-size", "directory-multi-root",
+              "directory-multi-child", "directory-multi-padding", "directory-multi-split"})
             QTest::newRow(kind) << QString::fromLatin1(kind);
     }
     void independentAndRetainedStreams() {
@@ -412,7 +414,10 @@ class IsoStreamTests final : public QObject {
     void failedOpenClearsCatalog() {
         for (const char *kind :
              {"bad-directory", "cycle", "bad-name-length", "short-record", "sierra-invalid-type",
-              "sierra-root-file", "sierra-short-root", "sierra-bad-name", "sierra-short-source"}) {
+              "sierra-short-root", "sierra-bad-name", "sierra-short-source", "directory-bad-dot",
+              "directory-file-dot", "directory-multi-outside", "directory-multi-unaligned",
+              "directory-multi-unfinished", "directory-multi-bad-dot",
+              "directory-sections-overflow"}) {
             loadFixture("plain");
             CMyComPtr<IInStream> input = new Input(bytes_);
             QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
@@ -439,13 +444,21 @@ class IsoStreamTests final : public QObject {
         input->failSeekAt = UINT64_MAX;
         QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
         check(stream("ALPHA.BIN"), "ALPHA.BIN", 0, 4096);
+        const UInt32 rootBlock = qFromLittleEndian<quint32>(bytes_.constData() + 16 * 2048 + 158);
+        input->failSeekAt = UInt64(rootBlock) * 2048;
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), E_FAIL);
+        QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, UInt32(0));
+        input->failSeekAt = UINT64_MAX;
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
     }
     void backendExtraction_data() {
         QTest::addColumn<QString>("kind");
         for (const char *kind :
              {"plain", "joliet", "block-512-tail", "xar", "multi", "multi-directory", "rock",
               "rock-joliet", "zisofs", "zisofs-multi", "sierra", "sierra-multi",
-              "names-joliet-components", "names-joliet-surrogates", "names-joliet-long"})
+              "names-joliet-components", "names-joliet-surrogates", "names-joliet-long",
+              "directory-multi-child", "directory-multi-root", "directory-metadata"})
             QTest::newRow(kind) << QString::fromLatin1(kind);
     }
     void backendExtraction() {
@@ -485,10 +498,12 @@ class IsoStreamTests final : public QObject {
             kind == "names-joliet-components"   ? QString::fromUtf8("Nested/данные 空.txt")
             : kind == "names-joliet-surrogates" ? QString::fromUtf8("face-😀.bin")
             : kind == "names-joliet-long"       ? QString(90, QChar(0x754c)) + ".bin"
-            : kind == "joliet" || kind.startsWith("rock") || kind.startsWith("zisofs")
+            : kind == "joliet" || kind.startsWith("rock") || kind.startsWith("zisofs") ||
+                    kind == "directory-metadata"
                 ? QString::fromUtf8("nested/данные 空.txt")
-            : kind == "multi-directory" ? "NESTED/LATE.BIN"
-                                        : "ALPHA.BIN";
+            : kind == "multi-directory" || kind == "directory-multi-child" ? "NESTED/LATE.BIN"
+            : kind == "directory-multi-root"                               ? "LATE.BIN"
+                                                                           : "ALPHA.BIN";
         const QByteArray expected =
             QByteArray::fromBase64(record_["files"].toObject()[name].toString().toLatin1());
         QVERIFY(!expected.isEmpty());
@@ -713,6 +728,27 @@ class IsoStreamTests final : public QObject {
         callback.SetFromCls(new Extract);
         QCOMPARE(archive_->Extract(&item, 1, 1, callback), S_OK);
         QCOMPARE(callback->result, Int32(NArchive::NExtract::NOperationResult::kDataError));
+    }
+    void directoryOwnMetadata() {
+        loadFixture("directory-metadata");
+        CMyComPtr<IInStream> input = new Input(bytes_);
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        const UInt32 directory = index("nested");
+        QVERIFY(directory != UInt32(-1));
+        NWindows::NCOM::CPropVariant isDirectory;
+        QCOMPARE(archive_->GetProperty(directory, kpidIsDir, &isDirectory), S_OK);
+        QCOMPARE(isDirectory.vt, VARTYPE(VT_BOOL));
+        QCOMPARE(isDirectory.boolVal, VARIANT_TRUE);
+        for (const auto &entry :
+             {qMakePair(kpidPosixAttrib, UInt32(0040750)), qMakePair(kpidUserId, UInt32(2345)),
+              qMakePair(kpidGroupId, UInt32(3456)), qMakePair(kpidLinks, UInt32(7))}) {
+            NWindows::NCOM::CPropVariant value;
+            QCOMPARE(archive_->GetProperty(directory, entry.first, &value), S_OK);
+            QCOMPARE(value.vt, VARTYPE(VT_UI4));
+            QCOMPARE(value.ulVal, entry.second);
+        }
+        check(stream(QString::fromUtf8("nested/данные 空.txt")),
+              QString::fromUtf8("nested/данные 空.txt"), 0, 4096);
     }
     void rockMetadataAndStreams_data() {
         QTest::addColumn<QString>("kind");

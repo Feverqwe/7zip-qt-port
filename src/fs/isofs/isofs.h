@@ -17,6 +17,11 @@ typedef uint8_t __u8;
 #endif
 #include "../../include/uapi/linux/iso_fs.h"
 typedef struct iso_directory_record sevenzip_iso_disk_record;
+static inline unsigned char isofs_record_flags(const sevenzip_iso_disk_record *record,
+                                               int high_sierra) {
+    return ((const unsigned char *)
+                record)[offsetof(sevenzip_iso_disk_record, flags) - (unsigned)high_sierra];
+}
 #define inode sevenzip_iso_inode
 #define iso_directory_record sevenzip_iso_record
 #define GFP_KERNEL 0
@@ -50,10 +55,14 @@ enum isofs_file_format { isofs_file_normal, isofs_file_sparse, isofs_file_compre
 struct super_block {
     struct sevenzip_iso_state *state;
     int s_rock, s_rock_offset, s_nocompress;
+    int s_high_sierra;
     uint32_t s_nzones, block_size;
     int error;
 };
 #define ISOFS_SB(sb) (sb)
+#define ISOFS_BUFFER_SIZE(node) ((node)->i_sb->block_size)
+#define ISOFS_BUFFER_BITS(node) ((node)->i_blkbits)
+int isofs_read_level3_size(struct inode *, struct sevenzip_iso_section *, unsigned *);
 struct buffer_head {
     unsigned char *b_data;
 };

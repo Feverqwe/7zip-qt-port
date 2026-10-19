@@ -8,6 +8,9 @@ import zlib
 
 
 def volume(kind="plain"):
+    if kind.startswith("directory-"):
+        from iso_directory_fixture import volume as directory_volume
+        return directory_volume(kind)
     if kind.startswith("tree-"):
         from iso_tree_fixture import volume as tree_volume
         return tree_volume(kind)

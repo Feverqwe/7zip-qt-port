@@ -62,6 +62,26 @@ class IsoTests(unittest.TestCase):
                     self.assertNotEqual(result.returncode, 0)
                     self.assertEqual(result.stdout, b"")
 
+    def test_directory_own_inode_and_sections(self):
+        for kind in ("directory-root-size", "directory-parent-size", "directory-root-flag",
+                     "directory-multi-root", "directory-multi-child", "directory-multi-padding",
+                     "directory-multi-split", "directory-sections-limit", "directory-metadata"):
+            image, files = volume(kind)
+            for name, expected in files.items():
+                with self.subTest(kind=kind, name=name):
+                    result = self.run_image("7z", image, name)
+                    self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                    self.assertEqual(result.stdout, expected)
+
+    def test_invalid_directory_inode_never_returns_bytes(self):
+        for kind in ("directory-bad-dot", "directory-file-dot", "directory-multi-outside",
+                     "directory-multi-unaligned", "directory-multi-unfinished", "directory-multi-bad-dot",
+                     "directory-sections-overflow"):
+            with self.subTest(kind=kind):
+                result = self.run_image("7z", volume(kind)[0], "ALPHA.BIN")
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(result.stdout, b"")
+
     def test_deep_tree_bytes_and_cycle(self):
         image, files = volume("tree-clear")
         for engine in ("7z", "7zz"):
@@ -89,7 +109,7 @@ class IsoTests(unittest.TestCase):
 
     def test_iso_and_high_sierra_detection(self):
         for kind in ("plain", "joliet", "iso-hs-collision", "sierra", "sierra-xar", "sierra-multi",
-                     "sierra-block1024", "sierra-block1024-sector", "sierra-leading"):
+                     "sierra-block1024", "sierra-block1024-sector", "sierra-leading", "sierra-root-file"):
             image, files = volume(kind)
             for name, expected in files.items():
                 with self.subTest(kind=kind, name=name):
@@ -98,7 +118,7 @@ class IsoTests(unittest.TestCase):
                     self.assertEqual(result.stdout, expected)
 
     def test_high_sierra_invalid_metadata(self):
-        for kind in ("sierra-invalid-type", "sierra-root-file", "sierra-short-root",
+        for kind in ("sierra-invalid-type", "sierra-short-root",
                      "sierra-bad-name", "sierra-short-source"):
             with self.subTest(kind=kind):
                 result = self.run_image("7z", volume(kind)[0], "ALPHA.BIN", typed=False)

@@ -88,3 +88,127 @@ int isofs_fill_super(struct sevenzip_iso_state *state, int root_error,
     state->rock = sbi->s_rock;
     return joliet_level ? 1 : 0;
 }
+
+/* isofs_read_level3_size: retain the kernel scan and expose bounded section
+ * records to the archive reader instead of VFS page mapping. */
+int isofs_read_level3_size(struct inode *inode, struct sevenzip_iso_section *sections,
+                           unsigned *count)
+{
+	unsigned long bufsize = ISOFS_BUFFER_SIZE(inode);
+	int high_sierra = ISOFS_SB(inode->i_sb)->s_high_sierra;
+	struct buffer_head *bh = NULL;
+	unsigned long block, offset, block_saved, offset_saved;
+	int i = 0;
+	int more_entries = 0;
+	sevenzip_iso_disk_record *tmpde = NULL;
+	struct inode *ei = ISOFS_I(inode);
+
+	*count = 0;
+	inode->i_size = 0;
+
+	/* The first 16 blocks are reserved as the System Area.  Thus,
+	 * no inodes can appear in block 0.  We use this to flag that
+	 * this is the last section. */
+	ei->i_next_section_block = 0;
+	ei->i_next_section_offset = 0;
+
+	block = ei->i_iget5_block;
+	offset = ei->i_iget5_offset;
+
+	do {
+		sevenzip_iso_disk_record *de;
+		unsigned int de_len;
+
+		if (!bh) {
+			bh = sb_bread(inode->i_sb, block);
+			if (!bh)
+				goto out_noread;
+		}
+		de = (sevenzip_iso_disk_record *) (bh->b_data + offset);
+		de_len = *(unsigned char *) de;
+
+		if (de_len == 0) {
+			brelse(bh);
+			bh = NULL;
+			++block;
+			offset = 0;
+			continue;
+		}
+
+		if (de_len < sizeof(*de))
+			goto out_corrupt;
+
+		block_saved = block;
+		offset_saved = offset;
+		offset += de_len;
+
+		/* Make sure we have a full directory entry */
+		if (offset >= bufsize) {
+			int slop = bufsize - offset + de_len;
+			if (!tmpde) {
+				tmpde = kmalloc(256, GFP_KERNEL);
+				if (!tmpde)
+					goto out_nomem;
+			}
+			memcpy(tmpde, de, slop);
+			offset &= bufsize - 1;
+			block++;
+			brelse(bh);
+			bh = NULL;
+			if (offset) {
+				bh = sb_bread(inode->i_sb, block);
+				if (!bh)
+					goto out_noread;
+				memcpy((unsigned char *)tmpde+slop, bh->b_data, offset);
+			}
+			de = tmpde;
+		}
+
+		if (de->name_len[0] != 1 || de_len < sizeof(*de) + 1 || de->name[0] != 0 ||
+		    !(isofs_record_flags(de, high_sierra) & 2))
+			goto out_corrupt;
+		if ((isofs_record_flags(de, high_sierra) & 0x80) &&
+		    (isonum_733(de->size) & (bufsize - 1)))
+			goto out_corrupt;
+		if (sections) {
+			sections[i].block = (uint64_t)isonum_733(de->extent) + de->ext_attr_length[0];
+			sections[i].size = isonum_733(de->size);
+			sections[i].gap = de->interleave[0];
+		}
+		inode->i_size += isonum_733(de->size);
+		if (i == 1) {
+			ei->i_next_section_block = block_saved;
+			ei->i_next_section_offset = offset_saved;
+		}
+
+		more_entries = isofs_record_flags(de, high_sierra) & 0x80;
+
+		i++;
+		if (i >= SEVENZIP_ISO_MAX_SECTIONS && more_entries)
+			goto out_toomany;
+	} while (more_entries);
+	*count = (unsigned)i;
+	kfree(tmpde);
+	brelse(bh);
+	return 0;
+
+out_nomem:
+	brelse(bh);
+	return -ENOMEM;
+
+out_noread:
+	printk(KERN_INFO "ISOFS: unable to read i-node block %lu\n", block);
+	kfree(tmpde);
+	return -EIO;
+
+out_toomany:
+	printk(KERN_INFO "%s: More than 100 file sections ?!?, aborting...\n"
+		"isofs_read_level3_size: inode=%llu\n",
+		__func__, inode->i_ino);
+	goto out_corrupt;
+
+out_corrupt:
+	kfree(tmpde);
+	brelse(bh);
+	return -EIO;
+}

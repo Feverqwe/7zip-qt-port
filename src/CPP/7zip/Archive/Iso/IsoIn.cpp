@@ -357,15 +357,38 @@ bool CInArchive::IsSupported(const CRef &ref) const {
     return true;
 }
 
+unsigned CInArchive::DirSectionCount(const CDir &d, const CRef *sections) const {
+#ifndef SEVENZIP_LINUX_ISO
+    (void)d;
+#endif
+#ifdef SEVENZIP_LINUX_ISO
+    if (d.DirectoryRead)
+        return d.DirectorySections.Size();
+#endif
+    return sections ? sections->NumExtents : 1;
+}
+
+const CDirRecord &CInArchive::DirSection(const CDir &d, const CRef *sections,
+                                         unsigned index) const {
+#ifdef SEVENZIP_LINUX_ISO
+    if (d.DirectoryRead)
+        return d.DirectorySections[index];
+#endif
+    return sections ? sections->Dir->_subItems[sections->Index + index] : d;
+}
+
 HRESULT CInArchive::ReadDirRecords(CDir &d, bool root, const CRef *sections) {
     if (!d.IsDir())
         return S_OK;
     if (_openCallback)
         RINOK(_openCallback->SetCompleted(&_numFiles, &_processedBytes))
 
-    const unsigned sectionCount = sections ? sections->NumExtents : 1;
+#ifdef SEVENZIP_LINUX_ISO
+    RINOK(ReadDirectory(d))
+#endif
+    const unsigned sectionCount = DirSectionCount(d, sections);
     for (unsigned section = 0; section < sectionCount; section++) {
-        const CDirRecord &part = sections ? sections->Dir->_subItems[sections->Index + section] : d;
+        const CDirRecord &part = DirSection(d, sections, section);
         if (!CheckRecord(part) || part.InterleaveGapSize)
             return S_FALSE;
         FOR_VECTOR(i, UniqStartLocations)
@@ -377,7 +400,7 @@ HRESULT CInArchive::ReadDirRecords(CDir &d, bool root, const CRef *sections) {
     }
 
     for (unsigned section = 0; section < sectionCount; section++) {
-        const CDirRecord &part = sections ? sections->Dir->_subItems[sections->Index + section] : d;
+        const CDirRecord &part = DirSection(d, sections, section);
         SeekToPosition(GetDataPosition(part));
         const UInt64 startPos = _position;
         bool firstItem = true;
@@ -425,7 +448,7 @@ HRESULT CInArchive::ReadDirRecords(CDir &d, bool root, const CRef *sections) {
                 IsSusp = subItem.CheckSusp(SuspSkipSize);
 #ifdef SEVENZIP_LINUX_ISO
             if (_rockState.rock && !IsJoliet() && !subItem.IsSystemItem()) {
-                RINOK(ReadRock(subItem))
+                RINOK(ReadRock(subItem, subItem.IsDir()))
                 if (subItem.RockHidden) {
                     firstItem = false;
                     continue;
@@ -494,7 +517,8 @@ HRESULT CInArchive::ReadDir(CDir &d, const unsigned level, const CRef *sections)
             next.Root = false;
             stack.Add(next);
         } else {
-            const unsigned count = frame.HasSections ? frame.Sections.NumExtents : 1;
+            const unsigned count =
+                DirSectionCount(*frame.Dir, frame.HasSections ? &frame.Sections : NULL);
             for (unsigned i = 0; i < count; ++i)
                 UniqStartLocations.DeleteBack();
             stack.DeleteBack();
@@ -755,8 +779,12 @@ HRESULT CInArchive::Open2() {
     if (vd.LogicalBlockSize != 512 && vd.LogicalBlockSize != 1024 &&
         vd.LogicalBlockSize != kBlockSize)
         return S_FALSE;
-    if (vd.VolumeSpaceSize == 0 || !vd.RootDirRecord.IsDir())
+    if (vd.VolumeSpaceSize == 0)
         return S_FALSE;
+#ifndef SEVENZIP_LINUX_ISO
+    if (!vd.RootDirRecord.IsDir())
+        return S_FALSE;
+#endif
 
     {
         FOR_VECTOR(i, VolDescs) {
@@ -768,6 +796,9 @@ HRESULT CInArchive::Open2() {
     IsArc = true;
 
     (CDirRecord &)_rootDir = vd.RootDirRecord;
+#ifdef SEVENZIP_LINUX_ISO
+    _rootDir.FileFlags |= NFileFlags::kDirectory;
+#endif
     RINOK(ReadDir(_rootDir, 0))
     CreateRefs(_rootDir);
     ReadBootInfo();

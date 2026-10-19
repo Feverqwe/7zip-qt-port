@@ -90,7 +90,7 @@ VFS inode acquisition заменён результатом существующ
 как bounded span. Folio/page-cache acquisition и inode publication заменены
 owned buffers; SUSP/XA skip не образует pointer за пределами этого span.
 Read services используют stream callbacks. Inode fields остаются read projection;
-`isofs_read_inode` defaults/dot-record projection используются для relocated inode,
+`isofs_read_inode` defaults/dot-record projection используются для directory inode,
 дисковый `iso_directory_record` взят из исходного UAPI header;
 VFS operation tables и mutable services не нужны. `CL` проверяет inode identity
 по месту directory record, отдельно от data extent, и рекурсивную relocation.
@@ -279,11 +279,39 @@ LNK1104 при relink только что выполненного probe.exe; о
 копию executable, сохраняя target/object и compiler cache. Проверка по-прежнему
 наблюдает изменение sizeof после правки только транзитивного header.
 
+## Собственный inode каталога и его секции
+
+Сравнены `isofs_normalize_block_and_offset`, полный `isofs_read_inode`,
+`isofs_read_level3_size` и mapping loop `isofs_get_blocks` вместе с callers
+lookup/readdir и `CL` metadata transfer. Каталог идентифицируется по effective
+extent родительской записи и offset 0. Его собственный dot record определяет
+размер, data extent, timestamps и RR inode metadata; родительский NM сохраняет
+имя. Parent PX больше не превращает wire-directory в файл. Descriptor flags
+и descriptor/parent size не подменяют собственный inode, включая root.
+
+Оригинальное тело `inode.c:isofs_read_level3_size` перенесено как C. Сохранены
+последовательный scan, padding, сборка пересекающего block record, накопление
+размера, next-section identity и cleanup. Bounded archive projection возвращает
+section extents/sizes вместо VFS page mapping; существующий C++ reader обходит
+их, сохраняя ancestor-cycle и source/volume bounds. High Sierra использует
+shifted flags через byte-offset helper вместо отрицательного array index;
+byte-pointer arithmetic при сборке record заменяет GNU void-pointer extension
+для MSVC без изменения копируемых bytes.
+Joliet и HS получают собственные directory defaults/dates через тот же boundary;
+RR parser вызывается только при включённом RR state.
+
+Дополнительная archive validation требует dot identifier/directory flag,
+выравнивания nonfinal sections и terminal record не позднее 101-й секции.
+Linux при превышении своего scan limit может вернуть частичный размер;
+archive reader отклоняет такую цепочку. Interleave и некорректный extent
+отклоняются до публикации каталога. VFS cache/operation tables, mount permission
+overrides и cruft mount option не копируются. GPL code остаётся только в
+изолированном module; standalone engine сохраняет прежнее чтение ISO inode.
+
 ## Оставшийся scope
 
-Остаются дополнительные NLS charsets и descriptor-date quirks,
-проверка остальных RR compatibility branches на производителях, полная
-dot-record normalization/root multi-section semantics. Эти read features остаются задачей,
+Остаются дополнительные NLS charsets и descriptor-date/mount-option quirks,
+проверка остальных RR compatibility branches на производителях. Эти read features остаются задачей,
 а не принятой окончательной границей совместимости. UDF ещё не проверен.
 Kernel VFS/mount services, запись и page cache не копируются.
 
@@ -451,3 +479,25 @@ macOS app target собран. Фактический CMake install извлёк
 notices без изменений. Это результат данного smoke, не performance contract.
 Temporary images/mounts/staging удалены; объёмный diagnostic sample заменён
 кратким свидетельством. Post-transfer source comparison выполнен отдельно.
+
+Directory-inode iteration: CLI и ABI проверяют независимость от parent/root
+size и descriptor flags, noncontiguous root/child sections, padding и split
+record, предел 101 sections и отказ от незавершённой/повреждённой цепочки.
+Parent NM сохраняется при конфликтующем PX; mode/UID/GID/nlink берутся из
+own dot record. Проверены retained streams, failed Open cleanup, ошибка
+источника при чтении root inode и backend selected/source-entry extraction.
+
+Native Linux 6.8.0-146 read-only loop mounts подтвердили десять valid cases,
+включая точные bytes при 101 sections и own-directory metadata. Generated
+images и mounts удалены. Pinned `fs/isofs`/UAPI hashes сверены, изменённые
+тела и callers повторно сопоставлены с исходниками отдельно от runtime.
+
+Seven-suite batch: macOS arm64 и Linux x64 7/7 PASS; Linux receipt
+`20261019T185539Z-2acea143`. MSVC потребовал byte-pointer arithmetic вместо
+GNU void-pointer extension; Windows x64 после правки 7/7 PASS,
+receipt `20261019T185628Z-769b041e`. Финальные `iso`/`iso_stream` после этой
+правки: macOS и Linux 2/2 PASS, Linux `20261019T185630Z-daa3de6b`.
+macOS app target собран; actual CMake install проверил восемь directory
+variants, отказ при превышении section limit и четыре notices. Staging удалён.
+Full/slow/UI/physical-device acceptance не выполнялась; incremental builds
+и compiler caches сохранены.
