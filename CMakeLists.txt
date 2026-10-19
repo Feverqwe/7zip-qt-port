@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.21)
 
-project(sevenzip_desktop VERSION 0.1.4 LANGUAGES C CXX)
+project(sevenzip_desktop VERSION 0.1.5 LANGUAGES C CXX)
 
 set(sevenzip_version_header "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/C/7zVersion.h")
 set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${sevenzip_version_header}")
