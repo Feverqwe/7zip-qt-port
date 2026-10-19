@@ -27,13 +27,19 @@
     "lib/zlib_inflate/inftrees.h": "b07a23beb8ea744842482c6857b7a764f4089199de9146d5f735a0a411d353df",
     "lib/zlib_inflate/inffast.h": "5b3101e5c251432b3bf7b00d108105f8a3d26a94bc2f7a5e8cd33fc243699d76",
     "lib/zlib_inflate/inffixed.h": "88a340c8e628d56682a99c3a9a38e44fafeb8b4c609e0df85ea17c66011e0f42",
-    "lib/zlib_inflate/infutil.h": "648c7d6acfe856fcf0674032c085a8be88bec197f124ec35deeef70d857dd6fb"
+    "lib/zlib_inflate/infutil.h": "648c7d6acfe856fcf0674032c085a8be88bec197f124ec35deeef70d857dd6fb",
+    "fs/nls/nls_base.c": "a121f305e92b6915e817c85de3c87eddea42d0a8507a29d84b157e53f970b796",
+    "fs/nls/nls_cp437.c": "b7f79558ec75ed778332271a17ff8d56d60f42487d58ad814316ba166aa7e4db"
   },
   "adapted": [
     "fs/isofs/compress.c",
+    "fs/isofs/dir.c",
     "fs/isofs/inode.c",
+    "fs/isofs/joliet.c",
     "fs/isofs/rock.c",
     "fs/isofs/util.c",
+    "fs/nls/nls_base.c",
+    "fs/nls/nls_cp437.c",
     "include/linux/zutil.h",
     "include/uapi/linux/iso_fs.h",
     "kernel/time/time.c",

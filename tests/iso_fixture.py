@@ -8,6 +8,9 @@ import zlib
 
 
 def volume(kind="plain"):
+    if kind.startswith("names-"):
+        from iso_name_fixture import volume as name_volume
+        return name_volume(kind)
     if kind.startswith("sierra"):
         from iso_sierra_fixture import volume as sierra_volume
         return sierra_volume(kind)

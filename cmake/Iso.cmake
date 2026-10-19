@@ -6,6 +6,7 @@ add_library(sevenzip_iso MODULE
     third_party/7zip/CPP/7zip/Archive/Iso/IsoHeader.cpp
     src/fs/isofs/rock.c src/fs/isofs/inode.c src/fs/isofs/util.c src/kernel/time/time.c src/exfatmodule.cpp
     src/fs/isofs/compress.c src/lib/zlib_inflate/inffast.c
+    src/fs/isofs/dir.c src/fs/isofs/joliet.c src/fs/nls/nls_base.c src/fs/nls/nls_cp437.c
     third_party/linux/lib/zlib_inflate/inflate.c third_party/linux/lib/zlib_inflate/inftrees.c
     third_party/7zip/CPP/7zip/Archive/ArchiveExports.cpp
     third_party/7zip/CPP/7zip/Archive/Common/FindSignature.cpp

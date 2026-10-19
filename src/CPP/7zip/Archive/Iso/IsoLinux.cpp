@@ -1,5 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-only
 // Stream/record boundary for the original Linux Rock Ridge C readers.
+#include "../../../../isonames.h"
+#include "../../../Common/StringConvert.h"
 #include "../../Common/StreamUtils.h"
 #include "../IArchive.h"
 #include "IsoIn.h"
@@ -71,15 +73,6 @@ HRESULT CInArchive::ReadRock(CDirRecord &item) {
     item.RockName = name;
     item.RockLink = link;
     if (item.RockDefined) {
-        if (item.RockName.IsEmpty()) {
-            item.RockName.SetFrom((const char *)(const Byte *)item.FileId,
-                                  (unsigned)item.FileId.Size());
-            if (item.RockName.Len() >= 2 && item.RockName[item.RockName.Len() - 2] == ';' &&
-                item.RockName.Back() == '1')
-                item.RockName.DeleteFrom(item.RockName.Len() - 2);
-            if (!item.RockName.IsEmpty() && item.RockName.Back() == '.')
-                item.RockName.DeleteBack();
-        }
         const unsigned type = item.RockInode.i_mode & 0170000;
         switch (type) {
         case 0040000:
@@ -100,6 +93,31 @@ HRESULT CInArchive::ReadRock(CDirRecord &item) {
             return S_FALSE;
         }
     }
+    return S_OK;
+}
+
+HRESULT CInArchive::ReadName(CDirRecord &item) {
+    if (item.IsSystemItem())
+        return S_OK;
+    if (item.RockDefined && !item.RockName.IsEmpty()) {
+        item.NameDefined = true;
+        return S_OK;
+    }
+    const bool rockNames =
+        item.RockDefined && (_rockState.rock == 1 || _rockState.rock_offset >= 0);
+    if (!IsJoliet() && !rockNames && !NameMapping)
+        return S_OK;
+    char name[1024];
+    const int length = sevenzip_iso_name(item.FileId, item.FileId.Size(), item.SystemUse,
+                                         item.SystemUse.Size(), item.FileFlags, IsJoliet(),
+                                         NameMapping ? NameMapping : 'n', NameCharset, name);
+    if (length < 0)
+        return S_FALSE;
+    item.RockName.SetFrom(name, (unsigned)length);
+    if (!IsJoliet())
+        item.RockName =
+            UnicodeStringToMultiByte(MultiByteToUnicodeString(item.RockName, CP_OEMCP), CP_UTF8);
+    item.NameDefined = true;
     return S_OK;
 }
 

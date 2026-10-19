@@ -36,3 +36,8 @@ No historical user images are used. The reserved flags byte is deliberately
 nonzero; files preserve the same expected payloads. The 1024-byte variants
 distinguish logical-block padding from padding compatible with older kernels.
 Short recording-date variants exercise timezone limits and normalization.
+
+`tests/iso_name_fixture.py` derives Joliet component/surrogate/NUL/long-name,
+NLS, RR-without-NM and Acorn variants from these generated images. It uses no
+user filenames or historical media. The Acorn marker and file type are synthetic;
+malformed marker/length variants must retain the normal fallback name.

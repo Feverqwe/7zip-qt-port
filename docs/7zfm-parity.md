@@ -12,6 +12,8 @@ ISO9660 читает тома с блоками 512/1024/2048 байт, XAR и �
 El Torito images независимы. Исходные archive names и boot namespace сохранены.
 Отдельный модуль добавляет Linux Rock Ridge names/links, POSIX metadata,
 continuations, relocated directories, выбор RR перед Joliet, zisofs и High Sierra.
+Joliet names и RR fallback используют Linux Unicode/суффиксные правила;
+CLI open-properties доступны для normal/Acorn/raw mapping и UTF-8/CP437.
 [Scope и проверки](upstream-port-audit/isofs-linux.md); полная актуализация
 ISO9660 по Linux ещё не завершена.
 

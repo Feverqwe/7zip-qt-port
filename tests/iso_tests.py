@@ -24,13 +24,14 @@ class IsoTests(unittest.TestCase):
         (cls.runtime / "Formats").mkdir()
         shutil.copy2(MODULE, cls.runtime / "Formats" / MODULE.name)
 
-    def run_image(self, engine, image, name=None, typed=True):
+    def run_image(self, engine, image, name=None, typed=True, properties=()):
         with tempfile.TemporaryDirectory(prefix="sevenzip-iso-") as temporary:
             path = Path(temporary) / ("образ 空.iso" if typed else "образ 空")
             path.write_bytes(image)
             args = [str(self.runtime / (engine+SUFFIX)), "x" if name else "t", "-sccUTF-8", "-bsp0"]
             if typed:
                 args += ["-tIso"]
+            args += ["-m" + value for value in properties]
             if name:
                 args += ["-so", "-bso0", "-bse2"]
             args += ["--", str(path)]
@@ -93,6 +94,21 @@ class IsoTests(unittest.TestCase):
                 result = self.run_image("7z", volume(kind)[0], "ALPHA.BIN", typed=False)
                 self.assertNotEqual(result.returncode, 0)
                 self.assertEqual(result.stdout, b"")
+
+    def test_linux_names_and_mappings(self):
+        cases = {"names-joliet-components": (), "names-joliet-surrogates": (),
+                 "names-joliet-malformed": (), "names-joliet-nul": (), "names-joliet-empty": (), "names-joliet-long": (),
+                 "names-joliet-utf8": ("iocharset=utf8",), "names-joliet-cp437": ("iocharset=cp437",),
+                 "names-map-normal": ("map=n",), "names-map-off": ("map=off",),
+                 "names-acorn": ("map=a",), "names-acorn-short": ("map=a",),
+                 "names-acorn-marker": ("map=a",), "names-rr": ()}
+        for kind, properties in cases.items():
+            image, files = volume(kind)
+            for name, expected in files.items():
+                with self.subTest(kind=kind, name=name):
+                    result = self.run_image("7z", image, name, properties=properties)
+                    self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                    self.assertEqual(result.stdout, expected)
 
     def test_zisofs_decoded_bytes(self):
         for kind in ("zisofs", "zisofs-shift0", "zisofs-pointer-boundary", "zisofs-expanding", "zisofs-small-sparse",

@@ -269,10 +269,15 @@ class CInArchive {
     static int RockRead(void *, uint64_t, void *, size_t);
     static int RockRelocate(void *, uint32_t, sevenzip_iso_inode *);
     HRESULT ReadRock(CDirRecord &);
+    HRESULT ReadName(CDirRecord &);
     HRESULT SelectRockVolume();
 #endif
 
   public:
+#ifdef SEVENZIP_LINUX_ISO
+    char NameMapping = 0;
+    int NameCharset = 0;
+#endif
     HRESULT Open(IInStream *inStream, IArchiveOpenCallback *openCallback);
     void Clear();
 

@@ -79,7 +79,9 @@ source/volume, streams независимы, повреждения и отме�
 Отдельный модуль подключает Linux C Rock Ridge/SUSP: CE/NM/SL/PX/PN/TF,
 relocation, inode metadata, RR-vs-Joliet выбор, Linux zisofs decompression,
 High Sierra и Linux recording dates. Актуализация ISO ещё не завершена:
-names/metadata и оставшиеся read semantics сохраняются в scope. UDF ещё не проверен.
+Joliet/RR fallback и normal/Acorn/raw mapping подключены к Linux C readers;
+дополнительные NLS charsets, metadata и оставшиеся read semantics сохраняются
+в scope. UDF ещё не проверен.
 
 ### HFS+/HFSX: fork mapping и metadata reads
 

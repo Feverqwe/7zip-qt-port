@@ -437,6 +437,11 @@ HRESULT CInArchive::ReadDir(CDir &d, const unsigned level, const CRef *sections)
                     continue;
                 }
             }
+            RINOK(ReadName(subItem))
+            if (subItem.NameDefined && subItem.RockName.IsEmpty()) {
+                firstItem = false;
+                continue;
+            }
 #endif
 
             if (!subItem.IsSystemItem()) {

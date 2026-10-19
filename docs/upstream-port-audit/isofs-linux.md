@@ -14,7 +14,7 @@
 `IsoHandler.cpp`, `IsoHandler.h`, `IsoHeader.cpp`/`.h`, `IsoRegister.cpp`,
 используемые stream helpers, ABI и регистрация в console/module/standalone.
 Изменённые файлы находятся под исходными путями в `src/`; `StdAfx.h`,
-`IsoHandler.h`, `IsoHeader.cpp`/`.h` переиспользуются без изменений в
+`IsoHeader.cpp`/`.h` переиспользуются без изменений в
 `third_party/7zip`. [7-Zip baseline](../upstream-baseline.json) фиксирует их
 происхождение и runtime overlays. `IsoRegister.cpp` адаптирован: dynamic engine
 передаёт регистрацию внешнему модулю, standalone сохраняет исходный handler.
@@ -197,9 +197,49 @@ timezone ±52 quarter-hours применяется, ±53 игнорируетс�
 RR TF и long-form date path продолжают использовать тот же Linux helper.
 Archive descriptor dates остаются отдельным исходным 7-Zip представлением.
 
+## Joliet, RR fallback и Acorn names
+
+Из того же Linux commit переданы полные `dir.c:isofs_name_translate`,
+`get_acorn_filename`, `joliet.c:uni16_to_x8` и `get_joliet_filename`.
+Directory iteration, VFS lookup/casefold operations и module registration
+не нужны для archive naming. C остаётся C; дисковые spans реконструируются
+из уже проверенного directory record, с bounded zero lookahead.
+Kernel 16-bit `wchar_t` использует существующий `fat_wchar_t`; перед shared
+UTF-16 helper делается aligned copy. Один cast устраняет host signedness warning.
+
+`fs/nls/nls_base.c` и `nls_cp437.c` переиспользуются из существующего FAT port,
+с теми же pinned source hashes и единственной реализацией. Сохранены UTF-16
+surrogate handling, остановка на NUL, замена непредставимых NLS символов `?`,
+`;1` и trailing-period rules для каждого Joliet компонента. Полученный charset
+переводится обратно в UTF-8 для Unicode archive ABI. Plain ISO mappings
+сохраняют существующий OEM-to-Unicode adapter. RR NM names не проходят ISO
+translation; при отсутствии NM используется оригинальный Linux fallback.
+Probing state без RR markers сохраняет исходный archive namespace.
+
+В `get_joliet_filename` длина расширена с `unsigned char` до `int`: 274 UTF-8
+байта не должны превращаться в 18. Native kernel воспроизводит truncation;
+исправленный reader сохраняет полное имя. Реальный host filesystem может
+ограничивать длину компонента; archive listing/stream/source-entry не обрезаются.
+Пустой результат conversion скрывается, как Linux `len <= 0`.
+
+`IsoHandler.h` адаптирован под штатный `ISetProperties`; исходный interface
+macro и module boundary сохранены. Property loop следует исходному NTFS handler.
+Open properties `map=n|normal`, `map=a|acorn`, `map=o|off` подключают Linux
+normal/Acorn/raw modes; `iocharset=utf8|cp437` выбирает Joliet charset.
+Например, dynamic engine принимает `7z l -mmap=a image.iso`.
+Acorn использует исходные ARCHIMEDES marker, mode и file-type rules.
+Неверный тип/значение возвращает E_INVALIDARG без изменения прежних options;
+пустой SetProperties сбрасывает defaults. Обычный ISO по умолчанию сохраняет
+исходное 7-Zip отображение, Joliet/RR используют исправленный path.
+Standalone `7zz` не получает GPL readers и этот interface extension.
+Прежняя [FAT/NLS dependency boundary](fat-linux.md) переиспользуется без
+изменения shared C sources; NLS tables не копируются второй реализацией.
+Остальные kernel NLS tables пока не подключены: неизвестный charset явно
+отклоняется; это остаётся незавершённым read scope, а не полной NLS parity.
+
 ## Оставшийся scope
 
-Остаются naming/NLS/Acorn и оставшиеся descriptor-date quirks,
+Остаются дополнительные NLS charsets и descriptor-date quirks,
 проверка остальных RR compatibility branches на производителях, полная
 dot-record normalization/root multi-section semantics. Сохранённый archive
 depth cap отличается от VFS; его снятие требует переноса рекурсивного обхода
@@ -296,6 +336,7 @@ macOS app build и фактический CMake install проверили exact
 ошибку повреждённого потока и GPL/LGPL/syscall/zlib notices; staging удалён.
 Source post-comparison и exact-source SHA-256 выполнены отдельно от runtime.
 Full/slow/UI/physical-device acceptance не выполнялась.
+
 После уточнения fixtures и wide-mask предупреждения повторены `iso`/`iso_stream`
 на всех трёх ОС: 2/2 PASS, remote receipt `20261019T161535Z-d5535c87`.
 
@@ -321,3 +362,27 @@ ISO/Joliet/HS, извлёк plain/XAR/multi-section/leading-descriptor/1024-byte
 и отверг неверный descriptor. GPL/LGPL/syscall/zlib notices сверены по содержимому;
 staging удалён. Post-transfer source comparison выполнен отдельно.
 Full/slow/UI/physical-device acceptance не выполнялась.
+
+Naming CLI/ABI проверяют нормализацию каждого Joliet компонента, surrogate
+pairs и их повреждения, NUL/empty identifier, полное длинное UTF-8 имя,
+UTF-8/CP437 и normal/raw/Acorn mappings, malformed Acorn marker/length,
+RR fallback без NM. Backend проверяет selected/source-entry extraction для
+Unicode и нормализованного parent, source-entry для длинного имени и отказ
+traversal без изменения файла вне destination. Неверные open properties
+не меняют прежний режим, reset возвращает archive defaults.
+
+Native Linux 6.8.0-146 read-only mounts: 12 naming/mapping/omission cases PASS;
+дополнительный long-name case воспроизвёл kernel truncation 274 → 18 UTF-8
+байт. Это отличие не воспроизводится в модуле. Native NLS сравнивался в raw
+CP437 bytes, Unicode archive ABI — в UTF-8. Все fixtures generated-only,
+temporary mounts/images удалены. Source comparison выполнен отдельно.
+
+Naming seven-suite batch: 7/7 PASS на macOS arm64, Linux x64 и Windows x64/MSVC,
+Qt 6.12; remote receipt `20261019T174846Z-d42720f7`.
+После empty-identifier boundary правки повторены `iso`/`iso_stream`: 2/2 PASS
+на всех трёх ОС, receipt `20261019T175213Z-7605db25`.
+macOS app target собран; фактический CMake install проверил component/emoji/long
+names, empty omission, CP437, normal/raw/Acorn и RR fallback extraction bytes,
+а также GPL/LGPL/syscall/zlib notices. Одноразовый staging удалён.
+Full/slow/UI/physical-device acceptance не выполнялась; persistent builds и
+compiler caches сохранены.

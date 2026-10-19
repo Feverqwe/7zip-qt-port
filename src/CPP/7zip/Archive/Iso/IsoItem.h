@@ -88,6 +88,7 @@ struct CDirRecord {
     sevenzip_iso_inode RockInode{};
     AString RockName, RockLink;
     bool RockDefined = false;
+    bool NameDefined = false;
     bool RockHidden = false;
     UInt64 RecordPosition = 0;
 #endif

@@ -25,6 +25,47 @@ using namespace NTime;
 
 namespace NArchive {
 namespace NIso {
+#ifdef SEVENZIP_LINUX_ISO
+// Standard 7-Zip open properties, following the source handler property loop.
+Z7_COM7F_IMF(CHandler::SetProperties(const wchar_t *const *names, const PROPVARIANT *values,
+                                     UInt32 numProps)) {
+    char mapping = 0;
+    int charset = 0;
+    for (UInt32 i = 0; i < numProps; ++i) {
+        const wchar_t *name = names[i];
+        const PROPVARIANT &value = values[i];
+        if (StringsAreEqualNoCase_Ascii(name, "map")) {
+            if (value.vt != VT_BSTR)
+                return E_INVALIDARG;
+            if (StringsAreEqualNoCase_Ascii(value.bstrVal, "n") ||
+                StringsAreEqualNoCase_Ascii(value.bstrVal, "normal"))
+                mapping = 'n';
+            else if (StringsAreEqualNoCase_Ascii(value.bstrVal, "a") ||
+                     StringsAreEqualNoCase_Ascii(value.bstrVal, "acorn"))
+                mapping = 'a';
+            else if (StringsAreEqualNoCase_Ascii(value.bstrVal, "o") ||
+                     StringsAreEqualNoCase_Ascii(value.bstrVal, "off"))
+                mapping = 'o';
+            else
+                return E_INVALIDARG;
+        } else if (StringsAreEqualNoCase_Ascii(name, "iocharset")) {
+            if (value.vt != VT_BSTR)
+                return E_INVALIDARG;
+            if (StringsAreEqualNoCase_Ascii(value.bstrVal, "utf8"))
+                charset = 0;
+            else if (StringsAreEqualNoCase_Ascii(value.bstrVal, "cp437"))
+                charset = 1;
+            else
+                return E_INVALIDARG;
+        } else if (!IsString1PrefixedByString2_NoCase_Ascii(name, "mt") &&
+                   !IsString1PrefixedByString2_NoCase_Ascii(name, "memuse"))
+            return E_INVALIDARG;
+    }
+    _archive.NameMapping = mapping;
+    _archive.NameCharset = charset;
+    return S_OK;
+}
+#endif
 
 static const Byte kProps[] = {kpidPath, kpidIsDir, kpidSize, kpidPackSize, kpidMTime,
 #ifdef SEVENZIP_LINUX_ISO
@@ -208,16 +249,17 @@ Z7_COM7F_IMF(CHandler::GetProperty(UInt32 index, PROPID propID, PROPVARIANT *val
         const CRef &ref = _archive.Refs[index];
         const CDir &item = ref.Dir->_subItems[ref.Index];
 #ifdef SEVENZIP_LINUX_ISO
+        if (propID == kpidPath && item.NameDefined) {
+            UString text = MultiByteToUnicodeString(item.GetPath(false, 0), CP_UTF8);
+            NItemName::ReplaceToOsSlashes_Remove_TailSlash(text);
+            prop = text;
+            prop.Detach(value);
+            return S_OK;
+        }
         if (item.RockDefined) {
             const sevenzip_iso_inode &inode = item.RockInode;
             bool handled = true;
             switch (propID) {
-            case kpidPath: {
-                UString text = MultiByteToUnicodeString(item.GetPath(false, 0), CP_UTF8);
-                NItemName::ReplaceToOsSlashes_Remove_TailSlash(text);
-                prop = text;
-                break;
-            }
             case kpidSymLink:
                 if ((inode.i_mode & 0170000) == 0120000)
                     prop = MultiByteToUnicodeString(item.RockLink, CP_UTF8);

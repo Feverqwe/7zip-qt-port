@@ -18,6 +18,7 @@ namespace {
 class Input final : public IInStream, public CMyUnknownImp {
     Z7_COM_UNKNOWN_IMP_2(ISequentialInStream, IInStream)
     QByteArray bytes_;
+
     UInt64 position_ = 0;
 
   public:
@@ -100,6 +101,26 @@ class IsoStreamTests final : public QObject {
     CMyComPtr<IInArchive> archive_;
     QJsonObject record_;
     QByteArray bytes_;
+
+    void names(const wchar_t *mapping = nullptr, const wchar_t *charset = nullptr) {
+        CMyComPtr<ISetProperties> properties;
+        QVERIFY(archive_);
+        QCOMPARE(
+            archive_->QueryInterface(IID_ISetProperties, reinterpret_cast<void **>(&properties)),
+            S_OK);
+        const wchar_t *keys[2];
+        NWindows::NCOM::CPropVariant values[2];
+        UInt32 count = 0;
+        if (mapping) {
+            keys[count] = L"map";
+            values[count++] = mapping;
+        }
+        if (charset) {
+            keys[count] = L"iocharset";
+            values[count++] = charset;
+        }
+        QCOMPARE(properties->SetProperties(keys, values, count), S_OK);
+    }
 
     void createArchive() {
         archive_.Release();
@@ -190,6 +211,7 @@ class IsoStreamTests final : public QObject {
     }
   private slots:
     void initTestCase() { createArchive(); }
+    void init() { names(); }
     void independentAndRetainedStreams_data() {
         QTest::addColumn<QString>("kind");
         for (const char *kind :
@@ -339,7 +361,8 @@ class IsoStreamTests final : public QObject {
         QTest::addColumn<QString>("kind");
         for (const char *kind :
              {"plain", "joliet", "block-512-tail", "xar", "multi", "multi-directory", "rock",
-              "rock-joliet", "zisofs", "zisofs-multi", "sierra", "sierra-multi"})
+              "rock-joliet", "zisofs", "zisofs-multi", "sierra", "sierra-multi",
+              "names-joliet-components", "names-joliet-surrogates", "names-joliet-long"})
             QTest::newRow(kind) << QString::fromLatin1(kind);
     }
     void backendExtraction() {
@@ -376,7 +399,10 @@ class IsoStreamTests final : public QObject {
         QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 10000);
         QVERIFY2(finished[0][0].toBool(), qPrintable(finished[0][1].toString()));
         const QString name =
-            kind == "joliet" || kind.startsWith("rock") || kind.startsWith("zisofs")
+            kind == "names-joliet-components"   ? QString::fromUtf8("Nested/данные 空.txt")
+            : kind == "names-joliet-surrogates" ? QString::fromUtf8("face-😀.bin")
+            : kind == "names-joliet-long"       ? QString(90, QChar(0x754c)) + ".bin"
+            : kind == "joliet" || kind.startsWith("rock") || kind.startsWith("zisofs")
                 ? QString::fromUtf8("nested/данные 空.txt")
             : kind == "multi-directory" ? "NESTED/LATE.BIN"
                                         : "ALPHA.BIN";
@@ -385,13 +411,15 @@ class IsoStreamTests final : public QObject {
         QVERIFY(!expected.isEmpty());
         finished.clear();
         const QString output = temporary.filePath("output");
-        backend.extract(image.fileName(), output, {name});
-        QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 10000);
-        QVERIFY2(finished[0][0].toBool(), qPrintable(finished[0][1].toString()));
-        QFile file(QDir(output).filePath(name));
-        QVERIFY(file.open(QIODevice::ReadOnly));
-        QCOMPARE(file.readAll(), expected);
-        finished.clear();
+        if (kind != "names-joliet-long") {
+            backend.extract(image.fileName(), output, {name});
+            QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 10000);
+            QVERIFY2(finished[0][0].toBool(), qPrintable(finished[0][1].toString()));
+            QFile file(QDir(output).filePath(name));
+            QVERIFY(file.open(QIODevice::ReadOnly));
+            QCOMPARE(file.readAll(), expected);
+            finished.clear();
+        }
         const QString saved = temporary.filePath("source.bin");
         backend.extractSourceEntry(image.fileName(), name, saved, "Iso", {});
         QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 10000);
@@ -401,6 +429,83 @@ class IsoStreamTests final : public QObject {
         QCOMPARE(source.readAll(), expected);
         QVERIFY(image.open(QIODevice::ReadOnly));
         QCOMPARE(image.readAll(), bytes_);
+    }
+    void normalizedNameCannotEscapeDestination() {
+        loadFixture("names-joliet-traversal");
+        QTemporaryDir temporary;
+        QVERIFY(temporary.isValid());
+        QFile image(temporary.filePath(QString::fromUtf8("образ 空.iso")));
+        QVERIFY(image.open(QIODevice::WriteOnly));
+        QCOMPARE(image.write(bytes_), bytes_.size());
+        image.close();
+        QFile outside(temporary.filePath("escape.bin"));
+        QVERIFY(outside.open(QIODevice::WriteOnly));
+        QCOMPARE(outside.write("preserve"), qint64(8));
+        outside.close();
+        const QDir runtime(QString::fromUtf8(SEVENZIP_ISO_RUNTIME));
+        ArchiveBackend backend(nullptr, runtime.filePath(
+#ifdef Q_OS_WIN
+                                            "7z.exe"
+#else
+                                            "7z"
+#endif
+                                            ));
+        QSignalSpy finished(&backend, &ArchiveBackend::finished);
+        backend.extract(image.fileName(), temporary.filePath("output"), {});
+        QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 10000);
+        QVERIFY(!finished[0][0].toBool());
+        QVERIFY(outside.open(QIODevice::ReadOnly));
+        QCOMPARE(outside.readAll(), QByteArray("preserve"));
+    }
+    void linuxNames_data() {
+        QTest::addColumn<QString>("kind");
+        for (const char *kind :
+             {"names-joliet-components", "names-joliet-surrogates", "names-joliet-malformed",
+              "names-joliet-nul", "names-joliet-empty", "names-joliet-long", "names-joliet-cp437",
+              "names-map-normal", "names-map-off", "names-acorn", "names-acorn-short",
+              "names-acorn-marker", "names-rr"})
+            QTest::newRow(kind) << QString::fromLatin1(kind);
+    }
+    void linuxNames() {
+        QFETCH(QString, kind);
+        names(kind.startsWith("names-acorn") ? L"a"
+              : kind == "names-map-normal"   ? L"n"
+              : kind == "names-map-off"      ? L"off"
+                                             : nullptr,
+              kind == "names-joliet-cp437" ? L"cp437" : nullptr);
+        loadFixture(kind);
+        CMyComPtr<IInStream> input = new Input(bytes_);
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        const auto files = record_["files"].toObject();
+        if (kind == "names-joliet-empty")
+            QVERIFY(index("") == UInt32(-1));
+        for (auto entry = files.begin(); entry != files.end(); ++entry) {
+            QVERIFY2(index(entry.key()) != UInt32(-1), qPrintable(entry.key()));
+            check(stream(entry.key()), entry.key(), 0,
+                  QByteArray::fromBase64(entry.value().toString().toLatin1()).size());
+        }
+    }
+    void invalidNamePropertiesPreserveConfiguration() {
+        names(L"a");
+        CMyComPtr<ISetProperties> properties;
+        QCOMPARE(
+            archive_->QueryInterface(IID_ISetProperties, reinterpret_cast<void **>(&properties)),
+            S_OK);
+        const wchar_t *key = L"iocharset";
+        NWindows::NCOM::CPropVariant value(L"unsupported-charset");
+        QCOMPARE(properties->SetProperties(&key, &value, 1), E_INVALIDARG);
+        key = L"map";
+        value = UInt32(42);
+        QCOMPARE(properties->SetProperties(&key, &value, 1), E_INVALIDARG);
+        loadFixture("names-acorn");
+        CMyComPtr<IInStream> input = new Input(bytes_);
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        check(stream("!app,abc"), "!app,abc", 0, 4096);
+        names();
+        loadFixture("plain");
+        input = new Input(bytes_);
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        check(stream("ALPHA.BIN"), "ALPHA.BIN", 0, 4096);
     }
     void linuxRecordingDates_data() {
         QTest::addColumn<QString>("kind");
