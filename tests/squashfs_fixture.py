@@ -18,7 +18,7 @@ def metadata(data, compressed=False):
     return struct.pack("<H", len(packed) | (0 if compressed else 0x8000)) + packed
 
 
-def volume(fault="", compressed=False, no_fragments=False, codec="zlib"):
+def volume(fault="", compressed=False, no_fragments=False, codec="zlib", xattrs=False, export=False):
     image = bytearray(96)
     first = b"A" * BLOCK + b"first-tail"
     if codec == "lz4":
@@ -61,19 +61,25 @@ def volume(fault="", compressed=False, no_fragments=False, codec="zlib"):
     for i, data in enumerate((first, second)):
         offsets.append(len(inodes))
         start, size = descriptors[i]
-        inodes += base(2, i + 1)
-        inodes += struct.pack("<4I", start, 0, 0 if i == 0 else 10, len(data))
+        if xattrs and i == 0:
+            inodes += base(9, 1) + struct.pack("<QQQ4I", start, len(data), 0, 2, 0, 0, 0)
+        else:
+            inodes += base(2, i + 1)
+            inodes += struct.pack("<4I", start, 0, 0 if i == 0 else 10, len(data))
         inodes += struct.pack("<I", size)
         if i == 1:
             inodes += bytes(4)  # sparse block
     offsets.append(len(inodes))
     inodes += base(3, 3) + struct.pack("<2I", 1, 5) + b"alpha"
     names = ["alpha", "данные 空", "link"]
-    directory = bytearray(struct.pack("<3I", 2, 0, 1))
+    if xattrs:
+        names.append("hardlink")
+    directory = bytearray(struct.pack("<3I", len(names) - 1, 0, 1))
     for i in sorted(range(len(names)), key=lambda i: names[i].encode()):
         name = names[i]
         name = name.encode()
-        directory += struct.pack("<4H", offsets[i], i, 3 if i == 2 else 2, len(name) - 1) + name
+        node = 0 if i == 3 else i
+        directory += struct.pack("<4H", offsets[node], node, 3 if node == 2 else 2, len(name) - 1) + name
     root_offset = len(inodes)
     inodes += base(1, 4) + struct.pack("<2I2HI", 0, 2, len(directory) + 3, 0, 1)
     inode_start = len(image)
@@ -92,18 +98,53 @@ def volume(fault="", compressed=False, no_fragments=False, codec="zlib"):
         image += metadata(struct.pack("<QII", fragment_start, fragment_size, 0), compressed)
         fragment_table = len(image)
         image += struct.pack("<Q", fragment_metadata)
+    lookup_table = INVALID
+    if export:
+        lookup_metadata = len(image)
+        image += metadata(struct.pack("<4Q", offsets[0], offsets[1], offsets[2], root_offset))
+        lookup_table = len(image)
+        image += struct.pack("<Q", lookup_metadata)
     ids_metadata = len(image)
     image += metadata(struct.pack("<I", 1000), compressed)
     ids_table = len(image)
     image += struct.pack("<Q", ids_metadata)
+    xattr_id_table = INVALID
+    if xattrs:
+        attributes = [(0, b"inline", b"v\0a\0lue"), (2, b"label", b"test-label"), (0, b"empty", b"")]
+        entries = bytearray()
+        for kind, name, value in attributes:
+            entries += struct.pack("<HH", kind, len(name)) + name
+            entries += struct.pack("<I", len(value)) + value
+        references = []
+        for kind, name in ((1, b"large"), (0, b"duplicate")):
+            entries += struct.pack("<HH", kind | 256, len(name)) + name + struct.pack("<I", 8)
+            references.append(len(entries))
+            entries += bytes(8)
+        entries += struct.pack("<HH", 0x8000, 6) + b"future" + struct.pack("<I", 1) + b"?"
+        pointer = ((len(entries) // BLOCK * (BLOCK + 2)) << 16) | (len(entries) % BLOCK)
+        for reference in references:
+            struct.pack_into("<Q", entries, reference, pointer)
+        value = bytes(range(251)) * 36
+        entries += struct.pack("<I", len(value)) + value
+        xattr_start = len(image)
+        for offset in range(0, len(entries), BLOCK):
+            image += metadata(entries[offset:offset + BLOCK])
+        xattr_ids_metadata = len(image)
+        image += metadata(struct.pack("<QII", 0, len(attributes) + 3, len(entries)))
+        xattr_id_table = len(image)
+        image += struct.pack("<QIIQ", xattr_start, 1, 0, xattr_ids_metadata)
     struct.pack_into("<5I6H8Q", image, 0, 0x73717368, 1 if no_fragments else 4,
                      0, BLOCK, 0 if no_fragments else 1, 5 if codec == "lz4" else 3 if codec == "lzo-rle" else 1,
                      13, 1 << 10 if codec == "lz4" else 0, 1, 4, 0,
-                     root_offset, len(image), ids_table, INVALID, inode_start, dir_start,
-                     fragment_table, INVALID)
+                     root_offset, len(image), ids_table, xattr_id_table, inode_start, dir_start,
+                     fragment_table, lookup_table)
     # Structural mutations use uncompressed metadata so each targets a single boundary.
     if fault == "fragment-large":
         struct.pack_into("<I", image, fragment_metadata + 2 + 8, BLOCK + 1)
+    elif fault == "fragment-zero":
+        struct.pack_into("<I", image, fragment_metadata + 2 + 8, 1 << 24)
+    elif fault == "data-zero":
+        struct.pack_into("<I", image, inode_start + 2 + 32, 1 << 24)
     elif fault == "fragment-outside":
         struct.pack_into("<Q", image, fragment_metadata + 2, len(image) - 1)
     elif fault == "data-outside":
@@ -122,6 +163,20 @@ def volume(fault="", compressed=False, no_fragments=False, codec="zlib"):
         struct.pack_into("<H", image, inode_start + 2 + 4, 1)
     elif fault == "negative-size":
         struct.pack_into("<Q", image, 40, 1 << 63)
+    elif fault == "xattr-ids-zero":
+        struct.pack_into("<I", image, xattr_id_table + 8, 0)
+    elif fault == "xattr-count-negative":
+        struct.pack_into("<I", image, xattr_ids_metadata + 2 + 8, 0x80000000)
+    elif fault == "xattr-index-outside":
+        struct.pack_into("<Q", image, xattr_id_table + 16, len(image))
+    elif fault == "xattr-id-invalid":
+        struct.pack_into("<I", image, inode_start + 2 + 52, 1)
+    elif fault == "xattr-ool-outside":
+        struct.pack_into("<Q", image, xattr_start + 2 + references[0], INVALID)
+    elif fault == "id-metadata-gap":
+        image[ids_table:ids_table] = bytes(BLOCK)
+        struct.pack_into("<Q", image, 48, ids_table + BLOCK)
+        struct.pack_into("<Q", image, 40, len(image))
     elif fault in ("metadata-bomb", "cross-block-inode"):
         if fault == "metadata-bomb":
             # The inode block expands beyond the 8 KiB metadata contract.
@@ -139,7 +194,7 @@ def volume(fault="", compressed=False, no_fragments=False, codec="zlib"):
         struct.pack_into("<Q", image, fragment_table + delta, fragment_metadata + delta)
         struct.pack_into("<Q", image, ids_table + delta, ids_metadata + delta)
     image += bytes((-len(image)) % 4096)
-    return bytes(image), dict(zip(names, (first, second, b"alpha"))) if not no_fragments else {}
+    return bytes(image), dict(zip(names, (first, second, b"alpha", first))) if not no_fragments else {}
 
 
 def legacy_volume(endian="<", compressed=False):
@@ -184,6 +239,7 @@ def legacy_volume(endian="<", compressed=False):
 
 if __name__ == "__main__":
     codec = next((arg.split("=", 1)[1] for arg in sys.argv if arg.startswith("--codec=")), "zlib")
-    data, files = volume(compressed="--compressed" in sys.argv, codec=codec)
+    data, files = volume(compressed="--compressed" in sys.argv, codec=codec, xattrs="--xattrs" in sys.argv,
+                         export="--export" in sys.argv)
     print(json.dumps({"size": len(data), "image": base64.b64encode(zlib.compress(data)).decode(),
                       "files": {name: base64.b64encode(value).decode() for name, value in files.items()}}))

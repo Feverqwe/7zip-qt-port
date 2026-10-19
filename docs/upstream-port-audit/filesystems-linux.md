@@ -75,10 +75,10 @@ GPT/MBR/APM проверяются как дополнительные форм�
 
 [Сравнение и исправление существующего чтения](squashfs-linux.md) охватывает
 оба engines: корректные границы metadata/data, пустые тома без fragments,
-независимость потоков и передачу ошибок. Полная актуализация SquashFS ещё
-продолжается. Следующая интеграция подключает Linux C LZ4/LZO и compressor
-options к приложению через отдельный GPL-модуль; оставшиеся index/xattr
-metadata и inode/link properties остаются в scope.
+независимость потоков и передачу ошибок. Актуализация также
+подключает Linux C LZ4/LZO, compressor options, index/xattr metadata и
+inode/link properties. Source scope и границы standalone/archive ABI описаны
+в linked audit; runtime evidence не заменяет проверку остальных строк.
 
 ### ext2/3/4: sparse, metadata и inline data
 

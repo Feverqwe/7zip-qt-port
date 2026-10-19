@@ -37,7 +37,7 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 ## Новые изменения
 
 - [SquashFS по Linux](upstream-port-audit/squashfs-linux.md)
-  — metadata/data boundaries, fragments и независимые streams обоих engines.
+  — Linux codecs, index/xattr reads, inode/link properties и независимые streams.
 
 - [ext2/3/4 по Linux](upstream-port-audit/ext-linux.md)
   — sparse/extent streams, Linux metadata checksums, inline data, геометрия и fs-verity.

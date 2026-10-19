@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 // Archive memory/I/O services around the original SquashFS decompressor units.
 #include "squashfsdecoder.h"
+#include "squashfsio.h"
 #include "fs/squashfs/squashfscompat.h"
 #include "fs/squashfs/squashfs_fs.h"
 #include "fs/squashfs/squashfs_fs_sb.h"
@@ -12,8 +13,7 @@ extern const struct squashfs_decompressor_thread_ops squashfs_decompressor_singl
 
 struct sevenzip_squashfs_decoder {
     struct squashfs_sb_info msblk;
-    sevenzip_squashfs_read read;
-    void *opaque;
+    struct sevenzip_squashfs_io io;
 };
 
 // 7-Zip already supplies bounded Zlib/XZ/Zstd decoder bodies. The Linux
@@ -33,34 +33,6 @@ const struct squashfs_decompressor squashfs_zstd_comp_ops = {
     .id = ZSTD_COMPRESSION, .name = "zstd", .supported = 1
 };
 
-// Replace block-device bio submission with a bounded archive source read.
-int squashfs_bio_read(struct super_block *sb, u64 index, int length,
-    struct bio **result, int *offset)
-{
-    struct sevenzip_squashfs_decoder *decoder = sb->s_fs_info->read_context;
-    struct bio *bio;
-    int error = -ENOMEM;
-    if (length <= 0 || index > (u64)sb->s_fs_info->bytes_used ||
-        (unsigned)length > (u64)sb->s_fs_info->bytes_used - index || !decoder->read)
-        return -EIO;
-    bio = calloc(1, sizeof(*bio));
-    if (!bio) return -ENOMEM;
-    bio->segment.data = malloc((size_t)length);
-    if (!bio->segment.data) goto failed;
-    bio->segment.bv_len = (unsigned)length;
-    if (decoder->read(decoder->opaque, index, (void *)bio->segment.data, (size_t)length)) {
-        error = -EIO;
-        goto failed;
-    }
-    *result = bio;
-    *offset = 0;
-    return 0;
-failed:
-    bio_free_pages(bio);
-    free(bio);
-    return error;
-}
-
 int sevenzip_squashfs_decoder_create(unsigned method, unsigned block_size, unsigned flags,
     uint64_t bytes_used, sevenzip_squashfs_read read, void *opaque,
     struct sevenzip_squashfs_decoder **result)
@@ -73,11 +45,11 @@ int sevenzip_squashfs_decoder_create(unsigned method, unsigned block_size, unsig
         return -EINVAL;
     decoder = calloc(1, sizeof(*decoder));
     if (!decoder) return -ENOMEM;
-    decoder->read = read;
-    decoder->opaque = opaque;
+    decoder->io.read = read;
+    decoder->io.opaque = opaque;
     decoder->msblk.block_size = block_size;
     decoder->msblk.bytes_used = (long long)bytes_used;
-    decoder->msblk.read_context = decoder;
+    decoder->msblk.read_context = &decoder->io;
     decoder->msblk.thread_ops = &squashfs_decompressor_single;
     decoder->msblk.decompressor = squashfs_lookup_decompressor((int)method);
     if (!decoder->msblk.decompressor->supported) {
@@ -92,8 +64,8 @@ int sevenzip_squashfs_decoder_create(unsigned method, unsigned block_size, unsig
         return error;
     }
     // Source callbacks are borrowed only during setup, never by a returned stream.
-    decoder->read = NULL;
-    decoder->opaque = NULL;
+    decoder->io.read = NULL;
+    decoder->io.opaque = NULL;
     *result = decoder;
     return 0;
 }

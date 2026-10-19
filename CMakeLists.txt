@@ -764,6 +764,14 @@ if(BUILD_TESTING)
     add_test(NAME squashfs_stream COMMAND squashfs_stream_tests -silent)
     add_dependencies(squashfs_stream_tests sevenzip_squashfs_runtime)
     set_tests_properties(squashfs_stream PROPERTIES TIMEOUT 45)
+    qt_add_executable(squashfs_metadata_tests tests/squashfs_metadata_tests.cpp)
+    target_include_directories(squashfs_metadata_tests PRIVATE src)
+    target_link_libraries(squashfs_metadata_tests PRIVATE sevenzip_squashfs_metadata Qt6::Test)
+    target_compile_definitions(squashfs_metadata_tests PRIVATE
+        "SEVENZIP_SQUASHFS_PYTHON=\"${Python3_EXECUTABLE}\""
+        "SEVENZIP_SQUASHFS_FIXTURE=\"${CMAKE_CURRENT_SOURCE_DIR}/tests/squashfs_fixture.py\"")
+    add_test(NAME squashfs_metadata COMMAND squashfs_metadata_tests -silent)
+    set_tests_properties(squashfs_metadata PROPERTIES TIMEOUT 30)
     add_test(NAME fat COMMAND ${Python3_EXECUTABLE}
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/fat_tests.py
         ${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime "$<TARGET_FILE:sevenzip_fat>")

@@ -28,6 +28,7 @@
 #include "../Compress/ZlibDecoder.h"
 #ifdef SEVENZIP_LINUX_SQUASHFS
 #include "../../../squashfsdecoder.h"
+#include "../../../squashfsmetadata.h"
 #endif
 // #include "../Compress/LzmaDecoder.h"
 
@@ -268,10 +269,10 @@ struct CNode {
     UInt32 Frag;
     UInt32 Offset;
     // UInt32 MTime;
-    // UInt32 Number;
-    // UInt32 NumLinks;
+    UInt32 Number;
+    UInt32 NumLinks;
     // UInt32 RDev;
-    // UInt32 Xattr;
+    UInt32 Xattr;
     // UInt32 Parent;
 
     UInt64 FileSize;
@@ -628,11 +629,12 @@ UInt32 CNode::Parse4(const Byte *p, UInt32 size, const CHeader &_h) {
     LE_16(4, Uid);
     LE_16(6, Gid);
     // LE_32 (8, MTime);
-    // LE_32 (12, Number);
+    LE_32(12, Number);
     if ((Mode & MY_LIN_S_IFMT) != 0 || Uid >= _h.NumIDs || Gid >= _h.NumIDs || GetUi32(p + 12) == 0)
         return 0;
 
-    // Xattr = kXattr_Empty;
+    Xattr = (UInt32)-1;
+    NumLinks = 1;
     FileSize = 0;
     StartBlock = 0;
 
@@ -652,10 +654,10 @@ UInt32 CNode::Parse4(const Byte *p, UInt32 size, const CHeader &_h) {
             LE_64(16, StartBlock);
             LE_64(24, FileSize);
             // LE_64 (32, Sparse);
-            // LE_32 (40, NumLinks);
+            LE_32(40, NumLinks);
             LE_32(44, Frag);
             LE_32(48, Offset);
-            // LE_32 (52, Xattr);
+            LE_32(52, Xattr);
             offset = 56;
         }
         if ((Int64)FileSize < 0 ||
@@ -670,14 +672,14 @@ UInt32 CNode::Parse4(const Byte *p, UInt32 size, const CHeader &_h) {
         if (size < 32)
             return 0;
         LE_32(16, StartBlock);
-        // LE_32 (20, NumLinks);
+        LE_32(20, NumLinks);
         LE_16(24, FileSize);
         LE_16(26, Offset);
         // LE_32 (28, Parent);
         return 32;
     }
 
-    // LE_32 (16, NumLinks);
+    LE_32(16, NumLinks);
 
     if (Type == kType_DIR + 7) {
         if (size < 40)
@@ -688,7 +690,7 @@ UInt32 CNode::Parse4(const Byte *p, UInt32 size, const CHeader &_h) {
         UInt32 iCount;
         LE_16(32, iCount);
         LE_16(34, Offset);
-        // LE_32 (36, Xattr);
+        LE_32(36, Xattr);
 
         UInt32 pos = 40;
         for (UInt32 i = 0; i < iCount; i++) {
@@ -739,7 +741,7 @@ UInt32 CNode::Parse4(const Byte *p, UInt32 size, const CHeader &_h) {
     if (Type >= 8) {
         if (size < offset + 4)
             return 0;
-        // LE_32 (offset, Xattr);
+        LE_32(offset, Xattr);
         offset += 4;
     }
     return offset;
@@ -821,9 +823,13 @@ Z7_CLASS_IMP_CHandler_IInArchive_1(
   CByteBuffer _inputBuffer;
 #ifdef SEVENZIP_LINUX_SQUASHFS
   sevenzip_squashfs_decoder *_linuxDecoder = NULL;
+  sevenzip_squashfs_metadata *_linuxMetadata = NULL;
   HRESULT _linuxReadResult = S_OK;
   static int ReadLinux(void *opaque, uint64_t offset, void *data, size_t size);
   HRESULT InitLinuxDecoder();
+  static int ReadLinuxMetadata(void *, uint64_t, void *, unsigned *, uint64_t *);
+  HRESULT LoadLinuxTables(UInt64 &directoryEnd);
+  HRESULT LinuxResult(int result) const;
 #endif
 
   void ClearCache()
@@ -859,6 +865,7 @@ public:
   {
 #ifdef SEVENZIP_LINUX_SQUASHFS
     sevenzip_squashfs_decoder_destroy(_linuxDecoder);
+    sevenzip_squashfs_metadata_destroy(_linuxMetadata);
 #endif
     XzUnpacker_Free(&_xz);
     if (_zstd)
@@ -902,11 +909,75 @@ HRESULT CHandler::InitLinuxDecoder() {
         return _linuxReadResult;
     return result == 0 ? S_OK : result == -12 ? E_OUTOFMEMORY : result == -95 ? E_NOTIMPL : S_FALSE;
 }
+
+HRESULT CHandler::LinuxResult(int result) const {
+    if (_linuxReadResult != S_OK)
+        return _linuxReadResult;
+    return result >= 0 ? S_OK : result == -12 ? E_OUTOFMEMORY : S_FALSE;
+}
+
+int CHandler::ReadLinuxMetadata(void *opaque, uint64_t block, void *data, unsigned *size,
+                                uint64_t *next) {
+    CHandler *handler = static_cast<CHandler *>(opaque);
+    if (block > handler->_h.Size) {
+        handler->_linuxReadResult = S_FALSE;
+        return -5;
+    }
+    try {
+        HRESULT result = handler->Seek2(block);
+        UInt32 packed = (UInt32)MyMin(handler->_h.Size - block, (UInt64)kMetadataBlockSize + 3);
+        handler->_dynOutStream->Init();
+        if (result == S_OK)
+            result = handler->ReadMetadataBlock(packed);
+        if (result == S_OK) {
+            const size_t actual = handler->_dynOutStream->GetSize();
+            if (actual > *size)
+                result = S_FALSE;
+            else {
+                memcpy(data, handler->_dynOutStream->GetBuffer(), actual);
+                *size = (unsigned)actual;
+                *next = block + packed;
+            }
+        }
+        handler->_linuxReadResult = result;
+        return result == S_OK ? 0 : -5;
+    } catch (...) {
+        handler->_linuxReadResult = E_OUTOFMEMORY;
+        return -12;
+    }
+}
+
+HRESULT CHandler::LoadLinuxTables(UInt64 &directoryEnd) {
+    _linuxReadResult = S_OK;
+    uint64_t end;
+    RINOK(LinuxResult(sevenzip_squashfs_metadata_create(_h.Size, ReadLinux, ReadLinuxMetadata, this,
+                                                        &_linuxMetadata, &end)))
+    directoryEnd = end;
+    _uids.Alloc((size_t)_h.NumIDs * 4);
+    for (unsigned i = 0; i < _h.NumIDs; ++i) {
+        unsigned id;
+        RINOK(LinuxResult(sevenzip_squashfs_id(_linuxMetadata, i, &id)))
+        SetUi32(_uids + (size_t)i * 4, id)
+    }
+    if (_h.NumFrags > kNumFilesMax)
+        return S_FALSE;
+    _frags.ClearAndReserve(_h.NumFrags);
+    for (UInt32 i = 0; i < _h.NumFrags; ++i) {
+        uint64_t start;
+        unsigned size;
+        RINOK(LinuxResult(sevenzip_squashfs_fragment(_linuxMetadata, i, &start, &size)))
+        CFrag frag;
+        frag.StartBlock = start;
+        frag.Size = size;
+        _frags.AddInReserved(frag);
+    }
+    return S_OK;
+}
 #endif
 
 static const Byte kProps[] = {
-    kpidPath,        kpidIsDir,  kpidSize,   kpidPackSize, kpidMTime,
-    kpidPosixAttrib, kpidUserId, kpidGroupId
+    kpidPath,   kpidIsDir,   kpidSize,  kpidPackSize, kpidMTime,  kpidPosixAttrib,
+    kpidUserId, kpidGroupId, kpidINode, kpidLinks,    kpidSymLink
     // kpidLinks,
     // kpidOffset
 };
@@ -1558,107 +1629,116 @@ HRESULT CHandler::Open2(IInStream *inStream) {
 #endif
 
     UInt64 dirEnd = _h.FragTable;
-    if (_h.Major < 4) {
-        RINOK(ReadUids(_h.UidTable, _h.NumUids, _uids))
-        RINOK(ReadUids(_h.GidTable, _h.NumGids, _gids))
-    } else {
-        if (_h.NumIDs == 0)
-            return S_FALSE;
-        const UInt32 size = (UInt32)_h.NumIDs * 4;
-        _uids.Alloc(size);
-
-        const UInt32 numBlocks = (size + kMetadataBlockSize - 1) / kMetadataBlockSize;
-        const UInt32 numBlocksBytes = numBlocks << 3;
-        if (_h.UidTable > _h.Size || numBlocksBytes > _h.Size - _h.UidTable)
-            return S_FALSE;
-        CByteBuffer data(numBlocksBytes);
-        RINOK(Seek2(_h.UidTable))
-        RINOK(ReadStream_FALSE(inStream, data, numBlocksBytes))
-
-        for (UInt32 i = 0; i < numBlocks; i++) {
-            const UInt64 offset = GetUi64(data + i * 8);
-            if (offset >= _h.UidTable || (i != 0 && offset <= GetUi64(data + (i - 1) * 8)))
+#ifdef SEVENZIP_LINUX_SQUASHFS
+    if (!_h.IsOldVersion()) {
+        RINOK(LoadLinuxTables(dirEnd))
+    } else
+#endif
+    {
+        if (_h.Major < 4) {
+            RINOK(ReadUids(_h.UidTable, _h.NumUids, _uids))
+            RINOK(ReadUids(_h.GidTable, _h.NumGids, _gids))
+        } else {
+            if (_h.NumIDs == 0)
                 return S_FALSE;
-            if (i == 0)
-                dirEnd = offset;
-            RINOK(Seek2(offset))
-            // RINOK(ReadMetadataBlock(NULL, _uids + kMetadataBlockSize * i, packSize, unpackSize));
-            RINOK(ReadMetadataBlock2())
-            const size_t unpackSize = _dynOutStream->GetSize();
-            UInt32 remSize = size & (kMetadataBlockSize - 1);
-            if (remSize == 0 || i != numBlocks - 1)
-                remSize = kMetadataBlockSize;
-            if (unpackSize != remSize)
+            const UInt32 size = (UInt32)_h.NumIDs * 4;
+            _uids.Alloc(size);
+
+            const UInt32 numBlocks = (size + kMetadataBlockSize - 1) / kMetadataBlockSize;
+            const UInt32 numBlocksBytes = numBlocks << 3;
+            if (_h.UidTable > _h.Size || numBlocksBytes > _h.Size - _h.UidTable)
                 return S_FALSE;
-            memcpy(_uids + kMetadataBlockSize * i, _dynOutStream->GetBuffer(), remSize);
-        }
-    }
+            CByteBuffer data(numBlocksBytes);
+            RINOK(Seek2(_h.UidTable))
+            RINOK(ReadStream_FALSE(inStream, data, numBlocksBytes))
 
-    if (_h.Major == 4 && _h.LookupTable != (UInt64)(Int64)-1) {
-        const UInt64 indexBytes =
-            (((UInt64)_h.NumInodes * 8 + kMetadataBlockSize - 1) / kMetadataBlockSize) * 8;
-        if (_h.NumInodes == 0 || _h.LookupTable > dirEnd || indexBytes != dirEnd - _h.LookupTable)
-            return S_FALSE;
-        Byte first[8];
-        RINOK(Seek2(_h.LookupTable))
-        RINOK(ReadStream_FALSE(inStream, first, sizeof(first)))
-        dirEnd = GetUi64(first);
-        if (dirEnd >= _h.LookupTable)
-            return S_FALSE;
-    }
-
-    if (_h.NumFrags != 0) {
-        if (_h.NumFrags > kNumFilesMax)
-            return S_FALSE;
-        const unsigned bigFrag = (_h.Major > 2);
-
-        const unsigned fragPtrsInBlockLog = kMetadataBlockSizeLog - (3 + bigFrag);
-        const UInt32 numBlocks =
-            (_h.NumFrags + (1 << fragPtrsInBlockLog) - 1) >> fragPtrsInBlockLog;
-        const size_t numBlocksBytes = (size_t)numBlocks << (2 + bigFrag);
-        const UInt64 fragEnd = _h.Major == 4 ? dirEnd : _h.Size;
-        if (_h.FragTable > fragEnd || numBlocksBytes > fragEnd - _h.FragTable)
-            return S_FALSE;
-        CByteBuffer data(numBlocksBytes);
-        RINOK(Seek2(_h.FragTable))
-        RINOK(ReadStream_FALSE(inStream, data, numBlocksBytes))
-        _frags.ClearAndReserve(_h.NumFrags);
-        const bool be = _h.be;
-
-        for (UInt32 i = 0; i < numBlocks; i++) {
-            const UInt64 offset = bigFrag ? Get64(data + i * 8) : Get32(data + i * 4);
-            if (_h.Major == 4) {
-                if (offset >= _h.FragTable)
+            for (UInt32 i = 0; i < numBlocks; i++) {
+                const UInt64 offset = GetUi64(data + i * 8);
+                if (offset >= _h.UidTable || (i != 0 && offset <= GetUi64(data + (i - 1) * 8)))
                     return S_FALSE;
                 if (i == 0)
                     dirEnd = offset;
-            }
-            RINOK(Seek2(offset))
-            RINOK(ReadMetadataBlock2())
-            const UInt32 unpackSize = (UInt32)_dynOutStream->GetSize();
-            UInt32 remSize = (_h.NumFrags << (3 + bigFrag)) & (kMetadataBlockSize - 1);
-            if (remSize == 0 || i != numBlocks - 1)
-                remSize = kMetadataBlockSize;
-            if (unpackSize != remSize)
-                return S_FALSE;
-            const Byte *buf = _dynOutStream->GetBuffer();
-            for (UInt32 j = 0; j < unpackSize;) {
-                CFrag frag;
-                if (bigFrag) {
-                    frag.StartBlock = Get64(buf + j);
-                    frag.Size = Get32(buf + j + 8);
-                    // some archives contain nonzero in unused (buf + j + 12)
-                    j += 16;
-                } else {
-                    frag.StartBlock = Get32(buf + j);
-                    frag.Size = Get32(buf + j + 4);
-                    j += 8;
-                }
-                _frags.Add(frag);
+                RINOK(Seek2(offset))
+                // RINOK(ReadMetadataBlock(NULL, _uids + kMetadataBlockSize * i, packSize,
+                // unpackSize));
+                RINOK(ReadMetadataBlock2())
+                const size_t unpackSize = _dynOutStream->GetSize();
+                UInt32 remSize = size & (kMetadataBlockSize - 1);
+                if (remSize == 0 || i != numBlocks - 1)
+                    remSize = kMetadataBlockSize;
+                if (unpackSize != remSize)
+                    return S_FALSE;
+                memcpy(_uids + kMetadataBlockSize * i, _dynOutStream->GetBuffer(), remSize);
             }
         }
-        if ((UInt32)_frags.Size() != _h.NumFrags)
-            return S_FALSE;
+
+        if (_h.Major == 4 && _h.LookupTable != (UInt64)(Int64)-1) {
+            const UInt64 indexBytes =
+                (((UInt64)_h.NumInodes * 8 + kMetadataBlockSize - 1) / kMetadataBlockSize) * 8;
+            if (_h.NumInodes == 0 || _h.LookupTable > dirEnd ||
+                indexBytes != dirEnd - _h.LookupTable)
+                return S_FALSE;
+            Byte first[8];
+            RINOK(Seek2(_h.LookupTable))
+            RINOK(ReadStream_FALSE(inStream, first, sizeof(first)))
+            dirEnd = GetUi64(first);
+            if (dirEnd >= _h.LookupTable)
+                return S_FALSE;
+        }
+
+        if (_h.NumFrags != 0) {
+            if (_h.NumFrags > kNumFilesMax)
+                return S_FALSE;
+            const unsigned bigFrag = (_h.Major > 2);
+
+            const unsigned fragPtrsInBlockLog = kMetadataBlockSizeLog - (3 + bigFrag);
+            const UInt32 numBlocks =
+                (_h.NumFrags + (1 << fragPtrsInBlockLog) - 1) >> fragPtrsInBlockLog;
+            const size_t numBlocksBytes = (size_t)numBlocks << (2 + bigFrag);
+            const UInt64 fragEnd = _h.Major == 4 ? dirEnd : _h.Size;
+            if (_h.FragTable > fragEnd || numBlocksBytes > fragEnd - _h.FragTable)
+                return S_FALSE;
+            CByteBuffer data(numBlocksBytes);
+            RINOK(Seek2(_h.FragTable))
+            RINOK(ReadStream_FALSE(inStream, data, numBlocksBytes))
+            _frags.ClearAndReserve(_h.NumFrags);
+            const bool be = _h.be;
+
+            for (UInt32 i = 0; i < numBlocks; i++) {
+                const UInt64 offset = bigFrag ? Get64(data + i * 8) : Get32(data + i * 4);
+                if (_h.Major == 4) {
+                    if (offset >= _h.FragTable)
+                        return S_FALSE;
+                    if (i == 0)
+                        dirEnd = offset;
+                }
+                RINOK(Seek2(offset))
+                RINOK(ReadMetadataBlock2())
+                const UInt32 unpackSize = (UInt32)_dynOutStream->GetSize();
+                UInt32 remSize = (_h.NumFrags << (3 + bigFrag)) & (kMetadataBlockSize - 1);
+                if (remSize == 0 || i != numBlocks - 1)
+                    remSize = kMetadataBlockSize;
+                if (unpackSize != remSize)
+                    return S_FALSE;
+                const Byte *buf = _dynOutStream->GetBuffer();
+                for (UInt32 j = 0; j < unpackSize;) {
+                    CFrag frag;
+                    if (bigFrag) {
+                        frag.StartBlock = Get64(buf + j);
+                        frag.Size = Get32(buf + j + 8);
+                        // some archives contain nonzero in unused (buf + j + 12)
+                        j += 16;
+                    } else {
+                        frag.StartBlock = Get32(buf + j);
+                        frag.Size = Get32(buf + j + 4);
+                        j += 8;
+                    }
+                    _frags.Add(frag);
+                }
+            }
+            if ((UInt32)_frags.Size() != _h.NumFrags)
+                return S_FALSE;
+        }
     }
 
     RINOK(ReadData(_inodesData, _h.InodeTable, _h.DirTable))
@@ -1675,6 +1755,9 @@ HRESULT CHandler::Open2(IInStream *inStream) {
         _nodesPos.ClearAndReserve(_h.NumInodes);
         _nodes.ClearAndReserve(_h.NumInodes);
         UInt32 pos = 0;
+#ifdef SEVENZIP_LINUX_SQUASHFS
+        unsigned metadataBlock = 0;
+#endif
         for (UInt32 i = 0; i < _h.NumInodes; i++) {
             CNode n;
             const Byte *p = _inodesData.Data + pos;
@@ -1696,6 +1779,23 @@ HRESULT CHandler::Open2(IInStream *inStream) {
             }
             if (size == 0)
                 return S_FALSE;
+#ifdef SEVENZIP_LINUX_SQUASHFS
+            if (!_h.IsOldVersion()) {
+                _linuxReadResult = S_OK;
+                RINOK(LinuxResult(sevenzip_squashfs_validate_xattrs(_linuxMetadata, n.Xattr)))
+                if (_h.LookupTable != (UInt64)(Int64)-1) {
+                    while (metadataBlock + 1 < _inodesData.UnpackPos.Size() &&
+                           pos >= _inodesData.UnpackPos[metadataBlock + 1])
+                        ++metadataBlock;
+                    uint64_t reference;
+                    RINOK(
+                        LinuxResult(sevenzip_squashfs_inode(_linuxMetadata, n.Number, &reference)))
+                    if (reference != ((UInt64)_inodesData.PackPos[metadataBlock] << 16) + pos -
+                                         _inodesData.UnpackPos[metadataBlock])
+                        return S_FALSE;
+                }
+            }
+#endif
             _nodesPos.AddInReserved(pos);
             _nodes.AddInReserved(n);
             pos += size;
@@ -1798,6 +1898,8 @@ Z7_COM7F_IMF(CHandler::Close()) {
 #ifdef SEVENZIP_LINUX_SQUASHFS
     sevenzip_squashfs_decoder_destroy(_linuxDecoder);
     _linuxDecoder = NULL;
+    sevenzip_squashfs_metadata_destroy(_linuxMetadata);
+    _linuxMetadata = NULL;
 #endif
     _openCodePage = CP_UTF8;
     _sizeCalculated = 0;
@@ -1877,7 +1979,7 @@ bool CHandler::GetPackSize(unsigned index, UInt64 &totalPack, bool fillOffsets) 
             if (fillOffsets)
                 _blockCompressed.Add(IS_COMPRESSED_BLOCK(t));
             UInt32 size = GET_COMPRESSED_BLOCK_SIZE(t);
-            if (size > _h.BlockSize)
+            if (size > _h.BlockSize || (_h.Major == 4 && size == 0 && t != 0))
                 return false;
             totalPack += size;
             if (fillOffsets)
@@ -1889,7 +1991,7 @@ bool CHandler::GetPackSize(unsigned index, UInt64 &totalPack, bool fillOffsets) 
                 return false;
             const CFrag &frag = _frags[node.Frag];
             const UInt32 size = GET_COMPRESSED_BLOCK_SIZE(frag.Size);
-            if (size > _h.BlockSize || frag.StartBlock > _h.Size ||
+            if (size > _h.BlockSize || (_h.Major == 4 && size == 0) || frag.StartBlock > _h.Size ||
                 size > _h.Size - frag.StartBlock)
                 return false;
             if (node.Offset == 0) {
@@ -1912,6 +2014,9 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID propID, PROPVARIANT *value)) {
     COM_TRY_BEGIN
     NWindows::NCOM::CPropVariant prop;
     switch (propID) {
+    case kpidINode:
+        prop = (_h.Major == 4);
+        break;
     case kpidMethod: {
         char sz[16];
         const char *s;
@@ -1997,6 +2102,27 @@ Z7_COM7F_IMF(CHandler::GetProperty(UInt32 index, PROPID propID, PROPVARIANT *val
     const bool be = _h.be;
 
     switch (propID) {
+    case kpidINode:
+    case kpidStreamId:
+        if (_h.Major == 4)
+            prop = node.Number;
+        break;
+    case kpidLinks:
+        if (_h.Major == 4)
+            prop = node.NumLinks;
+        break;
+    case kpidSymLink:
+        if (node.IsLink() && node.FileSize != 0) {
+            AString target;
+            target.SetFrom_CalcLen((const char *)(const Byte *)_inodesData.Data +
+                                       _nodesPos[item.Node] + _h.GetSymLinkOffset(),
+                                   (unsigned)node.FileSize);
+            UString text;
+            if (_openCodePage != CP_UTF8 || !ConvertUTF8ToUnicode(target, text))
+                MultiByteToUnicodeString2(text, target, _openCodePage);
+            prop = text;
+        }
+        break;
     case kpidPath: {
         AString path(GetPath(index));
         UString s;

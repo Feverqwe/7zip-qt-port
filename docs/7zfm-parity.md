@@ -7,6 +7,12 @@ Qt заменяет presentation и платформенные services; арх�
 
 ## Основные сценарии
 
+SquashFS сообщает реальные inode identity и symlink targets стандартному
+механизму 7-Zip. При process extraction действует существующий запрет links:
+набор со ссылкой отклоняется, выбранные обычные файлы извлекаются. Source
+extraction использует исходный callback и native OS link services; возможность
+создания ссылок зависит от платформы и прав. [Scope и проверки SquashFS](upstream-port-audit/squashfs-linux.md).
+
 File → Open device добавляет переносимый выбор внешнего устройства и раздела
 для прямого чтения ext, сохраняя обычные тома и открытие архивов. Это расширение
 исходного Windows device namespace: системные права получает узкий native service,

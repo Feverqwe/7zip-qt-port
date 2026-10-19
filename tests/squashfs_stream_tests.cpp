@@ -148,11 +148,13 @@ class SquashfsStreamTests final : public QObject {
         }
         QCOMPARE(actual, expected);
     }
-    void loadFixture(const QString &codec) {
+    void loadFixture(const QString &codec, bool xattrs = false) {
         QProcess generator;
-        generator.start(QString::fromUtf8(SEVENZIP_SQUASHFS_PYTHON),
-                        {QString::fromUtf8(SEVENZIP_SQUASHFS_FIXTURE),
-                         codec == "zlib" ? "--compressed" : "--codec=" + codec});
+        QStringList arguments{QString::fromUtf8(SEVENZIP_SQUASHFS_FIXTURE)};
+        arguments << (codec == "zlib" && !xattrs ? "--compressed" : "--codec=" + codec);
+        if (xattrs)
+            arguments << "--xattrs" << "--export";
+        generator.start(QString::fromUtf8(SEVENZIP_SQUASHFS_PYTHON), arguments);
         QVERIFY(generator.waitForFinished(10000));
         QCOMPARE(generator.exitCode(), 0);
         record_ = QJsonDocument::fromJson(generator.readAllStandardOutput()).object();
@@ -170,6 +172,25 @@ class SquashfsStreamTests final : public QObject {
     }
   private slots:
     void initTestCase() { createArchive(); }
+    void inodePropertiesDescribeHardlinksAndSymlinks() {
+        loadFixture("zlib", true);
+        CMyComPtr<IInStream> source = new Input(bytes_);
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
+        for (const QString &name : {QString("alpha"), QString("hardlink")}) {
+            NWindows::NCOM::CPropVariant inode, links, streamId;
+            QCOMPARE(archive_->GetProperty(index(name), kpidINode, &inode), S_OK);
+            QCOMPARE(inode.vt, VARTYPE(VT_UI4));
+            QCOMPARE(inode.ulVal, 1u);
+            QCOMPARE(archive_->GetProperty(index(name), kpidLinks, &links), S_OK);
+            QCOMPARE(links.ulVal, 2u);
+            QCOMPARE(archive_->GetProperty(index(name), kpidStreamId, &streamId), S_OK);
+            QCOMPARE(streamId.ulVal, inode.ulVal);
+        }
+        NWindows::NCOM::CPropVariant target;
+        QCOMPARE(archive_->GetProperty(index("link"), kpidSymLink, &target), S_OK);
+        QCOMPARE(target.vt, VARTYPE(VT_BSTR));
+        QCOMPARE(QString::fromWCharArray(target.bstrVal), QString("alpha"));
+    }
     void interleavedStreamsSurviveCloseReopenAndRelease_data() { codecs(); }
     void interleavedStreamsSurviveCloseReopenAndRelease() {
         QFETCH(QString, codec);
@@ -262,6 +283,11 @@ class SquashfsStreamTests final : public QObject {
         finished.clear();
         const QString output = runtime.filePath("output");
         backend.extract(image, output);
+        QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 10000);
+        QVERIFY(!finished[0][0].toBool());
+        QVERIFY(!QFileInfo::exists(output));
+        finished.clear();
+        backend.extract(image, output, {name});
         QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 10000);
         QVERIFY2(finished[0][0].toBool(), qPrintable(finished[0][1].toString()));
         QFile result(QDir(output).filePath(name));

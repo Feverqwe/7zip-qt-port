@@ -16,12 +16,14 @@ typedef uint8_t u8;
 typedef int64_t loff_t;
 typedef uint64_t pgoff_t;
 #define PAGE_SIZE 65536
+#define PAGE_SHIFT 16
 #define GFP_KERNEL 0
 #define CONFIG_SQUASHFS_LZ4 1
 #define CONFIG_SQUASHFS_LZO 1
 #define CONFIG_SQUASHFS_XZ 1
 #define CONFIG_SQUASHFS_ZLIB 1
 #define CONFIG_SQUASHFS_ZSTD 1
+#define CONFIG_SQUASHFS_XATTR 1
 #define likely(x) (x)
 #define unlikely(x) (x)
 #define ERROR(...) ((void)0)
@@ -34,6 +36,7 @@ typedef uint64_t pgoff_t;
 #define min(a, b) ((a) < (b) ? (a) : (b))
 #endif
 #define kmalloc(n, flags) malloc(n)
+#define kcalloc(n, s, flags) calloc(n, s)
 #define kmalloc_obj(obj) malloc(sizeof(obj))
 #define kzalloc_obj(obj) calloc(1, sizeof(obj))
 #define kfree(p) free(p)
@@ -46,6 +49,19 @@ static inline uint32_t le32_to_cpu(__le32 v)
 {
     const uint8_t *b = (const uint8_t *)&v;
     return (uint32_t)b[0] | (uint32_t)b[1] << 8 | (uint32_t)b[2] << 16 | (uint32_t)b[3] << 24;
+}
+static inline uint16_t le16_to_cpu(__le16 v)
+{
+    const uint8_t *b = (const uint8_t *)&v;
+    return (uint16_t)(b[0] | (uint16_t)b[1] << 8);
+}
+static inline uint64_t le64_to_cpu(__le64 v)
+{
+    const uint8_t *b = (const uint8_t *)&v;
+    uint64_t value = 0;
+    unsigned i;
+    for (i = 0; i < 8; ++i) value |= (uint64_t)b[i] << (8 * i);
+    return value;
 }
 static inline int sevenzip_squashfs_ffs(int n)
 {

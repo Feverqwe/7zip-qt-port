@@ -133,12 +133,50 @@ class SquashfsTests(unittest.TestCase):
 
     def test_corrupt_metadata_and_data_boundaries(self):
         for engine in ("7z", "7zz"):
-            for fault in ("fragment-large", "fragment-outside", "data-outside", "cross-block-inode",
+            for fault in ("fragment-large", "fragment-zero", "data-zero", "fragment-outside", "data-outside", "cross-block-inode",
                           "cycle", "count-wrap", "name-nul", "name-slash", "root-not-directory",
                           "uid-index", "negative-size", "metadata-bomb"):
                 with self.subTest(engine=engine, fault=fault):
                     result = self.run_image(engine, volume(fault)[0])
                     self.assertNotEqual(result.returncode, 0, result.stdout.decode(errors="replace"))
+
+    def test_xattr_tables_and_out_of_line_values(self):
+        data, files = volume(xattrs=True)
+        for name in ("alpha", "hardlink"):
+            result = self.run_image("7z", data, "x", name)
+            self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+            self.assertEqual(result.stdout, files[name])
+        for fault in ("xattr-ids-zero", "xattr-count-negative", "xattr-index-outside", "xattr-id-invalid", "xattr-ool-outside"):
+            with self.subTest(fault=fault):
+                result = self.run_image("7z", volume(fault, xattrs=True)[0], "l")
+                self.assertNotEqual(result.returncode, 0, result.stdout.decode(errors="replace"))
+
+    def test_id_metadata_index_rejects_an_excessive_gap(self):
+        result = self.run_image("7z", volume("id-metadata-gap")[0], "l")
+        self.assertNotEqual(result.returncode, 0)
+
+    def test_export_table_reference_must_match_the_inode(self):
+        import struct
+        data = bytearray(volume(xattrs=True, export=True)[0])
+        lookup = struct.unpack_from("<Q", data, 88)[0]
+        metadata = struct.unpack_from("<Q", data, lookup)[0]
+        struct.pack_into("<Q", data, metadata + 2, 1)
+        result = self.run_image("7z", data, "l")
+        self.assertNotEqual(result.returncode, 0, result.stdout.decode(errors="replace"))
+
+    def test_hardlink_identity_and_symlink_target_during_native_cli_extraction(self):
+        data, files = volume(xattrs=True)
+        with tempfile.TemporaryDirectory(dir=self.runtime) as temporary:
+            root = Path(temporary)
+            image = root / "image.squashfs"
+            image.write_bytes(data)
+            output = root / "output"
+            result = subprocess.run([str(self.runtime / ("7z" + SUFFIX)), "x", "-y", "-o" + str(output),
+                                     "--", str(image), "alpha", "hardlink"], capture_output=True, timeout=10)
+            self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+            self.assertEqual((output / "alpha").read_bytes(), files["alpha"])
+            self.assertEqual((output / "hardlink").read_bytes(), files["alpha"])
+            self.assertTrue((output / "alpha").samefile(output / "hardlink"))
 
     def test_shared_fragment_with_nonzero_offset_is_validated_before_read(self):
         for engine in ("7z", "7zz"):

@@ -106,15 +106,51 @@ install включают модуль и GPL/BSD/7-Zip notices. Обработк
 сохраняет собственный C decoder у каждого stream; callback источника нужен
 только при setup и не хранится после него.
 
-## Открытая актуализация
+## Linux metadata, xattrs и inode properties
 
-Полная проверка оставшихся index/xattr metadata,
-экспорт доступных inode/link properties и остальные source-visible read
-различия остаются в scope следующей интеграции. Текущие проверки native
-xattr-containing images подтверждают чтение обычных файлов, а не экспорт
-произвольных xattrs через archive ABI. Ограничение eager metadata buffers
-также не считается новым read feature. Эта запись не превращает пробелы
-в окончательные ограничения продукта.
+Переданы полные `id.c` и `fragment.c`, обе read functions `xattr_id.c`,
+`export.c:squashfs_inode_lookup` и `squashfs_read_inode_lookup_table`, полный
+`xattr.c` с list/get/namespace handlers. `cache.c` сохраняет полные
+`squashfs_copy_data`, `squashfs_read_metadata`, `squashfs_read_table`.
+VFS/NFS dentry/export operations и kernel cache allocation/wait queues
+не относятся к архивному чтению и не копируются. `squashfs_fill_super`
+непригоден целиком без VFS; его table setup sequence перенесена в узкую
+инициализацию C reader с исходными helpers и порядком xattr/ID/export/fragment.
+
+C metadata reader получает тот же проверенный источник и original 7-Zip
+metadata decoder через callback. Одноэлементный cache хранит собственные
+распакованные байты, поддерживает переходы через metadata blocks и повтор
+после ошибки. Источник и callbacks живут до Close; returned file streams
+по-прежнему независимы от metadata reader. Общий bounded bio service вынесен
+из decoder adapter и используется обоими C-компонентами.
+
+Динамический handler использует C tables для UID/GID, fragments и directory
+boundary. При наличии export table каждый inode reference проверяется через
+исходный Linux lookup. Xattrs читаются полностью, включая binary/empty values,
+shared out-of-line references и переходы metadata block. C API позволяет
+получать names/values; те же функции используются при проверке inode metadata.
+User/trusted/security namespaces читаются как байты архива, без привязки к
+привилегиям процесса на host OS. Неизвестные типы пропускаются как в Linux.
+Произвольные xattrs не добавляются в вымышленные 7-Zip properties: стандартный
+archive ABI не предоставляет такого поля; установка OS xattrs — write operation.
+
+Сохранены GNU-to-C portability adaptations. Raw table range проверяется до
+выделения памяти; длина не должна пересекаться с кодируемым uncompressed bit.
+Отрицательный xattr count отклоняется до signed loop, names/values ограничены
+Linux VFS xattr limits. Eager archive open отклоняет повреждённые metadata
+целиком; Linux может сообщить ошибку позднее при отдельном xattr/NFS access.
+Это отличие момента отказа не подменяет корректные байты файла нулями.
+
+В обоих engines восстановлены реальные inode number/nlink и цель symlink.
+Стандартные archive/item inode properties подключают существующий механизм
+hardlinks `ArchiveExtractCallback`; новый алгоритм создания ссылок не добавлен.
+Ненулевой data descriptor с нулевым payload и нулевой fragment payload теперь
+отклоняются, сохраняя настоящий sparse descriptor 0. Так повреждённый пакет
+не выдаёт вымышленные нули вместо ошибки Linux.
+
+Проверенный source scope перечислен выше отдельно от runtime evidence.
+Eager metadata limits и bounded-buffer decoder allocation policy сохраняются;
+другие filesystem/format rows общего аудита продолжаются.
 
 ## Проверки
 
@@ -155,3 +191,20 @@ payload и native mount fixtures удалены; incremental build/cache сох�
 исключений обе SquashFS suites повторно PASS на macOS/Linux/Windows;
 final remote receipt `20261019T103336Z-9b9eae7a`. Повторное source comparison
 подтвердило неизменное тело `squashfs_read_data`, кроме `{0}` initializer.
+
+Metadata/inode iteration: `squashfs_metadata` дополнительно проверяет names,
+empty/binary и shared OOL values, short buffers, invalid IDs, export lookup,
+source failure на следующем block и retry через чистый C API без unRAR.
+CLI/ABI checks покрывают raw table/index corruption, OOL/count повреждения,
+ложные zero packets, реальные hardlink identity и symlink properties.
+ArchiveBackend теперь видит ссылку и применяет существующий process-extraction
+guard; отказ всего набора и успешный выбор обычного файла проверяются вместе.
+Native Linux `6.8.0-146-generic` подтвердил реальные xattrs, включая trusted,
+empty и shared OOL values, inode identity/readlink и семь corrupt cases.
+Focused6 (три SquashFS suites, codec_probe, upstream_baseline/inventory) PASS
+на macOS/Linux/Windows; remote receipt `20261019T105020Z-026dcd9a`.
+Последние export lookup и packet/count guards проверены тремя SquashFS suites
+на всех трёх ОС: receipt `20261019T105725Z-8db18d7e`, macOS 4,51 с.
+Проверка baseline и staged whitespace выполняется перед коммитом. Full/slow,
+physical-device и native Windows symlink creation в этот backend scenario
+не входят. Build directories и compiler caches сохранены.

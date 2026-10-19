@@ -16,5 +16,25 @@ struct squashfs_sb_info {
     bool panic_on_errors;
     const struct squashfs_decompressor_thread_ops *thread_ops;
     void *read_context;
+    struct squashfs_cache *block_cache;
+    __le64 *id_table;
+    __le64 *fragment_index;
+    __le64 *xattr_id_table;
+    __le64 *inode_lookup_table;
+    u64 inode_table;
+    u64 directory_table;
+    u64 xattr_table;
+    unsigned int inodes;
+    unsigned int fragments;
+    unsigned int xattr_ids;
+    unsigned int ids;
+};
+struct squashfs_cache { void *private_data; };
+struct squashfs_cache_entry {
+    u64 block;
+    int length;
+    u64 next_index;
+    int error;
+    void **data;
 };
 #endif

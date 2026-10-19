@@ -1,8 +1,18 @@
+# GPL metadata core is shared by the format module and its pure C API consumer.
+add_library(sevenzip_squashfs_metadata STATIC
+    src/squashfsmetadata.c src/squashfsio.c src/fs/squashfs/cache.c
+    src/fs/squashfs/id.c src/fs/squashfs/fragment.c src/fs/squashfs/export.c
+    src/fs/squashfs/xattr_id.c src/fs/squashfs/xattr.c
+    src/fs/squashfs/block.c src/fs/squashfs/page_actor.c)
+target_include_directories(sevenzip_squashfs_metadata PRIVATE src)
+set_target_properties(sevenzip_squashfs_metadata PROPERTIES AUTOMOC OFF AUTOUIC OFF
+    POSITION_INDEPENDENT_CODE ON C_STANDARD 11 C_STANDARD_REQUIRED ON)
+
 # Linux-derived C readers remain in a separate GPL format module.
 add_library(sevenzip_squashfs MODULE
     src/CPP/7zip/Archive/SquashfsHandler.cpp src/exfatmodule.cpp
-    src/squashfsdecoder.c src/fs/squashfs/decompressor.c src/fs/squashfs/block.c
-    src/fs/squashfs/decompressor_single.c src/fs/squashfs/page_actor.c
+    src/squashfsdecoder.c src/fs/squashfs/decompressor.c
+    src/fs/squashfs/decompressor_single.c
     src/fs/squashfs/lz4_wrapper.c src/fs/squashfs/lzo_wrapper.c src/fs/squashfs/xz_wrapper.c
     src/lib/lz4/lz4_decompress.c src/lib/lzo/lzo1x_decompress_safe.c
     third_party/7zip/CPP/7zip/Archive/ArchiveExports.cpp
@@ -41,7 +51,7 @@ add_library(sevenzip_squashfs MODULE
 target_include_directories(sevenzip_squashfs PRIVATE src third_party/7zip/CPP
     third_party/7zip/CPP/7zip/Archive)
 target_compile_definitions(sevenzip_squashfs PRIVATE SEVENZIP_LINUX_SQUASHFS Z7_ST)
-target_link_libraries(sevenzip_squashfs PRIVATE Threads::Threads)
+target_link_libraries(sevenzip_squashfs PRIVATE sevenzip_squashfs_metadata Threads::Threads)
 set_target_properties(sevenzip_squashfs PROPERTIES AUTOMOC OFF AUTOUIC OFF PREFIX ""
     C_STANDARD 11 C_STANDARD_REQUIRED ON)
 if(UNIX AND NOT APPLE)

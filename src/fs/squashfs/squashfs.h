@@ -14,4 +14,16 @@
 int squashfs_read_data(struct super_block *, u64, int, u64 *, struct squashfs_page_actor *);
 const struct squashfs_decompressor *squashfs_lookup_decompressor(int);
 void *squashfs_decompressor_setup(struct super_block *, unsigned short);
+struct squashfs_cache;
+struct squashfs_cache_entry;
+struct squashfs_cache_entry *squashfs_cache_get(struct super_block *, struct squashfs_cache *, u64, int);
+void squashfs_cache_put(struct squashfs_cache_entry *);
+int squashfs_read_metadata(struct super_block *, void *, u64 *, int *, int);
+void *squashfs_read_table(struct super_block *, u64, int);
+int squashfs_get_id(struct super_block *, unsigned int, unsigned int *);
+__le64 *squashfs_read_id_index_table(struct super_block *, u64, u64, unsigned short);
+int squashfs_frag_lookup(struct super_block *, unsigned int, u64 *);
+__le64 *squashfs_read_fragment_index_table(struct super_block *, u64, u64, unsigned int);
+__le64 *squashfs_read_inode_lookup_table(struct super_block *, u64, u64, unsigned int);
+long long squashfs_inode_lookup(struct super_block *, int);
 #endif
