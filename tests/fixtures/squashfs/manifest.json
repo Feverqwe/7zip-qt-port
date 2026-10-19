@@ -1,0 +1,122 @@
+{
+  "version": "mksquashfs version 4.6.1 (2023/03/25)",
+  "images": {
+    "gzip": {
+      "size": 8192,
+      "sha256": "6348e86ef10754e030c8fb798ea584fca304c260dab8e82c61c094cdddbf12e2",
+      "options": [
+        "-noappend",
+        "-processors",
+        "1",
+        "-comp",
+        "gzip",
+        "-b",
+        "16384",
+        "-all-time",
+        "0",
+        "-mkfs-time",
+        "0",
+        "-all-root",
+        "-no-progress"
+      ]
+    },
+    "xz": {
+      "size": 8192,
+      "sha256": "f7efee9db646e60e0decf2cc0a89ee5a1aa17ad72a6f3ed9937c2cb4277430b2",
+      "options": [
+        "-noappend",
+        "-processors",
+        "1",
+        "-comp",
+        "xz",
+        "-b",
+        "16384",
+        "-all-time",
+        "0",
+        "-mkfs-time",
+        "0",
+        "-all-root",
+        "-no-progress",
+        "-Xdict-size",
+        "50%"
+      ]
+    },
+    "lzo": {
+      "size": 8192,
+      "sha256": "b88a6022cb82841553c54f007ebdac5a074cc25c9e58ca87d5feb389833569ee",
+      "options": [
+        "-noappend",
+        "-processors",
+        "1",
+        "-comp",
+        "lzo",
+        "-b",
+        "16384",
+        "-all-time",
+        "0",
+        "-mkfs-time",
+        "0",
+        "-all-root",
+        "-no-progress"
+      ]
+    },
+    "lz4": {
+      "size": 8192,
+      "sha256": "81dad305a565126e7e0db3d207e1d75a756f23445cb14815f2db9123414d130c",
+      "options": [
+        "-noappend",
+        "-processors",
+        "1",
+        "-comp",
+        "lz4",
+        "-b",
+        "16384",
+        "-all-time",
+        "0",
+        "-mkfs-time",
+        "0",
+        "-all-root",
+        "-no-progress"
+      ]
+    },
+    "lz4-4k": {
+      "size": 20480,
+      "sha256": "5d116f40b0f9d916fb2135d4d9761e8507e56c9cd1814ae6d93f615fe746d0b4",
+      "options": [
+        "-noappend",
+        "-processors",
+        "1",
+        "-comp",
+        "lz4",
+        "-b",
+        "4096",
+        "-all-time",
+        "0",
+        "-mkfs-time",
+        "0",
+        "-all-root",
+        "-no-progress",
+        "-Xhc"
+      ]
+    },
+    "zstd": {
+      "size": 8192,
+      "sha256": "b402f946bd21835a4c76c90b9e5baf2b604af0ca016f23970e8662db0ff29713",
+      "options": [
+        "-noappend",
+        "-processors",
+        "1",
+        "-comp",
+        "zstd",
+        "-b",
+        "16384",
+        "-all-time",
+        "0",
+        "-mkfs-time",
+        "0",
+        "-all-root",
+        "-no-progress"
+      ]
+    }
+  }
+}

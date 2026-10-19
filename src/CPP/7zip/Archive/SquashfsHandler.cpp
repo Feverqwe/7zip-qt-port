@@ -26,6 +26,9 @@
 
 #include "../Compress/CopyCoder.h"
 #include "../Compress/ZlibDecoder.h"
+#ifdef SEVENZIP_LINUX_SQUASHFS
+#include "../../../squashfsdecoder.h"
+#endif
 // #include "../Compress/LzmaDecoder.h"
 
 namespace NArchive {
@@ -67,7 +70,7 @@ static const UInt32 kSignature32_B2 = 0x73687371;
 #define kMethod_LZMA 2
 #define kMethod_LZO 3
 #define kMethod_XZ 4
-// #define kMethod_LZ4  5
+#define kMethod_LZ4 5
 #define kMethod_ZSTD 6
 
 static const char *const k_Methods[] = {"0", "ZLIB", "LZMA", "LZO", "XZ", "LZ4", "ZSTD"};
@@ -816,6 +819,12 @@ Z7_CLASS_IMP_CHandler_IInArchive_1(
   CZstdDecHandle _zstd;
 
   CByteBuffer _inputBuffer;
+#ifdef SEVENZIP_LINUX_SQUASHFS
+  sevenzip_squashfs_decoder *_linuxDecoder = NULL;
+  HRESULT _linuxReadResult = S_OK;
+  static int ReadLinux(void *opaque, uint64_t offset, void *data, size_t size);
+  HRESULT InitLinuxDecoder();
+#endif
 
   void ClearCache()
   {
@@ -848,6 +857,9 @@ public:
   CHandler();
   ~CHandler()
   {
+#ifdef SEVENZIP_LINUX_SQUASHFS
+    sevenzip_squashfs_decoder_destroy(_linuxDecoder);
+#endif
     XzUnpacker_Free(&_xz);
     if (_zstd)
       ZstdDec_Destroy(_zstd);
@@ -858,6 +870,39 @@ public:
 // clang-format on
 
 CHandler::CHandler() : _zstd(NULL) { XzUnpacker_Construct(&_xz, &g_Alloc); }
+
+#ifdef SEVENZIP_LINUX_SQUASHFS
+int CHandler::ReadLinux(void *opaque, uint64_t offset, void *data, size_t size) {
+    CHandler *handler = static_cast<CHandler *>(opaque);
+    if (offset > handler->_h.Size || size > handler->_h.Size - offset) {
+        handler->_linuxReadResult = S_FALSE;
+        return -1;
+    }
+    try {
+        HRESULT result = handler->Seek2(offset);
+        if (result == S_OK)
+            result = ReadStream_FALSE(handler->_stream, data, size);
+        handler->_linuxReadResult = result;
+        return result == S_OK ? 0 : -1;
+    } catch (...) {
+        // Match the upstream COM boundary without unwinding through C-owned
+        // option buffers and decoder setup allocations.
+        handler->_linuxReadResult = E_OUTOFMEMORY;
+        return -1;
+    }
+}
+
+HRESULT CHandler::InitLinuxDecoder() {
+    if (_h.IsOldVersion())
+        return S_OK;
+    _linuxReadResult = S_OK;
+    const int result = sevenzip_squashfs_decoder_create(_h.Method, _h.BlockSize, _h.Flags, _h.Size,
+                                                        ReadLinux, this, &_linuxDecoder);
+    if (_linuxReadResult != S_OK)
+        return _linuxReadResult;
+    return result == 0 ? S_OK : result == -12 ? E_OUTOFMEMORY : result == -95 ? E_NOTIMPL : S_FALSE;
+}
+#endif
 
 static const Byte kProps[] = {
     kpidPath,        kpidIsDir,  kpidSize,   kpidPackSize, kpidMTime,
@@ -1089,8 +1134,20 @@ HRESULT CHandler::Decompress(ISequentialOutStream *outStream, Byte *outBuf, bool
 
         SizeT destLen = outSizeMax, srcLen = inSize;
 
-        if (method == kMethod_LZO) {
+        if (method == kMethod_LZO
+#ifdef SEVENZIP_LINUX_SQUASHFS
+            && _h.IsOldVersion()
+#endif
+        ) {
             RINOK(LzoDecode(dest, &destLen, _inputBuffer, &srcLen))
+#ifdef SEVENZIP_LINUX_SQUASHFS
+        } else if (method == kMethod_LZO || method == kMethod_LZ4) {
+            const int result =
+                sevenzip_squashfs_decode(_linuxDecoder, _inputBuffer, inSize, dest, outSizeMax);
+            if (result < 0)
+                return result == -12 ? E_OUTOFMEMORY : S_FALSE;
+            destLen = (SizeT)result;
+#endif
         } else if (method == kMethod_LZMA) {
             Byte props[5];
             const Byte *src = _inputBuffer;
@@ -1480,6 +1537,9 @@ HRESULT CHandler::Open2(IInStream *inStream) {
             break;
         case kMethod_LZMA:
         case kMethod_LZO:
+#ifdef SEVENZIP_LINUX_SQUASHFS
+        case kMethod_LZ4:
+#endif
         case kMethod_XZ:
         case kMethod_ZSTD:
             break;
@@ -1493,6 +1553,9 @@ HRESULT CHandler::Open2(IInStream *inStream) {
     RINOK(inStream->Seek(0, STREAM_SEEK_END, &inputSize))
     if (_h.Size > inputSize || (Int64)_h.Size < 0 || _h.Size < (_h.Major == 4 ? 96 : kHeaderSize3))
         return S_FALSE;
+#ifdef SEVENZIP_LINUX_SQUASHFS
+    RINOK(InitLinuxDecoder())
+#endif
 
     UInt64 dirEnd = _h.FragTable;
     if (_h.Major < 4) {
@@ -1732,6 +1795,10 @@ Z7_COM7F_IMF(CHandler::Open(IInStream *stream, const UInt64 *, IArchiveOpenCallb
 }
 
 Z7_COM7F_IMF(CHandler::Close()) {
+#ifdef SEVENZIP_LINUX_SQUASHFS
+    sevenzip_squashfs_decoder_destroy(_linuxDecoder);
+    _linuxDecoder = NULL;
+#endif
     _openCodePage = CP_UTF8;
     _sizeCalculated = 0;
     _openCallback = NULL;
@@ -2234,6 +2301,9 @@ Z7_COM7F_IMF(CHandler::GetStream(UInt32 index, ISequentialInStream **stream)) {
     }
     reader->_stream = _stream;
     reader->_limitedInStream->SetStream(_stream);
+#ifdef SEVENZIP_LINUX_SQUASHFS
+    RINOK(reader->InitLinuxDecoder())
+#endif
     reader->_cachedBlock.Alloc(_h.BlockSize);
     reader->ClearCache();
     unsigned cacheSizeLog = 22;
@@ -2249,11 +2319,13 @@ Z7_COM7F_IMF(CHandler::GetStream(UInt32 index, ISequentialInStream **stream)) {
     COM_TRY_END
 }
 
+#if defined(SEVENZIP_LINUX_SQUASHFS) || !defined(Z7_EXTERNAL_CODECS)
 static const Byte k_Signature[] = {4, 'h', 's', 'q', 's', 4, 's', 'q', 's', 'h',
                                    4, 's', 'h', 's', 'q', 4, 'q', 's', 'h', 's'};
 
 REGISTER_ARC_I("SquashFS", "squashfs", NULL, 0xD2, k_Signature, 0, NArcInfoFlags::kMultiSignature,
                NULL)
+#endif
 
 }
 }

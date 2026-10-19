@@ -22,6 +22,11 @@ install(TARGETS sevenzip_exfat LIBRARY DESTINATION "${runtime_destination}/Forma
 install(TARGETS sevenzip_cramfs LIBRARY DESTINATION "${runtime_destination}/Formats")
 install(TARGETS sevenzip_fat LIBRARY DESTINATION "${runtime_destination}/Formats")
 install(TARGETS sevenzip_ext LIBRARY DESTINATION "${runtime_destination}/Formats")
+install(TARGETS sevenzip_squashfs LIBRARY DESTINATION "${runtime_destination}/Formats")
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/preferred/GPL-2.0"
+    "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/preferred/BSD-2-Clause"
+    "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/DOC/copying.txt"
+    DESTINATION "${notices_destination}/sevenzip-squashfs")
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/preferred/GPL-2.0"
     "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/DOC/copying.txt"
     "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/exceptions/Linux-syscall-note"

@@ -35,7 +35,31 @@
     "fs/squashfs/xattr_id.c": "9e0f3b7754734489c86490bd4270ac9a625093f1029ff9d22e27bb8773045074",
     "fs/squashfs/xz_wrapper.c": "5b379e4c696a2f08c57e6fac60b389cfd2890dd01b42c64922cf8aea21d0ffdc",
     "fs/squashfs/zlib_wrapper.c": "5a37f1193e5cee80128d831dbc67d9e0e9e083965bb07361ea3da831c07124e3",
-    "fs/squashfs/zstd_wrapper.c": "947fcc51f8e2f7c93b897727ee591d9d3bd8a856641eebcca78d5b09a6c62a3f"
+    "fs/squashfs/zstd_wrapper.c": "947fcc51f8e2f7c93b897727ee591d9d3bd8a856641eebcca78d5b09a6c62a3f",
+    "include/linux/lz4.h": "e8f8201156a05f9e01a20487c731d99b4914c2380b09f3e562c7aae234029f57",
+    "include/linux/lzo.h": "6323519cb8c1a03a9651027d6e576573fcfe1b196ff1798f8ebf441d0c217cb4",
+    "lib/lz4/lz4_decompress.c": "bdbc6864ba7bc05bbaedbe21875758a83d8cec0d6db648b6b70147da4804e86a",
+    "lib/lz4/lz4defs.h": "38dc425247b3dd4d9b91a634407f973921f0d9bb67892c48e810e1cf323e1456",
+    "lib/lzo/lzo1x_decompress_safe.c": "f481e9df6835eea59c555017e4446cbf6f8d4062d0c04a52fa99d4de5846be04",
+    "lib/lzo/lzodefs.h": "e2e1bab42551bd544d5798ba75570386e0af53f4300a9cca561640c4480c3a94"
   },
-  "adapted": []
+  "adapted": [
+    "fs/squashfs/block.c",
+    "fs/squashfs/decompressor.c",
+    "fs/squashfs/decompressor.h",
+    "fs/squashfs/decompressor_single.c",
+    "fs/squashfs/lz4_wrapper.c",
+    "fs/squashfs/lzo_wrapper.c",
+    "fs/squashfs/page_actor.c",
+    "fs/squashfs/squashfs.h",
+    "fs/squashfs/squashfs_fs.h",
+    "fs/squashfs/squashfs_fs_sb.h",
+    "fs/squashfs/xz_wrapper.c",
+    "lib/lzo/lzo1x_decompress_safe.c"
+  ],
+  "exact": [
+    "fs/squashfs/page_actor.h",
+    "include/linux/lzo.h",
+    "lib/lzo/lzodefs.h"
+  ]
 }

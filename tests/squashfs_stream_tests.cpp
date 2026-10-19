@@ -1,12 +1,19 @@
 #include "7zip/Archive/IArchive.h"
 #include "Common/MyCom.h"
 #include "Windows/PropVariant.h"
+#include "archivebackend.h"
+#include "archivecodeccatalog.h"
+#include <QDir>
+#include <QFile>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QLibrary>
 #include <QProcess>
+#include <QSignalSpy>
+#include <QTemporaryDir>
 #include <QtEndian>
 #include <QtTest>
+#include <algorithm>
 
 namespace {
 class Input final : public IInStream, public CMyUnknownImp {
@@ -141,11 +148,11 @@ class SquashfsStreamTests final : public QObject {
         }
         QCOMPARE(actual, expected);
     }
-  private slots:
-    void initTestCase() {
+    void loadFixture(const QString &codec) {
         QProcess generator;
         generator.start(QString::fromUtf8(SEVENZIP_SQUASHFS_PYTHON),
-                        {QString::fromUtf8(SEVENZIP_SQUASHFS_FIXTURE), "--compressed"});
+                        {QString::fromUtf8(SEVENZIP_SQUASHFS_FIXTURE),
+                         codec == "zlib" ? "--compressed" : "--codec=" + codec});
         QVERIFY(generator.waitForFinished(10000));
         QCOMPARE(generator.exitCode(), 0);
         record_ = QJsonDocument::fromJson(generator.readAllStandardOutput()).object();
@@ -155,9 +162,18 @@ class SquashfsStreamTests final : public QObject {
         packed += QByteArray::fromBase64(record_["image"].toString().toLatin1());
         bytes_ = qUncompress(packed);
         QVERIFY(!bytes_.isEmpty());
-        createArchive();
     }
+    static void codecs() {
+        QTest::addColumn<QString>("codec");
+        for (const char *codec : {"zlib", "lz4", "lzo-rle"})
+            QTest::newRow(codec) << QString::fromLatin1(codec);
+    }
+  private slots:
+    void initTestCase() { createArchive(); }
+    void interleavedStreamsSurviveCloseReopenAndRelease_data() { codecs(); }
     void interleavedStreamsSurviveCloseReopenAndRelease() {
+        QFETCH(QString, codec);
+        loadFixture(codec);
         CMyComPtr<IInStream> input = new Input(bytes_);
         QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
         auto first = stream("alpha");
@@ -179,7 +195,10 @@ class SquashfsStreamTests final : public QObject {
         check(second, QStringLiteral("данные 空"), 0, 8200);
         createArchive();
     }
+    void sourceErrorsAndCancellationPropagateWithoutPoisoningRetry_data() { codecs(); }
     void sourceErrorsAndCancellationPropagateWithoutPoisoningRetry() {
+        QFETCH(QString, codec);
+        loadFixture(codec);
         auto *source = new Input(bytes_);
         CMyComPtr<IInStream> input = source;
         QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
@@ -196,6 +215,61 @@ class SquashfsStreamTests final : public QObject {
                  Int32(NArchive::NExtract::NOperationResult::kOK));
         static_cast<Extract *>(callback.Interface())->cancel = true;
         QCOMPARE(archive_->Extract(&item, 1, 1, callback), E_ABORT);
+    }
+    void backendDiscoversModuleAndReadsCompressedFiles_data() { codecs(); }
+    void backendDiscoversModuleAndReadsCompressedFiles() {
+        QFETCH(QString, codec);
+        loadFixture(codec);
+        QTemporaryDir runtime;
+        QVERIFY(runtime.isValid());
+#ifdef Q_OS_WIN
+        const QString engineName = "7z.exe", coreName = "7z.dll";
+#else
+        const QString engineName = "7z", coreName = "7z.so";
+#endif
+        const QDir prepared(QString::fromUtf8(SEVENZIP_SQUASHFS_RUNTIME));
+        const QString engine = runtime.filePath(engineName), core = runtime.filePath(coreName);
+        QVERIFY(QFile::copy(prepared.filePath(engineName), engine));
+        QVERIFY(QFile::copy(prepared.filePath(coreName), core));
+        QVERIFY(QDir(runtime.path()).mkdir("Formats"));
+        const QString module = QString::fromUtf8(SEVENZIP_SQUASHFS_CORE);
+        QVERIFY(QFile::copy(module, runtime.filePath("Formats/" + QFileInfo(module).fileName())));
+        const QString image = runtime.filePath(QStringLiteral("образ 空.squashfs"));
+        QFile source(image);
+        QVERIFY(source.open(QIODevice::WriteOnly));
+        QCOMPARE(source.write(bytes_), bytes_.size());
+        source.close();
+        ArchiveBackend backend(nullptr, engine);
+        QSignalSpy ready(&backend, &ArchiveBackend::codecCatalogReady);
+        QVERIFY(backend.discoverCodecCatalog(core));
+        QTRY_COMPARE_WITH_TIMEOUT(ready.size(), 1, 15000);
+        QVERIFY2(ready[0][0].toBool(), qPrintable(ready[0][1].toString()));
+        QVERIFY(!backend.codecCatalog()->canUpdate("SquashFS"));
+        QList<ArchiveEntry> entries;
+        connect(&backend, &ArchiveBackend::entriesReady, this,
+                [&](const QList<ArchiveEntry> &result) { entries = result; });
+        QSignalSpy finished(&backend, &ArchiveBackend::finished);
+        backend.list(image);
+        QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 10000);
+        QVERIFY2(finished[0][0].toBool(), qPrintable(finished[0][1].toString()));
+        const QString name = QStringLiteral("данные 空");
+        QVERIFY(std::any_of(entries.cbegin(), entries.cend(),
+                            [&](const ArchiveEntry &entry) { return entry.path == name; }));
+        finished.clear();
+        backend.test(image);
+        QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 10000);
+        QVERIFY2(finished[0][0].toBool(), qPrintable(finished[0][1].toString()));
+        finished.clear();
+        const QString output = runtime.filePath("output");
+        backend.extract(image, output);
+        QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 10000);
+        QVERIFY2(finished[0][0].toBool(), qPrintable(finished[0][1].toString()));
+        QFile result(QDir(output).filePath(name));
+        QVERIFY(result.open(QIODevice::ReadOnly));
+        QCOMPARE(result.readAll(),
+                 QByteArray::fromBase64(record_["files"].toObject()[name].toString().toLatin1()));
+        QVERIFY(source.open(QIODevice::ReadOnly));
+        QCOMPARE(source.readAll(), bytes_);
     }
     void cleanupTestCase() { archive_.Release(); }
 };

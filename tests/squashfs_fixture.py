@@ -9,22 +9,45 @@ BLOCK = 8192
 INVALID = (1 << 64) - 1
 
 
+def creator_payload():
+    return bytes(range(256)) * 1000 + bytes(131072) + b"tail"
+
+
 def metadata(data, compressed=False):
     packed = zlib.compress(data) if compressed else data
     return struct.pack("<H", len(packed) | (0 if compressed else 0x8000)) + packed
 
 
-def volume(fault="", compressed=False, no_fragments=False):
+def volume(fault="", compressed=False, no_fragments=False, codec="zlib"):
     image = bytearray(96)
     first = b"A" * BLOCK + b"first-tail"
+    if codec == "lz4":
+        image += metadata(struct.pack("<II", 1, 0))
+    elif codec == "lzo-rle":
+        first = b"X" + bytes(BLOCK - 1) + b"first-tail"
     second = b"B" * BLOCK + bytes(BLOCK) + b"second-tail"
     fragment = b"first-tailsecond-tail"
     descriptors = []
-    for data in (first[:BLOCK], second[:BLOCK]):
+    for i, data in enumerate((first[:BLOCK], second[:BLOCK])):
         start = len(image)
         packed = zlib.compress(data) if compressed else data
+        raw = not compressed
+        if codec == "lzo-rle" and i == 0:
+            # Linux LZO v1: initial literal, four zero runs, end marker.
+            packed = bytes((17, 1, 18, ord('X')))
+            for count in (2048, 2048, 2048, 2047):
+                value = count - 4
+                packed += bytes((0x18 | (value & 7), 0xfc, 0xff, value >> 3))
+            packed += bytes((17, 0, 0))
+            raw = False
+        elif codec == "lz4":
+            # One literal, offset-one match and the required five final literals.
+            extra = BLOCK - 6 - 19
+            packed = bytes((0x1f, data[0], 1, 0)) + bytes((255,)) * (extra // 255)
+            packed += bytes((extra % 255, 0x50)) + data[-5:]
+            raw = False
         image += packed
-        descriptors.append((start, len(packed) | (0 if compressed else 1 << 24)))
+        descriptors.append((start, len(packed) | ((1 << 24) if raw else 0)))
     fragment_start = len(image)
     packed = zlib.compress(fragment) if compressed else fragment
     image += packed
@@ -74,7 +97,8 @@ def volume(fault="", compressed=False, no_fragments=False):
     ids_table = len(image)
     image += struct.pack("<Q", ids_metadata)
     struct.pack_into("<5I6H8Q", image, 0, 0x73717368, 1 if no_fragments else 4,
-                     0, BLOCK, 0 if no_fragments else 1, 1, 13, 0, 1, 4, 0,
+                     0, BLOCK, 0 if no_fragments else 1, 5 if codec == "lz4" else 3 if codec == "lzo-rle" else 1,
+                     13, 1 << 10 if codec == "lz4" else 0, 1, 4, 0,
                      root_offset, len(image), ids_table, INVALID, inode_start, dir_start,
                      fragment_table, INVALID)
     # Structural mutations use uncompressed metadata so each targets a single boundary.
@@ -159,6 +183,7 @@ def legacy_volume(endian="<", compressed=False):
 
 
 if __name__ == "__main__":
-    data, files = volume(compressed="--compressed" in sys.argv)
+    codec = next((arg.split("=", 1)[1] for arg in sys.argv if arg.startswith("--codec=")), "zlib")
+    data, files = volume(compressed="--compressed" in sys.argv, codec=codec)
     print(json.dumps({"size": len(data), "image": base64.b64encode(zlib.compress(data)).decode(),
                       "files": {name: base64.b64encode(value).decode() for name, value in files.items()}}))
