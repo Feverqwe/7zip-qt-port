@@ -391,14 +391,20 @@ class MainShellTests final : public QObject {
         }
         auto *large = window.findChild<QAction *>("largeButtonsOption");
         QVERIFY(large);
+        const QSize normalIconSize = toolbar->iconSize();
         large->trigger();
-        QCOMPARE(toolbar->iconSize(), QSize(48, 36));
+        QVERIFY(toolbar->iconSize().width() > normalIconSize.width());
+        QVERIFY(toolbar->iconSize().height() > normalIconSize.height());
         for (const char *name : actions) {
             auto *button = qobject_cast<QToolButton *>(
                 toolbar->widgetForAction(window.findChild<QAction *>(name)));
             QVERIFY(UiInspection::fullyVisible(*button, window));
             QVERIFY(!button->icon().pixmap(toolbar->iconSize()).isNull());
         }
+        QVERIFY(
+            UiInspection::writeReport(window, QStringLiteral("main-shell-large-%1").arg(language)));
+        large->trigger();
+        QCOMPARE(toolbar->iconSize(), normalIconSize);
     }
 
     void fileMenuTracksTheFocusedPanelAfterToggleAndTab() {

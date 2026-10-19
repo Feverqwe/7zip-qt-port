@@ -173,7 +173,7 @@ void MainWindow::updateToolbar() {
         toolbar->widgetForAction(action)->setVisible(standard);
     toolbar->widgetForAction(toolbarGroupSeparator_)->setVisible(archive && standard);
     toolbar->setVisible(archive || standard);
-    toolbar->setIconSize(largeButtonsOption_->isChecked() ? QSize(48, 36) : QSize(24, 24));
+    toolbar->setIconSize(largeButtonsOption_->isChecked() ? QSize(24, 24) : QSize(16, 16));
     toolbar->setToolButtonStyle(Qt::ToolButtonIconOnly);
     for (QAction *action : {toolbarAdd_, extract_, test_, copy_, move_, remove_, infoAction_}) {
         if (auto *button = qobject_cast<QToolButton *>(toolbar->widgetForAction(action))) {

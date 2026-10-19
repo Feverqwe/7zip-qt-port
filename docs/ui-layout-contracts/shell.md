@@ -152,7 +152,9 @@ use icons, with localized accessible names and tooltips that include their
 current native shortcut. The label preference can still hide the primary
 captions; toolbar group visibility and large/small icons keep their existing
 owners and saved values. Buttons use native hover/focus rendering and support
-keyboard focus. The Extract caption uses the same translation as the redesigned
+keyboard focus. The vector toolbar uses 16×16 logical icons to match the concept;
+the larger preference uses 24×24 rather than the original bitmap canvas sizes.
+The Extract caption uses the same translation as the redesigned
 Extract dialog. Command/navigation symbols now adapt local Lucide vectors,
 following the current palette in normal/disabled states and at display density.
 Native file, namespace and application icons retain their original owners.
