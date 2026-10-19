@@ -1,0 +1,416 @@
+#include "7zip/Archive/IArchive.h"
+#include "Common/MyCom.h"
+#include "Windows/PropVariant.h"
+#include "archivebackend.h"
+#include "archivecodeccatalog.h"
+#include <QDir>
+#include <QFile>
+#include <QJsonDocument>
+#include <QJsonObject>
+#include <QLibrary>
+#include <QProcess>
+#include <QSignalSpy>
+#include <QTemporaryDir>
+#include <QtEndian>
+#include <QtTest>
+#include <algorithm>
+
+namespace {
+class Input final : public IInStream, public CMyUnknownImp {
+    Z7_COM_UNKNOWN_IMP_2(ISequentialInStream, IInStream)
+    QByteArray bytes_;
+    UInt64 position_ = 0;
+
+  public:
+    HRESULT failure = S_OK;
+    HRESULT seekFailure = S_OK;
+    bool eof = false;
+    UInt64 failSeekAt = UINT64_MAX;
+    explicit Input(QByteArray bytes) : bytes_(std::move(bytes)) {}
+    Z7_COM7F_IMF(Read(void *data, UInt32 size, UInt32 *processed)) override {
+        if (processed)
+            *processed = 0;
+        if (failure != S_OK)
+            return failure;
+        if (eof)
+            return S_OK;
+        size = UInt32(qMin<UInt64>(
+            size, position_ < UInt64(bytes_.size()) ? UInt64(bytes_.size()) - position_ : 0));
+        if (size)
+            memcpy(data, bytes_.constData() + position_, size);
+        position_ += size;
+        if (processed)
+            *processed = size;
+        return S_OK;
+    }
+    Z7_COM7F_IMF(Seek(Int64 offset, UInt32 origin, UInt64 *position)) override {
+        if (failure != S_OK)
+            return failure;
+        if (origin == STREAM_SEEK_SET && UInt64(offset) == failSeekAt)
+            return E_FAIL;
+        if (seekFailure != S_OK) {
+            const HRESULT result = seekFailure;
+            seekFailure = S_OK;
+            return result;
+        }
+        if (origin > STREAM_SEEK_END)
+            return E_INVALIDARG;
+        const Int64 base = origin == STREAM_SEEK_SET   ? 0
+                           : origin == STREAM_SEEK_CUR ? Int64(position_)
+                                                       : bytes_.size();
+        if (offset < -base || (offset > 0 && base > INT64_MAX - offset))
+            return E_INVALIDARG;
+        position_ = UInt64(base + offset);
+        if (position)
+            *position = position_;
+        return S_OK;
+    }
+};
+class Extract final : public IArchiveExtractCallback, public CMyUnknownImp {
+    Z7_COM_UNKNOWN_IMP_1(IArchiveExtractCallback)
+  public:
+    bool cancel = false;
+    Int32 result = -1;
+    Z7_COM7F_IMF(SetTotal(UInt64)) override { return S_OK; }
+    Z7_COM7F_IMF(SetCompleted(const UInt64 *)) override { return cancel ? E_ABORT : S_OK; }
+    Z7_COM7F_IMF(GetStream(UInt32, ISequentialOutStream **stream, Int32)) override {
+        *stream = nullptr;
+        return S_OK;
+    }
+    Z7_COM7F_IMF(PrepareOperation(Int32)) override { return S_OK; }
+    Z7_COM7F_IMF(SetOperationResult(Int32 value)) override {
+        result = value;
+        return S_OK;
+    }
+};
+class CancelOpen final : public IArchiveOpenCallback, public CMyUnknownImp {
+    Z7_COM_UNKNOWN_IMP_1(IArchiveOpenCallback)
+  public:
+    Z7_COM7F_IMF(SetTotal(const UInt64 *, const UInt64 *)) override { return S_OK; }
+    Z7_COM7F_IMF(SetCompleted(const UInt64 *, const UInt64 *)) override { return E_ABORT; }
+};
+} // namespace
+
+class NtfsStreamTests final : public QObject {
+    Q_OBJECT
+    QLibrary module_{QString::fromUtf8(SEVENZIP_NTFS_CORE)};
+    CMyComPtr<IInArchive> archive_;
+    QJsonObject record_;
+    QByteArray bytes_;
+
+    void createArchive() {
+        archive_.Release();
+        QVERIFY2(module_.load(), qPrintable(module_.errorString()));
+        const auto count =
+            reinterpret_cast<Func_GetNumberOfFormats>(module_.resolve("GetNumberOfFormats"));
+        const auto property =
+            reinterpret_cast<Func_GetHandlerProperty2>(module_.resolve("GetHandlerProperty2"));
+        const auto create = reinterpret_cast<Func_CreateObject>(module_.resolve("CreateObject"));
+        QVERIFY(count && property && create);
+        UInt32 formats = 0;
+        QCOMPARE(count(&formats), S_OK);
+        for (UInt32 i = 0; i < formats; ++i) {
+            NWindows::NCOM::CPropVariant name;
+            QCOMPARE(property(i, NArchive::NHandlerPropID::kName, &name), S_OK);
+            if (name.vt != VT_BSTR || QString::fromWCharArray(name.bstrVal) != "NTFS")
+                continue;
+            NWindows::NCOM::CPropVariant clsid;
+            QCOMPARE(property(i, NArchive::NHandlerPropID::kClassID, &clsid), S_OK);
+            GUID guid;
+            memcpy(&guid, clsid.bstrVal, sizeof(guid));
+            QCOMPARE(create(&guid, &IID_IInArchive, reinterpret_cast<void **>(&archive_)), S_OK);
+            return;
+        }
+        QFAIL("Prepared engine has no NTFS handler");
+    }
+    UInt32 index(const QString &name) {
+        UInt32 count = 0;
+        if (archive_->GetNumberOfItems(&count) != S_OK)
+            return UInt32(-1);
+        for (UInt32 i = 0; i < count; ++i) {
+            NWindows::NCOM::CPropVariant path;
+            if (archive_->GetProperty(i, kpidPath, &path) == S_OK && path.vt == VT_BSTR &&
+                QString::fromWCharArray(path.bstrVal) == name)
+                return i;
+        }
+        return UInt32(-1);
+    }
+    CMyComPtr<IInStream> stream(const QString &name) {
+        CMyComPtr<IInArchiveGetStream> provider;
+        if (archive_->QueryInterface(IID_IInArchiveGetStream,
+                                     reinterpret_cast<void **>(&provider)) != S_OK)
+            return {};
+        CMyComPtr<ISequentialInStream> sequential;
+        if (provider->GetStream(index(name), &sequential) != S_OK || !sequential)
+            return {};
+        CMyComPtr<IInStream> result;
+        sequential->QueryInterface(IID_IInStream, reinterpret_cast<void **>(&result));
+        return result;
+    }
+    void check(IInStream *stream, const QString &name, int offset, int size) {
+        const auto expected =
+            QByteArray::fromBase64(record_["files"].toObject()[name].toString().toLatin1())
+                .mid(offset, size);
+        QCOMPARE(stream->Seek(offset, STREAM_SEEK_SET, nullptr), S_OK);
+        QByteArray actual;
+        while (actual.size() < expected.size()) {
+            char data[37];
+            UInt32 count = 0;
+            QCOMPARE(
+                stream->Read(data,
+                             UInt32(qMin(qsizetype(sizeof(data)), expected.size() - actual.size())),
+                             &count),
+                S_OK);
+            QVERIFY(count > 0);
+            actual.append(data, count);
+        }
+        QCOMPARE(actual, expected);
+    }
+    void loadFixture(const QString &codec) {
+        QProcess generator;
+        QStringList arguments{QString::fromUtf8(SEVENZIP_NTFS_FIXTURE), "--kind=" + codec};
+        generator.start(QString::fromUtf8(SEVENZIP_NTFS_PYTHON), arguments);
+        QVERIFY(generator.waitForFinished(10000));
+        QCOMPARE(generator.exitCode(), 0);
+        record_ = QJsonDocument::fromJson(generator.readAllStandardOutput()).object();
+        QVERIFY(!record_.isEmpty());
+        QByteArray packed(4, '\0');
+        qToBigEndian(quint32(record_["size"].toInt()), packed.data());
+        packed += QByteArray::fromBase64(record_["image"].toString().toLatin1());
+        bytes_ = qUncompress(packed);
+        QVERIFY(!bytes_.isEmpty());
+    }
+  private slots:
+    void initTestCase() { createArchive(); }
+    void reads_data() {
+        QTest::addColumn<QString>("kind");
+        for (const char *kind :
+             {"base", "sparse", "hole-first", "initialized", "compressed", "short-compressed",
+              "sector4k", "boot-reserved", "backup-boot", "reparse"})
+            QTest::newRow(kind) << QString::fromLatin1(kind);
+    }
+    void reads() {
+        QFETCH(QString, kind);
+        loadFixture(kind);
+        CMyComPtr<IInStream> input = new Input(bytes_);
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        const auto files = record_["files"].toObject();
+        for (auto it = files.begin(); it != files.end(); ++it) {
+            auto file = stream(it.key());
+            QVERIFY2(file, qPrintable(it.key()));
+            check(file, it.key(), 0, 200000);
+            check(file, it.key(), 4090, 8200);
+        }
+        if (kind == "reparse") {
+            CMyComPtr<IArchiveGetRawProps> raw;
+            QCOMPARE(
+                archive_->QueryInterface(IID_IArchiveGetRawProps, reinterpret_cast<void **>(&raw)),
+                S_OK);
+            const void *data = nullptr;
+            UInt32 size = 0, type = 0;
+            QCOMPARE(raw->GetRawProp(index("gamma"), kpidNtReparse, &data, &size, &type), S_OK);
+            QCOMPARE(size, 30u);
+            QCOMPARE(qFromLittleEndian<quint32>(data), 0xa000000cu);
+            QCOMPARE(QByteArray(static_cast<const char *>(data) + 20, 10),
+                     QByteArray("a\0l\0p\0h\0a\0", 10));
+        }
+    }
+    void interleavedStreamsSurviveArchive() {
+        loadFixture("base");
+        auto *source = new Input(bytes_);
+        CMyComPtr<IInStream> input = source;
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        auto first = stream("alpha"), second = stream("gamma"),
+             resident = stream(QStringLiteral("данные 空"));
+        QVERIFY(first && second && resident);
+        char data[19];
+        UInt32 count = 0;
+        QCOMPARE(first->Read(data, sizeof(data), &count), S_OK);
+        QCOMPARE(second->Read(data, sizeof(data), &count), S_OK);
+        QCOMPARE(first->Read(data, sizeof(data), &count), S_OK);
+        QCOMPARE(QByteArray(data, count),
+                 QByteArray::fromBase64(record_["files"].toObject()["alpha"].toString().toLatin1())
+                     .mid(19, 19));
+        QCOMPARE(input->Seek(17, STREAM_SEEK_SET, nullptr), S_OK);
+        QCOMPARE(second->Read(data, sizeof(data), &count), S_OK);
+        QCOMPARE(QByteArray(data, count), QByteArray(19, 'B'));
+        QCOMPARE(archive_->Close(), S_OK);
+        CMyComPtr<IInStream> next = new Input(bytes_);
+        QCOMPARE(archive_->Open(next, nullptr, nullptr), S_OK);
+        archive_.Release();
+        input.Release();
+        check(first, "alpha", 8191, 8193);
+        check(second, "gamma", 32500, 9000);
+        check(resident, QStringLiteral("данные 空"), 0, 100);
+        createArchive();
+    }
+    void errorsAndRetry_data() {
+        QTest::addColumn<QString>("kind");
+        QTest::newRow("raw") << QString("base");
+        QTest::newRow("compressed") << QString("compressed");
+    }
+    void errorsAndRetry() {
+        QFETCH(QString, kind);
+        loadFixture(kind);
+        auto *source = new Input(bytes_);
+        CMyComPtr<IInStream> input = source;
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        auto file = stream("alpha");
+        QVERIFY(file);
+        char data[19];
+        UInt32 count = 99;
+        source->seekFailure = E_FAIL;
+        QCOMPARE(file->Read(data, sizeof(data), &count), E_FAIL);
+        QCOMPARE(count, 0u);
+        source->failure = E_ABORT;
+        QCOMPARE(file->Read(data, sizeof(data), &count), E_ABORT);
+        source->failure = S_OK;
+        check(file, "alpha", 0, 8200);
+        QCOMPARE(file->Seek(INT64_MIN, STREAM_SEEK_CUR, nullptr),
+                 HRESULT_WIN32_ERROR_NEGATIVE_SEEK);
+        QCOMPARE(file->Seek(INT64_MAX, STREAM_SEEK_CUR, nullptr), E_INVALIDARG);
+        if (kind == "base") {
+            source->eof = true;
+            QCOMPARE(file->Read(data, sizeof(data), &count), S_FALSE);
+            source->eof = false;
+        }
+        CMyComPtr2<IArchiveExtractCallback, Extract> callback;
+        callback.Create_if_Empty();
+        callback->cancel = true;
+        const UInt32 id = index("alpha");
+        QCOMPARE(archive_->Extract(&id, 1, true, callback), E_ABORT);
+        callback->cancel = false;
+        QCOMPARE(archive_->Extract(&id, 1, true, callback), S_OK);
+        QCOMPARE(callback->result, Int32(NArchive::NExtract::NOperationResult::kOK));
+    }
+    void malformed_data() {
+        QTest::addColumn<QString>("kind");
+        QTest::addColumn<HRESULT>("result");
+        QTest::newRow("out-of-volume") << QString("run-over-volume") << HRESULT(S_FALSE);
+        QTest::newRow("underflow") << QString("run-underflow") << HRESULT(S_FALSE);
+        QTest::newRow("normal-virtual-over-volume")
+            << QString("normal-virtual-over-volume") << HRESULT(S_FALSE);
+        QTest::newRow("encrypted") << QString("encrypted") << HRESULT(E_NOTIMPL);
+        QTest::newRow("WOF") << QString("wof") << HRESULT(E_NOTIMPL);
+        QTest::newRow("WOF-without-unnamed-data") << QString("wof-empty") << HRESULT(E_NOTIMPL);
+        QTest::newRow("bad-compressed") << QString("bad-compressed") << HRESULT(S_OK);
+    }
+    void malformed() {
+        QFETCH(QString, kind);
+        QFETCH(HRESULT, result);
+        loadFixture(kind);
+        CMyComPtr<IInStream> input = new Input(bytes_);
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        CMyComPtr<IInArchiveGetStream> provider;
+        QCOMPARE(
+            archive_->QueryInterface(IID_IInArchiveGetStream, reinterpret_cast<void **>(&provider)),
+            S_OK);
+        CMyComPtr<ISequentialInStream> file;
+        const UInt32 id = index(kind.startsWith("wof") ? "gamma" : "alpha");
+        QCOMPARE(provider->GetStream(id, &file), result);
+        if (kind == "bad-compressed") {
+            char data[100];
+            UInt32 count = 99;
+            QVERIFY(file);
+            for (int i = 0; i < 2; ++i) {
+                QCOMPARE(file->Read(data, sizeof(data), &count), S_FALSE);
+                QCOMPARE(count, 0u);
+            }
+        }
+        CMyComPtr2<IArchiveExtractCallback, Extract> callback;
+        callback.Create_if_Empty();
+        QCOMPARE(archive_->Extract(&id, 1, true, callback), S_OK);
+        QCOMPARE(callback->result,
+                 Int32(result == E_NOTIMPL
+                           ? NArchive::NExtract::NOperationResult::kUnsupportedMethod
+                           : NArchive::NExtract::NOperationResult::kDataError));
+    }
+    void invalidInitializedSizeRejectsOpenAndReuses() {
+        loadFixture("invalid-initialized");
+        CMyComPtr<IInStream> input = new Input(bytes_);
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_FALSE);
+        loadFixture("base");
+        input = new Input(bytes_);
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+    }
+    void openPropagatesMftSeekFailureAndCancellation() {
+        loadFixture("base");
+        auto *source = new Input(bytes_);
+        CMyComPtr<IInStream> input = source;
+        source->failSeekAt = qFromLittleEndian<quint64>(bytes_.constData() + 0x30) * 4096;
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), E_FAIL);
+        source->failSeekAt = UINT64_MAX;
+        QCOMPARE(input->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
+        CMyComPtr<IArchiveOpenCallback> cancelled = new CancelOpen;
+        QCOMPARE(archive_->Open(input, nullptr, cancelled), E_ABORT);
+        UInt32 count = 99;
+        QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, 0u);
+        QCOMPARE(input->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+    }
+    void backendSelectedExtraction_data() {
+        QTest::addColumn<QString>("kind");
+        QTest::newRow("sparse") << QString("sparse");
+        QTest::newRow("compressed") << QString("short-compressed");
+        QTest::newRow("corrupt") << QString("run-over-volume");
+    }
+    void backendSelectedExtraction() {
+        QFETCH(QString, kind);
+        loadFixture(kind);
+        QTemporaryDir runtime;
+        QVERIFY(runtime.isValid());
+        const QDir prepared(QString::fromUtf8(SEVENZIP_NTFS_RUNTIME));
+        const QString executable = QLatin1String("7z") +
+#ifdef Q_OS_WIN
+                                   ".exe";
+        const QString core = "7z.dll";
+#else
+                                   "";
+        const QString core = "7z.so";
+#endif
+        QVERIFY(QFile::copy(prepared.filePath(executable), runtime.filePath(executable)));
+        QVERIFY(QFile::copy(prepared.filePath(core), runtime.filePath(core)));
+        QVERIFY(QDir(runtime.path()).mkdir("Formats"));
+        const QString module = QString::fromUtf8(SEVENZIP_NTFS_CORE);
+        QVERIFY(QFile::copy(module, runtime.filePath("Formats/" + QFileInfo(module).fileName())));
+        const QString path = runtime.filePath(QStringLiteral("образ 空.ntfs"));
+        QFile source(path);
+        QVERIFY(source.open(QIODevice::WriteOnly));
+        QCOMPARE(source.write(bytes_), bytes_.size());
+        source.close();
+        ArchiveBackend backend(nullptr, runtime.filePath(executable));
+        QSignalSpy ready(&backend, &ArchiveBackend::codecCatalogReady);
+        QVERIFY(backend.discoverCodecCatalog(runtime.filePath(core)));
+        QTRY_COMPARE_WITH_TIMEOUT(ready.size(), 1, 15000);
+        QVERIFY2(ready[0][0].toBool(), qPrintable(ready[0][1].toString()));
+        QSignalSpy finished(&backend, &ArchiveBackend::finished);
+        QVector<ArchiveEntry> entries;
+        connect(&backend, &ArchiveBackend::entriesReady, &backend,
+                [&](const QVector<ArchiveEntry> &result) { entries = result; });
+        backend.list(path);
+        QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 10000);
+        QVERIFY2(finished[0][0].toBool(), qPrintable(finished[0][1].toString()));
+        QVERIFY(!backend.codecCatalog()->canUpdate("NTFS"));
+        QVERIFY(std::any_of(entries.cbegin(), entries.cend(), [](const ArchiveEntry &entry) {
+            return entry.path == QStringLiteral("данные 空");
+        }));
+        finished.clear();
+        const QString output = runtime.filePath("output");
+        backend.extract(path, output, {"alpha"});
+        QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 10000);
+        QCOMPARE(finished[0][0].toBool(), kind != "run-over-volume");
+        if (kind != "run-over-volume") {
+            QFile file(QDir(output).filePath("alpha"));
+            QVERIFY(file.open(QIODevice::ReadOnly));
+            QCOMPARE(
+                file.readAll(),
+                QByteArray::fromBase64(record_["files"].toObject()["alpha"].toString().toLatin1()));
+        }
+        QVERIFY(source.open(QIODevice::ReadOnly));
+        QCOMPARE(source.readAll(), bytes_);
+    }
+    void cleanupTestCase() { archive_.Release(); }
+};
+QTEST_GUILESS_MAIN(NtfsStreamTests)
+#include "ntfs_stream_tests.moc"

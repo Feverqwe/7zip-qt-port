@@ -1,0 +1,38 @@
+{
+  "repository": "https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git",
+  "revision": "58161ead29e50d70a317ea26b472e0c7508e69da",
+  "files": {
+    "fs/ntfs3/Kconfig": "1807dc07531b01483694d5389d20fd6e8d859925e52509bddc782b76462ac376",
+    "fs/ntfs3/Makefile": "884b2a48429c39107f19445655880176dd6637089db58acb60475c57373cc5eb",
+    "fs/ntfs3/attrib.c": "61221cb56585647de13f8972febc4b49c18c40afc722dc0f26f79df7362aa290",
+    "fs/ntfs3/attrlist.c": "c6651e82f2ea7b390065cfbf71f4d9a393324c1e3bd429234a89b7b3b53fc6be",
+    "fs/ntfs3/bitfunc.c": "439f0d4541ce09c562971eef035462556d3dc8886f087c01e1bc49266f911c18",
+    "fs/ntfs3/bitmap.c": "fbf09c26c5a79cca91943fabe3c3198202ecf6c6e7259e835e03c945f357809b",
+    "fs/ntfs3/debug.h": "09a01e528f66a10d60ad461c34fe8ffb0efe7129779953979dffd42dac5d06cb",
+    "fs/ntfs3/dir.c": "5b87980a32f1fcce91b047716d7d161846f4ee3fcee8f0145ecf34b540792890",
+    "fs/ntfs3/file.c": "e607210f33299e022ce4dec4473c6208a24935d1cbfa4732e7906b077f30cede",
+    "fs/ntfs3/frecord.c": "9b68e9acd0f5c31039b01ab060deb8f67f011662d6abe5de2446ba7f06402ddd",
+    "fs/ntfs3/fslog.c": "ab462daa19ca742f91b99ca78b32c9eab8b3d08b3608986b93d4b13ecd64409c",
+    "fs/ntfs3/fsntfs.c": "23e8cec55ebb1ea2bcb9e20301ca9b5136af57b5d427df6c809bc78e1a3f4eae",
+    "fs/ntfs3/index.c": "44bbe7cc6e85236b36e09e8ac2abb7a50b819ec154e05ea6cd6d96d244a34107",
+    "fs/ntfs3/inode.c": "95f8fadfbc35cc583245f52c6849ac806621f0babb05245edf25a2ac1e9d67be",
+    "fs/ntfs3/lib/decompress_common.c": "845f1deb2fda76c5a98b258f055847d924f39e2b7e621faf57f089162ab283b0",
+    "fs/ntfs3/lib/decompress_common.h": "9cf301466a3bc51634f480e4ae191a79a50d09af6f5968081737dbbe2c6cc8b2",
+    "fs/ntfs3/lib/lib.h": "e787371a56faf8598dd76775c9d14ea6a30115134976ab37d8bf176bd4175993",
+    "fs/ntfs3/lib/lzx_decompress.c": "7f54fcab5695a3faf00579a5ff5d27c7977ac0685beefb5ea0a915091c8e592c",
+    "fs/ntfs3/lib/xpress_decompress.c": "6f569bc4b1bbbad5a5b144a641555948494ceca30ddadb1fc263e2e049c2ad9a",
+    "fs/ntfs3/lznt.c": "89afd1fe5042f59bed78311b0b97cdc79bc30768a1a8a38138d1385e3943744d",
+    "fs/ntfs3/namei.c": "bfed88cfd7130ec6b0d5fd72f6435a61fae8c5542b02d12a536e5b71ecfb60c6",
+    "fs/ntfs3/ntfs.h": "cba697587926a59770bc04962769b8b15b2d9267ec78d379d6cb719e5ee706c4",
+    "fs/ntfs3/ntfs_fs.h": "9785b5855f929daabc3d089a58c047f288f54d8f6da2fa9729b57192327c5690",
+    "fs/ntfs3/record.c": "157bd4845958b1bf119b355a8f244f5059e7aa619c89f38f17354f04088bfa5e",
+    "fs/ntfs3/run.c": "82a898be6d1a71a905f4336335b8ca876bbebb722d154ac06409472493c2c12d",
+    "fs/ntfs3/super.c": "a221f1dade47f140912e0f5b48550010ce4a2f370c6a2be8f28851a87ea47d02",
+    "fs/ntfs3/upcase.c": "daad6dc03944129302bb9a4988976a7241a18071f4824fa4cdf34f64696e4acd",
+    "fs/ntfs3/xattr.c": "46d16b017617a5ab75f60a811be0fef6c4bcfe27f1c653c8ff6fae829a5e13dd"
+  },
+  "adapted": [
+    "fs/ntfs3/lznt.c"
+  ],
+  "exact": []
+}

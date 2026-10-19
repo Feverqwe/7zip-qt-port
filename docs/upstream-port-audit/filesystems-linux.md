@@ -71,6 +71,14 @@ GPT/MBR/APM проверяются как дополнительные форм�
 
 ## Свидетельства
 
+### NTFS: classic data reads и LZNT1
+
+[Сравнение и интегрированная актуализация](ntfs-linux.md): boot/MFT и
+атрибуты, sparse/initialized data, физические run границы, независимые streams,
+nonresident reparse payload и Linux C LZNT1 в отдельном GPL-модуле приложения.
+WOF LZX/XPRESS и bootstrap MFT attribute lists остаются в общем scope;
+временный явный отказ WOF не считается завершённой поддержкой.
+
 ### SquashFS: metadata, fragments и независимые streams
 
 [Сравнение и исправление существующего чтения](squashfs-linux.md) охватывает

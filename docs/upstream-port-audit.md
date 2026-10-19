@@ -36,6 +36,9 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 
 ## Новые изменения
 
+- [NTFS по Linux](upstream-port-audit/ntfs-linux.md)
+  — boot/MFT, атрибуты, sparse/compressed streams и Linux C LZNT1.
+
 - [SquashFS по Linux](upstream-port-audit/squashfs-linux.md)
   — Linux codecs, index/xattr reads, inode/link properties и независимые streams.
 
