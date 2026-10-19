@@ -837,6 +837,7 @@ int sevenzip_iso_rock_name(struct sevenzip_iso_state *state,
     sb.s_nzones = state->volume_blocks;
     sb.block_size = state->block_size;
     node.i_sb = &sb;
+    while ((1U << node.i_blkbits) < state->block_size) node.i_blkbits++;
     name[0] = 0;
     result = get_rock_ridge_filename(&de, name, &node);
     state->rock = sb.s_rock;

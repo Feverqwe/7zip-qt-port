@@ -21,6 +21,7 @@ struct timespec64 iso_date(u8 *p, int flags)
 	struct timespec64 ts;
 
 	if (flags & ISO_DATE_LONG_FORM) {
+		int hundredths;
 		year = (p[0] - '0') * 1000 +
 		       (p[1] - '0') * 100 +
 		       (p[2] - '0') * 10 +
@@ -30,7 +31,10 @@ struct timespec64 iso_date(u8 *p, int flags)
 		hour = ((p[8] - '0') * 10 + (p[9] - '0'));
 		minute = ((p[10] - '0') * 10 + (p[11] - '0'));
 		second = ((p[12] - '0') * 10 + (p[13] - '0'));
-		ts.tv_nsec = ((p[14] - '0') * 10 + (p[15] - '0')) * 10000000;
+		hundredths = (p[14] - '0') * 10 + (p[15] - '0');
+		ts.tv_nsec = 0;
+		if (hundredths >= 0 && hundredths < 100)
+			ts.tv_nsec = hundredths * 10000000;
 		tz = p[16];
 	} else {
 		year = p[0];

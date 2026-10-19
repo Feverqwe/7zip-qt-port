@@ -8,6 +8,9 @@ import zlib
 
 
 def volume(kind="plain"):
+    if kind.startswith("producer-"):
+        from iso_producer_fixture import volume as producer_volume
+        return producer_volume(kind)
     if kind.startswith("policy-"):
         from iso_policy_fixture import volume as policy_volume
         return policy_volume(kind)

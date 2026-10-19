@@ -494,7 +494,9 @@ class IsoStreamTests final : public QObject {
                                  "directory-multi-root",
                                  "directory-metadata",
                                  "policy-date-malformed",
-                                 "policy-associated-bad"})
+                                 "policy-associated-bad",
+                                 "producer-xa",
+                                 "producer-skip"})
             QTest::newRow(kind) << QString::fromLatin1(kind);
     }
     void backendExtraction() {
@@ -535,7 +537,7 @@ class IsoStreamTests final : public QObject {
             : kind == "names-joliet-surrogates" ? QString::fromUtf8("face-😀.bin")
             : kind == "names-joliet-long"       ? QString(90, QChar(0x754c)) + ".bin"
             : kind == "joliet" || kind.startsWith("rock") || kind.startsWith("zisofs") ||
-                    kind == "directory-metadata"
+                    kind == "directory-metadata" || kind.startsWith("producer-")
                 ? QString::fromUtf8("nested/данные 空.txt")
             : kind == "multi-directory" || kind == "directory-multi-child" ? "NESTED/LATE.BIN"
             : kind == "policy-associated-bad"                              ? "BOOT.BIN"
@@ -1020,9 +1022,69 @@ class IsoStreamTests final : public QObject {
         QCOMPARE(count, UInt32(expected.size()));
         QCOMPARE(actual, expected);
     }
+    void producerLayouts_data() {
+        QTest::addColumn<QString>("kind");
+        for (const char *kind :
+             {"producer-xa", "producer-skip", "producer-nm-parts", "producer-nm-nul",
+              "producer-nm-overflow", "producer-sl-parts", "producer-sl-root", "producer-tf-short",
+              "producer-tf-truncated", "producer-tf-malformed-fraction"})
+            QTest::newRow(kind) << QString::fromLatin1(kind);
+    }
+    void producerLayouts() {
+        QFETCH(QString, kind);
+        loadFixture(kind);
+        CMyComPtr<IInStream> input = new Input(bytes_);
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        const auto files = record_["files"].toObject();
+        for (auto entry = files.begin(); entry != files.end(); ++entry) {
+            QVERIFY2(index(entry.key()) != UInt32(-1), qPrintable(entry.key()));
+            check(stream(entry.key()), entry.key(), 0,
+                  QByteArray::fromBase64(entry.value().toString().toLatin1()).size());
+        }
+        if (kind.startsWith("producer-sl")) {
+            NWindows::NCOM::CPropVariant value;
+            QCOMPARE(archive_->GetProperty(index("link"), kpidSymLink, &value), S_OK);
+            QCOMPARE(value.vt, VARTYPE(VT_BSTR));
+            QCOMPARE(QString::fromWCharArray(value.bstrVal).toUtf8(),
+                     QByteArray::fromBase64(files["link"].toString().toLatin1()));
+        }
+        if (kind == "producer-tf-malformed-fraction") {
+            NWindows::NCOM::CPropVariant value;
+            QCOMPARE(archive_->GetProperty(index("alpha.bin"), kpidMTime, &value), S_OK);
+            QCOMPARE(value.vt, VARTYPE(VT_FILETIME));
+            const qint64 seconds =
+                QDateTime(QDate(2041, 1, 2), QTime(3, 4, 5), QTimeZone::UTC).toSecsSinceEpoch();
+            QCOMPARE((UInt64(value.filetime.dwHighDateTime) << 32) | value.filetime.dwLowDateTime,
+                     UInt64(seconds + 11644473600LL) * 10000000);
+        } else if (kind.startsWith("producer-tf")) {
+            const UInt32 item = index("alpha.bin");
+            const bool truncated = kind.endsWith("truncated");
+            for (const auto &entry : {qMakePair(kpidMTime, 2001), qMakePair(kpidATime, 2002),
+                                      qMakePair(kpidChangeTime, truncated ? 2000 : 2003)}) {
+                if (truncated && entry.first == kpidATime)
+                    continue;
+                NWindows::NCOM::CPropVariant value;
+                QCOMPARE(archive_->GetProperty(item, entry.first, &value), S_OK);
+                QCOMPARE(value.vt, VARTYPE(VT_FILETIME));
+                const qint64 seconds =
+                    QDateTime(QDate(entry.second, 1, 2), QTime(16, 4, 5), QTimeZone::UTC)
+                        .toSecsSinceEpoch();
+                QCOMPARE((UInt64(value.filetime.dwHighDateTime) << 32) |
+                             value.filetime.dwLowDateTime,
+                         UInt64(seconds + 11644473600LL) * 10000000);
+            }
+        }
+        const QString nested = QString::fromUtf8("nested/данные 空.txt");
+        auto retained = stream(nested);
+        QVERIFY(retained);
+        QCOMPARE(archive_->Close(), S_OK);
+        input.Release();
+        check(retained, nested, 0, 4096);
+    }
     void failedRockOpenClearsCatalog() {
-        for (const char *kind : {"rock-ce-outside", "rock-ce-crossblock", "rock-ce-cycle",
-                                 "rock-sl-overrun", "rock-cl-cycle", "rock-cl-outside"}) {
+        for (const char *kind :
+             {"rock-ce-outside", "rock-ce-crossblock", "rock-ce-cycle", "rock-sl-overrun",
+              "rock-cl-cycle", "rock-cl-outside", "producer-directory-ce-outside"}) {
             loadFixture("rock");
             CMyComPtr<IInStream> input = new Input(bytes_);
             QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);

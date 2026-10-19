@@ -78,7 +78,7 @@ GPT/MBR/APM проверяются как дополнительные форм�
 source/volume, streams независимы, повреждения и отмена передаются явно.
 Отдельный модуль подключает Linux C Rock Ridge/SUSP: CE/NM/SL/PX/PN/TF,
 relocation, inode metadata, RR-vs-Joliet выбор, Linux zisofs decompression,
-High Sierra и Linux recording dates. Актуализация ISO ещё не завершена:
+High Sierra и Linux recording dates.
 Joliet/RR fallback и normal/Acorn/raw mapping подключены к Linux C readers;
 глубокий обход, очистка дерева и выбор вложенного файла проверены вместе.
 Собственные inode каталогов определяют metadata и Level 3 секции, включая root;
@@ -86,8 +86,10 @@ Joliet/RR fallback и normal/Acorn/raw mapping подключены к Linux C r
 Все Linux NLS charset modules подключены к Joliet, включая aliases и
 многобайтовые преобразования. Read-path options, legacy-size `cruft`, выбор
 descriptor sector и необязательные descriptor dates актуализированы.
-Оставшиеся RR producer branches и read semantics сохраняются в scope.
-UDF ещё не проверен.
+RR producer layouts и оставшиеся read-side consumers сверены с pinned source;
+исправлены directory-name CE context и malformed TF fractions. Runtime
+проверки и отличия archive projection перечислены в ISO audit.
+UDF ещё не проверен; остальные строки общей задачи не закрываются этим результатом.
 
 ### HFS+/HFSX: fork mapping и metadata reads
 

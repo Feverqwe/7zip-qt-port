@@ -177,6 +177,19 @@ class IsoTests(unittest.TestCase):
         image = volume("policy-norock-bad-primary")[0]
         self.assertNotEqual(self.run_image("7z", image).returncode, 0)
 
+    def test_rock_ridge_producer_layouts(self):
+        from iso_producer_fixture import CASES
+        for kind in CASES:
+            image, files = volume(kind)
+            for name, expected in files.items():
+                with self.subTest(kind=kind, name=name):
+                    result = self.run_image("7z", image, name)
+                    self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                    self.assertEqual(result.stdout, expected)
+        result = self.run_image("7z", volume("producer-directory-ce-outside")[0], "alpha.bin")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(result.stdout, b"")
+
     def test_zisofs_decoded_bytes(self):
         for kind in ("zisofs", "zisofs-shift0", "zisofs-pointer-boundary", "zisofs-expanding", "zisofs-small-sparse",
                      "zisofs-shift17", "zisofs-padding", "zisofs-header0", "zisofs-embedded-header",

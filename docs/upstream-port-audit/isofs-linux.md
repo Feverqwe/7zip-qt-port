@@ -4,7 +4,8 @@
 Основной ISO9660 read path исправлен в обоих поставляемых engines.
 Отдельный GPL-модуль добавляет оригинальные Linux C Rock Ridge/SUSP readers.
 Он также читает High Sierra и zisofs.
-Полная актуализация ISO9660 и отдельного UDF ещё не завершена.
+Сверка read-side ISO9660 по pinned Linux выполнена в описанном ниже archive
+projection; отдельный UDF ещё не проверен. Границы runtime evidence указаны отдельно.
 
 ## Источники и source comparison
 
@@ -407,12 +408,37 @@ overrides и casefold lookup остаются OS services; они не чита�
 дисковые features в archive projection. Вместо device session ioctl доступен
 явный descriptor sector. Mutable VFS, запись и page cache не переносятся.
 
-## Оставшийся scope
+## Rock Ridge producer layouts и итог read-side сверки
 
-Остаётся проверка остальных RR compatibility branches на производителях и
-завершающая сверка read scenario по всем source-visible ветвям. Эти read features остаются задачей,
-а не принятой окончательной границей совместимости. UDF ещё не проверен.
-Kernel VFS/mount services, запись и page cache не копируются.
+Повторно сопоставлены полные helpers SP/CE/ER/NM, inode PX/PN/TF/SL/CL/RE/ZF,
+XA retry, symlink component conversion и их C++ consumers. Тела `check_sp`,
+`init_rock_state`, `rock_continue`, `rock_check_overflow`,
+`get_rock_ridge_filename`, `get_symlink_chunk`, `parse_rock_ridge_inode`
+совпадают с pinned source без учёта комментариев/форматирования.
+Внутренний inode parser сохраняет все branches; единственная body adaptation —
+bounds перед XA pointer advance. Bounded span и folio/stream services описаны выше.
+
+Временный inode имени каталога теперь получает logical block bits, которые
+в kernel приходят из VFS inode. Без этого `rock_continue` видел block size 1
+и отклонял корректную directory-name CE. Геометрия передаётся так же, как
+в metadata inode; оригинальный continuation algorithm не заменён.
+Проверены XA preamble/offset 14, SP skip 7, CE у обычных и relocated directories,
+составные NM, embedded NUL и NAME_MAX truncation, несколько SL records,
+continued components, root/current/parent components, short TF и частичный TF.
+Имена, link bytes и timestamp priority следуют исходным readers.
+
+Для повреждённого long TF hundredths проверяются до умножения на 10000000.
+Это исключает signed-int overflow и недопустимые nanoseconds; повреждённая
+дробь даёт нулевую fractional part, как существующая 7-Zip date projection.
+Корректные hundredths сохраняются. Это дополнительная archive validation;
+не заявляется совпадение с undefined behavior kernel на повреждённых bytes.
+
+Переданные source read paths и consumers сверены: descriptors/geometry,
+directory enumeration/inode identity/sections, RR/SUSP metadata/names/links,
+Joliet/NLS/Acorn, zisofs и read options. Изменения адаптеров проверялись отдельно
+от сходства C bodies. Kernel VFS/mount/lookup/export services, запись и page cache
+не копируются; остальные форматные строки общей задачи остаются открытыми.
+UDF — отдельный следующий source review, а не часть выполненной ISO сверки.
 
 El Torito virtual entries и uppercase ISO names сохраняют исходный archive
 namespace. Kernel default lowercase projection проверяется отдельно;
@@ -534,6 +560,22 @@ physical-size consumers и LGPL/GPL/standalone boundaries; pinned source hashes
 31 read profile по extracted bytes, отказ неверных options и пять notices.
 Staging удалён. Full/slow/UI/physical-device acceptance не выполнялась;
 существующие incremental build trees и compiler caches сохранены.
+
+RR producer/continuation iteration: nine valid layouts confirmed by read-only
+Linux 6.8.0-146 mounts, including exact payloads, readlink targets and short TF
+mtime/atime/ctime. Archive CLI/ABI cover these layouts, malformed long-TF fraction,
+directory-name CE outside volume, atomic catalog cleanup and retained streams.
+Backend selected/source-entry extraction covers XA/SP-prefix directory names.
+The malformed fraction is archive validation, not a claimed kernel UB match.
+
+Focused seven-suite batch: macOS arm64, Linux x64 and Windows x64/MSVC 7/7 PASS,
+Qt 6.12; remote receipt `20261019T195921Z-cc7ebee5`. After the fraction guard,
+final `iso`/`iso_stream`: 2/2 PASS on all three platforms, remote receipt
+`20261019T200551Z-e77fd94e`. Source bodies/adapters/callers and pinned hashes
+were compared separately from runtime. Existing incremental builds/cache reused.
+macOS app built; actual CMake install exercised all ten producer cases, rejected
+bad directory CE and installed five matching notices. Mounts/images/staging
+removed. Full/slow/UI/physical-device acceptance was not performed.
 
 После уточнения fixtures и wide-mask предупреждения повторены `iso`/`iso_stream`
 на всех трёх ОС: 2/2 PASS, remote receipt `20261019T161535Z-d5535c87`.
