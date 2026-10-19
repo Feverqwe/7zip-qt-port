@@ -132,7 +132,7 @@ class ArchiveDeviceTests final : public QObject {
     void readsSelectedExtPartitionWithoutWholeDiskCopy_data() {
         QTest::addColumn<QString>("layout");
         QTest::addColumn<QString>("mode");
-        for (const QString &layout : {"ext4", "mbr", "gpt"})
+        for (const QString &layout : {"ext2", "ext3", "ext4", "mbr", "gpt"})
             for (const QString &mode : {"success", "disconnect", "cancel"})
                 QTest::newRow(qPrintable(layout + '-' + mode)) << layout << mode;
     }
@@ -150,7 +150,7 @@ class ArchiveDeviceTests final : public QObject {
         QCOMPARE(device.inspect(direct, UInt64(disk.size()), QStringLiteral("USB диск 空"), &ui),
                  S_OK);
         QCOMPARE(device.partitions().size(), layout == "gpt" ? 2 : 1);
-        QCOMPARE(device.partitions()[0].offset, UInt64(layout == "ext4" ? 0 : 1024 * 1024));
+        QCOMPARE(device.partitions()[0].offset, UInt64(layout.startsWith("ext") ? 0 : 1024 * 1024));
         std::shared_ptr<ArchiveNativeOpen> reader;
         QCOMPARE(device.openPartition(0, &ui, reader), S_OK);
         QVERIFY(reader);

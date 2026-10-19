@@ -26,7 +26,7 @@ class CDeviceReadStream final : public IInStream, public CMyUnknownImp {
             return E_INVALIDARG;
         const quint32 prefix = quint32(position_ % sector_);
         const quint32 wanted =
-            quint32(qMin<quint64>(qMin<UInt32>(size, 1024 * 1024), size_ - position_));
+            quint32(qMin<quint64>(qMin<UInt32>(size, 1024 * 1024 - prefix), size_ - position_));
         const quint32 aligned = (prefix + wanted + sector_ - 1) / sector_ * sector_;
         QByteArray buffer(qsizetype(aligned) + sector_, Qt::Uninitialized);
         auto *bytes = reinterpret_cast<Byte *>((quintptr(buffer.data()) + sector_ - 1) &
@@ -102,7 +102,8 @@ qint32 CreateDevicePartitionInput(IInStream *device, quint64 offset, quint64 siz
     *stream = nullptr;
     const auto *source = dynamic_cast<CDirectDeviceInput *>(device);
     if (!source || !size || offset > source->deviceInputSize() ||
-        size > source->deviceInputSize() - offset)
+        size > source->deviceInputSize() - offset || offset % source->Device.sectorSize ||
+        size % source->Device.sectorSize)
         return E_INVALIDARG;
     return CreateInput(source->Device, source->Handle, source->Start + offset, size, stream);
     COM_TRY_END

@@ -13,6 +13,7 @@ evidence applies only to the recorded revision, platform and scenario.
 | Task | Primary documentation |
 | --- | --- |
 | Learn about the application | [README](../README.md) |
+| Read files from an external ext device | [Direct device access](direct-device-reading.md) |
 | Report a bug, contribute or check licenses | [Contributing](../CONTRIBUTING.md), [security](../SECURITY.md), [licenses](../THIRD_PARTY_NOTICES.md) |
 | Set up, build, run or prepare runtime dependencies | [Development](development.md) |
 | Update interface translations | [Localization](localization.md) |
