@@ -1,0 +1,197 @@
+#include "7zip/Common/StreamObjects.h"
+#include "7zip/PropID.h"
+#include "Windows/PropVariant.h"
+#include "archivecodeccatalog.h"
+#include "archivedevice.h"
+#include "archivenativeopen.h"
+#include <QDir>
+#include <QProcess>
+#include <QStandardPaths>
+#include <QtTest>
+
+namespace {
+class CDeviceInput final : public IInStream, public CMyUnknownImp {
+    Z7_COM_UNKNOWN_IMP_2(ISequentialInStream, IInStream)
+    CMyComPtr<IInStream> stream_;
+    UInt64 position_ = 0;
+
+  public:
+    bool Disconnected = false;
+    UInt64 FarthestRead = 0;
+    explicit CDeviceInput(const QByteArray &data) {
+        auto *input = new CBufInStream;
+        stream_ = input;
+        input->Init(reinterpret_cast<const Byte *>(data.constData()), size_t(data.size()));
+    }
+    Z7_COM7F_IMF(Read(void *data, UInt32 size, UInt32 *processed)) override {
+        if (processed)
+            *processed = 0;
+        if (Disconnected)
+            return E_FAIL;
+        UInt32 count = 0;
+        const HRESULT result = stream_->Read(data, size, &count);
+        position_ += count;
+        FarthestRead = qMax(FarthestRead, position_);
+        if (processed)
+            *processed = count;
+        return result;
+    }
+    Z7_COM7F_IMF(Seek(Int64 offset, UInt32 origin, UInt64 *position)) override {
+        const HRESULT result = stream_->Seek(offset, origin, &position_);
+        if (position)
+            *position = position_;
+        return result;
+    }
+};
+
+class COpenUi final : public IOpenCallbackUI {
+  public:
+    bool Cancel = false;
+    HRESULT Open_CheckBreak() override { return Cancel ? E_ABORT : S_OK; }
+    HRESULT Open_SetTotal(const UInt64 *, const UInt64 *) override { return Open_CheckBreak(); }
+    HRESULT Open_SetCompleted(const UInt64 *, const UInt64 *) override { return Open_CheckBreak(); }
+    HRESULT Open_Finished() override { return S_OK; }
+    HRESULT Open_CryptoGetTextPassword(BSTR *) override { return E_ABORT; }
+};
+
+class CExtractUi final : public IArchiveExtractCallback, public CMyUnknownImp {
+    Z7_COM_UNKNOWN_IMP_1(IArchiveExtractCallback)
+
+  public:
+    bool Cancel = false;
+    Int32 ItemResult = -1;
+    CDynBufSeqOutStream *Output = new CDynBufSeqOutStream;
+    CMyComPtr<ISequentialOutStream> Lease = Output;
+    Z7_COM7F_IMF(SetTotal(UInt64)) override { return S_OK; }
+    Z7_COM7F_IMF(SetCompleted(const UInt64 *)) override { return Cancel ? E_ABORT : S_OK; }
+    Z7_COM7F_IMF(GetStream(UInt32, ISequentialOutStream **stream, Int32)) override {
+        *stream = Lease;
+        (*stream)->AddRef();
+        return S_OK;
+    }
+    Z7_COM7F_IMF(PrepareOperation(Int32)) override { return S_OK; }
+    Z7_COM7F_IMF(SetOperationResult(Int32 result)) override {
+        ItemResult = result;
+        return S_OK;
+    }
+    QByteArray bytes() const {
+        return QByteArray(reinterpret_cast<const char *>(Output->GetBuffer()),
+                          qsizetype(Output->GetSize()));
+    }
+};
+} // namespace
+
+class ArchiveDeviceTests final : public QObject {
+    Q_OBJECT
+    std::shared_ptr<const ArchiveCodecCatalog> catalog_;
+    QString engine_;
+
+    QByteArray fixture(const QString &name) const {
+        QProcess process;
+        process.start(
+            engine_, {"x", "-so", "--",
+                      QStringLiteral(DEVICE_FIXTURE_DIR) + '/' + name + QStringLiteral(".img.gz")});
+        if (!process.waitForFinished(10000) || process.exitCode() != 0)
+            return {};
+        return process.readAllStandardOutput();
+    }
+
+  private slots:
+    void initTestCase() {
+#ifndef SEVENZIP_CODEC_MODULE
+        QSKIP("Official module unavailable; direct-device engine integration unverified");
+#else
+        engine_ = QStandardPaths::findExecutable("7zz");
+        QVERIFY(!engine_.isEmpty());
+        catalog_ = std::make_shared<ArchiveCodecCatalog>(QStringLiteral(SEVENZIP_CODEC_MODULE), 0);
+        QVERIFY2(catalog_->result() == S_OK, qPrintable(catalog_->error()));
+#endif
+    }
+    void readsSelectedExtPartitionWithoutWholeDiskCopy_data() {
+        QTest::addColumn<QString>("layout");
+        QTest::addColumn<QString>("mode");
+        for (const QString &layout : {"ext4", "mbr", "gpt"})
+            for (const QString &mode : {"success", "disconnect", "cancel"})
+                QTest::newRow(qPrintable(layout + '-' + mode)) << layout << mode;
+    }
+    void readsSelectedExtPartitionWithoutWholeDiskCopy() {
+        QFETCH(QString, layout);
+        QFETCH(QString, mode);
+        const QByteArray disk = fixture(layout);
+        QVERIFY(!disk.isEmpty());
+        auto *input = new CDeviceInput(disk);
+        CMyComPtr<IInStream> lease = input;
+        ArchiveDevice device(catalog_);
+        COpenUi ui;
+        QCOMPARE(device.inspect(lease, UInt64(disk.size()), QStringLiteral("USB диск 空"), &ui),
+                 S_OK);
+        QCOMPARE(device.partitions().size(), layout == "gpt" ? 2 : 1);
+        QCOMPARE(device.partitions()[0].offset, UInt64(layout == "ext4" ? 0 : 1024 * 1024));
+        std::shared_ptr<ArchiveNativeOpen> reader;
+        QCOMPARE(device.openPartition(0, &ui, reader), S_OK);
+        QVERIFY(reader);
+        // The reader owns its input/module after the discovery owner is reset.
+        device = ArchiveDevice(catalog_);
+        UInt32 count = 0;
+        QCOMPARE(reader->arc().Archive->GetNumberOfItems(&count), S_OK);
+        UInt32 fileIndex = count;
+        for (UInt32 index = 0; index < count; ++index) {
+            NWindows::NCOM::CPropVariant path;
+            QCOMPARE(reader->arc().Archive->GetProperty(index, kpidPath, &path), S_OK);
+            if (path.vt == VT_BSTR &&
+                QDir::fromNativeSeparators(QString::fromWCharArray(path.bstrVal)) ==
+                    QStringLiteral("папка 空/данные с пробелом.txt"))
+                fileIndex = index;
+        }
+        QVERIFY(fileIndex < count);
+        auto *extracted = new CExtractUi;
+        CMyComPtr<IArchiveExtractCallback> callback = extracted;
+        input->Disconnected = mode == "disconnect";
+        extracted->Cancel = mode == "cancel";
+        const HRESULT result = reader->arc().Archive->Extract(&fileIndex, 1, 0, callback);
+        if (mode == "cancel")
+            QCOMPARE(result, E_ABORT);
+        else if (mode == "disconnect")
+            QVERIFY(result != S_OK ||
+                    extracted->ItemResult != NArchive::NExtract::NOperationResult::kOK);
+        else {
+            QCOMPARE(result, S_OK);
+            QCOMPARE(extracted->ItemResult, Int32(NArchive::NExtract::NOperationResult::kOK));
+            QCOMPARE(extracted->bytes(), QByteArray("device ext4 payload\n"));
+        }
+        QVERIFY(input->FarthestRead <= UInt64(disk.size()));
+    }
+    void cancellationAndUnsupportedPartitionDoNotPublishReader() {
+        const QByteArray disk = fixture("gpt");
+        QVERIFY(!disk.isEmpty());
+        CMyComPtr<IInStream> input = new CDeviceInput(disk);
+        ArchiveDevice device(catalog_);
+        COpenUi ui;
+        ui.Cancel = true;
+        QCOMPARE(device.inspect(input, UInt64(disk.size()), "USB", &ui), E_ABORT);
+        QVERIFY(device.partitions().isEmpty());
+        ui.Cancel = false;
+        QCOMPARE(device.inspect(input, UInt64(disk.size()), "USB", &ui), S_OK);
+        std::shared_ptr<ArchiveNativeOpen> reader;
+        QCOMPARE(device.openPartition(1, &ui, reader), S_FALSE);
+        QVERIFY(!reader);
+        ui.Cancel = true;
+        QCOMPARE(device.openPartition(0, &ui, reader), E_ABORT);
+        QVERIFY(!reader);
+        QCOMPARE(device.openPartition(2, nullptr, reader), E_INVALIDARG);
+    }
+    void rejectsPartitionsBeyondAuthorizedDeviceBoundary() {
+        const QByteArray disk = fixture("mbr");
+        QVERIFY(!disk.isEmpty());
+        auto *source = new CDeviceInput(disk);
+        CMyComPtr<IInStream> input = source;
+        ArchiveDevice device(catalog_);
+        const UInt64 authorizedSize = 2 * 1024 * 1024;
+        QVERIFY(device.inspect(input, authorizedSize, "USB", nullptr) != S_OK);
+        QVERIFY(device.partitions().isEmpty());
+        QVERIFY(source->FarthestRead <= authorizedSize);
+    }
+};
+
+QTEST_GUILESS_MAIN(ArchiveDeviceTests)
+#include "archive_device_tests.moc"

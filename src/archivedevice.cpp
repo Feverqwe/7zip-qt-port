@@ -1,0 +1,132 @@
+#include "archivedevice.h"
+#include "7zip/Common/LimitedStreams.h"
+#include "7zip/PropID.h"
+#include "Common/ComTry.h"
+#include "Windows/PropVariant.h"
+#include "archivecodeccatalog.h"
+#include "archivenativeopen.h"
+#include <limits>
+
+namespace {
+HRESULT Limit(IInStream *input, UInt64 offset, UInt64 size, IInStream **result) {
+    CMyComPtr<ISequentialInStream> limited;
+    RINOK(CreateLimitedInStream(input, offset, size, &limited))
+    return limited->QueryInterface(IID_IInStream, reinterpret_cast<void **>(result));
+}
+
+HRESULT Open(const std::shared_ptr<const ArchiveCodecCatalog> &catalog, IInStream *input,
+             const QString &name, const QString &format, IOpenCallbackUI *callback,
+             std::shared_ptr<ArchiveNativeOpen> &reader) {
+    reader = std::make_shared<ArchiveNativeOpen>(catalog);
+    COpenOptions options;
+    options.props = nullptr;
+    options.stream = input;
+    options.filePath = name.toStdWString().c_str();
+    CObjectVector<COpenType> types;
+    CIntVector excluded;
+    if (!catalog->parseOpenTypes(format, types))
+        return E_INVALIDARG;
+    // Never descend automatically into a partition: the user selects one,
+    // including on disks with several filesystems or hidden service partitions.
+    FOR_VECTOR(i, types) {
+        types[i].Recursive = false;
+        types[i].MaxStartOffset_Defined = true;
+        types[i].MaxStartOffset = 0;
+    }
+    options.types = &types;
+    options.excludedFormats = &excluded;
+    return reader->Open(name, format, callback, &options);
+}
+
+HRESULT Number(IInArchive *archive, UInt32 index, PROPID id, UInt64 &number) {
+    NWindows::NCOM::CPropVariant value;
+    RINOK(archive->GetProperty(index, id, &value))
+    if (value.vt != VT_UI8)
+        return E_FAIL;
+    number = value.uhVal.QuadPart;
+    return S_OK;
+}
+
+QString Text(IInArchive *archive, UInt32 index, PROPID id) {
+    NWindows::NCOM::CPropVariant value;
+    if (archive->GetProperty(index, id, &value) != S_OK || value.vt != VT_BSTR)
+        return {};
+    return QString::fromWCharArray(value.bstrVal);
+}
+} // namespace
+
+ArchiveDevice::ArchiveDevice(std::shared_ptr<const ArchiveCodecCatalog> catalog)
+    : catalog_(std::move(catalog)) {}
+
+HRESULT ArchiveDevice::inspect(IInStream *input, UInt64 size, const QString &name,
+                               IOpenCallbackUI *callback) {
+    COM_TRY_BEGIN
+    input_.Release();
+    partitions_.clear();
+    name_.clear();
+    if (!input || !size || size > UInt64(std::numeric_limits<Int64>::max()) || !catalog_ ||
+        catalog_->result() != S_OK)
+        return E_INVALIDARG;
+    CMyComPtr<IInStream> bounded;
+    RINOK(Limit(input, 0, size, &bounded))
+    QList<ArchiveDevicePartition> partitions;
+    for (const QString &format : {QStringLiteral("GPT"), QStringLiteral("MBR")}) {
+        if (callback)
+            RINOK(callback->Open_CheckBreak())
+        RINOK(bounded->Seek(0, STREAM_SEEK_SET, nullptr))
+        std::shared_ptr<ArchiveNativeOpen> layout;
+        const HRESULT result = Open(catalog_, bounded, name, format, callback, layout);
+        if (result == S_FALSE)
+            continue;
+        RINOK(result)
+        IInArchive *archive = layout->arc().Archive;
+        UInt32 count;
+        RINOK(archive->GetNumberOfItems(&count))
+        for (UInt32 index = 0; index < count; ++index) {
+            if (callback)
+                RINOK(callback->Open_CheckBreak())
+            ArchiveDevicePartition partition;
+            RINOK(Number(archive, index, kpidOffset, partition.offset))
+            RINOK(Number(archive, index, kpidSize, partition.size))
+            if (!partition.size || partition.offset > size ||
+                partition.size > size - partition.offset)
+                return E_FAIL;
+            partition.name = Text(archive, index, kpidPath);
+            partition.type = Text(archive, index, kpidFileSystem);
+            // MbrHandler also exposes unallocated tail bytes as an archive
+            // item. Only real partitions have its FileSystem property.
+            if (format == QStringLiteral("MBR") && partition.type.isEmpty())
+                continue;
+            partitions.append(partition);
+        }
+        break;
+    }
+    // A device can contain a filesystem directly, without a partition table.
+    // Opening it as Ext below is the authority; no local superblock parser.
+    if (partitions.isEmpty())
+        partitions.append({name, QString(), 0, size});
+    name_ = name;
+    partitions_ = std::move(partitions);
+    input_ = bounded;
+    return S_OK;
+    COM_TRY_END
+}
+
+HRESULT ArchiveDevice::openPartition(int index, IOpenCallbackUI *callback,
+                                     std::shared_ptr<ArchiveNativeOpen> &reader) const {
+    COM_TRY_BEGIN
+    reader.reset();
+    if (!input_ || index < 0 || index >= partitions_.size())
+        return E_INVALIDARG;
+    if (callback)
+        RINOK(callback->Open_CheckBreak())
+    const auto &partition = partitions_[index];
+    CMyComPtr<IInStream> bounded;
+    RINOK(Limit(input_, partition.offset, partition.size, &bounded))
+    std::shared_ptr<ArchiveNativeOpen> opened;
+    RINOK(Open(catalog_, bounded, name_ + '/' + partition.name, QStringLiteral("Ext"), callback,
+               opened))
+    reader = std::move(opened);
+    return S_OK;
+    COM_TRY_END
+}

@@ -431,6 +431,7 @@ add_library(sevenzip_filesystem STATIC
     src/archivecodeccatalog.cpp src/archivecodeccatalog.h
     src/archivecodecimage.cpp src/archivecodecimage.h
     src/archivenativeopen.cpp src/archivenativeopen.h
+    src/archivedevice.cpp src/archivedevice.h
     src/archivecodecprobe.cpp src/archivecodecprobe.h
     third_party/7zip/CPP/7zip/UI/Common/ArchiveOpenCallback.cpp
     third_party/7zip/CPP/7zip/UI/Common/SetProperties.cpp
@@ -3277,6 +3278,17 @@ if(BUILD_TESTING)
     add_test(NAME native_archive_properties COMMAND native_archive_properties_tests -silent)
     set_tests_properties(native_archive_properties PROPERTIES TIMEOUT 30 ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
+    qt_add_executable(archive_device_tests tests/archive_device_tests.cpp)
+    target_include_directories(archive_device_tests PRIVATE src)
+    target_link_libraries(archive_device_tests PRIVATE sevenzip_filesystem Qt6::Test)
+    target_compile_definitions(archive_device_tests PRIVATE
+        "DEVICE_FIXTURE_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/devices\"")
+    if(SEVENZIP_CODEC_MODULE)
+        target_compile_definitions(archive_device_tests PRIVATE
+            "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\"")
+    endif()
+    add_test(NAME archive_device COMMAND archive_device_tests -silent)
+    set_tests_properties(archive_device PROPERTIES TIMEOUT 30)
     qt_add_executable(native_archive_opening_tests tests/native_archive_opening_tests.cpp)
     target_include_directories(native_archive_opening_tests PRIVATE src)
     target_link_libraries(native_archive_opening_tests PRIVATE sevenzip_panel Qt6::Test)
