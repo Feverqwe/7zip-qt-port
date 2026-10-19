@@ -26,6 +26,11 @@ install(FILES "${SEVENZIP_WINDOWS_RUNTIME}/LICENSE.txt"
     DESTINATION share/licenses/sevenzip-desktop/7zip)
 install(TARGETS sevenzip_exfat RUNTIME DESTINATION bin/Formats LIBRARY DESTINATION bin/Formats)
 install(TARGETS sevenzip_cramfs RUNTIME DESTINATION bin/Formats LIBRARY DESTINATION bin/Formats)
+install(TARGETS sevenzip_erofs RUNTIME DESTINATION bin/Formats LIBRARY DESTINATION bin/Formats)
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/preferred/GPL-2.0"
+    "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/preferred/BSD-2-Clause"
+    "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/deprecated/0BSD"
+    DESTINATION share/licenses/sevenzip-desktop/sevenzip-erofs)
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/preferred/GPL-2.0"
     DESTINATION share/licenses/sevenzip-desktop/sevenzip-cramfs)
 install(TARGETS sevenzip_brotli RUNTIME DESTINATION bin/Formats LIBRARY DESTINATION bin/Formats)

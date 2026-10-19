@@ -26,6 +26,7 @@ find_package(Qt6 REQUIRED COMPONENTS Widgets LinguistTools)
 find_package(Threads REQUIRED)
 include(cmake/Exfat.cmake)
 include(cmake/Cramfs.cmake)
+include(cmake/Erofs.cmake)
 include(cmake/Brotli.cmake)
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR (APPLE AND BUILD_TESTING))
     find_package(Qt6 REQUIRED COMPONENTS DBus)
@@ -618,6 +619,7 @@ set_target_properties(sevenzip_desktop PROPERTIES
 )
 sevenzip_deploy_exfat()
 sevenzip_deploy_cramfs()
+sevenzip_deploy_erofs()
 sevenzip_deploy_brotli()
 if(APPLE)
     include(cmake/MacAssociationBundle.cmake)
@@ -742,6 +744,10 @@ if(BUILD_TESTING)
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/cramfs_tests.py
         ${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime "$<TARGET_FILE:sevenzip_cramfs>")
     set_tests_properties(cramfs PROPERTIES TIMEOUT 45)
+    add_test(NAME erofs COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/erofs_tests.py
+        ${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime "$<TARGET_FILE:sevenzip_erofs>")
+    set_tests_properties(erofs PROPERTIES TIMEOUT 90)
     add_test(NAME runtime_package COMMAND ${Python3_EXECUTABLE}
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/package_tests.py)
     add_test(NAME windows_package_verification COMMAND ${Python3_EXECUTABLE}
@@ -1528,6 +1534,7 @@ if(BUILD_TESTING)
     list(REMOVE_ITEM compression_order_sources tests/compression_tests.cpp)
     target_sources(exfat_backend_tests PRIVATE ${compression_order_sources})
     target_sources(cramfs_module_tests PRIVATE ${compression_order_sources})
+    target_sources(erofs_module_tests PRIVATE ${compression_order_sources})
     target_sources(brotli_tests PRIVATE ${compression_order_sources})
     qt_add_executable(compression_error_policy_tests tests/compression_error_policy_tests.cpp
         tests/layout_inspection.cpp ${compression_order_sources})

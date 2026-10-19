@@ -20,6 +20,11 @@ install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime/LICENSE.txt"
     DESTINATION "${notices_destination}/7zip")
 install(TARGETS sevenzip_exfat LIBRARY DESTINATION "${runtime_destination}/Formats")
 install(TARGETS sevenzip_cramfs LIBRARY DESTINATION "${runtime_destination}/Formats")
+install(TARGETS sevenzip_erofs LIBRARY DESTINATION "${runtime_destination}/Formats")
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/preferred/GPL-2.0"
+    "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/preferred/BSD-2-Clause"
+    "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/deprecated/0BSD"
+    DESTINATION "${notices_destination}/sevenzip-erofs")
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/preferred/GPL-2.0"
     DESTINATION "${notices_destination}/sevenzip-cramfs")
 install(TARGETS sevenzip_brotli LIBRARY DESTINATION "${runtime_destination}/Formats")

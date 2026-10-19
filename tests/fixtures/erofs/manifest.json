@@ -1,0 +1,210 @@
+{
+  "version": "mkfs.erofs (erofs-utils) 1.9.4\navailable compressors: lz4, lz4hc, lzma, deflate, zstd",
+  "repository": "https://git.kernel.org/pub/scm/linux/kernel/git/xiang/erofs-utils.git",
+  "revision": "f36cadb5c563995ab3aa8572a60ed6b721b9557d",
+  "payload_size": 147284,
+  "images": {
+    "plain": {
+      "options": [],
+      "size": 286720,
+      "sha256": "893171791c2c069a25a430f2981d0bce3b7e2f623aeda89eec866ff15cba2eaa"
+    },
+    "plain-512": {
+      "options": [
+        "-b512"
+      ],
+      "size": 284672,
+      "sha256": "e4374702dbb908e3d5d7b5c56c85780dd863a1ba9865b4af6fdb0c4b218a776c"
+    },
+    "plain-64k": {
+      "options": [
+        "-b65536"
+      ],
+      "size": 327680,
+      "sha256": "65cace604d19449acee4bf52eda35f5c121ab8b920dccbaa929ba6b345319f4b"
+    },
+    "lz4": {
+      "options": [
+        "-zlz4"
+      ],
+      "size": 20480,
+      "sha256": "84f95dff7d1eb7104bf89b3b096f98c7bb2f7db39e1605bfb5d80379e0a8c010"
+    },
+    "lz4-subpage": {
+      "options": [
+        "-b512",
+        "-zlz4",
+        "-C16384"
+      ],
+      "size": 14336,
+      "sha256": "d38b12593ccb1ef296391ea3c3f2a3a29db71573e351b5301f5a293ae740d7bb"
+    },
+    "lz4-64k": {
+      "options": [
+        "-b65536",
+        "-zlz4"
+      ],
+      "size": 196608,
+      "sha256": "84a4d07ecfa693ddad5bcfe4c1892c52d3e0ad65777d19dc1db8a44f62299e83"
+    },
+    "lz4-full": {
+      "options": [
+        "-zlz4",
+        "-Elegacy-compress"
+      ],
+      "size": 20480,
+      "sha256": "9c526c50546fdc275b8694352b5142585cd1136a92fb45307cf3785255458c59"
+    },
+    "lz4-big": {
+      "options": [
+        "-zlz4",
+        "-C8192"
+      ],
+      "size": 20480,
+      "sha256": "cba3325229663203dd7cc44adc0c1519c6199ef4e72b001213d248032da1b820"
+    },
+    "lzma": {
+      "options": [
+        "-zlzma"
+      ],
+      "size": 20480,
+      "sha256": "a414340cde8f1bf601d684052ed6d944d8ca49f4f9fef0bc7ef8f031c7340bef"
+    },
+    "lzma-full": {
+      "options": [
+        "-zlzma",
+        "-Elegacy-compress"
+      ],
+      "size": 20480,
+      "sha256": "f8e932772e3e58113e8d18a639000d0e66ea63e9ae0e628b74774b5156a369a6"
+    },
+    "deflate": {
+      "options": [
+        "-zdeflate"
+      ],
+      "size": 32768,
+      "sha256": "cc32fc54a97fbb091fa9736b02c43302ab06dd9eca81884622348dacca32fd35"
+    },
+    "deflate-full": {
+      "options": [
+        "-zdeflate",
+        "-Elegacy-compress"
+      ],
+      "size": 32768,
+      "sha256": "f31e208016f53d367b52c61f1dbd916028613586a052867001fa46668c40b05f"
+    },
+    "zstd": {
+      "options": [
+        "-zzstd"
+      ],
+      "size": 20480,
+      "sha256": "4c1333e8e874ddcdcb03916126b5dbbfdfb881c29eed0be535cf4712427843f1"
+    },
+    "zstd-full": {
+      "options": [
+        "-zzstd",
+        "-Elegacy-compress"
+      ],
+      "size": 20480,
+      "sha256": "ffb1627aaa0344f8018277201a3965aa6bd5e1f318c6285170bdb3a366c12b8c"
+    },
+    "fragments": {
+      "options": [
+        "-zlz4",
+        "-Efragments"
+      ],
+      "size": 16384,
+      "sha256": "47f214c64ad3778837e8109d4b94b18adf52c85711bafd1d5abbd5fd0a910076"
+    },
+    "all-fragments": {
+      "options": [
+        "-zlz4",
+        "-Eall-fragments"
+      ],
+      "size": 16384,
+      "sha256": "72cd23ad0b71863565106588154a2529ba9271570807386ccc27ef2df6904942"
+    },
+    "ztailpacking": {
+      "options": [
+        "-zlz4",
+        "-Eztailpacking"
+      ],
+      "size": 16384,
+      "sha256": "b3cec00cfca56704bc55240cf0bc1fc09a1298950263eed4ab95dbee98e1b136"
+    },
+    "metabox": {
+      "options": [
+        "-zlz4",
+        "-m4096"
+      ],
+      "size": 24576,
+      "sha256": "bb1a1cbf0f61a904741f2eb73cc12d6cad69339b61bacdcc1f87a39cadd64d58"
+    },
+    "chunks": {
+      "options": [
+        "--chunksize=4096"
+      ],
+      "size": 122880,
+      "sha256": "b4a145c512df3782e86d5d5d7b7352ba5825723e766c64db23303b1ce8a2531a"
+    },
+    "chunk-indexes": {
+      "options": [
+        "--chunksize=4096",
+        "-Eforce-chunk-indexes"
+      ],
+      "size": 122880,
+      "sha256": "a23ac85545bcce09051ffa44e44010fa647bf21e5b176ba4357fa68a8e4194c4"
+    },
+    "48bit": {
+      "options": [
+        "-zlz4",
+        "-E48bit"
+      ],
+      "size": 20480,
+      "sha256": "640337731d6c70bee6c72609cacc2f45dc074136c978d39cf94cb712dc71b496"
+    },
+    "compressed-directory": {
+      "options": [
+        "-zlz4",
+        "-m4096",
+        "--zD=1"
+      ],
+      "size": 24576,
+      "sha256": "bb1a1cbf0f61a904741f2eb73cc12d6cad69339b61bacdcc1f87a39cadd64d58"
+    },
+    "xattrs": {
+      "options": [
+        "-zlz4",
+        "-Efragments",
+        "-x0",
+        "--xattr-prefix=user.fixture.long."
+      ],
+      "size": 16384,
+      "sha256": "348d9e63fbb9394d341e9cc2f3378fbae24db1181564a11a0d15229238777cb2"
+    },
+    "unified-device": {
+      "options": [
+        "--chunksize=4096",
+        "--blobdev=blob.bin"
+      ],
+      "size": 122880,
+      "sha256": "73ffe320083347f30a40fc4422e96f97ec8321c8c55784cae0231e5f4c5c3d6e",
+      "transformation": "append blob at device unified address"
+    },
+    "external-device": {
+      "options": [
+        "--chunksize=4096",
+        "--blobdev=blob.bin"
+      ],
+      "size": 4096,
+      "sha256": "fbaf8284b53b8c55b7a29f28d3a6496c629c6b69de9fd9760e6c96efd77b85e0",
+      "devices": {
+        "blob.bin": {
+          "size": 118784,
+          "file": "blob.bin.zlib"
+        }
+      },
+      "transformation": "name device blob.bin and update checksum"
+    }
+  }
+}
