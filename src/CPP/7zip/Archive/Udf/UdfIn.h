@@ -45,6 +45,9 @@ struct CDString
 
   void Parse(const Byte *p, unsigned size);
   UString GetString() const;
+#ifdef SEVENZIP_LINUX_UDF
+  bool GetFilename(UString &name) const;
+#endif
 };
 
 
@@ -258,14 +261,14 @@ struct CPartitionMap {
 
 // ECMA 4/14.6.6
 
-enum EIcbFileType
-{
-  ICB_FILE_TYPE_DIR = 4,
-  ICB_FILE_TYPE_FILE = 5,
-  ICB_FILE_TYPE_REAL_TIME_FILE  = 249, // 2.3.5.2.1
-  ICB_FILE_TYPE_METADATA        = 250, // 2.2.13.1
-  ICB_FILE_TYPE_METADATA_MIRROR = 251, // 2.2.13.1
-  ICB_FILE_TYPE_METADATA_BITMAP = 252  // 2.2.13.2
+enum EIcbFileType {
+    ICB_FILE_TYPE_DIR = 4,
+    ICB_FILE_TYPE_FILE = 5,
+    ICB_FILE_TYPE_SYMLINK = 12,
+    ICB_FILE_TYPE_REAL_TIME_FILE = 249,  // 2.3.5.2.1
+    ICB_FILE_TYPE_METADATA = 250,        // 2.2.13.1
+    ICB_FILE_TYPE_METADATA_MIRROR = 251, // 2.2.13.1
+    ICB_FILE_TYPE_METADATA_BITMAP = 252  // 2.2.13.2
 };
 
 enum EIcbDescriptorType
@@ -332,6 +335,7 @@ struct CItem {
 #ifdef SEVENZIP_LINUX_UDF
     CLogBlockAddr Location;
     CByteBuffer LinuxAllocData;
+    UString SymLink;
 #endif
     CIcbTag IcbTag;
 
@@ -495,6 +499,7 @@ private:
   UInt32 _lastRecordedBlock;
   HRESULT LoadLinuxDiscovery();
   HRESULT ReadLinuxFileset(unsigned volIndex, const CLongAllocDesc &location, CByteBuffer &data);
+  HRESULT ReadLinuxSymlink(unsigned volIndex, CItem &item);
   static int ReadLinuxBlock(void *, UInt16, UInt32, void *, size_t);
   static int ReadLinuxPhysical(void *, UInt16, UInt32, void *, size_t);
   HRESULT LoadLinuxSparing(unsigned volIndex, unsigned partitionRef);

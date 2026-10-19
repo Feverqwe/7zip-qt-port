@@ -98,7 +98,9 @@ QList<ArchiveEntry> ArchiveBackend::parseListing(const QString &output) {
         else if (key == "Attributes") {
             current.directory = value.startsWith('D');
             current.link |= value.contains('l') || value.contains("Link", Qt::CaseInsensitive);
-        } else if (key == "Symbolic Link" || key == "Hard Link" || key == "Reparse Point")
+        } else if (key == "Mode")
+            current.link |= value.startsWith('l');
+        else if (key == "Symbolic Link" || key == "Hard Link" || key == "Reparse Point")
             current.link |= !value.isEmpty();
         if (key == "CRC") {
             bool defined = false;

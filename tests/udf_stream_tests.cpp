@@ -86,13 +86,16 @@ class CancelAt final : public IArchiveOpenCallback, public CMyUnknownImp {
     UInt64 checkpoint_;
     HRESULT result_;
     bool fired_ = false;
+    bool exact_;
 
   public:
-    CancelAt(Input *input, UInt64 checkpoint, HRESULT result = E_ABORT)
-        : input_(input), checkpoint_(checkpoint), result_(result) {}
+    CancelAt(Input *input, UInt64 checkpoint, HRESULT result = E_ABORT, bool exact = false)
+        : input_(input), checkpoint_(checkpoint), result_(result), exact_(exact) {}
+    bool fired() const { return fired_; }
     Z7_COM7F_IMF(SetTotal(const UInt64 *, const UInt64 *)) override { return S_OK; }
     Z7_COM7F_IMF(SetCompleted(const UInt64 *, const UInt64 *)) override {
-        if (!fired_ && input_->lastSeek >= checkpoint_) {
+        if (!fired_ &&
+            (exact_ ? input_->lastSeek == checkpoint_ : input_->lastSeek >= checkpoint_)) {
             fired_ = true;
             return result_;
         }
@@ -316,6 +319,83 @@ class UdfStreamTests final : public QObject {
             QTest::newRow(kind) << QString::fromLatin1(kind);
     }
     void discoveryStreams() { allocationStreams(); }
+    void namespaceStreams_data() {
+        QTest::addColumn<QString>("kind");
+        for (const char *kind :
+             {"ns-latin1",        "ns-utf16",        "ns-slash",       "ns-nul",
+              "ns-surrogate",     "ns-dot",          "ns-dotdot",      "ns-collapse",
+              "ns-limit",         "ns-spaces",       "ns-bad-code",    "ns-odd16",
+              "ns-empty",         "ns-hidden-file",  "ns-hidden-dir",  "ns-link-inline",
+              "ns-link-external", "ns-link-long",    "ns-link-chain",  "ns-link-parent",
+              "ns-link-root",     "ns-link-reset",   "ns-link-origin", "ns-link-unicode",
+              "ns-link-mangle",   "ns-link-unknown", "ns-link-empty"})
+            QTest::newRow(kind) << QString::fromLatin1(kind);
+    }
+    void namespaceStreams() {
+        QFETCH(QString, kind);
+        fixture(kind);
+        CMyComPtr<IInStream> input = new Input(bytes_);
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        UInt32 count = 0;
+        QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+        QSet<QString> actual;
+        for (UInt32 i = 0; i < count; ++i) {
+            NWindows::NCOM::CPropVariant path, dir;
+            QCOMPARE(archive_->GetProperty(i, kpidPath, &path), S_OK);
+            QCOMPARE(archive_->GetProperty(i, kpidIsDir, &dir), S_OK);
+            QCOMPARE(path.vt, VARTYPE(VT_BSTR));
+            if (dir.boolVal)
+                continue;
+            const QString name = QString::fromWCharArray(path.bstrVal).replace('\\', '/');
+            QVERIFY(files_.contains(name));
+            actual.insert(name);
+            const QByteArray expected = QByteArray::fromHex(files_[name].toString().toLatin1());
+            check(stream(name), expected);
+            if (name == "alpha.bin" && kind.startsWith("ns-link-")) {
+                NWindows::NCOM::CPropVariant target, size, mode;
+                QCOMPARE(archive_->GetProperty(i, kpidSymLink, &target), S_OK);
+                QCOMPARE(target.vt, VARTYPE(VT_BSTR));
+                QCOMPARE(QString::fromWCharArray(target.bstrVal), QString::fromUtf8(expected));
+                QCOMPARE(archive_->GetProperty(i, kpidSize, &size), S_OK);
+                QCOMPARE(size.uhVal.QuadPart, UInt64(expected.size()));
+                QCOMPARE(archive_->GetProperty(i, kpidPosixAttrib, &mode), S_OK);
+                QCOMPARE(mode.vt, VARTYPE(VT_UI4));
+                QCOMPARE(mode.ulVal, UInt32(0120777));
+            }
+        }
+        QCOMPARE(actual.size(), files_.size());
+        const QString name = files_.keys().first();
+        auto retained = stream(name);
+        const QByteArray expected = QByteArray::fromHex(files_[name].toString().toLatin1());
+        QCOMPARE(archive_->Close(), S_OK);
+        fixture("native");
+        CMyComPtr<IInStream> replacement = new Input(bytes_);
+        QCOMPARE(archive_->Open(replacement, nullptr, nullptr), S_OK);
+        archive_.Release();
+        check(retained, expected);
+    }
+    void symlinkFailuresAndCancellation() {
+        fixture("ns-link-external");
+        CMyComPtr2<IInStream, Input> input;
+        input.SetFromCls(new Input(bytes_));
+        input->failSeekAt = UInt64(272) * 2048;
+        for (HRESULT error : {E_ABORT, E_FAIL}) {
+            input->seekFailure = error;
+            QCOMPARE(archive_->Open(input, nullptr, nullptr), error);
+        }
+        input->failSeekAt = UINT64_MAX;
+        for (HRESULT error : {E_ABORT, E_FAIL}) {
+            auto *callback = new CancelAt(input.operator->(), UInt64(272) * 2048, error, true);
+            CMyComPtr<IArchiveOpenCallback> progress = callback;
+            QCOMPARE(archive_->Open(input, nullptr, progress), error);
+            QVERIFY(callback->fired());
+        }
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        auto link = stream("alpha.bin");
+        QCOMPARE(archive_->Close(), S_OK);
+        archive_.Release();
+        check(link, QByteArray("nested/tail.bin"));
+    }
     void allocationStreams() {
         QFETCH(QString, kind);
         fixture(kind);
@@ -598,7 +678,10 @@ class UdfStreamTests final : public QObject {
                                  "ds-backup-last",
                                  "ds-vdp",
                                  "ds-prevailing-new",
-                                 "ds-main-reserve"})
+                                 "ds-main-reserve",
+                                 "ns-utf16",
+                                 "ns-nul",
+                                 "ns-limit"})
             QTest::newRow(kind) << QString::fromLatin1(kind);
     }
     void backendExtraction() {
@@ -637,16 +720,24 @@ class UdfStreamTests final : public QObject {
         QVERIFY2(finished[0][0].toBool(), qPrintable(finished[0][1].toString()));
         finished.clear();
         const QString output = temporary.filePath("output");
-        backend.extract(image.fileName(), output, {"alpha.bin"});
+        QString name = "alpha.bin";
+        if (!files_.contains(name)) {
+            for (auto i = files_.begin(); i != files_.end(); ++i)
+                if (!i.value().toString().isEmpty() && !i.key().contains('/')) {
+                    name = i.key();
+                    break;
+                }
+        }
+        backend.extract(image.fileName(), output, {name});
         QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 10000);
         QVERIFY2(finished[0][0].toBool(), qPrintable(finished[0][1].toString()));
-        QFile file(QDir(output).filePath("alpha.bin"));
+        QFile file(QDir(output).filePath(name));
         QVERIFY(file.open(QIODevice::ReadOnly));
-        const QByteArray expected = QByteArray::fromHex(files_["alpha.bin"].toString().toLatin1());
+        const QByteArray expected = QByteArray::fromHex(files_[name].toString().toLatin1());
         QCOMPARE(file.readAll(), expected);
         finished.clear();
         const QString saved = temporary.filePath("source.bin");
-        backend.extractSourceEntry(image.fileName(), "alpha.bin", saved, "Udf", {});
+        backend.extractSourceEntry(image.fileName(), name, saved, "Udf", {});
         QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 10000);
         QVERIFY2(finished[0][0].toBool(), qPrintable(finished[0][1].toString()));
         QFile source(saved);

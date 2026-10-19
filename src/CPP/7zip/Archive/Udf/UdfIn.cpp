@@ -11,6 +11,9 @@
 #include "../../../../C/CpuArch.h"
 
 #include "../../../Windows/PropVariantUtils.h"
+#ifdef SEVENZIP_LINUX_UDF
+#include "../../../Common/UTFConvert.h"
+#endif
 
 #include "../../Common/RegisterArc.h"
 #include "../../Common/StreamUtils.h"
@@ -84,6 +87,7 @@ void CDString::Parse(const Byte *p, unsigned size)
   Data.CopyFrom(p, size);
 }
 
+#ifndef SEVENZIP_LINUX_UDF
 static UString ParseDString(const Byte *data, unsigned size)
 {
   UString res;
@@ -125,23 +129,59 @@ static UString ParseDString(const Byte *data, unsigned size)
   }
   return res;
 }
-
-UString CDString32::GetString() const
-{
-  const unsigned size = Data[sizeof(Data) - 1];
-  return ParseDString(Data, MyMin(size, (unsigned)(sizeof(Data) - 1)));
+#else
+static UString ParseLinuxDString(const Byte *data, unsigned size) {
+    Byte output[127];
+    const int length = sevenzip_udf_dstring(data, (int)size, output, (int)size - 1);
+    UString result;
+    if (length > 0) {
+        AString text;
+        text.SetFrom((const char *)output, (unsigned)length);
+        ConvertUTF8ToUnicode(text, result);
+    }
+    return result;
 }
 
-UString CDString128::GetString() const
-{
-  const unsigned size = Data[sizeof(Data) - 1];
-  return ParseDString(Data, MyMin(size, (unsigned)(sizeof(Data) - 1)));
+bool CDString::GetFilename(UString &name) const {
+    Byte output[255];
+    const int length = sevenzip_udf_filename(Data, (int)Data.Size(), output, sizeof(output));
+    if (length < 0)
+        return false;
+    AString text;
+    text.SetFrom((const char *)output, (unsigned)length);
+    return ConvertUTF8ToUnicode(text, name);
+}
+#endif
+
+UString CDString32::GetString() const {
+#ifdef SEVENZIP_LINUX_UDF
+    return ParseLinuxDString(Data, sizeof(Data));
+#else
+    const unsigned size = Data[sizeof(Data) - 1];
+    return ParseDString(Data, MyMin(size, (unsigned)(sizeof(Data) - 1)));
+#endif
 }
 
-UString CDString::GetString() const { return ParseDString(Data, (unsigned)Data.Size()); }
+UString CDString128::GetString() const {
+#ifdef SEVENZIP_LINUX_UDF
+    return ParseLinuxDString(Data, sizeof(Data));
+#else
+    const unsigned size = Data[sizeof(Data) - 1];
+    return ParseDString(Data, MyMin(size, (unsigned)(sizeof(Data) - 1)));
+#endif
+}
+
+UString CDString::GetString() const {
+#ifdef SEVENZIP_LINUX_UDF
+    UString name;
+    GetFilename(name);
+    return name;
+#else
+    return ParseDString(Data, (unsigned)Data.Size());
+#endif
+}
 
 void CTime::Parse(const Byte *p) { memcpy(Data, p, sizeof(Data)); }
-
 
 static void AddCommentChars(UString &dest, const char *s, size_t size)
 {
@@ -155,7 +195,6 @@ static void AddCommentChars(UString &dest, const char *s, size_t size)
     dest += (wchar_t)c;
   }
 }
-
 
 void CRegId::Parse(const Byte *p)
 {
@@ -764,6 +803,9 @@ HRESULT CInArchive::ReadItem(unsigned volIndex, int fsIndex, const CLongAllocDes
   } else if (fsIndex >= 0 &&
              (item.IcbTag.FileType != ICB_FILE_TYPE_DIR &&
               item.IcbTag.FileType != ICB_FILE_TYPE_FILE &&
+#ifdef SEVENZIP_LINUX_UDF
+              item.IcbTag.FileType != ICB_FILE_TYPE_SYMLINK &&
+#endif
               item.IcbTag.FileType !=
                   ICB_FILE_TYPE_REAL_TIME_FILE)) // M2TS files in /BDMV/STREAM/ in Blu-ray movie
       return S_FALSE;
@@ -879,38 +921,50 @@ HRESULT CInArchive::ReadItem(unsigned volIndex, int fsIndex, const CLongAllocDes
         size2 -= cur;
       }
       if (fileId.IsItLink_Parent())
-        continue;
+          continue;
       if (fileId.IsItLink_Deleted())
-        continue;
+          continue;
+#ifdef SEVENZIP_LINUX_UDF
+      // Default Linux directory enumeration hides hidden FIDs and invalid names.
+      if (fileId.FileCharacteristics & 1)
+          continue;
+      UString decodedName;
+      if (!fileId.Id.GetFilename(decodedName))
+          continue;
+#endif
       {
-        CFile file;
-        // file.FileVersion = fileId.FileVersion;
-        // file.FileCharacteristics = fileId.FileCharacteristics;
-        // file.ImplUse = fileId.ImplUse;
-        file.Id = fileId.Id;
+          CFile file;
+          // file.FileVersion = fileId.FileVersion;
+          // file.FileCharacteristics = fileId.FileCharacteristics;
+          // file.ImplUse = fileId.ImplUse;
+          file.Id = fileId.Id;
 
-        _fileNameLengthTotal += file.Id.Data.Size();
-        if (_fileNameLengthTotal > kFileNameLengthTotalMax)
-          return S_FALSE;
+          _fileNameLengthTotal += file.Id.Data.Size();
+          if (_fileNameLengthTotal > kFileNameLengthTotalMax)
+              return S_FALSE;
 
-        item.SubFiles.Add(Files.Size());
-        if (Files.Size() >= kNumFilesMax)
-          return S_FALSE;
-        Files.Add(file);
-        RINOK(ReadFileItem(volIndex, (unsigned)fsIndex, fileId.Icb,
-            fileId.IsItLink_Dir(), numRecurseAllowed))
+          item.SubFiles.Add(Files.Size());
+          if (Files.Size() >= kNumFilesMax)
+              return S_FALSE;
+          Files.Add(file);
+          RINOK(ReadFileItem(volIndex, (unsigned)fsIndex, fileId.Icb, fileId.IsItLink_Dir(),
+                             numRecurseAllowed))
       }
     }
   }
   else
   {
-    if ((UInt32)item.Extents.Size() > kNumExtentsMax - _numExtents)
-      return S_FALSE;
-    _numExtents += item.Extents.Size();
+#ifdef SEVENZIP_LINUX_UDF
+      if (item.IcbTag.FileType == ICB_FILE_TYPE_SYMLINK)
+          RINOK(ReadLinuxSymlink(volIndex, item))
+#endif
+      if ((UInt32)item.Extents.Size() > kNumExtentsMax - _numExtents)
+          return S_FALSE;
+      _numExtents += item.Extents.Size();
 
-    if (item.InlineData.Size() > kInlineExtentsSizeMax - _inlineExtentsSize)
-      return S_FALSE;
-    _inlineExtentsSize += item.InlineData.Size();
+      if (item.InlineData.Size() > kInlineExtentsSizeMax - _inlineExtentsSize)
+          return S_FALSE;
+      _inlineExtentsSize += item.InlineData.Size();
   }
 
   return S_OK;
@@ -1981,7 +2035,9 @@ UString CInArchive::GetComment() const
 static UString GetSpecName(const UString &name)
 {
   UString name2 = name;
+#ifndef SEVENZIP_LINUX_UDF
   name2.Trim();
+#endif
   if (name2.IsEmpty())
     return UString("[]");
   return name;

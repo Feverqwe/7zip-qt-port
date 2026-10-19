@@ -8,6 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include "../nls/types.h"
 #include "../../include/linux/crc-itu-t.h"
 #ifdef _MSC_VER
 #pragma pack(push, 1)
@@ -38,7 +39,14 @@
 #define udf_debug(...) ((void)0)
 #define pr_err(...) ((void)0)
 #define pr_notice(...) ((void)0)
+#define pr_warn(...) ((void)0)
+#define WARN_ON_ONCE(value) ((void)(value))
+#define min_t(type, a, b) ((type)(a) < (type)(b) ? (type)(a) : (type)(b))
+#define hex_asc_upper_hi(value) ("0123456789ABCDEF"[((value) >> 4) & 15])
+#define hex_asc_upper_lo(value) ("0123456789ABCDEF"[(value) & 15])
+#define fallthrough ((void)0)
 #define UDF_EXTENT_LENGTH_MASK 0x3fffffff
+#define UDF_NAME_LEN 254
 typedef uint64_t udf_pblk_t;
 struct buffer_head { uint8_t *b_data; unsigned b_size, references; };
 typedef uint32_t u32;
@@ -163,4 +171,5 @@ int sevenzip_udf_load_vrs(struct super_block *, struct udf_options *, struct ker
 int sevenzip_udf_find_fileset(struct super_block *, struct kernel_lb_addr *, struct kernel_lb_addr *);
 struct logicalVolIntegrityDescImpUse *udf_sb_lvidiu(struct super_block *);
 int sevenzip_udf_check_vsd(struct super_block *);
+int udf_get_filename(struct super_block *, const uint8_t *, int, uint8_t *, int);
 #endif

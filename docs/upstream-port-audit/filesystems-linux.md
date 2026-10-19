@@ -105,7 +105,9 @@ short AD, chains, primary/mirror fallback, readonly bitmap policy и extent cach
 EOF и AED tag/read policies сверены с Linux.
 Volume discovery, block geometry, резервные anchors/VDS и prevailing descriptors
 подключены к исходному Linux C reader; проверены tagged fileset и LVID read revision.
-Names/NLS, symlinks и остальные read-side возможности UDF ещё требуют актуализации.
+CS0 names/dstrings, default UTF-8, CRC mangling и symlink path components
+подключены к исходным Linux C converters. Специальные inode/device EA и
+оставшиеся metadata/read policies UDF ещё требуют актуализации.
 
 ### HFS+/HFSX: fork mapping и metadata reads
 

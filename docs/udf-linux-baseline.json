@@ -39,10 +39,12 @@
     "fs/udf/misc.c",
     "fs/udf/partition.c",
     "fs/udf/super.c",
+    "fs/udf/symlink.c",
     "fs/udf/udf_i.h",
     "fs/udf/udf_sb.h",
     "fs/udf/udfdecl.h",
     "fs/udf/udfend.h",
+    "fs/udf/unicode.c",
     "include/linux/crc-itu-t.h",
     "lib/crc/crc-itu-t.c"
   ]

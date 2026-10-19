@@ -3,6 +3,7 @@
 #include "StdAfx.h"
 // clang-format on
 #include "../../../../udfreader.h"
+#include "../../../Common/UTFConvert.h"
 #include "../../Common/RegisterArc.h"
 #include "../../Common/StreamUtils.h"
 #include "UdfIn.h"
@@ -335,6 +336,40 @@ HRESULT CInArchive::ReadLinuxExtents(unsigned volIndex, unsigned partitionRef, C
     if (context.result != S_OK)
         return context.result;
     return result == 0 ? S_OK : S_FALSE;
+}
+HRESULT CInArchive::ReadLinuxSymlink(unsigned volIndex, CItem &item) {
+    const CLogVol &vol = LogVols[volIndex];
+    // udf_symlink_filler accepts at most one filesystem block, and uses raw
+    // udf_bread for external data rather than synthesizing holes at logical EOF.
+    if (item.Size > vol.BlockSize)
+        return S_FALSE;
+    CByteBuffer raw;
+    Byte *data;
+    if (item.IsInline) {
+        if (!item.CheckChunkSizes())
+            return S_FALSE;
+        data = item.InlineData;
+    } else {
+        if (item.Extents.IsEmpty() || !item.Extents[0].IsRecAndAlloc())
+            return S_FALSE;
+        raw.Alloc(vol.BlockSize);
+        const CMyExtent &extent = item.Extents[0];
+        RINOK(Read(volIndex, extent.PartitionRef, extent.Pos, vol.BlockSize, raw))
+        data = raw;
+    }
+    Byte output[4096];
+    if (sevenzip_udf_symlink(data, (int)item.Size, output, sizeof(output)))
+        return S_FALSE;
+    AString target((const char *)output);
+    if (!ConvertUTF8ToUnicode(target, item.SymLink))
+        return S_FALSE;
+    item.Size = target.Len();
+    item.IsInline = true;
+    item.InlineData.CopyFrom((const Byte *)(const char *)target, target.Len());
+    item.Extents.ClearAndFree();
+    if (_progress)
+        RINOK(_progress->SetCompleted(Files.Size(), _processedProgressBytes))
+    return S_OK;
 }
 } // namespace NUdf
 } // namespace NArchive

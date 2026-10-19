@@ -16,6 +16,9 @@ CONTINUATIONS = ("ad-short", "ad-long", "ad-chain-short", "ad-chain-long",
 
 
 def volume(kind):
+    if kind.startswith("ns-"):
+        from udf_names_fixture import volume as names_volume
+        return names_volume(kind)
     if kind.startswith("ds-"):
         from udf_discovery_fixture import volume as discovery_volume
         return discovery_volume(kind)

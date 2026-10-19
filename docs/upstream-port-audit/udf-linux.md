@@ -544,7 +544,95 @@ build trees и compiler caches. Full/slow/UI/physical-device acceptance
 
 Actual macOS CMake install прочитал все 136 положительных UDF variants,
 сохранил source bytes и установил обе лицензии с точным исходным содержимым.
-Staging удалён. Полный UDF audit остаётся открытым: names/NLS, symlinks,
-специальные inode/device EA и оставшиеся metadata/read policies требуют
+Staging удалён. Полный UDF audit остаётся открытым: специальные inode/device EA
+и оставшиеся metadata/read policies требуют
 отдельной source comparison. Эта итерация закрывает default file-stream
 discovery, а не physical-CD acceptance или все UDF возможности.
+
+## CS0 namespace и symbolic links
+
+До реализации сравнены полные `unicode.c`, `symlink.c`, соответствующие
+`dir.c`/`namei.c` enumeration/lookup branches и inode read/type consumers,
+а также 7-Zip `CDString`, `CFileId`, `ReadItem`, paths, comments,
+`GetProperty`/`GetStream`/`Extract` и исходный extract callback, читающий
+`kpidSymLink`. Из того же pinned Linux commit перенесены полные
+`get_utf16_char`, `udf_name_conv_char`, `udf_name_from_CS0`,
+`udf_dstrCS0toChar`, `udf_get_filename` в `src/fs/udf/unicode.c` и
+`udf_pc_to_char` в `src/fs/udf/symlink.c`. Повторное сравнение всех шести bodies
+подтверждает единственную type adaptation: Linux 16-bit `wchar_t` именуется
+`fat_wchar_t`, как в существующем NLS module. Notices сохранены; write-side
+CS0 encoding и VFS folio/getattr operations не копируются.
+
+Используется прежний исходный `fs/nls/nls_base.c::utf32_to_utf8`; происхождение
+зафиксировано в [FAT/NLS audit](fat-linux.md). Общие объявления portable NLS ABI
+вынесены из FAT service header в `src/fs/nls/types.h`, без изменения layout
+или алгоритмов FAT/ISO. Unicode archive API использует default Linux UTF-8
+branch; mount charset overrides и обратная запись имён не экспонируются.
+Сохранены обе converter branches, включая имеющийся NLS callback ABI.
+
+Directory names теперь учитывают compression ID 8/16, surrogate pairs,
+invalid character runs, slash/NUL replacement, CRC suffix, extension preservation
+и Linux `UDF_NAME_LEN=254` bytes. Некорректные CS0 names и hidden FIDs
+пропускаются при перечислении, как default Linux `readdir`; допустимые имена
+из пробелов сохраняются. Archive enumeration не воспроизводит побочный отказ
+native `namei` при поиске последующих entries после malformed CS0 record:
+пригодные файлы остаются доступны по опубликованным archive paths.
+Fixed dstrings для volume/fileset metadata используют исходную separate
+informational conversion, её truncation/replacement и отсутствие filename CRC.
+
+Symbolic links принимаются как отдельный UDF inode type. Narrow stream adapter
+сохраняет политику `udf_symlink_filler`: максимум один filesystem block,
+inline content либо полное raw чтение первого recorded data block без
+синтеза holes. Исходный path-component decoder обрабатывает root/reset,
+parent/current, origin и CS0 components; результат публикуется через
+`kpidSymLink`, native symlink mode `S_IFLNK | 0777`, текстовый `GetStream`
+и размер target в UTF-8 bytes, как native
+`readlink`/symlink getattr. Готовые 7-Zip buffer streams и extract callback
+обеспечивают ownership и создание ссылок через CLI. Backend сохраняет прежнюю
+валидацию links при извлечении; technical-listing adapter дополнительно читает
+поле Mode, чтобы не принимать пустой symlink target за обычный файл.
+Эта узкая Qt boundary не имеет готового upstream ArchiveEntry parser.
+Существующая regression извлечения покрывает пустую ссылку и порядок Mode/Attributes.
+Отмены/ошибки source reads и progress
+не скрываются; malformed target возвращает archive error.
+
+33 новых положительных fixtures покрывают имена, hidden/invalid entries,
+volume dstrings и inline/external/long-AD/AED symlink data. Safe native checks
+на Linux `6.8.0-147-generic` подтвердили имена и target bytes; для malformed
+CS0 отдельно сравнен `readdir`, без обещания lookup parity. Для dstring fixtures
+native mount/data проверены, а текст archive comment проверен через CLI;
+kernel volume-label publication не измерялась. Четыре повреждённых symlink
+варианта отвергнуты native `readlink`; пять отвергаются модулем.
+
+Пятый вариант, symlink с unallocated hole, при первом native run вызвал
+kernel oops в `6.8.0-146-generic::read_cache_page`. Он больше не запускается
+в ядре; его module rejection не заявляется native parity. Выделенный test
+guest штатно перезагружен, зависший fixture mount освобождён, temporary images
+удалены. Загрузилось ранее установленное ядро 6.8.0-147; matching
+linux-cloud-tools восстановил KVP/VSS discovery после reboot. Build trees и
+compiler caches сохранены. Остальные native checks завершены после recovery.
+
+CLI проверяет точные paths/bytes, комментарии и symlink properties; на macOS
+и Linux — actual extraction трёх safe relative links. Windows проверяет
+properties/streams, без native link creation, требующего отдельной privilege.
+ABI дополнительно проверяет EOF, retained streams после Close/reopen/release,
+source errors, однократные progress E_ABORT/E_FAIL именно после symlink data read
+и последующее успешное открытие. Backend consumers проверяют Unicode,
+CRC-mangled и предельные имена через list/extract/extractSourceEntry.
+
+Десять focused suites (`udf`, `udf_stream`, `fat_module`, `iso`, `iso_stream`,
+`archive_backend`, `source_extract_backend`, `upstream_baseline`,
+`runtime_cache`, `runtime_package`) прошли на macOS arm64, Linux x64 и Windows
+x64/MSVC; remote receipt `20261019T232841Z-36674133`. До дополнения empty-link
+consumer также прошли восемь filesystem/runtime suites на трёх платформах;
+финальный run включает связанные backend regressions и новый symlink mode.
+
+Actual macOS CMake install прочитал все 169 положительных UDF variants,
+сохранил source bytes и установил обе лицензии с точным исходным содержимым.
+Staging, native mounts и временные images удалены. Build trees и compiler
+caches переиспользованы; full/slow/UI/physical-device acceptance не выполнялась.
+
+Полный UDF audit остаётся открытым: специальные inode/device EA, permissions,
+UID/GID/link metadata и оставшиеся directory/inode/read policies требуют
+следующей интегрированной source comparison. Standalone decoder и physical-CD
+границы остаются прежними; эта итерация их не закрывает.

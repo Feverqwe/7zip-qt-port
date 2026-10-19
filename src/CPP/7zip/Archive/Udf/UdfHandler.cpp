@@ -40,20 +40,16 @@ static void UdfTimeToFileTime(const CTime &t, NWindows::NCOM::CPropVariant &prop
   prop.SetAsTimeFrom_Ft64_Prec(v, k_PropVar_TimePrec_Base + numDigits);
 }
 
-static const Byte kProps[] =
-{
-  kpidPath,
-  kpidIsDir,
-  kpidSize,
-  kpidPackSize,
-  kpidMTime,
-  kpidATime,
-  kpidCTime,
-  kpidChangeTime,
-  // kpidUserId,
-  // kpidGroupId,
-  // kpidPosixAttrib,
-  kpidLinks
+static const Byte kProps[] = {kpidPath, kpidIsDir, kpidSize, kpidPackSize, kpidMTime, kpidATime,
+                              kpidCTime, kpidChangeTime,
+                              // kpidUserId,
+                              // kpidGroupId,
+                              // kpidPosixAttrib,
+                              kpidLinks
+#ifdef SEVENZIP_LINUX_UDF
+                              ,
+                              kpidSymLink, kpidPosixAttrib
+#endif
 };
 
 static const Byte kArcProps[] =
@@ -251,7 +247,18 @@ Z7_COM7F_IMF(CHandler::GetProperty(UInt32 index, PROPID propID, PROPVARIANT *val
       // case kpidGroupId: prop = item.Gid; break;
       // case kpidPosixAttrib: prop = (UInt32)item.Permissions; break;
       case kpidLinks: prop = (UInt32)item.FileLinkCount; break;
-    }
+#ifdef SEVENZIP_LINUX_UDF
+      case kpidSymLink:
+        if (item.IcbTag.FileType == ICB_FILE_TYPE_SYMLINK)
+            prop = item.SymLink;
+        break;
+      case kpidPosixAttrib:
+          if (item.IcbTag.FileType == ICB_FILE_TYPE_SYMLINK)
+              // udf_read_inode publishes S_IFLNK | 0777, including empty targets.
+              prop = (UInt32)0120777;
+          break;
+#endif
+      }
   }
   prop.Detach(value);
   return S_OK;

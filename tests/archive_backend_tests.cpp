@@ -691,6 +691,10 @@ class ArchiveBackendTests : public QObject, protected ArchiveBackendTestSupport 
         QTest::newRow("link before attributes")
             << QByteArray("Path = link\nSymbolic Link = ../outside\nAttributes = A\n\n");
         QTest::newRow("hard link") << QByteArray("Path = link\nHard Link = target\n\n");
+        QTest::newRow("empty symbolic link") << QByteArray(
+            "Path = link\nSize = 0\nSymbolic Link = \nMode = lrwxrwxrwx\n\n");
+        QTest::newRow("empty symbolic link before attributes")
+            << QByteArray("Path = link\nMode = lrwxrwxrwx\nSymbolic Link = \nAttributes = A\n\n");
         QTest::newRow("duplicate")
             << QByteArray("Path = same.txt\nSize = 1\n\nPath = SAME.TXT\nSize = 1\n\n");
         QTest::newRow("dot-duplicate")

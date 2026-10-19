@@ -44,6 +44,7 @@ struct udf_part_map {
 	uint32_t (*s_partition_func)(struct super_block *, uint32_t, uint16_t, uint32_t);
 };
 struct udf_sb_info {
+	struct nls_table *s_nls_map;
 	uint32_t s_partitions;
 	struct udf_part_map *s_partmaps;
 	struct inode *s_vat_inode;

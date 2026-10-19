@@ -1,5 +1,6 @@
 """UDF allocation data, sparse holes and EOF through both shipped engines."""
 from pathlib import Path
+import os
 import subprocess
 import shutil
 import sys
@@ -12,6 +13,7 @@ from udf_vat_fixture import CASES as VAT_CASES, BAD as VAT_BAD
 from udf_metadata_fixture import CASES as METADATA_CASES, BAD as METADATA_BAD
 from udf_walk_fixture import CASES as WALK_CASES, MODULE_ONLY as WALK_MODULE, BAD as WALK_BAD
 from udf_discovery_fixture import CASES as DISCOVERY_CASES, MODULE_ONLY as DISCOVERY_MODULE, BAD as DISCOVERY_BAD
+from udf_names_fixture import CASES as NAME_CASES, BAD as NAME_BAD, COMMENTS
 
 RUNTIME = Path(sys.argv.pop(1))
 MODULE = Path(sys.argv.pop(1))
@@ -68,7 +70,7 @@ class UdfTests(unittest.TestCase):
 
     def test_continuations(self):
         for kind in (*CONTINUATIONS, *ICB_CASES, *SPARING_CASES, *VAT_CASES, *METADATA_CASES,
-                     *WALK_CASES, *WALK_MODULE, *DISCOVERY_CASES, *DISCOVERY_MODULE):
+                     *WALK_CASES, *WALK_MODULE, *DISCOVERY_CASES, *DISCOVERY_MODULE, *NAME_CASES):
             image, files = volume(kind)
             with self.subTest(kind=kind):
                 result = self.run_image("7z", image)
@@ -87,7 +89,7 @@ class UdfTests(unittest.TestCase):
     def test_damaged_continuation_chains(self):
         for kind in ("ad-cycle", "ad-limit-17", "ad-outside", "ad-bad-partition",
                      "ad-overflow", "ad-over-block", *ICB_BAD, *SPARING_BAD, *VAT_BAD,
-                     *METADATA_BAD, *DISCOVERY_BAD):
+                     *METADATA_BAD, *DISCOVERY_BAD, *NAME_BAD):
             image, _ = volume(kind)
             with self.subTest(kind=kind):
                 self.assertNotEqual(self.run_image("7z", image).returncode, 0)
@@ -107,6 +109,42 @@ class UdfTests(unittest.TestCase):
             with self.subTest(kind=kind):
                 # 7-Zip's normal archive error, rather than timeout, crash or out-of-memory.
                 self.assertEqual(self.run_image("7z", image).returncode, 2)
+
+    def test_namespace_listing(self):
+        for kind in NAME_CASES:
+            image, files = volume(kind)
+            with self.subTest(kind=kind):
+                result = self.run_image("7z", image, listing=True)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                text = result.stdout.decode("utf-8").replace("\r\n", "\n")
+                records = text.split("----------\n", 1)[1].split("\n\n")
+                paths = {line[7:].replace("\\", "/") for record in records
+                         for line in record.splitlines() if line.startswith("Path = ")}
+                self.assertEqual(paths - {"nested"}, set(files))
+                if kind in COMMENTS:
+                    self.assertIn("VolumeId: " + COMMENTS[kind] + "\n", text)
+                if kind.startswith("ns-link-"):
+                    alpha = next(record for record in records if "Path = alpha.bin\n" in record)
+                    self.assertIn("Symbolic Link = " + files["alpha.bin"].decode(), alpha)
+                    self.assertIn("Size = " + str(len(files["alpha.bin"])), alpha)
+
+    @unittest.skipIf(sys.platform == "win32", "native symlink creation requires Windows privilege")
+    def test_symlink_extraction(self):
+        for kind in ("ns-link-inline", "ns-link-external", "ns-link-chain"):
+            image, _ = volume(kind)
+            with self.subTest(kind=kind), tempfile.TemporaryDirectory(prefix="sevenzip-udf-links-") as td:
+                root = Path(td)
+                source = root / "образ 空.udf"
+                source.write_bytes(image)
+                output = root / "выход 空"
+                result = subprocess.run([str(self.runtime / ("7z" + SUFFIX)), "x", "-tUdf", "-y",
+                                         "-o" + str(output), "--", str(source)], capture_output=True, timeout=10)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                link = output / "alpha.bin"
+                self.assertTrue(link.is_symlink())
+                self.assertEqual(os.readlink(link), "nested/tail.bin")
+                self.assertEqual(link.read_bytes(), b"directory payload")
+                self.assertEqual(source.read_bytes(), image)
 
     def test_discovery_without_format_or_extension_hint(self):
         for kind in ("ds-block-512", "ds-block-1024", "ds-block-4096", "ds-block-4096-spaced",

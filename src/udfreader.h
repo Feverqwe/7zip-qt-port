@@ -35,6 +35,9 @@ int sevenzip_udf_discover(void *, sevenzip_udf_read, sevenzip_udf_descriptor,
     sevenzip_udf_reset, sevenzip_udf_status, uint64_t, struct sevenzip_udf_discovery *);
 int sevenzip_udf_probe(const void *, size_t);
 int sevenzip_udf_fileset(void *, sevenzip_udf_read, uint32_t, uint16_t, uint32_t, void *);
+int sevenzip_udf_filename(const void *, int, void *, int);
+int sevenzip_udf_dstring(const void *, int, void *, int);
+int sevenzip_udf_symlink(void *, int, void *, int);
 int sevenzip_udf_metadata_create(void *, sevenzip_udf_open_file, sevenzip_udf_read,
     sevenzip_udf_close_file, sevenzip_udf_status, uint32_t, uint32_t, uint16_t, uint16_t, const void *,
     struct sevenzip_udf_metadata **);
