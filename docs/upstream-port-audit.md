@@ -36,6 +36,9 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 
 ## Новые изменения
 
+- [FAT12/16/32 по Linux](upstream-port-audit/fat-linux.md)
+  — BPB, восстановление имён и чтение по размеру файла в обоих engines.
+
 - [cramfs sparse reads по Linux](upstream-port-audit/cramfs-linux.md)
   — нулевые extents, исходный C++ sparse branch и provenance обоих engines.
 

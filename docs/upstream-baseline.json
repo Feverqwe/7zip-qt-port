@@ -4,7 +4,8 @@
   "revision": "9128b80e3a471108678e2b3ec3c985861c8d7b0f",
   "overrides": {},
   "runtime_adapted": [
-    "src/CPP/7zip/Archive/CramfsHandler.cpp"
+    "src/CPP/7zip/Archive/CramfsHandler.cpp",
+    "src/CPP/7zip/Archive/FatHandler.cpp"
   ],
   "exact": [
     "third_party/7zip/C/7zCrc.c",
@@ -426,6 +427,7 @@
   "adapted": [
     "src/CPP/7zip/Archive/Common/HandlerOut.h",
     "src/CPP/7zip/Archive/CramfsHandler.cpp",
+    "src/CPP/7zip/Archive/FatHandler.cpp",
     "src/CPP/7zip/Archive/Rar/Rar5Handler.cpp",
     "src/CPP/7zip/Archive/Zip/ZipCompressionMode.h",
     "src/CPP/7zip/Common/MethodProps.cpp",

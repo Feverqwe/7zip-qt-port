@@ -1,0 +1,20 @@
+{
+  "repository": "https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git",
+  "revision": "58161ead29e50d70a317ea26b472e0c7508e69da",
+  "files": {
+    "fs/fat/.kunitconfig": "e1481a312ea506ecfac286df8b4066acd7a0a090dfc2e1a40bfcb01a13972d70",
+    "fs/fat/Kconfig": "5331da2995a4f08018c23b16ab9adbfdc10dc6a1173cb117234d25c747d61274",
+    "fs/fat/Makefile": "5764ea22e71cdb246d7a03ef7c1ab4975a317515ffd20720fcc0fc4bef4dfadb",
+    "fs/fat/cache.c": "80955c25f209354a5806324b7ceca4a939ae645a23703c9a1373e986c82eb944",
+    "fs/fat/dir.c": "bdd276602334142f7558d496fff39fbf66f889663142c929d6eeef7c9e422e6f",
+    "fs/fat/fat.h": "6a8e482f861014038c99a9dbcaa2b8b0902a9af095afaff9b621fb88e9ab15bf",
+    "fs/fat/fat_test.c": "791450683736f1aa2eef3ada519ed0b234ce0cc97cf9cbfc1acf8a86fa04a020",
+    "fs/fat/fatent.c": "1298754fbbe59d8f17cab642c9b6919941acb84e847e222df19fa27ba4ee39d7",
+    "fs/fat/file.c": "579ad774153e9b072f8b6bf554b7cf3c6dc0700962f331dd1c435a58f9e0e410",
+    "fs/fat/inode.c": "234835d63bc497f47b8531d86e187859864ce58e00383b98a1597c373d248a5d",
+    "fs/fat/misc.c": "cbb1e341a95073fde57c0187fb33364001698aa0d4ee221eb7a84dd702f438df",
+    "fs/fat/namei_msdos.c": "7c2d46016820ffab1dcdd2bb814ddea089a99c36e8d4ffbd2ba653b6016ad62f",
+    "fs/fat/namei_vfat.c": "ebbbad0a88c7922036f1c2c13e69cb0e6746d5d3e4c7109bfe88c75d59547748",
+    "fs/fat/nfs.c": "be6af97fa9df008bba9909ea4fa0a59b23def9282e8756c8d1bb4c10f54d513c"
+  }
+}
