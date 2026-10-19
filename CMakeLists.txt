@@ -33,6 +33,7 @@ include(cmake/Ext.cmake)
 include(cmake/Squashfs.cmake)
 include(cmake/Ntfs.cmake)
 include(cmake/Hfs.cmake)
+include(cmake/Iso.cmake)
 include(cmake/Erofs.cmake)
 include(cmake/Brotli.cmake)
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR (APPLE AND BUILD_TESTING))
@@ -631,6 +632,7 @@ sevenzip_deploy_ext()
 sevenzip_deploy_squashfs()
 sevenzip_deploy_ntfs()
 sevenzip_deploy_hfs()
+sevenzip_deploy_iso()
 sevenzip_deploy_erofs()
 sevenzip_deploy_brotli()
 if(APPLE)
@@ -804,23 +806,21 @@ if(BUILD_TESTING)
     set_tests_properties(hfs_stream PROPERTIES TIMEOUT 45)
     add_test(NAME iso COMMAND ${Python3_EXECUTABLE}
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/iso_tests.py
-        ${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime)
+        ${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime "$<TARGET_FILE:sevenzip_iso>")
     set_tests_properties(iso PROPERTIES TIMEOUT 60)
     qt_add_executable(iso_stream_tests tests/iso_stream_tests.cpp)
     target_include_directories(iso_stream_tests PRIVATE src third_party/7zip/CPP)
     target_link_libraries(iso_stream_tests PRIVATE sevenzip_panel Qt6::Test)
     if(WIN32)
         target_link_libraries(iso_stream_tests PRIVATE oleaut32)
-        set(sevenzip_iso_core_name "7z.dll")
-    else()
-        set(sevenzip_iso_core_name "7z.so")
     endif()
     target_compile_definitions(iso_stream_tests PRIVATE
-        "SEVENZIP_ISO_CORE=\"${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime/${sevenzip_iso_core_name}\""
+        "SEVENZIP_ISO_CORE=\"$<TARGET_FILE:sevenzip_iso>\""
         "SEVENZIP_ISO_RUNTIME=\"${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime\""
         "SEVENZIP_ISO_PYTHON=\"${Python3_EXECUTABLE}\""
         "SEVENZIP_ISO_FIXTURE=\"${CMAKE_CURRENT_SOURCE_DIR}/tests/iso_fixture.py\"")
     add_test(NAME iso_stream COMMAND iso_stream_tests -silent)
+    add_dependencies(iso_stream_tests sevenzip_iso_runtime)
     set_tests_properties(iso_stream PROPERTIES TIMEOUT 60)
     add_test(NAME ntfs COMMAND ${Python3_EXECUTABLE}
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/ntfs_tests.py

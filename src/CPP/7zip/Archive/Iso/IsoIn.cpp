@@ -15,9 +15,6 @@
 namespace NArchive {
 namespace NIso {
 
-struct CUnexpectedEndException {};
-struct CHeaderErrorException {};
-
 static const char *const kMediaTypes[] = {"NoEmul", "1.2M", "1.44M", "2.88M", "HardDisk"};
 
 bool CBootInitialEntry::Parse(const Byte *p) {
@@ -203,6 +200,9 @@ void CInArchive::ReadRecordingDateTime(CRecordingDateTime &t) {
 }
 
 void CInArchive::ReadDirRecord(CDirRecord &r, unsigned len, bool isJolietDescriptor) {
+#ifdef SEVENZIP_LINUX_ISO
+    r.RecordPosition = _position - 1;
+#endif
     r.ExtendedAttributeRecordLen = ReadByte();
     r.ExtentLocation = ReadUInt32();
     r.Size = ReadUInt32();
@@ -334,6 +334,15 @@ bool CInArchive::CheckRef(const CRef &ref) const {
 }
 
 bool CInArchive::IsSupported(const CRef &ref) const {
+#ifdef SEVENZIP_LINUX_ISO
+    const CDir &item = ref.Dir->_subItems[ref.Index];
+    if (item.RockDefined) {
+        const unsigned type = item.RockInode.i_mode & 0170000;
+        if (item.RockInode.i_file_format == 2 ||
+            (type != 0100000 && type != 0120000 && type != 0040000))
+            return false;
+    }
+#endif
     for (UInt32 i = 0; i < ref.NumExtents; i++)
         if (ref.Dir->_subItems[ref.Index + i].InterleaveGapSize)
             return false;
@@ -408,6 +417,15 @@ HRESULT CInArchive::ReadDir(CDir &d, const unsigned level, const CRef *sections)
             ReadDirRecord(subItem, len);
             if (firstItem && level == 0 && section == 0)
                 IsSusp = subItem.CheckSusp(SuspSkipSize);
+#ifdef SEVENZIP_LINUX_ISO
+            if (_rockState.rock && !IsJoliet() && !subItem.IsSystemItem()) {
+                RINOK(ReadRock(subItem))
+                if (subItem.RockHidden) {
+                    firstItem = false;
+                    continue;
+                }
+            }
+#endif
 
             if (!subItem.IsSystemItem()) {
                 if (_numFiles >= (1u << 30)) {
@@ -441,6 +459,10 @@ CRef CInArchive::ReadExtentGroup(CDir &d, unsigned &i) {
     ref.Index = i++;
     ref.NumExtents = 1;
     ref.TotalSize = subItem.Size;
+#ifdef SEVENZIP_LINUX_ISO
+    if (subItem.RockDefined && (subItem.RockInode.i_mode & 0170000) == 0120000)
+        ref.TotalSize = subItem.RockLink.Len();
+#endif
     ref.Valid = true;
     if (subItem.IsNonFinalExtent()) {
         const unsigned blockSize = VolDescs[MainVolDescIndex].LogicalBlockSize;
@@ -625,6 +647,9 @@ HRESULT CInArchive::Open2() {
     for (MainVolDescIndex = (int)VolDescs.Size() - 1; MainVolDescIndex > 0; MainVolDescIndex--)
         if (VolDescs[MainVolDescIndex].IsJoliet())
             break;
+#ifdef SEVENZIP_LINUX_ISO
+    RINOK(SelectRockVolume())
+#endif
     /* FIXME: some volume can contain Rock Ridge, that is better than
        Joliet volume. So we need some way to detect such case */
     // MainVolDescIndex = 0; // to read primary volume
@@ -715,6 +740,11 @@ HRESULT CInArchive::Open(IInStream *inStream, IArchiveOpenCallback *openCallback
 }
 
 void CInArchive::Clear() {
+#ifdef SEVENZIP_LINUX_ISO
+    memset(&_rockState, 0, sizeof(_rockState));
+    _rockState.rock_offset = -1;
+    _rockResult = S_OK;
+#endif
     IsArc = false;
     UnexpectedEnd = false;
     HeadersError = false;

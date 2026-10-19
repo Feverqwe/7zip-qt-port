@@ -12,6 +12,7 @@
     "src/CPP/7zip/Archive/Iso/IsoIn.cpp",
     "src/CPP/7zip/Archive/Iso/IsoIn.h",
     "src/CPP/7zip/Archive/Iso/IsoItem.h",
+    "src/CPP/7zip/Archive/Iso/IsoRegister.cpp",
     "src/CPP/7zip/Archive/NtfsHandler.cpp",
     "src/CPP/7zip/Archive/SquashfsHandler.cpp",
     "src/CPP/7zip/Common/LimitedStreams.cpp"
@@ -448,6 +449,7 @@
     "src/CPP/7zip/Archive/Iso/IsoIn.cpp",
     "src/CPP/7zip/Archive/Iso/IsoIn.h",
     "src/CPP/7zip/Archive/Iso/IsoItem.h",
+    "src/CPP/7zip/Archive/Iso/IsoRegister.cpp",
     "src/CPP/7zip/Archive/NtfsHandler.cpp",
     "src/CPP/7zip/Archive/Rar/Rar5Handler.cpp",
     "src/CPP/7zip/Archive/SquashfsHandler.cpp",
@@ -656,6 +658,7 @@
   ],
   "local": [
     "src/CPP/7zip/Archive/BrotliHandler.cpp",
+    "src/CPP/7zip/Archive/Iso/IsoLinux.cpp",
     "src/CPP/7zip/Compress/BrotliDecoder.cpp",
     "src/CPP/7zip/Compress/BrotliDecoder.h",
     "src/CPP/7zip/UI/FileManager/PanelSelect.h",

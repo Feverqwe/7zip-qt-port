@@ -323,8 +323,8 @@ class IsoStreamTests final : public QObject {
     }
     void backendExtraction_data() {
         QTest::addColumn<QString>("kind");
-        for (const char *kind :
-             {"plain", "joliet", "block-512-tail", "xar", "multi", "multi-directory"})
+        for (const char *kind : {"plain", "joliet", "block-512-tail", "xar", "multi",
+                                 "multi-directory", "rock", "rock-joliet"})
             QTest::newRow(kind) << QString::fromLatin1(kind);
     }
     void backendExtraction() {
@@ -345,7 +345,14 @@ class IsoStreamTests final : public QObject {
 #endif
                                             ));
         QSignalSpy ready(&backend, &ArchiveBackend::codecCatalogReady);
-        QVERIFY(backend.discoverCodecCatalog(QString::fromUtf8(SEVENZIP_ISO_CORE)));
+        const QString core = runtime.filePath(
+#ifdef Q_OS_WIN
+            "7z.dll"
+#else
+            "7z.so"
+#endif
+        );
+        QVERIFY(backend.discoverCodecCatalog(core));
         QTRY_COMPARE_WITH_TIMEOUT(ready.size(), 1, 15000);
         QVERIFY2(ready[0][0].toBool(), qPrintable(ready[0][1].toString()));
         QVERIFY(!backend.codecCatalog()->canUpdate("Iso"));
@@ -353,7 +360,8 @@ class IsoStreamTests final : public QObject {
         backend.list(image.fileName());
         QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 10000);
         QVERIFY2(finished[0][0].toBool(), qPrintable(finished[0][1].toString()));
-        const QString name = kind == "joliet"            ? QString::fromUtf8("nested/данные 空.txt")
+        const QString name = kind == "joliet" || kind.startsWith("rock")
+                                 ? QString::fromUtf8("nested/данные 空.txt")
                              : kind == "multi-directory" ? "NESTED/LATE.BIN"
                                                          : "ALPHA.BIN";
         const QByteArray expected =
@@ -377,6 +385,113 @@ class IsoStreamTests final : public QObject {
         QCOMPARE(source.readAll(), expected);
         QVERIFY(image.open(QIODevice::ReadOnly));
         QCOMPARE(image.readAll(), bytes_);
+    }
+    void rockMetadataAndStreams_data() {
+        QTest::addColumn<QString>("kind");
+        for (const char *kind : {"rock", "rock-joliet", "rock-no-er", "rock-metadata",
+                                 "rock-pn-legacy", "rock-pn-wide"})
+            QTest::newRow(kind) << QString::fromLatin1(kind);
+    }
+    void rockMetadataAndStreams() {
+        QFETCH(QString, kind);
+        loadFixture(kind);
+        CMyComPtr<IInStream> input = new Input(bytes_);
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        const UInt32 item = index("alpha.bin");
+        QVERIFY(item != UInt32(-1));
+        const bool device = kind.startsWith("rock-pn");
+        for (const auto &entry :
+             {qMakePair(kpidPosixAttrib, UInt32(device ? 0020640 : 0100640)),
+              qMakePair(kpidUserId, UInt32(1000)), qMakePair(kpidGroupId, UInt32(1000)),
+              qMakePair(kpidLinks, UInt32(1))}) {
+            NWindows::NCOM::CPropVariant value;
+            QCOMPARE(archive_->GetProperty(item, entry.first, &value), S_OK);
+            QCOMPARE(value.vt, VARTYPE(VT_UI4));
+            QCOMPARE(value.ulVal, entry.second);
+        }
+        if (device) {
+            for (const auto &entry :
+                 {qMakePair(kpidDeviceMajor, UInt32(kind == "rock-pn-legacy" ? 0x12 : 0xabc)),
+                  qMakePair(kpidDeviceMinor, UInt32(kind == "rock-pn-legacy" ? 0x34 : 0x54321))}) {
+                NWindows::NCOM::CPropVariant value;
+                QCOMPARE(archive_->GetProperty(item, entry.first, &value), S_OK);
+                QCOMPARE(value.vt, VARTYPE(VT_UI4));
+                QCOMPARE(value.ulVal, entry.second);
+            }
+            QVERIFY(!stream("alpha.bin"));
+            CMyComPtr2<IArchiveExtractCallback, Extract> callback;
+            callback.SetFromCls(new Extract);
+            QCOMPARE(archive_->Extract(&item, 1, 1, callback), S_OK);
+            QCOMPARE(callback->result,
+                     Int32(NArchive::NExtract::NOperationResult::kUnsupportedMethod));
+            return;
+        }
+        if (kind == "rock-metadata") {
+            for (const auto &entry : {qMakePair(kpidMTime, 2041), qMakePair(kpidATime, 2042),
+                                      qMakePair(kpidChangeTime, 2043)}) {
+                NWindows::NCOM::CPropVariant value;
+                QCOMPARE(archive_->GetProperty(item, entry.first, &value), S_OK);
+                QCOMPARE(value.vt, VARTYPE(VT_FILETIME));
+                const UInt64 actual =
+                    (UInt64(value.filetime.dwHighDateTime) << 32) | value.filetime.dwLowDateTime;
+                const qint64 seconds =
+                    QDateTime(QDate(entry.second, 1, 2), QTime(3, 4, 5), QTimeZone::UTC)
+                        .toSecsSinceEpoch();
+                QCOMPARE(actual, UInt64(seconds + 11644473600LL) * 10000000 + 3700000);
+            }
+        }
+        QString deep;
+        for (int i = 0; i < 11; ++i)
+            deep += "level" + QString::number(i) + '/';
+        deep += "end.bin";
+        auto alpha = stream("alpha.bin");
+        auto relocated = stream(deep);
+        auto unicode = stream(QString::fromUtf8("nested/данные 空.txt"));
+        auto link = stream("long-link");
+        QVERIFY(alpha && relocated && unicode && link);
+        check(alpha, "alpha.bin", 0, 37);
+        check(relocated, deep, 0, 37);
+        check(alpha, "alpha.bin", 37, 37);
+        NWindows::NCOM::CPropVariant target;
+        const UInt32 linkIndex = index("long-link");
+        QVERIFY(linkIndex != UInt32(-1));
+        QCOMPARE(archive_->GetProperty(linkIndex, kpidSymLink, &target), S_OK);
+        QCOMPARE(target.vt, VARTYPE(VT_BSTR));
+        const QByteArray expected = "../" + QByteArray(220, 'x') + "/target";
+        QCOMPARE(QString::fromWCharArray(target.bstrVal).toUtf8(), expected);
+        QCOMPARE(archive_->Close(), S_OK);
+        check(alpha, "alpha.bin", 32760, 32780);
+        check(relocated, deep, 0, 4000);
+        check(unicode, QString::fromUtf8("nested/данные 空.txt"), 0, 4000);
+        QByteArray actual(expected.size(), '\0');
+        UInt32 count = 0;
+        QCOMPARE(link->Read(actual.data(), UInt32(actual.size()), &count), S_OK);
+        QCOMPARE(count, UInt32(expected.size()));
+        QCOMPARE(actual, expected);
+    }
+    void failedRockOpenClearsCatalog() {
+        for (const char *kind : {"rock-ce-outside", "rock-ce-crossblock", "rock-ce-cycle",
+                                 "rock-sl-overrun", "rock-cl-cycle", "rock-cl-outside"}) {
+            loadFixture("rock");
+            CMyComPtr<IInStream> input = new Input(bytes_);
+            QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+            loadFixture(kind);
+            input = new Input(bytes_);
+            QVERIFY(archive_->Open(input, nullptr, nullptr) != S_OK);
+            UInt32 count = 99;
+            QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+            QCOMPARE(count, UInt32(0));
+        }
+        loadFixture("rock");
+        CMyComPtr2<IInStream, Input> input;
+        input.SetFromCls(new Input(bytes_));
+        CMyComPtr<IArchiveOpenCallback> callback = new CancelOpen;
+        QCOMPARE(archive_->Open(input, nullptr, callback), E_ABORT);
+        UInt32 count = 99;
+        QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, UInt32(0));
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        check(stream("alpha.bin"), "alpha.bin", 0, 4096);
     }
     void cleanupTestCase() { archive_.Release(); }
 };

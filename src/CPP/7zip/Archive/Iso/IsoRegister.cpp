@@ -1,0 +1,20 @@
+// IsoRegister.cpp
+
+#include "StdAfx.h"
+
+#include "../../Common/RegisterArc.h"
+
+#include "IsoHandler.h"
+
+namespace NArchive {
+namespace NIso {
+
+#if defined(SEVENZIP_LINUX_ISO) || !defined(Z7_EXTERNAL_CODECS)
+static const Byte k_Signature[] = {'C', 'D', '0', '0', '1'};
+
+REGISTER_ARC_I("Iso", "iso img", NULL, 0xE7, k_Signature, NArchive::NIso::kStartPos + 1, 0, NULL)
+
+#endif
+
+} // namespace NIso
+} // namespace NArchive

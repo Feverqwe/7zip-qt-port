@@ -1,7 +1,8 @@
 # ISO9660: descriptors, logical blocks и extent streams
 
 Работа входит в [общую актуализацию по Linux](filesystems-linux.md).
-Эта итерация исправляет основной ISO9660 read path в обоих поставляемых engines.
+Основной ISO9660 read path исправлен в обоих поставляемых engines.
+Отдельный GPL-модуль добавляет оригинальные Linux C Rock Ridge/SUSP readers.
 Полная актуализация ISO9660 и отдельного UDF ещё не завершена.
 
 ## Источники и source comparison
@@ -11,10 +12,11 @@
 Сравнены полные `CPP/7zip/Archive/Iso/IsoIn.cpp`/`.h`, `IsoItem.h`,
 `IsoHandler.cpp`, `IsoHandler.h`, `IsoHeader.cpp`/`.h`, `IsoRegister.cpp`,
 используемые stream helpers, ABI и регистрация в console/module/standalone.
-Четыре изменённых файла находятся под исходными путями в `src/`; `StdAfx.h`,
+Изменённые файлы находятся под исходными путями в `src/`; `StdAfx.h`,
 `IsoHandler.h`, `IsoHeader.cpp`/`.h` переиспользуются без изменений в
 `third_party/7zip`. [7-Zip baseline](../upstream-baseline.json) фиксирует их
-происхождение и runtime overlays. `IsoRegister.cpp` остаётся в pinned snapshot.
+происхождение и runtime overlays. `IsoRegister.cpp` адаптирован: dynamic engine
+передаёт регистрацию внешнему модулю, standalone сохраняет исходный handler.
 C++ форматирование учитывается отдельно от функциональных изменений.
 
 Linux: <https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git>,
@@ -26,8 +28,9 @@ commit `58161ead29e50d70a317ea26b472e0c7508e69da`.
 `isofs_read_inode`; полные `dir.c`, `isofs.h`, `util.c`, определения дисковых
 структур и directory validation/lookup в `namei.c`. `compress.c` прочитан для
 выделения отдельного zisofs scope; его декодер в этой итерации не переносится.
-Linux используется как reference; GPL bodies в изменённый engine не копируются.
-Новых независимых parsers/decoders не добавлено: адаптирован исходный 7-Zip.
+В первой core-итерации Linux использовался как reference без копирования GPL
+bodies в engine. Следующая интеграция переносит C scope в отдельный модуль,
+описанный ниже. Новых независимых parsers/decoders не добавлено.
 
 ## Переданный read scenario
 
@@ -67,11 +70,63 @@ allocation. Runtime snapshot теперь добавляет транзитив�
 а не отдельный refactor build system. Incremental outputs и ccache сохраняются.
 Compiler/flags identity существующих объектов остаётся отдельным runtime debt.
 
+## Rock Ridge/SUSP: Linux C read module
+
+Перенесены `fs/isofs/rock.c`: `check_sp`, `setup_rock_ridge`,
+`rock_continue`, `rock_check_overflow`, `get_rock_ridge_filename`,
+`parse_rock_ridge_inode_internal`/wrapper, `get_symlink_chunk` и parse loop
+`rock_ridge_symlink_read_folio`. Сохранены CE bounds/loop limit, NM accumulation,
+SL records/component continuation, PX/PN, short/long TF, ER/SP/XA probing,
+CL relocation checks и RE hiding. `rock.h` переиспользован без изменений.
+`util.c:iso_date` и `kernel/time/time.c:mktime64` передают Linux timestamp
+semantics, включая timezone sanity и long-form fractions. Отрицательный left
+shift при sign extension заменён эквивалентным определённым C выражением.
+Из `inode.c` перенесены `rootdir_empty` и root-choice часть `isofs_fill_super`;
+VFS inode acquisition заменён результатом существующего bounded reader.
+
+7-Zip уже ограничивает и выравнивает System Use area; C boundary получает её
+как bounded span. Folio/page-cache acquisition и inode publication заменены
+owned buffers; SUSP/XA skip не образует pointer за пределами этого span.
+Read services используют stream callbacks. Inode fields остаются read projection;
+`isofs_read_inode` defaults/dot-record projection используются для relocated inode,
+дисковый `iso_directory_record` взят из исходного UAPI header;
+VFS operation tables и mutable services не нужны. `CL` проверяет inode identity
+по месту directory record, отдельно от data extent, и рекурсивную relocation.
+`PL` не участвует в archive hierarchy: native NFS parent/export service не
+переносится. Общие read branches и их тела сохранены; wrapper differences
+описаны отдельно от скопированных алгоритмов.
+
+`IsoLinux.cpp` — C++ stream/record adapter. Он сохраняет HRESULT/отмену
+и восстанавливает физическую позицию metadata buffer после CE/CL callbacks.
+Handler публикует UTF-8 RR names, symlink target/stream, UID/GID/links/mode,
+device major/minor и access/change/modify times. TF_CREATE трактуется как
+change time с приоритетом TF_ATTRIBUTES, как в Linux; birth time не выдумывается.
+RR punctuation не проходит ISO version/dot stripping. Служебные `.`/`..` и
+скрытые RE records не валидируются как публикуемые children. Relocated children
+читаются в исходной hierarchy; физические RE entries скрыты.
+Повторные CE reads metadata/name/symlink readers не расходуют исходный budget
+directory traversal: общий CE может использоваться тысячами records. Отмена
+проверяется при этих reads; CE bounds/loop limit остаются в Linux reader.
+
+При наличии RR выбирается primary descriptor; пустой или повреждённый primary
+root допускает переход к корректному Joliet, как `isofs_fill_super`/`rootdir_empty`.
+Без ER marker Linux продолжает RR probing, если Joliet не выбран; этот branch
+также сохранён. Выбранный primary root должен иметь directory inode mode.
+Zisofs ZF metadata распознаётся оригинальной ветвью, но compressed stream пока
+явно возвращает UnsupportedMethod. То же относится к попытке читать special
+device/FIFO/socket как обычный файл; metadata доступна без обращения к устройствам.
+
+Linux C компилируется как C11 только в `sevenzip_iso`, без unRAR. LGPL closure:
+ISO handler/header, ArchiveExports, Common/Windows/stream helpers и CopyCoder.
+Модуль устанавливается вместе с GPL/LGPL notices и Linux-syscall-note для
+выбранного UAPI type. Standalone `7zz` сохраняет
+core fixes и исходный ограниченный RR parser; новые Linux read features
+предоставляет dynamic engine приложения, как у остальных GPL format-модулей.
+
 ## Оставшийся scope
 
-Полное Linux Rock Ridge/SUSP чтение ещё требуется актуализировать: CE continuation,
-NM/SL/TF/PX/PN, CL/PL/RE relocation, RR-vs-Joliet выбор, inode metadata.
-Также остаются zisofs, High Sierra, naming/NLS/Acorn и date quirks, полная
+Остаются zisofs decoding, High Sierra, naming/NLS/Acorn и оставшиеся date quirks,
+проверка остальных RR compatibility branches на производителях, полная
 dot-record normalization/root multi-section semantics. Сохранённый archive
 depth cap отличается от VFS; его снятие требует переноса рекурсивного обхода
 в безопасный для глубоких деревьев сценарий. Эти read features остаются задачей,
@@ -110,3 +165,37 @@ source scope выше не выводится из runtime PASS.
 macOS app target собран; фактический CMake install runtime автоматически
 распознал и извлёк plain/Joliet, 512-byte tail, XAR и multi-section file/directory
 с точным совпадением bytes. Одноразовый install staging удалён.
+
+Rock Ridge fixtures добавляют native genisoimage `-R` и `-R -J`: Unicode,
+239-byte NM, длинную SL target с CE и дерево глубже ISO relocation threshold.
+CLI/ABI/backend проверяют data bytes, punctuation и RR-vs-Joliet choice,
+retained symlink/relocated streams, PX/PN/TF, ошибки CE span/volume/loops,
+SL overflow и CL mapping. Bad/canceled Open очищает каталог. CL regression
+различает inode-record identity и совпадающий data extent. Проверяется fallback
+при пустом primary, внеобразном root и повреждённой длине имени.
+
+Native Linux 6.8.0-146 read-only mounts: 12/12 generated cases PASS — оба native
+образа, long TF, legacy/wide PN, три Joliet fallback, CL same-extent,
+RR без ER с/без Joliet и 5001-file shared CE. Сверены
+обычные bytes, readlink, UID/GID/mode, device numbers и TF times с fractions.
+Special devices не открывались; mounts использовали nodev/nosuid/noexec.
+Отдельно проверен отказ root с file inode mode. На прежнем engine до budget fix
+shared-CE образ давал exit 2 без данных; Linux VFS читает его, исправленный engine
+извлекает payload. Это regression значимого false rejection, не coverage counter.
+Temporary images/mounts удалены; входные образы не изменились.
+
+Rock Ridge focused 7/7 suites PASS на macOS arm64, Linux x64 и Windows x64/MSVC.
+После финальных root/budget/path уточнений повторены затронутые `iso`/`iso_stream`
+— 2/2 PASS на всех трёх ОС, Qt 6.12. Final remote receipt:
+`20261019T154035Z-eb1faaf9`; 7-suite receipts: Windows
+`20261019T151230Z-788f2467`, Linux `20261019T151023Z-13dd0d99`.
+Incremental builds/caches сохранены. Full/slow/UI/physical-device acceptance
+не выполнялась. Post-transfer comparison отделяет скопированные Linux bodies,
+адаптированные I/O/VFS boundaries и исходную 7-Zip path/extent implementation.
+
+macOS app target собран. Фактический CMake install runtime автоматически
+распознал RR/RR+Joliet и извлёк native/derived variants; финальный installed
+typed-directory reader проверен на RR+Joliet, RR без ER и 5001-file shared CE.
+GPL/LGPL/Linux-syscall-note notices проверены по содержимому. Install staging
+и временные images удалены. Deployment меняет Mach-O bytes, поэтому совпадение
+binary hash с build artifact не используется вместо проверки установленного reader.

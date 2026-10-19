@@ -13,6 +13,9 @@
 namespace NArchive {
 namespace NIso {
 
+struct CUnexpectedEndException {};
+struct CHeaderErrorException {};
+
 struct CDir : public CDirRecord {
     CDir *Parent;
     CObjectVector<CDir> _subItems;
@@ -259,6 +262,14 @@ class CInArchive {
 
     void ReadBootInfo();
     HRESULT Open2();
+#ifdef SEVENZIP_LINUX_ISO
+    sevenzip_iso_state _rockState{};
+    HRESULT _rockResult = S_OK;
+    static int RockRead(void *, uint64_t, void *, size_t);
+    static int RockRelocate(void *, uint32_t, sevenzip_iso_inode *);
+    HRESULT ReadRock(CDirRecord &);
+    HRESULT SelectRockVolume();
+#endif
 
   public:
     HRESULT Open(IInStream *inStream, IArchiveOpenCallback *openCallback);

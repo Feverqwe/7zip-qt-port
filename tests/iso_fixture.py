@@ -8,6 +8,9 @@ import zlib
 
 
 def volume(kind="plain"):
+    if kind.startswith("rock"):
+        from iso_rock_fixture import volume as rock_volume
+        return rock_volume(kind)
     joliet = kind == "joliet"
     image = bytearray(zlib.decompress(
         (Path(__file__).parent / "fixtures/iso" / ("joliet.iso.zlib" if joliet else "plain.iso.zlib")).read_bytes()))

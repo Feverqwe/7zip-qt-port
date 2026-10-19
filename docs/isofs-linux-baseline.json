@@ -15,8 +15,17 @@
     "fs/isofs/rock.h": "76d5a8766561cef71c36a00fc6f60b3cc3443606854f0f4d3fe55dff8f3fa03c",
     "fs/isofs/util.c": "2f07188a3f5aec2aaf8d3ab3d739854dd763662821a088baf9278a0d14c69fdb",
     "fs/isofs/zisofs.h": "ba4ca87fbc051c464c3f9558aad601b15c5c9113d2bcc154a874de7910e2527d",
-    "include/uapi/linux/iso_fs.h": "de5927214e85c8c0bbe94029ecdcab93fa3b7ff3a962ec85d6af8a05cf1d5760"
+    "include/uapi/linux/iso_fs.h": "de5927214e85c8c0bbe94029ecdcab93fa3b7ff3a962ec85d6af8a05cf1d5760",
+    "kernel/time/time.c": "ebeaf97b1314be4bcc8c9f8e1f6755e5992317e74139d5f7c14d94313ea41b3e"
   },
-  "adapted": [],
-  "exact": []
+  "adapted": [
+    "fs/isofs/inode.c",
+    "fs/isofs/rock.c",
+    "fs/isofs/util.c",
+    "include/uapi/linux/iso_fs.h",
+    "kernel/time/time.c"
+  ],
+  "exact": [
+    "fs/isofs/rock.h"
+  ]
 }

@@ -76,7 +76,9 @@ GPT/MBR/APM проверяются как дополнительные форм�
 [Source comparison и исправления](isofs-linux.md): оба engines читают
 512/1024/2048-byte geometry, XAR и multi-section children; mapping ограничен
 source/volume, streams независимы, повреждения и отмена передаются явно.
-Актуализация ISO ещё не завершена: Rock Ridge/SUSP, zisofs, High Sierra,
+Отдельный модуль подключает Linux C Rock Ridge/SUSP: CE/NM/SL/PX/PN/TF,
+relocation, inode metadata и RR-vs-Joliet выбор. Актуализация ISO ещё не завершена:
+zisofs decoding, High Sierra,
 names/metadata и оставшиеся read semantics сохраняются в scope. UDF ещё не проверен.
 
 ### HFS+/HFSX: fork mapping и metadata reads
