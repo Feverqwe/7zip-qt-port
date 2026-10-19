@@ -5,6 +5,9 @@ add_library(sevenzip_ext MODULE
     src/fs/ext4/inode.c src/fs/ext4/bitmap.c src/fs/ext4/inline.c
     src/fs/ext4/xattr.c src/fs/ext4/dir.c src/fs/ext4/namei.c
     src/fs/ext4/extents.c src/lib/crc/crc16.c src/lib/crc/crc32-main.c
+    src/fs/ext4/verity.c src/fs/verity/open.c src/fs/verity/hash_algs.c
+    src/fs/verity/verify.c src/fs/verity/pagecache.c
+    src/extverityreader.c src/extveritystream.cpp
     third_party/7zip/CPP/7zip/Archive/Common/ItemNameUtils.cpp
     third_party/7zip/CPP/7zip/Archive/ArchiveExports.cpp
     third_party/7zip/CPP/7zip/Common/StreamObjects.cpp
@@ -23,7 +26,9 @@ add_library(sevenzip_ext MODULE
     third_party/7zip/CPP/Common/IntToString.cpp
     third_party/7zip/CPP/Common/StringConvert.cpp
     third_party/7zip/CPP/Common/UTFConvert.cpp
-    third_party/7zip/C/CpuArch.c third_party/7zip/C/Alloc.c)
+    third_party/7zip/C/CpuArch.c third_party/7zip/C/Alloc.c
+    third_party/7zip/C/Sha256.c third_party/7zip/C/Sha256Opt.c
+    third_party/7zip/C/Sha512.c third_party/7zip/C/Sha512Opt.c)
 target_include_directories(sevenzip_ext PRIVATE src third_party/7zip/CPP
     third_party/7zip/CPP/7zip/Archive)
 target_compile_definitions(sevenzip_ext PRIVATE SEVENZIP_LINUX_EXT)

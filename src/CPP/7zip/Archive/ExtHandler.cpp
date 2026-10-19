@@ -37,6 +37,7 @@
 
 #ifdef SEVENZIP_LINUX_EXT
 #include "extreader.h"
+#include "extveritystream.h"
 #endif
 
 using namespace NWindows;
@@ -2581,6 +2582,9 @@ HRESULT CHandler::GetStream_Node(unsigned nodeIndex, ISequentialInStream **strea
 
     const CNode &node = _nodes[nodeIndex];
 #ifdef SEVENZIP_LINUX_EXT
+    const bool verity = (node.Flags & ((UInt32)1 << 20)) != 0;
+    if (verity && (!node.IsRegular() || !node.IsFlags_EXTENTS() || node.InlineIndex >= 0))
+        return S_FALSE;
     // fscrypt requires a key service; never expose encrypted bytes as file data.
     if (node.Flags & 0x800)
         return E_NOTIMPL;
@@ -2590,6 +2594,9 @@ HRESULT CHandler::GetStream_Node(unsigned nodeIndex, ISequentialInStream **strea
         return S_OK;
     }
     _extentChecksumSeed = node.ChecksumSeed;
+#else
+    if (node.Flags & ((UInt32)1 << 20))
+        return E_NOTIMPL;
 #endif
 
     if (!node.IsFlags_EXTENTS()) {
@@ -2639,6 +2646,16 @@ HRESULT CHandler::GetStream_Node(unsigned nodeIndex, ISequentialInStream **strea
         }
 
         RINOK(streamSpec->StartSeek())
+#ifdef SEVENZIP_LINUX_EXT
+        if (verity) {
+            if (!end)
+                return S_FALSE;
+            streamSpec->Size = (UInt64)end << _h.BlockBits;
+            CMyComPtr<IInStream> verified;
+            RINOK(CreateExtVerityStream(streamSpec, node.FileSize, _h.BlockBits, end, &verified))
+            streamTemp = verified;
+        }
+#endif
     } else {
         {
             UInt64 numBlocks2 = numBlocks64;

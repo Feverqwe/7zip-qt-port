@@ -9,6 +9,7 @@ import unittest
 import zlib
 from ext_fixture import Volume, NAME
 from ext_modern_fixture import ModernVolume
+from ext_verity_fixture import VerityVolume
 
 RUNTIME = Path(sys.argv.pop(1))
 MODULE = Path(sys.argv.pop(1))
@@ -49,6 +50,66 @@ class ExtTests(unittest.TestCase):
                     result = self.run_image(v, engine)
                     self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
                     self.assertEqual(result.stdout, v.read(0, v.size))
+
+    def test_verity_empty_short_salted_sparse_and_multilevel_reads(self):
+        for algorithm, salt, size in (("sha256", b"", 0), ("sha256", b"", 100),
+                                       ("sha512", b"pepper", 100),
+                                       ("sha256", b"", 35 * 1024 + 17),
+                                       ("sha512", bytes(range(32)), 35 * 1024 + 17)):
+            with self.subTest(algorithm=algorithm, salt=salt, size=size):
+                volume = VerityVolume(algorithm, salt, size)
+                result = self.run_image(volume)
+                self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                self.assertEqual(result.stdout, volume.read(0, size))
+
+    def test_verity_corruption_cannot_return_success(self):
+        for fault in ("data", "tree", "root", "version", "reserved", "algorithm", "salt-size",
+                      "data-size", "block-size", "signature-size", "descriptor-size"):
+            with self.subTest(fault=fault):
+                volume = VerityVolume("sha512", b"salt")
+                descriptor = volume.descriptor_physical
+                offsets = {"data": volume.first_data, "tree": volume.metadata_physical * 1024,
+                           "root": descriptor + 16, "version": descriptor, "reserved": descriptor + 112,
+                           "algorithm": descriptor + 1, "salt-size": descriptor + 3,
+                           "data-size": descriptor + 8, "block-size": descriptor + 2,
+                           "signature-size": descriptor + 4, "descriptor-size": descriptor + 1020}
+                if fault in ("algorithm", "salt-size", "block-size"):
+                    volume.data[offsets[fault]] = 255
+                else:
+                    if fault == "descriptor-size":
+                        volume.put32(offsets[fault], 1)
+                    else:
+                        volume.data[offsets[fault]] ^= 1
+                result = self.run_image(volume)
+                self.assertNotEqual(result.returncode, 0)
+
+    def test_verity_descriptor_padding_is_accepted(self):
+        volume = VerityVolume()
+        # Linux permits descriptor padding beyond the fixed header/signature.
+        volume.put32(volume.descriptor_physical + 1020, 257)
+        result = self.run_image(volume)
+        self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+        self.assertEqual(result.stdout, volume.read(0, volume.size))
+
+    def test_linux_creator_verity_files(self):
+        path = Path(__file__).parent / "fixtures" / "ext4" / "verity.ext4.zlib"
+        class Image:
+            data = zlib.decompress(path.read_bytes())
+        volume = VerityVolume()
+        for name, expected in ((NAME, volume.read(0, volume.size)),
+                               ("sha512.bin", volume.read(0, volume.size)),
+                               ("short.bin", bytes(range(100))), ("empty.bin", b"")):
+            with self.subTest(name=name):
+                result = self.run_image(Image, name=name)
+                self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                self.assertEqual(result.stdout, expected)
+
+    def test_standalone_cannot_publish_unverified_verity_data(self):
+        volume = VerityVolume(size=100)
+        volume.data[volume.first_data] ^= 1
+        result = self.run_image(volume, engine="7zz")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(result.stdout, b"")
 
     def test_modern_metadata_and_full_inline_payload(self):
         # Linux C readers live in the dynamic format module; standalone 7zz

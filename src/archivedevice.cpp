@@ -62,9 +62,9 @@ HRESULT CheckFeatures(IInArchive *archive) {
     const QSet<QString> incompatible{"FILETYPE", "EXTENTS",     "64BIT",    "FLEX_BG",
                                      "META_BG",  "MMP",         "EA_INODE", "CSUM_SEED",
                                      "LARGEDIR", "INLINE_DATA", "CASEFOLD"};
-    const QSet<QString> readOnly{"SPARSE_SUPER", "LARGE_FILE",  "HUGE_FILE", "GDT_CSUM",
-                                 "DIR_NLINK",    "EXTRA_ISIZE", "QUOTA",     "METADATA_CSUM",
-                                 "READONLY",     "BTREE_DIR",   "BIGALLOC",  "PROJECT"};
+    const QSet<QString> readOnly{
+        "SPARSE_SUPER",  "LARGE_FILE", "HUGE_FILE", "GDT_CSUM", "DIR_NLINK", "EXTRA_ISIZE", "QUOTA",
+        "METADATA_CSUM", "READONLY",   "BTREE_DIR", "BIGALLOC", "PROJECT",   "VERITY"};
     UInt32 count = 0;
     RINOK(archive->GetNumberOfArchiveProperties(&count))
     bool checkedIncompatible = false, checkedReadOnly = false;

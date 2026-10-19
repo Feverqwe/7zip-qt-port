@@ -186,7 +186,12 @@ class Volume:
 
 if __name__ == "__main__":
     layout = sys.argv[1] if len(sys.argv) > 1 else "double-hole"
-    if layout.startswith("modern-inline") or layout == "modern-time":
+    if layout in ("verity-salted", "verity-corrupt"):
+        from ext_verity_fixture import VerityVolume
+        v = VerityVolume("sha512", b"salt")
+        if layout == "verity-corrupt":
+            v.data[v.metadata_physical * v.block_size] ^= 1
+    elif layout.startswith("modern-inline") or layout == "modern-time":
         from ext_modern_fixture import ModernVolume
         v = ModernVolume(inline=layout.startswith("modern-inline"))
         if layout == "modern-time":

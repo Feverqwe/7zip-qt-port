@@ -225,7 +225,7 @@ class ArchiveDeviceTests final : public QObject {
     }
     void readsModernLinuxLayoutsFromDirectDevices_data() {
         QTest::addColumn<QString>("layout");
-        for (const auto &name : {"inline", "bigalloc", "meta-bg"})
+        for (const auto &name : {"inline", "bigalloc", "meta-bg", "verity"})
             QTest::newRow(name) << QString::fromLatin1(name);
     }
     void readsModernLinuxLayoutsFromDirectDevices() {
@@ -267,8 +267,14 @@ class ArchiveDeviceTests final : public QObject {
         QCOMPARE(reader->arc().Archive->Extract(&index, 1, 0, callback), S_OK);
         QCOMPARE(output->ItemResult, Int32(NArchive::NExtract::NOperationResult::kOK));
         QByteArray expected;
-        for (int i = 0; i < 100; ++i)
-            expected.append(char(i));
+        if (layout == "verity") {
+            expected = QByteArray(35 * 1024 + 17, '\0');
+            expected.replace(2 * 1024, 1024, QByteArray(1024, 'A'));
+            expected.replace(35 * 1024, 4, "tail");
+        } else {
+            for (int i = 0; i < 100; ++i)
+                expected.append(char(i));
+        }
         QCOMPARE(output->bytes(), expected);
     }
     void rejectsPartitionsBeyondAuthorizedDeviceBoundary() {

@@ -76,8 +76,9 @@ GPT/MBR/APM проверяются как дополнительные форм�
 [Сравненный scope и исправления](ext-linux.md): classic sparse indirect paths,
 ограничения extent/каталогов, fast symlink с EA и передача ошибок потоков в обоих
 engines. Динамический движок также подключает Linux C-проверки metadata,
-полные inline data/каталоги, META_BG, BIGALLOC и современные descriptors.
-Полная актуализация ext4 не завершена: fscrypt/key service, fs-verity и оставшиеся
+полные inline data/каталоги, META_BG, BIGALLOC, современные descriptors и
+fs-verity data verification. Полная актуализация ext4 не завершена: fscrypt/key
+service, trust policy и оставшиеся
 feature/creator-OS read semantics остаются в общем scope.
 
 ### FAT12/16/32: BPB, имена и размер файла

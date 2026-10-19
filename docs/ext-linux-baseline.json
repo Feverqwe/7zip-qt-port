@@ -2,6 +2,7 @@
   "repository": "https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git",
   "revision": "58161ead29e50d70a317ea26b472e0c7508e69da",
   "files": {
+    "LICENSES/exceptions/Linux-syscall-note": "8e378ab93586eb55135d3bc119cce787f7324f48394777d00c34fa3d0be3303f",
     "fs/ext2/Kconfig": "5c010d64e1b7ba6fc7f8d6f51b602b0593c5e8a7b6b276597b98bf8893771d78",
     "fs/ext2/Makefile": "f9485beaafd0fd20ba2c52b359ebd8ec3e60b0a482cb102308d632d446f28928",
     "fs/ext2/acl.c": "e07c509835911eb8c0008f824ca42007cdc749d4b70766cca2255d490b26a4db",
@@ -77,6 +78,20 @@
     "fs/ext4/xattr_security.c": "9ff6ed915a847cd4c2976f4d004ef99ce2d53adc718ec6db5a221825da29b4ac",
     "fs/ext4/xattr_trusted.c": "57eb676c2b9fd98765a013577fad3b23352f61e9e5f7aa2415e7ced731a6482b",
     "fs/ext4/xattr_user.c": "9edb34db46c9d60cdefdfad8908fb476246f6fe17d1a71e1070f06532788224c",
+    "fs/verity/Kconfig": "a30f6eccff12c1451ee1d65f2c97d567ef531c5103dc902949bbc500dd2328ed",
+    "fs/verity/Makefile": "e69923181c4584ed0a0c9b61e8432b2bd313e638581d83d0aec3c14b383dc827",
+    "fs/verity/enable.c": "4bbdc3f63572d9187007499a46bc8caf5beb4f556e2375ad8322e169750fe3ff",
+    "fs/verity/fsverity_private.h": "7a994be541dffe6f5e61053e1dfbbff1942985e087456e38e3c3c1f5577417ce",
+    "fs/verity/hash_algs.c": "3ab9ec783c0febb32b4288ff1ce03a4a80be57ee503e8c96a41c8227ad5be533",
+    "fs/verity/init.c": "726cb52e7e1a06e8001164d8c1e92e8e70ceac70ec29f6488379cb564938b466",
+    "fs/verity/measure.c": "694390a7db63a0a6b014a22e6d61896d970ecaa49705bd7ed437a2a4bcca232f",
+    "fs/verity/open.c": "e5fa8da056cf8310ba0fb8310ca6b52162a28699332d9f71fe37b60be1ef1cc4",
+    "fs/verity/pagecache.c": "d3f627bbf000a69c8f3b7e86cc0035aae143233ed7652e34b9baf009ed69bc45",
+    "fs/verity/read_metadata.c": "1ebc9ba70909d357343045a706df8fc046b8f933cf77090cee7534b1f5bb0b44",
+    "fs/verity/signature.c": "7153999d505f7818e0c716d093877beded41a71a000700cfc882cc4c1953d695",
+    "fs/verity/verify.c": "50e092ecad431ca03fe24c2134bc12a22689af789ea98911e8a10ec1dc76d6f9",
+    "include/linux/fsverity.h": "2323c06ef5548454a3c95f436fa0855c4523e63ab3177aefba7d2c1a49d41b75",
+    "include/uapi/linux/fsverity.h": "d24815f2affdf0fb011d1b24e6973ed453d473ef79e8978f8126b999883a6406",
     "lib/crc/crc16.c": "e2916771fef3d5a2bc6ae18740dffb2ded44e1e08e117a9c7d4b8bd27cd45fda",
     "lib/crc/crc32-main.c": "83cf1aab62cf8a05e352fb4acc1fa8cda514ebd4f5601c95e42fa9126a7fb2cb",
     "lib/crc/gen_crc32table.c": "b2d4fe27ca5ae1cdd14bc3fc2919b62568817dd9dccd9da8a35b41a24f3df3fe"
@@ -92,9 +107,20 @@
     "fs/ext4/inode.c",
     "fs/ext4/namei.c",
     "fs/ext4/super.c",
+    "fs/ext4/verity.c",
     "fs/ext4/xattr.c",
     "fs/ext4/xattr.h",
+    "fs/verity/fsverity_private.h",
+    "fs/verity/hash_algs.c",
+    "fs/verity/open.c",
+    "fs/verity/pagecache.c",
+    "fs/verity/verify.c",
+    "include/linux/fsverity.h",
+    "include/uapi/linux/fsverity.h",
     "lib/crc/crc16.c",
     "lib/crc/crc32-main.c"
+  ],
+  "exact": [
+    "LICENSES/exceptions/Linux-syscall-note"
   ]
 }

@@ -29,6 +29,46 @@
       ],
       "size": 33554432,
       "sha256": "89b9738620b5a62802dcae0234bc6bdabd7cf83e79f6383af77674f08a4f1302"
+    },
+    "verity": {
+      "kernel": "6.8.0-146-generic",
+      "creator": "mke2fs 1.47.0 + Linux FS_IOC_ENABLE_VERITY",
+      "options": [
+        "-O",
+        "verity"
+      ],
+      "size": 33554432,
+      "sha256": "a7efd95e63f37272591caac3fb31fa33ad68ea154bcf09d53b8afc2561dd815e",
+      "files": [
+        {
+          "name": "данные 空.bin",
+          "algorithm": 1,
+          "salt": "",
+          "size": 35857,
+          "digest": "ab1137082381134239f2c829ff9142a72bad57cac71e9ba06e1c3f2efd03980d"
+        },
+        {
+          "name": "sha512.bin",
+          "algorithm": 2,
+          "salt": "706570706572",
+          "size": 35857,
+          "digest": "c9d4459e178f01420719827f6cdfc3f0d64cf73db343b493501f7552d6faaaaed6c2c887c7daac5f73d3b846c1ffebdfd0adcb05490a3c87e73e4f5d65647b6f"
+        },
+        {
+          "name": "short.bin",
+          "algorithm": 1,
+          "salt": "73616c74",
+          "size": 100,
+          "digest": "1723903d94ef4fe21bb91f7067a163a52179c0be646bc860faf75416a28ecbda"
+        },
+        {
+          "name": "empty.bin",
+          "algorithm": 2,
+          "salt": "",
+          "size": 0,
+          "digest": "8451664f25b2ad3f24391280e0c5681cb843389c180baa719f8fdfb063f5ddfa2d1c4433e55e2b6fbb3ba6aa2df8a4f41bf56cb7e0a3b617b6919a42c80f034c"
+        }
+      ]
     }
   },
   "creator_repository": "https://git.kernel.org/pub/scm/fs/ext2/e2fsprogs.git",

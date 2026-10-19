@@ -17,6 +17,7 @@ class Input final : public IInStream, public CMyUnknownImp {
 
   public:
     bool fail = false;
+    HRESULT readResult = S_OK;
     HRESULT seekResult = S_OK;
     explicit Input(QByteArray bytes) : bytes_(std::move(bytes)) {}
     Z7_COM7F_IMF(Read(void *data, UInt32 size, UInt32 *processed)) override {
@@ -24,6 +25,8 @@ class Input final : public IInStream, public CMyUnknownImp {
             *processed = 0;
         if (fail)
             return E_FAIL;
+        if (readResult != S_OK)
+            return readResult;
         size = UInt32(
             qMin<UInt64>(size, position_ < UInt64(bytes_.size()) ? bytes_.size() - position_ : 0));
         if (size)
@@ -156,7 +159,7 @@ class ExtStreamTests final : public QObject {
     void sparseStreamsRetainSourceAfterCloseAndRelease_data() {
         QTest::addColumn<QString>("layout");
         for (const char *layout : {"double-hole", "double-subtree", "triple", "triple-hole",
-                                   "extent-tree", "modern-inline"})
+                                   "extent-tree", "modern-inline", "verity-salted"})
             QTest::newRow(layout) << QString::fromLatin1(layout);
     }
     void sparseStreamsRetainSourceAfterCloseAndRelease() {
@@ -178,8 +181,9 @@ class ExtStreamTests final : public QObject {
         QCOMPARE(sequential->QueryInterface(IID_IInStream, reinterpret_cast<void **>(&stream)),
                  S_OK);
         QCOMPARE(archive_->Close(), S_OK);
-        auto changed =
-            layout == "modern-inline" ? image(bundle("modern-inline-replacement")) : data;
+        auto changed = layout == "modern-inline"   ? image(bundle("modern-inline-replacement"))
+                       : layout == "verity-salted" ? image(bundle("direct"))
+                                                   : data;
         const auto start = changed.indexOf("head");
         if (start >= 0)
             changed[start] = 'Z';
@@ -278,6 +282,60 @@ class ExtStreamTests final : public QObject {
         NWindows::NCOM::CPropVariant created;
         QCOMPARE(archive_->GetProperty(index, kpidCTime, &created), S_OK);
         QCOMPARE(created.vt, VARTYPE(VT_EMPTY));
+    }
+    void verityMetadataAndReadFailuresPropagateAndCanBeRetried() {
+        auto *source = new Input(image(bundle("verity-salted")));
+        CMyComPtr<IInStream> input = source;
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        CMyComPtr<IInArchiveGetStream> provider;
+        QCOMPARE(
+            archive_->QueryInterface(IID_IInArchiveGetStream, reinterpret_cast<void **>(&provider)),
+            S_OK);
+        const auto index = fileIndex();
+        QVERIFY(index != UInt32(-1));
+        for (HRESULT error : {E_ABORT, E_FAIL}) {
+            source->readResult = error;
+            CMyComPtr<ISequentialInStream> failed;
+            QCOMPARE(provider->GetStream(index, &failed), error);
+            QVERIFY(!failed);
+        }
+        source->readResult = S_OK;
+        CMyComPtr<ISequentialInStream> stream;
+        QCOMPARE(provider->GetStream(index, &stream), S_OK);
+        CMyComPtr<IInStream> seekable;
+        QCOMPARE(stream->QueryInterface(IID_IInStream, reinterpret_cast<void **>(&seekable)), S_OK);
+        QCOMPARE(seekable->Seek(2 * 1024, STREAM_SEEK_SET, nullptr), S_OK);
+        for (HRESULT error : {E_ABORT, E_FAIL}) {
+            source->readResult = error;
+            char data[37];
+            memset(data, '!', sizeof(data));
+            UInt32 count = 99;
+            QCOMPARE(stream->Read(data, sizeof(data), &count), error);
+            QCOMPARE(count, 0u);
+            QCOMPARE(QByteArray(data, sizeof(data)), QByteArray(sizeof(data), '!'));
+        }
+        source->readResult = S_OK;
+        char data[37];
+        UInt32 count = 0;
+        QCOMPARE(stream->Read(data, sizeof(data), &count), S_OK);
+        QCOMPARE(count, UInt32(sizeof(data)));
+        QCOMPARE(QByteArray(data, sizeof(data)), QByteArray(sizeof(data), 'A'));
+    }
+    void corruptedVerityBlockIsNotPublishedToCaller() {
+        CMyComPtr<IInStream> input = new Input(image(bundle("verity-corrupt")));
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        CMyComPtr<IInArchiveGetStream> provider;
+        QCOMPARE(
+            archive_->QueryInterface(IID_IInArchiveGetStream, reinterpret_cast<void **>(&provider)),
+            S_OK);
+        CMyComPtr<ISequentialInStream> stream;
+        QCOMPARE(provider->GetStream(fileIndex(), &stream), S_OK);
+        char data[37];
+        memset(data, '!', sizeof(data));
+        UInt32 count = 99;
+        QCOMPARE(stream->Read(data, sizeof(data), &count), E_FAIL);
+        QCOMPARE(count, 0u);
+        QCOMPARE(QByteArray(data, sizeof(data)), QByteArray(sizeof(data), '!'));
     }
     void cleanupTestCase() { archive_.Release(); }
 };

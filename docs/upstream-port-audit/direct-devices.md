@@ -68,8 +68,9 @@ format-модуль через штатное обнаружение движк�
 реализованные современные metadata/inline layouts; encrypted content и journal
 recovery по-прежнему не публикуются как готовый reader. Новые creator fixtures
 проверяют извлечение точных байтов из inline, BIGALLOC и META_BG через
-авторизованный поток. Ключи fscrypt и fs-verity verification остаются в общем
-scope актуализации ext, а не считаются реализованными этим разрешением layouts.
+авторизованный поток. Следующая связанная итерация подключает fs-verity data
+verification и проверяет её тем же device-потоком. Ключи fscrypt и trust policy
+остаются в общем scope актуализации ext; разрешение layouts не реализует их.
 
 ## Выбор устройства и панель
 

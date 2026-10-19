@@ -19,7 +19,8 @@ struct ext4_sb_info {
     struct ext4_super_block *s_es;
     u32 s_csum_seed, s_desc_size, s_desc_per_block, s_inode_size;
 };
-struct super_block { unsigned int s_blocksize, s_blocksize_bits; struct ext4_sb_info info; };
+struct fsverity_operations;
+struct super_block { unsigned int s_blocksize, s_blocksize_bits; struct ext4_sb_info info; const struct fsverity_operations *s_vop; };
 struct ext4_inode_info { u32 i_csum_seed, i_inline_size; u16 i_extra_isize, i_inline_off; bool xattr; };
 struct inode {
     struct super_block *i_sb;
@@ -28,6 +29,9 @@ struct inode {
     int error;
     struct ext4_inode_info info;
     struct buffer_head raw;
+    unsigned int i_blkbits;
+    struct inode *i_mapping;
+    void *verity_context;
 };
 struct ext4_iloc { struct buffer_head *bh; unsigned int offset; };
 struct dir_private_info { u64 cookie; };

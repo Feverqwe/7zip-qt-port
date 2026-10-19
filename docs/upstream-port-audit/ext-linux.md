@@ -192,12 +192,86 @@ The source inventory verifies 416 exact, 206 adapted and six local 7-Zip paths.
 No full/slow, physical-device, native authorization or clean-package gate is
 claimed; incremental build trees and compiler caches were retained.
 
+## fs-verity data verification
+
+The same pinned Linux revision supplies `fs/ext4/verity.c`'s metadata-position,
+descriptor-location, descriptor-read and Merkle-page read bodies. The existing
+7-Zip extent walk remains authoritative for physical mapping; its validated final
+allocated endpoint supplies the location query used by ext4's descriptor reader.
+Metadata beyond logical EOF is readable only inside the verifier; returned
+streams retain the original logical file length.
+
+Selected complete read-side bodies from `fs/verity/open.c`, `hash_algs.c`,
+`verify.c` and `pagecache.c` provide descriptor checks, salted hash state, tree
+topology and ascent/descent verification, including sparse/unwritten data and
+EOF padding. Their headers stay at the original `fs/verity`, `include/linux`
+and `include/uapi/linux` paths. The extended inventory pins all generic verity
+units and both headers. All implementations remain C11. Original 7-Zip SHA-256
+and SHA-512 C implementations provide the host hash services; no new hash or
+Merkle algorithm is introduced. The separate GPL module remains isolated from
+unRAR. Its install payload now also includes Linux-syscall-note for the UAPI
+header notice.
+
+The host represents pages as 64 KiB buffers so all ext block sizes fit. It uses
+a bounded metadata-page cache with per-page verified-block masks, instead of the
+kernel's per-inode/global page-cache bitmap. Consequently, the kernel's bitmap
+allocation cap is omitted and file/tree indices retain Linux's 64-bit width on
+LLP64 hosts. These adaptations affect cache/allocation services; the verification
+path still checks the complete chain against the stored root. A failed block
+is never added to the 7-Zip data cache or copied into the caller's buffer.
+
+`CCachedInStream` supplies the unchanged 7-Zip read/seek/cache behavior; the local
+stream adapter only acquires, pads and verifies blocks. Source failures and
+`E_ABORT` cross the C service boundary unchanged. Streams own their mapping,
+source, metadata and verification state after handler Close/reopen/Release.
+The dynamic module verifies verity data; standalone `7zz` explicitly refuses
+verity-marked file streams rather than claiming unchecked reads as verified.
+Direct-device policy accepts the implemented verity data path.
+
+Write/enable/metadata mutation, ioctl transport, global inode caching, scheduling,
+readahead and kernel trust keyrings are omitted. The signature callback is the
+original `CONFIG_FS_VERITY_BUILTIN_SIGNATURES=n` service: stored signature bounds
+are checked, but this module makes no certificate/authenticity claim. Trust/key
+policy still needs to be considered with the remaining fscrypt integration.
+
+Deterministic fixtures independently produce SHA-256/SHA-512 trees using hashlib,
+with/without salt, empty and short files, multiple tree levels, holes/unwritten
+extents and partial EOF blocks. Metadata/data mutations cover descriptor version,
+size, reserved fields, algorithm, salt, logical size, block size, signature bounds,
+root, tree and file data. Valid descriptor padding remains accepted as in Linux.
+ABI regressions exercise seeks and lifetime, failed metadata reads, failed block
+reads, cancellation/retry, and an unchanged caller buffer on verification failure.
+The tests assert operation results and bytes, not internal implementation names.
+
+Eight read-only mounts on Linux `6.8.0-146-generic` accepted the valid deterministic
+cases and rejected corrupted data/tree reads with `EIO`. A separate mke2fs 1.47.0
+image was enabled through Linux `FS_IOC_ENABLE_VERITY` for SHA-256, salted SHA-512,
+short and empty files; `FS_IOC_MEASURE_VERITY` results are recorded in the fixture
+manifest. All bytes matched through a fresh read-only remount and the production
+dynamic engine, including extraction through the authorized device stream.
+Temporary images and mounts were removed; the compressed creator image remains
+under `tests/fixtures/ext4`. These tests execute Linux 6.8; the source baseline
+remains the pinned 2026 revision. Native 64 KiB pages/blocks are not claimed.
+
+Eight focused suites (`ext`, `ext_stream`, `archive_device`, `device_folder`,
+`device_ui`, `codec_probe`, `upstream_baseline`, `upstream_inventory`) passed on
+macOS arm64/Qt 6.12 locally (6.42 s) and Linux x64 in receipt
+`20261019T094203Z-fb47223f`.
+Windows x64/MSVC/Qt 6.12 passed the same selection in
+`20261019T094444Z-9bf69376` after the host header undefines Windows SAL's
+`__reserved` annotation macro before the original Linux disk field declaration.
+The initial Windows build failure was this name collision; the disk field and
+layout remain unchanged. No timeout, cache or toolchain settings were altered.
+The added standalone rejection regression passed in the localized `ext` rerun on
+macOS and on both runners (`20261019T094646Z-6362f08b`).
+No full/slow, package, physical-device or native authorization gate is claimed.
+
 ## Remaining ext modernization
 
 This iteration does not close the ext row. Encryption still needs a key-service
 contract and the corresponding fscrypt read/name/symlink paths; the current
 explicit unsupported result prevents ciphertext from masquerading as plaintext.
-Fs-verity verification and remaining feature/creator-OS read semantics need a
-complete source comparison and integration. These remain required follow-up work,
+Remaining feature/creator-OS read semantics and key/trust service integration need
+a complete source comparison and integration. These remain required follow-up work,
 not accepted permanent limitations. Kernel VFS/page cache, writes and journal
 replay remain outside the read-only archive contract.
