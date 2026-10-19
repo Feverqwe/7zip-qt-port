@@ -1,6 +1,61 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "udfdecl.h"
 
+struct sevenzip_udf_sparing {
+    struct super_block sb;
+    struct udf_part_map map;
+};
+
+void sevenzip_udf_sparing_free(struct sevenzip_udf_sparing *state)
+{
+    unsigned i;
+    if (!state)
+        return;
+    for (i = 0; i < 4; ++i)
+        brelse(state->map.s_type_specific.s_sparing.s_spar_map[i]);
+    free(state);
+}
+
+int sevenzip_udf_sparing_create(void *context, sevenzip_udf_read read,
+                                uint32_t block_size, uint32_t root, const void *raw,
+                                struct sevenzip_udf_sparing **output)
+{
+    struct sevenzip_udf_sparing *state = calloc(1, sizeof(*state));
+    struct sparablePartitionMap map;
+    int result;
+    *output = NULL;
+    if (!state)
+        return -ENOMEM;
+    memcpy(&map, raw, sizeof(map));
+    state->sb.info.s_partitions = 1;
+    state->sb.info.s_partmaps = &state->map;
+    state->sb.s_blocksize = block_size;
+    state->sb.context = context;
+    state->sb.read = read;
+    state->map.s_partition_root = root;
+    result = sevenzip_udf_load_sparable(&state->sb, &state->map, &map);
+    if (result) {
+        sevenzip_udf_sparing_free(state);
+        return result;
+    }
+    state->sb.context = NULL;
+    state->sb.read = NULL;
+    *output = state;
+    return 0;
+}
+
+int sevenzip_udf_sparing_span(const struct sevenzip_udf_sparing *state, uint32_t block,
+                              uint32_t *physical, uint32_t *blocks)
+{
+    struct super_block sb = state->sb;
+    *physical = udf_get_pblock_spar15(&sb, block, 0, 0);
+    if (*physical == UINT32_MAX)
+        return -EIO;
+    *blocks = state->map.s_type_specific.s_sparing.s_packet_len -
+        (block & (state->map.s_type_specific.s_sparing.s_packet_len - 1));
+    return 0;
+}
+
 struct buffer_head *sb_bread(struct super_block *sb, udf_pblk_t address)
 {
     struct buffer_head *bh = malloc(sizeof(*bh));

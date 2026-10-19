@@ -16,6 +16,9 @@ CONTINUATIONS = ("ad-short", "ad-long", "ad-chain-short", "ad-chain-long",
 
 
 def volume(kind):
+    if kind.startswith("sp-"):
+        from udf_sparing_fixture import volume as sparing_volume
+        return sparing_volume(kind)
     if kind.startswith("icb-"):
         from udf_icb_fixture import volume as icb_volume
         return icb_volume(kind)

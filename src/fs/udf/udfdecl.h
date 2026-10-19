@@ -13,6 +13,7 @@
 #pragma pack(push, 1)
 #endif
 #include "../../../third_party/linux/fs/udf/ecma_167.h"
+#include "../../../third_party/linux/fs/udf/osta_udf.h"
 #ifdef _MSC_VER
 #pragma pack(pop)
 #endif
@@ -35,7 +36,21 @@
 #define UDF_EXTENT_LENGTH_MASK 0x3fffffff
 typedef uint64_t udf_pblk_t;
 struct buffer_head { uint8_t *b_data; unsigned b_size; };
-struct udf_part_map { uint32_t s_partition_len; };
+typedef uint32_t u32;
+struct super_block;
+struct udf_sparing_data {
+    uint16_t s_packet_len;
+    struct buffer_head *s_spar_map[4];
+};
+struct udf_part_map {
+    uint32_t s_partition_len, s_partition_root;
+    unsigned s_partition_type;
+    union { struct udf_sparing_data s_sparing; } s_type_specific;
+    uint32_t (*s_partition_func)(struct super_block *, uint32_t, uint16_t, uint32_t);
+};
+#define UDF_SPARABLE_MAP15 0x1522U
+#define is_power_of_2(n) ((n) != 0 && (((n) & ((n) - 1)) == 0))
+#define struct_size(p, member, n) (sizeof(*(p)) + sizeof((p)->member[0]) * (n))
 struct udf_sb_info {
     uint32_t s_partitions;
     struct udf_part_map *s_partmaps;
@@ -94,4 +109,6 @@ u8 udf_tag_checksum(const struct tag *);
 struct buffer_head *udf_read_tagged(struct super_block *, udf_pblk_t, uint32_t, uint16_t *);
 struct buffer_head *udf_read_ptagged(struct super_block *, struct kernel_lb_addr *, uint32_t, uint16_t *);
 int sevenzip_udf_read_inode(struct inode *);
+uint32_t udf_get_pblock_spar15(struct super_block *, uint32_t, uint16_t, uint32_t);
+int sevenzip_udf_load_sparable(struct super_block *, struct udf_part_map *, struct sparablePartitionMap *);
 #endif

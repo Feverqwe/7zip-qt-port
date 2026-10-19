@@ -292,19 +292,27 @@ Z7_COM7F_IMF(CHandler::GetStream(UInt32 index, ISequentialInStream **stream)) {
         if (size < len)
             len = (UInt32)size;
 
-        const unsigned partitionIndex = vol.PartitionMaps[extent.PartitionRef].PartitionIndex;
-        UInt32 logBlockNumber = extent.Pos;
-        const CPartition &partition = _archive.Partitions[partitionIndex];
-        UInt64 offset =
-            ((UInt64)partition.Pos << _archive.SecLogSize) + (UInt64)logBlockNumber * vol.BlockSize;
-
-        CSeekExtent se;
-        se.Phy = offset;
-        if (!extent.IsRecAndAlloc())
-            se.SetAs_ZeroFill();
-        se.Virt = virtOffset;
-        virtOffset += len;
-        extentStreamSpec->Extents.Add(se);
+        UInt32 remaining = len, block = extent.Pos;
+        while (remaining) {
+            CSeekExtent se;
+            UInt32 chunk = remaining;
+            if (extent.IsRecAndAlloc()) {
+                RINOK(_archive.GetPhysicalSpan(ref2.Vol, extent.PartitionRef, block, remaining,
+                                               se.Phy, chunk))
+            } else {
+                se.SetAs_ZeroFill();
+            }
+            se.Virt = virtOffset;
+            if (extentStreamSpec->Extents.IsEmpty() || se.Is_ZeroFill() ||
+                extentStreamSpec->Extents.Back().Is_ZeroFill() ||
+                extentStreamSpec->Extents.Back().Phy + virtOffset -
+                        extentStreamSpec->Extents.Back().Virt !=
+                    se.Phy)
+                extentStreamSpec->Extents.Add(se);
+            virtOffset += chunk;
+            remaining -= chunk;
+            block += chunk / vol.BlockSize;
+        }
 
         size -= len;
     }

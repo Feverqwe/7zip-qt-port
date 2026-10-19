@@ -10,6 +10,10 @@
 #include "../../../Common/MyString.h"
 
 #include "../../IStream.h"
+#ifdef SEVENZIP_LINUX_UDF
+#include "../../../../udfreader.h"
+#include <memory>
+#endif
 
 namespace NArchive {
 namespace NUdf {
@@ -214,35 +218,39 @@ struct CLongAllocDesc
   void Parse(const Byte *p);
 };
 
-
 // ECMA 3/10.7 Partition maps
 // UDF 2.2.8-2.2.10 Partition Maps
 
-struct CPartitionMap
-{
-  unsigned PartitionIndex;
+struct CPartitionMap {
+#ifdef SEVENZIP_LINUX_UDF
+    CByteBuffer SparableMap;
+    std::shared_ptr<sevenzip_udf_sparing> Sparing;
+    unsigned MetadataBacking = (unsigned)-1;
+    UInt32 MetadataStart = 0;
+    bool IsSparable() const { return SparableMap.Size() != 0; }
+#endif
+    unsigned PartitionIndex;
 
-  Byte Type;
-  // Byte Len;
+    Byte Type;
+    // Byte Len;
 
-  // ECMA 10.7.2
-  UInt16 VolumeSequenceNumber;
-  UInt16 PartitionNumber;
+    // ECMA 10.7.2
+    UInt16 VolumeSequenceNumber;
+    UInt16 PartitionNumber;
 
-  CRegId PartitionTypeId;
+    CRegId PartitionTypeId;
 
-  // UDF 2.2.10 Metadata Partition Map
-  UInt32 MetadataFileLocation;
-  // UInt32 MetadataMirrorFileLocation;
-  // UInt32 MetadataBitmapFileLocation;
-  // UInt32 AllocationUnitSize; // (Blocks)
-  // UInt16 AlignmentUnitSize; // (Blocks)
-  // Byte Flags;
+    // UDF 2.2.10 Metadata Partition Map
+    UInt32 MetadataFileLocation;
+    // UInt32 MetadataMirrorFileLocation;
+    // UInt32 MetadataBitmapFileLocation;
+    // UInt32 AllocationUnitSize; // (Blocks)
+    // UInt16 AlignmentUnitSize; // (Blocks)
+    // Byte Flags;
 
-  // Byte Data[256];
-  // CPartitionMap(): PartitionIndex(-1) {}
+    // Byte Data[256];
+    // CPartitionMap(): PartitionIndex(-1) {}
 };
-
 
 // ECMA 4/14.6.6
 
@@ -465,6 +473,8 @@ public:
       bool showVolName, bool showFsName) const;
 
   bool CheckItemExtents(unsigned volIndex, const CItem &item) const;
+  HRESULT GetPhysicalSpan(unsigned volIndex, unsigned partitionRef, UInt32 block, UInt32 length,
+                          UInt64 &offset, UInt32 &size) const;
 
 private:
   IInStream *_stream;
@@ -476,6 +486,8 @@ private:
 #ifdef SEVENZIP_LINUX_UDF
   struct CLinuxContext;
   static int ReadLinuxBlock(void *, UInt16, UInt32, void *, size_t);
+  static int ReadLinuxPhysical(void *, UInt16, UInt32, void *, size_t);
+  HRESULT LoadLinuxSparing(unsigned volIndex, unsigned partitionRef);
   HRESULT ReadLinuxItem(unsigned volIndex, CLongAllocDesc &location, CByteBuffer &data);
   HRESULT ReadLinuxExtents(unsigned volIndex, unsigned partitionRef, CItem &item, const Byte *data,
                            UInt32 size);

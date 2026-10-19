@@ -88,6 +88,19 @@ class CancelAt final : public IArchiveOpenCallback, public CMyUnknownImp {
         return input_->lastSeek >= checkpoint_ ? E_ABORT : S_OK;
     }
 };
+class CancelOnce final : public IArchiveOpenCallback, public CMyUnknownImp {
+    Z7_COM_UNKNOWN_IMP_1(IArchiveOpenCallback)
+    bool consumed_ = false;
+
+  public:
+    Z7_COM7F_IMF(SetTotal(const UInt64 *, const UInt64 *)) override { return S_OK; }
+    Z7_COM7F_IMF(SetCompleted(const UInt64 *, const UInt64 *)) override {
+        if (consumed_)
+            return S_OK;
+        consumed_ = true;
+        return E_ABORT;
+    }
+};
 } // namespace
 
 class UdfStreamTests final : public QObject {
@@ -213,6 +226,11 @@ class UdfStreamTests final : public QObject {
                                  "icb-extent-long",
                                  "icb-root-extent-zero"})
             QTest::newRow(kind) << QString::fromLatin1(kind);
+        for (const char *kind :
+             {"sp-packet", "sp-cross", "sp-reverse", "sp-backup", "sp-first-wins", "sp-no-table",
+              "sp-invalid-table", "sp-table-overrun", "sp-max-table", "sp-declared-zero",
+              "sp-reserved", "sp-sparse", "sp-icb", "sp-directory-cross", "sp-metadata"})
+            QTest::newRow(kind) << QString::fromLatin1(kind);
     }
     void allocationStreams() {
         QFETCH(QString, kind);
@@ -303,11 +321,36 @@ class UdfStreamTests final : public QObject {
         QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
         check(stream("alpha.bin"), QByteArray::fromHex(files_["alpha.bin"].toString().toLatin1()));
     }
+    void sparingLoaderErrorsAndCancellation() {
+        fixture("sp-first-wins");
+        CMyComPtr2<IInStream, Input> input;
+        input.SetFromCls(new Input(bytes_));
+        input->failSeekAt = UInt64(64) * 2048;
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        check(stream("alpha.bin"), QByteArray(8192, 'X'));
+        input->failSeekAt = UINT64_MAX;
+        CMyComPtr<IArchiveOpenCallback> cancel = new CancelOnce;
+        QCOMPARE(archive_->Open(input, nullptr, cancel), E_ABORT);
+        UInt32 count = 99;
+        QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, UInt32(0));
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        auto alpha = stream("alpha.bin");
+        QVERIFY(alpha);
+        input->failSeekAt = UInt64(335) * 2048;
+        char data[23];
+        count = 99;
+        QCOMPARE(alpha->Read(data, sizeof(data), &count), E_FAIL);
+        QCOMPARE(count, UInt32(0));
+        input->failSeekAt = UINT64_MAX;
+        check(alpha, QByteArray::fromHex(files_["alpha.bin"].toString().toLatin1()));
+    }
     void backendExtraction_data() {
         QTest::addColumn<QString>("kind");
         for (const char *kind :
              {"sparse-long", "ad-directory", "ad-chain-long", "ad-cross-partition", "icb-efe",
-              "icb-root", "icb-cross-partition", "icb-metadata-cross"})
+              "icb-root", "icb-cross-partition", "icb-metadata-cross", "sp-reverse",
+              "sp-directory-cross", "sp-metadata"})
             QTest::newRow(kind) << QString::fromLatin1(kind);
     }
     void backendExtraction() {

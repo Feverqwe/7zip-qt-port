@@ -41,7 +41,7 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 - [ISO9660 по Linux](upstream-port-audit/isofs-linux.md)
   — logical blocks, XAR, multi-section directories и независимые extent streams.
 - [UDF по Linux](upstream-port-audit/udf-linux.md)
-  — sparse/continuation allocation, indirect ICB, логический EOF и Linux C format-модуль.
+  — sparse/continuation allocation, indirect ICB, sparable mapping и Linux C format-модуль.
 - [NTFS по Linux](upstream-port-audit/ntfs-linux.md)
   — boot/MFT, attribute lists, sparse/compressed streams и Linux C LZNT1/LZX/XPRESS.
 

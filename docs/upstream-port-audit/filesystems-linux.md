@@ -95,8 +95,9 @@ RR producer layouts и оставшиеся read-side consumers сверены �
 открытыми. Динамический UDF-модуль подключает исходные Linux C allocation
 continuations, включая short/long chains, directory data и межраздельные адреса;
 indirect ICB/strategy 4096 выбирают актуальную запись inode через Linux C reader,
-сохраняя fallback и read-only metadata backing semantics. VAT/sparable и
-остальные возможности UDF ещё требуют актуализации.
+сохраняя fallback и read-only metadata backing semantics. Sparable loader/mapper,
+packet spans и compound metadata backing подключены в том же GPL-модуле.
+VAT и остальные возможности UDF ещё требуют актуализации.
 
 ### HFS+/HFSX: fork mapping и metadata reads
 

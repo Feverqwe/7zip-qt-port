@@ -7,6 +7,7 @@ import tempfile
 import unittest
 from udf_fixture import CASES, CONTINUATIONS, volume
 from udf_icb_fixture import CASES as ICB_CASES, BAD as ICB_BAD
+from udf_sparing_fixture import CASES as SPARING_CASES, BAD as SPARING_BAD
 
 RUNTIME = Path(sys.argv.pop(1))
 MODULE = Path(sys.argv.pop(1))
@@ -60,7 +61,7 @@ class UdfTests(unittest.TestCase):
                     self.assertNotEqual(self.run_image(engine, image).returncode, 0)
 
     def test_continuations(self):
-        for kind in (*CONTINUATIONS, *ICB_CASES):
+        for kind in (*CONTINUATIONS, *ICB_CASES, *SPARING_CASES):
             image, files = volume(kind)
             with self.subTest(kind=kind):
                 result = self.run_image("7z", image)
@@ -72,7 +73,7 @@ class UdfTests(unittest.TestCase):
 
     def test_damaged_continuation_chains(self):
         for kind in ("ad-cycle", "ad-limit-17", "ad-outside", "ad-bad-partition",
-                     "ad-overflow", "ad-over-block", *ICB_BAD):
+                     "ad-overflow", "ad-over-block", *ICB_BAD, *SPARING_BAD):
             image, _ = volume(kind)
             with self.subTest(kind=kind):
                 self.assertNotEqual(self.run_image("7z", image).returncode, 0)

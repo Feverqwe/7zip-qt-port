@@ -4,6 +4,7 @@
 // clang-format on
 #include "../../../../udfreader.h"
 #include "../../Common/RegisterArc.h"
+#include "../../Common/StreamUtils.h"
 #include "UdfIn.h"
 #include <errno.h>
 
@@ -16,6 +17,50 @@ struct CInArchive::CLinuxContext {
     HRESULT result = S_OK;
     HRESULT progressResult = S_OK;
 };
+
+int CInArchive::ReadLinuxPhysical(void *opaque, UInt16, UInt32 block, void *buffer, size_t length) {
+    auto &c = *static_cast<CLinuxContext *>(opaque);
+    if (c.progressResult != S_OK || c.result == E_ABORT)
+        return -1;
+    try {
+        const UInt64 offset = (UInt64)block << c.archive->SecLogSize;
+        if (offset > c.archive->FileSize || length > c.archive->FileSize - offset) {
+            c.result = S_FALSE;
+            return -1;
+        }
+        c.result = InStream_SeekSet(c.archive->_stream, offset);
+        if (c.result == S_OK)
+            c.result = ReadStream_FALSE(c.archive->_stream, buffer, length);
+        if (c.result == S_OK) {
+            c.archive->UpdatePhySize(offset + length);
+            c.progressResult = E_FAIL;
+            c.progressResult = c.archive->_progress->SetCompleted(
+                c.archive->Files.Size(), c.archive->_processedProgressBytes);
+            c.result = c.progressResult;
+        }
+    } catch (...) {
+        c.result = E_FAIL;
+    }
+    return c.result == S_OK ? 0 : -1;
+}
+
+HRESULT CInArchive::LoadLinuxSparing(unsigned volIndex, unsigned partitionRef) {
+    CPartitionMap &map = LogVols[volIndex].PartitionMaps[partitionRef];
+    CLinuxContext context{this, volIndex, nullptr};
+    sevenzip_udf_sparing *state = nullptr;
+    const int result =
+        sevenzip_udf_sparing_create(&context, ReadLinuxPhysical, LogVols[volIndex].BlockSize,
+                                    Partitions[map.PartitionIndex].Pos, map.SparableMap, &state);
+    std::shared_ptr<sevenzip_udf_sparing> owner(state, sevenzip_udf_sparing_free);
+    if (context.progressResult != S_OK)
+        return context.progressResult;
+    if (context.result == E_ABORT)
+        return E_ABORT;
+    if (result != 0)
+        return result == -ENOMEM ? E_OUTOFMEMORY : S_FALSE;
+    map.Sparing = std::move(owner);
+    return S_OK;
+}
 
 int CInArchive::ReadLinuxBlock(void *opaque, UInt16 partition, UInt32 block, void *buffer,
                                size_t length) {

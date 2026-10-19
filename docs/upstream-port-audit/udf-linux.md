@@ -201,8 +201,66 @@ build trees/compiler caches и небольшое свидетельство в�
 tail-scan failure. После проверок нормализованы только пустые строки EOF
 новых C-файлов. Full/slow/UI/physical-device acceptance не выполнялась.
 
+## Sparable partitions и составное отображение
+
+Полный `super.c::udf_load_sparable_map` перенесён с исходными checks packet size,
+числа таблиц, tag/CRC, identifier и размера entries в buffer. Единственная
+типовая адаптация body — `const char *` для pointer-sign comparison.
+`partition.c::udf_get_pblock_spar15` сохраняет исходный выбор первой пригодной
+таблицы, обход entries/sentinels и physical fallback. Добавлены checked additions
+для combined block/offset, mapped location и fallback root: 32-bit wrap не
+должен превращать повреждённый адрес в успешное чтение чужих блоков. Эти узкие
+archive-boundary проверки являются отличием от pinned malformed-input policy;
+два regressions защищают mapped-target и fallback-root wrap.
+
+Полный `osta_udf.h` сохранён без изменений. C state владеет проверенными table
+buffers и освобождается через module deleter; callback context нужен только при
+загрузке. Mapping после Open не хранит указатели на stack progress callbacks.
+Уведомления и лицензии остаются в существующем GPL UDF-модуле, исходные C
+функции не связаны с core/unRAR. Standalone оставляет прежний read scope.
+
+Существующий `Read` и `GetStream` используют общий physical-span boundary:
+extent дробится на packet boundaries, а соседние physical spans объединяются
+при подготовке extents для существующего `CExtentsStream`. Logical EOF, holes
+и retained streams сохраняются.
+Physical-size scan проходит те же spans. Metadata map сохраняет offset и
+associated backing reference, чтобы compound mapping доходил до sparable map,
+вместо потери remapping при прежнем плоском прибавлении physical root.
+Исходные `udf_try_read_meta`, partition mapper и metadata-load callers сравнены
+до изменения; single metadata extent и mirror support остаются отдельным scope.
+
+15 новых positive fixtures проверяют packet/extent boundary, обратный physical
+порядок, fallback tables, first-valid precedence, отсутствие/повреждение таблиц,
+полный table buffer, допустимые Linux reserved/declared-size fields, sparse,
+ICB, directory records через два packets и metadata на sparable backing.
+Исходные блоки содержат poison bytes там, где обязателен remapping. Отдельные
+отказы покрывают неверные packet/table fields, source bounds, sentinel и wrap.
+ABI проверяет loader I/O fallback, сохранение однократного E_ABORT при переборе
+optional tables, mapped-data I/O failure/retry,
+точные bytes/EOF и чтение streams после Close/reopen/release. Backend/catalog
+consumers используют reverse mapping, directory и metadata cases.
+
+14 variants совпали с read-only native Linux `6.8.0-146-generic`; mounts/images
+удалены. `sp-table-overrun` оставлен проверкой pinned code/module: guest не
+выполняет современный bounds check. В upstream v6.8 `udf_load_sparable_map`
+использует `sizeof(*st) + reallocationTableLen`, тогда как pinned revision
+проверяет полный `struct_size` entries. Наблюдаемый native mount failure
+согласуется с этим различием; parity PASS для данного malformed input не
+заявляется. Ссылка для отдельного старого source evidence:
+<https://kernel.googlesource.com/pub/scm/linux/kernel/git/torvalds/linux/+/refs/tags/v6.8/fs/udf/super.c>.
+
+Пять focused suites прошли на macOS arm64, Linux x64 и Windows x64/MSVC,
+Qt 6.12: remote receipt `20261019T212357Z-14847466`. После локальных уточнений
+physical sentinel range и сохранения cancellation повторены `udf`/`udf_stream`
+на тех же трёх ОС: receipt `20261019T212834Z-ac1db147`.
+Actual macOS CMake install прочитал все 61 positive variants, включая pinned
+table-bound fallback, и сохранил оба UDF notices. Staging удалён; постоянные
+build trees и compiler caches сохранены. Full/slow/UI/physical-device
+acceptance не выполнялась. Это завершённый sparable scope, а не закрытие
+VAT или всего UDF read audit.
+
 Полный UDF read audit остаётся открытым. В частности, ещё требуются
-VAT и sparable partitions, volume discovery/block geometry,
+VAT, volume discovery/block geometry,
 полная metadata partition/mirror mapping, names/NLS, symlinks, специальные
 inode и metadata/read policies. Проверка этой итерации не означает завершение
 всех UDF возможностей или общей задачи форматов Linux. VFS, запись,

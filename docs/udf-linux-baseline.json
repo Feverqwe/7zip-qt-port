@@ -29,12 +29,15 @@
     "include/linux/crc-itu-t.h": "52c39a25363812428ad3ec2e441690ea12b7bcb9e63874077919682b86f9b9d7"
   },
   "exact": [
-    "fs/udf/ecma_167.h"
+    "fs/udf/ecma_167.h",
+    "fs/udf/osta_udf.h"
   ],
   "adapted": [
     "fs/udf/directory.c",
     "fs/udf/inode.c",
     "fs/udf/misc.c",
+    "fs/udf/partition.c",
+    "fs/udf/super.c",
     "fs/udf/udf_i.h",
     "fs/udf/udfdecl.h",
     "fs/udf/udfend.h",
