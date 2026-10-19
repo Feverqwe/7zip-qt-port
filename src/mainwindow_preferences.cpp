@@ -8,6 +8,7 @@
 #include "qtcommandicons.h"
 #include "qtlanguageservices.h"
 #include "qtlocationfolder.h"
+#include "qtmainwindowchrome.h"
 #include "qtpanelcontextmenu.h"
 #include <QMouseEvent>
 #include <QSignalBlocker>
@@ -172,11 +173,13 @@ void MainWindow::updateToolbar() {
     for (QAction *action : {copy_, move_, remove_, infoAction_})
         toolbar->widgetForAction(action)->setVisible(standard);
     toolbar->widgetForAction(toolbarGroupSeparator_)->setVisible(archive && standard);
+    toolbar->widgetForAction(toolbarGroupSeparator_)->setStyle(toolbar->style());
     toolbar->setVisible(archive || standard);
     toolbar->setIconSize(largeButtonsOption_->isChecked() ? QSize(24, 24) : QSize(16, 16));
     toolbar->setToolButtonStyle(Qt::ToolButtonIconOnly);
     for (QAction *action : {toolbarAdd_, extract_, test_, copy_, move_, remove_, infoAction_}) {
         if (auto *button = qobject_cast<QToolButton *>(toolbar->widgetForAction(action))) {
+            QtConfigureMainToolbarButton(*button);
             const bool primary = action == toolbarAdd_ || action == extract_;
             button->setToolButtonStyle(primary && app_.ShowButtonsLables
                                            ? Qt::ToolButtonTextBesideIcon

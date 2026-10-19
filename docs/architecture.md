@@ -38,6 +38,10 @@ Original item indices, marks and focused row are distinct from display text and
 Qt selection. Sorting, column metadata and native namespaces retain their source
 owners; presentation does not infer operation paths from rendered cells.
 
+Main-window chrome has a scoped Qt presentation adapter for toolbar spacing,
+labels and the parent button. It does not style dialogs or own commands; the
+editable address retains the original panel address/navigation owner.
+
 ## Dialogs and preferences
 
 Original dialog/page modules own values, validation, prompts and operation

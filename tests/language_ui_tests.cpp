@@ -433,9 +433,9 @@ class LanguageUiTests : public QObject, protected MainWindowTestSupport {
         const bool enabled = rename->isEnabled();
         const QStringList fileNames = {table->item(0, 0)->text()};
         auto *fileMenu = window.findChild<QMenu *>("fileMenu");
-        auto *parentButton = window.findChild<QToolButton *>("panelParentButton0");
+        auto *parentButton = window.findChild<QAbstractButton *>("panelParentButton0");
         QVERIFY(parentButton && !parentButton->icon().isNull());
-        QCOMPARE(parentButton->toolButtonStyle(), Qt::ToolButtonIconOnly);
+        QVERIFY(parentButton->text().isEmpty());
         QCOMPARE(fileMenu->title(), QString("&File"));
         bool applied = false;
         QTimer::singleShot(0, &window, [&] {

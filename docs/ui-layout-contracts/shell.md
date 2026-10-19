@@ -154,6 +154,11 @@ captions; toolbar group visibility and large/small icons keep their existing
 owners and saved values. Buttons use native hover/focus rendering and support
 keyboard focus. The vector toolbar uses 16×16 logical icons to match the concept;
 the larger preference uses 24×24 rather than the original bitmap canvas sizes.
+The toolbar reserves space around and between command buttons. Captions use the
+regular application font rather than Cocoa's smaller bold toolbar label.
+The parent button and editable address occupy a separate padded navigation row;
+the address grows with the system font and keeps an adequate input height.
+These metrics belong to main-window chrome, not shared dialog controls.
 The Extract caption uses the same translation as the redesigned
 Extract dialog. Command/navigation symbols now adapt local Lucide vectors,
 following the current palette in normal/disabled states and at display density.

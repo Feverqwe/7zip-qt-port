@@ -47,9 +47,9 @@
         "enabled": false
       },
       {
-        "class": "QToolButton",
+        "class": "QPushButton",
         "name": "panelParentButton0",
-        "text": "Переход на один уровень вверх",
+        "text": "",
         "enabled": true
       },
       {
@@ -92,7 +92,7 @@
         "enabled": true
       }
     ],
-    "revision": "faf87903887fde0ae385fc5a85b5cb3000bf69c7",
+    "revision": "aca1e36dbadd77b1c189dd9cd28345e46decb2ff",
     "capture": {
       "qpa": "cocoa",
       "colorScheme": "light",
@@ -102,7 +102,7 @@
     },
     "sourceState": {
       "modified": true,
-      "diffSha256": "2d8c51a7cc5ee22c48a416745ddeab3f2a2912bd9536feca296fbe3e028e1dbc"
+      "diffSha256": "690814a489abf63fc4fd7488eaa6a152544ee8bf57697e37d3abf63a2d9a7d55"
     }
   },
   {

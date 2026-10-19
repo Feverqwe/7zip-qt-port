@@ -5,6 +5,7 @@
 #include "qtfilelisthover.h"
 #include "qtfilemanagerdrag.h"
 #include "qtlangcontrols.h"
+#include "qtmainwindowchrome.h"
 #include "qtpaneladdresscombo.h"
 #include "qtpanelcontextmenu.h"
 #include "qtstatuslabel.h"
@@ -13,21 +14,26 @@ void MainWindow::createFilePanel(QMenu *editMenu, unsigned index) {
     QSettings settings(toolbarSettingsPath(), QSettings::IniFormat);
     auto *central = new QWidget(this);
     auto *layout = new QVBoxLayout(central);
-    layout->setContentsMargins(4, 4, 4, 4);
+    layout->setContentsMargins(0, 0, 0, 0);
+    layout->setSpacing(0);
     auto *navigation = new QHBoxLayout;
-    navigation->setContentsMargins(0, 0, 0, 0);
+    navigation->setContentsMargins(16, 12, 16, 12);
+    navigation->setSpacing(8);
     {
-        auto *button = new QToolButton(central);
-        button->setDefaultAction(up_);
+        auto *button = new QPushButton(central);
         // Keep the source parent command without its longer View menu caption.
-        const auto updateIcon = [this, button] {
+        const auto updateButton = [this, button] {
             button->setIcon(QtCommandSymbol(QtCommandIcon::Parent));
+            button->setEnabled(up_->isEnabled());
+            button->setAccessibleName(up_->toolTip());
+            button->setToolTip(up_->toolTip());
         };
-        updateIcon();
-        // QAction::changed also projects its empty menu icon to QToolButton.
-        // Restore the panel-specific image after every caption/state update.
-        connect(up_, &QAction::changed, button, updateIcon);
-        button->setToolButtonStyle(Qt::ToolButtonIconOnly);
+        updateButton();
+        // Project the existing command state and caption; the button itself
+        // does not own navigation or command availability.
+        connect(up_, &QAction::changed, button, updateButton);
+        connect(button, &QPushButton::clicked, up_, &QAction::trigger);
+        QtConfigurePanelParentButton(*button);
         button->setObjectName(QString("panelParentButton%1").arg(index));
         navigation->addWidget(button);
     }

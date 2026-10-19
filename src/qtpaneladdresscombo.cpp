@@ -40,6 +40,9 @@ QtPanelAddressCombo::QtPanelAddressCombo(CPanel &panel,
                                          std::function<HRESULT(const QString &, bool)> navigate,
                                          QWidget *parent)
     : QComboBox(parent), panel_(panel), navigate_(std::move(navigate)) {
+#ifdef Q_OS_MACOS
+    setAttribute(Qt::WA_LayoutUsesWidgetRect);
+#endif
     setEditable(true);
     currentIcon_ = lineEdit()->addAction(QIcon(), QLineEdit::LeadingPosition);
     currentIcon_->setObjectName("currentAddressIcon");
@@ -64,6 +67,18 @@ void QtPanelAddressCombo::showPopup() {
         lineEdit()->setText(text);
     }
     QComboBox::showPopup();
+}
+
+QSize QtPanelAddressCombo::sizeHint() const {
+    QSize size = QComboBox::sizeHint();
+    size.setHeight(qMax(size.height(), qMax(34, fontMetrics().height() + 16)));
+    return size;
+}
+
+QSize QtPanelAddressCombo::minimumSizeHint() const {
+    QSize size = QComboBox::minimumSizeHint();
+    size.setHeight(qMax(size.height(), qMax(34, fontMetrics().height() + 16)));
+    return size;
 }
 
 void QtPanelAddressCombo::ResetContent() { clear(); }

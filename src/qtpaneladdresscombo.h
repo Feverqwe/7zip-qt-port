@@ -34,6 +34,8 @@ class QtPanelAddressCombo final : public QComboBox, public IQtPanelAddressCombo 
     QtPanelAddressCombo(CPanel &panel, std::function<HRESULT(const QString &, bool)> navigate,
                         QWidget *parent);
     void showPopup() override;
+    QSize sizeHint() const override;
+    QSize minimumSizeHint() const override;
     void ResetContent() override;
     void InsertItem(const UString &name, int iconIndex, unsigned indent,
                     UInt32 namespaceID) override;

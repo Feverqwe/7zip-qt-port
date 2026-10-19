@@ -5,12 +5,14 @@
 #include "Windows/TimeUtils.h"
 #include "mainwindow.h"
 #include "qtlangcontrols.h"
+#include "qtmainwindowchrome.h"
 
 QMenu *MainWindow::createMenusAndToolbar() {
     auto *menu = menuBar()->addMenu("&File");
     menu->setObjectName("fileMenu");
     auto *toolbar = addToolBar("Archive");
     toolbar->setObjectName("archiveToolbar");
+    QtConfigureMainToolbar(*toolbar);
     QtBindLocalText(toolbar, "mainwindow_menus", QT_TRANSLATE_NOOP("mainwindow_menus", "Archive"));
     toolbar->setMovable(false);
     toolbar->setToolButtonStyle(Qt::ToolButtonIconOnly);

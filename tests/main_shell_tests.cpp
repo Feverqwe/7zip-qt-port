@@ -205,11 +205,9 @@ class MainShellTests final : public QObject {
             for (unsigned index = 0; index < (phase == 1 ? 2u : 1u); ++index) {
                 auto *panel = window.findChild<QWidget *>(QString("filePanel%1").arg(index));
                 QVERIFY(panel);
-                const auto buttons =
-                    panel->findChildren<QToolButton *>(QString(), Qt::FindDirectChildrenOnly);
-                if (buttons.size() != 1 ||
-                    buttons[0]->objectName() != QString("panelParentButton%1").arg(index))
-                    differences << QString("panel%1 navigation buttons").arg(index);
+                auto *parent =
+                    panel->findChild<QAbstractButton *>(QString("panelParentButton%1").arg(index));
+                QVERIFY(parent && UiInspection::fullyVisible(*parent, window));
                 auto *status = panel->findChild<QStatusBar *>("panelStatusBar");
                 QVERIFY(status && UiInspection::fullyVisible(*status, window));
                 QVERIFY(UiInspection::fullyVisible(*panel->findChild<QComboBox *>("pathCombo"),
