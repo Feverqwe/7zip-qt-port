@@ -466,6 +466,10 @@ HRESULT CInArchive::GetItemStream(unsigned volIndex, const CItem &item,
     *stream = NULL;
     const CLogVol &vol = LogVols[volIndex];
     UInt64 size = item.Size;
+#ifdef SEVENZIP_LINUX_UDF
+    if (!item.LinuxAttributes.hidden && !(item.LinuxAttributes.mode & 0170000))
+        return E_NOTIMPL;
+#endif
 
     if (!item.CheckChunkSizes() || !CheckItemExtents(volIndex, item))
         return E_NOTIMPL;
@@ -745,7 +749,7 @@ HRESULT CInArchive::ReadItem(unsigned volIndex, int fsIndex, const CLongAllocDes
     CByteBuffer buf(size);
 #ifdef SEVENZIP_LINUX_UDF
     CLongAllocDesc resolved = lad;
-    RINOK(ReadLinuxItem(volIndex, resolved, buf, progressResult))
+    RINOK(ReadLinuxItem(volIndex, resolved, buf, item, fsIndex < 0, progressResult))
     item.Location = resolved.Location;
 #else
     RINOK(ReadLad(volIndex, lad, buf))
@@ -770,28 +774,7 @@ HRESULT CInArchive::ReadItem(unsigned volIndex, int fsIndex, const CLongAllocDes
 
   item.IcbTag.Parse(p + 16);
 
-#ifdef SEVENZIP_LINUX_UDF
-  if (fsIndex < -1) {
-      // Hidden streams use Linux's non-device inode types without directory traversal.
-      switch (item.IcbTag.FileType) {
-      case 0:
-      case 4:
-      case 5:
-      case 9:
-      case 10:
-      case 12:
-      case 248:
-      case 249:
-      case 250:
-      case 251:
-      case 252:
-          break;
-      default:
-          return S_FALSE;
-      }
-  }
-#endif
-
+#ifndef SEVENZIP_LINUX_UDF
   // maybe another FileType values are possible in rare cases.
   // Shoud we ignore FileType here?
   if (fsIndex == -1) {
@@ -803,12 +786,11 @@ HRESULT CInArchive::ReadItem(unsigned volIndex, int fsIndex, const CLongAllocDes
   } else if (fsIndex >= 0 &&
              (item.IcbTag.FileType != ICB_FILE_TYPE_DIR &&
               item.IcbTag.FileType != ICB_FILE_TYPE_FILE &&
-#ifdef SEVENZIP_LINUX_UDF
-              item.IcbTag.FileType != ICB_FILE_TYPE_SYMLINK &&
-#endif
               item.IcbTag.FileType !=
                   ICB_FILE_TYPE_REAL_TIME_FILE)) // M2TS files in /BDMV/STREAM/ in Blu-ray movie
       return S_FALSE;
+
+#endif
 
   item.Parse(p);
 
@@ -817,8 +799,10 @@ HRESULT CInArchive::ReadItem(unsigned volIndex, int fsIndex, const CLongAllocDes
   const UInt32 extendedAttrLen = Get32(p + 168 + kExtendOffset);
   const UInt32 allocDescriptorsLen = Get32(p + 172 + kExtendOffset);
 
+#ifndef SEVENZIP_LINUX_UDF
   if ((extendedAttrLen & 3) != 0 && fsIndex >= -1)
       return S_FALSE;
+#endif
   size_t pos = 176 + kExtendOffset;
   if (extendedAttrLen > size - pos)
       return S_FALSE;
@@ -847,6 +831,13 @@ HRESULT CInArchive::ReadItem(unsigned volIndex, int fsIndex, const CLongAllocDes
       item.IsInline = descType == ICB_DESC_TYPE_INLINE;
       if (item.IsInline)
           item.InlineData.CopyFrom(p + pos, allocDescriptorsLen);
+      return S_OK;
+  }
+  const UInt32 modeType = item.LinuxAttributes.mode & 0170000;
+  if (fsIndex >= 0 &&
+      (modeType == 0020000 || modeType == 0060000 || modeType == 0010000 || modeType == 0140000)) {
+      // Special inode data is not a regular-file AD stream. Never open a host device.
+      item.IsInline = true;
       return S_OK;
   }
 #endif

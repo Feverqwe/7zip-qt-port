@@ -98,3 +98,55 @@ u8 udf_tag_checksum(const struct tag *t)
 			checksum += data[i];
 	return checksum;
 }
+
+
+struct genericFormat *udf_get_extendedattr(struct inode *inode, uint32_t type,
+					   uint8_t subtype)
+{
+	struct genericFormat *gaf;
+	uint8_t *ea = NULL;
+	uint32_t offset;
+	struct udf_inode_info *iinfo = UDF_I(inode);
+
+	ea = iinfo->i_data;
+
+	if (iinfo->i_lenEAttr >= sizeof(struct extendedAttrHeaderDesc)) {
+		struct extendedAttrHeaderDesc *eahd;
+		eahd = (struct extendedAttrHeaderDesc *)ea;
+
+		/* check checksum/crc */
+		if (eahd->descTag.tagIdent !=
+				cpu_to_le16(TAG_IDENT_EAHD) ||
+		    le32_to_cpu(eahd->descTag.tagLocation) !=
+				iinfo->i_location.logicalBlockNum)
+			return NULL;
+
+		if (type < 2048)
+			offset = sizeof(struct extendedAttrHeaderDesc);
+		else if (type < 65536)
+			offset = le32_to_cpu(eahd->impAttrLocation);
+		else
+			offset = le32_to_cpu(eahd->appAttrLocation);
+
+		while (offset < iinfo->i_lenEAttr &&
+		       sizeof(*gaf) < iinfo->i_lenEAttr - offset) {
+			uint32_t attrLength;
+
+			gaf = (struct genericFormat *)&ea[offset];
+			attrLength = le32_to_cpu(gaf->attrLength);
+
+			/* Detect undersized elements and buffer overflows */
+			if ((attrLength < sizeof(*gaf)) ||
+			    (attrLength > (iinfo->i_lenEAttr - offset)))
+				break;
+
+			if (le32_to_cpu(gaf->attrType) == type &&
+					gaf->attrSubtype == subtype)
+				return gaf;
+			else
+				offset += attrLength;
+		}
+	}
+
+	return NULL;
+}

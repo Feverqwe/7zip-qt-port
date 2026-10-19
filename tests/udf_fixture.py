@@ -16,6 +16,9 @@ CONTINUATIONS = ("ad-short", "ad-long", "ad-chain-short", "ad-chain-long",
 
 
 def volume(kind):
+    if kind.startswith("ia-"):
+        from udf_inode_fixture import volume as inode_volume
+        return inode_volume(kind)
     if kind.startswith("ns-"):
         from udf_names_fixture import volume as names_volume
         return names_volume(kind)
@@ -209,4 +212,8 @@ def volume(kind):
 if __name__ == "__main__":
     image, files = volume(sys.argv[1])
     Path(sys.argv[2]).write_bytes(image)
-    print(json.dumps({name: data.hex() for name, data in files.items()}))
+    result = {name: data.hex() for name, data in files.items()}
+    if "--metadata" in sys.argv[3:]:
+        from udf_inode_fixture import attributes
+        result = {"files": result, "attributes": attributes(sys.argv[1])}
+    print(json.dumps(result))

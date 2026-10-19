@@ -632,7 +632,93 @@ Actual macOS CMake install прочитал все 169 положительны�
 Staging, native mounts и временные images удалены. Build trees и compiler
 caches переиспользованы; full/slow/UI/physical-device acceptance не выполнялась.
 
-Полный UDF audit остаётся открытым: специальные inode/device EA, permissions,
-UID/GID/link metadata и оставшиеся directory/inode/read policies требуют
+Полный UDF audit остаётся открытым: оставшиеся directory/inode/read policies требуют
 следующей интегрированной source comparison. Standalone decoder и physical-CD
 границы остаются прежними; эта итерация их не закрывает.
+
+## Inode attributes, special files и timestamps
+
+Повторно сравнены полные Linux `udf_read_inode`, `__udf_iget`,
+`udf_alloc_i_data`, `udf_convert_permissions`, `udf_get_extendedattr`,
+`udf_disk_stamp_to_time`, mount defaults/credential flags, ECMA FE/EFE/EA
+structures и их callers. Сопоставлены исходные 7-Zip `CItem::Parse`, ICB/FID
+consumers, hidden VAT/metadata reader, properties, streams и extraction.
+Сохранён pinned commit из начала audit; [manifest](../udf-linux-baseline.json)
+включает `udftime.c` и общий dependency `kernel/time/time.c`.
+
+В `src/fs/udf/inode.c` дополнена оставшаяся часть исходного `udf_read_inode`;
+`udf_alloc_i_data` и `udf_convert_permissions` перенесены целиком. Теперь native
+C body проверяет FE/EFE/USE, allocation lengths и inline size, выбирает inode
+type, права, владельцев, link count, blocks, timestamps и named-stream metadata.
+Прежние независимые C++ type whitelist и требование выравнивания EA по четыре
+байта убраны из Linux branch. Typed attributes передаются вместе с validated
+FE/EFE единственному 7-Zip archive projection. Обычный zero-link inode
+отвергается; hidden VAT/metadata inode получает native fallback link count.
+Directory link count увеличивается без прежнего ограничения UInt16 property.
+
+После реализации повторно сравнены полные bodies. Адаптации `udf_read_inode`:
+не публикуются VFS inode/file/page-cache operations и highmem settings;
+успешный FE buffer удерживается до archive projection, включая USE early return.
+Owned `i_data` и buffer освобождаются wrapper после копирования, в том числе
+при ошибках. Serialized calls заменяют VFS credential locks; kernel operation
+tables, inode-cache publication и write paths не реализуются фиктивными handlers.
+`__udf_iget` cache/role consistency остаётся отдельной частью read-policy audit.
+
+Permissions и setuid/setgid/sticky flags преобразуются исходным helper.
+Mode, UID/GID, links и device major/minor доступны через стандартные archive
+properties. Default Linux profile использует overflow UID/GID 65534 для disk -1;
+host sysctl/user namespace и mount overrides не экспонируются archive API.
+`udf_get_extendedattr` перенесён в `misc.c`; сохранены EAHD identity/location,
+поиск type/subtype, порядок attributes и native internal dev_t normalization.
+Невостребованные EA fields не валидируются дополнительно. Защита malformed
+границ дополнена: EA header должен помещаться в declared EA, deviceSpec — в
+declared attribute; offset scan не переполняется. Два таких варианта проверены
+только модулем, без заявления native malformed-input parity. Windows shim
+отображает отсутствующий в MSVC `ESTALE` в обычную archive input error.
+
+Block/character devices, FIFO и socket перечисляются с native metadata.
+Их AD не интерпретируются как обычное содержимое: нулевой размер даёт пустой
+archive stream; ненулевой information length сохраняется в properties, а data
+stream возвращает E_NOTIMPL. Host device/FIFO/socket не открывается. Private
+metadata inode без обычного file type не получает публичный regular stream;
+внутренний hidden metadata backing reader остаётся подключён. Создание device
+nodes и native special-file I/O не входят в archive read boundary.
+
+`src/fs/udf/udftime.c` содержит исходный `udf_disk_stamp_to_time` без изменения
+body. Переиспользован ранее перенесённый Linux `mktime64`; его include теперь
+ограничен portable integer types, вместо зависимости от ISO service header.
+Все UDF archive/item time properties используют этот converter: timezone type,
+signed/unspecified offset, fractional sanitization, leap second и нормализация
+date fields соответствуют Linux. 7-Zip FILETIME adapter ограничивает результат
+диапазоном публичного типа и сохраняет microsecond precision. Write-side
+`udf_time_to_disk_stamp` не переносится. Оригинальный LGPL-2.0+ notice сохранён;
+pinned Linux LGPL-2.0 text устанавливается вместе с прежними GPL/7-Zip notices
+на Unix/macOS и Windows. GPL/LGPL C остаётся в отдельном format module.
+
+32 новых положительных variants сверены с read-only native Linux
+`6.8.0-147-generic`, включая закрытые права (data check от root), high/overflow
+owners, 65535/65536 links, regular type aliases, FE/EFE device EA, subtype/chain,
+EAHD tag policy, unaligned EA, hidden zero-link metadata и timestamps.
+Десять invalid inode/EA variants отвергнуты native stat и модулем. Отдельный
+special inode с ненулевой длиной сравнен через stat без открытия устройства;
+модуль проверяет его metadata-only контракт. Mounts и images удалены.
+
+CLI проверяет точные bytes и published properties; ABI — mode/owner/link/device
+values, FILETIME quantums, empty и unavailable streams, EOF и ownership после
+Close/release. Backend consumers дополняют coverage для type alias, unaligned EA
+и rewritten EFE. Прежние cancellation/I/O/mirror checks остаются включены.
+Семь focused suites (`udf`, `udf_stream`, `iso`, `iso_stream`,
+`upstream_baseline`, `runtime_cache`, `runtime_package`) прошли на macOS arm64,
+Linux x64 и Windows x64/MSVC. Linux receipt `20261019T234537Z-ae6f25af`;
+Windows после исправления compile error ESTALE — `20261019T234653Z-f8965613`.
+Общий ISO consumer включён из-за переиспользования `mktime64`.
+Actual macOS CMake install прочитал все 201 положительный UDF variant,
+сохранил source bytes и установил три notices с точным исходным содержимым.
+Staging удалён; incremental builds/caches сохранены. Full/slow/UI/physical-device
+acceptance не выполнялась.
+
+Полный UDF audit не закрыт: directory FID, partition-map и оставшиеся cache/read
+policies, включая non-FE inode publication, требуют следующей сверки.
+USE обрабатывается C service как free-space descriptor, но не публикуется
+7-Zip projection как пользовательский inode. Standalone/VFS/physical-device
+границы прежние.

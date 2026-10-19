@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
 /* Copyright (C) 1991, 1992 Linus Torvalds. Selected mktime64 read helper. */
-#include "../../fs/isofs/isofs.h"
+#include <stdint.h>
 typedef int64_t time64_t;
 
 /**

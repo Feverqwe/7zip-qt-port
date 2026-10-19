@@ -106,8 +106,10 @@ EOF и AED tag/read policies сверены с Linux.
 Volume discovery, block geometry, резервные anchors/VDS и prevailing descriptors
 подключены к исходному Linux C reader; проверены tagged fileset и LVID read revision.
 CS0 names/dstrings, default UTF-8, CRC mangling и symlink path components
-подключены к исходным Linux C converters. Специальные inode/device EA и
-оставшиеся metadata/read policies UDF ещё требуют актуализации.
+подключены к исходным Linux C converters. Read-side body `udf_read_inode`,
+permissions/owners/links, специальные inode/device EA и исходное преобразование
+timestamps также подключены. Оставшиеся directory, partition-map и cache/read
+policies UDF ещё требуют сверки.
 
 ### HFS+/HFSX: fork mapping и metadata reads
 

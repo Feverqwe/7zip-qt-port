@@ -133,6 +133,7 @@ class UdfStreamTests final : public QObject {
     QLibrary module_{QString::fromUtf8(SEVENZIP_UDF_CORE)};
     CMyComPtr<IInArchive> archive_;
     QJsonObject files_;
+    QJsonObject attributes_;
     QByteArray bytes_;
 
     void createArchive() {
@@ -160,16 +161,21 @@ class UdfStreamTests final : public QObject {
         }
         QFAIL("Prepared engine has no UDF handler");
     }
-    void fixture(const QString &kind) {
+    void fixture(const QString &kind, bool metadata = false) {
         QTemporaryDir temporary;
         QVERIFY(temporary.isValid());
         const QString path = temporary.filePath("volume.udf");
         QProcess process;
-        process.start(QString::fromUtf8(SEVENZIP_UDF_PYTHON),
-                      {QString::fromUtf8(SEVENZIP_UDF_FIXTURE), kind, path});
+        QStringList arguments{QString::fromUtf8(SEVENZIP_UDF_FIXTURE), kind, path};
+        if (metadata)
+            arguments.append("--metadata");
+        process.start(QString::fromUtf8(SEVENZIP_UDF_PYTHON), arguments);
         QVERIFY(process.waitForFinished(10000));
         QCOMPARE(process.exitCode(), 0);
-        files_ = QJsonDocument::fromJson(process.readAllStandardOutput()).object();
+        const QJsonObject result =
+            QJsonDocument::fromJson(process.readAllStandardOutput()).object();
+        files_ = metadata ? result["files"].toObject() : result;
+        attributes_ = metadata ? result["attributes"].toObject() : QJsonObject{};
         QFile file(path);
         QVERIFY(file.open(QIODevice::ReadOnly));
         bytes_ = file.readAll();
@@ -319,6 +325,111 @@ class UdfStreamTests final : public QObject {
             QTest::newRow(kind) << QString::fromLatin1(kind);
     }
     void discoveryStreams() { allocationStreams(); }
+    void inodeAttributes_data() {
+        QTest::addColumn<QString>("kind");
+        for (const char *kind : {"ia-owner",
+                                 "ia-overflow",
+                                 "ia-high-owner",
+                                 "ia-permissions",
+                                 "ia-extra-permissions",
+                                 "ia-links",
+                                 "ia-directory",
+                                 "ia-undef",
+                                 "ia-vat-type",
+                                 "ia-realtime",
+                                 "ia-char",
+                                 "ia-block",
+                                 "ia-fifo",
+                                 "ia-socket",
+                                 "ia-device-chain",
+                                 "ia-device-subtypes",
+                                 "ia-device-tag-crc",
+                                 "ia-device-max",
+                                 "ia-device-payload",
+                                 "ia-unaligned-ea",
+                                 "ia-efe-owner",
+                                 "ia-efe-device",
+                                 "ia-hidden-zero-links",
+                                 "ia-time-zone",
+                                 "ia-time-negative-zone",
+                                 "ia-time-unspecified",
+                                 "ia-time-type0",
+                                 "ia-time-type2",
+                                 "ia-time-fraction",
+                                 "ia-time-bad-fraction",
+                                 "ia-time-leap",
+                                 "ia-time-month",
+                                 "ia-time-day"})
+            QTest::newRow(kind) << QString::fromLatin1(kind);
+    }
+    void inodeAttributes() {
+        QFETCH(QString, kind);
+        fixture(kind, true);
+        CMyComPtr<IInStream> input = new Input(bytes_);
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        UInt32 count = 0;
+        QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+        QSet<QString> checked;
+        for (UInt32 i = 0; i < count; ++i) {
+            NWindows::NCOM::CPropVariant path;
+            QCOMPARE(archive_->GetProperty(i, kpidPath, &path), S_OK);
+            QCOMPARE(path.vt, VARTYPE(VT_BSTR));
+            const QString name = QString::fromWCharArray(path.bstrVal).replace('\\', '/');
+            if (!attributes_.contains(name))
+                continue;
+            checked.insert(name);
+            const QJsonObject expected = attributes_[name].toObject();
+            for (const auto &[key, property] : {std::pair{"mode", kpidPosixAttrib},
+                                                {"uid", kpidUserId},
+                                                {"gid", kpidGroupId},
+                                                {"links", kpidLinks},
+                                                {"major", kpidDeviceMajor},
+                                                {"minor", kpidDeviceMinor}}) {
+                if (!expected.contains(key))
+                    continue;
+                NWindows::NCOM::CPropVariant prop;
+                QCOMPARE(archive_->GetProperty(i, property, &prop), S_OK);
+                QCOMPARE(prop.vt, VARTYPE(VT_UI4));
+                QCOMPARE(prop.ulVal, UInt32(expected[key].toInteger()));
+            }
+            if (expected.contains("seconds")) {
+                NWindows::NCOM::CPropVariant time;
+                QCOMPARE(archive_->GetProperty(i, kpidMTime, &time), S_OK);
+                QCOMPARE(time.vt, VARTYPE(VT_FILETIME));
+                const UInt64 actual =
+                    ((UInt64)time.filetime.dwHighDateTime << 32) | time.filetime.dwLowDateTime;
+                const UInt64 wanted =
+                    UInt64(expected["seconds"].toInteger() + 11644473600LL) * 10000000 +
+                    expected["nanoseconds"].toInteger() / 100;
+                QCOMPARE(actual, wanted);
+            }
+            if (expected.contains("size")) {
+                NWindows::NCOM::CPropVariant size;
+                QCOMPARE(archive_->GetProperty(i, kpidSize, &size), S_OK);
+                QCOMPARE(size.vt, VARTYPE(VT_UI8));
+                QCOMPARE(size.uhVal.QuadPart, UInt64(expected["size"].toInteger()));
+            }
+            if (kind == "ia-device-payload") {
+                CMyComPtr<IInArchiveGetStream> provider;
+                QCOMPARE(archive_->QueryInterface(IID_IInArchiveGetStream,
+                                                  reinterpret_cast<void **>(&provider)),
+                         S_OK);
+                CMyComPtr<ISequentialInStream> data;
+                QCOMPARE(provider->GetStream(i, &data), E_NOTIMPL);
+                QVERIFY(!data);
+            }
+        }
+        QCOMPARE(checked.size(), attributes_.size());
+        for (auto i = files_.begin(); i != files_.end(); ++i)
+            if (kind != "ia-device-payload" || i.key() != "alpha.bin")
+                check(stream(i.key()), QByteArray::fromHex(i.value().toString().toLatin1()));
+        const QString retainedName = kind == "ia-device-payload" ? "nested/tail.bin" : "alpha.bin";
+        auto retained = stream(retainedName);
+        const QByteArray expected = QByteArray::fromHex(files_[retainedName].toString().toLatin1());
+        QCOMPARE(archive_->Close(), S_OK);
+        archive_.Release();
+        check(retained, expected);
+    }
     void namespaceStreams_data() {
         QTest::addColumn<QString>("kind");
         for (const char *kind :
@@ -681,7 +792,10 @@ class UdfStreamTests final : public QObject {
                                  "ds-main-reserve",
                                  "ns-utf16",
                                  "ns-nul",
-                                 "ns-limit"})
+                                 "ns-limit",
+                                 "ia-undef",
+                                 "ia-unaligned-ea",
+                                 "ia-efe-owner"})
             QTest::newRow(kind) << QString::fromLatin1(kind);
     }
     void backendExtraction() {

@@ -34,6 +34,7 @@ install(TARGETS sevenzip_hfs RUNTIME DESTINATION bin/Formats LIBRARY DESTINATION
 install(TARGETS sevenzip_iso RUNTIME DESTINATION bin/Formats LIBRARY DESTINATION bin/Formats)
 install(TARGETS sevenzip_udf RUNTIME DESTINATION bin/Formats LIBRARY DESTINATION bin/Formats)
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/preferred/GPL-2.0"
+    "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/preferred/LGPL-2.0"
     "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/DOC/copying.txt"
     DESTINATION share/licenses/sevenzip-desktop/sevenzip-udf)
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/preferred/GPL-2.0"

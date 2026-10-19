@@ -11,6 +11,9 @@
 #define UDF_MAX_READ_VERSION 0x0260
 #define UDF_FLAG_NOVRS 8
 #define UDF_FLAG_RW_INCOMPAT 19
+#define UDF_FLAG_UID_SET 13
+#define UDF_FLAG_GID_SET 14
+#define UDF_INVALID_MODE ((umode_t)-1)
 
 struct udf_meta_data {
 	uint32_t s_meta_file_loc;
@@ -44,6 +47,8 @@ struct udf_part_map {
 	uint32_t (*s_partition_func)(struct super_block *, uint32_t, uint16_t, uint32_t);
 };
 struct udf_sb_info {
+	uint32_t s_uid, s_gid;
+	umode_t s_umask, s_fmode, s_dmode;
 	struct nls_table *s_nls_map;
 	uint32_t s_partitions;
 	struct udf_part_map *s_partmaps;

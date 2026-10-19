@@ -336,6 +336,7 @@ struct CItem {
     CLogBlockAddr Location;
     CByteBuffer LinuxAllocData;
     UString SymLink;
+    sevenzip_udf_inode LinuxAttributes{};
 #endif
     CIcbTag IcbTag;
 
@@ -507,8 +508,8 @@ private:
   struct CVatBuilder;
   HRESULT LoadLinuxVat(unsigned volIndex, unsigned partitionRef);
   HRESULT LoadLinuxMetadata(unsigned volIndex, unsigned partitionRef);
-  HRESULT ReadLinuxItem(unsigned volIndex, CLongAllocDesc &location, CByteBuffer &data,
-                        HRESULT *progressResult);
+  HRESULT ReadLinuxItem(unsigned volIndex, CLongAllocDesc &location, CByteBuffer &data, CItem &item,
+                        bool hidden, HRESULT *progressResult);
   HRESULT ReadLinuxExtents(unsigned volIndex, unsigned partitionRef, CItem &item, const Byte *data,
                            UInt32 size, HRESULT *progressResult);
 #endif

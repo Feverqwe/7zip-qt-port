@@ -19,36 +19,45 @@
 namespace NArchive {
 namespace NUdf {
 
-static void UdfTimeToFileTime(const CTime &t, NWindows::NCOM::CPropVariant &prop)
-{
-  UInt64 numSecs;
-  const Byte *d = t.Data;
-  if (!NWindows::NTime::GetSecondsSince1601(t.GetYear(), d[4], d[5], d[6], d[7], d[8], numSecs))
-    return;
-  if (t.IsLocal())
-    numSecs = (UInt64)((Int64)numSecs - (Int64)((Int32)t.GetMinutesOffset() * 60));
-  const UInt32 m0 = d[9];
-  const UInt32 m1 = d[10];
-  const UInt32 m2 = d[11];
-  unsigned numDigits = 0;
-  UInt64 v = numSecs * 10000000;
-  if (m0 < 100 && m1 < 100 && m2 < 100)
-  {
-    v += m0 * 100000 + m1 * 1000 + m2 * 10;
-    numDigits = 6;
-  }
-  prop.SetAsTimeFrom_Ft64_Prec(v, k_PropVar_TimePrec_Base + numDigits);
+static void UdfTimeToFileTime(const CTime &t, NWindows::NCOM::CPropVariant &prop) {
+#ifdef SEVENZIP_LINUX_UDF
+    sevenzip_udf_time time{};
+    sevenzip_udf_stamp(t.Data, &time);
+    UInt64 value;
+    if (NWindows::NTime::UnixTime64_To_FileTime64(time.seconds, value) &&
+        value <= UINT64_MAX - time.nanoseconds / 100) {
+        value += time.nanoseconds / 100;
+        prop.SetAsTimeFrom_Ft64_Prec(value, k_PropVar_TimePrec_Base + 6);
+    }
+#else
+    UInt64 numSecs;
+    const Byte *d = t.Data;
+    if (!NWindows::NTime::GetSecondsSince1601(t.GetYear(), d[4], d[5], d[6], d[7], d[8], numSecs))
+        return;
+    if (t.IsLocal())
+        numSecs = (UInt64)((Int64)numSecs - (Int64)((Int32)t.GetMinutesOffset() * 60));
+    const UInt32 m0 = d[9];
+    const UInt32 m1 = d[10];
+    const UInt32 m2 = d[11];
+    unsigned numDigits = 0;
+    UInt64 v = numSecs * 10000000;
+    if (m0 < 100 && m1 < 100 && m2 < 100) {
+        v += m0 * 100000 + m1 * 1000 + m2 * 10;
+        numDigits = 6;
+    }
+    prop.SetAsTimeFrom_Ft64_Prec(v, k_PropVar_TimePrec_Base + numDigits);
+#endif
 }
 
-static const Byte kProps[] = {kpidPath, kpidIsDir, kpidSize, kpidPackSize, kpidMTime, kpidATime,
-                              kpidCTime, kpidChangeTime,
-                              // kpidUserId,
-                              // kpidGroupId,
-                              // kpidPosixAttrib,
-                              kpidLinks
+static const Byte kProps[] = {
+    kpidPath, kpidIsDir, kpidSize, kpidPackSize, kpidMTime, kpidATime, kpidCTime, kpidChangeTime,
+    // kpidUserId,
+    // kpidGroupId,
+    // kpidPosixAttrib,
+    kpidLinks
 #ifdef SEVENZIP_LINUX_UDF
-                              ,
-                              kpidSymLink, kpidPosixAttrib
+    ,
+    kpidSymLink, kpidPosixAttrib, kpidUserId, kpidGroupId, kpidDeviceMajor, kpidDeviceMinor
 #endif
 };
 
@@ -246,16 +255,31 @@ Z7_COM7F_IMF(CHandler::GetProperty(UInt32 index, PROPID propID, PROPVARIANT *val
       // case kpidUserId: prop = item.Uid; break;
       // case kpidGroupId: prop = item.Gid; break;
       // case kpidPosixAttrib: prop = (UInt32)item.Permissions; break;
+#ifdef SEVENZIP_LINUX_UDF
+      case kpidLinks: prop = item.LinuxAttributes.links; break;
+#else
       case kpidLinks: prop = (UInt32)item.FileLinkCount; break;
+#endif
 #ifdef SEVENZIP_LINUX_UDF
       case kpidSymLink:
-        if (item.IcbTag.FileType == ICB_FILE_TYPE_SYMLINK)
-            prop = item.SymLink;
-        break;
-      case kpidPosixAttrib:
           if (item.IcbTag.FileType == ICB_FILE_TYPE_SYMLINK)
-              // udf_read_inode publishes S_IFLNK | 0777, including empty targets.
-              prop = (UInt32)0120777;
+              prop = item.SymLink;
+          break;
+      case kpidPosixAttrib:
+          prop = item.LinuxAttributes.mode;
+          break;
+      case kpidUserId:
+          prop = item.LinuxAttributes.uid;
+          break;
+      case kpidGroupId:
+          prop = item.LinuxAttributes.gid;
+          break;
+      case kpidDeviceMajor:
+      case kpidDeviceMinor:
+          if ((item.LinuxAttributes.mode & 0170000) == 0020000 ||
+              (item.LinuxAttributes.mode & 0170000) == 0060000)
+              prop = propID == kpidDeviceMajor ? item.LinuxAttributes.device_major
+                                               : item.LinuxAttributes.device_minor;
           break;
 #endif
       }

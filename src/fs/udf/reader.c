@@ -89,7 +89,8 @@ void brelse(struct buffer_head *bh)
 
 int sevenzip_udf_icb(void *context, sevenzip_udf_read read, uint32_t block_size,
                      const uint32_t *lengths, uint32_t partitions,
-                     uint16_t *partition, uint32_t *block, void *data)
+                     uint16_t *partition, uint32_t *block, void *data,
+                     int hidden, struct sevenzip_udf_inode *attributes)
 {
     struct super_block sb = {0};
     struct inode inode = {0};
@@ -101,19 +102,31 @@ int sevenzip_udf_icb(void *context, sevenzip_udf_read read, uint32_t block_size,
     for (i = 0; i < partitions; ++i)
         sb.info.s_partmaps[i].s_partition_len = lengths[i];
     sb.info.s_partitions = partitions;
+    sb.info.s_uid = sb.info.s_gid = 65534;
+    sb.info.s_fmode = sb.info.s_dmode = UDF_INVALID_MODE;
     sb.s_blocksize = block_size;
+    while ((1U << sb.s_blocksize_bits) < block_size)
+        ++sb.s_blocksize_bits;
     sb.context = context;
     sb.read = read;
     inode.i_sb = &sb;
     inode.info.i_location.logicalBlockNum = *block;
     inode.info.i_location.partitionReferenceNum = *partition;
-    result = sevenzip_udf_read_inode(&inode);
+    result = sevenzip_udf_read_inode(&inode, hidden != 0);
     if (!result) {
         memcpy(data, inode.entry->b_data, block_size);
         *block = inode.info.i_location.logicalBlockNum;
         *partition = inode.info.i_location.partitionReferenceNum;
+        attributes->mode = inode.i_mode;
+        attributes->uid = inode.i_uid;
+        attributes->gid = inode.i_gid;
+        attributes->links = inode.i_nlink;
+        attributes->device_major = MAJOR(inode.i_rdev);
+        attributes->device_minor = MINOR(inode.i_rdev);
+        attributes->hidden = inode.info.i_hidden;
     }
     brelse(inode.entry);
+    free(inode.info.i_data);
     free(sb.info.s_partmaps);
     return result;
 }

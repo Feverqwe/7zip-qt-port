@@ -265,7 +265,7 @@ int CInArchive::ReadLinuxBlock(void *opaque, UInt16 partition, UInt32 block, voi
 }
 
 HRESULT CInArchive::ReadLinuxItem(unsigned volIndex, CLongAllocDesc &location, CByteBuffer &data,
-                                  HRESULT *progressResult) {
+                                  CItem &item, bool hidden, HRESULT *progressResult) {
     CLinuxContext context{this, volIndex, nullptr};
     const bool previousUnexpectedEnd = UnexpectedEnd;
     const CLogVol &vol = LogVols[volIndex];
@@ -274,8 +274,9 @@ HRESULT CInArchive::ReadLinuxItem(unsigned volIndex, CLongAllocDesc &location, C
     lengths.Add(Partitions[vol.PartitionMaps[i].PartitionIndex].Len);
     uint16_t partition = location.Location.PartitionRef;
     uint32_t block = location.Location.Pos;
-    const int result = sevenzip_udf_icb(&context, ReadLinuxBlock, vol.BlockSize, &lengths[0],
-                                        lengths.Size(), &partition, &block, data);
+    const int result =
+        sevenzip_udf_icb(&context, ReadLinuxBlock, vol.BlockSize, &lengths[0], lengths.Size(),
+                         &partition, &block, data, hidden, &item.LinuxAttributes);
     if (context.progressResult != S_OK) {
         if (progressResult)
             *progressResult = context.progressResult;

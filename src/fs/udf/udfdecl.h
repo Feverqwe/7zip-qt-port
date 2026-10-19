@@ -21,13 +21,18 @@
 #ifndef EFSCORRUPTED
 #define EFSCORRUPTED EIO
 #endif
+#ifndef ESTALE
+#define ESTALE EIO
+#endif
 #if defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
 #define le16_to_cpu(v) __builtin_bswap16(v)
 #define le32_to_cpu(v) __builtin_bswap32(v)
+#define le64_to_cpu(v) __builtin_bswap64(v)
 #define cpu_to_le16(v) __builtin_bswap16(v)
 #else
 #define le16_to_cpu(v) (v)
 #define le32_to_cpu(v) (v)
+#define le64_to_cpu(v) (v)
 #define cpu_to_le16(v) (v)
 #endif
 #include "udfend.h"
@@ -51,6 +56,29 @@ typedef uint64_t udf_pblk_t;
 struct buffer_head { uint8_t *b_data; unsigned b_size, references; };
 typedef uint32_t u32;
 typedef uint64_t sector_t;
+typedef uint16_t umode_t;
+typedef uint16_t u16;
+struct timespec64 { int64_t tv_sec; long tv_nsec; };
+#define UDF_INVALID_ID UINT32_MAX
+/* Linux mode/dev_t representation, independent of the host C runtime. */
+#define S_IFDIR 0040000
+#define S_IFREG 0100000
+#define S_IFBLK 0060000
+#define S_IFCHR 0020000
+#define S_IFIFO 0010000
+#define S_IFSOCK 0140000
+#define S_IFLNK 0120000
+#define S_ISUID 04000
+#define S_ISGID 02000
+#define S_ISVTX 01000
+#define S_ISCHR(mode) (((mode) & 0170000) == S_IFCHR)
+#define S_ISBLK(mode) (((mode) & 0170000) == S_IFBLK)
+#include "../../include/linux/kdev_t.h"
+#define MKDEV(major, minor) (((uint32_t)(major) << 20) | (uint32_t)(minor))
+#define kmalloc(size, flags) malloc(size)
+#define GFP_KERNEL 0
+#define read_lock(lock) ((void)0)
+#define read_unlock(lock) ((void)0)
 struct super_block;
 struct inode;
 #include "udf_sb.h"
@@ -96,6 +124,11 @@ struct udf_inode_info {
     unsigned i_alloc_type, i_efe, i_use, i_strat4096;
     uint8_t *i_data;
     struct udf_ext_cache cached_extent;
+    unsigned i_hidden, i_streamdir;
+    uint64_t i_unique, i_lenStreams;
+    uint32_t i_next_alloc_block, i_next_alloc_goal, i_extraPerms, i_checkpoint;
+    struct kernel_lb_addr i_locStreamdir;
+    struct timespec64 i_crtime;
 };
 struct inode {
     struct super_block *i_sb;
@@ -103,7 +136,24 @@ struct inode {
     struct buffer_head *entry;
     uint64_t i_size;
     void *file;
+    uint32_t i_uid, i_gid, i_nlink, i_rdev;
+    umode_t i_mode;
+    uint64_t i_blocks, i_generation;
+    struct timespec64 atime, mtime, ctime;
 };
+static inline void i_uid_write(struct inode *inode, uint32_t id) { inode->i_uid = id; }
+static inline void i_gid_write(struct inode *inode, uint32_t id) { inode->i_gid = id; }
+static inline void set_nlink(struct inode *inode, unsigned count) { inode->i_nlink = count; }
+static inline void inc_nlink(struct inode *inode) { ++inode->i_nlink; }
+static inline void init_special_inode(struct inode *inode, umode_t mode, uint32_t dev) {
+    inode->i_mode = mode;
+    inode->i_rdev = dev;
+}
+static inline void inode_set_atime_to_ts(struct inode *inode, struct timespec64 ts) { inode->atime = ts; }
+static inline void inode_set_mtime_to_ts(struct inode *inode, struct timespec64 ts) { inode->mtime = ts; }
+static inline void inode_set_ctime_to_ts(struct inode *inode, struct timespec64 ts) { inode->ctime = ts; }
+void udf_disk_stamp_to_time(struct timespec64 *, struct timestamp);
+int64_t mktime64(unsigned int, unsigned int, unsigned int, unsigned int, unsigned int, unsigned int);
 static inline uint64_t sb_bdev_nr_blocks(struct super_block *sb) { return sb->blocks; }
 struct inode *udf_iget_special(struct super_block *, const struct kernel_lb_addr *);
 struct buffer_head *udf_bread(struct inode *, uint32_t, int, int *);
@@ -152,7 +202,8 @@ int sevenzip_udf_next_aext(struct sevenzip_udf_walk *, struct inode *, struct ex
 u8 udf_tag_checksum(const struct tag *);
 struct buffer_head *udf_read_tagged(struct super_block *, udf_pblk_t, uint32_t, uint16_t *);
 struct buffer_head *udf_read_ptagged(struct super_block *, struct kernel_lb_addr *, uint32_t, uint16_t *);
-int sevenzip_udf_read_inode(struct inode *);
+int sevenzip_udf_read_inode(struct inode *, bool);
+struct genericFormat *udf_get_extendedattr(struct inode *, uint32_t, uint8_t);
 uint32_t udf_get_pblock_spar15(struct super_block *, uint32_t, uint16_t, uint32_t);
 int sevenzip_udf_load_sparable(struct super_block *, struct udf_part_map *, struct sparablePartitionMap *);
 uint32_t udf_get_pblock(struct super_block *, uint32_t, uint16_t, uint32_t);

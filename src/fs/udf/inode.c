@@ -132,19 +132,28 @@ int udf_current_aext(struct inode *inode, struct extent_position *epos,
 }
 
 #define UDF_MAX_ICB_NESTING 1024
+#define FE_MAPPED_PERMS	(FE_PERM_U_READ | FE_PERM_U_WRITE | FE_PERM_U_EXEC | \
+			 FE_PERM_G_READ | FE_PERM_G_WRITE | FE_PERM_G_EXEC | \
+			 FE_PERM_O_READ | FE_PERM_O_WRITE | FE_PERM_O_EXEC)
+
+static int udf_alloc_i_data(struct inode *, size_t);
+static umode_t udf_convert_permissions(struct fileEntry *);
 
 static int udf_read_inode(struct inode *inode, bool hidden_inode)
 {
 	struct buffer_head *bh = NULL;
 	struct fileEntry *fe;
+	struct extendedFileEntry *efe;
 	uint16_t ident;
 	struct udf_inode_info *iinfo = UDF_I(inode);
 	struct udf_sb_info *sbi = UDF_SB(inode->i_sb);
 	struct kernel_lb_addr *iloc = &iinfo->i_location;
+	unsigned int link_count;
 	unsigned int indirections = 0;
+	int bs = inode->i_sb->s_blocksize;
 	int ret = -EIO;
-
-	(void)hidden_inode;
+	uint32_t uid, gid;
+	struct timespec64 ts;
 
 reread:
 	if (iloc->partitionReferenceNum >= sbi->s_partitions) {
@@ -186,6 +195,7 @@ reread:
 	}
 
 	fe = (struct fileEntry *)bh->b_data;
+	efe = (struct extendedFileEntry *)bh->b_data;
 
 	if (fe->icbTag.strategyType == cpu_to_le16(4096)) {
 		struct buffer_head *ibh;
@@ -232,17 +242,227 @@ reread:
 		ret = -EIO;
 		goto out;
 	}
-	/* Archive consumer owns the final FE/EFE projection. */
-	inode->entry = bh;
-	return 0;
+	iinfo->i_hidden = hidden_inode;
+	iinfo->i_unique = 0;
+	iinfo->i_lenEAttr = 0;
+	iinfo->i_lenExtents = 0;
+	iinfo->i_lenAlloc = 0;
+	iinfo->i_next_alloc_block = 0;
+	iinfo->i_next_alloc_goal = 0;
+	if (fe->descTag.tagIdent == cpu_to_le16(TAG_IDENT_EFE)) {
+		iinfo->i_efe = 1;
+		iinfo->i_use = 0;
+		ret = udf_alloc_i_data(inode, bs -
+					sizeof(struct extendedFileEntry));
+		if (ret)
+			goto out;
+		memcpy(iinfo->i_data,
+		       bh->b_data + sizeof(struct extendedFileEntry),
+		       bs - sizeof(struct extendedFileEntry));
+	} else if (fe->descTag.tagIdent == cpu_to_le16(TAG_IDENT_FE)) {
+		iinfo->i_efe = 0;
+		iinfo->i_use = 0;
+		ret = udf_alloc_i_data(inode, bs - sizeof(struct fileEntry));
+		if (ret)
+			goto out;
+		memcpy(iinfo->i_data,
+		       bh->b_data + sizeof(struct fileEntry),
+		       bs - sizeof(struct fileEntry));
+	} else if (fe->descTag.tagIdent == cpu_to_le16(TAG_IDENT_USE)) {
+		iinfo->i_efe = 0;
+		iinfo->i_use = 1;
+		iinfo->i_lenAlloc = le32_to_cpu(
+				((struct unallocSpaceEntry *)bh->b_data)->
+				 lengthAllocDescs);
+		if (iinfo->i_lenAlloc > bs - sizeof(struct unallocSpaceEntry)) {
+			ret = -EFSCORRUPTED;
+			goto out;
+		}
+		ret = udf_alloc_i_data(inode, bs -
+					sizeof(struct unallocSpaceEntry));
+		if (ret)
+			goto out;
+		memcpy(iinfo->i_data,
+		       bh->b_data + sizeof(struct unallocSpaceEntry),
+		       bs - sizeof(struct unallocSpaceEntry));
+		inode->entry = bh;
+		return 0;
+	}
+
+	ret = -EIO;
+	read_lock(&sbi->s_cred_lock);
+	uid = le32_to_cpu(fe->uid);
+	if (uid == UDF_INVALID_ID ||
+	    UDF_QUERY_FLAG(inode->i_sb, UDF_FLAG_UID_SET))
+		inode->i_uid = sbi->s_uid;
+	else
+		i_uid_write(inode, uid);
+
+	gid = le32_to_cpu(fe->gid);
+	if (gid == UDF_INVALID_ID ||
+	    UDF_QUERY_FLAG(inode->i_sb, UDF_FLAG_GID_SET))
+		inode->i_gid = sbi->s_gid;
+	else
+		i_gid_write(inode, gid);
+
+	if (fe->icbTag.fileType != ICBTAG_FILE_TYPE_DIRECTORY &&
+			sbi->s_fmode != UDF_INVALID_MODE)
+		inode->i_mode = sbi->s_fmode;
+	else if (fe->icbTag.fileType == ICBTAG_FILE_TYPE_DIRECTORY &&
+			sbi->s_dmode != UDF_INVALID_MODE)
+		inode->i_mode = sbi->s_dmode;
+	else
+		inode->i_mode = udf_convert_permissions(fe);
+	inode->i_mode &= ~sbi->s_umask;
+	iinfo->i_extraPerms = le32_to_cpu(fe->permissions) & ~FE_MAPPED_PERMS;
+
+	read_unlock(&sbi->s_cred_lock);
+
+	link_count = le16_to_cpu(fe->fileLinkCount);
+	if (!link_count) {
+		if (!hidden_inode) {
+			ret = -ESTALE;
+			goto out;
+		}
+		link_count = 1;
+	}
+	set_nlink(inode, link_count);
+
+	inode->i_size = le64_to_cpu(fe->informationLength);
+	iinfo->i_lenExtents = inode->i_size;
+
+	if (iinfo->i_efe == 0) {
+		inode->i_blocks = le64_to_cpu(fe->logicalBlocksRecorded) <<
+			(inode->i_sb->s_blocksize_bits - 9);
+
+		udf_disk_stamp_to_time(&ts, fe->accessTime);
+		inode_set_atime_to_ts(inode, ts);
+		udf_disk_stamp_to_time(&ts, fe->modificationTime);
+		inode_set_mtime_to_ts(inode, ts);
+		udf_disk_stamp_to_time(&ts, fe->attrTime);
+		inode_set_ctime_to_ts(inode, ts);
+
+		iinfo->i_unique = le64_to_cpu(fe->uniqueID);
+		iinfo->i_lenEAttr = le32_to_cpu(fe->lengthExtendedAttr);
+		iinfo->i_lenAlloc = le32_to_cpu(fe->lengthAllocDescs);
+		iinfo->i_checkpoint = le32_to_cpu(fe->checkpoint);
+		iinfo->i_streamdir = 0;
+		iinfo->i_lenStreams = 0;
+	} else {
+		inode->i_blocks = le64_to_cpu(efe->logicalBlocksRecorded) <<
+		    (inode->i_sb->s_blocksize_bits - 9);
+
+		udf_disk_stamp_to_time(&ts, efe->accessTime);
+		inode_set_atime_to_ts(inode, ts);
+		udf_disk_stamp_to_time(&ts, efe->modificationTime);
+		inode_set_mtime_to_ts(inode, ts);
+		udf_disk_stamp_to_time(&ts, efe->attrTime);
+		inode_set_ctime_to_ts(inode, ts);
+		udf_disk_stamp_to_time(&iinfo->i_crtime, efe->createTime);
+
+		iinfo->i_unique = le64_to_cpu(efe->uniqueID);
+		iinfo->i_lenEAttr = le32_to_cpu(efe->lengthExtendedAttr);
+		iinfo->i_lenAlloc = le32_to_cpu(efe->lengthAllocDescs);
+		iinfo->i_checkpoint = le32_to_cpu(efe->checkpoint);
+
+		/* Named streams */
+		iinfo->i_streamdir = (efe->streamDirectoryICB.extLength != 0);
+		iinfo->i_locStreamdir =
+			lelb_to_cpu(efe->streamDirectoryICB.extLocation);
+		iinfo->i_lenStreams = le64_to_cpu(efe->objectSize);
+		if (iinfo->i_lenStreams >= inode->i_size)
+			iinfo->i_lenStreams -= inode->i_size;
+		else
+			iinfo->i_lenStreams = 0;
+	}
+	inode->i_generation = iinfo->i_unique;
+
+	/*
+	 * Sanity check length of allocation descriptors and extended attrs to
+	 * avoid integer overflows
+	 */
+	if (iinfo->i_lenEAttr > bs || iinfo->i_lenAlloc > bs)
+		goto out;
+	/* Now do exact checks */
+	if (udf_file_entry_alloc_offset(inode) + iinfo->i_lenAlloc > bs)
+		goto out;
+	/* Sanity checks for files in ICB so that we don't get confused later */
+	if (iinfo->i_alloc_type == ICBTAG_FLAG_AD_IN_ICB) {
+		/*
+		 * For file in ICB data is stored in allocation descriptor
+		 * so sizes should match
+		 */
+		if (iinfo->i_lenAlloc != inode->i_size)
+			goto out;
+		/* File in ICB has to fit in there... */
+		if (inode->i_size > bs - udf_file_entry_alloc_offset(inode))
+			goto out;
+	}
+
+	switch (fe->icbTag.fileType) {
+	case ICBTAG_FILE_TYPE_DIRECTORY:
+		inode->i_mode |= S_IFDIR;
+		inc_nlink(inode);
+		break;
+	case ICBTAG_FILE_TYPE_REALTIME:
+	case ICBTAG_FILE_TYPE_REGULAR:
+	case ICBTAG_FILE_TYPE_UNDEF:
+	case ICBTAG_FILE_TYPE_VAT20:
+		inode->i_mode |= S_IFREG;
+		break;
+	case ICBTAG_FILE_TYPE_BLOCK:
+		inode->i_mode |= S_IFBLK;
+		break;
+	case ICBTAG_FILE_TYPE_CHAR:
+		inode->i_mode |= S_IFCHR;
+		break;
+	case ICBTAG_FILE_TYPE_FIFO:
+		init_special_inode(inode, inode->i_mode | S_IFIFO, 0);
+		break;
+	case ICBTAG_FILE_TYPE_SOCKET:
+		init_special_inode(inode, inode->i_mode | S_IFSOCK, 0);
+		break;
+	case ICBTAG_FILE_TYPE_SYMLINK:
+		inode->i_mode = S_IFLNK | 0777;
+		break;
+	case ICBTAG_FILE_TYPE_MAIN:
+		udf_debug("METADATA FILE-----\n");
+		break;
+	case ICBTAG_FILE_TYPE_MIRROR:
+		udf_debug("METADATA MIRROR FILE-----\n");
+		break;
+	case ICBTAG_FILE_TYPE_BITMAP:
+		udf_debug("METADATA BITMAP FILE-----\n");
+		break;
+	default:
+		udf_err(inode->i_sb, "(ino %llu) failed unknown file type=%u\n",
+			inode->i_ino, fe->icbTag.fileType);
+		goto out;
+	}
+	if (S_ISCHR(inode->i_mode) || S_ISBLK(inode->i_mode)) {
+		struct deviceSpec *dsea =
+			(struct deviceSpec *)udf_get_extendedattr(inode, 12, 1);
+		if (dsea && le32_to_cpu(dsea->attrLength) >= sizeof(*dsea)) {
+			init_special_inode(inode, inode->i_mode,
+				MKDEV(le32_to_cpu(dsea->majorDeviceIdent),
+				      le32_to_cpu(dsea->minorDeviceIdent)));
+			/* Developer ID ??? */
+		} else
+			goto out;
+	}
+	ret = 0;
 out:
+	if (!ret) {
+		inode->entry = bh;
+		return 0;
+	}
 	brelse(bh);
 	return ret;
 }
 
-int sevenzip_udf_read_inode(struct inode *inode)
+int sevenzip_udf_read_inode(struct inode *inode, bool hidden)
 {
-	return udf_read_inode(inode, false);
+	return udf_read_inode(inode, hidden);
 }
 
 static void __udf_clear_extent_cache(struct inode *inode)
@@ -341,4 +561,34 @@ int inode_bmap(struct inode *inode, sector_t block, struct extent_position *pos,
 	*offset = (bcount + *elen - lbcount) >> blocksize_bits;
 
 	return 1;
+}
+
+
+static int udf_alloc_i_data(struct inode *inode, size_t size)
+{
+	struct udf_inode_info *iinfo = UDF_I(inode);
+	iinfo->i_data = kmalloc(size, GFP_KERNEL);
+	if (!iinfo->i_data)
+		return -ENOMEM;
+	return 0;
+}
+
+
+static umode_t udf_convert_permissions(struct fileEntry *fe)
+{
+	umode_t mode;
+	uint32_t permissions;
+	uint32_t flags;
+
+	permissions = le32_to_cpu(fe->permissions);
+	flags = le16_to_cpu(fe->icbTag.flags);
+
+	mode =	((permissions) & 0007) |
+		((permissions >> 2) & 0070) |
+		((permissions >> 4) & 0700) |
+		((flags & ICBTAG_FLAG_SETUID) ? S_ISUID : 0) |
+		((flags & ICBTAG_FLAG_SETGID) ? S_ISGID : 0) |
+		((flags & ICBTAG_FLAG_STICKY) ? S_ISVTX : 0);
+
+	return mode;
 }

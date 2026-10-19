@@ -11,6 +11,11 @@ typedef int (*sevenzip_udf_extent)(void *, unsigned, uint32_t, uint32_t, uint16_
 struct sevenzip_udf_sparing;
 struct sevenzip_udf_virtual;
 struct sevenzip_udf_metadata;
+struct sevenzip_udf_inode {
+    uint32_t mode, uid, gid, links, device_major, device_minor, hidden;
+};
+struct sevenzip_udf_time { int64_t seconds; uint32_t nanoseconds; };
+void sevenzip_udf_stamp(const void *, struct sevenzip_udf_time *);
 struct sevenzip_udf_file {
     uint64_t size;
     uint16_t partition;
@@ -56,7 +61,7 @@ void sevenzip_udf_sparing_free(struct sevenzip_udf_sparing *);
 int sevenzip_udf_sparing_span(const struct sevenzip_udf_sparing *, uint32_t,
                               uint32_t *, uint32_t *);
 int sevenzip_udf_icb(void *, sevenzip_udf_read, uint32_t, const uint32_t *,
-                     uint32_t, uint16_t *, uint32_t *, void *);
+                     uint32_t, uint16_t *, uint32_t *, void *, int, struct sevenzip_udf_inode *);
 int sevenzip_udf_extents(void *, sevenzip_udf_read, sevenzip_udf_extent,
                          uint32_t, uint32_t, uint16_t, unsigned, int,
                          const void *, uint32_t, uint64_t, uint32_t);

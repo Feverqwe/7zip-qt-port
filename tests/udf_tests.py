@@ -1,6 +1,7 @@
 """UDF allocation data, sparse holes and EOF through both shipped engines."""
 from pathlib import Path
 import os
+import stat
 import subprocess
 import shutil
 import sys
@@ -14,6 +15,7 @@ from udf_metadata_fixture import CASES as METADATA_CASES, BAD as METADATA_BAD
 from udf_walk_fixture import CASES as WALK_CASES, MODULE_ONLY as WALK_MODULE, BAD as WALK_BAD
 from udf_discovery_fixture import CASES as DISCOVERY_CASES, MODULE_ONLY as DISCOVERY_MODULE, BAD as DISCOVERY_BAD
 from udf_names_fixture import CASES as NAME_CASES, BAD as NAME_BAD, COMMENTS
+from udf_inode_fixture import CASES as INODE_CASES, BAD as INODE_BAD, MODULE_BAD as INODE_MODULE_BAD, METADATA_ONLY, attributes
 
 RUNTIME = Path(sys.argv.pop(1))
 MODULE = Path(sys.argv.pop(1))
@@ -70,7 +72,8 @@ class UdfTests(unittest.TestCase):
 
     def test_continuations(self):
         for kind in (*CONTINUATIONS, *ICB_CASES, *SPARING_CASES, *VAT_CASES, *METADATA_CASES,
-                     *WALK_CASES, *WALK_MODULE, *DISCOVERY_CASES, *DISCOVERY_MODULE, *NAME_CASES):
+                     *WALK_CASES, *WALK_MODULE, *DISCOVERY_CASES, *DISCOVERY_MODULE, *NAME_CASES,
+                     *INODE_CASES):
             image, files = volume(kind)
             with self.subTest(kind=kind):
                 result = self.run_image("7z", image)
@@ -89,7 +92,7 @@ class UdfTests(unittest.TestCase):
     def test_damaged_continuation_chains(self):
         for kind in ("ad-cycle", "ad-limit-17", "ad-outside", "ad-bad-partition",
                      "ad-overflow", "ad-over-block", *ICB_BAD, *SPARING_BAD, *VAT_BAD,
-                     *METADATA_BAD, *DISCOVERY_BAD, *NAME_BAD):
+                     *METADATA_BAD, *DISCOVERY_BAD, *NAME_BAD, *INODE_BAD, *INODE_MODULE_BAD):
             image, _ = volume(kind)
             with self.subTest(kind=kind):
                 self.assertNotEqual(self.run_image("7z", image).returncode, 0)
@@ -102,6 +105,25 @@ class UdfTests(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stderr)
                 alpha = result.stdout.split(b"Path = alpha.bin", 1)[1].split(b"Path = ", 1)[0]
                 self.assertIn(b"Modified = 2041-", alpha)
+
+    def test_inode_properties(self):
+        for kind in (*INODE_CASES, *METADATA_ONLY):
+            image, _ = volume(kind)
+            with self.subTest(kind=kind):
+                result = self.run_image("7z", image, listing=True)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                records = result.stdout.decode("utf-8").replace("\r\n", "\n").split("----------\n", 1)[1].split("\n\n")
+                for name, expected in attributes(kind).items():
+                    record = next(record for record in records if record.startswith("Path = " + name + "\n"))
+                    self.assertIn("Mode = " + stat.filemode(expected["mode"]), record)
+                    for key, label in (("uid", "User ID"), ("gid", "Group ID"), ("links", "Links"),
+                                       ("major", "Device Major"), ("minor", "Device Minor")):
+                        if key in expected:
+                            self.assertIn(label + " = " + str(expected[key]) + "\n", record + "\n")
+                if kind in METADATA_ONLY:
+                    result = self.run_image("7z", image, "alpha.bin")
+                    self.assertEqual(result.returncode, 2)
+                    self.assertEqual(result.stdout, b"")
 
     def test_allocation_cycles_fail_normally(self):
         for kind in WALK_BAD:
