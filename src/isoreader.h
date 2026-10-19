@@ -11,6 +11,13 @@ struct timespec64 {
     long tv_nsec;
 };
 struct super_block;
+struct sevenzip_iso_high_sierra {
+    uint32_t s_nzones, s_log_zone_size, root_offset;
+    unsigned char system_id[32], volume_id[32];
+    uint16_t volume_set_size, volume_sequence_number;
+};
+int isofs_high_sierra(const unsigned char *, struct sevenzip_iso_high_sierra *);
+struct timespec64 sevenzip_iso_date(unsigned char *, int);
 struct sevenzip_iso_inode {
     struct super_block *i_sb;
     unsigned i_blkbits;

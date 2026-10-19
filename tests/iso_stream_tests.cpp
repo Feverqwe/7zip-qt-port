@@ -192,8 +192,9 @@ class IsoStreamTests final : public QObject {
     void initTestCase() { createArchive(); }
     void independentAndRetainedStreams_data() {
         QTest::addColumn<QString>("kind");
-        for (const char *kind : {"plain", "multi", "multi-directory", "xar", "xar-directory",
-                                 "block-512", "block-1024", "block-512-tail"})
+        for (const char *kind :
+             {"plain", "multi", "multi-directory", "xar", "xar-directory", "block-512",
+              "block-1024", "block-512-tail", "sierra", "sierra-xar", "sierra-multi"})
             QTest::newRow(kind) << QString::fromLatin1(kind);
     }
     void independentAndRetainedStreams() {
@@ -205,11 +206,17 @@ class IsoStreamTests final : public QObject {
         auto alpha = stream("ALPHA.BIN");
         auto beta = stream("NESTED/BETA.BIN");
         auto boot = stream("[BOOT]/Boot-NoEmul.img");
-        QVERIFY(alpha && beta && boot);
+        const bool hasBoot = !kind.startsWith("sierra");
+        QVERIFY(alpha && beta);
+        if (hasBoot)
+            QVERIFY(boot);
+        else
+            QVERIFY(!boot);
         check(alpha, "ALPHA.BIN", 0, 37);
         check(beta, "NESTED/BETA.BIN", 0, 74);
         check(alpha, "ALPHA.BIN", 37, 37);
-        check(boot, "[BOOT]/Boot-NoEmul.img", 0, 37);
+        if (hasBoot)
+            check(boot, "[BOOT]/Boot-NoEmul.img", 0, 37);
         char buffer[37];
         UInt32 count = 0;
         QCOMPARE(alpha->Read(buffer, sizeof(buffer), &count), S_OK);
@@ -227,7 +234,8 @@ class IsoStreamTests final : public QObject {
         record_ = retained;
         check(alpha, "ALPHA.BIN", 2040, 8192);
         check(beta, "NESTED/BETA.BIN", 0, 100000);
-        check(boot, "[BOOT]/Boot-NoEmul.img", 0, 2048);
+        if (hasBoot)
+            check(boot, "[BOOT]/Boot-NoEmul.img", 0, 2048);
         createArchive();
     }
     void errorsAndSeekBoundaries() {
@@ -297,7 +305,9 @@ class IsoStreamTests final : public QObject {
                            : NArchive::NExtract::NOperationResult::kDataError));
     }
     void failedOpenClearsCatalog() {
-        for (const char *kind : {"bad-directory", "cycle", "bad-name-length", "short-record"}) {
+        for (const char *kind :
+             {"bad-directory", "cycle", "bad-name-length", "short-record", "sierra-invalid-type",
+              "sierra-root-file", "sierra-short-root", "sierra-bad-name", "sierra-short-source"}) {
             loadFixture("plain");
             CMyComPtr<IInStream> input = new Input(bytes_);
             QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
@@ -329,7 +339,7 @@ class IsoStreamTests final : public QObject {
         QTest::addColumn<QString>("kind");
         for (const char *kind :
              {"plain", "joliet", "block-512-tail", "xar", "multi", "multi-directory", "rock",
-              "rock-joliet", "zisofs", "zisofs-multi"})
+              "rock-joliet", "zisofs", "zisofs-multi", "sierra", "sierra-multi"})
             QTest::newRow(kind) << QString::fromLatin1(kind);
     }
     void backendExtraction() {
@@ -391,6 +401,36 @@ class IsoStreamTests final : public QObject {
         QCOMPARE(source.readAll(), expected);
         QVERIFY(image.open(QIODevice::ReadOnly));
         QCOMPARE(image.readAll(), bytes_);
+    }
+    void linuxRecordingDates_data() {
+        QTest::addColumn<QString>("kind");
+        QTest::addColumn<int>("offset");
+        QTest::addColumn<bool>("normalize");
+        QTest::newRow("sierra-no-zone") << QString("sierra-date") << 0 << false;
+        QTest::newRow("east") << QString("date-east") << 52 << false;
+        QTest::newRow("west") << QString("date-west") << -52 << false;
+        QTest::newRow("invalid-east") << QString("date-invalid-east") << 0 << false;
+        QTest::newRow("invalid-west") << QString("date-invalid-west") << 0 << false;
+        QTest::newRow("normalize") << QString("date-normalize") << 0 << true;
+    }
+    void linuxRecordingDates() {
+        QFETCH(QString, kind);
+        QFETCH(int, offset);
+        QFETCH(bool, normalize);
+        loadFixture(kind);
+        CMyComPtr<IInStream> input = new Input(bytes_);
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        NWindows::NCOM::CPropVariant value;
+        QCOMPARE(archive_->GetProperty(index("ALPHA.BIN"), kpidMTime, &value), S_OK);
+        QCOMPARE(value.vt, VARTYPE(VT_FILETIME));
+        const qint64 expected = QDateTime(normalize ? QDate(2041, 2, 1) : QDate(2041, 1, 2),
+                                          QTime(3, 4, 5), QTimeZone::UTC)
+                                    .toSecsSinceEpoch() -
+                                offset * 900;
+        const UInt64 actual =
+            (UInt64(value.filetime.dwHighDateTime) << 32) | value.filetime.dwLowDateTime;
+        QCOMPARE(actual, UInt64(expected + 11644473600LL) * 10000000);
+        check(stream("ALPHA.BIN"), "ALPHA.BIN", 32760, 32780);
     }
     void compressedStreamsAndLifetime() {
         loadFixture("zisofs");

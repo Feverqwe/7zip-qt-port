@@ -8,6 +8,9 @@ import zlib
 
 
 def volume(kind="plain"):
+    if kind.startswith("sierra"):
+        from iso_sierra_fixture import volume as sierra_volume
+        return sierra_volume(kind)
     if kind.startswith("zisofs"):
         from iso_zisofs_fixture import volume as compressed_volume
         return compressed_volume(kind)
@@ -97,7 +100,12 @@ def volume(kind="plain"):
                         struct.pack_into(order+"I", image, pos + 2, new_extent)
                         image[pos + 1] = xar
                     pos += 8 + length + length % 2
-    if kind in ("block-512", "block-1024", "block-512-tail"):
+    if kind.startswith("date-"):
+        offset = {"date-east": 52, "date-west": -52, "date-invalid-east": 53,
+                  "date-invalid-west": -53, "date-normalize": 0}[kind]
+        image[alpha_record + 18:alpha_record + 25] = bytes((141, 1, 32 if kind == "date-normalize" else 2,
+                                                          3, 4, 5, offset & 255))
+    elif kind in ("block-512", "block-1024", "block-512-tail"):
         block = 512 if kind.startswith("block-512") else 1024
         scale = 2048 // block
         for descriptor in descriptors:
@@ -206,6 +214,8 @@ def volume(kind="plain"):
         image[terminator] = 3
     elif kind == "big-endian-mirror":
         struct.pack_into(">I", image, alpha_record + 6, 0x11223344)
+    elif kind == "iso-hs-collision":
+        image[primary + 9:primary + 14] = b"CDROM"
     elif kind == "unit-no-gap":
         image[alpha_record + 26] = 1
     elif kind == "interleave":

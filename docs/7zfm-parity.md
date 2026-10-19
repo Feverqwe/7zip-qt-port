@@ -11,7 +11,7 @@ ISO9660 читает тома с блоками 512/1024/2048 байт, XAR и �
 повреждённые maps и interleaving дают явную ошибку чтения. Потоки файлов и
 El Torito images независимы. Исходные archive names и boot namespace сохранены.
 Отдельный модуль добавляет Linux Rock Ridge names/links, POSIX metadata,
-continuations, relocated directories, выбор RR перед Joliet и чтение zisofs.
+continuations, relocated directories, выбор RR перед Joliet, zisofs и High Sierra.
 [Scope и проверки](upstream-port-audit/isofs-linux.md); полная актуализация
 ISO9660 по Linux ещё не завершена.
 

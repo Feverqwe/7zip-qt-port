@@ -14,6 +14,26 @@
 
 #include "isofs.h"
 
+/* isofs_fill_super High Sierra descriptor branch. The caller has checked the
+ * ISO identifier first and supplies a complete descriptor sector. */
+int isofs_high_sierra(const unsigned char *data, struct sevenzip_iso_high_sierra *sbi)
+{
+    const struct hs_volume_descriptor *hdp = (const struct hs_volume_descriptor *)data;
+    const struct hs_primary_descriptor *h_pri = (const struct hs_primary_descriptor *)data;
+    if (strncmp(hdp->id, HS_STANDARD_ID, sizeof hdp->id) != 0)
+        return 0;
+    if (isonum_711(hdp->type) != 1)
+        return -EIO;
+    sbi->s_nzones = isonum_733(h_pri->volume_space_size);
+    sbi->s_log_zone_size = isonum_721(h_pri->logical_block_size);
+    sbi->root_offset = offsetof(struct hs_primary_descriptor, root_directory_record);
+    memcpy(sbi->system_id, h_pri->system_id, sizeof sbi->system_id);
+    memcpy(sbi->volume_id, h_pri->volume_id, sizeof sbi->volume_id);
+    sbi->volume_set_size = (uint16_t)isonum_721(h_pri->volume_set_size);
+    sbi->volume_sequence_number = (uint16_t)isonum_721(h_pri->volume_sequence_number);
+    return 1;
+}
+
 static int rootdir_empty(struct super_block *sb, unsigned long block)
 {
 	int offset = 0, files = 0, de_len;

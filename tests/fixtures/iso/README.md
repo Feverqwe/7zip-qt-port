@@ -29,3 +29,10 @@ It contains only generated patterned, deterministic random, sparse, Unicode
 and empty files, with input modification time 1760000000.
 `tests/iso_zisofs_fixture.py` defines the expected bytes and derives focused
 pointer-table, compression-block, header, multi-section and corruption cases.
+
+`tests/iso_sierra_fixture.py` projects the generated plain/XAR/multi-section
+payloads to the High Sierra layout described by Linux UAPI `iso_fs.h`.
+No historical user images are used. The reserved flags byte is deliberately
+nonzero; files preserve the same expected payloads. The 1024-byte variants
+distinguish logical-block padding from padding compatible with older kernels.
+Short recording-date variants exercise timezone limits and normalization.

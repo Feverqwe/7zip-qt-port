@@ -3,6 +3,7 @@
 Работа входит в [общую актуализацию по Linux](filesystems-linux.md).
 Основной ISO9660 read path исправлен в обоих поставляемых engines.
 Отдельный GPL-модуль добавляет оригинальные Linux C Rock Ridge/SUSP readers.
+Он также читает High Sierra и zisofs.
 Полная актуализация ISO9660 и отдельного UDF ещё не завершена.
 
 ## Источники и source comparison
@@ -166,9 +167,39 @@ Extract totals и CopyCoder используют decoded size. I/O HRESULT, от
 independent cursors и retained-source lifetime сохраняются. Standalone `7zz`
 не получает этот GPL decoder; приложение использует dynamic format module.
 
+## High Sierra и recording dates
+
+Из того же pinned `inode.c:isofs_fill_super` передана High Sierra ветвь
+идентификации primary descriptor и выбора geometry/root. Она остаётся C
+в `isofs_high_sierra`; buffer acquisition и VFS superblock publication
+заменены read projection. Из UAPI `iso_fs.h` скопированы исходные
+`hs_volume_descriptor`/`hs_primary_descriptor`; kernel-only includes опущены,
+форматирование учитывается отдельно. LE часть paired scalars используется
+как `isonum_723`/`isonum_733`; существующий LE16 helper носит имя `isonum_721`.
+System/volume identifiers и volume set/sequence передаются в существующие
+archive properties. Отсутствующие в Linux HS descriptor поля не выдумываются.
+
+Исходный 7-Zip record/extent reader сохранён: флаги берутся из байта перед
+ISO flags, следующий reserved byte пропускается. Дата имеет шесть байтов,
+timezone равен нулю. XAR, multi-section, logical blocks и lifetime/error
+контракты используют тот же mapper. RR/SUSP и El Torito не применяются к HS.
+ISO descriptor проверяется первым при перекрывающихся magic, как в Linux.
+Вместо единственного fixed signature offset module использует штатный IsArc
+callback, распознающий обе descriptor signatures. Имя/CLSID Iso сохранены;
+проверяются секторы 16–99, включая primary после чужого descriptor.
+Автоопределение проверяется также без расширения файла. Standalone `7zz`
+сохраняет исходную регистрацию и не получает GPL HS branch.
+
+Обычные короткие recording dates тоже вызывают исходный Linux `iso_date`:
+timezone ±52 quarter-hours применяется, ±53 игнорируется; переполненный день
+нормализуется `mktime64`. HS flags и reserved byte не становятся timezone.
+Дата возвращается через существующий FILETIME property; decoder остаётся C.
+RR TF и long-form date path продолжают использовать тот же Linux helper.
+Archive descriptor dates остаются отдельным исходным 7-Zip представлением.
+
 ## Оставшийся scope
 
-Остаются High Sierra, naming/NLS/Acorn и оставшиеся date quirks,
+Остаются naming/NLS/Acorn и оставшиеся descriptor-date quirks,
 проверка остальных RR compatibility branches на производителях, полная
 dot-record normalization/root multi-section semantics. Сохранённый archive
 depth cap отличается от VFS; его снятие требует переноса рекурсивного обхода
@@ -267,3 +298,26 @@ Source post-comparison и exact-source SHA-256 выполнены отдельн
 Full/slow/UI/physical-device acceptance не выполнялась.
 После уточнения fixtures и wide-mask предупреждения повторены `iso`/`iso_stream`
 на всех трёх ОС: 2/2 PASS, remote receipt `20261019T161535Z-d5535c87`.
+
+High Sierra CLI/ABI/backend проверяют exact bytes, автоопределение без
+расширения, XAR/multi-section, retained streams, 1024-byte logical blocks,
+невалидный descriptor/root/name и очистку каталога после failed Open.
+ISO с перекрывающимся HS magic остаётся ISO. Recording dates проверяются
+на ±52/±53 timezone, нормализации 32 января и HS reserved flags byte.
+
+Native Linux 6.8.0-146 read-only mounts подтвердили HS plain/XAR/multi-section,
+primary после чужого descriptor, 1024-byte sector-padding variant, шесть
+date variants с точным UTC epoch и ISO-first collision case. У fixture с
+padding на границе 1024 старое ядро пропускает child record до 2048;
+это уже установленное version difference с pinned `dir.c`, не native PASS.
+Все образы содержали generated payloads; временные mounts/images удалены.
+
+High Sierra focused seven-suite batch: 7/7 PASS на macOS arm64, Linux x64 и
+Windows x64/MSVC, Qt 6.12; remote receipt `20261019T172921Z-4bcca3a0`.
+После финальной правки descriptor scan повторены `iso`/`iso_stream`: 2/2 PASS
+на всех трёх ОС, remote receipt `20261019T173239Z-d22e4cac`.
+macOS app target собран; фактический CMake install распознал extensionless
+ISO/Joliet/HS, извлёк plain/XAR/multi-section/leading-descriptor/1024-byte данные
+и отверг неверный descriptor. GPL/LGPL/syscall/zlib notices сверены по содержимому;
+staging удалён. Post-transfer source comparison выполнен отдельно.
+Full/slow/UI/physical-device acceptance не выполнялась.

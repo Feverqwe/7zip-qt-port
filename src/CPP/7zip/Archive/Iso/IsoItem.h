@@ -28,6 +28,13 @@ struct CRecordingDateTime {
     signed char GmtOffset; // min intervals from -48 (West) to +52 (East) recorded.
 
     bool GetFileTime(NWindows::NCOM::CPropVariant &prop) const {
+#ifdef SEVENZIP_LINUX_ISO
+        unsigned char date[7] = {Year, Month, Day, Hour, Minute, Second, (Byte)GmtOffset};
+        const timespec64 time = sevenzip_iso_date(date, 0);
+        const UInt64 value = (UInt64)(time.tv_sec + 11644473600LL) * 10000000;
+        prop.SetAsTimeFrom_Ft64_Prec(value, k_PropVar_TimePrec_Base);
+        return true;
+#else
         UInt64 v;
         const bool res =
             NWindows::NTime::GetSecondsSince1601(Year + 1900, Month, Day, Hour, Minute, Second, v);
@@ -37,6 +44,7 @@ struct CRecordingDateTime {
             prop.SetAsTimeFrom_Ft64_Prec(v, k_PropVar_TimePrec_Base);
         }
         return res;
+#endif
     }
 };
 
