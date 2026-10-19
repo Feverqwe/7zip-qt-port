@@ -583,6 +583,30 @@ class IsoStreamTests final : public QObject {
                   QByteArray::fromBase64(entry.value().toString().toLatin1()).size());
         }
     }
+    void linuxNlsNames_data() {
+        QTest::addColumn<QString>("codec");
+        for (const char *codec : {"ascii", "default", "cp866", "cp1251", "koi8-r", "koi8-ru",
+                                  "iso8859-15", "macinuit", "cp932", "cp936", "cp949", "cp950",
+                                  "euc-jp", "euc-jp-extended", "euc-jp-long", "sjis", "big5"})
+            QTest::newRow(codec) << QString::fromLatin1(codec);
+    }
+    void linuxNlsNames() {
+        QFETCH(QString, codec);
+        const auto charset = (codec.startsWith("euc-jp-") ? QString("euc-jp")
+                              : codec == "sjis"           ? QString("SJIS")
+                                                          : codec)
+                                 .toStdWString();
+        names(nullptr, charset.c_str());
+        loadFixture("names-joliet-nls-" + codec);
+        CMyComPtr<IInStream> input = new Input(bytes_);
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        const auto files = record_["files"].toObject();
+        for (auto entry = files.begin(); entry != files.end(); ++entry) {
+            QVERIFY2(index(entry.key()) != UInt32(-1), qPrintable(entry.key()));
+            check(stream(entry.key()), entry.key(), 0,
+                  QByteArray::fromBase64(entry.value().toString().toLatin1()).size());
+        }
+    }
     void invalidNamePropertiesPreserveConfiguration() {
         names(L"a");
         CMyComPtr<ISetProperties> properties;
@@ -604,6 +628,30 @@ class IsoStreamTests final : public QObject {
         input = new Input(bytes_);
         QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
         check(stream("ALPHA.BIN"), "ALPHA.BIN", 0, 4096);
+    }
+    void invalidNlsPropertiesPreserveCharset() {
+        names(nullptr, L"cp932");
+        CMyComPtr<ISetProperties> properties;
+        QCOMPARE(
+            archive_->QueryInterface(IID_ISetProperties, reinterpret_cast<void **>(&properties)),
+            S_OK);
+        const wchar_t *key = L"iocharset";
+        NWindows::NCOM::CPropVariant value(L"missing-nls");
+        QCOMPARE(properties->SetProperties(&key, &value, 1), E_INVALIDARG);
+        loadFixture("names-joliet-nls-cp932");
+        CMyComPtr<IInStream> input = new Input(bytes_);
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        const QString projected = QString::fromUtf8("case-日本語-??.bin");
+        check(stream(projected), projected, 0, 4096);
+        names();
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        QVERIFY(index(projected) == UInt32(-1));
+        const QString utf8 = QString::fromUtf8("case-日本語-😀.bin");
+        auto retained = stream(utf8);
+        QVERIFY(retained);
+        archive_.Release();
+        check(retained, projected, 0, 4096);
+        createArchive();
     }
     void linuxRecordingDates_data() {
         QTest::addColumn<QString>("kind");

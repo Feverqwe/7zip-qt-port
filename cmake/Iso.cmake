@@ -7,6 +7,23 @@ add_library(sevenzip_iso MODULE
     src/fs/isofs/rock.c src/fs/isofs/inode.c src/fs/isofs/util.c src/kernel/time/time.c src/exfatmodule.cpp
     src/fs/isofs/compress.c src/lib/zlib_inflate/inffast.c
     src/fs/isofs/dir.c src/fs/isofs/joliet.c src/fs/nls/nls_base.c src/fs/nls/nls_cp437.c
+    src/fs/nls/mac-celtic.c src/fs/nls/mac-centeuro.c src/fs/nls/mac-croatian.c
+    src/fs/nls/mac-cyrillic.c src/fs/nls/mac-gaelic.c src/fs/nls/mac-greek.c
+    src/fs/nls/mac-iceland.c src/fs/nls/mac-inuit.c src/fs/nls/mac-roman.c
+    src/fs/nls/mac-romanian.c src/fs/nls/mac-turkish.c src/fs/nls/nls_ascii.c
+    src/fs/nls/nls_cp1250.c src/fs/nls/nls_cp1251.c src/fs/nls/nls_cp1255.c
+    src/fs/nls/nls_cp737.c src/fs/nls/nls_cp775.c src/fs/nls/nls_cp850.c
+    src/fs/nls/nls_cp852.c src/fs/nls/nls_cp855.c src/fs/nls/nls_cp857.c
+    src/fs/nls/nls_cp860.c src/fs/nls/nls_cp861.c src/fs/nls/nls_cp862.c
+    src/fs/nls/nls_cp863.c src/fs/nls/nls_cp864.c src/fs/nls/nls_cp865.c
+    src/fs/nls/nls_cp866.c src/fs/nls/nls_cp869.c src/fs/nls/nls_cp874.c
+    src/fs/nls/nls_cp932.c src/fs/nls/nls_cp936.c src/fs/nls/nls_cp949.c
+    src/fs/nls/nls_cp950.c src/fs/nls/nls_euc-jp.c src/fs/nls/nls_iso8859-1.c
+    src/fs/nls/nls_iso8859-13.c src/fs/nls/nls_iso8859-14.c src/fs/nls/nls_iso8859-15.c
+    src/fs/nls/nls_iso8859-2.c src/fs/nls/nls_iso8859-3.c src/fs/nls/nls_iso8859-4.c
+    src/fs/nls/nls_iso8859-5.c src/fs/nls/nls_iso8859-6.c src/fs/nls/nls_iso8859-7.c
+    src/fs/nls/nls_iso8859-9.c src/fs/nls/nls_koi8-r.c src/fs/nls/nls_koi8-ru.c
+    src/fs/nls/nls_koi8-u.c src/fs/nls/registry.c
     third_party/linux/lib/zlib_inflate/inflate.c third_party/linux/lib/zlib_inflate/inftrees.c
     third_party/7zip/CPP/7zip/Archive/ArchiveExports.cpp
     third_party/7zip/CPP/7zip/Archive/Common/FindSignature.cpp

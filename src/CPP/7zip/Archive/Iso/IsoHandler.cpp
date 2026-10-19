@@ -10,6 +10,7 @@
 #include "../../Common/ProgressUtils.h"
 #include "../../Common/StreamUtils.h"
 #ifdef SEVENZIP_LINUX_ISO
+#include "../../../../isonames.h"
 #include "../../Common/StreamObjects.h"
 #include "IsoZisofs.h"
 #endif
@@ -51,11 +52,10 @@ Z7_COM7F_IMF(CHandler::SetProperties(const wchar_t *const *names, const PROPVARI
         } else if (StringsAreEqualNoCase_Ascii(name, "iocharset")) {
             if (value.vt != VT_BSTR)
                 return E_INVALIDARG;
-            if (StringsAreEqualNoCase_Ascii(value.bstrVal, "utf8"))
-                charset = 0;
-            else if (StringsAreEqualNoCase_Ascii(value.bstrVal, "cp437"))
-                charset = 1;
-            else
+            AString charsetName = UnicodeStringToMultiByte(UString(value.bstrVal), CP_UTF8);
+            charsetName.MakeLower_Ascii();
+            charset = sevenzip_iso_charset(charsetName);
+            if (charset < 0)
                 return E_INVALIDARG;
         } else if (!IsString1PrefixedByString2_NoCase_Ascii(name, "mt") &&
                    !IsString1PrefixedByString2_NoCase_Ascii(name, "memuse"))

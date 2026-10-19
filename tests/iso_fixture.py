@@ -8,6 +8,9 @@ import zlib
 
 
 def volume(kind="plain"):
+    if kind.startswith("names-joliet-nls-"):
+        from iso_nls_fixture import volume as nls_volume
+        return nls_volume(kind)
     if kind.startswith("directory-"):
         from iso_directory_fixture import volume as directory_volume
         return directory_volume(kind)

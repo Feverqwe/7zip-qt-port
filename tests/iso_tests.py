@@ -140,6 +140,16 @@ class IsoTests(unittest.TestCase):
                     self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
                     self.assertEqual(result.stdout, expected)
 
+    def test_linux_nls_names_and_multibyte_sequences(self):
+        from iso_nls_fixture import cases, charset
+        for case in cases():
+            image, files = volume("names-joliet-nls-" + case)
+            for name, expected in files.items():
+                with self.subTest(charset=case, name=name):
+                    result = self.run_image("7z", image, name, properties=("iocharset=" + charset(case),))
+                    self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                    self.assertEqual(result.stdout, expected)
+
     def test_zisofs_decoded_bytes(self):
         for kind in ("zisofs", "zisofs-shift0", "zisofs-pointer-boundary", "zisofs-expanding", "zisofs-small-sparse",
                      "zisofs-shift17", "zisofs-padding", "zisofs-header0", "zisofs-embedded-header",

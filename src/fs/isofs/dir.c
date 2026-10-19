@@ -12,6 +12,7 @@
  *  isofs directory handling functions
  */
 #include "namecompat.h"
+#include "../nls/nls.h"
 
 /* Read-service adapter: reconstruct the already bounded directory record for
  * the original Linux naming functions. Extra zero bytes bound their lookahead. */
@@ -23,10 +24,12 @@ int sevenzip_iso_name(const unsigned char *name, size_t name_size,
     unsigned char storage[512] = { 0 };
     unsigned char converted[1024];
     struct iso_directory_record *de = (struct iso_directory_record *)storage;
-    struct isofs_name_super super = { charset ? fat_cp437_table() : NULL };
+    struct isofs_name_super super = { sevenzip_nls_table(charset) };
     struct inode node = { &super };
     size_t std = sizeof(*de) + name_size;
     int length;
+    if (charset && !super.s_nls_iocharset)
+        return -EINVAL;
     std += std & 1;
     if (name_size > 222 || std > 255 || system_size > 255 - std)
         return -EIO;
@@ -41,11 +44,17 @@ int sevenzip_iso_name(const unsigned char *name, size_t name_size,
         length = get_joliet_filename(de, converted, &node);
         if (charset) {
             fat_wchar_t unicode[256];
-            int i;
-            for (i = 0; i < length; ++i)
-                if (super.s_nls_iocharset->char2uni(converted + i, 1, unicode + i) < 0)
-                    unicode[i] = '?';
-            length = utf16s_to_utf8s(unicode, length, UTF16_HOST_ENDIAN, (u8 *)output, 1023);
+            int i = 0, units = 0;
+            while (i < length) {
+                int consumed;
+                if (units == ARRAY_SIZE(unicode)) return -EIO;
+                consumed = super.s_nls_iocharset->char2uni(converted + i, length - i,
+                                                          unicode + units);
+                if (consumed <= 0 || consumed > length - i) return -EIO;
+                i += consumed;
+                units++;
+            }
+            length = utf16s_to_utf8s(unicode, units, UTF16_HOST_ENDIAN, (u8 *)output, 1023);
         } else if (length)
             memcpy(output, converted, (size_t)length);
     } else if (mapping == 'a') {
@@ -57,6 +66,7 @@ int sevenzip_iso_name(const unsigned char *name, size_t name_size,
         if (name_size)
             memcpy(output, name, name_size);
     }
+    if (length < 0 || length >= 1024) return -EIO;
     output[length] = 0;
     return length;
 }

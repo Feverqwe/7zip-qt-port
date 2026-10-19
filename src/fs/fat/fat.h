@@ -57,6 +57,7 @@ struct nls_table {
     int (*uni2char)(fat_wchar_t, unsigned char *, int);
     int (*char2uni)(const unsigned char *, int, fat_wchar_t *);
     const unsigned char *charset2lower, *charset2upper;
+    const char *alias;
 };
 enum utf16_endian { UTF16_HOST_ENDIAN, UTF16_LITTLE_ENDIAN, UTF16_BIG_ENDIAN };
 int utf32_to_utf8(unicode_t, u8 *, int);

@@ -226,17 +226,55 @@ Probing state без RR markers сохраняет исходный archive name
 `IsoHandler.h` адаптирован под штатный `ISetProperties`; исходный interface
 macro и module boundary сохранены. Property loop следует исходному NTFS handler.
 Open properties `map=n|normal`, `map=a|acorn`, `map=o|off` подключают Linux
-normal/Acorn/raw modes; `iocharset=utf8|cp437` выбирает Joliet charset.
+normal/Acorn/raw modes; `iocharset` выбирает Joliet charset из Linux NLS,
+например `utf8`, `cp437`, `cp1251`, `sjis`, `euc-jp` или `iso8859-15`.
 Например, dynamic engine принимает `7z l -mmap=a image.iso`.
 Acorn использует исходные ARCHIMEDES marker, mode и file-type rules.
 Неверный тип/значение возвращает E_INVALIDARG без изменения прежних options;
 пустой SetProperties сбрасывает defaults. Обычный ISO по умолчанию сохраняет
 исходное 7-Zip отображение, Joliet/RR используют исправленный path.
 Standalone `7zz` не получает GPL readers и этот interface extension.
-Прежняя [FAT/NLS dependency boundary](fat-linux.md) переиспользуется без
-изменения shared C sources; NLS tables не копируются второй реализацией.
-Остальные kernel NLS tables пока не подключены: неизвестный charset явно
-отклоняется; это остаётся незавершённым read scope, а не полной NLS parity.
+Прежняя [FAT/NLS dependency boundary](fat-linux.md) переиспользуется:
+общие C sources и CP437 остаются authoritative для обоих модулей.
+
+## Полный выбор NLS для Joliet
+
+Сопоставлены полный `fs/nls/Makefile`, Kconfig, charset tables, conversion
+functions, alias fields, init/dependency branches и `nls_base.c:find_nls`.
+Все charset modules из этого Makefile подключены к ISO: таблицы и `uni2char`/
+`char2uni` перенесены под исходными путями как C, вместе с EUC-JP helpers и
+зависимостями CP932/KOI8-U. Baseline manifest фиксирует полный reference snapshot;
+UCS2 utility service не является charset module и не нужен этому caller.
+UTF-8, как исходный `isofs_fill_super`, использует null NLS и оригинальный
+UTF-16 converter; surrogate pairs сохраняются этим отдельным read path.
+
+Вместо kernel module loader/registration/refcounts применяется неизменяемый
+список linked-in table accessors. Charset и alias сравнения сохранены;
+существующая case-insensitive archive property нормализует ASCII spelling.
+Неизвестное имя возвращает E_INVALIDARG без изменения прежних settings;
+reset возвращает archive UTF-8 default, независимо от CONFIG_NLS_DEFAULT хоста.
+`default` использует исходную fallback table из `nls_base.c`.
+Kernel `wchar_t` заменён переносимым u16, includes — narrow service header.
+Dependency pointers EUC-JP/KOI8-RU получаются из статических accessors;
+их init-time case-fold pointer assignments не нужны Joliet conversion.
+Ни одного codec или conversion table независимо не реализовано.
+
+Unicode archive ABI получает результат NLS conversion через исходный
+`char2uni`, продвигаясь на фактически потреблённое число bytes, затем через
+Linux UTF-16/UTF-8 converter. Прежний однобайтовый loop был непригоден для
+Shift-JIS/GBK/Korean/Big5/EUC-JP. Output bounds проверяются до публикации имени.
+В KOI8-RU исправлено инвертированное условие двух byte overrides в `char2uni`:
+прочие bytes, включая ASCII, должны обращаться к KOI8-U. Linux Joliet выдаёт
+только encoded bytes через `uni2char`, поэтому этот inverse bug не меняет его
+native encoded namespace; archive adapter не воспроизводит повреждение Unicode.
+
+Сохранены особенности исходных tables, включая отсутствие ASCII digits в
+ISO-8859-6 и неполную private-use поддержку CP932/EUC-JP. Version stripping
+выполняется после conversion, как Linux; ISO-8859-6 может оставить `;?`.
+Таблицы Mac сохраняют исходные Unicode copyright/permission notices и явное
+уведомление об адаптации. Полный Unicode notice устанавливается рядом с
+GPL/LGPL/syscall/zlib notices на всех платформах. GPL code остаётся изолированным
+в ISO-модуле; standalone engine не получает NLS property extension.
 
 ## Глубокие каталоги и lifetime дерева
 
@@ -310,7 +348,7 @@ overrides и cruft mount option не копируются. GPL code остаёт
 
 ## Оставшийся scope
 
-Остаются дополнительные NLS charsets и descriptor-date/mount-option quirks,
+Остаются descriptor-date/mount-option quirks,
 проверка остальных RR compatibility branches на производителях. Эти read features остаются задачей,
 а не принятой окончательной границей совместимости. UDF ещё не проверен.
 Kernel VFS/mount services, запись и page cache не копируются.
@@ -501,3 +539,32 @@ macOS app target собран; actual CMake install проверил восем�
 variants, отказ при превышении section limit и четыре notices. Staging удалён.
 Full/slow/UI/physical-device acceptance не выполнялась; incremental builds
 и compiler caches сохранены.
+
+NLS iteration: CLI fixtures проверяют все подключённые charset families и
+aliases по извлечённым bytes, имена каталогов, непредставимые surrogate units,
+EUC-JP IBM/NEC/halfwidth sequences и длинное многобайтовое имя. ABI дополнительно
+проверяет точные Unicode paths, uppercase alias, сохранение charset при ошибочной
+property, reset/reopen и retained stream после освобождения handler.
+Проверки не читают исходники и не фиксируют layout registry.
+
+Восемь focused suites (`iso`, `iso_stream`, `fat`, baseline/inventory,
+runtime cache/package и archive security consumer): 8/8 PASS на macOS arm64,
+Linux x64 и Windows x64/MSVC, Qt 6.12. Remote receipt
+`20261019T191201Z-6eaa3b2a`. Shared FAT/NLS caller проверен отдельно от ISO
+codec cases; runtime reused persistent build trees и compiler caches.
+
+Native Linux 6.8.0-146 read-only loop mounts подтвердили 58 cases: raw encoded
+NLS paths и payload bytes; Unicode archive ABI проверялся отдельно. Mac codecs
+в госте установлены как modules, но не имеют `nls_<charset>` autoload aliases.
+После проверки config/modinfo они временно загружены под штатными module names;
+все 11 загруженных этой проверкой modules затем выгружены. Mounts/images удалены.
+Для длинных EUC-JP имён kernel выдаёт 25/23 bytes вместо 281/279: это отдельное
+свидетельство прежнего uchar truncation, а не native parity PASS. Archive reader
+сохраняет полные имена; источник и данные при этом не меняются.
+
+Post-transfer comparison подтвердил исходные tables и полные conversion bodies
+49 новых C units после перечисленных narrow adaptations; fallback table/body
+сверены с `nls_base.c`. Pinned NLS reference hashes соответствуют manifest.
+macOS app target собран, actual CMake install извлёк payloads для всех 59
+NLS fixture cases и установил пять notices с точным содержимым. Staging удалён.
+Full/slow/UI/physical-device acceptance не выполнялась.
