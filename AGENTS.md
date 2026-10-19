@@ -65,6 +65,25 @@ Keep adaptations narrow; account for formatting separately from functional chang
    omissions/adaptations and checked platforms. Passing tests do not prove complete
    source transfer; source similarity does not prove a working platform adaptation.
 
+## Read-only filesystem access
+
+- Favor useful read-only access when the reader can retrieve filesystem data,
+  including partial or potentially inconsistent data. Distinguish actual reader
+  limitations from restrictions introduced by product policy. A recovery flag,
+  incomplete support or inability to guarantee consistency alone should not
+  become an unconditional refusal when a usable reading mode exists.
+- Explain the concrete limitations and offer an explicit user choice to proceed.
+  Keep that choice scoped to the selected opening, retain a visible indication
+  of the mode, and report unreadable/skipped files and incomplete results honestly.
+  Reading a `RECOVER` filesystem without journal replay is the reference example:
+  warn about missing, outdated or unreadable files while allowing copying.
+- Check the relevant reader behavior before introducing or relaxing a gate;
+  investigate whether a supported subset can be exposed. User consent does not
+  implement missing decoding or make unreliable data verified. Preserve read-only
+  source access and bounds/path validation; this choice does not authorize writes,
+  repair or journal replay on the source. When useful reading is genuinely
+  unavailable, explain the specific technical limitation.
+
 ## Context and memory
 
 Read `.codex/memory/README.md` at task start if present, then only relevant notes.
