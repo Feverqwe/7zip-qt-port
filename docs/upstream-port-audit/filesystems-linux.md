@@ -99,8 +99,10 @@ indirect ICB/strategy 4096 выбирают актуальную запись in
 packet spans и compound metadata backing подключены в том же GPL-модуле.
 VAT15/20 loader и mapper перенесены в модуль и подключены к общим streams;
 проверены inline/external таблицы, предыдущие записи и offset semantics.
-Volume discovery/block geometry, полное metadata/mirror mapping и остальные
-read-side возможности UDF ещё требуют актуализации.
+Metadata/mirror loader и inode-backed mapping также перенесены: fragmented
+short AD, chains, primary/mirror fallback, readonly bitmap policy и extent cache.
+Volume discovery/block geometry, names/NLS, symlinks и остальные read-side
+возможности UDF ещё требуют актуализации.
 
 ### HFS+/HFSX: fork mapping и metadata reads
 

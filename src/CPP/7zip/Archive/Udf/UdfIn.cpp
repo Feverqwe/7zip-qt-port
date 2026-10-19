@@ -371,11 +371,16 @@ HRESULT CInArchive::GetPhysicalSpan(unsigned volIndex, unsigned partitionRef, UI
             return result < 0 ? (HRESULT)result : S_FALSE;
         return GetPhysicalSpan(volIndex, backing, mapped, length, offset, size);
     }
-    if (map.MetadataBacking != (unsigned)-1) {
-        if ((UInt64)map.MetadataStart + block > (UInt32)-1)
+    if (map.IsMetadata()) {
+        if (!map.Metadata)
             return S_FALSE;
-        return GetPhysicalSpan(volIndex, map.MetadataBacking, map.MetadataStart + block, length,
-                               offset, size, blockOffset);
+        uint16_t backing;
+        uint32_t mapped;
+        const int result =
+            sevenzip_udf_metadata_map(map.Metadata.get(), block, blockOffset, &backing, &mapped);
+        if (result)
+            return result < -4095 ? (HRESULT)result : result == -ENOMEM ? E_OUTOFMEMORY : S_FALSE;
+        return GetPhysicalSpan(volIndex, backing, mapped, length, offset, size);
     }
     if (map.IsSparable()) {
         uint32_t physical, blocks;
@@ -678,7 +683,8 @@ HRESULT CInArchive::ReadFileItem(unsigned volIndex, unsigned fsIndex, const CLon
   return S_OK;
 }
 
-// (fsIndex = -1) means that it's metadata file
+// Negative fsIndex roles: -1 legacy metadata, -2 hidden VAT stream,
+// -3 raw hidden metadata allocation list for the Linux mapper.
 
 HRESULT CInArchive::ReadItem(unsigned volIndex, int fsIndex, const CLongAllocDesc &lad, bool isDir,
                              int numRecurseAllowed, HRESULT *progressResult) {
@@ -726,8 +732,8 @@ HRESULT CInArchive::ReadItem(unsigned volIndex, int fsIndex, const CLongAllocDes
   item.IcbTag.Parse(p + 16);
 
 #ifdef SEVENZIP_LINUX_UDF
-  if (fsIndex == -2) {
-      // Hidden VAT streams use Linux's non-device inode types without directory traversal.
+  if (fsIndex < -1) {
+      // Hidden streams use Linux's non-device inode types without directory traversal.
       switch (item.IcbTag.FileType) {
       case 0:
       case 4:
@@ -755,7 +761,7 @@ HRESULT CInArchive::ReadItem(unsigned volIndex, int fsIndex, const CLongAllocDes
           item.IcbTag.FileType != ICB_FILE_TYPE_METADATA_MIRROR &&
           item.IcbTag.FileType != ICB_FILE_TYPE_METADATA_BITMAP)
           return S_FALSE;
-  } else if (fsIndex != -2 &&
+  } else if (fsIndex >= 0 &&
              (item.IcbTag.FileType != ICB_FILE_TYPE_DIR &&
               item.IcbTag.FileType != ICB_FILE_TYPE_FILE &&
               item.IcbTag.FileType !=
@@ -769,11 +775,11 @@ HRESULT CInArchive::ReadItem(unsigned volIndex, int fsIndex, const CLongAllocDes
   const UInt32 extendedAttrLen = Get32(p + 168 + kExtendOffset);
   const UInt32 allocDescriptorsLen = Get32(p + 172 + kExtendOffset);
 
-  if ((extendedAttrLen & 3) != 0)
-    return S_FALSE;
+  if ((extendedAttrLen & 3) != 0 && fsIndex >= -1)
+      return S_FALSE;
   size_t pos = 176 + kExtendOffset;
   if (extendedAttrLen > size - pos)
-    return S_FALSE;
+      return S_FALSE;
   /*
   if (extendedAttrLen != 16)
   {
@@ -791,14 +797,21 @@ HRESULT CInArchive::ReadItem(unsigned volIndex, int fsIndex, const CLongAllocDes
 
   const int descType = item.IcbTag.GetDescriptorType();
   if (allocDescriptorsLen > size - pos)
-    return S_FALSE;
-  if (descType == ICB_DESC_TYPE_INLINE)
-  {
-    item.IsInline = true;
-    item.InlineData.CopyFrom(p + pos, allocDescriptorsLen);
+      return S_FALSE;
+#ifdef SEVENZIP_LINUX_UDF
+  if (fsIndex < -1)
+      item.LinuxAllocData.CopyFrom(p + pos, allocDescriptorsLen);
+  if (fsIndex == -3) {
+      item.IsInline = descType == ICB_DESC_TYPE_INLINE;
+      if (item.IsInline)
+          item.InlineData.CopyFrom(p + pos, allocDescriptorsLen);
+      return S_OK;
   }
-  else
-  {
+#endif
+  if (descType == ICB_DESC_TYPE_INLINE) {
+      item.IsInline = true;
+      item.InlineData.CopyFrom(p + pos, allocDescriptorsLen);
+  } else {
       item.IsInline = false;
       if (descType != ICB_DESC_TYPE_SHORT && descType != ICB_DESC_TYPE_LONG)
           return S_FALSE;
@@ -1204,17 +1217,18 @@ HRESULT CInArchive::Open2()
                 // UDF 2.2.10 Metadata Partition Map
                 pm.MetadataFileLocation = Get32(buf + pos + 40);
 #ifdef SEVENZIP_LINUX_UDF
+                pm.MetadataMap.CopyFrom(buf + pos, 64);
             }
 #endif
-          // pm.MetadataMirrorFileLocation = Get32(buf + pos + 44);
-          // pm.MetadataBitmapFileLocation = Get32(buf + pos + 48);
-          // pm.AllocationUnitSize = Get32(buf + pos + 52);
-          // pm.AlignmentUnitSize = Get16(buf + pos + 56);
-          // pm.Flags = buf[pos + 58];
+            // pm.MetadataMirrorFileLocation = Get32(buf + pos + 44);
+            // pm.MetadataBitmapFileLocation = Get32(buf + pos + 48);
+            // pm.AllocationUnitSize = Get32(buf + pos + 52);
+            // pm.AlignmentUnitSize = Get16(buf + pos + 56);
+            // pm.Flags = buf[pos + 58];
 
-          PRF(printf("\nPartitionMap type 2 PartitionNumber = %2d", pm.PartitionNumber));
-          // Unsupported = true;
-          // return S_FALSE;
+            PRF(printf("\nPartitionMap type 2 PartitionNumber = %2d", pm.PartitionNumber));
+            // Unsupported = true;
+            // return S_FALSE;
         } else
             return S_FALSE;
         pos += len;
@@ -1299,17 +1313,20 @@ HRESULT CInArchive::Open2()
   }
 #endif
 
+#ifdef SEVENZIP_LINUX_UDF
+  for (unsigned v = 0; v < LogVols.Size(); ++v) {
+      for (unsigned p = 0; p < LogVols[v].PartitionMaps.Size(); ++p) {
+          if (LogVols[v].PartitionMaps[p].IsMetadata())
+              RINOK(LoadLinuxMetadata(v, p))
+      }
+  }
+#else
   for (volIndex = 0; volIndex < LogVols.Size(); volIndex++) {
       CLogVol &vol = LogVols[volIndex];
       FOR_VECTOR(pmIndex, vol.PartitionMaps) {
           CPartitionMap &pm = vol.PartitionMaps[pmIndex];
           if (pm.Type != 2)
               continue;
-#ifdef SEVENZIP_LINUX_UDF
-          if (pm.IsSparable() || pm.IsVirtual)
-              continue;
-          unsigned backingRef = pmIndex;
-#endif
 
           {
               CLongAllocDesc lad;
@@ -1323,18 +1340,11 @@ HRESULT CInArchive::Open2()
                  so we can use pmIndex or find (Type==1) PartitionMap */
               FOR_VECTOR(pmIndex2, vol.PartitionMaps) {
                   const CPartitionMap &pm2 = vol.PartitionMaps[pmIndex2];
-                  if (pm2.PartitionNumber == pm.PartitionNumber && (pm2.Type == 1
-#ifdef SEVENZIP_LINUX_UDF
-                                                                    || pm2.IsSparable()
-#endif
-                                                                        )) {
+                  if (pm2.PartitionNumber == pm.PartitionNumber && pm2.Type == 1) {
                       lad.Location.PartitionRef = (UInt16)pmIndex2;
                       break;
                   }
               }
-#ifdef SEVENZIP_LINUX_UDF
-              backingRef = lad.Location.PartitionRef;
-#endif
 
               RINOK(ReadItem(volIndex,
                              -1, // (fsIndex = -1) means that it's metadata
@@ -1371,12 +1381,6 @@ HRESULT CInArchive::Open2()
               // mp.Number = part.Number;
               mp.Pos = part.Pos + e.Pos;
               mp.Len = e.Len >> SecLogSize;
-#ifdef SEVENZIP_LINUX_UDF
-              if (backingRef == pmIndex)
-                  return S_FALSE;
-              pm.MetadataBacking = backingRef;
-              pm.MetadataStart = e.Pos;
-#endif
               pm.PartitionIndex = Partitions.Add(mp);
           }
           // Items.DeleteBack(); // we can delete that metadata item
@@ -1400,6 +1404,8 @@ HRESULT CInArchive::Open2()
           */
       }
   }
+
+#endif
 
   RINOK(_progress->SetTotal(totalSize))
 
@@ -1594,32 +1600,34 @@ HRESULT CInArchive::Open2()
   return S_OK;
 }
 
+HRESULT CInArchive::Open(IInStream *inStream, CProgressVirt *progress) {
+    _progress = progress;
+    struct CResetProgress {
+        CProgressVirt **Value;
+        ~CResetProgress() { *Value = nullptr; }
+    } resetProgress{&_progress};
+    _stream = inStream;
+    HRESULT res = Open2();
+    if (res == S_FALSE && IsArc && !UnexpectedEnd)
+        Unsupported = true;
+    return res;
 
-HRESULT CInArchive::Open(IInStream *inStream, CProgressVirt *progress)
-{
-  _progress = progress;
-  _stream = inStream;
-  HRESULT res = Open2();
-  if (res == S_FALSE && IsArc && !UnexpectedEnd)
-    Unsupported = true;
-  return res;
-
-  /*
-  HRESULT res;
-  try
-  {
-    res = Open2();
-  }
-  catch(...)
-  {
-    // Clear();
-    // res = S_FALSE;
+    /*
+    HRESULT res;
+    try
+    {
+      res = Open2();
+    }
+    catch(...)
+    {
+      // Clear();
+      // res = S_FALSE;
+      _stream.Release();
+      throw;
+    }
     _stream.Release();
-    throw;
-  }
-  _stream.Release();
-  return res;
-  */
+    return res;
+    */
 }
 
 void CInArchive::Clear()

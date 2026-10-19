@@ -9,6 +9,7 @@ from udf_fixture import CASES, CONTINUATIONS, volume
 from udf_icb_fixture import CASES as ICB_CASES, BAD as ICB_BAD
 from udf_sparing_fixture import CASES as SPARING_CASES, BAD as SPARING_BAD
 from udf_vat_fixture import CASES as VAT_CASES, BAD as VAT_BAD
+from udf_metadata_fixture import CASES as METADATA_CASES, BAD as METADATA_BAD
 
 RUNTIME = Path(sys.argv.pop(1))
 MODULE = Path(sys.argv.pop(1))
@@ -55,14 +56,14 @@ class UdfTests(unittest.TestCase):
 
     def test_malformed_allocations(self):
         for kind in ("recorded-outside", "bad-partition", "continuation",
-                     "inline-length-mismatch", "metadata-hole", "metadata-outside"):
+                     "inline-length-mismatch"):
             image, _ = volume(kind)
             for engine in ("7z", "7zz"):
                 with self.subTest(kind=kind, engine=engine):
                     self.assertNotEqual(self.run_image(engine, image).returncode, 0)
 
     def test_continuations(self):
-        for kind in (*CONTINUATIONS, *ICB_CASES, *SPARING_CASES, *VAT_CASES):
+        for kind in (*CONTINUATIONS, *ICB_CASES, *SPARING_CASES, *VAT_CASES, *METADATA_CASES):
             image, files = volume(kind)
             with self.subTest(kind=kind):
                 result = self.run_image("7z", image)
@@ -72,9 +73,16 @@ class UdfTests(unittest.TestCase):
                     self.assertEqual(result.returncode, 0, result.stderr)
                     self.assertEqual(result.stdout, expected, name)
 
+    def test_standalone_metadata_bootstrap_bounds(self):
+        for kind in ("metadata-hole", "metadata-outside"):
+            image, _ = volume(kind)
+            with self.subTest(kind=kind):
+                self.assertNotEqual(self.run_image("7zz", image).returncode, 0)
+
     def test_damaged_continuation_chains(self):
         for kind in ("ad-cycle", "ad-limit-17", "ad-outside", "ad-bad-partition",
-                     "ad-overflow", "ad-over-block", *ICB_BAD, *SPARING_BAD, *VAT_BAD):
+                     "ad-overflow", "ad-over-block", *ICB_BAD, *SPARING_BAD, *VAT_BAD,
+                     *METADATA_BAD):
             image, _ = volume(kind)
             with self.subTest(kind=kind):
                 self.assertNotEqual(self.run_image("7z", image).returncode, 0)

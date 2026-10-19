@@ -244,3 +244,103 @@ int sevenzip_udf_read_inode(struct inode *inode)
 {
 	return udf_read_inode(inode, false);
 }
+
+static void __udf_clear_extent_cache(struct inode *inode)
+{
+	struct udf_inode_info *iinfo = UDF_I(inode);
+
+	if (iinfo->cached_extent.lstart != -1) {
+		brelse(iinfo->cached_extent.epos.bh);
+		iinfo->cached_extent.lstart = -1;
+	}
+}
+
+void udf_clear_extent_cache(struct inode *inode)
+{
+	struct udf_inode_info *iinfo = UDF_I(inode);
+
+	spin_lock(&iinfo->i_extent_cache_lock);
+	__udf_clear_extent_cache(inode);
+	spin_unlock(&iinfo->i_extent_cache_lock);
+}
+
+static int udf_read_extent_cache(struct inode *inode, int64_t bcount,
+				 int64_t *lbcount, struct extent_position *pos)
+{
+	struct udf_inode_info *iinfo = UDF_I(inode);
+	int ret = 0;
+
+	spin_lock(&iinfo->i_extent_cache_lock);
+	if ((iinfo->cached_extent.lstart <= bcount) &&
+	    (iinfo->cached_extent.lstart != -1)) {
+		/* Cache hit */
+		*lbcount = iinfo->cached_extent.lstart;
+		memcpy(pos, &iinfo->cached_extent.epos,
+		       sizeof(struct extent_position));
+		if (pos->bh)
+			get_bh(pos->bh);
+		ret = 1;
+	}
+	spin_unlock(&iinfo->i_extent_cache_lock);
+	return ret;
+}
+
+static void udf_update_extent_cache(struct inode *inode, int64_t estart,
+				    struct extent_position *pos)
+{
+	struct udf_inode_info *iinfo = UDF_I(inode);
+
+	spin_lock(&iinfo->i_extent_cache_lock);
+	/* Invalidate previously cached extent */
+	__udf_clear_extent_cache(inode);
+	if (pos->bh)
+		get_bh(pos->bh);
+	memcpy(&iinfo->cached_extent.epos, pos, sizeof(*pos));
+	iinfo->cached_extent.lstart = estart;
+	switch (iinfo->i_alloc_type) {
+	case ICBTAG_FLAG_AD_SHORT:
+		iinfo->cached_extent.epos.offset -= sizeof(struct short_ad);
+		break;
+	case ICBTAG_FLAG_AD_LONG:
+		iinfo->cached_extent.epos.offset -= sizeof(struct long_ad);
+		break;
+	}
+	spin_unlock(&iinfo->i_extent_cache_lock);
+}
+
+int inode_bmap(struct inode *inode, sector_t block, struct extent_position *pos,
+	       struct kernel_lb_addr *eloc, uint32_t *elen, sector_t *offset,
+	       int8_t *etype)
+{
+	unsigned char blocksize_bits = inode->i_sb->s_blocksize_bits;
+	int64_t lbcount = 0, bcount = (int64_t) block << blocksize_bits;
+	struct udf_inode_info *iinfo;
+	int err = 0;
+
+	iinfo = UDF_I(inode);
+	if (!udf_read_extent_cache(inode, bcount, &lbcount, pos)) {
+		pos->offset = 0;
+		pos->block = iinfo->i_location;
+		pos->bh = NULL;
+	}
+	*elen = 0;
+	do {
+		err = udf_next_aext(inode, pos, eloc, elen, etype, 1);
+		if (err <= 0) {
+			if (err == 0) {
+				*offset = (bcount - lbcount) >> blocksize_bits;
+				iinfo->i_lenExtents = lbcount;
+			}
+			return err;
+		}
+		/* A typed zero-length extent cannot advance a metadata lookup. */
+		if (!*elen)
+			return -EFSCORRUPTED;
+		lbcount += *elen;
+	} while (lbcount <= bcount);
+	/* update extent cache */
+	udf_update_extent_cache(inode, lbcount - *elen, pos);
+	*offset = (bcount + *elen - lbcount) >> blocksize_bits;
+
+	return 1;
+}

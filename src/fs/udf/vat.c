@@ -7,53 +7,6 @@ struct sevenzip_udf_virtual {
     uint16_t partition;
 };
 
-struct inode *udf_iget_special(struct super_block *sb, const struct kernel_lb_addr *loc)
-{
-    struct sevenzip_udf_file file = {0};
-    struct inode *inode = calloc(1, sizeof(*inode));
-    int error;
-    if (!inode)
-        return ERR_PTR(-ENOMEM);
-    error = sb->open_file(sb->context, loc->partitionReferenceNum, loc->logicalBlockNum, &file);
-    if (error) {
-        sb->io_error = error;
-        free(inode);
-        return ERR_PTR(-EIO);
-    }
-    inode->i_sb = sb;
-    inode->i_size = file.size;
-    inode->file = file.handle;
-    inode->info.i_location = *loc;
-    inode->info.i_location.partitionReferenceNum = file.partition;
-    inode->info.i_alloc_type = file.inline_data ? ICBTAG_FLAG_AD_IN_ICB : ICBTAG_FLAG_AD_SHORT;
-    inode->info.i_data = (uint8_t *)file.data;
-    return inode;
-}
-
-struct buffer_head *udf_bread(struct inode *inode, uint32_t block, int create, int *error)
-{
-    struct super_block *sb = inode->i_sb;
-    struct buffer_head *bh = calloc(1, sizeof(*bh));
-    (void)create;
-    *error = -ENOMEM;
-    if (!bh)
-        return NULL;
-    bh->b_size = sb->s_blocksize;
-    bh->b_data = malloc(bh->b_size);
-    if (!bh->b_data) {
-        brelse(bh);
-        return NULL;
-    }
-    sb->io_error = sb->read_file(inode->file, block, bh->b_data, bh->b_size);
-    if (sb->io_error) {
-        *error = -EIO;
-        brelse(bh);
-        return NULL;
-    }
-    *error = 0;
-    return bh;
-}
-
 void sevenzip_udf_virtual_free(struct sevenzip_udf_virtual *state)
 {
     if (state) {

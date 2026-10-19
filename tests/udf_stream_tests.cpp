@@ -108,6 +108,17 @@ class CancelOnce final : public IArchiveOpenCallback, public CMyUnknownImp {
         return E_ABORT;
     }
 };
+class OpenProgress final : public IArchiveOpenCallback, public CMyUnknownImp {
+    Z7_COM_UNKNOWN_IMP_1(IArchiveOpenCallback)
+  public:
+    bool closed = false;
+    unsigned calls = 0;
+    Z7_COM7F_IMF(SetTotal(const UInt64 *, const UInt64 *)) override { return S_OK; }
+    Z7_COM7F_IMF(SetCompleted(const UInt64 *, const UInt64 *)) override {
+        ++calls;
+        return closed ? E_FAIL : S_OK;
+    }
+};
 } // namespace
 
 class UdfStreamTests final : public QObject {
@@ -244,6 +255,16 @@ class UdfStreamTests final : public QObject {
               "vat20-unknown-newest", "vat20-cross-partition", "vat20-sparable"})
             QTest::newRow(kind) << QString::fromLatin1(kind);
     }
+    void metadataStreams_data() {
+        QTest::addColumn<QString>("kind");
+        for (const char *kind :
+             {"md-fragmented", "md-mirror-bootstrap", "md-mirror-lazy", "md-primary-only",
+              "md-bitmap-missing", "md-bitmap-present", "md-short-size", "md-ad-chain", "md-offset",
+              "md-sparable", "md-long-primary", "md-efe", "md-attributes", "metadata-hole",
+              "metadata-outside"})
+            QTest::newRow(kind) << QString::fromLatin1(kind);
+    }
+    void metadataStreams() { allocationStreams(); }
     void allocationStreams() {
         QFETCH(QString, kind);
         fixture(kind);
@@ -393,12 +414,62 @@ class UdfStreamTests final : public QObject {
         input->failSeekAt = UINT64_MAX;
         check(alpha, QByteArray::fromHex(files_["alpha.bin"].toString().toLatin1()));
     }
+    void metadataMirrorErrorsAndLifetime() {
+        fixture("md-ad-chain");
+        CMyComPtr2<IInStream, Input> input;
+        input.SetFromCls(new Input(bytes_));
+        const QByteArray expected = QByteArray::fromHex(files_["alpha.bin"].toString().toLatin1());
+        input->failSeekAt = UInt64(387) * 2048;
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        check(stream("alpha.bin"), expected);
+        input->failSeekAt = UINT64_MAX;
+        for (HRESULT result : {E_ABORT, E_FAIL}) {
+            for (UInt64 sector : {UInt64(387), UInt64(390)}) {
+                CMyComPtr<IArchiveOpenCallback> cancel =
+                    new CancelAt(input.operator->(), sector * 2048, result);
+                QCOMPARE(archive_->Open(input, nullptr, cancel), result);
+                UInt32 count = 99;
+                QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+                QCOMPARE(count, UInt32(0));
+            }
+        }
+        CMyComPtr2<IArchiveOpenCallback, OpenProgress> progress;
+        progress.SetFromCls(new OpenProgress);
+        QCOMPARE(archive_->Open(input, nullptr, progress), S_OK);
+        const unsigned calls = progress->calls;
+        progress->closed = true;
+        input->failSeekAt = UInt64(390) * 2048;
+        auto alpha = stream("alpha.bin");
+        QVERIFY(alpha);
+        check(alpha, expected);
+        QCOMPARE(progress->calls, calls);
+        input->failure = E_FAIL;
+        char data[17];
+        UInt32 count = 99;
+        QCOMPARE(alpha->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
+        QCOMPARE(alpha->Read(data, sizeof(data), &count), E_FAIL);
+        QCOMPARE(count, UInt32(0));
+        input->failure = S_OK;
+        check(alpha, expected);
+
+        input->failSeekAt = UINT64_MAX;
+        input->failure = E_FAIL;
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), E_FAIL);
+        input->failure = S_OK;
+        input->failSeekAt = UInt64(390) * 2048;
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        check(stream("alpha.bin"), expected);
+        QCOMPARE(archive_->Close(), S_OK);
+        archive_.Release();
+        check(alpha, expected);
+    }
     void backendExtraction_data() {
         QTest::addColumn<QString>("kind");
         for (const char *kind :
              {"sparse-long", "ad-directory", "ad-chain-long", "ad-cross-partition", "icb-efe",
               "icb-root", "icb-cross-partition", "icb-metadata-cross", "sp-reverse",
-              "sp-directory-cross", "sp-metadata", "vat15-inline", "vat20-external"})
+              "sp-directory-cross", "sp-metadata", "vat15-inline", "vat20-external",
+              "md-fragmented", "md-mirror-lazy", "md-ad-chain", "md-sparable"})
             QTest::newRow(kind) << QString::fromLatin1(kind);
     }
     void backendExtraction() {

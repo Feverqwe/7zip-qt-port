@@ -6,4 +6,10 @@ struct extent_position {
 	uint32_t offset;
 	struct kernel_lb_addr block;
 };
+struct udf_ext_cache {
+	/* Extent position */
+	struct extent_position epos;
+	/* Start logical offset in bytes */
+	int64_t lstart;
+};
 #endif

@@ -338,9 +338,88 @@ UDF variants и установил обе лицензии с точным ис�
 physical-device acceptance не выполнялась. Runtime validation относится к
 описанному read scope, а не ко всем UDF возможностям.
 
+## Metadata partition и mirror
+
+Из pinned Linux `58161ead29e50d70a317ea26b472e0c7508e69da` перенесены полные
+`super.c::udf_find_metadata_inode_efe`, `udf_load_metadata_files`,
+`partition.c::udf_try_read_meta`, `udf_get_pblock_meta25`, `inode.c::inode_bmap`
+и четыре extent-cache helpers (`__udf_clear_extent_cache`, `udf_clear_extent_cache`,
+`udf_read_extent_cache`, `udf_update_extent_cache`). Полные bodies, callers,
+`udf_iget_special`, `udf_bread`, AD traversal, структуры и bitmap/read-only ветви
+сравнены до реализации и повторно после неё. `udf_sb.h` сохраняет read-side
+projection partition types, `udf_i.h` — исходные extent/cache структуры.
+Их происхождение добавлено в существующий [manifest](../udf-linux-baseline.json).
+VFS inode/page-cache ownership и write-side поля не переносятся в архивный ABI.
+
+Исходный loader выбирает основной metadata inode либо mirror при невозможности
+загрузить основной, требует short AD и допускает недоступный bitmap в read-only
+режиме. Mapper использует `inode_bmap` для fragmented allocations и chains;
+если основное mapping невозможно, лениво загружает mirror, сохраняя исходный
+флаг однократной попытки. Ошибка чтения уже отображённого payload или его tag
+не заменяется данными mirror: fallback относится к mapping, как в Linux.
+Associated physical/sparable reference сохраняется независимо от того, куда
+ICB перенаправил сам metadata inode. Передача base/offset остаётся исходной,
+включая offset за границей выбранного metadata AD и составное sparable mapping.
+
+Новый `metadata.c` предоставляет owned state/callback services; original C
+использует существующее чтение FE/EFE и AD через тот же integration boundary,
+что VAT. Общие inode/stream services перенесены из `vat.c` в `reader.c`, без
+второй реализации. Hidden metadata role сохраняет raw allocation list и его
+actual kind; information length не обрезает AD list до передачи `inode_bmap`.
+Extended attributes удаляются из buffer view корректировкой его начала; EFE
+allocation offset сохраняется. `CPartitionMap` владеет C state и callback
+context; отдельная identity partition не смешивает inode keys разных maps.
+Старое прибавление одного metadata extent остаётся только у standalone engine.
+
+Extent cache сохраняет исходный lookup/update/clear control flow. Host buffer
+services предоставляют `get_bh`/`brelse` ownership; последний cached buffer
+освобождается вместе с inode. Kernel spinlocks заменены границей сериализованных
+archive calls; дополнительная thread-safety одного `IInArchive` не заявляется.
+Progress pointer очищается при выходе из Open, включая исключения. Позднее
+чтение AD или mirror использует source stream и не обращается к уничтоженному
+Open callback. Однократные E_ABORT/E_FAIL progress failures сохраняются при
+optional primary/mirror/bitmap retries; обычная optional inode I/O ошибка
+может привести к успешному mirror fallback.
+
+Типовые адаптации C bodies: `loff_t` → `int64_t`, C11 initializer `{0}`, явный
+portable ternary вместо GNU `?:` и внешняя linkage cache-clear для inode deleter.
+Добавлена bounded malformed-input политика: typed AD нулевой длины отклоняется
+в metadata `inode_bmap`. В исходном цикле такой AD не увеличивает byte count,
+а чередование с continuation может обходить лимит consecutive indirections.
+Этот случай проверяется через module CLI с timeout; native kernel его не
+запускает. Это намеренное отличие от pinned malformed-input policy. Общие
+checked physical additions остаются адаптацией предыдущих итераций.
+
+15 дополнительных положительных случаев покрывают fragmented FE/EFE metadata,
+AD после extended attributes, bootstrap/lazy mirror, исправный primary при
+повреждённом mirror, доступный/недоступный bitmap, mapping за information length,
+short AD chain, base/offset и sparable composition. Два из них уточняют прежнюю
+избыточную проверку unused metadata map: Linux не отвергает весь архив заранее
+из-за hole или unused allocation за partition bounds. Прежние строгие standalone
+checks сохранены отдельными поведенческими проверками. 11 отрицательных случаев
+проверяют отсутствующие/неверные inode, unsupported allocation kind, unmapped
+data, повреждённые tags, cycles, source bounds и arithmetic wrap.
+
+Нативный Linux `6.8.0-146-generic` подтвердил все 15 положительных вариантов
+и отказы для десяти повреждённых образов. Typed-zero cycle исключён из native
+run по причине выше; PASS для него относится к module regression. Mounts и
+образы удалены. ABI проверяет I/O fallback, однократные E_ABORT/E_FAIL в loader
+и AD mapping, отсутствие progress callbacks после Open, payload failure/retry,
+Close/reopen/release и сохранённые streams. Backend/catalog consumers покрывают
+fragmented, mirror, continuation и sparable scenarios.
+
+Пять focused suites (`udf`, `udf_stream`, `upstream_baseline`, `runtime_cache`,
+`runtime_package`) прошли на macOS arm64, Linux x64 и Windows x64/MSVC,
+Qt 6.12. Финальный remote receipt: `20261019T221324Z-e95dc361`.
+Actual macOS CMake install прочитал все 87 положительных UDF variants,
+сохранил source bytes и установил обе лицензии с точным исходным содержимым.
+Staging, loop mounts и одноразовые образы удалены; использованы прежние
+incremental build trees и compiler caches. Full/slow/UI/physical-device
+acceptance не выполнялась. Проверка этой итерации закрывает описанный metadata
+read scope, а не весь UDF audit или общую задачу форматов Linux.
+
 Полный UDF read audit остаётся открытым. В частности, ещё требуются
-volume discovery/block geometry,
-полная metadata partition/mirror mapping, names/NLS, symlinks, специальные
+volume discovery/block geometry, names/NLS, symlinks, специальные
 inode и metadata/read policies. Проверка этой итерации не означает завершение
 всех UDF возможностей или общей задачи форматов Linux. VFS, запись,
 journal/mount ownership и page cache остаются вне archive read scope.

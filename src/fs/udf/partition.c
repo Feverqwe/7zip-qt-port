@@ -144,3 +144,70 @@ uint32_t udf_get_pblock_virt20(struct super_block *sb, uint32_t block,
 {
 	return udf_get_pblock_virt15(sb, block, partition, offset);
 }
+
+static uint32_t udf_try_read_meta(struct inode *inode, uint32_t block,
+					uint16_t partition, uint32_t offset)
+{
+	struct super_block *sb = inode->i_sb;
+	struct udf_part_map *map;
+	struct kernel_lb_addr eloc;
+	uint32_t elen;
+	sector_t ext_offset;
+	struct extent_position epos = {0};
+	uint32_t phyblock;
+	int8_t etype;
+	int err = 0;
+
+	err = inode_bmap(inode, block, &epos, &eloc, &elen, &ext_offset, &etype);
+	if (err <= 0 || etype != (EXT_RECORDED_ALLOCATED >> 30))
+		phyblock = 0xFFFFFFFF;
+	else {
+		map = &UDF_SB(sb)->s_partmaps[partition];
+		/* map to sparable/physical partition desc */
+		phyblock = udf_get_pblock(sb, eloc.logicalBlockNum,
+			map->s_type_specific.s_metadata.s_phys_partition_ref,
+			ext_offset + offset);
+	}
+
+	brelse(epos.bh);
+	return phyblock;
+}
+
+uint32_t udf_get_pblock_meta25(struct super_block *sb, uint32_t block,
+				uint16_t partition, uint32_t offset)
+{
+	struct udf_sb_info *sbi = UDF_SB(sb);
+	struct udf_part_map *map;
+	struct udf_meta_data *mdata;
+	uint32_t retblk;
+	struct inode *inode;
+
+	udf_debug("READING from METADATA\n");
+
+	map = &sbi->s_partmaps[partition];
+	mdata = &map->s_type_specific.s_metadata;
+	inode = mdata->s_metadata_fe ? mdata->s_metadata_fe : mdata->s_mirror_fe;
+
+	if (!inode)
+		return 0xFFFFFFFF;
+
+	retblk = udf_try_read_meta(inode, block, partition, offset);
+	if (retblk == 0xFFFFFFFF && mdata->s_metadata_fe) {
+		udf_warn(sb, "error reading from METADATA, trying to read from MIRROR\n");
+		if (!(mdata->s_flags & MF_MIRROR_FE_LOADED)) {
+			mdata->s_mirror_fe = udf_find_metadata_inode_efe(sb,
+				mdata->s_mirror_file_loc,
+				mdata->s_phys_partition_ref);
+			if (IS_ERR(mdata->s_mirror_fe))
+				mdata->s_mirror_fe = NULL;
+			mdata->s_flags |= MF_MIRROR_FE_LOADED;
+		}
+
+		inode = mdata->s_mirror_fe;
+		if (!inode)
+			return 0xFFFFFFFF;
+		retblk = udf_try_read_meta(inode, block, partition, offset);
+	}
+
+	return retblk;
+}

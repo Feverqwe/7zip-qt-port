@@ -4,7 +4,7 @@ add_library(sevenzip_udf MODULE
     src/CPP/7zip/Archive/Udf/UdfLinux.cpp src/exfatmodule.cpp
     src/fs/udf/inode.c src/fs/udf/directory.c src/fs/udf/reader.c
     src/fs/udf/misc.c src/lib/crc/crc-itu-t.c
-    src/fs/udf/partition.c src/fs/udf/super.c src/fs/udf/vat.c
+    src/fs/udf/partition.c src/fs/udf/super.c src/fs/udf/vat.c src/fs/udf/metadata.c
     third_party/7zip/CPP/7zip/Archive/ArchiveExports.cpp
     third_party/7zip/CPP/7zip/Archive/Common/FindSignature.cpp
     third_party/7zip/CPP/7zip/Archive/Common/ItemNameUtils.cpp
@@ -31,7 +31,7 @@ target_include_directories(sevenzip_udf PRIVATE src third_party/7zip/CPP
     src/CPP/7zip/Archive/Udf third_party/7zip/CPP/7zip/Archive/Udf)
 set_source_files_properties(src/fs/udf/inode.c src/fs/udf/directory.c src/fs/udf/reader.c
     src/fs/udf/misc.c src/lib/crc/crc-itu-t.c
-    src/fs/udf/partition.c src/fs/udf/super.c src/fs/udf/vat.c
+    src/fs/udf/partition.c src/fs/udf/super.c src/fs/udf/vat.c src/fs/udf/metadata.c
     PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/src/fs/udf/include")
 target_compile_definitions(sevenzip_udf PRIVATE SEVENZIP_LINUX_UDF Z7_ST)
 target_link_libraries(sevenzip_udf PRIVATE Threads::Threads)

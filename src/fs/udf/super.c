@@ -199,3 +199,96 @@ int sevenzip_udf_load_vat(struct super_block *sb, int virtual_ref, int backing_r
 {
     return udf_load_vat(sb, virtual_ref, backing_ref);
 }
+
+struct inode *udf_find_metadata_inode_efe(struct super_block *sb,
+					u32 meta_file_loc, u32 partition_ref)
+{
+	struct kernel_lb_addr addr;
+	struct inode *metadata_fe;
+
+	addr.logicalBlockNum = meta_file_loc;
+	addr.partitionReferenceNum = partition_ref;
+
+	metadata_fe = udf_iget_special(sb, &addr);
+
+	if (IS_ERR(metadata_fe)) {
+		udf_warn(sb, "metadata inode efe not found\n");
+		return metadata_fe;
+	}
+	if (UDF_I(metadata_fe)->i_alloc_type != ICBTAG_FLAG_AD_SHORT) {
+		udf_warn(sb, "metadata inode efe does not have short allocation descriptors!\n");
+		iput(metadata_fe);
+		return ERR_PTR(-EIO);
+	}
+
+	return metadata_fe;
+}
+
+static int udf_load_metadata_files(struct super_block *sb, int partition,
+				   int type1_index)
+{
+	struct udf_sb_info *sbi = UDF_SB(sb);
+	struct udf_part_map *map;
+	struct udf_meta_data *mdata;
+	struct kernel_lb_addr addr;
+	struct inode *fe;
+
+	map = &sbi->s_partmaps[partition];
+	mdata = &map->s_type_specific.s_metadata;
+	mdata->s_phys_partition_ref = type1_index;
+
+	/* metadata address */
+	udf_debug("Metadata file location: block = %u part = %u\n",
+		  mdata->s_meta_file_loc, mdata->s_phys_partition_ref);
+
+	fe = udf_find_metadata_inode_efe(sb, mdata->s_meta_file_loc,
+					 mdata->s_phys_partition_ref);
+	if (IS_ERR(fe)) {
+		/* mirror file entry */
+		udf_debug("Mirror metadata file location: block = %u part = %u\n",
+			  mdata->s_mirror_file_loc, mdata->s_phys_partition_ref);
+
+		fe = udf_find_metadata_inode_efe(sb, mdata->s_mirror_file_loc,
+						 mdata->s_phys_partition_ref);
+
+		if (IS_ERR(fe)) {
+			udf_err(sb, "Both metadata and mirror metadata inode efe can not found\n");
+			return PTR_ERR(fe);
+		}
+		mdata->s_mirror_fe = fe;
+	} else
+		mdata->s_metadata_fe = fe;
+
+
+	/*
+	 * bitmap file entry
+	 * Note:
+	 * Load only if bitmap file location differs from 0xFFFFFFFF (DCN-5102)
+	*/
+	if (mdata->s_bitmap_file_loc != 0xFFFFFFFF) {
+		addr.logicalBlockNum = mdata->s_bitmap_file_loc;
+		addr.partitionReferenceNum = mdata->s_phys_partition_ref;
+
+		udf_debug("Bitmap file location: block = %u part = %u\n",
+			  addr.logicalBlockNum, addr.partitionReferenceNum);
+
+		fe = udf_iget_special(sb, &addr);
+		if (IS_ERR(fe)) {
+			if (sb_rdonly(sb))
+				udf_warn(sb, "bitmap inode efe not found but it's ok since the disc is mounted read-only\n");
+			else {
+				udf_err(sb, "bitmap inode efe not found and attempted read-write mount\n");
+				return PTR_ERR(fe);
+			}
+		} else
+			mdata->s_bitmap_fe = fe;
+	}
+
+	udf_debug("udf_load_metadata_files Ok\n");
+	return 0;
+}
+
+int sevenzip_udf_load_metadata(struct super_block *sb, int partition, int backing)
+{
+    return udf_load_metadata_files(sb, partition, backing);
+}

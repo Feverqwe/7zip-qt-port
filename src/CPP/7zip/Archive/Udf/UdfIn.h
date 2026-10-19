@@ -226,11 +226,12 @@ struct CPartitionMap {
     CByteBuffer SparableMap;
     std::shared_ptr<sevenzip_udf_sparing> Sparing;
     std::shared_ptr<sevenzip_udf_virtual> Virtual;
+    CByteBuffer MetadataMap;
+    std::shared_ptr<sevenzip_udf_metadata> Metadata;
     bool IsVirtual = false;
     bool IsVat20 = false;
-    unsigned MetadataBacking = (unsigned)-1;
-    UInt32 MetadataStart = 0;
     bool IsSparable() const { return SparableMap.Size() != 0; }
+    bool IsMetadata() const { return MetadataMap.Size() != 0; }
 #endif
     unsigned PartitionIndex;
 
@@ -330,6 +331,7 @@ struct CMyExtent
 struct CItem {
 #ifdef SEVENZIP_LINUX_UDF
     CLogBlockAddr Location;
+    CByteBuffer LinuxAllocData;
 #endif
     CIcbTag IcbTag;
 
@@ -495,6 +497,7 @@ private:
   struct CVatSource;
   struct CVatBuilder;
   HRESULT LoadLinuxVat(unsigned volIndex, unsigned partitionRef);
+  HRESULT LoadLinuxMetadata(unsigned volIndex, unsigned partitionRef);
   HRESULT ReadLinuxItem(unsigned volIndex, CLongAllocDesc &location, CByteBuffer &data,
                         HRESULT *progressResult);
   HRESULT ReadLinuxExtents(unsigned volIndex, unsigned partitionRef, CItem &item, const Byte *data,

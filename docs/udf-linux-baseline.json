@@ -39,6 +39,7 @@
     "fs/udf/partition.c",
     "fs/udf/super.c",
     "fs/udf/udf_i.h",
+    "fs/udf/udf_sb.h",
     "fs/udf/udfdecl.h",
     "fs/udf/udfend.h",
     "include/linux/crc-itu-t.h",

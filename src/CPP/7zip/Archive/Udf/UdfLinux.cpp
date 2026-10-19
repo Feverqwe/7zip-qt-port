@@ -58,6 +58,7 @@ struct CInArchive::CVatBuilder {
     CInArchive *archive;
     unsigned volume;
     HRESULT fatal = S_OK;
+    bool metadata = false;
 
     static int Open(void *opaque, UInt16 partition, UInt32 block, sevenzip_udf_file *file) {
         auto &builder = *static_cast<CVatBuilder *>(opaque);
@@ -73,7 +74,8 @@ struct CInArchive::CVatBuilder {
             location.Len = archive.LogVols[builder.volume].BlockSize;
             location.Location.PartitionRef = partition;
             location.Location.Pos = block;
-            result = archive.ReadItem(builder.volume, -2, location, false, 0, &builder.fatal);
+            result = archive.ReadItem(builder.volume, builder.metadata ? -3 : -2, location, false,
+                                      0, &builder.fatal);
             if (result == S_OK && archive.Items.Back().IsInline &&
                 !archive.Items.Back().CheckChunkSizes())
                 result = S_FALSE;
@@ -84,6 +86,11 @@ struct CInArchive::CVatBuilder {
                 source->item = archive.Items.Back();
                 file->size = source->item.Size;
                 file->partition = source->item.Location.PartitionRef;
+                file->block = source->item.Location.Pos;
+                file->allocation_type = source->item.IcbTag.GetDescriptorType();
+                file->extended = source->item.IsExtended;
+                file->allocation_size = (UInt32)source->item.LinuxAllocData.Size();
+                file->allocation_data = source->item.LinuxAllocData;
                 file->inline_data = source->item.IsInline;
                 file->data =
                     source->item.IsInline ? (const Byte *)source->item.InlineData : nullptr;
@@ -109,7 +116,56 @@ struct CInArchive::CVatBuilder {
         }
     }
     static void Close(void *opaque) { delete static_cast<CVatSource *>(opaque); }
+    static int Status(void *opaque) { return (int)static_cast<CVatBuilder *>(opaque)->fatal; }
+    static int ReadBlock(void *opaque, UInt16 partition, UInt32 block, void *data, size_t size) {
+        auto &builder = *static_cast<CVatBuilder *>(opaque);
+        if (builder.fatal != S_OK)
+            return (int)builder.fatal;
+        CLinuxContext context{builder.archive, builder.volume, nullptr};
+        ReadLinuxBlock(&context, partition, block, data, size);
+        if (context.progressResult != S_OK)
+            builder.fatal = context.progressResult;
+        if (context.result == E_ABORT)
+            builder.fatal = E_ABORT;
+        return (int)context.result;
+    }
 };
+
+HRESULT CInArchive::LoadLinuxMetadata(unsigned volIndex, unsigned partitionRef) {
+    const CLogVol &vol = LogVols[volIndex];
+    CPartitionMap &map = LogVols[volIndex].PartitionMaps[partitionRef];
+    unsigned backing = vol.PartitionMaps.Size();
+    FOR_VECTOR(i, vol.PartitionMaps) {
+        const CPartitionMap &candidate = vol.PartitionMaps[i];
+        if (candidate.PartitionNumber == map.PartitionNumber &&
+            (candidate.Type == 1 || candidate.IsSparable())) {
+            backing = i;
+            break;
+        }
+    }
+    if (backing == vol.PartitionMaps.Size())
+        return S_FALSE;
+    auto context = std::make_shared<CVatBuilder>();
+    context->archive = this;
+    context->volume = volIndex;
+    context->metadata = true;
+    sevenzip_udf_metadata *state = nullptr;
+    const int result = sevenzip_udf_metadata_create(
+        context.get(), CVatBuilder::Open, CVatBuilder::ReadBlock, CVatBuilder::Close,
+        CVatBuilder::Status, vol.BlockSize, vol.PartitionMaps.Size(), (UInt16)partitionRef,
+        (UInt16)backing, map.MetadataMap, &state);
+    std::shared_ptr<sevenzip_udf_metadata> owner(
+        state, [context](sevenzip_udf_metadata *p) { sevenzip_udf_metadata_free(p); });
+    if (context->fatal != S_OK)
+        return context->fatal;
+    if (result)
+        return result < -4095 ? (HRESULT)result : result == -ENOMEM ? E_OUTOFMEMORY : S_FALSE;
+    map.Metadata = std::move(owner);
+    CPartition partition = Partitions[map.PartitionIndex];
+    partition.IsMetadata = true;
+    map.PartitionIndex = Partitions.Add(partition);
+    return S_OK;
+}
 
 HRESULT CInArchive::LoadLinuxVat(unsigned volIndex, unsigned partitionRef) {
     const CLogVol &vol = LogVols[volIndex];
@@ -158,7 +214,7 @@ int CInArchive::ReadLinuxPhysical(void *opaque, UInt16, UInt32 block, void *buff
         c.result = InStream_SeekSet(c.archive->_stream, offset);
         if (c.result == S_OK)
             c.result = ReadStream_FALSE(c.archive->_stream, buffer, length);
-        if (c.result == S_OK) {
+        if (c.result == S_OK && c.archive->_progress) {
             c.archive->UpdatePhySize(offset + length);
             c.progressResult = E_FAIL;
             c.progressResult = c.archive->_progress->SetCompleted(
@@ -195,7 +251,7 @@ int CInArchive::ReadLinuxBlock(void *opaque, UInt16 partition, UInt32 block, voi
     try {
         c.result = c.archive->Read(c.volume, partition, block, (UInt32)length,
                                    static_cast<Byte *>(buffer));
-        if (c.result == S_OK) {
+        if (c.result == S_OK && c.archive->_progress) {
             c.progressResult = E_FAIL;
             c.progressResult = c.archive->_progress->SetCompleted(
                 c.archive->Files.Size(), c.archive->_processedProgressBytes);

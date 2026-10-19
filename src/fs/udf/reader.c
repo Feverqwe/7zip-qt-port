@@ -62,9 +62,16 @@ struct buffer_head *sb_bread(struct super_block *sb, udf_pblk_t address)
     if (!bh)
         return NULL;
     bh->b_size = sb->s_blocksize;
+    bh->references = 1;
     bh->b_data = malloc(bh->b_size);
-    if (!bh->b_data || sb->read(sb->context, (uint16_t)(address >> 32),
-                               (uint32_t)address, bh->b_data, bh->b_size)) {
+    if (!bh->b_data) {
+        free(bh);
+        sb->io_error = -ENOMEM;
+        return NULL;
+    }
+    sb->io_error = sb->read(sb->context, (uint16_t)(address >> 32),
+                            (uint32_t)address, bh->b_data, bh->b_size);
+    if (sb->io_error) {
         free(bh->b_data);
         free(bh);
         return NULL;
@@ -74,7 +81,7 @@ struct buffer_head *sb_bread(struct super_block *sb, udf_pblk_t address)
 
 void brelse(struct buffer_head *bh)
 {
-    if (bh) {
+    if (bh && --bh->references == 0) {
         free(bh->b_data);
         free(bh);
     }
@@ -148,4 +155,65 @@ int sevenzip_udf_extents(void *context, sevenzip_udf_read read,
     }
     brelse(pos.bh);
     return result < 0 ? result : 0;
+}
+
+struct inode *udf_iget_special(struct super_block *sb, const struct kernel_lb_addr *loc)
+{
+    struct sevenzip_udf_file file = {0};
+    struct inode *inode = calloc(1, sizeof(*inode));
+    int error;
+    if (!inode)
+        return ERR_PTR(-ENOMEM);
+    error = sb->open_file(sb->context, loc->partitionReferenceNum, loc->logicalBlockNum, &file);
+    if (error) {
+        sb->io_error = error;
+        free(inode);
+        return ERR_PTR(-EIO);
+    }
+    inode->i_sb = sb;
+    inode->i_size = file.size;
+    inode->file = file.handle;
+    inode->info.i_location = *loc;
+    inode->info.cached_extent.lstart = -1;
+    inode->info.i_location.logicalBlockNum = file.block;
+    inode->info.i_location.partitionReferenceNum = file.partition;
+    inode->info.i_alloc_type = file.allocation_type;
+    inode->info.i_efe = file.extended;
+    inode->info.i_lenAlloc = file.allocation_size;
+    inode->info.i_data = (uint8_t *)(file.inline_data ? file.data : file.allocation_data);
+    return inode;
+}
+
+void iput(struct inode *inode)
+{
+    if (inode) {
+        udf_clear_extent_cache(inode);
+        inode->i_sb->close_file(inode->file);
+        free(inode);
+    }
+}
+
+struct buffer_head *udf_bread(struct inode *inode, uint32_t block, int create, int *error)
+{
+    struct super_block *sb = inode->i_sb;
+    struct buffer_head *bh = calloc(1, sizeof(*bh));
+    (void)create;
+    *error = -ENOMEM;
+    if (!bh)
+        return NULL;
+    bh->b_size = sb->s_blocksize;
+    bh->references = 1;
+    bh->b_data = malloc(bh->b_size);
+    if (!bh->b_data) {
+        brelse(bh);
+        return NULL;
+    }
+    sb->io_error = sb->read_file(inode->file, block, bh->b_data, bh->b_size);
+    if (sb->io_error) {
+        *error = -EIO;
+        brelse(bh);
+        return NULL;
+    }
+    *error = 0;
+    return bh;
 }
