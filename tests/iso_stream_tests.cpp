@@ -93,6 +93,14 @@ class CancelOpen final : public IArchiveOpenCallback, public CMyUnknownImp {
     Z7_COM7F_IMF(SetTotal(const UInt64 *, const UInt64 *)) override { return S_OK; }
     Z7_COM7F_IMF(SetCompleted(const UInt64 *, const UInt64 *)) override { return E_ABORT; }
 };
+class CancelDeepOpen final : public IArchiveOpenCallback, public CMyUnknownImp {
+    Z7_COM_UNKNOWN_IMP_1(IArchiveOpenCallback)
+  public:
+    Z7_COM7F_IMF(SetTotal(const UInt64 *, const UInt64 *)) override { return S_OK; }
+    Z7_COM7F_IMF(SetCompleted(const UInt64 *files, const UInt64 *)) override {
+        return files && *files >= 3000 ? E_ABORT : S_OK;
+    }
+};
 } // namespace
 
 class IsoStreamTests final : public QObject {
@@ -259,6 +267,81 @@ class IsoStreamTests final : public QObject {
         if (hasBoot)
             check(boot, "[BOOT]/Boot-NoEmul.img", 0, 2048);
         createArchive();
+    }
+    void deepTreeCleanupAndRetainedStream() {
+        loadFixture("tree-clear");
+        CMyComPtr<IInStream> input = new Input(bytes_);
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        UInt32 count = 0;
+        QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, UInt32(4097));
+        const QString path = record_["files"].toObject().keys().first();
+        auto retained = stream(path);
+        QVERIFY(retained);
+        const auto retainedRecord = record_;
+        CMyComPtr<IArchiveOpenCallback> cancel = new CancelDeepOpen;
+        QCOMPARE(archive_->Open(input, nullptr, cancel), E_ABORT);
+        QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, UInt32(0));
+        check(retained, path, 0, 4096);
+        loadFixture("tree-cycle");
+        input = new Input(bytes_);
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_FALSE);
+        QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, UInt32(0));
+        loadFixture("plain");
+        input = new Input(bytes_);
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        check(stream("ALPHA.BIN"), "ALPHA.BIN", 0, 4096);
+        archive_.Release();
+        input.Release();
+        record_ = retainedRecord;
+        check(retained, path, 4096, 1000);
+        createArchive();
+    }
+    void deepBackendListingAndSourceEntry() {
+        loadFixture("tree-clear");
+        QTemporaryDir temporary;
+        QVERIFY(temporary.isValid());
+        QFile image(temporary.filePath(QString::fromUtf8("образ 空.iso")));
+        QVERIFY(image.open(QIODevice::WriteOnly));
+        QCOMPARE(image.write(bytes_), bytes_.size());
+        image.close();
+        const QString path = record_["files"].toObject().keys().first();
+        const QByteArray expected =
+            QByteArray::fromBase64(record_["files"].toObject()[path].toString().toLatin1());
+        const QDir runtime(QString::fromUtf8(SEVENZIP_ISO_RUNTIME));
+        QList<ArchiveEntry> entries;
+        ArchiveBackend backend(nullptr, runtime.filePath(
+#ifdef Q_OS_WIN
+                                            "7z.exe"
+#else
+                                            "7z"
+#endif
+                                            ));
+        connect(&backend, &ArchiveBackend::entriesReady, this,
+                [&](const QList<ArchiveEntry> &result) { entries = result; });
+        QSignalSpy finished(&backend, &ArchiveBackend::finished);
+        backend.list(image.fileName());
+        QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 20000);
+        QVERIFY2(finished[0][0].toBool(), qPrintable(finished[0][1].toString()));
+        QCOMPARE(entries.size(), qsizetype(4097));
+        bool leaf = false;
+        for (const auto &entry : entries)
+            if (QDir::fromNativeSeparators(entry.path) == path) {
+                QCOMPARE(entry.size, qint64(expected.size()));
+                QVERIFY(!entry.directory);
+                leaf = true;
+            }
+        QVERIFY2(leaf, qPrintable(entries.constLast().path.right(80)));
+        finished.clear();
+        const QString output = temporary.filePath("leaf.bin");
+        backend.extractSourceEntry(image.fileName(), path, output, "Iso", {});
+        QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 20000);
+        QVERIFY2(finished[0][0].toBool(), qPrintable(finished[0][1].toString()));
+        QFile file(output);
+        QVERIFY(file.open(QIODevice::ReadOnly));
+        QCOMPARE(file.readAll(), expected);
     }
     void errorsAndSeekBoundaries() {
         loadFixture("plain");

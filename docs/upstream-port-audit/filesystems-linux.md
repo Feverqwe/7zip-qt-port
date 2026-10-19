@@ -80,7 +80,8 @@ source/volume, streams независимы, повреждения и отме�
 relocation, inode metadata, RR-vs-Joliet выбор, Linux zisofs decompression,
 High Sierra и Linux recording dates. Актуализация ISO ещё не завершена:
 Joliet/RR fallback и normal/Acorn/raw mapping подключены к Linux C readers;
-дополнительные NLS charsets, metadata и оставшиеся read semantics сохраняются
+глубокий обход, очистка дерева и выбор вложенного файла проверены вместе.
+Дополнительные NLS charsets, metadata и оставшиеся read semantics сохраняются
 в scope. UDF ещё не проверен.
 
 ### HFS+/HFSX: fork mapping и metadata reads

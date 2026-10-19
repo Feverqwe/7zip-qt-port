@@ -8,6 +8,9 @@ import zlib
 
 
 def volume(kind="plain"):
+    if kind.startswith("tree-"):
+        from iso_tree_fixture import volume as tree_volume
+        return tree_volume(kind)
     if kind.startswith("names-"):
         from iso_name_fixture import volume as name_volume
         return name_volume(kind)

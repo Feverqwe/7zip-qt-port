@@ -41,3 +41,7 @@ Short recording-date variants exercise timezone limits and normalization.
 NLS, RR-without-NM and Acorn variants from these generated images. It uses no
 user filenames or historical media. The Acorn marker and file type are synthetic;
 malformed marker/length variants must retain the normal fallback name.
+
+`tests/iso_tree_fixture.py` constructs deep directory chains from the same
+native record templates and generated payload storage. It derives valid
+768/4096-level trees and a deep cycle; no host directory tree is created.

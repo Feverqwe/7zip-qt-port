@@ -62,6 +62,16 @@ class IsoTests(unittest.TestCase):
                     self.assertNotEqual(result.returncode, 0)
                     self.assertEqual(result.stdout, b"")
 
+    def test_deep_tree_bytes_and_cycle(self):
+        image, files = volume("tree-clear")
+        for engine in ("7z", "7zz"):
+            for name, expected in files.items():
+                with self.subTest(engine=engine):
+                    result = self.run_image(engine, image, name)
+                    self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                    self.assertEqual(result.stdout, expected)
+            self.assertNotEqual(self.run_image(engine, volume("tree-cycle")[0]).returncode, 0)
+
     def test_invalid_directory_is_rejected(self):
         for kind in ("bad-directory", "cycle", "bad-name-length", "short-record"):
             for engine in ("7z", "7zz"):

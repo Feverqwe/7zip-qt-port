@@ -357,17 +357,11 @@ bool CInArchive::IsSupported(const CRef &ref) const {
     return true;
 }
 
-static const unsigned kNumLevelsMax = 256;
-
-HRESULT CInArchive::ReadDir(CDir &d, const unsigned level, const CRef *sections) {
+HRESULT CInArchive::ReadDirRecords(CDir &d, bool root, const CRef *sections) {
     if (!d.IsDir())
         return S_OK;
     if (_openCallback)
         RINOK(_openCallback->SetCompleted(&_numFiles, &_processedBytes))
-    if (level > kNumLevelsMax) {
-        TooDeepDirs = true;
-        return S_FALSE;
-    }
 
     const unsigned sectionCount = sections ? sections->NumExtents : 1;
     for (unsigned section = 0; section < sectionCount; section++) {
@@ -423,7 +417,7 @@ HRESULT CInArchive::ReadDir(CDir &d, const unsigned level, const CRef *sections)
 
             CDir subItem;
             ReadDirRecord(subItem, len);
-            if (firstItem && level == 0 && section == 0
+            if (firstItem && root && section == 0
 #ifdef SEVENZIP_LINUX_ISO
                 && !_highSierra
 #endif
@@ -455,16 +449,57 @@ HRESULT CInArchive::ReadDir(CDir &d, const unsigned level, const CRef *sections)
             firstItem = false;
         }
     }
-    for (unsigned i = 0; i < d._subItems.Size();) {
-        const CRef ref = ReadExtentGroup(d, i);
-        CDir &child = d._subItems[ref.Index];
-        if (child.IsDir() && !ref.Valid)
-            return S_FALSE;
-        RINOK(ReadDir(child, level + 1, &ref))
-    }
+    return S_OK;
+}
 
-    for (unsigned i = 0; i < sectionCount; i++)
-        UniqStartLocations.DeleteBack();
+HRESULT CInArchive::ReadDir(CDir &d, const unsigned level, const CRef *sections) {
+    if (!d.IsDir())
+        return S_OK;
+    struct CFrame {
+        CDir *Dir;
+        CRef Sections;
+        unsigned Next;
+        bool HasSections, Entered, Root;
+    };
+    CRecordVector<CFrame> stack;
+    CFrame first = {};
+    first.Dir = &d;
+    first.Next = 0;
+    first.HasSections = sections != NULL;
+    if (sections)
+        first.Sections = *sections;
+    first.Entered = false;
+    first.Root = level == 0;
+    stack.Add(first);
+    while (!stack.IsEmpty()) {
+        CFrame &frame = stack.Back();
+        if (!frame.Entered) {
+            RINOK(
+                ReadDirRecords(*frame.Dir, frame.Root, frame.HasSections ? &frame.Sections : NULL))
+            frame.Entered = true;
+        }
+        if (frame.Next < frame.Dir->_subItems.Size()) {
+            const CRef ref = ReadExtentGroup(*frame.Dir, frame.Next);
+            CDir &child = frame.Dir->_subItems[ref.Index];
+            if (!child.IsDir())
+                continue;
+            if (!ref.Valid)
+                return S_FALSE;
+            CFrame next;
+            next.Dir = &child;
+            next.Sections = ref;
+            next.Next = 0;
+            next.HasSections = true;
+            next.Entered = false;
+            next.Root = false;
+            stack.Add(next);
+        } else {
+            const unsigned count = frame.HasSections ? frame.Sections.NumExtents : 1;
+            for (unsigned i = 0; i < count; ++i)
+                UniqStartLocations.DeleteBack();
+            stack.DeleteBack();
+        }
+    }
     return S_OK;
 }
 
@@ -516,10 +551,26 @@ CRef CInArchive::ReadExtentGroup(CDir &d, unsigned &i) {
 void CInArchive::CreateRefs(CDir &d) {
     if (!d.IsDir())
         return;
-    for (unsigned i = 0; i < d._subItems.Size();) {
-        const CRef ref = ReadExtentGroup(d, i);
+    struct CFrame {
+        CDir *Dir;
+        unsigned Next;
+    };
+    CRecordVector<CFrame> stack;
+    CFrame first = {&d, 0};
+    stack.Add(first);
+    while (!stack.IsEmpty()) {
+        CFrame &frame = stack.Back();
+        if (frame.Next == frame.Dir->_subItems.Size()) {
+            stack.DeleteBack();
+            continue;
+        }
+        const CRef ref = ReadExtentGroup(*frame.Dir, frame.Next);
         Refs.Add(ref);
-        CreateRefs(d._subItems[ref.Index]);
+        CDir &child = frame.Dir->_subItems[ref.Index];
+        if (child.IsDir()) {
+            CFrame next = {&child, 0};
+            stack.Add(next);
+        }
     }
 }
 

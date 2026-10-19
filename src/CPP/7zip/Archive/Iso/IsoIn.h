@@ -17,12 +17,33 @@ struct CUnexpectedEndException {};
 struct CHeaderErrorException {};
 
 struct CDir : public CDirRecord {
-    CDir *Parent;
+    CDir *Parent = NULL;
     CObjectVector<CDir> _subItems;
 
+    CDir() = default;
+    CDir(const CDir &) = default;
+    CDir &operator=(const CDir &) = default;
+    ~CDir() { Clear(); }
+
     void Clear() {
+        CDir *current = this;
+        for (;;) {
+            if (!current->_subItems.IsEmpty()) {
+                CDir &child = current->_subItems.Back();
+                if (!child._subItems.IsEmpty()) {
+                    child.Parent = current;
+                    current = &child;
+                } else
+                    current->_subItems.DeleteBack();
+            } else {
+                if (current == this)
+                    break;
+                CDir *owner = current->Parent;
+                owner->_subItems.DeleteBack();
+                current = owner;
+            }
+        }
         Parent = NULL;
-        _subItems.Clear();
     }
 
     AString GetPath(bool checkSusp, unsigned skipSize) const {
@@ -258,6 +279,7 @@ class CInArchive {
     void SeekToPosition(UInt64 position);
     CRef ReadExtentGroup(CDir &parent, unsigned &index);
     HRESULT ReadDir(CDir &d, unsigned level, const CRef *sections = NULL);
+    HRESULT ReadDirRecords(CDir &d, bool root, const CRef *sections);
     void CreateRefs(CDir &d);
 
     void ReadBootInfo();

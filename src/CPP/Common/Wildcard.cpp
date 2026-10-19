@@ -1,24 +1,34 @@
-// Adapted from 7-Zip CPP/Common/Wildcard.cpp (0766b73).
+// Adapted from 7-Zip CPP/Common/Wildcard.cpp; see docs/upstream-baseline.json.
 // Copyright (C) 1999-2026 Igor Pavlov. LGPL-2.1-or-later.
 
-#include "Common/StdAfx.h"
+#include "StdAfx.h"
 
 #include "Wildcard.h"
+#ifdef QT_CORE_LIB
 #include "qtdiagnostictext.h"
 #include <QString>
 #include <string>
 
 static char16_t MyCharUpper(char16_t c) { return QChar(c).toUpper().unicode(); }
+#endif
 
 extern bool g_CaseSensitive;
 bool g_CaseSensitive =
 #ifdef _WIN32
     false;
 #elif defined(__APPLE__)
+#ifdef QT_CORE_LIB
 #if defined(TARGET_OS_IPHONE) && TARGET_OS_IPHONE
     true;
 #else
     false;
+#endif
+#else
+#ifdef TARGET_OS_IPHONE
+    true;
+#else
+    false;
+#endif
 #endif
 #else
     true;
@@ -215,6 +225,7 @@ bool DoesWildcardMatchName(const UString &mask, const UString &name) {
     return EnhancedMaskTest(mask.Ptr(), name.Ptr(), g_CaseSensitive);
 }
 
+#ifdef QT_CORE_LIB
 bool DoesWildcardMatchName(const char16_t *mask, const char16_t *name) {
     return EnhancedMaskTest(mask, name, false);
 }
@@ -232,6 +243,7 @@ void SplitPathToParts_Smart(const QString &path, QString &dirPrefix, QString &na
     dirPrefix = QString::fromWCharArray(prefix.Ptr());
     name = QString::fromWCharArray(leaf.Ptr());
 }
+#endif
 
 bool DoesNameContainWildcard(const UString &path) {
     for (unsigned i = 0; i < path.Len(); i++) {
@@ -246,6 +258,26 @@ bool DoesNameContainWildcard(const UString &path) {
 // NWildcard
 
 namespace NWildcard {
+
+CCensorNode::~CCensorNode() {
+    CCensorNode *current = this;
+    for (;;) {
+        if (!current->SubNodes.IsEmpty()) {
+            CCensorNode &child = current->SubNodes.Back();
+            if (!child.SubNodes.IsEmpty()) {
+                child.Parent = current;
+                current = &child;
+            } else
+                current->SubNodes.DeleteBack();
+        } else {
+            if (current == this)
+                break;
+            CCensorNode *owner = current->Parent;
+            owner->SubNodes.DeleteBack();
+            current = owner;
+        }
+    }
+}
 
 /*
 
@@ -270,6 +302,12 @@ bool CItem::AreAllAllowed() const {
 }
 
 bool CItem::CheckPath(const UStringVector &pathParts, bool isFile) const {
+    return CheckPathFrom(pathParts, 0, isFile);
+}
+
+bool CItem::CheckPathFrom(const UStringVector &pathParts, unsigned offset, bool isFile) const {
+    if (offset > pathParts.Size())
+        return false;
     if (!isFile && !ForDir)
         return false;
 
@@ -285,7 +323,7 @@ bool CItem::CheckPath(const UStringVector &pathParts, bool isFile) const {
     }
     */
 
-    int delta = (int)pathParts.Size() - (int)PathParts.Size();
+    int delta = (int)(pathParts.Size() - offset) - (int)PathParts.Size();
     if (delta < 0)
         return false;
     int start = 0;
@@ -312,10 +350,10 @@ bool CItem::CheckPath(const UStringVector &pathParts, bool isFile) const {
         unsigned i;
         for (i = 0; i < PathParts.Size(); i++) {
             if (WildcardMatching) {
-                if (!DoesWildcardMatchName(PathParts[i], pathParts[i + (unsigned)d]))
+                if (!DoesWildcardMatchName(PathParts[i], pathParts[offset + i + (unsigned)d]))
                     break;
             } else {
-                if (CompareFileNames(PathParts[i], pathParts[i + (unsigned)d]) != 0)
+                if (CompareFileNames(PathParts[i], pathParts[offset + i + (unsigned)d]) != 0)
                     break;
             }
         }
@@ -345,25 +383,28 @@ void CCensorNode::AddItemSimple(bool include, CItem &item) {
 }
 
 void CCensorNode::AddItem(bool include, CItem &item, int ignoreWildcardIndex) {
-    if (item.PathParts.Size() <= 1) {
-        if (item.PathParts.Size() != 0 && item.WildcardMatching) {
-            if (!DoesNameContainWildcard(item.PathParts.Front()))
-                item.WildcardMatching = false;
+    CCensorNode *node = this;
+    for (;;) {
+        if (item.PathParts.Size() <= 1) {
+            if (item.PathParts.Size() != 0 && item.WildcardMatching) {
+                if (!DoesNameContainWildcard(item.PathParts.Front()))
+                    item.WildcardMatching = false;
+            }
+            node->AddItemSimple(include, item);
+            return;
         }
-        AddItemSimple(include, item);
-        return;
-    }
 
-    const UString &front = item.PathParts.Front();
+        const UString &front = item.PathParts.Front();
 
-    // WIN32 doesn't support wildcards in file names
-    if (item.WildcardMatching && ignoreWildcardIndex != 0 && DoesNameContainWildcard(front)) {
-        AddItemSimple(include, item);
-        return;
+        // WIN32 doesn't support wildcards in file names
+        if (item.WildcardMatching && ignoreWildcardIndex != 0 && DoesNameContainWildcard(front)) {
+            node->AddItemSimple(include, item);
+            return;
+        }
+        node = &node->Find_SubNode_Or_Add_New(front);
+        item.PathParts.Delete(0);
+        --ignoreWildcardIndex;
     }
-    CCensorNode &subNode = Find_SubNode_Or_Add_New(front);
-    item.PathParts.Delete(0);
-    subNode.AddItem(include, item, ignoreWildcardIndex - 1);
 }
 
 /*
@@ -399,30 +440,49 @@ bool CCensorNode::AreThereIncludeItems() const {
 
 bool CCensorNode::CheckPathCurrent(bool include, const UStringVector &pathParts,
                                    bool isFile) const {
+    return CheckPathCurrentFrom(include, pathParts, 0, isFile);
+}
+
+bool CCensorNode::CheckPathCurrentFrom(bool include, const UStringVector &pathParts,
+                                       unsigned offset, bool isFile) const {
     const CObjectVector<CItem> &items = include ? IncludeItems : ExcludeItems;
     FOR_VECTOR(i, items)
-    if (items[i].CheckPath(pathParts, isFile))
+    if (items[i].CheckPathFrom(pathParts, offset, isFile))
         return true;
     return false;
 }
 
 bool CCensorNode::CheckPathVect(const UStringVector &pathParts, bool isFile, bool &include) const {
-    if (CheckPathCurrent(false, pathParts, isFile)) {
-        include = false;
-        return true;
-    }
-    if (pathParts.Size() > 1) {
-        int index = FindSubNode(pathParts.Front());
-        if (index >= 0) {
-            UStringVector pathParts2 = pathParts;
-            pathParts2.Delete(0);
-            if (SubNodes[(unsigned)index].CheckPathVect(pathParts2, isFile, include))
-                return true;
+    CRecordVector<const CCensorNode *> parents;
+    const CCensorNode *node = this;
+    unsigned offset = 0;
+    for (;;) {
+        if (node->CheckPathCurrentFrom(false, pathParts, offset, isFile)) {
+            include = false;
+            return true;
         }
+        parents.Add(node);
+        if (pathParts.Size() - offset <= 1)
+            break;
+        const int index = node->FindSubNode(pathParts[offset]);
+        if (index < 0)
+            break;
+        node = &node->SubNodes[(unsigned)index];
+        ++offset;
     }
-    bool finded = CheckPathCurrent(true, pathParts, isFile);
-    include = finded; // if (!finded), then (true) is allowed also
-    return finded;
+    for (;;) {
+        node = parents.Back();
+        parents.DeleteBack();
+        if (node->CheckPathCurrentFrom(true, pathParts, offset, isFile)) {
+            include = true;
+            return true;
+        }
+        if (parents.IsEmpty()) {
+            include = false;
+            return false;
+        }
+        --offset;
+    }
 }
 
 /*
@@ -580,7 +640,11 @@ static unsigned GetNumPrefixParts(const UStringVector &pathParts) {
 void CCensor::AddItem(ECensorPathMode pathMode, bool include, const UString &path,
                       const CCensorPathProps &props) {
     if (path.IsEmpty())
+#ifdef QT_CORE_LIB
         throw QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Empty file path");
+#else
+        throw "Empty file path";
+#endif
 
     UStringVector pathParts;
     SplitPathToParts(path, pathParts);

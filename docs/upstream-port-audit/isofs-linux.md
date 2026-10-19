@@ -58,8 +58,9 @@ bodies в engine. Следующая интеграция переносит C s
   Streams остаются читаемыми после Close, повторного Open и release handler.
 - Interleave gap явно возвращает UnsupportedMethod, вместо неверных сырых байтов.
   Linux также не реализует interleaving; `file_unit_size` без gap принимается.
-- Malformed directories, циклы и превышение исходного depth cap 256 явно
-  отклоняются, вместо успешной публикации неполного дерева. Failed/canceled Open
+- Malformed directories и циклы явно отклоняются, вместо успешной публикации
+  неполного дерева. Искусственный depth cap снят вместе с рекурсией обхода,
+  построения refs и освобождения дерева. Failed/canceled Open
   очищает опубликованный каталог. Частичный последний metadata buffer допустим;
   physical size больше не округляет 512-byte хвост до 2048.
 
@@ -237,13 +238,52 @@ Standalone `7zz` не получает GPL readers и этот interface extensi
 Остальные kernel NLS tables пока не подключены: неизвестный charset явно
 отклоняется; это остаётся незавершённым read scope, а не полной NLS parity.
 
+## Глубокие каталоги и lifetime дерева
+
+Сравнены полные исходные `ReadDir`, `CreateRefs`, `CDir::Clear`, callers и
+`CObjectVector` copy/delete/destructor paths. Linux directory/inode lookup
+не накладывает archive limit 256 на глубину тома; native openat позволяет
+проверить filesystem tree отдельно от лимита длины одного host path.
+Исходный 7-Zip record parser выделен без изменения его ветвей; recursive DFS
+заменён явными frames с тем же порядком section/group processing и refs.
+Active-ancestor extent checks, metadata budget, ошибки и callbacks сохранены.
+Это C++ adaptation исходного алгоритма, без нового format parser или VFS emulation.
+
+`CDir::Clear` освобождает subtree снизу вверх без allocations и зависимости
+от call stack. Временные owner links устанавливаются при cleanup; частично
+построенное дерево не требует уже созданных archive refs/Parent pointers.
+Parent инициализирован до копирования записи. Destructor очищает descendants
+до вызова исходного `CObjectVector` destructor; пустые child destructors не
+образуют рекурсивную цепочку. Старое поле TooDeepDirs сохраняет layout/API,
+но произвольный предел не применяется. Оба engines получают эту адаптацию.
+
+Полный install smoke выявил следующую зависимость: исходный
+`CPP/Common/Wildcard.cpp:CCensorNode::CheckPathVect` рекурсивно копировал хвост
+пути при фильтрации каждого элемента. Профиль 4096-level CLI selection показал
+CPU в этой ветви; diagnostic процесс остановлен. Исходные item matching,
+exclude-before-child и child-before-parent-include ветви сохранены, а обход
+использует frames и offset в неизменном path vector. AddItem и освобождение
+subnodes также итеративны. Нового mask matcher не добавлено.
+
+Одна authoritative адаптация Wildcard.cpp/.h используется Qt и обоими native
+engines; Qt string/localization boundary обёрнут compile guard. Native path
+case policy сохранена. Полные исходные тела и dependencies сравнены с тем же
+7-Zip commit; runtime manifest подключает эти два overlays. Отдельные проверки
+покрывают ancestor include fallback, глубинное exclude, file/dir flags,
+literal/wildcard matching и 4096-component selection/cleanup. ISO CLI regression
+теперь извлекает leaf в stdout на глубине 4096 обоими engines с обычным timeout.
+
+На MSVC copy operations CDir объявлены defaulted из-за C5267 при добавлении
+destructor. Изолированный transitive-header rebuild fixture также обнаружил
+LNK1104 при relink только что выполненного probe.exe; он запускает отдельную
+копию executable, сохраняя target/object и compiler cache. Проверка по-прежнему
+наблюдает изменение sizeof после правки только транзитивного header.
+
 ## Оставшийся scope
 
 Остаются дополнительные NLS charsets и descriptor-date quirks,
 проверка остальных RR compatibility branches на производителях, полная
-dot-record normalization/root multi-section semantics. Сохранённый archive
-depth cap отличается от VFS; его снятие требует переноса рекурсивного обхода
-в безопасный для глубоких деревьев сценарий. Эти read features остаются задачей,
+dot-record normalization/root multi-section semantics. Эти read features остаются задачей,
 а не принятой окончательной границей совместимости. UDF ещё не проверен.
 Kernel VFS/mount services, запись и page cache не копируются.
 
@@ -386,3 +426,28 @@ names, empty omission, CP437, normal/raw/Acorn и RR fallback extraction bytes,
 а также GPL/LGPL/syscall/zlib notices. Одноразовый staging удалён.
 Full/slow/UI/physical-device acceptance не выполнялась; persistent builds и
 compiler caches сохранены.
+
+Deep-tree fixtures: native Linux 6.8.0-146 read-only loop mounts прочитали
+leaf bytes на глубинах 768 и 4096 через openat, без создания host deep tree.
+Оба CLI engines извлекают 4096-level leaf в stdout; ABI проверяет полный
+каталог, отмену по progress, очистку после deep cycle/error и retained stream
+после Close/Open/release. Backend listing публикует 4097 entries и выполняет
+точный source-entry extract; Windows technical separators проверяются в
+штатном native namespace. Запись полного дерева в host filesystem здесь не
+проверяется: stream acceptance не отменяет host path limits.
+
+Deep-tree/shared-selector batch: 9/9 PASS на macOS arm64, Linux x64 и Windows
+x64/MSVC, Qt 6.12. Linux nine-suite receipt `20261019T181425Z-791eb546`,
+Windows `20261019T181616Z-0f8cf443`; после финального PCH boundary и mask cases
+Linux five-suite PASS `20261019T182136Z-010cf69a`, Windows wildcard PASS
+`20261019T182558Z-de6a82b4`. Финальный backend regression: macOS PASS,
+Linux `20261019T182903Z-61cbc20b`, Windows `20261019T183038Z-c6b9a7c4` — PASS.
+Исходный ISO parser, общий selector, Qt selection, snapshot/inventory/cache,
+runtime package и прямые security consumers проверены адресно; full/slow/UI
+acceptance не выполнялась. Проверки reused incremental builds и compiler cache.
+
+macOS app target собран. Фактический CMake install извлёк 4096-level leaf
+с точным совпадением bytes за 3,69 s, отверг deep cycle и установил четыре
+notices без изменений. Это результат данного smoke, не performance contract.
+Temporary images/mounts/staging удалены; объёмный diagnostic sample заменён
+кратким свидетельством. Post-transfer source comparison выполнен отдельно.

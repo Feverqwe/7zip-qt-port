@@ -177,9 +177,15 @@ class UpstreamBaselineTests(unittest.TestCase):
             baseline.prepare_runtime_snapshot(self.manifest, snapshot, self.upstream)
             bundle = snapshot / directory
             (bundle / "objects").mkdir(exist_ok=True)
-            subprocess.run(command, cwd=bundle, env=environment, check=True, capture_output=True)
+            compiled = subprocess.run(command, cwd=bundle, env=environment, capture_output=True, text=True)
+            self.assertEqual(compiled.returncode, 0, compiled.stdout + compiled.stderr)
             executable = bundle / "objects" / ("probe.exe" if windows else "probe")
-            self.assertEqual(subprocess.run([str(executable)]).returncode, expected)
+            checked = executable
+            if windows:
+                # Keep the relink target out of Windows' executable image locks.
+                checked = executable.with_name("probe-checked-" + str(expected) + ".exe")
+                shutil.copy2(executable, checked)
+            self.assertEqual(subprocess.run([str(checked)]).returncode, expected)
 
 
 if __name__ == "__main__":

@@ -3,6 +3,7 @@
 #ifndef ZIP7_INC_COMMON_WILDCARD_H
 #define ZIP7_INC_COMMON_WILDCARD_H
 
+#ifdef QT_CORE_LIB
 #include "Common/MyString.h"
 #include <QStringView>
 
@@ -10,6 +11,9 @@
 bool DoesWildcardMatchName(const char16_t *mask, const char16_t *name);
 bool DoesWildcardMatchName(QStringView mask, QStringView name);
 void SplitPathToParts_Smart(const QString &path, QString &dirPrefix, QString &name);
+#else
+#include "MyString.h"
+#endif
 
 int CompareFileNames(const wchar_t *s1, const wchar_t *s2) STRING_UNICODE_THROW;
 #ifndef USE_UNICODE_FSTRING
@@ -54,6 +58,7 @@ struct CItem {
 
     bool AreAllAllowed() const;
     bool CheckPath(const UStringVector &pathParts, bool isFile) const;
+    bool CheckPathFrom(const UStringVector &pathParts, unsigned offset, bool isFile) const;
 };
 
 const Byte kMark_FileOrDir = 0;
@@ -72,9 +77,12 @@ class CCensorNode MY_UNCOPYABLE {
     CCensorNode *Parent;
 
     bool CheckPathCurrent(bool include, const UStringVector &pathParts, bool isFile) const;
+    bool CheckPathCurrentFrom(bool include, const UStringVector &pathParts, unsigned offset,
+                              bool isFile) const;
     void AddItemSimple(bool include, CItem &item);
 
   public:
+    ~CCensorNode();
     // bool ExcludeDirItems;
 
     CCensorNode()

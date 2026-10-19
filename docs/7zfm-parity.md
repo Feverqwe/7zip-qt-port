@@ -14,6 +14,8 @@ El Torito images независимы. Исходные archive names и boot na
 continuations, relocated directories, выбор RR перед Joliet, zisofs и High Sierra.
 Joliet names и RR fallback используют Linux Unicode/суффиксные правила;
 CLI open-properties доступны для normal/Acorn/raw mapping и UTF-8/CP437.
+Поддержано чтение глубоких ISO-деревьев и извлечение отдельного вложенного
+файла в поток.
 [Scope и проверки](upstream-port-audit/isofs-linux.md); полная актуализация
 ISO9660 по Linux ещё не завершена.
 

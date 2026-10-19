@@ -15,7 +15,9 @@
     "src/CPP/7zip/Archive/Iso/IsoRegister.cpp",
     "src/CPP/7zip/Archive/NtfsHandler.cpp",
     "src/CPP/7zip/Archive/SquashfsHandler.cpp",
-    "src/CPP/7zip/Common/LimitedStreams.cpp"
+    "src/CPP/7zip/Common/LimitedStreams.cpp",
+    "src/CPP/Common/Wildcard.cpp",
+    "src/CPP/Common/Wildcard.h"
   ],
   "exact": [
     "third_party/7zip/C/7zCrc.c",
