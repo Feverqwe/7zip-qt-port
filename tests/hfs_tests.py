@@ -1,5 +1,6 @@
 """Fork bytes, metadata failures and volume boundaries through both engines."""
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -7,15 +8,27 @@ import unittest
 from hfs_fixture import volume
 
 RUNTIME = Path(sys.argv.pop(1))
+MODULE = Path(sys.argv.pop(1))
 SUFFIX = ".exe" if sys.platform == "win32" else ""
 
 
 class HfsTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.temporary = tempfile.TemporaryDirectory(prefix="sevenzip-hfs-runtime-")
+        cls.addClassCleanup(cls.temporary.cleanup)
+        cls.runtime = Path(cls.temporary.name)
+        core = "7z.dll" if sys.platform == "win32" else "7z.so"
+        for name in ("7z" + SUFFIX, "7zz" + SUFFIX, core):
+            shutil.copy2(RUNTIME / name, cls.runtime / name)
+        (cls.runtime / "Formats").mkdir()
+        shutil.copy2(MODULE, cls.runtime / "Formats" / MODULE.name)
+
     def run_image(self, engine, data, name=None):
         with tempfile.TemporaryDirectory(prefix="sevenzip-hfs-") as temporary:
             path = Path(temporary) / "образ 空.hfs"
             path.write_bytes(data)
-            args = [str(RUNTIME / (engine + SUFFIX)), "x" if name else "t",
+            args = [str(self.runtime / (engine + SUFFIX)), "x" if name else "t",
                     "-tHFS", "-sccUTF-8", "-bsp0"]
             if name:
                 args += ["-so", "-bso0", "-bse2", "-sns" if ":" in name else "-sns-"]
@@ -44,6 +57,29 @@ class HfsTests(unittest.TestCase):
                     result = self.run_image(engine, volume(kind)[0], "HfsFixture/alpha")
                     self.assertNotEqual(result.returncode, 0)
                     self.assertEqual(result.stdout, b"")
+
+    def test_linux_unicode_and_hardlink_bytes(self):
+        for kind in ("modern", "modern-nul", "modern-date", "modern-chain", "modern-hfsx",
+                     "modern-case", "modern-xattr", "modern-metadata", "modern-binary",
+                     "modern-zlib", "modern-lzvn", "modern-hidden-case"):
+            image, files = volume(kind)
+            for name, expected in files.items():
+                with self.subTest(kind=kind, name=name):
+                    result = self.run_image("7z", image, name)
+                    self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                    self.assertEqual(result.stdout, expected)
+
+    def test_missing_and_corrupt_backing_inode_never_succeed(self):
+        for kind in ("modern-missing", "modern-bounds", "modern-binary-case"):
+            with self.subTest(kind=kind):
+                result = self.run_image("7z", volume(kind)[0], "HfsFixture/alpha")
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(result.stdout, b"")
+
+    def test_standalone_does_not_extract_hardlink_stubs_as_empty_success(self):
+        result = self.run_image("7zz", volume("modern")[0], "HfsFixture/alpha")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(result.stdout, b"")
 
     def test_corrupt_metadata_is_rejected(self):
         for kind in ("metadata-short-map", "leaf-height", "leaf-backlink", "leaf-offset",

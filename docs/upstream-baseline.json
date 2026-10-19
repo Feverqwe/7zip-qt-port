@@ -112,6 +112,7 @@
     "third_party/7zip/CPP/7zip/Archive/Common/StdAfx.h",
     "third_party/7zip/CPP/7zip/Archive/HandlerCont.cpp",
     "third_party/7zip/CPP/7zip/Archive/HandlerCont.h",
+    "third_party/7zip/CPP/7zip/Archive/HfsHandler.h",
     "third_party/7zip/CPP/7zip/Archive/IArchive.h",
     "third_party/7zip/CPP/7zip/Archive/Rar/Rar5Handler.h",
     "third_party/7zip/CPP/7zip/Archive/Rar/RarHeader.h",

@@ -8,6 +8,9 @@ import zlib
 
 
 def volume(kind="base"):
+    if kind.startswith("modern"):
+        from hfs_modern_fixture import volume as modern_volume
+        return modern_volume(kind)
     image = bytearray(zlib.decompress(
         (Path(__file__).parent / "fixtures/hfs/hfsplus.img.zlib").read_bytes()))
     get16 = lambda off: struct.unpack_from(">H", image, off)[0]

@@ -182,8 +182,14 @@ class HfsStreamTests final : public QObject {
     }
   private slots:
     void initTestCase() { createArchive(); }
+    void independentAndRetainedForks_data() {
+        QTest::addColumn<QString>("kind");
+        QTest::newRow("overflow") << QString("overflow-leaves");
+        QTest::newRow("hardlinks") << QString("modern");
+    }
     void independentAndRetainedForks() {
-        loadFixture("overflow-leaves");
+        QFETCH(QString, kind);
+        loadFixture(kind);
         CMyComPtr2<IInStream, Input> input;
         input.SetFromCls(new Input(bytes_));
         QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
@@ -208,6 +214,61 @@ class HfsStreamTests final : public QObject {
         check(resource, "HfsFixture/alpha:rsrc", 0, 2422);
         check(attribute, "HfsFixture/alpha:com.sevenzip.fixture", 0, 24);
         createArchive();
+    }
+    void modernMetadataAndNames_data() {
+        QTest::addColumn<QString>("kind");
+        for (const char *kind : {"modern", "modern-nul", "modern-case", "modern-xattr",
+                                 "modern-metadata", "modern-binary", "modern-hidden-case"})
+            QTest::newRow(kind) << QString::fromLatin1(kind);
+    }
+    void modernMetadataAndNames() {
+        QFETCH(QString, kind);
+        loadFixture(kind);
+        CMyComPtr<IInStream> input = new Input(bytes_);
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        for (const QString &name : {QString("HfsFixture/alpha"), QString("HfsFixture/hard-alpha"),
+                                    QString("HfsFixture/links/second-link")}) {
+            for (const auto &property :
+                 {qMakePair(kpidINode, UInt32(20)),
+                  qMakePair(kpidLinks, UInt32(kind == "modern-metadata" ? 70000 : 3)),
+                  qMakePair(kpidUserId, UInt32(kind == "modern-metadata" ? 0x12345678 : 501)),
+                  qMakePair(kpidGroupId, UInt32(kind == "modern-metadata" ? 0x87654321 : 20))}) {
+                NWindows::NCOM::CPropVariant value;
+                QCOMPARE(archive_->GetProperty(index(name), property.first, &value), S_OK);
+                QCOMPARE(value.vt, VARTYPE(VT_UI4));
+                QCOMPARE(value.ulVal, property.second);
+            }
+        }
+        const auto files = record_["files"].toObject();
+        for (auto it = files.begin(); it != files.end(); ++it) {
+            auto file = stream(it.key());
+            QVERIFY2(file, qPrintable(it.key()));
+            check(file, it.key(), 0, 200000);
+        }
+        NWindows::NCOM::CPropVariant target;
+        QCOMPARE(archive_->GetProperty(index("HfsFixture/symlink"), kpidSymLink, &target), S_OK);
+        QCOMPARE(target.vt, VARTYPE(VT_BSTR));
+        QCOMPARE(QString::fromWCharArray(target.bstrVal), QString("alpha"));
+    }
+    void brokenBackingReportsDataError() {
+        for (const char *kind : {"modern-missing", "modern-bounds", "modern-binary-case"}) {
+            loadFixture(kind);
+            CMyComPtr<IInStream> input = new Input(bytes_);
+            QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+            const UInt32 item = index("HfsFixture/alpha");
+            QVERIFY(item != UInt32(-1));
+            CMyComPtr<IInArchiveGetStream> provider;
+            QCOMPARE(archive_->QueryInterface(IID_IInArchiveGetStream,
+                                              reinterpret_cast<void **>(&provider)),
+                     S_OK);
+            CMyComPtr<ISequentialInStream> sequential;
+            QCOMPARE(provider->GetStream(item, &sequential), S_FALSE);
+            QVERIFY(!sequential);
+            CMyComPtr2<IArchiveExtractCallback, Extract> callback;
+            callback.SetFromCls(new Extract);
+            QCOMPARE(archive_->Extract(&item, 1, 1, callback), S_OK);
+            QCOMPARE(callback->result, Int32(NArchive::NExtract::NOperationResult::kDataError));
+        }
     }
     void errorsAndSeekBoundaries() {
         loadFixture("base");
@@ -250,8 +311,8 @@ class HfsStreamTests final : public QObject {
         QCOMPARE(archive_->Close(), S_OK);
     }
     void failedOpenClearsCatalog() {
-        for (const char *kind :
-             {"leaf-height", "metadata-short-map", "parent-cycle", "wrapped-short"}) {
+        for (const char *kind : {"leaf-height", "metadata-short-map", "parent-cycle",
+                                 "wrapped-short", "modern-no-root"}) {
             loadFixture(kind);
             CMyComPtr2<IInStream, Input> input;
             input.SetFromCls(new Input(bytes_));
@@ -275,7 +336,8 @@ class HfsStreamTests final : public QObject {
     }
     void backendExtraction_data() {
         QTest::addColumn<QString>("kind");
-        for (const char *kind : {"preallocated", "overflow-leaves", "extent-over-volume"})
+        for (const char *kind : {"preallocated", "overflow-leaves", "extent-over-volume", "modern",
+                                 "modern-nul", "modern-zlib", "modern-lzvn"})
             QTest::newRow(kind) << QString::fromLatin1(kind);
     }
     void backendExtraction() {
@@ -288,7 +350,7 @@ class HfsStreamTests final : public QObject {
         QVERIFY(image.open(QIODevice::WriteOnly));
         QCOMPARE(image.write(bytes_), bytes_.size());
         image.close();
-        const QDir runtime(QFileInfo(QString::fromUtf8(SEVENZIP_HFS_CORE)).absolutePath());
+        const QDir runtime(QString::fromUtf8(SEVENZIP_HFS_RUNTIME));
         ArchiveBackend backend(nullptr, runtime.filePath(
 #ifdef Q_OS_WIN
                                             "7z.exe"
@@ -297,7 +359,14 @@ class HfsStreamTests final : public QObject {
 #endif
                                             ));
         QSignalSpy ready(&backend, &ArchiveBackend::codecCatalogReady);
-        QVERIFY(backend.discoverCodecCatalog(QString::fromUtf8(SEVENZIP_HFS_CORE)));
+        const QString core = runtime.filePath(
+#ifdef Q_OS_WIN
+            "7z.dll"
+#else
+            "7z.so"
+#endif
+        );
+        QVERIFY(backend.discoverCodecCatalog(core));
         QTRY_COMPARE_WITH_TIMEOUT(ready.size(), 1, 15000);
         QVERIFY2(ready[0][0].toBool(), qPrintable(ready[0][1].toString()));
         QSignalSpy finished(&backend, &ArchiveBackend::finished);
@@ -306,6 +375,9 @@ class HfsStreamTests final : public QObject {
         QVERIFY2(finished[0][0].toBool(), qPrintable(finished[0][1].toString()));
         QVERIFY(!backend.codecCatalog()->canUpdate("HFS"));
         finished.clear();
+        QString transcript;
+        connect(&backend, &ArchiveBackend::outputReceived, &backend,
+                [&](const QString &text) { transcript += text; });
         const QString name = "HfsFixture/alpha";
         const QString output = temporary.filePath("output");
         backend.extract(path, output, {name});
@@ -315,11 +387,25 @@ class HfsStreamTests final : public QObject {
         if (!corrupt) {
             QFile file(QDir(output).filePath(name));
             QVERIFY(file.open(QIODevice::ReadOnly));
-            QCOMPARE(file.readAll(), QByteArray::fromBase64(
-                                         record_["files"].toObject()[name].toString().toLatin1()));
-            for (const QString &entry : {QString("HfsFixture/alpha:rsrc"),
-                                         QString("HfsFixture/alpha:com.sevenzip.fixture"),
-                                         QString::fromUtf8("HfsFixture/данные 空")}) {
+            const QByteArray actual = file.readAll();
+            const QByteArray expected =
+                QByteArray::fromBase64(record_["files"].toObject()[name].toString().toLatin1());
+            QVERIFY2(actual == expected, qPrintable(QString("Expected %1 bytes, got %2.\n%3")
+                                                        .arg(expected.size())
+                                                        .arg(actual.size())
+                                                        .arg(transcript)));
+            QStringList entries{QString("HfsFixture/alpha:rsrc"),
+                                QString("HfsFixture/alpha:com.sevenzip.fixture"),
+                                QString::fromUtf8("HfsFixture/данные 空")};
+            if (kind == "modern-zlib" || kind == "modern-lzvn")
+                entries.removeAll("HfsFixture/alpha:com.sevenzip.fixture");
+            if (kind.startsWith("modern")) {
+                entries << QString("HfsFixture/hard-alpha") << QString::fromUtf8("HfsFixture/café")
+                        << QString::fromUtf8("HfsFixture/각");
+                if (kind == "modern-nul")
+                    entries << QString::fromUtf8("HfsFixture/null␀name");
+            }
+            for (const QString &entry : entries) {
                 finished.clear();
                 const QString saved = temporary.filePath("stream.bin");
                 QFile::remove(saved);

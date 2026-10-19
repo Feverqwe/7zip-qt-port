@@ -6,6 +6,11 @@
 
 #include "../../Common/ComTry.h"
 #include "../../Common/MyString.h"
+#include "../../Common/StringConvert.h"
+#include "../../Common/UTFConvert.h"
+#ifdef SEVENZIP_LINUX_HFS
+#include "../../../hfsreader.h"
+#endif
 
 #include "../../Windows/PropVariantUtils.h"
 
@@ -301,6 +306,9 @@ void MethodsMaskToProp(UInt32 methodsMask, NWindows::NCOM::CPropVariant &prop) {
 
 struct CItem {
     UString Name;
+#ifdef SEVENZIP_LINUX_HFS
+    CByteBuffer DiskName;
+#endif
 
     UInt32 ParentID;
 
@@ -315,23 +323,15 @@ struct CItem {
     UInt32 ATime;
     // UInt32 BackupDate;
 
-    /*
     UInt32 OwnerID;
     UInt32 GroupID;
-    Byte AdminFlags;
-    Byte OwnerFlags;
-    union
-    {
-      UInt32  iNodeNum;
-      UInt32  LinkCount;
-      UInt32  RawDevice;
-    } special;
-
+    UInt32 Special;
     UInt32 FileType;
     UInt32 FileCreator;
-    UInt16 FinderFlags;
-    UInt16 Point[2];
-    */
+    unsigned DataIndex;
+    bool PrivateDir;
+    bool UnsupportedLink;
+    bool LinkError;
 
     CFork DataFork;
     CFork ResourceFork;
@@ -340,8 +340,11 @@ struct CItem {
     int decmpfs_AttrIndex;
     CCompressHeader CompressHeader;
 
-    CItem() : decmpfs_AttrIndex(-1) {}
+    CItem() : PrivateDir(false), UnsupportedLink(false), LinkError(false), decmpfs_AttrIndex(-1) {}
     bool IsDir() const { return Type == RECORD_TYPE_FOLDER; }
+    bool IsHardlink() const {
+        return !IsDir() && FileType == 0x686c6e6b && FileCreator == 0x6866732b;
+    }
     // const CFork *GetFork(bool isResource) const { return (isResource ? &ResourceFork: &DataFork);
     // }
 };
@@ -371,6 +374,77 @@ struct CAttr {
     {}
 };
 
+#ifdef SEVENZIP_LINUX_HFS
+struct CNameIndexPair {
+    UInt32 Parent;
+    const CByteBuffer *Name;
+    bool Binary;
+    unsigned Index;
+    int Compare(const CNameIndexPair &a) const {
+        RINOZ(MyCompare(Parent, a.Parent))
+        return sevenzip_hfsplus_compare(*Name, *a.Name, Binary);
+    }
+};
+
+static sevenzip_hfsplus_record GetLinkRecord(const CItem &item) {
+    sevenzip_hfsplus_record record = {item.ID,       item.ParentID,    item.CTime,  item.Special,
+                                      item.FileType, item.FileCreator, item.IsDir()};
+    return record;
+}
+
+struct CLinkCatalog {
+    const CObjectVector<CItem> &Items;
+    CObjectVector<CNameIndexPair> Names;
+    static int CompareNames(void *const *a, void *const *b, void *) {
+        return ((const CNameIndexPair *)*a)->Compare(*(const CNameIndexPair *)*b);
+    }
+    CLinkCatalog(const CObjectVector<CItem> &items, UInt32 hiddenId, bool binary) : Items(items) {
+        FOR_VECTOR(i, Items) {
+            if (Items[i].ParentID != hiddenId)
+                continue;
+            CNameIndexPair &pair = Names.AddNew();
+            pair.Parent = Items[i].ParentID;
+            pair.Name = &Items[i].DiskName;
+            pair.Binary = binary;
+            pair.Index = i;
+        }
+        Names.Sort(CompareNames, NULL);
+    }
+    static int Lookup(void *context, uint32_t parent, const char *name,
+                      sevenzip_hfsplus_record *record, unsigned *index) {
+        const CLinkCatalog &catalog = *(const CLinkCatalog *)context;
+        CNameIndexPair key;
+        key.Parent = parent;
+        const unsigned len = (unsigned)strlen(name);
+        CByteBuffer diskName(2 + len * 2);
+        Byte *bytes = diskName;
+        bytes[0] = 0;
+        bytes[1] = (Byte)len;
+        for (unsigned i = 0; i < len; i++) {
+            bytes[2 + i * 2] = 0;
+            bytes[3 + i * 2] = (Byte)name[i];
+        }
+        key.Name = &diskName;
+        key.Binary = catalog.Names.IsEmpty() ? false : catalog.Names[0].Binary;
+        unsigned left = 0, right = catalog.Names.Size();
+        while (left != right) {
+            const unsigned mid = left + (right - left) / 2;
+            const int compare = key.Compare(catalog.Names[mid]);
+            if (compare == 0) {
+                *index = catalog.Names[mid].Index;
+                *record = GetLinkRecord(catalog.Items[*index]);
+                return 0;
+            }
+            if (compare < 0)
+                right = mid;
+            else
+                left = mid + 1;
+        }
+        return -1;
+    }
+};
+#endif
+
 static const int kAttrIndex_Item = -1;
 static const int kAttrIndex_Resource = -2;
 
@@ -396,12 +470,16 @@ class CDatabase {
     HRESULT LoadCatalog(const CFork &fork, const CObjectVector<CIdExtents> *overflowExtentsArray,
                         IInStream *inStream, IArchiveOpenCallback *progress);
     bool Parse_decmpgfs(unsigned attrIndex, CItem &item, bool &skip);
+    HRESULT ResolveHardlinks();
 
   public:
     bool CheckFork(const CFork &fork) const;
     CRecordVector<CRef> Refs;
     CObjectVector<CItem> Items;
     CObjectVector<CAttr> Attrs;
+    const CItem &GetDataItem(const CRef &ref) const {
+        return Items[Items[ref.ItemIndex].DataIndex];
+    }
 
     // CByteBuffer AttrBuf;
 
@@ -409,6 +487,7 @@ class CDatabase {
     bool HeadersError;
     bool UnsupportedFeature;
     bool ThereAreAltStreams;
+    bool CatalogCaseSensitive;
     // bool CaseSensetive;
     UInt32 MethodsMask;
     UString ResFileName;
@@ -427,6 +506,7 @@ class CDatabase {
         HeadersError = false;
         UnsupportedFeature = false;
         ThereAreAltStreams = false;
+        CatalogCaseSensitive = false;
         // CaseSensetive = false;
 
         Refs.Clear();
@@ -438,7 +518,7 @@ class CDatabase {
     UInt64 Get_UnpackSize_of_Ref(const CRef &ref) const {
         if (ref.AttrIndex >= 0)
             return Attrs[ref.AttrIndex].GetSize();
-        const CItem &item = Items[ref.ItemIndex];
+        const CItem &item = GetDataItem(ref);
         if (ref.IsResource())
             return item.ResourceFork.Size;
         if (item.IsDir())
@@ -451,6 +531,45 @@ class CDatabase {
     void GetItemPath(unsigned index, NWindows::NCOM::CPropVariant &path) const;
     HRESULT Open2(IInStream *inStream, IArchiveOpenCallback *progress);
 };
+
+HRESULT CDatabase::ResolveHardlinks() {
+#ifdef SEVENZIP_LINUX_HFS
+    UInt32 hiddenId = 0, hiddenCreation = 0, rootCreation = 0;
+    bool rootFound = false;
+    FOR_VECTOR(i, Items) {
+        const CItem &item = Items[i];
+        if (item.ID == 2 && item.IsDir()) {
+            rootCreation = item.CTime;
+            rootFound = true;
+        }
+        if (item.ParentID == 2 && item.PrivateDir) {
+            if (hiddenId != 0 || !item.IsDir())
+                return S_FALSE;
+            hiddenId = item.ID;
+            hiddenCreation = item.CTime;
+        }
+    }
+    if (!rootFound)
+        return S_FALSE;
+    CLinkCatalog catalog(Items, hiddenId, CatalogCaseSensitive);
+    FOR_VECTOR(i, Items) {
+        CItem &item = Items[i];
+        if (hfsplus_lookup(GetLinkRecord(item), i, hiddenId, hiddenCreation, rootCreation,
+                           CLinkCatalog::Lookup, &catalog, &item.DataIndex) != 0) {
+            item.LinkError = true;
+            HeadersError = true;
+        }
+    }
+#else
+    FOR_VECTOR(i, Items) {
+        if (Items[i].IsHardlink()) {
+            Items[i].UnsupportedLink = true;
+            UnsupportedFeature = true;
+        }
+    }
+#endif
+    return S_OK;
+}
 
 enum {
     kHfsID_Root = 1,
@@ -515,7 +634,7 @@ void CDatabase::GetItemPath(unsigned index, NWindows::NCOM::CPropVariant &path) 
         for (unsigned j = 0; j < curLen; j++) {
             wchar_t c = src[j];
             // 18.06
-            if (c == CHAR_PATH_SEPARATOR || c == '/')
+            if (c == CHAR_PATH_SEPARATOR || c == '/' || c == ':')
                 c = '_';
             dest[j] = c;
         }
@@ -799,7 +918,22 @@ HRESULT CDatabase::LoadExtentFile(const CFork &fork, IInStream *inStream,
     return S_OK;
 }
 
-static void LoadName(const Byte *data, unsigned len, UString &dest) {
+static bool LoadName(const Byte *data, unsigned len, UString &dest, bool xattr) {
+#ifdef SEVENZIP_LINUX_HFS
+    UInt16 units[255];
+    unsigned size = Z7_ARRAY_SIZE(units);
+    if (sevenzip_hfsplus_name(data, len, xattr, units, &size) != 0)
+        return false;
+    wchar_t *out = dest.GetBuf(size);
+    for (unsigned i = 0; i < size; i++) {
+        if (units[i] == 0)
+            return false;
+        out[i] = units[i];
+    }
+    dest.ReleaseBuf_SetEnd(size);
+    return true;
+#else
+    UNUSED_VAR(xattr)
     wchar_t *p = dest.GetBuf(len);
     unsigned i;
     for (i = 0; i < len; i++) {
@@ -810,6 +944,8 @@ static void LoadName(const Byte *data, unsigned len, UString &dest) {
     }
     p[i] = 0;
     dest.ReleaseBuf_SetLen(i);
+    return true;
+#endif
 }
 
 static bool IsNameEqualTo(const Byte *data, const char *name) {
@@ -913,7 +1049,8 @@ HRESULT CDatabase::LoadAttrs(const CFork &fork, IInStream *inStream,
 
             CAttr &attr = Attrs.AddNew();
             attr.ID = fileID;
-            LoadName(name, nameLen, attr.Name);
+            if (!LoadName(name, nameLen, attr.Name, true))
+                return S_FALSE;
 
             if (recordType == kAttrRecordType_Fork) {
                 // 22.00 : some hfs files contain it;
@@ -987,6 +1124,7 @@ HRESULT CDatabase::LoadCatalog(const CFork &fork,
     // nodeDesc.Parse(p);
     CHeaderRec hr;
     RINOK(hr.Parse2(buf, 516))
+    CatalogCaseSensitive = Header.IsHfsX() && p[kNodeDescriptor_Size + 0x25] == 0xBC;
 
     CRecordVector<CIdIndexPair> IdToIndexMap;
 
@@ -1064,6 +1202,7 @@ HRESULT CDatabase::LoadCatalog(const CFork &fork,
                 return S_FALSE;
 
             CItem &item = Items.AddNew();
+            item.DataIndex = Items.Size() - 1;
             item.ParentID = parentID;
             item.Type = type;
             // item.Flags = Get16(r + 2);
@@ -1071,7 +1210,19 @@ HRESULT CDatabase::LoadCatalog(const CFork &fork,
             item.ID = Get32(r + 8);
             {
                 const Byte *name = r - (nameLen * 2);
-                LoadName(name, nameLen, item.Name);
+#ifdef SEVENZIP_LINUX_HFS
+                if (nameLen > 255)
+                    return S_FALSE;
+                item.DiskName.CopyFrom(name - 2, 2 + nameLen * 2);
+                item.PrivateDir =
+                    sevenzip_hfsplus_private_name(item.DiskName, CatalogCaseSensitive);
+#else
+                item.PrivateDir = item.IsDir() && nameLen == 21 && GetUi32(name) == 0 &&
+                                  GetUi32(name + 4) == 0 &&
+                                  IsNameEqualTo(name + 8, "HFS+ Private Data");
+#endif
+                if (!LoadName(name, nameLen, item.Name, false))
+                    return S_FALSE;
                 if (item.Name.Len() <= 1) {
                     if (item.Name.IsEmpty() && nameLen == 21) {
                         if (GetUi32(name) == 0 && GetUi32(name + 4) == 0 &&
@@ -1093,21 +1244,12 @@ HRESULT CDatabase::LoadCatalog(const CFork &fork,
             item.ATime = Get32(r + 0x18);
             // item.BackupDate = Get32(r + 0x1C);
 
-            /*
             item.OwnerID = Get32(r + 0x20);
             item.GroupID = Get32(r + 0x24);
-            item.AdminFlags = r[0x28];
-            item.OwnerFlags = r[0x29];
-            */
             item.FileMode = Get16(r + 0x2A);
-            /*
-            item.special.iNodeNum = Get16(r + 0x2C); // or .linkCount
+            item.Special = Get32(r + 0x2C);
             item.FileType = Get32(r + 0x30);
             item.FileCreator = Get32(r + 0x34);
-            item.FinderFlags = Get16(r + 0x38);
-            item.Point[0] = Get16(r + 0x3A); // v
-            item.Point[1] = Get16(r + 0x3C); // h
-            */
 
             // const refIndex = Refs.Size();
             CIdIndexPair pair;
@@ -1154,6 +1296,7 @@ HRESULT CDatabase::LoadCatalog(const CFork &fork,
 
     if (Header.NumFiles != numFiles || Header.NumFolders + 1 != numFolders)
         HeadersError = true;
+    RINOK(ResolveHardlinks())
 
     IdToIndexMap.Sort2();
     {
@@ -1189,10 +1332,10 @@ HRESULT CDatabase::LoadCatalog(const CFork &fork,
 
     {
         FOR_VECTOR(i, Items) {
-            const CItem &item = Items[i];
+            const CItem &item = Items[Items[i].DataIndex];
 
             CIdIndexPair pair;
-            pair.ID = item.ID;
+            pair.ID = Items[i].ID;
             pair.Index = Refs.Size();
             IdToIndexMap.Add(pair);
 
@@ -1237,6 +1380,17 @@ HRESULT CDatabase::LoadCatalog(const CFork &fork,
 
 #ifdef HFS_SHOW_ALT_STREAMS
     {
+        CRecordVector<CIdIndexPair> attrParents;
+        FOR_VECTOR(i, Refs) {
+            const CRef &ref = Refs[i];
+            if (!ref.IsItem())
+                continue;
+            CIdIndexPair pair;
+            pair.ID = Items[ref.ItemIndex].DataIndex;
+            pair.Index = i;
+            attrParents.Add(pair);
+        }
+        attrParents.Sort2();
         FOR_VECTOR(i, Attrs) {
             if (skipAttr[i])
                 continue;
@@ -1248,14 +1402,24 @@ HRESULT CDatabase::LoadCatalog(const CFork &fork,
                 continue;
             }
 
-            ThereAreAltStreams = true;
-
-            CRef ref;
-            ref.Construct();
-            ref.AttrIndex = (int)i;
-            ref.Parent = refIndex;
-            ref.ItemIndex = Refs[refIndex].ItemIndex;
-            Refs.Add(ref);
+            const unsigned source = Refs[refIndex].ItemIndex;
+            unsigned left = 0, right = attrParents.Size();
+            while (left != right) {
+                const unsigned mid = left + (right - left) / 2;
+                if (attrParents[mid].ID < source)
+                    left = mid + 1;
+                else
+                    right = mid;
+            }
+            for (; left < attrParents.Size() && attrParents[left].ID == source; left++) {
+                ThereAreAltStreams = true;
+                CRef ref;
+                ref.Construct();
+                ref.AttrIndex = (int)i;
+                ref.Parent = (int)attrParents[left].Index;
+                ref.ItemIndex = Refs[ref.Parent].ItemIndex;
+                Refs.Add(ref);
+            }
         }
     }
 #endif
@@ -1291,6 +1455,7 @@ static const unsigned k_Signature_LE16_HFSX = 'H' + ((unsigned)'X' << 8);
 static const UInt32 k_Signature_LE32_HFSP_VER4 = 'H' + ((UInt32)'+' << 8) + ((UInt32)4 << 24);
 static const UInt32 k_Signature_LE32_HFSX_VER5 = 'H' + ((UInt32)'X' << 8) + ((UInt32)5 << 24);
 
+#if defined(SEVENZIP_LINUX_HFS) || !defined(Z7_EXTERNAL_CODECS)
 API_FUNC_static_IsArc IsArc_HFS(const Byte *p, size_t size) {
     if (size < kHfsHeaderSize)
         return k_IsArc_Res_NEED_MORE;
@@ -1305,6 +1470,7 @@ API_FUNC_static_IsArc IsArc_HFS(const Byte *p, size_t size) {
     return k_IsArc_Res_YES;
 }
 }
+#endif
 
 HRESULT CDatabase::Open2(IInStream *inStream, IArchiveOpenCallback *progress) {
     Clear();
@@ -1501,17 +1667,13 @@ Z7_class_CHandler_final:
 };
 // clang-format on
 
-static const Byte kProps[] = {kpidPath,        kpidIsDir,      kpidSize,
-                              kpidPackSize,    kpidCTime,      kpidMTime,
-                              kpidATime,       kpidChangeTime, kpidPosixAttrib,
-/*
-kpidUserId,
-kpidGroupId,
-*/
+static const Byte kProps[] = {
+    kpidPath,        kpidIsDir,       kpidSize,   kpidPackSize, kpidCTime, kpidMTime, kpidATime,
+    kpidChangeTime,  kpidPosixAttrib, kpidUserId, kpidGroupId,  kpidINode, kpidLinks, kpidSymLink,
 #ifdef HFS_SHOW_ALT_STREAMS
-                              kpidIsAltStream,
+    kpidIsAltStream,
 #endif
-                              kpidMethod};
+    kpidMethod};
 
 static const Byte kArcProps[] = {kpidMethod,    kpidCharacts, kpidClusterSize,
                                  kpidFreeSpace, kpidCTime,    kpidMTime};
@@ -1636,7 +1798,7 @@ Z7_COM7F_IMF(CHandler::GetProperty(UInt32 index, PROPID propID, PROPVARIANT *val
     COM_TRY_BEGIN
     NWindows::NCOM::CPropVariant prop;
     const CRef &ref = Refs[index];
-    const CItem &item = Items[ref.ItemIndex];
+    const CItem &item = GetDataItem(ref);
     switch (propID) {
     case kpidPath:
         GetItemPath(index, prop);
@@ -1648,7 +1810,7 @@ Z7_COM7F_IMF(CHandler::GetProperty(UInt32 index, PROPID propID, PROPVARIANT *val
         else if (ref.AttrIndex >= 0)
             s = &Attrs[ref.AttrIndex].Name;
         else
-            s = &item.Name;
+            s = &Items[ref.ItemIndex].Name;
         prop = *s;
         break;
     }
@@ -1711,10 +1873,41 @@ Z7_COM7F_IMF(CHandler::GetProperty(UInt32 index, PROPID propID, PROPVARIANT *val
         if (ref.IsItem())
             prop = (UInt32)item.FileMode;
         break;
-        /*
-        case kpidUserId: prop = (UInt32)item.OwnerID; break;
-        case kpidGroupId: prop = (UInt32)item.GroupID; break;
-        */
+    case kpidUserId:
+        prop = item.OwnerID;
+        break;
+    case kpidGroupId:
+        prop = item.GroupID;
+        break;
+    case kpidINode:
+    case kpidStreamId:
+        if (ref.IsItem())
+            prop = item.ID;
+        break;
+    case kpidLinks:
+        if (ref.IsItem())
+            prop = !item.IsDir() && (item.FileMode & 0170000) == 0100000 && item.Special
+                       ? item.Special
+                       : (UInt32)1;
+        break;
+    case kpidSymLink:
+        if (ref.IsItem() && (item.FileMode & 0170000) == 0120000) {
+            if (item.DataFork.Size == 0 || item.DataFork.Size > (1 << 16))
+                return S_FALSE;
+            CMyComPtr<ISequentialInStream> input;
+            RINOK(GetForkStream(item.DataFork, &input))
+            CByteBuffer data((size_t)item.DataFork.Size);
+            RINOK(ReadStream_FALSE(input, data, data.Size()))
+            if (memchr(data, 0, data.Size()))
+                return S_FALSE;
+            AString target;
+            target.SetFrom((const char *)(const Byte *)data, (unsigned)data.Size());
+            UString text;
+            if (!ConvertUTF8ToUnicode(target, text))
+                MultiByteToUnicodeString2(text, target);
+            prop = text;
+        }
+        break;
 
     case kpidMethod:
         if (ref.IsItem())
@@ -2273,7 +2466,7 @@ Z7_COM7F_IMF(CHandler::Extract(const UInt32 *indices, UInt32 numItems, Int32 tes
             break;
         const UInt32 index = allFilesMode ? i : indices[i];
         const CRef &ref = Refs[index];
-        const CItem &item = Items[ref.ItemIndex];
+        const CItem &item = GetDataItem(ref);
         currentItemSize = Get_UnpackSize_of_Ref(ref);
 
         int opRes;
@@ -2297,7 +2490,10 @@ Z7_COM7F_IMF(CHandler::Extract(const UInt32 *indices, UInt32 numItems, Int32 tes
             opRes = NExtract::NOperationResult::kDataError;
             const CFork *fork = NULL;
 
-            if (ref.AttrIndex >= 0) {
+            if (item.LinkError || item.UnsupportedLink) {
+                if (item.UnsupportedLink)
+                    opRes = NExtract::NOperationResult::kUnsupportedMethod;
+            } else if (ref.AttrIndex >= 0) {
                 const CAttr &attr = Attrs[ref.AttrIndex];
                 if (attr.Fork_defined && attr.Data.Size() == 0)
                     fork = &attr.Fork;
@@ -2427,6 +2623,8 @@ Z7_COM7F_IMF(CHandler::GetStream(UInt32 index, ISequentialInStream **stream)) {
         return E_INVALIDARG;
 
     const CRef &ref = Refs[index];
+    if (GetDataItem(ref).UnsupportedLink || GetDataItem(ref).LinkError)
+        return S_FALSE;
     const CFork *fork = NULL;
     if (ref.AttrIndex >= 0) {
         const CAttr &attr = Attrs[ref.AttrIndex];
@@ -2436,7 +2634,7 @@ Z7_COM7F_IMF(CHandler::GetStream(UInt32 index, ISequentialInStream **stream)) {
         }
         fork = &attr.Fork;
     } else {
-        const CItem &item = Items[ref.ItemIndex];
+        const CItem &item = GetDataItem(ref);
         if (ref.IsResource())
             fork = &item.ResourceFork;
         else if (item.IsDir())
@@ -2450,10 +2648,11 @@ Z7_COM7F_IMF(CHandler::GetStream(UInt32 index, ISequentialInStream **stream)) {
     COM_TRY_END
 }
 
+#if defined(SEVENZIP_LINUX_HFS) || !defined(Z7_EXTERNAL_CODECS)
 static const Byte k_Signature[] = {2, 'B', 'D', 4, 'H', '+', 0, 4, 4, 'H', 'X', 0, 5};
-
 REGISTER_ARC_I("HFS", "hfs hfsx", NULL, 0xE3, k_Signature, kHeaderPadSize,
                NArcInfoFlags::kMultiSignature, IsArc_HFS)
+#endif
 
-}
-}
+} // namespace NHfs
+} // namespace NArchive

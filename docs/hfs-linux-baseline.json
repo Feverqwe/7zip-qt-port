@@ -55,6 +55,10 @@
     "fs/hfsplus/xattr_user.c": "23d65a12be6d7d78c289dda1ce6d2b498ac1d8f9ec9010edfd57795fe6cf6d78",
     "include/linux/hfs_common.h": "dded52469cd6d3661049a3877705484ec8c71726dda4a5150d1b3a93201d2fed"
   },
-  "adapted": [],
+  "adapted": [
+    "fs/hfsplus/dir.c",
+    "fs/hfsplus/tables.c",
+    "fs/hfsplus/unicode.c"
+  ],
   "exact": []
 }

@@ -15,7 +15,8 @@ extraction использует исходный callback и native OS link serv
 
 Чтение HFS+/HFSX дополнено исправлениями по Linux: fragmented/preallocated
 forks, boot blocks и wrappers, проверки повреждённых metadata и независимые
-потоки. [Scope и проверки](upstream-port-audit/hfs-linux.md); полная актуализация
+потоки. Отдельный read-only модуль добавляет Linux Unicode composition/casefold,
+hardlink backing data и inode metadata. [Scope и проверки](upstream-port-audit/hfs-linux.md); полная актуализация
 формата ещё не завершена.
 
 File → Open device добавляет переносимый выбор внешнего устройства и раздела

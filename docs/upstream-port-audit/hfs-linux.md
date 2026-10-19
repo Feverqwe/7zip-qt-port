@@ -1,7 +1,8 @@
-# HFS+: fork mapping и чтение metadata
+# HFS+: fork mapping, Unicode и hardlinks
 
 Работа входит в [общий scope актуализации по Linux](filesystems-linux.md).
-Эта итерация исправляет существующее чтение HFS+/HFSX и их HFS wrappers.
+Исправлено существующее чтение HFS+/HFSX и их HFS wrappers; добавлены Linux
+Unicode read conversion и разрешение hardlinks через backing inode.
 Полная актуализация семейства HFS ещё не завершена.
 
 ## Источники и source comparison
@@ -29,15 +30,51 @@ commit `58161ead29e50d70a317ea26b472e0c7508e69da`.
 `dir.c:hfsplus_lookup`/readdir, disk-name conversion в `unicode.c`, inline
 чтение `xattr.c:__hfsplus_getxattr`, определения общего on-disk header.
 
-Linux служит эталоном интерпретации формата; GPL bodies в этой итерации
-не копируются и не линкуются. Исправляются исходные 7-Zip алгоритмы и их
-portable stream integration. Сохранены исходные классы, eager leaf enumeration,
+Первое исправление fork mapping использовало Linux как эталон без копирования
+GPL bodies. Для Unicode/hardlinks теперь переносится оригинальный C-код
+`fs/hfsplus/unicode.c`: `case_fold`, `hfsplus_strcasecmp`/`hfsplus_strcmp`,
+`hfsplus_compose_lookup`, Hangul composition, compatibility mapping,
+`hfsplus_uni2asc` и его regular/xattr wrappers. Алгоритмы, ветвления и lookup
+таблицы сохранены; `tables.c` отличается только include. Decompose table
+сохранена вместе с исходным модулем таблиц; inverse conversion и dentry
+hash/compare VFS services не копируются. `inline` у экспортируемых wrappers
+убран для portable C11 linkage; исправлена знаковость одного pointer conversion.
+
+Из `dir.c:hfsplus_lookup` перенесён hardlink loop: type/creator, наличие private
+directory, проверка create date, lookup `iNode%d` и возврат к исходному inode
+при цепочке ссылок. VFS structs, B-tree service calls и dentry publication
+заменены узким adapter к уже прочитанному 7-Zip catalog. Оригинальные условия
+и однократный переход сохранены. Catalog lookup и распознавание private directory
+используют исходные disk names и Linux casefold/binary comparator с учётом HFSX.
+Write/delete/rename и inode
+publication не переносятся; archive adapter возвращает исходный catalog index.
+
+Этот Linux C компилируется только в отдельном GPL-2.0-only format module
+`sevenzip_hfs`, без unRAR. Его LGPL closure — исходные ArchiveExports,
+Common/Windows/stream helpers и handler, zlib/Deflate и BSD LZFSE/LZVN decoder.
+Исходный `HfsHandler.h` переиспользуется без изменений. Модуль и GPL/LGPL/BSD
+notices устанавливаются с приложением; registration HFS основного external-codec
+engine отключена, чтобы единственным владельцем формата был модуль.
+Standalone сохраняет classic scope и явно отказывается от hardlink stubs,
+вместо успешного возврата пустого файла; GPL bodies с ним не линкуются.
+
+Сохранены исходные классы, eager leaf enumeration,
 каталог, alternate streams, decmpfs decoder и extraction callbacks. Полный
 kernel B-tree index traversal не переносится: archive handler перечисляет leaves,
 а не предоставляет VFS lookup. Проверки высоты, backlinks, offsets и header
 относятся к читаемым nodes; это не обещание полной проверки всех index/map nodes.
 Зависимости — исходные portable Common/Windows helpers, StreamObjects/Utils,
 LimitedStreams и существующие zlib/LZVN decoders; новый decoder не добавляется.
+
+NLS encoding — platform boundary: C converter выдаёт UTF-16 units в исходный
+7-Zip string model, сохраняя surrogate pairs. Linux composition и NUL → U+2400
+применяются к regular names; xattr conversion следует отдельной kernel ветви.
+Недопустимые длины и NUL в xattr name отклоняются вместо усечения строки.
+Для переносимого archive path slash/colon/backslash в компоненте заменяются
+`_` исходным path builder, чтобы имя не превращалось в ADS syntax. Это
+presentation adaptation; Linux VFS использует `:` для disk slash. Metadata
+private directory остаётся видимой как в исходном archive handler; Linux VFS
+скрывает её из readdir.
 
 ## Исправленное поведение
 
@@ -60,6 +97,12 @@ LimitedStreams и существующие zlib/LZVN decoders; новый decode
 - Общий `CExtentsStream` восстанавливает физическую позицию перед чтением,
   сообщает ранний EOF как ошибку и не допускает переполнения signed seek.
   Другие классы из `LimitedStreams` функционально не изменены.
+- Hardlink names сохраняют собственный путь и получают data/resource forks,
+  inline attributes, compression header, timestamps, owner/group и inode
+  identity backing file. Missing/corrupt backing inode сообщает DataError,
+  без успешного пустого файла; kernel date/chain guards сохраняются.
+- Публичные properties сообщают UID/GID, inode/link count и symlink target;
+  symlink payload читается через тот же bounded fork stream.
 
 ## Проверки и оставшийся scope
 
@@ -76,7 +119,10 @@ ABI проверяет чередование потоков, lifetime, I/O fail
 Focused suites прошли на macOS ARM64, Linux x64 и Windows x64: HFS CLI/ABI/backend,
 provenance и прямые потребители общего extent stream (FAT, ext, cramfs,
 SquashFS и существующие extraction backend suites). Последние изменения
-HFS дополнительно проверены его suites и provenance на трёх ОС.
+HFS дополнительно проверены его suites и provenance на трёх ОС. Unicode/hardlink
+модуль прошёл CLI/ABI/backend, runtime packaging, codec creation и extraction
+security suites на тех же платформах. Проверяется как отдельное deployment
+формата, так и immutable runtime copy, используемая приложением.
 Приложение собрано на macOS. Полный gate, slow suites, UI и физические
 устройства в эту проверку не входили.
 
@@ -86,9 +132,24 @@ Linux VFS `hfsplus`, kernel `6.8.0-146-generic`: восемь корректны
 отдельное от source comparison закреплённой более новой ревизии. Resource fork
 проверен через engines и ABI, отдельная VFS-проверка его bytes не заявляется.
 
-Остаются актуализация Unicode conversion/normalization, разрешение hardlinks
-через private inode directory, расширение metadata и дальнейшее сравнение read
-branches. Plain classic HFS исходный handler не читает: поддерживается только
+Unicode/hardlink сценарии проверяются также на отдельном native-created
+fixture с тремя hardlink names, decomposed Latin/Hangul, surrogate pair,
+symlink и наследуемыми forks/xattr. CLI/ABI/backend проверяют composition,
+NUL suffix, casefold lookup, date/chain/missing/bounds cases и 32-bit metadata.
+Десять вариантов, включая HFSX binary tree и case-only private-directory name,
+дополнительно сопоставлены с Linux VFS: обычные bytes,
+inode/link count/UID/GID, symlink и Unicode xattr совпали. Kernel NLS показывает
+emoji как `??`, а lookup возвращённого имени не проходит; для него VFS bytes
+не заявляются. Сохранение исходного emoji и его bytes проверено через engine/ABI.
+Это обоснование UTF-16 adapter, а не обход ошибки decoder.
+Zlib и native-produced LZVN decmpfs payloads дополнительно читаются через
+CLI и ArchiveBackend/SourceEntry: перенос в отдельный модуль сохраняет исходный
+decoder и чтение сжатого backing inode. Это 7-Zip extension, отдельное от
+Linux VFS evidence. Сборка и реальный install runtime на macOS проверены
+извлечением hardlinks, resource fork и Unicode/emoji файлов.
+
+Остаются расширение metadata/permissions и дальнейшее сравнение read branches.
+Plain classic HFS исходный handler не читает: поддерживается только
 его wrapper с HFS+/HFSX; это отсутствие остаётся в общем scope работы.
 Apple decmpfs сохраняется как расширение 7-Zip, которое Linux hfsplus не
 декодирует. Fork/extent xattrs также не читаются Linux xattr API; отдельное

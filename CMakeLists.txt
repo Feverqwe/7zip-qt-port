@@ -32,6 +32,7 @@ include(cmake/Fat.cmake)
 include(cmake/Ext.cmake)
 include(cmake/Squashfs.cmake)
 include(cmake/Ntfs.cmake)
+include(cmake/Hfs.cmake)
 include(cmake/Erofs.cmake)
 include(cmake/Brotli.cmake)
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR (APPLE AND BUILD_TESTING))
@@ -629,6 +630,7 @@ sevenzip_deploy_fat()
 sevenzip_deploy_ext()
 sevenzip_deploy_squashfs()
 sevenzip_deploy_ntfs()
+sevenzip_deploy_hfs()
 sevenzip_deploy_erofs()
 sevenzip_deploy_brotli()
 if(APPLE)
@@ -784,7 +786,7 @@ if(BUILD_TESTING)
     set_tests_properties(ntfs_stream PROPERTIES TIMEOUT 60)
     add_test(NAME hfs COMMAND ${Python3_EXECUTABLE}
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/hfs_tests.py
-        ${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime)
+        ${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime "$<TARGET_FILE:sevenzip_hfs>")
     set_tests_properties(hfs PROPERTIES TIMEOUT 60)
     qt_add_executable(hfs_stream_tests tests/hfs_stream_tests.cpp)
     target_include_directories(hfs_stream_tests PRIVATE src third_party/7zip/CPP)
@@ -793,10 +795,12 @@ if(BUILD_TESTING)
         target_link_libraries(hfs_stream_tests PRIVATE oleaut32)
     endif()
     target_compile_definitions(hfs_stream_tests PRIVATE
-        "SEVENZIP_HFS_CORE=\"${SEVENZIP_CODEC_MODULE}\""
+        "SEVENZIP_HFS_CORE=\"$<TARGET_FILE:sevenzip_hfs>\""
+        "SEVENZIP_HFS_RUNTIME=\"${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime\""
         "SEVENZIP_HFS_PYTHON=\"${Python3_EXECUTABLE}\""
         "SEVENZIP_HFS_FIXTURE=\"${CMAKE_CURRENT_SOURCE_DIR}/tests/hfs_fixture.py\"")
     add_test(NAME hfs_stream COMMAND hfs_stream_tests -silent)
+    add_dependencies(hfs_stream_tests sevenzip_hfs_runtime)
     set_tests_properties(hfs_stream PROPERTIES TIMEOUT 45)
     add_test(NAME ntfs COMMAND ${Python3_EXECUTABLE}
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/ntfs_tests.py

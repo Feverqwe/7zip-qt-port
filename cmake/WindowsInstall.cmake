@@ -30,6 +30,11 @@ install(TARGETS sevenzip_fat RUNTIME DESTINATION bin/Formats LIBRARY DESTINATION
 install(TARGETS sevenzip_ext RUNTIME DESTINATION bin/Formats LIBRARY DESTINATION bin/Formats)
 install(TARGETS sevenzip_squashfs RUNTIME DESTINATION bin/Formats LIBRARY DESTINATION bin/Formats)
 install(TARGETS sevenzip_ntfs RUNTIME DESTINATION bin/Formats LIBRARY DESTINATION bin/Formats)
+install(TARGETS sevenzip_hfs RUNTIME DESTINATION bin/Formats LIBRARY DESTINATION bin/Formats)
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/preferred/GPL-2.0"
+    "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/DOC/copying.txt"
+    "${CMAKE_CURRENT_SOURCE_DIR}/third_party/lzfse/LICENSE"
+    DESTINATION share/licenses/sevenzip-desktop/sevenzip-hfs)
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/preferred/GPL-2.0"
     "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/DOC/copying.txt"
     DESTINATION share/licenses/sevenzip-desktop/sevenzip-ntfs)
