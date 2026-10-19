@@ -205,7 +205,11 @@ struct CVolHeader {
 };
 
 inline void HfsTimeToFileTime(UInt32 hfsTime, FILETIME &ft) {
+#ifdef SEVENZIP_LINUX_HFS
+    UInt64 v = ((UInt64)11644473600 + (UInt64)sevenzip_hfsplus_time(hfsTime)) * 10000000;
+#else
     UInt64 v = ((UInt64)3600 * 24 * (365 * 303 + 24 * 3) + hfsTime) * 10000000;
+#endif
     ft.dwLowDateTime = (DWORD)v;
     ft.dwHighDateTime = (DWORD)(v >> 32);
 }
@@ -332,6 +336,11 @@ struct CItem {
     Byte FinderInfo[32];
     Byte AdminFlags;
     Byte OwnerFlags;
+#ifdef SEVENZIP_LINUX_HFS
+    UInt32 NumLinks;
+    UInt32 DeviceMajor;
+    UInt32 DeviceMinor;
+#endif
     unsigned DataIndex;
     bool PrivateDir;
     bool UnsupportedLink;
@@ -596,16 +605,20 @@ HRESULT CDatabase::LoadMetadata() {
             continue;
         ready[index] = true;
         CItem &item = Items[index];
-        sevenzip_hfsplus_permissions permissions;
+        sevenzip_hfsplus_inode metadata;
         // Archive metadata has stable root credentials and the usual Linux umask,
         // independent of the desktop process's credentials or mount overrides.
-        if (hfsplus_get_perms(item.Permissions, item.IsDir(), 0, 0, 0022, &permissions))
+        if (hfsplus_cat_read_inode(item.Permissions, item.IsDir(), &metadata))
             return S_FALSE;
+        const sevenzip_hfsplus_permissions &permissions = metadata.permissions;
         item.OwnerID = permissions.owner;
         item.GroupID = permissions.group;
         item.FileMode = permissions.mode;
         item.AdminFlags = permissions.rootflags;
         item.OwnerFlags = permissions.userflags;
+        item.NumLinks = metadata.links;
+        item.DeviceMajor = metadata.device_major;
+        item.DeviceMinor = metadata.device_minor;
     }
 #endif
     CRecordVector<CIdIndexPair> finderAttrs;
@@ -1797,7 +1810,11 @@ static const Byte kProps[] = {
 #ifdef HFS_SHOW_ALT_STREAMS
     kpidIsAltStream,
 #endif
-    kpidMethod,      kpidCharacts};
+    kpidMethod,      kpidCharacts,
+#ifdef SEVENZIP_LINUX_HFS
+    kpidDeviceMajor, kpidDeviceMinor,
+#endif
+};
 
 static const Byte kArcProps[] = {kpidMethod,    kpidCharacts, kpidClusterSize,
                                  kpidFreeSpace, kpidCTime,    kpidMTime};
@@ -1806,8 +1823,10 @@ IMP_IInArchive_Props IMP_IInArchive_ArcProps
 
     static void
     HfsTimeToProp(UInt32 hfsTime, NWindows::NCOM::CPropVariant &prop) {
+#ifndef SEVENZIP_LINUX_HFS
     if (hfsTime == 0)
         return;
+#endif
     FILETIME ft;
     HfsTimeToFileTime(hfsTime, ft);
     prop.SetAsTimeFrom_FT_Prec(ft, k_PropVar_TimePrec_Base);
@@ -2015,10 +2034,22 @@ Z7_COM7F_IMF(CHandler::GetProperty(UInt32 index, PROPID propID, PROPVARIANT *val
         break;
     case kpidLinks:
         if (ref.IsItem())
+#ifdef SEVENZIP_LINUX_HFS
+            prop = item.NumLinks;
+#else
             prop = !item.IsDir() && (item.FileMode & 0170000) == 0100000 && item.Special
                        ? item.Special
                        : (UInt32)1;
+#endif
         break;
+#ifdef SEVENZIP_LINUX_HFS
+    case kpidDeviceMajor:
+    case kpidDeviceMinor:
+        if (ref.IsItem() &&
+            ((item.FileMode & 0170000) == 0020000 || (item.FileMode & 0170000) == 0060000))
+            prop = propID == kpidDeviceMajor ? item.DeviceMajor : item.DeviceMinor;
+        break;
+#endif
     case kpidSymLink:
         if (ref.IsItem() && (item.FileMode & 0170000) == 0120000) {
             if (item.DataFork.Size == 0 || item.DataFork.Size > (1 << 16))

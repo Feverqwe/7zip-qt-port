@@ -17,6 +17,7 @@ extraction использует исходный callback и native OS link serv
 forks, boot blocks и wrappers, проверки повреждённых metadata и независимые
 потоки. Отдельный read-only модуль добавляет Linux Unicode composition/casefold,
 hardlink backing data, Linux permission defaults, BSD flags и FinderInfo streams.
+Даты следуют Linux диапазону 1970–2106; специальные inode сообщают device metadata.
 [Scope и проверки](upstream-port-audit/hfs-linux.md); полная актуализация
 формата ещё не завершена.
 

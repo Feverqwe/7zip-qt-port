@@ -53,15 +53,19 @@
     "fs/hfsplus/xattr_security.c": "b27db8c01354cf9c7cd1eaf9197ce1fd4f79a09841b81b19e47701e83855ad86",
     "fs/hfsplus/xattr_trusted.c": "6b97afb4a8105300acb93df0f5ab781f6154670672e79d3719d21303c4c3a97d",
     "fs/hfsplus/xattr_user.c": "23d65a12be6d7d78c289dda1ce6d2b498ac1d8f9ec9010edfd57795fe6cf6d78",
-    "include/linux/hfs_common.h": "dded52469cd6d3661049a3877705484ec8c71726dda4a5150d1b3a93201d2fed"
+    "include/linux/hfs_common.h": "dded52469cd6d3661049a3877705484ec8c71726dda4a5150d1b3a93201d2fed",
+    "include/linux/kdev_t.h": "88c47d8d1979f2c0e11aca3ad52f07d8da574db821a5a2b17bf64c5495991015",
+    "include/uapi/linux/kdev_t.h": "232a7c06c56de7bf1c3ba1def81834fda292c3e1771c36d01c7d2085106ca80a"
   },
   "adapted": [
     "fs/hfsplus/bfind.c",
     "fs/hfsplus/dir.c",
+    "fs/hfsplus/hfsplus_fs.h",
     "fs/hfsplus/inode.c",
     "fs/hfsplus/tables.c",
     "fs/hfsplus/unicode.c",
-    "fs/hfsplus/xattr.c"
+    "fs/hfsplus/xattr.c",
+    "include/linux/kdev_t.h"
   ],
   "exact": []
 }

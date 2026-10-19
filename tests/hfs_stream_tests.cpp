@@ -282,6 +282,67 @@ class HfsStreamTests final : public QObject {
         check(fileInfo, "HfsFixture/alpha:com.apple.FinderInfo", 0, 32);
         check(folderInfo, "HfsFixture/links:com.apple.FinderInfo", 0, 32);
     }
+    void inodeTimesAndSpecialFiles() {
+        loadFixture("modern-times");
+        CMyComPtr<IInStream> input = new Input(bytes_);
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        for (const QString &name :
+             {QString("HfsFixture/alpha"), QString("HfsFixture/hard-alpha"),
+              QString("HfsFixture/links/second-link"), QString("HfsFixture/links")}) {
+            for (const auto &entry :
+                 {qMakePair(kpidCTime, UInt64(2212122496)),
+                  qMakePair(kpidMTime, UInt64(4294967295)), qMakePair(kpidChangeTime, UInt64(0)),
+                  qMakePair(kpidATime, UInt64(2212122495))}) {
+                NWindows::NCOM::CPropVariant value;
+                QCOMPARE(archive_->GetProperty(index(name), entry.first, &value), S_OK);
+                QCOMPARE(value.vt, VARTYPE(VT_FILETIME));
+                const UInt64 actual =
+                    UInt64(value.filetime.dwHighDateTime) << 32 | value.filetime.dwLowDateTime;
+                QCOMPARE(actual, (entry.second + 11644473600ULL) * 10000000ULL);
+            }
+        }
+        NWindows::NCOM::CPropVariant modified;
+        QCOMPARE(archive_->GetArchiveProperty(kpidMTime, &modified), S_OK);
+        QCOMPARE(modified.vt, VARTYPE(VT_FILETIME));
+        QCOMPARE((UInt64(modified.filetime.dwHighDateTime) << 32) | modified.filetime.dwLowDateTime,
+                 (2212122496ULL + 11644473600ULL) * 10000000ULL);
+        for (PROPID property : {PROPID(kpidMTime), PROPID(kpidATime), PROPID(kpidChangeTime)}) {
+            NWindows::NCOM::CPropVariant value;
+            QCOMPARE(archive_->GetProperty(index("HfsFixture/null-name"), property, &value), S_OK);
+            QCOMPARE(value.vt, VARTYPE(VT_FILETIME));
+            QCOMPARE((UInt64(value.filetime.dwHighDateTime) << 32) | value.filetime.dwLowDateTime,
+                     (2212122496ULL + 11644473600ULL) * 10000000ULL);
+        }
+        QCOMPARE(archive_->Close(), S_OK);
+        loadFixture("modern-special");
+        input = new Input(bytes_);
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        for (const auto &entry : {qMakePair(QString("HfsFixture/null-name"), UInt32(0020640)),
+                                  qMakePair(QString("HfsFixture/slash_name"), UInt32(0060600)),
+                                  qMakePair(QString::fromUtf8("HfsFixture/café"), UInt32(0010644)),
+                                  qMakePair(QString::fromUtf8("HfsFixture/각"), UInt32(0140600))}) {
+            const unsigned item = index(entry.first);
+            for (const auto &property :
+                 {qMakePair(kpidPosixAttrib, entry.second), qMakePair(kpidLinks, UInt32(1))}) {
+                NWindows::NCOM::CPropVariant value;
+                QCOMPARE(archive_->GetProperty(item, property.first, &value), S_OK);
+                QCOMPARE(value.vt, VARTYPE(VT_UI4));
+                QCOMPARE(value.ulVal, property.second);
+            }
+            for (PROPID property : {PROPID(kpidDeviceMajor), PROPID(kpidDeviceMinor)}) {
+                NWindows::NCOM::CPropVariant value;
+                QCOMPARE(archive_->GetProperty(item, property, &value), S_OK);
+                if ((entry.second & 0170000) == 0020000 || (entry.second & 0170000) == 0060000) {
+                    QCOMPARE(value.vt, VARTYPE(VT_UI4));
+                    QCOMPARE(value.ulVal,
+                             property == kpidDeviceMajor
+                                 ? (entry.first.endsWith("null-name") ? 0xabcU : 0x123U)
+                                 : (entry.first.endsWith("null-name") ? 0x54321U : 0xabcdeU));
+                } else
+                    QCOMPARE(value.vt, VARTYPE(VT_EMPTY));
+            }
+        }
+    }
     void brokenBackingReportsDataError() {
         for (const char *kind : {"modern-missing", "modern-bounds", "modern-binary-case"}) {
             loadFixture(kind);
@@ -371,8 +432,9 @@ class HfsStreamTests final : public QObject {
     }
     void backendExtraction_data() {
         QTest::addColumn<QString>("kind");
-        for (const char *kind : {"preallocated", "overflow-leaves", "extent-over-volume", "modern",
-                                 "modern-nul", "modern-zlib", "modern-lzvn", "modern-permissions"})
+        for (const char *kind :
+             {"preallocated", "overflow-leaves", "extent-over-volume", "modern", "modern-nul",
+              "modern-zlib", "modern-lzvn", "modern-permissions", "modern-times"})
             QTest::newRow(kind) << QString::fromLatin1(kind);
     }
     void backendExtraction() {
@@ -429,6 +491,8 @@ class HfsStreamTests final : public QObject {
                                                         .arg(expected.size())
                                                         .arg(actual.size())
                                                         .arg(transcript)));
+            if (kind == "modern-times")
+                QCOMPARE(QFileInfo(file).lastModified().toSecsSinceEpoch(), qint64(4294967295));
             QStringList entries{QString("HfsFixture/alpha:rsrc"),
                                 QString("HfsFixture/alpha:com.sevenzip.fixture"),
                                 QString::fromUtf8("HfsFixture/данные 空")};

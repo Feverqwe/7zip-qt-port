@@ -1,6 +1,7 @@
 """Native HFS+ hardlinks, Unicode names and targeted catalog mutations."""
 from pathlib import Path
 import struct
+import unicodedata
 import zlib
 
 
@@ -39,7 +40,28 @@ def volume(kind="modern"):
         files["HfsFixture/" + name + ":com.sevenzip.fixture"] = b"inline attribute content"
     for name in ("café", "각", "emoji 😃", "null-name", "slash:name", "single \u200dX"):
         files["HfsFixture/" + name.replace(':', '_')] = ("payload for " + name + "\n").encode() * 5
-    if kind == "modern-permissions":
+    if kind == "modern-times":
+        # Cross both sides of the 1904-based rollover and the Unix epoch.
+        for name in ("iNode20", "links"):
+            for offset, timestamp in ((12, 0), (16, 2082844799), (20, 2082844800), (24, 0xffffffff)):
+                put32(records[name] + offset, timestamp)
+        for offset in (16, 20, 24):
+            put32(records["null-name"] + offset, 0)
+        for header in (1024, len(image) - 1024):
+            put32(header + 20, 0)
+    elif kind == "modern-special":
+        for name, mode, device in (("null-name", 0o20640, 0xabc54321),
+                                    ("slash:name", 0o60600, 0x123abcde),
+                                    ("café", 0o10644, 0xffffffff),
+                                    ("각", 0o140600, 0xffffffff)):
+            # The catalog uses decomposed disk names; converted paths use NFC.
+            disk_name = unicodedata.normalize("NFD", name.replace(':', '/'))
+            record = records[disk_name]
+            struct.pack_into(">H", image, record + 42, mode)
+            put32(record + 44, device)
+            struct.pack_into(">Q", image, record + 88, 0)
+            files["HfsFixture/" + name.replace(':', '_')] = b""
+    elif kind == "modern-permissions":
         for name in ("iNode20", "links"):
             record = records[name]
             put32(record + 32, 0)

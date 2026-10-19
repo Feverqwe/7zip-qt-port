@@ -27,6 +27,11 @@ static inline u16 be16_to_cpu(u16 value)
     const u8 *p = (const u8 *)&value;
     return (u16)((u16)p[0] << 8 | p[1]);
 }
+static inline u32 be32_to_cpu(u32 value)
+{
+    const u8 *p = (const u8 *)&value;
+    return (u32)p[0] << 24 | (u32)p[1] << 16 | (u32)p[2] << 8 | p[3];
+}
 extern u16 hfsplus_case_fold_table[], hfsplus_decompose_table[], hfsplus_compose_table[];
 int hfsplus_strcasecmp(const struct hfsplus_unistr *, const struct hfsplus_unistr *);
 int hfsplus_strcmp(const struct hfsplus_unistr *, const struct hfsplus_unistr *);

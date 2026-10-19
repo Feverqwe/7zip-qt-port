@@ -7,6 +7,7 @@
  * and mutable VFS inode flags are represented by explicit defaults/raw flags.
  */
 #include "hfscompat.h"
+#include "../../include/linux/kdev_t.h"
 
 static u32 get32(const u8 *p)
 {
@@ -51,4 +52,32 @@ int hfsplus_get_perms(const void *permissions, int dir, uint32_t uid, uint32_t g
     return 0;
 bad_type:
     return -EIO;
+}
+
+/* hfsplus_cat_read_inode: the caller has already bounded the catalog record,
+ * mapped its forks and retained timestamps. Keep permission/link/special inode
+ * interpretation here; VFS operations and inode publication are not needed. */
+int hfsplus_cat_read_inode(const void *permissions, int dir,
+                          struct sevenzip_hfsplus_inode *result)
+{
+    int res;
+    u32 dev = get32((const u8 *)permissions + 12);
+    res = hfsplus_get_perms(permissions, dir, 0, 0, 0022, &result->permissions);
+    if (res)
+        return res;
+    result->links = 1;
+    result->device_major = result->device_minor = 0;
+    if (!dir) {
+        u16 mode = result->permissions.mode;
+        if ((mode & 0170000) == 0100000) {
+            if (dev)
+                result->links = dev;
+        } else if ((mode & 0170000) != 0120000) {
+            /* init_special_inode receives the raw internal Linux dev_t, not
+             * the new_encode_dev disk encoding used by other filesystems. */
+            result->device_major = MAJOR(dev);
+            result->device_minor = MINOR(dev);
+        }
+    }
+    return 0;
 }

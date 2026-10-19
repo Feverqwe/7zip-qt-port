@@ -4,6 +4,7 @@
 Исправлено существующее чтение HFS+/HFSX и их HFS wrappers; добавлены Linux
 Unicode read conversion и разрешение hardlinks через backing inode.
 Актуализированы permission defaults, catalog/thread validation и FinderInfo.
+Подключены Linux timestamp rollover и metadata специальных inode.
 Полная актуализация семейства HFS ещё не завершена.
 
 ## Источники и source comparison
@@ -66,6 +67,21 @@ Linux special xattr read/list, с исходным archive namespace без пр
 перечисленного каталога. Linux ищет thread при обращении к inode; eager отказ
 в `Open` и проверка соответствия типа — адаптация архивного интерфейса.
 
+Read projection `inode.c:hfsplus_cat_read_inode` сохраняет permission/link-count
+и special-inode ветви; чтение fork и dates уже выполняет существующий handler,
+а VFS operation tables и публикация inode не копируются. Device numbers читаются
+как raw internal `dev_t` из `permissions.dev`, как в `init_special_inode`;
+используются исходные `MINORBITS`/`MAJOR`/`MINOR` из `include/linux/kdev_t.h`.
+Disk encoder `new_encode_dev` здесь неприменим. В archive properties major/minor
+публикуются только для character/block devices, не для FIFO/socket.
+`hfsplus_fs.h:__hfsp_mt2ut` перенесён в C с исходным unsigned rollover:
+Linux read range — 1970–2106, disk zero означает 2040 год. C++ adapter переводит
+секунды в существующий FILETIME ABI и сохраняет metadata backing inode у aliases.
+Создание файла/тома остаётся archive extension: Linux VFS не возвращает birth time;
+исходная local-time трактовка volume creation не заменяется VFS-семантикой.
+Новые C helpers подключены только к GPL-модулю; standalone сохраняет исходную
+датировку 7-Zip и не публикует новые device properties.
+
 Этот Linux C компилируется только в отдельном GPL-2.0-only format module
 `sevenzip_hfs`, без unRAR. Его LGPL closure — исходные ArchiveExports,
 Common/Windows/stream helpers и handler, zlib/Deflate и BSD LZFSE/LZVN decoder.
@@ -126,6 +142,11 @@ private directory остаётся видимой как в исходном arc
   файлов, каталогов и hardlink aliases; его bytes сохраняются после `Close`.
 - Некорректные размеры/типы catalog records и несогласованные thread records
   отклоняются с очисткой опубликованного каталога.
+- Даты после rollover 2040 года читаются в Linux эпохе; нулевые access/modify/
+  change timestamps возвращают дату, а не отсутствующее свойство. При извлечении
+  сохраняется mtime вплоть до конца Linux диапазона в 2106 году.
+- Character/block devices сообщают исходные major/minor. Regular file link count
+  и единичные ссылки специальных inode определяет перенесённый Linux read path.
 
 ## Проверки и оставшийся scope
 
@@ -181,6 +202,18 @@ modes и thread length дали EIO, неверные parent/name — ENOENT.
 Несовпадение thread type kernel 6.8 принимает; наш eager integrity check
 отклоняет этот случай. Все семь read-only loop images остались неизменны.
 Это не проверка принудительного применения immutable/append VFS flags.
+
+Timestamp/special-inode fixtures сопоставлены с Linux VFS отдельно: mtime/atime/
+ctime у файла, каталога и трёх hardlink aliases, disk zero, raw dev_t с большими
+major/minor и FIFO/socket metadata совпали; оба read-only образа остались неизменны.
+Проверка special inode использует только `lstat`, без открытия устройств.
+CLI/ABI проверяют эти properties, backend — реальное извлечение с mtime 2106 года.
+HFS CLI/ABI/backend, runtime packaging, provenance и extraction security suites
+прошли на macOS ARM64, Linux x64 и Windows x64. Remote receipt
+`20261019T134311Z-af620460`: Linux 6/6, Windows 5/6; CLI regression на Windows
+прошла после исправления CRLF parsing теста (`20261019T134440Z-0d16b3b4`).
+Код модуля в повторном запуске не менялся. Приложение собрано на macOS;
+полный gate, slow suites и UI в эту итерацию не входили.
 
 Остаются дальнейшее сравнение read branches и системных metadata services.
 Plain classic HFS исходный handler не читает: поддерживается только

@@ -1,5 +1,15 @@
 // SPDX-License-Identifier: GPL-2.0-only
 #include "fs/hfsplus/hfscompat.h"
+#include "fs/hfsplus/hfsplus_fs.h"
+
+int64_t sevenzip_hfsplus_time(uint32_t timestamp)
+{
+    const u8 encoded[4] = {(u8)(timestamp >> 24), (u8)(timestamp >> 16),
+                           (u8)(timestamp >> 8), (u8)timestamp};
+    u32 mt;
+    memcpy(&mt, encoded, sizeof(mt));
+    return __hfsp_mt2ut(mt);
+}
 
 int sevenzip_hfsplus_compare(const void *a, const void *b, int binary)
 {

@@ -24,12 +24,14 @@ class HfsTests(unittest.TestCase):
         (cls.runtime / "Formats").mkdir()
         shutil.copy2(MODULE, cls.runtime / "Formats" / MODULE.name)
 
-    def run_image(self, engine, data, name=None):
+    def run_image(self, engine, data, name=None, listing=False):
         with tempfile.TemporaryDirectory(prefix="sevenzip-hfs-") as temporary:
             path = Path(temporary) / "образ 空.hfs"
             path.write_bytes(data)
-            args = [str(self.runtime / (engine + SUFFIX)), "x" if name else "t",
+            args = [str(self.runtime / (engine + SUFFIX)), "l" if listing else "x" if name else "t",
                     "-tHFS", "-sccUTF-8", "-bsp0"]
+            if listing:
+                args += ["-slt", "-ba"]
             if name:
                 args += ["-so", "-bso0", "-bse2", "-sns" if ":" in name else "-sns-"]
             args += ["--", str(path)]
@@ -38,6 +40,28 @@ class HfsTests(unittest.TestCase):
             result = subprocess.run(args, capture_output=True, timeout=10)
             self.assertEqual(path.read_bytes(), data)
             return result
+
+    def test_linux_inode_metadata_listing(self):
+        for kind in ("modern-times", "modern-special"):
+            result = self.run_image("7z", volume(kind)[0], listing=True)
+            self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+            entries = {}
+            for block in result.stdout.decode("utf-8").replace("\r\n", "\n").split("\n\n"):
+                fields = dict(line.split(" = ", 1) for line in block.splitlines() if " = " in line)
+                if "Path" in fields:
+                    entries[fields["Path"].replace('\\', '/')] = fields
+            if kind == "modern-times":
+                for name in ("alpha", "hard-alpha", "links/second-link", "links"):
+                    self.assertTrue(entries["HfsFixture/" + name]["Modified"].startswith("2106-"))
+                self.assertTrue(entries["HfsFixture/null-name"]["Modified"].startswith("2040-"))
+            else:
+                for name, major, minor in (("null-name", 0xabc, 0x54321),
+                                            ("slash_name", 0x123, 0xabcde)):
+                    self.assertEqual(int(entries["HfsFixture/" + name]["Device Major"]), major)
+                    self.assertEqual(int(entries["HfsFixture/" + name]["Device Minor"]), minor)
+                for name in ("café", "각"):
+                    self.assertFalse(entries["HfsFixture/" + name].get("Device Major"))
+                    self.assertFalse(entries["HfsFixture/" + name].get("Device Minor"))
 
     def test_fork_contents(self):
         for kind in ("base", "preallocated", "empty-preallocated", "overflow-leaves", "boot-blocks",

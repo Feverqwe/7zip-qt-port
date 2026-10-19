@@ -10,6 +10,7 @@ int sevenzip_hfsplus_name(const void *big_endian, unsigned length, int xattr,
                          uint16_t *output, unsigned *output_length);
 int sevenzip_hfsplus_compare(const void *name_a, const void *name_b, int binary);
 int sevenzip_hfsplus_private_name(const void *name, int binary);
+int64_t sevenzip_hfsplus_time(uint32_t timestamp);
 struct sevenzip_hfsplus_permissions {
     uint32_t owner, group;
     uint16_t mode;
@@ -17,6 +18,12 @@ struct sevenzip_hfsplus_permissions {
 };
 int hfsplus_get_perms(const void *permissions, int directory, uint32_t uid, uint32_t gid,
                       uint16_t umask, struct sevenzip_hfsplus_permissions *result);
+struct sevenzip_hfsplus_inode {
+    struct sevenzip_hfsplus_permissions permissions;
+    uint32_t links, device_major, device_minor;
+};
+int hfsplus_cat_read_inode(const void *permissions, int directory,
+                          struct sevenzip_hfsplus_inode *result);
 int hfsplus_brec_read_cat(const void *record, size_t length);
 int hfsplus_getxattr_finder_info(const void *record, size_t length, void *value, size_t size);
 struct sevenzip_hfsplus_record {

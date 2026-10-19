@@ -79,6 +79,7 @@ leaves, preallocation/EOF, границы metadata и forks, boot blocks/wrapper
 conversion/casefold и hardlink lookup в отдельном GPL-модуле; backing forks,
 xattrs и inode metadata проходят ABI/backend. Подключены Linux permission defaults,
 проверки catalog/thread records и catalog FinderInfo streams, включая hardlinks.
+Linux inode projection также передаёт timestamp rollover и special-device metadata.
 Дальнейший metadata/read audit
 и classic HFS остаются в scope актуализации.
 
