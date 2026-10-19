@@ -19,6 +19,9 @@ install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime/7z.so"
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime/LICENSE.txt"
     DESTINATION "${notices_destination}/7zip")
 install(TARGETS sevenzip_exfat LIBRARY DESTINATION "${runtime_destination}/Formats")
+install(TARGETS sevenzip_cramfs LIBRARY DESTINATION "${runtime_destination}/Formats")
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/preferred/GPL-2.0"
+    DESTINATION "${notices_destination}/sevenzip-cramfs")
 install(TARGETS sevenzip_brotli LIBRARY DESTINATION "${runtime_destination}/Formats")
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/brotli/LICENSE"
     "${CMAKE_CURRENT_SOURCE_DIR}/third_party/brotli/7zip-zstd-LICENSE.txt"

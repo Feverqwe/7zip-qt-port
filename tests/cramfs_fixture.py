@@ -1,0 +1,67 @@
+"""Deterministic Linux cramfs images, including extended physical block layouts."""
+import struct
+import zlib
+import lzma
+
+
+def inode(mode, length, offset, name_length=0, endian="<", uid=1234, gid=42):
+    if endian == "<":
+        fields = (mode | (uid << 16), length | (gid << 24), (offset // 4 << 6) | (name_length // 4))
+    else:
+        fields = ((mode << 16) | uid, (length << 8) | gid, (name_length // 4 << 26) | (offset // 4))
+    return struct.pack(endian + "III", *fields)
+
+
+def checksum(data, endian="<", prefix=0):
+    struct.pack_into(endian + "I", data, prefix + 4, len(data))
+    struct.pack_into(endian + "I", data, prefix + 32, 0)
+    struct.pack_into(endian + "I", data, prefix + 32, zlib.crc32(data[prefix:]))
+
+
+def image(blocks, endian="<", storage=None, prefix=0, shifted=0, reverse=False,
+          name=b"data.bin", short_zlib=False, version2=True, mode=0o100644, directory=None,
+          legacy_block_bits=None):
+    storage = storage or ["zlib" if any(block) else "hole" for block in blocks]
+    extended = any(kind in ("raw", "direct-raw", "direct-zlib") for kind in storage)
+    name = name + bytes((-len(name)) % 4)
+    directory_start = prefix + 76 + shifted
+    dirname = directory + bytes((-len(directory)) % 4) if directory else b""
+    file_directory_start = directory_start + (12 + len(dirname) if directory else 0)
+    table = file_directory_start + 12 + len(name)
+    file_entry = inode(mode, sum(map(len, blocks)), table if blocks else 0, len(name), endian) + name
+    result = bytearray(table + 4 * len(blocks))
+    flags = int(version2) | 0x100 | (0x800 if extended else 0) | (0x400 if shifted else 0)
+    if legacy_block_bits is not None:
+        flags |= ((legacy_block_bits - 12) << 11) | ((2 if "lzma" in storage else 1) << 14)
+    result[prefix:prefix + 32] = struct.pack(endian + "IIII16s", 0x28CD3D45, 0, flags, 0,
+                                            b"Compressed ROMFS")
+    root_size = 12 + len(dirname) if dirname else len(file_entry)
+    result[prefix + 64:prefix + 76] = inode(0o40755, root_size, directory_start, endian=endian)
+    if dirname:
+        result[directory_start:file_directory_start] = inode(0o40755, len(file_entry), file_directory_start,
+                                                              len(dirname), endian) + dirname
+    result[file_directory_start:table] = file_entry
+    order = reversed(range(len(blocks))) if reverse else range(len(blocks))
+    for index in order:
+        block, kind = blocks[index], storage[index]
+        direct = kind.startswith("direct-")
+        if direct:
+            result.extend(bytes((-len(result)) % 4))
+        start = len(result)
+        if kind != "hole":
+            if kind == "lzma":
+                packed = (b"\x5d" + struct.pack("<II", 4096, len(block)) +
+                          lzma.compress(block, format=lzma.FORMAT_RAW,
+                                        filters=[{"id": lzma.FILTER_LZMA1, "dict_size": 4096, "lc": 3, "lp": 0, "pb": 2}]))
+            else:
+                packed = block if kind.endswith("raw") else zlib.compress(block.rstrip(b"\0") if short_zlib else block)
+            if kind == "direct-zlib":
+                result.extend(struct.pack(endian + "H", len(packed)))
+            result.extend(packed)
+        pointer = ((start // 4) | 0x40000000) if direct else len(result)
+        if kind.endswith("raw"):
+            pointer |= 0x80000000
+        struct.pack_into(endian + "I", result, table + index * 4, pointer)
+    struct.pack_into(endian + "IIII", result, prefix + 32, 0, 0, len(blocks), 2)
+    checksum(result, endian, prefix)
+    return bytes(result)

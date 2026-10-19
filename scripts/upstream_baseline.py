@@ -127,7 +127,7 @@ def prepare_runtime_snapshot(data, snapshot, upstream):
         destination = snapshot / source_path(path)
         if source.is_symlink() or destination.is_symlink() or not destination.is_file():
             raise ValueError("Runtime adaptation requires regular source files: " + path)
-        hashes[path] = hashlib.sha256(source.read_bytes()).hexdigest()
+        hashes[path] = hashlib.sha256(destination.read_bytes()).hexdigest()
     (snapshot / "runtime-adaptations.json").write_text(json.dumps(hashes, indent=2) + "\n")
 
 

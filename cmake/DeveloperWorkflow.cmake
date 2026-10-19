@@ -7,7 +7,7 @@ get_property(sevenzip_workflow_targets DIRECTORY PROPERTY BUILDSYSTEM_TARGETS)
 set(sevenzip_workflow_manifest "")
 foreach(sevenzip_workflow_target IN LISTS sevenzip_workflow_targets)
     get_target_property(sevenzip_workflow_type ${sevenzip_workflow_target} TYPE)
-    if(sevenzip_workflow_type STREQUAL "EXECUTABLE")
+    if(sevenzip_workflow_type STREQUAL "EXECUTABLE" OR sevenzip_workflow_type STREQUAL "MODULE_LIBRARY")
         string(APPEND sevenzip_workflow_manifest
             "${sevenzip_workflow_target}\t$<TARGET_FILE:${sevenzip_workflow_target}>\n")
     endif()
