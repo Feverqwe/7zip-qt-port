@@ -8,6 +8,9 @@
 #define UDF_METADATA_MAP25 0x2511U
 #define MF_DUPLICATE_MD 0x01
 #define MF_MIRROR_FE_LOADED 0x02
+#define UDF_MAX_READ_VERSION 0x0260
+#define UDF_FLAG_NOVRS 8
+#define UDF_FLAG_RW_INCOMPAT 19
 
 struct udf_meta_data {
 	uint32_t s_meta_file_loc;
@@ -45,5 +48,8 @@ struct udf_sb_info {
 	struct udf_part_map *s_partmaps;
 	struct inode *s_vat_inode;
 	uint64_t s_last_block;
+	uint32_t s_anchor, s_session, s_flags;
+	uint16_t s_partition, s_serial_number;
+	struct buffer_head *s_lvid_bh;
 };
 #endif

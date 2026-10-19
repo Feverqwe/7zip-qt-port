@@ -103,8 +103,9 @@ Metadata/mirror loader и inode-backed mapping также перенесены: 
 short AD, chains, primary/mirror fallback, readonly bitmap policy и extent cache.
 Общий AD traversal ограничивает циклы без запрета конечных typed-zero records;
 EOF и AED tag/read policies сверены с Linux.
-Volume discovery/block geometry, names/NLS, symlinks и остальные read-side
-возможности UDF ещё требуют актуализации.
+Volume discovery, block geometry, резервные anchors/VDS и prevailing descriptors
+подключены к исходному Linux C reader; проверены tagged fileset и LVID read revision.
+Names/NLS, symlinks и остальные read-side возможности UDF ещё требуют актуализации.
 
 ### HFS+/HFSX: fork mapping и metadata reads
 

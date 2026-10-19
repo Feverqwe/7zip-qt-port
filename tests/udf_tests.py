@@ -11,6 +11,7 @@ from udf_sparing_fixture import CASES as SPARING_CASES, BAD as SPARING_BAD
 from udf_vat_fixture import CASES as VAT_CASES, BAD as VAT_BAD
 from udf_metadata_fixture import CASES as METADATA_CASES, BAD as METADATA_BAD
 from udf_walk_fixture import CASES as WALK_CASES, MODULE_ONLY as WALK_MODULE, BAD as WALK_BAD
+from udf_discovery_fixture import CASES as DISCOVERY_CASES, MODULE_ONLY as DISCOVERY_MODULE, BAD as DISCOVERY_BAD
 
 RUNTIME = Path(sys.argv.pop(1))
 MODULE = Path(sys.argv.pop(1))
@@ -29,11 +30,13 @@ class UdfTests(unittest.TestCase):
         (cls.runtime / "Formats").mkdir()
         shutil.copy2(MODULE, cls.runtime / "Formats" / MODULE.name)
 
-    def run_image(self, engine, image, name=None, listing=False):
+    def run_image(self, engine, image, name=None, listing=False, forced=True):
         with tempfile.TemporaryDirectory(prefix="sevenzip-udf-") as temporary:
-            path = Path(temporary) / "образ 空.udf"
+            path = Path(temporary) / ("образ 空.udf" if forced else "образ 空.bin")
             path.write_bytes(image)
-            args = [str(self.runtime / (engine + SUFFIX)), "l" if listing else "x" if name else "t", "-tUdf", "-sccUTF-8", "-bsp0"]
+            args = [str(self.runtime / (engine + SUFFIX)), "l" if listing else "x" if name else "t", "-sccUTF-8", "-bsp0"]
+            if forced:
+                args += ["-tUdf"]
             if listing:
                 args += ["-slt"]
             if name:
@@ -65,7 +68,7 @@ class UdfTests(unittest.TestCase):
 
     def test_continuations(self):
         for kind in (*CONTINUATIONS, *ICB_CASES, *SPARING_CASES, *VAT_CASES, *METADATA_CASES,
-                     *WALK_CASES, *WALK_MODULE):
+                     *WALK_CASES, *WALK_MODULE, *DISCOVERY_CASES, *DISCOVERY_MODULE):
             image, files = volume(kind)
             with self.subTest(kind=kind):
                 result = self.run_image("7z", image)
@@ -84,7 +87,7 @@ class UdfTests(unittest.TestCase):
     def test_damaged_continuation_chains(self):
         for kind in ("ad-cycle", "ad-limit-17", "ad-outside", "ad-bad-partition",
                      "ad-overflow", "ad-over-block", *ICB_BAD, *SPARING_BAD, *VAT_BAD,
-                     *METADATA_BAD):
+                     *METADATA_BAD, *DISCOVERY_BAD):
             image, _ = volume(kind)
             with self.subTest(kind=kind):
                 self.assertNotEqual(self.run_image("7z", image).returncode, 0)
@@ -104,6 +107,19 @@ class UdfTests(unittest.TestCase):
             with self.subTest(kind=kind):
                 # 7-Zip's normal archive error, rather than timeout, crash or out-of-memory.
                 self.assertEqual(self.run_image("7z", image).returncode, 2)
+
+    def test_discovery_without_format_or_extension_hint(self):
+        for kind in ("ds-block-512", "ds-block-1024", "ds-block-4096", "ds-block-4096-spaced",
+                     "ds-backup-last", "ds-backup-middle", "ds-open-512", "ds-nsr03",
+                     "ds-direct-nsr", "ds-vrs-type-version", "ds-main-reserve", "ds-prevailing-lvd"):
+            image, files = volume(kind)
+            with self.subTest(kind=kind):
+                result = self.run_image("7z", image, listing=True, forced=False)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertIn(b"Type = Udf", result.stdout)
+                result = self.run_image("7z", image, "alpha.bin", forced=False)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stdout, files["alpha.bin"])
 
 
 if __name__ == "__main__":

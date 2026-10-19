@@ -350,23 +350,22 @@ Z7_COM7F_IMF(CHandler::Extract(const UInt32 *indices, UInt32 numItems, Int32 tes
 }
 
 #if defined(SEVENZIP_LINUX_UDF) || !defined(Z7_EXTERNAL_CODECS)
+#ifdef SEVENZIP_LINUX_UDF
+static const UInt32 kIsoStartPos = 0x8001;
+static const Byte k_Signature[] = {5, 'B', 'E', 'A', '0', '1', 5, 'N', 'S', 'R', '0', '2',
+                                   5, 'N', 'S', 'R', '0', '3', 5, 'C', 'D', '0', '0', '1',
+                                   5, 'B', 'O', 'O', 'T', '2', 5, 'C', 'D', 'W', '0', '2'};
+#else
 static const UInt32 kIsoStartPos = 0x8000;
 
 //  5, { 0, 'N', 'S', 'R', '0' },
 
-static const Byte k_Signature[] =
-{
-  8,    0, 'B', 'E', 'A', '0', '1', 1, 0,
-  6,    1, 'C', 'D', '0', '0', '1'
-};
+static const Byte k_Signature[] = {8, 0, 'B', 'E', 'A', '0', '1', 1,
+                                   0, 6, 1,   'C', 'D', '0', '0', '1'};
+#endif
 
-REGISTER_ARC_I(
-  "Udf", "udf iso img", NULL, 0xE0,
-  k_Signature,
-  kIsoStartPos,
-  NArcInfoFlags::kMultiSignature |
-  NArcInfoFlags::kStartOpen,
-  IsArc_Udf)
+REGISTER_ARC_I("Udf", "udf iso img", NULL, 0xE0, k_Signature, kIsoStartPos,
+               NArcInfoFlags::kMultiSignature | NArcInfoFlags::kStartOpen, IsArc_Udf)
 #endif
 
 }}

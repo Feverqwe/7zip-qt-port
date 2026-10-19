@@ -188,7 +188,7 @@ HRESULT CInArchive::LoadLinuxVat(unsigned volIndex, unsigned partitionRef) {
     sevenzip_udf_virtual *state = nullptr;
     const int result = sevenzip_udf_virtual_create(
         &builder, CVatBuilder::Open, CVatBuilder::Read, CVatBuilder::Close, vol.BlockSize,
-        vol.PartitionMaps.Size(), blocks, (UInt32)(blocks - 1), Partitions[map.PartitionIndex].Pos,
+        vol.PartitionMaps.Size(), blocks, _lastRecordedBlock, Partitions[map.PartitionIndex].Pos,
         (UInt16)partitionRef, (UInt16)backing, map.IsVat20, &state);
     std::shared_ptr<sevenzip_udf_virtual> owner(state, sevenzip_udf_virtual_free);
     if (builder.fatal != S_OK)
@@ -293,6 +293,19 @@ HRESULT CInArchive::ReadLinuxItem(unsigned volIndex, CLongAllocDesc &location, C
     location.Location.PartitionRef = partition;
     location.Location.Pos = block;
     return S_OK;
+}
+
+HRESULT CInArchive::ReadLinuxFileset(unsigned volIndex, const CLongAllocDesc &location,
+                                     CByteBuffer &data) {
+    CLinuxContext context{this, volIndex, nullptr};
+    const int result =
+        sevenzip_udf_fileset(&context, ReadLinuxBlock, LogVols[volIndex].BlockSize,
+                             location.Location.PartitionRef, location.Location.Pos, data);
+    if (context.progressResult != S_OK)
+        return context.progressResult;
+    if (context.result != S_OK)
+        return context.result;
+    return result == 0 ? S_OK : result == -ENOMEM ? E_OUTOFMEMORY : S_FALSE;
 }
 
 HRESULT CInArchive::ReadLinuxExtents(unsigned volIndex, unsigned partitionRef, CItem &item,

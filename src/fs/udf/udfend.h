@@ -11,4 +11,11 @@ static inline struct kernel_lb_addr lelb_to_cpu(struct lb_addr in)
 
 	return out;
 }
+static inline struct kernel_extent_ad leea_to_cpu(struct extent_ad in)
+{
+	struct kernel_extent_ad out;
+	out.extLength = le32_to_cpu(in.extLength);
+	out.extLocation = le32_to_cpu(in.extLocation);
+	return out;
+}
 #endif

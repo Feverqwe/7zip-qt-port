@@ -30,6 +30,9 @@
 #define cpu_to_le16(v) (v)
 #endif
 #include "udfend.h"
+#define kfree(p) free(p)
+#define kzalloc_objs(object, count) calloc((count), sizeof(object))
+#define noinline
 #define udf_err(...) ((void)0)
 #define udf_warn(...) ((void)0)
 #define udf_debug(...) ((void)0)
@@ -60,7 +63,16 @@ struct super_block {
     sevenzip_udf_read_file read_file;
     sevenzip_udf_close_file close_file;
     int io_error;
+    uint64_t device_size;
+    sevenzip_udf_descriptor descriptor;
+    sevenzip_udf_reset reset;
+    void *descriptor_output;
+    unsigned seen_anchor;
+    uint32_t anchor_block;
 };
+struct udf_options { uint32_t blocksize, lastblock, anchor; };
+struct udf_vds_record { uint32_t block, volDescSeqNum; };
+struct generic_desc { struct tag descTag; __le32 volDescSeqNum; };
 #include "udf_i.h"
 /* Constant-space cycle guard for one allocation traversal. */
 struct sevenzip_udf_walk {
@@ -90,6 +102,8 @@ struct buffer_head *udf_bread(struct inode *, uint32_t, int, int *);
 void iput(struct inode *);
 #define UDF_I(inode) (&(inode)->info)
 #define UDF_SB(sb) (&(sb)->info)
+#define UDF_QUERY_FLAG(sb, flag) ((UDF_SB(sb)->s_flags & (1U << (flag))) != 0)
+#define UDF_SET_FLAG(sb, flag) (UDF_SB(sb)->s_flags |= (1U << (flag)))
 /* Serialized archive calls replace VFS locking at this boundary. */
 #define spin_lock(lock) ((void)0)
 #define spin_unlock(lock) ((void)0)
@@ -142,4 +156,11 @@ uint32_t udf_get_pblock_meta25(struct super_block *, uint32_t, uint16_t, uint32_
 int inode_bmap(struct inode *, sector_t, struct extent_position *, struct kernel_lb_addr *,
                uint32_t *, sector_t *, int8_t *);
 int sevenzip_udf_load_metadata(struct super_block *, int, int);
+int sb_set_blocksize(struct super_block *, unsigned);
+udf_pblk_t udf_get_last_block(struct super_block *);
+unsigned int udf_get_last_session(struct super_block *);
+int sevenzip_udf_load_vrs(struct super_block *, struct udf_options *, struct kernel_lb_addr *);
+int sevenzip_udf_find_fileset(struct super_block *, struct kernel_lb_addr *, struct kernel_lb_addr *);
+struct logicalVolIntegrityDescImpUse *udf_sb_lvidiu(struct super_block *);
+int sevenzip_udf_check_vsd(struct super_block *);
 #endif

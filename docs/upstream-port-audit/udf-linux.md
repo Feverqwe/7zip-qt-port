@@ -478,7 +478,73 @@ Staging и временные native images удалены; incremental builds �
 сохранены. Full/slow/UI/physical-device acceptance не выполнялась.
 
 Полный UDF read audit остаётся открытым. В частности, ещё требуются
-volume discovery/block geometry, names/NLS, symlinks, специальные
+names/NLS, symlinks, специальные
 inode и metadata/read policies. Проверка этой итерации не означает завершение
 всех UDF возможностей или общей задачи форматов Linux. VFS, запись,
 journal/mount ownership и page cache остаются вне archive read scope.
+
+## Volume discovery, geometry и prevailing descriptors
+
+С pinned Linux snapshot до реализации сравнены полные bodies и callers
+`identify_vsd`, `udf_check_vsd`, `udf_verify_domain_identifier`,
+`udf_load_fileset`/`udf_find_fileset`, `udf_lvid_valid`,
+`udf_load_logicalvolint`, `handle_partition_descriptor`,
+`get_volume_descriptor_record`, `udf_process_sequence`, `udf_load_sequence`,
+`udf_check_anchor_block`, `udf_scan_anchors`, `udf_load_vrs`, `udf_sb_lvidiu`,
+а также geometry/revision checks в `udf_fill_super` и `lowlevel.c`.
+Эти 15 discovery/selection/helper bodies перенесены в `src/fs/udf/super.c`;
+их структуры, constants, buffer ownership и зависимости включены в тот же
+изолированный GPL format module. `lowlevel.c` сохраняет только regular-file
+ветви last session/block: archive stream не предоставляет CD-ROM ioctls.
+Default regular-file geometry перебирает 512/1024/2048/4096 bytes; VRS probe
+используется также при автоматическом определении формата без расширения.
+Резервные anchors, main/reserve sequences, VDP chains, prevailing LVD/PD,
+LVID chains/revision и fileset tag/domain проходят через исходный C reader.
+
+Полные Linux `udf_load_pvoldesc`, `udf_load_logicalvol`, `udf_load_partdesc`
+изучены, но не скопированы целиком: их VFS publication, write allocation state
+и NLS conversion не являются готовым archive API. Narrow adapters передают
+выбранные validated descriptors единственному исходному 7-Zip parser в
+`UdfIn.cpp`; `UdfDiscovery.cpp` соединяет его с C discovery. Legacy engine
+сохраняет прежний decoder под условной компиляцией. Неиспользованные PD
+игнорируются, активные partition bounds проверяются; geometry определяется
+реальным чтением, а не противоречащим ему LVD field. Fileset читается полным
+блоком с проверкой tag location, как в Linux. Выбранный last recorded block
+передаётся также VAT loader. Hardware multisession и пользовательские mount
+overrides session/anchor/lastblock/novrs не экспонируются stream interface.
+
+После переноса повторно сравнены все 15 bodies. Адаптации: portable int64_t
+для VSD byte offsets, запись выбранного anchor и копирование validated fileset
+для archive projection, platform allocation/buffer services. LVID validation
+дополнительно требует объявленное пространство для implementation-use revision
+fields. Частичная длина integrity extent не переполняется при вычитании блока;
+невалидный последний LVID освобождается, предыдущий пригодный сохраняется,
+следующий extent копируется до освобождения buffer. Эти malformed-input fixes
+сознательно строже/безопаснее исходной ветви и не заявляются native parity.
+VFS mount/write accounting не перенесён. Прочие discovery branches сохранены;
+обычные ошибки optional reads допускают fallback, однократные cancellation и
+progress failures сохраняются. При полном I/O failure возвращается source error.
+
+33 новых положительных discovery variants и 12 отрицательных проверены через
+read-only native Linux `6.8.0-146-generic`: четыре block geometries, обе 4K VRS
+strides, резервные/скорректированные anchors, main/reserve VDS, bounded VDP,
+prevailing/tied/older records, рост PD table, fileset tag/length policies,
+LVID chains и read revision. Mounts и images удалены. Три дополнительных
+malformed LVID variants проверяются только модулем из-за исходных bounds и
+ownership ошибок. CLI покрывает также auto-detection без format hint;
+ABI проверяет bytes/EOF, interleaved streams, Close/reopen ownership, source
+failures, однократные progress E_ABORT/E_FAIL и успешное повторное открытие.
+Backend consumers включают шесть discovery scenarios.
+
+Пять focused suites (`udf`, `udf_stream`, `upstream_baseline`, `runtime_cache`,
+`runtime_package`) прошли на macOS arm64, Linux x64 и Windows x64/MSVC;
+remote receipt `20261019T231108Z-75bbd86a`. Использованы прежние incremental
+build trees и compiler caches. Full/slow/UI/physical-device acceptance
+не выполнялась; source-port scope и runtime evidence указаны отдельно выше.
+
+Actual macOS CMake install прочитал все 136 положительных UDF variants,
+сохранил source bytes и установил обе лицензии с точным исходным содержимым.
+Staging удалён. Полный UDF audit остаётся открытым: names/NLS, symlinks,
+специальные inode/device EA и оставшиеся metadata/read policies требуют
+отдельной source comparison. Эта итерация закрывает default file-stream
+discovery, а не physical-CD acceptance или все UDF возможности.

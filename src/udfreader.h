@@ -25,6 +25,16 @@ typedef int (*sevenzip_udf_open_file)(void *, uint16_t, uint32_t, struct sevenzi
 typedef int (*sevenzip_udf_read_file)(void *, uint32_t, void *, size_t);
 typedef void (*sevenzip_udf_close_file)(void *);
 typedef int (*sevenzip_udf_status)(void *);
+typedef int (*sevenzip_udf_descriptor)(void *, uint16_t, uint32_t, const void *, size_t);
+typedef void (*sevenzip_udf_reset)(void *);
+struct sevenzip_udf_discovery {
+    uint32_t block_size, last_block, anchor_block;
+    unsigned seen_anchor;
+};
+int sevenzip_udf_discover(void *, sevenzip_udf_read, sevenzip_udf_descriptor,
+    sevenzip_udf_reset, sevenzip_udf_status, uint64_t, struct sevenzip_udf_discovery *);
+int sevenzip_udf_probe(const void *, size_t);
+int sevenzip_udf_fileset(void *, sevenzip_udf_read, uint32_t, uint16_t, uint32_t, void *);
 int sevenzip_udf_metadata_create(void *, sevenzip_udf_open_file, sevenzip_udf_read,
     sevenzip_udf_close_file, sevenzip_udf_status, uint32_t, uint32_t, uint16_t, uint16_t, const void *,
     struct sevenzip_udf_metadata **);

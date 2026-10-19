@@ -35,6 +35,7 @@
   "adapted": [
     "fs/udf/directory.c",
     "fs/udf/inode.c",
+    "fs/udf/lowlevel.c",
     "fs/udf/misc.c",
     "fs/udf/partition.c",
     "fs/udf/super.c",

@@ -21,6 +21,8 @@ class Input final : public IInStream, public CMyUnknownImp {
 
   public:
     HRESULT failure = S_OK;
+    HRESULT readFailure = S_OK;
+    HRESULT seekFailure = E_FAIL;
     UInt64 failSeekAt = UINT64_MAX;
     UInt64 lastSeek = 0;
     explicit Input(QByteArray bytes) : bytes_(std::move(bytes)) {}
@@ -29,6 +31,8 @@ class Input final : public IInStream, public CMyUnknownImp {
             *processed = 0;
         if (failure != S_OK)
             return failure;
+        if (readFailure != S_OK)
+            return readFailure;
         size = UInt32(qMin<UInt64>(
             size, position_ < UInt64(bytes_.size()) ? UInt64(bytes_.size()) - position_ : 0));
         if (size)
@@ -42,7 +46,7 @@ class Input final : public IInStream, public CMyUnknownImp {
         if (failure != S_OK)
             return failure;
         if (origin == STREAM_SEEK_SET && UInt64(offset) == failSeekAt)
-            return E_FAIL;
+            return seekFailure;
         if (origin > STREAM_SEEK_END)
             return E_INVALIDARG;
         const Int64 base = origin == STREAM_SEEK_SET   ? 0
@@ -271,6 +275,47 @@ class UdfStreamTests final : public QObject {
             QTest::newRow(kind) << QString::fromLatin1(kind);
     }
     void metadataStreams() { allocationStreams(); }
+    void discoveryStreams_data() {
+        QTest::addColumn<QString>("kind");
+        for (const char *kind : {"ds-block-512",
+                                 "ds-block-1024",
+                                 "ds-block-2048",
+                                 "ds-block-4096",
+                                 "ds-block-4096-spaced",
+                                 "ds-lvd-size",
+                                 "ds-backup-last",
+                                 "ds-backup-middle",
+                                 "ds-bad-primary",
+                                 "ds-open-512",
+                                 "ds-last-minus-one",
+                                 "ds-last-minus-two",
+                                 "ds-last-minus-150",
+                                 "ds-last-minus-152",
+                                 "ds-main-reserve",
+                                 "ds-no-terminator",
+                                 "ds-stop-invalid",
+                                 "ds-vdp",
+                                 "ds-vdp-64",
+                                 "ds-prevailing-new",
+                                 "ds-prevailing-tie",
+                                 "ds-prevailing-older",
+                                 "ds-prevailing-lvd",
+                                 "ds-partitions-growth",
+                                 "ds-fsd-zero",
+                                 "ds-fsd-large",
+                                 "ds-nsr03",
+                                 "ds-direct-nsr",
+                                 "ds-vrs-type-version",
+                                 "ds-lvid-max",
+                                 "ds-lvid-chain",
+                                 "ds-lvid-missing",
+                                 "ds-lvid-cycle",
+                                 "ds-lvid-invalid-last",
+                                 "ds-lvid-short-use",
+                                 "ds-lvid-partial"})
+            QTest::newRow(kind) << QString::fromLatin1(kind);
+    }
+    void discoveryStreams() { allocationStreams(); }
     void allocationStreams() {
         QFETCH(QString, kind);
         fixture(kind);
@@ -383,6 +428,43 @@ class UdfStreamTests final : public QObject {
         QCOMPARE(count, UInt32(0));
         input->failSeekAt = UINT64_MAX;
         check(alpha, QByteArray::fromHex(files_["alpha.bin"].toString().toLatin1()));
+    }
+    void discoveryFailuresAndCancellation() {
+        fixture("ds-block-2048");
+        CMyComPtr2<IInStream, Input> input;
+        input.SetFromCls(new Input(bytes_));
+        const QByteArray expected = QByteArray::fromHex(files_["alpha.bin"].toString().toLatin1());
+        for (UInt64 offset : {UInt64(32768), UInt64(256 * 2048), UInt64(80 * 2048)}) {
+            input->failSeekAt = offset;
+            QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+            check(stream("alpha.bin"), expected);
+            NWindows::NCOM::CPropVariant flags;
+            QCOMPARE(archive_->GetArchiveProperty(kpidErrorFlags, &flags), S_OK);
+            QCOMPARE(flags.vt, VARTYPE(VT_UI4));
+            QCOMPARE(flags.ulVal, UInt32(0));
+        }
+        input->seekFailure = E_ABORT;
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), E_ABORT);
+        input->seekFailure = E_FAIL;
+        input->failSeekAt = UINT64_MAX;
+        for (HRESULT result : {E_ABORT, E_FAIL}) {
+            CMyComPtr<IArchiveOpenCallback> cancel =
+                new CancelAt(input.operator->(), UInt64(80 * 2048), result);
+            QCOMPARE(archive_->Open(input, nullptr, cancel), result);
+            UInt32 count = 99;
+            QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+            QCOMPARE(count, UInt32(0));
+            input->failSeekAt = UInt64(257) * 2048;
+            input->seekFailure = result;
+            QCOMPARE(archive_->Open(input, nullptr, nullptr), result);
+            input->failSeekAt = UINT64_MAX;
+        }
+        input->seekFailure = E_FAIL;
+        input->readFailure = E_FAIL;
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), E_FAIL);
+        input->readFailure = S_OK;
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        check(stream("alpha.bin"), expected);
     }
     void guardedAllocationIoAndCancellation() {
         fixture("walk-zero-chain-long");
@@ -510,7 +592,13 @@ class UdfStreamTests final : public QObject {
                                  "md-sparable",
                                  "walk-zero-chain-long",
                                  "walk-metadata-zero-chain",
-                                 "walk-metadata-cycle-mirror"})
+                                 "walk-metadata-cycle-mirror",
+                                 "ds-block-1024",
+                                 "ds-block-4096-spaced",
+                                 "ds-backup-last",
+                                 "ds-vdp",
+                                 "ds-prevailing-new",
+                                 "ds-main-reserve"})
             QTest::newRow(kind) << QString::fromLatin1(kind);
     }
     void backendExtraction() {

@@ -940,77 +940,264 @@ HRESULT CInArchive::FillRefs(CFileSet &fs, unsigned fileIndex, int parent, int n
   return S_OK;
 }
 
-
-API_FUNC_IsArc IsArc_Udf(const Byte *p, size_t size)
-{
-  UInt32 res = k_IsArc_Res_NO;
-  unsigned SecLogSize;
-  for (SecLogSize = 11;; SecLogSize -= 2)
-  {
-    if (SecLogSize < 9)
-      return res;
-    const UInt32 offset = (UInt32)256 << SecLogSize;
-    const UInt32 bufSize = (UInt32)1 << SecLogSize;
-    if (offset + bufSize > size)
-      res = k_IsArc_Res_NEED_MORE;
-    else
-    {
-      CTag tag;
-      if (tag.Parse(p + offset, bufSize) == S_OK)
-        if (tag.Id == DESC_TYPE_AnchorVolPtr)
-        {
-          if (Get32(p + offset + 12) == 256 &&  // TagLocation
-              tag.CrcLen >= 16)
-            return k_IsArc_Res_YES;
+API_FUNC_IsArc IsArc_Udf(const Byte *p, size_t size) {
+#ifdef SEVENZIP_LINUX_UDF
+    const int result = sevenzip_udf_probe(p, size);
+    return result < 0 ? k_IsArc_Res_NEED_MORE : result ? k_IsArc_Res_YES : k_IsArc_Res_NO;
+#else
+    UInt32 res = k_IsArc_Res_NO;
+    unsigned SecLogSize;
+    for (SecLogSize = 11;; SecLogSize -= 2) {
+        if (SecLogSize < 9)
+            return res;
+        const UInt32 offset = (UInt32)256 << SecLogSize;
+        const UInt32 bufSize = (UInt32)1 << SecLogSize;
+        if (offset + bufSize > size)
+            res = k_IsArc_Res_NEED_MORE;
+        else {
+            CTag tag;
+            if (tag.Parse(p + offset, bufSize) == S_OK)
+                if (tag.Id == DESC_TYPE_AnchorVolPtr) {
+                    if (Get32(p + offset + 12) == 256 && // TagLocation
+                        tag.CrcLen >= 16)
+                        return k_IsArc_Res_YES;
+                }
         }
     }
-  }
+#endif
 }
 
+HRESULT CInArchive::ParseVolumeDescriptor(const Byte *buf, size_t bufSize, UInt16 id) {
+    if (id == DESC_TYPE_PrimVol) {
+        CPrimeVol &pm = PrimeVols.AddNew();
+        pm.Parse(buf);
+        return S_OK;
+    }
 
-HRESULT CInArchive::Open2()
-{
-  Clear();
-  UInt64 fileSize;
-  RINOK(InStream_GetSize_SeekToEnd(_stream, fileSize))
-  FileSize = fileSize;
+    if (id == DESC_TYPE_Partition) {
+#ifdef SEVENZIP_LINUX_UDF
+        bool used = false;
+        FOR_VECTOR(v, LogVols) {
+            FOR_VECTOR(p, LogVols[v].PartitionMaps) {
+                const CPartitionMap &map = LogVols[v].PartitionMaps[p];
+                if ((map.Type == 1 || map.IsSparable()) && map.PartitionNumber == Get16(buf + 22))
+                    used = true;
+            }
+        }
+        if (!used)
+            return S_OK;
+#endif
+        // Partition Descriptor
+        // ECMA 3/10.5
+        // UDF 2.2.14
+        if (Partitions.Size() >= kNumPartitionsMax)
+            return S_FALSE;
+        CPartition partition;
+        // const UInt32 volDescSeqNumer = Get32(buf + 16);
+        partition.Flags = Get16(buf + 20);
+        partition.Number = Get16(buf + 22);
+        partition.ContentsId.Parse(buf + 24);
 
-  // Some UDFs contain additional pad zeros (2 KB).
-  // Seek to STREAM_SEEK_END for direct DVD reading can return 8 KB more, so we check last 16 KB.
-  // And when we read last block, result read size can be smaller than required size.
+        // memcpy(partition.ContentsUse, buf + 56, sizeof(partition.ContentsUse));
+        // ContentsUse contains Partition Header Description.
+        // ECMA 4/14.3
+        // UDF PartitionHeaderDescriptor 2.3.3
 
-  /*
-  const size_t kBufSize = 1 << 14;
-  Byte buf[kBufSize];
-  size_t readSize = (fileSize < kBufSize) ? (size_t)fileSize : kBufSize;
-  RINOK(InStream_SeekSet(_stream, fileSize - readSize))
-  RINOK(ReadStream(_stream, buf, &readSize));
-  size_t i = readSize;
-  for (;;)
-  {
-    const size_t kSecSizeMin = 1 << 8;
-    if (i < kSecSizeMin)
-      return S_FALSE;
-    i -= kSecSizeMin;
-    SecLogSize = (readSize - i < ((size_t)1 << 11)) ? 8 : 11;
-    CTag tag;
-    if (tag.Parse(buf + i, (1 << SecLogSize)) == S_OK)
-      if (tag.Id == DESC_TYPE_AnchorVolPtr)
-        break;
-  }
-  PhySize = fileSize;
-  CExtent extentVDS;
-  extentVDS.Parse(buf + i + 16);
-  */
+        partition.AccessType = Get32(buf + 184);
+        partition.Pos = Get32(buf + 188);
+        partition.Len = Get32(buf + 192);
+#ifdef SEVENZIP_LINUX_UDF
+        if ((UInt64)partition.Pos + partition.Len > UINT32_MAX)
+            return S_FALSE;
+#endif
+        partition.ImplId.Parse(buf + 196);
+        // memcpy(partition.ImplUse, buf + 228, sizeof(partition.ImplUse));
 
-  /*
-  An Anchor Volume Descriptor Pointer structure shall be recorded in at
-  least 2 of the following 3 locations on the media:
-      Logical Sector 256.
-      Logical Sector (N - 256).
-      N
-  */
+        PRF(printf("\nPartition number = %2d   pos = %d   len = %d", partition.Number,
+                   partition.Pos, partition.Len));
+        Partitions.Add(partition);
+        return S_OK;
+    }
 
+    if (id == DESC_TYPE_LogicalVol) {
+        /* Logical Volume Descriptor
+            ECMA 3/10.6
+            UDF 2.60 2.2.4 */
+
+        if (LogVols.Size() >= kNumLogVolumesMax)
+            return S_FALSE;
+        CLogVol &vol = LogVols.AddNew();
+
+        vol.Id.Parse(buf + 84);
+        vol.BlockSize = Get32(buf + 212);
+#ifdef SEVENZIP_LINUX_UDF
+        // Linux uses the block size chosen during anchor discovery.
+        vol.BlockSize = (UInt32)1 << SecLogSize;
+#else
+        if (vol.BlockSize != ((UInt32)1 << SecLogSize)) {
+            // UDF 2.2.4.2 LogicalBlockSize
+            // UDF probably doesn't allow different sizes
+            return S_FALSE;
+        }
+#endif
+        /*
+        if (vol.BlockSize < 512 || vol.BlockSize > ((UInt32)1 << 30))
+          return S_FALSE;
+        */
+
+        vol.DomainId.Parse(buf + 216);
+
+        // ECMA 4/3.1
+        // UDF 2.2.4.4 LogicalVolumeContentsUse
+        /* the extent in which the first File Set Descriptor Sequence
+           of the logical volume is recorded */
+        vol.FileSetLocation.Parse(buf + 248);
+#ifdef SEVENZIP_LINUX_UDF
+        vol.FileSetLocation.Len = vol.BlockSize;
+#endif
+        // memcpy(vol.ContentsUse, buf + 248, sizeof(vol.ContentsUse));
+
+        vol.ImplId.Parse(buf + 272);
+        // memcpy(vol.ImplUse, buf + 304, sizeof(vol.ImplUse));
+        // vol.IntegritySequenceExtent.Parse(buf + 432);
+
+        const UInt32 mapTableLen = Get32(buf + 264);
+        const UInt32 numPartitionMaps = Get32(buf + 268);
+        if (numPartitionMaps > kNumPartitionsMax)
+            return S_FALSE;
+
+        PRF(printf("\nLogicalVol numPartitionMaps = %2d", numPartitionMaps));
+
+        size_t pos = 440;
+        if (mapTableLen > bufSize - pos)
+            return S_FALSE;
+        const size_t posLimit = pos + mapTableLen;
+
+        for (UInt32 i = 0; i < numPartitionMaps; i++) {
+            // ECMA 3/10.7 Partition maps
+            if (pos + 2 > posLimit)
+                return S_FALSE;
+            CPartitionMap pm;
+            pm.Type = buf[pos + 0];
+            // pm.Length = buf[pos + 1];
+            const Byte len = buf[pos + 1];
+            if (pos + len > posLimit)
+                return S_FALSE;
+
+            // memcpy(pm.Data, buf + pos + 2, pm.Length - 2);
+            if (pm.Type == 1) {
+                // ECMA 3/10.7.2
+                if (len != 6)
+                    return S_FALSE;
+                pm.VolumeSequenceNumber = Get16(buf + pos + 2);
+                pm.PartitionNumber = Get16(buf + pos + 4);
+                PRF(printf("\nPartitionMap type 1 PartitionNumber = %2d", pm.PartitionNumber));
+            } else if (pm.Type == 2) {
+                if (len != 64)
+                    return S_FALSE;
+                /* ECMA 10.7.3 / Type 2 Partition Map
+                   62 bytes: Partition Identifier. */
+
+                /* UDF
+                    2.2.8   "*UDF Virtual Partition"
+                    2.2.9   "*UDF Sparable Partition"
+                    2.2.10  "*UDF Metadata Partition"
+                */
+
+#ifndef SEVENZIP_LINUX_UDF
+                if (Get16(buf + pos + 2) != 0) // reserved
+                    return S_FALSE;
+#endif
+
+                pm.PartitionTypeId.Parse(buf + pos + 4);
+                pm.VolumeSequenceNumber = Get16(buf + pos + 36);
+                pm.PartitionNumber = Get16(buf + pos + 38);
+
+#ifdef SEVENZIP_LINUX_UDF
+                if (memcmp(pm.PartitionTypeId.Id, "*UDF Sparable Partition",
+                           sizeof("*UDF Sparable Partition") - 1) == 0) {
+                    pm.SparableMap.CopyFrom(buf + pos, 64);
+                } else if (memcmp(pm.PartitionTypeId.Id, "*UDF Virtual Partition",
+                                  sizeof("*UDF Virtual Partition") - 1) == 0) {
+                    pm.IsVirtual = true;
+                    pm.IsVat20 = Get16(pm.PartitionTypeId.Suffix) >= 0x200;
+                } else {
+#endif
+                    if (memcmp(pm.PartitionTypeId.Id, "*UDF Metadata Partition", 23) != 0)
+                        return S_FALSE;
+
+                    // UDF 2.2.10 Metadata Partition Map
+                    pm.MetadataFileLocation = Get32(buf + pos + 40);
+#ifdef SEVENZIP_LINUX_UDF
+                    pm.MetadataMap.CopyFrom(buf + pos, 64);
+                }
+#endif
+                // pm.MetadataMirrorFileLocation = Get32(buf + pos + 44);
+                // pm.MetadataBitmapFileLocation = Get32(buf + pos + 48);
+                // pm.AllocationUnitSize = Get32(buf + pos + 52);
+                // pm.AlignmentUnitSize = Get16(buf + pos + 56);
+                // pm.Flags = buf[pos + 58];
+
+                PRF(printf("\nPartitionMap type 2 PartitionNumber = %2d", pm.PartitionNumber));
+                // Unsupported = true;
+                // return S_FALSE;
+            } else
+                return S_FALSE;
+            pos += len;
+            vol.PartitionMaps.Add(pm);
+        }
+        return S_OK;
+    }
+
+    return S_OK;
+}
+
+HRESULT CInArchive::Open2() {
+    Clear();
+    UInt64 fileSize;
+    RINOK(InStream_GetSize_SeekToEnd(_stream, fileSize))
+    FileSize = fileSize;
+
+    // Some UDFs contain additional pad zeros (2 KB).
+    // Seek to STREAM_SEEK_END for direct DVD reading can return 8 KB more, so we check last 16 KB.
+    // And when we read last block, result read size can be smaller than required size.
+
+    /*
+    const size_t kBufSize = 1 << 14;
+    Byte buf[kBufSize];
+    size_t readSize = (fileSize < kBufSize) ? (size_t)fileSize : kBufSize;
+    RINOK(InStream_SeekSet(_stream, fileSize - readSize))
+    RINOK(ReadStream(_stream, buf, &readSize));
+    size_t i = readSize;
+    for (;;)
+    {
+      const size_t kSecSizeMin = 1 << 8;
+      if (i < kSecSizeMin)
+        return S_FALSE;
+      i -= kSecSizeMin;
+      SecLogSize = (readSize - i < ((size_t)1 << 11)) ? 8 : 11;
+      CTag tag;
+      if (tag.Parse(buf + i, (1 << SecLogSize)) == S_OK)
+        if (tag.Id == DESC_TYPE_AnchorVolPtr)
+          break;
+    }
+    PhySize = fileSize;
+    CExtent extentVDS;
+    extentVDS.Parse(buf + i + 16);
+    */
+
+    /*
+    An Anchor Volume Descriptor Pointer structure shall be recorded in at
+    least 2 of the following 3 locations on the media:
+        Logical Sector 256.
+        Logical Sector (N - 256).
+        N
+    */
+
+#ifdef SEVENZIP_LINUX_UDF
+  Byte buf[1 << 12];
+  RINOK(LoadLinuxDiscovery())
+#else
   const size_t kBufSize = 1 << 11;
   Byte buf[kBufSize];
 
@@ -1076,167 +1263,7 @@ HRESULT CInArchive::Open2()
     if (tag.Id == DESC_TYPE_Terminating)
       break;
 
-    if (tag.Id == DESC_TYPE_PrimVol)
-    {
-      CPrimeVol &pm = PrimeVols.AddNew();
-      pm.Parse(buf);
-      continue;
-    }
-
-    if (tag.Id == DESC_TYPE_Partition)
-    {
-      // Partition Descriptor
-      // ECMA 3/10.5
-      // UDF 2.2.14
-      if (Partitions.Size() >= kNumPartitionsMax)
-        return S_FALSE;
-      CPartition partition;
-      // const UInt32 volDescSeqNumer = Get32(buf + 16);
-      partition.Flags = Get16(buf + 20);
-      partition.Number = Get16(buf + 22);
-      partition.ContentsId.Parse(buf + 24);
-
-      // memcpy(partition.ContentsUse, buf + 56, sizeof(partition.ContentsUse));
-      // ContentsUse contains Partition Header Description.
-      // ECMA 4/14.3
-      // UDF PartitionHeaderDescriptor 2.3.3
-
-      partition.AccessType = Get32(buf + 184);
-      partition.Pos = Get32(buf + 188);
-      partition.Len = Get32(buf + 192);
-      partition.ImplId.Parse(buf + 196);
-      // memcpy(partition.ImplUse, buf + 228, sizeof(partition.ImplUse));
-
-      PRF(printf("\nPartition number = %2d   pos = %d   len = %d", partition.Number, partition.Pos, partition.Len));
-      Partitions.Add(partition);
-      continue;
-    }
-
-    if (tag.Id == DESC_TYPE_LogicalVol)
-    {
-      /* Logical Volume Descriptor
-          ECMA 3/10.6
-          UDF 2.60 2.2.4 */
-
-      if (LogVols.Size() >= kNumLogVolumesMax)
-        return S_FALSE;
-      CLogVol &vol = LogVols.AddNew();
-
-      vol.Id.Parse(buf + 84);
-      vol.BlockSize = Get32(buf + 212);
-      if (vol.BlockSize != ((UInt32)1 << SecLogSize))
-      {
-        // UDF 2.2.4.2 LogicalBlockSize
-        // UDF probably doesn't allow different sizes
-        return S_FALSE;
-      }
-      /*
-      if (vol.BlockSize < 512 || vol.BlockSize > ((UInt32)1 << 30))
-        return S_FALSE;
-      */
-
-      vol.DomainId.Parse(buf + 216);
-
-      // ECMA 4/3.1
-      // UDF 2.2.4.4 LogicalVolumeContentsUse
-      /* the extent in which the first File Set Descriptor Sequence
-         of the logical volume is recorded */
-      vol.FileSetLocation.Parse(buf + 248);
-      // memcpy(vol.ContentsUse, buf + 248, sizeof(vol.ContentsUse));
-
-      vol.ImplId.Parse(buf + 272);
-      // memcpy(vol.ImplUse, buf + 304, sizeof(vol.ImplUse));
-      // vol.IntegritySequenceExtent.Parse(buf + 432);
-
-      const UInt32 mapTableLen = Get32(buf + 264);
-      const UInt32 numPartitionMaps = Get32(buf + 268);
-      if (numPartitionMaps > kNumPartitionsMax)
-        return S_FALSE;
-
-      PRF(printf("\nLogicalVol numPartitionMaps = %2d", numPartitionMaps));
-
-      size_t pos = 440;
-      if (mapTableLen > bufSize - pos)
-        return S_FALSE;
-      const size_t posLimit = pos + mapTableLen;
-
-      for (UInt32 i = 0; i < numPartitionMaps; i++)
-      {
-        // ECMA 3/10.7 Partition maps
-        if (pos + 2 > posLimit)
-          return S_FALSE;
-        CPartitionMap pm;
-        pm.Type = buf[pos + 0];
-        // pm.Length = buf[pos + 1];
-        const Byte len = buf[pos + 1];
-        if (pos + len > posLimit)
-          return S_FALSE;
-
-        // memcpy(pm.Data, buf + pos + 2, pm.Length - 2);
-        if (pm.Type == 1) {
-            // ECMA 3/10.7.2
-            if (len != 6)
-                return S_FALSE;
-            pm.VolumeSequenceNumber = Get16(buf + pos + 2);
-            pm.PartitionNumber = Get16(buf + pos + 4);
-            PRF(printf("\nPartitionMap type 1 PartitionNumber = %2d", pm.PartitionNumber));
-        } else if (pm.Type == 2) {
-            if (len != 64)
-                return S_FALSE;
-            /* ECMA 10.7.3 / Type 2 Partition Map
-               62 bytes: Partition Identifier. */
-
-            /* UDF
-                2.2.8   "*UDF Virtual Partition"
-                2.2.9   "*UDF Sparable Partition"
-                2.2.10  "*UDF Metadata Partition"
-            */
-
-#ifndef SEVENZIP_LINUX_UDF
-            if (Get16(buf + pos + 2) != 0) // reserved
-                return S_FALSE;
-#endif
-
-            pm.PartitionTypeId.Parse(buf + pos + 4);
-            pm.VolumeSequenceNumber = Get16(buf + pos + 36);
-            pm.PartitionNumber = Get16(buf + pos + 38);
-
-#ifdef SEVENZIP_LINUX_UDF
-            if (memcmp(pm.PartitionTypeId.Id, "*UDF Sparable Partition",
-                       sizeof("*UDF Sparable Partition") - 1) == 0) {
-                pm.SparableMap.CopyFrom(buf + pos, 64);
-            } else if (memcmp(pm.PartitionTypeId.Id, "*UDF Virtual Partition",
-                              sizeof("*UDF Virtual Partition") - 1) == 0) {
-                pm.IsVirtual = true;
-                pm.IsVat20 = Get16(pm.PartitionTypeId.Suffix) >= 0x200;
-            } else {
-#endif
-                if (memcmp(pm.PartitionTypeId.Id, "*UDF Metadata Partition", 23) != 0)
-                    return S_FALSE;
-
-                // UDF 2.2.10 Metadata Partition Map
-                pm.MetadataFileLocation = Get32(buf + pos + 40);
-#ifdef SEVENZIP_LINUX_UDF
-                pm.MetadataMap.CopyFrom(buf + pos, 64);
-            }
-#endif
-            // pm.MetadataMirrorFileLocation = Get32(buf + pos + 44);
-            // pm.MetadataBitmapFileLocation = Get32(buf + pos + 48);
-            // pm.AllocationUnitSize = Get32(buf + pos + 52);
-            // pm.AlignmentUnitSize = Get16(buf + pos + 56);
-            // pm.Flags = buf[pos + 58];
-
-            PRF(printf("\nPartitionMap type 2 PartitionNumber = %2d", pm.PartitionNumber));
-            // Unsupported = true;
-            // return S_FALSE;
-        } else
-            return S_FALSE;
-        pos += len;
-        vol.PartitionMaps.Add(pm);
-      }
-      continue;
-    }
-
+    RINOK(ParseVolumeDescriptor(buf, bufSize, tag.Id))
     /*
     if (tag.Id == DESC_TYPE_UnallocSpace)
     {
@@ -1256,6 +1283,8 @@ HRESULT CInArchive::Open2()
       continue;
     */
   }
+
+#endif
 
   UInt64 totalSize = 0;
 
@@ -1411,25 +1440,33 @@ HRESULT CInArchive::Open2()
 
   PRF(printf("\n Read files"));
 
-  for (volIndex = 0; volIndex < LogVols.Size(); volIndex++)
-  {
-    CLogVol &vol = LogVols[volIndex];
+  for (volIndex = 0; volIndex < LogVols.Size(); volIndex++) {
+      CLogVol &vol = LogVols[volIndex];
 
-    PRF(printf("\nLogVol %2d", volIndex));
+      PRF(printf("\nLogVol %2d", volIndex));
 
-    CLongAllocDesc nextExtent = vol.FileSetLocation;
-    // while (nextExtent.ExtentLen != 0)
-    // for (int i = 0; i < 1; i++)
-    {
-      if (nextExtent.GetLen() < 512)
-        return S_FALSE;
-      CByteBuffer buf2(nextExtent.GetLen());
-      RINOK(ReadLad(volIndex, nextExtent, buf2))
-      const Byte *p = buf2;
-      const size_t size = nextExtent.GetLen();
+      CLongAllocDesc nextExtent = vol.FileSetLocation;
+      // while (nextExtent.ExtentLen != 0)
+      // for (int i = 0; i < 1; i++)
+      {
+#ifdef SEVENZIP_LINUX_UDF
+          CByteBuffer buf2(vol.BlockSize);
+          RINOK(ReadLinuxFileset(volIndex, nextExtent, buf2))
+#else
+          if (nextExtent.GetLen() < 512)
+              return S_FALSE;
+          CByteBuffer buf2(nextExtent.GetLen());
+          RINOK(ReadLad(volIndex, nextExtent, buf2))
+          const size_t size = nextExtent.GetLen();
+#endif
+          const Byte *p = buf2;
 
-      CTag tag;
+          CTag tag;
+#ifdef SEVENZIP_LINUX_UDF
+      tag.Id = Get16(p);
+#else
       RINOK(tag.Parse(p, size))
+#endif
 
       /*
       // commented in 22.01
@@ -1465,7 +1502,7 @@ HRESULT CInArchive::Open2()
       vol.FileSets.Add(fs);
 
       // nextExtent.Parse(p + 448);
-    }
+      }
 
     FOR_VECTOR (fsIndex, vol.FileSets)
     {
@@ -1478,7 +1515,6 @@ HRESULT CInArchive::Open2()
       RINOK(FillRefs(fs, fileIndex, -1, kNumRecursionLevelsMax))
     }
   }
-
 
   for (volIndex = 0; volIndex < LogVols.Size(); volIndex++)
   {
@@ -1650,6 +1686,9 @@ void CInArchive::Clear()
   _numExtents = 0;
   _inlineExtentsSize = 0;
   _processedProgressBytes = 0;
+#ifdef SEVENZIP_LINUX_UDF
+  _lastRecordedBlock = 0;
+#endif
 }
 
 

@@ -491,6 +491,10 @@ private:
   HRESULT ReadFromFile(unsigned volIndex, const CItem &item, CByteBuffer &buf);
 #ifdef SEVENZIP_LINUX_UDF
   struct CLinuxContext;
+  struct CDiscoveryContext;
+  UInt32 _lastRecordedBlock;
+  HRESULT LoadLinuxDiscovery();
+  HRESULT ReadLinuxFileset(unsigned volIndex, const CLongAllocDesc &location, CByteBuffer &data);
   static int ReadLinuxBlock(void *, UInt16, UInt32, void *, size_t);
   static int ReadLinuxPhysical(void *, UInt16, UInt32, void *, size_t);
   HRESULT LoadLinuxSparing(unsigned volIndex, unsigned partitionRef);
@@ -510,6 +514,7 @@ private:
                    int numRecurseAllowed, HRESULT *progressResult = nullptr);
 
   HRESULT Open2();
+  HRESULT ParseVolumeDescriptor(const Byte *data, size_t size, UInt16 id);
   HRESULT FillRefs(CFileSet &fs, unsigned fileIndex, int parent, int numRecurseAllowed);
 
   UInt64 _processedProgressBytes;
