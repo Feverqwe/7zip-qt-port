@@ -6,6 +6,7 @@ import sys
 import tempfile
 import unittest
 from udf_fixture import CASES, CONTINUATIONS, volume
+from udf_icb_fixture import CASES as ICB_CASES, BAD as ICB_BAD
 
 RUNTIME = Path(sys.argv.pop(1))
 MODULE = Path(sys.argv.pop(1))
@@ -24,11 +25,13 @@ class UdfTests(unittest.TestCase):
         (cls.runtime / "Formats").mkdir()
         shutil.copy2(MODULE, cls.runtime / "Formats" / MODULE.name)
 
-    def run_image(self, engine, image, name=None):
+    def run_image(self, engine, image, name=None, listing=False):
         with tempfile.TemporaryDirectory(prefix="sevenzip-udf-") as temporary:
             path = Path(temporary) / "образ 空.udf"
             path.write_bytes(image)
-            args = [str(self.runtime / (engine + SUFFIX)), "x" if name else "t", "-tUdf", "-sccUTF-8", "-bsp0"]
+            args = [str(self.runtime / (engine + SUFFIX)), "l" if listing else "x" if name else "t", "-tUdf", "-sccUTF-8", "-bsp0"]
+            if listing:
+                args += ["-slt"]
             if name:
                 args += ["-so", "-bso0", "-bse2"]
             result = subprocess.run(args + ["--", str(path)] + ([name] if name else []),
@@ -57,7 +60,7 @@ class UdfTests(unittest.TestCase):
                     self.assertNotEqual(self.run_image(engine, image).returncode, 0)
 
     def test_continuations(self):
-        for kind in CONTINUATIONS:
+        for kind in (*CONTINUATIONS, *ICB_CASES):
             image, files = volume(kind)
             with self.subTest(kind=kind):
                 result = self.run_image("7z", image)
@@ -69,10 +72,19 @@ class UdfTests(unittest.TestCase):
 
     def test_damaged_continuation_chains(self):
         for kind in ("ad-cycle", "ad-limit-17", "ad-outside", "ad-bad-partition",
-                     "ad-overflow", "ad-over-block"):
+                     "ad-overflow", "ad-over-block", *ICB_BAD):
             image, _ = volume(kind)
             with self.subTest(kind=kind):
                 self.assertNotEqual(self.run_image("7z", image).returncode, 0)
+
+    def test_selected_inode_metadata(self):
+        for kind in ("icb-file", "icb-efe", "icb-cross-partition"):
+            image, _ = volume(kind)
+            with self.subTest(kind=kind):
+                result = self.run_image("7z", image, listing=True)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                alpha = result.stdout.split(b"Path = alpha.bin", 1)[1].split(b"Path = ", 1)[0]
+                self.assertIn(b"Modified = 2041-", alpha)
 
 
 if __name__ == "__main__":

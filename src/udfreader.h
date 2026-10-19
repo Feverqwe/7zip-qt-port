@@ -8,6 +8,8 @@ extern "C" {
 #endif
 typedef int (*sevenzip_udf_read)(void *, uint16_t, uint32_t, void *, size_t);
 typedef int (*sevenzip_udf_extent)(void *, unsigned, uint32_t, uint32_t, uint16_t);
+int sevenzip_udf_icb(void *, sevenzip_udf_read, uint32_t, const uint32_t *,
+                     uint32_t, uint16_t *, uint32_t *, void *);
 int sevenzip_udf_extents(void *, sevenzip_udf_read, sevenzip_udf_extent,
                          uint32_t, uint32_t, uint16_t, unsigned, int,
                          const void *, uint32_t, uint64_t, uint32_t);

@@ -25,6 +25,37 @@ void brelse(struct buffer_head *bh)
     }
 }
 
+int sevenzip_udf_icb(void *context, sevenzip_udf_read read, uint32_t block_size,
+                     const uint32_t *lengths, uint32_t partitions,
+                     uint16_t *partition, uint32_t *block, void *data)
+{
+    struct super_block sb = {0};
+    struct inode inode = {0};
+    int result;
+    uint32_t i;
+    sb.info.s_partmaps = calloc(partitions, sizeof(*sb.info.s_partmaps));
+    if (!sb.info.s_partmaps)
+        return -ENOMEM;
+    for (i = 0; i < partitions; ++i)
+        sb.info.s_partmaps[i].s_partition_len = lengths[i];
+    sb.info.s_partitions = partitions;
+    sb.s_blocksize = block_size;
+    sb.context = context;
+    sb.read = read;
+    inode.i_sb = &sb;
+    inode.info.i_location.logicalBlockNum = *block;
+    inode.info.i_location.partitionReferenceNum = *partition;
+    result = sevenzip_udf_read_inode(&inode);
+    if (!result) {
+        memcpy(data, inode.entry->b_data, block_size);
+        *block = inode.info.i_location.logicalBlockNum;
+        *partition = inode.info.i_location.partitionReferenceNum;
+    }
+    brelse(inode.entry);
+    free(sb.info.s_partmaps);
+    return result;
+}
+
 int sevenzip_udf_extents(void *context, sevenzip_udf_read read,
                          sevenzip_udf_extent emit, uint32_t block_size,
                          uint32_t partitions, uint16_t partition, unsigned type,

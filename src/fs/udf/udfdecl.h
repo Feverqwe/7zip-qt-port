@@ -7,6 +7,8 @@
 #include <limits.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
+#include "../../include/linux/crc-itu-t.h"
 #ifdef _MSC_VER
 #pragma pack(push, 1)
 #endif
@@ -20,9 +22,11 @@
 #if defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
 #define le16_to_cpu(v) __builtin_bswap16(v)
 #define le32_to_cpu(v) __builtin_bswap32(v)
+#define cpu_to_le16(v) __builtin_bswap16(v)
 #else
 #define le16_to_cpu(v) (v)
 #define le32_to_cpu(v) (v)
+#define cpu_to_le16(v) (v)
 #endif
 #include "udfend.h"
 #define udf_err(...) ((void)0)
@@ -31,7 +35,11 @@
 #define UDF_EXTENT_LENGTH_MASK 0x3fffffff
 typedef uint64_t udf_pblk_t;
 struct buffer_head { uint8_t *b_data; unsigned b_size; };
-struct udf_sb_info { uint32_t s_partitions; };
+struct udf_part_map { uint32_t s_partition_len; };
+struct udf_sb_info {
+    uint32_t s_partitions;
+    struct udf_part_map *s_partmaps;
+};
 struct super_block {
     struct udf_sb_info info;
     uint32_t s_blocksize;
@@ -41,12 +49,13 @@ struct super_block {
 struct udf_inode_info {
     struct kernel_lb_addr i_location;
     uint32_t i_lenEAttr, i_lenAlloc;
-    unsigned i_alloc_type, i_efe, i_use;
+    unsigned i_alloc_type, i_efe, i_use, i_strat4096;
     uint8_t *i_data;
 };
 struct inode {
     struct super_block *i_sb;
     struct udf_inode_info info;
+    struct buffer_head *entry;
 };
 #include "udf_i.h"
 #define UDF_I(inode) (&(inode)->info)
@@ -81,4 +90,8 @@ struct short_ad *udf_get_fileshortad(uint8_t *, int, uint32_t *, int);
 struct long_ad *udf_get_filelongad(uint8_t *, int, uint32_t *, int);
 int udf_current_aext(struct inode *, struct extent_position *, struct kernel_lb_addr *, uint32_t *, int8_t *, int);
 int udf_next_aext(struct inode *, struct extent_position *, struct kernel_lb_addr *, uint32_t *, int8_t *, int);
+u8 udf_tag_checksum(const struct tag *);
+struct buffer_head *udf_read_tagged(struct super_block *, udf_pblk_t, uint32_t, uint16_t *);
+struct buffer_head *udf_read_ptagged(struct super_block *, struct kernel_lb_addr *, uint32_t, uint16_t *);
+int sevenzip_udf_read_inode(struct inode *);
 #endif

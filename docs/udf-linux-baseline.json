@@ -24,7 +24,9 @@
     "fs/udf/udfdecl.h": "5809f4da39dce0530c270d80f1774f17a1db534b2721cd505065e3bb4d6a2b2d",
     "fs/udf/udfend.h": "3fff57108e88e5a03e093509d5a60af3797310653d2551312736b78e3f8efc5f",
     "fs/udf/udftime.c": "fd52cfdadb8166f34bd7b69e8c027bce88b55a5a7d0a6e213e200a51ab5ab56e",
-    "fs/udf/unicode.c": "c6990308d7a32bb4cc101dc88fca044ffc9e35f798e45d1634012cd453bd4717"
+    "fs/udf/unicode.c": "c6990308d7a32bb4cc101dc88fca044ffc9e35f798e45d1634012cd453bd4717",
+    "lib/crc/crc-itu-t.c": "7e49b43033e98b436c53273d528ffb89839a881da27386a8b0d0336048dbfa3e",
+    "include/linux/crc-itu-t.h": "52c39a25363812428ad3ec2e441690ea12b7bcb9e63874077919682b86f9b9d7"
   },
   "exact": [
     "fs/udf/ecma_167.h"
@@ -32,8 +34,11 @@
   "adapted": [
     "fs/udf/directory.c",
     "fs/udf/inode.c",
+    "fs/udf/misc.c",
     "fs/udf/udf_i.h",
     "fs/udf/udfdecl.h",
-    "fs/udf/udfend.h"
+    "fs/udf/udfend.h",
+    "include/linux/crc-itu-t.h",
+    "lib/crc/crc-itu-t.c"
   ]
 }

@@ -16,6 +16,9 @@ CONTINUATIONS = ("ad-short", "ad-long", "ad-chain-short", "ad-chain-long",
 
 
 def volume(kind):
+    if kind.startswith("icb-"):
+        from udf_icb_fixture import volume as icb_volume
+        return icb_volume(kind)
     image = bytearray(zlib.decompress(
         (Path(__file__).parent / "fixtures/udf/genisoimage.udf.zlib").read_bytes()))
     files = {"alpha.bin": bytes(range(256)) * 32, "empty": b"",

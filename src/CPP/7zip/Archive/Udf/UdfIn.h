@@ -474,6 +474,9 @@ private:
   HRESULT ReadLad(unsigned volIndex, const CLongAllocDesc &lad, Byte *buf);
   HRESULT ReadFromFile(unsigned volIndex, const CItem &item, CByteBuffer &buf);
 #ifdef SEVENZIP_LINUX_UDF
+  struct CLinuxContext;
+  static int ReadLinuxBlock(void *, UInt16, UInt32, void *, size_t);
+  HRESULT ReadLinuxItem(unsigned volIndex, CLongAllocDesc &location, CByteBuffer &data);
   HRESULT ReadLinuxExtents(unsigned volIndex, unsigned partitionRef, CItem &item, const Byte *data,
                            UInt32 size);
 #endif

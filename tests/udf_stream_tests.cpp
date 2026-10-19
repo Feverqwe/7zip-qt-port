@@ -22,6 +22,7 @@ class Input final : public IInStream, public CMyUnknownImp {
   public:
     HRESULT failure = S_OK;
     UInt64 failSeekAt = UINT64_MAX;
+    UInt64 lastSeek = 0;
     explicit Input(QByteArray bytes) : bytes_(std::move(bytes)) {}
     Z7_COM7F_IMF(Read(void *data, UInt32 size, UInt32 *processed)) override {
         if (processed)
@@ -50,6 +51,7 @@ class Input final : public IInStream, public CMyUnknownImp {
         if (offset < -base || (offset > 0 && base > INT64_MAX - offset))
             return E_INVALIDARG;
         position_ = UInt64(base + offset);
+        lastSeek = position_;
         if (position)
             *position = position_;
         return S_OK;
@@ -73,6 +75,18 @@ class CancelOpen final : public IArchiveOpenCallback, public CMyUnknownImp {
   public:
     Z7_COM7F_IMF(SetTotal(const UInt64 *, const UInt64 *)) override { return S_OK; }
     Z7_COM7F_IMF(SetCompleted(const UInt64 *, const UInt64 *)) override { return E_ABORT; }
+};
+class CancelAt final : public IArchiveOpenCallback, public CMyUnknownImp {
+    Z7_COM_UNKNOWN_IMP_1(IArchiveOpenCallback)
+    Input *input_;
+    UInt64 checkpoint_;
+
+  public:
+    CancelAt(Input *input, UInt64 checkpoint) : input_(input), checkpoint_(checkpoint) {}
+    Z7_COM7F_IMF(SetTotal(const UInt64 *, const UInt64 *)) override { return S_OK; }
+    Z7_COM7F_IMF(SetCompleted(const UInt64 *, const UInt64 *)) override {
+        return input_->lastSeek >= checkpoint_ ? E_ABORT : S_OK;
+    }
 };
 } // namespace
 
@@ -178,6 +192,27 @@ class UdfStreamTests final : public QObject {
              {"ad-short", "ad-long", "ad-chain-short", "ad-chain-long", "ad-limit-16",
               "ad-directory", "ad-cross-partition", "ad-zero", "ad-implicit-tail"})
             QTest::newRow(kind) << QString::fromLatin1(kind);
+        for (const char *kind : {"icb-file",
+                                 "icb-efe",
+                                 "icb-inline",
+                                 "icb-root",
+                                 "icb-directory",
+                                 "icb-chain",
+                                 "icb-limit-1024",
+                                 "icb-cross-partition",
+                                 "icb-ad-continuation",
+                                 "icb-metadata",
+                                 "icb-metadata-cross",
+                                 "icb-no-ie",
+                                 "icb-terminal",
+                                 "icb-empty-ie",
+                                 "icb-bad-ie-crc",
+                                 "icb-bad-ie-location",
+                                 "icb-reserved",
+                                 "icb-extent-short",
+                                 "icb-extent-long",
+                                 "icb-root-extent-zero"})
+            QTest::newRow(kind) << QString::fromLatin1(kind);
     }
     void allocationStreams() {
         QFETCH(QString, kind);
@@ -242,10 +277,37 @@ class UdfStreamTests final : public QObject {
         QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
         check(stream("alpha.bin"), QByteArray::fromHex(files_["alpha.bin"].toString().toLatin1()));
     }
+    void indirectIcbFailuresAndFallback() {
+        fixture("icb-file");
+        CMyComPtr2<IInStream, Input> input;
+        input.SetFromCls(new Input(bytes_));
+        input->failSeekAt = UInt64(257 + 23) * 2048;
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), E_FAIL);
+        UInt32 count = 99;
+        QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, UInt32(0));
+        input->failSeekAt = UINT64_MAX;
+        CMyComPtr<IArchiveOpenCallback> cancel =
+            new CancelAt(input.operator->(), UInt64(257 + 22) * 2048);
+        QCOMPARE(archive_->Open(input, nullptr, cancel), E_ABORT);
+        QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, UInt32(0));
+        input->failSeekAt = UInt64(257 + 22) * 2048;
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        check(stream("alpha.bin"), {});
+        NWindows::NCOM::CPropVariant flags;
+        QCOMPARE(archive_->GetArchiveProperty(kpidErrorFlags, &flags), S_OK);
+        QCOMPARE(flags.vt, VARTYPE(VT_UI4));
+        QCOMPARE(flags.ulVal, UInt32(0));
+        input->failSeekAt = UINT64_MAX;
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        check(stream("alpha.bin"), QByteArray::fromHex(files_["alpha.bin"].toString().toLatin1()));
+    }
     void backendExtraction_data() {
         QTest::addColumn<QString>("kind");
         for (const char *kind :
-             {"sparse-long", "ad-directory", "ad-chain-long", "ad-cross-partition"})
+             {"sparse-long", "ad-directory", "ad-chain-long", "ad-cross-partition", "icb-efe",
+              "icb-root", "icb-cross-partition", "icb-metadata-cross"})
             QTest::newRow(kind) << QString::fromLatin1(kind);
     }
     void backendExtraction() {

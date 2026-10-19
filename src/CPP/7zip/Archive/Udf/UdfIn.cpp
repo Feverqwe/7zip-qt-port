@@ -563,16 +563,30 @@ HRESULT CInArchive::ReadItem(unsigned volIndex, int fsIndex, const CLongAllocDes
 
   const CLogVol &vol = LogVols[volIndex];
 
+#ifdef SEVENZIP_LINUX_UDF
+  const size_t size = vol.BlockSize;
+#else
   const size_t size = lad.GetLen();
   if (size != vol.BlockSize)
-    return S_FALSE;
+      return S_FALSE;
+#endif
 
   CByteBuffer buf(size);
+#ifdef SEVENZIP_LINUX_UDF
+  CLongAllocDesc resolved = lad;
+  RINOK(ReadLinuxItem(volIndex, resolved, buf))
+#else
   RINOK(ReadLad(volIndex, lad, buf))
+#endif
 
   CTag tag;
   const Byte *p = buf;
+#ifdef SEVENZIP_LINUX_UDF
+  tag.Id = Get16(p);
+  tag.CrcLen = Get16(p + 10);
+#else
   RINOK(tag.Parse(p, size))
+#endif
 
   item.IsExtended = (tag.Id == DESC_TYPE_ExtendedFile);
   const size_t kExtendOffset = item.IsExtended ? 40 : 0;
@@ -642,8 +656,8 @@ HRESULT CInArchive::ReadItem(unsigned volIndex, int fsIndex, const CLongAllocDes
       if (descType != ICB_DESC_TYPE_SHORT && descType != ICB_DESC_TYPE_LONG)
           return S_FALSE;
 #ifdef SEVENZIP_LINUX_UDF
-      RINOK(
-          ReadLinuxExtents(volIndex, lad.Location.PartitionRef, item, p + pos, allocDescriptorsLen))
+      RINOK(ReadLinuxExtents(volIndex, resolved.Location.PartitionRef, item, p + pos,
+                             allocDescriptorsLen))
 #else
       for (UInt32 i = 0; i < allocDescriptorsLen;) {
           CMyExtent e;
@@ -1143,35 +1157,35 @@ HRESULT CInArchive::Open2()
             1)) // numRecurseAllowed
       }
       {
-        const CItem &item = Items.Back();
-        // This bootstrap maps the complete allocated metadata extent, not a file stream.
-        if (!item.IsRecAndAlloc())
-          return S_FALSE;
-        FOR_VECTOR(k, item.Extents) {
-            const CMyExtent &e = item.Extents[k];
-            if (!CheckExtent(volIndex, e.PartitionRef, e.Pos, e.GetLen()))
-                return S_FALSE;
-        }
-        if (item.Extents.Size() != 1) {
-            if (item.Extents.Size() < 1)
-                return S_FALSE;
-            /* Windows 10 writes empty record item.Extents[1].
-               we ignore such extent here */
-            for (unsigned k = 1; k < item.Extents.Size(); k++) {
-                const CMyExtent &e = item.Extents[k];
-                if (e.GetLen() != 0)
-                    return S_FALSE;
-            }
-        }
+          const CItem &item = Items.Back();
+          // This bootstrap maps the complete allocated metadata extent, not a file stream.
+          if (!item.IsRecAndAlloc() || item.IcbTag.GetDescriptorType() != ICB_DESC_TYPE_SHORT)
+              return S_FALSE;
+          FOR_VECTOR(k, item.Extents) {
+              const CMyExtent &e = item.Extents[k];
+              if (!CheckExtent(volIndex, pmIndex, e.Pos, e.GetLen()))
+                  return S_FALSE;
+          }
+          if (item.Extents.Size() != 1) {
+              if (item.Extents.Size() < 1)
+                  return S_FALSE;
+              /* Windows 10 writes empty record item.Extents[1].
+                 we ignore such extent here */
+              for (unsigned k = 1; k < item.Extents.Size(); k++) {
+                  const CMyExtent &e = item.Extents[k];
+                  if (e.GetLen() != 0)
+                      return S_FALSE;
+              }
+          }
 
-        const CMyExtent &e = item.Extents[0];
-        const CPartition &part = Partitions[pm.PartitionIndex];
-        CPartition mp = part;
-        mp.IsMetadata = true;
-        // mp.Number = part.Number;
-        mp.Pos = part.Pos + e.Pos;
-        mp.Len = e.Len >> SecLogSize;
-        pm.PartitionIndex = Partitions.Add(mp);
+          const CMyExtent &e = item.Extents[0];
+          const CPartition &part = Partitions[pm.PartitionIndex];
+          CPartition mp = part;
+          mp.IsMetadata = true;
+          // mp.Number = part.Number;
+          mp.Pos = part.Pos + e.Pos;
+          mp.Len = e.Len >> SecLogSize;
+          pm.PartitionIndex = Partitions.Add(mp);
       }
       // Items.DeleteBack(); // we can delete that metadata item
 
@@ -1314,55 +1328,71 @@ HRESULT CInArchive::Open2()
       PhySize = (PhySize + secMask) & ~(UInt64)secMask;
   }
 
+#ifdef SEVENZIP_LINUX_UDF
+  // Linux accepts the already validated primary anchor, including open media
+  // and previous inode revisions followed by unreferenced rewrite records.
+  NoEndAnchor = false;
+#else
   NoEndAnchor = true;
+#endif
 
-  if (PhySize < fileSize)
-  {
-    UInt64 rem = fileSize - PhySize;
-    const size_t secSize = (size_t)1 << SecLogSize;
+  if (PhySize < fileSize) {
+      UInt64 rem = fileSize - PhySize;
+      const size_t secSize = (size_t)1 << SecLogSize;
 
-    RINOK(InStream_SeekSet(_stream, PhySize))
+      const HRESULT tailSeek = InStream_SeekSet(_stream, PhySize);
+#ifdef SEVENZIP_LINUX_UDF
+      if (tailSeek != S_OK)
+          return tailSeek == E_ABORT ? E_ABORT : S_OK;
+#else
+      RINOK(tailSeek)
+#endif
 
-    // some UDF images contain ZEROs before "Anchor Volume Descriptor Pointer" at the end
+      // some UDF images contain ZEROs before "Anchor Volume Descriptor Pointer" at the end
 
-    for (unsigned sec = 0; sec < 1024; sec++)
-    {
-      if (rem == 0)
-        break;
+      for (unsigned sec = 0; sec < 1024; sec++) {
+          if (rem == 0)
+              break;
 
-      size_t readSize = secSize;
-      if (readSize > rem)
-        readSize = (size_t)rem;
+          size_t readSize = secSize;
+          if (readSize > rem)
+              readSize = (size_t)rem;
 
-      RINOK(ReadStream(_stream, buf, &readSize))
+          const HRESULT tailRead = ReadStream(_stream, buf, &readSize);
+#ifdef SEVENZIP_LINUX_UDF
+          if (tailRead == E_ABORT)
+              return E_ABORT;
+          if (tailRead != S_OK)
+              break;
+#else
+          RINOK(tailRead)
+#endif
 
-      if (readSize == 0)
-        break;
+          if (readSize == 0)
+              break;
 
-      // some udf contain many EndAnchors
-      if (readSize == secSize /* && NoEndAnchor */)
-      {
-        CTag tag;
-        if (tag.Parse(buf, readSize) == S_OK
-            && tag.Id == DESC_TYPE_AnchorVolPtr
-            && Get32(buf + 12) == (UInt32)((fileSize - rem) >> SecLogSize))
-        {
-          NoEndAnchor = false;
+          // some udf contain many EndAnchors
+          if (readSize == secSize /* && NoEndAnchor */) {
+              CTag tag;
+              if (tag.Parse(buf, readSize) == S_OK && tag.Id == DESC_TYPE_AnchorVolPtr &&
+                  Get32(buf + 12) == (UInt32)((fileSize - rem) >> SecLogSize)) {
+                  NoEndAnchor = false;
+                  rem -= readSize;
+                  PhySize = fileSize - rem;
+                  continue;
+              }
+          }
+
+          size_t i;
+          for (i = 0; i < readSize && buf[i] == 0; i++)
+              ;
+          if (i != readSize)
+              break;
           rem -= readSize;
-          PhySize = fileSize - rem;
-          continue;
-        }
       }
 
-      size_t i;
-      for (i = 0; i < readSize && buf[i] == 0; i++);
-      if (i != readSize)
-        break;
-      rem -= readSize;
-    }
-
-    if (rem == 0)
-      PhySize = fileSize;
+      if (rem == 0)
+          PhySize = fileSize;
   }
 
   return S_OK;

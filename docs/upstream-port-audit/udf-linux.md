@@ -1,4 +1,4 @@
-# UDF: sparse allocation и логический EOF
+# UDF: чтение и актуализация по Linux
 
 ## Источники и выбранный сценарий
 
@@ -104,7 +104,7 @@ enumeration с имеющимися extents, information length и callbacks.
 Compatibility layer предоставляет owned block buffers и минимальные inode/sb
 services. Логические адреса возвращаются существующему partition mapper 7-Zip,
 а ошибки/отмена callbacks сохраняют HRESULT. Portable `linux/types.h` виден
-только трём C translation units; C++ и системные Linux headers используют
+только C translation units UDF-модуля; C++ и системные Linux headers используют
 свои типы. Уведомления, GPL-2.0 и лицензия 7-Zip устанавливаются вместе с модулем.
 GPL C не связан с core engine или unRAR codecs. Динамический engine передаёт
 регистрацию UDF этому модулю; standalone сохраняет прежний flat-AD reader.
@@ -137,8 +137,72 @@ Qt 6.12: receipt `20261019T203449Z-3d8c7921`. Расширенные catalog/bac
 Staging, native mounts и одноразовые образы удалены. Постоянные build trees и
 compiler caches сохранены; full/slow/UI/physical-device acceptance не выполнялась.
 
-Полный UDF read audit остаётся открытым. В частности, ещё требуются перенос
-indirect-ICB paths, VAT и sparable partitions,
+## Indirect ICB и strategy 4096
+
+Передан resolution prefix `inode.c::udf_read_inode`: начальные bounds,
+FE/EFE/USE tag selection, strategy 4/4096, optional IE, reread, предел hierarchy
+и проверка AD kind. Метаданные и данные выбранного FE/EFE затем разбираются
+существующим `ReadItem`. VFS/inode projection после этого prefix не копировалась;
+она остаётся отдельным read scope. Удалены только неиспользуемые declarations
+VFS-части и EFE alias; ветви выбранного prefix сохранены. Возврат owned FE
+buffer заменяет переход к остальной VFS-инициализации.
+
+Полные `misc.c::udf_read_tagged`, `udf_read_ptagged`, `udf_tag_checksum` и
+`lib/crc/crc-itu-t.c`/`include/linux/crc-itu-t.h` передают исходные checks и
+CRC table/loop. Изменены kernel includes/exports и ширина tagged-read address
+для существующего portable partition token; тела checks и CRC неизменны.
+Все Linux notices и C language сохранены. Новые CRC units входят в тот же
+изолированный GPL-модуль; core/standalone не связываются с ними.
+
+Сравнение до и после переноса включает complete selected prefix, helpers,
+types, callers и consumers `ReadItem`, `ReadLinuxExtents`, metadata bootstrap,
+archive flags и physical-size scan. `super.c::udf_find_metadata_inode_efe`,
+`partition.c::udf_try_read_meta` определяют требование short AD и фиксированный
+backing partition metadata map. Результат resolution используется для short
+AD обычных inode, а metadata сохраняет свой исходный backing map, даже когда
+ICB самого metadata file находится в другом разделе.
+
+Linux сохраняет прежний FE при отсутствии пригодной optional IE. У archive
+adapter это не теряет отмену или ошибку обязательного target; failed/canceled
+Open не публикует каталог. Успешный fallback восстанавливает прежний
+UnexpectedEnd state и ограничивает physical footprint backing source.
+Повторная строгая C++ tag-проверка не отменяет принятые Linux ICB tags.
+
+Источник `super.c::udf_check_anchor_block`, `udf_scan_anchors`,
+`udf_load_sequence` подтверждает: пригодный primary anchor достаточен и для
+open media. Поэтому динамический модуль не выставляет ошибку отсутствия end
+anchor после успешной основной проверки. Необязательный старый tail scan
+больше не отменяет fallback при повторном I/O отказе; E_ABORT сохраняется.
+Standalone оставляет прежнюю политику. Воспроизведённый pre-fix ABI failure
+и последующий PASS подтверждают чувствительность regression для этого caller.
+
+20 новых положительных вариантов проверяют FE/EFE, inline, root/child directory,
+1024 перехода, cross-partition short AD, продолжение AD после ICB, metadata
+и fallback для missing/terminal/empty/corrupt IE. Все совпали с read-only
+нативным Linux `6.8.0-146-generic`; mounts/images удалены. Metadata fixture
+загружает зависимый partition descriptor раньше metadata map, как требует
+порядок initialization в Linux. Повреждённые цепочки проверяют цикл, превышение
+глубины, неверные refs/targets, required tag/checksum/CRC/version/length,
+unsupported strategy/AD kind и long AD metadata. Отдельные ABI проверки
+передают I/O failure и отмену в optional IE, проверяют отсутствие ложных
+archive error flags после fallback и повторное Open. CLI проверяет metadata
+выбранного inode; backend/catalog consumers охватывают новые variants.
+`udf_lookup`, `udf_load_fileset` и resolution prefix также подтверждают чтение
+полного logical block независимо от extent length родительской ссылки.
+Динамический модуль больше не требует ровно block-sized parent extent;
+короткая, увеличенная и нулевая root extent length проверены native и через ABI.
+
+Пять focused suites (`udf`, `udf_stream`, `upstream_baseline`, `runtime_cache`,
+`runtime_package`) прошли на macOS arm64, Linux x64 и Windows x64/MSVC,
+Qt 6.12. Последний remote receipt: `20261019T210032Z-3c93313f`.
+Actual macOS CMake install прочитал все 46 положительных вариантов и установил
+оба UDF notices с точным содержимым. Staging удалён; сохранены incremental
+build trees/compiler caches и небольшое свидетельство воспроизведённого
+tail-scan failure. После проверок нормализованы только пустые строки EOF
+новых C-файлов. Full/slow/UI/physical-device acceptance не выполнялась.
+
+Полный UDF read audit остаётся открытым. В частности, ещё требуются
+VAT и sparable partitions, volume discovery/block geometry,
 полная metadata partition/mirror mapping, names/NLS, symlinks, специальные
 inode и metadata/read policies. Проверка этой итерации не означает завершение
 всех UDF возможностей или общей задачи форматов Linux. VFS, запись,
