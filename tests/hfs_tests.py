@@ -74,6 +74,25 @@ class HfsTests(unittest.TestCase):
                         self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
                         self.assertEqual(result.stdout, expected)
 
+    def test_classic_hfs_bytes(self):
+        for kind in ("classic", "classic-overflow", "classic-catalog-overflow",
+                     "classic-non-power-of-two", "classic-locked", "classic-preallocated"):
+            image, files = volume(kind)
+            for name, expected in files.items():
+                with self.subTest(kind=kind, name=name):
+                    result = self.run_image("7z", image, name)
+                    self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                    self.assertEqual(result.stdout, expected)
+
+    def test_classic_hfs_metadata_failures(self):
+        for kind in ("classic-bad-fork", "classic-short-fork", "classic-bad-cnid",
+                     "classic-thread-parent", "classic-leaf-cycle", "classic-node-offset",
+                     "classic-truncated", "classic-missing-overflow"):
+            with self.subTest(kind=kind):
+                result = self.run_image("7z", volume(kind)[0], "HfsFixture/alpha")
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(result.stdout, b"")
+
     def test_bad_forks_never_read_appended_bytes(self):
         for kind in ("extent-over-volume", "allocation-tail-over-volume"):
             for engine in ("7z", "7zz"):
@@ -102,6 +121,11 @@ class HfsTests(unittest.TestCase):
 
     def test_standalone_does_not_extract_hardlink_stubs_as_empty_success(self):
         result = self.run_image("7zz", volume("modern")[0], "HfsFixture/alpha")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(result.stdout, b"")
+
+    def test_standalone_does_not_claim_classic_hfs(self):
+        result = self.run_image("7zz", volume("classic")[0], "HfsFixture/alpha")
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual(result.stdout, b"")
 

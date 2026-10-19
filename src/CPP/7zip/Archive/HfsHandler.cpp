@@ -9,7 +9,9 @@
 #include "../../Common/StringConvert.h"
 #include "../../Common/UTFConvert.h"
 #ifdef SEVENZIP_LINUX_HFS
+#include "../../../hfsclassicreader.h"
 #include "../../../hfsreader.h"
+#include <errno.h>
 #endif
 
 #include "../../Windows/PropVariantUtils.h"
@@ -180,6 +182,8 @@ bool CFork::Upgrade(const CObjectVector<CIdExtents> &items, UInt32 id) {
 
 struct CVolHeader {
     unsigned BlockSizeLog;
+    UInt32 BlockSize;
+    bool IsClassic;
     UInt32 NumFiles;
     UInt32 NumFolders;
     UInt32 NumBlocks;
@@ -199,8 +203,9 @@ struct CVolHeader {
     // UInt32 FinderInfo[8];
     // UInt64 VolID;
 
-    UInt64 GetPhySize() const { return (UInt64)NumBlocks << BlockSizeLog; }
-    UInt64 GetFreeSize() const { return (UInt64)NumFreeBlocks << BlockSizeLog; }
+    UInt32 GetBlockSize() const { return BlockSize; }
+    UInt64 GetPhySize() const { return (UInt64)NumBlocks * BlockSize; }
+    UInt64 GetFreeSize() const { return (UInt64)NumFreeBlocks * BlockSize; }
     bool IsHfsX() const { return Is_Hsfx_ver5; }
 };
 
@@ -494,6 +499,10 @@ class CDatabase {
     bool Parse_decmpgfs(unsigned attrIndex, CItem &item, bool &skip);
     HRESULT ResolveHardlinks();
     HRESULT LoadMetadata();
+    HRESULT BuildRefs(CRecordVector<CIdIndexPair> &IdToIndexMap);
+#ifdef SEVENZIP_LINUX_HFS
+    HRESULT OpenClassic(IInStream *inStream, IArchiveOpenCallback *progress);
+#endif
 
   public:
     bool CheckFork(const CFork &fork) const;
@@ -530,6 +539,7 @@ class CDatabase {
         UnsupportedFeature = false;
         ThereAreAltStreams = false;
         CatalogCaseSensitive = false;
+        Header.IsClassic = false;
         // CaseSensetive = false;
 
         Refs.Clear();
@@ -726,9 +736,10 @@ void CDatabase::GetItemPath(unsigned index, NWindows::NCOM::CPropVariant &path) 
 }
 
 bool CDatabase::CheckFork(const CFork &fork) const {
-    if (!fork.IsOk(Header.BlockSizeLog) || SpecOffset > ArcFileSize)
+    if (!fork.Check_NumBlocks() || fork.Size > (UInt64)fork.NumBlocks * Header.GetBlockSize() ||
+        SpecOffset > ArcFileSize)
         return false;
-    const UInt64 sourceBlocks = (ArcFileSize - SpecOffset) >> Header.BlockSizeLog;
+    const UInt64 sourceBlocks = (ArcFileSize - SpecOffset) / Header.GetBlockSize();
     FOR_VECTOR(i, fork.Extents) {
         const CExtent &e = fork.Extents[i];
         if (e.Pos > Header.NumBlocks || e.NumBlocks > Header.NumBlocks - e.Pos ||
@@ -1405,12 +1416,6 @@ HRESULT CDatabase::LoadCatalog(const CFork &fork,
     RINOK(ResolveHardlinks())
     RINOK(LoadMetadata())
 
-    IdToIndexMap.Sort2();
-    {
-        for (unsigned i = 1; i < IdToIndexMap.Size(); i++)
-            if (IdToIndexMap[i - 1].ID == IdToIndexMap[i].ID)
-                return S_FALSE;
-    }
 #ifdef SEVENZIP_LINUX_HFS
     CRecordVector<CIdIndexPair> threadIds;
     FOR_VECTOR(i, threads) {
@@ -1437,6 +1442,15 @@ HRESULT CDatabase::LoadCatalog(const CFork &fork,
             return S_FALSE;
     }
 #endif
+
+    return BuildRefs(IdToIndexMap);
+}
+
+HRESULT CDatabase::BuildRefs(CRecordVector<CIdIndexPair> &IdToIndexMap) {
+    IdToIndexMap.Sort2();
+    for (unsigned i = 1; i < IdToIndexMap.Size(); i++)
+        if (IdToIndexMap[i - 1].ID == IdToIndexMap[i].ID)
+            return S_FALSE;
 
     CBoolArr skipAttr(Attrs.Size());
     {
@@ -1588,6 +1602,152 @@ static const unsigned k_Signature_LE16_HFSX = 'H' + ((unsigned)'X' << 8);
 static const UInt32 k_Signature_LE32_HFSP_VER4 = 'H' + ((UInt32)'+' << 8) + ((UInt32)4 << 24);
 static const UInt32 k_Signature_LE32_HFSX_VER5 = 'H' + ((UInt32)'X' << 8) + ((UInt32)5 << 24);
 
+#ifdef SEVENZIP_LINUX_HFS
+struct CClassicInput {
+    IInStream *Stream;
+    IArchiveOpenCallback *Progress;
+    sevenzip_hfs_classic *State;
+    HRESULT Result;
+    UInt64 ReadBytes;
+
+    CClassicInput(IInStream *stream, IArchiveOpenCallback *progress)
+        : Stream(stream), Progress(progress), State(NULL), Result(S_OK), ReadBytes(0) {}
+    ~CClassicInput() { sevenzip_hfs_classic_close(State); }
+    HRESULT Status(int error) const {
+        if (Result != S_OK)
+            return Result;
+        return error == -ENOMEM ? E_OUTOFMEMORY : S_FALSE;
+    }
+    static int Read(void *context, uint64_t offset, void *data, size_t size) {
+        CClassicInput &input = *(CClassicInput *)context;
+        try {
+            input.Result = InStream_SeekSet(input.Stream, offset);
+            if (input.Result == S_OK)
+                input.Result = ReadStream_FALSE(input.Stream, data, size);
+            input.ReadBytes += size;
+            if (input.Result == S_OK && input.Progress)
+                input.Result = input.Progress->SetCompleted(NULL, &input.ReadBytes);
+        } catch (...) {
+            input.Result = E_FAIL;
+        }
+        return input.Result == S_OK ? 0 : -EIO;
+    }
+};
+
+HRESULT CDatabase::OpenClassic(IInStream *inStream, IArchiveOpenCallback *progress) {
+    RINOK(InStream_GetSize_SeekToEnd(inStream, ArcFileSize))
+    CClassicInput input(inStream, progress);
+    sevenzip_hfs_classic_volume volume;
+    const int error =
+        sevenzip_hfs_classic_open(CClassicInput::Read, &input, ArcFileSize, &input.State, &volume);
+    if (error)
+        return input.Status(error);
+    Header.IsClassic = true;
+    Header.Is_Hsfx_ver5 = false;
+    Header.BlockSize = volume.block_size;
+    Header.NumBlocks = volume.blocks;
+    Header.NumFreeBlocks = volume.free_blocks;
+    Header.NumFiles = volume.files;
+    Header.NumFolders = volume.folders;
+    Header.CTime = volume.created;
+    Header.MTime = volume.modified;
+    SpecOffset = volume.allocation_start;
+    PhySize2 = ArcFileSize;
+    ResFileName = kResFileName;
+    CRecordVector<CIdIndexPair> IdToIndexMap;
+    UInt64 numFiles = (UInt64)volume.files + volume.folders + 1;
+    if (progress)
+        RINOK(progress->SetTotal(&numFiles, NULL))
+    UInt32 files = 0, folders = 0;
+    bool root = false;
+    for (;;) {
+        sevenzip_hfs_classic_item record;
+        const int result = sevenzip_hfs_classic_next(input.State, &record);
+        if (result < 0)
+            return input.Status(result);
+        if (result == 0)
+            break;
+        CItem &item = Items.AddNew();
+        item.DataIndex = Items.Size() - 1;
+        item.ID = record.id;
+        item.ParentID = record.parent;
+        item.Type = (record.mode & 0170000) == 0040000 ? RECORD_TYPE_FOLDER : RECORD_TYPE_FILE;
+        if (item.ID == kHfsID_RootFolder) {
+            if (!item.IsDir() || item.ParentID != kHfsID_Root)
+                return S_FALSE;
+            root = true;
+        }
+        wchar_t *name = item.Name.GetBuf(record.name_length);
+        for (unsigned i = 0; i < record.name_length; i++) {
+            if (!record.name[i])
+                return S_FALSE;
+            name[i] = (wchar_t)record.name[i];
+        }
+        item.Name.ReleaseBuf_SetEnd(record.name_length);
+        item.CTime = record.created;
+        item.MTime = item.ATime = item.AttrMTime = record.modified;
+        item.OwnerID = item.GroupID = 0;
+        item.FileMode = (UInt16)record.mode;
+        item.NumLinks = 1;
+        item.DeviceMajor = item.DeviceMinor = item.Special = 0;
+        item.AdminFlags = item.OwnerFlags = 0;
+        item.FileType = Get32(record.finder_type);
+        item.FileCreator = Get32(record.finder_creator);
+        if (item.IsDir())
+            folders++;
+        else {
+            files++;
+            for (unsigned resource = 0; resource < 2; resource++) {
+                CFork &fork = resource ? item.ResourceFork : item.DataFork;
+                fork.Size = record.size[resource];
+                fork.NumBlocks = record.blocks[resource];
+                for (UInt32 block = 0; block < fork.NumBlocks; block++) {
+                    uint32_t physical;
+                    const int mapped =
+                        sevenzip_hfs_classic_map(input.State, resource, block, &physical);
+                    if (mapped)
+                        return input.Status(mapped);
+                    if (!fork.Extents.IsEmpty() &&
+                        fork.Extents.Back().Pos + fork.Extents.Back().NumBlocks == physical)
+                        fork.Extents.Back().NumBlocks++;
+                    else {
+                        CExtent extent;
+                        extent.Pos = physical;
+                        extent.NumBlocks = 1;
+                        fork.Extents.Add(extent);
+                    }
+                }
+                if (!CheckFork(fork))
+                    return S_FALSE;
+            }
+            for (unsigned creator = 0; creator < 2; creator++) {
+                CAttr &attr = Attrs.AddNew();
+                attr.ID = item.ID;
+                attr.Name = creator ? "hfs.creator" : "hfs.type";
+                attr.Data.CopyFrom(creator ? record.finder_creator : record.finder_type, 4);
+            }
+        }
+        CIdIndexPair pair;
+        pair.ID = item.ID;
+        pair.Index = Items.Size() - 1;
+        IdToIndexMap.Add(pair);
+        if (progress) {
+            numFiles = Items.Size();
+            RINOK(progress->SetCompleted(&numFiles, NULL))
+        }
+    }
+    if (!root)
+        return S_FALSE;
+    if (files != Header.NumFiles || (UInt64)folders != (UInt64)Header.NumFolders + 1)
+        HeadersError = true;
+    RINOK(BuildRefs(IdToIndexMap))
+    FOR_VECTOR(i, Refs)
+    if (Refs[i].IsItem() && Items[Refs[i].ItemIndex].ID != kHfsID_RootFolder && Refs[i].Parent < 0)
+        return S_FALSE;
+    return S_OK;
+}
+#endif
+
 #if defined(SEVENZIP_LINUX_HFS) || !defined(Z7_EXTERNAL_CODECS)
 API_FUNC_static_IsArc IsArc_HFS(const Byte *p, size_t size) {
     if (size < kHfsHeaderSize)
@@ -1596,9 +1756,12 @@ API_FUNC_static_IsArc IsArc_HFS(const Byte *p, size_t size) {
     const UInt32 sig = GetUi32(p);
     if (sig != k_Signature_LE32_HFSP_VER4)
         if (sig != k_Signature_LE32_HFSX_VER5)
-            if ((UInt16)sig != k_Signature_LE16_HFS_BD ||
-                (GetUi16(p + 0x7c) != k_Signature_LE16_HPLUS &&
-                 GetUi16(p + 0x7c) != k_Signature_LE16_HFSX))
+            if ((UInt16)sig != k_Signature_LE16_HFS_BD
+#ifndef SEVENZIP_LINUX_HFS
+                || (GetUi16(p + 0x7c) != k_Signature_LE16_HPLUS &&
+                    GetUi16(p + 0x7c) != k_Signature_LE16_HFSX)
+#endif
+            )
                 return k_IsArc_Res_NO;
     return k_IsArc_Res_YES;
 }
@@ -1624,8 +1787,13 @@ HRESULT CDatabase::Open2(IInStream *inStream, IArchiveOpenCallback *progress) {
         */
 
         if (GetUi16a(p + 0x7c) != k_Signature_LE16_HPLUS &&
-            GetUi16a(p + 0x7c) != k_Signature_LE16_HFSX)
+            GetUi16a(p + 0x7c) != k_Signature_LE16_HFSX) {
+#ifdef SEVENZIP_LINUX_HFS
+            return OpenClassic(inStream, progress);
+#else
             return S_FALSE;
+#endif
+        }
         /*
         h.CTime = Get32(p + 0x2);
         h.MTime = Get32(p + 0x6);
@@ -1712,6 +1880,7 @@ HRESULT CDatabase::Open2(IInStream *inStream, IArchiveOpenCallback *progress) {
             if (i == 31)
                 return S_FALSE;
         h.BlockSizeLog = i;
+        h.BlockSize = blockSize;
     }
 
     // h.Attr = Get32a(p + 4);
@@ -1840,7 +2009,7 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID propID, PROPVARIANT *value)) {
         prop = Header.IsHfsX() ? "hfsx" : "hfs";
         break;
     case kpidMethod:
-        prop = Header.IsHfsX() ? "HFSX" : "HFS+";
+        prop = Header.IsClassic ? "HFS" : Header.IsHfsX() ? "HFSX" : "HFS+";
         break;
     case kpidCharacts:
         MethodsMaskToProp(MethodsMask, prop);
@@ -1853,7 +2022,7 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID propID, PROPVARIANT *value)) {
         break;
     }
     case kpidClusterSize:
-        prop = (UInt32)1 << Header.BlockSizeLog;
+        prop = Header.GetBlockSize();
         break;
     case kpidFreeSpace:
         prop = (UInt64)Header.GetFreeSize();
@@ -1962,12 +2131,12 @@ Z7_COM7F_IMF(CHandler::GetProperty(UInt32 index, PROPID propID, PROPVARIANT *val
         if (ref.AttrIndex >= 0)
             size = Attrs[ref.AttrIndex].GetSize();
         else if (ref.IsResource())
-            size = (UInt64)item.ResourceFork.NumBlocks << Header.BlockSizeLog;
+            size = (UInt64)item.ResourceFork.NumBlocks * Header.GetBlockSize();
         else if (item.IsDir())
             break;
         else if (item.CompressHeader.IsCorrect) {
             if (item.CompressHeader.IsMethod_Resource())
-                size = (UInt64)item.ResourceFork.NumBlocks << Header.BlockSizeLog;
+                size = (UInt64)item.ResourceFork.NumBlocks * Header.GetBlockSize();
             else if (item.decmpfs_AttrIndex >= 0) {
                 // size = item.PackSize;
                 const CAttr &attr = Attrs[item.decmpfs_AttrIndex];
@@ -1975,7 +2144,7 @@ Z7_COM7F_IMF(CHandler::GetProperty(UInt32 index, PROPID propID, PROPVARIANT *val
             } else
                 size = 0;
         } else
-            size = (UInt64)item.DataFork.NumBlocks << Header.BlockSizeLog;
+            size = (UInt64)item.DataFork.NumBlocks * Header.GetBlockSize();
         prop = size;
         break;
     }
@@ -2751,12 +2920,12 @@ HRESULT CHandler::GetForkStream(const CFork &fork, ISequentialInStream **stream)
         const CExtent &e = fork.Extents[i];
         if (e.NumBlocks == 0)
             continue;
-        UInt64 cur = ((UInt64)e.NumBlocks << Header.BlockSizeLog);
+        UInt64 cur = (UInt64)e.NumBlocks * Header.GetBlockSize();
         if (cur > rem) {
             cur = rem;
         }
         CSeekExtent se;
-        se.Phy = SpecOffset + ((UInt64)e.Pos << Header.BlockSizeLog);
+        se.Phy = SpecOffset + (UInt64)e.Pos * Header.GetBlockSize();
         se.Virt = virt;
         virt += cur;
         rem -= cur;

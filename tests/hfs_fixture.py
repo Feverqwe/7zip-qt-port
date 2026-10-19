@@ -8,6 +8,9 @@ import zlib
 
 
 def volume(kind="base"):
+    if kind.startswith("classic"):
+        from hfs_classic_fixture import volume as classic_volume
+        return classic_volume(kind)
     if kind.startswith("modern"):
         from hfs_modern_fixture import volume as modern_volume
         return modern_volume(kind)

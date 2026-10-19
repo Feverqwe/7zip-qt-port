@@ -1,10 +1,11 @@
-# HFS+: fork mapping, Unicode, hardlinks и metadata
+# HFS/HFS+: read modules, forks и metadata
 
 Работа входит в [общий scope актуализации по Linux](filesystems-linux.md).
 Исправлено существующее чтение HFS+/HFSX и их HFS wrappers; добавлены Linux
 Unicode read conversion и разрешение hardlinks через backing inode.
 Актуализированы permission defaults, catalog/thread validation и FinderInfo.
 Подключены Linux timestamp rollover и metadata специальных inode.
+Добавлено чтение plain classic HFS через Linux C read paths в том же GPL-модуле.
 Полная актуализация семейства HFS ещё не завершена.
 
 ## Источники и source comparison
@@ -88,8 +89,56 @@ Common/Windows/stream helpers и handler, zlib/Deflate и BSD LZFSE/LZVN decoder
 Исходный `HfsHandler.h` переиспользуется без изменений. Модуль и GPL/LGPL/BSD
 notices устанавливаются с приложением; registration HFS основного external-codec
 engine отключена, чтобы единственным владельцем формата был модуль.
-Standalone сохраняет classic scope и явно отказывается от hardlink stubs,
+Standalone сохраняет исходный scope HFS+/HFSX/wrappers и явно отказывается от hardlink stubs,
 вместо успешного возврата пустого файла; GPL bodies с ним не линкуются.
+
+### Plain classic HFS
+
+Исходный `HfsHandler.cpp:Open2` явно отказывает plain HFS; пригодного classic
+reader в 7-Zip нет. До интеграции сравнены Linux `fs/hfs` MDB/B-tree, bnode/brec/
+bfind, extent, catalog, inode, name conversion, directory и xattr read bodies
+со всеми вызываемыми типами. `include/linux/hfs_common.h` перенесён exact;
+portable C types/packing обеспечиваются узким header adapter.
+Переданы полные read search bodies из `bfind.c`, record helpers из `brec.c`,
+catalog/extent comparators и исходная `string.c` case-order table с `hfs_strcmp`.
+Пути и символы сохранены; cast для pointer arithmetic нужен MSVC C.
+
+`mdb.c:hfs_mdb_get`, `btree.c:hfs_btree_open`, `bnode.c:hfs_bnode_find`,
+`inode.c:hfs_inode_read_fork`/`hfs_read_inode` и extent read/cache/mapping
+адаптированы к byte transport и существующим bounded archive streams.
+Page/folio services, inode/hash caches и locks заменены локальными buffers
+на время `Open`; B-tree search, высоты/offset checks и predecessor lookup
+extent records сохранены. Добавлены bounds source/volume/record, проверка
+полного allocation mapping, leaf order/count/links и циклов родителей.
+Catalog directory threads проверяются через перенесённые
+`hfs_cat_find_brec`/`hfs_cat_validate_found_cnid`; file threads остаются optional.
+Mapping включает data/resource forks и overflow extents самого catalog file.
+Неприменимый к classic kernel bootstrap overflow самого extent-tree не добавляется:
+Linux также требует его mapping в трёх исходных extents.
+
+Read projection сохраняет Linux defaults file/dir masks `0133`/`0022`, lock bit,
+inode identity и link count. UID/GID и timezone defaults фиксированы на `0`;
+archive clock использует общий unsigned rollover, соответствующий
+`hfs_fs.h:__hfs_m_to_utime` при UTC. Creation остаётся archive extension.
+`attr.c:__hfs_getxattr` сопоставлен с публикацией точных четырёх bytes
+`hfs.type`/`hfs.creator` как alternate streams. Resource fork публикуется
+через исходный archive namespace `:rsrc`.
+
+`trans.c:hfs_mac2asc` сохраняет default byte-preserving branch и disk slash →
+colon. Каждый byte проецируется в один UTF-16 code unit; portable path builder
+затем заменяет separators на `_`. Mount-selected NLS/credentials/timezone,
+session/partition selection, загрузка/обновление allocator bitmap и alternate-MDB
+services не переносятся: fork mapping не обращается к bitmap, запись отсутствует.
+Это archive/platform boundaries; выбор раздела остаётся у
+существующих partition handlers. Сырые default Linux names проверены отдельно
+от Unicode presentation. Этот перенос не заявляет Mac Roman conversion.
+
+Новый C boundary владеет transient reader state и передаёт errors/cancellation
+в COM callback. Handler переиспользует один `BuildRefs`, extent stream,
+extraction и retained inline-attribute streams для обоих семейств. Allocation
+size хранится в bytes, чтобы classic 1536-byte blocks не превращались в shift.
+Все новые C bodies входят только в `sevenzip_hfs`; standalone явно не принимает
+plain classic HFS, его прежнее чтение HFS+/HFSX/wrappers проверяется отдельно.
 
 Сохранены исходные классы, eager leaf enumeration,
 каталог, alternate streams, decmpfs decoder и extraction callbacks. Полный
@@ -215,9 +264,24 @@ HFS CLI/ABI/backend, runtime packaging, provenance и extraction security suites
 Код модуля в повторном запуске не менялся. Приложение собрано на macOS;
 полный gate, slow suites и UI в эту итерацию не входили.
 
-Остаются дальнейшее сравнение read branches и системных metadata services.
-Plain classic HFS исходный handler не читает: поддерживается только
-его wrapper с HFS+/HFSX; это отсутствие остаётся в общем scope работы.
+Classic HFS проверен на hfsutils-produced fixture с native multi-level catalog:
+data/resource bytes, type/creator streams, Unicode projection, независимые и
+retained streams, отмена/I/O/ошибочный Open и реальные ArchiveBackend consumers.
+Linux VFS `6.8.0-146-generic` подтвердил bytes обычных файлов, type/creator,
+правила lock/default mode, UID/GID/mtime и неизменность шести read-only images:
+base, data/resource overflow, catalog overflow, 1536-byte blocks, lock и
+preallocation/empty forks. VFS lookup `file/rsrc` вернул ENOTDIR; native VFS
+resource bytes не заявляются, их проверяют CLI/ABI/backend.
+Все семь focused suites (HFS CLI/ABI/backend, runtime/Windows packaging,
+provenance и extraction security) прошли на macOS ARM64, Linux x64 и Windows x64;
+remote receipt `20261019T141119Z-77ea5199`. Приложение собрано на macOS.
+Реальный install runtime на macOS автоматически распознал и извлёк пять
+classic variants, включая data/resource/catalog overflow и 1536-byte blocks;
+установленные GPL/LGPL/BSD notices проверены. Staging удалён после проверки.
+Full/slow suites, UI и физические устройства в эту итерацию не входили.
+
+Остаются дальнейшее сравнение read branches и системных metadata services;
+plain classic HFS теперь читается модулем приложения.
 Apple decmpfs сохраняется как расширение 7-Zip, которое Linux hfsplus не
 декодирует. Fork/extent xattrs также не читаются Linux xattr API; отдельное
 отсутствие kernel read feature из этого не выводится. Запись, journal recovery,

@@ -18,6 +18,8 @@ forks, boot blocks и wrappers, проверки повреждённых metada
 потоки. Отдельный read-only модуль добавляет Linux Unicode composition/casefold,
 hardlink backing data, Linux permission defaults, BSD flags и FinderInfo streams.
 Даты следуют Linux диапазону 1970–2106; специальные inode сообщают device metadata.
+Тот же модуль читает plain classic HFS, включая resource forks, type/creator
+metadata и non-power-of-two allocation blocks.
 [Scope и проверки](upstream-port-audit/hfs-linux.md); полная актуализация
 формата ещё не завершена.
 

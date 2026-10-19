@@ -21,3 +21,14 @@ The native encoder emitted one `bvxn` block; its 12-byte header and final
 `bvx$` marker were removed to retain the raw LZVN payload used by decmpfs.
 The derived compressed-file cases protect the original zlib/LZVN read paths
 when loading the handler from the separate format module.
+
+`hfs-classic.img.zlib` is a compressed 4 MiB classic HFS volume created with
+Ubuntu `hfsutils` 3.2.6 (`hformat -f -l HfsFixture`, `hmount`, `hmkdir`, `hcopy`,
+`humount`). It contains only generated patterned data, an empty file, a nested
+directory and small files that make the native catalog span multiple levels.
+`alpha` was imported as MacBinary II to give it data/resource forks and
+`TEXT`/`SZIP` type/creator bytes. The nested accented name uses byte `e9`;
+Linux's default byte-preserving HFS names and the archive's Unicode projection
+are checked separately. No user files or physical devices were used.
+The classic fixture generator derives overflow, preallocated, locked,
+non-power-of-two allocation and damaged variants from this native volume.
