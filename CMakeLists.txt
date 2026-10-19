@@ -62,6 +62,18 @@ if(APPLE)
     enable_language(OBJCXX)
     set(CMAKE_OBJCXX_STANDARD 17)
     set(CMAKE_OBJCXX_STANDARD_REQUIRED ON)
+    add_library(sevenzip_device_access STATIC
+        src/deviceaccess.h src/deviceaccess_mac.h src/deviceaccess_mac.mm
+        src/deviceaccess_posix.cpp src/deviceaccess_posix.h
+        src/deviceauthclient_mac.cpp src/deviceauthsocket_mac.h)
+    target_include_directories(sevenzip_device_access PUBLIC src third_party/7zip/CPP)
+    target_link_libraries(sevenzip_device_access PUBLIC Qt6::Core
+        "-framework DiskArbitration" "-framework IOKit" "-framework Foundation")
+    set_target_properties(sevenzip_device_access PROPERTIES AUTOMOC OFF AUTOUIC OFF)
+    add_executable(sevenzip_device_reader src/devicereader_mac.cpp)
+    target_link_libraries(sevenzip_device_reader PRIVATE sevenzip_device_access)
+    set_target_properties(sevenzip_device_reader PROPERTIES
+        OUTPUT_NAME SevenzipDeviceReader AUTOMOC OFF AUTOUIC OFF)
 endif()
 
 add_library(sevenzip_hash_registry OBJECT third_party/7zip/CPP/Common/CrcReg.cpp
@@ -432,6 +444,7 @@ add_library(sevenzip_filesystem STATIC
     src/archivecodecimage.cpp src/archivecodecimage.h
     src/archivenativeopen.cpp src/archivenativeopen.h
     src/archivedevice.cpp src/archivedevice.h
+    src/deviceinput.cpp src/deviceaccess.h
     src/archivecodecprobe.cpp src/archivecodecprobe.h
     third_party/7zip/CPP/7zip/UI/Common/ArchiveOpenCallback.cpp
     third_party/7zip/CPP/7zip/UI/Common/SetProperties.cpp
@@ -3278,6 +3291,17 @@ if(BUILD_TESTING)
     add_test(NAME native_archive_properties COMMAND native_archive_properties_tests -silent)
     set_tests_properties(native_archive_properties PROPERTIES TIMEOUT 30 ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
+    qt_add_executable(device_input_tests tests/device_input_tests.cpp)
+    target_include_directories(device_input_tests PRIVATE src)
+    target_link_libraries(device_input_tests PRIVATE sevenzip_filesystem Qt6::Test)
+    add_test(NAME device_input COMMAND device_input_tests -silent)
+    set_tests_properties(device_input PROPERTIES TIMEOUT 15)
+    if(APPLE)
+        qt_add_executable(device_access_tests tests/device_access_tests.cpp)
+        target_link_libraries(device_access_tests PRIVATE sevenzip_device_access Qt6::Test)
+        add_test(NAME device_access COMMAND device_access_tests -silent)
+        set_tests_properties(device_access PROPERTIES TIMEOUT 15)
+    endif()
     qt_add_executable(archive_device_tests tests/archive_device_tests.cpp)
     target_include_directories(archive_device_tests PRIVATE src)
     target_link_libraries(archive_device_tests PRIVATE sevenzip_filesystem Qt6::Test)

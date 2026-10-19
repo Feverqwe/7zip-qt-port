@@ -29,6 +29,12 @@ install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/LICENSE"
     DESTINATION "${notices_destination}/sevenzip-desktop")
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/lucide/LICENSE"
     DESTINATION "${notices_destination}/lucide")
-qt_generate_deploy_app_script(TARGET sevenzip_desktop OUTPUT_SCRIPT unix_deploy_script
-    NO_TRANSLATIONS)
+if(APPLE)
+    qt_generate_deploy_app_script(TARGET sevenzip_desktop OUTPUT_SCRIPT unix_deploy_script
+        NO_TRANSLATIONS DEPLOY_TOOL_OPTIONS
+        "-executable=Sevenzip.app/Contents/MacOS/SevenzipDeviceReader")
+else()
+    qt_generate_deploy_app_script(TARGET sevenzip_desktop OUTPUT_SCRIPT unix_deploy_script
+        NO_TRANSLATIONS)
+endif()
 install(SCRIPT "${unix_deploy_script}")

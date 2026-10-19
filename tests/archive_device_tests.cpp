@@ -4,6 +4,7 @@
 #include "archivecodeccatalog.h"
 #include "archivedevice.h"
 #include "archivenativeopen.h"
+#include "deviceaccess.h"
 #include <QDir>
 #include <QProcess>
 #include <QStandardPaths>
@@ -43,6 +44,26 @@ class CDeviceInput final : public IInStream, public CMyUnknownImp {
         return result;
     }
 };
+
+class CAlignedHandle final : public DeviceReadHandle {
+    CMyComPtr<IInStream> input_;
+
+  public:
+    explicit CAlignedHandle(IInStream *input) : input_(input) {}
+    qint32 readAt(quint64 offset, void *data, quint32 size, quint32 &read) override {
+        if (offset % 4096 || size % 4096 || quintptr(data) % 4096)
+            return E_INVALIDARG;
+        RINOK(input_->Seek(Int64(offset), STREAM_SEEK_SET, nullptr))
+        return input_->Read(data, size, &read);
+    }
+};
+
+HRESULT DeviceInput(IInStream *input, quint64 size, IInStream **stream) {
+    ExternalDevice description;
+    description.size = size;
+    description.sectorSize = 4096;
+    return CreateDeviceInput(description, std::make_shared<CAlignedHandle>(input), stream);
+}
 
 class COpenUi final : public IOpenCallbackUI {
   public:
@@ -121,9 +142,11 @@ class ArchiveDeviceTests final : public QObject {
         QVERIFY(!disk.isEmpty());
         auto *input = new CDeviceInput(disk);
         CMyComPtr<IInStream> lease = input;
+        CMyComPtr<IInStream> direct;
+        QCOMPARE(DeviceInput(lease, quint64(disk.size()), &direct), S_OK);
         ArchiveDevice device(catalog_);
         COpenUi ui;
-        QCOMPARE(device.inspect(lease, UInt64(disk.size()), QStringLiteral("USB диск 空"), &ui),
+        QCOMPARE(device.inspect(direct, UInt64(disk.size()), QStringLiteral("USB диск 空"), &ui),
                  S_OK);
         QCOMPARE(device.partitions().size(), layout == "gpt" ? 2 : 1);
         QCOMPARE(device.partitions()[0].offset, UInt64(layout == "ext4" ? 0 : 1024 * 1024));
@@ -165,13 +188,15 @@ class ArchiveDeviceTests final : public QObject {
         const QByteArray disk = fixture("gpt");
         QVERIFY(!disk.isEmpty());
         CMyComPtr<IInStream> input = new CDeviceInput(disk);
+        CMyComPtr<IInStream> direct;
+        QCOMPARE(DeviceInput(input, quint64(disk.size()), &direct), S_OK);
         ArchiveDevice device(catalog_);
         COpenUi ui;
         ui.Cancel = true;
-        QCOMPARE(device.inspect(input, UInt64(disk.size()), "USB", &ui), E_ABORT);
+        QCOMPARE(device.inspect(direct, UInt64(disk.size()), "USB", &ui), E_ABORT);
         QVERIFY(device.partitions().isEmpty());
         ui.Cancel = false;
-        QCOMPARE(device.inspect(input, UInt64(disk.size()), "USB", &ui), S_OK);
+        QCOMPARE(device.inspect(direct, UInt64(disk.size()), "USB", &ui), S_OK);
         std::shared_ptr<ArchiveNativeOpen> reader;
         QCOMPARE(device.openPartition(1, &ui, reader), S_FALSE);
         QVERIFY(!reader);
@@ -185,9 +210,11 @@ class ArchiveDeviceTests final : public QObject {
         QVERIFY(!disk.isEmpty());
         auto *source = new CDeviceInput(disk);
         CMyComPtr<IInStream> input = source;
+        CMyComPtr<IInStream> direct;
+        QCOMPARE(DeviceInput(input, quint64(disk.size()), &direct), S_OK);
         ArchiveDevice device(catalog_);
         const UInt64 authorizedSize = 2 * 1024 * 1024;
-        QVERIFY(device.inspect(input, authorizedSize, "USB", nullptr) != S_OK);
+        QVERIFY(device.inspect(direct, authorizedSize, "USB", nullptr) != S_OK);
         QVERIFY(device.partitions().isEmpty());
         QVERIFY(source->FarthestRead <= authorizedSize);
     }

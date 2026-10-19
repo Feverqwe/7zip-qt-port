@@ -5,6 +5,7 @@
 #include "Windows/PropVariant.h"
 #include "archivecodeccatalog.h"
 #include "archivenativeopen.h"
+#include "deviceaccess.h"
 #include <limits>
 
 namespace {
@@ -68,7 +69,11 @@ HRESULT ArchiveDevice::inspect(IInStream *input, UInt64 size, const QString &nam
         catalog_->result() != S_OK)
         return E_INVALIDARG;
     CMyComPtr<IInStream> bounded;
-    RINOK(Limit(input, 0, size, &bounded))
+    if (dynamic_cast<DirectDeviceInput *>(input)) {
+        RINOK(CreateDevicePartitionInput(input, 0, size, &bounded))
+    } else {
+        RINOK(Limit(input, 0, size, &bounded))
+    }
     QList<ArchiveDevicePartition> partitions;
     for (const QString &format : {QStringLiteral("GPT"), QStringLiteral("MBR")}) {
         if (callback)
@@ -122,7 +127,11 @@ HRESULT ArchiveDevice::openPartition(int index, IOpenCallbackUI *callback,
         RINOK(callback->Open_CheckBreak())
     const auto &partition = partitions_[index];
     CMyComPtr<IInStream> bounded;
-    RINOK(Limit(input_, partition.offset, partition.size, &bounded))
+    if (dynamic_cast<DirectDeviceInput *>(input_.Interface())) {
+        RINOK(CreateDevicePartitionInput(input_, partition.offset, partition.size, &bounded))
+    } else {
+        RINOK(Limit(input_, partition.offset, partition.size, &bounded))
+    }
     std::shared_ptr<ArchiveNativeOpen> opened;
     RINOK(Open(catalog_, bounded, name_ + '/' + partition.name, QStringLiteral("Ext"), callback,
                opened))

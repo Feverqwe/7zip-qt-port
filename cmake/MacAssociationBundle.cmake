@@ -37,3 +37,11 @@ set_target_properties(sevenzip_desktop PROPERTIES
     MACOSX_BUNDLE_BUNDLE_NAME "Sevenzip"
     MACOSX_BUNDLE_SHORT_VERSION_STRING "${PROJECT_VERSION}"
     MACOSX_BUNDLE_BUNDLE_VERSION "${PROJECT_VERSION}")
+
+add_dependencies(sevenzip_desktop sevenzip_device_reader)
+set_property(TARGET sevenzip_desktop APPEND PROPERTY LINK_DEPENDS
+    "$<TARGET_FILE:sevenzip_device_reader>")
+add_custom_command(TARGET sevenzip_desktop POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:sevenzip_device_reader>
+        "$<TARGET_FILE_DIR:sevenzip_desktop>/SevenzipDeviceReader"
+    VERBATIM)
