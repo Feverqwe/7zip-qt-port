@@ -92,7 +92,9 @@ RR producer layouts и оставшиеся read-side consumers сверены �
 [UDF allocation/EOF](udf-linux.md): short/long explicit и implicit sparse,
 логический EOF, bounded directory reads и metadata bootstrap проверены вместе
 для обоих engines. Полный UDF audit и остальные строки общей задачи остаются
-открытыми; продолжения allocation descriptors — следующий UDF scope.
+открытыми. Динамический UDF-модуль подключает исходные Linux C allocation
+continuations, включая short/long chains, directory data и межраздельные адреса;
+indirect ICB и остальные возможности UDF ещё требуют актуализации.
 
 ### HFS+/HFSX: fork mapping и metadata reads
 

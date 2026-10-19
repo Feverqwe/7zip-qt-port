@@ -25,5 +25,15 @@
     "fs/udf/udfend.h": "3fff57108e88e5a03e093509d5a60af3797310653d2551312736b78e3f8efc5f",
     "fs/udf/udftime.c": "fd52cfdadb8166f34bd7b69e8c027bce88b55a5a7d0a6e213e200a51ab5ab56e",
     "fs/udf/unicode.c": "c6990308d7a32bb4cc101dc88fca044ffc9e35f798e45d1634012cd453bd4717"
-  }
+  },
+  "exact": [
+    "fs/udf/ecma_167.h"
+  ],
+  "adapted": [
+    "fs/udf/directory.c",
+    "fs/udf/inode.c",
+    "fs/udf/udf_i.h",
+    "fs/udf/udfdecl.h",
+    "fs/udf/udfend.h"
+  ]
 }

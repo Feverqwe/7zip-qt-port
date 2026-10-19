@@ -10,6 +10,9 @@ CASES = ("native", "sparse-short", "sparse-long", "hole-only", "allocated-hole",
          "eof-short", "eof-long", "unused-tail", "inline", "directory-padded",
          "directory-inline", "metadata-bootstrap", "implicit-tail", "implicit-hole",
          "eof-partition-tail", "terminator-short", "terminator-long")
+CONTINUATIONS = ("ad-short", "ad-long", "ad-chain-short", "ad-chain-long",
+                 "ad-limit-16", "ad-directory", "ad-cross-partition", "ad-zero",
+                 "ad-implicit-tail")
 
 
 def volume(kind):
@@ -29,17 +32,75 @@ def volume(kind):
         image[pos + 4] = 0
         image[pos + 4] = sum(image[pos:pos + 16]) & 255
 
+    def allocation(extents, long):
+        return b"".join(struct.pack("<IIH6x", length | (type << 30), location, partition)
+                        if long else struct.pack("<II", length | (type << 30), location)
+                        for type, length, location, partition in extents)
     def descriptors(pos, extents, long=False):
         flags = struct.unpack_from("<H", image, pos + 34)[0]
         struct.pack_into("<H", image, pos + 34, (flags & ~3) | int(long))
-        data = b"".join(struct.pack("<IIH6x", length | (type << 30), location, partition)
-                        if long else struct.pack("<II", length | (type << 30), location)
-                        for type, length, location, partition in extents)
+        data = allocation(extents, long)
         struct.pack_into("<I", image, pos + 172, len(data))
         image[pos + 176:pos + block] = data + bytes(block - 176 - len(data))
         tag(pos, 176 + len(data))
 
-    if kind.startswith("metadata-"):
+    if kind.startswith("ad-"):
+        for sector in (34, 50):
+            pos = sector * block
+            struct.pack_into("<I", image, pos + 192, 100)
+            tag(pos, 16 + struct.unpack_from("<H", image, pos + 10)[0])
+        long = kind.endswith("long") or kind in ("ad-cross-partition", "ad-bad-partition")
+        def aed(logical, extents):
+            pos = ((360 if kind == "ad-cross-partition" else 257) + logical) * block
+            data = allocation(extents, long)
+            image[pos:pos + block] = bytes(block)
+            struct.pack_into("<HH", image, pos, 258, 2)
+            struct.pack_into("<I", image, pos + 12, logical)
+            struct.pack_into("<I", image, pos + 20, len(data))
+            image[pos + 24:pos + 24 + len(data)] = data
+            tag(pos, 24 + len(data))
+        if kind == "ad-cross-partition":
+            image[360 * block:381 * block] = image[257 * block:278 * block]
+            for source, target in ((34, 36), (50, 52)):
+                pos = target * block
+                image[pos:pos + block] = image[source * block:(source + 1) * block]
+                struct.pack_into("<I", image, pos + 12, target)
+                struct.pack_into("<H", image, pos + 22, 1)
+                struct.pack_into("<II", image, pos + 188, 360, 60)
+                tag(pos, 16 + struct.unpack_from("<H", image, pos + 10)[0])
+            for sector in (35, 51):
+                pos = sector * block
+                image[pos + 446:pos + 452] = image[pos + 440:pos + 446]
+                struct.pack_into("<H", image, pos + 450, 1)
+                struct.pack_into("<II", image, pos + 264, 12, 2)
+                tag(pos, 452)
+        partition = 1 if kind == "ad-cross-partition" else 99 if kind == "ad-bad-partition" else 0
+        target = 100 if kind == "ad-outside" else 21
+        directory = kind == "ad-directory"
+        initial = [(0, block, 15, 0)] if kind in ("ad-short", "ad-long") else []
+        descriptors(259 * block if directory else entry, initial + [(3, block, target, partition)], long)
+        count = 16 if kind == "ad-limit-16" else 17 if kind == "ad-limit-17" else 3 if "chain" in kind else 1
+        for i in range(count):
+            if i + 1 < count or kind == "ad-cycle":
+                extents = [(3, block, 21 if kind == "ad-cycle" else 22 + i, 0)]
+            elif directory:
+                extents = [(0, 180, 3, 0)]
+            elif kind in ("ad-short", "ad-long"):
+                extents = [(0, 3 * block, 16, 0)]
+            elif "chain" in kind:
+                extents = [(0, block, 15, 0), (2, block, 0xffffffff, 0), (0, 2 * block, 17, 0)]
+                files["alpha.bin"] = files["alpha.bin"][:block] + bytes(block) + files["alpha.bin"][2 * block:]
+            elif kind in ("ad-zero", "ad-implicit-tail"):
+                extents = [(0, block, 15, 0)] + ([(0, 0, 0, 0), (0, 3 * block, 16, 0)] if kind == "ad-zero" else [])
+                files["alpha.bin"] = files["alpha.bin"][:block] + bytes(3 * block)
+            else:
+                extents = [(0, 8192, 15, 1 if kind == "ad-cross-partition" else 0)]
+            aed(21 + i, extents)
+        if kind == "ad-overflow":
+            struct.pack_into("<I", image, (257 + 21) * block + 20, 0xffffffff)
+        if kind == "ad-over-block":
+            struct.pack_into("<I", image, (257 + 21) * block + 20, block - 23)
+    elif kind.startswith("metadata-"):
         # Keep user files on their original map; opening still has to read and
         # validate this additional metadata map before publishing any entries.
         pos = 277 * block

@@ -7,8 +7,9 @@
 Адаптированы `CPP/7zip/Archive/Udf/UdfIn.cpp`, `UdfIn.h`, `UdfHandler.cpp`
 под исходными путями в `src/`. Оба engine получают одни runtime overlays;
 [baseline](../upstream-baseline.json) фиксирует происхождение и зависимости.
-Неизменённые `UdfHandler.h`, `StdAfx.h`, регистрация, CRC16, buffers и stream
-helpers берутся из официального runtime snapshot. Уведомления и лицензия
+Неизменённые `UdfHandler.h`, `StdAfx.h`, `Common/MyMap.cpp`/`.h` сохранены в
+`third_party/7zip`; CRC16, buffers и stream helpers переиспользуются.
+Уведомления и лицензия
 7-Zip сохранены. Форматирование C++ учитывается отдельно от функционального diff.
 
 Linux: <https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git>,
@@ -87,8 +88,57 @@ macOS app собрана; actual CMake install прочитал все 17 вар
 Использованы постоянные incremental builds и compiler caches. Full/slow suites,
 UI и чтение физических устройств в этой итерации не проверялись.
 
+## Продолжения allocation descriptors
+
+Отдельный `sevenzip_udf` format-модуль передаёт short/long AD enumeration
+исходным Linux C-функциям. Скопированы полные, неизменённые тела
+`inode.c::udf_current_aext`, `udf_next_aext` и
+`directory.c::udf_get_fileshortad`, `udf_get_filelongad`.
+Предел consecutive indirections сохранён. `udf_i.h` сохраняет исходный
+`extent_position`, `udfend.h` — `lelb_to_cpu`; полный `ecma_167.h` перенесён
+без изменений. В `udfdecl.h` сохранён `udf_file_entry_alloc_offset`.
+Остальные тела этих Linux units пока не перенесены: они относятся к остальным
+UDF read paths или VFS/write services. Новая C ABI glue только связывает
+enumeration с имеющимися extents, information length и callbacks.
+
+Compatibility layer предоставляет owned block buffers и минимальные inode/sb
+services. Логические адреса возвращаются существующему partition mapper 7-Zip,
+а ошибки/отмена callbacks сохраняют HRESULT. Portable `linux/types.h` виден
+только трём C translation units; C++ и системные Linux headers используют
+свои типы. Уведомления, GPL-2.0 и лицензия 7-Zip устанавливаются вместе с модулем.
+GPL C не связан с core engine или unRAR codecs. Динамический engine передаёт
+регистрацию UDF этому модулю; standalone сохраняет прежний flat-AD reader.
+Таким образом новые continuation capabilities относятся к приложению и
+динамическому engine; standalone parity в этой области не заявляется.
+
+Сравнены полные исходные C bodies, callers, endian/disk types, существующие
+`ReadItem`, directory/metadata consumers и `CMap32` с зависимостями. Повторная
+сверка после переноса подтвердила неизменённость четырёх C bodies; адаптации
+ограничены block/stream services и archive enumeration boundary. AED headers
+обрабатываются с теми же length/buffer checks, что и Linux reader; отдельная
+новая CRC/tag policy для AED не изобреталась.
+
+Девять новых положительных fixtures проверяют FE+AED data, short/long chains,
+граничную глубину, directory continuation, второй физический partition,
+terminator и implicit tail в AED. Все совпали с read-only native Linux
+`6.8.0-146-generic`. Повреждения проверяют cycle, превышение глубины, адрес и
+partition reference вне диапазона, переполнение/выход AD length за block.
+ABI также проверяет source failure и отмену во время Open, пустой опубликованный
+каталог после ошибки и успешное повторное Open; retained streams и backend
+selected/source-entry extraction охватывают новые allocation variants.
+Backend получает UDF через штатный native codec catalog и проверяет read-only
+capability; CLI-тесты загружают изолированную копию только проверяемого модуля.
+
+Пять focused suites прошли на macOS arm64, Linux x64 и Windows x64/MSVC,
+Qt 6.12: receipt `20261019T203449Z-3d8c7921`. Расширенные catalog/backend
+проверки затем прошли на тех же трёх ОС, remote receipt
+`20261019T203621Z-3eb58fef`. macOS app собрана; actual CMake install прочитал
+все 26 положительных вариантов и сохранил точное содержимое двух UDF notices.
+Staging, native mounts и одноразовые образы удалены. Постоянные build trees и
+compiler caches сохранены; full/slow/UI/physical-device acceptance не выполнялась.
+
 Полный UDF read audit остаётся открытым. В частности, ещё требуются перенос
-allocation-continuation/indirect-ICB paths, VAT и sparable partitions,
+indirect-ICB paths, VAT и sparable partitions,
 полная metadata partition/mirror mapping, names/NLS, symlinks, специальные
 inode и metadata/read policies. Проверка этой итерации не означает завершение
 всех UDF возможностей или общей задачи форматов Linux. VFS, запись,

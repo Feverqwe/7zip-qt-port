@@ -473,6 +473,10 @@ private:
   HRESULT Read(unsigned volIndex, unsigned partitionRef, UInt32 blockPos, UInt32 len, Byte *buf);
   HRESULT ReadLad(unsigned volIndex, const CLongAllocDesc &lad, Byte *buf);
   HRESULT ReadFromFile(unsigned volIndex, const CItem &item, CByteBuffer &buf);
+#ifdef SEVENZIP_LINUX_UDF
+  HRESULT ReadLinuxExtents(unsigned volIndex, unsigned partitionRef, CItem &item, const Byte *data,
+                           UInt32 size);
+#endif
 
   HRESULT ReadFileItem(unsigned volIndex, unsigned fsIndex, const CLongAllocDesc &lad, bool isDir, int numRecurseAllowed);
   HRESULT ReadItem(unsigned volIndex, int fsIndex, const CLongAllocDesc &lad, bool isDir, int numRecurseAllowed);

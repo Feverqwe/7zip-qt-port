@@ -404,6 +404,7 @@ Z7_COM7F_IMF(CHandler::Extract(const UInt32 *indices, UInt32 numItems, Int32 tes
     COM_TRY_END
 }
 
+#if defined(SEVENZIP_LINUX_UDF) || !defined(Z7_EXTERNAL_CODECS)
 static const UInt32 kIsoStartPos = 0x8000;
 
 //  5, { 0, 'N', 'S', 'R', '0' },
@@ -421,5 +422,6 @@ REGISTER_ARC_I(
   NArcInfoFlags::kMultiSignature |
   NArcInfoFlags::kStartOpen,
   IsArc_Udf)
+#endif
 
 }}

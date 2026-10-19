@@ -2,6 +2,7 @@
 #include "Common/MyCom.h"
 #include "Windows/PropVariant.h"
 #include "archivebackend.h"
+#include "archivecodeccatalog.h"
 #include <QDir>
 #include <QFile>
 #include <QJsonDocument>
@@ -20,6 +21,7 @@ class Input final : public IInStream, public CMyUnknownImp {
 
   public:
     HRESULT failure = S_OK;
+    UInt64 failSeekAt = UINT64_MAX;
     explicit Input(QByteArray bytes) : bytes_(std::move(bytes)) {}
     Z7_COM7F_IMF(Read(void *data, UInt32 size, UInt32 *processed)) override {
         if (processed)
@@ -38,6 +40,8 @@ class Input final : public IInStream, public CMyUnknownImp {
     Z7_COM7F_IMF(Seek(Int64 offset, UInt32 origin, UInt64 *position)) override {
         if (failure != S_OK)
             return failure;
+        if (origin == STREAM_SEEK_SET && UInt64(offset) == failSeekAt)
+            return E_FAIL;
         if (origin > STREAM_SEEK_END)
             return E_INVALIDARG;
         const Int64 base = origin == STREAM_SEEK_SET   ? 0
@@ -63,6 +67,12 @@ class Extract final : public IArchiveExtractCallback, public CMyUnknownImp {
     }
     Z7_COM7F_IMF(PrepareOperation(Int32)) override { return S_OK; }
     Z7_COM7F_IMF(SetOperationResult(Int32)) override { return S_OK; }
+};
+class CancelOpen final : public IArchiveOpenCallback, public CMyUnknownImp {
+    Z7_COM_UNKNOWN_IMP_1(IArchiveOpenCallback)
+  public:
+    Z7_COM7F_IMF(SetTotal(const UInt64 *, const UInt64 *)) override { return S_OK; }
+    Z7_COM7F_IMF(SetCompleted(const UInt64 *, const UInt64 *)) override { return E_ABORT; }
 };
 } // namespace
 
@@ -164,6 +174,10 @@ class UdfStreamTests final : public QObject {
               "metadata-bootstrap", "implicit-tail", "implicit-hole", "eof-partition-tail",
               "terminator-short", "terminator-long"})
             QTest::newRow(kind) << QString::fromLatin1(kind);
+        for (const char *kind :
+             {"ad-short", "ad-long", "ad-chain-short", "ad-chain-long", "ad-limit-16",
+              "ad-directory", "ad-cross-partition", "ad-zero", "ad-implicit-tail"})
+            QTest::newRow(kind) << QString::fromLatin1(kind);
     }
     void allocationStreams() {
         QFETCH(QString, kind);
@@ -211,8 +225,32 @@ class UdfStreamTests final : public QObject {
         CMyComPtr<IArchiveExtractCallback> callback = new Extract;
         QCOMPARE(archive_->Extract(nullptr, UInt32(-1), 1, callback), E_ABORT);
     }
+    void continuationOpenFailureAndCancellation() {
+        fixture("ad-chain-long");
+        CMyComPtr2<IInStream, Input> input;
+        input.SetFromCls(new Input(bytes_));
+        input->failSeekAt = UInt64(257 + 21) * 2048;
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), E_FAIL);
+        UInt32 count = 99;
+        QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, UInt32(0));
+        input->failSeekAt = UINT64_MAX;
+        CMyComPtr<IArchiveOpenCallback> cancel = new CancelOpen;
+        QCOMPARE(archive_->Open(input, nullptr, cancel), E_ABORT);
+        QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, UInt32(0));
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        check(stream("alpha.bin"), QByteArray::fromHex(files_["alpha.bin"].toString().toLatin1()));
+    }
+    void backendExtraction_data() {
+        QTest::addColumn<QString>("kind");
+        for (const char *kind :
+             {"sparse-long", "ad-directory", "ad-chain-long", "ad-cross-partition"})
+            QTest::newRow(kind) << QString::fromLatin1(kind);
+    }
     void backendExtraction() {
-        fixture("sparse-long");
+        QFETCH(QString, kind);
+        fixture(kind);
         QTemporaryDir temporary;
         QVERIFY(temporary.isValid());
         QFile image(temporary.filePath(QString::fromUtf8("образ 空.udf")));
@@ -227,6 +265,19 @@ class UdfStreamTests final : public QObject {
                                             "7z"
 #endif
                                             ));
+        QSignalSpy ready(&backend, &ArchiveBackend::codecCatalogReady);
+        const QString core = runtime.filePath(
+#ifdef Q_OS_WIN
+            "7z.dll"
+#else
+            "7z.so"
+#endif
+        );
+        QVERIFY(backend.discoverCodecCatalog(core));
+        QTRY_COMPARE_WITH_TIMEOUT(ready.size(), 1, 15000);
+        QVERIFY2(ready[0][0].toBool(), qPrintable(ready[0][1].toString()));
+        QVERIFY(backend.codecCatalog()->formatIndex("Udf") >= 0);
+        QVERIFY(!backend.codecCatalog()->canUpdate("Udf"));
         QSignalSpy finished(&backend, &ArchiveBackend::finished);
         backend.list(image.fileName());
         QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 10000);

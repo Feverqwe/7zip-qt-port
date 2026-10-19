@@ -638,38 +638,39 @@ HRESULT CInArchive::ReadItem(unsigned volIndex, int fsIndex, const CLongAllocDes
   }
   else
   {
-    item.IsInline = false;
-    if (descType != ICB_DESC_TYPE_SHORT && descType != ICB_DESC_TYPE_LONG)
-      return S_FALSE;
-    for (UInt32 i = 0; i < allocDescriptorsLen;)
-    {
-      CMyExtent e;
-      if (descType == ICB_DESC_TYPE_SHORT)
-      {
-        if (i + 8 > allocDescriptorsLen)
+      item.IsInline = false;
+      if (descType != ICB_DESC_TYPE_SHORT && descType != ICB_DESC_TYPE_LONG)
           return S_FALSE;
-        CShortAllocDesc sad;
-        sad.Parse(p + pos + i);
-        e.Pos = sad.Pos;
-        e.Len = sad.Len;
-        e.PartitionRef = lad.Location.PartitionRef;
-        i += 8;
+#ifdef SEVENZIP_LINUX_UDF
+      RINOK(
+          ReadLinuxExtents(volIndex, lad.Location.PartitionRef, item, p + pos, allocDescriptorsLen))
+#else
+      for (UInt32 i = 0; i < allocDescriptorsLen;) {
+          CMyExtent e;
+          if (descType == ICB_DESC_TYPE_SHORT) {
+              if (i + 8 > allocDescriptorsLen)
+                  return S_FALSE;
+              CShortAllocDesc sad;
+              sad.Parse(p + pos + i);
+              e.Pos = sad.Pos;
+              e.Len = sad.Len;
+              e.PartitionRef = lad.Location.PartitionRef;
+              i += 8;
+          } else {
+              if (i + 16 > allocDescriptorsLen)
+                  return S_FALSE;
+              CLongAllocDesc ladNew;
+              ladNew.Parse(p + pos + i);
+              e.Pos = ladNew.Location.Pos;
+              e.PartitionRef = ladNew.Location.PartitionRef;
+              e.Len = ladNew.Len;
+              i += 16;
+          }
+          if (e.Len == 0)
+              break;
+          item.Extents.Add(e);
       }
-      else
-      {
-        if (i + 16 > allocDescriptorsLen)
-          return S_FALSE;
-        CLongAllocDesc ladNew;
-        ladNew.Parse(p + pos + i);
-        e.Pos = ladNew.Location.Pos;
-        e.PartitionRef = ladNew.Location.PartitionRef;
-        e.Len = ladNew.Len;
-        i += 16;
-      }
-      if (e.Len == 0)
-          break;
-      item.Extents.Add(e);
-    }
+#endif
   }
 
   if (isDir != item.IcbTag.IsDir())
