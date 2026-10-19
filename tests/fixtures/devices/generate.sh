@@ -26,3 +26,9 @@ dd if="$fixture/ext4.img" of="$fixture/gpt.img" bs=1M seek=1 conv=notrunc status
 for layout in ext2 ext3 ext4 mbr gpt; do
     gzip -n -c "$fixture/$layout.img" > "$destination/$layout.img.gz"
 done
+mkdir -p "$fixture/timestamp-input/.internal/twiMonBot"
+printf 'SELECT 1;\n' | gzip -n -c > "$fixture/timestamp-input/.internal/twiMonBot/2024-05-07T02:00:02Z.sql.gz"
+truncate -s 8M "$fixture/ext4-timestamp.img"
+mke2fs -q -t ext4 -b 1024 -I 256 -O ^has_journal \
+    -d "$fixture/timestamp-input" -F "$fixture/ext4-timestamp.img"
+gzip -n -c "$fixture/ext4-timestamp.img" > "$destination/ext4-timestamp.img.gz"

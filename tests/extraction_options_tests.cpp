@@ -36,6 +36,40 @@ class ExtractionOptionsTests : public QObject {
     }
 
   private slots:
+    void timestampFilenameRemainsInsideDestination() {
+#ifdef Q_OS_WIN
+        QSKIP("Colons are not ordinary Windows filename characters");
+#else
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString name = QStringLiteral("2024-05-07T02:00:02Z.sql.gz");
+        const QString source = fixture.filePath(name);
+        const QString archive = fixture.filePath("timestamp.zip");
+        const QString destination = fixture.filePath("output");
+        writeFile(source, "fixture SQL gzip bytes");
+        ArchiveBackend backend;
+        backend.create(archive, {source});
+        await(backend, true);
+        backend.list(archive);
+        await(backend, true);
+        QString error;
+        const QString output = QDir(destination).filePath(name);
+        QVERIFY2(ArchiveBackend::validateExtractionOutput(destination, output, false, &error),
+                 qPrintable(error));
+        backend.extract(archive, destination);
+        await(backend, true);
+        QCOMPARE(readFile(output), QByteArray("fixture SQL gzip bytes"));
+        QVERIFY(!ArchiveBackend::validateExtractionOutput(
+            destination, fixture.filePath("escape:outside.txt"), false, &error));
+        QVERIFY(QDir().mkpath(destination));
+        const QString linked = QDir(destination).filePath("link:inside");
+        if (QFile::link(fixture.path(), linked)) {
+            QVERIFY(!ArchiveBackend::validateExtractionOutput(destination, linked + "/escape.txt",
+                                                              false, &error));
+            QVERIFY(!QFileInfo::exists(fixture.filePath("escape.txt")));
+        }
+#endif
+    }
     void askOverwriteAfterCancelledProcessCanSucceed() {
         QTemporaryDir fixture;
         QVERIFY(fixture.isValid());

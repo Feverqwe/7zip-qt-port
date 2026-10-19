@@ -20,7 +20,10 @@ bool ArchiveBackend::safePath(const QString &path) {
     for (const QString &part : normalized.split('/')) {
         const QString base = part.section('.', 0, 0).toUpper();
         if (part.isEmpty() || part == ".." || part == "." || part.endsWith('.') ||
-            part.endsWith(' ') || part.contains(':') ||
+            part.endsWith(' ') ||
+#ifdef Q_OS_WIN
+            part.contains(':') ||
+#endif
             QRegularExpression(R"([\x00-\x1f])").match(part).hasMatch() || base == "CON" ||
             base == "PRN" || base == "AUX" || base == "NUL" ||
             QRegularExpression(R"(^(COM[1-9]|LPT[1-9])$)").match(base).hasMatch())
@@ -166,10 +169,11 @@ bool ArchiveBackend::validateExtraction(const QString &destination, const QStrin
         const QString streamName = entryPath.mid(currentFolder.size());
         // Original ArchiveExtractCallback::CorrectPathParts removes the base
         // and colon when extracting from an ADS folder. Validate that exact
-        // output name; ordinary colon paths remain refused.
+        // output name. Ordinary POSIX filenames may contain colons; ADS
+        // names still cannot contain a second stream separator.
         const bool safeStream = stream && entryPath.startsWith(currentFolder) && safePath(base) &&
                                 safePath(streamName) && !streamName.contains('/') &&
-                                !streamName.contains('\\');
+                                !streamName.contains('\\') && !streamName.contains(':');
         bool nativeStream = false;
 #ifdef Q_OS_WIN
         const int colon = boundedPath.indexOf(':');

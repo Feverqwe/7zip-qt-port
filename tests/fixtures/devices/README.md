@@ -14,3 +14,7 @@ tests compare observable content and partition boundaries, not binary identity.
 The ext3 sample has a clean journal. `mbr.img.gz` contains ext4 in a
 Linux partition. `gpt.img.gz` also has a second blank Linux-type partition to
 verify explicit partition selection and rejection of unsupported content.
+
+`ext4-timestamp.img.gz` contains a small gzip SQL sample under
+`.internal/twiMonBot/2024-05-07T02:00:02Z.sql.gz`. It reproduces copying a
+filename with colons through native device extraction and the panel commands.

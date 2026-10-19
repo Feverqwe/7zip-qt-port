@@ -1,6 +1,7 @@
 #include "CPP/7zip/UI/FileManager/LangUtils.h"
 #include "archivecodeccatalog.h"
 #include "archivecodecprobe.h"
+#include "copydialog.h"
 #include "deviceselectiondialog.h"
 #include "layout_inspection.h"
 #include "mainwindow.h"
@@ -273,22 +274,38 @@ class DeviceUiTests final : public QObject {
         QTest::addColumn<QString>("language");
         QTest::addColumn<bool>("needsRecovery");
         QTest::addColumn<bool>("acceptRecovery");
+        QTest::addColumn<QString>("copyCommand");
         for (const QString &language : {"en", "ru"}) {
-            QTest::newRow(qPrintable(language)) << language << false << false;
-            QTest::newRow(qPrintable(language + "-cancel-recovery")) << language << true << false;
-            QTest::newRow(qPrintable(language + "-accept-recovery")) << language << true << true;
+            QTest::newRow(qPrintable(language)) << language << false << false << QString();
+            QTest::newRow(qPrintable(language + "-cancel-recovery"))
+                << language << true << false << QString();
+            QTest::newRow(qPrintable(language + "-accept-recovery"))
+                << language << true << true << QString();
+            for (const QString &command : {"copyAction", "extractArchiveAction"})
+                QTest::newRow(qPrintable(language + '-' + command + "-timestamp"))
+                    << language << true << true << command;
         }
     }
     void menuToSourcePanelCopyRefreshAndParent() {
         QFETCH(QString, language);
         QFETCH(bool, needsRecovery);
         QFETCH(bool, acceptRecovery);
+        QFETCH(QString, copyCommand);
         SaveRegLang(UString(language == "en" ? L"-" : L"ru"),
                     qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
         auto bytes = std::make_shared<CDeviceBytes>(fixture_);
+        if (!copyCommand.isEmpty()) {
+            QProcess gzip;
+            gzip.start(engine_, {"x", "-so", "--",
+                                 QStringLiteral(DEVICE_FIXTURE_DIR "/ext4-timestamp.img.gz")});
+            QVERIFY(gzip.waitForFinished(10000));
+            QCOMPARE(gzip.exitCode(), 0);
+            bytes->Bytes = gzip.readAllStandardOutput();
+            QVERIFY(!bytes->Bytes.isEmpty());
+        }
         if (needsRecovery) {
             // Controlled Ext declarations inside the first GPT partition.
-            const int superblock = 1024 * 1024 + 1024;
+            const int superblock = copyCommand.isEmpty() ? 1024 * 1024 + 1024 : 1024;
             bytes->Bytes[superblock + 0x65] = char(quint8(bytes->Bytes[superblock + 0x65]) & ~4u);
             bytes->Bytes[superblock + 0x60] = char(quint8(bytes->Bytes[superblock + 0x60]) | 4u);
         }
@@ -341,7 +358,7 @@ class DeviceUiTests final : public QObject {
             auto *back = dialog->findChild<QPushButton *>("deviceBackButton");
             if (stage == 0 && Items(*dialog)->topLevelItemCount() == 2) {
                 Items(*dialog)->setCurrentItem(Items(*dialog)->topLevelItem(1));
-                ++stage;
+                stage = copyCommand.isEmpty() ? 1u : 2u;
                 Open(*dialog)->click();
             } else if (stage == 1 && back->isVisible()) {
                 Items(*dialog)->setCurrentItem(Items(*dialog)->topLevelItem(0));
@@ -367,8 +384,10 @@ class DeviceUiTests final : public QObject {
             QCOMPARE(stage, 2u);
         auto *table = window.findChild<QTableWidget *>("archiveTable");
         QVERIFY(table);
-        const QString folder = QStringLiteral("папка 空");
-        QTRY_VERIFY(Row(*table, folder) >= 0);
+        const QString folder = copyCommand.isEmpty() ? QStringLiteral("папка 空")
+                                                     : QStringLiteral(".internal/twiMonBot");
+        const QStringList folders = folder.split('/');
+        QTRY_VERIFY(Row(*table, folders.first()) >= 0);
         auto *badge = window.findChild<QLabel *>("deviceReadOnlyLabel");
         QVERIFY(badge && badge->isVisible());
         const QString badgeText = badge->text();
@@ -388,10 +407,18 @@ class DeviceUiTests final : public QObject {
                 window, (needsRecovery ? "device-journal-panel-" : "device-panel-") + language +
                             '-' + QString::number(size.width())));
         }
-        const int row = Row(*table, folder);
-        QVERIFY(QMetaObject::invokeMethod(table, "cellDoubleClicked", Qt::DirectConnection,
-                                          Q_ARG(int, row), Q_ARG(int, 0)));
-        const QString name = QStringLiteral("данные с пробелом.txt");
+        for (const QString &part : folders) {
+            QTRY_VERIFY(Row(*table, part) >= 0);
+            QVERIFY(QMetaObject::invokeMethod(table, "cellDoubleClicked", Qt::DirectConnection,
+                                              Q_ARG(int, Row(*table, part)), Q_ARG(int, 0)));
+        }
+        const QString name = copyCommand.isEmpty() ? QStringLiteral("данные с пробелом.txt")
+                                                   : QStringLiteral("2024-05-07T02:00:02Z.sql.gz");
+#ifdef Q_OS_WIN
+        const QString outputName = QString(name).replace(':', '_');
+#else
+        const QString outputName = name;
+#endif
         QTRY_VERIFY(Row(*table, name) >= 0);
         table->selectRow(Row(*table, name));
         table->setFocus();
@@ -402,20 +429,49 @@ class DeviceUiTests final : public QObject {
         const QString output = directory.filePath("copied");
         ExtractionOptions options;
         options.overwriteMode = ExtractionOptions::OverwriteMode::OverwriteExisting;
-        window.extractTo(output, true, {}, options);
-        QFile copied(output + '/' + folder + '/' + name);
+        if (copyCommand.isEmpty())
+            window.extractTo(output, true, {}, options);
+        else {
+            QVERIFY(QDir().mkpath(output));
+            bool dialogSeen = false;
+            QTimer::singleShot(0, &window, [&] {
+                if (auto *dialog = window.findChild<CopyDialog *>("copyDialog")) {
+                    dialogSeen = true;
+                    dialog->findChild<QComboBox *>("copyDestination")->setCurrentText(output + '/');
+                    dialog->accept();
+                }
+            });
+            window.findChild<QAction *>(qPrintable(copyCommand))->trigger();
+            QVERIFY(dialogSeen);
+        }
+        const QString copiedPath =
+            output + '/' + (copyCommand.isEmpty() ? folder + '/' : QString()) + outputName;
+        QTRY_VERIFY(QFileInfo::exists(copiedPath));
+        QFile copied(copiedPath);
         QVERIFY2(copied.open(QIODevice::ReadOnly), qPrintable(copied.fileName()));
-        QCOMPARE(copied.readAll(), QByteArray("device ext4 payload\n"));
+        const QByteArray copiedBytes = copied.readAll();
+        if (copyCommand.isEmpty())
+            QCOMPARE(copiedBytes, QByteArray("device ext4 payload\n"));
+        else {
+            QVERIFY(!copiedBytes.isEmpty());
+            QProcess gzip;
+            gzip.start(engine_, {"x", "-so", "--", copiedPath});
+            QVERIFY(gzip.waitForFinished(10000));
+            QCOMPARE(gzip.exitCode(), 0);
+            QCOMPARE(gzip.readAllStandardOutput(), QByteArray("SELECT 1;\n"));
+        }
         window.findChild<QAction *>("refreshAction")->trigger();
         QTRY_VERIFY(Row(*table, name) >= 0);
         QCOMPARE(badge->text(), badgeText);
-        window.findChild<QAction *>("parentFolderAction")->trigger();
-        QTRY_VERIFY(Row(*table, folder) >= 0);
+        for (int index = folders.size() - 1; index >= 0; --index) {
+            window.findChild<QAction *>("parentFolderAction")->trigger();
+            QTRY_VERIFY(Row(*table, folders[index]) >= 0);
+        }
         const QString allOutput = directory.filePath("whole-filesystem");
         window.extractTo(allOutput, false, {}, options);
-        QFile allCopied(allOutput + '/' + folder + '/' + name);
+        QFile allCopied(allOutput + '/' + folder + '/' + outputName);
         QVERIFY(allCopied.open(QIODevice::ReadOnly));
-        QCOMPARE(allCopied.readAll(), QByteArray("device ext4 payload\n"));
+        QCOMPARE(allCopied.readAll(), copiedBytes);
         window.findChild<QAction *>("parentFolderAction")->trigger();
         QTRY_VERIFY(!badge->isVisible());
         QVERIFY(QFileInfo::exists(copied.fileName()));

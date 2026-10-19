@@ -185,6 +185,9 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
   — исправление предварительного отказа для CPIO payload и повторное использование
   исходной коррекции путей.
 
+- [Имена с двоеточиями при извлечении на POSIX](upstream-port-audit/posix-colon-extraction.md)
+  — native ext4 RECOVER, F5/Extract и сохранение защиты путей/Windows ADS.
+
 При изменении перенесённого модуля добавлять сюда ссылку на отдельную запись
 в `docs/upstream-port-audit/`. Указывать дату, retrievable source repository,
 полный commit, пути/символы, copied/adapted/omitted scope, зависимости и причины
