@@ -94,6 +94,12 @@ def nonresident(original, entries, size, valid=None, flags=0, unit=0):
 
 
 def volume(kind="base"):
+    if kind.startswith("mft-list"):
+        from ntfs_mft_fixture import volume as mft_volume
+        return mft_volume(kind)
+    if any(kind.startswith("wof-" + codec) for codec in ("xpress", "lzx")):
+        from ntfs_wof_fixture import volume as wof_volume
+        return wof_volume(kind)
     image = bytearray(zlib.decompress(FIXTURE.read_bytes()))
     expected = dict(FILES)
     offset, rec = record(image, 64)
@@ -120,6 +126,14 @@ def volume(kind="base"):
         else:
             payload, expected["alpha"] = b"\x03\xb0\x02A\xfc\x0f" * 16, b"A" * 65536
         image[lcn * 4096:(lcn + 1) * 4096] = payload + bytes(4096 - len(payload))
+    elif kind == "cache-collision":
+        entries = [(1, lcn), (15, None), (1, lcn + 1), (15, None), (1, lcn + 2), (15, None)]
+        attr = nonresident(attr, entries, 3 * 65536, flags=1, unit=4)
+        for index, payload in enumerate((b"\x03\xb0\x02A\xfc\x0f" * 16,
+                                         b"\x03\xb0\x02B\xfc\x0f" * 16,
+                                         b"\x03\xb0\x02Z\x00\x10")):
+            image[(lcn + index) * 4096:(lcn + index + 1) * 4096] = payload + bytes(4096 - len(payload))
+        expected["alpha"] = b"A" * 65536 + b"B" * 65536
     elif kind == "encrypted":
         put(attr, 12, "H", 0x4000)
         expected.pop("alpha")

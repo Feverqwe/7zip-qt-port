@@ -323,14 +323,31 @@ void ArchiveBackend::extract(const QString &archive, const QString &destination,
             return;
         }
     }
+    // Console defaults to extracting ADS belonging to a selected ordinary file.
+    // Keep its selection within the entries validated above (Extract.cpp AltStreams).
+    bool alternateStreams = false;
+    QStringList excludedStreams;
+    for (const ArchiveEntry &entry : entries_) {
+        if (entry.properties.value(QStringLiteral("Alternate Stream")) != "+")
+            continue;
+        if (selectedEntries.isEmpty() || selectedEntries.contains(entry.path))
+            alternateStreams = true;
+        else
+            excludedStreams.append("-x!" + entry.path);
+    }
     QStringList arguments = {options.pathMode == ExtractionOptions::PathMode::NoPaths ? "e" : "x",
                              "-y",
                              "-bsp1",
                              "-bb1",
                              "-spd",
+                             alternateStreams ? "-sns" : "-sns-",
                              "-o" + outputDirectory,
                              "--",
                              QFileInfo(archive).absoluteFilePath()};
+    if (alternateStreams && !excludedStreams.isEmpty()) {
+        const int boundary = arguments.indexOf("--");
+        arguments = arguments.mid(0, boundary) + excludedStreams + arguments.mid(boundary);
+    }
     if (options.overwriteMode == ExtractionOptions::OverwriteMode::Ask ||
         options.overwriteMode == ExtractionOptions::OverwriteMode::SkipExisting)
         arguments.insert(2, "-aos");

@@ -281,8 +281,13 @@ standalone `7zz` сохраняет классический reader с общи�
 NTFS читает sparse и initialized data, compressed файлы и тома с сектором
 4 KiB с общими исправлениями обоих engines. Динамический runtime дополнительно
 использует Linux LZNT1, включая нулевое заполнение коротких compressed frames;
-standalone сохраняет классический декодер. EFS и пока не подключённый WOF
-возвращают явный отказ. Запись в NTFS не добавлялась.
+standalone сохраняет классический декодер. Динамический runtime также читает
+WOF LZX/XPRESS и MFT с дополнительными extents из attribute lists; standalone
+явно отклоняет эти расширения. EFS возвращает явный отказ, как в Linux.
+Запись в NTFS не добавлялась.
+Process extraction выбранного обычного файла исключает невыбранные ADS;
+WOF извлекается в декодированный файл без попытки записать служебный
+`WofCompressedData` в Windows. Явное чтение raw ADS остаётся отдельной операцией.
 [Scope и проверки](upstream-port-audit/ntfs-linux.md).
 
 Образы EROFS доступны для просмотра, проверки и извлечения, включая сжатые

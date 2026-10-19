@@ -32,7 +32,18 @@
     "fs/ntfs3/xattr.c": "46d16b017617a5ab75f60a811be0fef6c4bcfe27f1c653c8ff6fae829a5e13dd"
   },
   "adapted": [
-    "fs/ntfs3/lznt.c"
+    "fs/ntfs3/attrib.c",
+    "fs/ntfs3/attrlist.c",
+    "fs/ntfs3/frecord.c",
+    "fs/ntfs3/fsntfs.c",
+    "fs/ntfs3/lib/decompress_common.h",
+    "fs/ntfs3/lib/lib.h",
+    "fs/ntfs3/lznt.c",
+    "fs/ntfs3/ntfs.h"
   ],
-  "exact": []
+  "exact": [
+    "fs/ntfs3/lib/decompress_common.c",
+    "fs/ntfs3/lib/lzx_decompress.c",
+    "fs/ntfs3/lib/xpress_decompress.c"
+  ]
 }

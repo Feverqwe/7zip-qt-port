@@ -29,6 +29,7 @@
 #include "../Compress/CopyCoder.h"
 #ifdef SEVENZIP_LINUX_NTFS
 #include "../../../ntfsdecoder.h"
+#include "../../../ntfswofstream.h"
 #endif
 
 #include "Common/DummyOutStream.h"
@@ -359,7 +360,7 @@ struct CAttr {
     // UInt32 Len;
     UString2 Name;
     UInt16 Flags;
-    // UInt16 Instance;
+    UInt16 Instance;
     CByteBuffer Data;
 
     // Non-Resident
@@ -457,7 +458,7 @@ unsigned CAttr::ParseAttr(const Byte *const p, const unsigned size, UInt32 &type
         }
     }
     G16(p + 0x0C, Flags);
-    // G16(p + 0x0E, Instance);
+    G16(p + 0x0E, Instance);
     // PRF(printf(" F=%4X", Flags));
     // PRF(printf(" Inst=%d", Instance));
 
@@ -963,6 +964,7 @@ Z7_COM7F_IMF(CInStream::Read(void *const data, UInt32 size, UInt32 *const proces
             destLen = (size_t)rem;
 
         Byte *const dest = _outBuf + (cacheIndex << _chunkSizeLog);
+        _tags[cacheIndex] = kEmptyTag;
 #ifdef SEVENZIP_LINUX_NTFS
         if (InUse) {
             if (sevenzip_ntfs_lznt(_inBuf, offs, dest, destLenMax) != 0)
@@ -1125,9 +1127,11 @@ struct CMftRec {
                      // that record
     int ReparseDataIndex;
     bool Wof;
+    UInt32 WofFormat;
 
     CObjectVector<CAttr> DataAttrs; // will be sorted by CAttr::Name and CAttr::LowVcn
     CObjectVector<CAttr> ReparseAttrs;
+    CObjectVector<CAttr> AttrListAttrs;
     CObjectVector<CFileNameAttr> FileNames;
     /* usually there is one FileName per CMftRec record,
        but there are additional names for Hard links or for DosName. */
@@ -1212,7 +1216,7 @@ struct CMftRec {
 
     CMftRec()
         : SeqNumber(0), Flags(0), MyNumNameLinks(0), MyItemIndex(-1), ReparseDataIndex(-1),
-          Wof(false) {}
+          Wof(false), WofFormat((UInt32)-1) {}
 };
 
 void CMftRec::ParseDataNames() {
@@ -1231,8 +1235,42 @@ HRESULT CMftRec::GetStream(IInStream *mainStream, const int dataIndex,
                            IInStream **destStream,
                            CMyComPtr2<IInStream, CInStream> *inStream_Object) const {
     *destStream = NULL;
-    if (Wof && (dataIndex < 0 || DataAttrs[dataIndex].Name.IsEmpty()))
-        return E_NOTIMPL;
+    if (Wof && (dataIndex < 0 || DataAttrs[dataIndex].Name.IsEmpty())) {
+        if (dataIndex < 0)
+            return E_NOTIMPL;
+        const CAttr &data = DataAttrs[dataIndex];
+        if (data.NonResident && data.Size && data.InitializedSize) {
+            if (WofFormat > 3)
+                return E_NOTIMPL;
+#ifdef SEVENZIP_LINUX_NTFS
+            if (data.Flags & 0x4000)
+                return E_NOTIMPL;
+            CRecordVector<CExtent> extents;
+            RINOK(DataParseExtents(clusterSizeLog, DataAttrs, (unsigned)dataIndex, numPhysClusters,
+                                   extents))
+            for (unsigned i = 0; i < DataAttrs.Size(); i = DataAttrs[i].NextAttrIndex) {
+                const CAttr &ads = DataAttrs[i];
+                if (ads.Name.IsEmpty() || ads.Name.Compare(L"WofCompressedData") != 0)
+                    continue;
+                CMftRec adsRecord;
+                adsRecord.Flags = Flags;
+                adsRecord.DataAttrs = DataAttrs;
+                CMyComPtr<IInStream> adsStream;
+                RINOK(adsRecord.GetStream(mainStream, (int)i, clusterSizeLog, numPhysClusters,
+                                          &adsStream))
+                const unsigned bits = WofFormat == 1   ? 15
+                                      : WofFormat == 2 ? 13
+                                      : WofFormat == 3 ? 14
+                                                       : 12;
+                return SevenzipNtfsWofStream(adsStream, data.Size, data.InitializedSize,
+                                             ads.GetSize(), bits, destStream);
+            }
+            return S_FALSE;
+#else
+            return E_NOTIMPL;
+#endif
+        }
+    }
     CBufferInStream *streamSpec = new CBufferInStream;
     CMyComPtr<IInStream> streamTemp = streamSpec;
 
@@ -1403,6 +1441,9 @@ bool CMftRec::ParseRec(Byte *const p, const unsigned sectorSizeLog, const unsign
         case ATTR_TYPE_DATA:
             DataAttrs.Add(attr);
             break;
+        case ATTR_TYPE_ATTRIBUTE_LIST:
+            AttrListAttrs.Add(attr);
+            break;
         case ATTR_TYPE_REPARSE_POINT:
             ReparseAttrs.Add(attr);
             break;
@@ -1563,6 +1604,9 @@ struct CDatabase {
     }
 
     HRESULT ParseSecuritySDS(ISequentialInStream *stream, const size_t size);
+#ifdef SEVENZIP_LINUX_NTFS
+    HRESULT LoadMftAttributes(CMftRec &rec);
+#endif
 };
 
 HRESULT CDatabase::SeekToCluster(UInt64 cluster) {
@@ -1771,6 +1815,133 @@ HRESULT CDatabase::ParseSecuritySDS(ISequentialInStream *stream, const size_t si
     return S_OK;
 }
 
+#ifdef SEVENZIP_LINUX_NTFS
+// NTFS3 ntfs_read_mft/ni_enum_attr_ex: extend the currently readable MFT mapping
+// through list entries before opening the complete MFT as a regular stream.
+HRESULT CDatabase::LoadMftAttributes(CMftRec &rec) {
+    if (rec.AttrListAttrs.IsEmpty())
+        return S_OK;
+    if (rec.AttrListAttrs.Size() != 1 || !rec.AttrListAttrs[0].Name.IsEmpty() ||
+        !rec.DataAttrs[0].Name.IsEmpty() || !rec.DataAttrs[0].NonResident ||
+        rec.DataAttrs[0].LowVcn || (rec.DataAttrs[0].Flags & 0xc0ff))
+        return S_FALSE;
+    const UInt64 mftSize = rec.DataAttrs[0].Size;
+    if ((mftSize >> Header.MftRecordSizeLog) > (1u << 30))
+        return S_FALSE;
+    CMftRec listRecord;
+    listRecord.Flags = rec.Flags;
+    listRecord.DataAttrs = rec.AttrListAttrs;
+    listRecord.ParseDataNames();
+    const UInt64 listSize = listRecord.DataAttrs[0].GetSize();
+    if (!listSize || listSize > Header.GetPhySize_Clusters() || listSize > SIZE_MAX)
+        return S_FALSE;
+    CMyComPtr<IInStream> listStream;
+    RINOK(listRecord.GetStream(InStream, 0, Header.ClusterSizeLog, Header.NumClusters, &listStream))
+    CByteBuffer list;
+    list.Alloc((size_t)listSize);
+    RINOK(ReadStream_FALSE(listStream, list, (size_t)listSize))
+
+    CMyComPtr2<IInStream, CInStream> partial;
+    partial.Create_if_Empty();
+    partial->Stream = InStream;
+    partial->BlockSizeLog = Header.ClusterSizeLog;
+    partial->InUse = true;
+    CExtent end;
+    end.Virt = 0;
+    end.Phy = kEmptyExtent;
+    partial->Extents.Add(end);
+    if (!rec.DataAttrs[0].ParseExtents(partial->Extents, Header.NumClusters, 0, false))
+        return S_FALSE;
+    partial->Size = MyMin(mftSize, partial->Extents.Back().Virt << Header.ClusterSizeLog);
+    partial->InitializedSize = partial->Size;
+    RINOK(partial->InitAndSeek(0))
+    const size_t recSize = (size_t)1 << Header.MftRecordSizeLog;
+    CByteBuffer buffer;
+    buffer.Alloc(recSize);
+    size_t cursor = SIZE_MAX;
+    bool dataFound = false;
+    UInt64 previousVcn = 0;
+    for (;;) {
+        sevenzip_ntfs_list_entry entry;
+        const int next = sevenzip_ntfs_list_next(list, (size_t)listSize, &cursor, &entry);
+        if (next < 0)
+            return S_FALSE;
+        if (!next)
+            break;
+        if (entry.type != ATTR_TYPE_DATA || entry.name_len)
+            continue;
+        if ((!dataFound && entry.vcn) || (dataFound && entry.vcn <= previousVcn))
+            return S_FALSE;
+        dataFound = true;
+        previousVcn = entry.vcn;
+        CMftRef reference;
+        reference.Val = entry.ref;
+        const UInt64 number = reference.GetIndex();
+        CMftRec extension;
+        const CMftRec *owner = &rec;
+        if (number) {
+            if (number >= (mftSize >> Header.MftRecordSizeLog))
+                return S_FALSE;
+            const UInt64 offset = number << Header.MftRecordSizeLog;
+            if (offset <= partial->Size && recSize <= partial->Size - offset) {
+                RINOK(InStream_SeekSet(partial, offset))
+                RINOK(ReadStream_FALSE(partial, buffer, recSize))
+            } else {
+                // NTFS3 seeds the first three contiguous MFT records at bootstrap.
+                if (number >= 3)
+                    return S_FALSE;
+                const UInt64 physical = (Header.MftCluster << Header.ClusterSizeLog) + offset;
+                if (physical > Header.GetPhySize_Clusters() ||
+                    recSize > Header.GetPhySize_Clusters() - physical)
+                    return S_FALSE;
+                RINOK(InStream_SeekSet(InStream, physical))
+                RINOK(ReadStream_FALSE(InStream, buffer, recSize))
+            }
+            if (!extension.ParseRec(buffer, 9, (unsigned)(recSize >> 9), (unsigned)number,
+                                    ReparseDataVector, NULL) ||
+                !extension.Is_Magic_FILE() || !extension.InUse() ||
+                extension.BaseMftRef.GetIndex() != 0 ||
+                extension.BaseMftRef.GetNumber() != rec.SeqNumber ||
+                !extension.AttrListAttrs.IsEmpty())
+                return S_FALSE;
+            owner = &extension;
+        }
+        if (owner->SeqNumber != reference.GetNumber())
+            return S_FALSE;
+        bool found = false;
+        for (unsigned i = 0; i < owner->DataAttrs.Size(); ++i) {
+            const CAttr &attr = owner->DataAttrs[i];
+            if (attr.Instance != entry.id || !attr.Name.IsEmpty() || attr.LowVcn != entry.vcn)
+                continue;
+            if (!attr.NonResident || (attr.Flags & 0xc0ff))
+                return S_FALSE;
+            if (entry.vcn) {
+                if (!attr.ParseExtents(partial->Extents, Header.NumClusters, 0, false))
+                    return S_FALSE;
+                if (number)
+                    rec.DataAttrs.Add(attr);
+                partial->Size =
+                    MyMin(mftSize, partial->Extents.Back().Virt << Header.ClusterSizeLog);
+                partial->InitializedSize = partial->Size;
+                RINOK(partial->InitAndSeek(0))
+            }
+            found = true;
+            break;
+        }
+        if (!found)
+            return S_FALSE;
+        if (OpenCallback) {
+            const UInt64 completed = cursor;
+            RINOK(OpenCallback->SetCompleted(NULL, &completed))
+        }
+    }
+    if (!dataFound)
+        return S_FALSE;
+    rec.ParseDataNames();
+    return S_OK;
+}
+#endif
+
 HRESULT CDatabase::Open() {
     Clear();
     /* NTFS layout:
@@ -1843,6 +2014,9 @@ HRESULT CDatabase::Open() {
                 return S_FALSE;
             if (mftRec.DataAttrs[0].NonResident == 0)
                 return S_FALSE;
+#ifdef SEVENZIP_LINUX_NTFS
+            RINOK(LoadMftAttributes(mftRec))
+#endif
             const int dataIndex = 0; // first stream in DataAttrs[]
             RINOK(mftRec.GetStream(InStream, dataIndex, Header.ClusterSizeLog, Header.NumClusters,
                                    &mftStream))
@@ -2005,6 +2179,9 @@ HRESULT CDatabase::Open() {
         }
         rec.ReparseDataIndex = (int)ReparseDataVector.Add(data);
         rec.Wof = size >= 4 && Get32(data) == 0x80000017;
+        if (rec.Wof && size >= 24 && Get16(data + 4) >= 16 && Get32(data + 8) == 1 &&
+            Get32(data + 12) == 2 && Get32(data + 16) == 1)
+            rec.WofFormat = Get32(data + 20);
         rec.ReparseAttrs.ClearAndFree();
     }
 

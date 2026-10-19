@@ -2,6 +2,10 @@
 add_library(sevenzip_ntfs MODULE
     src/CPP/7zip/Archive/NtfsHandler.cpp src/exfatmodule.cpp
     src/ntfsdecoder.c src/fs/ntfs3/lznt.c
+    src/ntfswofstream.cpp src/fs/ntfs3/attrib.c src/fs/ntfs3/frecord.c
+    src/fs/ntfs3/attrlist.c src/fs/ntfs3/fsntfs.c
+    src/fs/ntfs3/lib/decompress_common.c src/fs/ntfs3/lib/lzx_decompress.c
+    src/fs/ntfs3/lib/xpress_decompress.c
     third_party/7zip/CPP/7zip/Archive/ArchiveExports.cpp
     third_party/7zip/CPP/7zip/Common/StreamUtils.cpp
     third_party/7zip/CPP/7zip/Common/StreamObjects.cpp

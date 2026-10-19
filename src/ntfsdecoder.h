@@ -2,10 +2,26 @@
 #ifndef SEVENZIP_NTFS_DECODER_H
 #define SEVENZIP_NTFS_DECODER_H
 #include <stddef.h>
+#include <stdint.h>
 #ifdef __cplusplus
 extern "C" {
 #endif
 int sevenzip_ntfs_lznt(const void *, size_t, void *, size_t);
+typedef int (*sevenzip_ntfs_read_fn)(void *, uint64_t, void *, size_t);
+struct sevenzip_ntfs_wof;
+struct sevenzip_ntfs_wof *sevenzip_ntfs_wof_create(uint64_t file_size, uint64_t ads_size,
+                                                   unsigned frame_bits, sevenzip_ntfs_read_fn,
+                                                   void *);
+void sevenzip_ntfs_wof_destroy(struct sevenzip_ntfs_wof *);
+int sevenzip_ntfs_wof_read_frame(struct sevenzip_ntfs_wof *, uint64_t frame, void *output);
+struct sevenzip_ntfs_list_entry {
+    uint64_t ref, vcn;
+    uint32_t type;
+    uint16_t id;
+    uint8_t name_len;
+};
+int sevenzip_ntfs_list_next(const void *, size_t, size_t *cursor,
+                            struct sevenzip_ntfs_list_entry *);
 #ifdef __cplusplus
 }
 #endif

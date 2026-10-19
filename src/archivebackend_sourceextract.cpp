@@ -23,10 +23,8 @@ void ArchiveBackend::extractSourceEntry(const QString &archive, const QString &e
     createTemporary_ = QFileInfo(output).absoluteFilePath();
     pendingPassword_ = password;
     QStringList arguments{"x", "-y", "-so", "-bso0", "-bse2", "-bsp2", "-spd", "-ssc"};
-    // Original native kpidIsAltStream controls the Console transport. Unix
-    // skips ADS without this switch; ordinary stdout must stay one payload.
-    if (isAltStream)
-        arguments.append("-sns");
+    // Explicitly choose one payload: ordinary files must not implicitly include ADS.
+    arguments.append(isAltStream ? "-sns" : "-sns-");
     if (!format.isEmpty())
         arguments.append("-t" + format);
     sourceExtractSelection_.reset();

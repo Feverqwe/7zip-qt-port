@@ -184,9 +184,28 @@ class NtfsStreamTests final : public QObject {
     void initTestCase() { createArchive(); }
     void reads_data() {
         QTest::addColumn<QString>("kind");
-        for (const char *kind :
-             {"base", "sparse", "hole-first", "initialized", "compressed", "short-compressed",
-              "sector4k", "boot-reserved", "backup-boot", "reparse"})
+        for (const char *kind : {"base",
+                                 "sparse",
+                                 "hole-first",
+                                 "initialized",
+                                 "compressed",
+                                 "short-compressed",
+                                 "sector4k",
+                                 "boot-reserved",
+                                 "backup-boot",
+                                 "reparse",
+                                 "mft-list",
+                                 "mft-list-nonresident",
+                                 "wof-xpress4k",
+                                 "wof-xpress8k",
+                                 "wof-xpress16k",
+                                 "wof-lzx32k",
+                                 "wof-xpress4k-resident",
+                                 "wof-xpress8k-resident",
+                                 "wof-xpress16k-resident",
+                                 "wof-lzx32k-resident",
+                                 "wof-lzx32k-initialized",
+                                 "wof-xpress4k-uninitialized"})
             QTest::newRow(kind) << QString::fromLatin1(kind);
     }
     void reads() {
@@ -215,8 +234,14 @@ class NtfsStreamTests final : public QObject {
                      QByteArray("a\0l\0p\0h\0a\0", 10));
         }
     }
+    void interleavedStreamsSurviveArchive_data() {
+        QTest::addColumn<QString>("kind");
+        for (const char *kind : {"base", "wof-xpress4k", "wof-lzx32k"})
+            QTest::newRow(kind) << QString::fromLatin1(kind);
+    }
     void interleavedStreamsSurviveArchive() {
-        loadFixture("base");
+        QFETCH(QString, kind);
+        loadFixture(kind);
         auto *source = new Input(bytes_);
         CMyComPtr<IInStream> input = source;
         QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
@@ -233,7 +258,9 @@ class NtfsStreamTests final : public QObject {
                      .mid(19, 19));
         QCOMPARE(input->Seek(17, STREAM_SEEK_SET, nullptr), S_OK);
         QCOMPARE(second->Read(data, sizeof(data), &count), S_OK);
-        QCOMPARE(QByteArray(data, count), QByteArray(19, 'B'));
+        QCOMPARE(QByteArray(data, count),
+                 QByteArray::fromBase64(record_["files"].toObject()["gamma"].toString().toLatin1())
+                     .mid(19, 19));
         QCOMPARE(archive_->Close(), S_OK);
         CMyComPtr<IInStream> next = new Input(bytes_);
         QCOMPARE(archive_->Open(next, nullptr, nullptr), S_OK);
@@ -241,6 +268,7 @@ class NtfsStreamTests final : public QObject {
         input.Release();
         check(first, "alpha", 8191, 8193);
         check(second, "gamma", 32500, 9000);
+        check(second, "gamma", 0, 8200);
         check(resident, QStringLiteral("данные 空"), 0, 100);
         createArchive();
     }
@@ -248,6 +276,8 @@ class NtfsStreamTests final : public QObject {
         QTest::addColumn<QString>("kind");
         QTest::newRow("raw") << QString("base");
         QTest::newRow("compressed") << QString("compressed");
+        QTest::newRow("WOF-XPRESS") << QString("wof-xpress4k");
+        QTest::newRow("WOF-LZX") << QString("wof-lzx32k");
     }
     void errorsAndRetry() {
         QFETCH(QString, kind);
@@ -255,7 +285,8 @@ class NtfsStreamTests final : public QObject {
         auto *source = new Input(bytes_);
         CMyComPtr<IInStream> input = source;
         QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
-        auto file = stream("alpha");
+        const QString name = kind.startsWith("wof") ? "gamma" : "alpha";
+        auto file = stream(name);
         QVERIFY(file);
         char data[19];
         UInt32 count = 99;
@@ -265,7 +296,7 @@ class NtfsStreamTests final : public QObject {
         source->failure = E_ABORT;
         QCOMPARE(file->Read(data, sizeof(data), &count), E_ABORT);
         source->failure = S_OK;
-        check(file, "alpha", 0, 8200);
+        check(file, name, 0, 8200);
         QCOMPARE(file->Seek(INT64_MIN, STREAM_SEEK_CUR, nullptr),
                  HRESULT_WIN32_ERROR_NEGATIVE_SEEK);
         QCOMPARE(file->Seek(INT64_MAX, STREAM_SEEK_CUR, nullptr), E_INVALIDARG);
@@ -277,7 +308,7 @@ class NtfsStreamTests final : public QObject {
         CMyComPtr2<IArchiveExtractCallback, Extract> callback;
         callback.Create_if_Empty();
         callback->cancel = true;
-        const UInt32 id = index("alpha");
+        const UInt32 id = index(name);
         QCOMPARE(archive_->Extract(&id, 1, true, callback), E_ABORT);
         callback->cancel = false;
         QCOMPARE(archive_->Extract(&id, 1, true, callback), S_OK);
@@ -291,7 +322,7 @@ class NtfsStreamTests final : public QObject {
         QTest::newRow("normal-virtual-over-volume")
             << QString("normal-virtual-over-volume") << HRESULT(S_FALSE);
         QTest::newRow("encrypted") << QString("encrypted") << HRESULT(E_NOTIMPL);
-        QTest::newRow("WOF") << QString("wof") << HRESULT(E_NOTIMPL);
+        QTest::newRow("WOF-missing-ADS") << QString("wof") << HRESULT(S_FALSE);
         QTest::newRow("WOF-without-unnamed-data") << QString("wof-empty") << HRESULT(E_NOTIMPL);
         QTest::newRow("bad-compressed") << QString("bad-compressed") << HRESULT(S_OK);
     }
@@ -325,16 +356,105 @@ class NtfsStreamTests final : public QObject {
                            ? NArchive::NExtract::NOperationResult::kUnsupportedMethod
                            : NArchive::NExtract::NOperationResult::kDataError));
     }
-    void invalidInitializedSizeRejectsOpenAndReuses() {
-        loadFixture("invalid-initialized");
+    void corruptMetadataRejectsOpenAndReuses_data() {
+        QTest::addColumn<QString>("kind");
+        for (const char *kind : {"invalid-initialized", "mft-list-bad-sequence", "mft-list-bad-id",
+                                 "mft-list-unmapped", "mft-list-bad-list"})
+            QTest::newRow(kind) << QString::fromLatin1(kind);
+    }
+    void corruptMetadataRejectsOpenAndReuses() {
+        QFETCH(QString, kind);
+        loadFixture(kind);
         CMyComPtr<IInStream> input = new Input(bytes_);
         QCOMPARE(archive_->Open(input, nullptr, nullptr), S_FALSE);
         loadFixture("base");
         input = new Input(bytes_);
         QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
     }
+    void wofCorruptionDoesNotPublishPartialCachedOutput_data() {
+        QTest::addColumn<QString>("kind");
+        QTest::addColumn<int>("badOffset");
+        for (const char *codec : {"xpress4k", "lzx32k"}) {
+            const int size = QString(codec).startsWith("lzx") ? 32768 : 4096;
+            QTest::newRow(qPrintable(QString(codec) + "-frame"))
+                << (QString("wof-") + codec + "-bad-frame") << (2 * size);
+            QTest::newRow(qPrintable(QString(codec) + "-table"))
+                << (QString("wof-") + codec + "-bad-table") << size;
+        }
+        QTest::newRow("short-ADS") << QString("wof-xpress4k-short-ads") << 0;
+    }
+    void lzntFailureDoesNotRetainPreviousCacheTag() {
+        loadFixture("cache-collision");
+        CMyComPtr<IInStream> input = new Input(bytes_);
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        auto file = stream("alpha");
+        QVERIFY(file);
+        check(file, "alpha", 0, 100);
+        QCOMPARE(file->Seek(2 * 65536, STREAM_SEEK_SET, nullptr), S_OK);
+        char data[100];
+        UInt32 count = 99;
+        QCOMPARE(file->Read(data, sizeof(data), &count), S_FALSE);
+        QCOMPARE(count, 0u);
+        check(file, "alpha", 0, 100);
+    }
+    void largeWofUses64bitOffsetsAcrossTablePages() {
+        loadFixture("wof-lzx32k-large");
+        CMyComPtr<IInStream> input = new Input(bytes_);
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        auto file = stream("gamma");
+        QVERIFY(file);
+        const auto files = record_["files"].toObject();
+        const QByteArray tail = QByteArray::fromBase64(files["large-last"].toString().toLatin1());
+        NWindows::NCOM::CPropVariant size;
+        QCOMPARE(archive_->GetProperty(index("gamma"), kpidSize, &size), S_OK);
+        QCOMPARE(size.uhVal.QuadPart, (UInt64(1) << 32) + UInt64(tail.size()));
+        QCOMPARE(file->Seek(Int64(1) << 32, STREAM_SEEK_SET, nullptr), S_OK);
+        QByteArray actual(tail.size(), '\0');
+        UInt32 count = 0;
+        QCOMPARE(file->Read(actual.data(), UInt32(actual.size()), &count), S_OK);
+        QCOMPARE(count, UInt32(actual.size()));
+        QCOMPARE(actual, tail);
+        for (int frame : {0, 511, 512, 513, 0}) {
+            QCOMPARE(file->Seek(Int64(frame) << 15, STREAM_SEEK_SET, nullptr), S_OK);
+            actual.resize(100);
+            QCOMPARE(file->Read(actual.data(), 100, &count), S_OK);
+            QCOMPARE(count, 100u);
+            QCOMPARE(actual, QByteArray(100, 'A'));
+        }
+    }
+    void wofCorruptionDoesNotPublishPartialCachedOutput() {
+        QFETCH(QString, kind);
+        QFETCH(int, badOffset);
+        loadFixture(kind);
+        CMyComPtr<IInStream> input = new Input(bytes_);
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        auto file = stream("gamma");
+        QVERIFY(file);
+        if (badOffset)
+            check(file, "gamma", 0, 100);
+        char bytes[100];
+        UInt32 count = 99;
+        for (int i = 0; i < 2; ++i) {
+            QCOMPARE(file->Seek(badOffset, STREAM_SEEK_SET, nullptr), S_OK);
+            QCOMPARE(file->Read(bytes, sizeof(bytes), &count), S_FALSE);
+            QCOMPARE(count, 0u);
+        }
+        if (badOffset)
+            check(file, "gamma", 0, 100);
+        CMyComPtr2<IArchiveExtractCallback, Extract> callback;
+        callback.Create_if_Empty();
+        const UInt32 id = index("gamma");
+        QCOMPARE(archive_->Extract(&id, 1, true, callback), S_OK);
+        QCOMPARE(callback->result, Int32(NArchive::NExtract::NOperationResult::kDataError));
+    }
+    void openPropagatesMftSeekFailureAndCancellation_data() {
+        QTest::addColumn<QString>("kind");
+        QTest::newRow("classic") << QString("base");
+        QTest::newRow("MFT-list") << QString("mft-list");
+    }
     void openPropagatesMftSeekFailureAndCancellation() {
-        loadFixture("base");
+        QFETCH(QString, kind);
+        loadFixture(kind);
         auto *source = new Input(bytes_);
         CMyComPtr<IInStream> input = source;
         source->failSeekAt = qFromLittleEndian<quint64>(bytes_.constData() + 0x30) * 4096;
@@ -354,6 +474,9 @@ class NtfsStreamTests final : public QObject {
         QTest::newRow("sparse") << QString("sparse");
         QTest::newRow("compressed") << QString("short-compressed");
         QTest::newRow("corrupt") << QString("run-over-volume");
+        QTest::newRow("WOF-XPRESS") << QString("wof-xpress4k");
+        QTest::newRow("WOF-LZX") << QString("wof-lzx32k");
+        QTest::newRow("fragmented-MFT") << QString("mft-list-nonresident");
     }
     void backendSelectedExtraction() {
         QFETCH(QString, kind);
@@ -397,15 +520,31 @@ class NtfsStreamTests final : public QObject {
         }));
         finished.clear();
         const QString output = runtime.filePath("output");
-        backend.extract(path, output, {"alpha"});
+        const QString name = kind.startsWith("wof") ? "gamma" : "alpha";
+        backend.extract(path, output, {name});
         QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 10000);
-        QCOMPARE(finished[0][0].toBool(), kind != "run-over-volume");
+        QVERIFY2(finished[0][0].toBool() == (kind != "run-over-volume"),
+                 qPrintable(finished[0][1].toString()));
         if (kind != "run-over-volume") {
-            QFile file(QDir(output).filePath("alpha"));
+            QFile file(QDir(output).filePath(name));
             QVERIFY(file.open(QIODevice::ReadOnly));
-            QCOMPARE(
-                file.readAll(),
-                QByteArray::fromBase64(record_["files"].toObject()["alpha"].toString().toLatin1()));
+            QCOMPARE(file.readAll(), QByteArray::fromBase64(
+                                         record_["files"].toObject()[name].toString().toLatin1()));
+        }
+        if (kind.startsWith("wof")) {
+            for (const QString &entry : {QString("gamma"), QString("gamma:WofCompressedData")}) {
+                finished.clear();
+                const QString saved =
+                    runtime.filePath(entry == "gamma" ? "decoded.bin" : "packed.bin");
+                backend.extractSourceEntry(path, entry, saved, "NTFS", {}, entry.contains(':'));
+                QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 10000);
+                QVERIFY2(finished[0][0].toBool(), qPrintable(finished[0][1].toString()));
+                QFile file(saved);
+                QVERIFY(file.open(QIODevice::ReadOnly));
+                QCOMPARE(file.readAll(),
+                         QByteArray::fromBase64(
+                             record_["files"].toObject()[entry].toString().toLatin1()));
+            }
         }
         QVERIFY(source.open(QIODevice::ReadOnly));
         QCOMPARE(source.readAll(), bytes_);

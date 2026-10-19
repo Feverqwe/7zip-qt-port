@@ -32,6 +32,8 @@ class NtfsTests(unittest.TestCase):
             args = [str(self.runtime / (engine + SUFFIX)), command, "-tNTFS", "-sccUTF-8", "-bsp0"]
             if command == "x":
                 args += ["-so", "-bso0", "-bse2"]
+                if name and ":" not in name:
+                    args += ["-x!" + name + ":*"]  # Keep the selected unnamed stream separate from ADS.
             args += ["--", str(path)]
             if name:
                 args.append(name)
@@ -54,6 +56,30 @@ class NtfsTests(unittest.TestCase):
         result = self.run_image("7z", image, "x", "alpha")
         self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
         self.assertEqual(result.stdout, files["alpha"])
+
+    def test_linux_wof_and_fragmented_mft(self):
+        for kind in ("mft-list", "mft-list-nonresident", "wof-xpress4k", "wof-xpress8k",
+                     "wof-xpress16k", "wof-lzx32k", "wof-xpress4k-resident", "wof-lzx32k-resident"):
+            image, files = volume(kind)
+            for name in ("alpha", "данные 空", "gamma"):
+                with self.subTest(kind=kind, name=name):
+                    result = self.run_image("7z", image, "x", name)
+                    self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                    self.assertEqual(result.stdout, files[name])
+
+    def test_wof_corrupt_reads_report_failure(self):
+        for kind in ("wof-xpress4k-bad-frame", "wof-lzx32k-bad-frame", "wof-lzx32k-bad-table",
+                     "wof-xpress4k-short-ads"):
+            with self.subTest(kind=kind):
+                result = self.run_image("7z", volume(kind)[0], "x", "gamma")
+                self.assertNotEqual(result.returncode, 0)
+
+    def test_standalone_refuses_missing_linux_read_features(self):
+        for kind in ("mft-list", "wof-xpress4k", "wof-lzx32k"):
+            with self.subTest(kind=kind):
+                result = self.run_image("7zz", volume(kind)[0], "x", "gamma")
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(result.stdout, b"")
 
     def test_corrupt_or_encrypted_data_never_reports_success(self):
         for kind in ("run-over-volume", "run-underflow", "normal-virtual-over-volume", "invalid-initialized", "encrypted", "wof", "wof-empty", "bad-compressed"):
