@@ -71,6 +71,14 @@ GPT/MBR/APM проверяются как дополнительные форм�
 
 ## Свидетельства
 
+### ISO9660: logical blocks, XAR и extent streams
+
+[Source comparison и исправления](isofs-linux.md): оба engines читают
+512/1024/2048-byte geometry, XAR и multi-section children; mapping ограничен
+source/volume, streams независимы, повреждения и отмена передаются явно.
+Актуализация ISO ещё не завершена: Rock Ridge/SUSP, zisofs, High Sierra,
+names/metadata и оставшиеся read semantics сохраняются в scope. UDF ещё не проверен.
+
 ### HFS+/HFSX: fork mapping и metadata reads
 
 [Source comparison и исправления](hfs-linux.md): overflow continuation между

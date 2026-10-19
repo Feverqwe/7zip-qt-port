@@ -1,7 +1,11 @@
 import importlib.util
 import json
 import pathlib
+import os
+import shutil
 import subprocess
+import sys
+import time
 import tempfile
 import unittest
 
@@ -121,6 +125,61 @@ class UpstreamBaselineTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "unowned"):
             baseline.prepare_runtime_snapshot(self.manifest, snapshot, self.upstream)
         self.assertEqual(private.read_bytes(), b"user data")
+
+    def test_runtime_rebuilds_transitive_adapted_header_consumers(self):
+        directory = "CPP/7zip/UI/Console"
+        header = "CPP/7zip/Common/Model.h"
+        files = {
+            directory + "/Probe.cpp": '#include "../../Common/Bridge.h"\nint main() { return sizeof(Model); }\n',
+            "CPP/7zip/Common/Bridge.h": '#include "Model.h"\n',
+            header: "struct Model { char value; };\n",
+        }
+        windows = sys.platform == "win32"
+        cache = shutil.which("ccache")
+        self.assertIsNotNone(cache, "Runtime compilation must use the existing compiler cache")
+        compiler = '"' + cache + '" ' + ("cl /nologo" if windows else "c++")
+        if windows:
+            makefile = ('O=objects\nall: $(O)\\probe.exe\n'
+                        '$(O)\\probe.exe: $(O)\\Probe.obj\n'
+                        f'\t{compiler} /Fe$@ $(O)\\Probe.obj\n'
+                        '$(O)\\Probe.obj: Probe.cpp\n'
+                        f'\t{compiler} /c /Fo$@ Probe.cpp\n')
+        else:
+            makefile = ('O=objects\nall: $(O)/probe\n'
+                        '$(O)/probe: $(O)/Probe.o\n'
+                        f'\t{compiler} -o $@ $<\n'
+                        '$(O)/Probe.o: Probe.cpp\n'
+                        f'\t{compiler} -c -o $@ $<\n')
+        files[directory + ("/makefile" if windows else "/makefile.gcc")] = makefile
+        for name, contents in files.items():
+            path = self.upstream / name
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(contents)
+        git(self.upstream, "add", ".")
+        git(self.upstream, "commit", "-qm", "native dependency fixture")
+        self.manifest["revision"] = git(self.upstream, "rev-parse", "HEAD")
+        local = "src/" + header
+        (self.port / local).parent.mkdir(parents=True, exist_ok=True)
+        (self.port / local).write_text(files[header])
+        self.manifest["adapted"] = sorted([*self.manifest["adapted"], local])
+        self.manifest["runtime_adapted"] = [local]
+        snapshot = pathlib.Path(self.temporary.name) / "runtime"
+        environment = dict(os.environ)
+        if sys.platform == "darwin":
+            environment.setdefault("CCACHE_DIR", "/private/tmp/sevenzip-desktop-ccache")
+        command = ["nmake", "/nologo", "/f", "sevenzip-runtime.mak"] if windows else [
+            "make", "-f", "sevenzip-runtime.gcc.mak"]
+        for contents, expected in ((files[header], 1), ("struct Model { long long value; };\n", 8)):
+            # Apple GNU make 3.81 and nmake compare whole-second timestamps.
+            if expected != 1:
+                time.sleep(1.1)
+            (self.port / local).write_text(contents)
+            baseline.prepare_runtime_snapshot(self.manifest, snapshot, self.upstream)
+            bundle = snapshot / directory
+            (bundle / "objects").mkdir(exist_ok=True)
+            subprocess.run(command, cwd=bundle, env=environment, check=True, capture_output=True)
+            executable = bundle / "objects" / ("probe.exe" if windows else "probe")
+            self.assertEqual(subprocess.run([str(executable)]).returncode, expected)
 
 
 if __name__ == "__main__":

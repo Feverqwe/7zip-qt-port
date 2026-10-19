@@ -72,7 +72,7 @@ $snapshot = Join-Path $output '.build-runtime'
         $bundle = Join-Path $snapshot $artifacts[$name]
         Push-Location -LiteralPath $bundle
         try {
-            $makeArgs = @('/nologo', '/f', 'makefile', "PLATFORM=$Architecture")
+            $makeArgs = @('/nologo', '/f', 'sevenzip-runtime.mak', "PLATFORM=$Architecture")
             if (Get-Command ccache.exe -ErrorAction SilentlyContinue) {
                 $makeArgs += 'CC=ccache cl'
             }

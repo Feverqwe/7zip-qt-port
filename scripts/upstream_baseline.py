@@ -5,6 +5,7 @@ import argparse
 import hashlib
 import json
 import pathlib
+import posixpath
 import re
 import subprocess
 import sys
@@ -71,6 +72,55 @@ def check_inventory(data):
         raise ValueError(f"Inventory mismatch: unrecorded={sorted(missing)}, stale={sorted(stale)}")
 
 
+def runtime_header_dependencies(snapshot, members, overlays):
+    """Supplement upstream make/nmake rules for adapted header consumers."""
+    sources = {name for name in members if pathlib.PurePosixPath(name).suffix in
+               (".c", ".cpp", ".h", ".hpp", ".inl")}
+    headers = {name for name in overlays if pathlib.PurePosixPath(name).suffix in
+               (".h", ".hpp", ".inl")}
+    reverse = {}
+    pattern = re.compile(r'^\s*#\s*include\s*["<]([^">]+)[">]', re.MULTILINE)
+    for name in sources:
+        for include in pattern.findall((snapshot / name).read_text(errors="replace")):
+            local = posixpath.normpath(posixpath.join(posixpath.dirname(name), include))
+            # Relative includes have one owner. For include-directory searches,
+            # retain all possible source-tree matches rather than miss a consumer.
+            matches = [local] if local in sources else [path for path in sources
+                                                        if path == include or path.endswith("/" + include)]
+            for dependency in matches:
+                reverse.setdefault(dependency, set()).add(name)
+    dependencies = {}
+    for header in headers:
+        pending = [header]
+        seen = set()
+        while pending:
+            current = pending.pop()
+            if current in seen:
+                continue
+            seen.add(current)
+            if pathlib.PurePosixPath(current).suffix in (".c", ".cpp"):
+                dependencies.setdefault(pathlib.PurePosixPath(current).stem, set()).add(header)
+            pending.extend(reverse.get(current, ()))
+    for directory in ("CPP/7zip/UI/Console", "CPP/7zip/Bundles/Format7zF", "CPP/7zip/Bundles/Alone2"):
+        for windows, original, generated in ((False, "makefile.gcc", "sevenzip-runtime.gcc.mak"),
+                                              (True, "makefile", "sevenzip-runtime.mak")):
+            bundle = snapshot / directory
+            if not (bundle / original).is_file():
+                continue
+            lines = [f'!include "{original}"' if windows else f'include {original}']
+            for stem, needed in sorted(dependencies.items()):
+                relative = sorted(posixpath.relpath(name, directory) for name in needed)
+                target = "$(O)\\" + stem + ".obj" if windows else "$(O)/" + stem + ".o"
+                lines.append(target + ": " + " ".join('"' + name + '"' if windows else name
+                                                       for name in relative))
+            content = "\n".join(lines) + "\n"
+            output = bundle / generated
+            if output.is_symlink():
+                raise ValueError("Refusing linked runtime dependency makefile")
+            if not output.exists() or output.read_text() != content:
+                output.write_text(content)
+
+
 def prepare_runtime_snapshot(data, snapshot, upstream):
     """Overlay only engine adaptations explicitly selected in the baseline."""
     paths = data.get("runtime_adapted", [])
@@ -129,6 +179,7 @@ def prepare_runtime_snapshot(data, snapshot, upstream):
             raise ValueError("Runtime adaptation requires regular source files: " + path)
         hashes[path] = hashlib.sha256(destination.read_bytes()).hexdigest()
     (snapshot / "runtime-adaptations.json").write_text(json.dumps(hashes, indent=2) + "\n")
+    runtime_header_dependencies(snapshot, members, overlays)
 
 
 def verify(data, upstream):

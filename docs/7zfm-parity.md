@@ -7,6 +7,12 @@ Qt заменяет presentation и платформенные services; арх�
 
 ## Основные сценарии
 
+ISO9660 читает тома с блоками 512/1024/2048 байт, XAR и составные каталоги;
+повреждённые maps и interleaving дают явную ошибку чтения. Потоки файлов и
+El Torito images независимы. Исходные archive names и boot namespace сохранены.
+[Scope и проверки](upstream-port-audit/isofs-linux.md); полная актуализация
+ISO9660 по Linux ещё не завершена.
+
 SquashFS сообщает реальные inode identity и symlink targets стандартному
 механизму 7-Zip. При process extraction действует существующий запрет links:
 набор со ссылкой отклоняется, выбранные обычные файлы извлекаются. Source

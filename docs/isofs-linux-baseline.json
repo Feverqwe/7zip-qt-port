@@ -1,0 +1,22 @@
+{
+  "repository": "https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git",
+  "revision": "58161ead29e50d70a317ea26b472e0c7508e69da",
+  "files": {
+    "fs/isofs/Kconfig": "404d2ba6a0e70b75b94d800c9afe925ff25e75f8746df8cd500673e8899b0b8a",
+    "fs/isofs/Makefile": "bf18659905c00f019d1a4430df6e975a6c53cfe84e1b228b8cfa2ef59d263703",
+    "fs/isofs/compress.c": "048a4761aed1f39d28fc532d0a285f7f44c3422c279c5f12ba422a200bcc74b2",
+    "fs/isofs/dir.c": "a58ba7fec2644cf48f39f3faf142009073ab814a1f4c2ae3226bcaa5e6660344",
+    "fs/isofs/export.c": "888a68bebba03ff2d1a4f11df8f9aa0f9cf6c63a33def16875394fd5f934e337",
+    "fs/isofs/inode.c": "5a1009f76dbc8704830b4691d8694cd33c9fe54ecddb61c83b99a652eae6185b",
+    "fs/isofs/isofs.h": "f3332a4b88d6b8ffd27a9259934d29242d73efbdcd75f43a6e1b1192f9761928",
+    "fs/isofs/joliet.c": "5ca9fc782e6a4fd5a5ec0c55d5dff1c069a2df6a817d57d6347e3f7ef1a8889e",
+    "fs/isofs/namei.c": "37cf6b8c9e6ef1f34c14190f0a6e208f3ef77819a2b3844901ddbd4570eff0ed",
+    "fs/isofs/rock.c": "451f9172e75861c2b432bc5c2cced8668a0ab5658b2c9e5ed93d98e0d70caa73",
+    "fs/isofs/rock.h": "76d5a8766561cef71c36a00fc6f60b3cc3443606854f0f4d3fe55dff8f3fa03c",
+    "fs/isofs/util.c": "2f07188a3f5aec2aaf8d3ab3d739854dd763662821a088baf9278a0d14c69fdb",
+    "fs/isofs/zisofs.h": "ba4ca87fbc051c464c3f9558aad601b15c5c9113d2bcc154a874de7910e2527d",
+    "include/uapi/linux/iso_fs.h": "de5927214e85c8c0bbe94029ecdcab93fa3b7ff3a962ec85d6af8a05cf1d5760"
+  },
+  "adapted": [],
+  "exact": []
+}

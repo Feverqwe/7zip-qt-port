@@ -45,7 +45,7 @@ if [[ "$(uname -s)" == Darwin ]]; then
   export CCACHE_DIR="${CCACHE_DIR:-/private/tmp/sevenzip-desktop-ccache}"
 fi
 for source in CPP/7zip/UI/Console CPP/7zip/Bundles/Format7zF CPP/7zip/Bundles/Alone2; do
-  make -s -C "$snapshot/$source" -f makefile.gcc \
+  make -s -C "$snapshot/$source" -f sevenzip-runtime.gcc.mak \
     CC="$task_runtime_cc" CXX="$task_runtime_cxx" LFLAGS_STRIP= -j4
 done
 python3 - "$project_root/docs/upstream-baseline.json" "$snapshot" "$artifact_dir" <<'PY'
