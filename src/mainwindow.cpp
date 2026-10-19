@@ -16,8 +16,9 @@
 #include <QScrollBar>
 
 MainWindow::MainWindow(ArchiveBackend *backend, std::function<bool(const QUrl &)> fileOpener,
-                       IQtTrashService *trashService, const QtFileManagerStartup *startup)
-    : fileOpener_(std::move(fileOpener)) {
+                       IQtTrashService *trashService, const QtFileManagerStartup *startup,
+                       DeviceSelectionServices deviceServices)
+    : deviceServices_(std::move(deviceServices)), fileOpener_(std::move(fileOpener)) {
     if (trashService)
         trashService_ = trashService;
     else {

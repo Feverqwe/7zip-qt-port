@@ -7,6 +7,7 @@
 #include "combodialog.h"
 #include "copydialog.h"
 #include "createarchivedialog.h"
+#include "deviceselectiondialog.h"
 #include "extractdialog.h"
 #include "filesystemscanner.h"
 #include "filetable.h"
@@ -87,7 +88,8 @@ class MainWindow : public QMainWindow {
     explicit MainWindow(ArchiveBackend *backend = nullptr,
                         std::function<bool(const QUrl &)> fileOpener = {},
                         IQtTrashService *trashService = nullptr,
-                        const QtFileManagerStartup *startup = nullptr);
+                        const QtFileManagerStartup *startup = nullptr,
+                        DeviceSelectionServices deviceServices = DeviceSelectionServices::system());
 
     void openArchive(const QString &path);
     void openPath(const QString &path);
@@ -98,6 +100,8 @@ class MainWindow : public QMainWindow {
     void testArchive();
 
   private:
+    DeviceSelectionServices deviceServices_;
+    QLabel *deviceReadOnly_ = nullptr;
     friend class QtAppPresentation;
     friend class QtVolumeWindowServices;
     friend class QtFileManagerWindowServices;

@@ -144,9 +144,10 @@ bool MainWindow::extractWithSource(const QString &destination, bool onlySelected
         state_ == State::Viewing ? dynamic_cast<CAgentFolder *>(panel.GetFolder()) : nullptr;
     auto *resource =
         folder ? dynamic_cast<QtArchiveFileResource *>(folder->GetEngineResource()) : nullptr;
+    const bool sourceAvailable =
+        resource && (resource->HasDirectInput() || backend_->hasListedSourceArchive(archive_));
     if (options.pathMode == ExtractionOptions::PathMode::CurrentPaths &&
-        (!resource || !resource->HasExtractService() ||
-         !backend_->hasListedSourceArchive(archive_))) {
+        (!resource || !resource->HasExtractService() || !sourceAvailable)) {
         if (options.currentFolder.isEmpty())
             return false; // At archive root, the existing full-path transport is equivalent.
         QMessageBox::warning(
@@ -163,9 +164,9 @@ bool MainWindow::extractWithSource(const QString &destination, bool onlySelected
                                         "Source extraction is unavailable for this archive."));
         return true;
     }
-    if (!resource || !resource->HasExtractService() || !backend_->hasListedSourceArchive(archive_))
+    if (!resource || !resource->HasExtractService() || !sourceAvailable)
         return false;
-    const bool scoped = onlySelected || !archiveFolder_.isEmpty();
+    const bool scoped = onlySelected || !archiveFolder_.isEmpty() || resource->HasDirectInput();
     CRecordVector<UInt32> indices;
     QStringList validationNames = names;
     if (scoped) {
@@ -205,7 +206,7 @@ bool MainWindow::extractWithSource(const QString &destination, bool onlySelected
                     : validationError);
             return true;
         }
-        if (!onlySelected && archiveFolder_.isEmpty()) {
+        if (!onlySelected && archiveFolder_.isEmpty() && !resource->HasDirectInput()) {
             previousState_ = state_;
             setState(State::Operating);
             operationName_ = QtLangText(IDS_PROGRESS_EXTRACTING);
@@ -316,7 +317,8 @@ void MainWindow::testArchive() {
                                         "Source extraction is unavailable for this archive."));
         return;
     }
-    if (resource && resource->HasExtractService() && backend_->hasListedSourceArchive(archive_)) {
+    if (resource && resource->HasExtractService() &&
+        (resource->HasDirectInput() || backend_->hasListedSourceArchive(archive_))) {
         previousState_ = state_;
         setState(State::Operating);
         operationName_ = QtLangText(IDS_PROGRESS_TESTING);

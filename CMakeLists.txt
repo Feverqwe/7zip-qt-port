@@ -462,6 +462,7 @@ add_library(sevenzip_filesystem STATIC
     src/archivecodecimage.cpp src/archivecodecimage.h
     src/archivenativeopen.cpp src/archivenativeopen.h
     src/archivedevice.cpp src/archivedevice.h
+    src/archivebackend_device.cpp
     src/deviceinput.cpp src/deviceaccess.h
     src/archivecodecprobe.cpp src/archivecodecprobe.h
     third_party/7zip/CPP/7zip/UI/Common/ArchiveOpenCallback.cpp
@@ -533,11 +534,13 @@ add_library(sevenzip_location STATIC src/qtlocationfolder.cpp src/qtlocationfold
     src/qtarchivestreamopen.h
     src/qtarchivefileresource.cpp src/qtarchivefileresource.h
     src/qtarchivedevicefolder.cpp
+    src/deviceselectiondialog.cpp src/deviceselectiondialog.h src/qtdevicecommands.cpp
     src/qtarchivenativeproperties.cpp
     src/qtfolderpropertycapabilities.h
     src/CPP/7zip/UI/Agent/Agent.cpp src/CPP/7zip/UI/Agent/AgentProxy.cpp)
 target_include_directories(sevenzip_location PUBLIC src)
 target_link_libraries(sevenzip_location PUBLIC sevenzip_filesystem sevenzip_panel)
+target_link_libraries(sevenzip_location PRIVATE sevenzip_device_access)
 target_sources(sevenzip_location PRIVATE src/CPP/7zip/UI/GUI/GUI.cpp src/qtguicommand.h)
 target_include_directories(sevenzip_location PRIVATE src/CPP/Common src/CPP/7zip/UI/Common)
 if(WIN32)
@@ -3469,6 +3472,22 @@ if(BUILD_TESTING)
             RESOURCE_LOCK sevenzip_native_ui)
     endif()
     qt_add_executable(archive_metadata_ui_tests tests/archive_metadata_ui_tests.cpp ${metadata_ui_sources})
+    qt_add_executable(device_ui_tests tests/device_ui_tests.cpp tests/layout_inspection.cpp ${metadata_ui_sources})
+    target_include_directories(device_ui_tests PRIVATE src tests)
+    target_link_libraries(device_ui_tests PRIVATE ${metadata_ui_libraries})
+    target_compile_definitions(device_ui_tests PRIVATE
+        "DEVICE_FIXTURE_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/devices\"")
+    if(SEVENZIP_CODEC_MODULE)
+        target_compile_definitions(device_ui_tests PRIVATE
+            "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\"")
+    endif()
+    add_test(NAME device_ui COMMAND device_ui_tests -silent)
+    set_tests_properties(device_ui PROPERTIES TIMEOUT 90 RESOURCE_LOCK sevenzip_ui_artifacts
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/device-ui.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
+    if(APPLE)
+        set_property(TEST device_ui PROPERTY ENVIRONMENT
+            "QT_QPA_PLATFORM=cocoa;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/device-ui.ini;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
+    endif()
     target_include_directories(archive_metadata_ui_tests PRIVATE src tests)
     target_link_libraries(archive_metadata_ui_tests PRIVATE ${metadata_ui_libraries})
     if(SEVENZIP_CODEC_MODULE)

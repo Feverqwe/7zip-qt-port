@@ -13,7 +13,7 @@ class CPanel;
 // Native menu policy is recomputed for execution, never read from QAction state.
 class QtFileManagerCommands final : public IQtFileManagerMenuCommandServices {
   public:
-    enum Extension : unsigned { Back = 1000, OpenArchivePicker };
+    enum Extension : unsigned { Back = 1000, OpenArchivePicker, OpenDevicePicker };
     explicit QtFileManagerCommands(MainWindow &window);
     void AttachActions();
     void RefreshActions();
@@ -78,6 +78,7 @@ class QtFileManagerCommands final : public IQtFileManagerMenuCommandServices {
     void SetBookmark(unsigned index) override;
 
   private:
+    void OpenDevice();
     struct TransportCapabilities {
         bool filesystem = false, archive = false, writable = false, mutationWritable = false;
         bool filesystemStreams = false;

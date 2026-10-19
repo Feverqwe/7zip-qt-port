@@ -17,7 +17,8 @@ QList<QAction *> QtGroupFileCommands(QMenu &menu, bool contextMenu) {
         if (action->isSeparator())
             continue;
         const unsigned id = action->property("nativeCommandID").toUInt();
-        if (action->objectName() == "openArchiveAction")
+        if (action->objectName() == "openArchiveAction" ||
+            action->objectName() == "openDeviceAction")
             picker.append(action);
         else if (action->menu() && (action->menu()->objectName() == "hashMenu" ||
                                     action->menu()->objectName() == "contextHashMenu"))

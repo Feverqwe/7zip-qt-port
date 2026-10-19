@@ -268,6 +268,10 @@ void MainWindow::rebuildSourceMenus() {
     openArchive->setObjectName("openArchiveAction");
     QtBindLocalText(openArchive, "mainwindow_menus",
                     QT_TRANSLATE_NOOP("mainwindow_menus", "Open archive…"));
+    auto *openDevice = file->addAction(QString());
+    openDevice->setObjectName("openDeviceAction");
+    QtBindLocalText(openDevice, "mainwindow_menus",
+                    QT_TRANSLATE_NOOP("mainwindow_menus", "Open device…"));
     file->addSeparator();
     for (QAction *action : {openItem_, openInside_, openInsideOne_, openInsideParser_, openOutside_,
                             viewFile_, editFile_})

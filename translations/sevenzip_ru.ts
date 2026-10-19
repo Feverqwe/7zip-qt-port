@@ -5746,6 +5746,10 @@ Application modules:
             <source>Open archive…</source>
             <translation>Открыть архив…</translation>
         </message>
+        <message>
+            <source>Open device…</source>
+            <translation>Открыть устройство…</translation>
+        </message>
     </context>
     <context>
         <name>mainwindow_panel</name>
@@ -5764,6 +5768,10 @@ Application modules:
             <location line="-216" />
             <source>Path to folder or archive</source>
             <translation>Путь к папке или архиву</translation>
+        </message>
+        <message>
+            <source>Read only</source>
+            <translation>Только чтение</translation>
         </message>
     </context>
     <context>
@@ -6196,6 +6204,167 @@ Application modules:
             <location line="-26" />
             <source>Volume size must be positive.</source>
             <translation>Размер тома должен быть положительным.</translation>
+        </message>
+    </context>
+    <context>
+        <name>DeviceSelectionDialog</name>
+        <message>
+            <source>Read access was not authorized. You can try again.</source>
+            <translation>Доступ на чтение не разрешён. Можно попробовать снова.</translation>
+        </message>
+        <message>
+            <source>Open device</source>
+            <translation>Открыть устройство</translation>
+        </message>
+        <message>
+            <source>Read-only access to ext2/ext3/ext4. Copy files to another disk.</source>
+            <translation>Доступ к ext2/ext3/ext4 только для чтения. Копируйте файлы на другой диск.</translation>
+        </message>
+        <message>
+            <source>Devices and partitions</source>
+            <translation>Устройства и разделы</translation>
+        </message>
+        <message>
+            <source>Name</source>
+            <translation>Имя</translation>
+        </message>
+        <message>
+            <source>Size</source>
+            <translation>Размер</translation>
+        </message>
+        <message>
+            <source>Status</source>
+            <translation>Состояние</translation>
+        </message>
+        <message>
+            <source>Refresh</source>
+            <translation>Обновить</translation>
+        </message>
+        <message>
+            <source>Back</source>
+            <translation>Назад</translation>
+        </message>
+        <message>
+            <source>Canceling…</source>
+            <translation>Отмена…</translation>
+        </message>
+        <message>
+            <source>Looking for external devices…</source>
+            <translation>Поиск внешних устройств…</translation>
+        </message>
+        <message>
+            <source>In use</source>
+            <translation>Используется</translation>
+        </message>
+        <message>
+            <source>Read only</source>
+            <translation>Только чтение</translation>
+        </message>
+        <message>
+            <source>No external devices found. Connect a device and refresh.</source>
+            <translation>Внешние устройства не найдены. Подключите устройство и обновите список.</translation>
+        </message>
+        <message>
+            <source>Select a device. Volumes in use must be unmounted first.</source>
+            <translation>Выберите устройство. Используемые тома нужно сначала размонтировать.</translation>
+        </message>
+        <message>
+            <source>Partition type</source>
+            <translation>Тип раздела</translation>
+        </message>
+        <message>
+            <source>Select an ext2/ext3/ext4 partition to open read only.</source>
+            <translation>Выберите раздел ext2/ext3/ext4 для открытия только на чтение.</translation>
+        </message>
+        <message>
+            <source>Could not list external devices.</source>
+            <translation>Не удалось получить список внешних устройств.</translation>
+        </message>
+        <message>
+            <source>Device access canceled. You can try again.</source>
+            <translation>Доступ к устройству отменён. Можно попробовать снова.</translation>
+        </message>
+        <message>
+            <source>This device is in use. Unmount its volumes and try again.</source>
+            <translation>Устройство используется. Размонтируйте его тома и попробуйте снова.</translation>
+        </message>
+        <message>
+            <source>Could not read this device. It may have been disconnected.</source>
+            <translation>Не удалось прочитать устройство. Возможно, оно было отключено.</translation>
+        </message>
+        <message>
+            <source>Opening device… System authorization may be required.</source>
+            <translation>Открытие устройства… Может потребоваться разрешение системы.</translation>
+        </message>
+        <message>
+            <source>Could not open this partition.</source>
+            <translation>Не удалось открыть этот раздел.</translation>
+        </message>
+    </context>
+    <context>
+        <name>deviceaccess</name>
+        <message>
+            <source>Could not inspect devices through UDisks2.</source>
+            <translation>Не удалось получить сведения об устройствах через UDisks2.</translation>
+        </message>
+        <message>
+            <source>Could not open the selected device.</source>
+            <translation>Не удалось открыть выбранное устройство.</translation>
+        </message>
+        <message>
+            <source>The selected device is no longer available.</source>
+            <translation>Выбранное устройство больше недоступно.</translation>
+        </message>
+        <message>
+            <source>The device is in use. Unmount its volumes before reading it directly.</source>
+            <translation>Устройство используется. Перед прямым чтением размонтируйте его тома.</translation>
+        </message>
+        <message>
+            <source>The device changed or became unavailable.</source>
+            <translation>Устройство изменилось или стало недоступно.</translation>
+        </message>
+        <message>
+            <source>Could not inspect attached devices.</source>
+            <translation>Не удалось получить сведения о подключённых устройствах.</translation>
+        </message>
+        <message>
+            <source>External disk</source>
+            <translation>Внешний диск</translation>
+        </message>
+        <message>
+            <source>The device helper did not respond.</source>
+            <translation>Помощник для доступа к устройству не ответил.</translation>
+        </message>
+        <message>
+            <source>The device helper returned an invalid response.</source>
+            <translation>Помощник для доступа к устройству вернул некорректный ответ.</translation>
+        </message>
+        <message>
+            <source>The Sevenzip device helper is unavailable.</source>
+            <translation>Помощник Sevenzip для доступа к устройствам недоступен.</translation>
+        </message>
+        <message>
+            <source>Could not prepare device authorization.</source>
+            <translation>Не удалось подготовить запрос прав для устройства.</translation>
+        </message>
+        <message>
+            <source>Could not authorize access to this device.</source>
+            <translation>Не удалось получить разрешение на доступ к устройству.</translation>
+        </message>
+    </context>
+    <context>
+        <name>qtdevicecommands</name>
+        <message>
+            <source>This filesystem uses features that are not supported for direct reading.</source>
+            <translation>Эта файловая система использует возможности, которые не поддерживаются при прямом чтении.</translation>
+        </message>
+        <message>
+            <source>Could not open this partition. It may be unsupported or the device may have been disconnected.</source>
+            <translation>Не удалось открыть раздел. Возможно, он не поддерживается или устройство было отключено.</translation>
+        </message>
+        <message>
+            <source>Open device</source>
+            <translation>Открыть устройство</translation>
         </message>
     </context>
 </TS>

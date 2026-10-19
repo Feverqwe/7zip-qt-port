@@ -8,6 +8,7 @@
 #include "Windows/PropVariantConv.h"
 #include "mainwindow.h"
 #include "qtapppresentation.h"
+#include "qtarchivefileresource.h"
 #include "qtfilemanagercommands.h"
 #include "qtlanguageservices.h"
 #include "qtlocationfolder.h"
@@ -224,7 +225,21 @@ void MainWindow::refreshActions() {
     }
 }
 
-void MainWindow::refreshPanelStatus() { app_.GetFocusedPanel().Refresh_StatusBar(); }
+void MainWindow::refreshPanelStatus() {
+    auto &panel = app_.GetFocusedPanel();
+    panel.Refresh_StatusBar();
+    const auto direct = [](IFolderFolder *folder) {
+        const auto *agent = dynamic_cast<CAgentFolder *>(folder);
+        const auto *resource =
+            agent ? dynamic_cast<QtArchiveFileResource *>(agent->GetEngineResource()) : nullptr;
+        return resource && resource->HasDirectInput();
+    };
+    bool device = direct(panel.GetFolder());
+    const auto &parents = panel.GetParentFolders();
+    FOR_VECTOR(i, parents) { device = device || direct(parents[i].ParentFolder); }
+    deviceReadOnly_->setVisible(device);
+    statusBar()->setVisible(device || !statusBar()->currentMessage().isEmpty());
+}
 
 void MainWindow::showPanelStatus(unsigned index, const CPanelStatus &status) {
     if (index >= kNumPanelsMax || app_.QtOperations().closed())

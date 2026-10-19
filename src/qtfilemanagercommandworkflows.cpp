@@ -112,6 +112,9 @@ void QtFileManagerCommands::ExtractArchives() { window_.extractArchives(); }
 void QtFileManagerCommands::TestArchives() { window_.testArchive(); }
 bool QtFileManagerCommands::ExecuteExtensionCommand(unsigned id) {
     switch (id) {
+    case OpenDevicePicker:
+        OpenDevice();
+        break;
     case OpenArchivePicker: {
         const QString directory = window_.state_ == MainWindow::State::Viewing
                                       ? QFileInfo(window_.archive_).absolutePath()

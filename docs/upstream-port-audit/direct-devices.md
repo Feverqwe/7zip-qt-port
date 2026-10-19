@@ -29,9 +29,10 @@ Agent и QtArchiveFileResource принимают отдельный прямо�
 ## Текущее состояние
 
 Реализуется [первая версия](../direct-device-reading-plan.md).
-Первый компонент предоставляет stream-level discovery и native Ext-reader;
-пользовательский UI ещё не подключён. Добавлен native access macOS/Linux/Windows.
-Это не завершённый пользовательский сценарий.
+Подключены native access macOS/Linux/Windows, stream-level partition discovery,
+Ext-reader и пользовательский выбор устройства/раздела. Просмотр и копирование
+проверяются на частных образцах. Нативные права, реальные носители и оставшиеся
+границы приёмки перечислены ниже; завершение первой версии ещё проверяется.
 
 ## Agent и прямой поток
 
@@ -59,6 +60,38 @@ Upstream Ext публикует feature descriptions, но не применяе
 шифрование, требование journal recovery и неподдерживаемые варианты размещения
 данных. Собственный superblock parser не добавляется; обычное открытие `.img`
 не получает это ограничение. Список проверяемых возможностей остаётся в коде.
+
+## Выбор устройства и панель
+
+Перед подключением сравнены upstream `CPP/7zip/UI/FileManager/PanelItemOpen.cpp`
+(`OpenAsArc`, stream callers), `PanelFolderChange.cpp` (parent links, bind/close),
+`PanelMenu.cpp` (read-only state) и File-menu `resource.rc`/handlers.
+Source `OpenAsArc` принимает выбранный поток; его folder links, worker/modal
+opening, Parent, выбор и существующий CopyTo остаются владельцами поведения.
+Отдельного файлового браузера или второй модели навигации нет.
+
+Оригинальный Windows device namespace не даёт переносимого выбора внешних
+носителей с native authorization. Qt добавляет File → Open device, сохраняя
+обычный Open archive и список томов. Диалог перечисляет внешние устройства,
+блокирует busy rows, затем предлагает разделы или открывает единственный.
+Native access и backend inspection выполняются owned worker; UI отменяет запрос
+и ждёт завершения, не публикуя поздний источник. Back освобождает источник до
+следующего exclusive open; отложенное удаление QThread не удерживает device lease.
+Проверка устройства компилируется вместе с reader; лёгким потребителям
+метаданных не требуется весь process backend.
+
+Для direct input главное окно использует native extract/test и refresh вместо
+file-only listing prerequisites; извлечение всех файлов не переоткрывает display
+path как файл. Read-only badge остаётся видимым в статусной строке, включая
+просмотр вложенного архива; mutation availability учитывает source parent chain.
+Во время незавершённого перечисления текущей панели команда открытия устройства
+недоступна, чтобы не менять provider под его асинхронной проекцией.
+
+EN/RU используют Qt Linguist; native access diagnostics также переведены.
+Компоновка новая, поэтому rendered Windows 7zFM reference для неё отсутствует.
+На macOS используются QDialog window modality и стандартные Qt/Cocoa роли кнопок;
+AppKit sheet и pixel parity не заявляются. Контракт —
+[direct device selection](../ui-layout-contracts/extraction.md#direct-device-selection).
 
 ## Native access macOS
 
@@ -209,3 +242,27 @@ Linux x64 и Windows x64. `device_folder` открывает частный GPT/
 неподключённый device flag в Agent, исправление проверено тем же сценарием.
 Отображение UI, нативная авторизация и физические устройства этой итерацией
 не подтверждаются; явные ext2/ext3 fixtures ещё не проверены.
+
+2026-10-19, UI integration: одиннадцать focused suites (`device_ui`,
+`device_folder`, `archive_device`, `app_copy_routing`, `file_menu_policy`,
+`ui_geometry`, `menu_policy`, `archive_metadata_ui`, `language`,
+`language_main_dialog`, `language_standard_buttons`) PASS на macOS arm64,
+Linux x64 и Windows x64. После локальных уточнений повторены UI/command-policy
+consumers, затем финальный `device_ui` на трёх ОС. macOS app собрана.
+Проверка выявила и устранила лишнюю зависимость лёгкого menu consumer от
+process backend; source inspection factory выделена в reader module.
+
+`device_ui` проходит от пункта меню через выбор GPT-раздела к текущей панели:
+Unicode folder/file, выбранное и полное копирование, readonly availability,
+refresh и Parent с возвратом в исходный каталог. Отдельно проверяются пустой
+список/Refresh, отказ в правах и retry, Escape во время pending authorization,
+Return на выбранном разделе и освобождение exclusive source после Back.
+Настройки и содержимое — частные временные fixtures; реальная авторизация и
+доступ к пользовательским устройствам не вызываются.
+
+Просмотрены текущие normal/compact EN/RU widget JSON chooser (devices/partitions)
+и главной панели с read-only badge: группировка, размеры, footer, clipping и
+enabled state. macOS использует native Cocoa; sandbox WindowServer refusal
+перепроверен вне sandbox, PASS. Linux/Windows используют offscreen Qt: rendered
+native appearance, физическая клавиатура/VoiceOver и системные запросы прав
+этими проверками не подтверждаются. Screenshots не требовались.

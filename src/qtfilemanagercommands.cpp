@@ -58,6 +58,7 @@ void QtFileManagerCommands::AttachFileActions() {
     Bind(w.test_, kMenuCmdID_Toolbar_Test);
     Bind(w.openItem_, IDM_OPEN);
     Bind(w.findChild<QAction *>("openArchiveAction"), OpenArchivePicker);
+    Bind(w.findChild<QAction *>("openDeviceAction"), OpenDevicePicker);
     Bind(w.openInside_, IDM_OPEN_INSIDE);
     Bind(w.openInsideOne_, IDM_OPEN_INSIDE_ONE);
     Bind(w.openInsideParser_, IDM_OPEN_INSIDE_PARSER);
@@ -256,6 +257,10 @@ QHash<unsigned, bool> QtFileManagerCommands::Availability() {
     availability[IDM_ABOUT] = availability[IDM_HELP_CONTENTS];
     availability[IDM_TEMP_DIR] = availability[IDM_HELP_CONTENTS];
     availability[OpenArchivePicker] = availability[IDM_HELP_CONTENTS] && !w.backend_->busy();
+    availability[OpenDevicePicker] = availability[OpenArchivePicker] && safeFolderQueries &&
+                                     !w.scanningDisk_ && !w.scanningArchive_ &&
+                                     w.backend_->codecCatalog() &&
+                                     w.backend_->codecCatalog()->result() == S_OK;
     const bool hasFolder = panel.GetFolder() != nullptr;
     const bool namespaceChild = safeFolderQueries && w.state_ == MainWindow::State::Namespace &&
                                 hasFolder && !panel.IsRootFolder();

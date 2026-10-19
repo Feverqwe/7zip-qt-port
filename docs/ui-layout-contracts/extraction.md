@@ -1,5 +1,21 @@
 # Archive opening and extraction
 
+## Direct device selection
+
+File → Open device opens an independent chooser without replacing ordinary
+volumes or archive entry points. It lists external whole devices with their
+sizes and availability; busy devices cannot be opened. Discovery, authorization
+and partition inspection keep the dialog responsive. Cancel publishes no source,
+and a denied request can be retried. Refresh updates discovery; Back returns
+from partition selection to devices. A single partition opens directly.
+
+The device and partition lists, explanatory/error text and standard Open/Cancel
+footer remain accessible in normal and compact EN/RU layouts. Long names and
+partition types retain usable list columns. Return opens a valid selection;
+Escape cancels. The file manager keeps a visible Read only indicator while
+viewing the source, disables mutation commands and uses its existing panel,
+copy, refresh and Parent interactions.
+
 [Все UI-спецификации](../ui-layout-contracts.md). Разделы сохраняют исходные требования,
 якоря и границы датированных свидетельств. Новые результаты проверок —
 в [source audit](../upstream-port-audit.md).

@@ -105,9 +105,17 @@ void MainWindow::createFilePanel(QMenu *editMenu, unsigned index) {
     if (index == 0) {
         auto *feedback = statusBar();
         feedback->setObjectName("operationStatusBar");
+        deviceReadOnly_ = new QLabel(feedback);
+        deviceReadOnly_->setObjectName("deviceReadOnlyLabel");
+        QtBindLocalText(deviceReadOnly_, "mainwindow_panel",
+                        QT_TRANSLATE_NOOP("mainwindow_panel", "Read only"));
+        feedback->addPermanentWidget(deviceReadOnly_);
+        deviceReadOnly_->hide();
         feedback->setVisible(!feedback->currentMessage().isEmpty());
         connect(feedback, &QStatusBar::messageChanged, feedback,
-                [feedback](const QString &message) { feedback->setVisible(!message.isEmpty()); });
+                [this, feedback](const QString &message) {
+                    feedback->setVisible(!message.isEmpty() || !deviceReadOnly_->isHidden());
+                });
     }
     connect(table_, &QTableWidget::cellDoubleClicked, this, [this](int row, int) {
         if (!fileListSettings_.SingleClick)
