@@ -6,7 +6,8 @@
   "runtime_adapted": [
     "src/CPP/7zip/Archive/CramfsHandler.cpp",
     "src/CPP/7zip/Archive/ExtHandler.cpp",
-    "src/CPP/7zip/Archive/FatHandler.cpp"
+    "src/CPP/7zip/Archive/FatHandler.cpp",
+    "src/CPP/7zip/Archive/SquashfsHandler.cpp"
   ],
   "exact": [
     "third_party/7zip/C/7zCrc.c",
@@ -432,6 +433,7 @@
     "src/CPP/7zip/Archive/ExtHandler.cpp",
     "src/CPP/7zip/Archive/FatHandler.cpp",
     "src/CPP/7zip/Archive/Rar/Rar5Handler.cpp",
+    "src/CPP/7zip/Archive/SquashfsHandler.cpp",
     "src/CPP/7zip/Archive/Zip/ZipCompressionMode.h",
     "src/CPP/7zip/Common/MethodProps.cpp",
     "src/CPP/7zip/Common/MethodProps.h",

@@ -71,6 +71,14 @@ GPT/MBR/APM проверяются как дополнительные форм�
 
 ## Свидетельства
 
+### SquashFS: metadata, fragments и независимые streams
+
+[Сравнение и исправление существующего чтения](squashfs-linux.md) охватывает
+оба engines: корректные границы metadata/data, пустые тома без fragments,
+независимость потоков и передачу ошибок. Полная актуализация SquashFS ещё
+продолжается: Linux LZ4/LZO, compressor options и оставшиеся metadata branches
+не закрыты этой итерацией.
+
 ### ext2/3/4: sparse, metadata и inline data
 
 [Сравненный scope и исправления](ext-linux.md): classic sparse indirect paths,

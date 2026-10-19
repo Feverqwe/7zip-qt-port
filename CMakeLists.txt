@@ -744,6 +744,25 @@ if(BUILD_TESTING)
     set_tests_properties(folder_history PROPERTIES ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     find_package(Python3 3.9 REQUIRED COMPONENTS Interpreter)
+    add_test(NAME squashfs COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/squashfs_tests.py
+        ${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime)
+    set_tests_properties(squashfs PROPERTIES TIMEOUT 60)
+    qt_add_executable(squashfs_stream_tests tests/squashfs_stream_tests.cpp)
+    target_include_directories(squashfs_stream_tests PRIVATE src third_party/7zip/CPP)
+    target_link_libraries(squashfs_stream_tests PRIVATE sevenzip_filesystem Qt6::Test)
+    if(WIN32)
+        target_link_libraries(squashfs_stream_tests PRIVATE oleaut32)
+        set(squashfs_core_name 7z.dll)
+    else()
+        set(squashfs_core_name 7z.so)
+    endif()
+    target_compile_definitions(squashfs_stream_tests PRIVATE
+        "SEVENZIP_SQUASHFS_CORE=\"${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime/${squashfs_core_name}\""
+        "SEVENZIP_SQUASHFS_PYTHON=\"${Python3_EXECUTABLE}\""
+        "SEVENZIP_SQUASHFS_FIXTURE=\"${CMAKE_CURRENT_SOURCE_DIR}/tests/squashfs_fixture.py\"")
+    add_test(NAME squashfs_stream COMMAND squashfs_stream_tests -silent)
+    set_tests_properties(squashfs_stream PROPERTIES TIMEOUT 45)
     add_test(NAME fat COMMAND ${Python3_EXECUTABLE}
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/fat_tests.py
         ${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime "$<TARGET_FILE:sevenzip_fat>")
