@@ -11,6 +11,7 @@
 #include "../../Common/StreamUtils.h"
 #ifdef SEVENZIP_LINUX_ISO
 #include "../../Common/StreamObjects.h"
+#include "IsoZisofs.h"
 #endif
 
 #include "../../Compress/CopyCoder.h"
@@ -28,7 +29,7 @@ namespace NIso {
 static const Byte kProps[] = {kpidPath, kpidIsDir, kpidSize, kpidPackSize, kpidMTime,
 #ifdef SEVENZIP_LINUX_ISO
                               kpidATime, kpidChangeTime, kpidUserId, kpidGroupId, kpidLinks,
-                              kpidDeviceMajor, kpidDeviceMinor,
+                              kpidMethod, kpidDeviceMajor, kpidDeviceMinor,
 #endif
                               // kpidCTime,
                               // kpidATime,
@@ -241,7 +242,11 @@ Z7_COM7F_IMF(CHandler::GetProperty(UInt32 index, PROPID propID, PROPVARIANT *val
                 break;
             case kpidSize:
                 if (!item.IsDir())
-                    prop = inode.i_file_format == 2 ? inode.i_size : ref.TotalSize;
+                    prop = _archive.GetUnpackSize(ref);
+                break;
+            case kpidMethod:
+                if (inode.i_file_format == 2 && (inode.i_mode & 0170000) == 0100000)
+                    prop = "zisofs";
                 break;
             case kpidPackSize:
                 if (!item.IsDir())
@@ -390,7 +395,7 @@ Z7_COM7F_IMF(CHandler::Extract(const UInt32 *indices, UInt32 numItems, Int32 tes
             const CRef &ref = _archive.Refs[index];
             const CDir &item = ref.Dir->_subItems[ref.Index];
             if (!item.IsDir())
-                totalSize += ref.TotalSize;
+                totalSize += _archive.GetUnpackSize(ref);
         } else
             totalSize += _archive.GetBootItemSize(index - _archive.Refs.Size());
     }
@@ -426,7 +431,7 @@ Z7_COM7F_IMF(CHandler::Extract(const UInt32 *indices, UInt32 numItems, Int32 tes
                     RINOK(extractCallback->SetOperationResult(NExtract::NOperationResult::kOK))
                     continue;
                 }
-                currentItemSize = ref.TotalSize;
+                currentItemSize = _archive.GetUnpackSize(ref);
             } else {
                 unsigned bootIndex = index - _archive.Refs.Size();
                 currentItemSize = _archive.GetBootItemSize(bootIndex);
@@ -518,6 +523,17 @@ Z7_COM7F_IMF(CHandler::GetStream(UInt32 index, ISequentialInStream **stream)) {
     end.Virt = virtOffset;
     extentStream->Extents.Add(end);
     extentStream->Init();
+#ifdef SEVENZIP_LINUX_ISO
+    if (index < _archive.Refs.Size()) {
+        const CRef &ref = _archive.Refs[index];
+        const CDir &item = ref.Dir->_subItems[ref.Index];
+        if (item.RockDefined && item.RockInode.i_file_format == 2 &&
+            (item.RockInode.i_mode & 0170000) == 0100000)
+            return CreateZisofsStream(extentStream, ref.TotalSize,
+                                      _archive.VolDescs[_archive.MainVolDescIndex].LogicalBlockSize,
+                                      item.RockInode, stream);
+    }
+#endif
     *stream = extentStream.Detach();
     return S_OK;
     COM_TRY_END

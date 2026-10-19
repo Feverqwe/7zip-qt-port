@@ -2,8 +2,11 @@
 add_library(sevenzip_iso MODULE
     src/CPP/7zip/Archive/Iso/IsoIn.cpp src/CPP/7zip/Archive/Iso/IsoHandler.cpp
     src/CPP/7zip/Archive/Iso/IsoRegister.cpp src/CPP/7zip/Archive/Iso/IsoLinux.cpp
+    src/CPP/7zip/Archive/Iso/IsoZisofs.cpp
     third_party/7zip/CPP/7zip/Archive/Iso/IsoHeader.cpp
     src/fs/isofs/rock.c src/fs/isofs/inode.c src/fs/isofs/util.c src/kernel/time/time.c src/exfatmodule.cpp
+    src/fs/isofs/compress.c src/lib/zlib_inflate/inffast.c
+    third_party/linux/lib/zlib_inflate/inflate.c third_party/linux/lib/zlib_inflate/inftrees.c
     third_party/7zip/CPP/7zip/Archive/ArchiveExports.cpp
     third_party/7zip/CPP/7zip/Archive/Common/FindSignature.cpp
     third_party/7zip/CPP/7zip/Archive/Common/ItemNameUtils.cpp
@@ -25,7 +28,8 @@ add_library(sevenzip_iso MODULE
     third_party/7zip/CPP/Common/UTFConvert.cpp
     third_party/7zip/C/CpuArch.c third_party/7zip/C/Alloc.c)
 target_include_directories(sevenzip_iso PRIVATE src third_party/7zip/CPP
-    src/CPP/7zip/Archive/Iso third_party/7zip/CPP/7zip/Archive/Iso third_party/linux/fs/isofs)
+    src/CPP/7zip/Archive/Iso third_party/7zip/CPP/7zip/Archive/Iso third_party/linux/fs/isofs
+    src/include third_party/linux/include third_party/linux/lib/zlib_inflate)
 target_compile_definitions(sevenzip_iso PRIVATE SEVENZIP_LINUX_ISO CONFIG_ZISOFS Z7_ST)
 target_link_libraries(sevenzip_iso PRIVATE Threads::Threads)
 set_target_properties(sevenzip_iso PROPERTIES AUTOMOC OFF AUTOUIC OFF PREFIX ""

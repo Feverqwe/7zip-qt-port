@@ -659,6 +659,8 @@
   "local": [
     "src/CPP/7zip/Archive/BrotliHandler.cpp",
     "src/CPP/7zip/Archive/Iso/IsoLinux.cpp",
+    "src/CPP/7zip/Archive/Iso/IsoZisofs.cpp",
+    "src/CPP/7zip/Archive/Iso/IsoZisofs.h",
     "src/CPP/7zip/Compress/BrotliDecoder.cpp",
     "src/CPP/7zip/Compress/BrotliDecoder.h",
     "src/CPP/7zip/UI/FileManager/PanelSelect.h",

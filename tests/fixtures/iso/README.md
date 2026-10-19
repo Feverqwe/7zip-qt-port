@@ -22,3 +22,10 @@ modes 0750, UID/GID 1000; genisoimage also records native generated metadata.
 Modification times were set to 1760000000; native change/access times may differ.
 `tests/iso_rock_fixture.py` defines payloads and the focused CE/SL/CL, TF/PN and
 primary-root variants. No symlink was followed to copy outside fixture data.
+
+`zisofs.iso.zlib` was created with mkzftree 1.0.7 (`mkzftree -f seed compressed`)
+and genisoimage 1.1.11 (`-R -z -no-pad -iso-level 3 -V ZisofsFixture`).
+It contains only generated patterned, deterministic random, sparse, Unicode
+and empty files, with input modification time 1760000000.
+`tests/iso_zisofs_fixture.py` defines the expected bytes and derives focused
+pointer-table, compression-block, header, multi-section and corruption cases.

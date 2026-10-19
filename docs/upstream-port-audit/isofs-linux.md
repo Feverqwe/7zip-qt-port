@@ -26,8 +26,8 @@ commit `58161ead29e50d70a317ea26b472e0c7508e69da`.
 или проверку всех его ветвей. Для выбранного сценария сравнены `inode.c`:
 `isofs_fill_super`, `isofs_get_blocks`, `isofs_read_level3_size`,
 `isofs_read_inode`; полные `dir.c`, `isofs.h`, `util.c`, определения дисковых
-структур и directory validation/lookup в `namei.c`. `compress.c` прочитан для
-выделения отдельного zisofs scope; его декодер в этой итерации не переносится.
+структур и directory validation/lookup в `namei.c`. Полный `compress.c`,
+`zisofs.h`, ZF branch и generic `lib/zlib_inflate` сравнены для zisofs scope.
 В первой core-итерации Linux использовался как reference без копирования GPL
 bodies в engine. Следующая интеграция переносит C scope в отдельный модуль,
 описанный ниже. Новых независимых parsers/decoders не добавлено.
@@ -112,8 +112,8 @@ directory traversal: общий CE может использоваться ты�
 root допускает переход к корректному Joliet, как `isofs_fill_super`/`rootdir_empty`.
 Без ER marker Linux продолжает RR probing, если Joliet не выбран; этот branch
 также сохранён. Выбранный primary root должен иметь directory inode mode.
-Zisofs ZF metadata распознаётся оригинальной ветвью, но compressed stream пока
-явно возвращает UnsupportedMethod. То же относится к попытке читать special
+Zisofs ZF metadata распознаётся оригинальной ветвью и подключает описанный ниже
+decoded stream. UnsupportedMethod возвращается при попытке читать special
 device/FIFO/socket как обычный файл; metadata доступна без обращения к устройствам.
 
 Linux C компилируется как C11 только в `sevenzip_iso`, без unRAR. LGPL closure:
@@ -123,9 +123,52 @@ ISO handler/header, ArchiveExports, Common/Windows/stream helpers и CopyCoder.
 core fixes и исходный ограниченный RR parser; новые Linux read features
 предоставляет dynamic engine приложения, как у остальных GPL format-модулей.
 
+## Zisofs: Linux C decoder
+
+Из того же Linux commit перенесены полные read bodies `compress.c`:
+`zisofs_uncompress_block`, `zisofs_fill_pages`, `zisofs_read_folio`.
+Buffer-head reads используют bounded 7-Zip extent stream, включая Level 3
+multi-section mapping; folio acquisition заменён stream-owned cache до 128 KiB.
+Workspace и sink принадлежат потоку вместо kernel-global mutex/workspace.
+VFS operation table, module init/exit и shared page cache не переносятся.
+`IsoZisofs.cpp` содержит только ABI/ownership/error adapter; Seek использует
+исходное тело `CExtentsStream::Seek` с decoded EOF.
+
+Generic Linux zlib inflate компилируется как C: `inflate.c`, `inftrees.c`,
+`inffast.c`, их headers и `zlib.h`/`zconf.h`. Первые два тела и headers сохранены
+побайтно; в `inffast.c` pointer alignment cast заменён на `uintptr_t` для LLP64.
+`zutil.h` заменяет kernel includes и выбирает portable unaligned helper.
+Архитектурный s390 DFLTCC, unused blob helper и deflate encoder не нужны.
+Manifest фиксирует исходные SHA-256 и разделяет exact/adapted files.
+Сохранены notices H. Peter Anvin, Mark Adler и Jean-loup Gailly;
+из `zlib.h` выделен устанавливаемый `zlib-LICENSE.txt`.
+Все эти C sources подключены только к отдельному GPL `sevenzip_iso` без unRAR.
+
+ZF size/header words/block shift управляют чтением, как в Linux; embedded
+zisofs header не становится дополнительным обязательным magic contract.
+Sparse blocks, sub-page compression, pointer-table block crossings,
+512-byte logical blocks и максимальный shift 17 поддерживаются.
+Archive boundary проверяет полную таблицу и непустые packed ranges до чтения;
+arithmetic остаётся широкой до проверок. Один private guard page позволяет
+проверить trailer даже при точном заполнении последней страницы.
+Перед публикацией блока требуется zlib stream end, корректный Adler и точный
+decoded size; при ошибке весь cache window инвалидируется. Это намеренно
+строже kernel policy, допускающей готовую critical page после поздней ошибки.
+Sparse sub-page branch обнуляет только текущий compression block: исходный
+Linux branch обнулял оставшуюся страницу вместе с соседними блоками.
+Equal sparse pointers не требуют чтения backing bytes.
+Packed reads ограничиваются raw extent size, а не decoded size: expanding
+zlib blocks могут занимать больше исходных данных. Native 6.8 `isofs_get_blocks`
+ошибочно ограничивает такой read по decoded EOF и возвращает EIO.
+
+Handler публикует decoded Size и `zisofs` Method, сохраняет packed Size;
+Extract totals и CopyCoder используют decoded size. I/O HRESULT, отмена,
+independent cursors и retained-source lifetime сохраняются. Standalone `7zz`
+не получает этот GPL decoder; приложение использует dynamic format module.
+
 ## Оставшийся scope
 
-Остаются zisofs decoding, High Sierra, naming/NLS/Acorn и оставшиеся date quirks,
+Остаются High Sierra, naming/NLS/Acorn и оставшиеся date quirks,
 проверка остальных RR compatibility branches на производителях, полная
 dot-record normalization/root multi-section semantics. Сохранённый archive
 depth cap отличается от VFS; его снятие требует переноса рекурсивного обхода
@@ -199,3 +242,28 @@ typed-directory reader проверен на RR+Joliet, RR без ER и 5001-fil
 GPL/LGPL/Linux-syscall-note notices проверены по содержимому. Install staging
 и временные images удалены. Deployment меняет Mach-O bytes, поэтому совпадение
 binary hash с build artifact не используется вместо проверки установленного reader.
+
+Zisofs CLI проверяет native mkzftree bytes, shifts 0/8/10/15/17,
+таблицу через block boundary, sub-page sparse, expanding blocks, zero-size,
+ignored embedded header, header size 0, padding, equal sparse pointers,
+multi-section и 512-byte blocks. CRC/truncated zlib, short/long decoded output,
+неверный порядок/границы pointers и короткая таблица дают DataError.
+ABI/backend проверяют независимые/retained streams, seek, metadata/progress,
+I/O HRESULT, отмену и Unicode selected/source-entry extraction.
+
+Native Linux 6.8.0-146 read-only loop mounts подтвердили native bytes,
+shift 0/17, pointer-table boundary, padding, header size 0/ignored header, empty, sparse marker,
+multi-section и 512-byte geometry (с явным `block=512`). Expanding-block fixture
+даёт kernel EIO с `isofs_get_blocks: block >= EOF`; sub-page sparse fixture
+возвращает неверные bytes начиная с offset 1025. Эти результаты не считаются
+native PASS и не воспроизводятся как требование совместимости. Все mounts
+использовали nodev/nosuid/noexec; temporary images/mounts удалены.
+
+Zisofs focused seven-suite batch: macOS arm64, Linux x64 и Windows x64/MSVC
+7/7 PASS, Qt 6.12; remote receipt `20261019T161308Z-b9195c80`.
+macOS app build и фактический CMake install проверили exact extracted bytes,
+ошибку повреждённого потока и GPL/LGPL/syscall/zlib notices; staging удалён.
+Source post-comparison и exact-source SHA-256 выполнены отдельно от runtime.
+Full/slow/UI/physical-device acceptance не выполнялась.
+После уточнения fixtures и wide-mask предупреждения повторены `iso`/`iso_stream`
+на всех трёх ОС: 2/2 PASS, remote receipt `20261019T161535Z-d5535c87`.

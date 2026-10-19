@@ -338,8 +338,7 @@ bool CInArchive::IsSupported(const CRef &ref) const {
     const CDir &item = ref.Dir->_subItems[ref.Index];
     if (item.RockDefined) {
         const unsigned type = item.RockInode.i_mode & 0170000;
-        if (item.RockInode.i_file_format == 2 ||
-            (type != 0100000 && type != 0120000 && type != 0040000))
+        if (type != 0100000 && type != 0120000 && type != 0040000)
             return false;
     }
 #endif

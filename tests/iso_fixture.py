@@ -8,6 +8,9 @@ import zlib
 
 
 def volume(kind="plain"):
+    if kind.startswith("zisofs"):
+        from iso_zisofs_fixture import volume as compressed_volume
+        return compressed_volume(kind)
     if kind.startswith("rock"):
         from iso_rock_fixture import volume as rock_volume
         return rock_volume(kind)

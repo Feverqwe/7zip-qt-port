@@ -34,6 +34,7 @@ install(TARGETS sevenzip_hfs RUNTIME DESTINATION bin/Formats LIBRARY DESTINATION
 install(TARGETS sevenzip_iso RUNTIME DESTINATION bin/Formats LIBRARY DESTINATION bin/Formats)
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/preferred/GPL-2.0"
     "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/DOC/copying.txt"
+    "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/zlib-LICENSE.txt"
     DESTINATION share/licenses/sevenzip-desktop/sevenzip-iso)
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/exceptions/Linux-syscall-note"
     DESTINATION share/licenses/sevenzip-desktop/sevenzip-iso)

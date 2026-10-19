@@ -69,8 +69,12 @@ class Extract final : public IArchiveExtractCallback, public CMyUnknownImp {
     Z7_COM_UNKNOWN_IMP_1(IArchiveExtractCallback)
   public:
     bool cancel = false;
+    UInt64 total = 0;
     Int32 result = -1;
-    Z7_COM7F_IMF(SetTotal(UInt64)) override { return S_OK; }
+    Z7_COM7F_IMF(SetTotal(UInt64 value)) override {
+        total = value;
+        return S_OK;
+    }
     Z7_COM7F_IMF(SetCompleted(const UInt64 *)) override { return cancel ? E_ABORT : S_OK; }
     Z7_COM7F_IMF(GetStream(UInt32, ISequentialOutStream **stream, Int32)) override {
         *stream = nullptr;
@@ -323,8 +327,9 @@ class IsoStreamTests final : public QObject {
     }
     void backendExtraction_data() {
         QTest::addColumn<QString>("kind");
-        for (const char *kind : {"plain", "joliet", "block-512-tail", "xar", "multi",
-                                 "multi-directory", "rock", "rock-joliet"})
+        for (const char *kind :
+             {"plain", "joliet", "block-512-tail", "xar", "multi", "multi-directory", "rock",
+              "rock-joliet", "zisofs", "zisofs-multi"})
             QTest::newRow(kind) << QString::fromLatin1(kind);
     }
     void backendExtraction() {
@@ -360,10 +365,11 @@ class IsoStreamTests final : public QObject {
         backend.list(image.fileName());
         QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 10000);
         QVERIFY2(finished[0][0].toBool(), qPrintable(finished[0][1].toString()));
-        const QString name = kind == "joliet" || kind.startsWith("rock")
-                                 ? QString::fromUtf8("nested/данные 空.txt")
-                             : kind == "multi-directory" ? "NESTED/LATE.BIN"
-                                                         : "ALPHA.BIN";
+        const QString name =
+            kind == "joliet" || kind.startsWith("rock") || kind.startsWith("zisofs")
+                ? QString::fromUtf8("nested/данные 空.txt")
+            : kind == "multi-directory" ? "NESTED/LATE.BIN"
+                                        : "ALPHA.BIN";
         const QByteArray expected =
             QByteArray::fromBase64(record_["files"].toObject()[name].toString().toLatin1());
         QVERIFY(!expected.isEmpty());
@@ -385,6 +391,100 @@ class IsoStreamTests final : public QObject {
         QCOMPARE(source.readAll(), expected);
         QVERIFY(image.open(QIODevice::ReadOnly));
         QCOMPARE(image.readAll(), bytes_);
+    }
+    void compressedStreamsAndLifetime() {
+        loadFixture("zisofs");
+        CMyComPtr2<IInStream, Input> input;
+        input.SetFromCls(new Input(bytes_));
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        auto alpha = stream("alpha.bin");
+        auto noise = stream("noise.bin");
+        auto mixed = stream("mixed.bin");
+        QVERIFY(alpha && noise && mixed);
+        check(alpha, "alpha.bin", 32760, 32780);
+        check(noise, "noise.bin", 65530, 40000);
+        check(mixed, "mixed.bin", 32760, 32780);
+        check(alpha, "alpha.bin", 4080, 8200);
+        const UInt32 item = index("alpha.bin");
+        NWindows::NCOM::CPropVariant size, packed, method;
+        QCOMPARE(archive_->GetProperty(item, kpidSize, &size), S_OK);
+        QCOMPARE(size.vt, VARTYPE(VT_UI8));
+        QCOMPARE(size.uhVal.QuadPart, UInt64(131328));
+        QCOMPARE(archive_->GetProperty(item, kpidPackSize, &packed), S_OK);
+        QCOMPARE(packed.vt, VARTYPE(VT_UI8));
+        QVERIFY(packed.uhVal.QuadPart < size.uhVal.QuadPart);
+        QCOMPARE(archive_->GetProperty(item, kpidMethod, &method), S_OK);
+        QCOMPARE(method.vt, VARTYPE(VT_BSTR));
+        QCOMPARE(QString::fromWCharArray(method.bstrVal), QString("zisofs"));
+        CMyComPtr2<IArchiveExtractCallback, Extract> callback;
+        callback.SetFromCls(new Extract);
+        QCOMPARE(archive_->Extract(&item, 1, 1, callback), S_OK);
+        QCOMPARE(callback->total, UInt64(131328));
+        QCOMPARE(callback->result, Int32(NArchive::NExtract::NOperationResult::kOK));
+        callback->cancel = true;
+        QCOMPARE(archive_->Extract(&item, 1, 1, callback), E_ABORT);
+        QCOMPARE(archive_->Close(), S_OK);
+        const auto retained = record_;
+        loadFixture("plain");
+        CMyComPtr<IInStream> replacement = new Input(bytes_);
+        QCOMPARE(archive_->Open(replacement, nullptr, nullptr), S_OK);
+        archive_.Release();
+        input.SetFromCls(nullptr);
+        record_ = retained;
+        check(noise, "noise.bin", 0, 150321);
+        check(alpha, "alpha.bin", 131000, 1000);
+        check(mixed, "mixed.bin", 65530, 36306);
+        char data[37];
+        UInt32 count = 99;
+        QCOMPARE(alpha->Seek(0, STREAM_SEEK_END, nullptr), S_OK);
+        QCOMPARE(alpha->Read(data, sizeof(data), &count), S_OK);
+        QCOMPARE(count, UInt32(0));
+        QVERIFY(alpha->Seek(INT64_MIN, STREAM_SEEK_CUR, nullptr) != S_OK);
+        QCOMPARE(alpha->Seek(INT64_MAX, STREAM_SEEK_SET, nullptr), S_OK);
+        QVERIFY(alpha->Seek(1, STREAM_SEEK_CUR, nullptr) != S_OK);
+        createArchive();
+    }
+    void compressedIoFailures() {
+        loadFixture("zisofs");
+        CMyComPtr2<IInStream, Input> input;
+        input.SetFromCls(new Input(bytes_));
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        auto alpha = stream("alpha.bin");
+        QVERIFY(alpha);
+        char data[37];
+        UInt32 count = 99;
+        input->eof = true;
+        QCOMPARE(alpha->Read(data, sizeof(data), &count), S_FALSE);
+        QCOMPARE(count, UInt32(0));
+        input->eof = false;
+        input->seekFailure = E_NOTIMPL;
+        QCOMPARE(alpha->Read(data, sizeof(data), &count), E_NOTIMPL);
+        QCOMPARE(count, UInt32(0));
+        input->failure = E_ABORT;
+        QCOMPARE(alpha->Read(data, sizeof(data), &count), E_ABORT);
+        QCOMPARE(count, UInt32(0));
+        input->failure = S_OK;
+        check(alpha, "alpha.bin", 0, 4096);
+    }
+    void corruptCompressedExtraction_data() {
+        QTest::addColumn<QString>("kind");
+        for (const char *kind :
+             {"zisofs-crc", "zisofs-short-zlib", "zisofs-short-output", "zisofs-long-output",
+              "zisofs-pointer-order", "zisofs-pointer-outside", "zisofs-pointer-header",
+              "zisofs-short-table"})
+            QTest::newRow(kind) << QString::fromLatin1(kind);
+    }
+    void corruptCompressedExtraction() {
+        QFETCH(QString, kind);
+        loadFixture(kind);
+        CMyComPtr<IInStream> input = new Input(bytes_);
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        const UInt32 item = index("alpha.bin");
+        QVERIFY(item != UInt32(-1));
+        CMyComPtr2<IArchiveExtractCallback, Extract> callback;
+        callback.SetFromCls(new Extract);
+        QCOMPARE(archive_->Extract(&item, 1, 1, callback), S_OK);
+        QCOMPARE(callback->result, Int32(NArchive::NExtract::NOperationResult::kDataError));
     }
     void rockMetadataAndStreams_data() {
         QTest::addColumn<QString>("kind");

@@ -74,6 +74,26 @@ class IsoTests(unittest.TestCase):
                     self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
                     self.assertEqual(result.stdout, expected)
 
+    def test_zisofs_decoded_bytes(self):
+        for kind in ("zisofs", "zisofs-shift0", "zisofs-pointer-boundary", "zisofs-expanding", "zisofs-small-sparse",
+                     "zisofs-shift17", "zisofs-padding", "zisofs-header0", "zisofs-embedded-header",
+                     "zisofs-empty", "zisofs-sparse-marker", "zisofs-multi", "zisofs-block512"):
+            image, files = volume(kind)
+            for name, expected in files.items():
+                with self.subTest(kind=kind, name=name):
+                    result = self.run_image("7z", image, name)
+                    self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                    self.assertEqual(result.stdout, expected)
+
+    def test_zisofs_corruption_is_data_error(self):
+        for kind in ("zisofs-crc", "zisofs-short-zlib", "zisofs-short-output", "zisofs-long-output",
+                     "zisofs-pointer-order", "zisofs-pointer-outside", "zisofs-pointer-header",
+                     "zisofs-short-table"):
+            with self.subTest(kind=kind):
+                result = self.run_image("7z", volume(kind)[0], "alpha.bin")
+                self.assertNotEqual(result.returncode, 0)
+                self.assertIn(b"Data Error", result.stderr)
+
     def test_bad_rock_ridge_never_publishes_partial_catalog(self):
         for kind in ("rock-ce-outside", "rock-ce-crossblock", "rock-ce-cycle", "rock-sl-overrun",
                      "rock-cl-cycle", "rock-cl-outside", "rock-root-mode"):

@@ -315,6 +315,15 @@ class CInArchive {
     bool CheckRecord(const CDirRecord &record) const;
     bool CheckRef(const CRef &ref) const;
     bool IsSupported(const CRef &ref) const;
+    UInt64 GetUnpackSize(const CRef &ref) const {
+#ifdef SEVENZIP_LINUX_ISO
+        const CDir &item = ref.Dir->_subItems[ref.Index];
+        if (item.RockDefined && item.RockInode.i_file_format == 2 &&
+            (item.RockInode.i_mode & 0170000) == 0100000)
+            return item.RockInode.i_size;
+#endif
+        return ref.TotalSize;
+    }
     UInt64 GetDataPosition(const CDirRecord &record) const {
         return record.GetDataBlock() * VolDescs[MainVolDescIndex].LogicalBlockSize;
     }
