@@ -97,7 +97,10 @@ continuations, включая short/long chains, directory data и межраз�
 indirect ICB/strategy 4096 выбирают актуальную запись inode через Linux C reader,
 сохраняя fallback и read-only metadata backing semantics. Sparable loader/mapper,
 packet spans и compound metadata backing подключены в том же GPL-модуле.
-VAT и остальные возможности UDF ещё требуют актуализации.
+VAT15/20 loader и mapper перенесены в модуль и подключены к общим streams;
+проверены inline/external таблицы, предыдущие записи и offset semantics.
+Volume discovery/block geometry, полное metadata/mirror mapping и остальные
+read-side возможности UDF ещё требуют актуализации.
 
 ### HFS+/HFSX: fork mapping и metadata reads
 

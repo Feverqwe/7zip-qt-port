@@ -80,12 +80,19 @@ class CancelAt final : public IArchiveOpenCallback, public CMyUnknownImp {
     Z7_COM_UNKNOWN_IMP_1(IArchiveOpenCallback)
     Input *input_;
     UInt64 checkpoint_;
+    HRESULT result_;
+    bool fired_ = false;
 
   public:
-    CancelAt(Input *input, UInt64 checkpoint) : input_(input), checkpoint_(checkpoint) {}
+    CancelAt(Input *input, UInt64 checkpoint, HRESULT result = E_ABORT)
+        : input_(input), checkpoint_(checkpoint), result_(result) {}
     Z7_COM7F_IMF(SetTotal(const UInt64 *, const UInt64 *)) override { return S_OK; }
     Z7_COM7F_IMF(SetCompleted(const UInt64 *, const UInt64 *)) override {
-        return input_->lastSeek >= checkpoint_ ? E_ABORT : S_OK;
+        if (!fired_ && input_->lastSeek >= checkpoint_) {
+            fired_ = true;
+            return result_;
+        }
+        return S_OK;
     }
 };
 class CancelOnce final : public IArchiveOpenCallback, public CMyUnknownImp {
@@ -231,6 +238,11 @@ class UdfStreamTests final : public QObject {
               "sp-invalid-table", "sp-table-overrun", "sp-max-table", "sp-declared-zero",
               "sp-reserved", "sp-sparse", "sp-icb", "sp-directory-cross", "sp-metadata"})
             QTest::newRow(kind) << QString::fromLatin1(kind);
+        for (const char *kind :
+             {"vat15-inline", "vat20-inline", "vat15-external", "vat20-external",
+              "vat20-extended-header", "vat20-previous", "vat15-offset", "vat20-sparse",
+              "vat20-unknown-newest", "vat20-cross-partition", "vat20-sparable"})
+            QTest::newRow(kind) << QString::fromLatin1(kind);
     }
     void allocationStreams() {
         QFETCH(QString, kind);
@@ -345,12 +357,48 @@ class UdfStreamTests final : public QObject {
         input->failSeekAt = UINT64_MAX;
         check(alpha, QByteArray::fromHex(files_["alpha.bin"].toString().toLatin1()));
     }
+    void vatLoaderFailuresAndCancellation() {
+        fixture("vat20-previous");
+        CMyComPtr2<IInStream, Input> input;
+        input.SetFromCls(new Input(bytes_));
+        // Optional invalid/missing last entries do not prevent finding the previous VAT.
+        input->failSeekAt = UInt64(1399) * 2048;
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        check(stream("alpha.bin"), QByteArray::fromHex(files_["alpha.bin"].toString().toLatin1()));
+        input->failSeekAt = UINT64_MAX;
+        CMyComPtr<IArchiveOpenCallback> cancel =
+            new CancelAt(input.operator->(), UInt64(1396) * 2048);
+        QCOMPARE(archive_->Open(input, nullptr, cancel), E_ABORT);
+        UInt32 count = 99;
+        QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, UInt32(0));
+        CMyComPtr<IArchiveOpenCallback> failedProgress =
+            new CancelAt(input.operator->(), UInt64(1396) * 2048, E_FAIL);
+        QCOMPARE(archive_->Open(input, nullptr, failedProgress), E_FAIL);
+        QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, UInt32(0));
+        fixture("vat20-external");
+        input.SetFromCls(new Input(bytes_));
+        input->failSeekAt = UInt64(390) * 2048;
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), E_FAIL);
+        input->failSeekAt = UINT64_MAX;
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        auto alpha = stream("alpha.bin");
+        QVERIFY(alpha);
+        input->failSeekAt = UInt64(315) * 2048;
+        char data[23];
+        count = 99;
+        QCOMPARE(alpha->Read(data, sizeof(data), &count), E_FAIL);
+        QCOMPARE(count, UInt32(0));
+        input->failSeekAt = UINT64_MAX;
+        check(alpha, QByteArray::fromHex(files_["alpha.bin"].toString().toLatin1()));
+    }
     void backendExtraction_data() {
         QTest::addColumn<QString>("kind");
         for (const char *kind :
              {"sparse-long", "ad-directory", "ad-chain-long", "ad-cross-partition", "icb-efe",
               "icb-root", "icb-cross-partition", "icb-metadata-cross", "sp-reverse",
-              "sp-directory-cross", "sp-metadata"})
+              "sp-directory-cross", "sp-metadata", "vat15-inline", "vat20-external"})
             QTest::newRow(kind) << QString::fromLatin1(kind);
     }
     void backendExtraction() {

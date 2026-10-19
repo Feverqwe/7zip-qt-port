@@ -266,70 +266,7 @@ Z7_COM7F_IMF(CHandler::GetStream(UInt32 index, ISequentialInStream **stream)) {
     const CRef &ref = vol.FileSets[ref2.Fs].Refs[ref2.Ref];
     const CFile &file = _archive.Files[ref.FileIndex];
     const CItem &item = _archive.Items[file.ItemIndex];
-    UInt64 size = item.Size;
-
-    if (!item.CheckChunkSizes() || !_archive.CheckItemExtents(ref2.Vol, item))
-        return E_NOTIMPL;
-
-    if (item.IsInline) {
-        Create_BufInStream_WithNewBuffer(item.InlineData, stream);
-        return S_OK;
-    }
-
-    CExtentsStream *extentStreamSpec = new CExtentsStream();
-    CMyComPtr<ISequentialInStream> extentStream = extentStreamSpec;
-
-    extentStreamSpec->Stream = _inStream;
-
-    UInt64 virtOffset = 0;
-    FOR_VECTOR(extentIndex, item.Extents) {
-        if (size == 0)
-            break;
-        const CMyExtent &extent = item.Extents[extentIndex];
-        UInt32 len = extent.GetLen();
-        if (len == 0)
-            continue;
-        if (size < len)
-            len = (UInt32)size;
-
-        UInt32 remaining = len, block = extent.Pos;
-        while (remaining) {
-            CSeekExtent se;
-            UInt32 chunk = remaining;
-            if (extent.IsRecAndAlloc()) {
-                RINOK(_archive.GetPhysicalSpan(ref2.Vol, extent.PartitionRef, block, remaining,
-                                               se.Phy, chunk))
-            } else {
-                se.SetAs_ZeroFill();
-            }
-            se.Virt = virtOffset;
-            if (extentStreamSpec->Extents.IsEmpty() || se.Is_ZeroFill() ||
-                extentStreamSpec->Extents.Back().Is_ZeroFill() ||
-                extentStreamSpec->Extents.Back().Phy + virtOffset -
-                        extentStreamSpec->Extents.Back().Virt !=
-                    se.Phy)
-                extentStreamSpec->Extents.Add(se);
-            virtOffset += chunk;
-            remaining -= chunk;
-            block += chunk / vol.BlockSize;
-        }
-
-        size -= len;
-    }
-    if (size != 0) {
-        CSeekExtent hole;
-        hole.Virt = virtOffset;
-        hole.SetAs_ZeroFill();
-        extentStreamSpec->Extents.Add(hole);
-        virtOffset += size;
-    }
-    CSeekExtent se;
-    se.Phy = 0;
-    se.Virt = virtOffset;
-    extentStreamSpec->Extents.Add(se);
-    extentStreamSpec->Init();
-    *stream = extentStream.Detach();
-    return S_OK;
+    return _archive.GetItemStream(ref2.Vol, item, stream);
 }
 
 Z7_COM7F_IMF(CHandler::Extract(const UInt32 *indices, UInt32 numItems, Int32 testMode,

@@ -14,6 +14,8 @@
 
 #include "../../Common/RegisterArc.h"
 #include "../../Common/StreamUtils.h"
+#include "../../Common/LimitedStreams.h"
+#include "../../Common/StreamObjects.h"
 
 #include "UdfIn.h"
 
@@ -346,24 +348,39 @@ bool CInArchive::CheckItemExtents(unsigned volIndex, const CItem &item) const {
 }
 
 HRESULT CInArchive::GetPhysicalSpan(unsigned volIndex, unsigned partitionRef, UInt32 block,
-                                    UInt32 length, UInt64 &offset, UInt32 &size) const {
-    if (!CheckExtent(volIndex, partitionRef, block, length))
+                                    UInt32 length, UInt64 &offset, UInt32 &size,
+                                    UInt32 blockOffset) const {
+    if ((UInt64)block + blockOffset > UINT32_MAX)
+        return S_FALSE;
+    if (!CheckExtent(volIndex, partitionRef, block + blockOffset, length))
         return S_FALSE;
     const CLogVol &vol = LogVols[volIndex];
     const CPartitionMap &map = vol.PartitionMaps[partitionRef];
     const CPartition &partition = Partitions[map.PartitionIndex];
-    offset = ((UInt64)partition.Pos << SecLogSize) + (UInt64)block * vol.BlockSize;
+    offset = ((UInt64)partition.Pos << SecLogSize) + ((UInt64)block + blockOffset) * vol.BlockSize;
     size = length;
 #ifdef SEVENZIP_LINUX_UDF
+    if (map.IsVirtual) {
+        uint16_t backing;
+        uint32_t mapped;
+        if (!map.Virtual)
+            return S_FALSE;
+        const int result =
+            sevenzip_udf_virtual_map(map.Virtual.get(), block, blockOffset, &backing, &mapped);
+        if (result)
+            return result < 0 ? (HRESULT)result : S_FALSE;
+        return GetPhysicalSpan(volIndex, backing, mapped, length, offset, size);
+    }
     if (map.MetadataBacking != (unsigned)-1) {
         if ((UInt64)map.MetadataStart + block > (UInt32)-1)
             return S_FALSE;
         return GetPhysicalSpan(volIndex, map.MetadataBacking, map.MetadataStart + block, length,
-                               offset, size);
+                               offset, size, blockOffset);
     }
     if (map.IsSparable()) {
         uint32_t physical, blocks;
-        if (!map.Sparing || sevenzip_udf_sparing_span(map.Sparing.get(), block, &physical, &blocks))
+        if (!map.Sparing ||
+            sevenzip_udf_sparing_span(map.Sparing.get(), block + blockOffset, &physical, &blocks))
             return S_FALSE;
         size = (UInt32)MyMin((UInt64)length, (UInt64)blocks * vol.BlockSize);
         if ((UInt64)physical + ((UInt64)size + vol.BlockSize - 1) / vol.BlockSize >
@@ -382,10 +399,11 @@ HRESULT CInArchive::Read(unsigned volIndex, unsigned partitionRef, UInt32 blockP
     if (!CheckExtent(volIndex, partitionRef, blockPos, len))
         return S_FALSE;
     const CLogVol &vol = LogVols[volIndex];
+    UInt32 blockOffset = 0;
     while (len) {
         UInt64 offset;
         UInt32 size;
-        RINOK(GetPhysicalSpan(volIndex, partitionRef, blockPos, len, offset, size))
+        RINOK(GetPhysicalSpan(volIndex, partitionRef, blockPos, len, offset, size, blockOffset))
         RINOK(InStream_SeekSet(_stream, offset))
         UpdatePhySize(offset + size);
         const HRESULT res = ReadStream_FALSE(_stream, buf, size);
@@ -394,8 +412,78 @@ HRESULT CInArchive::Read(unsigned volIndex, unsigned partitionRef, UInt32 blockP
         RINOK(res)
         len -= size;
         buf += size;
-        blockPos += size / vol.BlockSize;
+        blockOffset += size / vol.BlockSize;
     }
+    return S_OK;
+}
+
+HRESULT CInArchive::GetItemStream(unsigned volIndex, const CItem &item,
+                                  ISequentialInStream **stream) {
+    *stream = NULL;
+    const CLogVol &vol = LogVols[volIndex];
+    UInt64 size = item.Size;
+
+    if (!item.CheckChunkSizes() || !CheckItemExtents(volIndex, item))
+        return E_NOTIMPL;
+
+    if (item.IsInline) {
+        Create_BufInStream_WithNewBuffer(item.InlineData, stream);
+        return S_OK;
+    }
+
+    CExtentsStream *extentStreamSpec = new CExtentsStream();
+    CMyComPtr<ISequentialInStream> extentStream = extentStreamSpec;
+
+    extentStreamSpec->Stream = _stream;
+
+    UInt64 virtOffset = 0;
+    FOR_VECTOR(extentIndex, item.Extents) {
+        if (size == 0)
+            break;
+        const CMyExtent &extent = item.Extents[extentIndex];
+        UInt32 len = extent.GetLen();
+        if (len == 0)
+            continue;
+        if (size < len)
+            len = (UInt32)size;
+
+        UInt32 remaining = len, blockOffset = 0;
+        while (remaining) {
+            CSeekExtent se;
+            UInt32 chunk = remaining;
+            if (extent.IsRecAndAlloc()) {
+                RINOK(GetPhysicalSpan(volIndex, extent.PartitionRef, extent.Pos, remaining, se.Phy,
+                                      chunk, blockOffset))
+            } else {
+                se.SetAs_ZeroFill();
+            }
+            se.Virt = virtOffset;
+            if (extentStreamSpec->Extents.IsEmpty() || se.Is_ZeroFill() ||
+                extentStreamSpec->Extents.Back().Is_ZeroFill() ||
+                extentStreamSpec->Extents.Back().Phy + virtOffset -
+                        extentStreamSpec->Extents.Back().Virt !=
+                    se.Phy)
+                extentStreamSpec->Extents.Add(se);
+            virtOffset += chunk;
+            remaining -= chunk;
+            blockOffset += chunk / vol.BlockSize;
+        }
+
+        size -= len;
+    }
+    if (size != 0) {
+        CSeekExtent hole;
+        hole.Virt = virtOffset;
+        hole.SetAs_ZeroFill();
+        extentStreamSpec->Extents.Add(hole);
+        virtOffset += size;
+    }
+    CSeekExtent se;
+    se.Phy = 0;
+    se.Virt = virtOffset;
+    extentStreamSpec->Extents.Add(se);
+    extentStreamSpec->Init();
+    *stream = extentStream.Detach();
     return S_OK;
 }
 
@@ -590,35 +678,36 @@ HRESULT CInArchive::ReadFileItem(unsigned volIndex, unsigned fsIndex, const CLon
   return S_OK;
 }
 
-
 // (fsIndex = -1) means that it's metadata file
 
-HRESULT CInArchive::ReadItem(unsigned volIndex, int fsIndex, const CLongAllocDesc &lad, bool isDir, int numRecurseAllowed)
-{
-  if (Items.Size() >= kNumItemsMax)
-    return S_FALSE;
-  CItem &item = Items.AddNew();
+HRESULT CInArchive::ReadItem(unsigned volIndex, int fsIndex, const CLongAllocDesc &lad, bool isDir,
+                             int numRecurseAllowed, HRESULT *progressResult) {
+    (void)progressResult;
+    if (Items.Size() >= kNumItemsMax)
+        return S_FALSE;
+    CItem &item = Items.AddNew();
 
-  const CLogVol &vol = LogVols[volIndex];
+    const CLogVol &vol = LogVols[volIndex];
 
 #ifdef SEVENZIP_LINUX_UDF
-  const size_t size = vol.BlockSize;
+    const size_t size = vol.BlockSize;
 #else
-  const size_t size = lad.GetLen();
-  if (size != vol.BlockSize)
-      return S_FALSE;
+    const size_t size = lad.GetLen();
+    if (size != vol.BlockSize)
+        return S_FALSE;
 #endif
 
-  CByteBuffer buf(size);
+    CByteBuffer buf(size);
 #ifdef SEVENZIP_LINUX_UDF
-  CLongAllocDesc resolved = lad;
-  RINOK(ReadLinuxItem(volIndex, resolved, buf))
+    CLongAllocDesc resolved = lad;
+    RINOK(ReadLinuxItem(volIndex, resolved, buf, progressResult))
+    item.Location = resolved.Location;
 #else
-  RINOK(ReadLad(volIndex, lad, buf))
+    RINOK(ReadLad(volIndex, lad, buf))
 #endif
 
-  CTag tag;
-  const Byte *p = buf;
+    CTag tag;
+    const Byte *p = buf;
 #ifdef SEVENZIP_LINUX_UDF
   tag.Id = Get16(p);
   tag.CrcLen = Get16(p + 10);
@@ -630,28 +719,48 @@ HRESULT CInArchive::ReadItem(unsigned volIndex, int fsIndex, const CLongAllocDes
   const size_t kExtendOffset = item.IsExtended ? 40 : 0;
 
   if (size < kExtendOffset + 176)
-    return S_FALSE;
-  if (tag.Id != DESC_TYPE_File &&
-      tag.Id != DESC_TYPE_ExtendedFile)
-    return S_FALSE;
+      return S_FALSE;
+  if (tag.Id != DESC_TYPE_File && tag.Id != DESC_TYPE_ExtendedFile)
+      return S_FALSE;
 
   item.IcbTag.Parse(p + 16);
 
+#ifdef SEVENZIP_LINUX_UDF
+  if (fsIndex == -2) {
+      // Hidden VAT streams use Linux's non-device inode types without directory traversal.
+      switch (item.IcbTag.FileType) {
+      case 0:
+      case 4:
+      case 5:
+      case 9:
+      case 10:
+      case 12:
+      case 248:
+      case 249:
+      case 250:
+      case 251:
+      case 252:
+          break;
+      default:
+          return S_FALSE;
+      }
+  }
+#endif
+
   // maybe another FileType values are possible in rare cases.
   // Shoud we ignore FileType here?
-  if (fsIndex < 0)
-  {
-    // if (item.IcbTag.FileType == ICB_FILE_TYPE_DIR) return S_FALSE;
-    if (item.IcbTag.FileType != ICB_FILE_TYPE_METADATA &&
-        item.IcbTag.FileType != ICB_FILE_TYPE_METADATA_MIRROR &&
-        item.IcbTag.FileType != ICB_FILE_TYPE_METADATA_BITMAP)
+  if (fsIndex == -1) {
+      // if (item.IcbTag.FileType == ICB_FILE_TYPE_DIR) return S_FALSE;
+      if (item.IcbTag.FileType != ICB_FILE_TYPE_METADATA &&
+          item.IcbTag.FileType != ICB_FILE_TYPE_METADATA_MIRROR &&
+          item.IcbTag.FileType != ICB_FILE_TYPE_METADATA_BITMAP)
+          return S_FALSE;
+  } else if (fsIndex != -2 &&
+             (item.IcbTag.FileType != ICB_FILE_TYPE_DIR &&
+              item.IcbTag.FileType != ICB_FILE_TYPE_FILE &&
+              item.IcbTag.FileType !=
+                  ICB_FILE_TYPE_REAL_TIME_FILE)) // M2TS files in /BDMV/STREAM/ in Blu-ray movie
       return S_FALSE;
-  }
-  else if (
-      item.IcbTag.FileType != ICB_FILE_TYPE_DIR &&
-      item.IcbTag.FileType != ICB_FILE_TYPE_FILE &&
-      item.IcbTag.FileType != ICB_FILE_TYPE_REAL_TIME_FILE) // M2TS files in /BDMV/STREAM/ in Blu-ray movie
-    return S_FALSE;
 
   item.Parse(p);
 
@@ -695,7 +804,7 @@ HRESULT CInArchive::ReadItem(unsigned volIndex, int fsIndex, const CLongAllocDes
           return S_FALSE;
 #ifdef SEVENZIP_LINUX_UDF
       RINOK(ReadLinuxExtents(volIndex, resolved.Location.PartitionRef, item, p + pos,
-                             allocDescriptorsLen))
+                             allocDescriptorsLen, progressResult))
 #else
       for (UInt32 i = 0; i < allocDescriptorsLen;) {
           CMyExtent e;
@@ -724,6 +833,9 @@ HRESULT CInArchive::ReadItem(unsigned volIndex, int fsIndex, const CLongAllocDes
       }
 #endif
   }
+
+  if (fsIndex == -2)
+      return S_OK;
 
   if (isDir != item.IcbTag.IsDir())
       return S_FALSE;
@@ -790,7 +902,6 @@ HRESULT CInArchive::ReadItem(unsigned volIndex, int fsIndex, const CLongAllocDes
 
   return S_OK;
 }
-
 
 HRESULT CInArchive::FillRefs(CFileSet &fs, unsigned fileIndex, int parent, int numRecurseAllowed)
 {
@@ -1078,18 +1189,22 @@ HRESULT CInArchive::Open2()
             pm.PartitionNumber = Get16(buf + pos + 38);
 
 #ifdef SEVENZIP_LINUX_UDF
-          if (memcmp(pm.PartitionTypeId.Id, "*UDF Sparable Partition",
-                     sizeof("*UDF Sparable Partition") - 1) == 0) {
+            if (memcmp(pm.PartitionTypeId.Id, "*UDF Sparable Partition",
+                       sizeof("*UDF Sparable Partition") - 1) == 0) {
                 pm.SparableMap.CopyFrom(buf + pos, 64);
+            } else if (memcmp(pm.PartitionTypeId.Id, "*UDF Virtual Partition",
+                              sizeof("*UDF Virtual Partition") - 1) == 0) {
+                pm.IsVirtual = true;
+                pm.IsVat20 = Get16(pm.PartitionTypeId.Suffix) >= 0x200;
             } else {
 #endif
-          if (memcmp(pm.PartitionTypeId.Id, "*UDF Metadata Partition", 23) != 0)
-            return S_FALSE;
+                if (memcmp(pm.PartitionTypeId.Id, "*UDF Metadata Partition", 23) != 0)
+                    return S_FALSE;
 
-          // UDF 2.2.10 Metadata Partition Map
-          pm.MetadataFileLocation = Get32(buf + pos + 40);
+                // UDF 2.2.10 Metadata Partition Map
+                pm.MetadataFileLocation = Get32(buf + pos + 40);
 #ifdef SEVENZIP_LINUX_UDF
-          }
+            }
 #endif
           // pm.MetadataMirrorFileLocation = Get32(buf + pos + 44);
           // pm.MetadataBitmapFileLocation = Get32(buf + pos + 48);
@@ -1176,6 +1291,12 @@ HRESULT CInArchive::Open2()
               RINOK(LoadLinuxSparing(v, p))
       }
   }
+  for (unsigned v = 0; v < LogVols.Size(); ++v) {
+      for (unsigned p = 0; p < LogVols[v].PartitionMaps.Size(); ++p) {
+          if (LogVols[v].PartitionMaps[p].IsVirtual)
+              RINOK(LoadLinuxVat(v, p))
+      }
+  }
 #endif
 
   for (volIndex = 0; volIndex < LogVols.Size(); volIndex++) {
@@ -1185,7 +1306,7 @@ HRESULT CInArchive::Open2()
           if (pm.Type != 2)
               continue;
 #ifdef SEVENZIP_LINUX_UDF
-          if (pm.IsSparable())
+          if (pm.IsSparable() || pm.IsVirtual)
               continue;
           unsigned backingRef = pmIndex;
 #endif
@@ -1383,14 +1504,15 @@ HRESULT CInArchive::Open2()
               if (!extent.IsRecAndAlloc())
                   continue;
 
-              UInt32 remaining = len, block = extent.Pos;
+              UInt32 remaining = len, blockOffset = 0;
               while (remaining) {
                   UInt64 offset;
                   UInt32 chunk;
-                  RINOK(GetPhysicalSpan(volIndex, extent.PartitionRef, block, remaining, offset, chunk))
+                  RINOK(GetPhysicalSpan(volIndex, extent.PartitionRef, extent.Pos, remaining,
+                                        offset, chunk, blockOffset))
                   UpdatePhySize(offset + chunk);
                   remaining -= chunk;
-                  block += chunk / vol.BlockSize;
+                  blockOffset += chunk / vol.BlockSize;
               }
           }
       }

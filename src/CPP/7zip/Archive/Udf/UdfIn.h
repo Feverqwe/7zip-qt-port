@@ -225,6 +225,9 @@ struct CPartitionMap {
 #ifdef SEVENZIP_LINUX_UDF
     CByteBuffer SparableMap;
     std::shared_ptr<sevenzip_udf_sparing> Sparing;
+    std::shared_ptr<sevenzip_udf_virtual> Virtual;
+    bool IsVirtual = false;
+    bool IsVat20 = false;
     unsigned MetadataBacking = (unsigned)-1;
     UInt32 MetadataStart = 0;
     bool IsSparable() const { return SparableMap.Size() != 0; }
@@ -324,60 +327,60 @@ struct CMyExtent
   bool IsRecAndAlloc() const { return GetType() == SHORT_ALLOC_DESC_TYPE_RecordedAndAllocated; }
 };
 
+struct CItem {
+#ifdef SEVENZIP_LINUX_UDF
+    CLogBlockAddr Location;
+#endif
+    CIcbTag IcbTag;
 
-struct CItem
-{
-  CIcbTag IcbTag;
+    // UInt32 Uid;
+    // UInt32 Gid;
+    // UInt32 Permissions;
+    UInt16 FileLinkCount;
+    // Byte RecordFormat;
+    // Byte RecordDisplayAttr;
+    // UInt32 RecordLen;
+    UInt64 Size;
+    UInt64 NumLogBlockRecorded;
+    // UInt64 ObjectSize;
 
-  // UInt32 Uid;
-  // UInt32 Gid;
-  // UInt32 Permissions;
-  UInt16 FileLinkCount;
-  // Byte RecordFormat;
-  // Byte RecordDisplayAttr;
-  // UInt32 RecordLen;
-  UInt64 Size;
-  UInt64 NumLogBlockRecorded;
-  // UInt64 ObjectSize;
+    CTime ATime;
+    CTime MTime;
+    CTime AttribTime; // Attribute time : most recent date and time of the day of file creation or
+                      // modification of the attributes of.
+    CTime CreateTime;
+    // UInt32 CheckPoint;
+    // CLongAllocDesc ExtendedAttrIcb;
+    // CRegId ImplId;
+    // UInt64 UniqueId;
 
-  CTime ATime;
-  CTime MTime;
-  CTime AttribTime; // Attribute time : most recent date and time of the day of file creation or modification of the attributes of.
-  CTime CreateTime;
-  // UInt32 CheckPoint;
-  // CLongAllocDesc ExtendedAttrIcb;
-  // CRegId ImplId;
-  // UInt64 UniqueId;
+    bool IsExtended;
+    bool IsInline;
+    CByteBuffer InlineData;
+    CRecordVector<CMyExtent> Extents;
+    CUIntVector SubFiles;
 
-  bool IsExtended;
-  bool IsInline;
-  CByteBuffer InlineData;
-  CRecordVector<CMyExtent> Extents;
-  CUIntVector SubFiles;
+    void Parse(const Byte *p);
 
-  void Parse(const Byte *p);
+    bool IsRecAndAlloc() const {
+        FOR_VECTOR(i, Extents)
+        if (!Extents[i].IsRecAndAlloc())
+            return false;
+        return true;
+    }
 
-  bool IsRecAndAlloc() const
-  {
-    FOR_VECTOR (i, Extents)
-      if (!Extents[i].IsRecAndAlloc())
-        return false;
-    return true;
-  }
+    UInt64 GetChunksSumSize() const {
+        if (IsInline)
+            return InlineData.Size();
+        UInt64 size = 0;
+        FOR_VECTOR(i, Extents)
+        size += Extents[i].GetLen();
+        return size;
+    }
 
-  UInt64 GetChunksSumSize() const
-  {
-    if (IsInline)
-      return InlineData.Size();
-    UInt64 size = 0;
-    FOR_VECTOR (i, Extents)
-      size += Extents[i].GetLen();
-    return size;
-  }
+    bool CheckChunkSizes() const { return !IsInline || InlineData.Size() == Size; }
 
-  bool CheckChunkSizes() const { return !IsInline || InlineData.Size() == Size; }
-
-  bool IsDir() const { return IcbTag.IsDir(); }
+    bool IsDir() const { return IcbTag.IsDir(); }
 };
 
 struct CRef
@@ -473,8 +476,9 @@ public:
       bool showVolName, bool showFsName) const;
 
   bool CheckItemExtents(unsigned volIndex, const CItem &item) const;
+  HRESULT GetItemStream(unsigned volIndex, const CItem &item, ISequentialInStream **stream);
   HRESULT GetPhysicalSpan(unsigned volIndex, unsigned partitionRef, UInt32 block, UInt32 length,
-                          UInt64 &offset, UInt32 &size) const;
+                          UInt64 &offset, UInt32 &size, UInt32 blockOffset = 0) const;
 
 private:
   IInStream *_stream;
@@ -488,13 +492,19 @@ private:
   static int ReadLinuxBlock(void *, UInt16, UInt32, void *, size_t);
   static int ReadLinuxPhysical(void *, UInt16, UInt32, void *, size_t);
   HRESULT LoadLinuxSparing(unsigned volIndex, unsigned partitionRef);
-  HRESULT ReadLinuxItem(unsigned volIndex, CLongAllocDesc &location, CByteBuffer &data);
+  struct CVatSource;
+  struct CVatBuilder;
+  HRESULT LoadLinuxVat(unsigned volIndex, unsigned partitionRef);
+  HRESULT ReadLinuxItem(unsigned volIndex, CLongAllocDesc &location, CByteBuffer &data,
+                        HRESULT *progressResult);
   HRESULT ReadLinuxExtents(unsigned volIndex, unsigned partitionRef, CItem &item, const Byte *data,
-                           UInt32 size);
+                           UInt32 size, HRESULT *progressResult);
 #endif
 
-  HRESULT ReadFileItem(unsigned volIndex, unsigned fsIndex, const CLongAllocDesc &lad, bool isDir, int numRecurseAllowed);
-  HRESULT ReadItem(unsigned volIndex, int fsIndex, const CLongAllocDesc &lad, bool isDir, int numRecurseAllowed);
+  HRESULT ReadFileItem(unsigned volIndex, unsigned fsIndex, const CLongAllocDesc &lad, bool isDir,
+                       int numRecurseAllowed);
+  HRESULT ReadItem(unsigned volIndex, int fsIndex, const CLongAllocDesc &lad, bool isDir,
+                   int numRecurseAllowed, HRESULT *progressResult = nullptr);
 
   HRESULT Open2();
   HRESULT FillRefs(CFileSet &fs, unsigned fileIndex, int parent, int numRecurseAllowed);

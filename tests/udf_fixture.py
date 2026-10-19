@@ -16,6 +16,9 @@ CONTINUATIONS = ("ad-short", "ad-long", "ad-chain-short", "ad-chain-long",
 
 
 def volume(kind):
+    if kind.startswith("vat"):
+        from udf_vat_fixture import volume as vat_volume
+        return vat_volume(kind)
     if kind.startswith("sp-"):
         from udf_sparing_fixture import volume as sparing_volume
         return sparing_volume(kind)

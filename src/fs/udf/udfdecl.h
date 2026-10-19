@@ -33,11 +33,15 @@
 #define udf_err(...) ((void)0)
 #define udf_debug(...) ((void)0)
 #define pr_err(...) ((void)0)
+#define pr_notice(...) ((void)0)
 #define UDF_EXTENT_LENGTH_MASK 0x3fffffff
 typedef uint64_t udf_pblk_t;
 struct buffer_head { uint8_t *b_data; unsigned b_size; };
 typedef uint32_t u32;
+typedef uint64_t sector_t;
 struct super_block;
+struct inode;
+struct udf_virtual_data { uint32_t s_num_entries, s_start_offset; };
 struct udf_sparing_data {
     uint16_t s_packet_len;
     struct buffer_head *s_spar_map[4];
@@ -45,21 +49,32 @@ struct udf_sparing_data {
 struct udf_part_map {
     uint32_t s_partition_len, s_partition_root;
     unsigned s_partition_type;
-    union { struct udf_sparing_data s_sparing; } s_type_specific;
+    union { struct udf_sparing_data s_sparing; struct udf_virtual_data s_virtual; } s_type_specific;
     uint32_t (*s_partition_func)(struct super_block *, uint32_t, uint16_t, uint32_t);
 };
 #define UDF_SPARABLE_MAP15 0x1522U
+#define UDF_VIRTUAL_MAP15 0x1512U
+#define UDF_VIRTUAL_MAP20 0x2012U
+#define ERR_PTR(v) ((void *)(intptr_t)(v))
+#define IS_ERR(v) ((uintptr_t)(v) >= (uintptr_t)-4095)
 #define is_power_of_2(n) ((n) != 0 && (((n) & ((n) - 1)) == 0))
 #define struct_size(p, member, n) (sizeof(*(p)) + sizeof((p)->member[0]) * (n))
 struct udf_sb_info {
     uint32_t s_partitions;
     struct udf_part_map *s_partmaps;
+    struct inode *s_vat_inode;
+    uint64_t s_last_block;
 };
 struct super_block {
     struct udf_sb_info info;
     uint32_t s_blocksize;
     void *context;
     sevenzip_udf_read read;
+    uint64_t blocks;
+    sevenzip_udf_open_file open_file;
+    sevenzip_udf_read_file read_file;
+    sevenzip_udf_close_file close_file;
+    int io_error;
 };
 struct udf_inode_info {
     struct kernel_lb_addr i_location;
@@ -71,7 +86,12 @@ struct inode {
     struct super_block *i_sb;
     struct udf_inode_info info;
     struct buffer_head *entry;
+    uint64_t i_size;
+    void *file;
 };
+static inline uint64_t sb_bdev_nr_blocks(struct super_block *sb) { return sb->blocks; }
+struct inode *udf_iget_special(struct super_block *, const struct kernel_lb_addr *);
+struct buffer_head *udf_bread(struct inode *, uint32_t, int, int *);
 #include "udf_i.h"
 #define UDF_I(inode) (&(inode)->info)
 #define UDF_SB(sb) (&(sb)->info)
@@ -111,4 +131,8 @@ struct buffer_head *udf_read_ptagged(struct super_block *, struct kernel_lb_addr
 int sevenzip_udf_read_inode(struct inode *);
 uint32_t udf_get_pblock_spar15(struct super_block *, uint32_t, uint16_t, uint32_t);
 int sevenzip_udf_load_sparable(struct super_block *, struct udf_part_map *, struct sparablePartitionMap *);
+uint32_t udf_get_pblock(struct super_block *, uint32_t, uint16_t, uint32_t);
+uint32_t udf_get_pblock_virt15(struct super_block *, uint32_t, uint16_t, uint32_t);
+uint32_t udf_get_pblock_virt20(struct super_block *, uint32_t, uint16_t, uint32_t);
+int sevenzip_udf_load_vat(struct super_block *, int, int);
 #endif

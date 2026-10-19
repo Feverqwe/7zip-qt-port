@@ -259,8 +259,87 @@ build trees и compiler caches сохранены. Full/slow/UI/physical-device
 acceptance не выполнялась. Это завершённый sparable scope, а не закрытие
 VAT или всего UDF read audit.
 
+## VAT15/20: поиск таблицы и чтение через backing partition
+
+Из того же pinned Linux revision перенесены полные `super.c::udf_find_vat_block`,
+`udf_load_vat`, `partition.c::udf_get_pblock`, `udf_get_pblock_virt15` и
+`udf_get_pblock_virt20`. До реализации сравнены их callers при загрузке volume,
+`udf_iget_special`, полный `udf_read_inode`, `udf_bread`, `inode_bmap` и
+`udf_map_block`, структуры VAT/partition maps и соответствующие 7-Zip consumers.
+После изменений тела сравнены повторно. VAT20 dispatch подключён через исходный
+alias VAT15 mapper. Исходные notices сохранены; C остаётся C в GPL-модуле.
+
+Сохранены поиск последней доступной FE и трёх предыдущих блоков, выбор первой
+пригодной inode, разные VAT15 trailer/VAT20 header offsets, bounds числа entries,
+inline/external ветви, recursion guard и передача extent offset в backing map.
+Повреждённые данные уже выбранного нового VAT не заставляют выбирать старую
+таблицу. Inode неизвестного типа пропускается при поиске; cancellation сохраняется
+при повторных попытках, включая однократный E_FAIL progress callback.
+Resolved VAT inode может принадлежать другому partition reference; C services
+сохраняют полный размер таблицы partition maps, а terminal mapping передаётся
+соответствующему backing reader. Device/session discovery не переносилась:
+для обычного образа last recorded и device last равны последнему полному блоку файла.
+Отдельная CD-ROM/session геометрия остаётся в открытом discovery scope.
+
+Узкие адаптации malformed-input policy: checked terminal address addition,
+защита scanner от sector underflow, минимальная длина VAT20 header, верхняя
+граница размера таблицы и выравнивание header на LE32 cell. Inline cell читается
+через `memcpy`; external byte offset нормализован без unsigned вычитания
+`blocksize - start_offset`, которое небезопасно для многоблочного header в
+pinned implementation. Для обычного выровненного header результаты совпадают
+с исходным вычислением. Невыровненный header отклоняется, в том числе inline;
+Linux inline policy здесь мягче. Эти отличия не выдаются за native parity.
+
+`src/fs/udf/vat.c` предоставляет inode/stream callbacks и владеет выбранным
+VAT handle; новых filesystem parsers в нём нет. `UdfLinux.cpp` связывает
+существующий FE/AD reader с этими services. Hidden VAT role сохраняет FE/EFE,
+strategy resolution и inline size validation. Поддержаны non-device inode types
+из Linux switch без обхода directory contents. Block/character special inode
+требуют ещё не перенесённой проверки device extended attribute и пока
+отклоняются; полный special-inode/EA audit остаётся открытым.
+
+Существующий 7-Zip stream builder перемещён из `CHandler::GetStream` в
+`CInArchive::GetItemStream`, чтобы VAT использовал те же bounded extents,
+source ownership и seek services. Таблица не буферизуется целиком: external
+cells читаются по блокам через готовый stream. Sparse VAT data отклоняются,
+поскольку Linux `udf_bread` не возвращает из holes записанные VAT cells.
+Lazy data reader не вызывает сохранённый Open progress callback. Его handle
+освобождается вместе с partition map, а выданные пользователю streams уже
+владеют physical extents и исходным IInStream независимо от handler.
+Read, stream preparation и physical-size scan сохраняют исходный extent base
+и передают накопленный offset отдельно, включая compound sparable backing.
+Standalone engine по-прежнему не получает GPL VAT code.
+
+Одиннадцать новых positive fixtures проверяют VAT15/20 inline и external data,
+поздние entries, многоблочный header, поиск предыдущей inode, неизвестный
+тип новой inode, cross-partition ICB/VAT backing, sparse file и base/offset semantics.
+Compound VAT+sparable case содержит запрещённые соседние VAT cells: packet split
+должен продвигать offset исходного extent, а не искать следующую cell.
+Исходные data/metadata blocks содержат poison bytes. Десять malformed cases покрывают отсутствие
+VAT, короткие/невыравненные/выходящие за EOF headers, отсутствующие cells,
+sentinel/out-of-partition mapping, новый повреждённый VAT перед старым исправным
+и hole в данных таблицы. ABI дополнительно проверяет optional inode I/O fallback,
+однократную отмену, обязательный VAT-data I/O failure/retry, mapped payload
+failure/retry, retained streams и ArchiveBackend consumers.
+
+Десять обычных variants совпали по payload с read-only native Linux
+`6.8.0-146-generic`; mounts и образы удалены. Многоблочный header проверен
+через модуль, а не небезопасную ветвь native kernel; runtime parity для него
+не заявляется.
+
+Пять focused suites (`udf`, `udf_stream`, `upstream_baseline`, `runtime_cache`,
+`runtime_package`) прошли на macOS arm64, Linux x64 и Windows x64/MSVC,
+Qt 6.12; receipt `20261019T214824Z-4f2f0a1a`. После локальных уточнений hidden
+inode selection, progress errors и cross/compound mapping повторены
+`udf`/`udf_stream` на всех трёх ОС: final receipt
+`20261019T215541Z-67785abe`. Actual macOS CMake install прочитал все 72 positive
+UDF variants и установил обе лицензии с точным исходным содержимым. Staging
+удалён; постоянные build trees и compiler caches сохранены. Full/slow/UI и
+physical-device acceptance не выполнялась. Runtime validation относится к
+описанному read scope, а не ко всем UDF возможностям.
+
 Полный UDF read audit остаётся открытым. В частности, ещё требуются
-VAT, volume discovery/block geometry,
+volume discovery/block geometry,
 полная metadata partition/mirror mapping, names/NLS, symlinks, специальные
 inode и metadata/read policies. Проверка этой итерации не означает завершение
 всех UDF возможностей или общей задачи форматов Linux. VFS, запись,
