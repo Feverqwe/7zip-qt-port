@@ -71,6 +71,13 @@ GPT/MBR/APM проверяются как дополнительные форм�
 
 ## Свидетельства
 
+### ext2/3/4: sparse, trees и stream boundaries
+
+[Сравненный scope и исправления](ext-linux.md): classic sparse indirect paths,
+ограничения extent/каталогов, fast symlink с EA и передача ошибок потоков в обоих
+engines. Полная актуализация ext4 не завершена: inline data, современные metadata
+layouts, checksums и остальные найденные возможности остаются в общем scope.
+
 ### FAT12/16/32: BPB, имена и размер файла
 
 [Сравненные paths и интегрированные изменения](fat-linux.md): сняты лишние

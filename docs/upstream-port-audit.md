@@ -36,6 +36,9 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 
 ## Новые изменения
 
+- [ext2/3/4 по Linux](upstream-port-audit/ext-linux.md)
+  — sparse indirect reads, extent/dir bounds и archive stream errors.
+
 - [FAT12/16/32 по Linux](upstream-port-audit/fat-linux.md)
   — BPB, восстановление имён и чтение по размеру файла в обоих engines.
 

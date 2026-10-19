@@ -746,6 +746,25 @@ if(BUILD_TESTING)
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/fat_tests.py
         ${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime "$<TARGET_FILE:sevenzip_fat>")
     set_tests_properties(fat PROPERTIES TIMEOUT 60)
+    add_test(NAME ext COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/ext_tests.py
+        ${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime)
+    set_tests_properties(ext PROPERTIES TIMEOUT 45)
+    qt_add_executable(ext_stream_tests tests/ext_stream_tests.cpp)
+    target_include_directories(ext_stream_tests PRIVATE src third_party/7zip/CPP)
+    target_link_libraries(ext_stream_tests PRIVATE sevenzip_filesystem Qt6::Test)
+    if(WIN32)
+        set(sevenzip_ext_core "${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime/7z.dll")
+        target_link_libraries(ext_stream_tests PRIVATE oleaut32)
+    else()
+        set(sevenzip_ext_core "${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime/7z.so")
+    endif()
+    target_compile_definitions(ext_stream_tests PRIVATE
+        "SEVENZIP_EXT_CORE=\"${sevenzip_ext_core}\""
+        "SEVENZIP_EXT_PYTHON=\"${Python3_EXECUTABLE}\""
+        "SEVENZIP_EXT_FIXTURE=\"${CMAKE_CURRENT_SOURCE_DIR}/tests/ext_fixture.py\"")
+    add_test(NAME ext_stream COMMAND ext_stream_tests -silent)
+    set_tests_properties(ext_stream PROPERTIES TIMEOUT 45)
     add_test(NAME cramfs COMMAND ${Python3_EXECUTABLE}
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/cramfs_tests.py
         ${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime "$<TARGET_FILE:sevenzip_cramfs>")
