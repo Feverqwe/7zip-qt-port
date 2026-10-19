@@ -19,7 +19,7 @@ add_library(sevenzip_squashfs MODULE
     third_party/7zip/CPP/7zip/Common/StreamUtils.cpp
     third_party/7zip/CPP/7zip/Common/CWrappers.cpp
     third_party/7zip/CPP/7zip/Common/StreamObjects.cpp
-    third_party/7zip/CPP/7zip/Common/LimitedStreams.cpp
+    src/CPP/7zip/Common/LimitedStreams.cpp
     third_party/7zip/CPP/7zip/Common/InBuffer.cpp
     third_party/7zip/CPP/7zip/Common/OutBuffer.cpp
     third_party/7zip/CPP/7zip/Common/ProgressUtils.cpp

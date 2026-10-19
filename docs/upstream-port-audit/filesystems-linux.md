@@ -71,6 +71,13 @@ GPT/MBR/APM проверяются как дополнительные форм�
 
 ## Свидетельства
 
+### HFS+/HFSX: fork mapping и metadata reads
+
+[Source comparison и исправления](hfs-linux.md): overflow continuation между
+leaves, preallocation/EOF, границы metadata и forks, boot blocks/wrappers,
+циклы каталога, независимые streams и ошибки I/O. Unicode, hardlinks,
+metadata и classic HFS остаются в scope актуализации.
+
 ### NTFS: classic data reads и LZNT1
 
 [Сравнение и интегрированная актуализация](ntfs-linux.md): boot/MFT и

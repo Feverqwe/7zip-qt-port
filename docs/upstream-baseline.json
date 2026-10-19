@@ -7,8 +7,10 @@
     "src/CPP/7zip/Archive/CramfsHandler.cpp",
     "src/CPP/7zip/Archive/ExtHandler.cpp",
     "src/CPP/7zip/Archive/FatHandler.cpp",
+    "src/CPP/7zip/Archive/HfsHandler.cpp",
     "src/CPP/7zip/Archive/NtfsHandler.cpp",
-    "src/CPP/7zip/Archive/SquashfsHandler.cpp"
+    "src/CPP/7zip/Archive/SquashfsHandler.cpp",
+    "src/CPP/7zip/Common/LimitedStreams.cpp"
   ],
   "exact": [
     "third_party/7zip/C/7zCrc.c",
@@ -144,7 +146,6 @@
     "third_party/7zip/CPP/7zip/Common/FilterCoder.h",
     "third_party/7zip/CPP/7zip/Common/InBuffer.cpp",
     "third_party/7zip/CPP/7zip/Common/InBuffer.h",
-    "third_party/7zip/CPP/7zip/Common/LimitedStreams.cpp",
     "third_party/7zip/CPP/7zip/Common/LimitedStreams.h",
     "third_party/7zip/CPP/7zip/Common/MemBlocks.cpp",
     "third_party/7zip/CPP/7zip/Common/MemBlocks.h",
@@ -433,10 +434,12 @@
     "src/CPP/7zip/Archive/CramfsHandler.cpp",
     "src/CPP/7zip/Archive/ExtHandler.cpp",
     "src/CPP/7zip/Archive/FatHandler.cpp",
+    "src/CPP/7zip/Archive/HfsHandler.cpp",
     "src/CPP/7zip/Archive/NtfsHandler.cpp",
     "src/CPP/7zip/Archive/Rar/Rar5Handler.cpp",
     "src/CPP/7zip/Archive/SquashfsHandler.cpp",
     "src/CPP/7zip/Archive/Zip/ZipCompressionMode.h",
+    "src/CPP/7zip/Common/LimitedStreams.cpp",
     "src/CPP/7zip/Common/MethodProps.cpp",
     "src/CPP/7zip/Common/MethodProps.h",
     "src/CPP/7zip/Common/MultiOutStream.cpp",

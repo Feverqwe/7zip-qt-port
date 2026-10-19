@@ -21,6 +21,8 @@ include(CTest)
 # Relocated source headers must also resolve from unchanged upstream headers
 # spelling MyVector.h, ../Common/MyVector.h or ../../Common/MyVector.h.
 include_directories(src/CPP src/CPP/Common src/CPP/Windows src/CPP/7zip/Common)
+set_source_files_properties(src/CPP/7zip/Common/LimitedStreams.cpp PROPERTIES
+    INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/Common")
 
 find_package(Qt6 REQUIRED COMPONENTS Widgets LinguistTools)
 find_package(Threads REQUIRED)
@@ -158,7 +160,7 @@ add_library(sevenzip_common STATIC third_party/7zip/C/Sort.c third_party/7zip/C/
     third_party/7zip/CPP/7zip/Common/FileStreams.cpp
     third_party/7zip/CPP/7zip/Common/StreamUtils.cpp
     third_party/7zip/CPP/7zip/Common/StreamObjects.cpp
-    third_party/7zip/CPP/7zip/Common/LimitedStreams.cpp
+    src/CPP/7zip/Common/LimitedStreams.cpp
     third_party/7zip/CPP/7zip/Compress/CopyCoder.cpp
     third_party/7zip/CPP/7zip/Archive/Common/ItemNameUtils.cpp
     src/CPP/7zip/UI/Common/ExtractingFilePath.cpp src/CPP/7zip/UI/Common/ExtractingFilePath.h
@@ -780,6 +782,22 @@ if(BUILD_TESTING)
     add_test(NAME ntfs_stream COMMAND ntfs_stream_tests -silent)
     add_dependencies(ntfs_stream_tests sevenzip_ntfs_runtime)
     set_tests_properties(ntfs_stream PROPERTIES TIMEOUT 60)
+    add_test(NAME hfs COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/hfs_tests.py
+        ${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime)
+    set_tests_properties(hfs PROPERTIES TIMEOUT 60)
+    qt_add_executable(hfs_stream_tests tests/hfs_stream_tests.cpp)
+    target_include_directories(hfs_stream_tests PRIVATE src third_party/7zip/CPP)
+    target_link_libraries(hfs_stream_tests PRIVATE sevenzip_panel Qt6::Test)
+    if(WIN32)
+        target_link_libraries(hfs_stream_tests PRIVATE oleaut32)
+    endif()
+    target_compile_definitions(hfs_stream_tests PRIVATE
+        "SEVENZIP_HFS_CORE=\"${SEVENZIP_CODEC_MODULE}\""
+        "SEVENZIP_HFS_PYTHON=\"${Python3_EXECUTABLE}\""
+        "SEVENZIP_HFS_FIXTURE=\"${CMAKE_CURRENT_SOURCE_DIR}/tests/hfs_fixture.py\"")
+    add_test(NAME hfs_stream COMMAND hfs_stream_tests -silent)
+    set_tests_properties(hfs_stream PROPERTIES TIMEOUT 45)
     add_test(NAME ntfs COMMAND ${Python3_EXECUTABLE}
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/ntfs_tests.py
         ${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime "$<TARGET_FILE:sevenzip_ntfs>")
@@ -1609,6 +1627,7 @@ if(BUILD_TESTING)
     target_sources(cramfs_module_tests PRIVATE ${compression_order_sources})
     target_sources(squashfs_stream_tests PRIVATE ${compression_order_sources})
     target_sources(ntfs_stream_tests PRIVATE ${compression_order_sources})
+    target_sources(hfs_stream_tests PRIVATE ${compression_order_sources})
     target_sources(fat_module_tests PRIVATE ${compression_order_sources})
     target_sources(erofs_module_tests PRIVATE ${compression_order_sources})
     target_sources(brotli_tests PRIVATE ${compression_order_sources})

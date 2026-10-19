@@ -5,7 +5,7 @@ add_library(sevenzip_cramfs MODULE
     third_party/7zip/CPP/7zip/Archive/ArchiveExports.cpp
     third_party/7zip/CPP/7zip/Common/StreamUtils.cpp
     third_party/7zip/CPP/7zip/Common/StreamObjects.cpp
-    third_party/7zip/CPP/7zip/Common/LimitedStreams.cpp
+    src/CPP/7zip/Common/LimitedStreams.cpp
     third_party/7zip/CPP/7zip/Common/InBuffer.cpp
     third_party/7zip/CPP/7zip/Common/OutBuffer.cpp
     third_party/7zip/CPP/7zip/Common/ProgressUtils.cpp

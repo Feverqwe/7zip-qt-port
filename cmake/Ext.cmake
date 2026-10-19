@@ -12,7 +12,7 @@ add_library(sevenzip_ext MODULE
     third_party/7zip/CPP/7zip/Archive/ArchiveExports.cpp
     third_party/7zip/CPP/7zip/Common/StreamObjects.cpp
     third_party/7zip/CPP/7zip/Common/StreamUtils.cpp
-    third_party/7zip/CPP/7zip/Common/LimitedStreams.cpp
+    src/CPP/7zip/Common/LimitedStreams.cpp
     third_party/7zip/CPP/7zip/Common/ProgressUtils.cpp
     third_party/7zip/CPP/7zip/Common/PropId.cpp
     third_party/7zip/CPP/7zip/Compress/CopyCoder.cpp

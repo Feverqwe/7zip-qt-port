@@ -13,6 +13,11 @@ SquashFS сообщает реальные inode identity и symlink targets с�
 extraction использует исходный callback и native OS link services; возможность
 создания ссылок зависит от платформы и прав. [Scope и проверки SquashFS](upstream-port-audit/squashfs-linux.md).
 
+Чтение HFS+/HFSX дополнено исправлениями по Linux: fragmented/preallocated
+forks, boot blocks и wrappers, проверки повреждённых metadata и независимые
+потоки. [Scope и проверки](upstream-port-audit/hfs-linux.md); полная актуализация
+формата ещё не завершена.
+
 File → Open device добавляет переносимый выбор внешнего устройства и раздела
 для прямого чтения ext, сохраняя обычные тома и открытие архивов. Это расширение
 исходного Windows device namespace: системные права получает узкий native service,
