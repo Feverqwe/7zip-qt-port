@@ -6,6 +6,7 @@
 #include "archivecodeccatalog.h"
 #include "archivenativeopen.h"
 #include "deviceaccess.h"
+#include <QSet>
 #include <limits>
 
 namespace {
@@ -54,7 +55,63 @@ QString Text(IInArchive *archive, UInt32 index, PROPID id) {
         return {};
     return QString::fromWCharArray(value.bstrVal);
 }
+
+HRESULT CheckFeatures(IInArchive *archive) {
+    // Ask the official handler for its public feature descriptions. Unknown
+    // features stay unsupported; no superblock parsing lives in this boundary.
+    const QSet<QString> incompatible{"FILETYPE", "EXTENTS", "64BIT", "FLEX_BG"};
+    const QSet<QString> readOnly{"SPARSE_SUPER", "LARGE_FILE",    "HUGE_FILE",
+                                 "GDT_CSUM",     "DIR_NLINK",     "EXTRA_ISIZE",
+                                 "QUOTA",        "METADATA_CSUM", "READONLY"};
+    UInt32 count = 0;
+    RINOK(archive->GetNumberOfArchiveProperties(&count))
+    bool checkedIncompatible = false, checkedReadOnly = false;
+    for (UInt32 i = 0; i < count; ++i) {
+        CMyComBSTR name;
+        PROPID id;
+        VARTYPE type;
+        RINOK(archive->GetArchivePropertyInfo(i, &name, &id, &type))
+        const QString label = name ? QString::fromWCharArray(name) : QString();
+        const QSet<QString> *allowed = nullptr;
+        if (label == QStringLiteral("Incompatible Features")) {
+            allowed = &incompatible;
+            checkedIncompatible = true;
+        } else if (label == QStringLiteral("Readonly-compatible Features")) {
+            allowed = &readOnly;
+            checkedReadOnly = true;
+        }
+        if (!allowed)
+            continue;
+        NWindows::NCOM::CPropVariant value;
+        RINOK(archive->GetArchiveProperty(id, &value))
+        if (value.vt == VT_EMPTY)
+            continue;
+        if (value.vt != VT_BSTR)
+            return E_NOTIMPL;
+        for (const auto &feature :
+             QString::fromWCharArray(value.bstrVal).split(' ', Qt::SkipEmptyParts))
+            if (!allowed->contains(feature))
+                return E_NOTIMPL;
+    }
+    return checkedIncompatible && checkedReadOnly ? S_OK : E_NOTIMPL;
+}
 } // namespace
+
+HRESULT OpenDeviceFilesystem(const std::shared_ptr<const ArchiveCodecCatalog> &catalog,
+                             IInStream *input, const QString &name, IOpenCallbackUI *callback,
+                             std::shared_ptr<ArchiveNativeOpen> &reader) {
+    COM_TRY_BEGIN
+    reader.reset();
+    if (!input || !catalog || catalog->result() != S_OK)
+        return E_INVALIDARG;
+    RINOK(input->Seek(0, STREAM_SEEK_SET, nullptr))
+    std::shared_ptr<ArchiveNativeOpen> opened;
+    RINOK(Open(catalog, input, name, QStringLiteral("Ext"), callback, opened))
+    RINOK(CheckFeatures(opened->arc().Archive))
+    reader = std::move(opened);
+    return S_OK;
+    COM_TRY_END
+}
 
 ArchiveDevice::ArchiveDevice(std::shared_ptr<const ArchiveCodecCatalog> catalog)
     : catalog_(std::move(catalog)) {}
@@ -125,17 +182,24 @@ HRESULT ArchiveDevice::openPartition(int index, IOpenCallbackUI *callback,
         return E_INVALIDARG;
     if (callback)
         RINOK(callback->Open_CheckBreak())
-    const auto &partition = partitions_[index];
     CMyComPtr<IInStream> bounded;
+    RINOK(partitionInput(index, &bounded))
+    return OpenDeviceFilesystem(catalog_, bounded, name_ + '/' + partitions_[index].name, callback,
+                                reader);
+    COM_TRY_END
+}
+
+HRESULT ArchiveDevice::partitionInput(int index, IInStream **stream) const {
+    COM_TRY_BEGIN
+    if (!stream)
+        return E_INVALIDARG;
+    *stream = nullptr;
+    if (!input_ || index < 0 || index >= partitions_.size())
+        return E_INVALIDARG;
+    const auto &partition = partitions_[index];
     if (dynamic_cast<DirectDeviceInput *>(input_.Interface())) {
-        RINOK(CreateDevicePartitionInput(input_, partition.offset, partition.size, &bounded))
-    } else {
-        RINOK(Limit(input_, partition.offset, partition.size, &bounded))
+        return CreateDevicePartitionInput(input_, partition.offset, partition.size, stream);
     }
-    std::shared_ptr<ArchiveNativeOpen> opened;
-    RINOK(Open(catalog_, bounded, name_ + '/' + partition.name, QStringLiteral("Ext"), callback,
-               opened))
-    reader = std::move(opened);
-    return S_OK;
+    return Limit(input_, partition.offset, partition.size, stream);
     COM_TRY_END
 }

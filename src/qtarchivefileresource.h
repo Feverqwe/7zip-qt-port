@@ -1,5 +1,6 @@
-// Owned file-only engine resource for a source archive folder.
+// Owned engine resource for a source archive folder or direct device stream.
 #pragma once
+#include "7zip/IStream.h"
 #include "Common/MyCom.h"
 #include "Windows/FileFind.h"
 #include "archivebackend.h"
@@ -46,12 +47,14 @@ class QtArchiveFileResource final : public IUnknown, public CMyUnknownImp {
     std::shared_ptr<QtArchiveDeleteInputs> _deleteInputs;
     std::shared_ptr<const ArchiveCodecCatalog> _codecs;
     std::shared_ptr<ArchiveNativeOpen> _nativeOpen;
+    CMyComPtr<IInStream> _directInput;
     bool _nativeNested = false;
     bool _nativeReadOnly = false;
     bool _nativeItemOrder = false;
     bool _nativePropertiesExplicit = false;
     std::function<HRESULT(const wchar_t *const *, const PROPVARIANT *, UInt32)> _setProperties;
     QString _nativeOpenType;
+    HRESULT RefreshDeviceInput(ArchiveBackend &backend, IOpenCallbackUI *callback);
 
   public:
     QString EnginePath;
@@ -59,6 +62,8 @@ class QtArchiveFileResource final : public IUnknown, public CMyUnknownImp {
     explicit QtArchiveFileResource(const QString &path) : EnginePath(path) {}
     ~QtArchiveFileResource();
     void AttachNativeOpen(std::shared_ptr<ArchiveNativeOpen> reader);
+    HRESULT OpenDeviceInput(ArchiveBackend &backend, IInStream *input, IOpenCallbackUI *callback);
+    bool HasDirectInput() const { return _directInput != nullptr; }
     HRESULT CloseNativeOpen();
     void BindNativeItemOrder(IFolderFolder *metadata);
     bool HasCommentService() const;

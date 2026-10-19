@@ -10,6 +10,7 @@
 #include "archivebackend.h"
 #include "archivecodeccatalog.h"
 #include "archivecodecprobe.h"
+#include "archivedevice.h"
 #include "archivenativeopen.h"
 #include "qtbenchmarkservices.h"
 #include "qtlanguageservices.h"
@@ -111,6 +112,14 @@ HRESULT ArchiveBackend::openNativeArchive(const std::shared_ptr<const ArchiveCod
     if (result == S_OK || result == S_FALSE)
         reader = std::move(opened);
     return result;
+}
+
+HRESULT
+ArchiveBackend::openDeviceFilesystem(const std::shared_ptr<const ArchiveCodecCatalog> &catalog,
+                                     IInStream *input, const QString &name,
+                                     IOpenCallbackUI *callback,
+                                     std::shared_ptr<ArchiveNativeOpen> &reader) const {
+    return OpenDeviceFilesystem(catalog, input, name, callback, reader);
 }
 
 HRESULT ArchiveBackend::loadCodecCatalog(const QString &module, quint32 engineVersion) {

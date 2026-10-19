@@ -30,6 +30,11 @@ class ArchiveDevice final {
     explicit ArchiveDevice(std::shared_ptr<const ArchiveCodecCatalog> catalog);
     HRESULT inspect(IInStream *input, UInt64 size, const QString &name, IOpenCallbackUI *callback);
     const QList<ArchiveDevicePartition> &partitions() const { return partitions_; }
+    HRESULT partitionInput(int index, IInStream **stream) const;
     HRESULT openPartition(int index, IOpenCallbackUI *callback,
                           std::shared_ptr<ArchiveNativeOpen> &reader) const;
 };
+
+HRESULT OpenDeviceFilesystem(const std::shared_ptr<const ArchiveCodecCatalog> &catalog,
+                             IInStream *input, const QString &name, IOpenCallbackUI *callback,
+                             std::shared_ptr<ArchiveNativeOpen> &reader);

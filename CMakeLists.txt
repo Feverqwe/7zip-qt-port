@@ -532,6 +532,7 @@ add_library(sevenzip_location STATIC src/qtlocationfolder.cpp src/qtlocationfold
     src/qtarchivenativeopenprogress.cpp src/qtarchivenativeopenprogress.h
     src/qtarchivestreamopen.h
     src/qtarchivefileresource.cpp src/qtarchivefileresource.h
+    src/qtarchivedevicefolder.cpp
     src/qtarchivenativeproperties.cpp
     src/qtfolderpropertycapabilities.h
     src/CPP/7zip/UI/Agent/Agent.cpp src/CPP/7zip/UI/Agent/AgentProxy.cpp)
@@ -1171,6 +1172,18 @@ if(BUILD_TESTING)
     target_link_libraries(agent_opening_tests PRIVATE sevenzip_location Qt6::Test)
     add_test(NAME agent_opening COMMAND agent_opening_tests -silent)
     set_tests_properties(agent_opening PROPERTIES TIMEOUT 90)
+    qt_add_executable(device_folder_tests tests/device_folder_tests.cpp
+        src/CPP/7zip/UI/GUI/CompressDialog.cpp src/archivebackend.cpp
+        src/archivebackend_validation.cpp src/archivebackend_mutations.cpp src/archivebackend_listing.cpp)
+    target_link_libraries(device_folder_tests PRIVATE sevenzip_location Qt6::Test)
+    target_compile_definitions(device_folder_tests PRIVATE
+        "DEVICE_FIXTURE_DIR=\"${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/devices\"")
+    if(SEVENZIP_CODEC_MODULE)
+        target_compile_definitions(device_folder_tests PRIVATE
+            "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\"")
+    endif()
+    add_test(NAME device_folder COMMAND device_folder_tests -silent)
+    set_tests_properties(device_folder PROPERTIES TIMEOUT 30)
     qt_add_executable(agent_lifecycle_tests tests/agent_lifecycle_tests.cpp
         src/CPP/7zip/UI/GUI/CompressDialog.cpp src/archivebackend.cpp
         src/archivebackend_validation.cpp src/archivebackend_mutations.cpp src/archivebackend_listing.cpp)

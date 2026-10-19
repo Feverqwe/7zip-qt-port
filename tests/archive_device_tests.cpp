@@ -8,6 +8,7 @@
 #include <QDir>
 #include <QProcess>
 #include <QStandardPaths>
+#include <QTemporaryDir>
 #include <QtTest>
 
 namespace {
@@ -217,6 +218,41 @@ class ArchiveDeviceTests final : public QObject {
         QVERIFY(device.inspect(direct, authorizedSize, "USB", nullptr) != S_OK);
         QVERIFY(device.partitions().isEmpty());
         QVERIFY(source->FarthestRead <= authorizedSize);
+    }
+    void refusesUnsupportedFeaturesOnlyForDirectDevices_data() {
+        QTest::addColumn<int>("field");
+        QTest::addColumn<int>("bit");
+        QTest::newRow("journal-recovery") << 0x60 << 2;
+        QTest::newRow("inline-data") << 0x60 << 15;
+        QTest::newRow("encryption") << 0x60 << 16;
+        QTest::newRow("unknown-incompatible") << 0x60 << 30;
+        QTest::newRow("bigalloc") << 0x64 << 9;
+    }
+    void refusesUnsupportedFeaturesOnlyForDirectDevices() {
+        QFETCH(int, field);
+        QFETCH(int, bit);
+        QByteArray disk = fixture("ext4");
+        QVERIFY(disk.size() > 2048);
+        // Controlled feature declarations in a generated filesystem fixture.
+        // The original handler must still open it, proving rejection below is
+        // the device policy rather than an incidental parser failure.
+        const int byte = 1024 + field + bit / 8;
+        disk[byte] = char(quint8(disk[byte]) | (1u << (bit % 8)));
+        QTemporaryDir directory;
+        QVERIFY(directory.isValid());
+        const QString path = directory.filePath("declared-feature.img");
+        QFile file(path);
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        QCOMPARE(file.write(disk), qint64(disk.size()));
+        file.close();
+        ArchiveNativeOpen ordinary(catalog_);
+        QCOMPARE(ordinary.Open(path, "Ext", nullptr), S_OK);
+        CMyComPtr<IInStream> input = new CDeviceInput(disk);
+        ArchiveDevice device(catalog_);
+        QCOMPARE(device.inspect(input, UInt64(disk.size()), "USB", nullptr), S_OK);
+        std::shared_ptr<ArchiveNativeOpen> reader;
+        QCOMPARE(device.openPartition(0, nullptr, reader), E_NOTIMPL);
+        QVERIFY(!reader);
     }
 };
 

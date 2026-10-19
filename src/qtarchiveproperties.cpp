@@ -44,7 +44,8 @@ class CFolderArchiveProperties final : public IInArchive,
     QtArchiveFileResource *_resourceSpec;
     void BindRawProperties() {
         _rawProps.Release();
-        _properties.QueryInterface(IID_IArchiveGetRawProps, &_rawProps);
+        if (_properties)
+            _properties.QueryInterface(IID_IArchiveGetRawProps, &_rawProps);
         if (_resourceSpec) {
             _resourceSpec->BindNativeItemOrder(_properties);
             if (auto *native = _resourceSpec->NativeItemProperties()) {
@@ -123,6 +124,11 @@ Z7_COM7F_IMF(CFolderArchiveProperties::Close()) {
     return _resourceSpec ? _resourceSpec->CloseNativeOpen() : S_OK;
 }
 Z7_COM7F_IMF(CFolderArchiveProperties::GetNumberOfItems(UInt32 *count)) {
+    if (_resourceSpec)
+        if (auto *native = _resourceSpec->NativeItemProperties())
+            return native->GetNumberOfItems(count);
+    if (!_properties)
+        return E_FAIL;
     return _properties->GetNumberOfItems(count);
 }
 Z7_COM7F_IMF(CFolderArchiveProperties::GetProperty(UInt32 index, PROPID id, PROPVARIANT *value)) {
@@ -139,7 +145,7 @@ Z7_COM7F_IMF(CFolderArchiveProperties::GetProperty(UInt32 index, PROPID id, PROP
             }
             return native->GetProperty(index, id, value);
         }
-    return _properties->GetProperty(index, id, value);
+    return _properties ? _properties->GetProperty(index, id, value) : E_FAIL;
 }
 Z7_COM7F_IMF(CFolderArchiveProperties::Extract(const UInt32 *indices, UInt32 count, Int32 testMode,
                                                IArchiveExtractCallback *callback)) {
@@ -153,10 +159,20 @@ Z7_COM7F_IMF(CFolderArchiveProperties::GetArchiveProperty(PROPID id, PROPVARIANT
     return prop.Detach(value);
 }
 Z7_COM7F_IMF(CFolderArchiveProperties::GetNumberOfProperties(UInt32 *count)) {
+    if (!_properties && _resourceSpec)
+        if (auto *native = _resourceSpec->NativeItemProperties())
+            return native->GetNumberOfProperties(count);
+    if (!_properties)
+        return E_FAIL;
     return _properties->GetNumberOfProperties(count);
 }
 Z7_COM7F_IMF(CFolderArchiveProperties::GetPropertyInfo(UInt32 index, BSTR *name, PROPID *id,
                                                        VARTYPE *type)) {
+    if (!_properties && _resourceSpec)
+        if (auto *native = _resourceSpec->NativeItemProperties())
+            return native->GetPropertyInfo(index, name, id, type);
+    if (!_properties)
+        return E_FAIL;
     return _properties->GetPropertyInfo(index, name, id, type);
 }
 Z7_COM7F_IMF(CFolderArchiveProperties::GetNumberOfArchiveProperties(UInt32 *count)) {
@@ -174,7 +190,8 @@ Z7_COM7F_IMF(CFolderArchiveProperties::GetArchivePropertyInfo(UInt32 index, BSTR
 
 HRESULT CreateArchivePropertyTransport(IFolderFolder *properties, IInArchive **archive,
                                        IUnknown *engineResource) {
-    if (!properties || !archive)
+    const auto *resource = dynamic_cast<QtArchiveFileResource *>(engineResource);
+    if ((!properties && (!resource || !resource->HasDirectInput())) || !archive)
         return E_INVALIDARG;
     *archive = nullptr;
     if (!engineResource) {
@@ -189,7 +206,8 @@ HRESULT CreateArchivePropertyTransport(IFolderFolder *properties, IInArchive **a
 
 HRESULT CreateArchiveLinkTransport(CArchiveLink &link, IFolderFolder *properties,
                                    IUnknown *engineResource, const CCodecs *codecs) {
-    if (!properties)
+    const auto *resource = dynamic_cast<QtArchiveFileResource *>(engineResource);
+    if (!properties && (!resource || !resource->HasDirectInput()))
         return E_INVALIDARG;
     if (!link.Arcs.IsEmpty())
         return E_FAIL;

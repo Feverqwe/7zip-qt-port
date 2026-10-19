@@ -22,11 +22,9 @@ upstream stream bounds, callback progress/cancellation и retained module lease.
 исключаются по отсутствию FileSystem, которое upstream выдаёт только для
 реальных разделов. Источник без таблицы разделов передаётся Ext целиком.
 
-Существующие адаптации Agent и QtArchiveFileResource рассчитаны на file-only
-transport и требуют отдельного подключения устройства; копирование новых
-парсеров или дублирование алгоритмов там не требуется. POSIX device size,
-выравнивание, разрешения и обнаружение отсутствуют в этом первом компоненте.
-Windows source device I/O уже существует, но не означает готовность нового UX.
+Agent и QtArchiveFileResource принимают отдельный прямой stream transport;
+обычные архивы продолжают использовать прежний file-only transport. Native I/O
+и разрешения перечислены ниже; они сами по себе не означают готовность UX.
 
 ## Текущее состояние
 
@@ -34,6 +32,33 @@ Windows source device I/O уже существует, но не означае�
 Первый компонент предоставляет stream-level discovery и native Ext-reader;
 пользовательский UI ещё не подключён. Добавлен native access macOS/Linux/Windows.
 Это не завершённый пользовательский сценарий.
+
+## Agent и прямой поток
+
+Сравнены полные тела и callers `CPP/7zip/UI/Agent/Agent.cpp`
+(`Open`, `CanUpdate`, `ReOpen`, `ReadItems`), `ArchiveFolderOpen.cpp`
+(`OpenFolderFile`), `ArchiveFolder.cpp` (`CopyTo`, `Extract`),
+`ArchiveFolderOut.cpp` (`CommonUpdateOperation`) и
+`CPP/7zip/UI/Common/OpenArchive.cpp` (`CArc::ReOpen`, `CArchiveLink::ReOpen`).
+Ревизия источника — указанная выше; существующий смешанный baseline адаптированных
+Agent-модулей сохраняется, новые upstream-тела не копируются.
+
+Штатные Agent proxy/tree, выбор файлов, извлечение и пути назначения сохраняются.
+Qt-граница распознаёт authorized device stream до spool/CLI listing и строит
+property transport над тем же сохранённым native handler. Индексы не сопоставляются
+по именам: метаданные и извлечение принадлежат одному обработчику. Размер и
+read-only состояние берутся из потока и reader, виртуальный display path не
+проверяется как обычный файл. При refresh переоткрывается разрешённый поток,
+сохраняются исходные retirement/binding proxy и восстановление подпапки.
+Признак устройства подключён к существующему `CanUpdate`; команды записи
+отклоняются до создания выходного файла. Источник освобождается вместе с lease.
+
+Upstream Ext публикует feature descriptions, но не применяет продуктовую политику
+этой версии для неподдерживаемых возможностей. Direct-device open проверяет эти
+публичные свойства до публикации reader и отклоняет неизвестные возможности,
+шифрование, требование journal recovery и неподдерживаемые варианты размещения
+данных. Собственный superblock parser не добавляется; обычное открытие `.img`
+не получает это ограничение. Список проверяемых возможностей остаётся в коде.
 
 ## Native access macOS
 
@@ -168,3 +193,19 @@ stale selection, отмена до elevation, обмен через частны
 обычные временные файлы и pipe; виртуальные диски не создаются и не подключаются.
 Реальный raw disk, UAC, privileged peer exchange и установленный Windows package
 ещё не проверены. UI остаётся следующим интеграционным компонентом.
+
+2026-10-19, stream-to-Agent integration: `archive_device`, `device_folder`,
+`agent_opening`, `agent_lifecycle`, `native_folder_opening` PASS на macOS arm64,
+Linux x64 и Windows x64. `device_folder` открывает частный GPT/ext4 fixture
+через авторизованный stream, переходит в Unicode-папку и копирует выбранный
+файл штатным `IFolderOperations::CopyTo`. Проверяются refresh с восстановлением
+папки и retirement старого proxy, отмена/потеря источника при копировании,
+отказ удаления, освобождение native lease, отсутствие CLI listing и полного
+считывания раздела. Дополнительно проверены отмена/потеря источника при открытии
+с успешным повторным открытием. Synthetic feature declarations проверяют отказ
+прямого чтения при сохранении исходного поведения обычного образа.
+На macOS первичный native-folder запуск использовал несовпадающий system `7zz`;
+повтор с подготовленным pinned runtime PASS. Первичный device-folder test выявил
+неподключённый device flag в Agent, исправление проверено тем же сценарием.
+Отображение UI, нативная авторизация и физические устройства этой итерацией
+не подтверждаются; явные ext2/ext3 fixtures ещё не проверены.

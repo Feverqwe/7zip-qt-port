@@ -6,7 +6,15 @@
 
 void QtArchiveFileResource::BindNativeItemOrder(IFolderFolder *metadata) {
     _nativeItemOrder = false;
-    if (!metadata || !_nativeOpen)
+    if (!_nativeOpen)
+        return;
+    if (HasDirectInput() && !metadata) {
+        // Direct metadata comes from this exact retained handler, including
+        // duplicate names; there is no independent CLI index mapping.
+        _nativeItemOrder = true;
+        return;
+    }
+    if (!metadata)
         return;
     IInArchive *native = _nativeOpen->arc().Archive;
     UInt32 nativeCount = 0, count = 0;

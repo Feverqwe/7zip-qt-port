@@ -162,7 +162,7 @@ HRESULT QtArchiveFileResource::GetArchivePropertyInfo(UInt32 index, BSTR *name, 
 
 HRESULT QtArchiveFileResource::ConfigureArc(CArc &arc, const CCodecs *codecs) const {
     const QFileInfo file(EnginePath);
-    if (!file.isFile())
+    if (!_directInput && !file.isFile())
         return E_FAIL;
     arc.Path = EnginePath.toStdWString().c_str();
     if (_nativeOpen) {
@@ -174,7 +174,7 @@ HRESULT QtArchiveFileResource::ConfigureArc(CArc &arc, const CCodecs *codecs) co
             if (const CArcInfoEx *format = _nativeOpen->formatInfo())
                 arc.FormatIndex = codecs->FindFormatForArchiveType(format->Name);
         arc.DefaultName = native.DefaultName;
-        arc.IsReadOnly = native.IsReadOnly;
+        arc.IsReadOnly = _directInput || native.IsReadOnly;
         arc.FileSize = native.FileSize;
         arc.ArcStreamOffset = native.ArcStreamOffset;
         arc.InStream = native.InStream;

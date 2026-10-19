@@ -16,6 +16,7 @@
 #include "Windows/PropVariant.h"
 #include "Windows/PropVariantConv.h"
 #include "Windows/System.h"
+#include "deviceaccess.h"
 #include "qtarchiveagentopen.h"
 #include "qtarchivefileresource.h"
 #include "qtarchiveproperties.h"
@@ -1444,7 +1445,7 @@ Z7_COM7F_IMF(CAgent::Open(IInStream *inStream, const wchar_t *filePath, const wc
     _archiveFilePath = filePath;
     _hashBaseFolderPrefix.Empty();
     _attrib = 0;
-    _isDeviceFile = false;
+    _isDeviceFile = dynamic_cast<DirectDeviceInput *>(inStream) != nullptr;
     _isHashHandler = false;
     NWindows::NFile::NFind::CFileInfo fi;
     if (!inStream) {
@@ -1577,10 +1578,21 @@ Z7_COM7F_IMF(CAgent::ReOpen(IArchiveOpenCallback *openArchiveCallback)) {
     options.filePath = _archiveFilePath;
     options.callback = openArchiveCallback;
 
-    RINOK(_archiveLink.ReOpen(options))
+    auto *resource = dynamic_cast<QtArchiveFileResource *>(GetEngineResource());
+    if (resource && resource->HasDirectInput()) {
+        // A device refresh reuses its authorized stream; a virtual display
+        // path must never be reopened through the host filesystem.
+        if (_archiveLink.Arcs.Size() != 1)
+            return E_FAIL;
+        _archiveLink.IsOpen = false;
+        RINOK(_archiveLink.Arcs[0].Archive->Open(nullptr, nullptr, openArchiveCallback))
+        _archiveLink.IsOpen = true;
+    } else {
+        RINOK(_archiveLink.ReOpen(options))
+    }
     // The Qt transport opens a fresh native handler after publication. Its
     // tree/stream capabilities can change when the first ADS is added.
-    if (auto *resource = dynamic_cast<QtArchiveFileResource *>(GetEngineResource())) {
+    if (resource) {
         RINOK(resource->ConfigureArc(_archiveLink.Arcs.Back()))
         _isHashHandler = resource->HasNativeHashReader();
     }

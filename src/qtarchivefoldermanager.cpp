@@ -6,6 +6,7 @@
 #include "archivecodeccatalog.h"
 #include "archivenativeopen.h"
 #include "archiveprogresstransport.h"
+#include "deviceaccess.h"
 #include "qtarchiveagentopen.h"
 #include "qtarchivefileresource.h"
 #include "qtarchivenativeopenprogress.h"
@@ -191,6 +192,11 @@ HRESULT QtArchiveFolderManager::OpenLinkImpl(CArchiveLink &link, const COpenOpti
     auto *ui = callback ? dynamic_cast<COpenArchiveCallback *>(callback->Callback) : nullptr;
     if (ui)
         ui->ProgressDialog.WaitCreating();
+    if (dynamic_cast<DirectDeviceInput *>(inStream)) {
+        CNativeOpenProgress nativeProgress(progress, callback ? callback->Callback : nullptr);
+        RINOK(resource->OpenDeviceInput(_backend, inStream, &nativeProgress))
+        return CreateArchiveLinkTransport(link, nullptr, resource, sourceOptions.codecs);
+    }
     if (inStream) {
         if (ownedStreamFile) {
             RINOK(resource->SpoolToOwnedFile(inStream, QString::fromWCharArray(filePath), progress))
