@@ -24,7 +24,7 @@ def entry(alias, cluster=0, size=0, attr=0x20):
 
 
 def long_entries(name, alias):
-    raw = name.encode("utf-16le") + b"\0\0"
+    raw = name.encode("utf-16le", errors="surrogatepass") + b"\0\0"
     raw += b"\xff\xff" * ((-len(raw) // 2) % 13)
     result = []
     for index in reversed(range(len(raw) // 26)):
@@ -102,4 +102,42 @@ class Volume:
 
     def write_directory(self):
         raw = b"".join(self.records) + bytes(32)
+        capacity = self.cluster_size if self.bits == 32 else self.root_sectors * self.sector
+        assert len(raw) <= capacity
+        self.data[self.root:self.root + capacity] = bytes(capacity)
         self.data[self.root:self.root + len(raw)] = raw
+
+
+def legacy_volume(kib=160):
+    spc, root_entries, media, fat_sectors = {
+        160: (1, 64, 0xFE, 1), 180: (1, 64, 0xFC, 2),
+        320: (2, 112, 0xFF, 1), 360: (2, 112, 0xFD, 2),
+    }[kib]
+    v = object.__new__(Volume)
+    v.bits, v.sector, v.spc, v.fats, v.reserved = 12, 512, spc, 2, 1
+    v.cluster_size, v.fat_sectors = spc * 512, fat_sectors
+    v.root_sector = 1 + 2 * fat_sectors
+    v.root_sectors = root_entries // 16
+    v.data_sector = v.root_sector + v.root_sectors
+    v.sectors, v.eof = kib * 2, 0xFFF
+    v.clusters = (v.sectors - v.data_sector) // spc
+    v.data = bytearray(kib * 1024)
+    v.data[:3] = b"\xeb\x3c\x90"
+    v.root = v.root_sector * 512
+    v.set_fat(0, 0xF00 | media)
+    v.set_fat(1, v.eof)
+    needed = (len(PAYLOAD) + v.cluster_size - 1) // v.cluster_size
+    v.chain = [2, 5, 9][:needed]
+    for i, cluster in enumerate(v.chain):
+        v.set_fat(cluster, v.chain[i + 1] if i + 1 < needed else v.eof)
+        part = PAYLOAD[i * v.cluster_size:(i + 1) * v.cluster_size]
+        v.data[v.offset(cluster):v.offset(cluster) + len(part)] = part
+    v.alias = b"LEGACY  BIN"
+    v.records = [entry(v.alias, v.chain[0], len(PAYLOAD))]
+    v.write_directory()
+    return v
+
+
+if __name__ == "__main__":
+    import sys
+    sys.stdout.buffer.write(legacy_volume().data)

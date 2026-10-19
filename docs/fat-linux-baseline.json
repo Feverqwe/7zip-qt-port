@@ -2,6 +2,7 @@
   "repository": "https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git",
   "revision": "58161ead29e50d70a317ea26b472e0c7508e69da",
   "files": {
+    "LICENSES/exceptions/Linux-syscall-note": "8e378ab93586eb55135d3bc119cce787f7324f48394777d00c34fa3d0be3303f",
     "fs/fat/.kunitconfig": "e1481a312ea506ecfac286df8b4066acd7a0a090dfc2e1a40bfcb01a13972d70",
     "fs/fat/Kconfig": "5331da2995a4f08018c23b16ab9adbfdc10dc6a1173cb117234d25c747d61274",
     "fs/fat/Makefile": "5764ea22e71cdb246d7a03ef7c1ab4975a317515ffd20720fcc0fc4bef4dfadb",
@@ -15,6 +16,23 @@
     "fs/fat/misc.c": "cbb1e341a95073fde57c0187fb33364001698aa0d4ee221eb7a84dd702f438df",
     "fs/fat/namei_msdos.c": "7c2d46016820ffab1dcdd2bb814ddea089a99c36e8d4ffbd2ba653b6016ad62f",
     "fs/fat/namei_vfat.c": "ebbbad0a88c7922036f1c2c13e69cb0e6746d5d3e4c7109bfe88c75d59547748",
-    "fs/fat/nfs.c": "be6af97fa9df008bba9909ea4fa0a59b23def9282e8756c8d1bb4c10f54d513c"
-  }
+    "fs/fat/nfs.c": "be6af97fa9df008bba9909ea4fa0a59b23def9282e8756c8d1bb4c10f54d513c",
+    "fs/nls/Kconfig": "95df35b842942114855042bcf6819b65719a0cb1fd6c01b747b1d299138b0666",
+    "fs/nls/nls_base.c": "a121f305e92b6915e817c85de3c87eddea42d0a8507a29d84b157e53f970b796",
+    "fs/nls/nls_cp437.c": "b7f79558ec75ed778332271a17ff8d56d60f42487d58ad814316ba166aa7e4db",
+    "include/linux/msdos_fs.h": "a8befed154427aeebc9c4c9bd63006b4b827d6141213d677dc6c135c59aa3201",
+    "include/linux/nls.h": "4b2d38eced38722fbc52eedbe177af65aeb39adab5d271fe8c732b76fe65b980",
+    "include/uapi/linux/msdos_fs.h": "5ff0f57d1203ee2fdbd4627c45368b057532442f52eeaa140828b14ccb7b3669"
+  },
+  "exact": [
+    "LICENSES/exceptions/Linux-syscall-note"
+  ],
+  "adapted": [
+    "fs/fat/dir.c",
+    "fs/fat/inode.c",
+    "fs/fat/misc.c",
+    "fs/nls/nls_base.c",
+    "fs/nls/nls_cp437.c",
+    "include/uapi/linux/msdos_fs.h"
+  ]
 }

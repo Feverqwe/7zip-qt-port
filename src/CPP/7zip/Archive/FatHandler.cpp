@@ -10,6 +10,10 @@
 #include "../../Common/MyBuffer2.h"
 #include "../../Common/MyCom.h"
 #include "../../Common/StringConvert.h"
+#ifdef SEVENZIP_LINUX_FAT
+#include "../../../fatreader.h"
+#include "../../Common/UTFConvert.h"
+#endif
 
 #include "../../Windows/PropVariant.h"
 #include "../../Windows/TimeUtils.h"
@@ -118,12 +122,21 @@ API_FUNC_IsArc IsArc_Fat(const Byte *p, size_t size) {
     if (size < kHeaderSize)
         return k_IsArc_Res_NEED_MORE;
     CHeader h;
-    return h.Parse(p) ? k_IsArc_Res_YES : k_IsArc_Res_NO;
+    if (h.Parse(p))
+        return k_IsArc_Res_YES;
+#ifdef SEVENZIP_LINUX_FAT
+    Byte normalized[kHeaderSize];
+    if (fat_linux_legacy_header(p, size, normalized) && h.Parse(normalized))
+        return k_IsArc_Res_YES;
+#endif
+    return k_IsArc_Res_NO;
 }
 
 bool CHeader::Parse(const Byte *p) {
+#ifndef SEVENZIP_LINUX_FAT
     if (Get16(p + 0x1FE) != 0xAA55)
         return false;
+#endif
 
     HeadersWarning = false;
 
@@ -224,6 +237,8 @@ bool CHeader::Parse(const Byte *p) {
         Flags = Get16(p + 4);
         RootCluster = Get32(p + 8);
         FsInfoSector = Get16(p + 12);
+        if (FsInfoSector == 0)
+            FsInfoSector = 1;
         p += 28;
         curOffset += 28;
     }
@@ -274,7 +289,8 @@ bool CHeader::Parse(const Byte *p) {
         fatSize = fatCapacity;
         HeadersWarning = true;
     }
-    if (fatSize < 2 || fatSize > BadCluster)
+    const UInt64 maxEntries = (UInt64)BadCluster + (IsFat32() ? 1 : 0);
+    if (fatSize < 2 || fatSize > maxEntries)
         return false;
     FatSize = (UInt32)fatSize;
     return true;
@@ -325,10 +341,30 @@ static char *CopyAndTrim(char *dest Z7_lifetimebound, const char *src, unsigned 
 }
 
 static void FatStringToUnicode(UString &dest, const char *s) {
+#ifdef SEVENZIP_LINUX_FAT
+    char utf8[64];
+    const int size =
+        fat_linux_oem_name((const unsigned char *)s, (unsigned)strlen(s), utf8, sizeof(utf8));
+    if (size >= 0) {
+        AString encoded;
+        encoded.SetFrom(utf8, (unsigned)size);
+        ConvertUTF8ToUnicode(encoded, dest);
+    } else
+        dest.Empty();
+#else
     MultiByteToUnicodeString2(dest, AString(s), CP_OEMCP);
+#endif
 }
 
 void CItem::GetShortName(UString &shortName) const {
+#ifdef SEVENZIP_LINUX_FAT
+    char utf8[73];
+    const int size = fat_linux_short_name((const unsigned char *)DosName, Flags, utf8);
+    AString encoded;
+    if (size > 0)
+        encoded.SetFrom(utf8, (unsigned)size);
+    ConvertUTF8ToUnicode(encoded, shortName);
+#else
     char s[16];
     char *dest = CopyAndTrim(s, DosName, 8, NameIsLow());
     *dest++ = '.';
@@ -336,31 +372,36 @@ void CItem::GetShortName(UString &shortName) const {
     if (dest == dest2)
         dest[-1] = 0;
     FatStringToUnicode(shortName, s);
+#endif
 }
 
 // numWords != 0
 static unsigned ParseLongName(UInt16 *buf, unsigned numWords) {
     unsigned i;
     for (i = 0; i < numWords; i++) {
-        const unsigned c = buf[i];
+        const unsigned c = Get16(buf + i);
         if (c == 0)
             break;
+#ifndef SEVENZIP_LINUX_FAT
         if (c == 0xFFFF)
             return 0;
+#endif
     }
     if (i == 0)
         return 0;
-    buf[i] = 0;
+    SetUi16(buf + i, 0);
     numWords -= i;
     i++;
+#ifndef SEVENZIP_LINUX_FAT
     if (numWords > 1) {
         numWords--;
         buf += i;
         do
-            if (*buf++ != 0xFFFF)
+            if (Get16(buf++) != 0xFFFF)
                 return 0;
         while (--numWords);
     }
+#endif
     return i; // it includes NULL terminator
 }
 
@@ -368,10 +409,19 @@ void CItem::GetName(UString &name) const {
     if (LongName.Size() >= 2) {
         const Byte *const p = LongName;
         const unsigned numWords = ((unsigned)LongName.Size() - 2) / 2;
+#ifdef SEVENZIP_LINUX_FAT
+        char utf8[4 * 260];
+        const int size = fat_linux_long_name(p, numWords, utf8, sizeof(utf8));
+        AString encoded;
+        if (size > 0)
+            encoded.SetFrom(utf8, (unsigned)size);
+        ConvertUTF8ToUnicode(encoded, name);
+#else
         wchar_t *dest = name.GetBuf(numWords);
         for (unsigned i = 0; i < numWords; i++)
             dest[i] = (wchar_t)Get16(p + (size_t)i * 2);
         name.ReleaseBuf_SetEnd(numWords);
+#endif
     } else
         GetShortName(name);
     if (name.IsEmpty()) // it's unexpected
@@ -700,10 +750,15 @@ HRESULT CDatabase::Open() {
     {
         UInt32 buf32[kHeaderSize / 4];
         RINOK(ReadStream_FALSE(InStream, buf32, kHeaderSize))
-        if (!Header.Parse((Byte *)(void *)buf32))
-            return S_FALSE;
         UInt64 fileSize;
         RINOK(InStream_GetSize_SeekToEnd(InStream, fileSize))
+        if (!Header.Parse((Byte *)(void *)buf32)) {
+#ifdef SEVENZIP_LINUX_FAT
+            if (!fat_linux_legacy_header(buf32, fileSize, buf32) ||
+                !Header.Parse((Byte *)(void *)buf32))
+#endif
+                return S_FALSE;
+        }
         const UInt64 fatEnd = ((UInt64)Header.GetFatSector() + Header.CalcFatSizeInSectors())
                               << Header.SectorSizeLog;
         if (fatEnd > fileSize)
@@ -722,13 +777,14 @@ HRESULT CDatabase::Open() {
                 0xaa550000 == Get32a(buf32 + 508 / 4) && 0x41615252 == Get32a(buf32) &&
                 0x61417272 == Get32a(buf32 + 484 / 4)) {
                 NumFreeClusters = Get32a(buf32 + 488 / 4);
-                numFreeClusters_Defined = (NumFreeClusters <= Header.FatSize);
+                numFreeClusters_Defined = (NumFreeClusters <= Header.FatSize - 2);
             } else
                 Header.HeadersWarning = true;
         }
     }
 
-    // numFreeClusters_Defined = false; // to recalculate NumFreeClusters
+    // Linux's default statfs path recounts the FAT rather than trusting FSINFO.
+    numFreeClusters_Defined = false;
     if (!numFreeClusters_Defined)
         NumFreeClusters = 0;
 
@@ -795,6 +851,8 @@ HRESULT CDatabase::Open() {
         }
     }
 
+    // Entries zero and one are reserved, not allocatable data clusters.
+    NumFreeClusters -= (UInt32)(Fat[0] == 0) + (UInt32)(Fat[1] == 0);
     RINOK(OpenProgressFat())
 
     if ((Fat[0] & 0xFF) != Header.MediaType) {
@@ -904,10 +962,21 @@ IMP_IInArchive_Props IMP_IInArchive_ArcProps_WITH_NAME
     static void
     FatTimeToProp(UInt32 dosTime, UInt32 ms10, NWindows::NCOM::CPropVariant &prop) {
     FILETIME localFileTime, utc;
+#ifdef SEVENZIP_LINUX_FAT
+    int64_t seconds;
+    uint32_t nsec;
+    fat_linux_time(dosTime, (Byte)ms10, &seconds, &nsec);
+    if (NWindows::NTime::UnixTime64_To_FileTime(seconds, localFileTime))
+#else
     if (NWindows::NTime::DosTime_To_FileTime(dosTime, localFileTime))
+#endif
         if (LocalFileTimeToFileTime(&localFileTime, &utc)) {
             UInt64 t64 = (((UInt64)utc.dwHighDateTime) << 32) + utc.dwLowDateTime;
+#ifdef SEVENZIP_LINUX_FAT
+            t64 += nsec / 100;
+#else
             t64 += ms10 * 100000;
+#endif
             utc.dwLowDateTime = (DWORD)t64;
             utc.dwHighDateTime = (DWORD)(t64 >> 32);
             prop.SetAsTimeFrom_FT_Prec(utc, k_PropVar_TimePrec_Base + 2);
@@ -953,7 +1022,11 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID propID, PROPVARIANT *value)) {
         break;
     case kpidMTime:
         if (VolItem_Defined)
+#ifdef SEVENZIP_LINUX_FAT
+            FatTimeToProp(Vol_MTime, 0, prop);
+#else
             PropVariant_SetFrom_DosTime(prop, Vol_MTime);
+#endif
         break;
     case kpidShortComment:
     case kpidVolumeName:
@@ -1020,6 +1093,7 @@ Z7_COM7F_IMF(CHandler::GetRawProp(UInt32 index, PROPID propID, const void **data
     *dataSize = 0;
     *propType = 0;
 
+#ifndef SEVENZIP_LINUX_FAT
     if (index < Items.Size() && propID == kpidName) {
         CByteBuffer &buf = Items[index].LongName;
         const UInt32 size = (UInt32)buf.Size();
@@ -1029,6 +1103,12 @@ Z7_COM7F_IMF(CHandler::GetRawProp(UInt32 index, PROPID propID, const void **data
             *data = (const void *)(const Byte *)buf;
         }
     }
+#else
+    // Linux canonicalizes invalid UTF-16 during name conversion. Publish that
+    // same name through GetProperty rather than exposing unsanitized raw slots.
+    (void)index;
+    (void)propID;
+#endif
     return S_OK;
 }
 
@@ -1062,13 +1142,21 @@ Z7_COM7F_IMF(CHandler::GetProperty(UInt32 index, PROPID propID, PROPVARIANT *val
         prop = item.IsDir();
         break;
     case kpidMTime:
+#ifdef SEVENZIP_LINUX_FAT
+        FatTimeToProp(item.MTime, 0, prop);
+#else
         PropVariant_SetFrom_DosTime(prop, item.MTime);
+#endif
         break;
     case kpidCTime:
         FatTimeToProp(item.CTime, item.CTime2, prop);
         break;
     case kpidATime:
+#ifdef SEVENZIP_LINUX_FAT
+        FatTimeToProp((UInt32)item.ADate << 16, 0, prop);
+#else
         PropVariant_SetFrom_DosTime(prop, ((UInt32)item.ADate << 16));
+#endif
         break;
     case kpidAttrib:
         prop = (UInt32)item.Attrib;
@@ -1206,8 +1294,11 @@ Z7_COM7F_IMF(CHandler::GetNumberOfItems(UInt32 *numItems)) {
     return S_OK;
 }
 
+#ifdef SEVENZIP_LINUX_FAT
+REGISTER_ARC_I_NO_SIG("FAT", "fat img", NULL, 0xDA, 0, NArcInfoFlags::kPureStartOpen, IsArc_Fat)
+#elif !defined(Z7_EXTERNAL_CODECS)
 static const Byte k_Signature[] = {0x55, 0xAA};
-
 REGISTER_ARC_I("FAT", "fat img", NULL, 0xDA, k_Signature, 0x1FE, 0, IsArc_Fat)
+#endif
 }
 }

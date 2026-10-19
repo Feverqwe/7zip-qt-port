@@ -26,6 +26,7 @@ find_package(Qt6 REQUIRED COMPONENTS Widgets LinguistTools)
 find_package(Threads REQUIRED)
 include(cmake/Exfat.cmake)
 include(cmake/Cramfs.cmake)
+include(cmake/Fat.cmake)
 include(cmake/Erofs.cmake)
 include(cmake/Brotli.cmake)
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR (APPLE AND BUILD_TESTING))
@@ -619,6 +620,7 @@ set_target_properties(sevenzip_desktop PROPERTIES
 )
 sevenzip_deploy_exfat()
 sevenzip_deploy_cramfs()
+sevenzip_deploy_fat()
 sevenzip_deploy_erofs()
 sevenzip_deploy_brotli()
 if(APPLE)
@@ -742,7 +744,7 @@ if(BUILD_TESTING)
     find_package(Python3 3.9 REQUIRED COMPONENTS Interpreter)
     add_test(NAME fat COMMAND ${Python3_EXECUTABLE}
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/fat_tests.py
-        ${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime)
+        ${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime "$<TARGET_FILE:sevenzip_fat>")
     set_tests_properties(fat PROPERTIES TIMEOUT 60)
     add_test(NAME cramfs COMMAND ${Python3_EXECUTABLE}
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/cramfs_tests.py
@@ -1538,6 +1540,7 @@ if(BUILD_TESTING)
     list(REMOVE_ITEM compression_order_sources tests/compression_tests.cpp)
     target_sources(exfat_backend_tests PRIVATE ${compression_order_sources})
     target_sources(cramfs_module_tests PRIVATE ${compression_order_sources})
+    target_sources(fat_module_tests PRIVATE ${compression_order_sources})
     target_sources(erofs_module_tests PRIVATE ${compression_order_sources})
     target_sources(brotli_tests PRIVATE ${compression_order_sources})
     qt_add_executable(compression_error_policy_tests tests/compression_error_policy_tests.cpp

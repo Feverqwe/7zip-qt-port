@@ -6,9 +6,10 @@ import subprocess
 import sys
 import tempfile
 import unittest
-from fat_fixture import Volume, PAYLOAD, LONG_NAME, entry, long_entries
+from fat_fixture import Volume, PAYLOAD, LONG_NAME, entry, long_entries, legacy_volume
 
 RUNTIME = Path(sys.argv.pop(1))
+MODULE = Path(sys.argv.pop(1))
 SUFFIX = ".exe" if sys.platform == "win32" else ""
 
 
@@ -21,12 +22,16 @@ class FatTests(unittest.TestCase):
         core = "7z.dll" if sys.platform == "win32" else "7z.so"
         for name in ("7z" + SUFFIX, "7zz" + SUFFIX, core):
             shutil.copy2(RUNTIME / name, cls.runtime / name)
+        (cls.runtime / "Formats").mkdir()
+        shutil.copy2(MODULE, cls.runtime / "Formats" / MODULE.name)
 
-    def run_image(self, volume, engine, command="x", name=LONG_NAME):
+    def run_image(self, volume, engine, command="x", name=LONG_NAME, forced=True):
         with tempfile.TemporaryDirectory(dir=self.runtime) as temporary:
             path = Path(temporary) / "образ FAT 空.img"
             path.write_bytes(volume.data)
-            args = [str(self.runtime / (engine + SUFFIX)), command, "-tFAT", "-sccUTF-8", "-bsp0"]
+            args = [str(self.runtime / (engine + SUFFIX)), command, "-sccUTF-8", "-bsp0"]
+            if forced:
+                args += ["-tFAT"]
             args += ["-so", "-bso0", "-bse2"] if command == "x" else ["-slt"]
             args += ["--", str(path)]
             if name is not None:
@@ -76,6 +81,88 @@ class FatTests(unittest.TestCase):
                         # A valid second table must retain priority over the first.
                         volume.set_fat(volume.chain[0], 0, copy=0)
                     self.assert_contents(volume, engine)
+
+    def test_linux_legacy_and_signatureless_auto_recognition(self):
+        for kib in (160, 180, 320, 360):
+            with self.subTest(kib=kib):
+                v = legacy_volume(kib)
+                result = self.run_image(v, "7z", name="LEGACY.BIN", forced=False)
+                self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                self.assertEqual(result.stdout, PAYLOAD)
+        for bits in (12, 16, 32):
+            with self.subTest(bits=bits):
+                v = Volume(bits)
+                v.data[:3] = bytes(3)
+                v.data[510:512] = bytes(2)
+                result = self.run_image(v, "7z", forced=False)
+                self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                self.assertEqual(result.stdout, PAYLOAD)
+
+    def test_legacy_fallback_rejects_unrelated_raw_images(self):
+        for fault in ("bootstrap", "nonzero-bpb", "size", "truncated-fat"):
+            with self.subTest(fault=fault):
+                v = legacy_volume()
+                if fault == "bootstrap":
+                    v.data[:3] = bytes(3)
+                elif fault == "nonzero-bpb":
+                    v.data[13] = 1
+                elif fault == "size":
+                    v.data += bytes(512)
+                else:
+                    del v.data[600:]
+                result = self.run_image(v, "7z", name="LEGACY.BIN")
+                self.assertIn(result.returncode, (1, 2), result.stderr)
+                self.assertEqual(result.stdout, b"")
+
+    def test_linux_unicode_padding_and_short_codepage(self):
+        for name, expected in (("снимок 😀.bin", "снимок 😀.bin"),
+                               ("A\ud800B.bin", "AB.bin"), ("A\udc00B.bin", "AB.bin")):
+            with self.subTest(name=ascii(name)):
+                v = Volume()
+                v.records = long_entries(name, v.alias) + [entry(v.alias, v.chain[0], len(PAYLOAD))]
+                v.write_directory()
+                self.assert_contents(v, "7z", expected)
+        v = Volume()
+        # Data after the first UTF-16 NUL is not part of the name.
+        tail = v.records[0]
+        tail[28:32] = b"X\0Y\0"
+        v.write_directory()
+        self.assert_contents(v, "7z")
+        for alias, flags, expected in ((b"\x8eBC     TXT", 0x18, "äbc.txt"),
+                                       (b"ABC\0    TXT", 0, "ABC.TXT")):
+            with self.subTest(alias=alias):
+                v = Volume()
+                rec = entry(alias, v.chain[0], len(PAYLOAD))
+                rec[12] = flags
+                v.records = [rec]
+                v.write_directory()
+                self.assert_contents(v, "7z", expected)
+
+    def test_linux_date_normalization(self):
+        for date, expected in ((0, "1980-01-01"), ((120 << 9) | (2 << 5) | 29, "2100-03-01")):
+            with self.subTest(date=date):
+                v = Volume()
+                struct.pack_into("<H", v.records[2], 24, date)
+                v.write_directory()
+                result = self.run_image(v, "7z", "l", None)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn("Modified = " + expected, result.stdout.decode("utf-8"))
+
+    def test_free_space_recounts_fat_and_excludes_reserved_entries(self):
+        for engine in ("7z", "7zz"):
+            for bits in (12, 16, 32):
+                with self.subTest(engine=engine, bits=bits):
+                    v = Volume(bits)
+                    v.set_fat(0, 0)
+                    v.set_fat(1, 0)
+                    if bits == 32:
+                        # A valid but stale FSINFO count must not override the FAT.
+                        struct.pack_into("<I", v.data, v.sector + 488, 1)
+                        struct.pack_into("<H", v.data, 48, 0)
+                    result = self.run_image(v, engine, "l", None)
+                    self.assertIn(result.returncode, (0, 1), result.stderr)
+                    free = (v.clusters - len(v.chain) - int(bits == 32)) * v.cluster_size
+                    self.assertIn("Free Space = " + str(free), result.stdout.decode("utf-8"))
 
     def test_bpb_geometry_does_not_require_bootstrap_code(self):
         for engine in ("7z", "7zz"):

@@ -1,9 +1,9 @@
 # FAT read paths compared with Linux
 
 Part of the [Linux format review](filesystems-linux.md), 2026-10-19.
-This integrated iteration updates BPB-based FAT12/16/32 geometry, directory-name
-recovery and size-bounded file reads. It does not close the complete FAT row:
-the additional compatibility work listed below remains in the active goal.
+The two integrated iterations cover BPB-based FAT12/16/32 geometry, directory
+and file reads, then DOS 1.x recognition, names, dates and archive consumers.
+Other filesystem and shared-format rows remain in the active goal.
 
 ## Sources and retained ownership
 
@@ -98,16 +98,99 @@ modern reference. Mounts and temporary images were removed. No physical-device,
 UI, full/slow suite or clean-package acceptance is claimed. Existing build trees
 and compiler caches were retained.
 
-## Remaining FAT compatibility work
+## Linux compatibility module
 
-The source comparison also identified Linux's optional DOS 1.x floppy geometry
-fallback, which has no BPB and is a separate recognition/read scenario. It must
-be integrated and checked before completing the FAT row. Linux does not require
-the modern boot signature; the current archive detector still does. Recognition
-must retain sufficient evidence to avoid claiming unrelated raw images as FAT.
+The next integrated iteration connects the following original C implementations,
+with full original bodies and required tables retained under their original paths:
 
-Short-name codepage policy, full UTF-16 name conversion/padding behavior, invalid
-date normalization and the remaining directory-size/record recovery boundaries
-need comparison and behavioral checks. These are continuing work, not permanent
-format restrictions accepted in place of the requested modernization. Kernel
-mount-option policy, VFS services and writes remain outside the read-only goal.
+- `fs/fat/inode.c`: `fat_bpb_is_zero`, `fat_read_static_bpb`, floppy defaults
+  and the decoded BPB type. The userspace BPB adds the table's media value so the
+  archive header can retain that property. A bounded adapter creates a private
+  normalized BPB for the existing 7-Zip parser; the source is never rewritten.
+- `fs/fat/dir.c`: `fat_parse_short`, short-name conversion helpers and bounded
+  Unicode output. The archive selects Linux's default CP437 and WinNT display
+  policy, honoring base/extension lowercase flags, including non-ASCII mappings.
+- `fs/fat/misc.c`: `fat_time_fat2unix`, epoch/leap-year tables and timezone
+  calculation. Local wall-clock output passes through the existing 7-Zip host
+  FILETIME adapter; no kernel timezone or mount state is recreated.
+- `fs/nls/nls_cp437.c`: the complete conversion/case tables and conversion
+  functions. `fs/nls/nls_base.c` retains the UTF-8 encoding table,
+  `utf32_to_utf8`, `get_utf16` and `utf16s_to_utf8s` dependency closure.
+- `include/uapi/linux/msdos_fs.h`: disk structures and constants, with only
+  host-header imports replaced. Layout assertions check the on-disk ABI.
+
+C remains C11. The private compatibility header supplies only the required
+kernel service/type boundary. Kernel NLS's 16-bit `wchar_t` is named
+`fat_wchar_t` to avoid conflicting host C library types. Logging, module
+registration, mount policy and VFS operations are omitted. One string-literal
+pointer cast addresses host C compiler signedness diagnostics. Source comparison
+verified the eight transferred function/table ranges against the pinned snapshot
+with these explicit adaptations. Copyright and license notices are retained;
+the UAPI syscall exception is included with installed notices.
+
+The original 7-Zip FAT handler remains authoritative. `sevenzip_fat` links the C
+compatibility routines and archive ABI without unRAR code, following the existing
+GPL format-module boundary. Dynamic-engine FAT registration is omitted to avoid
+duplicate handlers; CMake deployment and Unix/Windows installation supply the
+module. Standalone `7zz` retains the common BPB/chain fixes and its classic reader;
+DOS 1.x, Linux NLS and date normalization belong to the application's module.
+No independent FAT decoder or compression algorithm is introduced.
+
+Automatic recognition uses the original archive detector interface with a
+start-of-stream rule. Modern volumes do not require executable boot code or the
+`55 AA` signature. DOS 1.x additionally requires the original bootstrap pattern,
+zero BPB fields and one of Linux's four known floppy sizes. Unrelated raw images
+and incomplete metadata are rejected. The accepted FAT32 cluster-count boundary
+also includes Linux's final addressable entry; maximum-size volumes were not
+materialized for runtime testing.
+
+LFNs end at the first UTF-16 NUL; trailing slot padding does not change a name.
+Linux's converter combines surrogate pairs and skips isolated surrogates. Raw
+unsanitized LFN slots are not returned as an alternate name: archive consumers
+use the same canonical `GetProperty` name. The original parent/tree ABI remains.
+Dates with zero day/month and the 2100 non-leap-year boundary follow Linux's
+normalization. FSINFO sector zero falls back to sector one. Free-space reporting
+recounts the decoded FAT as Linux's default statfs does, excluding the two
+reserved entries and ignoring stale cached FSINFO counts.
+
+The read-side comparison also reviewed fixed/clustered roots, directory size
+limits, end markers, volume/deleted/dot entries, aliases and required chain ranges.
+Existing archive recovery and unsafe-cycle guards remain explicit adaptations;
+this does not promise identical recovery of every damaged tree. Codepage and
+timezone choices are archive policy where the disk records no such choice.
+Kernel mount-option configuration, VFS lookup/casefold policy, NFS, writeback,
+ioctl/device management and writing are outside this read-only archive contract.
+
+## Compatibility and consumer validation
+
+The process suite exercises automatic detection of all four DOS 1.x geometries
+and signatureless modern volumes, rejects unrelated legacy candidates, extracts
+CP437/NT-case and supplementary-plane names, and checks lone-surrogate/padding
+recovery. Date checks cover the zero date and 2100-02-29 normalization. Stale
+FSINFO and zero reserved FAT entries exercise actual free-space output through
+both engines. All process cases preserve their source images.
+
+Module ABI checks cover cancelled/failed opens, extract cancellation, input/output
+failures, reuse and exact output. A fragmented seekable stream retains its source
+after archive Close/reopen/Release, including backward and cross-cluster reads.
+The test honors the stream contract allowing short reads at cluster boundaries.
+ArchiveBackend discovers read-only FAT and automatically lists, tests and extracts
+a DOS 1.x image with Unicode/spaces in the image path and exact source preservation.
+
+Thirteen related suites passed locally. On Linux/Windows, the initial batch's
+other twelve suites passed, while a new ABI assertion incorrectly assumed one
+Read would fill the requested buffer. After correcting that test, both FAT suites
+passed on both guests (`20261019T080628Z-a0200428`). A subsequent Windows run timed
+out during codec discovery. A read-only system snapshot taken afterward showed
+available memory and low CPU load, which does not establish the incident's cause.
+Both FAT suites passed locally and on both guests after the final free-space
+changes (`20261019T081059Z-e4321383`). Source baseline/inventory checks also passed.
+No production timeout was increased.
+
+Eleven additional native read-only mounts on Linux `6.8.0-146-generic`, using
+`dos1xfloppy`, CP437, WinNT name display and UTC dates, confirmed all four legacy
+geometries, signatureless BPBs, CP437, surrogate/padding names and normalized
+dates with exact file bytes. The mounts were unmounted and temporary images
+removed. They supplement the pinned modern-source comparison; they do not claim
+runtime execution of the 2026 kernel. No full/slow, physical-device, UI or
+clean-package acceptance is claimed. Incremental builds and caches are preserved.
