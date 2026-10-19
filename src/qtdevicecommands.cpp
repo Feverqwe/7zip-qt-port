@@ -17,7 +17,8 @@ void QtFileManagerCommands::OpenDevice() {
         const HRESULT result = panel.OpenAsArc(input, temporary, name, UString(L"Ext"), opened);
         if (result != S_OK && result != E_ABORT) {
             const QString error =
-                result == E_NOTIMPL
+                !opened.ErrorMessage.IsEmpty() ? ToQString(opened.ErrorMessage)
+                : result == E_NOTIMPL
                     ? QCoreApplication::translate("qtdevicecommands",
                                                   "This filesystem uses features that are not "
                                                   "supported for direct reading.")

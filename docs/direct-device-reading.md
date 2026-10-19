@@ -35,8 +35,12 @@ Some ext features and layouts are unsupported. Encrypted filesystems and those
 requiring journal recovery are refused. Sevenzip does not unlock LUKS/fscrypt,
 assemble LVM/RAID, repair filesystems or provide damaged-disk recovery. Direct
 reading is not a consistent snapshot if another program changes the medium.
+An unsupported-feature error lists the rejected features. `RECOVER` means the
+filesystem needs journal recovery; open it on its usual Linux system and unmount
+it cleanly before trying again. Sevenzip does not replay the journal.
 
 Current automated checks use private filesystem samples on macOS, Linux and
-Windows. Helper packaging and loading are checked separately; successful access
-to real external media and actual system authorization prompts remain unverified.
+Windows. Helper packaging and loading are checked separately. A user has reported
+successful device authorization on macOS after enabling Full Disk Access;
+successful browsing and copying from real external media remain unverified.
 Detailed scope and platform evidence are in the [audit](upstream-port-audit/direct-devices.md).

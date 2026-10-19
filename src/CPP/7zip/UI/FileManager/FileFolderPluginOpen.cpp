@@ -355,6 +355,8 @@ HRESULT CFfpOpen::OpenFileFolderPlugin(IInStream *inStream, const FString &path,
     */
     t.OpenCallbackProgress.Release();
     MaterializedStreamFile = t.MaterializedStreamFile;
+    if (!t.OpenCallbackSpec->DeviceOpenError.isEmpty())
+        ErrorMessage = t.OpenCallbackSpec->DeviceOpenError.toStdWString().c_str();
 
     if (t.Result != S_FALSE && t.Result != S_OK)
         return t.Result;

@@ -32,9 +32,10 @@ class ArchiveDevice final {
     const QList<ArchiveDevicePartition> &partitions() const { return partitions_; }
     HRESULT partitionInput(int index, IInStream **stream) const;
     HRESULT openPartition(int index, IOpenCallbackUI *callback,
-                          std::shared_ptr<ArchiveNativeOpen> &reader) const;
+                          std::shared_ptr<ArchiveNativeOpen> &reader,
+                          QString *error = nullptr) const;
 };
 
 HRESULT OpenDeviceFilesystem(const std::shared_ptr<const ArchiveCodecCatalog> &catalog,
                              IInStream *input, const QString &name, IOpenCallbackUI *callback,
-                             std::shared_ptr<ArchiveNativeOpen> &reader);
+                             std::shared_ptr<ArchiveNativeOpen> &reader, QString *error = nullptr);

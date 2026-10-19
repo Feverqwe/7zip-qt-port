@@ -194,7 +194,14 @@ HRESULT QtArchiveFolderManager::OpenLinkImpl(CArchiveLink &link, const COpenOpti
         ui->ProgressDialog.WaitCreating();
     if (dynamic_cast<DirectDeviceInput *>(inStream)) {
         CNativeOpenProgress nativeProgress(progress, callback ? callback->Callback : nullptr);
-        RINOK(resource->OpenDeviceInput(_backend, inStream, &nativeProgress))
+        QString error;
+        const HRESULT result =
+            resource->OpenDeviceInput(_backend, inStream, &nativeProgress, &error);
+        // The source opening worker is joined before CFfpOpen reads this
+        // per-opening diagnostic. No widget access or shared backend state.
+        if (ui)
+            ui->DeviceOpenError = error;
+        RINOK(result)
         return CreateArchiveLinkTransport(link, nullptr, resource, sourceOptions.codecs);
     }
     if (inStream) {

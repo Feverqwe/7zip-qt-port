@@ -27,6 +27,7 @@ class COpenArchiveCallback Z7_final :
     bool PasswordIsDefined;
     bool PasswordWasAsked;
     UString Password;
+    QString DeviceOpenError;
     QPointer<QWidget> ParentWindow;
     QString SettingsPath;
     CProgressDialog ProgressDialog;

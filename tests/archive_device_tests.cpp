@@ -293,12 +293,14 @@ class ArchiveDeviceTests final : public QObject {
     void refusesUnsupportedFeaturesOnlyForDirectDevices_data() {
         QTest::addColumn<int>("field");
         QTest::addColumn<int>("bit");
-        QTest::newRow("journal-recovery") << 0x60 << 2;
-        QTest::newRow("encryption") << 0x60 << 16;
+        QTest::addColumn<QString>("feature");
+        QTest::newRow("journal-recovery") << 0x60 << 2 << QString("RECOVER");
+        QTest::newRow("encryption") << 0x60 << 16 << QString("ENCRYPT");
     }
     void refusesUnsupportedFeaturesOnlyForDirectDevices() {
         QFETCH(int, field);
         QFETCH(int, bit);
+        QFETCH(QString, feature);
         QByteArray disk = fixture("ext4");
         QVERIFY(disk.size() > 2048);
         // Controlled declarations of recover/encrypt with no changed file data.
@@ -319,7 +321,9 @@ class ArchiveDeviceTests final : public QObject {
         ArchiveDevice device(catalog_);
         QCOMPARE(device.inspect(input, UInt64(disk.size()), "USB", nullptr), S_OK);
         std::shared_ptr<ArchiveNativeOpen> reader;
-        QCOMPARE(device.openPartition(0, nullptr, reader), E_NOTIMPL);
+        QString error;
+        QCOMPARE(device.openPartition(0, nullptr, reader, &error), E_NOTIMPL);
+        QVERIFY2(error.contains(feature), qPrintable(error));
         QVERIFY(!reader);
     }
 };

@@ -6,9 +6,9 @@
 #include "qtarchivenativeopenprogress.h"
 
 HRESULT QtArchiveFileResource::RefreshDeviceInput(ArchiveBackend &backend,
-                                                  IOpenCallbackUI *callback) {
+                                                  IOpenCallbackUI *callback, QString *error) {
     std::shared_ptr<ArchiveNativeOpen> opened;
-    RINOK(backend.openDeviceFilesystem(_codecs, _directInput, EnginePath, callback, opened))
+    RINOK(backend.openDeviceFilesystem(_codecs, _directInput, EnginePath, callback, opened, error))
     AttachNativeOpen(std::move(opened));
     _nativeReadOnly = true;
     BindNativeItemOrder(nullptr);
@@ -20,12 +20,12 @@ HRESULT QtArchiveFileResource::RefreshDeviceInput(ArchiveBackend &backend,
 }
 
 HRESULT QtArchiveFileResource::OpenDeviceInput(ArchiveBackend &backend, IInStream *input,
-                                               IOpenCallbackUI *callback) {
+                                               IOpenCallbackUI *callback, QString *error) {
     COM_TRY_BEGIN
     if (!dynamic_cast<DirectDeviceInput *>(input) || _directInput)
         return E_INVALIDARG;
     _directInput = input;
-    const HRESULT result = RefreshDeviceInput(backend, callback);
+    const HRESULT result = RefreshDeviceInput(backend, callback, error);
     if (result != S_OK) {
         _directInput.Release();
         return result;

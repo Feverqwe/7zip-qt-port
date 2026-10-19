@@ -54,7 +54,8 @@ class QtArchiveFileResource final : public IUnknown, public CMyUnknownImp {
     bool _nativePropertiesExplicit = false;
     std::function<HRESULT(const wchar_t *const *, const PROPVARIANT *, UInt32)> _setProperties;
     QString _nativeOpenType;
-    HRESULT RefreshDeviceInput(ArchiveBackend &backend, IOpenCallbackUI *callback);
+    HRESULT RefreshDeviceInput(ArchiveBackend &backend, IOpenCallbackUI *callback,
+                               QString *error = nullptr);
 
   public:
     QString EnginePath;
@@ -62,7 +63,8 @@ class QtArchiveFileResource final : public IUnknown, public CMyUnknownImp {
     explicit QtArchiveFileResource(const QString &path) : EnginePath(path) {}
     ~QtArchiveFileResource();
     void AttachNativeOpen(std::shared_ptr<ArchiveNativeOpen> reader);
-    HRESULT OpenDeviceInput(ArchiveBackend &backend, IInStream *input, IOpenCallbackUI *callback);
+    HRESULT OpenDeviceInput(ArchiveBackend &backend, IInStream *input, IOpenCallbackUI *callback,
+                            QString *error = nullptr);
     bool HasDirectInput() const { return _directInput != nullptr; }
     HRESULT CloseNativeOpen();
     void BindNativeItemOrder(IFolderFolder *metadata);

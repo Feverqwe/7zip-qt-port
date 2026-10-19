@@ -327,3 +327,40 @@ PASS; после изменения геометрии повторён `device_
 проверяют размещение отказа и успешную повторную попытку; native rendered
 Windows/Linux не проверялись. Предыдущие записи о непроверенной авторизации
 описывают границы автоматических тестов первоначальной версии.
+
+2026-10-19, подробная причина отказа Ext: после предоставления прав пользователь
+получил общий unsupported-feature отказ; обновлённая диагностика затем подтвердила
+`RECOVER` на его разделе. Успешный просмотр/копирование этого раздела не заявляется:
+текущая политика требует предварительного journal recovery в его Linux-системе.
+Проверка возможностей сохраняет прежние ограничения, но передаёт отклонённые
+имена и пояснения для journal recovery/encryption через Qt integration до окна
+ошибки. Проверены текущие Ext property descriptors и полный source путь
+`CArchiveFolderManager::OpenFolderFile`, `CPanel::OpenAsArc`,
+`CFfpOpen::OpenFileFolderPlugin`, `COpenArchiveCallback` в upstream
+`9128b80e3a471108678e2b3ec3c985861c8d7b0f` и адаптации. Новые upstream-тела
+не копировались. Необходимая Qt-адаптация — per-opening diagnostic в callback,
+читаемый после завершения source worker: upstream HRESULT не содержит названий
+возможностей локальной direct-device policy. Общий алгоритм открытия не менялся.
+
+Backend regression проверяет сохранение `RECOVER`/`ENCRYPT` при отказе без
+публикации reader; UI regression проходит весь путь меню → GPT-раздел → EN/RU
+окно с конкретным `RECOVER` и сохраняет доступность повторного открытия.
+macOS `archive_device`, `device_folder`, `device_ui`, `language`,
+`native_archive_opening`, `native_folder_opening`, `agent_opening` PASS.
+Первоначально добавленный compression sample отклонялся самим Ext reader до
+проверяемой policy; эта неподходящая строка удалена, существующие recovery и
+encryption сценарии сохранены. Private install-only macOS package собран и
+прошёл deep/strict ad hoc signature verification и native startup smoke с
+временными настройками; payload сохранён для пользователя в
+`build/dev/device-access-fix/Sevenzip.app`. Это диагностическая сборка, без
+автоматического доступа к пользовательскому устройству или записи на него.
+
+Linux/Windows те же семь focused suites PASS по совокупности initial consumer
+run `20261019T163024Z-8530c576` (шесть consumers PASS, указанная неподходящая
+compression строка FAIL) и итогового `archive_device`
+`20261019T163300Z-29f3390c` PASS. После добавления контроля видимости пояснения
+повторён `device_ui` на всех трёх ОС; гости `20261019T163333Z-46a6833e` PASS.
+Текущие native Cocoa EN/RU JSON окна RECOVER проверены: текст и кнопки помещаются;
+гости используют offscreen Qt. Политика отказа не ослаблена; конкретная причина
+на пользовательском диске установлена его повторным запуском, без автоматического
+чтения содержимого диска агентом.

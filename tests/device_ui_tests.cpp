@@ -271,14 +271,24 @@ class DeviceUiTests final : public QObject {
     }
     void menuToSourcePanelCopyRefreshAndParent_data() {
         QTest::addColumn<QString>("language");
-        QTest::newRow("en") << QString("en");
-        QTest::newRow("ru") << QString("ru");
+        QTest::addColumn<bool>("needsRecovery");
+        QTest::newRow("en") << QString("en") << false;
+        QTest::newRow("ru") << QString("ru") << false;
+        QTest::newRow("en-recovery") << QString("en") << true;
+        QTest::newRow("ru-recovery") << QString("ru") << true;
     }
     void menuToSourcePanelCopyRefreshAndParent() {
         QFETCH(QString, language);
+        QFETCH(bool, needsRecovery);
         SaveRegLang(UString(language == "en" ? L"-" : L"ru"),
                     qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
         auto bytes = std::make_shared<CDeviceBytes>(fixture_);
+        if (needsRecovery) {
+            // Controlled Ext declarations inside the first GPT partition.
+            const int superblock = 1024 * 1024 + 1024;
+            bytes->Bytes[superblock + 0x65] = char(quint8(bytes->Bytes[superblock + 0x65]) & ~4u);
+            bytes->Bytes[superblock + 0x60] = char(quint8(bytes->Bytes[superblock + 0x60]) | 4u);
+        }
         ArchiveBackend backend(nullptr, engine_);
         QSignalSpy ready(&backend, &ArchiveBackend::codecCatalogReady);
         QVERIFY(backend.discoverCodecCatalog(module_));
@@ -294,7 +304,28 @@ class DeviceUiTests final : public QObject {
         QTRY_VERIFY(action->isEnabled());
         QTimer automation;
         unsigned stage = 0;
+        QString openingError;
+        bool errorGeometry = false;
         connect(&automation, &QTimer::timeout, &window, [&] {
+            if (needsRecovery && stage == 2) {
+                if (auto *message = window.findChild<QMessageBox *>()) {
+                    openingError = message->text();
+                    message->layout()->activate();
+                    errorGeometry = true;
+                    for (auto *label : message->findChildren<QLabel *>())
+                        if (label->isVisible())
+                            errorGeometry &= UiInspection::fullyVisible(*label, *message) &&
+                                             UiInspection::labelFits(*label);
+                    message->setProperty("uiInspection_language", language);
+                    message->setProperty("uiInspection_state", "journal-recovery");
+                    errorGeometry &=
+                        UiInspection::writeReport(*message, "device-recovery-" + language);
+                    ++stage;
+                    automation.stop();
+                    message->accept();
+                }
+                return;
+            }
             auto *dialog = window.findChild<DeviceSelectionDialog *>();
             if (!dialog || !Items(*dialog)->isEnabled())
                 return;
@@ -306,12 +337,21 @@ class DeviceUiTests final : public QObject {
             } else if (stage == 1 && back->isVisible()) {
                 Items(*dialog)->setCurrentItem(Items(*dialog)->topLevelItem(0));
                 ++stage;
-                automation.stop();
+                if (!needsRecovery)
+                    automation.stop();
                 Open(*dialog)->click();
             }
         });
         automation.start(10);
         action->trigger();
+        if (needsRecovery) {
+            QCOMPARE(stage, 3u);
+            QVERIFY2(openingError.contains("RECOVER"), qPrintable(openingError));
+            QVERIFY(errorGeometry);
+            QVERIFY(!window.findChild<QLabel *>("deviceReadOnlyLabel")->isVisible());
+            QVERIFY(action->isEnabled());
+            return;
+        }
         QCOMPARE(stage, 2u);
         auto *table = window.findChild<QTableWidget *>("archiveTable");
         QVERIFY(table);

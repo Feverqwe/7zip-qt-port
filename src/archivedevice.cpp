@@ -6,6 +6,7 @@
 #include "archivecodeccatalog.h"
 #include "archivenativeopen.h"
 #include "deviceaccess.h"
+#include <QCoreApplication>
 #include <QSet>
 #include <limits>
 
@@ -56,7 +57,7 @@ QString Text(IInArchive *archive, UInt32 index, PROPID id) {
     return QString::fromWCharArray(value.bstrVal);
 }
 
-HRESULT CheckFeatures(IInArchive *archive) {
+HRESULT CheckFeatures(IInArchive *archive, QString *error) {
     // Ask the official handler for its public feature descriptions. Unknown
     // features stay unsupported; no superblock parsing lives in this boundary.
     const QSet<QString> incompatible{"FILETYPE", "EXTENTS",     "64BIT",    "FLEX_BG",
@@ -68,6 +69,7 @@ HRESULT CheckFeatures(IInArchive *archive) {
     UInt32 count = 0;
     RINOK(archive->GetNumberOfArchiveProperties(&count))
     bool checkedIncompatible = false, checkedReadOnly = false;
+    QStringList unsupported;
     for (UInt32 i = 0; i < count; ++i) {
         CMyComBSTR name;
         PROPID id;
@@ -88,28 +90,60 @@ HRESULT CheckFeatures(IInArchive *archive) {
         RINOK(archive->GetArchiveProperty(id, &value))
         if (value.vt == VT_EMPTY)
             continue;
-        if (value.vt != VT_BSTR)
+        if (value.vt != VT_BSTR) {
+            if (error)
+                *error = QCoreApplication::translate(
+                    "archivedevice",
+                    "Could not verify the filesystem features for direct reading.");
             return E_NOTIMPL;
+        }
         for (const auto &feature :
              QString::fromWCharArray(value.bstrVal).split(' ', Qt::SkipEmptyParts))
             if (!allowed->contains(feature))
-                return E_NOTIMPL;
+                unsupported.append(feature);
     }
-    return checkedIncompatible && checkedReadOnly ? S_OK : E_NOTIMPL;
+    if (!checkedIncompatible || !checkedReadOnly) {
+        if (error)
+            *error = QCoreApplication::translate(
+                "archivedevice", "Could not verify the filesystem features for direct reading.");
+        return E_NOTIMPL;
+    }
+    if (unsupported.isEmpty())
+        return S_OK;
+    if (error) {
+        *error =
+            QCoreApplication::translate("archivedevice", "Unsupported filesystem features: %1.")
+                .arg(unsupported.join(QStringLiteral(", ")));
+        if (unsupported.contains(QStringLiteral("RECOVER")))
+            *error +=
+                QLatin1Char('\n') +
+                QCoreApplication::translate(
+                    "archivedevice",
+                    "The filesystem needs journal recovery. Open it on its usual Linux system and "
+                    "unmount it cleanly before trying again. Sevenzip does not replay the "
+                    "journal.");
+        if (unsupported.contains(QStringLiteral("ENCRYPT")))
+            *error += QLatin1Char('\n') +
+                      QCoreApplication::translate(
+                          "archivedevice", "Encrypted ext filesystems cannot be read directly.");
+    }
+    return E_NOTIMPL;
 }
 } // namespace
 
 HRESULT OpenDeviceFilesystem(const std::shared_ptr<const ArchiveCodecCatalog> &catalog,
                              IInStream *input, const QString &name, IOpenCallbackUI *callback,
-                             std::shared_ptr<ArchiveNativeOpen> &reader) {
+                             std::shared_ptr<ArchiveNativeOpen> &reader, QString *error) {
     COM_TRY_BEGIN
     reader.reset();
+    if (error)
+        error->clear();
     if (!input || !catalog || catalog->result() != S_OK)
         return E_INVALIDARG;
     RINOK(input->Seek(0, STREAM_SEEK_SET, nullptr))
     std::shared_ptr<ArchiveNativeOpen> opened;
     RINOK(Open(catalog, input, name, QStringLiteral("Ext"), callback, opened))
-    RINOK(CheckFeatures(opened->arc().Archive))
+    RINOK(CheckFeatures(opened->arc().Archive, error))
     reader = std::move(opened);
     return S_OK;
     COM_TRY_END
@@ -177,9 +211,12 @@ HRESULT ArchiveDevice::inspect(IInStream *input, UInt64 size, const QString &nam
 }
 
 HRESULT ArchiveDevice::openPartition(int index, IOpenCallbackUI *callback,
-                                     std::shared_ptr<ArchiveNativeOpen> &reader) const {
+                                     std::shared_ptr<ArchiveNativeOpen> &reader,
+                                     QString *error) const {
     COM_TRY_BEGIN
     reader.reset();
+    if (error)
+        error->clear();
     if (!input_ || index < 0 || index >= partitions_.size())
         return E_INVALIDARG;
     if (callback)
@@ -187,7 +224,7 @@ HRESULT ArchiveDevice::openPartition(int index, IOpenCallbackUI *callback,
     CMyComPtr<IInStream> bounded;
     RINOK(partitionInput(index, &bounded))
     return OpenDeviceFilesystem(catalog_, bounded, name_ + '/' + partitions_[index].name, callback,
-                                reader);
+                                reader, error);
     COM_TRY_END
 }
 

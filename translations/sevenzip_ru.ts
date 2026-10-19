@@ -6302,6 +6302,25 @@ Application modules:
         </message>
     </context>
     <context>
+        <name>archivedevice</name>
+        <message>
+            <source>Could not verify the filesystem features for direct reading.</source>
+            <translation>Не удалось проверить возможности файловой системы для прямого чтения.</translation>
+        </message>
+        <message>
+            <source>Unsupported filesystem features: %1.</source>
+            <translation>Неподдерживаемые возможности файловой системы: %1.</translation>
+        </message>
+        <message>
+            <source>The filesystem needs journal recovery. Open it on its usual Linux system and unmount it cleanly before trying again. Sevenzip does not replay the journal.</source>
+            <translation>Файловая система требует восстановления журнала. Откройте её в обычной для неё системе Linux и корректно размонтируйте перед повторной попыткой. Sevenzip не воспроизводит журнал.</translation>
+        </message>
+        <message>
+            <source>Encrypted ext filesystems cannot be read directly.</source>
+            <translation>Прямое чтение зашифрованных файловых систем ext не поддерживается.</translation>
+        </message>
+    </context>
+    <context>
         <name>deviceaccess</name>
         <message>
             <source>macOS denied device access after administrator authorization. Enable Full Disk Access for Sevenzip in System Settings &gt; Privacy &amp; Security, then restart Sevenzip and try again.</source>
