@@ -127,7 +127,19 @@ class DeviceUiTests final : public QObject {
         QFETCH(QSize, size);
         QtLoadTranslation(language == "en" ? "-" : language);
         auto bytes = std::make_shared<CDeviceBytes>(fixture_);
-        DeviceSelectionDialog dialog(catalog_, nullptr, Services(bytes));
+        auto services = Services(bytes);
+        const auto open = services.open;
+        const QString denied = QCoreApplication::translate(
+            "deviceaccess", "macOS denied device access after administrator authorization. "
+                            "Enable Full Disk Access for Sevenzip in System Settings > "
+                            "Privacy & Security, then restart Sevenzip and try again.");
+        std::atomic<unsigned> attempts{0};
+        services.open = [&](const ExternalDevice &device, const auto &cancelled) {
+            if (!attempts++)
+                return DeviceAccessResult{DeviceAccessStatus::Failed, denied, {}};
+            return open(device, cancelled);
+        };
+        DeviceSelectionDialog dialog(catalog_, nullptr, services);
         dialog.resize(size);
         dialog.show();
         QTRY_VERIFY(Items(dialog)->isEnabled());
@@ -152,6 +164,8 @@ class DeviceUiTests final : public QObject {
                 if (label->isVisible()) {
                     QVERIFY(UiInspection::fullyVisible(*label, dialog));
                     QVERIFY2(UiInspection::labelFits(*label), qPrintable(label->text()));
+                    QVERIFY(UiInspection::separate(*label, *Items(dialog), dialog));
+                    QVERIFY(UiInspection::separate(*label, *buttons, dialog));
                 }
             dialog.setProperty("uiInspection_language", language);
             dialog.setProperty("uiInspection_state", state);
@@ -159,6 +173,11 @@ class DeviceUiTests final : public QObject {
                 dialog, "devices-" + language + '-' + QString::number(size.width()) + '-' + state));
         };
         inspect("devices");
+        Open(dialog)->click();
+        QTRY_VERIFY(Open(dialog)->isEnabled());
+        QCOMPARE(dialog.findChild<QLabel *>("deviceMessage")->text(), denied);
+        QVERIFY(!dialog.selectedStream());
+        inspect("denied");
         Open(dialog)->click();
         auto *back = dialog.findChild<QPushButton *>("deviceBackButton");
         QTRY_VERIFY(back->isVisible() && back->isEnabled());

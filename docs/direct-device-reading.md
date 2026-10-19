@@ -24,6 +24,12 @@ helper obtains read access when required. The macOS helper can be ad-hoc signed
 without Developer ID and installs no permanent service. Linux requires UDisks2
 and a working system authorization agent.
 
+If macOS reports “Operation not permitted” after you enter the administrator
+password, enable Sevenzip.app in System Settings → Privacy & Security → Full
+Disk Access, then quit and reopen Sevenzip. Administrator authorization and
+macOS privacy permissions are separate; entering the password alone may not
+permit device access.
+
 The first version accepts GPT, MBR and filesystems stored directly on a device.
 Some ext features and layouts are unsupported. Encrypted filesystems and those
 requiring journal recovery are refused. Sevenzip does not unlock LUKS/fscrypt,

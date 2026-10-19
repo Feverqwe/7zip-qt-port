@@ -6304,6 +6304,10 @@ Application modules:
     <context>
         <name>deviceaccess</name>
         <message>
+            <source>macOS denied device access after administrator authorization. Enable Full Disk Access for Sevenzip in System Settings &gt; Privacy &amp; Security, then restart Sevenzip and try again.</source>
+            <translation>macOS запретила доступ к устройству после ввода пароля администратора. Включите Sevenzip в «Системные настройки → Конфиденциальность и безопасность → Полный доступ к диску», затем перезапустите Sevenzip и повторите попытку.</translation>
+        </message>
+        <message>
             <source>Could not inspect devices through UDisks2.</source>
             <translation>Не удалось получить сведения об устройствах через UDisks2.</translation>
         </message>

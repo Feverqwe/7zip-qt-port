@@ -105,7 +105,13 @@ DeviceAccessResult Receive(int peer, const std::function<bool()> &cancelled) {
             ::close(descriptor);
         result.status =
             reply.error == EBUSY ? DeviceAccessStatus::Busy : DeviceAccessStatus::Failed;
-        result.error = reply.error
+        result.error = reply.error == EPERM || reply.error == EACCES
+                           ? QCoreApplication::translate(
+                                 "deviceaccess",
+                                 "macOS denied device access after administrator authorization. "
+                                 "Enable Full Disk Access for Sevenzip in System Settings > "
+                                 "Privacy & Security, then restart Sevenzip and try again.")
+                       : reply.error
                            ? QString::fromLocal8Bit(std::strerror(reply.error))
                            : QCoreApplication::translate(
                                  "deviceaccess", "The device helper returned an invalid response.");

@@ -63,7 +63,7 @@ DeviceSelectionDialog::DeviceSelectionDialog(std::shared_ptr<const ArchiveCodecC
     items_->header()->setSectionResizeMode(1, QHeaderView::ResizeToContents);
     items_->header()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
     items_->header()->setStretchLastSection(false);
-    items_->setMinimumSize(320, 150);
+    items_->setMinimumSize(320, 100);
     layout->addWidget(items_, 1);
     message_ = new QLabel(this);
     message_->setObjectName("deviceMessage");
