@@ -4,6 +4,9 @@ A cross-platform port of the Windows 7-Zip File Manager for Windows, macOS and
 Linux. The interface uses Qt 6 Widgets, and archive operations use the official
 7-Zip engine. This is an independent project and is not an official 7-Zip release.
 
+This is an AI-driven project: AI coding agents play a central role in development,
+guided by human direction, review and testing.
+
 [Download](https://github.com/Feverqwe/7zip-qt-port/releases) ·
 [Report a bug](https://github.com/Feverqwe/7zip-qt-port/issues) ·
 [Contributing](CONTRIBUTING.md)
