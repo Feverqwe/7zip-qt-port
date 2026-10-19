@@ -5,6 +5,11 @@
 #include "qtarchivefileresource.h"
 #include "qtarchivenativeopenprogress.h"
 
+bool QtArchiveFileResource::IgnoresDeviceJournal() const {
+    const auto *direct = dynamic_cast<DirectDeviceInput *>(_directInput.Interface());
+    return direct && direct->ignoresDeviceJournal();
+}
+
 HRESULT QtArchiveFileResource::RefreshDeviceInput(ArchiveBackend &backend,
                                                   IOpenCallbackUI *callback, QString *error) {
     std::shared_ptr<ArchiveNativeOpen> opened;

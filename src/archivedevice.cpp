@@ -57,7 +57,7 @@ QString Text(IInArchive *archive, UInt32 index, PROPID id) {
     return QString::fromWCharArray(value.bstrVal);
 }
 
-HRESULT CheckFeatures(IInArchive *archive, QString *error) {
+HRESULT CheckFeatures(IInArchive *archive, bool ignoreJournal, QString *error) {
     // Ask the official handler for its public feature descriptions. Unknown
     // features stay unsupported; no superblock parsing lives in this boundary.
     const QSet<QString> incompatible{"FILETYPE", "EXTENTS",     "64BIT",    "FLEX_BG",
@@ -99,7 +99,8 @@ HRESULT CheckFeatures(IInArchive *archive, QString *error) {
         }
         for (const auto &feature :
              QString::fromWCharArray(value.bstrVal).split(' ', Qt::SkipEmptyParts))
-            if (!allowed->contains(feature))
+            if (!allowed->contains(feature) && !(ignoreJournal && allowed == &incompatible &&
+                                                 feature == QStringLiteral("RECOVER")))
                 unsupported.append(feature);
     }
     if (!checkedIncompatible || !checkedReadOnly) {
@@ -127,7 +128,9 @@ HRESULT CheckFeatures(IInArchive *archive, QString *error) {
                       QCoreApplication::translate(
                           "archivedevice", "Encrypted ext filesystems cannot be read directly.");
     }
-    return E_NOTIMPL;
+    return unsupported.size() == 1 && unsupported.first() == QStringLiteral("RECOVER")
+               ? kDeviceJournalRecoveryRequired
+               : E_NOTIMPL;
 }
 } // namespace
 
@@ -143,7 +146,8 @@ HRESULT OpenDeviceFilesystem(const std::shared_ptr<const ArchiveCodecCatalog> &c
     RINOK(input->Seek(0, STREAM_SEEK_SET, nullptr))
     std::shared_ptr<ArchiveNativeOpen> opened;
     RINOK(Open(catalog, input, name, QStringLiteral("Ext"), callback, opened))
-    RINOK(CheckFeatures(opened->arc().Archive, error))
+    const auto *direct = dynamic_cast<DirectDeviceInput *>(input);
+    RINOK(CheckFeatures(opened->arc().Archive, direct && direct->ignoresDeviceJournal(), error))
     reader = std::move(opened);
     return S_OK;
     COM_TRY_END

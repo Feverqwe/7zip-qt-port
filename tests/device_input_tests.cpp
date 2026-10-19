@@ -148,6 +148,27 @@ class DeviceInputTests final : public QObject {
         QVERIFY(!partition);
         QCOMPARE(memory->FarthestRead, quint64(0));
     }
+    void journalReadLeaseKeepsTheSelectedPartitionBounds() {
+        auto memory = std::make_shared<MemoryDevice>(4096, 4 * 4096);
+        CMyComPtr<IInStream> input, selected, withoutReplay;
+        QCOMPARE(CreateDeviceInput(Description(*memory), memory, &input), qint32(S_OK));
+        QCOMPARE(CreateDevicePartitionInput(input, 4096, 8192, &selected), qint32(S_OK));
+        QCOMPARE(CreateDeviceInputIgnoringJournal(selected, &withoutReplay), qint32(S_OK));
+        input.Release();
+        QByteArray output(3 * 4096, Qt::Uninitialized);
+        size_t read = size_t(output.size());
+        QCOMPARE(ReadStream(withoutReplay, output.data(), &read), S_OK);
+        QCOMPARE(read, size_t(8192));
+        QCOMPARE(output.left(qsizetype(read)), memory->Data.mid(4096, 8192));
+        QVERIFY(memory->FarthestRead <= quint64(3 * 4096));
+        // Opting in must leave the original view's policy and cursor untouched.
+        QVERIFY(!dynamic_cast<DirectDeviceInput *>(selected.Interface())->ignoresDeviceJournal());
+        char first = 0;
+        UInt32 count = 0;
+        QCOMPARE(selected->Read(&first, 1, &count), S_OK);
+        QCOMPARE(count, UInt32(1));
+        QCOMPARE(first, memory->Data[4096]);
+    }
 };
 
 QTEST_GUILESS_MAIN(DeviceInputTests)

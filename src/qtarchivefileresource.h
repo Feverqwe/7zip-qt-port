@@ -66,6 +66,7 @@ class QtArchiveFileResource final : public IUnknown, public CMyUnknownImp {
     HRESULT OpenDeviceInput(ArchiveBackend &backend, IInStream *input, IOpenCallbackUI *callback,
                             QString *error = nullptr);
     bool HasDirectInput() const { return _directInput != nullptr; }
+    bool IgnoresDeviceJournal() const;
     HRESULT CloseNativeOpen();
     void BindNativeItemOrder(IFolderFolder *metadata);
     bool HasCommentService() const;

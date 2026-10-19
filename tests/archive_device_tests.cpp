@@ -149,15 +149,17 @@ class ArchiveDeviceTests final : public QObject {
     void readsSelectedExtPartitionWithoutWholeDiskCopy_data() {
         QTest::addColumn<QString>("layout");
         QTest::addColumn<QString>("mode");
-        for (const QString &layout : {"ext2", "ext3", "ext4", "mbr", "gpt"})
+        for (const QString &layout : {"ext2", "ext3", "ext4", "mbr", "gpt", "recover"})
             for (const QString &mode : {"success", "disconnect", "cancel"})
                 QTest::newRow(qPrintable(layout + '-' + mode)) << layout << mode;
     }
     void readsSelectedExtPartitionWithoutWholeDiskCopy() {
         QFETCH(QString, layout);
         QFETCH(QString, mode);
-        const QByteArray disk = fixture(layout);
+        QByteArray disk = fixture(layout == "recover" ? "ext3" : layout);
         QVERIFY(!disk.isEmpty());
+        if (layout == "recover")
+            disk[1024 + 0x60] = char(quint8(disk[1024 + 0x60]) | 4u);
         auto *input = new CDeviceInput(disk);
         CMyComPtr<IInStream> lease = input;
         CMyComPtr<IInStream> direct;
@@ -167,9 +169,21 @@ class ArchiveDeviceTests final : public QObject {
         QCOMPARE(device.inspect(direct, UInt64(disk.size()), QStringLiteral("USB диск 空"), &ui),
                  S_OK);
         QCOMPARE(device.partitions().size(), layout == "gpt" ? 2 : 1);
-        QCOMPARE(device.partitions()[0].offset, UInt64(layout.startsWith("ext") ? 0 : 1024 * 1024));
+        QCOMPARE(device.partitions()[0].offset,
+                 UInt64(layout.startsWith("ext") || layout == "recover" ? 0 : 1024 * 1024));
         std::shared_ptr<ArchiveNativeOpen> reader;
-        QCOMPARE(device.openPartition(0, &ui, reader), S_OK);
+        if (layout == "recover") {
+            QCOMPARE(device.openPartition(0, &ui, reader), kDeviceJournalRecoveryRequired);
+            QVERIFY(!reader);
+            CMyComPtr<IInStream> selected, withoutReplay;
+            QCOMPARE(device.partitionInput(0, &selected), S_OK);
+            QCOMPARE(CreateDeviceInputIgnoringJournal(selected, &withoutReplay), S_OK);
+            QCOMPARE(OpenDeviceFilesystem(catalog_, withoutReplay, "USB/Ext", &ui, reader), S_OK);
+            std::shared_ptr<ArchiveNativeOpen> rejected;
+            QCOMPARE(device.openPartition(0, &ui, rejected), kDeviceJournalRecoveryRequired);
+            QVERIFY(!rejected); // Accepting one session never relaxes another.
+        } else
+            QCOMPARE(device.openPartition(0, &ui, reader), S_OK);
         QVERIFY(reader);
         // The reader owns its input/module after the discovery owner is reset.
         device = ArchiveDevice(catalog_);
@@ -294,13 +308,16 @@ class ArchiveDeviceTests final : public QObject {
         QTest::addColumn<int>("field");
         QTest::addColumn<int>("bit");
         QTest::addColumn<QString>("feature");
-        QTest::newRow("journal-recovery") << 0x60 << 2 << QString("RECOVER");
-        QTest::newRow("encryption") << 0x60 << 16 << QString("ENCRYPT");
+        QTest::addColumn<bool>("recoveryAlso");
+        QTest::newRow("journal-recovery") << 0x60 << 2 << QString("RECOVER") << false;
+        QTest::newRow("encryption") << 0x60 << 16 << QString("ENCRYPT") << false;
+        QTest::newRow("encrypted-recovery") << 0x60 << 16 << QString("ENCRYPT") << true;
     }
     void refusesUnsupportedFeaturesOnlyForDirectDevices() {
         QFETCH(int, field);
         QFETCH(int, bit);
         QFETCH(QString, feature);
+        QFETCH(bool, recoveryAlso);
         QByteArray disk = fixture("ext4");
         QVERIFY(disk.size() > 2048);
         // Controlled declarations of recover/encrypt with no changed file data.
@@ -308,6 +325,8 @@ class ArchiveDeviceTests final : public QObject {
         disk[1024 + 0x65] = char(quint8(disk[1024 + 0x65]) & ~4u);
         const int byte = 1024 + field + bit / 8;
         disk[byte] = char(quint8(disk[byte]) | (1u << (bit % 8)));
+        if (recoveryAlso)
+            disk[1024 + 0x60] = char(quint8(disk[1024 + 0x60]) | 4u);
         QTemporaryDir directory;
         QVERIFY(directory.isValid());
         const QString path = directory.filePath("declared-feature.img");
@@ -322,9 +341,19 @@ class ArchiveDeviceTests final : public QObject {
         QCOMPARE(device.inspect(input, UInt64(disk.size()), "USB", nullptr), S_OK);
         std::shared_ptr<ArchiveNativeOpen> reader;
         QString error;
-        QCOMPARE(device.openPartition(0, nullptr, reader, &error), E_NOTIMPL);
+        QCOMPARE(device.openPartition(0, nullptr, reader, &error),
+                 feature == "RECOVER" ? kDeviceJournalRecoveryRequired : E_NOTIMPL);
         QVERIFY2(error.contains(feature), qPrintable(error));
         QVERIFY(!reader);
+        CMyComPtr<IInStream> direct, withoutReplay;
+        QCOMPARE(DeviceInput(input, quint64(disk.size()), &direct), S_OK);
+        QCOMPARE(CreateDeviceInputIgnoringJournal(direct, &withoutReplay), S_OK);
+        QCOMPARE(OpenDeviceFilesystem(catalog_, withoutReplay, "USB", nullptr, reader, &error),
+                 feature == "RECOVER" ? S_OK : E_NOTIMPL);
+        if (feature == "ENCRYPT") {
+            QVERIFY(!reader);
+            QVERIFY2(error.contains(feature), qPrintable(error));
+        }
     }
 };
 

@@ -119,19 +119,28 @@ class DeviceFolderTests final : public QObject {
     }
     void sourceFolderCopiesSelectedUnicodeFile_data() {
         QTest::addColumn<QString>("mode");
-        for (const QString &mode :
-             {"success", "refresh", "cancel", "disconnect", "cancel-open", "disconnect-open"})
-            QTest::newRow(qPrintable(mode)) << mode;
+        QTest::addColumn<bool>("ignoreJournal");
+        for (bool ignoreJournal : {false, true})
+            for (const QString &mode :
+                 {"success", "refresh", "cancel", "disconnect", "cancel-open", "disconnect-open"})
+                QTest::newRow(qPrintable(mode + (ignoreJournal ? "-journal" : "")))
+                    << mode << ignoreJournal;
     }
     void sourceFolderCopiesSelectedUnicodeFile() {
         QFETCH(QString, mode);
+        QFETCH(bool, ignoreJournal);
         CObservedBackend backend(nullptr, engine_);
         QSignalSpy ready(&backend, &ArchiveBackend::codecCatalogReady);
         QVERIFY(backend.discoverCodecCatalog(module_));
         QTRY_COMPARE(ready.size(), 1);
         QVERIFY(ready[0][0].toBool());
-        const QByteArray bytes = fixture();
+        QByteArray bytes = fixture();
         QVERIFY(!bytes.isEmpty());
+        if (ignoreJournal) {
+            const int superblock = 1024 * 1024 + 1024;
+            bytes[superblock + 0x65] = char(quint8(bytes[superblock + 0x65]) & ~4u);
+            bytes[superblock + 0x60] = char(quint8(bytes[superblock + 0x60]) | 4u);
+        }
         auto handle = std::make_shared<CMemoryDevice>(bytes);
         ExternalDevice description;
         description.size = quint64(bytes.size());
@@ -141,6 +150,11 @@ class DeviceFolderTests final : public QObject {
         ArchiveDevice device(backend.codecCatalog());
         QCOMPARE(device.inspect(input, description.size, QStringLiteral("USB 空"), nullptr), S_OK);
         QCOMPARE(device.partitionInput(0, &selected), S_OK);
+        if (ignoreJournal) {
+            CMyComPtr<IInStream> withoutReplay;
+            QCOMPARE(CreateDeviceInputIgnoringJournal(selected, &withoutReplay), S_OK);
+            selected = withoutReplay;
+        }
         CMyComPtr<IFolderManager> manager = new QtArchiveFolderManager(backend);
         CMyComPtr<IFolderFolder> root;
         auto *opening = new CCopyCallback;

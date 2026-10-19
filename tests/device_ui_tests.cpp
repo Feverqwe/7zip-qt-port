@@ -272,14 +272,17 @@ class DeviceUiTests final : public QObject {
     void menuToSourcePanelCopyRefreshAndParent_data() {
         QTest::addColumn<QString>("language");
         QTest::addColumn<bool>("needsRecovery");
-        QTest::newRow("en") << QString("en") << false;
-        QTest::newRow("ru") << QString("ru") << false;
-        QTest::newRow("en-recovery") << QString("en") << true;
-        QTest::newRow("ru-recovery") << QString("ru") << true;
+        QTest::addColumn<bool>("acceptRecovery");
+        for (const QString &language : {"en", "ru"}) {
+            QTest::newRow(qPrintable(language)) << language << false << false;
+            QTest::newRow(qPrintable(language + "-cancel-recovery")) << language << true << false;
+            QTest::newRow(qPrintable(language + "-accept-recovery")) << language << true << true;
+        }
     }
     void menuToSourcePanelCopyRefreshAndParent() {
         QFETCH(QString, language);
         QFETCH(bool, needsRecovery);
+        QFETCH(bool, acceptRecovery);
         SaveRegLang(UString(language == "en" ? L"-" : L"ru"),
                     qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
         auto bytes = std::make_shared<CDeviceBytes>(fixture_);
@@ -289,6 +292,7 @@ class DeviceUiTests final : public QObject {
             bytes->Bytes[superblock + 0x65] = char(quint8(bytes->Bytes[superblock + 0x65]) & ~4u);
             bytes->Bytes[superblock + 0x60] = char(quint8(bytes->Bytes[superblock + 0x60]) | 4u);
         }
+        const QByteArray originalBytes = bytes->Bytes;
         ArchiveBackend backend(nullptr, engine_);
         QSignalSpy ready(&backend, &ArchiveBackend::codecCatalogReady);
         QVERIFY(backend.discoverCodecCatalog(module_));
@@ -322,7 +326,12 @@ class DeviceUiTests final : public QObject {
                         UiInspection::writeReport(*message, "device-recovery-" + language);
                     ++stage;
                     automation.stop();
-                    message->accept();
+                    if (acceptRecovery)
+                        message->findChild<QPushButton *>("deviceOpenWithoutRecoveryButton")
+                            ->click();
+                    else
+                        QTest::keyClick(message,
+                                        language == "en" ? Qt::Key_Return : Qt::Key_Escape);
                 }
                 return;
             }
@@ -346,19 +355,26 @@ class DeviceUiTests final : public QObject {
         action->trigger();
         if (needsRecovery) {
             QCOMPARE(stage, 3u);
-            QVERIFY2(openingError.contains("RECOVER"), qPrintable(openingError));
+            QVERIFY(!openingError.isEmpty());
             QVERIFY(errorGeometry);
-            QVERIFY(!window.findChild<QLabel *>("deviceReadOnlyLabel")->isVisible());
-            QVERIFY(action->isEnabled());
-            return;
-        }
-        QCOMPARE(stage, 2u);
+            if (!acceptRecovery) {
+                QVERIFY(!window.findChild<QLabel *>("deviceReadOnlyLabel")->isVisible());
+                QVERIFY(action->isEnabled());
+                QCOMPARE(bytes->Bytes, originalBytes);
+                return;
+            }
+        } else
+            QCOMPARE(stage, 2u);
         auto *table = window.findChild<QTableWidget *>("archiveTable");
         QVERIFY(table);
         const QString folder = QStringLiteral("папка 空");
         QTRY_VERIFY(Row(*table, folder) >= 0);
         auto *badge = window.findChild<QLabel *>("deviceReadOnlyLabel");
         QVERIFY(badge && badge->isVisible());
+        const QString badgeText = badge->text();
+        if (needsRecovery)
+            QCOMPARE(badgeText, QCoreApplication::translate("mainwindow_panel",
+                                                            "Read only · journal not replayed"));
         for (const QSize size : {QSize(980, 620), QSize(640, 400)}) {
             window.resize(size);
             window.layout()->activate();
@@ -366,9 +382,11 @@ class DeviceUiTests final : public QObject {
             QVERIFY(UiInspection::fullyVisible(*badge, window));
             QVERIFY(UiInspection::labelFits(*badge));
             window.setProperty("uiInspection_language", language);
-            window.setProperty("uiInspection_state", "direct-device");
-            QVERIFY(UiInspection::writeReport(window, "device-panel-" + language + '-' +
-                                                          QString::number(size.width())));
+            window.setProperty("uiInspection_state",
+                               needsRecovery ? "journal-not-replayed" : "direct-device");
+            QVERIFY(UiInspection::writeReport(
+                window, (needsRecovery ? "device-journal-panel-" : "device-panel-") + language +
+                            '-' + QString::number(size.width())));
         }
         const int row = Row(*table, folder);
         QVERIFY(QMetaObject::invokeMethod(table, "cellDoubleClicked", Qt::DirectConnection,
@@ -390,6 +408,7 @@ class DeviceUiTests final : public QObject {
         QCOMPARE(copied.readAll(), QByteArray("device ext4 payload\n"));
         window.findChild<QAction *>("refreshAction")->trigger();
         QTRY_VERIFY(Row(*table, name) >= 0);
+        QCOMPARE(badge->text(), badgeText);
         window.findChild<QAction *>("parentFolderAction")->trigger();
         QTRY_VERIFY(Row(*table, folder) >= 0);
         const QString allOutput = directory.filePath("whole-filesystem");
@@ -400,7 +419,7 @@ class DeviceUiTests final : public QObject {
         window.findChild<QAction *>("parentFolderAction")->trigger();
         QTRY_VERIFY(!badge->isVisible());
         QVERIFY(QFileInfo::exists(copied.fileName()));
-        QCOMPARE(bytes->Bytes, fixture_);
+        QCOMPARE(bytes->Bytes, originalBytes);
     }
 };
 #include "review_test_main.h"

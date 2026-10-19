@@ -10,6 +10,10 @@ class ArchiveCodecCatalog;
 class ArchiveNativeOpen;
 struct IOpenCallbackUI;
 
+// Customer-defined FACILITY_ITF result: the caller can offer an explicit
+// read-without-replay session. Other unsupported features remain E_NOTIMPL.
+constexpr HRESULT kDeviceJournalRecoveryRequired = static_cast<HRESULT>(0xA0040201u);
+
 struct ArchiveDevicePartition {
     QString name;
     QString type;

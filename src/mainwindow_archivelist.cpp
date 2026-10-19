@@ -10,6 +10,7 @@
 #include "qtapppresentation.h"
 #include "qtarchivefileresource.h"
 #include "qtfilemanagercommands.h"
+#include "qtlangcontrols.h"
 #include "qtlanguageservices.h"
 #include "qtlocationfolder.h"
 #include "qtpaneladdresscombo.h"
@@ -232,11 +233,22 @@ void MainWindow::refreshPanelStatus() {
         const auto *agent = dynamic_cast<CAgentFolder *>(folder);
         const auto *resource =
             agent ? dynamic_cast<QtArchiveFileResource *>(agent->GetEngineResource()) : nullptr;
-        return resource && resource->HasDirectInput();
+        return resource;
     };
-    bool device = direct(panel.GetFolder());
+    bool device = false, ignoresJournal = false;
+    const auto inspect = [&](IFolderFolder *folder) {
+        if (const auto *resource = direct(folder)) {
+            device |= resource->HasDirectInput();
+            ignoresJournal |= resource->IgnoresDeviceJournal();
+        }
+    };
+    inspect(panel.GetFolder());
     const auto &parents = panel.GetParentFolders();
-    FOR_VECTOR(i, parents) { device = device || direct(parents[i].ParentFolder); }
+    FOR_VECTOR(i, parents) { inspect(parents[i].ParentFolder); }
+    QtBindLocalText(deviceReadOnly_, "mainwindow_panel",
+                    ignoresJournal
+                        ? QT_TRANSLATE_NOOP("mainwindow_panel", "Read only · journal not replayed")
+                        : QT_TRANSLATE_NOOP("mainwindow_panel", "Read only"));
     deviceReadOnly_->setVisible(device);
     statusBar()->setVisible(device || !statusBar()->currentMessage().isEmpty());
 }

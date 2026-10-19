@@ -31,13 +31,19 @@ macOS privacy permissions are separate; entering the password alone may not
 permit device access.
 
 The first version accepts GPT, MBR and filesystems stored directly on a device.
-Some ext features and layouts are unsupported. Encrypted filesystems and those
-requiring journal recovery are refused. Sevenzip does not unlock LUKS/fscrypt,
+Some ext features and layouts are unsupported. Encrypted filesystems are refused.
+For a filesystem requiring journal recovery, Sevenzip offers to open it read-only
+without replaying the journal. Continue only if you accept that some files may
+be missing, outdated or unreadable. The status bar keeps a journal warning while
+you browse and copy; the source device remains unchanged. Cancel leaves the
+current panel unchanged. This choice applies to the current opening only.
+Sevenzip does not unlock LUKS/fscrypt,
 assemble LVM/RAID, repair filesystems or provide damaged-disk recovery. Direct
 reading is not a consistent snapshot if another program changes the medium.
 An unsupported-feature error lists the rejected features. `RECOVER` means the
-filesystem needs journal recovery; open it on its usual Linux system and unmount
-it cleanly before trying again. Sevenzip does not replay the journal.
+filesystem needs journal recovery. Opening it on its usual Linux system and
+unmounting it cleanly is an alternative to reading without journal replay;
+that system may write journal changes to the disk. Sevenzip does not replay the journal.
 
 Current automated checks use private filesystem samples on macOS, Linux and
 Windows. Helper packaging and loading are checked separately. A user has reported

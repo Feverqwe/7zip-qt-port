@@ -31,9 +31,10 @@ Agent и QtArchiveFileResource принимают отдельный прямо�
 Реализована экспериментальная [первая версия](../direct-device-reading-plan.md).
 Подключены native access macOS/Linux/Windows, stream-level partition discovery,
 Ext-reader и пользовательский выбор устройства/раздела. Просмотр и копирование
-проверены на частных образцах. Доступная платформенная приёмка завершена;
-реальные носители и системная авторизация остаются непроверенными. Пользователь
-подтвердил отсутствие тестового носителя и выбрал проверки только на образцах.
+проверены на частных образцах. Автоматические проверки не используют реальные
+носители и системные запросы прав. Позднее пользователь сообщил об успешном
+получении доступа и чтении свойств реального раздела на macOS после включения
+Full Disk Access; копирование его данных в новом режиме ещё не подтверждено.
 Инструкция и ограничения — в [руководстве](../direct-device-reading.md).
 
 ## Agent и прямой поток
@@ -59,14 +60,16 @@ read-only состояние берутся из потока и reader, вир�
 Upstream Ext публикует feature descriptions, но не применяет продуктовую политику
 этой версии для неподдерживаемых возможностей. Direct-device open проверяет эти
 публичные свойства до публикации reader и отклоняет неизвестные возможности,
-шифрование, требование journal recovery и неподдерживаемые варианты размещения
-данных. Собственный superblock parser не добавляется; обычное открытие `.img`
+шифрование и неподдерживаемые варианты размещения данных. Требование journal
+recovery допускает явное чтение без replay после предупреждения о несогласованности;
+по умолчанию такой reader не публикуется. Собственный superblock parser не добавляется; обычное открытие `.img`
 не получает это ограничение. Список проверяемых возможностей остаётся в коде.
 
 Актуализация ext по [Linux reference](ext-linux.md) подключает отдельный Ext
 format-модуль через штатное обнаружение движка. Direct-device open принимает
-реализованные современные metadata/inline layouts; encrypted content и journal
-recovery по-прежнему не публикуются как готовый reader. Новые creator fixtures
+реализованные современные metadata/inline layouts; encrypted content по-прежнему
+не публикуется как готовый reader. Явный режим игнорирования журнала не выполняет
+journal recovery и не изменяет файловую систему. Новые creator fixtures
 проверяют извлечение точных байтов из inline, BIGALLOC и META_BG через
 авторизованный поток. Следующая связанная итерация подключает fs-verity data
 verification и проверяет её тем же device-потоком. Ключи fscrypt и trust policy
@@ -364,3 +367,47 @@ compression строка FAIL) и итогового `archive_device`
 гости используют offscreen Qt. Политика отказа не ослаблена; конкретная причина
 на пользовательском диске установлена его повторным запуском, без автоматического
 чтения содержимого диска агентом.
+
+2026-10-19, чтение без journal replay по явному запросу пользователя:
+отдельный customer HRESULT обозначает случай, когда единственная причина отказа
+policy — `RECOVER`. Qt-команда предлагает Warning с Cancel по умолчанию и
+действием Open read-only. После принятия новый immutable input lease сохраняет
+native read handle, выбранные физические границы и собственный курсор, разрешая
+только чтение без replay. Исходный lease и другие открытия не меняются. Режим
+сохраняется в retained stream при refresh; badge учитывает текущий source и
+parent chain, остаётся связанным с переводами. Шифрование, неизвестные flags,
+unsupported layouts и проверки целостности reader не отключаются.
+
+Сравнены `ExtHandler::Open2`, properties/Extract/GetStream, platform stream и
+`CLimitedInStream`, source `CPanel::OpenAsArc` и worker/callback lifetime в
+указанном выше 7-Zip baseline; текущий Ext-модуль с Linux read helpers описан
+в [ext audit](ext-linux.md). Новых заимствованных тел нет. Форматные алгоритмы,
+JBD2 recovery и native privileges не менялись. Upstream archive reader не
+выполняет journal replay; локальная policy теперь разрешает явно выбранный
+режим. Согласованность filesystem без replay не обещается — это соответствует
+ограничениям Linux [`ro,noload`](https://cdn.kernel.org/doc/html/latest/admin-guide/ext4.html).
+Это изменение продуктового отказа/сессии, а не перенос восстановления журнала.
+
+Регрессии покрывают копирование Unicode-файла, отмену и disconnect через
+RECOVER-marked ext3 sample; исходный default stream после opt-in по-прежнему
+отклоняется. Проверены границы отдельного partition lease и независимость курсора,
+повторное открытие/refresh через source Agent, отсутствие мутаций и unchanged
+fixture bytes. EN/RU UI проверяет Cancel/Return/Escape, принятие, selected/all
+copy, refresh/Parent и постоянный badge в normal/compact geometry. Encrypted
+source, включая сочетание с RECOVER, не становится доступным при opt-in.
+Образцы используют управляемые feature declarations; реальные незавершённые
+journal transactions и пользовательский носитель автоматикой не проверялись.
+
+Восемь focused suites (`device_input`, `archive_device`, `device_folder`,
+`device_ui`, `language`, `app_copy_routing`, `file_menu_policy`, `menu_policy`)
+PASS на macOS arm64, Linux x64 и Windows x64; гости
+`20261019T164530Z-ad32b95a`. После расширения сочетания RECOVER/ENCRYPT и
+проверки default Return/Escape повторены `archive_device`/`device_ui` на всех
+трёх ОС; гости `20261019T164806Z-655226ba` PASS. Native Cocoa EN/RU JSON
+подтверждения и badge normal/compact просмотрены: текст, кнопки и badge помещаются.
+Linux/Windows UI — offscreen, native appearance не заявляется. macOS app собрана,
+обновлена private install-only сборка `build/dev/device-access-fix/Sevenzip.app`,
+deep/strict ad hoc signature и native startup smoke с временными настройками PASS.
+Incremental builds/caches сохранены; временный install staging удалён упаковщиком,
+payload оставлен пользователю. Реальные pending journal transactions,
+копирование пользовательских файлов и full/slow acceptance не проверялись.

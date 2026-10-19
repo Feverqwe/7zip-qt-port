@@ -157,7 +157,9 @@ and encrypted content cannot be returned as successful plaintext.
 
 Direct-device consumers discover the format module through the same dynamic
 engine/probe as the product. Their feature policy accepts the implemented modern
-layouts while retaining refusal of journal recovery and filesystem encryption.
+layouts while retaining refusal of filesystem encryption. An explicit
+[device session](direct-devices.md) may read a filesystem needing recovery without
+replaying its journal; journal recovery itself is still omitted.
 Creator images are read and extracted through the authorized device stream,
 in addition to console/ABI tests. ABI lifetime checks reopen with different
 inline bytes, close/release the handler and verify the original stream contents.

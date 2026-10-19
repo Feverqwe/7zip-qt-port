@@ -5754,6 +5754,10 @@ Application modules:
     <context>
         <name>mainwindow_panel</name>
         <message>
+            <source>Read only · journal not replayed</source>
+            <translation>Только чтение · журнал не восстановлен</translation>
+        </message>
+        <message>
             <location filename="../src/mainwindow_panel.cpp" line="+123" />
             <location line="+95" />
             <source>File list</source>
@@ -6377,6 +6381,18 @@ Application modules:
     </context>
     <context>
         <name>qtdevicecommands</name>
+        <message>
+            <source>Open without journal recovery?</source>
+            <translation>Открыть без восстановления журнала?</translation>
+        </message>
+        <message>
+            <source>This filesystem has unfinished journal changes. You can copy files without replaying the journal, but some files may be missing, outdated or unreadable. Nothing will be written to the device.</source>
+            <translation>В журнале файловой системы остались незавершённые изменения. Можно копировать файлы без восстановления журнала, но часть файлов может отсутствовать, быть устаревшей или не читаться. На устройство ничего не будет записано.</translation>
+        </message>
+        <message>
+            <source>Open read-only</source>
+            <translation>Открыть для чтения</translation>
+        </message>
         <message>
             <source>This filesystem uses features that are not supported for direct reading.</source>
             <translation>Эта файловая система использует возможности, которые не поддерживаются при прямом чтении.</translation>

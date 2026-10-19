@@ -1,6 +1,30 @@
+#include "deviceaccess.h"
 #include "mainwindow.h"
 #include "qtfilemanagercommands.h"
 #include "qtlanguageservices.h"
+
+namespace {
+bool ConfirmJournalRead(QWidget *parent) {
+    QMessageBox warning(
+        QMessageBox::Warning,
+        QCoreApplication::translate("qtdevicecommands", "Open without journal recovery?"),
+        QCoreApplication::translate(
+            "qtdevicecommands",
+            "This filesystem has unfinished journal changes. You can copy files without "
+            "replaying the journal, but some files may be missing, outdated or unreadable. "
+            "Nothing will be written to the device."),
+        QMessageBox::Cancel, parent);
+    warning.setObjectName("deviceJournalRecoveryWarning");
+    warning.setTextFormat(Qt::PlainText);
+    auto *open = warning.addButton(
+        QCoreApplication::translate("qtdevicecommands", "Open read-only"), QMessageBox::AcceptRole);
+    open->setObjectName("deviceOpenWithoutRecoveryButton");
+    warning.setDefaultButton(QMessageBox::Cancel);
+    warning.setEscapeButton(QMessageBox::Cancel);
+    warning.exec();
+    return warning.clickedButton() == open;
+}
+} // namespace
 
 void QtFileManagerCommands::OpenDevice() {
     auto &w = window_;
@@ -14,7 +38,17 @@ void QtFileManagerCommands::OpenDevice() {
         CPanel::CDisableNotify notify(panel);
         CTempFileInfo temporary;
         COpenResult opened;
-        const HRESULT result = panel.OpenAsArc(input, temporary, name, UString(L"Ext"), opened);
+        HRESULT result = panel.OpenAsArc(input, temporary, name, UString(L"Ext"), opened);
+        if (result == kDeviceJournalRecoveryRequired) {
+            if (!ConfirmJournalRead(&w))
+                return;
+            CMyComPtr<IInStream> withoutReplay;
+            result = CreateDeviceInputIgnoringJournal(input, &withoutReplay);
+            if (result == S_OK) {
+                input = withoutReplay;
+                result = panel.OpenAsArc(input, temporary, name, UString(L"Ext"), opened);
+            }
+        }
         if (result != S_OK && result != E_ABORT) {
             const QString error =
                 !opened.ErrorMessage.IsEmpty() ? ToQString(opened.ErrorMessage)
