@@ -383,11 +383,12 @@ optional primary/mirror/bitmap retries; обычная optional inode I/O оши
 
 Типовые адаптации C bodies: `loff_t` → `int64_t`, C11 initializer `{0}`, явный
 portable ternary вместо GNU `?:` и внешняя linkage cache-clear для inode deleter.
-Добавлена bounded malformed-input политика: typed AD нулевой длины отклоняется
-в metadata `inode_bmap`. В исходном цикле такой AD не увеличивает byte count,
+На этом этапе typed AD нулевой длины отклонялся в metadata `inode_bmap`.
+В исходном цикле такой AD не увеличивает byte count,
 а чередование с continuation может обходить лимит consecutive indirections.
 Этот случай проверяется через module CLI с timeout; native kernel его не
-запускает. Это намеренное отличие от pinned malformed-input policy. Общие
+запускает. Ограничение затем заменено общим cycle guard ниже: конечные typed-zero
+records снова поддержаны. Общие
 checked physical additions остаются адаптацией предыдущих итераций.
 
 15 дополнительных положительных случаев покрывают fragmented FE/EFE metadata,
@@ -417,6 +418,64 @@ Staging, loop mounts и одноразовые образы удалены; ис
 incremental build trees и compiler caches. Full/slow/UI/physical-device
 acceptance не выполнялась. Проверка этой итерации закрывает описанный metadata
 read scope, а не весь UDF audit или общую задачу форматов Linux.
+
+## Завершение AD traversal и read policies
+
+Повторно сравнены полные Linux `udf_next_aext`, `udf_current_aext`, `inode_bmap`,
+short/long AD accessors, `udf_read_tagged`/`udf_read_ptagged` и их actual callers,
+а также исходный flat AD parser 7-Zip. Linux ограничивает consecutive continuation
+records внутри одного `udf_next_aext`; после возврата обычного AD счётчик
+сбрасывается. В общем archive enumerator прежний огромный extent budget не
+предотвращал практически неограниченный обход mixed chains. Готового общего
+traversal guard в этих исходных bodies нет; flat 7-Zip reader вообще не обходит
+такие chains. Поэтому добавлен узкий guard в существующий host-service boundary,
+без нового AD decoder или замены алгоритмов Linux.
+
+`reader.c::sevenzip_udf_next_aext` вызывает исходный `udf_next_aext` и выполняет
+constant-space cycle detection по cursor AD, включая partition reference, logical
+block, offset и различие initial/AED buffer. Guard используется общим enumerator
+и `inode_bmap`, сохраняющим исходный extent cache. Память guard не растёт с числом
+AD, и дополнительных I/O он не выполняет. Source comparison после изменения
+подтверждает, что остальные ветви `inode_bmap` и исходные AD accessors сохранены.
+Ранее добавленный blanket отказ для typed-zero metadata AD убран: конечные
+нулевые records, включая длинные последовательности, читаются как в Linux.
+
+Обход по-прежнему останавливается на logical EOF; неиспользованный cyclic tail
+не исследуется. Detected cycles возвращают обычную archive error и не выдаются
+за native malformed-input parity. Metadata mapping failure может восстановиться
+через исправный mirror; source I/O failure и однократная отмена/ошибка progress
+не превращаются в успех guard. AED tag fields по-прежнему не валидируются заново:
+в Linux этот caller использует raw `sb_bread`, а длина AD проверяется по buffer.
+Это отличается от обязательного tagged FE/EFE/IE чтения. Частичный short/long AD
+tail завершает список и оставляет implicit hole; source bounds остаются прежними.
+
+12 дополнительных конечных variants совпали по bytes с read-only native Linux
+`6.8.0-146-generic`: short/long typed-zero AD, последовательность 64 таких records,
+chains, active EOF, AED tag policy, partial tails, одинаковые cursor coordinates
+в разных partitions и metadata с конечными zero records без пригодного mirror.
+Mounts и образы удалены. Отдельный module-only вариант подтверждает восстановление
+через mirror при mixed-zero cycle основного metadata. Семь ordinary-file cycles
+(short/long, один/два nodes, prefix, записанные bytes и holes) должны завершаться
+штатным exit code archive error, без timeout, crash или out-of-memory.
+Циклические variants в native kernel не запускались.
+
+ABI проверяет прежние stream/EOF/ownership contracts на всех положительных
+вариантах; отдельные проверки передают I/O failure, однократные E_ABORT/E_FAIL
+после частичного обхода и последующий успешный reopen. Backend consumers покрывают
+finite chains, metadata zero records и damaged-primary mirror fallback.
+
+Пять focused suites (`udf`, `udf_stream`, `upstream_baseline`, `runtime_cache`,
+`runtime_package`) прошли на macOS arm64 и Linux x64; remote receipt
+`20261019T222545Z-8cfa0a4a`. Windows x64/MSVC прошёл четыре suites в том же run;
+`udf_stream` получил одиночный codec-discovery timeout в прежнем первом backend
+сценарии до UDF операции, при 128 успешных проверках. Адресный повтор всего
+`udf_stream` без изменения кода, build tree или deadline прошёл: receipt
+`20261019T222826Z-cbf7cacf`. Это повторная проверка после наблюдаемого timeout,
+а не исправление discovery или доказательство его причины.
+Actual macOS CMake install прочитал все 100 положительных UDF variants,
+сохранил source bytes и установил обе лицензии с точным исходным содержимым.
+Staging и временные native images удалены; incremental builds и compiler caches
+сохранены. Full/slow/UI/physical-device acceptance не выполнялась.
 
 Полный UDF read audit остаётся открытым. В частности, ещё требуются
 volume discovery/block geometry, names/NLS, symlinks, специальные

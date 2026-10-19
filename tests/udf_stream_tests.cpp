@@ -254,6 +254,12 @@ class UdfStreamTests final : public QObject {
               "vat20-extended-header", "vat20-previous", "vat15-offset", "vat20-sparse",
               "vat20-unknown-newest", "vat20-cross-partition", "vat20-sparable"})
             QTest::newRow(kind) << QString::fromLatin1(kind);
+        for (const char *kind :
+             {"walk-zero-short", "walk-zero-long", "walk-zero-many", "walk-zero-chain-short",
+              "walk-zero-chain-long", "walk-active-eof", "walk-aed-tags", "walk-tail-short",
+              "walk-tail-long", "walk-cross-partition", "walk-metadata-zero",
+              "walk-metadata-zero-chain", "walk-metadata-cycle-mirror"})
+            QTest::newRow(kind) << QString::fromLatin1(kind);
     }
     void metadataStreams_data() {
         QTest::addColumn<QString>("kind");
@@ -378,6 +384,26 @@ class UdfStreamTests final : public QObject {
         input->failSeekAt = UINT64_MAX;
         check(alpha, QByteArray::fromHex(files_["alpha.bin"].toString().toLatin1()));
     }
+    void guardedAllocationIoAndCancellation() {
+        fixture("walk-zero-chain-long");
+        CMyComPtr2<IInStream, Input> input;
+        input.SetFromCls(new Input(bytes_));
+        input->failSeekAt = UInt64(279) * 2048;
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), E_FAIL);
+        UInt32 count = 99;
+        QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, UInt32(0));
+        input->failSeekAt = UINT64_MAX;
+        for (HRESULT result : {E_ABORT, E_FAIL}) {
+            CMyComPtr<IArchiveOpenCallback> cancel =
+                new CancelAt(input.operator->(), UInt64(279) * 2048, result);
+            QCOMPARE(archive_->Open(input, nullptr, cancel), result);
+            QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+            QCOMPARE(count, UInt32(0));
+        }
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        check(stream("alpha.bin"), QByteArray::fromHex(files_["alpha.bin"].toString().toLatin1()));
+    }
     void vatLoaderFailuresAndCancellation() {
         fixture("vat20-previous");
         CMyComPtr2<IInStream, Input> input;
@@ -465,11 +491,26 @@ class UdfStreamTests final : public QObject {
     }
     void backendExtraction_data() {
         QTest::addColumn<QString>("kind");
-        for (const char *kind :
-             {"sparse-long", "ad-directory", "ad-chain-long", "ad-cross-partition", "icb-efe",
-              "icb-root", "icb-cross-partition", "icb-metadata-cross", "sp-reverse",
-              "sp-directory-cross", "sp-metadata", "vat15-inline", "vat20-external",
-              "md-fragmented", "md-mirror-lazy", "md-ad-chain", "md-sparable"})
+        for (const char *kind : {"sparse-long",
+                                 "ad-directory",
+                                 "ad-chain-long",
+                                 "ad-cross-partition",
+                                 "icb-efe",
+                                 "icb-root",
+                                 "icb-cross-partition",
+                                 "icb-metadata-cross",
+                                 "sp-reverse",
+                                 "sp-directory-cross",
+                                 "sp-metadata",
+                                 "vat15-inline",
+                                 "vat20-external",
+                                 "md-fragmented",
+                                 "md-mirror-lazy",
+                                 "md-ad-chain",
+                                 "md-sparable",
+                                 "walk-zero-chain-long",
+                                 "walk-metadata-zero-chain",
+                                 "walk-metadata-cycle-mirror"})
             QTest::newRow(kind) << QString::fromLatin1(kind);
     }
     void backendExtraction() {

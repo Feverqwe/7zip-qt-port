@@ -316,6 +316,7 @@ int inode_bmap(struct inode *inode, sector_t block, struct extent_position *pos,
 	int64_t lbcount = 0, bcount = (int64_t) block << blocksize_bits;
 	struct udf_inode_info *iinfo;
 	int err = 0;
+	struct sevenzip_udf_walk walk = {0};
 
 	iinfo = UDF_I(inode);
 	if (!udf_read_extent_cache(inode, bcount, &lbcount, pos)) {
@@ -325,7 +326,7 @@ int inode_bmap(struct inode *inode, sector_t block, struct extent_position *pos,
 	}
 	*elen = 0;
 	do {
-		err = udf_next_aext(inode, pos, eloc, elen, etype, 1);
+		err = sevenzip_udf_next_aext(&walk, inode, pos, eloc, elen, etype);
 		if (err <= 0) {
 			if (err == 0) {
 				*offset = (bcount - lbcount) >> blocksize_bits;
@@ -333,9 +334,6 @@ int inode_bmap(struct inode *inode, sector_t block, struct extent_position *pos,
 			}
 			return err;
 		}
-		/* A typed zero-length extent cannot advance a metadata lookup. */
-		if (!*elen)
-			return -EFSCORRUPTED;
 		lbcount += *elen;
 	} while (lbcount <= bcount);
 	/* update extent cache */

@@ -101,6 +101,8 @@ VAT15/20 loader и mapper перенесены в модуль и подключ
 проверены inline/external таблицы, предыдущие записи и offset semantics.
 Metadata/mirror loader и inode-backed mapping также перенесены: fragmented
 short AD, chains, primary/mirror fallback, readonly bitmap policy и extent cache.
+Общий AD traversal ограничивает циклы без запрета конечных typed-zero records;
+EOF и AED tag/read policies сверены с Linux.
 Volume discovery/block geometry, names/NLS, symlinks и остальные read-side
 возможности UDF ещё требуют актуализации.
 

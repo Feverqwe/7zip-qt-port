@@ -118,6 +118,35 @@ int sevenzip_udf_icb(void *context, sevenzip_udf_read read, uint32_t block_size,
     return result;
 }
 
+int sevenzip_udf_next_aext(struct sevenzip_udf_walk *walk, struct inode *inode,
+                          struct extent_position *pos, struct kernel_lb_addr *location,
+                          uint32_t *length, int8_t *type)
+{
+    int result = udf_next_aext(inode, pos, location, length, type, 1);
+    bool external;
+    if (result <= 0)
+        return result;
+    external = pos->bh != NULL;
+    if (walk->power) {
+        if (walk->external == external && walk->offset == pos->offset &&
+            walk->block.logicalBlockNum == pos->block.logicalBlockNum &&
+            walk->block.partitionReferenceNum == pos->block.partitionReferenceNum)
+            return -EFSCORRUPTED;
+        if (++walk->distance != walk->power)
+            return result;
+        if (walk->power > UINT64_MAX / 2)
+            return -EFSCORRUPTED;
+        walk->power *= 2;
+    } else {
+        walk->power = 1;
+    }
+    walk->distance = 0;
+    walk->block = pos->block;
+    walk->offset = pos->offset;
+    walk->external = external;
+    return result;
+}
+
 int sevenzip_udf_extents(void *context, sevenzip_udf_read read,
                          sevenzip_udf_extent emit, uint32_t block_size,
                          uint32_t partitions, uint16_t partition, unsigned type,
@@ -127,6 +156,7 @@ int sevenzip_udf_extents(void *context, sevenzip_udf_read read,
     struct super_block sb = {0};
     struct inode inode = {0};
     struct extent_position pos = {0};
+    struct sevenzip_udf_walk walk = {0};
     uint32_t count = 0;
     int result = 0;
     sb.info.s_partitions = partitions;
@@ -143,7 +173,7 @@ int sevenzip_udf_extents(void *context, sevenzip_udf_read read,
         struct kernel_lb_addr loc;
         uint32_t length;
         int8_t extent_type;
-        result = udf_next_aext(&inode, &pos, &loc, &length, &extent_type, 1);
+        result = sevenzip_udf_next_aext(&walk, &inode, &pos, &loc, &length, &extent_type);
         if (result <= 0)
             break;
         if (count++ >= max_extents || emit(context, (unsigned)extent_type, length,

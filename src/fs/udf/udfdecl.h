@@ -62,6 +62,13 @@ struct super_block {
     int io_error;
 };
 #include "udf_i.h"
+/* Constant-space cycle guard for one allocation traversal. */
+struct sevenzip_udf_walk {
+    struct kernel_lb_addr block;
+    uint32_t offset;
+    uint64_t power, distance;
+    bool external;
+};
 struct udf_inode_info {
     struct kernel_lb_addr i_location;
     uint32_t i_lenEAttr, i_lenAlloc;
@@ -118,6 +125,8 @@ struct short_ad *udf_get_fileshortad(uint8_t *, int, uint32_t *, int);
 struct long_ad *udf_get_filelongad(uint8_t *, int, uint32_t *, int);
 int udf_current_aext(struct inode *, struct extent_position *, struct kernel_lb_addr *, uint32_t *, int8_t *, int);
 int udf_next_aext(struct inode *, struct extent_position *, struct kernel_lb_addr *, uint32_t *, int8_t *, int);
+int sevenzip_udf_next_aext(struct sevenzip_udf_walk *, struct inode *, struct extent_position *,
+                           struct kernel_lb_addr *, uint32_t *, int8_t *);
 u8 udf_tag_checksum(const struct tag *);
 struct buffer_head *udf_read_tagged(struct super_block *, udf_pblk_t, uint32_t, uint16_t *);
 struct buffer_head *udf_read_ptagged(struct super_block *, struct kernel_lb_addr *, uint32_t, uint16_t *);

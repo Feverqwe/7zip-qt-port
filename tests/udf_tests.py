@@ -10,6 +10,7 @@ from udf_icb_fixture import CASES as ICB_CASES, BAD as ICB_BAD
 from udf_sparing_fixture import CASES as SPARING_CASES, BAD as SPARING_BAD
 from udf_vat_fixture import CASES as VAT_CASES, BAD as VAT_BAD
 from udf_metadata_fixture import CASES as METADATA_CASES, BAD as METADATA_BAD
+from udf_walk_fixture import CASES as WALK_CASES, MODULE_ONLY as WALK_MODULE, BAD as WALK_BAD
 
 RUNTIME = Path(sys.argv.pop(1))
 MODULE = Path(sys.argv.pop(1))
@@ -63,7 +64,8 @@ class UdfTests(unittest.TestCase):
                     self.assertNotEqual(self.run_image(engine, image).returncode, 0)
 
     def test_continuations(self):
-        for kind in (*CONTINUATIONS, *ICB_CASES, *SPARING_CASES, *VAT_CASES, *METADATA_CASES):
+        for kind in (*CONTINUATIONS, *ICB_CASES, *SPARING_CASES, *VAT_CASES, *METADATA_CASES,
+                     *WALK_CASES, *WALK_MODULE):
             image, files = volume(kind)
             with self.subTest(kind=kind):
                 result = self.run_image("7z", image)
@@ -95,6 +97,13 @@ class UdfTests(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stderr)
                 alpha = result.stdout.split(b"Path = alpha.bin", 1)[1].split(b"Path = ", 1)[0]
                 self.assertIn(b"Modified = 2041-", alpha)
+
+    def test_allocation_cycles_fail_normally(self):
+        for kind in WALK_BAD:
+            image, _ = volume(kind)
+            with self.subTest(kind=kind):
+                # 7-Zip's normal archive error, rather than timeout, crash or out-of-memory.
+                self.assertEqual(self.run_image("7z", image).returncode, 2)
 
 
 if __name__ == "__main__":

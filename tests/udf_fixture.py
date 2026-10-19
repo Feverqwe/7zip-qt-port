@@ -16,6 +16,9 @@ CONTINUATIONS = ("ad-short", "ad-long", "ad-chain-short", "ad-chain-long",
 
 
 def volume(kind):
+    if kind.startswith("walk-"):
+        from udf_walk_fixture import volume as walk_volume
+        return walk_volume(kind)
     if kind.startswith("md-"):
         from udf_metadata_fixture import volume as metadata_volume
         return metadata_volume(kind)
