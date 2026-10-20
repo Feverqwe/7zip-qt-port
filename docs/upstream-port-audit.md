@@ -36,6 +36,8 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 
 ## Новые изменения
 
+- [ELF по Linux](upstream-port-audit/elf-linux.md)
+  — headers, extended core counts, file spans, metadata и retained streams.
 - [Base64 по Linux](upstream-port-audit/base64-linux.md)
   — standard/URL-safe/IMAP alphabets, canonical tails и handler lifecycle.
 - [Zstandard по Linux](upstream-port-audit/zstd-linux.md)

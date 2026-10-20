@@ -290,7 +290,8 @@ Z7_COM7F_IMF(CHandler::GetProperty(UInt32 /* index */, PROPID propID, PROPVARIAN
     return S_OK;
 }
 
-static UInt32 CheckData(const Byte *start, SizeT srcLen, const Byte *props, UInt64 unpackSize) {
+static UInt32 CheckData(const Byte *start, SizeT srcLen, const Byte *props, UInt64 unpackSize,
+                        bool requireEmptyMarker = false) {
     const UInt32 outLimit = 1 << 11;
     Byte outBuf[outLimit];
     SizeT destLen = outLimit;
@@ -298,9 +299,13 @@ static UInt32 CheckData(const Byte *start, SizeT srcLen, const Byte *props, UInt
         destLen = (SizeT)unpackSize;
     ELzmaStatus status;
     const SRes res =
-        LzmaDecode(outBuf, &destLen, start, &srcLen, props, 5, LZMA_FINISH_ANY, &status, &g_Alloc);
+        LzmaDecode(outBuf, &destLen, start, &srcLen, props, 5,
+                   requireEmptyMarker && unpackSize == 0 ? LZMA_FINISH_END : LZMA_FINISH_ANY,
+                   &status, &g_Alloc);
     if (res == SZ_ERROR_INPUT_EOF)
         return k_IsArc_Res_NEED_MORE;
+    if (requireEmptyMarker && unpackSize == 0 && status != LZMA_STATUS_FINISHED_WITH_MARK)
+        return k_IsArc_Res_NO;
     return res == SZ_OK ? k_IsArc_Res_YES : k_IsArc_Res_NO;
 }
 
@@ -327,7 +332,7 @@ API_FUNC_static_IsArc IsArc_Lzma(const Byte *p, size_t size) {
         }
     }
     if (!highProbability)
-        return CheckData(p + kHeaderSize, size - kHeaderSize, p, unpackSize);
+        return CheckData(p + kHeaderSize, size - kHeaderSize, p, unpackSize, true);
     return k_IsArc_Res_YES;
 }
 }

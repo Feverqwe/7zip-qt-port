@@ -51,7 +51,7 @@ Linux определяет корректность интерпретации �
 | ISO9660, UDF | `fs/isofs`, `fs/udf` | Descriptors, names/extensions, extents, sparse и embedded data. |
 | EROFS (новый модуль) | `fs/erofs` | Сначала полный source comparison read path и зависимостей, затем C-перенос, 7-Zip ABI, deployment и end-to-end чтение. |
 | Base64 | `lib/base64.c`, fscrypt/Ceph callers | Standard/URL-safe/IMAP alphabets, padding/tail validation и archive handler lifecycle. |
-| ELF | `fs/binfmt_elf.c`, `fs/binfmt_elf_fdpic.c` | Подтверждён kernel parser; source comparison и актуализация archive reader ещё открыты. |
+| ELF | `fs/binfmt_elf.c`, `fs/binfmt_elf_fdpic.c`, kexec/module readers | Headers, table/payload spans, Linux core numbering, metadata и archive streams; execution services не входят в byte reader. |
 
 APFS не входит в scope: соответствующего драйвера нет в основном дереве Linux.
 GPT/MBR/APM проверяются как дополнительные форматы разметки дисков.
@@ -72,6 +72,14 @@ GPT/MBR/APM проверяются как дополнительные форм�
 ошибки; проверки текста исходников не применяются.
 
 ## Свидетельства
+
+### ELF: headers, core numbering и streams
+
+[Сверка ELF](elf-linux.md): class/endian header reads, ignored fields, bounds,
+extended counts/names, BSS/NULL metadata, independent retained streams и ошибки
+Open/Extract. Связанный GPT discovery regression исправлен в LZMA probe.
+ELF execution и archive inspection имеют отдельные границы; PE и оставшийся
+census не закрываются этой итерацией.
 
 ### Base64: современные alphabets и lifecycle
 

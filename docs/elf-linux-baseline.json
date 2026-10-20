@@ -1,0 +1,14 @@
+{
+  "repository": "https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git",
+  "revision": "58161ead29e50d70a317ea26b472e0c7508e69da",
+  "files": {
+    "fs/binfmt_elf.c": "4bd3f3734c2b1941fd9e43439ae3d0eb02d62f9d3044678afa9a29a069de25c6",
+    "fs/binfmt_elf_fdpic.c": "d2d42dfc5717707e951afd0ef9bb5a6e891135b1d64d1c799a0158301362a8a7",
+    "fs/compat_binfmt_elf.c": "1aa99d47eacce948bd275ca23396c8248bad84c65d882fc4961da1f304e96270",
+    "include/linux/elf.h": "ca735899fd2c19c7d387f6a361d54878b3feff287ab025295f215f606e9f5e3e",
+    "include/uapi/linux/elf.h": "15613d116a6c77c4826036740dd5023c6a7779c776acd3ac7a1a661fe7432b3c",
+    "kernel/kexec_elf.c": "e5b6fb389c0bc7c264373fe9d8c55ca23b8dee671a5e367daa53a80b6af7ba65",
+    "kernel/module/main.c": "1f5d5be6ab700c727b43eac28664fa5cefae747ce431f4e167a3a5523ca15da8"
+  },
+  "scope": "ELF read-side comparison and core extended numbering; original 7-Zip reader retained."
+}

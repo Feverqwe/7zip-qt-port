@@ -80,6 +80,7 @@ members не заменяют composite initramfs и его общий CPIO stat
 
 CLI обоих shipped engines: 18 valid cases, automatic recognition `.bin` для
 LZMA-alone, explicit LZMA86, exact output, test command и source immutability.
+
 Проверены small/odd dictionary, wrapping, known/unknown/empty output,
 крайние properties, пустой первый и другие concatenated members.
 11 malformed cases проверяют normal code 2 для properties/range init,
@@ -110,3 +111,13 @@ Linux x64 и Windows x64/MSVC — 11/11 PASS. Remote receipt
 227 adapted, 11 local paths, одна revision. Shared decoder проверен прямыми
 consumers и interface regressions; full/slow gate, UI appearance и реальные
 устройства в этой итерации не проверялись.
+
+### Follow-up: empty auto-probe и GPT
+
+При [сверке ELF](elf-linux.md) существующий GPT regression воспроизвёл
+ложный выбор empty LZMA86 для нулевого префикса disk image. Нестандартные
+properties требуют bounded data proof, но при declared size 0 FINISH_ANY
+возвращал успех без подтверждения compressed data. Только auto-detection
+такого empty candidate теперь требует EOS status через исходный LzmaDecode.
+Explicit Open сохраняет FINISH_ANY, decoder и форматное чтение не сужаются.
+Оба engines проходят GPT discovery и прежние LZMA positive/error/ABI suites.
