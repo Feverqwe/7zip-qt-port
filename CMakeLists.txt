@@ -758,6 +758,22 @@ if(BUILD_TESTING)
     set_tests_properties(folder_history PROPERTIES ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     find_package(Python3 3.9 REQUIRED COMPONENTS Interpreter)
+    add_test(NAME gzip COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/gzip_tests.py
+        ${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime)
+    set_tests_properties(gzip PROPERTIES TIMEOUT 45)
+    qt_add_executable(gzip_stream_tests tests/gzip_stream_tests.cpp)
+    target_include_directories(gzip_stream_tests PRIVATE src third_party/7zip/CPP)
+    target_link_libraries(gzip_stream_tests PRIVATE sevenzip_panel Qt6::Test)
+    if(WIN32)
+        target_link_libraries(gzip_stream_tests PRIVATE oleaut32)
+    endif()
+    target_compile_definitions(gzip_stream_tests PRIVATE
+        "SEVENZIP_GZIP_RUNTIME=\"${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime\""
+        "SEVENZIP_GZIP_PYTHON=\"${Python3_EXECUTABLE}\""
+        "SEVENZIP_GZIP_FIXTURE=\"${CMAKE_CURRENT_SOURCE_DIR}/tests/gzip_fixture.py\"")
+    add_test(NAME gzip_stream COMMAND gzip_stream_tests -silent)
+    set_tests_properties(gzip_stream PROPERTIES TIMEOUT 30)
     add_test(NAME cpio COMMAND ${Python3_EXECUTABLE}
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/cpio_tests.py
         ${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime)
@@ -1749,6 +1765,7 @@ if(BUILD_TESTING)
     target_sources(udf_stream_tests PRIVATE ${compression_order_sources})
     target_sources(gpt_stream_tests PRIVATE ${compression_order_sources})
     target_sources(cpio_stream_tests PRIVATE ${compression_order_sources})
+    target_sources(gzip_stream_tests PRIVATE ${compression_order_sources})
     target_sources(apm_stream_tests PRIVATE ${compression_order_sources})
     target_sources(fat_module_tests PRIVATE ${compression_order_sources})
     target_sources(erofs_module_tests PRIVATE ${compression_order_sources})

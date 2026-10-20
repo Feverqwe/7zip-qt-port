@@ -71,6 +71,13 @@ GPT/MBR/APM проверяются как дополнительные форм�
 
 ## Свидетельства
 
+### Gzip: probe, metadata и member extraction
+
+[Сверка gzip](gzip-linux.md): XFL, ignored DEFLATE stored bits, длинные
+header strings, progress/cancellation и cleanup Open/OpenSeq. Сохранены
+исходные decoder, concatenated-member reader и CRC/ISIZE diagnostics 7-Zip.
+Standalone gzip не закрывает composite initramfs или остальные decompressors.
+
 ### CPIO: raw newc/crc members
 
 [Сверка CPIO](cpio-linux.md): NUL-padded names, optional trailer, смешанные
