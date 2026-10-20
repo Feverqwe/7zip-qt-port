@@ -17,6 +17,7 @@
 #include "../../Common/MyBuffer2.h"
 #include "../../Common/MyCom.h"
 #include "../../Common/MyLinux.h"
+#include "../../Common/UTFConvert.h"
 
 #include "../../Windows/PropVariant.h"
 #include "../../Windows/TimeUtils.h"
@@ -31,6 +32,7 @@
 #ifdef SEVENZIP_LINUX_NTFS
 #include "../../../ntfsdecoder.h"
 #include "../../../ntfsea.h"
+#include "../../../ntfslink.h"
 #include "../../../ntfssecurity.h"
 #include "../../../ntfswofstream.h"
 #endif
@@ -1142,6 +1144,8 @@ struct CMftRec {
     CObjectVector<CAttr> EaInfoAttrs, EaAttrs;
     CObjectVector<CAttr> SecurityRoots, SecurityAlloc;
     sevenzip_ntfs_wsl_perm Wsl{};
+    bool Link = false;
+    bool Deduplicated = false;
 #endif
     CObjectVector<CFileNameAttr> FileNames;
     /* usually there is one FileName per CMftRec record,
@@ -1227,6 +1231,8 @@ struct CMftRec {
     bool InUse() const { return (Flags & 1) != 0; }
     bool IsDir() const {
 #ifdef SEVENZIP_LINUX_NTFS
+        if (Link)
+            return false;
         if (Wsl.present)
             return (Wsl.mode & MY_LIN_S_IFMT) == MY_LIN_S_IFDIR;
 #endif
@@ -1263,6 +1269,10 @@ HRESULT CMftRec::GetStream(IInStream *mainStream, const int dataIndex,
                            CMyComPtr2<IInStream, CInStream> *inStream_Object) const {
     *destStream = NULL;
 #ifdef SEVENZIP_LINUX_NTFS
+    if (Deduplicated && (dataIndex < 0 || DataAttrs[dataIndex].Name.IsEmpty()))
+        return E_NOTIMPL;
+    if (Link && (dataIndex < 0 || DataAttrs[dataIndex].Name.IsEmpty()))
+        return E_NOTIMPL; // Item-specific translated targets are owned by CDatabase.
     if (Wsl.present && (dataIndex < 0 || DataAttrs[dataIndex].Name.IsEmpty()) &&
         (Wsl.mode & MY_LIN_S_IFMT) != MY_LIN_S_IFREG)
         return E_NOTIMPL;
@@ -1477,7 +1487,8 @@ bool CMftRec::ParseRec(Byte *const p, const unsigned sectorSizeLog, const unsign
             AttrListAttrs.Add(attr);
             break;
         case ATTR_TYPE_REPARSE_POINT:
-            ReparseAttrs.Add(attr);
+            if (attr.Name.IsEmpty())
+                ReparseAttrs.Add(attr);
             break;
 #ifdef SEVENZIP_LINUX_NTFS
         case 0x90: // $SII INDEX_ROOT
@@ -1539,6 +1550,9 @@ static const int k_ParentFolderIndex_Lost = -2;
 static const int k_ParentFolderIndex_Deleted = -3;
 
 struct CItem {
+#ifdef SEVENZIP_LINUX_NTFS
+    int LinkTargetIndex;
+#endif
     unsigned RecIndex;  // index in Recs[]
     unsigned NameIndex; // index in CMftRec::FileNames[] : name of file (is not name of alt stream)
 
@@ -1558,6 +1572,9 @@ struct CItem {
        main files. */
 
     void Construct() {
+#ifdef SEVENZIP_LINUX_NTFS
+        LinkTargetIndex = -1;
+#endif
         DataIndex = k_Item_DataIndex_IsDir;
         ParentFolder = -1;
         ParentHost = -1;
@@ -1596,6 +1613,7 @@ struct CDatabase {
     CRecordVector<UInt32> SecurIds; // sorted
 #ifdef SEVENZIP_LINUX_NTFS
     CObjectVector<CByteBuffer> IndexedSecurData;
+    CObjectVector<AString> LinkTargets;
 #endif
 
     CVolumeInfo VolumeInfo;
@@ -1664,6 +1682,7 @@ struct CDatabase {
     HRESULT LoadMftAttributes(CMftRec &rec);
     HRESULT LoadWslMetadata();
     HRESULT LoadSecurityIndex();
+    HRESULT LoadLinks();
 #endif
 };
 
@@ -1683,6 +1702,9 @@ void CDatabase::Clear() {
     // _headerWarning = false;
     VolumeInfo.Clear();
     ReparseDataVector.Clear();
+#ifdef SEVENZIP_LINUX_NTFS
+    LinkTargets.ClearAndFree();
+#endif
     PhySize = 0;
 }
 
@@ -2115,6 +2137,39 @@ HRESULT CDatabase::LoadSecurityIndex() {
     return S_OK;
 }
 
+HRESULT CDatabase::LoadLinks() {
+    FOR_VECTOR(i, Items) {
+        CItem &item = Items[i];
+        const CMftRec &rec = Recs[item.RecIndex];
+        if (!rec.Link || item.IsAltStream() || rec.ReparseDataIndex < 0)
+            continue;
+        if (OpenCallback)
+            RINOK(OpenCallback->SetCompleted(nullptr, nullptr))
+        const CByteBuffer &data = ReparseDataVector[rec.ReparseDataIndex];
+        NCOM::CPropVariant path;
+        GetItemPath(i, path);
+        if (path.vt != VT_BSTR)
+            continue;
+        UString name(path.bstrVal);
+        name.Replace(L'\\', L'/');
+        AString utf8;
+        ConvertUnicodeToUTF8(name, utf8);
+        AString absolute("/");
+        absolute += utf8;
+        char target[4096];
+        const int length =
+            sevenzip_ntfs_readlink(data, data.Size(), absolute, target, sizeof(target));
+        if (length == -ENOMEM)
+            return E_OUTOFMEMORY;
+        if (length <= 0)
+            continue;
+        AString &saved = LinkTargets.AddNew();
+        saved.SetFrom(target, (unsigned)length);
+        item.LinkTargetIndex = (int)LinkTargets.Size() - 1;
+    }
+    return S_OK;
+}
+
 HRESULT CDatabase::LoadWslMetadata() {
     bool needed = false;
     FOR_VECTOR(i, Recs) {
@@ -2429,14 +2484,30 @@ HRESULT CDatabase::Open() {
         }
         rec.ReparseDataIndex = (int)ReparseDataVector.Add(data);
         rec.Wof = size >= 4 && Get32(data) == 0x80000017;
+#ifndef SEVENZIP_LINUX_NTFS
         if (rec.Wof && size >= 24 && Get16(data + 4) >= 16 && Get32(data + 8) == 1 &&
             Get32(data + 12) == 2 && Get32(data + 16) == 1)
             rec.WofFormat = Get32(data + 20);
+#endif
         rec.ReparseAttrs.ClearAndFree();
     }
 
 #ifdef SEVENZIP_LINUX_NTFS
     RINOK(LoadWslMetadata())
+    FOR_VECTOR(linkIndex, Recs) {
+        CMftRec &rec = Recs[linkIndex];
+        if (rec.ReparseDataIndex < 0)
+            continue;
+        const CByteBuffer &data = ReparseDataVector[rec.ReparseDataIndex];
+        const int type = sevenzip_ntfs_classify_reparse(data, data.Size());
+        if (rec.Wof && type == SEVENZIP_NTFS_REPARSE_COMPRESSED)
+            rec.WofFormat = Get32(data + 20);
+        rec.Deduplicated = type == SEVENZIP_NTFS_REPARSE_DEDUPLICATED;
+        rec.Link = rec.Wsl.present ? (rec.Wsl.mode & MY_LIN_S_IFMT) == MY_LIN_S_IFLNK
+                                   : type == SEVENZIP_NTFS_REPARSE_LINK;
+        if (rec.Link)
+            rec.SiAttr.Attrib &= ~FILE_ATTRIBUTE_DIRECTORY;
+    }
 #endif
 
     for (i = 0; i < Recs.Size(); i++) {
@@ -2631,6 +2702,10 @@ HRESULT CDatabase::Open() {
         VirtFolderNames.Add(kVirtualFolder_Lost_Deleted);
     }
 
+#ifdef SEVENZIP_LINUX_NTFS
+    RINOK(LoadLinks())
+#endif
+
     return S_OK;
 }
 
@@ -2709,6 +2784,10 @@ Z7_COM7F_IMF(CHandler::GetRawProp(const UInt32 index, const PROPID propID, const
         if (index >= Items.Size())
             return S_OK;
         const CItem &item = Items[index];
+#ifdef SEVENZIP_LINUX_NTFS
+        if (item.IsAltStream())
+            return S_OK;
+#endif
         const CMftRec &rec = Recs[item.RecIndex];
         if (rec.ReparseDataIndex >= 0) {
             const CByteBuffer &reparse = ReparseDataVector[rec.ReparseDataIndex];
@@ -2760,6 +2839,15 @@ Z7_COM7F_IMF(CHandler::GetStream(const UInt32 index, ISequentialInStream **const
     IInStream *stream2;
     const CItem &item = Items[index];
     const CMftRec &rec = Recs[item.RecIndex];
+#ifdef SEVENZIP_LINUX_NTFS
+    if (rec.Link && !item.IsAltStream()) {
+        if (item.LinkTargetIndex < 0)
+            return E_NOTIMPL;
+        const AString &target = LinkTargets[(unsigned)item.LinkTargetIndex];
+        Create_BufInStream_WithNewBuffer(target.Ptr(), target.Len(), stream);
+        return S_OK;
+    }
+#endif
     HRESULT res = rec.GetStream(InStream, item.DataIndex, Header.ClusterSizeLog, Header.NumClusters,
                                 &stream2);
     *stream = (ISequentialInStream *)stream2;
@@ -2830,7 +2918,8 @@ static const Byte kProps[] = {kpidPath,
                               kpidUserId,
                               kpidGroupId,
                               kpidDeviceMajor,
-                              kpidDeviceMinor
+                              kpidDeviceMinor,
+                              kpidSymLink
 #endif
 };
 
@@ -3064,6 +3153,14 @@ Z7_COM7F_IMF(CHandler::GetProperty(const UInt32 index, const PROPID propID,
             prop = !rec.InUse();
             break;
 #ifdef SEVENZIP_LINUX_NTFS
+        case kpidSymLink:
+            if (item.LinkTargetIndex >= 0) {
+                UString target;
+                if (!ConvertUTF8ToUnicode(LinkTargets[(unsigned)item.LinkTargetIndex], target))
+                    return S_FALSE;
+                prop = target;
+            }
+            break;
         case kpidPosixAttrib:
         case kpidUserId:
         case kpidGroupId:
@@ -3071,6 +3168,9 @@ Z7_COM7F_IMF(CHandler::GetProperty(const UInt32 index, const PROPID propID,
                 prop = propID == kpidPosixAttrib ? rec.Wsl.mode
                        : propID == kpidUserId    ? rec.Wsl.uid
                                                  : rec.Wsl.gid;
+            else if (propID == kpidPosixAttrib && rec.Link && !item.IsAltStream())
+                prop = (UInt32)(MY_LIN_S_IFLNK |
+                                ((rec.SiAttr.Attrib & FILE_ATTRIBUTE_READONLY) ? 0555 : 0777));
             break;
         case kpidDeviceMajor:
         case kpidDeviceMinor:
@@ -3147,18 +3247,38 @@ Z7_COM7F_IMF(CHandler::GetProperty(const UInt32 index, const PROPID propID,
         }
 
         case kpidSize:
+#ifdef SEVENZIP_LINUX_NTFS
+            if (rec.Link && !item.IsAltStream()) {
+                prop = item.LinkTargetIndex < 0
+                           ? (UInt64)0
+                           : (UInt64)LinkTargets[(unsigned)item.LinkTargetIndex].Len();
+                break;
+            }
+#endif
             if (data)
                 prop = data->GetSize();
             else if (!item.IsDir())
                 prop = (UInt64)0;
             break;
         case kpidPackSize:
+#ifdef SEVENZIP_LINUX_NTFS
+            if (rec.Link && !item.IsAltStream()) {
+                prop = (UInt64)0;
+                break;
+            }
+#endif
             if (data)
                 prop = data->GetPackSize();
             else if (!item.IsDir())
                 prop = (UInt64)0;
             break;
         case kpidNumBlocks:
+#ifdef SEVENZIP_LINUX_NTFS
+            if (rec.Link && !item.IsAltStream()) {
+                prop = (UInt32)0;
+                break;
+            }
+#endif
             if (data)
                 prop = (UInt32)rec.GetNumExtents(item.DataIndex, Header.ClusterSizeLog,
                                                  Header.NumClusters);
@@ -3211,6 +3331,13 @@ Z7_COM7F_IMF(CHandler::Extract(const UInt32 *indices, UInt32 numItems, Int32 tes
             continue;
         const CItem &item = Items[allFilesMode ? i : indices[i]];
         const CMftRec &rec = Recs[item.RecIndex];
+#ifdef SEVENZIP_LINUX_NTFS
+        if (rec.Link && !item.IsAltStream()) {
+            if (item.LinkTargetIndex >= 0)
+                totalSize += LinkTargets[(unsigned)item.LinkTargetIndex].Len();
+            continue;
+        }
+#endif
         if (item.DataIndex >= 0)
             totalSize += rec.GetSize((unsigned)item.DataIndex);
     }
@@ -3253,7 +3380,15 @@ Z7_COM7F_IMF(CHandler::Extract(const UInt32 *indices, UInt32 numItems, Int32 tes
         const CItem &item = Items[index];
         const CMftRec &rec = Recs[item.RecIndex];
         UInt64 unpackSize = 0;
-        if (item.DataIndex >= 0) {
+#ifdef SEVENZIP_LINUX_NTFS
+        const bool link = rec.Link && !item.IsAltStream();
+        if (link) {
+            if (item.LinkTargetIndex >= 0)
+                unpackSize = LinkTargets[(unsigned)item.LinkTargetIndex].Len();
+            totalSize += unpackSize;
+        } else
+#endif
+            if (item.DataIndex >= 0) {
             const CAttr &data = rec.DataAttrs[item.DataIndex];
             totalPackSize += data.GetPackSize();
             unpackSize = data.GetSize();
@@ -3262,16 +3397,32 @@ Z7_COM7F_IMF(CHandler::Extract(const UInt32 *indices, UInt32 numItems, Int32 tes
         int res = NExtract::NOperationResult::kDataError;
         {
             CMyComPtr<IInStream> inStream;
-            HRESULT hres = rec.GetStream(InStream, item.DataIndex, Header.ClusterSizeLog,
-                                         Header.NumClusters, &inStream, &inStream_Object);
+            HRESULT hres;
+#ifdef SEVENZIP_LINUX_NTFS
+            CMyComPtr<ISequentialInStream> linkStream;
+            if (link) {
+                hres = item.LinkTargetIndex < 0 ? E_NOTIMPL : S_OK;
+                if (hres == S_OK) {
+                    const AString &target = LinkTargets[(unsigned)item.LinkTargetIndex];
+                    Create_BufInStream_WithNewBuffer(target.Ptr(), target.Len(), &linkStream);
+                }
+            } else
+#endif
+                hres = rec.GetStream(InStream, item.DataIndex, Header.ClusterSizeLog,
+                                     Header.NumClusters, &inStream, &inStream_Object);
             if (hres == E_NOTIMPL)
                 res = NExtract::NOperationResult::kUnsupportedMethod;
             else if (hres == S_FALSE)
                 res = NExtract::NOperationResult::kDataError;
             else {
                 RINOK(hres)
-                if (inStream) {
-                    hres = copyCoder.Interface()->Code(inStream, outStream, NULL, NULL, lps);
+                ISequentialInStream *input = inStream;
+#ifdef SEVENZIP_LINUX_NTFS
+                if (linkStream)
+                    input = linkStream;
+#endif
+                if (input) {
+                    hres = copyCoder.Interface()->Code(input, outStream, NULL, NULL, lps);
                     if (hres == S_OK) {
                         if (copyCoder->TotalSize == unpackSize)
                             res = NExtract::NOperationResult::kOK;

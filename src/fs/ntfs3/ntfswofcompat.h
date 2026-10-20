@@ -18,18 +18,32 @@ struct ATTRIB {
     struct { __le64 data_size; } nres;
     const void *data;
 };
+struct super_block;
+struct ntfs_mount_options;
 struct ntfs_sb_info {
     sevenzip_ntfs_read_fn read;
     void *opaque;
+    struct super_block *sb;
+    struct ntfs_mount_options *options;
+    struct { u64 max_size; } reparse;
     struct {
         void *lzx, *xpress;
         int mtx_lzx, mtx_xpress;
     } compress;
 };
+struct ntfs_inode;
+struct inode {
+    struct super_block *i_sb;
+    struct ntfs_inode *ntfs;
+    u64 i_size;
+};
 struct ntfs_inode {
+    struct ntfs_inode *base;
+    unsigned ni_flags;
+    struct ATTRIB *reparse;
     struct { struct ntfs_sb_info *sbi; } mi;
-    struct { u64 i_size; } vfs_inode;
-    struct { int run_lock; struct folio *offs_folio; } file;
+    struct inode vfs_inode;
+    struct { int run_lock; struct folio *offs_folio; struct runs_tree run; } file;
     struct { struct ATTR_LIST_ENTRY *le; size_t size; } attr_list;
 };
 extern const __le16 WOF_NAME[17];

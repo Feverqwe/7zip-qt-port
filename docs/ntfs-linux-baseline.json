@@ -2,6 +2,7 @@
   "repository": "https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git",
   "revision": "58161ead29e50d70a317ea26b472e0c7508e69da",
   "files": {
+    "fs/nls/nls_base.c": "a121f305e92b6915e817c85de3c87eddea42d0a8507a29d84b157e53f970b796",
     "fs/ntfs3/Kconfig": "1807dc07531b01483694d5389d20fd6e8d859925e52509bddc782b76462ac376",
     "fs/ntfs3/Makefile": "884b2a48429c39107f19445655880176dd6637089db58acb60475c57373cc5eb",
     "fs/ntfs3/attrib.c": "61221cb56585647de13f8972febc4b49c18c40afc722dc0f26f79df7362aa290",
@@ -29,14 +30,18 @@
     "fs/ntfs3/run.c": "82a898be6d1a71a905f4336335b8ca876bbebb722d154ac06409472493c2c12d",
     "fs/ntfs3/super.c": "a221f1dade47f140912e0f5b48550010ce4a2f370c6a2be8f28851a87ea47d02",
     "fs/ntfs3/upcase.c": "daad6dc03944129302bb9a4988976a7241a18071f4824fa4cdf34f64696e4acd",
-    "fs/ntfs3/xattr.c": "46d16b017617a5ab75f60a811be0fef6c4bcfe27f1c653c8ff6fae829a5e13dd"
+    "fs/ntfs3/xattr.c": "46d16b017617a5ab75f60a811be0fef6c4bcfe27f1c653c8ff6fae829a5e13dd",
+    "include/linux/nls.h": "4b2d38eced38722fbc52eedbe177af65aeb39adab5d271fe8c732b76fe65b980"
   },
   "adapted": [
+    "fs/nls/nls_base.c",
     "fs/ntfs3/attrib.c",
     "fs/ntfs3/attrlist.c",
+    "fs/ntfs3/dir.c",
     "fs/ntfs3/frecord.c",
     "fs/ntfs3/fsntfs.c",
     "fs/ntfs3/index.c",
+    "fs/ntfs3/inode.c",
     "fs/ntfs3/lib/decompress_common.h",
     "fs/ntfs3/lib/lib.h",
     "fs/ntfs3/lznt.c",

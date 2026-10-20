@@ -339,6 +339,12 @@ NTFS-модуль читает Windows security descriptors через `$SII`, �
 index nodes и sparse `$SDS`; отсутствие зеркальной копии не скрывает корректный
 дескриптор. Чтение metadata не применяет ACL к host filesystem.
 
+Динамический NTFS-модуль показывает reparse link targets и читает их через
+стандартные streams/extraction. Junction переводится относительно пути записи
+в образе по Linux NTFS3; именованные ADS остаются отдельными потоками.
+Deduplicated-файлы явно не читаются, как в Linux. Standalone сохраняет прежнее
+представление ссылок. [Scope и проверки](upstream-port-audit/ntfs-linux.md#reparse-links-и-dedup-read-restrictions--2026-10-20).
+
 NTFS-модуль дополнительно показывает WSL owner IDs, POSIX mode и device metadata
 из EA. Специальные inode доступны как metadata, без выдачи служебных DATA bytes
 обычным файлом. Это расширение чтения относительно исходного 7zFM;

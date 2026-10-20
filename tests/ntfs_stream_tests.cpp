@@ -301,6 +301,85 @@ class NtfsStreamTests final : public QObject {
                                  "wof-xpress4k-uninitialized"})
             QTest::newRow(kind) << QString::fromLatin1(kind);
     }
+    void reparseLinks_data() {
+        QTest::addColumn<QString>("kind");
+        for (const char *kind :
+             {"link-symlink",       "link-print-name",  "link-unicode",    "link-surrogate",
+              "link-nul",           "link-backslashes", "link-junction",   "link-junction-lost",
+              "link-nonresident",   "link-fragmented",  "link-extension",  "link-directory",
+              "link-readonly",      "link-ads",         "link-user",       "link-named-reparse",
+              "link-odd-offset",    "link-cloud",       "link-bad-offset", "link-bad-length",
+              "link-no-print-name", "link-unknown-ms",  "link-user-short", "link-junction-no-drive",
+              "link-dedup"})
+            QTest::newRow(kind) << QString::fromLatin1(kind);
+    }
+    void reparseLinks() {
+        QFETCH(QString, kind);
+        loadFixture(kind);
+        CMyComPtr<IInStream> input = new Input(bytes_);
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        const QString name = kind == "link-junction-lost" ? "[LOST]/gamma" : "gamma";
+        const UInt32 id = index(name);
+        QVERIFY(id != UINT32_MAX);
+        const auto files = record_["files"].toObject();
+        const bool supported = files.contains(name), regular = kind == "link-named-reparse";
+        NWindows::NCOM::CPropVariant link, mode, directory, size;
+        QCOMPARE(archive_->GetProperty(id, kpidSymLink, &link), S_OK);
+        QCOMPARE(archive_->GetProperty(id, kpidPosixAttrib, &mode), S_OK);
+        QCOMPARE(archive_->GetProperty(id, kpidIsDir, &directory), S_OK);
+        QCOMPARE(directory.vt, VARTYPE(VT_BOOL));
+        QCOMPARE(directory.boolVal, VARIANT_FALSE);
+        if (regular) {
+            QCOMPARE(link.vt, VARTYPE(VT_EMPTY));
+            QCOMPARE(mode.vt, VARTYPE(VT_EMPTY));
+        } else if (kind == "link-dedup") {
+            QCOMPARE(mode.vt, VARTYPE(VT_EMPTY));
+        } else {
+            QCOMPARE(mode.vt, VARTYPE(VT_UI4));
+            QCOMPARE(mode.ulVal, ULONG(kind == "link-readonly" ? 0120555
+                                       : kind == "link-cloud"  ? 0120751
+                                                               : 0120777));
+        }
+        const QByteArray expected = QByteArray::fromBase64(files[name].toString().toLatin1());
+        if (supported && !regular) {
+            QCOMPARE(link.vt, VARTYPE(VT_BSTR));
+            QCOMPARE(QString::fromWCharArray(link.bstrVal), QString::fromUtf8(expected));
+            QCOMPARE(archive_->GetProperty(id, kpidSize, &size), S_OK);
+            QCOMPARE(size.vt, VARTYPE(VT_UI8));
+            QCOMPARE(size.uhVal.QuadPart, UInt64(expected.size()));
+        } else if (!supported) {
+            QCOMPARE(link.vt, VARTYPE(VT_EMPTY));
+            CMyComPtr<IInArchiveGetStream> provider;
+            QCOMPARE(archive_->QueryInterface(IID_IInArchiveGetStream,
+                                              reinterpret_cast<void **>(&provider)),
+                     S_OK);
+            CMyComPtr<ISequentialInStream> data;
+            QCOMPARE(provider->GetStream(id, &data), E_NOTIMPL);
+            QVERIFY(!data);
+        }
+        auto retained = supported ? stream(name) : CMyComPtr<IInStream>();
+        if (kind == "link-ads") {
+            const UInt32 adsId = index("gamma:side");
+            QVERIFY(adsId != UINT32_MAX);
+            QCOMPARE(archive_->GetProperty(adsId, kpidSymLink, &link), S_OK);
+            QCOMPARE(link.vt, VARTYPE(VT_EMPTY));
+            CMyComPtr<IArchiveGetRawProps> raw;
+            QCOMPARE(
+                archive_->QueryInterface(IID_IArchiveGetRawProps, reinterpret_cast<void **>(&raw)),
+                S_OK);
+            const void *data = nullptr;
+            UInt32 bytes = 0, type = 0;
+            QCOMPARE(raw->GetRawProp(adsId, kpidNtReparse, &data, &bytes, &type), S_OK);
+            QCOMPARE(bytes, UInt32(0));
+            check(stream("gamma:side"), "gamma:side", 0, 200000);
+        }
+        QCOMPARE(archive_->Close(), S_OK);
+        input.Release();
+        if (supported) {
+            QVERIFY(retained);
+            check(retained, name, 0, 200000);
+        }
+    }
     void reads() {
         QFETCH(QString, kind);
         loadFixture(kind);
@@ -571,6 +650,8 @@ class NtfsStreamTests final : public QObject {
         QTest::newRow("WSL-EA") << QString("ea-fragmented");
         QTest::newRow("WOF-LZX") << QString("wof-lzx32k");
         QTest::newRow("fragmented-MFT") << QString("mft-list-nonresident");
+        QTest::newRow("Unicode-link") << QString("link-unicode");
+        QTest::newRow("junction") << QString("link-junction");
     }
     void backendSelectedExtraction() {
         QFETCH(QString, kind);
@@ -624,6 +705,21 @@ class NtfsStreamTests final : public QObject {
             QVERIFY(file.open(QIODevice::ReadOnly));
             QCOMPARE(file.readAll(), QByteArray::fromBase64(
                                          record_["files"].toObject()[name].toString().toLatin1()));
+        }
+        if (kind.startsWith("link-")) {
+            QVERIFY(std::any_of(entries.cbegin(), entries.cend(), [](const ArchiveEntry &entry) {
+                return entry.path == "gamma" && entry.link && !entry.directory;
+            }));
+            finished.clear();
+            const QString saved = runtime.filePath("link-target.txt");
+            backend.extractSourceEntry(path, "gamma", saved, "NTFS", {});
+            QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 10000);
+            QVERIFY2(finished[0][0].toBool(), qPrintable(finished[0][1].toString()));
+            QFile file(saved);
+            QVERIFY(file.open(QIODevice::ReadOnly));
+            QCOMPARE(
+                file.readAll(),
+                QByteArray::fromBase64(record_["files"].toObject()["gamma"].toString().toLatin1()));
         }
         if (kind.startsWith("wof")) {
             for (const QString &entry : {QString("gamma"), QString("gamma:WofCompressedData")}) {

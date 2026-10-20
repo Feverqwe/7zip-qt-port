@@ -94,6 +94,9 @@ def nonresident(original, entries, size, valid=None, flags=0, unit=0):
 
 
 def volume(kind="base"):
+    if kind.startswith("link-"):
+        from ntfs_link_fixture import volume as link_volume
+        return link_volume(kind)
     if kind.startswith("security-"):
         from ntfs_security_fixture import volume as security_volume
         return security_volume(kind)
@@ -197,7 +200,7 @@ def volume(kind="base"):
         if kind.startswith("wof"):
             expected.pop("gamma")
         else:
-            expected["gamma"] = b"B" * 4096
+            expected["gamma"] = b"alpha"
     return bytes(image), expected
 
 

@@ -8,6 +8,7 @@ import unittest
 import zlib
 from ntfs_fixture import volume
 from ntfs_ea_fixture import VALID as EA_VALID, BAD as EA_BAD
+from ntfs_link_fixture import VALID as LINK_VALID, UNSUPPORTED as LINK_UNSUPPORTED, path as link_path
 
 RUNTIME = Path(sys.argv.pop(1))
 MODULE = Path(sys.argv.pop(1))
@@ -94,6 +95,44 @@ class NtfsTests(unittest.TestCase):
             with self.subTest(kind=kind):
                 result = self.run_image("7z", volume(kind)[0], "x", "gamma")
                 self.assertNotEqual(result.returncode, 0)
+
+    def test_linux_reparse_links(self):
+        for kind in LINK_VALID:
+            with self.subTest(kind=kind):
+                image, files = volume(kind)
+                name = link_path(kind)
+                result = self.run_image("7z", image, "x", name)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stdout, files[name])
+                checked = self.run_image("7z", image, name=name)
+                self.assertEqual(checked.returncode, 0, checked.stderr)
+                if kind == "link-ads":
+                    ads = self.run_image("7z", image, "x", "gamma:side")
+                    self.assertEqual(ads.returncode, 0, ads.stderr)
+                    self.assertEqual(ads.stdout, files["gamma:side"])
+
+    def test_unsupported_reparse_never_returns_unnamed_data(self):
+        for kind in LINK_UNSUPPORTED:
+            with self.subTest(kind=kind):
+                result = self.run_image("7z", volume(kind)[0], "x", "gamma")
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(result.stdout, b"")
+
+    @unittest.skipIf(sys.platform == "win32", "Native Windows link creation requires a privileged token")
+    def test_reparse_extraction_creates_a_link(self):
+        with tempfile.TemporaryDirectory(dir=self.runtime) as temporary:
+            root = Path(temporary)
+            image = root / "образ 空.ntfs"
+            data, _ = volume("link-symlink")
+            image.write_bytes(data)
+            result = subprocess.run([str(self.runtime / ("7z" + SUFFIX)), "x", "-tNTFS", "-y",
+                                     "-o" + str(root / "output"), "--", str(image), "gamma"],
+                                    capture_output=True, timeout=10)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            link = root / "output" / "gamma"
+            self.assertTrue(link.is_symlink())
+            self.assertEqual(str(link.readlink()), "alpha")
+            self.assertEqual(image.read_bytes(), data)
 
     def test_standalone_refuses_missing_linux_read_features(self):
         for kind in ("mft-list", "wof-xpress4k", "wof-lzx32k"):

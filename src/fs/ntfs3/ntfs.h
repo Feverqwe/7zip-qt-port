@@ -363,4 +363,209 @@ struct SID {
 	__le32 SubAuthority[];
 };
 _Static_assert(offsetof(struct SID, SubAuthority) == 8, "NTFS disk layout");
+struct GUID {
+	__le32 Data1;
+	__le16 Data2;
+	__le16 Data3;
+	u8 Data4[8];
+};
+
+#define WOF_CURRENT_VERSION		cpu_to_le32(1)
+/* CompressReparseBuffer.WofProvider */
+#define WOF_PROVIDER_WIM		cpu_to_le32(1)
+/* CompressReparseBuffer.WofProvider */
+#define WOF_PROVIDER_SYSTEM		cpu_to_le32(2)
+/* CompressReparseBuffer.ProviderVer */
+#define WOF_PROVIDER_CURRENT_VERSION	cpu_to_le32(1)
+
+#define WOF_COMPRESSION_XPRESS4K	cpu_to_le32(0) // 4k
+#define WOF_COMPRESSION_LZX32K		cpu_to_le32(1) // 32k
+#define WOF_COMPRESSION_XPRESS8K	cpu_to_le32(2) // 8k
+#define WOF_COMPRESSION_XPRESS16K	cpu_to_le32(3) // 16k
+
+/*
+ * ATTR_REPARSE (0xC0)
+ *
+ * The reparse struct GUID structure is used by all 3rd party layered drivers to
+ * store data in a reparse point. For non-Microsoft tags, The struct GUID field
+ * cannot be GUID_NULL.
+ * The constraints on reparse tags are defined below.
+ * Microsoft tags can also be used with this format of the reparse point buffer.
+ */
+struct REPARSE_POINT {
+	__le32 ReparseTag;	// 0x00:
+	__le16 ReparseDataLength;// 0x04:
+	__le16 Reserved;
+
+	struct GUID Guid;	// 0x08:
+
+	//
+	// Here GenericReparseBuffer is placed
+	//
+};
+
+_Static_assert(sizeof(struct REPARSE_POINT) == 0x18, "NTFS reparse layout");
+
+/*
+ * The value of the following constant needs to satisfy the following
+ * conditions:
+ *  (1) Be at least as large as the largest of the reserved tags.
+ *  (2) Be strictly smaller than all the tags in use.
+ */
+#define IO_REPARSE_TAG_RESERVED_RANGE		1
+
+/*
+ * The reparse tags are a ULONG. The 32 bits are laid out as follows:
+ *
+ *   3 3 2 2 2 2 2 2 2 2 2 2 1 1 1 1 1 1 1 1 1 1
+ *   1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0 9 8 7 6 5 4 3 2 1 0
+ *  +-+-+-+-+-----------------------+-------------------------------+
+ *  |M|R|N|R|	  Reserved bits     |	    Reparse Tag Value	    |
+ *  +-+-+-+-+-----------------------+-------------------------------+
+ *
+ * M is the Microsoft bit. When set to 1, it denotes a tag owned by Microsoft.
+ *   All ISVs must use a tag with a 0 in this position.
+ *   Note: If a Microsoft tag is used by non-Microsoft software, the
+ *   behavior is not defined.
+ *
+ * R is reserved.  Must be zero for non-Microsoft tags.
+ *
+ * N is name surrogate. When set to 1, the file represents another named
+ *   entity in the system.
+ *
+ * The M and N bits are OR-able.
+ * The following macros check for the M and N bit values:
+ */
+
+/*
+ * Macro to determine whether a reparse point tag corresponds to a tag
+ * owned by Microsoft.
+ */
+#define IsReparseTagMicrosoft(_tag)	(((_tag)&IO_REPARSE_TAG_MICROSOFT))
+
+/* Macro to determine whether a reparse point tag is a name surrogate. */
+#define IsReparseTagNameSurrogate(_tag)	(((_tag)&IO_REPARSE_TAG_NAME_SURROGATE))
+
+/*
+ * The following constant represents the bits that are valid to use in
+ * reparse tags.
+ */
+#define IO_REPARSE_TAG_VALID_VALUES	0xF000FFFF
+
+/*
+ * Macro to determine whether a reparse tag is a valid tag.
+ */
+#define IsReparseTagValid(_tag)						       \
+	(!((_tag) & ~IO_REPARSE_TAG_VALID_VALUES) &&			       \
+	 ((_tag) > IO_REPARSE_TAG_RESERVED_RANGE))
+
+/* Microsoft tags for reparse points. */
+
+enum IO_REPARSE_TAG {
+	IO_REPARSE_TAG_SYMBOLIC_LINK	= cpu_to_le32(0),
+	IO_REPARSE_TAG_NAME_SURROGATE	= cpu_to_le32(0x20000000),
+	IO_REPARSE_TAG_MICROSOFT	= cpu_to_le32(0x80000000),
+	IO_REPARSE_TAG_MOUNT_POINT	= cpu_to_le32(0xA0000003),
+	IO_REPARSE_TAG_SYMLINK		= cpu_to_le32(0xA000000C),
+	IO_REPARSE_TAG_HSM		= cpu_to_le32(0xC0000004),
+	IO_REPARSE_TAG_SIS		= cpu_to_le32(0x80000007),
+	IO_REPARSE_TAG_DEDUP		= cpu_to_le32(0x80000013),
+	IO_REPARSE_TAG_COMPRESS		= cpu_to_le32(0x80000017),
+
+	/*
+	 * The reparse tag 0x80000008 is reserved for Microsoft internal use.
+	 * May be published in the future.
+	 */
+
+	/* Microsoft reparse tag reserved for DFS */
+	IO_REPARSE_TAG_DFS	= cpu_to_le32(0x8000000A),
+
+	/* Microsoft reparse tag reserved for the file system filter manager. */
+	IO_REPARSE_TAG_FILTER_MANAGER	= cpu_to_le32(0x8000000B),
+
+	/* Non-Microsoft tags for reparse points */
+
+	/* Tag allocated to CONGRUENT, May 2000. Used by IFSTEST. */
+	IO_REPARSE_TAG_IFSTEST_CONGRUENT = cpu_to_le32(0x00000009),
+
+	/* Tag allocated to ARKIVIO. */
+	IO_REPARSE_TAG_ARKIVIO	= cpu_to_le32(0x0000000C),
+
+	/* Tag allocated to SOLUTIONSOFT. */
+	IO_REPARSE_TAG_SOLUTIONSOFT	= cpu_to_le32(0x2000000D),
+
+	/* Tag allocated to COMMVAULT. */
+	IO_REPARSE_TAG_COMMVAULT	= cpu_to_le32(0x0000000E),
+
+	/* OneDrive?? */
+	IO_REPARSE_TAG_CLOUD	= cpu_to_le32(0x9000001A),
+	IO_REPARSE_TAG_CLOUD_1	= cpu_to_le32(0x9000101A),
+	IO_REPARSE_TAG_CLOUD_2	= cpu_to_le32(0x9000201A),
+	IO_REPARSE_TAG_CLOUD_3	= cpu_to_le32(0x9000301A),
+	IO_REPARSE_TAG_CLOUD_4	= cpu_to_le32(0x9000401A),
+	IO_REPARSE_TAG_CLOUD_5	= cpu_to_le32(0x9000501A),
+	IO_REPARSE_TAG_CLOUD_6	= cpu_to_le32(0x9000601A),
+	IO_REPARSE_TAG_CLOUD_7	= cpu_to_le32(0x9000701A),
+	IO_REPARSE_TAG_CLOUD_8	= cpu_to_le32(0x9000801A),
+	IO_REPARSE_TAG_CLOUD_9	= cpu_to_le32(0x9000901A),
+	IO_REPARSE_TAG_CLOUD_A	= cpu_to_le32(0x9000A01A),
+	IO_REPARSE_TAG_CLOUD_B	= cpu_to_le32(0x9000B01A),
+	IO_REPARSE_TAG_CLOUD_C	= cpu_to_le32(0x9000C01A),
+	IO_REPARSE_TAG_CLOUD_D	= cpu_to_le32(0x9000D01A),
+	IO_REPARSE_TAG_CLOUD_E	= cpu_to_le32(0x9000E01A),
+	IO_REPARSE_TAG_CLOUD_F	= cpu_to_le32(0x9000F01A),
+
+};
+
+#define SYMLINK_FLAG_RELATIVE		1
+
+/* Microsoft reparse buffer. (see DDK for details) */
+struct REPARSE_DATA_BUFFER {
+	__le32 ReparseTag;		// 0x00:
+	__le16 ReparseDataLength;	// 0x04:
+	__le16 Reserved;
+
+	union {
+		/* If ReparseTag == 0xA0000003 (IO_REPARSE_TAG_MOUNT_POINT) */
+		struct {
+			__le16 SubstituteNameOffset; // 0x08
+			__le16 SubstituteNameLength; // 0x0A
+			__le16 PrintNameOffset;      // 0x0C
+			__le16 PrintNameLength;      // 0x0E
+			__le16 PathBuffer[];	     // 0x10
+		} MountPointReparseBuffer;
+
+		/*
+		 * If ReparseTag == 0xA000000C (IO_REPARSE_TAG_SYMLINK)
+		 * https://msdn.microsoft.com/en-us/library/cc232006.aspx
+		 */
+		struct {
+			__le16 SubstituteNameOffset; // 0x08
+			__le16 SubstituteNameLength; // 0x0A
+			__le16 PrintNameOffset;      // 0x0C
+			__le16 PrintNameLength;      // 0x0E
+			// 0-absolute path 1- relative path, SYMLINK_FLAG_RELATIVE
+			__le32 Flags;		     // 0x10
+			__le16 PathBuffer[];	     // 0x14
+		} SymbolicLinkReparseBuffer;
+
+		/* If ReparseTag == 0x80000017U */
+		struct NTFS_COMPRESS_REPARSE {
+			__le32 WofVersion;  // 0x08 == 1
+			/*
+			 * 1 - WIM backing provider ("WIMBoot"),
+			 * 2 - System compressed file provider
+			 */
+			__le32 WofProvider; // 0x0C:
+			__le32 ProviderVer; // 0x10: == 1 WOF_FILE_PROVIDER_CURRENT_VERSION == 1
+			__le32 CompressionFormat; // 0x14: 0, 1, 2, 3. See WOF_COMPRESSION_XXX
+		} CompressReparseBuffer;
+
+		struct {
+			u8 DataBuffer[1];   // 0x08:
+		} GenericReparseBuffer;
+	};
+};
+
+
 #endif

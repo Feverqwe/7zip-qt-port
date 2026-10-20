@@ -216,6 +216,16 @@ cancellation/source errors и временное хранилище. Compiled Li
 wrappers reference подтвердил 143 сценария. Это закрывает composite initramfs
 read scenario; оставшиеся filesystem read features общей цели сохраняются.
 
+### NTFS: reparse links и dedup reads
+
+[Linux reparse read path](ntfs-linux.md#reparse-links-и-dedup-read-restrictions--2026-10-20)
+публикует symlink targets, переводит junction относительно пути записи и
+возвращает target bytes через streams/extraction. Оригинальные C classifier,
+readlink, junction и Unicode bodies подключены в dynamic plugin; named ADS
+не наследуют reparse metadata. Deduplicated reads явно отклоняются, как Linux.
+Остальные NTFS read branches, включая default 64 KiB WOF branch, остаются
+в scope актуализации; platform evidence отделено в linked audit.
+
 ### NTFS: indexed security descriptors
 
 [Linux NTFS3 `$SII` read path](ntfs-linux.md#indexed-security-descriptors--2026-10-20)

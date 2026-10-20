@@ -227,9 +227,10 @@ inode-type projection согласованы с полученным mode. Numer
 диск, без переноса host
 user namespace или kernel mount defaults.
 
-Character/block devices, FIFO/socket и symlink не выдают unnamed DATA как обычный
-file stream; специальные inode остаются metadata-only с явным unsupported result
-на чтение. Device major/minor соответствуют NTFS3 internal dev_t layout.
+Character/block devices, FIFO/socket и symlink без поддерживаемого reparse target
+не выдают unnamed DATA как обычный file stream; эти inode остаются metadata-only
+с явным unsupported result на чтение. Поддерживаемые reparse links теперь
+читаются через link scenario ниже. Device major/minor соответствуют NTFS3 internal dev_t layout.
 Named ADS остаются независимыми data streams, без присвоения им типа специального
 base inode. Existing NT reparse/security projection, WOF, classic compression,
 recovery и public extraction flow сохранены. Standalone `7zz` сохраняет прежний
@@ -352,10 +353,91 @@ Incremental builds и compiler caches сохранены; full/slow gate, физ
 устройства и UI appearance не проверялись. Linux/Windows runtime и native
 kernel comparison для этой итерации пока не подтверждены.
 
+## Reparse links и dedup read restrictions — 2026-10-20
+
+Сравнены полные Linux `frecord.c:ni_parse_reparse`,
+`inode.c:ntfs_readlink_hlp`, `ntfs_translate_junction`, `ntfs_get_link`,
+reparse/EA branches `ntfs_read_mft`, `dir.c:ntfs_utf16_to_nls`, NLS conversion,
+`file.c:check_read_restriction`, disk types и SDK raw-property/GetStream/Extract
+callers. Полные revisions прежние. Изначально handler сохранял raw reparse,
+но стандартное `kpidSymLink` не публиковал, а unnamed DATA отдавал независимо
+от reparse inode type. Это позволяло выдать посторонний file payload вместо
+цели ссылки или служебные bytes deduplicated-файла вместо явного отказа.
+
+В исходные `frecord.c`, `inode.c`, `dir.c` перенесены выбранные полные C bodies,
+заголовки reparse/GUID/WOF types и необходимые services. `ntfs_translate_junction`
+совпадает с Linux; в `ni_parse_reparse` GNU `typeof` заменён именованным C
+struct type для MSVC, без изменения ветвлений. WOF provider/header selection
+динамического handler теперь вызывает этот же classifier вместо отдельной
+C++ проверки. `ntfs_utf16_to_nls` сохраняет тело с явным portable 16-bit
+`fat_wchar_t`; общий перенесённый `fs/nls/nls_base.c` используется повторно.
+NLS source/header dependency добавлены в существующий baseline. C остаётся
+C11, Paragon/NLS notices и GPL licenses сохранены.
+
+`ntfs_readlink_hlp` сохраняет выбор PrintName, terminal-NUL handling, Unicode
+conversion, замену backslash на slash, cloud fallback и junction translation.
+Добавлены integer span checks до создания указателя PrintName и вместо
+pointer arithmetic за границей объекта; последнее UTF-16 слово читается
+unaligned-safe. Явный `u8 *` cast устраняет compiler warning. NLS boundary
+копирует UTF-16 в выровненный буфер. Размеры reparse/page output ограничены
+NTFS3-compatible пределами; malformed offsets/lengths не читают чужую память.
+
+Archive adapter предоставляет приватные inode/attribute/dentry contexts,
+allocation и уже прочитанный bounded SDK reparse stream после extension merge.
+Kernel inode cache, mount/NLS selection, VFS get_link delayed-call ownership
+не копируются; UTF-8 и ownership возвращённого stream задаёт archive API.
+Для junction dentry path — путь записи относительно корня образа, включая
+recovery folders. Kernel предположение о том же mounted device сохранено:
+drive prefix снимается и строится относительный target. Source writes нет.
+
+После WSL mode override dynamic module классифицирует inode и кэширует target
+для каждого item, чтобы junction depth соответствовал его пути. Link не
+остаётся directory из-за DOS/MFT flags. Public properties показывают target,
+mode и размер UTF-8 target; GetStream и Extract используют owned target bytes,
+а не unnamed DATA. Archive size измеряется фактическими UTF-8 bytes;
+kernel inode estimate `PrintNameLength / 2` не используется как длина extraction.
+Target stream остаётся пригоден после Close. Named ADS
+сохраняют обычное содержимое и не наследуют raw reparse/link projection.
+Отсутствующий/повреждённый target и неизвестный Microsoft name-surrogate дают
+явный unsupported read. Deduplicated unnamed reads возвращают E_NOTIMPL, как
+Linux `check_read_restriction`; декодер dedup в Linux отсутствует и не выдумывается.
+Callback cancellation и allocation error в target loading передаются через Open.
+Standalone сохраняет прежнюю link/classification projection; unnamed-only
+выбор reparse attribute исправлен в общем handler.
+
+Fixtures проверяют PrintName отдельно от SubstituteName, Unicode/surrogate
+pairs, odd byte offset, terminal NUL, backslashes, junction/root/recovery paths,
+resident/nonresident/fragmented/extension payloads, stale directory flags,
+readonly mode, cloud fallback с WSL mode, пользовательский tag и named ADS.
+Отдельные cases проверяют unknown/malformed links и dedup refusal. ABI сравнивает
+properties, exact target bytes и retained streams; CLI проверяет selected
+Extract/Test и source immutability. ArchiveBackend распознаёт link и читает
+target через публичный selected-source flow. Native filesystem link creation
+проверяется на POSIX; Windows case явно пропускается без privileged token.
+
+Whole-image Test исходного creator fixture отдельно выявил отказ `$Boot`:
+его mapping pairs содержат zero LCN delta. Результат воспроизведён в обоих
+engines без новых reparse mutations; текущий Linux `run_unpack` также явно
+отклоняет zero delta. Проверка link payload поэтому выбирает конкретный item;
+эта итерация не заявляет принятие всех системных streams creator image.
+
+Одиннадцать focused suites PASS на macOS arm64/Qt 6.12 (14,12 с): обе прежние
+NTFS suites и новая security suite, archive/backend extraction/security/selection
+consumers, runtime cache/package и source provenance. В `ntfs_stream` прошли
+106 cases, в `ntfs_security` — 38; CLI suite проверяет selected Extract/Test и
+POSIX link creation. Incremental builds и compiler caches сохранены; full/slow
+gate, физические устройства и UI appearance не проверялись. Linux/Windows
+runtime и native-kernel reference этой итерации пока не подтверждены:
+удалённая синхронизация ожидает явного разрешения пользователя после отказа
+automatic approval review. Это ограничение проверки, не доказательство parity.
+
 ## Открытый read scope
 
 Выбранные classic/WOF/MFT bootstrap scenarios подключены и проверены.
 Остальные metadata/read features NTFS должны пройти оставшийся source audit;
 эта итерация не закрывает остальные файловые системы и общие форматы goal.
+В частности, default 64 KiB branch Linux WOF classifier пока не подключена
+к archive WOF frame reader; известные XPRESS4/8/16 и LZX32 scenarios выше
+не доказывают поддержку этой дополнительной ветви.
 VFS/page cache, mount services, запись/journal replay и EFS key service не
 переносятся в archive handler; Linux сам не расшифровывает EFS при чтении.

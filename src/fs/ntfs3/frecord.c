@@ -5,7 +5,7 @@
  *
  */
 
-#include "ntfswofcompat.h"
+#include "ntfslinkcompat.h"
 
 static int decompress_lzx_xpress(struct ntfs_sb_info *sbi, const char *cmpr,
 				 size_t cmpr_size, void *unc, size_t unc_size,
@@ -129,4 +129,105 @@ int sevenzip_ntfs_wof_read_frame(struct sevenzip_ntfs_wof *w, uint64_t frame, vo
     if (!err && unc_size < frame_size)
         memset((u8 *)output + unc_size, 0, frame_size - unc_size);
     return err;
+}
+
+enum REPARSE_SIGN ni_parse_reparse(struct ntfs_inode *ni, struct ATTRIB *attr,
+				   struct REPARSE_DATA_BUFFER *buffer)
+{
+	const struct REPARSE_DATA_BUFFER *rp = NULL;
+	u8 bits;
+	u16 len;
+	const struct NTFS_COMPRESS_REPARSE *cmpr;
+
+	ni = ni->base;
+	/* Try to estimate reparse point. */
+	if (!attr->non_res) {
+		rp = resident_data_ex(attr, sizeof(struct REPARSE_DATA_BUFFER));
+	} else if (le64_to_cpu(attr->nres.data_size) >=
+		   sizeof(struct REPARSE_DATA_BUFFER)) {
+		struct runs_tree run;
+
+		run_init(&run);
+
+		if (!attr_load_runs_vcn(ni, ATTR_REPARSE, NULL, 0, &run, 0) &&
+		    !ntfs_read_run_nb(ni->mi.sbi, &run, 0, buffer,
+				      sizeof(struct REPARSE_DATA_BUFFER),
+				      NULL)) {
+			rp = buffer;
+		}
+
+		run_close(&run);
+	}
+
+	if (!rp)
+		return REPARSE_NONE;
+
+	len = le16_to_cpu(rp->ReparseDataLength);
+	switch (rp->ReparseTag) {
+	case (IO_REPARSE_TAG_MICROSOFT | IO_REPARSE_TAG_SYMBOLIC_LINK):
+		break; /* Symbolic link. */
+	case IO_REPARSE_TAG_MOUNT_POINT:
+		break; /* Mount points and junctions. */
+	case IO_REPARSE_TAG_SYMLINK:
+		break;
+	case IO_REPARSE_TAG_COMPRESS:
+		/*
+		 * WOF - Windows Overlay Filter - Used to compress files with
+		 * LZX/Xpress.
+		 *
+		 * Unlike native NTFS file compression, the Windows
+		 * Overlay Filter supports only read operations. This means
+		 * that it doesn't need to sector-align each compressed chunk,
+		 * so the compressed data can be packed more tightly together.
+		 * If you open the file for writing, the WOF just decompresses
+		 * the entire file, turning it back into a plain file.
+		 *
+		 * Ntfs3 driver decompresses the entire file only on write or
+		 * change size requests.
+		 */
+
+		cmpr = &rp->CompressReparseBuffer;
+		if (len < sizeof(*cmpr) ||
+		    cmpr->WofVersion != WOF_CURRENT_VERSION ||
+		    cmpr->WofProvider != WOF_PROVIDER_SYSTEM ||
+		    cmpr->ProviderVer != WOF_PROVIDER_CURRENT_VERSION) {
+			return REPARSE_NONE;
+		}
+
+		switch (cmpr->CompressionFormat) {
+		case WOF_COMPRESSION_XPRESS4K:
+			bits = 0xc; // 4k
+			break;
+		case WOF_COMPRESSION_XPRESS8K:
+			bits = 0xd; // 8k
+			break;
+		case WOF_COMPRESSION_XPRESS16K:
+			bits = 0xe; // 16k
+			break;
+		case WOF_COMPRESSION_LZX32K:
+			bits = 0xf; // 32k
+			break;
+		default:
+			bits = 0x10; // 64k
+			break;
+		}
+		ni_set_ext_compress_bits(ni, bits);
+		return REPARSE_COMPRESSED;
+
+	case IO_REPARSE_TAG_DEDUP:
+		ni->ni_flags |= NI_FLAG_DEDUPLICATED;
+		return REPARSE_DEDUPLICATED;
+
+	default:
+		if (rp->ReparseTag & IO_REPARSE_TAG_NAME_SURROGATE)
+			break;
+
+		return REPARSE_NONE;
+	}
+
+	if (buffer != rp)
+		memcpy(buffer, rp, sizeof(struct REPARSE_DATA_BUFFER));
+
+	/* Looks like normal symlink. */
+	return REPARSE_LINK;
 }
