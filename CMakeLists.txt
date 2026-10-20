@@ -758,6 +758,22 @@ if(BUILD_TESTING)
     set_tests_properties(folder_history PROPERTIES ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     find_package(Python3 3.9 REQUIRED COMPONENTS Interpreter)
+    add_test(NAME tar COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/tar_tests.py
+        ${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime)
+    set_tests_properties(tar PROPERTIES TIMEOUT 45)
+    qt_add_executable(tar_stream_tests tests/tar_stream_tests.cpp)
+    target_include_directories(tar_stream_tests PRIVATE src third_party/7zip/CPP)
+    target_link_libraries(tar_stream_tests PRIVATE sevenzip_panel Qt6::Test)
+    if(WIN32)
+        target_link_libraries(tar_stream_tests PRIVATE oleaut32)
+    endif()
+    target_compile_definitions(tar_stream_tests PRIVATE
+        "SEVENZIP_TAR_RUNTIME=\"${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime\""
+        "SEVENZIP_TAR_PYTHON=\"${Python3_EXECUTABLE}\""
+        "SEVENZIP_TAR_FIXTURE=\"${CMAKE_CURRENT_SOURCE_DIR}/tests/tar_fixture.py\"")
+    add_test(NAME tar_stream COMMAND tar_stream_tests -silent)
+    set_tests_properties(tar_stream PROPERTIES TIMEOUT 30)
     add_test(NAME ihex COMMAND ${Python3_EXECUTABLE}
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/ihex_tests.py
         ${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime)
@@ -1919,6 +1935,7 @@ if(BUILD_TESTING)
     target_sources(pe_stream_tests PRIVATE ${compression_order_sources})
     target_sources(uefi_stream_tests PRIVATE ${compression_order_sources})
     target_sources(ihex_stream_tests PRIVATE ${compression_order_sources})
+    target_sources(tar_stream_tests PRIVATE ${compression_order_sources})
     target_sources(apm_stream_tests PRIVATE ${compression_order_sources})
     target_sources(fat_module_tests PRIVATE ${compression_order_sources})
     target_sources(erofs_module_tests PRIVATE ${compression_order_sources})

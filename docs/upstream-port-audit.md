@@ -40,7 +40,9 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 - [PE по Linux](upstream-port-audit/pe-linux.md)
 - [EFI capsules по Linux](upstream-port-audit/uefi-linux.md)
 - [Intel HEX по Linux](upstream-port-audit/ihex-linux.md)
-  — headers, extended core counts, file spans, metadata и retained streams.
+  — ASCII records, адреса, IQS5xx map profile и handler lifecycle.
+- [TAR по Linux](upstream-port-audit/tar-linux.md)
+  — physical records, GNU/PAX/sparse, последовательное чтение и retained streams.
 - [Base64 по Linux](upstream-port-audit/base64-linux.md)
   — standard/URL-safe/IMAP alphabets, canonical tails и handler lifecycle.
 - [Zstandard по Linux](upstream-port-audit/zstd-linux.md)

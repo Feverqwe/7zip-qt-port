@@ -1,0 +1,16 @@
+{
+  "repository": "https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git",
+  "revision": "58161ead29e50d70a317ea26b472e0c7508e69da",
+  "files": {
+    "drivers/crypto/marvell/octeontx/otx_cptpf_ucode.c": "0ea64ffe7b276dc2903977b2b05ffa467f1c2ab914b3714d1a0408512cb16fc9",
+    "drivers/crypto/marvell/octeontx/otx_cptpf_ucode.h": "283aff53562103f58ea8a0da0e7d15eed1f7fc663f45d32921873289d52ca458",
+    "drivers/crypto/marvell/octeontx/otx_cpt_common.h": "375491f35fbb80e64722dd8d9cc16d9f0f0cbff15bae887c7433b5dba1227ba6",
+    "drivers/crypto/marvell/octeontx/otx_cptpf.h": "4137cf8eb0d43201d8332f2866480f25bc65ff6f115c8cec059571e8f9b8f048",
+    "lib/kstrtox.c": "b2b52e31906d7a0e7231d5abf4713a13c91bf398ffa39fcc0ea937187cb606e8",
+    "include/linux/kstrtox.h": "5f3dec3121a7aa0d1ae3ad9b7001f502bb056a136e2f2e296c408fd6cabea171",
+    "lib/string.c": "708fd782a7c09e0b04b2eafa87007004ffb81283e0ac37941f59738a9288f497",
+    "lib/kstrtox.h": "7af24f296c90d0fb561f5f8d5daa893e315042d16c21af71d79e0f03e3ee3a8c",
+    "include/linux/ctype.h": "eb8af725f1e42866009e36ed110bc03d0b6e3eb522b475573e7226530f803d50"
+  },
+  "scope": "OcteonTX CPT TAR archive reader, microcode consumer boundary, numeric conversion and end-marker predicate; firmware acquisition and hardware upload excluded."
+}

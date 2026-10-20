@@ -55,7 +55,7 @@ Linux определяет корректность интерпретации �
 | PE | `crypto/asymmetric_keys/verify_pefile.c`, kexec callers | Headers, certificate/file spans и byte streams; общий COFF consumer проверяется вместе, kernel trust/execution — отдельные contracts. |
 | EFI capsules | `drivers/firmware/efi/capsule-loader.c`, `capsule.c`, x86 EFI quirks | Common header/payload и Quark mapping; UEFIf проверяется как общий SDK consumer, firmware updates не выполняются. |
 | Intel HEX | AS102/IQS5xx ASCII firmware readers | Extended address/EOF/separators, errors/streams и явный IQS5xx map profile; binary ihex_binrec — другой format. |
-| TAR | Marvell CPT `load_tar_archive` | Подтверждён kernel ustar reader; полная source/runtime сверка остаётся открытой. |
+| TAR | Marvell CPT `load_tar_archive` | [Сверка reader и streams](tar-linux.md), physical alignment служебных записей, GNU/PAX/sparse consumers и update. |
 
 APFS не входит в scope: соответствующего драйвера нет в основном дереве Linux.
 GPT/MBR/APM проверяются как дополнительные форматы разметки дисков.
@@ -96,7 +96,7 @@ format correctness audit — разные свидетельства.
 | --- | --- |
 | CramFS, EROFS, Ext, FAT, HFS, Iso, NTFS, SquashFS, Udf, exFAT | Общие disk formats: Linux `fs/*`; индивидуальные audits выше владеют read completeness. |
 | APM, GPT, MBR | Общие partition readers `block/partitions`; включая вложенные MBR subformats, а не отдельные registry names. |
-| Cpio, tar | `init/initramfs.c` и Marvell CPT `load_tar_archive`; TAR добавлен в scope, его полная сверка ещё открыта. |
+| Cpio, tar | `init/initramfs.c` и Marvell CPT `load_tar_archive`; [TAR read audit](tar-linux.md) включает declared-size mode и SDK extensions. Composite initramfs остаётся отдельным сценарием. |
 | ELF, PE, UEFIc | Настоящие executable/capsule readers; byte inspection отделён от execution, trust и firmware services. |
 | Base64, IHex | `lib/base64.c` и AS102/IQS5xx ASCII readers; binary ihex helpers не использованы как ложное доказательство. |
 | bzip2, gzip, lzma, xz, zstd | Общие framed streams/decoders `lib/decompress_*`, XZ/Zstd libraries; composite initramfs остаётся открытым. |
