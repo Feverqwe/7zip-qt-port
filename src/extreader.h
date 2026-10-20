@@ -25,6 +25,16 @@ uint64_t ext_linux_descriptor_block(struct ext_volume *, unsigned int number);
 int ext_linux_group_check(struct ext_volume *, uint32_t group, const void *descriptor);
 int ext_linux_bitmap_check(struct ext_volume *, const void *descriptor,
                            const void *bitmap, int inode_bitmap);
+/* Setup borrows callbacks only during the call and copies descriptors. */
+struct ext_block_services {
+    void *context;
+    int (*inode)(void *, uint32_t ino, void *, size_t);
+    int (*map)(void *, uint32_t ino, uint32_t logical, uint32_t *count, uint64_t *physical);
+};
+int ext_linux_system_zone(struct ext_volume *, const void *descriptors, uint32_t groups,
+                          const struct ext_block_services *);
+int ext_linux_block_valid(struct ext_volume *, uint32_t ino, uint64_t start, uint32_t count);
+int ext_linux_blockrefs(struct ext_volume *, uint32_t ino, const void *refs, uint32_t count);
 int ext_linux_inode_open(struct ext_volume *, uint32_t ino, const void *raw,
                          struct ext_node **, struct ext_node_info *);
 void ext_linux_inode_close(struct ext_node *);

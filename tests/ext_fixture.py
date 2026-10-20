@@ -189,6 +189,10 @@ if __name__ == "__main__":
     if layout.startswith("xattrs"):
         from ext_xattr_fixture import XattrVolume
         v = XattrVolume(layout)
+    elif layout.startswith("block-"):
+        from ext_block_fixture import BlockVolume
+        v = BlockVolume(mapping="descriptor-overlap") if layout == "block-overlap" else \
+            BlockVolume(target=layout.removeprefix("block-"))
     elif layout in ("verity-salted", "verity-corrupt"):
         from ext_verity_fixture import VerityVolume
         v = VerityVolume("sha512", b"salt")

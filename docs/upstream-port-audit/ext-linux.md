@@ -822,3 +822,56 @@ timestamp comparison. Runner receipt: `20261020T231817Z-c3cfe8ab`; native mount
 receipt: `20261020T231747Z-e420d403`. Full/slow suites, installed packages and
 physical devices were not checked for this iteration. Remaining ext read
 validation and the parent format census remain open.
+
+### System zones and block references
+
+At the same Linux pin, `fs/ext4/block_validity.c` supplies complete zone insertion,
+merging, reserved-inode protection, setup/release, range lookup and block-reference
+checks. `balloc.c` supplies the complete descriptor/backup metadata geometry
+helpers; `super.c` supplies descriptor-address accessors and the complete
+`ext4_check_descriptors` body. Their original mount, inode, extent, indirect and
+xattr callers were compared before integration. Descriptor checks retain their
+read-only branches; existing archive checksum validation remains in force.
+
+The dynamic module now builds the original tree before directory/content reads,
+including journal mappings and their owner identity. Direct and indirect block
+references, extent data/index ranges, unwritten extents and external xattrs use
+the original validity checks. Journal blocks remain readable by their owning
+inode. Original sparse-super/sparse-super2, reserved GDT, meta_bg and flex_bg
+geometry determines the protected metadata ranges. This closes successful
+extraction of metadata bytes through corrupt file pointers. Standalone `7zz`
+retains its SDK-only checks; the GPL reader is a separately deployed module.
+
+The complete `lib/rbtree.c` and its three Linux headers are pinned dependencies.
+Host adaptations replace pointer-sized `unsigned long` storage/casts with
+`uintptr_t` for MSVC, retain natural pointer alignment, and replace GNU statement
+expressions used at the boundary with C11 equivalents. Kernel slab initialization,
+shutdown and optional debug printing are omitted. Archive-owned allocation and
+postorder destruction replace slab services; an unpublished immutable tree uses
+immediate RCU publication/destruction without kernel locks or grace periods.
+The journal mapping adapter reuses the SDK's existing extent/indirect maps and
+preserves source/callback errors. It does not read or replay journal transactions.
+No usable kernel userspace stream/ownership implementation exists for that
+boundary. New original units and their full source hashes are in the existing
+baseline manifest; notices remain in the copied sources.
+
+CLI regressions cover 48 corrupt mapping/metadata combinations, overlapping
+descriptors and journal-owner reads. SDK checks cover cancellation, empty state
+after partial-tree or file-reference failure and reuse.
+Existing creator-generated ext images exercise journal, inline, bigalloc and
+distributed-descriptor consumers. Native Linux 6.8.0-147-generic read-only loop
+mounts separately confirmed a valid control read and rejection of direct,
+indirect, extent and unwritten-extent aliases of the inode table. Input images
+were unchanged and temporary mounts removed (receipt
+`20261020T232844Z-71fd0a16`). Native runtime evidence is distinct from the pinned
+source comparison. Other inode acceptance/read-feature branches remain in the
+parent audit; this transfer does not complete the overall ext review.
+
+Seven focused ext/stream/fscrypt/xattr/backend/device suites passed on macOS,
+Linux and MSVC Windows on 2026-10-21 (remote receipt
+`20261020T232857Z-5068045a`). The MSVC run includes the C11 replacement for a GNU
+rbtree statement macro found during the first Windows build. Full/slow suites,
+installed packages, native UI and physical devices were not checked.
+The subsequent overlapping-descriptor cleanup regression passed the two focused
+SDK/CLI suites on all three platforms (remote receipt
+`20261020T233013Z-ca8056ef`).

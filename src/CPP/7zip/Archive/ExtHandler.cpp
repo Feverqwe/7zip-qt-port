@@ -832,6 +832,7 @@ Z7_CLASS_IMP_CHandler_IInArchive_2(
   CObjectVector<CByteBuffer> _inlineData;
   std::vector<CExtCryptInode> _cryptInodes;
   UInt32 _extentChecksumSeed;
+  UInt32 _blockInode = 0;
   CObjectVector<CExtXattr> _xattrs;
   int _rootXattrAux;
   struct CXattrContext {
@@ -843,6 +844,15 @@ Z7_CLASS_IMP_CHandler_IInArchive_2(
   };
   static int ReadXattr(void *, uint32_t, uint64_t, void *, size_t) noexcept;
   static int ReadXattrInode(void *, uint32_t, void *, size_t) noexcept;
+  struct CSystemZoneContext {
+    CXattrContext Io;
+    CRecordVector<CExtent> Extents;
+    CRecordVector<UInt32> Blocks;
+    bool Mapped = false;
+  };
+  static int ReadSystemInode(void *, uint32_t, void *, size_t) noexcept;
+  static int MapSystemInode(void *, uint32_t, uint32_t, uint32_t *, uint64_t *) noexcept;
+  HRESULT LoadSystemZone(const void *descriptors, UInt32 groups);
   static int EmitXattr(void *, const char *, const void *, size_t) noexcept;
   HRESULT LoadXattrs();
   HRESULT LoadEncryption();
@@ -1254,6 +1264,93 @@ int CHandler::ReadXattrInode(void *opaque, uint32_t ino, void *raw, size_t size)
     if (ino >= owner._refs.Size() || owner._refs[ino] < 0 || size != owner._h.InodeSize)
         return -EIO;
     return ReadXattr(opaque, 0, owner._nodes[owner._refs[ino]].RawOffset, raw, size);
+}
+
+int CHandler::ReadSystemInode(void *opaque, uint32_t ino, void *raw, size_t size) noexcept {
+    return ReadXattrInode(&static_cast<CSystemZoneContext *>(opaque)->Io, ino, raw, size);
+}
+
+int CHandler::MapSystemInode(void *opaque, uint32_t ino, uint32_t logical, uint32_t *count,
+                             uint64_t *physical) noexcept {
+    auto &context = *static_cast<CSystemZoneContext *>(opaque);
+    auto &owner = *context.Io.Owner;
+    try {
+        if (owner._openCallback)
+            context.Io.Result = owner.CheckProgress2();
+        if (context.Io.Result != S_OK)
+            return -EIO;
+        if (ino >= owner._refs.Size() || owner._refs[ino] < 0)
+            return -EIO;
+        const CNode &node = owner._nodes[owner._refs[ino]];
+        if (!node.IsRegular() || node.InlineIndex >= 0)
+            return -EIO;
+        if (!context.Mapped) {
+            owner._blockInode = ino;
+            owner._extentChecksumSeed = node.ChecksumSeed;
+            if (node.IsFlags_EXTENTS()) {
+                context.Io.Result =
+                    owner.FillExtents(node.Block, kNodeBlockFieldSize, context.Extents, -1);
+            } else {
+                const UInt64 blocks =
+                    (node.FileSize + (((UInt64)1 << owner._h.BlockBits) - 1)) >> owner._h.BlockBits;
+                if (blocks > UINT32_MAX)
+                    return -EIO;
+                context.Io.Result =
+                    owner.FillFileBlocks(node.Block, (unsigned)blocks, context.Blocks);
+            }
+            if (context.Io.Result != S_OK)
+                return -EIO;
+            context.Mapped = true;
+        }
+        *physical = 0;
+        if (node.IsFlags_EXTENTS()) {
+            FOR_VECTOR(i, context.Extents) {
+                const auto &extent = context.Extents[i];
+                if (logical >= extent.VirtBlock && logical - extent.VirtBlock < extent.Len) {
+                    *count = MyMin(*count, extent.Len - (logical - extent.VirtBlock));
+                    if (extent.PhyStart)
+                        *physical = extent.PhyStart + logical - extent.VirtBlock;
+                    return 0;
+                }
+            }
+        } else if (logical < context.Blocks.Size()) {
+            *count = 1;
+            *physical = context.Blocks[logical];
+            return 0;
+        }
+        *count = 1;
+        return 0;
+    } catch (const std::bad_alloc &) {
+        context.Io.Result = E_OUTOFMEMORY;
+        return -ENOMEM;
+    } catch (...) {
+        context.Io.Result = E_FAIL;
+        return -EIO;
+    }
+}
+
+HRESULT CHandler::LoadSystemZone(const void *descriptors, UInt32 groups) {
+    CSystemZoneContext context{{this, 0, S_OK, 0, {}}, {}, {}, false};
+    ext_block_services services{&context, ReadSystemInode, MapSystemInode};
+    const int error = ext_linux_system_zone(_volume.Ptr, descriptors, groups, &services);
+    if (context.Io.Result != S_OK)
+        return context.Io.Result;
+    if (error)
+        return error == -ENOMEM ? E_OUTOFMEMORY : S_FALSE;
+    FOR_VECTOR(i, _nodes) {
+        const CNode &node = _nodes[i];
+        if (node.FileAcl && !ext_linux_block_valid(_volume.Ptr, node.InodeNumber, node.FileAcl, 1))
+            return S_FALSE;
+        const UInt64 eaSectors = node.FileAcl ? ((UInt64)1 << _h.BlockBits) >> 9 : 0;
+        const bool fastLink =
+            node.IsLink() &&
+            ((_h.FeatureIncompat & (1U << 10)) ? node.FileSize != 0 : node.NumBlocks == eaSectors);
+        if (node.InlineIndex < 0 && !node.IsFlags_EXTENTS() &&
+            (node.IsRegular() || node.IsDir() || (node.IsLink() && !fastLink)) &&
+            ext_linux_blockrefs(_volume.Ptr, node.InodeNumber, node.Block, 15))
+            return S_FALSE;
+    }
+    return S_OK;
 }
 
 int CHandler::EmitXattr(void *opaque, const char *name, const void *data, size_t size) noexcept {
@@ -1735,6 +1832,10 @@ HRESULT CHandler::Open2(IInStream *inStream) {
             // printf("\n numReserveInodes = %6d, _refs.Size() = %d, numEmpty = %7d\n",
             // numReserveInodes, _refs.Size(), (unsigned)numEmpty);
         }
+#ifdef SEVENZIP_LINUX_EXT
+        _stream = inStream;
+        RINOK(LoadSystemZone(gdBuf, numGroups))
+#endif
     }
 
     _stream = inStream; // we need stream for dir nodes
@@ -2892,6 +2993,10 @@ HRESULT CHandler::FillFileBlocks2(UInt32 block, unsigned level, unsigned numBloc
     RINOK(SeekAndRead(_stream, block, tempBuf, blockSize))
 
     const Byte *p = tempBuf;
+#ifdef SEVENZIP_LINUX_EXT
+    if (ext_linux_blockrefs(_volume.Ptr, _blockInode, p, (UInt32)(blockSize / 4)))
+        return S_FALSE;
+#endif
     size_t num = (size_t)1 << (_h.BlockBits - 2);
 
     for (size_t i = 0; i < num; i++) {
@@ -2933,6 +3038,10 @@ HRESULT CHandler::FillFileBlocks(const Byte *p, unsigned numBlocks, CRecordVecto
     // ext2 supports zero blocks (blockIndex == 0).
 
     blocks.ClearAndReserve(numBlocks);
+#ifdef SEVENZIP_LINUX_EXT
+    if (ext_linux_blockrefs(_volume.Ptr, _blockInode, p, 15))
+        return S_FALSE;
+#endif
 
     for (unsigned i = 0; i < kNumDirectNodeBlocks; i++) {
         if (i == numBlocks)
@@ -3027,6 +3136,10 @@ HRESULT CHandler::FillExtents(const Byte *p, size_t size, CRecordVector<CExtent>
             if (e.PhyStart == 0 || e.PhyStart > _h.NumBlocks || e.PhyStart + e.Len > _h.NumBlocks ||
                 !e.IsLenOK() || e.VirtBlock < firstBlock || e.GetVirtEnd() > blockLimit)
                 return S_FALSE;
+#ifdef SEVENZIP_LINUX_EXT
+            if (!ext_linux_block_valid(_volume.Ptr, _blockInode, e.PhyStart, e.Len))
+                return S_FALSE;
+#endif
             if (!UpdateExtents(extents, e.VirtBlock))
                 return S_FALSE;
             extents.Add(e);
@@ -3048,6 +3161,10 @@ HRESULT CHandler::FillExtents(const Byte *p, size_t size, CRecordVector<CExtent>
 
         if (e.PhyLeaf == 0 || e.PhyLeaf >= _h.NumBlocks)
             return S_FALSE;
+#ifdef SEVENZIP_LINUX_EXT
+        if (!ext_linux_block_valid(_volume.Ptr, _blockInode, e.PhyLeaf, 1))
+            return S_FALSE;
+#endif
 
         if (!UpdateExtents(extents, e.VirtBlock))
             return S_FALSE;
@@ -3091,6 +3208,7 @@ HRESULT CHandler::GetStream_Node(unsigned nodeIndex, ISequentialInStream **strea
         return S_OK;
     }
     _extentChecksumSeed = node.ChecksumSeed;
+    _blockInode = node.InodeNumber;
 #else
     (void)rawLink;
     if (node.Flags & (((UInt32)1 << 20) | 0x800))

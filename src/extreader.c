@@ -6,9 +6,8 @@
 #include "fs/ext4/xattrread.h"
 #include "fscryptreader.h"
 #include "fs/ext4/hashread.h"
+#include "extreaderprivate.h"
 
-struct ext_volume { struct super_block sb; struct ext4_super_block raw; };
-struct ext_node { struct inode inode; };
 _Static_assert(sizeof(struct ext4_super_block) == 1024, "ext4 superblock layout");
 _Static_assert(sizeof(struct ext4_inode) == 160, "ext4 inode layout");
 
@@ -72,7 +71,13 @@ corrupt:
     return -EFSCORRUPTED;
 }
 
-void ext_linux_close(struct ext_volume *volume) { free(volume); }
+void ext_linux_close(struct ext_volume *volume) {
+    if (!volume) return;
+    ext4_release_system_zone(&volume->sb);
+    free(volume->sb.info.s_group_desc);
+    free(volume);
+}
+
 uint64_t ext_linux_descriptor_block(struct ext_volume *volume, unsigned int number)
 {
     return descriptor_loc(&volume->sb, volume->sb.s_blocksize == 1024 ? 1 : 0, number);

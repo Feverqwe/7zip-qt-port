@@ -57,3 +57,75 @@ int ext4_bg_has_super(struct super_block *sb, ext4_group_t group)
 
 	return 0;
 }
+
+static unsigned long ext4_bg_num_gdb_meta(struct super_block *sb,
+					ext4_group_t group)
+{
+	unsigned long metagroup = group / EXT4_DESC_PER_BLOCK(sb);
+	ext4_group_t first = metagroup * EXT4_DESC_PER_BLOCK(sb);
+	ext4_group_t last = first + EXT4_DESC_PER_BLOCK(sb) - 1;
+
+	if (group == first || group == first + 1 || group == last)
+		return 1;
+	return 0;
+}
+
+static unsigned long ext4_bg_num_gdb_nometa(struct super_block *sb,
+					ext4_group_t group)
+{
+	if (!ext4_bg_has_super(sb, group))
+		return 0;
+
+	if (ext4_has_feature_meta_bg(sb))
+		return le32_to_cpu(EXT4_SB(sb)->s_es->s_first_meta_bg);
+	else
+		return EXT4_SB(sb)->s_gdb_count;
+}
+
+/**
+ *	ext4_bg_num_gdb - number of blocks used by the group table in group
+ *	@sb: superblock for filesystem
+ *	@group: group number to check
+ *
+ *	Return the number of blocks used by the group descriptor table
+ *	(primary or backup) in this group.  In the future there may be a
+ *	different number of descriptor blocks in each group.
+ */
+unsigned long ext4_bg_num_gdb(struct super_block *sb, ext4_group_t group)
+{
+	unsigned long first_meta_bg =
+			le32_to_cpu(EXT4_SB(sb)->s_es->s_first_meta_bg);
+	unsigned long metagroup = group / EXT4_DESC_PER_BLOCK(sb);
+
+	if (!ext4_has_feature_meta_bg(sb) || metagroup < first_meta_bg)
+		return ext4_bg_num_gdb_nometa(sb, group);
+
+	return ext4_bg_num_gdb_meta(sb,group);
+
+}
+
+/*
+ * This function returns the number of file system metadata blocks at
+ * the beginning of a block group, including the reserved gdt blocks.
+ */
+unsigned int ext4_num_base_meta_blocks(struct super_block *sb,
+				       ext4_group_t block_group)
+{
+	struct ext4_sb_info *sbi = EXT4_SB(sb);
+	unsigned num;
+
+	/* Check for superblock and gdt backups in this group */
+	num = ext4_bg_has_super(sb, block_group);
+
+	if (!ext4_has_feature_meta_bg(sb) ||
+	    block_group < le32_to_cpu(sbi->s_es->s_first_meta_bg) *
+			  sbi->s_desc_per_block) {
+		if (num) {
+			num += ext4_bg_num_gdb_nometa(sb, block_group);
+			num += le16_to_cpu(sbi->s_es->s_reserved_gdt_blocks);
+		}
+	} else { /* For META_BG_BLOCK_GROUPS */
+		num += ext4_bg_num_gdb_meta(sb, block_group);
+	}
+	return num;
+}

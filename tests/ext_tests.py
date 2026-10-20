@@ -15,6 +15,7 @@ from ext_fixture import Volume, NAME
 from ext_modern_fixture import ModernVolume
 from ext_verity_fixture import VerityVolume
 from ext_xattr_fixture import XattrVolume
+from ext_block_fixture import BlockVolume
 
 RUNTIME = Path(sys.argv.pop(1))
 MODULE = Path(sys.argv.pop(1))
@@ -94,6 +95,29 @@ class ExtTests(unittest.TestCase):
                         self.assertTrue(any(b"2242-" in line for line in fields), fields)
                     timestamps.append(fields)
                 self.assertEqual(timestamps[0], timestamps[1])
+
+    def test_file_references_cannot_expose_filesystem_metadata(self):
+        for mapping in ("direct", "unused-direct", "indirect-index", "indirect-data",
+                        "extent", "extent-unwritten", "extent-index", "xattr"):
+            for target in ("super", "gdt", "block-map", "inode-map", "table", "journal"):
+                with self.subTest(mapping=mapping, target=target):
+                    result = self.run_image(BlockVolume(mapping, target))
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertEqual(result.stdout, b"")
+
+    def test_reserved_journal_blocks_remain_readable_by_their_owner(self):
+        volume = BlockVolume(target="journal-owner")
+        result = self.run_image(volume, name="[SYS]/Journal")
+        self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+        self.assertEqual(result.stdout, volume.journal_payload)
+        result = self.run_image(volume)
+        self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+        self.assertEqual(result.stdout, volume.read(0, volume.size))
+
+    def test_overlapping_metadata_descriptors_are_rejected(self):
+        result = self.run_image(BlockVolume(mapping="descriptor-overlap"))
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(result.stdout, b"")
 
     def test_xattr_names_values_and_acl_serialization(self):
         for kind in ("xattrs", "xattrs-signed", "xattrs-lustre"):

@@ -17,6 +17,11 @@ struct ext4_sb_info {
     struct super_block *s_sb;
     struct ext4_super_block *s_es;
     u32 s_csum_seed, s_desc_size, s_desc_per_block, s_inode_size;
+    u32 s_groups_count, s_gdb_count, s_itb_per_group;
+    void *s_group_desc;
+    struct ext4_system_blocks *s_system_blks;
+    const struct ext_block_services *block_services;
+    struct journal_s *s_journal;
     const struct ext_xattr_services *xattr_services;
 };
 struct fsverity_operations;
@@ -39,6 +44,7 @@ struct inode {
     bool verity_require_signatures;
     const struct sevenzip_fscrypt_inode *fscrypt_owner;
 };
+typedef struct journal_s { struct inode *j_inode; } journal_t;
 struct ext4_iloc { struct buffer_head *bh; unsigned int offset; };
 struct dir_private_info { u64 cookie; };
 struct file { struct inode *inode; void *private_data; };
@@ -64,6 +70,41 @@ EXT_FEATURE(ea_inode, incompat, 10)
 EXT_FEATURE(csum_seed, incompat, 13)
 EXT_FEATURE(filetype, incompat, 1)
 EXT_FEATURE(encrypt, incompat, 16)
+EXT_FEATURE(journal, compat, 2)
+EXT_FEATURE(flex_bg, incompat, 9)
+#define EXT4_BLOCKS_PER_GROUP(sb) le32_to_cpu(EXT4_SB(sb)->s_es->s_blocks_per_group)
+#define EXT4_BG_INODE_ZEROED 4
+#define ext4_debug(...) ((void)0)
+#define ext4_msg(...) ((void)0)
+#define sb_rdonly(sb) true
+#define ext4_lock_group(sb, group) ((void)0)
+#define ext4_unlock_group(sb, group) ((void)0)
+int ext4_check_descriptors(struct super_block *, ext4_fsblk_t, ext4_group_t *);
+static inline u64 ext4_blocks_count(struct ext4_super_block *es) {
+    return le32_to_cpu(es->s_blocks_count_lo) |
+        ((le32_to_cpu(es->s_feature_incompat) & EXT4_FEATURE_INCOMPAT_64BIT) ?
+        (u64)le32_to_cpu(es->s_blocks_count_hi) << 32 : 0);
+}
+#define EXT4_DESC_SIZE(sb) (EXT4_SB(sb)->s_desc_size)
+#define EXT4_DESC_PER_BLOCK(sb) (EXT4_SB(sb)->s_desc_per_block)
+#define EXT4_MIN_DESC_SIZE_64BIT 64
+static inline ext4_group_t ext4_get_groups_count(struct super_block *sb) {
+    return EXT4_SB(sb)->s_groups_count;
+}
+static inline struct ext4_group_desc *ext4_get_group_desc(struct super_block *sb, u32 group, void *bh) {
+    (void)bh;
+    return (struct ext4_group_desc *)((u8 *)EXT4_SB(sb)->s_group_desc + (size_t)group * EXT4_DESC_SIZE(sb));
+}
+ext4_fsblk_t ext4_block_bitmap(struct super_block *, struct ext4_group_desc *);
+ext4_fsblk_t ext4_inode_bitmap(struct super_block *, struct ext4_group_desc *);
+ext4_fsblk_t ext4_inode_table(struct super_block *, struct ext4_group_desc *);
+unsigned long ext4_bg_num_gdb(struct super_block *, ext4_group_t);
+unsigned int ext4_num_base_meta_blocks(struct super_block *, ext4_group_t);
+int ext4_setup_system_zone(struct super_block *);
+void ext4_release_system_zone(struct super_block *);
+int ext4_sb_block_valid(struct super_block *, struct inode *, ext4_fsblk_t, unsigned int);
+int ext4_inode_block_valid(struct inode *, ext4_fsblk_t, unsigned int);
+int ext4_check_blockref(const char *, unsigned int, struct inode *, __le32 *, unsigned int);
 static inline bool ext4_has_unknown_ext4_incompat_features(struct super_block *sb) {
     return (EXT4_SB(sb)->s_es->s_feature_incompat & cpu_to_le32(~EXT4_FEATURE_INCOMPAT_SUPP)) != 0;
 }

@@ -381,6 +381,9 @@ symlink targets, casefold dirhash и композицию с fs-verity. Тот �
 Подключены builtin signatures и явно переданные сертификаты доверия; сквозные
 SDK/CLI/device проверки прошли на macOS, Linux и Windows. Полная актуализация ext4
 не завершена: оставшиеся feature/creator-OS read semantics остаются в общем scope.
+Подключены также исходные Linux system zones: corrupt file references больше
+не позволяют извлечь служебные metadata/journal blocks; блоки журнала доступны
+своему inode. Сверены и исправлены partial/zero inode extensions временных меток.
 
 ### FAT12/16/32: BPB, имена и размер файла
 
