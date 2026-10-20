@@ -223,8 +223,11 @@ read scenario; оставшиеся filesystem read features общей цели
 возвращает target bytes через streams/extraction. Оригинальные C classifier,
 readlink, junction и Unicode bodies подключены в dynamic plugin; named ADS
 не наследуют reparse metadata. Deduplicated reads явно отклоняются, как Linux.
-Остальные NTFS read branches, включая default 64 KiB WOF branch, остаются
-в scope актуализации; platform evidence отделено в linked audit.
+Оставшийся NTFS metadata/read audit сохраняется в scope актуализации;
+platform evidence отделено в linked audit. Полная сверка WOF read caller
+подтвердила, что default 64 KiB classifier branch Linux сам не декодирует;
+[initialized-tail scenario](ntfs-linux.md#wof-initialized-tail-и-unsupported-formats--2026-10-20)
+сохраняет этот отказ и читает нулевой хвост независимо от ADS errors.
 
 ### NTFS: indexed security descriptors
 

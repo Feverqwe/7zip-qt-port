@@ -431,13 +431,65 @@ runtime и native-kernel reference этой итерации пока не по�
 удалённая синхронизация ожидает явного разрешения пользователя после отказа
 automatic approval review. Это ограничение проверки, не доказательство parity.
 
+## WOF initialized tail и unsupported formats — 2026-10-20
+
+Полностью сравнены `ni_parse_reparse`, `ni_ext_compress_bits`,
+`inode.c:ntfs_read_folio`, `frecord.c:ni_read_folio_cmpr`, `ni_read_frame`,
+`decompress_lzx_xpress`, `attrib.c:attr_wof_frame_info`, XPRESS/LZX decoders,
+SDK stream construction/Extract и portable WOF adapters. Metadata classifier
+назначает неизвестному CompressionFormat 64 KiB, однако read path явно
+принимает только 4/8/16/32 KiB и возвращает EOPNOTSUPP для default branch.
+Поэтому 64 KiB не является отсутствующей поддержкой чтения относительно Linux:
+архивный движок также не должен декодировать эту ветвь как известный XPRESS.
+
+Найдено другое расхождение: eager ADS stream construction отказывала ещё до
+чтения initialized data. В Linux полностью неинициализированная folio
+обнуляется до вызова compressed reader; отсутствие ADS или ошибка его mapping
+не должны блокировать такое чтение. Portable byte stream сохраняет прежнюю
+нулевую проекцию после initialized size и теперь открывает ADS при первом
+фактическом чтении compressed bytes. Новый узкий ownership adapter сохраняет
+source и копию SDK attributes, а mapping выполняет оригинальный
+`CMftRec::GetStream`; независимого run parser нет. Неуспешная инициализация
+допускает повтор после восстановления source. Streams остаются пригодны после
+Close; исключения allocation/services не пересекают C callback boundary.
+
+C classifier возвращает frame bits из исходного Linux `ni_ext_compress_bits`,
+без второй таблицы CompressionFormat в C++. Значения 4, high-bit и UINT32_MAX
+не смешиваются с признаком повреждённого header. C frame adapter сохраняет
+исходный supported-frame switch `ni_read_frame` до ADS lookup; unsupported
+read передаётся как E_NOTIMPL. Extract одинаково сообщает UnsupportedMethod
+при таком отказе от GetStream или от последующего Read. Source E_FAIL/E_ABORT
+сохраняются; S_FALSE остаётся DataError. Полностью uninitialized stream
+не требует ни ADS, ни decoder даже при unknown format, как Linux early guard.
+
+Регрессии проверяют нули при missing ADS, неверном physical mapping, encrypted
+ADS и unavailable source, затем отказ при чтении initialized bytes. Проверены
+unknown formats, source failure/abort и retry, operation results и retained
+streams; CLI извлекает целиком нулевой uninitialized file и отклоняет
+нечитаемые initialized данные без публикации bytes. Прежний missing-ADS test
+проверяет ошибку Read и Extract вместо закрепления eager failure в GetStream.
+WOF frames остаются независимым wimlib fixture, новый decoder/producer не нужен.
+
+Сравниваемый zero-tail начинается с полностью неинициализированной 4 KiB
+страницы: kernel page, которая содержит initialized bytes повреждённого кадра,
+может целиком завершиться ошибкой. Archive API работает с byte streams и не
+эмулирует VFS page cache или его гранулярность ошибок. Это не native-kernel
+acceptance частично инициализированной страницы.
+
+Одиннадцать focused suites PASS на macOS arm64/Qt 6.12 (12,07 с): NTFS,
+security и stream suites, прямые archive/backend extraction/security/selection
+consumers, runtime cache/package и provenance. После сужения error mapping
+до WOF и удаления неиспользуемой локальной format table повторены пять прямых
+NTFS/provenance suites: PASS, 14,25 с; `ntfs_stream` содержит 117 cases,
+`ntfs_security` — 38. Сохранены incremental builds и compiler caches.
+Linux/Windows runtime и native-kernel comparison для этой итерации не
+подтверждены: прежний automatic-review отказ на source transfer остаётся
+неразрешённым. Full/slow gate, UI и физические устройства не проверялись.
+
 ## Открытый read scope
 
 Выбранные classic/WOF/MFT bootstrap scenarios подключены и проверены.
 Остальные metadata/read features NTFS должны пройти оставшийся source audit;
 эта итерация не закрывает остальные файловые системы и общие форматы goal.
-В частности, default 64 KiB branch Linux WOF classifier пока не подключена
-к archive WOF frame reader; известные XPRESS4/8/16 и LZX32 scenarios выше
-не доказывают поддержку этой дополнительной ветви.
 VFS/page cache, mount services, запись/journal replay и EFS key service не
 переносятся в archive handler; Linux сам не расшифровывает EFS при чтении.

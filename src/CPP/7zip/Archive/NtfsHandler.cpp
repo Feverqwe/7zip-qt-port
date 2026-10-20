@@ -1135,7 +1135,6 @@ struct CMftRec {
                      // that record
     int ReparseDataIndex;
     bool Wof;
-    UInt32 WofFormat;
 
     CObjectVector<CAttr> DataAttrs; // will be sorted by CAttr::Name and CAttr::LowVcn
     CObjectVector<CAttr> ReparseAttrs;
@@ -1146,6 +1145,7 @@ struct CMftRec {
     sevenzip_ntfs_wsl_perm Wsl{};
     bool Link = false;
     bool Deduplicated = false;
+    unsigned WofFrameBits = 0;
 #endif
     CObjectVector<CFileNameAttr> FileNames;
     /* usually there is one FileName per CMftRec record,
@@ -1249,7 +1249,7 @@ struct CMftRec {
 
     CMftRec()
         : SeqNumber(0), Flags(0), MyNumNameLinks(0), MyItemIndex(-1), ReparseDataIndex(-1),
-          Wof(false), WofFormat((UInt32)-1) {}
+          Wof(false) {}
 };
 
 void CMftRec::ParseDataNames() {
@@ -1262,6 +1262,41 @@ void CMftRec::ParseDataNames() {
         attr.NextAttrIndex = i;
     }
 }
+
+#ifdef SEVENZIP_LINUX_NTFS
+// Defer ADS mapping until initialized WOF data is actually requested.
+class CDeferredNtfsAds final : public IInStream, public CMyUnknownImp {
+    Z7_COM_UNKNOWN_IMP_2(ISequentialInStream, IInStream)
+    CMyComPtr<IInStream> source_, stream_;
+    CMftRec record_;
+    int index_;
+    unsigned clusterBits_;
+    UInt64 clusters_;
+    HRESULT EnsureStream() {
+        if (stream_)
+            return S_OK;
+        return record_.GetStream(source_, index_, clusterBits_, clusters_, &stream_);
+    }
+
+  public:
+    CDeferredNtfsAds(IInStream *source, const CMftRec &record, int index, unsigned clusterBits,
+                     UInt64 clusters)
+        : source_(source), index_(index), clusterBits_(clusterBits), clusters_(clusters) {
+        record_.Flags = record.Flags;
+        record_.DataAttrs = record.DataAttrs;
+    }
+    Z7_COM7F_IMF(Read(void *data, UInt32 size, UInt32 *processed)) override {
+        if (processed)
+            *processed = 0;
+        RINOK(EnsureStream())
+        return stream_->Read(data, size, processed);
+    }
+    Z7_COM7F_IMF(Seek(Int64 offset, UInt32 origin, UInt64 *position)) override {
+        RINOK(EnsureStream())
+        return stream_->Seek(offset, origin, position);
+    }
+};
+#endif
 
 HRESULT CMftRec::GetStream(IInStream *mainStream, const int dataIndex,
                            const unsigned clusterSizeLog, const UInt64 numPhysClusters,
@@ -1282,32 +1317,28 @@ HRESULT CMftRec::GetStream(IInStream *mainStream, const int dataIndex,
             return E_NOTIMPL;
         const CAttr &data = DataAttrs[dataIndex];
         if (data.NonResident && data.Size && data.InitializedSize) {
-            if (WofFormat > 3)
-                return E_NOTIMPL;
 #ifdef SEVENZIP_LINUX_NTFS
+            if (WofFrameBits < 12 || WofFrameBits > 16)
+                return E_NOTIMPL;
             if (data.Flags & 0x4000)
                 return E_NOTIMPL;
             CRecordVector<CExtent> extents;
             RINOK(DataParseExtents(clusterSizeLog, DataAttrs, (unsigned)dataIndex, numPhysClusters,
                                    extents))
+            if (WofFrameBits == 16)
+                return SevenzipNtfsWofStream(nullptr, data.Size, data.InitializedSize, 0,
+                                             WofFrameBits, destStream);
             for (unsigned i = 0; i < DataAttrs.Size(); i = DataAttrs[i].NextAttrIndex) {
                 const CAttr &ads = DataAttrs[i];
                 if (ads.Name.IsEmpty() || ads.Name.Compare(L"WofCompressedData") != 0)
                     continue;
-                CMftRec adsRecord;
-                adsRecord.Flags = Flags;
-                adsRecord.DataAttrs = DataAttrs;
-                CMyComPtr<IInStream> adsStream;
-                RINOK(adsRecord.GetStream(mainStream, (int)i, clusterSizeLog, numPhysClusters,
-                                          &adsStream))
-                const unsigned bits = WofFormat == 1   ? 15
-                                      : WofFormat == 2 ? 13
-                                      : WofFormat == 3 ? 14
-                                                       : 12;
+                CMyComPtr<IInStream> adsStream = new CDeferredNtfsAds(
+                    mainStream, *this, (int)i, clusterSizeLog, numPhysClusters);
                 return SevenzipNtfsWofStream(adsStream, data.Size, data.InitializedSize,
-                                             ads.GetSize(), bits, destStream);
+                                             ads.GetSize(), WofFrameBits, destStream);
             }
-            return S_FALSE;
+            return SevenzipNtfsWofStream(nullptr, data.Size, data.InitializedSize, 0, WofFrameBits,
+                                         destStream);
 #else
             return E_NOTIMPL;
 #endif
@@ -2484,11 +2515,6 @@ HRESULT CDatabase::Open() {
         }
         rec.ReparseDataIndex = (int)ReparseDataVector.Add(data);
         rec.Wof = size >= 4 && Get32(data) == 0x80000017;
-#ifndef SEVENZIP_LINUX_NTFS
-        if (rec.Wof && size >= 24 && Get16(data + 4) >= 16 && Get32(data + 8) == 1 &&
-            Get32(data + 12) == 2 && Get32(data + 16) == 1)
-            rec.WofFormat = Get32(data + 20);
-#endif
         rec.ReparseAttrs.ClearAndFree();
     }
 
@@ -2499,9 +2525,7 @@ HRESULT CDatabase::Open() {
         if (rec.ReparseDataIndex < 0)
             continue;
         const CByteBuffer &data = ReparseDataVector[rec.ReparseDataIndex];
-        const int type = sevenzip_ntfs_classify_reparse(data, data.Size());
-        if (rec.Wof && type == SEVENZIP_NTFS_REPARSE_COMPRESSED)
-            rec.WofFormat = Get32(data + 20);
+        const int type = sevenzip_ntfs_classify_reparse(data, data.Size(), &rec.WofFrameBits);
         rec.Deduplicated = type == SEVENZIP_NTFS_REPARSE_DEDUPLICATED;
         rec.Link = rec.Wsl.present ? (rec.Wsl.mode & MY_LIN_S_IFMT) == MY_LIN_S_IFLNK
                                    : type == SEVENZIP_NTFS_REPARSE_LINK;
@@ -3426,6 +3450,8 @@ Z7_COM7F_IMF(CHandler::Extract(const UInt32 *indices, UInt32 numItems, Int32 tes
                     if (hres == S_OK) {
                         if (copyCoder->TotalSize == unpackSize)
                             res = NExtract::NOperationResult::kOK;
+                    } else if (hres == E_NOTIMPL && rec.Wof) {
+                        res = NExtract::NOperationResult::kUnsupportedMethod;
                     } else if (hres != S_FALSE)
                         return hres;
                 }

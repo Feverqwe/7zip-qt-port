@@ -83,7 +83,7 @@ struct sevenzip_ntfs_wof *sevenzip_ntfs_wof_create(uint64_t size, uint64_t ads_s
                                                 sevenzip_ntfs_read_fn read, void *opaque)
 {
     struct sevenzip_ntfs_wof *w;
-    if (!size || bits < 12 || bits > 15 || !read) return NULL;
+    if (!size || bits < 12 || bits > 16 || !read) return NULL;
     w = calloc(1, sizeof(*w));
     if (!w) return NULL;
     w->size = size; w->ads_size = ads_size; w->bits = bits;
@@ -110,6 +110,16 @@ int sevenzip_ntfs_wof_read_frame(struct sevenzip_ntfs_wof *w, uint64_t frame, vo
     u64 offset;
     int err;
     if (frame > frames) return -EINVAL;
+    /* ni_read_frame rejects unknown compression before reading the ADS. */
+    switch (frame_size) {
+    case 0x1000:
+    case 0x2000:
+    case 0x4000:
+    case 0x8000:
+        break;
+    default:
+        return -EOPNOTSUPP;
+    }
     /* ni_read_frame uses the offset preceding the frame and the final ADS size. */
     err = attr_wof_frame_info(&w->ni, &w->attr, &w->run, frame, frames,
                               (u8)w->bits, &disk_size, &offset);

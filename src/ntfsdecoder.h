@@ -3,6 +3,10 @@
 #define SEVENZIP_NTFS_DECODER_H
 #include <stddef.h>
 #include <stdint.h>
+#include <errno.h>
+#ifndef EOPNOTSUPP
+#define EOPNOTSUPP 95
+#endif
 #ifdef __cplusplus
 extern "C" {
 #endif

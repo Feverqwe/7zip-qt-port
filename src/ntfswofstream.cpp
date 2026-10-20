@@ -7,6 +7,7 @@
 #include "ntfsdecoder.h"
 #include <cerrno>
 #include <cstring>
+#include <new>
 
 namespace {
 class WofStream final : public IInStream, public CMyUnknownImp {
@@ -19,9 +20,19 @@ class WofStream final : public IInStream, public CMyUnknownImp {
     HRESULT failure_ = S_OK;
     static int readSource(void *opaque, uint64_t offset, void *data, size_t size) {
         auto &self = *static_cast<WofStream *>(opaque);
-        self.failure_ = InStream_SeekSet(self.ads_, offset);
-        if (self.failure_ == S_OK)
-            self.failure_ = ReadStream_FALSE(self.ads_, data, size);
+        if (!self.ads_) {
+            self.failure_ = S_FALSE;
+            return -1;
+        }
+        try {
+            self.failure_ = InStream_SeekSet(self.ads_, offset);
+            if (self.failure_ == S_OK)
+                self.failure_ = ReadStream_FALSE(self.ads_, data, size);
+        } catch (const std::bad_alloc &) {
+            self.failure_ = E_OUTOFMEMORY;
+        } catch (...) {
+            self.failure_ = E_FAIL;
+        }
         return self.failure_ == S_OK ? 0 : -1;
     }
 
@@ -59,6 +70,8 @@ class WofStream final : public IInStream, public CMyUnknownImp {
                 failure_ = S_OK;
                 cached_ = UINT64_MAX;
                 const int result = sevenzip_ntfs_wof_read_frame(reader_, frame, frame_);
+                if (result == -EOPNOTSUPP)
+                    return E_NOTIMPL;
                 if (result)
                     return failure_ == S_OK ? (result == -ENOMEM ? E_OUTOFMEMORY : S_FALSE)
                                             : failure_;

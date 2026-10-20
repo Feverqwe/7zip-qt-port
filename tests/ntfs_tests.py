@@ -141,6 +141,19 @@ class NtfsTests(unittest.TestCase):
                 self.assertNotEqual(result.returncode, 0)
                 self.assertEqual(result.stdout, b"")
 
+    def test_wof_unknown_initialized_data_is_unsupported(self):
+        for kind in ("wof-xpress4k-unknown-initialized", "wof-xpress4k-unknown-high-initialized",
+                     "wof-xpress4k-unknown-max-initialized", "wof-xpress4k-initialized-missing-ads",
+                     "wof-xpress4k-initialized-bad-map", "wof-lzx32k-initialized-encrypted-ads"):
+            with self.subTest(kind=kind):
+                result = self.run_image("7z", volume(kind)[0], "x", "gamma")
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(result.stdout, b"")
+        image, files = volume("wof-xpress4k-unknown-uninitialized")
+        result = self.run_image("7z", image, "x", "gamma")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(result.stdout, files["gamma"])
+
     def test_corrupt_or_encrypted_data_never_reports_success(self):
         for kind in ("run-over-volume", "run-underflow", "normal-virtual-over-volume", "invalid-initialized", "encrypted", "wof", "wof-empty", "bad-compressed"):
             image, _ = volume(kind)

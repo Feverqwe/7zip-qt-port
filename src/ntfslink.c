@@ -24,13 +24,18 @@ static void link_context_init(struct link_context *ctx, const void *data, size_t
     ctx->sbi.reparse.max_size = 16384;
     ctx->sb.s_fs_info = &ctx->sbi;
 }
-int sevenzip_ntfs_classify_reparse(const void *data, size_t size)
+int sevenzip_ntfs_classify_reparse(const void *data, size_t size, unsigned *frame_bits)
 {
     struct link_context ctx;
     struct REPARSE_DATA_BUFFER header;
+    int type;
+    if (frame_bits) *frame_bits = 0;
     if (!data || size > 16384) return 0;
     link_context_init(&ctx, data, size);
-    return ni_parse_reparse(&ctx.ni, &ctx.attr, &header);
+    type = ni_parse_reparse(&ctx.ni, &ctx.attr, &header);
+    if (frame_bits && type == REPARSE_COMPRESSED)
+        *frame_bits = ni_ext_compress_bits(&ctx.ni);
+    return type;
 }
 int sevenzip_ntfs_readlink(const void *data, size_t size, const char *path,
                           char *output, size_t capacity)

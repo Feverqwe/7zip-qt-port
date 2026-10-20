@@ -298,6 +298,7 @@ class NtfsStreamTests final : public QObject {
                                  "wof-xpress16k-resident",
                                  "wof-lzx32k-resident",
                                  "wof-lzx32k-initialized",
+                                 "wof-xpress4k-unknown-uninitialized",
                                  "wof-xpress4k-uninitialized"})
             QTest::newRow(kind) << QString::fromLatin1(kind);
     }
@@ -379,6 +380,79 @@ class NtfsStreamTests final : public QObject {
             QVERIFY(retained);
             check(retained, name, 0, 200000);
         }
+    }
+    void wofTailBeforePayloadErrors_data() {
+        QTest::addColumn<QString>("kind");
+        QTest::addColumn<HRESULT>("failure");
+        for (const char *kind :
+             {"wof-xpress4k-unknown-initialized", "wof-xpress4k-unknown-high-initialized",
+              "wof-xpress4k-unknown-max-initialized", "wof-lzx32k-initialized-encrypted-ads"})
+            QTest::newRow(kind) << QString::fromLatin1(kind) << HRESULT(E_NOTIMPL);
+        for (const char *kind :
+             {"wof-xpress4k-initialized-missing-ads", "wof-lzx32k-initialized-missing-ads",
+              "wof-xpress4k-initialized-bad-map"})
+            QTest::newRow(kind) << QString::fromLatin1(kind) << HRESULT(S_FALSE);
+        for (const char *kind : {"wof-xpress4k-initialized", "wof-lzx32k-initialized"})
+            QTest::newRow(kind) << QString::fromLatin1(kind) << HRESULT(E_FAIL);
+        QTest::newRow("source-abort") << QString("wof-xpress4k-initialized") << HRESULT(E_ABORT);
+    }
+    void wofTailBeforePayloadErrors() {
+        QFETCH(QString, kind);
+        QFETCH(HRESULT, failure);
+        loadFixture(kind);
+        CMyComPtr2<IInStream, Input> input;
+        input.SetFromCls(new Input(bytes_));
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        const bool sourceFailure = failure == E_FAIL || failure == E_ABORT;
+        if (sourceFailure)
+            input->failure = failure;
+        auto file = stream("gamma");
+        QVERIFY(file);
+        const UInt64 valid = (UInt64(1) << (kind.contains("unknown")     ? 16
+                                            : kind.startsWith("wof-lzx") ? 15
+                                                                         : 12)) +
+                             37;
+        const UInt64 tail = (valid + 4095) & ~UInt64(4095);
+        const auto zeros = [&] {
+            QCOMPARE(file->Seek(tail, STREAM_SEEK_SET, nullptr), S_OK);
+            char data[97];
+            memset(data, 'X', sizeof(data));
+            UInt32 processed = 0;
+            QCOMPARE(file->Read(data, sizeof(data), &processed), S_OK);
+            QCOMPARE(processed, UInt32(sizeof(data)));
+            QCOMPARE(QByteArray(data, sizeof(data)), QByteArray(sizeof(data), '\0'));
+        };
+        zeros();
+        QCOMPARE(file->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
+        char byte = 0;
+        UInt32 processed = 99;
+        QCOMPARE(file->Read(&byte, 1, &processed), failure);
+        QCOMPARE(processed, UInt32(0));
+        zeros();
+        const UInt32 id = index("gamma");
+        if (sourceFailure) {
+            CMyComPtr2<IArchiveExtractCallback, Extract> callback;
+            callback.Create_if_Empty();
+            QCOMPARE(archive_->Extract(&id, 1, true, callback), failure);
+        }
+        input->failure = S_OK;
+        if (sourceFailure) {
+            QCOMPARE(file->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
+            QCOMPARE(file->Read(&byte, 1, &processed), S_OK);
+            QCOMPARE(processed, UInt32(1));
+            QCOMPARE(byte, 'A');
+        }
+        CMyComPtr2<IArchiveExtractCallback, Extract> callback;
+        callback.Create_if_Empty();
+        QCOMPARE(archive_->Extract(&id, 1, true, callback), S_OK);
+        QCOMPARE(callback->result,
+                 Int32(sourceFailure ? NArchive::NExtract::NOperationResult::kOK
+                       : failure == E_NOTIMPL
+                           ? NArchive::NExtract::NOperationResult::kUnsupportedMethod
+                           : NArchive::NExtract::NOperationResult::kDataError));
+        QCOMPARE(archive_->Close(), S_OK);
+        input.SetFromCls(nullptr);
+        zeros();
     }
     void reads() {
         QFETCH(QString, kind);
@@ -494,7 +568,7 @@ class NtfsStreamTests final : public QObject {
         QTest::newRow("normal-virtual-over-volume")
             << QString("normal-virtual-over-volume") << HRESULT(S_FALSE);
         QTest::newRow("encrypted") << QString("encrypted") << HRESULT(E_NOTIMPL);
-        QTest::newRow("WOF-missing-ADS") << QString("wof") << HRESULT(S_FALSE);
+        QTest::newRow("WOF-missing-ADS") << QString("wof") << HRESULT(S_OK);
         QTest::newRow("WOF-without-unnamed-data") << QString("wof-empty") << HRESULT(E_NOTIMPL);
         QTest::newRow("bad-compressed") << QString("bad-compressed") << HRESULT(S_OK);
     }
@@ -511,7 +585,7 @@ class NtfsStreamTests final : public QObject {
         CMyComPtr<ISequentialInStream> file;
         const UInt32 id = index(kind.startsWith("wof") ? "gamma" : "alpha");
         QCOMPARE(provider->GetStream(id, &file), result);
-        if (kind == "bad-compressed") {
+        if (kind == "bad-compressed" || kind == "wof") {
             char data[100];
             UInt32 count = 99;
             QVERIFY(file);

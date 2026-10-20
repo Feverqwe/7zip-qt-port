@@ -26,6 +26,9 @@ def volume(kind):
         image[-512:] = image[:512]
     codec = next(name for name in ("xpress4k", "xpress8k", "xpress16k", "lzx32k") if name in kind)
     bits, method = {"xpress4k": (12, 0), "xpress8k": (13, 2), "xpress16k": (14, 3), "lzx32k": (15, 1)}[codec]
+    unknown = "unknown" in kind
+    if unknown:
+        method = 0xffffffff if "max" in kind else 0x80000000 if "high" in kind else 4
     data = payloads(bits)
     records = json.loads((Path(__file__).parent / "fixtures/ntfs/wof-frames.json").read_text())["frames"][codec]
     frames = [base64.b64decode(frame["packed"]) for frame in records]
@@ -64,7 +67,9 @@ def volume(kind):
     if large:
         lcn = 4096
     size = sum(map(len, data))
-    valid = (1 << bits) + 37 if "initialized" in kind else size
+    if unknown:
+        size = 131585
+    valid = (1 << (16 if unknown else bits)) + 37 if "initialized" in kind else size
     if "uninitialized" in kind:
         valid = 0
     unnamed = nonresident(data_attr, [((size + 4095) // 4096, None)], size, valid, flags=0x8000)
@@ -76,7 +81,9 @@ def volume(kind):
         put(named, 16, "IH", len(ads), start)
         named[start:start + len(ads)] = ads
     else:
-        named = nonresident(data_attr, [((len(ads) + 4095) // 4096, lcn)], len(ads))
+        named = nonresident(data_attr, [((len(ads) + 4095) // 4096,
+                                         0x100000 if "bad-map" in kind else lcn)], len(ads),
+                            flags=0x4000 if "encrypted-ads" in kind else 0)
         start = (64 + len(name) + 7) & ~7
         mapping = named[64:]
         named = named[:64] + bytearray(start - 64) + mapping
@@ -95,7 +102,7 @@ def volume(kind):
     attrs = []
     for attr in original:
         if u32(attr, 0) == 0x80:
-            attrs += [unnamed, reparse] if "uninitialized" in kind else [unnamed, named, reparse]
+            attrs += [unnamed, reparse] if "uninitialized" in kind or "missing-ads" in kind else [unnamed, named, reparse]
         else:
             if u32(attr, 0) == 0x10:
                 put(attr, u16(attr, 20) + 32, "I", 0x620)
@@ -120,7 +127,10 @@ def volume(kind):
         for cluster in range(lcn, lcn + (len(ads) + 4095) // 4096):
             image[bitmap_lcn * 4096 + cluster // 8] |= 1 << (cluster % 8)
     else:
-        expected["gamma"] = b"".join(data)[:valid] + bytes(size - valid)
-        if "uninitialized" not in kind:
+        if unknown and valid:
+            expected.pop("gamma")
+        else:
+            expected["gamma"] = b"".join(data)[:valid] + bytes(size - valid)
+        if "uninitialized" not in kind and "missing-ads" not in kind:
             expected["gamma:WofCompressedData"] = bytes(ads)
     return bytes(image), expected

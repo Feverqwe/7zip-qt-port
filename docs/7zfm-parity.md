@@ -316,7 +316,9 @@ NTFS читает sparse и initialized data, compressed файлы и тома 
 standalone сохраняет классический декодер. Динамический runtime также читает
 WOF LZX/XPRESS и MFT с дополнительными extents из attribute lists; standalone
 явно отклоняет эти расширения. EFS возвращает явный отказ, как в Linux.
-Запись в NTFS не добавлялась.
+Нулевой WOF-хвост после initialized size читается независимо от доступности
+сжатого ADS. Ошибки initialized data остаются явными; unknown WOF formats
+не декодируются, как в Linux NTFS3. Запись в NTFS не добавлялась.
 Process extraction выбранного обычного файла исключает невыбранные ADS;
 WOF извлекается в декодированный файл без попытки записать служебный
 `WofCompressedData` в Windows. Явное чтение raw ADS остаётся отдельной операцией.

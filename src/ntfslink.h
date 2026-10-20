@@ -11,7 +11,7 @@ enum sevenzip_ntfs_reparse_type {
     SEVENZIP_NTFS_REPARSE_DEDUPLICATED,
     SEVENZIP_NTFS_REPARSE_LINK
 };
-int sevenzip_ntfs_classify_reparse(const void *, size_t);
+int sevenzip_ntfs_classify_reparse(const void *, size_t, unsigned *);
 int sevenzip_ntfs_readlink(const void *, size_t, const char *, char *, size_t);
 #ifdef __cplusplus
 }

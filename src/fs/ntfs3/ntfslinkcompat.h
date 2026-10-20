@@ -48,6 +48,9 @@ static inline int ntfs_read_run_nb(struct ntfs_sb_info *sbi, struct runs_tree *r
 static inline void ni_set_ext_compress_bits(struct ntfs_inode *ni, u8 bits) {
     ni->ni_flags |= (bits - 0xb) & NI_FLAG_COMPRESSED_MASK;
 }
+static inline int ni_ext_compress_bits(const struct ntfs_inode *ni) {
+    return 0xb + (ni->ni_flags & NI_FLAG_COMPRESSED_MASK);
+}
 static inline char *hex_byte_pack(char *out, unsigned value) {
     static const char digits[] = "0123456789abcdef";
     *out++ = digits[(value >> 4) & 15]; *out++ = digits[value & 15]; return out;
