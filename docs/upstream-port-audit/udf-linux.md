@@ -1066,3 +1066,48 @@ Disposable native helper/images и диагностические object/disasse
 удалены; current evidence, incremental builds и compiler caches сохранены.
 Full/slow/UI/physical-device acceptance не выполнялась. Общий UDF read audit
 и оставшиеся форматы из единого реестра остаются открытыми.
+
+## Итоговая сверка read-side source scope — 2026-10-20
+
+После `79a37e9c` повторно рассмотрены оставшиеся units из закреплённого
+Linux `fs/udf/Makefile`, включая полные read consumers в `file.c`,
+`namei.c`, inline folio/readahead и operation tables `inode.c`, заключительную
+часть `udf_fill_super`, statfs/free-space consumers, low-level CD branches,
+а также callers stream-directory fields. Эта запись завершает сверку
+дисковых readers для default read-only archive projection. Она не означает
+перенос всех функций драйвера или новую runtime acceptance.
+
+| Linux source unit | Результат сверки |
+| --- | --- |
+| `super.c`, `lowlevel.c`, `partition.c` | VRS/anchor/VDS/LVD/PD/fileset/LVID и physical/sparable/VAT/metadata readers подключены; source scope и адаптации разобраны выше. Порядок PD и условия reserve fallback сохранены. |
+| `inode.c`, `misc.c`, `directory.c` | FE/EFE/USE, indirect ICB, hidden-role inode identity, tagged reads, device EA, AD/extent и FID readers подключены. Inline folio читает уже validated inode bytes; external folio использует тот же AD mapping. Archive stream заменяет page-cache transport. |
+| `dir.c`, `namei.c` | Archive перечисляет FID через Linux iterator и вызывает тот же inode reader; lookup, parent resolution и NFS file handles повторно используют эти readers, отдельного parser формата не содержат. Разница lookup при malformed names сохранена выше. |
+| `unicode.c`, `symlink.c`, `udftime.c` | Read converters подключены; default UTF-8 соответствует Unicode archive API. Обратные converters обслуживают запись, не чтение образа. |
+| `file.c` | `read_iter`, read-only mmap и splice используют generic VFS/filemap и рассмотренный inode mapping. Самостоятельного дополнительного disk-data decoder здесь нет. |
+| `balloc.c`, `ialloc.c`, `truncate.c` | Allocation/free, inode creation/deletion и изменение extent lists обслуживают запись. Read-only archive их не вызывает; готовые AD readers переиспользуются без write helpers. |
+
+EFE stream-directory location/object size считываются исходным
+`udf_read_inode`. В закреплённом Linux эти fields затем используются для
+обратной сериализации inode; named-stream directory reader или xattr lookup
+в `file_operations`/`inode_operations` отсутствует. Поэтому не реализованный
+в самом эталоне stream traversal не считается пропущенной read feature.
+System stream directory также не обходится native root/fileset consumer.
+
+`UDF_GETVOLIDENT`, `UDF_GETEASIZE` и `UDF_GETEABLOCK` — ioctl projection уже
+прочитанных volume/inode buffers; нового дискового parser они не добавляют.
+Archive публикует volume identity и разобранные inode metadata, но не предоставляет
+Linux ioctl ABI или raw EA control interface. NFS handles, lease/permission
+policy, device/session ioctls, mount options, statfs/free-space enumeration,
+writeback и allocation counters остаются kernel/platform services, а не
+заменяются фиктивными archive callbacks. Default hidden/deleted filtering,
+UTF-8, ownership defaults и regular-file device branch зафиксированы в
+предыдущих разделах; это явные границы API adaptation.
+
+В рассмотренном read-side source scope незакрытых disk parser gaps не найдено.
+7-Zip сохраняет archive tree/ref projection, quotas, properties, streams и
+extraction; standalone decoder остаётся отдельным исходным fallback, не полной
+копией Linux module. Runtime evidence остаётся ровно тем, что указано выше:
+три ОС на fixtures и ограниченные native Linux сравнения. Physical CD/session,
+устройства, mount/repair, full/slow и неизвестная причина batch Windows timeout
+этой source-сверкой не подтверждаются. Общая задача остальных FS и совпадающих
+форматов Linux продолжается.

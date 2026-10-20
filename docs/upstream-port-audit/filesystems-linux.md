@@ -91,8 +91,10 @@ RR producer layouts и оставшиеся read-side consumers сверены �
 проверки и отличия archive projection перечислены в ISO audit.
 [UDF allocation/EOF](udf-linux.md): short/long explicit и implicit sparse,
 логический EOF, bounded directory reads и metadata bootstrap проверены вместе
-для обоих engines. Полный UDF audit и остальные строки общей задачи остаются
-открытыми. Динамический UDF-модуль подключает исходные Linux C allocation
+для обоих engines. [Итоговая source-сверка UDF read scope](udf-linux.md#итоговая-сверка-read-side-source-scope--2026-10-20)
+отделяет закрытые disk readers от kernel/platform services и runtime границ.
+Остальные строки общей задачи остаются открытыми. Динамический UDF-модуль
+подключает исходные Linux C allocation
 continuations, включая short/long chains, directory data и межраздельные адреса;
 indirect ICB/strategy 4096 выбирают актуальную запись inode через Linux C reader,
 сохраняя fallback и read-only metadata backing semantics. Sparable loader/mapper,
@@ -117,7 +119,8 @@ timestamps также подключены. Linux FID iterator читает ка
 backing. Read-only PD allocation-info validation и последовательная загрузка
 разделов перенесены через Linux C bodies. Глубокий archive traversal и cycle
 guards сверены; C iterator возвращается до спуска к дочернему inode, а inode
-parser не удерживается в рекурсивной цепочке. Общий UDF read audit остаётся открыт.
+parser не удерживается в рекурсивной цепочке. Read-side source scope проверен
+с явными archive/API адаптациями; все функции kernel driver не заявляются.
 
 ### HFS+/HFSX: fork mapping и metadata reads
 
