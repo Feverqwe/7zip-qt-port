@@ -53,6 +53,7 @@ Linux определяет корректность интерпретации �
 | Base64 | `lib/base64.c`, fscrypt/Ceph callers | Standard/URL-safe/IMAP alphabets, padding/tail validation и archive handler lifecycle. |
 | ELF | `fs/binfmt_elf.c`, `fs/binfmt_elf_fdpic.c`, kexec/module readers | Headers, table/payload spans, Linux core numbering, metadata и archive streams; execution services не входят в byte reader. |
 | PE | `crypto/asymmetric_keys/verify_pefile.c`, kexec callers | Headers, certificate/file spans и byte streams; общий COFF consumer проверяется вместе, kernel trust/execution — отдельные contracts. |
+| EFI capsules | `drivers/firmware/efi/capsule-loader.c`, `capsule.c`, x86 EFI quirks | Common header/payload и Quark mapping; UEFIf проверяется как общий SDK consumer, firmware updates не выполняются. |
 
 APFS не входит в scope: соответствующего драйвера нет в основном дереве Linux.
 GPT/MBR/APM проверяются как дополнительные форматы разметки дисков.
@@ -74,12 +75,19 @@ GPT/MBR/APM проверяются как дополнительные форм�
 
 ## Свидетельства
 
+### EFI capsules: generic header, Quark и streams
+
+[Сверка EFI capsule](uefi-linux.md): GUID-agnostic/short payload reads, большой
+header без буферизации, Quark wrapper, source/region bounds, cancellation и
+независимые retained streams. Сохранены исходные FV/LZMA/ME consumers.
+Firmware services и общий format census не закрываются этой итерацией.
+
 ### PE: headers, bounds и resource streams
 
 [Сверка PE](pe-linux.md): поздние headers, 64-bit file spans, debug iteration,
 certificate/symbol bounds, cleanup/cancellation и retained section/resource
 streams. Общий COFF consumer, оба engines и backend проверены вместе.
-TE, EFI capsule scope и оставшийся census требуют отдельных source evidence.
+TE и оставшийся census требуют отдельных source evidence.
 
 ### ELF: headers, core numbering и streams
 

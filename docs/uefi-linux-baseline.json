@@ -1,0 +1,11 @@
+{
+  "repository": "https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git",
+  "revision": "58161ead29e50d70a317ea26b472e0c7508e69da",
+  "files": {
+    "drivers/firmware/efi/capsule-loader.c": "5934bbbc674603f9ca50422b0fd5dec4117a3f2807faed9ee57d1000a50d66d6",
+    "drivers/firmware/efi/capsule.c": "c777bb4d865b7c242bcd463024dc552ddd19524bc3e037b504e4e3053e61bfd9",
+    "include/linux/efi.h": "36bac55a5d1b14247c55341b04e876e9a388c914b6a5c4f7d0b8daf5ff72c4c2",
+    "arch/x86/platform/efi/quirks.c": "bae52be109d467a0c90c279024607cf2594cc450e35acb5208d59d1197c1d7a6"
+  },
+  "scope": "Common capsule header, size and flag transport, Quark security-header mapping; firmware query/update services remain outside archive reads."
+}
