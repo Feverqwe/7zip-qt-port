@@ -52,6 +52,7 @@ Linux определяет корректность интерпретации �
 | EROFS (новый модуль) | `fs/erofs` | Сначала полный source comparison read path и зависимостей, затем C-перенос, 7-Zip ABI, deployment и end-to-end чтение. |
 | Base64 | `lib/base64.c`, fscrypt/Ceph callers | Standard/URL-safe/IMAP alphabets, padding/tail validation и archive handler lifecycle. |
 | ELF | `fs/binfmt_elf.c`, `fs/binfmt_elf_fdpic.c`, kexec/module readers | Headers, table/payload spans, Linux core numbering, metadata и archive streams; execution services не входят в byte reader. |
+| PE | `crypto/asymmetric_keys/verify_pefile.c`, kexec callers | Headers, certificate/file spans и byte streams; общий COFF consumer проверяется вместе, kernel trust/execution — отдельные contracts. |
 
 APFS не входит в scope: соответствующего драйвера нет в основном дереве Linux.
 GPT/MBR/APM проверяются как дополнительные форматы разметки дисков.
@@ -73,13 +74,20 @@ GPT/MBR/APM проверяются как дополнительные форм�
 
 ## Свидетельства
 
+### PE: headers, bounds и resource streams
+
+[Сверка PE](pe-linux.md): поздние headers, 64-bit file spans, debug iteration,
+certificate/symbol bounds, cleanup/cancellation и retained section/resource
+streams. Общий COFF consumer, оба engines и backend проверены вместе.
+TE, EFI capsule scope и оставшийся census требуют отдельных source evidence.
+
 ### ELF: headers, core numbering и streams
 
 [Сверка ELF](elf-linux.md): class/endian header reads, ignored fields, bounds,
 extended counts/names, BSS/NULL metadata, independent retained streams и ошибки
 Open/Extract. Связанный GPT discovery regression исправлен в LZMA probe.
-ELF execution и archive inspection имеют отдельные границы; PE и оставшийся
-census не закрываются этой итерацией.
+ELF execution и archive inspection имеют отдельные границы; оставшийся census
+не закрывается этой итерацией.
 
 ### Base64: современные alphabets и lifecycle
 

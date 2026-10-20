@@ -1,0 +1,12 @@
+{
+  "repository": "https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git",
+  "revision": "58161ead29e50d70a317ea26b472e0c7508e69da",
+  "files": {
+    "crypto/asymmetric_keys/verify_pefile.c": "e256088f0f7a93faaec6fa351d357cb1bfeab48d5ff9b85335301255398c6a98",
+    "crypto/asymmetric_keys/verify_pefile.h": "5bb1a82ff4021e8c3ae5050bb7263dfa9dabfd048a794af2050e64440430cd11",
+    "include/linux/pe.h": "987617cbeb44dcd91cc4bf34ef8da8bc58fa564628055e37f45e7bb2972a02ff",
+    "kernel/kexec_file.c": "b8b70686c88ab40da3ac7503e3ac71becc9be9d660b14536e58428fa22f34e20",
+    "arch/x86/kernel/kexec-bzimage64.c": "3d288c8f49e20b27d74d32ad510feed11ce8dc6036fb693af62806689d5d1e2a"
+  },
+  "scope": "PE headers, certificate bounds, canonical digest input and verification callers; original 7-Zip archive projection retained."
+}
