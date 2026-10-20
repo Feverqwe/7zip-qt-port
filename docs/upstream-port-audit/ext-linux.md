@@ -792,3 +792,33 @@ retains the LGPL MPI, BSD ECC and IETF ASN.1 license texts and specific notices.
 Installed Linux/Windows packages, full/slow suites, native UI, release packages
 and physical devices were not checked in this iteration. Broader ext
 feature/creator-OS read semantics remain in the parent scope.
+
+### Extra inode initialization and timestamps
+
+The same Linux pin supplies the complete `fs/ext4/inode.c`
+`ext4_iget_extra_inode` body and the extra-inode initialization branch of
+`__ext4_iget`, with their callers, checksum ordering, timestamp macros and
+`fs/ext2/inode.c` read path reviewed. The helper changes only linkage and GNU
+void-pointer arithmetic for the C11 boundary. The original inode-state enum is
+retained; archive-owned state bits replace kernel atomic bit operations while
+the inode is unpublished. Xattr, inline-data and Lustre state remain distinct.
+Other `__ext4_iget` validation branches are outside this transfer.
+
+An on-disk zero extra size now receives Linux's standard in-memory extension
+after raw checksum verification, without discovering inode xattrs in that
+branch. Both engines expose each timestamp field according to its available
+extension size, including partial extensions and valid epoch-zero timestamps;
+absent birth time remains absent. This fixes lost epoch/nanosecond and birth-time
+information in the existing SDK parser as well as the dynamic module.
+
+Native Linux 6.8.0-147-generic read-only loop mounts confirmed both generated
+partial-extension and zero-extension fixtures on 2026-10-21. In the latter,
+atime/mtime reach 2106 and birth time reaches 2242 with nanoseconds preserved.
+Payload hashes and input-image hashes matched; temporary mounts were removed.
+This runtime kernel is separate from the pinned source reference. Seven focused
+ext/stream/fscrypt/xattr/backend/device suites passed on macOS, Linux and MSVC
+Windows, including rebuilt SDK and standalone runtimes and their public CLI
+timestamp comparison. Runner receipt: `20261020T231817Z-c3cfe8ab`; native mount
+receipt: `20261020T231747Z-e420d403`. Full/slow suites, installed packages and
+physical devices were not checked for this iteration. Remaining ext read
+validation and the parent format census remain open.

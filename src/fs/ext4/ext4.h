@@ -309,5 +309,25 @@ static inline struct timespec64 ext4_decode_extra_time(__le32 base,
 	return ts;
 }
 
+/*
+ * Inode dynamic state flags
+ */
+enum {
+	EXT4_STATE_NEW,			/* inode is newly created */
+	EXT4_STATE_XATTR,		/* has in-inode xattrs */
+	EXT4_STATE_NO_EXPAND,		/* No space for expansion */
+	EXT4_STATE_DA_ALLOC_CLOSE,	/* Alloc DA blks on close */
+	EXT4_STATE_EXT_MIGRATE,		/* Inode is migrating */
+	EXT4_STATE_NEWENTRY,		/* File just added to dir */
+	EXT4_STATE_MAY_INLINE_DATA,	/* may have in-inode data */
+	EXT4_STATE_EXT_PRECACHED,	/* extents have been precached */
+	EXT4_STATE_LUSTRE_EA_INODE,	/* Lustre-style ea_inode */
+	EXT4_STATE_VERITY_IN_PROGRESS,	/* building fs-verity Merkle tree */
+	EXT4_STATE_FC_COMMITTING,	/* Fast commit ongoing */
+	EXT4_STATE_FC_FLUSHING_DATA,	/* Fast commit flushing data */
+	EXT4_STATE_ORPHAN_FILE,		/* Inode orphaned in orphan file */
+	EXT4_STATE_FC_REQUEUE,		/* Inode modified during fast commit */
+};
+
 #include "services.h"
 #endif

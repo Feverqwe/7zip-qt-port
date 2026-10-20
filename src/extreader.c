@@ -154,16 +154,17 @@ int ext_linux_inode_open(struct ext_volume *volume, uint32_t ino, const void *da
         (le32_to_cpu(volume->raw.s_feature_incompat) & 0x4000))
         inode->i_size |= (u64)le32_to_cpu(raw->i_size_high) << 32;
     ext4_get_inode_loc(inode, &iloc);
-    if (EXT4_INODE_HAS_XATTR_SPACE(inode)) {
-        struct ext4_xattr_ibody_header *header = IHDR(inode, raw);
-        if (header->h_magic == cpu_to_le32(EXT4_XATTR_MAGIC)) {
-            error = xattr_check_inode(inode, header, ITAIL(inode, raw));
+    /* Selected original __ext4_iget extra-inode initialization. A zero disk
+     * extra_isize does not hide the standard extended timestamp fields. */
+    if (EXT4_INODE_SIZE(inode->i_sb) > EXT4_GOOD_OLD_INODE_SIZE) {
+        if (ei->i_extra_isize == 0) {
+            _Static_assert((sizeof(struct ext4_inode) & 3) == 0, "ext4 inode alignment");
+            ei->i_extra_isize = sizeof(struct ext4_inode) - EXT4_GOOD_OLD_INODE_SIZE;
+        } else {
+            error = ext4_iget_extra_inode(inode, raw, ei);
             if (error) goto fail;
-            ei->xattr = true;
         }
     }
-    error = ext4_find_inline_data_nolock(inode);
-    if (error) goto fail;
     if (inode->flags & (1U << 28)) {
         if (!ei->i_inline_off || (inode->flags & (1U << 19))) goto corrupt;
         if ((le16_to_cpu(raw->i_mode) & 0170000) != 0040000 && inode->i_size > ei->i_inline_size) goto corrupt;
@@ -171,7 +172,7 @@ int ext_linux_inode_open(struct ext_volume *volume, uint32_t ino, const void *da
     }
     info->size = inode->i_size;
     info->checksum_seed = ei->i_csum_seed;
-    info->has_xattrs = ei->xattr || ei->i_file_acl != 0;
+    info->has_xattrs = ext4_test_inode_state(inode, EXT4_STATE_XATTR) || ei->i_file_acl != 0;
     DECODE_TIME(info->atime, i_atime);
     DECODE_TIME(info->mtime, i_mtime);
     DECODE_TIME(info->change_time, i_ctime);

@@ -20,6 +20,7 @@
  */
 
 #include "ext4.h"
+#include "xattr.h"
 
 static __u32 ext4_inode_csum(struct inode *inode, struct ext4_inode *raw,
 			      struct ext4_inode_info *ei)
@@ -109,4 +110,30 @@ int check_igot_inode(struct inode *inode, ext4_iget_flags flags,
 error:
 	ext4_error_inode(inode, function, line, 0, "%s", err_str);
 	return -EFSCORRUPTED;
+}
+
+int ext4_iget_extra_inode(struct inode *inode,
+					 struct ext4_inode *raw_inode,
+					 struct ext4_inode_info *ei)
+{
+	__le32 *magic = (__le32 *)((u8 *)raw_inode +
+			EXT4_GOOD_OLD_INODE_SIZE + ei->i_extra_isize);
+
+	if (EXT4_INODE_HAS_XATTR_SPACE(inode)  &&
+	    *magic == cpu_to_le32(EXT4_XATTR_MAGIC)) {
+		int err;
+
+		err = xattr_check_inode(inode, IHDR(inode, raw_inode),
+					ITAIL(inode, raw_inode));
+		if (err)
+			return err;
+
+		ext4_set_inode_state(inode, EXT4_STATE_XATTR);
+		err = ext4_find_inline_data_nolock(inode);
+		if (!err && ext4_has_inline_data(inode))
+			ext4_set_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA);
+		return err;
+	} else
+		EXT4_I(inode)->i_inline_off = 0;
+	return 0;
 }

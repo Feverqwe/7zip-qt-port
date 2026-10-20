@@ -194,16 +194,20 @@ if __name__ == "__main__":
         v = VerityVolume("sha512", b"salt")
         if layout == "verity-corrupt":
             v.data[v.metadata_physical * v.block_size] ^= 1
-    elif layout.startswith("modern-inline") or layout == "modern-time":
+    elif layout.startswith("modern-inline") or layout.startswith("modern-time"):
         from ext_modern_fixture import ModernVolume
         v = ModernVolume(inline=layout.startswith("modern-inline"))
-        if layout == "modern-time":
-            struct.pack_into("<H", v.data, v.file_inode + 128, 12)
+        if layout.startswith("modern-time"):
+            struct.pack_into("<H", v.data, v.file_inode + 128, 0 if layout == "modern-time-zero" else 12)
             v.put32(v.file_inode + 8, 0)
             v.put32(v.file_inode + 16, 0)
             v.put32(v.file_inode + 136, (123456789 << 2) | 1)
-            # Outside extra_isize: this atime extension must be ignored.
+            # Outside the partial extension; the zero-size case uses Linux's
+            # initialized standard extension instead.
             v.put32(v.file_inode + 140, 1)
+            if layout == "modern-time-zero":
+                v.put32(v.file_inode + 144, 0)
+                v.put32(v.file_inode + 148, (234567890 << 2) | 2)
             v.refresh()
         if layout == "modern-inline-replacement":
             v.payload = bytes(value ^ 0xFF for value in v.payload)

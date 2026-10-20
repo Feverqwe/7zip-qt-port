@@ -11,8 +11,6 @@
 #define EXT4_MIN_INLINE_DATA_SIZE 60
 #define EXT4_INLINE_DOTDOT_SIZE 4
 #define EXT4_XATTR_SYSTEM_DATA "data"
-#define EXT4_STATE_XATTR 0
-#define EXT4_STATE_LUSTRE_EA_INODE 1
 #define DT_DIR 4
 #define i_checksum_lo osd2.linux2.l_i_checksum_lo
 struct ext4_sb_info {
@@ -24,7 +22,7 @@ struct ext4_sb_info {
 struct fsverity_operations;
 struct sevenzip_asymmetric_trust;
 struct super_block { unsigned int s_blocksize, s_blocksize_bits; struct ext4_sb_info info; const struct fsverity_operations *s_vop; };
-struct ext4_inode_info { u32 i_csum_seed, i_inline_size, i_flags; u16 i_extra_isize, i_inline_off; bool xattr, lustre; u64 i_file_acl; };
+struct ext4_inode_info { u32 i_csum_seed, i_inline_size, i_flags; u16 i_extra_isize, i_inline_off; unsigned long i_state_flags; u64 i_file_acl; };
 struct inode {
     struct super_block *i_sb;
     u32 i_ino, flags;
@@ -98,7 +96,14 @@ static inline unsigned int ext4_rec_len_from_disk(__le16 dlen, unsigned int bloc
 static inline int ext4_get_inode_loc(struct inode *inode, struct ext4_iloc *iloc) {
     iloc->bh = &inode->raw; iloc->offset = 0; return 0;
 }
-#define ext4_test_inode_state(inode, state) ((state) == EXT4_STATE_XATTR ? (inode)->info.xattr : (inode)->info.lustre)
+/* State is initialized while the archive owns the unpublished inode, then
+ * consumed by the original read paths; no concurrent kernel bitops apply. */
+static inline int ext4_test_inode_state(struct inode *inode, int bit) {
+    return (EXT4_I(inode)->i_state_flags >> bit) & 1UL;
+}
+static inline void ext4_set_inode_state(struct inode *inode, int bit) {
+    EXT4_I(inode)->i_state_flags |= 1UL << bit;
+}
 #define ext4_has_inline_data(inode) (((inode)->flags & (1U << 28)) && (inode)->info.i_inline_off)
 #define file_inode(file) ((file)->inode)
 #define inode_eq_iversion(inode, cookie) ((cookie) == 1)
@@ -124,6 +129,7 @@ ext4_fsblk_t descriptor_loc(struct super_block *, ext4_fsblk_t, int);
 int ext4_inode_bitmap_csum_verify(struct super_block *, struct ext4_group_desc *, struct buffer_head *);
 int ext4_block_bitmap_csum_verify(struct super_block *, struct ext4_group_desc *, struct buffer_head *);
 int ext4_inode_csum_verify(struct inode *, struct ext4_inode *, struct ext4_inode_info *);
+int ext4_iget_extra_inode(struct inode *, struct ext4_inode *, struct ext4_inode_info *);
 int ext4_find_inline_data_nolock(struct inode *);
 int ext4_read_inline_data(struct inode *, void *, unsigned int, struct ext4_iloc *);
 int ext4_read_inline_dir(struct file *, struct dir_context *, int *);

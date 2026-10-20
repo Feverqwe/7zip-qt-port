@@ -77,6 +77,24 @@ class ExtTests(unittest.TestCase):
                 self.assertNotEqual(rejected.returncode, 0)
                 self.assertEqual(rejected.stdout, b"")
 
+    def test_extended_inode_times_match_between_engines(self):
+        for layout in ("modern-time", "modern-time-zero"):
+            with self.subTest(layout=layout):
+                fixture = subprocess.run([sys.executable, str(Path(__file__).with_name("ext_fixture.py")), layout],
+                                         capture_output=True, check=True)
+                volume = SimpleNamespace(data=fixture.stdout)
+                timestamps = []
+                for engine in ("7z", "7zz"):
+                    result = self.run_image(volume, engine=engine, command="l")
+                    self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                    fields = [line for line in result.stdout.replace(b"\r\n", b"\n").splitlines()
+                              if line.startswith((b"Modified = ", b"Created = ", b"Accessed = ", b"Changed = "))]
+                    self.assertTrue(any(b"2106-" in line for line in fields), fields)
+                    if layout == "modern-time-zero":
+                        self.assertTrue(any(b"2242-" in line for line in fields), fields)
+                    timestamps.append(fields)
+                self.assertEqual(timestamps[0], timestamps[1])
+
     def test_xattr_names_values_and_acl_serialization(self):
         for kind in ("xattrs", "xattrs-signed", "xattrs-lustre"):
             volume = XattrVolume(kind)

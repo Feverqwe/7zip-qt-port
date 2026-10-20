@@ -153,10 +153,13 @@ class ModernVolume(Volume):
         for ino in ((2, 12, 13) if self.inline else (2, 12)):
             start = self.table * bs + (ino - 1) * 256
             struct.pack_into("<H", self.data, start + 124, 0)
-            struct.pack_into("<H", self.data, start + 130, 0)
+            has_checksum_hi = struct.unpack_from("<H", self.data, start + 128)[0] >= 4
+            if has_checksum_hi:
+                struct.pack_into("<H", self.data, start + 130, 0)
             checksum = crc32c(self.inode_seed(ino), self.data[start:start + 256])
             struct.pack_into("<H", self.data, start + 124, checksum & 0xFFFF)
-            struct.pack_into("<H", self.data, start + 130, checksum >> 16)
+            if has_checksum_hi:
+                struct.pack_into("<H", self.data, start + 130, checksum >> 16)
         for block, lo, hi, size in ((self.block_map, 24, 56, 128), (self.inode_map, 26, 58, 2)):
             checksum = crc32c(self.seed, self.data[block * bs:block * bs + size])
             struct.pack_into("<H", self.data, gd + lo, checksum & 0xFFFF)

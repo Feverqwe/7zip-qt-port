@@ -24,7 +24,6 @@
 #define inode_set_iversion_raw(inode, value) ((inode)->i_version = (u32)(value))
 #define i_size_read(inode) ((inode)->i_size)
 #define ext4_forced_shutdown(sb) false
-#define ext4_set_inode_state(inode, state) ((inode)->info.lustre = true)
 #define ext4_error(...) ((void)0)
 #define ext4_warning_inode(...) ((void)0)
 #define pr_warn_once(...) ((void)0)

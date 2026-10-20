@@ -548,9 +548,7 @@ struct CExtent {
 struct CExtTime {
     UInt32 Val;
     UInt32 Extra;
-#ifdef SEVENZIP_LINUX_EXT
     bool Defined;
-#endif
 };
 
 struct CNode {
@@ -615,6 +613,8 @@ struct CNode {
 };
 
 bool CNode::Parse(const Byte *p, const CHeader &_h) {
+    MTime.Defined = ATime.Defined = ChangeTime.Defined = true;
+    CTime.Defined = false;
     MTime.Extra = 0;
     ATime.Extra = 0;
     CTime.Extra = 0;
@@ -689,17 +689,25 @@ bool CNode::Parse(const Byte *p, const CHeader &_h) {
         // if (_h.InodeSize < 128 + 2) return false;
         UInt16 extra_isize;
         LE_16(0x80, extra_isize)
-        if (128 + extra_isize > _h.InodeSize)
+        if ((extra_isize & 3) || 128 + extra_isize > _h.InodeSize)
             return false;
-        if (extra_isize >= 0x1C) {
-            // UInt16 checksumUpper;
-            // LE_16 (0x82, checksumUpper);
+        if (extra_isize == 0)
+            extra_isize = 0x20; // Linux's standard ext4 inode extension.
+        if (extra_isize >= 8) {
             LE_32(0x84, ChangeTime.Extra)
+        }
+        if (extra_isize >= 12) {
             LE_32(0x88, MTime.Extra)
+        }
+        if (extra_isize >= 16) {
             LE_32(0x8C, ATime.Extra)
+        }
+        if (extra_isize >= 20) {
             LE_32(0x90, CTime.Val)
+            CTime.Defined = true;
+        }
+        if (extra_isize >= 24) {
             LE_32(0x94, CTime.Extra)
-            // LE_32 (0x98, VersionHi)
         }
     }
 
@@ -2434,11 +2442,7 @@ Z7_COM7F_IMF(CHandler::GetRawProp(UInt32 index, PROPID propID, const void **data
 }
 
 static void ExtTimeToProp(const CExtTime &t, NCOM::CPropVariant &prop) {
-#ifdef SEVENZIP_LINUX_EXT
     if (!t.Defined)
-#else
-    if (t.Val == 0 && t.Extra == 0)
-#endif
         return;
 
     FILETIME ft;

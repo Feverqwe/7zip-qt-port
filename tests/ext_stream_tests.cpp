@@ -454,8 +454,17 @@ class ExtStreamTests final : public QObject {
         QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
         QVERIFY(fileIndex() != UInt32(-1));
     }
+    void partialTimestampExtensionsAndEpochZero_data() {
+        QTest::addColumn<QString>("layout");
+        QTest::addColumn<quint64>("accessEpochs");
+        QTest::newRow("partial extension") << QStringLiteral("modern-time") << quint64(0);
+        QTest::newRow("zero extension initialized by Linux")
+            << QStringLiteral("modern-time-zero") << quint64(1);
+    }
     void partialTimestampExtensionsAndEpochZero() {
-        CMyComPtr<IInStream> input = new Input(image(bundle("modern-time")));
+        QFETCH(QString, layout);
+        QFETCH(quint64, accessEpochs);
+        CMyComPtr<IInStream> input = new Input(image(bundle(layout)));
         QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
         const auto index = fileIndex();
         QVERIFY(index != UInt32(-1));
@@ -469,10 +478,14 @@ class ExtStreamTests final : public QObject {
         };
         const UInt64 unixEpoch = UInt64(11644473600) * 10000000;
         time(kpidMTime, unixEpoch + (UInt64(1) << 32) * 10000000 + 1234567);
-        time(kpidATime, unixEpoch);
+        time(kpidATime, unixEpoch + accessEpochs * (UInt64(1) << 32) * 10000000);
         NWindows::NCOM::CPropVariant created;
         QCOMPARE(archive_->GetProperty(index, kpidCTime, &created), S_OK);
-        QCOMPARE(created.vt, VARTYPE(VT_EMPTY));
+        if (accessEpochs) {
+            time(kpidCTime, unixEpoch + (UInt64(2) << 32) * 10000000 + 2345678);
+        } else {
+            QCOMPARE(created.vt, VARTYPE(VT_EMPTY));
+        }
     }
     void verityMetadataAndReadFailuresPropagateAndCanBeRetried() {
         auto *source = new Input(image(bundle("verity-salted")));
