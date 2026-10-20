@@ -44,6 +44,11 @@ int sevenzip_udf_sparing_create(void *context, sevenzip_udf_read read,
     return 0;
 }
 
+void sevenzip_udf_sparing_root(struct sevenzip_udf_sparing *state, uint32_t root)
+{
+    state->map.s_partition_root = root;
+}
+
 int sevenzip_udf_sparing_span(const struct sevenzip_udf_sparing *state, uint32_t block,
                               uint32_t *physical, uint32_t *blocks)
 {

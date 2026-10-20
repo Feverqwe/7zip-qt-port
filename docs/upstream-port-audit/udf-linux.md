@@ -941,3 +941,76 @@ Actual macOS CMake install проверил 257 payload variants и четыре
 USE metadata-only scenarios, unchanged source images и три точных notices.
 Temporary staging/fixtures удалены; incremental build trees/cache сохранены.
 Full/slow/UI/physical-device acceptance не выполнялась.
+
+## Read-only allocation-info и порядок PD
+
+Сравнены полные закреплённые Linux `check_partition_desc`,
+`udf_fill_partdesc_info`, `udf_compute_nr_groups`, `udf_sb_alloc_bitmap`,
+`udf_load_partdesc`, `udf_load_logicalvol`, VDS/anchor callers, allocation
+structures/flags и hidden inode consumers. Повторно сопоставлены 7-Zip PD/LVD
+projection, partition binding, sparable/VAT/metadata initialization, source
+callbacks, progress и candidate cleanup. После реализации C bodies сравнены
+повторно: четыре первые функции перенесены в `src/fs/udf/super.c` полностью.
+Адаптации — portable `calloc` вместо kernel flex allocation, два typed uint32
+overflow helper calls и char-pointer casts. GPL C остаётся отдельным модулем.
+
+Native `RW_INCOMPAT` теперь сохраняется между domain/LVID и PD проверками,
+включая missing/damaged LVID. Read-only запрос сам по себе не пропускает всю
+allocation-info: eligible physical/sparable PD загружает hidden allocation-table
+inode; bitmap setup резервирует descriptor groups и проверяет арифметику.
+Исходные причины force-readonly/skip сохранены, включая access type, contents,
+отсутствие allocation-info, freed/mixed structures и dependent map types.
+Новая проверка не требует, чтобы bitmap payload читался при mount: Linux здесь
+его также не читает. Write allocation и statfs/free-space enumeration не
+добавлены в archive API.
+
+Загрузка и привязка идут по исходному порядку prevailing PD внутри native VDS
+callback. Ранее C++ сначала привязывал все PD и затем загружал dependent maps;
+теперь hidden ICB не получает доступ к ещё не загруженному физическому разделу.
+Для каждой PD сохранены first physical/sparable и first dependent selection.
+Sparing tables загружаются до PD, а root обновляется при привязке без повторного
+чтения таблиц. VAT получает текущий native last-block state во время discovery.
+Прежний независимый C++ root/length overflow guard удалён: проверяет исходный
+`udf_fill_partdesc_info`.
+
+Allocation-table validation использует уже перенесённый shared hidden inode
+cache. Temporary C table/file и bitmap allocation освобождаются после проверки;
+validated inode и hidden-role identity удерживает archive cache. Копия PD
+отделена от borrowed tagged buffer. Progress delegate действует только на время
+discovery и восстанавливается при любом выходе. Однократные E_FAIL/E_ABORT не
+теряются при descriptor callbacks; source HRESULT сохраняется отдельно от
+обычного input error. Candidate reset очищает owned volume state и EOF flag.
+
+Условие восстановления не расширено: исходный `udf_load_sequence` пробует
+reserve VDS лишь для `-EAGAIN`. Invalid allocation-table/metadata/VAT возвращают
+terminal `-EIO`, даже если reserve-копия исправна. Это подтверждено native runs;
+первоначальная гипотеза о более широком fallback отклонена до acceptance.
+
+21 новый положительный образ совпал по bytes с native Linux
+`6.8.0-147-generic`: USE/FE/inline/indirect table inode, extLength flags, bitmap
+descriptor-only setup, force-readonly причины, отсутствующий LVID и обратная
+межраздельная зависимость. 11 negative mount/lookup результатов также совпали:
+invalid ICB, hidden-role conflict, forward dependency, PD order и terminal
+errors с исправной reserve VDS. Bitmap arithmetic overflow и oversized USE
+проверяются только модулем по актуальным source guards; старый runner не
+используется как malformed-input reference для этих границ. Mounts/images удалены.
+
+CLI проверяет payloads и normal code 2 для module-only malformed cases. ABI
+добавляет семь allocation/backing вариантов в existing EOF/interleaved/retained
+stream checks, selected invalid-setup contracts, source E_FAIL/E_ABORT и
+однократный progress failure с успешным повторным открытием. Порог разделения
+`UdfLinux.cpp` рассмотрен: callbacks остаются одним C/stream bridge; VDS lifecycle
+и scoped progress принадлежат отдельному существующему `UdfDiscovery.cpp`.
+Kernel write/VFS services не реализуются фиктивно. Source-port scope этой
+итерации закрыт; traversal/stack limits и общий FS/shared-format goal остаются
+открытыми.
+
+Пять focused suites (`udf`, `udf_stream`, `upstream_baseline`, `runtime_cache`,
+`runtime_package`) прошли на macOS arm64, Linux x64 и Windows x64/MSVC;
+remote receipt `20261020T034124Z-d8554333`. После удаления дублирующего C++
+overflow guard affected targets пересобраны: пять suites повторно прошли на
+macOS, `udf`/`udf_stream` — на Linux/Windows,
+receipt `20261020T034726Z-4c839631`. Actual macOS CMake install прочитал 278
+payload variants и четыре USE metadata-only, сохранил source images и установил
+три точных notices. Temporary staging/fixtures удалены; build trees/cache
+сохранены. Full/slow/UI/physical-device acceptance не выполнялась.

@@ -9,10 +9,37 @@
 
 namespace NArchive {
 namespace NUdf {
-struct CInArchive::CDiscoveryContext {
+struct CInArchive::CDiscoveryContext : CProgressVirt {
     CInArchive *archive;
+    CProgressVirt *progress;
     HRESULT fatal = S_OK;
     HRESULT ioFailure = S_OK;
+    explicit CDiscoveryContext(CInArchive *owner) : archive(owner), progress(owner->_progress) {
+        if (progress)
+            archive->_progress = this;
+    }
+    ~CDiscoveryContext() { archive->_progress = progress; }
+    HRESULT SetTotal(UInt64 bytes) override {
+        if (fatal != S_OK)
+            return fatal;
+        fatal = E_FAIL;
+        fatal = progress ? progress->SetTotal(bytes) : S_OK;
+        return fatal;
+    }
+    HRESULT SetCompleted(UInt64 files, UInt64 bytes) override {
+        if (fatal != S_OK)
+            return fatal;
+        fatal = E_FAIL;
+        fatal = progress ? progress->SetCompleted(files, bytes) : S_OK;
+        return fatal;
+    }
+    HRESULT SetCompleted() override {
+        if (fatal != S_OK)
+            return fatal;
+        fatal = E_FAIL;
+        fatal = progress ? progress->SetCompleted() : S_OK;
+        return fatal;
+    }
     static int Read(void *opaque, UInt16 partition, UInt32 block, void *data, size_t size) {
         auto &c = *static_cast<CDiscoveryContext *>(opaque);
         if (c.fatal != S_OK)
@@ -26,9 +53,7 @@ struct CInArchive::CDiscoveryContext {
             if (result == S_OK)
                 result = ReadStream_FALSE(c.archive->_stream, data, size);
             if (result == S_OK && c.archive->_progress) {
-                c.fatal = E_FAIL;
-                c.fatal = c.archive->_progress->SetCompleted(0, c.archive->_processedProgressBytes);
-                result = c.fatal;
+                result = c.SetCompleted(0, c.archive->_processedProgressBytes);
             }
         } catch (...) {
             result = E_FAIL;
@@ -39,7 +64,8 @@ struct CInArchive::CDiscoveryContext {
             c.ioFailure = result;
         return (int)result;
     }
-    static int Descriptor(void *opaque, UInt16 id, UInt32 block, const void *data, size_t size) {
+    static int Descriptor(void *opaque, UInt16 id, UInt32 block, const void *data, size_t size,
+                          UInt32 *flags, UInt32 lastBlock) {
         auto &c = *static_cast<CDiscoveryContext *>(opaque);
         if (c.fatal != S_OK)
             return (int)c.fatal;
@@ -48,12 +74,15 @@ struct CInArchive::CDiscoveryContext {
             while (((size_t)1 << bits) < size)
                 ++bits;
             c.archive->SecLogSize = bits;
+            c.archive->_lastRecordedBlock = lastBlock;
             const HRESULT result =
-                c.archive->ParseVolumeDescriptor(static_cast<const Byte *>(data), size, id);
+                c.archive->ParseVolumeDescriptor(static_cast<const Byte *>(data), size, id, flags);
             if (result == S_OK)
                 c.archive->UpdatePhySize(((UInt64)block + 1) * size);
             if (result == E_OUTOFMEMORY || result == E_ABORT)
                 c.fatal = result;
+            if (FAILED(result) && c.ioFailure == S_OK)
+                c.ioFailure = result;
             return (int)result;
         } catch (...) {
             c.fatal = E_OUTOFMEMORY;
@@ -66,6 +95,7 @@ struct CInArchive::CDiscoveryContext {
         archive.LogVols.Clear();
         archive.Partitions.Clear();
         archive.PhySize = 0;
+        archive.UnexpectedEnd = false;
     }
     static int Status(void *opaque) { return (int)static_cast<CDiscoveryContext *>(opaque)->fatal; }
 };
@@ -86,6 +116,8 @@ HRESULT CInArchive::LoadLinuxDiscovery() {
     if (LogVols.IsEmpty() || LogVols[0].PartitionMaps.IsEmpty() || Partitions.IsEmpty())
         return S_FALSE;
     _lastRecordedBlock = discovery.last_block;
+    FOR_VECTOR(v, LogVols)
+    LogVols[v].LinuxFlags = discovery.flags;
     UpdatePhySize(((UInt64)discovery.anchor_block + 1) * discovery.block_size);
     return S_OK;
 }

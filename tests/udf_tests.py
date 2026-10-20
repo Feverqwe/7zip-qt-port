@@ -19,6 +19,7 @@ from udf_inode_fixture import CASES as INODE_CASES, BAD as INODE_BAD, MODULE_BAD
 from udf_directory_fixture import CASES as DIRECTORY_CASES, BAD as DIRECTORY_BAD, MODULE_BAD as DIRECTORY_MODULE_BAD
 from udf_maps_fixture import CASES as MAP_CASES, BAD as MAP_BAD, MODULE_BAD as MAP_MODULE_BAD
 from udf_cache_fixture import CASES as CACHE_CASES, BAD as CACHE_BAD, MODULE_BAD as CACHE_MODULE_BAD, METADATA_ONLY as CACHE_METADATA
+from udf_partition_fixture import CASES as PARTITION_CASES, BAD as PARTITION_BAD, MODULE_BAD as PARTITION_MODULE_BAD
 
 RUNTIME = Path(sys.argv.pop(1))
 MODULE = Path(sys.argv.pop(1))
@@ -76,7 +77,7 @@ class UdfTests(unittest.TestCase):
     def test_continuations(self):
         for kind in (*CONTINUATIONS, *ICB_CASES, *SPARING_CASES, *VAT_CASES, *METADATA_CASES,
                      *WALK_CASES, *WALK_MODULE, *DISCOVERY_CASES, *DISCOVERY_MODULE, *NAME_CASES,
-                     *INODE_CASES, *DIRECTORY_CASES, *MAP_CASES, *CACHE_CASES):
+                     *INODE_CASES, *DIRECTORY_CASES, *MAP_CASES, *CACHE_CASES, *PARTITION_CASES):
             image, files = volume(kind)
             with self.subTest(kind=kind):
                 result = self.run_image("7z", image)
@@ -96,7 +97,7 @@ class UdfTests(unittest.TestCase):
         for kind in ("ad-cycle", "ad-limit-17", "ad-outside", "ad-bad-partition",
                      "ad-overflow", "ad-over-block", *ICB_BAD, *SPARING_BAD, *VAT_BAD,
                      *METADATA_BAD, *DISCOVERY_BAD, *NAME_BAD, *INODE_BAD, *INODE_MODULE_BAD,
-                     *DIRECTORY_BAD, *MAP_BAD, *CACHE_BAD):
+                     *DIRECTORY_BAD, *MAP_BAD, *CACHE_BAD, *PARTITION_BAD):
             image, _ = volume(kind)
             with self.subTest(kind=kind):
                 self.assertNotEqual(self.run_image("7z", image).returncode, 0)
@@ -151,7 +152,7 @@ class UdfTests(unittest.TestCase):
                 self.assertEqual(self.run_image("7z", image).returncode, 2)
 
     def test_unsafe_inputs_fail_normally(self):
-        for kind in (*MAP_MODULE_BAD, *CACHE_MODULE_BAD):
+        for kind in (*MAP_MODULE_BAD, *CACHE_MODULE_BAD, *PARTITION_MODULE_BAD):
             image, _ = volume(kind)
             with self.subTest(kind=kind):
                 self.assertEqual(self.run_image("7z", image).returncode, 2)

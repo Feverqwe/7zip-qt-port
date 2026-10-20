@@ -136,6 +136,9 @@ struct CPrimeVol
 
 struct CPartition
 {
+#ifdef SEVENZIP_LINUX_UDF
+    CByteBuffer RawDescriptor;
+#endif
   UInt32 Pos;
   UInt32 Len;
 
@@ -440,6 +443,7 @@ A Volume Descriptor Sequence:
 struct CLogVol
 {
 #ifdef SEVENZIP_LINUX_UDF
+    UInt32 LinuxFlags = 0;
     CMap32 NativeIndex, PublicItems;
     CObjectVector<std::shared_ptr<sevenzip_udf_cached_inode>> NativeInodes;
 #endif
@@ -515,6 +519,8 @@ private:
   UInt32 _lastRecordedBlock;
   HRESULT LoadLinuxDiscovery();
   HRESULT LoadLinuxMaps(CLogVol &volume, const Byte *data, UInt32 size);
+  HRESULT LoadLinuxPartition(unsigned volIndex, unsigned partitionRef, const Byte *descriptor);
+  HRESULT LoadLinuxPartitionDescriptor(unsigned index);
   HRESULT GetLinuxInodeKey(unsigned volIndex, const CLongAllocDesc &location, UInt32 &key);
   static sevenzip_udf_cached_inode *GetLinuxInode(void *, UInt32);
   static UInt32 MapLinuxInode(void *, UInt16, UInt32);
@@ -544,7 +550,8 @@ private:
                    const UInt32 *inodeKey = nullptr);
 
   HRESULT Open2();
-  HRESULT ParseVolumeDescriptor(const Byte *data, size_t size, UInt16 id);
+  HRESULT ParseVolumeDescriptor(const Byte *data, size_t size, UInt16 id,
+                                UInt32 *linuxFlags = nullptr);
   HRESULT FillRefs(CFileSet &fs, unsigned fileIndex, int parent, int numRecurseAllowed);
 
   UInt64 _processedProgressBytes;

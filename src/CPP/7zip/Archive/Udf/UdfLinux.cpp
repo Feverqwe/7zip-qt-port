@@ -157,7 +157,7 @@ struct CInArchive::CVatBuilder {
 HRESULT CInArchive::LoadLinuxMaps(CLogVol &volume, const Byte *data, UInt32 size) {
     sevenzip_udf_map *maps = nullptr;
     uint32_t count = 0;
-    const int result = sevenzip_udf_maps(data, size, &maps, &count);
+    const int result = sevenzip_udf_maps(data, size, &maps, &count, &volume.LinuxFlags);
     std::unique_ptr<sevenzip_udf_map, decltype(&sevenzip_udf_maps_free)> owner(
         maps, sevenzip_udf_maps_free);
     if (result)
@@ -178,6 +178,56 @@ HRESULT CInArchive::LoadLinuxMaps(CLogVol &volume, const Byte *data, UInt32 size
         if (maps[i].kind == UDF_METADATA_MAP25)
             map.MetadataMap.CopyFrom(maps[i].data, sizeof(maps[i].data));
         volume.PartitionMaps.Add(map);
+    }
+    const unsigned volIndex = LogVols.Size() - 1;
+    FOR_VECTOR(p, volume.PartitionMaps)
+    if (volume.PartitionMaps[p].IsSparable())
+        RINOK(LoadLinuxSparing(volIndex, p))
+    return S_OK;
+}
+
+HRESULT CInArchive::LoadLinuxPartition(unsigned volIndex, unsigned partitionRef,
+                                       const Byte *descriptor) {
+    CLogVol &volume = LogVols[volIndex];
+    CVatBuilder context{this, volIndex};
+    context.metadata = true;
+    const int result = sevenzip_udf_partition(
+        &context, CVatBuilder::Open, CVatBuilder::Close, volume.BlockSize,
+        volume.PartitionMaps.Size(), partitionRef, volume.PartitionMaps[partitionRef].Native.kind,
+        descriptor, &volume.LinuxFlags);
+    if (context.fatal != S_OK)
+        return context.fatal;
+    return result < -4095      ? (HRESULT)result
+           : result == -ENOMEM ? E_OUTOFMEMORY
+           : result            ? S_FALSE
+                               : S_OK;
+}
+
+HRESULT CInArchive::LoadLinuxPartitionDescriptor(unsigned index) {
+    FOR_VECTOR(v, LogVols) {
+        CLogVol &volume = LogVols[v];
+        CRecordVector<sevenzip_udf_map> maps;
+        FOR_VECTOR(p, volume.PartitionMaps)
+        maps.Add(volume.PartitionMaps[p].Native);
+        uint32_t physical, dependent;
+        sevenzip_udf_map_indices(&maps[0], maps.Size(), Partitions[index].Number, &physical,
+                                 &dependent);
+        if (physical >= maps.Size())
+            continue;
+        CPartitionMap &map = volume.PartitionMaps[physical];
+        map.PartitionIndex = index;
+        if (map.IsSparable())
+            sevenzip_udf_sparing_root(map.Sparing.get(), Partitions[index].Pos);
+        RINOK(LoadLinuxPartition(v, physical, Partitions[index].RawDescriptor))
+        if (dependent < maps.Size()) {
+            volume.PartitionMaps[dependent].PartitionIndex = index;
+            RINOK(LoadLinuxPartition(v, dependent, Partitions[index].RawDescriptor))
+            if (volume.PartitionMaps[dependent].IsMetadata()) {
+                RINOK(LoadLinuxMetadata(v, dependent))
+            } else {
+                RINOK(LoadLinuxVat(v, dependent))
+            }
+        }
     }
     return S_OK;
 }

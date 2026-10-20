@@ -10,6 +10,12 @@
 #define UDF_FLAG_UID_SET 13
 #define UDF_FLAG_GID_SET 14
 #define UDF_INVALID_MODE ((umode_t)-1)
+#define UDF_PART_FLAG_UNALLOC_BITMAP 0x0001
+#define UDF_PART_FLAG_UNALLOC_TABLE 0x0002
+#define UDF_PART_FLAG_READ_ONLY 0x0010
+#define UDF_PART_FLAG_WRITE_ONCE 0x0020
+#define UDF_PART_FLAG_REWRITABLE 0x0040
+#define UDF_PART_FLAG_OVERWRITABLE 0x0080
 
 struct udf_meta_data {
 	uint32_t s_meta_file_loc;
@@ -32,7 +38,17 @@ struct udf_virtual_data {
 	uint32_t s_num_entries;
 	uint16_t s_start_offset;
 };
+struct udf_bitmap {
+    uint32_t s_extPosition;
+    int s_nr_groups;
+    struct buffer_head *s_block_bitmap[];
+};
 struct udf_part_map {
+    union {
+        struct udf_bitmap *s_bitmap;
+        struct inode *s_table;
+    } s_uspace;
+    unsigned s_partition_flags;
 	uint16_t s_volumeseqnum, s_partition_num;
 	const uint8_t *s_raw;
 	unsigned s_raw_len;

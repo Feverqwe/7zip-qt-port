@@ -114,8 +114,9 @@ timestamps также подключены. Linux FID iterator читает ка
 повторные и непривязанные карты, а также таблицы с большим числом разделов.
 Политика physical-block inode cache и hidden-role consistency перенесена через
 исходный `__udf_iget`; USE доступен как metadata-only inode и hidden metadata
-backing. Оставшиеся read-only allocation-info dependencies и archive traversal
-limits UDF ещё требуют сверки.
+backing. Read-only PD allocation-info validation и последовательная загрузка
+разделов перенесены через Linux C bodies; archive traversal limits UDF ещё
+требуют сверки.
 
 ### HFS+/HFSX: fork mapping и metadata reads
 

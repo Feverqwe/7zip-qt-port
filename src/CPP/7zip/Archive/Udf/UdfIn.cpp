@@ -1074,7 +1074,9 @@ API_FUNC_IsArc IsArc_Udf(const Byte *p, size_t size) {
 #endif
 }
 
-HRESULT CInArchive::ParseVolumeDescriptor(const Byte *buf, size_t bufSize, UInt16 id) {
+HRESULT CInArchive::ParseVolumeDescriptor(const Byte *buf, size_t bufSize, UInt16 id,
+                                          UInt32 *linuxFlags) {
+    (void)linuxFlags;
     if (id == DESC_TYPE_PrimVol) {
         CPrimeVol &pm = PrimeVols.AddNew();
         pm.Parse(buf);
@@ -1083,6 +1085,10 @@ HRESULT CInArchive::ParseVolumeDescriptor(const Byte *buf, size_t bufSize, UInt1
 
     if (id == DESC_TYPE_Partition) {
 #ifdef SEVENZIP_LINUX_UDF
+        if (linuxFlags) {
+            FOR_VECTOR(v, LogVols)
+            LogVols[v].LinuxFlags = *linuxFlags;
+        }
         bool used = false;
         FOR_VECTOR(v, LogVols) {
             FOR_VECTOR(p, LogVols[v].PartitionMaps) {
@@ -1103,6 +1109,9 @@ HRESULT CInArchive::ParseVolumeDescriptor(const Byte *buf, size_t bufSize, UInt1
             return S_FALSE;
 #endif
         CPartition partition;
+#ifdef SEVENZIP_LINUX_UDF
+        partition.RawDescriptor.CopyFrom(buf, 512);
+#endif
         // const UInt32 volDescSeqNumer = Get32(buf + 16);
         partition.Flags = Get16(buf + 20);
         partition.Number = Get16(buf + 22);
@@ -1116,17 +1125,20 @@ HRESULT CInArchive::ParseVolumeDescriptor(const Byte *buf, size_t bufSize, UInt1
         partition.AccessType = Get32(buf + 184);
         partition.Pos = Get32(buf + 188);
         partition.Len = Get32(buf + 192);
-#ifdef SEVENZIP_LINUX_UDF
-        if ((UInt64)partition.Pos + partition.Len > UINT32_MAX)
-            return S_FALSE;
-#endif
         partition.ImplId.Parse(buf + 196);
         // memcpy(partition.ImplUse, buf + 228, sizeof(partition.ImplUse));
 
         PRF(printf("\nPartition number = %2d   pos = %d   len = %d", partition.Number,
                    partition.Pos, partition.Len));
+#ifdef SEVENZIP_LINUX_UDF
+        const HRESULT result = LoadLinuxPartitionDescriptor(Partitions.Add(partition));
+        if (linuxFlags && !LogVols.IsEmpty())
+            *linuxFlags = LogVols[0].LinuxFlags;
+        return result;
+#else
         Partitions.Add(partition);
         return S_OK;
+#endif
     }
 
     if (id == DESC_TYPE_LogicalVol) {
@@ -1172,7 +1184,12 @@ HRESULT CInArchive::ParseVolumeDescriptor(const Byte *buf, size_t bufSize, UInt1
         // vol.IntegritySequenceExtent.Parse(buf + 432);
 
 #ifdef SEVENZIP_LINUX_UDF
-        return LoadLinuxMaps(vol, buf, (UInt32)bufSize);
+        if (linuxFlags)
+            vol.LinuxFlags = *linuxFlags;
+        const HRESULT result = LoadLinuxMaps(vol, buf, (UInt32)bufSize);
+        if (linuxFlags)
+            *linuxFlags = vol.LinuxFlags;
+        return result;
 #else
         const UInt32 mapTableLen = Get32(buf + 264);
         const UInt32 numPartitionMaps = Get32(buf + 268);
@@ -1391,19 +1408,11 @@ HRESULT CInArchive::Open2() {
   {
     CLogVol &vol = LogVols[volIndex];
 #ifdef SEVENZIP_LINUX_UDF
-    CRecordVector<sevenzip_udf_map> maps;
-    FOR_VECTOR(p, vol.PartitionMaps)
-    maps.Add(vol.PartitionMaps[p].Native);
-    FOR_VECTOR(i, Partitions) {
-        uint32_t physical, dependent;
-        sevenzip_udf_map_indices(&maps[0], maps.Size(), Partitions[i].Number, &physical,
-                                 &dependent);
-        if (physical < maps.Size()) {
-            vol.PartitionMaps[physical].PartitionIndex = i;
-            totalSize += (UInt64)Partitions[i].Len << SecLogSize;
-        }
-        if (dependent < maps.Size())
-            vol.PartitionMaps[dependent].PartitionIndex = i;
+    FOR_VECTOR(p, vol.PartitionMaps) {
+        const CPartitionMap &map = vol.PartitionMaps[p];
+        if ((map.Native.kind == UDF_TYPE1_MAP15 || map.IsSparable()) &&
+            map.PartitionIndex < Partitions.Size())
+            totalSize += (UInt64)Partitions[map.PartitionIndex].Len << SecLogSize;
     }
 #else
     FOR_VECTOR (pmIndex, vol.PartitionMaps)
@@ -1438,31 +1447,7 @@ HRESULT CInArchive::Open2() {
 #endif
   }
 
-#ifdef SEVENZIP_LINUX_UDF
-  for (unsigned v = 0; v < LogVols.Size(); ++v) {
-      for (unsigned p = 0; p < LogVols[v].PartitionMaps.Size(); ++p) {
-          if (LogVols[v].PartitionMaps[p].IsSparable())
-              RINOK(LoadLinuxSparing(v, p))
-      }
-  }
-  for (unsigned v = 0; v < LogVols.Size(); ++v) {
-      for (unsigned p = 0; p < LogVols[v].PartitionMaps.Size(); ++p) {
-          if (LogVols[v].PartitionMaps[p].IsVirtual &&
-              LogVols[v].PartitionMaps[p].PartitionIndex < Partitions.Size())
-              RINOK(LoadLinuxVat(v, p))
-      }
-  }
-#endif
-
-#ifdef SEVENZIP_LINUX_UDF
-  for (unsigned v = 0; v < LogVols.Size(); ++v) {
-      for (unsigned p = 0; p < LogVols[v].PartitionMaps.Size(); ++p) {
-          if (LogVols[v].PartitionMaps[p].IsMetadata() &&
-              LogVols[v].PartitionMaps[p].PartitionIndex < Partitions.Size())
-              RINOK(LoadLinuxMetadata(v, p))
-      }
-  }
-#else
+#ifndef SEVENZIP_LINUX_UDF
   for (volIndex = 0; volIndex < LogVols.Size(); volIndex++) {
       CLogVol &vol = LogVols[volIndex];
       FOR_VECTOR(pmIndex, vol.PartitionMaps) {

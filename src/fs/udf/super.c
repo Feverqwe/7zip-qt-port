@@ -965,7 +965,8 @@ static int udf_load_selected(struct super_block *sb, sector_t block, uint16_t ex
         brelse(bh);
         return expected == TAG_IDENT_PD ? 0 : -EIO;
     }
-    result = sb->descriptor(sb->context, ident, (uint32_t)block, bh->b_data, sb->s_blocksize);
+    result = sb->descriptor(sb->context, ident, (uint32_t)block, bh->b_data, sb->s_blocksize,
+                            &sb->info.s_flags, (uint32_t)sb->info.s_last_block);
     if (!result && ident == TAG_IDENT_LVD) {
         struct logicalVolDesc *lvd = (struct logicalVolDesc *)bh->b_data;
         struct long_ad location;
@@ -973,6 +974,8 @@ static int udf_load_selected(struct super_block *sb, sector_t block, uint16_t ex
         *fileset = lelb_to_cpu(location.extLocation);
         if (lvd->integritySeqExt.extLength)
             udf_load_logicalvolint(sb, leea_to_cpu(lvd->integritySeqExt));
+        if (!UDF_SB(sb)->s_lvid_bh)
+            UDF_SET_FLAG(sb, UDF_FLAG_RW_INCOMPAT);
     }
     brelse(bh);
     return result ? -EIO : 0;
@@ -1168,7 +1171,7 @@ out:
 }
 
 int sevenzip_udf_maps(const void *data, uint32_t size, struct sevenzip_udf_map **output,
-                      uint32_t *count)
+                      uint32_t *count, uint32_t *flags)
 {
     struct super_block sb = {0};
     unsigned i;
@@ -1178,7 +1181,9 @@ int sevenzip_udf_maps(const void *data, uint32_t size, struct sevenzip_udf_map *
     if (!data || size < sizeof(struct logicalVolDesc))
         return -EFSCORRUPTED;
     sb.s_blocksize = size;
+    sb.info.s_flags = *flags;
     result = udf_decode_partition_maps(&sb, (struct logicalVolDesc *)data);
+    *flags = sb.info.s_flags;
     if (!result) {
         struct sevenzip_udf_map *maps = calloc(sb.info.s_partitions, sizeof(*maps));
         if (!maps) result = -ENOMEM;
@@ -1225,4 +1230,200 @@ void sevenzip_udf_map_indices(const struct sevenzip_udf_map *maps, uint32_t coun
             break;
     }
     *dependent = i;
+}
+
+int udf_compute_nr_groups(struct super_block *sb, u32 partition)
+{
+	struct udf_part_map *map = &UDF_SB(sb)->s_partmaps[partition];
+	return DIV_ROUND_UP(map->s_partition_len +
+			    (sizeof(struct spaceBitmapDesc) << 3),
+			    sb->s_blocksize * 8);
+}
+
+static struct udf_bitmap *udf_sb_alloc_bitmap(struct super_block *sb, u32 index)
+{
+	struct udf_bitmap *bitmap;
+	int nr_groups = udf_compute_nr_groups(sb, index);
+
+	bitmap = calloc(1, struct_size(bitmap, s_block_bitmap, nr_groups));
+	if (!bitmap)
+		return NULL;
+
+	bitmap->s_nr_groups = nr_groups;
+	return bitmap;
+}
+
+static int check_partition_desc(struct super_block *sb,
+				struct partitionDesc *p,
+				struct udf_part_map *map)
+{
+	bool umap, utable, fmap, ftable;
+	struct partitionHeaderDesc *phd;
+
+	switch (le32_to_cpu(p->accessType)) {
+	case PD_ACCESS_TYPE_READ_ONLY:
+	case PD_ACCESS_TYPE_WRITE_ONCE:
+	case PD_ACCESS_TYPE_NONE:
+		goto force_ro;
+	}
+
+	/* No Partition Header Descriptor? */
+	if (strcmp((const char *)p->partitionContents.ident, PD_PARTITION_CONTENTS_NSR02) &&
+	    strcmp((const char *)p->partitionContents.ident, PD_PARTITION_CONTENTS_NSR03))
+		goto force_ro;
+
+	phd = (struct partitionHeaderDesc *)p->partitionContentsUse;
+	utable = phd->unallocSpaceTable.extLength;
+	umap = phd->unallocSpaceBitmap.extLength;
+	ftable = phd->freedSpaceTable.extLength;
+	fmap = phd->freedSpaceBitmap.extLength;
+
+	/* No allocation info? */
+	if (!utable && !umap && !ftable && !fmap)
+		goto force_ro;
+
+	/* We don't support blocks that require erasing before overwrite */
+	if (ftable || fmap)
+		goto force_ro;
+	/* UDF 2.60: 2.3.3 - no mixing of tables & bitmaps, no VAT. */
+	if (utable && umap)
+		goto force_ro;
+
+	if (map->s_partition_type == UDF_VIRTUAL_MAP15 ||
+	    map->s_partition_type == UDF_VIRTUAL_MAP20 ||
+	    map->s_partition_type == UDF_METADATA_MAP25)
+		goto force_ro;
+
+	return 0;
+force_ro:
+	if (!sb_rdonly(sb))
+		return -EACCES;
+	UDF_SET_FLAG(sb, UDF_FLAG_RW_INCOMPAT);
+	return 0;
+}
+
+static int udf_fill_partdesc_info(struct super_block *sb,
+		struct partitionDesc *p, int p_index)
+{
+	struct udf_part_map *map;
+	struct udf_sb_info *sbi = UDF_SB(sb);
+	struct partitionHeaderDesc *phd;
+	u32 sum;
+	int err;
+
+	map = &sbi->s_partmaps[p_index];
+
+	map->s_partition_len = le32_to_cpu(p->partitionLength); /* blocks */
+	map->s_partition_root = le32_to_cpu(p->partitionStartingLocation);
+	if (udf_add_u32_overflow(map->s_partition_root, map->s_partition_len,
+			       &sum)) {
+		udf_err(sb, "Partition %d has invalid location %u + %u\n",
+			p_index, map->s_partition_root, map->s_partition_len);
+		return -EFSCORRUPTED;
+	}
+
+	if (p->accessType == cpu_to_le32(PD_ACCESS_TYPE_READ_ONLY))
+		map->s_partition_flags |= UDF_PART_FLAG_READ_ONLY;
+	if (p->accessType == cpu_to_le32(PD_ACCESS_TYPE_WRITE_ONCE))
+		map->s_partition_flags |= UDF_PART_FLAG_WRITE_ONCE;
+	if (p->accessType == cpu_to_le32(PD_ACCESS_TYPE_REWRITABLE))
+		map->s_partition_flags |= UDF_PART_FLAG_REWRITABLE;
+	if (p->accessType == cpu_to_le32(PD_ACCESS_TYPE_OVERWRITABLE))
+		map->s_partition_flags |= UDF_PART_FLAG_OVERWRITABLE;
+
+	udf_debug("Partition (%d type %x) starts at physical %u, block length %u\n",
+		  p_index, map->s_partition_type,
+		  map->s_partition_root, map->s_partition_len);
+
+	err = check_partition_desc(sb, p, map);
+	if (err)
+		return err;
+
+	/*
+	 * Skip loading allocation info it we cannot ever write to the fs.
+	 * This is a correctness thing as we may have decided to force ro mount
+	 * to avoid allocation info we don't support.
+	 */
+	if (UDF_QUERY_FLAG(sb, UDF_FLAG_RW_INCOMPAT))
+		return 0;
+
+	phd = (struct partitionHeaderDesc *)p->partitionContentsUse;
+	if (phd->unallocSpaceTable.extLength) {
+		struct kernel_lb_addr loc = {
+			.logicalBlockNum = le32_to_cpu(
+				phd->unallocSpaceTable.extPosition),
+			.partitionReferenceNum = p_index,
+		};
+		struct inode *inode;
+
+		inode = udf_iget_special(sb, &loc);
+		if (IS_ERR(inode)) {
+			udf_debug("cannot load unallocSpaceTable (part %d)\n",
+				  p_index);
+			return PTR_ERR(inode);
+		}
+		map->s_uspace.s_table = inode;
+		map->s_partition_flags |= UDF_PART_FLAG_UNALLOC_TABLE;
+		udf_debug("unallocSpaceTable (part %d) @ %llu\n",
+			  p_index, map->s_uspace.s_table->i_ino);
+	}
+
+	if (phd->unallocSpaceBitmap.extLength) {
+		struct udf_bitmap *bitmap = udf_sb_alloc_bitmap(sb, p_index);
+		if (!bitmap)
+			return -ENOMEM;
+		map->s_uspace.s_bitmap = bitmap;
+		bitmap->s_extPosition = le32_to_cpu(
+				phd->unallocSpaceBitmap.extPosition);
+		map->s_partition_flags |= UDF_PART_FLAG_UNALLOC_BITMAP;
+		/* Check whether math over bitmap won't overflow. */
+		if (udf_add_u32_overflow(map->s_partition_len,
+				       sizeof(struct spaceBitmapDesc) << 3,
+				       &sum)) {
+			udf_err(sb, "Partition %d is too long (%u)\n", p_index,
+				map->s_partition_len);
+			return -EFSCORRUPTED;
+		}
+		udf_debug("unallocSpaceBitmap (part %d) @ %u\n",
+			  p_index, bitmap->s_extPosition);
+	}
+
+	return 0;
+}
+
+/* Read-side PD setup; allocation buffers are owned for this validation call.
+ * The caller keeps the native inode cache after the temporary file closes. */
+int sevenzip_udf_partition(void *context, sevenzip_udf_open_file open_file,
+    sevenzip_udf_close_file close_file, uint32_t block_size, uint32_t partitions,
+    uint32_t index, uint32_t kind, const void *raw, uint32_t *flags)
+{
+    struct super_block sb = {0};
+    struct partitionDesc descriptor;
+    struct udf_part_map *map;
+    int result;
+    if (index >= partitions || block_size < 512 || block_size > 4096 ||
+        !is_power_of_2(block_size))
+        return -EINVAL;
+    sb.info.s_partmaps = calloc(partitions, sizeof(*map));
+    if (!sb.info.s_partmaps)
+        return -ENOMEM;
+    sb.info.s_partitions = partitions;
+    sb.info.s_flags = *flags;
+    sb.context = context;
+    sb.open_file = open_file;
+    sb.close_file = close_file;
+    sb.s_blocksize = block_size;
+    map = &sb.info.s_partmaps[index];
+    map->s_partition_type = kind;
+    memcpy(&descriptor, raw, sizeof(descriptor));
+    result = udf_fill_partdesc_info(&sb, &descriptor, (int)index);
+    *flags = sb.info.s_flags;
+    if (map->s_partition_flags & UDF_PART_FLAG_UNALLOC_TABLE)
+        iput(map->s_uspace.s_table);
+    if (map->s_partition_flags & UDF_PART_FLAG_UNALLOC_BITMAP)
+        free(map->s_uspace.s_bitmap);
+    if (sb.io_error < -4095)
+        result = sb.io_error;
+    free(sb.info.s_partmaps);
+    return result;
 }

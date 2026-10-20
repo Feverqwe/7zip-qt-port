@@ -230,6 +230,9 @@ class UdfStreamTests final : public QObject {
     void init() { createArchive(); }
     void allocationStreams_data() {
         QTest::addColumn<QString>("kind");
+        for (const char *kind : {"ua-table", "ua-table-fe", "ua-table-inline", "ua-table-indirect",
+                                 "ua-bitmap", "ua-backward-table", "ua-order-ro-first"})
+            QTest::newRow(kind) << QString::fromLatin1(kind);
         for (const char *kind : {"uc-unknown", "uc-bounded", "uc-indirect", "uc-sparable",
                                  "uc-virtual", "uc-metadata", "uc-use-metadata"})
             QTest::newRow(kind) << QString::fromLatin1(kind);
@@ -611,6 +614,39 @@ class UdfStreamTests final : public QObject {
         QCOMPARE(count, UInt32(0));
         QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
         check(stream("alias.bin"), QByteArray::fromHex(files_["alias.bin"].toString().toLatin1()));
+    }
+    void allocationSetupFailuresAndCancellation() {
+        fixture("ua-table");
+        CMyComPtr2<IInStream, Input> input;
+        input.SetFromCls(new Input(bytes_));
+        for (HRESULT result : {E_FAIL, E_ABORT}) {
+            input->failSeekAt = UInt64(277) * 2048;
+            input->seekFailure = result;
+            QCOMPARE(archive_->Open(input, nullptr, nullptr), result);
+            UInt32 count = 99;
+            QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+            QCOMPARE(count, UInt32(0));
+            input->failSeekAt = UINT64_MAX;
+            CMyComPtr<IArchiveOpenCallback> cancel =
+                new CancelAt(input.operator->(), UInt64(277) * 2048, result, true);
+            QCOMPARE(archive_->Open(input, nullptr, cancel), result);
+            QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+            QCOMPARE(count, UInt32(0));
+        }
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        check(stream("alpha.bin"), QByteArray::fromHex(files_["alpha.bin"].toString().toLatin1()));
+    }
+    void allocationSetupErrors() {
+        for (const char *kind :
+             {"ua-table-hidden", "ua-order-table-first", "ua-forward-table", "ua-bitmap-overflow",
+              "ua-use-length", "ua-reserve-metadata", "ua-reserve-vat"}) {
+            fixture(QString::fromLatin1(kind));
+            CMyComPtr<IInStream> input = new Input(bytes_);
+            QCOMPARE(archive_->Open(input, nullptr, nullptr), S_FALSE);
+            UInt32 count = 99;
+            QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+            QCOMPARE(count, UInt32(0));
+        }
     }
     void hiddenRolesAndReopen() {
         for (const char *kind :

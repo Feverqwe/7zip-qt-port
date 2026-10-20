@@ -46,6 +46,7 @@ int sevenzip_udf_discover(void *context, sevenzip_udf_read read,
             result = -EINVAL;
     }
     output->seen_anchor = sb.seen_anchor;
+    output->flags = sb.info.s_flags;
     output->block_size = sb.s_blocksize;
     output->last_block = (uint32_t)sb.info.s_last_block;
     output->anchor_block = sb.anchor_block;

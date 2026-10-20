@@ -29,7 +29,7 @@ struct sevenzip_udf_map {
     uint8_t type, bytes;
     uint8_t data[64];
 };
-int sevenzip_udf_maps(const void *, uint32_t, struct sevenzip_udf_map **, uint32_t *);
+int sevenzip_udf_maps(const void *, uint32_t, struct sevenzip_udf_map **, uint32_t *, uint32_t *);
 void sevenzip_udf_maps_free(struct sevenzip_udf_map *);
 void sevenzip_udf_map_indices(const struct sevenzip_udf_map *, uint32_t, uint16_t,
                               uint32_t *, uint32_t *);
@@ -54,10 +54,11 @@ typedef int (*sevenzip_udf_open_file)(void *, uint16_t, uint32_t, struct sevenzi
 typedef int (*sevenzip_udf_read_file)(void *, uint32_t, void *, size_t);
 typedef void (*sevenzip_udf_close_file)(void *);
 typedef int (*sevenzip_udf_status)(void *);
-typedef int (*sevenzip_udf_descriptor)(void *, uint16_t, uint32_t, const void *, size_t);
+typedef int (*sevenzip_udf_descriptor)(void *, uint16_t, uint32_t, const void *, size_t,
+                                       uint32_t *, uint32_t);
 typedef void (*sevenzip_udf_reset)(void *);
 struct sevenzip_udf_discovery {
-    uint32_t block_size, last_block, anchor_block;
+    uint32_t block_size, last_block, anchor_block, flags;
     unsigned seen_anchor;
 };
 int sevenzip_udf_discover(void *, sevenzip_udf_read, sevenzip_udf_descriptor,
@@ -82,6 +83,9 @@ int sevenzip_udf_virtual_map(struct sevenzip_udf_virtual *, uint32_t, uint32_t,
 int sevenzip_udf_sparing_create(void *, sevenzip_udf_read, uint32_t, uint32_t,
                                 const void *, struct sevenzip_udf_sparing **);
 void sevenzip_udf_sparing_free(struct sevenzip_udf_sparing *);
+void sevenzip_udf_sparing_root(struct sevenzip_udf_sparing *, uint32_t);
+int sevenzip_udf_partition(void *, sevenzip_udf_open_file, sevenzip_udf_close_file,
+                           uint32_t, uint32_t, uint32_t, uint32_t, const void *, uint32_t *);
 int sevenzip_udf_sparing_span(const struct sevenzip_udf_sparing *, uint32_t,
                               uint32_t *, uint32_t *);
 int sevenzip_udf_icb(void *, sevenzip_udf_read, sevenzip_udf_iget,

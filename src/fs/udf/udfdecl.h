@@ -29,11 +29,13 @@
 #define le32_to_cpu(v) __builtin_bswap32(v)
 #define le64_to_cpu(v) __builtin_bswap64(v)
 #define cpu_to_le16(v) __builtin_bswap16(v)
+#define cpu_to_le32(v) __builtin_bswap32(v)
 #else
 #define le16_to_cpu(v) (v)
 #define le32_to_cpu(v) (v)
 #define le64_to_cpu(v) (v)
 #define cpu_to_le16(v) (v)
+#define cpu_to_le32(v) (v)
 #endif
 #include "udfend.h"
 #define kfree(p) free(p)
@@ -209,6 +211,13 @@ static inline int check_add_overflow(size_t a, uint32_t b, int *result)
     if (a > INT_MAX || b > INT_MAX - a)
         return 1;
     *result = (int)(a + b);
+    return 0;
+}
+static inline int udf_add_u32_overflow(uint32_t a, uint32_t b, uint32_t *result)
+{
+    if (b > UINT32_MAX - a)
+        return 1;
+    *result = a + b;
     return 0;
 }
 /* This token carries a logical address to the caller's existing partition mapper. */
