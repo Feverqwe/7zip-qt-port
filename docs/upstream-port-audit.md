@@ -36,6 +36,8 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 
 ## Новые изменения
 
+- [Bzip2 по Linux](upstream-port-audit/bzip2-linux.md)
+  — end padding, integrity, progress/cancellation и multiblock consumers.
 - [LZMA по Linux](upstream-port-audit/lzma-linux.md)
   — dictionary/size fields, member boundaries и decoder source failures.
 - [Gzip по Linux](upstream-port-audit/gzip-linux.md)

@@ -71,6 +71,13 @@ GPT/MBR/APM проверяются как дополнительные форм�
 
 ## Свидетельства
 
+### Bzip2: end padding, CRC и cancellation
+
+[Сверка bzip2](bzip2-linux.md): unused end bits больше не превращаются в
+DataError, учитываются Open и последний Extract callback. CRC и общий
+decoder сохранены; проверены levels, selectors, blocks, streams и I/O errors.
+Composite initramfs этим не закрывается.
+
 ### LZMA: headers, dictionary и ошибки чтения
 
 [Сверка LZMA](lzma-linux.md): arbitrary dictionary fields, 64-bit declared size,
