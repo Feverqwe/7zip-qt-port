@@ -36,6 +36,8 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 
 ## Новые изменения
 
+- [APM по Linux](upstream-port-audit/apm-linux.md)
+  — block geometry, reserved fields, map count и завершённое открытие.
 - [GPT по Linux](upstream-port-audit/gpt-linux.md)
   — header/table validation, logical sectors, backup policy и independent partition streams.
 - [HFS+/HFSX по Linux](upstream-port-audit/hfs-linux.md)

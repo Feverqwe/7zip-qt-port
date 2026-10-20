@@ -71,6 +71,13 @@ GPT/MBR/APM проверяются как дополнительные форм�
 
 ## Свидетельства
 
+### Apple Partition Map: geometry и map reader
+
+[Сверка APM](apm-linux.md): block sizes до 32768, reserved fields, first-entry
+count, end signature и безопасные partition spans; оба engine и backend consumer.
+Сохранён отдельный legacy installation-image mode 7-Zip. Native Linux и
+focused три ОС проверяют read scope; MBR и остальные shared formats ещё открыты.
+
 ### GPT: tables, geometry и partition streams
 
 [Сверка и исправления GPT](gpt-linux.md): validated header/table spans и CRC,

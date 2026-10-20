@@ -4,6 +4,7 @@
   "revision": "9128b80e3a471108678e2b3ec3c985861c8d7b0f",
   "overrides": {},
   "runtime_adapted": [
+    "src/CPP/7zip/Archive/ApmHandler.cpp",
     "src/CPP/7zip/Archive/CramfsHandler.cpp",
     "src/CPP/7zip/Archive/ExtHandler.cpp",
     "src/CPP/7zip/Archive/FatHandler.cpp",
@@ -449,6 +450,7 @@
     "third_party/7zip/License.txt"
   ],
   "adapted": [
+    "src/CPP/7zip/Archive/ApmHandler.cpp",
     "src/CPP/7zip/Archive/Common/HandlerOut.h",
     "src/CPP/7zip/Archive/CramfsHandler.cpp",
     "src/CPP/7zip/Archive/ExtHandler.cpp",
