@@ -1,0 +1,10 @@
+{
+  "repository": "https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git",
+  "revision": "58161ead29e50d70a317ea26b472e0c7508e69da",
+  "files": {
+    "init/initramfs.c": "beb2db5b08b31961349982ac76ca9ac529ba912b7434c20055c2b9bd3dbecd44",
+    "lib/decompress.c": "dd82cca38e7af2ad746f659cd45b6f94ecb05ce063a0068fe6e3d424d09554a1",
+    "lib/decompress_unlzma.c": "186e2a8be080c7c65512e4fcec043096a6d93a6d30355c3aec448095cab432aa"
+  },
+  "scope": "Reference comparison only; existing 7-Zip LZMA parser and decoder retained."
+}

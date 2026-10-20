@@ -71,6 +71,13 @@ GPT/MBR/APM проверяются как дополнительные форм�
 
 ## Свидетельства
 
+### LZMA: headers, dictionary и ошибки чтения
+
+[Сверка LZMA](lzma-linux.md): arbitrary dictionary fields, 64-bit declared size,
+пустой первый member, bounded probe и source HRESULT в общем decoder.
+Подключены оба shipped engines и локальный ZIP consumer; LZMA86 сохранён.
+Это не завершение composite initramfs или оставшихся compression formats.
+
 ### Gzip: probe, metadata и member extraction
 
 [Сверка gzip](gzip-linux.md): XFL, ignored DEFLATE stored bits, длинные

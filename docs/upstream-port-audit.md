@@ -36,6 +36,8 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 
 ## Новые изменения
 
+- [LZMA по Linux](upstream-port-audit/lzma-linux.md)
+  — dictionary/size fields, member boundaries и decoder source failures.
 - [Gzip по Linux](upstream-port-audit/gzip-linux.md)
   — recognition, длинные headers, progress/cancellation и завершённое открытие.
 - [CPIO по Linux](upstream-port-audit/cpio-linux.md)

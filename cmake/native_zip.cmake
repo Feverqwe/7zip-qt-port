@@ -52,7 +52,7 @@ add_library(sevenzip_zip STATIC
     third_party/7zip/CPP/7zip/Compress/LzOutWindow.cpp
     third_party/7zip/CPP/7zip/Compress/LzfseDecoder.cpp
     third_party/7zip/CPP/7zip/Compress/Lzma2Encoder.cpp
-    third_party/7zip/CPP/7zip/Compress/LzmaDecoder.cpp
+    src/CPP/7zip/Compress/LzmaDecoder.cpp
     third_party/7zip/CPP/7zip/Compress/LzmaEncoder.cpp
     third_party/7zip/CPP/7zip/Compress/PpmdZip.cpp
     third_party/7zip/CPP/7zip/Compress/ShrinkDecoder.cpp
@@ -75,4 +75,6 @@ add_library(sevenzip_zip STATIC
 set_target_properties(sevenzip_zip PROPERTIES AUTOMOC OFF AUTOUIC OFF)
 target_include_directories(sevenzip_zip PUBLIC src third_party/7zip/CPP
     src/CPP/7zip/Archive/Common src/CPP/7zip/Archive/Zip)
+set_source_files_properties(src/CPP/7zip/Compress/LzmaDecoder.cpp PROPERTIES
+    INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/Compress")
 target_link_libraries(sevenzip_zip PUBLIC sevenzip_common)
