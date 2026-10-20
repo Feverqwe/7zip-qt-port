@@ -350,8 +350,8 @@ Fixtures детерминированы и не используют польз�
 selection consumers, runtime cache/package и source provenance. Проверены
 прежние EA/WOF consumers после объединения little-endian services.
 Incremental builds и compiler caches сохранены; full/slow gate, физические
-устройства и UI appearance не проверялись. Linux/Windows runtime и native
-kernel comparison для этой итерации пока не подтверждены.
+устройства и UI appearance не проверялись. Последующая Linux/Windows и native
+kernel проверка приведена в разделе platform acceptance ниже.
 
 ## Reparse links и dedup read restrictions — 2026-10-20
 
@@ -426,10 +426,8 @@ NTFS suites и новая security suite, archive/backend extraction/security/se
 consumers, runtime cache/package и source provenance. В `ntfs_stream` прошли
 106 cases, в `ntfs_security` — 38; CLI suite проверяет selected Extract/Test и
 POSIX link creation. Incremental builds и compiler caches сохранены; full/slow
-gate, физические устройства и UI appearance не проверялись. Linux/Windows
-runtime и native-kernel reference этой итерации пока не подтверждены:
-удалённая синхронизация ожидает явного разрешения пользователя после отказа
-automatic approval review. Это ограничение проверки, не доказательство parity.
+gate, физические устройства и UI appearance не проверялись. Последующая
+cross-platform и native-kernel проверка приведена ниже.
 
 ## WOF initialized tail и unsupported formats — 2026-10-20
 
@@ -482,9 +480,43 @@ consumers, runtime cache/package и provenance. После сужения error 
 до WOF и удаления неиспользуемой локальной format table повторены пять прямых
 NTFS/provenance suites: PASS, 14,25 с; `ntfs_stream` содержит 117 cases,
 `ntfs_security` — 38. Сохранены incremental builds и compiler caches.
-Linux/Windows runtime и native-kernel comparison для этой итерации не
-подтверждены: прежний automatic-review отказ на source transfer остаётся
-неразрешённым. Full/slow gate, UI и физические устройства не проверялись.
+Последующая Linux/Windows и native-kernel проверка приведена ниже.
+Full/slow gate, UI и физические устройства не проверялись.
+
+## Platform acceptance security/reparse/WOF — 2026-10-20
+
+После разрешённой синхронизации текущих исходников одиннадцать focused suites
+PASS на Linux x64/Qt 6.12 (42,00 с), receipt `20261020T160746Z-8dd33871`.
+Windows x64/MSVC/Qt 6.12 выявил C compiler adaptation: unary `!offsetof` в
+static assertion не принимается как constant expression. Эквивалентное
+сравнение offset с нулём сохраняет disk layout assertion. WOF/security
+compatibility headers также не переопределяют уже предоставленный UCRT `min`.
+Алгоритмы и структуры не изменялись. После исправлений все одиннадцать suites
+PASS на Windows (78,74 с), receipt `20261020T160908Z-e41153de`.
+
+Финальные C adapters проверены пятью прямыми NTFS/provenance suites на macOS
+arm64 (17,34 с) и тремя NTFS suites на Linux (35,85 с), receipt
+`20261020T161114Z-215e74a0`. Windows compiler warnings C4005 и ошибка C2057
+устранены. Ранее выбранные archive/backend/runtime consumers не менялись.
+Windows filesystem link-creation case явно исключён без privileged token;
+ABI/CLI target bytes, properties и обычный ArchiveBackend flow проверены.
+
+Native Linux NTFS3 `6.8.0-147-generic` подтвердил 32 generated images через
+read-only loop mounts, receipt `20261020T161051Z-063dba33`: 11 security cases
+сравнивают exact `system.ntfs_security` bytes, 17 reparse cases — readlink
+targets или обычный payload для named-only reparse, четыре WOF cases — нулевые
+полностью неинициализированные страницы. Покрыты SII root/trees/fragmented/
+extension/small blocks/large search, переставленные SDS records, stale/missing
+mirror и sparse SDS offset 4 GiB; Unicode, odd offset, cloud+WSL, resident/
+fragmented/extension links и root junction; missing ADS и unknown WOF formats.
+Archive recovery-folder junction не имеет native directory entry и проверен
+только ABI. Повреждённые SID/index cycles не передавались старому kernel.
+
+Все образы остались неизменными; mounts, images и временный review script
+удалены. Native kernel версия отличается от pinned source revision, поэтому
+эта проверка дополняет source comparison, а не заменяет его. Incremental build
+trees и compiler caches сохранены; full/slow, UI appearance и физические
+устройства этим набором не проверялись. Остальной read scope остаётся открытым.
 
 ## Открытый read scope
 

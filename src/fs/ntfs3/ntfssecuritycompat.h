@@ -12,7 +12,9 @@
 #define GFP_NOFS 0
 #define kmalloc(bytes, flags) malloc(bytes)
 #define kzalloc_obj(type, flags) ((type *)calloc(1, sizeof(type)))
+#ifndef min
 #define min(a, b) ((a) < (b) ? (a) : (b))
+#endif
 #define IS_ALIGNED(v, a) (((v) & ((a) - 1)) == 0)
 #define struct_size(p, member, count) (sizeof(*(p)) + (count) * sizeof((p)->member[0]))
 #define init_rwsem(lock) ((void)(lock))

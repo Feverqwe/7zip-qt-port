@@ -8,7 +8,9 @@
 #include "../../ntfsdecoder.h"
 #define PAGE_SIZE 4096
 #define PAGE_SHIFT 12
+#ifndef min
 #define min(a, b) ((a) < (b) ? (a) : (b))
+#endif
 typedef u64 pgoff_t;
 struct folio { u64 index; u8 bytes[PAGE_SIZE]; };
 struct runs_tree { int unused; };

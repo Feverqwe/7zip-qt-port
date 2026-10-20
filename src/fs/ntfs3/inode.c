@@ -108,7 +108,7 @@ static noinline int ntfs_readlink_hlp(const struct dentry *link_de,
 	struct ATTRIB *attr;
 
 	/* Reparse data present. Try to parse it. */
-	static_assert(!offsetof(struct REPARSE_DATA_BUFFER, ReparseTag));
+	static_assert(offsetof(struct REPARSE_DATA_BUFFER, ReparseTag) == 0);
 	static_assert(sizeof(u32) == sizeof(rp->ReparseTag));
 
 	*buffer = 0;
