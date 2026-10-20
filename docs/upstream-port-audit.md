@@ -36,6 +36,8 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 
 ## Новые изменения
 
+- [CPIO по Linux](upstream-port-audit/cpio-linux.md)
+  — raw newc/crc members, hard links, integrity и независимые entry streams.
 - [MBR primary/EBR по Linux](upstream-port-audit/mbr-linux.md)
   — logical chains, 64-bit geometry, EOD bounds и direct-device sector property.
 - [APM по Linux](upstream-port-audit/apm-linux.md)

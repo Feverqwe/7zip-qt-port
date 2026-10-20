@@ -71,6 +71,14 @@ GPT/MBR/APM проверяются как дополнительные форм�
 
 ## Свидетельства
 
+### CPIO: raw newc/crc members
+
+[Сверка CPIO](cpio-linux.md): NUL-padded names, optional trailer, смешанные
+raw members, hard links с данными в любом положении и сбросом по trailer,
+checksum и independent streams. Использован исходный handler 7-Zip.
+Composite initramfs с compressed/raw members и общим hard-link state остаётся
+открытым; эта итерация не завершает initramfs/decompressor scope.
+
 ### MBR primary/EBR и block-layer границы
 
 [Сверка MBR](mbr-linux.md): primary ordering/overlap/CHS, extended types,
