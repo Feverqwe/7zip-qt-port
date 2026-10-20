@@ -7,9 +7,12 @@ import tempfile
 import unittest
 from mbr_fixture import CASES, BAD, volume
 from mbr_subtypes_fixture import CASES as SUBTYPES, volume as subtype_volume
+from mbr_classification_fixture import CASES as CLASSIFICATIONS, volume as classification_volume
+from fat_fixture import Volume as FatVolume, LONG_NAME, PAYLOAD
 
 RUNTIME = Path(sys.argv.pop(1)).resolve()
 MODULE = Path(sys.argv.pop(1)).resolve()
+FAT_MODULE = Path(sys.argv.pop(1)).resolve()
 SUFFIX = ".exe" if sys.platform == "win32" else ""
 
 
@@ -24,6 +27,7 @@ class MbrTests(unittest.TestCase):
             shutil.copy2(RUNTIME / name, cls.runtime / name)
         (cls.runtime / "Formats").mkdir()
         shutil.copy2(MODULE, cls.runtime / "Formats" / MODULE.name)
+        shutil.copy2(FAT_MODULE, cls.runtime / "Formats" / FAT_MODULE.name)
 
     def run_engine(self, engine, args):
         return subprocess.run([str(self.runtime / (engine + SUFFIX)), *args],
@@ -32,6 +36,8 @@ class MbrTests(unittest.TestCase):
     def test_readable_partitions(self):
         variants = [(kind, volume(kind), False, ("7z", "7zz")) for kind in CASES]
         variants += [(kind, subtype_volume(kind)[:2], True, ("7z",)) for kind in SUBTYPES]
+        variants += [(kind, classification_volume(kind)[:2], False, ("7z",))
+                     for kind in CLASSIFICATIONS if not classification_volume(kind)[2]]
         for kind, (image, expected), nested, engines in variants:
             with tempfile.TemporaryDirectory(prefix="sevenzip-mbr-") as temporary:
                 path = Path(temporary) / "разделы 空.bin"
@@ -69,6 +75,41 @@ class MbrTests(unittest.TestCase):
                     with self.subTest(kind=kind, engine=engine):
                         result = self.run_engine(engine, ["l", "-tMBR", "--", str(path)])
                         self.assertEqual(result.returncode, 2)
+
+    def test_rejected_non_mbr_maps(self):
+        for kind in CLASSIFICATIONS:
+            image, _, rejected, automatic = classification_volume(kind)
+            if not rejected:
+                continue
+            with self.subTest(kind=kind), tempfile.TemporaryDirectory(prefix="sevenzip-mbr-") as temporary:
+                path = Path(temporary) / "карта 空.bin"
+                path.write_bytes(image)
+                result = self.run_engine("7z", ["l", "-tMBR", "--", str(path)])
+                self.assertEqual(result.returncode, 2)
+                result = self.run_engine("7z", ["l", "-t*", "-slt", "--", str(path)])
+                if automatic:
+                    self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                    self.assertIn(("Type = " + automatic).encode(), result.stdout)
+                else:
+                    self.assertEqual(result.returncode, 2, result.stdout + result.stderr)
+                self.assertEqual(path.read_bytes(), image)
+
+    def test_fat_superfloppy_routing(self):
+        for bits in (12, 16, 32):
+            image = FatVolume(bits).data
+            image[446] = 0x7f
+            with self.subTest(bits=bits), tempfile.TemporaryDirectory(prefix="sevenzip-mbr-") as temporary:
+                path = Path(temporary) / "том 空.bin"
+                path.write_bytes(image)
+                result = self.run_engine("7z", ["l", "-tMBR", "--", str(path)])
+                self.assertEqual(result.returncode, 2)
+                result = self.run_engine("7z", ["l", "-t*", "-slt", "--", str(path)])
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertIn(b"Type = FAT", result.stdout)
+                result = self.run_engine("7z", ["x", "-so", "-bso0", "-sccUTF-8", "--", str(path), LONG_NAME])
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stdout, PAYLOAD)
+                self.assertEqual(path.read_bytes(), image)
 
 
 if __name__ == "__main__":

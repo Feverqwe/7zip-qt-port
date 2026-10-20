@@ -23,6 +23,8 @@ def volume(kind):
     entry_size = 256 if kind == "entry-256" else 128
     entries = bytearray(entry_size * 4)
     entries[:16] = uuid.UUID("0fc63daf-8483-4772-8e79-3d69d8477de4").bytes_le
+    if kind == "windows-probe":
+        entries[:16] = uuid.UUID("ebd0a0a2-b9e5-4433-87c0-68b6b72699c7").bytes_le
     entries[16:32] = uuid.UUID("12345678-abcd-4321-9876-0123456789ab").bytes_le
     struct.pack_into("<QQQ", entries, 32, 16, 19, 0)
     name = "данные 空".encode("utf-16le")

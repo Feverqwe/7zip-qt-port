@@ -760,7 +760,8 @@ if(BUILD_TESTING)
     find_package(Python3 3.9 REQUIRED COMPONENTS Interpreter)
     add_test(NAME mbr COMMAND ${Python3_EXECUTABLE}
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/mbr_tests.py
-        ${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime "$<TARGET_FILE:sevenzip_mbr>")
+        ${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime "$<TARGET_FILE:sevenzip_mbr>"
+        "$<TARGET_FILE:sevenzip_fat>")
     set_tests_properties(mbr PROPERTIES TIMEOUT 45)
     qt_add_executable(mbr_stream_tests tests/mbr_stream_tests.cpp)
     target_include_directories(mbr_stream_tests PRIVATE src third_party/7zip/CPP)
@@ -775,9 +776,11 @@ if(BUILD_TESTING)
         "SEVENZIP_MBR_FIXTURE=\"${CMAKE_CURRENT_SOURCE_DIR}/tests/mbr_fixture.py\"")
     target_compile_definitions(mbr_stream_tests PRIVATE
         "SEVENZIP_MBR_SUBTYPE_FIXTURE=\"${CMAKE_CURRENT_SOURCE_DIR}/tests/mbr_subtypes_fixture.py\"")
+    target_compile_definitions(mbr_stream_tests PRIVATE
+        "SEVENZIP_MBR_CLASSIFICATION_FIXTURE=\"${CMAKE_CURRENT_SOURCE_DIR}/tests/mbr_classification_fixture.py\"")
     add_test(NAME mbr_stream COMMAND mbr_stream_tests -silent)
     set_tests_properties(mbr_stream PROPERTIES TIMEOUT 45)
-    add_dependencies(mbr_stream_tests sevenzip_mbr_runtime)
+    add_dependencies(mbr_stream_tests sevenzip_mbr_runtime sevenzip_fat_runtime)
     add_test(NAME apm COMMAND ${Python3_EXECUTABLE}
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/apm_tests.py
         ${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime)

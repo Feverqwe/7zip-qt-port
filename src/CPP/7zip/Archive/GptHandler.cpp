@@ -25,7 +25,7 @@ using namespace NWindows;
 namespace NArchive {
 
 namespace NMbr {
-const char *GetFileSystem(ISequentialInStream *stream, UInt64 partitionSize);
+const char *GetFileSystem(ISequentialInStream *stream, UInt64 partitionSize, HRESULT &status);
 }
 
 namespace NFat {
@@ -309,7 +309,13 @@ Z7_COM7F_IMF(CHandler::Open(IInStream *stream, const UInt64 * /* maxCheckStartPo
             if (
                 // ((IInArchiveGetStream *)this)->
                 GetStream(fileIndex, &inStream) == S_OK && inStream) {
-                const char *fs = NMbr::GetFileSystem(inStream, item.GetSize(_sectorSizeLog));
+                HRESULT status;
+                const char *fs =
+                    NMbr::GetFileSystem(inStream, item.GetSize(_sectorSizeLog), status);
+                if (status == E_ABORT) {
+                    Close();
+                    return status;
+                }
                 if (fs)
                     item.Ext = fs;
             }

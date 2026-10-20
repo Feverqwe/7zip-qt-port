@@ -54,6 +54,12 @@ backup. Архивный интерфейс не предоставляет kern
 `alternative_gpt_sector` не подменяется эвристикой для обычного `IInStream`.
 Source E_FAIL/E_ABORT прерывает чтение, не заменяется успешным fallback.
 
+Заключительная [MBR classification сверка](mbr-linux.md) исправила также
+E_ABORT общего filesystem probe: GPT прекращает отменённое открытие и очищает
+опубликованные entries, сохраняя прежний optional unknown-type fallback для
+обычной неудачи probe. ABI проверяет отмену Windows-partition probe и reuse;
+read-only table parser и backup policy не меняются.
+
 ABI regression воспроизвёл ошибку исходного `CHandlerCont::GetStream`:
 два `CLimitedInStream` доверяли каждый своему кэшу общей физической позиции,
 и чередование чтений смещало данные. Container теперь использует готовый

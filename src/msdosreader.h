@@ -15,6 +15,8 @@ struct sevenzip_msdos_part {
     uint8_t parent_type;
 };
 typedef int32_t (*sevenzip_msdos_read)(void *, uint64_t, void *, unsigned);
+int32_t sevenzip_msdos_candidate(void *context, sevenzip_msdos_read read, uint64_t bytes,
+                                 uint8_t *header, int *is_mbr);
 int32_t sevenzip_msdos_scan(void *context, sevenzip_msdos_read read, uint64_t bytes,
                             const struct sevenzip_msdos_parent *parents, unsigned count,
                             unsigned logical_count, struct sevenzip_msdos_part *parts,

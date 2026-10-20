@@ -37,6 +37,13 @@ static inline sector_t start_sect(struct msdos_partition *p)
 	return (sector_t)get_unaligned_le32(&p->start_sect);
 }
 
+static inline int is_extended_partition(struct msdos_partition *p)
+{
+	return (p->sys_ind == DOS_EXTENDED_PARTITION ||
+		p->sys_ind == WIN98_EXTENDED_PARTITION ||
+		p->sys_ind == LINUX_EXTENDED_PARTITION);
+}
+
 #define MSDOS_LABEL_MAGIC1	0x55
 #define MSDOS_LABEL_MAGIC2	0xAA
 
@@ -44,6 +51,47 @@ static inline int
 msdos_magic_present(unsigned char *p)
 {
 	return (p[0] == MSDOS_LABEL_MAGIC1 && p[1] == MSDOS_LABEL_MAGIC2);
+}
+
+/* Value is EBCDIC 'IBMA' */
+#define AIX_LABEL_MAGIC1	0xC9
+#define AIX_LABEL_MAGIC2	0xC2
+#define AIX_LABEL_MAGIC3	0xD4
+#define AIX_LABEL_MAGIC4	0xC1
+static int aix_magic_present(struct parsed_partitions *state, unsigned char *p)
+{
+	struct msdos_partition *pt = (struct msdos_partition *) (p + 0x1be);
+	Sector sect;
+	unsigned char *d;
+	int slot, ret = 0;
+
+	if (!(p[0] == AIX_LABEL_MAGIC1 &&
+		p[1] == AIX_LABEL_MAGIC2 &&
+		p[2] == AIX_LABEL_MAGIC3 &&
+		p[3] == AIX_LABEL_MAGIC4))
+		return 0;
+
+	/*
+	 * Assume the partition table is valid if Linux partitions exists.
+	 * Note that old Solaris/x86 partitions use the same indicator as
+	 * Linux swap partitions, so we consider that a Linux partition as
+	 * well.
+	 */
+	for (slot = 1; slot <= 4; slot++, pt++) {
+		if (pt->sys_ind == SOLARIS_X86_PARTITION ||
+		    pt->sys_ind == LINUX_RAID_PARTITION ||
+		    pt->sys_ind == LINUX_DATA_PARTITION ||
+		    pt->sys_ind == LINUX_LVM_PARTITION ||
+		    is_extended_partition(pt))
+			return 0;
+	}
+	d = read_part_sector(state, 7, &sect);
+	if (d) {
+		if (d[0] == '_' && d[1] == 'L' && d[2] == 'V' && d[3] == 'M')
+			ret = 1;
+		put_dev_sector(sect);
+	}
+	return ret;
 }
 
 #define SOLARIS_X86_NUMSLICE	16
@@ -383,6 +431,33 @@ static struct {
 	{0, NULL},
 };
 
+
+/* From block/partitions/efi.h; the GPT handler owns protective maps. */
+#define EFI_PMBR_OSTYPE_EFI_GPT 0xEE
+
+int32_t sevenzip_msdos_candidate(void *context, sevenzip_msdos_read read, uint64_t bytes,
+    uint8_t *header, int *is_mbr)
+{
+    struct parsed_partitions state = {0};
+    struct msdos_partition *p;
+    int slot;
+    state.context = context;
+    state.read = read;
+    state.bytes = bytes;
+    *is_mbr = 0;
+    if (aix_magic_present(&state, header))
+        return state.error;
+    if (state.error)
+        return state.error;
+    p = (struct msdos_partition *) (header + 0x1be);
+    for (slot = 1; slot <= 4; slot++, p++) {
+        /* If this is an EFI GPT disk, msdos should ignore it. */
+        if (p->sys_ind == EFI_PMBR_OSTYPE_EFI_GPT)
+            return 0;
+    }
+    *is_mbr = 1;
+    return 0;
+}
 
 int sevenzip_msdos_subtypes(struct parsed_partitions *state,
     const struct sevenzip_msdos_parent *parents, unsigned count)

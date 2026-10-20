@@ -53,10 +53,15 @@ class MbrStreamTests final : public QObject {
         const QString path = temporary.filePath("disk.mbr");
         QProcess process;
         const bool nested = kind.startsWith("nested-");
-        process.start(
-            QString::fromUtf8(SEVENZIP_MBR_PYTHON),
-            {QString::fromUtf8(nested ? SEVENZIP_MBR_SUBTYPE_FIXTURE : SEVENZIP_MBR_FIXTURE),
-             nested ? kind.mid(7) : kind, path});
+        const bool classification = kind.startsWith("classify-");
+        process.start(QString::fromUtf8(SEVENZIP_MBR_PYTHON),
+                      {QString::fromUtf8(nested           ? SEVENZIP_MBR_SUBTYPE_FIXTURE
+                                         : classification ? SEVENZIP_MBR_CLASSIFICATION_FIXTURE
+                                                          : SEVENZIP_MBR_FIXTURE),
+                       nested           ? kind.mid(7)
+                       : classification ? kind.mid(9)
+                                        : kind,
+                       path});
         QVERIFY(process.waitForFinished(10000));
         QCOMPARE(process.exitCode(), 0);
         const auto part =
@@ -237,6 +242,46 @@ class MbrStreamTests final : public QObject {
         QCOMPARE(ReadStream(selected, bytes.data(), &count), S_OK);
         QCOMPARE(count, size_t(payload_.size()));
         QCOMPARE(bytes.left(qsizetype(count)), payload_);
+    }
+    void classificationErrorsAndReuse() {
+        fixture("classify-aix-no-lvm");
+        image_.replace(7 * 512, 4, "_LVM");
+        auto handle = std::make_shared<Handle>(image_, 512);
+        auto source = input(handle, 512);
+        QVERIFY(source);
+        handle->failAt = 7 * 512;
+        for (HRESULT error : {E_FAIL, E_ABORT}) {
+            handle->failure = error;
+            QCOMPARE(archive_->Open(source, nullptr, nullptr), error);
+            UInt32 count = 99;
+            QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+            QCOMPARE(count, UInt32(0));
+        }
+        handle->failAt = UINT64_MAX;
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), S_FALSE);
+        fixture("classify-aix-linux-131");
+        handle = std::make_shared<Handle>(image_, 512);
+        source = input(handle, 512);
+        handle->failAt = 7 * 512;
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
+        checkPartition();
+    }
+    void optionalProbeCancellation() {
+        fixture("primary");
+        image_[450] = 7;
+        const auto handle = std::make_shared<Handle>(image_, 512);
+        auto source = input(handle, 512);
+        handle->failAt = 16 * 512;
+        handle->failure = E_FAIL;
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
+        handle->failure = E_ABORT;
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), E_ABORT);
+        UInt32 count = 99;
+        QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, UInt32(0));
+        handle->failAt = UINT64_MAX;
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
+        checkPartition();
     }
 };
 QTEST_GUILESS_MAIN(MbrStreamTests)

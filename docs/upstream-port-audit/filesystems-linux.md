@@ -78,8 +78,10 @@ data/link offsets, bounded iterative chains и 64-bit/EOD geometry. Direct-devic
 adapter передаёт известный размер сектора; APM также согласован с EOD clipping.
 Вложенные BSD/Solaris/Unixware/Minix readers перенесены на C в отдельный GPL
 module; byte-granular device leases сохраняют их 512-byte subdivisions на 4Kn.
-Native Linux и focused consumers проверяют эти сценарии. Remaining AIX/FAT
-classification callers ещё открыты; весь MBR module не объявляется завершённым.
+Native Linux и focused consumers проверяют эти сценарии. AIX/FAT/EFI
+classification callers также сверены, C helper подключён, optional-probe
+cancellation исправлена в MBR/GPT. Archive read source scope MBR завершён;
+kernel/platform services и отдельный AIX volume format не подменяют этот scope.
 
 ### Apple Partition Map: geometry и map reader
 

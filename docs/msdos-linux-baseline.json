@@ -2,9 +2,11 @@
   "repository": "https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git",
   "revision": "58161ead29e50d70a317ea26b472e0c7508e69da",
   "files": {
-    "block/partitions/msdos.c": "f0974f7e01650fb6187fea7ff6649e7c18c2b1d0fe7f1af62e339b399ab04614",
+    "block/partitions/aix.c": "2d32bc371b0c9653066ae1eef51a7d5101768aa49f8f00c5620c3bc20e774b9e",
     "block/partitions/check.h": "64336765d57d7814e78c67d36f7fdaf1ccaab1bb7701438d81f91219fd4504f0",
     "block/partitions/core.c": "add355b5a35d09f77daa435e6f281ab6a3ba801d1b19980c8d5e471f05ed5d17",
+    "block/partitions/efi.h": "084577fc455f7ca39b557ae31bf26568e37352ae5ab2155afb4794637cddce20",
+    "block/partitions/msdos.c": "f0974f7e01650fb6187fea7ff6649e7c18c2b1d0fe7f1af62e339b399ab04614",
     "include/linux/msdos_partition.h": "b4e084eeee904626dd4fd4c83bee5cd90c756992f406e0015c5bdfb99d9b24a0"
   },
   "exact": [

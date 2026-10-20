@@ -180,10 +180,60 @@ timeout не установлена, повторный failure не воспр�
 target также собран; runtime Formats path проверен CLI/catalog consumers.
 Полный install/release gate и UI appearance acceptance не выполнялись.
 
-## Открытая часть полного MBR read scope
+## Итоговая сверка classification и read scope
 
-AIX delegation и FAT-superfloppy classification остаются в source scope callers.
-RAID registration, device UUID publication и queue/platform services сами
-по себе не являются отсутствующими archive read functions.
+Заключительная итерация переносит без изменений `aix_magic_present` и
+`is_extended_partition` из того же `msdos.c`. C helper вызывается для root
+до проверки 55AA, как в Linux: EBCDIC IBMA и `_LVM` в 512-byte sector 7
+не принимаются за DOS table. Linux/Solaris-swap/RAID/LVM/extended type в любом
+из четырёх slots сохраняет приоритет MBR, даже при нулевом размере slot.
+EFI protective type в любом slot отклоняет MBR в пользу отдельного GPT
+handler, включая повреждённый GPT, для которого нет пригодной DOS table.
+Обработка соответствует Linux с включённым EFI parser, имеющемуся в проекте.
+Callback E_FAIL/E_ABORT не подменяется успешным классификационным fallback;
+истинный out-of-device auxiliary address не выполняет чтение.
+
+AIX LVM — отдельный формат, не исходный 7-Zip LVM handler: проверены его
+`LABELONE`/`LVM2 001` signatures и структуры Linux `aix.c`. Новый AIX volume
+reader не добавляется; classifier предотвращает выдачу AIX за MBR.
+FAT superfloppy ветвь Linux возвращает признанный носитель **без partitions**.
+Архивный MBR API представляет это отказом MBR (`S_FALSE`), а существующий FAT
+module читает сам том. Не добавляется пустая фиктивная MBR hierarchy.
+Automatic routing и exact extraction FAT12/16/32 проверены отдельно.
+
+Повторная сверка общего `GetFileSystem` нашла потерю E_ABORT в необязательном
+probe. Helper теперь передаёт status обоим consumers. MBR прекращает Open
+при отмене read/seek probe, GPT также закрывает partial state; обычный E_FAIL
+необязательной эвристики сохраняет прежний unknown-type fallback. Сами
+NTFS/exFAT/FAT/UDF probes и original naming policy не заменяются новым parser.
+ABI regression проверяет сохранение обычного fallback, E_ABORT, нулевые
+published items после отмены и успешное повторное открытие обоих handlers.
+
+| Полный Linux MSDOS read path | Состояние source transfer/adaptation |
+| --- | --- |
+| Disk geometry, `nr_sects`/`start_sect`, primary validation | Исходный C++ parser 7-Zip актуализирован; known device geometry и byte spans подключены. |
+| AIX routing, signature, boot flags, FAT-superfloppy, EFI selection | Linux C AIX helper и EFI filter подключены; различия return model архивного/FAT API объяснены и проверены. |
+| `parse_extended` data/link traversal и bounds | Пригодный C++ parser исправлен; native valid chains совпадают, повторный cyclic address завершается без дубликатов. |
+| BSD/Solaris/Unixware/Minix и second pass | Исходные C bodies/dispatch полностью подключены к root parents и 512-byte sector services. |
+| Block-layer EOD clipping/skip | Применяется к опубликованным spans без out-of-source bytes. |
+| UUID/RAID registration, device creation/capacity unlock, logging | Kernel/platform services; не отсутствующие archive read functions. Disk signature/property presentation 7-Zip сохранены. |
+
+Source comparison archive read scope MBR завершён; это не перенос Linux
+block-device driver целиком. Standalone сохраняет C++ path, новые Linux C
+classification/subtype branches доступны через поставляемый dynamic module.
+
+Заключительная validation: 16 classification variants через CLI, source errors,
+Linux-type exemptions и cancellation/reuse через ABI, три FAT superfloppies
+с неизменными source bytes и exact payload. Native Linux `6.8.0-147-generic`
+подтвердил 19 read-only loop images; FAT12/16/32 не создали partitions,
+смонтированы `ro,utf8=1` и отдали по 1044 точных bytes Unicode-файла.
+Первый диагностический mount с `iocharset=utf8` отклонён из-за отсутствующего
+NLS charset; kernel diagnostic подтвердил причину. Никакие kernel/modules
+не устанавливались. Все mounts/loops/temporary images очищены.
+macOS arm64 13/13 PASS (7.19 s); Linux x64 и Windows x64/MSVC 13/13 PASS,
+receipt `20261020T063827Z-1b8d2928`. Scope: `mbr`, `mbr_stream`, `fat`, `fat_module`,
+`gpt`, `gpt_stream`, `archive_device`, `device_input`, `codec_probe`,
+`runtime_cache`, `runtime_package`, `upstream_baseline`, `upstream_inventory`.
+Full/slow, physical-device и UI acceptance не заявляются.
 
 Общий scope и остальные форматы — в [едином реестре](filesystems-linux.md).

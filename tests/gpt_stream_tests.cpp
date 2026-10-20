@@ -233,6 +233,22 @@ class GptStreamTests final : public QObject {
         QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
         check(stream(), payload_);
     }
+    void optionalProbeCancellation() {
+        fixture("windows-probe");
+        CMyComPtr2<IInStream, Input> input;
+        input.SetFromCls(new Input(image_));
+        input->failReadAt = 16 * 512;
+        input->seekFailure = E_FAIL;
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        input->seekFailure = E_ABORT;
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), E_ABORT);
+        UInt32 count = 99;
+        QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, UInt32(0));
+        input->failReadAt = UINT64_MAX;
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        check(stream(), payload_);
+    }
     void backendExtraction() {
         fixture("sector-2048");
         QTemporaryDir temporary;

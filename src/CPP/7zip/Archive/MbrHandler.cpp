@@ -40,6 +40,9 @@ API_FUNC_IsArc IsArc_Fat(const Byte *p, size_t size);
 }
 
 namespace NMbr {
+#ifdef SEVENZIP_LINUX_MBR
+static int32_t ReadNested(void *context, uint64_t offset, void *data, unsigned size);
+#endif
 
 struct CChs {
     Byte Head;
@@ -222,7 +225,7 @@ static bool IsEmptyBuffer(const Byte *data, size_t size)
 }
 */
 
-const char *GetFileSystem(ISequentialInStream *stream, UInt64 partitionSize);
+const char *GetFileSystem(ISequentialInStream *stream, UInt64 partitionSize, HRESULT &status);
 
 HRESULT CHandler::ReadTables(IInStream *stream, UInt64 baseLba, UInt64 lba, unsigned level,
                              UInt64 extendedSize) {
@@ -250,6 +253,18 @@ HRESULT CHandler::ReadTables(IInStream *stream, UInt64 baseLba, UInt64 lba, unsi
                 return level == 0 ? S_FALSE : S_OK;
             RINOK(InStream_SeekSet(stream, newPos))
             RINOK(ReadStream_FALSE(stream, buf, bufSize))
+#ifdef SEVENZIP_LINUX_MBR
+            if (level == 0) {
+                int isMbr = 0;
+                const int32_t result =
+                    sevenzip_msdos_candidate(stream, ReadNested, _totalSize, buf, &isMbr);
+                if (result == -ENOMEM)
+                    return E_OUTOFMEMORY;
+                RINOK(result)
+                if (!isMbr)
+                    return S_FALSE;
+            }
+#endif
             if (buf[0x1FE] != 0x55 || buf[0x1FF] != 0xAA)
                 return level == 0 ? S_FALSE : S_OK;
             if (level == 0)
@@ -289,11 +304,19 @@ HRESULT CHandler::ReadTables(IInStream *stream, UInt64 baseLba, UInt64 lba, unsi
                     if (lim12 <= _totalSize
                         // && _totalSize - lim12 < (1 << 28) // we can try to exclude false positive
                         // cases
-                    )
-                        // if (IsEmptyBuffer(&_buffer[(1 << 9)], (1 << 12) - (1 << 9)))
-                        if (InStream_SeekSet(stream, (UInt64)firstLba << 12) == S_OK)
-                            if (GetFileSystem(stream, (UInt64)numBlocks << 12))
+                        )
+                    // if (IsEmptyBuffer(&_buffer[(1 << 9)], (1 << 12) - (1 << 9)))
+                    {
+                        HRESULT status = InStream_SeekSet(stream, (UInt64)firstLba << 12);
+                        if (status == E_ABORT)
+                            return status;
+                        if (status == S_OK) {
+                            if (GetFileSystem(stream, (UInt64)numBlocks << 12, status))
                                 _sectorSizeLog = 12;
+                            if (status == E_ABORT)
+                                return status;
+                        }
+                    }
                 }
             }
 
@@ -423,11 +446,13 @@ static bool Is_Udf(const Byte *p) {
     return memcmp(p + k_Udf_StartPos, k_Udf_Signature, sizeof(k_Udf_Signature)) == 0;
 }
 
-const char *GetFileSystem(ISequentialInStream *stream, UInt64 partitionSize) {
+const char *GetFileSystem(ISequentialInStream *stream, UInt64 partitionSize, HRESULT &status) {
+    status = S_OK;
     const size_t kHeaderSize = 1 << 9;
     if (partitionSize >= kHeaderSize) {
         Byte buf[kHeaderSize];
-        if (ReadStream_FAIL(stream, buf, kHeaderSize) == S_OK) {
+        status = ReadStream_FAIL(stream, buf, kHeaderSize);
+        if (status == S_OK) {
             // NTFS is expected default filesystem for (Type == 7)
             if (Is_Ntfs(buf))
                 return "NTFS";
@@ -440,8 +465,9 @@ const char *GetFileSystem(ISequentialInStream *stream, UInt64 partitionSize) {
                 if (AllAreZeros(buf, kHeaderSize)) {
                     CByteBuffer buffer(kHeaderSize2);
                     // memcpy(buffer, buf, kHeaderSize);
-                    if (ReadStream_FAIL(stream, buffer + kHeaderSize, kHeaderSize2 - kHeaderSize) ==
-                        S_OK)
+                    status =
+                        ReadStream_FAIL(stream, buffer + kHeaderSize, kHeaderSize2 - kHeaderSize);
+                    if (status == S_OK)
                         if (Is_Udf(buffer))
                             return "UDF";
                 }
@@ -545,9 +571,14 @@ HRESULT CHandler::Open2(IInStream *stream) {
         CItem &item = _items[i];
         if (item.Part.Type != kType_Windows_NTFS)
             continue;
-        if (InStream_SeekSet(stream, item.Part.GetPos(_sectorSizeLog)) != S_OK)
+        HRESULT status = InStream_SeekSet(stream, item.Part.GetPos(_sectorSizeLog));
+        if (status == E_ABORT)
+            return status;
+        if (status != S_OK)
             continue;
-        item.FileSystem = GetFileSystem(stream, item.Size);
+        item.FileSystem = GetFileSystem(stream, item.Size, status);
+        if (status == E_ABORT)
+            return status;
         item.WasParsed = true;
     }
 
