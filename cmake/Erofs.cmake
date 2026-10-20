@@ -1,6 +1,7 @@
 # Linux C read-side code is isolated from the core engine's codec licenses.
 add_library(sevenzip_erofs_core STATIC
     src/erofsreader.c src/fs/erofs/data.c src/fs/erofs/dir.c
+    src/fs/erofs/xattr.c src/fs/posix_acl.c src/lib/xxhash.c
     src/fs/erofs/inode.c src/fs/erofs/super.c src/fs/erofs/zmap.c
     src/fs/erofs/decompressor.c src/fs/erofs/decompressor_lzma.c
     src/fs/erofs/decompressor_deflate.c src/fs/erofs/decompressor_zstd.c
@@ -13,7 +14,7 @@ set_target_properties(sevenzip_erofs_core PROPERTIES AUTOMOC OFF AUTOUIC OFF
     POSITION_INDEPENDENT_CODE ON C_STANDARD 11 C_STANDARD_REQUIRED ON)
 
 add_library(sevenzip_erofs MODULE
-    src/erofshandler.cpp src/erofsarchivereader.cpp src/exfatmodule.cpp
+    src/erofshandler.cpp src/erofsarchivereader.cpp src/erofsarchiveattributes.cpp src/exfatmodule.cpp
     third_party/7zip/CPP/7zip/Archive/ArchiveExports.cpp
     third_party/7zip/CPP/7zip/Common/StreamUtils.cpp
     third_party/7zip/CPP/7zip/Common/StreamObjects.cpp

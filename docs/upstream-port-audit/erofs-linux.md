@@ -86,12 +86,9 @@ and notices. This extension uses the application's dynamic engine; standalone
 and has no external compression-library runtime dependency.
 
 The archive contract exposes contents, modes, UID/GID, timestamps, inode/link
-identity and symlink targets. Linux xattr values, ACL/LSM policy, VFS mounting,
-mmap/DAX and cache-sharing services are outside this archive API. Like the
-upstream 7-Zip Ext handler, it has no generic Linux xattr publication interface.
-On-disk inline/shared/long-prefix xattrs remain compatible with file reading;
-their size participates in locating subsequent inode data. A creator fixture
-with those attributes checks that boundary. This does not claim xattr export.
+identity, symlink targets and public xattr/ACL values as described below.
+Host ACL/LSM enforcement, VFS mounting, mmap/DAX and page-cache sharing services
+remain outside this read-only archive API.
 
 ## Behavior validation
 
@@ -145,3 +142,98 @@ were unmounted and removed. The pinned source remains the reference for modern
 layouts. No full, slow, package/clean-OS, UI or physical-device acceptance is
 claimed. Incremental build trees and compiler caches were preserved; disposable
 images, private runtimes and extraction directories were removed by their owners.
+
+## Public xattr and ACL values — 2026-10-20
+
+The initial implementation accounted for xattr storage when locating inode data
+but omitted value reads. This iteration connects the pinned Linux `xattr.c`
+initialization, inline/shared iteration, name/value copying, list/get operations,
+handler map, long-prefix loading/cleanup and ACL getter. Complete bodies and
+their `super.c`, inode, metadata-buffer and VFS callers were compared before
+integration and again afterward. The selected function bodies remain identical;
+only private visibility, host signed-size types, includes and VFS service types
+are adapted. The source inventory now also pins the original Linux `xxh32`
+implementation and POSIX ACL dependencies.
+
+The Linux name-filter hash uses the original `lib/xxhash.c` round and one-shot
+32-bit bodies. Streaming/64-bit hash interfaces are not needed; unaligned loads
+are a narrow byte-order service. ACL conversion reuses the authoritative
+`fs/posix_acl.c` serialization from ext, adding its original backing-store parser
+and common value checks. Numeric namespace/allocation services are shared without
+depending on ext4 disk/inode types. EROFS ACL values follow the VFS representation,
+including named users/groups and validation of tags, version, size and IDs.
+The ext consumers remain covered because their private ACL services moved to
+the common header; their filesystem reader and ACL decoder are unchanged.
+The original POSIX ACL UAPI headers retain their notices and paths; disk words
+use the equivalent fixed-width host types. Unix/Windows installation includes
+the LGPL text and Linux-syscall-note alongside the existing module notices.
+
+Long prefixes are read from physical, packed or metabox metadata using the
+original loader branches. Inline and shared xattrs can span filesystem blocks;
+shared entries in metabox use the original feature selection. The name filter
+honors its reserved byte. Immutable inode initialization and owned prefix/shared
+arrays replace VFS allocation, locking and lifetime services. The no-ACL cache
+hint and inode fingerprint/page-cache sharing are kernel cache services and are
+omitted; they do not substitute for public value reads. Namespace handlers use
+user/trusted/security/ACL metadata with privileged image-reader policy, without
+host mount-option, capability or LSM filtering.
+
+The C archive boundary calls the Linux list/get/ACL operations. A small separate
+C++ value adapter owns bytes, escapes unsafe name bytes and disambiguates case
+collisions. Existing 7-Zip buffer streams expose those values after archive
+Close/reopen/Release. The handler publishes per-name metadata on files, directories
+and hardlinks, plus a collision-free virtual root item. It provides alternate-
+stream parent/type/name properties, independent inode/stream identities and
+readonly file metadata. Archive projection has no usable kernel implementation;
+it remains in the existing archive owner with the value adapter separated.
+Extraction reports value bytes in progress and honors the final cancellation
+callback; it does not apply stored xattrs or ACLs to the host filesystem.
+The SDK's complete `CArc::OpenStream`/item-property callers also require the
+archive-level alternate-stream marker before consulting individual items.
+Both EROFS and ext now provide it, following the original HFS/NTFS contract.
+CLI regressions check that `-sns-` excludes metadata while preserving an ordinary
+ext filename containing a colon, and `-sns` exposes exact metadata values.
+
+Six additional fixtures are produced by the same pinned erofs-utils. PAX input
+supplies binary values, trusted/security namespaces and access/default ACLs
+without host xattr dependencies. The creator's TAR path stores values inline
+even with `-x0`; directory-input fixtures therefore separately exercise actual
+shared entries, including shared metadata in metabox. Long-prefix variants cover
+plain and packed locations and metabox. Values include empty/binary/Unicode and
+unsafe names, case collisions, 9000-byte data and named user/group ACL entries.
+A real `[ROOT]` filename checks virtual-root disambiguation. Fixture generation
+uses disposable directories and records command inputs and hashes in the manifest.
+
+CLI regressions compare every published value and preserve source images.
+Mutations cover unsupported header-only bodies, inline bounds, shared counts/
+IDs, ACL version/ID errors and the reserved-filter compatibility branch. ABI
+checks cover owned empty/large streams, parent/type, shared-value read errors,
+cancellation after actual metadata transport, output failure and reuse. A shared
+metadata relocation keeps source failures distinct from earlier superblock and
+inode reads. The ArchiveBackend consumer verifies listing and selected extraction
+of large values, access/default ACLs, directory and root metadata. Tests check
+observable bytes, errors and progress rather than source text or call counts.
+
+Nine focused suites (`erofs`, `erofs_module`, `ext`, `ext_stream`,
+`ext_xattr_backend`, `codec_probe`, `runtime_cache`, `upstream_baseline`,
+`upstream_inventory`) passed on macOS arm64/Qt 6.12 (7.05 s), Linux x64
+(17.84 s) and Windows x64/MSVC/Qt 6.12 (42.83 s), receipt
+`20261020T181120Z-de95b22f`. After connecting archive-level stream filtering
+and guarding UCRT's existing `min`/`max` macros, the seven direct format/source
+suites passed again on all three platforms: macOS 3.80 s, Linux 12.48 s and
+Windows 29.78 s, receipt `20261020T181619Z-ebaf5053`. The final Windows build
+has no C4005 redefinition warnings; timeout and cache settings were not changed.
+
+Native Linux `6.8.0-147-generic` matched all 93 xattr reads over four read-only
+images: inline, shared, plain-prefix and packed-prefix layouts, receipt
+`20261020T180830Z-572c4d70`. All image hashes stayed unchanged. New metabox
+layouts are validated through the pinned-source module on three platforms,
+not through that older native kernel. Temporary mounts/images and the review
+script were removed locally and from the guest worktrees.
+
+A real local macOS installation of the final runtime read nine exact metadata
+values across inline, packed-prefix and shared-metabox images and honored
+`-sns-` filtering. Installed LGPL/syscall notice bytes matched the retained
+originals. The disposable installation and its log were removed. Incremental
+build trees and compiler caches remain intact. No full/slow, release archive,
+native authorization, physical-device or UI appearance gate is claimed.

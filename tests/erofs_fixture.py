@@ -33,3 +33,18 @@ def mutation_locations(data):
             return {"root": root, "entry": entry, "name": directory + start,
                     "file": metadata + nid * 32, "block_size": block_size, "root_nid": root_nid}
     raise ValueError("Payload inode not found in fixture directory")
+
+
+def xattr_locations(data):
+    """Offsets for mutations of immutable, uncompressed-metadata creator samples."""
+    node = mutation_locations(data)["file"]
+    fmt, count = struct.unpack_from("<HH", data, node)
+    header = node + (64 if fmt & 1 else 32)
+    start = header + 12 + data[header + 4] * 4
+    end = header + 12 + (count - 1) * 4
+    entries = {}
+    while start < end:
+        length, index, size = struct.unpack_from("<BBH", data, start)
+        entries[(index, bytes(data[start + 4:start + 4 + length]))] = start
+        start += (4 + length + size + 3) & ~3
+    return {"node": node, "header": header, "entries": entries}

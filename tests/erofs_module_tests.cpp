@@ -54,12 +54,19 @@ class Input final : public IInStream, public CMyUnknownImp {
 
   public:
     bool fail = false;
+    UInt64 failAt = UINT64_MAX, notifyAt = UINT64_MAX;
+    HRESULT atResult = E_FAIL;
+    bool notified = false;
     explicit Input(QByteArray bytes) : bytes_(std::move(bytes)) {}
     Z7_COM7F_IMF(Read(void *data, UInt32 size, UInt32 *processed)) override {
         if (processed)
             *processed = 0;
         if (fail)
             return E_FAIL;
+        if (failAt >= position_ && failAt - position_ < size)
+            return atResult;
+        if (notifyAt >= position_ && notifyAt - position_ < size)
+            notified = true;
         size = UInt32(
             qMin<UInt64>(size, position_ < UInt64(bytes_.size()) ? bytes_.size() - position_ : 0));
         if (size)
@@ -104,10 +111,16 @@ class Extract final : public IArchiveExtractCallback, public CMyUnknownImp {
   public:
     CMyComPtr2<ISequentialOutStream, Output> output;
     bool cancel = false;
+    bool cancelAfterOutput = false;
+    UInt64 completed = 0;
     Int32 result = -1;
     Extract() { output.Create_if_Empty(); }
     Z7_COM7F_IMF(SetTotal(UInt64)) override { return S_OK; }
-    Z7_COM7F_IMF(SetCompleted(const UInt64 *)) override { return cancel ? E_ABORT : S_OK; }
+    Z7_COM7F_IMF(SetCompleted(const UInt64 *value)) override {
+        if (value)
+            completed = *value;
+        return cancel || (cancelAfterOutput && !output->bytes.isEmpty()) ? E_ABORT : S_OK;
+    }
     Z7_COM7F_IMF(GetStream(UInt32, ISequentialOutStream **stream, Int32 mode)) override {
         *stream = nullptr;
         if (mode == NArchive::NExtract::NAskMode::kExtract) {
@@ -128,11 +141,12 @@ class OpenCallback final : public IArchiveOpenCallback,
     Z7_COM_UNKNOWN_IMP_2(IArchiveOpenCallback, IArchiveOpenVolumeCallback)
   public:
     bool cancel = false, cancelDevice = false;
+    const Input *observed = nullptr;
     QByteArray device;
     QString requested;
     Z7_COM7F_IMF(SetTotal(const UInt64 *, const UInt64 *)) override { return S_OK; }
     Z7_COM7F_IMF(SetCompleted(const UInt64 *, const UInt64 *)) override {
-        return cancel ? E_ABORT : S_OK;
+        return cancel || (observed && observed->notified) ? E_ABORT : S_OK;
     }
     Z7_COM7F_IMF(GetProperty(PROPID, PROPVARIANT *value)) override {
         NWindows::NCOM::CPropVariant prop;
@@ -196,13 +210,13 @@ class ErofsModuleTests final : public QObject {
         CMyComPtr<IInStream> source = new Input(std::move(data));
         return archive_->Open(source, nullptr, callback);
     }
-    UInt32 fileIndex() {
+    UInt32 fileIndex(const QString &path = name) {
         UInt32 count = 0;
         archive_->GetNumberOfItems(&count);
         for (UInt32 i = 0; i < count; ++i) {
             NWindows::NCOM::CPropVariant value;
             if (archive_->GetProperty(i, kpidPath, &value) == S_OK && value.vt == VT_BSTR &&
-                QString::fromWCharArray(value.bstrVal) == name)
+                QDir::fromNativeSeparators(QString::fromWCharArray(value.bstrVal)) == path)
                 return i;
         }
         return UInt32(-1);
@@ -331,7 +345,7 @@ class ErofsModuleTests final : public QObject {
         const QString path = runtime.filePath(QStringLiteral("образ 空.img"));
         QFile source(path);
         QVERIFY(source.open(QIODevice::WriteOnly));
-        const auto data = image("metabox");
+        const auto data = image("xattr-values-metabox");
         QCOMPARE(source.write(data), data.size());
         source.close();
         ArchiveBackend backend(nullptr, engine);
@@ -362,8 +376,140 @@ class ErofsModuleTests final : public QObject {
         QFile result(QDir(output).filePath(name));
         QVERIFY(result.open(QIODevice::ReadOnly));
         QCOMPARE(result.readAll(), payload());
+        for (const QString &entry :
+             {name + ":$XATTR.user.large", name + ":$XATTR.system.posix_acl_access",
+              QString::fromUtf8("папка:$XATTR.system.posix_acl_default"),
+              QString("[ROOT]_:$XATTR.user.root")}) {
+            QVERIFY(std::any_of(entries.cbegin(), entries.cend(), [&](const ArchiveEntry &value) {
+                return value.path == entry && !value.directory &&
+                       value.properties.value("Alternate Stream") == "+";
+            }));
+            finished.clear();
+            const QString saved = runtime.filePath("selected.bin");
+            QFile::remove(saved);
+            backend.extractSourceEntry(path, entry, saved, "EROFS", {}, true);
+            QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 10000);
+            QVERIFY2(finished[0][0].toBool(), qPrintable(finished[0][1].toString()));
+            QFile extracted(saved);
+            QVERIFY(extracted.open(QIODevice::ReadOnly));
+            const int colon = entry.indexOf(':');
+            const QString host = entry.left(colon) == "[ROOT]_" ? QString() : entry.left(colon);
+            const QString attribute = entry.mid(colon + QString(":$XATTR.").size());
+            const auto values = manifest()["images"]
+                                    .toObject()["xattr-values-metabox"]
+                                    .toObject()["attributes"]
+                                    .toObject()[host]
+                                    .toObject();
+            QCOMPARE(extracted.readAll(),
+                     QByteArray::fromHex(values[attribute].toString().toLatin1()));
+        }
         QVERIFY(source.open(QIODevice::ReadOnly));
         QCOMPARE(source.readAll(), data);
+    }
+    void metadataStreamOwnershipAndParent() {
+        QCOMPARE(open(image("xattr-values-prefix")), S_OK);
+        const UInt32 host = fileIndex();
+        const UInt32 index = fileIndex(name + ":$XATTR.user.large");
+        QVERIFY(host != UInt32(-1) && index != UInt32(-1));
+        NWindows::NCOM::CPropVariant prop;
+        QCOMPARE(archive_->GetProperty(index, kpidIsAltStream, &prop), S_OK);
+        QCOMPARE(prop.vt, VARTYPE(VT_BOOL));
+        QCOMPARE(prop.boolVal, VARIANT_TRUE);
+        CMyComPtr<IArchiveGetRawProps> raw;
+        QCOMPARE(archive_->QueryInterface(IID_IArchiveGetRawProps, reinterpret_cast<void **>(&raw)),
+                 S_OK);
+        UInt32 parent = 0, type = 0;
+        QCOMPARE(raw->GetParent(index, &parent, &type), S_OK);
+        QCOMPARE(parent, host);
+        QCOMPARE(type, UInt32(NParentType::kAltStream));
+        CMyComPtr<IInArchiveGetStream> provider;
+        QCOMPARE(
+            archive_->QueryInterface(IID_IInArchiveGetStream, reinterpret_cast<void **>(&provider)),
+            S_OK);
+        CMyComPtr<ISequentialInStream> stream, empty;
+        QCOMPARE(provider->GetStream(index, &stream), S_OK);
+        QCOMPARE(provider->GetStream(fileIndex(name + ":$XATTR.user.empty"), &empty), S_OK);
+        QCOMPARE(archive_->Close(), S_OK);
+        QCOMPARE(open(image()), S_OK);
+        provider.Release();
+        raw.Release();
+        archive_.Release();
+        QByteArray actual(9000, '\0');
+        UInt32 processed = 0;
+        QCOMPARE(stream->Read(actual.data(), actual.size(), &processed), S_OK);
+        QCOMPARE(processed, UInt32(actual.size()));
+        const auto expected = manifest()["images"]
+                                  .toObject()["xattr-values-prefix"]
+                                  .toObject()["attributes"]
+                                  .toObject()[name]
+                                  .toObject()["user.large"]
+                                  .toString();
+        QCOMPARE(actual, QByteArray::fromHex(expected.toLatin1()));
+        char byte = 'x';
+        QCOMPARE(empty->Read(&byte, 1, &processed), S_OK);
+        QCOMPARE(processed, UInt32(0));
+        QCOMPARE(byte, 'x');
+        createArchive();
+    }
+    void metadataReadFailureCancellationAndReuse() {
+        QByteArray data = image("xattr-values-shared");
+        const unsigned bits = quint8(data[1036]);
+        const int old = int(qFromLittleEndian<quint32>(data.constData() + 1068) << bits);
+        const QByteArray shared = data.mid(old);
+        const int relocated = (data.size() + 65535) & ~65535;
+        data.resize(relocated);
+        data.append(shared);
+        data.resize((data.size() + (1 << bits) - 1) & ~((1 << bits) - 1));
+        qToLittleEndian(quint32(relocated >> bits), data.data() + 1068);
+        qToLittleEndian(quint32(data.size() >> bits), data.data() + 1060);
+        qToLittleEndian(qFromLittleEndian<quint32>(data.constData() + 1032) & ~quint32(1),
+                        data.data() + 1032);
+        CMyComPtr2<IInStream, Input> source;
+        source.SetFromCls(new Input(data));
+        source->failAt = UInt64(relocated);
+        for (HRESULT result : {E_FAIL, E_ABORT}) {
+            QCOMPARE(source->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
+            source->atResult = result;
+            QCOMPARE(archive_->Open(source, nullptr, nullptr), result);
+            UInt32 count = 99;
+            QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+            QCOMPARE(count, UInt32(0));
+        }
+        source->notifyAt = source->failAt;
+        source->failAt = UINT64_MAX;
+        CMyComPtr2<IArchiveOpenCallback, OpenCallback> callback;
+        callback.SetFromCls(new OpenCallback);
+        callback->observed = source.ClsPtr();
+        QCOMPARE(source->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
+        QCOMPARE(archive_->Open(source, nullptr, callback), E_ABORT);
+        source->notified = false;
+        source->notifyAt = UINT64_MAX;
+        QCOMPARE(source->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
+        QCOMPARE(archive_->Open(source, nullptr, callback), S_OK);
+        const UInt32 index = fileIndex(name + ":$XATTR.user.large");
+        QVERIFY(index != UInt32(-1));
+        CMyComPtr2<IArchiveExtractCallback, Extract> output;
+        output.Create_if_Empty();
+        QCOMPARE(archive_->Extract(&index, 1, 0, output), S_OK);
+        QCOMPARE(output->result, Int32(NArchive::NExtract::NOperationResult::kOK));
+        const auto expected = manifest()["images"]
+                                  .toObject()["xattr-values-shared"]
+                                  .toObject()["attributes"]
+                                  .toObject()[name]
+                                  .toObject()["user.large"]
+                                  .toString();
+        QCOMPARE(output->output->bytes, QByteArray::fromHex(expected.toLatin1()));
+        QCOMPARE(output->completed, UInt64(9000));
+        output->cancelAfterOutput = true;
+        output->output->bytes.clear();
+        QCOMPARE(archive_->Extract(&index, 1, 0, output), E_ABORT);
+        output->cancelAfterOutput = false;
+        output->output->bytes.clear();
+        output->output->fail = true;
+        QCOMPARE(archive_->Extract(&index, 1, 0, output), E_FAIL);
+        output->output->fail = false;
+        QCOMPARE(archive_->Extract(&index, 1, 0, output), S_OK);
+        QCOMPARE(output->output->bytes, QByteArray::fromHex(expected.toLatin1()));
     }
     void cleanupTestCase() { archive_.Release(); }
 };

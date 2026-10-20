@@ -391,7 +391,9 @@ feature/creator-OS read semantics остаются в общем scope.
 [Переданный C scope, интеграция и границы проверок](erofs-linux.md).
 Подключены mapping/metadata paths, четыре декодера и format-модуль. Проверены
 образы официального mkfs, ABI/backend, повреждения, отмена, время жизни потоков
-и дополнительные устройства на трёх ОС. Эта итерация не закрывает остальные
+и дополнительные устройства на трёх ОС. Публичные xattr/ACL values теперь
+подключены через Linux inline/shared/long-prefix/metabox readers и owned
+alternate streams. Эта итерация не закрывает остальные
 файловые системы и дополнительные форматы из общего scope.
 
 ### cramfs: sparse end-pointer blocks

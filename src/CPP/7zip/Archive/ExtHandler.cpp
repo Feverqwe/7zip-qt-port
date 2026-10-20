@@ -2097,6 +2097,11 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID propID, PROPVARIANT *value)) {
     case kpidIsTree:
         prop = true;
         break;
+#ifdef SEVENZIP_LINUX_EXT
+    case kpidIsAltStream:
+        prop = !_xattrs.IsEmpty();
+        break;
+#endif
     // case kpidIsAux: prop = true; break;
     case kpidINode:
         prop = true;

@@ -126,6 +126,8 @@
     "fs/verity/verify.c",
     "include/linux/fsverity.h",
     "include/uapi/linux/fsverity.h",
+    "include/uapi/linux/posix_acl.h",
+    "include/uapi/linux/posix_acl_xattr.h",
     "lib/crc/crc16.c",
     "lib/crc/crc32-main.c"
   ],

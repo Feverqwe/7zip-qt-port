@@ -2,6 +2,7 @@
 // Stream, metadata-buffer and lifetime services for the Linux EROFS reader.
 #include "erofsreader.h"
 #include "fs/erofs/internal.h"
+#include "fs/erofs/xattr.h"
 
 struct erofs_volume {
     struct super_block sb;
@@ -41,20 +42,24 @@ void erofs_unmap_metabuf(struct erofs_buf *buf) {
     (void)buf;
 }
 int erofs_init_metabuf(struct erofs_buf *buf, struct super_block *sb, bool in_metabox) {
-    if (buf->sb != sb || buf->in_metabox != in_metabox)
+    struct inode *mapping = in_metabox ? EROFS_SB(sb)->metabox_inode : NULL;
+    if (buf->sb != sb || buf->mapping != mapping)
         erofs_put_metabuf(buf);
     buf->sb = sb;
     buf->in_metabox = in_metabox;
+    buf->mapping = mapping;
     return in_metabox && !EROFS_SB(sb)->metabox_inode ? -EFSCORRUPTED : 0;
 }
 void *erofs_bread(struct erofs_buf *buf, erofs_off_t offset, bool need_kmap) {
     struct super_block *sb = buf->sb;
+    if (!sb && buf->mapping)
+        sb = buf->sb = buf->mapping->i_sb;
     if (!sb)
         return ERR_PTR(-EINVAL);
     if (sb->poll && sb->poll(sb->context))
         return ERR_PTR(-ECANCELED);
-    struct inode *meta = EROFS_SB(sb)->metabox_inode;
-    u64 length = buf->in_metabox ? (u64)meta->i_size : sb->image_size;
+    struct inode *meta = buf->mapping;
+    u64 length = meta ? (u64)meta->i_size : sb->image_size;
     if (offset >= length)
         return ERR_PTR(-EIO);
     u64 index = offset >> PAGE_SHIFT;
@@ -68,7 +73,7 @@ void *erofs_bread(struct erofs_buf *buf, erofs_off_t offset, bool need_kmap) {
         u64 pos = index << PAGE_SHIFT;
         size_t size = (size_t)min((u64)PAGE_SIZE, length - pos);
         int error;
-        if (buf->in_metabox)
+        if (meta)
             error = sb->read_inode(meta, pos, buf->base, size);
         else
             error = sb->read(sb->context, 0, pos, buf->base, size) ? -EIO : 0;
@@ -122,6 +127,7 @@ void erofs_close_file(struct erofs_file *file) {
     if (!file)
         return;
     free(file->inode.vfs_inode.i_link);
+    free(file->inode.xattr_shared_xattrs);
     erofs_put_metabuf(&file->map.buf);
     free(file->decoded);
     free(file);
@@ -136,6 +142,7 @@ int erofs_open_file(struct erofs_volume *volume, uint64_t nid, struct erofs_file
         return -ENOMEM;
     file->inode.nid = nid;
     file->inode.vfs_inode.i_sb = &volume->sb;
+    file->inode.vfs_inode.i_mapping = &file->inode.vfs_inode;
     file->inode.vfs_inode.i_blkbits = volume->sb.s_blocksize_bits;
     int error = erofs_read_inode(&file->inode.vfs_inode);
     if (!error && file->inode.datalayout != EROFS_INODE_CHUNK_BASED &&
@@ -263,12 +270,15 @@ static int erofs_pread_inode(struct inode *inode, u64 pos, void *data, size_t si
 void erofs_close_volume(struct erofs_volume *volume) {
     if (!volume)
         return;
+    erofs_xattr_prefixes_cleanup(&volume->sb);
     if (volume->info.metabox_inode) {
         free(volume->info.metabox_inode->i_link);
+        free(EROFS_I(volume->info.metabox_inode)->xattr_shared_xattrs);
         free(EROFS_I(volume->info.metabox_inode));
     }
     if (volume->info.packed_inode) {
         free(volume->info.packed_inode->i_link);
+        free(EROFS_I(volume->info.packed_inode)->xattr_shared_xattrs);
         free(EROFS_I(volume->info.packed_inode));
     }
     free(volume->info.devices);
@@ -286,6 +296,7 @@ static int erofs_internal_inode(struct erofs_volume *v, u64 nid, struct inode **
         return -ENOMEM;
     }
     *inode = file->inode;
+    inode->vfs_inode.i_mapping = &inode->vfs_inode;
     file->inode.vfs_inode.i_link = NULL;
     erofs_close_file(file);
     *result = &inode->vfs_inode;
@@ -335,6 +346,8 @@ int erofs_open_volume(const struct erofs_source *source, struct erofs_volume **r
         error = erofs_internal_inode(v, v->info.packed_nid, &v->info.packed_inode);
     if (!error && erofs_sb_has_metabox(&v->info))
         error = erofs_internal_inode(v, v->info.metabox_nid, &v->info.metabox_inode);
+    if (!error)
+        error = erofs_xattr_prefixes_init(&v->sb);
     if (!error) {
         struct erofs_file *root;
         error = erofs_open_file(v, v->info.root_nid, &root);
@@ -415,4 +428,68 @@ int erofs_read_directory(struct erofs_file *file, void *context,
     }
     free(block);
     return error;
+}
+
+int erofs_read_xattrs(struct erofs_file *file, void *context, erofs_xattr_emit emit) {
+    struct inode *inode = &file->inode.vfs_inode;
+    struct dentry entry = { inode->i_sb, inode };
+    ptrdiff_t length = erofs_listxattr(&entry, NULL, 0);
+    char *names, *name, *end;
+    int result = 0;
+    if (length <= 0) return (int)length;
+    names = malloc((size_t)length);
+    if (!names) return -ENOMEM;
+    if (erofs_listxattr(&entry, names, (size_t)length) != length) {
+        free(names);
+        return -EIO;
+    }
+    end = names + length;
+    for (name = names; name < end; name += strlen(name) + 1) {
+        static const char *const prefixes[] = {
+            NULL, "user.", "system.posix_acl_access", "system.posix_acl_default",
+            "trusted.", NULL, "security."
+        };
+        unsigned index;
+        size_t prefix = 0, size = 0;
+        void *value;
+        struct posix_acl *acl = NULL;
+        if (inode->i_sb->poll && inode->i_sb->poll(inode->i_sb->context)) {
+            result = -ECANCELED;
+            break;
+        }
+        for (index = 1; index < sizeof(prefixes) / sizeof(prefixes[0]); ++index) {
+            if (!prefixes[index]) continue;
+            prefix = strlen(prefixes[index]);
+            if (!strncmp(name, prefixes[index], prefix)) break;
+        }
+        if (index == sizeof(prefixes) / sizeof(prefixes[0])) continue;
+        if (index == EROFS_XATTR_INDEX_POSIX_ACL_ACCESS ||
+            index == EROFS_XATTR_INDEX_POSIX_ACL_DEFAULT) {
+            if (name[prefix]) continue;
+            acl = erofs_get_acl(inode, index == EROFS_XATTR_INDEX_POSIX_ACL_ACCESS ?
+                                 ACL_TYPE_ACCESS : ACL_TYPE_DEFAULT, false);
+            if (IS_ERR(acl)) { result = PTR_ERR(acl); break; }
+            if (!acl) continue;
+            value = posix_acl_to_xattr(&init_user_ns, acl, &size, GFP_KERNEL);
+            posix_acl_release(acl);
+            if (!value) { result = -ENOMEM; break; }
+        } else {
+            result = erofs_getxattr(inode, (int)index, name + prefix, NULL, 0);
+            if (result < 0) break;
+            size = (size_t)result;
+            value = malloc(size ? size : 1);
+            if (!value) { result = -ENOMEM; break; }
+            result = erofs_getxattr(inode, (int)index, name + prefix, value, size);
+            if (result < 0 || (size_t)result != size) {
+                free(value);
+                if (result >= 0) result = -EIO;
+                break;
+            }
+        }
+        result = emit(context, name, value, size);
+        free(value);
+        if (result) break;
+    }
+    free(names);
+    return result;
 }

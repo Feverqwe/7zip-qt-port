@@ -110,6 +110,8 @@ def generate(tool, output):
         (output / "blob.bin.zlib").write_bytes(zlib.compress(extra, 9))
         save("external-device", data, options, devices={"blob.bin": {"size": len(extra),
              "file": "blob.bin.zlib"}}, transformation="name device blob.bin and update checksum")
+    from generate_xattrs import generate as generate_xattrs
+    generate_xattrs(tool, output, manifest)
     (output / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
 
 

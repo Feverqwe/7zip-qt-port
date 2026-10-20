@@ -8,7 +8,8 @@ import sys
 import tempfile
 import unittest
 import zlib
-from erofs_fixture import FILES, PAYLOAD_NAME, mutation_locations
+import urllib.parse
+from erofs_fixture import FILES, PAYLOAD_NAME, mutation_locations, xattr_locations
 
 RUNTIME = Path(sys.argv.pop(1))
 MODULE = Path(sys.argv.pop(1))
@@ -92,6 +93,74 @@ class ErofsTests(unittest.TestCase):
                 self.assertEqual(path.read_bytes(), data)
                 path.unlink()
 
+    def test_xattr_values_shared_inline_prefix_and_metabox(self):
+        for variant, record in json.loads((FIXTURES / "manifest.json").read_text())["images"].items():
+            if "attributes" not in record:
+                continue
+            with self.subTest(variant=variant):
+                data = zlib.decompress((FIXTURES / (variant + ".erofs.zlib")).read_bytes())
+                image = self.runtime / "значения 空.erofs"
+                image.write_bytes(data)
+                engine = str(self.runtime / ("7z" + SUFFIX))
+                listing = self.run_engine([engine, "l", "-slt", "-sns", "-sccUTF-8", "--", str(image)])
+                self.assertEqual(listing.returncode, 0, listing.stderr.decode(errors="replace"))
+                paths = {line[7:] for line in listing.stdout.decode("utf-8").splitlines()
+                         if line.startswith("Path = ")}
+                plain = self.run_engine([engine, "l", "-slt", "-sns-", "--", str(image)])
+                self.assertEqual(plain.returncode, 0, plain.stderr.decode(errors="replace"))
+                self.assertNotIn(b"Alternate Stream = +", plain.stdout)
+                for path, attributes in record["attributes"].items():
+                    for name, value in attributes.items():
+                        base = (path or "[ROOT]_") + ":$XATTR." + urllib.parse.quote(name, safe="._-")
+                        candidates = [p for p in paths if p == base or p.startswith(base + "#")]
+                        self.assertEqual(len(candidates), 1, base)
+                        extracted = self.run_engine([engine, "x", "-so", "-sns", "-bso0", "-bsp0", "-bse2",
+                                                     "--", str(image), candidates[0]])
+                        self.assertEqual(extracted.returncode, 0, extracted.stderr.decode(errors="replace"))
+                        self.assertEqual(extracted.stdout, bytes.fromhex(value), candidates[0])
+                self.assertEqual(image.read_bytes(), data)
+                image.unlink()
+
+    def test_xattr_corruption_and_reserved_filter(self):
+        for fault in ("header-only", "entry-size", "shared-count", "shared-id", "acl-version",
+                      "acl-id", "filter", "reserved-filter"):
+            with self.subTest(fault=fault):
+                variant = "shared" if fault.startswith("shared") else "inline"
+                data = bytearray(zlib.decompress((FIXTURES / ("xattr-values-" + variant + ".erofs.zlib")).read_bytes()))
+                loc = xattr_locations(data)
+                struct.pack_into("<I", data, 1032, 4)  # Keep name filtering, omit optional checksum.
+                if fault == "header-only":
+                    struct.pack_into("<H", data, loc["node"] + 2, 1)
+                elif fault == "entry-size":
+                    struct.pack_into("<H", data, next(iter(loc["entries"].values())) + 2, 65535)
+                elif fault == "shared-count":
+                    data[loc["header"] + 4] = 255
+                elif fault == "shared-id":
+                    struct.pack_into("<I", data, loc["header"] + 12, 0xffffffff)
+                elif fault.startswith("acl"):
+                    value = loc["entries"][(2, b"")] + 4
+                    if fault == "acl-version":
+                        struct.pack_into("<I", data, value, 0)
+                    else:
+                        struct.pack_into("<I", data, value + 4 + 8 + 4, 0xffffffff)
+                else:
+                    struct.pack_into("<I", data, loc["header"], 0xffffffff)
+                    if fault == "reserved-filter":
+                        data[1128] = 1
+                image = self.runtime / "xattr corrupt.img"
+                image.write_bytes(data)
+                result = self.run_engine([str(self.runtime / ("7z" + SUFFIX)), "x", "-so",
+                                          "-sns", "-bso0", "-bsp0", "-bse2", "--", str(image),
+                                          PAYLOAD_NAME + ":$XATTR.user.large"])
+                if fault == "reserved-filter":
+                    self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                    self.assertEqual(result.stdout, bytes(i % 251 for i in range(9000)))
+                else:
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertEqual(result.stdout, b"")
+                self.assertEqual(image.read_bytes(), data)
+                image.unlink()
+
     def test_creator_images_exact_contents_and_metadata(self):
         variants = json.loads((FIXTURES / "manifest.json").read_text())["images"]
         for variant in variants:
@@ -114,7 +183,7 @@ class ErofsTests(unittest.TestCase):
                 self.assertIn("Group ID = 5678", text)
                 self.assertIn("Symbolic Link = " + PAYLOAD_NAME, text)
                 for name, expected in FILES.items():
-                    result = self.run_engine([engine, "x", "-so", "-bso0", "-bsp0", "-bse2", "--",
+                    result = self.run_engine([engine, "x", "-so", "-sns-", "-bso0", "-bsp0", "-bse2", "--",
                                               str(image), name])
                     self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
                     self.assertEqual(result.stdout, expected, name)

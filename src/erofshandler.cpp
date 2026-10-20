@@ -1,15 +1,19 @@
 // SPDX-License-Identifier: GPL-2.0-only
 // 7-Zip archive presentation for the Linux EROFS C read-side modules.
 #include "7zip/Common/RegisterArc.h"
+#include "7zip/Common/StreamObjects.h"
 #include "7zip/Common/StreamUtils.h"
 #include "Common/ComTry.h"
 #include "Common/StringConvert.h"
 #include "Common/UTFConvert.h"
 #include "Windows/PropVariant.h"
 #include "Windows/TimeUtils.h"
+#include "erofsarchiveattributes.h"
 #include "erofsarchivereader.h"
+#include <algorithm>
 #include <array>
 #include <cstring>
+#include <map>
 #include <set>
 #include <string>
 #include <utility>
@@ -34,10 +38,13 @@ UString Text(const char *bytes, size_t size) {
 struct Item {
     UString path, symlink;
     erofs_item inode{};
+    UInt32 parent = UInt32(-1);
+    std::shared_ptr<const ErofsAttribute> attribute;
 };
 struct Pending {
     UString prefix;
     UInt64 nid;
+    UInt32 parent = UInt32(-1);
 };
 
 class FileStream final : public IInStream, public CMyUnknownImp {
@@ -85,10 +92,14 @@ class FileStream final : public IInStream, public CMyUnknownImp {
 };
 } // namespace
 
-class CHandler final : public IInArchive, public IInArchiveGetStream, public CMyUnknownImp {
-    Z7_COM_UNKNOWN_IMP_2(IInArchive, IInArchiveGetStream)
+class CHandler final : public IInArchive,
+                       public IInArchiveGetStream,
+                       public IArchiveGetRawProps,
+                       public CMyUnknownImp {
+    Z7_COM_UNKNOWN_IMP_3(IInArchive, IInArchiveGetStream, IArchiveGetRawProps)
     Z7_IFACE_COM7_IMP(IInArchive)
     Z7_IFACE_COM7_IMP(IInArchiveGetStream)
+    Z7_IFACE_COM7_IMP(IArchiveGetRawProps)
     std::shared_ptr<ErofsArchiveReader> reader_;
     std::vector<Item> items_;
     struct Tree {
@@ -102,6 +113,7 @@ class CHandler final : public IInArchive, public IInArchiveGetStream, public CMy
     static int Emit(void *, const char *, size_t, uint64_t, unsigned int);
     HRESULT AddItem(Tree &, const char *, size_t, UInt64);
     HRESULT ReadTree();
+    HRESULT ReadAttributes();
     HRESULT ExtractItem(UInt32, Int32, IArchiveExtractCallback *);
 };
 
@@ -128,6 +140,7 @@ HRESULT CHandler::AddItem(Tree &tree, const char *name, size_t size, UInt64 nid)
     if (!tree.names.emplace(name, size).second)
         return S_FALSE;
     Item item;
+    item.parent = tree.directory.parent;
     item.path = tree.directory.prefix;
     if (item.path.Len() > UINT32_MAX - size - 1)
         return S_FALSE;
@@ -138,7 +151,7 @@ HRESULT CHandler::AddItem(Tree &tree, const char *name, size_t size, UInt64 nid)
     if (IsDir(item.inode)) {
         if (!tree.directories.insert(nid).second)
             return S_FALSE;
-        Pending child{item.path, nid};
+        Pending child{item.path, nid, UInt32(items_.size())};
         child.prefix += L'/';
         tree.pending.push_back(std::move(child));
     } else if ((item.inode.mode & typeMask) == symlinkType) {
@@ -173,6 +186,74 @@ HRESULT CHandler::ReadTree() {
     return S_OK;
 }
 
+HRESULT CHandler::ReadAttributes() {
+    using Values = std::vector<std::shared_ptr<const ErofsAttribute>>;
+    std::map<UInt64, Values> cache;
+    const auto load = [&](UInt64 nid, const Values *&values) -> HRESULT {
+        auto found = cache.find(nid);
+        if (found == cache.end()) {
+            ErofsFile file;
+            RINOK(reader_->OpenFile(nid, file))
+            std::vector<ErofsAttribute> attributes;
+            RINOK(ReadErofsAttributes(*reader_, file.get(), attributes))
+            Values owned;
+            for (auto &attribute : attributes)
+                owned.push_back(std::make_shared<ErofsAttribute>(std::move(attribute)));
+            found = cache.emplace(nid, std::move(owned)).first;
+        }
+        values = &found->second;
+        return S_OK;
+    };
+    const auto append = [&](UInt32 parent, const Values &values) -> HRESULT {
+        for (const auto &attribute : values) {
+            if (items_.size() == UINT32_MAX)
+                return S_FALSE;
+            Item item;
+            item.parent = parent;
+            item.attribute = attribute;
+            item.path = items_[parent].path;
+            item.path += L':';
+            item.path += attribute->name;
+            item.inode = items_[parent].inode;
+            item.inode.mode = regularType | 0444;
+            item.inode.size = item.inode.packed_size = attribute->value.size();
+            item.inode.nlink = 1;
+            items_.push_back(std::move(item));
+        }
+        return S_OK;
+    };
+    const UInt32 count = UInt32(items_.size());
+    for (UInt32 i = 0; i < count; ++i) {
+        const Values *values;
+        RINOK(load(items_[i].inode.nid, values))
+        RINOK(append(i, *values))
+    }
+    const Values *root;
+    RINOK(load(reader_->info.root_nid, root))
+    if (!root->empty()) {
+        if (items_.size() == UINT32_MAX)
+            return S_FALSE;
+        Item item;
+        item.path = L"[ROOT]";
+        for (;;) {
+            bool collision = false;
+            for (UInt32 i = 0; i < count; ++i)
+                if (items_[i].path.IsEqualTo_NoCase(item.path))
+                    collision = true;
+            if (!collision)
+                break;
+            item.path += L'_';
+        }
+        ErofsFile file;
+        RINOK(reader_->OpenFile(reader_->info.root_nid, file))
+        erofs_get_file_info(file.get(), &item.inode);
+        const UInt32 parent = UInt32(items_.size());
+        items_.push_back(std::move(item));
+        RINOK(append(parent, *root))
+    }
+    return S_OK;
+}
+
 Z7_COM7F_IMF(CHandler::Open(IInStream *stream, const UInt64 *, IArchiveOpenCallback *callback)) {
     COM_TRY_BEGIN
     Close();
@@ -190,6 +271,7 @@ Z7_COM7F_IMF(CHandler::Open(IInStream *stream, const UInt64 *, IArchiveOpenCallb
     RINOK(reader_->Open(stream, callback))
     reader_->openCallback = callback;
     RINOK(ReadTree())
+    RINOK(ReadAttributes())
     reset.accepted = true;
     return S_OK;
     COM_TRY_END
@@ -215,6 +297,13 @@ Z7_COM7F_IMF(CHandler::GetProperty(UInt32 index, PROPID id, PROPVARIANT *value))
     case kpidPath:
         prop = item.path;
         break;
+    case kpidName:
+        prop = item.attribute ? item.attribute->name.Ptr()
+                              : item.path.Ptr(item.path.ReverseFind_PathSepar() + 1);
+        break;
+    case kpidIsAltStream:
+        prop = bool(item.attribute);
+        break;
     case kpidIsDir:
         prop = IsDir(inode);
         break;
@@ -236,7 +325,12 @@ Z7_COM7F_IMF(CHandler::GetProperty(UInt32 index, PROPID id, PROPVARIANT *value))
         prop = UInt32(inode.gid);
         break;
     case kpidINode:
-        prop = UInt64(inode.nid);
+        if (!item.attribute)
+            prop = UInt64(inode.nid);
+        break;
+    case kpidStreamId:
+        if (item.attribute)
+            prop = (UInt64(1) << 63) | index;
         break;
     case kpidLinks:
         prop = UInt32(inode.nlink);
@@ -286,6 +380,13 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID id, PROPVARIANT *value)) {
         case kpidINode:
             prop = true;
             break;
+        case kpidIsTree:
+            prop = true;
+            break;
+        case kpidIsAltStream:
+            prop = std::any_of(items_.cbegin(), items_.cend(),
+                               [](const Item &item) { return bool(item.attribute); });
+            break;
         }
     }
     prop.Detach(value);
@@ -299,6 +400,11 @@ Z7_COM7F_IMF(CHandler::GetStream(UInt32 index, ISequentialInStream **stream)) {
     if (!reader_ || index >= items_.size())
         return E_INVALIDARG;
     const auto &item = items_[index];
+    if (item.attribute) {
+        const auto &value = item.attribute->value;
+        Create_BufInStream_WithNewBuffer(value.data(), value.size(), stream);
+        return S_OK;
+    }
     if (IsDir(item.inode))
         return E_FAIL;
     ErofsFile file;
@@ -344,6 +450,8 @@ HRESULT CHandler::ExtractItem(UInt32 index, Int32 testMode, IArchiveExtractCallb
             if (output)
                 RINOK(WriteStream(output, buffer.data(), count))
             processedTotal += count;
+            if (item.attribute)
+                reader_->completed += count;
         }
     }
     output.Release();
@@ -380,13 +488,37 @@ Z7_COM7F_IMF(CHandler::Extract(const UInt32 *indices, UInt32 count, Int32 testMo
         RINOK(callback->SetCompleted(&reader_->completed))
         RINOK(ExtractItem(all ? i : indices[i], testMode, callback))
     }
-    return S_OK;
+    return callback->SetCompleted(&reader_->completed);
     COM_TRY_END
 }
 
-static const Byte kProps[] = {
-    kpidPath,    kpidIsDir, kpidSize,  kpidPackSize, kpidPosixAttrib, kpidMTime,      kpidUserId,
-    kpidGroupId, kpidINode, kpidLinks, kpidSymLink,  kpidDeviceMajor, kpidDeviceMinor};
+static const Byte kProps[] = {kpidPath,        kpidIsAltStream, kpidIsDir, kpidSize,
+                              kpidPackSize,    kpidPosixAttrib, kpidMTime, kpidUserId,
+                              kpidGroupId,     kpidINode,       kpidLinks, kpidSymLink,
+                              kpidDeviceMajor, kpidDeviceMinor};
+
+Z7_COM7F_IMF(CHandler::GetParent(UInt32 index, UInt32 *parent, UInt32 *type)) {
+    if (index >= items_.size())
+        return E_INVALIDARG;
+    *parent = items_[index].parent;
+    *type = items_[index].attribute ? NParentType::kAltStream : NParentType::kDir;
+    return S_OK;
+}
+Z7_COM7F_IMF(CHandler::GetNumRawProps(UInt32 *count)) {
+    *count = 0;
+    return S_OK;
+}
+Z7_COM7F_IMF(CHandler::GetRawPropInfo(UInt32, BSTR *name, PROPID *id)) {
+    *name = nullptr;
+    *id = 0;
+    return S_OK;
+}
+Z7_COM7F_IMF(CHandler::GetRawProp(UInt32, PROPID, const void **data, UInt32 *size, UInt32 *type)) {
+    *data = nullptr;
+    *size = 0;
+    *type = 0;
+    return S_OK;
+}
 IMP_IInArchive_Props IMP_IInArchive_ArcProps_NO_Table static const Byte signature[] = {0xe2, 0xe1,
                                                                                        0xf5, 0xe0};
 REGISTER_ARC_I("EROFS", "erofs img", nullptr, 0xF2, signature, 1024, 0, nullptr)

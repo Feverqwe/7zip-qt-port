@@ -75,6 +75,8 @@ install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/preferred/
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/preferred/GPL-2.0"
     "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/preferred/BSD-2-Clause"
     "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/deprecated/0BSD"
+    "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/exceptions/Linux-syscall-note"
+    "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/DOC/copying.txt"
     DESTINATION share/licenses/sevenzip-desktop/sevenzip-erofs)
 install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/linux/LICENSES/preferred/GPL-2.0"
     DESTINATION share/licenses/sevenzip-desktop/sevenzip-cramfs)

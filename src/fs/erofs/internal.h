@@ -18,6 +18,7 @@ typedef uint64_t u64, __le64;
 typedef int64_t s64;
 typedef int64_t loff_t;
 typedef uint8_t __u8;
+typedef unsigned int uint;
 typedef u64 erofs_nid_t, erofs_off_t, erofs_blk_t;
 #ifdef _MSC_VER
 #define __packed
@@ -34,9 +35,14 @@ typedef u64 erofs_nid_t, erofs_off_t, erofs_blk_t;
 #define roundup(x, a) ALIGN(x, a)
 #define round_down(x, a) ((u64)(x) & ~((u64)(a) - 1))
 #define rounddown(x, a) round_down(x, a)
+#ifndef min
 #define min(a, b) ((a) < (b) ? (a) : (b))
+#endif
+#ifndef max
 #define max(a, b) ((a) > (b) ? (a) : (b))
+#endif
 #define min_t(t, a, b) min((t)(a), (t)(b))
+#define ARRAY_SIZE(array) (sizeof(array) / sizeof((array)[0]))
 #define for_each_set_bit(bit, mask, count) \
     for ((bit) = 0; (bit) < (count); ++(bit)) if ((*(mask) >> (bit)) & 1UL)
 #define container_of(p, type, member) ((type *)((char *)(p) - offsetof(type, member)))
@@ -62,6 +68,9 @@ typedef u64 erofs_nid_t, erofs_off_t, erofs_blk_t;
 #endif
 #define ERESTARTSYS 992
 #define GFP_KERNEL 0
+#define kmalloc_objs(type, count) calloc((count) ? (count) : 1, sizeof(type))
+#define kzalloc_objs(type, count) calloc((count) ? (count) : 1, sizeof(type))
+#define krealloc(ptr, size, flags) realloc(ptr, size)
 #define kmalloc(n, flags) malloc(n)
 #define kfree(p) free(p)
 #define smp_mb() ((void)0)
@@ -72,11 +81,17 @@ typedef u64 erofs_nid_t, erofs_off_t, erofs_blk_t;
 #define clear_and_wake_up_bit(bit, p) (*(p) &= ~(1UL << (bit)))
 #define BITS_PER_LONG (sizeof(unsigned long) * CHAR_BIT)
 #define EROFS_I_Z_INITED_BIT 1
+#define EROFS_I_EA_INITED_BIT 0
+#define EROFS_I_BL_XATTR_BIT (BITS_PER_LONG - 1)
 #define EROFS_I_BL_Z_BIT (BITS_PER_LONG - 2)
 #define CONFIG_EROFS_FS_ZIP 1
-#define CONFIG_EROFS_FS_POSIX_ACL 0
+#define CONFIG_EROFS_FS_XATTR 1
+#define CONFIG_EROFS_FS_SECURITY 1
+#define CONFIG_EROFS_FS_POSIX_ACL 1
 #define IS_ENABLED(x) (x)
-#define test_opt(opt, option) ((void)(opt), 0)
+#define XATTR_USER 1
+#define DAX_ALWAYS 0
+#define test_opt(opt, option) ((void)(opt), (option) == XATTR_USER)
 #define S_DAX 0
 #define S_IFMT 0170000
 #define S_IFREG 0100000
@@ -119,6 +134,7 @@ static inline unsigned int ilog2(u64 n) {
 struct super_block;
 struct inode {
     struct super_block *i_sb;
+    struct inode *i_mapping;
     s64 i_size, mtime;
     u64 i_blocks;
     u32 i_mode, uid, gid, nlink, nsec, i_rdev, i_flags;
@@ -131,6 +147,8 @@ struct erofs_inode {
     unsigned char datalayout, inode_isize;
     bool dot_omitted;
     unsigned int xattr_isize;
+    unsigned int xattr_name_filter, xattr_shared_count;
+    unsigned int *xattr_shared_xattrs;
     union {
         erofs_blk_t startblk;
         struct { unsigned short chunkformat; unsigned char chunkbits; };
@@ -145,6 +163,10 @@ struct erofs_inode {
     struct inode vfs_inode;
 };
 struct erofs_device_info { u64 blocks, uniaddr; unsigned int id; u8 tag[64]; };
+struct erofs_xattr_prefix_item {
+    struct erofs_xattr_long_prefix *prefix;
+    u8 infix_len;
+};
 struct erofs_sb_info {
     struct erofs_device_info dif0, *devices;
     unsigned int extra_devices;
@@ -152,6 +174,9 @@ struct erofs_sb_info {
     struct inode *packed_inode, *metabox_inode;
     u64 total_blocks;
     u32 meta_blkaddr, xattr_blkaddr;
+    u32 xattr_prefix_start;
+    unsigned int xattr_prefix_count, xattr_filter_reserved, ishare_xattr_prefix_id;
+    struct erofs_xattr_prefix_item *xattr_prefixes;
     u16 device_id_mask;
     unsigned char islotbits, blkszbits;
     u32 sb_size, fixed_nsec;
@@ -178,7 +203,9 @@ struct super_block {
     int (*open_device)(void *, unsigned int, const char *, u64);
     unsigned int read_depth;
 };
-struct erofs_buf { u8 *base; u64 index; bool in_metabox; struct super_block *sb; };
+struct erofs_buf { u8 *base; u64 index; bool in_metabox; struct super_block *sb; struct inode *mapping; };
+struct qstr { const char *name; unsigned int len; };
+#define QSTR(text) ((struct qstr){(text), (unsigned int)strlen(text)})
 #define __EROFS_BUF_INITIALIZER ((struct erofs_buf){0})
 #define EROFS_SB(sb) ((sb)->s_fs_info)
 #define EROFS_I_SB(inode) EROFS_SB((inode)->i_sb)
@@ -200,6 +227,10 @@ EROFS_FEATURE_FUNCS(fragments, incompat, INCOMPAT_FRAGMENTS)
 EROFS_FEATURE_FUNCS(48bit, incompat, INCOMPAT_48BIT)
 EROFS_FEATURE_FUNCS(metabox, incompat, INCOMPAT_METABOX)
 EROFS_FEATURE_FUNCS(sb_chksum, compat, COMPAT_SB_CHKSUM)
+EROFS_FEATURE_FUNCS(xattr_filter, compat, COMPAT_XATTR_FILTER)
+EROFS_FEATURE_FUNCS(shared_ea_in_metabox, compat, COMPAT_SHARED_EA_IN_METABOX)
+EROFS_FEATURE_FUNCS(plain_xattr_pfx, compat, COMPAT_PLAIN_XATTR_PFX)
+EROFS_FEATURE_FUNCS(ishare_xattrs, compat, COMPAT_ISHARE_XATTRS)
 
 static inline bool erofs_inode_in_metabox(struct inode *inode) {
     return !!(EROFS_I(inode)->nid & BIT_ULL(EROFS_DIRENT_NID_METABOX_BIT));

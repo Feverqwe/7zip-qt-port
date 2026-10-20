@@ -372,6 +372,10 @@ input errors, cancellation and reuse. The ArchiveBackend test lists alternate
 streams and extracts selected large, ACL, directory and root values through the
 real process transport. It caught and fixed property ordering that otherwise
 lost the alternate-stream marker during listing.
+The subsequent [EROFS metadata iteration](erofs-linux.md#public-xattr-and-acl-values--2026-10-20)
+also connected the archive-level marker required by the SDK's item-property
+caller and shared the numeric ACL services/UAPI notices. Its focused checks
+cover ext and verify metadata filtering separately from ordinary colon filenames.
 
 Nine focused suites (`ext`, `ext_stream`, `ext_xattr_backend`, `archive_device`,
 `device_folder`, `codec_probe`, `runtime_cache`, `upstream_baseline`,

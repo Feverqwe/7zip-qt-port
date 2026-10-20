@@ -36,6 +36,8 @@ class ExtTests(unittest.TestCase):
             args = [str(self.runtime / (engine + SUFFIX)), command, "-tExt", "-sccUTF-8", "-bsp0"]
             if streams or (name and ':' in name):
                 args += ["-sns"]
+            else:
+                args += ["-sns-"]
             args += ["-so", "-bso0", "-bse2"] if command == "x" else ["-slt"]
             args += ["--", str(path)]
             if name is not None:
@@ -49,6 +51,10 @@ class ExtTests(unittest.TestCase):
             volume = XattrVolume(kind)
             listing = self.run_image(volume, command="l", name=None, streams=True)
             self.assertEqual(listing.returncode, 0, listing.stderr.decode(errors="replace"))
+            plain = self.run_image(volume, command="l", name=None)
+            self.assertEqual(plain.returncode, 0, plain.stderr.decode(errors="replace"))
+            self.assertNotIn(b"Alternate Stream = +", plain.stdout)
+            self.assertIn(b"Path = data.bin:$XATTR.user.comment\n", plain.stdout.replace(b"\r\n", b"\n"))
             for name, expected in volume.files.items():
                 with self.subTest(kind=kind, name=name):
                     self.assertIn(name.encode(), listing.stdout)
