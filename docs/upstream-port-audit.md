@@ -36,6 +36,8 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 
 ## Новые изменения
 
+- [Zstandard по Linux](upstream-port-audit/zstd-linux.md)
+  — frame discovery, parse metadata, Code/Read source failures и cancellation.
 - [XZ по Linux](upstream-port-audit/xz-linux.md)
   — stream padding, независимые seekable readers, source failures и cancellation.
 - [Bzip2 по Linux](upstream-port-audit/bzip2-linux.md)

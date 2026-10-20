@@ -71,6 +71,13 @@ GPT/MBR/APM проверяются как дополнительные форм�
 
 ## Свидетельства
 
+### Zstandard: frames, discovery и decoder errors
+
+[Сверка Zstd](zstd-linux.md): автоматическое открытие leading skippable frames,
+размеры и cleanup Open, parse overflow, source HRESULT в Code/Read и
+PrepareOperation/final progress cancellation. Проверены оба engines,
+native ZIP и backend; composite initramfs и census остаются открытыми.
+
 ### XZ: streams, Index и random access
 
 [Сверка XZ](xz-linux.md): длинный padding, пустой EOF stream, независимое
