@@ -477,6 +477,7 @@ Actual macOS CMake install прочитал все 100 положительны�
 Staging и временные native images удалены; incremental builds и compiler caches
 сохранены. Full/slow/UI/physical-device acceptance не выполнялась.
 
+
 Полный UDF read audit остаётся открытым. В частности, ещё требуются
 names/NLS, symlinks, специальные
 inode и metadata/read policies. Проверка этой итерации не означает завершение
@@ -1014,3 +1015,54 @@ receipt `20261020T034726Z-4c839631`. Actual macOS CMake install прочитал
 payload variants и четыре USE metadata-only, сохранил source images и установил
 три точных notices. Temporary staging/fixtures удалены; build trees/cache
 сохранены. Full/slow/UI/physical-device acceptance не выполнялась.
+
+## Глубокий обход и стек ABI-host
+
+Сравнены полные закреплённые Linux `udf_readdir`, `udf_lookup`, восемь
+`udf_fiiter_*` bodies и их buffer lifetime, а также 7-Zip `ReadFileItem`,
+`ReadItem`, `FillRefs`, физический inode cache, root/hidden callers и path
+projection. Linux lookup/readdir не обходят всё дерево рекурсивно. У archive
+сохраняются исходные DFS order, in-progress cycle markers, квоты имён/items/refs
+и предел 1024 вложенных вызовов чтения inode. Этот archive limit не является
+ограничением Linux filesystem lookup.
+
+Прежний callback удерживал Linux iterator и C/C++ bridge при каждом спуске.
+Корректный образ глубины 1022 аварийно завершал Windows ABI-host со штатным
+стеком 1 MiB; тот же тест проходил на macOS и в CLI с 8 MiB. Контрольная
+временная копия Windows host с увеличенным PE stack reserve проходила; оригинал,
+параметры сборки и cache при этом не менялись. Переноса одного C iterator в
+heap оказалось недостаточно: в рекурсивной цепочке оставался inode parser.
+
+Теперь адаптер владеет resumable heap cursor вокруг неизменённых Linux
+iterator bodies. Запись выдаётся до обхода ребёнка, продвижение выполняется
+при следующем запросе. Имена/ICB заимствованы до next/free, каждый каталог
+удерживает собственные buffers. C++ bridge state освобождается через RAII.
+Парсер сохраняет directory AD в owned buffer и возвращается до обхода детей;
+`ReadFileItem` завершает directory projection до снятия in-progress marker.
+Ошибки source/progress и очистка при досрочном выходе сохранены. Новый C API —
+локальная archive adaptation, не самостоятельный parser формата; notices,
+GPL boundary и pinned Linux revision не изменены. Legacy standalone parser
+и его исходная организация сохранены.
+
+Четыре корректных образа глубины 256/512/1022/1023 прочитаны native Linux
+`6.8.0-147-generic` с точным payload; temporary mounts/images удалены.
+Archive принимает первые три, а последний отклоняет по сохранённой квоте.
+Циклы root/self проверяются только engine/ABI, в kernel не передаются.
+Регрессии проверяют payload обоих CLI, normal error code 2, ABI item count,
+retained stream после Close/reopen/release, source E_FAIL/E_ABORT и однократный
+progress failure внутри глубокого обхода с последующим успешным открытием.
+Windows ABI-host прошёл с исходным стеком 1 MiB без специальных linker flags.
+
+Итоговые пять focused suites (`udf`, `udf_stream`, `upstream_baseline`,
+`runtime_cache`, `runtime_package`) прошли на macOS arm64 (26,86 с) и Linux x64
+(28,80 с). Receipt `20261020T042731Z-bd5d586f` содержит Linux PASS и четыре
+Windows PASS; Windows ABI достиг 45-second timeout. Изолированный полный ABI
+run прошёл 289 сценариев за 33,55 с; штатный повтор `udf_stream` через wrapper
+также PASS за 35,65 с, receipt `20261020T043118Z-a7f49052`. Причина задержки
+в общих Windows прогонах не установлена; timeout и настройки сборки не менялись.
+Порог разделения C++ bridge рассмотрен: новая cursor ownership остаётся частью
+существующего directory/stream adapter; kernel iterator bodies не переписаны.
+Disposable native helper/images и диагностические object/disassembly copies
+удалены; current evidence, incremental builds и compiler caches сохранены.
+Full/slow/UI/physical-device acceptance не выполнялась. Общий UDF read audit
+и оставшиеся форматы из единого реестра остаются открытыми.

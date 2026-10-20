@@ -17,27 +17,7 @@ struct CInArchive::CLinuxContext {
     CItem *item;
     HRESULT result = S_OK;
     HRESULT progressResult = S_OK;
-    unsigned fileSet = 0;
-    int recurse = 0;
     const UInt32 *inodeKey = nullptr;
-
-    static int DirectoryEntry(void *opaque, Byte flags, const void *icb, const void *name,
-                              Byte size) {
-        auto &context = *static_cast<CLinuxContext *>(opaque);
-        if (context.result != S_OK || context.progressResult != S_OK)
-            return 1;
-        // Default udf_readdir skips parent, deleted, hidden and invalid names.
-        if (flags & (1 | 4 | 8))
-            return 0;
-        try {
-            context.result = context.archive->ReadLinuxDirectoryFile(
-                context.volume, context.fileSet, *context.item, static_cast<const Byte *>(icb),
-                static_cast<const Byte *>(name), size, context.recurse);
-        } catch (...) {
-            context.result = E_OUTOFMEMORY;
-        }
-        return context.result != S_OK;
-    }
 };
 
 struct CInArchive::CVatSource {
@@ -502,26 +482,59 @@ HRESULT CInArchive::ReadLinuxExtents(unsigned volIndex, unsigned partitionRef, C
 HRESULT CInArchive::ReadLinuxDirectory(unsigned volIndex, unsigned fsIndex, CItem &item,
                                        const Byte *data, UInt32 size, int numRecurseAllowed) {
     const CLogVol &vol = LogVols[volIndex];
-    CLinuxContext context{this, volIndex, &item};
-    context.fileSet = fsIndex;
-    context.recurse = numRecurseAllowed;
-    sevenzip_udf_file source{};
-    source.size = item.Size;
-    source.partition = (UInt16)item.Location.PartitionRef;
-    source.block = item.Location.Pos;
-    source.inline_data = item.IsInline;
-    source.data = source.allocation_data = data;
-    source.allocation_size = size;
-    source.allocation_type = item.IcbTag.GetDescriptorType();
-    source.extended = item.IsExtended;
-    const int result =
-        sevenzip_udf_directory(&context, ReadLinuxBlock, CLinuxContext::DirectoryEntry,
-                               vol.BlockSize, vol.PartitionMaps.Size(), &source);
-    if (context.progressResult != S_OK)
-        return context.progressResult;
-    if (context.result != S_OK)
-        return context.result;
-    return !result ? S_OK : result == -ENOMEM ? E_OUTOFMEMORY : S_FALSE;
+    struct CDirectoryFrame {
+        CLinuxContext context;
+        sevenzip_udf_entry entry{};
+        CLongAllocDesc location;
+        sevenzip_udf_directory *directory = nullptr;
+        int opened;
+
+        CDirectoryFrame(CInArchive *archive, unsigned volume, CItem &item, const Byte *data,
+                        UInt32 size, const CLogVol &vol)
+            : context{archive, volume, &item} {
+            sevenzip_udf_file source{};
+            source.size = item.Size;
+            source.partition = (UInt16)item.Location.PartitionRef;
+            source.block = item.Location.Pos;
+            source.inline_data = item.IsInline;
+            source.data = source.allocation_data = data;
+            source.allocation_size = size;
+            source.allocation_type = item.IcbTag.GetDescriptorType();
+            source.extended = item.IsExtended;
+            opened = sevenzip_udf_directory_open(&context, ReadLinuxBlock, vol.BlockSize,
+                                                 vol.PartitionMaps.Size(), &source, &directory);
+        }
+        ~CDirectoryFrame() { sevenzip_udf_directory_free(directory); }
+        HRESULT Status(int result) const {
+            if (context.progressResult != S_OK)
+                return context.progressResult;
+            if (context.result != S_OK)
+                return context.result;
+            return !result ? S_OK : result == -ENOMEM ? E_OUTOFMEMORY : S_FALSE;
+        }
+    };
+    // The upstream DFS can retain 1024 directories. Keep iterator and bridge
+    // state off the caller's stack, including in small-stack ABI hosts.
+    std::unique_ptr<CDirectoryFrame> frame(
+        new CDirectoryFrame(this, volIndex, item, data, size, vol));
+    RINOK(frame->Status(frame->opened))
+    for (;;) {
+        sevenzip_udf_entry &entry = frame->entry;
+        const int result = sevenzip_udf_directory_next(frame->directory, &entry);
+        RINOK(frame->Status(result < 0 ? result : 0))
+        if (!result)
+            return S_OK;
+        // Default udf_readdir skips parent, deleted and hidden names.
+        if (entry.flags & (1 | 4 | 8))
+            continue;
+        bool added;
+        RINOK(AddLinuxDirectoryFile(item, static_cast<const Byte *>(entry.name), entry.name_size,
+                                    added))
+        if (added) {
+            frame->location.Parse(static_cast<const Byte *>(entry.icb));
+            RINOK(ReadFileItem(volIndex, fsIndex, frame->location, false, numRecurseAllowed))
+        }
+    }
 }
 
 HRESULT CInArchive::ReadLinuxSymlink(unsigned volIndex, CItem &item) {

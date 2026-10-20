@@ -737,6 +737,17 @@ HRESULT CInArchive::ReadFileItem(unsigned volIndex, unsigned fsIndex, const CLon
       if (inodeMap.Set(key, kRecursedErrorValue))
           return S_FALSE;
       RINOK(ReadItem(volIndex, (int)fsIndex, lad, isDir, numRecurseAllowed, nullptr, &key))
+#ifdef SEVENZIP_LINUX_UDF
+      CItem &item = Items[value];
+      if (item.IcbTag.IsDir()) {
+          RINOK(ReadLinuxDirectory(volIndex, fsIndex, item, item.LinuxAllocData,
+                                   (UInt32)item.LinuxAllocData.Size(), numRecurseAllowed))
+          item.Size = 0;
+          item.Extents.ClearAndFree();
+          item.InlineData.Free();
+          item.LinuxAllocData.Free();
+      }
+#endif
       if (!inodeMap.Set(key, value))
           return S_FALSE;
   }
@@ -934,11 +945,9 @@ HRESULT CInArchive::ReadItem(unsigned volIndex, int fsIndex, const CLongAllocDes
           return S_FALSE;
 
 #ifdef SEVENZIP_LINUX_UDF
-      RINOK(ReadLinuxDirectory(volIndex, (unsigned)fsIndex, item, p + pos, allocDescriptorsLen,
-                               numRecurseAllowed))
-      item.Size = 0;
-      item.Extents.ClearAndFree();
-      item.InlineData.Free();
+      // ReadFileItem walks children after this parser frame has returned,
+      // while keeping the inode's in-progress cycle marker until completion.
+      item.LinuxAllocData.CopyFrom(p + pos, allocDescriptorsLen);
 #else
     if (!item.CheckChunkSizes() || !CheckItemExtents(volIndex, item))
       return S_FALSE;
@@ -1002,9 +1011,9 @@ HRESULT CInArchive::ReadItem(unsigned volIndex, int fsIndex, const CLongAllocDes
 }
 
 #ifdef SEVENZIP_LINUX_UDF
-HRESULT CInArchive::ReadLinuxDirectoryFile(unsigned volIndex, unsigned fsIndex, CItem &item,
-                                           const Byte *icb, const Byte *name, unsigned size,
-                                           int numRecurseAllowed) {
+HRESULT CInArchive::AddLinuxDirectoryFile(CItem &item, const Byte *name, unsigned size,
+                                          bool &added) {
+    added = false;
     CFile file;
     file.Id.Parse(name, size);
     UString decodedName;
@@ -1017,9 +1026,8 @@ HRESULT CInArchive::ReadLinuxDirectoryFile(unsigned volIndex, unsigned fsIndex, 
     if (Files.Size() >= kNumFilesMax)
         return S_FALSE;
     Files.Add(file);
-    CLongAllocDesc location;
-    location.Parse(icb);
-    return ReadFileItem(volIndex, fsIndex, location, false, numRecurseAllowed);
+    added = true;
+    return S_OK;
 }
 #endif
 

@@ -185,7 +185,7 @@ class UdfStreamTests final : public QObject {
         bytes_ = file.readAll();
         QVERIFY(!bytes_.isEmpty());
     }
-    CMyComPtr<IInStream> stream(const QString &name) {
+    CMyComPtr<IInStream> stream(const QString &name, bool skipDirectories = false) {
         CMyComPtr<IInArchiveGetStream> provider;
         if (archive_->QueryInterface(IID_IInArchiveGetStream,
                                      reinterpret_cast<void **>(&provider)) != S_OK)
@@ -194,6 +194,12 @@ class UdfStreamTests final : public QObject {
         if (archive_->GetNumberOfItems(&count) != S_OK)
             return {};
         for (UInt32 i = 0; i < count; ++i) {
+            if (skipDirectories) {
+                NWindows::NCOM::CPropVariant directory;
+                if (archive_->GetProperty(i, kpidIsDir, &directory) != S_OK ||
+                    directory.vt != VT_BOOL || directory.boolVal)
+                    continue;
+            }
             NWindows::NCOM::CPropVariant path;
             if (archive_->GetProperty(i, kpidPath, &path) != S_OK || path.vt != VT_BSTR ||
                 QString::fromWCharArray(path.bstrVal).replace('\\', '/') != name)
@@ -614,6 +620,62 @@ class UdfStreamTests final : public QObject {
         QCOMPARE(count, UInt32(0));
         QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
         check(stream("alias.bin"), QByteArray::fromHex(files_["alias.bin"].toString().toLatin1()));
+    }
+    void traversalStreams_data() {
+        QTest::addColumn<QString>("kind");
+        QTest::addColumn<bool>("success");
+        for (const char *kind : {"ut-depth-256", "ut-depth-512", "ut-depth-1022"})
+            QTest::newRow(kind) << QString::fromLatin1(kind) << true;
+        for (const char *kind : {"ut-depth-1023", "ut-cycle-root", "ut-cycle-parent"})
+            QTest::newRow(kind) << QString::fromLatin1(kind) << false;
+    }
+    void traversalStreams() {
+        QFETCH(QString, kind);
+        QFETCH(bool, success);
+        fixture(kind);
+        CMyComPtr<IInStream> input = new Input(bytes_);
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), success ? S_OK : S_FALSE);
+        UInt32 count = 99;
+        QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+        if (!success) {
+            QCOMPARE(count, UInt32(0));
+            return;
+        }
+        const QString path = files_.begin().key();
+        QCOMPARE(count, UInt32(path.count('/') + 1));
+        auto retained = stream(path, true);
+        QVERIFY(retained);
+        const QByteArray expected = QByteArray::fromHex(files_[path].toString().toLatin1());
+        check(retained, expected);
+        QCOMPARE(archive_->Close(), S_OK);
+        fixture("native");
+        CMyComPtr<IInStream> replacement = new Input(bytes_);
+        QCOMPARE(archive_->Open(replacement, nullptr, nullptr), S_OK);
+        archive_.Release();
+        check(retained, expected);
+    }
+    void traversalFailuresAndCancellation() {
+        fixture("ut-depth-512");
+        CMyComPtr2<IInStream, Input> input;
+        input.SetFromCls(new Input(bytes_));
+        const UInt64 checkpoint = UInt64(257 + 100 + 2 * 127) * 2048;
+        for (HRESULT result : {E_FAIL, E_ABORT}) {
+            input->failSeekAt = checkpoint;
+            input->seekFailure = result;
+            QCOMPARE(archive_->Open(input, nullptr, nullptr), result);
+            UInt32 count = 99;
+            QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+            QCOMPARE(count, UInt32(0));
+            input->failSeekAt = UINT64_MAX;
+            CMyComPtr<IArchiveOpenCallback> cancel =
+                new CancelAt(input.operator->(), checkpoint, result);
+            QCOMPARE(archive_->Open(input, nullptr, cancel), result);
+            QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+            QCOMPARE(count, UInt32(0));
+        }
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        const QString path = files_.begin().key();
+        check(stream(path, true), QByteArray::fromHex(files_[path].toString().toLatin1()));
     }
     void allocationSetupFailuresAndCancellation() {
         fixture("ua-table");

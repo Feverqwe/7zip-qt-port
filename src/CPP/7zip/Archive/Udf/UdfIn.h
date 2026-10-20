@@ -527,8 +527,7 @@ private:
   HRESULT ReadLinuxFileset(unsigned volIndex, const CLongAllocDesc &location, CByteBuffer &data);
   HRESULT ReadLinuxDirectory(unsigned volIndex, unsigned fsIndex, CItem &item, const Byte *data,
                              UInt32 size, int numRecurseAllowed);
-  HRESULT ReadLinuxDirectoryFile(unsigned volIndex, unsigned fsIndex, CItem &item, const Byte *icb,
-                                 const Byte *name, unsigned size, int numRecurseAllowed);
+  HRESULT AddLinuxDirectoryFile(CItem &item, const Byte *name, unsigned size, bool &added);
   HRESULT ReadLinuxSymlink(unsigned volIndex, CItem &item);
   static int ReadLinuxBlock(void *, UInt16, UInt32, void *, size_t);
   static int ReadLinuxPhysical(void *, UInt16, UInt32, void *, size_t);

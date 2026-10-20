@@ -16,6 +16,9 @@ CONTINUATIONS = ("ad-short", "ad-long", "ad-chain-short", "ad-chain-long",
 
 
 def volume(kind):
+    if kind.startswith("ut-"):
+        from udf_traversal_fixture import volume as traversal_volume
+        return traversal_volume(kind)
     if kind.startswith("ua-"):
         from udf_partition_fixture import volume as partition_volume
         return partition_volume(kind)

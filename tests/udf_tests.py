@@ -20,6 +20,7 @@ from udf_directory_fixture import CASES as DIRECTORY_CASES, BAD as DIRECTORY_BAD
 from udf_maps_fixture import CASES as MAP_CASES, BAD as MAP_BAD, MODULE_BAD as MAP_MODULE_BAD
 from udf_cache_fixture import CASES as CACHE_CASES, BAD as CACHE_BAD, MODULE_BAD as CACHE_MODULE_BAD, METADATA_ONLY as CACHE_METADATA
 from udf_partition_fixture import CASES as PARTITION_CASES, BAD as PARTITION_BAD, MODULE_BAD as PARTITION_MODULE_BAD
+from udf_traversal_fixture import CASES as TRAVERSAL_CASES, BAD as TRAVERSAL_BAD
 
 RUNTIME = Path(sys.argv.pop(1))
 MODULE = Path(sys.argv.pop(1))
@@ -156,6 +157,22 @@ class UdfTests(unittest.TestCase):
             image, _ = volume(kind)
             with self.subTest(kind=kind):
                 self.assertEqual(self.run_image("7z", image).returncode, 2)
+
+    def test_deep_directory_streams(self):
+        for kind in TRAVERSAL_CASES:
+            image, files = volume(kind)
+            for engine in ("7z", "7zz"):
+                with self.subTest(kind=kind, engine=engine):
+                    result = self.run_image(engine, image)
+                    self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                    for name, expected in files.items():
+                        result = self.run_image(engine, image, name)
+                        self.assertEqual(result.returncode, 0, result.stderr)
+                        self.assertEqual(result.stdout, expected)
+        for kind in TRAVERSAL_BAD:
+            for engine in ("7z", "7zz"):
+                with self.subTest(kind=kind, engine=engine):
+                    self.assertEqual(self.run_image(engine, volume(kind)[0]).returncode, 2)
 
     def test_namespace_listing(self):
         for kind in NAME_CASES:

@@ -115,8 +115,9 @@ timestamps также подключены. Linux FID iterator читает ка
 Политика physical-block inode cache и hidden-role consistency перенесена через
 исходный `__udf_iget`; USE доступен как metadata-only inode и hidden metadata
 backing. Read-only PD allocation-info validation и последовательная загрузка
-разделов перенесены через Linux C bodies; archive traversal limits UDF ещё
-требуют сверки.
+разделов перенесены через Linux C bodies. Глубокий archive traversal и cycle
+guards сверены; C iterator возвращается до спуска к дочернему inode, а inode
+parser не удерживается в рекурсивной цепочке. Общий UDF read audit остаётся открыт.
 
 ### HFS+/HFSX: fork mapping и metadata reads
 
