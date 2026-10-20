@@ -36,6 +36,8 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 
 ## Новые изменения
 
+- [Base64 по Linux](upstream-port-audit/base64-linux.md)
+  — standard/URL-safe/IMAP alphabets, canonical tails и handler lifecycle.
 - [Zstandard по Linux](upstream-port-audit/zstd-linux.md)
   — frame discovery, parse metadata, Code/Read source failures и cancellation.
 - [XZ по Linux](upstream-port-audit/xz-linux.md)

@@ -50,13 +50,15 @@ Linux определяет корректность интерпретации �
 | cramfs, SquashFS | `fs/cramfs`, `fs/squashfs` | Metadata, directories, blocks/fragments, decompressor boundaries. |
 | ISO9660, UDF | `fs/isofs`, `fs/udf` | Descriptors, names/extensions, extents, sparse и embedded data. |
 | EROFS (новый модуль) | `fs/erofs` | Сначала полный source comparison read path и зависимостей, затем C-перенос, 7-Zip ABI, deployment и end-to-end чтение. |
+| Base64 | `lib/base64.c`, fscrypt/Ceph callers | Standard/URL-safe/IMAP alphabets, padding/tail validation и archive handler lifecycle. |
+| ELF | `fs/binfmt_elf.c`, `fs/binfmt_elf_fdpic.c` | Подтверждён kernel parser; source comparison и актуализация archive reader ещё открыты. |
 
 APFS не входит в scope: соответствующего драйвера нет в основном дереве Linux.
 GPT/MBR/APM проверяются как дополнительные форматы разметки дисков.
 Наличие обработчика в engine не считается доказательством проверки по Linux.
 
 Дополнительный scope уточняется по полному списку `7z i` поставляемого engine:
-разметка GPT/MBR/APM, CPIO/initramfs, gzip/bzip2/LZMA/XZ/Zstd, загрузочные
+разметка GPT/MBR/APM, CPIO/initramfs, gzip/bzip2/LZMA/XZ/Zstd, Base64, загрузочные
 образы ELF/PE/COFF и остальные фактически совпадающие parsers/decoders.
 Проверка дополнительных форматов ещё не завершена; ограничения отдельных
 подформатов Linux и 7-Zip должны быть указаны при source comparison.
@@ -70,6 +72,13 @@ GPT/MBR/APM проверяются как дополнительные форм�
 ошибки; проверки текста исходников не применяются.
 
 ## Свидетельства
+
+### Base64: современные alphabets и lifecycle
+
+[Сверка Base64](base64-linux.md): URL-safe/IMAP, canonical padded/unpadded tails,
+optional callback, error cleanup и cached extraction. Фактический список форматов
+получен у обоих engines; полный census, ELF/PE и оставшиеся
+filesystem read features сохраняются в scope.
 
 ### Zstandard: frames, discovery и decoder errors
 

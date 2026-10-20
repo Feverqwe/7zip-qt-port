@@ -6,6 +6,7 @@
   "runtime_adapted": [
     "src/C/XzIn.c",
     "src/CPP/7zip/Archive/ApmHandler.cpp",
+    "src/CPP/7zip/Archive/Base64Handler.cpp",
     "src/CPP/7zip/Archive/Bz2Handler.cpp",
     "src/CPP/7zip/Archive/CpioHandler.cpp",
     "src/CPP/7zip/Archive/CramfsHandler.cpp",
@@ -459,6 +460,7 @@
   "adapted": [
     "src/C/XzIn.c",
     "src/CPP/7zip/Archive/ApmHandler.cpp",
+    "src/CPP/7zip/Archive/Base64Handler.cpp",
     "src/CPP/7zip/Archive/Bz2Handler.cpp",
     "src/CPP/7zip/Archive/Common/HandlerOut.h",
     "src/CPP/7zip/Archive/CpioHandler.cpp",

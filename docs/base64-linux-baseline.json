@@ -1,0 +1,13 @@
+{
+  "repository": "https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git",
+  "revision": "58161ead29e50d70a317ea26b472e0c7508e69da",
+  "files": {
+    "fs/ceph/crypto.c": "bea0744e4e0848d6071dee2346643107d92d2858cbb55fbc43beac26f283ae16",
+    "fs/ceph/inode.c": "7325acccf34efa4c399dc0d3a4706941b3daeefc98647525b78017b5ba0ea2e9",
+    "fs/crypto/fname.c": "3c4b2269c604e6f88dbd5ffc0efc21cd7e24aede8647387ed4334fcd3b36b9ca",
+    "include/linux/base64.h": "6f30e5758d432e2fc11db2ebf3eedaee9ec23a29414d37038adc6dc94371247b",
+    "lib/base64.c": "832166e9b148438a27b56c92fd8c77814b5ac33ae0aefa6f73221df6f3b6f2aa",
+    "lib/tests/base64_kunit.c": "9f74d6b700a38018c13e21a965a5949c5ccad2d187fb699f61fea208d4e20b0f"
+  },
+  "scope": "Reference comparison and compiled decoder only; original 7-Zip Base64 decoding loop retained."
+}
