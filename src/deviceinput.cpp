@@ -118,8 +118,7 @@ qint32 CreateDevicePartitionInput(IInStream *device, quint64 offset, quint64 siz
     *stream = nullptr;
     const auto *source = dynamic_cast<CDirectDeviceInput *>(device);
     if (!source || !size || offset > source->deviceInputSize() ||
-        size > source->deviceInputSize() - offset || offset % source->Device.sectorSize ||
-        size % source->Device.sectorSize)
+        size > source->deviceInputSize() - offset)
         return E_INVALIDARG;
     return CreateInput(source->Device, source->Handle, source->Start + offset, size, stream,
                        source->IgnoreJournal);

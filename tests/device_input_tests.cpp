@@ -136,17 +136,27 @@ class DeviceInputTests final : public QObject {
         QVERIFY(!partition);
         QCOMPARE(memory->FarthestRead, quint64(0));
     }
-    void rejectsViewsWhoseAlignedReadsWouldReachAnotherPartition() {
+    void unalignedPartitionViewsExposeOnlyTheirRequestedBytes() {
         auto memory = std::make_shared<MemoryDevice>(4096, 4 * 4096);
         CMyComPtr<IInStream> input, partition;
         QCOMPARE(CreateDeviceInput(Description(*memory), memory, &input), qint32(S_OK));
-        // A logical bounded view cannot prevent native sector rounding from
-        // reading its neighbour unless both selected boundaries are aligned.
-        QCOMPARE(CreateDevicePartitionInput(input, 512, 4096, &partition), qint32(E_INVALIDARG));
-        QVERIFY(!partition);
-        QCOMPARE(CreateDevicePartitionInput(input, 4096, 4097, &partition), qint32(E_INVALIDARG));
-        QVERIFY(!partition);
-        QCOMPARE(memory->FarthestRead, quint64(0));
+        for (const auto &span : {qMakePair(512, 4096), qMakePair(4096, 4097)}) {
+            QCOMPARE(CreateDevicePartitionInput(input, quint64(span.first), quint64(span.second),
+                                                &partition),
+                     qint32(S_OK));
+            QByteArray output(span.second + 16, Qt::Uninitialized);
+            size_t count = size_t(output.size());
+            QCOMPARE(ReadStream(partition, output.data(), &count), S_OK);
+            QCOMPARE(count, size_t(span.second));
+            QCOMPARE(output.left(qsizetype(count)), memory->Data.mid(span.first, span.second));
+            QCOMPARE(partition->Seek(-1, STREAM_SEEK_END, nullptr), S_OK);
+            char tail[2];
+            UInt32 last = 0;
+            QCOMPARE(partition->Read(tail, sizeof(tail), &last), S_OK);
+            QCOMPARE(last, UInt32(1));
+            QCOMPARE(tail[0], memory->Data[span.first + span.second - 1]);
+        }
+        QVERIFY(memory->FarthestRead <= quint64(memory->Data.size()));
     }
     void journalReadLeaseKeepsTheSelectedPartitionBounds() {
         auto memory = std::make_shared<MemoryDevice>(4096, 4 * 4096);

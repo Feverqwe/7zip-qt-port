@@ -19,8 +19,9 @@ parsers, структуры, primary validation и extended walk; провере
 фильтрация/ограничение геометрии block layer. Со стороны 7-Zip прочитаны весь
 handler, `HandlerCont.h`/`.cpp`, extent/limited streams и consumers из
 `ArchiveDevice`. После изменений selected read scope повторно сопоставлен.
-Linux C bodies в этой итерации не копируются/не переводятся в C++: исправляется
-пригодный исходный C++ parser 7-Zip; исходные notices и лицензия сохранены.
+В primary/EBR итерации Linux C bodies не копировались/не переводились в C++:
+исправлен пригодный исходный C++ parser 7-Zip; исходные notices и лицензия
+сохранены. Дополнительный перенос subtype readers на C описан ниже.
 
 Перед добавлением geometry bridge сопоставлены `IStreamGetProp` из `IStream.h`
 и property implementation `CInFileStream::GetProperty` из `FileStreams.cpp`.
@@ -104,16 +105,84 @@ receipt `20261020T054300Z-d8f6f98a`. Exact baseline verification — 422 exact,
 223 adapted, 11 local paths, одна upstream revision. Локальный PATH начинается
 с проектного `build/codec-runtime`; Homebrew sevenzip не используется.
 
+## Linux C subtype readers
+
+Дополнительная итерация переносит FreeBSD/NetBSD/OpenBSD disklabels,
+Solaris VTOC, Unixware slices и Minix subpartitions из того же Linux baseline.
+Поиск signatures/types в полном pinned 7-Zip checkout не обнаружил пригодного
+reader для этих labels. Исходные структуры и 336 строк subtype bodies/table
+сохранены без изменений в `src/block/partitions/msdos.c` и компилируются как C11.
+`nr_sects`, `start_sect` и signature helper также взяты из исходного C unit.
+Точный `include/linux/msdos_partition.h` хранится в `third_party/linux/`.
+[Source hashes и scope](../msdos-linux-baseline.json) закрепляют оригиналы.
+
+| Linux scope | Перенесённое чтение |
+| --- | --- |
+| `parse_bsd` / `parse_freebsd` / `parse_netbsd` / `parse_openbsd` | Signature, bounded label count, unused entries, FreeBSD relative-offset convention, parent containment и full-parent duplicate suppression. |
+| `parse_solaris_x86` | Sanity/version, 8/16-slice layouts, offsets относительно parent. |
+| `parse_unixware` | Обе signatures, все 16 slots с пропуском slice 0/unused labels, абсолютные addresses. |
+| `parse_minix` | Secondary MBR signature/first type, четыре Minix slots и абсолютные addresses. |
+| `subtypes` dispatch | Все исходные subtype IDs; второй проход только по primary entries после logical EBR partitions. |
+
+`reader.c` и `userspace.h` заменяют page-cache sectors на временный 512-byte
+buffer, stream callback, endian services, bounded partition slots и освобождение
+buffer. Source callback status хранится в контексте: исходные void parsers
+могут прекратить label scan, но E_FAIL/E_ABORT не превращается в успешное Open.
+Запрос за физическим концом не выполняет I/O; пригодные соседние labels остаются
+доступными. Kernel-only logging не влияет на результат format reader.
+
+7-Zip MBR handler получает C output через узкий adapter. Разные структуры
+используют разные sector units: parent geometry масштабируется из известного
+logical sector в Linux 512-byte units, а label sectors/slices не переводятся
+ошибочно в 4Kn units. Новый byte-offset в исходном item model сохраняет точные
+512-byte subdivisions. Extraction и `CExtentsStream` остаются исходными;
+последующие clipping/skip правила совпадают с block layer. Parent partitions
+сохраняются рядом с subpartitions, как в Linux, без новой иерархии имён.
+
+Read-only `sevenzip_mbr` использует отдельную GPL module boundary, стандартные
+archive exports и обычный `Formats` deployment/install на трёх ОС. Общий
+`HandlerCont.cpp` компилирует нужный container scope, а `FatHandler.cpp` — свой
+исходный header probe без второго FAT handler/registration. Новые compile guards
+не меняют обычные сборки этих units. Дублирование parser bodies или RAR code
+не добавляется. Dynamic engine использует модуль вместо собственной MBR
+registration; standalone engine сохраняет C++ primary/EBR reader. Linux C
+не линкуется в standalone/core engine, его subtype extensions относятся
+к поставляемому dynamic-module path приложения.
+
+Direct-device partition lease теперь допускает byte ranges, не выровненные
+по логическому сектору: Linux labels могут описывать такие subdivisions.
+Native read всё ещё выровнен и ограничен полным разрешённым device handle;
+внутреннее округление может захватывать соседние bytes аппаратного сектора,
+но наружу bounded stream возвращает только выбранный диапазон. Не открывается
+новое устройство и не расширяется разрешённый device handle. Bounds, EOF,
+жизненный цикл lease и journal policy сохраняются; raw handle не читает
+невыровненные запросы.
+
+CLI dynamic-module matrix проверяет 27 subtype variants, в том числе ignored
+invalid labels, BSD relative/absolute/unused/containment/count boundaries,
+Solaris 8/16/version, Unixware count/slice rules, Minix secondary-table gating,
+combined primary labels и совместное logical EBR/subtype numbering. Проверяются
+публичные spans, exact bytes и неизменность источника. ABI проверяет все шесть
+flavours на 512/4096 геометриях, failures/cancellation/reuse, а полный
+`ArchiveDevice` catalog — выбранную невыровненную BSD lease после закрытия
+исходного view. Existing device tests проверяют aligned native reads,
+byte-exact unaligned views и EOF без публикации соседних bytes.
+
+Native Linux `6.8.0-147-generic` со всеми четырьмя subtype CONFIG options:
+33 disposable read-only loop images, 47 exact partition payloads и geometry,
+включая все шесть flavours на 4Kn. Loops отключены, fixtures удалены.
+macOS arm64 и Linux x64: 17 focused suites PASS; scope предыдущего сценария
+расширен `fat`, `fat_module`, `native_rar_memory`, `codec_probe` из-за reuse
+compile scopes/registration. Linux/Windows receipt `20261020T060938Z-5adbebc7`:
+Windows 16/17, `device_input` timeout 15 s; isolated same-code retry PASS
+в receipt `20261020T061452Z-ae338ada`, без изменения timeout. Причина первого
+timeout не установлена, повторный failure не воспроизведён. macOS application
+target также собран; runtime Formats path проверен CLI/catalog consumers.
+Полный install/release gate и UI appearance acceptance не выполнялись.
+
 ## Открытая часть полного MBR read scope
 
-Это завершение **primary/EBR scenario**, а не всего Linux MSDOS module.
-Остались прочитанные, но ещё не перенесённые subtype readers:
-FreeBSD/NetBSD/OpenBSD disklabels, Solaris VTOC, Unixware slices и Minix
-subpartitions. Поиск соответствующих signatures/types в полном 7-Zip checkout
-не обнаружил пригодной реализации. Их нужно переносить из Linux в C с узким
-read callback/partition adapter и отдельной GPL module boundary; нельзя
-заменять C реализацию независимо написанным C++ parser. AIX delegation и
-FAT-superfloppy classification также остаются в source scope callers.
+AIX delegation и FAT-superfloppy classification остаются в source scope callers.
 RAID registration, device UUID publication и queue/platform services сами
 по себе не являются отсутствующими archive read functions.
 

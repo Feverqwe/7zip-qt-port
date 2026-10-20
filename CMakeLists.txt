@@ -35,6 +35,7 @@ include(cmake/Ntfs.cmake)
 include(cmake/Hfs.cmake)
 include(cmake/Iso.cmake)
 include(cmake/Udf.cmake)
+include(cmake/Mbr.cmake)
 include(cmake/Erofs.cmake)
 include(cmake/Brotli.cmake)
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR (APPLE AND BUILD_TESTING))
@@ -635,6 +636,7 @@ sevenzip_deploy_ntfs()
 sevenzip_deploy_hfs()
 sevenzip_deploy_iso()
 sevenzip_deploy_udf()
+sevenzip_deploy_mbr()
 sevenzip_deploy_erofs()
 sevenzip_deploy_brotli()
 if(APPLE)
@@ -758,7 +760,7 @@ if(BUILD_TESTING)
     find_package(Python3 3.9 REQUIRED COMPONENTS Interpreter)
     add_test(NAME mbr COMMAND ${Python3_EXECUTABLE}
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/mbr_tests.py
-        ${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime)
+        ${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime "$<TARGET_FILE:sevenzip_mbr>")
     set_tests_properties(mbr PROPERTIES TIMEOUT 45)
     qt_add_executable(mbr_stream_tests tests/mbr_stream_tests.cpp)
     target_include_directories(mbr_stream_tests PRIVATE src third_party/7zip/CPP)
@@ -768,10 +770,14 @@ if(BUILD_TESTING)
     endif()
     target_compile_definitions(mbr_stream_tests PRIVATE
         "SEVENZIP_MBR_RUNTIME=\"${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime\""
+        "SEVENZIP_MBR_MODULE=\"$<TARGET_FILE:sevenzip_mbr>\""
         "SEVENZIP_MBR_PYTHON=\"${Python3_EXECUTABLE}\""
         "SEVENZIP_MBR_FIXTURE=\"${CMAKE_CURRENT_SOURCE_DIR}/tests/mbr_fixture.py\"")
+    target_compile_definitions(mbr_stream_tests PRIVATE
+        "SEVENZIP_MBR_SUBTYPE_FIXTURE=\"${CMAKE_CURRENT_SOURCE_DIR}/tests/mbr_subtypes_fixture.py\"")
     add_test(NAME mbr_stream COMMAND mbr_stream_tests -silent)
     set_tests_properties(mbr_stream PROPERTIES TIMEOUT 45)
+    add_dependencies(mbr_stream_tests sevenzip_mbr_runtime)
     add_test(NAME apm COMMAND ${Python3_EXECUTABLE}
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/apm_tests.py
         ${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime)
@@ -3574,6 +3580,7 @@ if(BUILD_TESTING)
             "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\"")
     endif()
     add_test(NAME archive_device COMMAND archive_device_tests -silent)
+    add_dependencies(archive_device_tests sevenzip_mbr_runtime)
     set_tests_properties(archive_device PROPERTIES TIMEOUT 30)
     qt_add_executable(native_archive_opening_tests tests/native_archive_opening_tests.cpp)
     target_include_directories(native_archive_opening_tests PRIVATE src)

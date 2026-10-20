@@ -1,6 +1,10 @@
 #include "7zip/Archive/IArchive.h"
+#include "7zip/Common/StreamUtils.h"
 #include "Common/MyCom.h"
 #include "Windows/PropVariant.h"
+#include "archivecodeccatalog.h"
+#include "archivecodecprobe.h"
+#include "archivedevice.h"
 #include "deviceaccess.h"
 #include <QDir>
 #include <QFile>
@@ -33,16 +37,7 @@ class Handle final : public DeviceReadHandle {
         return S_OK;
     }
 };
-QString core() {
-    return QDir(QString::fromUtf8(SEVENZIP_MBR_RUNTIME))
-        .filePath(
-#ifdef Q_OS_WIN
-            "7z.dll"
-#else
-            "7z.so"
-#endif
-        );
-}
+QString core() { return QString::fromUtf8(SEVENZIP_MBR_MODULE); }
 } // namespace
 
 class MbrStreamTests final : public QObject {
@@ -57,8 +52,11 @@ class MbrStreamTests final : public QObject {
         QVERIFY(temporary.isValid());
         const QString path = temporary.filePath("disk.mbr");
         QProcess process;
-        process.start(QString::fromUtf8(SEVENZIP_MBR_PYTHON),
-                      {QString::fromUtf8(SEVENZIP_MBR_FIXTURE), kind, path});
+        const bool nested = kind.startsWith("nested-");
+        process.start(
+            QString::fromUtf8(SEVENZIP_MBR_PYTHON),
+            {QString::fromUtf8(nested ? SEVENZIP_MBR_SUBTYPE_FIXTURE : SEVENZIP_MBR_FIXTURE),
+             nested ? kind.mid(7) : kind, path});
         QVERIFY(process.waitForFinished(10000));
         QCOMPARE(process.exitCode(), 0);
         const auto part =
@@ -78,9 +76,9 @@ class MbrStreamTests final : public QObject {
             return {};
         return result;
     }
-    void checkPartition() {
+    void checkPartition(UInt32 index = 0) {
         NWindows::NCOM::CPropVariant offset;
-        QCOMPARE(archive_->GetProperty(0, kpidOffset, &offset), S_OK);
+        QCOMPARE(archive_->GetProperty(index, kpidOffset, &offset), S_OK);
         QCOMPARE(offset.vt, VARTYPE(VT_UI8));
         QCOMPARE(offset.uhVal.QuadPart, UInt64(firstOffset_));
         CMyComPtr<IInArchiveGetStream> provider;
@@ -88,7 +86,7 @@ class MbrStreamTests final : public QObject {
             archive_->QueryInterface(IID_IInArchiveGetStream, reinterpret_cast<void **>(&provider)),
             S_OK);
         CMyComPtr<ISequentialInStream> data;
-        QCOMPARE(provider->GetStream(0, &data), S_OK);
+        QCOMPARE(provider->GetStream(index, &data), S_OK);
         QVERIFY(data);
         QByteArray actual(payload_.size(), Qt::Uninitialized);
         UInt32 count = 0;
@@ -151,6 +149,94 @@ class MbrStreamTests final : public QObject {
         handle->failAt = UINT64_MAX;
         QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
         checkPartition();
+    }
+    void nestedGeometry_data() {
+        QTest::addColumn<QString>("kind");
+        QTest::addColumn<quint32>("sector");
+        for (const char *kind :
+             {"freebsd", "netbsd", "openbsd", "solaris-new", "unixware", "minix"}) {
+            QTest::newRow(kind) << QString::fromLatin1(kind) << quint32(512);
+            const QString large = QString::fromLatin1(kind) + "-4kn";
+            QTest::newRow(qPrintable(large)) << large << quint32(4096);
+        }
+    }
+    void nestedGeometry() {
+        QFETCH(QString, kind);
+        QFETCH(quint32, sector);
+        fixture("nested-" + kind);
+        const auto handle = std::make_shared<Handle>(image_, sector);
+        auto source = input(handle, sector);
+        QVERIFY(source);
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
+        UInt32 count = 0;
+        QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+        for (UInt32 i = 0; i < count; ++i) {
+            NWindows::NCOM::CPropVariant offset;
+            QCOMPARE(archive_->GetProperty(i, kpidOffset, &offset), S_OK);
+            if (offset.vt == VT_UI8 && offset.uhVal.QuadPart == firstOffset_) {
+                checkPartition(i);
+                return;
+            }
+        }
+        QFAIL("Nested partition was not published");
+    }
+    void nestedReadFailureAndReuse() {
+        fixture("nested-freebsd");
+        const auto handle = std::make_shared<Handle>(image_, 512);
+        auto source = input(handle, 512);
+        QVERIFY(source);
+        handle->failAt = 17 * 512;
+        for (HRESULT error : {E_FAIL, E_ABORT}) {
+            handle->failure = error;
+            QCOMPARE(archive_->Open(source, nullptr, nullptr), error);
+            UInt32 count = 99;
+            QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+            QCOMPARE(count, UInt32(0));
+        }
+        handle->failAt = UINT64_MAX;
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
+    }
+    void selectedNestedDeviceView() {
+        fixture("nested-freebsd-4kn");
+        const QDir runtime(QString::fromUtf8(SEVENZIP_MBR_RUNTIME));
+        ArchiveCodecProbe probe;
+        std::shared_ptr<const ArchiveCodecCatalog> catalog;
+        bool ready = false;
+#ifdef Q_OS_WIN
+        const QString engine = runtime.filePath("7z.exe");
+        const QString mainModule = runtime.filePath("7z.dll");
+#else
+        const QString engine = runtime.filePath("7z");
+        const QString mainModule = runtime.filePath("7z.so");
+#endif
+        QVERIFY(probe.Start(engine, mainModule, [&](auto result) {
+            catalog = result.catalog;
+            ready = true;
+        }));
+        QTRY_VERIFY(ready);
+        QVERIFY(catalog);
+        QCOMPARE(catalog->result(), S_OK);
+        CMyComPtr<IInStream> selected;
+        {
+            const auto handle = std::make_shared<Handle>(image_, 4096);
+            auto source = input(handle, 4096);
+            QVERIFY(source);
+            ArchiveDevice device(catalog);
+            QCOMPARE(device.inspect(source, UInt64(image_.size()), QString::fromUtf8("диск 空"),
+                                    nullptr),
+                     S_OK);
+            int match = -1;
+            for (int i = 0; i < device.partitions().size(); ++i)
+                if (device.partitions()[i].offset == firstOffset_)
+                    match = i;
+            QVERIFY(match >= 0);
+            QCOMPARE(device.partitionInput(match, &selected), S_OK);
+        }
+        QByteArray bytes(payload_.size() + 16, Qt::Uninitialized);
+        size_t count = size_t(bytes.size());
+        QCOMPARE(ReadStream(selected, bytes.data(), &count), S_OK);
+        QCOMPARE(count, size_t(payload_.size()));
+        QCOMPARE(bytes.left(qsizetype(count)), payload_);
     }
 };
 QTEST_GUILESS_MAIN(MbrStreamTests)

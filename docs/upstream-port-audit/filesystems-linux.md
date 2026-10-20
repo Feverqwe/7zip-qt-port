@@ -76,9 +76,10 @@ GPT/MBR/APM проверяются как дополнительные форм�
 [Сверка MBR](mbr-linux.md): primary ordering/overlap/CHS, extended types,
 data/link offsets, bounded iterative chains и 64-bit/EOD geometry. Direct-device
 adapter передаёт известный размер сектора; APM также согласован с EOD clipping.
-Native Linux и focused consumers проверяют эти сценарии. Вложенные BSD/Solaris/
-Unixware/Minix readers и remaining classification callers ещё требуют переноса;
-весь MBR module не объявляется завершённым.
+Вложенные BSD/Solaris/Unixware/Minix readers перенесены на C в отдельный GPL
+module; byte-granular device leases сохраняют их 512-byte subdivisions на 4Kn.
+Native Linux и focused consumers проверяют эти сценарии. Remaining AIX/FAT
+classification callers ещё открыты; весь MBR module не объявляется завершённым.
 
 ### Apple Partition Map: geometry и map reader
 

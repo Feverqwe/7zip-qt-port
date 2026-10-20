@@ -296,6 +296,7 @@ bool CHeader::Parse(const Byte *p) {
     return true;
 }
 
+#ifndef SEVENZIP_FAT_PROBE_ONLY
 class CItem {
     Z7_CLASS_NO_COPY(CItem)
   public:
@@ -1300,5 +1301,6 @@ REGISTER_ARC_I_NO_SIG("FAT", "fat img", NULL, 0xDA, 0, NArcInfoFlags::kPureStart
 static const Byte k_Signature[] = {0x55, 0xAA};
 REGISTER_ARC_I("FAT", "fat img", NULL, 0xDA, k_Signature, 0x1FE, 0, IsArc_Fat)
 #endif
+#endif // SEVENZIP_FAT_PROBE_ONLY
 }
 }

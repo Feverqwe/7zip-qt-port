@@ -6,6 +6,7 @@ sources. Retain their copyright and license notices when redistributing them.
 
 | Component | License and source information |
 | --- | --- |
+| Linux MSDOS nested partition module | GPL-2.0-only as a combined module; [license text](third_party/linux/LICENSES/preferred/GPL-2.0), retained Linux partition-reader notices and [source audit](docs/upstream-port-audit/mbr-linux.md). Reused 7-Zip handler, FAT probe and stream/ABI sources retain their LGPL notices. The separate module contains no unRAR implementation. |
 | 7-Zip sources, adapted UI, language files, help and resources | [7-Zip license](third_party/7zip/License.txt): LGPL-2.1-or-later, public domain and the listed BSD exceptions; RAR decoder code also carries the unRAR restriction. [Source audit](docs/upstream-port-audit.md) and [baseline](docs/upstream-baseline.json). |
 | Read-only exFAT/TexFAT module and its Linux adaptation | GPL-2.0-or-later; [license text](third_party/linux/LICENSES/preferred/GPL-2.0), retained SPDX notices and [source audit](docs/upstream-port-audit/exfat-linux.md). |
 | Linux-derived cramfs read module | GPL-2.0-only; [license text](third_party/linux/LICENSES/preferred/GPL-2.0), retained Linux notices and [source audit](docs/upstream-port-audit/cramfs-linux.md). The separate format module reuses LGPL 7-Zip handler/decoder/ABI sources; it contains no unRAR implementation. |

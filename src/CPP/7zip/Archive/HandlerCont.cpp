@@ -112,6 +112,7 @@ Z7_COM7F_IMF(CHandlerCont::GetStream(UInt32 index, ISequentialInStream **stream)
     COM_TRY_END
 }
 
+#ifndef SEVENZIP_CONTAINER_ONLY
 CHandlerImg::CHandlerImg() { Clear_HandlerImg_Vars(); }
 
 Z7_COM7F_IMF(CHandlerImg::Seek(Int64 offset, UInt32 seekOrigin, UInt64 *newPosition)) {
@@ -296,4 +297,5 @@ Z7_COM7F_IMF(CHandlerImg::Extract(const UInt32 *indices, UInt32 numItems, Int32 
     return extractCallback->SetOperationResult(opRes);
     COM_TRY_END
 }
+#endif // SEVENZIP_CONTAINER_ONLY
 }
