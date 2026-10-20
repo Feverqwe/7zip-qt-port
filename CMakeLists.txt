@@ -37,6 +37,7 @@ include(cmake/Iso.cmake)
 include(cmake/Udf.cmake)
 include(cmake/Mbr.cmake)
 include(cmake/Erofs.cmake)
+include(cmake/LinuxFrames.cmake)
 include(cmake/Brotli.cmake)
 if(CMAKE_SYSTEM_NAME STREQUAL "Linux" OR (APPLE AND BUILD_TESTING))
     find_package(Qt6 REQUIRED COMPONENTS DBus)
@@ -638,6 +639,7 @@ sevenzip_deploy_iso()
 sevenzip_deploy_udf()
 sevenzip_deploy_mbr()
 sevenzip_deploy_erofs()
+sevenzip_deploy_linux_frames()
 sevenzip_deploy_brotli()
 if(APPLE)
     include(cmake/MacAssociationBundle.cmake)
@@ -758,6 +760,24 @@ if(BUILD_TESTING)
     set_tests_properties(folder_history PROPERTIES ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     find_package(Python3 3.9 REQUIRED COMPONENTS Interpreter)
+    add_test(NAME linux_frames COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/linux_frames_tests.py
+        ${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime "$<TARGET_FILE:sevenzip_linux_frames>")
+    set_tests_properties(linux_frames PROPERTIES TIMEOUT 45)
+    qt_add_executable(linux_frames_stream_tests tests/linux_frames_stream_tests.cpp src/linuxframestream.cpp)
+    target_include_directories(linux_frames_stream_tests PRIVATE src third_party/7zip/CPP)
+    target_link_libraries(linux_frames_stream_tests PRIVATE sevenzip_panel sevenzip_linux_frames_core Qt6::Test)
+    if(WIN32)
+        target_link_libraries(linux_frames_stream_tests PRIVATE oleaut32)
+    endif()
+    target_compile_definitions(linux_frames_stream_tests PRIVATE
+        "SEVENZIP_FRAME_MODULE=\"$<TARGET_FILE:sevenzip_linux_frames>\""
+        "SEVENZIP_FRAME_RUNTIME=\"${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime\""
+        "SEVENZIP_FRAME_PYTHON=\"${Python3_EXECUTABLE}\""
+        "SEVENZIP_FRAME_FIXTURE=\"${CMAKE_CURRENT_SOURCE_DIR}/tests/linux_frames_fixture.py\"")
+    add_dependencies(linux_frames_stream_tests sevenzip_linux_frames_runtime)
+    add_test(NAME linux_frames_stream COMMAND linux_frames_stream_tests -silent)
+    set_tests_properties(linux_frames_stream PROPERTIES TIMEOUT 30)
     add_test(NAME tar COMMAND ${Python3_EXECUTABLE}
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/tar_tests.py
         ${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime)
@@ -1936,6 +1956,7 @@ if(BUILD_TESTING)
     target_sources(uefi_stream_tests PRIVATE ${compression_order_sources})
     target_sources(ihex_stream_tests PRIVATE ${compression_order_sources})
     target_sources(tar_stream_tests PRIVATE ${compression_order_sources})
+    target_sources(linux_frames_stream_tests PRIVATE ${compression_order_sources})
     target_sources(apm_stream_tests PRIVATE ${compression_order_sources})
     target_sources(fat_module_tests PRIVATE ${compression_order_sources})
     target_sources(erofs_module_tests PRIVATE ${compression_order_sources})

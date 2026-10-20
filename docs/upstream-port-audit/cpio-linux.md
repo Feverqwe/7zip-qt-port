@@ -54,8 +54,8 @@ handler не перенаправляют уже выданный поток н�
 совместный hard-link state через decompressor dispatch остаются открытыми
 в [едином реестре](filesystems-linux.md). Обычный отдельный `.cpio.gz` уже
 открывается вложенными archive handlers, но это не доказывает поддержку всей
-грамматики initramfs. LZO/LZ4 нельзя исключать из дальнейшего сравнения только
-потому, что они не перечислены как самостоятельные archive formats.
+грамматики initramfs. [Legacy LZ4/lzop readers](linux-frames.md) теперь перенесены
+отдельным компонентом; их подключение к общему CPIO dispatcher ещё требуется.
 
 Linux распаковывает rootfs через VFS; archive API представляет записи и их
 данные. Создание special nodes, chown, boot/mount и replay конечного namespace

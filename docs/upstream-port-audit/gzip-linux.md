@@ -67,8 +67,8 @@ transitions, точные границы каждого decompressor и общи
 остаются открытыми в [едином реестре](filesystems-linux.md). Простое объединение
 выхода нескольких compressed members не доказывает соответствие initramfs:
 Linux требует отдельного завершения CPIO state при выходе каждого decompressor.
-Для LZO/LZ4 в поставляемом core нет самостоятельного wrapper handler;
-существующие Linux block decoders файловых систем не заменяют эти wrappers.
+Для LZO/LZ4 добавлены [GPL framing readers](linux-frames.md) в dynamic runtime;
+они дополняют Linux block decoders файловых систем, но ещё не общий dispatcher.
 
 ## Validation
 

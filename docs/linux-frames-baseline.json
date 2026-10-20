@@ -1,0 +1,33 @@
+{
+  "repository": "https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git",
+  "revision": "58161ead29e50d70a317ea26b472e0c7508e69da",
+  "files": {
+    "lib/decompress.c": "dd82cca38e7af2ad746f659cd45b6f94ecb05ce063a0068fe6e3d424d09554a1",
+    "lib/decompress_unlz4.c": "8dfa6b034570409d9aef1414cd09007a7d9845eb4276fae7ee93928242d73059",
+    "lib/decompress_unlzo.c": "62fc8fb05170c8225ffa3d5df1a32afd76944623e2dca1919a9d832a7997086f",
+    "include/linux/decompress/unlz4.h": "68803b3167917e8f43a37bb1b0d36976b15110e6b68a6af3da5c57da62406653",
+    "include/linux/decompress/unlzo.h": "fa214bb6adddb6cc1b35c678cc5c33954521cb2da8818695c466dedab90d1dba",
+    "lib/lz4/lz4_decompress.c": "bdbc6864ba7bc05bbaedbe21875758a83d8cec0d6db648b6b70147da4804e86a",
+    "lib/lzo/lzo1x_decompress_safe.c": "f481e9df6835eea59c555017e4446cbf6f8d4062d0c04a52fa99d4de5846be04",
+    "include/linux/lz4.h": "e8f8201156a05f9e01a20487c731d99b4914c2380b09f3e562c7aae234029f57",
+    "include/linux/lzo.h": "6323519cb8c1a03a9651027d6e576573fcfe1b196ff1798f8ebf441d0c217cb4",
+    "include/linux/zutil.h": "abd2699dc70a2ac45038eaf6f88d42353926c3b5015950f457c211582e95c7c1",
+    "lib/crc/crc32-main.c": "83cf1aab62cf8a05e352fb4acc1fa8cda514ebd4f5601c95e42fa9126a7fb2cb",
+    "init/initramfs.c": "beb2db5b08b31961349982ac76ca9ac529ba912b7434c20055c2b9bd3dbecd44"
+  },
+  "adapted": [
+    "lib/decompress_unlz4.c",
+    "lib/decompress_unlzo.c"
+  ],
+  "scope": "Legacy LZ4 and lzop frame wrappers, existing block/checksum dependencies and composite-initramfs caller boundary; boot-only fast paths and VFS extraction excluded.",
+  "lzop_reference": {
+    "repository": "https://github.com/mirror/lzop.git",
+    "revision": "1941c6fb1c8f5616aa74144fba09a13013f24f45",
+    "files": {
+      "src/conf.h": "de0c87027eeffca1afd3ddebad5aba69ef03c88278c02d018e04c5c71a352625",
+      "src/lzop.c": "a7c2165f161ed68309d2595433aeaf64712eeae5ef431e0cb879ad42ee2c5c5c",
+      "src/p_lzo.c": "e37f4b7d09c951c9b54c6d48ccab9be8a538324ff204e2f3820b3874330ff8be"
+    },
+    "scope": "Source comparison of header versions, header checksum and block checksum ordering; no standalone lzop implementation copied."
+  }
+}

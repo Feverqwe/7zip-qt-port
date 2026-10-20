@@ -20,7 +20,9 @@
     "fs/ntfs3/lib/xpress_decompress.c": "6f569bc4b1bbbad5a5b144a641555948494ceca30ddadb1fc263e2e049c2ad9a",
     "lib/lz4/lz4_decompress.c": "bdbc6864ba7bc05bbaedbe21875758a83d8cec0d6db648b6b70147da4804e86a",
     "lib/lzo/lzo1x_decompress_safe.c": "f481e9df6835eea59c555017e4446cbf6f8d4062d0c04a52fa99d4de5846be04",
-    "lib/decompress_inflate.c": "1f0ef737c3c9978746b84ba252fa365404d8bced3138dd0b170cc929521f9951"
+    "lib/decompress_inflate.c": "1f0ef737c3c9978746b84ba252fa365404d8bced3138dd0b170cc929521f9951",
+    "lib/decompress_unlz4.c": "8dfa6b034570409d9aef1414cd09007a7d9845eb4276fae7ee93928242d73059",
+    "lib/decompress_unlzo.c": "62fc8fb05170c8225ffa3d5df1a32afd76944623e2dca1919a9d832a7997086f"
   },
   "scope": "Discovery evidence for the shipped archive-format intersection; individual format audits own correctness and completeness."
 }
