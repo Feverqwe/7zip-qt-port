@@ -34,6 +34,7 @@
     "fs/udf/osta_udf.h"
   ],
   "adapted": [
+    "fs/udf/dir.c",
     "fs/udf/directory.c",
     "fs/udf/inode.c",
     "fs/udf/lowlevel.c",

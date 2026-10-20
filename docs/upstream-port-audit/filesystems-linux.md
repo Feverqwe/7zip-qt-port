@@ -108,8 +108,9 @@ Volume discovery, block geometry, резервные anchors/VDS и prevailing d
 CS0 names/dstrings, default UTF-8, CRC mangling и symlink path components
 подключены к исходным Linux C converters. Read-side body `udf_read_inode`,
 permissions/owners/links, специальные inode/device EA и исходное преобразование
-timestamps также подключены. Оставшиеся directory, partition-map и cache/read
-policies UDF ещё требуют сверки.
+timestamps также подключены. Linux FID iterator читает каталоги по блокам,
+включая fragmented/AED и межраздельные переходы. Оставшиеся partition-map,
+inode-cache/read policies и non-FE publication UDF ещё требуют сверки.
 
 ### HFS+/HFSX: fork mapping и metadata reads
 

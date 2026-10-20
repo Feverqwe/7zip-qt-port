@@ -2,7 +2,7 @@
 add_library(sevenzip_udf MODULE
     src/CPP/7zip/Archive/Udf/UdfIn.cpp src/CPP/7zip/Archive/Udf/UdfHandler.cpp
     src/CPP/7zip/Archive/Udf/UdfLinux.cpp src/CPP/7zip/Archive/Udf/UdfDiscovery.cpp src/exfatmodule.cpp
-    src/fs/udf/inode.c src/fs/udf/directory.c src/fs/udf/reader.c
+    src/fs/udf/inode.c src/fs/udf/directory.c src/fs/udf/reader.c src/fs/udf/dir.c
     src/fs/udf/misc.c src/lib/crc/crc-itu-t.c
     src/fs/udf/partition.c src/fs/udf/super.c src/fs/udf/vat.c src/fs/udf/metadata.c
     src/fs/udf/discovery.c src/fs/udf/lowlevel.c src/fs/udf/unicode.c src/fs/udf/symlink.c
@@ -33,6 +33,7 @@ add_library(sevenzip_udf MODULE
 target_include_directories(sevenzip_udf PRIVATE src third_party/7zip/CPP
     src/CPP/7zip/Archive/Udf third_party/7zip/CPP/7zip/Archive/Udf)
 set_source_files_properties(src/fs/udf/inode.c src/fs/udf/directory.c src/fs/udf/reader.c
+    src/fs/udf/dir.c
     src/fs/udf/misc.c src/lib/crc/crc-itu-t.c
     src/fs/udf/partition.c src/fs/udf/super.c src/fs/udf/vat.c src/fs/udf/metadata.c
     src/fs/udf/discovery.c src/fs/udf/lowlevel.c src/fs/udf/unicode.c src/fs/udf/symlink.c src/fs/udf/udftime.c

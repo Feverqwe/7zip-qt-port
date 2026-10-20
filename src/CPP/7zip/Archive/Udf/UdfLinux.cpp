@@ -17,6 +17,26 @@ struct CInArchive::CLinuxContext {
     CItem *item;
     HRESULT result = S_OK;
     HRESULT progressResult = S_OK;
+    unsigned fileSet = 0;
+    int recurse = 0;
+
+    static int DirectoryEntry(void *opaque, Byte flags, const void *icb, const void *name,
+                              Byte size) {
+        auto &context = *static_cast<CLinuxContext *>(opaque);
+        if (context.result != S_OK || context.progressResult != S_OK)
+            return 1;
+        // Default udf_readdir skips parent, deleted, hidden and invalid names.
+        if (flags & (1 | 4 | 8))
+            return 0;
+        try {
+            context.result = context.archive->ReadLinuxDirectoryFile(
+                context.volume, context.fileSet, *context.item, static_cast<const Byte *>(icb),
+                static_cast<const Byte *>(name), size, context.recurse);
+        } catch (...) {
+            context.result = E_OUTOFMEMORY;
+        }
+        return context.result != S_OK;
+    }
 };
 
 struct CInArchive::CVatSource {
@@ -338,6 +358,31 @@ HRESULT CInArchive::ReadLinuxExtents(unsigned volIndex, unsigned partitionRef, C
         return context.result;
     return result == 0 ? S_OK : S_FALSE;
 }
+HRESULT CInArchive::ReadLinuxDirectory(unsigned volIndex, unsigned fsIndex, CItem &item,
+                                       const Byte *data, UInt32 size, int numRecurseAllowed) {
+    const CLogVol &vol = LogVols[volIndex];
+    CLinuxContext context{this, volIndex, &item};
+    context.fileSet = fsIndex;
+    context.recurse = numRecurseAllowed;
+    sevenzip_udf_file source{};
+    source.size = item.Size;
+    source.partition = (UInt16)item.Location.PartitionRef;
+    source.block = item.Location.Pos;
+    source.inline_data = item.IsInline;
+    source.data = source.allocation_data = data;
+    source.allocation_size = size;
+    source.allocation_type = item.IcbTag.GetDescriptorType();
+    source.extended = item.IsExtended;
+    const int result =
+        sevenzip_udf_directory(&context, ReadLinuxBlock, CLinuxContext::DirectoryEntry,
+                               vol.BlockSize, vol.PartitionMaps.Size(), &source);
+    if (context.progressResult != S_OK)
+        return context.progressResult;
+    if (context.result != S_OK)
+        return context.result;
+    return !result ? S_OK : result == -ENOMEM ? E_OUTOFMEMORY : S_FALSE;
+}
+
 HRESULT CInArchive::ReadLinuxSymlink(unsigned volIndex, CItem &item) {
     const CLogVol &vol = LogVols[volIndex];
     // udf_symlink_filler accepts at most one filesystem block, and uses raw

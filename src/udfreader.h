@@ -8,6 +8,7 @@ extern "C" {
 #endif
 typedef int (*sevenzip_udf_read)(void *, uint16_t, uint32_t, void *, size_t);
 typedef int (*sevenzip_udf_extent)(void *, unsigned, uint32_t, uint32_t, uint16_t);
+typedef int (*sevenzip_udf_dirent)(void *, uint8_t, const void *, const void *, uint8_t);
 struct sevenzip_udf_sparing;
 struct sevenzip_udf_virtual;
 struct sevenzip_udf_metadata;
@@ -26,6 +27,8 @@ struct sevenzip_udf_file {
     unsigned allocation_type, extended;
     const void *allocation_data;
 };
+int sevenzip_udf_directory(void *, sevenzip_udf_read, sevenzip_udf_dirent,
+                          uint32_t, uint32_t, const struct sevenzip_udf_file *);
 typedef int (*sevenzip_udf_open_file)(void *, uint16_t, uint32_t, struct sevenzip_udf_file *);
 typedef int (*sevenzip_udf_read_file)(void *, uint32_t, void *, size_t);
 typedef void (*sevenzip_udf_close_file)(void *);

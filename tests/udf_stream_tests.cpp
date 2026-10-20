@@ -325,6 +325,44 @@ class UdfStreamTests final : public QObject {
             QTest::newRow(kind) << QString::fromLatin1(kind);
     }
     void discoveryStreams() { allocationStreams(); }
+    void directoryStreams_data() {
+        QTest::addColumn<QString>("kind");
+        for (const char *kind :
+             {"fi-header-split", "fi-name-split", "fi-impl-split", "fi-boundary", "fi-fragmented",
+              "fi-aed", "fi-long-partition", "fi-extent-short", "fi-inline-ea", "fi-inline-padding",
+              "fi-checksum", "fi-directory-hint", "fi-file-hint"})
+            QTest::newRow(kind) << QString::fromLatin1(kind);
+    }
+    void directoryStreams() { allocationStreams(); }
+    void directoryFailuresAndCancellation() {
+        fixture("fi-empty");
+        CMyComPtr<IInStream> empty = new Input(bytes_);
+        QCOMPARE(archive_->Open(empty, nullptr, nullptr), S_OK);
+        UInt32 count = 99;
+        QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, UInt32(0));
+        fixture("fi-aed");
+        CMyComPtr2<IInStream, Input> input;
+        input.SetFromCls(new Input(bytes_));
+        for (UInt64 sector : {UInt64(287), UInt64(290)}) {
+            input->failSeekAt = sector * 2048;
+            for (HRESULT error : {E_ABORT, E_FAIL}) {
+                input->seekFailure = error;
+                QCOMPARE(archive_->Open(input, nullptr, nullptr), error);
+                QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+                QCOMPARE(count, UInt32(0));
+            }
+            input->failSeekAt = UINT64_MAX;
+            for (HRESULT error : {E_ABORT, E_FAIL}) {
+                auto *callback = new CancelAt(input.operator->(), sector * 2048, error, true);
+                CMyComPtr<IArchiveOpenCallback> progress = callback;
+                QCOMPARE(archive_->Open(input, nullptr, progress), error);
+                QVERIFY(callback->fired());
+            }
+        }
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        check(stream("alpha.bin"), QByteArray::fromHex(files_["alpha.bin"].toString().toLatin1()));
+    }
     void inodeAttributes_data() {
         QTest::addColumn<QString>("kind");
         for (const char *kind : {"ia-owner",
@@ -795,7 +833,9 @@ class UdfStreamTests final : public QObject {
                                  "ns-limit",
                                  "ia-undef",
                                  "ia-unaligned-ea",
-                                 "ia-efe-owner"})
+                                 "ia-efe-owner",
+                                 "fi-aed",
+                                 "fi-directory-hint"})
             QTest::newRow(kind) << QString::fromLatin1(kind);
     }
     void backendExtraction() {

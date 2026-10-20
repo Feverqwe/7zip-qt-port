@@ -16,6 +16,7 @@ from udf_walk_fixture import CASES as WALK_CASES, MODULE_ONLY as WALK_MODULE, BA
 from udf_discovery_fixture import CASES as DISCOVERY_CASES, MODULE_ONLY as DISCOVERY_MODULE, BAD as DISCOVERY_BAD
 from udf_names_fixture import CASES as NAME_CASES, BAD as NAME_BAD, COMMENTS
 from udf_inode_fixture import CASES as INODE_CASES, BAD as INODE_BAD, MODULE_BAD as INODE_MODULE_BAD, METADATA_ONLY, attributes
+from udf_directory_fixture import CASES as DIRECTORY_CASES, BAD as DIRECTORY_BAD, MODULE_BAD as DIRECTORY_MODULE_BAD
 
 RUNTIME = Path(sys.argv.pop(1))
 MODULE = Path(sys.argv.pop(1))
@@ -73,7 +74,7 @@ class UdfTests(unittest.TestCase):
     def test_continuations(self):
         for kind in (*CONTINUATIONS, *ICB_CASES, *SPARING_CASES, *VAT_CASES, *METADATA_CASES,
                      *WALK_CASES, *WALK_MODULE, *DISCOVERY_CASES, *DISCOVERY_MODULE, *NAME_CASES,
-                     *INODE_CASES):
+                     *INODE_CASES, *DIRECTORY_CASES):
             image, files = volume(kind)
             with self.subTest(kind=kind):
                 result = self.run_image("7z", image)
@@ -92,7 +93,8 @@ class UdfTests(unittest.TestCase):
     def test_damaged_continuation_chains(self):
         for kind in ("ad-cycle", "ad-limit-17", "ad-outside", "ad-bad-partition",
                      "ad-overflow", "ad-over-block", *ICB_BAD, *SPARING_BAD, *VAT_BAD,
-                     *METADATA_BAD, *DISCOVERY_BAD, *NAME_BAD, *INODE_BAD, *INODE_MODULE_BAD):
+                     *METADATA_BAD, *DISCOVERY_BAD, *NAME_BAD, *INODE_BAD, *INODE_MODULE_BAD,
+                     *DIRECTORY_BAD):
             image, _ = volume(kind)
             with self.subTest(kind=kind):
                 self.assertNotEqual(self.run_image("7z", image).returncode, 0)
@@ -126,7 +128,7 @@ class UdfTests(unittest.TestCase):
                     self.assertEqual(result.stdout, b"")
 
     def test_allocation_cycles_fail_normally(self):
-        for kind in WALK_BAD:
+        for kind in (*WALK_BAD, *DIRECTORY_MODULE_BAD):
             image, _ = volume(kind)
             with self.subTest(kind=kind):
                 # 7-Zip's normal archive error, rather than timeout, crash or out-of-memory.
@@ -149,6 +151,21 @@ class UdfTests(unittest.TestCase):
                     alpha = next(record for record in records if "Path = alpha.bin\n" in record)
                     self.assertIn("Symbolic Link = " + files["alpha.bin"].decode(), alpha)
                     self.assertIn("Size = " + str(len(files["alpha.bin"])), alpha)
+
+    def test_directory_listing(self):
+        for kind in DIRECTORY_CASES:
+            image, files = volume(kind)
+            with self.subTest(kind=kind):
+                result = self.run_image("7z", image, listing=True)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                text = result.stdout.decode("utf-8").replace("\r\n", "\n")
+                records = text.partition("----------\n")[2].split("\n\n")
+                paths = {line[7:].replace("\\", "/") for record in records
+                         for line in record.splitlines() if line.startswith("Path = ")}
+                self.assertEqual(paths - {"nested"}, set(files))
+                if "nested/tail.bin" in files:
+                    nested = next(record for record in records if record.startswith("Path = nested\n"))
+                    self.assertIn("Folder = +", nested)
 
     @unittest.skipIf(sys.platform == "win32", "native symlink creation requires Windows privilege")
     def test_symlink_extraction(self):

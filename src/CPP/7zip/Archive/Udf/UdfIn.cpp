@@ -638,6 +638,7 @@ Deleted bit:
     rewrire the compression ID of the File Identifier: 8 -> 254, 16 -> 255.
 */
 
+#ifndef SEVENZIP_LINUX_UDF
 struct CFileId
 {
   // UInt16 FileVersion;
@@ -690,6 +691,8 @@ size_t CFileId::Parse(const Byte *p, size_t size)
 }
 
 
+
+#endif
 
 HRESULT CInArchive::ReadFileItem(unsigned volIndex, unsigned fsIndex, const CLongAllocDesc &lad, bool isDir, int numRecurseAllowed)
 {
@@ -773,6 +776,11 @@ HRESULT CInArchive::ReadItem(unsigned volIndex, int fsIndex, const CLongAllocDes
       return S_FALSE;
 
   item.IcbTag.Parse(p + 16);
+#ifdef SEVENZIP_LINUX_UDF
+  // The archive root is a directory; FID type hints are not inode type authority.
+  if (isDir && !item.IcbTag.IsDir())
+      return S_FALSE;
+#endif
 
 #ifndef SEVENZIP_LINUX_UDF
   // maybe another FileType values are possible in rare cases.
@@ -849,8 +857,10 @@ HRESULT CInArchive::ReadItem(unsigned volIndex, int fsIndex, const CLongAllocDes
       if (descType != ICB_DESC_TYPE_SHORT && descType != ICB_DESC_TYPE_LONG)
           return S_FALSE;
 #ifdef SEVENZIP_LINUX_UDF
-      RINOK(ReadLinuxExtents(volIndex, resolved.Location.PartitionRef, item, p + pos,
-                             allocDescriptorsLen, progressResult))
+      if (!item.IcbTag.IsDir()) {
+          RINOK(ReadLinuxExtents(volIndex, resolved.Location.PartitionRef, item, p + pos,
+                                 allocDescriptorsLen, progressResult))
+      }
 #else
       for (UInt32 i = 0; i < allocDescriptorsLen;) {
           CMyExtent e;
@@ -883,14 +893,22 @@ HRESULT CInArchive::ReadItem(unsigned volIndex, int fsIndex, const CLongAllocDes
   if (fsIndex == -2)
       return S_OK;
 
+#ifndef SEVENZIP_LINUX_UDF
   if (isDir != item.IcbTag.IsDir())
       return S_FALSE;
+#endif
 
-  if (item.IcbTag.IsDir())
-  {
-    if (fsIndex < 0)
-      return S_FALSE;
+  if (item.IcbTag.IsDir()) {
+      if (fsIndex < 0)
+          return S_FALSE;
 
+#ifdef SEVENZIP_LINUX_UDF
+      RINOK(ReadLinuxDirectory(volIndex, (unsigned)fsIndex, item, p + pos, allocDescriptorsLen,
+                               numRecurseAllowed))
+      item.Size = 0;
+      item.Extents.ClearAndFree();
+      item.InlineData.Free();
+#else
     if (!item.CheckChunkSizes() || !CheckItemExtents(volIndex, item))
       return S_FALSE;
     CByteBuffer buf2;
@@ -915,14 +933,6 @@ HRESULT CInArchive::ReadItem(unsigned volIndex, int fsIndex, const CLongAllocDes
           continue;
       if (fileId.IsItLink_Deleted())
           continue;
-#ifdef SEVENZIP_LINUX_UDF
-      // Default Linux directory enumeration hides hidden FIDs and invalid names.
-      if (fileId.FileCharacteristics & 1)
-          continue;
-      UString decodedName;
-      if (!fileId.Id.GetFilename(decodedName))
-          continue;
-#endif
       {
           CFile file;
           // file.FileVersion = fileId.FileVersion;
@@ -942,9 +952,8 @@ HRESULT CInArchive::ReadItem(unsigned volIndex, int fsIndex, const CLongAllocDes
                              numRecurseAllowed))
       }
     }
-  }
-  else
-  {
+#endif
+  } else {
 #ifdef SEVENZIP_LINUX_UDF
       if (item.IcbTag.FileType == ICB_FILE_TYPE_SYMLINK)
           RINOK(ReadLinuxSymlink(volIndex, item))
@@ -960,6 +969,28 @@ HRESULT CInArchive::ReadItem(unsigned volIndex, int fsIndex, const CLongAllocDes
 
   return S_OK;
 }
+
+#ifdef SEVENZIP_LINUX_UDF
+HRESULT CInArchive::ReadLinuxDirectoryFile(unsigned volIndex, unsigned fsIndex, CItem &item,
+                                           const Byte *icb, const Byte *name, unsigned size,
+                                           int numRecurseAllowed) {
+    CFile file;
+    file.Id.Parse(name, size);
+    UString decodedName;
+    if (!file.Id.GetFilename(decodedName))
+        return S_OK;
+    _fileNameLengthTotal += file.Id.Data.Size();
+    if (_fileNameLengthTotal > kFileNameLengthTotalMax)
+        return S_FALSE;
+    item.SubFiles.Add(Files.Size());
+    if (Files.Size() >= kNumFilesMax)
+        return S_FALSE;
+    Files.Add(file);
+    CLongAllocDesc location;
+    location.Parse(icb);
+    return ReadFileItem(volIndex, fsIndex, location, false, numRecurseAllowed);
+}
+#endif
 
 HRESULT CInArchive::FillRefs(CFileSet &fs, unsigned fileIndex, int parent, int numRecurseAllowed)
 {

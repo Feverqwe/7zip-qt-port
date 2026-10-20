@@ -52,6 +52,12 @@
 #define fallthrough ((void)0)
 #define UDF_EXTENT_LENGTH_MASK 0x3fffffff
 #define UDF_NAME_LEN 254
+#define UDF_NAME_LEN_CS0 255
+#define UDF_NAME_PAD 4
+#define __GFP_NOFAIL 0
+#define ALIGN(value, size) (((value) + (size) - 1) & ~((size) - 1))
+#define DIV_ROUND_UP(value, size) (((value) + (size) - 1) / (size))
+#define buffer_uptodate(bh) (1)
 typedef uint64_t udf_pblk_t;
 struct buffer_head { uint8_t *b_data; unsigned b_size, references; };
 typedef uint32_t u32;
@@ -117,6 +123,23 @@ struct sevenzip_udf_walk {
     uint64_t power, distance;
     bool external;
 };
+struct udf_fileident_iter {
+    struct inode *dir;
+    int64_t pos;
+    struct buffer_head *bh[2];
+    struct kernel_lb_addr eloc;
+    uint32_t elen;
+    sector_t loffset;
+    struct extent_position epos;
+    struct fileIdentDesc fi;
+    uint8_t *name, *namebuf;
+    struct sevenzip_udf_walk walk;
+};
+static inline unsigned int udf_dir_entry_len(struct fileIdentDesc *cfi)
+{
+    return ALIGN(sizeof(struct fileIdentDesc) +
+        le16_to_cpu(cfi->lengthOfImpUse) + cfi->lengthFileIdent, UDF_NAME_PAD);
+}
 struct udf_inode_info {
     struct kernel_lb_addr i_location;
     uint32_t i_lenEAttr, i_lenAlloc;
@@ -140,6 +163,7 @@ struct inode {
     umode_t i_mode;
     uint64_t i_blocks, i_generation;
     struct timespec64 atime, mtime, ctime;
+    unsigned char i_blkbits;
 };
 static inline void i_uid_write(struct inode *inode, uint32_t id) { inode->i_uid = id; }
 static inline void i_gid_write(struct inode *inode, uint32_t id) { inode->i_gid = id; }
@@ -189,6 +213,8 @@ static inline udf_pblk_t udf_get_lb_pblock(struct super_block *sb,
                                           const struct kernel_lb_addr *loc, unsigned offset)
 {
     (void)sb;
+    if (offset > UINT32_MAX - loc->logicalBlockNum)
+        return UINT64_MAX;
     return ((uint64_t)loc->partitionReferenceNum << 32) | (loc->logicalBlockNum + offset);
 }
 struct buffer_head *sb_bread(struct super_block *, udf_pblk_t);
@@ -223,4 +249,7 @@ int sevenzip_udf_find_fileset(struct super_block *, struct kernel_lb_addr *, str
 struct logicalVolIntegrityDescImpUse *udf_sb_lvidiu(struct super_block *);
 int sevenzip_udf_check_vsd(struct super_block *);
 int udf_get_filename(struct super_block *, const uint8_t *, int, uint8_t *, int);
+int udf_fiiter_init(struct udf_fileident_iter *, struct inode *, int64_t);
+int udf_fiiter_advance(struct udf_fileident_iter *);
+void udf_fiiter_release(struct udf_fileident_iter *);
 #endif

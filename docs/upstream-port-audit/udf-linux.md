@@ -722,3 +722,82 @@ policies, включая non-FE inode publication, требуют следующ
 USE обрабатывается C service как free-space descriptor, но не публикуется
 7-Zip projection как пользовательский inode. Standalone/VFS/physical-device
 границы прежние.
+
+## Directory FID iterator
+
+Полностью сравнены read-side `directory.c`, iterator/types в `udfdecl.h`,
+`dir.c::udf_readdir` и lookup consumers в `namei.c`, allocation mapper/cache,
+а также исходные 7-Zip FID parser, `ReadItem`, recursion/ref consumers и limits.
+Из прежнего pinned Linux commit в `src/fs/udf/directory.c` перенесены восемь
+полных bodies: `udf_verify_fi`, `udf_copy_fi`, `udf_fiiter_bread_blk`,
+`udf_fiiter_advance_blk`, `udf_fiiter_load_bhs`, `udf_fiiter_init`,
+`udf_fiiter_advance`, `udf_fiiter_release`. Inline `udf_dir_entry_len` и структуры
+перенесены с portable integer types. Повторное сравнение восьми bodies
+подтверждает описанные ниже адаптации; verify/copy/load/advance сохранены целиком.
+
+`src/fs/udf/dir.c` — archive-stream wrapper, не полный VFS `udf_readdir`:
+immutable one-pass enumeration не требует seek cookies, inode version state,
+dot emission и `dir_context`. Исходный iterator получает allocation list и
+inline bytes validated inode, использует `inode_bmap`, extent cache и прежний
+partition read callback. Directory body больше не собирается целиком через
+regular-file extent stream. Сохраняются split header/name/implementation-use,
+переходы между blocks/extents, long AD, AED и partition references. Default
+parent/deleted/hidden/invalid-name filtering подключён через существующий C++
+archive projection; FID directory hint не заменяет настоящий inode type.
+Archive root отдельно требует directory inode, включая special-file root.
+
+Linux branch не использует второй C++ FID parser. Готовые original 7-Zip
+file/ref insertion, counters, recursion limits и payload streams сохранены;
+parser для legacy engine остаётся под условной компиляцией. Host services
+остаются в `UdfLinux.cpp` (421 строк): просмотрен порог разделения; общий private
+read/progress context по-прежнему имеет одну роль C/stream boundary, а file/ref
+insertion оставлен в исходном `UdfIn.cpp`. Новая архитектура UI не вводится.
+
+Адаптации C iterator: kernel advisory readahead/async buffer cache не вызываются
+для archive stream; успешный `sb_bread` уже содержит весь блок. `loff_t`
+заменён на int64_t. Allocation name buffer может вернуть ENOMEM вместо kernel
+NOFAIL retry. Iterator освобождает собственный AED position buffer; wrapper
+отдельно очищает extent cache, в том числе после ошибки. Advance использует
+прежний constant-space AD cycle guard. Logical-address token дополнительно
+отвергает uint32 overflow до передачи в partition mapper. Source I/O и
+однократные progress failures сохраняются через callback boundary.
+
+Read policies теперь соответствуют исходному Linux iterator: FID identity,
+aligned implementation-use, entry size не больше блока, logical EOF и точная
+CRC length обязательны. Tag checksum/CRC value/version/location/reserved bytes,
+file version и padding в этом consumer не проверяются заново. Whole FE/EFE
+tag validation остаётся обязательной для inline directories. Короткий recorded
+AD не обрезает raw filesystem block: native FID reader может прочитать остальные
+records в этом блоке; holes/implicit missing extents не становятся zero-filled
+каталогом. Это изменение directory read policy, а не ослабление inode validation.
+
+24 новых положительных variants совпали по именам/bytes с native Linux
+`6.8.0-147-generic`: ignored FID fields, inline/EA, split records, fragmented/AED
+и cross-partition data, boundary entries, short extent и type hints. На первом
+invalid FID native `os.listdir`/getdents повторял parent entry без продвижения;
+collector завершён SIGTERM после неэффективного SIGINT, затем mount штатно
+размонтирован и temporary images удалены. Перезагрузка гостя не потребовалась.
+Отдельные bounded lookup/stat подтвердили десять отказов, включая два mount
+отказа для non-directory roots. Archive iterator возвращает error за один проход
+и не воспроизводит VFS partial-getdents повтор. Cyclic AD проверяется только
+модулем и завершается нормальным archive error без native run.
+
+CLI проверяет exact paths/type/bytes; ABI — два directory blocks, split/AED,
+межраздельный переход, inline data, retained streams, EOF/Close/reopen/release,
+ошибки source seek и однократные progress E_ABORT/E_FAIL на первом и следующем
+data block. Backend consumers включают AED и неверный FID directory hint.
+Actual macOS install проверил все 225 положительных UDF variants через test и
+extraction, source bytes не изменились, три notices установлены без изменений;
+staging удалён. Полный UDF audit остаётся открытым для partition-map,
+inode-cache/read policies и non-FE publication; VFS/standalone/physical-CD
+границы прежние.
+
+Пять focused suites (`udf`, `udf_stream`, `upstream_baseline`, `runtime_cache`,
+`runtime_package`) прошли на macOS arm64, Linux x64 и Windows x64/MSVC;
+remote receipt `20261020T000931Z-e9240935`. После acceptance восстановлено
+исходное форматирование незатронутого `FillRefs` и оформлен существующий if body
+без изменения поведения; affected targets повторно собраны. Incremental builds
+и compiler caches сохранены; full/slow/UI/physical-device acceptance не выполнялась.
+Контракт нормального CLI exit code 2 для cyclic directory AD дополнительно
+зафиксирован в существующей cycle regression; адресный `udf` прошёл на трёх ОС,
+remote receipt `20261020T001355Z-869fa1ac`.
