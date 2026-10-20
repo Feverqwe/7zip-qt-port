@@ -335,6 +335,12 @@ runtime: поддерживаются смешанные raw/compressed част
 по-прежнему открывают внешний поток; полный initramfs доступен как Cpio.
 [Границы и проверенные платформы](upstream-port-audit/cpio-linux.md#composite-initramfs--2026-10-20).
 
+NTFS-модуль дополнительно показывает WSL owner IDs, POSIX mode и device metadata
+из EA. Специальные inode доступны как metadata, без выдачи служебных DATA bytes
+обычным файлом. Это расширение чтения относительно исходного 7zFM;
+[source/runtime scope](upstream-port-audit/ntfs-linux.md#ea-и-wsl-inode-metadata--2026-10-20)
+отделяет его от настройки прав на host и native kernel enforcement.
+
 ## Необходимые платформенные адаптации
 
 | Область | Отличие и граница |

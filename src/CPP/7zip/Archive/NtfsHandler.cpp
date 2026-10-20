@@ -16,6 +16,7 @@
 #include "../../Common/IntToString.h"
 #include "../../Common/MyBuffer2.h"
 #include "../../Common/MyCom.h"
+#include "../../Common/MyLinux.h"
 
 #include "../../Windows/PropVariant.h"
 #include "../../Windows/TimeUtils.h"
@@ -29,10 +30,13 @@
 #include "../Compress/CopyCoder.h"
 #ifdef SEVENZIP_LINUX_NTFS
 #include "../../../ntfsdecoder.h"
+#include "../../../ntfsea.h"
 #include "../../../ntfswofstream.h"
 #endif
 
 #include "Common/DummyOutStream.h"
+#include <cerrno>
+#include <new>
 
 #ifdef SHOW_DEBUG_INFO
 #define PRF(x) x
@@ -1132,6 +1136,10 @@ struct CMftRec {
     CObjectVector<CAttr> DataAttrs; // will be sorted by CAttr::Name and CAttr::LowVcn
     CObjectVector<CAttr> ReparseAttrs;
     CObjectVector<CAttr> AttrListAttrs;
+#ifdef SEVENZIP_LINUX_NTFS
+    CObjectVector<CAttr> EaInfoAttrs, EaAttrs;
+    sevenzip_ntfs_wsl_perm Wsl{};
+#endif
     CObjectVector<CFileNameAttr> FileNames;
     /* usually there is one FileName per CMftRec record,
        but there are additional names for Hard links or for DosName. */
@@ -1171,6 +1179,12 @@ struct CMftRec {
     void MoveAttrsFrom(CMftRec &src) {
         DataAttrs += src.DataAttrs;
         ReparseAttrs += src.ReparseAttrs;
+#ifdef SEVENZIP_LINUX_NTFS
+        EaInfoAttrs += src.EaInfoAttrs;
+        EaAttrs += src.EaAttrs;
+        src.EaInfoAttrs.ClearAndFree();
+        src.EaAttrs.ClearAndFree();
+#endif
         FileNames += src.FileNames;
         src.DataAttrs.ClearAndFree();
         src.ReparseAttrs.ClearAndFree();
@@ -1204,7 +1218,13 @@ struct CMftRec {
     }
 
     bool InUse() const { return (Flags & 1) != 0; }
-    bool IsDir() const { return (Flags & 2) != 0; }
+    bool IsDir() const {
+#ifdef SEVENZIP_LINUX_NTFS
+        if (Wsl.present)
+            return (Wsl.mode & MY_LIN_S_IFMT) == MY_LIN_S_IFDIR;
+#endif
+        return (Flags & 2) != 0;
+    }
 
     void ParseDataNames();
     HRESULT GetStream(IInStream *mainStream, int dataIndex, unsigned clusterSizeLog,
@@ -1235,6 +1255,11 @@ HRESULT CMftRec::GetStream(IInStream *mainStream, const int dataIndex,
                            IInStream **destStream,
                            CMyComPtr2<IInStream, CInStream> *inStream_Object) const {
     *destStream = NULL;
+#ifdef SEVENZIP_LINUX_NTFS
+    if (Wsl.present && (dataIndex < 0 || DataAttrs[dataIndex].Name.IsEmpty()) &&
+        (Wsl.mode & MY_LIN_S_IFMT) != MY_LIN_S_IFREG)
+        return E_NOTIMPL;
+#endif
     if (Wof && (dataIndex < 0 || DataAttrs[dataIndex].Name.IsEmpty())) {
         if (dataIndex < 0)
             return E_NOTIMPL;
@@ -1447,6 +1472,16 @@ bool CMftRec::ParseRec(Byte *const p, const unsigned sectorSizeLog, const unsign
         case ATTR_TYPE_REPARSE_POINT:
             ReparseAttrs.Add(attr);
             break;
+#ifdef SEVENZIP_LINUX_NTFS
+        case 0xD0: // EA_INFO
+            if (attr.Name.IsEmpty())
+                EaInfoAttrs.Add(attr);
+            break;
+        case 0xE0: // EA
+            if (attr.Name.IsEmpty())
+                EaAttrs.Add(attr);
+            break;
+#endif
         /*
         case ATTR_TYPE_SECURITY_DESCRIPTOR:
           SecurityAttr = attr;
@@ -1606,6 +1641,7 @@ struct CDatabase {
     HRESULT ParseSecuritySDS(ISequentialInStream *stream, const size_t size);
 #ifdef SEVENZIP_LINUX_NTFS
     HRESULT LoadMftAttributes(CMftRec &rec);
+    HRESULT LoadWslMetadata();
 #endif
 };
 
@@ -1942,6 +1978,111 @@ HRESULT CDatabase::LoadMftAttributes(CMftRec &rec) {
 }
 #endif
 
+#ifdef SEVENZIP_LINUX_NTFS
+struct CEaRead {
+    CMyComPtr<IInStream> Stream;
+    IArchiveOpenCallback *Callback = nullptr;
+    HRESULT Result = S_OK;
+    static int Read(void *opaque, uint64_t offset, void *data, size_t size) noexcept {
+        CEaRead &self = *static_cast<CEaRead *>(opaque);
+        try {
+            self.Result = InStream_SeekSet(self.Stream, offset);
+            while (self.Result == S_OK && size) {
+                if (self.Callback)
+                    self.Result = self.Callback->SetCompleted(nullptr, nullptr);
+                if (self.Result != S_OK)
+                    break;
+                const size_t chunk = MyMin(size, size_t(1 << 15));
+                self.Result = ReadStream_FALSE(self.Stream, data, chunk);
+                data = static_cast<Byte *>(data) + chunk;
+                size -= chunk;
+            }
+        } catch (const std::bad_alloc &) {
+            self.Result = E_OUTOFMEMORY;
+        } catch (...) {
+            self.Result = E_FAIL;
+        }
+        return self.Result == S_OK ? 0 : -1;
+    }
+};
+
+HRESULT CDatabase::LoadWslMetadata() {
+    bool needed = false;
+    FOR_VECTOR(i, Recs) {
+        const CMftRec &rec = Recs[i];
+        if (rec.Is_Magic_FILE() && rec.InUse() && rec.BaseMftRef.IsBaseItself() &&
+            !rec.EaInfoAttrs.IsEmpty() && !rec.EaAttrs.IsEmpty())
+            needed = true;
+    }
+    if (!needed)
+        return S_OK;
+    if (Recs.Size() <= 4 || Recs[4].DataAttrs.IsEmpty())
+        return S_FALSE;
+    const UInt64 definitionSize = Recs[4].DataAttrs[0].GetSize();
+    if (definitionSize < 0xA0 || definitionSize > 100 * 0xA0)
+        return S_FALSE;
+    CEaRead reader;
+    reader.Callback = OpenCallback;
+    RINOK(Recs[4].GetStream(InStream, 0, Header.ClusterSizeLog, Header.NumClusters, &reader.Stream))
+    CByteBuffer definitions;
+    definitions.Alloc((size_t)definitionSize);
+    if (CEaRead::Read(&reader, 0, definitions, (size_t)definitionSize))
+        return reader.Result;
+    UInt32 limit;
+    if (sevenzip_ntfs_ea_limit(definitions, definitions.Size(), &limit))
+        return S_FALSE;
+    FOR_VECTOR(i, Recs) {
+        CMftRec &rec = Recs[i];
+        if (!rec.Is_Magic_FILE() || !rec.InUse() || !rec.BaseMftRef.IsBaseItself() ||
+            rec.EaInfoAttrs.IsEmpty() || rec.EaAttrs.IsEmpty())
+            continue;
+        const CAttr &info = rec.EaInfoAttrs[0];
+        if (info.NonResident || info.Data.Size() < 8)
+            continue;
+        CMftRec eaRecord;
+        eaRecord.Flags = rec.Flags;
+        eaRecord.DataAttrs = rec.EaAttrs;
+        eaRecord.ParseDataNames();
+        const CAttr &ea = eaRecord.DataAttrs[0];
+        sevenzip_ntfs_ea_input input{};
+        input.info = info.Data;
+        input.info_size = info.Data.Size();
+        input.data_size = ea.GetSize();
+        input.max_size = limit;
+        input.nonresident = ea.NonResident;
+        input.resident = ea.NonResident ? nullptr : (const Byte *)ea.Data;
+        input.read = CEaRead::Read;
+        input.opaque = &reader;
+        reader.Result = S_OK;
+        reader.Stream.Release();
+        if (input.nonresident && input.data_size <= limit)
+            RINOK(eaRecord.GetStream(InStream, 0, Header.ClusterSizeLog, Header.NumClusters,
+                                     &reader.Stream))
+        const int result = sevenzip_ntfs_wsl_read(&input, &rec.Wsl);
+        if (reader.Result != S_OK)
+            return reader.Result;
+        if (result)
+            return result == -ENOMEM ? E_OUTOFMEMORY : S_FALSE;
+        if (rec.Wsl.present) {
+            const UInt32 type = rec.Wsl.mode & MY_LIN_S_IFMT;
+            if (type != MY_LIN_S_IFDIR && type != MY_LIN_S_IFREG && type != MY_LIN_S_IFLNK &&
+                type != MY_LIN_S_IFCHR && type != MY_LIN_S_IFBLK && type != MY_LIN_S_IFIFO &&
+                type != MY_LIN_S_IFSOCK)
+                return S_FALSE;
+            if (rec.SiAttr.Attrib & FILE_ATTRIBUTE_READONLY)
+                rec.Wsl.mode &= ~0222u;
+            if (type == MY_LIN_S_IFDIR)
+                rec.SiAttr.Attrib |= FILE_ATTRIBUTE_DIRECTORY;
+            else if (type == MY_LIN_S_IFREG || type == MY_LIN_S_IFLNK)
+                rec.SiAttr.Attrib &= ~FILE_ATTRIBUTE_DIRECTORY;
+        }
+        rec.EaInfoAttrs.ClearAndFree();
+        rec.EaAttrs.ClearAndFree();
+    }
+    return S_OK;
+}
+#endif
+
 HRESULT CDatabase::Open() {
     Clear();
     /* NTFS layout:
@@ -2184,6 +2325,10 @@ HRESULT CDatabase::Open() {
             rec.WofFormat = Get32(data + 20);
         rec.ReparseAttrs.ClearAndFree();
     }
+
+#ifdef SEVENZIP_LINUX_NTFS
+    RINOK(LoadWslMetadata())
+#endif
 
     for (i = 0; i < Recs.Size(); i++) {
         CMftRec &rec = Recs[i];
@@ -2541,10 +2686,31 @@ static const CStatProp kProps[] =
 };
 */
 
-static const Byte kProps[] = {kpidPath,          kpidIsDir,       kpidSize,      kpidPackSize,
-                              kpidMTime,         kpidCTime,       kpidATime,     kpidChangeTime,
-                              kpidAttrib,        kpidLinks,       kpidINode,     kpidNumBlocks,
-                              kpidNumAltStreams, kpidIsAltStream, kpidShortName, kpidIsDeleted};
+static const Byte kProps[] = {kpidPath,
+                              kpidIsDir,
+                              kpidSize,
+                              kpidPackSize,
+                              kpidMTime,
+                              kpidCTime,
+                              kpidATime,
+                              kpidChangeTime,
+                              kpidAttrib,
+                              kpidLinks,
+                              kpidINode,
+                              kpidNumBlocks,
+                              kpidNumAltStreams,
+                              kpidIsAltStream,
+                              kpidShortName,
+                              kpidIsDeleted
+#ifdef SEVENZIP_LINUX_NTFS
+                              ,
+                              kpidPosixAttrib,
+                              kpidUserId,
+                              kpidGroupId,
+                              kpidDeviceMajor,
+                              kpidDeviceMinor
+#endif
+};
 
 enum { kpidRecordSize = kpidUserDefined };
 
@@ -2775,6 +2941,23 @@ Z7_COM7F_IMF(CHandler::GetProperty(const UInt32 index, const PROPID propID,
         case kpidIsDeleted:
             prop = !rec.InUse();
             break;
+#ifdef SEVENZIP_LINUX_NTFS
+        case kpidPosixAttrib:
+        case kpidUserId:
+        case kpidGroupId:
+            if (rec.Wsl.present && !item.IsAltStream())
+                prop = propID == kpidPosixAttrib ? rec.Wsl.mode
+                       : propID == kpidUserId    ? rec.Wsl.uid
+                                                 : rec.Wsl.gid;
+            break;
+        case kpidDeviceMajor:
+        case kpidDeviceMinor:
+            if (rec.Wsl.present && !item.IsAltStream() &&
+                ((rec.Wsl.mode & MY_LIN_S_IFMT) == MY_LIN_S_IFCHR ||
+                 (rec.Wsl.mode & MY_LIN_S_IFMT) == MY_LIN_S_IFBLK))
+                prop = propID == kpidDeviceMajor ? rec.Wsl.device >> 20 : rec.Wsl.device & 0xFFFFF;
+            break;
+#endif
             // case kpidIsAux: prop = false; break;
 
         case kpidMTime:

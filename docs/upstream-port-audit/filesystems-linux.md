@@ -216,6 +216,17 @@ cancellation/source errors и временное хранилище. Compiled Li
 wrappers reference подтвердил 143 сценария. Это закрывает composite initramfs
 read scenario; оставшиеся filesystem read features общей цели сохраняются.
 
+### NTFS: EA и WSL metadata
+
+[Актуализация NTFS3 EA read path](ntfs-linux.md#ea-и-wsl-inode-metadata--2026-10-20):
+resident/nonresident/fragmented/extension EA, `$AttrDef` limits и актуальные C
+bounds checks; owner IDs, POSIX mode, readonly override и special inode/device
+metadata. Обычный payload сохраняется, special inode не выдаёт ложный regular
+stream. CLI/ABI/backend и native read-only reference проверены отдельно;
+device-number отличие старого native kernel записано в linked audit.
+Это завершённый metadata scenario, остальные NTFS read branches ещё требуют
+полного сравнения по общему scope.
+
 ### MBR primary/EBR и block-layer границы
 
 [Сверка MBR](mbr-linux.md): primary ordering/overlap/CHS, extended types,

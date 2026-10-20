@@ -26,6 +26,7 @@ class Input final : public IInStream, public CMyUnknownImp {
     HRESULT seekFailure = S_OK;
     bool eof = false;
     UInt64 failSeekAt = UINT64_MAX;
+    HRESULT failedSeekResult = E_FAIL;
     explicit Input(QByteArray bytes) : bytes_(std::move(bytes)) {}
     Z7_COM7F_IMF(Read(void *data, UInt32 size, UInt32 *processed)) override {
         if (processed)
@@ -47,7 +48,7 @@ class Input final : public IInStream, public CMyUnknownImp {
         if (failure != S_OK)
             return failure;
         if (origin == STREAM_SEEK_SET && UInt64(offset) == failSeekAt)
-            return E_FAIL;
+            return failedSeekResult;
         if (seekFailure != S_OK) {
             const HRESULT result = seekFailure;
             seekFailure = S_OK;
@@ -88,6 +89,17 @@ class CancelOpen final : public IArchiveOpenCallback, public CMyUnknownImp {
   public:
     Z7_COM7F_IMF(SetTotal(const UInt64 *, const UInt64 *)) override { return S_OK; }
     Z7_COM7F_IMF(SetCompleted(const UInt64 *, const UInt64 *)) override { return E_ABORT; }
+};
+class CancelEaOpen final : public IArchiveOpenCallback, public CMyUnknownImp {
+    Z7_COM_UNKNOWN_IMP_1(IArchiveOpenCallback)
+  public:
+    unsigned checkpoints = 0, abortAt = UINT_MAX;
+    Z7_COM7F_IMF(SetTotal(const UInt64 *, const UInt64 *)) override { return S_OK; }
+    Z7_COM7F_IMF(SetCompleted(const UInt64 *files, const UInt64 *bytes)) override {
+        if (!files && !bytes && ++checkpoints == abortAt)
+            return E_ABORT;
+        return S_OK;
+    }
 };
 } // namespace
 
@@ -130,7 +142,7 @@ class NtfsStreamTests final : public QObject {
         for (UInt32 i = 0; i < count; ++i) {
             NWindows::NCOM::CPropVariant path;
             if (archive_->GetProperty(i, kpidPath, &path) == S_OK && path.vt == VT_BSTR &&
-                QString::fromWCharArray(path.bstrVal) == name)
+                QDir::fromNativeSeparators(QString::fromWCharArray(path.bstrVal)) == name)
                 return i;
         }
         return UInt32(-1);
@@ -182,6 +194,87 @@ class NtfsStreamTests final : public QObject {
     }
   private slots:
     void initTestCase() { createArchive(); }
+    void wslMetadata_data() {
+        QTest::addColumn<QString>("kind");
+        for (const char *kind :
+             {"ea-resident", "ea-nonresident", "ea-fragmented", "ea-extension", "ea-readonly",
+              "ea-incomplete", "ea-long-uid", "ea-short-info", "ea-no-data", "ea-next-size",
+              "ea-zero-size", "ea-device-wide", "ea-mode-high", "ea-chr", "ea-blk", "ea-fifo",
+              "ea-sock", "ea-directory", "ea-stale-directory-bit"})
+            QTest::newRow(kind) << QString::fromLatin1(kind);
+    }
+    void wslMetadata() {
+        QFETCH(QString, kind);
+        loadFixture(kind);
+        CMyComPtr<IInStream> input = new Input(bytes_);
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        const auto expected = record_["wsl"].toObject();
+        const UInt32 id = index(kind == "ea-directory" ? "[SYSTEM]/$Extend" : "gamma");
+        QVERIFY(id != UINT32_MAX);
+        NWindows::NCOM::CPropVariant directory, attributes;
+        QCOMPARE(archive_->GetProperty(id, kpidIsDir, &directory), S_OK);
+        QCOMPARE(archive_->GetProperty(id, kpidAttrib, &attributes), S_OK);
+        QCOMPARE(directory.vt, VARTYPE(VT_BOOL));
+        QCOMPARE(attributes.vt, VARTYPE(VT_UI4));
+        QCOMPARE(bool(attributes.ulVal & 0x10), directory.boolVal != VARIANT_FALSE);
+        for (const auto &field :
+             {qMakePair(kpidUserId, "uid"), qMakePair(kpidGroupId, "gid"),
+              qMakePair(kpidPosixAttrib, "mode"), qMakePair(kpidDeviceMajor, "major"),
+              qMakePair(kpidDeviceMinor, "minor")}) {
+            NWindows::NCOM::CPropVariant value;
+            QCOMPARE(archive_->GetProperty(id, field.first, &value), S_OK);
+            const QJsonValue wanted = expected[field.second];
+            if (wanted.isUndefined() || wanted.isNull())
+                QCOMPARE(value.vt, VARTYPE(VT_EMPTY));
+            else {
+                QCOMPARE(value.vt, VARTYPE(VT_UI4));
+                QCOMPARE(value.ulVal, UInt32(wanted.toDouble()));
+            }
+        }
+        if (record_["files"].toObject().contains("gamma")) {
+            auto retained = stream("gamma");
+            QVERIFY(retained);
+            check(retained, "gamma", 4090, 8200);
+            QCOMPARE(archive_->Close(), S_OK);
+            check(retained, "gamma", 0, 200000);
+        } else {
+            CMyComPtr<IInArchiveGetStream> provider;
+            QCOMPARE(archive_->QueryInterface(IID_IInArchiveGetStream,
+                                              reinterpret_cast<void **>(&provider)),
+                     S_OK);
+            CMyComPtr<ISequentialInStream> data;
+            QCOMPARE(provider->GetStream(id, &data), E_NOTIMPL);
+            QVERIFY(!data);
+            CMyComPtr2<IArchiveExtractCallback, Extract> callback;
+            callback.Create_if_Empty();
+            QCOMPARE(archive_->Extract(&id, 1, true, callback), S_OK);
+            QCOMPARE(callback->result,
+                     Int32(NArchive::NExtract::NOperationResult::kUnsupportedMethod));
+        }
+    }
+    void eaReadFailuresAndRecovery() {
+        loadFixture("ea-fragmented");
+        CMyComPtr2<IInStream, Input> source;
+        source.SetFromCls(new Input(bytes_));
+        for (HRESULT result : {E_FAIL, E_ABORT}) {
+            source->failSeekAt = 1102 * 4096;
+            source->failedSeekResult = result;
+            QCOMPARE(archive_->Open(source, nullptr, nullptr), result);
+            UInt32 count = 99;
+            QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+            QCOMPARE(count, UInt32(0));
+        }
+        source->failSeekAt = UINT64_MAX;
+        CMyComPtr2<IArchiveOpenCallback, CancelEaOpen> callback;
+        callback.SetFromCls(new CancelEaOpen);
+        callback->abortAt = 2; // AttrDef read succeeds; cancel in the nonresident EA read.
+        QCOMPARE(archive_->Open(source, nullptr, callback), E_ABORT);
+        callback->checkpoints = 0;
+        callback->abortAt = UINT_MAX;
+        QCOMPARE(archive_->Open(source, nullptr, callback), S_OK);
+        QVERIFY(callback->checkpoints >= 2);
+        check(stream("gamma"), "gamma", 0, 200000);
+    }
     void reads_data() {
         QTest::addColumn<QString>("kind");
         for (const char *kind : {"base",
@@ -475,6 +568,7 @@ class NtfsStreamTests final : public QObject {
         QTest::newRow("compressed") << QString("short-compressed");
         QTest::newRow("corrupt") << QString("run-over-volume");
         QTest::newRow("WOF-XPRESS") << QString("wof-xpress4k");
+        QTest::newRow("WSL-EA") << QString("ea-fragmented");
         QTest::newRow("WOF-LZX") << QString("wof-lzx32k");
         QTest::newRow("fragmented-MFT") << QString("mft-list-nonresident");
     }

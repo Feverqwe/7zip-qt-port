@@ -7,6 +7,7 @@ import tempfile
 import unittest
 import zlib
 from ntfs_fixture import volume
+from ntfs_ea_fixture import VALID as EA_VALID, BAD as EA_BAD
 
 RUNTIME = Path(sys.argv.pop(1))
 MODULE = Path(sys.argv.pop(1))
@@ -56,6 +57,26 @@ class NtfsTests(unittest.TestCase):
         result = self.run_image("7z", image, "x", "alpha")
         self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
         self.assertEqual(result.stdout, files["alpha"])
+
+    def test_linux_ea_metadata_and_payload(self):
+        for kind in EA_VALID:
+            with self.subTest(kind=kind):
+                image, files = volume(kind)
+                listing = self.run_image("7z", image, "l")
+                self.assertEqual(listing.returncode, 0, listing.stderr)
+                result = self.run_image("7z", image, "x", "gamma")
+                if "gamma" in files:
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertEqual(result.stdout, files["gamma"])
+                else:
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertEqual(result.stdout, b"")
+
+    def test_corrupt_ea_rejects_open(self):
+        for kind in EA_BAD:
+            with self.subTest(kind=kind):
+                result = self.run_image("7z", volume(kind)[0], "l")
+                self.assertNotEqual(result.returncode, 0, result.stdout)
 
     def test_linux_wof_and_fragmented_mft(self):
         for kind in ("mft-list", "mft-list-nonresident", "wof-xpress4k", "wof-xpress8k",

@@ -94,6 +94,9 @@ def nonresident(original, entries, size, valid=None, flags=0, unit=0):
 
 
 def volume(kind="base"):
+    if kind.startswith("ea-"):
+        from ntfs_ea_fixture import volume as ea_volume
+        return ea_volume(kind)
     if kind.startswith("mft-list"):
         from ntfs_mft_fixture import volume as mft_volume
         return mft_volume(kind)
@@ -204,5 +207,9 @@ if __name__ == "__main__":
     if args.output:
         args.output.write_bytes(image)
     else:
-        print(json.dumps({"size": len(image), "image": base64.b64encode(zlib.compress(image, 9)).decode(),
-                          "files": {name: base64.b64encode(data).decode() for name, data in files.items()}}))
+        result = {"size": len(image), "image": base64.b64encode(zlib.compress(image, 9)).decode(),
+                  "files": {name: base64.b64encode(data).decode() for name, data in files.items()}}
+        if args.kind.startswith("ea-"):
+            from ntfs_ea_fixture import properties
+            result["wsl"] = properties(args.kind)
+        print(json.dumps(result))

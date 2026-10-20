@@ -39,7 +39,9 @@
     "fs/ntfs3/lib/decompress_common.h",
     "fs/ntfs3/lib/lib.h",
     "fs/ntfs3/lznt.c",
-    "fs/ntfs3/ntfs.h"
+    "fs/ntfs3/ntfs.h",
+    "fs/ntfs3/super.c",
+    "fs/ntfs3/xattr.c"
   ],
   "exact": [
     "fs/ntfs3/lib/decompress_common.c",

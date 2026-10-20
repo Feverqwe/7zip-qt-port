@@ -185,6 +185,102 @@ stdout extraction. Linux focused build после OOM повторён с одн
 staging удалён. Full/slow gate не требовался: NTFS и прямые transport consumers
 покрыты адресно; physical devices и UI appearance не проверялись.
 
+## EA и WSL inode metadata — 2026-10-20
+
+До реализации полностью сравнены `fs/ntfs3/xattr.c` read functions
+`unpacked_ea_size`, `find_ea`, `ntfs_read_ea`, `ntfs_get_ea`,
+`ntfs_get_wsl_perm`; их callers в `inode.c:ntfs_read_mft`, EA/AttrDef disk
+types в `ntfs.h`, `$AttrDef` loader из `super.c`, attribute/run readers и
+существующий полный SDK handler с extension merge, stream и property consumers.
+Используются те же полные Linux/SDK revisions выше. Пять перечисленных C
+function bodies перенесены без изменений под исходным путём `src/fs/ntfs3/xattr.c`;
+новый unit добавлен в существующий [Linux baseline](../ntfs-linux-baseline.json).
+Сохранены Paragon Software notice и GPL SPDX. C остаётся C11.
+
+Dynamic NTFS module читает unnamed EA_INFO/EA после объединения base/extension
+records; resident и nonresident EA используют прежний bounded CAttr stream и
+полную карту extents. Нельзя заменить nonresident EA mapping pairs содержимым
+атрибута. Максимальный размер берётся из реального `$AttrDef`: сохранены исходные
+проверки таблицы и ordered type/max-size selection loop в исходном `super.c` unit.
+Полный VFS loader
+`ntfs_fill_super` не копируется: открытие системного файла выполняет SDK reader.
+EA disk structures, flexible-array offsets и little-endian conversions сохранены;
+C11 static-assert messages — только compiler adaptation.
+
+Kernel inode/attribute lookup, allocation, locking, run I/O и dirty-state services
+заменены узким `ntfseacompat` adapter. Он предоставляет заранее собранные SDK
+attributes и проверенную карту данных; повторного EA parser в C++ нет.
+`ntfsea` — C linkage boundary и eager validation adapter; Linux read functions
+проверяют объявленную длину, весь EA chain и размеры каждого имени/value.
+Повреждённый активный EA останавливает archive Open; dirty-state adapter
+сохраняет ошибку, но не меняет исходный том. Linux mount может откладывать такую
+диагностику до xattr access или оставить default permissions. Source/seek ошибки
+и cancellation проходят через C boundary с исходным HRESULT, частичные items
+очищаются; temporary metadata streams и callback не остаются у открытого архива.
+
+Полный корректный набор `$LXUID`/`$LXGID`/`$LXMOD` публикует числовые owner IDs
+и POSIX mode. Неполный набор или неверная длина значения не публикуют частичную
+тройку, как `ntfs_get_wsl_perm`. Сохранены 16-bit inode mode и optional `$LXDEV`
+semantics, в том числе проверка точной длины device value. DOS readonly снимает
+write bits после WSL override, как `inode.c`; DOS directory bit, directory и
+inode-type projection согласованы с полученным mode. Numeric IDs представляют
+диск, без переноса host
+user namespace или kernel mount defaults.
+
+Character/block devices, FIFO/socket и symlink не выдают unnamed DATA как обычный
+file stream; специальные inode остаются metadata-only с явным unsupported result
+на чтение. Device major/minor соответствуют NTFS3 internal dev_t layout.
+Named ADS остаются независимыми data streams, без присвоения им типа специального
+base inode. Existing NT reparse/security projection, WOF, classic compression,
+recovery и public extraction flow сохранены. Standalone `7zz` сохраняет прежний
+scope metadata; Linux EA implementation линкуется только с отдельным GPL plugin.
+
+Write-side EA/WSL persistence, ACL mutation, xattr syscall frontends, kernel
+permission enforcement и host owner mapping не переносятся в readonly archive
+reader. Неиспользуемый `ntfs_list_ea` не копируется: выбранный public scenario —
+чтение inode permissions/type/device, а не новый archive xattr-enumeration API.
+
+Regression проверяет resident/nonresident/fragmented EA, EA в extension record,
+directory metadata, stale DOS directory bit, readonly override,
+incomplete/invalid-width values, zero и
+explicit next-size records, 16-bit mode и четыре special inode types. Девять
+malformed cases покрывают record/info/attribute spans, `$AttrDef` limit и
+неизвестный inode mode. ABI сравнивает properties и exact regular-file bytes,
+retained streams, явный отказ выдачи special payload, source E_FAIL/E_ABORT
+внутри fragmented EA, cancellation и успешное повторное открытие.
+ArchiveBackend извлекает файл из образа с fragmented EA; CLI сохраняет source
+bytes и error contracts. Эти tests проверяют поведение, не source text.
+
+Десять focused suites PASS на macOS arm64 (10,34 с), Linux x64 (24,43 с) и
+Windows x64/MSVC (116,72 с); receipt `20261020T142812Z-2331707a`. Выбор включает
+обе NTFS suites, archive/source-extract/security/selection consumers,
+runtime cache/package и source provenance. После добавления directory fixture
+обе NTFS suites повторены отдельно. Финальные suites после согласования DOS
+directory bit — PASS на macOS/Linux/Windows; remote receipt
+`20261020T143927Z-59c4358f`. Incremental builds и ccache сохранены;
+full/slow gate, UI appearance и физические устройства не проверялись.
+После размещения `$AttrDef` C loader в исходном `super.c` unit обе suites
+повторно PASS на macOS/Linux/Windows; receipt `20261020T144233Z-7124830d`.
+
+Native read-only loop reference на Linux NTFS3 `6.8.0-147-generic` подтвердил
+19 valid images: UID/GID/mode, incomplete-value fallback, readonly override,
+directory и special inode types, resident/nonresident/fragmented/extension EA,
+точные обычные file bytes и неизменность images. Для чтения файлов с заданными
+WSL owners использован privileged reader; сами permission bits не менялись.
+После смены runner kernel потребовался штатный Ubuntu пакет
+`linux-modules-extra-6.8.0-147-generic` для текущего ядра; загрузка NTFS3 выполнена
+без reboot. Images/mountpoints удалены. Финальный receipt `20261020T143833Z-2f6a013b`.
+
+Device major/minor проверены по закреплённым C bodies и ABI fixtures; native
+runner вернул 0:0 вместо stored dev_t. В исходном
+[Linux v6.8 read helper](https://github.com/torvalds/linux/blob/v6.8/fs/ntfs3/xattr.c)
+есть неверная длина `sizeof("$$LXDEV")`, отсутствующая в pinned reference.
+Это согласуется с наблюдаемым старым-kernel результатом; точное наличие
+backport fix в Ubuntu binary этим не утверждается. Модуль сохраняет исправленное
+чтение текущего эталона, а не воспроизводит наблюдённый нулевой rdev старого ядра.
+Malformed EA не передавались старому kernel как safety validator; их проверяют
+перенесённые актуальные bounds checks и production regressions.
+
 ## Открытый read scope
 
 Выбранные classic/WOF/MFT bootstrap scenarios подключены и проверены.
