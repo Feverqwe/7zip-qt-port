@@ -21,6 +21,8 @@ struct sevenzip_ntfs_wsl_perm {
 };
 int sevenzip_ntfs_ea_limit(const void *, size_t, uint32_t *);
 int sevenzip_ntfs_wsl_read(const struct sevenzip_ntfs_ea_input *, struct sevenzip_ntfs_wsl_perm *);
+typedef int (*sevenzip_ntfs_ea_visit_fn)(void *, const char *, size_t, const void *, size_t);
+int sevenzip_ntfs_ea_visit(const struct sevenzip_ntfs_ea_input *, sevenzip_ntfs_ea_visit_fn, void *);
 #ifdef __cplusplus
 }
 #endif

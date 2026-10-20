@@ -238,8 +238,7 @@ scope metadata; Linux EA implementation линкуется только с от�
 
 Write-side EA/WSL persistence, ACL mutation, xattr syscall frontends, kernel
 permission enforcement и host owner mapping не переносятся в readonly archive
-reader. Неиспользуемый `ntfs_list_ea` не копируется: выбранный public scenario —
-чтение inode permissions/type/device, а не новый archive xattr-enumeration API.
+reader. Публикация EA values добавлена следующей связанной итерацией ниже.
 
 Regression проверяет resident/nonresident/fragmented EA, EA в extension record,
 directory metadata, stale DOS directory bit, readonly override,
@@ -281,6 +280,58 @@ backport fix в Ubuntu binary этим не утверждается. Модул
 чтение текущего эталона, а не воспроизводит наблюдённый нулевой rdev старого ядра.
 Malformed EA не передавались старому kernel как safety validator; их проверяют
 перенесённые актуальные bounds checks и production regressions.
+
+## EA names и values — 2026-10-20
+
+Сравнены полные `xattr.c:ntfs_list_ea`, `ntfs_get_ea`, `ntfs_listxattr`,
+`ntfs_getxattr`, их namespace callers, `ntfs_read_ea`/`find_ea` и disk types
+с существующим EA/WSL adapter и SDK stream/property/extraction consumers.
+Dynamic module теперь публикует произвольные EA values, включая пустые,
+resident/nonresident данные и EA из extension MFT records. WSL inode metadata
+сохраняет прежний getter и условия полного набора permissions.
+
+Перенесённый C `ntfs_list_ea` использует тот же валидирующий loader; вместо
+буфера VFS names callback получает bounded name/value. Это позволяет читать
+список один раз, без повторного source I/O на каждый value. Отдельный C++ adapter
+копирует values в resident archive streams; это не новый EA parser.
+Повторяющиеся точные имена дают первое значение, как Linux `find_ea`/get.
+Пустое EA name завершает enumeration согласно kernel list path.
+Source/read errors, отмена и allocation failures сохраняют HRESULT; C callback
+не выпускает C++ exceptions. Per-value progress проверяет отмену и для resident EA.
+
+Archive representation отделяет EAs от ADS префиксом `$EA.`. Небезопасные и
+не-ASCII bytes имени экранируются как `%HH`; коллизии с ADS или другим EA,
+включая регистр, получают числовой suffix. Raw ADS сохраняют свои names/bytes.
+Это переносимое presentation boundary, а не NTFS disk stream name или Linux
+xattr namespace. Owned streams используют прежние listing/properties,
+GetStream/Extract и SourceEntry consumers, включая lifetime после Close/Release.
+Standalone не получает GPL EA code и сохраняет прежний read scope.
+
+Regressions проверяют binary/empty/Unicode/separator/case-only/duplicate names,
+resident/fragmented/extension data, ADS collision, CLI listing и exact bytes,
+retained streams и реальное backend SourceEntry extraction. Старый модуль
+воспроизвёл отсутствие всех новых непустых values. В затронутой проверке отмены
+счётчик callback-вызовов заменён запросом отмены после чтения EA fixture data;
+результат операции и повторное успешное открытие проверяются без привязки к
+порядку progress checkpoints.
+
+Семь focused suites (`ntfs`, `ntfs_stream`, `ntfs_security`, runtime packaging,
+extraction security и два provenance suites) PASS на macOS ARM64 (14,97 с),
+Linux x64 (receipt `20261020T165626Z-79cf4177`) и Windows x64/MSVC
+(70,09 с; `20261020T165521Z-cc5f9e6d`). Host discovery первоначально завершился
+SSH timeout до передачи/сборки. Уже настроенные гости были доступны напрямую;
+после проверки identities/host keys те же wrappers/current worktrees использовали
+временную ignored direct-SSH configuration. Основной runner config и toolchains
+не менялись; compiler caches и incremental build trees сохранены.
+
+Native NTFS3 `6.8.0-147-generic` подтвердил list/get четырёх read-only images
+(`20261020T165521Z-76d54250`): exact binary/empty/Unicode/separator/case-only
+values, fragmented EA, extension record и первое значение дубликата. Все image
+SHA256 остались неизменными; temporary images/mounts и review script удалены.
+Обычный ADS не предоставляется native Linux xattr API и проверен через engine/ABI.
+Running kernel остаётся отдельным evidence от pinned source baseline.
+Full/slow gate, UI и физические устройства не проверялись; общий NTFS read audit
+остаётся открытым.
 
 ## Indexed security descriptors — 2026-10-20
 

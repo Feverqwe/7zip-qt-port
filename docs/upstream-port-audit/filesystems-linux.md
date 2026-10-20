@@ -352,6 +352,8 @@ reserved bytes и ненулевой startBlock не скрывают читае
 nonresident reparse payload и Linux C LZNT1 в отдельном GPL-модуле приложения.
 Динамический модуль также читает WOF LZX/XPRESS, 32/64-битные ADS offsets и
 bootstrap MFT attribute lists через оригинальные Linux C readers.
+Подключены EA names/values как отдельные archive streams через Linux list/read
+path, с сохранением ADS и WSL metadata.
 Оставшийся NTFS metadata/read audit и остальные форматы сохраняются в scope.
 
 ### SquashFS: metadata, fragments и независимые streams

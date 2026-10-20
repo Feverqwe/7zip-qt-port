@@ -1711,7 +1711,7 @@ struct CDatabase {
     HRESULT ParseSecuritySDS(ISequentialInStream *stream, const size_t size);
 #ifdef SEVENZIP_LINUX_NTFS
     HRESULT LoadMftAttributes(CMftRec &rec);
-    HRESULT LoadWslMetadata();
+    HRESULT LoadEaMetadata();
     HRESULT LoadSecurityIndex();
     HRESULT LoadLinks();
 #endif
@@ -2095,6 +2095,74 @@ struct CSecurityRead {
     }
 };
 
+struct CEaStreams {
+    CMftRec &Record;
+    CEaRead &Reader;
+    CObjectVector<AString> Names;
+
+    static int Visit(void *opaque, const char *name, size_t nameSize, const void *value,
+                     size_t valueSize) noexcept {
+        auto &self = *static_cast<CEaStreams *>(opaque);
+        try {
+            if (self.Reader.Callback)
+                self.Reader.Result = self.Reader.Callback->SetCompleted(nullptr, nullptr);
+            if (self.Reader.Result != S_OK)
+                return -EINVAL;
+            FOR_VECTOR(i, self.Names)
+            if (self.Names[i].Len() == nameSize && memcmp(self.Names[i].Ptr(), name, nameSize) == 0)
+                return 0; // Linux get_ea returns the first occurrence of a name.
+            AString rawName;
+            rawName.SetFrom(name, (unsigned)nameSize);
+            self.Names.Add(rawName);
+            AString base("$EA.");
+            static const char hex[] = "0123456789ABCDEF";
+            for (size_t i = 0; i < nameSize; ++i) {
+                const Byte c = (Byte)name[i];
+                if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') ||
+                    c == '.' || c == '_' || c == '-' || c == '$')
+                    base += (char)c;
+                else {
+                    base += '%';
+                    base += hex[c >> 4];
+                    base += hex[c & 15];
+                }
+            }
+            AString candidate(base);
+            for (UInt32 suffix = 0;;) {
+                UString wide;
+                wide = candidate.Ptr();
+                bool collision = false;
+                FOR_VECTOR(i, self.Record.DataAttrs)
+                if (!self.Record.DataAttrs[i].Name.IsEmpty() &&
+                    StringsAreEqualNoCase(self.Record.DataAttrs[i].Name.GetRawPtr(), wide)) {
+                    collision = true;
+                    break;
+                }
+                if (!collision)
+                    break;
+                char number[16];
+                ConvertUInt32ToString(++suffix, number);
+                candidate = base;
+                candidate += '#';
+                candidate += number;
+            }
+            CAttr &attr = self.Record.DataAttrs.AddNew();
+            attr.NonResident = 0;
+            attr.Flags = attr.Instance = attr.CompressionUnit = 0;
+            attr.LowVcn = 0;
+            attr.Name.SetFromAscii(candidate.Ptr());
+            attr.Data.CopyFrom((const Byte *)value, valueSize);
+            return 0;
+        } catch (const std::bad_alloc &) {
+            self.Reader.Result = E_OUTOFMEMORY;
+            return -ENOMEM;
+        } catch (...) {
+            self.Reader.Result = E_FAIL;
+            return -EINVAL;
+        }
+    }
+};
+
 HRESULT CDatabase::LoadSecurityIndex() {
     if (Recs.Size() <= kRecIndex_Security)
         return S_OK;
@@ -2201,7 +2269,7 @@ HRESULT CDatabase::LoadLinks() {
     return S_OK;
 }
 
-HRESULT CDatabase::LoadWslMetadata() {
+HRESULT CDatabase::LoadEaMetadata() {
     bool needed = false;
     FOR_VECTOR(i, Recs) {
         const CMftRec &rec = Recs[i];
@@ -2258,6 +2326,13 @@ HRESULT CDatabase::LoadWslMetadata() {
             return reader.Result;
         if (result)
             return result == -ENOMEM ? E_OUTOFMEMORY : S_FALSE;
+        CEaStreams streams{rec, reader, {}};
+        const int visitResult = sevenzip_ntfs_ea_visit(&input, CEaStreams::Visit, &streams);
+        if (reader.Result != S_OK)
+            return reader.Result;
+        if (visitResult)
+            return visitResult == -ENOMEM ? E_OUTOFMEMORY : S_FALSE;
+        rec.ParseDataNames();
         if (rec.Wsl.present) {
             const UInt32 type = rec.Wsl.mode & MY_LIN_S_IFMT;
             if (type != MY_LIN_S_IFDIR && type != MY_LIN_S_IFREG && type != MY_LIN_S_IFLNK &&
@@ -2519,7 +2594,7 @@ HRESULT CDatabase::Open() {
     }
 
 #ifdef SEVENZIP_LINUX_NTFS
-    RINOK(LoadWslMetadata())
+    RINOK(LoadEaMetadata())
     FOR_VECTOR(linkIndex, Recs) {
         CMftRec &rec = Recs[linkIndex];
         if (rec.ReparseDataIndex < 0)

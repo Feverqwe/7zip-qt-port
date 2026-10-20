@@ -27,11 +27,13 @@ class NtfsTests(unittest.TestCase):
         (cls.runtime / "Formats").mkdir()
         shutil.copy2(MODULE, cls.runtime / "Formats" / MODULE.name)
 
-    def run_image(self, engine, data, command="t", name=None):
+    def run_image(self, engine, data, command="t", name=None, streams=False):
         with tempfile.TemporaryDirectory(dir=self.runtime) as temporary:
             path = Path(temporary) / "образ 空.ntfs"
             path.write_bytes(data)
             args = [str(self.runtime / (engine + SUFFIX)), command, "-tNTFS", "-sccUTF-8", "-bsp0"]
+            if streams or (name and ":" in name):
+                args += ["-sns"]
             if command == "x":
                 args += ["-so", "-bso0", "-bse2"]
                 if name and ":" not in name:
@@ -58,6 +60,20 @@ class NtfsTests(unittest.TestCase):
         result = self.run_image("7z", image, "x", "alpha")
         self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
         self.assertEqual(result.stdout, files["alpha"])
+
+    def test_linux_ea_values_and_ads_namespaces(self):
+        for kind in ("ea-xattrs", "ea-xattrs-fragmented", "ea-xattrs-extension", "ea-xattrs-collision"):
+            image, files = volume(kind)
+            listing = self.run_image("7z", image, "l", streams=True)
+            self.assertEqual(listing.returncode, 0, listing.stderr)
+            for name, expected in files.items():
+                if not name.startswith("gamma:"):
+                    continue
+                with self.subTest(kind=kind, name=name):
+                    self.assertIn(name.encode(), listing.stdout)
+                    result = self.run_image("7z", image, "x", name)
+                    self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                    self.assertEqual(result.stdout, expected)
 
     def test_linux_ea_metadata_and_payload(self):
         for kind in EA_VALID:

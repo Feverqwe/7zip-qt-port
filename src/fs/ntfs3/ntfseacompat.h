@@ -14,6 +14,7 @@
 #define gid_t u32
 #define NI_FLAG_EA 0x20
 #define NTFS_DIRTY_DIRTY 1
+#define NTFS_DIRTY_ERROR 2
 #define ni_lock(ni) ((void)(ni))
 #define ni_unlock(ni) ((void)(ni))
 struct ATTRIB {

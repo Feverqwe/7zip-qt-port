@@ -26,11 +26,15 @@ class Input final : public IInStream, public CMyUnknownImp {
     HRESULT seekFailure = S_OK;
     bool eof = false;
     UInt64 failSeekAt = UINT64_MAX;
+    UInt64 cancelAt = UINT64_MAX;
+    bool cancelRequested = false;
     HRESULT failedSeekResult = E_FAIL;
     explicit Input(QByteArray bytes) : bytes_(std::move(bytes)) {}
     Z7_COM7F_IMF(Read(void *data, UInt32 size, UInt32 *processed)) override {
         if (processed)
             *processed = 0;
+        if (position_ <= cancelAt && cancelAt - position_ < size)
+            cancelRequested = true;
         if (failure != S_OK)
             return failure;
         if (eof)
@@ -93,12 +97,10 @@ class CancelOpen final : public IArchiveOpenCallback, public CMyUnknownImp {
 class CancelEaOpen final : public IArchiveOpenCallback, public CMyUnknownImp {
     Z7_COM_UNKNOWN_IMP_1(IArchiveOpenCallback)
   public:
-    unsigned checkpoints = 0, abortAt = UINT_MAX;
+    const Input *source = nullptr;
     Z7_COM7F_IMF(SetTotal(const UInt64 *, const UInt64 *)) override { return S_OK; }
-    Z7_COM7F_IMF(SetCompleted(const UInt64 *files, const UInt64 *bytes)) override {
-        if (!files && !bytes && ++checkpoints == abortAt)
-            return E_ABORT;
-        return S_OK;
+    Z7_COM7F_IMF(SetCompleted(const UInt64 *, const UInt64 *)) override {
+        return source && source->cancelRequested ? E_ABORT : S_OK;
     }
 };
 } // namespace
@@ -267,13 +269,42 @@ class NtfsStreamTests final : public QObject {
         source->failSeekAt = UINT64_MAX;
         CMyComPtr2<IArchiveOpenCallback, CancelEaOpen> callback;
         callback.SetFromCls(new CancelEaOpen);
-        callback->abortAt = 2; // AttrDef read succeeds; cancel in the nonresident EA read.
+        callback->source = source.ClsPtr();
+        source->cancelAt = 1102 * 4096;
         QCOMPARE(archive_->Open(source, nullptr, callback), E_ABORT);
-        callback->checkpoints = 0;
-        callback->abortAt = UINT_MAX;
+        source->cancelAt = UINT64_MAX;
+        source->cancelRequested = false;
         QCOMPARE(archive_->Open(source, nullptr, callback), S_OK);
-        QVERIFY(callback->checkpoints >= 2);
         check(stream("gamma"), "gamma", 0, 200000);
+    }
+    void eaValuesRetainTheirOwner_data() {
+        QTest::addColumn<QString>("kind");
+        for (const char *kind :
+             {"ea-xattrs", "ea-xattrs-fragmented", "ea-xattrs-extension", "ea-xattrs-collision"})
+            QTest::newRow(kind) << QString::fromLatin1(kind);
+    }
+    void eaValuesRetainTheirOwner() {
+        QFETCH(QString, kind);
+        loadFixture(kind);
+        CMyComPtr<IInStream> input = new Input(bytes_);
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        const QString name =
+            kind == "ea-xattrs-collision" ? "gamma:$EA.user.comment#1" : "gamma:$EA.user.comment";
+        auto value = stream(name);
+        auto empty = stream("gamma:$EA.user.empty");
+        QVERIFY(value && empty);
+        const QByteArray expected =
+            QByteArray::fromBase64(record_["files"].toObject()[name].toString().toLatin1());
+        QCOMPARE(archive_->Close(), S_OK);
+        input.Release();
+        archive_.Release();
+        char buffer[128];
+        UInt32 bytes = 99;
+        QCOMPARE(empty->Read(buffer, sizeof(buffer), &bytes), S_OK);
+        QCOMPARE(bytes, UInt32(0));
+        QCOMPARE(value->Read(buffer, sizeof(buffer), &bytes), S_OK);
+        QCOMPARE(QByteArray(buffer, int(bytes)), expected);
+        createArchive();
     }
     void reads_data() {
         QTest::addColumn<QString>("kind");
@@ -722,6 +753,7 @@ class NtfsStreamTests final : public QObject {
         QTest::newRow("corrupt") << QString("run-over-volume");
         QTest::newRow("WOF-XPRESS") << QString("wof-xpress4k");
         QTest::newRow("WSL-EA") << QString("ea-fragmented");
+        QTest::newRow("EA-values") << QString("ea-xattrs-collision");
         QTest::newRow("WOF-LZX") << QString("wof-lzx32k");
         QTest::newRow("fragmented-MFT") << QString("mft-list-nonresident");
         QTest::newRow("Unicode-link") << QString("link-unicode");
@@ -779,6 +811,18 @@ class NtfsStreamTests final : public QObject {
             QVERIFY(file.open(QIODevice::ReadOnly));
             QCOMPARE(file.readAll(), QByteArray::fromBase64(
                                          record_["files"].toObject()[name].toString().toLatin1()));
+        }
+        if (kind == "ea-xattrs-collision") {
+            finished.clear();
+            const QString saved = runtime.filePath("ea-value.bin");
+            const QString entry = "gamma:$EA.user.comment#1";
+            backend.extractSourceEntry(path, entry, saved, "NTFS", {}, true);
+            QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 10000);
+            QVERIFY2(finished[0][0].toBool(), qPrintable(finished[0][1].toString()));
+            QFile file(saved);
+            QVERIFY(file.open(QIODevice::ReadOnly));
+            QCOMPARE(file.readAll(), QByteArray::fromBase64(
+                                         record_["files"].toObject()[entry].toString().toLatin1()));
         }
         if (kind.startsWith("link-")) {
             QVERIFY(std::any_of(entries.cbegin(), entries.cend(), [](const ArchiveEntry &entry) {

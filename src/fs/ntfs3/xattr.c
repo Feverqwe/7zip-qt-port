@@ -163,6 +163,48 @@ out:
 }
 
 
+/* ntfs_list_ea: emit each validated name/value directly to the archive adapter
+ * instead of building a VFS name buffer and rereading the EA list per value. */
+static int ntfs_list_ea(struct ntfs_inode *ni, sevenzip_ntfs_ea_visit_fn visit, void *context)
+{
+	const struct EA_INFO *info;
+	struct EA_FULL *ea_all = NULL;
+	u32 off, size;
+	int err;
+
+	err = ntfs_read_ea(ni, &ea_all, 0, &info);
+	if (err)
+		return err;
+	if (!info || !ea_all)
+		return 0;
+
+	size = le32_to_cpu(info->size);
+	off = 0;
+	while (off + sizeof(struct EA_FULL) < size) {
+		const struct EA_FULL *ea = Add2Ptr(ea_all, off);
+		int ea_size = unpacked_ea_size(ea);
+		u8 name_len = ea->name_len;
+
+		if (!name_len)
+			break;
+		if (name_len > ea_size) {
+			ntfs_set_state(ni->mi.sbi, NTFS_DIRTY_ERROR);
+			err = -EINVAL;
+			break;
+		}
+		if (off + ea_size > size)
+			break;
+		err = visit(context, (const char *)ea->name, name_len, ea->name + name_len + 1,
+			    le16_to_cpu(ea->elength));
+		if (err)
+			goto out;
+		off += ea_size;
+	}
+out:
+	kfree(ea_all);
+	return err;
+}
+
 static int ntfs_get_ea(struct inode *inode, const char *name, size_t name_len,
 		       void *buffer, size_t size, size_t *required)
 {
@@ -250,6 +292,39 @@ void ntfs_get_wsl_perm(struct inode *inode)
 }
 
 
+static bool init_ea_context(const struct sevenzip_ntfs_ea_input *input,
+                            struct ntfs_sb_info *sbi, struct ntfs_inode *ni)
+{
+    /* ntfs_read_mft enables the EA path only for a resident complete EA_INFO. */
+    if (!input->info || input->info_size < sizeof(struct EA_INFO))
+        return false;
+    sbi->input = input;
+    sbi->ea_max_size = input->max_size;
+    ni->mi.sbi = sbi;
+    ni->info.data = input->info;
+    ni->info.bytes = input->info_size;
+    ni->ea.data = input->resident;
+    ni->ea.bytes = input->data_size;
+    ni->ea.non_res = input->nonresident;
+    if (!ni->ea.non_res && !ni->ea.data)
+        return false; /* No matching ATTR_EA, as in ntfs_read_ea. */
+    ni->vfs_inode.owner = ni;
+    ni->ni_flags = NI_FLAG_EA;
+    return true;
+}
+
+int sevenzip_ntfs_ea_visit(const struct sevenzip_ntfs_ea_input *input,
+                          sevenzip_ntfs_ea_visit_fn visit, void *context)
+{
+    struct ntfs_sb_info sbi = {0};
+    struct ntfs_inode ni = {0};
+    if (!visit)
+        return -EINVAL;
+    if (!init_ea_context(input, &sbi, &ni))
+        return 0;
+    return ntfs_list_ea(&ni, visit, context);
+}
+
 int sevenzip_ntfs_wsl_read(const struct sevenzip_ntfs_ea_input *input,
                           struct sevenzip_ntfs_wsl_perm *result)
 {
@@ -259,21 +334,8 @@ int sevenzip_ntfs_wsl_read(const struct sevenzip_ntfs_ea_input *input,
     const struct EA_INFO *info = NULL;
     int err;
     memset(result, 0, sizeof(*result));
-    /* ntfs_read_mft enables the EA path only for a resident complete EA_INFO. */
-    if (!input->info || input->info_size < sizeof(struct EA_INFO))
+    if (!init_ea_context(input, &sbi, &ni))
         return 0;
-    sbi.input = input;
-    sbi.ea_max_size = input->max_size;
-    ni.mi.sbi = &sbi;
-    ni.info.data = input->info;
-    ni.info.bytes = input->info_size;
-    ni.ea.data = input->resident;
-    ni.ea.bytes = input->data_size;
-    ni.ea.non_res = input->nonresident;
-    if (!ni.ea.non_res && !ni.ea.data)
-        return 0; /* No matching ATTR_EA, as in ntfs_read_ea. */
-    ni.vfs_inode.owner = &ni;
-    ni.ni_flags = NI_FLAG_EA;
     /* Eager archive validation reports corrupt EA/source errors at Open. */
     err = ntfs_read_ea(&ni, &ea, 0, &info);
     kfree(ea);

@@ -1,4 +1,4 @@
-"""NTFS3 WSL permissions in real creator MFT records and EA attributes."""
+"""NTFS3 EA values and WSL permissions in real creator MFT records."""
 import stat
 import struct
 from ntfs_fixture import attributes, nonresident, put, record, save_record, u16, u32, u64
@@ -12,7 +12,7 @@ BAD = ("ea-record-small", "ea-record-overrun", "ea-record-short", "ea-info-zero"
 
 
 def properties(kind):
-    if kind in ("ea-incomplete", "ea-long-uid", "ea-short-info", "ea-no-data"):
+    if kind.startswith("ea-xattrs") or kind in ("ea-incomplete", "ea-long-uid", "ea-short-info", "ea-no-data"):
         return {}
     mode = {"ea-directory": stat.S_IFDIR, "ea-chr": stat.S_IFCHR, "ea-blk": stat.S_IFBLK,
             "ea-fifo": stat.S_IFIFO, "ea-sock": stat.S_IFSOCK}.get(kind, stat.S_IFREG) | 0o751
@@ -73,6 +73,27 @@ def volume(kind):
         mode = 0o751
     values = [("$LXUID", struct.pack("<I", 2067)), ("$LXGID", struct.pack("<I", 4097)),
               ("$LXMOD", struct.pack("<I", mode)), ("$LXDEV", struct.pack("<I", (123 << 20) | 4567))]
+    if kind.startswith("ea-xattrs"):
+        values = [("user.comment", b"EA payload\0with binary\xff"), ("user.empty", b""),
+                  ("user.имя", b"Unicode name"), ("user.slash/name:evil", b"escaped name"),
+                  ("user.case", b"lower"), ("user.CASE", b"upper"),
+                  ("user.comment", b"stale duplicate")]
+        if kind == "ea-xattrs-fragmented":
+            values.insert(0, ("user.large", b"F" * 9000))
+        seen = set()
+        for name, value in values:
+            if name in seen:
+                continue
+            seen.add(name)
+            escaped = ''.join(chr(c) if chr(c).isascii() and (chr(c).isalnum() or chr(c) in '._-$')
+                              else '%%%02X' % c for c in name.encode())
+            suffix = '#1' if name == 'user.CASE' or (kind == 'ea-xattrs-collision' and
+                                                    name == 'user.comment') else ''
+            files['gamma:$EA.' + escaped + suffix] = value
+        if kind == "ea-xattrs-collision":
+            from ntfs_security_fixture import named_resident
+            attrs.append(named_resident(0x80, "$EA.user.comment", b"original ADS", 15))
+            files['gamma:$EA.user.comment'] = b"original ADS"
     if kind == "ea-incomplete":
         values.pop(1)
     if kind == "ea-long-uid":
@@ -108,7 +129,7 @@ def volume(kind):
         put(std, u16(std, 20) + 32, "I", u32(std, u16(std, 20) + 32) | 0x10)
     info_attr = resident(0xD0, info, 12)
     ea_attr = resident(0xE0, data, 13)
-    if kind in ("ea-nonresident", "ea-fragmented", "ea-attr-overrun"):
+    if kind in ("ea-nonresident", "ea-fragmented", "ea-attr-overrun", "ea-xattrs-fragmented"):
         count = (len(data) + 4095) // 4096
         clusters = [1100 + 2 * i for i in range(count)]
         for i, cluster in enumerate(clusters):
@@ -134,7 +155,7 @@ def volume(kind):
             if u32(image, pos + 0x80) == 0xE0:
                 put(image, pos + 0x98, "Q", 32)
                 break
-    if kind == "ea-extension":
+    if kind in ("ea-extension", "ea-xattrs-extension"):
         extension = bytearray(rec)
         put(extension, 16, "H", 2)
         put(extension, 32, "Q", 66 | (u16(rec, 16) << 48))
@@ -148,7 +169,7 @@ def volume(kind):
         attrs.insert(1, resident(0x20, b"".join(rows), 14))
         allocated(image, 0, 0xB0, [16])
     attrs.append(info_attr)
-    if kind not in ("ea-no-data", "ea-extension"):
+    if kind not in ("ea-no-data", "ea-extension", "ea-xattrs-extension"):
         attrs.append(ea_attr)
     set_attributes(image, offset, rec, attrs)
     if kind in ("ea-chr", "ea-blk", "ea-fifo", "ea-sock"):
