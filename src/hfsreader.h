@@ -26,6 +26,7 @@ int hfsplus_cat_read_inode(const void *permissions, int directory,
                           struct sevenzip_hfsplus_inode *result);
 int hfsplus_brec_read_cat(const void *record, size_t length);
 int hfsplus_getxattr_finder_info(const void *record, size_t length, void *value, size_t size);
+int __hfsplus_getxattr(const void *record, size_t length, void *value, size_t size);
 struct sevenzip_hfsplus_record {
     uint32_t id, parent, creation, special, file_type, creator;
     int is_directory;

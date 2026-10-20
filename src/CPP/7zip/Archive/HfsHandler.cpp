@@ -1108,11 +1108,13 @@ HRESULT CDatabase::LoadAttrs(const CFork &fork, IInStream *inStream,
             // UInt16 pad = Get16(r + 2);
             const UInt32 fileID = Get32(r + 4);
             const unsigned startBlock = Get32(r + 8);
+#ifndef SEVENZIP_LINUX_HFS
             if (startBlock != 0) {
                 // that case is still unsupported
                 UnsupportedFeature = true;
                 continue;
             }
+#endif
             const unsigned nameLen = Get16(r + 12);
 
             if (keyLen + 2 > recSize || keyLen != kHeadSize - 2 + nameLen * 2)
@@ -1128,6 +1130,13 @@ HRESULT CDatabase::LoadAttrs(const CFork &fork, IInStream *inStream,
                 return S_FALSE;
 
             const UInt32 recordType = Get32(r);
+#ifdef SEVENZIP_LINUX_HFS
+            // Linux's attribute comparator uses CNID and name, not startBlock.
+            if (startBlock != 0 && recordType != kAttrRecordType_Inline) {
+                UnsupportedFeature = true;
+                continue;
+            }
+#endif
 
             if (progress && (Attrs.Size() & 0xFFF) == 0) {
                 const UInt64 numFiles = 0;
@@ -1154,10 +1163,24 @@ HRESULT CDatabase::LoadAttrs(const CFork &fork, IInStream *inStream,
                 attr.Fork_defined = true;
                 continue;
             } else if (recordType != kAttrRecordType_Inline) {
+#ifdef SEVENZIP_LINUX_HFS
+                return S_FALSE;
+#else
                 UnsupportedFeature = true;
                 continue;
+#endif
             }
 
+#ifdef SEVENZIP_LINUX_HFS
+            const int linuxSize = __hfsplus_getxattr(r, recSize, NULL, 0);
+            if (linuxSize >= 0) {
+                attr.Data.Alloc((size_t)linuxSize);
+                if (__hfsplus_getxattr(r, recSize, attr.Data, (size_t)linuxSize) != linuxSize)
+                    return S_FALSE;
+                continue;
+            }
+            // Preserve the SDK's larger inline values outside Linux's limit.
+#endif
             const unsigned kRecordHeaderSize = 16;
             if (recSize < kRecordHeaderSize)
                 return S_FALSE;

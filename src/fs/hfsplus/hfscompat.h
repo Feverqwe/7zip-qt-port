@@ -5,14 +5,19 @@
 #include <errno.h>
 #include <string.h>
 typedef uint8_t u8;
+typedef int8_t s8;
 typedef uint16_t u16;
+typedef int16_t s16;
 typedef uint32_t u32;
-typedef u16 hfsplus_unichr;
-#define HFSPLUS_MAX_STRLEN 255
-#define HFSPLUS_ATTR_MAX_STRLEN 127
-enum { HFS_REGULAR_NAME, HFS_XATTR_NAME };
-struct hfsplus_unistr { u16 length; hfsplus_unichr unicode[HFSPLUS_MAX_STRLEN]; };
-struct hfsplus_attr_unistr { u16 length; hfsplus_unichr unicode[HFSPLUS_ATTR_MAX_STRLEN]; };
+typedef u16 __be16;
+typedef u32 __be32;
+typedef uint64_t __be64;
+#define __packed
+#define struct_group_attr(name, attr, ...) union { struct { __VA_ARGS__ }; struct { __VA_ARGS__ } name; }
+#pragma pack(push, 1)
+#include "../../../third_party/linux/include/linux/hfs_common.h"
+#pragma pack(pop)
+#undef struct_group_attr
 struct nls_table { int (*uni2char)(u16, unsigned char *, int); };
 struct super_block { struct nls_table *nls; unsigned long flags; };
 #define HFSPLUS_SB(sb) (sb)

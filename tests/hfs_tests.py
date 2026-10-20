@@ -84,6 +84,21 @@ class HfsTests(unittest.TestCase):
                     self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
                     self.assertEqual(result.stdout, expected)
 
+    def test_linux_inline_xattr_records(self):
+        name = "HfsFixture/alpha:com.sevenzip.fixture"
+        for kind in ("xattr-reserved", "xattr-padding", "xattr-start", "xattr-empty", "xattr-limit",
+                     "xattr-large"):
+            with self.subTest(kind=kind):
+                image, files = volume(kind)
+                result = self.run_image("7z", image, name)
+                self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                self.assertEqual(result.stdout, files[name])
+        for kind in ("xattr-short", "xattr-unknown"):
+            with self.subTest(kind=kind):
+                result = self.run_image("7z", volume(kind)[0], name)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(result.stdout, b"")
+
     def test_classic_hfs_metadata_failures(self):
         for kind in ("classic-bad-fork", "classic-short-fork", "classic-bad-cnid",
                      "classic-thread-parent", "classic-leaf-cycle", "classic-node-offset",

@@ -187,6 +187,8 @@ class HfsStreamTests final : public QObject {
         QTest::addColumn<QString>("kind");
         QTest::newRow("overflow") << QString("overflow-leaves");
         QTest::newRow("hardlinks") << QString("modern");
+        QTest::newRow("inline-reserved") << QString("xattr-reserved");
+        QTest::newRow("inline-start") << QString("xattr-start");
         for (const char *kind : {"classic", "classic-overflow", "classic-catalog-overflow",
                                  "classic-non-power-of-two"})
             QTest::newRow(kind) << QString::fromLatin1(kind);
@@ -486,9 +488,10 @@ class HfsStreamTests final : public QObject {
     void backendExtraction_data() {
         QTest::addColumn<QString>("kind");
         for (const char *kind :
-             {"preallocated", "overflow-leaves", "extent-over-volume", "modern", "modern-nul",
-              "modern-zlib", "modern-lzvn", "modern-permissions", "modern-times", "classic",
-              "classic-overflow", "classic-catalog-overflow", "classic-non-power-of-two"})
+             {"preallocated", "overflow-leaves", "extent-over-volume", "xattr-padding", "modern",
+              "modern-nul", "modern-zlib", "modern-lzvn", "modern-permissions", "modern-times",
+              "classic", "classic-overflow", "classic-catalog-overflow",
+              "classic-non-power-of-two"})
             QTest::newRow(kind) << QString::fromLatin1(kind);
     }
     void backendExtraction() {

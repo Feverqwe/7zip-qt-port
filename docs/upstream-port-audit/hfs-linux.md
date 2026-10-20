@@ -197,6 +197,50 @@ private directory остаётся видимой как в исходном arc
 - Character/block devices сообщают исходные major/minor. Regular file link count
   и единичные ссылки специальных inode определяет перенесённый Linux read path.
 
+## Inline attribute records
+
+Следующая сверка полных `xattr.c:__hfsplus_getxattr`, list/get callers,
+`attributes.c:hfsplus_find_attr`/`hfsplus_attr_bin_cmp_key` и disk types
+обнаружила расхождения с `HfsHandler.cpp:LoadAttrs`. Inline value теперь читает
+перенесённый C `__hfsplus_getxattr`: 16-битная length, предел Linux и правила
+размера output buffer. Reserved bytes не участвуют в длине и не требуют нуля.
+Большие inline values вне kernel limit сохраняют существующий SDK read path
+с его 32-битной длиной и строгими header/bounds checks. Это расширение SDK,
+как decmpfs, а не заявленная возможность Linux xattr API.
+Ненулевой `startBlock` не скрывает inline attribute: Linux comparator использует
+CNID и name. Fork/extent attributes остаются прежним расширением SDK; Linux
+сам не читает их values. Неизвестный record type не принимается за inline value.
+
+Adapter получает уже найденный bounded record вместо inode/B-tree lookup и
+slab allocation. Проверка границ header/value относительно record дополняет
+Linux checks, чтобы archive reader не копировал соседние metadata bytes.
+Disk layout берётся из единственного exact `include/linux/hfs_common.h`, который
+теперь переиспользуют оба семейства; локальные дубликаты Unicode structs удалены.
+VFS namespace/capability policy, запись и mount services не переносятся.
+Standalone сохраняет прежний LGPL reader; GPL helper подключён только к модулю.
+
+CLI проверяет reserved/padding/startBlock, empty/maximal/large values и отказы для
+short/unknown records. Старый модуль воспроизвёл три ошибочных отказа.
+ABI дополнительно проверяет независимость и lifetime таких attribute streams,
+backend — реальные SourceEntry bytes.
+
+Focused6 (`hfs`, `hfs_stream`, runtime packaging, extraction security и два
+provenance suites) прошли на macOS ARM64, Linux x64 и Windows x64/MSVC.
+Linux receipt `20261020T163041Z-f8ab4173`, Windows
+`20261020T163013Z-e6573722`. Финальное сохранение больших SDK values проверено
+всеми шестью suites на macOS (14,91 с) и четырьмя HFS/provenance suites на
+обоих runners (`20261020T163222Z-4bc7f41a`). Непосредственно затронутые C++
+участки отформатированы; incremental build trees и compiler caches сохранены.
+
+Native Linux hfsplus `6.8.0-147-generic` прочитал точные bytes пяти вариантов
+(reserved/padding/startBlock/empty/kernel limit), вернул EIO для неизвестного
+типа и значения выше kernel limit: `20261020T163011Z-3aef9b8d`. Последнее
+модуль продолжает читать как SDK extension. Все семь read-only images сохранили
+SHA256; temporary images/mounts и одноразовый review script удалены. Short record
+не передавался старому kernel; archive boundary проверяет его собственные bounds.
+Версия running kernel отличается от pinned source baseline. Full/slow gate,
+UI и физические устройства не проверялись; общий HFS read audit остаётся открытым.
+
 ## Проверки и оставшийся scope
 
 Локальный fixture создан Apple `hdiutil` из сгенерированных данных;

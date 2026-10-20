@@ -45,7 +45,47 @@ def volume(kind="base"):
         "HfsFixture/alpha:rsrc": b"Resource fork\n" * 173,
         "HfsFixture/alpha:com.sevenzip.fixture": b"inline attribute content",
     }
-    if kind in ("preallocated", "empty-preallocated"):
+    if kind.startswith("xattr-"):
+        attr = get32(1024 + 0x160 + 16) * block
+        ns = get16(attr + 32)
+        attr_leaf = attr + get32(attr + 24) * ns
+        entries = []
+        for i in range(get16(attr_leaf + 10)):
+            start = attr_leaf + get16(attr_leaf + ns - (i + 1) * 2)
+            end = attr_leaf + get16(attr_leaf + ns - (i + 2) * 2)
+            entry = bytearray(image[start:end])
+            key_size = 2 + struct.unpack_from(">H", entry)[0]
+            name = entry[14:key_size].decode("utf-16-be")
+            if name == "com.sevenzip.fixture":
+                payload = files["HfsFixture/alpha:com.sevenzip.fixture"]
+                if kind == "xattr-reserved":
+                    entry[key_size + 4:key_size + 12] = bytes(range(1, 9))
+                elif kind == "xattr-padding":
+                    struct.pack_into(">H", entry, key_size + 12, 0xbeef)
+                elif kind == "xattr-start":
+                    struct.pack_into(">I", entry, 8, 17)
+                elif kind in ("xattr-empty", "xattr-limit", "xattr-large"):
+                    length = 0 if kind == "xattr-empty" else 3802 if kind == "xattr-limit" else 3803
+                    payload = bytes(i % 251 for i in range(length))
+                    entry = entry[:key_size] + struct.pack(">IIII", 0x10, 0, 0, length) + payload
+                    entry += bytes(len(entry) % 2)
+                elif kind == "xattr-short":
+                    struct.pack_into(">H", entry, key_size + 14, len(payload) + 2)
+                elif kind == "xattr-unknown":
+                    struct.pack_into(">I", entry, key_size, 0x40)
+                else:
+                    raise ValueError(kind)
+                files["HfsFixture/alpha:com.sevenzip.fixture"] = payload
+            entries.append(entry)
+        image[attr_leaf + 14:attr_leaf + ns] = bytes(ns - 14)
+        offset = 14
+        for i, entry in enumerate(entries):
+            put16(attr_leaf + ns - (i + 1) * 2, offset)
+            image[attr_leaf + offset:attr_leaf + offset + len(entry)] = entry
+            offset += len(entry)
+        assert offset <= ns - (len(entries) + 1) * 2
+        put16(attr_leaf + ns - (len(entries) + 1) * 2, offset)
+    elif kind in ("preallocated", "empty-preallocated"):
         size = 1024 if kind == "preallocated" else 0
         struct.pack_into(">Q", image, fork, size)
         files["HfsFixture/alpha"] = files["HfsFixture/alpha"][:size]

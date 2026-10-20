@@ -341,6 +341,8 @@ xattrs и inode metadata проходят ABI/backend. Подключены Linu
 Linux inode projection также передаёт timestamp rollover и special-device metadata.
 Добавлен Linux C reader plain classic HFS: MDB/B-tree, data/resource и catalog
 overflow forks, имена, lock/default metadata и type/creator streams.
+Inline xattr values читает Linux C path с его 16-битной длиной и пределом размера;
+reserved bytes и ненулевой startBlock не скрывают читаемые Linux attributes.
 Дальнейший metadata/read audit остаётся в scope актуализации.
 
 ### NTFS: classic data reads и LZNT1
