@@ -238,6 +238,14 @@ Z7_COM7F_IMF(CHandler::GetProperty(UInt32 index, PROPID propID, PROPVARIANT *val
     const CRef &ref = vol.FileSets[ref2.Fs].Refs[ref2.Ref];
     const CFile &file = _archive.Files[ref.FileIndex];
     const CItem &item = _archive.Items[file.ItemIndex];
+#ifdef SEVENZIP_LINUX_UDF
+    // USE has no FE/EFE timestamps. Do not publish uninitialized VFS/slab dates.
+    if (item.IsUnallocated && (propID == kpidMTime || propID == kpidATime || propID == kpidCTime ||
+                               propID == kpidChangeTime)) {
+        prop.Detach(value);
+        return S_OK;
+    }
+#endif
     switch (propID)
     {
       case kpidPath:  prop = _archive.GetItemPath(ref2.Vol, ref2.Fs, ref2.Ref,

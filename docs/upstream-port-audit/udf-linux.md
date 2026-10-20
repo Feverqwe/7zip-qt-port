@@ -863,3 +863,81 @@ Actual macOS CMake install проверил все 247 положительны�
 test/extraction, unchanged source images и три точных notices; staging удалён.
 Incremental build trees/caches сохранены. Full/slow/UI/physical-device acceptance
 не выполнялась.
+
+## Physical inode cache и USE publication
+
+Полностью сравнены закреплённые Linux `__udf_iget`, `udf_read_inode`,
+`udf_iget_special`, VAT/metadata callers, partition mappers и read-side inode
+consumers. Дополнительно прочитаны VFS `inode_init_always_gfp`, `iget_locked`,
+allocation/failed-inode/unlock dependencies в `fs/inode.c`; этот reference
+добавлен в [manifest](../udf-linux-baseline.json), без объявления переноса VFS.
+Сверены исходные 7-Zip `ReadFileItem`, `ReadItem`, cache maps, file/ref consumers,
+stream ownership и FE/EFE properties. После реализации повторно сравнены bodies.
+
+Исходный `__udf_iget` перенесён в `src/fs/udf/inode.c`: единственное изменение
+body — получение физического ключа через существующий archive partition mapper
+вместо kernel block-device boundary. Сохранены cached/new branches, hidden-role
+check, location assignment, `udf_read_inode`, failed-inode и unlock paths.
+Новый inode по-прежнему проверяет partition length; найденный physical cache
+alias возвращается до этой проверки, как в Linux. Начальный ICB cache key
+сохраняется при strategy-4096 indirection, отдельно от resolved inode location.
+Archive projection и C reader используют один вычисленный cache key: краткая
+ошибка AED с mirror fallback не заменяет его при восстановлении primary.
+
+Linux VFS inode allocator/cache нельзя использовать независимо от kernel
+objects, locks, RCU и reclaim. Узкие serialized adapters используют готовый
+7-Zip `CMap32`, owned C inode records и C++ shared ownership на время архива.
+Кеш общий для hidden VAT/metadata и visible inode; готовые archive items также
+индексируются физическим ключом. Это заменяет прежние раздельные logical-block
+кеши разделов, не создавая второй UDF parser. Неудачная инициализация очищает
+buffers и позволяет повторить запрос; recursive lookup собственного незавершённого
+inode возвращает input error вместо невозможного serialized wait. Mapping/progress
+errors не заменяются последующим чтением. Request-local superblock pointer
+отсоединяется до выхода из callback; кеш удерживает только owned buffers/values.
+Archive Close/reopen освобождает кеш, retained payload streams живут независимо.
+VFS eviction, concurrent waits и host inode services не имитируются.
+
+USE теперь проходит native reader и публикует UID/GID, links и нулевой размер,
+не интерпретируя free-space AD как обычное содержимое. Hidden USE allocation data
+и `i_use` передаются metadata mapper; проверен read-only образ с таким backing.
+Публичный USE имеет unavailable stream, не становится directory по одному raw
+ICB file-type hint и не получает FE/EFE timestamps. Здесь есть намеренная
+адаптация: Linux ранний USE return оставляет mode/timestamps без инициализации
+из descriptor; при native runs видны разные остаточные slab types. Archive
+adapter задаёт нулевой mode и не публикует случайные даты. VFS defaults для
+определённых UID/GID, links и size сохранены. Root требует настоящего directory.
+
+Десять новых payload variants совпали с native Linux `6.8.0-147-generic`:
+unknown/duplicate maps, alias за partition length, inline и indirect inode,
+sparable/VAT/metadata physical keys и USE metadata backing. Четыре публичных
+USE variants совпали по определённым metadata fields и отсутствию открываемого
+потока. Семь отрицательных случаев отвергнуты native mount/lookup: fresh alias,
+hidden metadata/root/VAT conflicts, non-directory USE root и invalid AD type.
+Нативный mode USE не закреплён как требование. Oversized USE allocation length
+проверяется только модулем по актуальной исходной проверке Linux: runner 6.8
+ещё допускает stat такого inode. Опасное чтение его allocation data не выполнялось.
+Все temporary mounts/images удалены.
+
+CLI проверяет exact alias bytes, metadata-only properties, unavailable streams
+и обычный code 2 для oversized USE. ABI дополняет EOF/interleaved/retained
+streams семью cache/backing variants; четыре USE проверяют typed properties,
+unset times и E_NOTIMPL stream. Hidden-role failures проверены вместе с пустым
+публичным результатом и успешным reopen того же archive object. Прежние source
+I/O, cancellation и cyclic allocation regressions сохранены. Отдельная transient
+I/O regression воспроизводит ошибочную публикацию physical alias без передачи
+исходного ключа, и проходит после исправления. `UdfLinux.cpp`
+после добавления bridge содержит около 500 строк: порог разделения рассмотрен;
+context и helpers остаются одной C/stream boundary, без новой UI ответственности.
+Широкое перемещение существующих callback consumers в этой итерации не требуется.
+
+Эта source-port сверка закрывает перечисленные cache/USE gaps, но не весь UDF
+audit. Read-only allocation-info dependencies PD и archive traversal limits
+остаются следующими сценариями; write paths и standalone decoder границы прежние.
+
+Финальные пять focused suites (`udf`, `udf_stream`, `upstream_baseline`,
+`runtime_cache`, `runtime_package`) прошли на macOS arm64, Linux x64 и
+Windows x64/MSVC; remote receipt `20261020T031230Z-9e366c31`.
+Actual macOS CMake install проверил 257 payload variants и четыре публичных
+USE metadata-only scenarios, unchanged source images и три точных notices.
+Temporary staging/fixtures удалены; incremental build trees/cache сохранены.
+Full/slow/UI/physical-device acceptance не выполнялась.

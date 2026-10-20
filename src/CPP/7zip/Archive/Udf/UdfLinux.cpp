@@ -19,6 +19,7 @@ struct CInArchive::CLinuxContext {
     HRESULT progressResult = S_OK;
     unsigned fileSet = 0;
     int recurse = 0;
+    const UInt32 *inodeKey = nullptr;
 
     static int DirectoryEntry(void *opaque, Byte flags, const void *icb, const void *name,
                               Byte size) {
@@ -110,6 +111,7 @@ struct CInArchive::CVatBuilder {
                 file->block = source->item.Location.Pos;
                 file->allocation_type = source->item.IcbTag.GetDescriptorType();
                 file->extended = source->item.IsExtended;
+                file->unallocated = source->item.IsUnallocated;
                 file->allocation_size = (UInt32)source->item.LinuxAllocData.Size();
                 file->allocation_data = source->item.LinuxAllocData;
                 file->inline_data = source->item.IsInline;
@@ -313,9 +315,67 @@ int CInArchive::ReadLinuxBlock(void *opaque, UInt16 partition, UInt32 block, voi
     return c.result == S_OK ? 0 : -1;
 }
 
-HRESULT CInArchive::ReadLinuxItem(unsigned volIndex, CLongAllocDesc &location, CByteBuffer &data,
-                                  CItem &item, bool hidden, HRESULT *progressResult) {
+sevenzip_udf_cached_inode *CInArchive::GetLinuxInode(void *opaque, UInt32 block) {
+    auto &context = *static_cast<CLinuxContext *>(opaque);
+    if (context.result != S_OK)
+        return nullptr;
+    try {
+        CLogVol &volume = context.archive->LogVols[context.volume];
+        UInt32 index;
+        if (volume.NativeIndex.Find(block, index))
+            return volume.NativeInodes[index].get();
+        std::shared_ptr<sevenzip_udf_cached_inode> inode(sevenzip_udf_inode_create(),
+                                                         sevenzip_udf_inode_free);
+        if (!inode) {
+            context.result = E_OUTOFMEMORY;
+            return nullptr;
+        }
+        index = volume.NativeInodes.Size();
+        volume.NativeInodes.Add(inode);
+        volume.NativeIndex.Set(block, index);
+        return inode.get();
+    } catch (...) {
+        context.result = E_OUTOFMEMORY;
+        return nullptr;
+    }
+}
+
+UInt32 CInArchive::MapLinuxInode(void *opaque, UInt16 partition, UInt32 block) {
+    auto &context = *static_cast<CLinuxContext *>(opaque);
+    if (context.inodeKey)
+        return *context.inodeKey;
+    try {
+        UInt64 offset;
+        UInt32 size;
+        // __udf_iget resolves its cache key before udf_read_inode checks partition length.
+        context.result = context.archive->GetPhysicalSpan(context.volume, partition, block, 0,
+                                                          offset, size, 0, false);
+        if (context.result != S_OK)
+            return UINT32_MAX;
+        const UInt64 physical = offset / context.archive->LogVols[context.volume].BlockSize;
+        if (physical >= UINT32_MAX) {
+            context.result = S_FALSE;
+            return UINT32_MAX;
+        }
+        return (UInt32)physical;
+    } catch (...) {
+        context.result = E_FAIL;
+        return UINT32_MAX;
+    }
+}
+
+HRESULT CInArchive::GetLinuxInodeKey(unsigned volIndex, const CLongAllocDesc &location,
+                                     UInt32 &key) {
     CLinuxContext context{this, volIndex, nullptr};
+    key = MapLinuxInode(&context, location.Location.PartitionRef, location.Location.Pos);
+    return context.result;
+}
+
+HRESULT CInArchive::ReadLinuxItem(unsigned volIndex, CLongAllocDesc &location, CByteBuffer &data,
+                                  CItem &item, bool hidden, HRESULT *progressResult,
+                                  const UInt32 *inodeKey) {
+    CLinuxContext context{this, volIndex, nullptr};
+    context.inodeKey = inodeKey;
     const bool previousUnexpectedEnd = UnexpectedEnd;
     const CLogVol &vol = LogVols[volIndex];
     CRecordVector<UInt32> lengths;
@@ -325,9 +385,9 @@ HRESULT CInArchive::ReadLinuxItem(unsigned volIndex, CLongAllocDesc &location, C
                     : 0);
     uint16_t partition = location.Location.PartitionRef;
     uint32_t block = location.Location.Pos;
-    const int result =
-        sevenzip_udf_icb(&context, ReadLinuxBlock, vol.BlockSize, &lengths[0], lengths.Size(),
-                         &partition, &block, data, hidden, &item.LinuxAttributes);
+    const int result = sevenzip_udf_icb(&context, ReadLinuxBlock, GetLinuxInode, MapLinuxInode,
+                                        vol.BlockSize, &lengths[0], lengths.Size(), &partition,
+                                        &block, data, hidden, &item.LinuxAttributes);
     if (context.progressResult != S_OK) {
         if (progressResult)
             *progressResult = context.progressResult;

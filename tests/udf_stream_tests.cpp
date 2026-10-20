@@ -24,6 +24,7 @@ class Input final : public IInStream, public CMyUnknownImp {
     HRESULT readFailure = S_OK;
     HRESULT seekFailure = E_FAIL;
     UInt64 failSeekAt = UINT64_MAX;
+    bool failSeekOnce = false;
     UInt64 lastSeek = 0;
     explicit Input(QByteArray bytes) : bytes_(std::move(bytes)) {}
     Z7_COM7F_IMF(Read(void *data, UInt32 size, UInt32 *processed)) override {
@@ -45,8 +46,11 @@ class Input final : public IInStream, public CMyUnknownImp {
     Z7_COM7F_IMF(Seek(Int64 offset, UInt32 origin, UInt64 *position)) override {
         if (failure != S_OK)
             return failure;
-        if (origin == STREAM_SEEK_SET && UInt64(offset) == failSeekAt)
+        if (origin == STREAM_SEEK_SET && UInt64(offset) == failSeekAt) {
+            if (failSeekOnce)
+                failSeekAt = UINT64_MAX;
             return seekFailure;
+        }
         if (origin > STREAM_SEEK_END)
             return E_INVALIDARG;
         const Int64 base = origin == STREAM_SEEK_SET   ? 0
@@ -226,6 +230,9 @@ class UdfStreamTests final : public QObject {
     void init() { createArchive(); }
     void allocationStreams_data() {
         QTest::addColumn<QString>("kind");
+        for (const char *kind : {"uc-unknown", "uc-bounded", "uc-indirect", "uc-sparable",
+                                 "uc-virtual", "uc-metadata", "uc-use-metadata"})
+            QTest::newRow(kind) << QString::fromLatin1(kind);
         for (const char *kind : {"pm-unknown-before", "pm-many", "pm-unknown-data",
                                  "pm-duplicate-data", "pm-unknown-fsd"})
             QTest::newRow(kind) << QString::fromLatin1(kind);
@@ -387,6 +394,10 @@ class UdfStreamTests final : public QObject {
                                  "ia-device-tag-crc",
                                  "ia-device-max",
                                  "ia-device-payload",
+                                 "uc-use-short",
+                                 "uc-use-long",
+                                 "uc-use-inline",
+                                 "uc-use-chain",
                                  "ia-unaligned-ea",
                                  "ia-efe-owner",
                                  "ia-efe-device",
@@ -450,7 +461,7 @@ class UdfStreamTests final : public QObject {
                 QCOMPARE(size.vt, VARTYPE(VT_UI8));
                 QCOMPARE(size.uhVal.QuadPart, UInt64(expected["size"].toInteger()));
             }
-            if (kind == "ia-device-payload") {
+            if (kind == "ia-device-payload" || kind.startsWith("uc-use-")) {
                 CMyComPtr<IInArchiveGetStream> provider;
                 QCOMPARE(archive_->QueryInterface(IID_IInArchiveGetStream,
                                                   reinterpret_cast<void **>(&provider)),
@@ -459,12 +470,20 @@ class UdfStreamTests final : public QObject {
                 QCOMPARE(provider->GetStream(i, &data), E_NOTIMPL);
                 QVERIFY(!data);
             }
+            if (kind.startsWith("uc-use-")) {
+                for (PROPID property : {kpidMTime, kpidATime, kpidCTime, kpidChangeTime}) {
+                    NWindows::NCOM::CPropVariant time;
+                    QCOMPARE(archive_->GetProperty(i, property, &time), S_OK);
+                    QCOMPARE(time.vt, VARTYPE(VT_EMPTY));
+                }
+            }
         }
         QCOMPARE(checked.size(), attributes_.size());
+        const bool metadataOnly = kind == "ia-device-payload" || kind.startsWith("uc-use-");
         for (auto i = files_.begin(); i != files_.end(); ++i)
-            if (kind != "ia-device-payload" || i.key() != "alpha.bin")
+            if (!metadataOnly || i.key() != "alpha.bin")
                 check(stream(i.key()), QByteArray::fromHex(i.value().toString().toLatin1()));
-        const QString retainedName = kind == "ia-device-payload" ? "nested/tail.bin" : "alpha.bin";
+        const QString retainedName = metadataOnly ? "nested/tail.bin" : "alpha.bin";
         auto retained = stream(retainedName);
         const QByteArray expected = QByteArray::fromHex(files_[retainedName].toString().toLatin1());
         QCOMPARE(archive_->Close(), S_OK);
@@ -577,6 +596,38 @@ class UdfStreamTests final : public QObject {
         archive_.Release();
         check(alpha, expected);
         check(beta, QByteArray("directory payload"));
+    }
+    void metadataCacheKeySurvivesTransientMappingFailure() {
+        fixture("uc-rekey");
+        CMyComPtr2<IInStream, Input> input;
+        input.SetFromCls(new Input(bytes_));
+        input->failSeekAt = UInt64(390) * 2048;
+        input->failSeekOnce = true;
+        // The first key uses the mirror; the FE read then recovers the primary.
+        // Its physical alias must not inherit an inode cached under another key.
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_FALSE);
+        UInt32 count = 99;
+        QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, UInt32(0));
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        check(stream("alias.bin"), QByteArray::fromHex(files_["alias.bin"].toString().toLatin1()));
+    }
+    void hiddenRolesAndReopen() {
+        for (const char *kind :
+             {"uc-hidden-metadata", "uc-hidden-root", "uc-hidden-vat15", "uc-hidden-vat20"}) {
+            fixture(QString::fromLatin1(kind));
+            CMyComPtr<IInStream> damaged = new Input(bytes_);
+            QCOMPARE(archive_->Open(damaged, nullptr, nullptr), S_FALSE);
+            UInt32 count = 99;
+            QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+            QCOMPARE(count, UInt32(0));
+            fixture("uc-metadata");
+            CMyComPtr<IInStream> input = new Input(bytes_);
+            QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+            check(stream("alias.bin"),
+                  QByteArray::fromHex(files_["alias.bin"].toString().toLatin1()));
+            QCOMPARE(archive_->Close(), S_OK);
+        }
     }
     void failuresAndCancellation() {
         fixture("sparse-long");

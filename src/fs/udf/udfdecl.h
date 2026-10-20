@@ -100,6 +100,8 @@ struct super_block {
     unsigned char s_blocksize_bits;
     void *context;
     sevenzip_udf_read read;
+    sevenzip_udf_iget iget;
+    sevenzip_udf_inode_block inode_block;
     uint64_t blocks;
     sevenzip_udf_open_file open_file;
     sevenzip_udf_read_file read_file;
@@ -158,6 +160,7 @@ struct inode {
     struct udf_inode_info info;
     struct buffer_head *entry;
     uint64_t i_size;
+    unsigned i_state, cached;
     void *file;
     uint32_t i_uid, i_gid, i_nlink, i_rdev;
     umode_t i_mode;
@@ -228,7 +231,19 @@ int sevenzip_udf_next_aext(struct sevenzip_udf_walk *, struct inode *, struct ex
 u8 udf_tag_checksum(const struct tag *);
 struct buffer_head *udf_read_tagged(struct super_block *, udf_pblk_t, uint32_t, uint16_t *);
 struct buffer_head *udf_read_ptagged(struct super_block *, struct kernel_lb_addr *, uint32_t, uint16_t *);
-int sevenzip_udf_read_inode(struct inode *, bool);
+struct inode *__udf_iget(struct super_block *, struct kernel_lb_addr *, bool);
+struct inode *iget_locked(struct super_block *, unsigned long);
+void iget_failed(struct inode *);
+#define I_NEW 1U
+#define UDF_INODE_LOADING 2U
+static inline unsigned inode_state_read_once(struct inode *inode) { return inode->i_state; }
+static inline void unlock_new_inode(struct inode *inode) { inode->i_state &= ~(I_NEW | UDF_INODE_LOADING); }
+static inline unsigned long udf_inode_block(struct super_block *sb,
+                                            const struct kernel_lb_addr *location)
+{
+    return sb->inode_block(sb->context, location->partitionReferenceNum,
+                           location->logicalBlockNum);
+}
 struct genericFormat *udf_get_extendedattr(struct inode *, uint32_t, uint8_t);
 uint32_t udf_get_pblock_spar15(struct super_block *, uint32_t, uint16_t, uint32_t);
 int sevenzip_udf_load_sparable(struct super_block *, struct udf_part_map *, struct sparablePartitionMap *);

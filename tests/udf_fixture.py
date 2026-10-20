@@ -16,6 +16,9 @@ CONTINUATIONS = ("ad-short", "ad-long", "ad-chain-short", "ad-chain-long",
 
 
 def volume(kind):
+    if kind.startswith("uc-"):
+        from udf_cache_fixture import volume as cache_volume
+        return cache_volume(kind)
     if kind.startswith("pm-"):
         from udf_maps_fixture import volume as maps_volume
         return maps_volume(kind)
@@ -220,6 +223,9 @@ if __name__ == "__main__":
     Path(sys.argv[2]).write_bytes(image)
     result = {name: data.hex() for name, data in files.items()}
     if "--metadata" in sys.argv[3:]:
-        from udf_inode_fixture import attributes
+        if sys.argv[1].startswith("uc-"):
+            from udf_cache_fixture import attributes
+        else:
+            from udf_inode_fixture import attributes
         result = {"files": result, "attributes": attributes(sys.argv[1])}
     print(json.dumps(result))

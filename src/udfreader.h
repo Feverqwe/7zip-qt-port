@@ -12,6 +12,11 @@ typedef int (*sevenzip_udf_dirent)(void *, uint8_t, const void *, const void *, 
 struct sevenzip_udf_sparing;
 struct sevenzip_udf_virtual;
 struct sevenzip_udf_metadata;
+struct sevenzip_udf_cached_inode;
+typedef struct sevenzip_udf_cached_inode *(*sevenzip_udf_iget)(void *, uint32_t);
+typedef uint32_t (*sevenzip_udf_inode_block)(void *, uint16_t, uint32_t);
+struct sevenzip_udf_cached_inode *sevenzip_udf_inode_create(void);
+void sevenzip_udf_inode_free(struct sevenzip_udf_cached_inode *);
 #define UDF_TYPE1_MAP15 0x1511U
 #define UDF_VIRTUAL_MAP15 0x1512U
 #define UDF_VIRTUAL_MAP20 0x2012U
@@ -40,7 +45,7 @@ struct sevenzip_udf_file {
     const void *data;
     void *handle;
     uint32_t block, allocation_size;
-    unsigned allocation_type, extended;
+    unsigned allocation_type, extended, unallocated;
     const void *allocation_data;
 };
 int sevenzip_udf_directory(void *, sevenzip_udf_read, sevenzip_udf_dirent,
@@ -79,7 +84,8 @@ int sevenzip_udf_sparing_create(void *, sevenzip_udf_read, uint32_t, uint32_t,
 void sevenzip_udf_sparing_free(struct sevenzip_udf_sparing *);
 int sevenzip_udf_sparing_span(const struct sevenzip_udf_sparing *, uint32_t,
                               uint32_t *, uint32_t *);
-int sevenzip_udf_icb(void *, sevenzip_udf_read, uint32_t, const uint32_t *,
+int sevenzip_udf_icb(void *, sevenzip_udf_read, sevenzip_udf_iget,
+                     sevenzip_udf_inode_block, uint32_t, const uint32_t *,
                      uint32_t, uint16_t *, uint32_t *, void *, int, struct sevenzip_udf_inode *);
 int sevenzip_udf_extents(void *, sevenzip_udf_read, sevenzip_udf_extent,
                          uint32_t, uint32_t, uint16_t, unsigned, int,

@@ -27,7 +27,8 @@
     "fs/udf/unicode.c": "c6990308d7a32bb4cc101dc88fca044ffc9e35f798e45d1634012cd453bd4717",
     "lib/crc/crc-itu-t.c": "7e49b43033e98b436c53273d528ffb89839a881da27386a8b0d0336048dbfa3e",
     "include/linux/crc-itu-t.h": "52c39a25363812428ad3ec2e441690ea12b7bcb9e63874077919682b86f9b9d7",
-    "kernel/time/time.c": "ebeaf97b1314be4bcc8c9f8e1f6755e5992317e74139d5f7c14d94313ea41b3e"
+    "kernel/time/time.c": "ebeaf97b1314be4bcc8c9f8e1f6755e5992317e74139d5f7c14d94313ea41b3e",
+    "fs/inode.c": "93f7048474c5a6c4f15b6ab3d1e81a994be6240c129c6128eb9bf83de4fd6862"
   },
   "exact": [
     "fs/udf/ecma_167.h",

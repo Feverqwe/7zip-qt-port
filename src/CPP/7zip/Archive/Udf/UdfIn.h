@@ -340,6 +340,7 @@ struct CItem {
     CByteBuffer LinuxAllocData;
     UString SymLink;
     sevenzip_udf_inode LinuxAttributes{};
+    bool IsUnallocated = false;
 #endif
     CIcbTag IcbTag;
 
@@ -390,7 +391,13 @@ struct CItem {
 
     bool CheckChunkSizes() const { return !IsInline || InlineData.Size() == Size; }
 
-    bool IsDir() const { return IcbTag.IsDir(); }
+    bool IsDir() const {
+#ifdef SEVENZIP_LINUX_UDF
+        if (IsUnallocated)
+            return false;
+#endif
+        return IcbTag.IsDir();
+    }
 };
 
 struct CRef
@@ -432,6 +439,10 @@ A Volume Descriptor Sequence:
 
 struct CLogVol
 {
+#ifdef SEVENZIP_LINUX_UDF
+    CMap32 NativeIndex, PublicItems;
+    CObjectVector<std::shared_ptr<sevenzip_udf_cached_inode>> NativeInodes;
+#endif
   CObjectVector<CPartitionMap> PartitionMaps;
   CObjectVector<CFileSet> FileSets;
 
@@ -488,7 +499,8 @@ public:
   bool CheckItemExtents(unsigned volIndex, const CItem &item) const;
   HRESULT GetItemStream(unsigned volIndex, const CItem &item, ISequentialInStream **stream);
   HRESULT GetPhysicalSpan(unsigned volIndex, unsigned partitionRef, UInt32 block, UInt32 length,
-                          UInt64 &offset, UInt32 &size, UInt32 blockOffset = 0) const;
+                          UInt64 &offset, UInt32 &size, UInt32 blockOffset = 0,
+                          bool checkRange = true) const;
 
 private:
   IInStream *_stream;
@@ -503,6 +515,9 @@ private:
   UInt32 _lastRecordedBlock;
   HRESULT LoadLinuxDiscovery();
   HRESULT LoadLinuxMaps(CLogVol &volume, const Byte *data, UInt32 size);
+  HRESULT GetLinuxInodeKey(unsigned volIndex, const CLongAllocDesc &location, UInt32 &key);
+  static sevenzip_udf_cached_inode *GetLinuxInode(void *, UInt32);
+  static UInt32 MapLinuxInode(void *, UInt16, UInt32);
   HRESULT ReadLinuxFileset(unsigned volIndex, const CLongAllocDesc &location, CByteBuffer &data);
   HRESULT ReadLinuxDirectory(unsigned volIndex, unsigned fsIndex, CItem &item, const Byte *data,
                              UInt32 size, int numRecurseAllowed);
@@ -517,7 +532,7 @@ private:
   HRESULT LoadLinuxVat(unsigned volIndex, unsigned partitionRef);
   HRESULT LoadLinuxMetadata(unsigned volIndex, unsigned partitionRef);
   HRESULT ReadLinuxItem(unsigned volIndex, CLongAllocDesc &location, CByteBuffer &data, CItem &item,
-                        bool hidden, HRESULT *progressResult);
+                        bool hidden, HRESULT *progressResult, const UInt32 *inodeKey);
   HRESULT ReadLinuxExtents(unsigned volIndex, unsigned partitionRef, CItem &item, const Byte *data,
                            UInt32 size, HRESULT *progressResult);
 #endif
@@ -525,7 +540,8 @@ private:
   HRESULT ReadFileItem(unsigned volIndex, unsigned fsIndex, const CLongAllocDesc &lad, bool isDir,
                        int numRecurseAllowed);
   HRESULT ReadItem(unsigned volIndex, int fsIndex, const CLongAllocDesc &lad, bool isDir,
-                   int numRecurseAllowed, HRESULT *progressResult = nullptr);
+                   int numRecurseAllowed, HRESULT *progressResult = nullptr,
+                   const UInt32 *inodeKey = nullptr);
 
   HRESULT Open2();
   HRESULT ParseVolumeDescriptor(const Byte *data, size_t size, UInt16 id);

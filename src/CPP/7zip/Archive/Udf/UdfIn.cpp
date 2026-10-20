@@ -393,11 +393,12 @@ bool CInArchive::CheckItemExtents(unsigned volIndex, const CItem &item) const {
 }
 
 HRESULT CInArchive::GetPhysicalSpan(unsigned volIndex, unsigned partitionRef, UInt32 block,
-                                    UInt32 length, UInt64 &offset, UInt32 &size,
-                                    UInt32 blockOffset) const {
+                                    UInt32 length, UInt64 &offset, UInt32 &size, UInt32 blockOffset,
+                                    bool checkRange) const {
     if ((UInt64)block + blockOffset > UINT32_MAX)
         return S_FALSE;
-    if (!CheckExtent(volIndex, partitionRef, block + blockOffset, length))
+    if (partitionRef >= LogVols[volIndex].PartitionMaps.Size() ||
+        (checkRange && !CheckExtent(volIndex, partitionRef, block + blockOffset, length)))
         return S_FALSE;
     const CLogVol &vol = LogVols[volIndex];
     const CPartitionMap &map = vol.PartitionMaps[partitionRef];
@@ -418,7 +419,7 @@ HRESULT CInArchive::GetPhysicalSpan(unsigned volIndex, unsigned partitionRef, UI
             sevenzip_udf_virtual_map(map.Virtual.get(), block, blockOffset, &backing, &mapped);
         if (result)
             return result < 0 ? (HRESULT)result : S_FALSE;
-        return GetPhysicalSpan(volIndex, backing, mapped, length, offset, size);
+        return GetPhysicalSpan(volIndex, backing, mapped, length, offset, size, 0, checkRange);
     }
     if (map.IsMetadata()) {
         if (!map.Metadata)
@@ -429,7 +430,7 @@ HRESULT CInArchive::GetPhysicalSpan(unsigned volIndex, unsigned partitionRef, UI
             sevenzip_udf_metadata_map(map.Metadata.get(), block, blockOffset, &backing, &mapped);
         if (result)
             return result < -4095 ? (HRESULT)result : result == -ENOMEM ? E_OUTOFMEMORY : S_FALSE;
-        return GetPhysicalSpan(volIndex, backing, mapped, length, offset, size);
+        return GetPhysicalSpan(volIndex, backing, mapped, length, offset, size, 0, checkRange);
     }
     if (map.IsSparable()) {
         uint32_t physical, blocks;
@@ -716,30 +717,28 @@ HRESULT CInArchive::ReadFileItem(unsigned volIndex, unsigned fsIndex, const CLon
   if (partitionRef >= vol.PartitionMaps.Size())
     return S_FALSE;
 #ifdef SEVENZIP_LINUX_UDF
-  // Unbound maps retain Linux's zero partition length and cannot load a new inode.
-  if (vol.PartitionMaps[partitionRef].PartitionIndex >= Partitions.Size())
-      return S_FALSE;
-#endif
+  UInt32 key;
+  RINOK(GetLinuxInodeKey(volIndex, lad, key))
+  CMap32 &inodeMap = LogVols[volIndex].PublicItems;
+#else
   CPartition &partition = Partitions[vol.PartitionMaps[partitionRef].PartitionIndex];
-
   const UInt32 key = lad.Location.Pos;
+  CMap32 &inodeMap = partition.Map;
+#endif
   UInt32 value;
   const UInt32 kRecursedErrorValue = (UInt32)(Int32)-1;
-  if (partition.Map.Find(key, value))
-  {
-    if (value == kRecursedErrorValue)
-      return S_FALSE;
-    file.ItemIndex = (int)(Int32)value;
-  }
-  else
-  {
-    value = Items.Size();
-    file.ItemIndex = (int)(Int32)value;
-    if (partition.Map.Set(key, kRecursedErrorValue))
-      return S_FALSE;
-    RINOK(ReadItem(volIndex, (int)fsIndex, lad, isDir, numRecurseAllowed))
-    if (!partition.Map.Set(key, value))
-      return S_FALSE;
+  if (inodeMap.Find(key, value)) {
+      if (value == kRecursedErrorValue)
+          return S_FALSE;
+      file.ItemIndex = (int)(Int32)value;
+  } else {
+      value = Items.Size();
+      file.ItemIndex = (int)(Int32)value;
+      if (inodeMap.Set(key, kRecursedErrorValue))
+          return S_FALSE;
+      RINOK(ReadItem(volIndex, (int)fsIndex, lad, isDir, numRecurseAllowed, nullptr, &key))
+      if (!inodeMap.Set(key, value))
+          return S_FALSE;
   }
   return S_OK;
 }
@@ -748,8 +747,10 @@ HRESULT CInArchive::ReadFileItem(unsigned volIndex, unsigned fsIndex, const CLon
 // -3 raw hidden metadata allocation list for the Linux mapper.
 
 HRESULT CInArchive::ReadItem(unsigned volIndex, int fsIndex, const CLongAllocDesc &lad, bool isDir,
-                             int numRecurseAllowed, HRESULT *progressResult) {
+                             int numRecurseAllowed, HRESULT *progressResult,
+                             const UInt32 *inodeKey) {
     (void)progressResult;
+    (void)inodeKey;
     if (Items.Size() >= kNumItemsMax)
         return S_FALSE;
     CItem &item = Items.AddNew();
@@ -767,7 +768,7 @@ HRESULT CInArchive::ReadItem(unsigned volIndex, int fsIndex, const CLongAllocDes
     CByteBuffer buf(size);
 #ifdef SEVENZIP_LINUX_UDF
     CLongAllocDesc resolved = lad;
-    RINOK(ReadLinuxItem(volIndex, resolved, buf, item, fsIndex < 0, progressResult))
+    RINOK(ReadLinuxItem(volIndex, resolved, buf, item, fsIndex < 0, progressResult, inodeKey))
     item.Location = resolved.Location;
 #else
     RINOK(ReadLad(volIndex, lad, buf))
@@ -783,6 +784,21 @@ HRESULT CInArchive::ReadItem(unsigned volIndex, int fsIndex, const CLongAllocDes
 #endif
 
   item.IsExtended = (tag.Id == DESC_TYPE_ExtendedFile);
+#ifdef SEVENZIP_LINUX_UDF
+  if (tag.Id == DESC_TYPE_UnallocatedSpaceEntry) {
+      if (isDir)
+          return S_FALSE;
+      item.IsUnallocated = true;
+      item.IcbTag.Parse(p + 16);
+      item.IsInline = item.IcbTag.GetDescriptorType() == ICB_DESC_TYPE_INLINE;
+      item.Size = item.NumLogBlockRecorded = 0;
+      item.FileLinkCount = (UInt16)item.LinuxAttributes.links;
+      const UInt32 allocationSize = Get32(p + 36);
+      if (fsIndex < 0)
+          item.LinuxAllocData.CopyFrom(p + 40, allocationSize);
+      return S_OK;
+  }
+#endif
   const size_t kExtendOffset = item.IsExtended ? 40 : 0;
 
   if (size < kExtendOffset + 176)

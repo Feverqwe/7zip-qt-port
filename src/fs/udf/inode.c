@@ -460,11 +460,6 @@ out:
 	return ret;
 }
 
-int sevenzip_udf_read_inode(struct inode *inode, bool hidden)
-{
-	return udf_read_inode(inode, hidden);
-}
-
 static void __udf_clear_extent_cache(struct inode *inode)
 {
 	struct udf_inode_info *iinfo = UDF_I(inode);
@@ -591,4 +586,33 @@ static umode_t udf_convert_permissions(struct fileEntry *fe)
 		((flags & ICBTAG_FLAG_STICKY) ? S_ISVTX : 0);
 
 	return mode;
+}
+
+struct inode *__udf_iget(struct super_block *sb, struct kernel_lb_addr *ino,
+			 bool hidden_inode)
+{
+	unsigned long block = udf_inode_block(sb, ino);
+	struct inode *inode = iget_locked(sb, block);
+	int err;
+
+	if (!inode)
+		return ERR_PTR(-ENOMEM);
+
+	if (!(inode_state_read_once(inode) & I_NEW)) {
+		if (UDF_I(inode)->i_hidden != hidden_inode) {
+			iput(inode);
+			return ERR_PTR(-EFSCORRUPTED);
+		}
+		return inode;
+	}
+
+	memcpy(&UDF_I(inode)->i_location, ino, sizeof(struct kernel_lb_addr));
+	err = udf_read_inode(inode, hidden_inode);
+	if (err < 0) {
+		iget_failed(inode);
+		return ERR_PTR(err);
+	}
+	unlock_new_inode(inode);
+
+	return inode;
 }

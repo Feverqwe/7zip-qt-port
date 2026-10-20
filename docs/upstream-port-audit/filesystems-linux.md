@@ -112,7 +112,10 @@ timestamps также подключены. Linux FID iterator читает ка
 включая fragmented/AED и межраздельные переходы. Разбор partition-map table
 и выбор первой подходящей карты PD перенесены из Linux; проверены неизвестные,
 повторные и непривязанные карты, а также таблицы с большим числом разделов.
-Оставшиеся inode-cache/read policies и non-FE publication UDF ещё требуют сверки.
+Политика physical-block inode cache и hidden-role consistency перенесена через
+исходный `__udf_iget`; USE доступен как metadata-only inode и hidden metadata
+backing. Оставшиеся read-only allocation-info dependencies и archive traversal
+limits UDF ещё требуют сверки.
 
 ### HFS+/HFSX: fork mapping и metadata reads
 

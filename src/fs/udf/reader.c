@@ -87,13 +87,69 @@ void brelse(struct buffer_head *bh)
     }
 }
 
-int sevenzip_udf_icb(void *context, sevenzip_udf_read read, uint32_t block_size,
+/* Serialized archive ownership replaces VFS allocation, locks and eviction.
+ * Address lookup itself reuses the caller's existing CMap32 implementation. */
+struct sevenzip_udf_cached_inode { struct inode inode; };
+
+struct sevenzip_udf_cached_inode *sevenzip_udf_inode_create(void)
+{
+    struct sevenzip_udf_cached_inode *entry = calloc(1, sizeof(*entry));
+    if (entry) {
+        entry->inode.cached = 1;
+        entry->inode.i_state = I_NEW;
+        entry->inode.i_nlink = 1;
+        entry->inode.info.cached_extent.lstart = -1;
+    }
+    return entry;
+}
+
+void sevenzip_udf_inode_free(struct sevenzip_udf_cached_inode *entry)
+{
+    if (entry) {
+        udf_clear_extent_cache(&entry->inode);
+        brelse(entry->inode.entry);
+        free(entry->inode.info.i_data);
+        free(entry);
+    }
+}
+
+struct inode *iget_locked(struct super_block *sb, unsigned long block)
+{
+    struct sevenzip_udf_cached_inode *entry = sb->iget(sb->context, (uint32_t)block);
+    if (!entry)
+        return NULL;
+    /* A serialized callback cannot wait for its own unfinished inode. */
+    if (entry->inode.i_state & UDF_INODE_LOADING) {
+        sb->io_error = -EFSCORRUPTED;
+        return NULL;
+    }
+    if (entry->inode.i_state & I_NEW)
+        entry->inode.i_state |= UDF_INODE_LOADING;
+    entry->inode.i_sb = sb;
+    return &entry->inode;
+}
+
+void iget_failed(struct inode *inode)
+{
+    udf_clear_extent_cache(inode);
+    brelse(inode->entry);
+    free(inode->info.i_data);
+    memset(inode, 0, sizeof(*inode));
+    inode->cached = 1;
+    inode->i_state = I_NEW;
+    inode->i_nlink = 1;
+    inode->info.cached_extent.lstart = -1;
+}
+
+int sevenzip_udf_icb(void *context, sevenzip_udf_read read, sevenzip_udf_iget get,
+                     sevenzip_udf_inode_block inode_block, uint32_t block_size,
                      const uint32_t *lengths, uint32_t partitions,
                      uint16_t *partition, uint32_t *block, void *data,
                      int hidden, struct sevenzip_udf_inode *attributes)
 {
     struct super_block sb = {0};
-    struct inode inode = {0};
+    struct inode *inode;
+    struct kernel_lb_addr location = {*block, *partition};
     int result;
     uint32_t i;
     sb.info.s_partmaps = calloc(partitions, sizeof(*sb.info.s_partmaps));
@@ -109,24 +165,23 @@ int sevenzip_udf_icb(void *context, sevenzip_udf_read read, uint32_t block_size,
         ++sb.s_blocksize_bits;
     sb.context = context;
     sb.read = read;
-    inode.i_sb = &sb;
-    inode.info.i_location.logicalBlockNum = *block;
-    inode.info.i_location.partitionReferenceNum = *partition;
-    result = sevenzip_udf_read_inode(&inode, hidden != 0);
+    sb.iget = get;
+    sb.inode_block = inode_block;
+    inode = __udf_iget(&sb, &location, hidden != 0);
+    result = IS_ERR(inode) ? (sb.io_error ? sb.io_error : PTR_ERR(inode)) : 0;
     if (!result) {
-        memcpy(data, inode.entry->b_data, block_size);
-        *block = inode.info.i_location.logicalBlockNum;
-        *partition = inode.info.i_location.partitionReferenceNum;
-        attributes->mode = inode.i_mode;
-        attributes->uid = inode.i_uid;
-        attributes->gid = inode.i_gid;
-        attributes->links = inode.i_nlink;
-        attributes->device_major = MAJOR(inode.i_rdev);
-        attributes->device_minor = MINOR(inode.i_rdev);
-        attributes->hidden = inode.info.i_hidden;
+        memcpy(data, inode->entry->b_data, block_size);
+        *block = inode->info.i_location.logicalBlockNum;
+        *partition = inode->info.i_location.partitionReferenceNum;
+        attributes->mode = inode->i_mode;
+        attributes->uid = inode->i_uid;
+        attributes->gid = inode->i_gid;
+        attributes->links = inode->i_nlink;
+        attributes->device_major = MAJOR(inode->i_rdev);
+        attributes->device_minor = MINOR(inode->i_rdev);
+        attributes->hidden = inode->info.i_hidden;
+        iput(inode);
     }
-    brelse(inode.entry);
-    free(inode.info.i_data);
     free(sb.info.s_partmaps);
     return result;
 }
@@ -222,6 +277,7 @@ struct inode *udf_iget_special(struct super_block *sb, const struct kernel_lb_ad
     inode->info.i_location.partitionReferenceNum = file.partition;
     inode->info.i_alloc_type = file.allocation_type;
     inode->info.i_efe = file.extended;
+    inode->info.i_use = file.unallocated;
     inode->info.i_lenAlloc = file.allocation_size;
     inode->info.i_data = (uint8_t *)(file.inline_data ? file.data : file.allocation_data);
     return inode;
@@ -229,7 +285,12 @@ struct inode *udf_iget_special(struct super_block *sb, const struct kernel_lb_ad
 
 void iput(struct inode *inode)
 {
-    if (inode) {
+    if (!inode)
+        return;
+    if (inode->cached) {
+        /* The callback superblock lives only for the current read request. */
+        inode->i_sb = NULL;
+    } else {
         udf_clear_extent_cache(inode);
         inode->i_sb->close_file(inode->file);
         free(inode);

@@ -18,6 +18,7 @@ from udf_names_fixture import CASES as NAME_CASES, BAD as NAME_BAD, COMMENTS
 from udf_inode_fixture import CASES as INODE_CASES, BAD as INODE_BAD, MODULE_BAD as INODE_MODULE_BAD, METADATA_ONLY, attributes
 from udf_directory_fixture import CASES as DIRECTORY_CASES, BAD as DIRECTORY_BAD, MODULE_BAD as DIRECTORY_MODULE_BAD
 from udf_maps_fixture import CASES as MAP_CASES, BAD as MAP_BAD, MODULE_BAD as MAP_MODULE_BAD
+from udf_cache_fixture import CASES as CACHE_CASES, BAD as CACHE_BAD, MODULE_BAD as CACHE_MODULE_BAD, METADATA_ONLY as CACHE_METADATA
 
 RUNTIME = Path(sys.argv.pop(1))
 MODULE = Path(sys.argv.pop(1))
@@ -75,7 +76,7 @@ class UdfTests(unittest.TestCase):
     def test_continuations(self):
         for kind in (*CONTINUATIONS, *ICB_CASES, *SPARING_CASES, *VAT_CASES, *METADATA_CASES,
                      *WALK_CASES, *WALK_MODULE, *DISCOVERY_CASES, *DISCOVERY_MODULE, *NAME_CASES,
-                     *INODE_CASES, *DIRECTORY_CASES, *MAP_CASES):
+                     *INODE_CASES, *DIRECTORY_CASES, *MAP_CASES, *CACHE_CASES):
             image, files = volume(kind)
             with self.subTest(kind=kind):
                 result = self.run_image("7z", image)
@@ -95,7 +96,7 @@ class UdfTests(unittest.TestCase):
         for kind in ("ad-cycle", "ad-limit-17", "ad-outside", "ad-bad-partition",
                      "ad-overflow", "ad-over-block", *ICB_BAD, *SPARING_BAD, *VAT_BAD,
                      *METADATA_BAD, *DISCOVERY_BAD, *NAME_BAD, *INODE_BAD, *INODE_MODULE_BAD,
-                     *DIRECTORY_BAD, *MAP_BAD):
+                     *DIRECTORY_BAD, *MAP_BAD, *CACHE_BAD):
             image, _ = volume(kind)
             with self.subTest(kind=kind):
                 self.assertNotEqual(self.run_image("7z", image).returncode, 0)
@@ -108,6 +109,20 @@ class UdfTests(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stderr)
                 alpha = result.stdout.split(b"Path = alpha.bin", 1)[1].split(b"Path = ", 1)[0]
                 self.assertIn(b"Modified = 2041-", alpha)
+
+    def test_unallocated_inode_metadata(self):
+        for kind in CACHE_METADATA:
+            image, _ = volume(kind)
+            with self.subTest(kind=kind):
+                result = self.run_image("7z", image, listing=True)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                alpha = result.stdout.split(b"Path = alpha.bin", 1)[1].split(b"Path = ", 1)[0]
+                for property in (b"Size = 0", b"Mode = 0---------", b"Links = 1",
+                                 b"User ID = 0", b"Group ID = 0"):
+                    self.assertIn(property, alpha)
+                result = self.run_image("7z", image, "alpha.bin")
+                self.assertEqual(result.returncode, 2)
+                self.assertEqual(result.stdout, b"")
 
     def test_inode_properties(self):
         for kind in (*INODE_CASES, *METADATA_ONLY):
@@ -135,8 +150,8 @@ class UdfTests(unittest.TestCase):
                 # 7-Zip's normal archive error, rather than timeout, crash or out-of-memory.
                 self.assertEqual(self.run_image("7z", image).returncode, 2)
 
-    def test_unsafe_maps_fail_normally(self):
-        for kind in MAP_MODULE_BAD:
+    def test_unsafe_inputs_fail_normally(self):
+        for kind in (*MAP_MODULE_BAD, *CACHE_MODULE_BAD):
             image, _ = volume(kind)
             with self.subTest(kind=kind):
                 self.assertEqual(self.run_image("7z", image).returncode, 2)
