@@ -2,6 +2,7 @@
 #include "extveritystream.h"
 #include "7zip/Common/StreamObjects.h"
 #include "7zip/Common/StreamUtils.h"
+#include "extveritypolicy.h"
 #include "extverityreader.h"
 #include <cerrno>
 #include <cstring>
@@ -14,6 +15,7 @@ class CExtVerityStream final : public CCachedInStream {
     UInt64 fileSize_ = 0;
     unsigned blockBits_ = 0;
     HRESULT inputError_ = S_OK;
+    CExtVerityPolicy policy_;
 
     static int ReadRaw(void *context, uint64_t position, void *data, size_t size) {
         auto &self = *static_cast<CExtVerityStream *>(context);
@@ -42,11 +44,14 @@ class CExtVerityStream final : public CCachedInStream {
   public:
     ~CExtVerityStream() override { ext_verity_close(verity_); }
 
-    HRESULT Open(IInStream *raw, UInt64 fileSize, unsigned blockBits, UInt32 allocatedEnd) {
+    HRESULT Open(IInStream *raw, UInt64 fileSize, unsigned blockBits, UInt32 allocatedEnd,
+                 const CExtVerityPolicy &policy) {
         raw_ = raw;
         fileSize_ = fileSize;
+        policy_ = policy;
+        const auto options = policy_.SignatureOptions();
         const int status = ext_verity_open(ReadRaw, this, fileSize, blockBits, allocatedEnd,
-                                           &verity_, &blockBits_);
+                                           &options, &verity_, &blockBits_);
         if (inputError_ != S_OK)
             return inputError_;
         if (status != 0)
@@ -60,11 +65,12 @@ class CExtVerityStream final : public CCachedInStream {
 } // namespace
 
 HRESULT CreateExtVerityStream(IInStream *raw, UInt64 fileSize, unsigned blockBits,
-                              UInt32 allocatedEnd, IInStream **result) {
+                              UInt32 allocatedEnd, const CExtVerityPolicy &policy,
+                              IInStream **result) {
     *result = nullptr;
     auto *stream = new CExtVerityStream;
     CMyComPtr<IInStream> owner = stream;
-    const HRESULT status = stream->Open(raw, fileSize, blockBits, allocatedEnd);
+    const HRESULT status = stream->Open(raw, fileSize, blockBits, allocatedEnd, policy);
     if (status == S_OK)
         *result = owner.Detach();
     return status;

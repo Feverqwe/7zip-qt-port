@@ -5,6 +5,7 @@
 #include "../../crypto/skciphercompat.h"
 #include "../../include/uapi/linux/fscrypt.h"
 #include <linux/siphash.h>
+#include <linux/count_zeros.h>
 #define SECTOR_SHIFT 9
 #define FSCRYPT_CONTENTS_ALIGNMENT 16
 #ifndef NAME_MAX
@@ -93,16 +94,5 @@ static inline struct fscrypt_master_key *fscrypt_find_master_key(struct super_bl
 							 const struct fscrypt_key_specifier *spec)
 { return sb->find_key ? sb->find_key(sb->key_context, spec) : NULL; }
 #define IS_CASEFOLDED(inode) ((inode)->casefolded)
-static inline int fls64(u64 value)
-{
-	int bits = 0;
-	while (value) { value >>= 1; ++bits; }
-	return bits;
-}
-static inline const void *memchr_inv(const void *data, int value, size_t len)
-{
-	const u8 *p = data;
-	for (size_t i = 0; i < len; ++i) if (p[i] != (u8)value) return p + i;
-	return NULL;
-}
+void *memchr_inv(const void *, int, size_t);
 #endif

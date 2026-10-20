@@ -77,15 +77,6 @@ void crypto_free_cipher(struct crypto_cipher *tfm)
 	free(tfm);
 }
 
-struct crypto_shash *crypto_alloc_shash(const char *name, unsigned type, unsigned mask)
-{
-	(void)type; (void)mask;
-	if (strcmp(name, "sha256")) return ERR_PTR(-ENOENT);
-	struct crypto_shash *hash = calloc(1, sizeof(*hash));
-	return hash ? hash : ERR_PTR(-ENOMEM);
-}
-void crypto_free_shash(struct crypto_shash *hash) { if (!IS_ERR(hash)) free(hash); }
-
 struct skcipher_request *skcipher_request_alloc(struct crypto_skcipher *tfm, unsigned flags)
 {
 	(void)flags;

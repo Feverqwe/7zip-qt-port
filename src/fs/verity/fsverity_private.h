@@ -81,7 +81,6 @@ struct fsverity_info *fsverity_create_info(struct inode *, struct fsverity_descr
 void fsverity_free_info(struct fsverity_info *);
 bool fsverity_verify_blocks(struct fsverity_info *, struct folio *, size_t, size_t);
 int fsverity_init_merkle_tree_params(struct merkle_tree_params *, const struct inode *, unsigned int, unsigned int, const u8 *, size_t);
-/* Linux's CONFIG_FS_VERITY_BUILTIN_SIGNATURES=n service: no host trust keyring. */
-static inline int fsverity_verify_signature(const struct fsverity_info *vi, const u8 *signature, size_t sig_size) { return 0; }
+int fsverity_verify_signature(const struct fsverity_info *, const u8 *, size_t);
 extern const struct fsverity_operations ext4_read_verityops;
 #endif

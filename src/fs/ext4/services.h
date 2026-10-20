@@ -22,6 +22,7 @@ struct ext4_sb_info {
     const struct ext_xattr_services *xattr_services;
 };
 struct fsverity_operations;
+struct sevenzip_asymmetric_trust;
 struct super_block { unsigned int s_blocksize, s_blocksize_bits; struct ext4_sb_info info; const struct fsverity_operations *s_vop; };
 struct ext4_inode_info { u32 i_csum_seed, i_inline_size, i_flags; u16 i_extra_isize, i_inline_off; bool xattr, lustre; u64 i_file_acl; };
 struct inode {
@@ -36,6 +37,8 @@ struct inode {
     unsigned int i_blkbits;
     struct inode *i_mapping;
     void *verity_context;
+    const struct sevenzip_asymmetric_trust *verity_trust;
+    bool verity_require_signatures;
     const struct sevenzip_fscrypt_inode *fscrypt_owner;
 };
 struct ext4_iloc { struct buffer_head *bh; unsigned int offset; };

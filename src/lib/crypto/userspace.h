@@ -8,6 +8,18 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <limits.h>
+#ifndef __attribute_const__
+#define __attribute_const__
+#endif
+#if ULONG_MAX == 0xffffffffUL
+#define BITS_PER_LONG 32
+#else
+#define BITS_PER_LONG 64
+#endif
+#ifndef EKEYREJECTED
+#define EKEYREJECTED 129
+#endif
 #ifdef _MSC_VER
 #include <intrin.h>
 #define SEVENZIP_CRYPTO_NOINLINE __declspec(noinline)
@@ -48,6 +60,7 @@ static inline bool crypto_warn_on(bool value) { return value; }
 #define fips_enabled 0
 #define IS_ENABLED(option) IS_ENABLED_##option
 #define IS_ENABLED_CONFIG_HAVE_EFFICIENT_UNALIGNED_ACCESS 0
+#define IS_ENABLED_CONFIG_CRYPTO_LIB_MLDSA_KUNIT_TEST 0
 #if UINTPTR_MAX > UINT32_MAX
 #define IS_ENABLED_CONFIG_64BIT 1
 #else
@@ -92,6 +105,13 @@ static inline u16 get_unaligned_le16(const void *p)
 {
 	const u8 *b = p;
 	return (u16)b[0] | (u16)b[1] << 8;
+}
+static inline __le16 cpu_to_le16(u16 v)
+{
+	const u8 bytes[2] = {(u8)v, (u8)(v >> 8)};
+	__le16 result;
+	memcpy(&result, bytes, sizeof(result));
+	return result;
 }
 static inline u64 get_unaligned_le64(const void *p)
 {

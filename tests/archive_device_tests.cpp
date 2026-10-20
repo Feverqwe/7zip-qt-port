@@ -1,5 +1,6 @@
 #include "../third_party/7zip/C/CpuArch.h"
 #include "7zip/Common/StreamObjects.h"
+#include "7zip/Common/StreamUtils.h"
 #include "7zip/PropID.h"
 #include "Windows/PropVariant.h"
 #include "archivecodeccatalog.h"
@@ -7,6 +8,7 @@
 #include "archivedevice.h"
 #include "archivenativeopen.h"
 #include "deviceaccess.h"
+#include <QCryptographicHash>
 #include <QDir>
 #include <QFileInfo>
 #include <QJsonArray>
@@ -381,6 +383,63 @@ class ArchiveDeviceTests final : public QObject {
         QCOMPARE(CreateDeviceInputIgnoringJournal(direct, &withoutReplay), S_OK);
         QCOMPARE(OpenDeviceFilesystem(catalog_, withoutReplay, "USB", nullptr, reader, &error),
                  S_OK);
+    }
+    void signedVerityPropertiesReachAlignedDeviceStreams() {
+        QFile manifest(QStringLiteral(DEVICE_FIXTURE_DIR "/../ext4/verity-signatures.json"));
+        QVERIFY(manifest.open(QIODevice::ReadOnly));
+        const auto fixtures = QJsonDocument::fromJson(manifest.readAll()).object();
+        const auto record = fixtures["cases"].toArray().first().toObject();
+        QByteArray compressed(4, '\0');
+        SetBe32(compressed.data(), UInt32(record["size"].toInt()));
+        compressed += QByteArray::fromBase64(record["image"].toString().toLatin1());
+        const auto bytes = qUncompress(compressed);
+        QVERIFY(!bytes.isEmpty());
+        CMyComPtr<IInStream> raw = new CDeviceInput(bytes), direct;
+        QCOMPARE(DeviceInput(raw, quint64(bytes.size()), &direct), S_OK);
+        CObjectVector<CProperty> properties;
+        properties.AddNew().Name = L"verity.require+";
+        auto &certificate = properties.AddNew();
+        certificate.Name = L"verity.trust";
+        certificate.Value = fixtures["root"].toString().toStdWString().c_str();
+        for (bool trusted : {false, true}) {
+            COpenOptions options;
+            options.props = trusted ? &properties : nullptr;
+            std::shared_ptr<ArchiveNativeOpen> reader;
+            QCOMPARE(OpenDeviceFilesystem(catalog_, direct, "signed USB", nullptr, reader, nullptr,
+                                          &options),
+                     S_OK);
+            CMyComPtr<IInArchiveGetStream> streams;
+            QCOMPARE(
+                reader->arc().Archive->QueryInterface(IID_IInArchiveGetStream, (void **)&streams),
+                S_OK);
+            UInt32 count = 0;
+            QCOMPARE(reader->arc().Archive->GetNumberOfItems(&count), S_OK);
+            UInt32 index = 0;
+            for (; index < count; ++index) {
+                NWindows::NCOM::CPropVariant path;
+                QCOMPARE(reader->arc().Archive->GetProperty(index, kpidPath, &path), S_OK);
+                if (path.vt == VT_BSTR && QDir::fromNativeSeparators(QString::fromWCharArray(
+                                              path.bstrVal)) == fixtures["path"].toString())
+                    break;
+            }
+            QVERIFY(index < count);
+            CMyComPtr<ISequentialInStream> stream;
+            const HRESULT status = streams->GetStream(index, &stream);
+            if (!trusted) {
+                QVERIFY(status != S_OK);
+                QVERIFY(!stream);
+                continue;
+            }
+            QCOMPARE(status, S_OK);
+            reader.reset();
+            streams.Release();
+            QByteArray actual(record["file_size"].toInt(), '\0');
+            size_t amount = size_t(actual.size());
+            QCOMPARE(ReadStream(stream, actual.data(), &amount), S_OK);
+            QCOMPARE(amount, size_t(actual.size()));
+            QCOMPARE(QCryptographicHash::hash(actual, QCryptographicHash::Sha256).toHex(),
+                     record["sha256"].toString().toLatin1());
+        }
     }
     void encryptedLinuxFilesThroughAlignedDeviceInput() {
         const QDir fixtures(QStringLiteral(DEVICE_FIXTURE_DIR "/../fscrypt"));

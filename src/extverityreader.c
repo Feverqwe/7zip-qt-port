@@ -74,6 +74,7 @@ struct ext4_ext_path *ext4_find_extent(struct inode *inode, u32 block, void *unu
 
 int ext_verity_open(ext_verity_read read, void *context, uint64_t file_size,
                     unsigned int block_bits, uint32_t allocated_end,
+                    const struct ext_verity_signature_options *options,
                     struct ext_verity_reader **result, unsigned int *verity_block_bits)
 {
     struct ext_verity_reader *reader;
@@ -97,6 +98,10 @@ int ext_verity_open(ext_verity_read read, void *context, uint64_t file_size,
     reader->inode.i_size = file_size;
     reader->inode.flags = (1U << EXT4_INODE_EXTENTS);
     reader->inode.verity_context = reader;
+    if (options) {
+        reader->inode.verity_trust = options->trust;
+        reader->inode.verity_require_signatures = options->require_signatures != 0;
+    }
     error = fsverity_get_descriptor(&reader->inode, &descriptor);
     if (error) goto fail;
     info = fsverity_create_info(&reader->inode, descriptor);

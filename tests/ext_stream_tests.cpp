@@ -1,7 +1,10 @@
 #include "7zip/Archive/IArchive.h"
 #include "Common/MyCom.h"
 #include "Windows/PropVariant.h"
+#include <QCryptographicHash>
 #include <QDir>
+#include <QFile>
+#include <QFileInfo>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -120,6 +123,26 @@ class ExtStreamTests final : public QObject {
     Q_OBJECT
     QLibrary module_{QString::fromUtf8(SEVENZIP_EXT_CORE)};
     CMyComPtr<IInArchive> archive_;
+    QJsonObject signatures() {
+        QFile file(QFileInfo(QString::fromUtf8(SEVENZIP_EXT_FIXTURE))
+                       .dir()
+                       .filePath("fixtures/ext4/verity-signatures.json"));
+        if (!file.open(QIODevice::ReadOnly))
+            return {};
+        return QJsonDocument::fromJson(file.readAll()).object();
+    }
+    HRESULT signaturePolicy(bool require, const QString &certificate = {}) {
+        CMyComPtr<ISetProperties> properties;
+        const HRESULT status =
+            archive_->QueryInterface(IID_ISetProperties, reinterpret_cast<void **>(&properties));
+        if (status != S_OK)
+            return status;
+        const wchar_t *names[] = {L"verity.require", L"verity.trust"};
+        NWindows::NCOM::CPropVariant values[2];
+        values[0] = require;
+        values[1] = certificate.toStdWString().c_str();
+        return properties->SetProperties(names, values, certificate.isEmpty() ? 1 : 2);
+    }
     QJsonObject bundle(const QString &layout) {
         QProcess generator;
         generator.start(QString::fromUtf8(SEVENZIP_EXT_PYTHON),
@@ -173,6 +196,92 @@ class ExtStreamTests final : public QObject {
     }
   private slots:
     void initTestCase() { createArchive(); }
+    void signedVerityStreamsKeepTheirPolicyAndInput() {
+        const auto fixtures = signatures();
+        const auto cases = fixtures["cases"].toArray();
+        QVERIFY(cases.size() >= 2);
+        for (const auto &value : cases) {
+            const auto record = value.toObject();
+            if (record["name"] == "unsigned")
+                continue;
+            createArchive();
+            QCOMPARE(signaturePolicy(true, fixtures["root"].toString()), S_OK);
+            CMyComPtr<IInStream> input = new Input(image(record));
+            QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+            CMyComPtr<IInArchiveGetStream> provider;
+            QCOMPARE(archive_->QueryInterface(IID_IInArchiveGetStream,
+                                              reinterpret_cast<void **>(&provider)),
+                     S_OK);
+            CMyComPtr<ISequentialInStream> stream;
+            QCOMPARE(provider->GetStream(fileIndex(), &stream), S_OK);
+            QVERIFY(stream);
+            QCOMPARE(archive_->Close(), S_OK);
+            QCOMPARE(signaturePolicy(false), S_OK);
+            provider.Release();
+            archive_.Release();
+            input.Release();
+            QByteArray actual(record["file_size"].toInt(), '\0');
+            UInt32 offset = 0;
+            while (offset < UInt32(actual.size())) {
+                UInt32 count = 0;
+                QCOMPARE(
+                    stream->Read(actual.data() + offset, UInt32(actual.size()) - offset, &count),
+                    S_OK);
+                QVERIFY(count > 0);
+                offset += count;
+            }
+            QCOMPARE(QCryptographicHash::hash(actual, QCryptographicHash::Sha256).toHex(),
+                     record["sha256"].toString().toLatin1());
+        }
+        createArchive();
+    }
+    void signaturePolicyRejectsMissingForeignAndDamagedSignatures() {
+        const auto fixtures = signatures();
+        for (const QString policy :
+             {QString(), fixtures["collision"].toString(), fixtures["root"].toString()}) {
+            for (const auto &value : fixtures["cases"].toArray()) {
+                const auto record = value.toObject();
+                const bool unsignedFile = record["name"] == "unsigned";
+                createArchive();
+                QCOMPARE(signaturePolicy(true, policy), S_OK);
+                auto bytes = image(record);
+                if (!unsignedFile && policy == fixtures["root"].toString())
+                    bytes[record["signature_offset"].toInt() + record["signature_size"].toInt() -
+                          1] ^= 1;
+                CMyComPtr<IInStream> input = new Input(bytes);
+                QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+                CMyComPtr<IInArchiveGetStream> provider;
+                QCOMPARE(archive_->QueryInterface(IID_IInArchiveGetStream,
+                                                  reinterpret_cast<void **>(&provider)),
+                         S_OK);
+                CMyComPtr<ISequentialInStream> stream;
+                QVERIFY(provider->GetStream(fileIndex(), &stream) != S_OK);
+                QVERIFY(!stream);
+            }
+        }
+    }
+    void signedVerityConfigurationFailureAndReadCancellationCanBeRetried() {
+        const auto fixtures = signatures();
+        const auto record = fixtures["cases"].toArray().first().toObject();
+        createArchive();
+        QCOMPARE(signaturePolicy(true, fixtures["root"].toString()), S_OK);
+        QCOMPARE(signaturePolicy(false, "not a DER certificate"), E_INVALIDARG);
+        auto *source = new Input(image(record));
+        CMyComPtr<IInStream> input = source;
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        source->failAt = UInt64(record["signature_offset"].toDouble());
+        source->atResult = E_ABORT;
+        CMyComPtr<IInArchiveGetStream> provider;
+        QCOMPARE(
+            archive_->QueryInterface(IID_IInArchiveGetStream, reinterpret_cast<void **>(&provider)),
+            S_OK);
+        CMyComPtr<ISequentialInStream> stream;
+        QCOMPARE(provider->GetStream(fileIndex(), &stream), E_ABORT);
+        QVERIFY(!stream);
+        source->failAt = UINT64_MAX;
+        QCOMPARE(provider->GetStream(fileIndex(), &stream), S_OK);
+        QVERIFY(stream);
+    }
     void xattrStreamsOwnBytesAndHaveParents() {
         const auto record = bundle("xattrs");
         CMyComPtr<IInStream> input = new Input(image(record));

@@ -18,8 +18,10 @@
 #define CRYPTO_TFM_REQ_MAY_SLEEP 0x00000200
 #define CRYPTO_TFM_REQ_MAY_BACKLOG 0x00000400
 #define GFP_KERNEL 0
-#define SG_MITER_FROM_SG 1
-#define SG_MITER_ATOMIC 2
+#define SG_MITER_ATOMIC 1
+#define SG_MITER_TO_SG 2
+#define SG_MITER_FROM_SG 4
+#define SG_MITER_LOCAL 8
 #define HASH_MAX_DIGESTSIZE 64
 #define MAX_CIPHER_BLOCKSIZE 16
 #define ALIGN(n, a) (((n) + (a) - 1) & ~((size_t)(a) - 1))
@@ -60,14 +62,26 @@ static inline void scatterwalk_map_and_copy(void *buffer, struct scatterlist *sg
 		else memcpy(buffer, sg->data + offset, len);
 	}
 }
-struct sg_mapping_iter { void *addr; size_t length; struct scatterlist *sg; };
+struct sg_page_iter {
+	struct scatterlist *sg;
+	unsigned long sg_pgoffset;
+	unsigned __nents, __pg_advance;
+};
+struct sg_mapping_iter {
+	struct page *page;
+	void *addr;
+	size_t length, consumed;
+	struct sg_page_iter piter;
+	size_t __offset, __remaining;
+	unsigned __flags;
+	struct page mapped_page;
+};
 static inline unsigned sg_nents(const struct scatterlist *sg) { (void)sg; return 1; }
-static inline void sg_miter_start(struct sg_mapping_iter *it, struct scatterlist *sg,
-				  unsigned nents, unsigned flags)
-{ (void)nents; (void)flags; it->sg = sg; }
-static inline bool sg_miter_next(struct sg_mapping_iter *it)
-{ it->addr = it->sg->data; it->length = it->sg->len; return true; }
-static inline void sg_miter_stop(struct sg_mapping_iter *it) { (void)it; }
+static inline int sg_nents_for_len(const struct scatterlist *sg, unsigned len)
+{ return len > sg->len ? -EINVAL : len ? 1 : 0; }
+void sg_miter_start(struct sg_mapping_iter *, struct scatterlist *, unsigned, unsigned);
+bool sg_miter_next(struct sg_mapping_iter *);
+void sg_miter_stop(struct sg_mapping_iter *);
 static inline struct page *sg_page(struct scatterlist *sg) { return &sg->page; }
 static inline u8 *kmap_local_page(struct page *page) { return page->data; }
 static inline void kunmap_local(const void *p) { (void)p; }
@@ -124,7 +138,7 @@ struct crypto_lskcipher {
 	struct crypto_cipher *block;
 };
 #define CRYPTO_LSKCIPHER_FLAG_FINAL 0x00000002
-struct crypto_shash { int unused; };
+struct crypto_shash;
 struct skcipher_request {
 	struct {
 		u32 flags;
@@ -163,9 +177,8 @@ struct crypto_cipher *crypto_alloc_cipher(const char *, unsigned, unsigned);
 void crypto_free_cipher(struct crypto_cipher *);
 struct crypto_shash *crypto_alloc_shash(const char *, unsigned, unsigned);
 void crypto_free_shash(struct crypto_shash *);
-static inline unsigned crypto_shash_digestsize(const struct crypto_shash *hash) { (void)hash; return SHA256_DIGEST_SIZE; }
-static inline int crypto_shash_tfm_digest(struct crypto_shash *hash, const u8 *data, unsigned len, u8 *out)
-{ (void)hash; sha256(data, len, out); return 0; }
+unsigned crypto_shash_digestsize(const struct crypto_shash *);
+int crypto_shash_tfm_digest(struct crypto_shash *, const u8 *, unsigned, u8 *);
 struct skcipher_request *skcipher_request_alloc(struct crypto_skcipher *, unsigned);
 void skcipher_request_free(struct skcipher_request *);
 int crypto_skcipher_encrypt(struct skcipher_request *);

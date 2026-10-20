@@ -38,6 +38,7 @@
 #ifdef SEVENZIP_LINUX_EXT
 #include "extfscrypt.h"
 #include "extreader.h"
+#include "extveritypolicy.h"
 #include "extveritystream.h"
 #include <cerrno>
 #include <new>
@@ -786,10 +787,18 @@ static void ImportTime(const ext_time &source, CExtTime &time) {
 #endif
 
 // clang-format off
+#ifdef SEVENZIP_LINUX_EXT
+Z7_CLASS_IMP_CHandler_IInArchive_3(
+  IArchiveGetRawProps,
+  IInArchiveGetStream,
+  ISetProperties
+)
+#else
 Z7_CLASS_IMP_CHandler_IInArchive_2(
   IArchiveGetRawProps,
   IInArchiveGetStream
 )
+#endif
   CObjectVector<CItem> _items;
   CIntVector _refs;                 // iNode -> (index in _nodes). if (_refs[iNode] < 0), that node is not filled
   CRecordVector<CNode> _nodes;
@@ -811,6 +820,7 @@ Z7_CLASS_IMP_CHandler_IInArchive_2(
   CHeader _h;
 #ifdef SEVENZIP_LINUX_EXT
   CExtVolume _volume;
+  CExtVerityPolicy _verityPolicy;
   CObjectVector<CByteBuffer> _inlineData;
   std::vector<CExtCryptInode> _cryptInodes;
   UInt32 _extentChecksumSeed;
@@ -2020,6 +2030,15 @@ Z7_COM7F_IMF(CHandler::Close()) {
     return S_OK;
 }
 
+#ifdef SEVENZIP_LINUX_EXT
+Z7_COM7F_IMF(CHandler::SetProperties(const wchar_t *const *names, const PROPVARIANT *values,
+                                     UInt32 numProps)) {
+    COM_TRY_BEGIN
+    return _verityPolicy.SetProperties(names, values, numProps);
+    COM_TRY_END
+}
+#endif
+
 static void ChangeSeparatorsInName(char *s, unsigned num) {
     for (unsigned i = 0; i < num; i++) {
         char c = s[i];
@@ -3137,7 +3156,8 @@ HRESULT CHandler::GetStream_Node(unsigned nodeIndex, ISequentialInStream **strea
                 return S_FALSE;
             streamSpec->Size = (UInt64)end << _h.BlockBits;
             CMyComPtr<IInStream> verified;
-            RINOK(CreateExtVerityStream(streamSpec, node.FileSize, _h.BlockBits, end, &verified))
+            RINOK(CreateExtVerityStream(streamSpec, node.FileSize, _h.BlockBits, end, _verityPolicy,
+                                        &verified))
             streamTemp = verified;
         }
 #endif

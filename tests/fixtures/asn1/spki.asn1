@@ -1,0 +1,9 @@
+-- SPDX-License-Identifier: GPL-2.0-or-later
+-- Exercise the actual SubjectPublicKeyInfo envelope consumed by X.509.
+SubjectPublicKeyInfo ::= SEQUENCE {
+    algorithm SEQUENCE {
+        id OBJECT IDENTIFIER ({ capture_oid }),
+        params ANY OPTIONAL ({ capture_params })
+    },
+    publicKey BIT STRING ({ capture_key })
+}

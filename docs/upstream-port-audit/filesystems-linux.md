@@ -378,8 +378,9 @@ fs-verity data verification, публичные xattr/EA-inode values и POSIX A
 keys: software mode/KDF/IV paths, ciphertext names и Linux no-key view,
 symlink targets, casefold dirhash и композицию с fs-verity. Тот же reader
 подключён к прямому чтению устройств; standalone отказывает в encrypted data.
-Полная актуализация ext4 не завершена: trust policy и оставшиеся
-feature/creator-OS read semantics остаются в общем scope.
+Подключены builtin signatures и явно переданные сертификаты доверия; сквозные
+SDK/CLI/device проверки прошли на macOS, Linux и Windows. Полная актуализация ext4
+не завершена: оставшиеся feature/creator-OS read semantics остаются в общем scope.
 
 ### FAT12/16/32: BPB, имена и размер файла
 

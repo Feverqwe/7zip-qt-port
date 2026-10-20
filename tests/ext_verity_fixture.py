@@ -5,7 +5,7 @@ from ext_modern_fixture import ModernVolume
 
 
 class VerityVolume(ModernVolume):
-    def __init__(self, algorithm="sha256", salt=b"", size=35 * 1024 + 17, block_bits=10):
+    def __init__(self, algorithm="sha256", salt=b"", size=35 * 1024 + 17, block_bits=10, signer=None):
         super().__init__()
         self.algorithm = algorithm
         self.salt = salt
@@ -43,13 +43,19 @@ class VerityVolume(ModernVolume):
                          block_bits, len(salt), 0, size)
         descriptor[16:16 + len(self.root_hash)] = self.root_hash
         descriptor[80:80 + len(salt)] = salt
+        self.file_digest = hashlib.new(algorithm, descriptor).digest()
+        signature = signer(1 if algorithm == "sha256" else 2, self.file_digest) if signer else b""
+        struct.pack_into("<I", descriptor, 4, len(signature))
         self.metadata_logical = (size + 65535) // 65536 * 64
-        metadata = self.tree + descriptor + bytes(1024 - 256 - 4) + struct.pack("<I", 256)
+        descriptor += signature
+        metadata = self.tree + descriptor + bytes((-len(descriptor) - 4) % 1024) + struct.pack("<I", len(descriptor))
         blocks = len(metadata) // 1024
         self.metadata_physical = self.allocate(metadata[:1024])
         for pos in range(1024, len(metadata), 1024):
             self.allocate(metadata[pos:pos + 1024])
         self.descriptor_physical = self.metadata_physical * 1024 + len(self.tree)
+        self.signature_physical = self.descriptor_physical + 256
+        self.signature_size = len(signature)
         entries.append((self.metadata_logical, blocks, self.metadata_physical))
         self.data[self.file_inode + 40:self.file_inode + 100] = self.extent_header(0, entries, 4)
         self.put32(self.file_inode + 4, size)

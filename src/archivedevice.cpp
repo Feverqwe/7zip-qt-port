@@ -19,10 +19,13 @@ HRESULT Limit(IInStream *input, UInt64 offset, UInt64 size, IInStream **result) 
 
 HRESULT Open(const std::shared_ptr<const ArchiveCodecCatalog> &catalog, IInStream *input,
              const QString &name, const QString &format, IOpenCallbackUI *callback,
-             std::shared_ptr<ArchiveNativeOpen> &reader) {
+             std::shared_ptr<ArchiveNativeOpen> &reader, const COpenOptions *requested = nullptr) {
     reader = std::make_shared<ArchiveNativeOpen>(catalog);
     COpenOptions options;
-    options.props = nullptr;
+    if (requested)
+        options = *requested;
+    else
+        options.props = nullptr;
     options.stream = input;
     options.filePath = name.toStdWString().c_str();
     CObjectVector<COpenType> types;
@@ -132,7 +135,8 @@ HRESULT CheckFeatures(IInArchive *archive, bool ignoreJournal, QString *error) {
 
 HRESULT OpenDeviceFilesystem(const std::shared_ptr<const ArchiveCodecCatalog> &catalog,
                              IInStream *input, const QString &name, IOpenCallbackUI *callback,
-                             std::shared_ptr<ArchiveNativeOpen> &reader, QString *error) {
+                             std::shared_ptr<ArchiveNativeOpen> &reader, QString *error,
+                             const COpenOptions *options) {
     COM_TRY_BEGIN
     reader.reset();
     if (error)
@@ -141,7 +145,7 @@ HRESULT OpenDeviceFilesystem(const std::shared_ptr<const ArchiveCodecCatalog> &c
         return E_INVALIDARG;
     RINOK(input->Seek(0, STREAM_SEEK_SET, nullptr))
     std::shared_ptr<ArchiveNativeOpen> opened;
-    RINOK(Open(catalog, input, name, QStringLiteral("Ext"), callback, opened))
+    RINOK(Open(catalog, input, name, QStringLiteral("Ext"), callback, opened, options))
     const auto *direct = dynamic_cast<DirectDeviceInput *>(input);
     RINOK(CheckFeatures(opened->arc().Archive, direct && direct->ignoresDeviceJournal(), error))
     reader = std::move(opened);
@@ -211,8 +215,8 @@ HRESULT ArchiveDevice::inspect(IInStream *input, UInt64 size, const QString &nam
 }
 
 HRESULT ArchiveDevice::openPartition(int index, IOpenCallbackUI *callback,
-                                     std::shared_ptr<ArchiveNativeOpen> &reader,
-                                     QString *error) const {
+                                     std::shared_ptr<ArchiveNativeOpen> &reader, QString *error,
+                                     const COpenOptions *options) const {
     COM_TRY_BEGIN
     reader.reset();
     if (error)
@@ -224,7 +228,7 @@ HRESULT ArchiveDevice::openPartition(int index, IOpenCallbackUI *callback,
     CMyComPtr<IInStream> bounded;
     RINOK(partitionInput(index, &bounded))
     return OpenDeviceFilesystem(catalog_, bounded, name_ + '/' + partitions_[index].name, callback,
-                                reader, error);
+                                reader, error, options);
     COM_TRY_END
 }
 

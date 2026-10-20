@@ -231,11 +231,9 @@ verity-marked file streams rather than claiming unchecked reads as verified.
 Direct-device policy accepts the implemented verity data path.
 
 Write/enable/metadata mutation, ioctl transport, global inode caching, scheduling,
-readahead and kernel trust keyrings are omitted. The signature callback is the
-original `CONFIG_FS_VERITY_BUILTIN_SIGNATURES=n` service: stored signature bounds
-are checked, but this module makes no certificate/authenticity claim. Trust/key
-policy remains a separate modernization requirement after the software fscrypt
-read integration.
+readahead and kernel trust keyrings are omitted. The enabled signature path and
+explicit archive trust are described below; they use owned certificates rather
+than a host kernel keyring.
 
 Deterministic fixtures independently produce SHA-256/SHA-512 trees using hashlib,
 with/without salt, empty and short files, multiple tree levels, holes/unwritten
@@ -651,7 +649,146 @@ dependency. This is scoped installed-CLI evidence; real encrypted media,
 hardware keys, native UI interaction and release-package acceptance are unverified.
 
 This iteration does not close the ext row. Remaining feature/creator-OS read
-semantics and verity trust policy need their complete source comparison and
-integration. These remain required follow-up work, not accepted permanent
-limitations. Kernel VFS/page cache, writes and journal replay remain outside
-the read-only archive contract.
+semantics still need their complete source comparison and integration; they are
+required follow-up work, not accepted permanent limitations. The subsequent
+verity trust integration is described below. Kernel VFS/page cache, writes and
+journal replay remain outside the read-only archive contract.
+
+### Builtin signatures and explicit archive trust
+
+The same pinned Linux revision supplies the enabled builtin-signature path in
+`fs/verity/signature.c`, its `open.c` consumer, the selected verification entry
+points in `certs/system_keyring.c`, and the complete PKCS#7 parser, verification
+and trust traversal. X.509 parsing, signature preparation and self-signature
+checks retain their original control flow. `public_key.c` supplies software
+algorithm/encoding/hash selection, parameter packing and fresh-transform
+verification; `signature.c` supplies subtype dispatch and cleanup. Original
+asymmetric identifier generation, exact/partial/name matching, lookup and the
+required second-ID check are retained. The baseline manifest pins every borrowed
+source/header/schema; each source retains its notices and original C boundary.
+
+The original enabled policy checks every present signature, including when
+signatures are optional. An empty archive trust set rejects signed files before
+parsing PKCS#7. Requiring signatures rejects unsigned verity files. The original
+fixed-endian formatted digest binds the signature to fs-verity, its digest
+algorithm and file digest. Descriptor, signature and Merkle verification must
+all succeed before the file stream becomes available. File-content verification
+and the standalone `7zz` refusal described above remain in force.
+
+Dependencies are transferred at their original paths:
+
+- `lib/asn1_decoder.c`, ASN.1 headers and the C host compiler
+  `scripts/asn1_compiler.c`; unchanged PKCS#7, X.509, AKID, RSA and ECC grammars.
+  Generated machine/callback tables match the original compiler. Host changes
+  cover CRT binary I/O, compiler annotations/GNU expressions, byte offsets and
+  equivalent sequential C11 table initialization.
+- `lib/oid_registry.c`, original OID definitions and `lib/build_OID_registry`.
+  The checked C11 generator retains every original index, encoded byte and
+  search entry. Ordinary builds need no Perl/bc. Scalar bitfields, byte-pointer
+  arithmetic and LLP64 numeric formatting are the narrow adaptations.
+- Original generic SHA-1/SHA-2/SHA-3/SHAKE, SM3 and Streebog routines and selected
+  synchronous `shash.c` buffering/default callbacks. Fixed owned provider
+  metadata replaces global Crypto API registration. Calendar conversion reuses
+  the existing authoritative `kernel/time/time.c`; original string/hex helpers
+  supply identifier conversion and digest lookup.
+- RSA, RSA ASN.1 helpers, PKCS#1 v1.5, synchronous akcipher requests and all generic
+  MPI arithmetic units. MPI follows native `unsigned long` limbs, including
+  32-bit limbs on LLP64 Windows. Original generic mixed-word arithmetic is used
+  without architecture assembly. Compiler type modes, inline linkage, zero
+  initialization and three GNU conditionals use equivalent C11 forms.
+- ECC arithmetic, full/partial point validation, all four Linux NIST curves,
+  both ECDSA encodings, and all five implemented GOST curves. The two GOST
+  parameter sets unsupported by Linux retain rejection. Compiler carry/borrow
+  services select the original generic path with portable unsigned overflow
+  operations; half-word multiplication and modular reductions are unchanged.
+- The generic ML-DSA verifier and Crypto API wrappers for all three parameter
+  sets. Only includes, parameter-table/zero initialization, pointer-width inline
+  selection and actual explicit workspace cleanup replace compiler services.
+  Original `lib/string.c::memchr_inv` replaces the old independent fscrypt loop.
+
+Original `lib/scatterlist.c` page/mapping iterator bodies replace the earlier
+repeating-span adapter, retaining partial consumption, resume and termination.
+Actual mappings address a bounded owned memory span; kernel chained/DMA pages
+are not provided. Original generic bit scans supply MPI and replace the fscrypt
+bit-count loop. Crypto API contexts and instances remain at their original
+internal header boundaries. Constructors replace kernel discovery/registration;
+original algorithm bodies and key-state behavior are retained. X.509 cleanup
+attributes become real cleanup on all exits, and its GNU time expressions use
+C11 statements. PKCS#1 requests are explicitly released on all allocated exits.
+The zero-length `none` prefix uses a C11 sentinel with encoded length zero.
+
+The archive-specific storage adapter owns copied certificate DER, parsed keys
+and identifiers in an immutable trust object. Lookup uses the original matcher;
+each synchronous result owns a separate handle borrowing immutable payload while
+its caller retains the ring. Concurrent checks do not mutate shared reference
+counts or global key state. PKCS#7 parsing/verification state and crypto transforms
+are fresh for each check. Trust is established by the original traversal and
+cryptographic verification of the trusted variant, never by names/IDs alone.
+
+Kernel key quotas/credentials, global registration, builtin/secondary/platform
+trust stores, system revocation lists and global inode caches are outside this
+userspace archive boundary. The selected original
+`CONFIG_SYSTEM_BLACKLIST_KEYRING=n`, `CONFIG_SYSTEM_REVOCATION_LIST=n` and
+`CONFIG_SECURITY=n` services do not consult host stores or notify kernel LSMs.
+Missing/special global-store requests are rejected; only the explicit owned ring
+is available. No system trust store or kernel keyring is modified. No FIPS claim
+is made. ECC private-key generation/validation, public-key generation and ECDH
+random services are omitted from this read-only boundary. RSA private operations
+remain source-transferred but are not runtime-accepted as an archive feature.
+
+The GPL handler implements the original SDK `ISetProperties` transport, following
+`NtfsHandler::SetProperties` conversion/ignored transport-property pattern from
+7-Zip `9128b80e3a471108678e2b3ec3c985861c8d7b0f`. It reuses the existing authoritative
+`MethodProps.cpp` boolean conversion; its mixed baseline remains recorded in the
+[7-Zip manifest](../upstream-baseline.json). The local policy owner has no usable
+upstream userspace counterpart. Property configuration is atomic on failure;
+streams retain their policy and inputs after handler Close/reopen/Release.
+Native file, device and selected-partition opening pass original `COpenOptions`
+properties to the same handler. Widgets gain no certificate-editor workflow.
+
+The public properties are `verity.require` (SDK boolean or `on`/`off` string) and
+repeatable `verity.trust` (ASCII hexadecimal DER certificate). Trust inputs are
+copied; Linux's original hex decoder handles the text boundary. For the dynamic
+CLI, use `-mverity.require+ -mverity.trust=<certificate-DER-as-hex>`; omit the
+require switch or use `-mverity.require=off` for optional signatures. Optional
+signatures still require valid explicit trust whenever present. These options do
+not load OS trust roots or interpret protector passwords.
+
+Behavior evidence covers 228 independent Linux AF_ALG hash answers with block,
+rate, padding and unaligned/split boundaries; published Linux ML-DSA, RSA and ECC
+answers; and corrupt keys/messages/encodings and failed key replacement. The RSA
+fixture generator independently reproduces the published CAVS answer and checks
+its positive results with OpenSSL. Its public outputs cover all six Linux
+non-FIPS modulus sizes and SHA-1/SHA-2/SHA-3 prefixes. No private test keys are
+emitted. Published X.509/PKCS#7 fixtures exercise actual self/internal signature
+verification, rather than accidentally deferring checks on a cert-less message.
+
+Deterministic chain fixtures use published Linux test keys, independent Python
+integer signing and OpenSSL verification. Tests cover embedded/external roots,
+trusted leaves/intermediates, missing chains, altered content, empty/foreign
+trust, second-ID mismatch and a valid certificate with identical identifiers but
+a different key. The last two cases must not acquire trust. Factory failure
+cannot publish a partially configured ring; verification survives input wipe.
+
+OpenSSL also verifies the SHA-256/SHA-512 formatted-digest signatures in the
+signed ext fixtures, including authenticated attributes. SDK and dynamic CLI
+checks read exact content hashes, reject missing/foreign trust and signature
+corruption, and enforce unsigned/required policy. SDK checks cover retained
+streams, failed property replacement and cancellation/retry at signature reads;
+aligned device streams receive the same opening properties. Input images stay
+unchanged. Actual kernel signature acceptance with installed trust roots has not
+been run: the host kernel's global trust state is deliberately untouched. Native
+unsigned Merkle/fscrypt evidence above and the original Linux signature vectors
+remain separate from these archive trust checks.
+
+The thirteen focused crypto/ext/stream/backend/device suites passed on macOS,
+Linux and MSVC Windows on 2026-10-21 with incremental builds and existing caches.
+The additional authenticated-attribute image passed localized SDK/CLI checks on
+all three platforms. The application was rebuilt, and a private macOS CMake
+installation read all four image cases with a system-only PATH, rejected missing
+or foreign trust, enforced required signatures and left input images unchanged.
+The installed module has no external crypto runtime dependency; its payload
+retains the LGPL MPI, BSD ECC and IETF ASN.1 license texts and specific notices.
+Installed Linux/Windows packages, full/slow suites, native UI, release packages
+and physical devices were not checked in this iteration. Broader ext
+feature/creator-OS read semantics remain in the parent scope.

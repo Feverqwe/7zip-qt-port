@@ -7,6 +7,10 @@ import sys
 import tempfile
 import unittest
 import zlib
+import base64
+import hashlib
+import json
+from types import SimpleNamespace
 from ext_fixture import Volume, NAME
 from ext_modern_fixture import ModernVolume
 from ext_verity_fixture import VerityVolume
@@ -29,7 +33,7 @@ class ExtTests(unittest.TestCase):
         (cls.runtime / "Formats").mkdir()
         shutil.copy2(MODULE, cls.runtime / "Formats" / MODULE.name)
 
-    def run_image(self, v, engine="7z", command="x", name=NAME, streams=False):
+    def run_image(self, v, engine="7z", command="x", name=NAME, streams=False, properties=()):
         with tempfile.TemporaryDirectory(dir=self.runtime) as temporary:
             path = Path(temporary) / "образ ext 空.img"
             path.write_bytes(v.data)
@@ -39,12 +43,39 @@ class ExtTests(unittest.TestCase):
             else:
                 args += ["-sns-"]
             args += ["-so", "-bso0", "-bse2"] if command == "x" else ["-slt"]
+            args += list(properties)
             args += ["--", str(path)]
             if name is not None:
                 args += [name]
             result = subprocess.run(args, stdin=subprocess.DEVNULL, capture_output=True, timeout=10)
             self.assertEqual(path.read_bytes(), v.data)
             return result
+
+    def test_builtin_verity_signatures_use_explicit_archive_trust(self):
+        fixtures = json.loads((Path(__file__).parent / "fixtures/ext4/verity-signatures.json").read_text())
+        trusted = "-mverity.trust=" + fixtures["root"]
+        foreign = "-mverity.trust=" + fixtures["collision"]
+        for record in fixtures["cases"]:
+            with self.subTest(algorithm=record["name"]):
+                volume = SimpleNamespace(data=zlib.decompress(base64.b64decode(record["image"])))
+                unsigned = record["name"] == "unsigned"
+                result = self.run_image(volume, properties=[trusted, "-mverity.require=off"])
+                self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                self.assertEqual(len(result.stdout), record["file_size"])
+                self.assertEqual(hashlib.sha256(result.stdout).hexdigest(), record["sha256"])
+                required = self.run_image(volume, properties=[trusted, "-mverity.require+"])
+                self.assertEqual(required.returncode == 0, not unsigned, required.stderr.decode(errors="replace"))
+                if unsigned:
+                    continue
+                for properties in ([], [foreign], [trusted, "-mverity.trust=not-hex"]):
+                    rejected = self.run_image(volume, properties=properties)
+                    self.assertNotEqual(rejected.returncode, 0)
+                    self.assertEqual(rejected.stdout, b"")
+                damaged = bytearray(volume.data)
+                damaged[record["signature_offset"] + record["signature_size"] - 1] ^= 1
+                rejected = self.run_image(SimpleNamespace(data=damaged), properties=[trusted, "-mverity.require=off"])
+                self.assertNotEqual(rejected.returncode, 0)
+                self.assertEqual(rejected.stdout, b"")
 
     def test_xattr_names_values_and_acl_serialization(self):
         for kind in ("xattrs", "xattrs-signed", "xattrs-lustre"):

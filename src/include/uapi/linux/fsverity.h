@@ -30,4 +30,13 @@ struct fsverity_descriptor {
 #endif
 };
 
+/* Format in which fs-verity file digests are signed in built-in signatures.
+ * Fixed endianness and context distinguish these from other uses of a key. */
+struct fsverity_formatted_digest {
+	char magic[8];			/* must be "FSVerity" */
+	__le16 digest_algorithm;
+	__le16 digest_size;
+	__u8 digest[];
+};
+
 #endif

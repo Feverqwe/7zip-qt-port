@@ -9,6 +9,7 @@
 class ArchiveCodecCatalog;
 class ArchiveNativeOpen;
 struct IOpenCallbackUI;
+struct COpenOptions;
 
 // Customer-defined FACILITY_ITF result: the caller can offer an explicit
 // read-without-replay session. Other unsupported features remain E_NOTIMPL.
@@ -36,10 +37,11 @@ class ArchiveDevice final {
     const QList<ArchiveDevicePartition> &partitions() const { return partitions_; }
     HRESULT partitionInput(int index, IInStream **stream) const;
     HRESULT openPartition(int index, IOpenCallbackUI *callback,
-                          std::shared_ptr<ArchiveNativeOpen> &reader,
-                          QString *error = nullptr) const;
+                          std::shared_ptr<ArchiveNativeOpen> &reader, QString *error = nullptr,
+                          const COpenOptions *options = nullptr) const;
 };
 
 HRESULT OpenDeviceFilesystem(const std::shared_ptr<const ArchiveCodecCatalog> &catalog,
                              IInStream *input, const QString &name, IOpenCallbackUI *callback,
-                             std::shared_ptr<ArchiveNativeOpen> &reader, QString *error = nullptr);
+                             std::shared_ptr<ArchiveNativeOpen> &reader, QString *error = nullptr,
+                             const COpenOptions *options = nullptr);

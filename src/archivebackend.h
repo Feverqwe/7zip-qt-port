@@ -124,7 +124,8 @@ class ArchiveBackend : public QObject {
     HRESULT openDeviceFilesystem(const std::shared_ptr<const ArchiveCodecCatalog> &catalog,
                                  IInStream *input, const QString &name, IOpenCallbackUI *callback,
                                  std::shared_ptr<ArchiveNativeOpen> &reader,
-                                 QString *error = nullptr) const;
+                                 QString *error = nullptr,
+                                 const COpenOptions *options = nullptr) const;
     static HRESULT inspectDevice(const std::shared_ptr<const ArchiveCodecCatalog> &catalog,
                                  IInStream *input, quint64 size, const QString &name,
                                  IOpenCallbackUI *callback, std::shared_ptr<ArchiveDevice> &source);

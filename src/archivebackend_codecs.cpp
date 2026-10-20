@@ -118,9 +118,9 @@ HRESULT
 ArchiveBackend::openDeviceFilesystem(const std::shared_ptr<const ArchiveCodecCatalog> &catalog,
                                      IInStream *input, const QString &name,
                                      IOpenCallbackUI *callback,
-                                     std::shared_ptr<ArchiveNativeOpen> &reader,
-                                     QString *error) const {
-    return OpenDeviceFilesystem(catalog, input, name, callback, reader, error);
+                                     std::shared_ptr<ArchiveNativeOpen> &reader, QString *error,
+                                     const COpenOptions *options) const {
+    return OpenDeviceFilesystem(catalog, input, name, callback, reader, error, options);
 }
 
 HRESULT ArchiveBackend::loadCodecCatalog(const QString &module, quint32 engineVersion) {
