@@ -956,8 +956,12 @@ if(BUILD_TESTING)
     set_tests_properties(gzip_stream PROPERTIES TIMEOUT 30)
     add_test(NAME cpio COMMAND ${Python3_EXECUTABLE}
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/cpio_tests.py
-        ${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime)
+        ${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime "$<TARGET_FILE:sevenzip_linux_frames>")
     set_tests_properties(cpio PROPERTIES TIMEOUT 45)
+    add_test(NAME initramfs COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/initramfs_tests.py
+        ${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime "$<TARGET_FILE:sevenzip_linux_frames>")
+    set_tests_properties(initramfs PROPERTIES TIMEOUT 60)
     qt_add_executable(cpio_stream_tests tests/cpio_stream_tests.cpp)
     target_include_directories(cpio_stream_tests PRIVATE src third_party/7zip/CPP)
     target_link_libraries(cpio_stream_tests PRIVATE sevenzip_panel Qt6::Test)
@@ -965,10 +969,13 @@ if(BUILD_TESTING)
         target_link_libraries(cpio_stream_tests PRIVATE oleaut32)
     endif()
     target_compile_definitions(cpio_stream_tests PRIVATE
+        "SEVENZIP_CPIO_MODULE=\"$<TARGET_FILE:sevenzip_linux_frames>\""
+        "SEVENZIP_INITRAMFS_FIXTURE=\"${CMAKE_CURRENT_SOURCE_DIR}/tests/initramfs_fixture.py\""
         "SEVENZIP_CPIO_RUNTIME=\"${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime\""
         "SEVENZIP_CPIO_PYTHON=\"${Python3_EXECUTABLE}\""
         "SEVENZIP_CPIO_FIXTURE=\"${CMAKE_CURRENT_SOURCE_DIR}/tests/cpio_fixture.py\"")
     add_test(NAME cpio_stream COMMAND cpio_stream_tests -silent)
+    add_dependencies(cpio_stream_tests sevenzip_linux_frames_runtime)
     set_tests_properties(cpio_stream PROPERTIES TIMEOUT 30)
     add_test(NAME mbr COMMAND ${Python3_EXECUTABLE}
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/mbr_tests.py

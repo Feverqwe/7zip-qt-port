@@ -328,6 +328,13 @@ WOF извлекается в декодированный файл без по�
 с EROFS-модулем; standalone `7zz` не содержит этого расширения.
 [Происхождение, границы metadata и проверки](upstream-port-audit/erofs-linux.md).
 
+Составной Linux initramfs читается через Cpio в поставляемом динамическом
+runtime: поддерживаются смешанные raw/compressed части и hard links через
+границы сжатия. Это расширение относительно upstream 7zFM; standalone `7zz`
+сохраняет отдельные compression wrappers и raw CPIO. Расширения compressor
+по-прежнему открывают внешний поток; полный initramfs доступен как Cpio.
+[Границы и проверенные платформы](upstream-port-audit/cpio-linux.md#composite-initramfs--2026-10-20).
+
 ## Необходимые платформенные адаптации
 
 | Область | Отличие и граница |

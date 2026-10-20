@@ -4,7 +4,14 @@
   "files": {
     "Documentation/driver-api/early-userspace/buffer-format.rst": "cc89d4c84c23995146da849cca90b800ad167b75089f259bece2c1a4bb759bfb",
     "init/initramfs.c": "beb2db5b08b31961349982ac76ca9ac529ba912b7434c20055c2b9bd3dbecd44",
-    "lib/decompress.c": "dd82cca38e7af2ad746f659cd45b6f94ecb05ce063a0068fe6e3d424d09554a1"
+    "lib/decompress.c": "dd82cca38e7af2ad746f659cd45b6f94ecb05ce063a0068fe6e3d424d09554a1",
+    "lib/decompress_inflate.c": "1f0ef737c3c9978746b84ba252fa365404d8bced3138dd0b170cc929521f9951",
+    "lib/decompress_bunzip2.c": "0dc424009d458e3c0c486cde834b28f743a50d27f5ff3544e70457407be59835",
+    "lib/decompress_unlzma.c": "186e2a8be080c7c65512e4fcec043096a6d93a6d30355c3aec448095cab432aa",
+    "lib/decompress_unxz.c": "97b26c43e0c5649dc4f7cf2f82142b28cc2654392b328f14e77bd934c0bde559",
+    "lib/decompress_unlzo.c": "62fc8fb05170c8225ffa3d5df1a32afd76944623e2dca1919a9d832a7997086f",
+    "lib/decompress_unlz4.c": "8dfa6b034570409d9aef1414cd09007a7d9845eb4276fae7ee93928242d73059",
+    "lib/decompress_unzstd.c": "a2ec8f555857a6e93303c2da58c5892ba3a303f4c3b9cd150dfe517520855b91"
   },
-  "scope": "Reference comparison only; no Linux parser bodies shipped. Existing 7-Zip CPIO parser is adapted."
+  "scope": "CPIO parser/hard-link comparison and composite initramfs dispatcher/boundaries. SDK parser and decoders retained; Linux VFS creation omitted. Linux LZ4/lzop C wrapper ports are owned by linux-frames-baseline.json."
 }

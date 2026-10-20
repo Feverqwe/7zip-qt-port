@@ -1,4 +1,4 @@
-# CPIO: raw newc/crc members и hard links
+# CPIO и составной initramfs
 
 ## Source comparison
 
@@ -47,7 +47,7 @@ Trailer сбрасывает группу: независимо созданны
 положением и удержанием источника; interleaved reads, Close/reopen и release
 handler не перенаправляют уже выданный поток на другой payload.
 
-## Границы и оставшийся scope
+## Границы raw-итерации
 
 Это законченная итерация raw CPIO entry reading, не завершение всего initramfs.
 Смешанные compressed/raw members, продолжение после compressed member и
@@ -67,7 +67,7 @@ lenient kernel branches для malformed input не объявляются forma
 Возможность поиска вложенного архива с ненулевым offset также сохранена;
 проверки malformed CPIO фиксируют начало (`-tCpio:s0`) либо используют ABI.
 
-## Validation
+## Validation raw-итерации
 
 CLI обоих engines: 26 valid вариантов, exact payload каждого regular entry,
 hard-link extraction на диск, Unicode/spaces, symlink metadata, automatic
@@ -98,3 +98,85 @@ x64/MSVC — 6/6 PASS. Remote receipt `20261020T073127Z-412fc9f8`.
 Exact baseline verification: 422 exact, 224 adapted, 11 local paths, одна
 upstream revision. Full/slow gate и UI appearance не требуются изменением
 одного format handler и в этой итерации не выполнялись.
+
+## Composite initramfs — 2026-10-20
+
+Прочитаны полные `unpack_to_rootfs`, `flush_buffer`, переходы Start/Reset,
+CPIO header/body/alignment branches и hard-link state, dispatch `lib/decompress.c`
+и все семь `lib/decompress_*` wrappers закреплённой Linux revision выше.
+Со стороны SDK повторно сравнены полный CPIO handler и его extent consumers,
+gzip/LZMA header/decoder/footer bodies, BZip2 stream loop, XZ unpacker states
+и Zstd C decoder/frame status. Hashes reference units добавлены в существующий
+[CPIO baseline](../cpio-linux-baseline.json); decoder baselines остаются у
+индивидуальных format audits.
+
+Динамический runtime теперь получает Cpio из отдельного GPL-модуля вместе с
+Lz4Legacy/Lzop. В core dynamic engine повторная регистрация отключена;
+standalone `7zz` сохраняет raw CPIO и вложенное чтение отдельных compressors.
+Новые initramfs возможности предоставляют dynamic `7z` и приложение. Cpio
+принимает raw/compressed последовательности с gzip, bzip2, LZMA, XZ, lzop,
+legacy LZ4 и Zstd, продолжение после каждого кадра и optional trailers.
+Реальный trailer сбрасывает hard-link группу; граница сжатия её сохраняет.
+
+`initramfsreader` — адаптация Linux dispatcher/flush state к archive streams,
+а не новый CPIO/compression parser. Исходный CPIO parser SDK остаётся единственным;
+его metadata/extraction/hard-link path получает seekable canonical stream.
+Каждая декомпрессированная часть отдельно проверяется на complete-record/Reset
+boundary до подключения следующей. Частичный header, body или alignment нельзя
+дополнить bytes из следующего compressed member. Начальный пустой compressed
+member/leading decompressed NUL отвергается, но после полного CPIO record эти
+переходы допустимы, как в Linux. Последний полный raw payload может не иметь
+alignment padding. Нулевые промежутки и physical alignment учитываются отдельно
+от локального alignment внутри compressed part.
+
+`initramfsdecoders` использует существующие SDK decoder bodies, с остановкой
+на одном member и возвратом exact consumed position после read-ahead.
+Gzip/LZMA single-member entry points добавлены в исходные handler units;
+compile guard исключает их обычные registrations из GPL target. BZip2, его
+header/constants/MTF dependencies скопированы без изменений из того же SDK
+commit по исходным путям; `Z7_ST` исключает неиспользуемую MT service ветвь.
+XZ сохраняет SDK index/check/footer validation и существующий one-block stop,
+Zstd — C frame-end/result API. LZ4/lzop используют уже перенесённые Linux C wrappers.
+Encoder, PREBOOT, VFS node creation и boot services не копируются в этот сценарий.
+
+`initramfscache` — узкий platform-service adapter для временного seekable storage.
+SDK InOutTempBuffer предоставляет последовательный вывод, а текущий FileDir
+порта зависит от Qt; ни один не является пригодным seekable plugin dependency.
+POSIX cache создаётся через mkstemp, сразу unlink, с close-on-exec; Windows
+использует private non-inheritable handle с delete-on-close и проверкой файла.
+Удержание cache принадлежит source stream: Close/reopen handler не инвалидирует
+выданные entry streams. Raw-only путь не создаёт cache. Неверный output path
+не записывается из archive metadata. Cancellation/source/disk errors очищают Open.
+Progress остаётся в пределах physical input; физический размер исходника
+сохранён, а canonical entry offsets/packed sizes не выдаются за compressed offsets.
+
+Расширения `.cpio`, `.initramfs`, `.initrd`, `.img` направляют пробу в Cpio;
+обычные `.gz`/`.xz` и другие compressor extensions сохраняют прежнее открытие
+внешнего compression format. Для чтения полного initramfs с таким именем
+доступен явный `-tCpio`. Неподходящий образ получает S_FALSE и обычный format
+fallback. Непредусмотренные corrupt streams не объявляются Linux features;
+SDK checksum validation и дополнительные compression contracts сохранены.
+
+CLI regression проверяет полные images, exact extracted files, automatic
+recognition, input immutability, shared/trailer-reset hard links, большие
+payloads, XZ multiple/empty blocks, смешанный образ со всеми семью compressors
+и malformed part boundaries. ABI проверяет independent/retained streams всех
+семи methods, source E_FAIL/E_ABORT, initial/mid/final cancellation, bounded
+progress, physical metadata, invalid indices, unavailable temporary storage,
+повторное открытие и ArchiveBackend extraction смешанного Unicode image.
+
+Compiled reference использует исходные C bodies Linux dispatcher, initramfs FSM,
+hard-link routines и всех семи wrappers с POSIX VFS/allocation adapters.
+Проверены success/error boundaries и bytes; metadata ownership/time services
+адаптированы, native kernel boot не выполнялся. Опасные malformed compressed
+memory calls в старых boot wrappers не используются как validator.
+
+Focused macOS arm64 / Linux x64 / Windows x64/MSVC: 15/15 suites PASS
+(`cpio`, `cpio_stream`, `initramfs`, обе Linux frame suites и CLI/ABI suites
+пяти SDK compressors). Remote receipt `20261020T140937Z-05aae5b6`.
+После финальных XZ/raw-boundary fixtures и POSIX close-on-exec две затронутые
+suites повторно PASS на всех трёх ОС; receipt `20261020T141242Z-7d284559`.
+Итоговый reference: 94 valid images с exact bytes
+и 49 invalid boundary cases, все результаты совпадают с исходным Linux FSM.
+SDK baseline: 422 exact / 242 adapted / 12 local, одна revision. Full/slow,
+native boot, физические устройства и UI appearance в эти проверки не входят.

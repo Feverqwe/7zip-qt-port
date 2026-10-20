@@ -8,6 +8,34 @@ set_target_properties(sevenzip_linux_frames_core PROPERTIES AUTOMOC OFF AUTOUIC 
     POSITION_INDEPENDENT_CODE ON C_STANDARD 11 C_STANDARD_REQUIRED ON)
 add_library(sevenzip_linux_frames MODULE
     src/CPP/7zip/Archive/LinuxFrameHandler.cpp src/linuxframestream.cpp src/exfatmodule.cpp
+    src/CPP/7zip/Archive/CpioHandler.cpp
+    src/CPP/7zip/Archive/GzHandler.cpp src/CPP/7zip/Archive/LzmaHandler.cpp
+    src/initramfsdecoders.cpp src/initramfsreader.cpp src/initramfscache.cpp
+    src/CPP/7zip/Common/LimitedStreams.cpp
+    src/CPP/7zip/Compress/LzmaDecoder.cpp
+    third_party/7zip/CPP/7zip/Compress/BZip2Decoder.cpp
+    third_party/7zip/CPP/7zip/Compress/BZip2Crc.cpp
+    third_party/7zip/CPP/7zip/Compress/CopyCoder.cpp
+    third_party/7zip/CPP/7zip/Compress/DeflateDecoder.cpp
+    third_party/7zip/CPP/7zip/Compress/BitlDecoder.cpp
+    third_party/7zip/CPP/7zip/Compress/LzOutWindow.cpp
+    third_party/7zip/CPP/7zip/Archive/Common/OutStreamWithCRC.cpp
+    third_party/7zip/CPP/7zip/Archive/Common/ItemNameUtils.cpp
+    third_party/7zip/CPP/7zip/Common/CWrappers.cpp
+    third_party/7zip/CPP/7zip/Common/InBuffer.cpp
+    third_party/7zip/CPP/7zip/Common/OutBuffer.cpp
+    third_party/7zip/CPP/Windows/TimeUtils.cpp
+    third_party/7zip/CPP/Common/CRC.cpp
+    third_party/7zip/CPP/Common/XzCrc64Init.cpp
+    third_party/7zip/CPP/Common/MyVector.cpp
+    third_party/7zip/CPP/Common/StringToInt.cpp
+    third_party/7zip/C/7zCrc.c third_party/7zip/C/7zCrcOpt.c
+    third_party/7zip/C/CpuArch.c third_party/7zip/C/Alloc.c third_party/7zip/C/LzmaDec.c
+    third_party/7zip/C/Lzma2Dec.c third_party/7zip/C/Xz.c third_party/7zip/C/XzDec.c
+    third_party/7zip/C/XzCrc64.c third_party/7zip/C/XzCrc64Opt.c
+    third_party/7zip/C/Sha256.c third_party/7zip/C/Sha256Opt.c
+    third_party/7zip/C/Bra.c third_party/7zip/C/Bra86.c third_party/7zip/C/BraIA64.c
+    third_party/7zip/C/Delta.c third_party/7zip/C/ZstdDec.c third_party/7zip/C/Xxh64.c
     third_party/7zip/CPP/7zip/Archive/ArchiveExports.cpp
     third_party/7zip/CPP/7zip/Archive/Common/DummyOutStream.cpp
     third_party/7zip/CPP/7zip/Archive/Common/FindSignature.cpp
@@ -20,7 +48,12 @@ add_library(sevenzip_linux_frames MODULE
     third_party/7zip/CPP/Common/IntToString.cpp
     third_party/7zip/CPP/Common/StringConvert.cpp
     third_party/7zip/CPP/Common/UTFConvert.cpp)
-target_include_directories(sevenzip_linux_frames PRIVATE src third_party/7zip/CPP)
+target_include_directories(sevenzip_linux_frames PRIVATE src third_party/7zip/CPP
+    third_party/7zip/CPP/7zip/Archive)
+target_compile_definitions(sevenzip_linux_frames PRIVATE SEVENZIP_LINUX_INITRAMFS Z7_ST)
+set_source_files_properties(src/CPP/7zip/Archive/GzHandler.cpp
+    src/CPP/7zip/Archive/LzmaHandler.cpp PROPERTIES
+    COMPILE_DEFINITIONS SEVENZIP_INITRAMFS_FRAME_ONLY)
 target_link_libraries(sevenzip_linux_frames PRIVATE sevenzip_linux_frames_core)
 set_target_properties(sevenzip_linux_frames PROPERTIES AUTOMOC OFF AUTOUIC OFF PREFIX "")
 if(UNIX AND NOT APPLE)

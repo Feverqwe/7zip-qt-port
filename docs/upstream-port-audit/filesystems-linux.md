@@ -28,8 +28,10 @@ commit `58161ead29e50d70a317ea26b472e0c7508e69da` от 2026-10-17.
 commit `9128b80e3a471108678e2b3ec3c985861c8d7b0f`.
 Обработчики встроены в поставляемый динамический engine и standalone engine;
 их исходники берутся из read-only sibling checkout при подготовке runtime.
-Локальные исправления должны попадать в оба engine, сохранять исходную структуру
-модулей и учитываться в provenance/cache runtime. Изменение sibling запрещено.
+Локальные исправления встроенных modules должны попадать в оба engine,
+сохранять исходную структуру и учитываться в provenance/cache runtime.
+Отдельные GPL plugins загружает dynamic engine; standalone `7zz` их не содержит.
+Изменение sibling запрещено.
 
 Linux определяет корректность интерпретации дисковых структур и чтения данных.
 Его VFS, запись, журналирование, mount, восстановление повреждённых томов,
@@ -97,10 +99,10 @@ format correctness audit — разные свидетельства.
 | --- | --- |
 | CramFS, EROFS, Ext, FAT, HFS, Iso, NTFS, SquashFS, Udf, exFAT | Общие disk formats: Linux `fs/*`; индивидуальные audits выше владеют read completeness. |
 | APM, GPT, MBR | Общие partition readers `block/partitions`; включая вложенные MBR subformats, а не отдельные registry names. |
-| Cpio, tar | `init/initramfs.c` и Marvell CPT `load_tar_archive`; [TAR read audit](tar-linux.md) включает declared-size mode и SDK extensions. Composite initramfs остаётся отдельным сценарием. |
+| Cpio, tar | `init/initramfs.c` и Marvell CPT `load_tar_archive`; [CPIO/composite initramfs](cpio-linux.md) и [TAR](tar-linux.md) покрывают соответствующие readonly scenarios. |
 | ELF, PE, UEFIc | Настоящие executable/capsule readers; byte inspection отделён от execution, trust и firmware services. |
 | Base64, IHex | `lib/base64.c` и AS102/IQS5xx ASCII readers; binary ihex helpers не использованы как ложное доказательство. |
-| bzip2, gzip, lzma, xz, zstd | Общие framed streams/decoders `lib/decompress_*`, XZ/Zstd libraries; composite initramfs остаётся открытым. |
+| bzip2, gzip, lzma, xz, zstd | Общие framed streams/decoders `lib/decompress_*`, XZ/Zstd libraries; [composite initramfs](cpio-linux.md#composite-initramfs--2026-10-20) подключает single-member boundaries. |
 | Lz4Legacy, Lzop | Linux boot wrappers `lib/decompress_unlz4.c`, `lib/decompress_unlzo.c`; добавлены отдельным GPL module с [read audit](linux-frames.md). |
 | COFF, TE, UEFIf | COFF fields внутри Linux PE не доказывают standalone COFF reader. EFI capsule transport не разбирает TE/FV. SDK units проверены как общие consumers; отдельного in-kernel reader этих containers не найдено. |
 | 7z, Cab, Chm, Hxs, Nsis, SWFc, Dmg, wim, zip | In-kernel container parser не найден. Совпадающие contained compression streams учитываются у actual consumers: DEFLATE/zlib, LZMA/XZ, NTFS3 LZX/XPRESS. Это не поддержка соответствующего container Linux. |
@@ -116,7 +118,7 @@ format correctness audit — разные свидетельства.
 
 Дополнительные decoder boundaries также сверены: LZ4/LZO raw blocks уже
 представлены filesystem modules; legacy LZ4/lzop framing перенесён отдельным
-компонентом для оставшегося composite initramfs scenario. Linux 842
+компонентом и подключён к composite initramfs scenario. Linux 842
 не представлен decoder проекта. Gzip marker 0x1f9e есть в dispatch table, но
 actual gunzip требует 0x1f8b: одно имя в dispatch не доказывает read support.
 Проверки XZ включают его BCJ/Delta consumers; отдельные криптопримитивы не
@@ -201,7 +203,18 @@ Standalone gzip не закрывает composite initramfs или осталь�
 raw members, hard links с данными в любом положении и сбросом по trailer,
 checksum и independent streams. Использован исходный handler 7-Zip.
 Composite initramfs с compressed/raw members и общим hard-link state остаётся
-открытым; эта итерация не завершает initramfs/decompressor scope.
+открытым на момент raw-итерации; следующая интеграция описана ниже.
+
+### CPIO: composite initramfs
+
+[Интегрированный read scenario](cpio-linux.md#composite-initramfs--2026-10-20)
+подключает все семь Linux compression methods, raw/compressed transitions,
+complete-record boundaries и общие hard links с реальным trailer reset.
+Dynamic Cpio использует отдельный GPL plugin; standalone raw CPIO сохранён.
+Проверены exact extracted bytes, owned streams, отказ оборванных частей,
+cancellation/source errors и временное хранилище. Compiled Linux FSM/dispatch/
+wrappers reference подтвердил 143 сценария. Это закрывает composite initramfs
+read scenario; оставшиеся filesystem read features общей цели сохраняются.
 
 ### MBR primary/EBR и block-layer границы
 

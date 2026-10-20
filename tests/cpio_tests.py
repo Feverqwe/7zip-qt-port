@@ -8,6 +8,7 @@ import unittest
 from cpio_fixture import CASES, BAD, volume
 
 RUNTIME = Path(sys.argv.pop(1)).resolve()
+MODULE = Path(sys.argv.pop(1)).resolve()
 SUFFIX = ".exe" if sys.platform == "win32" else ""
 
 
@@ -20,6 +21,8 @@ class CpioTests(unittest.TestCase):
         for name in ("7z" + SUFFIX, "7zz" + SUFFIX,
                      "7z.dll" if sys.platform == "win32" else "7z.so"):
             shutil.copy2(RUNTIME / name, cls.runtime / name)
+        (cls.runtime / "Formats").mkdir()
+        shutil.copy2(MODULE, cls.runtime / "Formats" / MODULE.name)
 
     def command(self, engine, path, command, *args, forced=True):
         return subprocess.run(

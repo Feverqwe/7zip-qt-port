@@ -19,9 +19,11 @@
 
 #include "../Compress/CopyCoder.h"
 #include "../Compress/DeflateDecoder.h"
+#ifndef SEVENZIP_INITRAMFS_FRAME_ONLY
 #include "../Compress/DeflateEncoder.h"
 
 #include "Common/HandlerOut.h"
+#endif
 #include "Common/InStreamWithCRC.h"
 #include "Common/OutStreamWithCRC.h"
 
@@ -373,6 +375,33 @@ HRESULT CItem::WriteFooter(ISequentialOutStream *stream) {
     SetUi32(buf, Crc) SetUi32(buf + 4, Size32) return WriteStream(stream, buf, 8);
 }
 
+// A gzip member is a boundary in Linux initramfs. Reuse this module's
+// header/footer reader rather than flattening concatenated gzip members.
+HRESULT DecodeInitramfsFrame(ISequentialInStream *input, ISequentialOutStream *output,
+                             ICompressProgressInfo *progress, UInt64 &consumed) {
+    CMyComPtr2_Create<ICompressCoder, NDecoder::CCOMCoder> decoder;
+    CMyComPtr2_Create<ISequentialOutStream, COutStreamWithCRC> checked;
+    checked->SetStream(output);
+    checked->Init();
+    try {
+        decoder->SetInStream(input);
+        decoder->InitInStream(true);
+        CItem item;
+        RINOK(item.ReadHeader(decoder.ClsPtr(), progress))
+        RINOK(decoder->CodeResume(checked, NULL, progress))
+        decoder->AlignToByte();
+        RINOK(item.ReadFooter1(decoder.ClsPtr()))
+        consumed = decoder->GetInputProcessedSize();
+        if (decoder->InputEofError() || item.Crc != checked->GetCRC() ||
+            item.Size32 != (UInt32)checked->GetSize())
+            return S_FALSE;
+        return S_OK;
+    } catch (const CInBufferException &e) {
+        return e.ErrorCode;
+    }
+}
+
+#ifndef SEVENZIP_INITRAMFS_FRAME_ONLY
 Z7_CLASS_IMP_CHandler_IInArchive_3(IArchiveOpenSeq, IOutArchive, ISetProperties) CItem _item;
 
 bool _isArc;
@@ -1101,5 +1130,6 @@ REGISTER_ARC_IO("gzip", "gz gzip tgz tpz apk", "* * .tar .tar .tar", 0xEF, k_Sig
                 TIME_PREC_TO_ARC_FLAGS_MASK(NFileTimeType::kUnix) |
                     TIME_PREC_TO_ARC_FLAGS_TIME_DEFAULT(NFileTimeType::kUnix),
                 IsArc_Gz)
+#endif // SEVENZIP_INITRAMFS_FRAME_ONLY
 }
 }

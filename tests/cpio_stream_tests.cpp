@@ -7,6 +7,7 @@
 #include <QJsonDocument>
 #include <QLibrary>
 #include <QProcess>
+#include <QScopeGuard>
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QtTest>
@@ -28,6 +29,8 @@ class Input final : public IInStream, public CMyUnknownImp {
             return failure;
         size = UInt32(qMin<UInt64>(
             size, position_ < UInt64(bytes_.size()) ? UInt64(bytes_.size()) - position_ : 0));
+        size = UInt32(
+            qMin<UInt64>(qMin<UInt32>(size, 64), failAt > position_ ? failAt - position_ : size));
         if (size)
             memcpy(data, bytes_.constData() + position_, size);
         position_ += size;
@@ -52,8 +55,20 @@ class Input final : public IInStream, public CMyUnknownImp {
 class Cancel final : public IArchiveOpenCallback, public CMyUnknownImp {
     Z7_COM_UNKNOWN_IMP_1(IArchiveOpenCallback)
   public:
-    Z7_COM7F_IMF(SetTotal(const UInt64 *, const UInt64 *)) override { return S_OK; }
-    Z7_COM7F_IMF(SetCompleted(const UInt64 *, const UInt64 *)) override { return E_ABORT; }
+    UInt64 threshold = 0, total = 0, last = 0;
+    bool bounded = true;
+    Z7_COM7F_IMF(SetTotal(const UInt64 *, const UInt64 *bytes)) override {
+        if (bytes)
+            total = *bytes;
+        return S_OK;
+    }
+    Z7_COM7F_IMF(SetCompleted(const UInt64 *, const UInt64 *bytes)) override {
+        if (bytes) {
+            bounded = bounded && *bytes <= total && *bytes >= last;
+            last = *bytes;
+        }
+        return bytes && *bytes >= threshold ? E_ABORT : S_OK;
+    }
 };
 QString runtimeFile(const char *name) {
     return QDir(QString::fromUtf8(SEVENZIP_CPIO_RUNTIME)).filePath(QString::fromLatin1(name));
@@ -69,7 +84,7 @@ QString core() {
 
 class CpioStreamTests final : public QObject {
     Q_OBJECT
-    QLibrary module_{core()};
+    QLibrary module_{QString::fromUtf8(SEVENZIP_CPIO_MODULE)};
     CMyComPtr<IInArchive> archive_;
     QByteArray image_;
     QMap<QString, QByteArray> files_;
@@ -79,8 +94,11 @@ class CpioStreamTests final : public QObject {
         QVERIFY(temporary.isValid());
         const QString path = temporary.filePath("volume.cpio");
         QProcess process;
-        process.start(QString::fromUtf8(SEVENZIP_CPIO_PYTHON),
-                      {QString::fromUtf8(SEVENZIP_CPIO_FIXTURE), kind, path});
+        const bool composite = kind.startsWith("initramfs:");
+        process.start(
+            QString::fromUtf8(SEVENZIP_CPIO_PYTHON),
+            {QString::fromUtf8(composite ? SEVENZIP_INITRAMFS_FIXTURE : SEVENZIP_CPIO_FIXTURE),
+             composite ? kind.mid(10) : kind, path});
         QVERIFY(process.waitForFinished(10000));
         QCOMPARE(process.exitCode(), 0);
         const auto files =
@@ -151,6 +169,8 @@ class CpioStreamTests final : public QObject {
                                  "member-chain", "links-first", "links-overwrite", "inode-single",
                                  "inode-types", "trailer-reset", "no-reset", "binary-be", "odc"})
             QTest::newRow(kind) << QString::fromLatin1(kind);
+        for (const char *method : {"gzip", "bzip2", "lzma", "xz", "lzo", "lz4", "zstd"})
+            QTest::newRow(method) << "initramfs:" + QString::fromLatin1(method) + "-links";
     }
     void streams() {
         QFETCH(QString, kind);
@@ -235,8 +255,84 @@ class CpioStreamTests final : public QObject {
         QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
         check(stream(0), "A");
     }
+    void compositeFailureAndBounds_data() {
+        QTest::addColumn<QString>("kind");
+        for (const char *method : {"gzip", "bzip2", "lzma", "xz", "lzo", "lz4", "zstd"})
+            QTest::newRow(method) << "initramfs:" + QString::fromLatin1(method) + "-large";
+        QTest::newRow("mixed") << QStringLiteral("initramfs:mixed");
+    }
+    void compositeFailureAndBounds() {
+        QFETCH(QString, kind);
+        fixture(kind);
+        CMyComPtr2<IInStream, Input> input;
+        input.SetFromCls(new Input(image_));
+        input->failAt = 32;
+        for (HRESULT failure : {E_FAIL, E_ABORT}) {
+            input->failure = failure;
+            QCOMPARE(archive_->Open(input, nullptr, nullptr), failure);
+            UInt32 count = 99;
+            QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+            QCOMPARE(count, UInt32(0));
+        }
+        input->failAt = UINT64_MAX;
+        for (UInt64 threshold : {UInt64(0), UInt64(64), UInt64(image_.size())}) {
+            CMyComPtr2<IArchiveOpenCallback, Cancel> cancel;
+            cancel.SetFromCls(new Cancel);
+            cancel->threshold = threshold;
+            QCOMPARE(archive_->Open(input, nullptr, cancel), E_ABORT);
+            QVERIFY(cancel->bounded);
+        }
+        CMyComPtr2<IArchiveOpenCallback, Cancel> progress;
+        progress.SetFromCls(new Cancel);
+        progress->threshold = UINT64_MAX;
+        QCOMPARE(archive_->Open(input, nullptr, progress), S_OK);
+        QVERIFY(progress->bounded);
+        QCOMPARE(progress->last, UInt64(image_.size()));
+        NWindows::NCOM::CPropVariant value;
+        QCOMPARE(archive_->GetArchiveProperty(kpidPhySize, &value), S_OK);
+        QCOMPARE(value.vt, VARTYPE(VT_UI8));
+        QCOMPARE(value.uhVal.QuadPart, UInt64(image_.size()));
+        QCOMPARE(archive_->GetProperty(0, kpidOffset, &value), S_OK);
+        QCOMPARE(value.vt, VARTYPE(VT_EMPTY));
+        QCOMPARE(archive_->GetProperty(0, kpidPackSize, &value), S_OK);
+        QCOMPARE(value.vt, VARTYPE(VT_EMPTY));
+        CMyComPtr<IInArchiveGetStream> provider;
+        QCOMPARE(
+            archive_->QueryInterface(IID_IInArchiveGetStream, reinterpret_cast<void **>(&provider)),
+            S_OK);
+        ISequentialInStream *invalid = reinterpret_cast<ISequentialInStream *>(quintptr(1));
+        QCOMPARE(provider->GetStream(UINT32_MAX, &invalid), E_INVALIDARG);
+        QVERIFY(!invalid);
+        QCOMPARE(provider->GetStream(0, nullptr), E_INVALIDARG);
+        QCOMPARE(archive_->GetProperty(UINT32_MAX, kpidSize, &value), E_INVALIDARG);
+        QCOMPARE(archive_->Extract(nullptr, 1, true, nullptr), E_INVALIDARG);
+    }
+    void scratchFailureRecovery() {
+        fixture("initramfs:gzip-single");
+        QTemporaryDir temporary;
+        QVERIFY(temporary.isValid());
+        const auto oldTmp = qgetenv("TMP"), oldTmpdir = qgetenv("TMPDIR");
+        const bool hadTmp = qEnvironmentVariableIsSet("TMP"),
+                   hadTmpdir = qEnvironmentVariableIsSet("TMPDIR");
+        const auto restore = [&] {
+            hadTmp ? qputenv("TMP", oldTmp) : qunsetenv("TMP");
+            hadTmpdir ? qputenv("TMPDIR", oldTmpdir) : qunsetenv("TMPDIR");
+        };
+        const auto guard = qScopeGuard(restore);
+        const auto missing = QFile::encodeName(temporary.filePath("missing/folder"));
+        qputenv("TMP", missing);
+        qputenv("TMPDIR", missing);
+        CMyComPtr<IInStream> input = new Input(image_);
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), E_FAIL);
+        UInt32 count = 99;
+        QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, UInt32(0));
+        restore();
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        check(stream(0), files_.first());
+    }
     void backendExtraction() {
-        fixture("name-nuls");
+        fixture("initramfs:mixed");
         QTemporaryDir temporary;
         QVERIFY(temporary.isValid());
         const QString path = temporary.filePath(QString::fromUtf8("архив 空.cpio"));

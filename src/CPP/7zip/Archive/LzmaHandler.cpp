@@ -14,7 +14,9 @@
 #include "../Common/RegisterArc.h"
 #include "../Common/StreamUtils.h"
 
+#ifndef SEVENZIP_INITRAMFS_FRAME_ONLY
 #include "../Compress/BcjCoder.h"
+#endif
 #include "../Compress/LzmaDecoder.h"
 
 #include "Common/DummyOutStream.h"
@@ -60,6 +62,25 @@ bool CHeader::Parse(const Byte *buf, bool isThereFilter) {
     return LzmaProps[0] < 5 * 5 * 9 && FilterID < 2;
 }
 
+HRESULT DecodeInitramfsFrame(ISequentialInStream *input, ISequentialOutStream *output,
+                             ICompressProgressInfo *progress, UInt64 &consumed) {
+    Byte bytes[13];
+    RINOK(ReadStream_FALSE(input, bytes, sizeof(bytes)))
+    CHeader header;
+    if (!header.Parse(bytes, false))
+        return S_FALSE;
+    CMyComPtr2_Create<ICompressCoder, NCompress::NLzma::CDecoder> decoder;
+    decoder->FinishStream = true;
+    RINOK(decoder->SetDecoderProperties2(header.LzmaProps, 5))
+    const UInt64 *size = header.HasSize() ? &header.Size : NULL;
+    RINOK(decoder.Interface()->Code(input, output, NULL, size, progress))
+    if (header.HasSize() && decoder->GetOutputProcessedSize() != header.Size)
+        return S_FALSE;
+    consumed = sizeof(bytes) + decoder->GetInputProcessedSize();
+    return S_OK;
+}
+
+#ifndef SEVENZIP_INITRAMFS_FRAME_ONLY
 class CDecoder Z7_final {
     CMyComPtr<ISequentialOutStream> _bcjStream;
     CFilterCoder *_filterCoder;
@@ -585,5 +606,6 @@ REGISTER_ARC_I_CLS_NO_SIG(CHandler(true), "lzma86", "lzma86", NULL, 0xB, 0,
                           NArcInfoFlags::kKeepName, IsArc_Lzma86)
 
 }
+#endif // SEVENZIP_INITRAMFS_FRAME_ONLY
 }
 }

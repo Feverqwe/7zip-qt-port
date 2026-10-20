@@ -108,7 +108,6 @@ Full/slow, native boot и appearance acceptance не выполнялись. У�
 пользовательский app bundle не заменялся; install rules проверены конфигурацией,
 runtime deployment — реальным CLI/backend чтением из `Formats`.
 
-Общий compressed/raw dispatcher, CPIO state на decompressor boundary и hard-link
-state через эти переходы остаются открытым integrated initramfs scenario
-в [едином реестре](filesystems-linux.md). Эта итерация завершает необходимые
-LZ4/lzop readers и их consumers, а не всю цель.
+Общий compressed/raw dispatcher и hard-link state через decompressor boundaries
+подключены следующей [интегрированной CPIO-итерацией](cpio-linux.md#composite-initramfs--2026-10-20).
+Эта standalone-итерация сама по себе не завершала весь initramfs scenario.
