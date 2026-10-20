@@ -131,8 +131,8 @@ shared out-of-line references и переходы metadata block. C API позв
 получать names/values; те же функции используются при проверке inode metadata.
 User/trusted/security namespaces читаются как байты архива, без привязки к
 привилегиям процесса на host OS. Неизвестные типы пропускаются как в Linux.
-Произвольные xattrs не добавляются в вымышленные 7-Zip properties: стандартный
-archive ABI не предоставляет такого поля; установка OS xattrs — write operation.
+Публичные xattrs доступны как alternate streams через стандартный archive ABI,
+как описано ниже. Установка OS xattrs остаётся отдельной write operation.
 
 Сохранены GNU-to-C portability adaptations. Raw table range проверяется до
 выделения памяти; длина не должна пересекаться с кодируемым uncompressed bit.
@@ -208,3 +208,66 @@ Focused6 (три SquashFS suites, codec_probe, upstream_baseline/inventory) PASS
 Проверка baseline и staged whitespace выполняется перед коммитом. Full/slow,
 physical-device и native Windows symlink creation в этот backend scenario
 не входят. Build directories и compiler caches сохранены.
+
+## Публикация xattr values — 2026-10-20
+
+Повторное сравнение полного `xattr.c`, `xattr_id.c`, metadata cache/read callers,
+их локальных C services и всех property/stream/extraction consumers handler
+выявило незавершённую интеграцию: значения читались при проверке inode, но не
+были доступны пользователю. Исходные Linux list/get/namespace/OOL bodies уже
+перенесены; новый visitor использует эти же функции и заменяет отдельное
+чтение с последующим отбрасыванием bytes. Validation-only C API остаётся
+обёрткой того же visitor. Источник, декодирование, metadata-block transitions,
+типы namespaces и ошибки остаются у существующих C readers. Пустые значения
+передаются отдельно от ошибки; размер фактического getter result проверяется.
+
+Один authoritative handler по прежнему upstream пути публикует owned metadata
+streams файлов, каталогов и каждого hardlink name. Общие xattr IDs используют
+один набор values. Корень получает виртуальный item с безопасным уникальным
+именем. Экранирование bytes/коллизий имён и владение values переиспользуют
+адаптер предыдущей EROFS-итерации, выделенный в общий GPL-only source; EROFS
+использует тот же код. Этот адаптер не подключён к LGPL/unRAR core. Отдельные
+коллизии полных путей, включая реальные filenames с двоеточием, разрешаются
+без изменения обычных имён; поиск использует упорядоченный набор путей.
+
+Archive-level/item alternate-stream markers, name/parent/type properties,
+owned buffer streams, size/packed size и extraction/progress подключены вместе.
+Metadata не наследует inode/stream identity, symlink или directory type своего
+владельца. `-sns-` исключает metadata, сохраняя обычные colon filenames; `-sns`
+позволяет извлекать выбранные values. Root/directory values имеют обычный
+readonly file stream. C callbacks не выпускают C++ исключения через выделенные
+C buffers; source errors и cancellation сохраняют HRESULT и очищают Open state.
+Standalone `7zz` сохраняет прежний reader без GPL xattr publication; обе версии
+по-прежнему извлекают обычные payloads и hardlinks.
+
+Новый fixture создаёт официальный mksquashfs 4.6.1. Временный ext4 EA_INODE
+backing позволяет задать большие xattrs независимо от возможностей host volume;
+creator читает trusted/security metadata с нужными правами. Образ содержит
+binary/empty/Unicode/unsafe names, case collisions, shared 9000-byte values,
+корень, каталог, hardlinks и обычные `[ROOT]`/colon filenames. Generator и
+manifest сохраняют параметры, hash и native comparison. Нативный Linux
+`6.8.0-147-generic` вернул точные 22 значения через read-only mount, подтвердил
+общий inode hardlink и неизменный image hash, receipt
+`20261020T182610Z-c0f9b97f`. Временные backing/images/mounts и транспортный JSON
+удалены. Это установленное ядро, отдельное от закреплённого source baseline.
+
+CLI проверяет все values и обычные bytes, source preservation и stream filtering.
+ABI проверяет parent relationship, lifetime после Close/reopen/Release,
+cross-block value seeks, empty streams, input E_FAIL/E_ABORT, cancellation после
+реального metadata read, output failure, final progress и reuse. ArchiveBackend
+проверяет реальные listing и выбранное извлечение больших/root/directory values;
+прежние compressor, hardlink/symlink и malformed metadata checks сохранены.
+Проверки EROFS включены из-за общего адаптера имён и owned values.
+
+Девять focused suites (`squashfs`, `squashfs_stream`, `squashfs_metadata`,
+`erofs`, `erofs_module`, `codec_probe`, `runtime_cache`, `upstream_baseline`,
+`upstream_inventory`) PASS на macOS arm64/Qt 6.12 (6,84 с), Linux x64
+(10,70 с) и Windows x64/MSVC/Qt 6.12 (45,03 с), receipt
+`20261020T183202Z-8d7fd21f`. После финального callback cancellation без
+подмены file progress числом inode повторены три SquashFS suites: PASS на
+macOS (2,63 с) и обоих runners (1,71/10,92 с), receipt
+`20261020T183419Z-578e88e7`. Source-port scope выше и runtime acceptance
+различаются; это не доказательство завершения остальных read branches общего
+goal. Full/slow, release-package, UI и физические устройства не проверялись.
+Incremental builds и compiler caches сохранены; временных task-owned fixtures
+после завершённых прогонов не осталось.

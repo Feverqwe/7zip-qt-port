@@ -218,7 +218,8 @@ int sevenzip_squashfs_xattr(struct sevenzip_squashfs_metadata *reader, unsigned 
     return -EOPNOTSUPP;
 }
 
-int sevenzip_squashfs_validate_xattrs(struct sevenzip_squashfs_metadata *reader, unsigned index) {
+int sevenzip_squashfs_visit_xattrs(struct sevenzip_squashfs_metadata *reader, unsigned index,
+                                   sevenzip_squashfs_xattr_emit emit, void *context) {
     char *names, *name;
     int length, result = 0;
     if (!reader->msblk.xattr_id_table || index == SQUASHFS_INVALID_XATTR)
@@ -255,11 +256,17 @@ int sevenzip_squashfs_validate_xattrs(struct sevenzip_squashfs_metadata *reader,
             break;
         }
         result = sevenzip_squashfs_xattr(reader, index, name, value, (size_t)size);
+        if (result == size)
+            result = emit ? emit(context, name, value, (size_t)size) : 0;
+        else if (result >= 0)
+            result = -EIO;
         free(value);
-        if (result < 0)
+        if (result)
             break;
-        result = 0;
     }
     free(names);
     return result;
+}
+int sevenzip_squashfs_validate_xattrs(struct sevenzip_squashfs_metadata *reader, unsigned index) {
+    return sevenzip_squashfs_visit_xattrs(reader, index, NULL, NULL);
 }

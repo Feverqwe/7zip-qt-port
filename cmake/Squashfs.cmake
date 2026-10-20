@@ -10,7 +10,7 @@ set_target_properties(sevenzip_squashfs_metadata PROPERTIES AUTOMOC OFF AUTOUIC 
 
 # Linux-derived C readers remain in a separate GPL format module.
 add_library(sevenzip_squashfs MODULE
-    src/CPP/7zip/Archive/SquashfsHandler.cpp src/exfatmodule.cpp
+    src/CPP/7zip/Archive/SquashfsHandler.cpp src/exfatmodule.cpp src/archiveattributes.cpp
     src/squashfsdecoder.c src/fs/squashfs/decompressor.c
     src/fs/squashfs/decompressor_single.c
     src/fs/squashfs/lz4_wrapper.c src/fs/squashfs/lzo_wrapper.c src/fs/squashfs/xz_wrapper.c

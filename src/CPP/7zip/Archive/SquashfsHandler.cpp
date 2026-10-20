@@ -29,6 +29,10 @@
 #ifdef SEVENZIP_LINUX_SQUASHFS
 #include "../../../squashfsdecoder.h"
 #include "../../../squashfsmetadata.h"
+#include "archiveattributes.h"
+#include <map>
+#include <memory>
+#include <set>
 #endif
 // #include "../Compress/LzmaDecoder.h"
 
@@ -751,11 +755,19 @@ struct CItem {
     int Node;
     int Parent;
     UInt32 Ptr;
+#ifdef SEVENZIP_LINUX_SQUASHFS
+    int Attribute;
+    UInt32 AttributeSuffix;
+#endif
 
     void Construct() {
         Node = -1;
         Parent = -1;
         Ptr = 0;
+#ifdef SEVENZIP_LINUX_SQUASHFS
+        Attribute = -1;
+        AttributeSuffix = 0;
+#endif
     }
 };
 
@@ -778,9 +790,16 @@ struct CFrag {
 };
 
 // clang-format off
+#ifdef SEVENZIP_LINUX_SQUASHFS
+Z7_CLASS_IMP_CHandler_IInArchive_2(
+  IInArchiveGetStream,
+  IArchiveGetRawProps
+)
+#else
 Z7_CLASS_IMP_CHandler_IInArchive_1(
   IInArchiveGetStream
 )
+#endif
   bool _noPropsLZMA;
   bool _needCheckLzma;
 
@@ -830,7 +849,16 @@ Z7_CLASS_IMP_CHandler_IInArchive_1(
   static int ReadLinuxMetadata(void *, uint64_t, void *, unsigned *, uint64_t *);
   HRESULT LoadLinuxTables(UInt64 &directoryEnd);
   HRESULT LinuxResult(int result) const;
+  using CAttributes = std::shared_ptr<std::vector<ArchiveAttribute>>;
+  std::vector<CAttributes> _attributes;
+  std::map<UInt32, CAttributes> _attributeSets;
+  AString _rootAttributeName;
+  struct CAttributeContext { CHandler *Owner; unsigned Node; HRESULT Result; };
+  static int EmitAttribute(void *, const char *, const void *, size_t) noexcept;
+  HRESULT AddAttributeItems(int root);
 #endif
+  UInt64 GetItemSize(unsigned index) const;
+  bool ItemIsDir(unsigned index) const;
 
   void ClearCache()
   {
@@ -973,11 +1001,89 @@ HRESULT CHandler::LoadLinuxTables(UInt64 &directoryEnd) {
     }
     return S_OK;
 }
+
+int CHandler::EmitAttribute(void *opaque, const char *name, const void *value,
+                            size_t size) noexcept {
+    auto &context = *static_cast<CAttributeContext *>(opaque);
+    try {
+        if (context.Owner->_openCallback)
+            context.Result = context.Owner->_openCallback->SetCompleted(NULL, NULL);
+        if (context.Result == S_OK)
+            context.Result = AppendArchiveAttribute(*context.Owner->_attributes[context.Node], name,
+                                                    value, size);
+    } catch (...) {
+        context.Result = E_FAIL;
+    }
+    return context.Result == S_OK ? 0 : -5;
+}
+
+HRESULT CHandler::AddAttributeItems(int root) {
+    unsigned count = _items.Size();
+    if (!_attributes[(unsigned)root]->empty()) {
+        _rootAttributeName = "[ROOT]";
+        for (;;) {
+            bool collision = false;
+            for (unsigned i = 0; i < count; ++i)
+                if (_items[i].Parent < 0 &&
+                    StringsAreEqualNoCase(UString(GetPath(i)), UString(_rootAttributeName)))
+                    collision = true;
+            if (!collision)
+                break;
+            _rootAttributeName += '_';
+        }
+        CItem item;
+        item.Construct();
+        item.Node = root;
+        item.Attribute = -2;
+        _items.Add(item);
+        ++count;
+    }
+    struct CaseLess {
+        bool operator()(const UString &a, const UString &b) const {
+            return MyStringCompareNoCase(a, b) < 0;
+        }
+    };
+    std::set<UString, CaseLess> paths;
+    for (unsigned i = 0; i < count; ++i)
+        paths.insert(MultiByteToUnicodeString(GetPath(i), _openCodePage));
+    for (unsigned i = 0; i < count; ++i) {
+        const int node = _items[i].Node;
+        const auto &attributes = *_attributes[(unsigned)node];
+        for (unsigned a = 0; a < attributes.size(); ++a) {
+            if (_items.Size() >= kNumFilesMax)
+                return S_FALSE;
+            CItem item;
+            item.Construct();
+            item.Node = node;
+            item.Parent = (int)i;
+            item.Attribute = (int)a;
+            const UString prefix = MultiByteToUnicodeString(GetPath(i), _openCodePage);
+            for (;;) {
+                UString path = prefix;
+                path += L':';
+                path += attributes[a].name;
+                if (item.AttributeSuffix) {
+                    path += L'#';
+                    path.Add_UInt32(item.AttributeSuffix);
+                }
+                if (paths.insert(path).second)
+                    break;
+                ++item.AttributeSuffix;
+            }
+            _items.Add(item);
+        }
+    }
+    return S_OK;
+}
 #endif
 
 static const Byte kProps[] = {
-    kpidPath,   kpidIsDir,   kpidSize,  kpidPackSize, kpidMTime,  kpidPosixAttrib,
-    kpidUserId, kpidGroupId, kpidINode, kpidLinks,    kpidSymLink
+    kpidPath,
+#ifdef SEVENZIP_LINUX_SQUASHFS
+    kpidIsAltStream,
+#endif
+    kpidIsDir,       kpidSize,  kpidPackSize, kpidMTime,  kpidPosixAttrib, kpidUserId,
+    kpidGroupId,     kpidINode, kpidLinks,    kpidSymLink
     // kpidLinks,
     // kpidOffset
 };
@@ -1754,6 +1860,10 @@ HRESULT CHandler::Open2(IInStream *inStream) {
             return S_FALSE;
         _nodesPos.ClearAndReserve(_h.NumInodes);
         _nodes.ClearAndReserve(_h.NumInodes);
+#ifdef SEVENZIP_LINUX_SQUASHFS
+        if (!_h.IsOldVersion())
+            _attributes.resize(_h.NumInodes);
+#endif
         UInt32 pos = 0;
 #ifdef SEVENZIP_LINUX_SQUASHFS
         unsigned metadataBlock = 0;
@@ -1782,7 +1892,17 @@ HRESULT CHandler::Open2(IInStream *inStream) {
 #ifdef SEVENZIP_LINUX_SQUASHFS
             if (!_h.IsOldVersion()) {
                 _linuxReadResult = S_OK;
-                RINOK(LinuxResult(sevenzip_squashfs_validate_xattrs(_linuxMetadata, n.Xattr)))
+                auto found = _attributeSets.find(n.Xattr);
+                if (found == _attributeSets.end()) {
+                    _attributes[i] = std::make_shared<std::vector<ArchiveAttribute>>();
+                    CAttributeContext context{this, i, S_OK};
+                    const int result = sevenzip_squashfs_visit_xattrs(_linuxMetadata, n.Xattr,
+                                                                      EmitAttribute, &context);
+                    RINOK(context.Result)
+                    RINOK(LinuxResult(result))
+                    _attributeSets.emplace(n.Xattr, _attributes[i]);
+                } else
+                    _attributes[i] = found->second;
                 if (_h.LookupTable != (UInt64)(Int64)-1) {
                     while (metadataBlock + 1 < _inodesData.UnpackPos.Size() &&
                            pos >= _inodesData.UnpackPos[metadataBlock + 1])
@@ -1808,6 +1928,11 @@ HRESULT CHandler::Open2(IInStream *inStream) {
     _activeDirs.AddInReserved(false);
     int rootNodeIndex;
     RINOK(OpenDir(-1, (UInt32)absOffset, (UInt32)_h.RootInode & 0xFFFF, 0, rootNodeIndex))
+#ifdef SEVENZIP_LINUX_SQUASHFS
+    if (!_h.IsOldVersion()) {
+        RINOK(AddAttributeItems(rootNodeIndex))
+    }
+#endif
 
     {
         const UInt32 alignSize = 1 << 12;
@@ -1832,6 +1957,22 @@ HRESULT CHandler::Open2(IInStream *inStream) {
 }
 
 AString CHandler::GetPath(unsigned index) const {
+#ifdef SEVENZIP_LINUX_SQUASHFS
+    const CItem &entry = _items[index];
+    if (entry.Attribute == -2)
+        return _rootAttributeName;
+    if (entry.Attribute >= 0) {
+        AString path = GetPath((unsigned)entry.Parent);
+        path += ':';
+        path += UnicodeStringToMultiByte(
+            (*_attributes[(unsigned)entry.Node])[(unsigned)entry.Attribute].name, CP_UTF8);
+        if (entry.AttributeSuffix) {
+            path += '#';
+            path.Add_UInt32(entry.AttributeSuffix);
+        }
+        return path;
+    }
+#endif
     unsigned len = 0;
     const unsigned indexMem = index;
     const bool be = _h.be;
@@ -1900,6 +2041,9 @@ Z7_COM7F_IMF(CHandler::Close()) {
     _linuxDecoder = NULL;
     sevenzip_squashfs_metadata_destroy(_linuxMetadata);
     _linuxMetadata = NULL;
+    _attributes.clear();
+    _attributeSets.clear();
+    _rootAttributeName.Empty();
 #endif
     _openCodePage = CP_UTF8;
     _sizeCalculated = 0;
@@ -1925,8 +2069,55 @@ Z7_COM7F_IMF(CHandler::Close()) {
     return S_OK;
 }
 
+UInt64 CHandler::GetItemSize(unsigned index) const {
+    const CItem &item = _items[index];
+#ifdef SEVENZIP_LINUX_SQUASHFS
+    if (item.Attribute >= 0)
+        return (*_attributes[(unsigned)item.Node])[(unsigned)item.Attribute].value.size();
+#endif
+    return _nodes[item.Node].GetSize();
+}
+bool CHandler::ItemIsDir(unsigned index) const {
+#ifdef SEVENZIP_LINUX_SQUASHFS
+    if (_items[index].Attribute >= 0)
+        return false;
+#endif
+    return _nodes[_items[index].Node].IsDir();
+}
+
+#ifdef SEVENZIP_LINUX_SQUASHFS
+Z7_COM7F_IMF(CHandler::GetParent(UInt32 index, UInt32 *parent, UInt32 *type)) {
+    if (index >= _items.Size())
+        return E_INVALIDARG;
+    *parent = (UInt32)_items[index].Parent;
+    *type = _items[index].Attribute >= 0 ? NParentType::kAltStream : NParentType::kDir;
+    return S_OK;
+}
+Z7_COM7F_IMF(CHandler::GetNumRawProps(UInt32 *count)) {
+    *count = 0;
+    return S_OK;
+}
+Z7_COM7F_IMF(CHandler::GetRawPropInfo(UInt32, BSTR *name, PROPID *id)) {
+    *name = NULL;
+    *id = 0;
+    return S_OK;
+}
+Z7_COM7F_IMF(CHandler::GetRawProp(UInt32, PROPID, const void **data, UInt32 *size, UInt32 *type)) {
+    *data = NULL;
+    *size = 0;
+    *type = 0;
+    return S_OK;
+}
+#endif
+
 bool CHandler::GetPackSize(unsigned index, UInt64 &totalPack, bool fillOffsets) {
     totalPack = 0;
+#ifdef SEVENZIP_LINUX_SQUASHFS
+    if (_items[index].Attribute >= 0) {
+        totalPack = GetItemSize(index);
+        return true;
+    }
+#endif
     const CItem &item = _items[index];
     const CNode &node = _nodes[item.Node];
     const UInt32 ptr = _nodesPos[item.Node];
@@ -2014,6 +2205,20 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID propID, PROPVARIANT *value)) {
     COM_TRY_BEGIN
     NWindows::NCOM::CPropVariant prop;
     switch (propID) {
+#ifdef SEVENZIP_LINUX_SQUASHFS
+    case kpidIsTree:
+        prop = true;
+        break;
+    case kpidIsAltStream: {
+        bool found = false;
+        FOR_VECTOR(i, _items) if (_items[i].Attribute >= 0) {
+            found = true;
+            break;
+        }
+        prop = found;
+        break;
+    }
+#endif
     case kpidINode:
         prop = (_h.Major == 4);
         break;
@@ -2098,10 +2303,53 @@ Z7_COM7F_IMF(CHandler::GetProperty(UInt32 index, PROPID propID, PROPVARIANT *val
     NWindows::NCOM::CPropVariant prop;
     const CItem &item = _items[index];
     const CNode &node = _nodes[item.Node];
-    const bool isDir = node.IsDir();
+    const bool isDir = ItemIsDir(index);
     const bool be = _h.be;
 
+#ifdef SEVENZIP_LINUX_SQUASHFS
+    if (item.Attribute >= 0) {
+        switch (propID) {
+        case kpidINode:
+        case kpidSymLink:
+            prop.Detach(value);
+            return S_OK;
+        case kpidStreamId:
+            prop = ((UInt64)1 << 63) | index;
+            prop.Detach(value);
+            return S_OK;
+        case kpidLinks:
+            prop = (UInt32)1;
+            prop.Detach(value);
+            return S_OK;
+        case kpidPosixAttrib:
+            prop = (UInt32)(MY_LIN_S_IFREG | 0444);
+            prop.Detach(value);
+            return S_OK;
+        }
+    }
+#endif
+
     switch (propID) {
+#ifdef SEVENZIP_LINUX_SQUASHFS
+    case kpidIsAltStream:
+        prop = item.Attribute >= 0;
+        break;
+    case kpidName: {
+        AString path = GetPath(index);
+        UString name;
+        if (item.Attribute >= 0) {
+            name = (*_attributes[(unsigned)item.Node])[(unsigned)item.Attribute].name;
+            if (item.AttributeSuffix) {
+                name += L'#';
+                name.Add_UInt32(item.AttributeSuffix);
+            }
+        } else
+            MultiByteToUnicodeString2(name, AString(path.Ptr(path.ReverseFind_PathSepar() + 1)),
+                                      _openCodePage);
+        prop = name;
+        break;
+    }
+#endif
     case kpidINode:
     case kpidStreamId:
         if (_h.Major == 4)
@@ -2139,7 +2387,7 @@ Z7_COM7F_IMF(CHandler::GetProperty(UInt32 index, PROPID propID, PROPVARIANT *val
     // case kpidOffset: if (!node.IsLink()) prop = (UInt64)node.StartBlock; break;
     case kpidSize:
         if (!isDir)
-            prop = node.GetSize();
+            prop = GetItemSize(index);
         break;
     case kpidPackSize:
         if (!isDir) {
@@ -2303,9 +2551,10 @@ Z7_COM7F_IMF(CHandler::Extract(const UInt32 *indices, UInt32 numItems, Int32 tes
     UInt64 totalSize = 0;
     UInt32 i;
     for (i = 0; i < numItems; i++) {
-        const CItem &item = _items[allFilesMode ? i : indices[i]];
-        const CNode &node = _nodes[item.Node];
-        totalSize += node.GetSize();
+        const unsigned index = allFilesMode ? i : indices[i];
+        if (index >= _items.Size() || UINT64_MAX - totalSize < GetItemSize(index))
+            return E_INVALIDARG;
+        totalSize += GetItemSize(index);
     }
     RINOK(extractCallback->SetTotal(totalSize))
 
@@ -2329,17 +2578,15 @@ Z7_COM7F_IMF(CHandler::Extract(const UInt32 *indices, UInt32 numItems, Int32 tes
             const Int32 askMode =
                 testMode ? NExtract::NAskMode::kTest : NExtract::NAskMode::kExtract;
             const UInt32 index = allFilesMode ? i : indices[i];
-            const CItem &item = _items[index];
-            const CNode &node = _nodes[item.Node];
             RINOK(extractCallback->GetStream(index, &outStream, askMode))
             // const Byte *p = _data + item.Offset;
 
-            if (node.IsDir()) {
+            if (ItemIsDir(index)) {
                 RINOK(extractCallback->PrepareOperation(askMode))
                 RINOK(extractCallback->SetOperationResult(NExtract::NOperationResult::kOK))
                 continue;
             }
-            const UInt64 unpackSize = node.GetSize();
+            const UInt64 unpackSize = GetItemSize(index);
             totalSize += unpackSize;
             UInt64 packSize;
             if (GetPackSize(index, packSize, false))
@@ -2387,6 +2634,13 @@ Z7_COM7F_IMF(CHandler::GetStream(UInt32 index, ISequentialInStream **stream)) {
         return E_INVALIDARG;
 
     const CItem &item = _items[index];
+#ifdef SEVENZIP_LINUX_SQUASHFS
+    if (item.Attribute >= 0) {
+        const auto &value = (*_attributes[(unsigned)item.Node])[(unsigned)item.Attribute].value;
+        Create_BufInStream_WithNewBuffer(value.data(), value.size(), stream);
+        return S_OK;
+    }
+#endif
     const CNode &node = _nodes[item.Node];
 
     if (node.IsDir())

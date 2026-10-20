@@ -21,6 +21,10 @@ int sevenzip_squashfs_fragment(struct sevenzip_squashfs_metadata *, unsigned, ui
                                unsigned *);
 int sevenzip_squashfs_inode(struct sevenzip_squashfs_metadata *, unsigned, uint64_t *);
 int sevenzip_squashfs_validate_xattrs(struct sevenzip_squashfs_metadata *, unsigned);
+typedef int (*sevenzip_squashfs_xattr_emit)(void *, const char *, const void *, size_t);
+// Names/values are borrowed during emit; nonzero stops and is returned unchanged.
+int sevenzip_squashfs_visit_xattrs(struct sevenzip_squashfs_metadata *, unsigned,
+                                   sevenzip_squashfs_xattr_emit, void *);
 int sevenzip_squashfs_xattrs(struct sevenzip_squashfs_metadata *, unsigned, char *, size_t);
 int sevenzip_squashfs_xattr(struct sevenzip_squashfs_metadata *, unsigned, const char *, void *,
                             size_t);

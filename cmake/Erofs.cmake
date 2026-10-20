@@ -14,7 +14,8 @@ set_target_properties(sevenzip_erofs_core PROPERTIES AUTOMOC OFF AUTOUIC OFF
     POSITION_INDEPENDENT_CODE ON C_STANDARD 11 C_STANDARD_REQUIRED ON)
 
 add_library(sevenzip_erofs MODULE
-    src/erofshandler.cpp src/erofsarchivereader.cpp src/erofsarchiveattributes.cpp src/exfatmodule.cpp
+    src/erofshandler.cpp src/erofsarchivereader.cpp src/erofsarchiveattributes.cpp
+    src/archiveattributes.cpp src/exfatmodule.cpp
     third_party/7zip/CPP/7zip/Archive/ArchiveExports.cpp
     third_party/7zip/CPP/7zip/Common/StreamUtils.cpp
     third_party/7zip/CPP/7zip/Common/StreamObjects.cpp

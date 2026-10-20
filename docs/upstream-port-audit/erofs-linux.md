@@ -231,6 +231,10 @@ layouts are validated through the pinned-source module on three platforms,
 not through that older native kernel. Temporary mounts/images and the review
 script were removed locally and from the guest worktrees.
 
+The subsequent [SquashFS xattr iteration](squashfs-linux.md#публикация-xattr-values--2026-10-20)
+reuses EROFS's ownership/name projection through a shared GPL-only source.
+EROFS process/ABI/backend suites are included in that change's focused validation.
+
 A real local macOS installation of the final runtime read nine exact metadata
 values across inline, packed-prefix and shared-metabox images and honored
 `-sns-` filtering. Installed LGPL/syscall notice bytes matched the retained

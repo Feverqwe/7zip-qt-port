@@ -6,6 +6,8 @@ import sys
 import tempfile
 import unittest
 import zlib
+import json
+import urllib.parse
 from squashfs_fixture import volume, legacy_volume, creator_payload
 
 RUNTIME = Path(sys.argv.pop(1))
@@ -25,13 +27,16 @@ class SquashfsTests(unittest.TestCase):
         (cls.runtime / "Formats").mkdir()
         shutil.copy2(MODULE, cls.runtime / "Formats" / MODULE.name)
 
-    def run_image(self, engine, data, command="t", name=None):
+    def run_image(self, engine, data, command="t", name=None, streams=False):
         with tempfile.TemporaryDirectory(dir=self.runtime) as temporary:
             path = Path(temporary) / "образ 空.squashfs"
             path.write_bytes(data)
             args = [str(self.runtime / (engine + SUFFIX)), command, "-tSquashFS", "-sccUTF-8", "-bsp0"]
+            args += ["-sns" if streams else "-sns-"]
             if command == "x":
                 args += ["-so", "-bso0", "-bse2"]
+            elif command == "l":
+                args += ["-slt"]
             args += ["--", str(path)]
             if name:
                 args.append(name)
@@ -84,7 +89,10 @@ class SquashfsTests(unittest.TestCase):
 
     def test_official_creator_fixtures_on_every_platform(self):
         fixtures = Path(__file__).parent / "fixtures/squashfs"
+        records = json.loads((fixtures / "manifest.json").read_text())["images"]
         for path in sorted(fixtures.glob("*.squashfs.zlib")):
+            if "attributes" in records[path.name.removesuffix(".squashfs.zlib")]:
+                continue  # Different payloads are checked by the native-xattr scenario.
             data = zlib.decompress(path.read_bytes())
             for engine in ("7z", "7zz"):
                 if path.name.startswith("lz4") and engine == "7zz":
@@ -150,6 +158,37 @@ class SquashfsTests(unittest.TestCase):
             with self.subTest(fault=fault):
                 result = self.run_image("7z", volume(fault, xattrs=True)[0], "l")
                 self.assertNotEqual(result.returncode, 0, result.stdout.decode(errors="replace"))
+
+    def test_published_native_xattr_values_and_stream_filtering(self):
+        fixtures = Path(__file__).parent / "fixtures/squashfs"
+        record = json.loads((fixtures / "manifest.json").read_text())["images"]["xattr-values"]
+        data = zlib.decompress((fixtures / "xattr-values.squashfs.zlib").read_bytes())
+        listing = self.run_image("7z", data, "l", streams=True)
+        self.assertEqual(listing.returncode, 0, listing.stderr.decode(errors="replace"))
+        paths = []
+        for block in listing.stdout.decode("utf-8").replace("\r\n", "\n").split("\n\n"):
+            lines = block.splitlines()
+            if "Alternate Stream = +" in lines:
+                paths += [line[7:] for line in lines if line.startswith("Path = ")]
+        plain = self.run_image("7z", data, "l")
+        self.assertEqual(plain.returncode, 0, plain.stderr.decode(errors="replace"))
+        self.assertNotIn(b"Alternate Stream = +", plain.stdout)
+        self.assertIn(b"data.bin:$XATTR.user.comment", plain.stdout)
+        for name, expected in (("data.bin", bytes(range(100))), ("alias.bin", bytes(range(100))),
+                               ("[ROOT]", b"ordinary root name"),
+                               ("data.bin:$XATTR.user.comment", b"ordinary colon file")):
+            for engine in ("7z", "7zz"):
+                result = self.run_image(engine, data, "x", name)
+                self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                self.assertEqual(result.stdout, expected)
+        for host, attributes in record["attributes"].items():
+            for name, expected in attributes.items():
+                base = (host or "[ROOT]_") + ":$XATTR." + urllib.parse.quote(name, safe="._-")
+                candidates = [path for path in paths if path == base or path.startswith(base + "#")]
+                self.assertEqual(len(candidates), 1, base)
+                result = self.run_image("7z", data, "x", candidates[0], streams=True)
+                self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                self.assertEqual(result.stdout, bytes.fromhex(expected), candidates[0])
 
     def test_id_metadata_index_rejects_an_excessive_gap(self):
         result = self.run_image("7z", volume("id-metadata-gap")[0], "l")
