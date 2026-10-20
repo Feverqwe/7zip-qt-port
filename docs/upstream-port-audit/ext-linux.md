@@ -268,6 +268,47 @@ The added standalone rejection regression passed in the localized `ext` rerun on
 macOS and on both runners (`20261019T094646Z-6362f08b`).
 No full/slow, package, physical-device or native authorization gate is claimed.
 
+## Read-only feature compatibility
+
+The complete `ext4_feature_set_ok` and `ext4_check_feature_compatibility` bodies
+in the pinned `fs/ext4/super.c`, their mount-call context and `ext4.h` feature helpers
+were compared with `ext_linux_open`. The transferred C subset now owns the
+incompatible-feature mask and rejects HURD with 64bit or EA_INODE, plus nonzero
+encryption levels when the encryption feature is present. Previously these
+combinations could extract successfully despite Linux rejecting the filesystem.
+Accepted HURD 32-bit images, other creator OS values and ordinary unencrypted
+files on encryption-capable filesystems remain readable.
+
+The adaptation omits mount diagnostics, rev-0 warnings, ext2/ext3 driver probing,
+DAX and read-write/quota checks. Archive reads are always read-only, perform no
+casefold lookup and preserve stored directory names, so the kernel's dependency
+on CONFIG_UNICODE for casefold lookup is not imposed. Unknown read-only-compatible
+features remain permitted by the read-only feature check. This does not supply
+fscrypt decryption. Inode checksum rules already match Linux's creator-OS guard;
+they were reviewed without changing it. Modern LARGEDIR size decoding was also
+already connected through the C inode reader.
+
+The CLI regression checks actual extracted bytes and rejection without output
+over eleven combinations. Before rebuilding the module it reproduced four
+incorrect successful extractions. The source inventory revision remains unchanged;
+the modified Linux units were already registered as adapted.
+
+Focused acceptance covers `ext`, `ext_stream`, `archive_device`, `device_folder`,
+`device_ui`, `codec_probe`, `upstream_baseline` and `upstream_inventory`.
+Linux passed all eight in 17.29s (`20261020T162120Z-0fe78e55`). macOS passed
+seven in the initial batch; `device_ui` lacked a screen inside the sandbox and
+passed separately with native Cocoa access in 28.73s. Windows passed seven in
+106.35s (`20261020T162024Z-25cfe890`); `codec_probe` timed out in its unchanged
+deadline-delivery test, then passed alone without code/timeout changes
+(`20261020T162256Z-958b16d6`). Incremental build trees and compiler caches were
+retained. These checks do not establish a full/slow or physical-device gate.
+
+Native Linux ext4 `6.8.0-147-generic` independently matched all eleven cases
+(`20261020T162059Z-355afad5`): seven read-only mounts returned the exact payload,
+and four unsupported combinations were rejected. All image SHA256 values stayed
+unchanged. Temporary images, mounts and the synced review script were removed.
+This running kernel is separate from the pinned source revision used for transfer.
+
 ## Remaining ext modernization
 
 This iteration does not close the ext row. Encryption still needs a key-service

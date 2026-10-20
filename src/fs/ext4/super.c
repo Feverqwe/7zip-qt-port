@@ -19,6 +19,43 @@
 
 #include "ext4.h"
 
+/* Read-only archive subset: no write mounts, VFS probing or DAX. Casefold
+ * lookup is not performed; directory entries retain their stored names. */
+static int ext4_feature_set_ok(struct super_block *sb, int readonly)
+{
+	if (ext4_has_unknown_ext4_incompat_features(sb))
+		return 0;
+
+	if (readonly)
+		return 1;
+
+	return 0;
+}
+
+int ext4_check_feature_compatibility(struct super_block *sb,
+				   struct ext4_super_block *es)
+{
+	if (es->s_creator_os == cpu_to_le32(EXT4_OS_HURD)) {
+		if (ext4_has_feature_64bit(sb))
+			return -EINVAL;
+
+		/*
+		 * ea_inode feature uses l_i_version field which is not
+		 * available in HURD_COMPAT mode.
+		 */
+		if (ext4_has_feature_ea_inode(sb))
+			return -EINVAL;
+	}
+
+	if (!ext4_feature_set_ok(sb, 1))
+		return -EINVAL;
+
+	if (ext4_has_feature_encrypt(sb) && es->s_encryption_level)
+		return -EINVAL;
+
+	return 0;
+}
+
 __le32 ext4_superblock_csum(struct ext4_super_block *es)
 {
 	int offset = offsetof(struct ext4_super_block, s_checksum);

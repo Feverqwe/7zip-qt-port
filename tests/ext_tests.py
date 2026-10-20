@@ -208,6 +208,30 @@ class ExtTests(unittest.TestCase):
                 self.assertNotEqual(result.returncode, 0)
                 self.assertEqual(result.stdout, b"")
 
+    def test_creator_os_and_encryption_feature_compatibility(self):
+        # Check extraction, including accepted boundaries: a creator OS alone
+        # must not reject readable data, nor may an unused encryption byte.
+        for creator, features, level, accepted in (
+                (1, 0, 0, True), (1, 0x80, 0, False), (1, 0x400, 0, False),
+                (0, 0x80 | 0x400, 0, True), (2, 0x80, 0, True),
+                (3, 0x80, 0, True), (4, 0x80, 0, True),
+                (0, 0x80 | 0x10000, 0, True),
+                (0, 0x80 | 0x10000, 1, False),
+                (0, 0x80 | 0x10000, 255, False), (0, 0x80, 255, True)):
+            with self.subTest(creator=creator, features=features, level=level):
+                volume = ModernVolume(descriptor_size=64 if features & 0x80 else 32)
+                volume.put32(1024 + 72, creator)
+                volume.put32(1024 + 96, 2 | 0x40 | features)
+                volume.data[1024 + 0x176] = level
+                volume.refresh()
+                result = self.run_image(volume)
+                if accepted:
+                    self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                    self.assertEqual(result.stdout, volume.read(0, volume.size))
+                else:
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertEqual(result.stdout, b"")
+
     def test_external_xattr_checksum_and_value_bounds(self):
         volume = ModernVolume()
         volume.add_external_xattr()

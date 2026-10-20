@@ -23,10 +23,7 @@ int ext_linux_open(const void *superblock, struct ext_volume **result)
     sbi->s_es = &volume->raw;
     bits = le32_to_cpu(volume->raw.s_log_block_size);
     if (le16_to_cpu(volume->raw.s_magic) != 0xEF53 || bits > 6) goto corrupt;
-    /* Linux ext4's supported incompatible features; unknown layouts cannot be read safely. */
-    if (le32_to_cpu(volume->raw.s_feature_incompat) &
-        ~(0x0002U | 0x0004U | 0x0010U | 0x0040U | 0x0080U | 0x0100U | 0x0200U |
-          0x0400U | 0x2000U | 0x4000U | 0x8000U | 0x10000U | 0x20000U)) goto corrupt;
+    if (ext4_check_feature_compatibility(&volume->sb, &volume->raw)) goto corrupt;
     volume->sb.s_blocksize_bits = bits + 10;
     volume->sb.s_blocksize = 1024U << bits;
     {

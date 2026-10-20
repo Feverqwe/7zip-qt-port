@@ -57,6 +57,10 @@ EXT_FEATURE(meta_bg, incompat, 4)
 EXT_FEATURE(ea_inode, incompat, 10)
 EXT_FEATURE(csum_seed, incompat, 13)
 EXT_FEATURE(filetype, incompat, 1)
+EXT_FEATURE(encrypt, incompat, 16)
+static inline bool ext4_has_unknown_ext4_incompat_features(struct super_block *sb) {
+    return (EXT4_SB(sb)->s_es->s_feature_incompat & cpu_to_le32(~EXT4_FEATURE_INCOMPAT_SUPP)) != 0;
+}
 static inline bool ext4_has_group_desc_csum(struct super_block *sb) {
     return ext4_has_feature_metadata_csum(sb) || ext4_has_feature_gdt_csum(sb);
 }
@@ -106,6 +110,7 @@ static inline unsigned int get_dtype(struct super_block *sb, unsigned int type) 
 }
 int ext4_bg_has_super(struct super_block *, ext4_group_t);
 int ext4_superblock_csum_verify(struct super_block *, struct ext4_super_block *);
+int ext4_check_feature_compatibility(struct super_block *, struct ext4_super_block *);
 int ext4_group_desc_csum_verify(struct super_block *, u32, struct ext4_group_desc *);
 ext4_fsblk_t descriptor_loc(struct super_block *, ext4_fsblk_t, int);
 int ext4_inode_bitmap_csum_verify(struct super_block *, struct ext4_group_desc *, struct buffer_head *);
