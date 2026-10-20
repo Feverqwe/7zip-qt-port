@@ -71,6 +71,15 @@ GPT/MBR/APM проверяются как дополнительные форм�
 
 ## Свидетельства
 
+### MBR primary/EBR и block-layer границы
+
+[Сверка MBR](mbr-linux.md): primary ordering/overlap/CHS, extended types,
+data/link offsets, bounded iterative chains и 64-bit/EOD geometry. Direct-device
+adapter передаёт известный размер сектора; APM также согласован с EOD clipping.
+Native Linux и focused consumers проверяют эти сценарии. Вложенные BSD/Solaris/
+Unixware/Minix readers и remaining classification callers ещё требуют переноса;
+весь MBR module не объявляется завершённым.
+
 ### Apple Partition Map: geometry и map reader
 
 [Сверка APM](apm-linux.md): block sizes до 32768, reserved fields, first-entry

@@ -109,7 +109,7 @@ class ApmStreamTests final : public QObject {
     }
     void cleanup() { archive_.Release(); }
     void failedOpenAndReuse() {
-        for (const char *kind : {"partition-overflow", "truncated-map"}) {
+        for (const char *kind : {"first-signature", "truncated-map"}) {
             fixture(QString::fromLatin1(kind));
             CMyComPtr<IInStream> damaged = new Input(image_);
             QCOMPARE(archive_->Open(damaged, nullptr, nullptr), S_FALSE);

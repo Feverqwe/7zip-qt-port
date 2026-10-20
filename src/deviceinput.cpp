@@ -1,5 +1,7 @@
 #include "7zip/Common/LimitedStreams.h"
+#include "7zip/PropID.h"
 #include "Common/ComTry.h"
+#include "Windows/PropVariant.h"
 #include "deviceaccess.h"
 #include <QByteArray>
 #include <cstring>
@@ -55,8 +57,11 @@ class CDeviceReadStream final : public IInStream, public CMyUnknownImp {
     }
 };
 
-class CDirectDeviceInput final : public IInStream, public DirectDeviceInput, public CMyUnknownImp {
-    Z7_COM_UNKNOWN_IMP_2(ISequentialInStream, IInStream)
+class CDirectDeviceInput final : public IInStream,
+                                 public IStreamGetProp,
+                                 public DirectDeviceInput,
+                                 public CMyUnknownImp {
+    Z7_COM_UNKNOWN_IMP_3(ISequentialInStream, IInStream, IStreamGetProp)
     CMyComPtr<IInStream> input_;
     quint64 size_;
 
@@ -71,6 +76,14 @@ class CDirectDeviceInput final : public IInStream, public DirectDeviceInput, pub
           Start(start), IgnoreJournal(ignoreJournal) {}
     quint64 deviceInputSize() const override { return size_; }
     bool ignoresDeviceJournal() const override { return IgnoreJournal; }
+    Z7_COM7F_IMF(GetProperty(PROPID id, PROPVARIANT *value)) override {
+        NWindows::NCOM::CPropVariant prop;
+        if (id == kpidSectorSize)
+            prop = UInt32(Device.sectorSize);
+        prop.Detach(value);
+        return S_OK;
+    }
+    Z7_COM7F_IMF(ReloadProps()) override { return S_OK; }
     Z7_COM7F_IMF(Read(void *data, UInt32 size, UInt32 *processed)) override {
         return input_->Read(data, size, processed);
     }

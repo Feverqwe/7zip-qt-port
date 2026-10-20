@@ -5,10 +5,10 @@ import struct
 import sys
 
 CASES = tuple("block-" + str(1 << n) for n in range(9, 16)) + (
-    "ddm-reserved", "pm-reserved", "first-count", "map-end", "header-count", "legacy-512")
+    "ddm-reserved", "pm-reserved", "first-count", "map-end", "header-count", "legacy-512",
+    "partition-outside", "partition-overflow")
 BAD = ("signature", "block-zero", "block-small", "block-nonpower", "map-count-zero",
-       "map-count-large", "first-signature", "partition-outside", "partition-overflow",
-       "truncated-map")
+       "map-count-large", "first-signature", "truncated-map")
 
 
 def volume(kind):
@@ -46,6 +46,8 @@ def volume(kind):
     elif kind in ("partition-outside", "partition-overflow"):
         struct.pack_into(">II", image, 2 * block + 8,
                          63 if kind == "partition-outside" else 0xffffffff, 4)
+        start = 63 if kind == "partition-outside" else 0xffffffff
+        payload = bytes(image[start * block:min(len(image), (start + 4) * block)])
     elif kind == "truncated-map":
         struct.pack_into(">I", image, block + 12, 1)
         image = image[:2 * block + 100]

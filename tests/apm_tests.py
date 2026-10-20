@@ -47,7 +47,10 @@ class ApmTests(unittest.TestCase):
                     self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                     self.assertIn(b"Type = APM", result.stdout)
                     self.assertIn(("Cluster Size = " + str(block)).encode(), result.stdout)
-                    self.assertIn(b"Path = data.hfs", result.stdout)
+                    if expected:
+                        self.assertIn(b"Path = data.hfs", result.stdout)
+                    else:
+                        self.assertNotIn(b"Path = data.hfs", result.stdout)
 
     def test_invalid_maps_fail_normally(self):
         for kind in BAD:

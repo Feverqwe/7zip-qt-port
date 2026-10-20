@@ -36,6 +36,8 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 
 ## Новые изменения
 
+- [MBR primary/EBR по Linux](upstream-port-audit/mbr-linux.md)
+  — logical chains, 64-bit geometry, EOD bounds и direct-device sector property.
 - [APM по Linux](upstream-port-audit/apm-linux.md)
   — block geometry, reserved fields, map count и завершённое открытие.
 - [GPT по Linux](upstream-port-audit/gpt-linux.md)

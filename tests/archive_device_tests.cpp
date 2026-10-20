@@ -1,3 +1,4 @@
+#include "../third_party/7zip/C/CpuArch.h"
 #include "7zip/Common/StreamObjects.h"
 #include "7zip/PropID.h"
 #include "Windows/PropVariant.h"
@@ -119,7 +120,20 @@ class ArchiveDeviceTests final : public QObject {
                       QStringLiteral(DEVICE_FIXTURE_DIR) + '/' + name + QStringLiteral(".img.gz")});
         if (!process.waitForFinished(10000) || process.exitCode() != 0)
             return {};
-        return process.readAllStandardOutput();
+        QByteArray image = process.readAllStandardOutput();
+        if (name == "mbr") {
+            // The shared disk fixture uses 512-byte LBAs; this device mock has
+            // 4096-byte logical sectors. Preserve its actual partition byte spans.
+            for (unsigned i = 0; i < 4; ++i) {
+                auto *entry = reinterpret_cast<Byte *>(image.data()) + 446 + 16 * i;
+                const UInt32 start = GetUi32(entry + 8), count = GetUi32(entry + 12);
+                if ((start | count) & 7)
+                    return {};
+                SetUi32(entry + 8, start / 8);
+                SetUi32(entry + 12, count / 8);
+            }
+        }
+        return image;
     }
 
   private slots:
@@ -291,7 +305,7 @@ class ArchiveDeviceTests final : public QObject {
         }
         QCOMPARE(output->bytes(), expected);
     }
-    void rejectsPartitionsBeyondAuthorizedDeviceBoundary() {
+    void limitsPartitionsToAuthorizedDeviceBoundary() {
         const QByteArray disk = fixture("mbr");
         QVERIFY(!disk.isEmpty());
         auto *source = new CDeviceInput(disk);
@@ -300,8 +314,17 @@ class ArchiveDeviceTests final : public QObject {
         QCOMPARE(DeviceInput(input, quint64(disk.size()), &direct), S_OK);
         ArchiveDevice device(catalog_);
         const UInt64 authorizedSize = 2 * 1024 * 1024;
-        QVERIFY(device.inspect(direct, authorizedSize, "USB", nullptr) != S_OK);
-        QVERIFY(device.partitions().isEmpty());
+        QCOMPARE(device.inspect(direct, authorizedSize, "USB", nullptr), S_OK);
+        QCOMPARE(device.partitions().size(), 1);
+        QCOMPARE(device.partitions()[0].offset, UInt64(1024 * 1024));
+        QCOMPARE(device.partitions()[0].size, authorizedSize - device.partitions()[0].offset);
+        CMyComPtr<IInStream> partition;
+        QCOMPARE(device.partitionInput(0, &partition), S_OK);
+        QCOMPARE(partition->Seek(-1, STREAM_SEEK_END, nullptr), S_OK);
+        char tail[2];
+        UInt32 count = 99;
+        QCOMPARE(partition->Read(tail, sizeof(tail), &count), S_OK);
+        QCOMPARE(count, UInt32(1));
         QVERIFY(source->FarthestRead <= authorizedSize);
     }
     void refusesUnsupportedFeaturesOnlyForDirectDevices_data() {

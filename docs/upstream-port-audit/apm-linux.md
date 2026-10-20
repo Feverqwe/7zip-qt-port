@@ -32,10 +32,11 @@ DDM принимает все представимые power-of-two block sizes 
 и очищает частичные entries; следующий Open начинает новое чтение.
 
 Границы partition вычисляются в 64 битах и проверяются по доступному image,
-до публикации. Archive reader явно отклоняет выходящий за образ span,
-вместо объявления успешно читаемого раздела с отсутствующими данными.
-Это archive boundary: `mac_partition` публикует geometry через block layer,
-а `IInStream` не предоставляет последующей проверки/ограничения устройством.
+до публикации. Дополнительная source-сверка `core.c::blk_add_partition` в
+[MBR-итерации](mbr-linux.md) уточнила полное native поведение после `mac_partition`:
+start за концом устройства пропускается, пересекающий конец размер ограничивается
+доступными полными блоками. APM применяет то же правило, сохраняя пригодных
+соседей и не возвращая отсутствующие bytes как успешно читаемый раздел.
 Недостоверный DDM block-count больше не раздувает physical size за пределы
 источника. Пригодные partition offsets/sizes остаются главным read contract.
 
@@ -59,8 +60,8 @@ Native Linux `6.8.0-147-generic`, CONFIG_MAC_PARTITION=y: 19 disposable readonly
 loop images. 12 valid вариантов (семь block sizes, reserved fields, first-count,
 end signature, oversized DDM count) дали ожидаемые partition start/size и
 точный payload. Семь invalid signature/geometry/initial-count образов не дали
-разделов. Loops отключены, временные images удалены. Legacy 512-byte map и
-out-of-source spans не выдаются за native positive cases.
+разделов. Loops отключены, временные images удалены. Legacy 512-byte map
+не выдаётся за native positive case.
 
 CLI checks обоих shipped engines проверяют forced extraction, автоматический
 выбор внешнего контейнера (`-t*`), неизменность источника, exact payload и normal
@@ -78,6 +79,7 @@ Focused suites: `apm`, `apm_stream`, `gpt`, `gpt_stream`, `archive_device`,
 После удаления дублирующего malformed fixture обе APM suites повторно прошли
 на Linux/Windows, receipt `20261020T052527Z-25aac1b0`; production unit неизменён.
 Exact baseline verification: 422 exact, 222 adapted, 11 local paths, одна revision.
+Дополнительные EOD fixtures и актуальная acceptance — в [MBR-аудите](mbr-linux.md).
 Slow, full gate и UI appearance проверки в этой итерации не запускались:
 изменён один format handler без изменения общего stream framework.
 

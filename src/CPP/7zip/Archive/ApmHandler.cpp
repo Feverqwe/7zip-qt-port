@@ -241,13 +241,15 @@ HRESULT CHandler::Open2(IInStream *stream) {
         if (numBlocksInMap > (1 << 8) || numBlocksInMap <= i)
             return S_FALSE;
 
-        const UInt64 finish = (UInt64)item.StartBlock + item.NumBlocks;
-        if (BlocksToBytes(finish) > fileEnd)
-            return S_FALSE;
-        if (numBlocks < finish)
-            numBlocks = finish;
-
-        _items.Add(item);
+        const UInt64 diskBlocks = fileEnd >> _blockSizeLog;
+        if (item.StartBlock < diskBlocks) {
+            if (item.NumBlocks > diskBlocks - item.StartBlock)
+                item.NumBlocks = (UInt32)(diskBlocks - item.StartBlock);
+            const UInt64 finish = (UInt64)item.StartBlock + item.NumBlocks;
+            if (numBlocks < finish)
+                numBlocks = finish;
+            _items.Add(item);
+        }
         {
             const unsigned offset = numPadSectors << 9;
             if (offset)
