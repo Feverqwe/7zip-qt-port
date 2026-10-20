@@ -15,7 +15,7 @@ uint16_t crc16(uint16_t, const unsigned char *, size_t);
 struct ext_time { int64_t seconds; uint32_t nsec; int defined; };
 struct ext_node_info {
     uint64_t size;
-    uint32_t checksum_seed, inline_size, has_xattrs;
+    uint32_t checksum_seed, inline_size, has_xattrs, fast_symlink;
     struct ext_time atime, mtime, change_time, birth_time;
 };
 /* All buffers remain owned by the caller except the returned opaque objects. */
@@ -60,7 +60,9 @@ int ext_linux_directory_hash(struct ext_volume *, uint32_t flags, uint64_t direc
                               const struct sevenzip_fscrypt_inode *, int root_hash_version,
                               const void *record, size_t record_size,
                               uint32_t *hash, uint32_t *minor_hash);
-int ext_linux_extent_check(struct ext_volume *, uint32_t seed, const void *block);
+int ext_linux_extent_check(struct ext_volume *, uint32_t ino, uint32_t seed,
+                           uint32_t root_depth, const void *block, size_t size,
+                           uint32_t depth, uint64_t physical, uint32_t logical);
 int ext_linux_directory_check(struct ext_volume *, uint32_t seed, uint32_t flags, const void *block);
 #ifdef __cplusplus
 }

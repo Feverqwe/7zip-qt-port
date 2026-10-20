@@ -13,6 +13,11 @@
 #define EXT4_XATTR_SYSTEM_DATA "data"
 #define DT_DIR 4
 #define i_checksum_lo osd2.linux2.l_i_checksum_lo
+#define i_blocks_high osd2.linux2.l_i_blocks_high
+typedef u32 ext4_lblk_t;
+#define S_ISLNK(mode) (((mode) & 0170000) == 0120000)
+#define S_ISREG(mode) (((mode) & 0170000) == 0100000)
+#define S_ISDIR(mode) (((mode) & 0170000) == 0040000)
 struct ext4_sb_info {
     struct super_block *s_sb;
     struct ext4_super_block *s_es;
@@ -25,14 +30,17 @@ struct ext4_sb_info {
     const struct ext_xattr_services *xattr_services;
 };
 struct fsverity_operations;
+struct ext4_extent_header;
 struct sevenzip_asymmetric_trust;
 struct super_block { unsigned int s_blocksize, s_blocksize_bits; struct ext4_sb_info info; const struct fsverity_operations *s_vop; };
-struct ext4_inode_info { u32 i_csum_seed, i_inline_size, i_flags; u16 i_extra_isize, i_inline_off; unsigned long i_state_flags; u64 i_file_acl; };
+struct ext4_inode_info { u32 i_csum_seed, i_inline_size, i_flags; u16 i_extra_isize, i_inline_off; unsigned long i_state_flags; u64 i_file_acl; __le32 i_data[EXT4_N_BLOCKS]; };
 struct inode {
     struct super_block *i_sb;
     u32 i_ino, flags;
     u32 i_flags;
     u64 i_size;
+    u64 i_blocks;
+    u16 i_mode;
     u32 i_generation, i_nlink, i_atime_sec, i_mtime_sec, i_ctime_sec, i_version;
     int error;
     struct ext4_inode_info info;
@@ -72,6 +80,15 @@ EXT_FEATURE(filetype, incompat, 1)
 EXT_FEATURE(encrypt, incompat, 16)
 EXT_FEATURE(journal, compat, 2)
 EXT_FEATURE(flex_bg, incompat, 9)
+EXT_FEATURE(huge_file, ro_compat, 3)
+#define EXT4_INODE_HUGE_FILE 18
+#define ext4_test_inode_flag(inode, flag) (((inode)->flags & (1U << (flag))) != 0)
+#define EXT4_CLUSTER_SIZE(sb) (1024U << le32_to_cpu(EXT4_SB(sb)->s_es->s_log_cluster_size))
+int ext4_inode_is_fast_symlink(struct inode *);
+u64 ext4_inode_blocks(struct ext4_inode *, struct ext4_inode_info *, struct inode *);
+int ext4_ext_check_inode(struct inode *);
+int __ext4_ext_check(const char *, unsigned int, struct inode *, struct ext4_extent_header *, int, ext4_fsblk_t, ext4_lblk_t);
+#define ext4_error_inode_err(inode, ...) ((inode)->error = -EFSCORRUPTED)
 #define EXT4_BLOCKS_PER_GROUP(sb) le32_to_cpu(EXT4_SB(sb)->s_es->s_blocks_per_group)
 #define EXT4_BG_INODE_ZEROED 4
 #define ext4_debug(...) ((void)0)

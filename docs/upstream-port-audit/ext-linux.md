@@ -875,3 +875,49 @@ installed packages, native UI and physical devices were not checked.
 The subsequent overlapping-descriptor cleanup regression passed the two focused
 SDK/CLI suites on all three platforms (remote receipt
 `20261020T233013Z-ca8056ef`).
+
+### Original extent validation and symlink inode semantics
+
+The same Linux pin supplies complete `extents.c` root/block capacity helpers,
+`ext4_valid_extent`, `ext4_valid_extent_idx`, `ext4_valid_extent_entries`,
+`__ext4_ext_check` and `ext4_ext_check_inode`, together with their original
+`ext4_extents.h` address/depth accessors. Complete original bodies and callers in
+inode loading, tree lookup and block mapping were compared. The generic header
+ceiling of 32 does not replace the lookup ceiling of five; empty non-root leaves
+remain rejected by the mapping path, as in `ext4_ext_map_blocks`.
+
+The dynamic reader validates inode extent roots during inode loading, repeats
+their block checks after system-zone publication, and uses the same original
+validator for child nodes and checksums. Empty file contents cannot bypass a
+corrupt root. SDK traversal, parent-range guards and stream lifetime remain in
+their existing owner. The C boundary bounds each supplied buffer before invoking
+the original validator; exported linkage and owned inode state replace VFS
+allocation. These helpers add no write, cache or journal-replay services.
+
+Complete original `inode.c` `ext4_inode_is_fast_symlink` and `ext4_inode_blocks`
+bodies now supply cluster-aware EA accounting and huge-file block conversion.
+The latter takes the already-owned inode explicitly instead of embedding a VFS
+inode in its private state, and spells kernel `blkcnt_t` as `u64` to avoid a
+collision with the host POSIX typedef. Selected `__ext4_iget` symlink branches
+reject append/immutable flags and invalid fast-target length/termination;
+orphan recovery and VFS cached-link publication are outside the archive boundary.
+Other inode acceptance branches remain outside this selected transfer.
+
+Both engine builds receive the narrow SDK field/accounting corrections for
+BIGALLOC, huge-file and EA_INODE symlinks, including a fast target carrying an
+EXTENTS flag. Standalone retains SDK code and does not link the GPL helpers.
+Production CLI tests cover all these positive cases, slow-link metadata aliases,
+invalid symlink flags/targets and corrupt empty-file roots. Existing checksum,
+fscrypt/verity, stream, backend and device consumers remain covered.
+
+Seven focused suites passed on macOS, Linux and MSVC Windows on 2026-10-21;
+remote receipt: `20261020T233701Z-038b41e8`. The final unsigned-width spelling
+also passed localized macOS SDK/CLI checks. Native read-only Linux 6.8.0-147
+mounts confirmed all four symlink geometry cases, rejected append/immutable flags,
+a corrupt empty-file root and an empty non-root extent leaf. That older runtime
+accepted malformed fast-target termination and zero length; the pinned reference
+contains the stricter checks used by this port. Its acceptance is not attributed
+to the newer source pin. Native receipt: `20261020T233904Z-031edc21`; images were
+unchanged and mounts/temporary fixtures removed. Full/slow suites, installed
+packages, UI and physical devices were not checked. The parent ext review and
+overall format goal remain open.

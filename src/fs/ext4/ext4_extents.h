@@ -55,4 +55,36 @@ static inline int ext4_ext_get_actual_len(struct ext4_extent *ext)
 		(le16_to_cpu(ext->ee_len) - EXT_INIT_MAX_LEN));
 }
 
+
+#define EXT4_EXT_MAGIC cpu_to_le16(0xf30a)
+#define EXT_FIRST_EXTENT(eh) ((struct ext4_extent *)((char *)(eh) + sizeof(struct ext4_extent_header)))
+#define EXT_FIRST_INDEX(eh) ((struct ext4_extent_idx *)((char *)(eh) + sizeof(struct ext4_extent_header)))
+static inline struct ext4_extent_header *ext_inode_hdr(struct inode *inode)
+{
+	return (struct ext4_extent_header *) EXT4_I(inode)->i_data;
+}
+
+static inline unsigned short ext_depth(struct inode *inode)
+{
+	return le16_to_cpu(ext_inode_hdr(inode)->eh_depth);
+}
+
+static inline ext4_fsblk_t ext4_ext_pblock(struct ext4_extent *ex)
+{
+	ext4_fsblk_t block;
+
+	block = le32_to_cpu(ex->ee_start_lo);
+	block |= ((ext4_fsblk_t) le16_to_cpu(ex->ee_start_hi) << 31) << 1;
+	return block;
+}
+
+static inline ext4_fsblk_t ext4_idx_pblock(struct ext4_extent_idx *ix)
+{
+	ext4_fsblk_t block;
+
+	block = le32_to_cpu(ix->ei_leaf_lo);
+	block |= ((ext4_fsblk_t) le16_to_cpu(ix->ei_leaf_hi) << 31) << 1;
+	return block;
+}
+
 #endif

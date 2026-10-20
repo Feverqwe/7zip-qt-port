@@ -118,7 +118,6 @@ static inline size_t memcpy_from_file_folio(void *output, struct page *page, u64
 struct page *generic_read_merkle_tree_page(struct inode *, pgoff_t);
 #define EXT4_LBLK_TO_B(inode, block) ((u64)(block) << (inode)->i_blkbits)
 #define i_blocksize(inode) ((inode)->i_sb->s_blocksize)
-#define ext4_test_inode_flag(inode, flag) (((inode)->flags & (1U << (flag))) != 0)
 #define EXT4_INODE_EXTENTS 19
 #define EXT_MAX_BLOCKS 0xFFFFFFFFU
 struct ext4_ext_path *ext4_find_extent(struct inode *, u32, void *, int);

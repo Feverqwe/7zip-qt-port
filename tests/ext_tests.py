@@ -16,6 +16,7 @@ from ext_modern_fixture import ModernVolume
 from ext_verity_fixture import VerityVolume
 from ext_xattr_fixture import XattrVolume
 from ext_block_fixture import BlockVolume
+from ext_symlink_fixture import SymlinkVolume
 
 RUNTIME = Path(sys.argv.pop(1))
 MODULE = Path(sys.argv.pop(1))
@@ -118,6 +119,44 @@ class ExtTests(unittest.TestCase):
         result = self.run_image(BlockVolume(mapping="descriptor-overlap"))
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual(result.stdout, b"")
+
+    def test_symlink_cluster_ea_inode_and_huge_block_geometry(self):
+        for case in ("bigalloc", "bigalloc-huge", "ea-slow", "ea-fast-extents"):
+            volume = SymlinkVolume(case)
+            for engine in ("7z", "7zz"):
+                with self.subTest(case=case, engine=engine):
+                    result = self.run_image(volume, engine, "l", "link")
+                    self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                    self.assertIn("Symbolic Link = " + volume.target, result.stdout.decode("utf-8"))
+
+    def test_invalid_symlink_flags_and_fast_target_lengths_are_rejected(self):
+        for case in ("append", "immutable", "embedded-nul", "unterminated", "empty"):
+            for engine in ("7z", "7zz"):
+                with self.subTest(case=case, engine=engine):
+                    result = self.run_image(SymlinkVolume(case), engine, "l", None)
+                    self.assertNotEqual(result.returncode, 0)
+        result = self.run_image(SymlinkVolume("ea-slow-alias"))
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(result.stdout, b"")
+
+    def test_empty_files_do_not_bypass_root_extent_validation(self):
+        for fault in ("magic", "capacity", "entries", "wrapped-logical", "metadata-alias"):
+            with self.subTest(fault=fault):
+                volume = Volume("extent")
+                root = volume.file_inode + 40
+                volume.put32(volume.file_inode + 4, 0)
+                if fault == "magic":
+                    struct.pack_into("<H", volume.data, root, 0)
+                elif fault == "capacity":
+                    struct.pack_into("<H", volume.data, root + 4, 5)
+                elif fault == "entries":
+                    struct.pack_into("<H", volume.data, root + 2, 5)
+                elif fault == "wrapped-logical":
+                    volume.put32(root + 12, 0xFFFFFFFF)
+                else:
+                    volume.put32(root + 20, volume.table)
+                result = self.run_image(volume, command="l", name=None)
+                self.assertNotEqual(result.returncode, 0)
 
     def test_xattr_names_values_and_acl_serialization(self):
         for kind in ("xattrs", "xattrs-signed", "xattrs-lustre"):

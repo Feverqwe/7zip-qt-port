@@ -137,3 +137,39 @@ int ext4_iget_extra_inode(struct inode *inode,
 		EXT4_I(inode)->i_inline_off = 0;
 	return 0;
 }
+
+int ext4_inode_is_fast_symlink(struct inode *inode)
+{
+	if (!ext4_has_feature_ea_inode(inode->i_sb)) {
+		int ea_blocks = EXT4_I(inode)->i_file_acl ?
+				EXT4_CLUSTER_SIZE(inode->i_sb) >> 9 : 0;
+
+		if (ext4_has_inline_data(inode))
+			return 0;
+
+		return (S_ISLNK(inode->i_mode) && inode->i_blocks - ea_blocks == 0);
+	}
+	return S_ISLNK(inode->i_mode) && inode->i_size &&
+	       (inode->i_size < EXT4_N_BLOCKS * 4);
+}
+
+u64 ext4_inode_blocks(struct ext4_inode *raw_inode,
+				  struct ext4_inode_info *ei, struct inode *inode)
+{
+	u64 i_blocks ;
+	struct super_block *sb = inode->i_sb;
+
+	if (ext4_has_feature_huge_file(sb)) {
+		/* we are using combined 48 bit field */
+		i_blocks = ((u64)le16_to_cpu(raw_inode->i_blocks_high)) << 32 |
+					le32_to_cpu(raw_inode->i_blocks_lo);
+		if (ext4_test_inode_flag(inode, EXT4_INODE_HUGE_FILE)) {
+			/* i_blocks represent file system block size */
+			return i_blocks  << (inode->i_blkbits - 9);
+		} else {
+			return i_blocks;
+		}
+	} else {
+		return le32_to_cpu(raw_inode->i_blocks_lo);
+	}
+}

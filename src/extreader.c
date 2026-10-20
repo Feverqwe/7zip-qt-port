@@ -140,7 +140,10 @@ int ext_linux_inode_open(struct ext_volume *volume, uint32_t ino, const void *da
     ei->i_csum_seed = ext4_chksum(ei->i_csum_seed, &raw->i_generation, sizeof(raw->i_generation));
     if (!ext4_inode_csum_verify(inode, raw, ei)) goto corrupt;
     inode->flags = le32_to_cpu(raw->i_flags);
+    inode->i_mode = le16_to_cpu(raw->i_mode);
     ei->i_flags = inode->flags;
+    inode->i_blocks = ext4_inode_blocks(raw, ei, inode);
+    memcpy(ei->i_data, raw->i_block, sizeof(ei->i_data));
     inode->i_generation = le32_to_cpu(raw->i_generation);
     inode->i_nlink = le16_to_cpu(raw->i_links_count);
     inode->i_atime_sec = le32_to_cpu(raw->i_atime);
@@ -174,6 +177,23 @@ int ext_linux_inode_open(struct ext_volume *volume, uint32_t ino, const void *da
         if (!ei->i_inline_off || (inode->flags & (1U << 19))) goto corrupt;
         if ((le16_to_cpu(raw->i_mode) & 0170000) != 0040000 && inode->i_size > ei->i_inline_size) goto corrupt;
         info->inline_size = ei->i_inline_size;
+    }
+    info->fast_symlink = ext4_inode_is_fast_symlink(inode);
+    if (S_ISLNK(inode->i_mode)) {
+        /* Selected original __ext4_iget symlink acceptance. The archive does
+         * not run orphan recovery or publish a VFS cached link. */
+        if (inode->flags & (0x20U | 0x10U)) goto corrupt;
+        if (!(inode->flags & 0x800U) && info->fast_symlink) {
+            if (inode->i_size == 0 || inode->i_size >= sizeof(ei->i_data) ||
+                strnlen((char *)ei->i_data, (size_t)inode->i_size + 1) != inode->i_size)
+                goto corrupt;
+        }
+    }
+    if ((inode->flags & (1U << 19)) && !ext4_has_inline_data(inode) &&
+        (S_ISREG(inode->i_mode) || S_ISDIR(inode->i_mode) ||
+         (S_ISLNK(inode->i_mode) && !info->fast_symlink))) {
+        error = ext4_ext_check_inode(inode);
+        if (error) goto fail;
     }
     info->size = inode->i_size;
     info->checksum_seed = ei->i_csum_seed;
@@ -306,12 +326,17 @@ int ext_linux_inline_directory(struct ext_node *node, ext_dir_emit emit, void *c
     int error = ext4_read_inline_dir(&file, &ctx, &has_inline);
     return error ? error : ctx.error ? ctx.error : node->inode.error;
 }
-int ext_linux_extent_check(struct ext_volume *volume, uint32_t seed, const void *block)
+int ext_linux_extent_check(struct ext_volume *volume, uint32_t ino, uint32_t seed,
+                           uint32_t root_depth, const void *block, size_t size,
+                           uint32_t depth, uint64_t physical, uint32_t logical)
 {
-    struct inode inode = { .i_sb = &volume->sb, .info = { .i_csum_seed = seed } };
+    struct inode inode = { .i_sb = &volume->sb, .i_ino = ino, .info = { .i_csum_seed = seed } };
     struct ext4_extent_header *header = (struct ext4_extent_header *)block;
-    if (EXT4_EXTENT_TAIL_OFFSET(header) + sizeof(struct ext4_extent_tail) > volume->sb.s_blocksize) return -EFSCORRUPTED;
-    return ext4_extent_block_csum_verify(&inode, header) ? 0 : -EFSBADCRC;
+    if (size < sizeof(*header) || root_depth > 32 || depth > root_depth ||
+        le16_to_cpu(header->eh_max) > (size - sizeof(*header)) / sizeof(struct ext4_extent))
+        return -EFSCORRUPTED;
+    ext_inode_hdr(&inode)->eh_depth = cpu_to_le16((u16)root_depth);
+    return __ext4_ext_check(__func__, __LINE__, &inode, header, (int)depth, physical, logical);
 }
 int ext_linux_directory_check(struct ext_volume *volume, uint32_t seed, uint32_t flags, const void *block)
 {

@@ -584,6 +584,7 @@ struct CNode {
     UInt64 RawOffset;
     UInt32 InodeNumber;
     bool HasXattrs;
+    bool FastSymlink;
     unsigned XattrFirst, XattrCount;
 #endif
 
@@ -608,9 +609,26 @@ struct CNode {
     bool IsDir() const { return MY_LIN_S_ISDIR(Mode); }
     bool IsRegular() const { return MY_LIN_S_ISREG(Mode); }
     bool IsLink() const { return MY_LIN_S_ISLNK(Mode); }
+    bool IsFastSymlink(const CHeader &header) const;
 
     bool Parse(const Byte *p, const CHeader &_h);
 };
+
+bool CNode::IsFastSymlink(const CHeader &header) const {
+#ifdef SEVENZIP_LINUX_EXT
+    (void)header;
+    return FastSymlink;
+#else
+    if (!IsLink() || (Flags & ((UInt32)1 << 28)))
+        return false;
+    if (header.FeatureIncompat & (1U << 10))
+        return FileSize != 0 && FileSize < kNodeBlockFieldSize;
+    const unsigned clusterBits =
+        (header.FeatureRoCompat & 0x200) ? header.ClusterBits + 10 : header.BlockBits;
+    const UInt64 eaSectors = FileAcl ? (UInt64)1 << (clusterBits - 9) : 0;
+    return NumBlocks == (IsFlags_HUGE() ? eaSectors >> (header.BlockBits - 9) : eaSectors);
+#endif
+}
 
 bool CNode::Parse(const Byte *p, const CHeader &_h) {
     MTime.Defined = ATime.Defined = ChangeTime.Defined = true;
@@ -713,6 +731,14 @@ bool CNode::Parse(const Byte *p, const CHeader &_h) {
 
     PRF(printf("size = %5d", (unsigned)FileSize));
 
+    if (IsLink() && (Flags & (0x10U | 0x20U)))
+        return false;
+#ifndef SEVENZIP_LINUX_EXT
+    if (!(Flags & 0x800U) && IsFastSymlink(_h) &&
+        (FileSize == 0 || FileSize >= kNodeBlockFieldSize || memchr(Block, 0, (size_t)FileSize) ||
+         Block[(size_t)FileSize] != 0))
+        return false;
+#endif
     return true;
 }
 
@@ -833,6 +859,7 @@ Z7_CLASS_IMP_CHandler_IInArchive_2(
   std::vector<CExtCryptInode> _cryptInodes;
   UInt32 _extentChecksumSeed;
   UInt32 _blockInode = 0;
+  UInt32 _extentRootDepth = 0;
   CObjectVector<CExtXattr> _xattrs;
   int _rootXattrAux;
   struct CXattrContext {
@@ -1287,6 +1314,7 @@ int CHandler::MapSystemInode(void *opaque, uint32_t ino, uint32_t logical, uint3
         if (!context.Mapped) {
             owner._blockInode = ino;
             owner._extentChecksumSeed = node.ChecksumSeed;
+            owner._extentRootDepth = GetUi16(node.Block + 6);
             if (node.IsFlags_EXTENTS()) {
                 context.Io.Result =
                     owner.FillExtents(node.Block, kNodeBlockFieldSize, context.Extents, -1);
@@ -1341,10 +1369,13 @@ HRESULT CHandler::LoadSystemZone(const void *descriptors, UInt32 groups) {
         const CNode &node = _nodes[i];
         if (node.FileAcl && !ext_linux_block_valid(_volume.Ptr, node.InodeNumber, node.FileAcl, 1))
             return S_FALSE;
-        const UInt64 eaSectors = node.FileAcl ? ((UInt64)1 << _h.BlockBits) >> 9 : 0;
-        const bool fastLink =
-            node.IsLink() &&
-            ((_h.FeatureIncompat & (1U << 10)) ? node.FileSize != 0 : node.NumBlocks == eaSectors);
+        const bool fastLink = node.IsFastSymlink(_h);
+        if (node.InlineIndex < 0 && !fastLink && node.IsFlags_EXTENTS() &&
+            (node.IsRegular() || node.IsDir() || node.IsLink()) &&
+            ext_linux_extent_check(_volume.Ptr, node.InodeNumber, node.ChecksumSeed,
+                                   GetUi16(node.Block + 6), node.Block, kNodeBlockFieldSize,
+                                   GetUi16(node.Block + 6), 0, 0))
+            return S_FALSE;
         if (node.InlineIndex < 0 && !node.IsFlags_EXTENTS() &&
             (node.IsRegular() || node.IsDir() || (node.IsLink() && !fastLink)) &&
             ext_linux_blockrefs(_volume.Ptr, node.InodeNumber, node.Block, 15))
@@ -1761,6 +1792,7 @@ HRESULT CHandler::Open2(IInStream *inStream) {
                     node.InodeNumber = globalNodeIndex + 1;
                     node.HasXattrs = info.has_xattrs != 0;
                     node.FileSize = info.size;
+                    node.FastSymlink = info.fast_symlink != 0;
                     ImportTime(info.atime, node.ATime);
                     ImportTime(info.mtime, node.MTime);
                     ImportTime(info.change_time, node.ChangeTime);
@@ -3128,6 +3160,11 @@ HRESULT CHandler::FillExtents(const Byte *p, size_t size, CRecordVector<CExtent>
 
     if (eth.Depth >= kNumTreeLevelsMax)
         return S_FALSE;
+#ifdef SEVENZIP_LINUX_EXT
+    if (ext_linux_extent_check(_volume.Ptr, _blockInode, _extentChecksumSeed, _extentRootDepth, p,
+                               size, eth.Depth, 0, firstBlock))
+        return S_FALSE;
+#endif
 
     if (eth.Depth == 0) {
         for (unsigned i = 0; i < eth.NumEntries; i++) {
@@ -3170,10 +3207,6 @@ HRESULT CHandler::FillExtents(const Byte *p, size_t size, CRecordVector<CExtent>
             return S_FALSE;
 
         RINOK(SeekAndRead(_stream, e.PhyLeaf, tempBuf, blockSize))
-#ifdef SEVENZIP_LINUX_EXT
-        if (ext_linux_extent_check(_volume.Ptr, _extentChecksumSeed, tempBuf) != 0)
-            return S_FALSE;
-#endif
         RINOK(FillExtents(tempBuf, blockSize, extents, eth.Depth, e.VirtBlock, next))
     }
 
@@ -3209,22 +3242,16 @@ HRESULT CHandler::GetStream_Node(unsigned nodeIndex, ISequentialInStream **strea
     }
     _extentChecksumSeed = node.ChecksumSeed;
     _blockInode = node.InodeNumber;
+    _extentRootDepth = GetUi16(node.Block + 6);
 #else
     (void)rawLink;
     if (node.Flags & (((UInt32)1 << 20) | 0x800))
         return E_NOTIMPL;
 #endif
 
-    if (!node.IsFlags_EXTENTS()) {
-        // Fast symlinks can account for an external EA block in i_blocks.
-        // Retain the existing short inline-data fallback until its complete
-        // inode/xattr read path is connected separately.
+    {
         const bool inlineData = (node.Flags & ((UInt32)1 << 28)) != 0;
-        const UInt64 eaSectors = node.FileAcl ? ((UInt64)1 << _h.BlockBits) >> 9 : 0;
-        const bool fastLink =
-            node.IsLink() && !inlineData &&
-            ((_h.FeatureIncompat & ((UInt32)1 << 10)) != 0 ? node.FileSize != 0
-                                                           : node.NumBlocks == eaSectors);
+        const bool fastLink = node.IsFastSymlink(_h);
         if ((fastLink || (inlineData && node.NumBlocks == 0)) &&
             node.FileSize < kNodeBlockFieldSize) {
             Create_BufInStream_WithNewBuffer(node.Block, (size_t)node.FileSize, stream);
