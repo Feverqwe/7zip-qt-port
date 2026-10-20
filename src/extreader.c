@@ -4,6 +4,8 @@
 #include "fs/ext4/xattr.h"
 #include "fs/ext4/ext4_extents.h"
 #include "fs/ext4/xattrread.h"
+#include "fscryptreader.h"
+#include "fs/ext4/hashread.h"
 
 struct ext_volume { struct super_block sb; struct ext4_super_block raw; };
 struct ext_node { struct inode inode; };
@@ -222,6 +224,65 @@ int ext_linux_xattr_visit(struct ext_node *node, const struct ext_xattr_services
     sbi->xattr_services = services;
     result = ext4_xattr_visit(&node->inode, emit, context);
     sbi->xattr_services = previous;
+    return result;
+}
+int ext_linux_fscrypt_context(struct ext_node *node, const struct ext_xattr_services *services,
+                               void *output, size_t size)
+{
+    struct ext4_sb_info *sbi = EXT4_SB(node->inode.i_sb);
+    const struct ext_xattr_services *previous = sbi->xattr_services;
+    sbi->xattr_services = services;
+    int result = ext4_get_context(&node->inode, output, size);
+    sbi->xattr_services = previous;
+    return result;
+}
+void ext_linux_fscrypt_geometry(struct ext_volume *volume, struct sevenzip_fscrypt_geometry *geometry)
+{
+    memset(geometry, 0, sizeof(*geometry));
+    geometry->block_bits = volume->sb.s_blocksize_bits;
+    geometry->max_file_size = ext4_max_size((int)geometry->block_bits,
+        (le32_to_cpu(volume->raw.s_feature_ro_compat) & 8) != 0);
+    memcpy(geometry->uuid, volume->raw.s_uuid, 16);
+    geometry->stable_inodes = (le32_to_cpu(volume->raw.s_feature_compat) & 0x800) != 0;
+    geometry->has_32bit_inodes = 1;
+    geometry->supports_subblock_units = 1;
+}
+int ext_linux_directory_hash(struct ext_volume *volume, uint32_t flags, uint64_t size,
+                              const struct sevenzip_fscrypt_inode *crypt, int root_version,
+                              const void *record, size_t record_size, uint32_t *hash, uint32_t *minor)
+{
+    const struct ext4_dir_entry_2 *de = record;
+    struct inode dir = {.i_sb = &volume->sb, .flags = flags, .i_size = size, .fscrypt_owner = crypt};
+    *hash = *minor = 0;
+    if (record_size < 8 || de->name_len > record_size - 8) return -EFSCORRUPTED;
+    if (!de->inode || !de->name_len ||
+        (de->name[0] == '.' && (de->name_len == 1 || (de->name_len == 2 && de->name[1] == '.'))))
+        return 0;
+    /* Original ext4 readdir/htree rule: casefolded encrypted entries carry
+     * hashes after the aligned ciphertext, independent of key availability. */
+    if (ext4_hash_in_dirent(&dir)) {
+        size_t offset = (8 + de->name_len + EXT4_DIR_ROUND) & ~EXT4_DIR_ROUND;
+        if (offset + sizeof(struct ext4_dir_entry_hash) > record_size) return -EFSCORRUPTED;
+        *hash = ext_load_le32((const u8 *)record + offset);
+        *minor = ext_load_le32((const u8 *)record + offset + 4);
+        return 0;
+    }
+    /* Original is_dx_dir() also selects a potentially indexed one-block dir. */
+    if (!(le32_to_cpu(volume->raw.s_feature_compat) & 0x20) ||
+        !((flags & 0x1000) || (size >> volume->sb.s_blocksize_bits) == 1 || (flags & (1U << 28))))
+        return 0;
+    int version = root_version < 0 ? volume->raw.s_def_hash_version : root_version;
+    if (version != DX_HASH_LEGACY && version != DX_HASH_HALF_MD4 && version != DX_HASH_TEA &&
+        version != DX_HASH_SIPHASH) return -EINVAL;
+    u32 seed[4];
+    for (unsigned i = 0; i < 4; ++i) seed[i] = le32_to_cpu(volume->raw.s_hash_seed[i]);
+    u32 disk_flags = le32_to_cpu(volume->raw.s_flags);
+    if (version <= DX_HASH_TEA && ((disk_flags & 2) || (!(disk_flags & 1) && CHAR_MIN == 0)))
+        version += 3;
+    struct dx_hash_info hinfo = {.hash_version = version, .seed = seed};
+    int result = ext4fs_dirhash(&dir, de->name, de->name_len, &hinfo);
+    if (!result) result = dir.error;
+    if (!result) { *hash = hinfo.hash; *minor = hinfo.minor_hash; }
     return result;
 }
 int ext_linux_inline_read(struct ext_node *node, void *output, unsigned int size)

@@ -234,7 +234,8 @@ Write/enable/metadata mutation, ioctl transport, global inode caching, schedulin
 readahead and kernel trust keyrings are omitted. The signature callback is the
 original `CONFIG_FS_VERITY_BUILTIN_SIGNATURES=n` service: stored signature bounds
 are checked, but this module makes no certificate/authenticity claim. Trust/key
-policy still needs to be considered with the remaining fscrypt integration.
+policy remains a separate modernization requirement after the software fscrypt
+read integration.
 
 Deterministic fixtures independently produce SHA-256/SHA-512 trees using hashlib,
 with/without salt, empty and short files, multiple tree levels, holes/unwritten
@@ -390,10 +391,267 @@ package, physical-device or native authorization gate is claimed for this change
 
 ## Remaining ext modernization
 
-This iteration does not close the ext row. Encryption still needs a key-service
-contract and the corresponding fscrypt read/name/symlink paths; the current
-explicit unsupported result prevents ciphertext from masquerading as plaintext.
-Remaining feature/creator-OS read semantics and key/trust service integration need
-a complete source comparison and integration. These remain required follow-up work,
-not accepted permanent limitations. Kernel VFS/page cache, writes and journal
-replay remain outside the read-only archive contract.
+### fscrypt software reads
+
+The integrated scenario covers encrypted ext4 directory, file and symlink reads
+with explicit raw master keys, plus Linux's no-key view. The pinned inventory
+includes complete `fs/crypto` units and the selected generic crypto dependency
+closure; the inventory does not establish completed source transfer.
+
+Initial body/caller comparison covers policy/context conversion and validation,
+v1/v2 KDF branches, per-mode selection, IV generation, data-unit decryption,
+filename presentation and symlink reads. Pinned Linux supports AES-XTS/CTS,
+AES-CBC-ESSIV/CTS, SM4-XTS/CTS, Adiantum and AES-HCTR2 policy pairs. All remain
+in the transferred scope, alongside direct-key/inode-IV policies, configurable
+data units, no-key names and existing fs-verity composition.
+
+The 2026 Linux library already provides usable portable AES CBC/CTS/XTS/XCTR
+bodies. Selected original bodies, SHA-2/HMAC and exact fscrypt HKDF
+remain under their original paths, with notices. A C11 static target supplies
+the dynamic format module and a standalone C check. Portable Crypto API services
+replace kernel allocation, mapping and registration at the boundaries described
+below. The LGPL standalone engine does not link GPL fscrypt code and explicitly
+refuses encryption-flagged nodes.
+
+The generic AES and SHA algorithm bodies retain the pinned control flow.
+Host adaptations replace kernel includes/exports and compiler barriers, provide
+explicit key zeroization, endian/unaligned access and overflow services, and
+name the initial AES encryption-key member for C11/MSVC. The encryption argument
+uses the common initial member address instead of GNU transparent unions.
+Pointer alignment calculations use `uintptr_t` on LLP64. Kernel acceleration,
+FIPS initialization/registration and unused AES MAC/AEAD modes are omitted.
+The copied XTS field multiplication and weak-key checks remain original;
+kernel skcipher registration wrappers are omitted. Crypto utility routines use
+their generic paths rather than compiler-specific constant-size shortcuts.
+The generic SHA-224/SHA-256 and SHA-384/SHA-512 modules retain their HMAC APIs;
+the archive scenario needs SHA-256 and HMAC-SHA512. Generic word accesses use
+the kernel's compiler aliasing contract (`-fno-strict-aliasing` with GCC/Clang).
+
+The selected dependency group includes original SM4 block/key functions,
+SipHash2-4 and base64url. SM4 aliases for assembly consumers are omitted.
+SipHash uses its alignment-independent path; fixed-width helpers are retained,
+while unused HalfSipHash and compiler constant-size dispatch are omitted.
+Base64 tables retain the original values with sequential C11 initialization
+instead of GNU designated ranges. Decoder bit assembly uses unsigned shifts
+to retain rejection of negative lookup entries without signed-shift undefined
+behavior on host compilers. The encode/decode control flow remains original.
+
+Original HCTR2 setkey/hash/crypt/finish and request completion bodies now run
+through a synchronous owned-request Crypto API boundary. Its POLYVAL/GHASH
+dependency uses the original generic 32-bit carryless multiply fallback.
+HCTR2 initialization selects AES and AES-XCTR directly instead of kernel
+template/spawn registration. The original cleanup and request-size branches
+are retained. GNU omitted-middle conditionals use an explicit error local;
+kernel algorithm-name negotiation, async providers and module registration are
+omitted. This dependency layer is still separate from the ext handler.
+The host Crypto API retains the installed-key requirement: a request without a
+usable key returns `ENOKEY`, including after a failed key installation. Request
+bounds are checked before the original mode body accesses its memory segments.
+
+Prepared AES providers now expose the original ECB/CBC/XTS/CTR/XCTR library
+through that Crypto API, including the ECB primitive needed by the v1 KDF.
+XTS uses a private evolving tweak to retain the kernel driver's unchanged-IV
+contract. CTS uses the original `crypto/cts.c` request bodies with the CBC
+provider: the library CTS API deliberately clobbers IV differently, so direct
+substitution would lose the kernel API state contract. CTS alignment annotations
+use C11 and its GNU omitted-middle conditionals use explicit error locals;
+the selected setkey/crypt/completion bodies otherwise remain original.
+Original ESSIV skcipher setkey/crypt/request and cleanup bodies are transferred
+for the fscrypt `essiv(cbc(aes),sha256)` instantiation. The SHA-256 hash service
+and fixed dependencies replace kernel allocation/registration; dm-crypt AEAD
+instantiations and algorithm-name negotiation are outside this ext read scope.
+
+SM4 now uses the original generic block callbacks and CBC request functions,
+the original ECB block iterator, and the original generic XTS key/tweak/CTS
+functions. A fixed-buffer bridge replaces lskcipher/kernel registration and
+selects the existing raw SM4 callbacks. XTS initialization selects ECB-SM4 and
+the raw SM4 tweak cipher; the original allocation failure cleanup is retained.
+Its two GNU error chains use equivalent explicit short-circuit statements.
+Aligned owned buffers replace the kernel walk mappings, copying only processed
+bytes before the original XTS tail handling and wiping temporary storage.
+Portable request-context alignment follows the generic `u64` members; no SIMD
+kernel context is used. This avoids relying on `max_align_t`, absent from the
+selected MSVC C11 headers.
+
+Adiantum now has its original setkey, NH/Poly1305 hashing, two-pass crypt,
+request completion and cleanup bodies, with the generic ChaCha/HChaCha, NH and
+32-bit Poly1305 dependency closure. Original `crypto/chacha.c` request bodies
+preserve the XChaCha subkey and nonce/stream-position mapping. Generic Poly1305
+uses the default non-architecture schedule size; full MAC buffering APIs are
+not needed by the Adiantum core. Kernel algorithm registration and architecture
+acceleration are omitted. Initialization selects XChaCha12/AES for fscrypt;
+the original XChaCha20 variant is also available through the same bodies.
+Two mapped-memory pointers use byte types for C11 arithmetic and ChaCha's local
+alignment annotation uses C11. Empty Poly1305 initializers use `{0}`.
+
+Host scatterlists now retain page/offset views as well as flat data bounds.
+Ordinary coherent memory replaces page mapping/cache flushes; the synthetic
+4096-byte page boundary selects the original fast or streaming hash path.
+This is a crypto mapping optimization, not the filesystem's policy/page geometry.
+The original Adiantum hashing branches remain present. Sized zeroed allocation
+and sensitive release replace kernel slab ownership for derived-key buffers.
+The selected stream providers are synchronous, satisfying Adiantum's original
+provider requirement; no asynchronous device completion service is introduced.
+
+The focused crypto suite compares encryption and decryption with selected
+original `crypto/testmgr.h` known answers, including in-place/unaligned buffers,
+continuation and final IVs. SHA/HMAC cases include split updates and long HMAC
+keys. Separate fscrypt HKDF answers use Python's standard HMAC-SHA512 with RFC
+5869 expansion, covering context separation and multiple output blocks.
+Additional cases cover SHA-256, SM4, SipHash reference vectors, independent
+base64url answers and invalid input bytes, plus HCTR2's complete kernel vector
+set with both aligned and partial final blocks. These checks validate the host
+crypto boundary, not encrypted filesystem reads.
+The Crypto API adapters also run the AES vectors, preserving the CBC/CTR final
+IVs recorded by the kernel vectors and the XTS/XCTR unchanged IV contract.
+Original ESSIV vectors exercise the complete SHA-256-to-IV-to-CBC composition.
+The forbidden-weak-key request flag must reject identical XTS key halves for
+both AES and SM4. SM4-CBC/CTS/XTS use the original kernel vectors, including
+the 189-byte XTS ciphertext-stealing case and recorded CBC final IVs.
+Adiantum and ChaCha variants use their complete kernel vector sets. The
+4096-byte Adiantum case also uses a nonzero source/destination page offset,
+checking the generic streaming path against the same independent known answer.
+On 2026-10-20 the prepared AES Crypto API/ESSIV, generic SM4, HCTR2 and supporting
+hash/KDF/name-codec checks passed on macOS, Linux and MSVC Windows. The Windows
+context-alignment compile error was fixed and the expanded suite rerun after
+the other worktree owner completed. The subsequent Adiantum/ChaCha expansion
+also passed on all three platforms before archive integration.
+
+The context/policy read subset is now transferred as well: original context
+size/version/nonce helpers, policy fields and accessors, context conversion,
+mode-pair/flag/data-unit/geometry validation, policy comparison and key specifier
+selection. The selected ten policy function bodies match Linux except for the
+inline-crypto page-size comparison, which uses explicit archive geometry rather
+than the host OS constant. Callers must supply filesystem maximum file size,
+stable-inode capabilities and the relevant page geometry; current file length
+cannot substitute for those limits. The handler now supplies these services
+through the original `ext4_max_size` calculation and ext4 crypto capabilities.
+The mode table from `keysetup.c` uses sequential C11 initialization for MSVC,
+retaining its original mode indices. The borrowed blk-crypto
+enum remains under its original header path and copyright notice; no inline
+hardware service is provided. UAPI policy/key-specifier declarations exclude
+unneeded ioctl/write interfaces. C11 assertion statements and the Windows SAL
+name boundary preserve the on-disk structure layout.
+Focused context/policy checks now also pass on all three platforms: truncated,
+oversized and unknown contexts; invalid mode/flag/reserved fields; casefold/v1
+restrictions; and unsafe data-unit/inode-IV combinations under supplied geometry.
+These are parser/policy acceptance checks, not encrypted archive acceptance.
+
+The read-side key preparation and name/data readers are now transferred:
+`keysetup.c` mode selection, software cipher preparation/destruction, master-key
+size checks and all v2 derivation branches; `keysetup_v1.c` nonce-keyed AES KDF
+and direct-key selection; and the raw-key/HKDF identifier preparation from
+`keyring.c`. The original SipHash inode-IV and directory-hash key derivations
+are retained. An immutable archive lookup callback replaces kernel keyrings;
+each prepared inode owns its transform. Global direct-key/per-mode caches,
+kernel key claims, lazy shared inode-hash initialization, VFS key links, RCU and
+revocation are omitted. The inode-hash key is prepared before publication;
+mode/UUID/nonce/HKDF inputs and IV generation remain unchanged. Kernel inline
+encryption and hardware unwrapping are not host services; no wrapped raw-key
+input is accepted. The original unsupported-key/policy error distinctions remain.
+
+`crypto.c` retains the complete IV generation and single-data-unit cipher body.
+`fname.c` retains filename decryption, buffer ownership, dot-name handling and
+the complete Linux no-key name representation, including strong-hash shortening.
+`hooks.c` retains symlink header/bounds/empty-target checks and its name-reader
+call. Symlink caching is omitted: every result has an explicit owner instead
+of a shared VFS `i_link`. Heap cipher requests replace kernel stack-request
+macros and add allocation-error handling; C byte/character pointer conversions
+and an unaligned symlink length read form narrow host boundaries.
+
+The opaque C boundary in `fscryptreader` snapshots inode metadata and filesystem
+geometry during construction, prepares keys, then releases all borrowed registry
+inputs. Its inode can outlive the original raw/master key and context buffers.
+It restricts content decryption to regular files and name/symlink readers to
+their appropriate inode types; allocated units must be complete and within
+the filesystem data-unit limit. The archive handler retains these owned objects
+in its mapped streams, independently of archive Close/reopen/Release.
+
+The synthetic native fixture generator creates an ext4 image using Linux
+ioctls and e2fsprogs, then obtains ciphertext extents and private contexts with
+FIEMAP/debugfs. Linux reads back the known plaintext before unmounting, and a
+read-only remount without keys supplies independent opaque-name/symlink answers.
+The image hash remains unchanged during that read-only inspection. Kernel
+`6.8.0-147-generic` accepted all thirteen selected cases: v1/v2 AES, ESSIV and
+Adiantum; v1/v2 direct-key; inode-IV 64/32; HCTR2; SM4; and 512-byte data units.
+The standalone C checks compare complete decrypted-unit hashes and native name/
+symlink bytes, including a sparse gap, padded tail, unaligned/in-place buffers,
+missing keys, malformed metadata, bounded output and released constructor inputs.
+On 2026-10-20 these native-byte composition checks passed on macOS, Linux and
+MSVC Windows. This establishes the prepared C reader, not archive extraction.
+Directory hashes are actual inputs: native htree readdir supplies them even for
+a single-block directory; the ext4 archive caller must preserve that behavior.
+
+Required archive boundaries identified from current callers include binary
+on-disk directory names before presentation, context values from ext4's private
+encryption xattr, and full allocated last-block reads before logical EOF clipping.
+Sparse holes must remain zero rather than being decrypted as ciphertext.
+For encrypted fs-verity files, decryption must precede hash verification for
+both data and verifier-only metadata reads. Inode/UUID and data-unit limits
+must come from ext4 geometry, not from the archive's currently requested byte
+range or the host OS page size.
+
+The archive key boundary uses the existing `ICryptoGetTextPassword` callback
+with an explicit fscrypt envelope. The [user contract](../ext-encryption.md)
+defines v1 descriptors, v2 keys, multiple keys and the no-key view. Empty callback
+text also selects the no-key view. Callback cancellation/errors propagate; raw
+key/text buffers are released through wiping owners. Duplicate v1 descriptors
+are rejected rather than choosing between conflicting master keys. No SDK
+fscrypt key parser exists to transfer; this syntax/ownership bridge is new
+integration code, and delegates hex conversion to the original 7-Zip parser.
+Login/protector passwords are not interpreted as master keys. Hardware wrapping,
+kernel keyring permissions/RCU and kernel I/O acceleration remain platform
+services. No real user keys or archives are used by the native fixtures.
+
+`ext4/crypto.c::ext4_get_context` reads the private encryption xattr through the
+existing original xattr bodies. `super.c::ext4_max_size` supplies the original
+maximum DUN geometry (the VFS block-count typedef assertion is omitted; archive
+block counts are explicitly 64-bit). `hash.c` retains all original hash bodies;
+its Unicode lookup-folding configuration is disabled because readdir hashes
+stored ciphertext or uses hashes stored in casefold dirents. A narrow bridge
+supplies byte/rotation services and the original fscrypt SipHash name reader.
+Default/index hash versions, filesystem seed and signedness follow Linux;
+casefolded encrypted records use the stored aligned hash pair. Prepared casefold
+SipHash keys are also checked against native dirent answers. Original
+`fscrypt_get_policy`, `fscrypt_has_permitted_context` and `fscrypt_require_key`
+enforce key and parent/child policy requirements. Nonces do not have to match
+between parent and child; policies do. Per-path access checks survive hardlink
+aliases, and derived streams retain their own prepared inode.
+
+The original ExtHandler mapping and hole branches remain authoritative. Only
+initialized allocated regular-file bytes go through an owned data-unit cache;
+the complete allocated unit is acquired before EOF clipping. Directory blocks
+remain structural metadata, and binary names are decrypted/encoded before string
+and path checks. Symlink payloads go through the transferred hooks reader and
+their presented size drives properties, copy accounting and Extract acceptance.
+Verity wraps the already-decrypting mapped stream, so both data and hidden
+metadata are decrypted before verification. The direct-device feature policy
+now admits ENCRYPT through this same reader, retaining journal-consent rules.
+
+The expanded native image includes encrypted casefold and fscrypt+verity files,
+bringing the selected policies/scenarios to fifteen; Linux accepted both new
+cases and verified the known file content. Native inputs use 16/32-byte minimum
+keys where permitted and retain 64-byte v1/v2 cases. Dynamic SDK and CLI checks
+read all fifteen exact payloads and symlinks, and compare no-key names. They also
+cover retained streams, failed/cancelled opens, invalid raw-key input, incomplete
+input reads and retry without publishing a partial unit. A foreign file policy
+with an available master key is refused before any output; malformed directory
+policy edges are rejected before traversing the tree. Backend checks list
+and extract all native files, reopen without keys, and preserve an existing
+destination on failure. Aligned synthetic-device streams read each native tail
+and preserve authorization/cancellation and journal-recovery boundaries.
+On 2026-10-21 all eight focused crypto/archive/CLI/backend/device suites passed
+on macOS, Linux and MSVC Windows using the current incremental builds and
+prepared runtime. The Windows backend comparison uses native path separators;
+this was a test expectation correction, not a changed path-publication contract.
+A private macOS CMake installation also reads all native plaintext hashes and
+no-key names through its installed CLI with only system paths, preserves the
+image and carries the ext GPL notice. Its module adds no external crypto runtime
+dependency. This is scoped installed-CLI evidence; real encrypted media,
+hardware keys, native UI interaction and release-package acceptance are unverified.
+
+This iteration does not close the ext row. Remaining feature/creator-OS read
+semantics and verity trust policy need their complete source comparison and
+integration. These remain required follow-up work, not accepted permanent
+limitations. Kernel VFS/page cache, writes and journal replay remain outside
+the read-only archive contract.

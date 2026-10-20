@@ -25,6 +25,7 @@
 #define EXT4_XATTR_INDEX_SYSTEM			7
 #define EXT4_XATTR_INDEX_RICHACL		8
 #define EXT4_XATTR_INDEX_ENCRYPTION		9
+#define EXT4_XATTR_NAME_ENCRYPTION_CONTEXT "c"
 #define EXT4_XATTR_INDEX_HURD			10 /* Reserved for Hurd */
 
 struct ext4_xattr_header {

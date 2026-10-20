@@ -6,6 +6,9 @@
 #include "../third_party/7zip/C/7zVersion.h"
 #include "7zip/Archive/IArchive.h"
 #include "7zip/ICoder.h"
+#ifdef SEVENZIP_LINUX_EXT
+#include "7zip/IPassword.h"
+#endif
 #include "Windows/PropVariant.h"
 
 Z7_DEFINE_GUID(CLSID_CArchiveHandler, k_7zip_GUID_Data1, k_7zip_GUID_Data2,

@@ -36,6 +36,7 @@ struct inode {
     unsigned int i_blkbits;
     struct inode *i_mapping;
     void *verity_context;
+    const struct sevenzip_fscrypt_inode *fscrypt_owner;
 };
 struct ext4_iloc { struct buffer_head *bh; unsigned int offset; };
 struct dir_private_info { u64 cookie; };

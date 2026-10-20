@@ -62,7 +62,7 @@ HRESULT CheckFeatures(IInArchive *archive, bool ignoreJournal, QString *error) {
     // features stay unsupported; no superblock parsing lives in this boundary.
     const QSet<QString> incompatible{"FILETYPE", "EXTENTS",     "64BIT",    "FLEX_BG",
                                      "META_BG",  "MMP",         "EA_INODE", "CSUM_SEED",
-                                     "LARGEDIR", "INLINE_DATA", "CASEFOLD"};
+                                     "LARGEDIR", "INLINE_DATA", "CASEFOLD", "ENCRYPT"};
     const QSet<QString> readOnly{
         "SPARSE_SUPER",  "LARGE_FILE", "HUGE_FILE", "GDT_CSUM", "DIR_NLINK", "EXTRA_ISIZE", "QUOTA",
         "METADATA_CSUM", "READONLY",   "BTREE_DIR", "BIGALLOC", "PROJECT",   "VERITY"};
@@ -123,10 +123,6 @@ HRESULT CheckFeatures(IInArchive *archive, bool ignoreJournal, QString *error) {
                     "The filesystem needs journal recovery. Open it on its usual Linux system and "
                     "unmount it cleanly before trying again. Sevenzip does not replay the "
                     "journal.");
-        if (unsupported.contains(QStringLiteral("ENCRYPT")))
-            *error += QLatin1Char('\n') +
-                      QCoreApplication::translate(
-                          "archivedevice", "Encrypted ext filesystems cannot be read directly.");
     }
     return unsupported.size() == 1 && unsupported.first() == QStringLiteral("RECOVER")
                ? kDeviceJournalRecoveryRequired

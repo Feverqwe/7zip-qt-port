@@ -374,8 +374,11 @@ engines. Динамический движок также подключает L
 полные inline data/каталоги, META_BG, BIGALLOC, современные descriptors и
 fs-verity data verification, публичные xattr/EA-inode values и POSIX ACL,
 а также read-only feature compatibility (HURD и версия шифрования).
-Полная актуализация ext4 не завершена: fscrypt/key
-service, trust policy и оставшиеся
+Динамический модуль теперь читает fscrypt v1/v2 с явно переданными raw master
+keys: software mode/KDF/IV paths, ciphertext names и Linux no-key view,
+symlink targets, casefold dirhash и композицию с fs-verity. Тот же reader
+подключён к прямому чтению устройств; standalone отказывает в encrypted data.
+Полная актуализация ext4 не завершена: trust policy и оставшиеся
 feature/creator-OS read semantics остаются в общем scope.
 
 ### FAT12/16/32: BPB, имена и размер файла

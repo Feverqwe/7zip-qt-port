@@ -36,6 +36,7 @@
 #include "../Compress/CopyCoder.h"
 
 #ifdef SEVENZIP_LINUX_EXT
+#include "extfscrypt.h"
 #include "extreader.h"
 #include "extveritystream.h"
 #include <cerrno>
@@ -709,6 +710,7 @@ bool CNode::Parse(const Byte *p, const CHeader &_h) {
 struct CItem {
 #ifdef SEVENZIP_LINUX_EXT
     int XattrIndex = -1, XattrParent = -1;
+    bool ContextAllowed = true;
 #endif
     unsigned Node;        // in _refs[]
     int ParentNode;       // in _refs[]
@@ -722,6 +724,7 @@ struct CItem {
     void Clear() {
 #ifdef SEVENZIP_LINUX_EXT
         XattrIndex = XattrParent = -1;
+        ContextAllowed = true;
 #endif
         Node = 0;
         ParentNode = -1;
@@ -809,6 +812,7 @@ Z7_CLASS_IMP_CHandler_IInArchive_2(
 #ifdef SEVENZIP_LINUX_EXT
   CExtVolume _volume;
   CObjectVector<CByteBuffer> _inlineData;
+  std::vector<CExtCryptInode> _cryptInodes;
   UInt32 _extentChecksumSeed;
   CObjectVector<CExtXattr> _xattrs;
   int _rootXattrAux;
@@ -823,6 +827,12 @@ Z7_CLASS_IMP_CHandler_IInArchive_2(
   static int ReadXattrInode(void *, uint32_t, void *, size_t) noexcept;
   static int EmitXattr(void *, const char *, const void *, size_t) noexcept;
   HRESULT LoadXattrs();
+  HRESULT LoadEncryption();
+  UInt64 GetUnpackSize(const CNode &node) const
+  {
+    return node.IsLink() && node.SymLinkIndex >= 0 ?
+        _symLinks[(unsigned)node.SymLinkIndex].Len() : node.FileSize;
+  }
   void AddXattrItem(unsigned node, int parent, unsigned attribute);
 #endif
 
@@ -870,7 +880,8 @@ Z7_CLASS_IMP_CHandler_IInArchive_2(
   HRESULT FillExtents(const Byte *p, size_t size, CRecordVector<CExtent> &extents, int parentDepth,
       UInt32 firstBlock = 0, UInt64 blockLimit = (UInt64)1 << 32);
 
-  HRESULT GetStream_Node(unsigned nodeIndex, ISequentialInStream **stream, bool requireAllocated = false);
+  HRESULT GetStream_Node(unsigned nodeIndex, ISequentialInStream **stream, bool requireAllocated = false,
+      bool rawLink = false);
   HRESULT ExtractNode(unsigned nodeIndex, CByteBuffer &data);
 
   void ClearRefs();
@@ -893,6 +904,8 @@ HRESULT CHandler::ParseDir(const Byte *p, size_t size, unsigned iNodeDir) {
 #ifdef SEVENZIP_LINUX_EXT
     if (nodeDir.Flags & ((UInt32)1 << 21))
         return S_FALSE;
+    const CExtCryptInode &dirCrypt = _cryptInodes[(unsigned)_refs[iNodeDir]];
+    const int rootHashVersion = (nodeDir.Flags & 0x1000) && size >= 32 ? p[28] : -1;
 #endif
     nodeDir.DirIndex = (int)_dirs.Size();
     CUIntVector &dir = _dirs.AddNew();
@@ -933,13 +946,44 @@ HRESULT CHandler::ParseDir(const Byte *p, size_t size, unsigned iNodeDir) {
 
         item.ParentNode = (int)iNodeDir;
         item.Node = iNode;
-        item.Name.SetFrom_CalcLen((const char *)(p + 8), nameLen);
+#ifdef SEVENZIP_LINUX_EXT
+        unsigned presentedLen = nameLen;
+        if (dirCrypt) {
+            if (iNode) {
+                uint32_t hash = 0, minor = 0;
+                if (ext_linux_directory_hash(_volume.Ptr, nodeDir.Flags, nodeDir.FileSize,
+                                             dirCrypt.get(), rootHashVersion, p, recLen, &hash,
+                                             &minor) != 0)
+                    return S_FALSE;
+                CByteBuffer name(256);
+                size_t len = 0;
+                const int result = sevenzip_fscrypt_present_name(dirCrypt.get(), hash, minor, p + 8,
+                                                                 nameLen, name, name.Size(), &len);
+                if (result)
+                    return result == -ENOMEM ? E_OUTOFMEMORY : S_FALSE;
+                presentedLen = (unsigned)len;
+                if (!len || memchr(name, '/', len))
+                    return S_FALSE;
+                item.Name.SetFrom_CalcLen((const char *)(const Byte *)name, presentedLen);
+            } else {
+                presentedLen = 0;
+                item.Name.Empty();
+            }
+        } else
+#endif
+            item.Name.SetFrom_CalcLen((const char *)(p + 8), nameLen);
 
         p += recLen;
         size -= recLen;
         blockOffset = (blockOffset + recLen) & (blockSize - 1);
 
-        if (item.Name.Len() != nameLen)
+        if (item.Name.Len() !=
+#ifdef SEVENZIP_LINUX_EXT
+            presentedLen
+#else
+            nameLen
+#endif
+        )
             return S_FALSE;
 
         if (_isUTF) {
@@ -969,6 +1013,9 @@ HRESULT CHandler::ParseDir(const Byte *p, size_t size, unsigned iNodeDir) {
 #ifdef SEVENZIP_LINUX_EXT
         if (node.Flags & ((UInt32)1 << 21))
             return S_FALSE;
+        item.ContextAllowed =
+            sevenzip_fscrypt_permitted_context(
+                dirCrypt.get(), _cryptInodes[(unsigned)nodeIndex].get(), node.Mode) != 0;
 #endif
 
         if (_h.IsThereFileType() && type != 0) {
@@ -1019,6 +1066,10 @@ HRESULT CHandler::ParseDir(const Byte *p, size_t size, unsigned iNodeDir) {
             return S_FALSE;
 
         if (node.IsDir()) {
+#ifdef SEVENZIP_LINUX_EXT
+            if (!item.ContextAllowed)
+                return S_FALSE;
+#endif
             if (node.ParentNode < 0)
                 node.ParentNode = (int)iNodeDir;
             else if ((unsigned)node.ParentNode != iNodeDir)
@@ -1231,6 +1282,8 @@ void CHandler::AddXattrItem(unsigned node, int parent, unsigned attribute) {
     item.Type = k_Type_REG_FILE;
     item.XattrParent = parent;
     item.XattrIndex = (int)attribute;
+    if (parent >= 0)
+        item.ContextAllowed = _items[(unsigned)parent].ContextAllowed;
     const AString base = _xattrs[attribute].Name;
     item.Name = base;
     const AString host =
@@ -1260,6 +1313,62 @@ void CHandler::AddXattrItem(unsigned node, int parent, unsigned attribute) {
         item.Name += number;
     }
     _items.Add(item);
+}
+
+HRESULT CHandler::LoadEncryption() {
+    _cryptInodes.resize(_nodes.Size());
+    bool encrypted = false;
+    FOR_VECTOR(i, _nodes)
+    if (_nodes[i].Flags & 0x800)
+        encrypted = true;
+    if (!encrypted)
+        return S_OK;
+    CExtCryptKeys keys;
+    RINOK(keys.Read(_openCallback))
+    sevenzip_fscrypt_geometry geometry;
+    ext_linux_fscrypt_geometry(_volume.Ptr, &geometry);
+    FOR_VECTOR(i, _nodes) {
+        const CNode &node = _nodes[i];
+        if (!(node.Flags & 0x800))
+            continue;
+        if (!(_h.FeatureIncompat & 0x10000) || node.InlineIndex >= 0 ||
+            (!node.IsDir() && !node.IsRegular() && !node.IsLink()))
+            return S_FALSE;
+        if (node.IsLink() && node.FileSize > ((UInt64)1 << _h.BlockBits))
+            return S_FALSE;
+        CXattrContext context{this, i, S_OK, 0, {}};
+        CByteBuffer raw(_h.InodeSize);
+        int result = ReadXattr(&context, 0, node.RawOffset, raw, raw.Size());
+        ext_node *inode = NULL;
+        ext_node_info info;
+        if (!result)
+            result = ext_linux_inode_open(_volume.Ptr, node.InodeNumber, raw, &inode, &info);
+        struct CNodeOwner {
+            ext_node *Ptr;
+            ~CNodeOwner() { ext_linux_inode_close(Ptr); }
+        } holder{inode};
+        ext_xattr_services services{&context, ReadXattr, ReadXattrInode};
+        Byte value[40] = {};
+        if (!result)
+            result = ext_linux_fscrypt_context(inode, &services, NULL, 0);
+        const int contextSize = result;
+        if (result >= 0 && (unsigned)result <= sizeof(value))
+            result = ext_linux_fscrypt_context(inode, &services, value, sizeof(value));
+        if (context.Result != S_OK)
+            return context.Result;
+        if (result < 0)
+            return result == -ENOMEM ? E_OUTOFMEMORY : S_FALSE;
+        sevenzip_fscrypt_inode_options options{};
+        options.geometry = &geometry;
+        options.inode_number = node.InodeNumber;
+        options.mode = node.Mode;
+        options.casefolded = (node.Flags & 0x40000000U) != 0;
+        options.context = value;
+        options.context_size = (size_t)contextSize;
+        options.allow_unsupported = 1;
+        RINOK(keys.Prepare(options, _cryptInodes[i]))
+    }
+    return S_OK;
 }
 
 HRESULT CHandler::LoadXattrs() {
@@ -1611,6 +1720,9 @@ HRESULT CHandler::Open2(IInStream *inStream) {
     }
 
     _stream = inStream; // we need stream for dir nodes
+#ifdef SEVENZIP_LINUX_EXT
+    RINOK(LoadEncryption())
+#endif
 
     {
         // ---------- Read Dirs ----------
@@ -1743,7 +1855,11 @@ HRESULT CHandler::Open2(IInStream *inStream) {
             CNode &node = _nodes[nodeIndex];
             if (!node.IsLink())
                 continue;
-            if (node.FileSize > ((UInt32)1 << 14))
+            if (node.FileSize > ((UInt32)1 << 14)
+#ifdef SEVENZIP_LINUX_EXT
+                && !(node.Flags & 0x800)
+#endif
+            )
                 continue;
             if (ExtractNode((unsigned)nodeIndex, data) == S_OK && data.Size() != 0) {
                 s.SetFrom_CalcLen((const char *)(const Byte *)data, (unsigned)data.Size());
@@ -1763,7 +1879,11 @@ HRESULT CHandler::Open2(IInStream *inStream) {
         for (i = 0; i < _items.Size(); i++) {
             CItem &item = _items[i];
             const int sym = _nodes[_refs[item.Node]].SymLinkIndex;
-            if (sym >= 0 && item.ParentNode >= 0) {
+            if (sym >= 0 && item.ParentNode >= 0
+#ifdef SEVENZIP_LINUX_EXT
+                && item.ContextAllowed
+#endif
+            ) {
                 item.SymLinkItemIndex =
                     FindTargetItem_for_SymLink((unsigned)item.ParentNode, _symLinks[sym]);
                 if (_openCallback) {
@@ -1869,6 +1989,7 @@ Z7_COM7F_IMF(CHandler::Open(IInStream *stream, const UInt64 *, IArchiveOpenCallb
 void CHandler::ClearRefs() {
 #ifdef SEVENZIP_LINUX_EXT
     _inlineData.Clear();
+    _cryptInodes.clear();
     _xattrs.Clear();
     _rootXattrAux = -1;
     _volume.Reset();
@@ -2030,7 +2151,7 @@ enum {
 static const UInt32 kProps[] = {
     kpidPath,
 #ifdef SEVENZIP_LINUX_EXT
-    kpidIsAltStream,
+    kpidIsAltStream, kpidEncrypted,
 #endif
     kpidIsDir, kpidSize, kpidPackSize, kpidPosixAttrib, kpidMTime, kpidCTime, kpidATime,
     // kpidChangeTime,
@@ -2413,9 +2534,19 @@ Z7_COM7F_IMF(CHandler::GetProperty(UInt32 index, PROPID propID, PROPVARIANT *val
         }
 
         case kpidSize:
-            if (!isDir)
+            if (!isDir) {
+#ifdef SEVENZIP_LINUX_EXT
+                prop = GetUnpackSize(node);
+#else
                 prop = node.FileSize;
+#endif
+            }
             break;
+#ifdef SEVENZIP_LINUX_EXT
+        case kpidEncrypted:
+            prop = !xattr && ((node.Flags & 0x800) != 0);
+            break;
+#endif
 
         case kpidPackSize:
             if (!isDir) {
@@ -2468,6 +2599,10 @@ Z7_COM7F_IMF(CHandler::GetProperty(UInt32 index, PROPID propID, PROPVARIANT *val
             break;
 
         case kpidSymLink: {
+#ifdef SEVENZIP_LINUX_EXT
+            if (!item.ContextAllowed)
+                break;
+#endif
             if (node.SymLinkIndex >= 0) {
                 UString u;
                 {
@@ -2496,6 +2631,9 @@ unsigned BlockBits;
 UInt64 Size;
 CMyComPtr<IInStream> Stream;
 CRecordVector<UInt32> Vector;
+#ifdef SEVENZIP_LINUX_EXT
+CExtCryptData Crypt;
+#endif
 
 HRESULT SeekToPhys() { return InStream_SeekSet(Stream, _physPos); }
 
@@ -2542,6 +2680,16 @@ Z7_COM7F_IMF(CClusterInStream2::Read(void *data, UInt32 size, UInt32 *processedS
         }
 
         UInt64 newPos = ((UInt64)phyBlock << BlockBits) + offsetInBlock;
+#ifdef SEVENZIP_LINUX_EXT
+        if (Crypt.Defined()) {
+            UInt32 done = 0;
+            const HRESULT result = Crypt.Read(Stream, _virtPos, newPos, data, size, &done);
+            _virtPos += done;
+            if (processedSize)
+                *processedSize = done;
+            return result;
+        }
+#endif
         if (newPos != _physPos) {
             _physPos = newPos;
             RINOK(SeekToPhys())
@@ -2597,6 +2745,9 @@ unsigned BlockBits;
 UInt64 Size;
 CMyComPtr<IInStream> Stream;
 CRecordVector<CExtent> Extents;
+#ifdef SEVENZIP_LINUX_EXT
+CExtCryptData Crypt;
+#endif
 
 HRESULT StartSeek() {
     _virtPos = 0;
@@ -2658,6 +2809,16 @@ Z7_COM7F_IMF(CExtInStream::Read(void *data, UInt32 size, UInt32 *processedSize))
 
         const UInt64 phyBlock = extent.PhyStart + bo;
         const UInt64 phy = (phyBlock << BlockBits) + offset;
+#ifdef SEVENZIP_LINUX_EXT
+        if (Crypt.Defined()) {
+            UInt32 done = 0;
+            const HRESULT result = Crypt.Read(Stream, _virtPos, phy, data, size, &done);
+            _virtPos += done;
+            if (processedSize)
+                *processedSize = done;
+            return result;
+        }
+#endif
 
         if (phy != _phyPos) {
             RINOK(InStream_SeekSet(Stream, phy))
@@ -2880,7 +3041,7 @@ HRESULT CHandler::FillExtents(const Byte *p, size_t size, CRecordVector<CExtent>
 }
 
 HRESULT CHandler::GetStream_Node(unsigned nodeIndex, ISequentialInStream **stream,
-                                 bool requireAllocated) {
+                                 bool requireAllocated, bool rawLink) {
     COM_TRY_BEGIN
 
     *stream = NULL;
@@ -2890,9 +3051,17 @@ HRESULT CHandler::GetStream_Node(unsigned nodeIndex, ISequentialInStream **strea
     const bool verity = (node.Flags & ((UInt32)1 << 20)) != 0;
     if (verity && (!node.IsRegular() || !node.IsFlags_EXTENTS() || node.InlineIndex >= 0))
         return S_FALSE;
-    // fscrypt requires a key service; never expose encrypted bytes as file data.
-    if (node.Flags & 0x800)
-        return E_NOTIMPL;
+    const CExtCryptInode &crypt = _cryptInodes[nodeIndex];
+    if ((node.Flags & 0x800) && !crypt)
+        return S_FALSE;
+    if (crypt && node.IsRegular())
+        RINOK(ExtCryptRequireKey(crypt))
+    if (crypt && node.IsLink() && !rawLink) {
+        CByteBuffer target;
+        RINOK(ExtractNode(nodeIndex, target))
+        Create_BufInStream_WithNewBuffer(target, target.Size(), stream);
+        return S_OK;
+    }
     if (node.InlineIndex >= 0) {
         const CByteBuffer &payload = _inlineData[(unsigned)node.InlineIndex];
         Create_BufInStream_WithNewBuffer(payload, payload.Size(), stream);
@@ -2900,7 +3069,8 @@ HRESULT CHandler::GetStream_Node(unsigned nodeIndex, ISequentialInStream **strea
     }
     _extentChecksumSeed = node.ChecksumSeed;
 #else
-    if (node.Flags & ((UInt32)1 << 20))
+    (void)rawLink;
+    if (node.Flags & (((UInt32)1 << 20) | 0x800))
         return E_NOTIMPL;
 #endif
 
@@ -2939,6 +3109,10 @@ HRESULT CHandler::GetStream_Node(unsigned nodeIndex, ISequentialInStream **strea
         streamSpec->BlockBits = _h.BlockBits;
         streamSpec->Size = node.FileSize;
         streamSpec->Stream = _stream;
+#ifdef SEVENZIP_LINUX_EXT
+        if (crypt && node.IsRegular())
+            streamSpec->Crypt.Init(crypt);
+#endif
 
         RINOK(FillExtents(node.Block, kNodeBlockFieldSize, streamSpec->Extents, -1))
 
@@ -3008,6 +3182,10 @@ HRESULT CHandler::GetStream_Node(unsigned nodeIndex, ISequentialInStream **strea
         streamSpec->BlockBits = _h.BlockBits;
         streamSpec->Size = node.FileSize;
         streamSpec->Stream = _stream;
+#ifdef SEVENZIP_LINUX_EXT
+        if (crypt && node.IsRegular())
+            streamSpec->Crypt.Init(crypt);
+#endif
 
         RINOK(FillFileBlocks(node.Block, numBlocks, streamSpec->Vector))
         if (requireAllocated) {
@@ -3038,12 +3216,17 @@ HRESULT CHandler::ExtractNode(unsigned nodeIndex, CByteBuffer &data) {
     if (size != node.FileSize)
         return S_FALSE;
     CMyComPtr<ISequentialInStream> inSeqStream;
-    RINOK(GetStream_Node(nodeIndex, &inSeqStream))
+    RINOK(GetStream_Node(nodeIndex, &inSeqStream, false, true))
     if (!inSeqStream)
         return S_FALSE;
     data.Alloc(size);
     _totalRead += size;
-    return ReadStream_FALSE(inSeqStream, data, size);
+    RINOK(ReadStream_FALSE(inSeqStream, data, size))
+#ifdef SEVENZIP_LINUX_EXT
+    if (node.IsLink() && _cryptInodes[nodeIndex])
+        return ExtCryptPresentSymlink(_cryptInodes[nodeIndex], data);
+#endif
+    return S_OK;
 }
 
 Z7_COM7F_IMF(CHandler::Extract(const UInt32 *indices, UInt32 numItems, Int32 testMode,
@@ -3071,7 +3254,11 @@ Z7_COM7F_IMF(CHandler::Extract(const UInt32 *indices, UInt32 numItems, Int32 tes
         }
 #endif
         if (!node.IsDir())
+#ifdef SEVENZIP_LINUX_EXT
+            totalSize += GetUnpackSize(node);
+#else
             totalSize += node.FileSize;
+#endif
     }
 
     RINOK(extractCallback->SetTotal(totalSize))
@@ -3121,6 +3308,7 @@ Z7_COM7F_IMF(CHandler::Extract(const UInt32 *indices, UInt32 numItems, Int32 tes
 
             UInt64 unpackSize = node.FileSize;
 #ifdef SEVENZIP_LINUX_EXT
+            unpackSize = GetUnpackSize(node);
             if (item.XattrIndex >= 0)
                 unpackSize = _xattrs[(unsigned)item.XattrIndex].Data.Size();
 #endif
@@ -3171,6 +3359,8 @@ Z7_COM7F_IMF(CHandler::GetStream(UInt32 index, ISequentialInStream **stream)) {
     if (index >= _items.Size())
         return S_FALSE;
 #ifdef SEVENZIP_LINUX_EXT
+    if (!_items[index].ContextAllowed)
+        return HRESULT(0x80070005L);
     if (_items[index].XattrIndex >= 0) {
         const CByteBuffer &data = _xattrs[(unsigned)_items[index].XattrIndex].Data;
         Create_BufInStream_WithNewBuffer(data, data.Size(), stream);

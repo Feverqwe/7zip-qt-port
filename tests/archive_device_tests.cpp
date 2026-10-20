@@ -9,6 +9,7 @@
 #include "deviceaccess.h"
 #include <QDir>
 #include <QFileInfo>
+#include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QProcess>
@@ -74,11 +75,20 @@ HRESULT DeviceInput(IInStream *input, quint64 size, IInStream **stream) {
 class COpenUi final : public IOpenCallbackUI {
   public:
     bool Cancel = false;
+    QString Password;
+    HRESULT PasswordResult = E_ABORT;
     HRESULT Open_CheckBreak() override { return Cancel ? E_ABORT : S_OK; }
     HRESULT Open_SetTotal(const UInt64 *, const UInt64 *) override { return Open_CheckBreak(); }
     HRESULT Open_SetCompleted(const UInt64 *, const UInt64 *) override { return Open_CheckBreak(); }
     HRESULT Open_Finished() override { return S_OK; }
-    HRESULT Open_CryptoGetTextPassword(BSTR *) override { return E_ABORT; }
+    HRESULT Open_CryptoGetTextPassword(BSTR *value) override {
+        *value = nullptr;
+        if (PasswordResult != S_OK)
+            return PasswordResult;
+        const auto text = Password.toStdWString();
+        *value = SysAllocStringLen(text.data(), (UINT)text.size());
+        return *value ? S_OK : E_OUTOFMEMORY;
+    }
 };
 
 class CExtractUi final : public IArchiveExtractCallback, public CMyUnknownImp {
@@ -333,8 +343,7 @@ class ArchiveDeviceTests final : public QObject {
         QTest::addColumn<QString>("feature");
         QTest::addColumn<bool>("recoveryAlso");
         QTest::newRow("journal-recovery") << 0x60 << 2 << QString("RECOVER") << false;
-        QTest::newRow("encryption") << 0x60 << 16 << QString("ENCRYPT") << false;
-        QTest::newRow("encrypted-recovery") << 0x60 << 16 << QString("ENCRYPT") << true;
+        QTest::newRow("encrypted-recovery") << 0x60 << 16 << QString("RECOVER") << true;
     }
     void refusesUnsupportedFeaturesOnlyForDirectDevices() {
         QFETCH(int, field);
@@ -364,18 +373,71 @@ class ArchiveDeviceTests final : public QObject {
         QCOMPARE(device.inspect(input, UInt64(disk.size()), "USB", nullptr), S_OK);
         std::shared_ptr<ArchiveNativeOpen> reader;
         QString error;
-        QCOMPARE(device.openPartition(0, nullptr, reader, &error),
-                 feature == "RECOVER" ? kDeviceJournalRecoveryRequired : E_NOTIMPL);
+        QCOMPARE(device.openPartition(0, nullptr, reader, &error), kDeviceJournalRecoveryRequired);
         QVERIFY2(error.contains(feature), qPrintable(error));
         QVERIFY(!reader);
         CMyComPtr<IInStream> direct, withoutReplay;
         QCOMPARE(DeviceInput(input, quint64(disk.size()), &direct), S_OK);
         QCOMPARE(CreateDeviceInputIgnoringJournal(direct, &withoutReplay), S_OK);
         QCOMPARE(OpenDeviceFilesystem(catalog_, withoutReplay, "USB", nullptr, reader, &error),
-                 feature == "RECOVER" ? S_OK : E_NOTIMPL);
-        if (feature == "ENCRYPT") {
-            QVERIFY(!reader);
-            QVERIFY2(error.contains(feature), qPrintable(error));
+                 S_OK);
+    }
+    void encryptedLinuxFilesThroughAlignedDeviceInput() {
+        const QDir fixtures(QStringLiteral(DEVICE_FIXTURE_DIR "/../fscrypt"));
+        QFile manifest(fixtures.filePath("native.json"));
+        QVERIFY(manifest.open(QIODevice::ReadOnly));
+        const auto record = QJsonDocument::fromJson(manifest.readAll()).object();
+        QFile packed(fixtures.filePath("native.ext4.zlib"));
+        QVERIFY(packed.open(QIODevice::ReadOnly));
+        QByteArray compressed(4, '\0');
+        const auto size = UInt32(record["image_size"].toDouble());
+        SetBe32(compressed.data(), size);
+        compressed += packed.readAll();
+        const auto bytes = qUncompress(compressed);
+        QVERIFY(!bytes.isEmpty());
+        QStringList keys;
+        for (const auto &entry : record["cases"].toArray()) {
+            const auto value = entry.toObject();
+            keys << (value["key_type"].toInt() == 1 ? "v1:" + value["descriptor"].toString() + ":"
+                                                    : "v2:") +
+                        value["raw_key"].toString();
+        }
+        CMyComPtr<IInStream> raw = new CDeviceInput(bytes), direct;
+        QCOMPARE(DeviceInput(raw, quint64(bytes.size()), &direct), S_OK);
+        COpenUi ui;
+        std::shared_ptr<ArchiveNativeOpen> reader;
+        QCOMPARE(OpenDeviceFilesystem(catalog_, direct, "encrypted USB", &ui, reader), E_ABORT);
+        QVERIFY(!reader);
+        ui.PasswordResult = S_OK;
+        ui.Password = "fscrypt:" + keys.join(';');
+        QCOMPARE(OpenDeviceFilesystem(catalog_, direct, "encrypted USB", &ui, reader), S_OK);
+        IInArchive *archive = reader->arc().Archive;
+        CMyComPtr<IInArchiveGetStream> streams;
+        QCOMPARE(archive->QueryInterface(IID_IInArchiveGetStream, (void **)&streams), S_OK);
+        UInt32 count = 0;
+        QCOMPARE(archive->GetNumberOfItems(&count), S_OK);
+        for (const auto &entry : record["cases"].toArray()) {
+            const auto value = entry.toObject();
+            const auto expected = value["name"].toString() + '/' + value["filename"].toString();
+            UInt32 index = 0;
+            for (; index < count; ++index) {
+                NWindows::NCOM::CPropVariant path;
+                QCOMPARE(archive->GetProperty(index, kpidPath, &path), S_OK);
+                if (path.vt == VT_BSTR &&
+                    QDir::fromNativeSeparators(QString::fromWCharArray(path.bstrVal)) == expected)
+                    break;
+            }
+            QVERIFY2(index < count, qPrintable(expected));
+            CMyComPtr<ISequentialInStream> sequential;
+            QCOMPARE(streams->GetStream(index, &sequential), S_OK);
+            CMyComPtr<IInStream> input;
+            QCOMPARE(sequential->QueryInterface(IID_IInStream, (void **)&input), S_OK);
+            QCOMPARE(input->Seek(8192, STREAM_SEEK_SET, nullptr), S_OK);
+            char tail[3] = {};
+            UInt32 done = 0;
+            QCOMPARE(input->Read(tail, 3, &done), S_OK);
+            QCOMPARE(done, UInt32(3));
+            QCOMPARE(QByteArray(tail, 3), QByteArray("end"));
         }
     }
 };

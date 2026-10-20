@@ -14,6 +14,7 @@ evidence applies only to the recorded revision, platform and scenario.
 | --- | --- |
 | Learn about the application | [README](../README.md) |
 | Read files from an external ext device | [Direct device access](direct-device-reading.md) |
+| Read fscrypt files using raw master keys | [Encrypted ext files](ext-encryption.md) |
 | Report a bug, contribute or check licenses | [Contributing](../CONTRIBUTING.md), [security](../SECURITY.md), [licenses](../THIRD_PARTY_NOTICES.md) |
 | Set up, build, run or prepare runtime dependencies | [Development](development.md) |
 | Update interface translations | [Localization](localization.md) |

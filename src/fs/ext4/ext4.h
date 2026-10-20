@@ -17,6 +17,9 @@
 #ifndef SEVENZIP_EXT4_DISK_H
 #define SEVENZIP_EXT4_DISK_H
 #include "userspace.h"
+#define MAX_LFS_FILESIZE INT64_MAX
+loff_t ext4_max_size(int blkbits, int has_huge_files);
+int ext4_get_context(struct inode *, void *, size_t);
 #define EXT4_N_BLOCKS 15
 #define EXT4_LABEL_MAX 16
 #define EXT4_NAME_LEN 255
