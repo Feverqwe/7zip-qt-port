@@ -1,0 +1,26 @@
+{
+  "repository": "https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git",
+  "revision": "58161ead29e50d70a317ea26b472e0c7508e69da",
+  "snapshot": {
+    "url": "https://codeload.github.com/torvalds/linux/tar.gz/58161ead29e50d70a317ea26b472e0c7508e69da",
+    "sha256": "1cf8bb4681e9dd09a9c7cd871fdff8d469e6e36e8cc4d6f176e7463b0a7a6fd6",
+    "source_scope": "Kernel C/headers/assembly/Rust/linker and Kbuild files in architecture, block, crypto, drivers, filesystems, init, core, libraries, memory, networking, security, sound and virtualization; host tools and docs excluded."
+  },
+  "files": {
+    "fs/Makefile": "5e8462335c1749e142a7ee484cf4fbca9cc88ff4a6e3a3face705b885dbde074",
+    "fs/binfmt_misc.c": "3b02a588711092fd8c163f7d691a761a11fcd149c0e12ad56852022967a9410f",
+    "lib/decompress.c": "dd82cca38e7af2ad746f659cd45b6f94ecb05ce063a0068fe6e3d424d09554a1",
+    "drivers/crypto/marvell/octeontx/otx_cptpf_ucode.c": "0ea64ffe7b276dc2903977b2b05ffa467f1c2ab914b3714d1a0408512cb16fc9",
+    "drivers/media/usb/as102/as102_fw.c": "641134d833b90f555c06696c1919cfd52bae9693a83a211006a5268f934805c8",
+    "drivers/input/touchscreen/iqs5xx.c": "6fd9965327ad3e60e685ea9daaf1a4a61a3b0532ebb76abfc6d59775718a6f90",
+    "include/linux/ihex.h": "d60e6c9f0c2b000018ec75bc504b32920f14e1173e80a1c0cd37fc0d382afcf4",
+    "drivers/net/ppp/bsd_comp.c": "b83542467cc487842a86d5ce1c33746b4255fdd9880119bd457e40de0443782c",
+    "arch/um/drivers/cow_user.c": "3fda78afaf8831c54693456ce4d171b6843a07e054ab1721d20b660d264d7394",
+    "fs/ntfs3/lib/lzx_decompress.c": "7f54fcab5695a3faf00579a5ff5d27c7977ac0685beefb5ea0a915091c8e592c",
+    "fs/ntfs3/lib/xpress_decompress.c": "6f569bc4b1bbbad5a5b144a641555948494ceca30ddadb1fc263e2e049c2ad9a",
+    "lib/lz4/lz4_decompress.c": "bdbc6864ba7bc05bbaedbe21875758a83d8cec0d6db648b6b70147da4804e86a",
+    "lib/lzo/lzo1x_decompress_safe.c": "f481e9df6835eea59c555017e4446cbf6f8d4062d0c04a52fa99d4de5846be04",
+    "lib/decompress_inflate.c": "1f0ef737c3c9978746b84ba252fa365404d8bced3138dd0b170cc929521f9951"
+  },
+  "scope": "Discovery evidence for the shipped archive-format intersection; individual format audits own correctness and completeness."
+}

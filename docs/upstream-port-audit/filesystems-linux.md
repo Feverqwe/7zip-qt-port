@@ -54,6 +54,8 @@ Linux определяет корректность интерпретации �
 | ELF | `fs/binfmt_elf.c`, `fs/binfmt_elf_fdpic.c`, kexec/module readers | Headers, table/payload spans, Linux core numbering, metadata и archive streams; execution services не входят в byte reader. |
 | PE | `crypto/asymmetric_keys/verify_pefile.c`, kexec callers | Headers, certificate/file spans и byte streams; общий COFF consumer проверяется вместе, kernel trust/execution — отдельные contracts. |
 | EFI capsules | `drivers/firmware/efi/capsule-loader.c`, `capsule.c`, x86 EFI quirks | Common header/payload и Quark mapping; UEFIf проверяется как общий SDK consumer, firmware updates не выполняются. |
+| Intel HEX | AS102/IQS5xx ASCII firmware readers | Extended address/EOF/separators, errors/streams и явный IQS5xx map profile; binary ihex_binrec — другой format. |
+| TAR | Marvell CPT `load_tar_archive` | Подтверждён kernel ustar reader; полная source/runtime сверка остаётся открытой. |
 
 APFS не входит в scope: соответствующего драйвера нет в основном дереве Linux.
 GPT/MBR/APM проверяются как дополнительные форматы разметки дисков.
@@ -73,7 +75,60 @@ GPT/MBR/APM проверяются как дополнительные форм�
 Новые regressions должны выявлять конкретное неверное чтение или обработку
 ошибки; проверки текста исходников не применяются.
 
+## Census поставляемых форматов — 2026-10-20
+
+Повторно получены полные `7z i` и `7zz i` текущего runtime: 64 и 61 format
+строки соответственно, включая console Hash. Разница — EROFS/exFAT/Brotli
+modules; заменяющие filesystem plugins не создают дополнительные names.
+Ниже классифицирован весь union этих списков, а не только первоначальные FS.
+Это датированное source evidence, не фиксированный публичный список приложения.
+
+[Census baseline](../formats-linux-baseline.json) закрепляет полный source
+archive Linux, retrieval URL/hash и ключевые candidate/negative-comparison units.
+В существующий reference cache получены и сверены 65 697 C/header/assembly/Rust/
+linker/Kbuild units всех kernel source directories. Tools/scripts/docs не
+выдавались за in-kernel readers. Case-sensitive variants Linux сохранены отдельно
+с исходными path/hash mappings: macOS filesystem не может хранить все такие
+имена в одном directory. Поиск включал их содержимое. Source inventory и весь
+format correctness audit — разные свидетельства.
+
+| Форматы из union | Результат source census |
+| --- | --- |
+| CramFS, EROFS, Ext, FAT, HFS, Iso, NTFS, SquashFS, Udf, exFAT | Общие disk formats: Linux `fs/*`; индивидуальные audits выше владеют read completeness. |
+| APM, GPT, MBR | Общие partition readers `block/partitions`; включая вложенные MBR subformats, а не отдельные registry names. |
+| Cpio, tar | `init/initramfs.c` и Marvell CPT `load_tar_archive`; TAR добавлен в scope, его полная сверка ещё открыта. |
+| ELF, PE, UEFIc | Настоящие executable/capsule readers; byte inspection отделён от execution, trust и firmware services. |
+| Base64, IHex | `lib/base64.c` и AS102/IQS5xx ASCII readers; binary ihex helpers не использованы как ложное доказательство. |
+| bzip2, gzip, lzma, xz, zstd | Общие framed streams/decoders `lib/decompress_*`, XZ/Zstd libraries; composite initramfs остаётся открытым. |
+| COFF, TE, UEFIf | COFF fields внутри Linux PE не доказывают standalone COFF reader. EFI capsule transport не разбирает TE/FV. SDK units проверены как общие consumers; отдельного in-kernel reader этих containers не найдено. |
+| 7z, Cab, Chm, Hxs, Nsis, SWFc, Dmg, wim, zip | In-kernel container parser не найден. Совпадающие contained compression streams учитываются у actual consumers: DEFLATE/zlib, LZMA/XZ, NTFS3 LZX/XPRESS. Это не поддержка соответствующего container Linux. |
+| Ar, Arj, Compound, FLV, LP, Lzh, MachO, MsLZ, Mub, Ppmd, Rar, Rar5, Rpm, SWF, Sparse, Split, Xar | In-kernel reader не найден по source bodies, names/magics и dispatchers. Android device-mapper tables не читают LP metadata или Android sparse images; firmware blobs и archive/linker host tools не считаются такими readers. |
+| APFS, QCOW, VDI, VHD, VHDX, VMDK | APFS driver отсутствует в mainline. Block/virt frontends работают с sectors, а backing container декодирует host. UML COW имеет собственные MOOO headers, это не QCOW/VHD/etc. |
+| Z, brotli, lzma86, Hash | Standalone counterparts не найдены. PPP BSD LZW использует MSB packet coding и иной state contract, а не Unix `.Z`; x86 BCJ внутри XZ не означает `.lzma86` header. Kernel hashes/checksums и binary OpenPGP-inspired metadata не являются Hash text-manifest reader. |
+
+Таким образом, подтверждены 25 общих format names; остальные строки покрыты
+отдельными dependency/container/subformat различиями выше. Это завершает
+первичный census archive-format surface, но не заявляет завершения всех
+индивидуальных read audits. Появление новых доказанных kernel readers или
+изменение pinned sources требует пересмотра соответствующей classification.
+
+Дополнительные decoder boundaries также сверены: LZ4/LZO raw blocks уже
+представлены filesystem modules; legacy LZ4/lzop framing нужен оставшемуся
+composite initramfs scenario, а не выдумывается из raw-block module. Linux 842
+не представлен decoder проекта. Gzip marker 0x1f9e есть в dispatch table, но
+actual gunzip требует 0x1f8b: одно имя в dispatch не доказывает read support.
+Проверки XZ включают его BCJ/Delta consumers; отдельные криптопримитивы не
+добавляются как архивные форматы без соответствующего binary/text grammar.
+
 ## Свидетельства
+
+### Intel HEX: ASCII records и vendor profile
+
+[Сверка Intel HEX](ihex-linux.md): реальный AS102/IQS5xx text reader, исправления
+probe/address/EOF/separators, cleanup/cancellation и independent cached streams.
+Явный IQS5xx property сохраняет особую settings checksum policy и map assembly;
+default checksum validation остаётся строгой. Общий census ниже отделяет этот
+формат от binary ihex helpers и включает подтверждённый TAR reader.
 
 ### EFI capsules: generic header, Quark и streams
 
@@ -101,8 +156,7 @@ ELF execution и archive inspection имеют отдельные границы
 
 [Сверка Base64](base64-linux.md): URL-safe/IMAP, canonical padded/unpadded tails,
 optional callback, error cleanup и cached extraction. Фактический список форматов
-получен у обоих engines; полный census, ELF/PE и оставшиеся
-filesystem read features сохраняются в scope.
+получен у обоих engines; оставшиеся filesystem read features сохраняются в scope.
 
 ### Zstandard: frames, discovery и decoder errors
 

@@ -1,0 +1,12 @@
+{
+  "repository": "https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git",
+  "revision": "58161ead29e50d70a317ea26b472e0c7508e69da",
+  "files": {
+    "drivers/media/usb/as102/as102_fw.c": "641134d833b90f555c06696c1919cfd52bae9693a83a211006a5268f934805c8",
+    "drivers/media/usb/as102/as102_fw.h": "3e29655056f34fc79a9532368f2fb510cb30c55dcde9e647287626eaf24d4521",
+    "drivers/input/touchscreen/iqs5xx.c": "6fd9965327ad3e60e685ea9daaf1a4a61a3b0532ebb76abfc6d59775718a6f90",
+    "include/linux/ihex.h": "d60e6c9f0c2b000018ec75bc504b32920f14e1173e80a1c0cd37fc0d382afcf4",
+    "lib/hexdump.c": "8dc7763f4e57463bdd71dbc6c07dabc75c01ac42413c1ae09073794e859c7f2b"
+  },
+  "scope": "ASCII Intel HEX AS102/IQS5xx readers, nibble conversion and distinction from binary ihex_binrec; hardware firmware update excluded."
+}
