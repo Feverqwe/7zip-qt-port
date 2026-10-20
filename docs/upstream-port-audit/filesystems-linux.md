@@ -71,6 +71,13 @@ GPT/MBR/APM проверяются как дополнительные форм�
 
 ## Свидетельства
 
+### XZ: streams, Index и random access
+
+[Сверка XZ](xz-linux.md): длинный padding, пустой EOF stream, независимое
+время жизни выданных streams, source HRESULT и Open/Extract cancellation.
+Проверены Linux BCJ filters, integrity, оба engines, native ZIP и backend.
+Composite initramfs и оставшийся census форматов остаются открытыми.
+
 ### Bzip2: end padding, CRC и cancellation
 
 [Сверка bzip2](bzip2-linux.md): unused end bits больше не превращаются в

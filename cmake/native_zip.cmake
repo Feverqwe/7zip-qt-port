@@ -25,7 +25,7 @@ add_library(sevenzip_zip STATIC
     third_party/7zip/C/Xz.c
     third_party/7zip/C/XzDec.c
     third_party/7zip/C/XzEnc.c
-    third_party/7zip/C/XzIn.c
+    src/C/XzIn.c
     third_party/7zip/C/ZstdDec.c
     third_party/7zip/CPP/7zip/Archive/Common/HandlerOut.cpp
     third_party/7zip/CPP/7zip/Archive/Common/InStreamWithCRC.cpp
@@ -56,7 +56,7 @@ add_library(sevenzip_zip STATIC
     third_party/7zip/CPP/7zip/Compress/LzmaEncoder.cpp
     third_party/7zip/CPP/7zip/Compress/PpmdZip.cpp
     third_party/7zip/CPP/7zip/Compress/ShrinkDecoder.cpp
-    third_party/7zip/CPP/7zip/Compress/XzDecoder.cpp
+    src/CPP/7zip/Compress/XzDecoder.cpp
     third_party/7zip/CPP/7zip/Compress/XzEncoder.cpp
     third_party/7zip/CPP/7zip/Compress/ZstdDecoder.cpp
     third_party/7zip/CPP/7zip/Crypto/HmacSha1.cpp
@@ -77,4 +77,8 @@ target_include_directories(sevenzip_zip PUBLIC src third_party/7zip/CPP
     src/CPP/7zip/Archive/Common src/CPP/7zip/Archive/Zip)
 set_source_files_properties(src/CPP/7zip/Compress/LzmaDecoder.cpp PROPERTIES
     INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/Compress")
+set_source_files_properties(src/CPP/7zip/Compress/XzDecoder.cpp PROPERTIES
+    INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/Compress")
+set_source_files_properties(src/C/XzIn.c PROPERTIES
+    INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/C")
 target_link_libraries(sevenzip_zip PUBLIC sevenzip_common)

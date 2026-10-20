@@ -4,6 +4,7 @@
   "revision": "9128b80e3a471108678e2b3ec3c985861c8d7b0f",
   "overrides": {},
   "runtime_adapted": [
+    "src/C/XzIn.c",
     "src/CPP/7zip/Archive/ApmHandler.cpp",
     "src/CPP/7zip/Archive/Bz2Handler.cpp",
     "src/CPP/7zip/Archive/CpioHandler.cpp",
@@ -26,8 +27,10 @@
     "src/CPP/7zip/Archive/Udf/UdfHandler.cpp",
     "src/CPP/7zip/Archive/Udf/UdfIn.cpp",
     "src/CPP/7zip/Archive/Udf/UdfIn.h",
+    "src/CPP/7zip/Archive/XzHandler.cpp",
     "src/CPP/7zip/Common/LimitedStreams.cpp",
     "src/CPP/7zip/Compress/LzmaDecoder.cpp",
+    "src/CPP/7zip/Compress/XzDecoder.cpp",
     "src/CPP/Common/Wildcard.cpp",
     "src/CPP/Common/Wildcard.h"
   ],
@@ -111,7 +114,6 @@
     "third_party/7zip/C/XzDec.c",
     "third_party/7zip/C/XzEnc.c",
     "third_party/7zip/C/XzEnc.h",
-    "third_party/7zip/C/XzIn.c",
     "third_party/7zip/C/ZstdDec.c",
     "third_party/7zip/C/ZstdDec.h",
     "third_party/7zip/CPP/7zip/Archive/ArchiveExports.cpp",
@@ -226,7 +228,6 @@
     "third_party/7zip/CPP/7zip/Compress/ShrinkDecoder.cpp",
     "third_party/7zip/CPP/7zip/Compress/ShrinkDecoder.h",
     "third_party/7zip/CPP/7zip/Compress/StdAfx.h",
-    "third_party/7zip/CPP/7zip/Compress/XzDecoder.cpp",
     "third_party/7zip/CPP/7zip/Compress/XzDecoder.h",
     "third_party/7zip/CPP/7zip/Compress/XzEncoder.cpp",
     "third_party/7zip/CPP/7zip/Compress/XzEncoder.h",
@@ -455,6 +456,7 @@
     "third_party/7zip/License.txt"
   ],
   "adapted": [
+    "src/C/XzIn.c",
     "src/CPP/7zip/Archive/ApmHandler.cpp",
     "src/CPP/7zip/Archive/Bz2Handler.cpp",
     "src/CPP/7zip/Archive/Common/HandlerOut.h",
@@ -480,6 +482,7 @@
     "src/CPP/7zip/Archive/Udf/UdfHandler.cpp",
     "src/CPP/7zip/Archive/Udf/UdfIn.cpp",
     "src/CPP/7zip/Archive/Udf/UdfIn.h",
+    "src/CPP/7zip/Archive/XzHandler.cpp",
     "src/CPP/7zip/Archive/Zip/ZipCompressionMode.h",
     "src/CPP/7zip/Common/LimitedStreams.cpp",
     "src/CPP/7zip/Common/MethodProps.cpp",
@@ -488,6 +491,7 @@
     "src/CPP/7zip/Common/MultiOutStream.h",
     "src/CPP/7zip/Compress/LzmaDecoder.cpp",
     "src/CPP/7zip/Compress/RarCodecsRegister.cpp",
+    "src/CPP/7zip/Compress/XzDecoder.cpp",
     "src/CPP/7zip/UI/Agent/Agent.cpp",
     "src/CPP/7zip/UI/Agent/Agent.h",
     "src/CPP/7zip/UI/Agent/AgentOut.cpp",

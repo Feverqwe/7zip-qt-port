@@ -181,7 +181,8 @@ in:
 out:
   if returns SZ_OK, then (*startOffset) is position in stream that shows start of xz_stream.
 */
-static SRes Xz_ReadBackward(CXzStream *p, ILookInStreamPtr stream, Int64 *startOffset, ISzAllocPtr alloc)
+static SRes Xz_ReadBackward(CXzStream *p, ILookInStreamPtr stream, Int64 *startOffset,
+    ISzAllocPtr alloc, ICompressProgressPtr progress, UInt64 endOffset)
 {
   #define TEMP_BUF_SIZE  (1 << 10)
   UInt32 buf32[TEMP_BUF_SIZE / 4];
@@ -197,6 +198,8 @@ static SRes Xz_ReadBackward(CXzStream *p, ILookInStreamPtr stream, Int64 *startO
     pos += XZ_STREAM_FOOTER_SIZE;
     for (;;)
     {
+      if (pos == 0)
+        return SZ_ERROR_NO_ARCHIVE;
       // pos != 0
       // (pos & 3) == 0
       size_t i = pos >= TEMP_BUF_SIZE ? TEMP_BUF_SIZE : (size_t)pos;
@@ -209,11 +212,9 @@ static SRes Xz_ReadBackward(CXzStream *p, ILookInStreamPtr stream, Int64 *startO
       while (--i);
 
       pos += i * 4;
-      #define XZ_STREAM_BACKWARD_READING_PAD_MAX (1 << 16)
-      // here we don't support rare case with big padding for xz stream.
-      // so we have padding limit for backward reading.
-      if ((UInt64)*startOffset - pos > XZ_STREAM_BACKWARD_READING_PAD_MAX)
-        return SZ_ERROR_NO_ARCHIVE;
+      if (progress && ICompressProgress_Progress(progress, endOffset - pos,
+          (UInt64)(Int64)-1) != SZ_OK)
+        return SZ_ERROR_PROGRESS;
       if (i)
         break;
     }
@@ -347,7 +348,7 @@ SRes Xzs_ReadBackward(CXzs *p, ILookInStreamPtr stream, Int64 *startOffset, ICom
     CXzStream st;
     SRes res;
     Xz_CONSTRUCT(&st)
-    res = Xz_ReadBackward(&st, stream, startOffset, alloc);
+    res = Xz_ReadBackward(&st, stream, startOffset, alloc, progress, (UInt64)endOffset);
     // if (res == SZ_OK), then (*startOffset) is start offset of new stream if
     // if (res != SZ_OK), then (*startOffset) is unchend or it's expected start offset of stream with error
     st.startOffset = (UInt64)*startOffset;

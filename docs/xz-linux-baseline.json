@@ -1,0 +1,18 @@
+{
+  "repository": "https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git",
+  "revision": "58161ead29e50d70a317ea26b472e0c7508e69da",
+  "files": {
+    "include/linux/xz.h": "f17a04b94fcd995111efcbb51b1e1530c882b0e84d9b524d5e674576104cf939",
+    "init/initramfs.c": "beb2db5b08b31961349982ac76ca9ac529ba912b7434c20055c2b9bd3dbecd44",
+    "lib/decompress.c": "dd82cca38e7af2ad746f659cd45b6f94ecb05ce063a0068fe6e3d424d09554a1",
+    "lib/decompress_unxz.c": "97b26c43e0c5649dc4f7cf2f82142b28cc2654392b328f14e77bd934c0bde559",
+    "lib/xz/xz_crc32.c": "d67a5b276d162bfee41c05b7e991f5298359bea637cc70e0aff499c07dbdc34f",
+    "lib/xz/xz_dec_bcj.c": "da3017cc27d264a1f603e538fab740a74aed50368ca4a0bd1f8f99df0cf366b8",
+    "lib/xz/xz_dec_lzma2.c": "a0ba2f918180fd09df2a330168068321c1ca5c20cdd0af9f0265a5fa59358cb9",
+    "lib/xz/xz_dec_stream.c": "8489b360c2554abe9755ff4879639f0d0e380dec4599323e438e52c7aa6cdc36",
+    "lib/xz/xz_lzma2.h": "c9b113b42fd756818f3f611dbcd73f603d76fb373d3e92d179aa1a5355d203c4",
+    "lib/xz/xz_private.h": "4a5558fb7cc43508218824745e929ed2a6c9f8ca3e0123d2c3df22025f238841",
+    "lib/xz/xz_stream.h": "89e80af27003ad39f3122ad447861ec574fa235a0c6339c26bb48a53c3d9e12b"
+  },
+  "scope": "Reference comparison only; original 7-Zip XZ parser and decoder retained."
+}
