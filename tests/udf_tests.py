@@ -17,6 +17,7 @@ from udf_discovery_fixture import CASES as DISCOVERY_CASES, MODULE_ONLY as DISCO
 from udf_names_fixture import CASES as NAME_CASES, BAD as NAME_BAD, COMMENTS
 from udf_inode_fixture import CASES as INODE_CASES, BAD as INODE_BAD, MODULE_BAD as INODE_MODULE_BAD, METADATA_ONLY, attributes
 from udf_directory_fixture import CASES as DIRECTORY_CASES, BAD as DIRECTORY_BAD, MODULE_BAD as DIRECTORY_MODULE_BAD
+from udf_maps_fixture import CASES as MAP_CASES, BAD as MAP_BAD, MODULE_BAD as MAP_MODULE_BAD
 
 RUNTIME = Path(sys.argv.pop(1))
 MODULE = Path(sys.argv.pop(1))
@@ -74,7 +75,7 @@ class UdfTests(unittest.TestCase):
     def test_continuations(self):
         for kind in (*CONTINUATIONS, *ICB_CASES, *SPARING_CASES, *VAT_CASES, *METADATA_CASES,
                      *WALK_CASES, *WALK_MODULE, *DISCOVERY_CASES, *DISCOVERY_MODULE, *NAME_CASES,
-                     *INODE_CASES, *DIRECTORY_CASES):
+                     *INODE_CASES, *DIRECTORY_CASES, *MAP_CASES):
             image, files = volume(kind)
             with self.subTest(kind=kind):
                 result = self.run_image("7z", image)
@@ -94,7 +95,7 @@ class UdfTests(unittest.TestCase):
         for kind in ("ad-cycle", "ad-limit-17", "ad-outside", "ad-bad-partition",
                      "ad-overflow", "ad-over-block", *ICB_BAD, *SPARING_BAD, *VAT_BAD,
                      *METADATA_BAD, *DISCOVERY_BAD, *NAME_BAD, *INODE_BAD, *INODE_MODULE_BAD,
-                     *DIRECTORY_BAD):
+                     *DIRECTORY_BAD, *MAP_BAD):
             image, _ = volume(kind)
             with self.subTest(kind=kind):
                 self.assertNotEqual(self.run_image("7z", image).returncode, 0)
@@ -132,6 +133,12 @@ class UdfTests(unittest.TestCase):
             image, _ = volume(kind)
             with self.subTest(kind=kind):
                 # 7-Zip's normal archive error, rather than timeout, crash or out-of-memory.
+                self.assertEqual(self.run_image("7z", image).returncode, 2)
+
+    def test_unsafe_maps_fail_normally(self):
+        for kind in MAP_MODULE_BAD:
+            image, _ = volume(kind)
+            with self.subTest(kind=kind):
                 self.assertEqual(self.run_image("7z", image).returncode, 2)
 
     def test_namespace_listing(self):

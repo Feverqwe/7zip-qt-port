@@ -801,3 +801,65 @@ remote receipt `20261020T000931Z-e9240935`. После acceptance восстан
 Контракт нормального CLI exit code 2 для cyclic directory AD дополнительно
 зафиксирован в существующей cycle regression; адресный `udf` прошёл на трёх ОС,
 remote receipt `20261020T001355Z-869fa1ac`.
+
+## Partition-map table и привязка разделов
+
+Сравнены полные `udf_load_logicalvol`, `udf_sb_alloc_partition_maps`,
+`udf_load_partdesc`, `udf_fill_partdesc_info`, `check_partition_desc`,
+`udf_load_sparable_map`, их структуры, discovery/fileset callers и partition
+mappers из закреплённого Linux commit. Повторно просмотрены 7-Zip LVD/PD
+projection, extent checks, metadata/VAT bootstrap, inode reads, comments и
+stream consumers. После реализации повторно сопоставлены изменённые bodies.
+
+В `src/fs/udf/super.c` перенесены исходный allocator и полный участок разбора
+таблицы из `udf_load_logicalvol`: domain, размер таблицы, число карт, обход,
+распознавание type1/virtual/sparable/metadata, revision и неизвестные типы.
+Два first-match scan из `udf_load_partdesc` выделены в C service, возвращающий
+индексы physical/sparable и dependent карты. Полный VFS mount loader этим не
+объявляется перенесённым: archive descriptor publication и ownership остаются
+в существующем C++ adapter. GPL C находится в отдельном format module;
+обычный engine сохраняет прежнюю условно компилируемую реализацию 7-Zip.
+
+Sparing configuration checks выделены из исходного loader и переиспользуются
+при разборе LVD; полный table read выполняется прежним C loader после привязки
+PD. При ошибке parser временные карты освобождаются; typed records и доступный
+raw prefix копируются в owned archive state. Дополнительные bounds checks
+защищают фактический descriptor buffer. Они не требуют, чтобы wire map length
+равнялась 6/64 или покрывала все поля: native parser использует доступные bytes
+всего блока, в том числе при нулевой длине, padding и выходе шага за table EOF.
+Число карт ограничивает исходная проверка размера таблицы, а не прежний лимит 64.
+
+PD связывается только с первой подходящей physical/sparable и первой dependent
+картой, как в Linux. Повторные карты и карты без PD сохраняют нулевые root/length;
+VAT/metadata для них не загружаются, а sparing tables читаются независимо от PD.
+Исходное default raw mapping доступно для data extents и fileset, с проверкой
+границ source stream. Новый inode на непривязанной карте отвергается по нулевой
+длине; uninitialized virtual/metadata mapping возвращает archive error.
+VFS inode-cache aliases, hidden-role consistency и non-FE publication остаются
+отдельной незавершённой частью read-policy audit. Write allocation bookkeeping,
+VFS mount state и host block-device services не добавляются фиктивно.
+
+22 положительных образа совпали по exact bytes с read-only native Linux
+`6.8.0-147-generic`: неизвестные карты до/после physical, короткая неизвестная
+запись, нестандартные strides, непросмотренная запись, repeated/unmatched maps,
+80 карт и 80 отдельных PD, default data/fileset mapping, повторные VAT/metadata/
+sparable maps и revision classification. Два invalid inode lookup и два invalid
+LVD mount отвергнуты native и модулем. Mounts и images удалены. Две записи,
+обрезанные фактическим концом блока, и unbound virtual data проверены только
+модулем: CLI завершает их обычным code 2; небезопасный native access не запускается.
+
+CLI проверяет test/extraction и сохранность исходного образа; пять новых ABI
+вариантов используют существующие EOF, interleaved/retained streams и Close/release
+checks. Общие cancellation/source-I/O checks остаются включены. Source-port
+сверка этой таблицы и PD selection завершена; полный UDF audit остаётся открытым.
+
+Пять focused suites (`udf`, `udf_stream`, `upstream_baseline`, `runtime_cache`,
+`runtime_package`) прошли на macOS arm64 и Linux x64; receipt
+`20261020T024015Z-de3fe70f`. На Windows x64/MSVC четыре suites прошли, а один
+существующий backend row в `udf_stream` получил `Codec discovery timed out`
+до открытия образа; остальные 259 rows прошли. Отдельный повтор всего
+`udf_stream` на том же коде прошёл: `20261020T024224Z-acea1d9f`.
+Actual macOS CMake install проверил все 247 положительных UDF variants через
+test/extraction, unchanged source images и три точных notices; staging удалён.
+Incremental build trees/caches сохранены. Full/slow/UI/physical-device acceptance
+не выполнялась.

@@ -36,17 +36,10 @@
 
 #include "udfdecl.h"
 
-static int udf_load_sparable_map(struct super_block *sb,
-				 struct udf_part_map *map,
-				 struct sparablePartitionMap *spm)
+static int udf_describe_sparable_map(struct super_block *sb,
+                                     struct udf_part_map *map, struct sparablePartitionMap *spm)
 {
-	uint32_t loc;
-	uint16_t ident;
-	struct sparingTable *st;
-	struct udf_sparing_data *sdata = &map->s_type_specific.s_sparing;
-	int i;
-	struct buffer_head *bh;
-
+    struct udf_sparing_data *sdata = &map->s_type_specific.s_sparing;
 	map->s_partition_type = UDF_SPARABLE_MAP15;
 	sdata->s_packet_len = le16_to_cpu(spm->packetLength);
 	if (!is_power_of_2(sdata->s_packet_len)) {
@@ -67,6 +60,24 @@ static int udf_load_sparable_map(struct super_block *sb,
 			le32_to_cpu(spm->sizeSparingTable));
 		return -EIO;
 	}
+
+    return 0;
+}
+
+static int udf_load_sparable_map(struct super_block *sb,
+				 struct udf_part_map *map,
+				 struct sparablePartitionMap *spm)
+{
+	uint32_t loc;
+	uint16_t ident;
+	struct sparingTable *st;
+	struct udf_sparing_data *sdata = &map->s_type_specific.s_sparing;
+	int i;
+	struct buffer_head *bh;
+
+    int error = udf_describe_sparable_map(sb, map, spm);
+    if (error)
+        return error;
 
 	for (i = 0; i < spm->numSparingTables; i++) {
 		loc = le32_to_cpu(spm->locSparingTable[i]);
@@ -981,4 +992,237 @@ static int udf_load_partdesc(struct super_block *sb, sector_t block)
 static void udf_sb_free_partitions(struct super_block *sb)
 {
     sb->reset(sb->context);
+}
+
+static int udf_sb_alloc_partition_maps(struct super_block *sb, u32 count)
+{
+	struct udf_sb_info *sbi = UDF_SB(sb);
+
+	sbi->s_partmaps = kzalloc_objs(*sbi->s_partmaps, count);
+	if (!sbi->s_partmaps) {
+		sbi->s_partitions = 0;
+		return -ENOMEM;
+	}
+
+	sbi->s_partitions = count;
+	return 0;
+}
+
+/* udf_load_logicalvol's table parser; tagged reads and volume publication stay
+ * with the existing discovery/projection services. Sparing I/O follows PD setup. */
+static int udf_decode_partition_maps(struct super_block *sb, struct logicalVolDesc *lvd)
+{
+    struct udf_sb_info *sbi = UDF_SB(sb);
+    struct genericPartitionMap *gpm;
+    unsigned int table_len, part_map_count;
+    int i, offset, ret;
+    uint8_t type;
+	table_len = le32_to_cpu(lvd->mapTableLength);
+	if (table_len > sb->s_blocksize - sizeof(*lvd)) {
+		udf_err(sb, "error loading logical volume descriptor: "
+			"Partition table too long (%u > %lu)\n", table_len,
+			sb->s_blocksize - sizeof(*lvd));
+		ret = -EIO;
+		goto out;
+	}
+
+	ret = udf_verify_domain_identifier(sb, &lvd->domainIdent,
+					   "logical volume");
+	if (ret)
+		goto out;
+
+	part_map_count = le32_to_cpu(lvd->numPartitionMaps);
+	if (part_map_count > table_len / sizeof(struct genericPartitionMap1)) {
+		udf_err(sb, "error loading logical volume descriptor: "
+			"Too many partition maps (%u > %u)\n", part_map_count,
+			table_len / (unsigned)sizeof(struct genericPartitionMap1));
+		ret = -EIO;
+		goto out;
+	}
+	ret = udf_sb_alloc_partition_maps(sb, part_map_count);
+	if (ret)
+		goto out;
+
+	for (i = 0, offset = 0;
+	     i < sbi->s_partitions && offset < table_len;
+	     i++, offset += gpm->partitionMapLength) {
+		struct udf_part_map *map = &sbi->s_partmaps[i];
+        unsigned available = sb->s_blocksize - sizeof(*lvd) - offset;
+        if (available < 2) {
+            ret = -EFSCORRUPTED;
+            goto out;
+        }
+		gpm = (struct genericPartitionMap *)
+				&(lvd->partitionMaps[offset]);
+		type = gpm->partitionMapType;
+        if ((type == 1 && available < sizeof(struct genericPartitionMap1)) ||
+            (type == 2 && available < 28)) {
+            ret = -EFSCORRUPTED;
+            goto out;
+        }
+        map->s_raw = (const uint8_t *)gpm;
+        map->s_raw_len = available < 64 ? available : 64;
+		if (type == 1) {
+			struct genericPartitionMap1 *gpm1 =
+				(struct genericPartitionMap1 *)gpm;
+			map->s_partition_type = UDF_TYPE1_MAP15;
+			map->s_volumeseqnum = le16_to_cpu(gpm1->volSeqNum);
+			map->s_partition_num = le16_to_cpu(gpm1->partitionNum);
+			map->s_partition_func = NULL;
+		} else if (type == 2) {
+			struct udfPartitionMap2 *upm2 =
+						(struct udfPartitionMap2 *)gpm;
+			if (!strncmp((const char *)upm2->partIdent.ident, UDF_ID_VIRTUAL,
+						strlen(UDF_ID_VIRTUAL))) {
+                if (available < 40) {
+                    ret = -EFSCORRUPTED;
+                    goto out;
+                }
+				u16 suf =
+					le16_to_cpu(((__le16 *)upm2->partIdent.
+							identSuffix)[0]);
+				if (suf < 0x0200) {
+					map->s_partition_type =
+							UDF_VIRTUAL_MAP15;
+					map->s_partition_func =
+							udf_get_pblock_virt15;
+				} else {
+					map->s_partition_type =
+							UDF_VIRTUAL_MAP20;
+					map->s_partition_func =
+							udf_get_pblock_virt20;
+				}
+			} else if (!strncmp((const char *)upm2->partIdent.ident,
+						UDF_ID_SPARABLE,
+						strlen(UDF_ID_SPARABLE))) {
+                if (available < 48 || ((struct sparablePartitionMap *)gpm)->numSparingTables > 4 ||
+                    available < 48U + 4U * ((struct sparablePartitionMap *)gpm)->numSparingTables) {
+                    ret = -EFSCORRUPTED;
+                    goto out;
+                }
+				ret = udf_describe_sparable_map(sb, map,
+					(struct sparablePartitionMap *)gpm);
+				if (ret < 0)
+					goto out;
+			} else if (!strncmp((const char *)upm2->partIdent.ident,
+						UDF_ID_METADATA,
+						strlen(UDF_ID_METADATA))) {
+                if (available < 59) {
+                    ret = -EFSCORRUPTED;
+                    goto out;
+                }
+				struct udf_meta_data *mdata =
+					&map->s_type_specific.s_metadata;
+				struct metadataPartitionMap *mdm =
+						(struct metadataPartitionMap *)
+						&(lvd->partitionMaps[offset]);
+				udf_debug("Parsing Logical vol part %d type %u  id=%s\n",
+					  i, type, UDF_ID_METADATA);
+
+				map->s_partition_type = UDF_METADATA_MAP25;
+				map->s_partition_func = udf_get_pblock_meta25;
+
+				mdata->s_meta_file_loc   =
+					le32_to_cpu(mdm->metadataFileLoc);
+				mdata->s_mirror_file_loc =
+					le32_to_cpu(mdm->metadataMirrorFileLoc);
+				mdata->s_bitmap_file_loc =
+					le32_to_cpu(mdm->metadataBitmapFileLoc);
+				mdata->s_alloc_unit_size =
+					le32_to_cpu(mdm->allocUnitSize);
+				mdata->s_align_unit_size =
+					le16_to_cpu(mdm->alignUnitSize);
+				if (mdm->flags & 0x01)
+					mdata->s_flags |= MF_DUPLICATE_MD;
+
+				udf_debug("Metadata Ident suffix=0x%x\n",
+					  le16_to_cpu(*(__le16 *)
+						      mdm->partIdent.identSuffix));
+				udf_debug("Metadata part num=%u\n",
+					  le16_to_cpu(mdm->partitionNum));
+				udf_debug("Metadata part alloc unit size=%u\n",
+					  le32_to_cpu(mdm->allocUnitSize));
+				udf_debug("Metadata file loc=%u\n",
+					  le32_to_cpu(mdm->metadataFileLoc));
+				udf_debug("Mirror file loc=%u\n",
+					  le32_to_cpu(mdm->metadataMirrorFileLoc));
+				udf_debug("Bitmap file loc=%u\n",
+					  le32_to_cpu(mdm->metadataBitmapFileLoc));
+				udf_debug("Flags: %d %u\n",
+					  mdata->s_flags, mdm->flags);
+			} else {
+				udf_debug("Unknown ident: %s\n",
+					  upm2->partIdent.ident);
+				continue;
+			}
+			map->s_volumeseqnum = le16_to_cpu(upm2->volSeqNum);
+			map->s_partition_num = le16_to_cpu(upm2->partitionNum);
+		}
+		udf_debug("Partition (%d:%u) type %u on volume %u\n",
+			  i, map->s_partition_num, type, map->s_volumeseqnum);
+	}
+
+    ret = 0;
+out:
+    return ret;
+}
+
+int sevenzip_udf_maps(const void *data, uint32_t size, struct sevenzip_udf_map **output,
+                      uint32_t *count)
+{
+    struct super_block sb = {0};
+    unsigned i;
+    int result;
+    *output = NULL;
+    *count = 0;
+    if (!data || size < sizeof(struct logicalVolDesc))
+        return -EFSCORRUPTED;
+    sb.s_blocksize = size;
+    result = udf_decode_partition_maps(&sb, (struct logicalVolDesc *)data);
+    if (!result) {
+        struct sevenzip_udf_map *maps = calloc(sb.info.s_partitions, sizeof(*maps));
+        if (!maps) result = -ENOMEM;
+        else {
+            for (i = 0; i < sb.info.s_partitions; ++i) {
+                struct udf_part_map *source = &sb.info.s_partmaps[i];
+                maps[i].kind = source->s_partition_type;
+                maps[i].volume_sequence = source->s_volumeseqnum;
+                maps[i].partition_number = source->s_partition_num;
+                if (source->s_partition_type == UDF_METADATA_MAP25)
+                    maps[i].metadata_file = source->s_type_specific.s_metadata.s_meta_file_loc;
+                if (source->s_raw) {
+                    maps[i].type = source->s_raw[0];
+                    maps[i].bytes = (uint8_t)source->s_raw_len;
+                    memcpy(maps[i].data, source->s_raw, source->s_raw_len);
+                }
+            }
+            *output = maps;
+            *count = sb.info.s_partitions;
+        }
+    }
+    free(sb.info.s_partmaps);
+    return result;
+}
+void sevenzip_udf_maps_free(struct sevenzip_udf_map *maps) { free(maps); }
+
+/* The two first-match scans in udf_load_partdesc, without VFS publication. */
+void sevenzip_udf_map_indices(const struct sevenzip_udf_map *maps, uint32_t count,
+                              uint16_t number, uint32_t *physical, uint32_t *dependent)
+{
+    unsigned i;
+    *physical = *dependent = count;
+    for (i = 0; i < count; ++i) {
+        if (maps[i].partition_number == number &&
+            (maps[i].kind == UDF_TYPE1_MAP15 || maps[i].kind == UDF_SPARABLE_MAP15))
+            break;
+    }
+    if (i >= count) return;
+    *physical = i;
+    for (i = 0; i < count; ++i) {
+        if (maps[i].partition_number == number &&
+            (maps[i].kind == UDF_VIRTUAL_MAP15 || maps[i].kind == UDF_VIRTUAL_MAP20 ||
+             maps[i].kind == UDF_METADATA_MAP25))
+            break;
+    }
+    *dependent = i;
 }

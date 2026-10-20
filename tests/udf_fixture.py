@@ -16,6 +16,9 @@ CONTINUATIONS = ("ad-short", "ad-long", "ad-chain-short", "ad-chain-long",
 
 
 def volume(kind):
+    if kind.startswith("pm-"):
+        from udf_maps_fixture import volume as maps_volume
+        return maps_volume(kind)
     if kind.startswith("fi-"):
         from udf_directory_fixture import volume as directory_volume
         return directory_volume(kind)

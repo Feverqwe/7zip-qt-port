@@ -12,6 +12,22 @@ typedef int (*sevenzip_udf_dirent)(void *, uint8_t, const void *, const void *, 
 struct sevenzip_udf_sparing;
 struct sevenzip_udf_virtual;
 struct sevenzip_udf_metadata;
+#define UDF_TYPE1_MAP15 0x1511U
+#define UDF_VIRTUAL_MAP15 0x1512U
+#define UDF_VIRTUAL_MAP20 0x2012U
+#define UDF_SPARABLE_MAP15 0x1522U
+#define UDF_METADATA_MAP25 0x2511U
+struct sevenzip_udf_map {
+    uint32_t kind, metadata_file;
+    uint16_t volume_sequence, partition_number;
+    /* bytes is the available raw prefix, independent of the on-disk map length. */
+    uint8_t type, bytes;
+    uint8_t data[64];
+};
+int sevenzip_udf_maps(const void *, uint32_t, struct sevenzip_udf_map **, uint32_t *);
+void sevenzip_udf_maps_free(struct sevenzip_udf_map *);
+void sevenzip_udf_map_indices(const struct sevenzip_udf_map *, uint32_t, uint16_t,
+                              uint32_t *, uint32_t *);
 struct sevenzip_udf_inode {
     uint32_t mode, uid, gid, links, device_major, device_minor, hidden;
 };

@@ -152,6 +152,34 @@ struct CInArchive::CVatBuilder {
     }
 };
 
+HRESULT CInArchive::LoadLinuxMaps(CLogVol &volume, const Byte *data, UInt32 size) {
+    sevenzip_udf_map *maps = nullptr;
+    uint32_t count = 0;
+    const int result = sevenzip_udf_maps(data, size, &maps, &count);
+    std::unique_ptr<sevenzip_udf_map, decltype(&sevenzip_udf_maps_free)> owner(
+        maps, sevenzip_udf_maps_free);
+    if (result)
+        return result == -ENOMEM ? E_OUTOFMEMORY : S_FALSE;
+    for (uint32_t i = 0; i < count; ++i) {
+        CPartitionMap map{};
+        map.Native = maps[i];
+        map.Type = maps[i].type;
+        map.VolumeSequenceNumber = maps[i].volume_sequence;
+        map.PartitionNumber = maps[i].partition_number;
+        map.MetadataFileLocation = maps[i].metadata_file;
+        if (map.Type == 2 && maps[i].bytes >= 36)
+            map.PartitionTypeId.Parse(maps[i].data + 4);
+        map.IsVirtual = maps[i].kind == UDF_VIRTUAL_MAP15 || maps[i].kind == UDF_VIRTUAL_MAP20;
+        map.IsVat20 = maps[i].kind == UDF_VIRTUAL_MAP20;
+        if (maps[i].kind == UDF_SPARABLE_MAP15)
+            map.SparableMap.CopyFrom(maps[i].data, sizeof(maps[i].data));
+        if (maps[i].kind == UDF_METADATA_MAP25)
+            map.MetadataMap.CopyFrom(maps[i].data, sizeof(maps[i].data));
+        volume.PartitionMaps.Add(map);
+    }
+    return S_OK;
+}
+
 HRESULT CInArchive::LoadLinuxMetadata(unsigned volIndex, unsigned partitionRef) {
     const CLogVol &vol = LogVols[volIndex];
     CPartitionMap &map = LogVols[volIndex].PartitionMaps[partitionRef];
@@ -159,7 +187,7 @@ HRESULT CInArchive::LoadLinuxMetadata(unsigned volIndex, unsigned partitionRef) 
     FOR_VECTOR(i, vol.PartitionMaps) {
         const CPartitionMap &candidate = vol.PartitionMaps[i];
         if (candidate.PartitionNumber == map.PartitionNumber &&
-            (candidate.Type == 1 || candidate.IsSparable())) {
+            (candidate.Native.kind == UDF_TYPE1_MAP15 || candidate.IsSparable())) {
             backing = i;
             break;
         }
@@ -195,7 +223,7 @@ HRESULT CInArchive::LoadLinuxVat(unsigned volIndex, unsigned partitionRef) {
     FOR_VECTOR(i, vol.PartitionMaps) {
         const CPartitionMap &candidate = vol.PartitionMaps[i];
         if (candidate.PartitionNumber == map.PartitionNumber &&
-            (candidate.Type == 1 || candidate.IsSparable())) {
+            (candidate.Native.kind == UDF_TYPE1_MAP15 || candidate.IsSparable())) {
             backing = i;
             break;
         }
@@ -252,9 +280,10 @@ HRESULT CInArchive::LoadLinuxSparing(unsigned volIndex, unsigned partitionRef) {
     CPartitionMap &map = LogVols[volIndex].PartitionMaps[partitionRef];
     CLinuxContext context{this, volIndex, nullptr};
     sevenzip_udf_sparing *state = nullptr;
-    const int result =
-        sevenzip_udf_sparing_create(&context, ReadLinuxPhysical, LogVols[volIndex].BlockSize,
-                                    Partitions[map.PartitionIndex].Pos, map.SparableMap, &state);
+    const int result = sevenzip_udf_sparing_create(
+        &context, ReadLinuxPhysical, LogVols[volIndex].BlockSize,
+        map.PartitionIndex < Partitions.Size() ? Partitions[map.PartitionIndex].Pos : 0,
+        map.SparableMap, &state);
     std::shared_ptr<sevenzip_udf_sparing> owner(state, sevenzip_udf_sparing_free);
     if (context.progressResult != S_OK)
         return context.progressResult;
@@ -291,7 +320,9 @@ HRESULT CInArchive::ReadLinuxItem(unsigned volIndex, CLongAllocDesc &location, C
     const CLogVol &vol = LogVols[volIndex];
     CRecordVector<UInt32> lengths;
     FOR_VECTOR(i, vol.PartitionMaps)
-    lengths.Add(Partitions[vol.PartitionMaps[i].PartitionIndex].Len);
+    lengths.Add(vol.PartitionMaps[i].PartitionIndex < Partitions.Size()
+                    ? Partitions[vol.PartitionMaps[i].PartitionIndex].Len
+                    : 0);
     uint16_t partition = location.Location.PartitionRef;
     uint32_t block = location.Location.Pos;
     const int result =

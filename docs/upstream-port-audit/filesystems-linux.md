@@ -109,8 +109,10 @@ CS0 names/dstrings, default UTF-8, CRC mangling и symlink path components
 подключены к исходным Linux C converters. Read-side body `udf_read_inode`,
 permissions/owners/links, специальные inode/device EA и исходное преобразование
 timestamps также подключены. Linux FID iterator читает каталоги по блокам,
-включая fragmented/AED и межраздельные переходы. Оставшиеся partition-map,
-inode-cache/read policies и non-FE publication UDF ещё требуют сверки.
+включая fragmented/AED и межраздельные переходы. Разбор partition-map table
+и выбор первой подходящей карты PD перенесены из Linux; проверены неизвестные,
+повторные и непривязанные карты, а также таблицы с большим числом разделов.
+Оставшиеся inode-cache/read policies и non-FE publication UDF ещё требуют сверки.
 
 ### HFS+/HFSX: fork mapping и metadata reads
 

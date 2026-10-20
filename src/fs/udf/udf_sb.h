@@ -2,10 +2,6 @@
 /* Read-side projection of Linux fs/udf/udf_sb.h. */
 #ifndef _UDF_SB_H
 #define _UDF_SB_H
-#define UDF_VIRTUAL_MAP15 0x1512U
-#define UDF_VIRTUAL_MAP20 0x2012U
-#define UDF_SPARABLE_MAP15 0x1522U
-#define UDF_METADATA_MAP25 0x2511U
 #define MF_DUPLICATE_MD 0x01
 #define MF_MIRROR_FE_LOADED 0x02
 #define UDF_MAX_READ_VERSION 0x0260
@@ -37,6 +33,9 @@ struct udf_virtual_data {
 	uint16_t s_start_offset;
 };
 struct udf_part_map {
+	uint16_t s_volumeseqnum, s_partition_num;
+	const uint8_t *s_raw;
+	unsigned s_raw_len;
 	uint32_t s_partition_len, s_partition_root;
 	unsigned s_partition_type;
 	union {

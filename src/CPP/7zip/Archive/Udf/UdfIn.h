@@ -226,6 +226,8 @@ struct CLongAllocDesc
 
 struct CPartitionMap {
 #ifdef SEVENZIP_LINUX_UDF
+    sevenzip_udf_map Native{};
+    unsigned PartitionIndex = (unsigned)-1;
     CByteBuffer SparableMap;
     std::shared_ptr<sevenzip_udf_sparing> Sparing;
     std::shared_ptr<sevenzip_udf_virtual> Virtual;
@@ -235,8 +237,9 @@ struct CPartitionMap {
     bool IsVat20 = false;
     bool IsSparable() const { return SparableMap.Size() != 0; }
     bool IsMetadata() const { return MetadataMap.Size() != 0; }
-#endif
+#else
     unsigned PartitionIndex;
+#endif
 
     Byte Type;
     // Byte Len;
@@ -499,6 +502,7 @@ private:
   struct CDiscoveryContext;
   UInt32 _lastRecordedBlock;
   HRESULT LoadLinuxDiscovery();
+  HRESULT LoadLinuxMaps(CLogVol &volume, const Byte *data, UInt32 size);
   HRESULT ReadLinuxFileset(unsigned volIndex, const CLongAllocDesc &location, CByteBuffer &data);
   HRESULT ReadLinuxDirectory(unsigned volIndex, unsigned fsIndex, CItem &item, const Byte *data,
                              UInt32 size, int numRecurseAllowed);

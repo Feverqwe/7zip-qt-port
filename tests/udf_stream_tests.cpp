@@ -226,6 +226,9 @@ class UdfStreamTests final : public QObject {
     void init() { createArchive(); }
     void allocationStreams_data() {
         QTest::addColumn<QString>("kind");
+        for (const char *kind : {"pm-unknown-before", "pm-many", "pm-unknown-data",
+                                 "pm-duplicate-data", "pm-unknown-fsd"})
+            QTest::newRow(kind) << QString::fromLatin1(kind);
         for (const char *kind :
              {"native", "sparse-short", "sparse-long", "hole-only", "allocated-hole", "eof-short",
               "eof-long", "unused-tail", "inline", "directory-padded", "directory-inline",
