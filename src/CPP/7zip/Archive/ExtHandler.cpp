@@ -585,6 +585,7 @@ struct CNode {
     UInt32 InodeNumber;
     bool HasXattrs;
     bool FastSymlink;
+    int ReadError, SpecialReadError, EaReadError;
     unsigned XattrFirst, XattrCount;
 #endif
 
@@ -671,7 +672,7 @@ bool CNode::Parse(const Byte *p, const CHeader &_h) {
         UInt32 highSize;
         LE_32(0x6C, highSize) // In ext2/3 this field was named i_dir_acl
 
-        if (IsRegular()) // do we need that check ?
+        if (IsRegular() || (_h.FeatureIncompat & 0x4000))
             FileSize |= ((UInt64)highSize << 32);
     }
 
@@ -1066,6 +1067,8 @@ HRESULT CHandler::ParseDir(const Byte *p, size_t size, unsigned iNodeDir) {
             return S_FALSE;
         CNode &node = _nodes[nodeIndex];
 #ifdef SEVENZIP_LINUX_EXT
+        if (node.ReadError)
+            return S_FALSE;
         if (node.Flags & ((UInt32)1 << 21))
             return S_FALSE;
         item.ContextAllowed =
@@ -1367,6 +1370,8 @@ HRESULT CHandler::LoadSystemZone(const void *descriptors, UInt32 groups) {
         return error == -ENOMEM ? E_OUTOFMEMORY : S_FALSE;
     FOR_VECTOR(i, _nodes) {
         const CNode &node = _nodes[i];
+        if ((node.Flags & ((UInt32)1 << 21)) ? node.EaReadError : node.SpecialReadError)
+            continue;
         if (node.FileAcl && !ext_linux_block_valid(_volume.Ptr, node.InodeNumber, node.FileAcl, 1))
             return S_FALSE;
         const bool fastLink = node.IsFastSymlink(_h);
@@ -1465,7 +1470,7 @@ HRESULT CHandler::LoadEncryption() {
     _cryptInodes.resize(_nodes.Size());
     bool encrypted = false;
     FOR_VECTOR(i, _nodes)
-    if (_nodes[i].Flags & 0x800)
+    if (!_nodes[i].SpecialReadError && (_nodes[i].Flags & 0x800))
         encrypted = true;
     if (!encrypted)
         return S_OK;
@@ -1475,7 +1480,7 @@ HRESULT CHandler::LoadEncryption() {
     ext_linux_fscrypt_geometry(_volume.Ptr, &geometry);
     FOR_VECTOR(i, _nodes) {
         const CNode &node = _nodes[i];
-        if (!(node.Flags & 0x800))
+        if (node.SpecialReadError || !(node.Flags & 0x800))
             continue;
         if (!(_h.FeatureIncompat & 0x10000) || node.InlineIndex >= 0 ||
             (!node.IsDir() && !node.IsRegular() && !node.IsLink()))
@@ -1520,7 +1525,7 @@ HRESULT CHandler::LoadEncryption() {
 HRESULT CHandler::LoadXattrs() {
     FOR_VECTOR(i, _nodes) {
         CNode &node = _nodes[i];
-        if (!node.HasXattrs || (node.Flags & ((UInt32)1 << 21)))
+        if (node.SpecialReadError || !node.HasXattrs || (node.Flags & ((UInt32)1 << 21)))
             continue;
         node.XattrFirst = _xattrs.Size();
         CXattrContext context{this, i, S_OK, 0, {}};
@@ -1793,6 +1798,9 @@ HRESULT CHandler::Open2(IInStream *inStream) {
                     node.HasXattrs = info.has_xattrs != 0;
                     node.FileSize = info.size;
                     node.FastSymlink = info.fast_symlink != 0;
+                    node.ReadError = info.read_error;
+                    node.SpecialReadError = info.special_read_error;
+                    node.EaReadError = info.ea_read_error;
                     ImportTime(info.atime, node.ATime);
                     ImportTime(info.mtime, node.MTime);
                     ImportTime(info.change_time, node.ChangeTime);
@@ -1886,6 +1894,10 @@ HRESULT CHandler::Open2(IInStream *inStream) {
                 if (nodeIndex < 0)
                     continue;
                 const CNode &node = _nodes[nodeIndex];
+#ifdef SEVENZIP_LINUX_EXT
+                if (node.SpecialReadError)
+                    continue;
+#endif
                 if (!node.IsDir())
                     continue;
             }
@@ -2061,6 +2073,8 @@ HRESULT CHandler::Open2(IInStream *inStream) {
             const CNode &node = _nodes[nodeIndex];
 
 #ifdef SEVENZIP_LINUX_EXT
+            if (node.SpecialReadError)
+                continue;
             if (node.Flags & ((UInt32)1 << 21))
                 continue;
 #endif
@@ -3221,6 +3235,9 @@ HRESULT CHandler::GetStream_Node(unsigned nodeIndex, ISequentialInStream **strea
 
     const CNode &node = _nodes[nodeIndex];
 #ifdef SEVENZIP_LINUX_EXT
+    if ((requireAllocated && (node.Flags & ((UInt32)1 << 21))) ? node.EaReadError
+                                                               : node.SpecialReadError)
+        return S_FALSE;
     const bool verity = (node.Flags & ((UInt32)1 << 20)) != 0;
     if (verity && (!node.IsRegular() || !node.IsFlags_EXTENTS() || node.InlineIndex >= 0))
         return S_FALSE;
@@ -3248,6 +3265,13 @@ HRESULT CHandler::GetStream_Node(unsigned nodeIndex, ISequentialInStream **strea
     if (node.Flags & (((UInt32)1 << 20) | 0x800))
         return E_NOTIMPL;
 #endif
+
+    if (!node.IsRegular() && !node.IsDir() && !node.IsLink()) {
+        if (node.FileSize)
+            return E_NOTIMPL;
+        Create_BufInStream_WithNewBuffer(nullptr, 0, stream);
+        return S_OK;
+    }
 
     {
         const bool inlineData = (node.Flags & ((UInt32)1 << 28)) != 0;

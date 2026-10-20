@@ -921,3 +921,57 @@ to the newer source pin. Native receipt: `20261020T233904Z-031edc21`; images wer
 unchanged and mounts/temporary fixtures removed. Full/slow suites, installed
 packages, UI and physical devices were not checked. The parent ext review and
 overall format goal remain open.
+
+### Inode acceptance, sparse sizes and special-file boundaries
+
+At the same Linux pin, the complete `ext4_inode_info_init`,
+`ext4_max_bitmap_size`, `ext4_isize`, `ext4_get_maxbytes`, `ext4_valid_inum` and
+`is_special_ino` bodies supply original inode geometry, sparse-size and identity
+rules. The initialized first-inode value preserves revision-zero semantics;
+extra-size requirements are checked by the original initializer. The read-side
+`__ext4_iget` retains its original illegal
+inode, unlinked inode, size, casefold and `check_igot_inode` branches. Its archive
+signature validates an already-owned decoded inode and returns an error code;
+kernel pointer-error returns are converted at that boundary. Known-mode VFS
+operation binding becomes mode acceptance without installing operation tables
+or creating device nodes. VFS allocation/cache lookup, namespace services and
+orphan recovery remain omitted. A per-copy bad-inode state retains the original
+boot-loader/check_igot handling without mutating inventory objects.
+
+The owned superblock initializes both original maximum-size calculations. Raw
+inode inventory can still include inactive reserved slots written by mkfs;
+normal namespace, special-inode and EA-inode consumers select their respective
+Linux validation contracts. Invalid linked targets cannot become public items,
+and unlinked inventory slots cannot become recovered `[UNKNOWN]` file contents.
+The internal EA stream reader selects the EA-inode contract, preserving valid
+large xattr values. Journal protection selects the special-inode contract.
+All added helpers/branches and their callers were compared with pinned source;
+the existing baseline already owns their complete original units.
+
+Both SDK engines now decode the high size field when LARGEDIR requires it.
+Device/FIFO/socket inode encoding is metadata, not an indirect data-block map:
+empty special files produce empty streams; nonempty special-file stream requests
+fail explicitly without opening any native device. Standalone retains its SDK
+implementation and does not gain the GPL inode validator. No claim of native
+device/service access or newly complete large-directory runtime coverage follows
+from the metadata size correction.
+
+Behavior checks exercise sparse-size boundaries and overflow, unknown/zero
+modes, unlinked targets, casefold without its feature, reserved/quota aliases,
+unlinked inventory and special-inode payload requests. Existing EA/xattr,
+fscrypt/verity, stream, backend and device consumers remain part of the focused
+selection. Native read-only Linux 6.8.0-147 stat/listing confirmed all fourteen
+fixture cases, including exact bitmap/extent boundary sizes and metadata-only
+device identities (receipt `20261020T234719Z-79830de5`). No device was opened;
+images were unchanged and temporary mounts/fixtures removed. Native runtime
+evidence remains distinct from the pinned source comparison. The broader ext
+read-feature review and parent format goal remain open.
+
+The final initializer/legacy and stale-unlinked-slot variants also passed native
+read-only checks (`20261020T235334Z-b10c414b`), including valid legacy content and
+rejected min/want extra-size requirements. Unreadable inventory slots do not
+enter post-publication block validation as active files. Seven focused suites
+passed on macOS, Linux and MSVC Windows on 2026-10-21 with existing incremental
+trees/caches (remote receipt `20261020T235121Z-2f567c0d`). Both engine runtimes
+were prepared for the shared SDK changes. Full/slow suites, installed packages,
+native UI and physical devices were not checked in this iteration.

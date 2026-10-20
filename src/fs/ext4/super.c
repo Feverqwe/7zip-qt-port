@@ -329,3 +329,149 @@ int ext4_check_descriptors(struct super_block *sb,
 		*first_not_zeroed = grp;
 	return 1;
 }
+
+loff_t ext4_max_bitmap_size(int bits, int has_huge_files)
+{
+	loff_t upper_limit, res = EXT4_NDIR_BLOCKS;
+	int meta_blocks;
+	unsigned int ppb = 1 << (bits - 2);
+
+	/*
+	 * This is calculated to be the largest file size for a dense, block
+	 * mapped file such that the file's total number of 512-byte sectors,
+	 * including data and all indirect blocks, does not exceed (2^48 - 1).
+	 *
+	 * __u32 i_blocks_lo and _u16 i_blocks_high represent the total
+	 * number of 512-byte sectors of the file.
+	 */
+	if (!has_huge_files) {
+		/*
+		 * !has_huge_files or implies that the inode i_block field
+		 * represents total file blocks in 2^32 512-byte sectors ==
+		 * size of vfs inode i_blocks * 8
+		 */
+		upper_limit = (1LL << 32) - 1;
+
+		/* total blocks in file system block size */
+		upper_limit >>= (bits - 9);
+
+	} else {
+		/*
+		 * We use 48 bit ext4_inode i_blocks
+		 * With EXT4_HUGE_FILE_FL set the i_blocks
+		 * represent total number of blocks in
+		 * file system block size
+		 */
+		upper_limit = (1LL << 48) - 1;
+
+	}
+
+	/* Compute how many blocks we can address by block tree */
+	res += ppb;
+	res += ppb * ppb;
+	res += ((loff_t)ppb) * ppb * ppb;
+	/* Compute how many metadata blocks are needed */
+	meta_blocks = 1;
+	meta_blocks += 1 + ppb;
+	meta_blocks += 1 + ppb + ppb * ppb;
+	/* Does block tree limit file size? */
+	if (res + meta_blocks <= upper_limit)
+		goto check_lfs;
+
+	res = upper_limit;
+	/* How many metadata blocks are needed for addressing upper_limit? */
+	upper_limit -= EXT4_NDIR_BLOCKS;
+	/* indirect blocks */
+	meta_blocks = 1;
+	upper_limit -= ppb;
+	/* double indirect blocks */
+	if (upper_limit < ppb * ppb) {
+		meta_blocks += 1 + DIV_ROUND_UP_ULL(upper_limit, ppb);
+		res -= meta_blocks;
+		goto check_lfs;
+	}
+	meta_blocks += 1 + ppb;
+	upper_limit -= ppb * ppb;
+	/* tripple indirect blocks for the rest */
+	meta_blocks += 1 + DIV_ROUND_UP_ULL(upper_limit, ppb) +
+		DIV_ROUND_UP_ULL(upper_limit, ppb*ppb);
+	res -= meta_blocks;
+check_lfs:
+	res <<= bits;
+	if (res > MAX_LFS_FILESIZE)
+		res = MAX_LFS_FILESIZE;
+
+	return res;
+}
+
+int ext4_inode_info_init(struct super_block *sb,
+				struct ext4_super_block *es)
+{
+	struct ext4_sb_info *sbi = EXT4_SB(sb);
+
+	if (le32_to_cpu(es->s_rev_level) == EXT4_GOOD_OLD_REV) {
+		sbi->s_inode_size = EXT4_GOOD_OLD_INODE_SIZE;
+		sbi->s_first_ino = EXT4_GOOD_OLD_FIRST_INO;
+	} else {
+		sbi->s_inode_size = le16_to_cpu(es->s_inode_size);
+		sbi->s_first_ino = le32_to_cpu(es->s_first_ino);
+		if (sbi->s_first_ino < EXT4_GOOD_OLD_FIRST_INO) {
+			ext4_msg(sb, KERN_ERR, "invalid first ino: %u",
+				 sbi->s_first_ino);
+			return -EINVAL;
+		}
+		if ((sbi->s_inode_size < EXT4_GOOD_OLD_INODE_SIZE) ||
+		    (!is_power_of_2(sbi->s_inode_size)) ||
+		    (sbi->s_inode_size > sb->s_blocksize)) {
+			ext4_msg(sb, KERN_ERR,
+			       "unsupported inode size: %d",
+			       sbi->s_inode_size);
+			ext4_msg(sb, KERN_ERR, "blocksize: %lu", sb->s_blocksize);
+			return -EINVAL;
+		}
+		/*
+		 * i_atime_extra is the last extra field available for
+		 * [acm]times in struct ext4_inode. Checking for that
+		 * field should suffice to ensure we have extra space
+		 * for all three.
+		 */
+		if (sbi->s_inode_size >= offsetof(struct ext4_inode, i_atime_extra) +
+			sizeof(((struct ext4_inode *)0)->i_atime_extra)) {
+			sb->s_time_gran = 1;
+			sb->s_time_max = EXT4_EXTRA_TIMESTAMP_MAX;
+		} else {
+			sb->s_time_gran = NSEC_PER_SEC;
+			sb->s_time_max = EXT4_NON_EXTRA_TIMESTAMP_MAX;
+		}
+		sb->s_time_min = EXT4_TIMESTAMP_MIN;
+	}
+
+	if (sbi->s_inode_size > EXT4_GOOD_OLD_INODE_SIZE) {
+		sbi->s_want_extra_isize = sizeof(struct ext4_inode) -
+			EXT4_GOOD_OLD_INODE_SIZE;
+		if (ext4_has_feature_extra_isize(sb)) {
+			unsigned v, max = (sbi->s_inode_size -
+					   EXT4_GOOD_OLD_INODE_SIZE);
+
+			v = le16_to_cpu(es->s_want_extra_isize);
+			if (v > max) {
+				ext4_msg(sb, KERN_ERR,
+					 "bad s_want_extra_isize: %d", v);
+				return -EINVAL;
+			}
+			if (sbi->s_want_extra_isize < v)
+				sbi->s_want_extra_isize = v;
+
+			v = le16_to_cpu(es->s_min_extra_isize);
+			if (v > max) {
+				ext4_msg(sb, KERN_ERR,
+					 "bad s_min_extra_isize: %d", v);
+				return -EINVAL;
+			}
+			if (sbi->s_want_extra_isize < v)
+				sbi->s_want_extra_isize = v;
+		}
+	}
+
+	return 0;
+}

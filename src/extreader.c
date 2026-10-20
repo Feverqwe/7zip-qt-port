@@ -15,7 +15,7 @@ int ext_linux_open(const void *superblock, struct ext_volume **result)
 {
     struct ext_volume *volume;
     struct ext4_sb_info *sbi;
-    u32 bits, desc, inode_size;
+    u32 bits, desc;
     *result = NULL;
     volume = calloc(1, sizeof(*volume));
     if (!volume) return -ENOMEM;
@@ -38,16 +38,18 @@ int ext_linux_open(const void *superblock, struct ext_volume **result)
                 le32_to_cpu(volume->raw.s_blocks_per_group)) goto corrupt;
     }
     desc = ext4_has_feature_64bit(&volume->sb) ? le16_to_cpu(volume->raw.s_desc_size) : 32;
-    inode_size = le32_to_cpu(volume->raw.s_rev_level) ? le16_to_cpu(volume->raw.s_inode_size) : 128;
     if (desc < (ext4_has_feature_64bit(&volume->sb) ? 64U : 32U) ||
-        desc > 1024 || (desc & (desc - 1)) ||
-        inode_size < 128 || inode_size > volume->sb.s_blocksize || (inode_size & (inode_size - 1))) goto corrupt;
+        desc > 1024 || (desc & (desc - 1))) goto corrupt;
     if (EXT4_INODES_PER_GROUP(&volume->sb) > volume->sb.s_blocksize * 8 ||
         EXT4_CLUSTERS_PER_GROUP(&volume->sb) > volume->sb.s_blocksize * 8) goto corrupt;
     sbi->s_desc_size = desc;
     sbi->s_desc_per_block = volume->sb.s_blocksize / desc;
-    sbi->s_inode_size = inode_size;
-    if (EXT4_INODES_PER_GROUP(&volume->sb) % (volume->sb.s_blocksize / inode_size) ||
+    if (ext4_inode_info_init(&volume->sb, &volume->raw)) goto corrupt;
+    volume->sb.s_maxbytes = ext4_max_size((int)volume->sb.s_blocksize_bits,
+        ext4_has_feature_huge_file(&volume->sb));
+    sbi->s_bitmap_maxbytes = ext4_max_bitmap_size((int)volume->sb.s_blocksize_bits,
+        ext4_has_feature_huge_file(&volume->sb));
+    if (EXT4_INODES_PER_GROUP(&volume->sb) % (volume->sb.s_blocksize / sbi->s_inode_size) ||
         (EXT4_CLUSTERS_PER_GROUP(&volume->sb) & 7)) goto corrupt;
     if (ext4_has_feature_meta_bg(&volume->sb)) {
         u64 blocks = le32_to_cpu(volume->raw.s_blocks_count_lo);
@@ -157,10 +159,7 @@ int ext_linux_inode_open(struct ext_volume *volume, uint32_t ino, const void *da
     if ((inode->flags & (1U << 28)) && !(le32_to_cpu(volume->raw.s_feature_incompat) & 0x8000)) goto corrupt;
     if ((inode->flags & 0x1000U) && ext4_has_feature_metadata_csum(&volume->sb) &&
         !(le32_to_cpu(volume->raw.s_feature_compat) & 0x20)) goto corrupt;
-    inode->i_size = le32_to_cpu(raw->i_size_lo);
-    if ((le16_to_cpu(raw->i_mode) & 0170000) == 0100000 ||
-        (le32_to_cpu(volume->raw.s_feature_incompat) & 0x4000))
-        inode->i_size |= (u64)le32_to_cpu(raw->i_size_high) << 32;
+    inode->i_size = ext4_isize(&volume->sb, raw);
     ext4_get_inode_loc(inode, &iloc);
     /* Selected original __ext4_iget extra-inode initialization. A zero disk
      * extra_isize does not hide the standard extended timestamp fields. */
@@ -202,6 +201,16 @@ int ext_linux_inode_open(struct ext_volume *volume, uint32_t ino, const void *da
     DECODE_TIME(info->mtime, i_mtime);
     DECODE_TIME(info->change_time, i_ctime);
     if (EXT4_FITS_IN_INODE(raw, ei, i_crtime)) { DECODE_TIME(info->birth_time, i_crtime); }
+    /* Inventory includes inactive reserved slots. Validate borrowed copies so
+     * the archive's normal/special consumers can select the original contract. */
+    {
+        struct inode check = *inode;
+        info->read_error = __ext4_iget(&check, EXT4_IGET_NORMAL, __func__, __LINE__);
+        check = *inode;
+        info->special_read_error = __ext4_iget(&check, EXT4_IGET_SPECIAL, __func__, __LINE__);
+        check = *inode;
+        info->ea_read_error = __ext4_iget(&check, EXT4_IGET_EA_INODE, __func__, __LINE__);
+    }
     *result = node;
     return 0;
 corrupt:
@@ -229,7 +238,7 @@ struct inode *ext_xattr_iget(struct super_block *sb, unsigned long ino, ext4_ige
         result = ext_linux_inode_open((struct ext_volume *)sb, (u32)ino, raw, &node, &info);
     free(raw);
     if (!result)
-        result = check_igot_inode(&node->inode, flags, __func__, __LINE__);
+        result = __ext4_iget(&node->inode, flags, __func__, __LINE__);
     if (result) { ext_linux_inode_close(node); return ERR_PTR(result); }
     return &node->inode;
 }

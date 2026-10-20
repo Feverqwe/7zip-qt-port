@@ -5,6 +5,27 @@
 #define EXT4_GOOD_OLD_INODE_SIZE 128
 #define EXT4_OS_LINUX 0
 #define EXT4_ROOT_INO 2
+#define EXT4_BOOT_LOADER_INO 5
+#define EXT4_NDIR_BLOCKS 12
+#define EXT4_ORPHAN_FS 0x0004
+#define EXT4_INODE_EXTENTS 19
+#define EXT4_FIRST_INO(sb) (EXT4_SB(sb)->s_first_ino)
+#define EXT4_GOOD_OLD_REV 0
+#define EXT4_GOOD_OLD_FIRST_INO 11
+#define EXT4_EXTRA_TIMESTAMP_MAX (((int64_t)1 << 34) - 1 + INT32_MIN)
+#define EXT4_NON_EXTRA_TIMESTAMP_MAX INT32_MAX
+#define EXT4_TIMESTAMP_MIN INT32_MIN
+#define NSEC_PER_SEC 1000000000L
+#define is_power_of_2(n) ((n) && !((n) & ((n) - 1)))
+#define i_size_read(inode) ((inode)->i_size)
+#define IS_CASEFOLDED(inode) (((inode)->flags & 0x40000000U) != 0)
+#define S_ISCHR(mode) (((mode) & 0170000) == 0020000)
+#define S_ISBLK(mode) (((mode) & 0170000) == 0060000)
+#define S_ISFIFO(mode) (((mode) & 0170000) == 0010000)
+#define S_ISSOCK(mode) (((mode) & 0170000) == 0140000)
+#define DIV_ROUND_UP_ULL(value, divisor) (((value) + (divisor) - 1) / (divisor))
+#define __ext4_error(...) ((void)0)
+loff_t ext4_max_bitmap_size(int, int);
 #define EXT4_MAX_REC_LEN 65535
 #define EXT4_DIR_ROUND 3
 #define EXT4_FT_DIR_CSUM 0xDE
@@ -23,6 +44,9 @@ struct ext4_sb_info {
     struct ext4_super_block *s_es;
     u32 s_csum_seed, s_desc_size, s_desc_per_block, s_inode_size;
     u32 s_groups_count, s_gdb_count, s_itb_per_group;
+    u32 s_first_ino, s_want_extra_isize;
+    loff_t s_bitmap_maxbytes;
+    u32 s_mount_state;
     void *s_group_desc;
     struct ext4_system_blocks *s_system_blks;
     const struct ext_block_services *block_services;
@@ -32,7 +56,7 @@ struct ext4_sb_info {
 struct fsverity_operations;
 struct ext4_extent_header;
 struct sevenzip_asymmetric_trust;
-struct super_block { unsigned int s_blocksize, s_blocksize_bits; struct ext4_sb_info info; const struct fsverity_operations *s_vop; };
+struct super_block { unsigned int s_blocksize, s_blocksize_bits; struct ext4_sb_info info; const struct fsverity_operations *s_vop; loff_t s_maxbytes; int64_t s_time_min, s_time_max; unsigned int s_time_gran; };
 struct ext4_inode_info { u32 i_csum_seed, i_inline_size, i_flags; u16 i_extra_isize, i_inline_off; unsigned long i_state_flags; u64 i_file_acl; __le32 i_data[EXT4_N_BLOCKS]; };
 struct inode {
     struct super_block *i_sb;
@@ -43,6 +67,7 @@ struct inode {
     u16 i_mode;
     u32 i_generation, i_nlink, i_atime_sec, i_mtime_sec, i_ctime_sec, i_version;
     int error;
+    bool bad_inode;
     struct ext4_inode_info info;
     struct buffer_head raw;
     unsigned int i_blkbits;
@@ -81,6 +106,10 @@ EXT_FEATURE(encrypt, incompat, 16)
 EXT_FEATURE(journal, compat, 2)
 EXT_FEATURE(flex_bg, incompat, 9)
 EXT_FEATURE(huge_file, ro_compat, 3)
+EXT_FEATURE(largedir, incompat, 14)
+EXT_FEATURE(casefold, incompat, 17)
+EXT_FEATURE(extra_isize, ro_compat, 6)
+int ext4_inode_info_init(struct super_block *, struct ext4_super_block *);
 #define EXT4_INODE_HUGE_FILE 18
 #define ext4_test_inode_flag(inode, flag) (((inode)->flags & (1U << (flag))) != 0)
 #define EXT4_CLUSTER_SIZE(sb) (1024U << le32_to_cpu(EXT4_SB(sb)->s_es->s_log_cluster_size))
@@ -89,6 +118,32 @@ u64 ext4_inode_blocks(struct ext4_inode *, struct ext4_inode_info *, struct inod
 int ext4_ext_check_inode(struct inode *);
 int __ext4_ext_check(const char *, unsigned int, struct inode *, struct ext4_extent_header *, int, ext4_fsblk_t, ext4_lblk_t);
 #define ext4_error_inode_err(inode, ...) ((inode)->error = -EFSCORRUPTED)
+static inline loff_t ext4_isize(struct super_block *sb,
+				struct ext4_inode *raw_inode)
+{
+	if (ext4_has_feature_largedir(sb) ||
+	    S_ISREG(le16_to_cpu(raw_inode->i_mode)))
+		return ((loff_t)le32_to_cpu(raw_inode->i_size_high) << 32) |
+			le32_to_cpu(raw_inode->i_size_lo);
+
+	return (loff_t) le32_to_cpu(raw_inode->i_size_lo);
+}
+static inline loff_t ext4_get_maxbytes(struct inode *inode)
+{
+	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
+		return inode->i_sb->s_maxbytes;
+	return EXT4_SB(inode->i_sb)->s_bitmap_maxbytes;
+}
+static inline bool is_special_ino(struct super_block *sb, unsigned long ino)
+{
+	struct ext4_super_block *es = EXT4_SB(sb)->s_es;
+
+	return (ino < EXT4_FIRST_INO(sb) && ino != EXT4_ROOT_INO) ||
+		ino == le32_to_cpu(es->s_usr_quota_inum) ||
+		ino == le32_to_cpu(es->s_grp_quota_inum) ||
+		ino == le32_to_cpu(es->s_prj_quota_inum) ||
+		ino == le32_to_cpu(es->s_orphan_file_inum);
+}
 #define EXT4_BLOCKS_PER_GROUP(sb) le32_to_cpu(EXT4_SB(sb)->s_es->s_blocks_per_group)
 #define EXT4_BG_INODE_ZEROED 4
 #define ext4_debug(...) ((void)0)
@@ -132,9 +187,11 @@ static inline ext4_fsblk_t ext4_group_first_block_no(struct super_block *sb, ext
     return (ext4_fsblk_t)group * le32_to_cpu(EXT4_SB(sb)->s_es->s_blocks_per_group) +
         le32_to_cpu(EXT4_SB(sb)->s_es->s_first_data_block);
 }
-static inline bool ext4_valid_inum(struct super_block *sb, unsigned long ino) {
-    return ino >= le32_to_cpu(EXT4_SB(sb)->s_es->s_first_ino) &&
-        ino <= le32_to_cpu(EXT4_SB(sb)->s_es->s_inodes_count);
+static inline int ext4_valid_inum(struct super_block *sb, unsigned long ino)
+{
+	return ino == EXT4_ROOT_INO ||
+		(ino >= EXT4_FIRST_INO(sb) &&
+		 ino <= le32_to_cpu(EXT4_SB(sb)->s_es->s_inodes_count));
 }
 static inline bool ext4_hash_in_dirent(const struct inode *inode) {
     return (inode->flags & 0x40000800U) == 0x40000800U;
@@ -204,5 +261,7 @@ typedef enum {
 } ext4_iget_flags;
 int check_igot_inode(struct inode *, ext4_iget_flags, const char *, unsigned int);
 #define EXT4_EA_INODE_FL 0x00200000U
-#define is_bad_inode(inode) false /* No VFS cache or cached bad-inode objects. */
+#define is_bad_inode(inode) ((inode)->bad_inode)
+#define make_bad_inode(inode) ((inode)->bad_inode = true)
+int __ext4_iget(struct inode *, ext4_iget_flags, const char *, unsigned int);
 #endif

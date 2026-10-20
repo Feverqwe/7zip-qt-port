@@ -16,6 +16,7 @@ struct ext_time { int64_t seconds; uint32_t nsec; int defined; };
 struct ext_node_info {
     uint64_t size;
     uint32_t checksum_seed, inline_size, has_xattrs, fast_symlink;
+    int read_error, special_read_error, ea_read_error;
     struct ext_time atime, mtime, change_time, birth_time;
 };
 /* All buffers remain owned by the caller except the returned opaque objects. */

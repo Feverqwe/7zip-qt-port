@@ -16,7 +16,7 @@ struct inode *ext4_iget(struct super_block *sb, unsigned long ino, ext4_iget_fla
     error = services->inode(services->context, (u32)ino, raw, EXT4_INODE_SIZE(sb));
     if (!error) error = ext_linux_inode_open((struct ext_volume *)sb, (u32)ino, raw, &node, &info);
     free(raw);
-    if (!error) error = check_igot_inode(&node->inode, flags, __func__, __LINE__);
+    if (!error) error = __ext4_iget(&node->inode, flags, __func__, __LINE__);
     if (error) { ext_linux_inode_close(node); return ERR_PTR(error); }
     return &node->inode;
 }

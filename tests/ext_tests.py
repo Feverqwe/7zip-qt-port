@@ -17,6 +17,7 @@ from ext_verity_fixture import VerityVolume
 from ext_xattr_fixture import XattrVolume
 from ext_block_fixture import BlockVolume
 from ext_symlink_fixture import SymlinkVolume
+from ext_inode_fixture import inode_volume
 
 RUNTIME = Path(sys.argv.pop(1))
 MODULE = Path(sys.argv.pop(1))
@@ -157,6 +158,55 @@ class ExtTests(unittest.TestCase):
                     volume.put32(root + 20, volume.table)
                 result = self.run_image(volume, command="l", name=None)
                 self.assertNotEqual(result.returncode, 0)
+
+    def test_named_inodes_require_linux_read_acceptance(self):
+        for case in ("mode-zero", "mode-unknown", "unlinked", "casefold", "reserved-alias",
+                     "quota-alias", "negative-size", "bitmap-overflow", "extent-overflow"):
+            with self.subTest(case=case):
+                result = self.run_image(inode_volume(case))
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(result.stdout, b"")
+
+    def test_legacy_inode_numbers_and_extra_inode_requirements(self):
+        for engine in ("7z", "7zz"):
+            volume = inode_volume("legacy-control")
+            result = self.run_image(volume, engine)
+            self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+            self.assertEqual(result.stdout, volume.read(0, volume.size))
+        result = self.run_image(inode_volume("legacy-reserved-alias"))
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(result.stdout, b"")
+        for offset in (0x15C, 0x15E):
+            volume = ModernVolume()
+            volume.put32(1024 + 100, 2 | 0x400 | 0x40)
+            struct.pack_into("<H", volume.data, 1024 + offset, 132)
+            volume.refresh()
+            result = self.run_image(volume)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertEqual(result.stdout, b"")
+
+    def test_sparse_inode_size_limits_do_not_require_dense_allocation(self):
+        for case in ("bitmap-boundary", "extent-boundary"):
+            with self.subTest(case=case):
+                volume = inode_volume(case)
+                result = self.run_image(volume, command="l")
+                self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                self.assertIn(("Size = " + str(volume.declared_size)).encode(), result.stdout)
+
+    def test_unlinked_inventory_slots_cannot_become_unknown_files(self):
+        result = self.run_image(inode_volume("orphan-unreferenced"), command="l", name=None)
+        self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+        self.assertNotIn(b"[UNKNOWN]", result.stdout)
+
+    def test_special_inode_device_encoding_is_not_a_data_block_pointer(self):
+        for engine in ("7z", "7zz"):
+            with self.subTest(engine=engine):
+                empty = self.run_image(inode_volume("special-empty"), engine)
+                self.assertEqual(empty.returncode, 0, empty.stderr.decode(errors="replace"))
+                self.assertEqual(empty.stdout, b"")
+                rejected = self.run_image(inode_volume("special-payload"), engine)
+                self.assertNotEqual(rejected.returncode, 0)
+                self.assertEqual(rejected.stdout, b"")
 
     def test_xattr_names_values_and_acl_serialization(self):
         for kind in ("xattrs", "xattrs-signed", "xattrs-lustre"):
