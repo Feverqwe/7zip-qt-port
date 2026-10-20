@@ -16,6 +16,9 @@ typedef int64_t loff_t, time64_t;
 #ifndef ENODATA
 #define ENODATA 61
 #endif
+#ifndef ESTALE
+#define ESTALE 116
+#endif
 #define EFSCORRUPTED EIO
 #define EFSBADCRC EIO
 #define __nonstring
@@ -63,8 +66,10 @@ struct timespec64 { time64_t tv_sec; long tv_nsec; };
 struct super_block;
 struct inode;
 struct file;
-struct buffer_head { char *b_data; size_t b_size; u64 b_blocknr; bool verified; };
+struct buffer_head { char *b_data; size_t b_size; u64 b_blocknr; bool verified, allocated; };
 #define buffer_verified(bh) ((bh)->verified)
 #define set_buffer_verified(bh) ((bh)->verified = true)
-#define brelse(...) ((void)0)
+static inline void brelse(struct buffer_head *bh) {
+    if (bh && bh->allocated) free(bh);
+}
 #endif

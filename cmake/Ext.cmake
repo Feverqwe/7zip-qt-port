@@ -1,5 +1,6 @@
 # Linux ext4 C code is isolated in a GPL format module.
 add_library(sevenzip_ext MODULE
+    src/fs/ext4/acl.c src/fs/posix_acl.c
     src/CPP/7zip/Archive/ExtHandler.cpp src/exfatmodule.cpp
     src/extreader.c src/fs/ext4/super.c src/fs/ext4/balloc.c
     src/fs/ext4/inode.c src/fs/ext4/bitmap.c src/fs/ext4/inline.c

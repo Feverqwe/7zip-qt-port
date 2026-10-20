@@ -1,6 +1,7 @@
 #include "7zip/Archive/IArchive.h"
 #include "Common/MyCom.h"
 #include "Windows/PropVariant.h"
+#include <QDir>
 #include <QJsonArray>
 #include <QJsonDocument>
 #include <QJsonObject>
@@ -19,10 +20,17 @@ class Input final : public IInStream, public CMyUnknownImp {
     bool fail = false;
     HRESULT readResult = S_OK;
     HRESULT seekResult = S_OK;
+    UInt64 failAt = UINT64_MAX, notifyAt = UINT64_MAX;
+    HRESULT atResult = E_FAIL;
+    bool notified = false;
     explicit Input(QByteArray bytes) : bytes_(std::move(bytes)) {}
     Z7_COM7F_IMF(Read(void *data, UInt32 size, UInt32 *processed)) override {
         if (processed)
             *processed = 0;
+        if (position_ <= failAt && failAt - position_ < size)
+            return atResult;
+        if (position_ <= notifyAt && notifyAt - position_ < size)
+            notified = true;
         if (fail)
             return E_FAIL;
         if (readResult != S_OK)
@@ -97,6 +105,15 @@ class CancelOpen final : public IArchiveOpenCallback, public CMyUnknownImp {
     Z7_COM7F_IMF(SetTotal(const UInt64 *, const UInt64 *)) override { return E_ABORT; }
     Z7_COM7F_IMF(SetCompleted(const UInt64 *, const UInt64 *)) override { return E_ABORT; }
 };
+class CancelXattrOpen final : public IArchiveOpenCallback, public CMyUnknownImp {
+    Z7_COM_UNKNOWN_IMP_1(IArchiveOpenCallback)
+  public:
+    const Input *source = nullptr;
+    Z7_COM7F_IMF(SetTotal(const UInt64 *, const UInt64 *)) override { return S_OK; }
+    Z7_COM7F_IMF(SetCompleted(const UInt64 *, const UInt64 *)) override {
+        return source && source->notified ? E_ABORT : S_OK;
+    }
+};
 } // namespace
 
 class ExtStreamTests final : public QObject {
@@ -117,14 +134,14 @@ class ExtStreamTests final : public QObject {
         data += QByteArray::fromBase64(record["image"].toString().toLatin1());
         return qUncompress(data);
     }
-    UInt32 fileIndex() {
+    UInt32 fileIndex(const QString &name = QStringLiteral("данные 空.bin")) {
         UInt32 count = 0;
         if (archive_->GetNumberOfItems(&count) != S_OK)
             return UInt32(-1);
         for (UInt32 i = 0; i < count; ++i) {
             NWindows::NCOM::CPropVariant path;
             if (archive_->GetProperty(i, kpidPath, &path) == S_OK && path.vt == VT_BSTR &&
-                QString::fromWCharArray(path.bstrVal) == QStringLiteral("данные 空.bin"))
+                QDir::fromNativeSeparators(QString::fromWCharArray(path.bstrVal)) == name)
                 return i;
         }
         return UInt32(-1);
@@ -156,6 +173,71 @@ class ExtStreamTests final : public QObject {
     }
   private slots:
     void initTestCase() { createArchive(); }
+    void xattrStreamsOwnBytesAndHaveParents() {
+        const auto record = bundle("xattrs");
+        CMyComPtr<IInStream> input = new Input(image(record));
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        CMyComPtr<IInArchiveGetStream> provider;
+        QCOMPARE(
+            archive_->QueryInterface(IID_IInArchiveGetStream, reinterpret_cast<void **>(&provider)),
+            S_OK);
+        CMyComPtr<IArchiveGetRawProps> raw;
+        QCOMPARE(archive_->QueryInterface(IID_IArchiveGetRawProps, reinterpret_cast<void **>(&raw)),
+                 S_OK);
+        CMyComPtr<ISequentialInStream> value, empty;
+        const UInt32 id = fileIndex("data.bin:$XATTR.user.large");
+        QVERIFY(id != UInt32(-1));
+        QCOMPARE(provider->GetStream(id, &value), S_OK);
+        QCOMPARE(provider->GetStream(fileIndex("data.bin:$XATTR.user.empty"), &empty), S_OK);
+        UInt32 parent = 0, type = 0;
+        QCOMPARE(raw->GetParent(id, &parent, &type), S_OK);
+        QCOMPARE(parent, fileIndex("data.bin"));
+        QCOMPARE(type, UInt32(NParentType::kAltStream));
+        NWindows::NCOM::CPropVariant property;
+        QCOMPARE(archive_->GetProperty(id, kpidIsAltStream, &property), S_OK);
+        QCOMPARE(property.vt, VARTYPE(VT_BOOL));
+        QVERIFY(property.boolVal != VARIANT_FALSE);
+        QCOMPARE(archive_->Close(), S_OK);
+        input.Release();
+        provider.Release();
+        raw.Release();
+        archive_.Release();
+        const auto expected = QByteArray::fromHex(
+            record["files"].toObject()["data.bin:$XATTR.user.large"].toString().toLatin1());
+        QByteArray bytes(expected.size() + 1, '!');
+        UInt32 actual = 0;
+        QCOMPARE(value->Read(bytes.data(), UInt32(bytes.size()), &actual), S_OK);
+        QCOMPARE(bytes.left(int(actual)), expected);
+        QCOMPARE(empty->Read(bytes.data(), UInt32(bytes.size()), &actual), S_OK);
+        QCOMPARE(actual, UInt32(0));
+        createArchive();
+    }
+    void xattrReadFailureCancellationAndReuse() {
+        const auto record = bundle("xattrs");
+        CMyComPtr2<IInStream, Input> input;
+        input.SetFromCls(new Input(image(record)));
+        input->failAt = UInt64(record["ea_data_offset"].toDouble());
+        for (HRESULT result : {E_FAIL, E_ABORT}) {
+            QCOMPARE(input->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
+            input->atResult = result;
+            QCOMPARE(archive_->Open(input, nullptr, nullptr), result);
+            UInt32 count = 99;
+            QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+            QCOMPARE(count, UInt32(0));
+        }
+        input->notifyAt = input->failAt;
+        input->failAt = UINT64_MAX;
+        CMyComPtr2<IArchiveOpenCallback, CancelXattrOpen> cancel;
+        cancel.SetFromCls(new CancelXattrOpen);
+        cancel->source = input.ClsPtr();
+        QCOMPARE(input->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
+        QCOMPARE(archive_->Open(input, nullptr, cancel), E_ABORT);
+        input->notifyAt = UINT64_MAX;
+        input->notified = false;
+        QCOMPARE(input->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
+        QCOMPARE(archive_->Open(input, nullptr, cancel), S_OK);
+        QVERIFY(fileIndex("data.bin:$XATTR.user.large") != UInt32(-1));
+    }
     void sparseStreamsRetainSourceAfterCloseAndRelease_data() {
         QTest::addColumn<QString>("layout");
         for (const char *layout : {"double-hole", "double-subtree", "triple", "triple-hole",

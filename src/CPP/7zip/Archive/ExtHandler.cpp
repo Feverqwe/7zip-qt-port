@@ -38,6 +38,8 @@
 #ifdef SEVENZIP_LINUX_EXT
 #include "extreader.h"
 #include "extveritystream.h"
+#include <cerrno>
+#include <new>
 #endif
 
 using namespace NWindows;
@@ -579,6 +581,10 @@ struct CNode {
 #ifdef SEVENZIP_LINUX_EXT
     UInt32 ChecksumSeed;
     int InlineIndex;
+    UInt64 RawOffset;
+    UInt32 InodeNumber;
+    bool HasXattrs;
+    unsigned XattrFirst, XattrCount;
 #endif
 
     void Construct() {
@@ -589,6 +595,10 @@ struct CNode {
         NumLinksCalced = 0;
 #ifdef SEVENZIP_LINUX_EXT
         InlineIndex = -1;
+        RawOffset = 0;
+        InodeNumber = 0;
+        HasXattrs = false;
+        XattrFirst = XattrCount = 0;
 #endif
     }
 
@@ -697,6 +707,9 @@ bool CNode::Parse(const Byte *p, const CHeader &_h) {
 }
 
 struct CItem {
+#ifdef SEVENZIP_LINUX_EXT
+    int XattrIndex = -1, XattrParent = -1;
+#endif
     unsigned Node;        // in _refs[]
     int ParentNode;       // in _refs[]
     int SymLinkItemIndex; // in _items[], if the Node contains SymLink to existing dir
@@ -707,6 +720,9 @@ struct CItem {
     CItem() : Node(0), ParentNode(-1), SymLinkItemIndex(-1), Type(k_Type_UNKNOWN) {}
 
     void Clear() {
+#ifdef SEVENZIP_LINUX_EXT
+        XattrIndex = XattrParent = -1;
+#endif
         Node = 0;
         ParentNode = -1;
         SymLinkItemIndex = -1;
@@ -728,6 +744,11 @@ struct CExtVolume {
         ext_linux_close(Ptr);
         Ptr = NULL;
     }
+};
+
+struct CExtXattr {
+    AString RawName, Name;
+    CByteBuffer Data;
 };
 
 struct CInlineDirectory {
@@ -789,6 +810,20 @@ Z7_CLASS_IMP_CHandler_IInArchive_2(
   CExtVolume _volume;
   CObjectVector<CByteBuffer> _inlineData;
   UInt32 _extentChecksumSeed;
+  CObjectVector<CExtXattr> _xattrs;
+  int _rootXattrAux;
+  struct CXattrContext {
+    CHandler *Owner;
+    unsigned NodeIndex;
+    HRESULT Result;
+    UInt32 StreamInode;
+    CMyComPtr<IInStream> Stream;
+  };
+  static int ReadXattr(void *, uint32_t, uint64_t, void *, size_t) noexcept;
+  static int ReadXattrInode(void *, uint32_t, void *, size_t) noexcept;
+  static int EmitXattr(void *, const char *, const void *, size_t) noexcept;
+  HRESULT LoadXattrs();
+  void AddXattrItem(unsigned node, int parent, unsigned attribute);
 #endif
 
   IArchiveOpenCallback *_openCallback;
@@ -835,7 +870,7 @@ Z7_CLASS_IMP_CHandler_IInArchive_2(
   HRESULT FillExtents(const Byte *p, size_t size, CRecordVector<CExtent> &extents, int parentDepth,
       UInt32 firstBlock = 0, UInt64 blockLimit = (UInt64)1 << 32);
 
-  HRESULT GetStream_Node(unsigned nodeIndex, ISequentialInStream **stream);
+  HRESULT GetStream_Node(unsigned nodeIndex, ISequentialInStream **stream, bool requireAllocated = false);
   HRESULT ExtractNode(unsigned nodeIndex, CByteBuffer &data);
 
   void ClearRefs();
@@ -855,6 +890,10 @@ HRESULT CHandler::ParseDir(const Byte *p, size_t size, unsigned iNodeDir) {
     PRF(printf("\n\n========= node = %5d    size = %5d", (unsigned)iNodeDir, (unsigned)size));
 
     CNode &nodeDir = _nodes[_refs[iNodeDir]];
+#ifdef SEVENZIP_LINUX_EXT
+    if (nodeDir.Flags & ((UInt32)1 << 21))
+        return S_FALSE;
+#endif
     nodeDir.DirIndex = (int)_dirs.Size();
     CUIntVector &dir = _dirs.AddNew();
     int parentNode = -1;
@@ -927,6 +966,10 @@ HRESULT CHandler::ParseDir(const Byte *p, size_t size, unsigned iNodeDir) {
         if (nodeIndex < 0)
             return S_FALSE;
         CNode &node = _nodes[nodeIndex];
+#ifdef SEVENZIP_LINUX_EXT
+        if (node.Flags & ((UInt32)1 << 21))
+            return S_FALSE;
+#endif
 
         if (_h.IsThereFileType() && type != 0) {
             if (type >= Z7_ARRAY_SIZE(k_TypeToMode))
@@ -1088,6 +1131,194 @@ HRESULT CHandler::SeekAndRead(IInStream *inStream, UInt64 block, Byte *data, siz
     _totalRead += size;
     return ReadStream_FALSE(inStream, data, size);
 }
+
+#ifdef SEVENZIP_LINUX_EXT
+int CHandler::ReadXattr(void *opaque, uint32_t ino, uint64_t offset, void *data,
+                        size_t size) noexcept {
+    auto &context = *static_cast<CXattrContext *>(opaque);
+    CHandler &owner = *context.Owner;
+    try {
+        if (owner._openCallback)
+            context.Result = owner.CheckProgress2();
+        if (context.Result != S_OK)
+            return -EIO;
+        if (!ino) {
+            const UInt64 volumeSize = owner._h.GetPhySize();
+            if (offset > volumeSize || size > volumeSize - offset)
+                return -EIO;
+            context.Result = InStream_SeekSet(owner._stream, offset);
+            if (context.Result == S_OK)
+                context.Result = ReadStream_FALSE(owner._stream, data, size);
+        } else {
+            if (ino >= owner._refs.Size() || owner._refs[ino] < 0)
+                return -EIO;
+            if (context.StreamInode != ino) {
+                CMyComPtr<ISequentialInStream> sequential;
+                context.Stream.Release();
+                context.Result =
+                    owner.GetStream_Node((unsigned)owner._refs[ino], &sequential, true);
+                if (context.Result == S_OK)
+                    context.Result = sequential->QueryInterface(
+                        IID_IInStream, reinterpret_cast<void **>(&context.Stream));
+                if (context.Result != S_OK)
+                    return -EIO;
+                context.StreamInode = ino;
+            }
+            context.Result = InStream_SeekSet(context.Stream, offset);
+            if (context.Result == S_OK)
+                context.Result = ReadStream_FALSE(context.Stream, data, size);
+        }
+        owner._totalRead += size;
+        return context.Result == S_OK ? 0 : -EIO;
+    } catch (const std::bad_alloc &) {
+        context.Result = E_OUTOFMEMORY;
+        return -ENOMEM;
+    } catch (...) {
+        context.Result = E_FAIL;
+        return -EIO;
+    }
+}
+
+int CHandler::ReadXattrInode(void *opaque, uint32_t ino, void *raw, size_t size) noexcept {
+    auto &context = *static_cast<CXattrContext *>(opaque);
+    CHandler &owner = *context.Owner;
+    if (ino >= owner._refs.Size() || owner._refs[ino] < 0 || size != owner._h.InodeSize)
+        return -EIO;
+    return ReadXattr(opaque, 0, owner._nodes[owner._refs[ino]].RawOffset, raw, size);
+}
+
+int CHandler::EmitXattr(void *opaque, const char *name, const void *data, size_t size) noexcept {
+    auto &context = *static_cast<CXattrContext *>(opaque);
+    CHandler &owner = *context.Owner;
+    try {
+        if (owner._openCallback)
+            context.Result = owner.CheckProgress2();
+        if (context.Result != S_OK)
+            return -EIO;
+        const unsigned first = owner._nodes[context.NodeIndex].XattrFirst;
+        for (unsigned i = first; i < owner._xattrs.Size(); ++i)
+            if (owner._xattrs[i].RawName == name)
+                return 0;
+        CExtXattr &attribute = owner._xattrs.AddNew();
+        attribute.RawName = name;
+        attribute.Name = "$XATTR.";
+        static const char hex[] = "0123456789ABCDEF";
+        for (const unsigned char *p = (const unsigned char *)name; *p; ++p) {
+            const unsigned char c = *p;
+            if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') ||
+                c == '.' || c == '_' || c == '-')
+                attribute.Name += (char)c;
+            else {
+                attribute.Name += '%';
+                attribute.Name += hex[c >> 4];
+                attribute.Name += hex[c & 15];
+            }
+        }
+        attribute.Data.CopyFrom((const Byte *)data, size);
+        return 0;
+    } catch (const std::bad_alloc &) {
+        context.Result = E_OUTOFMEMORY;
+        return -ENOMEM;
+    } catch (...) {
+        context.Result = E_FAIL;
+        return -EIO;
+    }
+}
+
+void CHandler::AddXattrItem(unsigned node, int parent, unsigned attribute) {
+    CItem item;
+    item.Node = node;
+    item.Type = k_Type_REG_FILE;
+    item.XattrParent = parent;
+    item.XattrIndex = (int)attribute;
+    const AString base = _xattrs[attribute].Name;
+    item.Name = base;
+    const AString host =
+        parent >= 0 ? _items[(unsigned)parent].Name : _auxItems[(unsigned)_rootXattrAux];
+    const int parentNode = parent >= 0 ? _items[(unsigned)parent].ParentNode : k_INODE_ROOT;
+    for (UInt32 suffix = 0;;) {
+        AString full = host;
+        full += ':';
+        full += item.Name;
+        bool collision = false;
+        FOR_VECTOR(i, _items) {
+            const CItem &other = _items[i];
+            if ((other.XattrIndex >= 0 && other.XattrParent == parent &&
+                 StringsAreEqualNoCase(UString(other.Name), UString(item.Name))) ||
+                (other.XattrIndex < 0 && other.ParentNode == parentNode &&
+                 StringsAreEqualNoCase(UString(other.Name), UString(full)))) {
+                collision = true;
+                break;
+            }
+        }
+        if (!collision)
+            break;
+        char number[16];
+        ConvertUInt32ToString(++suffix, number);
+        item.Name = base;
+        item.Name += '#';
+        item.Name += number;
+    }
+    _items.Add(item);
+}
+
+HRESULT CHandler::LoadXattrs() {
+    FOR_VECTOR(i, _nodes) {
+        CNode &node = _nodes[i];
+        if (!node.HasXattrs || (node.Flags & ((UInt32)1 << 21)))
+            continue;
+        node.XattrFirst = _xattrs.Size();
+        CXattrContext context{this, i, S_OK, 0, {}};
+        CByteBuffer raw;
+        raw.Alloc(_h.InodeSize);
+        int result = ReadXattr(&context, 0, node.RawOffset, raw, raw.Size());
+        ext_node *inode = NULL;
+        ext_node_info info;
+        if (!result)
+            result = ext_linux_inode_open(_volume.Ptr, node.InodeNumber, raw, &inode, &info);
+        struct CNodeOwner {
+            ext_node *Ptr;
+            ~CNodeOwner() { ext_linux_inode_close(Ptr); }
+        } holder{inode};
+        ext_xattr_services services{&context, ReadXattr, ReadXattrInode};
+        if (!result)
+            result = ext_linux_xattr_visit(inode, &services, EmitXattr, &context);
+        if (context.Result != S_OK)
+            return context.Result;
+        if (result)
+            return result == -ENOMEM ? E_OUTOFMEMORY : S_FALSE;
+        node.XattrCount = _xattrs.Size() - node.XattrFirst;
+    }
+    const unsigned count = _items.Size();
+    for (unsigned i = 0; i < count; ++i) {
+        const unsigned ino = _items[i].Node;
+        const CNode &node = _nodes[_refs[ino]];
+        for (unsigned a = 0; a < node.XattrCount; ++a)
+            AddXattrItem(ino, (int)i, node.XattrFirst + a);
+    }
+    const CNode &root = _nodes[_refs[k_INODE_ROOT]];
+    if (root.XattrCount) {
+        AString name("[ROOT]");
+        for (;;) {
+            bool collision = false;
+            for (unsigned i = 0; i < count; ++i)
+                if (_items[i].ParentNode == k_INODE_ROOT &&
+                    StringsAreEqualNoCase(UString(_items[i].Name), UString(name)))
+                    collision = true;
+            FOR_VECTOR(i, _auxItems)
+            if (StringsAreEqualNoCase(UString(_auxItems[i]), UString(name)))
+                collision = true;
+            if (!collision)
+                break;
+            name += '_';
+        }
+        _rootXattrAux = (int)_auxItems.Add(name);
+        for (unsigned a = 0; a < root.XattrCount; ++a)
+            AddXattrItem(k_INODE_ROOT, -1, root.XattrFirst + a);
+    }
+    return S_OK;
+}
+#endif
 
 static const unsigned kHeaderSize = 2 * 1024;
 static const unsigned kHeaderDataOffset = 1024;
@@ -1302,6 +1533,9 @@ HRESULT CHandler::Open2(IInStream *inStream) {
                             return S_FALSE;
                     }
                     node.ChecksumSeed = info.checksum_seed;
+                    node.RawOffset = (gd.InodeTable << _h.BlockBits) + (UInt64)n * _h.InodeSize;
+                    node.InodeNumber = globalNodeIndex + 1;
+                    node.HasXattrs = info.has_xattrs != 0;
                     node.FileSize = info.size;
                     ImportTime(info.atime, node.ATime);
                     ImportTime(info.mtime, node.MTime);
@@ -1555,6 +1789,10 @@ HRESULT CHandler::Open2(IInStream *inStream) {
                 continue;
             const CNode &node = _nodes[nodeIndex];
 
+#ifdef SEVENZIP_LINUX_EXT
+            if (node.Flags & ((UInt32)1 << 21))
+                continue;
+#endif
             if (node.NumLinksCalced == 0 /* || i > 100 && i < 150 */) // for debug
             {
                 CItem item;
@@ -1589,6 +1827,9 @@ HRESULT CHandler::Open2(IInStream *inStream) {
             _auxUnknownIndex = (int)_auxItems.Add((AString) "[UNKNOWN]");
     }
 
+#ifdef SEVENZIP_LINUX_EXT
+    RINOK(LoadXattrs())
+#endif
     return S_OK;
 }
 
@@ -1628,6 +1869,8 @@ Z7_COM7F_IMF(CHandler::Open(IInStream *stream, const UInt64 *, IArchiveOpenCallb
 void CHandler::ClearRefs() {
 #ifdef SEVENZIP_LINUX_EXT
     _inlineData.Clear();
+    _xattrs.Clear();
+    _rootXattrAux = -1;
     _volume.Reset();
 #endif
     _stream.Release();
@@ -1671,6 +1914,18 @@ void CHandler::GetPath(unsigned index, AString &s) const {
         s = _auxItems[index - _items.Size()];
         return;
     }
+#ifdef SEVENZIP_LINUX_EXT
+    if (_items[index].XattrIndex >= 0) {
+        const CItem &item = _items[index];
+        if (item.XattrParent >= 0)
+            GetPath((unsigned)item.XattrParent, s);
+        else
+            s = _auxItems[(unsigned)_rootXattrAux];
+        s += ':';
+        s += item.Name;
+        return;
+    }
+#endif
 
     for (;;) {
         const CItem &item = _items[index];
@@ -1711,6 +1966,12 @@ bool CHandler::GetPackSize(unsigned index, UInt64 &totalPack) const {
     }
 
     const CItem &item = _items[index];
+#ifdef SEVENZIP_LINUX_EXT
+    if (item.XattrIndex >= 0) {
+        totalPack = _xattrs[(unsigned)item.XattrIndex].Data.Size();
+        return true;
+    }
+#endif
     const CNode &node = _nodes[_refs[item.Node]];
 
     // if (!node.IsFlags_EXTENTS())
@@ -1767,7 +2028,11 @@ enum {
 };
 
 static const UInt32 kProps[] = {
-    kpidPath, kpidIsDir, kpidSize, kpidPackSize, kpidPosixAttrib, kpidMTime, kpidCTime, kpidATime,
+    kpidPath,
+#ifdef SEVENZIP_LINUX_EXT
+    kpidIsAltStream,
+#endif
+    kpidIsDir, kpidSize, kpidPackSize, kpidPosixAttrib, kpidMTime, kpidCTime, kpidATime,
     // kpidChangeTime,
     // kpidDTime,
     kpidINode, kpidLinks, kpidSymLink, kpidCharacts, kpidUserId, kpidGroupId};
@@ -1973,6 +2238,14 @@ Z7_COM7F_IMF(CHandler::GetParent(UInt32 index, UInt32 *parent, UInt32 *parentTyp
 
     const CItem &item = _items[index];
 
+#ifdef SEVENZIP_LINUX_EXT
+    if (item.XattrIndex >= 0) {
+        *parentType = NParentType::kAltStream;
+        *parent = item.XattrParent >= 0 ? (UInt32)item.XattrParent
+                                        : (UInt32)(_items.Size() + (unsigned)_rootXattrAux);
+        return S_OK;
+    }
+#endif
     if (item.ParentNode < 0) {
         const int aux = GetParentAux(item);
         if (aux >= 0)
@@ -2074,8 +2347,34 @@ Z7_COM7F_IMF(CHandler::GetProperty(UInt32 index, PROPID propID, PROPVARIANT *val
         const CItem &item = _items[index];
         const CNode &node = _nodes[_refs[item.Node]];
         bool isDir = node.IsDir();
+#ifdef SEVENZIP_LINUX_EXT
+        const bool xattr = item.XattrIndex >= 0;
+        if (xattr)
+            isDir = false;
+        if (xattr && (propID == kpidSize || propID == kpidPackSize || propID == kpidIsDir ||
+                      propID == kpidPosixAttrib || propID == kpidSymLink || propID == kpidLinks ||
+                      propID == kpidINode || propID == kpidStreamId || propID == kpidCharacts)) {
+            if (propID == kpidSize || propID == kpidPackSize)
+                prop = (UInt64)_xattrs[(unsigned)item.XattrIndex].Data.Size();
+            else if (propID == kpidIsDir)
+                prop = false;
+            else if (propID == kpidPosixAttrib)
+                prop = (UInt32)(MY_LIN_S_IFREG | 0444);
+            else if (propID == kpidLinks)
+                prop = (UInt32)1;
+            else if (propID == kpidStreamId)
+                prop = ((UInt64)1 << 63) | (unsigned)item.XattrIndex;
+            prop.Detach(value);
+            return S_OK;
+        }
+#endif
 
         switch (propID) {
+#ifdef SEVENZIP_LINUX_EXT
+        case kpidIsAltStream:
+            prop = xattr;
+            break;
+#endif
         case kpidPath: {
             UString u;
             {
@@ -2575,7 +2874,8 @@ HRESULT CHandler::FillExtents(const Byte *p, size_t size, CRecordVector<CExtent>
     return S_OK;
 }
 
-HRESULT CHandler::GetStream_Node(unsigned nodeIndex, ISequentialInStream **stream) {
+HRESULT CHandler::GetStream_Node(unsigned nodeIndex, ISequentialInStream **stream,
+                                 bool requireAllocated) {
     COM_TRY_BEGIN
 
     *stream = NULL;
@@ -2644,6 +2944,12 @@ HRESULT CHandler::GetStream_Node(unsigned nodeIndex, ISequentialInStream **strea
             AddSkipExtents(streamSpec->Extents, end, (UInt32)(numBlocks64 - end));
             // return S_FALSE;
         }
+        if (requireAllocated) {
+            FOR_VECTOR(i, streamSpec->Extents)
+            if (streamSpec->Extents[i].VirtBlock < numBlocks64 &&
+                (!streamSpec->Extents[i].IsInited || streamSpec->Extents[i].PhyStart == 0))
+                return S_FALSE;
+        }
 
         RINOK(streamSpec->StartSeek())
 #ifdef SEVENZIP_LINUX_EXT
@@ -2699,6 +3005,11 @@ HRESULT CHandler::GetStream_Node(unsigned nodeIndex, ISequentialInStream **strea
         streamSpec->Stream = _stream;
 
         RINOK(FillFileBlocks(node.Block, numBlocks, streamSpec->Vector))
+        if (requireAllocated) {
+            FOR_VECTOR(i, streamSpec->Vector)
+            if (!streamSpec->Vector[i])
+                return S_FALSE;
+        }
         RINOK(streamSpec->InitAndSeek())
     }
 
@@ -2748,6 +3059,12 @@ Z7_COM7F_IMF(CHandler::Extract(const UInt32 *indices, UInt32 numItems, Int32 tes
             continue;
         const CItem &item = _items[index];
         const CNode &node = _nodes[_refs[item.Node]];
+#ifdef SEVENZIP_LINUX_EXT
+        if (item.XattrIndex >= 0) {
+            totalSize += _xattrs[(unsigned)item.XattrIndex].Data.Size();
+            continue;
+        }
+#endif
         if (!node.IsDir())
             totalSize += node.FileSize;
     }
@@ -2787,13 +3104,21 @@ Z7_COM7F_IMF(CHandler::Extract(const UInt32 *indices, UInt32 numItems, Int32 tes
             const CItem &item = _items[index];
             const CNode &node = _nodes[_refs[item.Node]];
 
-            if (node.IsDir()) {
+            if (node.IsDir()
+#ifdef SEVENZIP_LINUX_EXT
+                && item.XattrIndex < 0
+#endif
+            ) {
                 RINOK(extractCallback->PrepareOperation(askMode))
                 RINOK(extractCallback->SetOperationResult(NExtract::NOperationResult::kOK))
                 continue;
             }
 
             UInt64 unpackSize = node.FileSize;
+#ifdef SEVENZIP_LINUX_EXT
+            if (item.XattrIndex >= 0)
+                unpackSize = _xattrs[(unsigned)item.XattrIndex].Data.Size();
+#endif
             totalSize += unpackSize;
             UInt64 packSize;
             if (GetPackSize(index, packSize))
@@ -2840,6 +3165,13 @@ Z7_COM7F_IMF(CHandler::GetStream(UInt32 index, ISequentialInStream **stream)) {
     *stream = NULL;
     if (index >= _items.Size())
         return S_FALSE;
+#ifdef SEVENZIP_LINUX_EXT
+    if (_items[index].XattrIndex >= 0) {
+        const CByteBuffer &data = _xattrs[(unsigned)_items[index].XattrIndex].Data;
+        Create_BufInStream_WithNewBuffer(data, data.Size(), stream);
+        return S_OK;
+    }
+#endif
     return GetStream_Node((unsigned)_refs[_items[index].Node], stream);
 }
 

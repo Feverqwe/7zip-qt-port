@@ -10,6 +10,7 @@ import zlib
 from ext_fixture import Volume, NAME
 from ext_modern_fixture import ModernVolume
 from ext_verity_fixture import VerityVolume
+from ext_xattr_fixture import XattrVolume
 
 RUNTIME = Path(sys.argv.pop(1))
 MODULE = Path(sys.argv.pop(1))
@@ -28,11 +29,13 @@ class ExtTests(unittest.TestCase):
         (cls.runtime / "Formats").mkdir()
         shutil.copy2(MODULE, cls.runtime / "Formats" / MODULE.name)
 
-    def run_image(self, v, engine="7z", command="x", name=NAME):
+    def run_image(self, v, engine="7z", command="x", name=NAME, streams=False):
         with tempfile.TemporaryDirectory(dir=self.runtime) as temporary:
             path = Path(temporary) / "образ ext 空.img"
             path.write_bytes(v.data)
             args = [str(self.runtime / (engine + SUFFIX)), command, "-tExt", "-sccUTF-8", "-bsp0"]
+            if streams or (name and ':' in name):
+                args += ["-sns"]
             args += ["-so", "-bso0", "-bse2"] if command == "x" else ["-slt"]
             args += ["--", str(path)]
             if name is not None:
@@ -40,6 +43,26 @@ class ExtTests(unittest.TestCase):
             result = subprocess.run(args, stdin=subprocess.DEVNULL, capture_output=True, timeout=10)
             self.assertEqual(path.read_bytes(), v.data)
             return result
+
+    def test_xattr_names_values_and_acl_serialization(self):
+        for kind in ("xattrs", "xattrs-signed", "xattrs-lustre"):
+            volume = XattrVolume(kind)
+            listing = self.run_image(volume, command="l", name=None, streams=True)
+            self.assertEqual(listing.returncode, 0, listing.stderr.decode(errors="replace"))
+            for name, expected in volume.files.items():
+                with self.subTest(kind=kind, name=name):
+                    self.assertIn(name.encode(), listing.stdout)
+                    result = self.run_image(volume, name=name)
+                    self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                    self.assertEqual(result.stdout, expected)
+
+    def test_ea_inode_integrity_cannot_return_value_bytes(self):
+        for fault in ("bad-data", "bad-hash", "bad-entry-hash", "missing-flag", "no-links",
+                      "many-links", "no-refs", "size", "self", "unwritten", "bad-acl"):
+            with self.subTest(fault=fault):
+                result = self.run_image(XattrVolume("xattrs-" + fault), name="data.bin:$XATTR.user.large")
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(result.stdout, b"")
 
     def test_sparse_indirect_and_extent_reads(self):
         for engine in ("7z", "7zz"):

@@ -371,8 +371,9 @@ inode/link properties. Source scope и границы standalone/archive ABI о�
 ограничения extent/каталогов, fast symlink с EA и передача ошибок потоков в обоих
 engines. Динамический движок также подключает Linux C-проверки metadata,
 полные inline data/каталоги, META_BG, BIGALLOC, современные descriptors и
-fs-verity data verification и read-only feature compatibility (HURD и версия
-шифрования). Полная актуализация ext4 не завершена: fscrypt/key
+fs-verity data verification, публичные xattr/EA-inode values и POSIX ACL,
+а также read-only feature compatibility (HURD и версия шифрования).
+Полная актуализация ext4 не завершена: fscrypt/key
 service, trust policy и оставшиеся
 feature/creator-OS read semantics остаются в общем scope.
 

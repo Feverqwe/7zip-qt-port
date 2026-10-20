@@ -12,20 +12,24 @@
 #define EXT4_INLINE_DOTDOT_SIZE 4
 #define EXT4_XATTR_SYSTEM_DATA "data"
 #define EXT4_STATE_XATTR 0
+#define EXT4_STATE_LUSTRE_EA_INODE 1
 #define DT_DIR 4
 #define i_checksum_lo osd2.linux2.l_i_checksum_lo
 struct ext4_sb_info {
     struct super_block *s_sb;
     struct ext4_super_block *s_es;
     u32 s_csum_seed, s_desc_size, s_desc_per_block, s_inode_size;
+    const struct ext_xattr_services *xattr_services;
 };
 struct fsverity_operations;
 struct super_block { unsigned int s_blocksize, s_blocksize_bits; struct ext4_sb_info info; const struct fsverity_operations *s_vop; };
-struct ext4_inode_info { u32 i_csum_seed, i_inline_size; u16 i_extra_isize, i_inline_off; bool xattr; };
+struct ext4_inode_info { u32 i_csum_seed, i_inline_size, i_flags; u16 i_extra_isize, i_inline_off; bool xattr, lustre; u64 i_file_acl; };
 struct inode {
     struct super_block *i_sb;
     u32 i_ino, flags;
+    u32 i_flags;
     u64 i_size;
+    u32 i_generation, i_nlink, i_atime_sec, i_mtime_sec, i_ctime_sec, i_version;
     int error;
     struct ext4_inode_info info;
     struct buffer_head raw;
@@ -90,7 +94,7 @@ static inline unsigned int ext4_rec_len_from_disk(__le16 dlen, unsigned int bloc
 static inline int ext4_get_inode_loc(struct inode *inode, struct ext4_iloc *iloc) {
     iloc->bh = &inode->raw; iloc->offset = 0; return 0;
 }
-#define ext4_test_inode_state(inode, state) ((inode)->info.xattr)
+#define ext4_test_inode_state(inode, state) ((state) == EXT4_STATE_XATTR ? (inode)->info.xattr : (inode)->info.lustre)
 #define ext4_has_inline_data(inode) (((inode)->flags & (1U << 28)) && (inode)->info.i_inline_off)
 #define file_inode(file) ((file)->inode)
 #define inode_eq_iversion(inode, cookie) ((cookie) == 1)
@@ -126,4 +130,11 @@ struct ext4_extent_header;
 int ext4_extent_block_csum_verify(struct inode *, struct ext4_extent_header *);
 int ext4_dirblock_csum_verify(struct inode *, struct buffer_head *);
 int ext4_dx_csum_verify(struct inode *, struct ext4_dir_entry *);
+typedef enum {
+    EXT4_IGET_NORMAL = 0, EXT4_IGET_SPECIAL = 0x0001, EXT4_IGET_HANDLE = 0x0002,
+    EXT4_IGET_BAD = 0x0004, EXT4_IGET_EA_INODE = 0x0008, EXT4_IGET_NOWAIT = 0x0010
+} ext4_iget_flags;
+int check_igot_inode(struct inode *, ext4_iget_flags, const char *, unsigned int);
+#define EXT4_EA_INODE_FL 0x00200000U
+#define is_bad_inode(inode) false /* No VFS cache or cached bad-inode objects. */
 #endif

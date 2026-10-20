@@ -309,6 +309,81 @@ and four unsupported combinations were rejected. All image SHA256 values stayed
 unchanged. Temporary images, mounts and the synced review script were removed.
 This running kernel is separate from the pinned source revision used for transfer.
 
+## Extended attributes, EA-inode values and POSIX ACLs
+
+The xattr comparison found an unconnected consumer: the archive reader checked
+in-inode/external xattr structures without exposing their values. The dynamic
+module now connects the complete read getter bodies from the pinned `xattr.c`,
+including ibody-before-block precedence, EA-inode acquisition, exact size,
+role/refcount and data/entry hashes. Both unsigned and legacy signed name hashes,
+plus the original Lustre backpointer compatibility branch, are retained.
+`check_igot_inode` comes from the same pinned `inode.c`. Recomparison found these
+read bodies unchanged apart from explicit C pointer casts and replacement of
+GNU's omitted ternary operand for MSVC. New dependencies are pinned in the
+existing source inventory; no sibling checkout is modified.
+
+Linux `acl.c` supplies the complete `ext4_acl_from_disk` body; `fs/posix_acl.c`
+supplies `posix_acl_to_xattr`. Their original disk/in-memory/UAPI types and
+numeric IDs are adapted through private allocation and initial-user-namespace
+services. Published ACL bytes therefore match Linux VFS xattrs, including named
+users/groups, rather than exposing the different on-disk ACL representation.
+The original C modules and license notices remain at their upstream paths.
+
+Archive byte, raw-inode and buffer services replace VFS/cache ownership.
+EA-inode data uses the existing 7-Zip mapping with holes/unwritten extents
+rejected inside logical EOF; unused preallocation after EOF is permitted.
+Kernel cache insertion, locks and quota state have no archive counterpart.
+The namespace/list adapter follows Linux's entry traversal and handler map,
+then calls the original getter/converters for each value. It exposes public
+user/trusted/security/Hurd/ACL metadata as a privileged image reader, without
+applying the host's mount options, capability or LSM policy. Internal inline-data
+and fscrypt contexts are not published as public xattrs.
+
+The authoritative Ext handler retains archive properties, extraction and parent
+relationships. Owned values appear as alternate streams on files, directories
+and each hardlink; root metadata uses a collision-free virtual root item.
+Names escape unsafe bytes and disambiguate case/ordinary-filename collisions.
+These archive naming/ownership adapters have no usable kernel implementation:
+Linux supplies VFS xattr operations, not archive item/stream interfaces. Keeping
+them in the existing handler preserves its module boundary and portable SDK
+types. Returned metadata streams survive Close/reopen/Release; failed reads and
+cancellation propagate through Open without leaving partially usable items.
+Standalone LGPL `7zz` keeps its existing reader and does not publish this GPL
+metadata path.
+
+The retained creator fixture was made with mke2fs 1.47.0 and Linux
+`6.8.0-147-generic` xattr operations, then read through a fresh read-only loop
+mount. All listed values, including 9000-byte shared EA-inode values and access/
+default ACLs, matched `getxattr`; the image hash stayed unchanged. The manifest
+records the creator, native comparison and reproducible generation command's
+inputs. Temporary images/mounts were removed. This running kernel supplements
+the pinned 2026 source; it does not execute that revision.
+An additional native read-only comparison accepted all 27 values for each of
+the ordinary, signed-hash and Lustre-compatible variants, with unchanged image
+hashes (`20261020T174331Z-894cb0af`). Its temporary review script was removed
+locally and from the guest after completion.
+
+CLI tests compare every value for ordinary, signed-hash and Lustre-compatible
+images. Mutations reject bad data/hash/entry hash, missing EA flag, zero/multiple
+links, zero references, wrong size, self-reference, unwritten EA data and invalid
+ACL encoding. The unwritten fixture has valid hashes for zero bytes so it detects
+accidental sparse zero filling. ABI tests cover owned/empty streams, parent/type,
+input errors, cancellation and reuse. The ArchiveBackend test lists alternate
+streams and extracts selected large, ACL, directory and root values through the
+real process transport. It caught and fixed property ordering that otherwise
+lost the alternate-stream marker during listing.
+
+Nine focused suites (`ext`, `ext_stream`, `ext_xattr_backend`, `archive_device`,
+`device_folder`, `codec_probe`, `runtime_cache`, `upstream_baseline`,
+`upstream_inventory`) passed on macOS arm64/Qt 6.12 (10.27 s) and Linux x64
+(19.74 s, `20261020T174135Z-226768c4`). Windows x64/MSVC/Qt 6.12 passed eight
+in that receipt; `device_folder` exceeded its unchanged catalog-readiness wait
+and passed alone (4.07 s, `20261020T174404Z-a0be8676`) without a code/timeout
+change. After removing an unused external getter wrapper, the five ext/source
+suites passed again on macOS and both runners (`20261020T174504Z-3e3fe0e4`).
+Incremental build trees and compiler caches were retained. No full/slow, UI,
+package, physical-device or native authorization gate is claimed for this change.
+
 ## Remaining ext modernization
 
 This iteration does not close the ext row. Encryption still needs a key-service

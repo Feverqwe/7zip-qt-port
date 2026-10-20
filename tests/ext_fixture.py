@@ -186,7 +186,10 @@ class Volume:
 
 if __name__ == "__main__":
     layout = sys.argv[1] if len(sys.argv) > 1 else "double-hole"
-    if layout in ("verity-salted", "verity-corrupt"):
+    if layout.startswith("xattrs"):
+        from ext_xattr_fixture import XattrVolume
+        v = XattrVolume(layout)
+    elif layout in ("verity-salted", "verity-corrupt"):
         from ext_verity_fixture import VerityVolume
         v = VerityVolume("sha512", b"salt")
         if layout == "verity-corrupt":
@@ -212,6 +215,8 @@ if __name__ == "__main__":
         samples = [{"offset": pos, "bytes": v.read(pos, 37).hex()}
                    for pos in (0, max(0, v.size - 17), 1010)]
         print(json.dumps({"size": len(v.data), "image": base64.b64encode(zlib.compress(v.data)).decode(),
-                          "file_size": v.size, "name": NAME, "samples": samples}))
+                          "file_size": v.size, "name": getattr(v, "name", NAME), "samples": samples,
+                          "files": {name: value.hex() for name, value in getattr(v, "files", {}).items()},
+                          "ea_data_offset": getattr(v, "ea_data_offset", 0)}))
     else:
         sys.stdout.buffer.write(v.data)

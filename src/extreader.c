@@ -3,6 +3,7 @@
 #include "fs/ext4/ext4.h"
 #include "fs/ext4/xattr.h"
 #include "fs/ext4/ext4_extents.h"
+#include "fs/ext4/xattrread.h"
 
 struct ext_volume { struct super_block sb; struct ext4_super_block raw; };
 struct ext_node { struct inode inode; };
@@ -120,6 +121,7 @@ int ext_linux_inode_open(struct ext_volume *volume, uint32_t ino, const void *da
     inode = &node->inode;
     inode->i_sb = &volume->sb;
     inode->i_ino = ino;
+    inode->i_blkbits = volume->sb.s_blocksize_bits;
     inode->raw.b_data = (char *)(node + 1);
     inode->raw.b_size = size;
     memcpy(inode->raw.b_data, data, size);
@@ -131,6 +133,16 @@ int ext_linux_inode_open(struct ext_volume *volume, uint32_t ino, const void *da
     ei->i_csum_seed = ext4_chksum(ei->i_csum_seed, &raw->i_generation, sizeof(raw->i_generation));
     if (!ext4_inode_csum_verify(inode, raw, ei)) goto corrupt;
     inode->flags = le32_to_cpu(raw->i_flags);
+    ei->i_flags = inode->flags;
+    inode->i_generation = le32_to_cpu(raw->i_generation);
+    inode->i_nlink = le16_to_cpu(raw->i_links_count);
+    inode->i_atime_sec = le32_to_cpu(raw->i_atime);
+    inode->i_mtime_sec = le32_to_cpu(raw->i_mtime);
+    inode->i_ctime_sec = le32_to_cpu(raw->i_ctime);
+    inode->i_version = le32_to_cpu(raw->osd1.linux1.l_i_version);
+    ei->i_file_acl = le32_to_cpu(raw->i_file_acl_lo);
+    if (ext4_has_feature_64bit(&volume->sb))
+        ei->i_file_acl |= (u64)le16_to_cpu(raw->osd2.linux2.l_i_file_acl_high) << 32;
     if ((inode->flags & (1U << 19)) && !(le32_to_cpu(volume->raw.s_feature_incompat) & 0x40)) goto corrupt;
     if ((inode->flags & (1U << 28)) && !(le32_to_cpu(volume->raw.s_feature_incompat) & 0x8000)) goto corrupt;
     if ((inode->flags & 0x1000U) && ext4_has_feature_metadata_csum(&volume->sb) &&
@@ -157,6 +169,7 @@ int ext_linux_inode_open(struct ext_volume *volume, uint32_t ino, const void *da
     }
     info->size = inode->i_size;
     info->checksum_seed = ei->i_csum_seed;
+    info->has_xattrs = ei->xattr || ei->i_file_acl != 0;
     DECODE_TIME(info->atime, i_atime);
     DECODE_TIME(info->mtime, i_mtime);
     DECODE_TIME(info->change_time, i_ctime);
@@ -171,10 +184,45 @@ fail:
 }
 #undef DECODE_TIME
 void ext_linux_inode_close(struct ext_node *node) { free(node); }
+
+struct inode *ext_xattr_iget(struct super_block *sb, unsigned long ino, ext4_iget_flags flags)
+{
+    const struct ext_xattr_services *services = EXT4_SB(sb)->xattr_services;
+    struct ext_node *node = NULL;
+    struct ext_node_info info;
+    void *raw;
+    int result;
+    if (!services || !services->inode || ino > UINT32_MAX || !ext4_valid_inum(sb, ino))
+        return ERR_PTR(-EFSCORRUPTED);
+    raw = malloc(EXT4_INODE_SIZE(sb));
+    if (!raw) return ERR_PTR(-ENOMEM);
+    result = services->inode(services->context, (u32)ino, raw, EXT4_INODE_SIZE(sb));
+    if (!result)
+        result = ext_linux_inode_open((struct ext_volume *)sb, (u32)ino, raw, &node, &info);
+    free(raw);
+    if (!result)
+        result = check_igot_inode(&node->inode, flags, __func__, __LINE__);
+    if (result) { ext_linux_inode_close(node); return ERR_PTR(result); }
+    return &node->inode;
+}
+
+void ext4_put_ea_inode(struct inode *inode) { ext_linux_inode_close((struct ext_node *)inode); }
 int ext_linux_xattr_check(struct ext_node *node, uint64_t block, const void *data)
 {
     struct buffer_head bh = { .b_data = (char *)data, .b_size = node->inode.i_sb->s_blocksize, .b_blocknr = block };
     return __ext4_xattr_check_block(&node->inode, &bh, __func__, __LINE__);
+}
+
+int ext_linux_xattr_visit(struct ext_node *node, const struct ext_xattr_services *services,
+                          ext_xattr_emit emit, void *context)
+{
+    struct ext4_sb_info *sbi = EXT4_SB(node->inode.i_sb);
+    const struct ext_xattr_services *previous = sbi->xattr_services;
+    int result;
+    sbi->xattr_services = services;
+    result = ext4_xattr_visit(&node->inode, emit, context);
+    sbi->xattr_services = previous;
+    return result;
 }
 int ext_linux_inline_read(struct ext_node *node, void *output, unsigned int size)
 {

@@ -1165,6 +1165,17 @@ if(BUILD_TESTING)
     add_test(NAME ext_stream COMMAND ext_stream_tests -silent)
     add_dependencies(ext_stream_tests sevenzip_ext_runtime)
     set_tests_properties(ext_stream PROPERTIES TIMEOUT 45)
+    qt_add_executable(ext_xattr_backend_tests tests/ext_xattr_backend_tests.cpp)
+    target_include_directories(ext_xattr_backend_tests PRIVATE src)
+    target_link_libraries(ext_xattr_backend_tests PRIVATE sevenzip_panel Qt6::Test)
+    target_compile_definitions(ext_xattr_backend_tests PRIVATE
+        "SEVENZIP_EXT_CORE=\"$<TARGET_FILE:sevenzip_ext>\""
+        "SEVENZIP_EXT_RUNTIME=\"${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime\""
+        "SEVENZIP_EXT_PYTHON=\"${Python3_EXECUTABLE}\""
+        "SEVENZIP_EXT_FIXTURE=\"${CMAKE_CURRENT_SOURCE_DIR}/tests/ext_fixture.py\"")
+    add_dependencies(ext_xattr_backend_tests sevenzip_ext_runtime)
+    add_test(NAME ext_xattr_backend COMMAND ext_xattr_backend_tests -silent)
+    set_tests_properties(ext_xattr_backend PROPERTIES TIMEOUT 45)
     add_test(NAME cramfs COMMAND ${Python3_EXECUTABLE}
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/cramfs_tests.py
         ${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime "$<TARGET_FILE:sevenzip_cramfs>")
@@ -1963,6 +1974,7 @@ if(BUILD_TESTING)
     target_sources(ntfs_stream_tests PRIVATE ${compression_order_sources})
     target_sources(ntfs_security_tests PRIVATE ${compression_order_sources})
     target_sources(hfs_stream_tests PRIVATE ${compression_order_sources})
+    target_sources(ext_xattr_backend_tests PRIVATE ${compression_order_sources})
     target_sources(iso_stream_tests PRIVATE ${compression_order_sources})
     target_sources(udf_stream_tests PRIVATE ${compression_order_sources})
     target_sources(gpt_stream_tests PRIVATE ${compression_order_sources})
