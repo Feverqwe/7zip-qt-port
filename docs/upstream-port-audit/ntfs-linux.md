@@ -281,6 +281,77 @@ backport fix в Ubuntu binary этим не утверждается. Модул
 Malformed EA не передавались старому kernel как safety validator; их проверяют
 перенесённые актуальные bounds checks и production regressions.
 
+## Indexed security descriptors — 2026-10-20
+
+Исходный SDK `ParseSecuritySDS` требует линейного порядка security IDs,
+зеркальных записей и загрузки всего `$SDS` в пределах прежнего memory limit.
+Linux NTFS3 ищет ID через `$SII` и читает только выбранный descriptor.
+Dynamic GPL module теперь использует этот Linux read path. Standalone `7zz`
+сохраняет прежний SDK security scanner; общий C++ handler остаётся единственным
+авторитетным исходником для обоих overlays.
+
+До реализации сравнены полные `fsntfs.c:ntfs_get_security_by_id`,
+`ntfs_fix_post_read`, `sid_length`, `is_acl_valid`, `is_sd_valid`,
+`ntfs_security_init`; `index.c` lookup/init/read/finder и index-header checks;
+`ntfs.h`/`ntfs_fs.h` disk types; callers в inode/xattr, boot geometry и полный
+SDK parse/extension/stream/raw-property flow. Использованы полные revisions,
+указанные выше. В исходные C units `fsntfs.c` и `index.c` перенесены выбранные
+функции вместе с именами индексов, disk structures и finder dependencies.
+Paragon notices и GPL SPDX сохранены, C компилируется как C11.
+
+Полные тела `cmp_uint`, `index_buf_check`, `fnd_clear`, `fnd_push`,
+`hdr_find_e`, `indx_init`, `indx_get_root`, `indx_find`, `ntfs_fix_post_read`,
+`sid_length`, `is_acl_valid`, `is_sd_valid` совпадают с эталоном. В
+`index_hdr_check` добавлены нижняя граница первого entry после header и
+проверка наличия полного следующего entry header перед чтением его полей;
+`indx_read_ra` отклоняет VBN с переполнением byte offset;
+`ntfs_get_security_by_id` проверяет полный размер SII view перед чтением
+`SECURITY_HDR`. `get_cmp_func` специализирован только для UINT `$SII`.
+Остальные collations, directory index consumers, `$SDH` write/dedup lookup,
+insert/delete/rebalance и создание security indexes не переносятся этим
+readonly scenario.
+
+`ntfssecuritycompat` заменяет kernel allocation, inode/attribute lookup,
+locking, run I/O и buffer-head services. Логические streams и полная
+проверенная карта extents принадлежат SDK. C++ сохраняет `$SII` attributes
+через base/extension merge и передаёт resident root, `$INDEX_ALLOCATION` и
+`$SDS` узкому C API. C lookup не сканирует зеркало или весь `$SDS` и не
+ограничивает logical stream прежним 512 MiB. Root/index geometry проверяется
+в пределах поддерживаемой NTFS3/SDK geometry. При fixup mismatch Linux
+восстанавливает sector tails; adapter сохраняет исправления только в частном
+буфере, без записи на том.
+
+C boundary вызывает Linux descriptor validator после безопасной проверки
+четырёх относительных offsets. Повреждённый descriptor активного inode
+останавливает archive Open; Linux xattr frontend лишь предупреждает о таком
+descriptor и может вернуть bytes. Это явно более строгий archive integrity
+contract, без переноса kernel permission enforcement. Не найденный или
+reserved ID не создаёт raw property; повреждённая metadata удалённого inode
+не мешает recovery остальных items. Read/seek errors и отмена сохраняют
+HRESULT через C callback. Descriptor cache принадлежит открытому архиву;
+временные index readers и callbacks освобождаются до завершения Open.
+NT4 resident security и key/trust services этим сценарием не изменяются.
+
+Новая focused ABI suite проверяет exact raw descriptor bytes, обычный file
+payload и retained streams после Close; Unicode/spaces образ проходит реальное
+ArchiveBackend extraction. Fixtures покрывают resident/root keys, allocated
+trees, расширенный поиск, маленькие index blocks, fragmented allocation,
+extension attributes, переставленный physical `$SDS`, повреждённое зеркало,
+отсутствующее зеркало, sparse stream с logical offset 4 GiB, missing/reserved
+IDs, fixup recovery и чтение удалённого файла при повреждённом descriptor.
+Восемнадцать malformed cases проверяют spans, отсутствующий terminal, key/view
+границы, SID/ACL, SDS range/header, VBN/fixup и циклы. Отдельные ABI cases
+проверяют E_FAIL/E_ABORT, cancellation внутри index I/O и успешное reopen.
+Fixtures детерминированы и не используют пользовательские образы.
+
+Локальные 11 focused suites PASS на macOS arm64/Qt 6.12 (10,72 с):
+`ntfs`, `ntfs_stream`, `ntfs_security`, archive/backend extraction/security/
+selection consumers, runtime cache/package и source provenance. Проверены
+прежние EA/WOF consumers после объединения little-endian services.
+Incremental builds и compiler caches сохранены; full/slow gate, физические
+устройства и UI appearance не проверялись. Linux/Windows runtime и native
+kernel comparison для этой итерации пока не подтверждены.
+
 ## Открытый read scope
 
 Выбранные classic/WOF/MFT bootstrap scenarios подключены и проверены.

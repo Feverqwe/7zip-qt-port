@@ -8,11 +8,7 @@
 #include "../../ntfsdecoder.h"
 #define PAGE_SIZE 4096
 #define PAGE_SHIFT 12
-#define Add2Ptr(p, n) ((void *)((u8 *)(p) + (n)))
 #define min(a, b) ((a) < (b) ? (a) : (b))
-#define le32_to_cpu(v) get_unaligned_le32(&(v))
-#define le64_to_cpu(v) get_unaligned_le64(&(v))
-#define le16_to_cpu(v) get_unaligned_le16(&(v))
 typedef u64 pgoff_t;
 struct folio { u64 index; u8 bytes[PAGE_SIZE]; };
 struct runs_tree { int unused; };

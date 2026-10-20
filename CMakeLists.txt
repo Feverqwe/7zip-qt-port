@@ -1064,6 +1064,20 @@ if(BUILD_TESTING)
     add_test(NAME ntfs_stream COMMAND ntfs_stream_tests -silent)
     add_dependencies(ntfs_stream_tests sevenzip_ntfs_runtime)
     set_tests_properties(ntfs_stream PROPERTIES TIMEOUT 60)
+    qt_add_executable(ntfs_security_tests tests/ntfs_security_tests.cpp)
+    target_include_directories(ntfs_security_tests PRIVATE src third_party/7zip/CPP)
+    target_link_libraries(ntfs_security_tests PRIVATE sevenzip_panel Qt6::Test)
+    if(WIN32)
+        target_link_libraries(ntfs_security_tests PRIVATE oleaut32)
+    endif()
+    target_compile_definitions(ntfs_security_tests PRIVATE
+        "SEVENZIP_NTFS_MODULE=\"$<TARGET_FILE:sevenzip_ntfs>\""
+        "SEVENZIP_NTFS_RUNTIME=\"${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime\""
+        "SEVENZIP_NTFS_PYTHON=\"${Python3_EXECUTABLE}\""
+        "SEVENZIP_NTFS_FIXTURE=\"${CMAKE_CURRENT_SOURCE_DIR}/tests/ntfs_fixture.py\"")
+    add_dependencies(ntfs_security_tests sevenzip_ntfs_runtime)
+    add_test(NAME ntfs_security COMMAND ntfs_security_tests -silent)
+    set_tests_properties(ntfs_security PROPERTIES TIMEOUT 60)
     add_test(NAME hfs COMMAND ${Python3_EXECUTABLE}
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/hfs_tests.py
         ${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime "$<TARGET_FILE:sevenzip_hfs>")
@@ -1947,6 +1961,7 @@ if(BUILD_TESTING)
     target_sources(cramfs_module_tests PRIVATE ${compression_order_sources})
     target_sources(squashfs_stream_tests PRIVATE ${compression_order_sources})
     target_sources(ntfs_stream_tests PRIVATE ${compression_order_sources})
+    target_sources(ntfs_security_tests PRIVATE ${compression_order_sources})
     target_sources(hfs_stream_tests PRIVATE ${compression_order_sources})
     target_sources(iso_stream_tests PRIVATE ${compression_order_sources})
     target_sources(udf_stream_tests PRIVATE ${compression_order_sources})

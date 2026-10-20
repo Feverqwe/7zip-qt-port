@@ -5,6 +5,7 @@ add_library(sevenzip_ntfs MODULE
     src/ntfswofstream.cpp src/fs/ntfs3/attrib.c src/fs/ntfs3/frecord.c
     src/fs/ntfs3/attrlist.c src/fs/ntfs3/fsntfs.c
     src/fs/ntfs3/xattr.c src/fs/ntfs3/super.c
+    src/ntfssecurity.c src/fs/ntfs3/index.c
     src/fs/ntfs3/lib/decompress_common.c src/fs/ntfs3/lib/lzx_decompress.c
     src/fs/ntfs3/lib/xpress_decompress.c
     third_party/7zip/CPP/7zip/Archive/ArchiveExports.cpp

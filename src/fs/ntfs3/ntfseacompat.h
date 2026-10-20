@@ -4,20 +4,11 @@
 #define SEVENZIP_NTFS_EA_COMPAT_H
 #include "ntfs.h"
 #include "../../ntfsea.h"
-#define le16_to_cpu(v) cpu_to_le16(v)
-#define le32_to_cpu(v) cpu_to_le32(v)
-#if defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
-#define le64_to_cpu(v) __builtin_bswap64(v)
-#else
-#define le64_to_cpu(v) (v)
-#endif
 #ifndef ENODATA
 #define ENODATA 61
 #endif
 #define static_assert(expr) _Static_assert(expr, #expr)
-#define Add2Ptr(p, n) ((void *)((u8 *)(p) + (n)))
 #define struct_size(p, member, count) (sizeof(*(p)) + (count) * sizeof((p)->member[0]))
-#define size_add(a, b) ((a) > SIZE_MAX - (b) ? SIZE_MAX : (a) + (b))
 #define kmalloc(size, flags) malloc(size)
 #define uid_t u32
 #define gid_t u32

@@ -31,11 +31,13 @@
 #ifdef SEVENZIP_LINUX_NTFS
 #include "../../../ntfsdecoder.h"
 #include "../../../ntfsea.h"
+#include "../../../ntfssecurity.h"
 #include "../../../ntfswofstream.h"
 #endif
 
 #include "Common/DummyOutStream.h"
 #include <cerrno>
+#include <memory>
 #include <new>
 
 #ifdef SHOW_DEBUG_INFO
@@ -1138,6 +1140,7 @@ struct CMftRec {
     CObjectVector<CAttr> AttrListAttrs;
 #ifdef SEVENZIP_LINUX_NTFS
     CObjectVector<CAttr> EaInfoAttrs, EaAttrs;
+    CObjectVector<CAttr> SecurityRoots, SecurityAlloc;
     sevenzip_ntfs_wsl_perm Wsl{};
 #endif
     CObjectVector<CFileNameAttr> FileNames;
@@ -1182,8 +1185,12 @@ struct CMftRec {
 #ifdef SEVENZIP_LINUX_NTFS
         EaInfoAttrs += src.EaInfoAttrs;
         EaAttrs += src.EaAttrs;
+        SecurityRoots += src.SecurityRoots;
+        SecurityAlloc += src.SecurityAlloc;
         src.EaInfoAttrs.ClearAndFree();
         src.EaAttrs.ClearAndFree();
+        src.SecurityRoots.ClearAndFree();
+        src.SecurityAlloc.ClearAndFree();
 #endif
         FileNames += src.FileNames;
         src.DataAttrs.ClearAndFree();
@@ -1473,6 +1480,14 @@ bool CMftRec::ParseRec(Byte *const p, const unsigned sectorSizeLog, const unsign
             ReparseAttrs.Add(attr);
             break;
 #ifdef SEVENZIP_LINUX_NTFS
+        case 0x90: // $SII INDEX_ROOT
+            if (attr.Name == L"$SII")
+                SecurityRoots.Add(attr);
+            break;
+        case 0xA0: // $SII INDEX_ALLOCATION
+            if (attr.Name == L"$SII")
+                SecurityAlloc.Add(attr);
+            break;
         case 0xD0: // EA_INFO
             if (attr.Name.IsEmpty())
                 EaInfoAttrs.Add(attr);
@@ -1579,6 +1594,9 @@ struct CDatabase {
     CByteBuffer SecurData;
     CRecordVector<UInt32> SecurOffsets;
     CRecordVector<UInt32> SecurIds; // sorted
+#ifdef SEVENZIP_LINUX_NTFS
+    CObjectVector<CByteBuffer> IndexedSecurData;
+#endif
 
     CVolumeInfo VolumeInfo;
     CObjectVector<UString2> VirtFolderNames;
@@ -1598,6 +1616,9 @@ struct CDatabase {
         SecurIds.Clear();
         SecurOffsets.Clear();
         SecurData.Free();
+#ifdef SEVENZIP_LINUX_NTFS
+        IndexedSecurData.ClearAndFree();
+#endif
     }
     void Clear();
     void ClearAndClose();
@@ -1642,6 +1663,7 @@ struct CDatabase {
 #ifdef SEVENZIP_LINUX_NTFS
     HRESULT LoadMftAttributes(CMftRec &rec);
     HRESULT LoadWslMetadata();
+    HRESULT LoadSecurityIndex();
 #endif
 };
 
@@ -2005,6 +2027,93 @@ struct CEaRead {
         return self.Result == S_OK ? 0 : -1;
     }
 };
+
+struct CSecurityRead {
+    CEaRead Sources[2];
+    static int Read(void *opaque, unsigned source, uint64_t offset, void *data,
+                    size_t size) noexcept {
+        auto &self = *static_cast<CSecurityRead *>(opaque);
+        if (source > 1)
+            return -1;
+        return CEaRead::Read(&self.Sources[source], offset, data, size);
+    }
+    HRESULT Result() const {
+        return Sources[0].Result != S_OK ? Sources[0].Result : Sources[1].Result;
+    }
+};
+
+HRESULT CDatabase::LoadSecurityIndex() {
+    if (Recs.Size() <= kRecIndex_Security)
+        return S_OK;
+    const CMftRec &secure = Recs[kRecIndex_Security];
+    if (secure.SecurityRoots.IsEmpty())
+        return S_OK;
+    const CAttr &root = secure.SecurityRoots[0];
+    if (root.NonResident)
+        return S_FALSE;
+    CSecurityRead source;
+    source.Sources[0].Callback = source.Sources[1].Callback = OpenCallback;
+    sevenzip_ntfs_security_input input{};
+    input.root = root.Data;
+    input.root_size = root.Data.Size();
+    input.cluster_bits = Header.ClusterSizeLog;
+    input.read = CSecurityRead::Read;
+    input.opaque = &source;
+    for (unsigned i = 0; i < secure.DataAttrs.Size();) {
+        const CAttr &attr = secure.DataAttrs[i];
+        if (attr.Name == L"$SDS") {
+            input.sds_size = attr.GetSize();
+            RINOK(secure.GetStream(InStream, (int)i, Header.ClusterSizeLog, Header.NumClusters,
+                                   &source.Sources[0].Stream))
+            break;
+        }
+        i = attr.NextAttrIndex;
+    }
+    if (!secure.SecurityAlloc.IsEmpty()) {
+        CMftRec allocation;
+        allocation.Flags = secure.Flags;
+        allocation.DataAttrs = secure.SecurityAlloc;
+        allocation.ParseDataNames();
+        input.allocation_size = allocation.DataAttrs[0].GetSize();
+        RINOK(allocation.GetStream(InStream, 0, Header.ClusterSizeLog, Header.NumClusters,
+                                   &source.Sources[1].Stream))
+    }
+    sevenzip_ntfs_security *rawReader = nullptr;
+    int result = sevenzip_ntfs_security_create(&input, &rawReader);
+    if (result)
+        return result == -ENOMEM ? E_OUTOFMEMORY : S_FALSE;
+    const auto deleter = [](sevenzip_ntfs_security *reader) {
+        sevenzip_ntfs_security_destroy(reader);
+    };
+    std::unique_ptr<sevenzip_ntfs_security, decltype(deleter)> reader(rawReader, deleter);
+    CRecordVector<UInt32> ids, required;
+    FOR_VECTOR(i, Items) {
+        const CMftRec &rec = Recs[Items[i].RecIndex];
+        const UInt32 id = rec.SiAttr.SecurityId;
+        if (id < 0x100)
+            continue;
+        ids.AddToUniqueSorted(id);
+        if (rec.InUse())
+            required.AddToUniqueSorted(id);
+    }
+    CByteBuffer buffer;
+    buffer.Alloc(0x10000);
+    FOR_VECTOR(i, ids) {
+        source.Sources[0].Result = source.Sources[1].Result = S_OK;
+        size_t bytes = 0;
+        result = sevenzip_ntfs_security_read(reader.get(), ids[i], buffer, buffer.Size(), &bytes);
+        RINOK(source.Result())
+        if (result == -ENOMEM)
+            return E_OUTOFMEMORY;
+        if (result && required.FindInSorted(ids[i]) >= 0)
+            return S_FALSE;
+        SecurIds.Add(ids[i]);
+        CByteBuffer &descriptor = IndexedSecurData.AddNew();
+        if (!result && bytes)
+            descriptor.CopyFrom(buffer, bytes);
+    }
+    return S_OK;
+}
 
 HRESULT CDatabase::LoadWslMetadata() {
     bool needed = false;
@@ -2440,6 +2549,9 @@ HRESULT CDatabase::Open() {
         }
     }
 
+#ifdef SEVENZIP_LINUX_NTFS
+    RINOK(LoadSecurityIndex())
+#else
     if (Recs.Size() > kRecIndex_Security) {
         const CMftRec &rec = Recs[kRecIndex_Security];
         for (unsigned di = 0; di < rec.DataAttrs.Size();) {
@@ -2463,6 +2575,7 @@ HRESULT CDatabase::Open() {
             di = attr.NextAttrIndex;
         }
     }
+#endif
 
     bool thereAreUnknownFolders_Normal = false;
     bool thereAreUnknownFolders_Deleted = false;
@@ -2616,6 +2729,14 @@ Z7_COM7F_IMF(CHandler::GetRawProp(const UInt32 index, const PROPID propID, const
         if (securId) {
             const int idIndex = SecurIds.FindInSorted(securId);
             if (idIndex >= 0) {
+#ifdef SEVENZIP_LINUX_NTFS
+                const CByteBuffer &descriptor = IndexedSecurData[(unsigned)idIndex];
+                if (descriptor.Size()) {
+                    *dataSize = (UInt32)descriptor.Size();
+                    *propType = NPropDataType::kRaw;
+                    *data = descriptor;
+                }
+#else
                 const UInt32 offset = SecurOffsets[idIndex];
                 const UInt32 size = SecurOffsets[(unsigned)idIndex + 1] - offset;
                 if (SecurData.Size() >= offset && SecurData.Size() - (size_t)offset >= size) {
@@ -2623,6 +2744,7 @@ Z7_COM7F_IMF(CHandler::GetRawProp(const UInt32 index, const PROPID propID, const
                     *propType = NPropDataType::kRaw;
                     *data = (const Byte *)SecurData + offset;
                 }
+#endif
             }
         }
     }

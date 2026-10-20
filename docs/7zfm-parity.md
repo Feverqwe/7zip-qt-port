@@ -335,6 +335,10 @@ runtime: поддерживаются смешанные raw/compressed част
 по-прежнему открывают внешний поток; полный initramfs доступен как Cpio.
 [Границы и проверенные платформы](upstream-port-audit/cpio-linux.md#composite-initramfs--2026-10-20).
 
+NTFS-модуль читает Windows security descriptors через `$SII`, включая allocated
+index nodes и sparse `$SDS`; отсутствие зеркальной копии не скрывает корректный
+дескриптор. Чтение metadata не применяет ACL к host filesystem.
+
 NTFS-модуль дополнительно показывает WSL owner IDs, POSIX mode и device metadata
 из EA. Специальные inode доступны как metadata, без выдачи служебных DATA bytes
 обычным файлом. Это расширение чтения относительно исходного 7zFM;

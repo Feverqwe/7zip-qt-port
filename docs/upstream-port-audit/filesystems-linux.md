@@ -216,6 +216,17 @@ cancellation/source errors и временное хранилище. Compiled Li
 wrappers reference подтвердил 143 сценария. Это закрывает composite initramfs
 read scenario; оставшиеся filesystem read features общей цели сохраняются.
 
+### NTFS: indexed security descriptors
+
+[Linux NTFS3 `$SII` read path](ntfs-linux.md#indexed-security-descriptors--2026-10-20)
+заменяет линейное сканирование `$SDS` в динамическом модуле. Resident root,
+allocated index nodes, fragmented/extension attributes и sparse `$SDS` используют
+оригинальные Linux C lookup/fixup/validation functions. Public raw-security
+property возвращает дескриптор по security ID; порядок физических записей и
+состояние зеркала не определяют наличие metadata. Это отдельный завершённый
+read scenario, без переноса host ACL enforcement или write-side index services.
+Оставшийся NTFS metadata/read audit сохраняется в scope.
+
 ### NTFS: EA и WSL metadata
 
 [Актуализация NTFS3 EA read path](ntfs-linux.md#ea-и-wsl-inode-metadata--2026-10-20):

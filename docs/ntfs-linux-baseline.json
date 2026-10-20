@@ -36,6 +36,7 @@
     "fs/ntfs3/attrlist.c",
     "fs/ntfs3/frecord.c",
     "fs/ntfs3/fsntfs.c",
+    "fs/ntfs3/index.c",
     "fs/ntfs3/lib/decompress_common.h",
     "fs/ntfs3/lib/lib.h",
     "fs/ntfs3/lznt.c",

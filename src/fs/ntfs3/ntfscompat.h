@@ -20,10 +20,20 @@ typedef uint64_t __le64;
 #if defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
 #define cpu_to_le16(v) __builtin_bswap16(v)
 #define cpu_to_le32(v) __builtin_bswap32(v)
+#define cpu_to_le64(v) __builtin_bswap64(v)
 #else
 #define cpu_to_le16(v) (v)
 #define cpu_to_le32(v) (v)
+#define cpu_to_le64(v) (v)
 #endif
+#define le16_to_cpu(v) cpu_to_le16(v)
+#define le32_to_cpu(v) cpu_to_le32(v)
+#define le64_to_cpu(v) cpu_to_le64(v)
+#define Add2Ptr(p, n) ((void *)((u8 *)(p) + (n)))
+static inline size_t ntfs_size_add(size_t a, size_t b) {
+    return a > SIZE_MAX - b ? SIZE_MAX : a + b;
+}
+#define size_add(a, b) ntfs_size_add(a, b)
 #define ALIGN(v, a) (((v) + (a) - 1) & ~((a) - 1))
 #ifndef __always_inline
 #define __always_inline inline
