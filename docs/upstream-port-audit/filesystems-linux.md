@@ -71,6 +71,15 @@ GPT/MBR/APM проверяются как дополнительные форм�
 
 ## Свидетельства
 
+### GPT: tables, geometry и partition streams
+
+[Сверка и исправления GPT](gpt-linux.md): validated header/table spans и CRC,
+usable ranges, out-of-disk entries, четыре размера сектора, primary precedence
+и backup recovery с явной archive adaptation относительно Linux `force_gpt`.
+Оба engine и вложенный image consumer используют обновлённый исходный 7-Zip
+handler; общие container streams переиспользуют готовый extent reader для
+независимых позиций. MBR/APM и остальные дополнительные форматы этим не закрыты.
+
 ### ISO9660: logical blocks, XAR и extent streams
 
 [Source comparison и исправления](isofs-linux.md): оба engines читают

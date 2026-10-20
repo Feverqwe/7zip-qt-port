@@ -756,6 +756,22 @@ if(BUILD_TESTING)
     set_tests_properties(folder_history PROPERTIES ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     find_package(Python3 3.9 REQUIRED COMPONENTS Interpreter)
+    add_test(NAME gpt COMMAND ${Python3_EXECUTABLE}
+        ${CMAKE_CURRENT_SOURCE_DIR}/tests/gpt_tests.py
+        ${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime)
+    set_tests_properties(gpt PROPERTIES TIMEOUT 45)
+    qt_add_executable(gpt_stream_tests tests/gpt_stream_tests.cpp)
+    target_include_directories(gpt_stream_tests PRIVATE src third_party/7zip/CPP)
+    target_link_libraries(gpt_stream_tests PRIVATE sevenzip_panel Qt6::Test)
+    if(WIN32)
+        target_link_libraries(gpt_stream_tests PRIVATE oleaut32)
+    endif()
+    target_compile_definitions(gpt_stream_tests PRIVATE
+        "SEVENZIP_GPT_RUNTIME=\"${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime\""
+        "SEVENZIP_GPT_PYTHON=\"${Python3_EXECUTABLE}\""
+        "SEVENZIP_GPT_FIXTURE=\"${CMAKE_CURRENT_SOURCE_DIR}/tests/gpt_fixture.py\"")
+    add_test(NAME gpt_stream COMMAND gpt_stream_tests -silent)
+    set_tests_properties(gpt_stream PROPERTIES TIMEOUT 30)
     add_test(NAME squashfs COMMAND ${Python3_EXECUTABLE}
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/squashfs_tests.py
         ${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime "$<TARGET_FILE:sevenzip_squashfs>")
@@ -1674,6 +1690,7 @@ if(BUILD_TESTING)
     target_sources(hfs_stream_tests PRIVATE ${compression_order_sources})
     target_sources(iso_stream_tests PRIVATE ${compression_order_sources})
     target_sources(udf_stream_tests PRIVATE ${compression_order_sources})
+    target_sources(gpt_stream_tests PRIVATE ${compression_order_sources})
     target_sources(fat_module_tests PRIVATE ${compression_order_sources})
     target_sources(erofs_module_tests PRIVATE ${compression_order_sources})
     target_sources(brotli_tests PRIVATE ${compression_order_sources})

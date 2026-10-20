@@ -36,6 +36,8 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
 
 ## Новые изменения
 
+- [GPT по Linux](upstream-port-audit/gpt-linux.md)
+  — header/table validation, logical sectors, backup policy и independent partition streams.
 - [HFS+/HFSX по Linux](upstream-port-audit/hfs-linux.md)
   — fork mapping/metadata bounds, Linux C Unicode/hardlinks, wrappers и streams.
 - [ISO9660 по Linux](upstream-port-audit/isofs-linux.md)
