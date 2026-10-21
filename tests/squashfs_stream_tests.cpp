@@ -497,12 +497,70 @@ class SquashfsStreamTests final : public QObject {
         QCOMPARE(archive_->Open(healthy, nullptr, nullptr), S_OK);
         QVERIFY(stream("broken/payload"));
     }
-    void directoryBlockFailuresRemainFatalWhenRequired() {
-        loadFixture("zlib", true, "directory-block-io");
+    void inodeBlocksAreIsolated_data() {
+        QTest::addColumn<QString>("fault");
+        for (const QString &fault :
+             {"inode-block-clean", "inode-block-header", "inode-block-zlib", "inode-block-io"})
+            QTest::newRow(qPrintable(fault)) << fault;
+    }
+    void inodeBlocksAreIsolated() {
+        QFETCH(QString, fault);
+        loadFixture("zlib", true, fault);
+        const bool clean = fault == "inode-block-clean";
+        const auto inode = qFromLittleEndian<quint64>(bytes_.constData() + 64);
+        const auto broken =
+            inode + 2 + (qFromLittleEndian<quint16>(bytes_.constData() + inode) & 0x7fff);
+        CMyComPtr2<IInStream, Input> source;
+        source.SetFromCls(new Input(bytes_));
+        if (fault == "inode-block-io")
+            source->failAt = broken + 2;
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
+        auto good = stream("данные 空");
+        QVERIFY(good);
+        check(good, "данные 空", 0, 333);
+        NWindows::NCOM::CPropVariant size;
+        const UInt32 alpha = index("alpha");
+        QVERIFY(alpha != UInt32(-1));
+        QCOMPARE(archive_->GetProperty(alpha, kpidSize, &size), S_OK);
+        QCOMPARE(size.vt, VARTYPE(clean ? VT_UI8 : VT_EMPTY));
+        if (clean) {
+            auto data = stream("alpha");
+            QVERIFY(data);
+            check(data, "alpha", 0, 237);
+        } else {
+            QVERIFY(!stream("alpha"));
+            NWindows::NCOM::CPropVariant error;
+            QCOMPARE(archive_->GetProperty(alpha, kpidError, &error), S_OK);
+            QCOMPARE(error.vt, VARTYPE(VT_BSTR));
+        }
+        QCOMPARE(archive_->Close(), S_OK);
+        loadFixture("zlib", true, "inode-block-clean");
+        CMyComPtr<IInStream> healthy = new Input(bytes_);
+        QCOMPARE(archive_->Open(healthy, nullptr, nullptr), S_OK);
+        QVERIFY(stream("alpha"));
+    }
+    void unreadableRootMetadataCannotBeOpened() {
+        loadFixture("zlib", true, "inode-block-root");
+        CMyComPtr<IInStream> source = new Input(bytes_);
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), S_FALSE);
+        UInt32 count = 99;
+        QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, 0u);
+    }
+    void metadataBlockFailuresRemainFatalWhenRequired_data() {
+        QTest::addColumn<QString>("fault");
+        QTest::newRow("directory") << QString("directory-block-io");
+        QTest::newRow("inode") << QString("inode-block-io");
+    }
+    void metadataBlockFailuresRemainFatalWhenRequired() {
+        QFETCH(QString, fault);
+        loadFixture("zlib", true, fault);
         const auto inode = qFromLittleEndian<quint64>(bytes_.constData() + 64);
         const auto directory = qFromLittleEndian<quint64>(bytes_.constData() + 72);
         const auto broken =
-            directory + qFromLittleEndian<quint32>(bytes_.constData() + inode + 2 + 72 + 16);
+            fault == "inode-block-io"
+                ? inode + 2 + (qFromLittleEndian<quint16>(bytes_.constData() + inode) & 0x7fff)
+                : directory + qFromLittleEndian<quint32>(bytes_.constData() + inode + 2 + 72 + 16);
         CMyComPtr2<IInStream, Input> source;
         source.SetFromCls(new Input(bytes_));
         source->failAt = broken + 2;

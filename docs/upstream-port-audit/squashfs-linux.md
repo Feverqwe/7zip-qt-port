@@ -5,6 +5,51 @@ Scope входит в [общую проверку форматов](filesystems
 современный LZO и проверки compressor options через отдельный format-модуль.
 Полная актуализация SquashFS read features по Linux ещё продолжается.
 
+## Ошибки отдельных inode metadata blocks, 2026-10-21
+
+Повторно сопоставлены полные Linux `inode.c` type branches,
+`cache.c:squashfs_read_metadata` и связанные block/cache services с SDK
+`ReadData`, `Parse4`, root/directory refs и потребителями сырых inode bytes.
+Linux читает metadata по block/offset и переходит только к следующему
+физическому блоку; предварительная успешная загрузка всей inode table ему
+не требуется. VFS/cache lifetime не переносится в archive ABI, существующие
+SDK field parser и декодеры сохраняются.
+
+GPL v4 reader теперь сохраняет исправные inode metadata runs. После локального
+сбоя продолжение использует известную packed boundary либо canonical root
+reference; поздние directory references могут загрузить свой bounded run.
+Невалидный header не используется для угадывания следующего блока. Повторно
+загруженный физический диапазон сохраняет старые raw offsets; canonical inode
+reference возвращает уже разобранный node, не создавая ложный конфликт identity.
+Один общий metadata-run loader обслуживает inode и directory caches.
+
+`Parse4` ограничен непрерывным успешно декодированным диапазоном. Частичный
+output декодера после checksum error не публикуется, а данные после gap не
+становятся продолжением предыдущего inode/blocklist. Метаданные и streams
+недоступного inode не выдаются за корректные; исправные файлы читаются с
+существующим per-opening предупреждением и badge. Неполная таблица сохраняет
+непроверенные identities скрытыми. Abort/OOM/недоступный decoder и ошибки
+callbacks не превращаются в partial success. Нечитаемый root остаётся
+техническим препятствием открытию. Legacy/core-only чтение не расширялось.
+
+Небольшие ABI/CLI fixtures проверяют bad header, Adler checksum после выдачи
+output, source E_FAIL, независимые root/sibling refs, отсутствие склейки через
+gap, Close/reopen и чистый inode, пересекающий границу двух metadata blocks.
+Fatal source/callback controls теперь охватывают обе metadata tables.
+EN/RU UI копирует исправный файл из обоих повреждённых образов, проверяя
+согласие, badge, недоступность мутаций и неизменность источника.
+
+Четыре native readonly controls на Linux `6.8.0-147-generic` подтвердили точные
+байты исправного файла, EIO при чтении файла с повреждённым продолжением inode,
+отказ mount при повреждённом root и чтение cross-block inode чистого образа.
+Образы не изменились; mounts/data удалены. Receipt:
+`20261021T155908Z-c01a660a`. Runtime kernel старше закреплённого source reference.
+Семь focused suites на macOS/Linux/Windows прошли за 17,68/10,04/46,90 с;
+remote receipt `20261021T155938Z-4ad8cfe1`. Incremental macOS app build также
+прошла. Full/slow suites и физические устройства не запускались.
+Initial index bootstrap ещё
+требует проверки полезного read subset; полнота SquashFS не заявляется.
+
 ## Локальные ошибки inode records, 2026-10-21
 
 Проверены полные Linux `inode.c` branches и их VFS/cache dependencies,

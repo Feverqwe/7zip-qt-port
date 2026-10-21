@@ -19,6 +19,8 @@ def metadata(data, compressed=False):
 
 
 def volume(fault="", compressed=False, no_fragments=False, codec="zlib", xattrs=False, export=False):
+    if fault.startswith("inode-block-"):
+        return inode_metadata_volume(fault)
     if fault.startswith("directory-block-"):
         return directory_volume(fault)
     image = bytearray(96)
@@ -245,6 +247,51 @@ def volume(fault="", compressed=False, no_fragments=False, codec="zlib", xattrs=
         struct.pack_into("<Q", image, ids_table + delta, ids_metadata + delta)
     image += bytes((-len(image)) % 4096)
     return bytes(image), dict(zip(names, (first, second, b"alpha", first))) if not no_fragments else {}
+
+
+def inode_metadata_volume(fault):
+    image = bytearray(96)
+    first, second = b"A" * 237, b"B" * 333
+    starts = (len(image), len(image) + len(first))
+    image += first + second
+
+    def base(kind, number):
+        return struct.pack("<HHHHII", kind, 0o755 if kind == 1 else 0o644, 0, 0, 0, number)
+
+    records = [base(2, i + 1) + struct.pack("<IIIII", starts[i], 0xffffffff, 0, len(body),
+                                           (1 << 24) | len(body))
+               for i, body in enumerate((first, second))]
+    # A valid file record crosses a block boundary. A failure in its blocklist
+    # must not borrow bytes from the healthy inode after the gap.
+    prefix = metadata(records[0][:32])
+    broken = bytearray(metadata(records[0][32:], fault != "inode-block-clean" and fault != "inode-block-io"))
+    good = metadata(records[1], True)
+    if fault == "inode-block-header":
+        struct.pack_into("<H", broken, 0, 0x8000)
+    elif fault not in ("inode-block-clean", "inode-block-io"):
+        broken[-1] ^= 0xff
+    good_position = len(prefix) + len(broken)
+    directory = bytearray()
+    for name, block, number in (("alpha", 0, 1), ("данные 空", good_position, 2)):
+        encoded = name.encode()
+        directory += struct.pack("<IIIHHHH", 0, block, number, 0, 0, 2, len(encoded) - 1) + encoded
+    root = metadata(base(1, 3) + struct.pack("<IIHHI", 0, 2, len(directory) + 3, 0, 3), True)
+    inode_start = len(image)
+    root_position = good_position + len(good)
+    if fault == "inode-block-root":
+        struct.pack_into("<H", root := bytearray(root), 0, 0x8000)
+    image += prefix + broken + good + root
+    directory_start = len(image)
+    image += metadata(directory)
+    ids_metadata = len(image)
+    image += metadata(struct.pack("<I", 1000))
+    ids_table = len(image)
+    image += struct.pack("<Q", ids_metadata)
+    struct.pack_into("<5I6H8Q", image, 0, 0x73717368, 3, 0, BLOCK, 0, 1, 13, 0, 1, 4, 0,
+                     root_position << 16, len(image), ids_table, INVALID, inode_start,
+                     directory_start, INVALID, INVALID)
+    image += bytes((-len(image)) % 4096)
+    return bytes(image), {"alpha": first, "данные 空": second}
 
 
 def directory_volume(fault):

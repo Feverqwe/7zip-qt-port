@@ -275,6 +275,21 @@ class SquashfsTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
         self.assertEqual(result.stdout, files["good 空/payload"])
 
+    def test_inode_metadata_failures_preserve_independent_files(self):
+        for fault in ("inode-block-clean", "inode-block-header", "inode-block-zlib"):
+            data, files = volume(fault)
+            with self.subTest(fault=fault):
+                result = self.run_image("7z", data, "x", "данные 空")
+                self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                self.assertEqual(result.stdout, files["данные 空"])
+                first = self.run_image("7z", data, "x", "alpha")
+                if fault == "inode-block-clean":
+                    self.assertEqual(first.returncode, 0)
+                    self.assertEqual(first.stdout, files["alpha"])
+                else:
+                    self.assertNotEqual(first.returncode, 0)
+                    self.assertEqual(first.stdout, b"")
+
     def test_ambiguous_inode_numbers_do_not_merge_unrelated_files(self):
         data, files = volume("directory-ambiguous", xattrs=True)
         with tempfile.TemporaryDirectory(dir=self.runtime) as temporary:

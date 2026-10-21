@@ -132,7 +132,9 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
         QTest::addColumn<QString>("kind");
         for (const QString &language : {"en", "ru"})
             for (bool accept : {false, true})
-                for (const QString &kind : {"squashfs-inode-record", "squashfs-inode-unused"}) {
+                for (const QString &kind :
+                     {"squashfs-inode-record", "squashfs-inode-unused",
+                      "squashfs-inode-block-header", "squashfs-inode-block-zlib"}) {
                     if (!accept && kind != "squashfs-inode-record")
                         continue;
                     QTest::newRow(
@@ -359,7 +361,8 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
                                             : QStringLiteral("HfsFixture/alpha");
             if (fatDirectory)
                 filename = fatFolder + (fatFolder == "BROKEN" ? "/PREFIX.TXT" : "/GOOD.TXT");
-            if (kind == "squashfs-directory-unavailable" || kind == "squashfs-inode-record")
+            if (kind == "squashfs-directory-unavailable" || kind == "squashfs-inode-record" ||
+                kind.startsWith("squashfs-inode-block-"))
                 filename = "данные 空";
             if (ext) {
                 payload = QByteArray(data["file_size"].toInt(), '\0');
