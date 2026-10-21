@@ -63,6 +63,8 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
                             runtime_.filePath("Formats/ext" + suffix)));
         QVERIFY(QFile::copy(QStringLiteral(SEVENZIP_FAT_MODULE),
                             runtime_.filePath("Formats/fat" + suffix)));
+        QVERIFY(QFile::copy(QStringLiteral(SEVENZIP_SQUASHFS_MODULE),
+                            runtime_.filePath("Formats/squashfs" + suffix)));
     }
     void cleanupTestCase() { qputenv("SEVENZIP_SETTINGS_PATH", previousSettings_); }
     void deletedRecoveryConsent_data() {
@@ -238,6 +240,19 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
         QFETCH(bool, accept);
         confirmAndCopy(language, accept, kind);
     }
+    void confirmsPartialSquashfsAttributes_data() {
+        QTest::addColumn<QString>("language");
+        QTest::addColumn<bool>("accept");
+        for (const QString &language : {"en", "ru"})
+            for (bool accept : {false, true})
+                QTest::newRow(qPrintable(language + (accept ? "-accept" : "-cancel")))
+                    << language << accept;
+    }
+    void confirmsPartialSquashfsAttributes() {
+        QFETCH(QString, language);
+        QFETCH(bool, accept);
+        confirmAndCopy(language, accept, "squashfs");
+    }
 
   private:
     void confirmAndCopy(const QString &language, bool accept, const QString &kind) {
@@ -248,6 +263,7 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
                           kind.startsWith("source-");
         const bool ext = kind.startsWith("ext-");
         const bool fat = kind.startsWith("fat-");
+        const bool squashfs = kind == "squashfs";
         const bool fatDirectory = kind.startsWith("fat-directory-");
         const bool fatFile = kind.startsWith("fat-file-");
         const QString fatFolder = kind == "fat-directory-free32" ? "BROKEN" : "GOOD";
@@ -269,8 +285,10 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
                                     "--bundle"}
                 : ext ? QStringList{QStringLiteral(SEVENZIP_EXT_FIXTURE), "readonly-" + kind.mid(4),
                                     "--bundle"}
-                : ntfs ? QStringList{QStringLiteral(SEVENZIP_NTFS_FIXTURE), "--kind=" + kind}
-                       : QStringList{QStringLiteral(SEVENZIP_HFS_FIXTURE), kind});
+                : squashfs ? QStringList{QStringLiteral(SEVENZIP_SQUASHFS_FIXTURE), "--xattrs",
+                                         "--fault=xattr-ool-outside"}
+                : ntfs     ? QStringList{QStringLiteral(SEVENZIP_NTFS_FIXTURE), "--kind=" + kind}
+                           : QStringList{QStringLiteral(SEVENZIP_HFS_FIXTURE), kind});
             QVERIFY(generator.waitForFinished(10000));
             QCOMPARE(generator.exitCode(), 0);
             const QJsonObject data =
@@ -280,9 +298,9 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
             packed += QByteArray::fromBase64(data["image"].toString().toLatin1());
             image = qUncompress(packed);
             QVERIFY(!image.isEmpty());
-            filename = (ext || fat) ? data["name"].toString()
-                       : ntfs       ? QStringLiteral("alpha")
-                                    : QStringLiteral("HfsFixture/alpha");
+            filename = (ext || fat)         ? data["name"].toString()
+                       : (ntfs || squashfs) ? QStringLiteral("alpha")
+                                            : QStringLiteral("HfsFixture/alpha");
             if (fatDirectory)
                 filename = fatFolder + (fatFolder == "BROKEN" ? "/PREFIX.TXT" : "/GOOD.TXT");
             if (ext) {
@@ -408,7 +426,7 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
                                                   Q_ARG(int, 0)));
                 filename = fatFolder == "BROKEN" ? "PREFIX.TXT" : "GOOD.TXT";
             }
-            if (kind != "exfat" && !ntfs && !ext && !fat) {
+            if (kind != "exfat" && !ntfs && !ext && !fat && !squashfs) {
                 QTRY_VERIFY(Row(*table, "HfsFixture") >= 0);
                 const int row = Row(*table, "HfsFixture");
                 table->selectRow(row);
@@ -423,7 +441,7 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
             const QString output = directory.filePath("copied");
             ExtractionOptions copyOptions;
             copyOptions.pathMode = ExtractionOptions::PathMode::CurrentPaths;
-            if (kind != "exfat" && !ntfs && !ext && !fat)
+            if (kind != "exfat" && !ntfs && !ext && !fat && !squashfs)
                 copyOptions.currentFolder = "HfsFixture";
             else if (fatDirectory)
                 copyOptions.currentFolder = fatFolder;

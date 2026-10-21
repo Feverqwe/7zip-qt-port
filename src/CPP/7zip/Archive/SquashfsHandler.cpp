@@ -30,6 +30,7 @@
 #include "../../../squashfsdecoder.h"
 #include "../../../squashfsmetadata.h"
 #include "archiveattributes.h"
+#include <errno.h>
 #include <map>
 #include <memory>
 #include <set>
@@ -852,6 +853,7 @@ Z7_CLASS_IMP_CHandler_IInArchive_1(
   using CAttributes = std::shared_ptr<std::vector<ArchiveAttribute>>;
   std::vector<CAttributes> _attributes;
   std::map<UInt32, CAttributes> _attributeSets;
+  std::set<UInt32> _incompleteAttributes;
   AString _rootAttributeName;
   struct CAttributeContext { CHandler *Owner; unsigned Node; HRESULT Result; };
   static int EmitAttribute(void *, const char *, const void *, size_t) noexcept;
@@ -968,7 +970,10 @@ int CHandler::ReadLinuxMetadata(void *opaque, uint64_t block, void *data, unsign
             }
         }
         handler->_linuxReadResult = result;
-        return result == S_OK ? 0 : -5;
+        return result == S_OK            ? 0
+               : result == E_ABORT       ? -ECANCELED
+               : result == E_OUTOFMEMORY ? -ENOMEM
+                                         : -EIO;
     } catch (...) {
         handler->_linuxReadResult = E_OUTOFMEMORY;
         return -12;
@@ -1080,7 +1085,7 @@ HRESULT CHandler::AddAttributeItems(int root) {
 static const Byte kProps[] = {
     kpidPath,
 #ifdef SEVENZIP_LINUX_SQUASHFS
-    kpidIsAltStream,
+    kpidIsAltStream, kpidError,
 #endif
     kpidIsDir,       kpidSize,  kpidPackSize, kpidMTime,  kpidPosixAttrib, kpidUserId,
     kpidGroupId,     kpidINode, kpidLinks,    kpidSymLink
@@ -1088,6 +1093,18 @@ static const Byte kProps[] = {
     // kpidOffset
 };
 
+#ifdef SEVENZIP_LINUX_SQUASHFS
+static const PROPID kpidReadLimitations = kpidUserDefined;
+static const char kAttributeLimitations[] = "Some SquashFS extended attributes are unavailable. "
+                                            "Readable file data and attributes remain accessible.";
+static const CStatProp kArcProps[] = {
+    {NULL, kpidHeadersSize, VT_UI8}, {NULL, kpidFileSystem, VT_BSTR},
+    {NULL, kpidMethod, VT_BSTR},     {NULL, kpidClusterSize, VT_UI4},
+    {NULL, kpidBigEndian, VT_BOOL},  {NULL, kpidCTime, VT_FILETIME},
+    {NULL, kpidCharacts, VT_BSTR},   {NULL, kpidCodePage, VT_BSTR},
+    {NULL, kpidReadOnly, VT_BOOL},   {"Read-only limitations", kpidReadLimitations, VT_BSTR}};
+IMP_IInArchive_Props IMP_IInArchive_ArcProps_WITH_NAME
+#else
 static const Byte kArcProps[] = {
     kpidHeadersSize, kpidFileSystem, kpidMethod,  kpidClusterSize, kpidBigEndian,
     kpidCTime,       kpidCharacts,   kpidCodePage
@@ -1095,9 +1112,9 @@ static const Byte kArcProps[] = {
 };
 
 IMP_IInArchive_Props IMP_IInArchive_ArcProps
+#endif
 
-    static HRESULT
-    LzoDecode(Byte *dest, SizeT *destLen, const Byte *src, SizeT *srcLen) {
+    static HRESULT LzoDecode(Byte *dest, SizeT *destLen, const Byte *src, SizeT *srcLen) {
     SizeT destRem = *destLen;
     SizeT srcRem = *srcLen;
     *destLen = 0;
@@ -1899,7 +1916,11 @@ HRESULT CHandler::Open2(IInStream *inStream) {
                     const int result = sevenzip_squashfs_visit_xattrs(_linuxMetadata, n.Xattr,
                                                                       EmitAttribute, &context);
                     RINOK(context.Result)
-                    RINOK(LinuxResult(result))
+                    const HRESULT attributeResult = LinuxResult(result);
+                    if (attributeResult == E_ABORT || attributeResult == E_OUTOFMEMORY)
+                        return attributeResult;
+                    if (attributeResult != S_OK)
+                        _incompleteAttributes.insert(n.Xattr);
                     _attributeSets.emplace(n.Xattr, _attributes[i]);
                 } else
                     _attributes[i] = found->second;
@@ -2043,6 +2064,7 @@ Z7_COM7F_IMF(CHandler::Close()) {
     _linuxMetadata = NULL;
     _attributes.clear();
     _attributeSets.clear();
+    _incompleteAttributes.clear();
     _rootAttributeName.Empty();
 #endif
     _openCodePage = CP_UTF8;
@@ -2206,6 +2228,13 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID propID, PROPVARIANT *value)) {
     NWindows::NCOM::CPropVariant prop;
     switch (propID) {
 #ifdef SEVENZIP_LINUX_SQUASHFS
+    case kpidReadOnly:
+        prop = true;
+        break;
+    case kpidReadLimitations:
+        if (!_incompleteAttributes.empty())
+            prop = kAttributeLimitations;
+        break;
     case kpidIsTree:
         prop = true;
         break;
@@ -2331,6 +2360,10 @@ Z7_COM7F_IMF(CHandler::GetProperty(UInt32 index, PROPID propID, PROPVARIANT *val
 
     switch (propID) {
 #ifdef SEVENZIP_LINUX_SQUASHFS
+    case kpidError:
+        if (item.Attribute < 0 && _incompleteAttributes.count(node.Xattr))
+            prop = "Some SquashFS extended attributes are unavailable.";
+        break;
     case kpidIsAltStream:
         prop = item.Attribute >= 0;
         break;

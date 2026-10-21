@@ -131,8 +131,12 @@ UString QtArchiveDiagnosticText(const UString &source) {
         QT_TRANSLATE_NOOP(
             "SevenZipDiagnostics",
             "The FAT file chain is incomplete. Only the readable prefix is available."),
+        QT_TRANSLATE_NOOP("SevenZipDiagnostics", "The FAT directory could not be read completely."),
         QT_TRANSLATE_NOOP("SevenZipDiagnostics",
-                          "The FAT directory could not be read completely.")};
+                          "Some SquashFS extended attributes are unavailable. Readable file data "
+                          "and attributes remain accessible."),
+        QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                          "Some SquashFS extended attributes are unavailable.")};
     for (const char *warning : warnings)
         if (text == QString::fromLatin1(warning))
             return QtDiagnosticText(warning);

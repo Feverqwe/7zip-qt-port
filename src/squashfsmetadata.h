@@ -23,6 +23,8 @@ int sevenzip_squashfs_inode(struct sevenzip_squashfs_metadata *, unsigned, uint6
 int sevenzip_squashfs_validate_xattrs(struct sevenzip_squashfs_metadata *, unsigned);
 typedef int (*sevenzip_squashfs_xattr_emit)(void *, const char *, const void *, size_t);
 // Names/values are borrowed during emit; nonzero stops and is returned unchanged.
+// Unreadable values are omitted, with a negative final result for the incomplete
+// set. Allocation failure and cancellation stop immediately.
 int sevenzip_squashfs_visit_xattrs(struct sevenzip_squashfs_metadata *, unsigned,
                                    sevenzip_squashfs_xattr_emit, void *);
 int sevenzip_squashfs_xattrs(struct sevenzip_squashfs_metadata *, unsigned, char *, size_t);

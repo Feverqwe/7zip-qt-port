@@ -239,7 +239,8 @@ def legacy_volume(endian="<", compressed=False):
 
 if __name__ == "__main__":
     codec = next((arg.split("=", 1)[1] for arg in sys.argv if arg.startswith("--codec=")), "zlib")
-    data, files = volume(compressed="--compressed" in sys.argv, codec=codec, xattrs="--xattrs" in sys.argv,
+    fault = next((arg.split("=", 1)[1] for arg in sys.argv if arg.startswith("--fault=")), "")
+    data, files = volume(fault=fault, compressed="--compressed" in sys.argv, codec=codec, xattrs="--xattrs" in sys.argv,
                          export="--export" in sys.argv)
     print(json.dumps({"size": len(data), "image": base64.b64encode(zlib.compress(data)).decode(),
                       "files": {name: base64.b64encode(value).decode() for name, value in files.items()}}))

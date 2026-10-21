@@ -154,10 +154,19 @@ class SquashfsTests(unittest.TestCase):
             result = self.run_image("7z", data, "x", name)
             self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
             self.assertEqual(result.stdout, files[name])
-        for fault in ("xattr-ids-zero", "xattr-count-negative", "xattr-index-outside", "xattr-id-invalid", "xattr-ool-outside"):
+        for fault in ("xattr-ids-zero", "xattr-index-outside"):
             with self.subTest(fault=fault):
                 result = self.run_image("7z", volume(fault, xattrs=True)[0], "l")
                 self.assertNotEqual(result.returncode, 0, result.stdout.decode(errors="replace"))
+        for fault in ("xattr-count-negative", "xattr-id-invalid", "xattr-ool-outside"):
+            with self.subTest(fault=fault):
+                data, files = volume(fault, xattrs=True)
+                result = self.run_image("7z", data, "x", "alpha")
+                self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                self.assertEqual(result.stdout, files["alpha"])
+                listing = self.run_image("7z", data, "l")
+                self.assertEqual(listing.returncode, 0, listing.stderr.decode(errors="replace"))
+                self.assertIn(b"Read-only limitations = Some SquashFS extended attributes are unavailable", listing.stdout)
 
     def test_published_native_xattr_values_and_stream_filtering(self):
         fixtures = Path(__file__).parent / "fixtures/squashfs"

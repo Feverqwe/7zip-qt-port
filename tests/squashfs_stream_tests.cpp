@@ -438,7 +438,7 @@ class SquashfsStreamTests final : public QObject {
         CMyComPtr2<IInStream, Input> source;
         source.SetFromCls(new Input(bytes_));
         source->failAt = xattrs;
-        for (HRESULT result : {E_FAIL, E_ABORT}) {
+        for (HRESULT result : {E_ABORT, E_OUTOFMEMORY}) {
             QCOMPARE(source->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
             source->atFailure = result;
             QCOMPARE(archive_->Open(source, nullptr, nullptr), result);
@@ -479,6 +479,94 @@ class SquashfsStreamTests final : public QObject {
         output->output->fail = false;
         QCOMPARE(archive_->Extract(&attribute, 1, 0, output), S_OK);
         QCOMPARE(output->output->bytes, expected);
+    }
+    void unavailableAttributesPreserveFileData_data() {
+        QTest::addColumn<bool>("outOfLine");
+        QTest::addColumn<bool>("corruptReference");
+        QTest::newRow("attribute-list-unreadable") << false << false;
+        QTest::newRow("large-value-unreadable") << true << false;
+        QTest::newRow("large-reference-invalid") << true << true;
+    }
+    void unavailableAttributesPreserveFileData() {
+        QFETCH(bool, outOfLine);
+        QFETCH(bool, corruptReference);
+        loadFixture("zlib", true);
+        const auto table = qFromLittleEndian<quint64>(bytes_.constData() + 56);
+        const auto xattrs = qFromLittleEndian<quint64>(bytes_.constData() + table);
+        if (corruptReference) {
+            const int name = bytes_.indexOf("large", int(xattrs));
+            QVERIFY(name >= 0);
+            qToLittleEndian(UINT64_MAX, bytes_.data() + name + 9);
+        }
+        CMyComPtr2<IInStream, Input> source;
+        source.SetFromCls(new Input(bytes_));
+        source->failAt = corruptReference ? UINT64_MAX : xattrs + (outOfLine ? 8194 : 0);
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
+        NWindows::NCOM::CPropVariant readOnly;
+        QCOMPARE(archive_->GetArchiveProperty(kpidReadOnly, &readOnly), S_OK);
+        QCOMPARE(readOnly.vt, VARTYPE(VT_BOOL));
+        QCOMPARE(readOnly.boolVal, VARIANT_TRUE);
+        bool limitations = false;
+        PROPID limitationsId = 0;
+        UInt32 properties = 0;
+        QCOMPARE(archive_->GetNumberOfArchiveProperties(&properties), S_OK);
+        for (UInt32 i = 0; i < properties; ++i) {
+            CMyComBSTR name;
+            PROPID id;
+            VARTYPE type;
+            QCOMPARE(archive_->GetArchivePropertyInfo(i, &name, &id, &type), S_OK);
+            if (name && QString::fromWCharArray(name) == "Read-only limitations") {
+                NWindows::NCOM::CPropVariant value;
+                QCOMPARE(archive_->GetArchiveProperty(id, &value), S_OK);
+                QVERIFY(value.vt == VT_BSTR && value.bstrVal[0]);
+                limitations = true;
+                limitationsId = id;
+            }
+        }
+        QVERIFY(limitations);
+        for (const QString &name : {QString("alpha"), QString("hardlink"), QString("данные 空")}) {
+            auto data = stream(name);
+            QVERIFY(data);
+            const int size =
+                QByteArray::fromBase64(record_["files"].toObject()[name].toString().toLatin1())
+                    .size();
+            check(data, name, 0, size);
+            NWindows::NCOM::CPropVariant itemError;
+            QCOMPARE(archive_->GetProperty(index(name), kpidError, &itemError), S_OK);
+            QCOMPARE(itemError.vt, VARTYPE(name == "данные 空" ? VT_EMPTY : VT_BSTR));
+        }
+        QCOMPARE(index("alpha:$XATTR.trusted.large"), UInt32(-1));
+        QCOMPARE(index("alpha:$XATTR.user.inline") != UInt32(-1), outOfLine);
+        QCOMPARE(index("alpha:$XATTR.user.duplicate") != UInt32(-1), corruptReference);
+        if (corruptReference) {
+            auto data = stream("alpha:$XATTR.user.duplicate");
+            QVERIFY(data);
+            QByteArray expected;
+            for (int i = 0; i < 36; ++i)
+                for (int byte = 0; byte < 251; ++byte)
+                    expected += char(byte);
+            QByteArray value(expected.size(), '!');
+            UInt32 read = 0;
+            QCOMPARE(data->Read(value.data(), UInt32(value.size()), &read), S_OK);
+            QCOMPARE(read, UInt32(value.size()));
+            QCOMPARE(value, expected);
+        }
+        if (outOfLine) {
+            auto data = stream("alpha:$XATTR.user.inline");
+            QVERIFY(data);
+            char value[7];
+            UInt32 read = 0;
+            QCOMPARE(data->Read(value, sizeof(value), &read), S_OK);
+            QCOMPARE(QByteArray(value, int(read)), QByteArray("v\0a\0lue", 7));
+        }
+        QCOMPARE(archive_->Close(), S_OK);
+        loadFixture("zlib", true);
+        CMyComPtr<IInStream> healthy = new Input(bytes_);
+        QCOMPARE(archive_->Open(healthy, nullptr, nullptr), S_OK);
+        NWindows::NCOM::CPropVariant error;
+        QCOMPARE(archive_->GetArchiveProperty(limitationsId, &error), S_OK);
+        QCOMPARE(error.vt, VARTYPE(VT_EMPTY));
+        QVERIFY(index("alpha:$XATTR.trusted.large") != UInt32(-1));
     }
 };
 QTEST_GUILESS_MAIN(SquashfsStreamTests)

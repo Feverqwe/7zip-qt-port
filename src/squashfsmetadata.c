@@ -221,7 +221,7 @@ int sevenzip_squashfs_xattr(struct sevenzip_squashfs_metadata *reader, unsigned 
 int sevenzip_squashfs_visit_xattrs(struct sevenzip_squashfs_metadata *reader, unsigned index,
                                    sevenzip_squashfs_xattr_emit emit, void *context) {
     char *names, *name;
-    int length, result = 0;
+    int length, result = 0, incomplete = 0;
     if (!reader->msblk.xattr_id_table || index == SQUASHFS_INVALID_XATTR)
         return 0;
     length = sevenzip_squashfs_xattrs(reader, index, NULL, 0);
@@ -248,7 +248,11 @@ int sevenzip_squashfs_visit_xattrs(struct sevenzip_squashfs_metadata *reader, un
         size = sevenzip_squashfs_xattr(reader, index, name, NULL, 0);
         if (size < 0 || size > 65536) {
             result = size < 0 ? size : -EIO;
-            break;
+            if (result == -ENOMEM || result == -ECANCELED)
+                break;
+            incomplete = result;
+            result = 0;
+            continue;
         }
         value = malloc(size ? (size_t)size : 1);
         if (!value) {
@@ -256,16 +260,23 @@ int sevenzip_squashfs_visit_xattrs(struct sevenzip_squashfs_metadata *reader, un
             break;
         }
         result = sevenzip_squashfs_xattr(reader, index, name, value, (size_t)size);
-        if (result == size)
+        if (result == size) {
             result = emit ? emit(context, name, value, (size_t)size) : 0;
-        else if (result >= 0)
+            free(value);
+            if (result)
+                break;
+            continue;
+        }
+        if (result >= 0)
             result = -EIO;
         free(value);
-        if (result)
+        if (result == -ENOMEM || result == -ECANCELED)
             break;
+        incomplete = result;
+        result = 0;
     }
     free(names);
-    return result;
+    return result ? result : incomplete;
 }
 int sevenzip_squashfs_validate_xattrs(struct sevenzip_squashfs_metadata *reader, unsigned index) {
     return sevenzip_squashfs_visit_xattrs(reader, index, NULL, NULL);

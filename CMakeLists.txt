@@ -3994,6 +3994,8 @@ if(BUILD_TESTING)
     target_include_directories(filesystem_read_ui_tests PRIVATE src tests)
     target_link_libraries(filesystem_read_ui_tests PRIVATE ${metadata_ui_libraries})
     target_compile_definitions(filesystem_read_ui_tests PRIVATE
+        "SEVENZIP_SQUASHFS_MODULE=\"$<TARGET_FILE:sevenzip_squashfs>\""
+        "SEVENZIP_SQUASHFS_FIXTURE=\"${CMAKE_CURRENT_SOURCE_DIR}/tests/squashfs_fixture.py\""
         "SEVENZIP_EXFAT_MODULE=\"$<TARGET_FILE:sevenzip_exfat>\""
         "SEVENZIP_FAT_MODULE=\"$<TARGET_FILE:sevenzip_fat>\""
         "SEVENZIP_FAT_FIXTURE=\"${CMAKE_CURRENT_SOURCE_DIR}/tests/fat_fixture.py\""
@@ -4007,17 +4009,18 @@ if(BUILD_TESTING)
         "SEVENZIP_EXT_FIXTURE=\"${CMAKE_CURRENT_SOURCE_DIR}/tests/ext_fixture.py\""
         "SEVENZIP_HFS_PYTHON=\"${Python3_EXECUTABLE}\""
         "SEVENZIP_HFS_FIXTURE=\"${CMAKE_CURRENT_SOURCE_DIR}/tests/hfs_fixture.py\"")
-    add_dependencies(filesystem_read_ui_tests sevenzip_exfat sevenzip_fat_runtime sevenzip_hfs_runtime sevenzip_ntfs_runtime sevenzip_ext_runtime)
+    add_dependencies(filesystem_read_ui_tests sevenzip_exfat sevenzip_fat_runtime sevenzip_hfs_runtime sevenzip_ntfs_runtime sevenzip_ext_runtime sevenzip_squashfs_runtime)
+    add_test(NAME filesystem_squashfs_read_ui COMMAND filesystem_read_ui_tests -silent confirmsPartialSquashfsAttributes)
     add_test(NAME filesystem_read_ui COMMAND filesystem_read_ui_tests -silent deletedRecoveryConsent confirmsAndCopiesFlaggedVolume)
     add_test(NAME filesystem_read_ui_ru COMMAND filesystem_read_ui_tests -silent confirmsAndCopiesFlaggedVolumeRu)
     add_test(NAME filesystem_security_read_ui COMMAND filesystem_read_ui_tests -silent confirmsPartialSecurityStream)
     add_test(NAME filesystem_fat_read_ui COMMAND filesystem_read_ui_tests -silent confirmsLimitedFat)
     add_test(NAME filesystem_fat_directory_ui COMMAND filesystem_read_ui_tests -silent confirmsPartialFatDirectory)
     add_test(NAME filesystem_fat_file_ui COMMAND filesystem_read_ui_tests -silent confirmsPartialFatFile)
-    set_tests_properties(filesystem_read_ui filesystem_read_ui_ru filesystem_security_read_ui filesystem_fat_read_ui filesystem_fat_directory_ui filesystem_fat_file_ui PROPERTIES TIMEOUT 60 RESOURCE_LOCK sevenzip_ui_artifacts
+    set_tests_properties(filesystem_squashfs_read_ui filesystem_read_ui filesystem_read_ui_ru filesystem_security_read_ui filesystem_fat_read_ui filesystem_fat_directory_ui filesystem_fat_file_ui PROPERTIES TIMEOUT 60 RESOURCE_LOCK sevenzip_ui_artifacts
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     if(APPLE)
-        set_property(TEST filesystem_read_ui filesystem_read_ui_ru filesystem_security_read_ui filesystem_fat_read_ui filesystem_fat_directory_ui filesystem_fat_file_ui PROPERTY ENVIRONMENT
+        set_property(TEST filesystem_squashfs_read_ui filesystem_read_ui filesystem_read_ui_ru filesystem_security_read_ui filesystem_fat_read_ui filesystem_fat_directory_ui filesystem_fat_file_ui PROPERTY ENVIRONMENT
             "QT_QPA_PLATFORM=cocoa;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     endif()
     qt_add_executable(associated_window_tests tests/associated_window_tests.cpp

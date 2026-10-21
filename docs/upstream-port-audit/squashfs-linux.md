@@ -5,6 +5,54 @@ Scope входит в [общую проверку форматов](filesystems
 современный LZO и проверки compressor options через отдельный format-модуль.
 Полная актуализация SquashFS read features по Linux ещё продолжается.
 
+## Частично доступные xattr: read-only политика, 2026-10-21
+
+Повторно сравнены `SquashfsHandler.cpp:Open2`, callback/error translation,
+alternate streams и их потребители с `fs/squashfs/inode.c:squashfs_read_inode`,
+`xattr_id.c:squashfs_xattr_lookup`, `xattr.c:squashfs_listxattr` и
+`squashfs_xattr_get` того же Linux commit, указанного ниже. Linux читает
+значения атрибутов отдельно от содержимого файлов; прежний eager archive
+adapter отказывал всему открытию при ошибке одного значения.
+
+GPL-модуль сохраняет читаемые данные файлов и полностью полученные значения
+атрибутов. Если список имён доступен, сбор значений продолжается после
+недоступного значения. Неполный набор диагностируется у владельца, включая
+его жёсткие ссылки, и через `Read-only limitations`. Общая Qt-служба запрашивает
+согласие на выбранное открытие и сохраняет индикатор ограниченного режима.
+Недоступное значение не публикуется как пустое или проверенное. Отмена,
+ошибка callback и нехватка памяти остаются фатальными; Close/reopen сбрасывает
+диагностику. Ограничения размеров и адресов сохранены, записи/replay нет.
+
+Это адаптация archive lifetime/enumeration в существующем host glue
+`src/squashfsmetadata.c` и исходном SDK handler. Тела Linux xattr readers,
+их C-язык и GPL-изоляция сохранены; standalone engine без GPL-модуля
+сохраняет прежний scope. Изменение не доказывает полную устойчивость к
+повреждениям SquashFS: начальная загрузка таблиц, eager inode/directory
+traversal и export lookup ещё требуют отдельного продолжения аудита.
+
+Синтетический образ с недопустимой ссылкой одного out-of-line xattr
+проверен через native Linux `6.8.0-147-generic`, read-only loop mount:
+данные `alpha`, его hardlink и Unicode-файла совпали побайтно; inline и
+следующий независимый user xattr доступны, повреждённый trusted xattr
+возвращает EIO при чтении с правами root. Образ не изменился, mount и
+временные данные удалены. Receipt: `20261021T141525Z-f90232ec`.
+Этот runtime reference старше закреплённого source reference.
+
+Регрессии проверяют публичные ABI/CLI: недоступный список/большое значение,
+повреждённую ссылку, последующие читаемые значения, основные данные,
+диагностику владельцев, отмену/OOM и повторное открытие. Отдельный
+`filesystem_squashfs_read_ui` проверяет реальное открытие, EN/RU принятие
+и отказ, видимый badge, запрет изменения и копирование читаемого файла.
+Итоговые восемь focused suites (`squashfs`, `squashfs_stream`,
+`squashfs_metadata`, `filesystem_squashfs_read_ui`, `filesystem_fat_read_ui`,
+`language`, `upstream_baseline`, `upstream_inventory`) прошли на macOS,
+Linux и Windows. Remote receipt: `20261021T141701Z-b4e8ce1f`.
+На macOS проверены Cocoa widgets и EN/RU JSON нормальной/компактной геометрии;
+на гостях — Qt offscreen. Это проверка сценария ограниченного чтения,
+а не утверждение pixel parity. Приложение собрано инкрементально на macOS.
+Полные и slow suites не запускались; временный native helper удалён и
+его удаление синхронизировано на обоих гостях. Build trees и кэши сохранены.
+
 ## Исходники и сравнение
 
 7-Zip: <https://github.com/ip7z/7zip.git>, commit
