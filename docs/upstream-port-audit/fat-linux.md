@@ -259,7 +259,86 @@ no discovery deadline, build flag or compiler cache was changed. All seven
 related suites are therefore checked across macOS/Linux/Windows batches.
 Full/slow suites and physical devices were not checked.
 
-Read-side closure is not claimed: a damaged child directory still propagates a
-global recursive-open failure in the retained SDK traversal. That namespace/error
-isolation scenario needs its own complete source comparison and integration;
-the current iteration establishes volume-state and usable-source behavior only.
+The directory failure boundary identified here is resolved by the next scenario.
+
+## Directory failure isolation and reachable namespace — 2026-10-21
+
+Compared complete pinned `dir.c:fat__get_entry/fat_get_entry/fat_get_entry_eod`,
+`fat_parse_long`, `__fat_readdir`, `fat_readdir` and `fat_subdirs`,
+`cache.c:fat_get_cluster/fat_bmap_cluster/fat_get_mapped_cluster/fat_bmap`,
+`inode.c:fat_calc_dir_size/fat_validate_dir/fat_fill_inode` and callers/types,
+with the original SDK `ReadDir`, cluster streams, item/tree properties, extraction
+callback and current GUI/native-opening consumers. Linux keeps directory errors
+local to an inode and can skip an unreadable directory block. The SDK recursively
+opened the entire tree and propagated one bad child/chain or source read to a
+failure of the whole image, discarding already readable records and siblings.
+
+The original directory-record/LFN loop remains authoritative under its original
+module path. Acquisition and recursive publication are separated into
+`ReadDirItems` and the retained `ReadDir` entry point. The dynamic module acquires
+logical sectors, preserving the SDK record parser and using the original stream
+helpers; Linux VFS/page-cache/block services are not reimplemented. Known complete
+records survive a missing suffix. A failed sector does not supply stale buffer
+bytes and does not prevent trying the next mapped sector. Pending LFNs are reset
+at a gap; metadata needs a complete 32-byte record, except a known first-byte NUL
+which already proves end-of-directory. An EOD found in a short read does not
+create a false incomplete-directory error.
+
+Malformed start/continuation clusters, free/bad links, cycles and existing
+item/size/depth bounds mark only the affected directory incomplete. Its known
+records and discovered children are retained, and healthy siblings continue.
+Source abort/OOM and all progress-callback failures remain fatal, including a
+callback failure immediately after a recoverable source error. Active traversal
+state is released on normal/error/exception exits. Physical metadata ownership
+still prevents file streams from reading directory clusters. Reusing a directory
+in another acyclic branch is readable at both names; an ancestor/chain cycle
+remains blocked. Header accounting counts physical directory clusters once.
+
+Incomplete directories expose item error metadata and return DataError when
+extracted as a directory. Individual verified files remain readable. An incomplete
+root namespace is reported through the global limitations contract. GUI consent,
+badge and per-opening state use the existing mechanism; nothing writes to the
+source, repairs its chain or replays a journal. Standalone retains its original
+strict traversal; the common source factoring does not add GPL linkage or the
+dynamic recovery semantics to that engine.
+
+Twenty-four chain/alias controls cover FAT12/16/32. Additional range faults cover
+root/child read and seek errors, unexpected EOF, short record/EOD prefixes,
+LFN continuity, abort/OOM/callback and reopening. Checks compare the exact visible
+file set, payloads and error results; no source-text assertions are added.
+Existing stream/callback test helpers were shared without losing their earlier
+module/backend tests. CLI checks copy known files and partial directory children,
+while a requested incomplete-directory copy returns an error. The new small
+`filesystem_fat_directory_ui` group copies both a healthy sibling and a known
+file inside an incomplete directory, with EN/RU accept/Cancel, badge, refresh/
+reopen, compact geometry and unchanged source. Cocoa warning geometry is
+420×214 EN / 420×262 RU, with translated text and no clipping.
+
+All nine focused suites passed on macOS arm64 (57.07 s). Final EOF/seek coverage
+and the portable form of directory extraction also passed in focused FAT batches.
+The first Windows build found preprocessor directives inside a macro argument;
+the result is now selected before `RINOK`, without changing operation semantics.
+App incremental build, upstream verifier (422 exact / 242 adapted / 12 local) and
+21 pinned Linux source hashes passed. The C readers/NLS source bodies did not
+change in this iteration.
+
+Native vfat `6.8.0-147-generic` confirmed seven controls, receipt
+`20261021T120537Z-267f96b2`: complete trees for FAT12/16/32, both alias paths,
+and exact root/healthy-sibling files for free/cyclic/invalid child directories.
+Recovery-prefix reading inside those invalid child directories is archive
+adaptation, not a claim of VFS parity. Readonly block/mount flags and unchanged
+SHA-256 were checked; all loops, mounts and images were removed. Pinned-kernel
+runtime, physical media and full/slow gate acceptance are not claimed.
+
+Linux's nine suites passed in `20261021T120701Z-ee7a2f34` (25.60 s); that
+receipt also retains the initial MSVC compile diagnostic. After the portable
+macro fix, all nine passed on Windows, `20261021T120918Z-e229cdd7` (94.41 s).
+Linux's three direct FAT suites passed again on the final source,
+`20261021T120917Z-1a271559` (2.22 s); the corresponding macOS follow-up also
+passed. Existing incremental outputs/cache and all test timeouts were retained.
+
+Read-side closure still requires the remaining stream/consumer comparison.
+In particular, the shared `CClusterInStream` caches its own physical position,
+while FAT streams share the source handle. Interleaved stream reads need a
+behavioral reproduction and a comparison of that shared owner's consumers before
+closing this boundary; the directory tests do not establish stream independence.

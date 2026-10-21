@@ -162,11 +162,21 @@ if __name__ == "__main__":
     import zlib
     parser = argparse.ArgumentParser()
     parser.add_argument("--readonly")
+    parser.add_argument("--directory")
     parser.add_argument("--bundle", action="store_true")
     args = parser.parse_args()
-    v = readonly_volume(args.readonly) if args.readonly else legacy_volume()
+    if args.directory:
+        from fat_directory_fixture import directory_volume
+        v = directory_volume(args.directory)
+    else:
+        v = readonly_volume(args.readonly) if args.readonly else legacy_volume()
     if args.bundle:
         print(json.dumps({"size": len(v.data), "image": base64.b64encode(zlib.compress(v.data)).decode(),
-                          "name": LONG_NAME, "files": {LONG_NAME: base64.b64encode(PAYLOAD).decode()}}))
+                          "name": LONG_NAME,
+                          "files": {name: base64.b64encode(data).decode() for name,data in
+                                    getattr(v, "expected_files", {LONG_NAME: PAYLOAD}).items()},
+                          "incomplete_dirs": getattr(v, "incomplete_dirs", []),
+                          "directory_limited": getattr(v, "directory_limited", False),
+                          "fault_offset": getattr(v, "fault_offset", 0)}))
     else:
         sys.stdout.buffer.write(v.data)

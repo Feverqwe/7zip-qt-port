@@ -43,6 +43,9 @@ namespace NArchive {
 namespace NFat {
 
 static const UInt32 kFatItemUsedByDirMask = (UInt32)1 << 31;
+#ifdef SEVENZIP_LINUX_FAT
+static const UInt32 kFatItemActiveDirMask = (UInt32)1 << 30;
+#endif
 
 struct CHeader {
     Byte NumFatBits;
@@ -315,6 +318,9 @@ class CItem {
     UInt32 CTime;
     UInt32 Cluster;
     Int32 Parent;
+#ifdef SEVENZIP_LINUX_FAT
+    bool DirectoryIncomplete = false;
+#endif
 
     CItem() {}
 
@@ -458,6 +464,7 @@ struct CDatabase {
     UInt32 Vol_MTime;
 #ifdef SEVENZIP_LINUX_FAT
     bool SourceTruncated = false;
+    bool DirectoryLimitations = false;
 #endif
     char VolLabel[11];
     bool VolItem_Defined;
@@ -473,6 +480,15 @@ struct CDatabase {
     void GetItemPath(UInt32 index, UString &s) const;
     HRESULT Open();
     HRESULT ReadDir(Int32 parent, UInt32 cluster, unsigned level);
+    HRESULT ReadDirItems(Int32 parent, UInt32 cluster, unsigned level, HRESULT &callbackResult,
+                         CRecordVector<UInt32> &activeClusters);
+#ifdef SEVENZIP_LINUX_FAT
+    void MarkDirectoryIncomplete(Int32 parent) {
+        DirectoryLimitations = true;
+        if (parent >= 0)
+            Items[(unsigned)parent].DirectoryIncomplete = true;
+    }
+#endif
 
     UInt64 GetHeadersSize() const {
         return ((UInt64)Header.DataSector + ((UInt64)NumDirClusters << Header.SectorsPerClusterLog))
@@ -489,6 +505,7 @@ HRESULT CDatabase::SeekToSector(UInt32 sector) {
 void CDatabase::Clear() {
 #ifdef SEVENZIP_LINUX_FAT
     SourceTruncated = false;
+    DirectoryLimitations = false;
     Header.Dirty = false;
 #endif
     PhySize = 0;
@@ -539,16 +556,31 @@ void CDatabase::GetItemPath(UInt32 index, UString &s) const {
     }
 }
 
-HRESULT CDatabase::ReadDir(Int32 parent, UInt32 cluster, unsigned level) {
+HRESULT CDatabase::ReadDirItems(Int32 parent, UInt32 cluster, unsigned level,
+                                HRESULT &callbackResult, CRecordVector<UInt32> &activeClusters) {
+#ifndef SEVENZIP_LINUX_FAT
+    (void)activeClusters;
+#endif
     const unsigned startIndex = Items.Size();
     if (startIndex >= (1 << 30) || level > 256)
         return S_FALSE;
 
     UInt32 blockSize = Header.ClusterSize();
     const bool clusterMode = (Header.IsFat32() || parent >= 0);
+#ifdef SEVENZIP_LINUX_FAT
+    if (clusterMode && !Header.IsValidCluster(cluster))
+        return S_FALSE;
+    blockSize = Header.SectorSize();
+    UInt32 clusterSectorsLeft = 0;
+    UInt64 nextSector = Header.RootDirSector;
+    UInt32 validBlockSize = 0;
+    bool gapAfterBlock = false;
+#endif
     if (!clusterMode) {
         blockSize = Header.SectorSize();
+#ifndef SEVENZIP_LINUX_FAT
         RINOK(SeekToSector(Header.RootDirSector))
+#endif
     }
 
     ByteBuf.Alloc(blockSize);
@@ -567,34 +599,95 @@ HRESULT CDatabase::ReadDir(Int32 parent, UInt32 cluster, unsigned level) {
     bool is_record_error = false;
 
     for (UInt32 pos = blockSize;; pos += 32) {
+#ifdef SEVENZIP_LINUX_FAT
+        if (pos >= validBlockSize) {
+#else
         if (pos == blockSize) {
+#endif
+#ifdef SEVENZIP_LINUX_FAT
+            if (gapAfterBlock) {
+                MarkDirectoryIncomplete(parent);
+                num_lfn_records = lfn_RecordIndex = 0;
+                checkSum = -1;
+                is_record_error = false;
+            }
+#endif
             pos = 0;
 
-            if (clusterMode) {
+            if (clusterMode
+#ifdef SEVENZIP_LINUX_FAT
+                && !clusterSectorsLeft
+#endif
+            ) {
                 if (Header.IsEoc(cluster))
                     break;
                 if (!Header.IsValidCluster(cluster))
                     return S_FALSE;
                 PRF(printf("\nCluster = %4X", cluster));
+#ifdef SEVENZIP_LINUX_FAT
+                nextSector = Header.ClusterToSector(cluster);
+                clusterSectorsLeft = (UInt32)1 << Header.SectorsPerClusterLog;
+#else
                 RINOK(SeekToCluster(cluster))
+#endif
                 const UInt32 newCluster = Fat[cluster];
+#ifdef SEVENZIP_LINUX_FAT
+                if (newCluster & kFatItemActiveDirMask)
+                    return S_FALSE;
+                activeClusters.Add(cluster);
+                Fat[cluster] |= kFatItemActiveDirMask;
+                const bool firstVisit = (newCluster & kFatItemUsedByDirMask) == 0;
+#else
                 if (newCluster & kFatItemUsedByDirMask)
                     return S_FALSE;
+#endif
                 Fat[cluster] |= kFatItemUsedByDirMask;
+#ifdef SEVENZIP_LINUX_FAT
+                cluster = newCluster & ~(kFatItemUsedByDirMask | kFatItemActiveDirMask);
+                if (firstVisit)
+                    NumDirClusters++;
+#else
                 cluster = newCluster;
                 NumDirClusters++;
+#endif
                 if ((NumDirClusters & 0xFF) == 0) {
-                    RINOK(OpenProgress())
+                    callbackResult = OpenProgress();
+                    RINOK(callbackResult)
                 }
                 NumCurUsedBytes += Header.ClusterSize();
-            } else if (sectorIndex++ >= Header.NumRootDirSectors)
+            } else if (!clusterMode && sectorIndex++ >= Header.NumRootDirSectors)
                 break;
 
             // if (curDirBytes_read > (1u << 28)) // do we need some relaxed limit for non-MS FATs?
             if (curDirBytes_read >= (1u << 21)) // 2MB limit from FAT specification.
                 return S_FALSE;
+#ifdef SEVENZIP_LINUX_FAT
+            HRESULT result = InStream_SeekSet(InStream, nextSector++ << Header.SectorSizeLog);
+            size_t size = blockSize;
+            if (result == S_OK)
+                result = ReadStream(InStream, ByteBuf, &size);
+            if (result == E_ABORT || result == E_OUTOFMEMORY)
+                return result;
+            callbackResult = OpenProgress();
+            RINOK(callbackResult)
+            if (result != S_OK)
+                size = 0;
+            gapAfterBlock = size != blockSize;
+            validBlockSize = (UInt32)size & ~(UInt32)31;
+            // A known end marker needs only its first byte; other records
+            // require all 32 bytes before their metadata can be interpreted.
+            if (validBlockSize < size && ByteBuf[validBlockSize] == 0)
+                ++validBlockSize;
+            if (clusterMode)
+                --clusterSectorsLeft;
+#else
             RINOK(ReadStream_FALSE(InStream, ByteBuf, blockSize))
+#endif
             curDirBytes_read += blockSize;
+#ifdef SEVENZIP_LINUX_FAT
+            if (!validBlockSize)
+                continue;
+#endif
         }
 
         if (is_record_error) {
@@ -742,6 +835,35 @@ HRESULT CDatabase::ReadDir(Int32 parent, UInt32 cluster, unsigned level) {
 
     if (is_record_error)
         Header.HeadersWarning = true;
+
+    return S_OK;
+}
+
+HRESULT CDatabase::ReadDir(Int32 parent, UInt32 cluster, unsigned level) {
+    const unsigned startIndex = Items.Size();
+    CRecordVector<UInt32> activeClusters;
+#ifdef SEVENZIP_LINUX_FAT
+    struct CActiveDirectoryScope {
+        UInt32 *Fat;
+        const CRecordVector<UInt32> &Clusters;
+        ~CActiveDirectoryScope() {
+            FOR_VECTOR(i, Clusters)
+            Fat[Clusters[i]] &= ~kFatItemActiveDirMask;
+        }
+    } scope{Fat, activeClusters};
+    RINOK(OpenProgress())
+#endif
+    HRESULT callbackResult = S_OK;
+    const HRESULT result = ReadDirItems(parent, cluster, level, callbackResult, activeClusters);
+    RINOK(callbackResult)
+#ifdef SEVENZIP_LINUX_FAT
+    if (result == E_ABORT || result == E_OUTOFMEMORY)
+        return result;
+    if (result != S_OK)
+        MarkDirectoryIncomplete(parent);
+#else
+    RINOK(result)
+#endif
 
     const unsigned finishIndex = Items.Size();
     for (unsigned i = startIndex; i < finishIndex; i++) {
@@ -911,6 +1033,10 @@ Z7_COM7F_IMF(CHandler::GetStream(UInt32 index, ISequentialInStream **stream)) {
     COM_TRY_BEGIN
     *stream = NULL;
     const CItem &item = Items[index];
+#ifdef SEVENZIP_LINUX_FAT
+    if (item.DirectoryIncomplete)
+        return S_FALSE;
+#endif
     CClusterInStream *streamSpec = new CClusterInStream;
     CMyComPtr<ISequentialInStream> streamTemp = streamSpec;
     streamSpec->Stream = InStream;
@@ -957,8 +1083,11 @@ Z7_COM7F_IMF(CHandler::GetStream(UInt32 index, ISequentialInStream **stream)) {
 }
 
 static const Byte kProps[] = {
-    kpidPath,  kpidIsDir, kpidSize,   kpidPackSize, kpidMTime,
-    kpidCTime, kpidATime, kpidAttrib, kpidShortName
+    kpidPath,  kpidIsDir, kpidSize,   kpidPackSize,  kpidMTime,
+    kpidCTime, kpidATime, kpidAttrib, kpidShortName,
+#ifdef SEVENZIP_LINUX_FAT
+    kpidError,
+#endif
     // , kpidCharacts
 };
 
@@ -1045,6 +1174,12 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID propID, PROPVARIANT *value)) {
                 reasons += '\n';
             reasons += "The FAT source is shorter than the declared volume. Some files may be "
                        "incomplete or unreadable.";
+        }
+        if (DirectoryLimitations) {
+            if (!reasons.IsEmpty())
+                reasons += '\n';
+            reasons += "Some FAT directories could not be read completely. Files or names may "
+                       "be missing. Readable files remain accessible.";
         }
         if (!reasons.IsEmpty())
             prop = reasons;
@@ -1169,6 +1304,12 @@ Z7_COM7F_IMF(CHandler::GetProperty(UInt32 index, PROPID propID, PROPVARIANT *val
     NWindows::NCOM::CPropVariant prop;
     const CItem &item = Items[index];
     switch (propID) {
+#ifdef SEVENZIP_LINUX_FAT
+    case kpidError:
+        if (item.DirectoryIncomplete)
+            prop = "The FAT directory could not be read completely.";
+        break;
+#endif
     case kpidPath:
     case kpidName:
     case kpidShortName: {
@@ -1313,7 +1454,12 @@ Z7_COM7F_IMF(CHandler::Extract(const UInt32 *indices, UInt32 numItems, Int32 tes
 
             if (item.IsDir()) {
                 RINOK(extractCallback->PrepareOperation(askMode))
-                RINOK(extractCallback->SetOperationResult(NExtract::NOperationResult::kOK))
+                res = NExtract::NOperationResult::kOK;
+#ifdef SEVENZIP_LINUX_FAT
+                if (item.DirectoryIncomplete)
+                    res = NExtract::NOperationResult::kDataError;
+#endif
+                RINOK(extractCallback->SetOperationResult(res))
                 continue;
             }
 

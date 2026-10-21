@@ -45,6 +45,19 @@ class FatTests(unittest.TestCase):
         self.assertIn(result.returncode, (0, 1), result.stderr.decode(errors="replace"))
         self.assertEqual(result.stdout, expected)
 
+    def extract_directory(self, volume, name):
+        with tempfile.TemporaryDirectory(dir=self.runtime) as temporary:
+            source, output = Path(temporary) / "том 空.img", Path(temporary) / "copied"
+            source.write_bytes(volume.data)
+            result = subprocess.run([str(self.runtime / ("7z" + SUFFIX)), "x", "-y", "-bsp0",
+                                     "-o" + str(output), "--", str(source), name],
+                                    stdin=subprocess.DEVNULL, capture_output=True, timeout=15)
+            self.assertEqual(source.read_bytes(), volume.data)
+            for path, data in volume.expected_files.items():
+                if path.startswith(name + "/"):
+                    self.assertEqual((output / path).read_bytes(), data)
+            return result
+
     def test_fragmented_variants_and_sector_boundaries(self):
         for engine in ("7z", "7zz"):
             for bits, sector, spc in ((12, 512, 1), (16, 512, 1), (32, 512, 1),
@@ -84,6 +97,24 @@ class FatTests(unittest.TestCase):
                         self.assertIn(b"not properly unmounted", listing.stdout)
                     if mode in ("short", "combined"):
                         self.assertIn(b"shorter than", listing.stdout)
+
+    def test_damaged_directory_keeps_siblings_and_prefix(self):
+        from fat_directory_fixture import directory_volume
+        for kind in ("free12", "cycle16", "start32", "alias32"):
+            with self.subTest(kind=kind):
+                volume = directory_volume(kind)
+                for name, data in volume.expected_files.items():
+                    self.assert_contents(volume, "7z", name, data)
+                listing = self.run_image(volume, "7z", "l", None)
+                self.assertIn(listing.returncode, (0, 1), listing.stderr)
+                if volume.directory_limited:
+                    self.assertIn(b"FAT directories could not be read completely", listing.stdout)
+                    self.assertIn(b"The FAT directory could not be read completely", listing.stdout)
+                    directory = volume.incomplete_dirs[0]
+                    extraction = self.extract_directory(volume, directory)
+                    self.assertEqual(extraction.returncode, 2, extraction.stderr)
+                else:
+                    self.assertNotIn(b"FAT directories could not be read completely", listing.stdout)
 
     def test_active_fat_and_invalid_index_fallback(self):
         for engine in ("7z", "7zz"):

@@ -4012,10 +4012,11 @@ if(BUILD_TESTING)
     add_test(NAME filesystem_read_ui_ru COMMAND filesystem_read_ui_tests -silent confirmsAndCopiesFlaggedVolumeRu)
     add_test(NAME filesystem_security_read_ui COMMAND filesystem_read_ui_tests -silent confirmsPartialSecurityStream)
     add_test(NAME filesystem_fat_read_ui COMMAND filesystem_read_ui_tests -silent confirmsLimitedFat)
-    set_tests_properties(filesystem_read_ui filesystem_read_ui_ru filesystem_security_read_ui filesystem_fat_read_ui PROPERTIES TIMEOUT 60 RESOURCE_LOCK sevenzip_ui_artifacts
+    add_test(NAME filesystem_fat_directory_ui COMMAND filesystem_read_ui_tests -silent confirmsPartialFatDirectory)
+    set_tests_properties(filesystem_read_ui filesystem_read_ui_ru filesystem_security_read_ui filesystem_fat_read_ui filesystem_fat_directory_ui PROPERTIES TIMEOUT 60 RESOURCE_LOCK sevenzip_ui_artifacts
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     if(APPLE)
-        set_property(TEST filesystem_read_ui filesystem_read_ui_ru filesystem_security_read_ui filesystem_fat_read_ui PROPERTY ENVIRONMENT
+        set_property(TEST filesystem_read_ui filesystem_read_ui_ru filesystem_security_read_ui filesystem_fat_read_ui filesystem_fat_directory_ui PROPERTY ENVIRONMENT
             "QT_QPA_PLATFORM=cocoa;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     endif()
     qt_add_executable(associated_window_tests tests/associated_window_tests.cpp

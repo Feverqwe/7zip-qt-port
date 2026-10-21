@@ -3838,6 +3838,14 @@ Are you sure you want to split archive into such volumes?</source>
     <context>
         <name>SevenZipDiagnostics</name>
         <message>
+            <source>Some FAT directories could not be read completely. Files or names may be missing. Readable files remain accessible.</source>
+            <translation>Некоторые каталоги FAT прочитаны не полностью. Часть файлов или имён может отсутствовать. Доступные файлы можно копировать.</translation>
+        </message>
+        <message>
+            <source>The FAT directory could not be read completely.</source>
+            <translation>Каталог FAT прочитан не полностью.</translation>
+        </message>
+        <message>
             <source>The FAT volume was not properly unmounted. Some data may be corrupt.</source>
             <translation>Том FAT не был корректно отключён. Часть данных может быть повреждена.</translation>
         </message>
