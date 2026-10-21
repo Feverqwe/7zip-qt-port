@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 #include "squashfsio.h"
-#include "fs/squashfs/squashfscompat.h"
 #include "fs/squashfs/squashfs_fs_sb.h"
+#include "fs/squashfs/squashfscompat.h"
 
 // Replace block-device bio submission with a bounded archive source read.
 int squashfs_bio_read(struct super_block *sb, u64 index, int length, struct bio **result,
@@ -19,8 +19,10 @@ int squashfs_bio_read(struct super_block *sb, u64 index, int length, struct bio 
     if (!bio->segment.data)
         goto failed;
     bio->segment.bv_len = (unsigned)length;
-    if (io->read(io->opaque, index, (void *)bio->segment.data, (size_t)length)) {
-        error = -EIO;
+    error = io->read(io->opaque, index, (void *)bio->segment.data, (size_t)length);
+    if (error) {
+        if (error > 0)
+            error = -EIO;
         goto failed;
     }
     *result = bio;

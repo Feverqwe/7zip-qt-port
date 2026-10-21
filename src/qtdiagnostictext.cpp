@@ -172,7 +172,10 @@ UString QtArchiveDiagnosticText(const UString &source) {
                           "The SquashFS inode-number mapping is unverified."),
         QT_TRANSLATE_NOOP("SevenZipDiagnostics",
                           "Some SquashFS inode records are unavailable. Files or metadata may be "
-                          "missing. Inode identities are unverified.")};
+                          "missing. Inode identities are unverified."),
+        QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                          "Some SquashFS metadata indexes are unavailable. File data, ownership or "
+                          "extended attributes may be incomplete.")};
     for (const char *warning : warnings)
         if (text == QString::fromLatin1(warning))
             return QtDiagnosticText(warning);

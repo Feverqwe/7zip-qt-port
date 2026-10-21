@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 // Archive lifetime/cache services for the original Linux metadata readers.
 #include "squashfsmetadata.h"
-#include "squashfsio.h"
-#include "fs/squashfs/squashfscompat.h"
-#include "fs/squashfs/squashfs_fs.h"
-#include "fs/squashfs/squashfs_fs_sb.h"
-#include "fs/squashfs/squashfs_fs_i.h"
 #include "fs/squashfs/squashfs.h"
+#include "fs/squashfs/squashfs_fs.h"
+#include "fs/squashfs/squashfs_fs_i.h"
+#include "fs/squashfs/squashfs_fs_sb.h"
+#include "fs/squashfs/squashfscompat.h"
 #include "fs/squashfs/xattr.h"
 #include "fs/squashfs/xattrcompat.h"
+#include "squashfsio.h"
 #include <limits.h>
 
 struct sevenzip_squashfs_metadata {
@@ -21,6 +21,7 @@ struct sevenzip_squashfs_metadata {
     void *pages[1];
     unsigned char buffer[SQUASHFS_METADATA_SIZE];
     bool cached;
+    unsigned unavailable;
 };
 
 struct squashfs_cache_entry *
@@ -54,6 +55,29 @@ void sevenzip_squashfs_metadata_destroy(struct sevenzip_squashfs_metadata *reade
     free(reader);
 }
 
+unsigned sevenzip_squashfs_unavailable_tables(const struct sevenzip_squashfs_metadata *reader) {
+    return reader->unavailable;
+}
+
+static bool fatal_table_error(int error) {
+    return error == -ENOMEM || error == -ECANCELED || error == -95 || error == -EOPNOTSUPP;
+}
+
+// A failed neighbouring table cannot establish an index's exact end. Its own
+// declared count still bounds the original Linux loader within bytes_used.
+static u64 index_end(struct squashfs_sb_info *msblk, u64 start, u64 length) {
+    const u64 end = (u64)msblk->bytes_used;
+    return start <= end && length <= end - start ? start + length : 0;
+}
+
+static bool metadata_boundary(struct squashfs_sb_info *msblk, u64 start, u64 *end) {
+    if (start < msblk->directory_table || start > (u64)msblk->bytes_used)
+        return false;
+    if (start < *end)
+        *end = start;
+    return true;
+}
+
 int sevenzip_squashfs_metadata_create(uint64_t bytes_used, sevenzip_squashfs_read read,
                                       sevenzip_squashfs_read_meta read_meta, void *opaque,
                                       struct sevenzip_squashfs_metadata **result,
@@ -62,7 +86,8 @@ int sevenzip_squashfs_metadata_create(uint64_t bytes_used, sevenzip_squashfs_rea
     struct squashfs_sb_info *msblk;
     struct squashfs_super_block *disk;
     struct super_block *sb;
-    u64 next_table, table_start;
+    u64 next_table, table_start, directory_limit;
+    bool next_known = true;
     int error = -EINVAL;
     *result = NULL;
     if (!read || !read_meta || bytes_used < sizeof(*disk) || bytes_used > INT64_MAX)
@@ -92,9 +117,14 @@ int sevenzip_squashfs_metadata_create(uint64_t bytes_used, sevenzip_squashfs_rea
     msblk->inodes = le32_to_cpu(disk->inodes);
     msblk->fragments = le32_to_cpu(disk->fragments);
     msblk->ids = le16_to_cpu(disk->no_ids);
+    if (msblk->inode_table >= msblk->directory_table || msblk->directory_table > bytes_used) {
+        error = -EINVAL;
+        goto failed_disk;
+    }
+    directory_limit = bytes_used;
 
-    // Table ordering and lookup sequence from squashfs_fill_super. The VFS
-    // superblock/inode/cache allocation around this read path is not needed.
+    // Keep fill_super's loaders/order, but isolate ancillary failures for the
+    // read-only archive view. Missing indexes never become fabricated entries.
     table_start = le64_to_cpu(disk->xattr_id_table_start);
     next_table = bytes_used;
     if (table_start != SQUASHFS_INVALID_BLK) {
@@ -103,44 +133,88 @@ int sevenzip_squashfs_metadata_create(uint64_t bytes_used, sevenzip_squashfs_rea
         if (IS_ERR(msblk->xattr_id_table)) {
             error = PTR_ERR(msblk->xattr_id_table);
             msblk->xattr_id_table = NULL;
-            goto failed_disk;
+            if (fatal_table_error(error))
+                goto failed_disk;
         }
-        next_table = msblk->xattr_table;
+        next_known =
+            msblk->xattr_id_table && metadata_boundary(msblk, msblk->xattr_table, &directory_limit);
+        if (next_known)
+            next_table = msblk->xattr_table;
+        else {
+            free(msblk->xattr_id_table);
+            msblk->xattr_id_table = NULL;
+            reader->unavailable |= SEVENZIP_SQUASHFS_XATTR_UNAVAILABLE;
+        }
     }
-    msblk->id_table = squashfs_read_id_index_table(sb, le64_to_cpu(disk->id_table_start),
-                                                   next_table, (unsigned short)msblk->ids);
+    table_start = le64_to_cpu(disk->id_table_start);
+    msblk->id_table = squashfs_read_id_index_table(
+        sb, table_start,
+        next_known ? next_table
+                   : index_end(msblk, table_start, SQUASHFS_ID_BLOCK_BYTES(msblk->ids)),
+        (unsigned short)msblk->ids);
     if (IS_ERR(msblk->id_table)) {
         error = PTR_ERR(msblk->id_table);
         msblk->id_table = NULL;
-        goto failed_disk;
+        if (fatal_table_error(error))
+            goto failed_disk;
     }
-    next_table = le64_to_cpu(msblk->id_table[0]);
+    next_known = msblk->id_table &&
+                 metadata_boundary(msblk, le64_to_cpu(msblk->id_table[0]), &directory_limit);
+    if (next_known)
+        next_table = le64_to_cpu(msblk->id_table[0]);
+    else {
+        free(msblk->id_table);
+        msblk->id_table = NULL;
+        reader->unavailable |= SEVENZIP_SQUASHFS_IDS_UNAVAILABLE;
+    }
     table_start = le64_to_cpu(disk->lookup_table_start);
     if (table_start != SQUASHFS_INVALID_BLK) {
-        msblk->inode_lookup_table =
-            squashfs_read_inode_lookup_table(sb, table_start, next_table, msblk->inodes);
+        msblk->inode_lookup_table = squashfs_read_inode_lookup_table(
+            sb, table_start,
+            next_known ? next_table
+                       : index_end(msblk, table_start, SQUASHFS_LOOKUP_BLOCK_BYTES(msblk->inodes)),
+            msblk->inodes);
         if (IS_ERR(msblk->inode_lookup_table)) {
             error = PTR_ERR(msblk->inode_lookup_table);
             msblk->inode_lookup_table = NULL;
-            goto failed_disk;
+            if (fatal_table_error(error))
+                goto failed_disk;
         }
-        next_table = le64_to_cpu(msblk->inode_lookup_table[0]);
+        next_known =
+            msblk->inode_lookup_table &&
+            metadata_boundary(msblk, le64_to_cpu(msblk->inode_lookup_table[0]), &directory_limit);
+        if (next_known)
+            next_table = le64_to_cpu(msblk->inode_lookup_table[0]);
+        else {
+            free(msblk->inode_lookup_table);
+            msblk->inode_lookup_table = NULL;
+            reader->unavailable |= SEVENZIP_SQUASHFS_EXPORT_UNAVAILABLE;
+        }
     }
     if (msblk->fragments) {
+        table_start = le64_to_cpu(disk->fragment_table_start);
         msblk->fragment_index = squashfs_read_fragment_index_table(
-            sb, le64_to_cpu(disk->fragment_table_start), next_table, msblk->fragments);
+            sb, table_start,
+            next_known
+                ? next_table
+                : index_end(msblk, table_start, SQUASHFS_FRAGMENT_INDEX_BYTES(msblk->fragments)),
+            msblk->fragments);
         if (IS_ERR(msblk->fragment_index)) {
             error = PTR_ERR(msblk->fragment_index);
             msblk->fragment_index = NULL;
-            goto failed_disk;
+            if (fatal_table_error(error))
+                goto failed_disk;
         }
-        next_table = le64_to_cpu(msblk->fragment_index[0]);
+        if (msblk->fragment_index &&
+            metadata_boundary(msblk, le64_to_cpu(msblk->fragment_index[0]), &directory_limit))
+            next_table = le64_to_cpu(msblk->fragment_index[0]);
+        else {
+            free(msblk->fragment_index);
+            msblk->fragment_index = NULL;
+            reader->unavailable |= SEVENZIP_SQUASHFS_FRAGMENTS_UNAVAILABLE;
+        }
     }
-    if (msblk->directory_table > next_table || msblk->inode_table >= msblk->directory_table) {
-        error = -EINVAL;
-        goto failed_disk;
-    }
-    *directory_end = next_table;
+    *directory_end = directory_limit;
     free(disk);
     *result = reader;
     return 0;
@@ -152,6 +226,8 @@ failed:
 }
 
 int sevenzip_squashfs_id(struct sevenzip_squashfs_metadata *reader, unsigned index, unsigned *id) {
+    if (!reader->msblk.id_table)
+        return -EIO;
     return squashfs_get_id(&reader->sb, index, id);
 }
 int sevenzip_squashfs_inode(struct sevenzip_squashfs_metadata *reader, unsigned number,
@@ -168,6 +244,8 @@ int sevenzip_squashfs_inode(struct sevenzip_squashfs_metadata *reader, unsigned 
 int sevenzip_squashfs_fragment(struct sevenzip_squashfs_metadata *reader, unsigned index,
                                uint64_t *block, unsigned *size) {
     u64 start;
+    if (!reader->msblk.fragment_index)
+        return -EIO;
     int result = squashfs_frag_lookup(&reader->sb, index, &start);
     if (result < 0)
         return result;
@@ -182,7 +260,11 @@ static int xattr_inode(struct sevenzip_squashfs_metadata *reader, unsigned index
     int result;
     memset(inode, 0, sizeof(*inode));
     inode->i_sb = &reader->sb;
-    if (!reader->msblk.xattr_id_table || index == SQUASHFS_INVALID_XATTR)
+    if (index == SQUASHFS_INVALID_XATTR)
+        return 0;
+    if (reader->unavailable & SEVENZIP_SQUASHFS_XATTR_UNAVAILABLE)
+        return -EIO;
+    if (!reader->msblk.xattr_id_table)
         return 0;
     result = squashfs_xattr_lookup(&reader->sb, index, &inode->info.xattr_count,
                                    &inode->info.xattr_size, &xattr);
@@ -222,7 +304,11 @@ int sevenzip_squashfs_visit_xattrs(struct sevenzip_squashfs_metadata *reader, un
                                    sevenzip_squashfs_xattr_emit emit, void *context) {
     char *names, *name;
     int length, result = 0, incomplete = 0;
-    if (!reader->msblk.xattr_id_table || index == SQUASHFS_INVALID_XATTR)
+    if (index == SQUASHFS_INVALID_XATTR)
+        return 0;
+    if (reader->unavailable & SEVENZIP_SQUASHFS_XATTR_UNAVAILABLE)
+        return -EIO;
+    if (!reader->msblk.xattr_id_table)
         return 0;
     length = sevenzip_squashfs_xattrs(reader, index, NULL, 0);
     if (length < 0)

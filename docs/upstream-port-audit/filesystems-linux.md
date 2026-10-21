@@ -59,9 +59,9 @@ RECOVER допускает копирование без replay. Источни�
 
 Это подтверждение общей интеграции и проверенных partial-read scenarios,
 а не закрытие всех отказов всех файловых систем. Локальные отказы загрузки inode
-metadata в [SquashFS](squashfs-linux.md) впоследствии изолированы; initial index
-bootstrap ещё требует проверки доступного подмножества. Такие отказы нельзя считать
-доказательством отсутствия полезного чтения. Общий source audit продолжается;
+metadata и ancillary index bootstrap в [SquashFS](squashfs-linux.md) впоследствии
+изолированы. Сам по себе отказ mount нельзя считать доказательством отсутствия
+полезного archive reading. Общий source audit продолжается;
 новые gates должны опираться на конкретное поведение reader.
 
 Пятнадцать focused suites на macOS прошли за 125,74 с: device input/access,

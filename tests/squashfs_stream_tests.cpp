@@ -591,6 +591,100 @@ class SquashfsStreamTests final : public QObject {
               "fragment-index-invalid", "metadata-combined"})
             QTest::newRow(qPrintable(fault)) << fault;
     }
+    void unavailableIndexesKeepIndependentReads_data() {
+        QTest::addColumn<QString>("fault");
+        for (const QString &fault :
+             {"xattr-ids-zero", "xattr-index-outside", "xattr-table-start-outside",
+              "id-table-index-outside", "id-table-start-outside", "id-metadata-gap",
+              "id-count-zero", "export-index-outside", "export-table-start-outside",
+              "fragment-table-index-outside", "fragment-table-start-outside",
+              "fragment-count-large", "table-indexes-combined"})
+            QTest::newRow(qPrintable(fault)) << fault;
+    }
+    void unavailableIndexesKeepIndependentReads() {
+        QFETCH(QString, fault);
+        loadFixture("zlib", true, fault);
+        const bool fragments = fault.startsWith("fragment-") || fault == "table-indexes-combined";
+        const bool ids = fault.startsWith("id-") || fault == "table-indexes-combined";
+        const bool xattrs = fault.startsWith("xattr-") || fault == "table-indexes-combined";
+        CMyComPtr<IInStream> source = new Input(bytes_);
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
+        auto good = stream("данные 空");
+        QVERIFY(good);
+        const int length =
+            QByteArray::fromBase64(record_["files"].toObject()["данные 空"].toString().toLatin1())
+                .size();
+        check(good, "данные 空", 0, length);
+        auto first = stream("alpha");
+        QVERIFY(first);
+        check(first, "alpha", 0, fragments ? 8192 : 8202);
+        if (fragments) {
+            UInt32 count = 99;
+            char byte;
+            QCOMPARE(first->Read(&byte, 1, &count), S_FALSE);
+            QCOMPARE(count, 0u);
+        }
+        NWindows::NCOM::CPropVariant uid;
+        QCOMPARE(archive_->GetProperty(index("alpha"), kpidUserId, &uid), S_OK);
+        QCOMPARE(uid.vt, VARTYPE(ids ? VT_EMPTY : VT_UI4));
+        if (!ids)
+            QCOMPARE(uid.ulVal, 1000u);
+        auto attribute = stream("alpha:$XATTR.user.inline");
+        QCOMPARE(bool(attribute), !xattrs);
+        if (attribute) {
+            char bytes[7];
+            UInt32 count = 0;
+            QCOMPARE(attribute->Read(bytes, sizeof(bytes), &count), S_OK);
+            QCOMPARE(QByteArray(bytes, int(count)), QByteArray("v\0a\0lue", 7));
+        }
+        QCOMPARE(archive_->Close(), S_OK);
+        loadFixture("zlib", true);
+        CMyComPtr<IInStream> healthy = new Input(bytes_);
+        QCOMPARE(archive_->Open(healthy, nullptr, nullptr), S_OK);
+        QVERIFY(stream("alpha:$XATTR.user.inline"));
+        auto complete = stream("alpha");
+        QVERIFY(complete);
+        check(complete, "alpha", 0, 8202);
+        QCOMPARE(archive_->GetProperty(index("alpha"), kpidUserId, &uid), S_OK);
+        QCOMPARE(uid.vt, VARTYPE(VT_UI4));
+    }
+    void indexIoFailuresPreserveFatalResults_data() {
+        QTest::addColumn<int>("field");
+        for (const int field : {48, 56, 80, 88})
+            QTest::newRow(qPrintable(QString::number(field))) << field;
+    }
+    void indexIoFailuresPreserveFatalResults() {
+        QFETCH(int, field);
+        loadFixture("zlib", true);
+        CMyComPtr2<IInStream, Input> source;
+        source.SetFromCls(new Input(bytes_));
+        source->failAt = qFromLittleEndian<quint64>(bytes_.constData() + field);
+        for (HRESULT failure : {E_ABORT, E_OUTOFMEMORY, E_NOTIMPL}) {
+            source->atFailure = failure;
+            QCOMPARE(source->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
+            QCOMPARE(archive_->Open(source, nullptr, nullptr), failure);
+            UInt32 count = 99;
+            QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+            QCOMPARE(count, 0u);
+        }
+        source->atFailure = E_FAIL;
+        QCOMPARE(source->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
+        auto good = stream("данные 空");
+        QVERIFY(good);
+        check(good, "данные 空", 0, 8192);
+        source->failAt = UINT64_MAX;
+        source->notifyAt = qFromLittleEndian<quint64>(bytes_.constData() + field);
+        CMyComPtr2<IArchiveOpenCallback, MetadataOpen> callback;
+        callback.SetFromCls(new MetadataOpen);
+        callback->source = source.ClsPtr();
+        for (HRESULT failure : {E_ABORT, E_FAIL, S_FALSE}) {
+            source->notified = false;
+            callback->completionResult = failure;
+            QCOMPARE(source->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
+            QCOMPARE(archive_->Open(source, nullptr, callback), failure);
+        }
+    }
     void unavailableTablesKeepReadableData() {
         QFETCH(QString, fault);
         loadFixture("zlib", true, fault);

@@ -5,6 +5,59 @@ Scope входит в [общую проверку форматов](filesystems
 современный LZO и проверки compressor options через отдельный format-модуль.
 Полная актуализация SquashFS read features по Linux ещё продолжается.
 
+## Недоступные служебные indexes: ограниченное чтение, 2026-10-21
+
+Сопоставлены полные Linux `super.c:squashfs_fill_super`, `id.c`, `fragment.c`,
+`export.c`, `xattr_id.c`, их headers/macros, metadata readers и SDK consumers.
+Linux отказывает mount при ошибке обязательного bootstrap, хотя обычные файлы
+адресуются через root/directory refs, а NFS export index не участвует в этом
+чтении. Read-only archive adapter теперь изолирует ошибки ancillary tables:
+это явное отличие от mount acceptance по политике проекта, а не утверждение,
+что Linux принимает такие тома.
+
+Исходные Linux table loaders и ID/fragment/xattr readers сохранены. Если
+соседняя таблица не позволяет установить точный `next_table`, собственные
+declared count/start и границы `bytes_used` ограничивают вызов loader.
+Его внутренние проверки refs/order/gaps не заменяются новым parser.
+Недоступные таблицы остаются NULL; обращения к ним возвращают ошибку.
+Фактические inode/directory spans, decoder bounds и проверка имён сохраняются.
+Directory cache ограничен доступными metadata boundaries, либо общим
+`bytes_used`, когда более точную границу подтвердить нельзя. Это ограниченное
+чтение с явной диагностикой, а не проверка целостности размещения таблиц.
+
+Изолированы xattr ID table, ownership index, export index и fragment index,
+включая start вне образа, invalid refs, неправильные counts и combined failure.
+Сбой ownership не выдаёт нулевой UID/GID за известный; отсутствующие xattrs
+не выдаются за полностью прочитанный набор. Сбой fragment index сохраняет
+полные блоки файла, неизвестный packed size и DataError на недоступном хвосте;
+файл без fragment dependency читается полностью. Непригодный index при huge
+declared fragment count не вызывает allocation по этому count.
+
+Raw I/O bridge сохраняет negative error code, чтобы Abort/OOM/неподдерживаемый
+reader не потерялись при продолжении после локального сбоя другой таблицы.
+Fatal C result имеет приоритет перед сохранённой ошибкой прежнего I/O.
+Пользователь получает конкретное предупреждение о недоступных indexes и
+существующие дополнительные причины, отдельное согласие и постоянный badge.
+Новая диагностика переведена на русский. GPL module включается на всех трёх
+ОС; core-only engine сохраняет прежние dependencies и strict checks.
+
+ABI/CLI проверяют полезные payloads, неизвестные свойства, частичный stream,
+здоровые независимые xattrs, Close/reopen, source E_FAIL и fatal source/callback
+results для каждой таблицы. EN/RU UI проверяет принятие/отказ, копирование,
+повторное согласие, geometry и неизменность исходного образа. Девять focused
+suites на macOS/Linux/Windows прошли за 70,34/16,11/75,62 с; remote receipt
+`20261021T161045Z-9814b0a1`. После уточнения приоритета fatal C result две
+CLI/ABI suites повторно прошли на macOS/Linux/Windows за 4,45/3,74/11,36 с,
+receipt `20261021T161401Z-95353adc`. Incremental macOS app build
+также прошла. Остальные прошедшие suites не повторялись на неизменённом scope.
+
+Native Linux `6.8.0-147-generic` отверг десять повреждённых bootstrap controls,
+а чистый образ вернул точные payloads. Все образы остались неизменны,
+mounts/data удалены; receipt `20261021T161011Z-e72c7126`. Runtime kernel старше
+закреплённого source reference. Общая сверка SquashFS read scope продолжается;
+в частности, существующие общие resource/metadata-size пределы ещё не дают
+заявлять поддержку всего диапазона размеров Linux.
+
 ## Ошибки отдельных inode metadata blocks, 2026-10-21
 
 Повторно сопоставлены полные Linux `inode.c` type branches,
@@ -47,8 +100,8 @@ EN/RU UI копирует исправный файл из обоих повре
 Семь focused suites на macOS/Linux/Windows прошли за 17,68/10,04/46,90 с;
 remote receipt `20261021T155938Z-4ad8cfe1`. Incremental macOS app build также
 прошла. Full/slow suites и физические устройства не запускались.
-Initial index bootstrap ещё
-требует проверки полезного read subset; полнота SquashFS не заявляется.
+Initial index bootstrap впоследствии изолирован, как описано выше;
+полнота SquashFS не заявляется.
 
 ## Локальные ошибки inode records, 2026-10-21
 

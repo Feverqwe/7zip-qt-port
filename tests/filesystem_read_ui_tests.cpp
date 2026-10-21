@@ -126,6 +126,25 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
     void confirmsAndCopiesFlaggedVolume_data() { flaggedVolumeData("en"); }
     void confirmsAndCopiesFlaggedVolumeRu_data() { flaggedVolumeData("ru"); }
 
+    void confirmsPartialSquashfsIndexes_data() {
+        QTest::addColumn<QString>("language");
+        QTest::addColumn<bool>("accept");
+        QTest::addColumn<QString>("kind");
+        for (const QString &language : {"en", "ru"})
+            for (bool accept : {false, true})
+                for (const QString &kind :
+                     {"squashfs-xattr-index-outside", "squashfs-table-indexes-combined"})
+                    QTest::newRow(
+                        qPrintable(language + '-' + kind + (accept ? "-accept" : "-cancel")))
+                        << language << accept << kind;
+    }
+    void confirmsPartialSquashfsIndexes() {
+        QFETCH(QString, language);
+        QFETCH(bool, accept);
+        QFETCH(QString, kind);
+        confirmAndCopy(language, accept, kind);
+    }
+
     void confirmsPartialSquashfsInodes_data() {
         QTest::addColumn<QString>("language");
         QTest::addColumn<bool>("accept");
@@ -362,7 +381,8 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
             if (fatDirectory)
                 filename = fatFolder + (fatFolder == "BROKEN" ? "/PREFIX.TXT" : "/GOOD.TXT");
             if (kind == "squashfs-directory-unavailable" || kind == "squashfs-inode-record" ||
-                kind.startsWith("squashfs-inode-block-"))
+                kind.startsWith("squashfs-inode-block-") ||
+                kind == "squashfs-table-indexes-combined")
                 filename = "данные 空";
             if (ext) {
                 payload = QByteArray(data["file_size"].toInt(), '\0');

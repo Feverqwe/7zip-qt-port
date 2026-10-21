@@ -3902,6 +3902,10 @@ Are you sure you want to split archive into such volumes?</source>
             <translation>Некоторые записи inode SquashFS недоступны. Часть файлов или метаданных может отсутствовать. Идентификаторы inode не проверены.</translation>
         </message>
         <message>
+            <source>Some SquashFS metadata indexes are unavailable. File data, ownership or extended attributes may be incomplete.</source>
+            <translation>Некоторые индексы метаданных SquashFS недоступны. Данные файлов, сведения о владельцах или расширенные атрибуты могут быть неполными.</translation>
+        </message>
+        <message>
             <source>The FAT directory could not be read completely.</source>
             <translation>Каталог FAT прочитан не полностью.</translation>
         </message>

@@ -30,7 +30,9 @@ def volume(fault="", compressed=False, no_fragments=False, codec="zlib", xattrs=
     elif codec == "lzo-rle":
         first = b"X" + bytes(BLOCK - 1) + b"first-tail"
     second = b"B" * BLOCK + bytes(BLOCK) + b"second-tail"
-    healthy_second = fault in ("fragment-metadata-zero", "fragment-index-invalid", "metadata-combined")
+    healthy_second = fault in ("fragment-metadata-zero", "fragment-index-invalid", "metadata-combined",
+                               "fragment-table-index-outside", "fragment-table-start-outside",
+                               "fragment-count-large", "table-indexes-combined")
     if healthy_second:
         second = second[:BLOCK * 2]
     fragment = b"first-tailsecond-tail"
@@ -225,10 +227,29 @@ def volume(fault="", compressed=False, no_fragments=False, codec="zlib", xattrs=
         image[lookup_metadata + 2:lookup_metadata + 34] = bytes(32)
     elif fault == "export-index-outside":
         struct.pack_into("<Q", image, lookup_table, len(image))
+    elif fault in ("id-table-index-outside", "fragment-table-index-outside"):
+        struct.pack_into("<Q", image, ids_table if fault.startswith("id-") else fragment_table, len(image))
+    elif fault in ("id-table-start-outside", "fragment-table-start-outside", "xattr-table-start-outside", "export-table-start-outside"):
+        field = {"id-table-start-outside": 48, "fragment-table-start-outside": 80,
+                 "xattr-table-start-outside": 56, "export-table-start-outside": 88}[fault]
+        struct.pack_into("<Q", image, field, len(image) + 1)
+    elif fault == "table-indexes-combined":
+        for table in (ids_table, fragment_table, lookup_table,
+                      xattr_id_table + 16 if xattrs else INVALID):
+            if table != INVALID:
+                struct.pack_into("<Q", image, table, len(image))
+    elif fault == "fragment-count-large":
+        struct.pack_into("<I", image, 16, 0xffffffff)
+    elif fault == "id-count-zero":
+        struct.pack_into("<H", image, 26, 0)
     elif fault == "id-metadata-gap":
         image[ids_table:ids_table] = bytes(BLOCK)
         struct.pack_into("<Q", image, 48, ids_table + BLOCK)
         struct.pack_into("<Q", image, 40, len(image))
+        if xattrs:
+            struct.pack_into("<Q", image, 56, xattr_id_table + BLOCK)
+            struct.pack_into("<Q", image, xattr_id_table + BLOCK, xattr_start + BLOCK)
+            struct.pack_into("<Q", image, xattr_id_table + BLOCK + 16, xattr_ids_metadata + BLOCK)
     elif fault in ("metadata-bomb", "cross-block-inode"):
         if fault == "metadata-bomb":
             # The inode block expands beyond the 8 KiB metadata contract.

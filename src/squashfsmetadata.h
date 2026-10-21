@@ -6,6 +6,12 @@
 extern "C" {
 #endif
 struct sevenzip_squashfs_metadata;
+enum {
+    SEVENZIP_SQUASHFS_XATTR_UNAVAILABLE = 1,
+    SEVENZIP_SQUASHFS_IDS_UNAVAILABLE = 2,
+    SEVENZIP_SQUASHFS_EXPORT_UNAVAILABLE = 4,
+    SEVENZIP_SQUASHFS_FRAGMENTS_UNAVAILABLE = 8
+};
 // The caller supplies a validated v4 superblock size and retains callback state
 // until destroy. Metadata callbacks are serialized through this reader.
 // Decode one metadata block: size is capacity on input and actual size on output;
@@ -16,6 +22,7 @@ int sevenzip_squashfs_metadata_create(uint64_t bytes_used, sevenzip_squashfs_rea
                                       struct sevenzip_squashfs_metadata **,
                                       uint64_t *directory_end);
 void sevenzip_squashfs_metadata_destroy(struct sevenzip_squashfs_metadata *);
+unsigned sevenzip_squashfs_unavailable_tables(const struct sevenzip_squashfs_metadata *);
 int sevenzip_squashfs_id(struct sevenzip_squashfs_metadata *, unsigned, unsigned *);
 int sevenzip_squashfs_fragment(struct sevenzip_squashfs_metadata *, unsigned, uint64_t *,
                                unsigned *);

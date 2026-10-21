@@ -4013,16 +4013,17 @@ if(BUILD_TESTING)
     add_test(NAME filesystem_squashfs_read_ui COMMAND filesystem_read_ui_tests -silent confirmsPartialSquashfsAttributes)
     add_test(NAME filesystem_squashfs_directory_ui COMMAND filesystem_read_ui_tests -silent confirmsPartialSquashfsDirectory)
     add_test(NAME filesystem_squashfs_inode_ui COMMAND filesystem_read_ui_tests -silent confirmsPartialSquashfsInodes)
+    add_test(NAME filesystem_squashfs_index_ui COMMAND filesystem_read_ui_tests -silent confirmsPartialSquashfsIndexes)
     add_test(NAME filesystem_read_ui COMMAND filesystem_read_ui_tests -silent deletedRecoveryConsent confirmsAndCopiesFlaggedVolume)
     add_test(NAME filesystem_read_ui_ru COMMAND filesystem_read_ui_tests -silent confirmsAndCopiesFlaggedVolumeRu)
     add_test(NAME filesystem_security_read_ui COMMAND filesystem_read_ui_tests -silent confirmsPartialSecurityStream)
     add_test(NAME filesystem_fat_read_ui COMMAND filesystem_read_ui_tests -silent confirmsLimitedFat)
     add_test(NAME filesystem_fat_directory_ui COMMAND filesystem_read_ui_tests -silent confirmsPartialFatDirectory)
     add_test(NAME filesystem_fat_file_ui COMMAND filesystem_read_ui_tests -silent confirmsPartialFatFile)
-    set_tests_properties(filesystem_squashfs_inode_ui filesystem_squashfs_directory_ui filesystem_squashfs_read_ui filesystem_read_ui filesystem_read_ui_ru filesystem_security_read_ui filesystem_fat_read_ui filesystem_fat_directory_ui filesystem_fat_file_ui PROPERTIES TIMEOUT 60 RESOURCE_LOCK sevenzip_ui_artifacts
+    set_tests_properties(filesystem_squashfs_index_ui filesystem_squashfs_inode_ui filesystem_squashfs_directory_ui filesystem_squashfs_read_ui filesystem_read_ui filesystem_read_ui_ru filesystem_security_read_ui filesystem_fat_read_ui filesystem_fat_directory_ui filesystem_fat_file_ui PROPERTIES TIMEOUT 60 RESOURCE_LOCK sevenzip_ui_artifacts
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     if(APPLE)
-        set_property(TEST filesystem_squashfs_inode_ui filesystem_squashfs_directory_ui filesystem_squashfs_read_ui filesystem_read_ui filesystem_read_ui_ru filesystem_security_read_ui filesystem_fat_read_ui filesystem_fat_directory_ui filesystem_fat_file_ui PROPERTY ENVIRONMENT
+        set_property(TEST filesystem_squashfs_index_ui filesystem_squashfs_inode_ui filesystem_squashfs_directory_ui filesystem_squashfs_read_ui filesystem_read_ui filesystem_read_ui_ru filesystem_security_read_ui filesystem_fat_read_ui filesystem_fat_directory_ui filesystem_fat_file_ui PROPERTY ENVIRONMENT
             "QT_QPA_PLATFORM=cocoa;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     endif()
     qt_add_executable(associated_window_tests tests/associated_window_tests.cpp

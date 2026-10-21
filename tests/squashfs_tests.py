@@ -156,11 +156,7 @@ class SquashfsTests(unittest.TestCase):
             result = self.run_image("7z", data, "x", name)
             self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
             self.assertEqual(result.stdout, files[name])
-        for fault in ("xattr-ids-zero", "xattr-index-outside"):
-            with self.subTest(fault=fault):
-                result = self.run_image("7z", volume(fault, xattrs=True)[0], "l")
-                self.assertNotEqual(result.returncode, 0, result.stdout.decode(errors="replace"))
-        for fault in ("xattr-count-negative", "xattr-id-invalid", "xattr-ool-outside"):
+        for fault in ("xattr-ids-zero", "xattr-index-outside", "xattr-count-negative", "xattr-id-invalid", "xattr-ool-outside"):
             with self.subTest(fault=fault):
                 data, files = volume(fault, xattrs=True)
                 result = self.run_image("7z", data, "x", "alpha")
@@ -168,7 +164,7 @@ class SquashfsTests(unittest.TestCase):
                 self.assertEqual(result.stdout, files["alpha"])
                 listing = self.run_image("7z", data, "l")
                 self.assertEqual(listing.returncode, 0, listing.stderr.decode(errors="replace"))
-                self.assertIn(b"Read-only limitations = Some SquashFS extended attributes are unavailable", listing.stdout)
+                self.assertIn(b"Some SquashFS extended attributes are unavailable", listing.stdout)
 
     def test_published_native_xattr_values_and_stream_filtering(self):
         fixtures = Path(__file__).parent / "fixtures/squashfs"
@@ -201,9 +197,24 @@ class SquashfsTests(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
                 self.assertEqual(result.stdout, bytes.fromhex(expected), candidates[0])
 
-    def test_id_metadata_index_rejects_an_excessive_gap(self):
-        result = self.run_image("7z", volume("id-metadata-gap")[0], "l")
-        self.assertNotEqual(result.returncode, 0)
+    def test_broken_indexes_preserve_the_readable_subset(self):
+        fragment_faults = ("fragment-table-index-outside", "fragment-table-start-outside",
+                           "fragment-count-large", "table-indexes-combined")
+        faults = fragment_faults + ("id-metadata-gap", "id-table-index-outside", "id-table-start-outside",
+                                   "id-count-zero", "xattr-table-start-outside", "export-index-outside",
+                                   "export-table-start-outside")
+        for fault in faults:
+            data, files = volume(fault, xattrs=True, export=True)
+            with self.subTest(fault=fault):
+                listing = self.run_image("7z", data, "l")
+                self.assertEqual(listing.returncode, 0, listing.stderr.decode(errors="replace"))
+                self.assertIn(b"metadata indexes are unavailable", listing.stdout)
+                good = self.run_image("7z", data, "x", "данные 空")
+                self.assertEqual(good.returncode, 0, good.stderr.decode(errors="replace"))
+                self.assertEqual(good.stdout, files["данные 空"])
+                first = self.run_image("7z", data, "x", "alpha")
+                self.assertEqual(first.stdout, files["alpha"][:8192] if fault in fragment_faults else files["alpha"])
+                self.assertEqual(first.returncode == 0, fault not in fragment_faults)
 
     def test_export_payload_is_independent_of_ordinary_file_reads(self):
         for engine in ("7z", "7zz"):
@@ -217,9 +228,8 @@ class SquashfsTests(unittest.TestCase):
                             result = self.run_image(engine, data, "x", name)
                             self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
                             self.assertEqual(result.stdout, files[name])
-        for engine in ("7z", "7zz"):
-            result = self.run_image(engine, volume("export-index-outside", export=True)[0], "l")
-            self.assertNotEqual(result.returncode, 0)
+        result = self.run_image("7zz", volume("export-index-outside", export=True)[0], "l")
+        self.assertNotEqual(result.returncode, 0)
 
     def test_partial_directory_entries_preserve_readable_files(self):
         for fault in ("directory-reference", "directory-unavailable", "directory-tail"):

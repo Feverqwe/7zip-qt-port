@@ -245,10 +245,15 @@ struct CHeader {
                 return false;
             Parse4(p);
         }
-        return InodeTable < DirTable && DirTable <= Size &&
-               (Major == 4 && NumFrags == 0 ? true : DirTable <= FragTable && FragTable <= Size) &&
-               UidTable <= Size && BlockSizeLog >= 12 && BlockSizeLog < 31 &&
-               BlockSize == ((UInt32)1 << BlockSizeLog);
+        bool indexesInRange =
+            (Major == 4 && NumFrags == 0 ? true : DirTable <= FragTable && FragTable <= Size) &&
+            UidTable <= Size;
+#ifdef SEVENZIP_LINUX_SQUASHFS
+        if (Major == 4)
+            indexesInRange = true; // Ancillary indexes have independent bounded Linux loaders.
+#endif
+        return InodeTable < DirTable && DirTable <= Size && indexesInRange && BlockSizeLog >= 12 &&
+               BlockSizeLog < 31 && BlockSize == ((UInt32)1 << BlockSizeLog);
     }
 
     bool IsSupported() const {
@@ -918,6 +923,7 @@ Z7_CLASS_IMP_CHandler_IInArchive_1(
   }
   bool _ownershipLimitations = false;
   bool _fragmentLimitations = false;
+  bool _indexLimitations = false;
   bool OwnershipUnavailable(const CNode &node) const {
     return !_h.IsOldVersion() && (node.Uid >= _h.NumIDs || node.Gid >= _h.NumIDs ||
         _unavailableIds.count(node.Uid) || _unavailableIds.count(node.Gid));
@@ -1002,12 +1008,16 @@ int CHandler::ReadLinux(void *opaque, uint64_t offset, void *data, size_t size) 
         if (result == S_OK)
             result = ReadStream_FALSE(handler->_stream, data, size);
         handler->_linuxReadResult = result;
-        return result == S_OK ? 0 : -1;
+        return result == S_OK            ? 0
+               : result == E_ABORT       ? -ECANCELED
+               : result == E_OUTOFMEMORY ? -ENOMEM
+               : result == E_NOTIMPL     ? -95
+                                         : -EIO;
     } catch (...) {
         // Match the upstream COM boundary without unwinding through C-owned
         // option buffers and decoder setup allocations.
         handler->_linuxReadResult = E_OUTOFMEMORY;
-        return -1;
+        return -ENOMEM;
     }
 }
 
@@ -1023,9 +1033,15 @@ HRESULT CHandler::InitLinuxDecoder() {
 }
 
 HRESULT CHandler::LinuxResult(int result) const {
+    if (result == -ENOMEM)
+        return E_OUTOFMEMORY;
+    if (result == -ECANCELED)
+        return E_ABORT;
+    if (result == -95)
+        return E_NOTIMPL;
     if (_linuxReadResult != S_OK)
         return _linuxReadResult;
-    return result >= 0 ? S_OK : result == -12 ? E_OUTOFMEMORY : S_FALSE;
+    return result >= 0 ? S_OK : S_FALSE;
 }
 
 int CHandler::ReadLinuxMetadata(void *opaque, uint64_t block, void *data, unsigned *size,
@@ -1055,6 +1071,7 @@ int CHandler::ReadLinuxMetadata(void *opaque, uint64_t block, void *data, unsign
         return result == S_OK            ? 0
                : result == E_ABORT       ? -ECANCELED
                : result == E_OUTOFMEMORY ? -ENOMEM
+               : result == E_NOTIMPL     ? -95
                                          : -EIO;
     } catch (...) {
         handler->_linuxReadResult = E_OUTOFMEMORY;
@@ -1065,15 +1082,22 @@ int CHandler::ReadLinuxMetadata(void *opaque, uint64_t block, void *data, unsign
 HRESULT CHandler::LoadLinuxTables(UInt64 &directoryEnd) {
     _linuxReadResult = S_OK;
     uint64_t end;
-    RINOK(LinuxResult(sevenzip_squashfs_metadata_create(_h.Size, ReadLinux, ReadLinuxMetadata, this,
-                                                        &_linuxMetadata, &end)))
+    const int created = sevenzip_squashfs_metadata_create(_h.Size, ReadLinux, ReadLinuxMetadata,
+                                                          this, &_linuxMetadata, &end);
+    if (created != 0)
+        return LinuxResult(created);
+    // Ancillary I/O failures have been retained as unavailable tables by the
+    // C adapter. A successful subset must not inherit its last tolerated read.
+    _linuxReadResult = S_OK;
+    const unsigned unavailable = sevenzip_squashfs_unavailable_tables(_linuxMetadata);
+    _indexLimitations = unavailable != 0;
     directoryEnd = end;
     _uids.Alloc((size_t)_h.NumIDs * 4);
     for (unsigned i = 0; i < _h.NumIDs; ++i) {
         _linuxReadResult = S_OK;
         unsigned id = 0;
         const HRESULT result = LinuxResult(sevenzip_squashfs_id(_linuxMetadata, i, &id));
-        if (result == E_ABORT || result == E_OUTOFMEMORY)
+        if (result == E_ABORT || result == E_OUTOFMEMORY || result == E_NOTIMPL)
             return result;
         if (result != S_OK)
             _unavailableIds.insert(i);
@@ -1081,6 +1105,8 @@ HRESULT CHandler::LoadLinuxTables(UInt64 &directoryEnd) {
         if (_openCallback && (i & 255) == 0)
             RINOK(_openCallback->SetCompleted(NULL, NULL))
     }
+    if (unavailable & SEVENZIP_SQUASHFS_FRAGMENTS_UNAVAILABLE)
+        return S_OK;
     if (_h.NumFrags > kNumFilesMax)
         return S_FALSE;
     _frags.ClearAndReserve(_h.NumFrags);
@@ -1090,7 +1116,7 @@ HRESULT CHandler::LoadLinuxTables(UInt64 &directoryEnd) {
         unsigned size = 0;
         const HRESULT result =
             LinuxResult(sevenzip_squashfs_fragment(_linuxMetadata, i, &start, &size));
-        if (result == E_ABORT || result == E_OUTOFMEMORY)
+        if (result == E_ABORT || result == E_OUTOFMEMORY || result == E_NOTIMPL)
             return result;
         CFrag frag;
         const UInt32 packed = GET_COMPRESSED_BLOCK_SIZE(size);
@@ -2526,6 +2552,7 @@ Z7_COM7F_IMF(CHandler::Close()) {
     _inodeMappingLimitations = false;
     _ownershipLimitations = false;
     _fragmentLimitations = false;
+    _indexLimitations = false;
     _rootAttributeName.Empty();
 #endif
     _openCodePage = CP_UTF8;
@@ -2709,8 +2736,14 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID propID, PROPVARIANT *value)) {
         break;
     case kpidReadLimitations: {
         AString reasons;
-        if (!_incompleteAttributes.empty())
-            reasons = kAttributeLimitations;
+        if (_indexLimitations)
+            reasons = "Some SquashFS metadata indexes are unavailable. File data, ownership or "
+                      "extended attributes may be incomplete.";
+        if (!_incompleteAttributes.empty()) {
+            if (!reasons.IsEmpty())
+                reasons += '\n';
+            reasons += kAttributeLimitations;
+        }
         if (_ownershipLimitations) {
             if (!reasons.IsEmpty())
                 reasons += '\n';
