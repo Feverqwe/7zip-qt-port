@@ -100,7 +100,6 @@ int exfat_open_volume(const struct exfat_source *source, struct exfat_volume **r
             sbi->data_start_sector > sbi->num_sectors ||
             clusters > ((sbi->num_sectors - sbi->data_start_sector) >> sbi->sect_per_clus_bits) ||
             (boot->num_fats == 1 && sbi->active_fat) ||
-            (boot->num_fats == 2 && (sbi->vol_flags & (VOLUME_DIRTY | MEDIA_FAILURE))) ||
             boot->fs_revision[1] != 1)
             error = -EINVAL;
         else
@@ -127,6 +126,9 @@ int exfat_open_volume(const struct exfat_source *source, struct exfat_volume **r
 }
 
 uint64_t exfat_volume_size(const struct exfat_volume *v) { return v->sb.image_size; }
+uint16_t exfat_volume_status(const struct exfat_volume *v) {
+    return v->info.vol_flags_persistent;
+}
 uint64_t exfat_volume_free_size(const struct exfat_volume *v) {
     // exfat_statfs: data clusters exclude the two reserved cluster numbers.
     return (uint64_t)(EXFAT_DATA_CLUSTER_COUNT(&v->info) - v->info.used_clusters)

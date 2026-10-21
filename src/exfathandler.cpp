@@ -69,6 +69,8 @@ class CHandler final : public IInArchive, public CMyUnknownImp {
     HRESULT ExtractItem(UInt32, Int32, IArchiveExtractCallback *);
 };
 
+enum { kpidReadLimitations = kpidUserDefined };
+
 int CHandler::Poll(void *context) {
     auto &self = *static_cast<CHandler *>(context);
     if (self.transportResult_ != S_OK)
@@ -225,7 +227,9 @@ Z7_COM7F_IMF(CHandler::GetProperty(UInt32 index, PROPID id, PROPVARIANT *value))
 Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID id, PROPVARIANT *value)) {
     COM_TRY_BEGIN
     NWindows::NCOM::CPropVariant prop;
-    if (id == kpidPhySize && volume_)
+    if (id == kpidReadOnly && volume_)
+        prop = true;
+    else if (id == kpidPhySize && volume_)
         prop = UInt64(exfat_volume_size(volume_.get()));
     else if (id == kpidFreeSpace && volume_)
         prop = UInt64(exfat_volume_free_size(volume_.get()));
@@ -233,7 +237,19 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID id, PROPVARIANT *value)) {
         prop = UInt32(exfat_volume_cluster_size(volume_.get()));
     else if (id == kpidSectorSize && volume_)
         prop = UInt32(exfat_volume_sector_size(volume_.get()));
-    else if (id == kpidVolumeName && volume_) {
+    else if (id == kpidReadLimitations && volume_) {
+        const UInt16 status = exfat_volume_status(volume_.get());
+        AString warning;
+        if (status & 2)
+            warning = "Volume was not properly unmounted. Some data may be corrupt.";
+        if (status & 4) {
+            if (!warning.IsEmpty())
+                warning += '\n';
+            warning += "Medium has reported failures. Some data may be lost.";
+        }
+        if (!warning.IsEmpty())
+            prop = warning;
+    } else if (id == kpidVolumeName && volume_) {
         UString label;
         for (const uint16_t *p = exfat_volume_label(volume_.get()); *p; ++p)
             label += wchar_t(*p);
@@ -318,9 +334,14 @@ Z7_COM7F_IMF(CHandler::Extract(const UInt32 *indices, UInt32 count, Int32 testMo
 
 static const Byte kProps[] = {kpidPath,   kpidIsDir, kpidSize,  kpidPackSize,
                               kpidAttrib, kpidCTime, kpidMTime, kpidATime};
-static const Byte kArcProps[] = {kpidPhySize, kpidVolumeName, kpidFreeSpace, kpidClusterSize,
-                                 kpidSectorSize};
-IMP_IInArchive_Props IMP_IInArchive_ArcProps static const Byte signature[] = {'E', 'X', 'F', 'A',
-                                                                              'T', ' ', ' ', ' '};
+static const CStatProp kArcProps[] = {{nullptr, kpidReadOnly, VT_BOOL},
+                                      {nullptr, kpidPhySize, VT_UI8},
+                                      {nullptr, kpidVolumeName, VT_BSTR},
+                                      {nullptr, kpidFreeSpace, VT_UI8},
+                                      {nullptr, kpidClusterSize, VT_UI4},
+                                      {nullptr, kpidSectorSize, VT_UI4},
+                                      {"Read-only limitations", kpidReadLimitations, VT_BSTR}};
+IMP_IInArchive_Props IMP_IInArchive_ArcProps_WITH_NAME static const Byte signature[] = {
+    'E', 'X', 'F', 'A', 'T', ' ', ' ', ' '};
 REGISTER_ARC_I("exFAT", "exfat img", nullptr, 0xF0, signature, 3, 0, nullptr)
 } // namespace NArchive::NExfat

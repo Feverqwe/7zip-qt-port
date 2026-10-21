@@ -11,6 +11,7 @@
 #include "qtarchivefileresource.h"
 #include "qtarchivenativeopenprogress.h"
 #include "qtarchiveproperties.h"
+#include "qtfilesystemreadprompt.h"
 #include "qtlocationfolder.h"
 #include <QFile>
 #include <QMetaObject>
@@ -228,6 +229,9 @@ HRESULT QtArchiveFolderManager::OpenLinkImpl(CArchiveLink &link, const COpenOpti
         if (nativeResult != S_FALSE || !nativeOpen || nativeOpen->archiveLink().Arcs.IsEmpty())
             return nativeResult;
     }
+    QString limitations;
+    RINOK(PrepareLimitedFilesystemRead(nativeOpen->archiveLink(), ui, {}, limitations))
+    resource->SetFilesystemReadLimitations(limitations);
     resource->AttachNativeOpen(std::move(nativeOpen));
     const auto *nativeLink = resource->NativeArchiveLink();
     const bool partialNativeOpen = nativeLink && !nativeLink->NonOpen_ArcPath.IsEmpty();

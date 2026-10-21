@@ -548,6 +548,7 @@ add_library(sevenzip_location STATIC src/qtlocationfolder.cpp src/qtlocationfold
     src/qtarchivefileresource.cpp src/qtarchivefileresource.h
     src/qtarchivedevicefolder.cpp
     src/deviceselectiondialog.cpp src/deviceselectiondialog.h src/qtdevicecommands.cpp
+    src/qtfilesystemreadprompt.cpp src/qtfilesystemreadprompt.h
     src/qtarchivenativeproperties.cpp
     src/qtfolderpropertycapabilities.h
     src/CPP/7zip/UI/Agent/Agent.cpp src/CPP/7zip/UI/Agent/AgentProxy.cpp)
@@ -3947,6 +3948,21 @@ if(BUILD_TESTING)
     get_target_property(metadata_ui_sources ui_update_modes_tests SOURCES)
     list(REMOVE_ITEM metadata_ui_sources tests/ui_update_modes_tests.cpp)
     get_target_property(metadata_ui_libraries ui_update_modes_tests LINK_LIBRARIES)
+    qt_add_executable(filesystem_read_ui_tests tests/filesystem_read_ui_tests.cpp
+        tests/exfat_fixture.cpp tests/layout_inspection.cpp ${metadata_ui_sources})
+    target_include_directories(filesystem_read_ui_tests PRIVATE src tests)
+    target_link_libraries(filesystem_read_ui_tests PRIVATE ${metadata_ui_libraries})
+    target_compile_definitions(filesystem_read_ui_tests PRIVATE
+        "SEVENZIP_EXFAT_MODULE=\"$<TARGET_FILE:sevenzip_exfat>\""
+        "SEVENZIP_EXFAT_RUNTIME=\"${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime\"")
+    add_dependencies(filesystem_read_ui_tests sevenzip_exfat)
+    add_test(NAME filesystem_read_ui COMMAND filesystem_read_ui_tests -silent)
+    set_tests_properties(filesystem_read_ui PROPERTIES TIMEOUT 60 RESOURCE_LOCK sevenzip_ui_artifacts
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
+    if(APPLE)
+        set_property(TEST filesystem_read_ui PROPERTY ENVIRONMENT
+            "QT_QPA_PLATFORM=cocoa;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
+    endif()
     qt_add_executable(associated_window_tests tests/associated_window_tests.cpp
         tests/fixtures/widget_dialogs.cpp
         src/qtfilemanagermain.cpp ${metadata_ui_sources})

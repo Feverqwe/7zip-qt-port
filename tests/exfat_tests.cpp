@@ -565,13 +565,55 @@ class ExfatTests final : public QObject {
         QCOMPARE(callback->result, Int32(NArchive::NExtract::NOperationResult::kOK));
         QCOMPARE(callback->output->bytes, QByteArray(512, 'A') + QByteArray(188, 'B'));
     }
+    void statusFlagsPermitReadOnlyData_data() {
+        QTest::addColumn<int>("layout");
+        QTest::addColumn<unsigned>("status");
+        for (int layout : {-1, 0, 1})
+            for (unsigned status : {2u, 4u, 6u})
+                QTest::newRow(qPrintable(QString::number(layout) + '-' + QString::number(status)))
+                    << layout << status;
+    }
+    void statusFlagsPermitReadOnlyData() {
+        QFETCH(int, layout);
+        QFETCH(unsigned, status);
+        ExfatFixture fixture;
+        if (layout >= 0)
+            fixture = TexfatFixture(unsigned(layout));
+        fixture.image[106] = char(status | (layout < 0 ? 0 : layout));
+        const QByteArray original = fixture.image;
+        QCOMPARE(open(fixture.image), S_OK);
+        UInt32 properties = 0;
+        QCOMPARE(archive_->GetNumberOfArchiveProperties(&properties), S_OK);
+        QString limitations;
+        for (UInt32 i = 0; i < properties; ++i) {
+            CMyComBSTR name;
+            PROPID id;
+            VARTYPE type;
+            QCOMPARE(archive_->GetArchivePropertyInfo(i, &name, &id, &type), S_OK);
+            if (!name || QString::fromWCharArray(name) != "Read-only limitations")
+                continue;
+            NWindows::NCOM::CPropVariant value;
+            QCOMPARE(archive_->GetArchiveProperty(id, &value), S_OK);
+            QCOMPARE(value.vt, VARTYPE(VT_BSTR));
+            limitations = QString::fromWCharArray(value.bstrVal);
+        }
+        QCOMPARE(limitations.contains("unmounted"), bool(status & 2));
+        QCOMPARE(limitations.contains("failures"), bool(status & 4));
+        const UInt32 index = indexOf(fixture.fragmentedName);
+        QVERIFY(index != UInt32(-1));
+        CMyComPtr2<IArchiveExtractCallback, Extract> callback;
+        callback.Create_if_Empty();
+        QCOMPARE(archive_->Extract(&index, 1, 0, callback), S_OK);
+        QCOMPARE(callback->result, Int32(NArchive::NExtract::NOperationResult::kOK));
+        QCOMPARE(callback->output->bytes, QByteArray(512, 'A') + QByteArray(188, 'B'));
+        QCOMPARE(fixture.image, original);
+    }
     void texfatRefusesInconsistentVolumes_data() {
         QTest::addColumn<unsigned>("active");
         QTest::addColumn<QString>("fault");
         for (unsigned active : {0u, 1u})
-            for (const auto *fault :
-                 {"dirty", "media-failure", "missing-bitmap", "duplicate-bitmap",
-                  "active-root-cycle", "active-root-unallocated", "bitmap-cycle"}) {
+            for (const auto *fault : {"missing-bitmap", "duplicate-bitmap", "active-root-cycle",
+                                      "active-root-unallocated", "bitmap-cycle"}) {
                 const QByteArray row = QByteArray::number(active) + '-' + fault;
                 QTest::newRow(row.constData()) << active << QString::fromLatin1(fault);
             }
@@ -580,10 +622,6 @@ class ExfatTests final : public QObject {
         QFETCH(unsigned, active);
         QFETCH(QString, fault);
         TexfatFixture fixture(active);
-        if (fault == "dirty")
-            fixture.image[106] = char(active | 2);
-        if (fault == "media-failure")
-            fixture.image[106] = char(active | 4);
         if (fault == "missing-bitmap")
             fixture.image[fixture.rootOffset(31)] = 1;
         if (fault == "duplicate-bitmap")
@@ -604,6 +642,7 @@ class ExfatTests final : public QObject {
     }
     void texfatDoesNotRecoverFromInactivePair() {
         TexfatFixture fixture(1);
+        fixture.image[106] = char(1 | 2 | 4);
         // The inactive copy still has an acyclic chain, but its payload is stale.
         fixture.fatCopy(1, 9, 5);
         QCOMPARE(open(fixture.image), S_OK);

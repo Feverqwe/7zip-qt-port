@@ -36,6 +36,7 @@ struct exfat_cursor {
 int exfat_open_volume(const struct exfat_source *, struct exfat_volume **);
 void exfat_close_volume(struct exfat_volume *);
 uint64_t exfat_volume_size(const struct exfat_volume *);
+uint16_t exfat_volume_status(const struct exfat_volume *);
 uint64_t exfat_volume_free_size(const struct exfat_volume *);
 uint32_t exfat_volume_cluster_size(const struct exfat_volume *);
 uint32_t exfat_volume_sector_size(const struct exfat_volume *);

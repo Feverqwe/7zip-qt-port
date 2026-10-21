@@ -3838,6 +3838,14 @@ Are you sure you want to split archive into such volumes?</source>
     <context>
         <name>SevenZipDiagnostics</name>
         <message>
+            <source>Volume was not properly unmounted. Some data may be corrupt.</source>
+            <translation>Том был некорректно размонтирован. Часть данных может быть повреждена.</translation>
+        </message>
+        <message>
+            <source>Medium has reported failures. Some data may be lost.</source>
+            <translation>Носитель сообщил об ошибках. Часть данных может быть потеряна.</translation>
+        </message>
+        <message>
             <location filename="../src/CPP/7zip/UI/Common/Update.cpp" line="+44" />
             <source>SFX file is not specified</source>
             <translation>SFX-модуль не указан</translation>
@@ -6386,8 +6394,8 @@ Application modules:
             <translation>Открыть для чтения с ограничениями?</translation>
         </message>
         <message>
-            <source>You can copy readable files, but unsupported features or unfinished recovery may leave some files missing, outdated or unreadable. Nothing will be written to the device. Sevenzip will not replay the journal, clean up orphaned files or repair the filesystem.</source>
-            <translation>Можно копировать доступные файлы, но из-за неподдерживаемых возможностей или незавершённого восстановления часть файлов может отсутствовать, быть устаревшей или не читаться. На устройство ничего не будет записано. Sevenzip не воспроизводит журнал, не очищает осиротевшие файлы и не исправляет файловую систему.</translation>
+            <source>You can copy readable files, but unsupported features or unfinished recovery may leave some files missing, outdated or unreadable. Nothing will be written to the source. Sevenzip will not replay the journal, clean up orphaned files or repair the filesystem.</source>
+            <translation>Можно копировать доступные файлы, но из-за неподдерживаемых возможностей или незавершённого восстановления часть файлов может отсутствовать, быть устаревшей или не читаться. Исходные данные не будут изменены. Sevenzip не воспроизводит журнал, не очищает осиротевшие файлы и не исправляет файловую систему.</translation>
         </message>
         <message>
             <source>Open read-only</source>

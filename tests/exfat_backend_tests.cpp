@@ -17,6 +17,9 @@ class ExfatBackendTests final : public QObject {
         QTest::newRow("texfat-second") << 1;
         QTest::newRow("texfat-fragmented-bitmap") << 2;
         QTest::newRow("zero-size-directories") << 3;
+        QTest::newRow("dirty-texfat-first") << 4;
+        QTest::newRow("media-texfat-second") << 5;
+        QTest::newRow("dirty-media-exfat") << 6;
     }
     void discoversBrowsesAndExtractsReadOnly() {
         QFETCH(int, layout);
@@ -38,6 +41,10 @@ class ExfatBackendTests final : public QObject {
         ExfatFixture fixture;
         if (layout >= 0 && layout <= 2)
             fixture = TexfatFixture(layout == 2 ? 1 : unsigned(layout), 512, layout == 2);
+        if (layout == 4 || layout == 5)
+            fixture = TexfatFixture(unsigned(layout - 4));
+        if (layout >= 4)
+            fixture.image[106] = char(layout == 4 ? 2 : layout == 5 ? 5 : 6);
         if (layout == 3) {
             fixture.fat(10, 11);
             fixture.fat(11, 0xffffffff);
@@ -60,6 +67,9 @@ class ExfatBackendTests final : public QObject {
         QVERIFY(catalog->formatIndex("exFAT") >= 0);
         QVERIFY(!catalog->canUpdate("exFAT"));
         QSignalSpy listed(&backend, &ArchiveBackend::entriesReady);
+        ArchiveInfo info;
+        connect(&backend, &ArchiveBackend::infoReady, this,
+                [&](const ArchiveInfo &result) { info = result; });
         QList<ArchiveEntry> entries;
         connect(&backend, &ArchiveBackend::entriesReady, this,
                 [&](const QList<ArchiveEntry> &result) { entries = result; });
@@ -68,6 +78,8 @@ class ExfatBackendTests final : public QObject {
         QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 10000);
         QVERIFY2(finished[0][0].toBool(), qPrintable(finished[0][1].toString()));
         QCOMPARE(listed.size(), 1);
+        if (layout >= 4)
+            QVERIFY(info.properties.contains("Read-only limitations"));
         QCOMPARE(entries.size(), layout == 3 ? 7 : 5);
         finished.clear();
         backend.test(image);

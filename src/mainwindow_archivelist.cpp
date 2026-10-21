@@ -238,8 +238,9 @@ void MainWindow::refreshPanelStatus() {
     bool device = false, limitedRead = false;
     const auto inspect = [&](IFolderFolder *folder) {
         if (const auto *resource = direct(folder)) {
-            device |= resource->HasDirectInput();
-            limitedRead |= resource->AllowsIncompleteDeviceRead();
+            const bool filesystemLimitations = !resource->FilesystemReadLimitations().isEmpty();
+            device |= resource->HasDirectInput() || filesystemLimitations;
+            limitedRead |= resource->AllowsIncompleteDeviceRead() || filesystemLimitations;
         }
     };
     inspect(panel.GetFolder());

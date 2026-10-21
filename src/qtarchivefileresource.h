@@ -52,6 +52,7 @@ class QtArchiveFileResource final : public IUnknown, public CMyUnknownImp {
     bool _nativeReadOnly = false;
     bool _nativeItemOrder = false;
     bool _nativePropertiesExplicit = false;
+    QString _filesystemReadLimitations;
     std::function<HRESULT(const wchar_t *const *, const PROPVARIANT *, UInt32)> _setProperties;
     QString _nativeOpenType;
     HRESULT RefreshDeviceInput(ArchiveBackend &backend, IOpenCallbackUI *callback,
@@ -67,6 +68,10 @@ class QtArchiveFileResource final : public IUnknown, public CMyUnknownImp {
                             QString *error = nullptr);
     bool HasDirectInput() const { return _directInput != nullptr; }
     bool AllowsIncompleteDeviceRead() const;
+    const QString &FilesystemReadLimitations() const { return _filesystemReadLimitations; }
+    void SetFilesystemReadLimitations(const QString &limitations) {
+        _filesystemReadLimitations = limitations;
+    }
     HRESULT CloseNativeOpen();
     void BindNativeItemOrder(IFolderFolder *metadata);
     bool HasCommentService() const;

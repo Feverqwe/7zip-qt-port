@@ -1,5 +1,9 @@
 # Linux exFAT read-only format module
 
+Current status handling includes [limited read-only access](#limited-read-only-status-2026-10-21)
+for dirty/media-failure volumes; the original clean-only TexFAT boundary below
+is retained as dated evidence.
+
 ## Sources and reproducible baseline
 
 Selected on 2026-10-17 from the current mainline Linux tree, rather than the
@@ -77,7 +81,8 @@ Explicit adaptations for untrusted image streams:
 
 - Establish volume/cluster/extent bounds that Linux normally obtains from a
   block device; reject unsupported major revisions. Two-FAT/TexFAT reads are
-  restricted to the clean-volume scope described below.
+  selected from the active allocation pair; status limitations are exposed as
+  described in the current limited-read section below.
 - Preserve bounded FAT-chain counting before traversing root/child directories
   or extracting FAT-chained files; reject ancestor directory aliases/cycles.
 - Require complete filename/stream entry sets and matching entry-set checksums;
@@ -443,7 +448,7 @@ Damaged-image behavior is deliberately bounded by the documented archive
 adaptations: entry-set checksums, complete mappings, name/path bounds, directory
 aliases/cycles and bitmap allocation are checked before publishing or extracting
 data. Linux's mount repair, silent size clamping and dirty-volume mutation are
-not reproduced. Clean TexFAT active-pair support remains the documented extension
+not reproduced. TexFAT active-pair support remains the documented extension
 to this Linux revision. Neither this comparison nor passing generated fixtures
 establishes recovery equivalence for every corrupt volume.
 
@@ -456,3 +461,79 @@ physical devices, UI appearance, full/slow suites and a new installed-package
 run are not claimed. This closure changes documentation only; `git diff --check`
 is the applicable new check, with the existing incremental build/cache results
 left intact.
+
+## Limited read-only status (2026-10-21)
+
+The Read-only filesystem access policy review found an extra adapter gate:
+two-FAT images were refused solely for VolumeDirty or MediaFailure. Pinned Linux
+`fs/exfat/super.c:exfat_read_boot_sector` retains those bits and warns rather than
+refusing read access. Full boot/verification, FAT selection, active bitmap
+loading/counting, directory traversal and extraction callers were compared before
+and after this change. The existing TexFAT extension continues selecting the
+declared active pair; it never guesses a replacement pair or replays a transaction.
+All 21 baseline hashes were checked, including the tracked upstream license.
+
+The extra status gate is removed. The module exposes standard ReadOnly capability
+and a named BSTR archive property, Read-only limitations, containing the applicable
+Linux status diagnostics. Clean images have no limitation text. Geometry, primary
+and backup checksums, entry-set validation, name/path checks, bitmap allocation,
+chain bounds/cycles and per-file DataError remain enforced. Neither status bit
+authorizes repair, writes, a different active pair or missing decoding.
+
+The engine ABI/process interface can retrieve the selected data and its limitation
+metadata. This metadata describes volume state, not a synthetic per-file read
+failure; existing operation errors and process completion checks are unchanged.
+The Qt archive-opening boundary reads that public property after a successful
+native Open and asks for confirmation before publishing the folder. The existing
+direct-device warning is reused in a focused shared prompt component. EN/RU text
+explains missing/outdated/unreadable data and no replay/cleanup/repair; Cancel is
+default and Escape cancels. A persistent limited-access badge applies to these
+filesystem-image folders and their descendants as well as direct devices.
+
+Accepted limitations belong to the resource for that opening. A new opening asks
+again, including after the source status changes. Source F5 relists the current
+reader, so it retains the chosen mode; it does not itself reread boot status.
+The explicit ReOpen path also checks current limitations, following the SDK's
+ReOpenCallback wrapper to the joined operation's UI. No callback pointer is retained
+beyond that operation. This is Qt/platform integration; no kernel write or VFS
+service and no new filesystem decoding algorithm is introduced.
+
+ABI coverage replaces the old dirty/media-refusal cases with nine layouts covering
+one FAT and both active TexFAT pairs with either/both flags. Exact diagnostics and
+payload are checked. Damaged active allocation still fails without falling back
+to stale inactive data. Backend cases list, test and extract flagged images with
+unchanged source bytes. EN/RU UI cases cover consent/cancel, copying, mutation
+restrictions, ordinary/compact badge geometry, mode retention and a new question
+on a later opening. These controlled declarations do not establish recovery of
+arbitrary interrupted TexFAT transactions.
+
+Focused ABI/backend/language checks passed on macOS, Linux and Windows. The first
+remote batch `20261021T033747Z-794a8a72` passed all five suites on Linux; Windows
+passed the exFAT/backend/language/new image UI cases, while device_ui stopped in
+its codec-catalog setup. Final `filesystem_read_ui` and `device_ui` passed on all
+three platforms: macOS Cocoa 29.03 s, Linux offscreen 6.02 s and Windows offscreen
+20.67 s, remote receipt `20261021T034826Z-97ddeb89`.
+
+The new native UI harness initially searched the wrong window hierarchy and hit
+a timeout; it now handles the actual top-level progress-owned prompt. An invalid
+test expectation that F5 performs a new Open was corrected from the original
+source flow. Windows correctly held a read-only source lease, so fixture changes
+for the later-opening case occur after closing the earlier opening. The affected
+device_ui test now waits for asynchronous native catalog loading beyond QTest's
+default five seconds; the production probe deadline is unchanged. Earlier Windows
+diagnostics also exist in `20261021T034559Z-7b98586b`.
+
+Native exFAT `6.8.0-147-generic` read three single-FAT images with dirty, media and
+combined flags through read-only loop mounts, with exact file data and unchanged
+image hashes, receipt `20261021T033536Z-6a5e1b72`. The temporary exporter reused the
+existing fixture object and compiler cache; mounts, images and helper were removed,
+and helper deletion was synchronized to both guests. Native TexFAT transaction
+acceptance is not claimed.
+
+Current Cocoa EN/RU JSON for both status diagnostics and the normal/compact badge
+was inspected: labels/buttons are visible and no clipping was found. Application
+builds passed on all three platforms, remote receipt
+`20261021T034959Z-5a5a3a02`. Existing build trees/caches were retained. Full/slow
+suites, physical devices, a new installed package, VoiceOver and native Windows/
+Linux appearance were not checked. This closes the selected status-policy scenario;
+the broader filesystem/format goal remains separate.

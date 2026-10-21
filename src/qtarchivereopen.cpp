@@ -8,9 +8,11 @@
 #include "CPP/7zip/UI/FileManager/OpenCallback.h"
 #include "Common/ComTry.h"
 #include "Common/StringConvert.h"
+#include "archivenativeopen.h"
 #include "qtarchivebackendrequest.h"
 #include "qtarchivefileresource.h"
 #include "qtarchivenativeopenprogress.h"
+#include "qtfilesystemreadprompt.h"
 #include "qtlocationfolder.h"
 #include <QThread>
 #include <memory>
@@ -115,6 +117,18 @@ void QtArchiveFileResource::AttachReopenService(ArchiveBackend &backend, const Q
         std::shared_ptr<ArchiveNativeOpen> nativeOpen;
         RINOK(
             backend.openNativeArchive(_codecs, path, format, &nativeProgress, nativeOpen, nullptr))
+        QString limitations;
+        auto *ui =
+            openCallback ? dynamic_cast<COpenArchiveCallback *>(openCallback->Callback) : nullptr;
+        // CArchiveLink::ReOpen wraps the caller in a fresh COpenCallbackImp.
+        // ReOpenCallback points to the caller for the joined operation's lifetime.
+        if (!ui && openCallback) {
+            const auto *outer = dynamic_cast<COpenCallbackImp *>(openCallback->ReOpenCallback);
+            if (outer)
+                ui = dynamic_cast<COpenArchiveCallback *>(outer->Callback);
+        }
+        RINOK(PrepareLimitedFilesystemRead(nativeOpen->archiveLink(), ui,
+                                           FilesystemReadLimitations(), limitations))
         QString password;
         CMyComPtr<ICryptoGetTextPassword2> crypto;
         if (callback)
@@ -141,6 +155,7 @@ void QtArchiveFileResource::AttachReopenService(ArchiveBackend &backend, const Q
             callback, _sync))
         RINOK(CreateArchiveMetadata(request->Entries, metadata))
         Info = request->Info;
+        SetFilesystemReadLimitations(limitations);
         AttachNativeOpen(std::move(nativeOpen));
         SetArchiveMetadata(request->Info.physicalSize, request->Info.offset);
         return S_OK;

@@ -25,6 +25,11 @@ within the source. The choice permits no journal replay, orphan cleanup or repai
 and cannot bypass missing decoding support. The warning and indicator fit the
 EN/RU layouts.
 
+Filesystem images with reader-reported state limitations use the same explicit
+choice before their folders are shown. Their limited-access indicator remains
+visible during copying and navigation. Relisting the current reader retains the
+chosen mode; a later opening asks again. Source data is never repaired or changed.
+
 [Все UI-спецификации](../ui-layout-contracts.md). Разделы сохраняют исходные требования,
 якоря и границы датированных свидетельств. Новые результаты проверок —
 в [source audit](../upstream-port-audit.md).

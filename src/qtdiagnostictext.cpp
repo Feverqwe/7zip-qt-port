@@ -37,7 +37,11 @@ UString QtArchiveDiagnosticText(const UString &source) {
     }
     const char *const warnings[] = {
         QT_TRANSLATE_NOOP("SevenZipDiagnostics", "32-bit overflow in headers"),
-        QT_TRANSLATE_NOOP("SevenZipDiagnostics", "16-bit overflow for number of files in headers")};
+        QT_TRANSLATE_NOOP("SevenZipDiagnostics", "16-bit overflow for number of files in headers"),
+        QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                          "Volume was not properly unmounted. Some data may be corrupt."),
+        QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                          "Medium has reported failures. Some data may be lost.")};
     for (const char *warning : warnings)
         if (text == QString::fromLatin1(warning))
             return QtDiagnosticText(warning);

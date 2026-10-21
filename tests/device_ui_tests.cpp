@@ -94,7 +94,9 @@ class DeviceUiTests final : public QObject {
             catalog_ = result.catalog;
             done = true;
         }));
-        QTRY_VERIFY(done);
+        // The probe deadline bounds process discovery; native DLL catalog loading
+        // completes asynchronously and can take longer on Windows.
+        QTRY_VERIFY_WITH_TIMEOUT(done, 15000);
         QVERIFY(catalog_);
         QCOMPARE(catalog_->result(), S_OK);
         QProcess gzip;
