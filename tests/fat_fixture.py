@@ -164,9 +164,13 @@ if __name__ == "__main__":
     parser.add_argument("--readonly")
     parser.add_argument("--directory")
     parser.add_argument("--streams", type=int)
+    parser.add_argument("--file-chain")
     parser.add_argument("--bundle", action="store_true")
     args = parser.parse_args()
-    if args.streams:
+    if args.file_chain:
+        from fat_stream_fixture import chain_volume
+        v = chain_volume(args.file_chain)
+    elif args.streams:
         from fat_stream_fixture import stream_volume
         v = stream_volume(args.streams)
     elif args.directory:
@@ -182,6 +186,8 @@ if __name__ == "__main__":
                           "incomplete_dirs": getattr(v, "incomplete_dirs", []),
                           "directory_limited": getattr(v, "directory_limited", False),
                           "fault_offset": getattr(v, "fault_offset", 0),
-                          "stream_offsets": getattr(v, "stream_offsets", [])}))
+                          "stream_offsets": getattr(v, "stream_offsets", []),
+                          "file_limited": getattr(v, "file_limited", False),
+                          "declared_file_size": getattr(v, "declared_file_size", len(PAYLOAD))}))
     else:
         sys.stdout.buffer.write(v.data)

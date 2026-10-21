@@ -2,6 +2,7 @@
 #include "7zip/Archive/IArchive.h"
 #include "Common/MyCom.h"
 #include <QByteArray>
+#include <QVector>
 #include <utility>
 
 namespace FatTestSupport {
@@ -80,6 +81,7 @@ class Extract final : public IArchiveExtractCallback, public CMyUnknownImp {
     CMyComPtr2<ISequentialOutStream, Output> output;
     bool cancel = false;
     Int32 result = -1;
+    QVector<Int32> results;
     Extract() { output.Create_if_Empty(); }
     Z7_COM7F_IMF(SetTotal(UInt64)) override { return S_OK; }
     Z7_COM7F_IMF(SetCompleted(const UInt64 *)) override { return cancel ? E_ABORT : S_OK; }
@@ -94,6 +96,7 @@ class Extract final : public IArchiveExtractCallback, public CMyUnknownImp {
     Z7_COM7F_IMF(PrepareOperation(Int32)) override { return S_OK; }
     Z7_COM7F_IMF(SetOperationResult(Int32 value)) override {
         result = value;
+        results.append(value);
         return S_OK;
     }
 };

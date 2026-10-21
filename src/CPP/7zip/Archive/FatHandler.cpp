@@ -43,6 +43,7 @@ namespace NArchive {
 namespace NFat {
 
 static const UInt32 kFatItemUsedByDirMask = (UInt32)1 << 31;
+static const UInt32 kFatItemActiveFileMask = (UInt32)1 << 29;
 #ifdef SEVENZIP_LINUX_FAT
 static const UInt32 kFatItemActiveDirMask = (UInt32)1 << 30;
 #endif
@@ -320,6 +321,7 @@ class CItem {
     Int32 Parent;
 #ifdef SEVENZIP_LINUX_FAT
     bool DirectoryIncomplete = false;
+    bool FileIncomplete = false;
 #endif
 
     CItem() {}
@@ -465,6 +467,7 @@ struct CDatabase {
 #ifdef SEVENZIP_LINUX_FAT
     bool SourceTruncated = false;
     bool DirectoryLimitations = false;
+    bool FileLimitations = false;
 #endif
     char VolLabel[11];
     bool VolItem_Defined;
@@ -479,6 +482,8 @@ struct CDatabase {
 
     void GetItemPath(UInt32 index, UString &s) const;
     HRESULT Open();
+    HRESULT GetFileClusters(const CItem &item, CRecordVector<UInt32> &clusters,
+                            bool reportProgress = false);
     HRESULT ReadDir(Int32 parent, UInt32 cluster, unsigned level);
     HRESULT ReadDirItems(Int32 parent, UInt32 cluster, unsigned level, HRESULT &callbackResult,
                          CRecordVector<UInt32> &activeClusters);
@@ -506,6 +511,7 @@ void CDatabase::Clear() {
 #ifdef SEVENZIP_LINUX_FAT
     SourceTruncated = false;
     DirectoryLimitations = false;
+    FileLimitations = false;
     Header.Dirty = false;
 #endif
     PhySize = 0;
@@ -1011,6 +1017,19 @@ HRESULT CDatabase::Open() {
 
     RINOK(ReadDir(-1, Header.RootCluster, 0))
 
+#ifdef SEVENZIP_LINUX_FAT
+    FOR_VECTOR(i, Items) {
+        CItem &item = Items[i];
+        if (!item.IsDir()) {
+            CRecordVector<UInt32> clusters;
+            RINOK(GetFileClusters(item, clusters, true))
+            item.FileIncomplete = ((UInt64)clusters.Size() << Header.ClusterSizeLog) < item.Size;
+            FileLimitations |= item.FileIncomplete;
+        }
+        RINOK(OpenProgress())
+    }
+#endif
+
 #ifndef SEVENZIP_LINUX_FAT
     PhySize = Header.GetPhySize();
 #endif
@@ -1029,6 +1048,37 @@ Z7_class_CHandler_final:
 };
 // clang-format on
 
+HRESULT CDatabase::GetFileClusters(const CItem &item, CRecordVector<UInt32> &clusters,
+                                   bool reportProgress) {
+    const UInt32 numClusters = Header.GetNumClusters(item.Size);
+    clusters.ClearAndReserve(MyMin(numClusters, Header.FatSize - 2));
+    struct CActiveFileScope {
+        UInt32 *Fat;
+        const CRecordVector<UInt32> &Clusters;
+        CActiveFileScope(UInt32 *fat, const CRecordVector<UInt32> &clusters)
+            : Fat(fat), Clusters(clusters) {}
+        ~CActiveFileScope() {
+            FOR_VECTOR(i, Clusters)
+            Fat[Clusters[i] + 2] &= ~kFatItemActiveFileMask;
+        }
+    } scope(Fat, clusters);
+    UInt32 cluster = item.Cluster;
+    for (UInt32 i = 0; i < numClusters; ++i) {
+        if (!Header.IsValidCluster(cluster) ||
+            (Fat[cluster] & (kFatItemUsedByDirMask | kFatItemActiveFileMask)))
+            break;
+        clusters.AddInReserved(cluster - 2);
+        const UInt32 next = Fat[cluster];
+        Fat[cluster] |= kFatItemActiveFileMask;
+        cluster = next;
+        if (reportProgress && (i & 0xFFFF) == 0) {
+            RINOK(OpenProgress())
+        }
+    }
+    // The inode size, not an EOF marker or allocated tail, bounds file data.
+    return S_OK;
+}
+
 Z7_COM7F_IMF(CHandler::GetStream(UInt32 index, ISequentialInStream **stream)) {
     COM_TRY_BEGIN
     *stream = NULL;
@@ -1042,40 +1092,11 @@ Z7_COM7F_IMF(CHandler::GetStream(UInt32 index, ISequentialInStream **stream)) {
     streamSpec->Stream = InStream;
     streamSpec->StartOffset = (UInt64)Header.DataSector << Header.SectorSizeLog;
     streamSpec->BlockSizeLog = Header.ClusterSizeLog;
-    streamSpec->Size = item.Size;
-
-    const UInt32 numClusters = Header.GetNumClusters(item.Size);
-    if (numClusters > Header.FatSize - 2)
+    RINOK(GetFileClusters(item, streamSpec->Vector))
+    streamSpec->Size =
+        MyMin((UInt64)item.Size, (UInt64)streamSpec->Vector.Size() << Header.ClusterSizeLog);
+    if (item.Size && !streamSpec->Size)
         return S_FALSE;
-    streamSpec->Vector.ClearAndReserve(numClusters);
-    UInt32 cluster = item.Cluster;
-    UInt32 size = item.Size;
-
-    if (size == 0) {
-        // Allocated empty files are readable; Linux stops at the inode size.
-    } else {
-        const UInt32 clusterSize = Header.ClusterSize();
-        for (;; size -= clusterSize) {
-            if (!Header.IsValidCluster(cluster) || (Fat[cluster] & kFatItemUsedByDirMask))
-                return S_FALSE;
-            streamSpec->Vector.AddInReserved(cluster - 2);
-            cluster = Fat[cluster];
-            if (size <= clusterSize)
-                break;
-        }
-        // Do not require an EOF marker after the last requested byte. The chain
-        // can retain preallocation or a tail left by a size-only truncation.
-        // Retain cycle rejection within the portion that supplies file data.
-        if (numClusters > 1) {
-            CRecordVector<UInt32> clusters(streamSpec->Vector);
-            clusters.Sort(
-                [](const UInt32 *a, const UInt32 *b, void *) { return *a < *b ? -1 : *a > *b; },
-                NULL);
-            for (unsigned i = 1; i < clusters.Size(); i++)
-                if (clusters[i] == clusters[i - 1])
-                    return S_FALSE;
-        }
-    }
     RINOK(streamSpec->InitAndSeek())
     *stream = streamTemp.Detach();
     return S_OK;
@@ -1180,6 +1201,12 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID propID, PROPVARIANT *value)) {
                 reasons += '\n';
             reasons += "Some FAT directories could not be read completely. Files or names may "
                        "be missing. Readable files remain accessible.";
+        }
+        if (FileLimitations) {
+            if (!reasons.IsEmpty())
+                reasons += '\n';
+            reasons += "Some FAT file chains are incomplete. Only readable prefixes of affected "
+                       "files are available; copying them reports an error.";
         }
         if (!reasons.IsEmpty())
             prop = reasons;
@@ -1308,6 +1335,8 @@ Z7_COM7F_IMF(CHandler::GetProperty(UInt32 index, PROPID propID, PROPVARIANT *val
     case kpidError:
         if (item.DirectoryIncomplete)
             prop = "The FAT directory could not be read completely.";
+        else if (item.FileIncomplete)
+            prop = "The FAT file chain is incomplete. Only the readable prefix is available.";
         break;
 #endif
     case kpidPath:

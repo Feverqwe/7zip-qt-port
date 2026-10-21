@@ -123,6 +123,12 @@ UString QtArchiveDiagnosticText(const UString &source) {
                           "Some FAT directories could not be read completely. Files or names may "
                           "be missing. Readable files remain accessible."),
         QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                          "Some FAT file chains are incomplete. Only readable prefixes of affected "
+                          "files are available; copying them reports an error."),
+        QT_TRANSLATE_NOOP(
+            "SevenZipDiagnostics",
+            "The FAT file chain is incomplete. Only the readable prefix is available."),
+        QT_TRANSLATE_NOOP("SevenZipDiagnostics",
                           "The FAT directory could not be read completely.")};
     for (const char *warning : warnings)
         if (text == QString::fromLatin1(warning))

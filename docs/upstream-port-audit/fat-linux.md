@@ -404,10 +404,83 @@ both runners (`fat_stream`/`compound_stream`,
 `20261021T123657Z-252e85d9`). The last synchronization also removed the
 disposable reference/cleanup helper; no temporary helper is shipped.
 
-One separate source-visible read-policy boundary remains: `GetStream` currently
-discards an entire file stream when a later required FAT link is free, ends
-early or loops, even when earlier distinct data clusters are known. Existing
-invalid-chain CLI tests establish an error result but do not establish access
-to that readable prefix. Compare Linux's per-read mapping failure and the SDK
-extraction/property consumers before exposing a bounded partial stream with
-honest incomplete-file reporting. This cursor fix does not close that boundary.
+That cursor iteration identified a separate read-policy boundary: `GetStream`
+discarded an entire file when a later required FAT link was free, ended early
+or looped, despite known earlier data clusters. The following iteration addresses
+it; the old invalid-chain CLI tests established only an error result.
+
+### Readable prefixes of incomplete file chains — 2026-10-21
+
+Compared the complete SDK FAT `GetStream`, `Extract`, item/archive properties,
+database opening/clearing and their consumers, plus pinned Linux
+`cache.c:fat_get_cluster`/`fat_bmap_cluster`/`fat_get_mapped_cluster`, `fat_bmap`,
+the `file.c` file operations and `inode.c` mapping/direct-I/O callers. Linux
+can map earlier blocks before a later mapping request returns EIO; a bad later
+link need not invalidate every earlier byte. The original SDK traversal is
+factored into a shared helper, used by stream construction and the dynamic
+module's opening diagnostics. No new FAT decoder or Linux C unit is added.
+
+Streams now expose the prefix before the first invalid, repeated or known
+directory-owned cluster. A private in-memory traversal flag is cleared by a
+scope guard, so one file or callback failure cannot poison another mapping.
+Capacity remains bounded by the file size and available data-cluster count.
+Empty files and unused allocated tails remain readable; safe shared file chains
+are independent. An invalid starting cluster yields no stream. Declared size
+remains unchanged, so the original copy coder's actual-byte comparison reports
+Data Error for an incomplete file and extraction continues to healthy selections.
+Both shipped engines use this portable adaptation. The dynamic module additionally
+reports affected-file Error and archive limitations before UI consent. EN/RU
+warnings, the per-opening choice and persistent badge use the existing service;
+no source writes, repair, journal replay or validation bypass is introduced.
+
+Thirty-three ABI controls cover all three FAT widths with free/early-EOC/bad/
+out-of-range links, self/back cycles, a directory-owned cluster, invalid start,
+oversized declared size and complete tail/shared-chain controls. Checks cover
+exact prefixes, original size/error properties, EOF/seek/retry, retained streams,
+multi-file extraction/test mode with per-item Data Error/OK, cancellation,
+destination failure and clean reopening. CLI checks both engines, including
+healthy sibling extraction. The new small `filesystem_fat_file_ui` group checks
+EN/RU Cancel/accept, partial bytes with actual visible extraction diagnostics,
+healthy copying, badge, compact geometry, refresh/reopen and unchanged source.
+Native Cocoa warning JSON is 420×214 EN / 420×262 RU, with translated limitations
+and no clipped labels. The shared GUI test helper reuses the established
+completed-progress Close predicate when dismissing expected diagnostics.
+
+Native vfat `6.8.0-147-generic` confirmed 21 controls, receipt
+`20261021T124757Z-f841e535`: aligned O_DIRECT reads return the exact 1024/1536-byte
+prefix before EIO for free/EOC/bad/range/oversized chains, while tail/shared
+controls return complete data. Buffered page-cache acceptance is not inferred
+from these direct reads. Cycle/metadata boundaries remain explicit archive
+validation adaptations; no native acceptance of them is claimed. Read-only
+device/mount flags and unchanged SHA-256 were checked, with all synthetic images,
+mounts and loops removed. The installed runtime kernel differs from the pinned
+source revision; physical media and pinned-kernel runtime remain unverified.
+
+The first UI checks timed out on expected extraction diagnostics because the new
+automation handled message boxes but not the completed progress window; test
+automation now follows the existing progress-dialog consumer. No product timeout
+was increased. MSVC's SDK /Wall /WX rejected an implicit deleted default
+constructor on the reference-bearing traversal scope; an explicit constructor
+fixes that portable build issue without changing semantics. All 11 focused suites
+passed on macOS arm64 (50.99 s) and Linux (`20261021T124831Z-2b334cab`).
+The app incremental build, upstream verifier (422 exact / 242 adapted / 12 local)
+and 21 pinned FAT hashes passed. Full/slow suites and installation were not run;
+incremental build trees and compiler caches were retained. The broader review
+remains active.
+
+Windows passed ten suites in `20261021T124757Z-0ea11bd9` (130.59 s); the
+remaining `fat_module` case hit the previously observed codec-discovery deadline,
+before filesystem opening. With unchanged source and deadlines, its isolated
+repeat passed in `20261021T125209Z-bce1da0a`. The discovery timing cause is still
+unproven and the initial diagnostic is retained. Thus all eleven selected suites
+have passing results on each OS, without claiming a single all-green Windows
+batch. Final task-owned fixture cleanup passed on both guests,
+`20261021T125129Z-4c9e1ee3`; the disposable helper was removed and synchronized
+away on both guests. All jobs reached terminal state.
+
+Read-side closure still requires checking table acquisition as well as the
+now-covered file mapping: initial FAT loading currently requires complete reads.
+Compare Linux's on-demand FAT-sector errors with this eager archive loader before
+deciding which files can remain useful after a localized FAT-table I/O failure.
+The present prefix support assumes the table entries used for mapping were read;
+it does not treat missing metadata as verified.

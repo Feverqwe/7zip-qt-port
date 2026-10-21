@@ -7,6 +7,7 @@ import sys
 import tempfile
 import unittest
 from fat_fixture import Volume, PAYLOAD, LONG_NAME, entry, long_entries, legacy_volume, readonly_volume
+from fat_stream_fixture import chain_volume
 
 RUNTIME = Path(sys.argv.pop(1))
 MODULE = Path(sys.argv.pop(1))
@@ -292,6 +293,24 @@ class FatTests(unittest.TestCase):
                         del volume.data[volume.offset(volume.chain[0]) + 100:]
                     result = self.run_image(volume, engine)
                     self.assertIn(result.returncode, (1, 2), result.stderr.decode(errors="replace"))
+
+    def test_incomplete_file_chains_preserve_prefix_and_report_error(self):
+        for engine in ("7z", "7zz"):
+            for bits in (12, 16, 32):
+                for mode in ("free", "eof", "bad", "range", "self", "cycle", "metadata",
+                             "start", "oversized", "tail", "shared"):
+                    with self.subTest(engine=engine, bits=bits, mode=mode):
+                        volume = chain_volume(f"{mode}-{bits}")
+                        result = self.run_image(volume, engine)
+                        self.assertEqual(result.stdout, volume.expected_files[LONG_NAME])
+                        if volume.file_limited:
+                            self.assertNotEqual(result.returncode, 0)
+                            self.assertIn(b"Data Error", result.stderr)
+                        else:
+                            self.assertEqual(result.returncode, 0, result.stderr)
+                        healthy = self.run_image(volume, engine, name="SECOND.BIN")
+                        self.assertEqual(healthy.returncode, 0, healthy.stderr)
+                        self.assertEqual(healthy.stdout, volume.expected_files["SECOND.BIN"])
 
 
 if __name__ == "__main__":

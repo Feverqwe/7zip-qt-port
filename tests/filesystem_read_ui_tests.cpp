@@ -1,6 +1,7 @@
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "archivebackend.h"
 #include "exfat_fixture.h"
+#include "fixtures/progress_dialog.h"
 #include "layout_inspection.h"
 #include "mainwindow.h"
 #include "ntfs_test_support.h"
@@ -18,6 +19,7 @@
 #include <QTableWidget>
 #include <QTemporaryDir>
 #include <QTimer>
+#include <QTreeWidget>
 #include <QtEndian>
 #include <QtTest>
 
@@ -219,6 +221,23 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
         QFETCH(bool, accept);
         confirmAndCopy(language, accept, kind);
     }
+    void confirmsPartialFatFile_data() {
+        QTest::addColumn<QString>("language");
+        QTest::addColumn<QString>("kind");
+        QTest::addColumn<bool>("accept");
+        for (const QString &language : {"en", "ru"}) {
+            for (const QString &kind : {"fat-file-free-32", "fat-file-eof-12", "fat-file-cycle-16"})
+                QTest::newRow(qPrintable(language + '-' + kind)) << language << kind << true;
+            QTest::newRow(qPrintable(language + "-cancel-file"))
+                << language << QString("fat-file-free-32") << false;
+        }
+    }
+    void confirmsPartialFatFile() {
+        QFETCH(QString, language);
+        QFETCH(QString, kind);
+        QFETCH(bool, accept);
+        confirmAndCopy(language, accept, kind);
+    }
 
   private:
     void confirmAndCopy(const QString &language, bool accept, const QString &kind) {
@@ -230,6 +249,7 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
         const bool ext = kind.startsWith("ext-");
         const bool fat = kind.startsWith("fat-");
         const bool fatDirectory = kind.startsWith("fat-directory-");
+        const bool fatFile = kind.startsWith("fat-file-");
         const QString fatFolder = kind == "fat-directory-free32" ? "BROKEN" : "GOOD";
         SaveRegLang(UString(language == "en" ? L"-" : L"ru"),
                     qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
@@ -244,6 +264,7 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
                 QStringLiteral(SEVENZIP_HFS_PYTHON),
                 fat   ? QStringList{QStringLiteral(SEVENZIP_FAT_FIXTURE),
                                     fatDirectory ? "--directory=" + kind.mid(14)
+                                    : fatFile    ? "--file-chain=" + kind.mid(9)
                                                  : "--readonly=" + kind.mid(4),
                                     "--bundle"}
                 : ext ? QStringList{QStringLiteral(SEVENZIP_EXT_FIXTURE), "readonly-" + kind.mid(4),
@@ -290,9 +311,36 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
         int questions = 0;
         bool geometry = true;
         QStringList unexpectedErrors;
+        int incompleteCopyErrors = 0;
+        bool copyingIncomplete = false;
         QPointer<QMessageBox> handled;
         QTimer automation;
         connect(&automation, &QTimer::timeout, &window, [&] {
+            for (QWidget *widget : QApplication::topLevelWidgets()) {
+                if (widget->isVisible() && widget->objectName() == "progressDialog") {
+                    auto *close = widget->findChild<QPushButton *>("IDCANCEL");
+                    if (TestProgressDialog::IsCloseButton(close)) {
+                        const auto *messages =
+                            widget->findChild<QTreeWidget *>("IDL_PROGRESS_MESSAGES");
+                        if (copyingIncomplete && messages && messages->topLevelItemCount() > 0)
+                            ++incompleteCopyErrors;
+                        else
+                            unexpectedErrors.append("Unexpected extraction diagnostics");
+                        close->click();
+                        return;
+                    }
+                }
+                if (widget->isVisible() && widget->objectName() == "operationMessagesDialog") {
+                    const auto *messages = widget->findChild<QTreeWidget *>("IDL_MESSAGE");
+                    if (copyingIncomplete && messages && messages->topLevelItemCount() > 0)
+                        ++incompleteCopyErrors;
+                    else
+                        unexpectedErrors.append("Unexpected extraction diagnostics");
+                    if (auto *close = widget->findChild<QPushButton *>("IDOK"))
+                        close->click();
+                    return;
+                }
+            }
             QMessageBox *message = nullptr;
             for (QWidget *widget : QApplication::topLevelWidgets())
                 if (auto *box = qobject_cast<QMessageBox *>(widget);
@@ -305,7 +353,10 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
                 return;
             handled = message;
             if (message->objectName() != "filesystemReadLimitationsWarning") {
-                unexpectedErrors.append(message->text());
+                if (copyingIncomplete)
+                    ++incompleteCopyErrors;
+                else
+                    unexpectedErrors.append(message->text());
                 message->reject();
                 return;
             }
@@ -376,7 +427,10 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
                 copyOptions.currentFolder = "HfsFixture";
             else if (fatDirectory)
                 copyOptions.currentFolder = fatFolder;
+            copyingIncomplete = fatFile;
             window.extractTo(output, true, {}, copyOptions);
+            copyingIncomplete = false;
+            QCOMPARE(incompleteCopyErrors, fatFile ? 1 : 0);
             QVERIFY2(unexpectedErrors.isEmpty(), qPrintable(unexpectedErrors.join('\n')));
             QFile copied(output + '/' + filename);
             QVERIFY2(
@@ -384,6 +438,18 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
                 qPrintable(
                     QDir(output).entryList(QDir::AllEntries | QDir::NoDotAndDotDot).join('\n')));
             QCOMPARE(copied.readAll(), payload);
+            if (fatFile) {
+                QTRY_VERIFY(Row(*table, "SECOND.BIN") >= 0);
+                table->selectRow(Row(*table, "SECOND.BIN"));
+                window.extractTo(output, true, {}, copyOptions);
+                QFile healthy(output + "/SECOND.BIN");
+                QVERIFY(healthy.open(QIODevice::ReadOnly));
+                QByteArray expected;
+                for (int i = 0; i < 1100; ++i)
+                    expected.append(char((i * 17 + 23) & 255));
+                expected += "second tail\n";
+                QCOMPARE(healthy.readAll(), expected);
+            }
             if (kind == "reparse-list-bad-id" || kind == "ea-record-small" ||
                 kind == "data-list-unreadable-list" || kind == "standard-short" ||
                 kind == "dir-root-missing" || kind.startsWith("security-") ||

@@ -3838,6 +3838,14 @@ Are you sure you want to split archive into such volumes?</source>
     <context>
         <name>SevenZipDiagnostics</name>
         <message>
+            <source>Some FAT file chains are incomplete. Only readable prefixes of affected files are available; copying them reports an error.</source>
+            <translation>Цепочки некоторых файлов FAT повреждены. Можно прочитать только доступное начало этих файлов; копирование завершится с ошибкой.</translation>
+        </message>
+        <message>
+            <source>The FAT file chain is incomplete. Only the readable prefix is available.</source>
+            <translation>Цепочка файла FAT повреждена. Доступно только начало файла.</translation>
+        </message>
+        <message>
             <source>Some FAT directories could not be read completely. Files or names may be missing. Readable files remain accessible.</source>
             <translation>Некоторые каталоги FAT прочитаны не полностью. Часть файлов или имён может отсутствовать. Доступные файлы можно копировать.</translation>
         </message>
