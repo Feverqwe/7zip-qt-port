@@ -239,6 +239,12 @@ if __name__ == "__main__":
         if args.kind.startswith("flags-"):
             from ntfs_flags_fixture import properties
             result["attributes"] = properties(args.kind)
+        if args.kind.startswith("volume-"):
+            from ntfs_volume_fixture import limitation
+            result["volume_limitation"] = limitation(args.kind)
+            if args.kind.startswith("volume-list-"):
+                from ntfs_volume_list_fixture import label
+                result["volume_label"] = label(args.kind)
         if args.kind.startswith("bitmap-"):
             from ntfs_bitmap_fixture import expected
             result["free_space"] = expected(args.kind, image)

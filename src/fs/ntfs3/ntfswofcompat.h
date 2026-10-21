@@ -24,6 +24,7 @@ struct ATTRIB {
 struct super_block;
 struct ntfs_mount_options;
 struct ntfs_sb_info {
+    const u16 *upcase;
     sevenzip_ntfs_read_fn read;
     void *opaque;
     struct super_block *sb;
@@ -34,6 +35,7 @@ struct ntfs_sb_info {
         int mtx_lzx, mtx_xpress;
     } compress;
 };
+int ntfs_cmp_names(const __le16 *, size_t, const __le16 *, size_t, const u16 *, bool);
 struct ntfs_inode;
 struct inode {
     struct super_block *i_sb;

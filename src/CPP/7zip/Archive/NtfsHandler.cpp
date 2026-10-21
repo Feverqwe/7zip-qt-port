@@ -1109,7 +1109,6 @@ struct CVolumeInfo {
     int FsVerMajor; // -1 if not defined
     Byte FsVerMinor;
 #ifdef SEVENZIP_LINUX_NTFS
-    bool StateSeen = false;
     bool StateKnown = false;
     bool Dirty = false;
 #endif
@@ -1117,7 +1116,7 @@ struct CVolumeInfo {
     void Clear() {
         FsVerMajor = -1;
 #ifdef SEVENZIP_LINUX_NTFS
-        StateSeen = StateKnown = Dirty = false;
+        StateKnown = Dirty = false;
 #endif
         if (!VolName.IsEmpty())
             VolName.SetFromAscii("");
@@ -1154,6 +1153,7 @@ struct CMftRec {
     CObjectVector<CAttr> AttrListAttrs;
 #ifdef SEVENZIP_LINUX_NTFS
     CObjectVector<CAttr> EaInfoAttrs, EaAttrs;
+    CObjectVector<CAttr> VolumeNameAttrs, VolumeInfoAttrs;
     CObjectVector<CAttr> SecurityRoots, SecurityAlloc;
     sevenzip_ntfs_wsl_perm Wsl{};
     bool Link = false;
@@ -1549,6 +1549,12 @@ bool CMftRec::ParseRec(Byte *const p, const unsigned sectorSizeLog, const unsign
                 ReparseAttrs.Add(attr);
             break;
 #ifdef SEVENZIP_LINUX_NTFS
+        case ATTR_TYPE_VOLUME_NAME:
+            VolumeNameAttrs.Add(attr);
+            break;
+        case ATTR_TYPE_VOLUME_INFO:
+            VolumeInfoAttrs.Add(attr);
+            break;
         case 0x90: // $SII INDEX_ROOT
             if (attr.Name == L"$SII")
                 SecurityRoots.Add(attr);
@@ -1577,27 +1583,11 @@ bool CMftRec::ParseRec(Byte *const p, const unsigned sectorSizeLog, const unsign
                 if (type == ATTR_TYPE_VOLUME_NAME && volInfo->VolName.IsEmpty())
                     GetString(attr.Data, (unsigned)attr.Data.Size() / 2, volInfo->VolName);
                 else if (type == ATTR_TYPE_VOLUME_INFO /* && volInfo->FsVerMajor < 0 */) {
-#ifdef SEVENZIP_LINUX_NTFS
-                    // Linux selects the first unnamed $VOLUME_INFORMATION.
-                    if (InUse() && !BaseMftRef.Val && attr.Name.IsEmpty() && !volInfo->StateSeen) {
-                        volInfo->StateSeen = true;
-                        sevenzip_ntfs_volume_info state;
-                        if (sevenzip_ntfs_read_volume_info(attr.Data, attr.Data.Size(),
-                                                           attr.NonResident, attr.Flags,
-                                                           &state) == 0) {
-                            volInfo->FsVerMajor = state.major;
-                            volInfo->FsVerMinor = state.minor;
-                            volInfo->Dirty = state.dirty != 0;
-                            volInfo->StateKnown = true;
-                        }
-                    }
-#else
                     if (attr.Data.Size() < 10)
                         return false;
                     volInfo->FsVerMajor = attr.Data[8];
                     volInfo->FsVerMinor = attr.Data[9];
                     // volInfo->Flags = Get16(attr.Data + 10);
-#endif
                 }
             }
             break;
@@ -1756,6 +1746,8 @@ struct CDatabase {
     HRESULT ParseSecuritySDS(ISequentialInStream *stream, const size_t size);
 #ifdef SEVENZIP_LINUX_NTFS
     HRESULT LoadMftAttributes(CMftRec &rec);
+    const CAttr *FindVolumeAttribute(UInt32 type, const CByteBuffer &list, bool useList) const;
+    HRESULT LoadVolumeMetadata();
     HRESULT LoadEaMetadata();
     HRESULT LoadSecurityIndex();
     HRESULT LoadLinks();
@@ -2022,6 +2014,87 @@ HRESULT CDatabase::ParseSecuritySDS(ISequentialInStream *stream, const size_t si
 }
 
 #ifdef SEVENZIP_LINUX_NTFS
+const CAttr *CDatabase::FindVolumeAttribute(UInt32 type, const CByteBuffer &list,
+                                            bool useList) const {
+    const CMftRec &base = Recs[kRecIndex_Volume];
+    const CMftRec *owner = &base;
+    sevenzip_ntfs_list_entry entry{};
+    if (useList) {
+        if (sevenzip_ntfs_list_find_unnamed(list, list.Size(), type, &entry) != 1)
+            return NULL;
+        CMftRef reference;
+        reference.Val = entry.ref;
+        const UInt64 number = reference.GetIndex();
+        if (number >= Recs.Size())
+            return NULL;
+        owner = &Recs[(unsigned)number];
+        if (!owner->Is_Magic_FILE() || !owner->InUse() || owner->SeqNumber != reference.GetNumber())
+            return NULL;
+        if (number != kRecIndex_Volume &&
+            (owner->BaseMftRef.GetIndex() != kRecIndex_Volume ||
+             owner->BaseMftRef.GetNumber() != base.SeqNumber || !owner->AttrListAttrs.IsEmpty()))
+            return NULL;
+    }
+    const auto &attrs =
+        type == ATTR_TYPE_VOLUME_NAME ? owner->VolumeNameAttrs : owner->VolumeInfoAttrs;
+    FOR_VECTOR(i, attrs) {
+        const CAttr &attr = attrs[i];
+        if (attr.Name.IsEmpty() && (!useList || attr.Instance == entry.id))
+            return &attr;
+    }
+    return NULL;
+}
+
+HRESULT CDatabase::LoadVolumeMetadata() {
+    VolumeInfo.Clear();
+    if (Recs.Size() <= kRecIndex_Volume)
+        return S_OK;
+    const CMftRec &base = Recs[kRecIndex_Volume];
+    if (!base.Is_Magic_FILE() || !base.InUse() || !base.BaseMftRef.IsBaseItself())
+        return S_OK;
+    const bool useList = !base.AttrListAttrs.IsEmpty();
+    CByteBuffer list;
+    if (useList) {
+        if (base.AttrListAttrs.Size() != 1 || !base.AttrListAttrs[0].Name.IsEmpty() ||
+            (base.AttrListAttrs[0].NonResident && base.AttrListAttrs[0].LowVcn) ||
+            (base.AttrListAttrs[0].Flags & 0xc0ff))
+            return S_OK; // Unavailable volume metadata does not discard readable files.
+        CMftRec listRecord;
+        listRecord.Flags = base.Flags;
+        listRecord.DataAttrs = base.AttrListAttrs;
+        listRecord.ParseDataNames();
+        const UInt64 size = listRecord.DataAttrs[0].GetSize();
+        if (!size || size > Header.GetPhySize_Clusters() || size > SIZE_MAX)
+            return S_OK;
+        CMyComPtr<IInStream> stream;
+        HRESULT result =
+            listRecord.GetStream(InStream, 0, Header.ClusterSizeLog, Header.NumClusters, &stream);
+        if (result != S_OK || !stream)
+            return result == E_ABORT ? result : S_OK;
+        if (OpenCallback)
+            RINOK(OpenCallback->SetCompleted(NULL, NULL))
+        list.Alloc((size_t)size);
+        result = ReadStream_FALSE(stream, list, (size_t)size);
+        if (result != S_OK)
+            return result == E_ABORT ? result : S_OK;
+        if (OpenCallback)
+            RINOK(OpenCallback->SetCompleted(NULL, NULL))
+    }
+    const CAttr *attr = FindVolumeAttribute(ATTR_TYPE_VOLUME_NAME, list, useList);
+    if (attr && !attr->NonResident && !attr->HasPackedSize())
+        GetString(attr->Data, (unsigned)attr->Data.Size() / 2, VolumeInfo.VolName);
+    attr = FindVolumeAttribute(ATTR_TYPE_VOLUME_INFO, list, useList);
+    sevenzip_ntfs_volume_info state;
+    if (attr && sevenzip_ntfs_read_volume_info(attr->Data, attr->Data.Size(), attr->NonResident,
+                                               attr->Flags, &state) == 0) {
+        VolumeInfo.FsVerMajor = state.major;
+        VolumeInfo.FsVerMinor = state.minor;
+        VolumeInfo.Dirty = state.dirty != 0;
+        VolumeInfo.StateKnown = true;
+    }
+    return S_OK;
+}
+
 // NTFS3 ntfs_read_mft/ni_enum_attr_ex: extend the currently readable MFT mapping
 // through list entries before opening the complete MFT as a regular stream.
 HRESULT CDatabase::LoadMftAttributes(CMftRec &rec) {
@@ -2620,6 +2693,9 @@ HRESULT CDatabase::Open() {
     }
     */
 
+#ifdef SEVENZIP_LINUX_NTFS
+    RINOK(LoadVolumeMetadata())
+#endif
     unsigned i;
     for (i = 0; i < Recs.Size(); i++) {
         CMftRec &rec = Recs[i];

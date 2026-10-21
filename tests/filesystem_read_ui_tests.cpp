@@ -62,9 +62,9 @@ class FilesystemReadUiTests final : public QObject {
         QTest::addColumn<QString>("kind");
         for (const QString &language : {"en", "ru"})
             for (bool accept : {false, true})
-                for (const QString &kind :
-                     {"exfat", "wrapper-no-slock", "unclean", "free-overflow",
-                      "classic-unclean-free-overflow", "volume-dirty", "volume-short"})
+                for (const QString &kind : {"exfat", "wrapper-no-slock", "unclean", "free-overflow",
+                                            "classic-unclean-free-overflow", "volume-dirty",
+                                            "volume-short", "volume-list-nonresident"})
                     QTest::newRow(qPrintable(language + (accept ? "-accept-" : "-cancel-") + kind))
                         << language << accept << kind;
     }

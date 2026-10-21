@@ -26,6 +26,8 @@ struct sevenzip_ntfs_list_entry {
 };
 int sevenzip_ntfs_list_next(const void *, size_t, size_t *cursor,
                             struct sevenzip_ntfs_list_entry *);
+int sevenzip_ntfs_list_find_unnamed(const void *, size_t, uint32_t,
+                                    struct sevenzip_ntfs_list_entry *);
 #ifdef __cplusplus
 }
 #endif

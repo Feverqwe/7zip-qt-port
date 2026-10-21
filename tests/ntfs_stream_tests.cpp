@@ -204,9 +204,26 @@ class NtfsStreamTests final : public QObject {
   private slots:
     void initTestCase() { createArchive(); }
     void volumeStateAndOpeningLifetime() {
-        for (const char *kind :
-             {"volume-dirty", "volume-clean", "volume-short", "volume-missing", "volume-named",
-              "volume-compressed", "volume-resize", "volume-duplicate", "volume-clean"}) {
+        for (const char *kind : {"volume-dirty",
+                                 "volume-clean",
+                                 "volume-short",
+                                 "volume-missing",
+                                 "volume-named",
+                                 "volume-compressed",
+                                 "volume-resize",
+                                 "volume-duplicate",
+                                 "volume-list-clean",
+                                 "volume-list-dirty",
+                                 "volume-list-nonresident",
+                                 "volume-list-base",
+                                 "volume-list-override",
+                                 "volume-list-bad-id",
+                                 "volume-list-bad-sequence",
+                                 "volume-list-wrong-owner",
+                                 "volume-list-missing",
+                                 "volume-list-bad-list",
+                                 "volume-list-bad-run",
+                                 "volume-clean"}) {
             loadFixture(kind);
             CMyComPtr<IInStream> input = new Input(bytes_);
             QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
@@ -229,24 +246,72 @@ class NtfsStreamTests final : public QObject {
                 found = true;
                 NWindows::NCOM::CPropVariant state;
                 QCOMPARE(archive_->GetArchiveProperty(id, &state), S_OK);
-                const QString layout = QString::fromLatin1(kind);
-                if (layout == "volume-clean" || layout == "volume-resize" ||
-                    layout == "volume-duplicate")
+                const QString expected = record_["volume_limitation"].toString();
+                if (expected.isEmpty())
                     QCOMPARE(state.vt, VARTYPE(VT_EMPTY));
                 else {
                     QCOMPARE(state.vt, VARTYPE(VT_BSTR));
-                    QVERIFY(
-                        QString::fromWCharArray(state.bstrVal)
-                            .contains(layout == "volume-dirty" ? "marked dirty" : "unavailable"));
+                    QCOMPARE(QString::fromWCharArray(state.bstrVal), expected);
                 }
             }
             QVERIFY(found);
+            if (record_.contains("volume_label")) {
+                NWindows::NCOM::CPropVariant label;
+                QCOMPARE(archive_->GetArchiveProperty(kpidVolumeName, &label), S_OK);
+                const QString expected = record_["volume_label"].toString();
+                if (expected.isEmpty())
+                    QCOMPARE(label.vt, VARTYPE(VT_EMPTY));
+                else {
+                    QCOMPARE(label.vt, VARTYPE(VT_BSTR));
+                    QCOMPARE(QString::fromWCharArray(label.bstrVal), expected);
+                }
+            }
             auto retained = stream("alpha");
             QVERIFY(retained);
             check(retained, "alpha", 0, 4096);
             QCOMPARE(archive_->Close(), S_OK);
             check(retained, "alpha", 4096, 1024);
         }
+    }
+    void volumeListFailureAndCancellation() {
+        loadFixture("volume-list-nonresident");
+        for (HRESULT failure : {E_FAIL, E_ABORT}) {
+            CMyComPtr2<IInStream, Input> source;
+            source.SetFromCls(new Input(bytes_));
+            source->failSeekAt = 1100 * 4096;
+            source->failedSeekResult = failure;
+            QCOMPARE(archive_->Open(source, nullptr, nullptr), failure == E_ABORT ? E_ABORT : S_OK);
+            if (failure == E_FAIL) {
+                NWindows::NCOM::CPropVariant label;
+                QCOMPARE(archive_->GetArchiveProperty(kpidVolumeName, &label), S_OK);
+                QCOMPARE(label.vt, VARTYPE(VT_EMPTY));
+                auto readable = stream("alpha");
+                QVERIFY(readable);
+                check(readable, "alpha", 0, 4096);
+            } else {
+                UInt32 count = 99;
+                QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+                QCOMPARE(count, 0u);
+            }
+            source->failSeekAt = UINT64_MAX;
+            QCOMPARE(source->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
+            QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
+            NWindows::NCOM::CPropVariant label;
+            QCOMPARE(archive_->GetArchiveProperty(kpidVolumeName, &label), S_OK);
+            QCOMPARE(label.vt, VARTYPE(VT_BSTR));
+            QCOMPARE(QString::fromWCharArray(label.bstrVal), record_["volume_label"].toString());
+            QCOMPARE(archive_->Close(), S_OK);
+        }
+        CMyComPtr2<IInStream, Input> source;
+        source.SetFromCls(new Input(bytes_));
+        source->cancelAt = 1100 * 4096;
+        CMyComPtr2<IArchiveOpenCallback, CancelEaOpen> callback;
+        callback.SetFromCls(new CancelEaOpen);
+        callback->source = source.ClsPtr();
+        QCOMPARE(archive_->Open(source, nullptr, callback), E_ABORT);
+        UInt32 count = 99;
+        QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, 0u);
     }
     void volumeFreeSpace_data() {
         QTest::addColumn<QString>("kind");
@@ -889,6 +954,7 @@ class NtfsStreamTests final : public QObject {
     void backendSelectedExtraction_data() {
         QTest::addColumn<QString>("kind");
         QTest::newRow("dirty-volume") << QString("volume-dirty");
+        QTest::newRow("volume-extension-metadata") << QString("volume-list-nonresident");
         QTest::newRow("unknown-volume-state") << QString("volume-short");
         QTest::newRow("sparse") << QString("sparse");
         QTest::newRow("compressed") << QString("short-compressed");

@@ -50,6 +50,7 @@
     "fs/ntfs3/ntfs.h",
     "fs/ntfs3/ntfs_fs.h",
     "fs/ntfs3/super.c",
+    "fs/ntfs3/upcase.c",
     "fs/ntfs3/xattr.c",
     "lib/hweight.c"
   ],

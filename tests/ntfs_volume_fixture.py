@@ -2,12 +2,16 @@
 from ntfs_fixture import attributes, put, record, u16, u32
 from ntfs_ea_fixture import resident, set_attributes
 from ntfs_security_fixture import named_resident
+from ntfs_volume_list_fixture import CASES as LIST_CASES
 
 CASES = ("volume-clean", "volume-dirty", "volume-resize", "volume-short",
-         "volume-missing", "volume-named", "volume-compressed", "volume-duplicate")
+         "volume-missing", "volume-named", "volume-compressed", "volume-duplicate") + LIST_CASES
 
 
 def volume(kind):
+    if kind.startswith("volume-list-"):
+        from ntfs_volume_list_fixture import volume as list_volume
+        return list_volume(kind)
     from ntfs_fixture import volume as base
     image, files = base()
     image = bytearray(image)
@@ -37,6 +41,9 @@ def volume(kind):
 
 
 def limitation(kind):
+    if kind.startswith("volume-list-"):
+        from ntfs_volume_list_fixture import limitation as list_limitation
+        return list_limitation(kind)
     if kind == "volume-dirty":
         return "The NTFS volume is marked dirty. Some data may be corrupt."
     if kind in ("volume-short", "volume-missing", "volume-named", "volume-compressed"):

@@ -787,11 +787,10 @@ capability подключает модуль к уже существующим 
 repair и запись на source не добавлены. Чтение dirty flag не является проверкой
 `$LogFile` или доказательством согласованности clean тома.
 
-В этой итерации состояние читается из самой base record `$Volume`. Если нужный
-атрибут доступен только через extension/attribute-list layout, он остаётся
-неизвестным с явным выбором limited read. Это не полная source closure NTFS и
-не обещание поддержки всех metadata lookup layouts Linux; disk/file read scope
-остальных компонентов остаётся открытым ниже.
+Первоначальная итерация читала состояние только из base record `$Volume`;
+extension/attribute-list metadata оставалась неизвестной с явным выбором limited
+read. Следующая сверка ниже подключает этот lookup после загрузки MFT. Полная
+source closure NTFS и остальных metadata/read features этим не заявляется.
 
 Regressions проверяют dirty/clean/resize, absent/short/named/compressed metadata,
 приоритет первого unnamed attribute, сброс состояния, точные stream bytes и
@@ -819,6 +818,80 @@ Cocoa EN/RU JSON dirty/unknown предупреждений просмотрен
 гостей синхронизацией. Full/slow suites, physical devices, native Windows/Linux
 appearance и installed-package acceptance не заявляются; incremental build
 trees и compiler caches сохранены.
+
+## `$Volume` attribute-list lookup и label — 2026-10-21
+
+Сопоставлены полные read-side bodies/callers `attrlist.c:ntfs_load_attr_list`,
+`al_enumerate`/`al_find_ex`, `frecord.c:ni_find_attr`/`ni_load_mi`,
+`record.c:mi_find_attr`/`mi_read`, bootstrap в `inode.c`/`super.c` и
+`fsntfs.c:ntfs_read_run_nb_ra`. В SDK проверены MFT bootstrap/enumeration,
+attribute parsing, extension merge, metadata properties и extraction consumers.
+Используются те же pinned commits; borrowed scope учтён в существующем manifest.
+
+В `src/fs/ntfs3/attrlist.c` передано неизменённое тело `al_find_ex`.
+Оригинальные `upcase_unicode_char`/`ntfs_cmp_names` из `upcase.c` подключены как
+C dependency с сохранением notices и полных bodies; `le_name` взят из `ntfs.h`.
+Kernel cache/inode services заменены уже прочитанным bounded list и owned SDK
+MFT records. Consumer ищет только unnamed attributes; полноценная загрузка
+`$UpCase`, named namespace lookup, `ntfs_cmp_names_cpu` и VFS name hashing этой
+итерацией не добавлены. Нулевой name length использует исходный comparator без
+таблицы upcase; не реализован второй decoder/алгоритм сравнения.
+
+SDK собирает volume label/info attributes по их исходным records. После полной
+загрузки MFT и до extension merge consumer следует исходному разделению Linux:
+при наличии списка выбирает entry через C lookup, затем проверяет record index,
+sequence, active FILE/base ownership и instance ID. Ошибка или отсутствие entry
+не подменяются stale clean metadata из base record. Без списка выбирается первый
+unnamed attribute primary record. Label имеет собственный независимый lookup;
+читаемый Unicode label сохраняется даже при неизвестном состоянии тома.
+
+Resident и обычный nonresident attribute list читаются через существующий SDK
+attribute stream с прежними source/cluster/mapping bounds. Несогласованная
+структура, недоступное чтение списка или неправильная ссылка оставляют состояние
+неизвестным и сохраняют явный limited read для доступных файлов. E_ABORT и
+callback cancellation завершают Open без опубликованных items. Mapping/file data,
+path validation и реальные per-file errors не ослаблены; replay/source writes
+не добавлены. Standalone SDK metadata branch не меняется.
+
+### Native bootstrap boundary
+
+Linux загружает `$Volume` до `$LogFile` и полного `$MFT`. Пока run mapping ещё
+не задан, `ntfs_read_run_nb_ra` допускает только bootstrap records 0–3. Поэтому
+extension metadata в record 16 не проходит kernel mount даже при пригодном
+общем `ni_find_attr`/list algorithm; эта граница подтверждена и pinned source,
+и `6.8.0-147-generic` diagnostic `ni_load_mi_ex`/`Failed to load $Volume`.
+Archive consumer применяет original lookup после уже существующей полной
+загрузки MFT. Это явная archive adaptation, более широкая, чем mount acceptance,
+а не заявление о поддержке такого bootstrap layout Linux kernel.
+
+Native controls clean и resident list со ссылками на base record успешно
+смонтированы read-only: exact alpha/Unicode data, ST_RDONLY и unchanged SHA-256.
+Четыре extension-record layouts (clean/dirty/nonresident-list/stale-base override)
+ожидаемо отвергнуты на bootstrap; их успешное чтение kernel не заявляется.
+Receipt `20261021T043524Z-e42013dd`; диагностический отказ сохранён отдельно в
+`20261021T043411Z-3902fda0`. Все mounts/images/одноразовый helper удалены.
+
+Regressions проверяют одиннадцать list layouts: resident/nonresident, base и
+extension records, Unicode label, dirty/clean, stale unlisted base metadata,
+неверные ID/sequence/owner, отсутствие записи, malformed list и out-of-source
+run. CLI/ABI проверяют metadata и exact file bytes; retained streams работают
+после Close. Сбой metadata I/O сохраняет обычное чтение и допускает успешный
+reopen; E_ABORT и callback cancellation не превращаются в unknown-success.
+ArchiveBackend и GUI EN/RU проверяют nonresident-list opening, consent, copying,
+refresh, повторное согласие и неизменность source. Это behavioral coverage,
+не source-text assertions или проверка внутренних имён.
+
+Focused `ntfs`, `ntfs_stream`, `ntfs_security`, `filesystem_read_ui` прошли на
+macOS arm64/Cocoa, Linux x64/offscreen и Windows x64/MSVC/offscreen. Локальный
+набор — 18,89 с; дополненные I/O/cancellation cases повторно проверены ABI suite
+(17,55 с). Windows receipt `20261021T043304Z-1f040639` (89,90 с), Linux receipt
+`20261021T043644Z-1eb1d1c8`. Приложение собрано локально. Переданные C lookup/
+comparator bodies повторно сопоставлены с оригиналом без functional differences,
+все 31 baseline source/license hashes проверены. Удаление native helper
+синхронизировано обоим гостям, Windows cleanup receipt
+`20261021T043648Z-5fc34df9` не выдаётся за отдельный test run. Incremental trees
+и compiler caches сохранены. Physical devices, installed package, full/slow и
+native Windows/Linux appearance не проверялись; общий read audit остаётся открыт.
 
 ## Открытый read scope
 

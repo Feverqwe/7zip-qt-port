@@ -68,6 +68,10 @@ class NtfsTests(unittest.TestCase):
                     self.assertIn(("Read-only limitations = " + reason).encode(), listing.stdout)
                 else:
                     self.assertNotIn(b"Read-only limitations = ", listing.stdout)
+                if kind.startswith("volume-list-"):
+                    from ntfs_volume_list_fixture import label
+                    if label(kind):
+                        self.assertIn(label(kind).encode(), listing.stdout)
                 result = self.run_image("7z", image, "x", "alpha")
                 self.assertEqual(result.returncode, 0, result.stderr)
                 self.assertEqual(result.stdout, files["alpha"])

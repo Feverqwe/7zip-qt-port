@@ -3,7 +3,7 @@ add_library(sevenzip_ntfs MODULE
     src/CPP/7zip/Archive/NtfsHandler.cpp src/exfatmodule.cpp
     src/ntfsdecoder.c src/fs/ntfs3/lznt.c src/fs/ntfs3/bitmap.c src/lib/hweight.c
     src/ntfswofstream.cpp src/fs/ntfs3/attrib.c src/fs/ntfs3/frecord.c
-    src/fs/ntfs3/attrlist.c src/fs/ntfs3/fsntfs.c
+    src/fs/ntfs3/attrlist.c src/fs/ntfs3/fsntfs.c src/fs/ntfs3/upcase.c
     src/fs/ntfs3/xattr.c src/fs/ntfs3/super.c
     src/ntfssecurity.c src/fs/ntfs3/index.c
     src/ntfslink.c src/fs/ntfs3/inode.c src/fs/ntfs3/dir.c src/fs/nls/nls_base.c

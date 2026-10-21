@@ -74,6 +74,11 @@ static inline u32 le_size(u8 name_len)
 		     name_len * sizeof(short), 8);
 }
 
+static inline __le16 const *le_name(const struct ATTR_LIST_ENTRY *le)
+{
+	return Add2Ptr(le, le->name_off);
+}
+
 enum COLLATION_RULE {
 	NTFS_COLLATION_TYPE_BINARY	= cpu_to_le32(0),
 	// $I30
