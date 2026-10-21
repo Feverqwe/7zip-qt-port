@@ -35,6 +35,7 @@
 #include "../../../ntfsea.h"
 #include "../../../ntfslink.h"
 #include "../../../ntfssecurity.h"
+#include "../../../ntfsvolume.h"
 #include "../../../ntfswofstream.h"
 #endif
 
@@ -1107,9 +1108,17 @@ struct CVolumeInfo {
     UString2 VolName;
     int FsVerMajor; // -1 if not defined
     Byte FsVerMinor;
+#ifdef SEVENZIP_LINUX_NTFS
+    bool StateSeen = false;
+    bool StateKnown = false;
+    bool Dirty = false;
+#endif
     CVolumeInfo() : FsVerMajor(-1) /* , Minor(-1) */ {}
     void Clear() {
         FsVerMajor = -1;
+#ifdef SEVENZIP_LINUX_NTFS
+        StateSeen = StateKnown = Dirty = false;
+#endif
         if (!VolName.IsEmpty())
             VolName.SetFromAscii("");
     }
@@ -1568,11 +1577,27 @@ bool CMftRec::ParseRec(Byte *const p, const unsigned sectorSizeLog, const unsign
                 if (type == ATTR_TYPE_VOLUME_NAME && volInfo->VolName.IsEmpty())
                     GetString(attr.Data, (unsigned)attr.Data.Size() / 2, volInfo->VolName);
                 else if (type == ATTR_TYPE_VOLUME_INFO /* && volInfo->FsVerMajor < 0 */) {
+#ifdef SEVENZIP_LINUX_NTFS
+                    // Linux selects the first unnamed $VOLUME_INFORMATION.
+                    if (InUse() && !BaseMftRef.Val && attr.Name.IsEmpty() && !volInfo->StateSeen) {
+                        volInfo->StateSeen = true;
+                        sevenzip_ntfs_volume_info state;
+                        if (sevenzip_ntfs_read_volume_info(attr.Data, attr.Data.Size(),
+                                                           attr.NonResident, attr.Flags,
+                                                           &state) == 0) {
+                            volInfo->FsVerMajor = state.major;
+                            volInfo->FsVerMinor = state.minor;
+                            volInfo->Dirty = state.dirty != 0;
+                            volInfo->StateKnown = true;
+                        }
+                    }
+#else
                     if (attr.Data.Size() < 10)
                         return false;
                     volInfo->FsVerMajor = attr.Data[8];
                     volInfo->FsVerMinor = attr.Data[9];
                     // volInfo->Flags = Get16(attr.Data + 10);
+#endif
                 }
             }
             break;
@@ -3113,16 +3138,23 @@ static const Byte kProps[] = {kpidPath,
 };
 
 enum { kpidRecordSize = kpidUserDefined };
-
-static const CStatProp kArcProps[] = {
-    {NULL, kpidVolumeName, VT_BSTR},
 #ifdef SEVENZIP_LINUX_NTFS
-    {NULL, kpidFreeSpace, VT_UI8},
+static const PROPID kpidReadLimitations = kpidUserDefined + 1;
 #endif
-    {NULL, kpidFileSystem, VT_BSTR}, {NULL, kpidClusterSize, VT_UI4},
-    {NULL, kpidSectorSize, VT_UI4},  {"MFT Record Size", kpidRecordSize, VT_UI4},
-    {NULL, kpidHeadersSize, VT_UI8}, {NULL, kpidCTime, VT_FILETIME},
-    {NULL, kpidId, VT_UI8}};
+
+static const CStatProp kArcProps[] = {{NULL, kpidVolumeName, VT_BSTR},
+#ifdef SEVENZIP_LINUX_NTFS
+                                      {NULL, kpidFreeSpace, VT_UI8},
+                                      {NULL, kpidReadOnly, VT_BOOL},
+                                      {"Read-only limitations", kpidReadLimitations, VT_BSTR},
+#endif
+                                      {NULL, kpidFileSystem, VT_BSTR},
+                                      {NULL, kpidClusterSize, VT_UI4},
+                                      {NULL, kpidSectorSize, VT_UI4},
+                                      {"MFT Record Size", kpidRecordSize, VT_UI4},
+                                      {NULL, kpidHeadersSize, VT_UI8},
+                                      {NULL, kpidCTime, VT_FILETIME},
+                                      {NULL, kpidId, VT_UI8}};
 
 /*
 static const Byte kArcProps[] =
@@ -3161,6 +3193,15 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(const PROPID propID, PROPVARIANT *cons
         prop = Header.ClusterSize();
         break;
 #ifdef SEVENZIP_LINUX_NTFS
+    case kpidReadOnly:
+        prop = true;
+        break;
+    case kpidReadLimitations:
+        if (!VolumeInfo.StateKnown)
+            prop = "The volume state is unavailable. Files may be inconsistent.";
+        else if (VolumeInfo.Dirty)
+            prop = "The NTFS volume is marked dirty. Some data may be corrupt.";
+        break;
     case kpidFreeSpace:
         if (!Recs.IsEmpty()) {
             RINOK(LoadFreeSpace())

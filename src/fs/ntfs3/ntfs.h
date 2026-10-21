@@ -19,6 +19,16 @@ enum FILE_ATTRIBUTE {
 #define ATTR_FLAG_ENCRYPTED cpu_to_le16(0x4000)
 #define ATTR_FLAG_SPARSED cpu_to_le16(0x8000)
 
+#define VOLUME_FLAG_DIRTY cpu_to_le16(0x0001)
+#define VOLUME_FLAG_RESIZE_LOG_FILE cpu_to_le16(0x0002)
+struct VOLUME_INFO {
+	__le64 res1;
+	u8 major_ver;
+	u8 minor_ver;
+	__le16 flags;
+};
+#define SIZEOF_ATTRIBUTE_VOLUME_INFO 0xc
+
 enum ATTR_TYPE {
 	ATTR_ZERO		= cpu_to_le32(0x00),
 	ATTR_STD		= cpu_to_le32(0x10),

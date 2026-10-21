@@ -94,6 +94,9 @@ def nonresident(original, entries, size, valid=None, flags=0, unit=0):
 
 
 def volume(kind="base"):
+    if kind.startswith("volume-"):
+        from ntfs_volume_fixture import volume as volume_state
+        return volume_state(kind)
     if kind.startswith("bitmap-"):
         from ntfs_bitmap_fixture import volume as bitmap_volume
         return bitmap_volume(kind)

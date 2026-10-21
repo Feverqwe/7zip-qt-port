@@ -21,6 +21,7 @@ struct ATTRIB {
     const void *data;
     u64 bytes;
     u8 non_res;
+    __le16 flags;
 };
 struct ntfs_sb_info {
     const struct sevenzip_ntfs_ea_input *input;

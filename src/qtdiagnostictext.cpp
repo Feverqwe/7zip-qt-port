@@ -46,7 +46,11 @@ UString QtArchiveDiagnosticText(const UString &source) {
             "SevenZipDiagnostics",
             "The HFS wrapper lacks protection flags. Embedded volume data may be inconsistent."),
         QT_TRANSLATE_NOOP("SevenZipDiagnostics",
-                          "The free-space count exceeds the volume size. Free space is unknown.")};
+                          "The free-space count exceeds the volume size. Free space is unknown."),
+        QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                          "The volume state is unavailable. Files may be inconsistent."),
+        QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                          "The NTFS volume is marked dirty. Some data may be corrupt.")};
     for (const char *warning : warnings)
         if (text == QString::fromLatin1(warning))
             return QtDiagnosticText(warning);

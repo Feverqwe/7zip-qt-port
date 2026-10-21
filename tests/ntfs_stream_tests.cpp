@@ -5,6 +5,7 @@
 #include "archivecodeccatalog.h"
 #include <QDir>
 #include <QFile>
+#include <QHash>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QLibrary>
@@ -111,6 +112,7 @@ class NtfsStreamTests final : public QObject {
     CMyComPtr<IInArchive> archive_;
     QJsonObject record_;
     QByteArray bytes_;
+    QHash<QString, QJsonObject> fixtures_;
 
     void createArchive() {
         archive_.Release();
@@ -181,12 +183,17 @@ class NtfsStreamTests final : public QObject {
         QCOMPARE(actual, expected);
     }
     void loadFixture(const QString &codec) {
-        QProcess generator;
-        QStringList arguments{QString::fromUtf8(SEVENZIP_NTFS_FIXTURE), "--kind=" + codec};
-        generator.start(QString::fromUtf8(SEVENZIP_NTFS_PYTHON), arguments);
-        QVERIFY(generator.waitForFinished(10000));
-        QCOMPARE(generator.exitCode(), 0);
-        record_ = QJsonDocument::fromJson(generator.readAllStandardOutput()).object();
+        if (!fixtures_.contains(codec)) {
+            QProcess generator;
+            QStringList arguments{QString::fromUtf8(SEVENZIP_NTFS_FIXTURE), "--kind=" + codec};
+            generator.start(QString::fromUtf8(SEVENZIP_NTFS_PYTHON), arguments);
+            QVERIFY(generator.waitForFinished(10000));
+            QCOMPARE(generator.exitCode(), 0);
+            const auto record = QJsonDocument::fromJson(generator.readAllStandardOutput()).object();
+            QVERIFY(!record.isEmpty());
+            fixtures_.insert(codec, record);
+        }
+        record_ = fixtures_.value(codec);
         QVERIFY(!record_.isEmpty());
         QByteArray packed(4, '\0');
         qToBigEndian(quint32(record_["size"].toInt()), packed.data());
@@ -196,6 +203,51 @@ class NtfsStreamTests final : public QObject {
     }
   private slots:
     void initTestCase() { createArchive(); }
+    void volumeStateAndOpeningLifetime() {
+        for (const char *kind :
+             {"volume-dirty", "volume-clean", "volume-short", "volume-missing", "volume-named",
+              "volume-compressed", "volume-resize", "volume-duplicate", "volume-clean"}) {
+            loadFixture(kind);
+            CMyComPtr<IInStream> input = new Input(bytes_);
+            QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+            NWindows::NCOM::CPropVariant readOnly;
+            QCOMPARE(archive_->GetArchiveProperty(kpidReadOnly, &readOnly), S_OK);
+            QCOMPARE(readOnly.vt, VARTYPE(VT_BOOL));
+            QVERIFY(readOnly.boolVal != VARIANT_FALSE);
+            UInt32 count = 0;
+            QCOMPARE(archive_->GetNumberOfArchiveProperties(&count), S_OK);
+            bool found = false;
+            for (UInt32 i = 0; i < count; ++i) {
+                BSTR name = nullptr;
+                PROPID id;
+                VARTYPE type;
+                QCOMPARE(archive_->GetArchivePropertyInfo(i, &name, &id, &type), S_OK);
+                const QString label = name ? QString::fromWCharArray(name) : QString();
+                SysFreeString(name);
+                if (label != "Read-only limitations")
+                    continue;
+                found = true;
+                NWindows::NCOM::CPropVariant state;
+                QCOMPARE(archive_->GetArchiveProperty(id, &state), S_OK);
+                const QString layout = QString::fromLatin1(kind);
+                if (layout == "volume-clean" || layout == "volume-resize" ||
+                    layout == "volume-duplicate")
+                    QCOMPARE(state.vt, VARTYPE(VT_EMPTY));
+                else {
+                    QCOMPARE(state.vt, VARTYPE(VT_BSTR));
+                    QVERIFY(
+                        QString::fromWCharArray(state.bstrVal)
+                            .contains(layout == "volume-dirty" ? "marked dirty" : "unavailable"));
+                }
+            }
+            QVERIFY(found);
+            auto retained = stream("alpha");
+            QVERIFY(retained);
+            check(retained, "alpha", 0, 4096);
+            QCOMPARE(archive_->Close(), S_OK);
+            check(retained, "alpha", 4096, 1024);
+        }
+    }
     void volumeFreeSpace_data() {
         QTest::addColumn<QString>("kind");
         for (const char *kind : {"bitmap-base", "bitmap-padding", "bitmap-last", "bitmap-full",
@@ -836,6 +888,8 @@ class NtfsStreamTests final : public QObject {
     }
     void backendSelectedExtraction_data() {
         QTest::addColumn<QString>("kind");
+        QTest::newRow("dirty-volume") << QString("volume-dirty");
+        QTest::newRow("unknown-volume-state") << QString("volume-short");
         QTest::newRow("sparse") << QString("sparse");
         QTest::newRow("compressed") << QString("short-compressed");
         QTest::newRow("corrupt") << QString("run-over-volume");

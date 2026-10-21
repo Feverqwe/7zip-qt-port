@@ -3838,6 +3838,14 @@ Are you sure you want to split archive into such volumes?</source>
     <context>
         <name>SevenZipDiagnostics</name>
         <message>
+            <source>The NTFS volume is marked dirty. Some data may be corrupt.</source>
+            <translation>Том NTFS помечен как требующий проверки. Часть данных может быть повреждена.</translation>
+        </message>
+        <message>
+            <source>The volume state is unavailable. Files may be inconsistent.</source>
+            <translation>Не удалось определить состояние тома. Данные файлов могут быть несогласованными.</translation>
+        </message>
+        <message>
             <source>The free-space count exceeds the volume size. Free space is unknown.</source>
             <translation>Число свободных блоков превышает размер тома. Объём свободного места неизвестен.</translation>
         </message>

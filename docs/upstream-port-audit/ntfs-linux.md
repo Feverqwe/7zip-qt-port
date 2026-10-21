@@ -752,6 +752,74 @@ mounts, fixtures и helper удалены; удаление синхронизи
 Native kernel дополняет pinned source comparison. Incremental builds/caches
 сохранены; full/slow suites, UI и физические устройства не проверялись.
 
+## Volume state и read-only policy — 2026-10-21
+
+До изменений сопоставлены полные `$Volume` ветви
+`super.c:ntfs_fill_super`, `fsntfs.c:ntfs_loadlog_and_replay`, read-only
+границы `fslog.c:log_replay`, `ntfs.h:VOLUME_INFO`/`is_attr_ext` и SDK
+`CVolumeInfo`, MFT/attribute parsing, archive properties и GUI/CLI consumers.
+Источник — те же pinned Linux/SDK commits из начала аудита; все 31 source/license
+hash повторно сверены. SDK читал лишь version bytes и игнорировал dirty flags.
+
+Оригинальные C layout/constants `VOLUME_INFO`, minimum resident size и
+`is_attr_ext` подключены к `src/fs/ntfs3/super.c` через узкую projection function.
+Сохранены resident/extended-attribute checks, version/flags reads и dirty branch;
+kernel inode lookup/logging/state заменены выбранным SDK attribute и owned
+result. Существующий compat `ATTRIB` дополнен полем flags. Все GPL bodies/types
+остаются внутри изолированного NTFS format module; standalone SDK не получает
+новую runtime dependency. C++ адаптация сохраняет original MFT parser и выбирает
+первый безымянный volume-info attribute активной base record `$Volume`;
+поздний duplicate или одноимённый named attribute не подменяет состояние.
+
+Dirty state публикуется как read-only limitation с конкретным EN/RU пояснением,
+а не ошибкой каждого файла. Если состояние отсутствует или непригодно, оно явно
+остаётся неизвестным: reader не выдаёт его за clean. В отличие от kernel mount
+acceptance, отсутствие пригодного volume-info metadata не становится отказом
+от всех независимо читаемых файлов. Это осознанный archive read-only subset
+по политике AGENTS.md. Сохраняются attribute/MFT/source bounds, file mapping,
+path checks и реальные per-file errors; согласие не исправляет metadata.
+
+Общий GUI до публикации папки спрашивает согласие с Cancel по умолчанию,
+сохраняет заметную отметку и область согласия одного открытия. После Close/Open
+состояние определяется заново. CLI/ABI сообщают причины в metadata; корректное
+копирование не превращается в фиктивный warning exit code. Стандартная read-only
+capability подключает модуль к уже существующим UI consumers. Journal replay,
+repair и запись на source не добавлены. Чтение dirty flag не является проверкой
+`$LogFile` или доказательством согласованности clean тома.
+
+В этой итерации состояние читается из самой base record `$Volume`. Если нужный
+атрибут доступен только через extension/attribute-list layout, он остаётся
+неизвестным с явным выбором limited read. Это не полная source closure NTFS и
+не обещание поддержки всех metadata lookup layouts Linux; disk/file read scope
+остальных компонентов остаётся открытым ниже.
+
+Regressions проверяют dirty/clean/resize, absent/short/named/compressed metadata,
+приоритет первого unnamed attribute, сброс состояния, точные stream bytes и
+retained streams после Close. CLI и ArchiveBackend consumers проверяют доступное
+чтение без изменения source. GUI EN/RU — accept/cancel, copying, persistent
+indicator, refresh и повторный запрос при новом открытии. Детерминированные
+сжатые fixture records повторно используются между ABI случаями, без удаления
+проверок и без изменения timeout.
+
+Native Linux `6.8.0-147-generic` прочитал clean/dirty/resize synthetic images
+через `ntfs3`/`mount -o loop,ro`: exact alpha/Unicode bytes, ST_RDONLY и неизменные
+SHA-256 подтверждены. Receipt `20261021T041530Z-1b801c1e`; mounts/images/helper
+удалены. Это evidence более старого running kernel 6.8, отдельно от pinned source.
+
+Focused `ntfs`, `ntfs_stream`, `ntfs_security`, `filesystem_read_ui`, `language`
+прошли на macOS arm64/Cocoa, Linux x64/offscreen и Windows x64/MSVC/offscreen.
+После уточнения диагностического текста affected CLI/ABI/UI/language проверки
+повторно прошли на macOS (39,67 с) и Windows; shared EA/security behavior
+проверен исходным полным выбранным набором. Linux final receipt
+`20261021T041650Z-ffb3ffef` (52,22 с), Windows initial five-suite receipt
+`20261021T041534Z-9efb198e` (86,31 с), final affected receipt
+`20261021T041825Z-870ca180`. Локальное приложение собрано с конечным текстом.
+Cocoa EN/RU JSON dirty/unknown предупреждений просмотрен: 420×201 / 420×249,
+причины и кнопки видимы без clipping. Одноразовый native helper удалён с обоих
+гостей синхронизацией. Full/slow suites, physical devices, native Windows/Linux
+appearance и installed-package acceptance не заявляются; incremental build
+trees и compiler caches сохранены.
+
 ## Открытый read scope
 
 Выбранные classic/WOF/MFT bootstrap scenarios подключены и проверены.

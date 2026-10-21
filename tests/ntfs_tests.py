@@ -56,6 +56,22 @@ class NtfsTests(unittest.TestCase):
                 self.assertIn(("Free Space = " + str(expected(kind, image))).encode(),
                               listing.stdout.splitlines())
 
+    def test_volume_state_and_readable_files(self):
+        from ntfs_volume_fixture import CASES, limitation
+        for kind in CASES:
+            image, files = volume(kind)
+            with self.subTest(kind=kind):
+                listing = self.run_image("7z", image, "l")
+                self.assertEqual(listing.returncode, 0, listing.stderr)
+                reason = limitation(kind)
+                if reason:
+                    self.assertIn(("Read-only limitations = " + reason).encode(), listing.stdout)
+                else:
+                    self.assertNotIn(b"Read-only limitations = ", listing.stdout)
+                result = self.run_image("7z", image, "x", "alpha")
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertEqual(result.stdout, files["alpha"])
+
     def test_standard_information_layout_and_presence_in_both_engines(self):
         for kind in STANDARD_VALID:
             image, files = volume(kind)
