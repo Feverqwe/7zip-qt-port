@@ -40,11 +40,13 @@ struct ntfs_index {
     u8 index_bits, idx2vbn_bits, vbn2vbo_bits, type;
 };
 struct ntfs_inode;
+struct inode { struct ntfs_inode *owner; u64 size; };
 struct ntfs_sb_info {
     struct sevenzip_ntfs_security_input input;
     u32 cluster_size;
     unsigned cluster_bits;
     int error;
+    bool fixup_corrected;
     struct { struct ntfs_inode *ni; struct ntfs_index index_sii; } security;
 };
 struct ATTRIB {
@@ -56,8 +58,11 @@ struct ntfs_inode {
     struct { struct ntfs_sb_info *sbi; } mi;
     struct { struct runs_tree run; } file;
     struct ntfs_index dir;
-    struct ATTRIB root;
-    int ni_lock, vfs_inode;
+    struct ATTRIB root, bitmap;
+    const struct sevenzip_ntfs_directory_input *directory_input;
+    bool directory_unverified;
+    int ni_lock;
+    struct inode vfs_inode;
 };
 struct ntfs_buffers { int unused; };
 struct indx_node { struct ntfs_buffers nb; struct INDEX_BUFFER *index; };
@@ -88,8 +93,12 @@ static inline struct ATTRIB *ni_find_attr(struct ntfs_inode *ni, struct ATTRIB *
         struct ATTR_LIST_ENTRY **le, enum ATTR_TYPE type, const __le16 *name,
         size_t length, void *vcn, struct mft_inode **mi) {
     (void)prev; (void)le; (void)vcn; (void)mi;
-    return type == ATTR_ROOT && length == ARRAY_SIZE(SII_NAME) &&
-           !memcmp(name, SII_NAME, sizeof(SII_NAME)) ? &ni->root : NULL;
+    if (length != ARRAY_SIZE(SII_NAME) ||
+        (memcmp(name, SII_NAME, sizeof(SII_NAME)) && memcmp(name, I30_NAME, sizeof(I30_NAME))))
+        return NULL;
+    if (type == ATTR_ROOT)
+        return &ni->root;
+    return type == ATTR_BITMAP && ni->directory_input ? &ni->bitmap : NULL;
 }
 static inline int attr_load_runs_range(struct ntfs_inode *ni, enum ATTR_TYPE type,
         const __le16 *name, size_t length, struct runs_tree *run, u64 first, u64 end) {
@@ -114,7 +123,8 @@ static inline int ntfs_read_bh_ra(struct ntfs_sb_info *sbi, struct runs_tree *ru
 }
 static inline int ntfs_write_bh(struct ntfs_sb_info *sbi, struct NTFS_RECORD_HEADER *h,
                                 struct ntfs_buffers *nb, int sync) {
-    (void)sbi; (void)h; (void)nb; (void)sync;
+    (void)h; (void)nb; (void)sync;
+    sbi->fixup_corrected = true;
     return 0; // Fixups are corrected in the private read buffer; no disk writes.
 }
 static inline void put_indx_node(struct indx_node *node) {
@@ -130,6 +140,8 @@ static inline unsigned __ffs(unsigned value) {
     while (!(value & 1)) { value >>= 1; ++count; }
     return count;
 }
+unsigned long _find_next_bit(const unsigned long *, unsigned long, unsigned long);
+#define MINUS_ONE_T SIZE_MAX
 static inline unsigned blksize_bits(unsigned size) {
     unsigned bits = SECTOR_SHIFT, blocks = size >> SECTOR_SHIFT;
     if (blocks > 1) for (--blocks; blocks; blocks >>= 1) ++bits;
@@ -143,6 +155,8 @@ static inline int indx_read(struct ntfs_index *indx, struct ntfs_inode *ni, CLST
 }
 int indx_find(struct ntfs_index *, struct ntfs_inode *, const struct INDEX_ROOT *,
               const void *, size_t, const void *, int *, struct NTFS_DE **, struct ntfs_fnd *);
+int indx_used_bit(struct ntfs_index *, struct ntfs_inode *, size_t *);
+int ntfs_directory_count(struct ntfs_inode *);
 int ntfs_get_security_by_id(struct ntfs_sb_info *, __le32, struct SECURITY_DESCRIPTOR_RELATIVE **, size_t *);
 bool is_sd_valid(const struct SECURITY_DESCRIPTOR_RELATIVE *, u32);
 #endif

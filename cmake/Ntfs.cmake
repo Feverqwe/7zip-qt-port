@@ -1,11 +1,18 @@
 # Linux-derived C readers remain in a separate GPL format module.
+# The same upstream dir.c owns its link conversion and directory read bodies;
+# their existing portable inode contexts are compiled separately.
+add_library(sevenzip_ntfs_directory OBJECT src/fs/ntfs3/dir.c)
+target_compile_definitions(sevenzip_ntfs_directory PRIVATE SEVENZIP_NTFS_DIRECTORY)
+set_target_properties(sevenzip_ntfs_directory PROPERTIES AUTOMOC OFF AUTOUIC OFF
+    POSITION_INDEPENDENT_CODE ON C_STANDARD 11 C_STANDARD_REQUIRED ON)
 add_library(sevenzip_ntfs MODULE
     src/CPP/7zip/Archive/NtfsHandler.cpp src/exfatmodule.cpp
-    src/ntfsdecoder.c src/fs/ntfs3/lznt.c src/fs/ntfs3/bitmap.c src/lib/hweight.c
+    src/ntfsdecoder.c src/fs/ntfs3/lznt.c src/fs/ntfs3/bitmap.c src/lib/hweight.c src/lib/find_bit.c
     src/ntfswofstream.cpp src/fs/ntfs3/attrib.c src/fs/ntfs3/frecord.c
     src/fs/ntfs3/attrlist.c src/fs/ntfs3/fsntfs.c src/fs/ntfs3/upcase.c
     src/fs/ntfs3/xattr.c src/fs/ntfs3/super.c
-    src/ntfssecurity.c src/fs/ntfs3/index.c
+    src/ntfssecurity.c src/fs/ntfs3/index.c src/ntfsdirectory.c
+    $<TARGET_OBJECTS:sevenzip_ntfs_directory>
     src/ntfslink.c src/fs/ntfs3/inode.c src/fs/ntfs3/dir.c src/fs/nls/nls_base.c
     src/fs/ntfs3/lib/decompress_common.c src/fs/ntfs3/lib/lzx_decompress.c
     src/fs/ntfs3/lib/xpress_decompress.c

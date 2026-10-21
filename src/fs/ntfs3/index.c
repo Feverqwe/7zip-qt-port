@@ -6,6 +6,7 @@
  */
 
 #include "ntfssecuritycompat.h"
+#include "../../ntfsdirectory.h"
 
 static const struct INDEX_NAMES {
 	const __le16 *name;
@@ -480,4 +481,69 @@ int indx_find(struct ntfs_index *indx, struct ntfs_inode *ni,
 
 	*entry = e;
 	return 0;
+}
+
+/* scan_nres_bitmap's physical run/block services are supplied by the archive's
+ * validated logical bitmap stream. Keep its block scan, valid/data bounds and
+ * scan_for_used callback; no full-bitmap allocation or native buffer_head. */
+static int scan_nres_bitmap(struct ntfs_inode *ni, struct ATTRIB *bitmap,
+                           struct ntfs_index *indx, size_t from,
+                           bool (*fn)(const void *, u32, u32, size_t *), size_t *ret)
+{
+    const struct sevenzip_ntfs_directory_input *input = ni->directory_input;
+    unsigned long buffer[4096 / sizeof(unsigned long)];
+    u64 vbo = (from >> 3) & ~(u64)(sizeof(buffer) - 1);
+    u32 first = (u32)(from & (sizeof(buffer) * 8 - 1));
+    (void)bitmap; (void)indx;
+    *ret = MINUS_ONE_T;
+    while (vbo < input->bitmap_valid) {
+        const size_t bytes = (size_t)min(sizeof(buffer), input->bitmap_size - vbo);
+        const size_t valid = (size_t)min(bytes, input->bitmap_valid - vbo);
+        int err;
+        memset(buffer, 0, sizeof(buffer));
+        err = input->read(input->opaque, 0, vbo, buffer, valid);
+        if (err)
+            return err;
+#if defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
+        for (size_t i = 0; i < ARRAY_SIZE(buffer); ++i)
+            buffer[i] = sizeof(unsigned long) == 8 ? get_unaligned_le64(&buffer[i]) :
+                                                   get_unaligned_le32(&buffer[i]);
+#endif
+        if ((*fn)(buffer, first, (u32)(bytes * 8), ret)) {
+            *ret += (size_t)vbo * 8;
+            return 0;
+        }
+        vbo += bytes;
+        first = 0;
+    }
+    return 0;
+}
+
+static bool scan_for_used(const void *buf, u32 bit, u32 bits, size_t *ret)
+{
+	size_t pos = _find_next_bit(buf, bits, bit);
+
+	if (pos >= bits)
+		return false;
+	*ret = pos;
+	return true;
+}
+
+int indx_used_bit(struct ntfs_index *indx, struct ntfs_inode *ni, size_t *bit)
+{
+	struct ATTRIB *b;
+	struct ATTR_LIST_ENTRY *le = NULL;
+	size_t from = *bit;
+	const struct INDEX_NAMES *in = &s_index_names[indx->type];
+
+	b = ni_find_attr(ni, NULL, &le, ATTR_BITMAP, in->name, in->name_len,
+			 NULL, NULL);
+
+	if (!b)
+		return -ENOENT;
+
+	*bit = MINUS_ONE_T;
+
+	/* Both attribute storage kinds use the same bounded stream service. */
+	return scan_nres_bitmap(ni, b, indx, from, &scan_for_used, bit);
 }

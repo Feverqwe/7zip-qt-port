@@ -1183,8 +1183,8 @@ extension reference остаются явно непроверенным recover
 существующие согласие на открытие, постоянный badge и read-only операции.
 Повреждённые границы FILE/MFT records остаются отдельным техническим отказом.
 
-Archive namespace по-прежнему восстанавливается из MFT; полноценный Linux
-directory-index/VFS path не переносился. Циклы родительских связей направляются
+Эта итерация сохраняла MFT namespace; перечисление `$I30` добавлено
+[следующим сценарием](#directory-indexes-i30--2026-10-21). Циклы родительских связей направляются
 в recovery-каталог, конечные пути глубже 256 компонентов сохраняются в пределах
 исходного ограничения длины. Это узкая адаптация single-parent archive graph:
 upstream CFB traversal работает с другим sibling/child graph, а подходящего
@@ -1204,6 +1204,86 @@ consent/badge geometry. Linux прошёл те же пять suites в
 кода/timeout прошёл в `20261021T074204Z-0fef8bd4`. Причина timeout не установлена.
 Новых native-kernel mount checks этого scenario нет;
 archive recovery adaptation не заявляется как полная VFS namespace parity.
+
+## Directory indexes `$I30` — 2026-10-21
+
+Сравнены полные `dir.c:ntfs_readdir`, `ntfs_dir_count`, `de_countable_fname`,
+`ntfs_dir_emit`, `index.c:indx_init`, `indx_get_root`, `indx_read_ra`,
+`indx_used_bit`, `scan_nres_bitmap`, их callers и disk types закреплённого Linux.
+Перенесён оригинальный `ntfs_dir_count` с полным обходом root и занятых index
+buffers по bitmap. Предикаты FILE_NAME и DOS namespace сохранены; callback
+добавлен рядом с подсчётом, а проверка home reference взята из `ntfs_dir_emit`.
+Allocated buffers используют уже перенесённые NTFS3 read/fixup/header services.
+Дополнены исходные `ntfs.h` disk types; shared `lib/find_bit.c` получил оригинальный
+`_find_next_bit` с раскрытым C11 `FIND_NEXT_BIT`, как прежний zero-bit helper.
+Manifest расширен этой dependency; проверены все 32 hashes исходного snapshot.
+
+`dir.c` остаётся единственным source owner link conversion и directory bodies.
+Две C compilation contexts используют свои узкие inode adapters; GPL directory
+object входит только в `sevenzip_ntfs`. Буферы/типизация и имя исходного C-файла
+сохранены. Новый C++ код ограничен выбором resident/nonresident `$I30` attributes
+по ATTR_LIST, существующими mapping/stream services и публикацией archive names.
+Нового decoder/независимого обхода формата нет. В SDK directory-index reader
+отсутствует; оригинальная MFT enumeration остаётся восстановительным fallback.
+
+Bitmap читается приватными блоками, без полной материализации. В оригинальном
+`scan_nres_bitmap` kernel run lookup, buffer_head и locks заменены проверенным
+логическим stream; сохранены block scan, valid/data bounds и `scan_for_used`.
+Нули за initialized tail не извлекаются из старых физических bytes. Resident и
+nonresident bitmap используют один stream boundary. Ошибки callback/отмена
+сохраняют HRESULT и прерывают открытие; ошибка чтения отдельного индекса допускает
+независимый MFT/DATA recovery. Reopen очищает прежнее ограничение и восстанавливает
+нормальное чтение. Память ограничена index/bitmap блоками, кроме уже существующих
+MFT/attribute ownership и archive-name vectors.
+
+Полученные имена объединяются с пригодными MFT именами; несовпадение, stale
+extension ownership/sequence, неисправный список, пропущенный target или malformed
+key явно помечают metadata как непроверенные. Идентичные пути с разным parent
+sequence не публикуются дважды. При непригодном имени в MFT индекс может сохранить
+доступный путь; без обоих источников остаётся исходный `[LOST]/[NONAME]-…`.
+Недоступный MFT target не превращается в фиктивный пустой файл. Небезопасные
+компоненты проходят тот же bounded filename/path validation. System namespace
+и deleted recovery сохраняют исходное archive представление. Неадресуемые child
+references, self references и fixup correction приватного буфера сообщаются как
+непроверенные; child tree не обходится рекурсивно. Disk writes, journal replay,
+VFS inode/dentry cache и collated pathname lookup не добавлялись. Роли объектов
+берутся из уже прочитанного MFT/reparse/WSL metadata, без дополнительного VFS iget
+ради `d_type`. Standalone сохраняет прежний classic reader без GPL linkage.
+
+26 deterministic fixtures проверяют resident/allocated roots, fragmented mapping,
+root/continuation attributes в extension record, resident/nonresident bitmap и
+его вторую страницу, initialized tail, 1 KiB index blocks, case-distinct links,
+повреждения/отсутствие имени или index, stale references, duplicate names и path escape.
+CLI/ABI проверяют точные bytes, неизвестные/непроверенные metadata, retained streams,
+ошибки I/O, callback E_FAIL/E_ABORT, reuse и unchanged input. GUI действительно
+копирует DATA при отсутствующем root index после per-opening consent и сохраняет
+видимый badge; EN/RU Cocoa geometry проверяется существующим общим сервисом.
+
+Native Linux 6.8.0-147 подтвердил семь корректных вариантов: те же Unicode/case
+имена, payload, hard-link count и read-only mount/device flags. Восьмой контроль
+с несовпадающим именем MFT/`$I30` перечисляет index name, но получает ENOENT при
+чтении обоих имён; archive намеренно сохраняет читаемый DATA по обоим recovery
+именам с явным предупреждением. Все SHA-256 неизменны; mounts/loop devices/images
+удалены. Receipt `20261021T081924Z-e2f238cc`. Старое native kernel не доказывает
+runtime всей закреплённой версии; malformed keys старому kernel не передавались.
+
+Итоговые пять suites `ntfs_directory`, `ntfs_stream`, `ntfs_security`, `ntfs`,
+`filesystem_read_ui` прошли на macOS arm64 (29,30 с), Linux (85,24 с) и Windows
+(135,18 с), receipt `20261021T083507Z-3a83c6bc`. До выделения I30 в собственную
+suite совместный Windows прогон достиг старого timeout `ntfs_stream`; причина
+того timeout не доказана. Новая матрица не расширяет прежнюю suite: fixture/COM
+support вынесен без изменения поведения, локальный I30 прогон занял 2,45 с.
+Product code между этими прогонами не менялся, timeout не увеличивался.
+Native Cocoa подтвердил EN/RU consent/copy и читаемость сообщения (420×214 /
+420×262); guest UI проверки не устанавливают pixel parity с Windows reference.
+Приложение пересобрано инкрементально, upstream provenance verifier прошёл.
+Full/slow suites, установка и физические носители не проверялись.
+После финальной сверки одинаковые MFT names также объединены перед публикацией
+items: повторяющийся FILE_NAME больше не приводит к двойному извлечению одного
+пути. Расширенные `ntfs_directory`/`ntfs` прошли повторно на macOS (8,99 с),
+Linux и Windows, receipt `20261021T084317Z-4c707931`; прочие product paths и
+предыдущие passing checks не менялись. Этот повтор проверяет локальное уточнение,
+а не подменяет пять suites и native reference evidence выше.
 
 ## Открытый read scope
 

@@ -191,7 +191,8 @@ def volume(kind):
         rows = [row(a, 66, sequence) for a in attrs if u32(a, 0) != 0x30]
         payload = files.pop("gamma")
         if kind in ("meta-bad-fn-id", "meta-bad-fn-value", "meta-nonresident-fn", "meta-nul-fn"):
-            files["[LOST]/[NONAME]-66"] = payload
+            # The directory index still names the independently readable file.
+            files["omega"] = payload
         elif kind == "meta-list-malformed":
             files["gamma"] = payload
         else:

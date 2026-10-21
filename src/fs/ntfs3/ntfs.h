@@ -11,6 +11,7 @@
 #include "ntfscompat.h"
 
 enum FILE_ATTRIBUTE {
+	FILE_ATTRIBUTE_DIRECTORY = cpu_to_le32(0x10000000),
 	FILE_ATTRIBUTE_SPARSE_FILE = cpu_to_le32(0x00000200),
 	FILE_ATTRIBUTE_COMPRESSED = cpu_to_le32(0x00000800),
 	FILE_ATTRIBUTE_ENCRYPTED = cpu_to_le32(0x00004000)
@@ -165,6 +166,45 @@ _Static_assert(sizeof(struct NTFS_RECORD_HEADER) == 0x10, "NTFS disk layout");
 #define NTFS_IE_LAST		cpu_to_le16(2)
 
 /* Directory entry structure. */
+/* File name types (the field type in struct ATTR_FILE_NAME). */
+#define FILE_NAME_POSIX   0
+#define FILE_NAME_UNICODE 1
+#define FILE_NAME_DOS	  2
+#define FILE_NAME_UNICODE_AND_DOS (FILE_NAME_DOS | FILE_NAME_UNICODE)
+
+/* Filename attribute structure (0x30). */
+struct NTFS_DUP_INFO {
+	__le64 cr_time;		// 0x00: File creation file.
+	__le64 m_time;		// 0x08: File modification time.
+	__le64 c_time;		// 0x10: Last time any attribute was modified.
+	__le64 a_time;		// 0x18: File last access time.
+	__le64 alloc_size;	// 0x20: Data attribute allocated size, multiple of cluster size.
+	__le64 data_size;	// 0x28: Data attribute size <= Dataalloc_size.
+	enum FILE_ATTRIBUTE fa;	// 0x30: Standard DOS attributes & more.
+	__le32 extend_data;	// 0x34: Extended data.
+
+}; // 0x38
+
+struct ATTR_FILE_NAME {
+	struct MFT_REF home;	// 0x00: MFT record for directory.
+	struct NTFS_DUP_INFO dup;// 0x08:
+	u8 name_len;		// 0x40: File name length in words.
+	u8 type;		// 0x41: File name type.
+	__le16 name[];		// 0x42: File name.
+};
+
+_Static_assert(sizeof(((struct ATTR_FILE_NAME *)NULL)->dup) == 0x38, "NTFS duplicate info");
+_Static_assert(offsetof(struct ATTR_FILE_NAME, name) == 0x42, "NTFS name layout");
+#define SIZEOF_ATTRIBUTE_FILENAME     0x44
+#define SIZEOF_ATTRIBUTE_FILENAME_MAX (0x42 + 255 * 2)
+
+static inline u16 fname_full_size(const struct ATTR_FILE_NAME *fname)
+{
+	/* Don't return struct_size(fname, name, fname->name_len); */
+	return offsetof(struct ATTR_FILE_NAME, name) +
+	       fname->name_len * sizeof(short);
+}
+
 struct NTFS_DE {
 	union {
 		struct MFT_REF ref; // 0x00: MFT record number with this file.
@@ -208,6 +248,13 @@ static inline CLST de_get_vbn(const struct NTFS_DE *e)
 static inline struct NTFS_DE *de_get_next(const struct NTFS_DE *e)
 {
 	return Add2Ptr(e, le16_to_cpu(e->size));
+}
+
+static inline struct ATTR_FILE_NAME *de_get_fname(const struct NTFS_DE *e)
+{
+	return le16_to_cpu(e->key_size) >= SIZEOF_ATTRIBUTE_FILENAME ?
+		       Add2Ptr(e, sizeof(struct NTFS_DE)) :
+		       NULL;
 }
 
 static inline bool de_is_last(const struct NTFS_DE *e)

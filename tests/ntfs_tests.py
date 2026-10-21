@@ -58,6 +58,20 @@ class NtfsTests(unittest.TestCase):
                 self.assertIn(("Free Space = " + str(expected(kind, image))).encode(),
                               listing.stdout.splitlines())
 
+    def test_directory_indexes_and_unverified_mft_fallback(self):
+        from ntfs_directory_fixture import CASES, LIMITED
+        for kind in CASES:
+            with self.subTest(kind=kind):
+                image, files = volume(kind)
+                listing = self.run_image("7z", image, "l")
+                self.assertEqual(listing.returncode, 0, listing.stderr)
+                self.assertEqual(b"Some NTFS file metadata is unavailable or unverified." in
+                                 listing.stdout, kind in LIMITED)
+                for name, expected in files.items():
+                    result = self.run_image("7z", image, "x", name, case_sensitive=True)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertEqual(result.stdout, expected)
+
     def test_volume_state_and_readable_files(self):
         from ntfs_volume_fixture import CASES, limitation
         for kind in CASES:

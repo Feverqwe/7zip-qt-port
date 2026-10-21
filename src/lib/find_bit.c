@@ -36,3 +36,26 @@ unsigned long _find_next_zero_bit(const unsigned long *addr, unsigned long nbits
 out:
 	return sz;
 }
+
+/* FIND_NEXT_BIT(addr[idx], ...), expanded for portable C11 as above. */
+unsigned long _find_next_bit(const unsigned long *addr, unsigned long nbits,
+			     unsigned long start)
+{
+	unsigned long mask, idx, tmp, sz = nbits, __start = start;
+
+	if (unlikely(__start >= sz))
+		goto out;
+
+	mask = BITMAP_FIRST_WORD_MASK(__start);
+	idx = __start / BITS_PER_LONG;
+
+	for (tmp = addr[idx] & mask; !tmp; tmp = addr[idx]) {
+		if ((idx + 1) * BITS_PER_LONG >= sz)
+			goto out;
+		idx++;
+	}
+
+	sz = min(idx * BITS_PER_LONG + __ffs(tmp), sz);
+out:
+	return sz;
+}
