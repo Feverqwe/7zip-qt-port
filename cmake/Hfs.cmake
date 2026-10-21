@@ -1,7 +1,7 @@
 # Linux classic HFS and HFS+ readers stay in a separate GPL format module.
 add_library(sevenzip_hfs MODULE
     src/CPP/7zip/Archive/HfsHandler.cpp src/exfatmodule.cpp
-    src/hfsreader.c src/fs/hfsplus/unicode.c src/fs/hfsplus/tables.c src/fs/hfsplus/dir.c
+    src/hfsreader.c src/fs/namei.c src/fs/hfsplus/unicode.c src/fs/hfsplus/tables.c src/fs/hfsplus/dir.c
     src/fs/hfsplus/inode.c src/fs/hfsplus/bfind.c src/fs/hfsplus/xattr.c
     src/hfsclassicreader.c src/fs/hfs/mdb.c src/fs/hfs/btree.c src/fs/hfs/bnode.c
     src/fs/hfs/bfind.c src/fs/hfs/brec.c src/fs/hfs/catalog.c src/fs/hfs/extent.c

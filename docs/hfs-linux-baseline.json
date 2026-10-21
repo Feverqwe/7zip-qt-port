@@ -55,7 +55,11 @@
     "fs/hfsplus/xattr_user.c": "23d65a12be6d7d78c289dda1ce6d2b498ac1d8f9ec9010edfd57795fe6cf6d78",
     "include/linux/hfs_common.h": "dded52469cd6d3661049a3877705484ec8c71726dda4a5150d1b3a93201d2fed",
     "include/linux/kdev_t.h": "88c47d8d1979f2c0e11aca3ad52f07d8da574db821a5a2b17bf64c5495991015",
-    "include/uapi/linux/kdev_t.h": "232a7c06c56de7bf1c3ba1def81834fda292c3e1771c36d01c7d2085106ca80a"
+    "include/uapi/linux/kdev_t.h": "232a7c06c56de7bf1c3ba1def81834fda292c3e1771c36d01c7d2085106ca80a",
+    "fs/namei.c": "f578a73e653e159b69e38714b350dd48754ca5f53224a8e89b67bf70dc831fb0",
+    "include/linux/namei.h": "dd167e8964822e8f98e06be8efc6efe188484a3d637143d7ce47e533515be9f1",
+    "include/linux/delayed_call.h": "c139dd95fcefa1d9ff38ab3c8ab232da992295e98d7d7404842003b2f1df18fc",
+    "include/linux/err.h": "e7fab3f021ae4d0c5f7e34497eca5cd3473cca904cb59a853b015720a74b04e9"
   },
   "adapted": [
     "fs/hfs/bfind.c",
@@ -77,9 +81,12 @@
     "fs/hfsplus/tables.c",
     "fs/hfsplus/unicode.c",
     "fs/hfsplus/xattr.c",
-    "include/linux/kdev_t.h"
+    "fs/namei.c",
+    "include/linux/kdev_t.h",
+    "include/linux/namei.h"
   ],
   "exact": [
-    "include/linux/hfs_common.h"
+    "include/linux/hfs_common.h",
+    "include/linux/delayed_call.h"
   ]
 }

@@ -40,7 +40,10 @@ def volume(kind="modern"):
         files["HfsFixture/" + name + ":com.sevenzip.fixture"] = b"inline attribute content"
     for name in ("café", "각", "emoji 😃", "null-name", "slash:name", "single \u200dX"):
         files["HfsFixture/" + name.replace(':', '_')] = ("payload for " + name + "\n").encode() * 5
-    if kind == "modern-times":
+    if kind.startswith("modern-symlink-"):
+        from hfs_symlink_fixture import apply
+        apply(image, records, block, kind, files)
+    elif kind == "modern-times":
         # Cross both sides of the 1904-based rollover and the Unix epoch.
         for name in ("iNode20", "links"):
             for offset, timestamp in ((12, 0), (16, 2082844799), (20, 2082844800), (24, 0xffffffff)):

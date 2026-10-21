@@ -63,6 +63,21 @@ class HfsTests(unittest.TestCase):
                     self.assertFalse(entries["HfsFixture/" + name].get("Device Major"))
                     self.assertFalse(entries["HfsFixture/" + name].get("Device Minor"))
 
+    def test_page_backed_symlink_targets(self):
+        from hfs_symlink_fixture import PAYLOADS, target
+        for suffix in PAYLOADS:
+            kind = "modern-symlink-" + suffix
+            with self.subTest(kind=kind):
+                result = self.run_image("7z", volume(kind)[0], listing=True)
+                self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                entries = {}
+                for block in result.stdout.decode("utf-8").replace("\r\n", "\n").split("\n\n"):
+                    fields = dict(line.split(" = ", 1) for line in block.splitlines() if " = " in line)
+                    if "Path" in fields:
+                        entries[fields["Path"].replace('\\', '/')] = fields
+                self.assertEqual(entries["HfsFixture/symlink"].get("Symbolic Link", ""),
+                                 target(kind).decode())
+
     def test_fork_contents(self):
         for kind in ("base", "preallocated", "empty-preallocated", "overflow-leaves", "boot-blocks",
                      "hfsx", "wrapped", "wrapped-hfsx"):

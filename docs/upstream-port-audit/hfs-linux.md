@@ -241,6 +241,62 @@ SHA256; temporary images/mounts и одноразовый review script удал
 Версия running kernel отличается от pinned source baseline. Full/slow gate,
 UI и физические устройства не проверялись; общий HFS read audit остаётся открытым.
 
+## Page-backed symlink targets — 2026-10-21
+
+До изменений сравнены полные `inode.c:hfsplus_symlink_inode_operations`,
+`hfsplus_cat_read_inode`, fork mapping, `fs/namei.c:__page_get_link`,
+`page_get_link`/`page_put_link`, `include/linux/namei.h:nd_terminate_link`,
+delayed-call/error-pointer types и SDK property/stream/extraction consumers.
+Все 58 source/license hashes расширенного HFS manifest проверены.
+Linux читает target из первой страницы, ограничивает его `PAGE_SIZE - 1` и
+останавливается на первом NUL. Прежняя archive property отклоняла любой NUL,
+пустой fork и размер больше 64 KiB, а остальные targets читала целиком.
+
+Исходное тело `page_get_link` перенесено без изменения в C `src/fs/namei.c`;
+повторная source-сверка подтвердила все его ветви. Оно переиспользует уже
+существующий authoritative `nd_terminate_link` и exact delayed-call header.
+`__page_get_link` — узкий boundary к заранее прочитанной owned странице:
+VFS page cache/RCU, highmem и folio reference services не копируются и не
+эмулируются. Archive owner обнуляет страницу и заполняет её существующим SDK
+fork stream; source failure/abort возвращаются до вызова C helper. Новый parser
+fork или extent mapping не добавляется. Error-pointer representation использует
+`uintptr_t` на LLP64. Notices сохранены, новые C bodies линкуются только с
+отдельным GPL HFS-модулем; standalone сохраняет прежнюю symlink projection.
+
+Portable page service фиксирован на 4 KiB, как проверенное native x64 ядро.
+Другие Linux PAGE_SIZE configurations этой проверкой не установлены.
+Target property теперь возвращает пустую строку, NUL prefix или первые
+4095 bytes. Unicode conversion остаётся прежним SDK boundary. Public raw fork
+stream сохраняет все исходные bytes, размер, independent/retained lifetime;
+это отдельная archive projection от Linux `readlink`. ArchiveBackend получает
+нормализованную target metadata, но сохраняет запрет извлечения archive links:
+ограничение не ослаблялось ради нового reader.
+
+Шесть новых images покрывают пустой target, NUL после prefix и в первом byte,
+границу 4095 bytes, полный 4096-byte page и 65537-byte fork. Fixtures выделяют
+реальные свободные extents и обновляют allocation bitmap и обе volume headers.
+ABI проверяет target, source E_FAIL/E_ABORT и retry, полный raw fork после Close.
+Official dynamic CLI проверяет точную target metadata; ArchiveBackend — listing,
+обычные file/stream consumers и отказ создать archive link без output artifact.
+Standalone не заявляет эти Linux read semantics. Windows backend test
+нормализует native path separators перед сравнением имени.
+
+`hfs`/`hfs_stream` PASS на macOS arm64/Qt 6.12 (22,38 с) и Linux x64/Qt 6.12
+(23,23 с), receipt `20261021T021722Z-053e1abe`; Windows x64/MSVC/Qt 6.12
+прошёл CLI suite, но новый backend assertion ожидал POSIX separator.
+После исправления только тестового сравнения финальный `hfs_stream` PASS
+на всех трёх ОС: macOS 21,90 с, Linux 15,22 с, Windows 26,78 с, receipt
+`20261021T021913Z-03dc8324`. Source/ABI/CLI checks и security policy не
+менялись после предыдущего запуска. Оба SDK runtime подготовлены с общим
+исходником; standalone не получил GPL C dependencies.
+
+Native hfsplus `6.8.0-147-generic` подтвердил все шесть точных `readlink` targets
+через read-only loop mounts, receipt `20261021T021831Z-f40fbf21`: 0/5/0/4095/
+4095/4095 bytes. Images остались неизменными, mounts и temporary fixtures
+удалены. Версия running kernel дополняет сравнение pinned source. Incremental
+builds и compiler caches сохранены; full/slow suites, UI, physical devices и
+новый install runtime не проверялись. Остальной HFS read audit остаётся открытым.
+
 ## Проверки и оставшийся scope
 
 Локальный fixture создан Apple `hdiutil` из сгенерированных данных;

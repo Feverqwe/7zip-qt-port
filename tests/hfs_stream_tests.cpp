@@ -296,6 +296,41 @@ class HfsStreamTests final : public QObject {
         QCOMPARE(target.vt, VARTYPE(VT_BSTR));
         QCOMPARE(QString::fromWCharArray(target.bstrVal), QString("alpha"));
     }
+    void pageBackedSymlinkTargets_data() {
+        QTest::addColumn<QString>("kind");
+        QTest::addColumn<QString>("target");
+        QTest::newRow("empty") << QString("modern-symlink-empty") << QString();
+        QTest::newRow("nul") << QString("modern-symlink-nul") << QString("alpha");
+        QTest::newRow("first-nul") << QString("modern-symlink-first-nul") << QString();
+        for (const char *suffix : {"limit", "page", "large"})
+            QTest::newRow(suffix) << "modern-symlink-" + QString::fromLatin1(suffix)
+                                  << QString(4095, 'T');
+    }
+    void pageBackedSymlinkTargets() {
+        QFETCH(QString, kind);
+        QFETCH(QString, target);
+        loadFixture(kind);
+        CMyComPtr2<IInStream, Input> input;
+        input.SetFromCls(new Input(bytes_));
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        const QString name = "HfsFixture/symlink";
+        NWindows::NCOM::CPropVariant value;
+        QCOMPARE(archive_->GetProperty(index(name), kpidSymLink, &value), S_OK);
+        QCOMPARE(value.vt, VARTYPE(VT_BSTR));
+        QCOMPARE(QString::fromWCharArray(value.bstrVal), target);
+        if (kind != "modern-symlink-empty") {
+            for (HRESULT failure : {E_FAIL, E_ABORT}) {
+                input->failure = failure;
+                QCOMPARE(archive_->GetProperty(index(name), kpidSymLink, &value), failure);
+            }
+            input->failure = S_OK;
+            QCOMPARE(archive_->GetProperty(index(name), kpidSymLink, &value), S_OK);
+        }
+        auto raw = stream(name);
+        QVERIFY(raw);
+        QCOMPARE(archive_->Close(), S_OK);
+        check(raw, name, 0, 100000);
+    }
     void permissionsAndFinderInfo() {
         loadFixture("modern-permissions");
         CMyComPtr<IInStream> input = new Input(bytes_);
@@ -490,7 +525,7 @@ class HfsStreamTests final : public QObject {
         for (const char *kind :
              {"preallocated", "overflow-leaves", "extent-over-volume", "xattr-padding", "modern",
               "modern-nul", "modern-zlib", "modern-lzvn", "modern-permissions", "modern-times",
-              "classic", "classic-overflow", "classic-catalog-overflow",
+              "modern-symlink-nul", "classic", "classic-overflow", "classic-catalog-overflow",
               "classic-non-power-of-two"})
             QTest::newRow(kind) << QString::fromLatin1(kind);
     }
@@ -524,10 +559,23 @@ class HfsStreamTests final : public QObject {
         QTRY_COMPARE_WITH_TIMEOUT(ready.size(), 1, 15000);
         QVERIFY2(ready[0][0].toBool(), qPrintable(ready[0][1].toString()));
         QSignalSpy finished(&backend, &ArchiveBackend::finished);
+        QList<ArchiveEntry> listedEntries;
+        connect(&backend, &ArchiveBackend::entriesReady, &backend,
+                [&](const QList<ArchiveEntry> &entries) { listedEntries = entries; });
         backend.list(path);
         QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 10000);
         QVERIFY2(finished[0][0].toBool(), qPrintable(finished[0][1].toString()));
         QVERIFY(!backend.codecCatalog()->canUpdate("HFS"));
+        if (kind == "modern-symlink-nul") {
+            bool found = false;
+            for (const auto &entry : listedEntries)
+                if (QString(entry.path).replace('\\', '/') == "HfsFixture/symlink") {
+                    found = true;
+                    QVERIFY(entry.link);
+                    QCOMPARE(entry.properties.value("Symbolic Link"), QString("alpha"));
+                }
+            QVERIFY(found);
+        }
         finished.clear();
         QString transcript;
         connect(&backend, &ArchiveBackend::outputReceived, &backend,
@@ -550,6 +598,15 @@ class HfsStreamTests final : public QObject {
                                                         .arg(transcript)));
             if (kind == "modern-times")
                 QCOMPARE(QFileInfo(file).lastModified().toSecsSinceEpoch(), qint64(4294967295));
+            if (kind == "modern-symlink-nul") {
+                finished.clear();
+                backend.extract(path, output, {"HfsFixture/symlink"});
+                QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 10000);
+                QVERIFY(!finished[0][0].toBool());
+                const QFileInfo link(QDir(output).filePath("HfsFixture/symlink"));
+                QVERIFY(!link.exists());
+                QVERIFY(!link.isSymLink());
+            }
             QStringList entries{QString("HfsFixture/alpha:rsrc"),
                                 QString("HfsFixture/alpha:com.sevenzip.fixture"),
                                 QString::fromUtf8("HfsFixture/данные 空")};

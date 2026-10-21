@@ -11,6 +11,7 @@
 #ifdef SEVENZIP_LINUX_HFS
 #include "../../../hfsclassicreader.h"
 #include "../../../hfsreader.h"
+#include "../../../pagelink.h"
 #include <errno.h>
 #endif
 
@@ -2244,6 +2245,17 @@ Z7_COM7F_IMF(CHandler::GetProperty(UInt32 index, PROPID propID, PROPVARIANT *val
 #endif
     case kpidSymLink:
         if (ref.IsItem() && (item.FileMode & 0170000) == 0120000) {
+#ifdef SEVENZIP_LINUX_HFS
+            CByteBuffer data(SEVENZIP_PAGE_LINK_SIZE);
+            memset(data, 0, data.Size());
+            if (item.DataFork.Size) {
+                CMyComPtr<ISequentialInStream> input;
+                RINOK(GetForkStream(item.DataFork, &input))
+                const size_t size = (size_t)MyMin(item.DataFork.Size, UInt64(data.Size()));
+                RINOK(ReadStream_FALSE(input, data, size))
+            }
+            const size_t targetSize = sevenzip_page_link(data, item.DataFork.Size);
+#else
             if (item.DataFork.Size == 0 || item.DataFork.Size > (1 << 16))
                 return S_FALSE;
             CMyComPtr<ISequentialInStream> input;
@@ -2252,8 +2264,10 @@ Z7_COM7F_IMF(CHandler::GetProperty(UInt32 index, PROPID propID, PROPVARIANT *val
             RINOK(ReadStream_FALSE(input, data, data.Size()))
             if (memchr(data, 0, data.Size()))
                 return S_FALSE;
+            const size_t targetSize = data.Size();
+#endif
             AString target;
-            target.SetFrom((const char *)(const Byte *)data, (unsigned)data.Size());
+            target.SetFrom((const char *)(const Byte *)data, (unsigned)targetSize);
             UString text;
             if (!ConvertUTF8ToUnicode(target, text))
                 MultiByteToUnicodeString2(text, target);
