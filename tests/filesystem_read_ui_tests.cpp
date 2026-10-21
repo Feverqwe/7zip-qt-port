@@ -62,9 +62,10 @@ class FilesystemReadUiTests final : public QObject {
         QTest::addColumn<QString>("kind");
         for (const QString &language : {"en", "ru"})
             for (bool accept : {false, true})
-                for (const QString &kind : {"exfat", "wrapper-no-slock", "unclean", "free-overflow",
-                                            "classic-unclean-free-overflow", "volume-dirty",
-                                            "volume-short", "volume-list-nonresident"})
+                for (const QString &kind :
+                     {"exfat", "wrapper-no-slock", "unclean", "free-overflow",
+                      "classic-unclean-free-overflow", "volume-dirty", "volume-short",
+                      "volume-list-nonresident", "reparse-list-bad-id"})
                     QTest::newRow(qPrintable(language + (accept ? "-accept-" : "-cancel-") + kind))
                         << language << accept << kind;
     }
@@ -72,7 +73,7 @@ class FilesystemReadUiTests final : public QObject {
         QFETCH(QString, language);
         QFETCH(bool, accept);
         QFETCH(QString, kind);
-        const bool ntfs = kind.startsWith("volume-");
+        const bool ntfs = kind.startsWith("volume-") || kind.startsWith("reparse-");
         SaveRegLang(UString(language == "en" ? L"-" : L"ru"),
                     qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
         TexfatFixture fixture(language == "en" ? 0 : 1);
@@ -201,6 +202,14 @@ class FilesystemReadUiTests final : public QObject {
                 qPrintable(
                     QDir(output).entryList(QDir::AllEntries | QDir::NoDotAndDotDot).join('\n')));
             QCOMPARE(copied.readAll(), payload);
+            if (kind == "reparse-list-bad-id") {
+                QTRY_VERIFY(Row(*table, "gamma") >= 0);
+                table->selectRow(Row(*table, "gamma"));
+                window.extractTo(output, true, {}, copyOptions);
+                QFile raw(output + "/gamma");
+                QVERIFY(raw.open(QIODevice::ReadOnly));
+                QCOMPARE(raw.readAll(), QByteArray(65536, 'B'));
+            }
             window.findChild<QAction *>("refreshAction")->trigger();
             QTRY_VERIFY(Row(*table, filename) >= 0);
             QCOMPARE(questions, 1);

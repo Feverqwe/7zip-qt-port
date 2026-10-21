@@ -1158,6 +1158,8 @@ struct CMftRec {
     sevenzip_ntfs_wsl_perm Wsl{};
     bool Link = false;
     bool Deduplicated = false;
+    HRESULT ReparseError = S_OK;
+    bool ReparseRawData = false;
     unsigned WofFrameBits = 0;
 #endif
     CObjectVector<CFileNameAttr> FileNames;
@@ -1249,7 +1251,7 @@ struct CMftRec {
     bool InUse() const { return (Flags & 1) != 0; }
     bool IsDir() const {
 #ifdef SEVENZIP_LINUX_NTFS
-        if (Link)
+        if (Link || ReparseError != S_OK || ReparseRawData)
             return false;
         if (Wsl.present)
             return (Wsl.mode & MY_LIN_S_IFMT) == MY_LIN_S_IFDIR;
@@ -1322,6 +1324,8 @@ HRESULT CMftRec::GetStream(IInStream *mainStream, const int dataIndex,
                            CMyComPtr2<IInStream, CInStream> *inStream_Object) const {
     *destStream = NULL;
 #ifdef SEVENZIP_LINUX_NTFS
+    if (ReparseError != S_OK && (dataIndex < 0 || DataAttrs[dataIndex].Name.IsEmpty()))
+        return ReparseError;
     if (Deduplicated && (dataIndex < 0 || DataAttrs[dataIndex].Name.IsEmpty()))
         return E_NOTIMPL;
     if (Link && (dataIndex < 0 || DataAttrs[dataIndex].Name.IsEmpty()))
@@ -1680,6 +1684,7 @@ struct CDatabase {
     CObjectVector<AString> LinkTargets;
     bool FreeSpaceDefined = false;
     UInt64 FreeSpace = 0;
+    bool ReparseLimitations = false;
 #endif
 
     CVolumeInfo VolumeInfo;
@@ -1746,8 +1751,17 @@ struct CDatabase {
     HRESULT ParseSecuritySDS(ISequentialInStream *stream, const size_t size);
 #ifdef SEVENZIP_LINUX_NTFS
     HRESULT LoadMftAttributes(CMftRec &rec);
-    const CAttr *FindVolumeAttribute(UInt32 type, const CByteBuffer &list, bool useList) const;
+    const CAttr *FindListedMetadataAttribute(UInt32 baseIndex, UInt32 type,
+                                             const sevenzip_ntfs_list_entry &entry) const;
+    int FindMetadataAttribute(UInt32 baseIndex, UInt32 type, const CByteBuffer &list, bool useList,
+                              const CAttr *&attr) const;
+    HRESULT ReadMetadataList(UInt32 baseIndex, CByteBuffer &list);
+    HRESULT GetRawMetadataStream(const CMftRec &reader, bool prefix, IInStream **stream);
+    HRESULT ProbeReparseType(const CAttr &primary, int &type);
     HRESULT LoadVolumeMetadata();
+    HRESULT LoadActiveReparseMetadata();
+    HRESULT ReadReparsePayload(UInt32 baseIndex, const CAttr &primary, const CByteBuffer &list,
+                               bool useList);
     HRESULT LoadEaMetadata();
     HRESULT LoadSecurityIndex();
     HRESULT LoadLinks();
@@ -1775,6 +1789,7 @@ void CDatabase::Clear() {
     LinkTargets.ClearAndFree();
     FreeSpaceDefined = false;
     FreeSpace = 0;
+    ReparseLimitations = false;
 #endif
     PhySize = 0;
 }
@@ -2014,35 +2029,86 @@ HRESULT CDatabase::ParseSecuritySDS(ISequentialInStream *stream, const size_t si
 }
 
 #ifdef SEVENZIP_LINUX_NTFS
-const CAttr *CDatabase::FindVolumeAttribute(UInt32 type, const CByteBuffer &list,
-                                            bool useList) const {
-    const CMftRec &base = Recs[kRecIndex_Volume];
-    const CMftRec *owner = &base;
-    sevenzip_ntfs_list_entry entry{};
-    if (useList) {
-        if (sevenzip_ntfs_list_find_unnamed(list, list.Size(), type, &entry) != 1)
-            return NULL;
-        CMftRef reference;
-        reference.Val = entry.ref;
-        const UInt64 number = reference.GetIndex();
-        if (number >= Recs.Size())
-            return NULL;
-        owner = &Recs[(unsigned)number];
-        if (!owner->Is_Magic_FILE() || !owner->InUse() || owner->SeqNumber != reference.GetNumber())
-            return NULL;
-        if (number != kRecIndex_Volume &&
-            (owner->BaseMftRef.GetIndex() != kRecIndex_Volume ||
-             owner->BaseMftRef.GetNumber() != base.SeqNumber || !owner->AttrListAttrs.IsEmpty()))
-            return NULL;
-    }
-    const auto &attrs =
-        type == ATTR_TYPE_VOLUME_NAME ? owner->VolumeNameAttrs : owner->VolumeInfoAttrs;
+enum { kMetadataReferenceInvalid = -1, kMetadataListInvalid = -2 };
+
+const CAttr *CDatabase::FindListedMetadataAttribute(UInt32 baseIndex, UInt32 type,
+                                                    const sevenzip_ntfs_list_entry &entry) const {
+    const CMftRec &base = Recs[baseIndex];
+    CMftRef reference;
+    reference.Val = entry.ref;
+    const UInt64 number = reference.GetIndex();
+    if (number >= Recs.Size())
+        return NULL;
+    const CMftRec *owner = &Recs[(unsigned)number];
+    if (!owner->Is_Magic_FILE() || !owner->InUse() || owner->SeqNumber != reference.GetNumber())
+        return NULL;
+    if (number != baseIndex &&
+        (owner->BaseMftRef.GetIndex() != baseIndex ||
+         owner->BaseMftRef.GetNumber() != base.SeqNumber || !owner->AttrListAttrs.IsEmpty()))
+        return NULL;
+    const auto &attrs = type == ATTR_TYPE_VOLUME_NAME   ? owner->VolumeNameAttrs
+                        : type == ATTR_TYPE_VOLUME_INFO ? owner->VolumeInfoAttrs
+                                                        : owner->ReparseAttrs;
     FOR_VECTOR(i, attrs) {
         const CAttr &attr = attrs[i];
-        if (attr.Name.IsEmpty() && (!useList || attr.Instance == entry.id))
+        if (attr.Name.IsEmpty() && attr.Instance == entry.id &&
+            (!attr.NonResident || attr.LowVcn == entry.vcn))
             return &attr;
     }
     return NULL;
+}
+
+int CDatabase::FindMetadataAttribute(UInt32 baseIndex, UInt32 type, const CByteBuffer &list,
+                                     bool useList, const CAttr *&attr) const {
+    attr = NULL;
+    if (useList) {
+        sevenzip_ntfs_list_entry entry{};
+        const int found = sevenzip_ntfs_list_find_unnamed(list, list.Size(), type, &entry);
+        if (found != 1)
+            return found < 0 ? kMetadataListInvalid : found;
+        attr = FindListedMetadataAttribute(baseIndex, type, entry);
+        return attr ? 1 : kMetadataReferenceInvalid;
+    }
+    const CMftRec &base = Recs[baseIndex];
+    const auto &attrs = type == ATTR_TYPE_VOLUME_NAME   ? base.VolumeNameAttrs
+                        : type == ATTR_TYPE_VOLUME_INFO ? base.VolumeInfoAttrs
+                                                        : base.ReparseAttrs;
+    FOR_VECTOR(i, attrs) {
+        if (attrs[i].Name.IsEmpty()) {
+            attr = &attrs[i];
+            return 1;
+        }
+    }
+    return 0;
+}
+
+HRESULT CDatabase::ReadMetadataList(UInt32 baseIndex, CByteBuffer &list) {
+    const CMftRec &base = Recs[baseIndex];
+    if (!base.AttrListAttrs.IsEmpty()) {
+        if (base.AttrListAttrs.Size() != 1 || !base.AttrListAttrs[0].Name.IsEmpty() ||
+            (base.AttrListAttrs[0].NonResident && base.AttrListAttrs[0].LowVcn))
+            return S_FALSE;
+        CMftRec listRecord;
+        listRecord.Flags = base.Flags;
+        listRecord.DataAttrs = base.AttrListAttrs;
+        listRecord.ParseDataNames();
+        const UInt64 size = listRecord.DataAttrs[0].GetSize();
+        if (!size || size > Header.GetPhySize_Clusters() || size > SIZE_MAX)
+            return S_FALSE;
+        CMyComPtr<IInStream> stream;
+        HRESULT result = GetRawMetadataStream(listRecord, false, &stream);
+        if (result != S_OK || !stream)
+            return result == E_ABORT ? result : S_FALSE;
+        if (OpenCallback)
+            RINOK(OpenCallback->SetCompleted(NULL, NULL))
+        list.Alloc((size_t)size);
+        result = ReadStream_FALSE(stream, list, (size_t)size);
+        if (result != S_OK)
+            return result == E_ABORT ? result : S_FALSE;
+        if (OpenCallback)
+            RINOK(OpenCallback->SetCompleted(NULL, NULL))
+    }
+    return S_OK;
 }
 
 HRESULT CDatabase::LoadVolumeMetadata() {
@@ -2054,36 +2120,15 @@ HRESULT CDatabase::LoadVolumeMetadata() {
         return S_OK;
     const bool useList = !base.AttrListAttrs.IsEmpty();
     CByteBuffer list;
-    if (useList) {
-        if (base.AttrListAttrs.Size() != 1 || !base.AttrListAttrs[0].Name.IsEmpty() ||
-            (base.AttrListAttrs[0].NonResident && base.AttrListAttrs[0].LowVcn) ||
-            (base.AttrListAttrs[0].Flags & 0xc0ff))
-            return S_OK; // Unavailable volume metadata does not discard readable files.
-        CMftRec listRecord;
-        listRecord.Flags = base.Flags;
-        listRecord.DataAttrs = base.AttrListAttrs;
-        listRecord.ParseDataNames();
-        const UInt64 size = listRecord.DataAttrs[0].GetSize();
-        if (!size || size > Header.GetPhySize_Clusters() || size > SIZE_MAX)
-            return S_OK;
-        CMyComPtr<IInStream> stream;
-        HRESULT result =
-            listRecord.GetStream(InStream, 0, Header.ClusterSizeLog, Header.NumClusters, &stream);
-        if (result != S_OK || !stream)
-            return result == E_ABORT ? result : S_OK;
-        if (OpenCallback)
-            RINOK(OpenCallback->SetCompleted(NULL, NULL))
-        list.Alloc((size_t)size);
-        result = ReadStream_FALSE(stream, list, (size_t)size);
-        if (result != S_OK)
-            return result == E_ABORT ? result : S_OK;
-        if (OpenCallback)
-            RINOK(OpenCallback->SetCompleted(NULL, NULL))
-    }
-    const CAttr *attr = FindVolumeAttribute(ATTR_TYPE_VOLUME_NAME, list, useList);
+    const HRESULT result = ReadMetadataList(kRecIndex_Volume, list);
+    if (result == S_FALSE)
+        return S_OK;
+    RINOK(result)
+    const CAttr *attr;
+    FindMetadataAttribute(kRecIndex_Volume, ATTR_TYPE_VOLUME_NAME, list, useList, attr);
     if (attr && !attr->NonResident && !attr->HasPackedSize())
         GetString(attr->Data, (unsigned)attr->Data.Size() / 2, VolumeInfo.VolName);
-    attr = FindVolumeAttribute(ATTR_TYPE_VOLUME_INFO, list, useList);
+    FindMetadataAttribute(kRecIndex_Volume, ATTR_TYPE_VOLUME_INFO, list, useList, attr);
     sevenzip_ntfs_volume_info state;
     if (attr && sevenzip_ntfs_read_volume_info(attr->Data, attr->Data.Size(), attr->NonResident,
                                                attr->Flags, &state) == 0) {
@@ -2091,6 +2136,174 @@ HRESULT CDatabase::LoadVolumeMetadata() {
         VolumeInfo.FsVerMinor = state.minor;
         VolumeInfo.Dirty = state.dirty != 0;
         VolumeInfo.StateKnown = true;
+    }
+    return S_OK;
+}
+
+HRESULT CDatabase::GetRawMetadataStream(const CMftRec &reader, bool prefix, IInStream **stream) {
+    *stream = NULL;
+    const CAttr &attr = reader.DataAttrs[0];
+    if (!attr.NonResident) {
+        const size_t size = prefix ? MyMin(attr.Data.Size(), (size_t)64) : attr.Data.Size();
+        CBufferInStream *buffer = new CBufferInStream;
+        CMyComPtr<IInStream> owned = buffer;
+        buffer->Buf.CopyFrom(attr.Data, size);
+        buffer->Init();
+        *stream = owned.Detach();
+        return S_OK;
+    }
+    CInStream *raw = new CInStream;
+    CMyComPtr<IInStream> owned = raw;
+    if (prefix) {
+        CExtent end;
+        end.Virt = 0;
+        end.Phy = kEmptyExtent;
+        raw->Extents.Add(end);
+        if (!attr.ParseExtents(raw->Extents, Header.NumClusters, 0, true))
+            return S_FALSE;
+    } else
+        RINOK(DataParseExtents(Header.ClusterSizeLog, reader.DataAttrs, 0, Header.NumClusters,
+                               raw->Extents))
+    raw->Size = prefix ? MyMin(attr.Size, (UInt64)64) : attr.Size;
+    if (raw->Size && raw->Extents.Size() < 2)
+        return S_FALSE;
+    for (unsigned i = 0; i + 1 < raw->Extents.Size(); ++i)
+        if (raw->Extents[i].IsEmpty() && (!prefix || raw->Extents[i].Virt == 0))
+            return S_FALSE; // Linux metadata run I/O does not synthesize sparse contents.
+    raw->InitializedSize = raw->Size;
+    raw->Stream = InStream;
+    raw->BlockSizeLog = Header.ClusterSizeLog;
+    raw->InUse = true;
+    RINOK(raw->InitAndSeek(0))
+    *stream = owned.Detach();
+    return S_OK;
+}
+
+HRESULT CDatabase::ProbeReparseType(const CAttr &primary, int &type) {
+    type = SEVENZIP_NTFS_REPARSE_NONE;
+    CMftRec reader;
+    reader.DataAttrs.Add(primary);
+    reader.ParseDataNames();
+    CMyComPtr<IInStream> stream;
+    HRESULT result = GetRawMetadataStream(reader, true, &stream);
+    if (result != S_OK)
+        return result == E_ABORT ? result : S_OK;
+    Byte prefix[64];
+    size_t size = (size_t)MyMin(primary.GetSize(), (UInt64)sizeof(prefix));
+    result = ReadStream(stream, prefix, &size);
+    if (result == S_OK)
+        type = sevenzip_ntfs_classify_reparse(prefix, size, NULL);
+    if (OpenCallback)
+        RINOK(OpenCallback->SetCompleted(NULL, NULL))
+    return result == E_ABORT ? result : S_OK;
+}
+
+HRESULT CDatabase::ReadReparsePayload(UInt32 baseIndex, const CAttr &primary,
+                                      const CByteBuffer &list, bool useList) {
+    CMftRec reader;
+    reader.Flags = Recs[baseIndex].Flags;
+    if (primary.NonResident && useList) {
+        size_t cursor = SIZE_MAX;
+        UInt64 previous = 0;
+        bool first = true;
+        for (;;) {
+            sevenzip_ntfs_list_entry entry;
+            const int next = sevenzip_ntfs_list_next(list, list.Size(), &cursor, &entry);
+            if (next < 0)
+                return S_FALSE;
+            if (!next)
+                break;
+            if (entry.type != ATTR_TYPE_REPARSE_POINT || entry.name_len)
+                continue;
+            if ((first && entry.vcn) || (!first && entry.vcn <= previous))
+                return S_FALSE;
+            const CAttr *attr =
+                FindListedMetadataAttribute(baseIndex, ATTR_TYPE_REPARSE_POINT, entry);
+            if (!attr || !attr->NonResident)
+                return S_FALSE;
+            reader.DataAttrs.Add(*attr);
+            first = false;
+            previous = entry.vcn;
+        }
+        if (first)
+            return S_FALSE;
+    } else
+        reader.DataAttrs.Add(primary);
+    const UInt64 size = primary.GetSize();
+    if (!size || size > 16384)
+        return S_FALSE;
+    reader.ParseDataNames();
+    CMyComPtr<IInStream> stream;
+    HRESULT result = GetRawMetadataStream(reader, false, &stream);
+    if (result == S_OK && stream) {
+        if (OpenCallback)
+            RINOK(OpenCallback->SetCompleted(NULL, NULL))
+        CByteBuffer data;
+        data.Alloc((size_t)size);
+        result = ReadStream_FALSE(stream, data, (size_t)size);
+        if (result == S_OK) {
+            if (OpenCallback)
+                RINOK(OpenCallback->SetCompleted(NULL, NULL))
+            CMftRec &rec = Recs[baseIndex];
+            rec.ReparseDataIndex = (int)ReparseDataVector.Add(data);
+            rec.Wof = size >= 4 && Get32(data) == 0x80000017;
+            return S_OK;
+        }
+    }
+    return result == E_ABORT || result == E_NOTIMPL ? result : S_FALSE;
+}
+
+HRESULT CDatabase::LoadActiveReparseMetadata() {
+    if (Recs.IsEmpty())
+        return S_OK;
+    CByteBuffer candidates;
+    candidates.Alloc(Recs.Size());
+    memset(candidates, 0, Recs.Size());
+    FOR_VECTOR(i, Recs) {
+        const CMftRec &rec = Recs[i];
+        if (!rec.Is_Magic_FILE() || !rec.InUse() || rec.ReparseAttrs.IsEmpty())
+            continue;
+        const UInt64 base = rec.BaseMftRef.IsBaseItself() ? i : rec.BaseMftRef.GetIndex();
+        if (base < Recs.Size())
+            candidates[(unsigned)base] = 1;
+    }
+    FOR_VECTOR(i, Recs) {
+        CMftRec &rec = Recs[i];
+        if (!rec.Is_Magic_FILE() || !rec.InUse() || !rec.BaseMftRef.IsBaseItself() ||
+            (!candidates[i] && rec.AttrListAttrs.IsEmpty()))
+            continue;
+        CByteBuffer list;
+        const bool reparseExpected =
+            candidates[i] || (rec.SiDefined && (rec.SiAttr.Attrib & FILE_ATTRIBUTE_REPARSE_POINT));
+        HRESULT result = ReadMetadataList(i, list);
+        bool rawFallback = true;
+        if (result == S_FALSE) {
+            if (!reparseExpected)
+                continue;
+        } else {
+            RINOK(result)
+            const CAttr *primary;
+            const int found = FindMetadataAttribute(i, ATTR_TYPE_REPARSE_POINT, list,
+                                                    !rec.AttrListAttrs.IsEmpty(), primary);
+            if (!found)
+                continue;
+            if (found == kMetadataListInvalid && !reparseExpected)
+                continue;
+            result = found < 0
+                         ? S_FALSE
+                         : ReadReparsePayload(i, *primary, list, !rec.AttrListAttrs.IsEmpty());
+            if (found > 0 && (result == S_FALSE || result == E_NOTIMPL)) {
+                int type;
+                RINOK(ProbeReparseType(*primary, type))
+                rawFallback = type == SEVENZIP_NTFS_REPARSE_NONE;
+            }
+        }
+        if (result == S_FALSE || result == E_NOTIMPL) {
+            rec.ReparseRawData = rawFallback;
+            rec.ReparseError = rawFallback ? S_OK : result;
+            ReparseLimitations = true;
+        } else
+            RINOK(result)
     }
     return S_OK;
 }
@@ -2695,6 +2908,7 @@ HRESULT CDatabase::Open() {
 
 #ifdef SEVENZIP_LINUX_NTFS
     RINOK(LoadVolumeMetadata())
+    RINOK(LoadActiveReparseMetadata())
 #endif
     unsigned i;
     for (i = 0; i < Recs.Size(); i++) {
@@ -2733,6 +2947,10 @@ HRESULT CDatabase::Open() {
 
     for (i = 0; i < Recs.Size(); ++i) {
         CMftRec &rec = Recs[i];
+#ifdef SEVENZIP_LINUX_NTFS
+        if (rec.InUse())
+            continue;
+#endif
         if (!rec.Is_Magic_FILE() || !rec.BaseMftRef.IsBaseItself() || rec.ReparseAttrs.IsEmpty())
             continue;
         CMftRec reparseRecord;
@@ -2788,6 +3006,18 @@ HRESULT CDatabase::Open() {
     RINOK(LoadEaMetadata())
     FOR_VECTOR(linkIndex, Recs) {
         CMftRec &rec = Recs[linkIndex];
+        if (rec.ReparseRawData) {
+            bool data = false;
+            FOR_VECTOR(di, rec.DataAttrs)
+            if (rec.DataAttrs[di].Name.IsEmpty())
+                data = true;
+            if (!data || (rec.Wsl.present && (rec.Wsl.mode & MY_LIN_S_IFMT) != MY_LIN_S_IFREG)) {
+                rec.ReparseRawData = false;
+                rec.ReparseError = S_FALSE;
+            }
+        }
+        if (rec.ReparseError != S_OK || rec.ReparseRawData)
+            rec.SiAttr.Attrib &= ~FILE_ATTRIBUTE_DIRECTORY;
         if (rec.ReparseDataIndex < 0)
             continue;
         const CByteBuffer &data = ReparseDataVector[rec.ReparseDataIndex];
@@ -3205,6 +3435,7 @@ static const Byte kProps[] = {kpidPath,
 #ifdef SEVENZIP_LINUX_NTFS
                               ,
                               kpidPosixAttrib,
+                              kpidMethod,
                               kpidUserId,
                               kpidGroupId,
                               kpidDeviceMajor,
@@ -3272,12 +3503,22 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(const PROPID propID, PROPVARIANT *cons
     case kpidReadOnly:
         prop = true;
         break;
-    case kpidReadLimitations:
+    case kpidReadLimitations: {
+        AString reasons;
         if (!VolumeInfo.StateKnown)
-            prop = "The volume state is unavailable. Files may be inconsistent.";
+            reasons = "The volume state is unavailable. Files may be inconsistent.";
         else if (VolumeInfo.Dirty)
-            prop = "The NTFS volume is marked dirty. Some data may be corrupt.";
+            reasons = "The NTFS volume is marked dirty. Some data may be corrupt.";
+        if (ReparseLimitations) {
+            if (!reasons.IsEmpty())
+                reasons += '\n';
+            reasons += "Some NTFS reparse metadata is unavailable. Unclassified entries expose "
+                       "underlying DATA streams where readable.";
+        }
+        if (!reasons.IsEmpty())
+            prop = reasons;
         break;
+    }
     case kpidFreeSpace:
         if (!Recs.IsEmpty()) {
             RINOK(LoadFreeSpace())
@@ -3479,6 +3720,9 @@ Z7_COM7F_IMF(CHandler::GetProperty(const UInt32 index, const PROPID propID,
         case kpidPosixAttrib:
         case kpidUserId:
         case kpidGroupId:
+            if (propID == kpidPosixAttrib && (rec.ReparseError != S_OK || rec.ReparseRawData) &&
+                !item.IsAltStream())
+                break;
             if (rec.Wsl.present && !item.IsAltStream())
                 prop = propID == kpidPosixAttrib ? rec.Wsl.mode
                        : propID == kpidUserId    ? rec.Wsl.uid
@@ -3531,6 +3775,8 @@ Z7_COM7F_IMF(CHandler::GetProperty(const UInt32 index, const PROPID propID,
 #ifdef SEVENZIP_LINUX_NTFS
                 if (item.IsAltStream() && data && rec.InUse())
                     attrib = sevenzip_ntfs_data_attributes(attrib, data->Flags);
+                if (item.IsAltStream() || rec.ReparseRawData)
+                    attrib &= ~(FILE_ATTRIBUTE_REPARSE_POINT | FILE_ATTRIBUTE_DIRECTORY);
 #endif
                 if (item.IsDir())
                     attrib |= FILE_ATTRIBUTE_DIRECTORY;
@@ -3565,8 +3811,16 @@ Z7_COM7F_IMF(CHandler::GetProperty(const UInt32 index, const PROPID propID,
             break;
         }
 
+        case kpidMethod:
+#ifdef SEVENZIP_LINUX_NTFS
+            if (rec.ReparseRawData && !item.IsAltStream())
+                prop = "NTFS DATA";
+#endif
+            break;
         case kpidSize:
 #ifdef SEVENZIP_LINUX_NTFS
+            if (rec.ReparseError != S_OK && !item.IsAltStream())
+                break;
             if (rec.Link && !item.IsAltStream()) {
                 prop = item.LinkTargetIndex < 0
                            ? (UInt64)0

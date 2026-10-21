@@ -3838,6 +3838,10 @@ Are you sure you want to split archive into such volumes?</source>
     <context>
         <name>SevenZipDiagnostics</name>
         <message>
+            <source>Some NTFS reparse metadata is unavailable. Unclassified entries expose underlying DATA streams where readable.</source>
+            <translation>Метаданные некоторых точек повторной обработки NTFS недоступны. Для объектов неустановленного типа предлагаются доступные потоки DATA.</translation>
+        </message>
+        <message>
             <source>The NTFS volume is marked dirty. Some data may be corrupt.</source>
             <translation>Том NTFS помечен как требующий проверки. Часть данных может быть повреждена.</translation>
         </message>

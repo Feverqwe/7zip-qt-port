@@ -893,6 +893,68 @@ comparator bodies повторно сопоставлены с оригинал�
 и compiler caches сохранены. Physical devices, installed package, full/slow и
 native Windows/Linux appearance не проверялись; общий read audit остаётся открыт.
 
+## Reparse attribute-list authority и частичное чтение
+
+Источник — закреплённые выше Linux и SDK revisions. Сопоставлены полные
+`fs/ntfs3/inode.c:ntfs_read_mft`, `frecord.c:ni_parse_reparse`, attribute-list/
+record lookup, continuation-run и raw metadata I/O services с SDK ParseRec,
+MoveAttrsFrom, GetStream, DataParseExtents и потребителем ArchiveExtractCallback.
+Новых заимствованных C bodies нет; прежние selector/classifier и SDK stream/
+extent implementations остаются авторитетными. GPL scope ограничен dynamic
+format module; standalone SDK branch сохранён.
+
+Typed metadata lookup теперь обслуживает и Volume, и reparse до объединения
+extension records. Список определяет выбранные атрибуты: проверяются record,
+sequence, owner, instance и VCN; stale unlisted base attribute не подменяет
+отсутствующий выбранный. Resident/nonresident lists и полные continuation runs
+подключены к существующим SDK потокам. Metadata читает allocated bytes без
+DATA encryption/compression или initialized-tail transforms, как Linux metadata
+run I/O; исходные flags не меняются. Sparse metadata не синтезируется в нули.
+Ограниченный prefix probe устанавливает только тип, а не непроверенную цель.
+
+По политике Read-only filesystem access неизвестный reparse type не запрещает
+полезное чтение: при наличии обычного DATA он доступен после явного согласия,
+с постоянным индикатором ограничений и свойством Method `NTFS DATA`. Это не
+проверенная ссылка или декодированное представление неизвестного формата.
+Если header устанавливает известный тип, но payload недоступен, остаётся
+per-file error без выдуманного размера/target; обычные файлы и независимые ADS
+доступны. Raw DATA и ADS не наследуют reparse/directory role для извлечения:
+иначе исходный extractor ошибочно интерпретировал бы их байты как link payload.
+Повреждённый Volume-only list не создаёт ложное предупреждение о reparse.
+Cancellation прерывает Open, retry очищает прежнее состояние; source остаётся
+read-only, bounds/path validation сохранены.
+
+Тринадцать fixtures проверяют selected/stale attrs, resident/nonresident list,
+split runs, WOF, metadata flags/valid-size, неверные references и runs,
+oversized/missing/sparse tails. CLI/ABI проверяют exact bytes, metadata,
+per-file errors, retained streams, I/O failure/reopen и cancellation. Backend
+и GUI EN/RU действительно копируют доступный DATA, проверяют отказ/согласие,
+повторное открытие, видимый режим и неизменность образа. Native Cocoa warning
+JSON проверен на полноту текста EN/RU; guest UI runs — offscreen.
+
+Focused `ntfs`, `ntfs_stream`, `ntfs_security`, `filesystem_read_ui`, `language`
+прошли на macOS arm64 (50,84 с), Linux x64 и Windows x64/MSVC;
+guest receipt `20261021T052227Z-ba756052`. После уточнения sparse-prefix probe
+затронутые `ntfs`/`ntfs_stream` повторно прошли на всех трёх ОС (macOS 19,64 с,
+guest receipt `20261021T052708Z-3d272027`). Приложение собрано локально;
+incremental trees и compiler caches сохранены.
+
+Native Linux 6.8.0-147 readonly controls — receipt
+`20261021T051929Z-f4dad67d`: восемь layouts, exact обычный файл, ST_RDONLY и
+неизменный SHA образа. Selected/nonresident/metadata-flags возвращают точную
+цель; unlisted и bad-id дают обычный DATA, WOF — decoded bytes. Split continuation
+reparse не читается kernel: ntfs_read_mft пропускает continuation entries для
+не-MFT, а readlink использует primary mapping. Archive читает полный mapping
+через SDK: это явная более широкая archive adaptation, не native parity claim.
+Дополнительный sparse-tail control подтверждает известную ссылку с readlink
+ошибкой EINVAL при сохранном обычном файле и unchanged image
+(`20261021T053237Z-02467241`). Временные mounts/images/helpers удалены.
+
+Source integration выбранного сценария и runtime evidence разделены. Остальные
+NTFS read features и все форматы goal этой итерацией не закрываются; physical
+devices, installed package, full/slow и native Windows/Linux appearance не
+проверялись.
+
 ## Открытый read scope
 
 Выбранные classic/WOF/MFT bootstrap scenarios подключены и проверены.

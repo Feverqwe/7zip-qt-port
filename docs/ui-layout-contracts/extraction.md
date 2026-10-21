@@ -29,6 +29,9 @@ Filesystem images with reader-reported state limitations use the same explicit
 choice before their folders are shown. Their limited-access indicator remains
 visible during copying and navigation. Relisting the current reader retains the
 chosen mode; a later opening asks again. Source data is never repaired or changed.
+When NTFS reparse metadata cannot establish an entry's type, the warning explains
+that readable underlying DATA streams are exposed. Such entries identify this
+mode in their properties; unreadable known links remain file errors.
 
 [Все UI-спецификации](../ui-layout-contracts.md). Разделы сохраняют исходные требования,
 якоря и границы датированных свидетельств. Новые результаты проверок —

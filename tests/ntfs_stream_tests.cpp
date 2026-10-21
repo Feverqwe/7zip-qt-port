@@ -201,8 +201,132 @@ class NtfsStreamTests final : public QObject {
         bytes_ = qUncompress(packed);
         QVERIFY(!bytes_.isEmpty());
     }
+    bool readLimitations(QString &text) {
+        text.clear();
+        UInt32 count = 0;
+        if (archive_->GetNumberOfArchiveProperties(&count) != S_OK)
+            return false;
+        for (UInt32 i = 0; i < count; ++i) {
+            BSTR name = nullptr;
+            PROPID id;
+            VARTYPE type;
+            if (archive_->GetArchivePropertyInfo(i, &name, &id, &type) != S_OK)
+                return false;
+            const QString label = name ? QString::fromWCharArray(name) : QString();
+            SysFreeString(name);
+            if (label != "Read-only limitations")
+                continue;
+            NWindows::NCOM::CPropVariant value;
+            if (archive_->GetArchiveProperty(id, &value) != S_OK)
+                return false;
+            if (value.vt == VT_BSTR)
+                text = QString::fromWCharArray(value.bstrVal);
+            return value.vt == VT_BSTR || value.vt == VT_EMPTY;
+        }
+        return false;
+    }
   private slots:
     void initTestCase() { createArchive(); }
+    void reparseListSelection_data() {
+        QTest::addColumn<QString>("kind");
+        for (const char *kind :
+             {"reparse-list-selected", "reparse-list-nonresident", "reparse-list-split",
+              "reparse-list-unlisted", "reparse-list-wof", "reparse-list-bad-id",
+              "reparse-list-bad-sequence", "reparse-list-bad-run", "reparse-list-too-large",
+              "reparse-list-directory", "reparse-list-missing-tail", "reparse-list-sparse-tail",
+              "reparse-list-metadata-flags"})
+            QTest::newRow(kind) << QString::fromLatin1(kind);
+    }
+    void reparseListSelection() {
+        QFETCH(QString, kind);
+        loadFixture(kind);
+        CMyComPtr<IInStream> input = new Input(bytes_);
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        const auto files = record_["files"].toObject();
+        const bool readable = files.contains("gamma");
+        QString limits;
+        QVERIFY(readLimitations(limits));
+        QCOMPARE(limits.contains("reparse metadata"), record_["reparse_limited"].toBool());
+        const UInt32 item = index("gamma");
+        QVERIFY(item != UINT32_MAX);
+        NWindows::NCOM::CPropVariant directory;
+        QCOMPARE(archive_->GetProperty(item, kpidIsDir, &directory), S_OK);
+        QCOMPARE(directory.vt, VARTYPE(VT_BOOL));
+        QCOMPARE(directory.boolVal, VARIANT_FALSE);
+        NWindows::NCOM::CPropVariant method;
+        QCOMPARE(archive_->GetProperty(item, kpidMethod, &method), S_OK);
+        if (record_["reparse_raw"].toBool()) {
+            QCOMPARE(method.vt, VARTYPE(VT_BSTR));
+            QCOMPARE(QString::fromWCharArray(method.bstrVal), QString("NTFS DATA"));
+        } else
+            QCOMPARE(method.vt, VARTYPE(VT_EMPTY));
+        CMyComPtr<IInStream> gamma;
+        if (readable) {
+            gamma = stream("gamma");
+            QVERIFY(gamma);
+            const int size = QByteArray::fromBase64(files["gamma"].toString().toLatin1()).size();
+            check(gamma, "gamma", 0, qMin(9000, size));
+        } else {
+            CMyComPtr<IInArchiveGetStream> provider;
+            QCOMPARE(archive_->QueryInterface(IID_IInArchiveGetStream,
+                                              reinterpret_cast<void **>(&provider)),
+                     S_OK);
+            CMyComPtr<ISequentialInStream> unavailable;
+            QCOMPARE(provider->GetStream(item, &unavailable), S_FALSE);
+            QVERIFY(!unavailable);
+            NWindows::NCOM::CPropVariant size;
+            QCOMPARE(archive_->GetProperty(item, kpidSize, &size), S_OK);
+            QCOMPARE(size.vt, VARTYPE(VT_EMPTY));
+            CMyComPtr2<IArchiveExtractCallback, Extract> callback;
+            callback.SetFromCls(new Extract);
+            QCOMPARE(archive_->Extract(&item, 1, 1, callback), S_OK);
+            QCOMPARE(callback->result, Int32(NArchive::NExtract::NOperationResult::kDataError));
+        }
+        auto alpha = stream("alpha"), side = stream("gamma:side");
+        QVERIFY(alpha && side);
+        NWindows::NCOM::CPropVariant attributes;
+        QCOMPARE(archive_->GetProperty(index("gamma:side"), kpidAttrib, &attributes), S_OK);
+        QCOMPARE(attributes.vt, VARTYPE(VT_UI4));
+        QVERIFY(!(attributes.ulVal & FILE_ATTRIBUTE_REPARSE_POINT));
+        check(alpha, "alpha", 0, 4096);
+        check(side, "gamma:side", 0, 15);
+        QCOMPARE(archive_->Close(), S_OK);
+        check(alpha, "alpha", 4096, 4096);
+        check(side, "gamma:side", 0, 15);
+        if (gamma)
+            check(gamma, "gamma", 0, 5);
+    }
+    void reparseMetadataIoAndCancellation() {
+        loadFixture("reparse-list-split");
+        CMyComPtr2<IInStream, Input> source;
+        source.SetFromCls(new Input(bytes_));
+        source->failSeekAt = 1402 * 4096;
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
+        QString limits;
+        QVERIFY(readLimitations(limits));
+        QVERIFY(limits.contains("reparse metadata"));
+        auto alpha = stream("alpha");
+        QVERIFY(alpha);
+        check(alpha, "alpha", 0, 4096);
+        source->failSeekAt = UINT64_MAX;
+        QCOMPARE(source->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
+        QVERIFY(readLimitations(limits));
+        QVERIFY(limits.isEmpty());
+        auto gamma = stream("gamma");
+        QVERIFY(gamma);
+        check(gamma, "gamma", 0, 2100);
+        QCOMPARE(archive_->Close(), S_OK);
+        source->cancelAt = 1400 * 4096;
+        CMyComPtr2<IArchiveOpenCallback, CancelEaOpen> callback;
+        callback.SetFromCls(new CancelEaOpen);
+        callback->source = source.ClsPtr();
+        QCOMPARE(source->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
+        QCOMPARE(archive_->Open(source, nullptr, callback), E_ABORT);
+        UInt32 count = 99;
+        QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, 0u);
+    }
     void volumeStateAndOpeningLifetime() {
         for (const char *kind : {"volume-dirty",
                                  "volume-clean",
@@ -955,6 +1079,8 @@ class NtfsStreamTests final : public QObject {
         QTest::addColumn<QString>("kind");
         QTest::newRow("dirty-volume") << QString("volume-dirty");
         QTest::newRow("volume-extension-metadata") << QString("volume-list-nonresident");
+        QTest::newRow("listed-WOF-metadata") << QString("reparse-list-wof");
+        QTest::newRow("partial-reparse-metadata") << QString("reparse-list-bad-id");
         QTest::newRow("unknown-volume-state") << QString("volume-short");
         QTest::newRow("sparse") << QString("sparse");
         QTest::newRow("compressed") << QString("short-compressed");
@@ -1009,7 +1135,8 @@ class NtfsStreamTests final : public QObject {
         }));
         finished.clear();
         const QString output = runtime.filePath("output");
-        const QString name = kind.startsWith("wof") ? "gamma" : "alpha";
+        const QString name =
+            kind.startsWith("wof") || kind == "reparse-list-wof" ? "gamma" : "alpha";
         backend.extract(path, output, {name});
         QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 10000);
         QVERIFY2(finished[0][0].toBool() == (kind != "run-over-volume"),

@@ -50,7 +50,10 @@ UString QtArchiveDiagnosticText(const UString &source) {
         QT_TRANSLATE_NOOP("SevenZipDiagnostics",
                           "The volume state is unavailable. Files may be inconsistent."),
         QT_TRANSLATE_NOOP("SevenZipDiagnostics",
-                          "The NTFS volume is marked dirty. Some data may be corrupt.")};
+                          "The NTFS volume is marked dirty. Some data may be corrupt."),
+        QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                          "Some NTFS reparse metadata is unavailable. Unclassified entries expose "
+                          "underlying DATA streams where readable.")};
     for (const char *warning : warnings)
         if (text == QString::fromLatin1(warning))
             return QtDiagnosticText(warning);

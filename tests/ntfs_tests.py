@@ -160,6 +160,28 @@ class NtfsTests(unittest.TestCase):
                 result = self.run_image("7z", volume(kind)[0], "x", "gamma")
                 self.assertNotEqual(result.returncode, 0)
 
+    def test_reparse_attribute_list_selection_and_partial_read(self):
+        from ntfs_reparse_list_fixture import CASES, BAD, UNREADABLE, LIMITATION
+        for kind in CASES:
+            with self.subTest(kind=kind):
+                image, files = volume(kind)
+                listed = self.run_image("7z", image, "l")
+                self.assertEqual(listed.returncode, 0, listed.stderr)
+                self.assertEqual(LIMITATION.encode() in listed.stdout, kind in BAD)
+                gamma = self.run_image("7z", image, "x", "gamma")
+                if kind in UNREADABLE:
+                    self.assertNotEqual(gamma.returncode, 0)
+                    self.assertEqual(gamma.stdout, b"")
+                else:
+                    self.assertEqual(gamma.returncode, 0, gamma.stderr)
+                    self.assertEqual(gamma.stdout, files["gamma"])
+                alpha = self.run_image("7z", image, "x", "alpha")
+                self.assertEqual(alpha.returncode, 0, alpha.stderr)
+                self.assertEqual(alpha.stdout, files["alpha"])
+                side = self.run_image("7z", image, "x", "gamma:side")
+                self.assertEqual(side.returncode, 0, side.stderr)
+                self.assertEqual(side.stdout, files["gamma:side"])
+
     def test_linux_reparse_links(self):
         for kind in LINK_VALID:
             with self.subTest(kind=kind):

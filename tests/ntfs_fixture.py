@@ -94,6 +94,9 @@ def nonresident(original, entries, size, valid=None, flags=0, unit=0):
 
 
 def volume(kind="base"):
+    if kind.startswith("reparse-list-"):
+        from ntfs_reparse_list_fixture import volume as reparse_volume
+        return reparse_volume(kind)
     if kind.startswith("volume-"):
         from ntfs_volume_fixture import volume as volume_state
         return volume_state(kind)
@@ -239,6 +242,10 @@ if __name__ == "__main__":
         if args.kind.startswith("flags-"):
             from ntfs_flags_fixture import properties
             result["attributes"] = properties(args.kind)
+        if args.kind.startswith("reparse-list-"):
+            from ntfs_reparse_list_fixture import RAW, BAD
+            result["reparse_limited"] = args.kind in BAD
+            result["reparse_raw"] = args.kind in RAW
         if args.kind.startswith("volume-"):
             from ntfs_volume_fixture import limitation
             result["volume_limitation"] = limitation(args.kind)
