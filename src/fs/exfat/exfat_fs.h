@@ -362,6 +362,7 @@ int exfat_get_dentry_set(struct exfat_entry_set_cache *, struct super_block *, s
 int exfat_put_dentry_set(struct exfat_entry_set_cache *, int);
 int exfat_count_num_clusters(struct super_block *, struct exfat_chain *, unsigned int *);
 int exfat_load_bitmap(struct super_block *);
+int exfat_read_volume_label(struct super_block *, struct exfat_uni_name *);
 void exfat_free_bitmap(struct exfat_sb_info *);
 void exfat_get_entry_time(struct exfat_sb_info *, struct timespec64 *, u8, __le16, __le16, u8);
 int64_t mktime64(unsigned int, unsigned int, unsigned int, unsigned int, unsigned int,

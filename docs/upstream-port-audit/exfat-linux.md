@@ -37,7 +37,7 @@ Adapted code remains C under `src/fs/exfat/`:
 | Upstream module | Transferred read scope |
 | --- | --- |
 | `super.c` | `exfat_calibrate_blocksize`, `exfat_read_boot_sector`, `exfat_verify_boot_region` |
-| `dir.c` | `exfat_extract_uni_name`, `exfat_get_uniname_from_ext_entry`, `exfat_readdir`, `exfat_get_entry_type`, entry location/read, entry-set loading/validation/release |
+| `dir.c` | `exfat_extract_uni_name`, `exfat_get_uniname_from_ext_entry`, `exfat_readdir`, `exfat_get_entry_type`, entry location/read, entry-set loading/validation/release, volume-label lookup/read |
 | `fatent.c` | `__exfat_ent_get`, `exfat_ent_get`, `exfat_count_num_clusters` |
 | `balloc.c` | Bitmap range testing, allocation/loading/freeing and `exfat_test_bitmap` |
 | `misc.c` | `exfat_calc_chksum16`, `exfat_calc_chksum32`, `exfat_chain_set`, `exfat_chain_dup`; no mutation transport |
@@ -271,3 +271,50 @@ fixtures were removed. The older running kernel supplements pinned source
 comparison; native creation-time export was not checked. Incremental builds
 and compiler caches were preserved. Full/slow suites, UI and physical devices
 were not checked; this scenario does not close the overall format audit.
+
+## Volume-label read feature (2026-10-21)
+
+The pinned Linux driver also implements `dir.c:exfat_get_volume_label_dentry`
+and `exfat_read_volume_label`, consumed by `file.c:exfat_ioctl_get_volume_label`.
+Complete bodies, types, root-chain setup/validation, entry classification,
+cached-entry lifetime and `nls.c` output consumers were compared before adding
+this previously absent read feature. All eighteen baseline hashes were verified.
+
+Both original C readers now live in `src/fs/exfat/dir.c`; root-chain walking,
+first-match selection, deleted/unused entry handling, length limit, endian
+conversion and buffer release branches are retained. Omitted scope consists of
+write-side free-entry hints and their root VFS inode, plus the VFS mutex:
+the archive owner serializes its per-volume source. Root chain counting still
+precedes the scanner, and the existing FAT adapter uses the selected active pair.
+The write-label function and ioctl userspace transport are not copied.
+
+The C volume owner reads and retains the label during Open. The existing 7-Zip
+adapter exposes `kpidVolumeName` through the standard archive-property table;
+the previously available physical size is now discoverable through that table
+too. UTF-16 is retained until the SDK string boundary, including surrogate pairs.
+The first NUL terminates presentation as in Linux's label ioctl converter.
+Absence is an empty label; after Close or failed Open the property is undefined.
+This is eager archive metadata validation: a malformed first label or a source
+error rejects Open, whereas Linux reports that error when its label ioctl runs.
+Source failure/cancellation HRESULTs survive the C reader and cleanup.
+
+Post-change source comparison covered the transferred readers, their existing
+dependencies and every new volume/ABI consumer. Twelve label scenarios cover
+first/fragmented-root placement, both TexFAT active pairs, 4096-byte sectors,
+Unicode/maximum/empty/absent/deleted labels, first-match duplicates, unused
+termination and embedded NUL. ABI checks verify label, unchanged file payload,
+failed-open cleanup, source failure/abort and reuse. The official process engine
+lists the Unicode label and tests/extracts the image for exFAT and both TexFAT
+pairs. Existing backend consumers remain covered.
+
+Final `exfat`/`exfat_backend` PASS on macOS arm64/Qt 6.12 (1.91 s), Linux x64
+(1.20 s) and Windows x64/MSVC/Qt 6.12 (3.65 s), receipt
+`20261021T015503Z-20b73622`. Incremental builds and compiler caches were
+preserved. Full/slow suites, UI appearance and physical devices were not checked.
+
+Native `6.8.0-147-generic` lacks this ioctl: a read-only mounted fixture returned
+ENOTTY, receipt `20261021T015619Z-6a18da24`. Native label acceptance is therefore
+unverified; the implementation is compared against the newer pinned source.
+The image remained unchanged and mount/temporary exporter/fixtures were removed.
+No package installation was needed. This feature does not close the remaining
+format audit or change standalone 7zz's exFAT boundary.

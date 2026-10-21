@@ -23,8 +23,14 @@ class Input final : public IInStream, public CMyUnknownImp {
 
   public:
     bool *cancelOnRead = nullptr;
+    UInt64 failureOffset = UINT64_MAX;
+    HRESULT failureResult = E_FAIL;
     explicit Input(QByteArray bytes) : bytes_(std::move(bytes)) {}
     Z7_COM7F_IMF(Read(void *data, UInt32 size, UInt32 *processed)) override {
+        if (processed)
+            *processed = 0;
+        if (position_ >= failureOffset)
+            return failureResult;
         const UInt64 remaining = position_ < UInt64(bytes_.size()) ? bytes_.size() - position_ : 0;
         size = UInt32(qMin<UInt64>(size, remaining));
         if (size)
@@ -102,6 +108,14 @@ QString path(IInArchive *archive, UInt32 index) {
 QByteArray read(const QString &path) {
     QFile file(path);
     return file.open(QIODevice::ReadOnly) ? file.readAll() : QByteArray();
+}
+void setVolumeLabel(ExfatFixture &fixture, int entry, const QString &label) {
+    const int offset = fixture.rootOffset(entry);
+    std::fill_n(fixture.image.data() + offset, 32, '\0');
+    fixture.image[offset] = char(0x83);
+    fixture.image[offset + 1] = char(label.size());
+    for (int i = 0; i < label.size(); ++i)
+        qToLittleEndian(label[i].unicode(), fixture.image.data() + offset + 2 + i * 2);
 }
 } // namespace
 
@@ -181,6 +195,104 @@ class ExfatTests final : public QObject {
             (quint64(timestamp.filetime.dwHighDateTime) << 32) | timestamp.filetime.dwLowDateTime;
         const auto utc = QDateTime(QDate(2026, 10, 17), QTime(9, 34, 57, 230), QTimeZone::UTC);
         QCOMPARE(qint64(ticks / 10000) - 11644473600000LL, utc.toMSecsSinceEpoch());
+    }
+    void volumeLabels_data() {
+        QTest::addColumn<int>("layout");
+        QTest::addColumn<QString>("scenario");
+        QTest::addColumn<QString>("label");
+        QTest::addColumn<QString>("expected");
+        const QString unicode = QStringLiteral("том 空 😀");
+        QTest::newRow("first-cluster") << 0 << "first" << unicode << unicode;
+        QTest::newRow("fragmented-root") << 0 << "late" << unicode << unicode;
+        QTest::newRow("texfat-first") << 1 << "late" << unicode << unicode;
+        QTest::newRow("texfat-second") << 2 << "late" << unicode << unicode;
+        QTest::newRow("sector4096") << 3 << "late" << unicode << unicode;
+        QTest::newRow("maximum") << 0 << "late" << "12345678901" << "12345678901";
+        QTest::newRow("empty") << 0 << "late" << "" << "";
+        QTest::newRow("absent") << 0 << "absent" << "" << "";
+        QTest::newRow("deleted") << 0 << "deleted" << unicode << "";
+        QTest::newRow("after-unused") << 1 << "after-unused" << unicode << "";
+        QTest::newRow("first-wins") << 1 << "duplicate" << unicode << unicode;
+        QTest::newRow("embedded-nul") << 0 << "late" << QString(QChar('A')) + QChar(0) + 'B' << "A";
+    }
+    void volumeLabels() {
+        QFETCH(int, layout);
+        QFETCH(QString, scenario);
+        QFETCH(QString, label);
+        QFETCH(QString, expected);
+        ExfatFixture fixture(layout == 3 ? 4096 : 512);
+        if (layout == 1 || layout == 2)
+            fixture = TexfatFixture(layout - 1);
+        int entry = layout == 1 || layout == 2 ? 34 : 31;
+        if (scenario == "first") {
+            for (int i = 30; i >= 2; --i)
+                memcpy(fixture.image.data() + fixture.rootOffset(i + 1),
+                       fixture.image.constData() + fixture.rootOffset(i), 32);
+            entry = 2;
+        }
+        if (scenario == "after-unused")
+            ++entry;
+        if (scenario != "absent")
+            setVolumeLabel(fixture, entry, label);
+        if (scenario == "deleted")
+            fixture.image[fixture.rootOffset(entry)] = 3;
+        if (scenario == "duplicate") {
+            setVolumeLabel(fixture, entry + 1, "other");
+            fixture.image[fixture.rootOffset(entry + 1) + 1] = 12; // Ignored later malformed label.
+        }
+        QCOMPARE(open(fixture.image), S_OK);
+        NWindows::NCOM::CPropVariant volume;
+        QCOMPARE(archive_->GetArchiveProperty(kpidVolumeName, &volume), S_OK);
+        QCOMPARE(volume.vt, VARTYPE(VT_BSTR));
+        QString text;
+        for (const wchar_t *p = volume.bstrVal; p && *p; ++p)
+            text += QChar(ushort(*p));
+        QCOMPARE(text, expected);
+        UInt32 count;
+        QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, 5u);
+        const UInt32 index = indexOf(fixture.fragmentedName);
+        QVERIFY(index != UInt32(-1));
+        CMyComPtr2<IArchiveExtractCallback, Extract> callback;
+        callback.Create_if_Empty();
+        QCOMPARE(archive_->Extract(&index, 1, 0, callback), S_OK);
+        QCOMPARE(callback->result, Int32(NArchive::NExtract::NOperationResult::kOK));
+        QCOMPARE(callback->output->bytes,
+                 QByteArray(fixture.sectorSize, 'A') + QByteArray(188, 'B'));
+        QCOMPARE(archive_->Close(), S_OK);
+        QCOMPARE(archive_->GetArchiveProperty(kpidVolumeName, &volume), S_OK);
+        QCOMPARE(volume.vt, VARTYPE(VT_EMPTY));
+    }
+    void volumeLabelSourceErrors() {
+        ExfatFixture fixture;
+        setVolumeLabel(fixture, 31, "label");
+        for (HRESULT error : {E_FAIL, E_ABORT}) {
+            Input *input = new Input(fixture.image);
+            CMyComPtr<IInStream> source = input;
+            input->failureOffset = fixture.clusterOffset(10);
+            input->failureResult = error;
+            QCOMPARE(archive_->Open(source, nullptr, nullptr), error);
+            UInt32 count;
+            QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+            QCOMPARE(count, 0u);
+            NWindows::NCOM::CPropVariant label;
+            QCOMPARE(archive_->GetArchiveProperty(kpidVolumeName, &label), S_OK);
+            QCOMPARE(label.vt, VARTYPE(VT_EMPTY));
+            QCOMPARE(open(fixture.image), S_OK);
+        }
+    }
+    void malformedVolumeLabel() {
+        ExfatFixture fixture;
+        setVolumeLabel(fixture, 31, "broken");
+        fixture.image[fixture.rootOffset(31) + 1] = 12;
+        QCOMPARE(open(fixture.image), S_FALSE);
+        UInt32 count;
+        QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, 0u);
+        NWindows::NCOM::CPropVariant label;
+        QCOMPARE(archive_->GetArchiveProperty(kpidVolumeName, &label), S_OK);
+        QCOMPARE(label.vt, VARTYPE(VT_EMPTY));
+        QCOMPARE(open(fixture_.image), S_OK);
     }
     void entryTimestamps_data() {
         QTest::addColumn<int>("date");
@@ -422,6 +534,8 @@ class ExfatTests final : public QObject {
         ExfatFixture fixture;
         if (active >= 0)
             fixture = TexfatFixture(unsigned(active));
+        const QString label = QStringLiteral("метка 空 😀");
+        setVolumeLabel(fixture, active >= 0 ? 34 : 31, label);
         QTemporaryDir runtime;
         QVERIFY(runtime.isValid());
         const QDir prepared(QString::fromUtf8(SEVENZIP_EXFAT_RUNTIME));
@@ -454,6 +568,7 @@ class ExfatTests final : public QObject {
         };
         const auto listing = run({"l", "-slt", "--", image});
         QVERIFY2(listing.contains("Type = exFAT"), listing.constData());
+        QVERIFY2(listing.contains(label.toUtf8()), listing.constData());
         QVERIFY2(listing.contains(fixture.fragmentedName.toUtf8()), listing.constData());
         const auto tested = run({"t", "--", image});
         QVERIFY2(tested.contains("Everything is Ok"), tested.constData());

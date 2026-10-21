@@ -7,6 +7,7 @@ struct exfat_volume {
     struct super_block sb;
     struct exfat_sb_info info;
     struct exfat_chain root;
+    struct exfat_uni_name label;
 };
 
 struct exfat_timestamp exfat_entry_time(uint16_t date, uint16_t time, uint8_t cs, uint8_t tz) {
@@ -113,6 +114,8 @@ int exfat_open_volume(const struct exfat_source *source, struct exfat_volume **r
         error = exfat_load_bitmap(&v->sb);
     if (!error && !exfat_test_bitmap(&v->sb, v->info.root_dir))
         error = -EIO;
+    if (!error)
+        error = exfat_read_volume_label(&v->sb, &v->label);
     if (error) {
         exfat_close_volume(v);
         return error;
@@ -122,6 +125,7 @@ int exfat_open_volume(const struct exfat_source *source, struct exfat_volume **r
 }
 
 uint64_t exfat_volume_size(const struct exfat_volume *v) { return v->sb.image_size; }
+const uint16_t *exfat_volume_label(const struct exfat_volume *v) { return v->label.name; }
 
 void exfat_root_cursor(const struct exfat_volume *v, struct exfat_cursor *c) {
     memset(c, 0, sizeof(*c));

@@ -472,3 +472,83 @@ put_es:
 	exfat_put_dentry_set(es, false);
 	return -EIO;
 }
+
+/* Read-only adaptation of the volume-label reader. Free-slot hints belong to
+ * the omitted write path; volume access is serialized by the archive owner. */
+static int exfat_get_volume_label_dentry(struct super_block *sb,
+		struct exfat_entry_set_cache *es)
+{
+	int i;
+	unsigned int type;
+	struct exfat_sb_info *sbi = EXFAT_SB(sb);
+	struct exfat_chain clu;
+	struct exfat_dentry *ep;
+	struct buffer_head *bh;
+
+	exfat_chain_set(&clu, sbi->root_dir, 0, ALLOC_FAT_CHAIN);
+
+	while (clu.dir != EXFAT_EOF_CLUSTER) {
+		for (i = 0; i < sbi->dentries_per_clu; i++) {
+			ep = exfat_get_dentry(sb, &clu, i, &bh);
+			if (!ep)
+				return -EIO;
+
+			type = exfat_get_entry_type(ep);
+			if (type == TYPE_UNUSED) {
+				brelse(bh);
+				goto not_found;
+			}
+
+			if (type != TYPE_VOLUME) {
+				brelse(bh);
+				continue;
+			}
+
+			memset(es, 0, sizeof(*es));
+			es->sb = sb;
+			es->bh = es->__bh;
+			es->bh[0] = bh;
+			es->num_bh = 1;
+			es->start_off = exfat_dentries_to_bytes(i) % sb->s_blocksize;
+
+			return 0;
+		}
+
+		if (exfat_get_next_cluster(sb, &(clu.dir)))
+			return -EIO;
+	}
+
+not_found:
+	return -ENOENT;
+}
+
+int exfat_read_volume_label(struct super_block *sb, struct exfat_uni_name *label_out)
+{
+	int ret, i;
+	struct exfat_entry_set_cache es;
+	struct exfat_dentry *ep;
+
+	memset(label_out, 0, sizeof(*label_out));
+	ret = exfat_get_volume_label_dentry(sb, &es);
+	if (ret < 0) {
+		/* ENOENT is an empty volume label, as in the original ioctl reader. */
+		if (ret == -ENOENT)
+			ret = 0;
+		goto unlock;
+	}
+
+	ep = exfat_get_dentry_cached(&es, 0);
+	label_out->name_len = ep->dentry.volume_label.char_count;
+	if (label_out->name_len > EXFAT_VOLUME_LABEL_LEN) {
+		ret = -EIO;
+		exfat_put_dentry_set(&es, false);
+		goto unlock;
+	}
+
+	for (i = 0; i < label_out->name_len; i++)
+		label_out->name[i] = le16_to_cpu(ep->dentry.volume_label.volume_label[i]);
+
+	exfat_put_dentry_set(&es, false);
+unlock:
+	return ret;
+}
