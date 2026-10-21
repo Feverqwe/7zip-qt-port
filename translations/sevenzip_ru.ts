@@ -3898,6 +3898,10 @@ Are you sure you want to split archive into such volumes?</source>
             <translation>Соответствие номера inode SquashFS не проверено.</translation>
         </message>
         <message>
+            <source>Some SquashFS inode records are unavailable. Files or metadata may be missing. Inode identities are unverified.</source>
+            <translation>Некоторые записи inode SquashFS недоступны. Часть файлов или метаданных может отсутствовать. Идентификаторы inode не проверены.</translation>
+        </message>
+        <message>
             <source>The FAT directory could not be read completely.</source>
             <translation>Каталог FAT прочитан не полностью.</translation>
         </message>

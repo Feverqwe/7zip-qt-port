@@ -256,6 +256,25 @@ class SquashfsTests(unittest.TestCase):
                     self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
                     self.assertEqual(result.stdout, files[name])
 
+    def test_inode_record_failures_are_local_to_their_entries(self):
+        for fault in ("inode-record", "inode-unused", "inode-count-short", "inode-count-large", "inode-length"):
+            data, files = volume(fault, xattrs=True)
+            with self.subTest(fault=fault):
+                listing = self.run_image("7z", data, "l")
+                self.assertEqual(listing.returncode, 0, listing.stderr.decode(errors="replace"))
+                self.assertIn(b"inode records are unavailable", listing.stdout)
+                result = self.run_image("7z", data, "x", "данные 空")
+                self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                self.assertEqual(result.stdout, files["данные 空"])
+                if fault == "inode-record":
+                    result = self.run_image("7z", data, "x", "alpha")
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertEqual(result.stdout, b"")
+        data, files = volume("directory-block-inode")
+        result = self.run_image("7z", data, "x", "good 空/payload")
+        self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+        self.assertEqual(result.stdout, files["good 空/payload"])
+
     def test_ambiguous_inode_numbers_do_not_merge_unrelated_files(self):
         data, files = volume("directory-ambiguous", xattrs=True)
         with tempfile.TemporaryDirectory(dir=self.runtime) as temporary:

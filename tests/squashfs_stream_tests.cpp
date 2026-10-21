@@ -217,8 +217,11 @@ class SquashfsStreamTests final : public QObject {
         QStringList arguments{QString::fromUtf8(SEVENZIP_SQUASHFS_FIXTURE)};
         arguments << (codec == "zlib" && !xattrs && fault.isEmpty() ? "--compressed"
                                                                     : "--codec=" + codec);
-        if (xattrs)
-            arguments << "--xattrs" << "--export";
+        if (xattrs) {
+            arguments << "--xattrs";
+            if (fault != "inode-count-large")
+                arguments << "--export";
+        }
         if (!fault.isEmpty())
             arguments << "--fault=" + fault;
         generator.start(QString::fromUtf8(SEVENZIP_SQUASHFS_PYTHON), arguments);
@@ -257,6 +260,9 @@ class SquashfsStreamTests final : public QObject {
         QCOMPARE(archive_->GetProperty(index("link"), kpidSymLink, &target), S_OK);
         QCOMPARE(target.vt, VARTYPE(VT_BSTR));
         QCOMPARE(QString::fromWCharArray(target.bstrVal), QString("alpha"));
+        NWindows::NCOM::CPropVariant error;
+        QCOMPARE(archive_->GetProperty(index("link"), kpidError, &error), S_OK);
+        QCOMPARE(error.vt, VARTYPE(VT_EMPTY));
     }
     void unreadableExportPayloadDoesNotBlockFiles_data() {
         QTest::addColumn<HRESULT>("failure");
@@ -376,6 +382,76 @@ class SquashfsStreamTests final : public QObject {
             QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
             QCOMPARE(count, 0u);
         }
+    }
+    void inodeFailuresDoNotHideHealthyRecords_data() {
+        QTest::addColumn<QString>("fault");
+        for (const QString &fault : {"inode-record", "inode-unused", "inode-count-short",
+                                     "inode-count-large", "inode-length"})
+            QTest::newRow(qPrintable(fault)) << fault;
+    }
+    void inodeFailuresDoNotHideHealthyRecords() {
+        QFETCH(QString, fault);
+        loadFixture("zlib", true, fault);
+        CMyComPtr<IInStream> source = new Input(bytes_);
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
+        auto data = stream("данные 空");
+        QVERIFY(data);
+        check(data, "данные 空", 0, 16395);
+        NWindows::NCOM::CPropVariant identity;
+        QCOMPARE(archive_->GetProperty(index("данные 空"), kpidINode, &identity), S_OK);
+        QCOMPARE(identity.vt, VARTYPE(VT_EMPTY));
+        if (fault == "inode-record") {
+            const UInt32 missing = index("alpha");
+            QVERIFY(missing != UInt32(-1));
+            QVERIFY(!stream("alpha"));
+            NWindows::NCOM::CPropVariant value;
+            QCOMPARE(archive_->GetProperty(missing, kpidSize, &value), S_OK);
+            QCOMPARE(value.vt, VARTYPE(VT_EMPTY));
+            QCOMPARE(archive_->GetProperty(missing, kpidError, &value), S_OK);
+            QCOMPARE(value.vt, VARTYPE(VT_BSTR));
+            CMyComPtr2<IArchiveExtractCallback, Extract> output;
+            output.SetFromCls(new Extract);
+            output->capture = true;
+            const UInt32 healthy = index("данные 空");
+            QCOMPARE(archive_->Extract(&healthy, 1, 0, output), S_OK);
+            QCOMPARE(output->result, Int32(NArchive::NExtract::NOperationResult::kOK));
+            QCOMPARE(output->output->bytes,
+                     QByteArray::fromBase64(
+                         record_["files"].toObject()["данные 空"].toString().toLatin1()));
+        } else if (fault != "inode-length") {
+            auto first = stream("alpha");
+            QVERIFY(first);
+            check(first, "alpha", 0, 8202);
+        }
+        QCOMPARE(archive_->Close(), S_OK);
+        loadFixture("zlib", true);
+        CMyComPtr<IInStream> healthy = new Input(bytes_);
+        QCOMPARE(archive_->Open(healthy, nullptr, nullptr), S_OK);
+        QCOMPARE(archive_->GetProperty(index("alpha"), kpidINode, &identity), S_OK);
+        QCOMPARE(identity.vt, VARTYPE(VT_UI4));
+        QVERIFY(stream("alpha"));
+    }
+    void lateDirectoryInodeRestartsItsOwnMetadataRange() {
+        loadFixture("zlib", true, "directory-block-inode");
+        CMyComPtr<IInStream> source = new Input(bytes_);
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
+        QVERIFY(!stream("alpha"));
+        auto good = stream("good 空/payload");
+        QVERIFY(good);
+        check(good, "good 空/payload", 0, 333);
+        QCOMPARE(index("broken/payload"), UInt32(-1));
+        QCOMPARE(index("payload"), UInt32(-1));
+        // Parent paths must remain stable when recovery appends another range.
+        QVERIFY(index("broken") != UInt32(-1));
+        QVERIFY(index("good 空") != UInt32(-1));
+    }
+    void unreadableRootRemainsAnOpeningFailure() {
+        loadFixture("zlib", true, "inode-root");
+        CMyComPtr<IInStream> source = new Input(bytes_);
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), S_FALSE);
+        UInt32 count = 99;
+        QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, 0u);
     }
     void directoryBlocksAreIsolated_data() {
         QTest::addColumn<QString>("fault");

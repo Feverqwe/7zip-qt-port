@@ -5,6 +5,65 @@ Scope входит в [общую проверку форматов](filesystems
 современный LZO и проверки compressor options через отдельный format-модуль.
 Полная актуализация SquashFS read features по Linux ещё продолжается.
 
+## Локальные ошибки inode records, 2026-10-21
+
+Проверены полные Linux `inode.c` branches и их VFS/cache dependencies,
+`squashfs_fs_i.h`, `namei.c`, а также SDK `CNode::Parse4`, его потребители,
+raw offsets, xattrs, directory anchors и hardlink identity. Linux читает
+inode по ссылке из каталога; неизвестный или повреждённый соседний inode
+не требует отказа всему открытию. Целиком подключить VFS `squashfs_iget`
+к текущему archive ABI нельзя без нового VFS lifetime/type layer.
+Поэтому сохраняется один исходный SDK parser; codec и inode field parsing
+не реализуются заново.
+
+GPL v4 handler использует тот же `Parse4`/xattr flow через `ReadNode` как при
+последовательном разборе, так и для записей по canonical root/directory refs.
+После первой неразбираемой записи он не сканирует байты в поисках похожих
+headers: используются только адреса, предоставленные root и проверенными
+directory entries. Некорректный record остаётся недоступным; исправный sibling
+и root после него могут читаться. Ошибка count не задаёт размер выделения
+памяти без учёта фактически полученного inode buffer. Неразбираемый root
+остаётся реальным ограничением opening, а не подменяется искусственным каталогом.
+
+Для неполной таблицы подавляются непроверенные `INode`/`StreamId` и подбор
+record по inode number: отсутствие скрытых конфликтов не доказано. Сохраняются
+проверки metadata block/offset, фактического buffer extent, type/mode, record
+fields, paths и доступности decoder. Если повреждённая длина одной записи
+захватывает соседние, canonical refs могут указывать на отдельно проверяемые
+records; это не даёт права читать за пределами inode metadata. Изменение
+требует отдельного per-opening согласия и badge; недоступные элементы имеют
+неизвестные свойства/ошибку, копирование исправных данных остаётся доступным.
+Abort/OOM и callbacks не превращаются в partial success. Legacy/core-only
+scope сохраняется.
+
+Поздно обнаруженный directory inode может загрузить собственный bounded
+metadata run, даже если первоначальный проход остановился на чужом bad header.
+Кэш добавляет только законченные блоки, сохраняет старые item offsets и
+границы разрывов. Arena растёт с запасом, но logical extent отделён от capacity:
+неинициализированный запас не становится metadata. Это сохраняет оба ранее
+проверенных сценария — локальный inode failure и directory block isolation —
+при их совместном возникновении.
+
+Семь native readonly Linux `6.8.0-147-generic` controls подтвердили доступность
+исправных payloads при invalid/unused inode type, неверном count, завышенной
+длине предыдущей записи и combined inode/directory failure. Неподдерживаемый
+inode возвращает EINVAL, невалидный root отвергается при mount. Образы не
+изменились, mounts/data удалены. Receipt: `20261021T154236Z-95808f13`;
+runtime kernel старше закреплённого source reference.
+
+ABI/CLI проверки покрывают payloads, unknown properties/identities, reset,
+huge-header resource guard, independent root, late directory re-entry и
+отсутствие склейки имен через gap. EN/RU UI проверяет принятие/отказ, копирование
+исправного файла, badge и новое согласие после закрытия. Семь focused suites
+прошли на macOS за 10,71 с; после исправления fragment type guard повторные
+три suites прошли за 8,73 с. На Linux/Windows семь suites прошли за 8,27/45,42 с,
+receipt `20261021T154735Z-481c0cd0`. Windows выявил чтение нерелевантного,
+неинициализированного fragment field у symlink: проверка fragment availability
+теперь ограничена двумя regular-file types, как соответствующие Linux branches.
+Здоровый symlink не получает ложную ошибку fragment; это проверяется через ABI.
+Отказы декомпрессии всей inode metadata и
+initial index bootstrap остаются незакрытыми; полнота SquashFS не заявляется.
+
 ## Ошибки отдельных directory metadata blocks, 2026-10-21
 
 Повторно сверены SDK `ReadMetadataBlock`/`Decompress`/`ReadData`, все decoder

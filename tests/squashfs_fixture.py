@@ -90,6 +90,8 @@ def volume(fault="", compressed=False, no_fragments=False, codec="zlib", xattrs=
         directory += struct.pack("<4H", offsets[node], node, 3 if node == 2 else 2, len(name) - 1) + name
     root_offset = len(inodes)
     inodes += base(1, 4) + struct.pack("<2I2HI", 0, 2, len(directory) + 3, 0, 1)
+    if fault == "inode-unused":
+        inodes += base(0xffff, 5) + bytes(4)
     inode_start = len(image)
     image += metadata(inodes, compressed)
     dir_start = len(image)
@@ -141,7 +143,7 @@ def volume(fault="", compressed=False, no_fragments=False, codec="zlib", xattrs=
         image += metadata(struct.pack("<QII", 0, len(attributes) + 3, len(entries)))
         xattr_id_table = len(image)
         image += struct.pack("<QIIQ", xattr_start, 1, 0, xattr_ids_metadata)
-    struct.pack_into("<5I6H8Q", image, 0, 0x73717368, 1 if no_fragments else 4,
+    struct.pack_into("<5I6H8Q", image, 0, 0x73717368, 1 if no_fragments else 5 if fault == "inode-unused" else 4,
                      0, BLOCK, 0 if no_fragments else 1, 5 if codec == "lz4" else 3 if codec == "lzo-rle" else 1,
                      13, 1 << 10 if codec == "lz4" else 0, 1, 4, 0,
                      root_offset, len(image), ids_table, xattr_id_table, inode_start, dir_start,
@@ -171,6 +173,19 @@ def volume(fault="", compressed=False, no_fragments=False, codec="zlib", xattrs=
         struct.pack_into("<H", image, inode_start + 2 + 4, 1)
     elif fault == "gid-index":
         struct.pack_into("<H", image, inode_start + 2 + 6, 1)
+    elif fault == "inode-record":
+        struct.pack_into("<H", image, inode_start + 2, 0xffff)
+    elif fault == "inode-root":
+        struct.pack_into("<H", image, inode_start + 2 + root_offset, 0xffff)
+    elif fault == "inode-count-short":
+        struct.pack_into("<I", image, 4, 3)
+    elif fault == "inode-count-large":
+        struct.pack_into("<I", image, 4, 0xffffffff)
+    elif fault == "inode-length":
+        # An earlier inode claims bytes belonging to later records. Root and
+        # directory references still identify those later records independently.
+        blocks = (len(inodes) - 56) // 4
+        struct.pack_into("<Q", image, inode_start + 2 + 24, blocks * BLOCK + 10)
     elif fault in ("directory-reference", "directory-unavailable", "directory-ambiguous"):
         struct.pack_into("<H", image, dir_start + 2 + entry_offsets["alpha"], 0xffff)
         if fault == "directory-unavailable":
@@ -252,7 +267,7 @@ def directory_volume(fault):
     child = entries((("payload", 1, 2),))
     root_block, good_block = metadata(root), metadata(child, True)
     bad_block = bytearray(metadata(child, fault != "directory-block-clean" and fault != "directory-block-io"))
-    if fault == "directory-block-header":
+    if fault in ("directory-block-header", "directory-block-inode"):
         struct.pack_into("<H", bad_block, 0, 0x8000)
     elif fault != "directory-block-clean" and fault != "directory-block-io":
         bad_block[-1] ^= 0xff  # Output can precede the failing Adler checksum.
@@ -267,6 +282,8 @@ def directory_volume(fault):
                                 (4, len(root_block) + len(bad_block), len(child)),
                                 (5, 0, len(root) + (len(child) if fault == "directory-block-span" else 0))):
         inodes += base(1, number) + struct.pack("<IIHHI", start, 2, size + 3, 0, 5)
+    if fault == "directory-block-inode":
+        struct.pack_into("<H", inodes, 0, 0xffff)
     inode_start = len(image)
     image += metadata(inodes)
     directory_start = len(image)
