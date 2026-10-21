@@ -5,6 +5,63 @@ Scope входит в [общую проверку форматов](filesystems
 современный LZO и проверки compressor options через отдельный format-модуль.
 Полная актуализация SquashFS read features по Linux ещё продолжается.
 
+## Частичные каталоги и недоступные inode, 2026-10-21
+
+Сравнены SDK `OpenDir` и потребители item/node mapping, Linux
+`dir.c:squashfs_readdir`, `namei.c:squashfs_lookup`,
+`inode.c:squashfs_iget` и полный hardlink consumer
+`ArchiveExtractCallback.cpp:Archive_Get_HardLinkNode`. Ревизии ниже.
+Основной directory parser сохранён, разбор direct entries выделен в
+`ReadDirItems` в том же handler; платформа и source language не менялись.
+
+GPL-модуль сохраняет проверенный префикс каталога и продолжает обход исправных
+записей при локальной ошибке. Достоверное имя с недоступным inode остаётся
+видимым: size, times, IDs и прочие неизвестные свойства не выдумываются,
+GetStream возвращает ошибку, извлечение сообщает DataError и продолжает
+работу со следующими файлами. Неполные каталоги получают собственную ошибку;
+неполный root представлен существующим collision-safe `[ROOT]` container.
+Неполнота требует согласия на новое открытие и остаётся видна в badge.
+Имена с NUL, slash, dot/dotdot и неверными границами не публикуются.
+Проверки recursion/cycles, item limits, root reference и decoder сохраняются.
+Отмена/OOM и любой не-S_OK callback result, включая S_FALSE, прерывают открытие,
+а не превращаются в partial success.
+
+Дополнительно выяснено, что Linux может открыть запись с повреждённой inode
+reference после загрузки исправной hardlink: `iget` использует inode cache.
+Archive reader может использовать уже разобранный inode с однозначным номером
+и совпадающим типом. Это отдельная явно непроверенная адаптация, не утверждение
+достоверности повреждённой связи имени и файла: предупреждение допускает
+неверное сопоставление/устаревшие данные, копирование сообщает DataError даже
+при полном наборе байтов. Признак распространяется на потомков и xattrs.
+При отсутствии или неоднозначности номера такая подстановка не производится.
+Непроверенные/неоднозначные `INode` и `StreamId` не экспортируются как verified
+identity: upstream hardlink consumer считает inode достаточным для объединения
+файлов даже при неопределённом StreamId. Регрессия с двумя разными payloads
+проверяет их отдельное извлечение и отсутствие ложного объединения.
+
+Native Linux `6.8.0-147-generic`, receipt `20261021T145043Z-24ca3f1e`:
+три synthetic readonly controls подтвердили directory prefix, холодный EIO
+повреждённой reference, успешное чтение после priming правильной hardlink и
+устойчивый EIO при неизвестном inode number. Исправная hardlink во всех случаях
+совпала побайтно. Образы не изменились; mounts/data удалены. Runtime kernel
+старше закреплённого source reference; его сборка здесь не проверялась.
+
+Публичные ABI/CLI проверки покрывают partial directory tail, cycle, invalid
+name/count, missing/unique/ambiguous inode mapping, неизвестные свойства,
+последующее исправное извлечение, Close/reopen и ошибки callback. EN/RU UI
+проверяет принятие/отказ, root warning, честный результат copying, нормальную
+и компактную геометрию и новый запрос после закрытия. На macOS восемь focused
+suites прошли за 24,30 с. Начальный отказ при недоступных inode/directory
+metadata blocks и index bootstrap ещё не закрыт: эта итерация не доказывает
+полную устойчивость SquashFS к повреждениям.
+Те же восемь suites прошли на Linux и Windows, receipt
+`20261021T145404Z-57c0a1b5`. После форматирования изменённых C++ ranges
+локальные CLI/ABI suites повторены: PASS за 5,33 с; приложение собрано
+инкрементально. Cocoa EN/RU JSON проверяет предупреждение о непроверенном
+inode mapping; guests используют Qt offscreen. Pixel parity не заявляется.
+Native helper удалён и удаление синхронизировано на гостях. Полные/slow suites,
+установка и физические источники не использовались, build trees/cache сохранены.
+
 ## Недоступные UID/GID и fragments: ограниченное чтение, 2026-10-21
 
 Сопоставлены Linux `id.c:squashfs_get_id`, `fragment.c:squashfs_frag_lookup`

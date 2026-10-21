@@ -3878,6 +3878,26 @@ Are you sure you want to split archive into such volumes?</source>
             <translation>Фрагмент файла SquashFS недоступен. Доступно только начало файла.</translation>
         </message>
         <message>
+            <source>Some SquashFS directories could not be read completely. Files or names may be missing. Readable files remain accessible.</source>
+            <translation>Некоторые каталоги SquashFS прочитаны не полностью. Часть файлов или имён может отсутствовать. Доступные файлы можно копировать.</translation>
+        </message>
+        <message>
+            <source>The SquashFS directory could not be read completely.</source>
+            <translation>Каталог SquashFS прочитан не полностью.</translation>
+        </message>
+        <message>
+            <source>The SquashFS inode is unavailable. File data and metadata could not be read.</source>
+            <translation>Inode SquashFS недоступен. Данные и метаданные файла прочитать не удалось.</translation>
+        </message>
+        <message>
+            <source>Some SquashFS directory references are unavailable. Files recovered by inode number may be misidentified or outdated.</source>
+            <translation>Некоторые ссылки каталогов SquashFS недоступны. Файлы, найденные по номеру inode, могут быть неверно определены или устаревшими.</translation>
+        </message>
+        <message>
+            <source>The SquashFS inode-number mapping is unverified.</source>
+            <translation>Соответствие номера inode SquashFS не проверено.</translation>
+        </message>
+        <message>
             <source>The FAT directory could not be read completely.</source>
             <translation>Каталог FAT прочитан не полностью.</translation>
         </message>

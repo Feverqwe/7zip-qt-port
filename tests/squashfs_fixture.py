@@ -79,7 +79,9 @@ def volume(fault="", compressed=False, no_fragments=False, codec="zlib", xattrs=
     if xattrs:
         names.append("hardlink")
     directory = bytearray(struct.pack("<3I", len(names) - 1, 0, 1))
+    entry_offsets = {}
     for i in sorted(range(len(names)), key=lambda i: names[i].encode()):
+        entry_offsets[names[i]] = len(directory)
         name = names[i]
         name = name.encode()
         node = 0 if i == 3 else i
@@ -167,6 +169,14 @@ def volume(fault="", compressed=False, no_fragments=False, codec="zlib", xattrs=
         struct.pack_into("<H", image, inode_start + 2 + 4, 1)
     elif fault == "gid-index":
         struct.pack_into("<H", image, inode_start + 2 + 6, 1)
+    elif fault in ("directory-reference", "directory-unavailable", "directory-ambiguous"):
+        struct.pack_into("<H", image, dir_start + 2 + entry_offsets["alpha"], 0xffff)
+        if fault == "directory-unavailable":
+            struct.pack_into("<H", image, dir_start + 2 + entry_offsets["alpha"] + 2, 4)
+        elif fault == "directory-ambiguous":
+            struct.pack_into("<I", image, inode_start + 2 + offsets[1] + 12, 1)
+    elif fault == "directory-tail":
+        struct.pack_into("<H", image, dir_start + 2 + entry_offsets["данные 空"] + 6, 0xffff)
     elif fault == "id-metadata-zero":
         struct.pack_into("<H", image, ids_metadata, 0x8000)
     elif fault in ("fragment-metadata-zero", "metadata-combined"):

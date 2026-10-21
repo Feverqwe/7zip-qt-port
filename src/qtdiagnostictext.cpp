@@ -156,7 +156,20 @@ UString QtArchiveDiagnosticText(const UString &source) {
                           "affected files are available; copying them reports an error."),
         QT_TRANSLATE_NOOP(
             "SevenZipDiagnostics",
-            "The SquashFS file fragment is unavailable. Only the readable prefix is available.")};
+            "The SquashFS file fragment is unavailable. Only the readable prefix is available."),
+        QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                          "Some SquashFS directories could not be read completely. Files or names "
+                          "may be missing. Readable files remain accessible."),
+        QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                          "The SquashFS directory could not be read completely."),
+        QT_TRANSLATE_NOOP(
+            "SevenZipDiagnostics",
+            "The SquashFS inode is unavailable. File data and metadata could not be read."),
+        QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                          "Some SquashFS directory references are unavailable. Files recovered by "
+                          "inode number may be misidentified or outdated."),
+        QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                          "The SquashFS inode-number mapping is unverified.")};
     for (const char *warning : warnings)
         if (text == QString::fromLatin1(warning))
             return QtDiagnosticText(warning);

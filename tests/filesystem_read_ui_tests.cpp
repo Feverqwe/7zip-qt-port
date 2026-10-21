@@ -260,6 +260,29 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
         confirmAndCopy(language, accept, kind);
     }
 
+    void confirmsPartialSquashfsDirectory_data() {
+        QTest::addColumn<QString>("language");
+        QTest::addColumn<bool>("accept");
+        QTest::addColumn<QString>("kind");
+        for (const QString &language : {"en", "ru"})
+            for (bool accept : {false, true})
+                for (const QString &kind :
+                     {"squashfs-directory-tail", "squashfs-directory-reference",
+                      "squashfs-directory-unavailable"}) {
+                    if (!accept && kind != "squashfs-directory-tail")
+                        continue;
+                    QTest::newRow(
+                        qPrintable(language + '-' + kind + (accept ? "-accept" : "-cancel")))
+                        << language << accept << kind;
+                }
+    }
+    void confirmsPartialSquashfsDirectory() {
+        QFETCH(QString, language);
+        QFETCH(bool, accept);
+        QFETCH(QString, kind);
+        confirmAndCopy(language, accept, kind);
+    }
+
   private:
     void confirmAndCopy(const QString &language, bool accept, const QString &kind) {
         const bool ntfs = kind.startsWith("volume-") || kind.startsWith("reparse-") ||
@@ -274,7 +297,8 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
             kind == "squashfs-fragment-metadata-zero" || kind == "squashfs-metadata-combined";
         const bool fatDirectory = kind.startsWith("fat-directory-");
         const bool fatFile = kind.startsWith("fat-file-");
-        const bool partialFile = fatFile || squashFragment;
+        const bool copyDiagnostic =
+            fatFile || squashFragment || kind == "squashfs-directory-reference";
         const QString fatFolder = kind == "fat-directory-free32" ? "BROKEN" : "GOOD";
         SaveRegLang(UString(language == "en" ? L"-" : L"ru"),
                     qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
@@ -314,6 +338,8 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
                                             : QStringLiteral("HfsFixture/alpha");
             if (fatDirectory)
                 filename = fatFolder + (fatFolder == "BROKEN" ? "/PREFIX.TXT" : "/GOOD.TXT");
+            if (kind == "squashfs-directory-unavailable")
+                filename = "данные 空";
             if (ext) {
                 payload = QByteArray(data["file_size"].toInt(), '\0');
                 payload.replace(0, 4, "head");
@@ -458,10 +484,10 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
                 copyOptions.currentFolder = "HfsFixture";
             else if (fatDirectory)
                 copyOptions.currentFolder = fatFolder;
-            copyingIncomplete = partialFile;
+            copyingIncomplete = copyDiagnostic;
             window.extractTo(output, true, {}, copyOptions);
             copyingIncomplete = false;
-            QCOMPARE(incompleteCopyErrors, partialFile ? 1 : 0);
+            QCOMPARE(incompleteCopyErrors, copyDiagnostic ? 1 : 0);
             QVERIFY2(unexpectedErrors.isEmpty(), qPrintable(unexpectedErrors.join('\n')));
             QFile copied(output + '/' + filename);
             QVERIFY2(

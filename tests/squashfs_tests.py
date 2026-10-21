@@ -221,6 +221,40 @@ class SquashfsTests(unittest.TestCase):
             result = self.run_image(engine, volume("export-index-outside", export=True)[0], "l")
             self.assertNotEqual(result.returncode, 0)
 
+    def test_partial_directory_entries_preserve_readable_files(self):
+        for fault in ("directory-reference", "directory-unavailable", "directory-tail"):
+            data, files = volume(fault, xattrs=True)
+            with self.subTest(fault=fault):
+                listing = self.run_image("7z", data, "l")
+                self.assertEqual(listing.returncode, 0, listing.stderr.decode(errors="replace"))
+                self.assertIn(b"directories could not be read completely", listing.stdout)
+                result = self.run_image("7z", data, "x", "hardlink")
+                self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                self.assertEqual(result.stdout, files["hardlink"])
+                if fault == "directory-reference":
+                    missing = self.run_image("7z", data, "x", "alpha")
+                    self.assertNotEqual(missing.returncode, 0)
+                    self.assertEqual(missing.stdout, files["alpha"])
+                elif fault == "directory-unavailable":
+                    missing = self.run_image("7z", data, "x", "alpha")
+                    self.assertNotEqual(missing.returncode, 0)
+                    self.assertEqual(missing.stdout, b"")
+                rejected = self.run_image("7zz", data, "l")
+                self.assertNotEqual(rejected.returncode, 0)
+
+    def test_ambiguous_inode_numbers_do_not_merge_unrelated_files(self):
+        data, files = volume("directory-ambiguous", xattrs=True)
+        with tempfile.TemporaryDirectory(dir=self.runtime) as temporary:
+            root = Path(temporary)
+            image, output = root / "image.squashfs", root / "output"
+            image.write_bytes(data)
+            result = subprocess.run([str(self.runtime / ("7z" + SUFFIX)), "x", "-y", "-o" + str(output),
+                                     "--", str(image), "hardlink", "данные 空"], capture_output=True, timeout=10)
+            self.assertNotEqual(result.returncode, 0)
+            for name in ("hardlink", "данные 空"):
+                self.assertEqual((output / name).read_bytes(), files[name])
+            self.assertEqual(image.read_bytes(), data)
+
     def test_hardlink_identity_and_symlink_target_during_native_cli_extraction(self):
         data, files = volume(xattrs=True)
         with tempfile.TemporaryDirectory(dir=self.runtime) as temporary:

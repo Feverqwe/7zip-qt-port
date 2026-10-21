@@ -215,7 +215,8 @@ class SquashfsStreamTests final : public QObject {
         }
         QProcess generator;
         QStringList arguments{QString::fromUtf8(SEVENZIP_SQUASHFS_FIXTURE)};
-        arguments << (codec == "zlib" && !xattrs ? "--compressed" : "--codec=" + codec);
+        arguments << (codec == "zlib" && !xattrs && fault.isEmpty() ? "--compressed"
+                                                                    : "--codec=" + codec);
         if (xattrs)
             arguments << "--xattrs" << "--export";
         if (!fault.isEmpty())
@@ -261,6 +262,120 @@ class SquashfsStreamTests final : public QObject {
         QTest::addColumn<HRESULT>("failure");
         QTest::newRow("export-read-error") << HRESULT(E_FAIL);
         QTest::newRow("export-read-aborted") << HRESULT(E_ABORT);
+    }
+    void partialDirectoriesKeepKnownEntries_data() {
+        QTest::addColumn<QString>("fault");
+        for (const QString &fault :
+             {"directory-reference", "directory-unavailable", "directory-ambiguous",
+              "directory-tail", "cycle", "name-slash", "count-wrap"})
+            QTest::newRow(qPrintable(fault)) << fault;
+    }
+    void partialDirectoriesKeepKnownEntries() {
+        QFETCH(QString, fault);
+        loadFixture("zlib", true, fault);
+        CMyComPtr<IInStream> source = new Input(bytes_);
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
+        const UInt32 root = index("[ROOT]");
+        QVERIFY(root != UInt32(-1));
+        NWindows::NCOM::CPropVariant rootError;
+        QCOMPARE(archive_->GetProperty(root, kpidError, &rootError), S_OK);
+        QVERIFY(rootError.vt == VT_BSTR && rootError.bstrVal[0]);
+        CMyComPtr2<IArchiveExtractCallback, Extract> diagnostic;
+        diagnostic.SetFromCls(new Extract);
+        QCOMPARE(archive_->Extract(&root, 1, 1, diagnostic), S_OK);
+        QCOMPARE(diagnostic->result, Int32(NArchive::NExtract::NOperationResult::kDataError));
+        if (fault == "name-slash" || fault == "count-wrap") {
+            QCOMPARE(index("alpha"), UInt32(-1));
+            QCOMPARE(index("hardlink"), UInt32(-1));
+        } else {
+            if (fault == "directory-reference") {
+                const UInt32 recovered = index("alpha");
+                auto data = stream("alpha");
+                QVERIFY(data);
+                check(data, "alpha", 0, 8202);
+                NWindows::NCOM::CPropVariant error, identity;
+                QCOMPARE(archive_->GetProperty(recovered, kpidError, &error), S_OK);
+                QVERIFY(error.vt == VT_BSTR && error.bstrVal[0]);
+                QCOMPARE(archive_->GetProperty(recovered, kpidStreamId, &identity), S_OK);
+                QCOMPARE(identity.vt, VARTYPE(VT_EMPTY));
+                diagnostic->capture = true;
+                QCOMPARE(archive_->Extract(&recovered, 1, 0, diagnostic), S_OK);
+                QCOMPARE(diagnostic->result,
+                         Int32(NArchive::NExtract::NOperationResult::kDataError));
+                QCOMPARE(diagnostic->output->bytes,
+                         QByteArray::fromBase64(
+                             record_["files"].toObject()["alpha"].toString().toLatin1()));
+            }
+            if (fault == "directory-unavailable" || fault == "directory-ambiguous") {
+                const UInt32 missing = index("alpha");
+                QVERIFY(missing != UInt32(-1));
+                for (PROPID property :
+                     {kpidSize, kpidPackSize, kpidMTime, kpidUserId, kpidINode, kpidPosixAttrib}) {
+                    NWindows::NCOM::CPropVariant value;
+                    QCOMPARE(archive_->GetProperty(missing, property, &value), S_OK);
+                    QCOMPARE(value.vt, VARTYPE(VT_EMPTY));
+                }
+                CMyComPtr<IInArchiveGetStream> streams;
+                QCOMPARE(archive_->QueryInterface(IID_IInArchiveGetStream,
+                                                  reinterpret_cast<void **>(&streams)),
+                         S_OK);
+                CMyComPtr<ISequentialInStream> data;
+                QCOMPARE(streams->GetStream(missing, &data), S_FALSE);
+                QVERIFY(!data);
+                const UInt32 items[] = {missing, index("hardlink")};
+                diagnostic->capture = true;
+                QCOMPARE(archive_->Extract(items, 2, 0, diagnostic), S_OK);
+                QCOMPARE(diagnostic->result,
+                         Int32(fault == "directory-ambiguous"
+                                   ? NArchive::NExtract::NOperationResult::kDataError
+                                   : NArchive::NExtract::NOperationResult::kOK));
+                QCOMPARE(diagnostic->output->bytes,
+                         QByteArray::fromBase64(
+                             record_["files"].toObject()["hardlink"].toString().toLatin1()));
+            }
+            if (fault == "directory-ambiguous") {
+                for (const QString &name : {QString("hardlink"), QString("данные 空")}) {
+                    NWindows::NCOM::CPropVariant identity;
+                    QCOMPARE(archive_->GetProperty(index(name), kpidStreamId, &identity), S_OK);
+                    QCOMPARE(identity.vt, VARTYPE(VT_EMPTY));
+                }
+            }
+            auto healthy = stream("hardlink");
+            QVERIFY(healthy);
+            check(healthy, "hardlink", 0, 8202);
+            if (fault == "directory-tail")
+                QCOMPARE(index("данные 空"), UInt32(-1));
+            else {
+                auto unicode = stream("данные 空");
+                QVERIFY(unicode);
+                check(unicode, "данные 空", 0, 16395);
+            }
+        }
+        QCOMPARE(archive_->Close(), S_OK);
+        loadFixture("zlib", true);
+        CMyComPtr<IInStream> healthy = new Input(bytes_);
+        QCOMPARE(archive_->Open(healthy, nullptr, nullptr), S_OK);
+        QCOMPARE(index("[ROOT]"), UInt32(-1));
+        QVERIFY(stream("alpha"));
+    }
+    void directoryCallbackFailureIsNotPartialSuccess() {
+        loadFixture("zlib", false, "directory-tail");
+        const auto directory = qFromLittleEndian<quint64>(bytes_.constData() + 72);
+        CMyComPtr2<IInStream, Input> source;
+        source.SetFromCls(new Input(bytes_));
+        source->notifyAt = directory;
+        CMyComPtr2<IArchiveOpenCallback, MetadataOpen> callback;
+        callback.SetFromCls(new MetadataOpen);
+        callback->source = source.ClsPtr();
+        for (HRESULT result : {E_ABORT, E_OUTOFMEMORY, E_FAIL, S_FALSE}) {
+            source->notified = false;
+            callback->completionResult = result;
+            QCOMPARE(source->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
+            QCOMPARE(archive_->Open(source, nullptr, callback), result);
+            UInt32 count = 99;
+            QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+            QCOMPARE(count, 0u);
+        }
     }
     void unavailableTablesKeepReadableData_data() {
         QTest::addColumn<QString>("fault");
