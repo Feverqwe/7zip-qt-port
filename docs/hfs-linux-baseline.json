@@ -83,7 +83,9 @@
     "fs/hfsplus/xattr.c",
     "fs/namei.c",
     "include/linux/kdev_t.h",
-    "include/linux/namei.h"
+    "include/linux/namei.h",
+    "fs/hfsplus/wrapper.c",
+    "fs/hfsplus/super.c"
   ],
   "exact": [
     "include/linux/hfs_common.h",

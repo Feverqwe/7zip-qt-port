@@ -1777,6 +1777,15 @@ API_FUNC_static_IsArc IsArc_HFS(const Byte *p, size_t size) {
     if (size < kHfsHeaderSize)
         return k_IsArc_Res_NEED_MORE;
     p += kHeaderPadSize;
+#ifdef SEVENZIP_LINUX_HFS
+    const UInt16 sig = GetUi16(p);
+    if (sig == k_Signature_LE16_HFS_BD)
+        return k_IsArc_Res_YES;
+    return ((sig == k_Signature_LE16_HPLUS || sig == k_Signature_LE16_HFSX) &&
+            sevenzip_hfsplus_volume_version(Get16(p + 2)))
+               ? k_IsArc_Res_YES
+               : k_IsArc_Res_NO;
+#else
     const UInt32 sig = GetUi32(p);
     if (sig != k_Signature_LE32_HFSP_VER4)
         if (sig != k_Signature_LE32_HFSX_VER5)
@@ -1788,6 +1797,7 @@ API_FUNC_static_IsArc IsArc_HFS(const Byte *p, size_t size) {
             )
                 return k_IsArc_Res_NO;
     return k_IsArc_Res_YES;
+#endif
 }
 }
 #endif
@@ -1800,7 +1810,11 @@ HRESULT CDatabase::Open2(IInStream *inStream, IArchiveOpenCallback *progress) {
     CVolHeader &h = Header;
     UInt64 embeddedSize = 0;
 
+#ifdef SEVENZIP_LINUX_HFS
+    while (GetUi16a(p) == k_Signature_LE16_HFS_BD) {
+#else
     if (GetUi16a(p) == k_Signature_LE16_HFS_BD) {
+#endif
         /*
         It's header for old HFS format.
         We don't support old HFS format, but we support
@@ -1813,6 +1827,8 @@ HRESULT CDatabase::Open2(IInStream *inStream, IArchiveOpenCallback *progress) {
         if (GetUi16a(p + 0x7c) != k_Signature_LE16_HPLUS &&
             GetUi16a(p + 0x7c) != k_Signature_LE16_HFSX) {
 #ifdef SEVENZIP_LINUX_HFS
+            if (SpecOffset)
+                return S_FALSE;
             return OpenClassic(inStream, progress);
 #else
             return S_FALSE;
@@ -1837,7 +1853,14 @@ HRESULT CDatabase::Open2(IInStream *inStream, IArchiveOpenCallback *progress) {
         */
 
         // v24.09: blockSize in old HFS image can be non-power of 2.
+#ifdef SEVENZIP_LINUX_HFS
+        hfsplus_wd wrapper;
+        if (!hfsplus_read_mdb(p, &wrapper))
+            return S_FALSE;
+        const UInt32 blockSize = wrapper.ablk_size;
+#else
         const UInt32 blockSize = Get32a(p + 0x14); // drAlBlkSiz
+#endif
         if (blockSize == 0 || (blockSize & 0x1ff))
             return S_FALSE;
         const unsigned numBlocks = Get16a(p + 0x12); // drNmAlBlks
@@ -1851,12 +1874,42 @@ HRESULT CDatabase::Open2(IInStream *inStream, IArchiveOpenCallback *progress) {
         }
         */
         // PhySize2 = ((UInt64)numBlocks + 2) * blockSize;
+#ifdef SEVENZIP_LINUX_HFS
+        const unsigned sector_of_FirstBlock = wrapper.ablk_start;
+        const UInt32 startBlock = wrapper.embed_start;
+        const UInt32 blockCount = wrapper.embed_count;
+#else
         const unsigned sector_of_FirstBlock =
             Get16a(p + 0x1c); // drAlBlSt : first allocation block in volume
         const UInt32 startBlock = Get16a(p + 0x7c + 2);
         const UInt32 blockCount = Get16a(p + 0x7c + 4);
+#endif
         if (startBlock > numBlocks || blockCount == 0 || blockCount > numBlocks - startBlock)
             return S_FALSE;
+#ifdef SEVENZIP_LINUX_HFS
+        const UInt64 nextSize = (UInt64)blockCount * blockSize;
+        const UInt64 nextOffset =
+            ((UInt64)sector_of_FirstBlock << 9) + (UInt64)startBlock * blockSize;
+        RINOK(InStream_GetSize_SeekToEnd(inStream, ArcFileSize))
+        if (!nextOffset || nextSize < kHfsHeaderSize || SpecOffset > ArcFileSize ||
+            nextOffset > ArcFileSize - SpecOffset ||
+            nextSize > ArcFileSize - SpecOffset - nextOffset ||
+            (embeddedSize && (nextOffset > embeddedSize || nextSize > embeddedSize - nextOffset)))
+            return S_FALSE;
+        const UInt64 wrapperSize =
+            ((UInt64)sector_of_FirstBlock << 9) + (UInt64)numBlocks * blockSize;
+        if (wrapperSize > ArcFileSize - SpecOffset || (embeddedSize && wrapperSize > embeddedSize))
+            return S_FALSE;
+        const UInt64 wrapperEnd = SpecOffset + wrapperSize;
+        PhySize2 = MyMax(PhySize2, wrapperEnd);
+        const UInt32 tail = MyMax(UInt32(1 << 10), blockSize);
+        if (ArcFileSize > wrapperEnd && ArcFileSize - wrapperEnd <= tail)
+            PhySize2 = ArcFileSize;
+        SpecOffset += nextOffset;
+        embeddedSize = nextSize;
+        if (progress)
+            RINOK(progress->SetCompleted(NULL, &SpecOffset))
+#else
         embeddedSize = (UInt64)blockCount * blockSize;
         {
             const UInt32 temp = (UInt32)sector_of_FirstBlock << 9; // it's 32-bit here
@@ -1880,12 +1933,20 @@ HRESULT CDatabase::Open2(IInStream *inStream, IArchiveOpenCallback *progress) {
             // Maybe we should scan for footer MDB data (in last 1 KiB)?
             PhySize2 = ArcFileSize;
         }
+#endif
         RINOK(InStream_SeekSet(inStream, SpecOffset))
         RINOK(ReadStream_FALSE(inStream, buf32, kHfsHeaderSize))
     }
 
     // HFS+ / HFSX volume header (starting from offset==1024):
     {
+#ifdef SEVENZIP_LINUX_HFS
+        const UInt16 sig = GetUi16a(p);
+        if ((sig != k_Signature_LE16_HPLUS && sig != k_Signature_LE16_HFSX) ||
+            !sevenzip_hfsplus_volume_version(Get16a(p + 2)))
+            return S_FALSE;
+        h.Is_Hsfx_ver5 = sig == k_Signature_LE16_HFSX;
+#else
         // v24.09: we use strict condition test for pair signature(Version):
         // H+(4), HX(5):
         const UInt32 sig = GetUi32a(p);
@@ -1896,6 +1957,7 @@ HRESULT CDatabase::Open2(IInStream *inStream, IArchiveOpenCallback *progress) {
                 return S_FALSE;
             h.Is_Hsfx_ver5 = true;
         }
+#endif
     }
     {
         const UInt32 blockSize = Get32a(p + 0x28);
@@ -1931,6 +1993,18 @@ HRESULT CDatabase::Open2(IInStream *inStream, IArchiveOpenCallback *progress) {
     if (h.NumBlocks == 0 || h.NumFreeBlocks > h.NumBlocks || SpecOffset > ArcFileSize ||
         volumeSize > ArcFileSize - SpecOffset || (embeddedSize && volumeSize > embeddedSize))
         return S_FALSE;
+#ifdef SEVENZIP_LINUX_HFS
+    // hfsplus_read_wrapper checks the signature of the secondary header at
+    // the end of its selected volume. A bare archive supplies its own extent.
+    const UInt64 selectedSize = embeddedSize ? embeddedSize : volumeSize;
+    if (selectedSize < kHfsHeaderSize)
+        return S_FALSE;
+    UInt32 backupHeader[512 / sizeof(UInt32)];
+    RINOK(InStream_SeekSet(inStream, SpecOffset + selectedSize - 1024))
+    RINOK(ReadStream_FALSE(inStream, backupHeader, sizeof(backupHeader)))
+    if (GetUi16((const Byte *)backupHeader) != GetUi16a(p))
+        return S_FALSE;
+#endif
     /*
     h.NextCalatlogNodeID = Get32(p + 0x40);
     h.WriteCount = Get32(p + 0x44);
@@ -3015,7 +3089,11 @@ Z7_COM7F_IMF(CHandler::GetStream(UInt32 index, ISequentialInStream **stream)) {
 }
 
 #if defined(SEVENZIP_LINUX_HFS) || !defined(Z7_EXTERNAL_CODECS)
+#ifdef SEVENZIP_LINUX_HFS
+static const Byte k_Signature[] = {2, 'B', 'D', 2, 'H', '+', 2, 'H', 'X'};
+#else
 static const Byte k_Signature[] = {2, 'B', 'D', 4, 'H', '+', 0, 4, 4, 'H', 'X', 0, 5};
+#endif
 REGISTER_ARC_I("HFS", "hfs hfsx", NULL, 0xE3, k_Signature, kHeaderPadSize,
                NArcInfoFlags::kMultiSignature, IsArc_HFS)
 #endif

@@ -297,6 +297,75 @@ Native hfsplus `6.8.0-147-generic` подтвердил все шесть точ
 builds и compiler caches сохранены; full/slow suites, UI, physical devices и
 новый install runtime не проверялись. Остальной HFS read audit остаётся открытым.
 
+## Volume discovery, wrappers и headers — 2026-10-21
+
+До изменений сравнены полные `wrapper.c:hfsplus_read_mdb`,
+`hfsplus_read_wrapper` и его transport/session callers, version/read-only
+ветви `super.c:hfsplus_fill_super`, raw/shared types и SDK recognition/Open,
+physical-size, fork-stream и extraction consumers. Прежний SDK путь обрабатывал
+один wrapper, не проверял SLOCK/SPARED и secondary header и требовал пары
+H+(4)/HX(5), хотя Linux допускает версии 4–5 для обеих сигнатур.
+
+Оригинальное тело `hfsplus_read_mdb` передано без изменения в C
+`src/fs/hfsplus/wrapper.c`; signature принимает byte pointer вместо GNU void
+arithmetic, а static linkage снята для узкого C boundary. Endian/unaligned
+services заменены portable adapters; constants и packed disk types остаются
+authoritative shared Linux header. Отдельный `src/fs/hfsplus/super.c` сохраняет
+version guard из `hfsplus_fill_super` с теми же constants и failure branch;
+VFS setup/cleanup не копируются. Все 58 baseline hashes и полный переданный
+MDB body повторно сверены. Новые C dependencies входят только в GPL-модуль.
+
+SDK transport повторяет исходный Linux reread до финального HFS+/HFSX header,
+накапливает относительное начало каждого embedded volume и сохраняет внешнюю
+physical-size projection. Существующие full-fork readers используют итоговый
+offset. Archive bounds дополнительно требуют прогресса offset, полного header,
+попадания вложенного extent/allocation area в источник и enclosing extent;
+нулевой шаг не запускает бесконечный перечитанный wrapper. Progress callback
+проверяется между уровнями, ошибки/отмена идут через прежний Open cleanup.
+Plain classic HFS сохраняет свой отдельный reader у начала выбранного образа.
+
+Secondary signature проверяется после discovery, как в Linux; версия secondary
+не подменяет primary version и не является условием отказа. Для wrapper выбирается
+его объявленный extent; для bare archive — объявленный HFS volume extent.
+Последнее сохраняет archive images с данными за концом файловой системы и
+отличается от размера целого block device при VFS mount. Поддерживаемая primary
+version проверяется C guard, HFSX определяется сигнатурой. Dynamic registration
+и IsArc используют те же правила, поэтому H+(5)/HX(4) доступны и автоматическому
+открытию. Standalone сохраняет прежние SDK пары/одиночный wrapper; session,
+partition discovery, mount/write services не переносятся в этот adapter.
+
+Positive fixtures покрывают nested HFS+/HFSX, 1536-byte wrapper allocation blocks,
+изменённую secondary version и обе ранее отвергавшиеся пары primary signature/
+version. Negative controls проверяют SLOCK/SPARED, secondary signature, primary
+версии вне диапазона, нулевой шаг и обрезанный enclosing extent. ABI проверяет
+Open cleanup/cancellation и retained independent forks, CLI — точные bytes.
+Штатный `-tHFS:s0` отключает поиск внутреннего архива для этих controls:
+успешное восстановление inner HFS+ не выдаётся за принятие wrapper. Источник
+параметра сверён в SDK `OpenArchive.cpp:ParseTypeParams`/MaxStartOffset consumer.
+ArchiveBackend отдельно проверяет обычное automatic listing/extraction
+nested volume и H+(5)/HX(4), включая Unicode/alternate streams и source retention.
+
+Финальные `hfs`/`hfs_stream` PASS на macOS arm64/Qt 6.12 (26,43 с), Linux x64
+(28,70 с) и Windows x64/MSVC/Qt 6.12 (44,41 с), receipt
+`20261021T023218Z-75ab163e`. Оба SDK runtime подготовлены с общим исходником;
+GPL C остаётся только в format-модуле. Ранний Windows batch до последних
+header/version изменений получил 10-second timeout в прежнем negative fork
+control; причина не установлена. Финальный batch прошёл с прежними timeout
+и compiler-cache настройками.
+
+Native hfsplus `6.8.0-147-generic` подтвердил одиннадцать read-only controls,
+receipt `20261021T023428Z-a8c1451a`: шесть вариантов прочитали точные bytes
+двух обычных файлов, пять неверных flags/signature/version отклонены mount.
+Images остались неизменными; mounts, temporary fixtures и review helper
+удалены. Нулевой шаг и обрезанный parent extent проверены только через archive
+ABI/CLI; циклический reread не передавался старому kernel. Версия running kernel
+дополняет pinned source comparison, а не заменяет его.
+
+Это selected read-discovery scope, не перенос всего `hfsplus_fill_super` или
+завершение общего HFS read audit. Incremental builds и compiler caches сохранены;
+full/slow suites, UI appearance, physical devices и новый installed runtime
+не входят в эту итерацию.
+
 ## Проверки и оставшийся scope
 
 Локальный fixture создан Apple `hdiutil` из сгенерированных данных;

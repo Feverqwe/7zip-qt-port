@@ -8,6 +8,9 @@ import zlib
 
 
 def volume(kind="base"):
+    if kind.startswith("wrapper-"):
+        from hfs_wrapper_fixture import volume as wrapper_volume
+        return wrapper_volume(kind)
     if kind.startswith("classic"):
         from hfs_classic_fixture import volume as classic_volume
         return classic_volume(kind)

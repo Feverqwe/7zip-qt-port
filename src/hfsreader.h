@@ -11,6 +11,12 @@ int sevenzip_hfsplus_name(const void *big_endian, unsigned length, int xattr,
 int sevenzip_hfsplus_compare(const void *name_a, const void *name_b, int binary);
 int sevenzip_hfsplus_private_name(const void *name, int binary);
 int64_t sevenzip_hfsplus_time(uint32_t timestamp);
+struct hfsplus_wd {
+    uint32_t ablk_size;
+    uint16_t ablk_start, embed_start, embed_count;
+};
+int hfsplus_read_mdb(const unsigned char *, struct hfsplus_wd *);
+int sevenzip_hfsplus_volume_version(uint16_t);
 struct sevenzip_hfsplus_permissions {
     uint32_t owner, group;
     uint16_t mode;

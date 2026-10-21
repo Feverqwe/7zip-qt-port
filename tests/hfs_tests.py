@@ -24,12 +24,12 @@ class HfsTests(unittest.TestCase):
         (cls.runtime / "Formats").mkdir()
         shutil.copy2(MODULE, cls.runtime / "Formats" / MODULE.name)
 
-    def run_image(self, engine, data, name=None, listing=False):
+    def run_image(self, engine, data, name=None, listing=False, start_only=False):
         with tempfile.TemporaryDirectory(prefix="sevenzip-hfs-") as temporary:
             path = Path(temporary) / "образ 空.hfs"
             path.write_bytes(data)
             args = [str(self.runtime / (engine + SUFFIX)), "l" if listing else "x" if name else "t",
-                    "-tHFS", "-sccUTF-8", "-bsp0"]
+                    "-tHFS:s0" if start_only else "-tHFS", "-sccUTF-8", "-bsp0"]
             if listing:
                 args += ["-slt", "-ba"]
             if name:
@@ -88,6 +88,23 @@ class HfsTests(unittest.TestCase):
                         result = self.run_image(engine, image, name)
                         self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
                         self.assertEqual(result.stdout, expected)
+
+    def test_linux_embedded_wrappers(self):
+        for kind in ("wrapper-nested", "wrapper-nested-hfsx", "wrapper-non-power",
+                     "wrapper-backup-version", "wrapper-version-hplus5", "wrapper-version-hfsx4"):
+            image, files = volume(kind)
+            for name, expected in files.items():
+                with self.subTest(kind=kind, name=name):
+                    result = self.run_image("7z", image, name, start_only=True)
+                    self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                    self.assertEqual(result.stdout, expected)
+        for kind in ("wrapper-no-slock", "wrapper-no-spared", "wrapper-zero-step",
+                     "wrapper-nested-short", "wrapper-backup-signature",
+                     "wrapper-version-old", "wrapper-version-new"):
+            with self.subTest(kind=kind):
+                result = self.run_image("7z", volume(kind)[0], "HfsFixture/alpha", start_only=True)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(result.stdout, b"")
 
     def test_classic_hfs_bytes(self):
         for kind in ("classic", "classic-overflow", "classic-catalog-overflow",

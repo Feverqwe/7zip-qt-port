@@ -189,6 +189,10 @@ class HfsStreamTests final : public QObject {
         QTest::newRow("hardlinks") << QString("modern");
         QTest::newRow("inline-reserved") << QString("xattr-reserved");
         QTest::newRow("inline-start") << QString("xattr-start");
+        QTest::newRow("nested-wrapper") << QString("wrapper-nested");
+        QTest::newRow("backup-version") << QString("wrapper-backup-version");
+        QTest::newRow("hplus5") << QString("wrapper-version-hplus5");
+        QTest::newRow("hfsx4") << QString("wrapper-version-hfsx4");
         for (const char *kind : {"classic", "classic-overflow", "classic-catalog-overflow",
                                  "classic-non-power-of-two"})
             QTest::newRow(kind) << QString::fromLatin1(kind);
@@ -485,13 +489,32 @@ class HfsStreamTests final : public QObject {
         QCOMPARE(archive_->Close(), S_OK);
     }
     void failedOpenClearsCatalog() {
-        for (const char *kind :
-             {"leaf-height", "metadata-short-map", "parent-cycle", "wrapped-short",
-              "modern-no-root", "modern-invalid-file-mode", "modern-invalid-dir-mode",
-              "modern-thread-parent", "modern-thread-name", "modern-thread-type",
-              "modern-thread-length", "classic-bad-fork", "classic-short-fork", "classic-bad-cnid",
-              "classic-thread-parent", "classic-leaf-cycle", "classic-node-offset",
-              "classic-truncated", "classic-missing-overflow"}) {
+        for (const char *kind : {"wrapper-no-slock",
+                                 "wrapper-no-spared",
+                                 "wrapper-zero-step",
+                                 "wrapper-nested-short",
+                                 "wrapper-backup-signature",
+                                 "wrapper-version-old",
+                                 "wrapper-version-new",
+                                 "leaf-height",
+                                 "metadata-short-map",
+                                 "parent-cycle",
+                                 "wrapped-short",
+                                 "modern-no-root",
+                                 "modern-invalid-file-mode",
+                                 "modern-invalid-dir-mode",
+                                 "modern-thread-parent",
+                                 "modern-thread-name",
+                                 "modern-thread-type",
+                                 "modern-thread-length",
+                                 "classic-bad-fork",
+                                 "classic-short-fork",
+                                 "classic-bad-cnid",
+                                 "classic-thread-parent",
+                                 "classic-leaf-cycle",
+                                 "classic-node-offset",
+                                 "classic-truncated",
+                                 "classic-missing-overflow"}) {
             loadFixture(kind);
             CMyComPtr2<IInStream, Input> input;
             input.SetFromCls(new Input(bytes_));
@@ -504,7 +527,7 @@ class HfsStreamTests final : public QObject {
         CMyComPtr2<IArchiveOpenCallback, CancelOpen> callback;
         callback.SetFromCls(new CancelOpen);
         UInt32 count = 99;
-        for (const char *kind : {"base", "classic", "classic-overflow"}) {
+        for (const char *kind : {"base", "wrapper-nested", "classic", "classic-overflow"}) {
             loadFixture(kind);
             input.SetFromCls(new Input(bytes_));
             QCOMPARE(archive_->Open(input, nullptr, callback), E_ABORT);
@@ -525,7 +548,8 @@ class HfsStreamTests final : public QObject {
         for (const char *kind :
              {"preallocated", "overflow-leaves", "extent-over-volume", "xattr-padding", "modern",
               "modern-nul", "modern-zlib", "modern-lzvn", "modern-permissions", "modern-times",
-              "modern-symlink-nul", "classic", "classic-overflow", "classic-catalog-overflow",
+              "modern-symlink-nul", "wrapper-nested", "wrapper-version-hplus5",
+              "wrapper-version-hfsx4", "classic", "classic-overflow", "classic-catalog-overflow",
               "classic-non-power-of-two"})
             QTest::newRow(kind) << QString::fromLatin1(kind);
     }
