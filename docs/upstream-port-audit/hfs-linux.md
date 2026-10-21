@@ -6,7 +6,8 @@ Unicode read conversion и разрешение hardlinks через backing ino
 Актуализированы permission defaults, catalog/thread validation и FinderInfo.
 Подключены Linux timestamp rollover и metadata специальных inode.
 Добавлено чтение plain classic HFS через Linux C read paths в том же GPL-модуле.
-Полная актуализация семейства HFS ещё не завершена.
+Read-side source scope семейства HFS сверён по pinned Linux; границы archive/
+platform adaptation и runtime evidence отделены от полноты переноса исходников.
 
 ## Источники и source comparison
 
@@ -449,9 +450,60 @@ classic variants, включая data/resource/catalog overflow и 1536-byte blo
 установленные GPL/LGPL/BSD notices проверены. Staging удалён после проверки.
 Full/slow suites, UI и физические устройства в эту итерацию не входили.
 
-Остаются дальнейшее сравнение read branches и системных metadata services;
-plain classic HFS теперь читается модулем приложения.
+Plain classic HFS читается модулем приложения. Итоговая сверка read scope и
+системных metadata services приведена ниже.
 Apple decmpfs сохраняется как расширение 7-Zip, которое Linux hfsplus не
 декодирует. Fork/extent xattrs также не читаются Linux xattr API; отдельное
 отсутствие kernel read feature из этого не выводится. Запись, journal recovery,
 mount services и проверка всех allocation/index maps не заменяют read-сценарии.
+
+## Итоговая сверка read-side source scope — 2026-10-21
+
+Полные inventory units `fs/hfs`, `fs/hfsplus` и shared dependencies из manifest
+сопоставлены с текущим reader и его consumers. Финальный проход проверил
+bootstrap B-tree/inode, catalog threads и readdir/lookup, extent/cache mapping,
+attribute lookup/list/get, resource-fork roles, inode/fileattr projection и
+оставшиеся super/ioctl/options ветви. Все 58 pinned source/license hashes
+повторно сверены. Source read-scope review HFS/HFS+/HFSX закрыт; это не
+завершение общего goal и не заявление о переносе всех функций kernel driver.
+
+Следующая сверка дополняет существующие разделы этого аудита, не создавая
+отдельного inventory или очереди работ:
+
+| Reference units | Текущий read consumer и граница |
+| --- | --- |
+| `hfs/mdb`, `btree`, `bnode`, `bfind`, `brec`, `catalog`, `extent`, `inode` | Переданные C read paths classic HFS: metadata bootstrap/search, data/resource/catalog overflow, record/CNID/thread validation, fork mapping и inode projection. Системные inode/folio/lock services заменены byte transport и owned state. |
+| `hfsplus/wrapper`, `super` | Linux MDB/version guards и повторный discovery подключены к SDK transport; secondary signature, enclosing extents и source bounds проверены. Read-only mount defaults/flags не превращаются в write services. Partition/session discovery принадлежит transport/partition handlers. |
+| `hfsplus/btree`, `bnode`, `brec`, `bfind` | Сверены bootstrap/header/node/key/record branches. SDK сохраняет authoritative eager leaf enumeration; Linux catalog record validator подключён отдельно. Полный VFS index search и node/map allocator не добавляются как неиспользуемые второй reader или fsck. |
+| `hfsplus/catalog`, `dir`, `inode` | Подключены raw-name comparators, hidden-directory/hardlink lookup, bounded thread/record checks, permissions/links/special inode, dates и symlink target. Readdir limits/link counts/inode IDs, создаваемые VFS, не выдаются за отдельные disk records. |
+| `hfsplus/extents` | Read mapping и cache consumers сверены с исходным SDK fork/overflow reader. Обе fork роли используют один owned extent stream; нет отдельного resource parser. Сам extent-tree не получает overflow bootstrap, который Linux также отвергает для этого inode. Allocation/truncate/writeback omitted. |
+| `hfsplus/attributes`, `xattr`, `xattr_user`, `xattr_trusted`, `xattr_security` | Binary key/lookup/list consumers сверены с indexed archive attributes. Inline values и catalog FinderInfo читают Linux C bodies; namespace wrappers не добавляют иной value decoder. Fork/extent records не поддерживаются самим Linux xattr API; сохранённые SDK extensions отмечены выше. LSM/init-security и set/remove paths не читают дополнительные disk values. |
+| `hfsplus/unicode`, `tables`; `hfs/string`, `trans` | Переданы оригинальные read converters/comparators и таблицы. NLS/mount charset, inverse lookup encoding и dentry hashing остаются platform boundary; UTF-16 archive representation и classic default-byte view описаны выше. |
+| Остальные `bitmap`, `super`, `sysdep`, `part_tbl`, `ioctl`, `options`, headers/Kconfig/Makefile | Проверены consumers и определения. Allocator bitmap/mutation, caches/locks, mount credentials/timezone/charset, block-device/session/partition selection, blessing, sync/NFS/inode publication и build configuration не являются отсутствующими archive disk readers. Stored BSD flags, classic lock bit и owners уже представлены metadata properties. |
+| Shared `hfs_common`, `kdev_t`, `namei`, delayed-call/error-pointer units | Disk layouts, raw device numbers, timestamp rollover и original page-link termination подключены к своим C/SDK consumers. Page-cache/RCU/highmem и native credential enforcement не эмулируются. |
+
+В этой сверке не осталось дополнительной неподключённой disk read feature,
+необходимой read-only archive interface. Структура оригинального SDK reader
+сохранена; Linux C добавлен там, где требовались отсутствующие decoding branches.
+Catalog enumeration вместо pathname lookup, indexed selection вместо dentry
+services и alternate streams вместо xattr syscalls — явно заданные interface
+adaptations. Читаемые metadata/данные проходят прежние bounds/error/cancellation
+paths; borrowed source comparison и runtime acceptance остаются разными
+свидетельствами.
+
+Границы не скрываются этим статусом: archive reader проверяет полный доступный
+mapping и catalog заранее, отклоняет неоднозначные CNID/parent cycles и может
+сообщать headers error при несогласованных counters. Linux обращается к части
+этих данных лениво. Это не обещание одинакового forensic recovery для любого
+повреждённого дерева. Неиспользуемые allocation/index maps не выдаются за полную
+integrity verification. Apple decmpfs и дополнительные SDK attribute/fork
+расширения не заявляются как функции Linux.
+
+Текущие focused ABI/CLI/ArchiveBackend сценарии проверены на macOS, Linux и
+Windows; native read-only evidence и receipts приведены у соответствующих
+изменений. Тесты не доказывают отсутствия всех source omissions сами по себе.
+Native reference работает на более старом kernel; другие PAGE_SIZE configurations,
+все реальные тома/physical devices, UI appearance, full/slow suites и новый
+installed-package прогон не заявляются. Новая итерация меняет только audit/status:
+достаточен `git diff --check`, ранее проверенные source/build outputs и compiler
+caches сохранены.

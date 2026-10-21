@@ -48,7 +48,7 @@ Linux определяет корректность интерпретации �
 | FAT12/16/32 | `fs/fat` | Boot geometry, FAT и длинные имена, цепочки и извлечение. |
 | ext2/3/4 | `fs/ext2`, `fs/ext4` | Superblock/features, inode, directory, extents/indirect/inline data и sparse reads. |
 | NTFS | `fs/ntfs3` | Boot/MFT, attributes/runlists, directories, sparse/compressed file reads. |
-| HFS/HFS+ | `fs/hfs`, `fs/hfsplus` | Volume/B-tree, extents, имена, data/resource forks. |
+| HFS/HFS+ | `fs/hfs`, `fs/hfsplus` | [Read-side source audit закрыт](hfs-linux.md#итоговая-сверка-read-side-source-scope--2026-10-21): volume/B-tree, extents, имена, metadata и data/resource forks; archive/platform и runtime границы записаны отдельно. |
 | cramfs, SquashFS | `fs/cramfs`, `fs/squashfs` | Metadata, directories, blocks/fragments, decompressor boundaries. |
 | ISO9660, UDF | `fs/isofs`, `fs/udf` | Descriptors, names/extensions, extents, sparse и embedded data. |
 | EROFS (новый модуль) | `fs/erofs` | Сначала полный source comparison read path и зависимостей, затем C-перенос, 7-Zip ABI, deployment и end-to-end чтение. |
@@ -343,7 +343,9 @@ Linux inode projection также передаёт timestamp rollover и special
 overflow forks, имена, lock/default metadata и type/creator streams.
 Inline xattr values читает Linux C path с его 16-битной длиной и пределом размера;
 reserved bytes и ненулевой startBlock не скрывают читаемые Linux attributes.
-Дальнейший metadata/read audit остаётся в scope актуализации.
+Итоговая source-сверка read-side scope закрыта с явными archive/platform
+adaptations; она не заявляет полного переноса kernel driver или завершения
+остальных форматов общей задачи.
 
 ### NTFS: classic data reads и LZNT1
 
