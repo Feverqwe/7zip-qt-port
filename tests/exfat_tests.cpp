@@ -196,6 +196,69 @@ class ExfatTests final : public QObject {
         const auto utc = QDateTime(QDate(2026, 10, 17), QTime(9, 34, 57, 230), QTimeZone::UTC);
         QCOMPARE(qint64(ticks / 10000) - 11644473600000LL, utc.toMSecsSinceEpoch());
     }
+    void volumeAllocation_data() {
+        QTest::addColumn<int>("layout");
+        QTest::addColumn<quint64>("freeClusters");
+        QTest::newRow("exfat") << 0 << quint64(119);
+        QTest::newRow("sector4096") << 1 << quint64(119);
+        QTest::newRow("texfat-first") << 2 << quint64(117);
+        QTest::newRow("texfat-second") << 3 << quint64(117);
+        QTest::newRow("fragmented-bitmap-first") << 4 << quint64(7666);
+        QTest::newRow("fragmented-bitmap-second") << 5 << quint64(7666);
+        QTest::newRow("partial-word-padding") << 6 << quint64(132);
+        QTest::newRow("partial-word-last-cluster") << 7 << quint64(131);
+        QTest::newRow("multi-sector-clusters") << 8 << quint64(119);
+    }
+    void volumeAllocation() {
+        QFETCH(int, layout);
+        QFETCH(quint64, freeClusters);
+        ExfatFixture fixture(layout == 1 ? 4096 : 512);
+        if (layout >= 2 && layout <= 5)
+            fixture = TexfatFixture((layout - 2) % 2, 512, layout >= 4);
+        if (layout == 6 || layout == 7) {
+            // 397 clusters leave a partial final bitmap word. Bits beyond the
+            // heap deliberately look allocated and must not reduce free space.
+            fixture.set32(92, 397);
+            fixture.set64(fixture.rootOffset(0) + 24, 50);
+            const int bitmap = fixture.clusterOffset(3);
+            std::fill_n(fixture.image.data() + bitmap + 49, fixture.sectorSize - 49, char(0xff));
+            fixture.image[bitmap + 49] = char(layout == 6 ? 0xe0 : 0xf0);
+            fixture.refreshBootChecksum();
+        }
+        if (layout == 8) {
+            // A metadata-only volume with 1024-byte clusters and 512-byte
+            // sectors distinguishes allocation units from I/O geometry.
+            const QByteArray original = fixture.image;
+            fixture.image.resize((fixture.dataSector + 384 * 2) * fixture.sectorSize);
+            std::fill(fixture.image.begin() + fixture.dataSector * fixture.sectorSize,
+                      fixture.image.end(), '\0');
+            std::copy_n(original.constData() + fixture.clusterOffset(2), 64,
+                        fixture.image.data() + fixture.clusterOffset(2));
+            std::copy_n(original.constData() + fixture.clusterOffset(3), 48,
+                        fixture.image.data() + (fixture.dataSector + 2) * fixture.sectorSize);
+            std::copy_n(original.constData() + fixture.clusterOffset(20), 65536 * 2,
+                        fixture.image.data() + (fixture.dataSector + 36) * fixture.sectorSize);
+            fixture.fat(2, 0xffffffff);
+            fixture.image[109] = 1;
+            fixture.set64(72, fixture.image.size() / fixture.sectorSize);
+            fixture.refreshBootChecksum();
+        }
+        const unsigned clusterSize = fixture.sectorSize * (layout == 8 ? 2 : 1);
+        QCOMPARE(open(fixture.image), S_OK);
+        NWindows::NCOM::CPropVariant value;
+        QCOMPARE(archive_->GetArchiveProperty(kpidFreeSpace, &value), S_OK);
+        QCOMPARE(value.vt, VARTYPE(VT_UI8));
+        QCOMPARE(value.uhVal.QuadPart, UInt64(freeClusters * clusterSize));
+        for (PROPID property : {kpidClusterSize, kpidSectorSize}) {
+            QCOMPARE(archive_->GetArchiveProperty(property, &value), S_OK);
+            QCOMPARE(value.vt, VARTYPE(VT_UI4));
+            QCOMPARE(value.ulVal,
+                     UInt32(property == kpidClusterSize ? clusterSize : fixture.sectorSize));
+        }
+        QCOMPARE(archive_->Close(), S_OK);
+        QCOMPARE(archive_->GetArchiveProperty(kpidFreeSpace, &value), S_OK);
+        QCOMPARE(value.vt, VARTYPE(VT_EMPTY));
+    }
     void volumeLabels_data() {
         QTest::addColumn<int>("layout");
         QTest::addColumn<QString>("scenario");

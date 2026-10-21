@@ -39,7 +39,7 @@ Adapted code remains C under `src/fs/exfat/`:
 | `super.c` | `exfat_calibrate_blocksize`, `exfat_read_boot_sector`, `exfat_verify_boot_region` |
 | `dir.c` | `exfat_extract_uni_name`, `exfat_get_uniname_from_ext_entry`, `exfat_readdir`, `exfat_get_entry_type`, entry location/read, entry-set loading/validation/release, volume-label lookup/read |
 | `fatent.c` | `__exfat_ent_get`, `exfat_ent_get`, `exfat_count_num_clusters` |
-| `balloc.c` | Bitmap range testing, allocation/loading/freeing and `exfat_test_bitmap` |
+| `balloc.c` | Bitmap range testing, allocation/loading/freeing, `exfat_test_bitmap` and `exfat_count_used_clusters` |
 | `misc.c` | `exfat_calc_chksum16`, `exfat_calc_chksum32`, `exfat_chain_set`, `exfat_chain_dup`; no mutation transport |
 | `exfat_fs.h`, `exfat_raw.h` | Original constants, packed disk structures, read-facing types and geometry/cluster-chain helpers, including `exfat_cluster_walk`/`exfat_chain_advance` |
 
@@ -318,3 +318,51 @@ unverified; the implementation is compared against the newer pinned source.
 The image remained unchanged and mount/temporary exporter/fixtures were removed.
 No package installation was needed. This feature does not close the remaining
 format audit or change standalone 7zz's exFAT boundary.
+
+## Allocation statistics and geometry (2026-10-21)
+
+Compared complete `balloc.c:exfat_count_used_clusters`, bitmap loader and
+root/active-pair consumers, `super.c:exfat_statfs`/`__exfat_fill_super`,
+`include/linux/bitmap.h:BITMAP_LAST_WORD_MASK`, `bitops.h:hweight_long` and
+`lib/hweight.c` software helpers before integration. Post-change comparison
+covered every selected branch and the archive-property consumers. All twenty-one
+source/license hashes in the extended manifest were verified.
+
+The original count loop now runs after loading the selected bitmap and stores
+`used_clusters` in the original volume state. Sector transitions and the final
+partial-word mask are retained. Bitmap word/pointer/stride and mask constants
+use the existing explicit 64-bit service on LLP64 as well as LP64. A per-sector
+archive cancellation checkpoint also covers cached scans. Original
+`__sw_hweight32`/`__sw_hweight64` bodies live in `src/lib/hweight.c`, compiled
+as C with their GPL-2.0 notice. Kernel export/include transport is omitted;
+the fixed word-width service chooses the software 64-bit branch without CPU
+instruction requirements. The 8/16-bit helpers are not dependencies and are
+not copied. All new Linux code remains in the separate GPL exFAT module.
+
+The C/C++ adapter publishes free bytes, cluster size and sector size through
+the standard archive-property table. Free bytes use the original `exfat_statfs`
+data-cluster/free-cluster expressions; kernel device fsid, VFS inode/dentry
+publication and statfs transport are omitted. Boot PercentInUse is not an
+allocation count and is not substituted for the bitmap. Existing chain bounds,
+bitmap acceptance, payload and TexFAT behavior remain in place.
+
+Nine ABI scenarios cover 512/4096-byte sectors, both active FAT/bitmap pairs,
+fragmented multi-sector bitmaps, a partial final word with deliberately allocated
+padding outside the heap, and the last valid cluster inside that word. Tests
+assert free bytes and geometry, including a 1024-byte cluster with a 512-byte
+sector, scaling with allocation units and clearing properties on Close.
+Existing source error/cancellation, malformed input,
+process-engine listing/extraction and ArchiveBackend checks are retained.
+
+Final `exfat`/`exfat_backend` PASS on macOS arm64/Qt 6.12 (1.97 s), Linux x64
+(1.26 s) and Windows x64/MSVC/Qt 6.12 (3.56 s), receipt
+`20261021T020231Z-59be93bd`. Earlier eight-scenario checks also passed on
+all three platforms before adding the distinct cluster/sector geometry case.
+
+Native exFAT `6.8.0-147-generic` confirmed three read-only images through
+`statvfs`: base, partial-word padding and the last valid cluster, receipt
+`20261021T020105Z-499c71eb`. Exact free-cluster counts, cluster size and file
+payload matched; images remained unchanged, and mounts/temporary exporter/
+fixtures were removed. This native check uses 512-byte sectors/clusters and
+does not establish native TexFAT acceptance. Incremental builds and compiler
+caches were retained. Full/slow suites, UI and physical devices were not checked.

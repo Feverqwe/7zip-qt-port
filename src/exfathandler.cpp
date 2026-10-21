@@ -227,6 +227,12 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID id, PROPVARIANT *value)) {
     NWindows::NCOM::CPropVariant prop;
     if (id == kpidPhySize && volume_)
         prop = UInt64(exfat_volume_size(volume_.get()));
+    else if (id == kpidFreeSpace && volume_)
+        prop = UInt64(exfat_volume_free_size(volume_.get()));
+    else if (id == kpidClusterSize && volume_)
+        prop = UInt32(exfat_volume_cluster_size(volume_.get()));
+    else if (id == kpidSectorSize && volume_)
+        prop = UInt32(exfat_volume_sector_size(volume_.get()));
     else if (id == kpidVolumeName && volume_) {
         UString label;
         for (const uint16_t *p = exfat_volume_label(volume_.get()); *p; ++p)
@@ -312,7 +318,8 @@ Z7_COM7F_IMF(CHandler::Extract(const UInt32 *indices, UInt32 count, Int32 testMo
 
 static const Byte kProps[] = {kpidPath,   kpidIsDir, kpidSize,  kpidPackSize,
                               kpidAttrib, kpidCTime, kpidMTime, kpidATime};
-static const Byte kArcProps[] = {kpidPhySize, kpidVolumeName};
+static const Byte kArcProps[] = {kpidPhySize, kpidVolumeName, kpidFreeSpace, kpidClusterSize,
+                                 kpidSectorSize};
 IMP_IInArchive_Props IMP_IInArchive_ArcProps static const Byte signature[] = {'E', 'X', 'F', 'A',
                                                                               'T', ' ', ' ', ' '};
 REGISTER_ARC_I("exFAT", "exfat img", nullptr, 0xF0, signature, 3, 0, nullptr)

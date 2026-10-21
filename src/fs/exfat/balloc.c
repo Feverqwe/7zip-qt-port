@@ -10,6 +10,9 @@
 #define __le_long __le64
 #define BITS_PER_LONG 64
 #define lel_to_cpu(A) le64_to_cpu(A)
+#define BITMAP_LAST_WORD_MASK(nbits) (UINT64_MAX >> (-(nbits) & (BITS_PER_LONG - 1)))
+unsigned long __sw_hweight64(uint64_t);
+#define hweight_long(word) __sw_hweight64(word)
 
 static bool exfat_test_bitmap_range(struct super_block *sb, unsigned int clu,
 		unsigned int count)
@@ -203,4 +206,37 @@ bool exfat_test_bitmap(struct super_block *sb, unsigned int clu)
 		return false;
 
 	return true;
+}
+
+int exfat_count_used_clusters(struct super_block *sb, unsigned int *ret_count)
+{
+	struct exfat_sb_info *sbi = EXFAT_SB(sb);
+	unsigned int count = 0;
+	unsigned int i, map_i = 0, map_b = 0;
+	unsigned int total_clus = EXFAT_DATA_CLUSTER_COUNT(sbi);
+	unsigned int last_mask = total_clus & (BITS_PER_LONG - 1);
+	u64 *bitmap, clu_bits; /* Match the fixed 64-bit bitmap service on LLP64. */
+
+	total_clus &= ~last_mask;
+	for (i = 0; i < total_clus; i += BITS_PER_LONG) {
+		/* Archive cancellation also applies to cached bitmap scans. */
+		if (!map_b && sb->poll && sb->poll(sb->context))
+			return -EIO;
+		bitmap = (void *)(sbi->vol_amap[map_i]->b_data + map_b);
+		count += hweight_long(*bitmap);
+		map_b += sizeof(u64);
+		if (map_b >= (unsigned int)sb->s_blocksize) {
+			map_i++;
+			map_b = 0;
+		}
+	}
+
+	if (last_mask) {
+		bitmap = (void *)(sbi->vol_amap[map_i]->b_data + map_b);
+		clu_bits = lel_to_cpu(*(__le_long *)bitmap);
+		count += hweight_long(clu_bits & BITMAP_LAST_WORD_MASK(last_mask));
+	}
+
+	*ret_count = count;
+	return 0;
 }

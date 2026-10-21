@@ -19,7 +19,10 @@
     "fs/exfat/nls.c": "e3e414139a9b4241480cd31f4c974a3c43b349d0091920c96c2373fcb2150468",
     "fs/exfat/super.c": "fb3e72dce49a7b9cd5918ebdefdab0ac8cbf3df762d4c7d1cd0444ab344f33a3",
     "LICENSES/preferred/GPL-2.0": "8780e78a1a737e127f25a65f6d95269bffd36158dc261114de7859b490bfc5aa",
-    "kernel/time/time.c": "ebeaf97b1314be4bcc8c9f8e1f6755e5992317e74139d5f7c14d94313ea41b3e"
+    "kernel/time/time.c": "ebeaf97b1314be4bcc8c9f8e1f6755e5992317e74139d5f7c14d94313ea41b3e",
+    "lib/hweight.c": "303e5b1657a56768bd1b640a068d8f028d5a7f35dbc469a2b279bcea6872a445",
+    "include/linux/bitmap.h": "394f0003abc46eae306b4eaacf1467aaa5afed74618b2585945a5848f822d38f",
+    "include/linux/bitops.h": "fdee528a2e2a17a568d305dd40cfa6f1bea510e155a0ed32df53bfda47a45209"
   },
   "adapted": [
     "dir.c",

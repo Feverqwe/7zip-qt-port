@@ -112,6 +112,8 @@ int exfat_open_volume(const struct exfat_source *source, struct exfat_volume **r
     }
     if (!error)
         error = exfat_load_bitmap(&v->sb);
+    if (!error)
+        error = exfat_count_used_clusters(&v->sb, &v->info.used_clusters);
     if (!error && !exfat_test_bitmap(&v->sb, v->info.root_dir))
         error = -EIO;
     if (!error)
@@ -125,6 +127,13 @@ int exfat_open_volume(const struct exfat_source *source, struct exfat_volume **r
 }
 
 uint64_t exfat_volume_size(const struct exfat_volume *v) { return v->sb.image_size; }
+uint64_t exfat_volume_free_size(const struct exfat_volume *v) {
+    // exfat_statfs: data clusters exclude the two reserved cluster numbers.
+    return (uint64_t)(EXFAT_DATA_CLUSTER_COUNT(&v->info) - v->info.used_clusters)
+           << v->info.cluster_size_bits;
+}
+uint32_t exfat_volume_cluster_size(const struct exfat_volume *v) { return v->info.cluster_size; }
+uint32_t exfat_volume_sector_size(const struct exfat_volume *v) { return v->sb.s_blocksize; }
 const uint16_t *exfat_volume_label(const struct exfat_volume *v) { return v->label.name; }
 
 void exfat_root_cursor(const struct exfat_volume *v, struct exfat_cursor *c) {

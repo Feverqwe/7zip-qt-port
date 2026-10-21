@@ -36,6 +36,9 @@ struct exfat_cursor {
 int exfat_open_volume(const struct exfat_source *, struct exfat_volume **);
 void exfat_close_volume(struct exfat_volume *);
 uint64_t exfat_volume_size(const struct exfat_volume *);
+uint64_t exfat_volume_free_size(const struct exfat_volume *);
+uint32_t exfat_volume_cluster_size(const struct exfat_volume *);
+uint32_t exfat_volume_sector_size(const struct exfat_volume *);
 // Owned by the volume; UTF-16 terminated at the first NUL, as in Linux's ioctl.
 const uint16_t *exfat_volume_label(const struct exfat_volume *);
 void exfat_root_cursor(const struct exfat_volume *, struct exfat_cursor *);
