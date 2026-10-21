@@ -155,6 +155,18 @@ def readonly_volume(kind):
     return v
 
 
+def capacity_volume(kind):
+    if kind not in ("capped16", "maximum16", "overflow16"):
+        raise ValueError(kind)
+    clusters = 65524 if kind == "maximum16" else 65525
+    v = Volume(16) if kind == "capped16" else Volume(16, clusters=clusters)
+    v.sectors = v.data_sector + clusters
+    struct.pack_into("<H", v.data, 19, 0)
+    struct.pack_into("<I", v.data, 32, v.sectors)
+    v.data += bytes(v.sectors * v.sector - len(v.data))
+    return v
+
+
 if __name__ == "__main__":
     import argparse
     import base64
@@ -167,9 +179,12 @@ if __name__ == "__main__":
     parser.add_argument("--streams", type=int)
     parser.add_argument("--file-chain")
     parser.add_argument("--table")
+    parser.add_argument("--capacity")
     parser.add_argument("--bundle", action="store_true")
     args = parser.parse_args()
-    if args.table:
+    if args.capacity:
+        v = capacity_volume(args.capacity)
+    elif args.table:
         from fat_table_fixture import table_volume
         v = table_volume(args.table)
     elif args.file_chain:

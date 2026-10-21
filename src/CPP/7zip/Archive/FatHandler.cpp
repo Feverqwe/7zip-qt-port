@@ -148,18 +148,6 @@ bool CHeader::Parse(const Byte *p) {
 
     HeadersWarning = false;
 
-    int codeOffset = 0;
-    switch (p[0]) {
-    case 0xE9:
-        codeOffset = 3 + (Int16)Get16(p + 1);
-        break;
-    case 0xEB:
-        if (p[2] == 0x90)
-            codeOffset = 2 + (signed char)p[1];
-        break;
-    default:
-        break;
-    }
     {
         {
             const unsigned num = Get16(p + 11);
@@ -236,7 +224,6 @@ bool CHeader::Parse(const Byte *p) {
 
     // memcpy(OemName, p + 3, 5);
 
-    int curOffset = 36;
     p += 36;
     if (IsFat32()) {
         if (NumFatSectors != 0)
@@ -248,19 +235,14 @@ bool CHeader::Parse(const Byte *p) {
         if (FsInfoSector == 0)
             FsInfoSector = 1;
         p += 28;
-        curOffset += 28;
     }
 
     // DriveNumber = p[0];
-    VolFieldsDefined = false;
-    if (codeOffset >= curOffset + 3) {
-        VolFieldsDefined = (p[2] == 0x29); // ExtendedBootSig
-        if (VolFieldsDefined) {
-            VolId = Get32(p + 3);
-            // memcpy(VolName, p + 7, 11);
-            // memcpy(FileSys, p + 18, 8);
-        }
-    }
+    VolFieldsDefined = (p[2] == 0x29); // ExtendedBootSig
+    // Linux reads the BPB volume ID independently of bootstrap code/signature.
+    VolId = Get32(p + 3);
+    // memcpy(VolName, p + 7, 11);
+    // memcpy(FileSys, p + 18, 8);
 
     if (NumFatSectors == 0)
         return false;
@@ -276,8 +258,6 @@ bool CHeader::Parse(const Byte *p) {
     BadCluster = 0x0FFFFFF7;
     // v23: we support unusual (< 0xFFF5) numClusters values in fat32 systems
     if (NumFatBits != 32) {
-        if (numClusters >= 0xFFF5)
-            return false;
         NumFatBits = (Byte)(numClusters < 0xFF5 ? 12 : 16);
         BadCluster &= (((UInt32)1 << NumFatBits) - 1);
     }
@@ -297,7 +277,7 @@ bool CHeader::Parse(const Byte *p) {
         fatSize = fatCapacity;
         HeadersWarning = true;
     }
-    const UInt64 maxEntries = (UInt64)BadCluster + (IsFat32() ? 1 : 0);
+    const UInt64 maxEntries = IsFat32() ? (UInt64)BadCluster + 1 : (UInt64)BadCluster - 1;
     if (fatSize < 2 || fatSize > maxEntries)
         return false;
     FatSize = (UInt32)fatSize;
@@ -1357,8 +1337,7 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID propID, PROPVARIANT *value)) {
     // case kpidNumHeads: prop = Header.NumHeads; break;
     // case kpidOemName: STRING_TO_PROP(Header.OemName, prop); break;
     case kpidId:
-        if (Header.VolFieldsDefined)
-            prop = Header.VolId;
+        prop = Header.VolId;
         break;
     case kpidIsTree:
         prop = true;

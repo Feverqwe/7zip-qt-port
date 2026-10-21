@@ -53,17 +53,18 @@ opening the whole volume. Reserved LFN type/start fields do not discard an
 otherwise usable name. Only the exact LFN attribute is treated as an LFN slot;
 volume entries remain outside the file tree even with a stale directory bit.
 The alias checksum uses the stored bytes before the escaped `0x05` lead byte is
-converted to `0xE5` for display. Directory block acquisition and the original
-warning reporting remain unchanged.
+converted to `0xE5` for display. The original record parser remains authoritative;
+later iterations below isolate directory and table I/O failures with explicit
+partial-read diagnostics.
 
 File reads stop at the directory entry's size, allowing preallocated empty files
-and unused allocated tails. Missing required clusters, directory-cluster aliases
-and repeated clusters within the required file prefix are rejected. The original
-stream vector supplies data; a temporary copy uses the existing vector sort to
-detect repeated cluster numbers without modifying shared FAT state. The number
-of required clusters is checked before reservation. Unused chain tails are not
-traversed or copied into output. These corruption guards do not claim identical
-recovery behavior for every damaged filesystem Linux can mount.
+and unused allocated tails. Later iterations retain readable prefixes before
+missing/repeated clusters or known directory-owned data, while reporting errors
+instead of complete extraction. Original stream helpers remain authoritative and
+each file retains its independent cursor. Mapping capacity stays bounded by the
+file size and addressable cluster count; unused tails are not copied. These
+archive validation/recovery choices do not claim identical behavior for every
+damaged filesystem Linux can mount.
 
 ## Validation
 
@@ -100,7 +101,7 @@ and compiler caches were retained.
 
 ## Linux compatibility module
 
-The next integrated iteration connects the following original C implementations,
+The Linux compatibility integration connects the following original C implementations,
 with full original bodies and required tables retained under their original paths:
 
 - `fs/fat/inode.c`: `fat_bpb_is_zero`, `fat_read_static_bpb`, floppy defaults
@@ -140,8 +141,9 @@ Automatic recognition uses the original archive detector interface with a
 start-of-stream rule. Modern volumes do not require executable boot code or the
 `55 AA` signature. DOS 1.x additionally requires the original bootstrap pattern,
 zero BPB fields and one of Linux's four known floppy sizes. Unrelated raw images
-and incomplete metadata are rejected. The accepted FAT32 cluster-count boundary
-also includes Linux's final addressable entry; maximum-size volumes were not
+are rejected; later iterations expose useful incomplete metadata with limitations.
+The accepted FAT32 cluster-count boundary also includes Linux's final addressable
+entry; maximum-size FAT32 volumes were not
 materialized for runtime testing.
 
 LFNs end at the first UTF-16 NUL; trailing slot padding does not change a name.
@@ -552,3 +554,64 @@ deleted and synchronized away on both. All jobs reached terminal state. Existing
 build trees and compiler caches were retained; full/slow gates and installation
 were not run. This closes the selected table-I/O scenario, not the remaining
 module/consumer review or the broader filesystem/format goal.
+
+### BPB volume identity and capped FAT16 geometry — 2026-10-21
+
+Final BPB comparison revisited the complete SDK `CHeader::Parse` and archive
+properties, Linux `fat_read_bpb`/`fat_fill_super` volume-ID publication,
+`calc_fat_clusters`, `max_fat`/MAX_FAT constants and the header/directory/file
+consumers. Two ordinary read-side differences remained. Linux reads the raw
+little-endian volume ID independently of executable bootstrap bytes and the
+extended signature. The SDK's retained bootstrap/extended-field gate suppressed
+that public property on otherwise readable volumes. The original BPB field load
+now supplies `kpidId` without that gate in both engines. The extended-field flag
+keeps its original meaning for the other optional fields. Unneeded bootstrap
+offset calculations are removed; BPB validation and legacy detection remain.
+
+The SDK also rejected a FAT16 data-area cluster count before applying table
+capacity. Linux classifies the format, caps addressable clusters by table space,
+then checks the variant's maximum. The port now follows that order and uses the
+corresponding reserved-entry limits for FAT12/16, retaining the FAT32 boundary.
+This allows a large declared FAT16 data area with a smaller valid FAT while
+still rejecting a count beyond the maximum when the table can address it.
+Known files remain streamed by the existing mapper; nothing writes to the source.
+No new decoder, Linux C unit, format registration or UI flow is introduced.
+
+Before the identity change, the new public ABI and both-engine CLI tests failed
+on missing ID values. The final controls cover FAT12/16/32 bootstrap forms,
+extended signatures 0/0x28/0x29, high-bit volume IDs and a defined zero ID.
+CLI checks exact numeric ID and extracted payloads, preserving input bytes;
+ABI checks the property type/value. Capacity controls copy files from a capped
+FAT16 and the valid maximum, and reject the overflow case. File selection uses
+the public path rather than an assumed item index. A Windows-only test failure
+initially pinned LF line endings; complete-line comparison now accepts native
+CRLF while retaining exact ID validation. Product behavior was already correct.
+
+The five direct FAT suites passed on macOS arm64 (5.53 s), followed by the final
+module and CLI refinements. Linux passed all five,
+`20261021T133242Z-b8aae0c1` (7.09 s). Windows passed four in
+`20261021T133053Z-ade95872`; the corrected CLI suite then passed in
+`20261021T133409Z-48c9a21f`. No discovery failure occurred in those Windows
+batches. Application incremental build, upstream verifier (422 exact / 242 adapted /
+12 local) and 21 pinned FAT hashes passed. No full/slow gate or installation ran.
+
+Native vfat `6.8.0-147-generic` confirmed 21 readonly controls,
+`20261021T133053Z-4481cafb`: all 18 bootstrap/signature variants mounted and
+returned exact file bytes; capped/maximum FAT16 mounted and overflow was rejected.
+Mount/device readonly flags and unchanged SHA-256 were checked; all synthetic
+images, mounts and loops were removed. This verifies native acceptance and data,
+not a public kernel UUID query. Volume-ID parity is established from pinned BPB/
+superblock code plus the archive ABI/CLI; `fat_statfs`'s device-based f_fsid is
+not a substitute for that volume ID. The installed kernel differs from the pin.
+
+Full FAT source closure remains unproven. In particular, the remaining mapping
+comparison must settle BAD-marker normalization at the maximum FAT32 geometry,
+where the last physical entry and marker value can overlap. Ordinary-sized bad
+chain controls do not establish that extreme boundary. The current acceptance
+claim covers the BPB fixes above, not every remaining format/module branch.
+
+Final task-owned fixture cleanup passed on both guests,
+`20261021T133712Z-4eff6e5b`. The disposable native-reference helper was deleted
+and synchronized away on both; no task-owned FAT temporary directories remained
+locally. All jobs reached terminal state. Incremental builds and compiler caches
+were retained, and nothing was pushed.

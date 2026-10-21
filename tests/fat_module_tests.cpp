@@ -70,6 +70,80 @@ class FatModuleTests final : public QObject {
         QCOMPARE(create(&guid, &IID_IInArchive, reinterpret_cast<void **>(&archive_)), S_OK);
     }
   private slots:
+    void volumeIdentityDoesNotDependOnBootstrap_data() {
+        QTest::addColumn<int>("bits");
+        QTest::addColumn<QByteArray>("bootstrap");
+        QTest::addColumn<int>("signature");
+        QTest::addColumn<quint32>("identity");
+        for (int bits : {12, 16, 32}) {
+            for (const QByteArray &bootstrap :
+                 {QByteArray::fromHex("eb5890"), QByteArray::fromHex("000000"),
+                  QByteArray::fromHex("eb0090"), QByteArray::fromHex("e90000")})
+                for (int signature : {0, 0x28, 0x29})
+                    QTest::newRow(qPrintable(QString::number(bits) + '-' + bootstrap.toHex() + '-' +
+                                             QString::number(signature)))
+                        << bits << bootstrap << signature << quint32(0xfedcba98);
+            QTest::newRow(qPrintable("zero-" + QString::number(bits)))
+                << bits << QByteArray(3, '\0') << 0 << quint32(0);
+        }
+    }
+    void volumeIdentityDoesNotDependOnBootstrap() {
+        QFETCH(int, bits);
+        QFETCH(QByteArray, bootstrap);
+        QFETCH(int, signature);
+        QFETCH(quint32, identity);
+        auto bytes = fixture("clean" + QString::number(bits));
+        QVERIFY(!bytes.isEmpty());
+        bytes.replace(0, 3, bootstrap);
+        const int extended = bits == 32 ? 66 : 38;
+        bytes[extended] = char(signature);
+        qToLittleEndian(identity, bytes.data() + extended + 1);
+        QCOMPARE(open(bytes), S_OK);
+        NWindows::NCOM::CPropVariant actual;
+        QCOMPARE(archive_->GetArchiveProperty(kpidId, &actual), S_OK);
+        QCOMPARE(actual.vt, VARTYPE(VT_UI4));
+        QCOMPARE(actual.ulVal, identity);
+    }
+    void fat16CapacityIsAppliedBeforeMaximumClusterCheck() {
+        for (const QString &kind : {"capped16", "maximum16", "overflow16"}) {
+            QProcess generator;
+            generator.start(QString::fromUtf8(SEVENZIP_FAT_PYTHON),
+                            {QString::fromUtf8(SEVENZIP_FAT_FIXTURE), "--capacity=" + kind});
+            QVERIFY(generator.waitForFinished(10000));
+            QCOMPARE(generator.exitCode(), 0);
+            const auto bytes = generator.readAllStandardOutput();
+            QVERIFY(!bytes.isEmpty());
+            const bool valid = kind != "overflow16";
+            QCOMPARE(open(bytes), valid ? S_OK : S_FALSE);
+            if (valid) {
+                NWindows::NCOM::CPropVariant filesystem;
+                QCOMPARE(archive_->GetArchiveProperty(kpidFileSystem, &filesystem), S_OK);
+                QCOMPARE(filesystem.vt, VARTYPE(VT_BSTR));
+                QCOMPARE(QString::fromWCharArray(filesystem.bstrVal), QString("FAT16"));
+                UInt32 count = 0;
+                QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+                QVERIFY(count >= 1);
+                UInt32 id = UINT32_MAX;
+                for (UInt32 i = 0; i < count; ++i) {
+                    NWindows::NCOM::CPropVariant path;
+                    QCOMPARE(archive_->GetProperty(i, kpidPath, &path), S_OK);
+                    if (path.vt == VT_BSTR && QString::fromWCharArray(path.bstrVal) ==
+                                                  QStringLiteral("данные 空 fragmented.bin"))
+                        id = i;
+                }
+                QVERIFY(id != UINT32_MAX);
+                CMyComPtr2<IArchiveExtractCallback, Extract> output;
+                output.Create_if_Empty();
+                QCOMPARE(archive_->Extract(&id, 1, 0, output), S_OK);
+                QCOMPARE(output->result, Int32(NArchive::NExtract::NOperationResult::kOK));
+                QByteArray expected;
+                for (int i = 0; i < 1024; ++i)
+                    expected.append(char(i & 255));
+                expected += "fragmented FAT tail\n";
+                QCOMPARE(output->output->bytes, expected);
+            }
+        }
+    }
     void initTestCase() {
         QProcess generator;
         generator.start(QString::fromUtf8(SEVENZIP_FAT_PYTHON),

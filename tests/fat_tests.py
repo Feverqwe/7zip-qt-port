@@ -6,7 +6,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
-from fat_fixture import Volume, PAYLOAD, LONG_NAME, entry, long_entries, legacy_volume, readonly_volume
+from fat_fixture import Volume, PAYLOAD, LONG_NAME, entry, long_entries, legacy_volume, readonly_volume, capacity_volume
 from fat_stream_fixture import chain_volume
 
 RUNTIME = Path(sys.argv.pop(1))
@@ -70,6 +70,40 @@ class FatTests(unittest.TestCase):
                     listing = self.run_image(volume, engine, "l", None)
                     self.assertIn(listing.returncode, (0, 1), listing.stderr)
                     self.assertIn("File System = FAT" + str(bits), listing.stdout.decode("utf-8"))
+
+    def test_volume_identity_is_independent_of_bootstrap_and_extended_signature(self):
+        variants = [(bootstrap, signature, 0xfedcba98)
+                    for bootstrap in (b"\xeb\x58\x90", bytes(3), b"\xeb\x00\x90", b"\xe9\x00\x00")
+                    for signature in (0, 0x28, 0x29)]
+        variants.append((bytes(3), 0, 0))
+        for engine in ("7z", "7zz"):
+            for bits in (12, 16, 32):
+                for bootstrap, signature, identity in variants:
+                    with self.subTest(engine=engine, bits=bits, bootstrap=bootstrap,
+                                      signature=signature, identity=identity):
+                        volume = Volume(bits)
+                        volume.data[:3] = bootstrap
+                        extended = 66 if bits == 32 else 38
+                        volume.data[extended] = signature
+                        struct.pack_into("<I", volume.data, extended + 1, identity)
+                        listing = self.run_image(volume, engine, "l", None)
+                        self.assertEqual(listing.returncode, 0, listing.stderr)
+                        self.assertIn(f"ID = {identity}", listing.stdout.decode("utf-8").splitlines())
+                        extracted = self.run_image(volume, engine)
+                        self.assertEqual(extracted.returncode, 0, extracted.stderr)
+                        self.assertEqual(extracted.stdout, PAYLOAD)
+
+    def test_fat16_table_capacity_precedes_maximum_cluster_limit(self):
+        for kind in ("capped16", "maximum16", "overflow16"):
+            volume = capacity_volume(kind)
+            for engine in ("7z", "7zz"):
+                with self.subTest(kind=kind, engine=engine):
+                    result = self.run_image(volume, engine)
+                    if kind == "overflow16":
+                        self.assertNotEqual(result.returncode, 0)
+                    else:
+                        self.assertEqual(result.returncode, 0, result.stderr)
+                        self.assertEqual(result.stdout, PAYLOAD)
 
     def test_inode_size_stops_before_unused_chain_tail(self):
         for engine in ("7z", "7zz"):
