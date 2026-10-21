@@ -569,6 +569,60 @@ Archive recovery-folder junction не имеет native directory entry и пр�
 trees и compiler caches сохранены; full/slow, UI appearance и физические
 устройства этим набором не проверялись. Остальной read scope остаётся открытым.
 
+## Standard information и активные MFT records — 2026-10-21
+
+До изменений и после них сравнены полные выбранные тела Linux
+`inode.c:ntfs_read_mft`, `ntfs.h:ATTR_STD_INFO/ATTR_STD_INFO5`, enumeration
+через `ni_enum_attr_ex` и security consumer `xattr.c:ntfs_getxattr`, а также
+SDK `CSiAttr::Parse`, `CAttr::ParseSi`, `CMftRec::ParseRec/MoveAttrsFrom`,
+constructors, MFT bootstrap/open и consumers timestamps/attributes/security.
+Все 30 source hashes NTFS baseline повторно проверены. Repository и полные
+ревизии обоих эталонов приведены выше; новых borrowed C bodies нет.
+
+Shared SDK reader теперь требует resident standard information длиной не менее
+48 bytes; security ID читается только из полного 72-byte варианта. Промежуточные
+56/64-byte layouts сохраняют basic metadata без ложного security descriptor.
+Первый корректный атрибут задаёт metadata; каждый последующий проверяется,
+но не перезаписывает время, readonly и security ID. Existing extension merge
+переносит standard information при отсутствии её в base record; обязательное
+наличие проверяется после merge. Активная MFT record должна объявлять полный
+фиксированный размер записи. Проверки общих attribute bounds остаются в SDK.
+
+Это узкое исправление существующего SDK parser по disk contracts Linux,
+не передача целого VFS `ntfs_read_mft` и не новая реализация ATTR_LIST.
+Оригинальные SDK MFT enumeration, sequence/base-reference merge и streams
+сохранены. Recovery удалённых записей — archive adaptation: повреждённая
+standard information не скрывает активные файлы и не запрещает восстановление
+доступного payload удалённого файла. Linux возвращает ESTALE для такой записи.
+Оба поставляемых engines используют один исправленный SDK исходник;
+GPL closure и ранее записанные границы standalone не расширены.
+
+Регрессии проверяют точный payload в обоих engines, точные FILETIME и readonly,
+raw security descriptor, extension ownership, duplicate attributes, retained
+streams после Close, отказ Open без опубликованных items и повторное открытие
+после ошибки. Legacy/partial/full layouts и восстановление deleted payload
+проверяются через публичный ABI; отсутствующие/короткие/nonresident metadata,
+повреждённый второй атрибут и неверный MFT total — через ABI и оба CLI.
+
+Финальные `ntfs`, `ntfs_stream`, `ntfs_security` PASS на macOS arm64/Qt 6.12
+(15,29 с) и Linux x64/Qt 6.12 (40,36 с), receipt
+`20261021T014050Z-4729815f`. Windows в том же запуске прошёл NTFS/security,
+но stream suite получил codec discovery timeout в sparse backend case;
+повторная проверка записана ниже. Ранее все три suites прошли обе remote
+платформы до добавления проверки MFT total, receipt
+`20261021T013833Z-fd7d5068`.
+Повторный `ntfs_stream` PASS на Windows x64/MSVC/Qt 6.12 без изменения
+кода или timeout, receipt `20261021T014359Z-04f9e516`; причина единичного
+codec discovery timeout не установлена.
+
+Native ntfs3 `6.8.0-147-generic` подтвердил шесть корректных и пять повреждённых
+образов, receipt `20261021T014356Z-b9f8948c`: exact payload, nanosecond mtime,
+readonly mode и `system.ntfs_security`; все пять повреждений отклонены EINVAL.
+Образы остались неизменными, mounts и fixtures удалены. Эта версия kernel
+дополняет сравнение pinned source, а не заменяет его. Incremental builds и
+compiler caches сохранены. Full/slow suites, UI и физические устройства не
+проверялись; оставшийся NTFS read scope остаётся открытым.
+
 ## Открытый read scope
 
 Выбранные classic/WOF/MFT bootstrap scenarios подключены и проверены.

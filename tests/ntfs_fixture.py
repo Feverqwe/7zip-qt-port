@@ -94,6 +94,9 @@ def nonresident(original, entries, size, valid=None, flags=0, unit=0):
 
 
 def volume(kind="base"):
+    if kind.startswith("standard-"):
+        from ntfs_standard_fixture import volume as standard_volume
+        return standard_volume(kind)
     if kind.startswith("link-"):
         from ntfs_link_fixture import volume as link_volume
         return link_volume(kind)
@@ -220,5 +223,8 @@ if __name__ == "__main__":
             result["wsl"] = properties(args.kind)
         if args.kind.startswith("security-"):
             from ntfs_security_fixture import expected
+            result["security"] = expected(args.kind).hex()
+        if args.kind.startswith("standard-"):
+            from ntfs_standard_fixture import expected
             result["security"] = expected(args.kind).hex()
         print(json.dumps(result))

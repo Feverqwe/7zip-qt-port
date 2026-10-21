@@ -9,6 +9,7 @@ import zlib
 from ntfs_fixture import volume
 from ntfs_ea_fixture import VALID as EA_VALID, BAD as EA_BAD
 from ntfs_link_fixture import VALID as LINK_VALID, UNSUPPORTED as LINK_UNSUPPORTED, path as link_path
+from ntfs_standard_fixture import VALID as STANDARD_VALID, BAD as STANDARD_BAD
 
 RUNTIME = Path(sys.argv.pop(1))
 MODULE = Path(sys.argv.pop(1))
@@ -44,6 +45,23 @@ class NtfsTests(unittest.TestCase):
             result = subprocess.run(args, capture_output=True, timeout=10)
             self.assertEqual(path.read_bytes(), data)
             return result
+
+    def test_standard_information_layout_and_presence_in_both_engines(self):
+        for kind in STANDARD_VALID:
+            image, files = volume(kind)
+            for engine in ("7z", "7zz"):
+                with self.subTest(kind=kind, engine=engine):
+                    name = "gamma" if "gamma" in files else "alpha"
+                    result = self.run_image(engine, image, "x", name)
+                    self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                    self.assertEqual(result.stdout, files[name])
+        for kind in STANDARD_BAD:
+            image, _ = volume(kind)
+            for engine in ("7z", "7zz"):
+                with self.subTest(kind=kind, engine=engine):
+                    result = self.run_image(engine, image, "x", "gamma")
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertEqual(result.stdout, b"")
 
     def test_classic_read_paths_in_both_engines(self):
         for kind in ("base", "sparse", "hole-first", "initialized", "compressed", "sector4k", "boot-reserved", "backup-boot"):

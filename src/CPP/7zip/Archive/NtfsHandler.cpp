@@ -335,7 +335,7 @@ struct CSiAttr {
 };
 
 bool CSiAttr::Parse(const Byte *const p, unsigned size) {
-    if (size < 0x24)
+    if (size < 0x30)
         return false;
     G64(p + 0x00, CTime);
     G64(p + 0x08, MTime);
@@ -343,7 +343,7 @@ bool CSiAttr::Parse(const Byte *const p, unsigned size) {
     G64(p + 0x18, ATime);
     G32(p + 0x20, Attrib);
     SecurityId = 0;
-    if (size >= 0x38)
+    if (size >= 0x48)
         G32(p + 0x34, SecurityId);
     return true;
 }
@@ -393,7 +393,7 @@ struct CAttr {
     bool ParseFileName(CFileNameAttr &a) const {
         return a.ParseFileNameAttr(Data, (unsigned)Data.Size());
     }
-    bool ParseSi(CSiAttr &a) const { return a.Parse(Data, (unsigned)Data.Size()); }
+    bool ParseSi(CSiAttr &a) const { return !NonResident && a.Parse(Data, (unsigned)Data.Size()); }
     bool ParseExtents(CRecordVector<CExtent> &extents, UInt64 numClustersMax,
                       unsigned compressionUnit, bool sparse) const;
     UInt64 GetSize() const { return NonResident ? Size : Data.Size(); }
@@ -1152,6 +1152,7 @@ struct CMftRec {
        but there are additional names for Hard links or for DosName. */
     // CAttr SecurityAttr;
     CSiAttr SiAttr;
+    bool SiDefined;
 
     int FindWin32Name_for_DosName(unsigned dosNameIndex) const {
         const CFileNameAttr &cur = FileNames[dosNameIndex];
@@ -1184,6 +1185,10 @@ struct CMftRec {
     }
     */
     void MoveAttrsFrom(CMftRec &src) {
+        if (!SiDefined && src.SiDefined) {
+            SiAttr = src.SiAttr;
+            SiDefined = true;
+        }
         DataAttrs += src.DataAttrs;
         ReparseAttrs += src.ReparseAttrs;
 #ifdef SEVENZIP_LINUX_NTFS
@@ -1249,7 +1254,7 @@ struct CMftRec {
 
     CMftRec()
         : SeqNumber(0), Flags(0), MyNumNameLinks(0), MyItemIndex(-1), ReparseDataIndex(-1),
-          Wof(false) {}
+          Wof(false), SiDefined(false) {}
 };
 
 void CMftRec::ParseDataNames() {
@@ -1475,7 +1480,7 @@ bool CMftRec::ParseRec(Byte *const p, const unsigned sectorSizeLog, const unsign
     // G16(p + 0x28, NextAttrInstance);
     unsigned limit = numSectors << sectorSizeLog;
     if (attrOffs < 0x30 || attrOffs >= limit || (attrOffs & 7) || bytesInUse > limit ||
-        bytesInUse > bytesAlloc || bytesAlloc > limit)
+        bytesInUse > bytesAlloc || bytesAlloc > limit || (InUse() && bytesAlloc != limit))
         return false;
     limit = bytesInUse;
 
@@ -1507,10 +1512,19 @@ bool CMftRec::ParseRec(Byte *const p, const unsigned sectorSizeLog, const unsign
             PRF_UTF16(fna.Name)
             break;
         }
-        case ATTR_TYPE_STANDARD_INFO:
-            if (!attr.ParseSi(SiAttr))
-                return false;
+        case ATTR_TYPE_STANDARD_INFO: {
+            CSiAttr value;
+            if (!attr.ParseSi(value)) {
+                if (InUse())
+                    return false;
+                break;
+            }
+            if (!SiDefined) {
+                SiAttr = value;
+                SiDefined = true;
+            }
             break;
+        }
         case ATTR_TYPE_DATA:
             DataAttrs.Add(attr);
             break;
@@ -2555,6 +2569,8 @@ HRESULT CDatabase::Open() {
         CMftRec &rec = Recs[i];
         if (!rec.Is_Magic_FILE())
             continue;
+        if (rec.InUse() && rec.BaseMftRef.IsBaseItself() && !rec.SiDefined)
+            return S_FALSE;
         rec.ParseDataNames();
     }
 

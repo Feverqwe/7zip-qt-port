@@ -173,12 +173,29 @@ class NtfsSecurityTests final : public QObject {
     }
     void indexedDescriptors_data() {
         QTest::addColumn<QString>("kind");
-        for (const char *kind :
-             {"security-index", "security-physical-order", "security-mirror",
-              "security-partial-sds", "security-tree", "security-root-key", "security-many",
-              "security-small-block", "security-fragmented-index", "security-extension",
-              "security-sparse-sds", "security-empty", "security-reserved", "security-no-metadata",
-              "security-fixup-mismatch", "security-deleted-corrupt"})
+        for (const char *kind : {"security-index",
+                                 "security-physical-order",
+                                 "security-mirror",
+                                 "security-partial-sds",
+                                 "security-tree",
+                                 "security-root-key",
+                                 "security-many",
+                                 "security-small-block",
+                                 "security-fragmented-index",
+                                 "security-extension",
+                                 "security-sparse-sds",
+                                 "security-empty",
+                                 "security-reserved",
+                                 "security-no-metadata",
+                                 "security-fixup-mismatch",
+                                 "security-deleted-corrupt",
+                                 "standard-full",
+                                 "standard-legacy",
+                                 "standard-partial56",
+                                 "standard-partial64",
+                                 "standard-duplicate",
+                                 "standard-extension",
+                                 "standard-deleted-short"})
             QTest::newRow(kind) << QString::fromLatin1(kind);
     }
     void indexedDescriptors() {
@@ -189,11 +206,21 @@ class NtfsSecurityTests final : public QObject {
             archive_->QueryInterface(IID_ISetProperties, reinterpret_cast<void **>(&properties)),
             S_OK);
         const wchar_t *name = L"ld";
-        const NWindows::NCOM::CPropVariant showDeleted(kind == "security-deleted-corrupt");
+        const NWindows::NCOM::CPropVariant showDeleted(kind.contains("deleted"));
         QCOMPARE(properties->SetProperties(&name, &showDeleted, 1), S_OK);
         CMyComPtr<IInStream> source = new Input(image_);
         QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
         QVERIFY(index() != UINT32_MAX);
+        if (kind.startsWith("standard-") && !kind.contains("deleted")) {
+            NWindows::NCOM::CPropVariant time, attributes;
+            QCOMPARE(archive_->GetProperty(index(), kpidMTime, &time), S_OK);
+            QCOMPARE(time.vt, VARTYPE(VT_FILETIME));
+            QCOMPARE((UInt64(time.filetime.dwHighDateTime) << 32) | time.filetime.dwLowDateTime,
+                     UInt64(132537600000000000));
+            QCOMPARE(archive_->GetProperty(index(), kpidAttrib, &attributes), S_OK);
+            QCOMPARE(attributes.vt, VARTYPE(VT_UI4));
+            QVERIFY(attributes.ulVal & 1);
+        }
         descriptor();
         payload(dataStream());
         descriptor();
@@ -204,13 +231,29 @@ class NtfsSecurityTests final : public QObject {
     }
     void malformedDescriptors_data() {
         QTest::addColumn<QString>("kind");
-        for (const char *kind :
-             {"security-root-offset", "security-root-used", "security-root-terminal",
-              "security-key-overrun", "security-subnode-flag", "security-view-short",
-              "security-header-mismatch", "security-sds-range", "security-sd-short",
-              "security-sid-overflow", "security-sid-length", "security-acl-revision",
-              "security-ace-overrun", "security-node-vbn", "security-node-fixup-range",
-              "security-node-key-overrun", "security-index-range", "security-cycle"})
+        for (const char *kind : {"security-root-offset",
+                                 "security-root-used",
+                                 "security-root-terminal",
+                                 "security-key-overrun",
+                                 "security-subnode-flag",
+                                 "security-view-short",
+                                 "security-header-mismatch",
+                                 "security-sds-range",
+                                 "security-sd-short",
+                                 "security-sid-overflow",
+                                 "security-sid-length",
+                                 "security-acl-revision",
+                                 "security-ace-overrun",
+                                 "security-node-vbn",
+                                 "security-node-fixup-range",
+                                 "security-node-key-overrun",
+                                 "security-index-range",
+                                 "security-cycle",
+                                 "standard-short",
+                                 "standard-nonresident",
+                                 "standard-missing",
+                                 "standard-bad-second",
+                                 "standard-record-total"})
             QTest::newRow(kind) << QString::fromLatin1(kind);
     }
     void malformedDescriptors() {
