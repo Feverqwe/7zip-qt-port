@@ -3862,6 +3862,18 @@ Are you sure you want to split archive into such volumes?</source>
             <translation>Дескриптор безопасности NTFS недоступен или не проверен.</translation>
         </message>
         <message>
+            <source>The NTFS source is shorter than the declared volume. Some files may be incomplete or unreadable.</source>
+            <translation>Размер источника NTFS меньше заявленного размера тома. Некоторые файлы могут быть неполными или нечитаемыми.</translation>
+        </message>
+        <message>
+            <source>NTFS is being read using a backup boot sector. The primary sector is invalid.</source>
+            <translation>NTFS читается с использованием резервного загрузочного сектора. Основной сектор повреждён.</translation>
+        </message>
+        <message>
+            <source>The backup NTFS boot sector is unavailable or differs from the primary sector.</source>
+            <translation>Резервный загрузочный сектор NTFS недоступен или отличается от основного.</translation>
+        </message>
+        <message>
             <source>The ext filesystem requires journal recovery. The journal will not be replayed; files may be missing, outdated or unreadable.</source>
             <translation>Файловой системе ext требуется восстановление журнала. Журнал не будет воспроизведён; некоторые файлы могут отсутствовать, быть устаревшими или нечитаемыми.</translation>
         </message>

@@ -1878,6 +1878,9 @@ struct CDatabase {
     bool DataLimitations = false;
     bool MetadataLimitations = false;
     bool MftLimitations = false;
+    bool SourceTruncated = false;
+    bool BootFromBackup = false;
+    bool BootCopyUnverified = false;
 #endif
 
     CVolumeInfo VolumeInfo;
@@ -2000,6 +2003,9 @@ void CDatabase::Clear() {
     DataLimitations = false;
     MetadataLimitations = false;
     MftLimitations = false;
+    SourceTruncated = false;
+    BootFromBackup = false;
+    BootCopyUnverified = false;
 #endif
     PhySize = 0;
 }
@@ -3728,6 +3734,9 @@ HRESULT CDatabase::Open() {
         return E_OUTOFMEMORY;
     {
         const unsigned kHeaderSize = 512;
+#ifdef SEVENZIP_LINUX_NTFS
+        RINOK(InStream_SeekSet(InStream, 0))
+#endif
         RINOK(ReadStream_FALSE(InStream, ByteBuf, kHeaderSize))
         const bool primaryValid = Header.Parse(ByteBuf);
         UInt64 fileSize;
@@ -3739,13 +3748,33 @@ HRESULT CDatabase::Open() {
             RINOK(ReadStream_FALSE(InStream, ByteBuf, kHeaderSize))
             if (!Header.Parse(ByteBuf))
                 return S_FALSE;
+#ifdef SEVENZIP_LINUX_NTFS
+            BootFromBackup = true;
+#endif
         }
         PhySize = Header.GetPhySize_Clusters();
-        if (fileSize < PhySize)
+        if (fileSize < PhySize) {
+#ifdef SEVENZIP_LINUX_NTFS
+            SourceTruncated = true;
+            PhySize = fileSize;
+#else
             return S_FALSE;
+#endif
+        }
 
         const UInt64 phySizeMax = Header.GetPhySize_Max();
         if (fileSize >= phySizeMax) {
+#ifdef SEVENZIP_LINUX_NTFS
+            PhySize = phySizeMax;
+            HRESULT backupResult =
+                InStream_SeekSet(InStream, Header.NumSectors << Header.SectorSizeLog);
+            if (backupResult == S_OK)
+                backupResult = ReadStream_FALSE(InStream, ByteBuf + kHeaderSize, kHeaderSize);
+            if (backupResult == E_ABORT || backupResult == E_OUTOFMEMORY)
+                return backupResult;
+            if (backupResult != S_OK || memcmp(ByteBuf, ByteBuf + kHeaderSize, kHeaderSize))
+                BootCopyUnverified = true;
+#else
             RINOK(InStream_SeekSet(InStream, Header.NumSectors << Header.SectorSizeLog))
             const HRESULT backupResult =
                 ReadStream_FALSE(InStream, ByteBuf + kHeaderSize, kHeaderSize);
@@ -3756,6 +3785,7 @@ HRESULT CDatabase::Open() {
                     PhySize = phySizeMax;
                 // else _headerWarning = true;
             }
+#endif
         }
     }
 
@@ -4587,6 +4617,24 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(const PROPID propID, PROPVARIANT *cons
             reasons = "The volume state is unavailable. Files may be inconsistent.";
         else if (VolumeInfo.Dirty)
             reasons = "The NTFS volume is marked dirty. Some data may be corrupt.";
+        if (SourceTruncated) {
+            if (!reasons.IsEmpty())
+                reasons += '\n';
+            reasons += "The NTFS source is shorter than the declared volume. Some files may be "
+                       "incomplete or unreadable.";
+        }
+        if (BootFromBackup) {
+            if (!reasons.IsEmpty())
+                reasons += '\n';
+            reasons +=
+                "NTFS is being read using a backup boot sector. The primary sector is invalid.";
+        }
+        if (BootCopyUnverified) {
+            if (!reasons.IsEmpty())
+                reasons += '\n';
+            reasons +=
+                "The backup NTFS boot sector is unavailable or differs from the primary sector.";
+        }
         if (ReparseLimitations) {
             if (!reasons.IsEmpty())
                 reasons += '\n';
@@ -4630,7 +4678,10 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(const PROPID propID, PROPVARIANT *cons
     }
     case kpidFreeSpace:
         if (!Recs.IsEmpty()) {
-            RINOK(LoadFreeSpace())
+            const HRESULT result = LoadFreeSpace();
+            if (SourceTruncated && result != S_OK && result != E_ABORT && result != E_OUTOFMEMORY)
+                break; // Missing allocation statistics do not close a usable source prefix.
+            RINOK(result)
             if (FreeSpaceDefined)
                 prop = FreeSpace;
         }

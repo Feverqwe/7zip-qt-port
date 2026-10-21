@@ -94,6 +94,9 @@ def nonresident(original, entries, size, valid=None, flags=0, unit=0):
 
 
 def volume(kind="base"):
+    if kind.startswith("source-"):
+        from ntfs_source_fixture import volume as source_volume
+        return source_volume(kind)
     if kind.startswith("record-"):
         from ntfs_record_fixture import volume as record_volume
         return record_volume(kind)

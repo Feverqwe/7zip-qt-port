@@ -84,7 +84,11 @@ class FilesystemReadUiTests final : public QObject {
                                             "dir-root-missing",
                                             "record-total",
                                             "security-root-offset",
-                                            "security-sd-short"}) {
+                                            "security-sd-short",
+                                            "source-prefix",
+                                            "source-partial-data",
+                                            "source-backup-used",
+                                            "source-backup-mismatch"}) {
                     // Rejection uses the shared consent service; acceptance checks every reason.
                     if (!accept && kind != "exfat" && kind != "unclean" && kind != "volume-dirty" &&
                         kind != "ext-recover")
@@ -100,7 +104,8 @@ class FilesystemReadUiTests final : public QObject {
         const bool ntfs = kind.startsWith("volume-") || kind.startsWith("reparse-") ||
                           kind.startsWith("ea-") || kind.startsWith("data-list-") ||
                           kind.startsWith("standard-") || kind.startsWith("dir-") ||
-                          kind.startsWith("record-") || kind.startsWith("security-");
+                          kind.startsWith("record-") || kind.startsWith("security-") ||
+                          kind.startsWith("source-");
         const bool ext = kind.startsWith("ext-");
         SaveRegLang(UString(language == "en" ? L"-" : L"ru"),
                     qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
@@ -241,7 +246,8 @@ class FilesystemReadUiTests final : public QObject {
             QCOMPARE(copied.readAll(), payload);
             if (kind == "reparse-list-bad-id" || kind == "ea-record-small" ||
                 kind == "data-list-unreadable-list" || kind == "standard-short" ||
-                kind == "dir-root-missing" || kind.startsWith("security-")) {
+                kind == "dir-root-missing" || kind.startsWith("security-") ||
+                kind == "source-prefix") {
                 QTRY_VERIFY(Row(*table, "gamma") >= 0);
                 table->selectRow(Row(*table, "gamma"));
                 window.extractTo(output, true, {}, copyOptions);

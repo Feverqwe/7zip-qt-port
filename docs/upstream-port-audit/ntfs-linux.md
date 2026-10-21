@@ -1421,12 +1421,78 @@ receipt `20261021T094808Z-ad26d523`; он дополняет шесть passing 
 (422 exact / 242 adapted / 12 local); сверены все 32 Linux baseline hashes.
 Full/slow suites, установка и физические носители не проверялись.
 
+## Short sources and boot copies — 2026-10-21
+
+Сравнены полный `super.c:ntfs_init_from_boot`, его mount caller, boot/disk types,
+SDK `CHeader::Parse`, полное opening/bootstrap flow, bounded file streams,
+`CArc::ReadBasicProps`/physical-size accounting, CLI archive-property consumer,
+GUI opening/reopen/consent и текущая MFT failure isolation. Linux при размере
+устройства меньше заявленного тома предупреждает и устанавливает `SB_RDONLY`;
+исходный SDK безусловно отклонял input короче cluster area. Dynamic module теперь
+сохраняет полезное чтение с явным source limitation, consent на открытие и badge.
+Номинальная cluster geometry остаётся исходной; физический archive span ограничен
+доступным input. Иначе общий SDK consumer превращал бы известный короткий input
+в дополнительную ошибку открытия вместо предлагаемого ограниченного чтения.
+
+Обязательные boot/MFT header, geometry, mapping, attribute и path checks сохранены.
+Непригодный bootstrap и отсутствие обоих boot sectors остаются техническим отказом.
+Файл из отсутствующей части source не становится успешным пустым или дополненным
+нулями результатом: обычный stream/extraction flow сообщает неполное чтение.
+Статистика свободного места при недоступной bitmap короткого source остаётся
+неизвестной; она не закрывает читаемые файлы. Отмена/OOM сохраняют ошибки.
+
+Существующий SDK fallback при неправильном primary boot теперь имеет отдельную
+EN/RU причину. Расхождение копий, read/seek error или EOF при необязательной
+проверке backup не отклоняют исправный primary; они дают отдельное предупреждение.
+Полная declared physical area учитывается по проверенному primary, а не только
+по успешному сравнению копий. Отсутствие необязательного хвоста за полной cluster
+area сохраняет прежний supported layout без фиктивного ограничения.
+Каждое dynamic Open сначала устанавливает source position 0: новые diagnostics
+выявили, что повторный Open раньше незаметно разбирал текущую позицию как primary
+и переходил к backup. Никакого восстановления boot bytes, source writes или
+journal replay не добавлено. Standalone сохраняет прежнее поведение.
+
+Одиннадцать fixtures покрывают readable prefix, частично отсутствующий файл,
+невыравненный EOF, только доступный MFT/resident DATA, отсутствие backup tail,
+fallback/mismatch/bad copy и непригодный bootstrap/header. ABI/CLI проверяют точные
+healthy bytes, retained streams, failure неполных файлов, unknown free space и
+physical span внутри input. Read/seek fault injection различает optional backup
+failure и fatal E_ABORT/OOM; reopen очищает прежние ограничения. GUI действительно
+копирует данные после EN/RU consent, проверяет badge, refresh/new-opening scope
+и unchanged image. Existing suites также обнаруживают spurious fallback при reuse.
+
+Native Linux 6.8.0-147 прочитал все healthy файлы короткого prefix, частичного
+source и образа с mismatch backup; controls `20261021T100229Z-268fb664` проверили
+read-only device/mount flags и unchanged SHA-256, затем удалили mounts/loops/images.
+У gamma старое kernel вернуло 65536 bytes с нулевой отсутствующей половиной;
+archive намеренно сообщает incomplete extraction, не выдавая эти zeros за DATA.
+В `20261021T100129Z-d6cfecbc` старый kernel также отклонил mount с invalid primary;
+это не acceptance fallback закреплённого snapshot. Archive backup path подтверждён
+отдельно точными bytes. Native reference не подменяет pinned source comparison.
+
+Семь focused suites `ntfs_record`, `ntfs_directory`, `ntfs_stream`, `ntfs_security`,
+`ntfs`, `language`, `filesystem_read_ui` прошли на macOS arm64 за 39,34 с.
+Native Cocoa EN/RU: source warning 420×201 / 420×262, backup warnings
+420×201 / 420×249; clipping не обнаружен. Приложение собрано инкрементально;
+provenance verifier прошёл (422 exact / 242 adapted / 12 local), все 32 Linux
+baseline hashes сверены. Full/slow suites, установка и физические устройства
+этим сценарием не проверялись.
+Шесть suites без `ntfs_stream` также прошли на Linux (60,22 с) и Windows
+(127,70 с), receipt `20261021T100348Z-87c8d956`. Отдельная `ntfs_stream` прошла
+на Linux (38,36 с) и Windows (54,61 с), receipt `20261021T100757Z-8b98bfb1`.
+Она запускалась отдельно из-за прежних Windows batch timeouts, без изменения
+её timeout, toolchain или cache.
+
 ## Открытый read scope
 
 Известный security-metadata gate исправлен описанным выше сценарием.
 Per-opening consent, постоянный limited-access badge, read-only input и честные
 per-file errors проверены для рассмотренных MFT/DATA/name/security scenarios;
 это не доказывает полное соответствие всех оставшихся read features.
+Source review также выявил прежние global returns при orphan extension и
+ошибках чтения reparse metadata удалённых records. Они выполняются даже без
+публикации deleted items и требуют отдельной изоляции от исправных активных
+файлов; текущий boot/source scenario их не изменяет.
 
 Выбранные classic/WOF/MFT bootstrap scenarios подключены и проверены.
 Остальные metadata/read features NTFS должны пройти оставшийся source audit;

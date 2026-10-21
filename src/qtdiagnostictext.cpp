@@ -97,7 +97,16 @@ UString QtArchiveDiagnosticText(const UString &source) {
             "Some NTFS security descriptors are unavailable or unverified. Permissions "
             "may be missing. Readable file data remains accessible."),
         QT_TRANSLATE_NOOP("SevenZipDiagnostics",
-                          "The NTFS security descriptor is unavailable or unverified.")};
+                          "The NTFS security descriptor is unavailable or unverified."),
+        QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                          "The NTFS source is shorter than the declared volume. Some files may be "
+                          "incomplete or unreadable."),
+        QT_TRANSLATE_NOOP(
+            "SevenZipDiagnostics",
+            "NTFS is being read using a backup boot sector. The primary sector is invalid."),
+        QT_TRANSLATE_NOOP(
+            "SevenZipDiagnostics",
+            "The backup NTFS boot sector is unavailable or differs from the primary sector.")};
     for (const char *warning : warnings)
         if (text == QString::fromLatin1(warning))
             return QtDiagnosticText(warning);
