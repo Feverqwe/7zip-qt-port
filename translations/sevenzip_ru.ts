@@ -3838,6 +3838,10 @@ Are you sure you want to split archive into such volumes?</source>
     <context>
         <name>SevenZipDiagnostics</name>
         <message>
+            <source>The HFS wrapper lacks protection flags. Embedded volume data may be inconsistent.</source>
+            <translation>У оболочки HFS не установлены защитные флаги. Данные вложенного тома могут быть несогласованными.</translation>
+        </message>
+        <message>
             <source>Volume was not properly unmounted. Some data may be corrupt.</source>
             <translation>Том был некорректно размонтирован. Часть данных может быть повреждена.</translation>
         </message>

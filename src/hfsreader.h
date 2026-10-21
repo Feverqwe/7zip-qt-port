@@ -14,6 +14,7 @@ int64_t sevenzip_hfsplus_time(uint32_t timestamp);
 struct hfsplus_wd {
     uint32_t ablk_size;
     uint16_t ablk_start, embed_start, embed_count;
+    int unprotected;
 };
 int hfsplus_read_mdb(const unsigned char *, struct hfsplus_wd *);
 int sevenzip_hfsplus_volume_version(uint16_t);

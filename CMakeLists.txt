@@ -3954,8 +3954,11 @@ if(BUILD_TESTING)
     target_link_libraries(filesystem_read_ui_tests PRIVATE ${metadata_ui_libraries})
     target_compile_definitions(filesystem_read_ui_tests PRIVATE
         "SEVENZIP_EXFAT_MODULE=\"$<TARGET_FILE:sevenzip_exfat>\""
-        "SEVENZIP_EXFAT_RUNTIME=\"${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime\"")
-    add_dependencies(filesystem_read_ui_tests sevenzip_exfat)
+        "SEVENZIP_EXFAT_RUNTIME=\"${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime\""
+        "SEVENZIP_HFS_MODULE=\"$<TARGET_FILE:sevenzip_hfs>\""
+        "SEVENZIP_HFS_PYTHON=\"${Python3_EXECUTABLE}\""
+        "SEVENZIP_HFS_FIXTURE=\"${CMAKE_CURRENT_SOURCE_DIR}/tests/hfs_fixture.py\"")
+    add_dependencies(filesystem_read_ui_tests sevenzip_exfat sevenzip_hfs_runtime)
     add_test(NAME filesystem_read_ui COMMAND filesystem_read_ui_tests -silent)
     set_tests_properties(filesystem_read_ui PROPERTIES TIMEOUT 60 RESOURCE_LOCK sevenzip_ui_artifacts
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")

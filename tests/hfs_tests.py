@@ -91,14 +91,15 @@ class HfsTests(unittest.TestCase):
 
     def test_linux_embedded_wrappers(self):
         for kind in ("wrapper-nested", "wrapper-nested-hfsx", "wrapper-non-power",
-                     "wrapper-backup-version", "wrapper-version-hplus5", "wrapper-version-hfsx4"):
+                     "wrapper-backup-version", "wrapper-version-hplus5", "wrapper-version-hfsx4",
+                     "wrapper-no-slock", "wrapper-no-spared", "unclean"):
             image, files = volume(kind)
             for name, expected in files.items():
                 with self.subTest(kind=kind, name=name):
                     result = self.run_image("7z", image, name, start_only=True)
                     self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
                     self.assertEqual(result.stdout, expected)
-        for kind in ("wrapper-no-slock", "wrapper-no-spared", "wrapper-zero-step",
+        for kind in ("wrapper-zero-step",
                      "wrapper-nested-short", "wrapper-backup-signature",
                      "wrapper-version-old", "wrapper-version-new"):
             with self.subTest(kind=kind):

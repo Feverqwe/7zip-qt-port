@@ -169,6 +169,8 @@ def volume(kind="base"):
         put32(catalog + 52, 0)
     elif kind == "parent-cycle":
         put32(keys["HfsFixture"] + 2, get32(records["empty"] + 8))
+    elif kind == "unclean":
+        put32(1028, get32(1028) & ~0x100)
     elif kind == "volume-truncated":
         del image[-block:]
     elif kind != "base":

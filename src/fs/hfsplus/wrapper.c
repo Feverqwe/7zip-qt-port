@@ -25,9 +25,10 @@ int hfsplus_read_mdb(const unsigned char *bufptr, struct hfsplus_wd *wd)
 		return 0;
 
 	attrib = be16_to_cpu(*(__be16 *)(bufptr + HFSP_WRAPOFF_ATTRIB));
-	if (!(attrib & HFSP_WRAP_ATTRIB_SLOCK) ||
-	   !(attrib & HFSP_WRAP_ATTRIB_SPARED))
-		return 0;
+	/* Archive read-only adaptation: expose the mount protection requirement
+	 * as a limitation, without discarding a bounded embedded volume. */
+	wd->unprotected = !(attrib & HFSP_WRAP_ATTRIB_SLOCK) ||
+			 !(attrib & HFSP_WRAP_ATTRIB_SPARED);
 
 	wd->ablk_size =
 		be32_to_cpu(*(__be32 *)(bufptr + HFSP_WRAPOFF_ABLKSIZE));

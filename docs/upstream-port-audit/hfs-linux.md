@@ -307,7 +307,7 @@ physical-size, fork-stream и extraction consumers. Прежний SDK путь 
 один wrapper, не проверял SLOCK/SPARED и secondary header и требовал пары
 H+(4)/HX(5), хотя Linux допускает версии 4–5 для обеих сигнатур.
 
-Оригинальное тело `hfsplus_read_mdb` передано без изменения в C
+Оригинальное тело `hfsplus_read_mdb` первоначально передано без изменения в C
 `src/fs/hfsplus/wrapper.c`; signature принимает byte pointer вместо GNU void
 arithmetic, а static linkage снята для узкого C boundary. Endian/unaligned
 services заменены portable adapters; constants и packed disk types остаются
@@ -337,7 +337,8 @@ partition discovery, mount/write services не переносятся в это�
 
 Positive fixtures покрывают nested HFS+/HFSX, 1536-byte wrapper allocation blocks,
 изменённую secondary version и обе ранее отвергавшиеся пары primary signature/
-version. Negative controls проверяют SLOCK/SPARED, secondary signature, primary
+version. Первоначальные negative controls проверяли SLOCK/SPARED; текущая
+read-only адаптация этих флагов описана ниже. Negative controls проверяют secondary signature, primary
 версии вне диапазона, нулевой шаг и обрезанный enclosing extent. ABI проверяет
 Open cleanup/cancellation и retained independent forks, CLI — точные bytes.
 Штатный `-tHFS:s0` отключает поиск внутреннего архива для этих controls:
@@ -507,3 +508,51 @@ Native reference работает на более старом kernel; друг�
 installed-package прогон не заявляются. Новая итерация меняет только audit/status:
 достаточен `git diff --check`, ранее проверенные source/build outputs и compiler
 caches сохранены.
+
+## Read-only policy: wrapper protection и unclean HFS+ — 2026-10-21
+
+Повторная сверка по `AGENTS.md:Read-only filesystem access` выявила, что mount
+gate SLOCK/SPARED был перенесён слишком буквально. Он отвергал даже bounded
+embedded volume с корректными headers, catalog и читаемыми forks. Полные
+`hfsplus_read_mdb`/`hfsplus_read_wrapper`, `hfsplus_fill_super`, shared attributes
+и SDK Open/property/stream consumers повторно сравнены с теми же pinned commits.
+
+В C MDB decoder единственная функциональная адаптация заменяет отказ при
+отсутствии SLOCK/SPARED на возвращаемое состояние ограничения. Signature,
+allocation-size и embedded-extent decoding сохранены; SDK сохраняет source и
+enclosing bounds, progress, version, secondary signature, catalog/extent
+validation и per-file errors. Исходные flags не изменяются. Это осознанное
+расширение read-only archive доступа относительно Linux mount acceptance,
+а не заявление о возможности безопасного read-write монтирования или recovery.
+
+Отсутствие HFS+ UNMNT, которое Linux допускает с предупреждением и SB_RDONLY,
+теперь также сообщается пользователю. Read-only-only soft lock или сам факт
+journaling не означают отсутствия поддержки чтения; journal replay не добавлен.
+Dynamic handler публикует состояние через стандартную read-only capability и
+именованную limitation property. Общий GUI предлагает явное продолжение,
+Cancel/Return/Escape отменяют по умолчанию, а после согласия остаётся видимая
+отметка ограниченного доступа. Согласие относится к выбранному открытию;
+Close/Open сбрасывает причины. CLI/ABI сообщают причины как свойства тома,
+успешное чтение не подменяется фиктивной ошибкой файла. Реальные ошибки остаются
+ошибками. Standalone 7zz сохраняет исходное поведение SDK.
+
+Проверки защищают точные bytes обеих forks и attributes, отказ при реально
+непригодных headers/extents и отсутствие утечки limitation state между
+открытиями. GUI сценарии EN/RU проверяют accept/cancel, persistent indicator,
+копирование, повторное согласие и неизменность source bytes. Это не проверка
+любых повреждённых HFS деревьев или journal recovery; source-review status
+выше не означает глобального соответствия всей read-only policy.
+
+Focused `hfs`, `hfs_stream`, `filesystem_read_ui`, `language` прошли на macOS
+arm64/Cocoa, Linux x64/offscreen и Windows x64/MSVC/offscreen; основной runner
+receipt `20261021T035914Z-2c85ce8a`. На Windows первая ABI suite достигла прежнего
+лимита 45 с после расширения случаев. Повторное использование сжатых результатов
+детерминированного fixture generator убрало повторные Python процессы без
+удаления проверок или увеличения timeout. Финальная ABI suite прошла на всех
+трёх ОС; guest receipts `20261021T040150Z-b53cabd8` (Windows) и
+`20261021T040207Z-3cca2362` (Linux). Локальное приложение собрано; EN/RU Cocoa
+widget JSON предупреждений просмотрен, текст/причины/кнопки видны без clipping.
+Native Linux mount для этих изменений повторно не запускался: wrapper acceptance
+намеренно шире mount gate, исходные native controls приведены выше. Physical
+devices, native Windows/Linux appearance, installed package и full/slow suites
+не проверялись; incremental build trees и compiler caches сохранены.

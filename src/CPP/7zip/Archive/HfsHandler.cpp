@@ -529,6 +529,9 @@ class CDatabase {
     // UInt64 PhySize;
     UInt64 PhySize2;
     UInt64 ArcFileSize;
+#ifdef SEVENZIP_LINUX_HFS
+    AString ReadLimitations;
+#endif
 
     void Clear() {
         SpecOffset = 0;
@@ -541,6 +544,9 @@ class CDatabase {
         ThereAreAltStreams = false;
         CatalogCaseSensitive = false;
         Header.IsClassic = false;
+#ifdef SEVENZIP_LINUX_HFS
+        ReadLimitations.Empty();
+#endif
         // CaseSensetive = false;
 
         Refs.Clear();
@@ -1857,6 +1863,9 @@ HRESULT CDatabase::Open2(IInStream *inStream, IArchiveOpenCallback *progress) {
         hfsplus_wd wrapper;
         if (!hfsplus_read_mdb(p, &wrapper))
             return S_FALSE;
+        if (wrapper.unprotected)
+            ReadLimitations =
+                "The HFS wrapper lacks protection flags. Embedded volume data may be inconsistent.";
         const UInt32 blockSize = wrapper.ablk_size;
 #else
         const UInt32 blockSize = Get32a(p + 0x14); // drAlBlkSiz
@@ -1969,6 +1978,14 @@ HRESULT CDatabase::Open2(IInStream *inStream, IArchiveOpenCallback *progress) {
         h.BlockSize = blockSize;
     }
 
+#ifdef SEVENZIP_LINUX_HFS
+    // Linux hfsplus_fill_super permits read-only access without UNMNT.
+    if (!(Get32a(p + 4) & (1 << 8))) {
+        if (!ReadLimitations.IsEmpty())
+            ReadLimitations += '\n';
+        ReadLimitations += "Volume was not properly unmounted. Some data may be corrupt.";
+    }
+#endif
     // h.Attr = Get32a(p + 4);
     // h.LastMountedVersion = Get32a(p + 8);
     // h.JournalInfoBlock = Get32a(p + 0xC);
@@ -2083,13 +2100,22 @@ static const Byte kProps[] = {
 #endif
 };
 
+#ifdef SEVENZIP_LINUX_HFS
+static const PROPID kpidReadLimitations = kpidUserDefined;
+static const CStatProp kArcProps[] = {
+    {nullptr, kpidMethod, VT_BSTR},     {nullptr, kpidCharacts, VT_BSTR},
+    {nullptr, kpidClusterSize, VT_UI4}, {nullptr, kpidFreeSpace, VT_UI8},
+    {nullptr, kpidCTime, VT_FILETIME},  {nullptr, kpidMTime, VT_FILETIME},
+    {nullptr, kpidReadOnly, VT_BOOL},   {"Read-only limitations", kpidReadLimitations, VT_BSTR}};
+IMP_IInArchive_Props IMP_IInArchive_ArcProps_WITH_NAME
+#else
 static const Byte kArcProps[] = {kpidMethod,    kpidCharacts, kpidClusterSize,
                                  kpidFreeSpace, kpidCTime,    kpidMTime};
 
 IMP_IInArchive_Props IMP_IInArchive_ArcProps
+#endif
 
-    static void
-    HfsTimeToProp(UInt32 hfsTime, NWindows::NCOM::CPropVariant &prop) {
+    static void HfsTimeToProp(UInt32 hfsTime, NWindows::NCOM::CPropVariant &prop) {
 #ifndef SEVENZIP_LINUX_HFS
     if (hfsTime == 0)
         return;
@@ -2103,6 +2129,15 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID propID, PROPVARIANT *value)) {
     COM_TRY_BEGIN
     NWindows::NCOM::CPropVariant prop;
     switch (propID) {
+#ifdef SEVENZIP_LINUX_HFS
+    case kpidReadOnly:
+        prop = true;
+        break;
+    case kpidReadLimitations:
+        if (!ReadLimitations.IsEmpty())
+            prop = ReadLimitations;
+        break;
+#endif
     case kpidExtension:
         prop = Header.IsHfsX() ? "hfsx" : "hfs";
         break;

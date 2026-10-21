@@ -5,6 +5,7 @@
 #include "archivecodeccatalog.h"
 #include <QDir>
 #include <QFile>
+#include <QHash>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QLibrary>
@@ -96,6 +97,7 @@ class HfsStreamTests final : public QObject {
     CMyComPtr<IInArchive> archive_;
     QJsonObject record_;
     QByteArray bytes_;
+    QHash<QString, QJsonObject> fixtures_;
 
     void createArchive() {
         archive_.Release();
@@ -168,12 +170,18 @@ class HfsStreamTests final : public QObject {
         QCOMPARE(actual, expected);
     }
     void loadFixture(const QString &codec) {
-        QProcess generator;
-        QStringList arguments{QString::fromUtf8(SEVENZIP_HFS_FIXTURE), codec};
-        generator.start(QString::fromUtf8(SEVENZIP_HFS_PYTHON), arguments);
-        QVERIFY(generator.waitForFinished(10000));
-        QCOMPARE(generator.exitCode(), 0);
-        record_ = QJsonDocument::fromJson(generator.readAllStandardOutput()).object();
+        if (!fixtures_.contains(codec)) {
+            QProcess generator;
+            QStringList arguments{QString::fromUtf8(SEVENZIP_HFS_FIXTURE), codec};
+            generator.start(QString::fromUtf8(SEVENZIP_HFS_PYTHON), arguments);
+            QVERIFY(generator.waitForFinished(10000));
+            QCOMPARE(generator.exitCode(), 0);
+            const QJsonObject record =
+                QJsonDocument::fromJson(generator.readAllStandardOutput()).object();
+            QVERIFY(!record.isEmpty());
+            fixtures_.insert(codec, record);
+        }
+        record_ = fixtures_.value(codec);
         QVERIFY(!record_.isEmpty());
         QByteArray packed(4, '\0');
         qToBigEndian(quint32(record_["size"].toInt()), packed.data());
@@ -183,6 +191,46 @@ class HfsStreamTests final : public QObject {
     }
   private slots:
     void initTestCase() { createArchive(); }
+    void readLimitationsFollowOpening() {
+        for (const char *kind :
+             {"wrapper-no-slock", "base", "wrapper-no-spared", "unclean", "base"}) {
+            loadFixture(kind);
+            CMyComPtr2<IInStream, Input> input;
+            input.SetFromCls(new Input(bytes_));
+            QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+            NWindows::NCOM::CPropVariant readOnly;
+            QCOMPARE(archive_->GetArchiveProperty(kpidReadOnly, &readOnly), S_OK);
+            QCOMPARE(readOnly.vt, VARTYPE(VT_BOOL));
+            QVERIFY(readOnly.boolVal != VARIANT_FALSE);
+            UInt32 count = 0;
+            QCOMPARE(archive_->GetNumberOfArchiveProperties(&count), S_OK);
+            bool found = false;
+            for (UInt32 i = 0; i < count; ++i) {
+                BSTR name = nullptr;
+                PROPID id;
+                VARTYPE type;
+                QCOMPARE(archive_->GetArchivePropertyInfo(i, &name, &id, &type), S_OK);
+                const QString label = name ? QString::fromWCharArray(name) : QString();
+                SysFreeString(name);
+                if (label != "Read-only limitations")
+                    continue;
+                found = true;
+                NWindows::NCOM::CPropVariant value;
+                QCOMPARE(archive_->GetArchiveProperty(id, &value), S_OK);
+                if (QString::fromLatin1(kind) == "base")
+                    QCOMPARE(value.vt, VARTYPE(VT_EMPTY));
+                else {
+                    QCOMPARE(value.vt, VARTYPE(VT_BSTR));
+                    const QString reason = QString::fromWCharArray(value.bstrVal);
+                    QVERIFY(reason.contains(QString::fromLatin1(kind) == "unclean"
+                                                ? "not properly unmounted"
+                                                : "wrapper lacks protection"));
+                }
+            }
+            QVERIFY(found);
+            QCOMPARE(archive_->Close(), S_OK);
+        }
+    }
     void independentAndRetainedForks_data() {
         QTest::addColumn<QString>("kind");
         QTest::newRow("overflow") << QString("overflow-leaves");
@@ -190,6 +238,9 @@ class HfsStreamTests final : public QObject {
         QTest::newRow("inline-reserved") << QString("xattr-reserved");
         QTest::newRow("inline-start") << QString("xattr-start");
         QTest::newRow("nested-wrapper") << QString("wrapper-nested");
+        QTest::newRow("unprotected-wrapper-lock") << QString("wrapper-no-slock");
+        QTest::newRow("unprotected-wrapper-spared") << QString("wrapper-no-spared");
+        QTest::newRow("unclean") << QString("unclean");
         QTest::newRow("backup-version") << QString("wrapper-backup-version");
         QTest::newRow("hplus5") << QString("wrapper-version-hplus5");
         QTest::newRow("hfsx4") << QString("wrapper-version-hfsx4");
@@ -489,9 +540,7 @@ class HfsStreamTests final : public QObject {
         QCOMPARE(archive_->Close(), S_OK);
     }
     void failedOpenClearsCatalog() {
-        for (const char *kind : {"wrapper-no-slock",
-                                 "wrapper-no-spared",
-                                 "wrapper-zero-step",
+        for (const char *kind : {"wrapper-zero-step",
                                  "wrapper-nested-short",
                                  "wrapper-backup-signature",
                                  "wrapper-version-old",

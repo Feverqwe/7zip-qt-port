@@ -41,7 +41,10 @@ UString QtArchiveDiagnosticText(const UString &source) {
         QT_TRANSLATE_NOOP("SevenZipDiagnostics",
                           "Volume was not properly unmounted. Some data may be corrupt."),
         QT_TRANSLATE_NOOP("SevenZipDiagnostics",
-                          "Medium has reported failures. Some data may be lost.")};
+                          "Medium has reported failures. Some data may be lost."),
+        QT_TRANSLATE_NOOP(
+            "SevenZipDiagnostics",
+            "The HFS wrapper lacks protection flags. Embedded volume data may be inconsistent.")};
     for (const char *warning : warnings)
         if (text == QString::fromLatin1(warning))
             return QtDiagnosticText(warning);

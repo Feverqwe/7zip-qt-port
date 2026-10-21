@@ -5,13 +5,17 @@
 #include "mainwindow.h"
 #include <QAction>
 #include <QFile>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QLabel>
 #include <QMessageBox>
+#include <QProcess>
 #include <QPushButton>
 #include <QSignalSpy>
 #include <QTableWidget>
 #include <QTemporaryDir>
 #include <QTimer>
+#include <QtEndian>
 #include <QtTest>
 
 namespace {
@@ -46,29 +50,54 @@ class FilesystemReadUiTests final : public QObject {
         QVERIFY(QDir(runtime_.path()).mkdir("Formats"));
         QVERIFY(QFile::copy(QStringLiteral(SEVENZIP_EXFAT_MODULE),
                             runtime_.filePath("Formats/exfat" + suffix)));
+        QVERIFY(QFile::copy(QStringLiteral(SEVENZIP_HFS_MODULE),
+                            runtime_.filePath("Formats/hfs" + suffix)));
     }
     void cleanupTestCase() { qputenv("SEVENZIP_SETTINGS_PATH", previousSettings_); }
     void confirmsAndCopiesFlaggedVolume_data() {
         QTest::addColumn<QString>("language");
         QTest::addColumn<bool>("accept");
+        QTest::addColumn<QString>("kind");
         for (const QString &language : {"en", "ru"})
             for (bool accept : {false, true})
-                QTest::newRow(qPrintable(language + (accept ? "-accept" : "-cancel")))
-                    << language << accept;
+                for (const QString &kind : {"exfat", "wrapper-no-slock", "unclean"})
+                    QTest::newRow(qPrintable(language + (accept ? "-accept-" : "-cancel-") + kind))
+                        << language << accept << kind;
     }
     void confirmsAndCopiesFlaggedVolume() {
         QFETCH(QString, language);
         QFETCH(bool, accept);
+        QFETCH(QString, kind);
         SaveRegLang(UString(language == "en" ? L"-" : L"ru"),
                     qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
         TexfatFixture fixture(language == "en" ? 0 : 1);
         fixture.image[106] = char(language == "en" ? 2 : 5);
+        QByteArray image = fixture.image;
+        QString filename = fixture.fragmentedName;
+        QByteArray payload = QByteArray(512, 'A') + QByteArray(188, 'B');
+        if (kind != "exfat") {
+            QProcess generator;
+            generator.start(QStringLiteral(SEVENZIP_HFS_PYTHON),
+                            {QStringLiteral(SEVENZIP_HFS_FIXTURE), kind});
+            QVERIFY(generator.waitForFinished(10000));
+            QCOMPARE(generator.exitCode(), 0);
+            const QJsonObject data =
+                QJsonDocument::fromJson(generator.readAllStandardOutput()).object();
+            QByteArray packed(4, '\0');
+            qToBigEndian(quint32(data["size"].toInt()), packed.data());
+            packed += QByteArray::fromBase64(data["image"].toString().toLatin1());
+            image = qUncompress(packed);
+            QVERIFY(!image.isEmpty());
+            filename = QStringLiteral("HfsFixture/alpha");
+            payload =
+                QByteArray::fromBase64(data["files"].toObject()[filename].toString().toLatin1());
+        }
         QTemporaryDir directory;
         QVERIFY(directory.isValid());
         const QString path = directory.filePath(QStringLiteral("том 空.img"));
         QFile source(path);
         QVERIFY(source.open(QIODevice::WriteOnly));
-        QCOMPARE(source.write(fixture.image), qint64(fixture.image.size()));
+        QCOMPARE(source.write(image), qint64(image.size()));
         source.close();
         ArchiveBackend backend(nullptr, engine_);
         QSignalSpy ready(&backend, &ArchiveBackend::codecCatalogReady);
@@ -107,8 +136,9 @@ class FilesystemReadUiTests final : public QObject {
                     geometry &= UiInspection::fullyVisible(*label, *message) &&
                                 UiInspection::labelFits(*label);
             message->setProperty("uiInspection_language", language);
-            message->setProperty("uiInspection_state", "flagged-exfat");
-            geometry &= UiInspection::writeReport(*message, "filesystem-limitations-" + language);
+            message->setProperty("uiInspection_state", kind);
+            geometry &= UiInspection::writeReport(*message, "filesystem-limitations-" + language +
+                                                                '-' + kind);
             if (accept)
                 message->findChild<QPushButton *>("deviceOpenWithoutRecoveryButton")->click();
             else
@@ -138,35 +168,46 @@ class FilesystemReadUiTests final : public QObject {
             }
             auto *table = window.findChild<QTableWidget *>("archiveTable");
             QVERIFY(table);
-            QTRY_VERIFY(Row(*table, fixture.fragmentedName) >= 0);
-            table->selectRow(Row(*table, fixture.fragmentedName));
+            // HFS starts at its volume root; descend through the public UI.
+            if (kind != "exfat") {
+                QTRY_VERIFY(Row(*table, "HfsFixture") >= 0);
+                const int row = Row(*table, "HfsFixture");
+                table->selectRow(row);
+                QVERIFY(QMetaObject::invokeMethod(table, "cellDoubleClicked", Qt::DirectConnection,
+                                                  Q_ARG(int, row), Q_ARG(int, 0)));
+                filename = "alpha";
+            }
+            QTRY_VERIFY(Row(*table, filename) >= 0);
+            table->selectRow(Row(*table, filename));
             for (const char *name : {"deleteAction", "renameAction", "moveAction"})
                 QVERIFY(!window.findChild<QAction *>(name)->isEnabled());
             const QString output = directory.filePath("copied");
             window.extractTo(output, true, {}, {});
-            QFile copied(output + '/' + fixture.fragmentedName);
+            QFile copied(output + '/' + filename);
             QVERIFY(copied.open(QIODevice::ReadOnly));
-            QCOMPARE(copied.readAll(), QByteArray(512, 'A') + QByteArray(188, 'B'));
+            QCOMPARE(copied.readAll(), payload);
             window.findChild<QAction *>("refreshAction")->trigger();
-            QTRY_VERIFY(Row(*table, fixture.fragmentedName) >= 0);
+            QTRY_VERIFY(Row(*table, filename) >= 0);
             QCOMPARE(questions, 1);
             QVERIFY(badge->isVisible());
             window.openPath(directory.path());
             QVERIFY(!badge->isVisible());
             // Change our fixture after closing the old Windows read lease.
-            fixture.image[106] = char(quint8(fixture.image[106]) | 6u);
-            QFile changed(path);
-            QVERIFY(changed.open(QIODevice::ReadWrite));
-            QVERIFY(changed.seek(106));
-            QCOMPARE(changed.write(fixture.image.constData() + 106, 1), qint64(1));
-            changed.close();
+            if (kind == "exfat") {
+                image[106] = char(quint8(image[106]) | 6u);
+                QFile changed(path);
+                QVERIFY(changed.open(QIODevice::ReadWrite));
+                QVERIFY(changed.seek(106));
+                QCOMPARE(changed.write(image.constData() + 106, 1), qint64(1));
+                changed.close();
+            }
             window.openArchive(path);
             QCOMPARE(questions, 2);
         }
         automation.stop();
         QVERIFY2(unexpectedErrors.isEmpty(), qPrintable(unexpectedErrors.join('\n')));
         QVERIFY(source.open(QIODevice::ReadOnly));
-        QCOMPARE(source.readAll(), fixture.image);
+        QCOMPARE(source.readAll(), image);
     }
 };
 
