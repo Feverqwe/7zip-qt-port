@@ -1483,16 +1483,83 @@ baseline hashes сверены. Full/slow suites, установка и физи
 Она запускалась отдельно из-за прежних Windows batch timeouts, без изменения
 её timeout, toolchain или cache.
 
+## Deleted record recovery and isolation — 2026-10-21
+
+Сравнены полные `inode.c:ntfs_read_mft`, `record.c:mi_read/mi_enum_attr`,
+`frecord.c:ni_parse_reparse` и их read callers/types закреплённого Linux с SDK
+MFT parse, base/extension merge, deleted enumeration и текущими reparse/WOF,
+property, stream/extraction consumers. Linux возвращает `ESTALE` для inode,
+который больше не in-use; он не читает все deleted reparse records ради открытия
+активных файлов. Archive сохраняет существующий SDK recovery mode отдельной
+адаптацией, а не выдаёт его за Linux VFS undelete.
+
+Dynamic module больше не отклоняет весь Open из-за orphan extension без
+адресуемого base. Такие attributes не прикрепляются к выдуманному или чужому
+record. Reparse I/O для известных удалённых records выполняется только при
+запросе их публикации. При включённом recovery непригодные/пустые/слишком большие
+reparse payloads, неверные mappings, E_FAIL и unexpected EOF делают основной
+поток недоступным, сохраняя активные файлы и независимые ADS. E_ABORT/OOM и ошибки
+progress callback по-прежнему завершают Open. Reopen восстанавливает metadata,
+когда источник снова доступен. Bounds, имя/путь, владельцы extensions и seq
+checks не ослаблены. В source ничего не записывается и журнал не воспроизводится.
+
+Отсутствующий DATA у deleted file не публикуется как успешный пустой файл:
+размер неизвестен, stream/extraction возвращают ошибку. Реальный resident DATA
+нулевой длины остаётся обычным читаемым пустым файлом. Существующие link, WOF,
+nonresident DATA и ADS readers используются без нового декодирования. Missing
+reparse с соответствующим SI flag также не превращает WOF/link в обычный файл.
+Объекты с недоступным reparse decoder имеют конкретную item diagnostic;
+недекодированная ссылка больше не получает ложный размер 0. При публикации
+deleted items archive отдельно сообщает, что старые имена/метаданные/данные
+могли исчезнуть или быть переиспользованы. Shared opening service может показать
+эту причину через обычный per-opening consent и limited-access badge.
+Standalone сохраняет прежние SDK recovery checks.
+
+Тринадцать deterministic fixtures удаляют gamma из live I30, сохраняя MFT
+metadata для recovery; orphan control оставляет все активные файлы. Отдельная
+небольшая `ntfs_deleted` suite проверяет hidden/shown варианты, точные bytes и
+sizes, отсутствие fake-empty DATA, отдельные ADS при ошибке main, retained streams,
+nonfatal I/O/EOF против cancel/OOM/callback failure и reuse. CLI использует
+существующий `-mld=on` и `[DELETED]/…` paths общего SDK opening layer;
+kernel-style имена не подменяют этот публичный archive contract.
+
+GUI test передаёт фактические archive limitations из recovery-open в общий
+confirmation service: EN/RU Cancel/accept и geometry прошли, Cocoa
+420×292 / 420×353, без clipping. Это проверка shared dialog service; отдельный
+GUI selector режима deleted recovery этой итерацией не добавлен, end-to-end
+навигация recovery items через MainWindow не заявляется.
+Native Linux 6.8.0-147 подтвердил live payload для orphan/deleted-bad-reparse/
+deleted-extension controls и отсутствие gamma в live directory для двух deleted
+случаев. Receipt `20261021T102521Z-c7271d9e`: block device/mount read-only,
+SHA-256 неизменны, временные mounts/loops/images удалены. Native VFS не доказывает
+archive recovery старых файлов или runtime закреплённого snapshot.
+
+Восемь focused suites прошли на macOS arm64: `ntfs_directory`, `ntfs_record`,
+`ntfs_security`, `language`, окончательные `ntfs_deleted`/`ntfs`/`filesystem_read_ui`
+(33,84 с) и отдельная `ntfs_stream` (25,55 с). Первые CLI проверки использовали
+raw вместо `[DELETED]` paths, а parentless Cocoa dialog не закрывался имитацией
+Escape; исправлены тестовый выбор path и автоматическое нажатие Cancel.
+Product code между этими прогонами не менялся. Семь suites без stream также
+прошли на Linux (65,16 с) и Windows (141,42 с), `20261021T102723Z-9a28b514`;
+отдельный stream — Linux 38,43 с / Windows 53,46 с,
+`20261021T103214Z-7af31deb`. Текущих failures/timeouts нет. Stream запускался
+отдельно из-за прежних Windows batch timeouts; timeout/toolchain/cache не менялись.
+Приложение собрано инкрементально; provenance verifier прошёл
+(422 exact / 242 adapted / 12 local), сверены все 32 hashes Linux baseline.
+Full/slow suites, установка и физические носители не проверялись.
+
 ## Открытый read scope
 
 Известный security-metadata gate исправлен описанным выше сценарием.
 Per-opening consent, постоянный limited-access badge, read-only input и честные
 per-file errors проверены для рассмотренных MFT/DATA/name/security scenarios;
 это не доказывает полное соответствие всех оставшихся read features.
-Source review также выявил прежние global returns при orphan extension и
-ошибках чтения reparse metadata удалённых records. Они выполняются даже без
-публикации deleted items и требуют отдельной изоляции от исправных активных
-файлов; текущий boot/source scenario их не изменяет.
+Известные global returns при orphan/deleted metadata изолированы описанным выше
+recovery scenario; это не заменяет дальнейшую сверку всего NTFS read scope.
+Следующее source-visible различие: `$SII` ROOT/ALLOCATION ещё выбираются из
+legacy base/extension merge, в отличие от named attribute-list lookup Linux.
+Их membership/selection требуется сверить до дальнейшего утверждения о полноте
+security read path; исправление optional metadata failures этого не доказывает.
 
 Выбранные classic/WOF/MFT bootstrap scenarios подключены и проверены.
 Остальные metadata/read features NTFS должны пройти оставшийся source audit;

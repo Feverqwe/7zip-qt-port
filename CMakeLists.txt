@@ -1086,6 +1086,16 @@ if(BUILD_TESTING)
     add_test(NAME ntfs_record COMMAND ntfs_record_tests -silent)
     add_dependencies(ntfs_record_tests sevenzip_ntfs_runtime)
     set_tests_properties(ntfs_record PROPERTIES TIMEOUT 45)
+    qt_add_executable(ntfs_deleted_tests tests/ntfs_deleted_tests.cpp tests/ntfs_test_support.h)
+    target_include_directories(ntfs_deleted_tests PRIVATE src third_party/7zip/CPP)
+    target_link_libraries(ntfs_deleted_tests PRIVATE sevenzip_filesystem Qt6::Test)
+    if(WIN32)
+        target_link_libraries(ntfs_deleted_tests PRIVATE oleaut32)
+    endif()
+    target_compile_definitions(ntfs_deleted_tests PRIVATE ${ntfs_test_definitions})
+    add_test(NAME ntfs_deleted COMMAND ntfs_deleted_tests -silent)
+    add_dependencies(ntfs_deleted_tests sevenzip_ntfs_runtime)
+    set_tests_properties(ntfs_deleted PROPERTIES TIMEOUT 45)
     qt_add_executable(ntfs_security_tests tests/ntfs_security_tests.cpp)
     target_include_directories(ntfs_security_tests PRIVATE src third_party/7zip/CPP)
     target_link_libraries(ntfs_security_tests PRIVATE sevenzip_panel Qt6::Test)
@@ -3978,6 +3988,8 @@ if(BUILD_TESTING)
         "SEVENZIP_EXFAT_RUNTIME=\"${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime\""
         "SEVENZIP_HFS_MODULE=\"$<TARGET_FILE:sevenzip_hfs>\""
         "SEVENZIP_NTFS_MODULE=\"$<TARGET_FILE:sevenzip_ntfs>\""
+        "SEVENZIP_NTFS_CORE=\"$<TARGET_FILE:sevenzip_ntfs>\""
+        "SEVENZIP_NTFS_PYTHON=\"${Python3_EXECUTABLE}\""
         "SEVENZIP_NTFS_FIXTURE=\"${CMAKE_CURRENT_SOURCE_DIR}/tests/ntfs_fixture.py\""
         "SEVENZIP_EXT_MODULE=\"$<TARGET_FILE:sevenzip_ext>\""
         "SEVENZIP_EXT_FIXTURE=\"${CMAKE_CURRENT_SOURCE_DIR}/tests/ext_fixture.py\""

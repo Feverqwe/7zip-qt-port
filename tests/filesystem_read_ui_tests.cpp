@@ -3,6 +3,9 @@
 #include "exfat_fixture.h"
 #include "layout_inspection.h"
 #include "mainwindow.h"
+#include "ntfs_test_support.h"
+#include "qtfilesystemreadprompt.h"
+#include "qtlanguageservices.h"
 #include <QAction>
 #include <QFile>
 #include <QJsonDocument>
@@ -27,7 +30,7 @@ int Row(QTableWidget &table, const QString &name) {
 }
 } // namespace
 
-class FilesystemReadUiTests final : public QObject {
+class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::Fixture {
     Q_OBJECT
     QTemporaryDir runtime_;
     QString engine_, module_;
@@ -58,6 +61,62 @@ class FilesystemReadUiTests final : public QObject {
                             runtime_.filePath("Formats/ext" + suffix)));
     }
     void cleanupTestCase() { qputenv("SEVENZIP_SETTINGS_PATH", previousSettings_); }
+    void deletedRecoveryConsent_data() {
+        QTest::addColumn<QString>("language");
+        QTest::addColumn<bool>("accept");
+        for (const QString &language : {"en", "ru"})
+            for (bool accept : {false, true})
+                QTest::newRow(qPrintable(language + (accept ? "-accept" : "-cancel")))
+                    << language << accept;
+    }
+    void deletedRecoveryConsent() {
+        QFETCH(QString, language);
+        QFETCH(bool, accept);
+        QtLoadTranslation(language == "en" ? "-" : "ru");
+        createArchive();
+        loadFixture("deleted-reparse-bad-run");
+        CMyComPtr<ISetProperties> properties;
+        QCOMPARE(
+            archive_->QueryInterface(IID_ISetProperties, reinterpret_cast<void **>(&properties)),
+            S_OK);
+        const wchar_t *name = L"ld";
+        const NWindows::NCOM::CPropVariant enabled(true);
+        QCOMPARE(properties->SetProperties(&name, &enabled, 1), S_OK);
+        CMyComPtr<IInStream> source = new NtfsTestSupport::Input(bytes_);
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
+        QString limitations;
+        QVERIFY(readLimitations(limitations));
+        QVERIFY(limitations.contains("Deleted NTFS records"));
+        bool geometry = true, handled = false;
+        QTimer automation;
+        connect(&automation, &QTimer::timeout, [&] {
+            for (auto *widget : QApplication::topLevelWidgets()) {
+                auto *message = qobject_cast<QMessageBox *>(widget);
+                if (!message || message->objectName() != "filesystemReadLimitationsWarning")
+                    continue;
+                message->layout()->activate();
+                for (auto *label : message->findChildren<QLabel *>())
+                    if (label->isVisible())
+                        geometry &= UiInspection::fullyVisible(*label, *message) &&
+                                    UiInspection::labelFits(*label);
+                message->setProperty("uiInspection_language", language);
+                message->setProperty("uiInspection_state", "deleted-recovery");
+                geometry &= UiInspection::writeReport(*message, "filesystem-deleted-" + language);
+                handled = true;
+                if (accept)
+                    message->findChild<QPushButton *>("deviceOpenWithoutRecoveryButton")->click();
+                else
+                    message->button(QMessageBox::Cancel)->click();
+            }
+        });
+        automation.start(10);
+        QCOMPARE(ConfirmLimitedFilesystemRead(nullptr, limitations), accept);
+        automation.stop();
+        QVERIFY(handled);
+        QVERIFY(geometry);
+        QCOMPARE(archive_->Close(), S_OK);
+        archive_.Release();
+    }
     void confirmsAndCopiesFlaggedVolume_data() {
         QTest::addColumn<QString>("language");
         QTest::addColumn<bool>("accept");

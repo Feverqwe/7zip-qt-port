@@ -28,11 +28,13 @@ class NtfsTests(unittest.TestCase):
         (cls.runtime / "Formats").mkdir()
         shutil.copy2(MODULE, cls.runtime / "Formats" / MODULE.name)
 
-    def run_image(self, engine, data, command="t", name=None, streams=False, case_sensitive=False):
+    def run_image(self, engine, data, command="t", name=None, streams=False, case_sensitive=False, deleted=False):
         with tempfile.TemporaryDirectory(dir=self.runtime) as temporary:
             path = Path(temporary) / "образ 空.ntfs"
             path.write_bytes(data)
             args = [str(self.runtime / (engine + SUFFIX)), command, "-tNTFS", "-sccUTF-8", "-bsp0"]
+            if deleted:
+                args += ["-mld=on"]
             if case_sensitive:
                 args += ["-ssc"]
             if streams or (name and ":" in name):
@@ -172,6 +174,29 @@ class NtfsTests(unittest.TestCase):
                     self.assertLess(len(result.stdout), len(complete[name]))
         image, _ = volume("source-prefix")
         self.assertNotEqual(self.run_image("7zz", image, "l").returncode, 0)
+
+    def test_deleted_metadata_does_not_hide_live_files(self):
+        from ntfs_deleted_fixture import CASES, UNREADABLE, volume as deleted_volume
+        for kind in CASES:
+            with self.subTest(kind=kind):
+                image, active, recovered = deleted_volume(kind)
+                for name, expected in active.items():
+                    result = self.run_image("7z", image, "x", name)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertEqual(result.stdout, expected)
+                listing = self.run_image("7z", image, "l", deleted=True)
+                self.assertEqual(listing.returncode, 0, listing.stderr)
+                if kind != "deleted-orphan-extension":
+                    self.assertIn(b"Deleted NTFS records", listing.stdout)
+                for name, expected in recovered.items():
+                    # The common 7-Zip opening layer prefixes recovery paths.
+                    result = self.run_image("7z", image, "x", "[DELETED]/" + name, deleted=True)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertEqual(result.stdout, expected)
+                if kind in UNREADABLE:
+                    result = self.run_image("7z", image, "x", "[DELETED]/gamma", deleted=True)
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertEqual(result.stdout, b"")
 
     def test_classic_read_paths_in_both_engines(self):
         for kind in ("base", "sparse", "hole-first", "initialized", "compressed", "sector4k", "boot-reserved", "backup-boot"):

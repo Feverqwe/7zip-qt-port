@@ -3874,6 +3874,14 @@ Are you sure you want to split archive into such volumes?</source>
             <translation>Резервный загрузочный сектор NTFS недоступен или отличается от основного.</translation>
         </message>
         <message>
+            <source>Deleted NTFS records are shown for recovery. Names, metadata and file data may be missing, outdated or reused.</source>
+            <translation>Показаны удалённые записи NTFS для восстановления. Имена, метаданные и данные файлов могут отсутствовать, быть устаревшими или уже использоваться другими файлами.</translation>
+        </message>
+        <message>
+            <source>NTFS reparse metadata is unavailable. The main file stream cannot be decoded.</source>
+            <translation>Метаданные точки повторной обработки NTFS недоступны. Не удалось декодировать основной поток файла.</translation>
+        </message>
+        <message>
             <source>The ext filesystem requires journal recovery. The journal will not be replayed; files may be missing, outdated or unreadable.</source>
             <translation>Файловой системе ext требуется восстановление журнала. Журнал не будет воспроизведён; некоторые файлы могут отсутствовать, быть устаревшими или нечитаемыми.</translation>
         </message>

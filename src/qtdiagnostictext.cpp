@@ -106,7 +106,14 @@ UString QtArchiveDiagnosticText(const UString &source) {
             "NTFS is being read using a backup boot sector. The primary sector is invalid."),
         QT_TRANSLATE_NOOP(
             "SevenZipDiagnostics",
-            "The backup NTFS boot sector is unavailable or differs from the primary sector.")};
+            "The backup NTFS boot sector is unavailable or differs from the primary sector."),
+        QT_TRANSLATE_NOOP(
+            "SevenZipDiagnostics",
+            "Deleted NTFS records are shown for recovery. Names, metadata and file data "
+            "may be missing, outdated or reused."),
+        QT_TRANSLATE_NOOP(
+            "SevenZipDiagnostics",
+            "NTFS reparse metadata is unavailable. The main file stream cannot be decoded.")};
     for (const char *warning : warnings)
         if (text == QString::fromLatin1(warning))
             return QtDiagnosticText(warning);

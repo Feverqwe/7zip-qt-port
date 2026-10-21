@@ -1881,6 +1881,7 @@ struct CDatabase {
     bool SourceTruncated = false;
     bool BootFromBackup = false;
     bool BootCopyUnverified = false;
+    bool DeletedItems = false;
 #endif
 
     CVolumeInfo VolumeInfo;
@@ -2006,6 +2007,7 @@ void CDatabase::Clear() {
     SourceTruncated = false;
     BootFromBackup = false;
     BootCopyUnverified = false;
+    DeletedItems = false;
 #endif
     PhySize = 0;
 }
@@ -3990,10 +3992,10 @@ HRESULT CDatabase::Open() {
         const UInt64 refIndex = rec.BaseMftRef.GetIndex();
         if (refIndex >= Recs.Size()) {
 #ifdef SEVENZIP_LINUX_NTFS
-            if (rec.InUse())
-                continue;
-#endif
+            continue; // An orphan extension cannot supply attributes to any known base record.
+#else
             return S_FALSE;
+#endif
         }
         CMftRec &refRec = Recs[(unsigned)refIndex];
         if (!refRec.Is_Magic_FILE())
@@ -4034,16 +4036,35 @@ HRESULT CDatabase::Open() {
     for (i = 0; i < Recs.Size(); ++i) {
         CMftRec &rec = Recs[i];
 #ifdef SEVENZIP_LINUX_NTFS
-        if (rec.InUse())
+        if (rec.InUse() || !_showDeletedFiles)
             continue;
 #endif
-        if (!rec.Is_Magic_FILE() || !rec.BaseMftRef.IsBaseItself() || rec.ReparseAttrs.IsEmpty())
+        if (!rec.Is_Magic_FILE() || !rec.BaseMftRef.IsBaseItself())
             continue;
+        if (rec.ReparseAttrs.IsEmpty()) {
+#ifdef SEVENZIP_LINUX_NTFS
+            if (rec.SiDefined && (rec.SiAttr.Attrib & FILE_ATTRIBUTE_REPARSE_POINT)) {
+                rec.ReparseError = S_FALSE;
+                ReparseLimitations = true;
+            }
+#endif
+            continue;
+        }
         CMftRec reparseRecord;
         reparseRecord.Flags = rec.Flags;
         reparseRecord.DataAttrs = rec.ReparseAttrs;
         reparseRecord.ParseDataNames();
         const UInt64 size = reparseRecord.DataAttrs[0].GetSize();
+#ifdef SEVENZIP_LINUX_NTFS
+        if (!size || size > 16384) {
+            rec.ReparseError = S_FALSE;
+            ReparseLimitations = true;
+            rec.ReparseAttrs.ClearAndFree();
+            continue;
+        }
+        if (OpenCallback)
+            RINOK(OpenCallback->SetCompleted(nullptr, nullptr))
+#else
         if (size > 16384) {
             if (!rec.InUse()) {
                 rec.ReparseAttrs.ClearAndFree();
@@ -4051,6 +4072,7 @@ HRESULT CDatabase::Open() {
             }
             return S_FALSE;
         }
+#endif
         CMyComPtr<IInStream> reparseStream;
         HRESULT result = reparseRecord.GetStream(InStream, 0, Header.ClusterSizeLog,
                                                  Header.NumClusters, &reparseStream);
@@ -4058,6 +4080,16 @@ HRESULT CDatabase::Open() {
         data.Alloc((size_t)size);
         if (result == S_OK)
             result = ReadStream_FALSE(reparseStream, data, (size_t)size);
+#ifdef SEVENZIP_LINUX_NTFS
+        if (OpenCallback)
+            RINOK(OpenCallback->SetCompleted(nullptr, nullptr))
+        if (result != S_OK && result != E_ABORT && result != E_OUTOFMEMORY) {
+            rec.ReparseError = S_FALSE;
+            ReparseLimitations = true;
+            rec.ReparseAttrs.ClearAndFree();
+            continue;
+        }
+#endif
         if (result != S_OK) {
             if (!rec.InUse() && (result == S_FALSE || result == E_NOTIMPL)) {
                 rec.ReparseAttrs.ClearAndFree();
@@ -4128,6 +4160,17 @@ HRESULT CDatabase::Open() {
         if (!rec.InUse() && !_showDeletedFiles)
             continue;
 
+#ifdef SEVENZIP_LINUX_NTFS
+        if (!rec.InUse() && !rec.IsDir()) {
+            bool primary = false;
+            FOR_VECTOR(di, rec.DataAttrs)
+            primary |= rec.DataAttrs[di].Name.IsEmpty();
+            if (!primary) {
+                rec.DataAttrs.Add(UnavailableDataAttribute(UString2()));
+                rec.ParseDataNames();
+            }
+        }
+#endif
         // rec.FileNames.Clear(); // for debug
         rec.MyNumNameLinks = rec.FileNames.Size();
         PRF(printf("\n%4u: ", i);)
@@ -4193,6 +4236,9 @@ HRESULT CDatabase::Open() {
             if (rec.MyItemIndex < 0)
                 rec.MyItemIndex = (int)Items.Size();
             item.ParentHost = (int)Items.Add(item);
+#ifdef SEVENZIP_LINUX_NTFS
+            DeletedItems |= !rec.InUse();
+#endif
             if (OpenCallback) // if (Items.Size() > Recs.Size())
             {
                 const UInt64 numFiles = Items.Size();
@@ -4635,6 +4681,12 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(const PROPID propID, PROPVARIANT *cons
             reasons +=
                 "The backup NTFS boot sector is unavailable or differs from the primary sector.";
         }
+        if (DeletedItems) {
+            if (!reasons.IsEmpty())
+                reasons += '\n';
+            reasons += "Deleted NTFS records are shown for recovery. Names, metadata and file data "
+                       "may be missing, outdated or reused.";
+        }
         if (ReparseLimitations) {
             if (!reasons.IsEmpty())
                 reasons += '\n';
@@ -5007,6 +5059,10 @@ Z7_COM7F_IMF(CHandler::GetProperty(const UInt32 index, const PROPID propID,
                 prop = "The NTFS MFT record is unavailable or unverified.";
             else if (UnavailableSecurIds.FindInSorted(rec.SiAttr.SecurityId) >= 0)
                 prop = "The NTFS security descriptor is unavailable or unverified.";
+            else if (!item.IsAltStream() &&
+                     (rec.ReparseError != S_OK || (rec.Link && item.LinkTargetIndex < 0)))
+                prop =
+                    "NTFS reparse metadata is unavailable. The main file stream cannot be decoded.";
             else if (data && (data->Unavailable || data->Partial) &&
                      (item.IsAltStream() || !rec.Link))
                 prop = "NTFS DATA mapping is incomplete or unverified.";
@@ -5019,9 +5075,8 @@ Z7_COM7F_IMF(CHandler::GetProperty(const UInt32 index, const PROPID propID,
             if (rec.ReparseError != S_OK && !item.IsAltStream())
                 break;
             if (rec.Link && !item.IsAltStream()) {
-                prop = item.LinkTargetIndex < 0
-                           ? (UInt64)0
-                           : (UInt64)LinkTargets[(unsigned)item.LinkTargetIndex].Len();
+                if (item.LinkTargetIndex >= 0)
+                    prop = (UInt64)LinkTargets[(unsigned)item.LinkTargetIndex].Len();
                 break;
             }
             if (data && data->Unavailable)
