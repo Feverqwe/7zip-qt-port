@@ -39,11 +39,12 @@ def long_entries(name, alias):
 
 
 class Volume:
-    def __init__(self, bits=12, sector=512, sectors_per_cluster=1, fats=2):
+    def __init__(self, bits=12, sector=512, sectors_per_cluster=1, fats=2, clusters=None):
         self.bits, self.sector, self.spc, self.fats = bits, sector, sectors_per_cluster, fats
         self.cluster_size = sector * sectors_per_cluster
-        self.clusters = 768 if bits == 12 else 4096 if bits == 16 else 1024
-        if bits == 32 and self.cluster_size >= len(PAYLOAD):
+        self.clusters = (clusters if clusters is not None else
+                         (768 if bits == 12 else 4096 if bits == 16 else 1024))
+        if clusters is None and bits == 32 and self.cluster_size >= len(PAYLOAD):
             self.clusters = 32
         self.fat_sectors = ((self.clusters + 2) * bits + 8 * sector - 1) // (8 * sector)
         self.reserved = 32 if bits == 32 else 1
@@ -165,9 +166,13 @@ if __name__ == "__main__":
     parser.add_argument("--directory")
     parser.add_argument("--streams", type=int)
     parser.add_argument("--file-chain")
+    parser.add_argument("--table")
     parser.add_argument("--bundle", action="store_true")
     args = parser.parse_args()
-    if args.file_chain:
+    if args.table:
+        from fat_table_fixture import table_volume
+        v = table_volume(args.table)
+    elif args.file_chain:
         from fat_stream_fixture import chain_volume
         v = chain_volume(args.file_chain)
     elif args.streams:
@@ -188,6 +193,9 @@ if __name__ == "__main__":
                           "fault_offset": getattr(v, "fault_offset", 0),
                           "stream_offsets": getattr(v, "stream_offsets", []),
                           "file_limited": getattr(v, "file_limited", False),
-                          "declared_file_size": getattr(v, "declared_file_size", len(PAYLOAD))}))
+                          "declared_file_size": getattr(v, "declared_file_size", len(PAYLOAD)),
+                          "table_fault_offset": getattr(v, "table_fault_offset", 0),
+                          "table_partial_bytes": getattr(v, "table_partial_bytes", 0),
+                          "table_limited": getattr(v, "table_limited", False)}))
     else:
         sys.stdout.buffer.write(v.data)

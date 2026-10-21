@@ -83,6 +83,35 @@ if(BUILD_TESTING)
     add_dependencies(fat_stream_tests sevenzip_fat_runtime)
     add_test(NAME fat_stream COMMAND fat_stream_tests -silent)
     set_tests_properties(fat_stream PROPERTIES TIMEOUT 45)
+    qt_add_executable(fat_table_tests tests/fat_table_tests.cpp tests/fat_test_support.h)
+    set_target_properties(fat_table_tests PROPERTIES AUTOMOC ON)
+    target_include_directories(fat_table_tests PRIVATE src third_party/7zip/CPP)
+    target_link_libraries(fat_table_tests PRIVATE sevenzip_filesystem Qt6::Test)
+    target_compile_definitions(fat_table_tests PRIVATE ${fat_test_definitions})
+    if(WIN32)
+        target_link_libraries(fat_table_tests PRIVATE oleaut32)
+    endif()
+    add_dependencies(fat_table_tests sevenzip_fat_runtime)
+    add_test(NAME fat_table COMMAND fat_table_tests -silent)
+    set_tests_properties(fat_table PROPERTIES TIMEOUT 45)
+    qt_add_executable(fat_table_prompt_tests tests/fat_table_tests.cpp tests/fat_test_support.h
+        tests/layout_inspection.cpp)
+    set_target_properties(fat_table_prompt_tests PROPERTIES AUTOMOC ON)
+    target_include_directories(fat_table_prompt_tests PRIVATE src third_party/7zip/CPP)
+    target_link_libraries(fat_table_prompt_tests PRIVATE sevenzip_location Qt6::Test)
+    target_compile_definitions(fat_table_prompt_tests PRIVATE ${fat_test_definitions}
+        SEVENZIP_FAT_TABLE_PROMPT)
+    if(WIN32)
+        target_link_libraries(fat_table_prompt_tests PRIVATE oleaut32)
+    endif()
+    add_dependencies(fat_table_prompt_tests sevenzip_fat_runtime)
+    add_test(NAME fat_table_prompt COMMAND fat_table_prompt_tests -silent limitedTableConsent)
+    set_tests_properties(fat_table_prompt PROPERTIES TIMEOUT 45 RESOURCE_LOCK sevenzip_ui_artifacts
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
+    if(APPLE)
+        set_property(TEST fat_table_prompt PROPERTY ENVIRONMENT
+            "QT_QPA_PLATFORM=cocoa;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
+    endif()
     # Compound is the other handler using the shared CClusterInStream reader.
     add_test(NAME compound_stream COMMAND ${Python3_EXECUTABLE}
         ${CMAKE_CURRENT_SOURCE_DIR}/tests/compound_stream_tests.py

@@ -3,10 +3,10 @@ from fat_fixture import Volume, PAYLOAD, LONG_NAME, entry
 import struct
 
 
-def stream_volume(bits):
+def stream_volume(bits, clusters=None):
     if bits not in (12, 16, 32):
         raise ValueError(bits)
-    v = Volume(bits)
+    v = Volume(bits, clusters=clusters)
     second = bytes((i * 17 + 23) & 255 for i in range(1100)) + b"second tail\n"
     chain = [10, 15, 20]
     for i, c in enumerate(chain):

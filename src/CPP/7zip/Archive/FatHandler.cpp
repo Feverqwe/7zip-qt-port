@@ -44,6 +44,7 @@ namespace NFat {
 
 static const UInt32 kFatItemUsedByDirMask = (UInt32)1 << 31;
 static const UInt32 kFatItemActiveFileMask = (UInt32)1 << 29;
+static const UInt32 kFatItemUnknownMask = (UInt32)1 << 28;
 #ifdef SEVENZIP_LINUX_FAT
 static const UInt32 kFatItemActiveDirMask = (UInt32)1 << 30;
 #endif
@@ -468,6 +469,7 @@ struct CDatabase {
     bool SourceTruncated = false;
     bool DirectoryLimitations = false;
     bool FileLimitations = false;
+    bool TableLimitations = false;
 #endif
     char VolLabel[11];
     bool VolItem_Defined;
@@ -488,6 +490,7 @@ struct CDatabase {
     HRESULT ReadDirItems(Int32 parent, UInt32 cluster, unsigned level, HRESULT &callbackResult,
                          CRecordVector<UInt32> &activeClusters);
 #ifdef SEVENZIP_LINUX_FAT
+    HRESULT ReadFatData(Byte *data, CByteBuffer &known, UInt32 sector, UInt32 size);
     void MarkDirectoryIncomplete(Int32 parent) {
         DirectoryLimitations = true;
         if (parent >= 0)
@@ -512,6 +515,7 @@ void CDatabase::Clear() {
     SourceTruncated = false;
     DirectoryLimitations = false;
     FileLimitations = false;
+    TableLimitations = false;
     Header.Dirty = false;
 #endif
     PhySize = 0;
@@ -625,6 +629,8 @@ HRESULT CDatabase::ReadDirItems(Int32 parent, UInt32 cluster, unsigned level,
                 && !clusterSectorsLeft
 #endif
             ) {
+                if (cluster & kFatItemUnknownMask)
+                    return S_FALSE;
                 if (Header.IsEoc(cluster))
                     break;
                 if (!Header.IsValidCluster(cluster))
@@ -942,10 +948,15 @@ HRESULT CDatabase::Open() {
         NumFreeClusters = 0;
 
     CByteBuffer byteBuf;
+#ifdef SEVENZIP_LINUX_FAT
+    CByteBuffer knownBuf;
+#endif
     Fat = new UInt32[Header.FatSize];
 
     RINOK(OpenProgressFat())
+#ifndef SEVENZIP_LINUX_FAT
     RINOK(SeekToSector(Header.GetFatSector()))
+#endif
     if (Header.NumFatBits == 32) {
         const UInt32 kBufSize = 1 << 15;
         byteBuf.Alloc(kBufSize);
@@ -957,20 +968,39 @@ HRESULT CDatabase::Open() {
             if (size > kBufSize32)
                 size = kBufSize32;
             const UInt32 readSize = Header.SizeToSectors(size * 4) << Header.SectorSizeLog;
+#ifdef SEVENZIP_LINUX_FAT
+            RINOK(ReadFatData(byteBuf, knownBuf,
+                              Header.GetFatSector() + (i >> (Header.SectorSizeLog - 2)), readSize))
+#else
             RINOK(ReadStream_FALSE(InStream, byteBuf, readSize))
+#endif
             NumCurUsedBytes += readSize;
 
             const UInt32 *src = (const UInt32 *)(const void *)(const Byte *)byteBuf;
             UInt32 *dest = Fat + i;
             const UInt32 *srcLim = src + size;
+#ifdef SEVENZIP_LINUX_FAT
+            const UInt32 *const srcStart = src;
+#endif
             if (numFreeClusters_Defined)
                 do
+#ifdef SEVENZIP_LINUX_FAT
+                    *dest++ = knownBuf[(src - srcStart) * 4 + 3] ? Get32a(src) & 0x0FFFFFFF
+                                                                 : kFatItemUnknownMask;
+#else
                     *dest++ = Get32a(src) & 0x0FFFFFFF;
+#endif
                 while (++src != srcLim);
             else {
                 UInt32 numFreeClusters = 0;
                 do {
-                    const UInt32 v = Get32a(src) & 0x0FFFFFFF;
+                    const UInt32 v =
+#ifdef SEVENZIP_LINUX_FAT
+                        knownBuf[(src - srcStart) * 4 + 3] ? Get32a(src) & 0x0FFFFFFF
+                                                           : kFatItemUnknownMask;
+#else
+                        Get32a(src) & 0x0FFFFFFF;
+#endif
                     *dest++ = v;
                     numFreeClusters += (UInt32)(v - 1) >> 31;
                 } while (++src != srcLim);
@@ -986,15 +1016,31 @@ HRESULT CDatabase::Open() {
         NumCurUsedBytes += kBufSize;
         byteBuf.Alloc(kBufSize);
         Byte *p = byteBuf;
+#ifdef SEVENZIP_LINUX_FAT
+        RINOK(ReadFatData(p, knownBuf, Header.GetFatSector(), kBufSize))
+#else
         RINOK(ReadStream_FALSE(InStream, p, kBufSize))
+#endif
         const UInt32 fatSize = Header.FatSize;
         UInt32 *fat = &Fat[0];
         if (Header.NumFatBits == 16)
             for (UInt32 j = 0; j < fatSize; j++)
-                fat[j] = Get16a(p + j * 2);
+                fat[j] =
+#ifdef SEVENZIP_LINUX_FAT
+                    knownBuf[j * 2 + 1] ? Get16a(p + j * 2) : kFatItemUnknownMask;
+#else
+                    Get16a(p + j * 2);
+#endif
         else
             for (UInt32 j = 0; j < fatSize; j++)
-                fat[j] = (Get16(p + j * 3 / 2) >> ((j & 1) << 2)) & 0xFFF;
+                fat[j] =
+#ifdef SEVENZIP_LINUX_FAT
+                    knownBuf[j * 3 / 2] && knownBuf[j * 3 / 2 + 1]
+                        ? (Get16(p + j * 3 / 2) >> ((j & 1) << 2)) & 0xFFF
+                        : kFatItemUnknownMask;
+#else
+                    (Get16(p + j * 3 / 2) >> ((j & 1) << 2)) & 0xFFF;
+#endif
 
         if (!numFreeClusters_Defined) {
             UInt32 numFreeClusters = 0;
@@ -1008,7 +1054,7 @@ HRESULT CDatabase::Open() {
     NumFreeClusters -= (UInt32)(Fat[0] == 0) + (UInt32)(Fat[1] == 0);
     RINOK(OpenProgressFat())
 
-    if ((Fat[0] & 0xFF) != Header.MediaType) {
+    if (!(Fat[0] & kFatItemUnknownMask) && (Fat[0] & 0xFF) != Header.MediaType) {
         // that case can mean error in FAT,
         // but xdf file: (MediaType == 0xF0 && Fat[0] == 0xFF9)
         // 19.00: so we use non-strict check
@@ -1035,6 +1081,49 @@ HRESULT CDatabase::Open() {
 #endif
     return S_OK;
 }
+
+#ifdef SEVENZIP_LINUX_FAT
+HRESULT CDatabase::ReadFatData(Byte *data, CByteBuffer &known, UInt32 sector, UInt32 size) {
+    known.Alloc(size);
+    memset(known, 0, size);
+    const UInt32 blockSize = Header.SectorSize();
+    const UInt64 tableBytes = ((UInt64)Header.FatSize * Header.NumFatBits + 7) / 8;
+    const UInt64 consumed = ((UInt64)sector - Header.GetFatSector()) << Header.SectorSizeLog;
+    const UInt32 required = (UInt32)MyMin((UInt64)size, tableBytes - consumed);
+    HRESULT result = SeekToSector(sector);
+    size_t read = 0;
+    if (result == S_OK) {
+        read = size;
+        result = ReadStream(InStream, data, &read);
+    }
+    if (result == E_ABORT || result == E_OUTOFMEMORY)
+        return result;
+    memset(known, 1, read);
+    RINOK(OpenProgressFat(false))
+    if (read >= required)
+        return S_OK;
+
+    // Retain the successful prefix, then isolate only the unavailable sectors.
+    for (UInt32 offset = (UInt32)read & ~(blockSize - 1); offset < size; offset += blockSize) {
+        result = SeekToSector(sector + (offset >> Header.SectorSizeLog));
+        read = 0;
+        if (result == S_OK) {
+            read = blockSize;
+            result = ReadStream(InStream, data + offset, &read);
+        }
+        if (result == E_ABORT || result == E_OUTOFMEMORY)
+            return result;
+        memset(known + offset, 1, read);
+        RINOK(OpenProgressFat(false))
+    }
+    for (UInt32 i = 0; i < required; ++i)
+        if (!known[i]) {
+            TableLimitations = true;
+            break;
+        }
+    return S_OK;
+}
+#endif
 
 // clang-format off
 Z7_class_CHandler_final:
@@ -1208,6 +1297,12 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID propID, PROPVARIANT *value)) {
             reasons += "Some FAT file chains are incomplete. Only readable prefixes of affected "
                        "files are available; copying them reports an error.";
         }
+        if (TableLimitations) {
+            if (!reasons.IsEmpty())
+                reasons += '\n';
+            reasons += "Some FAT table entries could not be read. Free space is unknown; some "
+                       "files or directories may be incomplete or unreadable.";
+        }
         if (!reasons.IsEmpty())
             prop = reasons;
         break;
@@ -1229,6 +1324,10 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID propID, PROPVARIANT *value)) {
         prop = PhySize;
         break;
     case kpidFreeSpace:
+#ifdef SEVENZIP_LINUX_FAT
+        if (TableLimitations)
+            break;
+#endif
         prop = (UInt64)NumFreeClusters << Header.ClusterSizeLog;
         break;
     case kpidHeadersSize:

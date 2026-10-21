@@ -120,6 +120,9 @@ UString QtArchiveDiagnosticText(const UString &source) {
                           "The FAT source is shorter than the declared volume. Some files may be "
                           "incomplete or unreadable."),
         QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                          "Some FAT table entries could not be read. Free space is unknown; some "
+                          "files or directories may be incomplete or unreadable."),
+        QT_TRANSLATE_NOOP("SevenZipDiagnostics",
                           "Some FAT directories could not be read completely. Files or names may "
                           "be missing. Readable files remain accessible."),
         QT_TRANSLATE_NOOP("SevenZipDiagnostics",

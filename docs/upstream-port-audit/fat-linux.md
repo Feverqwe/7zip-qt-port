@@ -478,9 +478,77 @@ batch. Final task-owned fixture cleanup passed on both guests,
 `20261021T125129Z-4c9e1ee3`; the disposable helper was removed and synchronized
 away on both guests. All jobs reached terminal state.
 
-Read-side closure still requires checking table acquisition as well as the
-now-covered file mapping: initial FAT loading currently requires complete reads.
-Compare Linux's on-demand FAT-sector errors with this eager archive loader before
-deciding which files can remain useful after a localized FAT-table I/O failure.
-The present prefix support assumes the table entries used for mapping were read;
-it does not treat missing metadata as verified.
+That file-prefix iteration left initial FAT-table acquisition requiring complete
+reads. The following iteration compares the eager loader with Linux's on-demand
+FAT-sector errors and separates unknown metadata from verified links.
+
+### Localized FAT-table I/O failures — 2026-10-21
+
+Compared complete pinned `fs/fat/fatent.c` entry addressing, sector acquisition,
+FAT12 two-buffer access, 12/16/32-bit decoding, `fat_ent_read` and
+`fat_count_free_clusters`, with their `cache.c` mapping and `inode.c` callers.
+Compared the original SDK's full table loading, media/free-space checks,
+directory traversal, file mapping, properties and open/clear/extract consumers.
+The original SDK entry decoders remain authoritative, including FAT32 high-bit
+masking. No new Linux C units, independent decoder or VFS/cache services are
+introduced; the adaptation is the archive input-acquisition boundary.
+
+The dynamic module retains original healthy bulk reads. After an actual input
+failure it preserves reported prefix bytes and isolates unavailable logical
+sectors, continuing to later readable sectors. Whole entry values require all
+their bytes, including both halves of a FAT12 boundary entry. Unknown entries
+have a separate internal state; they are never interpreted as zero/free space
+or a confirmed directory EOF. A known first file cluster can still provide data
+before its unknown next link, and a directory with a verified end marker can
+be complete without following that link. Otherwise known directory entries and
+children remain accessible with an incomplete-directory error. Existing metadata
+ownership, cycle, geometry and path bounds remain in force.
+
+Archive limitations describe the table failure before the existing per-opening
+consent/badge flow. Exact free-space publication is withheld if required table
+bytes are unavailable, instead of trusting an incomplete count or stale FSINFO.
+Unavailable alignment padding after the last real entry does not create a false
+limitation. Abort, OOM and open-callback failures remain fatal and clear the
+unpublished archive; reopening restores normal properties. The selected table
+remains authoritative, without guessing links from another FAT copy. Standalone
+retains strict table acquisition; its existing readable-prefix mapping remains
+unchanged. The physical table-end size check is retained: for this geometry the
+root/data region lies after the required table, so an image ending inside it
+does not contain useful file data to expose. No source writes or repair occur.
+
+The new `fat_table` public ABI suite covers first/middle sector faults, short
+reads/EOF and E_FAIL, partial cells and FAT12 straddles, a directory without a
+known end, missing padding, initial seek failure, and a large FAT32 fault in a
+later bulk chunk. It checks exact file/prefix bytes and per-item results across
+multiple selections, Error/limitation/free-space properties, callback failure,
+abort/OOM, and clean reopening. Fault inputs now stop successful reads at a fault
+boundary even when a larger request spans it. A discarded early test assumption
+expected a Seek to every sector; a healthy bulk read legitimately performs none
+of those intermediate seeks. Tests retain actual I/O failure scenarios rather
+than fixing the private read order.
+
+The same fixture/module setup drives `fat_table_prompt`: EN/RU accept/Cancel on
+actual handler limitations, default Cancel through Return, exact copy results
+after consent and native text geometry. Cocoa JSON is 420×253 EN / 420×301 RU,
+with both file-chain and table reasons translated and fully visible. Initial
+new-test compilation issues (explicit class-pointer access and QLayout include)
+were corrected before acceptance. The existing FAT UI consumers and language
+suite remain covered. This is fault-injected archive ABI evidence; no installed
+kernel/device I/O-fault injection or physical-media acceptance is claimed.
+
+All ten selected suites have passing results on macOS arm64 across focused
+batches (seven FAT/prompt/language suites, the added large-table controls, and
+three FAT UI suites). Linux passed the ten-suite batch,
+`20261021T131055Z-20bb9016` (10.86 s). In that same receipt Windows passed nine
+(60.02 s); `fat_module` hit the previously observed codec-discovery deadline,
+before filesystem Open. The unchanged isolated repeat passed in
+`20261021T131602Z-7998823a`. The cause of discovery latency remains unproven;
+initial diagnostics are retained and no deadline was increased.
+
+Application incremental build, upstream verifier (422 exact / 242 adapted /
+12 local) and all 21 pinned FAT source hashes passed. Task-owned fixture cleanup
+passed on both runners, `20261021T131356Z-52d781e9`; the disposable helper was
+deleted and synchronized away on both. All jobs reached terminal state. Existing
+build trees and compiler caches were retained; full/slow gates and installation
+were not run. This closes the selected table-I/O scenario, not the remaining
+module/consumer review or the broader filesystem/format goal.

@@ -3838,6 +3838,10 @@ Are you sure you want to split archive into such volumes?</source>
     <context>
         <name>SevenZipDiagnostics</name>
         <message>
+            <source>Some FAT table entries could not be read. Free space is unknown; some files or directories may be incomplete or unreadable.</source>
+            <translation>Часть таблицы FAT прочитать не удалось. Свободное место неизвестно; некоторые файлы и каталоги могут быть неполными или недоступными.</translation>
+        </message>
+        <message>
             <source>Some FAT file chains are incomplete. Only readable prefixes of affected files are available; copying them reports an error.</source>
             <translation>Цепочки некоторых файлов FAT повреждены. Можно прочитать только доступное начало этих файлов; копирование завершится с ошибкой.</translation>
         </message>

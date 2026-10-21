@@ -32,6 +32,8 @@ class Input final : public IInStream, public CMyUnknownImp {
             else
                 return failure;
         }
+        if (!failSeek && position_ < failAt && failAt - position_ < size)
+            size = UInt32(failAt - position_);
         size = UInt32(
             qMin<UInt64>(size, position_ < UInt64(bytes_.size()) ? bytes_.size() - position_ : 0));
         if (size)
