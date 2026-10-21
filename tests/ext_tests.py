@@ -18,6 +18,7 @@ from ext_xattr_fixture import XattrVolume
 from ext_block_fixture import BlockVolume
 from ext_symlink_fixture import SymlinkVolume
 from ext_inode_fixture import inode_volume
+from ext_directory_fixture import DirectoryVolume
 
 RUNTIME = Path(sys.argv.pop(1))
 MODULE = Path(sys.argv.pop(1))
@@ -192,6 +193,52 @@ class ExtTests(unittest.TestCase):
                 result = self.run_image(volume, command="l")
                 self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
                 self.assertIn(("Size = " + str(volume.declared_size)).encode(), result.stdout)
+
+    def test_directory_holes_are_not_checksums_of_zero_metadata(self):
+        for mapping in ("indirect", "extent", "unwritten"):
+            volume = DirectoryVolume(mapping)
+            for engine in ("7z", "7zz"):
+                with self.subTest(mapping=mapping, engine=engine):
+                    listing = self.run_image(volume, engine, "l", None)
+                    self.assertEqual(listing.returncode, 0, listing.stderr.decode(errors="replace"))
+                    self.assertIn(b"Path = after-hole.bin", listing.stdout)
+                    result = self.run_image(volume, engine, name="after-hole.bin")
+                    self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                    self.assertEqual(result.stdout, volume.read(0, volume.size))
+        for volume in (DirectoryVolume("allocated-zero"), DirectoryVolume(fault="checksum")):
+            result = self.run_image(volume, command="l", name=None)
+            self.assertNotEqual(result.returncode, 0)
+
+    def test_casefold_encoding_is_recognized_without_changing_stored_names(self):
+        for flags in (0, 1, 0x8000):
+            volume = DirectoryVolume(encoding=1, encoding_flags=flags)
+            result = self.run_image(volume)
+            self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+            self.assertEqual(result.stdout, volume.read(0, volume.size))
+        for encoding in (0, 0xFFFF):
+            volume = DirectoryVolume(encoding=encoding)
+            result = self.run_image(volume)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertEqual(result.stdout, b"")
+            # The encoding fields have no meaning without the casefold feature.
+            volume.put32(1024 + 96, volume.u32(1024 + 96) & ~0x20000)
+            volume.put32(volume.root_inode + 32, volume.u32(volume.root_inode + 32) & ~0x40000000)
+            volume.refresh()
+            result = self.run_image(volume)
+            self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+
+    def test_presented_directory_names_require_real_path_components(self):
+        for name in (b"", b"bad/name.bin"):
+            for inline in (False, True):
+                volume = ModernVolume(inline=True) if inline else DirectoryVolume()
+                record = volume.inline_dir_inode + 44 if inline else volume.root_block * 1024 + 24
+                volume.data[record + 6] = len(name)
+                volume.data[record + 8:record + 8 + len(name)] = name
+                volume.refresh()
+                for engine in (("7z",) if inline else ("7z", "7zz")):
+                    with self.subTest(name=name, inline=inline, engine=engine):
+                        result = self.run_image(volume, engine, "l", None)
+                        self.assertNotEqual(result.returncode, 0)
 
     def test_unlinked_inventory_slots_cannot_become_unknown_files(self):
         result = self.run_image(inode_volume("orphan-unreferenced"), command="l", name=None)

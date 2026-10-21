@@ -157,7 +157,8 @@ and encrypted content cannot be returned as successful plaintext.
 
 Direct-device consumers discover the format module through the same dynamic
 engine/probe as the product. Their feature policy accepts the implemented modern
-layouts while retaining refusal of filesystem encryption. An explicit
+layouts; the later [fscrypt integration](#fscrypt-software-reads) supplies explicit
+key/no-key handling. An explicit
 [device session](direct-devices.md) may read a filesystem needing recovery without
 replaying its journal; journal recovery itself is still omitted.
 Creator images are read and extracted through the authorized device stream,
@@ -282,8 +283,9 @@ The adaptation omits mount diagnostics, rev-0 warnings, ext2/ext3 driver probing
 DAX and read-write/quota checks. Archive reads are always read-only, perform no
 casefold lookup and preserve stored directory names, so the kernel's dependency
 on CONFIG_UNICODE for casefold lookup is not imposed. Unknown read-only-compatible
-features remain permitted by the read-only feature check. This does not supply
-fscrypt decryption. Inode checksum rules already match Linux's creator-OS guard;
+features remain permitted by the read-only feature check. The later encoding
+gate below validates the declared casefold charset; fscrypt reads are described
+in their own section. Inode checksum rules already match Linux's creator-OS guard;
 they were reviewed without changing it. Modern LARGEDIR size decoding was also
 already connected through the C inode reader.
 
@@ -975,3 +977,68 @@ passed on macOS, Linux and MSVC Windows on 2026-10-21 with existing incremental
 trees/caches (remote receipt `20261020T235121Z-2f567c0d`). Both engine runtimes
 were prepared for the shared SDK changes. Full/slow suites, installed packages,
 native UI and physical devices were not checked in this iteration.
+
+### Sparse directories, record validation and declared encoding
+
+The pinned `fs/ext4/dir.c` `ext4_readdir` mapping, checksum and emission paths,
+the complete `__ext4_check_dir_entry`/`is_fake_dir_entry` bodies, their inline
+callers and the SDK stream/ParseDir consumers were compared. Original Linux
+readdir skips missing mappings before checksum/record interpretation. The SDK
+mapper now passes allocated ranges with the directory result; holes and
+unwritten ranges are skipped by both engines, including the dynamic module's
+checksum pass. No second physical mapper or content-based zero-block heuristic
+is introduced. Allocation bookkeeping reuses validated extent/indirect maps and
+does not allocate one flag per logical block. Written zero-filled blocks still
+fail metadata checksums. The original C record validator is now connected to
+external directory records as well as its existing inline consumer; the owned
+buffer boundary checks available bytes before its original accesses.
+
+The syscall emission callers were also compared: complete original
+`fs/readdir.c` `verify_dirent_name` now validates presented names after optional
+fscrypt conversion. Its linkage is exported inside the GPL module and the
+kernel PATH_MAX definition is retained independently of the host limit; the
+helper and UAPI limit header have full pinned hashes. Raw ciphertext is not
+checked as a plaintext path component. Standalone's existing SDK parser gains
+the equivalent narrow empty/slash guard without linking GPL code. Tests reject
+invalid names in ordinary and inline directories; existing embedded-NUL length
+checks remain unchanged. User-copy/syscall, VFS lookup and signal services are
+not ported as archive operations.
+
+The complete original `super.c` encoding table and `ext4_sb_read_encoding`
+helper, with scalar `include/linux/unicode.h` age macros, now supply the declared
+casefold encoding gate. `ext4_encoding_init` retains that selected acceptance
+branch and its feature-off bypass. Archive readdir preserves stored names;
+Unicode VFS map allocation, module loading/unloading and case-insensitive lookup
+are omitted instead of being represented by fake Unicode operations. Unknown
+encoding values cannot be treated as supported casefold volumes. Encoding fields
+without the casefold feature and unused flag bits retain Linux's acceptance.
+The Unicode header's full baseline hash is recorded; no external Unicode or
+crypto runtime dependency is added. Standalone does not link the GPL gate.
+
+CLI regressions read aliases after holes through classic block mapping, extents
+and unwritten ranges; reject written-zero/corrupt checksummed blocks; and verify
+encoding acceptance/refusal with exact original names/content. Seven focused
+ext/stream/fscrypt/xattr/backend/device suites passed on macOS, Linux and MSVC
+Windows on 2026-10-21 (remote receipt `20261021T000259Z-d1fe5c66`). Both engine
+runtimes were rebuilt incrementally for the shared SDK changes.
+
+Native Linux 6.8.0-147 read-only mounts confirmed ten directory/encoding cases
+(`20261021T000545Z-450ba46e`): readdir names, content hashes, known/unknown encoding
+and feature-off handling. Native content was read through the first hard link to
+the same inode. The older kernel's VFS lookup after an unwritten directory range
+returned EBADMSG, while its readdir emitted both names; ordinary holes allowed
+lookup. The archive reconstructs paths from validated readdir records and does
+not reproduce VFS lookup services. These observations are not a claim of native
+post-unwritten-range lookup or identical corruption-recovery policy. Images
+were unchanged and temporary mounts/fixtures removed.
+
+Full/slow suites, installed packages, native UI and physical devices were not
+checked. SDK directory payload materialization still has its existing memory
+boundary; this iteration does not establish very large LARGEDIR acceptance or
+close the remaining read-feature scope of the parent audit.
+
+The final emission-name integration passed the same seven focused suites on all
+three platforms (`20261021T000926Z-5ce7849f`; macOS 5.68s). Native read-only
+ordinary/inline controls and empty/slash-name failures also passed
+(`20261021T001123Z-eb21c386`), with matching content and unchanged images. This
+separately validates the VFS emission contract copied into the GPL module.

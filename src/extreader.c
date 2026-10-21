@@ -26,6 +26,7 @@ int ext_linux_open(const void *superblock, struct ext_volume **result)
     bits = le32_to_cpu(volume->raw.s_log_block_size);
     if (le16_to_cpu(volume->raw.s_magic) != 0xEF53 || bits > 6) goto corrupt;
     if (ext4_check_feature_compatibility(&volume->sb, &volume->raw)) goto corrupt;
+    if (ext4_encoding_init(&volume->sb, &volume->raw)) goto corrupt;
     volume->sb.s_blocksize_bits = bits + 10;
     volume->sb.s_blocksize = 1024U << bits;
     {
@@ -355,4 +356,16 @@ int ext_linux_directory_check(struct ext_volume *volume, uint32_t seed, uint32_t
     if ((flags & 0x1000U) && (len == 12 || len == volume->sb.s_blocksize))
         return ext4_dx_csum_verify(&inode, (struct ext4_dir_entry *)block) ? 0 : -EFSBADCRC;
     return ext4_dirblock_csum_verify(&inode, &bh) ? 0 : -EFSBADCRC;
+}
+
+int ext_linux_directory_entry_check(struct ext_volume *volume, uint32_t flags,
+                                    const void *data, size_t size, unsigned int offset)
+{
+    struct inode inode = { .i_sb = &volume->sb, .flags = flags };
+    struct buffer_head bh = { .b_data = (char *)data, .b_size = size };
+    if (size > volume->sb.s_blocksize || offset > size || size - offset < 12)
+        return -EFSCORRUPTED;
+    return __ext4_check_dir_entry(__func__, __LINE__, &inode, NULL,
+        (struct ext4_dir_entry_2 *)((char *)data + offset), &bh, (char *)data,
+        (int)size, offset) ? -EFSCORRUPTED : 0;
 }

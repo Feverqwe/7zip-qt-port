@@ -10,6 +10,13 @@
 #define EXT4_ORPHAN_FS 0x0004
 #define EXT4_INODE_EXTENTS 19
 #define EXT4_FIRST_INO(sb) (EXT4_SB(sb)->s_first_ino)
+#define EXT4_ENC_UTF8_12_1 1
+#define UNICODE_MAJ_SHIFT 16
+#define UNICODE_MIN_SHIFT 8
+#define UNICODE_AGE(MAJ, MIN, REV) \
+    (((unsigned int)(MAJ) << UNICODE_MAJ_SHIFT) | \
+     ((unsigned int)(MIN) << UNICODE_MIN_SHIFT) | ((unsigned int)(REV)))
+int ext4_encoding_init(struct super_block *, struct ext4_super_block *);
 #define EXT4_GOOD_OLD_REV 0
 #define EXT4_GOOD_OLD_FIRST_INO 11
 #define EXT4_EXTRA_TIMESTAMP_MAX (((int64_t)1 << 34) - 1 + INT32_MIN)

@@ -18,6 +18,7 @@
  */
 
 #include "ext4.h"
+#define ARRAY_SIZE(array) (sizeof(array) / sizeof((array)[0]))
 
 /* Read-only archive subset: no write mounts, VFS probing or DAX. Casefold
  * lookup is not performed; directory entries retain their stored names. */
@@ -473,5 +474,44 @@ int ext4_inode_info_init(struct super_block *sb,
 		}
 	}
 
+	return 0;
+}
+
+static const struct ext4_sb_encodings {
+	__u16 magic;
+	char *name;
+	unsigned int version;
+} ext4_sb_encoding_map[] = {
+	{EXT4_ENC_UTF8_12_1, "utf8", UNICODE_AGE(12, 1, 0)},
+};
+
+static const struct ext4_sb_encodings *
+ext4_sb_read_encoding(const struct ext4_super_block *es)
+{
+	__u16 magic = le16_to_cpu(es->s_encoding);
+	int i;
+
+	for (i = 0; i < ARRAY_SIZE(ext4_sb_encoding_map); i++)
+		if (magic == ext4_sb_encoding_map[i].magic)
+			return &ext4_sb_encoding_map[i];
+
+	return NULL;
+}
+
+/* Original encoding gate; archive readdir keeps stored names and does not
+ * allocate a Unicode VFS lookup map. */
+int ext4_encoding_init(struct super_block *sb, struct ext4_super_block *es)
+{
+	const struct ext4_sb_encodings *encoding_info;
+
+	if (!ext4_has_feature_casefold(sb))
+		return 0;
+
+	encoding_info = ext4_sb_read_encoding(es);
+	if (!encoding_info) {
+		ext4_msg(sb, KERN_ERR,
+			 "Encoding requested by superblock is unknown");
+		return -EINVAL;
+	}
 	return 0;
 }
