@@ -196,6 +196,50 @@ class NtfsStreamTests final : public QObject {
     }
   private slots:
     void initTestCase() { createArchive(); }
+    void volumeFreeSpace_data() {
+        QTest::addColumn<QString>("kind");
+        for (const char *kind : {"bitmap-base", "bitmap-padding", "bitmap-last", "bitmap-full",
+                                 "bitmap-fragmented", "bitmap-resident", "bitmap-short",
+                                 "bitmap-uninitialized", "bitmap-bad-run", "bitmap-hole"})
+            QTest::newRow(kind) << QString::fromLatin1(kind);
+    }
+    void volumeFreeSpace() {
+        QFETCH(QString, kind);
+        loadFixture(kind);
+        CMyComPtr<IInStream> input = new Input(bytes_);
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        NWindows::NCOM::CPropVariant value;
+        const bool available = !record_["free_space"].isNull();
+        QCOMPARE(archive_->GetArchiveProperty(kpidFreeSpace, &value), available ? S_OK : S_FALSE);
+        if (available) {
+            QCOMPARE(value.vt, VARTYPE(VT_UI8));
+            QCOMPARE(value.uhVal.QuadPart, UInt64(record_["free_space"].toDouble()));
+        }
+        // Unavailable allocation metadata must not block ordinary file recovery.
+        auto retained = stream("alpha");
+        QVERIFY(retained);
+        check(retained, "alpha", 0, 200000);
+        QCOMPARE(archive_->Close(), S_OK);
+        QCOMPARE(archive_->GetArchiveProperty(kpidFreeSpace, &value), S_OK);
+        QCOMPARE(value.vt, VARTYPE(VT_EMPTY));
+        check(retained, "alpha", 0, 200000);
+    }
+    void volumeFreeSpaceReadFailures() {
+        loadFixture("bitmap-base");
+        CMyComPtr2<IInStream, Input> source;
+        source.SetFromCls(new Input(bytes_));
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
+        NWindows::NCOM::CPropVariant value;
+        for (HRESULT failure : {E_FAIL, E_ABORT}) {
+            source->failure = failure;
+            QCOMPARE(archive_->GetArchiveProperty(kpidFreeSpace, &value), failure);
+        }
+        source->failure = S_OK;
+        QCOMPARE(archive_->GetArchiveProperty(kpidFreeSpace, &value), S_OK);
+        QCOMPARE(value.vt, VARTYPE(VT_UI8));
+        QCOMPARE(value.uhVal.QuadPart, UInt64(record_["free_space"].toDouble()));
+        QCOMPARE(archive_->Close(), S_OK);
+    }
     void dataAttributeFlags_data() {
         QTest::addColumn<QString>("kind");
         for (const char *kind :

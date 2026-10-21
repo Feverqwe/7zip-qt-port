@@ -30,6 +30,7 @@
 
 #include "../Compress/CopyCoder.h"
 #ifdef SEVENZIP_LINUX_NTFS
+#include "../../../ntfsbitmap.h"
 #include "../../../ntfsdecoder.h"
 #include "../../../ntfsea.h"
 #include "../../../ntfslink.h"
@@ -101,6 +102,9 @@ static const unsigned kNumSysRecs = 16;
 
 static const unsigned kRecIndex_Volume = 3;
 static const unsigned kRecIndex_RootDir = 5;
+#ifdef SEVENZIP_LINUX_NTFS
+static const unsigned kRecIndex_Bitmap = 6;
+#endif
 static const unsigned kRecIndex_BadClus = 8;
 static const unsigned kRecIndex_Security = 9;
 
@@ -1659,6 +1663,8 @@ struct CDatabase {
 #ifdef SEVENZIP_LINUX_NTFS
     CObjectVector<CByteBuffer> IndexedSecurData;
     CObjectVector<AString> LinkTargets;
+    bool FreeSpaceDefined = false;
+    UInt64 FreeSpace = 0;
 #endif
 
     CVolumeInfo VolumeInfo;
@@ -1728,6 +1734,7 @@ struct CDatabase {
     HRESULT LoadEaMetadata();
     HRESULT LoadSecurityIndex();
     HRESULT LoadLinks();
+    HRESULT LoadFreeSpace();
 #endif
 };
 
@@ -1749,6 +1756,8 @@ void CDatabase::Clear() {
     ReparseDataVector.Clear();
 #ifdef SEVENZIP_LINUX_NTFS
     LinkTargets.ClearAndFree();
+    FreeSpaceDefined = false;
+    FreeSpace = 0;
 #endif
     PhySize = 0;
 }
@@ -1758,6 +1767,53 @@ void CDatabase::ClearAndClose() {
     InStream.Release();
     OpenCallback = NULL;
 }
+
+#ifdef SEVENZIP_LINUX_NTFS
+HRESULT CDatabase::LoadFreeSpace() {
+    if (FreeSpaceDefined)
+        return S_OK;
+    if (Recs.Size() <= kRecIndex_Bitmap)
+        return S_FALSE;
+    const CMftRec &bitmap = Recs[kRecIndex_Bitmap];
+    if (!bitmap.Is_Magic_FILE() || !bitmap.InUse() || bitmap.IsDir() ||
+        !bitmap.BaseMftRef.IsBaseItself() || bitmap.DataAttrs.IsEmpty())
+        return S_FALSE;
+    const CAttr &attr = bitmap.DataAttrs[0];
+    if ((UInt64)(size_t)Header.NumClusters != Header.NumClusters)
+        return E_NOTIMPL;
+    const UInt64 bytes = sevenzip_ntfs_bitmap_size((size_t)Header.NumClusters);
+    if (!attr.Name.IsEmpty() || attr.GetSize() < bytes ||
+        (attr.NonResident && attr.InitializedSize < bytes))
+        return S_FALSE;
+    CMyComPtr<IInStream> stream;
+    CMyComPtr2<IInStream, CInStream> mapped;
+    RINOK(bitmap.GetStream(InStream, 0, Header.ClusterSizeLog, Header.NumClusters, &stream,
+                           attr.NonResident ? &mapped : NULL))
+    if (mapped) {
+        const UInt64 clusters = (bytes + Header.ClusterSize() - 1) >> Header.ClusterSizeLog;
+        const CRecordVector<CExtent> &extents = mapped->Extents;
+        for (unsigned i = 0; i + 1 < extents.Size(); ++i)
+            if (extents[i].Virt < clusters && extents[i].IsEmpty())
+                return S_FALSE;
+    }
+    CAlignedBuffer block;
+    block.Alloc(4096);
+    if (!block)
+        return E_OUTOFMEMORY;
+    UInt64 remaining = Header.NumClusters;
+    UInt64 freeClusters = 0;
+    while (remaining) {
+        const unsigned bits = (unsigned)MyMin(remaining, (UInt64)32768);
+        const size_t size = sevenzip_ntfs_bitmap_size(bits);
+        RINOK(ReadStream_FALSE(stream, block, size))
+        freeClusters += bits - ntfs_bitmap_weight_le(block, (int)bits);
+        remaining -= bits;
+    }
+    FreeSpace = freeClusters << Header.ClusterSizeLog;
+    FreeSpaceDefined = true;
+    return S_OK;
+}
+#endif
 
 // src[0 ... num-1] != 0
 // it doesn't write NUL to dest[num]
@@ -3058,14 +3114,15 @@ static const Byte kProps[] = {kpidPath,
 
 enum { kpidRecordSize = kpidUserDefined };
 
-static const CStatProp kArcProps[] = {{NULL, kpidVolumeName, VT_BSTR},
-                                      {NULL, kpidFileSystem, VT_BSTR},
-                                      {NULL, kpidClusterSize, VT_UI4},
-                                      {NULL, kpidSectorSize, VT_UI4},
-                                      {"MFT Record Size", kpidRecordSize, VT_UI4},
-                                      {NULL, kpidHeadersSize, VT_UI8},
-                                      {NULL, kpidCTime, VT_FILETIME},
-                                      {NULL, kpidId, VT_UI8}};
+static const CStatProp kArcProps[] = {
+    {NULL, kpidVolumeName, VT_BSTR},
+#ifdef SEVENZIP_LINUX_NTFS
+    {NULL, kpidFreeSpace, VT_UI8},
+#endif
+    {NULL, kpidFileSystem, VT_BSTR}, {NULL, kpidClusterSize, VT_UI4},
+    {NULL, kpidSectorSize, VT_UI4},  {"MFT Record Size", kpidRecordSize, VT_UI4},
+    {NULL, kpidHeadersSize, VT_UI8}, {NULL, kpidCTime, VT_FILETIME},
+    {NULL, kpidId, VT_UI8}};
 
 /*
 static const Byte kArcProps[] =
@@ -3103,6 +3160,14 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(const PROPID propID, PROPVARIANT *cons
     case kpidClusterSize:
         prop = Header.ClusterSize();
         break;
+#ifdef SEVENZIP_LINUX_NTFS
+    case kpidFreeSpace:
+        if (!Recs.IsEmpty()) {
+            RINOK(LoadFreeSpace())
+            prop = FreeSpace;
+        }
+        break;
+#endif
     case kpidPhySize:
         prop = PhySize;
         break;

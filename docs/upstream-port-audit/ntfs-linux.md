@@ -701,6 +701,57 @@ Native ntfs3 `6.8.0-147-generic` подтвердил оба fragmented-обра
 замены владельца поля. Incremental builds и caches сохранены; full/slow suites,
 UI и физические устройства не проверялись.
 
+## Allocation bitmap и свободное место — 2026-10-21
+
+Сравнены полные selected bodies `super.c:ntfs_statfs/ntfs_fill_super`,
+`bitmap.c:wnd_init/wnd_rescan/ntfs_bitmap_weight_le`, `ntfs_fs.h` bitmap helpers,
+boot cluster geometry, `inode.c` выбор run owner для `$Bitmap`, `run.c` lookup,
+а также SDK `CAttr`, `DataParseExtents`, `CMftRec::GetStream`, archive properties
+и lifecycle Clear/Open/Close. Upstream SDK не публикует FreeSpace.
+
+Оригинальный полный C body `ntfs_bitmap_weight_le` скопирован в `bitmap.c`,
+`ntfs3_bitmap_size` сохранён в `ntfs_fs.h`. Portable service использует фиксированное
+64-bit слово, включая LLP64, исходную little-endian обработку последнего слова
+и оригинальные `__sw_hweight32/64` из общего `lib/hweight.c`. Новый boundary
+передаёт aligned buffer и число значимых bits; padding не считается allocation.
+В существующий NTFS baseline добавлен hash hweight dependency, все 31 hashes
+сверены с закреплённым выше Linux snapshot. C body bitmap weight после переноса
+совпадает с оригиналом; таблица archive properties переформатирована отдельно
+от функциональных изменений.
+
+Dynamic GPL module публикует `kpidFreeSpace` в bytes из `$Bitmap` и boot cluster
+count, как read-only `ntfs_statfs`: delayed allocation на неизменяемом archive
+отсутствует. Existing SDK stream читает bitmap небольшими aligned windows,
+включая fragmented mappings; успешный результат принадлежит текущему Open.
+Длина проверяется по quad-aligned Linux bitmap size. Неверный run, отсутствующие
+данные, недостаточный initialized range или hole не объявляются свободными
+кластерами. I/O errors и E_ABORT сохраняются, неудачная попытка допускает retry.
+Close очищает результат. Standalone не линкует GPL helpers и этого свойства
+не получает.
+
+VFS bitmap block cache, readahead, allocator extent trees, MFT zone management,
+write/journal/replay и delayed allocation не копируются. Метаданные читаются
+по запросу свойства: в отличие от mount path Linux, повреждённая bitmap не
+блокирует archive recovery обычных файлов. Resident bitmap также доступна через
+существующий archive stream; её native mount acceptance не заявляется.
+
+Десять ABI layouts покрывают ordinary/fragmented/resident bitmap, последний
+частичный word, padding, последний допустимый cluster, полный том и четыре
+повреждённых варианта. Проверяются exact FreeSpace, payload и retained streams
+после Close; отдельная проверка — E_FAIL/E_ABORT и retry. CLI сравнивает
+публикуемое число на трёх layouts.
+
+Финальные `ntfs`, `ntfs_stream`, `ntfs_security` PASS на macOS arm64/Qt 6.12
+(17,74 с), Linux x64/Qt 6.12 и Windows x64/MSVC/Qt 6.12, receipt
+`20261021T030703Z-1372708c`. Первый Windows build выявил конфликт нового имени
+GetFreeSpace с Win32 macro; helper переименован, затем проверки повторены.
+Native ntfs3 `6.8.0-147-generic` подтвердил пять layouts через read-only loop
+statvfs: ordinary/padding/last/full/fragmented, exact free/available bytes и
+полный payload, receipt `20261021T030459Z-203843e4`. Образы остались неизменными,
+mounts, fixtures и helper удалены; удаление синхронизировано на оба runners.
+Native kernel дополняет pinned source comparison. Incremental builds/caches
+сохранены; full/slow suites, UI и физические устройства не проверялись.
+
 ## Открытый read scope
 
 Выбранные classic/WOF/MFT bootstrap scenarios подключены и проверены.

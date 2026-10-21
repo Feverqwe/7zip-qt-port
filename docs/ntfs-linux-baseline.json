@@ -31,12 +31,14 @@
     "fs/ntfs3/super.c": "a221f1dade47f140912e0f5b48550010ce4a2f370c6a2be8f28851a87ea47d02",
     "fs/ntfs3/upcase.c": "daad6dc03944129302bb9a4988976a7241a18071f4824fa4cdf34f64696e4acd",
     "fs/ntfs3/xattr.c": "46d16b017617a5ab75f60a811be0fef6c4bcfe27f1c653c8ff6fae829a5e13dd",
-    "include/linux/nls.h": "4b2d38eced38722fbc52eedbe177af65aeb39adab5d271fe8c732b76fe65b980"
+    "include/linux/nls.h": "4b2d38eced38722fbc52eedbe177af65aeb39adab5d271fe8c732b76fe65b980",
+    "lib/hweight.c": "303e5b1657a56768bd1b640a068d8f028d5a7f35dbc469a2b279bcea6872a445"
   },
   "adapted": [
     "fs/nls/nls_base.c",
     "fs/ntfs3/attrib.c",
     "fs/ntfs3/attrlist.c",
+    "fs/ntfs3/bitmap.c",
     "fs/ntfs3/dir.c",
     "fs/ntfs3/frecord.c",
     "fs/ntfs3/fsntfs.c",
@@ -46,8 +48,10 @@
     "fs/ntfs3/lib/lib.h",
     "fs/ntfs3/lznt.c",
     "fs/ntfs3/ntfs.h",
+    "fs/ntfs3/ntfs_fs.h",
     "fs/ntfs3/super.c",
-    "fs/ntfs3/xattr.c"
+    "fs/ntfs3/xattr.c",
+    "lib/hweight.c"
   ],
   "exact": [
     "fs/ntfs3/lib/decompress_common.c",

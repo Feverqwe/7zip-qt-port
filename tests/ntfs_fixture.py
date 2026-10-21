@@ -94,6 +94,9 @@ def nonresident(original, entries, size, valid=None, flags=0, unit=0):
 
 
 def volume(kind="base"):
+    if kind.startswith("bitmap-"):
+        from ntfs_bitmap_fixture import volume as bitmap_volume
+        return bitmap_volume(kind)
     if kind.startswith("flags-"):
         from ntfs_flags_fixture import volume as flags_volume
         return flags_volume(kind)
@@ -233,4 +236,7 @@ if __name__ == "__main__":
         if args.kind.startswith("flags-"):
             from ntfs_flags_fixture import properties
             result["attributes"] = properties(args.kind)
+        if args.kind.startswith("bitmap-"):
+            from ntfs_bitmap_fixture import expected
+            result["free_space"] = expected(args.kind, image)
         print(json.dumps(result))

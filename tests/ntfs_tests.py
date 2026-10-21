@@ -46,6 +46,16 @@ class NtfsTests(unittest.TestCase):
             self.assertEqual(path.read_bytes(), data)
             return result
 
+    def test_volume_free_space_in_dynamic_engine(self):
+        from ntfs_bitmap_fixture import expected
+        for kind in ("bitmap-base", "bitmap-last", "bitmap-fragmented"):
+            with self.subTest(kind=kind):
+                image, _ = volume(kind)
+                listing = self.run_image("7z", image, "l")
+                self.assertEqual(listing.returncode, 0, listing.stderr)
+                self.assertIn(("Free Space = " + str(expected(kind, image))).encode(),
+                              listing.stdout.splitlines())
+
     def test_standard_information_layout_and_presence_in_both_engines(self):
         for kind in STANDARD_VALID:
             image, files = volume(kind)

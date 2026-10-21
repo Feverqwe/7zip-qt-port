@@ -1,7 +1,7 @@
 # Linux-derived C readers remain in a separate GPL format module.
 add_library(sevenzip_ntfs MODULE
     src/CPP/7zip/Archive/NtfsHandler.cpp src/exfatmodule.cpp
-    src/ntfsdecoder.c src/fs/ntfs3/lznt.c
+    src/ntfsdecoder.c src/fs/ntfs3/lznt.c src/fs/ntfs3/bitmap.c src/lib/hweight.c
     src/ntfswofstream.cpp src/fs/ntfs3/attrib.c src/fs/ntfs3/frecord.c
     src/fs/ntfs3/attrlist.c src/fs/ntfs3/fsntfs.c
     src/fs/ntfs3/xattr.c src/fs/ntfs3/super.c
