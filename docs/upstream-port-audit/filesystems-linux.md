@@ -44,7 +44,7 @@ Linux определяет корректность интерпретации �
 
 | Область engine | Эталон Linux | Работа |
 | --- | --- | --- |
-| exFAT/TexFAT | `fs/exfat` | Повторное сравнение C-переноса, metadata/chain/stream границ и ошибок; исправления и существующие ABI/backend consumers. |
+| exFAT/TexFAT | `fs/exfat` | [Read-side source audit закрыт](exfat-linux.md#read-side-source-audit-closure-2026-10-21): C readers, metadata/chain/stream границы, исправления и ABI/CLI/backend consumers; runtime и archive/platform границы записаны отдельно. |
 | FAT12/16/32 | `fs/fat` | Boot geometry, FAT и длинные имена, цепочки и извлечение. |
 | ext2/3/4 | `fs/ext2`, `fs/ext4` | Superblock/features, inode, directory, extents/indirect/inline data и sparse reads. |
 | NTFS | `fs/ntfs3` | Boot/MFT, attributes/runlists, directories, sparse/compressed file reads. |

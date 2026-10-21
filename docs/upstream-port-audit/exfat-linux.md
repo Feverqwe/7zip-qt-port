@@ -32,9 +32,10 @@ enumeration and entry-set consumers in `dir.c`/`namei.c`, FAT traversal in
 checksums in `misc.c`, upcase handling in `nls.c`, and read mapping through
 `inode.c`/`cache.c`/`iomap.c`. The complete driver is not ported.
 
-Adapted code remains C under `src/fs/exfat/`:
+Disk-facing adapted code remains C under `src/fs/exfat/`. The same inventory
+also accounts for callers that remain at the archive/platform boundary:
 
-| Upstream module | Transferred read scope |
+| Upstream module | Read scope and boundary |
 | --- | --- |
 | `super.c` | `exfat_calibrate_blocksize`, `exfat_read_boot_sector`, `exfat_verify_boot_region` |
 | `dir.c` | `exfat_extract_uni_name`, `exfat_get_uniname_from_ext_entry`, `exfat_readdir`, `exfat_get_entry_type`, entry location/read, entry-set loading/validation/release, volume-label lookup/read |
@@ -42,6 +43,13 @@ Adapted code remains C under `src/fs/exfat/`:
 | `balloc.c` | Bitmap range testing, allocation/loading/freeing, `exfat_test_bitmap` and `exfat_count_used_clusters` |
 | `misc.c` | `exfat_calc_chksum16`, `exfat_calc_chksum32`, `exfat_chain_set`, `exfat_chain_dup`; no mutation transport |
 | `exfat_fs.h`, `exfat_raw.h` | Original constants, packed disk structures, read-facing types and geometry/cluster-chain helpers, including `exfat_cluster_walk`/`exfat_chain_advance` |
+| `namei.c` | `exfat_find` metadata/zero-size rules are projected by the existing C entry adapter; pathname lookup, dentry aliases and mutation are not archive-index operations. `zero_size_dir` creation was compared to establish the disk read contract, not copied as a writer. |
+| `inode.c` | Root/file state, valid-size, flags and timestamps are represented by the C volume/items/cursors. VFS inode publication, generated IDs/link counts, credential/mask defaults and writeback are omitted. |
+| `cache.c` | Compared `exfat_get_cluster` and its cache consumers with the retained original cluster walker. The archive cursor keeps its own hint; kernel LRU/cache lifetime and contiguous-I/O aggregation are performance services. |
+| `iomap.c` | Compared read mapping, byte-valid boundary and end-I/O tail zeroing. The archive sequential stream returns the same data/zero regions without folios, bio, mmap, direct I/O or SEEK_DATA/SEEK_HOLE APIs. Writeback/swap activation are not image decoding. |
+| `file.c` | Stored DOS attributes and birth/modification/access times are exposed as properties; the label ioctl reader is connected through the transferred `dir.c` functions. Generic read/seek/splice/open, statx/ioctl transport, leases and mutation stay with VFS. |
+| `nls.c` | Original UTF-16 names/labels reach the SDK string boundary. NLS encodings, upcase/default-table lookup, name hashes and trailing-dot lookup options serve filesystem pathname resolution, which this indexed archive interface does not expose. These tables do not map file bytes. |
+| `Kconfig`, `Makefile` | Driver configuration/build inventory; the separate module's CMake target owns userspace dependencies and deployment. |
 
 The platform header replaces kernel allocation, endian helpers and block reads.
 Each volume has its own stream context; there is no kernel, FUSE, system mount,
@@ -409,3 +417,42 @@ still matches. Images remained unchanged; mounts, exporter, temporary fixtures
 and review helper were removed. This older running kernel supplements the
 comparison against the newer pinned source; TexFAT native acceptance is not
 claimed by these four single-FAT controls.
+
+## Read-side source audit closure (2026-10-21)
+
+The complete `fs/exfat` inventory above has now been reconciled with the current
+archive reader and its direct consumers. The final pass revisited root setup,
+entry-set loading/validation, benign/vendor entry classification, name assembly,
+pathname/upcase consumers, inode projection, cached/uncached FAT mapping,
+bitmap loading/counting, normal/direct read and end-I/O zero-tail branches,
+metadata/ioctl readers and lifecycle/error paths. No additional disk read feature
+required by this read-only archive interface remains disconnected in the pinned
+driver inventory. This closes exFAT's source read-scope review, not the entire
+multi-format goal and not a transfer of every Linux driver function.
+
+The archive boundary remains explicit: Unicode names are retained rather than
+converted through a mount charset, entries are selected by archive index rather
+than by the filesystem's upcase-table lookup, empty directories need no allocation
+cursor, and inode credentials/permissions supplied by mount options are not
+claimed as stored POSIX metadata. Upcase loading/checksum/default fallback is
+therefore not an unused parser added to volume acceptance. There is no Linux
+exFAT xattr/ACL, symlink, sparse-extent or compression reader omitted from this
+inventory; ValidDataLength zero regions are covered by the existing stream.
+
+Damaged-image behavior is deliberately bounded by the documented archive
+adaptations: entry-set checksums, complete mappings, name/path bounds, directory
+aliases/cycles and bitmap allocation are checked before publishing or extracting
+data. Linux's mount repair, silent size clamping and dirty-volume mutation are
+not reproduced. Clean TexFAT active-pair support remains the documented extension
+to this Linux revision. Neither this comparison nor passing generated fixtures
+establishes recovery equivalence for every corrupt volume.
+
+Runtime evidence is separate and retained in the scenario sections: current
+ABI/process-engine/ArchiveBackend checks passed on macOS, Linux and Windows;
+native read-only controls cover payloads, timestamps, allocation statistics and
+empty directories. The older native kernel lacks the label ioctl, so that native
+feature remains unverified despite source/ABI/CLI coverage. Native TexFAT,
+physical devices, UI appearance, full/slow suites and a new installed-package
+run are not claimed. This closure changes documentation only; `git diff --check`
+is the applicable new check, with the existing incremental build/cache results
+left intact.
