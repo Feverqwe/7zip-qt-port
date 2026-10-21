@@ -229,7 +229,7 @@ int exfat_next_item(struct exfat_volume *v, struct exfat_cursor *c, struct exfat
         exfat_bytes_to_cluster_round_up(&v->info, item->size) > v->info.num_clusters - item->cluster)
         return -EIO;
     if ((item->attributes & EXFAT_ATTR_SUBDIR) &&
-        (!item->size || (item->size & (v->info.cluster_size - 1)) || item->valid_size != item->size))
+        ((item->size & (v->info.cluster_size - 1)) || item->valid_size != item->size))
         return -EIO;
     if (!item->size) {
         item->cluster = EXFAT_EOF_CLUSTER;

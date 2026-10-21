@@ -109,7 +109,7 @@ HRESULT CHandler::ReadTree() {
                 return S_FALSE;
             item.path = directory.path;
             item.path += name;
-            if (item.entry.attributes & 0x10) {
+            if ((item.entry.attributes & 0x10) && item.entry.size) {
                 if (!directories.insert(item.entry.cluster).second)
                     return S_FALSE;
                 Pending child;

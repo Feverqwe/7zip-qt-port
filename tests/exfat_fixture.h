@@ -22,6 +22,7 @@ struct ExfatFixture {
     void set64(int offset, quint64 value);
     void refreshBootChecksum();
     void refreshEntryChecksum(int logicalRootEntry);
+    void emptyDirectory(int rootEntry, const QString &name, unsigned cluster = 0);
     int rootOffset(int logicalEntry) const;
 };
 

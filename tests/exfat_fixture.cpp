@@ -52,6 +52,11 @@ QByteArray entrySet(const QString &name, unsigned cluster, quint64 size, quint64
 void ExfatFixture::set32(int offset, quint32 value) {
     qToLittleEndian(value, image.data() + offset);
 }
+void ExfatFixture::emptyDirectory(int entry, const QString &name, unsigned cluster) {
+    const QByteArray records = entrySet(name, cluster, 0, 0, true, true);
+    for (int i = 0; i < records.size() / 32; ++i)
+        std::copy_n(records.constData() + i * 32, 32, image.data() + rootOffset(entry + i));
+}
 void ExfatFixture::set64(int offset, quint64 value) {
     qToLittleEndian(value, image.data() + offset);
 }

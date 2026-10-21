@@ -196,6 +196,51 @@ class ExfatTests final : public QObject {
         const auto utc = QDateTime(QDate(2026, 10, 17), QTime(9, 34, 57, 230), QTimeZone::UTC);
         QCOMPARE(qint64(ticks / 10000) - 11644473600000LL, utc.toMSecsSinceEpoch());
     }
+    void zeroSizeDirectories_data() {
+        QTest::addColumn<int>("layout");
+        QTest::addColumn<quint32>("cluster");
+        QTest::newRow("unallocated") << 0 << quint32(0);
+        QTest::newRow("stale-data") << 0 << quint32(6);
+        QTest::newRow("root-reference") << 0 << quint32(2);
+        QTest::newRow("out-of-range-reference") << 0 << quint32(0xfffffffe);
+        QTest::newRow("texfat-first") << 1 << quint32(0);
+        QTest::newRow("texfat-second") << 2 << quint32(0);
+        QTest::newRow("sector4096") << 3 << quint32(0);
+    }
+    void zeroSizeDirectories() {
+        QFETCH(int, layout);
+        QFETCH(quint32, cluster);
+        ExfatFixture fixture(layout == 3 ? 4096 : 512);
+        if (layout == 1 || layout == 2)
+            fixture = TexfatFixture(layout - 1);
+        else {
+            fixture.fat(10, 11);
+            fixture.fat(11, 0xffffffff);
+            const int bitmap = fixture.clusterOffset(3) + 1;
+            fixture.image[bitmap] = char(quint8(fixture.image[bitmap]) | 2);
+        }
+        fixture.emptyDirectory(6, fixture.directoryName, cluster);
+        const QString second = QStringLiteral("empty 空");
+        fixture.emptyDirectory(layout == 1 || layout == 2 ? 34 : 31, second);
+        QCOMPARE(open(fixture.image), S_OK);
+        UInt32 count;
+        QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, 5u);
+        QVERIFY(indexOf(fixture.directoryName + '/' + fixture.nestedName) == UInt32(-1));
+        for (const QString &name : {fixture.directoryName, second}) {
+            const UInt32 index = indexOf(name);
+            QVERIFY(index != UInt32(-1));
+            NWindows::NCOM::CPropVariant directory;
+            QCOMPARE(archive_->GetProperty(index, kpidIsDir, &directory), S_OK);
+            QCOMPARE(directory.vt, VARTYPE(VT_BOOL));
+            QCOMPARE(directory.boolVal, VARIANT_TRUE);
+            CMyComPtr2<IArchiveExtractCallback, Extract> callback;
+            callback.Create_if_Empty();
+            QCOMPARE(archive_->Extract(&index, 1, 0, callback), S_OK);
+            QCOMPARE(callback->result, Int32(NArchive::NExtract::NOperationResult::kOK));
+            QVERIFY(callback->output->bytes.isEmpty());
+        }
+    }
     void volumeAllocation_data() {
         QTest::addColumn<int>("layout");
         QTest::addColumn<quint64>("freeClusters");
@@ -591,14 +636,23 @@ class ExfatTests final : public QObject {
         QTest::newRow("exfat") << -1;
         QTest::newRow("texfat-first") << 0;
         QTest::newRow("texfat-second") << 1;
+        QTest::newRow("zero-size-directories") << 2;
     }
     void officialEngineListsTestsAndExtracts() {
         QFETCH(int, active);
         ExfatFixture fixture;
-        if (active >= 0)
+        if (active == 0 || active == 1)
             fixture = TexfatFixture(unsigned(active));
+        if (active == 2) {
+            fixture.fat(10, 11);
+            fixture.fat(11, 0xffffffff);
+            const int bitmap = fixture.clusterOffset(3) + 1;
+            fixture.image[bitmap] = char(quint8(fixture.image[bitmap]) | 2);
+            fixture.emptyDirectory(31, QStringLiteral("пустой 空"));
+            fixture.emptyDirectory(34, QStringLiteral("empty2"));
+        }
         const QString label = QStringLiteral("метка 空 😀");
-        setVolumeLabel(fixture, active >= 0 ? 34 : 31, label);
+        setVolumeLabel(fixture, active == 2 ? 37 : active >= 0 ? 34 : 31, label);
         QTemporaryDir runtime;
         QVERIFY(runtime.isValid());
         const QDir prepared(QString::fromUtf8(SEVENZIP_EXFAT_RUNTIME));
@@ -642,6 +696,13 @@ class ExfatTests final : public QObject {
                  QByteArray(512, 'A') + QByteArray(188, 'B'));
         QCOMPARE(read(QDir(output).filePath(fixture.directoryName + '/' + fixture.nestedName)),
                  QByteArray("tail") + QByteArray(1020, '\0'));
+        if (active == 2) {
+            for (const auto &name : {QStringLiteral("пустой 空"), QStringLiteral("empty2")}) {
+                const QDir directory(QDir(output).filePath(name));
+                QVERIFY(directory.exists());
+                QVERIFY(directory.entryList(QDir::AllEntries | QDir::NoDotAndDotDot).isEmpty());
+            }
+        }
         QCOMPARE(QCryptographicHash::hash(read(image), QCryptographicHash::Sha256), hash);
     }
     void cleanupTestCase() { archive_.Release(); }

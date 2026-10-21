@@ -366,3 +366,46 @@ payload matched; images remained unchanged, and mounts/temporary exporter/
 fixtures were removed. This native check uses 512-byte sectors/clusters and
 does not establish native TexFAT acceptance. Incremental builds and compiler
 caches were retained. Full/slow suites, UI and physical devices were not checked.
+
+## Zero-size directories (2026-10-21)
+
+Compared complete `namei.c:exfat_add_entry`/`exfat_find`/`exfat_lookup`,
+`inode.c:exfat_fill_inode`, directory counting/iteration and existing portable
+metadata/traversal/extraction consumers. The pinned driver can create directory
+entries without allocating a cluster (`zero_size_dir`); its read path normalizes
+every zero-size entry to EOF/no-FAT-chain and accepts an empty directory. All
+twenty-one baseline source/license hashes were verified again.
+
+The existing C reader already retained the original zero-size normalization,
+but an independent archive validation rejected zero-size directories before
+reaching it. That extra rejection is removed. The archive traversal now emits
+an empty directory without enqueueing a child cursor or inserting its shared
+EOF marker into the directory-allocation cycle guard. Existing nonempty
+directory bounds, allocation/cycle checks, timestamp and extraction paths are
+retained. This is an adaptation correction in the existing archive boundary;
+no new filesystem parser, VFS inode implementation or write path is added.
+
+Post-change comparison confirmed the normalized EOF/no-FAT-chain state and
+all directory consumers. Seven ABI scenarios cover ordinary exFAT, both
+TexFAT active pairs, 4096-byte sectors and zero-size entries whose original
+start-cluster field is zero, stale data, the root itself or outside the heap.
+Two empty directories can coexist without a false cycle; old backing directory
+contents stay invisible. Directory extraction reports success without data.
+Official CLI and ArchiveBackend also list/test/extract an image containing two
+empty directories alongside normal nested files, checking actual empty output
+directories and unchanged original images. Existing corrupt nonempty-directory
+regressions remain in the same suites.
+
+Final `exfat`/`exfat_backend` PASS on macOS arm64/Qt 6.12 (4.64 s), Linux x64
+(1.82 s) and Windows x64/MSVC/Qt 6.12 (5.49 s), receipt
+`20261021T020605Z-570fdbc3`. Incremental builds and compiler caches were retained.
+Full/slow suites, UI appearance and physical devices were not checked; the
+overall format audit and standalone exFAT boundary are unchanged.
+
+Native exFAT `6.8.0-147-generic` confirmed all four start-cluster variants
+through read-only loop mounts, receipt `20261021T020637Z-c7b0283a`: both
+directories have size zero and empty listings, and the ordinary file payload
+still matches. Images remained unchanged; mounts, exporter, temporary fixtures
+and review helper were removed. This older running kernel supplements the
+comparison against the newer pinned source; TexFAT native acceptance is not
+claimed by these four single-FAT controls.

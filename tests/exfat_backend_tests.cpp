@@ -16,6 +16,7 @@ class ExfatBackendTests final : public QObject {
         QTest::newRow("texfat-first") << 0;
         QTest::newRow("texfat-second") << 1;
         QTest::newRow("texfat-fragmented-bitmap") << 2;
+        QTest::newRow("zero-size-directories") << 3;
     }
     void discoversBrowsesAndExtractsReadOnly() {
         QFETCH(int, layout);
@@ -35,8 +36,16 @@ class ExfatBackendTests final : public QObject {
         QVERIFY(QFile::copy(QString::fromUtf8(SEVENZIP_EXFAT_MODULE),
                             runtime.filePath(QStringLiteral("Formats/формат 空") + suffix)));
         ExfatFixture fixture;
-        if (layout >= 0)
+        if (layout >= 0 && layout <= 2)
             fixture = TexfatFixture(layout == 2 ? 1 : unsigned(layout), 512, layout == 2);
+        if (layout == 3) {
+            fixture.fat(10, 11);
+            fixture.fat(11, 0xffffffff);
+            const int bitmap = fixture.clusterOffset(3) + 1;
+            fixture.image[bitmap] = char(quint8(fixture.image[bitmap]) | 2);
+            fixture.emptyDirectory(31, QStringLiteral("пустой 空"));
+            fixture.emptyDirectory(34, QStringLiteral("empty2"));
+        }
         const QString image = runtime.filePath(QStringLiteral("карта памяти 空.img"));
         QFile source(image);
         QVERIFY(source.open(QIODevice::WriteOnly));
@@ -59,7 +68,7 @@ class ExfatBackendTests final : public QObject {
         QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 10000);
         QVERIFY2(finished[0][0].toBool(), qPrintable(finished[0][1].toString()));
         QCOMPARE(listed.size(), 1);
-        QCOMPARE(entries.size(), 5);
+        QCOMPARE(entries.size(), layout == 3 ? 7 : 5);
         finished.clear();
         backend.test(image);
         QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 10000);
@@ -75,6 +84,13 @@ class ExfatBackendTests final : public QObject {
         QFile nested(QDir(output).filePath(fixture.directoryName + '/' + fixture.nestedName));
         QVERIFY(nested.open(QIODevice::ReadOnly));
         QCOMPARE(nested.readAll(), QByteArray("tail") + QByteArray(1020, '\0'));
+        if (layout == 3) {
+            for (const auto &name : {QStringLiteral("пустой 空"), QStringLiteral("empty2")}) {
+                const QDir directory(QDir(output).filePath(name));
+                QVERIFY(directory.exists());
+                QVERIFY(directory.entryList(QDir::AllEntries | QDir::NoDotAndDotDot).isEmpty());
+            }
+        }
         QVERIFY(source.open(QIODevice::ReadOnly));
         QCOMPARE(source.readAll(), fixture.image);
     }
