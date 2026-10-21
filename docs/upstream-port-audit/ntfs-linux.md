@@ -14,6 +14,8 @@ overlays. Сохранены классы, MFT enumeration, сборка base/ex
 имена/ADS, recovery deleted records, security metadata, исходные stream/cache
 и extraction flow. Полное C++ форматирование учитывается отдельно от
 функционального сравнения; macro class boundary сохранена.
+Active DATA/reparse/EA selection перед extension merge уточнён Linux lookup;
+последующие разделы фиксируют границы этих изменений отдельно от deleted recovery.
 
 Linux: <https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git>,
 commit `58161ead29e50d70a317ea26b472e0c7508e69da`.
@@ -1031,6 +1033,135 @@ mounts/images/helper удалены; incremental trees и compiler caches сох
 Остальной NTFS read audit и весь multi-format goal остаются открытыми.
 Full/slow suites, physical devices, installed package и native Windows/Linux
 appearance этой итерацией не проверялись.
+
+## DATA membership, ADS и частично доступные mappings
+
+Linux/SDK repositories и full revisions закреплены выше. Сопоставлены полные
+`inode.c:ntfs_read_mft`/ADS opening, `frecord.c:ni_enum_attr_ex`/`ni_find_attr`,
+record/attribute-list lookup, `attrib.c:attr_load_runs_vcn`/`attr_load_runs_range`,
+`run.c:run_unpack` и SDK CAttr parser, extension merge, DataParseExtents,
+CInStream, WOF consumers, item properties и extraction callbacks. Linux
+перечисляет выбранные list entries и загружает нужные mapping segments; прежнее
+безусловное SDK объединение active DATA по одному base reference этого не
+обеспечивало. Original C enumeration/lookup bodies сохранены, private entry
+projection дополнена bounded pointer на исходное имя. Новых kernel C units нет.
+
+Active unnamed DATA и ADS теперь выбираются до merge по type/name/instance,
+record index и VCN, с проверкой sequence/base owner. Противоречивый sequence или
+owner доступного active extension record допускает только явно непроверенное
+DATA-представление, если совпадают имя/instance/VCN и валидны source bounds.
+Raw metadata остальных типов не объединяются по такому reference; некорректный
+extension больше не превращает failure отдельного DATA в отказ всего образа.
+Непроверенные bytes не объявляются достоверными. Имена ADS сопоставляются точно, включая
+case-distinct и Unicode/spaces, как enumerating ADS caller Linux; unused named
+case-folded VFS lookup не добавлялся. Names с embedded NUL не превращаются в
+другой addressable stream: unaddressable list name пропускается с ограничением,
+а reference на несовпадающее raw attribute name остаётся ошибкой потока.
+Unlisted stale base/extension DATA не заменяет выбранный payload. Без списка
+используются base attributes; deleted records сохраняют исходный forensic merge.
+Исключённый из списка прежний default DATA остаётся ошибкой потока, а не ложным
+пустым файлом; его независимые ADS доступны.
+Ранее переданные Volume/reparse/EA selectors используют ту же typed ownership
+boundary; оригинальные C bodies и все 31 baseline hashes повторно проверены.
+
+Недоступный primary остаётся видимым ошибочным stream без выдуманного размера;
+независимые ADS и другие файлы читаются. При недоступном continuation исходный
+SDK parser сохраняет проверенные segments. Unknown mappings имеют отдельный
+error marker, а не sparse marker: Read возвращает ошибку при достижении такого
+диапазона; Seek допускает чтение доступных участков после него. Compressed unit
+с unknown mapping не декодируется и не публикует cache output. Sparse zeros и
+initialized tail сохраняют исходную семантику. Полное извлечение с missing bytes
+возвращает DataError, даже если часть байтов уже скопирована. Буферы, mappings и
+source owner принадлежат выданному stream и переживают Close/reopen.
+
+Если list целиком недоступен или malformed, reader предлагает только локальные
+base DATA mappings как явно непроверенное recovery-представление, без blind
+extension merge. Это полезный archive read subset, а не утверждение kernel
+acceptance или актуальности старых данных. Согласие не восстанавливает missing
+bytes и не снимает source bounds/path validation. Error property отмечает
+затронутый stream; archive reason требует явного выбора одного открытия и
+остаётся видимым при навигации/копировании. Metadata-only list failures без
+признаков DATA не порождают дополнительное ложное DATA warning.
+
+Потребители подключены вместе: при недоступном выбранном `$Bitmap` free space
+остаётся неизвестным, при недоступном `$Secure:$SDS` не публикуются unverified
+security descriptors; обычные файлы остаются читаемыми. Недоступный `$AttrDef`
+ограничивает EA через уже проверенный partial-EA path. MFT bootstrap остаётся
+обязательным условием enumeration; это не новый reader недоступных MFT records.
+Предварительная проверка также подключает полезный bounded partial mode без
+списка, когда primary run читается, а продолжения недоступны. Unlisted extensions
+при этом не объединяются. Полностью недекодируемые mappings сохраняют lazy
+per-file failure, включая `$Boot` zero-delta, отвергаемый SDK и закреплённым
+`run_unpack`. Непубликуемый service `$BadClus:$Bad` не создаёт ложное opening
+warning. Glue остаётся у существующих SDK CMftRec/CDatabase/stream owners:
+вынос его в отдельный reader потребовал бы дублирования private MFT model.
+
+Source language, notices и isolated GPL dynamic-module closure сохранены.
+Standalone SDK не получает Linux-specific selection/partial mapping; оба runtime
+overlays собираются из одного handler source с прежней macro boundary. Это
+подключение существующих SDK stream/map bodies к Linux metadata lookup, а не
+независимый DATA или compression decoder.
+
+Двадцать один layout покрывает selected/stale DATA, resident/nonresident list,
+split mappings, точные case-distinct и Unicode ADS, absent/invalid primary,
+missing first/middle runs, sparse/initialized tails, недоступный compressed unit,
+unreadable/malformed list, stale sequence/owner, embedded NUL и зависимые
+`$Bitmap`/`$SDS` consumers. CLI проверяет точные bytes, partial stdout + DataError
+и unchanged source; для case-distinct ADS использован явный `-ssc`, поскольку
+Windows CLI иначе выбирает оба имени своей case-insensitive маской. ABI проверяет
+Seek после missing range, unknown size/error properties, lifetime после Close,
+I/O recovery/reopen, callback E_FAIL/E_ABORT и отсутствие unverified ACL/free count.
+Backend действительно копирует selected primary/Unicode ADS и сообщает failure
+при incomplete copy. GUI EN/RU копирует local DATA после явного согласия;
+cancel проверен общим service по каждой reader family, acceptance/geometry — по
+всем различным reasons без дублирования одинаковых cancel combinations.
+
+DATA/list recovery `ntfs`, `ntfs_stream`, `ntfs_security` прошёл на macOS arm64 (23,57 с),
+Linux x64 (61,33 с) и Windows x64/MSVC (84,55 с), receipt
+`20261021T062529Z-6af04568`. `language` и native Cocoa `filesystem_read_ui`
+прошли локально, GUI — 51,83 с; warning EN 420×214/RU 420×275 полностью видим.
+Guest language/GUI и Linux пять suites прошли в `20261021T061112Z-aca82c53`;
+Windows ABI/security/language/GUI там прошли, CLI выявил описанную case-mask
+ошибку теста. После исправления точного выбора обе DATA suites прошли на обоих
+guests в `20261021T061648Z-79f656f6`, затем финальная recovery-семантика проверена
+выше. Приложение собрано локально после последнего source change. Source bodies
+`al_enumerate`/`al_find_ex` повторно сравнены с оригиналом без изменений.
+
+Native Linux 6.8.0-147, receipt `20261021T063212Z-abd1aadc`: одиннадцать
+readonly loop controls, exact обычный alpha и unchanged images во всех случаях.
+Selected/nonresident/split DATA совпали с archive payloads. Missing middle
+дал EIO при сохранных читаемых первом/последнем ranges; известный sparse range
+вернул нули, initialized tail также вернул нули без требуемого mapping.
+Stale sequence и оба owner contradictions вернули выбранные DATA bytes: archive
+сохраняет эту возможность только как unverified mode с предупреждением.
+Unlisted default и bad-id отвергнуты kernel с EINVAL; archive также сообщает
+ошибку default stream, сохраняя другие файлы/ADS. Доступ после invalid first
+mapping и incomplete compressed unit проверен archive ABI/CLI, не native mount.
+Временные mounts/images/helpers удалены. Scoped cleanup завершённых fixtures
+на обоих guests — `20261021T063049Z-7cf9463d`, сборки/кэши не затрагивались.
+
+Native controls проверяют unnamed DATA; ADS проверены по pinned source и через
+archive ABI/CLI/backend. Это не native acceptance современных ADS interfaces
+на старом guest kernel. Остальной NTFS и multi-format read scope остаются
+открытыми; full/slow, physical devices, installed package и native Windows/Linux
+appearance не проверялись. Incremental builds и compiler caches сохранены.
+
+Дополнительный no-list prefix контроль — `20261021T064539Z-5ef34cee`:
+native 6.8 прочитал точный первый run и обычный alpha, readonly image не изменён.
+В недостающем tail старое ядро вернуло 4096 нулей при declared size 12288.
+Archive намеренно возвращает DataError после доступного prefix, не принимая
+unknown mapping за подтверждённый sparse range. Pinned `attr_load_runs_vcn`
+проверяет requested VCN против фактического segment range; полный runtime
+этого pinned kernel данным старого guest не подтверждается. No-list prefix,
+partial-copy failure и retained stream отдельно проверены archive ABI/CLI.
+
+После расширения на no-list prefix те же три suites повторно прошли на macOS
+(24,83 с) и Linux (60,56 с), receipt `20261021T064542Z-69264566`. Windows в нём
+прошёл CLI/security, ABI suite завершилась по timeout. Адресный повтор
+`ntfs_stream` без изменения кода/timeout прошёл за 50,03 с,
+`20261021T065127Z-b649399f`; причина единичного timeout не установлена.
+Локальное приложение пересобрано после этого source change; language/UI inputs
+не менялись. Эти результаты дополняют, а не заменяют source comparison.
 
 ## Открытый read scope
 

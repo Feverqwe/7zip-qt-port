@@ -94,6 +94,9 @@ def nonresident(original, entries, size, valid=None, flags=0, unit=0):
 
 
 def volume(kind="base"):
+    if kind.startswith("data-list-"):
+        from ntfs_data_list_fixture import volume as data_list_volume
+        return data_list_volume(kind)
     if kind.startswith("reparse-list-"):
         from ntfs_reparse_list_fixture import volume as reparse_volume
         return reparse_volume(kind)

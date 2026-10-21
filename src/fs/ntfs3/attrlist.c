@@ -104,6 +104,7 @@ static void project_entry(const struct ATTR_LIST_ENTRY *le,
     entry->vcn = le64_to_cpu(le->vcn);
     entry->id = le16_to_cpu(le->id);
     entry->name_len = le->name_len;
+    entry->name = le_name(le);
 }
 
 int sevenzip_ntfs_list_next(const void *data, size_t size, size_t *cursor,

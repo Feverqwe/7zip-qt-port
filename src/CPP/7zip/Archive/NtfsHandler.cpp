@@ -354,15 +354,26 @@ bool CSiAttr::Parse(const Byte *const p, unsigned size) {
 }
 
 static const UInt64 kEmptyExtent = (UInt64)0 - 1;
+#ifdef SEVENZIP_LINUX_NTFS
+static const UInt64 kUnavailableExtent = (UInt64)0 - 2;
+#endif
 
 struct CExtent {
     UInt64 Virt;
     UInt64 Phy;
 
     bool IsEmpty() const { return Phy == kEmptyExtent; }
+#ifdef SEVENZIP_LINUX_NTFS
+    bool IsUnavailable() const { return Phy == kUnavailableExtent; }
+#endif
 };
 
 struct CAttr {
+#ifdef SEVENZIP_LINUX_NTFS
+    bool Unavailable = false;
+    bool Partial = false;
+    bool NameValid = true;
+#endif
     unsigned NextAttrIndex; /* DataAttrs[NextAttrIndex] is nearest
           item with a different name, skipping items with identical names. */
     Byte NonResident;
@@ -466,6 +477,9 @@ unsigned CAttr::ParseAttr(const Byte *const p, const unsigned size, UInt32 &type
             if (nameOffset + nameLen * 2 > len)
                 return 0;
             GetString(p + nameOffset, nameLen, Name);
+#ifdef SEVENZIP_LINUX_NTFS
+            NameValid = Name.Len() == nameLen;
+#endif
             PRF(printf(" N="));
             PRF_UTF16(Name)
         }
@@ -716,6 +730,10 @@ public:
     _virtPos = 0;
     _physPos = 0;
     const CExtent &e = Extents[0];
+#ifdef SEVENZIP_LINUX_NTFS
+    if (e.IsUnavailable())
+      return S_OK;
+#endif
     if (!e.IsEmpty())
       _physPos = e.Phy << BlockSizeLog;
     return e.IsEmpty() ? S_OK : SeekToPhys();
@@ -880,6 +898,10 @@ Z7_COM7F_IMF(CInStream::Read(void *const data, UInt32 size, UInt32 *const proces
         const UInt32 comprUnitSize = (UInt32)1 << CompressionUnit;
         const UInt64 virtBlock = _virtPos >> BlockSizeLog;
         const UInt64 virtBlock2 = virtBlock & ~((UInt64)comprUnitSize - 1);
+#ifdef SEVENZIP_LINUX_NTFS
+        if (Extents.Size() < 2 || virtBlock >= Extents.Back().Virt)
+            return S_FALSE;
+#endif
 
         unsigned left = 0, right = Extents.Size();
         for (;;) {
@@ -894,6 +916,11 @@ Z7_COM7F_IMF(CInStream::Read(void *const data, UInt32 size, UInt32 *const proces
 
         bool isCompressed = false;
         const UInt64 virtBlock2End = virtBlock2 + comprUnitSize;
+#ifdef SEVENZIP_LINUX_NTFS
+        for (unsigned j = left; j + 1 < Extents.Size() && Extents[j].Virt < virtBlock2End; ++j)
+            if (Extents[j].IsUnavailable())
+                return S_FALSE;
+#endif
         if (CompressionUnit != 0)
             for (unsigned i = left; i < Extents.Size(); i++) {
                 const CExtent &e = Extents[i];
@@ -1104,6 +1131,53 @@ static HRESULT DataParseExtents(const unsigned clusterSizeLog, const CObjectVect
     return S_OK;
 }
 
+#ifdef SEVENZIP_LINUX_NTFS
+// Preserve validated SDK run segments; missing mappings are errors, never sparse zeros.
+static HRESULT DataParsePartialExtents(unsigned clusterBits, const CObjectVector<CAttr> &attrs,
+                                       unsigned first, UInt64 clusters,
+                                       CRecordVector<CExtent> &extents) {
+    const CAttr &primary = attrs[first];
+    if (!primary.NonResident || primary.LowVcn || primary.AllocatedSize < primary.Size ||
+        (primary.AllocatedSize & (((UInt64)1 << clusterBits) - 1)))
+        return S_FALSE;
+    const UInt64 end = primary.AllocatedSize >> clusterBits;
+    if (end >= ((UInt64)1 << 63))
+        return S_FALSE;
+    extents.Clear();
+    CExtent sentinel;
+    sentinel.Virt = 0;
+    sentinel.Phy = kUnavailableExtent;
+    extents.Add(sentinel);
+    bool mapped = false;
+    for (unsigned i = first; i < primary.NextAttrIndex; ++i) {
+        const CAttr &attr = attrs[i];
+        if (!attr.NonResident || attr.Unavailable || attr.LowVcn < extents.Back().Virt ||
+            attr.HighVcn >= end)
+            continue;
+        CRecordVector<CExtent> segment;
+        sentinel.Virt = attr.LowVcn;
+        sentinel.Phy = kEmptyExtent;
+        segment.Add(sentinel);
+        if (!attr.ParseExtents(segment, clusters, primary.CompressionUnit,
+                               (primary.Flags & 0x8000) != 0))
+            continue;
+        if (attr.LowVcn == extents.Back().Virt)
+            extents.DeleteBack();
+        for (unsigned j = 0; j + 1 < segment.Size(); ++j)
+            extents.Add(segment[j]);
+        sentinel.Virt = segment.Back().Virt;
+        sentinel.Phy = kUnavailableExtent;
+        extents.Add(sentinel);
+        mapped = true;
+    }
+    if (extents.Back().Virt < end) {
+        sentinel.Virt = end;
+        extents.Add(sentinel);
+    }
+    return mapped || !primary.InitializedSize ? S_OK : S_FALSE;
+}
+#endif
+
 struct CVolumeInfo {
     UString2 VolName;
     int FsVerMajor; // -1 if not defined
@@ -1205,7 +1279,10 @@ struct CMftRec {
             SiAttr = src.SiAttr;
             SiDefined = true;
         }
-        DataAttrs += src.DataAttrs;
+#ifdef SEVENZIP_LINUX_NTFS
+        if (!InUse() || !src.InUse())
+#endif
+            DataAttrs += src.DataAttrs;
         ReparseAttrs += src.ReparseAttrs;
 #ifdef SEVENZIP_LINUX_NTFS
         if (!InUse() || !src.InUse()) {
@@ -1336,6 +1413,8 @@ HRESULT CMftRec::GetStream(IInStream *mainStream, const int dataIndex,
     if (Wsl.present && (dataIndex < 0 || DataAttrs[dataIndex].Name.IsEmpty()) &&
         (Wsl.mode & MY_LIN_S_IFMT) != MY_LIN_S_IFREG)
         return E_NOTIMPL;
+    if (dataIndex >= 0 && DataAttrs[dataIndex].Unavailable)
+        return S_FALSE;
 #endif
     if (Wof && (dataIndex < 0 || DataAttrs[dataIndex].Name.IsEmpty())) {
         if (dataIndex < 0)
@@ -1348,8 +1427,11 @@ HRESULT CMftRec::GetStream(IInStream *mainStream, const int dataIndex,
             if (data.Flags & 0x4000)
                 return E_NOTIMPL;
             CRecordVector<CExtent> extents;
-            RINOK(DataParseExtents(clusterSizeLog, DataAttrs, (unsigned)dataIndex, numPhysClusters,
-                                   extents))
+            RINOK(DataAttrs[dataIndex].Partial
+                      ? DataParsePartialExtents(clusterSizeLog, DataAttrs, (unsigned)dataIndex,
+                                                numPhysClusters, extents)
+                      : DataParseExtents(clusterSizeLog, DataAttrs, (unsigned)dataIndex,
+                                         numPhysClusters, extents))
             if (WofFrameBits == 16)
                 return SevenzipNtfsWofStream(nullptr, data.Size, data.InitializedSize, 0,
                                              WofFrameBits, destStream);
@@ -1398,8 +1480,16 @@ HRESULT CMftRec::GetStream(IInStream *mainStream, const int dataIndex,
             } else
                 ss = new CInStream;
             CMyComPtr<IInStream> streamTemp2 = ss;
-            RINOK(DataParseExtents(clusterSizeLog, DataAttrs, (unsigned)dataIndex, numPhysClusters,
-                                   ss->Extents))
+#ifdef SEVENZIP_LINUX_NTFS
+            if (attr0.Partial) {
+                RINOK(DataParsePartialExtents(clusterSizeLog, DataAttrs, (unsigned)dataIndex,
+                                              numPhysClusters, ss->Extents))
+            } else
+#endif
+            {
+                RINOK(DataParseExtents(clusterSizeLog, DataAttrs, (unsigned)dataIndex,
+                                       numPhysClusters, ss->Extents))
+            }
             ss->Size = attr0.Size;
             ss->InitializedSize = attr0.InitializedSize;
             ss->Stream = mainStream;
@@ -1689,6 +1779,7 @@ struct CDatabase {
     UInt64 FreeSpace = 0;
     bool ReparseLimitations = false;
     bool EaLimitations = false;
+    bool DataLimitations = false;
 #endif
 
     CVolumeInfo VolumeInfo;
@@ -1756,7 +1847,8 @@ struct CDatabase {
 #ifdef SEVENZIP_LINUX_NTFS
     HRESULT LoadMftAttributes(CMftRec &rec);
     const CAttr *FindListedMetadataAttribute(UInt32 baseIndex, UInt32 type,
-                                             const sevenzip_ntfs_list_entry &entry) const;
+                                             const sevenzip_ntfs_list_entry &entry,
+                                             bool allowUnverifiedReference = false) const;
     int FindMetadataAttribute(UInt32 baseIndex, UInt32 type, const CByteBuffer &list, bool useList,
                               const CAttr *&attr) const;
     HRESULT ReadMetadataList(UInt32 baseIndex, CByteBuffer &list);
@@ -1765,6 +1857,7 @@ struct CDatabase {
     HRESULT LoadVolumeMetadata();
     HRESULT LoadActiveReparseMetadata();
     HRESULT SelectActiveEaMetadata();
+    HRESULT SelectActiveDataAttributes();
     HRESULT CollectMetadataAttributes(UInt32 baseIndex, UInt32 type, const CAttr &primary,
                                       const CByteBuffer &list, bool useList,
                                       CObjectVector<CAttr> &attrs) const;
@@ -1800,6 +1893,7 @@ void CDatabase::Clear() {
     FreeSpace = 0;
     ReparseLimitations = false;
     EaLimitations = false;
+    DataLimitations = false;
 #endif
     PhySize = 0;
 }
@@ -1817,6 +1911,10 @@ HRESULT CDatabase::LoadFreeSpace() {
     if (Recs.Size() <= kRecIndex_Bitmap)
         return S_FALSE;
     const CMftRec &bitmap = Recs[kRecIndex_Bitmap];
+    if ((!bitmap.AttrListAttrs.IsEmpty() && bitmap.DataAttrs.IsEmpty()) ||
+        (!bitmap.DataAttrs.IsEmpty() &&
+         (bitmap.DataAttrs[0].Unavailable || bitmap.DataAttrs[0].Partial)))
+        return S_OK;
     if (!bitmap.Is_Magic_FILE() || !bitmap.InUse() || bitmap.IsDir() ||
         !bitmap.BaseMftRef.IsBaseItself() || bitmap.DataAttrs.IsEmpty())
         return S_FALSE;
@@ -2051,13 +2149,16 @@ static const CObjectVector<CAttr> &MetadataAttributes(const CMftRec &rec, UInt32
         return rec.EaInfoAttrs;
     case 0xE0:
         return rec.EaAttrs;
+    case ATTR_TYPE_DATA:
+        return rec.DataAttrs;
     default:
         return rec.ReparseAttrs;
     }
 }
 
 const CAttr *CDatabase::FindListedMetadataAttribute(UInt32 baseIndex, UInt32 type,
-                                                    const sevenzip_ntfs_list_entry &entry) const {
+                                                    const sevenzip_ntfs_list_entry &entry,
+                                                    bool allowUnverifiedReference) const {
     const CMftRec &base = Recs[baseIndex];
     CMftRef reference;
     reference.Val = entry.ref;
@@ -2065,17 +2166,24 @@ const CAttr *CDatabase::FindListedMetadataAttribute(UInt32 baseIndex, UInt32 typ
     if (number >= Recs.Size())
         return NULL;
     const CMftRec *owner = &Recs[(unsigned)number];
-    if (!owner->Is_Magic_FILE() || !owner->InUse() || owner->SeqNumber != reference.GetNumber())
+    if (!owner->Is_Magic_FILE() || !owner->InUse() ||
+        (!allowUnverifiedReference && owner->SeqNumber != reference.GetNumber()))
         return NULL;
-    if (number != baseIndex &&
-        (owner->BaseMftRef.GetIndex() != baseIndex ||
-         owner->BaseMftRef.GetNumber() != base.SeqNumber || !owner->AttrListAttrs.IsEmpty()))
-        return NULL;
+    if (number != baseIndex) {
+        if (owner->BaseMftRef.IsBaseItself())
+            return NULL;
+        if (!allowUnverifiedReference &&
+            (owner->BaseMftRef.GetIndex() != baseIndex ||
+             owner->BaseMftRef.GetNumber() != base.SeqNumber || !owner->AttrListAttrs.IsEmpty()))
+            return NULL;
+    }
     const auto &attrs = MetadataAttributes(*owner, type);
+    UString2 name;
+    GetString((const Byte *)entry.name, entry.name_len, name);
     FOR_VECTOR(i, attrs) {
         const CAttr &attr = attrs[i];
-        if (attr.Name.IsEmpty() && attr.Instance == entry.id &&
-            (!attr.NonResident || attr.LowVcn == entry.vcn))
+        if (attr.NameValid && name.Len() == entry.name_len && attr.Name == name &&
+            attr.Instance == entry.id && (!attr.NonResident || attr.LowVcn == entry.vcn))
             return &attr;
     }
     return NULL;
@@ -2095,7 +2203,7 @@ int CDatabase::FindMetadataAttribute(UInt32 baseIndex, UInt32 type, const CByteB
     const CMftRec &base = Recs[baseIndex];
     const auto &attrs = MetadataAttributes(base, type);
     FOR_VECTOR(i, attrs) {
-        if (attrs[i].Name.IsEmpty()) {
+        if (attrs[i].NameValid && attrs[i].Name.IsEmpty()) {
             attr = &attrs[i];
             return 1;
         }
@@ -2385,6 +2493,204 @@ HRESULT CDatabase::SelectActiveEaMetadata() {
     return S_OK;
 }
 
+struct CDataListSelection {
+    UString2 Name;
+    UInt64 Vcn;
+    size_t Order;
+    const CAttr *Attr;
+    bool Unverified;
+};
+
+static int CompareDataSelection(void *const *left, void *const *right, void *) {
+    const auto &a = **(const CDataListSelection *const *)left;
+    const auto &b = **(const CDataListSelection *const *)right;
+    const int names = a.Name.IsEmpty()   ? (b.Name.IsEmpty() ? 0 : -1)
+                      : b.Name.IsEmpty() ? 1
+                                         : a.Name.Compare(b.Name.GetRawPtr());
+    return names ? names : MyCompare(a.Order, b.Order);
+}
+
+static CAttr UnavailableDataAttribute(const UString2 &name) {
+    CAttr attr;
+    if (!name.IsEmpty())
+        attr.Name = name;
+    attr.NonResident = 0;
+    attr.Flags = attr.Instance = attr.CompressionUnit = 0;
+    attr.Unavailable = true;
+    return attr;
+}
+
+HRESULT CDatabase::SelectActiveDataAttributes() {
+    if (Recs.IsEmpty())
+        return S_OK;
+    CByteBuffer evidence;
+    evidence.Alloc(Recs.Size());
+    memset(evidence, 0, Recs.Size());
+    FOR_VECTOR(i, Recs) {
+        const CMftRec &rec = Recs[i];
+        if (!rec.Is_Magic_FILE() || !rec.InUse())
+            continue;
+        const UInt64 base = rec.BaseMftRef.IsBaseItself() ? i : rec.BaseMftRef.GetIndex();
+        if (base >= Recs.Size())
+            continue;
+        FOR_VECTOR(j, rec.DataAttrs)
+        if (rec.DataAttrs[j].GetSize() || !rec.DataAttrs[j].Name.IsEmpty())
+            evidence[(unsigned)base] = 1;
+    }
+    FOR_VECTOR(i, Recs) {
+        CMftRec &rec = Recs[i];
+        if (!rec.Is_Magic_FILE() || !rec.InUse() || !rec.BaseMftRef.IsBaseItself())
+            continue;
+        if (OpenCallback)
+            RINOK(OpenCallback->SetCompleted(NULL, NULL))
+        CObjectVector<CAttr> selected;
+        if (rec.AttrListAttrs.IsEmpty())
+            selected = rec.DataAttrs;
+        else {
+            CByteBuffer list;
+            const HRESULT result = ReadMetadataList(i, list);
+            if (result == S_FALSE) {
+                // Recovery access to local mappings is explicitly unverified; no stale
+                // extension is merged into this incomplete view.
+                selected = rec.DataAttrs;
+                if (evidence[i]) {
+                    FOR_VECTOR(j, selected)
+                    selected[j].Partial = true;
+                    DataLimitations = true;
+                }
+                if (evidence[i] && selected.IsEmpty() && !(rec.Flags & 2))
+                    selected.Add(UnavailableDataAttribute(UString2()));
+            } else {
+                RINOK(result)
+                CObjectVector<CDataListSelection> entries;
+                size_t cursor = SIZE_MAX;
+                bool malformed = false;
+                UInt32 previousType = 0;
+                for (;;) {
+                    sevenzip_ntfs_list_entry entry;
+                    const int next = sevenzip_ntfs_list_next(list, list.Size(), &cursor, &entry);
+                    if (next <= 0) {
+                        malformed = next < 0;
+                        break;
+                    }
+                    if (entry.type < previousType) {
+                        malformed = true;
+                        break;
+                    }
+                    previousType = entry.type;
+                    if (entry.type != ATTR_TYPE_DATA)
+                        continue;
+                    CDataListSelection &row = entries.AddNew();
+                    GetString((const Byte *)entry.name, entry.name_len, row.Name);
+                    if (row.Name.Len() != entry.name_len) {
+                        entries.DeleteBack();
+                        DataLimitations = true;
+                        continue; // Embedded NUL cannot identify an addressable archive stream.
+                    }
+                    row.Vcn = entry.vcn;
+                    row.Order = cursor;
+                    row.Attr = FindListedMetadataAttribute(i, ATTR_TYPE_DATA, entry);
+                    row.Unverified = false;
+                    if (!row.Attr) {
+                        row.Attr = FindListedMetadataAttribute(i, ATTR_TYPE_DATA, entry, true);
+                        row.Unverified = row.Attr != NULL;
+                    }
+                }
+                if (malformed) {
+                    // Preserve local recovery data without claiming list authority.
+                    selected = rec.DataAttrs;
+                    if (evidence[i]) {
+                        FOR_VECTOR(j, selected)
+                        selected[j].Partial = true;
+                        DataLimitations = true;
+                    }
+                    if (evidence[i] && selected.IsEmpty() && !(rec.Flags & 2))
+                        selected.Add(UnavailableDataAttribute(UString2()));
+                } else {
+                    entries.Sort(CompareDataSelection, NULL);
+                    for (unsigned first = 0; first < entries.Size();) {
+                        unsigned last = first + 1;
+                        while (last < entries.Size() && entries[last].Name == entries[first].Name)
+                            ++last;
+                        const CAttr *primary = entries[first].Vcn == 0 ? entries[first].Attr : NULL;
+                        if (!primary) {
+                            selected.Add(UnavailableDataAttribute(entries[first].Name));
+                            DataLimitations = true;
+                        } else {
+                            const unsigned start = selected.Size();
+                            selected.Add(*primary);
+                            if (entries[first].Unverified) {
+                                selected[start].Partial = true;
+                                DataLimitations = true;
+                            }
+                            UInt64 previous = 0;
+                            for (unsigned j = first + 1; j < last; ++j) {
+                                const CDataListSelection &row = entries[j];
+                                if (!primary->NonResident || row.Vcn <= previous) {
+                                    selected[start].Unavailable = true;
+                                    DataLimitations = true;
+                                    break;
+                                }
+                                previous = row.Vcn;
+                                if (row.Unverified) {
+                                    selected[start].Partial = true;
+                                    DataLimitations = true;
+                                }
+                                if (row.Attr && row.Attr->NonResident)
+                                    selected.Add(*row.Attr);
+                                else {
+                                    selected[start].Partial = true;
+                                    DataLimitations = true;
+                                }
+                            }
+                        }
+                        first = last;
+                    }
+                }
+            }
+        }
+        if (!(rec.Flags & 2) && rec.ReparseDataIndex < 0) {
+            bool hadPrimary = false, hasPrimary = false;
+            FOR_VECTOR(j, rec.DataAttrs)
+            hadPrimary |= rec.DataAttrs[j].Name.IsEmpty();
+            FOR_VECTOR(j, selected)
+            hasPrimary |= selected[j].Name.IsEmpty();
+            if (hadPrimary && !hasPrimary) {
+                selected.Add(UnavailableDataAttribute(UString2()));
+                DataLimitations = true;
+            }
+        }
+        rec.DataAttrs.Clear();
+        FOR_VECTOR(j, selected) {
+            if (selected[j].NameValid)
+                rec.DataAttrs.Add(selected[j]);
+            else
+                DataLimitations = true;
+        }
+        rec.ParseDataNames();
+        if (i == kRecIndex_Bitmap && !rec.AttrListAttrs.IsEmpty() && rec.DataAttrs.IsEmpty())
+            DataLimitations = true;
+        for (unsigned first = 0; first < rec.DataAttrs.Size();) {
+            CAttr &primary = rec.DataAttrs[first];
+            if (!primary.Unavailable && primary.NonResident &&
+                !(i == kRecIndex_BadClus && primary.Name == L"$Bad")) {
+                CRecordVector<CExtent> extents;
+                if (DataParseExtents(Header.ClusterSizeLog, rec.DataAttrs, first,
+                                     Header.NumClusters, extents) != S_OK) {
+                    if (!rec.AttrListAttrs.IsEmpty() ||
+                        DataParsePartialExtents(Header.ClusterSizeLog, rec.DataAttrs, first,
+                                                Header.NumClusters, extents) == S_OK) {
+                        primary.Partial = true;
+                        DataLimitations = true;
+                    }
+                }
+            }
+            first = primary.NextAttrIndex;
+        }
+    }
+    return S_OK;
+}
+
 // NTFS3 ntfs_read_mft/ni_enum_attr_ex: extend the currently readable MFT mapping
 // through list entries before opening the complete MFT as a regular stream.
 HRESULT CDatabase::LoadMftAttributes(CMftRec &rec) {
@@ -2630,6 +2936,19 @@ HRESULT CDatabase::LoadSecurityIndex() {
     const CMftRec &secure = Recs[kRecIndex_Security];
     if (secure.SecurityRoots.IsEmpty())
         return S_OK;
+    bool hasSds = false;
+    FOR_VECTOR(i, secure.DataAttrs) {
+        const CAttr &attr = secure.DataAttrs[i];
+        if (attr.Name != L"$SDS")
+            continue;
+        hasSds = true;
+        if (attr.Unavailable || attr.Partial)
+            return S_OK; // DATA limitation is already reported; no unverified ACL is published.
+    }
+    if (!hasSds && !secure.AttrListAttrs.IsEmpty()) {
+        DataLimitations = true;
+        return S_OK;
+    }
     const CAttr &root = secure.SecurityRoots[0];
     if (root.NonResident)
         return S_FALSE;
@@ -3021,6 +3340,7 @@ HRESULT CDatabase::Open() {
     RINOK(LoadVolumeMetadata())
     RINOK(LoadActiveReparseMetadata())
     RINOK(SelectActiveEaMetadata())
+    RINOK(SelectActiveDataAttributes())
 #endif
     unsigned i;
     for (i = 0; i < Recs.Size(); i++) {
@@ -3031,8 +3351,13 @@ HRESULT CDatabase::Open() {
             continue;
 
         const UInt64 refIndex = rec.BaseMftRef.GetIndex();
-        if (refIndex >= Recs.Size())
+        if (refIndex >= Recs.Size()) {
+#ifdef SEVENZIP_LINUX_NTFS
+            if (rec.InUse())
+                continue;
+#endif
             return S_FALSE;
+        }
         CMftRec &refRec = Recs[(unsigned)refIndex];
         if (!refRec.Is_Magic_FILE())
             continue;
@@ -3040,8 +3365,13 @@ HRESULT CDatabase::Open() {
         bool moveAttrs =
             (refRec.SeqNumber == rec.BaseMftRef.GetNumber() && refRec.BaseMftRef.IsBaseItself());
         if (rec.InUse() && refRec.InUse()) {
-            if (!moveAttrs)
+            if (!moveAttrs) {
+#ifdef SEVENZIP_LINUX_NTFS
+                continue; // Selected readers report inaccessible attributes per base file.
+#else
                 return S_FALSE;
+#endif
+            }
         } else if (rec.InUse() || refRec.InUse())
             moveAttrs = false;
         if (moveAttrs)
@@ -3103,6 +3433,8 @@ HRESULT CDatabase::Open() {
             continue;
         FOR_VECTOR(attributeIndex, rec.DataAttrs) {
             const CAttr &attr = rec.DataAttrs[attributeIndex];
+            if (attr.Unavailable)
+                continue;
             if (attr.NonResident && attr.LowVcn != 0)
                 continue;
             if (metadataIndex == kRecIndex_BadClus && !attr.NonResident)
@@ -3548,6 +3880,7 @@ static const Byte kProps[] = {kpidPath,
                               ,
                               kpidPosixAttrib,
                               kpidMethod,
+                              kpidError,
                               kpidUserId,
                               kpidGroupId,
                               kpidDeviceMajor,
@@ -3633,6 +3966,12 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(const PROPID propID, PROPVARIANT *cons
             reasons += "Some NTFS extended attributes are unavailable. WSL ownership and file "
                        "types may be unknown. Readable DATA streams remain accessible.";
         }
+        if (DataLimitations) {
+            if (!reasons.IsEmpty())
+                reasons += '\n';
+            reasons += "Some NTFS DATA mappings are incomplete or unverified. Files or streams "
+                       "may be outdated, incomplete or unreadable.";
+        }
         if (!reasons.IsEmpty())
             prop = reasons;
         break;
@@ -3640,7 +3979,8 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(const PROPID propID, PROPVARIANT *cons
     case kpidFreeSpace:
         if (!Recs.IsEmpty()) {
             RINOK(LoadFreeSpace())
-            prop = FreeSpace;
+            if (FreeSpaceDefined)
+                prop = FreeSpace;
         }
         break;
 #endif
@@ -3891,7 +4231,7 @@ Z7_COM7F_IMF(CHandler::GetProperty(const UInt32 index, const PROPID propID,
                 */
                 attrib = rec.SiAttr.Attrib;
 #ifdef SEVENZIP_LINUX_NTFS
-                if (item.IsAltStream() && data && rec.InUse())
+                if (item.IsAltStream() && data && rec.InUse() && !data->Unavailable)
                     attrib = sevenzip_ntfs_data_attributes(attrib, data->Flags);
                 if (item.IsAltStream() || rec.ReparseRawData)
                     attrib &= ~(FILE_ATTRIBUTE_REPARSE_POINT | FILE_ATTRIBUTE_DIRECTORY);
@@ -3938,6 +4278,12 @@ Z7_COM7F_IMF(CHandler::GetProperty(const UInt32 index, const PROPID propID,
                 prop = "NTFS DATA";
 #endif
             break;
+        case kpidError:
+#ifdef SEVENZIP_LINUX_NTFS
+            if (data && (data->Unavailable || data->Partial) && (item.IsAltStream() || !rec.Link))
+                prop = "NTFS DATA mapping is incomplete or unverified.";
+#endif
+            break;
         case kpidSize:
 #ifdef SEVENZIP_LINUX_NTFS
             if (rec.ReparseError != S_OK && !item.IsAltStream())
@@ -3948,6 +4294,8 @@ Z7_COM7F_IMF(CHandler::GetProperty(const UInt32 index, const PROPID propID,
                            : (UInt64)LinkTargets[(unsigned)item.LinkTargetIndex].Len();
                 break;
             }
+            if (data && data->Unavailable)
+                break;
 #endif
             if (data)
                 prop = data->GetSize();
@@ -3956,6 +4304,8 @@ Z7_COM7F_IMF(CHandler::GetProperty(const UInt32 index, const PROPID propID,
             break;
         case kpidPackSize:
 #ifdef SEVENZIP_LINUX_NTFS
+            if (data && (data->Unavailable || data->Partial) && (item.IsAltStream() || !rec.Link))
+                break;
             if (rec.Link && !item.IsAltStream()) {
                 prop = (UInt64)0;
                 break;
@@ -3968,6 +4318,8 @@ Z7_COM7F_IMF(CHandler::GetProperty(const UInt32 index, const PROPID propID,
             break;
         case kpidNumBlocks:
 #ifdef SEVENZIP_LINUX_NTFS
+            if (data && (data->Unavailable || data->Partial) && (item.IsAltStream() || !rec.Link))
+                break;
             if (rec.Link && !item.IsAltStream()) {
                 prop = (UInt32)0;
                 break;

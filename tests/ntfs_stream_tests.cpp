@@ -677,6 +677,201 @@ class NtfsStreamTests final : public QObject {
         QCOMPARE(archive_->Close(), S_OK);
         check(retained, "gamma", 4090, 8200);
     }
+    void dataListSelectionAndIncompleteRanges_data() {
+        QTest::addColumn<QString>("kind");
+        for (const char *kind : {"data-list-selected",
+                                 "data-list-nonresident",
+                                 "data-list-split",
+                                 "data-list-unlisted",
+                                 "data-list-bad-id",
+                                 "data-list-ads-bad-id",
+                                 "data-list-bad-sequence",
+                                 "data-list-missing-middle",
+                                 "data-list-sparse-middle",
+                                 "data-list-initialized-tail",
+                                 "data-list-compressed-middle",
+                                 "data-list-unreadable-list",
+                                 "data-list-malformed-list",
+                                 "data-list-bitmap",
+                                 "data-list-security",
+                                 "data-list-nul-name",
+                                 "data-list-nul-attribute",
+                                 "data-list-missing-first-run",
+                                 "data-list-wrong-owner",
+                                 "data-list-wrong-owner-sequence"})
+            QTest::newRow(kind) << QString::fromLatin1(kind);
+    }
+    void dataListSelectionAndIncompleteRanges() {
+        QFETCH(QString, kind);
+        loadFixture(kind);
+        CMyComPtr<IInStream> input = new Input(bytes_);
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        QString limitations;
+        QVERIFY(readLimitations(limitations));
+        const bool valid = kind == "data-list-selected" || kind == "data-list-nonresident" ||
+                           kind == "data-list-split";
+        QCOMPARE(limitations.isEmpty(), valid);
+        const auto files = record_["files"].toObject();
+        CObjectVector<CMyComPtr<IInStream>> retained;
+        QStringList names;
+        for (auto it = files.begin(); it != files.end(); ++it) {
+            if (it.key() != "alpha" && !it.key().startsWith("gamma"))
+                continue;
+            auto file = stream(it.key());
+            QVERIFY2(file, qPrintable(it.key()));
+            check(file, it.key(), 0, 200000);
+            retained.Add(file);
+            names.append(it.key());
+        }
+        const bool partial =
+            kind == "data-list-missing-middle" || kind == "data-list-sparse-middle";
+        if (partial || kind == "data-list-compressed-middle" ||
+            kind == "data-list-missing-first-run") {
+            auto file = stream("gamma");
+            QVERIFY(file);
+            char data[4096];
+            UInt32 bytes = 0;
+            if (partial) {
+                QCOMPARE(file->Read(data, sizeof(data), &bytes), S_OK);
+                QCOMPARE(bytes, UInt32(4096));
+                QCOMPARE(QByteArray(data, 4096),
+                         QByteArray(4096, kind == "data-list-sparse-middle" ? '\0' : 'A'));
+                QCOMPARE(file->Read(data, sizeof(data), &bytes), S_FALSE);
+                QCOMPARE(bytes, UInt32(0));
+                QCOMPARE(file->Seek(8192, STREAM_SEEK_SET, nullptr), S_OK);
+                QCOMPARE(file->Read(data, sizeof(data), &bytes), S_OK);
+                QCOMPARE(QByteArray(data, int(bytes)), QByteArray(4096, 'C'));
+                QCOMPARE(archive_->Close(), S_OK);
+                QCOMPARE(file->Seek(8192, STREAM_SEEK_SET, nullptr), S_OK);
+                QCOMPARE(file->Read(data, sizeof(data), &bytes), S_OK);
+                QCOMPARE(QByteArray(data, int(bytes)), QByteArray(4096, 'C'));
+            } else if (kind == "data-list-missing-first-run") {
+                QCOMPARE(file->Read(data, sizeof(data), &bytes), S_FALSE);
+                QCOMPARE(bytes, UInt32(0));
+                QCOMPARE(file->Seek(4096, STREAM_SEEK_SET, nullptr), S_OK);
+                QCOMPARE(file->Read(data, sizeof(data), &bytes), S_OK);
+                QCOMPARE(QByteArray(data, int(bytes)), QByteArray(4096, 'B'));
+                QCOMPARE(archive_->Close(), S_OK);
+                QCOMPARE(file->Seek(8192, STREAM_SEEK_SET, nullptr), S_OK);
+                QCOMPARE(file->Read(data, sizeof(data), &bytes), S_OK);
+                QCOMPARE(QByteArray(data, int(bytes)), QByteArray(4096, 'C'));
+            } else {
+                QCOMPARE(file->Read(data, sizeof(data), &bytes), S_FALSE);
+                QCOMPARE(bytes, UInt32(0));
+                QCOMPARE(archive_->Close(), S_OK);
+            }
+        } else {
+            if (kind == "data-list-bad-id" || kind == "data-list-unlisted" ||
+                kind == "data-list-ads-bad-id" || kind == "data-list-nul-attribute") {
+                const UInt32 id =
+                    index(kind == "data-list-ads-bad-id" || kind == "data-list-nul-attribute"
+                              ? "gamma:side"
+                              : "gamma");
+                QVERIFY(id != UINT32_MAX);
+                NWindows::NCOM::CPropVariant size, error;
+                QCOMPARE(archive_->GetProperty(id, kpidSize, &size), S_OK);
+                QCOMPARE(size.vt, VARTYPE(VT_EMPTY));
+                QCOMPARE(archive_->GetProperty(id, kpidError, &error), S_OK);
+                QCOMPARE(error.vt, VARTYPE(VT_BSTR));
+                CMyComPtr<IInArchiveGetStream> provider;
+                QCOMPARE(archive_->QueryInterface(IID_IInArchiveGetStream,
+                                                  reinterpret_cast<void **>(&provider)),
+                         S_OK);
+                CMyComPtr<ISequentialInStream> file;
+                QCOMPARE(provider->GetStream(id, &file), S_FALSE);
+                QVERIFY(!file);
+                CMyComPtr2<IArchiveExtractCallback, Extract> callback;
+                callback.Create_if_Empty();
+                QCOMPARE(archive_->Extract(&id, 1, true, callback), S_OK);
+                QCOMPARE(callback->result, Int32(NArchive::NExtract::NOperationResult::kDataError));
+            }
+            if (kind == "data-list-bitmap") {
+                NWindows::NCOM::CPropVariant free;
+                QCOMPARE(archive_->GetArchiveProperty(kpidFreeSpace, &free), S_OK);
+                QCOMPARE(free.vt, VARTYPE(VT_EMPTY));
+            }
+            if (kind == "data-list-nul-name")
+                QCOMPARE(index("gamma:side"), UInt32(UINT32_MAX));
+            if (kind == "data-list-bad-sequence" || kind.startsWith("data-list-wrong-owner")) {
+                NWindows::NCOM::CPropVariant error;
+                QCOMPARE(archive_->GetProperty(index("gamma"), kpidError, &error), S_OK);
+                QCOMPARE(error.vt, VARTYPE(VT_BSTR));
+            }
+            if (kind == "data-list-security") {
+                CMyComPtr<IArchiveGetRawProps> raw;
+                QCOMPARE(archive_->QueryInterface(IID_IArchiveGetRawProps,
+                                                  reinterpret_cast<void **>(&raw)),
+                         S_OK);
+                const void *data = nullptr;
+                UInt32 bytes = 99, type = 0;
+                QCOMPARE(raw->GetRawProp(index("gamma"), kpidNtSecure, &data, &bytes, &type), S_OK);
+                QCOMPARE(bytes, UInt32(0));
+                QVERIFY(!data);
+            }
+            QCOMPARE(archive_->Close(), S_OK);
+        }
+        for (unsigned i = 0; i < retained.Size(); ++i)
+            check(retained[i], names[int(i)], 0, 200000);
+    }
+    void noListStillExposesReadablePrefix() {
+        loadFixture("data-list-no-list-tail");
+        CMyComPtr<IInStream> input = new Input(bytes_);
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        QString limitations;
+        QVERIFY(readLimitations(limitations));
+        QVERIFY(!limitations.isEmpty());
+        check(stream("alpha"), "alpha", 0, 200000);
+        check(stream("gamma:local"), "gamma:local", 0, 200000);
+        QCOMPARE(index("gamma:side"), UInt32(UINT32_MAX));
+        auto file = stream("gamma");
+        QVERIFY(file);
+        char data[4096];
+        UInt32 bytes = 0;
+        QCOMPARE(file->Read(data, sizeof(data), &bytes), S_OK);
+        QCOMPARE(QByteArray(data, int(bytes)), QByteArray(4096, 'A'));
+        QCOMPARE(file->Read(data, sizeof(data), &bytes), S_FALSE);
+        QCOMPARE(bytes, UInt32(0));
+        QCOMPARE(archive_->Close(), S_OK);
+        QCOMPARE(file->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
+        QCOMPARE(file->Read(data, sizeof(data), &bytes), S_OK);
+        QCOMPARE(QByteArray(data, int(bytes)), QByteArray(4096, 'A'));
+    }
+    void dataListIoFailureAndReopening() {
+        loadFixture("data-list-nonresident");
+        CMyComPtr2<IInStream, Input> source;
+        source.SetFromCls(new Input(bytes_));
+        source->failSeekAt = 1100 * 4096;
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
+        QString limitations;
+        QVERIFY(readLimitations(limitations));
+        QVERIFY(!limitations.isEmpty());
+        auto local = stream("gamma");
+        QVERIFY(local);
+        char data[37];
+        UInt32 bytes = 0;
+        QCOMPARE(local->Read(data, sizeof(data), &bytes), S_OK);
+        QCOMPARE(QByteArray(data, int(bytes)), QByteArray(37, 'B'));
+        check(stream("alpha"), "alpha", 0, 200000);
+        source->failSeekAt = UINT64_MAX;
+        CMyComPtr2<IArchiveOpenCallback, CancelEaOpen> callback;
+        callback.SetFromCls(new CancelEaOpen);
+        callback->source = source.ClsPtr();
+        source->cancelAt = 1100 * 4096;
+        for (HRESULT failure : {E_FAIL, E_ABORT}) {
+            callback->failure = failure;
+            source->cancelRequested = false;
+            QCOMPARE(archive_->Open(source, nullptr, callback), failure);
+            UInt32 count = 99;
+            QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+            QCOMPARE(count, UInt32(0));
+        }
+        source->cancelRequested = false;
+        source->cancelAt = UINT64_MAX;
+        QCOMPARE(archive_->Open(source, nullptr, callback), S_OK);
+        QVERIFY(readLimitations(limitations));
+        QVERIFY(limitations.isEmpty());
+        check(stream("gamma"), "gamma", 0, 200000);
+    }
     void damagedEaPreservesKnownReparseRoles_data() {
         QTest::addColumn<QString>("kind");
         for (const char *kind : {"ea-damaged-link", "ea-damaged-dedup", "ea-damaged-wof"})
@@ -1189,6 +1384,8 @@ class NtfsStreamTests final : public QObject {
     }
     void backendSelectedExtraction_data() {
         QTest::addColumn<QString>("kind");
+        QTest::newRow("selected-DATA-and-ADS") << QString("data-list-selected");
+        QTest::newRow("partial-DATA-copy-error") << QString("data-list-missing-middle");
         QTest::newRow("dirty-volume") << QString("volume-dirty");
         QTest::newRow("volume-extension-metadata") << QString("volume-list-nonresident");
         QTest::newRow("listed-WOF-metadata") << QString("reparse-list-wof");
@@ -1248,21 +1445,25 @@ class NtfsStreamTests final : public QObject {
         finished.clear();
         const QString output = runtime.filePath("output");
         const QString name =
-            kind.startsWith("wof") || kind == "reparse-list-wof" ? "gamma" : "alpha";
+            kind.startsWith("wof") || kind == "reparse-list-wof" || kind.startsWith("data-list-")
+                ? "gamma"
+                : "alpha";
         backend.extract(path, output, {name});
         QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 10000);
-        QVERIFY2(finished[0][0].toBool() == (kind != "run-over-volume"),
-                 qPrintable(finished[0][1].toString()));
-        if (kind != "run-over-volume") {
+        const bool success = kind != "run-over-volume" && kind != "data-list-missing-middle";
+        QVERIFY2(finished[0][0].toBool() == success, qPrintable(finished[0][1].toString()));
+        if (success) {
             QFile file(QDir(output).filePath(name));
             QVERIFY(file.open(QIODevice::ReadOnly));
             QCOMPARE(file.readAll(), QByteArray::fromBase64(
                                          record_["files"].toObject()[name].toString().toLatin1()));
         }
-        if (kind == "ea-xattrs-collision") {
+        if (kind == "ea-xattrs-collision" || kind == "data-list-selected") {
             finished.clear();
             const QString saved = runtime.filePath("ea-value.bin");
-            const QString entry = "gamma:$EA.user.comment#1";
+            const QString entry = kind == "data-list-selected"
+                                      ? QStringLiteral("gamma:поток 空")
+                                      : QStringLiteral("gamma:$EA.user.comment#1");
             backend.extractSourceEntry(path, entry, saved, "NTFS", {}, true);
             QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 10000);
             QVERIFY2(finished[0][0].toBool(), qPrintable(finished[0][1].toString()));

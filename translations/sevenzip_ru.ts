@@ -3838,6 +3838,14 @@ Are you sure you want to split archive into such volumes?</source>
     <context>
         <name>SevenZipDiagnostics</name>
         <message>
+            <source>Some NTFS DATA mappings are incomplete or unverified. Files or streams may be outdated, incomplete or unreadable.</source>
+            <translation>Расположение некоторых данных NTFS неполно или не проверено. Файлы и потоки могут быть устаревшими, неполными или недоступными для чтения.</translation>
+        </message>
+        <message>
+            <source>NTFS DATA mapping is incomplete or unverified.</source>
+            <translation>Расположение данных NTFS неполно или не проверено.</translation>
+        </message>
+        <message>
             <source>Some NTFS extended attributes are unavailable. WSL ownership and file types may be unknown. Readable DATA streams remain accessible.</source>
             <translation>Некоторые расширенные атрибуты NTFS недоступны. Владельцы WSL и типы файлов могут быть неизвестны. Доступные потоки DATA можно читать.</translation>
         </message>

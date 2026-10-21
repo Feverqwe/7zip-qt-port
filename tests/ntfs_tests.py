@@ -28,11 +28,13 @@ class NtfsTests(unittest.TestCase):
         (cls.runtime / "Formats").mkdir()
         shutil.copy2(MODULE, cls.runtime / "Formats" / MODULE.name)
 
-    def run_image(self, engine, data, command="t", name=None, streams=False):
+    def run_image(self, engine, data, command="t", name=None, streams=False, case_sensitive=False):
         with tempfile.TemporaryDirectory(dir=self.runtime) as temporary:
             path = Path(temporary) / "образ 空.ntfs"
             path.write_bytes(data)
             args = [str(self.runtime / (engine + SUFFIX)), command, "-tNTFS", "-sccUTF-8", "-bsp0"]
+            if case_sensitive:
+                args += ["-ssc"]
             if streams or (name and ":" in name):
                 args += ["-sns"]
             if command == "x":
@@ -152,6 +154,31 @@ class NtfsTests(unittest.TestCase):
                     extracted = self.run_image("7z", image, "x", name)
                     self.assertEqual(extracted.returncode, 0, extracted.stderr)
                     self.assertEqual(extracted.stdout, files[name])
+
+    def test_data_list_authority_and_partial_copy_results(self):
+        from ntfs_data_list_fixture import CASES, LIMITED, PARTIAL, UNAVAILABLE, LIMITATION
+        for kind in CASES:
+            with self.subTest(kind=kind):
+                image, files = volume(kind)
+                listing = self.run_image("7z", image, "l", streams=True)
+                self.assertEqual(listing.returncode, 0, listing.stderr)
+                self.assertEqual(LIMITATION.encode() in listing.stdout, kind in LIMITED)
+                for name, expected in files.items():
+                    if name != "alpha" and not name.startswith("gamma"):
+                        continue
+                    result = self.run_image("7z", image, "x", name, case_sensitive=True)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertEqual(result.stdout, expected)
+                if kind in PARTIAL or kind in UNAVAILABLE:
+                    result = self.run_image("7z", image, "x", "gamma")
+                    self.assertNotEqual(result.returncode, 0)
+                    prefix = (bytes(4096) if kind == "data-list-sparse-middle" else
+                              b"A" * 4096 if kind in ("data-list-missing-middle", "data-list-no-list-tail") else b"")
+                    self.assertEqual(result.stdout, prefix)
+                if kind in ("data-list-ads-bad-id", "data-list-nul-attribute"):
+                    result = self.run_image("7z", image, "x", "gamma:side", case_sensitive=True)
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertEqual(result.stdout, b"")
 
     def test_linux_wof_and_fragmented_mft(self):
         for kind in ("mft-list", "mft-list-nonresident", "wof-xpress4k", "wof-xpress8k",

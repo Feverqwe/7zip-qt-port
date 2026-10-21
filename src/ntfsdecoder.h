@@ -23,6 +23,7 @@ struct sevenzip_ntfs_list_entry {
     uint32_t type;
     uint16_t id;
     uint8_t name_len;
+    const void *name;
 };
 int sevenzip_ntfs_list_next(const void *, size_t, size_t *cursor,
                             struct sevenzip_ntfs_list_entry *);
