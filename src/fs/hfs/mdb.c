@@ -26,7 +26,7 @@ int hfs_mdb_get(struct super_block *sb)
     sbi->fs_ablocks = be16_to_cpu(mdb->drNmAlBlks);
     sbi->fs_div = sbi->alloc_blksz / HFS_SECTOR_SIZE;
     sbi->fs_start = be16_to_cpu(mdb->drAlBlSt);
-    if (!sbi->fs_ablocks || be16_to_cpu(mdb->drFreeBks) > sbi->fs_ablocks ||
+    if (!sbi->fs_ablocks ||
         (u64)sbi->fs_start * HFS_SECTOR_SIZE + (u64)sbi->fs_ablocks * size > sbi->size)
         return -EIO;
     sbi->ext_tree = hfs_btree_open(sb, HFS_EXT_CNID, hfs_ext_keycmp);

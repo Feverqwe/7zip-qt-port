@@ -193,7 +193,9 @@ class HfsStreamTests final : public QObject {
     void initTestCase() { createArchive(); }
     void readLimitationsFollowOpening() {
         for (const char *kind :
-             {"wrapper-no-slock", "base", "wrapper-no-spared", "unclean", "base"}) {
+             {"wrapper-no-slock", "base", "wrapper-no-spared", "unclean", "classic-unclean",
+              "classic", "free-overflow", "classic-free-overflow", "classic-unclean-free-overflow",
+              "base"}) {
             loadFixture(kind);
             CMyComPtr2<IInStream, Input> input;
             input.SetFromCls(new Input(bytes_));
@@ -217,17 +219,25 @@ class HfsStreamTests final : public QObject {
                 found = true;
                 NWindows::NCOM::CPropVariant value;
                 QCOMPARE(archive_->GetArchiveProperty(id, &value), S_OK);
-                if (QString::fromLatin1(kind) == "base")
+                const QString layout = QString::fromLatin1(kind);
+                if (layout == "base" || layout == "classic")
                     QCOMPARE(value.vt, VARTYPE(VT_EMPTY));
                 else {
                     QCOMPARE(value.vt, VARTYPE(VT_BSTR));
                     const QString reason = QString::fromWCharArray(value.bstrVal);
-                    QVERIFY(reason.contains(QString::fromLatin1(kind) == "unclean"
-                                                ? "not properly unmounted"
-                                                : "wrapper lacks protection"));
+                    QCOMPARE(reason.contains("not properly unmounted"), layout.contains("unclean"));
+                    QCOMPARE(reason.contains("wrapper lacks protection"),
+                             layout.startsWith("wrapper-"));
+                    QCOMPARE(reason.contains("Free space is unknown"),
+                             layout.contains("free-overflow"));
                 }
             }
             QVERIFY(found);
+            NWindows::NCOM::CPropVariant freeSpace;
+            QCOMPARE(archive_->GetArchiveProperty(kpidFreeSpace, &freeSpace), S_OK);
+            QCOMPARE(
+                freeSpace.vt,
+                VARTYPE(QString::fromLatin1(kind).contains("free-overflow") ? VT_EMPTY : VT_UI8));
             QCOMPARE(archive_->Close(), S_OK);
         }
     }
@@ -241,11 +251,13 @@ class HfsStreamTests final : public QObject {
         QTest::newRow("unprotected-wrapper-lock") << QString("wrapper-no-slock");
         QTest::newRow("unprotected-wrapper-spared") << QString("wrapper-no-spared");
         QTest::newRow("unclean") << QString("unclean");
+        QTest::newRow("unknown-free-space") << QString("free-overflow");
         QTest::newRow("backup-version") << QString("wrapper-backup-version");
         QTest::newRow("hplus5") << QString("wrapper-version-hplus5");
         QTest::newRow("hfsx4") << QString("wrapper-version-hfsx4");
-        for (const char *kind : {"classic", "classic-overflow", "classic-catalog-overflow",
-                                 "classic-non-power-of-two"})
+        for (const char *kind :
+             {"classic", "classic-overflow", "classic-catalog-overflow", "classic-non-power-of-two",
+              "classic-unclean", "classic-free-overflow", "classic-unclean-free-overflow"})
             QTest::newRow(kind) << QString::fromLatin1(kind);
     }
     void independentAndRetainedForks() {
@@ -594,12 +606,26 @@ class HfsStreamTests final : public QObject {
     }
     void backendExtraction_data() {
         QTest::addColumn<QString>("kind");
-        for (const char *kind :
-             {"preallocated", "overflow-leaves", "extent-over-volume", "xattr-padding", "modern",
-              "modern-nul", "modern-zlib", "modern-lzvn", "modern-permissions", "modern-times",
-              "modern-symlink-nul", "wrapper-nested", "wrapper-version-hplus5",
-              "wrapper-version-hfsx4", "classic", "classic-overflow", "classic-catalog-overflow",
-              "classic-non-power-of-two"})
+        for (const char *kind : {"preallocated",
+                                 "overflow-leaves",
+                                 "extent-over-volume",
+                                 "xattr-padding",
+                                 "modern",
+                                 "modern-nul",
+                                 "modern-zlib",
+                                 "modern-lzvn",
+                                 "modern-permissions",
+                                 "modern-times",
+                                 "modern-symlink-nul",
+                                 "wrapper-nested",
+                                 "wrapper-version-hplus5",
+                                 "wrapper-version-hfsx4",
+                                 "classic",
+                                 "classic-overflow",
+                                 "classic-catalog-overflow",
+                                 "classic-non-power-of-two",
+                                 "free-overflow",
+                                 "classic-unclean-free-overflow"})
             QTest::newRow(kind) << QString::fromLatin1(kind);
     }
     void backendExtraction() {

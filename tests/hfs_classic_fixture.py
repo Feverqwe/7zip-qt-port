@@ -126,6 +126,11 @@ def volume(kind="classic"):
         struct.pack_into(">H", relocated, 1058, get16(1042) - cursor)
         relocated[-1024:-512] = relocated[1024:1536]
         image = relocated
+    elif kind in ("classic-unclean", "classic-free-overflow", "classic-unclean-free-overflow"):
+        if "unclean" in kind:
+            put16(1034, get16(1034) & ~0x100)
+        if "free-overflow" in kind:
+            put16(1058, get16(1042) + 1)
     elif kind == "classic-locked":
         image[alpha + 2] |= 1
     elif kind == "classic-preallocated":

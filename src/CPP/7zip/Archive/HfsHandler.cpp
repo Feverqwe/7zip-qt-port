@@ -1681,6 +1681,8 @@ HRESULT CDatabase::OpenClassic(IInStream *inStream, IArchiveOpenCallback *progre
     Header.NumFolders = volume.folders;
     Header.CTime = volume.created;
     Header.MTime = volume.modified;
+    if (volume.unclean)
+        ReadLimitations = "Volume was not properly unmounted. Some data may be corrupt.";
     SpecOffset = volume.allocation_start;
     PhySize2 = ArcFileSize;
     ResFileName = kResFileName;
@@ -2007,8 +2009,12 @@ HRESULT CDatabase::Open2(IInStream *inStream, IArchiveOpenCallback *progress) {
     h.NumBlocks = Get32a(p + 0x2C);
     h.NumFreeBlocks = Get32a(p + 0x30);
     const UInt64 volumeSize = (UInt64)h.NumBlocks << h.BlockSizeLog;
-    if (h.NumBlocks == 0 || h.NumFreeBlocks > h.NumBlocks || SpecOffset > ArcFileSize ||
-        volumeSize > ArcFileSize - SpecOffset || (embeddedSize && volumeSize > embeddedSize))
+    if (h.NumBlocks == 0 ||
+#ifndef SEVENZIP_LINUX_HFS
+        h.NumFreeBlocks > h.NumBlocks ||
+#endif
+        SpecOffset > ArcFileSize || volumeSize > ArcFileSize - SpecOffset ||
+        (embeddedSize && volumeSize > embeddedSize))
         return S_FALSE;
 #ifdef SEVENZIP_LINUX_HFS
     // hfsplus_read_wrapper checks the signature of the secondary header at
@@ -2133,10 +2139,17 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID propID, PROPVARIANT *value)) {
     case kpidReadOnly:
         prop = true;
         break;
-    case kpidReadLimitations:
-        if (!ReadLimitations.IsEmpty())
-            prop = ReadLimitations;
+    case kpidReadLimitations: {
+        AString reasons = ReadLimitations;
+        if (Header.NumFreeBlocks > Header.NumBlocks) {
+            if (!reasons.IsEmpty())
+                reasons += '\n';
+            reasons += "The free-space count exceeds the volume size. Free space is unknown.";
+        }
+        if (!reasons.IsEmpty())
+            prop = reasons;
         break;
+    }
 #endif
     case kpidExtension:
         prop = Header.IsHfsX() ? "hfsx" : "hfs";
@@ -2158,6 +2171,10 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID propID, PROPVARIANT *value)) {
         prop = Header.GetBlockSize();
         break;
     case kpidFreeSpace:
+#ifdef SEVENZIP_LINUX_HFS
+        if (Header.NumFreeBlocks > Header.NumBlocks)
+            break;
+#endif
         prop = (UInt64)Header.GetFreeSize();
         break;
     case kpidMTime:

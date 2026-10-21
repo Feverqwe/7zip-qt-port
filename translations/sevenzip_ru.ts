@@ -3838,6 +3838,10 @@ Are you sure you want to split archive into such volumes?</source>
     <context>
         <name>SevenZipDiagnostics</name>
         <message>
+            <source>The free-space count exceeds the volume size. Free space is unknown.</source>
+            <translation>Число свободных блоков превышает размер тома. Объём свободного места неизвестен.</translation>
+        </message>
+        <message>
             <source>The HFS wrapper lacks protection flags. Embedded volume data may be inconsistent.</source>
             <translation>У оболочки HFS не установлены защитные флаги. Данные вложенного тома могут быть несогласованными.</translation>
         </message>

@@ -171,6 +171,8 @@ def volume(kind="base"):
         put32(keys["HfsFixture"] + 2, get32(records["empty"] + 8))
     elif kind == "unclean":
         put32(1028, get32(1028) & ~0x100)
+    elif kind == "free-overflow":
+        put32(1072, get32(1068) + 1)
     elif kind == "volume-truncated":
         del image[-block:]
     elif kind != "base":

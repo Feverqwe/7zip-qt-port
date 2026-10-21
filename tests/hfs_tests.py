@@ -92,7 +92,7 @@ class HfsTests(unittest.TestCase):
     def test_linux_embedded_wrappers(self):
         for kind in ("wrapper-nested", "wrapper-nested-hfsx", "wrapper-non-power",
                      "wrapper-backup-version", "wrapper-version-hplus5", "wrapper-version-hfsx4",
-                     "wrapper-no-slock", "wrapper-no-spared", "unclean"):
+                     "wrapper-no-slock", "wrapper-no-spared", "unclean", "free-overflow"):
             image, files = volume(kind)
             for name, expected in files.items():
                 with self.subTest(kind=kind, name=name):
@@ -109,7 +109,8 @@ class HfsTests(unittest.TestCase):
 
     def test_classic_hfs_bytes(self):
         for kind in ("classic", "classic-overflow", "classic-catalog-overflow",
-                     "classic-non-power-of-two", "classic-locked", "classic-preallocated"):
+                     "classic-non-power-of-two", "classic-locked", "classic-preallocated",
+                     "classic-unclean", "classic-free-overflow", "classic-unclean-free-overflow"):
             image, files = volume(kind)
             for name, expected in files.items():
                 with self.subTest(kind=kind, name=name):

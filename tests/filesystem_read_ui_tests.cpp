@@ -60,7 +60,8 @@ class FilesystemReadUiTests final : public QObject {
         QTest::addColumn<QString>("kind");
         for (const QString &language : {"en", "ru"})
             for (bool accept : {false, true})
-                for (const QString &kind : {"exfat", "wrapper-no-slock", "unclean"})
+                for (const QString &kind : {"exfat", "wrapper-no-slock", "unclean", "free-overflow",
+                                            "classic-unclean-free-overflow"})
                     QTest::newRow(qPrintable(language + (accept ? "-accept-" : "-cancel-") + kind))
                         << language << accept << kind;
     }
@@ -182,9 +183,17 @@ class FilesystemReadUiTests final : public QObject {
             for (const char *name : {"deleteAction", "renameAction", "moveAction"})
                 QVERIFY(!window.findChild<QAction *>(name)->isEnabled());
             const QString output = directory.filePath("copied");
-            window.extractTo(output, true, {}, {});
+            ExtractionOptions copyOptions;
+            copyOptions.pathMode = ExtractionOptions::PathMode::CurrentPaths;
+            if (kind != "exfat")
+                copyOptions.currentFolder = "HfsFixture";
+            window.extractTo(output, true, {}, copyOptions);
+            QVERIFY2(unexpectedErrors.isEmpty(), qPrintable(unexpectedErrors.join('\n')));
             QFile copied(output + '/' + filename);
-            QVERIFY(copied.open(QIODevice::ReadOnly));
+            QVERIFY2(
+                copied.open(QIODevice::ReadOnly),
+                qPrintable(
+                    QDir(output).entryList(QDir::AllEntries | QDir::NoDotAndDotDot).join('\n')));
             QCOMPARE(copied.readAll(), payload);
             window.findChild<QAction *>("refreshAction")->trigger();
             QTRY_VERIFY(Row(*table, filename) >= 0);

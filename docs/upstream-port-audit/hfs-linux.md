@@ -556,3 +556,49 @@ Native Linux mount для этих изменений повторно не за
 намеренно шире mount gate, исходные native controls приведены выше. Physical
 devices, native Windows/Linux appearance, installed package и full/slow suites
 не проверялись; incremental build trees и compiler caches сохранены.
+
+## Read-only policy: classic state и недостоверное free space — 2026-10-21
+
+Сверены полные MDB/read-only/statfs ветви `fs/hfs/mdb.c`, `fs/hfs/super.c`,
+`fs/hfsplus/super.c`, потребители free counters и SDK Open/property/extraction
+consumers на тех же pinned Linux/SDK commits. Classic HFS уже позволял чтение
+без UNMNT, но не передавал предупреждение Linux пользователю. C transport теперь
+возвращает состояние из original MDB attributes; dynamic handler использует
+общий consent и постоянную отметку ограниченного открытия.
+
+Выявленные local guards отвергали classic HFS и HFS+ целиком, если число
+свободных блоков превышало общее. В Linux эти counters не определяют read
+mapping и не препятствуют read-only mount. Guard удалён для dynamic reader;
+нулевая/выходящая за источник геометрия, forks, catalog, version и другие
+действительные read validations сохранены. Недостоверная статистика не
+публикуется как объём свободного места: property остаётся неизвестной, а причина
+явно сообщается в limitation metadata и EN/RU предупреждении. Согласие не
+исправляет counter и не меняет исходный MDB/header. Состояния unclean и unknown
+space объединяются при необходимости и сбрасываются между открытиями.
+Standalone SDK acceptance не расширяется. Это завершённый сценарий состояния
+тома/статистики, не произвольное восстановление повреждённых каталогов.
+
+Regressions проверяют точное содержимое data/resource forks и metadata streams,
+неизвестное free space, корректную статистику после нового clean открытия,
+ABI/CLI/ArchiveBackend listing/extraction и прежние malformed-geometry отказы.
+GUI EN/RU проверяет accept/cancel, copy relative to current folder, refresh,
+повторное согласие и неизменность source bytes. Начальный GUI тест ошибочно
+ожидал плоский output при FullPaths; это исправлено явным CurrentPaths, production
+extraction paths не изменены.
+
+Native Linux `6.8.0-147-generic` прочитал семь clean/unclean/free-overflow controls
+через временные `mount -o loop,ro` (`hfs`/`hfsplus`): exact alpha bytes,
+ST_RDONLY и неизменные SHA-256 образов подтверждены. Receipt
+`20261021T040633Z-3f42bf11`; mounts, images и одноразовый helper удалены.
+Native reference старше pinned source и не доказывает поведение всех его ветвей.
+
+Focused `hfs`, `hfs_stream`, `filesystem_read_ui`, `language` прошли на macOS
+arm64/Cocoa, Linux x64/offscreen и Windows x64/MSVC/offscreen; guest receipt
+`20261021T040656Z-fc190d67`. После добавления backend consumers локальная ABI
+suite повторно прошла (27,57 с), GUI с явным CurrentPaths — 10,84 с. Приложение
+собрано локально. Cocoa EN/RU JSON совместных причин проверен: 420×227 и 420×275,
+текст, кнопки и причины видимы без clipping. Одноразовый native helper удалён
+и его удаление синхронизировано с гостями. Physical devices, native Windows/Linux
+appearance, installed package и full/slow suites не заявляются; existing
+incremental build trees и compiler caches сохранены. Полная read-only policy
+остальных файловых систем этой итерацией не подтверждается.

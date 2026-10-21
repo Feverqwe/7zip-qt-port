@@ -11,6 +11,7 @@ typedef int (*sevenzip_hfs_classic_read_fn)(void *, uint64_t, void *, size_t);
 struct sevenzip_hfs_classic_volume {
     uint32_t block_size, blocks, free_blocks, files, folders, created, modified;
     uint64_t allocation_start;
+    int unclean;
 };
 struct sevenzip_hfs_classic_item {
     uint32_t id, parent, mode, created, modified;

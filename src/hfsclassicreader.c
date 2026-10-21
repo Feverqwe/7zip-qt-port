@@ -87,6 +87,7 @@ int sevenzip_hfs_classic_open(sevenzip_hfs_classic_read_fn read, void *context,
     volume->created = be32_to_cpu(s->sbi.mdb.drCrDate);
     volume->modified = be32_to_cpu(s->sbi.mdb.drLsMod);
     volume->allocation_start = (u64)s->sbi.fs_start * 512;
+    volume->unclean = !(s->sbi.mdb.drAtrb & cpu_to_be16(HFS_SB_ATTRIB_UNMNT));
     *state = s;
     return 0;
 }
