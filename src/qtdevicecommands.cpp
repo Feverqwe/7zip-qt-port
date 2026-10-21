@@ -4,18 +4,20 @@
 #include "qtlanguageservices.h"
 
 namespace {
-bool ConfirmJournalRead(QWidget *parent) {
+bool ConfirmLimitedRead(QWidget *parent, const QString &limitations) {
     QMessageBox warning(
         QMessageBox::Warning,
-        QCoreApplication::translate("qtdevicecommands", "Open without journal recovery?"),
+        QCoreApplication::translate("qtdevicecommands", "Open read-only with limitations?"),
         QCoreApplication::translate(
             "qtdevicecommands",
-            "This filesystem has unfinished journal changes. You can copy files without "
-            "replaying the journal, but some files may be missing, outdated or unreadable. "
-            "Nothing will be written to the device."),
+            "You can copy readable files, but unsupported features or unfinished recovery may "
+            "leave some files missing, outdated or unreadable. Nothing will be written to the "
+            "device. Sevenzip will not replay the journal, clean up orphaned files or repair "
+            "the filesystem."),
         QMessageBox::Cancel, parent);
     warning.setObjectName("deviceJournalRecoveryWarning");
     warning.setTextFormat(Qt::PlainText);
+    warning.setInformativeText(limitations);
     auto *open = warning.addButton(
         QCoreApplication::translate("qtdevicecommands", "Open read-only"), QMessageBox::AcceptRole);
     open->setObjectName("deviceOpenWithoutRecoveryButton");
@@ -39,11 +41,11 @@ void QtFileManagerCommands::OpenDevice() {
         CTempFileInfo temporary;
         COpenResult opened;
         HRESULT result = panel.OpenAsArc(input, temporary, name, UString(L"Ext"), opened);
-        if (result == kDeviceJournalRecoveryRequired) {
-            if (!ConfirmJournalRead(&w))
+        if (result == kDeviceReadLimitationsRequired) {
+            if (!ConfirmLimitedRead(&w, ToQString(opened.ErrorMessage)))
                 return;
             CMyComPtr<IInStream> withoutReplay;
-            result = CreateDeviceInputIgnoringJournal(input, &withoutReplay);
+            result = CreateDeviceInputAllowingIncompleteRead(input, &withoutReplay);
             if (result == S_OK) {
                 input = withoutReplay;
                 result = panel.OpenAsArc(input, temporary, name, UString(L"Ext"), opened);

@@ -235,19 +235,19 @@ void MainWindow::refreshPanelStatus() {
             agent ? dynamic_cast<QtArchiveFileResource *>(agent->GetEngineResource()) : nullptr;
         return resource;
     };
-    bool device = false, ignoresJournal = false;
+    bool device = false, limitedRead = false;
     const auto inspect = [&](IFolderFolder *folder) {
         if (const auto *resource = direct(folder)) {
             device |= resource->HasDirectInput();
-            ignoresJournal |= resource->IgnoresDeviceJournal();
+            limitedRead |= resource->AllowsIncompleteDeviceRead();
         }
     };
     inspect(panel.GetFolder());
     const auto &parents = panel.GetParentFolders();
     FOR_VECTOR(i, parents) { inspect(parents[i].ParentFolder); }
     QtBindLocalText(deviceReadOnly_, "mainwindow_panel",
-                    ignoresJournal
-                        ? QT_TRANSLATE_NOOP("mainwindow_panel", "Read only · journal not replayed")
+                    limitedRead
+                        ? QT_TRANSLATE_NOOP("mainwindow_panel", "Read only · limited access")
                         : QT_TRANSLATE_NOOP("mainwindow_panel", "Read only"));
     deviceReadOnly_->setVisible(device);
     statusBar()->setVisible(device || !statusBar()->currentMessage().isEmpty());

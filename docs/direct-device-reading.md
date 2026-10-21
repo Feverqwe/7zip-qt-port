@@ -33,11 +33,14 @@ permit device access.
 The first version accepts GPT, MBR and filesystems stored directly on a device.
 Some ext features and layouts are unsupported. fscrypt files require
 [explicit raw master keys](ext-encryption.md); the no-key view remains available.
-For a filesystem requiring journal recovery, Sevenzip offers to open it read-only
-without replaying the journal. Continue only if you accept that some files may
-be missing, outdated or unreadable. The status bar keeps a journal warning while
-you browse and copy; the source device remains unchanged. Cancel leaves the
-current panel unchanged. This choice applies to the current opening only.
+When the reader can open a filesystem with read-only-compatible limitations or
+unfinished recovery, Sevenzip lists those conditions and offers limited read-only
+access. Continue only if you accept that some files may be missing, outdated or
+unreadable. The status bar keeps a limited-access warning while you browse and
+copy; the source device remains unchanged. Cancel leaves the current panel
+unchanged. This choice applies to the current opening only and cannot provide
+missing decoding support. Sevenzip does not replay the journal or clean up
+orphaned files.
 Sevenzip does not unlock LUKS containers or unwrap hardware fscrypt keys,
 assemble LVM/RAID, repair filesystems or provide damaged-disk recovery. Direct
 reading is not a consistent snapshot if another program changes the medium.

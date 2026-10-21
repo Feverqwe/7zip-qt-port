@@ -60,9 +60,10 @@ QString Text(IInArchive *archive, UInt32 index, PROPID id) {
     return QString::fromWCharArray(value.bstrVal);
 }
 
-HRESULT CheckFeatures(IInArchive *archive, bool ignoreJournal, QString *error) {
-    // Ask the official handler for its public feature descriptions. Unknown
-    // features stay unsupported; no superblock parsing lives in this boundary.
+HRESULT CheckFeatures(IInArchive *archive, bool allowIncompleteRead, QString *error) {
+    // The reader has already opened the filesystem. Incompatible features still
+    // require decoding support; other readonly-compatible declarations can be
+    // exposed with a per-opening choice. Disk parsing stays with the handler.
     const QSet<QString> incompatible{"FILETYPE", "EXTENTS",     "64BIT",    "FLEX_BG",
                                      "META_BG",  "MMP",         "EA_INODE", "CSUM_SEED",
                                      "LARGEDIR", "INLINE_DATA", "CASEFOLD", "ENCRYPT"};
@@ -72,7 +73,7 @@ HRESULT CheckFeatures(IInArchive *archive, bool ignoreJournal, QString *error) {
     UInt32 count = 0;
     RINOK(archive->GetNumberOfArchiveProperties(&count))
     bool checkedIncompatible = false, checkedReadOnly = false;
-    QStringList unsupported;
+    QStringList unsupported, limitations;
     for (UInt32 i = 0; i < count; ++i) {
         CMyComBSTR name;
         PROPID id;
@@ -101,10 +102,14 @@ HRESULT CheckFeatures(IInArchive *archive, bool ignoreJournal, QString *error) {
             return E_NOTIMPL;
         }
         for (const auto &feature :
-             QString::fromWCharArray(value.bstrVal).split(' ', Qt::SkipEmptyParts))
-            if (!allowed->contains(feature) && !(ignoreJournal && allowed == &incompatible &&
-                                                 feature == QStringLiteral("RECOVER")))
+             QString::fromWCharArray(value.bstrVal).split(' ', Qt::SkipEmptyParts)) {
+            if (allowed->contains(feature))
+                continue;
+            if (allowed == &readOnly || feature == QStringLiteral("RECOVER"))
+                limitations.append(feature);
+            else
                 unsupported.append(feature);
+        }
     }
     if (!checkedIncompatible || !checkedReadOnly) {
         if (error)
@@ -112,24 +117,19 @@ HRESULT CheckFeatures(IInArchive *archive, bool ignoreJournal, QString *error) {
                 "archivedevice", "Could not verify the filesystem features for direct reading.");
         return E_NOTIMPL;
     }
-    if (unsupported.isEmpty())
-        return S_OK;
-    if (error) {
-        *error =
-            QCoreApplication::translate("archivedevice", "Unsupported filesystem features: %1.")
-                .arg(unsupported.join(QStringLiteral(", ")));
-        if (unsupported.contains(QStringLiteral("RECOVER")))
-            *error +=
-                QLatin1Char('\n') +
-                QCoreApplication::translate(
-                    "archivedevice",
-                    "The filesystem needs journal recovery. Open it on its usual Linux system and "
-                    "unmount it cleanly before trying again. Sevenzip does not replay the "
-                    "journal.");
+    if (!unsupported.isEmpty()) {
+        if (error)
+            *error =
+                QCoreApplication::translate("archivedevice", "Unsupported filesystem features: %1.")
+                    .arg(unsupported.join(QStringLiteral(", ")));
+        return E_NOTIMPL;
     }
-    return unsupported.size() == 1 && unsupported.first() == QStringLiteral("RECOVER")
-               ? kDeviceJournalRecoveryRequired
-               : E_NOTIMPL;
+    if (limitations.isEmpty() || allowIncompleteRead)
+        return S_OK;
+    if (error)
+        *error = QCoreApplication::translate("archivedevice", "Limited read-only access: %1.")
+                     .arg(limitations.join(QStringLiteral(", ")));
+    return kDeviceReadLimitationsRequired;
 }
 } // namespace
 
@@ -147,7 +147,8 @@ HRESULT OpenDeviceFilesystem(const std::shared_ptr<const ArchiveCodecCatalog> &c
     std::shared_ptr<ArchiveNativeOpen> opened;
     RINOK(Open(catalog, input, name, QStringLiteral("Ext"), callback, opened, options))
     const auto *direct = dynamic_cast<DirectDeviceInput *>(input);
-    RINOK(CheckFeatures(opened->arc().Archive, direct && direct->ignoresDeviceJournal(), error))
+    RINOK(
+        CheckFeatures(opened->arc().Archive, direct && direct->allowsIncompleteDeviceRead(), error))
     reader = std::move(opened);
     return S_OK;
     COM_TRY_END

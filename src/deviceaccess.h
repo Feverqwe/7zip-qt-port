@@ -43,13 +43,13 @@ class DirectDeviceInput {
   public:
     virtual ~DirectDeviceInput() = default;
     virtual quint64 deviceInputSize() const = 0;
-    virtual bool ignoresDeviceJournal() const { return false; }
+    virtual bool allowsIncompleteDeviceRead() const { return false; }
 };
 
 qint32 CreateDeviceInput(const ExternalDevice &device, std::shared_ptr<DeviceReadHandle> handle,
                          IInStream **stream);
 qint32 CreateDevicePartitionInput(IInStream *device, quint64 offset, quint64 size,
                                   IInStream **stream);
-// A separate, bounded lease for an explicitly selected read-without-replay
+// A separate, bounded lease for an explicitly selected limited read-only
 // session. Does not modify the original stream's policy or the device.
-qint32 CreateDeviceInputIgnoringJournal(IInStream *device, IInStream **stream);
+qint32 CreateDeviceInputAllowingIncompleteRead(IInStream *device, IInStream **stream);

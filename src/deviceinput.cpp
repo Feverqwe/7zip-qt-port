@@ -69,13 +69,14 @@ class CDirectDeviceInput final : public IInStream,
     const ExternalDevice Device;
     const std::shared_ptr<DeviceReadHandle> Handle;
     const quint64 Start;
-    const bool IgnoreJournal;
+    const bool AllowIncompleteRead;
     CDirectDeviceInput(IInStream *input, quint64 size, ExternalDevice device,
-                       std::shared_ptr<DeviceReadHandle> handle, quint64 start, bool ignoreJournal)
+                       std::shared_ptr<DeviceReadHandle> handle, quint64 start,
+                       bool allowIncompleteRead)
         : input_(input), size_(size), Device(std::move(device)), Handle(std::move(handle)),
-          Start(start), IgnoreJournal(ignoreJournal) {}
+          Start(start), AllowIncompleteRead(allowIncompleteRead) {}
     quint64 deviceInputSize() const override { return size_; }
-    bool ignoresDeviceJournal() const override { return IgnoreJournal; }
+    bool allowsIncompleteDeviceRead() const override { return AllowIncompleteRead; }
     Z7_COM7F_IMF(GetProperty(PROPID id, PROPVARIANT *value)) override {
         NWindows::NCOM::CPropVariant prop;
         if (id == kpidSectorSize)
@@ -95,7 +96,8 @@ class CDirectDeviceInput final : public IInStream,
 
 namespace {
 qint32 CreateInput(const ExternalDevice &device, const std::shared_ptr<DeviceReadHandle> &handle,
-                   quint64 offset, quint64 size, IInStream **stream, bool ignoreJournal = false) {
+                   quint64 offset, quint64 size, IInStream **stream,
+                   bool allowIncompleteRead = false) {
     // Each view has its own logical cursor. Sharing an original limited stream
     // between two open partitions would invalidate its cached physical cursor.
     CMyComPtr<IInStream> native = new CDeviceReadStream(handle, device.size, device.sectorSize);
@@ -104,7 +106,7 @@ qint32 CreateInput(const ExternalDevice &device, const std::shared_ptr<DeviceRea
     CMyComPtr<IInStream> seekable;
     RINOK(limited.QueryInterface(IID_IInStream, &seekable))
     CMyComPtr<IInStream> result =
-        new CDirectDeviceInput(seekable, size, device, handle, offset, ignoreJournal);
+        new CDirectDeviceInput(seekable, size, device, handle, offset, allowIncompleteRead);
     *stream = result.Detach();
     return S_OK;
 }
@@ -121,11 +123,11 @@ qint32 CreateDevicePartitionInput(IInStream *device, quint64 offset, quint64 siz
         size > source->deviceInputSize() - offset)
         return E_INVALIDARG;
     return CreateInput(source->Device, source->Handle, source->Start + offset, size, stream,
-                       source->IgnoreJournal);
+                       source->AllowIncompleteRead);
     COM_TRY_END
 }
 
-qint32 CreateDeviceInputIgnoringJournal(IInStream *device, IInStream **stream) {
+qint32 CreateDeviceInputAllowingIncompleteRead(IInStream *device, IInStream **stream) {
     COM_TRY_BEGIN
     if (!stream)
         return E_INVALIDARG;

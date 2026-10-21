@@ -411,3 +411,58 @@ deep/strict ad hoc signature и native startup smoke с временными н�
 Incremental builds/caches сохранены; временный install staging удалён упаковщиком,
 payload оставлен пользователю. Реальные pending journal transactions,
 копирование пользовательских файлов и full/slow acceptance не проверялись.
+
+## Read-only filesystem access: readable feature limitations — 2026-10-21
+
+Проверка новой политики AGENTS.md выявила product gate: после успешного Ext Open
+`CheckFeatures` запрещал `ORPHAN_PRESENT`, `HAS_SNAPSHOT`, `REPLICA` и неизвестные
+readonly-compatible bits, предлагая выбор только для `RECOVER`. Сравнены полные
+selected bodies Linux `fs/ext4/super.c:ext4_feature_set_ok` и compatibility callers,
+header feature masks, archive `ext_linux_open`, SDK feature properties и consumers
+OpenDeviceFilesystem/Qt device command/stream leases/panel badge. Linux reference
+`58161ead29e50d70a317ea26b472e0c7508e69da`, repository
+<https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git>;
+SDK `9128b80e3a471108678e2b3ec3c985861c8d7b0f`, repository
+<https://github.com/ip7z/7zip.git>. Kernel readonly branch принимает эти RO bits;
+incompatible features по-прежнему требуют реальной поддержки reader.
+
+Local policy теперь сообщает конкретные условия ограниченного чтения и предлагает
+явный opt-in для уже открываемой reader файловой системы. Включены RECOVER и
+незнакомые boundary readonly-compatible declarations, в том числе ORPHAN_PRESENT.
+Это не принудительное открытие неизвестного disk layout: checks reader,
+checksums, bounds, path validation и per-file operation results сохраняются.
+Отсутствующий decoder не заменяется согласием; отсутствие/неверный тип feature
+metadata также не становится разрешением на обход проверки.
+
+Согласие принадлежит отдельному immutable limited-read lease выбранного открытия;
+первоначальный input остаётся прежним. Partition views наследуют этот mode в
+своих границах. Локальные API имена обобщены с journal-only на incomplete-read,
+без изменения source parsing или reader language. Qt warning EN/RU перечисляет
+feature conditions, объясняет missing/outdated/unreadable files и отсутствие
+journal replay/orphan cleanup/repair. Cancel остаётся default/escape; постоянный
+badge обозначает limited access при навигации и refresh. Source OS handles
+остаются O_RDONLY/FILE_GENERIC_READ, записи на устройство не добавлено.
+
+Backend regressions используют controlled declarations с неизменным payload:
+RECOVER/encrypt, ORPHAN_PRESENT отдельно и вместе с RECOVER, snapshot, replica и
+неизвестный RO bit. Проверяются подтверждение, exact extraction, неизменность
+образа и отсутствие разрешения в исходном opening; неизвестный incompatible bit
+не открывается и после opt-in. EN/RU UI scenarios добавляют orphan accept/cancel
+к существующим Copy/Extract/refresh/Parent, bounded leases и mutation restrictions.
+Это проверка selected direct-access policy, а не утверждение, что все filesystem
+handlers допускают любой повреждённый или частично поддерживаемый образ.
+
+Focused `device_input`, `archive_device`, `device_folder`, `device_ui`, `language`
+PASS на macOS arm64/Qt 6.12, Linux x64/Qt 6.12 и Windows x64/MSVC/Qt 6.12;
+remote receipt `20261021T031533Z-a30a7adc` (8,55/24,94 с). Первый sandbox Cocoa
+запуск прервался до окна (`no screens available`); affected `device_ui` повторён
+вне sandbox и PASS (45,98 с), остальные четыре macOS suites уже прошли.
+Native Cocoa EN/RU JSON confirms ORPHAN_PRESENT и RECOVER, labels/buttons и
+limited-access badge просмотрены при 980×620 и 640×400: clipping не выявлен.
+Linux/Windows UI — offscreen; native appearance, VoiceOver и реальный носитель
+не проверялись. Использована локальная HIG-выжимка от 2026-10-18: официальная
+Alerts page потребовала JavaScript, Markdown retrieval недоступен; новое HIG
+соответствие по этому источнику не заявляется. Штатные Qt warning roles сохранены.
+Приложение также собрано на трёх ОС, remote receipt
+`20261021T031840Z-8e06c889`. Старые task-owned warning JSON заменены текущими;
+build trees/caches сохранены, full/slow suites и installation не выполнялись.

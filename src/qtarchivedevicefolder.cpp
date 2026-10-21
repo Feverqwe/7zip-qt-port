@@ -5,9 +5,9 @@
 #include "qtarchivefileresource.h"
 #include "qtarchivenativeopenprogress.h"
 
-bool QtArchiveFileResource::IgnoresDeviceJournal() const {
+bool QtArchiveFileResource::AllowsIncompleteDeviceRead() const {
     const auto *direct = dynamic_cast<DirectDeviceInput *>(_directInput.Interface());
-    return direct && direct->ignoresDeviceJournal();
+    return direct && direct->allowsIncompleteDeviceRead();
 }
 
 HRESULT QtArchiveFileResource::RefreshDeviceInput(ArchiveBackend &backend,

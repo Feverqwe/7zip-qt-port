@@ -16,12 +16,14 @@ Escape cancels. The file manager keeps a visible Read only indicator while
 viewing the source, disables mutation commands and uses its existing panel,
 copy, refresh and Parent interactions.
 
-A partition requiring journal recovery offers an explicit read-only opening
-without replay. The warning explains potentially missing, outdated or unreadable
-files; Cancel is the default and Escape cancels. Acceptance applies only to that
-opening. A persistent status indicator distinguishes this mode, including after
-refresh and while browsing within the source. Other unsupported features retain
-their refusal. The warning and indicator fit the EN/RU layouts.
+A readable partition with unfinished recovery or read-only-compatible limitations
+offers an explicit limited opening. The warning lists the conditions and explains
+potentially missing, outdated or unreadable files; Cancel is the default and
+Escape cancels. Acceptance applies only to that opening. A persistent status
+indicator distinguishes this mode, including after refresh and while browsing
+within the source. The choice permits no journal replay, orphan cleanup or repair
+and cannot bypass missing decoding support. The warning and indicator fit the
+EN/RU layouts.
 
 [Все UI-спецификации](../ui-layout-contracts.md). Разделы сохраняют исходные требования,
 якоря и границы датированных свидетельств. Новые результаты проверок —

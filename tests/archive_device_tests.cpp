@@ -199,14 +199,14 @@ class ArchiveDeviceTests final : public QObject {
                  UInt64(layout.startsWith("ext") || layout == "recover" ? 0 : 1024 * 1024));
         std::shared_ptr<ArchiveNativeOpen> reader;
         if (layout == "recover") {
-            QCOMPARE(device.openPartition(0, &ui, reader), kDeviceJournalRecoveryRequired);
+            QCOMPARE(device.openPartition(0, &ui, reader), kDeviceReadLimitationsRequired);
             QVERIFY(!reader);
             CMyComPtr<IInStream> selected, withoutReplay;
             QCOMPARE(device.partitionInput(0, &selected), S_OK);
-            QCOMPARE(CreateDeviceInputIgnoringJournal(selected, &withoutReplay), S_OK);
+            QCOMPARE(CreateDeviceInputAllowingIncompleteRead(selected, &withoutReplay), S_OK);
             QCOMPARE(OpenDeviceFilesystem(catalog_, withoutReplay, "USB/Ext", &ui, reader), S_OK);
             std::shared_ptr<ArchiveNativeOpen> rejected;
-            QCOMPARE(device.openPartition(0, &ui, rejected), kDeviceJournalRecoveryRequired);
+            QCOMPARE(device.openPartition(0, &ui, rejected), kDeviceReadLimitationsRequired);
             QVERIFY(!rejected); // Accepting one session never relaxes another.
         } else
             QCOMPARE(device.openPartition(0, &ui, reader), S_OK);
@@ -339,22 +339,27 @@ class ArchiveDeviceTests final : public QObject {
         QCOMPARE(count, UInt32(1));
         QVERIFY(source->FarthestRead <= authorizedSize);
     }
-    void refusesUnsupportedFeaturesOnlyForDirectDevices_data() {
+    void confirmsReadableFeatureLimitations_data() {
         QTest::addColumn<int>("field");
         QTest::addColumn<int>("bit");
         QTest::addColumn<QString>("feature");
         QTest::addColumn<bool>("recoveryAlso");
         QTest::newRow("journal-recovery") << 0x60 << 2 << QString("RECOVER") << false;
         QTest::newRow("encrypted-recovery") << 0x60 << 16 << QString("RECOVER") << true;
+        QTest::newRow("orphan-cleanup") << 0x64 << 16 << QString("ORPHAN_PRESENT") << false;
+        QTest::newRow("orphan-and-journal") << 0x64 << 16 << QString("ORPHAN_PRESENT") << true;
+        QTest::newRow("snapshot") << 0x64 << 7 << QString("HAS_SNAPSHOT") << false;
+        QTest::newRow("replica") << 0x64 << 11 << QString("REPLICA") << false;
+        QTest::newRow("unknown-readonly") << 0x64 << 31 << QString("80000000") << false;
     }
-    void refusesUnsupportedFeaturesOnlyForDirectDevices() {
+    void confirmsReadableFeatureLimitations() {
         QFETCH(int, field);
         QFETCH(int, bit);
         QFETCH(QString, feature);
         QFETCH(bool, recoveryAlso);
         QByteArray disk = fixture("ext4");
         QVERIFY(disk.size() > 2048);
-        // Controlled declarations of recover/encrypt with no changed file data.
+        // Controlled feature declarations leave the fixture's file data intact.
         // Disable optional checksums so declaration changes reach device policy.
         disk[1024 + 0x65] = char(quint8(disk[1024 + 0x65]) & ~4u);
         const int byte = 1024 + field + bit / 8;
@@ -375,14 +380,51 @@ class ArchiveDeviceTests final : public QObject {
         QCOMPARE(device.inspect(input, UInt64(disk.size()), "USB", nullptr), S_OK);
         std::shared_ptr<ArchiveNativeOpen> reader;
         QString error;
-        QCOMPARE(device.openPartition(0, nullptr, reader, &error), kDeviceJournalRecoveryRequired);
+        QCOMPARE(device.openPartition(0, nullptr, reader, &error), kDeviceReadLimitationsRequired);
         QVERIFY2(error.contains(feature), qPrintable(error));
         QVERIFY(!reader);
         CMyComPtr<IInStream> direct, withoutReplay;
         QCOMPARE(DeviceInput(input, quint64(disk.size()), &direct), S_OK);
-        QCOMPARE(CreateDeviceInputIgnoringJournal(direct, &withoutReplay), S_OK);
+        QCOMPARE(CreateDeviceInputAllowingIncompleteRead(direct, &withoutReplay), S_OK);
         QCOMPARE(OpenDeviceFilesystem(catalog_, withoutReplay, "USB", nullptr, reader, &error),
                  S_OK);
+        QVERIFY(error.isEmpty());
+        UInt32 count = 0, fileIndex = UINT32_MAX;
+        QCOMPARE(reader->arc().Archive->GetNumberOfItems(&count), S_OK);
+        for (UInt32 i = 0; i < count; ++i) {
+            NWindows::NCOM::CPropVariant path;
+            QCOMPARE(reader->arc().Archive->GetProperty(i, kpidPath, &path), S_OK);
+            if (path.vt == VT_BSTR &&
+                QDir::fromNativeSeparators(QString::fromWCharArray(path.bstrVal)) ==
+                    QStringLiteral("папка 空/данные с пробелом.txt"))
+                fileIndex = i;
+        }
+        QVERIFY(fileIndex != UINT32_MAX);
+        auto *extracted = new CExtractUi;
+        CMyComPtr<IArchiveExtractCallback> callback = extracted;
+        QCOMPARE(reader->arc().Archive->Extract(&fileIndex, 1, 0, callback), S_OK);
+        QCOMPARE(extracted->ItemResult, Int32(NArchive::NExtract::NOperationResult::kOK));
+        QCOMPARE(extracted->bytes(), QByteArray("device ext4 payload\n"));
+        QCOMPARE(OpenDeviceFilesystem(catalog_, direct, "USB", nullptr, reader, &error),
+                 kDeviceReadLimitationsRequired);
+        QVERIFY(!reader);
+        QVERIFY(file.open(QIODevice::ReadOnly));
+        QCOMPARE(file.readAll(), disk);
+    }
+    void incompleteReadConsentDoesNotBypassUnsupportedDecoding() {
+        QByteArray disk = fixture("ext4");
+        disk[1024 + 0x65] = char(quint8(disk[1024 + 0x65]) & ~4u);
+        disk[1024 + 0x63] = char(quint8(disk[1024 + 0x63]) | 0x80u);
+        CMyComPtr<IInStream> input = new CDeviceInput(disk), direct, limited;
+        QCOMPARE(DeviceInput(input, quint64(disk.size()), &direct), S_OK);
+        QCOMPARE(CreateDeviceInputAllowingIncompleteRead(direct, &limited), S_OK);
+        for (const auto &source : {direct, limited}) {
+            std::shared_ptr<ArchiveNativeOpen> reader;
+            const HRESULT result = OpenDeviceFilesystem(catalog_, source, "USB", nullptr, reader);
+            QVERIFY(result != S_OK);
+            QVERIFY(result != kDeviceReadLimitationsRequired);
+            QVERIFY(!reader);
+        }
     }
     void signedVerityPropertiesReachAlignedDeviceStreams() {
         QFile manifest(QStringLiteral(DEVICE_FIXTURE_DIR "/../ext4/verity-signatures.json"));

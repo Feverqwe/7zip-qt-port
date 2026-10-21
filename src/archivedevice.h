@@ -12,8 +12,8 @@ struct IOpenCallbackUI;
 struct COpenOptions;
 
 // Customer-defined FACILITY_ITF result: the caller can offer an explicit
-// read-without-replay session. Other unsupported features remain E_NOTIMPL.
-constexpr HRESULT kDeviceJournalRecoveryRequired = static_cast<HRESULT>(0xA0040201u);
+// limited read-only session. Unsupported decoding remains E_NOTIMPL.
+constexpr HRESULT kDeviceReadLimitationsRequired = static_cast<HRESULT>(0xA0040201u);
 
 struct ArchiveDevicePartition {
     QString name;

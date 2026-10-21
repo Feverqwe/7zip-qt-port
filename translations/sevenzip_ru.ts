@@ -5754,8 +5754,8 @@ Application modules:
     <context>
         <name>mainwindow_panel</name>
         <message>
-            <source>Read only · journal not replayed</source>
-            <translation>Только чтение · журнал не восстановлен</translation>
+            <source>Read only · limited access</source>
+            <translation>Только чтение · с ограничениями</translation>
         </message>
         <message>
             <location filename="../src/mainwindow_panel.cpp" line="+123" />
@@ -6316,8 +6316,8 @@ Application modules:
             <translation>Неподдерживаемые возможности файловой системы: %1.</translation>
         </message>
         <message>
-            <source>The filesystem needs journal recovery. Open it on its usual Linux system and unmount it cleanly before trying again. Sevenzip does not replay the journal.</source>
-            <translation>Файловая система требует восстановления журнала. Откройте её в обычной для неё системе Linux и корректно размонтируйте перед повторной попыткой. Sevenzip не воспроизводит журнал.</translation>
+            <source>Limited read-only access: %1.</source>
+            <translation>Чтение с ограничениями: %1.</translation>
         </message>
         <message>
             <source>Encrypted ext filesystems cannot be read directly.</source>
@@ -6382,12 +6382,12 @@ Application modules:
     <context>
         <name>qtdevicecommands</name>
         <message>
-            <source>Open without journal recovery?</source>
-            <translation>Открыть без восстановления журнала?</translation>
+            <source>Open read-only with limitations?</source>
+            <translation>Открыть для чтения с ограничениями?</translation>
         </message>
         <message>
-            <source>This filesystem has unfinished journal changes. You can copy files without replaying the journal, but some files may be missing, outdated or unreadable. Nothing will be written to the device.</source>
-            <translation>В журнале файловой системы остались незавершённые изменения. Можно копировать файлы без восстановления журнала, но часть файлов может отсутствовать, быть устаревшей или не читаться. На устройство ничего не будет записано.</translation>
+            <source>You can copy readable files, but unsupported features or unfinished recovery may leave some files missing, outdated or unreadable. Nothing will be written to the device. Sevenzip will not replay the journal, clean up orphaned files or repair the filesystem.</source>
+            <translation>Можно копировать доступные файлы, но из-за неподдерживаемых возможностей или незавершённого восстановления часть файлов может отсутствовать, быть устаревшей или не читаться. На устройство ничего не будет записано. Sevenzip не воспроизводит журнал, не очищает осиротевшие файлы и не исправляет файловую систему.</translation>
         </message>
         <message>
             <source>Open read-only</source>

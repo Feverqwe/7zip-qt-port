@@ -163,7 +163,7 @@ class DeviceInputTests final : public QObject {
         CMyComPtr<IInStream> input, selected, withoutReplay;
         QCOMPARE(CreateDeviceInput(Description(*memory), memory, &input), qint32(S_OK));
         QCOMPARE(CreateDevicePartitionInput(input, 4096, 8192, &selected), qint32(S_OK));
-        QCOMPARE(CreateDeviceInputIgnoringJournal(selected, &withoutReplay), qint32(S_OK));
+        QCOMPARE(CreateDeviceInputAllowingIncompleteRead(selected, &withoutReplay), qint32(S_OK));
         input.Release();
         QByteArray output(3 * 4096, Qt::Uninitialized);
         size_t read = size_t(output.size());
@@ -172,7 +172,8 @@ class DeviceInputTests final : public QObject {
         QCOMPARE(output.left(qsizetype(read)), memory->Data.mid(4096, 8192));
         QVERIFY(memory->FarthestRead <= quint64(3 * 4096));
         // Opting in must leave the original view's policy and cursor untouched.
-        QVERIFY(!dynamic_cast<DirectDeviceInput *>(selected.Interface())->ignoresDeviceJournal());
+        QVERIFY(
+            !dynamic_cast<DirectDeviceInput *>(selected.Interface())->allowsIncompleteDeviceRead());
         char first = 0;
         UInt32 count = 0;
         QCOMPARE(selected->Read(&first, 1, &count), S_OK);

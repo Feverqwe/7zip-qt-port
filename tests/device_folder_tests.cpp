@@ -119,16 +119,16 @@ class DeviceFolderTests final : public QObject {
     }
     void sourceFolderCopiesSelectedUnicodeFile_data() {
         QTest::addColumn<QString>("mode");
-        QTest::addColumn<bool>("ignoreJournal");
-        for (bool ignoreJournal : {false, true})
+        QTest::addColumn<bool>("allowIncompleteRead");
+        for (bool allowIncompleteRead : {false, true})
             for (const QString &mode :
                  {"success", "refresh", "cancel", "disconnect", "cancel-open", "disconnect-open"})
-                QTest::newRow(qPrintable(mode + (ignoreJournal ? "-journal" : "")))
-                    << mode << ignoreJournal;
+                QTest::newRow(qPrintable(mode + (allowIncompleteRead ? "-journal" : "")))
+                    << mode << allowIncompleteRead;
     }
     void sourceFolderCopiesSelectedUnicodeFile() {
         QFETCH(QString, mode);
-        QFETCH(bool, ignoreJournal);
+        QFETCH(bool, allowIncompleteRead);
         CObservedBackend backend(nullptr, engine_);
         QSignalSpy ready(&backend, &ArchiveBackend::codecCatalogReady);
         QVERIFY(backend.discoverCodecCatalog(module_));
@@ -136,7 +136,7 @@ class DeviceFolderTests final : public QObject {
         QVERIFY(ready[0][0].toBool());
         QByteArray bytes = fixture();
         QVERIFY(!bytes.isEmpty());
-        if (ignoreJournal) {
+        if (allowIncompleteRead) {
             const int superblock = 1024 * 1024 + 1024;
             bytes[superblock + 0x65] = char(quint8(bytes[superblock + 0x65]) & ~4u);
             bytes[superblock + 0x60] = char(quint8(bytes[superblock + 0x60]) | 4u);
@@ -150,9 +150,9 @@ class DeviceFolderTests final : public QObject {
         ArchiveDevice device(backend.codecCatalog());
         QCOMPARE(device.inspect(input, description.size, QStringLiteral("USB 空"), nullptr), S_OK);
         QCOMPARE(device.partitionInput(0, &selected), S_OK);
-        if (ignoreJournal) {
+        if (allowIncompleteRead) {
             CMyComPtr<IInStream> withoutReplay;
-            QCOMPARE(CreateDeviceInputIgnoringJournal(selected, &withoutReplay), S_OK);
+            QCOMPARE(CreateDeviceInputAllowingIncompleteRead(selected, &withoutReplay), S_OK);
             selected = withoutReplay;
         }
         CMyComPtr<IFolderManager> manager = new QtArchiveFolderManager(backend);

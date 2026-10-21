@@ -276,17 +276,22 @@ class DeviceUiTests final : public QObject {
         QTest::addColumn<bool>("acceptRecovery");
         QTest::addColumn<QString>("copyCommand");
         QTest::addColumn<bool>("nestedArchive");
+        QTest::addColumn<int>("readonlyBit");
         for (const QString &language : {"en", "ru"}) {
-            QTest::newRow(qPrintable(language)) << language << false << false << QString() << false;
+            QTest::newRow(qPrintable(language))
+                << language << false << false << QString() << false << -1;
             QTest::newRow(qPrintable(language + "-cancel-recovery"))
-                << language << true << false << QString() << false;
+                << language << true << false << QString() << false << -1;
             QTest::newRow(qPrintable(language + "-accept-recovery"))
-                << language << true << true << QString() << false;
+                << language << true << true << QString() << false << -1;
+            for (bool accept : {false, true})
+                QTest::newRow(qPrintable(language + (accept ? "-accept-orphan" : "-cancel-orphan")))
+                    << language << true << accept << QString() << false << 16;
             for (const QString &command : {"copyAction", "extractArchiveAction"}) {
                 const bool nestedArchive = language == "en";
                 QTest::newRow(qPrintable(language + '-' + command +
                                          (nestedArchive ? "-nested" : "-timestamp")))
-                    << language << true << true << command << nestedArchive;
+                    << language << true << true << command << nestedArchive << -1;
             }
         }
     }
@@ -296,6 +301,7 @@ class DeviceUiTests final : public QObject {
         QFETCH(bool, acceptRecovery);
         QFETCH(QString, copyCommand);
         QFETCH(bool, nestedArchive);
+        QFETCH(int, readonlyBit);
         SaveRegLang(UString(language == "en" ? L"-" : L"ru"),
                     qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
         auto bytes = std::make_shared<CDeviceBytes>(fixture_);
@@ -312,7 +318,15 @@ class DeviceUiTests final : public QObject {
             // Controlled Ext declarations inside the first GPT partition.
             const int superblock = copyCommand.isEmpty() ? 1024 * 1024 + 1024 : 1024;
             bytes->Bytes[superblock + 0x65] = char(quint8(bytes->Bytes[superblock + 0x65]) & ~4u);
-            bytes->Bytes[superblock + 0x60] = char(quint8(bytes->Bytes[superblock + 0x60]) | 4u);
+            if (readonlyBit < 0)
+                bytes->Bytes[superblock + 0x60] =
+                    char(quint8(bytes->Bytes[superblock + 0x60]) | 4u);
+            else {
+                bytes->Bytes[superblock + 0x60] =
+                    char(quint8(bytes->Bytes[superblock + 0x60]) & ~4u);
+                const int field = superblock + 0x64 + readonlyBit / 8;
+                bytes->Bytes[field] = char(quint8(bytes->Bytes[field]) | (1u << (readonlyBit % 8)));
+            }
         }
         const QByteArray originalBytes = bytes->Bytes;
         ArchiveBackend backend(nullptr, engine_);
@@ -331,11 +345,13 @@ class DeviceUiTests final : public QObject {
         QTimer automation;
         unsigned stage = 0;
         QString openingError;
+        QString openingLimitations;
         bool errorGeometry = false;
         connect(&automation, &QTimer::timeout, &window, [&] {
             if (needsRecovery && stage == 2) {
                 if (auto *message = window.findChild<QMessageBox *>()) {
                     openingError = message->text();
+                    openingLimitations = message->informativeText();
                     message->layout()->activate();
                     errorGeometry = true;
                     for (auto *label : message->findChildren<QLabel *>())
@@ -343,9 +359,10 @@ class DeviceUiTests final : public QObject {
                             errorGeometry &= UiInspection::fullyVisible(*label, *message) &&
                                              UiInspection::labelFits(*label);
                     message->setProperty("uiInspection_language", language);
-                    message->setProperty("uiInspection_state", "journal-recovery");
-                    errorGeometry &=
-                        UiInspection::writeReport(*message, "device-recovery-" + language);
+                    message->setProperty("uiInspection_state", "limited-read");
+                    errorGeometry &= UiInspection::writeReport(
+                        *message, "device-limitations-" + language +
+                                      (readonlyBit < 0 ? "-journal" : "-orphan"));
                     ++stage;
                     automation.stop();
                     if (acceptRecovery)
@@ -378,6 +395,7 @@ class DeviceUiTests final : public QObject {
         if (needsRecovery) {
             QCOMPARE(stage, 3u);
             QVERIFY(!openingError.isEmpty());
+            QVERIFY(openingLimitations.contains(readonlyBit < 0 ? "RECOVER" : "ORPHAN_PRESENT"));
             QVERIFY(errorGeometry);
             if (!acceptRecovery) {
                 QVERIFY(!window.findChild<QLabel *>("deviceReadOnlyLabel")->isVisible());
@@ -397,8 +415,8 @@ class DeviceUiTests final : public QObject {
         QVERIFY(badge && badge->isVisible());
         const QString badgeText = badge->text();
         if (needsRecovery)
-            QCOMPARE(badgeText, QCoreApplication::translate("mainwindow_panel",
-                                                            "Read only · journal not replayed"));
+            QCOMPARE(badgeText,
+                     QCoreApplication::translate("mainwindow_panel", "Read only · limited access"));
         for (const QSize size : {QSize(980, 620), QSize(640, 400)}) {
             window.resize(size);
             window.layout()->activate();
