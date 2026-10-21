@@ -51,7 +51,7 @@ struct ext4_sb_info {
     struct ext4_super_block *s_es;
     u32 s_csum_seed, s_desc_size, s_desc_per_block, s_inode_size;
     u32 s_groups_count, s_gdb_count, s_itb_per_group;
-    u32 s_cluster_ratio, s_inodes_per_group, s_blockfile_groups;
+    u32 s_cluster_ratio, s_cluster_bits, s_inodes_per_group, s_blockfile_groups;
     u32 s_first_ino, s_want_extra_isize;
     loff_t s_bitmap_maxbytes;
     u32 s_mount_state;
@@ -86,6 +86,16 @@ struct inode {
     const struct sevenzip_fscrypt_inode *fscrypt_owner;
 };
 typedef struct journal_s { struct inode *j_inode; } journal_t;
+typedef int ext4_grpblk_t;
+#define EXT4_B2C(sbi, blk) ((blk) >> (sbi)->s_cluster_bits)
+#define EXT4_NUM_B2C(sbi, blks) (((blks) + (sbi)->s_cluster_ratio - 1) >> (sbi)->s_cluster_bits)
+unsigned long _find_next_zero_bit(const unsigned long *, unsigned long, unsigned long);
+#define ext4_find_next_zero_bit(data, size, offset) _find_next_zero_bit((const unsigned long *)(data), size, offset)
+static inline bool ext4_test_bit(unsigned int bit, const void *data) {
+    return (((const u8 *)data)[bit / 8] & (1U << (bit % 8))) != 0;
+}
+ext4_fsblk_t ext4_valid_block_bitmap(struct super_block *, struct ext4_group_desc *, ext4_group_t, struct buffer_head *);
+ext4_fsblk_t ext4_valid_block_bitmap_padding(struct super_block *, ext4_group_t, struct buffer_head *);
 struct ext4_iloc { struct buffer_head *bh; unsigned int offset; };
 struct dir_private_info { u64 cookie; };
 struct file { struct inode *inode; void *private_data; };

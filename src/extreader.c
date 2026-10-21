@@ -47,6 +47,7 @@ int ext_linux_open(const void *superblock, struct ext_volume **result)
     sbi->s_desc_per_block = volume->sb.s_blocksize / desc;
     sbi->s_inodes_per_group = EXT4_INODES_PER_GROUP(&volume->sb);
     sbi->s_cluster_ratio = EXT4_CLUSTER_SIZE(&volume->sb) / volume->sb.s_blocksize;
+    sbi->s_cluster_bits = le32_to_cpu(volume->raw.s_log_cluster_size) - bits;
     if (ext4_inode_info_init(&volume->sb, &volume->raw)) goto corrupt;
     volume->sb.s_maxbytes = ext4_max_size((int)volume->sb.s_blocksize_bits,
         ext4_has_feature_huge_file(&volume->sb));
@@ -54,6 +55,7 @@ int ext_linux_open(const void *superblock, struct ext_volume **result)
         ext4_has_feature_huge_file(&volume->sb));
     if (EXT4_INODES_PER_GROUP(&volume->sb) % (volume->sb.s_blocksize / sbi->s_inode_size) ||
         (EXT4_CLUSTERS_PER_GROUP(&volume->sb) & 7)) goto corrupt;
+    sbi->s_itb_per_group = EXT4_INODES_PER_GROUP(&volume->sb) / (volume->sb.s_blocksize / sbi->s_inode_size);
     if (ext4_has_feature_meta_bg(&volume->sb)) {
         u64 blocks = le32_to_cpu(volume->raw.s_blocks_count_lo);
         u32 per_group = le32_to_cpu(volume->raw.s_blocks_per_group);
@@ -97,12 +99,23 @@ int ext_linux_group_check(struct ext_volume *volume, uint32_t group, const void 
 {
     return ext4_group_desc_csum_verify(&volume->sb, group, (struct ext4_group_desc *)descriptor) ? 0 : -EFSBADCRC;
 }
-int ext_linux_bitmap_check(struct ext_volume *volume, const void *descriptor, const void *bitmap, int inode_bitmap)
+int ext_linux_bitmap_check(struct ext_volume *volume, uint32_t group, const void *descriptor,
+                           const void *bitmap, int inode_bitmap)
 {
+    struct super_block *sb = &volume->sb;
+    struct ext4_group_desc *desc = (struct ext4_group_desc *)descriptor;
     struct buffer_head bh = { .b_data = (char *)bitmap, .b_size = volume->sb.s_blocksize };
+    ext4_fsblk_t block = inode_bitmap ? ext4_inode_bitmap(sb, desc) : ext4_block_bitmap(sb, desc);
+    if (group >= ext4_get_groups_count(sb) ||
+        block <= le32_to_cpu(volume->raw.s_first_data_block) || block >= ext4_blocks_count(&volume->raw))
+        return -EFSCORRUPTED;
     int ok = inode_bitmap ? ext4_inode_bitmap_csum_verify(&volume->sb, (struct ext4_group_desc *)descriptor, &bh) :
         ext4_block_bitmap_csum_verify(&volume->sb, (struct ext4_group_desc *)descriptor, &bh);
-    return ok ? 0 : -EFSBADCRC;
+    if (!ok) return -EFSBADCRC;
+    if (!inode_bitmap && (ext4_valid_block_bitmap(sb, desc, group, &bh) ||
+                           ext4_valid_block_bitmap_padding(sb, group, &bh)))
+        return -EFSCORRUPTED;
+    return 0;
 }
 
 static struct ext_time base_time(__le32 base)

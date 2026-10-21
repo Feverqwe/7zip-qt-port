@@ -427,6 +427,48 @@ class ExtTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual(result.stdout, b"")
 
+    def test_block_bitmap_metadata_and_padding_need_more_than_valid_checksums(self):
+        for modern in (False, True):
+            for target in ("block-map", "inode-map", "table", "table-end", "padding", "padding-end"):
+                with self.subTest(modern=modern, target=target):
+                    volume = ModernVolume() if modern else Volume("direct")
+                    table_blocks = volume.inode_count * (256 if modern else 128) // volume.block_size
+                    block = {"block-map": volume.block_map, "inode-map": volume.inode_map,
+                             "table": volume.table, "table-end": volume.table + table_blocks - 1,
+                             "padding": volume.blocks, "padding-end": volume.first + volume.block_size * 8 - 1}[target]
+                    bit = block - volume.first
+                    volume.data[volume.block_map * volume.block_size + bit // 8] &= ~(1 << (bit % 8))
+                    if modern:
+                        volume.used.discard(block)
+                        volume.refresh()
+                    result = self.run_image(volume)
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertEqual(result.stdout, b"")
+
+        # Linux rejects uninitialized root-group bitmaps; without descriptor
+        # checksums those flags have no meaning.
+        for modern in (False, True):
+            volume = ModernVolume() if modern else Volume("direct")
+            struct.pack_into("<H", volume.data, volume.gdt * volume.block_size + 18, 2)
+            if modern:
+                volume.refresh()
+                volume.data[volume.block_map * volume.block_size:volume.block_map * volume.block_size + 1024] = bytes(1024)
+            result = self.run_image(volume)
+            if modern:
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(result.stdout, b"")
+            else:
+                self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                self.assertEqual(result.stdout, volume.read(0, volume.size))
+
+        for target in ("metadata", "padding"):
+            volume = SymlinkVolume("bigalloc")
+            bit = (volume.table - volume.first) // 4 if target == "metadata" else 256
+            volume.data[volume.block_map * volume.block_size + bit // 8] &= ~(1 << (bit % 8))
+            result = self.run_image(volume)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertEqual(result.stdout, b"")
+
     def test_indexed_directory_checksums_and_count_bounds(self):
         volume = ModernVolume(indexed=True)
         result = self.run_image(volume)

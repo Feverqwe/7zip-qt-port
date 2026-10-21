@@ -1803,6 +1803,9 @@ HRESULT CHandler::Open2(IInStream *inStream) {
 
                 const CGroupDescriptor &gd = groups[gi];
 #ifdef SEVENZIP_LINUX_EXT
+                // Linux rejects either uninitialized bitmap in the root group.
+                if (gi == 0 && (_h.UseGdtChecksum() || _h.UseMetadataChecksum()) && (gd.Flags & 3))
+                    return S_FALSE;
                 if ((_h.UseGdtChecksum() || _h.UseMetadataChecksum()) && (gd.Flags & 1)) {
                     const UInt32 count = MyMin(numNodes, _h.NumInodes - globalNodeIndex);
                     globalNodeIndex += count;
@@ -1815,16 +1818,16 @@ HRESULT CHandler::Open2(IInStream *inStream) {
 
                 RINOK(SeekAndRead(inStream, gd.InodeBitmap, nodesMap, blockSize))
 #ifdef SEVENZIP_LINUX_EXT
-                if (ext_linux_bitmap_check(_volume.Ptr,
+                if (ext_linux_bitmap_check(_volume.Ptr, gi,
                                            (const Byte *)gdBuf + ((size_t)gi << gdBits), nodesMap,
                                            1) != 0)
                     return S_FALSE;
                 // Uninitialized block bitmaps are synthesized by the kernel.
-                if ((_h.UseGdtChecksum() || _h.UseMetadataChecksum()) && !(gd.Flags & 2)) {
+                if (!((_h.UseGdtChecksum() || _h.UseMetadataChecksum()) && (gd.Flags & 2))) {
                     CByteBuffer blockMap;
                     blockMap.Alloc(blockSize);
                     RINOK(SeekAndRead(inStream, gd.BlockBitmap, blockMap, blockSize))
-                    if (ext_linux_bitmap_check(_volume.Ptr,
+                    if (ext_linux_bitmap_check(_volume.Ptr, gi,
                                                (const Byte *)gdBuf + ((size_t)gi << gdBits),
                                                blockMap, 0) != 0)
                         return S_FALSE;

@@ -1157,3 +1157,70 @@ format/read-feature review remains active. After the division-service refinement
 all seven local suites passed again (7.66s), and focused `ext`/`ext_stream`
 reruns passed on both runners (`20261021T003822Z-0853a693`). That final source
 synchronization also removed the disposable native helper from runner current.
+
+### Allocation bitmap structure and group initialization
+
+The pinned `ext4_read_inode_bitmap`, `ext4_read_block_bitmap_nowait` and
+`ext4_validate_block_bitmap` callers were compared with SDK group enumeration,
+the existing checksum boundary and system-zone setup. Checksums alone did not
+connect Linux's structural block-bitmap checks. SDK enumeration also skipped
+reading classic block bitmaps altogether and accepted root-group UNINIT flags.
+
+The complete original `num_clusters_in_group`, `ext4_valid_block_bitmap` and
+`ext4_valid_block_bitmap_padding` bodies are now transferred into their original
+`fs/ext4/balloc.c` unit (only private export changes). They check allocation of
+the block/inode bitmaps and the whole inode table, cluster-relative bounds and
+the entire padding through the end of the bitmap block. FLEX_BG retains the
+original metadata-location exemption while padding remains checked. The archive
+initializes the original cluster-bit and inode-table geometry before consuming
+these helpers. Bitmap block addresses use the original read caller's bounds.
+The group number is passed explicitly rather than inferred from bitmap bytes.
+
+The selected generic `_find_next_zero_bit` in `lib/find_bit.c` supplies the scan;
+its `FIND_NEXT_BIT` expression is expanded to C11 statements for MSVC, retaining
+the original masking, loop, bounds, first-set-bit helper and branch flow. The
+existing complete generic `__ffs` header is reused. Native unsigned-long width
+is retained (32 bits on LLP64 Windows, 64 on the checked Unix hosts). The dynamic
+bitmap-size path is used, without the constant-size optimization or unrelated
+search functions. The selected branch is Linux's little-endian host path, as on
+the supported checked arm64/x64 hosts; big-endian runtime is not established.
+Full dependency unit hashes for `find_bit.c`, `find.h`, `bitmap.h` and endian
+bitops are recorded, and original notices remain. No independent scan algorithm
+or format decoder is added.
+
+Initialized bitmaps now pass their original checksum and structural predicates
+before archive publication, including classic filesystems without descriptor
+checksums. Checksummed non-root UNINIT groups retain their existing immutable
+archive treatment: no stale bitmap bytes are consumed and empty inode groups
+produce no inventory. Both UNINIT flags in the root group are rejected according
+to the original read callers. Without descriptor checksums the flags remain
+ignored. Kernel bitmap cache, allocation-group state, locking, corruption marks
+and failure injection are not simulated. In particular, native read-only file
+lookup need not load allocation bitmaps; the archive eagerly validates the
+selected metadata and does not claim identical lazy corruption discovery.
+
+Behavior regressions clear metadata and padding bits in classic and independently
+checksummed images, preserving valid checksums so a checksum-only reader would
+miss the corruption. They cover the end of the inode table, the first and final
+padding bits, BIGALLOC cluster addressing and root/nonchecksummed flag handling.
+The older synthetic BIGALLOC symlink fixture is corrected to encode cluster
+allocation rather than retaining its previous block bitmap. Existing real mkfs
+BIGALLOC/META_BG/inline images remain positive controls. Public ABI tests inject
+E_FAIL/E_ABORT specifically at a classic block-bitmap read and verify exact
+errors, no published items, successful reuse and a visible file after recovery.
+
+On 2026-10-21 all seven focused suites passed on macOS (final 4.76s). Linux and
+MSVC Windows passed the five unaffected suites in `20261021T004344Z-7853d3de`;
+the two fixture-consuming stream/xattr suites then passed with the corrected
+generator in `20261021T004518Z-aec3176b`. That generator fix supplies optional
+fault offsets only for constructed images; existing native xattr fixtures have
+no such builder field. Both runtimes and module builds reused incremental trees
+and caches. The source predicates were compared again in full and all 301
+baseline hashes matched. Adapted classifications include both generic read-side
+dependency units `fs/libfs.c` and `lib/find_bit.c`.
+
+No new native-kernel allocation-bitmap corruption run is claimed: read-only VFS
+lookup need not reach these allocation validators. The Linux driver source is
+the oracle for the transferred predicates, and public archive behavior is tested
+separately. Full/slow suites, installed packages, UI and physical devices were
+not checked. The broader format/read-feature review remains active.

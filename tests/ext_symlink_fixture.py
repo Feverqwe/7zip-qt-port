@@ -31,6 +31,13 @@ class SymlinkVolume(Volume):
             self.put32(1024 + 100, 2 | 0x200 | (8 if case.endswith("huge") else 0))
             self.put32(1024 + 28, 2)
             self.put32(1024 + 36, 256)
+            # The allocation bitmap addresses clusters rather than blocks.
+            bitmap = bytearray(bs)
+            for cluster in {(block - self.first) // 4 for block in self.used}:
+                bitmap[cluster // 8] |= 1 << (cluster % 8)
+            for cluster in range(256, bs * 8):
+                bitmap[cluster // 8] |= 1 << (cluster % 8)
+            self.data[self.block_map * bs:(self.block_map + 1) * bs] = bitmap
             self.put32(self.link_inode + 28, 4 if case.endswith("huge") else 8)
             if case.endswith("huge"):
                 self.put32(self.link_inode + 32, 1 << 18)

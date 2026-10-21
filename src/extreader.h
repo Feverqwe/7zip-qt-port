@@ -25,7 +25,7 @@ int ext_linux_geometry_check(struct ext_volume *, uint64_t input_size);
 void ext_linux_close(struct ext_volume *);
 uint64_t ext_linux_descriptor_block(struct ext_volume *, unsigned int number);
 int ext_linux_group_check(struct ext_volume *, uint32_t group, const void *descriptor);
-int ext_linux_bitmap_check(struct ext_volume *, const void *descriptor,
+int ext_linux_bitmap_check(struct ext_volume *, uint32_t group, const void *descriptor,
                            const void *bitmap, int inode_bitmap);
 /* Setup borrows callbacks only during the call and copies descriptors. */
 struct ext_block_services {

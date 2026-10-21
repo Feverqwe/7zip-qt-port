@@ -230,6 +230,7 @@ if __name__ == "__main__":
                           "files": {name: value.hex() for name, value in getattr(v, "files", {}).items()},
                           "ea_data_offset": getattr(v, "ea_data_offset", 0),
                           "directory_head_offset": getattr(v, "directory_head_offset", 0),
-                          "directory_tail_offset": getattr(v, "directory_tail_offset", 0)}))
+                          "directory_tail_offset": getattr(v, "directory_tail_offset", 0),
+                          "block_bitmap_offset": getattr(v, "block_map", 0) * getattr(v, "block_size", 0)}))
     else:
         sys.stdout.buffer.write(v.data)
