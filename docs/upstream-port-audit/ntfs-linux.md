@@ -1163,6 +1163,48 @@ partial-copy failure и retained stream отдельно проверены arch
 Локальное приложение пересобрано после этого source change; language/UI inputs
 не менялись. Эти результаты дополняют, а не заменяют source comparison.
 
+## File metadata, names и parent paths — 2026-10-21
+
+Повторно сравнены `inode.c:ntfs_read_mft`, перечисление ATTR_LIST через
+`frecord.c:ni_enum_attr_ex` и `attrlist.c:al_enumerate`, а также
+`dir.c:ntfs_dir_emit` и типы STANDARD_INFORMATION/FILE_NAME закреплённого
+Linux snapshot. Сопоставлены полные затронутые ParseRec, extension merge,
+item/path construction и property consumers исходного 7-Zip и текущего порта.
+Первый пригодный base STANDARD_INFORMATION сохраняет приоритет: Linux читает
+его до переключения на ATTR_LIST. FILE_NAME выбирается по списку, reference,
+instance и границам исходных атрибутов вместо объединения старых aliases.
+Оригинальные parsers, vectors и Linux C list enumerator переиспользованы.
+
+Отсутствующее/непригодное SI или имя не запрещает независимо читаемый DATA.
+Неизвестные времена/permissions не подменяются нулевыми значениями; сохранены
+upstream имена `[LOST]`/`[NONAME]-…`. Orphan DOS alias и доступное имя со stale
+extension reference остаются явно непроверенным recovery-представлением.
+Общий limitation property включает конкретную EN/RU причину и использует
+существующие согласие на открытие, постоянный badge и read-only операции.
+Повреждённые границы FILE/MFT records остаются отдельным техническим отказом.
+
+Archive namespace по-прежнему восстанавливается из MFT; полноценный Linux
+directory-index/VFS path не переносился. Циклы родительских связей направляются
+в recovery-каталог, конечные пути глубже 256 компонентов сохраняются в пределах
+исходного ограничения длины. Это узкая адаптация single-parent archive graph:
+upstream CFB traversal работает с другим sibling/child graph, а подходящего
+готового helper в NTFS/Ext/HFS handlers нет. Алгоритмы формата/декодирования
+не заменялись. Standalone сохраняет исходный metadata acceptance scope.
+
+17 новых детерминированных fixtures проверяют выбранные/устаревшие имена,
+resident/nonresident lists, hard links и DOS alias, SI precedence, отсутствие
+metadata, повреждённые имена, родителей, циклы и путь из 300 каталогов.
+CLI/ABI проверяют exact DATA, metadata properties и retained streams; GUI
+копирует файл с непригодным SI после согласия. Образы остаются неизменными.
+На macOS arm64 пять focused suites `ntfs`, `ntfs_stream`, `ntfs_security`,
+`language`, `filesystem_read_ui` прошли за 21,43 с, включая native Cocoa EN/RU
+consent/badge geometry. Linux прошёл те же пять suites в
+`20261021T073808Z-07e9c4ac`. Windows прошёл четыре, а `ntfs_stream` завершился
+по прежнему timeout при совместном прогоне; адресный повтор без изменения
+кода/timeout прошёл в `20261021T074204Z-0fef8bd4`. Причина timeout не установлена.
+Новых native-kernel mount checks этого scenario нет;
+archive recovery adaptation не заявляется как полная VFS namespace parity.
+
 ## Открытый read scope
 
 Выбранные classic/WOF/MFT bootstrap scenarios подключены и проверены.

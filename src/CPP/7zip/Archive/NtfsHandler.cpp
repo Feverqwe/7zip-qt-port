@@ -1227,6 +1227,8 @@ struct CMftRec {
     CObjectVector<CAttr> AttrListAttrs;
 #ifdef SEVENZIP_LINUX_NTFS
     CObjectVector<CAttr> EaInfoAttrs, EaAttrs;
+    CObjectVector<CAttr> StandardAttrs, FileNameAttrs;
+    bool MetadataUnverified = false;
     CObjectVector<CAttr> VolumeNameAttrs, VolumeInfoAttrs;
     CObjectVector<CAttr> SecurityRoots, SecurityAlloc;
     sevenzip_ntfs_wsl_perm Wsl{};
@@ -1275,10 +1277,16 @@ struct CMftRec {
     }
     */
     void MoveAttrsFrom(CMftRec &src) {
-        if (!SiDefined && src.SiDefined) {
-            SiAttr = src.SiAttr;
-            SiDefined = true;
+#ifdef SEVENZIP_LINUX_NTFS
+        if (!InUse() || !src.InUse()) {
+#endif
+            if (!SiDefined && src.SiDefined) {
+                SiAttr = src.SiAttr;
+                SiDefined = true;
+            }
+#ifdef SEVENZIP_LINUX_NTFS
         }
+#endif
 #ifdef SEVENZIP_LINUX_NTFS
         if (!InUse() || !src.InUse())
 #endif
@@ -1296,7 +1304,10 @@ struct CMftRec {
         src.SecurityRoots.ClearAndFree();
         src.SecurityAlloc.ClearAndFree();
 #endif
-        FileNames += src.FileNames;
+#ifdef SEVENZIP_LINUX_NTFS
+        if (!InUse() || !src.InUse())
+#endif
+            FileNames += src.FileNames;
         src.DataAttrs.ClearAndFree();
         src.ReparseAttrs.ClearAndFree();
         src.FileNames.ClearAndFree();
@@ -1340,6 +1351,10 @@ struct CMftRec {
     }
 
     void ParseDataNames();
+#ifdef SEVENZIP_LINUX_NTFS
+    void AddStandardMetadata(const CAttr &attr);
+    void AddNameMetadata(const CAttr &attr, UInt32 recordIndex);
+#endif
     HRESULT GetStream(IInStream *mainStream, int dataIndex, unsigned clusterSizeLog,
                       UInt64 numPhysClusters, IInStream **stream,
                       CMyComPtr2<IInStream, CInStream> *inStream_Object = NULL) const;
@@ -1362,6 +1377,34 @@ void CMftRec::ParseDataNames() {
         attr.NextAttrIndex = i;
     }
 }
+
+#ifdef SEVENZIP_LINUX_NTFS
+void CMftRec::AddStandardMetadata(const CAttr &attr) {
+    CSiAttr value;
+    if (!attr.ParseSi(value)) {
+        MetadataUnverified = true;
+        return;
+    }
+    if (!SiDefined) {
+        SiAttr = value;
+        SiDefined = true;
+    }
+}
+
+void CMftRec::AddNameMetadata(const CAttr &attr, UInt32 recordIndex) {
+    CFileNameAttr name;
+    if (attr.NonResident || !attr.ParseFileName(name) || name.Name.IsEmpty() ||
+        name.Name.Len() != attr.Data[0x40] || name.Name == L".." ||
+        (name.Name == L"." && recordIndex != kRecIndex_RootDir) ||
+        UString(name.Name.GetRawPtr()).Find(L'/') >= 0) {
+        MetadataUnverified = true;
+        return;
+    }
+    if (name.NameType > kFileNameType_Win32Dos)
+        MetadataUnverified = true;
+    FileNames.Add(name);
+}
+#endif
 
 #ifdef SEVENZIP_LINUX_NTFS
 // Defer ADS mapping until initialized WOF data is actually requested.
@@ -1614,6 +1657,12 @@ bool CMftRec::ParseRec(Byte *const p, const unsigned sectorSizeLog, const unsign
         previousType = type;
         switch (type) {
         case ATTR_TYPE_FILE_NAME: {
+#ifdef SEVENZIP_LINUX_NTFS
+            if (InUse()) {
+                FileNameAttrs.Add(attr);
+                break;
+            }
+#endif
             CFileNameAttr fna;
             if (!attr.ParseFileName(fna))
                 return false;
@@ -1623,6 +1672,12 @@ bool CMftRec::ParseRec(Byte *const p, const unsigned sectorSizeLog, const unsign
             break;
         }
         case ATTR_TYPE_STANDARD_INFO: {
+#ifdef SEVENZIP_LINUX_NTFS
+            if (InUse()) {
+                StandardAttrs.Add(attr);
+                break;
+            }
+#endif
             CSiAttr value;
             if (!attr.ParseSi(value)) {
                 if (InUse())
@@ -1780,6 +1835,7 @@ struct CDatabase {
     bool ReparseLimitations = false;
     bool EaLimitations = false;
     bool DataLimitations = false;
+    bool MetadataLimitations = false;
 #endif
 
     CVolumeInfo VolumeInfo;
@@ -1858,6 +1914,8 @@ struct CDatabase {
     HRESULT LoadActiveReparseMetadata();
     HRESULT SelectActiveEaMetadata();
     HRESULT SelectActiveDataAttributes();
+    HRESULT SelectActiveFileMetadata();
+    void ResolveParentCycles(bool &normalLost, bool &deletedLost);
     HRESULT CollectMetadataAttributes(UInt32 baseIndex, UInt32 type, const CAttr &primary,
                                       const CByteBuffer &list, bool useList,
                                       CObjectVector<CAttr> &attrs) const;
@@ -1894,6 +1952,7 @@ void CDatabase::Clear() {
     ReparseLimitations = false;
     EaLimitations = false;
     DataLimitations = false;
+    MetadataLimitations = false;
 #endif
     PhySize = 0;
 }
@@ -1989,7 +2048,13 @@ void CDatabase::GetItemPath(const unsigned index, NCOM::CPropVariant &path) cons
 
     for (unsigned i = 0;; i++) {
         size += Recs[item->RecIndex].FileNames[item->NameIndex].Name.Len();
-        if (i > 256 || size >= 1u << 15) {
+        if (i >
+#ifdef SEVENZIP_LINUX_NTFS
+                Items.Size()
+#else
+                256
+#endif
+            || size >= 1u << 15) {
             path = kLongPath;
             return;
         }
@@ -2141,6 +2206,10 @@ enum { kMetadataReferenceInvalid = -1, kMetadataListInvalid = -2 };
 
 static const CObjectVector<CAttr> &MetadataAttributes(const CMftRec &rec, UInt32 type) {
     switch (type) {
+    case ATTR_TYPE_STANDARD_INFO:
+        return rec.StandardAttrs;
+    case ATTR_TYPE_FILE_NAME:
+        return rec.FileNameAttrs;
     case ATTR_TYPE_VOLUME_NAME:
         return rec.VolumeNameAttrs;
     case ATTR_TYPE_VOLUME_INFO:
@@ -2238,6 +2307,138 @@ HRESULT CDatabase::ReadMetadataList(UInt32 baseIndex, CByteBuffer &list) {
             RINOK(OpenCallback->SetCompleted(NULL, NULL))
     }
     return S_OK;
+}
+
+HRESULT CDatabase::SelectActiveFileMetadata() {
+    FOR_VECTOR(i, Recs) {
+        CMftRec &rec = Recs[i];
+        if (!rec.Is_Magic_FILE() || !rec.InUse() || !rec.BaseMftRef.IsBaseItself())
+            continue;
+        if (OpenCallback)
+            RINOK(OpenCallback->SetCompleted(NULL, NULL))
+        rec.SiAttr = CSiAttr();
+        rec.SiDefined = false;
+        rec.FileNames.Clear();
+        // ntfs_read_mft consumes base STANDARD_INFORMATION before ATTR_LIST;
+        // a listed duplicate cannot overwrite the first usable base value.
+        FOR_VECTOR(j, rec.StandardAttrs)
+        rec.AddStandardMetadata(rec.StandardAttrs[j]);
+        bool localNames = rec.AttrListAttrs.IsEmpty();
+        if (!localNames) {
+            CByteBuffer list;
+            const HRESULT result = ReadMetadataList(i, list);
+            if (result == S_FALSE) {
+                rec.MetadataUnverified = true;
+                localNames = true;
+            } else {
+                RINOK(result)
+                size_t cursor = SIZE_MAX;
+                UInt32 previous = 0;
+                CRecordVector<UInt64> namesSeen;
+                for (;;) {
+                    sevenzip_ntfs_list_entry entry;
+                    const int next = sevenzip_ntfs_list_next(list, list.Size(), &cursor, &entry);
+                    if (next < 0 || (next > 0 && entry.type < previous)) {
+                        rec.MetadataUnverified = true;
+                        localNames = true;
+                        rec.FileNames.Clear();
+                        rec.SiDefined = false;
+                        rec.SiAttr = CSiAttr();
+                        FOR_VECTOR(j, rec.StandardAttrs)
+                        rec.AddStandardMetadata(rec.StandardAttrs[j]);
+                        break;
+                    }
+                    if (!next)
+                        break;
+                    previous = entry.type;
+                    if (entry.type != ATTR_TYPE_STANDARD_INFO && entry.type != ATTR_TYPE_FILE_NAME)
+                        continue;
+                    const CAttr *attr = FindListedMetadataAttribute(i, entry.type, entry);
+                    if (!attr && entry.type == ATTR_TYPE_FILE_NAME) {
+                        attr = FindListedMetadataAttribute(i, entry.type, entry, true);
+                        if (attr)
+                            rec.MetadataUnverified = true;
+                    }
+                    if (!attr) {
+                        rec.MetadataUnverified = true;
+                        continue;
+                    }
+                    if (entry.type == ATTR_TYPE_STANDARD_INFO)
+                        rec.AddStandardMetadata(*attr);
+                    else {
+                        const UInt64 key = (entry.ref << 16) | entry.id;
+                        if (namesSeen.FindInSorted(key) >= 0) {
+                            rec.MetadataUnverified = true;
+                            continue;
+                        }
+                        namesSeen.AddToUniqueSorted(key);
+                        rec.AddNameMetadata(*attr, i);
+                    }
+                }
+            }
+        }
+        if (localNames)
+            FOR_VECTOR(j, rec.FileNameAttrs)
+        rec.AddNameMetadata(rec.FileNameAttrs[j], i);
+        bool nameNeeded = i >= kNumSysRecs;
+        if (!nameNeeded)
+            FOR_VECTOR(j, rec.DataAttrs)
+        nameNeeded |= rec.DataAttrs[j].GetSize() != 0;
+        if (!rec.SiDefined || (nameNeeded && rec.FileNames.IsEmpty()))
+            rec.MetadataUnverified = true;
+        // Keep the original orphan-DOS recovery name, but do not call it a
+        // verified normal namespace when Linux would skip this alias.
+        FOR_VECTOR(j, rec.FileNames)
+        if (rec.FileNames[j].IsDos() && rec.FindWin32Name_for_DosName(j) < 0)
+            rec.MetadataUnverified = true;
+        MetadataLimitations |= rec.MetadataUnverified;
+    }
+    FOR_VECTOR(i, Recs) {
+        Recs[i].StandardAttrs.ClearAndFree();
+        Recs[i].FileNameAttrs.ClearAndFree();
+    }
+    return S_OK;
+}
+
+void CDatabase::ResolveParentCycles(bool &normalLost, bool &deletedLost) {
+    if (Items.IsEmpty())
+        return;
+    CByteBuffer states;
+    states.Alloc(Items.Size());
+    memset(states, 0, Items.Size());
+    CRecordVector<UInt32> path;
+    FOR_VECTOR(start, Items) {
+        if (states[start])
+            continue;
+        path.Clear();
+        int node = (int)start;
+        while (node >= 0 && !states[(unsigned)node]) {
+            states[(unsigned)node] = 1;
+            path.Add((UInt32)node);
+            const CItem &item = Items[(unsigned)node];
+            node = item.RecIndex < kNumSysRecs ? -1 : item.ParentFolder;
+        }
+        if (node >= 0 && states[(unsigned)node] == 1) {
+            const int cycle = node;
+            do {
+                CItem &item = Items[(unsigned)node];
+                CMftRec &rec = Recs[item.RecIndex];
+                const int next = item.ParentFolder;
+                rec.MetadataUnverified = true;
+                MetadataLimitations = true;
+                if (rec.InUse()) {
+                    item.ParentFolder = k_ParentFolderIndex_Lost;
+                    normalLost = true;
+                } else {
+                    item.ParentFolder = k_ParentFolderIndex_Deleted;
+                    deletedLost = true;
+                }
+                node = next;
+            } while (node != cycle);
+        }
+        FOR_VECTOR(j, path)
+        states[path[j]] = 2;
+    }
 }
 
 HRESULT CDatabase::LoadVolumeMetadata() {
@@ -3337,6 +3538,7 @@ HRESULT CDatabase::Open() {
     */
 
 #ifdef SEVENZIP_LINUX_NTFS
+    RINOK(SelectActiveFileMetadata())
     RINOK(LoadVolumeMetadata())
     RINOK(LoadActiveReparseMetadata())
     RINOK(SelectActiveEaMetadata())
@@ -3383,7 +3585,14 @@ HRESULT CDatabase::Open() {
         if (!rec.Is_Magic_FILE())
             continue;
         if (rec.InUse() && rec.BaseMftRef.IsBaseItself() && !rec.SiDefined)
+#ifdef SEVENZIP_LINUX_NTFS
+        {
+            rec.MetadataUnverified = true;
+            MetadataLimitations = true;
+        }
+#else
             return S_FALSE;
+#endif
         rec.ParseDataNames();
     }
 
@@ -3624,13 +3833,28 @@ HRESULT CDatabase::Open() {
 #if 1 // 0 for debug
       // we don't set ParentFolder link to (RootDir) item:
         if (refIndex == kRecIndex_RootDir)
+#ifdef SEVENZIP_LINUX_NTFS
+        {
+            if (refIndex >= Recs.Size() ||
+                Recs[(unsigned)refIndex].SeqNumber != parentDirRef.GetNumber()) {
+                Recs[item.RecIndex].MetadataUnverified = true;
+                MetadataLimitations = true;
+            }
             continue;
+        }
+#else
+            continue;
+#endif
 #endif
         {
             int index = Find_DirItem_For_MftRec(refIndex);
             if (index < 0 || Recs[(unsigned)refIndex].SeqNumber != parentDirRef.GetNumber())
             // Recs[Items[index].RecIndex].SeqNumber != parentDirRef.GetNumber())
             {
+#ifdef SEVENZIP_LINUX_NTFS
+                Recs[item.RecIndex].MetadataUnverified = true;
+                MetadataLimitations = true;
+#endif
                 if (rec.InUse()) {
                     thereAreUnknownFolders_Normal = true;
                     index = k_ParentFolderIndex_Lost;
@@ -3643,6 +3867,9 @@ HRESULT CDatabase::Open() {
         }
     }
 
+#ifdef SEVENZIP_LINUX_NTFS
+    ResolveParentCycles(thereAreUnknownFolders_Normal, thereAreUnknownFolders_Deleted);
+#endif
     if (kRecIndex_RootDir < Recs.Size()) {
         CMftRec &rec = Recs[kRecIndex_RootDir];
         if (rec.MyItemIndex >= 0) {
@@ -3972,6 +4199,12 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(const PROPID propID, PROPVARIANT *cons
             reasons += "Some NTFS DATA mappings are incomplete or unverified. Files or streams "
                        "may be outdated, incomplete or unreadable.";
         }
+        if (MetadataLimitations) {
+            if (!reasons.IsEmpty())
+                reasons += '\n';
+            reasons += "Some NTFS file metadata is unavailable or unverified. Names, times and "
+                       "permissions may be missing or outdated.";
+        }
         if (!reasons.IsEmpty())
             prop = reasons;
         break;
@@ -4003,11 +4236,11 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(const PROPID propID, PROPVARIANT *cons
     }
     */
     case kpidCTime:
-        if (volRec)
+        if (volRec && volRec->SiDefined)
             NtfsTimeToProp(volRec->SiAttr.CTime, prop);
         break;
     case kpidMTime:
-        if (volRec)
+        if (volRec && volRec->SiDefined)
             NtfsTimeToProp(volRec->SiAttr.MTime, prop);
         break;
     case kpidShortComment:
@@ -4200,12 +4433,24 @@ Z7_COM7F_IMF(CHandler::GetProperty(const UInt32 index, const PROPID propID,
             // case kpidIsAux: prop = false; break;
 
         case kpidMTime:
+#ifdef SEVENZIP_LINUX_NTFS
+            if (rec.InUse() && !rec.SiDefined)
+                break;
+#endif
             NtfsTimeToProp(rec.SiAttr.MTime, prop);
             break;
         case kpidCTime:
+#ifdef SEVENZIP_LINUX_NTFS
+            if (rec.InUse() && !rec.SiDefined)
+                break;
+#endif
             NtfsTimeToProp(rec.SiAttr.CTime, prop);
             break;
         case kpidATime:
+#ifdef SEVENZIP_LINUX_NTFS
+            if (rec.InUse() && !rec.SiDefined)
+                break;
+#endif
             NtfsTimeToProp(rec.SiAttr.ATime, prop);
             break;
         case kpidChangeTime:
@@ -4218,6 +4463,10 @@ Z7_COM7F_IMF(CHandler::GetProperty(const UInt32 index, const PROPID propID,
         case kpidRecMTime2: if (fn) NtfsTimeToProp(fn->ThisRecMTime, prop); break;
         */
         case kpidAttrib: {
+#ifdef SEVENZIP_LINUX_NTFS
+            if (rec.InUse() && !rec.SiDefined)
+                break;
+#endif
             UInt32 attrib = 0;
             if (item.IsAltStream() && item.RecIndex == kRecIndex_RootDir) {
                 break;
@@ -4282,6 +4531,8 @@ Z7_COM7F_IMF(CHandler::GetProperty(const UInt32 index, const PROPID propID,
 #ifdef SEVENZIP_LINUX_NTFS
             if (data && (data->Unavailable || data->Partial) && (item.IsAltStream() || !rec.Link))
                 prop = "NTFS DATA mapping is incomplete or unverified.";
+            else if (rec.MetadataUnverified)
+                prop = "NTFS file metadata is unavailable or unverified.";
 #endif
             break;
         case kpidSize:

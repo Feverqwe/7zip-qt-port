@@ -60,7 +60,12 @@ UString QtArchiveDiagnosticText(const UString &source) {
         QT_TRANSLATE_NOOP("SevenZipDiagnostics",
                           "Some NTFS DATA mappings are incomplete or unverified. Files or streams "
                           "may be outdated, incomplete or unreadable."),
-        QT_TRANSLATE_NOOP("SevenZipDiagnostics", "NTFS DATA mapping is incomplete or unverified.")};
+        QT_TRANSLATE_NOOP("SevenZipDiagnostics", "NTFS DATA mapping is incomplete or unverified."),
+        QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                          "Some NTFS file metadata is unavailable or unverified. Names, times and "
+                          "permissions may be missing or outdated."),
+        QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                          "NTFS file metadata is unavailable or unverified.")};
     for (const char *warning : warnings)
         if (text == QString::fromLatin1(warning))
             return QtDiagnosticText(warning);

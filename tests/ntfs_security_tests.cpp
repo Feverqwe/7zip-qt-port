@@ -231,29 +231,14 @@ class NtfsSecurityTests final : public QObject {
     }
     void malformedDescriptors_data() {
         QTest::addColumn<QString>("kind");
-        for (const char *kind : {"security-root-offset",
-                                 "security-root-used",
-                                 "security-root-terminal",
-                                 "security-key-overrun",
-                                 "security-subnode-flag",
-                                 "security-view-short",
-                                 "security-header-mismatch",
-                                 "security-sds-range",
-                                 "security-sd-short",
-                                 "security-sid-overflow",
-                                 "security-sid-length",
-                                 "security-acl-revision",
-                                 "security-ace-overrun",
-                                 "security-node-vbn",
-                                 "security-node-fixup-range",
-                                 "security-node-key-overrun",
-                                 "security-index-range",
-                                 "security-cycle",
-                                 "standard-short",
-                                 "standard-nonresident",
-                                 "standard-missing",
-                                 "standard-bad-second",
-                                 "standard-record-total"})
+        for (const char *kind :
+             {"security-root-offset", "security-root-used", "security-root-terminal",
+              "security-key-overrun", "security-subnode-flag", "security-view-short",
+              "security-header-mismatch", "security-sds-range", "security-sd-short",
+              "security-sid-overflow", "security-sid-length", "security-acl-revision",
+              "security-ace-overrun", "security-node-vbn", "security-node-fixup-range",
+              "security-node-key-overrun", "security-index-range", "security-cycle",
+              "standard-record-total"})
             QTest::newRow(kind) << QString::fromLatin1(kind);
     }
     void malformedDescriptors() {
@@ -268,6 +253,46 @@ class NtfsSecurityTests final : public QObject {
         source = new Input(image_);
         QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
         descriptor();
+    }
+    void unavailableStandardMetadataKeepsData_data() {
+        QTest::addColumn<QString>("kind");
+        for (const char *kind :
+             {"standard-short", "standard-nonresident", "standard-missing", "standard-bad-second"})
+            QTest::newRow(kind) << QString::fromLatin1(kind);
+    }
+    void unavailableStandardMetadataKeepsData() {
+        QFETCH(QString, kind);
+        fixture(kind);
+        CMyComPtr<IInStream> source = new Input(image_);
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
+        QVERIFY(index() != UINT32_MAX);
+        NWindows::NCOM::CPropVariant time, attributes, error;
+        QCOMPARE(archive_->GetProperty(index(), kpidMTime, &time), S_OK);
+        QCOMPARE(archive_->GetProperty(index(), kpidAttrib, &attributes), S_OK);
+        QCOMPARE(archive_->GetProperty(index(), kpidError, &error), S_OK);
+        QCOMPARE(error.vt, VARTYPE(VT_BSTR));
+        if (kind == "standard-bad-second") {
+            QCOMPARE(time.vt, VARTYPE(VT_FILETIME));
+            QCOMPARE((UInt64(time.filetime.dwHighDateTime) << 32) | time.filetime.dwLowDateTime,
+                     UInt64(132537600000000000));
+            QCOMPARE(attributes.vt, VARTYPE(VT_UI4));
+            descriptor();
+        } else {
+            QCOMPARE(time.vt, VARTYPE(VT_EMPTY));
+            QCOMPARE(attributes.vt, VARTYPE(VT_EMPTY));
+            CMyComPtr<IArchiveGetRawProps> raw;
+            QCOMPARE(
+                archive_->QueryInterface(IID_IArchiveGetRawProps, reinterpret_cast<void **>(&raw)),
+                S_OK);
+            const void *data = nullptr;
+            UInt32 bytes = 99, type = 0;
+            QCOMPARE(raw->GetRawProp(index(), kpidNtSecure, &data, &bytes, &type), S_OK);
+            QCOMPARE(bytes, UInt32(0));
+        }
+        payload(dataStream());
+        auto retained = dataStream();
+        QCOMPARE(archive_->Close(), S_OK);
+        payload(retained);
     }
     void ioCancellationAndRecovery() {
         fixture("security-fragmented-index");

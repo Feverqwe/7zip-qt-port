@@ -3838,6 +3838,14 @@ Are you sure you want to split archive into such volumes?</source>
     <context>
         <name>SevenZipDiagnostics</name>
         <message>
+            <source>Some NTFS file metadata is unavailable or unverified. Names, times and permissions may be missing or outdated.</source>
+            <translation>Некоторые метаданные файлов NTFS недоступны или не проверены. Имена, время и права доступа могут отсутствовать или быть устаревшими.</translation>
+        </message>
+        <message>
+            <source>NTFS file metadata is unavailable or unverified.</source>
+            <translation>Метаданные файла NTFS недоступны или не проверены.</translation>
+        </message>
+        <message>
             <source>Some NTFS DATA mappings are incomplete or unverified. Files or streams may be outdated, incomplete or unreadable.</source>
             <translation>Расположение некоторых данных NTFS неполно или не проверено. Файлы и потоки могут быть устаревшими, неполными или недоступными для чтения.</translation>
         </message>

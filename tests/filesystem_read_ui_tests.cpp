@@ -66,7 +66,7 @@ class FilesystemReadUiTests final : public QObject {
                      {"exfat", "wrapper-no-slock", "unclean", "free-overflow",
                       "classic-unclean-free-overflow", "volume-dirty", "volume-short",
                       "volume-list-nonresident", "reparse-list-bad-id", "ea-record-small",
-                      "data-list-unreadable-list"}) {
+                      "data-list-unreadable-list", "standard-short"}) {
                     // Rejection uses the shared consent service; acceptance checks every reason.
                     if (!accept && kind != "exfat" && kind != "unclean" && kind != "volume-dirty")
                         continue;
@@ -79,7 +79,8 @@ class FilesystemReadUiTests final : public QObject {
         QFETCH(bool, accept);
         QFETCH(QString, kind);
         const bool ntfs = kind.startsWith("volume-") || kind.startsWith("reparse-") ||
-                          kind.startsWith("ea-") || kind.startsWith("data-list-");
+                          kind.startsWith("ea-") || kind.startsWith("data-list-") ||
+                          kind.startsWith("standard-");
         SaveRegLang(UString(language == "en" ? L"-" : L"ru"),
                     qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
         TexfatFixture fixture(language == "en" ? 0 : 1);
@@ -209,7 +210,7 @@ class FilesystemReadUiTests final : public QObject {
                     QDir(output).entryList(QDir::AllEntries | QDir::NoDotAndDotDot).join('\n')));
             QCOMPARE(copied.readAll(), payload);
             if (kind == "reparse-list-bad-id" || kind == "ea-record-small" ||
-                kind == "data-list-unreadable-list") {
+                kind == "data-list-unreadable-list" || kind == "standard-short") {
                 QTRY_VERIFY(Row(*table, "gamma") >= 0);
                 table->selectRow(Row(*table, "gamma"));
                 window.extractTo(output, true, {}, copyOptions);

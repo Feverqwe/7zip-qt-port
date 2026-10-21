@@ -94,6 +94,9 @@ def nonresident(original, entries, size, valid=None, flags=0, unit=0):
 
 
 def volume(kind="base"):
+    if kind.startswith("meta-"):
+        from ntfs_file_metadata_fixture import volume as metadata_volume
+        return metadata_volume(kind)
     if kind.startswith("data-list-"):
         from ntfs_data_list_fixture import volume as data_list_volume
         return data_list_volume(kind)

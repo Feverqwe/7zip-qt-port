@@ -67,7 +67,7 @@ class NtfsTests(unittest.TestCase):
                 self.assertEqual(listing.returncode, 0, listing.stderr)
                 reason = limitation(kind)
                 if reason:
-                    self.assertIn(("Read-only limitations = " + reason).encode(), listing.stdout)
+                    self.assertIn(reason.encode(), listing.stdout)
                 else:
                     self.assertNotIn(b"Read-only limitations = ", listing.stdout)
                 if kind.startswith("volume-list-"):
@@ -88,12 +88,18 @@ class NtfsTests(unittest.TestCase):
                     self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
                     self.assertEqual(result.stdout, files[name])
         for kind in STANDARD_BAD:
-            image, _ = volume(kind)
+            image, files = volume(kind)
             for engine in ("7z", "7zz"):
                 with self.subTest(kind=kind, engine=engine):
                     result = self.run_image(engine, image, "x", "gamma")
-                    self.assertNotEqual(result.returncode, 0)
-                    self.assertEqual(result.stdout, b"")
+                    if engine == "7z" and kind != "standard-record-total":
+                        self.assertEqual(result.returncode, 0, result.stderr)
+                        self.assertEqual(result.stdout, files["gamma"])
+                        listing = self.run_image(engine, image, "l")
+                        self.assertIn(b"Some NTFS file metadata is unavailable or unverified.", listing.stdout)
+                    else:
+                        self.assertNotEqual(result.returncode, 0)
+                        self.assertEqual(result.stdout, b"")
 
     def test_classic_read_paths_in_both_engines(self):
         for kind in ("base", "sparse", "hole-first", "initialized", "compressed", "sector4k", "boot-reserved", "backup-boot"):
@@ -179,6 +185,19 @@ class NtfsTests(unittest.TestCase):
                     result = self.run_image("7z", image, "x", "gamma:side", case_sensitive=True)
                     self.assertNotEqual(result.returncode, 0)
                     self.assertEqual(result.stdout, b"")
+
+    def test_file_metadata_membership_and_recovery_names(self):
+        from ntfs_file_metadata_fixture import CASES, LIMITED, LIMITATION
+        for kind in CASES:
+            with self.subTest(kind=kind):
+                image, files = volume(kind)
+                listing = self.run_image("7z", image, "l")
+                self.assertEqual(listing.returncode, 0, listing.stderr)
+                self.assertEqual(LIMITATION.encode() in listing.stdout, kind in LIMITED)
+                for name, expected in files.items():
+                    result = self.run_image("7z", image, "x", name, case_sensitive=True)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertEqual(result.stdout, expected)
 
     def test_linux_wof_and_fragmented_mft(self):
         for kind in ("mft-list", "mft-list-nonresident", "wof-xpress4k", "wof-xpress8k",

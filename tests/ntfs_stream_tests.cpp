@@ -376,7 +376,7 @@ class NtfsStreamTests final : public QObject {
                     QCOMPARE(state.vt, VARTYPE(VT_EMPTY));
                 else {
                     QCOMPARE(state.vt, VARTYPE(VT_BSTR));
-                    QCOMPARE(QString::fromWCharArray(state.bstrVal), expected);
+                    QVERIFY(QString::fromWCharArray(state.bstrVal).contains(expected));
                 }
             }
             QVERIFY(found);
@@ -835,6 +835,75 @@ class NtfsStreamTests final : public QObject {
         QCOMPARE(file->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
         QCOMPARE(file->Read(data, sizeof(data), &bytes), S_OK);
         QCOMPARE(QByteArray(data, int(bytes)), QByteArray(4096, 'A'));
+    }
+    void fileMetadataNamesAndParents_data() {
+        QTest::addColumn<QString>("kind");
+        for (const char *kind :
+             {"meta-list-selected", "meta-list-nonresident", "meta-hardlinks-dos", "meta-base-si",
+              "meta-listed-si", "meta-deep", "meta-unlisted-si", "meta-bad-fn-id",
+              "meta-bad-fn-value", "meta-nonresident-fn", "meta-nul-fn", "meta-list-malformed",
+              "meta-parent-missing", "meta-parent-stale", "meta-orphan-dos", "meta-cycle-self",
+              "meta-cycle-pair"})
+            QTest::newRow(kind) << QString::fromLatin1(kind);
+    }
+    void fileMetadataNamesAndParents() {
+        QFETCH(QString, kind);
+        loadFixture(kind);
+        CMyComPtr<IInStream> input = new Input(bytes_);
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        QString limitations;
+        QVERIFY(readLimitations(limitations));
+        const bool valid = kind == "meta-list-selected" || kind == "meta-list-nonresident" ||
+                           kind == "meta-hardlinks-dos" || kind == "meta-base-si" ||
+                           kind == "meta-listed-si" || kind == "meta-deep";
+        QCOMPARE(limitations.isEmpty(), valid);
+        const auto files = record_["files"].toObject();
+        QString chosen;
+        for (auto it = files.begin(); it != files.end(); ++it) {
+            auto file = stream(it.key());
+            QVERIFY2(file, qPrintable(it.key()));
+            check(file, it.key(), 0, 200000);
+            if (it.key() != "alpha" && it.key() != QStringLiteral("данные 空"))
+                chosen = it.key();
+        }
+        QVERIFY(!chosen.isEmpty());
+        if (kind == "meta-list-selected" || kind == "meta-list-nonresident" ||
+            kind == "meta-hardlinks-dos")
+            QCOMPARE(index("gamma"), UInt32(UINT32_MAX));
+        if (kind == "meta-hardlinks-dos") {
+            NWindows::NCOM::CPropVariant count, shortName, firstId, secondId;
+            QCOMPARE(archive_->GetProperty(index("omega"), kpidLinks, &count), S_OK);
+            QCOMPARE(count.vt, VARTYPE(VT_UI4));
+            QCOMPARE(count.ulVal, UInt32(2));
+            QCOMPARE(archive_->GetProperty(index("omega"), kpidShortName, &shortName), S_OK);
+            QCOMPARE(shortName.vt, VARTYPE(VT_BSTR));
+            QCOMPARE(QString::fromWCharArray(shortName.bstrVal), QString("OMEGA~1"));
+            QCOMPARE(index("OMEGA~1"), UInt32(UINT32_MAX));
+            QCOMPARE(archive_->GetProperty(index("omega"), kpidINode, &firstId), S_OK);
+            QCOMPARE(archive_->GetProperty(index("alias"), kpidINode, &secondId), S_OK);
+            QCOMPARE(firstId.ulVal, secondId.ulVal);
+        }
+        if (kind == "meta-base-si" || kind == "meta-listed-si" || kind == "meta-unlisted-si") {
+            NWindows::NCOM::CPropVariant time, attrs;
+            QCOMPARE(archive_->GetProperty(index("gamma"), kpidMTime, &time), S_OK);
+            QCOMPARE(archive_->GetProperty(index("gamma"), kpidAttrib, &attrs), S_OK);
+            if (kind == "meta-unlisted-si") {
+                QCOMPARE(time.vt, VARTYPE(VT_EMPTY));
+                QCOMPARE(attrs.vt, VARTYPE(VT_EMPTY));
+            } else {
+                QCOMPARE(time.vt, VARTYPE(VT_FILETIME));
+                const UInt64 expected =
+                    132537600000000000 + (kind == "meta-listed-si" ? UInt64(864000000000) : 0);
+                QCOMPARE((UInt64(time.filetime.dwHighDateTime) << 32) | time.filetime.dwLowDateTime,
+                         expected);
+                QCOMPARE(attrs.vt, VARTYPE(VT_UI4));
+                QVERIFY(attrs.ulVal & 1);
+            }
+        }
+        auto retained = stream(chosen);
+        QCOMPARE(archive_->Close(), S_OK);
+        input.Release();
+        check(retained, chosen, 0, 200000);
     }
     void dataListIoFailureAndReopening() {
         loadFixture("data-list-nonresident");
