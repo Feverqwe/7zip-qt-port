@@ -635,7 +635,7 @@ standard-information owner, последующие EA/reparse consumers и
 в `ntfs.h`. Узкий вызов передаёт standard attributes и DATA flags; private
 service `ATTRIB` дополнен flags, без изменения raw disk layout/parser.
 Source language и исходные bit predicates/ветвления сохранены. Существующий
-SDK owner выбирает атрибуты после extension merge: безымянный DATA обычного
+SDK owner выбирает primary атрибуты после extension merge: безымянный DATA обычного
 файла, а также nonresident `$BadClus:$Bad` и `$Secure:$SDS`. Resident DATA
 `$BadClus`, остальные named ADS и DATA каталогов пропускаются, как в Linux.
 Три признака sparse/compressed/encrypted уточняются независимо от устаревших
@@ -662,6 +662,44 @@ entries сравнивались три выбранных признака, п�
 fixtures и одноразовый helper удалены; удаление синхронизировано на оба runners.
 Native kernel дополняет сравнение pinned source. Incremental builds и compiler
 caches сохранены; full/slow suites, UI и физические устройства не проверялись.
+
+## Primary DATA и собственные metadata ADS — 2026-10-21
+
+Последующий source review сопоставил целиком `inode.c:ntfs_init_ads_node`,
+`ntfs_iget5_flags`, `ntfs_read_mft` и enumeration `ni_enum_attr_ex`, выделение
+inode в `super.c:ntfs_alloc_inode`, `xattr.c:ntfs_getxattr`, SDK sorting,
+`NextAttrIndex`, extension merge и `CHandler::GetProperty/GetStream`.
+Linux пропускает non-primary attribute-list segments до ATTR_DATA metadata;
+их flags не уточняют признаки файла. Dynamic SDK boundary теперь также
+пропускает nonresident continuation с ненулевым LowVcn. Stream mapping по-прежнему
+собирает все segments и не зависит от metadata filter.
+
+При открытии ADS Linux задаёт три признака по собственному primary DATA.
+Dynamic archive `kpidAttrib` для активного ADS вызывает уже перенесённые
+оригинальные C ветви с flags соответствующего stream. Остальные Windows file
+attributes наследуются от base record согласно archive API; это явно отличается
+от lifecycle отдельного kernel ADS inode, который создаётся с нулевым std_fa.
+Read payload, размеры, EA/reparse/security properties и standalone SDK scope
+не меняются. Deleted recovery сохраняет прежнюю metadata projection.
+
+Пять новых ABI cases проверяют fragmented sparse/ordinary DATA с противоположными
+continuation flags, sparse/resident/encrypted ADS, независимость основного файла
+и exact payload/retained streams. Encrypted ADS не возвращает ciphertext как
+успешно прочитанный файл: проверяется unsupported operation result.
+
+Focused `ntfs`, `ntfs_stream`, `ntfs_security` PASS на macOS arm64/Qt 6.12
+(19,65 с), Linux x64/Qt 6.12 и Windows x64/MSVC/Qt 6.12, receipt
+`20261021T025648Z-c52e0fe9`. Финальный sync также удалил одноразовый helper
+из runner snapshots.
+
+Native ntfs3 `6.8.0-147-generic` подтвердил оба fragmented-образа: exact
+`system.ntfs_attrib` и полное содержимое, receipt
+`20261021T025620Z-959cba87`. Образы остались неизменными; loop mounts, fixtures
+и helper удалены. ADS native acceptance на этом старом kernel не заявляется;
+новый ADS read path сопоставлен с pinned Linux source. Все 30 baseline hashes
+проверены, три C ветви ADS совпадают с уже перенесённым projection после
+замены владельца поля. Incremental builds и caches сохранены; full/slow suites,
+UI и физические устройства не проверялись.
 
 ## Открытый read scope
 

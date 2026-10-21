@@ -200,7 +200,9 @@ class NtfsStreamTests final : public QObject {
         QTest::addColumn<QString>("kind");
         for (const char *kind :
              {"flags-clear", "flags-sparse", "flags-compressed", "flags-encrypted",
-              "flags-resident", "flags-ads", "flags-directory", "flags-badclus", "flags-secure"})
+              "flags-resident", "flags-ads", "flags-directory", "flags-badclus", "flags-secure",
+              "flags-extension-sparse", "flags-extension-plain", "flags-ads-sparse",
+              "flags-ads-resident", "flags-ads-encrypted"})
             QTest::newRow(kind) << QString::fromLatin1(kind);
     }
     void dataAttributeFlags() {
@@ -216,11 +218,23 @@ class NtfsStreamTests final : public QObject {
         QCOMPARE(archive_->GetProperty(id, kpidAttrib, &value), S_OK);
         QCOMPARE(value.vt, VARTYPE(VT_UI4));
         QCOMPARE(value.ulVal, UInt32(expected["value"].toInt()));
+        if (expected.contains("base_value")) {
+            QCOMPARE(archive_->GetProperty(index("alpha"), kpidAttrib, &value), S_OK);
+            QCOMPARE(value.vt, VARTYPE(VT_UI4));
+            QCOMPARE(value.ulVal, UInt32(expected["base_value"].toInt()));
+        }
         CMyComPtr<IInStream> retained;
         if (record_["files"].toObject().contains(path)) {
             retained = stream(path);
             QVERIFY(retained);
             check(retained, path, 0, 200000);
+        }
+        if (kind == "flags-ads-encrypted") {
+            CMyComPtr2<IArchiveExtractCallback, Extract> callback;
+            callback.Create_if_Empty();
+            QCOMPARE(archive_->Extract(&id, 1, true, callback), S_OK);
+            QCOMPARE(callback->result,
+                     Int32(NArchive::NExtract::NOperationResult::kUnsupportedMethod));
         }
         QCOMPARE(archive_->Close(), S_OK);
         if (retained)

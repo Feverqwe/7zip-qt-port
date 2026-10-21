@@ -2616,6 +2616,8 @@ HRESULT CDatabase::Open() {
             continue;
         FOR_VECTOR(attributeIndex, rec.DataAttrs) {
             const CAttr &attr = rec.DataAttrs[attributeIndex];
+            if (attr.NonResident && attr.LowVcn != 0)
+                continue;
             if (metadataIndex == kRecIndex_BadClus && !attr.NonResident)
                 continue;
             if (!attr.Name.IsEmpty() &&
@@ -3344,6 +3346,10 @@ Z7_COM7F_IMF(CHandler::GetProperty(const UInt32 index, const PROPID propID,
                 else
                 */
                 attrib = rec.SiAttr.Attrib;
+#ifdef SEVENZIP_LINUX_NTFS
+                if (item.IsAltStream() && data && rec.InUse())
+                    attrib = sevenzip_ntfs_data_attributes(attrib, data->Flags);
+#endif
                 if (item.IsDir())
                     attrib |= FILE_ATTRIBUTE_DIRECTORY;
 
