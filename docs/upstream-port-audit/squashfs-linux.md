@@ -5,6 +5,58 @@ Scope входит в [общую проверку форматов](filesystems
 современный LZO и проверки compressor options через отдельный format-модуль.
 Полная актуализация SquashFS read features по Linux ещё продолжается.
 
+## Ошибки отдельных directory metadata blocks, 2026-10-21
+
+Повторно сверены SDK `ReadMetadataBlock`/`Decompress`/`ReadData`, все decoder
+output paths и потребители directory buffers с Linux `cache.c:squashfs_read_metadata`,
+`block.c:squashfs_read_data`, `dir.c`/`namei.c` и directory inode branches.
+Локальная ошибка блока каталога не должна закрывать другие независимо
+адресуемые каталоги: Linux читает их по inode references, а прежний archive
+adapter требовал успешной предварительной декомпрессии всей directory table.
+
+GPL v4 reader публикует только полностью декодированные metadata blocks.
+Ошибка checksum после выдачи декодером части данных не публикует эти данные.
+Разрывы сохраняются в mapping, и parser ограничивается непрерывным диапазоном:
+байты исправного следующего каталога не становятся продолжением повреждённого.
+Продолжение чтения использует только проверенную packed boundary либо anchor
+из уже разобранного directory inode; недостоверная длина не используется для
+угадывания следующего блока. Расчёт непрерывных диапазонов выполняется один
+раз, без повторного сканирования всей таблицы для каждого каталога.
+
+Сохранены оригинальные bounded SDK decoders, COM streams и item parsing.
+`ReadMetadataBlock` использует уже существующий direct-buffer output path
+decoder для отдельного блока; никаких новых codec implementations нет.
+Core-only/legacy scope сохранён. Initial inode table и обязательные index
+tables по-прежнему требуют отдельного продолжения аудита. Новая адаптация
+не ослабляет source/table bounds, names/path validation, decoder availability
+или fatal abort/OOM/callback contract. Используются прежние consent, badge,
+directory diagnostics и DataError для неполного результата; source write/replay нет.
+
+Новые deterministic images содержат root, отдельный повреждённый каталог и
+исправный Unicode sibling после него. Проверяются bad header, checksum с
+частичным decoder output, read I/O failure, directory span через разрыв и
+неповреждённый control. Наблюдаемые результаты: исправные payloads доступны,
+повреждённые имена не выдумываются/не склеиваются, reset/reopen работает,
+abort/OOM/unsupported decoder и non-S_OK callbacks остаются фатальными.
+EN/RU UI проверяет реальное ограниченное открытие и копирование из такого образа.
+
+Четыре readonly native Linux `6.8.0-147-generic` controls подтвердили доступность
+root/исправного sibling при недоступном соседнем каталоге, в том числе после
+ошибки compressed metadata. Receipt: `20261021T150825Z-851450f1`.
+Байты payloads и неизменность образов проверены, mounts/data удалены;
+runtime kernel старше закреплённого source reference.
+Шесть focused suites (`squashfs`, `squashfs_stream`, `squashfs_metadata`,
+`filesystem_squashfs_directory_ui`, `upstream_baseline`, `upstream_inventory`)
+прошли на macOS и Linux; Windows прошёл те же проверки после исправления
+native path separator в новом ABI-тесте вложенного пути. Основной receipt:
+`20261021T151051Z-f7cea294`, повтор только затронутого ABI suite на трёх ОС:
+`20261021T151239Z-e3934310` (remote). Прочие прошедшие suites не повторялись
+после test-only correction. На macOS итоговая шестёрка — 8,17 с.
+Временный native helper удалён и удаление синхронизировано на гостях.
+Приложение инкрементально собрано на macOS.
+Полные/slow suites и физические носители не использовались; incremental
+build trees и compiler caches сохранены.
+
 ## Частичные каталоги и недоступные inode, 2026-10-21
 
 Сравнены SDK `OpenDir` и потребители item/node mapping, Linux
@@ -51,8 +103,9 @@ name/count, missing/unique/ambiguous inode mapping, неизвестные св�
 последующее исправное извлечение, Close/reopen и ошибки callback. EN/RU UI
 проверяет принятие/отказ, root warning, честный результат copying, нормальную
 и компактную геометрию и новый запрос после закрытия. На macOS восемь focused
-suites прошли за 24,30 с. Начальный отказ при недоступных inode/directory
-metadata blocks и index bootstrap ещё не закрыт: эта итерация не доказывает
+suites прошли за 24,30 с. Directory metadata blocks рассмотрены выше;
+отказы начальной загрузки inode metadata и index bootstrap ещё не закрыты.
+Эта итерация не доказывает
 полную устойчивость SquashFS к повреждениям.
 Те же восемь suites прошли на Linux и Windows, receipt
 `20261021T145404Z-57c0a1b5`. После форматирования изменённых C++ ranges

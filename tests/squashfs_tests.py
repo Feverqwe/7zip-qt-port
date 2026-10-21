@@ -242,6 +242,20 @@ class SquashfsTests(unittest.TestCase):
                 rejected = self.run_image("7zz", data, "l")
                 self.assertNotEqual(rejected.returncode, 0)
 
+    def test_directory_metadata_blocks_do_not_hide_other_directories(self):
+        for fault in ("directory-block-clean", "directory-block-header", "directory-block-zlib", "directory-block-span"):
+            data, files = volume(fault)
+            with self.subTest(fault=fault):
+                result = self.run_image("7z", data, "l")
+                self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                if fault != "directory-block-clean":
+                    self.assertNotIn(b"Path = broken/payload", result.stdout)
+                    self.assertNotIn(b"Path = payload", result.stdout)
+                for name in ("alpha", "good 空/payload"):
+                    result = self.run_image("7z", data, "x", name)
+                    self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                    self.assertEqual(result.stdout, files[name])
+
     def test_ambiguous_inode_numbers_do_not_merge_unrelated_files(self):
         data, files = volume("directory-ambiguous", xattrs=True)
         with tempfile.TemporaryDirectory(dir=self.runtime) as temporary:

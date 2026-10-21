@@ -157,7 +157,7 @@ class SquashfsStreamTests final : public QObject {
         for (UInt32 i = 0; i < count; ++i) {
             NWindows::NCOM::CPropVariant path;
             if (archive_->GetProperty(i, kpidPath, &path) == S_OK && path.vt == VT_BSTR &&
-                QString::fromWCharArray(path.bstrVal) == name)
+                QDir::fromNativeSeparators(QString::fromWCharArray(path.bstrVal)) == name)
                 return i;
         }
         return UInt32(-1);
@@ -375,6 +375,79 @@ class SquashfsStreamTests final : public QObject {
             UInt32 count = 99;
             QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
             QCOMPARE(count, 0u);
+        }
+    }
+    void directoryBlocksAreIsolated_data() {
+        QTest::addColumn<QString>("fault");
+        for (const QString &fault :
+             {"directory-block-clean", "directory-block-header", "directory-block-zlib",
+              "directory-block-span", "directory-block-io"})
+            QTest::newRow(qPrintable(fault)) << fault;
+    }
+    void directoryBlocksAreIsolated() {
+        QFETCH(QString, fault);
+        loadFixture("zlib", true, fault);
+        const bool clean = fault == "directory-block-clean";
+        const auto inode = qFromLittleEndian<quint64>(bytes_.constData() + 64);
+        const auto directory = qFromLittleEndian<quint64>(bytes_.constData() + 72);
+        const auto broken =
+            directory + qFromLittleEndian<quint32>(bytes_.constData() + inode + 2 + 72 + 16);
+        CMyComPtr2<IInStream, Input> source;
+        source.SetFromCls(new Input(bytes_));
+        if (fault == "directory-block-io")
+            source->failAt = broken + 2;
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
+        for (const QString &name : {QString("alpha"), QString("good 空/payload")}) {
+            auto data = stream(name);
+            QVERIFY(data);
+            const auto expected =
+                QByteArray::fromBase64(record_["files"].toObject()[name].toString().toLatin1());
+            check(data, name, 0, expected.size());
+        }
+        QCOMPARE(index("broken/payload") != UInt32(-1), clean);
+        QCOMPARE(index("payload"), UInt32(-1)); // Never join a directory across a metadata gap.
+        NWindows::NCOM::CPropVariant error;
+        QCOMPARE(archive_->GetProperty(index("broken"), kpidError, &error), S_OK);
+        QCOMPARE(error.vt, VARTYPE(clean ? VT_EMPTY : VT_BSTR));
+        if (fault == "directory-block-span") {
+            const UInt32 root = index("[ROOT]");
+            QVERIFY(root != UInt32(-1));
+            QCOMPARE(archive_->GetProperty(root, kpidError, &error), S_OK);
+            QCOMPARE(error.vt, VARTYPE(VT_BSTR));
+        }
+        QCOMPARE(archive_->Close(), S_OK);
+        loadFixture("zlib", true, "directory-block-clean");
+        CMyComPtr<IInStream> healthy = new Input(bytes_);
+        QCOMPARE(archive_->Open(healthy, nullptr, nullptr), S_OK);
+        QVERIFY(stream("broken/payload"));
+    }
+    void directoryBlockFailuresRemainFatalWhenRequired() {
+        loadFixture("zlib", true, "directory-block-io");
+        const auto inode = qFromLittleEndian<quint64>(bytes_.constData() + 64);
+        const auto directory = qFromLittleEndian<quint64>(bytes_.constData() + 72);
+        const auto broken =
+            directory + qFromLittleEndian<quint32>(bytes_.constData() + inode + 2 + 72 + 16);
+        CMyComPtr2<IInStream, Input> source;
+        source.SetFromCls(new Input(bytes_));
+        source->failAt = broken + 2;
+        for (HRESULT result : {E_ABORT, E_OUTOFMEMORY, E_NOTIMPL}) {
+            source->atFailure = result;
+            QCOMPARE(source->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
+            QCOMPARE(archive_->Open(source, nullptr, nullptr), result);
+            UInt32 count = 99;
+            QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+            QCOMPARE(count, 0u);
+        }
+        source->failAt = UINT64_MAX;
+        source->notifyAt = broken + 2;
+        CMyComPtr2<IArchiveOpenCallback, MetadataOpen> callback;
+        callback.SetFromCls(new MetadataOpen);
+        callback->source = source.ClsPtr();
+        for (HRESULT result : {E_ABORT, E_FAIL, S_FALSE}) {
+            source->notified = false;
+            callback->completionResult = result;
+            QCOMPARE(source->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
+            QCOMPARE(archive_->Open(source, nullptr, callback), result);
         }
     }
     void unavailableTablesKeepReadableData_data() {

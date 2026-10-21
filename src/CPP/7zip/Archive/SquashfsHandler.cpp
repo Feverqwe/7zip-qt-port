@@ -784,12 +784,20 @@ struct CData {
     CByteBuffer Data;
     CRecordVector<UInt32> PackPos;
     CRecordVector<UInt32> UnpackPos;
+    CRecordVector<UInt32> PackEnd;
+    CRecordVector<UInt32> UnpackEnd;
+
+    UInt32 ContiguousEnd(unsigned block) const {
+        return UnpackEnd.IsEmpty() ? (UInt32)Data.Size() : UnpackEnd[block];
+    }
 
     UInt32 GetNumBlocks() const { return PackPos.Size(); }
     void Clear() {
         Data.Free();
         PackPos.Clear();
         UnpackPos.Clear();
+        PackEnd.Clear();
+        UnpackEnd.Clear();
     }
 };
 
@@ -915,9 +923,13 @@ Z7_CLASS_IMP_CHandler_IInArchive_1(
 
   HRESULT Decompress(ISequentialOutStream *outStream, Byte *outBuf, bool *outBufWasWritten, UInt32 *outBufWasWrittenSize,
       UInt32 inSize, UInt32 outSizeMax);
-  HRESULT ReadMetadataBlock(UInt32 &packSize);
+  HRESULT ReadMetadataBlock(UInt32 &packSize, bool *boundaryKnown = NULL,
+                            CDynBufSeqOutStream *output = NULL);
   HRESULT ReadMetadataBlock2();
   HRESULT ReadData(CData &data, UInt64 start, UInt64 end);
+#ifdef SEVENZIP_LINUX_SQUASHFS
+  HRESULT ReadDirectoryData(UInt64 end);
+#endif
 
   HRESULT OpenDir(int parent, UInt32 startBlock, UInt32 offset, unsigned level, int &nodeIndex);
   HRESULT ScanInodes(UInt64 ptr);
@@ -1509,7 +1521,12 @@ HRESULT CHandler::Decompress(ISequentialOutStream *outStream, Byte *outBuf, bool
 // in  : packSize : allowed packSize limit
 // out : packSize : real packSize in block
 // out(packSize) <= in(packSize)
-HRESULT CHandler::ReadMetadataBlock(UInt32 &packSize) {
+HRESULT CHandler::ReadMetadataBlock(UInt32 &packSize, bool *boundaryKnown,
+                                    CDynBufSeqOutStream *output) {
+    if (boundaryKnown)
+        *boundaryKnown = false;
+    if (!output)
+        output = _dynOutStream.ClsPtr();
     Byte temp[3];
     const unsigned offset = _h.NeedCheckData() ? 3 : 2;
     if (offset > packSize)
@@ -1527,20 +1544,29 @@ HRESULT CHandler::ReadMetadataBlock(UInt32 &packSize) {
     if (packSize2 > packSize)
         return S_FALSE;
     packSize = packSize2;
+    if (boundaryKnown)
+        *boundaryKnown = true;
     if (isCompressed) {
-        const size_t previousSize = _dynOutStream->GetSize();
+        const size_t previousSize = output->GetSize();
+        Byte *buffer = output->GetBufPtrForWriting(kMetadataBlockSize);
+        if (!buffer)
+            return E_OUTOFMEMORY;
+        bool written = false;
+        UInt32 writtenSize = 0;
         _limitedInStream->Init(size);
-        RINOK(Decompress(_dynOutStream, NULL, NULL, NULL, size, kMetadataBlockSize))
-        const size_t unpackSize = _dynOutStream->GetSize() - previousSize;
+        RINOK(Decompress(output, buffer, &written, &writtenSize, size, kMetadataBlockSize))
+        if (written)
+            output->UpdateSize(writtenSize);
+        const size_t unpackSize = output->GetSize() - previousSize;
         if (unpackSize == 0 || unpackSize > kMetadataBlockSize)
             return S_FALSE;
     } else {
         // size != 0 here
-        Byte *buf = _dynOutStream->GetBufPtrForWriting(size);
+        Byte *buf = output->GetBufPtrForWriting(size);
         if (!buf)
             return E_OUTOFMEMORY;
         RINOK(ReadStream_FALSE(_stream, buf, size))
-        _dynOutStream->UpdateSize(size);
+        output->UpdateSize(size);
     }
     return S_OK;
 }
@@ -1579,6 +1605,71 @@ HRESULT CHandler::ReadData(CData &data, UInt64 start, UInt64 end) {
     _dynOutStream->CopyToBuffer(data.Data);
     return S_OK;
 }
+
+#ifdef SEVENZIP_LINUX_SQUASHFS
+HRESULT CHandler::ReadDirectoryData(UInt64 end) {
+    const UInt64 start = _h.DirTable;
+    if (end < start || end > _h.Size || end - start >= ((UInt64)1 << 32))
+        return S_FALSE;
+    const UInt32 size = (UInt32)(end - start);
+    std::set<UInt32> anchors;
+    FOR_VECTOR(i, _nodes) {
+        const CNode &node = _nodes[i];
+        if (node.IsDir() && node.StartBlock < size)
+            anchors.insert((UInt32)node.StartBlock);
+    }
+    CMyComPtr2_Create<ISequentialOutStream, CDynBufSeqOutStream> block;
+    _dynOutStream->Init();
+    UInt32 position = 0, blocks = 0;
+    while (position < size) {
+        UInt32 packed = size - position;
+        bool boundaryKnown = false;
+        block->Init();
+        HRESULT result = Seek2(start + position);
+        if (result == S_OK)
+            result = ReadMetadataBlock(packed, &boundaryKnown, block.ClsPtr());
+        if (result == E_ABORT || result == E_OUTOFMEMORY || result == E_NOTIMPL)
+            return result;
+        if (_openCallback && ((blocks & 255) == 0 || result != S_OK)) {
+            _directoryCallbackResult = _openCallback->SetCompleted(NULL, NULL);
+            RINOK(_directoryCallbackResult)
+        }
+        ++blocks;
+        if (result == S_OK) {
+            const size_t before = _dynOutStream->GetSize();
+            const size_t length = block->GetSize();
+            if (before >= UINT32_MAX || length >= UINT32_MAX - before)
+                return S_FALSE;
+            UInt32 processed = 0;
+            RINOK(_dynOutStream.Interface()->Write(block->GetBuffer(), (UInt32)length, &processed))
+            if (processed != length)
+                return E_FAIL;
+            _dirs.PackPos.Add(position);
+            _dirs.PackEnd.Add(position + packed);
+            _dirs.UnpackPos.Add((UInt32)before);
+        }
+        UInt32 next = boundaryKnown ? position + packed : size;
+        const auto anchor = anchors.upper_bound(position);
+        if (anchor != anchors.end() && *anchor < next)
+            next = *anchor;
+        position = next;
+    }
+    if (_openCallback) {
+        _directoryCallbackResult = _openCallback->SetCompleted(NULL, NULL);
+        RINOK(_directoryCallbackResult)
+    }
+    _dirs.UnpackEnd = _dirs.UnpackPos;
+    for (unsigned i = _dirs.PackPos.Size(); i-- != 0;) {
+        const bool next = i + 1 < _dirs.PackPos.Size();
+        _dirs.UnpackEnd[i] = next && _dirs.PackEnd[i] == _dirs.PackPos[i + 1]
+                                 ? _dirs.UnpackEnd[i + 1]
+                             : next ? _dirs.UnpackPos[i + 1]
+                                    : (UInt32)_dynOutStream->GetSize();
+    }
+    _dynOutStream->CopyToBuffer(_dirs.Data);
+    return S_OK;
+}
+#endif
 
 struct CTempItem {
     UInt32 StartBlock;
@@ -1690,7 +1781,7 @@ HRESULT CHandler::ReadDirItems(int parent, const CNode &n, CRecordVector<CTempIt
     if (unpackPos < n.Offset || unpackPos > _dirs.Data.Size())
         return S_FALSE;
 
-    UInt32 rem = (UInt32)_dirs.Data.Size() - unpackPos;
+    UInt32 rem = _dirs.ContiguousEnd((unsigned)blockIndex) - unpackPos;
     const Byte *p = _dirs.Data + unpackPos;
     UInt32 fileSize = (UInt32)n.FileSize;
 
@@ -1700,8 +1791,16 @@ HRESULT CHandler::ReadDirItems(int parent, const CNode &n, CRecordVector<CTempIt
             return S_FALSE;
         fileSize -= 3;
     }
-    if (fileSize > rem)
-        return S_FALSE;
+    bool truncated = false;
+    if (fileSize > rem) {
+#ifdef SEVENZIP_LINUX_SQUASHFS
+        if (!_h.IsOldVersion()) {
+            fileSize = rem;
+            truncated = true;
+        } else
+#endif
+            return S_FALSE;
+    }
     rem = fileSize;
 
     AString tempString;
@@ -1827,7 +1926,7 @@ HRESULT CHandler::ReadDirItems(int parent, const CNode &n, CRecordVector<CTempIt
         }
     }
 
-    return S_OK;
+    return truncated ? S_FALSE : S_OK;
 }
 
 HRESULT CHandler::ReadUids(UInt64 start, UInt32 num, CByteBuffer &ids) {
@@ -1990,7 +2089,6 @@ HRESULT CHandler::Open2(IInStream *inStream) {
     }
 
     RINOK(ReadData(_inodesData, _h.InodeTable, _h.DirTable))
-    RINOK(ReadData(_dirs, _h.DirTable, dirEnd))
 
     const UInt64 absOffset = _h.RootInode >> 16;
     if (absOffset >= ((UInt64)1 << 32))
@@ -2071,6 +2169,14 @@ HRESULT CHandler::Open2(IInStream *inStream) {
         }
         if (pos != totalSize)
             return S_FALSE;
+    }
+#ifdef SEVENZIP_LINUX_SQUASHFS
+    if (!_h.IsOldVersion()) {
+        RINOK(ReadDirectoryData(dirEnd))
+    } else
+#endif
+    {
+        RINOK(ReadData(_dirs, _h.DirTable, dirEnd))
     }
     _activeDirs.ClearAndReserve(_nodes.Size());
     FOR_VECTOR(i, _nodes)

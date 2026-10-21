@@ -19,6 +19,8 @@ def metadata(data, compressed=False):
 
 
 def volume(fault="", compressed=False, no_fragments=False, codec="zlib", xattrs=False, export=False):
+    if fault.startswith("directory-block-"):
+        return directory_volume(fault)
     image = bytearray(96)
     first = b"A" * BLOCK + b"first-tail"
     if codec == "lz4":
@@ -228,6 +230,55 @@ def volume(fault="", compressed=False, no_fragments=False, codec="zlib", xattrs=
         struct.pack_into("<Q", image, ids_table + delta, ids_metadata + delta)
     image += bytes((-len(image)) % 4096)
     return bytes(image), dict(zip(names, (first, second, b"alpha", first))) if not no_fragments else {}
+
+
+def directory_volume(fault):
+    image = bytearray(96)
+    first, second = b"A" * 237, b"B" * 333
+    first_start = len(image)
+    image += first
+    second_start = len(image)
+    image += second
+    offsets = (0, 36, 72, 104, 136)
+
+    def entries(items):
+        result = bytearray(struct.pack("<III", len(items) - 1, 0, 1))
+        for name, node, kind in items:
+            encoded = name.encode()
+            result += struct.pack("<HHHH", offsets[node], node, kind, len(encoded) - 1) + encoded
+        return bytes(result)
+
+    root = entries((("alpha", 0, 2), ("broken", 2, 1), ("good 空", 3, 1)))
+    child = entries((("payload", 1, 2),))
+    root_block, good_block = metadata(root), metadata(child, True)
+    bad_block = bytearray(metadata(child, fault != "directory-block-clean" and fault != "directory-block-io"))
+    if fault == "directory-block-header":
+        struct.pack_into("<H", bad_block, 0, 0x8000)
+    elif fault != "directory-block-clean" and fault != "directory-block-io":
+        bad_block[-1] ^= 0xff  # Output can precede the failing Adler checksum.
+
+    def base(kind, number):
+        return struct.pack("<HHHHII", kind, 0o755 if kind == 1 else 0o644, 0, 0, 0, number)
+
+    inodes = bytearray()
+    for number, start, body in ((1, first_start, first), (2, second_start, second)):
+        inodes += base(2, number) + struct.pack("<IIIII", start, 0xffffffff, 0, len(body), (1 << 24) | len(body))
+    for number, start, size in ((3, len(root_block), len(child)),
+                                (4, len(root_block) + len(bad_block), len(child)),
+                                (5, 0, len(root) + (len(child) if fault == "directory-block-span" else 0))):
+        inodes += base(1, number) + struct.pack("<IIHHI", start, 2, size + 3, 0, 5)
+    inode_start = len(image)
+    image += metadata(inodes)
+    directory_start = len(image)
+    image += root_block + bad_block + good_block
+    ids_metadata = len(image)
+    image += metadata(struct.pack("<I", 1000))
+    ids_table = len(image)
+    image += struct.pack("<Q", ids_metadata)
+    struct.pack_into("<5I6H8Q", image, 0, 0x73717368, 5, 0, BLOCK, 0, 1, 13, 0, 1, 4, 0,
+                     offsets[4], len(image), ids_table, INVALID, inode_start, directory_start, INVALID, INVALID)
+    image += bytes((-len(image)) % 4096)
+    return bytes(image), {"alpha": first, "broken/payload": second, "good 空/payload": second}
 
 
 def legacy_volume(endian="<", compressed=False):

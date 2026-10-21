@@ -267,8 +267,8 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
         for (const QString &language : {"en", "ru"})
             for (bool accept : {false, true})
                 for (const QString &kind :
-                     {"squashfs-directory-tail", "squashfs-directory-reference",
-                      "squashfs-directory-unavailable"}) {
+                     {"squashfs-directory-tail", "squashfs-directory-block-span",
+                      "squashfs-directory-reference", "squashfs-directory-unavailable"}) {
                     if (!accept && kind != "squashfs-directory-tail")
                         continue;
                     QTest::newRow(
