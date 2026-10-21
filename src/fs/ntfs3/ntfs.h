@@ -10,6 +10,15 @@
 #define SEVENZIP_LINUX_NTFS_READ_TYPES_H
 #include "ntfscompat.h"
 
+enum FILE_ATTRIBUTE {
+	FILE_ATTRIBUTE_SPARSE_FILE = cpu_to_le32(0x00000200),
+	FILE_ATTRIBUTE_COMPRESSED = cpu_to_le32(0x00000800),
+	FILE_ATTRIBUTE_ENCRYPTED = cpu_to_le32(0x00004000)
+};
+#define ATTR_FLAG_COMPRESSED cpu_to_le16(0x0001)
+#define ATTR_FLAG_ENCRYPTED cpu_to_le16(0x4000)
+#define ATTR_FLAG_SPARSED cpu_to_le16(0x8000)
+
 enum ATTR_TYPE {
 	ATTR_ZERO		= cpu_to_le32(0x00),
 	ATTR_STD		= cpu_to_le32(0x10),

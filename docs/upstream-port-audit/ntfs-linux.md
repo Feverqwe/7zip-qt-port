@@ -623,6 +623,46 @@ readonly mode и `system.ntfs_security`; все пять повреждений 
 compiler caches сохранены. Full/slow suites, UI и физические устройства не
 проверялись; оставшийся NTFS read scope остаётся открытым.
 
+## Атрибуты файла из DATA — 2026-10-21
+
+Сравнены полные selected read bodies `inode.c:ntfs_read_mft`, его enumeration,
+standard-information owner, последующие EA/reparse consumers и
+`xattr.c:ntfs_getxattr`; SDK `ParseDataNames`, base/extension merge и публикация
+`kpidAttrib`. Все 30 baseline hashes совпадают с указанным выше Linux snapshot.
+
+Оригинальные три set/clear ветви ATTR_DATA перенесены в C `inode.c`, predicates
+из `ntfs.h` — в GPL boundary `ntfslinkcompat.h`, selected little-endian flags —
+в `ntfs.h`. Узкий вызов передаёт standard attributes и DATA flags; private
+service `ATTRIB` дополнен flags, без изменения raw disk layout/parser.
+Source language и исходные bit predicates/ветвления сохранены. Существующий
+SDK owner выбирает атрибуты после extension merge: безымянный DATA обычного
+файла, а также nonresident `$BadClus:$Bad` и `$Secure:$SDS`. Resident DATA
+`$BadClus`, остальные named ADS и DATA каталогов пропускаются, как в Linux.
+Три признака sparse/compressed/encrypted уточняются независимо от устаревших
+значений STANDARD_INFORMATION; остальные file attributes сохраняются.
+
+Нормализация действует на активные base records dynamic GPL-модуля; deleted
+records сохраняют forensic metadata. Standalone SDK не линкует GPL bodies и
+сохраняет прежнюю проекцию этих трёх признаков. EFS decrypt/key service не
+добавлялся. Archive enumeration/recovery и Windows-compatible directory bit
+остаются адаптациями archive API, а не переносом VFS inode lifecycle.
+
+Девять ABI fixtures проверяют фактически опубликованный `kpidAttrib`, обычные,
+resident, sparse/compressed/encrypted DATA, named ADS, directory и оба системных
+исключения. Доступное содержимое проверяется целиком, включая retained stream
+после Close; существующие suites продолжают проверять unsupported EFS reads.
+
+Финальные `ntfs`, `ntfs_stream`, `ntfs_security` PASS на macOS arm64/Qt 6.12
+(15,64 с), Linux x64/Qt 6.12 и Windows x64/MSVC/Qt 6.12, receipt
+`20261021T025201Z-ab4e2f10`. Native ntfs3 `6.8.0-147-generic` подтвердил
+все девять образов через read-only loop mounts, receipt
+`20261021T025132Z-4918e7da`: exact file flags и payload; для directory/system
+entries сравнивались три выбранных признака, поскольку Linux directory bit
+отличается от Windows archive ABI. Образы остались неизменными, mounts,
+fixtures и одноразовый helper удалены; удаление синхронизировано на оба runners.
+Native kernel дополняет сравнение pinned source. Incremental builds и compiler
+caches сохранены; full/slow suites, UI и физические устройства не проверялись.
+
 ## Открытый read scope
 
 Выбранные classic/WOF/MFT bootstrap scenarios подключены и проверены.

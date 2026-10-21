@@ -16,6 +16,7 @@ struct folio { u64 index; u8 bytes[PAGE_SIZE]; };
 struct runs_tree { int unused; };
 struct ATTRIB {
     u8 non_res;
+    __le16 flags;
     struct { __le32 data_size; } res;
     struct { __le64 data_size; } nres;
     const void *data;

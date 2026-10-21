@@ -196,6 +196,36 @@ class NtfsStreamTests final : public QObject {
     }
   private slots:
     void initTestCase() { createArchive(); }
+    void dataAttributeFlags_data() {
+        QTest::addColumn<QString>("kind");
+        for (const char *kind :
+             {"flags-clear", "flags-sparse", "flags-compressed", "flags-encrypted",
+              "flags-resident", "flags-ads", "flags-directory", "flags-badclus", "flags-secure"})
+            QTest::newRow(kind) << QString::fromLatin1(kind);
+    }
+    void dataAttributeFlags() {
+        QFETCH(QString, kind);
+        loadFixture(kind);
+        CMyComPtr<IInStream> input = new Input(bytes_);
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        const auto expected = record_["attributes"].toObject();
+        const QString path = expected["path"].toString();
+        const UInt32 id = index(path);
+        QVERIFY(id != UINT32_MAX);
+        NWindows::NCOM::CPropVariant value;
+        QCOMPARE(archive_->GetProperty(id, kpidAttrib, &value), S_OK);
+        QCOMPARE(value.vt, VARTYPE(VT_UI4));
+        QCOMPARE(value.ulVal, UInt32(expected["value"].toInt()));
+        CMyComPtr<IInStream> retained;
+        if (record_["files"].toObject().contains(path)) {
+            retained = stream(path);
+            QVERIFY(retained);
+            check(retained, path, 0, 200000);
+        }
+        QCOMPARE(archive_->Close(), S_OK);
+        if (retained)
+            check(retained, path, 0, 200000);
+    }
     void wslMetadata_data() {
         QTest::addColumn<QString>("kind");
         for (const char *kind :

@@ -5,6 +5,33 @@
 
 #include "ntfslinkcompat.h"
 
+/* ntfs_read_mft ATTR_DATA projection. Enumeration and stream ownership stay
+ * with the archive owner; the original little-endian predicates/branches remain. */
+uint32_t sevenzip_ntfs_data_attributes(uint32_t attributes, uint16_t flags)
+{
+	struct ATTRIB value = {0};
+	const struct ATTRIB *attr = &value;
+	__le32 std_fa = cpu_to_le32(attributes);
+	value.flags = cpu_to_le16(flags);
+
+	if (is_attr_sparsed(attr))
+		std_fa |= FILE_ATTRIBUTE_SPARSE_FILE;
+	else
+		std_fa &= ~FILE_ATTRIBUTE_SPARSE_FILE;
+
+	if (is_attr_compressed(attr))
+		std_fa |= FILE_ATTRIBUTE_COMPRESSED;
+	else
+		std_fa &= ~FILE_ATTRIBUTE_COMPRESSED;
+
+	if (is_attr_encrypted(attr))
+		std_fa |= FILE_ATTRIBUTE_ENCRYPTED;
+	else
+		std_fa &= ~FILE_ATTRIBUTE_ENCRYPTED;
+
+	return le32_to_cpu(std_fa);
+}
+
 static int ntfs_translate_junction(const struct super_block *sb,
 				   const struct dentry *link_de, char *target,
 				   int target_len, int target_max)

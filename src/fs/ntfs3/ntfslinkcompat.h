@@ -5,6 +5,19 @@
 #include "ntfswofcompat.h"
 #include "../nls/types.h"
 #include "../../ntfslink.h"
+/* Original ntfs.h predicates, Copyright (C) 2019-2021 Paragon Software GmbH. */
+static inline bool is_attr_encrypted(const struct ATTRIB *attr)
+{
+	return attr->flags & ATTR_FLAG_ENCRYPTED;
+}
+static inline bool is_attr_sparsed(const struct ATTRIB *attr)
+{
+	return attr->flags & ATTR_FLAG_SPARSED;
+}
+static inline bool is_attr_compressed(const struct ATTRIB *attr)
+{
+	return attr->flags & ATTR_FLAG_COMPRESSED;
+}
 #define PATH_MAX 4096
 #define static_assert(expr) _Static_assert(expr, #expr)
 #define noinline

@@ -2610,6 +2610,22 @@ HRESULT CDatabase::Open() {
     }
 
 #ifdef SEVENZIP_LINUX_NTFS
+    FOR_VECTOR(metadataIndex, Recs) {
+        CMftRec &rec = Recs[metadataIndex];
+        if (!rec.Is_Magic_FILE() || !rec.InUse() || !rec.BaseMftRef.IsBaseItself() || rec.IsDir())
+            continue;
+        FOR_VECTOR(attributeIndex, rec.DataAttrs) {
+            const CAttr &attr = rec.DataAttrs[attributeIndex];
+            if (metadataIndex == kRecIndex_BadClus && !attr.NonResident)
+                continue;
+            if (!attr.Name.IsEmpty() &&
+                !(attr.NonResident &&
+                  ((metadataIndex == kRecIndex_BadClus && attr.Name == L"$Bad") ||
+                   (metadataIndex == kRecIndex_Security && attr.Name == L"$SDS"))))
+                continue;
+            rec.SiAttr.Attrib = sevenzip_ntfs_data_attributes(rec.SiAttr.Attrib, attr.Flags);
+        }
+    }
     RINOK(LoadEaMetadata())
     FOR_VECTOR(linkIndex, Recs) {
         CMftRec &rec = Recs[linkIndex];

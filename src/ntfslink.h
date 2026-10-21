@@ -2,6 +2,7 @@
 #ifndef SEVENZIP_NTFS_LINK_H
 #define SEVENZIP_NTFS_LINK_H
 #include <stddef.h>
+#include <stdint.h>
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -13,6 +14,7 @@ enum sevenzip_ntfs_reparse_type {
 };
 int sevenzip_ntfs_classify_reparse(const void *, size_t, unsigned *);
 int sevenzip_ntfs_readlink(const void *, size_t, const char *, char *, size_t);
+uint32_t sevenzip_ntfs_data_attributes(uint32_t, uint16_t);
 #ifdef __cplusplus
 }
 #endif
