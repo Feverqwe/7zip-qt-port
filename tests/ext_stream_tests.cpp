@@ -454,6 +454,43 @@ class ExtStreamTests final : public QObject {
         QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
         QVERIFY(fileIndex() != UInt32(-1));
     }
+    void htreeIndexReadsPreserveErrorsCancellationAndReuse() {
+        for (const char *layout : {"htree-depth2", "htree-next-index"}) {
+            const auto record = bundle(layout);
+            CMyComPtr2<IInStream, Input> input;
+            input.SetFromCls(new Input(image(record)));
+            const UInt64 index = UInt64(record["next_index_offset"].toDouble());
+            input->failAt = index;
+            UInt32 count = 99;
+            for (HRESULT error : {E_FAIL, E_ABORT}) {
+                input->atResult = error;
+                QCOMPARE(input->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
+                QCOMPARE(archive_->Open(input, nullptr, nullptr), error);
+                QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+                QCOMPARE(count, UInt32(0));
+            }
+            input->failAt = UINT64_MAX;
+            input->notifyAt = index;
+            CMyComPtr2<IArchiveOpenCallback, CancelXattrOpen> cancel;
+            cancel.SetFromCls(new CancelXattrOpen);
+            cancel->source = input.ClsPtr();
+            QCOMPARE(input->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
+            QCOMPARE(archive_->Open(input, nullptr, cancel), E_ABORT);
+            QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+            QCOMPARE(count, UInt32(0));
+            auto damaged = image(record);
+            damaged[qsizetype(index) + 1020] ^= 1;
+            CMyComPtr<IInStream> corrupt = new Input(damaged);
+            QCOMPARE(archive_->Open(corrupt, nullptr, nullptr), S_FALSE);
+            QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+            QCOMPARE(count, UInt32(0));
+            input->notifyAt = UINT64_MAX;
+            input->notified = false;
+            QCOMPARE(input->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
+            QCOMPARE(archive_->Open(input, nullptr, cancel), S_OK);
+            QVERIFY(fileIndex() != UInt32(-1));
+        }
+    }
     void blockBitmapReadErrorsPreserveFailureAndReuse() {
         const auto record = bundle("direct");
         CMyComPtr2<IInStream, Input> input;

@@ -555,6 +555,7 @@ struct CDirParseState {
     int ParentNode = -1;
     bool SelfLink = false;
     int RootHashVersion = -1;
+    bool LinearFallback = false;
 };
 
 struct CNode {
@@ -887,6 +888,16 @@ Z7_CLASS_IMP_CHandler_IInArchive_2(
   static int ReadSystemInode(void *, uint32_t, void *, size_t) noexcept;
   static int MapSystemInode(void *, uint32_t, uint32_t, uint32_t *, uint64_t *) noexcept;
   HRESULT LoadSystemZone(const void *descriptors, UInt32 groups);
+  struct CDirectoryContext {
+    CHandler *Owner;
+    IInStream *Stream;
+    const CRecordVector<CExtent> *Ranges;
+    unsigned Inode;
+    CDirParseState *State;
+    HRESULT Result = S_OK;
+  };
+  static int ReadIndexBlock(void *, uint32_t, void *, size_t) noexcept;
+  static int EmitIndexBlock(void *, uint32_t, const void *, size_t) noexcept;
   static int EmitXattr(void *, const char *, const void *, size_t) noexcept;
   HRESULT LoadXattrs();
   HRESULT LoadEncryption();
@@ -1021,8 +1032,8 @@ HRESULT CHandler::ParseDir(const Byte *p, size_t size, unsigned iNodeDir, CDirPa
             if (iNode) {
                 uint32_t hash = 0, minor = 0;
                 if (ext_linux_directory_hash(_volume.Ptr, nodeDir.Flags, nodeDir.FileSize,
-                                             dirCrypt.get(), rootHashVersion, p, recLen, &hash,
-                                             &minor) != 0)
+                                             dirCrypt.get(), rootHashVersion, state.LinearFallback,
+                                             p, recLen, &hash, &minor) != 0)
                     return S_FALSE;
                 CByteBuffer name(256);
                 size_t len = 0;
@@ -1163,6 +1174,58 @@ HRESULT CHandler::ParseDir(const Byte *p, size_t size, unsigned iNodeDir, CDirPa
     return S_OK;
 }
 
+#ifdef SEVENZIP_LINUX_EXT
+int CHandler::ReadIndexBlock(void *opaque, uint32_t block, void *data, size_t size) noexcept {
+    auto &context = *static_cast<CDirectoryContext *>(opaque);
+    try {
+        const auto &ranges = *context.Ranges;
+        unsigned left = 0, right = ranges.Size();
+        while (left < right) {
+            const unsigned middle = left + (right - left) / 2;
+            if (ranges[middle].VirtBlock <= block)
+                left = middle + 1;
+            else
+                right = middle;
+        }
+        if (!left || block >= (UInt64)ranges[left - 1].VirtBlock + ranges[left - 1].Len)
+            return 1; // Linux bread reports an unmapped directory block as a hole.
+        context.Result =
+            InStream_SeekSet(context.Stream, (UInt64)block << context.Owner->_h.BlockBits);
+        if (context.Result == S_OK)
+            context.Result = ReadStream_FALSE(context.Stream, data, size);
+        if (context.Result == S_OK) {
+            context.Owner->_totalRead += size;
+            if (context.Owner->_openCallback)
+                context.Result = context.Owner->CheckProgress2();
+        }
+        return context.Result == S_OK ? 0 : -EIO;
+    } catch (const std::bad_alloc &) {
+        context.Result = E_OUTOFMEMORY;
+        return -ENOMEM;
+    } catch (...) {
+        context.Result = E_FAIL;
+        return -EIO;
+    }
+}
+
+int CHandler::EmitIndexBlock(void *opaque, uint32_t block, const void *data, size_t size) noexcept {
+    auto &context = *static_cast<CDirectoryContext *>(opaque);
+    try {
+        if (block == 0 && size >= 32)
+            context.State->RootHashVersion = static_cast<const Byte *>(data)[28];
+        context.Result = context.Owner->ParseDir(static_cast<const Byte *>(data), size,
+                                                 context.Inode, *context.State);
+        return context.Result == S_OK ? 0 : -EIO;
+    } catch (const std::bad_alloc &) {
+        context.Result = E_OUTOFMEMORY;
+        return -ENOMEM;
+    } catch (...) {
+        context.Result = E_FAIL;
+        return -EIO;
+    }
+}
+#endif
+
 HRESULT CHandler::ReadDir(unsigned iNodeDir) {
     const unsigned nodeIndex = (unsigned)_refs[iNodeDir];
     CNode &node = _nodes[nodeIndex];
@@ -1194,6 +1257,21 @@ HRESULT CHandler::ReadDir(unsigned iNodeDir) {
             return S_FALSE;
         CMyComPtr<IInStream> seekable;
         RINOK(input->QueryInterface(IID_IInStream, reinterpret_cast<void **>(&seekable)))
+#ifdef SEVENZIP_LINUX_EXT
+        if ((_h.FeatureCompat & 0x20) && (node.Flags & 0x1000)) {
+            CDirectoryContext context{this, seekable, &allocated, iNodeDir, &state};
+            const int result =
+                ext_linux_index_directory(_volume.Ptr, iNodeDir, node.ChecksumSeed, node.Flags,
+                                          node.FileSize, &context, ReadIndexBlock, EmitIndexBlock);
+            RINOK(context.Result)
+            if (result != 1) {
+                if (result)
+                    return result == -ENOMEM ? E_OUTOFMEMORY : S_FALSE;
+                return state.ParentNode < 0 || !state.SelfLink ? S_FALSE : S_OK;
+            }
+            state.LinearFallback = true;
+        }
+#endif
         CByteBuffer data(blockSize);
         const UInt64 blocks = (node.FileSize + blockSize - 1) >> _h.BlockBits;
         FOR_VECTOR(i, allocated) {

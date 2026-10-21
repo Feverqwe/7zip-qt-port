@@ -1,5 +1,6 @@
 """Native encrypted ext4 reads through the dynamic engine and standalone refusal."""
 from pathlib import Path
+import base64
 import json
 import shutil
 import subprocess
@@ -60,6 +61,79 @@ class FscryptCliTests(unittest.TestCase):
                     result = self.invoke(engine, "x", self.keys, case["name"] + "/link")
                     self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
                     self.assertEqual(result.stdout, case["symlink_target"].encode())
+
+    def test_unsigned_default_hash_versions_read_encrypted_names(self):
+        original = self.image_bytes
+        try:
+            for version in (3, 4, 5):
+                with self.subTest(version=version):
+                    data = bytearray(original)
+                    data[1024 + 252] = version
+                    struct.pack_into("<I", data, 2044, crc32c(0xFFFFFFFF, data[1024:2044]))
+                    self.image_bytes = bytes(data)
+                    self.image.write_bytes(self.image_bytes)
+                    listing = self.invoke("7z", "l", self.keys)
+                    self.assertEqual(listing.returncode, 0, listing.stderr.decode(errors="replace"))
+                    for case in self.record["cases"]:
+                        self.assertIn(case["filename"].encode(), listing.stdout)
+                    case = self.record["cases"][0]
+                    result = self.invoke("7z", "x", self.keys, case["name"] + "/" + case["filename"])
+                    self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                    self.assertEqual(result.stdout, bytes.fromhex(case["plain_first"]) + bytes(4096) + b"end")
+        finally:
+            self.image_bytes = original
+            self.image.write_bytes(original)
+
+    def test_htree_fallback_uses_linear_name_hashes(self):
+        original = self.image_bytes
+        case = self.record["cases"][0]
+        data = bytearray(original)
+        block_size = 1024 << struct.unpack_from("<I", data, 1024 + 24)[0]
+        inode_size = struct.unpack_from("<H", data, 1024 + 88)[0]
+        table = struct.unpack_from("<I", data, block_size + 8)[0]
+        offset = table * block_size + (case["directory_inode"] - 1) * inode_size
+        # This native fixture has one group. Make its legacy bitmap/descriptor
+        # mode explicit, then request htree on the ordinary encrypted leaf.
+        ro = struct.unpack_from("<I", data, 1024 + 100)[0]
+        struct.pack_into("<I", data, 1024 + 100, ro & ~(0x400 | 0x10))
+        flags = struct.unpack_from("<I", data, offset + 32)[0]
+        struct.pack_into("<I", data, offset + 32, flags | 0x1000)
+        # Without metadata_csum, casefolded encrypted records cannot leave a
+        # 12-byte checksum tail: their ordinary minimum record is larger.
+        for folded in (entry for entry in self.record["cases"] if entry["casefolded"]):
+            inode = table * block_size + (folded["directory_inode"] - 1) * inode_size
+            if struct.unpack_from("<I", data, inode + 32)[0] & 0x80000:
+                self.assertEqual(struct.unpack_from("<H", data, inode + 46)[0], 0)
+                physical = struct.unpack_from("<I", data, inode + 60)[0]
+            else:
+                physical = struct.unpack_from("<I", data, inode + 40)[0]
+            start = physical * block_size
+            position = start
+            while position < start + block_size - 12:
+                length = struct.unpack_from("<H", data, position + 4)[0]
+                self.assertGreaterEqual(length, 12)
+                if position + length == start + block_size - 12:
+                    struct.pack_into("<H", data, position + 4, length + 12)
+                    break
+                position += length
+        encoded = case["nokey_name"]
+        raw_name = base64.urlsafe_b64decode(encoded + "=" * (-len(encoded) % 4))
+        linear_name = base64.urlsafe_b64encode(bytes(8) + raw_name[8:]).rstrip(b"=")
+        try:
+            self.image_bytes = bytes(data)
+            self.image.write_bytes(self.image_bytes)
+            listing = self.invoke("7z", "l", self.keys)
+            self.assertEqual(listing.returncode, 0, listing.stderr.decode(errors="replace"))
+            self.assertIn(case["filename"].encode(), listing.stdout)
+            listing = self.invoke("7z", "l", "fscrypt:none")
+            self.assertEqual(listing.returncode, 0, listing.stderr.decode(errors="replace"))
+            self.assertIn(linear_name, listing.stdout)
+            result = self.invoke("7z", "x", self.keys, case["name"] + "/" + case["filename"])
+            self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+            self.assertEqual(result.stdout, bytes.fromhex(case["plain_first"]) + bytes(4096) + b"end")
+        finally:
+            self.image_bytes = original
+            self.image.write_bytes(original)
 
     def test_no_key_listing_and_regular_read_failure(self):
         for engine in ("7z",):

@@ -186,7 +186,10 @@ class Volume:
 
 if __name__ == "__main__":
     layout = sys.argv[1] if len(sys.argv) > 1 else "double-hole"
-    if layout in ("directory-stream", "directory-corrupt"):
+    if layout.startswith("htree-"):
+        from ext_htree_fixture import HtreeVolume
+        v = HtreeVolume(layout.removeprefix("htree-"))
+    elif layout in ("directory-stream", "directory-corrupt"):
         from ext_directory_fixture import DirectoryVolume
         v = DirectoryVolume(fault="checksum" if layout == "directory-corrupt" else None)
     elif layout.startswith("xattrs"):
@@ -231,6 +234,7 @@ if __name__ == "__main__":
                           "ea_data_offset": getattr(v, "ea_data_offset", 0),
                           "directory_head_offset": getattr(v, "directory_head_offset", 0),
                           "directory_tail_offset": getattr(v, "directory_tail_offset", 0),
-                          "block_bitmap_offset": getattr(v, "block_map", 0) * getattr(v, "block_size", 0)}))
+                          "block_bitmap_offset": getattr(v, "block_map", 0) * getattr(v, "block_size", 0),
+                          "next_index_offset": getattr(v, "next_index_offset", 0)}))
     else:
         sys.stdout.buffer.write(v.data)

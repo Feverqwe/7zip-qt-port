@@ -1224,3 +1224,101 @@ lookup need not reach these allocation validators. The Linux driver source is
 the oracle for the transferred predicates, and public archive behavior is tested
 separately. Full/slow suites, installed packages, UI and physical devices were
 not checked. The broader format/read-feature review remains active.
+
+### Reachable htree namespace and directory hash initialization
+
+The remaining inode/creator-OS read branches were compared with their existing
+owners, then directory enumeration callers were traced through pinned
+`ext4_htree_fill_tree`, `htree_dirblock_to_tree`, `dx_probe`,
+`ext4_htree_next_block` and `ext4_dx_readdir` fallback. SDK linear enumeration
+visited every initialized allocated block of an indexed directory. That could
+publish stale records from an allocated leaf which the htree no longer reaches,
+or reject an otherwise readable tree because that unreachable leaf had a bad
+checksum. Native htree enumeration does not visit that block.
+
+The GPL module now uses original `dx_probe`, `dx_release`,
+`ext4_htree_next_block`, getter/limit helpers and the complete
+`__ext4_read_dirblock` body under their original `fs/ext4/namei.c` path.
+`dx_probe` retains its hash-version, hash-in-dirent, flags, depth, count/limit,
+binary search, cycle, frame and cleanup branches. Its optional filename-lookup
+parameter and hash computation are omitted: this caller starts enumeration at
+hash zero and supplies no lookup name. Complete copied bodies were compared
+again with the pinned units; they are not inferred from passing tests.
+
+The archive boundary follows the original fill-tree probe/root/leaf/next/release
+call order, visiting every reachable leaf with `HASH_NB_ALWAYS`. SDK `ParseDir`
+continues to interpret records and own names, metadata, item/ref projection and
+sorting; fscrypt presentation remains in its existing owner. The kernel's
+batch hash-cookie/rbtree publication and filename lookup are not recreated.
+There is no usable upstream userspace callback boundary for the existing SDK
+stream/parser, so narrow read/emit callbacks replace VFS buffer transport and
+dirent-tree storage. Classic, inline and nonindexed directory paths retain the
+existing bounded reader. Standalone retains its original linear SDK projection
+and does not link GPL traversal.
+
+Read callbacks query the existing validated mapping, preserve holes and exact
+HRESULT failures, and check progress/cancellation between index reads. C buffers
+and frame lifetimes have explicit owners; callbacks catch C++ exceptions before
+crossing the C ABI. A bounded visited-bit set rejects repeated active blocks,
+preventing repeated subtree expansion in malformed graphs. INDEX reads retain
+bounded count/limit preconditions even without metadata checksums. Root limits
+use the original declared info length: legacy extended root info remains accepted
+when checksums are absent, while the original checksummed root parser requires
+its supported layout. Reached leaves retain strict archive checksum validation,
+including the empty-leaf ambiguity. `ERR_BAD_DX_DIR` during the initial probe
+selects the existing linear fallback before any item has been emitted; other
+read/checksum failures do not publish partial directories.
+
+The complete original `ext4_hash_info_init` body and original hash constants now
+initialize default hash version, seed and signedness. Invalid default versions,
+including SIPHASH as the default, are rejected as in Linux, independently of
+whether a particular directory uses an index. Creator-OS checksum/feature guards
+remain in their existing readers. No device, journal recovery or namespace
+mutation service is added.
+
+CLI regressions cover an allocated unreachable leaf and its corrupt-checksum
+variant, three htree levels with LARGEDIR, transitions into another internal node,
+continuation-hash traversal, masked logical block values, legacy no-checksum root
+layouts, initial-probe fallback, active holes/repeated subtrees and invalid default
+hash versions. ABI tests inject E_FAIL/E_ABORT and callback cancellation while
+probing a deeper index or moving to a later index, then verify empty failed-Open
+state, late index checksum failure and successful handler reuse.
+
+Seven focused ext/stream/fscrypt/xattr/backend/device suites passed on macOS,
+Linux and MSVC Windows (`20261021T005458Z-ddb79393`). After the bounded legacy
+root-info refinement, all seven local suites passed again (5.36s); final
+`ext`/`ext_stream` reruns, including fallback, passed locally (4.87s) and on both
+runners (`20261021T005720Z-134ec541`). Both official runtimes and module builds
+reused existing incremental trees and compiler caches.
+
+Native read-only Linux 6.8.0-147 confirmed twelve controls: reachable names and
+exact bytes for the nine positive layouts (including an unreachable corrupt
+leaf and legacy extended root info/fallback), plus refusal of three invalid
+default hash versions (`20261021T005748Z-e46cd857`). Repeated-subtree/hole failure
+controls were confined to the archive tests. Images remained unchanged and all
+temporary mounts/images/helper sources were removed. No full/slow suites,
+installed-package, native UI, physical-device or VFS hash-cookie ABI acceptance
+is claimed. The parent format/read-feature audit remains active.
+
+The final fscrypt caller comparison also resolves two hash-selection gaps:
+the original initializer accepts unsigned default versions 3/4/5, and original
+linear `ext4_readdir` supplies zero name hashes after fallback unless hashes are
+stored in casefolded encrypted dirents. The existing hash boundary now accepts
+the unsigned defaults and receives the actual linear-fallback state, preserving
+the stored-hash branch. CLI regressions list/decrypt names and extract exact
+plaintext with each unsigned default. A conversion of the native one-group
+fixture to legacy metadata without checksums exercises encrypted htree fallback
+with keys and
+the public no-key name containing zero hashes. Its casefolded record tail is
+converted to the valid non-metadata-csum geometry; no production validation is
+relaxed to accommodate the fixture.
+
+After these localized integrations, seven local suites passed (8.51s), and
+`ext`/`ext_stream`/`ext_fscrypt_cli` passed on both runners
+(`20261021T010051Z-17749cd8`). Native evidence above is specifically for the
+twelve htree/default-hash controls, not execution of this additional fscrypt
+fallback fixture by the kernel.
+The additional encrypted fallback regression passed locally (0.90s) and on
+both runners (`20261021T010537Z-4a8fd221`), with exact plaintext and zero-hash
+no-key presentation. Temporary helper deletion was synchronized to both runner
+current trees in `20261021T005910Z-fb3176cf`; no temporary native helper remains.

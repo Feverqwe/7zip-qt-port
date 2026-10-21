@@ -29,6 +29,7 @@ int ext_linux_open(const void *superblock, struct ext_volume **result)
     if (ext4_encoding_init(&volume->sb, &volume->raw)) goto corrupt;
     volume->sb.s_blocksize_bits = bits + 10;
     volume->sb.s_blocksize = 1024U << bits;
+    if (ext4_hash_info_init(&volume->sb)) goto corrupt;
     {
         u32 cluster_bits = le32_to_cpu(volume->raw.s_log_cluster_size);
         bool bigalloc = (le32_to_cpu(volume->raw.s_feature_ro_compat) & 0x200) != 0;
@@ -305,7 +306,7 @@ void ext_linux_fscrypt_geometry(struct ext_volume *volume, struct sevenzip_fscry
     geometry->supports_subblock_units = 1;
 }
 int ext_linux_directory_hash(struct ext_volume *volume, uint32_t flags, uint64_t size,
-                              const struct sevenzip_fscrypt_inode *crypt, int root_version,
+                              const struct sevenzip_fscrypt_inode *crypt, int root_version, int linear,
                               const void *record, size_t record_size, uint32_t *hash, uint32_t *minor)
 {
     const struct ext4_dir_entry_2 *de = record;
@@ -324,13 +325,14 @@ int ext_linux_directory_hash(struct ext_volume *volume, uint32_t flags, uint64_t
         *minor = ext_load_le32((const u8 *)record + offset + 4);
         return 0;
     }
+    /* Original linear readdir supplies zero hashes unless stored in dirents. */
+    if (linear) return 0;
     /* Original is_dx_dir() also selects a potentially indexed one-block dir. */
     if (!(le32_to_cpu(volume->raw.s_feature_compat) & 0x20) ||
         !((flags & 0x1000) || (size >> volume->sb.s_blocksize_bits) == 1 || (flags & (1U << 28))))
         return 0;
     int version = root_version < 0 ? volume->raw.s_def_hash_version : root_version;
-    if (version != DX_HASH_LEGACY && version != DX_HASH_HALF_MD4 && version != DX_HASH_TEA &&
-        version != DX_HASH_SIPHASH) return -EINVAL;
+    if (version < DX_HASH_LEGACY || version > DX_HASH_SIPHASH) return -EINVAL;
     u32 seed[4];
     for (unsigned i = 0; i < 4; ++i) seed[i] = le32_to_cpu(volume->raw.s_hash_seed[i]);
     u32 disk_flags = le32_to_cpu(volume->raw.s_flags);

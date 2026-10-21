@@ -19,6 +19,7 @@ from ext_block_fixture import BlockVolume
 from ext_symlink_fixture import SymlinkVolume
 from ext_inode_fixture import inode_volume
 from ext_directory_fixture import DirectoryVolume
+from ext_htree_fixture import HtreeVolume
 
 RUNTIME = Path(sys.argv.pop(1))
 MODULE = Path(sys.argv.pop(1))
@@ -489,6 +490,32 @@ class ExtTests(unittest.TestCase):
                 result = self.run_image(volume)
                 self.assertNotEqual(result.returncode, 0)
                 self.assertEqual(result.stdout, b"")
+
+    def test_htree_walk_reads_only_reachable_leaves(self):
+        for layout in ("orphan", "orphan-corrupt", "depth2", "next-index", "collision", "masked",
+                       "legacy", "legacy-extension", "fallback"):
+            with self.subTest(layout=layout):
+                volume = HtreeVolume(layout)
+                result = self.run_image(volume)
+                self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                self.assertEqual(result.stdout, volume.read(0, volume.size))
+                listing = self.run_image(volume, command="l", name=None)
+                self.assertEqual(listing.returncode, 0, listing.stderr.decode(errors="replace"))
+                self.assertNotIn(b"not-indexed.bin", listing.stdout)
+        for layout in ("hole", "duplicate"):
+            with self.subTest(layout=layout):
+                result = self.run_image(HtreeVolume(layout))
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(result.stdout, b"")
+
+    def test_invalid_default_directory_hash_is_refused(self):
+        for version in (6, 7, 255):
+            volume = ModernVolume()
+            volume.data[1024 + 252] = version
+            volume.refresh()
+            result = self.run_image(volume)
+            self.assertNotEqual(result.returncode, 0)
+            self.assertEqual(result.stdout, b"")
 
     def test_indexed_short_names_and_empty_leaf_checksum_dispatch(self):
         for empty in (False, True):

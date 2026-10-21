@@ -9,6 +9,11 @@ extern "C" {
 #endif
 struct ext_volume;
 struct ext_node;
+typedef int (*ext_dir_read_block)(void *, uint32_t, void *, size_t);
+typedef int (*ext_dir_parse_block)(void *, uint32_t, const void *, size_t);
+int ext_linux_index_directory(struct ext_volume *, uint32_t ino, uint32_t seed,
+                              uint32_t flags, uint64_t size, void *context,
+                              ext_dir_read_block, ext_dir_parse_block);
 struct sevenzip_fscrypt_geometry;
 struct sevenzip_fscrypt_inode;
 uint16_t crc16(uint16_t, const unsigned char *, size_t);
@@ -59,7 +64,7 @@ int ext_linux_fscrypt_context(struct ext_node *, const struct ext_xattr_services
 void ext_linux_fscrypt_geometry(struct ext_volume *, struct sevenzip_fscrypt_geometry *);
 /* root_hash_version is -1 for an unindexed directory; otherwise dx_root's version. */
 int ext_linux_directory_hash(struct ext_volume *, uint32_t flags, uint64_t directory_size,
-                              const struct sevenzip_fscrypt_inode *, int root_hash_version,
+                              const struct sevenzip_fscrypt_inode *, int root_hash_version, int linear,
                               const void *record, size_t record_size,
                               uint32_t *hash, uint32_t *minor_hash);
 int ext_linux_extent_check(struct ext_volume *, uint32_t ino, uint32_t seed,

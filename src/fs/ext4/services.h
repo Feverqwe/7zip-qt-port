@@ -53,6 +53,8 @@ struct ext4_sb_info {
     u32 s_groups_count, s_gdb_count, s_itb_per_group;
     u32 s_cluster_ratio, s_cluster_bits, s_inodes_per_group, s_blockfile_groups;
     u32 s_first_ino, s_want_extra_isize;
+    u32 s_hash_seed[4];
+    unsigned int s_def_hash_version, s_hash_unsigned;
     loff_t s_bitmap_maxbytes;
     u32 s_mount_state;
     void *s_group_desc;
@@ -127,6 +129,17 @@ EXT_FEATURE(huge_file, ro_compat, 3)
 EXT_FEATURE(largedir, incompat, 14)
 EXT_FEATURE(casefold, incompat, 17)
 EXT_FEATURE(extra_isize, ro_compat, 6)
+EXT_FEATURE(dir_index, compat, 5)
+#define EXT4_INODE_INDEX 12
+#define is_dx(dir) (ext4_has_feature_dir_index((dir)->i_sb) && ext4_test_inode_flag((dir), EXT4_INODE_INDEX))
+#define EXT4_HTREE_LEVEL_COMPAT 2
+#define EXT4_HTREE_LEVEL 3
+#define ERR_BAD_DX_DIR (-4094)
+#define HASH_NB_ALWAYS 1
+static inline int ext4_dir_htree_level(struct super_block *sb) {
+    return ext4_has_feature_largedir(sb) ? EXT4_HTREE_LEVEL : EXT4_HTREE_LEVEL_COMPAT;
+}
+int ext4_hash_info_init(struct super_block *);
 int ext4_inode_info_init(struct super_block *, struct ext4_super_block *);
 #define EXT4_INODE_HUGE_FILE 18
 #define ext4_test_inode_flag(inode, flag) (((inode)->flags & (1U << (flag))) != 0)
