@@ -604,14 +604,58 @@ not a public kernel UUID query. Volume-ID parity is established from pinned BPB/
 superblock code plus the archive ABI/CLI; `fat_statfs`'s device-based f_fsid is
 not a substitute for that volume ID. The installed kernel differs from the pin.
 
-Full FAT source closure remains unproven. In particular, the remaining mapping
-comparison must settle BAD-marker normalization at the maximum FAT32 geometry,
-where the last physical entry and marker value can overlap. Ordinary-sized bad
-chain controls do not establish that extreme boundary. The current acceptance
-claim covers the BPB fixes above, not every remaining format/module branch.
+The BPB iteration identified BAD-marker normalization at the maximum FAT32
+geometry as a separate mapping boundary. Its source correction and the explicit
+boundary-test acceptance status are recorded below. The BPB acceptance alone
+did not establish every remaining format/module branch.
 
 Final task-owned fixture cleanup passed on both guests,
 `20261021T133712Z-4eff6e5b`. The disposable native-reference helper was deleted
 and synchronized away on both; no task-owned FAT temporary directories remained
 locally. All jobs reached terminal state. Incremental builds and compiler caches
 were retained, and nothing was pushed.
+
+### BAD next-links at maximum FAT32 geometry — 2026-10-21
+
+Compared Linux `fat32_ent_get`, `fat_valid_entry` and `fat_get_cluster` with the
+complete SDK/current file and directory traversal, private metadata flags and
+extraction/property consumers. At Linux's maximum FAT32 count, the physical
+entry numbered BAD is addressable as an initial cluster, but the same value in
+a next-link is normalized to EOF. Treating the next-link solely as a physical
+range check could append unrelated bytes or parse file data as directory rows.
+
+The file walker now terminates that next-link while retaining its readable
+prefix and original per-file Data Error. The directory walker stops the BAD
+transition without parsing another physical cluster; its existing conservative
+incomplete-directory result remains unless a known end marker was already read.
+The initial physical address check is unchanged. Unknown-table/private flags,
+valid highest-index first clusters, known directory children, source bounds,
+read-only access and the original stream/copy helpers remain intact. Both engine
+overlays use the same adaptation, with standalone's existing strict directory
+opening policy retained. No Linux C unit or decoder is added.
+
+`fat_maximum` uses a virtual seekable input with a maximum-geometry BPB, a broken
+file and directory, a valid highest-index file and healthy data/child controls.
+Only small byte regions are stored by the input; it creates no huge disk image.
+The actual reader still decodes approximately 1 GiB of FAT metadata. Public ABI
+checks compare the exact tree, copied bytes, item errors and operation results;
+they can detect both an incorrectly followed marker and rejection of a valid
+highest-index first cluster. The target is compiled separately and classified
+`slow` before any gate, with an explicit timeout and processor reservation.
+
+The boundary suite has **not been executed**: AGENTS.md requires an explicit
+request for slow suites, and separate approval was requested. Its compilation
+or the normal FAT suites do not establish this maximum-size runtime boundary.
+Default-wrapper selection confirmed that it is excluded without opt-in. The
+ordinary focused suites remain the acceptance evidence for nonmaximum cases;
+full FAT/goal completion is not claimed while the boundary remains unverified.
+
+The five ordinary FAT suites passed on the final file/directory correction:
+macOS arm64 (3.10 s), Linux (7.27 s) and Windows (17.28 s), with both guest
+results in `20261021T135729Z-779998e5`. The maximum target compiled on all three
+platforms; compilation is reported separately from its still-pending execution.
+The app incremental build, upstream verifier (422 exact / 242 adapted / 12 local)
+and 21 pinned FAT hashes passed. Task-owned fixture cleanup passed on both guests,
+`20261021T140045Z-69a2ec5f`; the disposable helper was removed. Existing build
+trees/cache were retained. No maximum-boundary runtime, full/slow suite,
+installation, native-device or physical-media acceptance is claimed.

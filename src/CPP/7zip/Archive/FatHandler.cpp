@@ -642,6 +642,11 @@ HRESULT CDatabase::ReadDirItems(Int32 parent, UInt32 cluster, unsigned level,
                 cluster = newCluster;
                 NumDirClusters++;
 #endif
+                // Do not interpret a BAD next-link as a physical directory
+                // at the FAT32 limit. Preserve the incomplete-directory
+                // result unless a known end marker is read in this cluster.
+                if (cluster == Header.BadCluster)
+                    cluster = 0;
                 if ((NumDirClusters & 0xFF) == 0) {
                     callbackResult = OpenProgress();
                     RINOK(callbackResult)
@@ -1139,7 +1144,9 @@ HRESULT CDatabase::GetFileClusters(const CItem &item, CRecordVector<UInt32> &clu
         clusters.AddInReserved(cluster - 2);
         const UInt32 next = Fat[cluster];
         Fat[cluster] |= kFatItemActiveFileMask;
-        cluster = next;
+        // A BAD next-link is terminal even when its numeric value is also
+        // addressable as a first physical cluster at the FAT32 size limit.
+        cluster = next == Header.BadCluster ? Header.BadCluster + 1 : next;
         if (reportProgress && (i & 0xFFFF) == 0) {
             RINOK(OpenProgress())
         }
