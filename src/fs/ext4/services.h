@@ -197,7 +197,11 @@ static inline u32 ext_do_div(u64 *value, u32 divisor) {
     return remainder;
 }
 #define do_div(value, divisor) ext_do_div(&(value), (divisor))
+#ifndef min
 #define min(a, b) ((a) < (b) ? (a) : (b))
+#endif
+void kfree_link(void *);
+void *ext4_read_inline_link(struct inode *);
 #define sb_bdev_nr_blocks(sb) ((sb)->s_archive_bytes >> (sb)->s_blocksize_bits)
 int generic_check_addressable(unsigned, u64);
 int ext4_check_geometry(struct super_block *, struct ext4_super_block *);

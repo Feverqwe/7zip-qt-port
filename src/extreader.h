@@ -16,6 +16,12 @@ int ext_linux_index_directory(struct ext_volume *, uint32_t ino, uint32_t seed,
                               ext_dir_read_block, ext_dir_parse_block);
 struct sevenzip_fscrypt_geometry;
 struct sevenzip_fscrypt_inode;
+struct ext_link_services {
+    void *context;
+    int (*read_block)(void *, void *, size_t);
+};
+int ext_linux_readlink(struct ext_node *, const struct ext_link_services *,
+                        void *, size_t, size_t *);
 uint16_t crc16(uint16_t, const unsigned char *, size_t);
 struct ext_time { int64_t seconds; uint32_t nsec; int defined; };
 struct ext_node_info {

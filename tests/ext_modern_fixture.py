@@ -119,10 +119,11 @@ class ModernVolume(Volume):
         self.data[offset + 40:offset + 100] = payload[:60].ljust(60, b"\0")
         self.put32(offset + 160, 0xEA020000)
         extra = payload[60:]
-        struct.pack_into("<BBHIII", self.data, offset + 164, 4, 7, 256 - 164 - len(extra), 0, len(extra), 0)
+        value_start = (256 - len(extra)) & ~3
+        struct.pack_into("<BBHIII", self.data, offset + 164, 4, 7, value_start - 164, 0, len(extra), 0)
         self.data[offset + 180:offset + 184] = b"data"
         self.data[offset + 184:offset + 188] = bytes(4)
-        self.data[offset + 256 - len(extra):offset + 256] = extra
+        self.data[offset + value_start:offset + value_start + len(extra)] = extra
 
     def inode_seed(self, ino):
         return crc32c(crc32c(self.seed, struct.pack("<I", ino)), bytes(4))

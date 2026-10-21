@@ -197,7 +197,7 @@ int ext_linux_inode_open(struct ext_volume *volume, uint32_t ino, const void *da
     }
     if (inode->flags & (1U << 28)) {
         if (!ei->i_inline_off || (inode->flags & (1U << 19))) goto corrupt;
-        if ((le16_to_cpu(raw->i_mode) & 0170000) != 0040000 && inode->i_size > ei->i_inline_size) goto corrupt;
+        if (!S_ISDIR(inode->i_mode) && !S_ISLNK(inode->i_mode) && inode->i_size > ei->i_inline_size) goto corrupt;
         info->inline_size = ei->i_inline_size;
     }
     info->fast_symlink = ext4_inode_is_fast_symlink(inode);

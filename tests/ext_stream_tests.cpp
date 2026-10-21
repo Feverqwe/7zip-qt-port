@@ -454,6 +454,57 @@ class ExtStreamTests final : public QObject {
         QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
         QVERIFY(fileIndex() != UInt32(-1));
     }
+    void symlinkReadsAreBoundedOwnedAndPreserveFailures() {
+        const auto record = bundle("readlink-block-tail");
+        CMyComPtr2<IInStream, Input> input;
+        input.SetFromCls(new Input(image(record)));
+        input->failAt = UInt64(record["second_data_offset"].toDouble());
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        CMyComPtr<IInArchiveGetStream> provider;
+        QCOMPARE(
+            archive_->QueryInterface(IID_IInArchiveGetStream, reinterpret_cast<void **>(&provider)),
+            S_OK);
+        CMyComPtr<ISequentialInStream> target;
+        QCOMPARE(provider->GetStream(fileIndex(), &target), S_OK);
+        target.Release();
+        provider.Release();
+        input->failAt = UInt64(record["first_data_offset"].toDouble());
+        UInt32 count = 99;
+        for (HRESULT error : {E_FAIL, E_ABORT}) {
+            input->atResult = error;
+            QCOMPARE(input->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
+            QCOMPARE(archive_->Open(input, nullptr, nullptr), error);
+            QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+            QCOMPARE(count, UInt32(0));
+        }
+        input->failAt = UINT64_MAX;
+        input->notifyAt = UInt64(record["first_data_offset"].toDouble());
+        CMyComPtr2<IArchiveOpenCallback, CancelXattrOpen> cancel;
+        cancel.SetFromCls(new CancelXattrOpen);
+        cancel->source = input.ClsPtr();
+        QCOMPARE(input->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
+        QCOMPARE(archive_->Open(input, nullptr, cancel), E_ABORT);
+        QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, UInt32(0));
+        input->notifyAt = UINT64_MAX;
+        input->notified = false;
+        QCOMPARE(input->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        QCOMPARE(
+            archive_->QueryInterface(IID_IInArchiveGetStream, reinterpret_cast<void **>(&provider)),
+            S_OK);
+        QCOMPARE(provider->GetStream(fileIndex(), &target), S_OK);
+        QCOMPARE(archive_->Close(), S_OK);
+        provider.Release();
+        archive_.Release();
+        input.SetFromCls(nullptr);
+        QByteArray actual(record["file_size"].toInt(), '\0');
+        UInt32 read = 0;
+        QCOMPARE(target->Read(actual.data(), UInt32(actual.size()), &read), S_OK);
+        QCOMPARE(read, UInt32(actual.size()));
+        QCOMPARE(actual, QByteArray(actual.size(), 't'));
+        createArchive();
+    }
     void htreeIndexReadsPreserveErrorsCancellationAndReuse() {
         for (const char *layout : {"htree-depth2", "htree-next-index"}) {
             const auto record = bundle(layout);

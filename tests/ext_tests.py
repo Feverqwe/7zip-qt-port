@@ -20,6 +20,7 @@ from ext_symlink_fixture import SymlinkVolume
 from ext_inode_fixture import inode_volume
 from ext_directory_fixture import DirectoryVolume
 from ext_htree_fixture import HtreeVolume
+from ext_readlink_fixture import ReadlinkVolume
 
 RUNTIME = Path(sys.argv.pop(1))
 MODULE = Path(sys.argv.pop(1))
@@ -469,6 +470,21 @@ class ExtTests(unittest.TestCase):
             result = self.run_image(volume)
             self.assertNotEqual(result.returncode, 0)
             self.assertEqual(result.stdout, b"")
+
+    def test_symlink_targets_use_linux_storage_and_termination_bounds(self):
+        for layout in ("block-tail", "block-nul", "unwritten-tail", "large-size",
+                       "inline", "inline-nul", "inline-oversize", "inline-empty"):
+            with self.subTest(layout=layout):
+                volume = ReadlinkVolume(layout)
+                result = self.run_image(volume)
+                self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                self.assertEqual(result.stdout, volume.expected)
+                listing = self.run_image(volume, command="l")
+                self.assertEqual(listing.returncode, 0, listing.stderr.decode(errors="replace"))
+                self.assertIn(b"Size = " + str(len(volume.expected)).encode(), listing.stdout)
+        result = self.run_image(ReadlinkVolume("hole"))
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(result.stdout, b"")
 
     def test_indexed_directory_checksums_and_count_bounds(self):
         volume = ModernVolume(indexed=True)

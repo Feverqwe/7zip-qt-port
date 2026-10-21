@@ -6,6 +6,9 @@
 
 #include "ext4.h"
 #include "xattr.h"
+#include "../../include/linux/delayed_call.h"
+#include "../../include/linux/namei.h"
+#include "blockread.h"
 
 static int ext4_get_inline_size(struct inode *inode)
 {
@@ -244,4 +247,33 @@ out:
 	kfree(dir_buf);
 	brelse(iloc.bh);
 	return ret;
+}
+
+void *ext4_read_inline_link(struct inode *inode)
+{
+	struct ext4_iloc iloc;
+	int ret, inline_size;
+	void *link;
+
+	ret = ext4_get_inode_loc(inode, &iloc);
+	if (ret)
+		return ERR_PTR(ret);
+
+	ret = -ENOMEM;
+	inline_size = ext4_get_inline_size(inode);
+	link = kmalloc(inline_size + 1, GFP_NOFS);
+	if (!link)
+		goto out;
+
+	ret = ext4_read_inline_data(inode, link, inline_size, &iloc);
+	if (ret < 0) {
+		kfree(link);
+		goto out;
+	}
+	nd_terminate_link(link, inode->i_size, ret);
+out:
+	if (ret < 0)
+		link = ERR_PTR(ret);
+	brelse(iloc.bh);
+	return link;
 }

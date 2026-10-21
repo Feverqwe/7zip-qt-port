@@ -10,6 +10,7 @@ import tempfile
 import unittest
 import zlib
 from ext_modern_fixture import crc32c
+from ext_readlink_fixture import encrypted_link_size
 
 
 class FscryptCliTests(unittest.TestCase):
@@ -131,6 +132,28 @@ class FscryptCliTests(unittest.TestCase):
             result = self.invoke("7z", "x", self.keys, case["name"] + "/" + case["filename"])
             self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
             self.assertEqual(result.stdout, bytes.fromhex(case["plain_first"]) + bytes(4096) + b"end")
+        finally:
+            self.image_bytes = original
+            self.image.write_bytes(original)
+
+    def test_symlink_ciphertext_length_uses_storage_bounds_not_inode_size(self):
+        original = self.image_bytes
+        case = self.record["cases"][0]
+        try:
+            self.image_bytes = encrypted_link_size(original, case, 1)
+            self.image.write_bytes(self.image_bytes)
+            for key, target in ((self.keys, case["symlink_target"]),
+                                ("fscrypt:none", case["nokey_symlink_target"])):
+                path = case["name"] + "/link"
+                if key == "fscrypt:none":
+                    listing = self.invoke("7z", "l", key)
+                    self.assertEqual(listing.returncode, 0, listing.stderr.decode(errors="replace"))
+                    chunks = listing.stdout.decode().replace("\r\n", "\n").split("\n\n")
+                    chunk = next(part for part in chunks if "Symbolic Link = " + target in part)
+                    path = next(line[7:] for line in chunk.splitlines() if line.startswith("Path = "))
+                result = self.invoke("7z", "x", key, path)
+                self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                self.assertEqual(result.stdout, target.encode())
         finally:
             self.image_bytes = original
             self.image.write_bytes(original)

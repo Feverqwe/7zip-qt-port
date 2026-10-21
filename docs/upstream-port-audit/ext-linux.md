@@ -1322,3 +1322,73 @@ The additional encrypted fallback regression passed locally (0.90s) and on
 both runners (`20261021T010537Z-4a8fd221`), with exact plaintext and zero-hash
 no-key presentation. Temporary helper deletion was synchronized to both runner
 current trees in `20261021T005910Z-fb3176cf`; no temporary native helper remains.
+
+### Symlink storage, termination and owned target streams
+
+The complete pinned `ext4_get_link`, `ext4_free_link`,
+`ext4_read_inline_link`, `nd_terminate_link`, delayed-call ownership helpers and
+`kfree_link` were compared with SDK symlink discovery, properties and streams.
+The original plain block reader consumes only logical block zero, terminates
+at `min(i_size, blocksize - 1)` and returns a C string. The inline reader instead
+bounds termination by the actual inline payload. SDK full-i_size materialization
+could expose bytes beyond that target or fail an inline link which Linux reads.
+
+The complete C bodies now reside in their original `fs/ext4/symlink.c`,
+`fs/ext4/inline.c`, `fs/libfs.c` and `include/linux/namei.h` paths; the original
+`include/linux/delayed_call.h` is copied unchanged. Hashes/classifications are
+recorded in the ext baseline and original notices retained. An owned inode and
+bounded callback buffer replace block-device transport. The synchronous archive
+caller supplies a non-null lookup token; unsupported RCU cache-only requests
+retain the original ECHILD retry behavior, without constructing VFS dentries or
+an inode cache. Fast plaintext links retain the existing original inode
+validation and its validated i_data target. All borrowed implementations remain C.
+
+The existing SDK mapping owners supply exactly one complete initialized block
+for a slow symlink, or the complete 60-byte inode storage for an encrypted fast
+link. This private raw-storage mode does not enlarge public regular-file streams.
+Encrypted target presentation continues through the existing original fscrypt
+reader; its ciphertext length is bounded by storage rather than a possibly
+shorter i_size, matching `ext4_encrypted_get_link`. Inline symlinks preserve the
+actual inline capacity before invoking the original reader, including an i_size
+larger than that capacity. No new filesystem or encryption decoder is introduced.
+
+Properties, extraction sizes and GetStream use the same presented target.
+Archive payload size describes those target bytes (as already done for encrypted
+links), whereas native lstat can retain a malformed raw i_size. Embedded NULs,
+bytes after the first block and unused inline padding are not returned as target
+data. Returned streams copy their owned target before Linux callbacks release
+their buffers and survive Close/reopen/release. Source E_FAIL/E_ABORT and callback
+cancellation during eager symlink reads propagate instead of being swallowed by
+the former optional-property discovery loop. Failed Open exposes no partial items.
+Standalone retains its SDK fallback and does not gain the GPL readlink reader.
+
+Public CLI regressions cover first-block bounds, embedded NUL, unwritten tails,
+large declared size, inline continuation/NUL/oversize/empty targets and first-block
+holes. The constructed inline-xattr fixture now aligns arbitrary-sized values
+as required by the format. An independently checksummed native encrypted fixture
+with symlink i_size reduced to one byte still returns exact plaintext with keys
+and the native no-key target via its actual encoded path. ABI tests enforce that
+the second data block is not read, inject first-block errors/cancellation, check
+empty failed-Open state/reuse and read an owned target after handler/source release.
+
+Seven focused ext/stream/fscrypt/xattr/backend/device suites passed on macOS
+(5.62s) and Linux in `20261021T012203Z-deb961e4`. Windows passed six in that
+receipt; one subprocess in the prior bitmap-corruption test exceeded its
+unchanged 10-second timeout. Isolated `ext` then passed
+(`20261021T012418Z-f7809b9c`); the cause of the single shared-batch timeout is
+not established. After final original-header placement, `ext`/`ext_stream`
+passed on all three platforms (macOS 5.61s;
+`20261021T012538Z-4b6b289a` on the runners). The latter source synchronization
+also removed the disposable native helper from both current trees. An initial
+new ABI-test release/lifecycle error was corrected; handler reuse and the
+subsequent tests now pass. UCRT's existing `min` definition is respected.
+
+Native read-only Linux 6.8.0-147 confirmed ten controls with unchanged images
+(`20261021T012415Z-74c2e629`): exact block/inline targets, embedded NUL and
+size clamps, empty inline target, refusal of a hole and the expected no-key
+encrypted target despite i_size=1. That kernel reports EUCLEAN for the hole;
+the archive reports a format/read failure through its existing error boundary.
+All temporary mounts/images/helper sources were removed. The full copied bodies,
+exact delayed-call header and all 303 baseline hashes were checked separately.
+Incremental builds and caches were retained. Full/slow suites, installation,
+native UI and physical devices were not checked; the parent review remains active.

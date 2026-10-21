@@ -48,3 +48,8 @@ int generic_check_addressable(unsigned blocksize_bits, u64 num_blocks)
 	}
 	return 0;
 }
+
+void kfree_link(void *p)
+{
+	kfree(p);
+}
