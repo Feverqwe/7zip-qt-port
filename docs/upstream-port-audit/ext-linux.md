@@ -1033,12 +1033,78 @@ post-unwritten-range lookup or identical corruption-recovery policy. Images
 were unchanged and temporary mounts/fixtures removed.
 
 Full/slow suites, installed packages, native UI and physical devices were not
-checked. SDK directory payload materialization still has its existing memory
-boundary; this iteration does not establish very large LARGEDIR acceptance or
-close the remaining read-feature scope of the parent audit.
+checked. At that iteration SDK directory materialization still imposed a memory
+boundary; the subsequent streaming LARGEDIR work below addresses it. The parent
+read-feature scope remains open.
 
 The final emission-name integration passed the same seven focused suites on all
 three platforms (`20261021T000926Z-5ce7849f`; macOS 5.68s). Native read-only
 ordinary/inline controls and empty/slash-name failures also passed
 (`20261021T001123Z-eb21c386`), with matching content and unchanged images. This
 separately validates the VFS emission contract copied into the GPL module.
+
+### Streaming LARGEDIR directory payloads
+
+The complete original SDK `ParseDir`, `ExtractNode`, Open/cleanup callers and
+stream types were compared with pinned Linux `ext4_readdir` block traversal,
+checksum/emission and seek behavior. The SDK had no usable directory streaming
+orchestration: Open materialized the complete logical directory before parsing.
+The narrow `ReadDir` adapter now uses its existing seekable stream and validated
+allocated ranges to read one filesystem block at a time, jumping over holes.
+Physical mapping and record interpretation remain in their existing original
+owners; no second filesystem decoder, VFS page cache or syscall layer is added.
+
+The original record loop retains its branches and updates. Its self/parent-link
+state, directory-item vector and root hash version now live across block calls;
+final dot/parent validation runs after the complete directory. Inline directories
+reuse their existing bounded converted payload. Checksums and original Linux
+record/name validators precede publication of a successful archive. A late read,
+checksum or callback error leaves no items visible through failed Open and allows
+reuse. Progress/cancellation is checked between directory blocks. Both engines
+receive the shared SDK adaptation; GPL validation remains separately linked.
+Kernel inode-version/readahead services are outside immutable archive reading.
+
+The permanent Linux CLI regression opens a sparse LARGEDIR whose tail entry is
+past 4 GiB while each child process has a 512 MiB address-space cap. Both engines
+list that entry and extract its exact content; this detects the former whole-size
+allocation without allowing the failing case to exhaust host memory. macOS and
+Windows skip that platform-specific resource-limit test. SDK regressions on all
+platforms cover a late block returning E_FAIL/E_ABORT, first-block cancellation,
+late checksum failure, empty failed-Open state and successful reuse. Existing
+indexed/inline, encrypted/no-key, fscrypt+verity, xattr/backend/device consumers
+remain in the seven focused suites, which passed on macOS, Linux and MSVC Windows
+on 2026-10-21 (remote receipt `20261021T002228Z-5454c8c3`).
+
+Separate current-module CLI smoke checks read the same post-4-GiB entry through
+both engines on macOS and Windows as well as capped Linux
+(`20261021T002544Z-2c1b42ac` for the runners). Native read-only Linux
+6.8.0-147 confirmed the directory's 64-bit size and a linear readdir cookie after
+seeking to the high-offset tail, with the same inode/content as its first hard
+link. That is scoped native stat/seek/read evidence, not a dense 4-GiB directory
+walk or htree hash-cookie test. Images were unchanged; temporary CLI copies,
+mounts and fixtures were removed. Builds reused existing incremental trees and
+caches. Full/slow suites, installed packages, native UI, physical media and very
+large dense directory populations were not checked. The parent format review
+remains active.
+
+The same review found a checksum-dispatch defect: a non-root indexed leaf whose
+first short-name record occupied 12 bytes was mistaken for an htree root. The
+archive checksum boundary now receives the logical block number and mirrors
+`__ext4_read_dirblock`/`is_dx` classification: both DIR_INDEX and the inode index
+flag are required, and only logical block zero identifies the root. For a
+non-root full-block record, Linux explicitly warns that an empty leaf can look
+like an index node. Linear archive traversal lacks the VFS caller's INDEX hint;
+the adapter accepts that ambiguous block only if either original leaf or index
+checksum validator succeeds. It does not import the mutable VFS htree traversal
+or skip checksum verification. This is an archive-boundary adaptation, not a
+claim that the complete `__ext4_read_dirblock` body is transferred.
+
+Permanent CLI regressions extract both a one-character hard link and its Unicode
+alias, list them across a second empty htree leaf, and reject damaged checksums
+in either leaf. The final seven focused suites passed on macOS (5.65s), Linux
+and MSVC Windows (`20261021T003229Z-3f6e923e`), including the earlier streaming
+cases. Native read-only Linux 6.8.0-147 mounted both short-name controls, with and
+without the empty leaf, enumerated the same names and read identical content
+(`20261021T003306Z-f1b164d4`). Images were unchanged and temporary mounts/fixtures
+were removed. The native control establishes valid-image compatibility; the
+archive regression separately establishes strict rejection of corrupt checksums.

@@ -4,15 +4,23 @@ from ext_modern_fixture import ModernVolume
 
 
 class DirectoryVolume(ModernVolume):
-    def __init__(self, mapping="extent", fault=None, encoding=None, encoding_flags=0):
+    def __init__(self, mapping="extent", fault=None, encoding=None, encoding_flags=0, tail_logical=2):
         super().__init__()
         bs = self.block_size
         leaf = bytearray(bs)
         leaf[:bs - 12] = self.dirent(12, b"after-hole.bin", bs - 12)
         struct.pack_into("<IHBBI", leaf, bs - 12, 0, 12, 0, 0xDE, 0)
         tail = self.allocate(leaf)
+        self.tail_block = tail
+        self.directory_head_offset = self.root_block * bs
+        self.directory_tail_offset = tail * bs
+        self.tail_logical = tail_logical
+        self.directory_size = (tail_logical + 1) * bs
         self.dir_leaves.append(tail)
-        self.put32(self.root_inode + 4, 3 * bs)
+        self.put32(self.root_inode + 4, self.directory_size & 0xFFFFFFFF)
+        self.put32(self.root_inode + 108, self.directory_size >> 32)
+        if self.directory_size >= 1 << 32:
+            self.put32(1024 + 96, self.u32(1024 + 96) | 0x4000)
         self.put32(self.root_inode + 28, 2 * bs // 512)
         struct.pack_into("<H", self.data, self.file_inode + 26, 2)
         if mapping == "indirect":
@@ -20,7 +28,7 @@ class DirectoryVolume(ModernVolume):
             self.put32(self.root_inode + 40, self.root_block)
             self.put32(self.root_inode + 48, tail)
         else:
-            entries = [(0, 1, self.root_block), (2, 1, tail)]
+            entries = [(0, 1, self.root_block), (tail_logical, 1, tail)]
             if mapping in ("unwritten", "allocated-zero"):
                 middle = self.allocate(b"unwritten metadata secret" if mapping == "unwritten" else b"")
                 entries.insert(1, (1, 0x8001 if mapping == "unwritten" else 1, middle))

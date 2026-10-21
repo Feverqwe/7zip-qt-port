@@ -186,7 +186,10 @@ class Volume:
 
 if __name__ == "__main__":
     layout = sys.argv[1] if len(sys.argv) > 1 else "double-hole"
-    if layout.startswith("xattrs"):
+    if layout in ("directory-stream", "directory-corrupt"):
+        from ext_directory_fixture import DirectoryVolume
+        v = DirectoryVolume(fault="checksum" if layout == "directory-corrupt" else None)
+    elif layout.startswith("xattrs"):
         from ext_xattr_fixture import XattrVolume
         v = XattrVolume(layout)
     elif layout.startswith("block-"):
@@ -225,6 +228,8 @@ if __name__ == "__main__":
         print(json.dumps({"size": len(v.data), "image": base64.b64encode(zlib.compress(v.data)).decode(),
                           "file_size": v.size, "name": getattr(v, "name", NAME), "samples": samples,
                           "files": {name: value.hex() for name, value in getattr(v, "files", {}).items()},
-                          "ea_data_offset": getattr(v, "ea_data_offset", 0)}))
+                          "ea_data_offset": getattr(v, "ea_data_offset", 0),
+                          "directory_head_offset": getattr(v, "directory_head_offset", 0),
+                          "directory_tail_offset": getattr(v, "directory_tail_offset", 0)}))
     else:
         sys.stdout.buffer.write(v.data)

@@ -551,18 +551,11 @@ struct CExtTime {
     bool Defined;
 };
 
-static bool IsDirectoryBlockAllocated(const CRecordVector<CExtent> &ranges, UInt64 block,
-                                      unsigned &cursor) {
-    while (cursor < ranges.Size()) {
-        const CExtent &range = ranges[cursor];
-        if (block >= (UInt64)range.VirtBlock + range.Len) {
-            ++cursor;
-            continue;
-        }
-        return block >= range.VirtBlock;
-    }
-    return false;
-}
+struct CDirParseState {
+    int ParentNode = -1;
+    bool SelfLink = false;
+    int RootHashVersion = -1;
+};
 
 struct CNode {
     Int32 ParentNode; // in _refs[], -1 if not dir
@@ -941,7 +934,8 @@ Z7_CLASS_IMP_CHandler_IInArchive_2(
   }
 
   HRESULT SeekAndRead(IInStream *inStream, UInt64 block, Byte *data, size_t size);
-  HRESULT ParseDir(const Byte *data, size_t size, unsigned iNodeDir, const CRecordVector<CExtent> *allocated);
+  HRESULT ParseDir(const Byte *data, size_t size, unsigned iNodeDir, CDirParseState &state);
+  HRESULT ReadDir(unsigned iNodeDir);
   int FindTargetItem_for_SymLink(unsigned dirNode, const AString &path) const;
 
   HRESULT FillFileBlocks2(UInt32 block, unsigned level, unsigned numBlocks, CRecordVector<UInt32> &blocks);
@@ -951,7 +945,7 @@ Z7_CLASS_IMP_CHandler_IInArchive_2(
 
   HRESULT GetStream_Node(unsigned nodeIndex, ISequentialInStream **stream, bool requireAllocated = false,
       bool rawLink = false, CRecordVector<CExtent> *allocated = NULL);
-  HRESULT ExtractNode(unsigned nodeIndex, CByteBuffer &data, CRecordVector<CExtent> *allocated = NULL);
+  HRESULT ExtractNode(unsigned nodeIndex, CByteBuffer &data);
 
   void ClearRefs();
   HRESULT Open2(IInStream *inStream);
@@ -962,13 +956,10 @@ Z7_CLASS_IMP_CHandler_IInArchive_2(
 
 // clang-format on
 
-HRESULT CHandler::ParseDir(const Byte *p, size_t size, unsigned iNodeDir,
-                           const CRecordVector<CExtent> *allocated) {
-    const Byte *const start = p;
+HRESULT CHandler::ParseDir(const Byte *p, size_t size, unsigned iNodeDir, CDirParseState &state) {
     const size_t blockSize = (size_t)1 << _h.BlockBits;
     size_t blockOffset = 0;
-    unsigned allocationCursor = 0;
-    bool isThereSelfLink = false;
+    bool &isThereSelfLink = state.SelfLink;
 
     PRF(printf("\n\n========= node = %5d    size = %5d", (unsigned)iNodeDir, (unsigned)size));
 
@@ -977,26 +968,16 @@ HRESULT CHandler::ParseDir(const Byte *p, size_t size, unsigned iNodeDir,
     if (nodeDir.Flags & ((UInt32)1 << 21))
         return S_FALSE;
     const CExtCryptInode &dirCrypt = _cryptInodes[(unsigned)_refs[iNodeDir]];
-    const int rootHashVersion = (nodeDir.Flags & 0x1000) && size >= 32 ? p[28] : -1;
+    const int rootHashVersion = state.RootHashVersion;
 #endif
-    nodeDir.DirIndex = (int)_dirs.Size();
-    CUIntVector &dir = _dirs.AddNew();
-    int parentNode = -1;
+    CUIntVector &dir = _dirs[(unsigned)nodeDir.DirIndex];
+    int &parentNode = state.ParentNode;
 
     CItem item;
 
     for (;;) {
         if (size == 0)
             break;
-        if (allocated && blockOffset == 0) {
-            const size_t logical = (size_t)(p - start) >> _h.BlockBits;
-            if (!IsDirectoryBlockAllocated(*allocated, logical, allocationCursor)) {
-                const size_t skip = MyMin(size, blockSize);
-                p += skip;
-                size -= skip;
-                continue;
-            }
-        }
         if (size < 8)
             return S_FALSE;
 #ifdef SEVENZIP_LINUX_EXT
@@ -1179,10 +1160,68 @@ HRESULT CHandler::ParseDir(const Byte *p, size_t size, unsigned iNodeDir,
         _items.Add(item);
     }
 
-    if (parentNode < 0 || !isThereSelfLink)
-        return S_FALSE;
-
     return S_OK;
+}
+
+HRESULT CHandler::ReadDir(unsigned iNodeDir) {
+    const unsigned nodeIndex = (unsigned)_refs[iNodeDir];
+    CNode &node = _nodes[nodeIndex];
+    node.DirIndex = (int)_dirs.Size();
+    _dirs.AddNew();
+    CDirParseState state;
+#ifdef SEVENZIP_LINUX_EXT
+    if (node.InlineIndex >= 0) {
+        const CByteBuffer &data = _inlineData[(unsigned)node.InlineIndex];
+        if (data.Size() == 0)
+            return S_FALSE;
+        if ((node.Flags & 0x1000) && data.Size() >= 32)
+            state.RootHashVersion = data[28];
+        RINOK(ParseDir(data, data.Size(), iNodeDir, state))
+    } else
+#endif
+    {
+        const size_t blockSize = (size_t)1 << _h.BlockBits;
+        if (node.FileSize == 0)
+            return S_FALSE;
+#ifdef SEVENZIP_LINUX_EXT
+        if (_h.UseMetadataChecksum() && (node.FileSize & (blockSize - 1)))
+            return S_FALSE;
+#endif
+        CRecordVector<CExtent> allocated;
+        CMyComPtr<ISequentialInStream> input;
+        RINOK(GetStream_Node(nodeIndex, &input, false, true, &allocated))
+        if (!input)
+            return S_FALSE;
+        CMyComPtr<IInStream> seekable;
+        RINOK(input->QueryInterface(IID_IInStream, reinterpret_cast<void **>(&seekable)))
+        CByteBuffer data(blockSize);
+        const UInt64 blocks = (node.FileSize + blockSize - 1) >> _h.BlockBits;
+        FOR_VECTOR(i, allocated) {
+            const CExtent &range = allocated[i];
+            const UInt64 end = MyMin((UInt64)range.VirtBlock + range.Len, blocks);
+            if (range.VirtBlock >= end)
+                continue;
+            RINOK(InStream_SeekSet(seekable, (UInt64)range.VirtBlock << _h.BlockBits))
+            for (UInt64 block = range.VirtBlock; block < end; ++block) {
+                const size_t size =
+                    (size_t)MyMin<UInt64>(blockSize, node.FileSize - (block << _h.BlockBits));
+                RINOK(ReadStream_FALSE(input, data, size))
+                _totalRead += size;
+                if (block == 0 && (node.Flags & 0x1000) && size >= 32)
+                    state.RootHashVersion = data[28];
+#ifdef SEVENZIP_LINUX_EXT
+                if (_h.UseMetadataChecksum() &&
+                    ext_linux_directory_check(_volume.Ptr, node.ChecksumSeed, node.Flags,
+                                              (UInt32)block, data))
+                    return S_FALSE;
+#endif
+                RINOK(ParseDir(data, size, iNodeDir, state))
+                if (_openCallback)
+                    RINOK(CheckProgress2())
+            }
+        }
+    }
+    return state.ParentNode < 0 || !state.SelfLink ? S_FALSE : S_OK;
 }
 
 static int CompareItemsNames(const unsigned *p1, const unsigned *p2, void *param) {
@@ -1925,8 +1964,6 @@ HRESULT CHandler::Open2(IInStream *inStream) {
     {
         // ---------- Read Dirs ----------
 
-        CByteBuffer dataBuf;
-
         FOR_VECTOR(i, _refs) {
             const int nodeIndex = _refs[i];
             {
@@ -1940,36 +1977,7 @@ HRESULT CHandler::Open2(IInStream *inStream) {
                 if (!node.IsDir())
                     continue;
             }
-            CRecordVector<CExtent> allocated;
-            RINOK(ExtractNode((unsigned)nodeIndex, dataBuf, &allocated))
-#ifdef SEVENZIP_LINUX_EXT
-            const CNode &dirNode = _nodes[nodeIndex];
-            if (dirNode.InlineIndex < 0 && _h.UseMetadataChecksum()) {
-                const size_t blockSize = (size_t)1 << _h.BlockBits;
-                if (dataBuf.Size() % blockSize != 0)
-                    return S_FALSE;
-                unsigned allocationCursor = 0;
-                for (size_t offset = 0; offset < dataBuf.Size(); offset += blockSize) {
-                    if (!IsDirectoryBlockAllocated(allocated, offset >> _h.BlockBits,
-                                                   allocationCursor))
-                        continue;
-                    if (ext_linux_directory_check(_volume.Ptr, dirNode.ChecksumSeed, dirNode.Flags,
-                                                  (const Byte *)dataBuf + offset) != 0)
-                        return S_FALSE;
-                }
-            }
-#endif
-            if (dataBuf.Size() == 0) {
-                // _headersError = true;
-                return S_FALSE;
-            } else {
-#ifdef SEVENZIP_LINUX_EXT
-                RINOK(ParseDir(dataBuf, dataBuf.Size(), i,
-                               _nodes[nodeIndex].InlineIndex >= 0 ? NULL : &allocated))
-#else
-                RINOK(ParseDir(dataBuf, dataBuf.Size(), i, &allocated))
-#endif
-            }
+            RINOK(ReadDir(i))
             RINOK(CheckProgress())
         }
 
@@ -3480,11 +3488,8 @@ HRESULT CHandler::GetStream_Node(unsigned nodeIndex, ISequentialInStream **strea
     COM_TRY_END
 }
 
-HRESULT CHandler::ExtractNode(unsigned nodeIndex, CByteBuffer &data,
-                              CRecordVector<CExtent> *allocated) {
+HRESULT CHandler::ExtractNode(unsigned nodeIndex, CByteBuffer &data) {
     data.Free();
-    if (allocated)
-        allocated->Clear();
     const CNode &node = _nodes[nodeIndex];
 #ifdef SEVENZIP_LINUX_EXT
     if (node.IsDir() && node.InlineIndex >= 0) {
@@ -3496,7 +3501,7 @@ HRESULT CHandler::ExtractNode(unsigned nodeIndex, CByteBuffer &data,
     if (size != node.FileSize)
         return S_FALSE;
     CMyComPtr<ISequentialInStream> inSeqStream;
-    RINOK(GetStream_Node(nodeIndex, &inSeqStream, false, true, allocated))
+    RINOK(GetStream_Node(nodeIndex, &inSeqStream, false, true))
     if (!inSeqStream)
         return S_FALSE;
     data.Alloc(size);

@@ -454,6 +454,39 @@ class ExtStreamTests final : public QObject {
         QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
         QVERIFY(fileIndex() != UInt32(-1));
     }
+    void directoryBlocksPreserveErrorsCancellationAndReuse() {
+        const auto record = bundle("directory-stream");
+        CMyComPtr2<IInStream, Input> input;
+        input.SetFromCls(new Input(image(record)));
+        input->failAt = UInt64(record["directory_tail_offset"].toDouble());
+        UInt32 count = 99;
+        for (HRESULT error : {E_FAIL, E_ABORT}) {
+            input->atResult = error;
+            QCOMPARE(input->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
+            QCOMPARE(archive_->Open(input, nullptr, nullptr), error);
+            QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+            QCOMPARE(count, UInt32(0));
+        }
+        input->failAt = UINT64_MAX;
+        input->notifyAt = UInt64(record["directory_head_offset"].toDouble());
+        CMyComPtr2<IArchiveOpenCallback, CancelXattrOpen> cancel;
+        cancel.SetFromCls(new CancelXattrOpen);
+        cancel->source = input.ClsPtr();
+        QCOMPARE(input->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
+        QCOMPARE(archive_->Open(input, nullptr, cancel), E_ABORT);
+        QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, UInt32(0));
+        CMyComPtr<IInStream> corrupt = new Input(image(bundle("directory-corrupt")));
+        QCOMPARE(archive_->Open(corrupt, nullptr, nullptr), S_FALSE);
+        QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, UInt32(0));
+        input->notifyAt = UINT64_MAX;
+        input->notified = false;
+        QCOMPARE(input->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
+        QCOMPARE(archive_->Open(input, nullptr, cancel), S_OK);
+        QVERIFY(fileIndex() != UInt32(-1));
+        QVERIFY(fileIndex("after-hole.bin") != UInt32(-1));
+    }
     void systemZoneFailureAndJournalCancellationCanBeReused() {
         UInt32 count = 99;
         for (const char *layout : {"block-journal", "block-overlap"}) {

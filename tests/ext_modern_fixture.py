@@ -12,7 +12,8 @@ def crc32c(seed, data):
 
 
 class ModernVolume(Volume):
-    def __init__(self, inline=False, seed_feature=False, descriptor_size=64, indexed=False):
+    def __init__(self, inline=False, seed_feature=False, descriptor_size=64, indexed=False,
+                 short_leaf=False, empty_leaf=False):
         super().__init__("extent-tree")
         self.inline = inline
         self.indexed = indexed
@@ -68,6 +69,22 @@ class ModernVolume(Volume):
         struct.pack_into("<IHBBI", self.data, self.root_block * 1024 + 1012, 0, 12, 0, 0xDE, 0)
         if indexed:
             self.make_indexed_directory()
+            if short_leaf:
+                start = self.dir_leaves[0] * 1024
+                self.data[start:start + 1012] = (self.dirent(12, b"a", 12) +
+                                                self.dirent(12, NAME.encode(), 1000))
+                struct.pack_into("<H", self.data, self.file_inode + 26, 2)
+            if empty_leaf:
+                empty = self.allocate(self.dirent(0, b"", 1024))
+                struct.pack_into("<IHBBI", self.data, empty * 1024 + 1012, 0, 12, 0, 0xDE, 0)
+                self.put32(self.root_inode + 4, 4096)
+                self.put32(self.root_inode + 28, 8)
+                self.put32(self.root_inode + 52, empty)
+                # A second leaf at the end of the htree hash range.
+                index = self.index_blocks[1][0] * 1024
+                struct.pack_into("<H", self.data, index + 10, 2)
+                struct.pack_into("<II", self.data, index + 16, 0xFFFFFFFE, 3)
+                self.dir_leaves.append(empty)
         self.refresh()
 
     def make_indexed_directory(self):
@@ -141,7 +158,8 @@ class ModernVolume(Volume):
         for block, offset, limit in self.index_blocks:
             start = block * bs
             tail = start + offset + limit * 8
-            checksum = crc32c(self.inode_seed(2), self.data[start:start + offset + 8])
+            count = struct.unpack_from("<H", self.data, start + offset + 2)[0]
+            checksum = crc32c(self.inode_seed(2), self.data[start:start + offset + count * 8])
             checksum = crc32c(checksum, self.data[tail:tail + 4] + bytes(4))
             self.put32(tail + 4, checksum)
         if not self.inline:

@@ -37,7 +37,7 @@ class ExtTests(unittest.TestCase):
         (cls.runtime / "Formats").mkdir()
         shutil.copy2(MODULE, cls.runtime / "Formats" / MODULE.name)
 
-    def run_image(self, v, engine="7z", command="x", name=NAME, streams=False, properties=()):
+    def run_image(self, v, engine="7z", command="x", name=NAME, streams=False, properties=(), memory_limit=None):
         with tempfile.TemporaryDirectory(dir=self.runtime) as temporary:
             path = Path(temporary) / "образ ext 空.img"
             path.write_bytes(v.data)
@@ -51,7 +51,11 @@ class ExtTests(unittest.TestCase):
             args += ["--", str(path)]
             if name is not None:
                 args += [name]
-            result = subprocess.run(args, stdin=subprocess.DEVNULL, capture_output=True, timeout=10)
+            def set_limit():
+                import resource
+                resource.setrlimit(resource.RLIMIT_AS, (memory_limit, memory_limit))
+            result = subprocess.run(args, stdin=subprocess.DEVNULL, capture_output=True, timeout=10,
+                                    preexec_fn=set_limit if memory_limit is not None else None)
             self.assertEqual(path.read_bytes(), v.data)
             return result
 
@@ -208,6 +212,18 @@ class ExtTests(unittest.TestCase):
         for volume in (DirectoryVolume("allocated-zero"), DirectoryVolume(fault="checksum")):
             result = self.run_image(volume, command="l", name=None)
             self.assertNotEqual(result.returncode, 0)
+
+    @unittest.skipUnless(sys.platform == "linux", "Linux child address-space limit")
+    def test_largedir_reads_past_four_gib_with_bounded_memory(self):
+        volume = DirectoryVolume(tail_logical=(1 << 32) // 1024 + 1)
+        for engine in ("7z", "7zz"):
+            with self.subTest(engine=engine):
+                listing = self.run_image(volume, engine, "l", None, memory_limit=512 << 20)
+                self.assertEqual(listing.returncode, 0, listing.stderr.decode(errors="replace"))
+                self.assertIn(b"Path = after-hole.bin", listing.stdout)
+                result = self.run_image(volume, engine, name="after-hole.bin", memory_limit=512 << 20)
+                self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                self.assertEqual(result.stdout, volume.read(0, volume.size))
 
     def test_casefold_encoding_is_recognized_without_changing_stored_names(self):
         for flags in (0, 1, 0x8000):
@@ -398,6 +414,25 @@ class ExtTests(unittest.TestCase):
                     struct.pack_into("<H", volume.data, volume.root_block * 1024 +
                                      (34 if fault == "count" else 32), 65535)
                 result = self.run_image(volume)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(result.stdout, b"")
+
+    def test_indexed_short_names_and_empty_leaf_checksum_dispatch(self):
+        for empty in (False, True):
+            volume = ModernVolume(indexed=True, short_leaf=True, empty_leaf=empty)
+            for engine in ("7z", "7zz"):
+                with self.subTest(empty=empty, engine=engine):
+                    for name in ("a", NAME):
+                        result = self.run_image(volume, engine, name=name)
+                        self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                        self.assertEqual(result.stdout, volume.read(0, volume.size))
+                    listed = self.run_image(volume, engine, command="l", name=None)
+                    self.assertEqual(listed.returncode, 0, listed.stderr.decode(errors="replace"))
+                    self.assertIn(b"Path = a\n", listed.stdout.replace(b"\r\n", b"\n"))
+            for block in volume.dir_leaves:
+                damaged = bytearray(volume.data)
+                damaged[block * 1024 + 1020] ^= 1
+                result = self.run_image(SimpleNamespace(data=damaged))
                 self.assertNotEqual(result.returncode, 0)
                 self.assertEqual(result.stdout, b"")
 

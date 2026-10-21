@@ -348,13 +348,24 @@ int ext_linux_extent_check(struct ext_volume *volume, uint32_t ino, uint32_t see
     ext_inode_hdr(&inode)->eh_depth = cpu_to_le16((u16)root_depth);
     return __ext4_ext_check(__func__, __LINE__, &inode, header, (int)depth, physical, logical);
 }
-int ext_linux_directory_check(struct ext_volume *volume, uint32_t seed, uint32_t flags, const void *block)
+int ext_linux_directory_check(struct ext_volume *volume, uint32_t seed, uint32_t flags,
+                              uint32_t logical, const void *block)
 {
     struct inode inode = { .i_sb = &volume->sb, .flags = flags, .info = { .i_csum_seed = seed } };
     struct buffer_head bh = { .b_data = (char *)block, .b_size = volume->sb.s_blocksize };
     unsigned int len = ext4_rec_len_from_disk(((struct ext4_dir_entry *)block)->rec_len, volume->sb.s_blocksize);
-    if ((flags & 0x1000U) && (len == 12 || len == volume->sb.s_blocksize))
-        return ext4_dx_csum_verify(&inode, (struct ext4_dir_entry *)block) ? 0 : -EFSBADCRC;
+    if ((le32_to_cpu(volume->raw.s_feature_compat) & 0x20U) && (flags & 0x1000U)) {
+        /* __ext4_read_dirblock identifies the root by logical block, not rec_len. */
+        if (logical == 0)
+            return ext4_dx_csum_verify(&inode, (struct ext4_dir_entry *)block) ? 0 : -EFSBADCRC;
+        if (len == volume->sb.s_blocksize) {
+            /* Linux notes that an empty leaf can resemble an index node. Linear
+             * archive traversal has no INDEX caller hint: require one of the
+             * original checksum validators rather than skipping verification. */
+            return ext4_dirblock_csum_verify(&inode, &bh) ||
+                ext4_dx_csum_verify(&inode, (struct ext4_dir_entry *)block) ? 0 : -EFSBADCRC;
+        }
+    }
     return ext4_dirblock_csum_verify(&inode, &bh) ? 0 : -EFSBADCRC;
 }
 
