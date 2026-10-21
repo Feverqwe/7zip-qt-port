@@ -1392,3 +1392,43 @@ All temporary mounts/images/helper sources were removed. The full copied bodies,
 exact delayed-call header and all 303 baseline hashes were checked separately.
 Incremental builds and caches were retained. Full/slow suites, installation,
 native UI and physical devices were not checked; the parent review remains active.
+
+### Read-only policy: image openings and recovery diagnostics
+
+Review on 2026-10-21 found that direct-device recovery consent did not cover
+ordinary ext images: the handler exposed feature declarations but neither
+`kpidReadOnly` nor the limitation property consumed by the shared opening service.
+Compared the original `CHeader::Parse`, archive properties and `CArc::OpenStream`
+with their current consumers, then the pinned Linux `super.c` recovery/NOLOAD,
+feature compatibility and mount-state branches, and `ext4.h` disk fields.
+The original parser/property implementation remains authoritative. Two previously
+unused superblock fields are read through its existing bounded little-endian
+services; new code only reports recovery, pending orphan processing, unclean/error
+state and unverified readonly-compatible declarations. There is no upstream
+7-Zip consent/property implementation to reuse for these declarations.
+
+Both engine builds expose the read-only property and concrete limitations.
+The existing EN/RU opening service supplies per-opening consent, Cancel by default,
+the persistent badge and copying. Direct-device policy consumes the same reader
+reasons while preserving its incompatible-feature decoding restrictions. Unknown
+readonly declarations retain useful unverified reading; consent never bypasses
+missing decoding, source bounds or path checks. No source repair, writes, orphan
+cleanup or journal replay are introduced. This reports an archive reading subset;
+it does not port Linux mount/recovery services or assert consistency.
+
+Eight deterministic image states exercise clean/recovery/orphan/error/unknown
+declarations and combined warnings through CLI listing and exact extraction in
+both engines, verifying unchanged input bytes. EN/RU native Cocoa image tests
+cover cancellation, consent, copy, badge/diagnostic geometry, refresh and fresh
+opening. Device tests cover error state and the legacy pending-orphan pointer
+in addition to existing feature/decoding checks. The six focused suites `ext`,
+`ext_stream`, `archive_device`, `device_ui`, `filesystem_read_ui` and `language`
+passed on macOS arm64 in 50.71 seconds and Linux in 31.94 seconds
+(`20261021T074719Z-876845c3`). Windows passed five suites in that batch; the
+CLI suite reached its existing 45-second timeout. An isolated repeat with
+unchanged source and timeout passed (`20261021T075203Z-e5ff5022`); the cause
+of the shared-batch timeout is not established. Native Cocoa JSON confirms
+translated combined reasons fit at 420×279 (EN) and 420×366 (RU); other guest
+UI checks do not establish native visual parity. The application was rebuilt.
+No new physical-device or native-kernel mount acceptance is claimed by this
+policy check. The larger Linux-reference review remains active.

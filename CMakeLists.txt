@@ -3958,9 +3958,11 @@ if(BUILD_TESTING)
         "SEVENZIP_HFS_MODULE=\"$<TARGET_FILE:sevenzip_hfs>\""
         "SEVENZIP_NTFS_MODULE=\"$<TARGET_FILE:sevenzip_ntfs>\""
         "SEVENZIP_NTFS_FIXTURE=\"${CMAKE_CURRENT_SOURCE_DIR}/tests/ntfs_fixture.py\""
+        "SEVENZIP_EXT_MODULE=\"$<TARGET_FILE:sevenzip_ext>\""
+        "SEVENZIP_EXT_FIXTURE=\"${CMAKE_CURRENT_SOURCE_DIR}/tests/ext_fixture.py\""
         "SEVENZIP_HFS_PYTHON=\"${Python3_EXECUTABLE}\""
         "SEVENZIP_HFS_FIXTURE=\"${CMAKE_CURRENT_SOURCE_DIR}/tests/hfs_fixture.py\"")
-    add_dependencies(filesystem_read_ui_tests sevenzip_exfat sevenzip_hfs_runtime sevenzip_ntfs_runtime)
+    add_dependencies(filesystem_read_ui_tests sevenzip_exfat sevenzip_hfs_runtime sevenzip_ntfs_runtime sevenzip_ext_runtime)
     add_test(NAME filesystem_read_ui COMMAND filesystem_read_ui_tests -silent)
     set_tests_properties(filesystem_read_ui PROPERTIES TIMEOUT 60 RESOURCE_LOCK sevenzip_ui_artifacts
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")

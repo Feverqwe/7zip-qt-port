@@ -243,7 +243,8 @@ struct CHeader {
     // UInt16 NumMounts;
     // UInt16 NumMountsMax;
 
-    // UInt16 State;
+    UInt16 State;
+    UInt32 LastOrphan;
     // UInt16 Errors;
     // UInt16 MinorRevLevel;
 
@@ -364,7 +365,8 @@ bool CHeader::Parse(const Byte *p) {
     // LE_16 (0x34, NumMounts);
     // LE_16 (0x36, NumMountsMax);
 
-    // LE_16 (0x3A, State);
+    LE_16(0x3A, State)
+    LE_32(0xE8, LastOrphan)
     // LE_16 (0x3C, Errors);
     // LE_16 (0x3E, MinorRevLevel);
 
@@ -2533,7 +2535,8 @@ enum {
     kpidLastMount,
     kpidFeatureIncompat,
     kpidFeatureRoCompat,
-    kpidWrittenKB
+    kpidWrittenKB,
+    kpidReadLimitations
 
     // kpidGroupSize,
 
@@ -2574,7 +2577,9 @@ static const CStatProp kArcProps[] = {
     {NULL, kpidCharacts, VT_BSTR},
     {"Incompatible Features", kpidFeatureIncompat, VT_BSTR},
     {"Readonly-compatible Features", kpidFeatureRoCompat, VT_BSTR},
-    {"Written KiB", kpidWrittenKB, VT_UI8}};
+    {"Written KiB", kpidWrittenKB, VT_UI8},
+    {NULL, kpidReadOnly, VT_BOOL},
+    {"Read-only limitations", kpidReadLimitations, VT_BSTR}};
 
 IMP_IInArchive_Props IMP_IInArchive_ArcProps_WITH_NAME
 
@@ -2609,8 +2614,42 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID propID, PROPVARIANT *value)) {
         */
 
     case kpidIsTree:
+    case kpidReadOnly:
         prop = true;
         break;
+    case kpidReadLimitations: {
+        AString reasons;
+        if (_h.FeatureIncompat & 4)
+            reasons = "The ext filesystem requires journal recovery. The journal will not be "
+                      "replayed; files may be missing, outdated or unreadable.";
+        if (_h.LastOrphan || (_h.FeatureRoCompat & 0x10000)) {
+            if (!reasons.IsEmpty())
+                reasons += '\n';
+            reasons += "The ext filesystem requires orphan cleanup. Orphaned files will not be "
+                       "repaired; files may be missing or incomplete.";
+        }
+        if (!(_h.State & 1) || (_h.State & 2)) {
+            if (!reasons.IsEmpty())
+                reasons += '\n';
+            reasons += "The ext filesystem was not cleanly unmounted or reports errors. Files "
+                       "may be inconsistent.";
+        }
+        // These readonly-compatible declarations have supported read paths;
+        // the remaining bits retain the device reader's unverified mode.
+        const UInt32 unverified = _h.FeatureRoCompat & ~(UInt32)0xB77F;
+        if (unverified && unverified != 0x10000) {
+            NCOM::CPropVariant features;
+            FLAGS_TO_PROP(g_FeatureRoCompat_Flags, unverified & ~(UInt32)0x10000, features);
+            if (!reasons.IsEmpty())
+                reasons += '\n';
+            reasons += "Unverified ext read-only features: ";
+            reasons += UnicodeStringToMultiByte(features.bstrVal, CP_UTF8);
+            reasons += ".";
+        }
+        if (!reasons.IsEmpty())
+            prop = reasons;
+        break;
+    }
 #ifdef SEVENZIP_LINUX_EXT
     case kpidIsAltStream:
         prop = !_xattrs.IsEmpty();

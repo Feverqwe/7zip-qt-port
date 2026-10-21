@@ -184,9 +184,26 @@ class Volume:
         return bytes(result)
 
 
+def readonly_volume(kind):
+    v = Volume("direct")
+    if kind in ("recover", "combined"):
+        v.put32(1024 + 96, 6)
+    if kind in ("orphan", "combined"):
+        v.put32(1024 + 100, 2 | 0x10000)
+    if kind == "orphan-list":
+        v.put32(1024 + 0xe8, 12)
+    if kind in ("unclean", "errors", "combined"):
+        struct.pack_into("<H", v.data, 1024 + 58, 3 if kind == "errors" else 0)
+    if kind == "unverified":
+        v.put32(1024 + 100, 2 | (1 << 31))
+    return v
+
+
 if __name__ == "__main__":
     layout = sys.argv[1] if len(sys.argv) > 1 else "double-hole"
-    if layout.startswith("readlink-"):
+    if layout.startswith("readonly-"):
+        v = readonly_volume(layout.removeprefix("readonly-"))
+    elif layout.startswith("readlink-"):
         from ext_readlink_fixture import ReadlinkVolume
         v = ReadlinkVolume(layout.removeprefix("readlink-"))
     elif layout.startswith("htree-"):

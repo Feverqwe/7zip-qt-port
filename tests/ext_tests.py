@@ -11,7 +11,7 @@ import base64
 import hashlib
 import json
 from types import SimpleNamespace
-from ext_fixture import Volume, NAME
+from ext_fixture import Volume, NAME, readonly_volume
 from ext_modern_fixture import ModernVolume, crc32c
 from ext_verity_fixture import VerityVolume
 from ext_xattr_fixture import XattrVolume
@@ -60,6 +60,19 @@ class ExtTests(unittest.TestCase):
                                     preexec_fn=set_limit if memory_limit is not None else None)
             self.assertEqual(path.read_bytes(), v.data)
             return result
+
+    def test_readable_recovery_states_report_limitations_without_replaying(self):
+        for kind in ("clean", "recover", "orphan", "orphan-list", "unclean", "errors",
+                     "unverified", "combined"):
+            volume = readonly_volume(kind)
+            for engine in ("7z", "7zz"):
+                with self.subTest(kind=kind, engine=engine):
+                    listing = self.run_image(volume, engine, "l")
+                    self.assertEqual(listing.returncode, 0, listing.stderr.decode(errors="replace"))
+                    self.assertEqual(b"Read-only limitations = " in listing.stdout, kind != "clean")
+                    data = self.run_image(volume, engine)
+                    self.assertEqual(data.returncode, 0, data.stderr.decode(errors="replace"))
+                    self.assertEqual(data.stdout, volume.read(0, volume.size))
 
     def test_builtin_verity_signatures_use_explicit_archive_trust(self):
         fixtures = json.loads((Path(__file__).parent / "fixtures/ext4/verity-signatures.json").read_text())

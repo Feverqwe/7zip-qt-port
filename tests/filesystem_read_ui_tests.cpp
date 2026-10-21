@@ -54,6 +54,8 @@ class FilesystemReadUiTests final : public QObject {
                             runtime_.filePath("Formats/hfs" + suffix)));
         QVERIFY(QFile::copy(QStringLiteral(SEVENZIP_NTFS_MODULE),
                             runtime_.filePath("Formats/ntfs" + suffix)));
+        QVERIFY(QFile::copy(QStringLiteral(SEVENZIP_EXT_MODULE),
+                            runtime_.filePath("Formats/ext" + suffix)));
     }
     void cleanupTestCase() { qputenv("SEVENZIP_SETTINGS_PATH", previousSettings_); }
     void confirmsAndCopiesFlaggedVolume_data() {
@@ -66,9 +68,11 @@ class FilesystemReadUiTests final : public QObject {
                      {"exfat", "wrapper-no-slock", "unclean", "free-overflow",
                       "classic-unclean-free-overflow", "volume-dirty", "volume-short",
                       "volume-list-nonresident", "reparse-list-bad-id", "ea-record-small",
-                      "data-list-unreadable-list", "standard-short"}) {
+                      "data-list-unreadable-list", "standard-short", "ext-recover", "ext-orphan",
+                      "ext-unclean", "ext-unverified", "ext-combined"}) {
                     // Rejection uses the shared consent service; acceptance checks every reason.
-                    if (!accept && kind != "exfat" && kind != "unclean" && kind != "volume-dirty")
+                    if (!accept && kind != "exfat" && kind != "unclean" && kind != "volume-dirty" &&
+                        kind != "ext-recover")
                         continue;
                     QTest::newRow(qPrintable(language + (accept ? "-accept-" : "-cancel-") + kind))
                         << language << accept << kind;
@@ -81,6 +85,7 @@ class FilesystemReadUiTests final : public QObject {
         const bool ntfs = kind.startsWith("volume-") || kind.startsWith("reparse-") ||
                           kind.startsWith("ea-") || kind.startsWith("data-list-") ||
                           kind.startsWith("standard-");
+        const bool ext = kind.startsWith("ext-");
         SaveRegLang(UString(language == "en" ? L"-" : L"ru"),
                     qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
         TexfatFixture fixture(language == "en" ? 0 : 1);
@@ -92,8 +97,10 @@ class FilesystemReadUiTests final : public QObject {
             QProcess generator;
             generator.start(
                 QStringLiteral(SEVENZIP_HFS_PYTHON),
-                ntfs ? QStringList{QStringLiteral(SEVENZIP_NTFS_FIXTURE), "--kind=" + kind}
-                     : QStringList{QStringLiteral(SEVENZIP_HFS_FIXTURE), kind});
+                ext ? QStringList{QStringLiteral(SEVENZIP_EXT_FIXTURE), "readonly-" + kind.mid(4),
+                                  "--bundle"}
+                : ntfs ? QStringList{QStringLiteral(SEVENZIP_NTFS_FIXTURE), "--kind=" + kind}
+                       : QStringList{QStringLiteral(SEVENZIP_HFS_FIXTURE), kind});
             QVERIFY(generator.waitForFinished(10000));
             QCOMPARE(generator.exitCode(), 0);
             const QJsonObject data =
@@ -103,9 +110,16 @@ class FilesystemReadUiTests final : public QObject {
             packed += QByteArray::fromBase64(data["image"].toString().toLatin1());
             image = qUncompress(packed);
             QVERIFY(!image.isEmpty());
-            filename = ntfs ? QStringLiteral("alpha") : QStringLiteral("HfsFixture/alpha");
-            payload =
-                QByteArray::fromBase64(data["files"].toObject()[filename].toString().toLatin1());
+            filename = ext    ? data["name"].toString()
+                       : ntfs ? QStringLiteral("alpha")
+                              : QStringLiteral("HfsFixture/alpha");
+            if (ext) {
+                payload = QByteArray(data["file_size"].toInt(), '\0');
+                payload.replace(0, 4, "head");
+                payload.replace(payload.size() - 4, 4, "tail");
+            } else
+                payload = QByteArray::fromBase64(
+                    data["files"].toObject()[filename].toString().toLatin1());
         }
         QTemporaryDir directory;
         QVERIFY(directory.isValid());
@@ -184,7 +198,7 @@ class FilesystemReadUiTests final : public QObject {
             auto *table = window.findChild<QTableWidget *>("archiveTable");
             QVERIFY(table);
             // HFS starts at its volume root; descend through the public UI.
-            if (kind != "exfat" && !ntfs) {
+            if (kind != "exfat" && !ntfs && !ext) {
                 QTRY_VERIFY(Row(*table, "HfsFixture") >= 0);
                 const int row = Row(*table, "HfsFixture");
                 table->selectRow(row);
@@ -199,7 +213,7 @@ class FilesystemReadUiTests final : public QObject {
             const QString output = directory.filePath("copied");
             ExtractionOptions copyOptions;
             copyOptions.pathMode = ExtractionOptions::PathMode::CurrentPaths;
-            if (kind != "exfat" && !ntfs)
+            if (kind != "exfat" && !ntfs && !ext)
                 copyOptions.currentFolder = "HfsFixture";
             window.extractTo(output, true, {}, copyOptions);
             QVERIFY2(unexpectedErrors.isEmpty(), qPrintable(unexpectedErrors.join('\n')));

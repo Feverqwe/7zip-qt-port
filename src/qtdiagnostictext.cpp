@@ -29,6 +29,17 @@ UString QtDiagnosticLines(const AString &source) {
 
 UString QtArchiveDiagnosticText(const UString &source) {
     const QString text = QString::fromWCharArray(source);
+    static const QString extFeaturesPrefix = QStringLiteral("Unverified ext read-only features: ");
+    if (text.startsWith(extFeaturesPrefix) && text.endsWith('.')) {
+        const QString message = QtTranslatedApplicationText(
+            "SevenZipDiagnostics",
+            QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Unverified ext read-only features: %1."));
+        return UString(
+            message
+                .arg(text.mid(extFeaturesPrefix.size(), text.size() - extFeaturesPrefix.size() - 1))
+                .toStdWString()
+                .c_str());
+    }
     static const QString missingPrefix = QStringLiteral("Missing volume : ");
     if (text.startsWith(missingPrefix)) {
         const QString message = QtTranslatedApplicationText(
@@ -65,7 +76,16 @@ UString QtArchiveDiagnosticText(const UString &source) {
                           "Some NTFS file metadata is unavailable or unverified. Names, times and "
                           "permissions may be missing or outdated."),
         QT_TRANSLATE_NOOP("SevenZipDiagnostics",
-                          "NTFS file metadata is unavailable or unverified.")};
+                          "NTFS file metadata is unavailable or unverified."),
+        QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                          "The ext filesystem requires journal recovery. The journal will not be "
+                          "replayed; files may be missing, outdated or unreadable."),
+        QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                          "The ext filesystem requires orphan cleanup. Orphaned files will not be "
+                          "repaired; files may be missing or incomplete."),
+        QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                          "The ext filesystem was not cleanly unmounted or reports errors. Files "
+                          "may be inconsistent.")};
     for (const char *warning : warnings)
         if (text == QString::fromLatin1(warning))
             return QtDiagnosticText(warning);

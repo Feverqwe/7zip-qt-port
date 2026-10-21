@@ -3846,6 +3846,22 @@ Are you sure you want to split archive into such volumes?</source>
             <translation>Метаданные файла NTFS недоступны или не проверены.</translation>
         </message>
         <message>
+            <source>The ext filesystem requires journal recovery. The journal will not be replayed; files may be missing, outdated or unreadable.</source>
+            <translation>Файловой системе ext требуется восстановление журнала. Журнал не будет воспроизведён; некоторые файлы могут отсутствовать, быть устаревшими или нечитаемыми.</translation>
+        </message>
+        <message>
+            <source>The ext filesystem requires orphan cleanup. Orphaned files will not be repaired; files may be missing or incomplete.</source>
+            <translation>Файловой системе ext требуется обработка потерянных файлов. Восстановление не выполняется; некоторые файлы могут отсутствовать или быть неполными.</translation>
+        </message>
+        <message>
+            <source>The ext filesystem was not cleanly unmounted or reports errors. Files may be inconsistent.</source>
+            <translation>Файловая система ext не была корректно отключена или сообщает об ошибках. Данные файлов могут быть несогласованными.</translation>
+        </message>
+        <message>
+            <source>Unverified ext read-only features: %1.</source>
+            <translation>Непроверенные возможности ext при чтении: %1.</translation>
+        </message>
+        <message>
             <source>Some NTFS DATA mappings are incomplete or unverified. Files or streams may be outdated, incomplete or unreadable.</source>
             <translation>Расположение некоторых данных NTFS неполно или не проверено. Файлы и потоки могут быть устаревшими, неполными или недоступными для чтения.</translation>
         </message>

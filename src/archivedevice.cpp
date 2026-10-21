@@ -74,12 +74,22 @@ HRESULT CheckFeatures(IInArchive *archive, bool allowIncompleteRead, QString *er
     RINOK(archive->GetNumberOfArchiveProperties(&count))
     bool checkedIncompatible = false, checkedReadOnly = false;
     QStringList unsupported, limitations;
+    QString readerLimitations;
     for (UInt32 i = 0; i < count; ++i) {
         CMyComBSTR name;
         PROPID id;
         VARTYPE type;
         RINOK(archive->GetArchivePropertyInfo(i, &name, &id, &type))
         const QString label = name ? QString::fromWCharArray(name) : QString();
+        if (label == QStringLiteral("Read-only limitations")) {
+            NWindows::NCOM::CPropVariant value;
+            RINOK(archive->GetArchiveProperty(id, &value))
+            if (value.vt == VT_BSTR)
+                readerLimitations = QString::fromWCharArray(value.bstrVal);
+            else if (value.vt != VT_EMPTY)
+                return E_NOTIMPL;
+            continue;
+        }
         const QSet<QString> *allowed = nullptr;
         if (label == QStringLiteral("Incompatible Features")) {
             allowed = &incompatible;
@@ -124,11 +134,18 @@ HRESULT CheckFeatures(IInArchive *archive, bool allowIncompleteRead, QString *er
                     .arg(unsupported.join(QStringLiteral(", ")));
         return E_NOTIMPL;
     }
-    if (limitations.isEmpty() || allowIncompleteRead)
+    if ((limitations.isEmpty() && readerLimitations.isEmpty()) || allowIncompleteRead)
         return S_OK;
-    if (error)
-        *error = QCoreApplication::translate("archivedevice", "Limited read-only access: %1.")
-                     .arg(limitations.join(QStringLiteral(", ")));
+    if (error) {
+        if (!limitations.isEmpty())
+            *error = QCoreApplication::translate("archivedevice", "Limited read-only access: %1.")
+                         .arg(limitations.join(QStringLiteral(", ")));
+        if (!readerLimitations.isEmpty()) {
+            if (!error->isEmpty())
+                *error += '\n';
+            *error += readerLimitations;
+        }
+    }
     return kDeviceReadLimitationsRequired;
 }
 } // namespace

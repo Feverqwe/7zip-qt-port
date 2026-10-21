@@ -351,6 +351,8 @@ class ArchiveDeviceTests final : public QObject {
         QTest::newRow("snapshot") << 0x64 << 7 << QString("HAS_SNAPSHOT") << false;
         QTest::newRow("replica") << 0x64 << 11 << QString("REPLICA") << false;
         QTest::newRow("unknown-readonly") << 0x64 << 31 << QString("80000000") << false;
+        QTest::newRow("recorded-errors") << 0x3a << 1 << QString("reports errors") << false;
+        QTest::newRow("pending-orphan-list") << 0xe8 << 3 << QString("orphan cleanup") << false;
     }
     void confirmsReadableFeatureLimitations() {
         QFETCH(int, field);
