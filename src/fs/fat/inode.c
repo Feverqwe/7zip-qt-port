@@ -96,6 +96,84 @@ static bool fat_bpb_is_zero(struct fat_boot_sector *b)
 	return true;
 }
 
+static int fat_read_bpb(struct super_block *sb, struct fat_boot_sector *b,
+	int silent, struct fat_bios_param_block *bpb)
+{
+	int error = -EINVAL;
+
+	/* Read in BPB ... */
+	memset(bpb, 0, sizeof(*bpb));
+	bpb->fat_sector_size = get_unaligned_le16(&b->sector_size);
+	bpb->fat_sec_per_clus = b->sec_per_clus;
+	bpb->fat_reserved = le16_to_cpu(b->reserved);
+	bpb->fat_fats = b->fats;
+	bpb->fat_dir_entries = get_unaligned_le16(&b->dir_entries);
+	bpb->fat_sectors = get_unaligned_le16(&b->sectors);
+	bpb->fat_fat_length = le16_to_cpu(b->fat_length);
+	bpb->fat_total_sect = le32_to_cpu(b->total_sect);
+
+	bpb->fat16_state = b->fat16.state;
+	bpb->fat16_vol_id = get_unaligned_le32(b->fat16.vol_id);
+
+	bpb->fat32_length = le32_to_cpu(b->fat32.length);
+	bpb->fat32_root_cluster = le32_to_cpu(b->fat32.root_cluster);
+	bpb->fat32_info_sector = le16_to_cpu(b->fat32.info_sector);
+	bpb->fat32_state = b->fat32.state;
+	bpb->fat32_vol_id = get_unaligned_le32(b->fat32.vol_id);
+
+	/* Validate this looks like a FAT filesystem BPB */
+	if (!bpb->fat_reserved) {
+		if (!silent)
+			fat_msg(sb, KERN_ERR,
+				"bogus number of reserved sectors");
+		goto out;
+	}
+	if (!bpb->fat_fats) {
+		if (!silent)
+			fat_msg(sb, KERN_ERR, "bogus number of FAT structure");
+		goto out;
+	}
+
+	/*
+	 * Earlier we checked here that b->secs_track and b->head are nonzero,
+	 * but it turns out valid FAT filesystems can have zero there.
+	 */
+
+	if (!fat_valid_media(b->media)) {
+		if (!silent)
+			fat_msg(sb, KERN_ERR, "invalid media value (0x%02x)",
+				(unsigned)b->media);
+		goto out;
+	}
+
+	if (!is_power_of_2(bpb->fat_sector_size)
+	    || (bpb->fat_sector_size < 512)
+	    || (bpb->fat_sector_size > 4096)) {
+		if (!silent)
+			fat_msg(sb, KERN_ERR, "bogus logical sector size %u",
+			       (unsigned)bpb->fat_sector_size);
+		goto out;
+	}
+
+	if (!is_power_of_2(bpb->fat_sec_per_clus)) {
+		if (!silent)
+			fat_msg(sb, KERN_ERR, "bogus sectors per cluster %u",
+				(unsigned)bpb->fat_sec_per_clus);
+		goto out;
+	}
+
+	if (bpb->fat_fat_length == 0 && bpb->fat32_length == 0) {
+		if (!silent)
+			fat_msg(sb, KERN_ERR, "bogus number of FAT sectors");
+		goto out;
+	}
+
+	error = 0;
+
+out:
+	return error;
+}
+
 static int fat_read_static_bpb(struct super_block *sb,
 	struct fat_boot_sector *b, int silent,
 	struct fat_bios_param_block *bpb)
@@ -159,6 +237,24 @@ static int fat_read_static_bpb(struct super_block *sb,
 
 out:
 	return error;
+}
+
+int fat_linux_volume_state(const void *boot, size_t size, int *dirty)
+{
+	struct fat_boot_sector b;
+	struct fat_bios_param_block bpb;
+	struct super_block sb = {0};
+	if (!boot || !dirty || size < sizeof(b))
+		return -EINVAL;
+	memcpy(&b, boot, sizeof(b));
+	if (fat_read_bpb(&sb, &b, 1, &bpb))
+		return -EINVAL;
+	/* fat_fill_super: some OSes set FAT_STATE_DIRTY until unmount. */
+	if (!bpb.fat_fat_length && bpb.fat32_length)
+		*dirty = bpb.fat32_state & FAT_STATE_DIRTY;
+	else
+		*dirty = bpb.fat16_state & FAT_STATE_DIRTY;
+	return 0;
 }
 
 int fat_linux_legacy_header(const void *boot, uint64_t size, void *normalized)

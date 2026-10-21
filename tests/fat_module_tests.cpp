@@ -20,12 +20,17 @@ class Input final : public IInStream, public CMyUnknownImp {
 
   public:
     bool fail = false;
+    UInt64 failAt = UINT64_MAX;
+    HRESULT failure = E_FAIL;
+    bool failSeek = false;
     explicit Input(QByteArray bytes) : bytes_(std::move(bytes)) {}
     Z7_COM7F_IMF(Read(void *data, UInt32 size, UInt32 *processed)) override {
         if (processed)
             *processed = 0;
         if (fail)
             return E_FAIL;
+        if (position_ == failAt && !failSeek)
+            return failure;
         size = UInt32(
             qMin<UInt64>(size, position_ < UInt64(bytes_.size()) ? bytes_.size() - position_ : 0));
         if (size)
@@ -43,6 +48,8 @@ class Input final : public IInStream, public CMyUnknownImp {
                                                        : bytes_.size();
         if (offset < -base || (offset > 0 && base > INT64_MAX - offset))
             return E_INVALIDARG;
+        if (failSeek && UInt64(base + offset) == failAt)
+            return failure;
         position_ = UInt64(base + offset);
         if (position)
             *position = position_;
@@ -101,6 +108,38 @@ class FatModuleTests final : public QObject {
     QLibrary module_{QString::fromUtf8(SEVENZIP_FAT_MODULE)};
     CMyComPtr<IInArchive> archive_;
     QByteArray bytes_;
+    QByteArray fixture(const QString &kind) {
+        QProcess process;
+        process.start(QString::fromUtf8(SEVENZIP_FAT_PYTHON),
+                      {QString::fromUtf8(SEVENZIP_FAT_FIXTURE), "--readonly=" + kind});
+        if (!process.waitForFinished(10000) || process.exitCode()) {
+            QTest::qFail(process.readAllStandardError().constData(), __FILE__, __LINE__);
+            return {};
+        }
+        return process.readAllStandardOutput();
+    }
+    void checkLimitations(bool dirty, bool shortSource) {
+        UInt32 count = 0;
+        QCOMPARE(archive_->GetNumberOfArchiveProperties(&count), S_OK);
+        bool found = false;
+        for (UInt32 i = 0; i < count; ++i) {
+            CMyComBSTR name;
+            PROPID id;
+            VARTYPE type;
+            QCOMPARE(archive_->GetArchivePropertyInfo(i, &name, &id, &type), S_OK);
+            if (!name || QString::fromWCharArray(name) != "Read-only limitations")
+                continue;
+            found = true;
+            NWindows::NCOM::CPropVariant value;
+            QCOMPARE(archive_->GetArchiveProperty(id, &value), S_OK);
+            QCOMPARE(value.vt, VARTYPE(dirty || shortSource ? VT_BSTR : VT_EMPTY));
+            const QString text =
+                value.vt == VT_BSTR ? QString::fromWCharArray(value.bstrVal) : QString();
+            QCOMPARE(text.contains("not properly unmounted"), dirty);
+            QCOMPARE(text.contains("shorter than"), shortSource);
+        }
+        QVERIFY(found);
+    }
     HRESULT open(QByteArray data, IArchiveOpenCallback *callback = nullptr) {
         CMyComPtr<IInStream> source = new Input(std::move(data));
         return archive_->Open(source, nullptr, callback);
@@ -157,6 +196,49 @@ class FatModuleTests final : public QObject {
         QCOMPARE(archive_->Extract(&index, 1, 0, callback), S_OK);
         QCOMPARE(callback->result, Int32(NArchive::NExtract::NOperationResult::kOK));
         QCOMPARE(callback->output->bytes, payload());
+    }
+    void limitedVolumesKeepReadableFiles() {
+        for (const QString &bits : {"12", "16", "32"}) {
+            for (const QString &kind : {"clean", "dirty", "short", "combined"}) {
+                const QByteArray data = fixture(kind + bits);
+                QVERIFY(!data.isEmpty());
+                QCOMPARE(open(data), S_OK);
+                checkLimitations(kind == "dirty" || kind == "combined",
+                                 kind == "short" || kind == "combined");
+                const UInt32 index = 0;
+                CMyComPtr2<IArchiveExtractCallback, Extract> callback;
+                callback.Create_if_Empty();
+                QCOMPARE(archive_->Extract(&index, 1, 0, callback), S_OK);
+                QCOMPARE(callback->result, Int32(NArchive::NExtract::NOperationResult::kOK));
+                QCOMPARE(callback->output->bytes, payload());
+                QCOMPARE(archive_->Close(), S_OK);
+                checkLimitations(false, false);
+            }
+        }
+        QCOMPARE(open(fixture("partial32")), S_OK);
+        checkLimitations(false, true);
+        const UInt32 index = 0;
+        CMyComPtr2<IArchiveExtractCallback, Extract> callback;
+        callback.Create_if_Empty();
+        QCOMPARE(archive_->Extract(&index, 1, 0, callback), S_OK);
+        QCOMPARE(callback->result, Int32(NArchive::NExtract::NOperationResult::kDataError));
+        QVERIFY(callback->output->bytes != payload());
+    }
+    void optionalFsInfoFailuresAndReopening() {
+        const auto data = fixture("clean32");
+        for (bool seek : {false, true})
+            for (HRESULT failure : {E_FAIL, E_ABORT, E_OUTOFMEMORY}) {
+                auto *input = new Input(data);
+                CMyComPtr<IInStream> source = input;
+                input->failAt = 512;
+                input->failSeek = seek;
+                input->failure = failure;
+                QCOMPARE(archive_->Open(source, nullptr, nullptr),
+                         failure == E_FAIL ? S_OK : failure);
+                input->failAt = UINT64_MAX;
+                QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
+                checkLimitations(false, false);
+            }
     }
     void streamSurvivesCloseReopenAndRelease() {
         QCOMPARE(open(bytes_), S_OK);

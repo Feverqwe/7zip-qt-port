@@ -30,6 +30,13 @@ static inline u16 __be16_to_cpu(u16 value) {
 }
 #define __le16_to_cpu le16_to_cpu
 #define get_unaligned_le16 fat_load_le16
+static inline u32 fat_load_le32(const void *address) {
+    const u8 *p = (const u8 *)address;
+    return (u32)p[0] | (u32)p[1] << 8 | (u32)p[2] << 16 | (u32)p[3] << 24;
+}
+static inline u32 le32_to_cpu(u32 value) { return fat_load_le32(&value); }
+#define get_unaligned_le32 fat_load_le32
+static inline bool is_power_of_2(unsigned value) { return value && !(value & (value - 1)); }
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof((x)[0]))
 #define max(a, b) ((a) > (b) ? (a) : (b))
 #define min(a, b) ((a) < (b) ? (a) : (b))
@@ -70,6 +77,10 @@ struct super_block {
 /* Archive dates remain local wall-clock values until the host time adapter. */
 static const struct { int tz_minuteswest; } sys_tz = {0};
 #include "../../include/uapi/linux/msdos_fs.h"
+static inline int fat_valid_media(u8 media)
+{
+    return 0xf8 <= media || media == 0xf0;
+}
 _Static_assert(sizeof(struct msdos_dir_entry) == 32, "FAT directory layout");
 _Static_assert(offsetof(struct fat_boot_sector, fat32.root_cluster) == 44, "FAT32 BPB layout");
 #endif

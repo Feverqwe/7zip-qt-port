@@ -54,6 +54,9 @@ struct CHeader {
 
     bool VolFieldsDefined;
     bool HeadersWarning;
+#ifdef SEVENZIP_LINUX_FAT
+    bool Dirty = false;
+#endif
 
     UInt32 FatSize;
     UInt32 BadCluster;
@@ -453,6 +456,9 @@ struct CDatabase {
     UInt64 PhySize;
 
     UInt32 Vol_MTime;
+#ifdef SEVENZIP_LINUX_FAT
+    bool SourceTruncated = false;
+#endif
     char VolLabel[11];
     bool VolItem_Defined;
 
@@ -481,6 +487,10 @@ HRESULT CDatabase::SeekToSector(UInt32 sector) {
 }
 
 void CDatabase::Clear() {
+#ifdef SEVENZIP_LINUX_FAT
+    SourceTruncated = false;
+    Header.Dirty = false;
+#endif
     PhySize = 0;
     VolItem_Defined = false;
     NumDirClusters = 0;
@@ -747,6 +757,7 @@ HRESULT CDatabase::ReadDir(Int32 parent, UInt32 cluster, unsigned level) {
 
 HRESULT CDatabase::Open() {
     Clear();
+    RINOK(InStream_SeekSet(InStream, 0))
     bool numFreeClusters_Defined = false;
     {
         UInt32 buf32[kHeaderSize / 4];
@@ -764,6 +775,14 @@ HRESULT CDatabase::Open() {
                               << Header.SectorSizeLog;
         if (fatEnd > fileSize)
             return S_FALSE;
+#ifdef SEVENZIP_LINUX_FAT
+        int dirty = 0;
+        if (fat_linux_volume_state(buf32, kHeaderSize, &dirty))
+            return S_FALSE;
+        Header.Dirty = dirty != 0;
+        SourceTruncated = fileSize < Header.GetPhySize();
+        PhySize = MyMin(fileSize, Header.GetPhySize());
+#endif
 
         /* we comment that check to support truncated images */
         /*
@@ -772,11 +791,16 @@ HRESULT CDatabase::Open() {
         */
 
         if (Header.IsFat32()) {
-            if (((UInt32)Header.FsInfoSector << Header.SectorSizeLog) + kHeaderSize <= fileSize &&
-                SeekToSector(Header.FsInfoSector) == S_OK &&
-                ReadStream_FALSE(InStream, buf32, kHeaderSize) == S_OK &&
-                0xaa550000 == Get32a(buf32 + 508 / 4) && 0x41615252 == Get32a(buf32) &&
-                0x61417272 == Get32a(buf32 + 484 / 4)) {
+            HRESULT result = S_FALSE;
+            if (((UInt64)Header.FsInfoSector << Header.SectorSizeLog) + kHeaderSize <= fileSize) {
+                result = SeekToSector(Header.FsInfoSector);
+                if (result == S_OK)
+                    result = ReadStream_FALSE(InStream, buf32, kHeaderSize);
+                if (result == E_ABORT || result == E_OUTOFMEMORY)
+                    return result;
+            }
+            if (result == S_OK && 0xaa550000 == Get32a(buf32 + 508 / 4) &&
+                0x41615252 == Get32a(buf32) && 0x61417272 == Get32a(buf32 + 484 / 4)) {
                 NumFreeClusters = Get32a(buf32 + 488 / 4);
                 numFreeClusters_Defined = (NumFreeClusters <= Header.FatSize - 2);
             } else
@@ -865,7 +889,9 @@ HRESULT CDatabase::Open() {
 
     RINOK(ReadDir(-1, Header.RootCluster, 0))
 
+#ifndef SEVENZIP_LINUX_FAT
     PhySize = Header.GetPhySize();
+#endif
     return S_OK;
 }
 
@@ -942,8 +968,14 @@ enum {
     // kpidVolName,
     // kpidFileSysType
 };
+#ifdef SEVENZIP_LINUX_FAT
+static const PROPID kpidReadLimitations = kpidUserDefined + 1;
+#endif
 
 static const CStatProp kArcProps[] = {
+#ifdef SEVENZIP_LINUX_FAT
+    {NULL, kpidReadOnly, VT_BOOL},   {"Read-only limitations", kpidReadLimitations, VT_BSTR},
+#endif
     {NULL, kpidFileSystem, VT_BSTR}, {NULL, kpidClusterSize, VT_UI4},
     {NULL, kpidFreeSpace, VT_UI8},   {NULL, kpidHeadersSize, VT_UI8},
     {NULL, kpidMTime, VT_FILETIME},  {NULL, kpidVolumeName, VT_BSTR},
@@ -1000,6 +1032,25 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID propID, PROPVARIANT *value)) {
     COM_TRY_BEGIN
     NWindows::NCOM::CPropVariant prop;
     switch (propID) {
+#ifdef SEVENZIP_LINUX_FAT
+    case kpidReadOnly:
+        prop = true;
+        break;
+    case kpidReadLimitations: {
+        AString reasons;
+        if (Header.Dirty)
+            reasons = "The FAT volume was not properly unmounted. Some data may be corrupt.";
+        if (SourceTruncated) {
+            if (!reasons.IsEmpty())
+                reasons += '\n';
+            reasons += "The FAT source is shorter than the declared volume. Some files may be "
+                       "incomplete or unreadable.";
+        }
+        if (!reasons.IsEmpty())
+            prop = reasons;
+        break;
+    }
+#endif
     case kpidFileSystem: {
         char s[16];
         s[0] = 'F';

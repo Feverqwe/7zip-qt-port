@@ -6,7 +6,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
-from fat_fixture import Volume, PAYLOAD, LONG_NAME, entry, long_entries, legacy_volume
+from fat_fixture import Volume, PAYLOAD, LONG_NAME, entry, long_entries, legacy_volume, readonly_volume
 
 RUNTIME = Path(sys.argv.pop(1))
 MODULE = Path(sys.argv.pop(1))
@@ -70,6 +70,20 @@ class FatTests(unittest.TestCase):
                     volume.write_directory()
                     self.assert_contents(volume, engine)
                     self.assert_contents(volume, engine, "EMPTY.TXT", b"")
+
+    def test_flagged_and_short_sources_keep_readable_files(self):
+        for bits in (12, 16, 32):
+            for mode in ("dirty", "short", "combined"):
+                with self.subTest(bits=bits, mode=mode):
+                    volume = readonly_volume(mode + str(bits))
+                    self.assert_contents(volume, "7z")
+                    self.assert_contents(volume, "7z", "EMPTY.TXT", b"")
+                    listing = self.run_image(volume, "7z", "l", None)
+                    self.assertIn(listing.returncode, (0, 1), listing.stderr)
+                    if mode in ("dirty", "combined"):
+                        self.assertIn(b"not properly unmounted", listing.stdout)
+                    if mode in ("short", "combined"):
+                        self.assertIn(b"shorter than", listing.stdout)
 
     def test_active_fat_and_invalid_index_fallback(self):
         for engine in ("7z", "7zz"):

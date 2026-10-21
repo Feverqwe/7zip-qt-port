@@ -1,7 +1,7 @@
 # FAT read paths compared with Linux
 
 Part of the [Linux format review](filesystems-linux.md), 2026-10-19.
-The two integrated iterations cover BPB-based FAT12/16/32 geometry, directory
+The integrated iterations cover BPB-based FAT12/16/32 geometry, directory
 and file reads, then DOS 1.x recognition, names, dates and archive consumers.
 Other filesystem and shared-format rows remain in the active goal.
 
@@ -124,7 +124,7 @@ kernel service/type boundary. Kernel NLS's 16-bit `wchar_t` is named
 `fat_wchar_t` to avoid conflicting host C library types. Logging, module
 registration, mount policy and VFS operations are omitted. One string-literal
 pointer cast addresses host C compiler signedness diagnostics. Source comparison
-verified the eight transferred function/table ranges against the pinned snapshot
+verified the transferred function/table ranges against the pinned snapshot
 with these explicit adaptations. Copyright and license notices are retained;
 the UAPI syscall exception is included with installed notices.
 
@@ -194,3 +194,72 @@ dates with exact file bytes. The mounts were unmounted and temporary images
 removed. They supplement the pinned modern-source comparison; they do not claim
 runtime execution of the 2026 kernel. No full/slow, physical-device, UI or
 clean-package acceptance is claimed. Incremental builds and caches are preserved.
+
+## Volume state and useful read-only access — 2026-10-21
+
+Compared complete Linux `inode.c:fat_read_bpb`, `fat_fill_super`,
+`fat_set_state`, BPB types and `include/linux/msdos_fs.h:fat_valid_media` with
+the original SDK header/open/FSINFO/stream/property bodies and current archive
+opening, transport and consent consumers. The module previously ignored BPB
+dirty state. The existing reader could retrieve files from a short source, but
+its declared physical size made the common archive layer reject the opening as
+unexpected EOF before useful access. These were separate reader/product gates.
+
+The complete original `fat_read_bpb` C body is now retained in
+`src/fs/fat/inode.c`, unchanged, alongside the earlier legacy BPB routines.
+The original `fat_valid_media` helper and narrow little-endian/type services
+supply its dependency closure. A bounded C bridge returns the dirty state using
+the `fat_fill_super` FAT12/16 versus FAT32 branch. Legacy normalization uses a
+private BPB with no extended state, as before. Write-side `fat_set_state` and
+mount/VFS services are not copied. Notices and the existing GPL module/standalone
+boundary remain intact; the sibling SDK remains read-only.
+
+The dynamic FAT module reports dirty state and source truncation through the
+shared read-only limitations contract. Opening needs explicit per-opening consent;
+the badge persists across refresh, and a new opening asks again. Readable files
+can be copied; source geometry still governs FAT/mapping validation. The physical
+archive span is bounded by the actual input length, while the separate limitation
+retains the declared-volume discrepancy. Missing required bytes remain DataError,
+not successful empty/zero-filled output. An unusable FAT table is still a real
+reader limitation. No source writes, repair, journal replay or forced unmounts
+are introduced. Standalone retains its original short-source archive policy;
+the application's Linux module owns the new limitations contract.
+
+Related common fixes preserve abort/OOM from optional FSINFO seek/read and rewind
+the stream before a fresh open, allowing reuse after a failed metadata read.
+Other optional FSINFO failures remain warnings, with free space recounted from
+the usable FAT rather than the failed cached count. These two integration fixes
+also reach the standalone overlay without GPL linkage.
+
+ABI checks cover clean/dirty/short/combined FAT12/16/32, successful exact payload,
+cleared limitations after Close, genuinely incomplete extraction, FSINFO I/O,
+abort/OOM and reuse. CLI checks actual extraction, empty files, diagnostics and
+unchanged source bytes. The first integration run exposed the common unexpected
+EOF gate; the bounded physical span fixes it without weakening that common layer.
+Seven focused suites passed on macOS arm64 (53.41 s): `fat`, `fat_module`,
+`language`, all three previous filesystem GUI suites and `filesystem_fat_read_ui`.
+The new small GUI group preserves EN/RU accept/Cancel, exact copy, refresh/reopen,
+disabled write actions, source preservation and compact geometry. Cocoa combined
+warnings are 420×227 EN / 420×288 RU with translated text and no clipping.
+The app incremental build and upstream verifier (422 exact / 242 adapted /
+12 local), 21 Linux reference hashes and exact copied C body comparison passed.
+
+Native Linux vfat `6.8.0-147-generic` read all nine dirty/short/combined controls
+with exact payload and empty files, receipt `20261021T113154Z-3d9ca6e8`.
+Readonly block/mount flags and unchanged SHA-256 were checked; all loops, mounts
+and images were removed. This supplements pinned source comparison and does not
+claim execution of that snapshot or physical-device acceptance.
+
+Guest receipt `20261021T113302Z-13ace39b`: Linux 7/7 (23.74 s), Windows 6/7,
+with an existing backend-discovery test reporting `Codec discovery timed out`.
+The new ABI states, CLI and all four GUI groups passed. Focused unchanged
+`fat_module` then passed on Windows, receipt `20261021T113706Z-48cca499`.
+The original failure evidence is retained; its cause is not established, and
+no discovery deadline, build flag or compiler cache was changed. All seven
+related suites are therefore checked across macOS/Linux/Windows batches.
+Full/slow suites and physical devices were not checked.
+
+Read-side closure is not claimed: a damaged child directory still propagates a
+global recursive-open failure in the retained SDK traversal. That namespace/error
+isolation scenario needs its own complete source comparison and integration;
+the current iteration establishes volume-state and usable-source behavior only.

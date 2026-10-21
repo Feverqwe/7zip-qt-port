@@ -3838,6 +3838,14 @@ Are you sure you want to split archive into such volumes?</source>
     <context>
         <name>SevenZipDiagnostics</name>
         <message>
+            <source>The FAT volume was not properly unmounted. Some data may be corrupt.</source>
+            <translation>Том FAT не был корректно отключён. Часть данных может быть повреждена.</translation>
+        </message>
+        <message>
+            <source>The FAT source is shorter than the declared volume. Some files may be incomplete or unreadable.</source>
+            <translation>Источник FAT короче заявленного размера тома. Некоторые файлы могут быть неполными или недоступными для чтения.</translation>
+        </message>
+        <message>
             <source>Some NTFS file metadata is unavailable or unverified. Names, times and permissions may be missing or outdated.</source>
             <translation>Некоторые метаданные файлов NTFS недоступны или не проверены. Имена, время и права доступа могут отсутствовать или быть устаревшими.</translation>
         </message>

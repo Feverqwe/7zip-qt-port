@@ -113,7 +113,12 @@ UString QtArchiveDiagnosticText(const UString &source) {
             "may be missing, outdated or reused."),
         QT_TRANSLATE_NOOP(
             "SevenZipDiagnostics",
-            "NTFS reparse metadata is unavailable. The main file stream cannot be decoded.")};
+            "NTFS reparse metadata is unavailable. The main file stream cannot be decoded."),
+        QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                          "The FAT volume was not properly unmounted. Some data may be corrupt."),
+        QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                          "The FAT source is shorter than the declared volume. Some files may be "
+                          "incomplete or unreadable.")};
     for (const char *warning : warnings)
         if (text == QString::fromLatin1(warning))
             return QtDiagnosticText(warning);

@@ -138,6 +138,35 @@ def legacy_volume(kib=160):
     return v
 
 
+def readonly_volume(kind):
+    bits = int(kind[-2:])
+    mode = kind[:-2]
+    v = Volume(bits)
+    if mode not in ("clean", "dirty", "short", "combined", "partial"):
+        raise ValueError(kind)
+    if mode in ("dirty", "combined"):
+        v.data[65 if bits == 32 else 37] |= 1
+    if mode in ("short", "combined"):
+        # Missing unallocated tail; the complete fragmented payload is readable.
+        v.data = v.data[:max(v.root + 512, max(v.offset(c) for c in v.chain) + v.cluster_size)]
+    elif mode == "partial":
+        v.data = v.data[:v.offset(v.chain[-1]) + 7]
+    return v
+
+
 if __name__ == "__main__":
+    import argparse
+    import base64
+    import json
     import sys
-    sys.stdout.buffer.write(legacy_volume().data)
+    import zlib
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--readonly")
+    parser.add_argument("--bundle", action="store_true")
+    args = parser.parse_args()
+    v = readonly_volume(args.readonly) if args.readonly else legacy_volume()
+    if args.bundle:
+        print(json.dumps({"size": len(v.data), "image": base64.b64encode(zlib.compress(v.data)).decode(),
+                          "name": LONG_NAME, "files": {LONG_NAME: base64.b64encode(PAYLOAD).decode()}}))
+    else:
+        sys.stdout.buffer.write(v.data)
