@@ -103,10 +103,7 @@ Z7_COM7F_IMF(CClusterInStream::Read(void *data, UInt32 size, UInt32 *processedSi
         const UInt32 offsetInBlock = (UInt32)_virtPos & (blockSize - 1);
         const UInt32 phyBlock = Vector[virtBlock];
         const UInt64 newPos = StartOffset + ((UInt64)phyBlock << BlockSizeLog) + offsetInBlock;
-        if (newPos != _physPos) {
-            _physPos = newPos;
-            RINOK(SeekToPhys())
-        }
+        _physPos = newPos;
         _curRem = blockSize - offsetInBlock;
         for (unsigned i = 1; i < 64 && _curRem < size && _curRem < ((UInt32)1 << 31) - blockSize &&
                              virtBlock + i < Vector.Size() && phyBlock + i == Vector[virtBlock + i];
@@ -116,6 +113,9 @@ Z7_COM7F_IMF(CClusterInStream::Read(void *data, UInt32 size, UInt32 *processedSi
 
     if (size > _curRem)
         size = _curRem;
+    // Other file streams can share and reposition the physical input.
+    // Retry a failed seek before reading, without advancing the logical cursor.
+    RINOK(SeekToPhys())
     HRESULT res = Stream->Read(data, size, &size);
     if (processedSize)
         *processedSize = size;

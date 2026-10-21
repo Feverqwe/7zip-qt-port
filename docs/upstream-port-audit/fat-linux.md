@@ -337,8 +337,77 @@ Linux's three direct FAT suites passed again on the final source,
 `20261021T120917Z-1a271559` (2.22 s); the corresponding macOS follow-up also
 passed. Existing incremental outputs/cache and all test timeouts were retained.
 
-Read-side closure still requires the remaining stream/consumer comparison.
-In particular, the shared `CClusterInStream` caches its own physical position,
-while FAT streams share the source handle. Interleaved stream reads need a
-behavioral reproduction and a comparison of that shared owner's consumers before
-closing this boundary; the directory tests do not establish stream independence.
+Read-side closure still requires the remaining module/consumer comparison.
+The shared clustered-stream boundary identified here is addressed below;
+directory acceptance alone did not establish stream independence.
+
+### Independent clustered file cursors — 2026-10-21
+
+Compared the complete original SDK `CPP/7zip/Common/LimitedStreams.cpp` and
+`.h`, `CClusterInStream::Read`/`Seek`/`InitAndSeek`, FAT `GetStream`/extraction,
+and the other consumer, `CPP/7zip/Archive/ComHandler.cpp` regular-stream mapping
+and extraction. Both handlers retain one shared physical input. Ext uses a
+different class, `CClusterInStream2`; other classes in the common source are
+unchanged. The SDK revision/repository recorded above also owns these modules.
+Linux `fs/fat/file.c` exposes `generic_file_read_iter`/`generic_file_llseek`:
+each opened file has an independent logical position, regardless of shared
+device storage and fragmented FAT mapping. This comparison adds no Linux C
+units and does not transfer VFS/page-cache services.
+
+The old clustered reader assumed its cached physical position still matched
+the shared input. Creating or reading another file could therefore return that
+file's bytes; a failed seek could also make a retry read from a stale location.
+The regression reproduced both failures before the change. The retained SDK
+reader now restores its mapped physical position before each nonempty read.
+Its cluster vector, bounded contiguous-block batching, file-size limit,
+logical cursor updates, error propagation and EOF result remain unchanged.
+Failed seeks leave the logical position and processed byte count unchanged,
+and retry the seek. The single adaptation is included in both engine overlays
+and the FAT module; the original Compound handler itself is unchanged.
+
+The new `fat_stream` ABI suite alternates two fragmented files for FAT12/16/32,
+retains both streams after archive/source release, seeks backward across block
+boundaries and checks exact bytes, EOF and retry after seek/read error, abort,
+OOM or zero-byte source reads. `compound_stream` checks both engines with two
+regular Compound streams and an intentionally truncated source: complete data
+and the available partial prefix are exact, while truncation retains a nonzero
+result and the incomplete file reports Data Error. No source writes, repairs,
+journal replay or consent/bounds bypasses are added.
+
+Native vfat `6.8.0-147-generic` independently confirmed alternating file handles
+and backward reads for all three FAT widths, receipt
+`20261021T123343Z-bdc5273d`. Read-only block/mount flags and unchanged SHA-256
+were checked; all synthetic images, loops and mounts were removed. An initial
+reference run used the mount's default charset and could not address the Unicode
+filename; explicit `iocharset=utf8` corrected that test setup. This is native
+runtime evidence, not a claim that the pinned Linux revision was executed.
+
+The seven focused FAT/Compound/module/UI suites passed on macOS arm64 (11.62 s)
+and Linux (`20261021T123408Z-ba1ab7c5`, 5.54 s). Windows initially passed five:
+the backend module and one GUI row failed during codec discovery, before file
+reads (one signal arrived after 6.65 s versus the test's 5 s wait). The unchanged
+product/timeouts passed the four-suite targeted repeat, including the final
+stream/Compound fixtures, `20261021T123516Z-dabdb436` (9.51 s). The discovery
+timing cause remains unproven; these failures are retained as diagnostics rather
+than attributed to clustered reads or hidden by a deadline increase.
+
+The application incremental build, upstream verifier (422 exact / 242 adapted /
+12 local) and 21 pinned FAT source hashes passed. A final stream follow-up
+checks the whole requested range after backward seek rather than accepting only
+its first block fragment. Compiler caches, build trees and test deadlines were
+retained. Only the two handlers using this class and their direct consumers are
+affected; full/slow gates, installation and physical media were not run. The
+broader filesystem/format review remains active.
+
+The final boundary/EOF follow-up passed on macOS (`fat_stream`, 0.98 s) and
+both runners (`fat_stream`/`compound_stream`,
+`20261021T123657Z-252e85d9`). The last synchronization also removed the
+disposable reference/cleanup helper; no temporary helper is shipped.
+
+One separate source-visible read-policy boundary remains: `GetStream` currently
+discards an entire file stream when a later required FAT link is free, ends
+early or loops, even when earlier distinct data clusters are known. Existing
+invalid-chain CLI tests establish an error result but do not establish access
+to that readable prefix. Compare Linux's per-read mapping failure and the SDK
+extraction/property consumers before exposing a bounded partial stream with
+honest incomplete-file reporting. This cursor fix does not close that boundary.

@@ -163,9 +163,13 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--readonly")
     parser.add_argument("--directory")
+    parser.add_argument("--streams", type=int)
     parser.add_argument("--bundle", action="store_true")
     args = parser.parse_args()
-    if args.directory:
+    if args.streams:
+        from fat_stream_fixture import stream_volume
+        v = stream_volume(args.streams)
+    elif args.directory:
         from fat_directory_fixture import directory_volume
         v = directory_volume(args.directory)
     else:
@@ -177,6 +181,7 @@ if __name__ == "__main__":
                                     getattr(v, "expected_files", {LONG_NAME: PAYLOAD}).items()},
                           "incomplete_dirs": getattr(v, "incomplete_dirs", []),
                           "directory_limited": getattr(v, "directory_limited", False),
-                          "fault_offset": getattr(v, "fault_offset", 0)}))
+                          "fault_offset": getattr(v, "fault_offset", 0),
+                          "stream_offsets": getattr(v, "stream_offsets", [])}))
     else:
         sys.stdout.buffer.write(v.data)
