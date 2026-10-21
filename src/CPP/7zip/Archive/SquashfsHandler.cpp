@@ -635,8 +635,12 @@ UInt32 CNode::Parse4(const Byte *p, UInt32 size, const CHeader &_h) {
     LE_16(6, Gid);
     // LE_32 (8, MTime);
     LE_32(12, Number);
-    if ((Mode & MY_LIN_S_IFMT) != 0 || Uid >= _h.NumIDs || Gid >= _h.NumIDs || GetUi32(p + 12) == 0)
+    if ((Mode & MY_LIN_S_IFMT) != 0 || GetUi32(p + 12) == 0)
         return 0;
+#ifndef SEVENZIP_LINUX_SQUASHFS
+    if (Uid >= _h.NumIDs || Gid >= _h.NumIDs)
+        return 0;
+#endif
 
     Xattr = (UInt32)-1;
     NumLinks = 1;
@@ -788,6 +792,9 @@ struct CData {
 struct CFrag {
     UInt64 StartBlock;
     UInt32 Size;
+#ifdef SEVENZIP_LINUX_SQUASHFS
+    bool Available = true;
+#endif
 };
 
 // clang-format off
@@ -854,6 +861,17 @@ Z7_CLASS_IMP_CHandler_IInArchive_1(
   std::vector<CAttributes> _attributes;
   std::map<UInt32, CAttributes> _attributeSets;
   std::set<UInt32> _incompleteAttributes;
+  std::set<UInt32> _unavailableIds;
+  bool _ownershipLimitations = false;
+  bool _fragmentLimitations = false;
+  bool OwnershipUnavailable(const CNode &node) const {
+    return !_h.IsOldVersion() && (node.Uid >= _h.NumIDs || node.Gid >= _h.NumIDs ||
+        _unavailableIds.count(node.Uid) || _unavailableIds.count(node.Gid));
+  }
+  bool FragmentUnavailable(const CNode &node) const {
+    return !_h.IsOldVersion() && node.ThereAreFrags() &&
+        (node.Frag >= _frags.Size() || !_frags[node.Frag].Available);
+  }
   AString _rootAttributeName;
   struct CAttributeContext { CHandler *Owner; unsigned Node; HRESULT Result; };
   static int EmitAttribute(void *, const char *, const void *, size_t) noexcept;
@@ -988,21 +1006,37 @@ HRESULT CHandler::LoadLinuxTables(UInt64 &directoryEnd) {
     directoryEnd = end;
     _uids.Alloc((size_t)_h.NumIDs * 4);
     for (unsigned i = 0; i < _h.NumIDs; ++i) {
-        unsigned id;
-        RINOK(LinuxResult(sevenzip_squashfs_id(_linuxMetadata, i, &id)))
-        SetUi32(_uids + (size_t)i * 4, id)
+        _linuxReadResult = S_OK;
+        unsigned id = 0;
+        const HRESULT result = LinuxResult(sevenzip_squashfs_id(_linuxMetadata, i, &id));
+        if (result == E_ABORT || result == E_OUTOFMEMORY)
+            return result;
+        if (result != S_OK)
+            _unavailableIds.insert(i);
+        SetUi32(_uids + (size_t)i * 4, id);
+        if (_openCallback && (i & 255) == 0)
+            RINOK(_openCallback->SetCompleted(NULL, NULL))
     }
     if (_h.NumFrags > kNumFilesMax)
         return S_FALSE;
     _frags.ClearAndReserve(_h.NumFrags);
     for (UInt32 i = 0; i < _h.NumFrags; ++i) {
-        uint64_t start;
-        unsigned size;
-        RINOK(LinuxResult(sevenzip_squashfs_fragment(_linuxMetadata, i, &start, &size)))
+        _linuxReadResult = S_OK;
+        uint64_t start = 0;
+        unsigned size = 0;
+        const HRESULT result =
+            LinuxResult(sevenzip_squashfs_fragment(_linuxMetadata, i, &start, &size));
+        if (result == E_ABORT || result == E_OUTOFMEMORY)
+            return result;
         CFrag frag;
+        const UInt32 packed = GET_COMPRESSED_BLOCK_SIZE(size);
+        frag.Available = result == S_OK && packed != 0 && packed <= _h.BlockSize &&
+                         start <= _h.Size && packed <= _h.Size - start;
         frag.StartBlock = start;
         frag.Size = size;
         _frags.AddInReserved(frag);
+        if (_openCallback && (i & 255) == 0)
+            RINOK(_openCallback->SetCompleted(NULL, NULL))
     }
     return S_OK;
 }
@@ -1097,6 +1131,12 @@ static const Byte kProps[] = {
 static const PROPID kpidReadLimitations = kpidUserDefined;
 static const char kAttributeLimitations[] = "Some SquashFS extended attributes are unavailable. "
                                             "Readable file data and attributes remain accessible.";
+static const char kOwnershipLimitations[] =
+    "Some SquashFS ownership metadata is unavailable. User or group IDs may be unknown. Readable "
+    "file data remains accessible.";
+static const char kFragmentLimitations[] =
+    "Some SquashFS file fragments are unavailable. Only readable prefixes of affected files are "
+    "available; copying them reports an error.";
 static const CStatProp kArcProps[] = {
     {NULL, kpidHeadersSize, VT_UI8}, {NULL, kpidFileSystem, VT_BSTR},
     {NULL, kpidMethod, VT_BSTR},     {NULL, kpidClusterSize, VT_UI4},
@@ -1905,6 +1945,8 @@ HRESULT CHandler::Open2(IInStream *inStream) {
                 return S_FALSE;
 #ifdef SEVENZIP_LINUX_SQUASHFS
             if (!_h.IsOldVersion()) {
+                _ownershipLimitations |= OwnershipUnavailable(n);
+                _fragmentLimitations |= FragmentUnavailable(n);
                 _linuxReadResult = S_OK;
                 auto found = _attributeSets.find(n.Xattr);
                 if (found == _attributeSets.end()) {
@@ -2051,6 +2093,9 @@ Z7_COM7F_IMF(CHandler::Close()) {
     _attributes.clear();
     _attributeSets.clear();
     _incompleteAttributes.clear();
+    _unavailableIds.clear();
+    _ownershipLimitations = false;
+    _fragmentLimitations = false;
     _rootAttributeName.Empty();
 #endif
     _openCodePage = CP_UTF8;
@@ -2186,15 +2231,23 @@ bool CHandler::GetPackSize(unsigned index, UInt64 &totalPack, bool fillOffsets) 
         }
 
         if (node.ThereAreFrags()) {
-            if (node.Frag >= (UInt32)_frags.Size())
-                return false;
-            const CFrag &frag = _frags[node.Frag];
-            const UInt32 size = GET_COMPRESSED_BLOCK_SIZE(frag.Size);
-            if (size > _h.BlockSize || (_h.Major == 4 && size == 0) || frag.StartBlock > _h.Size ||
-                size > _h.Size - frag.StartBlock)
-                return false;
-            if (node.Offset == 0) {
-                totalPack += size;
+#ifdef SEVENZIP_LINUX_SQUASHFS
+            if (FragmentUnavailable(node)) {
+                if (!fillOffsets)
+                    return false;
+            } else
+#endif
+            {
+                if (node.Frag >= (UInt32)_frags.Size())
+                    return false;
+                const CFrag &frag = _frags[node.Frag];
+                const UInt32 size = GET_COMPRESSED_BLOCK_SIZE(frag.Size);
+                if (size > _h.BlockSize || (_h.Major == 4 && size == 0) ||
+                    frag.StartBlock > _h.Size || size > _h.Size - frag.StartBlock)
+                    return false;
+                if (node.Offset == 0) {
+                    totalPack += size;
+                }
             }
         }
     }
@@ -2217,10 +2270,24 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID propID, PROPVARIANT *value)) {
     case kpidReadOnly:
         prop = true;
         break;
-    case kpidReadLimitations:
+    case kpidReadLimitations: {
+        AString reasons;
         if (!_incompleteAttributes.empty())
-            prop = kAttributeLimitations;
+            reasons = kAttributeLimitations;
+        if (_ownershipLimitations) {
+            if (!reasons.IsEmpty())
+                reasons += '\n';
+            reasons += kOwnershipLimitations;
+        }
+        if (_fragmentLimitations) {
+            if (!reasons.IsEmpty())
+                reasons += '\n';
+            reasons += kFragmentLimitations;
+        }
+        if (!reasons.IsEmpty())
+            prop = reasons;
         break;
+    }
     case kpidIsTree:
         prop = true;
         break;
@@ -2346,10 +2413,25 @@ Z7_COM7F_IMF(CHandler::GetProperty(UInt32 index, PROPID propID, PROPVARIANT *val
 
     switch (propID) {
 #ifdef SEVENZIP_LINUX_SQUASHFS
-    case kpidError:
+    case kpidError: {
+        AString reasons;
         if (item.Attribute < 0 && _incompleteAttributes.count(node.Xattr))
-            prop = "Some SquashFS extended attributes are unavailable.";
+            reasons = "Some SquashFS extended attributes are unavailable.";
+        if (OwnershipUnavailable(node)) {
+            if (!reasons.IsEmpty())
+                reasons += '\n';
+            reasons += "SquashFS user or group IDs are unavailable.";
+        }
+        if (item.Attribute < 0 && FragmentUnavailable(node)) {
+            if (!reasons.IsEmpty())
+                reasons += '\n';
+            reasons +=
+                "The SquashFS file fragment is unavailable. Only the readable prefix is available.";
+        }
+        if (!reasons.IsEmpty())
+            prop = reasons;
         break;
+    }
     case kpidIsAltStream:
         prop = item.Attribute >= 0;
         break;
@@ -2464,6 +2546,10 @@ Z7_COM7F_IMF(CHandler::GetProperty(UInt32 index, PROPID propID, PROPVARIANT *val
             }
         }
         const UInt32 offset = (UInt32)id * 4;
+#ifdef SEVENZIP_LINUX_SQUASHFS
+        if (!_h.IsOldVersion() && _unavailableIds.count(id))
+            break;
+#endif
         if (offset < ids->Size())
             prop = (UInt32)Get32(*ids + offset);
         break;
@@ -2506,7 +2592,13 @@ HRESULT CHandler::ReadBlock(UInt64 blockIndex, Byte *dest, size_t blockSize) {
     } else {
         if (!node.ThereAreFrags())
             return S_FALSE;
+        if (node.Frag >= _frags.Size())
+            return S_FALSE;
         const CFrag &frag = _frags[node.Frag];
+#ifdef SEVENZIP_LINUX_SQUASHFS
+        if (!frag.Available)
+            return S_FALSE;
+#endif
         offsetInBlock = node.Offset;
         if (offsetInBlock > _h.BlockSize)
             return S_FALSE;
@@ -2695,7 +2787,15 @@ Z7_COM7F_IMF(CHandler::GetStream(UInt32 index, ISequentialInStream **stream)) {
     reader->_blockOffsets = _blockOffsets;
     reader->_blockCompressed = _blockCompressed;
     if (node.ThereAreFrags()) {
-        reader->_frags.Add(_frags[node.Frag]);
+        if (node.Frag < _frags.Size())
+            reader->_frags.Add(_frags[node.Frag]);
+#ifdef SEVENZIP_LINUX_SQUASHFS
+        else {
+            CFrag missing = {};
+            missing.Available = false;
+            reader->_frags.Add(missing);
+        }
+#endif
         reader->_nodes[0].Frag = 0;
     }
     reader->_stream = _stream;

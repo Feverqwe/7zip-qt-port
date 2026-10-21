@@ -243,15 +243,21 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
     void confirmsPartialSquashfsAttributes_data() {
         QTest::addColumn<QString>("language");
         QTest::addColumn<bool>("accept");
+        QTest::addColumn<QString>("kind");
         for (const QString &language : {"en", "ru"})
             for (bool accept : {false, true})
-                QTest::newRow(qPrintable(language + (accept ? "-accept" : "-cancel")))
-                    << language << accept;
+                for (const QString &kind :
+                     {"squashfs", "squashfs-id-metadata-zero", "squashfs-fragment-metadata-zero",
+                      "squashfs-metadata-combined"})
+                    QTest::newRow(
+                        qPrintable(language + '-' + kind + (accept ? "-accept" : "-cancel")))
+                        << language << accept << kind;
     }
     void confirmsPartialSquashfsAttributes() {
         QFETCH(QString, language);
         QFETCH(bool, accept);
-        confirmAndCopy(language, accept, "squashfs");
+        QFETCH(QString, kind);
+        confirmAndCopy(language, accept, kind);
     }
 
   private:
@@ -263,9 +269,12 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
                           kind.startsWith("source-");
         const bool ext = kind.startsWith("ext-");
         const bool fat = kind.startsWith("fat-");
-        const bool squashfs = kind == "squashfs";
+        const bool squashfs = kind.startsWith("squashfs");
+        const bool squashFragment =
+            kind == "squashfs-fragment-metadata-zero" || kind == "squashfs-metadata-combined";
         const bool fatDirectory = kind.startsWith("fat-directory-");
         const bool fatFile = kind.startsWith("fat-file-");
+        const bool partialFile = fatFile || squashFragment;
         const QString fatFolder = kind == "fat-directory-free32" ? "BROKEN" : "GOOD";
         SaveRegLang(UString(language == "en" ? L"-" : L"ru"),
                     qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
@@ -285,10 +294,12 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
                                     "--bundle"}
                 : ext ? QStringList{QStringLiteral(SEVENZIP_EXT_FIXTURE), "readonly-" + kind.mid(4),
                                     "--bundle"}
-                : squashfs ? QStringList{QStringLiteral(SEVENZIP_SQUASHFS_FIXTURE), "--xattrs",
-                                         "--fault=xattr-ool-outside"}
-                : ntfs     ? QStringList{QStringLiteral(SEVENZIP_NTFS_FIXTURE), "--kind=" + kind}
-                           : QStringList{QStringLiteral(SEVENZIP_HFS_FIXTURE), kind});
+                : squashfs
+                    ? QStringList{QStringLiteral(SEVENZIP_SQUASHFS_FIXTURE), "--xattrs",
+                                  "--fault=" + (kind == "squashfs" ? QString("xattr-ool-outside")
+                                                                   : kind.mid(9))}
+                : ntfs ? QStringList{QStringLiteral(SEVENZIP_NTFS_FIXTURE), "--kind=" + kind}
+                       : QStringList{QStringLiteral(SEVENZIP_HFS_FIXTURE), kind});
             QVERIFY(generator.waitForFinished(10000));
             QCOMPARE(generator.exitCode(), 0);
             const QJsonObject data =
@@ -310,6 +321,8 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
             } else
                 payload = QByteArray::fromBase64(
                     data["files"].toObject()[filename].toString().toLatin1());
+            if (squashFragment)
+                payload = payload.left(8192);
         }
         QTemporaryDir directory;
         QVERIFY(directory.isValid());
@@ -445,10 +458,10 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
                 copyOptions.currentFolder = "HfsFixture";
             else if (fatDirectory)
                 copyOptions.currentFolder = fatFolder;
-            copyingIncomplete = fatFile;
+            copyingIncomplete = partialFile;
             window.extractTo(output, true, {}, copyOptions);
             copyingIncomplete = false;
-            QCOMPARE(incompleteCopyErrors, fatFile ? 1 : 0);
+            QCOMPARE(incompleteCopyErrors, partialFile ? 1 : 0);
             QVERIFY2(unexpectedErrors.isEmpty(), qPrintable(unexpectedErrors.join('\n')));
             QFile copied(output + '/' + filename);
             QVERIFY2(
@@ -467,6 +480,14 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
                     expected.append(char((i * 17 + 23) & 255));
                 expected += "second tail\n";
                 QCOMPARE(healthy.readAll(), expected);
+            }
+            if (squashFragment) {
+                QTRY_VERIFY(Row(*table, "данные 空") >= 0);
+                table->selectRow(Row(*table, "данные 空"));
+                window.extractTo(output, true, {}, copyOptions);
+                QFile healthy(output + "/данные 空");
+                QVERIFY(healthy.open(QIODevice::ReadOnly));
+                QCOMPARE(healthy.readAll(), QByteArray(8192, 'B') + QByteArray(8192, '\0'));
             }
             if (kind == "reparse-list-bad-id" || kind == "ea-record-small" ||
                 kind == "data-list-unreadable-list" || kind == "standard-short" ||

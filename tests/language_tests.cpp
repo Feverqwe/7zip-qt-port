@@ -8,6 +8,7 @@
 #include "Windows/ErrorMsg.h"
 #include "fixtures/translation_catalog.h"
 #include "layout_inspection.h"
+#include "qtdiagnostictext.h"
 #include "qtlangcontrols.h"
 #include "qtmodalresult.h"
 #include <QComboBox>
@@ -35,6 +36,29 @@ bool writeFile(const QString &path, const QByteArray &data) {
 class LanguageTests : public QObject {
     Q_OBJECT
   private slots:
+    void combinedFilesystemDiagnosticsRemainLocalized() {
+        QTemporaryDir directory;
+        QVERIFY(directory.isValid());
+        const QString settings = directory.filePath("diagnostics.ini");
+        const auto restore = qScopeGuard([&] {
+            SaveRegLang(UString("-"), settings);
+            ReloadLang(settings);
+        });
+        const UString source(
+            L"SquashFS user or group IDs are unavailable.\n"
+            L"The SquashFS file fragment is unavailable. Only the readable prefix is available.\n"
+            L"source 空\n");
+        SaveRegLang(UString("ru"), settings);
+        ReloadLang(settings);
+        QCOMPARE(QString::fromWCharArray(QtArchiveDiagnosticText(source)),
+                 QString("ID пользователя или группы SquashFS недоступны.\n"
+                         "Фрагмент файла SquashFS недоступен. Доступно только начало файла.\n"
+                         "source 空\n"));
+        SaveRegLang(UString("-"), settings);
+        ReloadLang(settings);
+        QCOMPARE(QString::fromWCharArray(QtArchiveDiagnosticText(source)),
+                 QString::fromWCharArray(source));
+    }
     void resourceParametersAndCardinalForms() {
         QTemporaryDir fixture;
         QVERIFY(fixture.isValid());

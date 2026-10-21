@@ -3862,6 +3862,22 @@ Are you sure you want to split archive into such volumes?</source>
             <translation>Некоторые расширенные атрибуты SquashFS недоступны.</translation>
         </message>
         <message>
+            <source>Some SquashFS ownership metadata is unavailable. User or group IDs may be unknown. Readable file data remains accessible.</source>
+            <translation>Некоторые сведения о владельцах SquashFS недоступны. ID пользователя или группы могут быть неизвестны. Читаемые данные файлов можно копировать.</translation>
+        </message>
+        <message>
+            <source>SquashFS user or group IDs are unavailable.</source>
+            <translation>ID пользователя или группы SquashFS недоступны.</translation>
+        </message>
+        <message>
+            <source>Some SquashFS file fragments are unavailable. Only readable prefixes of affected files are available; copying them reports an error.</source>
+            <translation>Некоторые фрагменты файлов SquashFS недоступны. Можно прочитать только доступное начало этих файлов; копирование завершится с ошибкой.</translation>
+        </message>
+        <message>
+            <source>The SquashFS file fragment is unavailable. Only the readable prefix is available.</source>
+            <translation>Фрагмент файла SquashFS недоступен. Доступно только начало файла.</translation>
+        </message>
+        <message>
             <source>The FAT directory could not be read completely.</source>
             <translation>Каталог FAT прочитан не полностью.</translation>
         </message>

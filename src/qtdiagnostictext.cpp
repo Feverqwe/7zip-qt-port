@@ -29,6 +29,16 @@ UString QtDiagnosticLines(const AString &source) {
 
 UString QtArchiveDiagnosticText(const UString &source) {
     const QString text = QString::fromWCharArray(source);
+    if (text.contains('\n')) {
+        UString result;
+        const auto lines = text.split('\n');
+        for (qsizetype i = 0; i < lines.size(); ++i) {
+            if (i)
+                result.Add_LF();
+            result += QtArchiveDiagnosticText(UString(lines[i].toStdWString().c_str()));
+        }
+        return result;
+    }
     static const QString extFeaturesPrefix = QStringLiteral("Unverified ext read-only features: ");
     if (text.startsWith(extFeaturesPrefix) && text.endsWith('.')) {
         const QString message = QtTranslatedApplicationText(
@@ -136,7 +146,17 @@ UString QtArchiveDiagnosticText(const UString &source) {
                           "Some SquashFS extended attributes are unavailable. Readable file data "
                           "and attributes remain accessible."),
         QT_TRANSLATE_NOOP("SevenZipDiagnostics",
-                          "Some SquashFS extended attributes are unavailable.")};
+                          "Some SquashFS extended attributes are unavailable."),
+        QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                          "Some SquashFS ownership metadata is unavailable. User or group IDs may "
+                          "be unknown. Readable file data remains accessible."),
+        QT_TRANSLATE_NOOP("SevenZipDiagnostics", "SquashFS user or group IDs are unavailable."),
+        QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                          "Some SquashFS file fragments are unavailable. Only readable prefixes of "
+                          "affected files are available; copying them reports an error."),
+        QT_TRANSLATE_NOOP(
+            "SevenZipDiagnostics",
+            "The SquashFS file fragment is unavailable. Only the readable prefix is available.")};
     for (const char *warning : warnings)
         if (text == QString::fromLatin1(warning))
             return QtDiagnosticText(warning);

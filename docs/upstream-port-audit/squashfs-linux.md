@@ -5,6 +5,60 @@ Scope входит в [общую проверку форматов](filesystems
 современный LZO и проверки compressor options через отдельный format-модуль.
 Полная актуализация SquashFS read features по Linux ещё продолжается.
 
+## Недоступные UID/GID и fragments: ограниченное чтение, 2026-10-21
+
+Сопоставлены Linux `id.c:squashfs_get_id`, `fragment.c:squashfs_frag_lookup`
+и index loaders, `inode.c:squashfs_new_inode`/regular inode branches,
+`super.c` table setup с полными SDK `Open2`, `GetPackSize`, `ReadBlock`,
+`GetStream`, `Extract`, `CCachedInStream` и `CCopyCoder`. Ревизии и исходные
+репозитории закреплены ниже. Linux VFS требует ownership и fragment lookup
+при создании inode; эти проверки не означают, что все байты его основных
+блоков технически недоступны archive reader.
+
+GPL handler сохраняет доступные ID и fragment entries, помечая недоступные
+вместо отказа всему открытию. Неизвестный UID/GID, включая ссылку вне ID table,
+не выдаётся за нулевой или проверенный ID. При неизвестном fragment mapping
+размер файла остаётся исходным, packed size неизвестен; полные проверенные
+блоки читаются, обращение к хвосту возвращает ошибку. Извлечение сохраняет
+полученное начало, сообщает DataError и продолжает обработку исправных файлов.
+Returned streams сохраняют этот результат после Close/reopen владельца.
+
+Это явная адаптация ограниченного archive access по Read-only filesystem
+access, не перенесённый VFS recovery mode. Согласие запрашивается для каждого
+нового открытия; badge и сообщения у владельцев/hardlinks сохраняют
+неполноту видимой. Cancel/OOM и ошибки progress callback остаются фатальными.
+Unsupported decoder, index bootstrap/order/range validation и проверки
+основных data/inode/directory/path boundaries сохранены. Тела Linux C readers
+не менялись. Core-only standalone engine и старые версии SquashFS сохраняют
+прежний scope. Записи, repair и replay отсутствуют.
+
+Составные per-item сообщения переводятся построчно общей Qt-службой; неизвестный
+текст и переводы строк сохраняются. EN/RU проверки включают ownership,
+fragment и combined предупреждения, принятие/отказ, повторное открытие,
+обычную/компактную геометрию, копирование доступных байтов и диагностику
+неполного результата. Публичные ABI/CLI controls покрывают недоступный ID block,
+неверные UID/GID references, fragment block/reference, сохранение соседнего
+файла, исходного размера, отдельных ID и отсутствие ложного packed size,
+одну операцию с неполным и исправным файлом, сохранённый stream и сброс состояния.
+
+Шесть native Linux `6.8.0-147-generic` controls подтвердили границу VFS:
+неверные UID/GID references возвращают EINVAL, fragment block/reference — EIO
+для затронутых inode; исправный сосед читается точно. При повреждённом ID block
+root mount отвергается. Поэтому доступ приложения к известным блокам таких
+файлов отдельно проверен archive ABI, а не заявлен как native VFS поведение.
+Receipt: `20261021T143244Z-ce04eec0`. Образы неизменны, temporary mounts/data
+удалены; runtime kernel старше закреплённого source reference.
+
+На macOS девять focused suites прошли за 17,74 с: SquashFS CLI/ABI/C metadata,
+общий read-only UI, FAT partial-copy UI consumer, language, archive errors и
+оба upstream checks. Те же девять suites прошли на Linux и Windows, receipt
+`20261021T143424Z-2e85a00d`. Приложение собрано инкрементально на macOS;
+Cocoa EN/RU JSON подтверждает видимость и вместимость combined предупреждения.
+Guests используют Qt offscreen; pixel parity не заявляется. Native helper
+удалён и удаление синхронизировано на обеих ОС. Полные/slow suites, установка
+и физические носители не использовались; build trees и caches сохранены.
+Остальные initial-table и eager inode/directory failures ещё не закрыты.
+
 ## Частично доступные xattr: read-only политика, 2026-10-21
 
 Повторно сравнены `SquashfsHandler.cpp:Open2`, callback/error translation,

@@ -26,6 +26,9 @@ def volume(fault="", compressed=False, no_fragments=False, codec="zlib", xattrs=
     elif codec == "lzo-rle":
         first = b"X" + bytes(BLOCK - 1) + b"first-tail"
     second = b"B" * BLOCK + bytes(BLOCK) + b"second-tail"
+    healthy_second = fault in ("fragment-metadata-zero", "fragment-index-invalid", "metadata-combined")
+    if healthy_second:
+        second = second[:BLOCK * 2]
     fragment = b"first-tailsecond-tail"
     descriptors = []
     for i, data in enumerate((first[:BLOCK], second[:BLOCK])):
@@ -65,7 +68,8 @@ def volume(fault="", compressed=False, no_fragments=False, codec="zlib", xattrs=
             inodes += base(9, 1) + struct.pack("<QQQ4I", start, len(data), 0, 2, 0, 0, 0)
         else:
             inodes += base(2, i + 1)
-            inodes += struct.pack("<4I", start, 0, 0 if i == 0 else 10, len(data))
+            inodes += struct.pack("<4I", start, 0xffffffff if healthy_second and i == 1 else 0,
+                                  0 if i == 0 else 10, len(data))
         inodes += struct.pack("<I", size)
         if i == 1:
             inodes += bytes(4)  # sparse block
@@ -161,6 +165,16 @@ def volume(fault="", compressed=False, no_fragments=False, codec="zlib", xattrs=
         struct.pack_into("<Q", image, 32, 0)
     elif fault == "uid-index":
         struct.pack_into("<H", image, inode_start + 2 + 4, 1)
+    elif fault == "gid-index":
+        struct.pack_into("<H", image, inode_start + 2 + 6, 1)
+    elif fault == "id-metadata-zero":
+        struct.pack_into("<H", image, ids_metadata, 0x8000)
+    elif fault in ("fragment-metadata-zero", "metadata-combined"):
+        struct.pack_into("<H", image, fragment_metadata, 0x8000)
+        if fault == "metadata-combined":
+            struct.pack_into("<H", image, inode_start + 2 + 4, 1)
+    elif fault == "fragment-index-invalid":
+        struct.pack_into("<I", image, inode_start + 2 + (44 if xattrs else 20), 0xfffffffe)
     elif fault == "negative-size":
         struct.pack_into("<Q", image, 40, 1 << 63)
     elif fault == "xattr-ids-zero":

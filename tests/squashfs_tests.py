@@ -145,6 +145,8 @@ class SquashfsTests(unittest.TestCase):
                           "cycle", "count-wrap", "name-nul", "name-slash", "root-not-directory",
                           "uid-index", "negative-size", "metadata-bomb"):
                 with self.subTest(engine=engine, fault=fault):
+                    if engine == "7z" and fault == "uid-index":
+                        continue  # Unknown ownership is exposed with a limited-read diagnostic.
                     result = self.run_image(engine, volume(fault)[0])
                     self.assertNotEqual(result.returncode, 0, result.stdout.decode(errors="replace"))
 
@@ -238,7 +240,26 @@ class SquashfsTests(unittest.TestCase):
             for fault in ("fragment-large", "fragment-outside"):
                 result = self.run_image(engine, volume(fault)[0], "x", "данные 空")
                 self.assertNotEqual(result.returncode, 0)
-                self.assertEqual(result.stdout, b"")
+                self.assertEqual(result.stdout, (b"B" * 8192 + bytes(8192)) if engine == "7z" else b"")
+
+    def test_unavailable_ownership_and_fragment_metadata(self):
+        for fault in ("uid-index", "gid-index", "id-metadata-zero", "fragment-metadata-zero",
+                      "fragment-index-invalid", "metadata-combined"):
+            data, files = volume(fault, xattrs=True)
+            fragment = fault.startswith("fragment-") or fault == "metadata-combined"
+            with self.subTest(fault=fault):
+                listing = self.run_image("7z", data, "l")
+                self.assertEqual(listing.returncode, 0, listing.stderr.decode(errors="replace"))
+                self.assertIn(b"Read-only limitations =", listing.stdout)
+                self.assertIn(b"Some SquashFS", listing.stdout)
+                for name in ("alpha", "hardlink", "данные 空"):
+                    result = self.run_image("7z", data, "x", name)
+                    incomplete = fragment and name != "данные 空"
+                    if incomplete:
+                        self.assertNotEqual(result.returncode, 0)
+                    else:
+                        self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                    self.assertEqual(result.stdout, files[name][:8192] if incomplete else files[name])
 
     @unittest.skipUnless(shutil.which("mksquashfs"), "requires official squashfs-tools")
     def test_official_images_with_fragments_exports_xattrs_and_hardlinks(self):
