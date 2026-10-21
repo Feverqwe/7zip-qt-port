@@ -1160,6 +1160,7 @@ struct CMftRec {
     bool Deduplicated = false;
     HRESULT ReparseError = S_OK;
     bool ReparseRawData = false;
+    bool EaUnavailable = false;
     unsigned WofFrameBits = 0;
 #endif
     CObjectVector<CFileNameAttr> FileNames;
@@ -1207,8 +1208,10 @@ struct CMftRec {
         DataAttrs += src.DataAttrs;
         ReparseAttrs += src.ReparseAttrs;
 #ifdef SEVENZIP_LINUX_NTFS
-        EaInfoAttrs += src.EaInfoAttrs;
-        EaAttrs += src.EaAttrs;
+        if (!InUse() || !src.InUse()) {
+            EaInfoAttrs += src.EaInfoAttrs;
+            EaAttrs += src.EaAttrs;
+        }
         SecurityRoots += src.SecurityRoots;
         SecurityAlloc += src.SecurityAlloc;
         src.EaInfoAttrs.ClearAndFree();
@@ -1685,6 +1688,7 @@ struct CDatabase {
     bool FreeSpaceDefined = false;
     UInt64 FreeSpace = 0;
     bool ReparseLimitations = false;
+    bool EaLimitations = false;
 #endif
 
     CVolumeInfo VolumeInfo;
@@ -1760,9 +1764,14 @@ struct CDatabase {
     HRESULT ProbeReparseType(const CAttr &primary, int &type);
     HRESULT LoadVolumeMetadata();
     HRESULT LoadActiveReparseMetadata();
+    HRESULT SelectActiveEaMetadata();
+    HRESULT CollectMetadataAttributes(UInt32 baseIndex, UInt32 type, const CAttr &primary,
+                                      const CByteBuffer &list, bool useList,
+                                      CObjectVector<CAttr> &attrs) const;
     HRESULT ReadReparsePayload(UInt32 baseIndex, const CAttr &primary, const CByteBuffer &list,
                                bool useList);
     HRESULT LoadEaMetadata();
+    HRESULT ReadEaMetadata(CMftRec &rec, UInt32 limit);
     HRESULT LoadSecurityIndex();
     HRESULT LoadLinks();
     HRESULT LoadFreeSpace();
@@ -1790,6 +1799,7 @@ void CDatabase::Clear() {
     FreeSpaceDefined = false;
     FreeSpace = 0;
     ReparseLimitations = false;
+    EaLimitations = false;
 #endif
     PhySize = 0;
 }
@@ -2031,6 +2041,21 @@ HRESULT CDatabase::ParseSecuritySDS(ISequentialInStream *stream, const size_t si
 #ifdef SEVENZIP_LINUX_NTFS
 enum { kMetadataReferenceInvalid = -1, kMetadataListInvalid = -2 };
 
+static const CObjectVector<CAttr> &MetadataAttributes(const CMftRec &rec, UInt32 type) {
+    switch (type) {
+    case ATTR_TYPE_VOLUME_NAME:
+        return rec.VolumeNameAttrs;
+    case ATTR_TYPE_VOLUME_INFO:
+        return rec.VolumeInfoAttrs;
+    case 0xD0:
+        return rec.EaInfoAttrs;
+    case 0xE0:
+        return rec.EaAttrs;
+    default:
+        return rec.ReparseAttrs;
+    }
+}
+
 const CAttr *CDatabase::FindListedMetadataAttribute(UInt32 baseIndex, UInt32 type,
                                                     const sevenzip_ntfs_list_entry &entry) const {
     const CMftRec &base = Recs[baseIndex];
@@ -2046,9 +2071,7 @@ const CAttr *CDatabase::FindListedMetadataAttribute(UInt32 baseIndex, UInt32 typ
         (owner->BaseMftRef.GetIndex() != baseIndex ||
          owner->BaseMftRef.GetNumber() != base.SeqNumber || !owner->AttrListAttrs.IsEmpty()))
         return NULL;
-    const auto &attrs = type == ATTR_TYPE_VOLUME_NAME   ? owner->VolumeNameAttrs
-                        : type == ATTR_TYPE_VOLUME_INFO ? owner->VolumeInfoAttrs
-                                                        : owner->ReparseAttrs;
+    const auto &attrs = MetadataAttributes(*owner, type);
     FOR_VECTOR(i, attrs) {
         const CAttr &attr = attrs[i];
         if (attr.Name.IsEmpty() && attr.Instance == entry.id &&
@@ -2070,9 +2093,7 @@ int CDatabase::FindMetadataAttribute(UInt32 baseIndex, UInt32 type, const CByteB
         return attr ? 1 : kMetadataReferenceInvalid;
     }
     const CMftRec &base = Recs[baseIndex];
-    const auto &attrs = type == ATTR_TYPE_VOLUME_NAME   ? base.VolumeNameAttrs
-                        : type == ATTR_TYPE_VOLUME_INFO ? base.VolumeInfoAttrs
-                                                        : base.ReparseAttrs;
+    const auto &attrs = MetadataAttributes(base, type);
     FOR_VECTOR(i, attrs) {
         if (attrs[i].Name.IsEmpty()) {
             attr = &attrs[i];
@@ -2198,10 +2219,9 @@ HRESULT CDatabase::ProbeReparseType(const CAttr &primary, int &type) {
     return result == E_ABORT ? result : S_OK;
 }
 
-HRESULT CDatabase::ReadReparsePayload(UInt32 baseIndex, const CAttr &primary,
-                                      const CByteBuffer &list, bool useList) {
-    CMftRec reader;
-    reader.Flags = Recs[baseIndex].Flags;
+HRESULT CDatabase::CollectMetadataAttributes(UInt32 baseIndex, UInt32 type, const CAttr &primary,
+                                             const CByteBuffer &list, bool useList,
+                                             CObjectVector<CAttr> &attrs) const {
     if (primary.NonResident && useList) {
         size_t cursor = SIZE_MAX;
         UInt64 previous = 0;
@@ -2213,22 +2233,30 @@ HRESULT CDatabase::ReadReparsePayload(UInt32 baseIndex, const CAttr &primary,
                 return S_FALSE;
             if (!next)
                 break;
-            if (entry.type != ATTR_TYPE_REPARSE_POINT || entry.name_len)
+            if (entry.type != type || entry.name_len)
                 continue;
             if ((first && entry.vcn) || (!first && entry.vcn <= previous))
                 return S_FALSE;
-            const CAttr *attr =
-                FindListedMetadataAttribute(baseIndex, ATTR_TYPE_REPARSE_POINT, entry);
+            const CAttr *attr = FindListedMetadataAttribute(baseIndex, type, entry);
             if (!attr || !attr->NonResident)
                 return S_FALSE;
-            reader.DataAttrs.Add(*attr);
+            attrs.Add(*attr);
             first = false;
             previous = entry.vcn;
         }
         if (first)
             return S_FALSE;
     } else
-        reader.DataAttrs.Add(primary);
+        attrs.Add(primary);
+    return S_OK;
+}
+
+HRESULT CDatabase::ReadReparsePayload(UInt32 baseIndex, const CAttr &primary,
+                                      const CByteBuffer &list, bool useList) {
+    CMftRec reader;
+    reader.Flags = Recs[baseIndex].Flags;
+    RINOK(CollectMetadataAttributes(baseIndex, ATTR_TYPE_REPARSE_POINT, primary, list, useList,
+                                    reader.DataAttrs))
     const UInt64 size = primary.GetSize();
     if (!size || size > 16384)
         return S_FALSE;
@@ -2304,6 +2332,55 @@ HRESULT CDatabase::LoadActiveReparseMetadata() {
             ReparseLimitations = true;
         } else
             RINOK(result)
+    }
+    return S_OK;
+}
+
+HRESULT CDatabase::SelectActiveEaMetadata() {
+    if (Recs.IsEmpty())
+        return S_OK;
+    CByteBuffer candidates;
+    candidates.Alloc(Recs.Size());
+    memset(candidates, 0, Recs.Size());
+    FOR_VECTOR(i, Recs) {
+        const CMftRec &rec = Recs[i];
+        if (!rec.Is_Magic_FILE() || !rec.InUse() ||
+            (rec.EaInfoAttrs.IsEmpty() && rec.EaAttrs.IsEmpty()))
+            continue;
+        const UInt64 base = rec.BaseMftRef.IsBaseItself() ? i : rec.BaseMftRef.GetIndex();
+        if (base < Recs.Size())
+            candidates[(unsigned)base] = 1;
+    }
+    FOR_VECTOR(i, Recs) {
+        CMftRec &rec = Recs[i];
+        if (!rec.Is_Magic_FILE() || !rec.InUse() || !rec.BaseMftRef.IsBaseItself() ||
+            (!candidates[i] && rec.AttrListAttrs.IsEmpty()))
+            continue;
+        CByteBuffer list;
+        const bool useList = !rec.AttrListAttrs.IsEmpty();
+        HRESULT result = ReadMetadataList(i, list);
+        CObjectVector<CAttr> infoAttrs, eaAttrs;
+        if (result == S_OK) {
+            const CAttr *info, *ea;
+            const int foundInfo = FindMetadataAttribute(i, 0xD0, list, useList, info);
+            const int foundEa = FindMetadataAttribute(i, 0xE0, list, useList, ea);
+            if (foundInfo > 0 && foundEa > 0) {
+                infoAttrs.Add(*info);
+                result = CollectMetadataAttributes(i, 0xE0, *ea, list, useList, eaAttrs);
+            } else if (foundInfo < 0 || foundEa < 0)
+                result = S_FALSE;
+        }
+        if (result == S_FALSE) {
+            if (candidates[i]) {
+                rec.EaUnavailable = true;
+                EaLimitations = true;
+            }
+            infoAttrs.ClearAndFree();
+            eaAttrs.ClearAndFree();
+        } else
+            RINOK(result)
+        rec.EaInfoAttrs = infoAttrs;
+        rec.EaAttrs = eaAttrs;
     }
     return S_OK;
 }
@@ -2439,13 +2516,15 @@ struct CEaRead {
     CMyComPtr<IInStream> Stream;
     IArchiveOpenCallback *Callback = nullptr;
     HRESULT Result = S_OK;
+    HRESULT CallbackResult = S_OK;
     static int Read(void *opaque, uint64_t offset, void *data, size_t size) noexcept {
         CEaRead &self = *static_cast<CEaRead *>(opaque);
         try {
             self.Result = InStream_SeekSet(self.Stream, offset);
             while (self.Result == S_OK && size) {
                 if (self.Callback)
-                    self.Result = self.Callback->SetCompleted(nullptr, nullptr);
+                    self.Result = self.CallbackResult =
+                        self.Callback->SetCompleted(nullptr, nullptr);
                 if (self.Result != S_OK)
                     break;
                 const size_t chunk = MyMin(size, size_t(1 << 15));
@@ -2486,7 +2565,8 @@ struct CEaStreams {
         auto &self = *static_cast<CEaStreams *>(opaque);
         try {
             if (self.Reader.Callback)
-                self.Reader.Result = self.Reader.Callback->SetCompleted(nullptr, nullptr);
+                self.Reader.Result = self.Reader.CallbackResult =
+                    self.Reader.Callback->SetCompleted(nullptr, nullptr);
             if (self.Reader.Result != S_OK)
                 return -EINVAL;
             FOR_VECTOR(i, self.Names)
@@ -2660,76 +2740,107 @@ HRESULT CDatabase::LoadEaMetadata() {
     }
     if (!needed)
         return S_OK;
-    if (Recs.Size() <= 4 || Recs[4].DataAttrs.IsEmpty())
-        return S_FALSE;
-    const UInt64 definitionSize = Recs[4].DataAttrs[0].GetSize();
-    if (definitionSize < 0xA0 || definitionSize > 100 * 0xA0)
-        return S_FALSE;
     CEaRead reader;
     reader.Callback = OpenCallback;
-    RINOK(Recs[4].GetStream(InStream, 0, Header.ClusterSizeLog, Header.NumClusters, &reader.Stream))
-    CByteBuffer definitions;
-    definitions.Alloc((size_t)definitionSize);
-    if (CEaRead::Read(&reader, 0, definitions, (size_t)definitionSize))
-        return reader.Result;
-    UInt32 limit;
-    if (sevenzip_ntfs_ea_limit(definitions, definitions.Size(), &limit))
-        return S_FALSE;
+    UInt32 limit = 0;
+    HRESULT definitionsResult = S_FALSE;
+    if (Recs.Size() > 4 && !Recs[4].DataAttrs.IsEmpty()) {
+        const UInt64 size = Recs[4].DataAttrs[0].GetSize();
+        if (size >= 0xA0 && size <= 100 * 0xA0) {
+            definitionsResult = Recs[4].GetStream(InStream, 0, Header.ClusterSizeLog,
+                                                  Header.NumClusters, &reader.Stream);
+            if (definitionsResult == S_OK) {
+                CByteBuffer definitions;
+                definitions.Alloc((size_t)size);
+                if (CEaRead::Read(&reader, 0, definitions, (size_t)size))
+                    definitionsResult = reader.Result;
+                else if (sevenzip_ntfs_ea_limit(definitions, definitions.Size(), &limit))
+                    definitionsResult = S_FALSE;
+            }
+        }
+    }
+    if (reader.CallbackResult != S_OK)
+        return reader.CallbackResult;
+    if (definitionsResult == E_ABORT || definitionsResult == E_OUTOFMEMORY)
+        return definitionsResult;
     FOR_VECTOR(i, Recs) {
         CMftRec &rec = Recs[i];
         if (!rec.Is_Magic_FILE() || !rec.InUse() || !rec.BaseMftRef.IsBaseItself() ||
             rec.EaInfoAttrs.IsEmpty() || rec.EaAttrs.IsEmpty())
             continue;
-        const CAttr &info = rec.EaInfoAttrs[0];
-        if (info.NonResident || info.Data.Size() < 8)
-            continue;
-        CMftRec eaRecord;
-        eaRecord.Flags = rec.Flags;
-        eaRecord.DataAttrs = rec.EaAttrs;
-        eaRecord.ParseDataNames();
-        const CAttr &ea = eaRecord.DataAttrs[0];
-        sevenzip_ntfs_ea_input input{};
-        input.info = info.Data;
-        input.info_size = info.Data.Size();
-        input.data_size = ea.GetSize();
-        input.max_size = limit;
-        input.nonresident = ea.NonResident;
-        input.resident = ea.NonResident ? nullptr : (const Byte *)ea.Data;
-        input.read = CEaRead::Read;
-        input.opaque = &reader;
-        reader.Result = S_OK;
-        reader.Stream.Release();
-        if (input.nonresident && input.data_size <= limit)
-            RINOK(eaRecord.GetStream(InStream, 0, Header.ClusterSizeLog, Header.NumClusters,
-                                     &reader.Stream))
-        const int result = sevenzip_ntfs_wsl_read(&input, &rec.Wsl);
-        if (reader.Result != S_OK)
-            return reader.Result;
-        if (result)
-            return result == -ENOMEM ? E_OUTOFMEMORY : S_FALSE;
-        CEaStreams streams{rec, reader, {}};
-        const int visitResult = sevenzip_ntfs_ea_visit(&input, CEaStreams::Visit, &streams);
-        if (reader.Result != S_OK)
-            return reader.Result;
-        if (visitResult)
-            return visitResult == -ENOMEM ? E_OUTOFMEMORY : S_FALSE;
-        rec.ParseDataNames();
-        if (rec.Wsl.present) {
-            const UInt32 type = rec.Wsl.mode & MY_LIN_S_IFMT;
-            if (type != MY_LIN_S_IFDIR && type != MY_LIN_S_IFREG && type != MY_LIN_S_IFLNK &&
-                type != MY_LIN_S_IFCHR && type != MY_LIN_S_IFBLK && type != MY_LIN_S_IFIFO &&
-                type != MY_LIN_S_IFSOCK)
-                return S_FALSE;
+        const HRESULT result = definitionsResult == S_OK ? ReadEaMetadata(rec, limit) : S_FALSE;
+        if (result == S_FALSE) {
+            rec.EaUnavailable = true;
+            EaLimitations = true;
+        } else {
+            RINOK(result)
+        }
+        rec.EaInfoAttrs.ClearAndFree();
+        rec.EaAttrs.ClearAndFree();
+    }
+    return S_OK;
+}
+
+HRESULT CDatabase::ReadEaMetadata(CMftRec &rec, UInt32 limit) {
+    const CAttr &info = rec.EaInfoAttrs[0];
+    // ntfs_read_mft enables the EA path only for a complete resident EA_INFO.
+    if (info.NonResident || info.Data.Size() < 8)
+        return S_OK;
+    CMftRec eaRecord;
+    eaRecord.Flags = rec.Flags;
+    eaRecord.DataAttrs = rec.EaAttrs;
+    eaRecord.ParseDataNames();
+    const CAttr &ea = eaRecord.DataAttrs[0];
+    CEaRead reader;
+    reader.Callback = OpenCallback;
+    sevenzip_ntfs_ea_input input{};
+    input.info = info.Data;
+    input.info_size = info.Data.Size();
+    input.data_size = ea.GetSize();
+    input.max_size = limit;
+    input.nonresident = ea.NonResident;
+    input.resident = ea.NonResident ? nullptr : (const Byte *)ea.Data;
+    input.read = CEaRead::Read;
+    input.opaque = &reader;
+    if (input.nonresident && input.data_size <= limit) {
+        const HRESULT result = GetRawMetadataStream(eaRecord, false, &reader.Stream);
+        if (result != S_OK)
+            return result == E_ABORT || result == E_OUTOFMEMORY ? result : S_FALSE;
+    }
+    // Publish metadata and synthesized streams together, only after complete validation.
+    CMftRec projected;
+    projected.DataAttrs = rec.DataAttrs;
+    int result = sevenzip_ntfs_wsl_read(&input, &projected.Wsl);
+    if (!result) {
+        CEaStreams streams{projected, reader, {}};
+        result = sevenzip_ntfs_ea_visit(&input, CEaStreams::Visit, &streams);
+    }
+    if (reader.CallbackResult != S_OK)
+        return reader.CallbackResult;
+    if (reader.Result == E_ABORT || reader.Result == E_OUTOFMEMORY)
+        return reader.Result;
+    if (result || reader.Result != S_OK)
+        return result == -ENOMEM ? E_OUTOFMEMORY : S_FALSE;
+    if (projected.Wsl.present) {
+        const UInt32 type = projected.Wsl.mode & MY_LIN_S_IFMT;
+        if (type != MY_LIN_S_IFDIR && type != MY_LIN_S_IFREG && type != MY_LIN_S_IFLNK &&
+            type != MY_LIN_S_IFCHR && type != MY_LIN_S_IFBLK && type != MY_LIN_S_IFIFO &&
+            type != MY_LIN_S_IFSOCK) {
+            projected.Wsl = {};
+            rec.EaUnavailable = true;
+            EaLimitations = true;
+        } else {
             if (rec.SiAttr.Attrib & FILE_ATTRIBUTE_READONLY)
-                rec.Wsl.mode &= ~0222u;
+                projected.Wsl.mode &= ~0222u;
             if (type == MY_LIN_S_IFDIR)
                 rec.SiAttr.Attrib |= FILE_ATTRIBUTE_DIRECTORY;
             else if (type == MY_LIN_S_IFREG || type == MY_LIN_S_IFLNK)
                 rec.SiAttr.Attrib &= ~FILE_ATTRIBUTE_DIRECTORY;
         }
-        rec.EaInfoAttrs.ClearAndFree();
-        rec.EaAttrs.ClearAndFree();
     }
+    rec.Wsl = projected.Wsl;
+    rec.DataAttrs = projected.DataAttrs;
+    rec.ParseDataNames();
     return S_OK;
 }
 #endif
@@ -2909,6 +3020,7 @@ HRESULT CDatabase::Open() {
 #ifdef SEVENZIP_LINUX_NTFS
     RINOK(LoadVolumeMetadata())
     RINOK(LoadActiveReparseMetadata())
+    RINOK(SelectActiveEaMetadata())
 #endif
     unsigned i;
     for (i = 0; i < Recs.Size(); i++) {
@@ -3515,6 +3627,12 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(const PROPID propID, PROPVARIANT *cons
             reasons += "Some NTFS reparse metadata is unavailable. Unclassified entries expose "
                        "underlying DATA streams where readable.";
         }
+        if (EaLimitations) {
+            if (!reasons.IsEmpty())
+                reasons += '\n';
+            reasons += "Some NTFS extended attributes are unavailable. WSL ownership and file "
+                       "types may be unknown. Readable DATA streams remain accessible.";
+        }
         if (!reasons.IsEmpty())
             prop = reasons;
         break;
@@ -3813,7 +3931,10 @@ Z7_COM7F_IMF(CHandler::GetProperty(const UInt32 index, const PROPID propID,
 
         case kpidMethod:
 #ifdef SEVENZIP_LINUX_NTFS
-            if (rec.ReparseRawData && !item.IsAltStream())
+            if ((rec.ReparseRawData ||
+                 (rec.EaUnavailable && !rec.Link && !rec.Wof && !rec.Deduplicated &&
+                  rec.ReparseError == S_OK && rec.ReparseDataIndex < 0 && !rec.IsDir())) &&
+                !item.IsAltStream())
                 prop = "NTFS DATA";
 #endif
             break;

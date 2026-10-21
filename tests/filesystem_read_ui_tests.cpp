@@ -65,7 +65,7 @@ class FilesystemReadUiTests final : public QObject {
                 for (const QString &kind :
                      {"exfat", "wrapper-no-slock", "unclean", "free-overflow",
                       "classic-unclean-free-overflow", "volume-dirty", "volume-short",
-                      "volume-list-nonresident", "reparse-list-bad-id"})
+                      "volume-list-nonresident", "reparse-list-bad-id", "ea-record-small"})
                     QTest::newRow(qPrintable(language + (accept ? "-accept-" : "-cancel-") + kind))
                         << language << accept << kind;
     }
@@ -73,7 +73,8 @@ class FilesystemReadUiTests final : public QObject {
         QFETCH(QString, language);
         QFETCH(bool, accept);
         QFETCH(QString, kind);
-        const bool ntfs = kind.startsWith("volume-") || kind.startsWith("reparse-");
+        const bool ntfs =
+            kind.startsWith("volume-") || kind.startsWith("reparse-") || kind.startsWith("ea-");
         SaveRegLang(UString(language == "en" ? L"-" : L"ru"),
                     qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
         TexfatFixture fixture(language == "en" ? 0 : 1);
@@ -202,7 +203,7 @@ class FilesystemReadUiTests final : public QObject {
                 qPrintable(
                     QDir(output).entryList(QDir::AllEntries | QDir::NoDotAndDotDot).join('\n')));
             QCOMPARE(copied.readAll(), payload);
-            if (kind == "reparse-list-bad-id") {
+            if (kind == "reparse-list-bad-id" || kind == "ea-record-small") {
                 QTRY_VERIFY(Row(*table, "gamma") >= 0);
                 table->selectRow(Row(*table, "gamma"));
                 window.extractTo(output, true, {}, copyOptions);

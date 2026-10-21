@@ -137,11 +137,21 @@ class NtfsTests(unittest.TestCase):
                     self.assertNotEqual(result.returncode, 0)
                     self.assertEqual(result.stdout, b"")
 
-    def test_corrupt_ea_rejects_open(self):
-        for kind in EA_BAD:
+    def test_partial_ea_preserves_readable_data(self):
+        from ntfs_ea_list_fixture import CASES, LIMITED, LIMITATION
+        for kind in (*EA_BAD, *CASES):
             with self.subTest(kind=kind):
-                result = self.run_image("7z", volume(kind)[0], "l")
-                self.assertNotEqual(result.returncode, 0, result.stdout)
+                image, files = volume(kind)
+                result = self.run_image("7z", image, "l", streams=True)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                if kind in EA_BAD or kind in LIMITED:
+                    self.assertIn(LIMITATION.encode(), result.stdout)
+                else:
+                    self.assertNotIn(LIMITATION.encode(), result.stdout)
+                for name in ("alpha", "gamma"):
+                    extracted = self.run_image("7z", image, "x", name)
+                    self.assertEqual(extracted.returncode, 0, extracted.stderr)
+                    self.assertEqual(extracted.stdout, files[name])
 
     def test_linux_wof_and_fragmented_mft(self):
         for kind in ("mft-list", "mft-list-nonresident", "wof-xpress4k", "wof-xpress8k",

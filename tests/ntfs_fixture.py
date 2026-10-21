@@ -115,6 +115,9 @@ def volume(kind="base"):
     if kind.startswith("security-"):
         from ntfs_security_fixture import volume as security_volume
         return security_volume(kind)
+    if kind.startswith("ea-list-"):
+        from ntfs_ea_list_fixture import volume as ea_list_volume
+        return ea_list_volume(kind)
     if kind.startswith("ea-"):
         from ntfs_ea_fixture import volume as ea_volume
         return ea_volume(kind)
@@ -233,6 +236,10 @@ if __name__ == "__main__":
         if args.kind.startswith("ea-"):
             from ntfs_ea_fixture import properties
             result["wsl"] = properties(args.kind)
+            if args.kind.startswith("ea-list-"):
+                from ntfs_ea_list_fixture import LIMITED
+                if args.kind in LIMITED or args.kind == "ea-list-unlisted":
+                    result["wsl"] = {}
         if args.kind.startswith("security-"):
             from ntfs_security_fixture import expected
             result["security"] = expected(args.kind).hex()

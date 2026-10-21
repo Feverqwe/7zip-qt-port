@@ -99,9 +99,10 @@ class CancelEaOpen final : public IArchiveOpenCallback, public CMyUnknownImp {
     Z7_COM_UNKNOWN_IMP_1(IArchiveOpenCallback)
   public:
     const Input *source = nullptr;
+    HRESULT failure = E_ABORT;
     Z7_COM7F_IMF(SetTotal(const UInt64 *, const UInt64 *)) override { return S_OK; }
     Z7_COM7F_IMF(SetCompleted(const UInt64 *, const UInt64 *)) override {
-        return source && source->cancelRequested ? E_ABORT : S_OK;
+        return source && source->cancelRequested ? failure : S_OK;
     }
 };
 } // namespace
@@ -587,24 +588,135 @@ class NtfsStreamTests final : public QObject {
         loadFixture("ea-fragmented");
         CMyComPtr2<IInStream, Input> source;
         source.SetFromCls(new Input(bytes_));
-        for (HRESULT result : {E_FAIL, E_ABORT}) {
-            source->failSeekAt = 1102 * 4096;
-            source->failedSeekResult = result;
-            QCOMPARE(archive_->Open(source, nullptr, nullptr), result);
-            UInt32 count = 99;
-            QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
-            QCOMPARE(count, UInt32(0));
-        }
+        source->failSeekAt = 1102 * 4096;
+        source->failedSeekResult = E_FAIL;
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
+        QString limitations;
+        QVERIFY(readLimitations(limitations));
+        QVERIFY(!limitations.isEmpty());
+        check(stream("alpha"), "alpha", 0, 200000);
+        check(stream("gamma"), "gamma", 0, 200000);
+        QVERIFY(index("gamma:$EA.user.large") == UINT32_MAX);
+        source->failedSeekResult = E_ABORT;
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), E_ABORT);
+        UInt32 count = 99;
+        QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, UInt32(0));
         source->failSeekAt = UINT64_MAX;
         CMyComPtr2<IArchiveOpenCallback, CancelEaOpen> callback;
         callback.SetFromCls(new CancelEaOpen);
         callback->source = source.ClsPtr();
         source->cancelAt = 1102 * 4096;
+        callback->failure = E_FAIL;
+        QCOMPARE(archive_->Open(source, nullptr, callback), E_FAIL);
+        source->cancelRequested = false;
+        callback->failure = E_ABORT;
         QCOMPARE(archive_->Open(source, nullptr, callback), E_ABORT);
         source->cancelAt = UINT64_MAX;
         source->cancelRequested = false;
         QCOMPARE(archive_->Open(source, nullptr, callback), S_OK);
+        QVERIFY(readLimitations(limitations));
+        QVERIFY(limitations.isEmpty());
         check(stream("gamma"), "gamma", 0, 200000);
+    }
+    void eaListAuthorityAndPartialMetadata_data() {
+        QTest::addColumn<QString>("kind");
+        QTest::addColumn<bool>("limited");
+        for (const char *kind : {"ea-list-selected", "ea-list-nonresident", "ea-list-split",
+                                 "ea-list-metadata-flags", "ea-list-unlisted"})
+            QTest::newRow(kind) << QString::fromLatin1(kind) << false;
+        for (const char *kind :
+             {"ea-list-bad-id", "ea-list-bad-sequence", "ea-list-missing-tail", "ea-list-bad-run",
+              "ea-record-small", "ea-record-overrun", "ea-record-short", "ea-info-zero",
+              "ea-info-overrun", "ea-attr-overrun", "ea-limit", "ea-bad-mode", "ea-bad-def"})
+            QTest::newRow(kind) << QString::fromLatin1(kind) << true;
+    }
+    void eaListAuthorityAndPartialMetadata() {
+        QFETCH(QString, kind);
+        QFETCH(bool, limited);
+        loadFixture(kind);
+        CMyComPtr<IInStream> input = new Input(bytes_);
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        QString limitations;
+        QVERIFY(readLimitations(limitations));
+        QCOMPARE(!limitations.isEmpty(), limited);
+        const UInt32 id = index("gamma");
+        QVERIFY(id != UINT32_MAX);
+        NWindows::NCOM::CPropVariant uid, mode, directory, method;
+        QCOMPARE(archive_->GetProperty(id, kpidUserId, &uid), S_OK);
+        QCOMPARE(archive_->GetProperty(id, kpidPosixAttrib, &mode), S_OK);
+        QCOMPARE(archive_->GetProperty(id, kpidIsDir, &directory), S_OK);
+        QCOMPARE(directory.boolVal, VARIANT_FALSE);
+        if (limited || kind == "ea-list-unlisted") {
+            QCOMPARE(uid.vt, VARTYPE(VT_EMPTY));
+            QCOMPARE(mode.vt, VARTYPE(VT_EMPTY));
+        } else {
+            QCOMPARE(uid.vt, VARTYPE(VT_UI4));
+            QCOMPARE(uid.ulVal, UInt32(2067));
+            QCOMPARE(mode.vt, VARTYPE(VT_UI4));
+            QCOMPARE(mode.ulVal, UInt32(0100751));
+        }
+        QCOMPARE(archive_->GetProperty(id, kpidMethod, &method), S_OK);
+        if (limited) {
+            QCOMPARE(method.vt, VARTYPE(VT_BSTR));
+            QCOMPARE(QString::fromWCharArray(method.bstrVal), QString("NTFS DATA"));
+        }
+        check(stream("alpha"), "alpha", 0, 200000);
+        if (kind == "ea-bad-mode") {
+            auto value = stream("gamma:$EA.$LXMOD");
+            QVERIFY(value);
+            UInt32 count = 0;
+            Byte modeBytes[4]{};
+            QCOMPARE(value->Read(modeBytes, sizeof(modeBytes), &count), S_OK);
+            QCOMPARE(count, UInt32(4));
+            QCOMPARE(qFromLittleEndian<quint32>(modeBytes), quint32(0751));
+        }
+        auto retained = stream("gamma");
+        QVERIFY(retained);
+        check(retained, "gamma", 0, 200000);
+        QCOMPARE(archive_->Close(), S_OK);
+        check(retained, "gamma", 4090, 8200);
+    }
+    void damagedEaPreservesKnownReparseRoles_data() {
+        QTest::addColumn<QString>("kind");
+        for (const char *kind : {"ea-damaged-link", "ea-damaged-dedup", "ea-damaged-wof"})
+            QTest::newRow(kind) << QString::fromLatin1(kind);
+    }
+    void damagedEaPreservesKnownReparseRoles() {
+        QFETCH(QString, kind);
+        loadFixture(kind);
+        CMyComPtr<IInStream> input = new Input(bytes_);
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        QString limitations;
+        QVERIFY(readLimitations(limitations));
+        QVERIFY(!limitations.isEmpty());
+        const UInt32 id = index("gamma");
+        QVERIFY(id != UINT32_MAX);
+        NWindows::NCOM::CPropVariant method;
+        QCOMPARE(archive_->GetProperty(id, kpidMethod, &method), S_OK);
+        if (method.vt == VT_BSTR)
+            QVERIFY(QString::fromWCharArray(method.bstrVal) != QString("NTFS DATA"));
+        check(stream("alpha"), "alpha", 0, 200000);
+        if (kind == "ea-damaged-dedup") {
+            CMyComPtr<IInArchiveGetStream> provider;
+            QCOMPARE(archive_->QueryInterface(IID_IInArchiveGetStream,
+                                              reinterpret_cast<void **>(&provider)),
+                     S_OK);
+            CMyComPtr<ISequentialInStream> file;
+            QCOMPARE(provider->GetStream(id, &file), E_NOTIMPL);
+            QVERIFY(!file);
+            CMyComPtr2<IArchiveExtractCallback, Extract> callback;
+            callback.Create_if_Empty();
+            QCOMPARE(archive_->Extract(&id, 1, true, callback), S_OK);
+            QCOMPARE(callback->result,
+                     Int32(NArchive::NExtract::NOperationResult::kUnsupportedMethod));
+        } else {
+            auto retained = stream("gamma");
+            QVERIFY(retained);
+            check(retained, "gamma", 0, 200000);
+            QCOMPARE(archive_->Close(), S_OK);
+            check(retained, "gamma", 0, 200000);
+        }
     }
     void eaValuesRetainTheirOwner_data() {
         QTest::addColumn<QString>("kind");

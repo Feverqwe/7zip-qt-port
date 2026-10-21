@@ -60,7 +60,9 @@ def allocated(image, owner, typ, bits):
 
 def volume(kind):
     from ntfs_fixture import volume as base
-    original, files = base()
+    combined = {"ea-damaged-link": "link-symlink", "ea-damaged-dedup": "link-dedup",
+                "ea-damaged-wof": "wof-xpress4k"}
+    original, files = base(combined.get(kind, "base"))
     image = bytearray(original)
     offset, rec = record(image, 11 if kind == "ea-directory" else 66)
     attrs = [a for _, a in attributes(rec)]
@@ -108,7 +110,7 @@ def volume(kind):
     elif kind == "ea-next-size":
         put(data, 0, "I", 24)
         data[20:20] = bytes(4)
-    elif kind == "ea-record-small":
+    elif kind == "ea-record-small" or kind in combined:
         put(data, 0, "I", 4)
     elif kind == "ea-record-overrun":
         put(data, 0, "I", len(data) + 4)
@@ -171,6 +173,7 @@ def volume(kind):
     attrs.append(info_attr)
     if kind not in ("ea-no-data", "ea-extension", "ea-xattrs-extension"):
         attrs.append(ea_attr)
+    attrs.sort(key=lambda a: u32(a, 0))
     set_attributes(image, offset, rec, attrs)
     if kind in ("ea-chr", "ea-blk", "ea-fifo", "ea-sock"):
         files.pop("gamma")

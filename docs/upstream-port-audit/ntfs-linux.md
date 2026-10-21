@@ -955,6 +955,83 @@ NTFS read features и все форматы goal этой итерацией н�
 devices, installed package, full/slow и native Windows/Linux appearance не
 проверялись.
 
+## EA list authority и read-only доступ при ошибках EA
+
+Закреплённые Linux/SDK repositories и revisions приведены выше. Сравнены полные
+`xattr.c:ntfs_read_ea`, `ntfs_get_ea`, `ntfs_get_wsl_perm`, callers в
+`inode.c:ntfs_read_mft`, attribute-list/record lookup и metadata run I/O,
+а также SDK parser/extension merge, EA stream visitor и consumers свойств/копирования.
+`find_ea`, `ntfs_read_ea`, `ntfs_get_wsl_perm` повторно сопоставлены с оригиналом:
+тела не изменены. Все 31 baseline source/license hashes совпадают. Новых
+заимствованных C units нет; прежние GPL/standalone boundaries сохранены.
+
+Active EA_INFO/EA выбираются по исходному list selector до merge extension records.
+Общий typed metadata adapter проверяет reference/sequence/owner/instance и VCN;
+полные EA continuation runs подключаются к SDK extent reader. Unlisted stale
+base/extension EA не перезаписывают выбранные values. Без списка учитываются
+атрибуты base record. EA metadata использует raw allocated-byte transport,
+включая чтение без DATA encrypted/initialized-tail transforms. Это соответствует
+`ntfs_read_ea`/`ntfs_read_run_nb`; codecs DATA остаются в своём reader.
+
+Предыдущее archive-wide отклонение malformed EA, неверного WSL mode или
+недоступного EA I/O заменено явным limited opening. В Linux `ntfs_get_wsl_perm`
+не требует успеха всех EA reads для обычного DATA inode. Archive предупреждает
+об отсутствующих EA/WSL ownership/type metadata, сохраняет пользовательский выбор
+одного открытия и видимый режим. Читаемый DATA неизвестного WSL типа обозначается
+в свойствах как `NTFS DATA`; другие файлы и ADS остаются доступны. При успешном
+EA parsing и неизвестном WSL mode raw EA values сохраняются, непроверенная WSL
+проекция не публикуется. Короткий/отсутствующий EA_INFO не включает WSL reader,
+как исходный inode path. Проверенный special inode по-прежнему не выдаётся за DATA.
+
+EA metadata и synthesized streams публикуются после полной проверки, поэтому
+ошибка второго чтения не оставляет частично добавленных EA streams. Недоступный
+`$AttrDef` limit ограничивает EA, сохраняя читаемые файлы: это archive recovery
+adaptation, не утверждение об успешном kernel mount с повреждённым `$AttrDef`.
+Source read failure превращается в конкретное ограничение; E_ABORT, allocation
+failure и ошибки open callback сохраняют исходный failure. Повторное открытие
+очищает ограничение и восстанавливает прочитанные metadata. Source writes,
+journal replay и обход bounds/path checks отсутствуют.
+
+Девять новых list layouts покрывают selected/stale EA_INFO/EA, resident/nonresident
+list, split continuation, metadata flags/valid-size, unlisted attributes и
+недоступные references/runs. Девять прежних malformed-EA fixtures теперь
+проверяют honest limited opening и exact обычные payloads вместо blanket refusal.
+ABI дополнительно проверяет отсутствие ложных UID/mode, raw DATA Method,
+retained streams, I/O failure/retry, E_ABORT и callback E_FAIL. При invalid mode
+проверяется сохранность самих EA values. Сочетания повреждённых EA с известными
+link/WOF/dedup roles сохраняют точный target/decoded payload либо настоящий
+UnsupportedMethod, без ложной DATA проекции. GUI EN/RU проверяет consent/cancel,
+видимый режим, фактическое копирование обычного файла и затронутого DATA,
+повторное открытие и unchanged source. UI geometry/text проверены через
+current-build native Cocoa JSON; screenshots/pixel parity не заявляются.
+
+Focused `ntfs`, `ntfs_stream`, `ntfs_security`, `language` прошли локально;
+`filesystem_read_ui` повторён с доступом к native Cocoa после sandbox отказа
+из-за отсутствия экранов и прошёл за 58,86 с. EN warning 420×214, RU 420×275,
+текст полностью видим. Linux прошёл все пять suites, receipt
+`20261021T054403Z-781cec04`. В этом же receipt Windows прошёл четыре suites,
+но ABI backend dirty-volume case получил codec discovery timeout. Повторный
+`ntfs_stream` прошёл на обоих guests без изменения timeout, receipt
+`20261021T054644Z-59c43f70`. Финальное уточнение Method для известных reparse
+roles и три combined fixtures проверены `ntfs`/`ntfs_stream` на macOS (22,15 с),
+Linux и Windows (60,08 с), receipt `20261021T054918Z-8f602a34`.
+Приложение собрано локально после последнего изменения.
+
+Native Linux 6.8.0-147, receipt `20261021T054610Z-191213da`: семь readonly
+loop controls, exact обычные file bytes и unchanged images. Selected,
+nonresident-list, split и metadata-flags layouts дали UID 2067/GID 4097/mode
+0100751; unlisted EA не применились. Bad-id оставил обычный alpha читаемым,
+но kernel отверг gamma с EINVAL; archive всё ещё может прочитать его DATA.
+В bad-sequence старый kernel применил EA, archive строже проверяет sequence
+и явно оставляет DATA без утверждения достоверности EA. Это различие
+record-validation policy, а не native parity этих metadata. Malformed EA
+buffers не передавались старому kernel как safety validator. Временные
+mounts/images/helper удалены; incremental trees и compiler caches сохранены.
+
+Остальной NTFS read audit и весь multi-format goal остаются открытыми.
+Full/slow suites, physical devices, installed package и native Windows/Linux
+appearance этой итерацией не проверялись.
+
 ## Открытый read scope
 
 Выбранные classic/WOF/MFT bootstrap scenarios подключены и проверены.

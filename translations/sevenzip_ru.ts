@@ -3838,6 +3838,10 @@ Are you sure you want to split archive into such volumes?</source>
     <context>
         <name>SevenZipDiagnostics</name>
         <message>
+            <source>Some NTFS extended attributes are unavailable. WSL ownership and file types may be unknown. Readable DATA streams remain accessible.</source>
+            <translation>Некоторые расширенные атрибуты NTFS недоступны. Владельцы WSL и типы файлов могут быть неизвестны. Доступные потоки DATA можно читать.</translation>
+        </message>
+        <message>
             <source>Some NTFS reparse metadata is unavailable. Unclassified entries expose underlying DATA streams where readable.</source>
             <translation>Метаданные некоторых точек повторной обработки NTFS недоступны. Для объектов неустановленного типа предлагаются доступные потоки DATA.</translation>
         </message>
