@@ -64,13 +64,27 @@ class FilesystemReadUiTests final : public QObject {
         QTest::addColumn<QString>("kind");
         for (const QString &language : {"en", "ru"})
             for (bool accept : {false, true})
-                for (const QString &kind :
-                     {"exfat", "wrapper-no-slock", "unclean", "free-overflow",
-                      "classic-unclean-free-overflow", "volume-dirty", "volume-short",
-                      "volume-list-nonresident", "reparse-list-bad-id", "ea-record-small",
-                      "data-list-unreadable-list", "standard-short", "ext-recover", "ext-orphan",
-                      "ext-unclean", "ext-unverified", "ext-combined", "dir-root-missing",
-                      "record-total"}) {
+                for (const QString &kind : {"exfat",
+                                            "wrapper-no-slock",
+                                            "unclean",
+                                            "free-overflow",
+                                            "classic-unclean-free-overflow",
+                                            "volume-dirty",
+                                            "volume-short",
+                                            "volume-list-nonresident",
+                                            "reparse-list-bad-id",
+                                            "ea-record-small",
+                                            "data-list-unreadable-list",
+                                            "standard-short",
+                                            "ext-recover",
+                                            "ext-orphan",
+                                            "ext-unclean",
+                                            "ext-unverified",
+                                            "ext-combined",
+                                            "dir-root-missing",
+                                            "record-total",
+                                            "security-root-offset",
+                                            "security-sd-short"}) {
                     // Rejection uses the shared consent service; acceptance checks every reason.
                     if (!accept && kind != "exfat" && kind != "unclean" && kind != "volume-dirty" &&
                         kind != "ext-recover")
@@ -86,7 +100,7 @@ class FilesystemReadUiTests final : public QObject {
         const bool ntfs = kind.startsWith("volume-") || kind.startsWith("reparse-") ||
                           kind.startsWith("ea-") || kind.startsWith("data-list-") ||
                           kind.startsWith("standard-") || kind.startsWith("dir-") ||
-                          kind.startsWith("record-");
+                          kind.startsWith("record-") || kind.startsWith("security-");
         const bool ext = kind.startsWith("ext-");
         SaveRegLang(UString(language == "en" ? L"-" : L"ru"),
                     qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
@@ -227,7 +241,7 @@ class FilesystemReadUiTests final : public QObject {
             QCOMPARE(copied.readAll(), payload);
             if (kind == "reparse-list-bad-id" || kind == "ea-record-small" ||
                 kind == "data-list-unreadable-list" || kind == "standard-short" ||
-                kind == "dir-root-missing") {
+                kind == "dir-root-missing" || kind.startsWith("security-")) {
                 QTRY_VERIFY(Row(*table, "gamma") >= 0);
                 table->selectRow(Row(*table, "gamma"));
                 window.extractTo(output, true, {}, copyOptions);

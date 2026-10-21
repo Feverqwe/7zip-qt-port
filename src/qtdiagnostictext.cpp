@@ -91,7 +91,13 @@ UString QtArchiveDiagnosticText(const UString &source) {
             "Some NTFS MFT records are unavailable or unverified. Files or metadata may "
             "be missing, incomplete or unreadable."),
         QT_TRANSLATE_NOOP("SevenZipDiagnostics",
-                          "The NTFS MFT record is unavailable or unverified.")};
+                          "The NTFS MFT record is unavailable or unverified."),
+        QT_TRANSLATE_NOOP(
+            "SevenZipDiagnostics",
+            "Some NTFS security descriptors are unavailable or unverified. Permissions "
+            "may be missing. Readable file data remains accessible."),
+        QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                          "The NTFS security descriptor is unavailable or unverified.")};
     for (const char *warning : warnings)
         if (text == QString::fromLatin1(warning))
             return QtDiagnosticText(warning);

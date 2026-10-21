@@ -376,13 +376,13 @@ locking, run I/O и buffer-head services. Логические streams и пол
 буфере, без записи на том.
 
 C boundary вызывает Linux descriptor validator после безопасной проверки
-четырёх относительных offsets. Повреждённый descriptor активного inode
-останавливает archive Open; Linux xattr frontend лишь предупреждает о таком
-descriptor и может вернуть bytes. Это явно более строгий archive integrity
-contract, без переноса kernel permission enforcement. Не найденный или
-reserved ID не создаёт raw property; повреждённая metadata удалённого inode
-не мешает recovery остальных items. Read/seek errors и отмена сохраняют
-HRESULT через C callback. Descriptor cache принадлежит открытому архиву;
+четырёх относительных offsets. Первоначальный отказ всего Open при повреждённом
+descriptor заменён [изоляцией ошибок security metadata](#security-metadata-failure-isolation--2026-10-21).
+Linux xattr frontend лишь предупреждает о таком descriptor и может вернуть
+bytes; archive не публикует непроверенный ACL и не переносит kernel permission
+enforcement. Не найденный или reserved ID не создаёт raw property.
+Отмена и ошибки callback сохраняют HRESULT через C boundary.
+Descriptor cache принадлежит открытому архиву;
 временные index readers и callbacks освобождаются до завершения Open.
 NT4 resident security и key/trust services этим сценарием не изменяются.
 
@@ -1356,19 +1356,77 @@ Native Cocoa EN/RU подтвердил consent/copy, badge и читаемос�
 (422 exact / 242 adapted / 12 local), все 32 hashes Linux baseline сверены.
 Full/slow suites, установка и физические носители не проверялись.
 
+## Security metadata failure isolation — 2026-10-21
+
+Проверка политики `AGENTS.md: Read-only filesystem access` выявила отказ всего
+Open из-за повреждённого `$SII` или descriptor при независимо читаемом DATA.
+До исправления повторно сравнены полные Linux `ntfs_security_init`,
+`ntfs_get_security_by_id`, `is_sd_valid`, index lookup/fixup/read services,
+`super.c` mount caller и `xattr.c:ntfs_getxattr`, а также SDK `ParseSecuritySDS`,
+текущие attribute selectors, logical stream callbacks, raw-property cache и
+GUI open/reopen/consent consumers. Baselines остаются указанными выше.
+
+Linux mount может отказать при непригодном security index; отдельный xattr lookup
+не является условием обычного DATA read, а некорректный descriptor frontend лишь
+сопровождает предупреждением. Archive eagerly запрашивает права всех items;
+перенос отказа lookup на весь Open был дополнительным product gate. Теперь
+ошибка конкретного descriptor оставляет независимо проверенные ACL других IDs.
+Непригодный root/mapping делает права неизвестными без отказа читаемым файлам.
+Missing IDs, malformed descriptors/indexes, read errors и unexpected EOF дают
+конкретные archive/item diagnostics и общий consent/badge ограниченного режима.
+Reserved IDs не требуют descriptor и не создают фиктивного ограничения.
+
+Проверки index/descriptor spans, SID/ACL, logical/physical bounds и paths
+сохранены; оригинальные Linux C lookup/validation bodies не заменены.
+Узкая archive adaptation отделяет optional metadata failure от callback failure,
+отмены и OOM: последние по-прежнему завершают Open. После Close/reopen отсутствуют
+старые descriptors и старые ограничения. Source остаётся read-only, журнал не
+воспроизводится, repair не выполняется. Standalone сохраняет прежний SDK scanner;
+GPL C остаётся только в отдельном dynamic module.
+
+Private-buffer index fixup recovery и неполное USA coverage больше не позволяют
+назвать ACL проверенным: C adapter возвращает отдельную ошибку для такого lookup,
+не передавая descriptor bytes. Shared read service сохраняет indication о partial
+coverage и для directory consumer. Следующий независимый lookup получает свой
+статус; восстановленные buffers не записываются в образ.
+
+Прежняя malformed matrix проверяет доступный payload, отсутствие raw ACL,
+непустую диагностику, retained streams и восстановление после открытия исправного
+образа. Добавлены partial-fixup и два mixed-ID fixtures: invalid gamma descriptor
+не удаляет точные alpha permissions. I/O cases различают E_FAIL/EOF, E_ABORT/OOM
+и callback errors. CLI проверяет реальные bytes при испорченном root/descriptor;
+EN/RU GUI копирует alpha и gamma после согласия, сохраняет badge, запрашивает
+согласие при новом открытии и проверяет неизменность input.
+
+Native Linux 6.8.0-147 прочитал все три payload в control, short-descriptor и
+invalid-ACL-revision образах; raw xattr вернул исходные 72/8/72 bytes соответственно.
+Archive намеренно не экспортирует последние два malformed ACL, сохраняя DATA.
+Block devices/mounts были read-only; SHA-256 всех образов неизменны; временные
+mounts/loops/images удалены. Receipt `20261021T094248Z-b5413be3`. Это отдельное
+свидетельство старого kernel, не runtime acceptance закреплённого snapshot.
+
+Локально на macOS arm64 прошли `ntfs_stream`, `ntfs_directory`, `ntfs_record`,
+`ntfs`, `language`, `filesystem_read_ui`; первая новая mixed-ID проверка выявила,
+что исходный control alpha имел 48-byte SI без security ID. Добавлены явные
+два-ID fixtures вместо ослабления проверки; финальная `ntfs_security` прошла за
+11,52 с. Product code после первого прогона не менялся. Native Cocoa подтвердил
+EN/RU consent/copy и отсутствие clipping при 420×214 / 420×275.
+Linux прошёл все семь suites за 93,22 с, receipt `20261021T094357Z-24e74799`.
+Windows в том же batch прошёл шесть; `ntfs_stream` достиг прежнего 60 с timeout,
+причина которого не установлена. Timeout/cache/toolchain settings не менялись.
+Изолированный повтор `ntfs_stream` на том же коде прошёл за 52,29 с,
+receipt `20261021T094808Z-ad26d523`; он дополняет шесть passing suites batch,
+а не скрывает его timeout.
+Приложение собрано инкрементально, provenance verifier прошёл
+(422 exact / 242 adapted / 12 local); сверены все 32 Linux baseline hashes.
+Full/slow suites, установка и физические носители не проверялись.
+
 ## Открытый read scope
 
-Проверка политики `AGENTS.md: Read-only filesystem access` от 2026-10-21
-подтверждает per-opening consent, постоянный limited-access badge, read-only
-input и честные per-file errors для рассмотренных MFT/DATA/name scenarios.
-Полное соответствие NTFS пока не установлено: `LoadSecurityIndex` всё ещё
-прерывает открытие при повреждённом `$SII` или обязательном security descriptor,
-хотя эти metadata не нужны для чтения независимого DATA. Существующая
-`malformedDescriptors` матрица закрепляет этот отказ; её fixtures изменяют
-security metadata, сохраняя файловый payload. Следующий связный security-read
-scenario должен изолировать такую ошибку, не публиковать непроверенный ACL и
-сохранять чтение с конкретным предупреждением. Bounds checks, отмена и нехватка
-памяти остаются обязательными; простое подавление всех ошибок не решает задачу.
+Известный security-metadata gate исправлен описанным выше сценарием.
+Per-opening consent, постоянный limited-access badge, read-only input и честные
+per-file errors проверены для рассмотренных MFT/DATA/name/security scenarios;
+это не доказывает полное соответствие всех оставшихся read features.
 
 Выбранные classic/WOF/MFT bootstrap scenarios подключены и проверены.
 Остальные metadata/read features NTFS должны пройти оставшийся source audit;

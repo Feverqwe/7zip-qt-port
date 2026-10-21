@@ -61,10 +61,11 @@ class Cancel final : public IArchiveOpenCallback, public CMyUnknownImp {
     Z7_COM_UNKNOWN_IMP_1(IArchiveOpenCallback)
   public:
     Input *source;
+    HRESULT failure = E_ABORT;
     explicit Cancel(Input *value) : source(value) {}
     Z7_COM7F_IMF(SetTotal(const UInt64 *, const UInt64 *)) override { return S_OK; }
     Z7_COM7F_IMF(SetCompleted(const UInt64 *, const UInt64 *)) override {
-        return source->cancelRequested ? E_ABORT : S_OK;
+        return source->cancelRequested ? failure : S_OK;
     }
 };
 QString runtimeFile(const char *name) {
@@ -93,7 +94,7 @@ class NtfsSecurityTests final : public QObject {
         QVERIFY(!image_.isEmpty());
         expected_ = QByteArray::fromHex(object["security"].toString().toLatin1());
     }
-    UInt32 index() {
+    UInt32 index(const QString &name = "gamma") {
         UInt32 count = 0;
         if (archive_->GetNumberOfItems(&count) != S_OK)
             return UINT32_MAX;
@@ -101,7 +102,7 @@ class NtfsSecurityTests final : public QObject {
             NWindows::NCOM::CPropVariant value;
             if (archive_->GetProperty(i, kpidPath, &value) == S_OK && value.vt == VT_BSTR &&
                 QDir::fromNativeSeparators(QString::fromWCharArray(value.bstrVal))
-                        .section('/', -1) == "gamma")
+                        .section('/', -1) == name)
                 return i;
         }
         return UINT32_MAX;
@@ -132,6 +133,34 @@ class NtfsSecurityTests final : public QObject {
         if (provider->GetStream(index(), &result) != S_OK)
             return {};
         return result;
+    }
+    QByteArray rawSecurity(const QString &name) {
+        CMyComPtr<IArchiveGetRawProps> raw;
+        if (archive_->QueryInterface(IID_IArchiveGetRawProps, reinterpret_cast<void **>(&raw)) !=
+            S_OK)
+            return {};
+        const void *bytes = nullptr;
+        UInt32 size = 0, type = 0;
+        if (raw->GetRawProp(index(name), kpidNtSecure, &bytes, &size, &type) != S_OK || !bytes)
+            return {};
+        return QByteArray(static_cast<const char *>(bytes), size);
+    }
+    QString limitations() {
+        UInt32 count = 0;
+        if (archive_->GetNumberOfArchiveProperties(&count) != S_OK)
+            return {};
+        for (UInt32 i = 0; i < count; ++i) {
+            CMyComBSTR name;
+            PROPID id;
+            VARTYPE type;
+            if (archive_->GetArchivePropertyInfo(i, &name, &id, &type) != S_OK || !name ||
+                QString::fromWCharArray(name) != "Read-only limitations")
+                continue;
+            NWindows::NCOM::CPropVariant value;
+            if (archive_->GetArchiveProperty(id, &value) == S_OK && value.vt == VT_BSTR)
+                return QString::fromWCharArray(value.bstrVal);
+        }
+        return {};
     }
     void payload(ISequentialInStream *stream) {
         QVERIFY(stream);
@@ -173,29 +202,16 @@ class NtfsSecurityTests final : public QObject {
     }
     void indexedDescriptors_data() {
         QTest::addColumn<QString>("kind");
-        for (const char *kind : {"security-index",
-                                 "security-physical-order",
-                                 "security-mirror",
-                                 "security-partial-sds",
-                                 "security-tree",
-                                 "security-root-key",
-                                 "security-many",
-                                 "security-small-block",
-                                 "security-fragmented-index",
-                                 "security-extension",
-                                 "security-sparse-sds",
-                                 "security-empty",
-                                 "security-reserved",
-                                 "security-no-metadata",
-                                 "security-fixup-mismatch",
-                                 "security-deleted-corrupt",
-                                 "standard-full",
-                                 "standard-legacy",
-                                 "standard-partial56",
-                                 "standard-partial64",
-                                 "standard-duplicate",
-                                 "standard-extension",
-                                 "standard-deleted-short"})
+        for (const char *kind :
+             {"security-index",         "security-physical-order", "security-mirror",
+              "security-partial-sds",   "security-tree",           "security-root-key",
+              "security-many",          "security-small-block",    "security-fragmented-index",
+              "security-extension",     "security-sparse-sds",     "security-empty",
+              "security-reserved",      "security-no-metadata",    "security-fixup-mismatch",
+              "security-partial-fixup", "security-mixed-control",  "security-deleted-corrupt",
+              "standard-full",          "standard-legacy",         "standard-partial56",
+              "standard-partial64",     "standard-duplicate",      "standard-extension",
+              "standard-deleted-short"})
             QTest::newRow(kind) << QString::fromLatin1(kind);
     }
     void indexedDescriptors() {
@@ -222,6 +238,8 @@ class NtfsSecurityTests final : public QObject {
             QVERIFY(attributes.ulVal & 1);
         }
         descriptor();
+        if (kind == "security-fixup-mismatch" || kind == "security-partial-fixup")
+            QVERIFY(limitations().contains("NTFS security descriptors"));
         payload(dataStream());
         descriptor();
         auto retained = dataStream();
@@ -237,21 +255,48 @@ class NtfsSecurityTests final : public QObject {
               "security-header-mismatch", "security-sds-range", "security-sd-short",
               "security-sid-overflow", "security-sid-length", "security-acl-revision",
               "security-ace-overrun", "security-node-vbn", "security-node-fixup-range",
-              "security-node-key-overrun", "security-index-range", "security-cycle"})
+              "security-node-key-overrun", "security-index-range", "security-cycle",
+              "security-mixed"})
             QTest::newRow(kind) << QString::fromLatin1(kind);
     }
     void malformedDescriptors() {
         QFETCH(QString, kind);
         fixture(kind);
         CMyComPtr<IInStream> source = new Input(image_);
-        QCOMPARE(archive_->Open(source, nullptr, nullptr), S_FALSE);
-        UInt32 count = 99;
-        QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
-        QCOMPARE(count, UInt32(0));
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
+        QVERIFY(index() != UINT32_MAX);
+        QVERIFY(limitations().contains("NTFS security descriptors"));
+        expected_.clear();
+        descriptor();
+        NWindows::NCOM::CPropVariant error;
+        QCOMPARE(archive_->GetProperty(index(), kpidError, &error), S_OK);
+        QCOMPARE(error.vt, VARTYPE(VT_BSTR));
+        payload(dataStream());
+        auto retained = dataStream();
+        QCOMPARE(archive_->Close(), S_OK);
+        source.Release();
+        payload(retained);
         fixture("security-tree");
         source = new Input(image_);
         QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
         descriptor();
+        QVERIFY(!limitations().contains("NTFS security descriptors"));
+    }
+    void invalidDescriptorDoesNotDiscardOtherPermissions() {
+        fixture("security-mixed-control");
+        CMyComPtr<IInStream> source = new Input(image_);
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
+        const QByteArray alpha = rawSecurity("alpha");
+        QVERIFY(!alpha.isEmpty());
+        fixture("security-mixed");
+        source = new Input(image_);
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
+        QCOMPARE(rawSecurity("alpha"), alpha);
+        QVERIFY(rawSecurity("gamma").isEmpty());
+        NWindows::NCOM::CPropVariant error;
+        QCOMPARE(archive_->GetProperty(index("alpha"), kpidError, &error), S_OK);
+        QCOMPARE(error.vt, VARTYPE(VT_EMPTY));
+        payload(dataStream());
     }
     void unavailableStandardMetadataKeepsData_data() {
         QTest::addColumn<QString>("kind");
@@ -295,10 +340,19 @@ class NtfsSecurityTests final : public QObject {
     }
     void ioCancellationAndRecovery() {
         fixture("security-fragmented-index");
+        const QByteArray expected = expected_;
         CMyComPtr2<IInStream, Input> source;
         source.SetFromCls(new Input(image_));
         source->failAt = 1202 * 4096;
-        for (HRESULT result : {E_FAIL, E_ABORT}) {
+        for (HRESULT result : {E_FAIL, S_OK}) {
+            source->failure = result;
+            QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
+            QVERIFY(limitations().contains("NTFS security descriptors"));
+            expected_.clear();
+            descriptor();
+            payload(dataStream());
+        }
+        for (HRESULT result : {E_ABORT, E_OUTOFMEMORY}) {
             source->failure = result;
             QCOMPARE(archive_->Open(source, nullptr, nullptr), result);
             UInt32 count = 99;
@@ -307,8 +361,13 @@ class NtfsSecurityTests final : public QObject {
         }
         source->failAt = UINT64_MAX;
         source->cancelAt = 1202 * 4096;
-        CMyComPtr<IArchiveOpenCallback> callback = new Cancel(source.ClsPtr());
-        QCOMPARE(archive_->Open(source, nullptr, callback), E_ABORT);
+        CMyComPtr2<IArchiveOpenCallback, Cancel> callback;
+        callback.SetFromCls(new Cancel(source.ClsPtr()));
+        for (HRESULT result : {E_FAIL, E_ABORT}) {
+            source->cancelRequested = false;
+            callback->failure = result;
+            QCOMPARE(archive_->Open(source, nullptr, callback), result);
+        }
         QVERIFY(source->cancelRequested);
         UInt32 count = 99;
         QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
@@ -316,7 +375,9 @@ class NtfsSecurityTests final : public QObject {
         source->cancelAt = UINT64_MAX;
         source->cancelRequested = false;
         QCOMPARE(archive_->Open(source, nullptr, callback), S_OK);
+        expected_ = expected;
         descriptor();
+        QVERIFY(!limitations().contains("NTFS security descriptors"));
     }
     void backendExtraction() {
         fixture("security-tree");

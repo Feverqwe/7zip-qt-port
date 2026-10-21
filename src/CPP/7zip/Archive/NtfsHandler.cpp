@@ -1869,6 +1869,7 @@ struct CDatabase {
     CRecordVector<UInt32> SecurIds; // sorted
 #ifdef SEVENZIP_LINUX_NTFS
     CObjectVector<CByteBuffer> IndexedSecurData;
+    CRecordVector<UInt32> UnavailableSecurIds;
     CObjectVector<AString> LinkTargets;
     bool FreeSpaceDefined = false;
     UInt64 FreeSpace = 0;
@@ -1899,6 +1900,7 @@ struct CDatabase {
         SecurData.Free();
 #ifdef SEVENZIP_LINUX_NTFS
         IndexedSecurData.ClearAndFree();
+        UnavailableSecurIds.Clear();
 #endif
     }
     void Clear();
@@ -1967,6 +1969,7 @@ struct CDatabase {
     HRESULT LoadEaMetadata();
     HRESULT ReadEaMetadata(CMftRec &rec, UInt32 limit);
     HRESULT LoadSecurityIndex();
+    HRESULT ReadSecurityIndex(const CRecordVector<UInt32> &ids, HRESULT &callbackResult);
     HRESULT LoadLinks();
     HRESULT LoadFreeSpace();
 #endif
@@ -3447,13 +3450,34 @@ struct CEaStreams {
 };
 
 HRESULT CDatabase::LoadSecurityIndex() {
-    if (Recs.Size() <= kRecIndex_Security)
+    CRecordVector<UInt32> ids;
+    FOR_VECTOR(i, Items) {
+        const UInt32 id = Recs[Items[i].RecIndex].SiAttr.SecurityId;
+        if (id >= 0x100)
+            ids.AddToUniqueSorted(id);
+    }
+    if (ids.IsEmpty())
         return S_OK;
+    HRESULT callbackResult = S_OK;
+    const HRESULT result = ReadSecurityIndex(ids, callbackResult);
+    RINOK(callbackResult)
+    if (result != S_OK && result != S_FALSE)
+        return result;
+    if (result == S_FALSE) {
+        ClearSecurInfo();
+        UnavailableSecurIds = ids;
+    }
+    return S_OK;
+}
+
+HRESULT CDatabase::ReadSecurityIndex(const CRecordVector<UInt32> &ids, HRESULT &callbackResult) {
+    if (Recs.Size() <= kRecIndex_Security)
+        return S_FALSE;
     const CMftRec &secure = Recs[kRecIndex_Security];
     if (secure.MftIncomplete)
-        return S_OK; // No unverified index/SDS metadata is published as a verified ACL.
+        return S_FALSE;
     if (secure.SecurityRoots.IsEmpty())
-        return S_OK;
+        return S_FALSE;
     bool hasSds = false;
     FOR_VECTOR(i, secure.DataAttrs) {
         const CAttr &attr = secure.DataAttrs[i];
@@ -3461,11 +3485,11 @@ HRESULT CDatabase::LoadSecurityIndex() {
             continue;
         hasSds = true;
         if (attr.Unavailable || attr.Partial)
-            return S_OK; // DATA limitation is already reported; no unverified ACL is published.
+            return S_FALSE;
     }
     if (!hasSds && !secure.AttrListAttrs.IsEmpty()) {
         DataLimitations = true;
-        return S_OK;
+        return S_FALSE;
     }
     const CAttr &root = secure.SecurityRoots[0];
     if (root.NonResident)
@@ -3482,8 +3506,9 @@ HRESULT CDatabase::LoadSecurityIndex() {
         const CAttr &attr = secure.DataAttrs[i];
         if (attr.Name == L"$SDS") {
             input.sds_size = attr.GetSize();
-            RINOK(secure.GetStream(InStream, (int)i, Header.ClusterSizeLog, Header.NumClusters,
-                                   &source.Sources[0].Stream))
+            RINOK(DirectoryReadResult(secure.GetStream(InStream, (int)i, Header.ClusterSizeLog,
+                                                       Header.NumClusters,
+                                                       &source.Sources[0].Stream)))
             break;
         }
         i = attr.NextAttrIndex;
@@ -3494,8 +3519,8 @@ HRESULT CDatabase::LoadSecurityIndex() {
         allocation.DataAttrs = secure.SecurityAlloc;
         allocation.ParseDataNames();
         input.allocation_size = allocation.DataAttrs[0].GetSize();
-        RINOK(allocation.GetStream(InStream, 0, Header.ClusterSizeLog, Header.NumClusters,
-                                   &source.Sources[1].Stream))
+        RINOK(DirectoryReadResult(allocation.GetStream(
+            InStream, 0, Header.ClusterSizeLog, Header.NumClusters, &source.Sources[1].Stream)))
     }
     sevenzip_ntfs_security *rawReader = nullptr;
     int result = sevenzip_ntfs_security_create(&input, &rawReader);
@@ -3505,31 +3530,33 @@ HRESULT CDatabase::LoadSecurityIndex() {
         sevenzip_ntfs_security_destroy(reader);
     };
     std::unique_ptr<sevenzip_ntfs_security, decltype(deleter)> reader(rawReader, deleter);
-    CRecordVector<UInt32> ids, required;
-    FOR_VECTOR(i, Items) {
-        const CMftRec &rec = Recs[Items[i].RecIndex];
-        const UInt32 id = rec.SiAttr.SecurityId;
-        if (id < 0x100)
-            continue;
-        ids.AddToUniqueSorted(id);
-        if (rec.InUse())
-            required.AddToUniqueSorted(id);
-    }
     CByteBuffer buffer;
     buffer.Alloc(0x10000);
     FOR_VECTOR(i, ids) {
+        if (OpenCallback) {
+            callbackResult = OpenCallback->SetCompleted(nullptr, nullptr);
+            RINOK(callbackResult)
+        }
         source.Sources[0].Result = source.Sources[1].Result = S_OK;
+        source.Sources[0].CallbackResult = source.Sources[1].CallbackResult = S_OK;
         size_t bytes = 0;
         result = sevenzip_ntfs_security_read(reader.get(), ids[i], buffer, buffer.Size(), &bytes);
-        RINOK(source.Result())
+        callbackResult = source.Sources[0].CallbackResult != S_OK
+                             ? source.Sources[0].CallbackResult
+                             : source.Sources[1].CallbackResult;
+        RINOK(callbackResult)
+        const HRESULT readResult = DirectoryReadResult(source.Result());
+        if (readResult != S_OK && readResult != S_FALSE)
+            return readResult;
         if (result == -ENOMEM)
             return E_OUTOFMEMORY;
-        if (result && required.FindInSorted(ids[i]) >= 0)
-            return S_FALSE;
+        if (result || readResult != S_OK || !bytes) {
+            UnavailableSecurIds.Add(ids[i]);
+            continue;
+        }
         SecurIds.Add(ids[i]);
         CByteBuffer &descriptor = IndexedSecurData.AddNew();
-        if (!result && bytes)
-            descriptor.CopyFrom(buffer, bytes);
+        descriptor.CopyFrom(buffer, bytes);
     }
     return S_OK;
 }
@@ -4591,6 +4618,12 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(const PROPID propID, PROPVARIANT *cons
                 "Some NTFS MFT records are unavailable or unverified. Files or metadata may be "
                 "missing, incomplete or unreadable.";
         }
+        if (!UnavailableSecurIds.IsEmpty()) {
+            if (!reasons.IsEmpty())
+                reasons += '\n';
+            reasons += "Some NTFS security descriptors are unavailable or unverified. Permissions "
+                       "may be missing. Readable file data remains accessible.";
+        }
         if (!reasons.IsEmpty())
             prop = reasons;
         break;
@@ -4921,6 +4954,8 @@ Z7_COM7F_IMF(CHandler::GetProperty(const UInt32 index, const PROPID propID,
 #ifdef SEVENZIP_LINUX_NTFS
             if (rec.MftIncomplete)
                 prop = "The NTFS MFT record is unavailable or unverified.";
+            else if (UnavailableSecurIds.FindInSorted(rec.SiAttr.SecurityId) >= 0)
+                prop = "The NTFS security descriptor is unavailable or unverified.";
             else if (data && (data->Unavailable || data->Partial) &&
                      (item.IsAltStream() || !rec.Link))
                 prop = "NTFS DATA mapping is incomplete or unverified.";

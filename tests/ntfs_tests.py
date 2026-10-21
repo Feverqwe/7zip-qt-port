@@ -135,6 +135,18 @@ class NtfsTests(unittest.TestCase):
                     self.assertNotEqual(result.returncode, 0)
                     self.assertEqual(result.stdout, b"")
 
+    def test_unavailable_security_metadata_keeps_file_data_readable(self):
+        for kind in ("security-root-offset", "security-sd-short", "security-partial-fixup"):
+            with self.subTest(kind=kind):
+                image, files = volume(kind)
+                listing = self.run_image("7z", image, "l")
+                self.assertEqual(listing.returncode, 0, listing.stderr)
+                self.assertIn(b"NTFS security descriptors", listing.stdout)
+                for name in ("alpha", "gamma"):
+                    result = self.run_image("7z", image, "x", name)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertEqual(result.stdout, files[name])
+
     def test_classic_read_paths_in_both_engines(self):
         for kind in ("base", "sparse", "hole-first", "initialized", "compressed", "sector4k", "boot-reserved", "backup-boot"):
             image, files = volume(kind)

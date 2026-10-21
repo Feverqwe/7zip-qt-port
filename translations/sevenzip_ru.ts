@@ -3854,6 +3854,14 @@ Are you sure you want to split archive into such volumes?</source>
             <translation>Запись MFT NTFS недоступна или не проверена.</translation>
         </message>
         <message>
+            <source>Some NTFS security descriptors are unavailable or unverified. Permissions may be missing. Readable file data remains accessible.</source>
+            <translation>Некоторые дескрипторы безопасности NTFS недоступны или не проверены. Сведения о правах доступа могут отсутствовать. Данные читаемых файлов остаются доступны.</translation>
+        </message>
+        <message>
+            <source>The NTFS security descriptor is unavailable or unverified.</source>
+            <translation>Дескриптор безопасности NTFS недоступен или не проверен.</translation>
+        </message>
+        <message>
             <source>The ext filesystem requires journal recovery. The journal will not be replayed; files may be missing, outdated or unreadable.</source>
             <translation>Файловой системе ext требуется восстановление журнала. Журнал не будет воспроизведён; некоторые файлы могут отсутствовать, быть устаревшими или нечитаемыми.</translation>
         </message>

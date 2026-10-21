@@ -65,9 +65,14 @@ int sevenzip_ntfs_security_read(struct sevenzip_ntfs_security *reader, u32 id,
     *length = 0;
     if (id < 0x100)
         return 0; // xattr.c::ntfs_getxattr excludes reserved security IDs.
+    reader->sbi.fixup_corrected = false;
     err = ntfs_get_security_by_id(&reader->sbi, cpu_to_le32(id), &descriptor, &bytes);
     if (err || !descriptor)
         goto out;
+    if (reader->sbi.fixup_corrected) {
+        err = -E_NTFS_FIXUP;
+        goto out;
+    }
     /* Keep all original SD validation, with non-wrapping offset preconditions. */
     if (bytes < sizeof(*descriptor) || le32_to_cpu(descriptor->Owner) > bytes ||
         le32_to_cpu(descriptor->Group) > bytes || le32_to_cpu(descriptor->Sacl) > bytes ||

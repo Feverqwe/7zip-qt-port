@@ -119,7 +119,12 @@ static inline int ntfs_read_bh_ra(struct ntfs_sb_info *sbi, struct runs_tree *ru
         struct ntfs_buffers *nb, struct file_ra_state *ra) {
     (void)ra;
     int result = ntfs_read_run_nb(sbi, run, offset, header, size, nb);
-    return result ? result : ntfs_fix_post_read(header, size, false);
+    if (result)
+        return result;
+    result = ntfs_fix_post_read(header, size, false);
+    if (!result && le16_to_cpu(header->fix_num) != size / SECTOR_SIZE + 1)
+        sbi->fixup_corrected = true;
+    return result;
 }
 static inline int ntfs_write_bh(struct ntfs_sb_info *sbi, struct NTFS_RECORD_HEADER *h,
                                 struct ntfs_buffers *nb, int sync) {

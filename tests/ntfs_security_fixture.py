@@ -7,12 +7,12 @@ VALID = ("security-index", "security-physical-order", "security-mirror", "securi
          "security-tree", "security-root-key", "security-many", "security-small-block",
          "security-fragmented-index", "security-extension", "security-sparse-sds",
          "security-empty", "security-reserved", "security-no-metadata", "security-fixup-mismatch",
-         "security-deleted-corrupt")
+         "security-deleted-corrupt", "security-partial-fixup", "security-mixed-control")
 BAD = ("security-root-offset", "security-root-used", "security-root-terminal", "security-key-overrun", "security-subnode-flag",
        "security-view-short", "security-header-mismatch", "security-sds-range", "security-sd-short",
        "security-sid-overflow", "security-sid-length", "security-acl-revision", "security-ace-overrun",
        "security-node-vbn", "security-node-fixup-range", "security-node-key-overrun",
-       "security-index-range", "security-cycle")
+       "security-index-range", "security-cycle", "security-mixed")
 
 
 def attr_name(attr):
@@ -47,7 +47,7 @@ def descriptor(seed=700):
 
 def expected(kind):
     return b"" if kind in ("security-empty", "security-reserved", "security-no-metadata",
-                           "security-deleted-corrupt") else descriptor(
+                           "security-deleted-corrupt", "security-fixup-mismatch", "security-partial-fixup") else descriptor(
         500 if kind == "security-root-key" else 335 if kind == "security-many" else 700)
 
 
@@ -130,9 +130,11 @@ def volume(kind):
         cursor += u16(old_sii, cursor + 8)
     gamma_id = 500 if kind == "security-root-key" else 335 if kind == "security-many" else 700
     descriptors[gamma_id] = descriptor(gamma_id)
+    if kind.startswith("security-mixed"):
+        descriptors[500] = descriptor(500)
     if kind in ("security-tree", "security-fragmented-index", "security-small-block",
                 "security-extension", "security-root-key", "security-node-vbn", "security-node-fixup-range",
-                "security-node-key-overrun", "security-index-range", "security-cycle", "security-fixup-mismatch"):
+                "security-node-key-overrun", "security-index-range", "security-cycle", "security-fixup-mismatch", "security-partial-fixup"):
         descriptors[500] = descriptor(500)
         if kind == "security-root-key":
             descriptors[700] = descriptor(700)
@@ -144,7 +146,7 @@ def volume(kind):
             gamma_id = 17
     if kind == "security-no-metadata":
         descriptors = {}
-    if kind in ("security-sd-short", "security-deleted-corrupt"):
+    if kind in ("security-sd-short", "security-deleted-corrupt", "security-mixed"):
         descriptors[gamma_id] = bytes(8)
     elif kind.startswith("security-sid-") or kind.startswith("security-acl-") or kind == "security-ace-overrun":
         raw = bytearray(descriptors[gamma_id])
@@ -237,6 +239,7 @@ def volume(kind):
                 elif kind == "security-node-fixup-range":put(nodes[1], 4, "H", 4094)
                 elif kind == "security-node-key-overrun":put(nodes[1], 64 + 10, "H", 0xffff)
                 elif kind == "security-fixup-mismatch":nodes[1][510] ^= 1
+                elif kind == "security-partial-fixup":put(nodes[1], 6, "H", 1)
         root_attr = named_resident(0x90, name, data, 3 if name == "$SDH" else 4)
         target = extension_attrs if kind == "security-extension" and name == "$SII" else index_attrs
         target.append(root_attr)
@@ -276,4 +279,12 @@ def volume(kind):
     if kind == "security-deleted-corrupt":
         put(gamma, 22, "H", u16(gamma, 22) & ~1)
     set_attributes(image, offset, gamma, attrs)
+    if kind.startswith("security-mixed"):
+        offset, alpha = record(image, 64)
+        attrs = [a for _, a in attributes(alpha)]
+        std = next(a for a in attrs if u32(a, 0) == 0x10)
+        payload = bytearray(read_stream(image, std));payload += bytes(max(0, 72 - len(payload)))
+        put(payload, 52, "I", 500)
+        attrs[attrs.index(std)] = resident(0x10, payload, u16(std, 14))
+        set_attributes(image, offset, alpha, attrs)
     return bytes(image), files
