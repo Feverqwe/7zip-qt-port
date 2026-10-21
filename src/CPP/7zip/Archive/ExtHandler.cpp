@@ -1702,6 +1702,10 @@ HRESULT CHandler::Open2(IInStream *inStream) {
 
         UInt64 fileSize = 0;
         RINOK(InStream_GetSize_SeekToEnd(inStream, fileSize))
+#ifdef SEVENZIP_LINUX_EXT
+        if (ext_linux_geometry_check(_volume.Ptr, fileSize) != 0)
+            return S_FALSE;
+#endif
 
         CRecordVector<CGroupDescriptor> groups;
 

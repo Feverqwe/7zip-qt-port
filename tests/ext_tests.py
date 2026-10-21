@@ -12,7 +12,7 @@ import hashlib
 import json
 from types import SimpleNamespace
 from ext_fixture import Volume, NAME
-from ext_modern_fixture import ModernVolume
+from ext_modern_fixture import ModernVolume, crc32c
 from ext_verity_fixture import VerityVolume
 from ext_xattr_fixture import XattrVolume
 from ext_block_fixture import BlockVolume
@@ -395,6 +395,37 @@ class ExtTests(unittest.TestCase):
                 result = self.run_image(volume)
                 self.assertNotEqual(result.returncode, 0)
                 self.assertEqual(result.stdout, b"")
+
+    def test_volume_geometry_rejects_truncation_and_invalid_group_inventory(self):
+        volume = ModernVolume()
+        padded = SimpleNamespace(data=volume.data + bytes(37))
+        result = self.run_image(padded)
+        self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+        self.assertEqual(result.stdout, volume.read(0, volume.size))
+        for fault in ("truncated", "reserved-gdt", "first-data"):
+            with self.subTest(fault=fault):
+                volume = ModernVolume()
+                if fault == "reserved-gdt":
+                    struct.pack_into("<H", volume.data, 1024 + 206, 257)
+                elif fault == "first-data":
+                    volume.put32(1024 + 20, 0)
+                volume.refresh()
+                if fault == "truncated":
+                    volume.data = volume.data[:-1]
+                result = self.run_image(volume)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(result.stdout, b"")
+
+        # Real multi-group mkfs image: rounded group counts still agree after
+        # losing one inode, but the exact group inventory required by Linux does not.
+        path = Path(__file__).parent / "fixtures/ext4/meta-bg.ext4.zlib"
+        data = bytearray(zlib.decompress(path.read_bytes()))
+        inodes = struct.unpack_from("<I", data, 1024)[0]
+        struct.pack_into("<I", data, 1024, inodes - 1)
+        struct.pack_into("<I", data, 1024 + 1020, crc32c(0xFFFFFFFF, data[1024:2044]))
+        result = self.run_image(SimpleNamespace(data=data))
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(result.stdout, b"")
 
     def test_indexed_directory_checksums_and_count_bounds(self):
         volume = ModernVolume(indexed=True)

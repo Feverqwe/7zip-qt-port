@@ -21,6 +21,7 @@ struct ext_node_info {
 };
 /* All buffers remain owned by the caller except the returned opaque objects. */
 int ext_linux_open(const void *superblock, struct ext_volume **);
+int ext_linux_geometry_check(struct ext_volume *, uint64_t input_size);
 void ext_linux_close(struct ext_volume *);
 uint64_t ext_linux_descriptor_block(struct ext_volume *, unsigned int number);
 int ext_linux_group_check(struct ext_volume *, uint32_t group, const void *descriptor);

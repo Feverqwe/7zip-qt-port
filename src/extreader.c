@@ -45,6 +45,8 @@ int ext_linux_open(const void *superblock, struct ext_volume **result)
         EXT4_CLUSTERS_PER_GROUP(&volume->sb) > volume->sb.s_blocksize * 8) goto corrupt;
     sbi->s_desc_size = desc;
     sbi->s_desc_per_block = volume->sb.s_blocksize / desc;
+    sbi->s_inodes_per_group = EXT4_INODES_PER_GROUP(&volume->sb);
+    sbi->s_cluster_ratio = EXT4_CLUSTER_SIZE(&volume->sb) / volume->sb.s_blocksize;
     if (ext4_inode_info_init(&volume->sb, &volume->raw)) goto corrupt;
     volume->sb.s_maxbytes = ext4_max_size((int)volume->sb.s_blocksize_bits,
         ext4_has_feature_huge_file(&volume->sb));
@@ -79,6 +81,12 @@ void ext_linux_close(struct ext_volume *volume) {
     ext4_release_system_zone(&volume->sb);
     free(volume->sb.info.s_group_desc);
     free(volume);
+}
+
+int ext_linux_geometry_check(struct ext_volume *volume, uint64_t input_size)
+{
+    volume->sb.s_archive_bytes = input_size;
+    return ext4_check_geometry(&volume->sb, &volume->raw);
 }
 
 uint64_t ext_linux_descriptor_block(struct ext_volume *volume, unsigned int number)

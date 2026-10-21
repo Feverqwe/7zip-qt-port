@@ -1108,3 +1108,52 @@ without the empty leaf, enumerated the same names and read identical content
 (`20261021T003306Z-f1b164d4`). Images were unchanged and temporary mounts/fixtures
 were removed. The native control establishes valid-image compatibility; the
 archive regression separately establishes strict rejection of corrupt checksums.
+
+### Superblock geometry and input addressability
+
+The complete pinned `ext4_check_geometry` body in `fs/ext4/super.c`, its
+`ext4_block_group_meta_init`/`__ext4_fill_super` callers, descriptor/inode/cluster
+types and `generic_check_addressable` dependency in `fs/libfs.c` were compared
+with SDK header parsing and Open. SDK rounded block-group and inode-group counts
+could agree without an exact inode inventory; it also obtained input size
+without applying Linux's complete volume geometry contract before reading GDT.
+No usable SDK equivalent of the complete selected check exists.
+
+Both original C bodies are now compiled into the isolated GPL ext module;
+`ext4_check_geometry` is exported privately without changing its branches. The
+archive owns the initialized cluster ratio/inodes-per-group and supplies its
+actual input byte length for the block-device-size service. The original check
+runs before GDT allocation/reads and validates reserved GDT count, addressability,
+volume/device span, first-data-block geometry, group ceiling and exact total
+inode count. Existing checksum/descriptor/system-zone consumers remain in place.
+
+The `fs/libfs.c` dependency is recorded in the source baseline with its complete
+unit hash and original GPL notice. Its original function body remains unchanged.
+The narrow overflow service performs a checked unsigned 64-bit shift; archive
+sector/page indices are explicitly 64-bit on all hosts, with the existing 64 KiB
+archive page geometry. No native page cache or block-device access is created.
+Kernel logging/export services are replaced at the existing private boundary.
+The SDK's earlier signed-stream-size and basic parsing guards remain. Standalone
+does not acquire the GPL geometry implementation.
+
+Public CLI checks cover a correct image with trailing non-filesystem bytes,
+one-byte physical truncation, excessive reserved GDT blocks, an invalid 1 KiB
+first-data block and an inconsistent exact inode count in a real multi-group
+mkfs META_BG image. Existing coverage retains valid classic/legacy, BIGALLOC,
+distributed descriptors, sparse/LARGEDIR, inline, xattr, crypto and backend
+consumers. Source comparison confirms both transferred bodies match the pinned
+original after private linkage/include adaptations; runtime acceptance remains
+separate from this source evidence.
+
+On 2026-10-21 the seven focused ext/stream/fscrypt/xattr/backend/device suites
+passed on macOS, Linux and MSVC Windows (`20261021T003632Z-d048776b`). Native
+read-only Linux accepted the padded control with exact content and refused all
+four invalid geometry cases (`20261021T003708Z-cba469e1`). Images remained
+unchanged; all temporary mounts/images were removed. The arithmetic division
+service also retains Linux's remainder-return contract; its caller uses the
+updated quotient. Builds reused incremental trees and compiler caches. Full/slow
+suites, installed packages, UI and physical devices were not checked; the parent
+format/read-feature review remains active. After the division-service refinement,
+all seven local suites passed again (7.66s), and focused `ext`/`ext_stream`
+reruns passed on both runners (`20261021T003822Z-0853a693`). That final source
+synchronization also removed the disposable native helper from runner current.

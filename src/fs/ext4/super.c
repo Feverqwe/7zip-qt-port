@@ -515,3 +515,82 @@ int ext4_encoding_init(struct super_block *sb, struct ext4_super_block *es)
 	}
 	return 0;
 }
+
+int ext4_check_geometry(struct super_block *sb,
+			       struct ext4_super_block *es)
+{
+	struct ext4_sb_info *sbi = EXT4_SB(sb);
+	__u64 blocks_count;
+	int err;
+
+	if (le16_to_cpu(sbi->s_es->s_reserved_gdt_blocks) > (sb->s_blocksize / 4)) {
+		ext4_msg(sb, KERN_ERR,
+			 "Number of reserved GDT blocks insanely large: %d",
+			 le16_to_cpu(sbi->s_es->s_reserved_gdt_blocks));
+		return -EINVAL;
+	}
+	/*
+	 * Test whether we have more sectors than will fit in sector_t,
+	 * and whether the max offset is addressable by the page cache.
+	 */
+	err = generic_check_addressable(sb->s_blocksize_bits,
+					ext4_blocks_count(es));
+	if (err) {
+		ext4_msg(sb, KERN_ERR, "filesystem"
+			 " too large to mount safely on this system");
+		return err;
+	}
+
+	/* check blocks count against device size */
+	blocks_count = sb_bdev_nr_blocks(sb);
+	if (blocks_count && ext4_blocks_count(es) > blocks_count) {
+		ext4_msg(sb, KERN_WARNING, "bad geometry: block count %llu "
+		       "exceeds size of device (%llu blocks)",
+		       ext4_blocks_count(es), blocks_count);
+		return -EINVAL;
+	}
+
+	/*
+	 * It makes no sense for the first data block to be beyond the end
+	 * of the filesystem.
+	 */
+	if (le32_to_cpu(es->s_first_data_block) >= ext4_blocks_count(es)) {
+		ext4_msg(sb, KERN_WARNING, "bad geometry: first data "
+			 "block %u is beyond end of filesystem (%llu)",
+			 le32_to_cpu(es->s_first_data_block),
+			 ext4_blocks_count(es));
+		return -EINVAL;
+	}
+	if ((es->s_first_data_block == 0) && (es->s_log_block_size == 0) &&
+	    (sbi->s_cluster_ratio == 1)) {
+		ext4_msg(sb, KERN_WARNING, "bad geometry: first data "
+			 "block is 0 with a 1k block and cluster size");
+		return -EINVAL;
+	}
+
+	blocks_count = (ext4_blocks_count(es) -
+			le32_to_cpu(es->s_first_data_block) +
+			EXT4_BLOCKS_PER_GROUP(sb) - 1);
+	do_div(blocks_count, EXT4_BLOCKS_PER_GROUP(sb));
+	if (blocks_count > ((uint64_t)1<<32) - EXT4_DESC_PER_BLOCK(sb)) {
+		ext4_msg(sb, KERN_WARNING, "groups count too large: %llu "
+		       "(block count %llu, first data block %u, "
+		       "blocks per group %lu)", blocks_count,
+		       ext4_blocks_count(es),
+		       le32_to_cpu(es->s_first_data_block),
+		       EXT4_BLOCKS_PER_GROUP(sb));
+		return -EINVAL;
+	}
+	sbi->s_groups_count = blocks_count;
+	sbi->s_blockfile_groups = min(sbi->s_groups_count,
+			(EXT4_MAX_BLOCK_FILE_PHYS / EXT4_BLOCKS_PER_GROUP(sb)));
+	if (((u64)sbi->s_groups_count * sbi->s_inodes_per_group) !=
+	    le32_to_cpu(es->s_inodes_count)) {
+		ext4_msg(sb, KERN_ERR, "inodes count not valid: %u vs %llu",
+			 le32_to_cpu(es->s_inodes_count),
+			 ((u64)sbi->s_groups_count * sbi->s_inodes_per_group));
+		return -EINVAL;
+	}
+
+	return 0;
+}

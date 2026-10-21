@@ -51,6 +51,7 @@ struct ext4_sb_info {
     struct ext4_super_block *s_es;
     u32 s_csum_seed, s_desc_size, s_desc_per_block, s_inode_size;
     u32 s_groups_count, s_gdb_count, s_itb_per_group;
+    u32 s_cluster_ratio, s_inodes_per_group, s_blockfile_groups;
     u32 s_first_ino, s_want_extra_isize;
     loff_t s_bitmap_maxbytes;
     u32 s_mount_state;
@@ -63,7 +64,7 @@ struct ext4_sb_info {
 struct fsverity_operations;
 struct ext4_extent_header;
 struct sevenzip_asymmetric_trust;
-struct super_block { unsigned int s_blocksize, s_blocksize_bits; struct ext4_sb_info info; const struct fsverity_operations *s_vop; loff_t s_maxbytes; int64_t s_time_min, s_time_max; unsigned int s_time_gran; };
+struct super_block { unsigned int s_blocksize, s_blocksize_bits; struct ext4_sb_info info; const struct fsverity_operations *s_vop; loff_t s_maxbytes; int64_t s_time_min, s_time_max; unsigned int s_time_gran; u64 s_archive_bytes; };
 struct ext4_inode_info { u32 i_csum_seed, i_inline_size, i_flags; u16 i_extra_isize, i_inline_off; unsigned long i_state_flags; u64 i_file_acl; __le32 i_data[EXT4_N_BLOCKS]; };
 struct inode {
     struct super_block *i_sb;
@@ -166,6 +167,17 @@ static inline u64 ext4_blocks_count(struct ext4_super_block *es) {
 }
 #define EXT4_DESC_SIZE(sb) (EXT4_SB(sb)->s_desc_size)
 #define EXT4_DESC_PER_BLOCK(sb) (EXT4_SB(sb)->s_desc_per_block)
+#define EXT4_MAX_BLOCK_FILE_PHYS 0xFFFFFFFF
+static inline u32 ext_do_div(u64 *value, u32 divisor) {
+    u32 remainder = (u32)(*value % divisor);
+    *value /= divisor;
+    return remainder;
+}
+#define do_div(value, divisor) ext_do_div(&(value), (divisor))
+#define min(a, b) ((a) < (b) ? (a) : (b))
+#define sb_bdev_nr_blocks(sb) ((sb)->s_archive_bytes >> (sb)->s_blocksize_bits)
+int generic_check_addressable(unsigned, u64);
+int ext4_check_geometry(struct super_block *, struct ext4_super_block *);
 #define EXT4_MIN_DESC_SIZE_64BIT 64
 static inline ext4_group_t ext4_get_groups_count(struct super_block *sb) {
     return EXT4_SB(sb)->s_groups_count;
