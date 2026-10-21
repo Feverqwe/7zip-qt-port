@@ -94,6 +94,9 @@ def nonresident(original, entries, size, valid=None, flags=0, unit=0):
 
 
 def volume(kind="base"):
+    if kind.startswith("security-sds-map-"):
+        from ntfs_security_sds_fixture import volume as security_sds_volume
+        return security_sds_volume(kind)
     if kind.startswith("security-list-"):
         from ntfs_security_list_fixture import volume as security_list_volume
         return security_list_volume(kind)
@@ -267,7 +270,9 @@ if __name__ == "__main__":
                 if args.kind in LIMITED or args.kind == "ea-list-unlisted":
                     result["wsl"] = {}
         if args.kind.startswith("security-"):
-            if args.kind.startswith("security-list-"):
+            if args.kind.startswith("security-sds-map-"):
+                from ntfs_security_sds_fixture import expected
+            elif args.kind.startswith("security-list-"):
                 from ntfs_security_list_fixture import expected
             else:
                 from ntfs_security_fixture import expected

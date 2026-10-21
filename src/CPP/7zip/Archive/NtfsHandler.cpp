@@ -373,6 +373,7 @@ struct CAttr {
 #ifdef SEVENZIP_LINUX_NTFS
     bool Unavailable = false;
     bool Partial = false;
+    bool MetadataUnverified = false;
     bool NameValid = true;
 #endif
     unsigned NextAttrIndex; /* DataAttrs[NextAttrIndex] is nearest
@@ -2832,7 +2833,7 @@ HRESULT CDatabase::SelectActiveDataAttributes() {
                 selected = rec.DataAttrs;
                 if (evidence[i]) {
                     FOR_VECTOR(j, selected)
-                    selected[j].Partial = true;
+                    selected[j].Partial = selected[j].MetadataUnverified = true;
                     DataLimitations = true;
                 }
                 if (evidence[i] && selected.IsEmpty() && !(rec.Flags & 2))
@@ -2872,13 +2873,18 @@ HRESULT CDatabase::SelectActiveDataAttributes() {
                         row.Attr = FindListedMetadataAttribute(i, ATTR_TYPE_DATA, entry, true);
                         row.Unverified = row.Attr != NULL;
                     }
+                    if (row.Attr) {
+                        CMftRef reference;
+                        reference.Val = entry.ref;
+                        row.Unverified |= Recs[(unsigned)reference.GetIndex()].MftIncomplete;
+                    }
                 }
                 if (malformed) {
                     // Preserve local recovery data without claiming list authority.
                     selected = rec.DataAttrs;
                     if (evidence[i]) {
                         FOR_VECTOR(j, selected)
-                        selected[j].Partial = true;
+                        selected[j].Partial = selected[j].MetadataUnverified = true;
                         DataLimitations = true;
                     }
                     if (evidence[i] && selected.IsEmpty() && !(rec.Flags & 2))
@@ -2898,6 +2904,7 @@ HRESULT CDatabase::SelectActiveDataAttributes() {
                             selected.Add(*primary);
                             if (entries[first].Unverified) {
                                 selected[start].Partial = true;
+                                selected[start].MetadataUnverified = true;
                                 DataLimitations = true;
                             }
                             UInt64 previous = 0;
@@ -2913,9 +2920,10 @@ HRESULT CDatabase::SelectActiveDataAttributes() {
                                     selected[start].Partial = true;
                                     DataLimitations = true;
                                 }
-                                if (row.Attr && row.Attr->NonResident)
+                                if (row.Attr && row.Attr->NonResident) {
                                     selected.Add(*row.Attr);
-                                else {
+                                    selected.Back().MetadataUnverified |= row.Unverified;
+                                } else {
                                     selected[start].Partial = true;
                                     DataLimitations = true;
                                 }
@@ -2939,6 +2947,7 @@ HRESULT CDatabase::SelectActiveDataAttributes() {
         }
         rec.DataAttrs.Clear();
         FOR_VECTOR(j, selected) {
+            selected[j].MetadataUnverified |= rec.MftIncomplete;
             if (selected[j].NameValid)
                 rec.DataAttrs.Add(selected[j]);
             else
@@ -3569,13 +3578,21 @@ HRESULT CDatabase::ReadSecurityIndex(const CRecordVector<UInt32> &ids, HRESULT &
     RINOK(SelectSecurityIndex(selected, callbackResult))
     const CMftRec &secure = Recs[kRecIndex_Security];
     bool hasSds = false;
-    FOR_VECTOR(i, secure.DataAttrs) {
+    CMftRec sds;
+    for (unsigned i = 0; i < secure.DataAttrs.Size();) {
         const CAttr &attr = secure.DataAttrs[i];
-        if (attr.Name != L"$SDS")
+        const unsigned next = attr.NextAttrIndex;
+        if (attr.Name != L"$SDS") {
+            i = next;
             continue;
+        }
         hasSds = true;
-        if (attr.Unavailable || attr.Partial)
+        if (attr.Unavailable || attr.MetadataUnverified)
             return S_FALSE;
+        for (unsigned j = i; j < next; ++j)
+            if (!secure.DataAttrs[j].Unavailable && !secure.DataAttrs[j].MetadataUnverified)
+                sds.DataAttrs.Add(secure.DataAttrs[j]);
+        break;
     }
     if (!hasSds && !secure.AttrListAttrs.IsEmpty()) {
         DataLimitations = true;
@@ -3590,16 +3607,13 @@ HRESULT CDatabase::ReadSecurityIndex(const CRecordVector<UInt32> &ids, HRESULT &
     input.cluster_bits = Header.ClusterSizeLog;
     input.read = CSecurityRead::Read;
     input.opaque = &source;
-    for (unsigned i = 0; i < secure.DataAttrs.Size();) {
-        const CAttr &attr = secure.DataAttrs[i];
-        if (attr.Name == L"$SDS") {
-            input.sds_size = attr.GetSize();
-            RINOK(DirectoryReadResult(secure.GetStream(InStream, (int)i, Header.ClusterSizeLog,
-                                                       Header.NumClusters,
-                                                       &source.Sources[0].Stream)))
-            break;
-        }
-        i = attr.NextAttrIndex;
+    if (!sds.DataAttrs.IsEmpty()) {
+        sds.ParseDataNames();
+        // The Linux security reader requests raw run ranges, independently of
+        // file flags and initialized tails. Missing/unverified runs are errors.
+        sds.DataAttrs[0].Partial = true;
+        input.sds_size = sds.DataAttrs[0].GetSize();
+        RINOK(DirectoryReadResult(GetRawMetadataStream(sds, false, &source.Sources[0].Stream)))
     }
     if (!selected[1].DataAttrs.IsEmpty()) {
         input.allocation_size = selected[1].DataAttrs[0].GetSize();

@@ -138,7 +138,7 @@ class NtfsTests(unittest.TestCase):
                     self.assertEqual(result.stdout, b"")
 
     def test_unavailable_security_metadata_keeps_file_data_readable(self):
-        for kind in ("security-root-offset", "security-sd-short", "security-partial-fixup", "security-list-bad-id"):
+        for kind in ("security-root-offset", "security-sd-short", "security-partial-fixup", "security-list-bad-id", "security-sds-map-missing-tail"):
             with self.subTest(kind=kind):
                 image, files = volume(kind)
                 listing = self.run_image("7z", image, "l")

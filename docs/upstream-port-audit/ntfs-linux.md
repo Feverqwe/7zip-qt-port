@@ -1607,6 +1607,80 @@ metadata flags. Receipt `20261021T104820Z-998dee9a`: read-only device/mount flag
 unchanged SHA-256, mounts/loops/images удалены. Partial/malformed controls старому
 kernel не передавались; native mount не доказывает runtime pinned snapshot.
 
+## Range-local `$SDS` descriptors — 2026-10-21
+
+Сверены полные `fsntfs.c:ntfs_get_security_by_id`, `frecord.c:ni_find_attr/ni_load_mi`,
+list/run readers и их types/callers закреплённого Linux, исходный SDK stream
+selection и текущие DATA/list recovery, raw metadata adapter, descriptor cache
+и UI consent consumers. Linux читает header и descriptor по запрошенному run
+range. Прежний archive adapter отклонял весь `$SDS` при `Partial`, объединявшем
+потерянные segments и недостоверную ownership/sequence. Это скрывало независимо
+читаемые ACL, хотя обычные DATA оставались доступными.
+
+DATA selection теперь отдельно сохраняет недостоверность источника каждого
+segment: recovery references, malformed/unreadable list и непроверенный MFT frame.
+Обычное recovery-чтение DATA сохраняется. Security adapter использует только
+проверенные segments; недостоверный primary не даёт достоверного logical size,
+поэтому его ACL остаются неизвестными. Пропуски и недостоверные tails не
+подменяются sparse zeros. Отдельный descriptor из доступного mapping проходит
+оригинальный Linux lookup/header/SD validation; ошибочный диапазон влияет только
+на зависимый ID. SDS читается как raw metadata, без file encryption и initialized
+tail semantics, как исходные Linux run services. Sparse ranges вне запрошенного
+descriptor не закрывают доступ к другим ranges. C readers/validators не менялись;
+standalone SDK scanner и licensing boundary сохранены. Source writes/replay/repair
+не добавлялись.
+
+Отдельная source/runtime граница: `inode.c:ntfs_read_mft` пропускает non-primary
+DATA segments обычного inode; `ntfs_get_security_by_id` не загружает их перед run
+read. Archive adapter materializes проверенные list-selected segments заранее,
+поэтому может читать такой descriptor независимо от этого VFS loading limitation.
+Это явная read-only adaptation, а не заявление о совпадении mount behavior.
+
+Десять новых synthetic controls проверяют split SDS, missing tail/middle,
+неверные sequence/owner, непроверенные primary/tail frames, metadata flags и
+sparse descriptor range; неверная primary sequence отдельно запрещает оба ACL.
+Сравниваются точные ACL 500/700 и независимые file bytes.
+Отдельно проверяются I/O/EOF, cancel/OOM/callback и повторное открытие. CLI и GUI
+копируют actual files при missing tail; native Cocoa EN/RU consent/badge/copy,
+refresh/reopen и неизменность образа проверены (420×253 / 420×327, без clipping).
+Все девять focused suites прошли на macOS arm64 (43,55 с). Первый прогон обнаружил
+конфликт имени нового fixture с прежним `security-sds-range`; dispatcher исправлен,
+прежняя malformed-range regression сохранена. Cocoa acceptance выполнен вне sandbox.
+После добавления primary-sequence control `ntfs_security_list` повторно прошёл
+на macOS (2,58 с). Инкрементальная app build, upstream verifier
+(422 exact / 242 adapted / 12 local) и 32 reference hashes прошли.
+
+Native Linux 6.8.0-147 подтвердил точные bytes трёх файлов и primary ACL 500
+для split SDS и metadata flags; extension ACL 700 возвращает `ENOENT`, согласно
+описанной VFS loading boundary. Receipt `20261021T110720Z-6a0121de`, readonly
+block/mount flags и unchanged SHA-256 проверены, loops/mounts/images удалены.
+Первый diagnostic receipt `20261021T110615Z-05c9fcd0` обнаружил это различие;
+его cleanup также выполнен. Ни partial/malformed mount acceptance, ни runtime
+закреплённого kernel snapshot не заявляются.
+
+Основной remote batch `20261021T110736Z-62da3699`: Linux 8/8 (74,38 с),
+Windows 7/8, где расширенный GUI matrix достиг прежнего лимита 60 с.
+Новый SDS consent scenario вынесен в отдельный небольшой
+`filesystem_security_read_ui`, с общим behavior helper и сохранением coverage
+старого `filesystem_read_ui`. Таймауты и compiler caches не менялись.
+Follow-up `20261021T111139Z-9c542e69` подтвердил финальные десять ABI controls
+и новый SDS UI scenario на обоих guests; старый combined GUI снова достиг лимита
+на Windows. Diagnostic `20261021T111444Z-496cf91a` выполнил все 66 checks без
+ошибок за 65,33 с: 30 EN и 30 RU copy/consent rows плюс shared consent и lifecycle.
+Зависшей операции не найдено. Исходный GUI matrix разделён по языкам:
+`filesystem_read_ui` сохраняет EN и shared consent, `filesystem_read_ui_ru` — RU.
+Все rows/проверки сохранены, общий helper исключает дублирование behavior body.
+Это не увеличение CTest limit и не runtime acceptance по diagnostic run.
+Финальные три GUI suites прошли на macOS (43,49 с).
+CTest acceptance этих трёх groups прошёл и на обоих runners:
+`20261021T111720Z-b0ebbef4`, Linux 20,14 с / Windows 71,48 с суммарно,
+с отдельным прежним лимитом 60 с на каждый test. Linux `ntfs_stream` также прошёл,
+receipt `20261021T111458Z-f3ef86ae`. Full/slow suites и физические носители
+в этой итерации не проверялись.
+Windows `ntfs_stream` прошёл отдельно, receipt `20261021T111946Z-ca271db6`.
+В итоге все 11 относящихся к изменению suites проверены на macOS/Linux/Windows
+через focused batches; это не полный gate проекта или закрытие всего NTFS audit.
+
 ## Открытый read scope
 
 Известный security-metadata gate исправлен описанным выше сценарием.
@@ -1616,11 +1690,8 @@ per-file errors проверены для рассмотренных MFT/DATA/na
 Известные global returns при orphan/deleted metadata изолированы описанным выше
 recovery scenario; это не заменяет дальнейшую сверку всего NTFS read scope.
 Named `$SII` ROOT/ALLOCATION membership исправлен описанным выше сценарием.
-Остаётся отдельная граница `$SDS`: reader не публикует ACL при `Partial` DATA,
-поскольку этот признак объединяет недостающие segments и непроверенные references.
-Чтобы безопасно сохранить независимо читаемые descriptors из такой области,
-нужно разделить проверенное частичное mapping и недостоверное владение, а не
-просто разрешить все `Partial` ACL. Обычное чтение DATA уже остаётся доступным.
+Независимо читаемые `$SDS` descriptors сохраняются описанным выше сценарием;
+непроверенные mappings по-прежнему не считаются источником достоверных ACL.
 
 Выбранные classic/WOF/MFT bootstrap scenarios подключены и проверены.
 Остальные metadata/read features NTFS должны пройти оставшийся source audit;

@@ -117,50 +117,74 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
         QCOMPARE(archive_->Close(), S_OK);
         archive_.Release();
     }
-    void confirmsAndCopiesFlaggedVolume_data() {
+    void confirmsAndCopiesFlaggedVolume_data() { flaggedVolumeData("en"); }
+    void confirmsAndCopiesFlaggedVolumeRu_data() { flaggedVolumeData("ru"); }
+
+  private:
+    void flaggedVolumeData(const QString &language) {
         QTest::addColumn<QString>("language");
         QTest::addColumn<bool>("accept");
         QTest::addColumn<QString>("kind");
-        for (const QString &language : {"en", "ru"})
-            for (bool accept : {false, true})
-                for (const QString &kind : {"exfat",
-                                            "wrapper-no-slock",
-                                            "unclean",
-                                            "free-overflow",
-                                            "classic-unclean-free-overflow",
-                                            "volume-dirty",
-                                            "volume-short",
-                                            "volume-list-nonresident",
-                                            "reparse-list-bad-id",
-                                            "ea-record-small",
-                                            "data-list-unreadable-list",
-                                            "standard-short",
-                                            "ext-recover",
-                                            "ext-orphan",
-                                            "ext-unclean",
-                                            "ext-unverified",
-                                            "ext-combined",
-                                            "dir-root-missing",
-                                            "record-total",
-                                            "security-root-offset",
-                                            "security-sd-short",
-                                            "security-list-bad-id",
-                                            "source-prefix",
-                                            "source-partial-data",
-                                            "source-backup-used",
-                                            "source-backup-mismatch"}) {
-                    // Rejection uses the shared consent service; acceptance checks every reason.
-                    if (!accept && kind != "exfat" && kind != "unclean" && kind != "volume-dirty" &&
-                        kind != "ext-recover")
-                        continue;
-                    QTest::newRow(qPrintable(language + (accept ? "-accept-" : "-cancel-") + kind))
-                        << language << accept << kind;
-                }
+        for (bool accept : {false, true})
+            for (const QString &kind : {"exfat",
+                                        "wrapper-no-slock",
+                                        "unclean",
+                                        "free-overflow",
+                                        "classic-unclean-free-overflow",
+                                        "volume-dirty",
+                                        "volume-short",
+                                        "volume-list-nonresident",
+                                        "reparse-list-bad-id",
+                                        "ea-record-small",
+                                        "data-list-unreadable-list",
+                                        "standard-short",
+                                        "ext-recover",
+                                        "ext-orphan",
+                                        "ext-unclean",
+                                        "ext-unverified",
+                                        "ext-combined",
+                                        "dir-root-missing",
+                                        "record-total",
+                                        "security-root-offset",
+                                        "security-sd-short",
+                                        "security-list-bad-id",
+                                        "source-prefix",
+                                        "source-partial-data",
+                                        "source-backup-used",
+                                        "source-backup-mismatch"}) {
+                // Rejection uses the shared consent service; acceptance checks every reason.
+                if (!accept && kind != "exfat" && kind != "unclean" && kind != "volume-dirty" &&
+                    kind != "ext-recover")
+                    continue;
+                QTest::newRow(qPrintable(language + (accept ? "-accept-" : "-cancel-") + kind))
+                    << language << accept << kind;
+            }
     }
+  private slots:
     void confirmsAndCopiesFlaggedVolume() {
         QFETCH(QString, language);
         QFETCH(bool, accept);
         QFETCH(QString, kind);
+        confirmAndCopy(language, accept, kind);
+    }
+    void confirmsAndCopiesFlaggedVolumeRu() {
+        QFETCH(QString, language);
+        QFETCH(bool, accept);
+        QFETCH(QString, kind);
+        confirmAndCopy(language, accept, kind);
+    }
+    void confirmsPartialSecurityStream_data() {
+        QTest::addColumn<QString>("language");
+        for (const QString &language : {"en", "ru"})
+            QTest::newRow(qPrintable(language)) << language;
+    }
+    void confirmsPartialSecurityStream() {
+        QFETCH(QString, language);
+        confirmAndCopy(language, true, "security-sds-map-missing-tail");
+    }
+
+  private:
+    void confirmAndCopy(const QString &language, bool accept, const QString &kind) {
         const bool ntfs = kind.startsWith("volume-") || kind.startsWith("reparse-") ||
                           kind.startsWith("ea-") || kind.startsWith("data-list-") ||
                           kind.startsWith("standard-") || kind.startsWith("dir-") ||

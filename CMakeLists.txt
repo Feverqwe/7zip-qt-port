@@ -4006,11 +4006,13 @@ if(BUILD_TESTING)
         "SEVENZIP_HFS_PYTHON=\"${Python3_EXECUTABLE}\""
         "SEVENZIP_HFS_FIXTURE=\"${CMAKE_CURRENT_SOURCE_DIR}/tests/hfs_fixture.py\"")
     add_dependencies(filesystem_read_ui_tests sevenzip_exfat sevenzip_hfs_runtime sevenzip_ntfs_runtime sevenzip_ext_runtime)
-    add_test(NAME filesystem_read_ui COMMAND filesystem_read_ui_tests -silent)
-    set_tests_properties(filesystem_read_ui PROPERTIES TIMEOUT 60 RESOURCE_LOCK sevenzip_ui_artifacts
+    add_test(NAME filesystem_read_ui COMMAND filesystem_read_ui_tests -silent deletedRecoveryConsent confirmsAndCopiesFlaggedVolume)
+    add_test(NAME filesystem_read_ui_ru COMMAND filesystem_read_ui_tests -silent confirmsAndCopiesFlaggedVolumeRu)
+    add_test(NAME filesystem_security_read_ui COMMAND filesystem_read_ui_tests -silent confirmsPartialSecurityStream)
+    set_tests_properties(filesystem_read_ui filesystem_read_ui_ru filesystem_security_read_ui PROPERTIES TIMEOUT 60 RESOURCE_LOCK sevenzip_ui_artifacts
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     if(APPLE)
-        set_property(TEST filesystem_read_ui PROPERTY ENVIRONMENT
+        set_property(TEST filesystem_read_ui filesystem_read_ui_ru filesystem_security_read_ui PROPERTY ENVIRONMENT
             "QT_QPA_PLATFORM=cocoa;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     endif()
     qt_add_executable(associated_window_tests tests/associated_window_tests.cpp
