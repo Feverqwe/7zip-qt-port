@@ -7,6 +7,11 @@
 extern "C" {
 #endif
 struct exfat_volume;
+struct exfat_timestamp {
+    int64_t seconds;
+    uint32_t nanoseconds;
+};
+struct exfat_timestamp exfat_entry_time(uint16_t date, uint16_t time, uint8_t cs, uint8_t tz);
 struct exfat_source {
     void *context;
     uint64_t size;

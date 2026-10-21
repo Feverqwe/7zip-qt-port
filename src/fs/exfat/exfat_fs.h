@@ -363,6 +363,9 @@ int exfat_put_dentry_set(struct exfat_entry_set_cache *, int);
 int exfat_count_num_clusters(struct super_block *, struct exfat_chain *, unsigned int *);
 int exfat_load_bitmap(struct super_block *);
 void exfat_free_bitmap(struct exfat_sb_info *);
+void exfat_get_entry_time(struct exfat_sb_info *, struct timespec64 *, u8, __le16, __le16, u8);
+int64_t mktime64(unsigned int, unsigned int, unsigned int, unsigned int, unsigned int,
+                 unsigned int);
 bool exfat_test_bitmap(struct super_block *, unsigned int);
 u16 exfat_calc_chksum16(void *, int, u16, int);
 u32 exfat_calc_chksum32(void *, int, u32, int);

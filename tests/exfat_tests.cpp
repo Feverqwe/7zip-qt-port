@@ -11,6 +11,7 @@
 #include <QLibrary>
 #include <QProcess>
 #include <QTemporaryDir>
+#include <QtEndian>
 #include <QtTest>
 #include <map>
 
@@ -180,6 +181,72 @@ class ExfatTests final : public QObject {
             (quint64(timestamp.filetime.dwHighDateTime) << 32) | timestamp.filetime.dwLowDateTime;
         const auto utc = QDateTime(QDate(2026, 10, 17), QTime(9, 34, 57, 230), QTimeZone::UTC);
         QCOMPARE(qint64(ticks / 10000) - 11644473600000LL, utc.toMSecsSinceEpoch());
+    }
+    void entryTimestamps_data() {
+        QTest::addColumn<int>("date");
+        QTest::addColumn<int>("time");
+        QTest::addColumn<int>("cs");
+        QTest::addColumn<int>("tz");
+        QTest::addColumn<QDateTime>("expected");
+        const int date = ((2026 - 1980) << 9) | (10 << 5) | 17;
+        const int time = (12 << 11) | (34 << 5) | 28;
+        const QDateTime base(QDate(2026, 10, 17), QTime(12, 34, 56), QTimeZone::UTC);
+        QTest::newRow("unknown-offset") << date << time << 123 << 0 << base.addMSecs(1230);
+        QTest::newRow("unknown-offset-bits") << date << time << 0 << 0x7f << base;
+        QTest::newRow("positive-offset")
+            << date << time << 199 << 0xbf << base.addSecs(-63 * 900).addMSecs(1990);
+        QTest::newRow("negative-offset")
+            << date << time << 1 << 0xc0 << base.addSecs(64 * 900).addMSecs(10);
+        QTest::newRow("large-increment") << date << time << 255 << 0x80 << base.addMSecs(2550);
+        QTest::newRow("zero-date")
+            << 0 << 0 << 0 << 0x80 << QDateTime(QDate(1979, 11, 30), QTime(0, 0), QTimeZone::UTC);
+        QTest::newRow("leap-day-overflow")
+            << (((2024 - 1980) << 9) | (2 << 5) | 30) << 0 << 0 << 0x80
+            << QDateTime(QDate(2024, 3, 1), QTime(0, 0), QTimeZone::UTC);
+        QTest::newRow("clock-overflow")
+            << date << ((31 << 11) | (63 << 5) | 31) << 0 << 0x80
+            << QDateTime(QDate(2026, 10, 18), QTime(8, 4, 2), QTimeZone::UTC);
+    }
+    void entryTimestamps() {
+        QFETCH(int, date);
+        QFETCH(int, time);
+        QFETCH(int, cs);
+        QFETCH(int, tz);
+        QFETCH(QDateTime, expected);
+        ExfatFixture fixture;
+        const int offset = fixture.rootOffset(2);
+        for (int field : {8, 12, 16}) {
+            qToLittleEndian(quint16(time), fixture.image.data() + offset + field);
+            qToLittleEndian(quint16(date), fixture.image.data() + offset + field + 2);
+        }
+        fixture.image[offset + 20] = fixture.image[offset + 21] = char(cs);
+        fixture.image[offset + 22] = fixture.image[offset + 23] = fixture.image[offset + 24] =
+            char(tz);
+        fixture.refreshEntryChecksum(2);
+        QCOMPARE(open(fixture.image), S_OK);
+        const UInt32 index = indexOf(fixture.fragmentedName);
+        QVERIFY(index != UInt32(-1));
+        for (PROPID property : {kpidCTime, kpidMTime, kpidATime}) {
+            NWindows::NCOM::CPropVariant timestamp;
+            QCOMPARE(archive_->GetProperty(index, property, &timestamp), S_OK);
+            QCOMPARE(timestamp.vt, VARTYPE(VT_FILETIME));
+            const quint64 ticks = (quint64(timestamp.filetime.dwHighDateTime) << 32) |
+                                  timestamp.filetime.dwLowDateTime;
+            const auto wanted = property == kpidATime ? expected.addMSecs(-cs * 10) : expected;
+            QCOMPARE(ticks, quint64(wanted.toMSecsSinceEpoch() + 11644473600000LL) * 10000);
+        }
+    }
+    void timestampsAcrossHostTimezones() {
+        for (const auto *zone : {"UTC0", "HST10"}) {
+            QProcess process;
+            auto environment = QProcessEnvironment::systemEnvironment();
+            environment.insert("TZ", QString::fromLatin1(zone));
+            process.setProcessEnvironment(environment);
+            process.start(QCoreApplication::applicationFilePath(), {"entryTimestamps", "-silent"});
+            QVERIFY(process.waitForFinished(15000));
+            QCOMPARE(process.exitStatus(), QProcess::NormalExit);
+            QVERIFY2(process.exitCode() == 0, process.readAllStandardOutput().constData());
+        }
     }
     void largerLogicalSectors() {
         ExfatFixture fixture(4096);

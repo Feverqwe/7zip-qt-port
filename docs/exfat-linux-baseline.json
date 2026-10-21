@@ -18,7 +18,8 @@
     "fs/exfat/namei.c": "8faafe3a8cd3ad1e6e8cbf97155a2d710d2d94db89ef808bbdae64d61a6b5246",
     "fs/exfat/nls.c": "e3e414139a9b4241480cd31f4c974a3c43b349d0091920c96c2373fcb2150468",
     "fs/exfat/super.c": "fb3e72dce49a7b9cd5918ebdefdab0ac8cbf3df762d4c7d1cd0444ab344f33a3",
-    "LICENSES/preferred/GPL-2.0": "8780e78a1a737e127f25a65f6d95269bffd36158dc261114de7859b490bfc5aa"
+    "LICENSES/preferred/GPL-2.0": "8780e78a1a737e127f25a65f6d95269bffd36158dc261114de7859b490bfc5aa",
+    "kernel/time/time.c": "ebeaf97b1314be4bcc8c9f8e1f6755e5992317e74139d5f7c14d94313ea41b3e"
   },
   "adapted": [
     "dir.c",

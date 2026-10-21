@@ -41,25 +41,14 @@ bool ItemName(const exfat_item &item, UString &name) {
     return true;
 }
 bool EntryTime(UInt16 date, UInt16 time, Byte cs, Byte tz, FILETIME &result) {
-    if (!date || cs > 199)
+    const exfat_timestamp value = exfat_entry_time(date, time, cs, tz);
+    UInt64 ticks;
+    if (!NWindows::NTime::UnixTime64_To_FileTime64(value.seconds, ticks))
         return false;
-    const UInt32 dos = (UInt32(date) << 16) | time;
-    FILETIME local;
-    if (!NWindows::NTime::DosTime_To_FileTime(dos, local))
-        return false;
-    UInt64 ticks = (UInt64(local.dwHighDateTime) << 32) | local.dwLowDateTime;
-    ticks += UInt64(cs) * 100000;
-    if (tz & 0x80) {
-        const int quarterHours = (tz & 0x40) ? int(tz & 0x7f) - 128 : int(tz & 0x7f);
-        const Int64 adjustment = Int64(quarterHours) * 15 * 60 * 10000000;
-        ticks = UInt64(Int64(ticks) - adjustment);
-        result.dwLowDateTime = UInt32(ticks);
-        result.dwHighDateTime = UInt32(ticks >> 32);
-        return true;
-    }
-    local.dwLowDateTime = UInt32(ticks);
-    local.dwHighDateTime = UInt32(ticks >> 32);
-    return LocalFileTimeToFileTime(&local, &result) != 0;
+    ticks += value.nanoseconds / 100;
+    result.dwLowDateTime = UInt32(ticks);
+    result.dwHighDateTime = UInt32(ticks >> 32);
+    return true;
 }
 } // namespace
 

@@ -55,8 +55,8 @@ directory/extraction cursors and the C/C++ boundary. Metadata assignments follow
 `namei.c::exfat_find`; stream reads advance through the original cluster walker,
 using the retained cursor rather than Linux's VFS/page-cache/extent-cache APIs.
 The unwritten tail follows `iomap.c::__exfat_iomap_begin`'s `valid_size` distinction
-and is delivered as zero bytes. DOS conversion uses existing 7-Zip time helpers;
-signed quarter-hour offsets follow `misc.c::exfat_adjust_tz`.
+and is delivered as zero bytes. Timestamp decoding now uses the original Linux
+C functions described below; 7-Zip helpers only project UNIX time into FILETIME.
 
 `exfathandler.cpp` implements the new `IInArchive` adapter: filesystem traversal,
 properties, callback progress, extraction and test mode. There is no usable
@@ -228,3 +228,46 @@ count or source structure. With the new checkpoint removed, the regression
 failed: extraction completed with a data-error result instead of cancellation.
 With the checkpoint restored, the focused ABI/backend suites passed on macOS.
 The remaining runtime/platform evidence is recorded in the review entry.
+
+## Timestamp decoding (2026-10-21)
+
+Compared complete `misc.c:exfat_get_entry_time`, `exfat_adjust_tz`,
+`exfat_tz_offset`, their `namei.c:exfat_find` callers, inode timestamp consumers,
+`super.c:exfat_init_fs_context` defaults and `kernel/time/time.c:mktime64`.
+The previous independent C++ DOS conversion hid zero/normalized dates and
+increments above 199; timestamps without UTC-valid also depended on the host
+timezone instead of the driver's default zero offset.
+
+Original `exfat_get_entry_time` and `exfat_adjust_tz` bodies are now compiled
+as C in `src/fs/exfat/misc.c`, using the existing authoritative
+`src/kernel/time/time.c:mktime64`. The latter retains its GPL-2.0 notice and
+Linux source baseline; its original source hash is added to the exFAT manifest.
+All seventeen previous baseline source/license hashes were verified again.
+The module remains a separate GPL format module; standalone 7zz is unchanged.
+
+The only mount-boundary adaptation is `exfat_tz_offset`: archive reads have
+neither explicit mount options nor `sys_tz` services, so it returns the original
+zero-initialized default offset. Explicit disk offsets retain both signed
+branches. The C/C++ adapter preserves little-endian input and seconds/nanoseconds;
+the existing SDK UNIX-time conversion supplies FILETIME. All three public
+timestamp properties use the same decoder, with no increment for access time.
+Write-side timestamp conversion, VFS truncation and mount option services are
+omitted. Existing payload/chain/bitmap readers and TexFAT adaptations are retained.
+
+Post-change comparison confirmed complete selected decode branches and all
+three property consumers. ABI regressions assert exact FILETIME for unknown
+offsets (including ignored offset bits), both signed offset extremes, 10ms
+fractions, increment 255, zero date, leap-day and clock overflow. Separate child
+processes repeat these checks with `TZ=UTC0` and `TZ=HST10`, protecting against
+host-dependent conversion. Existing extraction/cancellation/malformed-volume
+and process-engine/backend checks remain part of the focused suites.
+
+`exfat` and `exfat_backend` passed on macOS arm64/Qt 6.12 (2.54 s), Linux x64
+and Windows x64/MSVC/Qt 6.12, remote receipt `20261021T014812Z-4572b3cc`.
+Native exFAT `6.8.0-147-generic` confirmed all eight images through read-only
+loop mounts: exact mtime/atime and file payload, receipt
+`20261021T014934Z-8faff0f4`. Images remained unchanged and mounts/temporary
+fixtures were removed. The older running kernel supplements pinned source
+comparison; native creation-time export was not checked. Incremental builds
+and compiler caches were preserved. Full/slow suites, UI and physical devices
+were not checked; this scenario does not close the overall format audit.

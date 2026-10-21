@@ -9,6 +9,12 @@ struct exfat_volume {
     struct exfat_chain root;
 };
 
+struct exfat_timestamp exfat_entry_time(uint16_t date, uint16_t time, uint8_t cs, uint8_t tz) {
+    struct timespec64 result;
+    exfat_get_entry_time(NULL, &result, tz, cpu_to_le16(time), cpu_to_le16(date), cs);
+    return (struct exfat_timestamp){result.tv_sec, (uint32_t)result.tv_nsec};
+}
+
 struct buffer_head *sb_bread(struct super_block *sb, sector_t sector) {
     if (sb->poll && sb->poll(sb->context))
         return NULL;

@@ -49,10 +49,12 @@ struct timespec64 {
 
 #if defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
 #define le16_to_cpu(x) __builtin_bswap16(x)
+#define cpu_to_le16(x) __builtin_bswap16(x)
 #define le32_to_cpu(x) __builtin_bswap32(x)
 #define le64_to_cpu(x) __builtin_bswap64(x)
 #else
 #define le16_to_cpu(x) (x)
+#define cpu_to_le16(x) (x)
 #define le32_to_cpu(x) (x)
 #define le64_to_cpu(x) (x)
 #endif
