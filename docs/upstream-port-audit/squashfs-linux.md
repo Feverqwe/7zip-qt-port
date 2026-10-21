@@ -28,7 +28,8 @@ GPL-модуль сохраняет читаемые данные файлов �
 их C-язык и GPL-изоляция сохранены; standalone engine без GPL-модуля
 сохраняет прежний scope. Изменение не доказывает полную устойчивость к
 повреждениям SquashFS: начальная загрузка таблиц, eager inode/directory
-traversal и export lookup ещё требуют отдельного продолжения аудита.
+traversal ещё требуют отдельного продолжения аудита. Export lookup
+рассмотрен отдельно ниже.
 
 Синтетический образ с недопустимой ссылкой одного out-of-line xattr
 проверен через native Linux `6.8.0-147-generic`, read-only loop mount:
@@ -173,14 +174,53 @@ metadata decoder через callback. Одноэлементный cache хра�
 из decoder adapter и используется обоими C-компонентами.
 
 Динамический handler использует C tables для UID/GID, fragments и directory
-boundary. При наличии export table каждый inode reference проверяется через
-исходный Linux lookup. Xattrs читаются полностью, включая binary/empty values,
+boundary. Границы export index проверяются при setup; его payload не является
+зависимостью обычного чтения файлов. Xattrs включают binary/empty values,
 shared out-of-line references и переходы metadata block. C API позволяет
 получать names/values; те же функции используются при проверке inode metadata.
 User/trusted/security namespaces читаются как байты архива, без привязки к
 привилегиям процесса на host OS. Неизвестные типы пропускаются как в Linux.
 Публичные xattrs доступны как alternate streams через стандартный archive ABI,
 как описано ниже. Установка OS xattrs остаётся отдельной write operation.
+
+### Независимость от NFS export payload, 2026-10-21
+
+Сверены полные `export.c` и его VFS callers, `namei.c:squashfs_lookup`,
+`inode.c:squashfs_iget`, setup в `super.c`, исходный SDK `Open2`/`OpenDir`
+и текущие C metadata services. Закреплённые ревизии указаны выше.
+Linux использует export inode lookup при работе с NFS filehandles;
+обычный поиск получает inode location из directory entries. Наша добавленная
+в предыдущем переносе сверка каждого inode с export payload создавала
+дополнительный отказ, которого нет в Linux для обычного чтения.
+
+Этот gate удалён из archive opening. Linux index loader и его size/order/range
+checks сохранены: первая index location всё ещё участвует в вычислении границ
+таблиц. Проверки inode/directory references, payload bounds и path validation
+не менялись. Ошибки действительно запрошенных source reads и callbacks
+сохраняют прежний контракт. NFS export operations приложение не предоставляет;
+неиспользуемый payload не объявляется проверенным и не требует отдельного
+режима ограниченного чтения. Native readonly сценарий подтверждает обычную
+доступность основных файлов, а не работоспособность NFS filehandles.
+
+Восемь native Linux `6.8.0-147-generic` controls: три повреждения export
+payload (неправильная reference, нулевой metadata block, повреждённый
+compressed block) при наличии/отсутствии xattrs читаются побайтно,
+включая Unicode и hardlink. Два controls с index за пределами образа
+отвергаются при mount. Все образы неизменны, temporary mounts/data удалены.
+Receipt: `20261021T142144Z-edbb37b7`; runtime kernel старше source reference.
+
+CLI-регрессии проверяют оба поставляемых engines, листинг и извлечение
+основных файлов; ABI-регрессия оставляет export metadata недоступной через
+IInStream и проверяет основные/alternate streams. Контроль некорректного
+index сохраняет отказ. На macOS шесть focused suites (`squashfs`,
+`squashfs_stream`, `squashfs_metadata`, `filesystem_squashfs_read_ui`,
+`upstream_baseline`, `upstream_inventory`) прошли за 3,71 с.
+Те же шесть suites прошли на Linux и Windows, receipt
+`20261021T142259Z-f410be08`. Временный native helper удалён и удаление
+синхронизировано на обоих гостях; образы/mounts удалены после oracle.
+Полные/slow suites и физические носители не использовались, incremental
+build trees и compiler caches сохранены. Начальная загрузка прочих metadata
+и eager inode/directory failures остаются в открытом scope общего аудита.
 
 Сохранены GNU-to-C portability adaptations. Raw table range проверяется до
 выделения памяти; длина не должна пересекаться с кодируемым uncompressed bit.

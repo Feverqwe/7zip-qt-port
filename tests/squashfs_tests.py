@@ -203,14 +203,21 @@ class SquashfsTests(unittest.TestCase):
         result = self.run_image("7z", volume("id-metadata-gap")[0], "l")
         self.assertNotEqual(result.returncode, 0)
 
-    def test_export_table_reference_must_match_the_inode(self):
-        import struct
-        data = bytearray(volume(xattrs=True, export=True)[0])
-        lookup = struct.unpack_from("<Q", data, 88)[0]
-        metadata = struct.unpack_from("<Q", data, lookup)[0]
-        struct.pack_into("<Q", data, metadata + 2, 1)
-        result = self.run_image("7z", data, "l")
-        self.assertNotEqual(result.returncode, 0, result.stdout.decode(errors="replace"))
+    def test_export_payload_is_independent_of_ordinary_file_reads(self):
+        for engine in ("7z", "7zz"):
+            for xattrs in (False, True):
+                for fault in ("export-reference", "export-metadata-zero", "export-compressed-invalid"):
+                    data, files = volume(fault, xattrs=xattrs, export=True)
+                    with self.subTest(engine=engine, xattrs=xattrs, fault=fault):
+                        listing = self.run_image(engine, data, "l")
+                        self.assertEqual(listing.returncode, 0, listing.stderr.decode(errors="replace"))
+                        for name in ("alpha", "данные 空"):
+                            result = self.run_image(engine, data, "x", name)
+                            self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                            self.assertEqual(result.stdout, files[name])
+        for engine in ("7z", "7zz"):
+            result = self.run_image(engine, volume("export-index-outside", export=True)[0], "l")
+            self.assertNotEqual(result.returncode, 0)
 
     def test_hardlink_identity_and_symlink_target_during_native_cli_extraction(self):
         data, files = volume(xattrs=True)

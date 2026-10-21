@@ -1882,9 +1882,6 @@ HRESULT CHandler::Open2(IInStream *inStream) {
             _attributes.resize(_h.NumInodes);
 #endif
         UInt32 pos = 0;
-#ifdef SEVENZIP_LINUX_SQUASHFS
-        unsigned metadataBlock = 0;
-#endif
         for (UInt32 i = 0; i < _h.NumInodes; i++) {
             CNode n;
             const Byte *p = _inodesData.Data + pos;
@@ -1924,17 +1921,6 @@ HRESULT CHandler::Open2(IInStream *inStream) {
                     _attributeSets.emplace(n.Xattr, _attributes[i]);
                 } else
                     _attributes[i] = found->second;
-                if (_h.LookupTable != (UInt64)(Int64)-1) {
-                    while (metadataBlock + 1 < _inodesData.UnpackPos.Size() &&
-                           pos >= _inodesData.UnpackPos[metadataBlock + 1])
-                        ++metadataBlock;
-                    uint64_t reference;
-                    RINOK(
-                        LinuxResult(sevenzip_squashfs_inode(_linuxMetadata, n.Number, &reference)))
-                    if (reference != ((UInt64)_inodesData.PackPos[metadataBlock] << 16) + pos -
-                                         _inodesData.UnpackPos[metadataBlock])
-                        return S_FALSE;
-                }
             }
 #endif
             _nodesPos.AddInReserved(pos);

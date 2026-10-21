@@ -173,6 +173,15 @@ def volume(fault="", compressed=False, no_fragments=False, codec="zlib", xattrs=
         struct.pack_into("<I", image, inode_start + 2 + 52, 1)
     elif fault == "xattr-ool-outside":
         struct.pack_into("<Q", image, xattr_start + 2 + references[0], INVALID)
+    elif fault == "export-reference":
+        struct.pack_into("<Q", image, lookup_metadata + 2, INVALID)
+    elif fault == "export-metadata-zero":
+        struct.pack_into("<H", image, lookup_metadata, 0x8000)
+    elif fault == "export-compressed-invalid":
+        struct.pack_into("<H", image, lookup_metadata, 32)
+        image[lookup_metadata + 2:lookup_metadata + 34] = bytes(32)
+    elif fault == "export-index-outside":
+        struct.pack_into("<Q", image, lookup_table, len(image))
     elif fault == "id-metadata-gap":
         image[ids_table:ids_table] = bytes(BLOCK)
         struct.pack_into("<Q", image, 48, ids_table + BLOCK)

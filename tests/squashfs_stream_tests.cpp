@@ -254,6 +254,36 @@ class SquashfsStreamTests final : public QObject {
         QCOMPARE(target.vt, VARTYPE(VT_BSTR));
         QCOMPARE(QString::fromWCharArray(target.bstrVal), QString("alpha"));
     }
+    void unreadableExportPayloadDoesNotBlockFiles_data() {
+        QTest::addColumn<HRESULT>("failure");
+        QTest::newRow("export-read-error") << HRESULT(E_FAIL);
+        QTest::newRow("export-read-aborted") << HRESULT(E_ABORT);
+    }
+    void unreadableExportPayloadDoesNotBlockFiles() {
+        QFETCH(HRESULT, failure);
+        loadFixture("zlib", true);
+        const auto table = qFromLittleEndian<quint64>(bytes_.constData() + 88);
+        const auto metadata = qFromLittleEndian<quint64>(bytes_.constData() + table);
+        CMyComPtr2<IInStream, Input> source;
+        source.SetFromCls(new Input(bytes_));
+        source->failAt = metadata;
+        source->atFailure = failure;
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
+        for (const QString &name : {QString("alpha"), QString("hardlink"), QString("данные 空")}) {
+            auto data = stream(name);
+            QVERIFY(data);
+            const int size =
+                QByteArray::fromBase64(record_["files"].toObject()[name].toString().toLatin1())
+                    .size();
+            check(data, name, 0, size);
+        }
+        auto value = stream("alpha:$XATTR.user.inline");
+        QVERIFY(value);
+        char data[7];
+        UInt32 read = 0;
+        QCOMPARE(value->Read(data, sizeof(data), &read), S_OK);
+        QCOMPARE(QByteArray(data, int(read)), QByteArray("v\0a\0lue", 7));
+    }
     void interleavedStreamsSurviveCloseReopenAndRelease_data() { codecs(); }
     void interleavedStreamsSurviveCloseReopenAndRelease() {
         QFETCH(QString, codec);
