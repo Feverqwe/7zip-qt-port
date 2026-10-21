@@ -171,9 +171,9 @@ class Fixture {
     }
     void check(IInStream *stream, const QString &name, int offset, int size) {
         QVERIFY2(stream, qPrintable(name));
-        const auto expected =
-            QByteArray::fromBase64(record_["files"].toObject()[name].toString().toLatin1())
-                .mid(offset, size);
+        const QJsonValue value = record_["files"].toObject().value(name);
+        QVERIFY2(value.isString(), qPrintable(name));
+        const auto expected = QByteArray::fromBase64(value.toString().toLatin1()).mid(offset, size);
         QCOMPARE(stream->Seek(offset, STREAM_SEEK_SET, nullptr), S_OK);
         QByteArray actual;
         while (actual.size() < expected.size()) {

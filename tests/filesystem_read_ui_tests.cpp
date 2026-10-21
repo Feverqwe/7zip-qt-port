@@ -144,6 +144,7 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
                                             "record-total",
                                             "security-root-offset",
                                             "security-sd-short",
+                                            "security-list-bad-id",
                                             "source-prefix",
                                             "source-partial-data",
                                             "source-backup-used",

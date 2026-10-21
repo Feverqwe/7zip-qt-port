@@ -1548,6 +1548,65 @@ Product code между этими прогонами не менялся. Се�
 (422 exact / 242 adapted / 12 local), сверены все 32 hashes Linux baseline.
 Full/slow suites, установка и физические носители не проверялись.
 
+## Authoritative `$SII` attributes — 2026-10-21
+
+Повторно сравнены полные `fsntfs.c:ntfs_security_init/ntfs_get_security_by_id`,
+`frecord.c:ni_find_attr/ni_load_mi`, `record.c:mi_find_attr`,
+`attrlist.c:al_find_ex/al_enumerate`, index lookup/run readers и callers/types
+закреплённого Linux с SDK attribute parse/merge и текущими metadata/DATA selectors,
+descriptor cache, properties и opening/consent consumers. Linux выбирает named
+ROOT/ALLOCATION через attribute list; прежний archive reader брал первый root
+после объединения extensions, включая устаревший unlisted root.
+
+Dynamic module сохраняет исходного владельца SII attributes до выбора. Общий
+lookup различает `$SII` и `$I30`, не меняя directory selection. При наличии list
+учитываются named entries, instance ID, VCN, record/owner sequence и bounded
+mapping. Без list используются только base attributes. Неадресуемые references,
+malformed/duplicate root, неверный тип/VCN и непроверенный MFT frame не дают
+ложно проверенный ACL из старого root. Ошибка metadata сохраняет обычные DATA
+с существующими archive/item reasons, per-opening consent и badge.
+
+Allocation читается как raw metadata, не как file DATA с encryption/compression
+или initialized-tail semantics. Existing partial-extents reader представляет
+отсутствующие segments недоступными; sparse metadata не превращается в zeros.
+Оригинальный C finder запрашивает только нужные index blocks: проверенный ACL
+в resident root остаётся доступным, даже если другой ID требует потерянный tail.
+Непригодная allocation также не мешает root-only lookup. Структура/владение root
+и index/SDS/descriptor validators сохраняются; сами оригинальные C readers
+не переписаны. Общий list reader больше не понижает OOM до optional metadata
+failure, а security caller отдельно сохраняет progress-callback result.
+Source writes, repair и replay отсутствуют; standalone сохраняет старый SDK
+security scanner и не получает GPL linkage.
+
+Шестнадцать deterministic fixtures включают resident/nonresident list, split
+allocation, file-style metadata flags, stale root, неверные ID/sequence/owner,
+missing root/tail, отсутствие list, malformed/unreadable list, MFT fixup recovery,
+root VCN и duplicate entry. Stale root с корректной структурой выбирает descriptor
+999 для того же ID, тогда как authoritative root выбирает descriptor 700:
+новая `ntfs_security_list` suite сравнивает точные bytes. При потерянном tail
+она также сохраняет независимый descriptor 500 из root. Проверяются payload,
+retained streams, I/O/EOF, cancel/OOM/callback и reopen. CLI/GUI действительно
+копируют файлы при недоступном ACL. Исправлены два тестовых JSON snapshots,
+которые ошибочно сохраняли mutable `QJsonValueRef`; общий byte-check helper
+теперь требует реальный expected payload и не принимает отсутствующее значение
+за пустой файл. Проверка поведения не зависит от текста production source.
+
+Все девять focused suites прошли на macOS arm64 (43,08 с): `ntfs_security_list`,
+`ntfs_security`, `ntfs_stream`, `ntfs_directory`, `ntfs_record`, `ntfs_deleted`,
+`ntfs`, `language`, `filesystem_read_ui`. Native Cocoa EN/RU consent/copy/badge
+проверен на wrong-ID list (420×214 / 420×275, без clipping). Новых UI strings нет.
+Те же восемь suites без `ntfs_stream` прошли на Linux и Windows:
+receipt `20261021T105518Z-fe26857a`. Политика проверялась через actual consent,
+copy, refresh/reopen и неизменность source bytes, а не по наличию флагов в коде.
+Отдельный `ntfs_stream` прошёл на обоих runners, receipt
+`20261021T105855Z-9ee188c0`. Инкрементальная сборка приложения и проверка upstream
+baseline также прошли. Full/slow suites и физические носители не проверялись.
+Native Linux 6.8.0-147 подтвердил четыре valid controls с точными
+`system.ntfs_security`/file bytes, включая stale root, nonresident list, split и
+metadata flags. Receipt `20261021T104820Z-998dee9a`: read-only device/mount flags,
+unchanged SHA-256, mounts/loops/images удалены. Partial/malformed controls старому
+kernel не передавались; native mount не доказывает runtime pinned snapshot.
+
 ## Открытый read scope
 
 Известный security-metadata gate исправлен описанным выше сценарием.
@@ -1556,10 +1615,12 @@ per-file errors проверены для рассмотренных MFT/DATA/na
 это не доказывает полное соответствие всех оставшихся read features.
 Известные global returns при orphan/deleted metadata изолированы описанным выше
 recovery scenario; это не заменяет дальнейшую сверку всего NTFS read scope.
-Следующее source-visible различие: `$SII` ROOT/ALLOCATION ещё выбираются из
-legacy base/extension merge, в отличие от named attribute-list lookup Linux.
-Их membership/selection требуется сверить до дальнейшего утверждения о полноте
-security read path; исправление optional metadata failures этого не доказывает.
+Named `$SII` ROOT/ALLOCATION membership исправлен описанным выше сценарием.
+Остаётся отдельная граница `$SDS`: reader не публикует ACL при `Partial` DATA,
+поскольку этот признак объединяет недостающие segments и непроверенные references.
+Чтобы безопасно сохранить независимо читаемые descriptors из такой области,
+нужно разделить проверенное частичное mapping и недостоверное владение, а не
+просто разрешить все `Partial` ACL. Обычное чтение DATA уже остаётся доступным.
 
 Выбранные classic/WOF/MFT bootstrap scenarios подключены и проверены.
 Остальные metadata/read features NTFS должны пройти оставшийся source audit;

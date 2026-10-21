@@ -107,7 +107,7 @@ class NtfsDeletedTests final : public QObject, protected Fixture {
                 input->failReadAt = input->failReadEnd = UINT64_MAX;
                 QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
                 if (show) {
-                    const auto active = record_["files"];
+                    const QJsonValue active = record_["files"];
                     record_["files"] = record_["deleted_files"];
                     check(stream("gamma"), "gamma", 0, 200000);
                     record_["files"] = active;

@@ -94,6 +94,9 @@ def nonresident(original, entries, size, valid=None, flags=0, unit=0):
 
 
 def volume(kind="base"):
+    if kind.startswith("security-list-"):
+        from ntfs_security_list_fixture import volume as security_list_volume
+        return security_list_volume(kind)
     if kind.startswith("deleted-"):
         from ntfs_deleted_fixture import volume as deleted_volume
         image, files, _ = deleted_volume(kind)
@@ -264,7 +267,10 @@ if __name__ == "__main__":
                 if args.kind in LIMITED or args.kind == "ea-list-unlisted":
                     result["wsl"] = {}
         if args.kind.startswith("security-"):
-            from ntfs_security_fixture import expected
+            if args.kind.startswith("security-list-"):
+                from ntfs_security_list_fixture import expected
+            else:
+                from ntfs_security_fixture import expected
             result["security"] = expected(args.kind).hex()
         if args.kind.startswith("standard-"):
             from ntfs_standard_fixture import expected
