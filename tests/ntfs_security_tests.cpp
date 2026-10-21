@@ -237,8 +237,7 @@ class NtfsSecurityTests final : public QObject {
               "security-header-mismatch", "security-sds-range", "security-sd-short",
               "security-sid-overflow", "security-sid-length", "security-acl-revision",
               "security-ace-overrun", "security-node-vbn", "security-node-fixup-range",
-              "security-node-key-overrun", "security-index-range", "security-cycle",
-              "standard-record-total"})
+              "security-node-key-overrun", "security-index-range", "security-cycle"})
             QTest::newRow(kind) << QString::fromLatin1(kind);
     }
     void malformedDescriptors() {

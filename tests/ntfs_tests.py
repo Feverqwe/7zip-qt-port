@@ -115,6 +115,26 @@ class NtfsTests(unittest.TestCase):
                         self.assertNotEqual(result.returncode, 0)
                         self.assertEqual(result.stdout, b"")
 
+    def test_mft_record_failures_do_not_hide_independent_files(self):
+        from ntfs_record_fixture import CASES, unavailable
+        for kind in CASES:
+            with self.subTest(kind=kind):
+                image, files = volume(kind)
+                listing = self.run_image("7z", image, "l")
+                if kind == "record-boot-total":
+                    self.assertNotEqual(listing.returncode, 0)
+                    continue
+                self.assertEqual(listing.returncode, 0, listing.stderr)
+                self.assertEqual(b"NTFS MFT records" in listing.stdout, kind != "record-base")
+                for name, expected in files.items():
+                    result = self.run_image("7z", image, "x", name, case_sensitive=True)
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertEqual(result.stdout, expected)
+                for name in unavailable(kind):
+                    result = self.run_image("7z", image, "x", name, case_sensitive=True)
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertEqual(result.stdout, b"")
+
     def test_classic_read_paths_in_both_engines(self):
         for kind in ("base", "sparse", "hole-first", "initialized", "compressed", "sector4k", "boot-reserved", "backup-boot"):
             image, files = volume(kind)

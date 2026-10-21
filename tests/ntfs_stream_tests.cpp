@@ -1134,8 +1134,8 @@ class NtfsStreamTests final : public QObject, protected Fixture {
     }
     void corruptMetadataRejectsOpenAndReuses_data() {
         QTest::addColumn<QString>("kind");
-        for (const char *kind : {"invalid-initialized", "mft-list-bad-sequence", "mft-list-bad-id",
-                                 "mft-list-unmapped", "mft-list-bad-list"})
+        for (const char *kind :
+             {"mft-list-bad-sequence", "mft-list-bad-id", "mft-list-unmapped", "mft-list-bad-list"})
             QTest::newRow(kind) << QString::fromLatin1(kind);
     }
     void corruptMetadataRejectsOpenAndReuses() {

@@ -1181,7 +1181,8 @@ upstream имена `[LOST]`/`[NONAME]-…`. Orphan DOS alias и доступн�
 extension reference остаются явно непроверенным recovery-представлением.
 Общий limitation property включает конкретную EN/RU причину и использует
 существующие согласие на открытие, постоянный badge и read-only операции.
-Повреждённые границы FILE/MFT records остаются отдельным техническим отказом.
+Отказы повреждённых FILE/MFT records изолированы
+[последующим сценарием](#mft-record-failure-isolation--2026-10-21).
 
 Эта итерация сохраняла MFT namespace; перечисление `$I30` добавлено
 [следующим сценарием](#directory-indexes-i30--2026-10-21). Циклы родительских связей направляются
@@ -1285,7 +1286,89 @@ Linux и Windows, receipt `20261021T084317Z-4c707931`; прочие product path
 предыдущие passing checks не менялись. Этот повтор проверяет локальное уточнение,
 а не подменяет пять suites и native reference evidence выше.
 
+## MFT record failure isolation — 2026-10-21
+
+Сравнены полные `record.c:mi_read`, read/validation ветви `mi_enum_attr`,
+`inode.c:ntfs_read_mft`, `fsntfs.c:ntfs_fix_post_read` и их types/callers
+закреплённого Linux с оригинальными `CMftRec::ParseRec`/`CDatabase::Open` 7-Zip,
+текущими DATA/metadata selectors, I30 projection, property и extraction consumers.
+Linux загружает и отклоняет конкретный inode; исходный SDK останавливает весь
+MFT scan при одной повреждённой записи. При уже проверенной bootstrap mapping
+это не является основанием закрывать все независимо читаемые файлы.
+
+Исходный fixed-size/bulk scan сохранён. Ошибка большого чтения повторяется
+по целым records внутри той же проверенной карты; unreadable frame не передаётся
+parser. Повреждённая запись не сдвигает slot numbers. Error/cancel callback и
+E_ABORT/OOM сохраняются; полное отсутствие читаемых records не публикует ложный
+успешный пустой архив. Успешный record-sized retry без потери данных не создаёт
+фиктивного ограничения. Первичная bootstrap mapping по-прежнему обязательна:
+непригодный MFT record 0 или недоступная карта остаются техническим отказом.
+
+Границы record/header/USA, attribute values и physical runs продолжают проверяться.
+При повреждённом attribute tail сохраняются уже проверенные attributes только
+после полного header/frame validation; пригодный DATA prefix не теряется из-за
+последующего неправильного атрибута. Отсутствующий DATA не становится пустым
+файлом. При непригодном frame все частично набранные attributes отбрасываются;
+имя из I30 может представить доступный slot как unreadable item с неизвестным
+размером и конкретной ошибкой. Неадресуемый slot за границами MFT не выдумывается.
+Недостоверные ACL из неполного `$Secure` не публикуются, а повреждённый `$Bitmap`
+оставляет free-space statistics неизвестной. Independently readable DATA остаётся
+доступным с отдельной EN/RU причиной, consent на открытие и постоянным badge.
+
+Оригинальный C `ntfs_fix_post_read` переиспользован через узкий C adapter.
+Как `mi_read`, он восстанавливает private-buffer fixups при USN mismatch.
+Неполное USA coverage допускается в границах record, как в NTFS3, с явным
+unverified indication; нулевой count и выход за buffer не допускаются.
+Stored record number не определяет адресацию NTFS3: несовпадение с запрошенным
+slot сохраняет чтение с предупреждением. Signature/geometry/run/path validation
+не заменены догадками. Journal replay, repair и source writes отсутствуют.
+Standalone сохраняет прежние C++ checks; GPL C остаётся в отдельном module.
+
+19 deterministic record fixtures проверяют header/USA/signature/offset/attribute
+границы, validated DATA prefix, недоступные root/bitmap/security/extension
+records, Unicode, bootstrap и mismatch recovery. Отдельная `ntfs_record` suite
+использует общий fixture support; она также проверяет прежние
+`standard-record-total`/`invalid-initialized` через наблюдаемое per-file failure,
+а не устаревший отказ всего образа. CLI/ABI проверяют точные healthy bytes,
+неизвестный размер/error у unreadable items, bounded retry, unexpected EOF,
+полностью неудачное чтение, callback E_FAIL/E_ABORT, reuse и retained streams.
+Test faults задаются диапазоном input, без проверки исходников/порядка private
+вызовов. GUI действительно копирует healthy file после EN/RU consent.
+
+Native Linux 6.8.0-147 подтвердил шесть read-only controls, receipt
+`20261021T092111Z-197aa309`: ошибка total в gamma даёт EINVAL только этому
+файлу; alpha/Unicode остаются читаемыми. USN mismatch, partial USA coverage,
+bootstrap fixup и stored record-number mismatch читают исходные bytes.
+Block device и mount read-only; все SHA-256 неизменны; временные mounts,
+loop devices и images удалены. Старое native kernel не доказывает runtime всего
+закреплённого snapshot; malformed attribute tails ему не передавались.
+
+Семь focused suites `ntfs_record`, `ntfs_directory`, `ntfs_stream`,
+`ntfs_security`, `ntfs`, `language`, `filesystem_read_ui` прошли на macOS arm64
+(29,61 с), Linux (91,41 с) и Windows (168,60 с), guest receipt
+`20261021T092617Z-30acebe3`. После добавления двух USA boundary fixtures и
+уточнения текста «недоступны или не проверены» четыре затронутые suites
+`ntfs_record`, `ntfs`, `language`, `filesystem_read_ui` прошли на macOS (30,48 с),
+Linux (38,14 с) и Windows (107,82 с), receipt `20261021T093341Z-34888a1a`.
+Native Cocoa EN/RU подтвердил consent/copy, badge и читаемость окончательного
+текста при 420×253 / 420×301; guest UI не устанавливает pixel parity.
+Приложение собрано инкрементально; provenance verifier прошёл
+(422 exact / 242 adapted / 12 local), все 32 hashes Linux baseline сверены.
+Full/slow suites, установка и физические носители не проверялись.
+
 ## Открытый read scope
+
+Проверка политики `AGENTS.md: Read-only filesystem access` от 2026-10-21
+подтверждает per-opening consent, постоянный limited-access badge, read-only
+input и честные per-file errors для рассмотренных MFT/DATA/name scenarios.
+Полное соответствие NTFS пока не установлено: `LoadSecurityIndex` всё ещё
+прерывает открытие при повреждённом `$SII` или обязательном security descriptor,
+хотя эти metadata не нужны для чтения независимого DATA. Существующая
+`malformedDescriptors` матрица закрепляет этот отказ; её fixtures изменяют
+security metadata, сохраняя файловый payload. Следующий связный security-read
+scenario должен изолировать такую ошибку, не публиковать непроверенный ACL и
+сохранять чтение с конкретным предупреждением. Bounds checks, отмена и нехватка
+памяти остаются обязательными; простое подавление всех ошибок не решает задачу.
 
 Выбранные classic/WOF/MFT bootstrap scenarios подключены и проверены.
 Остальные metadata/read features NTFS должны пройти оставшийся source audit;

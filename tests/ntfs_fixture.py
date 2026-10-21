@@ -94,6 +94,9 @@ def nonresident(original, entries, size, valid=None, flags=0, unit=0):
 
 
 def volume(kind="base"):
+    if kind.startswith("record-"):
+        from ntfs_record_fixture import volume as record_volume
+        return record_volume(kind)
     if kind.startswith("dir-"):
         from ntfs_directory_fixture import volume as directory_volume
         return directory_volume(kind)
@@ -255,6 +258,9 @@ if __name__ == "__main__":
         if args.kind.startswith("standard-"):
             from ntfs_standard_fixture import expected
             result["security"] = expected(args.kind).hex()
+        if args.kind.startswith("record-"):
+            from ntfs_record_fixture import unavailable
+            result["unavailable"] = unavailable(args.kind)
         if args.kind.startswith("flags-"):
             from ntfs_flags_fixture import properties
             result["attributes"] = properties(args.kind)

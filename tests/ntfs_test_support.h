@@ -25,6 +25,9 @@ class Input final : public IInStream, public CMyUnknownImp {
     UInt64 cancelAt = UINT64_MAX;
     bool cancelRequested = false;
     HRESULT failedSeekResult = E_FAIL;
+    UInt64 failReadAt = UINT64_MAX, failReadEnd = UINT64_MAX;
+    UInt32 failReadMinSize = 1, failedReads = 0;
+    HRESULT failedReadResult = E_FAIL;
     explicit Input(QByteArray bytes) : bytes_(std::move(bytes)) {}
     Z7_COM7F_IMF(Read(void *data, UInt32 size, UInt32 *processed)) override {
         if (processed)
@@ -35,6 +38,11 @@ class Input final : public IInStream, public CMyUnknownImp {
             return failure;
         if (eof)
             return S_OK;
+        if (size >= failReadMinSize && position_ < failReadEnd &&
+            (position_ >= failReadAt || failReadAt - position_ < size)) {
+            ++failedReads;
+            return failedReadResult;
+        }
         size = UInt32(qMin<UInt64>(
             size, position_ < UInt64(bytes_.size()) ? UInt64(bytes_.size()) - position_ : 0));
         if (size)
@@ -87,8 +95,9 @@ class Extract final : public IArchiveExtractCallback, public CMyUnknownImp {
 class CancelOpen final : public IArchiveOpenCallback, public CMyUnknownImp {
     Z7_COM_UNKNOWN_IMP_1(IArchiveOpenCallback)
   public:
+    HRESULT failure = E_ABORT;
     Z7_COM7F_IMF(SetTotal(const UInt64 *, const UInt64 *)) override { return S_OK; }
-    Z7_COM7F_IMF(SetCompleted(const UInt64 *, const UInt64 *)) override { return E_ABORT; }
+    Z7_COM7F_IMF(SetCompleted(const UInt64 *, const UInt64 *)) override { return failure; }
 };
 class CancelEaOpen final : public IArchiveOpenCallback, public CMyUnknownImp {
     Z7_COM_UNKNOWN_IMP_1(IArchiveOpenCallback)
@@ -161,6 +170,7 @@ class Fixture {
         return result;
     }
     void check(IInStream *stream, const QString &name, int offset, int size) {
+        QVERIFY2(stream, qPrintable(name));
         const auto expected =
             QByteArray::fromBase64(record_["files"].toObject()[name].toString().toLatin1())
                 .mid(offset, size);

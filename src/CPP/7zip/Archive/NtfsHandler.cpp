@@ -1230,6 +1230,8 @@ struct CMftRec {
     CObjectVector<CAttr> EaInfoAttrs, EaAttrs;
     CObjectVector<CAttr> StandardAttrs, FileNameAttrs;
     bool MetadataUnverified = false;
+    bool FrameValidated = false;
+    bool MftIncomplete = false;
     CObjectVector<CAttr> VolumeNameAttrs, VolumeInfoAttrs;
     CObjectVector<CAttr> SecurityRoots, SecurityAlloc;
     CObjectVector<CAttr> DirectoryRoots, DirectoryAlloc, DirectoryBitmap;
@@ -1357,6 +1359,7 @@ struct CMftRec {
 #ifdef SEVENZIP_LINUX_NTFS
     void AddStandardMetadata(const CAttr &attr);
     void AddNameMetadata(const CAttr &attr, UInt32 recordIndex);
+    void MakeUnavailable();
 #endif
     HRESULT GetStream(IInStream *mainStream, int dataIndex, unsigned clusterSizeLog,
                       UInt64 numPhysClusters, IInStream **stream,
@@ -1382,6 +1385,14 @@ void CMftRec::ParseDataNames() {
 }
 
 #ifdef SEVENZIP_LINUX_NTFS
+void CMftRec::MakeUnavailable() {
+    CMftRec empty;
+    empty.Magic = kMagic_BAAD;
+    empty.BaseMftRef.Val = 0;
+    empty.MftIncomplete = true;
+    *this = empty;
+}
+
 void CMftRec::AddStandardMetadata(const CAttr &attr) {
     CSiAttr value;
     if (!attr.ParseSi(value)) {
@@ -1598,7 +1609,11 @@ bool CMftRec::ParseRec(Byte *const p, const unsigned sectorSizeLog, const unsign
            Original values of these two bytes are stored in table.
            So we restore original data from table */
         if ((usaOffset & 1) || usaOffset + numUsaItems * 2 > (1u << sectorSizeLog) ||
+#ifdef SEVENZIP_LINUX_NTFS
+            !numUsaItems || numUsaItems - 1 > numSectors)
+#else
             numUsaItems - 1 != numSectors)
+#endif
             return false;
         if (usaOffset >= 0x30) // NTFS 3.1+
         {
@@ -1607,9 +1622,19 @@ bool CMftRec::ParseRec(Byte *const p, const unsigned sectorSizeLog, const unsign
                 // ntfs-3g probably writes 0 (that probably is incorrect value) to this field for
                 // unused records. so we support that "bad" case.
                 if (iii != 0)
+#ifdef SEVENZIP_LINUX_NTFS
+                    MftIncomplete = true; // NTFS3 addresses records by the requested MFT slot.
+#else
                     return false;
+#endif
             }
         }
+#ifdef SEVENZIP_LINUX_NTFS
+        const int fixed = sevenzip_ntfs_mft_fixup(p, (size_t)numSectors << sectorSizeLog);
+        if (fixed < 0)
+            return false;
+        MftIncomplete |= fixed != 0 || numUsaItems - 1 != numSectors;
+#else
         const UInt16 usn = Get16(p + usaOffset);
         // PRF(printf("\nusn = %d", usn));
         for (UInt32 i = 1; i < numUsaItems; i++) {
@@ -1618,6 +1643,7 @@ bool CMftRec::ParseRec(Byte *const p, const unsigned sectorSizeLog, const unsign
                 return false;
             SetUi16a(pp, Get16(p + usaOffset + i * 2))
         }
+#endif
     }
 
     // G64(p + 0x08, Lsn);
@@ -1639,6 +1665,9 @@ bool CMftRec::ParseRec(Byte *const p, const unsigned sectorSizeLog, const unsign
         bytesInUse > bytesAlloc || bytesAlloc > limit || (InUse() && bytesAlloc != limit))
         return false;
     limit = bytesInUse;
+#ifdef SEVENZIP_LINUX_NTFS
+    FrameValidated = true;
+#endif
 
     UInt32 previousType = 0;
     for (unsigned t = attrOffs;;) {
@@ -1847,6 +1876,7 @@ struct CDatabase {
     bool EaLimitations = false;
     bool DataLimitations = false;
     bool MetadataLimitations = false;
+    bool MftLimitations = false;
 #endif
 
     CVolumeInfo VolumeInfo;
@@ -1966,6 +1996,7 @@ void CDatabase::Clear() {
     EaLimitations = false;
     DataLimitations = false;
     MetadataLimitations = false;
+    MftLimitations = false;
 #endif
     PhySize = 0;
 }
@@ -1983,6 +2014,8 @@ HRESULT CDatabase::LoadFreeSpace() {
     if (Recs.Size() <= kRecIndex_Bitmap)
         return S_FALSE;
     const CMftRec &bitmap = Recs[kRecIndex_Bitmap];
+    if (bitmap.MftIncomplete)
+        return S_OK;
     if ((!bitmap.AttrListAttrs.IsEmpty() && bitmap.DataAttrs.IsEmpty()) ||
         (!bitmap.DataAttrs.IsEmpty() &&
          (bitmap.DataAttrs[0].Unavailable || bitmap.DataAttrs[0].Partial)))
@@ -3104,6 +3137,18 @@ struct CDirectoryRead {
             CMftRef reference;
             reference.Val = ref;
             const UInt64 index = reference.GetIndex();
+            if (index < db.Recs.Size() && !db.Recs[(unsigned)index].Is_Magic_FILE() &&
+                db.Recs[(unsigned)index].Is_Magic_CanIgnore()) {
+                CMftRec &unavailable = db.Recs[(unsigned)index];
+                unavailable.MakeUnavailable();
+                unavailable.Magic = kMagic_FILE;
+                unavailable.Flags = 1;
+                unavailable.SeqNumber = reference.GetNumber();
+                unavailable.MetadataUnverified = true;
+                unavailable.DataAttrs.Add(UnavailableDataAttribute(UString2()));
+                unavailable.ParseDataNames();
+                db.MftLimitations = true;
+            }
             if (index >= db.Recs.Size() || !db.Recs[(unsigned)index].Is_Magic_FILE() ||
                 !db.Recs[(unsigned)index].InUse() ||
                 !db.Recs[(unsigned)index].BaseMftRef.IsBaseItself()) {
@@ -3405,6 +3450,8 @@ HRESULT CDatabase::LoadSecurityIndex() {
     if (Recs.Size() <= kRecIndex_Security)
         return S_OK;
     const CMftRec &secure = Recs[kRecIndex_Security];
+    if (secure.MftIncomplete)
+        return S_OK; // No unverified index/SDS metadata is published as a verified ACL.
     if (secure.SecurityRoots.IsEmpty())
         return S_OK;
     bool hasSds = false;
@@ -3728,7 +3775,10 @@ HRESULT CDatabase::Open() {
             Recs.ClearAndReserve((unsigned)numFiles);
         }
         // ReparseDataVector.Clear(); // optional
-
+#ifdef SEVENZIP_LINUX_NTFS
+        bool readableRecord = false;
+        HRESULT firstReadFailure = S_OK;
+#endif
         for (UInt64 pos64 = 0;;) {
             if (OpenCallback) {
                 const UInt64 numFiles = Recs.Size();
@@ -3743,14 +3793,48 @@ HRESULT CDatabase::Open() {
             }
             if (readSize < recSize)
                 break;
+#ifdef SEVENZIP_LINUX_NTFS
+            const UInt64 blockStart = pos64;
+#endif
             pos64 += readSize;
+#ifdef SEVENZIP_LINUX_NTFS
+            HRESULT blockResult = InStream_SeekSet(mftStream, blockStart);
+            if (blockResult == S_OK)
+                blockResult = ReadStream_FALSE(mftStream, ByteBuf, readSize);
+            if (blockResult == E_ABORT || blockResult == E_OUTOFMEMORY)
+                return blockResult;
+            if (OpenCallback)
+                RINOK(OpenCallback->SetCompleted(nullptr, nullptr))
+            if (blockResult != S_OK && firstReadFailure == S_OK)
+                firstReadFailure = blockResult;
+#else
             RINOK(ReadStream_FALSE(mftStream, ByteBuf, readSize))
+#endif
 
             for (Byte *p = ByteBuf; readSize >= recSize; p += recSize, readSize -= recSize) {
                 PRF(printf("\n---------------------\n%5u:", Recs.Size()));
                 CMftRec rec;
                 CVolumeInfo *volInfo = NULL;
                 const unsigned recIndex = Recs.Size();
+#ifdef SEVENZIP_LINUX_NTFS
+                if (blockResult != S_OK) {
+                    // Keep the original bulk scan, isolating an I/O failure to
+                    // complete fixed-size records in the already validated map.
+                    HRESULT result = InStream_SeekSet(mftStream, blockStart + (p - ByteBuf));
+                    if (result == S_OK)
+                        result = ReadStream_FALSE(mftStream, p, recSize);
+                    if (result == E_ABORT || result == E_OUTOFMEMORY)
+                        return result;
+                    if (OpenCallback)
+                        RINOK(OpenCallback->SetCompleted(nullptr, nullptr))
+                    if (result != S_OK) {
+                        rec.MakeUnavailable();
+                        Recs.Add(rec);
+                        MftLimitations = true;
+                        continue;
+                    }
+                }
+#endif
                 switch (recIndex) {
                 case kRecIndex_Volume:
                     volInfo = &VolumeInfo;
@@ -3758,10 +3842,34 @@ HRESULT CDatabase::Open() {
                     // case kRecIndex_Security: attrs = &SecurityAttrs; break;
                 }
                 if (!rec.ParseRec(p, 9, numSectorsInRec, recIndex, ReparseDataVector, volInfo))
+#ifdef SEVENZIP_LINUX_NTFS
+                {
+                    if (!rec.FrameValidated)
+                        rec.MakeUnavailable();
+                    else {
+                        rec.MftIncomplete = true;
+                        bool primary = false;
+                        FOR_VECTOR(ai, rec.DataAttrs)
+                        primary |= rec.DataAttrs[ai].NameValid && rec.DataAttrs[ai].Name.IsEmpty();
+                        if (!rec.IsDir() && !primary) {
+                            rec.DataAttrs.Add(UnavailableDataAttribute(UString2()));
+                            rec.ParseDataNames();
+                        }
+                    }
+                    MftLimitations = true;
+                }
+                readableRecord |= rec.Is_Magic_FILE() && rec.InUse();
+                MftLimitations |= rec.MftIncomplete;
+#else
                     return S_FALSE;
+#endif
                 Recs.Add(rec);
             }
         }
+#ifdef SEVENZIP_LINUX_NTFS
+        if (!readableRecord)
+            return firstReadFailure == S_OK ? S_FALSE : firstReadFailure;
+#endif
     }
 
     /*
@@ -4476,6 +4584,13 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(const PROPID propID, PROPVARIANT *cons
             reasons += "Some NTFS file metadata is unavailable or unverified. Names, times and "
                        "permissions may be missing or outdated.";
         }
+        if (MftLimitations) {
+            if (!reasons.IsEmpty())
+                reasons += '\n';
+            reasons +=
+                "Some NTFS MFT records are unavailable or unverified. Files or metadata may be "
+                "missing, incomplete or unreadable.";
+        }
         if (!reasons.IsEmpty())
             prop = reasons;
         break;
@@ -4770,6 +4885,10 @@ Z7_COM7F_IMF(CHandler::GetProperty(const UInt32 index, const PROPID propID,
             break;
         }
         case kpidLinks:
+#ifdef SEVENZIP_LINUX_NTFS
+            if (rec.MftIncomplete && !rec.FrameValidated)
+                break;
+#endif
             if (rec.MyNumNameLinks != 1)
                 prop = (UInt32)rec.MyNumNameLinks;
             break;
@@ -4800,7 +4919,10 @@ Z7_COM7F_IMF(CHandler::GetProperty(const UInt32 index, const PROPID propID,
             break;
         case kpidError:
 #ifdef SEVENZIP_LINUX_NTFS
-            if (data && (data->Unavailable || data->Partial) && (item.IsAltStream() || !rec.Link))
+            if (rec.MftIncomplete)
+                prop = "The NTFS MFT record is unavailable or unverified.";
+            else if (data && (data->Unavailable || data->Partial) &&
+                     (item.IsAltStream() || !rec.Link))
                 prop = "NTFS DATA mapping is incomplete or unverified.";
             else if (rec.MetadataUnverified)
                 prop = "NTFS file metadata is unavailable or unverified.";

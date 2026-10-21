@@ -1,7 +1,16 @@
 // SPDX-License-Identifier: GPL-2.0-only
-// Read-frame normalization from ntfs3/frecord.c::ni_read_frame.
+// Frame and record adapters around the original NTFS3 C readers.
 #include "ntfsdecoder.h"
-#include "fs/ntfs3/ntfscompat.h"
+#include "fs/ntfs3/ntfssecuritycompat.h"
+int sevenzip_ntfs_mft_fixup(void *record, size_t size)
+{
+    int result;
+    if (!record || size < 512 || size > 4096 || size % 512)
+        return -EINVAL;
+    result = ntfs_fix_post_read(record, size, false);
+    return result == -E_NTFS_FIXUP ? 1 : result;
+}
+
 int sevenzip_ntfs_lznt(const void *input, size_t input_size, void *output, size_t output_size)
 {
     ssize_t size;

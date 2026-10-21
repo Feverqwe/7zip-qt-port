@@ -69,7 +69,8 @@ class FilesystemReadUiTests final : public QObject {
                       "classic-unclean-free-overflow", "volume-dirty", "volume-short",
                       "volume-list-nonresident", "reparse-list-bad-id", "ea-record-small",
                       "data-list-unreadable-list", "standard-short", "ext-recover", "ext-orphan",
-                      "ext-unclean", "ext-unverified", "ext-combined", "dir-root-missing"}) {
+                      "ext-unclean", "ext-unverified", "ext-combined", "dir-root-missing",
+                      "record-total"}) {
                     // Rejection uses the shared consent service; acceptance checks every reason.
                     if (!accept && kind != "exfat" && kind != "unclean" && kind != "volume-dirty" &&
                         kind != "ext-recover")
@@ -84,7 +85,8 @@ class FilesystemReadUiTests final : public QObject {
         QFETCH(QString, kind);
         const bool ntfs = kind.startsWith("volume-") || kind.startsWith("reparse-") ||
                           kind.startsWith("ea-") || kind.startsWith("data-list-") ||
-                          kind.startsWith("standard-") || kind.startsWith("dir-");
+                          kind.startsWith("standard-") || kind.startsWith("dir-") ||
+                          kind.startsWith("record-");
         const bool ext = kind.startsWith("ext-");
         SaveRegLang(UString(language == "en" ? L"-" : L"ru"),
                     qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));

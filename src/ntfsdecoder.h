@@ -11,6 +11,7 @@
 extern "C" {
 #endif
 int sevenzip_ntfs_lznt(const void *, size_t, void *, size_t);
+int sevenzip_ntfs_mft_fixup(void *, size_t);
 typedef int (*sevenzip_ntfs_read_fn)(void *, uint64_t, void *, size_t);
 struct sevenzip_ntfs_wof;
 struct sevenzip_ntfs_wof *sevenzip_ntfs_wof_create(uint64_t file_size, uint64_t ads_size,

@@ -85,7 +85,13 @@ UString QtArchiveDiagnosticText(const UString &source) {
                           "repaired; files may be missing or incomplete."),
         QT_TRANSLATE_NOOP("SevenZipDiagnostics",
                           "The ext filesystem was not cleanly unmounted or reports errors. Files "
-                          "may be inconsistent.")};
+                          "may be inconsistent."),
+        QT_TRANSLATE_NOOP(
+            "SevenZipDiagnostics",
+            "Some NTFS MFT records are unavailable or unverified. Files or metadata may "
+            "be missing, incomplete or unreadable."),
+        QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                          "The NTFS MFT record is unavailable or unverified.")};
     for (const char *warning : warnings)
         if (text == QString::fromLatin1(warning))
             return QtDiagnosticText(warning);

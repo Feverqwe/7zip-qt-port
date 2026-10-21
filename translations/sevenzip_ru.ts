@@ -3846,6 +3846,14 @@ Are you sure you want to split archive into such volumes?</source>
             <translation>Метаданные файла NTFS недоступны или не проверены.</translation>
         </message>
         <message>
+            <source>Some NTFS MFT records are unavailable or unverified. Files or metadata may be missing, incomplete or unreadable.</source>
+            <translation>Некоторые записи MFT NTFS недоступны или не проверены. Файлы или метаданные могут отсутствовать, быть неполными или нечитаемыми.</translation>
+        </message>
+        <message>
+            <source>The NTFS MFT record is unavailable or unverified.</source>
+            <translation>Запись MFT NTFS недоступна или не проверена.</translation>
+        </message>
+        <message>
             <source>The ext filesystem requires journal recovery. The journal will not be replayed; files may be missing, outdated or unreadable.</source>
             <translation>Файловой системе ext требуется восстановление журнала. Журнал не будет воспроизведён; некоторые файлы могут отсутствовать, быть устаревшими или нечитаемыми.</translation>
         </message>
