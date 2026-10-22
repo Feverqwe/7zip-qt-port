@@ -10,6 +10,72 @@ fs-verity now reuses the original shared Linux string scanner already linked
 for fscrypt. Source scope and validation are recorded with the
 [shared string-service transfer](erofs-linux.md#original-shared-string-services--2026-10-22).
 
+## Shared hash and crypto utility source comparison — 2026-10-22
+
+Compared the selected complete units against Linux
+`58161ead29e50d70a317ea26b472e0c7508e69da`:
+`lib/crypto/{sha1,sha256,sha512,sha3,sm3,utils,memneq}.c`,
+`crypto/{shash,streebog_generic}.c`, `lib/siphash.c` and `lib/base64.c`.
+Of 128 local complete function bodies, 120 match after comments/whitespace,
+seven have the adaptations below and one exposes the original Streebog provider
+table to the fixed registry. Reviewed complete headers, macro bodies, constants,
+algorithm metadata and consumers as well; function-body similarity alone is not
+the completeness criterion. No missing selected hash branch or behavior fix was
+established in this group.
+
+| Selected unit | Complete-body result and host boundary |
+| --- | --- |
+| SHA-1 and HMAC | All fourteen bodies match, including generic compression, padding, prepared/raw HMAC keys, updates and finalization. Kernel module/FIPS initialization is omitted. |
+| SHA-224/256 and HMAC | All 31 bodies match, including both variants, prepared/raw HMAC paths and the sequential two-input finalizer. Its stack noinline annotation uses the host compiler spelling. |
+| SHA-384/512 and HMAC | All 24 bodies match, including byte-count carry, padding and HMAC key/state handling. The header accepts a generic byte-buffer pointer for the HMAC update caller; the complete update body remains original. |
+| SHA-3/SHAKE and SM3 | All sixteen SHA-3/SHAKE and seven SM3 bodies match. SHA-3's inlining choice uses host pointer width; architecture and kernel initialization are omitted. Header context initializers use equivalent nested C11 aggregates. |
+| XOR and comparison | The original XOR body uses uintptr_t for pointer-alignment arithmetic, including LLP64. All three memneq bodies match; private byte-pointer types replace GNU void-pointer arithmetic and the noinline annotation uses the host compiler spelling. The public utility header selects original generic XOR paths instead of compiler-specific constant-size shortcuts. |
+| Synchronous hash requests | Nine of eleven selected shash bodies match; default finup/digest spell out GNU short-circuit error chains. Original block-only buffering, partial/final block handling, callback errors, key requirement and final-state clearing remain present. |
+| Streebog | Nine of eleven bodies match; final-block zero initialization uses C11, and one local registry accessor replaces kernel module registration. Both original algorithm entries, flags, constants and lookup tables remain intact. A constant-expression endian macro permits the original table initializers on host compilers. |
+| SipHash and base64 | Six of eight SipHash bodies match; two use C byte-pointer arithmetic. The complete encode body matches; decode uses unsigned shifts to avoid undefined behavior for negative lookup entries while retaining invalid-input rejection. Base64 alphabets and reverse maps use sequential C11 initialization in the original variant order. |
+
+The SHA/HMAC/SM3 headers retain their original context layouts and helpers with
+host includes and C11 alignment. `hmac.h` matches exactly. SHA-3/SHAKE nested
+initializers preserve rate/digest state and zero initialization. Streebog's
+block-only callback and descriptor size were checked against `shash_prepare_alg`:
+the fixed provider copies algorithm metadata per allocation, installs the original
+default callbacks, reserves the block plus length byte and checks the resulting
+descriptor against its owned state capacity. Both Streebog sizes fit without
+overlapping that trailing buffer. Fixed stack descriptors avoid VLAs; the original
+certificate callers' allocated descriptors also have sufficient storage. This
+does not recreate shash export/import, keyed-hash registration, kernel algorithm
+discovery or hardware providers. HMAC library entry points supply fscrypt's
+separate prepared-key service.
+
+Checked the original hash identifier enum and the sequential `hash_algo_name`
+table with the PKCS#7 lookup consumer. The unused digest-size table is omitted;
+actual digest sizes come from the selected provider. An unavailable hash returns
+an error rather than selecting a substitute; certificate parsing can retain its
+original unsupported-signature status, while verification still requires a
+usable algorithm. Traced SHA-256 through ESSIV, HMAC-SHA512 through fscrypt HKDF,
+SipHash through name/inode hashing, base64url through no-key name presentation,
+and shash through X.509/PKCS#7 digest acquisition. SHAKE remains available to the
+separate original ML-DSA verifier. The full asymmetric/parser source audit is not
+established by these caller checks.
+
+SipHash's public dispatch uses the original alignment-independent routine;
+unused HalfSipHash and compiler constant-length dispatch are omitted. Its round
+macros, fixed-width helpers and selected tail branches retain the pinned source.
+Base64 reverse-map expansion covers all 256 byte values for each original
+alphabet. Decoder shifts preserve the sign-based rejection test using defined
+unsigned arithmetic. Generic crypto routines retain the target's existing
+compiler aliasing contract; kernel FIPS startup tests are not a host FIPS claim.
+
+All 305 pinned reference hashes match. This iteration changes only the audit;
+`git diff --check` passed and no runtime batch was repeated on unchanged code.
+Existing `fscrypt_crypto` known answers cover HMAC/HKDF, SHA-256, SipHash and
+base64; `asymmetric_hash` compares provider digests across padding/rate boundaries,
+unaligned input and split updates and rejects unavailable algorithms. Those tests
+are behavior coverage, not proof of source completeness; no source-text test was
+added. The selected shared-hash/utility comparison is complete with the stated
+adaptations. Asymmetric/ASN.1 dependencies, overall ext closure and the parent
+format review remain open.
+
 ## HCTR2, Adiantum and ChaCha source comparison — 2026-10-22
 
 Completed comparison against Linux `58161ead29e50d70a317ea26b472e0c7508e69da`
