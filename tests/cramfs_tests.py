@@ -79,6 +79,24 @@ class CramfsTests(unittest.TestCase):
                                                   version2=version2), b"tail")
             self.assertContents(image([b"tail"], storage=["direct-raw"], version2=version2), b"tail")
 
+    def test_global_volume_coordinates_do_not_create_false_tails(self):
+        for engine in ("7z", "7zz"):
+            for boot_prefix, outer_prefix in ((512, 0), (0, 1024)):
+                volume = image([b"volume payload"], prefix=boot_prefix)
+                data = b"X" * outer_prefix + volume
+                for forced in (False, True):
+                    with self.subTest(engine=engine, boot=boot_prefix, outer=outer_prefix, forced=forced):
+                        listing = self.run_image(data, engine, "l", forced)
+                        self.assertIn(listing.returncode, (0, 1), listing.stderr)
+                        header = listing.stdout.partition(b"----------")[0]
+                        properties = dict(line.split(b" = ", 1) for line in header.splitlines() if b" = " in line)
+                        self.assertEqual(int(properties.get(b"Offset", b"0")), outer_prefix)
+                        self.assertEqual(int(properties[b"Physical Size"]), len(volume))
+                        self.assertEqual(int(properties.get(b"Tail Size", b"0")), 0)
+                        extracted = self.run_image(data, engine, forced=forced)
+                        self.assertIn(extracted.returncode, (0, 1), extracted.stderr)
+                        self.assertEqual(extracted.stdout, b"volume payload")
+
     def test_shared_direct_data_and_short_uncompressed_tail(self):
         data = bytearray(image([b"A" * 4096] * 2, storage=["direct-raw"] * 2))
         data[100:104] = data[96:100]

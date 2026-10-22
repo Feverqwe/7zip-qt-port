@@ -462,7 +462,7 @@ HRESULT CHandler::Open2(IInStream *inStream) {
     }
     _headerOffset = (UInt32)(headerPos - volumePos);
     _volumePos = volumePos;
-    _arcOffset = -(Int64)(initialPos - volumePos);
+    _arcOffset = (Int64)volumePos;
     const bool be = _h.be;
     if (!IsDir(buf + kHeaderSize, be) || (_h.Flags & ~0xFFFFu))
         return S_FALSE;

@@ -636,6 +636,12 @@ class CramfsModuleTests final : public QObject {
         QVERIFY2(ready[0][0].toBool(), qPrintable(ready[0][1].toString()));
         QVERIFY(!backend.codecCatalog()->canUpdate("CramFS"));
         QList<ArchiveEntry> entries;
+        ArchiveInfo info;
+        bool infoReceived = false;
+        connect(&backend, &ArchiveBackend::infoReady, this, [&](const ArchiveInfo &value) {
+            info = value;
+            infoReceived = true;
+        });
         connect(&backend, &ArchiveBackend::entriesReady, this,
                 [&](const QList<ArchiveEntry> &result) { entries = result; });
         QSignalSpy finished(&backend, &ArchiveBackend::finished);
@@ -644,6 +650,9 @@ class CramfsModuleTests final : public QObject {
         QVERIFY2(finished[0][0].toBool(), qPrintable(finished[0][1].toString()));
         QCOMPARE(entries.size(), 1);
         QCOMPARE(entries[0].path, name);
+        QVERIFY(infoReceived);
+        QCOMPARE(info.offset, qint64(0));
+        QCOMPARE(info.physicalSize, qint64(bytes.size()));
         finished.clear();
         backend.test(image);
         QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 10000);

@@ -340,6 +340,28 @@ The optional-verification scenario above subsequently resolves the CRC opening
 dependency. Addressed metadata reads above remove the contiguous-prefix
 dependency; partial-directory handling is recorded separately above.
 
+## Volume coordinates in the archive adapter
+
+2026-10-22: compared `CHandler::Open2`, archive-property publication and the
+7-Zip `CArc` marker-scan, `ReadBasicProps` and `ReOpen` consumers at the SDK
+revision below. `UseGlobalOffset` supplies the whole bounded input stream at
+the detected signature; the reported offset must identify the volume origin
+within that stream. The adapter now reports that origin rather than a delta
+from the signature cursor. This removes a false negative offset and trailing
+512 bytes for a native boot-prefixed volume, and preserves the outer offset
+for an embedded ordinary volume. Data-read positions are unchanged.
+
+Small fixtures verify offset, physical size, absence of a false tail and exact
+extraction through both engines, with automatic and forced recognition.
+The existing Unicode/boot-prefix ArchiveBackend scenario also checks the
+published volume coordinates. Before the correction, six CLI cases failed.
+Afterwards `cramfs`, `upstream_baseline` and `upstream_inventory` passed locally
+and on Linux/Windows (receipt `20261022T062607Z-cc27d7bc`); the local module ABI
+suite and application build passed too. The module ABI suite passed on both
+runners in receipt `20261022T062944Z-191d0d83`. These cases do not establish general inference of the
+origin of an embedded boot-prefixed volume. Declared-size/source-bound behavior
+and the remaining Cramfs source review remain open.
+
 ## Source comparison
 
 2026-10-19, part of the [Linux format review](filesystems-linux.md).
