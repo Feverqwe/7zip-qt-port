@@ -12,7 +12,8 @@ GUIDS = tuple(bytes.fromhex(s) for s in (
 FMP = uuid.UUID("6dcbd5ed-e82d-4c44-bda1-7194199ad92a").bytes_le
 CASES = ("generic", "fmp", "zero-guid", "padding", "flags", "empty", "short", "standard",
          "legacy1", "legacy2", "split", "quark", "quark-fv", "fv-capsule", "lzma-capsule",
-         "me-capsule", "fv", "fv-lzma")
+         "me-capsule", "fv", "fv-lzma", "generic-quark-prefix",
+         "generic-quark-prefix-large", "quark-ambiguous")
 BAD = ("short-header", "header-small", "image-small", "image-span", "legacy-short",
        "v2-short", "body-before", "body-after", "quark-short", "quark-chain",
        "fv-checksum", "fv-span", "me-span")
@@ -54,6 +55,13 @@ def volume(kind):
     if kind == "short": body = payload = b"x"
     if kind == "fmp": body = payload = struct.pack("<IHHQ", 1, 0, 1, 16) + payload
     if kind == "zero-guid": guid = bytes(16)
+    if kind in ("generic-quark-prefix", "generic-quark-prefix-large"):
+        guid = struct.pack("<I", 0x5f435348) + FMP[4:]
+        body = bytearray(40 if kind == "generic-quark-prefix" else 2048)
+        struct.pack_into("<I", body, 4, 1024)
+        if kind == "generic-quark-prefix":
+            struct.pack_into("<I", body, 24, 1)
+        payload = bytes(body)
     if kind == "padding": header = offset = 129
     if kind == "standard": guid = GUIDS[2]
     if kind in ("legacy1", "split", "legacy-short", "body-before", "body-after"):
@@ -83,10 +91,12 @@ def volume(kind):
         struct.pack_into("<II", image, 48, 1 if kind == "split" else 0, offset)
     if guid == GUIDS[1]: struct.pack_into("<H", image, 28, offset)
     image += body
-    if kind in ("quark", "quark-fv", "quark-short", "quark-chain", "quark-high"):
+    if kind in ("quark", "quark-fv", "quark-short", "quark-chain", "quark-high", "quark-ambiguous"):
         prefix = bytearray(1024)
         struct.pack_into("<III", prefix, 0, 0x5f435348, 7, 0)
         struct.pack_into("<I", prefix, 32, 1024)
+        if kind == "quark-ambiguous":
+            struct.pack_into("<III", prefix, 16, 28, 0, 64)
         if kind == "quark-chain": struct.pack_into("<I", prefix, 52, 1)
         image = prefix + image
     meta = dict(payload=payload.hex(), target=target, index=0,

@@ -1,5 +1,15 @@
 # ELF: headers, tables, core numbering и independent streams
 
+## Итоговая read-side сверка — 2026-10-23
+
+Read-side source audit ELF закрыт для archive projection ниже на закреплённом
+Linux commit. Полная сверка ниже дополнена повторной проверкой текущих header/
+table bounds, section-zero numbering, file/virtual extents и stream consumers;
+все семь reference hashes совпали. Execution/relocation и Linux consumer-specific
+policy не подменяют generic byte inspection. Production ELF code не менялся;
+обе ELF suites прошли macOS проверку вместе с EFI/PE (8/8, 2.74 s).
+Остальные runtime/platform ограничения перечислены ниже.
+
 ## Source comparison
 
 7-Zip: <https://github.com/ip7z/7zip.git>, commit

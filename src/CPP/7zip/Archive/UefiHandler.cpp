@@ -510,6 +510,11 @@ struct CCapsuleHeader {
 
     void Clear() { memset(this, 0, sizeof(*this)); }
 
+    bool IsValid(UInt64 sourceSize) const {
+        return CapsuleImageSize >= HeaderSize && OffsetToCapsuleBody >= HeaderSize &&
+               OffsetToCapsuleBody <= CapsuleImageSize && CapsuleImageSize <= sourceSize;
+    }
+
     bool Parse(const Byte *p, size_t size) {
         Clear();
         if (size < 0x1C)
@@ -1434,21 +1439,26 @@ HRESULT CHandler::OpenCapsule(IInStream *stream) {
     Byte buf[80];
     size_t headerSize = (size_t)MyMin(_fileSize, (UInt64)sizeof(buf));
     RINOK(ReadBuffer(stream, 0, buf, headerSize))
+    bool valid = _h.Parse(buf, headerSize) && _h.IsValid(_fileSize);
     // Linux's Quark transport skips a single fixed security header.  The
     // firmware owns authentication; archive reading only maps the file bytes.
     if (headerSize >= 64 && Get32(buf) == 0x5f435348 && Get32(buf + 32) == 0x400) {
-        if (Get32(buf + 52) != 0 || _fileSize < 0x400 + 0x1C)
-            return S_FALSE;
-        _capsuleOffset = 0x400;
-        headerSize = (size_t)MyMin(_fileSize - _capsuleOffset, (UInt64)sizeof(buf));
-        RINOK(ReadBuffer(stream, _capsuleOffset, buf, headerSize))
+        if (Get32(buf + 52) == 0 && _fileSize >= 0x400 + 0x1C) {
+            Byte inner[sizeof(buf)];
+            const size_t innerSize = (size_t)MyMin(_fileSize - 0x400, (UInt64)sizeof(inner));
+            RINOK(ReadBuffer(stream, 0x400, inner, innerSize))
+            CCapsuleHeader header;
+            if (header.Parse(inner, innerSize) && header.IsValid(_fileSize - 0x400)) {
+                _h = header;
+                _capsuleOffset = 0x400;
+                memcpy(buf, inner, innerSize);
+                valid = true;
+            }
+        }
     }
-    if (!_h.Parse(buf, headerSize) || _h.CapsuleImageSize < _h.HeaderSize ||
-        _h.OffsetToCapsuleBody < _h.HeaderSize || _h.OffsetToCapsuleBody > _h.CapsuleImageSize)
+    if (!valid)
         return S_FALSE;
     _phySize = _capsuleOffset + _h.CapsuleImageSize;
-    if (_phySize > _fileSize)
-        return S_FALSE;
 
     AString guid;
     AddGuid(guid, buf, true);

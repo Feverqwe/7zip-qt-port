@@ -1,5 +1,41 @@
 # EFI capsules: общий header, Quark и archive streams
 
+## Итог read-side сверки и Quark-like GUID — 2026-10-23
+
+Read-side source audit EFI capsules закрыт для archive projection ниже.
+Повторно сопоставлены common `efi_capsule_setup_info`, CPU-selected Quark caller,
+`qrk_capsule_setup_info`, header types и current capsule mapper; все четыре
+reference hashes совпали с закреплённым Linux snapshot. Firmware query,
+authentication/update и SDK FV/ME extensions имеют отдельные границы ниже.
+
+Обнаружено расхождение portable archive routing: opaque capsule GUID может
+начинаться с Quark signature, а payload — содержать совпадающее header-size
+слово. Reader безусловно переключался на Quark и терял корректный generic
+capsule. В Linux common loader не применяет quirk вне выбранного CPU context.
+Archive reader должен различать оба layout в одном переносимом интерфейсе.
+
+Существующий `CCapsuleHeader::Parse` теперь проверяет generic и, при наличии
+prefix, inner candidate с одной общей проверкой body/source spans. Подтверждённый
+Quark сохраняет приоритет, включая неоднозначный outer header. Если Quark
+candidate непригоден, валидный generic header остаётся доступным; отсутствие
+обоих по-прежнему даёт отказ. Source HRESULT/cancellation не превращаются в
+успешный fallback. GUID comment и payload mapping используют выбранный header.
+Новый firmware parser или source writes не добавлены.
+
+До исправления CLI обоих engines и ABI воспроизвели отказ короткого generic
+capsule и большого capsule с невалидным inner header. Третий контроль имеет
+валидные outer/inner interpretations и проверяет сохранение Quark precedence.
+Listing, exact bytes, test, retained/interleaved streams и reuse проверяются
+существующими suites. Compiled Linux reference подтвердил common generic
+header и CPU-selected Quark skip/total для этих трёх fixtures; firmware calls
+заменены прежними mock services, реальные обновления не выполнялись.
+
+macOS `uefi`, `uefi_stream`, `pe`, `pe_stream`, `elf`, `elf_stream`,
+`native_archive_opening`, `upstream_baseline` — 8/8 PASS (2.74 s), с текущими
+incremental builds и compiler cache. Linux/Windows, full/slow, native firmware
+и physical-device acceptance этой итерацией не расширяются.
+Финальный macOS application target собран с обновлённым capsule reader.
+
 ## Source comparison
 
 7-Zip: <https://github.com/ip7z/7zip.git>, commit

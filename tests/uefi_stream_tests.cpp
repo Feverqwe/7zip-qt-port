@@ -229,7 +229,8 @@ class UefiStreamTests final : public QObject {
         QTest::addColumn<QString>("kind");
         for (const char *kind :
              {"generic", "empty", "short", "legacy1", "legacy2", "quark", "fv-capsule",
-              "lzma-capsule", "me-capsule", "high-header", "quark-high", "large-fv-padding"})
+              "lzma-capsule", "me-capsule", "high-header", "quark-high", "large-fv-padding",
+              "generic-quark-prefix", "generic-quark-prefix-large", "quark-ambiguous"})
             QTest::newRow(kind) << QString::fromLatin1(kind);
     }
     void retainedStreams() {

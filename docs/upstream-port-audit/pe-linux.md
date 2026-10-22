@@ -1,5 +1,15 @@
 # PE: headers, file spans и retained streams
 
+## Итоговая read-side сверка — 2026-10-23
+
+Read-side source audit PE закрыт для archive projection ниже на закреплённом
+Linux commit. Полная сверка verifier read bodies ниже дополнена проверкой
+текущих source spans, certificate/debug и stream consumers; все пять reference
+hashes совпали. Kernel trust/signature/execution и дополнительные SDK COFF/TE
+formats отделены от чтения PE. Production PE code не менялся; обе PE suites
+прошли macOS проверку вместе с EFI/ELF (8/8, 2.74 s). Более широкие исторические
+проверки и их границы указаны ниже.
+
 ## Source comparison
 
 7-Zip: <https://github.com/ip7z/7zip.git>, commit
