@@ -328,6 +328,9 @@ if __name__ == "__main__":
     elif layout.startswith("htree-"):
         from ext_htree_fixture import HtreeVolume
         v = HtreeVolume(layout.removeprefix("htree-"))
+    elif layout in ("directory-cycle", "directory-cycle-tail"):
+        from ext_directory_fixture import cyclic_directory_volume
+        v = cyclic_directory_volume(tail=layout.endswith("-tail"))
     elif layout in ("directory-namespace", "directory-invalid-target"):
         from ext_directory_fixture import NamespaceVolume
         v = NamespaceVolume(invalid_target=layout == "directory-invalid-target")

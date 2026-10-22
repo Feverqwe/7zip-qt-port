@@ -2216,6 +2216,8 @@ HRESULT CHandler::Open2(IInStream *inStream) {
 
     {
         // ---------- Check that there is no loops in parents list ----------
+        // Isolate disconnected cycles through the existing unknown-directory
+        // projection. Its canonical item must not retain a cyclic parent path.
 
         unsigned numNodes = _refs.Size();
         CIntArr UsedByNode(numNodes);
@@ -2246,16 +2248,23 @@ HRESULT CHandler::Open2(IInStream *inStream) {
                 CNode &node = _nodes[nodeIndex];
 
                 if (UsedByNode[c] != -1) {
-                    if ((unsigned)UsedByNode[c] == i)
-                        return S_FALSE;
+                    if ((unsigned)UsedByNode[c] == i) {
+                        MarkDirectoryIncomplete(node);
+                        node.ParentNode = -1;
+                        node.ItemIndex = -1;
+                    }
                     break;
                 }
 
                 UsedByNode[c] = (int)i;
                 if (node.ParentNode < 0 || node.ParentNode == k_INODE_ROOT)
                     break;
-                if ((unsigned)node.ParentNode == i)
-                    return S_FALSE;
+                if ((unsigned)node.ParentNode == i) {
+                    MarkDirectoryIncomplete(node);
+                    node.ParentNode = -1;
+                    node.ItemIndex = -1;
+                    break;
+                }
                 c = (unsigned)node.ParentNode;
             }
         }

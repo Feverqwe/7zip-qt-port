@@ -10,6 +10,68 @@ fs-verity now reuses the original shared Linux string scanner already linked
 for fscrypt. Source scope and validation are recorded with the
 [shared string-service transfer](erofs-linux.md#original-shared-string-services--2026-10-22).
 
+## Directory source comparison and disconnected-cycle isolation — 2026-10-22
+
+Compared all 22 functions present in `fs/ext4/dir.c` and `fs/ext4/namei.c` with
+pinned Linux, complete original `ext4_readdir`/`ext4_dx_readdir`,
+`ext4_htree_fill_tree`/`htree_dirblock_to_tree`, inline iteration and the SDK
+`ParseDir`/`ReadDir`, parent-cycle checker, unknown-directory publication, path
+properties, raw parents and symlink consumers. Fifteen C bodies match after
+comments/whitespace; four have the adaptations below; three are archive services.
+
+| Read-side source | Compared result and archive boundary |
+| --- | --- |
+| Record/leaf validation | Complete `is_fake_dir_entry`, `__ext4_check_dir_entry`, leaf checksum and warning/verifier bodies match. `get_dirent_tail` only replaces GNU pointer arithmetic. Record bounds/length/type helpers retain their original header implementations. |
+| Index checksums and traversal | Complete checksum calculation, six block/hash/count/limit accessors, `__ext4_read_dirblock`, `dx_release` and `ext4_htree_next_block` match. `get_dx_countlimit` uses byte pointers. Index checksum lookup retains an explicit count/limit guard normally supplied by its VFS caller. `dx_probe` omits filename-lookup input/hash calculation, since full archive enumeration starts at hash zero. |
+| Archive block transport | Three local functions acquire immutable bounded blocks with repeated-subtree detection, retain index preconditions even without checksums, and drive original probe/leaf/next/release iteration. They do not replace an on-disk index decoder. Empty-leaf checksum ambiguity and initial bad-index fallback remain explicit. |
+
+The ordinary record/name/item projection remains the adapted original SDK
+handler, connected to the original C validators, dtype/record-length helpers,
+htree walk, inline iterator and fscrypt name services. The VFS's hash-cookie
+positioning, batch rbtree publication, concurrent version/lock handling and
+filename lookup are not the archive's full-listing interface. Stored names are
+retained and the SDK owns archive sorting/paths; the original normal readdir,
+fill-tree and inline branches were used to check this boundary rather than
+claiming those complete VFS entry points were all copied. Existing partial-read
+adaptations for checksum/I/O failures, unavailable inodes, dot links, framed bad
+names and conflicting incoming edges remain separately documented above.
+
+That caller review found a remaining whole-archive failure: the SDK eager
+parent-cycle checker rejected an otherwise readable root when a disconnected
+directory component contained a cycle. Linux root readdir does not inventory
+that unrelated component. Retained root identity and incoming-edge checks mean
+such cycles reaching this phase are disconnected from the rooted parent graph.
+
+The GPL handler retains the original visited-parent traversal and cycle
+detection. On detection it marks the component incomplete and clears one local
+canonical parent/item association, allowing the existing unnamed-directory
+publication to place it under `[UNKNOWN]`. Both path strings and `GetParent`
+then follow an acyclic archive projection. Original named aliases can remain as
+partial directory entries; the projection does not promise a repaired original
+namespace. Invalid references still fail their bounds/availability checks.
+No disk parent, name or file byte is changed, and no source repair/replay occurs.
+The original C decoders and the separate SDK-only variant are unchanged. Existing
+limited-opening consent and diagnostics cover the incomplete namespace.
+
+CLI and ABI regressions cover a disconnected cycle and an earlier descendant
+inode leading into a different cycle. Root and recovered component files return
+exact bytes; every raw parent chain terminates within valid item bounds. The
+checks allow any safe break point in the recovered component rather than pinning
+the traversal's internal choice. Healthy reopen clears the limited mode. Fixtures
+retain consistent link counts apart from the intended namespace cycle, and CLI
+checks verify unchanged source images.
+
+Validation: all eight ext/stream/fscrypt/xattr/provenance suites passed on macOS
+(8.85 s). The affected `ext`/`ext_stream` suites passed after adding the second
+graph shape, and again after refining fixture counts and removing the arbitrary
+break-point expectation (final 9.07 s). Production logic was unchanged during
+those test refinements. The incremental application build passed. Caches were
+reused and disposable ext fixtures were absent. All 305 reference hashes match.
+This portable graph/projection change did not require remote checks; no full/slow,
+physical-device, new kernel-mount, appearance or release-install gate was run.
+This completes the selected directory source comparison with the stated archive
+adaptations; generic crypto/verity and whole ext/parent closure remain separate.
+
 ## Superblock and inode acquisition source comparison — 2026-10-22
 
 Completed whole-unit source comparison for the selected metadata-acquisition

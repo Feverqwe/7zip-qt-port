@@ -19,7 +19,8 @@ from ext_block_fixture import BlockVolume, JournalVolume
 from ext_symlink_fixture import SymlinkVolume
 from ext_inode_fixture import inode_volume, inventory_volume
 from ext_directory_fixture import (DirectoryVolume, wide_indirect_directory_volume, type_hint_volume,
-                                   service_link_volume, parent_order_volume, conflicting_parent_volume)
+                                   service_link_volume, parent_order_volume, conflicting_parent_volume,
+                                   cyclic_directory_volume)
 from ext_htree_fixture import HtreeVolume
 from ext_readlink_fixture import ReadlinkVolume
 
@@ -442,6 +443,22 @@ class ExtTests(unittest.TestCase):
             result = self.run_image(volume, name=name)
             self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
             self.assertEqual(result.stdout, volume.read(0, volume.size))
+
+    def test_disconnected_directory_cycle_preserves_readable_data(self):
+        for tail in (False, True):
+            with self.subTest(tail=tail):
+                volume = cyclic_directory_volume(tail=tail)
+                listing = self.limited_listing(volume)
+                paths = [line[7:] for line in listing.stdout.decode().splitlines()
+                         if line.startswith("Path = ")]
+                for name, expected in volume.files.items():
+                    matches = [path for path in paths if path == name or path.endswith("/" + name)]
+                    self.assertEqual(len(matches), 1)
+                    if name != NAME:
+                        self.assertTrue(matches[0].startswith("[UNKNOWN]/"))
+                    result = self.run_image(volume, name=matches[0])
+                    self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                    self.assertEqual(result.stdout, expected)
 
     def test_service_links_do_not_hide_files_or_define_parent_cycles(self):
         for kind in ("self-file", "duplicate-self", "parent-file", "parent-child",

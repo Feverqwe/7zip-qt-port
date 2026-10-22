@@ -1208,6 +1208,62 @@ class ExtStreamTests final : public QObject {
         QCOMPARE(isDir.vt, VARTYPE(VT_BOOL));
         QCOMPARE(isDir.boolVal, VARIANT_BOOL(VARIANT_TRUE));
     }
+    void disconnectedDirectoryCycleHasSafeParentsAndReadableData_data() {
+        QTest::addColumn<QString>("layout");
+        QTest::newRow("cycle") << QStringLiteral("directory-cycle");
+        QTest::newRow("descendant-before-cycle") << QStringLiteral("directory-cycle-tail");
+    }
+    void disconnectedDirectoryCycleHasSafeParentsAndReadableData() {
+        QFETCH(QString, layout);
+        const auto record = bundle(layout);
+        QVERIFY(!record.isEmpty());
+        CMyComPtr<IInStream> input = new Input(image(record));
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        QVERIFY(!readLimitations().isEmpty());
+        CMyComPtr<IArchiveGetRawProps> parents;
+        QCOMPARE(archive_->QueryInterface(IID_IArchiveGetRawProps, (void **)&parents), S_OK);
+        UInt32 count = 0;
+        QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+        for (UInt32 index = 0; index < count; ++index) {
+            UInt32 parent = index;
+            for (UInt32 depth = 0; parent != UInt32(-1); ++depth) {
+                QVERIFY(depth < count);
+                QVERIFY(parent < count);
+                UInt32 type = 0, next = UInt32(-1);
+                QCOMPARE(parents->GetParent(parent, &next, &type), S_OK);
+                parent = next;
+            }
+        }
+        const auto files = record["files"].toObject();
+        QVERIFY(!files.isEmpty());
+        for (auto it = files.begin(); it != files.end(); ++it) {
+            UInt32 index = UInt32(-1);
+            for (UInt32 candidate = 0; candidate < count; ++candidate) {
+                NWindows::NCOM::CPropVariant value;
+                QCOMPARE(archive_->GetProperty(candidate, kpidPath, &value), S_OK);
+                if (value.vt != VT_BSTR)
+                    continue;
+                const QString path =
+                    QDir::fromNativeSeparators(QString::fromWCharArray(value.bstrVal));
+                if (path != it.key() && !path.endsWith('/' + it.key()))
+                    continue;
+                QCOMPARE(index, UInt32(-1));
+                if (it.key() != record["name"].toString())
+                    QVERIFY(path.startsWith("[UNKNOWN]/"));
+                index = candidate;
+            }
+            QVERIFY2(index != UInt32(-1), qPrintable(it.key()));
+            CMyComPtr2<IArchiveExtractCallback, Extract> copy;
+            copy.Create_if_Empty();
+            QCOMPARE(archive_->Extract(&index, 1, 0, copy), S_OK);
+            QCOMPARE(copy->results, QVector<Int32>({NArchive::NExtract::NOperationResult::kOK}));
+            QCOMPARE(copy->output->bytes, QByteArray::fromHex(it.value().toString().toLatin1()));
+        }
+        QCOMPARE(archive_->Close(), S_OK);
+        CMyComPtr<IInStream> healthy = new Input(image(bundle("direct")));
+        QCOMPARE(archive_->Open(healthy, nullptr, nullptr), S_OK);
+        QVERIFY(readLimitations().isEmpty());
+    }
     void classicDirectoryRawStreamsKeepMappedBlockBoundaries() {
         const auto record = bundle("directory-namespace");
         const auto bytes = image(record);

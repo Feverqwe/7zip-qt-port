@@ -153,6 +153,42 @@ def conflicting_parent_volume():
     return v
 
 
+def cyclic_directory_volume(tail=False):
+    v = parent_order_volume()
+    bs = v.block_size
+    root = ModernVolume.dirent(2, b".", 12, 2) + ModernVolume.dirent(2, b"..", 12, 2)
+    root += ModernVolume.dirent(12, NAME.encode(), bs - len(root))
+    v.data[v.root_block * bs:(v.root_block + 1) * bs] = root
+    struct.pack_into("<H", v.data, v.root_inode + 26, 2)
+    child = ModernVolume.dirent(13, b".", 12, 2) + ModernVolume.dirent(14, b"..", 12, 2)
+    child += ModernVolume.dirent(14, b"LOOP", 16, 2)
+    child += ModernVolume.dirent(12, b"before-error.bin", bs - len(child))
+    v.data[v.directory_head_offset:v.directory_head_offset + bs] = child
+    struct.pack_into("<H", v.data, v.table * bs + 12 * 128 + 26, 3)
+    parent = v.table * bs + 13 * 128
+    block = struct.unpack_from("<I", v.data, parent + 40)[0]
+    v.put32(block * bs + 12, 13)
+    if tail:
+        child = ModernVolume.dirent(13, b".", 12, 2) + ModernVolume.dirent(14, b"..", 12, 2)
+        child += ModernVolume.dirent(12, b"before-error.bin", bs - len(child))
+        v.data[v.directory_head_offset:v.directory_head_offset + bs] = child
+        contents = ModernVolume.dirent(14, b".", 12, 2) + ModernVolume.dirent(15, b"..", 12, 2)
+        contents += ModernVolume.dirent(13, b"CHILD", 16, 2)
+        contents += ModernVolume.dirent(15, b"RING", bs - len(contents), 2)
+        v.data[block * bs:(block + 1) * bs] = contents
+        contents = ModernVolume.dirent(15, b".", 12, 2) + ModernVolume.dirent(14, b"..", 12, 2)
+        contents += ModernVolume.dirent(14, b"BACK", bs - len(contents), 2)
+        last = v.allocate(contents)
+        v.inode(v.table * bs + 14 * 128, 0o40755, bs, bs // 512, links=2)
+        v.put32(v.table * bs + 14 * 128 + 40, last)
+        for ino, links in ((13, 2), (14, 4), (15, 3)):
+            struct.pack_into("<H", v.data, v.table * bs + (ino - 1) * 128 + 26, links)
+        v.superblock((13, 14, 15))
+    payload = v.read(0, v.size)
+    v.files = {NAME: payload, "before-error.bin": payload, "after-error.bin": payload}
+    return v
+
+
 def wide_indirect_directory_volume():
     v = wide_indirect_volume()
     bs = v.block_size
