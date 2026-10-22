@@ -44,3 +44,60 @@ err_bogus:
 	DBG_BUGON(1);
 	return -EFSCORRUPTED;
 }
+
+int erofs_readdir(struct file *f, struct dir_context *ctx)
+{
+	struct inode *dir = file_inode(f);
+	struct erofs_buf buf = __EROFS_BUF_INITIALIZER;
+	struct super_block *sb = dir->i_sb;
+	unsigned long bsz = sb->s_blocksize;
+	unsigned int ofs = erofs_blkoff(sb, ctx->pos);
+	int err = 0;
+	bool initial = true;
+
+	buf.mapping = dir->i_mapping;
+	while (ctx->pos < dir->i_size) {
+		erofs_off_t dbstart = ctx->pos - ofs;
+		struct erofs_dirent *de;
+		unsigned int nameoff, maxsize;
+
+		de = erofs_bread(&buf, dbstart, true);
+		if (IS_ERR(de)) {
+			erofs_err(sb, "failed to readdir of logical block %llu of nid %llu",
+				  erofs_blknr(sb, dbstart), EROFS_I(dir)->nid);
+			err = PTR_ERR(de);
+			break;
+		}
+
+		nameoff = le16_to_cpu(de->nameoff);
+		maxsize = min_t(unsigned int, dir->i_size - dbstart, bsz);
+		if (!nameoff || nameoff > maxsize || nameoff >= bsz ||
+		    (nameoff % sizeof(*de))) {
+			erofs_err(sb, "invalid de[0].nameoff %u @ nid %llu",
+				  nameoff, EROFS_I(dir)->nid);
+			err = -EFSCORRUPTED;
+			break;
+		}
+
+		/* search dirents at the arbitrary position */
+		if (initial) {
+			initial = false;
+			ofs = roundup(ofs, sizeof(struct erofs_dirent));
+			ctx->pos = dbstart + ofs;
+		}
+
+		err = erofs_fill_dentries(dir, ctx, de, (void *)((char *)de + ofs),
+					  nameoff, maxsize);
+		if (err)
+			break;
+		ctx->pos = dbstart + maxsize;
+		ofs = 0;
+	}
+	erofs_put_metabuf(&buf);
+	if (EROFS_I(dir)->dot_omitted && ctx->pos == dir->i_size) {
+		if (!dir_emit_dot(f, ctx))
+			return 0;
+		++ctx->pos;
+	}
+	return err < 0 ? err : 0;
+}

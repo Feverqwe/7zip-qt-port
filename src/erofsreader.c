@@ -339,37 +339,11 @@ int erofs_read_directory(struct erofs_file *file, void *context,
     struct inode *inode = &file->inode.vfs_inode;
     if (!S_ISDIR(inode->i_mode))
         return -EINVAL;
-    const unsigned int blocksize = i_blocksize(inode);
-    u8 *block = malloc(blocksize);
-    if (!block)
-        return -ENOMEM;
     struct erofs_directory_emitter emitter = {context, emit, 0};
     struct dir_context ctx = {0, &emitter, erofs_emit};
-    int error = 0;
-    for (u64 pos = 0; pos < (u64)inode->i_size; pos += blocksize) {
-        size_t size;
-        error = erofs_pread_file(file, pos, block, blocksize, &size);
-        if (error)
-            break;
-        if (size < sizeof(struct erofs_dirent)) {
-            error = -EFSCORRUPTED;
-            break;
-        }
-        struct erofs_dirent *de = (void *)block;
-        unsigned int nameoff = le16_to_cpu(de->nameoff);
-        if (!nameoff || nameoff > size || nameoff >= blocksize || nameoff % sizeof(*de)) {
-            error = -EFSCORRUPTED;
-            break;
-        }
-        error = erofs_fill_dentries(inode, &ctx, block, de, nameoff, (unsigned int)size);
-        if (error) {
-            if (emitter.result)
-                error = emitter.result;
-            break;
-        }
-    }
-    free(block);
-    return error;
+    struct file directory = {inode};
+    int error = erofs_readdir(&directory, &ctx);
+    return emitter.result ? emitter.result : error;
 }
 
 int erofs_read_xattrs(struct erofs_file *file, void *context, erofs_xattr_emit emit) {

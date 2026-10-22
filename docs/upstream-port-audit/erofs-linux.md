@@ -1,5 +1,49 @@
 # Read-only EROFS from Linux
 
+## Original directory iterator and omitted-dot handling — 2026-10-22
+
+Compared complete pinned `dir.c::erofs_readdir`/`erofs_fill_dentries`,
+`inode.c::erofs_read_inode`'s `dot_omitted` field, the shared `dir_emit_dot`
+contract, metadata-folio acquisition and C/archive enumeration consumers.
+The archive boundary had an independent block loop and omitted Linux's
+synthetic `.` entry for `EROFS_I_DOT_OMITTED_BIT` directories. This was a normal
+directory-reading gap, separate from recovery of damaged images.
+
+The original iterator is now transferred into `src/fs/erofs/dir.c`, retaining
+block/entry position handling, initial-position alignment, bounded last-block
+length, callback stop, buffer release and final synthetic-dot handling. A narrow
+file/inode and `dir_emit_dot` bridge replaces VFS file/dentry services; callback
+identifiers retain the C API's raw disk NIDs rather than VFS inode-number
+renumbering. The C entrypoint supplies its existing callback context and preserves
+nonzero callback results, including positive stops. Archive enumeration continues
+to ignore dot entries and uses opened inode metadata for actual item kinds.
+
+Kernel readahead, task-signal and scheduler services are omitted; the existing
+bounded folio reader polls archive cancellation and propagates stream failures.
+Logical final-block name-offset validation retains the prior archive guard in
+addition to Linux's block/alignment checks. Strict C byte-pointer arithmetic
+replaces GNU void-pointer arithmetic. The VFS file-operations table and seekable
+directory-handle API remain outside the whole-directory C callback boundary.
+Original source hashes and repository/revision remain in the baseline below.
+
+Public C-reader regressions cover compact/extended directories spanning two
+blocks at 512-byte, 4 KiB and 64 KiB geometry. They check disk entries followed
+by exactly one synthetic dot with the directory NID/type, callback stops on
+that synthetic entry, I/O failure and successful retry, and unchanged source
+bytes. Existing module/CLI suites cover full namespace enumeration, extraction,
+metadata, errors and cancellation. No new recovery mode or source-writing
+operation is added. Overall EROFS source closure and the parent audit remain open.
+
+Validation: `erofs_reader`, `erofs_module`, `erofs`, `upstream_baseline` and
+`upstream_inventory` passed on macOS, Linux and Windows (guest receipt
+`20261022T172733Z-a697e434`). The incremental application build passed. The
+iterator was compared again with the original for retained branches and the
+adaptations above; the existing entry parser remains unchanged. All 54 EROFS
+reference hashes match. Existing runtime snapshots, build trees and compiler
+caches were reused, and disposable EROFS fixtures were absent on all three
+platforms afterwards. No full gate, slow suite, new native mount/device check,
+UI appearance acceptance or release installation was run.
+
 ## Original shared string services — 2026-10-22
 
 Compared the complete pinned `lib/string.c::check_bytes8`/`memchr_inv`,
@@ -314,8 +358,8 @@ filesystem/format rows in the parent review remain separate work.
   that would reach the signed `1 << 31` expressions in the original bodies.
   The initial logical-cluster number uses `u64` to preserve Linux's 64-bit
   `unsigned long` behavior on Windows's LLP64 ABI.
-- `dir.c` retains `erofs_fill_dentries`; the adapter provides seekable block
-  acquisition and an enumeration callback in place of VFS/page-cache readdir.
+- `dir.c` retains `erofs_fill_dentries` and `erofs_readdir`; bounded metadata
+  folios and a file/inode/callback bridge replace VFS file/page-cache services.
 - `super.c` retains checksum verification, variable metadata acquisition and
   superblock parsing. Device slots and unified/external-device addresses are
   adapted to bounded streams; device opening is delegated to a callback.

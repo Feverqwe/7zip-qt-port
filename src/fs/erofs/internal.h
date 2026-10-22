@@ -299,7 +299,14 @@ struct dir_context {
     void *context;
     bool (*emit)(void *, const char *, unsigned int, u64, unsigned char);
 };
+struct file { struct inode *inode; };
+#define file_inode(file) ((file)->inode)
 #define dir_emit(ctx, name, len, nid, type) ((ctx)->emit((ctx)->context, name, len, nid, type))
+static inline bool dir_emit_dot(struct file *file, struct dir_context *ctx) {
+    struct inode *inode = file_inode(file);
+    return dir_emit(ctx, ".", 1,
+                    erofs_nid_to_ino64(EROFS_I_SB(inode), EROFS_I(inode)->nid), DT_DIR);
+}
 #define EROFS_MAP_MAPPED 0x0001
 #define EROFS_MAP_META 0x0002
 #define EROFS_MAP_PARTIAL_MAPPED 0x0004
@@ -353,4 +360,5 @@ int z_erofs_load_zstd_config(struct super_block *, struct erofs_super_block *, v
 int erofs_decode_extent(struct inode *, struct erofs_map_blocks *, const void *, void *);
 int erofs_fill_dentries(struct inode *, struct dir_context *, void *, struct erofs_dirent *,
                         unsigned int, unsigned int);
+int erofs_readdir(struct file *, struct dir_context *);
 #endif

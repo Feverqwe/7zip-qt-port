@@ -79,11 +79,14 @@ struct Entries {
         unsigned type;
     };
     QMap<QByteArray, Entry> values;
+    QList<QByteArray> order;
     int stop = 0;
+    QByteArray stopOnName;
     static int Emit(void *opaque, const char *name, size_t length, uint64_t nid, unsigned type) {
         auto &self = *static_cast<Entries *>(opaque);
         self.values.insert(QByteArray(name, qsizetype(length)), {nid, type});
-        return self.stop;
+        self.order.append(QByteArray(name, qsizetype(length)));
+        return self.stopOnName.isEmpty() || self.order.last() == self.stopOnName ? self.stop : 0;
     }
 };
 
@@ -109,6 +112,68 @@ qsizetype regularEntry(const QByteArray &bytes) {
 class ErofsReaderTests final : public QObject {
     Q_OBJECT
   private slots:
+    void omittedDotInMultiblockDirectory_data() {
+        QTest::addColumn<unsigned>("bits");
+        QTest::addColumn<bool>("extended");
+        for (unsigned bits : {9U, 12U, 16U})
+            for (bool extended : {false, true}) {
+                const auto row = QByteArray::number(bits) + '-' + QByteArray::number(extended);
+                QTest::newRow(row.constData()) << bits << extended;
+            }
+    }
+    void omittedDotInMultiblockDirectory() {
+        QFETCH(unsigned, bits);
+        QFETCH(bool, extended);
+        const unsigned block = 1U << bits, root = 4 * block, directory = 5 * block;
+        Reader reader;
+        reader.bytes = QByteArray(7 * block, '\0');
+        auto u16 = [&](unsigned at, quint16 value) {
+            qToLittleEndian(value, reader.bytes.data() + at);
+        };
+        auto u32 = [&](unsigned at, quint32 value) {
+            qToLittleEndian(value, reader.bytes.data() + at);
+        };
+        u32(1024, 0xe0f5e1e2);
+        reader.bytes[1036] = char(bits);
+        u32(1040, 2);
+        u32(1060, 7);
+        u32(1064, 4);
+        u16(root, 16 | unsigned(extended)); // DOT_OMITTED, flat plain directory
+        u16(root + 4, 0040755);
+        u32(root + 8, block + 16);
+        u32(root + 16, 5);
+        u16(root + 128 + 4, 0100644);
+        u16(directory + 8, 12);
+        reader.bytes[directory + 10] = 2;
+        std::memcpy(reader.bytes.data() + directory + 12, "..", 2);
+        u32(directory + block, 4); // node NID, relative to metadata block
+        u16(directory + block + 8, 12);
+        reader.bytes[directory + block + 10] = 1;
+        std::memcpy(reader.bytes.data() + directory + block + 12, "node", 4);
+        const auto original = reader.bytes;
+        QCOMPARE(reader.Open(), 0);
+        Entries entries;
+        QCOMPARE(erofs_read_directory(reader.root.get(), &entries, Entries::Emit), 0);
+        QCOMPARE(entries.order, (QList<QByteArray>{"..", "node", "."}));
+        QCOMPARE(entries.values["."].nid, quint64(0));
+        QCOMPARE(entries.values["."].type, 4U); // Linux DT_DIR
+        QCOMPARE(entries.values["node"].nid, quint64(4));
+        for (int stop : {7, -ECANCELED}) {
+            Entries stopped;
+            stopped.stop = stop;
+            stopped.stopOnName = ".";
+            QCOMPARE(erofs_read_directory(reader.root.get(), &stopped, Entries::Emit), stop);
+            QCOMPARE(stopped.order, entries.order);
+        }
+        reader.failAt = directory + block;
+        Entries failed;
+        QCOMPARE(erofs_read_directory(reader.root.get(), &failed, Entries::Emit), -EIO);
+        reader.failAt = UINT64_MAX;
+        Entries retried;
+        QCOMPARE(erofs_read_directory(reader.root.get(), &retried, Entries::Emit), 0);
+        QCOMPARE(retried.order, entries.order);
+        QCOMPARE(reader.bytes, original);
+    }
     void volumeUuidIsPreserved() {
         Reader reader;
         reader.bytes = erofsSpecialImage(0, 0100000, 0, 0);
