@@ -2,13 +2,20 @@
 
 ## Source comparison
 
+2026-10-22: общий `C/XzDec.c` и `C/Xz.h` также перенесены из exact baseline
+в `src/C/`. Добавлен отдельный one-stream entry point для
+[SquashFS compressed blocks](squashfs-linux.md#завершение-compressed-block-на-первом-stream-2026-10-22).
+Существующие interfaces сохраняют полное чтение concatenated XZ и padding;
+ST/MT, filters/checks и общий parser используются без второго decoder.
+Оба engines, ZIP и initramfs consumers получают одну реализацию через manifest.
+
 7-Zip: <https://github.com/ip7z/7zip.git>, commit
 `9128b80e3a471108678e2b3ec3c985861c8d7b0f`.
 Полный `CPP/7zip/Archive/XzHandler.cpp` скопирован в `src/`; reusable
 `C/XzIn.c` и `CPP/7zip/Compress/XzDecoder.cpp` перемещены из exact baseline
 в adapted под теми же upstream-relative paths. Сохранены notices, язык C,
 parser, block cache, decoder, metadata, encoding/update и module boundaries.
-[Manifest](../upstream-baseline.json) включает все три unit в overlays обоих
+[Manifest](../upstream-baseline.json) включает adapted units в overlays обоих
 shipped engines; локальный ZIP consumer использует тот же adapted decoder.
 
 До изменений сверены полные handler, backward/index reader и C++ decoder с

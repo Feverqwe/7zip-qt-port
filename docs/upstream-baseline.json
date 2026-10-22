@@ -4,6 +4,8 @@
   "revision": "9128b80e3a471108678e2b3ec3c985861c8d7b0f",
   "overrides": {},
   "runtime_adapted": [
+    "src/C/Xz.h",
+    "src/C/XzDec.c",
     "src/C/XzIn.c",
     "src/CPP/7zip/Archive/ApmHandler.cpp",
     "src/CPP/7zip/Archive/Base64Handler.cpp",
@@ -118,11 +120,9 @@
     "third_party/7zip/C/Xxh64.c",
     "third_party/7zip/C/Xxh64.h",
     "third_party/7zip/C/Xz.c",
-    "third_party/7zip/C/Xz.h",
     "third_party/7zip/C/XzCrc64.c",
     "third_party/7zip/C/XzCrc64.h",
     "third_party/7zip/C/XzCrc64Opt.c",
-    "third_party/7zip/C/XzDec.c",
     "third_party/7zip/C/XzEnc.c",
     "third_party/7zip/C/XzEnc.h",
     "third_party/7zip/C/ZstdDec.c",
@@ -470,6 +470,8 @@
     "third_party/7zip/License.txt"
   ],
   "adapted": [
+    "src/C/Xz.h",
+    "src/C/XzDec.c",
     "src/C/XzIn.c",
     "src/CPP/7zip/Archive/ApmHandler.cpp",
     "src/CPP/7zip/Archive/Base64Handler.cpp",

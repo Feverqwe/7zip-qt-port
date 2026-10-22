@@ -4,7 +4,6 @@
 #include "Windows/PropVariant.h"
 #include <QFile>
 #include <QProcess>
-#include <QStandardPaths>
 #include <QTemporaryDir>
 #include <QtTest>
 
@@ -38,7 +37,7 @@ QByteArray bytes(const QString &path) {
 
 class NativeZipWriterTests final : public QObject {
     Q_OBJECT
-    QString engine_;
+    QString engine_{QString::fromUtf8(SEVENZIP_ZIP_VERIFY_ENGINE)};
     bool run(const QStringList &args, const QString &directory = {}) {
         QProcess process;
         if (!directory.isEmpty())
@@ -48,10 +47,6 @@ class NativeZipWriterTests final : public QObject {
     }
 
   private slots:
-    void initTestCase() {
-        engine_ = QStandardPaths::findExecutable("7zz");
-        QVERIFY2(!engine_.isEmpty(), "Official engine required for independent ZIP verification");
-    }
     void commentRoundTrip_data() {
         QTest::addColumn<bool>("encrypted");
         QTest::addColumn<QString>("outcome");

@@ -3851,6 +3851,8 @@ if(BUILD_TESTING)
     set_tests_properties(native_comment PROPERTIES TIMEOUT 30 ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
     target_include_directories(native_zip_writer_tests PRIVATE src)
     target_link_libraries(native_zip_writer_tests PRIVATE sevenzip_zip sevenzip_location Qt6::Test)
+    target_compile_definitions(native_zip_writer_tests PRIVATE
+        "SEVENZIP_ZIP_VERIFY_ENGINE=\"${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime/7zz${CMAKE_EXECUTABLE_SUFFIX}\"")
     add_test(NAME native_zip_writer COMMAND native_zip_writer_tests -silent)
     set_tests_properties(native_zip_writer PROPERTIES TIMEOUT 30)
     qt_add_executable(native_folder_opening_tests tests/native_folder_opening_tests.cpp ${codec_update_sources})

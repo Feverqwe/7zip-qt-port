@@ -999,9 +999,9 @@ static void XzUnpacker_UpdateIndex(CXzUnpacker *p, UInt64 packSize, UInt64 unpac
 
 
 
-SRes XzUnpacker_Code(CXzUnpacker *p, Byte *dest, SizeT *destLen,
+static SRes XzUnpacker_Code2(CXzUnpacker *p, Byte *dest, SizeT *destLen,
     const Byte *src, SizeT *srcLen, int srcFinished,
-    ECoderFinishMode finishMode, ECoderStatus *status)
+    ECoderFinishMode finishMode, ECoderStatus *status, BoolInt oneStream)
 {
   const SizeT destLenOrig = *destLen;
   const SizeT srcLenOrig = *srcLen;
@@ -1321,6 +1321,11 @@ SRes XzUnpacker_Code(CXzUnpacker *p, Byte *dest, SizeT *destLen,
           p->padSize = 0;
           if (!Xz_CheckFooter(p->streamFlags, p->indexSize, p->buf))
             return SZ_ERROR_CRC;
+          if (oneStream)
+          {
+            *status = CODER_STATUS_FINISHED_WITH_MARK;
+            return SZ_OK;
+          }
         }
         break;
       }
@@ -1355,6 +1360,23 @@ SRes XzUnpacker_Code(CXzUnpacker *p, Byte *dest, SizeT *destLen,
   */
 }
 
+
+SRes XzUnpacker_Code(CXzUnpacker *p, Byte *dest, SizeT *destLen,
+    const Byte *src, SizeT *srcLen, int srcFinished,
+    ECoderFinishMode finishMode, ECoderStatus *status)
+{
+  return XzUnpacker_Code2(p, dest, destLen, src, srcLen, srcFinished,
+      finishMode, status, False);
+}
+
+SRes XzUnpacker_CodeFullOneStream(CXzUnpacker *p, Byte *dest, SizeT *destLen,
+    const Byte *src, SizeT *srcLen, ECoderStatus *status)
+{
+  XzUnpacker_Init(p);
+  XzUnpacker_SetOutBuf(p, dest, *destLen);
+  return XzUnpacker_Code2(p, NULL, destLen, src, srcLen, True,
+      CODER_FINISH_END, status, True);
+}
 
 SRes XzUnpacker_CodeFull(CXzUnpacker *p, Byte *dest, SizeT *destLen,
     const Byte *src, SizeT *srcLen,

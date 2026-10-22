@@ -261,6 +261,27 @@ class SquashfsStreamTests final : public QObject {
     }
   private slots:
     void initTestCase() { createArchive(); }
+    void compressedBlocksStopAfterOneVerifiedStream() {
+        for (const QString &codec : {QString("zlib"), QString("xz"), QString("zstd")}) {
+            for (const QString &scope : {QString("data"), QString("inode")}) {
+                const QStringList kinds = codec == "xz"
+                                              ? QStringList{"tail", "concat", "multiblock"}
+                                              : QStringList{"tail", "concat"};
+                for (const QString &kind : kinds) {
+                    loadFixture("zlib", false, "frame-" + codec + '-' + scope + '-' + kind);
+                    CMyComPtr<IInStream> input = new Input(bytes_);
+                    QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+                    auto first = stream("alpha");
+                    auto second = stream("данные 空");
+                    QVERIFY(first && second);
+                    check(first, "alpha", 0, 512);
+                    check(second, "данные 空", 0, 333);
+                    QCOMPARE(archive_->Close(), S_OK);
+                    check(first, "alpha", 200, 100);
+                }
+            }
+        }
+    }
     void dataAndFragmentCacheKeepsCompressionMode() {
         for (const QString &fault :
              {QString("cache-data-compressed"), QString("cache-fragment-compressed")}) {

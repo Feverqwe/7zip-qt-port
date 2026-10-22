@@ -31,7 +31,7 @@ add_library(sevenzip_linux_frames MODULE
     third_party/7zip/CPP/Common/StringToInt.cpp
     third_party/7zip/C/7zCrc.c third_party/7zip/C/7zCrcOpt.c
     third_party/7zip/C/CpuArch.c third_party/7zip/C/Alloc.c third_party/7zip/C/LzmaDec.c
-    third_party/7zip/C/Lzma2Dec.c third_party/7zip/C/Xz.c third_party/7zip/C/XzDec.c
+    third_party/7zip/C/Lzma2Dec.c third_party/7zip/C/Xz.c src/C/XzDec.c
     third_party/7zip/C/XzCrc64.c third_party/7zip/C/XzCrc64Opt.c
     third_party/7zip/C/Sha256.c third_party/7zip/C/Sha256Opt.c
     third_party/7zip/C/Bra.c third_party/7zip/C/Bra86.c third_party/7zip/C/BraIA64.c
@@ -48,7 +48,7 @@ add_library(sevenzip_linux_frames MODULE
     third_party/7zip/CPP/Common/IntToString.cpp
     third_party/7zip/CPP/Common/StringConvert.cpp
     third_party/7zip/CPP/Common/UTFConvert.cpp)
-target_include_directories(sevenzip_linux_frames PRIVATE src third_party/7zip/CPP
+target_include_directories(sevenzip_linux_frames PRIVATE src src/C third_party/7zip/C third_party/7zip/CPP
     third_party/7zip/CPP/7zip/Archive)
 target_compile_definitions(sevenzip_linux_frames PRIVATE SEVENZIP_LINUX_INITRAMFS Z7_ST)
 set_source_files_properties(src/CPP/7zip/Archive/GzHandler.cpp

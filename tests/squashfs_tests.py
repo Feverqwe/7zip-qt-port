@@ -63,6 +63,21 @@ class SquashfsTests(unittest.TestCase):
                     self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
                     self.assertEqual(result.stdout, expected)
 
+    def test_linux_reads_one_verified_stream_per_compressed_block(self):
+        for codec in ("zlib", "xz", "zstd"):
+            for scope in ("data", "inode"):
+                for kind in (("tail", "concat", "multiblock", "truncated", "damaged")
+                             if codec == "xz" else ("tail", "concat", "truncated", "damaged")):
+                    with self.subTest(codec=codec, scope=scope, kind=kind):
+                        data, files = volume(fault=f"frame-{codec}-{scope}-{kind}")
+                        result = self.run_image("7z", data, "x", "alpha")
+                        if kind in ("tail", "concat", "multiblock"):
+                            self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                            self.assertEqual(result.stdout, files["alpha"])
+                        else:
+                            self.assertNotEqual(result.returncode, 0)
+                            self.assertEqual(result.stdout, b"")
+
     def test_data_and_fragment_alias_preserve_each_compression_mode(self):
         for fault in ("cache-data-compressed", "cache-fragment-compressed"):
             data, files = volume(fault=fault)

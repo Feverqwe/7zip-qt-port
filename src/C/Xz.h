@@ -370,6 +370,10 @@ SRes XzUnpacker_CodeFull(CXzUnpacker *p, Byte *dest, SizeT *destLen,
     const Byte *src, SizeT *srcLen,
     ECoderFinishMode finishMode, ECoderStatus *status);
 
+/* Stop after the first verified Stream Footer; srcLen excludes any tail. */
+SRes XzUnpacker_CodeFullOneStream(CXzUnpacker *p, Byte *dest, SizeT *destLen,
+    const Byte *src, SizeT *srcLen, ECoderStatus *status);
+
 /*
 If you decode full xz stream(s), then you can call XzUnpacker_IsStreamWasFinished()
 after successful XzUnpacker_CodeFull() or after last call of XzUnpacker_Code().

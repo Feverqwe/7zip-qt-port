@@ -1700,6 +1700,12 @@ IMP_IInArchive_Props IMP_IInArchive_ArcProps
 
 HRESULT CHandler::Decompress(ISequentialOutStream *outStream, Byte *outBuf, bool *outBufWasWritten,
                              UInt32 *outBufWasWrittenSize, UInt32 inSize, UInt32 outSizeMax) {
+    const bool singleStream =
+#ifdef SEVENZIP_LINUX_SQUASHFS
+        !_h.IsOldVersion();
+#else
+        false;
+#endif
     if (outBuf) {
         *outBufWasWritten = false;
         *outBufWasWrittenSize = 0;
@@ -1727,7 +1733,7 @@ HRESULT CHandler::Decompress(ISequentialOutStream *outStream, Byte *outBuf, bool
         _zlibDecoder.Create_if_Empty();
         const UInt64 outputLimit = outSizeMax;
         RINOK(_zlibDecoder.Interface()->Code(_limitedInStream, outStream, NULL, &outputLimit, NULL))
-        if (inSize != _zlibDecoder->GetInputProcessedSize())
+        if (!singleStream && inSize != _zlibDecoder->GetInputProcessedSize())
             return S_FALSE;
     }
     /*
@@ -1843,6 +1849,10 @@ HRESULT CHandler::Decompress(ISequentialOutStream *outStream, Byte *outBuf, bool
                 sres = ZstdDec_Decode(_zstd, &state);
                 if (sres != SZ_OK)
                     break;
+#ifdef SEVENZIP_LINUX_SQUASHFS
+                if (singleStream && state.status == ZSTD_STATUS_FINISHED_FRAME)
+                    break;
+#endif
                 if (state.inLim == state.inPos && (state.status == ZSTD_STATUS_NEEDS_MORE_INPUT ||
                                                    state.status == ZSTD_STATUS_FINISHED_FRAME))
                     break;
@@ -1858,7 +1868,7 @@ HRESULT CHandler::Decompress(ISequentialOutStream *outStream, Byte *outBuf, bool
             if (sres == SZ_OK) {
                 if (state.status != ZSTD_STATUS_FINISHED_FRAME
                     // ||stat.UnexpededEnd
-                    || info.extraSize != 0 || state.inLim != state.inPos)
+                    || info.extraSize != 0 || (!singleStream && state.inLim != state.inPos))
                     sres = SZ_ERROR_DATA;
             }
             if (sres != SZ_OK)
@@ -1869,15 +1879,20 @@ HRESULT CHandler::Decompress(ISequentialOutStream *outStream, Byte *outBuf, bool
             destLen = state.winPos;
         } else {
             ECoderStatus status;
-            const SRes res = XzUnpacker_CodeFull(&_xz, dest, &destLen, _inputBuffer, &srcLen,
-                                                 CODER_FINISH_END, &status);
+            const SRes res = singleStream
+                                 ? XzUnpacker_CodeFullOneStream(&_xz, dest, &destLen, _inputBuffer,
+                                                                &srcLen, &status)
+                                 : XzUnpacker_CodeFull(&_xz, dest, &destLen, _inputBuffer, &srcLen,
+                                                       CODER_FINISH_END, &status);
             if (res != 0)
                 return SResToHRESULT(res);
-            if (status != CODER_STATUS_NEEDS_MORE_INPUT || !XzUnpacker_IsStreamWasFinished(&_xz))
+            if (status != (singleStream ? CODER_STATUS_FINISHED_WITH_MARK
+                                        : CODER_STATUS_NEEDS_MORE_INPUT) ||
+                !XzUnpacker_IsStreamWasFinished(&_xz))
                 return S_FALSE;
         }
 
-        if (inSize != srcLen)
+        if (!singleStream && inSize != srcLen)
             return S_FALSE;
         if (outBuf) {
             *outBufWasWritten = true;

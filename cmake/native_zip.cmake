@@ -23,7 +23,7 @@ add_library(sevenzip_zip STATIC
     third_party/7zip/C/Ppmd8Dec.c
     third_party/7zip/C/Ppmd8Enc.c
     third_party/7zip/C/Xz.c
-    third_party/7zip/C/XzDec.c
+    src/C/XzDec.c
     third_party/7zip/C/XzEnc.c
     src/C/XzIn.c
     third_party/7zip/C/ZstdDec.c
@@ -73,7 +73,7 @@ add_library(sevenzip_zip STATIC
     third_party/7zip/CPP/Windows/TimeUtils.cpp
 )
 set_target_properties(sevenzip_zip PROPERTIES AUTOMOC OFF AUTOUIC OFF)
-target_include_directories(sevenzip_zip PUBLIC src third_party/7zip/CPP
+target_include_directories(sevenzip_zip PUBLIC src src/C third_party/7zip/C third_party/7zip/CPP
     src/CPP/7zip/Archive/Common src/CPP/7zip/Archive/Zip)
 set_source_files_properties(src/CPP/7zip/Compress/LzmaDecoder.cpp PROPERTIES
     INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/Compress")
@@ -81,6 +81,6 @@ set_source_files_properties(src/CPP/7zip/Compress/XzDecoder.cpp PROPERTIES
     INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/Compress")
 set_source_files_properties(src/CPP/7zip/Compress/ZstdDecoder.cpp PROPERTIES
     INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/CPP/7zip/Compress")
-set_source_files_properties(src/C/XzIn.c PROPERTIES
+set_source_files_properties(src/C/XzIn.c src/C/XzDec.c PROPERTIES
     INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/third_party/7zip/C")
 target_link_libraries(sevenzip_zip PUBLIC sevenzip_common)

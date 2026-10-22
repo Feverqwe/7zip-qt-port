@@ -2,12 +2,12 @@
 // Single-member stream boundaries around the original SDK decoders.
 #include "initramfsdecoders.h"
 #include "../third_party/7zip/C/Alloc.h"
-#include "../third_party/7zip/C/Xz.h"
 #include "../third_party/7zip/C/ZstdDec.h"
 #include "7zip/Common/CWrappers.h"
 #include "7zip/Common/LimitedStreams.h"
 #include "7zip/Common/StreamUtils.h"
 #include "7zip/Compress/BZip2Decoder.h"
+#include "C/Xz.h"
 #include "linuxframestream.h"
 #include <algorithm>
 #include <memory>

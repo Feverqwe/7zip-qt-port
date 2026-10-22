@@ -5,6 +5,55 @@ Scope входит в [общую проверку форматов](filesystems
 современный LZO и проверки compressor options через отдельный format-модуль.
 Полная актуализация SquashFS read features по Linux ещё продолжается.
 
+## Завершение compressed block на первом stream, 2026-10-22
+
+Сверены полные pinned Linux `zlib_wrapper.c`, `xz_wrapper.c`,
+`zstd_wrapper.c`, `block.c` и decompressor setup/options с SDK `Decompress`,
+Zlib checksum wrapper, `C/XzDec.c` ST/MT/default/one-buffer interfaces,
+`C/ZstdDec.c` frame status/result reporting и metadata/data consumers.
+Linux baseline — `58161ead29e50d70a317ea26b472e0c7508e69da`, SDK —
+`9128b80e3a471108678e2b3ec3c985861c8d7b0f`; retrieval links ниже.
+Linux wrappers завершаются на первом stream/frame end. Portable adapter
+требовал полного расходования packed input либо продолжал следующие streams,
+из-за чего доступные Linux данные могли отклоняться или смешиваться с хвостом.
+
+GPL v4 adapter теперь завершает Zlib/XZ/Zstd на первом проверенном stream.
+Сохраняются checksums, header/Index/footer checks, output bounds и ошибки
+незавершённого либо повреждённого первого stream; последующие bytes не
+декодируются в его результат. LZ4/LZO сохраняют исходные full-input contracts.
+Legacy/core-only SquashFS framing не расширялся. Нового ограничения открытия,
+режима неподтверждённых данных или обхода source/path bounds не введено.
+
+В SDK нет готового вызова, останавливающего полное XZ-декодирование после
+первого verified footer: существующие full/partial interfaces продолжают
+padding и следующие streams, а random-block interface не проверяет stream
+Index/footer. Поэтому полные `C/XzDec.c` и `C/Xz.h` перемещены в `src/C/`;
+единственный parser получил узкий one-stream entry point и возврат после
+существующей footer check. Default public entry points вызывают то же тело
+с прежним продолжением. Disk parsing, filters, checks, ST/MT branches не
+переписаны. C язык, notices и upstream paths сохранены; manifests/overlays
+обоих engines и все локальные consumers используют одну реализацию.
+
+CLI/ABI regressions покрывают Zlib/XZ/Zstd data и inode metadata с произвольным
+хвостом и вторым stream, independent Unicode sibling и retained stream.
+XZ дополнительно проверяется с несколькими blocks, включая zero-output
+blocks. Повреждение или обрыв первого stream дают ошибку без ложного payload.
+Native Linux `6.8.0-147-generic` подтвердил все 14 положительных controls
+(`20261022T041203Z-98c85159`), loop,ro,nosuid,nodev,noexec; source hashes
+сохранены, mounts/temp очищены, одноразовый helper удалён. Native kernel
+и pinned source остаются разными evidence. Zstd data fixture использует
+RLE frame, помещающийся в expected output capacity native direct reader.
+
+Тринадцать focused CLI/ABI/C API/shared-consumer/source suites прошли на
+macOS/Linux за 6,06/11,96 с. После compile-time изоляции single-stream branch
+от core-only MSVC constant-condition warning повторены затронутые SquashFS
+три suites на macOS/Linux за 6,45/6,00 с; Linux receipt
+`20261022T041441Z-bdfecd7e`. На Windows все тринадцать прошли за 74,02 с
+(`20261022T041439Z-5cad7a16`). Source baseline verification и incremental
+macOS app build прошли. ZIP writer validation теперь использует подготовленный
+official runtime проекта, без зависимости от установленного через PATH `7zz`.
+Full/slow suites, физические устройства и native UI не проверялись.
+
 ## Представление данных в block cache, 2026-10-22
 
 Повторно сверены Linux `block.c:squashfs_read_data`, `file.c` regular/fragment

@@ -19,6 +19,8 @@ def metadata(data, compressed=False):
 
 
 def volume(fault="", compressed=False, no_fragments=False, codec="zlib", xattrs=False, export=False):
+    if fault.startswith("frame-"):
+        return framed_volume(fault)
     cache_alias = fault in ("cache-data-compressed", "cache-fragment-compressed")
     if cache_alias:
         compressed = fault == "cache-data-compressed"
@@ -372,6 +374,60 @@ def volume(fault="", compressed=False, no_fragments=False, codec="zlib", xattrs=
         struct.pack_into("<Q", image, ids_table + delta, ids_metadata + delta)
     image += bytes((-len(image)) % 4096)
     return bytes(image), dict(zip(names, (first, second, b"alpha", first))) if not no_fragments else {}
+
+
+def framed_volume(fault):
+    import lzma
+    from zstd_fixture import raw
+    _, codec, scope, kind = fault.split("-")
+    encode = {"zlib": zlib.compress,
+              "xz": lambda data: lzma.compress(data, check=lzma.CHECK_CRC32,
+                                               filters=[{"id": lzma.FILTER_LZMA2, "dict_size": BLOCK}]),
+              "zstd": lambda data: raw(data, rle=len(set(data)) == 1)}[codec]
+
+    def packet(data, selected):
+        packed = bytearray(encode(data))
+        if selected:
+            if kind == "multiblock":
+                from xz_fixture import multiple
+                packed = bytearray(multiple(data, zero_blocks=True))
+            if kind == "truncated":
+                return bytes(packed[:-1])
+            if kind == "damaged":
+                packed[-1 if codec == "zlib" else -12 if codec == "xz" else 0] ^= 1
+            packed += encode(b"unrelated second stream") if kind == "concat" else b"unused tail"
+        return bytes(packed)
+
+    files = {"alpha": b"A" * 512, "данные 空": b"B" * 333}
+    image, inodes, directory = bytearray(96), bytearray(), bytearray()
+
+    def base(kind, number):
+        return struct.pack("<HHHHII", kind, 0o755, 0, 0, 0, number)
+
+    for number, (name, data) in enumerate(files.items(), 1):
+        start = len(image)
+        packed = packet(data, scope == "data" and number == 1)
+        image += packed
+        offset = len(inodes)
+        inodes += base(2, number) + struct.pack("<IIIII", start, 0xffffffff, 0, len(data), len(packed))
+        encoded = name.encode()
+        directory += struct.pack("<IIIHHHH", 0, 0, number, offset, 0, 2, len(encoded) - 1) + encoded
+    root = len(inodes)
+    inodes += base(1, 3) + struct.pack("<IIHHI", 0, 2, len(directory) + 3, 0, 3)
+    inode_start = len(image)
+    packed = packet(inodes, scope == "inode")
+    image += struct.pack("<H", len(packed)) + packed
+    directory_start = len(image)
+    image += metadata(directory)
+    ids_metadata = len(image)
+    image += metadata(struct.pack("<I", 1000))
+    ids_table = len(image)
+    image += struct.pack("<Q", ids_metadata)
+    method = {"zlib": 1, "xz": 4, "zstd": 6}[codec]
+    struct.pack_into("<5I6H8Q", image, 0, 0x73717368, 3, 0, BLOCK, 0, method, 13, 0, 1, 4, 0,
+                     root, len(image), ids_table, INVALID, inode_start, directory_start, INVALID, INVALID)
+    image += bytes((-len(image)) % 4096)
+    return bytes(image), files
 
 
 def special_inode_volume(xattrs):
