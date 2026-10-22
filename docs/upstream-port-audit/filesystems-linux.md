@@ -79,7 +79,7 @@ filesystem UI; физические носители и системная ав�
 | Область engine | Эталон Linux | Работа |
 | --- | --- | --- |
 | exFAT/TexFAT | `fs/exfat` | [Read-side source audit закрыт](exfat-linux.md#read-side-source-audit-closure-2026-10-21): C readers, metadata/chain/stream границы, исправления и ABI/CLI/backend consumers; runtime и archive/platform границы записаны отдельно. |
-| FAT12/16/32 | `fs/fat` | Boot geometry, FAT и длинные имена, цепочки и извлечение. |
+| FAT12/16/32 | `fs/fat` | [Read-side source audit модуля закрыт](fat-linux.md#итоговая-сверка-read-side-source-scope--2026-10-22): BPB, FAT/namespace, NLS/timestamps, metadata и partial file streams; standalone/profile и runtime границы записаны отдельно. |
 | ext2/3/4 | `fs/ext2`, `fs/ext4` | Superblock/features, inode, directory, extents/indirect/inline data и sparse reads. |
 | NTFS | `fs/ntfs3` | Boot/MFT, attributes/runlists, directories, sparse/compressed file reads. |
 | HFS/HFS+ | `fs/hfs`, `fs/hfsplus` | [Read-side source audit закрыт](hfs-linux.md#итоговая-сверка-read-side-source-scope--2026-10-21): volume/B-tree, extents, имена, metadata и data/resource forks; archive/platform и runtime границы записаны отдельно. |

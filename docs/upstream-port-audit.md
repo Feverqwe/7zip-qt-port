@@ -81,7 +81,8 @@ rg -n --no-ignore -F 'CAgent::Open' docs/archive/qt-port/upstream-port-audit/ do
   — sparse/extent streams, Linux metadata checksums, inline data, геометрия и fs-verity.
 
 - [FAT12/16/32 по Linux](upstream-port-audit/fat-linux.md)
-  — BPB, восстановление имён и чтение по размеру файла в обоих engines.
+  — BPB, NLS, metadata/partial streams и source audit модуля;
+  общие исправления standalone и границы профилей указаны отдельно.
 
 - [cramfs по Linux](upstream-port-audit/cramfs-linux.md)
   — C read path, metadata/stream границы, ограниченное чтение и source audit.

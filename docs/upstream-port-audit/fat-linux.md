@@ -5,6 +5,64 @@ The integrated iterations cover BPB-based FAT12/16/32 geometry, directory
 and file reads, then DOS 1.x recognition, names, dates and archive consumers.
 Other filesystem and shared-format rows remain in the active goal.
 
+## Итоговая сверка read-side source scope — 2026-10-22
+
+Сверка чтения FAT12/16/32 с Linux
+`58161ead29e50d70a317ea26b472e0c7508e69da` завершена для модуля приложения.
+Повторно проверены все 21 reference hash из существующего
+[manifest](../fat-linux-baseline.json); расхождений нет. Repositories, SDK
+revision, transferred bodies и адаптации указаны в
+[sources](#sources-and-retained-ownership) и
+[compatibility module](#linux-compatibility-module). Это итог source comparison;
+runtime evidence и его ограничения приведены отдельно ниже.
+
+В пределах существующего inventory проверены полные read bodies, типы,
+зависимости и вызывающие функции:
+
+| Reference units | Подключённое чтение и граница переноса |
+| --- | --- |
+| `fs/fat/inode.c`, `include/linux/msdos_fs.h`, `include/uapi/linux/msdos_fs.h` | BPB/DOS 1.x, выбор FAT12/16/32, logical sector/cluster geometry, fixed/clustered root, FAT-capacity cap, volume ID и dirty state. Дисковые определения сохранены; kernel inode publication, mount lifecycle и writeback не переносятся. |
+| `fs/fat/fatent.c`, `cache.c`, `fat.h` | FAT12 entries через границу сектора, FAT16/28-bit FAT32, FREE/BAD/EOF, cluster mapping, file-size bounds и подсчёт свободных кластеров сопоставлены с исходным SDK reader. Kernel buffer/LRU/locking services заменены существующими SDK table/stream helpers; allocation, mirroring, discard и изменение цепочек исключены как запись. |
+| `fs/fat/dir.c`, `namei_msdos.c`, `namei_vfat.c` | Directory traversal, end markers, deleted/volume/dot records, LFN restart/order/checksum, aliases и short-name flags учтены. Enumeration и archive item properties подключены; dentry revalidation, lookup/hash/casefold и mount-selected MSDOS presentation относятся к VFS, создание/rename/unlink — к записи. |
+| `fs/fat/file.c`, `misc.c`, `nfs.c` | Stored attributes, file size, creation/access/modification times и file reads подключены. UID/GID/mode masks, NFS handles/generations, mmap и generic VFS file operations не добавляют дискового декодера. Timestamp encoding/update, ioctl setters, truncate и fsync исключены как изменение источника или kernel services. |
+| `fs/nls/nls_base.c`, `nls_cp437.c`, `include/linux/nls.h`, `fs/nls/Kconfig` | CP437 conversion/case tables, UTF-16 surrogate handling и UTF-8 output перенесены вместе с используемыми зависимостями. Kernel module registration и выбор mount codepage/iocharset заменены описанной archive policy; произвольные пользовательские mount-настройки не заявляются. |
+| `fs/fat/Kconfig`, `Makefile`, `.kunitconfig`, `fat_test.c`, `LICENSES/exceptions/Linux-syscall-note` | Проверены состав kernel modules, defaults, checksum/cluster-address helpers и read timestamp cases. Kernel build/KUnit harness и write timestamp cases не переносятся; source notices и syscall exception сохранены. |
+
+Повторное сравнение 17 перенесённых функций подтвердило 15 неизменённых тел
+после исключения комментариев, пробелов и переименования 16-bit NLS type.
+Два остальных отличия уже учтены в адаптации: DOS 1.x BPB получает media byte
+из той же Linux floppy table, а short-name converter имеет cast строкового
+литерала для host C compiler. CP437 tables и UAPI disk layouts также сверены.
+Нового отсутствующего disk-read feature этого baseline не обнаружено.
+
+Archive recovery отличается от kernel mount: поддерживаются явно обозначенные
+неполные каталоги/цепочки, локальные FAT/data I/O failures и file/directory
+overlap. Доступные bytes не означают проверенную согласованность metadata;
+per-file DataError сохраняется, Abort/OOM и consumer errors не подавляются.
+Ограничения требуют согласия для выбранного открытия и сохраняют видимый режим.
+Проверки границ, путей и отсутствие записи/replay остаются обязательными.
+Active-FAT selection — сохранённое SDK расширение; Linux читает первую FAT.
+Resource/cycle guards и невозможность гарантировать полный namespace
+повреждённого тома не скрыты этим source closure.
+
+`SEVENZIP_LINUX_FAT` включён для отдельного GPL format module на всех трёх ОС.
+Dynamic engine исключает дублирующую встроенную регистрацию и использует этот
+модуль. Standalone `7zz` получает общие SDK исправления, но сохраняет classic
+reader без Linux C linkage и дополнительных module recovery features; его
+полная эквивалентность модулю не заявляется. MBR consumer компилирует только
+FAT probe. Условия сборки обозначают dependency/profile boundary, а не host OS.
+
+Последние функциональные изменения проверены CLI/source, module ABI,
+directory/table/stream и limited-read UI suites на macOS, Linux и Windows;
+receipts находятся в соответствующих разделах. Native Linux loop checks
+подтверждают конкретные synthetic fixtures, но используют гостевой kernel,
+а не закреплённую source revision. `fat_maximum` остаётся исключённым по
+решению пользователя: максимальная FAT32 геометрия проверена по source,
+runtime acceptance этой границы не установлена. Новых runtime запусков для
+этого documentation-only итога нет; физические устройства, full/slow suites
+и release installation не проверялись. Общая задача остальных форматов остаётся
+открытой.
+
 ## Per-file source I/O failures during extraction — 2026-10-22
 
 Recompared pinned Linux cluster/bmap failure boundaries and inode read callers
