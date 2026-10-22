@@ -4,6 +4,9 @@ Current status handling includes [limited read-only access](#limited-read-only-s
 for dirty/media-failure volumes; the original clean-only TexFAT boundary below
 is retained as dated evidence.
 
+The boot reader now uses the original shared Linux string scanner; source scope
+and validation are recorded with the [shared string-service transfer](erofs-linux.md#original-shared-string-services--2026-10-22).
+
 ## Sources and reproducible baseline
 
 Selected on 2026-10-17 from the current mainline Linux tree, rather than the

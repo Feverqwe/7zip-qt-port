@@ -2,7 +2,18 @@
 /* linux/lib/string.c
  * Copyright (C) 1991, 1992 Linus Torvalds
  * Selected memchr_inv read helper; standard libc supplies other routines. */
-#include "crypto/userspace.h"
+#include "../include/linux/string.h"
+#include <limits.h>
+#include <stdint.h>
+
+typedef uint8_t u8;
+typedef uint64_t u64;
+#if ULONG_MAX == 0xffffffffUL
+#define BITS_PER_LONG 32
+#else
+#define BITS_PER_LONG 64
+#endif
+#define EXPORT_SYMBOL(name)
 
 static void *check_bytes8(const u8 *start, u8 value, unsigned int bytes)
 {

@@ -1,5 +1,48 @@
 # Read-only EROFS from Linux
 
+## Original shared string services — 2026-10-22
+
+Compared the complete pinned `lib/string.c::check_bytes8`/`memchr_inv`,
+`mm/util.c::__kmemdup_nul`/`kstrndup`/`kmemdup_nul`, their declarations in
+`include/linux/string.h`, and the EROFS compression-padding, volume-name and
+inline-symlink consumers. The reader previously supplied independent versions
+of these services despite usable original Linux bodies.
+
+EROFS now compiles the existing original `lib/string.c` scanner, also used by
+ext crypto. Independent exFAT boot-field and ext fs-verity reserved/tail-byte
+scanners are removed and their consumers use that same implementation. A
+selected declaration retains the original header path. The scanner's existing
+strict-C byte-pointer arithmetic and LLP64 `uintptr_t` alignment adaptation are
+preserved; its private scalar/export bridge no longer includes crypto services.
+All scanner bodies otherwise match the pinned reference. Each separate module
+links its own required object; this does not add a cross-module runtime service.
+
+The original duplication helpers are transferred together into `src/mm/util.c`.
+Their bodies are unchanged except that `__kmemdup_nul` retains the archive
+bridge's existing `SIZE_MAX` allocation-overflow rejection. Host allocation
+replaces `kmalloc_track_caller`, GFP flags are ignored, and export annotations
+are omitted. A pointer-sign cast at the volume-name call accommodates the
+original `const char *` parameter. Unused kernel memory-management and string
+services are omitted. Complete reference units and selected/adapted scope are
+recorded in the EROFS, exFAT and ext baselines at the repository/revision below.
+
+This removes source-transfer debt; no incorrect file bytes were established in
+the replaced implementations. Existing behavior suites cover extraction of
+compressed files and symlinks, volume metadata, malformed compressed input,
+exFAT boot validation and fs-verity verification/error propagation. No new
+recovery mode, source write, repair or journal replay is introduced. Overall
+EROFS source closure and the parent filesystem audit remain open.
+
+Validation: `erofs_reader`, `erofs_module`, `erofs`, `exfat`, `exfat_backend`,
+`ext_stream`, `ext_fscrypt`, `fsverity_signature`, `fscrypt_crypto`,
+`upstream_baseline` and `upstream_inventory` passed on macOS, Linux and Windows
+(guest receipt `20261022T171919Z-b1ac128e`). The incremental application build
+passed. All 54 EROFS and 304 ext reference hashes, and the added exFAT dependency
+hashes, match. Existing runtime snapshots, build trees and compiler caches were
+reused; disposable task fixtures were absent on all three platforms afterwards.
+No full gate, slow suite, new native mount/device check, UI appearance acceptance
+or release installation was run.
+
 ## Linux UUID publication and archive volume metadata — 2026-10-22
 
 Compared the pinned `super.c::erofs_read_superblock` UUID/name/geometry reads,

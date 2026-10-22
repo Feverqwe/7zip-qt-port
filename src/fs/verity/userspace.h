@@ -4,6 +4,7 @@
 #define SEVENZIP_FSVERITY_USERSPACE_H
 #include "../ext4/ext4.h"
 #include "../ext4/ext4_extents.h"
+#include "../../include/linux/string.h"
 #include "../../../third_party/7zip/C/Sha256.h"
 #include "../../../third_party/7zip/C/Sha512.h"
 /* Windows SAL defines this annotation name, also used by the Linux disk ABI. */
@@ -78,9 +79,6 @@ static inline u64 le64_to_cpu(__le64 value) {
     return (u64)ext_load_le32(&value) | (u64)ext_load_le32((const char *)&value + 4) << 32;
 }
 static inline unsigned int ilog2(u64 n) { unsigned int result = 0; while (n >>= 1) ++result; return result; }
-static inline const void *memchr_inv(const void *data, int value, size_t size) {
-    const u8 *p = data; for (size_t i = 0; i < size; ++i) if (p[i] != (u8)value) return p + i; return NULL;
-}
 static inline void *page_address(const void *page) { return (void *)page; }
 static inline const void *zero_page(void) { static const u8 zero[PAGE_SIZE] = {0}; return zero; }
 #define ZERO_PAGE(n) zero_page()

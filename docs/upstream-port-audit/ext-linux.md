@@ -6,6 +6,10 @@ tree boundaries, directory record boundaries and archive stream consumers.
 The second integrates Linux metadata and inline-data readers. The ext row remains
 open for the remaining read features listed below.
 
+fs-verity now reuses the original shared Linux string scanner already linked
+for fscrypt. Source scope and validation are recorded with the
+[shared string-service transfer](erofs-linux.md#original-shared-string-services--2026-10-22).
+
 ## Advisory directory file types and readable namespace recovery — 2026-10-22
 
 Compared the pinned ext4 `get_dtype`, normal/inline/htree directory emitters,

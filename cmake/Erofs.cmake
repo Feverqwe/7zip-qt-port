@@ -2,6 +2,7 @@
 add_library(sevenzip_erofs_core STATIC
     src/erofsreader.c src/fs/erofs/data.c src/fs/erofs/dir.c
     src/fs/erofs/xattr.c src/fs/posix_acl.c src/fs/fs_dirent.c src/lib/xxhash.c
+    src/lib/string.c src/mm/util.c
     src/fs/erofs/inode.c src/fs/erofs/super.c src/fs/erofs/zmap.c
     src/fs/erofs/decompressor.c src/fs/erofs/decompressor_lzma.c
     src/fs/erofs/decompressor_deflate.c src/fs/erofs/decompressor_zstd.c

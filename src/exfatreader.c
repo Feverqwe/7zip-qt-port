@@ -48,14 +48,6 @@ int sb_set_blocksize(struct super_block *sb, unsigned int size) {
     return size;
 }
 
-const void *memchr_inv(const void *data, int value, size_t size) {
-    const unsigned char *p = data;
-    for (size_t i = 0; i < size; i++)
-        if (p[i] != (unsigned char)value)
-            return p + i;
-    return NULL;
-}
-
 int exfat_utf16_to_nls(struct super_block *sb, struct exfat_uni_name *name,
                         unsigned char *buffer, int length) {
     (void)sb;

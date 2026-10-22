@@ -157,7 +157,7 @@ int erofs_read_superblock(struct super_block *sb)
 	super_set_uuid(sb, (void *)dsb->uuid, sizeof(dsb->uuid));
 
 	if (dsb->volume_name[0]) {
-		sbi->volume_name = kstrndup(dsb->volume_name,
+		sbi->volume_name = kstrndup((const char *)dsb->volume_name,
 					    sizeof(dsb->volume_name), GFP_KERNEL);
 		if (!sbi->volume_name) {
 			ret = -ENOMEM;

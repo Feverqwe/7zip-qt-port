@@ -407,6 +407,7 @@
     "include/linux/namei.h",
     "include/linux/oid_registry.h",
     "include/linux/siphash.h",
+    "include/linux/string.h",
     "include/linux/verification.h",
     "include/uapi/linux/fscrypt.h",
     "include/uapi/linux/fsverity.h",

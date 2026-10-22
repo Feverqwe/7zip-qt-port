@@ -3,6 +3,7 @@ add_library(sevenzip_exfat MODULE
     src/exfathandler.cpp src/exfatmodule.cpp src/exfatreader.c
     src/fs/exfat/dir.c src/fs/exfat/fatent.c src/fs/exfat/super.c
     src/fs/exfat/balloc.c src/fs/exfat/misc.c src/kernel/time/time.c src/lib/hweight.c
+    src/lib/string.c
     third_party/7zip/CPP/7zip/Archive/ArchiveExports.cpp
     third_party/7zip/CPP/7zip/Common/StreamUtils.cpp
     third_party/7zip/CPP/7zip/Common/PropId.cpp

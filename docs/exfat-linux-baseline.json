@@ -22,7 +22,9 @@
     "kernel/time/time.c": "ebeaf97b1314be4bcc8c9f8e1f6755e5992317e74139d5f7c14d94313ea41b3e",
     "lib/hweight.c": "303e5b1657a56768bd1b640a068d8f028d5a7f35dbc469a2b279bcea6872a445",
     "include/linux/bitmap.h": "394f0003abc46eae306b4eaacf1467aaa5afed74618b2585945a5848f822d38f",
-    "include/linux/bitops.h": "fdee528a2e2a17a568d305dd40cfa6f1bea510e155a0ed32df53bfda47a45209"
+    "include/linux/bitops.h": "fdee528a2e2a17a568d305dd40cfa6f1bea510e155a0ed32df53bfda47a45209",
+    "include/linux/string.h": "4dbc380b35f81d4e3992abae48fbb23b4f392fd28f633d0d96114be166d5dfd5",
+    "lib/string.c": "708fd782a7c09e0b04b2eafa87007004ffb81283e0ac37941f59738a9288f497"
   },
   "adapted": [
     "dir.c",
@@ -31,6 +33,8 @@
     "balloc.c",
     "misc.c",
     "exfat_fs.h",
-    "exfat_raw.h"
+    "exfat_raw.h",
+    "include/linux/string.h",
+    "lib/string.c"
   ]
 }

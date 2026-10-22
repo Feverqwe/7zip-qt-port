@@ -15,21 +15,6 @@ struct erofs_file {
     u64 decoded_start, decoded_size;
 };
 
-void *kmemdup_nul(const void *data, size_t size, int flags) {
-    (void)flags;
-    if (size == SIZE_MAX)
-        return NULL;
-    char *copy = malloc(size + 1);
-    if (copy) {
-        memcpy(copy, data, size);
-        copy[size] = 0;
-    }
-    return copy;
-}
-char *kstrndup(const void *data, size_t size, int flags) {
-    const char *end = memchr(data, 0, size);
-    return kmemdup_nul(data, end ? (size_t)(end - (const char *)data) : size, flags);
-}
 int erofs_init_metabuf(struct erofs_buf *buf, struct super_block *sb, bool in_metabox) {
     struct inode *mapping = in_metabox ? EROFS_SB(sb)->metabox_inode : NULL;
     if (buf->sb != sb || buf->mapping != mapping)

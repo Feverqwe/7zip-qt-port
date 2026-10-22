@@ -39,6 +39,7 @@
     "include/linux/lz4.h": "e8f8201156a05f9e01a20487c731d99b4914c2380b09f3e562c7aae234029f57",
     "include/linux/posix_acl.h": "509ca22da6c1ba21b27a37549c29e79e75040997928992200ff303f4016dfd8a",
     "include/linux/posix_acl_xattr.h": "7889389c9ba0240eea0f51e4f9a717236d92b5e0bfd4daa4974dde26dccb954c",
+    "include/linux/string.h": "4dbc380b35f81d4e3992abae48fbb23b4f392fd28f633d0d96114be166d5dfd5",
     "include/linux/xxhash.h": "a351f69b7fa3e7117d05104917d7d58fe0bb82315057bcc10190ef3811f1c99e",
     "include/linux/xz.h": "f17a04b94fcd995111efcbb51b1e1530c882b0e84d9b524d5e674576104cf939",
     "include/uapi/linux/magic.h": "7d027aa6b313483db0c9f3fb3fef40b45be753842c5a575bdbeb96ee4c3ac31d",
@@ -49,10 +50,12 @@
     "lib/crc/gen_crc32table.c": "b2d4fe27ca5ae1cdd14bc3fc2919b62568817dd9dccd9da8a35b41a24f3df3fe",
     "lib/lz4/lz4_decompress.c": "bdbc6864ba7bc05bbaedbe21875758a83d8cec0d6db648b6b70147da4804e86a",
     "lib/lz4/lz4defs.h": "38dc425247b3dd4d9b91a634407f973921f0d9bb67892c48e810e1cf323e1456",
+    "lib/string.c": "708fd782a7c09e0b04b2eafa87007004ffb81283e0ac37941f59738a9288f497",
     "lib/xxhash.c": "fe80d5f464d91450bb0eb3c69d57093bb35f4585e0498400f6e1fa63faaef797",
     "lib/xz/xz_dec_lzma2.c": "a0ba2f918180fd09df2a330168068321c1ca5c20cdd0af9f0265a5fa59358cb9",
     "lib/xz/xz_lzma2.h": "c9b113b42fd756818f3f611dbcd73f603d76fb373d3e92d179aa1a5355d203c4",
-    "lib/xz/xz_private.h": "4a5558fb7cc43508218824745e929ed2a6c9f8ca3e0123d2c3df22025f238841"
+    "lib/xz/xz_private.h": "4a5558fb7cc43508218824745e929ed2a6c9f8ca3e0123d2c3df22025f238841",
+    "mm/util.c": "4dfcce2b8fa8f18c350565950a10248b3590e3d3c0c9335fef6d47daa7a9e1f2"
   },
   "exact": [
     "LICENSES/deprecated/0BSD",
@@ -86,13 +89,16 @@
     "include/linux/fs_dirent.h",
     "include/linux/kdev_t.h",
     "include/linux/lz4.h",
+    "include/linux/string.h",
     "include/uapi/linux/posix_acl.h",
     "include/uapi/linux/posix_acl_xattr.h",
     "lib/crc/crc32-main.c",
     "lib/crc/gen_crc32table.c",
     "lib/lz4/lz4_decompress.c",
     "lib/lz4/lz4defs.h",
-    "lib/xxhash.c"
+    "lib/string.c",
+    "lib/xxhash.c",
+    "mm/util.c"
   ],
   "generated": {
     "lib/crc/crc32table.h": {

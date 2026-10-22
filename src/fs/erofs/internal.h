@@ -11,6 +11,7 @@
 #include <errno.h>
 #include <limits.h>
 #include "../../include/linux/kdev_t.h"
+#include "../../include/linux/string.h"
 
 typedef uint8_t u8;
 typedef uint16_t u16, __le16;
@@ -329,8 +330,8 @@ static inline void erofs_printk(struct super_block *sb, const char *fmt, ...) {
 #define trace_erofs_map_blocks_enter(inode, map, flags) ((void)(inode), (void)(map), (void)(flags))
 #define trace_erofs_map_blocks_exit(inode, map, flags, err) ((void)(err))
 
-void *kmemdup_nul(const void *, size_t, int);
-char *kstrndup(const void *, size_t, int);
+char *kmemdup_nul(const char *, size_t, int);
+char *kstrndup(const char *, size_t, int);
 u32 crc32c(u32, const void *, size_t);
 void erofs_put_metabuf(struct erofs_buf *);
 void erofs_unmap_metabuf(struct erofs_buf *);

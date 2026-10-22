@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "../../include/linux/string.h"
 
 typedef uint8_t u8;
 typedef uint16_t u16;
@@ -81,7 +82,6 @@ void brelse(struct buffer_head *);
 #define buffer_uptodate(bh) ((bh) != NULL)
 int sb_set_blocksize(struct super_block *, unsigned int);
 #define sb_min_blocksize sb_set_blocksize
-const void *memchr_inv(const void *, int, size_t);
 static inline bool is_power_of_2(unsigned int n) { return n && !(n & (n - 1)); }
 static inline bool test_bit_le(unsigned int bit, const void *data) {
     return (((const uint8_t *)data)[bit / 8] & (1u << (bit % 8))) != 0;
