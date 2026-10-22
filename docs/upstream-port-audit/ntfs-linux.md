@@ -4,6 +4,59 @@
 существующее чтение boot/MFT, атрибутов, sparse и compressed streams.
 Полная актуализация NTFS по Linux ещё не завершена.
 
+## Compression and attribute-list source comparison — 2026-10-22
+
+Completed whole-unit comparison of the selected compressed-data/list component
+against Linux `58161ead29e50d70a317ea26b472e0c7508e69da`:
+`fs/ntfs3/{lznt,attrib,attrlist,frecord}.c` and
+`fs/ntfs3/lib/{decompress_common,lzx_decompress,xpress_decompress}.c`, with
+headers, tables, frame callers and archive-owned stream services. The three
+library C files match byte-for-byte; their headers change only host includes.
+In the four selected top-level C units, six of fourteen complete local bodies
+match after comments/whitespace, two have the adaptations below and six provide
+archive projection/ownership glue. This closes this component's source
+comparison, not the remaining NTFS boot/MFT, namespace, metadata and security
+components or the parent goal.
+
+| Selected group | Complete-body result and archive boundary |
+| --- | --- |
+| LZNT1 | All three selected original bodies match: pair decoding, chunk decoding and the complete decompression loop. Chunk size and offset table retain the original values. Compression/search/encoding services are omitted from this reader. |
+| WOF offsets | Complete `attr_wof_frame_info` retains both resident and paged branches, 32/64-bit tables, boundary-page reads, cache/error handling and cleanup. Added checks bound offsets to the ADS and frame before narrowing/subtraction; they do not replace the original offset decoder. |
+| Attribute lists | Complete `al_enumerate` and `al_find_ex` match. Three local functions expose bounded entry fields/iteration and unnamed sorted lookup, validating the list before the latter. Original type/name/VCN ordering and selection remain in the original lookup. |
+| Reparse/decompression dispatch | Complete `decompress_lzx_xpress` matches, including stored frames and lazy decoder allocation/error handling. `ni_parse_reparse` changes only GNU typeof to the named const reparse type. Three local functions own WOF construction, release and frame transport following original `ni_read_frame` selection/last-frame rules. |
+
+Reviewed `ntfscompat.h`/`ntfswofcompat.h`, the decoder exports and the complete
+`ntfswofstream.cpp` with those functions. Validated ADS mappings remain owned by
+the incoming SDK stream; the C adapter neither decodes another runlist nor
+implements kernel folio/DMA/locking services. Each WOF stream owns its decoder,
+offset page and input/output buffers. Synthetic page size selects offset-cache
+batching, not a different disk frame format. An offset-page source failure
+invalidates its page index before return. The C++ frame tag is invalidated
+before replacement and published only after successful decode; failed source
+operations retain their HRESULT, cancellation or allocation result. A retry
+cannot treat partially replaced buffers as a valid old frame.
+
+Traced active classic reads and WOF selection through `CMftRec::GetStream` and
+the original SDK `CInStream` consumers. The GPL active LZNT branch calls the
+original C decoder with its existing bounded frame adapter; deleted-record
+salvage retains the original SDK decoder and is not claimed as a Linux mounted
+namespace. Sparse and initialized tails are handled before decoding, and the
+decoded final tail is zeroed before publication. WOF's selected original
+XPRESS4K/8K/16K and LZX32K variants retain short final frames, last-ADS bounds,
+stored frames and explicit unsupported-format results. Fully uninitialized
+data needs no decoder. Raw ADS remain separate explicitly selected streams.
+The two-license module boundaries are owned by
+[license variants](license-variants.md); standalone does not acquire GPL WOF.
+
+Existing behavior coverage includes known compressed/stored payloads, partial
+frames/chunks, initialized tails, corrupt frame/table retries, short ADS,
+64-bit offsets crossing table pages, retained streams, missing/cancelled source
+reads and authoritative attribute-list membership. No production source changed
+in this audit-only iteration, so the passing NTFS consumer checks on the current
+sources were not repeated. All 32 pinned NTFS reference hashes match and
+`git diff --check` passed; no implementation-text regression was added. Full
+boot/runlist/record and other metadata source closure remain open.
+
 ## Исходники и границы переноса
 
 7-Zip: <https://github.com/ip7z/7zip.git>, commit
