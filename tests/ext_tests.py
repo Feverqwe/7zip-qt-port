@@ -19,7 +19,7 @@ from ext_block_fixture import BlockVolume, JournalVolume
 from ext_symlink_fixture import SymlinkVolume
 from ext_inode_fixture import inode_volume, inventory_volume
 from ext_directory_fixture import (DirectoryVolume, wide_indirect_directory_volume, type_hint_volume,
-                                   service_link_volume, parent_order_volume)
+                                   service_link_volume, parent_order_volume, conflicting_parent_volume)
 from ext_htree_fixture import HtreeVolume
 from ext_readlink_fixture import ReadlinkVolume
 
@@ -395,6 +395,41 @@ class ExtTests(unittest.TestCase):
                     listing = self.run_image(volume, command="l", name=None)
                     self.assertEqual(listing.returncode, 0, listing.stderr.decode(errors="replace"))
                     self.assertNotIn(b"Read-only limitations = ", listing.stdout)
+
+    def test_invalid_framed_entries_do_not_hide_following_readable_files(self):
+        for layout in ("ordinary", "htree", "inline"):
+            for invalid in (b"", b"bad/name", b"a\0bad", b"SELF"):
+                with self.subTest(layout=layout, invalid=invalid):
+                    volume = ModernVolume(inline=layout == "inline", indexed=layout == "htree")
+                    directory_inode = 13 if layout == "inline" else 2
+                    inode = directory_inode if invalid == b"SELF" else 12
+                    rejected = volume.dirent(inode, invalid, 16, 2 if inode == directory_inode else 1)
+                    if layout == "inline":
+                        volume.set_inline(volume.inline_dir_inode,
+                                          struct.pack("<I", 2) + rejected +
+                                          volume.dirent(12, NAME.encode(), 80))
+                        name, expected = "nested/" + NAME, volume.payload
+                    else:
+                        prefix = (volume.dirent(2, b".", 12, 2) +
+                                  volume.dirent(2, b"..", 12, 2)) if layout == "ordinary" else b""
+                        start = volume.dir_leaves[0] * volume.block_size
+                        records = prefix + rejected + volume.dirent(
+                            12, NAME.encode(), volume.block_size - 12 - len(prefix) - len(rejected))
+                        volume.data[start:start + len(records)] = records
+                        name, expected = NAME, volume.read(0, volume.size)
+                    volume.refresh()
+                    self.limited_listing(volume, (invalid, b"nested/" + invalid))
+                    result = self.run_image(volume, name=name)
+                    self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                    self.assertEqual(result.stdout, expected)
+
+    def test_conflicting_directory_alias_does_not_hide_following_file(self):
+        volume = conflicting_parent_volume()
+        self.limited_listing(volume, (b"DIRECTORY/CHILD",))
+        for name in ("ALIAS/before-error.bin", "DIRECTORY/" + NAME):
+            result = self.run_image(volume, name=name)
+            self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+            self.assertEqual(result.stdout, volume.read(0, volume.size))
 
     def test_service_links_do_not_hide_files_or_define_parent_cycles(self):
         for kind in ("self-file", "duplicate-self", "parent-file", "parent-child",

@@ -772,7 +772,7 @@ struct CInlineDirectory {
     size_t Last = 0;
     static int Emit(void *opaque, uint32_t ino, unsigned type, const char *name, unsigned len) {
         CInlineDirectory &dir = *static_cast<CInlineDirectory *>(opaque);
-        const size_t size = (8 + len + 3) & ~(size_t)3;
+        const size_t size = MyMax<size_t>(12, (8 + len + 3) & ~(size_t)3);
         if (size > dir.Data.Size() - dir.Used)
             return -1;
         Byte *p = (Byte *)dir.Data + dir.Used;
@@ -1034,22 +1034,21 @@ HRESULT CHandler::ParseDir(const Byte *p, size_t size, unsigned iNodeDir, CDirPa
             if (result)
                 return result == -ENOMEM ? E_OUTOFMEMORY : S_FALSE;
             presentedLen = (unsigned)len;
-            if (!len || memchr(name, '/', len))
-                return S_FALSE;
             item.Name.SetFrom_CalcLen((const char *)(const Byte *)name, presentedLen);
         } else
             item.Name.SetFrom_CalcLen((const char *)(record + 8), nameLen);
 
-        if (item.Name.Len() != presentedLen)
-            return S_FALSE;
+        if (item.Name.Len() != presentedLen ||
+            verify_dirent_name(item.Name.Ptr(), (int)item.Name.Len())) {
+            MarkDirectoryIncomplete(nodeDir);
+            continue;
+        }
 
         if (_isUTF) {
             // 21.07 : we force UTF8
             // _isUTF = CheckUTF8_AString(item.Name);
         }
 
-        if (verify_dirent_name(item.Name.Ptr(), (int)item.Name.Len()))
-            return S_FALSE;
         const int nodeIndex = iNode < _refs.Size() ? _refs[iNode] : -1;
         if (nodeIndex < 0) {
             MarkDirectoryIncomplete(nodeDir);
@@ -1096,22 +1095,26 @@ HRESULT CHandler::ParseDir(const Byte *p, size_t size, unsigned iNodeDir, CDirPa
             }
         }
 
-        if (iNode == iNodeDir)
-            return S_FALSE;
+        if (iNode == iNodeDir) {
+            MarkDirectoryIncomplete(nodeDir);
+            continue;
+        }
 
-        node.NumLinksCalced++;
         if (node.IsDir()) {
             if (!item.ContextAllowed)
                 return HRESULT(0x80070005L);
             if (node.ParentNode < 0)
                 node.ParentNode = (int)iNodeDir;
-            else if ((unsigned)node.ParentNode != iNodeDir)
-                return S_FALSE;
+            else if ((unsigned)node.ParentNode != iNodeDir) {
+                MarkDirectoryIncomplete(nodeDir);
+                continue;
+            }
             const unsigned itemIndex = _items.Size();
             dir.Add(itemIndex);
             node.ItemIndex = (int)itemIndex;
         }
 
+        node.NumLinksCalced++;
         _items.Add(item);
     }
 

@@ -10,6 +10,51 @@ fs-verity now reuses the original shared Linux string scanner already linked
 for fscrypt. Source scope and validation are recorded with the
 [shared string-service transfer](erofs-linux.md#original-shared-string-services--2026-10-22).
 
+## Framed namespace errors and following readable entries — 2026-10-22
+
+Recompared complete SDK `ParseDir`, its name storage and named-parent checks,
+pinned Linux `ext4_readdir`, `htree_dirblock_to_tree`, `ext4_read_inline_dir`,
+`__ext4_check_dir_entry` and VFS `verify_dirent_name` with the current ordinary,
+htree and inline archive consumers. Framing and name acceptance have different
+owners: a record can have a valid bounded extent yet contain an unusable path
+component. The archive stopped the remaining block on an empty, slash-containing
+or NUL-truncated name, a named self-edge or an edge conflicting with an already
+established directory parent. That hid independent later files.
+
+The GPL archive projection now skips those individual entries with its existing
+incomplete-directory diagnostic and continues from the already validated next
+record. Name validation remains the original Linux VFS helper plus the SDK's
+NUL-length check, applied equally to plaintext and successfully presented fscrypt
+names. Decoder failures, OOM, fscrypt context restrictions, invalid record bounds,
+checksums and the final global parent-cycle check retain their existing handling.
+Skipped edges do not alter the parent graph or calculated link count. This is an
+explicit archive recovery adaptation; it does not claim the same enumeration
+result as a Linux syscall stopped by its output actor's bad-name error.
+
+Inline publication also retains the existing minimum record size when converting
+Linux callbacks to the archive's temporary record buffer. An empty emitted name
+previously became an eight-byte record, causing the archive's framing check to
+stop before name validation and discard later callbacks. The original C inline
+iterator and on-disk validation are unchanged. No new format decoder, source
+write, repair or journal replay is added; the SDK source variant is unchanged.
+
+Behavior regressions place empty, slash-containing, embedded-NUL and named-self
+records before a live Unicode file in ordinary, reachable htree and inline
+directories. A conflicting incoming-directory edge is followed by a separate
+readable file; the conflicting path is absent while both independently reachable
+files return exact bytes. Existing malformed framing, crypto, mapping/error and
+cycle controls remain. Every fixture opening verifies unchanged source bytes.
+
+Validation on macOS: all eight focused ext/stream/fscrypt/xattr/provenance suites
+passed (8.61 s). After adding the conflicting-parent control, the affected `ext`
+suite passed again (7.88 s); production code was unchanged between these runs.
+The incremental application build passed. Existing runtime/build/compiler caches
+were reused and disposable ext fixtures were absent afterwards. This portable
+change introduces no platform service or UI change, so no remote, full/slow,
+native-device, appearance or release-install acceptance was run. Source comparison
+establishes the recovery adaptation described above, not complete ext directory
+source transfer; the broader ext and parent audits remain open.
+
 ## Inconsistent dot links and archive parent topology — 2026-10-22
 
 Compared complete SDK `CHandler::ParseDir`, pinned Linux `ext4_readdir`,

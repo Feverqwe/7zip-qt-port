@@ -136,6 +136,23 @@ def parent_order_volume():
     return v
 
 
+def conflicting_parent_volume():
+    v = parent_order_volume()
+    bs = v.block_size
+    root = ModernVolume.dirent(2, b".", 12, 2) + ModernVolume.dirent(2, b"..", 12, 2)
+    root += ModernVolume.dirent(12, NAME.encode(), (8 + len(NAME.encode()) + 3) & ~3)
+    root += ModernVolume.dirent(13, b"ALIAS", 16, 2)
+    root += ModernVolume.dirent(14, b"DIRECTORY", bs - len(root), 2)
+    v.data[v.root_block * bs:(v.root_block + 1) * bs] = root
+    parent = v.table * bs + 13 * 128
+    block = struct.unpack_from("<I", v.data, parent + 40)[0]
+    contents = ModernVolume.dirent(14, b".", 12, 2) + ModernVolume.dirent(2, b"..", 12, 2)
+    contents += ModernVolume.dirent(13, b"CHILD", 16, 2)
+    contents += ModernVolume.dirent(12, NAME.encode(), bs - len(contents))
+    v.data[block * bs:(block + 1) * bs] = contents
+    return v
+
+
 def wide_indirect_directory_volume():
     v = wide_indirect_volume()
     bs = v.block_size
