@@ -10,6 +10,62 @@ fs-verity now reuses the original shared Linux string scanner already linked
 for fscrypt. Source scope and validation are recorded with the
 [shared string-service transfer](erofs-linux.md#original-shared-string-services--2026-10-22).
 
+## fscrypt software read-core source comparison — 2026-10-22
+
+Completed whole-unit comparison of the selected fscrypt read core against Linux
+`58161ead29e50d70a317ea26b472e0c7508e69da`: 44 functions present in
+`fs/crypto/{policy,hkdf,keysetup,keysetup_v1,keyring,crypto,fname,hooks}.c`, plus
+the original private-header key-requirement helper. Thirty complete bodies match
+after comments/whitespace, fourteen have the adaptations below, and one is raw
+archive-key preparation derived from the original keyring acquisition branch.
+Complete original callers, policy/context types, KDF contexts, mode selection,
+IV/data-unit geometry and archive ownership were checked with those bodies.
+
+| Read-side group | Compared result and host boundary |
+| --- | --- |
+| Policy/context | Eleven of twelve bodies match: v1/v2 mode/flag/reserved-field acceptance, policy equality/key specification, context conversion and permitted parent/child contexts. The remaining body uses the reader's declared page geometry in place of kernel PAGE_SIZE. Archive geometry is explicit, not a claim about a host kernel mount configuration. |
+| HKDF and IV | Both complete HKDF bodies and the complete IV generator match. Per-file/per-mode HKDF information, filesystem UUID, nonce, dirhash/inode-hash keys and direct/inode-IV policy branches retain the original consumers. |
+| Software key setup | Nine of seventeen `keysetup.c` bodies match. Adaptations replace shared transform/master-key caches, locking, lazy inode-hash publication and VFS key links with owned immutable construction. The inode hash key is prepared before publication; each CI owns its transform and destroys it on failure/free. Global driver logging, process/subscribed/dummy keyrings and inline-crypto device key preparation are omitted. |
+| v1 compatibility/raw keys | Two of three v1 setup bodies match, including complete AES derivation and direct/derived selection. Direct mode owns its transform instead of borrowing a global direct-key cache. The archive raw-key preparation retains the original raw-key HKDF/identifier branch, validates its explicit key input and wipes raw/derived secrets. Kernel claims, ioctls and revocation are not archive services. |
+| Data-unit and name reads | Original cipher/data-unit control flow is retained with owned C11 requests replacing kernel stack-request macros. Four of six filename bodies match; allocation/presentation differences are request ownership and C pointer casts. Stored/no-key names, abbreviation/hash/base64 layout, SipHash and dot handling retain their original algorithms. |
+| Encrypted symlinks | Complete target parsing/decryption/no-key presentation/error flow is retained, with unaligned little-endian length acquisition and always-owned results replacing the VFS i_link cache. Delayed release remains connected to the archive's owned target buffer. |
+
+The audit also found that `fscrypt_require_key` had been copied as an external
+function in `keysetup.c` instead of its original private header. Its complete
+original inline definition and documentation now reside under
+`fs/crypto/fscrypt_private.h`, and the duplicate external body/declaration are
+removed. All consumers use that authoritative definition. No behavior bug was
+established in the displaced equivalent; no implementation-presence regression
+is added for this source-fidelity correction.
+
+Reviewed `fscryptreader.c`, policy/context/header helpers and the ext handler's
+geometry/context/key/presentation consumers. Contexts are copied with explicit
+lengths; raw keys are caller-owned only during construction, and prepared CIs
+do not retain a borrowed registry or lookup context. Normal file reads require
+the key and decrypt complete data units; missing-key directory/symlink names use
+the original presentation path. Unsupported/malformed contexts do not become
+verified plaintext. Casefolded encrypted records retain their stored hash pair;
+permission/context checks do not disappear when names are recovered.
+
+Software policy/mode pairs remain those listed in the existing fscrypt section.
+Hardware-wrapped keys need a device/blk-crypto unwrap service that this reader
+does not have; user consent does not supply it. The archive accepts explicit raw
+keys and does not recreate kernel key management or filesystem encryption writes.
+This closes the selected software read-core comparison, not the separate source
+audit of every AES/SM4/Adiantum/HCTR2 or asymmetric/ASN.1 dependency. Those adapters
+and primitives remain in their original owners; no new cipher implementation,
+license conditional, source write or journal replay is introduced here.
+
+Validation on macOS: `fscrypt_crypto` and all eight ext/stream/fscrypt/xattr/
+provenance suites passed (11.08 s). The incremental application build passed.
+The moved complete helper matches the pinned header, and all 305 reference hashes
+match. Existing runtime/build/compiler caches were reused; disposable ext fixtures
+were absent. A trailing blank line after removing the external helper was cleaned
+up after the passing batch; production logic was unchanged. `git diff --check`
+passed. No platform-dependent service changed, so remote checks were not repeated;
+no full/slow, native-device, appearance or release-install gate was run. Generic
+crypto dependency and whole ext/parent closure remain open.
+
 ## fs-verity read-side source comparison — 2026-10-22
 
 Completed whole-unit comparison of all 24 functions present in `fs/ext4/verity.c`

@@ -222,7 +222,6 @@ struct fscrypt_symlink_data { __le16 len; char encrypted_path[]; };
 static_assert(sizeof(struct fscrypt_symlink_data) == 2);
 const char *fscrypt_get_symlink(struct inode *, const void *, unsigned, struct delayed_call *);
 u64 fscrypt_fname_siphash(const struct inode *, const struct qstr *);
-int fscrypt_require_key(struct inode *);
 int fscrypt_has_permitted_context(struct inode *, struct inode *);
 
 /* Kernel keyring/cache links are replaced by immutable archive ownership. */
@@ -306,4 +305,30 @@ bool fscrypt_policies_equal(const union fscrypt_policy *, const union fscrypt_po
 int fscrypt_policy_to_key_spec(const union fscrypt_policy *, struct fscrypt_key_specifier *);
 bool fscrypt_supported_policy(const union fscrypt_policy *, const struct inode *);
 int fscrypt_policy_from_context(union fscrypt_policy *, const union fscrypt_context *, int);
+
+/**
+ * fscrypt_require_key() - require an inode's encryption key
+ * @inode: the inode we need the key for
+ *
+ * If the inode is encrypted, set up its encryption key if not already done.
+ * Then require that the key be present and return -ENOKEY otherwise.
+ *
+ * No locks are needed, and the key will live as long as the struct inode --- so
+ * it won't go away from under you.
+ *
+ * Return: 0 on success, -ENOKEY if the key is missing, or another -errno code
+ * if a problem occurred while setting up the encryption key.
+ */
+static inline int fscrypt_require_key(struct inode *inode)
+{
+	if (IS_ENCRYPTED(inode)) {
+		int err = fscrypt_get_encryption_info(inode, false);
+
+		if (err)
+			return err;
+		if (!fscrypt_has_encryption_key(inode))
+			return -ENOKEY;
+	}
+	return 0;
+}
 #endif

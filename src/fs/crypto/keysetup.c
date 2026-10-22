@@ -553,16 +553,3 @@ void fscrypt_put_encryption_info(struct inode *inode)
 	put_crypt_info(*ci_addr);
 	*ci_addr = NULL;
 }
-
-int fscrypt_require_key(struct inode *inode)
-{
-	if (IS_ENCRYPTED(inode)) {
-		int err = fscrypt_get_encryption_info(inode, false);
-
-		if (err)
-			return err;
-		if (!fscrypt_has_encryption_key(inode))
-			return -ENOKEY;
-	}
-	return 0;
-}
