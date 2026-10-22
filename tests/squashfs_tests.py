@@ -54,6 +54,25 @@ class SquashfsTests(unittest.TestCase):
                         self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
                         self.assertEqual(result.stdout, expected)
 
+    def test_optional_padding_preserves_physical_size_and_file_data(self):
+        import struct
+        data, files = volume(compressed=True)
+        used = struct.unpack_from("<Q", data, 40)[0]
+        aligned, _ = volume(fault="padding-aligned", compressed=True)
+        variants = ((data, len(data)), (data[:used], used),
+                    (data[:used] + b"\0", used), (data[:used] + b"nonzero tail", used),
+                    (aligned, len(aligned)))
+        for engine in ("7z", "7zz"):
+            for image, expected_size in variants:
+                with self.subTest(engine=engine, size=len(image), physical=expected_size):
+                    listing = self.run_image(engine, image, "l")
+                    self.assertIn(listing.returncode, (0, 1), listing.stderr.decode(errors="replace"))
+                    text = listing.stdout.decode("utf-8").replace("\r\n", "\n")
+                    self.assertIn(f"Physical Size = {expected_size}\n", text)
+                    result = self.run_image(engine, image, "x", "alpha")
+                    self.assertIn(result.returncode, (0, 1), result.stderr.decode(errors="replace"))
+                    self.assertEqual(result.stdout, files["alpha"])
+
     def test_linux_lz4_and_modern_lzo_rle(self):
         for codec in ("lz4", "lzo-rle"):
             data, files = volume(codec=codec)

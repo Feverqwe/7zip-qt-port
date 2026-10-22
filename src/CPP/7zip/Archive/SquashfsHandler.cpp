@@ -136,7 +136,7 @@ static const UInt32 kNotCompressedBit32 = 1 << 24;
 // static const UInt32 kHeaderSize1 = 0x33;
 // static const UInt32 kHeaderSize2 = 0x3F;
 static const UInt32 kHeaderSize3 = 0x77;
-// static const UInt32 kHeaderSize4 = 0x60;
+static const UInt32 kHeaderSize4 = 0x60;
 
 struct CHeader {
     bool be;
@@ -2440,7 +2440,12 @@ HRESULT CHandler::ReadUids(UInt64 start, UInt32 num, CByteBuffer &ids) {
 HRESULT CHandler::Open2(IInStream *inStream) {
     {
         Byte buf[kHeaderSize3];
-        RINOK(ReadStream_FALSE(inStream, buf, kHeaderSize3))
+        RINOK(ReadStream_FALSE(inStream, buf, kHeaderSize4))
+        const UInt32 signature = GetUi32(buf);
+        const bool be = signature == kSignature32_BE || signature == kSignature32_B2;
+        if (Get16b(buf + 0x1C, be) <= 3) {
+            RINOK(ReadStream_FALSE(inStream, buf + kHeaderSize4, kHeaderSize3 - kHeaderSize4))
+        }
         if (!_h.Parse(buf))
             return S_FALSE;
         if (!_h.IsSupported())
@@ -2468,7 +2473,8 @@ HRESULT CHandler::Open2(IInStream *inStream) {
     _stream = inStream;
     UInt64 inputSize;
     RINOK(inStream->Seek(0, STREAM_SEEK_END, &inputSize))
-    if (_h.Size > inputSize || (Int64)_h.Size < 0 || _h.Size < (_h.Major == 4 ? 96 : kHeaderSize3))
+    if (_h.Size > inputSize || (Int64)_h.Size < 0 ||
+        _h.Size < (_h.Major == 4 ? kHeaderSize4 : kHeaderSize3))
         return S_FALSE;
 #ifdef SEVENZIP_LINUX_SQUASHFS
     RINOK(InitLinuxDecoder())
@@ -2669,12 +2675,13 @@ HRESULT CHandler::Open2(IInStream *inStream) {
     {
         const UInt32 alignSize = 1 << 12;
         Byte buf[alignSize];
-        RINOK(Seek2(_h.Size))
         UInt32 rem = (UInt32)(0 - _h.Size) & (alignSize - 1);
         _sizeCalculated = _h.Size;
-        if (rem != 0) {
-            const HRESULT readResult = ReadStream_FALSE(_stream, buf, rem);
-            if (FAILED(readResult))
+        if (rem != 0 && rem <= inputSize - _h.Size) {
+            HRESULT readResult = Seek2(_h.Size);
+            if (readResult == S_OK)
+                readResult = ReadStream_FALSE(_stream, buf, rem);
+            if (readResult == E_ABORT || readResult == E_OUTOFMEMORY)
                 return readResult;
             if (readResult == S_OK) {
                 size_t i;

@@ -5,6 +5,65 @@ Scope входит в [общую проверку форматов](filesystems
 современный LZO и проверки compressor options через отдельный format-модуль.
 Полная актуализация SquashFS read features по Linux ещё продолжается.
 
+## Границы необходимых чтений при открытии, 2026-10-22
+
+Сверены Linux `super.c:squashfs_fill_super` и superblock layout, полные SDK
+`Open2`, `CHeader::Parse`/version branches и physical-size publication,
+`CArc` archive-tail detection/`CheckZerosTail`, nested-open properties и
+прямые filesystem consumers. Baselines: Linux
+`58161ead29e50d70a317ea26b472e0c7508e69da`, SDK
+`9128b80e3a471108678e2b3ec3c985861c8d7b0f`; retrieval links ниже.
+Linux читает v4 superblock длиной 96 bytes и ограничивает filesystem reads
+через `bytes_used`; проверка нулевого archive padding не нужна для mount.
+
+SDK adapter запрашивал 119 bytes legacy superblock также для v4, затрагивая
+начало первого file payload. ABI regression воспроизвёл отказ всего Open
+при E_ABORT на этих ненужных bytes. Теперь читается общий 96-byte prefix,
+а остаток исходного legacy header запрашивается только для versions 1–3
+с прежним endian interpretation. Field parser, version/size checks и методы
+декодирования сохранены. Ошибка первого файла проявляется при его чтении,
+другой доступный файл можно прочитать независимо.
+
+Исходная проверка нулевого выравнивания сохранена как необязательное уточнение
+физического размера. Она выполняется только при наличии полного padding
+в известном input size; без padding не нужен даже Seek к концу ФС.
+При обычном отказе Seek/Read, unsupported source operation или коротком
+результате остаётся размер из superblock. E_ABORT и E_OUTOFMEMORY передаются
+вызывающему коду. Только полностью проверенные нули увеличивают physical size;
+ненулевой либо непрочитанный хвост не объявляется частью архива.
+Это применяется к обоим engines и их общему optional-padding code.
+
+Нечитаемый padding не означает неполную ФС: данные и metadata внутри
+`bytes_used` не потеряны, поэтому новый limited mode/согласие не вводится.
+Известная неполнота реальных filesystem records по-прежнему использует прежние
+diagnostics/согласие/badge. Generic archive tail reporting сохранён;
+`CheckZerosTail` является отдельной явно включаемой archive-search опцией,
+которая не включается по умолчанию или partition properties MBR/GPT/APM.
+Source bounds, реальные ошибки data/metadata и cancellation не ослаблены.
+
+До исправления ABI regressions выявили семь отказов header/padding paths.
+После исправления проверяются Seek/Read E_FAIL/E_NOTIMPL/S_FALSE, фатальные
+Abort/OOM, отсутствие probe за available input и при aligned bytes_used,
+physical-size fallback, отсутствие ложной неполноты и точные file bytes.
+CLI проверяет padded/unpadded/short/nonzero/aligned variants на обоих engines.
+Native Linux `6.8.0-147-generic` подтвердил минимальный для этой конфигурации
+device-block padding 1024B, ненулевой хвост и aligned bytes_used
+(`20261022T042615Z-388ad898`). Синтетические loop,ro,nosuid,nodev,noexec images
+не изменились; mounts/temp очищены, helper удалён. Kernel block-device minimum
+не является требованием archive byte stream: более короткий input проверяется
+через ABI/CLI. Native отказов I/O не инжектировали; это отдельная ABI evidence.
+
+На macOS прошли пять backend/source suites за 6,96 с и четыре UI consumers
+за 38,81 с; UI повторены вне sandbox после отсутствия Cocoa screens при первом
+запуске. На Linux все девять прошли за 19,07 с
+(`20261022T042657Z-a2f9927c`). На Windows восемь прошли в том же batch;
+существующий backend codec-discovery case в ABI suite получил timeout.
+Повтор только этого suite без изменений кода/таймаутов прошёл за 9,26 с
+(`20261022T042939Z-379371c6`); остальные прошедшие suites не повторялись.
+Intermittent discovery timing не считается доказанной регрессией handler.
+Incremental macOS app build и diff check прошли. Full/slow, физические
+устройства и visual parity не проверялись.
+
 ## Завершение compressed block на первом stream, 2026-10-22
 
 Сверены полные pinned Linux `zlib_wrapper.c`, `xz_wrapper.c`,

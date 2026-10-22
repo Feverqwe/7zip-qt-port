@@ -372,6 +372,11 @@ def volume(fault="", compressed=False, no_fragments=False, codec="zlib", xattrs=
             struct.pack_into("<Q", image, field, value)
         struct.pack_into("<Q", image, fragment_table + delta, fragment_metadata + delta)
         struct.pack_into("<Q", image, ids_table + delta, ids_metadata + delta)
+    if fault == "padding-aligned":
+        gap = -len(image) % 4096
+        image[ids_table:ids_table] = bytes(gap)
+        struct.pack_into("<Q", image, 48, ids_table + gap)
+        struct.pack_into("<Q", image, 40, len(image))
     image += bytes((-len(image)) % 4096)
     return bytes(image), dict(zip(names, (first, second, b"alpha", first))) if not no_fragments else {}
 

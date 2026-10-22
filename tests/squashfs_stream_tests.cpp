@@ -28,6 +28,7 @@ class Input final : public IInStream, public CMyUnknownImp {
     bool notified = false;
     UInt64 gapAt = UINT64_MAX, gapSize = 0;
     UInt64 forbiddenBoundary = UINT64_MAX;
+    UInt64 failSeekAt = UINT64_MAX;
     explicit Input(QByteArray bytes) : bytes_(std::move(bytes)) {}
     Z7_COM7F_IMF(Read(void *data, UInt32 size, UInt32 *processed)) override {
         if (processed)
@@ -64,6 +65,8 @@ class Input final : public IInStream, public CMyUnknownImp {
                                                        : Int64(bytes_.size() + gapSize);
         if (offset < -base || (offset > 0 && base > INT64_MAX - offset))
             return E_INVALIDARG;
+        if (origin == STREAM_SEEK_SET && UInt64(base + offset) == failSeekAt)
+            return atFailure;
         position_ = UInt64(base + offset);
         if (position)
             *position = position_;
@@ -261,6 +264,76 @@ class SquashfsStreamTests final : public QObject {
     }
   private slots:
     void initTestCase() { createArchive(); }
+    void headerDoesNotRequireFirstFileData() {
+        loadFixture("zlib");
+        CMyComPtr2<IInStream, Input> source;
+        source.SetFromCls(new Input(bytes_));
+        source->failAt = 96;
+        source->atFailure = E_ABORT;
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
+        auto unreadable = stream("alpha");
+        auto healthy = stream("данные 空");
+        QVERIFY(unreadable && healthy);
+        char data[10];
+        UInt32 count = 99;
+        QCOMPARE(unreadable->Read(data, sizeof(data), &count), E_ABORT);
+        QCOMPARE(count, UInt32(0));
+        check(healthy, "данные 空", 0, 16395);
+    }
+    void optionalPaddingErrorsDoNotHideFilesystem_data() {
+        QTest::addColumn<bool>("seek");
+        QTest::addColumn<qint32>("error");
+        for (bool seek : {false, true})
+            for (const HRESULT error : {E_FAIL, E_NOTIMPL, S_FALSE, E_ABORT, E_OUTOFMEMORY})
+                QTest::newRow(qPrintable(QString("%1-%2").arg(seek).arg(quint32(error))))
+                    << seek << qint32(error);
+    }
+    void optionalPaddingErrorsDoNotHideFilesystem() {
+        QFETCH(bool, seek);
+        QFETCH(qint32, error);
+        loadFixture("zlib");
+        const auto used = qFromLittleEndian<quint64>(bytes_.constData() + 40);
+        CMyComPtr2<IInStream, Input> source;
+        source.SetFromCls(new Input(bytes_));
+        (seek ? source->failSeekAt : source->failAt) = used;
+        source->atFailure = HRESULT(error);
+        const bool fatal = error == E_ABORT || error == E_OUTOFMEMORY;
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), fatal ? HRESULT(error) : S_OK);
+        if (fatal) {
+            UInt32 count = 99;
+            QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+            QCOMPARE(count, UInt32(0));
+            return;
+        }
+        NWindows::NCOM::CPropVariant size, limitations;
+        QCOMPARE(archive_->GetArchiveProperty(kpidPhySize, &size), S_OK);
+        QCOMPARE(size.vt, VARTYPE(VT_UI8));
+        QCOMPARE(size.uhVal.QuadPart, used);
+        QCOMPARE(archive_->GetArchiveProperty(kpidUserDefined, &limitations), S_OK);
+        QCOMPARE(limitations.vt, VARTYPE(VT_EMPTY));
+        auto data = stream("alpha");
+        QVERIFY(data);
+        check(data, "alpha", 0, 8202);
+    }
+    void noPaddingProbeOutsideAvailableInput() {
+        for (const QString &fault : {QString(), QString("padding-aligned")}) {
+            for (bool shortTail : {false, true}) {
+                if (!fault.isEmpty() && shortTail)
+                    continue;
+                loadFixture("zlib", false, fault);
+                const auto used = qFromLittleEndian<quint64>(bytes_.constData() + 40);
+                bytes_.truncate(qsizetype(used) + (shortTail ? 1 : 0));
+                CMyComPtr2<IInStream, Input> source;
+                source.SetFromCls(new Input(bytes_));
+                source->failAt = source->failSeekAt = used;
+                source->atFailure = E_ABORT;
+                QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
+                auto data = stream("alpha");
+                QVERIFY(data);
+                check(data, "alpha", 0, 8202);
+            }
+        }
+    }
     void compressedBlocksStopAfterOneVerifiedStream() {
         for (const QString &codec : {QString("zlib"), QString("xz"), QString("zstd")}) {
             for (const QString &scope : {QString("data"), QString("inode")}) {
