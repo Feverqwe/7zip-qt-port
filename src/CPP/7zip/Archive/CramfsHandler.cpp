@@ -1,6 +1,7 @@
 // CramfsHandler.cpp
 
 #include "StdAfx.h"
+#include <memory>
 
 #include "../../../C/7zCrc.h"
 #include "../../../C/Alloc.h"
@@ -178,6 +179,7 @@ Z7_CLASS_IMP_CHandler_IInArchive_1(
   CRecordVector<CItem> _items;
   CMyComPtr<IInStream> _stream;
   Byte *_data;
+  std::shared_ptr<Byte> _dataOwner;
   UInt32 _size;
   UInt32 _loadedSize;
   UInt32 _capacity;
@@ -322,7 +324,7 @@ HRESULT CHandler::EnsureData(UInt32 end) {
             return E_OUTOFMEMORY;
         if (_loadedSize)
             memcpy(data, _data, _loadedSize);
-        MidFree(_data);
+        _dataOwner.reset(data, [](Byte *buffer) { MidFree(buffer); });
         _data = data;
         _capacity = capacity;
     }
@@ -439,6 +441,7 @@ HRESULT CHandler::Open2(IInStream *inStream) {
     _data = (Byte *)MidAlloc(_h.Size);
     if (!_data)
         return E_OUTOFMEMORY;
+    _dataOwner.reset(_data, [](Byte *buffer) { MidFree(buffer); });
     RINOK(InStream_SeekSet(inStream, volumePos))
     size_t processed = 0;
     while (processed < _h.Size) {
@@ -609,7 +612,7 @@ Z7_COM7F_IMF(CHandler::Open(IInStream *stream, const UInt64 *, IArchiveOpenCallb
 
 void CHandler::Free()
 {
-  MidFree(_data);
+  _dataOwner.reset();
   _data = NULL;
 }
 
@@ -787,7 +790,7 @@ int CHandler::InflateLinux(void *context, void *dest, size_t capacity, const voi
 HRESULT CHandler::ReadBlock(UInt64 blockIndex, Byte *dest, size_t blockSize, UInt32 table,
                             UInt32 numBlocks, UInt32 fileSize) {
     COM_TRY_BEGIN(void) fileSize;
-    if (!_data)
+    if (!_data && !_linuxRead)
         return E_FAIL;
     if (_method == k_Flags_Method_ZLIB) {
         if (!_zlibDecoder) {
@@ -1005,13 +1008,28 @@ Z7_COM7F_IMF(CHandler::GetStream(UInt32 index, ISequentialInStream **stream))
 
   CCramfsInStream *streamSpec = new CCramfsInStream;
   CMyComPtr<IInStream> streamTemp = streamSpec;
-  streamSpec->Handler = this;
-  streamSpec->Owner = this;
+  // Keep the source and decoding state private to the returned stream.
+  // Close/reopen of the archive must not change an existing file reader.
+  CHandler *reader = new CHandler;
+  streamSpec->Owner = reader;
+  streamSpec->Handler = reader;
+  reader->_h = _h;
+  reader->_size = _size;
+  reader->_method = _method;
+  reader->_blockSizeLog = _blockSizeLog;
+  reader->_linuxRead = _linuxRead;
+  reader->_volumePos = _volumePos;
+  reader->_stream = _stream;
+  if (!_linuxRead) {
+      reader->_dataOwner = _dataOwner;
+      reader->_data = _data;
+      reader->_loadedSize = reader->_capacity = _size;
+  }
   streamSpec->Table = offset;
   streamSpec->NumBlocks = numBlocks;
   streamSpec->FileSize = size;
   if (!streamSpec->Alloc(_blockSizeLog, 21 - _blockSizeLog))
-    return E_OUTOFMEMORY;
+      return E_OUTOFMEMORY;
   streamSpec->Init(size);
   *stream = streamTemp.Detach();
 

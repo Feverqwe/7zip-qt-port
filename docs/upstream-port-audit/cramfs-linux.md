@@ -1,5 +1,48 @@
 # Cramfs read-side modernization against Linux
 
+## Independent file streams — 2026-10-22
+
+Rechecked the complete SDK `GetStream`, `ReadBlock`, `Close`/`Free`, allocation
+and cached-stream consumers against the baseline below, plus the Linux folio
+reader and the archive C source/decoder callbacks. A returned stream retained
+the public archive handler, whose mutable source and buffer were cleared on
+Close or replaced on reopen. Retaining the COM object alone did not retain
+the selected file's readable state. Both the Linux and historical SDK profiles
+failed an uncached read after Close in the public ABI regression.
+
+The original SDK stream/cache/decoder flow and original Linux C folio body
+are retained. Each returned stream now owns a private instance of the same
+handler with its selected source, profile, bounds and decoding state. The
+historical whole-image buffer has shared immutable ownership, so independent
+streams do not copy the image per file. The Linux profile holds its bounded
+source directly and does not need the archive's metadata buffer to read data.
+Allocation paths and Free use the same MidAlloc/MidFree pair through shared
+ownership. The standalone overlay receives the same SDK fix; no sibling or
+Linux source is changed. No second format reader or decoder is introduced.
+
+The regression covers two streams, uncached reads after Close and reopen into
+the other profile, release of the public handler/provider, source I/O failure
+and E_ABORT with zero reported bytes, retry and independent seek/read. Linux
+extended/raw and historical SDK Zlib controls exercise both ownership paths.
+This is an archive ABI lifetime adaptation, not a claim that Linux offers this
+archive interface or that a shared seekable source supports concurrent calls.
+Source access remains read-only; no gate, consent, repair or replay changes.
+
+Before the fix the new ABI rows both failed the first read after Close.
+Afterwards `cramfs`, `cramfs_module`, `upstream_baseline` and
+`upstream_inventory` passed on macOS, Linux and Windows. Linux/Windows receipt:
+`20261022T050553Z-57a756bb`; test phases 2.05/27.68 seconds. The local test
+phase took 2.60 seconds; the incremental application build also passed.
+Both official engine overlays and the module were rebuilt incrementally with
+the existing compiler caches. No full/slow suites, physical devices or native
+mount acceptance are claimed; fixtures are RAM-only or temporary-owned and
+removed by their existing owners. Diff check passed.
+
+This iteration does not close the complete cramfs source/policy audit.
+In particular, opening still verifies the whole-volume CRC and loads a
+contiguous metadata prefix; their I/O dependencies and directory-local errors
+need comparison with Linux's useful read subset before acceptance.
+
 ## Source comparison
 
 2026-10-19, part of the [Linux format review](filesystems-linux.md).

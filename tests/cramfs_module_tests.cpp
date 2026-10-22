@@ -14,7 +14,7 @@
 namespace {
 const QString name = QStringLiteral("файл 空.bin");
 const QByteArray contents = QByteArray(4096, 'A') + "tail";
-QByteArray fixture() {
+QByteArray fixture(bool legacy = false) {
     QByteArray filename = name.toUtf8();
     filename.append(QByteArray((4 - filename.size() % 4) % 4, '\0'));
     const int root = 512 + 76, table = root + 12 + filename.size(), data = table + 8;
@@ -33,6 +33,14 @@ QByteArray fixture() {
     put(table, 0xc0000000 | (data / 4));
     put(table + 4, 0xc0000000 | ((data + 4096) / 4));
     memcpy(image.data() + data, contents.constData(), contents.size());
+    if (legacy) {
+        put(512 + 8, 0x4000); // Historical SDK flags, outside the Linux profile.
+        image.resize(data);
+        for (int block = 0; block < 2; ++block) {
+            image += qCompress(contents.mid(block * 4096, 4096)).mid(4);
+            put(table + block * 4, quint32(image.size()));
+        }
+    }
     return image;
 }
 class Input final : public IInStream, public CMyUnknownImp {
@@ -44,6 +52,7 @@ class Input final : public IInStream, public CMyUnknownImp {
 
   public:
     bool fail = false;
+    HRESULT failure = E_FAIL;
     explicit Input(QByteArray bytes, bool distant = false) : bytes_(std::move(bytes)) {
         if (distant) {
             tail_ = UInt64(1) << 30;
@@ -57,7 +66,7 @@ class Input final : public IInStream, public CMyUnknownImp {
         if (processed)
             *processed = 0;
         if (fail)
-            return E_FAIL;
+            return failure;
         size = UInt32(qMin<UInt64>(size, position_ < length_ ? length_ - position_ : 0));
         for (UInt32 i = 0; i < size; ++i) {
             const UInt64 pos = position_ + i;
@@ -218,6 +227,52 @@ class CramfsModuleTests final : public QObject {
         QCOMPARE(archive_->Extract(&index, 1, 0, callback), S_OK);
         QCOMPARE(callback->result, Int32(NArchive::NExtract::NOperationResult::kOK));
         QCOMPARE(callback->output->bytes, contents);
+    }
+    void streamsSurviveCloseReopenAndSourceFailure_data() {
+        QTest::addColumn<bool>("legacy");
+        QTest::newRow("linux-extended") << false;
+        QTest::newRow("sdk-zlib") << true;
+    }
+    void streamsSurviveCloseReopenAndSourceFailure() {
+        QFETCH(bool, legacy);
+        createArchive();
+        auto *input = new Input(fixture(legacy));
+        CMyComPtr<IInStream> source = input;
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
+        CMyComPtr<IInArchiveGetStream> provider;
+        QCOMPARE(
+            archive_->QueryInterface(IID_IInArchiveGetStream, reinterpret_cast<void **>(&provider)),
+            S_OK);
+        CMyComPtr<ISequentialInStream> first, second;
+        QCOMPARE(provider->GetStream(0, &first), S_OK);
+        QCOMPARE(provider->GetStream(0, &second), S_OK);
+        QCOMPARE(archive_->Close(), S_OK);
+        char buffer[4];
+        UInt32 processed = 0;
+        QCOMPARE(first->Read(buffer, sizeof(buffer), &processed), S_OK);
+        QCOMPARE(QByteArray(buffer, processed), QByteArray("AAAA"));
+        QCOMPARE(open(fixture(!legacy)), S_OK);
+        CMyComPtr<IInStream> seekable;
+        QCOMPARE(first->QueryInterface(IID_IInStream, reinterpret_cast<void **>(&seekable)), S_OK);
+        QCOMPARE(seekable->Seek(4096, STREAM_SEEK_SET, nullptr), S_OK);
+        QCOMPARE(first->Read(buffer, sizeof(buffer), &processed), S_OK);
+        QCOMPARE(QByteArray(buffer, processed), QByteArray("tail"));
+        provider.Release();
+        archive_.Release();
+        if (!legacy) {
+            input->fail = true;
+            QCOMPARE(second->Read(buffer, sizeof(buffer), &processed), E_FAIL);
+            QCOMPARE(processed, 0u);
+            input->failure = E_ABORT;
+            QCOMPARE(second->Read(buffer, sizeof(buffer), &processed), E_ABORT);
+            QCOMPARE(processed, 0u);
+            input->fail = false;
+        }
+        QCOMPARE(second->Read(buffer, sizeof(buffer), &processed), S_OK);
+        QCOMPARE(QByteArray(buffer, processed), QByteArray("AAAA"));
+        QCOMPARE(seekable->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
+        QCOMPARE(first->Read(buffer, sizeof(buffer), &processed), S_OK);
+        QCOMPARE(QByteArray(buffer, processed), QByteArray("AAAA"));
     }
     void backendDiscoveryListingTestAndExtraction() {
         QTemporaryDir runtime;
