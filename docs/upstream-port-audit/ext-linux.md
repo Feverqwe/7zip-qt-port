@@ -6,6 +6,93 @@ tree boundaries, directory record boundaries and archive stream consumers.
 The second integrates Linux metadata and inline-data readers. The ext row remains
 open for the remaining read features listed below.
 
+## Incomplete directory namespace and useful read-only opening — 2026-10-22
+
+Recompared pinned Linux `ext4_readdir`, directory checksum/record validation,
+`dx_probe`/`ext4_htree_next_block`, the complete transferred index walker and
+SDK ParseDir/ReadDir, parent/path construction, properties and extraction callers.
+Linux skips checksum/bad-record blocks and confines directory I/O errors to the
+inode operation; the SDK's eager scan instead failed the entire archive opening.
+The archive adaptation now retains useful namespace data with explicit limits.
+It does not claim identical damaged-tree recovery to a kernel mount.
+
+The application module reads known mapped directory blocks independently.
+Unavailable source blocks, checksum failures and invalid record suffixes retain
+previous entries and permit other blocks/directories to be read. A known mapping
+prefix is usable without filling the unknown tail with zeros. Initial directory
+data seeks are deferred to the block read, preventing an unavailable first block
+from suppressing later blocks. Already decoded inline directory payloads retain
+only their valid record prefix.
+Indexed traversal reuses the original walker; after a recoverable failure the
+existing bounded linear path can read the remaining mapped blocks. Already emitted
+blocks are tracked so fallback cannot publish the same entries twice. Normal
+successful htree enumeration still ignores unreachable stale leaves.
+
+An entry whose target is invalid or absent from the decoded inode inventory is
+omitted without publishing a fabricated file or discarding the following valid
+entries. The inode-number bound comes
+from the superblock, not the shorter inventory ending at the last allocated
+inode; an absent inventory entry is an unavailable target, not an invalid record
+boundary. A regression places it between two readable entries in the same block.
+Root identity comes from the
+validated root inode; directory contents do not depend on readable dot records.
+The original named-parent edges and parent-cycle/path guards remain in force.
+Readable directories whose name was lost use the original auxiliary unknown
+namespace, with a real parent item for their descendants rather than flat paths
+that could collide with root files. This is an unverified namespace, not a repaired
+directory tree. Recovery of conflicting/cyclic parent graphs remains outside this
+iteration; their existing guards have not been relaxed. A root inode that cannot
+be initialized under the declared format still cannot provide this opening mode.
+
+Source EOF/ordinary Read/Seek failures are distinguished from progress callbacks.
+Abort/OOM, callback failures (including S_FALSE), internal interface failures and
+fscrypt context denials remain fatal. Context validation is not bypassed by the
+linear path or unknown namespace. A failed physical seek also invalidates the
+mapped stream's remembered cursor: a retry must seek again rather than return
+bytes from the old position. This shared SDK stream correction reaches both
+engines; partial namespace opening remains in the separate GPL module.
+
+Global read-only limitations and per-directory Error properties report an
+incomplete/outdated file list. Link counts cannot be reconciled against a partial
+enumeration, so that condition no longer turns the usable opening into a fatal
+listing error. Independent header/inode/checksum validation remains effective.
+Selecting an incomplete directory reports DataError while its readable selected
+files continue. The existing EN/RU per-opening consent, Cancel default, persistent
+badge, refresh/reopen and exact-copy flow apply. No source writes, journal replay,
+orphan processing or repair is introduced.
+
+ABI regressions cover first/last root and child blocks, Read/Seek/EOF/Abort/OOM,
+unknown parent names, per-directory results, exact healthy payloads, fatal callback
+results, clearing diagnostics on reopen and mapped-stream seek retries. CLI
+regressions now check the actual safety boundary: invalid inode/name/record entries
+are absent, partial mode is visible and valid sibling data is exact. They no longer
+require whole-volume rejection merely because one directory is incomplete.
+All 303 pinned Linux reference hashes still match. The broader ext source audit
+and parent format goal remain open.
+
+Eleven focused suites passed on macOS arm64 in 40.07 seconds: ext CLI/ABI,
+fscrypt CLI/ABI/backend, xattr backend, both provenance suites, language and both
+EN/RU read-only UI suites. After the final inode-inventory-bound regression,
+the eight code/provenance suites passed again in 8.24 seconds. Final Linux/Windows
+CLI/source checks passed in `20261022T093650Z-99e5778f`; the four final ABI/backend
+suites passed in `20261022T094100Z-b6462ad0`.
+
+Linux also passed the seven ABI/backend/UI/language suites in
+`20261022T092329Z-82db49b0`. Windows passed six in that batch; the first unchanged
+exFAT UI case exceeded its 5-second codec-discovery wait (Qt observed readiness
+after 6.4 seconds). The isolated unchanged Windows UI suite passed in
+`20261022T092703Z-ce676ca0` without timeout/cache changes. The cause of the initial
+delay is not established. Current Cocoa JSON confirms fitting translated labels
+at 420×201 (EN) and 420×262 (RU) logical pixels; these checks do not establish
+native Windows rendered parity. Consent/refusal, exact copying, persistent mode,
+refresh/reopen and source preservation are exercised through the application.
+
+The final incremental application build and diff check passed. Disposable local
+fixture directories were checked empty; test owners clean their temporary
+payloads. Current small receipts, compiler caches and build trees are retained.
+No full/slow suites, physical-device, new native mount or release-installation
+acceptance is claimed for this iteration.
+
 ## Readable prefixes before unavailable mapping metadata — 2026-10-22
 
 Recompared Linux `ext4_get_branch`/`ext4_ind_map_blocks`, `ext4_find_extent`

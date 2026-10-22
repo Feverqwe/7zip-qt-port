@@ -1,6 +1,7 @@
 """Checksummed directories with mapped, missing and unwritten logical blocks."""
 import struct
 from ext_modern_fixture import ModernVolume
+from ext_fixture import Volume, NAME
 
 
 class DirectoryVolume(ModernVolume):
@@ -44,3 +45,34 @@ class DirectoryVolume(ModernVolume):
 
     def u32(self, offset):
         return struct.unpack_from("<I", self.data, offset)[0]
+
+
+class NamespaceVolume(Volume):
+    def __init__(self, invalid_target=False):
+        super().__init__("direct")
+        bs = self.block_size
+        contents = ModernVolume.dirent(13, b".", 12, 2) + ModernVolume.dirent(2, b"..", 12, 2)
+        if invalid_target:
+            contents += ModernVolume.dirent(12, b"before-error.bin", 24)
+            contents += ModernVolume.dirent(14, b"unreadable.bin", 24)
+            contents += ModernVolume.dirent(12, b"after-bad-inode.bin", bs - len(contents))
+        else:
+            contents += ModernVolume.dirent(12, b"before-error.bin", bs - len(contents))
+        first = self.allocate(contents)
+        self.allocate()
+        last = self.allocate(ModernVolume.dirent(12, b"after-error.bin", bs))
+        inode = self.table * bs + 12 * 128
+        self.inode(inode, 0o40755, 2 * bs, 2 * bs // 512, links=2)
+        self.put32(inode + 40, first)
+        self.put32(inode + 44, last)
+        struct.pack_into("<H", self.data, self.root_inode + 26, 3)
+        struct.pack_into("<H", self.data, self.file_inode + 26, 4 if invalid_target else 3)
+        name = NAME.encode()
+        length = (8 + len(name) + 3) & ~3
+        root = ModernVolume.dirent(2, b".", 12, 2) + ModernVolume.dirent(2, b"..", 12, 2)
+        root += ModernVolume.dirent(12, name, length)
+        root += ModernVolume.dirent(13, b"DIRECTORY", bs - len(root), 2)
+        self.data[self.root_block * bs:(self.root_block + 1) * bs] = root
+        self.directory_head_offset = first * bs
+        self.directory_tail_offset = last * bs
+        self.superblock((13,))

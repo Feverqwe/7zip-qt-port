@@ -3958,6 +3958,14 @@ Are you sure you want to split archive into such volumes?</source>
             <translation>Каталог FAT прочитан не полностью.</translation>
         </message>
         <message>
+            <source>The ext directory could not be read completely.</source>
+            <translation>Каталог ext прочитан не полностью.</translation>
+        </message>
+        <message>
+            <source>Some ext directories could not be read completely. The file list may be incomplete or outdated.</source>
+            <translation>Некоторые каталоги ext прочитаны не полностью. Список файлов может быть неполным или устаревшим.</translation>
+        </message>
+        <message>
             <source>The FAT volume was not properly unmounted. Some data may be corrupt.</source>
             <translation>Том FAT не был корректно отключён. Часть данных может быть повреждена.</translation>
         </message>

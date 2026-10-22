@@ -61,6 +61,17 @@ class ExtTests(unittest.TestCase):
             self.assertEqual(path.read_bytes(), v.data)
             return result
 
+    def limited_listing(self, volume, forbidden=(), listing=None):
+        if listing is None:
+            listing = self.run_image(volume, command="l", name=None)
+        self.assertEqual(listing.returncode, 0, listing.stderr.decode(errors="replace"))
+        self.assertIn(b"Read-only limitations = ", listing.stdout)
+        records = listing.stdout.replace(b"\r\n", b"\n").split(b"----------\n", 1)[1]
+        paths = [line[7:] for line in records.splitlines() if line.startswith(b"Path = ")]
+        for path in forbidden:
+            self.assertNotIn(path, paths)
+        return listing
+
     def test_readable_recovery_states_report_limitations_without_replaying(self):
         for kind in ("clean", "recover", "orphan", "orphan-list", "unclean", "errors",
                      "unverified", "combined"):
@@ -188,8 +199,9 @@ class ExtTests(unittest.TestCase):
         for case in ("mode-zero", "mode-unknown", "unlinked", "casefold", "reserved-alias",
                      "quota-alias", "negative-size", "bitmap-overflow", "extent-overflow"):
             with self.subTest(case=case):
-                result = self.run_image(inode_volume(case))
-                self.assertNotEqual(result.returncode, 0)
+                volume = inode_volume(case)
+                self.limited_listing(volume, (NAME.encode(),))
+                result = self.run_image(volume)
                 self.assertEqual(result.stdout, b"")
 
     def test_legacy_inode_numbers_and_extra_inode_requirements(self):
@@ -198,8 +210,9 @@ class ExtTests(unittest.TestCase):
             result = self.run_image(volume, engine)
             self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
             self.assertEqual(result.stdout, volume.read(0, volume.size))
-        result = self.run_image(inode_volume("legacy-reserved-alias"))
-        self.assertNotEqual(result.returncode, 0)
+        volume = inode_volume("legacy-reserved-alias")
+        self.limited_listing(volume, (NAME.encode(),))
+        result = self.run_image(volume)
         self.assertEqual(result.stdout, b"")
         for offset in (0x15C, 0x15E):
             volume = ModernVolume()
@@ -230,8 +243,10 @@ class ExtTests(unittest.TestCase):
                     self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
                     self.assertEqual(result.stdout, volume.read(0, volume.size))
         for volume in (DirectoryVolume("allocated-zero"), DirectoryVolume(fault="checksum")):
-            result = self.run_image(volume, command="l", name=None)
-            self.assertNotEqual(result.returncode, 0)
+            self.limited_listing(volume)
+            result = self.run_image(volume)
+            self.assertEqual(result.returncode, 0)
+            self.assertEqual(result.stdout, volume.read(0, volume.size))
 
     @unittest.skipUnless(sys.platform == "linux", "Linux child address-space limit")
     def test_largedir_reads_past_four_gib_with_bounded_memory(self):
@@ -274,7 +289,10 @@ class ExtTests(unittest.TestCase):
                 for engine in (("7z",) if inline else ("7z", "7zz")):
                     with self.subTest(name=name, inline=inline, engine=engine):
                         result = self.run_image(volume, engine, "l", None)
-                        self.assertNotEqual(result.returncode, 0)
+                        if engine == "7z":
+                            self.limited_listing(volume, (name,), result)
+                        else:
+                            self.assertNotEqual(result.returncode, 0)
 
     def test_unlinked_inventory_slots_cannot_become_unknown_files(self):
         result = self.run_image(inode_volume("orphan-unreferenced"), command="l", name=None)
@@ -413,7 +431,10 @@ class ExtTests(unittest.TestCase):
                            "extent": volume.extent_blocks[0] * 1024 + 8}
                 volume.data[offsets[location]] ^= 1
                 result = self.run_image(volume)
-                self.assertNotEqual(result.returncode, 0)
+                if location == "dir":
+                    self.limited_listing(volume, (NAME.encode(),))
+                else:
+                    self.assertNotEqual(result.returncode, 0)
                 self.assertEqual(result.stdout, b"")
 
     def test_volume_geometry_rejects_truncation_and_invalid_group_inventory(self):
@@ -522,8 +543,8 @@ class ExtTests(unittest.TestCase):
                     struct.pack_into("<H", volume.data, volume.root_block * 1024 +
                                      (34 if fault == "count" else 32), 65535)
                 result = self.run_image(volume)
-                self.assertNotEqual(result.returncode, 0)
-                self.assertEqual(result.stdout, b"")
+                self.limited_listing(volume, (NAME.encode(),) if fault == "leaf-checksum" else ())
+                self.assertEqual(result.stdout, b"" if fault == "leaf-checksum" else volume.read(0, volume.size))
 
     def test_htree_walk_reads_only_reachable_leaves(self):
         for layout in ("orphan", "orphan-corrupt", "depth2", "next-index", "collision", "masked",
@@ -538,9 +559,11 @@ class ExtTests(unittest.TestCase):
                 self.assertNotIn(b"not-indexed.bin", listing.stdout)
         for layout in ("hole", "duplicate"):
             with self.subTest(layout=layout):
-                result = self.run_image(HtreeVolume(layout))
-                self.assertNotEqual(result.returncode, 0)
-                self.assertEqual(result.stdout, b"")
+                volume = HtreeVolume(layout)
+                self.limited_listing(volume)
+                result = self.run_image(volume)
+                self.assertEqual(result.returncode, 0)
+                self.assertEqual(result.stdout, volume.read(0, volume.size))
 
     def test_invalid_default_directory_hash_is_refused(self):
         for version in (6, 7, 255):
@@ -566,9 +589,11 @@ class ExtTests(unittest.TestCase):
             for block in volume.dir_leaves:
                 damaged = bytearray(volume.data)
                 damaged[block * 1024 + 1020] ^= 1
-                result = self.run_image(SimpleNamespace(data=damaged))
-                self.assertNotEqual(result.returncode, 0)
-                self.assertEqual(result.stdout, b"")
+                broken = SimpleNamespace(data=damaged)
+                first = block == volume.dir_leaves[0]
+                self.limited_listing(broken, (NAME.encode(),) if first else ())
+                result = self.run_image(broken)
+                self.assertEqual(result.stdout, b"" if first else volume.read(0, volume.size))
 
     def test_linux_creator_inline_bigalloc_and_distributed_descriptors(self):
         fixtures = Path(__file__).parent / "fixtures" / "ext4"
@@ -722,7 +747,10 @@ class ExtTests(unittest.TestCase):
                     struct.pack_into("<I", v.data, pos, 0)
                     struct.pack_into("<H", v.data, pos + 4, value)
                     result = self.run_image(v, engine, "l", None)
-                    self.assertIn(result.returncode, (1, 2), result.stderr)
+                    if engine == "7z":
+                        self.limited_listing(v, (NAME.encode(),), result)
+                    else:
+                        self.assertIn(result.returncode, (1, 2), result.stderr)
 
     def test_directory_records_cannot_cross_blocks_or_use_unaligned_lengths(self):
         for engine in ("7z", "7zz"):
@@ -741,7 +769,10 @@ class ExtTests(unittest.TestCase):
                     struct.pack_into("<H", v.data, start + 24 + first_length + 4,
                                      directory_size - 24 - first_length)
                     result = self.run_image(v, engine, "l", None)
-                    self.assertIn(result.returncode, (1, 2), result.stderr)
+                    if engine == "7z":
+                        self.limited_listing(v, (NAME.encode(),), result)
+                    else:
+                        self.assertIn(result.returncode, (1, 2), result.stderr)
 
     def test_large_block_directory_empty_record_encodings(self):
         for engine in ("7z", "7zz"):

@@ -186,6 +186,12 @@ class Volume:
 
 def readonly_volume(kind):
     v = Volume("direct")
+    if kind == "directory":
+        block = v.allocate(struct.pack("<IHBB", 0, 8, 0, 0))
+        v.put32(v.root_inode + 4, 2 * v.block_size)
+        v.put32(v.root_inode + 28, 2 * v.block_size // 512)
+        v.put32(v.root_inode + 44, block)
+        v.superblock()
     if kind in ("recover", "combined"):
         v.put32(1024 + 96, 6)
     if kind in ("orphan", "combined"):
@@ -293,6 +299,9 @@ if __name__ == "__main__":
     elif layout.startswith("htree-"):
         from ext_htree_fixture import HtreeVolume
         v = HtreeVolume(layout.removeprefix("htree-"))
+    elif layout in ("directory-namespace", "directory-invalid-target"):
+        from ext_directory_fixture import NamespaceVolume
+        v = NamespaceVolume(invalid_target=layout == "directory-invalid-target")
     elif layout in ("directory-stream", "directory-corrupt"):
         from ext_directory_fixture import DirectoryVolume
         v = DirectoryVolume(fault="checksum" if layout == "directory-corrupt" else None)
@@ -338,6 +347,7 @@ if __name__ == "__main__":
                           "ea_data_offset": getattr(v, "ea_data_offset", 0),
                           "directory_head_offset": getattr(v, "directory_head_offset", 0),
                           "directory_tail_offset": getattr(v, "directory_tail_offset", 0),
+                          "root_directory_offset": getattr(v, "root_block", 0) * getattr(v, "block_size", 0),
                           "block_bitmap_offset": getattr(v, "block_map", 0) * getattr(v, "block_size", 0),
                           "next_index_offset": getattr(v, "next_index_offset", 0),
                           "first_data_offset": getattr(v, "first_data_offset", 0),

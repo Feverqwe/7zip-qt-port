@@ -173,6 +173,10 @@ UString QtArchiveDiagnosticText(const UString &source) {
             "SevenZipDiagnostics",
             "The FAT file chain is incomplete. Only the readable prefix is available."),
         QT_TRANSLATE_NOOP("SevenZipDiagnostics", "The FAT directory could not be read completely."),
+        QT_TRANSLATE_NOOP("SevenZipDiagnostics", "The ext directory could not be read completely."),
+        QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                          "Some ext directories could not be read completely. The file list may be "
+                          "incomplete or outdated."),
         QT_TRANSLATE_NOOP("SevenZipDiagnostics",
                           "Some SquashFS extended attributes are unavailable. Readable file data "
                           "and attributes remain accessible."),

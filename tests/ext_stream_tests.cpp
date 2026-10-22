@@ -138,9 +138,10 @@ class CancelXattrOpen final : public IArchiveOpenCallback, public CMyUnknownImp 
     Z7_COM_UNKNOWN_IMP_1(IArchiveOpenCallback)
   public:
     const Input *source = nullptr;
+    HRESULT result = E_ABORT;
     Z7_COM7F_IMF(SetTotal(const UInt64 *, const UInt64 *)) override { return S_OK; }
     Z7_COM7F_IMF(SetCompleted(const UInt64 *, const UInt64 *)) override {
-        return source && source->notified ? E_ABORT : S_OK;
+        return source && source->notified ? result : S_OK;
     }
 };
 } // namespace
@@ -194,6 +195,26 @@ class ExtStreamTests final : public QObject {
                 return i;
         }
         return UInt32(-1);
+    }
+    QString readLimitations() {
+        UInt32 count = 0;
+        if (archive_->GetNumberOfArchiveProperties(&count) != S_OK)
+            return {};
+        for (UInt32 i = 0; i < count; ++i) {
+            BSTR name = nullptr;
+            PROPID id = 0;
+            VARTYPE type = VT_EMPTY;
+            if (archive_->GetArchivePropertyInfo(i, &name, &id, &type) != S_OK)
+                return {};
+            const QString label = name ? QString::fromWCharArray(name) : QString();
+            SysFreeString(name);
+            if (label == "Read-only limitations") {
+                NWindows::NCOM::CPropVariant value;
+                if (archive_->GetArchiveProperty(id, &value) == S_OK && value.vt == VT_BSTR)
+                    return QString::fromWCharArray(value.bstrVal);
+            }
+        }
+        return {};
     }
     void createArchive() {
         archive_.Release();
@@ -432,6 +453,39 @@ class ExtStreamTests final : public QObject {
         QTest::addColumn<QString>("layout");
         QTest::newRow("direct-data-seek") << QString("direct");
         QTest::newRow("indirect-metadata-seek") << QString("double-hole");
+    }
+    void mappedReadsRetryFailedSeeks_data() {
+        QTest::addColumn<QString>("layout");
+        for (const char *layout : {"direct", "single", "extent-tree"})
+            QTest::newRow(layout) << QString::fromLatin1(layout);
+    }
+    void mappedReadsRetryFailedSeeks() {
+        QFETCH(QString, layout);
+        const auto record = bundle(layout);
+        auto *source = new Input(image(record));
+        CMyComPtr<IInStream> input = source;
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        CMyComPtr<IInArchiveGetStream> provider;
+        QCOMPARE(
+            archive_->QueryInterface(IID_IInArchiveGetStream, reinterpret_cast<void **>(&provider)),
+            S_OK);
+        CMyComPtr<ISequentialInStream> stream;
+        QCOMPARE(provider->GetStream(fileIndex(), &stream), S_OK);
+        CMyComPtr<IInStream> seekable;
+        QCOMPARE(stream->QueryInterface(IID_IInStream, reinterpret_cast<void **>(&seekable)), S_OK);
+        for (HRESULT error : {E_FAIL, E_ABORT, E_OUTOFMEMORY}) {
+            QCOMPARE(seekable->Seek(record["file_size"].toInt() - 4, STREAM_SEEK_SET, nullptr),
+                     S_OK);
+            source->seekResult = error;
+            char bytes[4] = {};
+            UInt32 done = 99;
+            QCOMPARE(stream->Read(bytes, sizeof(bytes), &done), error);
+            QCOMPARE(done, UInt32(0));
+            source->seekResult = S_OK;
+            QCOMPARE(stream->Read(bytes, sizeof(bytes), &done), S_OK);
+            QCOMPARE(done, UInt32(4));
+            QCOMPARE(QByteArray(bytes, 4), QByteArray("tail"));
+        }
     }
     void inputSeekFailuresAreLocalDuringExtract() {
         QFETCH(QString, layout);
@@ -721,12 +775,16 @@ class ExtStreamTests final : public QObject {
             const UInt64 index = UInt64(record["next_index_offset"].toDouble());
             input->failAt = index;
             UInt32 count = 99;
-            for (HRESULT error : {E_FAIL, E_ABORT}) {
+            for (HRESULT error : {E_FAIL, E_ABORT, E_OUTOFMEMORY}) {
                 input->atResult = error;
                 QCOMPARE(input->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
-                QCOMPARE(archive_->Open(input, nullptr, nullptr), error);
+                QCOMPARE(archive_->Open(input, nullptr, nullptr), error == E_FAIL ? S_OK : error);
                 QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
-                QCOMPARE(count, UInt32(0));
+                if (error == E_FAIL) {
+                    QVERIFY(!readLimitations().isEmpty());
+                    QVERIFY(fileIndex() != UInt32(-1));
+                } else
+                    QCOMPARE(count, UInt32(0));
             }
             input->failAt = UINT64_MAX;
             input->notifyAt = index;
@@ -740,13 +798,15 @@ class ExtStreamTests final : public QObject {
             auto damaged = image(record);
             damaged[qsizetype(index) + 1020] ^= 1;
             CMyComPtr<IInStream> corrupt = new Input(damaged);
-            QCOMPARE(archive_->Open(corrupt, nullptr, nullptr), S_FALSE);
+            QCOMPARE(archive_->Open(corrupt, nullptr, nullptr), S_OK);
             QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
-            QCOMPARE(count, UInt32(0));
+            QVERIFY(!readLimitations().isEmpty());
+            QVERIFY(fileIndex() != UInt32(-1));
             input->notifyAt = UINT64_MAX;
             input->notified = false;
             QCOMPARE(input->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
             QCOMPARE(archive_->Open(input, nullptr, cancel), S_OK);
+            QVERIFY(readLimitations().isEmpty());
             QVERIFY(fileIndex() != UInt32(-1));
         }
     }
@@ -774,12 +834,16 @@ class ExtStreamTests final : public QObject {
         input.SetFromCls(new Input(image(record)));
         input->failAt = UInt64(record["directory_tail_offset"].toDouble());
         UInt32 count = 99;
-        for (HRESULT error : {E_FAIL, E_ABORT}) {
+        for (HRESULT error : {E_FAIL, E_ABORT, E_OUTOFMEMORY}) {
             input->atResult = error;
             QCOMPARE(input->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
-            QCOMPARE(archive_->Open(input, nullptr, nullptr), error);
+            QCOMPARE(archive_->Open(input, nullptr, nullptr), error == E_FAIL ? S_OK : error);
             QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
-            QCOMPARE(count, UInt32(0));
+            if (error == E_FAIL) {
+                QVERIFY(!readLimitations().isEmpty());
+                QVERIFY(fileIndex() != UInt32(-1));
+            } else
+                QCOMPARE(count, UInt32(0));
         }
         input->failAt = UINT64_MAX;
         input->notifyAt = UInt64(record["directory_head_offset"].toDouble());
@@ -791,15 +855,161 @@ class ExtStreamTests final : public QObject {
         QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
         QCOMPARE(count, UInt32(0));
         CMyComPtr<IInStream> corrupt = new Input(image(bundle("directory-corrupt")));
-        QCOMPARE(archive_->Open(corrupt, nullptr, nullptr), S_FALSE);
+        QCOMPARE(archive_->Open(corrupt, nullptr, nullptr), S_OK);
         QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
-        QCOMPARE(count, UInt32(0));
+        QVERIFY(!readLimitations().isEmpty());
+        QVERIFY(fileIndex() != UInt32(-1));
         input->notifyAt = UINT64_MAX;
         input->notified = false;
         QCOMPARE(input->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
         QCOMPARE(archive_->Open(input, nullptr, cancel), S_OK);
+        QVERIFY(readLimitations().isEmpty());
         QVERIFY(fileIndex() != UInt32(-1));
         QVERIFY(fileIndex("after-hole.bin") != UInt32(-1));
+    }
+    void directoryFaultsKeepOtherBlocksAndFatalCallbacks_data() {
+        QTest::addColumn<bool>("head");
+        QTest::addColumn<QString>("layout");
+        QTest::addColumn<bool>("root");
+        QTest::newRow("first-directory-block") << true << QString("directory-stream") << false;
+        QTest::newRow("last-directory-block") << false << QString("directory-stream") << false;
+        QTest::newRow("first-child-block") << true << QString("directory-namespace") << false;
+        QTest::newRow("last-child-block") << false << QString("directory-namespace") << false;
+        QTest::newRow("unknown-parent-name") << true << QString("directory-namespace") << true;
+    }
+    void directoryFaultsKeepOtherBlocksAndFatalCallbacks() {
+        QFETCH(bool, head);
+        QFETCH(QString, layout);
+        QFETCH(bool, root);
+        const auto record = bundle(layout);
+        CMyComPtr2<IInStream, Input> input;
+        input.SetFromCls(new Input(image(record)));
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        UInt32 selected = fileIndex();
+        QVERIFY(selected != UInt32(-1));
+        CMyComPtr2<IArchiveExtractCallback, Extract> baseline;
+        baseline.Create_if_Empty();
+        QCOMPARE(archive_->Extract(&selected, 1, 0, baseline), S_OK);
+        const QByteArray expected = baseline->output->bytes;
+        QCOMPARE(expected.size(), record["file_size"].toInt());
+        for (const auto &value : record["samples"].toArray()) {
+            const auto sample = value.toObject();
+            const auto bytes = QByteArray::fromHex(sample["bytes"].toString().toLatin1());
+            QCOMPARE(expected.mid(sample["offset"].toInt(), bytes.size()), bytes);
+        }
+        const UInt64 target = UInt64(record[root   ? "root_directory_offset"
+                                            : head ? "directory_head_offset"
+                                                   : "directory_tail_offset"]
+                                         .toDouble());
+        for (bool seek : {false, true}) {
+            for (HRESULT error : {E_FAIL, S_FALSE, S_OK, E_ABORT, E_OUTOFMEMORY}) {
+                if (seek && error == S_OK)
+                    continue;
+                input->failAt = seek ? UINT64_MAX : target;
+                input->seekFailAt = seek ? target : UINT64_MAX;
+                input->atResult = error;
+                QCOMPARE(input->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
+                const unsigned faults = input->faults;
+                const bool fatal = error == E_ABORT || error == E_OUTOFMEMORY;
+                QCOMPARE(archive_->Open(input, nullptr, nullptr), fatal ? error : S_OK);
+                QVERIFY(input->faults > faults);
+                if (fatal)
+                    continue;
+                QVERIFY(!readLimitations().isEmpty());
+                UInt32 incompleteDirectory = UInt32(-1);
+                if (layout == "directory-namespace") {
+                    if (!root)
+                        selected = fileIndex(head ? "DIRECTORY/after-error.bin"
+                                                  : "DIRECTORY/before-error.bin");
+                    else {
+                        selected = UInt32(-1);
+                        UInt32 count = 0;
+                        QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+                        for (UInt32 i = 0; i < count; ++i) {
+                            NWindows::NCOM::CPropVariant value;
+                            QCOMPARE(archive_->GetProperty(i, kpidPath, &value), S_OK);
+                            if (value.vt == VT_BSTR &&
+                                QDir::fromNativeSeparators(QString::fromWCharArray(value.bstrVal))
+                                    .endsWith("/after-error.bin"))
+                                selected = i;
+                        }
+                    }
+                    UInt32 parent = UInt32(-1), type = 0;
+                    CMyComPtr<IArchiveGetRawProps> tree;
+                    QCOMPARE(archive_->QueryInterface(IID_IArchiveGetRawProps,
+                                                      reinterpret_cast<void **>(&tree)),
+                             S_OK);
+                    QCOMPARE(tree->GetParent(selected, &parent, &type), S_OK);
+                    QVERIFY(parent != UInt32(-1));
+                    incompleteDirectory = parent;
+                    NWindows::NCOM::CPropVariant error;
+                    QCOMPARE(archive_->GetProperty(parent, kpidError, &error), S_OK);
+                    QCOMPARE(error.vt, VARTYPE(VT_BSTR));
+                    QVERIFY(SysStringLen(error.bstrVal) > 0);
+                } else
+                    selected = head ? fileIndex("after-hole.bin") : fileIndex();
+                QVERIFY(selected != UInt32(-1));
+                CMyComPtr2<IArchiveExtractCallback, Extract> copy;
+                copy.Create_if_Empty();
+                QCOMPARE(archive_->Extract(&selected, 1, 0, copy), S_OK);
+                QCOMPARE(copy->result, Int32(NArchive::NExtract::NOperationResult::kOK));
+                QCOMPARE(copy->output->bytes, expected);
+                if (incompleteDirectory != UInt32(-1)) {
+                    const UInt32 indices[] = {incompleteDirectory, selected};
+                    CMyComPtr2<IArchiveExtractCallback, Extract> sequence;
+                    sequence.Create_if_Empty();
+                    sequence->separateFiles = true;
+                    QCOMPARE(archive_->Extract(indices, 2, 0, sequence), S_OK);
+                    QCOMPARE(sequence->results,
+                             QVector<Int32>({NArchive::NExtract::NOperationResult::kDataError,
+                                             NArchive::NExtract::NOperationResult::kOK}));
+                    QCOMPARE(sequence->files[1], expected);
+                }
+            }
+        }
+        input->failAt = input->seekFailAt = UINT64_MAX;
+        input->notifyAt = target;
+        CMyComPtr2<IArchiveOpenCallback, CancelXattrOpen> callback;
+        callback.SetFromCls(new CancelXattrOpen);
+        callback->source = input.ClsPtr();
+        for (HRESULT error : {E_FAIL, S_FALSE, E_ABORT, E_OUTOFMEMORY}) {
+            input->notified = false;
+            callback->result = error;
+            QCOMPARE(input->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
+            QCOMPARE(archive_->Open(input, nullptr, callback), error);
+        }
+        input->notifyAt = UINT64_MAX;
+        input->notified = false;
+        QCOMPARE(input->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        QVERIFY(readLimitations().isEmpty());
+        if (layout == "directory-namespace") {
+            const UInt32 directory = fileIndex("DIRECTORY");
+            QVERIFY(directory != UInt32(-1));
+            NWindows::NCOM::CPropVariant error;
+            QCOMPARE(archive_->GetProperty(directory, kpidError, &error), S_OK);
+            QCOMPARE(error.vt, VARTYPE(VT_EMPTY));
+        }
+    }
+    void unreadableDirectoryTargetDoesNotHideFollowingRecords() {
+        const auto record = bundle("directory-invalid-target");
+        CMyComPtr<IInStream> input = new Input(image(record));
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        QVERIFY(!readLimitations().isEmpty());
+        QCOMPARE(fileIndex("DIRECTORY/unreadable.bin"), UInt32(-1));
+        const UInt32 indices[] = {fileIndex("DIRECTORY/before-error.bin"),
+                                  fileIndex("DIRECTORY/after-bad-inode.bin")};
+        QVERIFY(indices[0] != UInt32(-1) && indices[1] != UInt32(-1));
+        QByteArray expected(record["file_size"].toInt(), '\0');
+        expected.replace(0, 4, "head");
+        expected.replace(expected.size() - 4, 4, "tail");
+        CMyComPtr2<IArchiveExtractCallback, Extract> callback;
+        callback.Create_if_Empty();
+        callback->separateFiles = true;
+        QCOMPARE(archive_->Extract(indices, 2, 0, callback), S_OK);
+        QCOMPARE(callback->results, QVector<Int32>({NArchive::NExtract::NOperationResult::kOK,
+                                                    NArchive::NExtract::NOperationResult::kOK}));
+        QCOMPARE(callback->files, QVector<QByteArray>({expected, expected}));
     }
     void systemZoneFailureAndJournalCancellationCanBeReused() {
         UInt32 count = 99;

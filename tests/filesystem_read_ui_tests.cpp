@@ -190,6 +190,7 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
                                         "data-list-unreadable-list",
                                         "standard-short",
                                         "ext-recover",
+                                        "ext-directory",
                                         "ext-orphan",
                                         "ext-unclean",
                                         "ext-unverified",
@@ -205,7 +206,7 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
                                         "source-backup-mismatch"}) {
                 // Rejection uses the shared consent service; acceptance checks every reason.
                 if (!accept && kind != "exfat" && kind != "unclean" && kind != "volume-dirty" &&
-                    kind != "ext-recover")
+                    kind != "ext-recover" && kind != "ext-directory")
                     continue;
                 QTest::newRow(qPrintable(language + (accept ? "-accept-" : "-cancel-") + kind))
                     << language << accept << kind;
