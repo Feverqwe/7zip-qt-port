@@ -6,9 +6,10 @@ from ntfs_fixture import attributes, nonresident, put, record, save_record, u16,
 VALID = ("ea-resident", "ea-nonresident", "ea-fragmented", "ea-extension", "ea-readonly",
          "ea-incomplete", "ea-long-uid", "ea-short-info", "ea-no-data", "ea-next-size",
          "ea-zero-size", "ea-device-wide", "ea-mode-high", "ea-chr", "ea-blk", "ea-fifo", "ea-sock",
-         "ea-directory", "ea-stale-directory-bit")
+         "ea-directory", "ea-stale-directory-bit", "ea-def-decoy")
 BAD = ("ea-record-small", "ea-record-overrun", "ea-record-short", "ea-info-zero",
-       "ea-info-overrun", "ea-attr-overrun", "ea-limit", "ea-bad-mode", "ea-bad-def")
+       "ea-info-overrun", "ea-attr-overrun", "ea-limit", "ea-bad-mode", "ea-bad-def",
+       "ea-named-def", "ea-deleted-def")
 
 
 def properties(kind):
@@ -145,6 +146,23 @@ def volume(kind):
         if kind == "ea-attr-overrun":
             put(ea_attr, 40, "QQQ", 131072, 131072, 131072)
         allocated(image, 6, 0x80, clusters)
+    if kind in ("ea-named-def", "ea-deleted-def", "ea-def-decoy"):
+        from ntfs_security_fixture import named_nonresident
+        def_offset, defs = record(image, 4)
+        def_attrs = [a for _, a in attributes(defs)]
+        def_attr = next(a for a in def_attrs if u32(a, 0) == 0x80)
+        rp = u16(def_attr, 32)
+        lcn = int.from_bytes(def_attr[rp + 2:rp + 2 + (def_attr[rp] >> 4)], "little")
+        named = named_nonresident(def_attr, 0x80, "unrelated",
+                                  [(u64(def_attr, 40) // 4096, lcn)],
+                                  u64(def_attr, 48), u16(def_attr, 14) + 1)
+        if kind == "ea-named-def":
+            def_attrs[def_attrs.index(def_attr)] = named
+        elif kind == "ea-def-decoy":
+            def_attrs.insert(def_attrs.index(def_attr) + 1, named)
+        else:
+            put(defs, 22, "H", 0)
+        set_attributes(image, def_offset, defs, def_attrs)
     if kind in ("ea-limit", "ea-bad-def"):
         def_offset, defs = record(image, 4)
         def_attr = next(a for _, a in attributes(defs) if u32(a, 0) == 0x80)

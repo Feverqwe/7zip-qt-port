@@ -3604,7 +3604,10 @@ HRESULT CDatabase::LoadEaMetadata() {
     reader.Callback = OpenCallback;
     UInt32 limit = 0;
     HRESULT definitionsResult = S_FALSE;
-    if (Recs.Size() > 4 && !Recs[4].DataAttrs.IsEmpty()) {
+    // ntfs_iget5/ntfs_read_mft: $AttrDef belongs to an active base inode's unnamed DATA.
+    if (Recs.Size() > 4 && Recs[4].Is_Magic_FILE() && Recs[4].InUse() &&
+        Recs[4].BaseMftRef.IsBaseItself() && !Recs[4].DataAttrs.IsEmpty() &&
+        Recs[4].DataAttrs[0].NameValid && Recs[4].DataAttrs[0].Name.IsEmpty()) {
         const UInt64 size = Recs[4].DataAttrs[0].GetSize();
         if (size >= 0xA0 && size <= 100 * 0xA0) {
             definitionsResult = Recs[4].GetStream(InStream, 0, Header.ClusterSizeLog,

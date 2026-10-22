@@ -4,6 +4,54 @@
 существующее чтение boot/MFT, атрибутов, sparse и compressed streams.
 Полная актуализация NTFS по Linux ещё не завершена.
 
+## Security/EA source comparison and `$AttrDef` identity — 2026-10-22
+
+Compared complete local security/EA readers in Linux
+`58161ead29e50d70a317ea26b472e0c7508e69da`:
+`fs/ntfs3/fsntfs.c` and `xattr.c`, with the `$AttrDef`/`$Volume` read branches
+of `super.c`, attribute predicates and disk types. Nine of eleven borrowed
+reader bodies match after comments/whitespace. `ntfs_get_security_by_id` adds
+the fixed SII-entry/key bounds before reading its descriptor header;
+`ntfs_list_ea` emits validated name/value pairs through an archive callback
+instead of constructing a VFS name buffer. All original lookup, record walk,
+value-size/error checks and release paths remain. Nine security/EA structure
+bodies match, with portable packing replacing kernel packing annotations.
+
+Reviewed the three EA entry/context adapters, `ntfseacompat.h`,
+`ntfssecuritycompat.h`, `ntfssecurity.c` and the C++ list-selected SII/SDS/EA
+owners, raw metadata streams, property and synthesized-ADS consumers.
+The security reader uses original SII lookup and descriptor validation;
+missing ranges/IDs do not invalidate independently readable descriptors or DATA.
+Offset preconditions prevent wrapping before the original SD validator.
+EA/WSL publication remains transactional after complete validation, with first
+duplicate-name precedence, escaped collision-safe archive names, original WSL
+field-size requirements and explicit unknown metadata on failure. VFS locking,
+ACL installation, xattr mutation, inode credentials and allocation remain host
+or write-side boundaries. The `$AttrDef` table and volume-state projections
+retain original field selection; they do not recreate mount or repair services.
+This closes source comparison of the selected security/EA component.
+
+Found and fixed an owner-selection gap in `LoadEaMetadata`: it read the first
+DATA of MFT slot 4 even when that was a named ADS or the record was deleted.
+Linux loads the active `$AttrDef` inode and ignores unrelated named DATA.
+The archive now requires an active base FILE record and valid unnamed DATA
+before reading that table. Existing list membership, mapping and source bounds
+still apply. An unavailable table limits EA/WSL metadata while independently
+readable files remain available under the existing limited-read policy.
+The GPL reader owns this feature; standalone SDK has no Linux EA/WSL reader.
+
+Two creator-image mutations reproduced the bug before the fix: a named-only
+table was accepted without a limitation, and a deleted table published WSL UID.
+ABI regressions require unavailable metadata while retaining exact healthy DATA;
+a valid table beside an ADS preserves normal metadata. The same cases enter
+existing CLI checks for readable files, limitation diagnostics and unchanged
+source bytes. No implementation-text checks or artificial getter tests were added.
+
+All eight ordinary macOS NTFS/baseline suites passed after the fix (27.45 s),
+using existing incremental targets/caches. All 33 pinned NTFS dependency hashes
+match. No Linux/Windows, slow suites or full gate were run for this portable
+selection change. Remaining NTFS read components and the parent goal stay open.
+
 ## Directory/index source comparison — 2026-10-22
 
 Compared complete local bodies in pinned Linux `fs/ntfs3/{dir,index,upcase}.c`,

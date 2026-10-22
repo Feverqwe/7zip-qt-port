@@ -417,12 +417,13 @@ class NtfsStreamTests final : public QObject, protected Fixture {
         QTest::addColumn<QString>("kind");
         QTest::addColumn<bool>("limited");
         for (const char *kind : {"ea-list-selected", "ea-list-nonresident", "ea-list-split",
-                                 "ea-list-metadata-flags", "ea-list-unlisted"})
+                                 "ea-list-metadata-flags", "ea-list-unlisted", "ea-def-decoy"})
             QTest::newRow(kind) << QString::fromLatin1(kind) << false;
         for (const char *kind :
              {"ea-list-bad-id", "ea-list-bad-sequence", "ea-list-missing-tail", "ea-list-bad-run",
               "ea-record-small", "ea-record-overrun", "ea-record-short", "ea-info-zero",
-              "ea-info-overrun", "ea-attr-overrun", "ea-limit", "ea-bad-mode", "ea-bad-def"})
+              "ea-info-overrun", "ea-attr-overrun", "ea-limit", "ea-bad-mode", "ea-bad-def",
+              "ea-named-def", "ea-deleted-def"})
             QTest::newRow(kind) << QString::fromLatin1(kind) << true;
     }
     void eaListAuthorityAndPartialMetadata() {
