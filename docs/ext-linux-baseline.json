@@ -144,6 +144,7 @@
     "fs/ext4/xattr_trusted.c": "57eb676c2b9fd98765a013577fad3b23352f61e9e5f7aa2415e7ced731a6482b",
     "fs/ext4/xattr_user.c": "9edb34db46c9d60cdefdfad8908fb476246f6fe17d1a71e1070f06532788224c",
     "fs/libfs.c": "9af500b037c22b2e75c91c482ba957141d11b876a1fffd93cbb9ed0b9ce920fc",
+    "fs/namei.c": "f578a73e653e159b69e38714b350dd48754ca5f53224a8e89b67bf70dc831fb0",
     "fs/posix_acl.c": "895228acc53dc80a3898125ea3d676c3da0b5596ee9ebc321c5dba74adb8db91",
     "fs/readdir.c": "6a0ecdcbd99e8ad8336ad73fa2f04d3d0b562eb929263e63131222343bea424f",
     "fs/verity/Kconfig": "a30f6eccff12c1451ee1d65f2c97d567ef531c5103dc902949bbc500dd2328ed",

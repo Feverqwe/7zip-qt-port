@@ -101,6 +101,41 @@ class NamespaceVolume(Volume):
         self.superblock((13,))
 
 
+def service_link_volume(kind):
+    v = ModernVolume(inline=True)
+    if kind == "inline-parent":
+        v.put32(v.inline_dir_inode + 40, 13)
+    else:
+        dot = v.dirent(12 if kind == "self-file" else 2, b".", 12, 2)
+        parent = v.dirent(12 if kind == "parent-file" else
+                          13 if kind == "parent-child" else 2, b"..", 12, 2)
+        prefix = dot + (dot if kind == "duplicate-self" else b"") + parent
+        if kind == "duplicate-parent":
+            prefix += parent
+        prefix += v.dirent(12, NAME.encode(), (8 + len(NAME.encode()) + 3) & ~3)
+        prefix += v.dirent(13, b"nested", v.block_size - 12 - len(prefix), 2)
+        start = v.root_block * v.block_size
+        v.data[start:start + len(prefix)] = prefix
+    v.refresh()
+    return v
+
+
+def parent_order_volume():
+    v = NamespaceVolume()
+    bs = v.block_size
+    child = (ModernVolume.dirent(14, b".", 12, 2) + ModernVolume.dirent(2, b"..", 12, 2) +
+             ModernVolume.dirent(13, b"CHILD", bs - 24, 2))
+    block = v.allocate(child)
+    parent = v.table * bs + 13 * 128
+    v.inode(parent, 0o40755, bs, bs // 512, links=3)
+    v.put32(parent + 40, block)
+    v.put32(v.directory_head_offset + 12, 14)
+    root_name = (8 + len(NAME.encode()) + 3) & ~3
+    v.put32(v.root_block * bs + 24 + root_name, 14)
+    v.superblock((13, 14))
+    return v
+
+
 def wide_indirect_directory_volume():
     v = wide_indirect_volume()
     bs = v.block_size

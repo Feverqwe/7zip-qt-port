@@ -18,7 +18,8 @@ from ext_xattr_fixture import XattrVolume
 from ext_block_fixture import BlockVolume, JournalVolume
 from ext_symlink_fixture import SymlinkVolume
 from ext_inode_fixture import inode_volume, inventory_volume
-from ext_directory_fixture import DirectoryVolume, wide_indirect_directory_volume, type_hint_volume
+from ext_directory_fixture import (DirectoryVolume, wide_indirect_directory_volume, type_hint_volume,
+                                   service_link_volume, parent_order_volume)
 from ext_htree_fixture import HtreeVolume
 from ext_readlink_fixture import ReadlinkVolume
 
@@ -394,6 +395,32 @@ class ExtTests(unittest.TestCase):
                     listing = self.run_image(volume, command="l", name=None)
                     self.assertEqual(listing.returncode, 0, listing.stderr.decode(errors="replace"))
                     self.assertNotIn(b"Read-only limitations = ", listing.stdout)
+
+    def test_service_links_do_not_hide_files_or_define_parent_cycles(self):
+        for kind in ("self-file", "duplicate-self", "parent-file", "parent-child",
+                     "duplicate-parent", "inline-parent"):
+            with self.subTest(kind=kind):
+                volume = service_link_volume(kind)
+                self.limited_listing(volume)
+                for name in (NAME, "nested/" + NAME):
+                    result = self.run_image(volume, name=name)
+                    self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                    self.assertEqual(result.stdout, volume.payload)
+        volume = parent_order_volume()
+        listing = self.run_image(volume, command="l", name=None)
+        self.assertEqual(listing.returncode, 0, listing.stderr.decode(errors="replace"))
+        self.assertNotIn(b"Read-only limitations = ", listing.stdout)
+        result = self.run_image(volume, name="DIRECTORY/CHILD/before-error.bin")
+        self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+        self.assertEqual(result.stdout, volume.read(0, volume.size))
+
+        parent_inode = volume.table * volume.block_size + 13 * 128
+        parent_block = struct.unpack_from("<I", volume.data, parent_inode + 40)[0]
+        volume.put32(parent_block * volume.block_size + 24, 2)  # real edge back to root
+        self.limited_listing(volume, (b"DIRECTORY/CHILD",))
+        result = self.run_image(volume, name=NAME)
+        self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+        self.assertEqual(result.stdout, volume.read(0, volume.size))
 
     def test_special_inode_device_encoding_is_not_a_data_block_pointer(self):
         for engine in ("7z", "7zz"):

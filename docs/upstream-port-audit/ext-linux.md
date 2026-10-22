@@ -10,6 +10,38 @@ fs-verity now reuses the original shared Linux string scanner already linked
 for fscrypt. Source scope and validation are recorded with the
 [shared string-service transfer](erofs-linux.md#original-shared-string-services--2026-10-22).
 
+## Inconsistent dot links and archive parent topology — 2026-10-22
+
+Compared complete SDK `CHandler::ParseDir`, pinned Linux `ext4_readdir`,
+`htree_dirblock_to_tree`, `ext4_read_inline_dir` and VFS `handle_dots` with the
+archive's parent assignment, link counting and cycle checks. Linux emits live
+directory records without enforcing dot identities during readdir; VFS parent
+navigation follows dentry topology. The archive instead stopped a directory on
+bad/duplicate dot records, and let on-disk `..` assign its actual parent. This
+could hide later readable files or make the result depend on inode scan order.
+
+The GPL archive projection now records dot inconsistencies as incomplete
+directory diagnostics and continues across otherwise valid records. Only real
+named directory edges establish the archive parent graph. Recorded `..` is
+compared with that graph after all directories are scanned. Existing actual-edge
+cycle/alias rejection, checksums, record/name/inode bounds, fscrypt context checks
+and path validation remain; source writes, repair and journal replay are absent.
+The SDK source variant is unchanged. This is narrow archive integration for the
+existing ext limited-opening mode, rather than another directory decoder. The
+VFS reference unit is hashed in the baseline; no VFS implementation is copied.
+
+CLI regressions cover six bad/duplicate dot cases in ordinary and inline
+directories, exact readable root/child file contents, healthy child-before-parent
+inode ordering without spurious limitations, and exclusion of a real named edge
+back to root while retaining independent files. The fixture runner checks that
+source bytes remain unchanged.
+
+Validation on macOS: eight focused ext/stream/fscrypt/xattr/provenance suites
+passed, followed by a passing affected `ext` rerun after adding the actual-edge
+negative control. The incremental application build passed. Caches were reused;
+no full/slow suites or remote validation were requested for this portable change.
+The broader ext and parent format audits remain open.
+
 ## Unused directory slots and following live names — 2026-10-22
 
 Compared original SDK `CHandler::ParseDir`, pinned Linux `ext4_readdir`,

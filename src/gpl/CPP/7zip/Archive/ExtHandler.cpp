@@ -558,6 +558,7 @@ struct CDirParseState {
 
 struct CNode {
     Int32 ParentNode; // in _refs[], -1 if not dir
+    Int32 RecordedParentNode;
     int ItemIndex;    // in _items[]   , (set as >=0 only for if (IsDir())
     int SymLinkIndex; // in _symLinks[]
     int DirIndex;     // in _dirs[]
@@ -597,6 +598,7 @@ struct CNode {
 
     void Construct() {
         ParentNode = -1;
+        RecordedParentNode = -1;
         ItemIndex = -1;
         SymLinkIndex = -1;
         DirIndex = -1;
@@ -1067,36 +1069,29 @@ HRESULT CHandler::ParseDir(const Byte *p, size_t size, unsigned iNodeDir, CDirPa
             item.Type = k_Type_UNKNOWN;
         }
 
-        node.NumLinksCalced++;
-
         PRF(printf("\n%s %6d %s", item.IsDir() ? "DIR  " : "     ", (unsigned)item.Node,
                    (const char *)item.Name));
 
         if (item.Name[0] == '.') {
             if (item.Name[1] == 0) {
-                if (isThereSelfLink)
-                    return S_FALSE;
+                if (isThereSelfLink || iNode != iNodeDir)
+                    MarkDirectoryIncomplete(nodeDir);
+                else
+                    node.NumLinksCalced++;
                 isThereSelfLink = true;
-                if (iNode != iNodeDir)
-                    return S_FALSE;
                 continue;
             }
 
             if (item.Name[1] == '.' && item.Name[2] == 0) {
-                if (parentNode >= 0)
-                    return S_FALSE;
-                if (!node.IsDir())
-                    return S_FALSE;
-                if (iNode == iNodeDir && iNode != k_INODE_ROOT)
-                    return S_FALSE;
+                if (parentNode >= 0 || !node.IsDir() ||
+                    (iNode == iNodeDir && iNode != k_INODE_ROOT)) {
+                    MarkDirectoryIncomplete(nodeDir);
+                    continue;
+                }
 
                 parentNode = (int)iNode;
-
-                if (nodeDir.ParentNode < 0)
-                    nodeDir.ParentNode = (int)iNode;
-                else if ((unsigned)nodeDir.ParentNode != iNode)
-                    return S_FALSE;
-
+                nodeDir.RecordedParentNode = (int)iNode;
+                node.NumLinksCalced++;
                 continue;
             }
         }
@@ -1104,6 +1099,7 @@ HRESULT CHandler::ParseDir(const Byte *p, size_t size, unsigned iNodeDir, CDirPa
         if (iNode == iNodeDir)
             return S_FALSE;
 
+        node.NumLinksCalced++;
         if (node.IsDir()) {
             if (!item.ContextAllowed)
                 return HRESULT(0x80070005L);
@@ -2189,6 +2185,10 @@ HRESULT CHandler::Open2(IInStream *inStream) {
             if (nodeIndex < 0)
                 continue;
             const CNode &node = _nodes[nodeIndex];
+
+            if (node.IsDir() && node.RecordedParentNode >= 0 && node.ParentNode >= 0 &&
+                node.RecordedParentNode != node.ParentNode)
+                MarkDirectoryIncomplete(_nodes[nodeIndex]);
 
             if (node.NumLinks != node.NumLinksCalced && !(node.Flags & ((UInt32)1 << 21))) {
                 if (node.NumLinks != 1 || node.NumLinksCalced != 0
