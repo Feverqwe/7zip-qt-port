@@ -543,14 +543,14 @@ class SquashfsStreamTests final : public QObject {
     }
     void inodeBlocksAreIsolated_data() {
         QTest::addColumn<QString>("fault");
-        for (const QString &fault :
-             {"inode-block-clean", "inode-block-header", "inode-block-zlib", "inode-block-io"})
+        for (const QString &fault : {"inode-block-clean", "inode-block-header", "inode-block-zlib",
+                                     "inode-block-io", "inode-block-unused"})
             QTest::newRow(qPrintable(fault)) << fault;
     }
     void inodeBlocksAreIsolated() {
         QFETCH(QString, fault);
         loadFixture("zlib", true, fault);
-        const bool clean = fault == "inode-block-clean";
+        const bool clean = fault == "inode-block-clean" || fault == "inode-block-unused";
         const auto inode = qFromLittleEndian<quint64>(bytes_.constData() + 64);
         const auto broken =
             inode + 2 + (qFromLittleEndian<quint16>(bytes_.constData() + inode) & 0x7fff);
@@ -558,6 +558,10 @@ class SquashfsStreamTests final : public QObject {
         source.SetFromCls(new Input(bytes_));
         if (fault == "inode-block-io")
             source->failAt = broken + 2;
+        if (fault == "inode-block-unused") {
+            source->failAt = qFromLittleEndian<quint64>(bytes_.constData() + 72) - 2;
+            source->atFailure = E_ABORT;
+        }
         QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
         auto good = stream("данные 空");
         QVERIFY(good);
@@ -582,6 +586,55 @@ class SquashfsStreamTests final : public QObject {
         CMyComPtr<IInStream> healthy = new Input(bytes_);
         QCOMPARE(archive_->Open(healthy, nullptr, nullptr), S_OK);
         QVERIFY(stream("alpha"));
+    }
+    void inodeRecordsRequestTheirOwnExtent_data() {
+        QTest::addColumn<QString>("fault");
+        for (const QString &fault : {"inode-split", "inode-split-directory", "inode-split-link"})
+            QTest::newRow(qPrintable(fault)) << fault;
+    }
+    void inodeRecordsRequestTheirOwnExtent() {
+        QFETCH(QString, fault);
+        loadFixture("zlib", true, fault);
+        CMyComPtr<IInStream> source = new Input(bytes_);
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
+        for (const QString &name : {QString("alpha"), QString("hardlink"), QString("данные 空")}) {
+            auto data = stream(name);
+            QVERIFY(data);
+            const int size =
+                QByteArray::fromBase64(record_["files"].toObject()[name].toString().toLatin1())
+                    .size();
+            check(data, name, 0, size);
+        }
+        NWindows::NCOM::CPropVariant link;
+        QCOMPARE(archive_->GetProperty(index("link"), kpidSymLink, &link), S_OK);
+        QCOMPARE(link.vt, VARTYPE(VT_BSTR));
+        QCOMPARE(QString::fromWCharArray(link.bstrVal), QString("alpha"));
+    }
+    void inodeTableSpanCanExceed32Bits() {
+        loadFixture("zlib", true, "directory-block-clean");
+        const auto table = qFromLittleEndian<quint64>(bytes_.constData() + 48);
+        const auto ids = qFromLittleEndian<quint64>(bytes_.constData() + table);
+        const auto directory = qFromLittleEndian<quint64>(bytes_.constData() + 72);
+        const auto used = qFromLittleEndian<quint64>(bytes_.constData() + 40);
+        const UInt64 gap = (UInt64(1) << 32) + 17;
+        qToLittleEndian(used + gap, bytes_.data() + 40);
+        qToLittleEndian(table + gap, bytes_.data() + 48);
+        qToLittleEndian(directory + gap, bytes_.data() + 72);
+        qToLittleEndian(ids + gap, bytes_.data() + table);
+        CMyComPtr2<IInStream, Input> source;
+        source.SetFromCls(new Input(bytes_));
+        source->gapAt = directory;
+        source->gapSize = gap;
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
+        for (const QString &name :
+             {QString("alpha"), QString("broken/payload"), QString("good 空/payload")}) {
+            auto data = stream(name);
+            QVERIFY(data);
+            const int size =
+                QByteArray::fromBase64(record_["files"].toObject()[name].toString().toLatin1())
+                    .size();
+            check(data, name, 0, size);
+        }
     }
     void unreadableRootMetadataCannotBeOpened() {
         loadFixture("zlib", true, "inode-block-root");

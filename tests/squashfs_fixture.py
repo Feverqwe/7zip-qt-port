@@ -84,7 +84,9 @@ def volume(fault="", compressed=False, no_fragments=False, codec="zlib", xattrs=
         if i == 1:
             inodes += bytes(4)  # sparse block
     offsets.append(len(inodes))
-    inodes += base(3, 3) + struct.pack("<2I", 1, 5) + b"alpha"
+    inodes += base(10 if fault == "inode-split-link" else 3, 3) + struct.pack("<2I", 1, 5) + b"alpha"
+    if fault == "inode-split-link":
+        inodes += struct.pack("<I", 0xffffffff)
     names = ["alpha", "данные 空", "link"]
     if xattrs:
         names.append("hardlink")
@@ -97,7 +99,12 @@ def volume(fault="", compressed=False, no_fragments=False, codec="zlib", xattrs=
         node = 0 if i == 3 else i
         directory += struct.pack("<4H", offsets[node], node, 3 if node == 2 else 2, len(name) - 1) + name
     root_offset = len(inodes)
-    inodes += base(1, 4) + struct.pack("<2I2HI", 0, 2, len(directory) + 3, 0, 1)
+    extended_root = fault == "inode-split-directory"
+    if extended_root:
+        inodes += base(8, 4) + struct.pack("<IIIIHHI", 2, len(directory) + 3, 0, 1, 1, 0, 0xffffffff)
+        inodes += struct.pack("<III", 0, 0, 0) + b"a"
+    else:
+        inodes += base(1, 4) + struct.pack("<2I2HI", 0, 2, len(directory) + 3, 0, 1)
     unused_inode = fault in ("inode-unused-fragment", "inode-unused-owner", "inode-unused-xattr")
     if unused_inode:
         unused_offset = len(inodes)
@@ -112,8 +119,27 @@ def volume(fault="", compressed=False, no_fragments=False, codec="zlib", xattrs=
         inodes += struct.pack("<I", size)
     if fault == "inode-unused":
         inodes += base(0xffff, 5) + bytes(4)
+    split_inodes = fault.startswith("inode-split")
+
+    def inode_ref(offset):
+        return (((offset // 17) * 19) << 16) + offset % 17 if split_inodes else offset
+
+    if split_inodes:
+        directory = bytearray()
+        for i in sorted(range(len(names)), key=lambda i: names[i].encode()):
+            name = names[i].encode()
+            node = 0 if i == 3 else i
+            reference = inode_ref(offsets[node])
+            directory += struct.pack("<IIIHHHH", 0, reference >> 16, node + 1,
+                                     reference & 0xffff, 0, 3 if node == 2 else 2, len(name) - 1) + name
+        struct.pack_into("<I" if extended_root else "<H", inodes,
+                         root_offset + (20 if extended_root else 24), len(directory) + 3)
     inode_start = len(image)
-    image += metadata(inodes, compressed)
+    if split_inodes:
+        for offset in range(0, len(inodes), 17):
+            image += metadata(inodes[offset:offset + 17])
+    else:
+        image += metadata(inodes, compressed)
     dir_start = len(image)
     image += metadata(directory, compressed)
     fragment_metadata = len(image)
@@ -143,7 +169,7 @@ def volume(fault="", compressed=False, no_fragments=False, codec="zlib", xattrs=
     if export:
         lookup_metadata = len(image)
         refs = offsets + [root_offset] + ([unused_offset] if unused_inode else [])
-        image += metadata(struct.pack("<" + "Q" * len(refs), *refs))
+        image += metadata(struct.pack("<" + "Q" * len(refs), *(inode_ref(ref) for ref in refs)))
         lookup_table = len(image)
         image += struct.pack("<Q", lookup_metadata)
     ids_metadata = len(image)
@@ -189,7 +215,7 @@ def volume(fault="", compressed=False, no_fragments=False, codec="zlib", xattrs=
     struct.pack_into("<5I6H8Q", image, 0, 0x73717368, 1 if no_fragments else 5 if fault == "inode-unused" or unused_inode else 4,
                      0, BLOCK, 0 if no_fragments else fragment_count, 5 if codec == "lz4" else 3 if codec == "lzo-rle" else 1,
                      13, 1 << 10 if codec == "lz4" else 0, 2049 if fault == "inode-unused-owner" else 1, 4, 0,
-                     root_offset, len(image), ids_table, xattr_id_table, inode_start, dir_start,
+                     inode_ref(root_offset), len(image), ids_table, xattr_id_table, inode_start, dir_start,
                      fragment_table, lookup_table)
     # Structural mutations use uncompressed metadata so each targets a single boundary.
     if fault == "fragment-large":
@@ -327,11 +353,11 @@ def inode_metadata_volume(fault):
     # A valid file record crosses a block boundary. A failure in its blocklist
     # must not borrow bytes from the healthy inode after the gap.
     prefix = metadata(records[0][:32])
-    broken = bytearray(metadata(records[0][32:], fault != "inode-block-clean" and fault != "inode-block-io"))
+    broken = bytearray(metadata(records[0][32:], fault not in ("inode-block-clean", "inode-block-io", "inode-block-unused")))
     good = metadata(records[1], True)
     if fault == "inode-block-header":
         struct.pack_into("<H", broken, 0, 0x8000)
-    elif fault not in ("inode-block-clean", "inode-block-io"):
+    elif fault not in ("inode-block-clean", "inode-block-io", "inode-block-unused"):
         broken[-1] ^= 0xff
     good_position = len(prefix) + len(broken)
     directory = bytearray()
@@ -344,6 +370,8 @@ def inode_metadata_volume(fault):
     if fault == "inode-block-root":
         struct.pack_into("<H", root := bytearray(root), 0, 0x8000)
     image += prefix + broken + good + root
+    if fault == "inode-block-unused":
+        image += struct.pack("<H", 0x8000)
     directory_start = len(image)
     image += metadata(directory)
     ids_metadata = len(image)

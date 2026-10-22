@@ -5,6 +5,50 @@ Scope входит в [общую проверку форматов](filesystems
 современный LZO и проверки compressor options через отдельный format-модуль.
 Полная актуализация SquashFS read features по Linux ещё продолжается.
 
+## Inode metadata по запросу, 2026-10-22
+
+Повторно сверены все type branches Linux `inode.c:squashfs_read_inode`,
+`namei.c:squashfs_lookup`, `cache.c:squashfs_read_metadata` и SDK `Parse4`,
+его callers, root/directory traversal, inode-number recovery и stream/property
+consumers. Используются прежние полные Linux/SDK baselines из этого аудита.
+Linux читает metadata по canonical inode reference и продолжает запись через
+границы metadata blocks, не сканируя предварительно всю таблицу inode.
+
+GPL v4 adapter теперь запрашивает первый block нужного inode и расширяет
+contiguous run только при недостатке bytes для исходного SDK parser.
+`Parse4` сообщает необходимый размер, сохраняя ветви разбора полей; отдельного
+parser нет. Partial decoder output и gaps не соединяются с независимыми
+записями. Перекрытие повреждённой записи не запрещает bounded разбор соседнего
+canonical reference; полный inventory при этом считается недостоверным.
+Старые cache offsets остаются стабильными при расширении run.
+
+Общий scan не вызывает дополнительного I/O, если весь contiguous inventory
+уже в cache. Полная загрузка для number-based recovery выполняется только
+при фактической необходимости и требует доказанного полного inventory без
+конфликтов. Неполные mappings не разрешают догадку по inode number.
+Сохраняются partial-read diagnostics, согласие, badge и fatal Abort/OOM/
+unsupported decoder/callback results. Убран 32-битный gate на physical span
+inode table; cumulative decoded-cache extent пока ограничен UInt32.
+Это оставшийся scope, а не заявление полной metadata-size parity.
+
+ABI/CLI проверяют basic/extended records на коротких metadata blocks,
+extended directory index и symlink suffix, hardlinks и Unicode payloads.
+ABI также ставит E_ABORT на посторонний блок, который не должен читаться,
+и использует виртуальный source со span inode table свыше 4 ГиБ.
+Native readonly Linux `6.8.0-147-generic` подтвердил пять controls, включая
+symlink target и xattr values; receipt `20261022T013349Z-3c3ba876`.
+Wide-span sparse image занял 12 КиБ физически. Проверены записанные regions,
+size/allocated blocks/mtime источника; gap не хешировался и не сканировался.
+Mounts/temp data очищены, одноразовый helper удалён. Native kernel старше
+закреплённого source baseline, эти свидетельства учитываются отдельно.
+
+Обычные девять focused suites прошли на Linux/Windows за 16,26/63,40 с,
+receipt `20261022T013404Z-1006d4cf`. На macOS семь остальных suites прошли
+в первоначальном batch; после исправления отсутствующего `nlink` в extended
+directory fixture повторно прошли ABI/CLI suites за 4,72 с. Product code между
+этими запусками не менялся. Incremental macOS app build прошла.
+Full/slow suites, физические устройства и UI appearance не проверялись.
+
 ## Directory metadata ranges и 64-битные physical spans, 2026-10-22
 
 Сверены полные Linux `dir.c`/`namei.c`, `cache.c:squashfs_read_metadata`, SDK
