@@ -1,5 +1,76 @@
 # Cramfs read-side modernization against Linux
 
+## Partial directories and independent branches — 2026-10-22
+
+Recompared complete Linux `cramfs_readdir`/`cramfs_lookup`, inode publication
+and block-read dependencies with SDK OpenDir, item publication, properties,
+GetStream and Extract. Source baselines/retrieval are below. Linux can emit
+completed directory entries before a later error, and another directory's
+lookup does not require a complete walk of the damaged branch. Loading an
+entire directory and propagating its failure through recursive archive Open
+introduced a stronger refusal in the archive adapter.
+
+The same SDK parser/walker is retained. Its entry loop is factored into
+ReadDirItems and, in the GPL Linux profile, requests the fixed header and name
+through the existing addressed metadata service before publishing an item.
+Only completed, validated entries are retained; malformed names/types, path
+escapes and incomplete records never enter the catalog. A later local error
+preserves the completed prefix. Recursive traversal still visits the original
+range of immediate children and continues independent branches. It does not
+guess a resynchronization position in a corrupt tail.
+
+Active source-directory references prevent recursion cycles, while completed
+aliases can be traversed at another archive path. Local parse/I/O failures and
+resource/depth limits mark the selected directory incomplete. E_ABORT,
+E_OUTOFMEMORY and all open-progress callback failures remain fatal and clear
+partial state. An unavailable root directory can expose only header metadata
+and an explicitly incomplete empty catalog; this is not a verified empty FS.
+Empty directories need no read of an unused offset, matching Linux's empty
+inode path. Historical core-only profiles retain strict namespace opening.
+
+The archive warning/read-only limitations report missing files/names and use
+the existing per-opening consent, Cancel default, persistent badge and reopen
+flow. Each incomplete directory also exposes its public item Error property;
+copying that directory reports DataError while readable files remain exact.
+Copying an independent healthy file succeeds. No source writes, repair,
+journal replay or missing-decoder bypass is introduced. EN/RU messages use
+the existing diagnostic translation path.
+
+Public ABI regression first reproduced whole-open refusal after a readable
+child entry. It now checks that prefix and a healthy sibling, per-directory
+copy error, late source Abort/OOM, fatal callback E_FAIL after publication,
+cleanup and healthy reopen without stale limitations. Existing source-gap
+tests now require a diagnosed incomplete catalog for ordinary required-root
+I/O failure while retaining fatal cancellation/OOM checks. CLI controls cover
+both byte orders, malformed directory tails, cycles, individual exact reads,
+public item errors and exclusion of invalid/unsafe entries. An existing empty
+root control now also checks an unused high offset. UI controls exercise
+accept/refuse and healthy copying for partial directories and cycles in EN/RU.
+
+The six focused suites (`cramfs`, `cramfs_module`,
+`filesystem_cramfs_read_ui`, `language`, `upstream_baseline`,
+`upstream_inventory`) passed on macOS and Linux. Windows's initial strict
+runtime build required an explicit constructor for the cleanup scope (C4623);
+warnings remain enabled. After that narrow portability fix, five Windows
+suites passed, while the ABI suite exposed a test-only native path-separator
+difference and an existing codec-discovery deadline. The path lookup is now
+normalized in the fixture comparison; the product path contract and deadline
+are unchanged. Final isolated ABI checks passed on all three platforms in
+receipt `20261022T053828Z-bd70d33d`. The timeout's cause is unconfirmed; this
+does not establish reliable concurrent acceptance of that deadline.
+
+Following the constructor change, Cramfs CLI/ABI consumers were also rechecked
+on macOS/Linux; the unchanged UI/source suites were not repeated. Incremental
+macOS application builds and diff check passed. Current Cocoa widget JSON
+confirms the new translated warning fits; Windows/Linux UI used offscreen Qt,
+without pixel-parity claims. No full/slow suites, native mounts or physical
+devices were used. Existing compiler caches/build trees and current review/
+failure evidence were retained; temporary fixture owners clean their data.
+
+This completes directory-local failure isolation, not the entire cramfs audit.
+Remaining inode/empty-data semantics, header/count acceptance and physical
+offset reporting still need final source comparison before closure.
+
 ## Addressed metadata reads — 2026-10-22
 
 Compared complete Linux `cramfs_read_super`, `cramfs_read`/block-device buffer
@@ -53,9 +124,8 @@ consent/badge/copy checks. No full/slow suites, native mounts, physical
 devices or new UI visual acceptance were performed. Fixtures are RAM-only
 or temporary-owned; incremental build trees and caches were retained.
 
-This resolves unnecessary source-prefix dependencies, not directory-local
-recovery: currently an unavailable required directory can still reject the
-opening. That useful-subset scenario remains in the full cramfs audit.
+This resolves unnecessary source-prefix dependencies. The partial-directory
+scenario above subsequently isolates failures in required directory ranges.
 
 ## Optional whole-volume verification and limited reading — 2026-10-22
 
@@ -106,7 +176,8 @@ task UI reports removed, current review evidence and caches retained.
 
 This completes the optional-verification scenario, not the full cramfs audit.
 The addressed-read scenario above subsequently removes contiguous source-prefix
-dependencies. Directory-local errors remain in the open useful-read scope.
+dependencies; the partial-directory scenario above subsequently isolates
+directory-local errors.
 
 ## Independent file streams — 2026-10-22
 
@@ -149,7 +220,7 @@ removed by their existing owners. Diff check passed.
 This iteration does not close the complete cramfs source/policy audit.
 The optional-verification scenario above subsequently resolves the CRC opening
 dependency. Addressed metadata reads above remove the contiguous-prefix
-dependency; directory-local errors remain outside this lifetime fix.
+dependency; partial-directory handling is recorded separately above.
 
 ## Source comparison
 

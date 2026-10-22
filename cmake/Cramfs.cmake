@@ -52,13 +52,16 @@ function(sevenzip_deploy_cramfs)
 endfunction()
 if(BUILD_TESTING)
     find_package(Qt6 REQUIRED COMPONENTS Test)
+    find_package(Python3 3.9 REQUIRED COMPONENTS Interpreter)
     qt_add_executable(cramfs_module_tests tests/cramfs_module_tests.cpp)
     set_target_properties(cramfs_module_tests PROPERTIES AUTOMOC ON)
     target_include_directories(cramfs_module_tests PRIVATE src third_party/7zip/CPP)
     target_link_libraries(cramfs_module_tests PRIVATE sevenzip_panel Qt6::Test)
     target_compile_definitions(cramfs_module_tests PRIVATE
         "SEVENZIP_CRAMFS_MODULE=\"$<TARGET_FILE:sevenzip_cramfs>\""
-        "SEVENZIP_CRAMFS_RUNTIME=\"${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime\"")
+        "SEVENZIP_CRAMFS_RUNTIME=\"${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime\""
+        "SEVENZIP_CRAMFS_PYTHON=\"${Python3_EXECUTABLE}\""
+        "SEVENZIP_CRAMFS_FIXTURE=\"${CMAKE_CURRENT_SOURCE_DIR}/tests/cramfs_fixture.py\"")
     if(WIN32)
         target_link_libraries(cramfs_module_tests PRIVATE oleaut32)
     endif()

@@ -6,7 +6,10 @@
 #include "archivecodeccatalog.h"
 #include <QDir>
 #include <QFile>
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QLibrary>
+#include <QProcess>
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QtEndian>
@@ -163,6 +166,14 @@ class ChecksumProgressFailure final : public IArchiveOpenCallback, public CMyUnk
         return bytes ? E_FAIL : S_OK;
     }
 };
+class DirectoryProgressFailure final : public IArchiveOpenCallback, public CMyUnknownImp {
+    Z7_COM_UNKNOWN_IMP_1(IArchiveOpenCallback)
+  public:
+    Z7_COM7F_IMF(SetTotal(const UInt64 *, const UInt64 *)) override { return S_OK; }
+    Z7_COM7F_IMF(SetCompleted(const UInt64 *files, const UInt64 *)) override {
+        return files && *files >= 3 ? E_FAIL : S_OK;
+    }
+};
 } // namespace
 
 class CramfsModuleTests final : public QObject {
@@ -263,6 +274,65 @@ class CramfsModuleTests final : public QObject {
         QTest::newRow("io-failure") << false;
         QTest::newRow("short-read") << true;
     }
+    void directoryFailureRetainsPrefixAndSibling() {
+        createArchive();
+        QProcess generator;
+        generator.start(QStringLiteral(SEVENZIP_CRAMFS_PYTHON),
+                        {QStringLiteral(SEVENZIP_CRAMFS_FIXTURE), "directory"});
+        QVERIFY(generator.waitForFinished(10000));
+        QCOMPARE(generator.exitCode(), 0);
+        const auto bundle = QJsonDocument::fromJson(generator.readAllStandardOutput()).object();
+        QByteArray packed(4, '\0');
+        qToBigEndian(quint32(bundle["size"].toInt()), packed.data());
+        packed += QByteArray::fromBase64(bundle["image"].toString().toLatin1());
+        auto bytes = qUncompress(packed);
+        QVERIFY(!bytes.isEmpty());
+        qToLittleEndian(quint32(0x800), bytes.data() + 512 + 8);
+        auto *input = new Input(bytes);
+        CMyComPtr<IInStream> source = input;
+        input->failAt = quint64(bundle["fault_offset"].toInt());
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
+        UInt32 count = 0;
+        QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, 3u);
+        CMyComPtr2<IArchiveExtractCallback, Extract> callback;
+        callback.Create_if_Empty();
+        for (UInt32 index = 0; index < count; ++index) {
+            NWindows::NCOM::CPropVariant path;
+            QCOMPARE(archive_->GetProperty(index, kpidPath, &path), S_OK);
+            const auto name = QString::fromWCharArray(path.bstrVal).replace('\\', '/');
+            callback->output->bytes.clear();
+            QCOMPARE(archive_->Extract(&index, 1, 0, callback), S_OK);
+            if (name == "BROKEN") {
+                QCOMPARE(callback->result, Int32(NArchive::NExtract::NOperationResult::kDataError));
+                NWindows::NCOM::CPropVariant error;
+                QCOMPARE(archive_->GetProperty(index, kpidError, &error), S_OK);
+                QCOMPARE(error.vt, VARTYPE(VT_BSTR));
+            } else {
+                QCOMPARE(callback->result, Int32(NArchive::NExtract::NOperationResult::kOK));
+                QCOMPARE(
+                    callback->output->bytes,
+                    QByteArray::fromBase64(bundle["files"].toObject()[name].toString().toLatin1()));
+            }
+        }
+        for (HRESULT failure : {E_ABORT, E_OUTOFMEMORY}) {
+            input->failure = failure;
+            QCOMPARE(source->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
+            QCOMPARE(archive_->Open(source, nullptr, nullptr), failure);
+            QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+            QCOMPARE(count, 0u);
+        }
+        input->failAt = UINT64_MAX;
+        QCOMPARE(source->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
+        CMyComPtr<IArchiveOpenCallback> callbackFailure = new DirectoryProgressFailure;
+        QCOMPARE(archive_->Open(source, nullptr, callbackFailure), E_FAIL);
+        QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, 0u);
+        QCOMPARE(open(fixture()), S_OK);
+        NWindows::NCOM::CPropVariant limitations;
+        QCOMPARE(archive_->GetArchiveProperty(kpidUserDefined + 1, &limitations), S_OK);
+        QCOMPARE(limitations.vt, VARTYPE(VT_EMPTY));
+    }
     void directoryReadsSkipUnrelatedSourceBytes_data() {
         QTest::addColumn<quint32>("directory");
         QTest::addColumn<quint64>("fault");
@@ -298,10 +368,15 @@ class CramfsModuleTests final : public QObject {
             input->failAt = directory;
             input->failure = failure;
             QCOMPARE(source->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
-            QCOMPARE(archive_->Open(source, nullptr, nullptr), failure);
+            QCOMPARE(archive_->Open(source, nullptr, nullptr), failure == E_FAIL ? S_OK : failure);
             UInt32 count = 99;
             QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
             QCOMPARE(count, 0u);
+            if (failure == E_FAIL) {
+                NWindows::NCOM::CPropVariant limitations;
+                QCOMPARE(archive_->GetArchiveProperty(kpidUserDefined + 1, &limitations), S_OK);
+                QCOMPARE(limitations.vt, VARTYPE(VT_BSTR));
+            }
         }
     }
     void optionalChecksumReadDoesNotHideFiles() {

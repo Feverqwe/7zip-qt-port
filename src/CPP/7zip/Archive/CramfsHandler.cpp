@@ -2,6 +2,7 @@
 
 #include "StdAfx.h"
 #include <memory>
+#include <set>
 
 #include "../../../C/7zCrc.h"
 #include "../../../C/Alloc.h"
@@ -99,6 +100,13 @@ struct CNode
 
 static UInt32 GetMode(const Byte *p, bool be) { return be ? GetBe16(p) : GetUi16(p); }
 static bool IsDir(const Byte *p, bool be) { return MY_LIN_S_ISDIR(GetMode(p, be)); }
+static bool IsKnownMode(UInt32 mode) {
+    return MY_LIN_S_ISDIR(mode) || MY_LIN_S_ISREG(mode) || MY_LIN_S_ISLNK(mode) ||
+           MY_LIN_S_ISCHR(mode) || MY_LIN_S_ISBLK(mode) || MY_LIN_S_ISFIFO(mode) || MY_LIN_S_ISSOCK(mode);
+}
+static const char *const kDirectoryLimitations =
+    "Some CramFS directories could not be read completely. Files or names may be missing. Readable "
+    "files remain accessible.";
 
 static UInt32 GetSize(const Byte *p, bool be)
 {
@@ -133,6 +141,7 @@ struct CItem
 {
   UInt32 Offset;
   int Parent;
+  bool DirectoryIncomplete = false;
 };
 
 struct CHeader
@@ -189,6 +198,9 @@ Z7_CLASS_IMP_CHandler_IInArchive_1(
   Int64 _arcOffset;
   bool _linuxRead;
   bool _crcUnavailable;
+  bool _directoryLimitations;
+  HRESULT _directoryCallbackResult;
+  std::set<UInt32> _activeDirectories;
   IArchiveOpenCallback *_openCallback;
 
   UInt32 _errorFlags;
@@ -210,6 +222,12 @@ Z7_CLASS_IMP_CHandler_IInArchive_1(
   CMyComPtr<ISequentialOutStream> _outStream;
 
   HRESULT OpenDir(int parent, UInt32 baseOffsetBase, unsigned level);
+  HRESULT ReadDirItems(int parent, UInt32 baseOffset, unsigned level);
+  void MarkDirectoryIncomplete(int parent) {
+      _directoryLimitations = true;
+      if (parent >= 0)
+          _items[(unsigned)parent].DirectoryIncomplete = true;
+  }
   HRESULT Open2(IInStream *inStream);
   HRESULT EnsureData(UInt32 sourceOffset, UInt32 size, UInt32 &offset);
   HRESULT CheckCrc();
@@ -240,7 +258,7 @@ public:
 
   static const Byte kProps[] = {
       kpidPath,   kpidIsDir,   kpidSize,        kpidPackSize,   kpidPosixAttrib,
-      kpidUserId, kpidGroupId, kpidDeviceMajor, kpidDeviceMinor
+      kpidUserId, kpidGroupId, kpidDeviceMajor, kpidDeviceMinor, kpidError
       // kpidOffset
   };
 
@@ -256,34 +274,66 @@ public:
 
       HRESULT
       CHandler::OpenDir(int parent, UInt32 baseOffset, unsigned level) {
+      UInt32 directory = 0;
+      bool inserted = false;
+      if (_linuxRead && baseOffset <= _loadedSize && kNodeSize <= _loadedSize - baseOffset &&
+          IsDir(_data + baseOffset, _h.be) && GetSize(_data + baseOffset, _h.be)) {
+          directory = GetOffset(_data + baseOffset, _h.be);
+          inserted = _activeDirectories.insert(directory).second;
+          if (!inserted) {
+              MarkDirectoryIncomplete(parent);
+              return S_OK;
+          }
+      }
+      struct CDirectoryScope {
+          std::set<UInt32> &Active;
+          UInt32 Directory;
+          bool Inserted;
+          CDirectoryScope(std::set<UInt32> &active, UInt32 directory, bool inserted)
+              : Active(active), Directory(directory), Inserted(inserted) {}
+          ~CDirectoryScope() {
+              if (Inserted)
+                  Active.erase(Directory);
+          }
+      } scope = {_activeDirectories, directory, inserted};
+      const unsigned startIndex = _items.Size();
+      const HRESULT result = ReadDirItems(parent, baseOffset, level);
+      RINOK(_directoryCallbackResult)
+      if (result != S_OK) {
+          if (!_linuxRead || result == E_ABORT || result == E_OUTOFMEMORY)
+              return result;
+          MarkDirectoryIncomplete(parent);
+      }
+      const unsigned endIndex = _items.Size();
+      for (unsigned i = startIndex; i < endIndex; i++) {
+          RINOK(OpenDir((int)i, _items[i].Offset, level + 1))
+      }
+      return S_OK;
+  }
+
+  HRESULT CHandler::ReadDirItems(int parent, UInt32 baseOffset, unsigned level) {
       if (baseOffset > _loadedSize || kNodeSize > _loadedSize - baseOffset)
           return S_FALSE;
       const Byte *p = _data + baseOffset;
       bool be = _h.be;
       const UInt32 mode = GetMode(p, be);
-      if (!MY_LIN_S_ISDIR(mode) && !MY_LIN_S_ISREG(mode) && !MY_LIN_S_ISLNK(mode) &&
-          !MY_LIN_S_ISCHR(mode) && !MY_LIN_S_ISBLK(mode) && !MY_LIN_S_ISFIFO(mode) &&
-          !MY_LIN_S_ISSOCK(mode))
+      if (!IsKnownMode(mode))
           return S_FALSE;
       if (!IsDir(p, be))
           return S_OK;
       UInt32 offset = GetOffset(p, be);
       UInt32 size = GetSize(p, be);
-      if (offset == 0)
-          return S_OK;
+      if ((_linuxRead && size == 0) || offset == 0)
+          return _linuxRead && size != 0 ? S_FALSE : S_OK;
       UInt32 end = offset + size;
-      if (offset < kHeaderSize || end > _size || level > kNumDirLevelsMax)
+      if (offset < kHeaderSize || offset > _size || (!_linuxRead && end > _size) ||
+          level > kNumDirLevelsMax)
           return S_FALSE;
-      if (_linuxRead) {
-          UInt32 cachedOffset;
-          RINOK(EnsureData(offset, size, cachedOffset))
-          offset = cachedOffset;
-      }
+      if (_linuxRead)
+          end = MyMin(end, _size);
       UpdatePhySize(end);
       if (end > _headersSize)
           _headersSize = end;
-
-      unsigned startIndex = _items.Size();
 
       while (size != 0) {
           if (size < kNodeSize || (UInt32)_items.Size() >= kNumFilesMax)
@@ -291,11 +341,18 @@ public:
           CItem item;
           item.Parent = parent;
           item.Offset = offset;
-          _items.Add(item);
-          UInt32 nodeLen = kNodeSize + GetNameLen(_data + offset, be);
-          if (size < nodeLen)
+          if (_linuxRead) {
+              RINOK(EnsureData(offset, kNodeSize, item.Offset))
+          }
+          UInt32 nodeLen = kNodeSize + GetNameLen(_data + item.Offset, be);
+          if (size < nodeLen || nodeLen == kNodeSize ||
+              !IsKnownMode(GetMode(_data + item.Offset, be)))
               return S_FALSE;
-          const Byte *name = _data + offset + kNodeSize;
+          if (_linuxRead) {
+              UInt32 nameOffset;
+              RINOK(EnsureData(offset + kNodeSize, nodeLen - kNodeSize, nameOffset))
+          }
+          const Byte *name = _data + item.Offset + kNodeSize;
           unsigned nameLen = nodeLen - kNodeSize;
           while (nameLen && name[nameLen - 1] == 0)
               --nameLen;
@@ -305,18 +362,16 @@ public:
           for (unsigned n = 0; n < nameLen; ++n)
               if (name[n] == 0 || name[n] == '/' || name[n] == '\\' || name[n] == ':')
                   return S_FALSE;
+          _items.Add(item);
           if (_openCallback) {
               const UInt64 files = _items.Size();
-              RINOK(_openCallback->SetCompleted(&files, NULL))
+              _directoryCallbackResult = _openCallback->SetCompleted(&files, NULL);
+              RINOK(_directoryCallbackResult)
           }
           offset += nodeLen;
           size -= nodeLen;
       }
 
-      unsigned endIndex = _items.Size();
-      for (unsigned i = startIndex; i < endIndex; i++) {
-          RINOK(OpenDir((int)i, _items[i].Offset, level + 1))
-      }
       return S_OK;
   }
 
@@ -347,44 +402,45 @@ public:
           RINOK(ReadStream_FALSE(_stream, _data + _loadedSize, part))
           _loadedSize += (UInt32)part;
           if (_openCallback) {
-              RINOK(_openCallback->SetCompleted(NULL, NULL))
+              _directoryCallbackResult = _openCallback->SetCompleted(NULL, NULL);
+              RINOK(_directoryCallbackResult)
           }
       }
       return S_OK;
   }
 
-HRESULT CHandler::CheckCrc() {
-    const auto unavailable = [this](HRESULT result) -> HRESULT {
-        if (result == E_ABORT || result == E_OUTOFMEMORY)
-            return result;
-        _crcUnavailable = true;
-        return S_OK;
-    };
-    HRESULT result = InStream_SeekSet(_stream, _volumePos + _headerOffset);
-    if (result != S_OK)
-        return unavailable(result);
-    Byte buf[1 << 16];
-    UInt32 crc = CRC_INIT_VAL;
-    UInt32 pos = _headerOffset;
-    while (pos < _size) {
-        size_t part = _size - pos;
-        if (part > sizeof(buf))
-            part = sizeof(buf);
-        result = ReadStream_FALSE(_stream, buf, part);
-        if (result != S_OK)
-            return unavailable(result);
-        if (pos == _headerOffset)
-            SetUi32(buf + 0x20, 0) crc = CrcUpdate(crc, buf, part);
-        pos += (UInt32)part;
-        if (_openCallback) {
-            const UInt64 bytes = pos;
-            RINOK(_openCallback->SetCompleted(NULL, &bytes))
-        }
-    }
-    if (CRC_GET_DIGEST(crc) != _h.Crc)
-        _errorFlags = kpv_ErrorFlags_HeadersError;
-    return S_OK;
-}
+  HRESULT CHandler::CheckCrc() {
+      const auto unavailable = [this](HRESULT result) -> HRESULT {
+          if (result == E_ABORT || result == E_OUTOFMEMORY)
+              return result;
+          _crcUnavailable = true;
+          return S_OK;
+      };
+      HRESULT result = InStream_SeekSet(_stream, _volumePos + _headerOffset);
+      if (result != S_OK)
+          return unavailable(result);
+      Byte buf[1 << 16];
+      UInt32 crc = CRC_INIT_VAL;
+      UInt32 pos = _headerOffset;
+      while (pos < _size) {
+          size_t part = _size - pos;
+          if (part > sizeof(buf))
+              part = sizeof(buf);
+          result = ReadStream_FALSE(_stream, buf, part);
+          if (result != S_OK)
+              return unavailable(result);
+          if (pos == _headerOffset)
+              SetUi32(buf + 0x20, 0) crc = CrcUpdate(crc, buf, part);
+          pos += (UInt32)part;
+          if (_openCallback) {
+              const UInt64 bytes = pos;
+              RINOK(_openCallback->SetCompleted(NULL, &bytes))
+          }
+      }
+      if (CRC_GET_DIGEST(crc) != _h.Crc)
+          _errorFlags = kpv_ErrorFlags_HeadersError;
+      return S_OK;
+  }
 
 HRESULT CHandler::Open2(IInStream *inStream) {
     UInt64 initialPos;
@@ -648,6 +704,9 @@ Z7_COM7F_IMF(CHandler::Close())
   _arcOffset = 0;
   _linuxRead = false;
   _crcUnavailable = false;
+  _directoryLimitations = false;
+  _directoryCallbackResult = S_OK;
+  _activeDirectories.clear();
   _method = k_Flags_Method_ZLIB;
   _blockSizeLog = kBlockSizeLog;
   _h = CHeader();
@@ -690,15 +749,30 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID propID, PROPVARIANT *value)) {
             reasons += "The CramFS source is shorter than the declared volume. Some files may be "
                        "incomplete or unreadable.";
         }
+        if (_directoryLimitations) {
+            if (!reasons.IsEmpty())
+                reasons += '\n';
+            reasons += kDirectoryLimitations;
+        }
         if (!reasons.IsEmpty())
             prop = reasons;
         break;
     }
-    case kpidWarning:
+    case kpidWarning: {
+        AString warning;
         if (_crcUnavailable)
-            prop = "The CramFS volume checksum could not be verified. Some files may be damaged or "
-                   "unreadable.";
+            warning =
+                "The CramFS volume checksum could not be verified. Some files may be damaged or "
+                "unreadable.";
+        if (_directoryLimitations) {
+            if (!warning.IsEmpty())
+                warning += '\n';
+            warning += kDirectoryLimitations;
+        }
+        if (!warning.IsEmpty())
+            prop = warning;
         break;
+    }
     case kpidVolumeName: {
         char dest[kHeaderNameSize + 4];
         memcpy(dest, _h.Name, kHeaderNameSize);
@@ -761,6 +835,10 @@ Z7_COM7F_IMF(CHandler::GetProperty(UInt32 index, PROPID propID, PROPVARIANT *val
   bool isDir = IsDir(p, be);
   switch (propID)
   {
+  case kpidError:
+      if (item.DirectoryIncomplete)
+          prop = "The CramFS directory could not be read completely.";
+      break;
   case kpidPath:
       prop = MultiByteToUnicodeString(GetPath(index), CP_UTF8);
       break;
@@ -967,66 +1045,60 @@ Z7_COM7F_IMF(CHandler::Extract(const UInt32 *indices, UInt32 numItems,
   CMyComPtr<ICompressProgressInfo> progress = lps;
   lps->Init(extractCallback, false);
 
-  for (i = 0; i < numItems; i++)
-  {
-    lps->InSize = totalPackSize;
-    lps->OutSize = totalSize;
-    RINOK(lps->SetCur())
-    CMyComPtr<ISequentialOutStream> outStream;
-    const Int32 askMode = testMode ?
-        NExtract::NAskMode::kTest :
-        NExtract::NAskMode::kExtract;
-    const UInt32 index = allFilesMode ? i : indices[i];
-    const CItem &item = _items[index];
-    RINOK(extractCallback->GetStream(index, &outStream, askMode))
-    const Byte *p = _data + item.Offset;
+  for (i = 0; i < numItems; i++) {
+      lps->InSize = totalPackSize;
+      lps->OutSize = totalSize;
+      RINOK(lps->SetCur())
+      CMyComPtr<ISequentialOutStream> outStream;
+      const Int32 askMode = testMode ? NExtract::NAskMode::kTest : NExtract::NAskMode::kExtract;
+      const UInt32 index = allFilesMode ? i : indices[i];
+      const CItem &item = _items[index];
+      RINOK(extractCallback->GetStream(index, &outStream, askMode))
+      const Byte *p = _data + item.Offset;
 
-    if (IsDir(p, be))
-    {
-      RINOK(extractCallback->PrepareOperation(askMode))
-      RINOK(extractCallback->SetOperationResult(NExtract::NOperationResult::kOK))
-      continue;
-    }
-    UInt32 curSize = GetDataSize(p, be);
-    totalSize += curSize;
-    UInt32 packSize;
-    if (GetPackSize(index, packSize))
-      totalPackSize += packSize;
-
-    if (!testMode && !outStream)
-      continue;
-    RINOK(extractCallback->PrepareOperation(askMode))
-
-    UInt32 offset = GetOffset(p, be);
-    if (offset < kHeaderSize)
-      curSize = 0;
-
-    int res = NExtract::NOperationResult::kDataError;
-    {
-      CMyComPtr<ISequentialInStream> inSeqStream;
-      HRESULT hres = GetStream(index, &inSeqStream);
-      if (hres == E_OUTOFMEMORY)
-        return E_OUTOFMEMORY;
-      if (hres == S_FALSE || !inSeqStream)
-        res = NExtract::NOperationResult::kUnsupportedMethod;
-      else
-      {
-        RINOK(hres)
-        {
-          hres = copyCoder->Code(inSeqStream, outStream, NULL, NULL, progress);
-          if (hres == S_OK)
-          {
-            if (copyCoderSpec->TotalSize == curSize)
-              res = NExtract::NOperationResult::kOK;
-          }
-          else if (hres == E_NOTIMPL)
-            res = NExtract::NOperationResult::kUnsupportedMethod;
-          else if (hres != S_FALSE)
-            return hres;
-        }
+      if (IsDir(p, be)) {
+          RINOK(extractCallback->PrepareOperation(askMode))
+          RINOK(extractCallback->SetOperationResult(item.DirectoryIncomplete
+                                                        ? NExtract::NOperationResult::kDataError
+                                                        : NExtract::NOperationResult::kOK))
+          continue;
       }
-    }
-    RINOK(extractCallback->SetOperationResult(res))
+      UInt32 curSize = GetDataSize(p, be);
+      totalSize += curSize;
+      UInt32 packSize;
+      if (GetPackSize(index, packSize))
+          totalPackSize += packSize;
+
+      if (!testMode && !outStream)
+          continue;
+      RINOK(extractCallback->PrepareOperation(askMode))
+
+      UInt32 offset = GetOffset(p, be);
+      if (offset < kHeaderSize)
+          curSize = 0;
+
+      int res = NExtract::NOperationResult::kDataError;
+      {
+          CMyComPtr<ISequentialInStream> inSeqStream;
+          HRESULT hres = GetStream(index, &inSeqStream);
+          if (hres == E_OUTOFMEMORY)
+              return E_OUTOFMEMORY;
+          if (hres == S_FALSE || !inSeqStream)
+              res = NExtract::NOperationResult::kUnsupportedMethod;
+          else {
+              RINOK(hres) {
+                  hres = copyCoder->Code(inSeqStream, outStream, NULL, NULL, progress);
+                  if (hres == S_OK) {
+                      if (copyCoderSpec->TotalSize == curSize)
+                          res = NExtract::NOperationResult::kOK;
+                  } else if (hres == E_NOTIMPL)
+                      res = NExtract::NOperationResult::kUnsupportedMethod;
+                  else if (hres != S_FALSE)
+                      return hres;
+              }
+          }
+      }
+      RINOK(extractCallback->SetOperationResult(res))
   }
 
   return S_OK;

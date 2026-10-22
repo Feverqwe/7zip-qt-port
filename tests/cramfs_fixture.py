@@ -67,6 +67,33 @@ def image(blocks, endian="<", storage=None, prefix=0, shifted=0, reverse=False,
     return bytes(result)
 
 
+def partial_directory(state, endian="<"):
+    prefix, root = 512, 588
+    child = root + 40
+    child_size = 40 if state == "directory-cycle" else 36
+    tables = child + child_size
+    data = bytearray(tables + 8)
+    files = {"alpha": b"healthy sibling\n", "BROKEN/prefix.txt": b"readable prefix\n"}
+    data[prefix:prefix + 32] = struct.pack(endian + "IIII16s", 0x28CD3D45, 0, 0x801, 0,
+                                         b"Compressed ROMFS")
+    data[prefix + 64:prefix + 76] = inode(0o40755, 40, root, endian=endian)
+    data[root:root + 20] = inode(0o40755, child_size, child, 8, endian) + b"BROKEN\0\0"
+    data[root + 20:root + 40] = inode(0o100644, len(files["alpha"]), tables, 8, endian) + b"alpha\0\0\0"
+    data[child:child + 24] = inode(0o100644, len(files["BROKEN/prefix.txt"]), tables + 4,
+                                  12, endian) + b"prefix.txt\0\0"
+    if state == "directory-cycle":
+        data[child + 24:child + 40] = inode(0o40755, 40, root, 4, endian) + b"loop"
+    else:
+        data[child + 24:child + 36] = inode(0o100644, 0, 0, 0, endian)
+    for index, payload in enumerate(files.values()):
+        data.extend(bytes((-len(data)) % 4))
+        struct.pack_into(endian + "I", data, tables + index * 4, 0xc0000000 | (len(data) // 4))
+        data.extend(payload)
+    struct.pack_into(endian + "II", data, prefix + 40, 2, 5 if state == "directory-cycle" else 4)
+    checksum(data, endian, prefix)
+    return data, files, child + 24
+
+
 if __name__ == "__main__":
     import base64
     import json
@@ -74,12 +101,16 @@ if __name__ == "__main__":
     payload = b"readable CramFS payload\n"
     data = bytearray(image([payload], storage=["direct-raw"], prefix=512, name=b"alpha"))
     state = sys.argv[1]
+    files, fault_offset = {"alpha": payload}, 0
     if state == "crc":
         data[512 + 32] ^= 1
     elif state == "short":
         struct.pack_into("<I", data, 512 + 4, len(data) + 16)
+    elif state.startswith("directory"):
+        data, files, fault_offset = partial_directory(state)
     elif state != "clean":
         raise ValueError(state)
     print(json.dumps({"size": len(data),
                       "image": base64.b64encode(zlib.compress(data)).decode(),
-                      "files": {"alpha": base64.b64encode(payload).decode()}}))
+                      "fault_offset": fault_offset,
+                      "files": {name: base64.b64encode(value).decode() for name, value in files.items()}}))

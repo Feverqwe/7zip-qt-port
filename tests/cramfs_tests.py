@@ -6,7 +6,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
-from cramfs_fixture import image, checksum, inode
+from cramfs_fixture import image, checksum, inode, partial_directory
 
 RUNTIME = Path(sys.argv.pop(1))
 MODULE = Path(sys.argv.pop(1))
@@ -25,13 +25,13 @@ class CramfsTests(unittest.TestCase):
         (cls.runtime / "Formats").mkdir()
         shutil.copy2(MODULE, cls.runtime / "Formats" / MODULE.name)
 
-    def run_image(self, data, engine="7z", command="x", forced=True):
+    def run_image(self, data, engine="7z", command="x", forced=True, members=()):
         with tempfile.TemporaryDirectory(dir=self.runtime) as temporary:
             path = Path(temporary) / "образ 空.img"
             path.write_bytes(data)
             options = ["-slt", "-sccUTF-8", "-bsp0", "-bse2"] if command == "l" else ["-so", "-bso0", "-bsp0", "-bse2"]
             completed = subprocess.run([str(self.runtime / (engine + SUFFIX)), command,
-                                        *options, *(["-tCramFS"] if forced else []), "--", str(path)],
+                                        *options, *(["-tCramFS"] if forced else []), "--", str(path), *members],
                                        capture_output=True, timeout=10)
             self.assertEqual(path.read_bytes(), data)
             return completed
@@ -94,6 +94,10 @@ class CramfsTests(unittest.TestCase):
         data[64:76] = inode(0o40755, 0, 0)
         checksum(data)
         self.assertContents(data, b"")
+        data[64:76] = inode(0o40755, 0, 0x0ffffffc)
+        struct.pack_into("<I", data, 8, struct.unpack_from("<I", data, 8)[0] | 0x400)
+        checksum(data)
+        self.assertContents(data, b"")
 
     def test_nested_unicode_names_and_ownership_metadata(self):
         for endian in ("<", ">"):
@@ -116,7 +120,7 @@ class CramfsTests(unittest.TestCase):
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertEqual(result.stdout, b"tail")
 
-    def test_corrupt_metadata_is_rejected(self):
+    def test_invalid_metadata_never_publishes_unsafe_entries(self):
         for fault in ("root-type", "file-type", "empty-name", "traversal", "unsupported-feature"):
             data = bytearray(image([b"tail"]))
             if fault == "root-type":
@@ -132,8 +136,14 @@ class CramfsTests(unittest.TestCase):
             checksum(data)
             with self.subTest(fault=fault):
                 result = self.run_image(data)
-                self.assertNotEqual(result.returncode, 0)
                 self.assertEqual(result.stdout, b"")
+                if fault in ("root-type", "unsupported-feature"):
+                    self.assertNotEqual(result.returncode, 0)
+                else:
+                    listing = self.run_image(data, command="l")
+                    self.assertIn(listing.returncode, (0, 1), listing.stderr)
+                    self.assertIn(b"Some CramFS directories", listing.stdout)
+                    self.assertNotIn(b"Path = ../x", listing.stdout)
 
     def test_checksum_warning_preserves_readable_payload(self):
         for engine in ("7z", "7zz"):
@@ -147,6 +157,20 @@ class CramfsTests(unittest.TestCase):
                     extracted = self.run_image(data, engine)
                     self.assertIn(extracted.returncode, (0, 1), extracted.stderr)
                     self.assertEqual(extracted.stdout, b"readable payload")
+
+    def test_partial_directory_preserves_prefix_and_siblings(self):
+        for endian in ("<", ">"):
+            for fault in ("directory", "directory-cycle"):
+                data, files, _ = partial_directory(fault, endian)
+                with self.subTest(endian=endian, fault=fault):
+                    listing = self.run_image(data, command="l")
+                    self.assertIn(listing.returncode, (0, 1), listing.stderr)
+                    self.assertIn(b"Some CramFS directories", listing.stdout)
+                    self.assertIn(b"The CramFS directory could not be read completely", listing.stdout)
+                    for name, payload in files.items():
+                        result = self.run_image(data, members=(name,))
+                        self.assertIn(result.returncode, (0, 1), result.stderr)
+                        self.assertEqual(result.stdout, payload)
 
     def test_bad_data_ranges_and_streams(self):
         for fault in ("direct-range", "direct-length", "oversized-raw", "broken-zlib", "truncated"):
