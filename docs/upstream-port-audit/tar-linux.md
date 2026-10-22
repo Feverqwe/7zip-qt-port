@@ -1,5 +1,26 @@
 # TAR: Linux CPT reader и потоки SDK
 
+## Итоговая read-side сверка — 2026-10-22
+
+Read-side source audit TAR закрыт на закреплённом Linux commit для archive
+projection ниже. Повторно сверены полные `load_tar_archive`, `is_mem_zero`,
+дисковые структуры, `process_tar_file` и release/selection consumers с исходным
+SDK header/item traversal, `linkdata` и partition-independent entry streams.
+Все девять reference hashes manifest совпали с текущим snapshot.
+
+| Read scope | Результат сверки |
+| --- | --- |
+| Headers и regular payload | Magic, octal fields, 512-byte records, payload spans и terminal zeros сопоставлены; SDK сохраняет более строгие checksum/source bounds и более широкие numeric forms. |
+| Nonregular physical layout | Linux declared-size traversal доступен через `linkdata`; default GNU directory/hardlink compatibility и причина явного выбора описаны ниже. |
+| Archive consumers | Текущие Open/GetStream/Extract используют исходные parser/copy/sparse bodies с уже описанными bounds, progress, source lifetime и independent cursors. |
+| Дополнительный SDK scope | PAX/GNU/sparse и writer/update consumers сохранены; соответствующих читателей в Linux CPT нет, hardware acceptance из них не следует. |
+
+Новых отсутствующих read branches в Linux TAR scope не обнаружено. Эта итерация
+уточняет source completeness без изменения кода. Прежняя runtime evidence ниже
+остаётся ограниченной указанными сценариями/платформами; после изменения общего
+archive discovery TAR CLI suite обоих engines повторно прошла в macOS проверке
+`fb09caf3`. Full writer, firmware upload и native device acceptance не заявляются.
+
 ## Исходники и полнота переноса
 
 7-Zip: <https://github.com/ip7z/7zip.git>, commit

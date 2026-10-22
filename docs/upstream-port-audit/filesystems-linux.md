@@ -129,7 +129,7 @@ filesystem UI; физические носители и системная ав�
 | PE | `crypto/asymmetric_keys/verify_pefile.c`, kexec callers | Headers, certificate/file spans и byte streams; общий COFF consumer проверяется вместе, kernel trust/execution — отдельные contracts. |
 | EFI capsules | `drivers/firmware/efi/capsule-loader.c`, `capsule.c`, x86 EFI quirks | Common header/payload и Quark mapping; UEFIf проверяется как общий SDK consumer, firmware updates не выполняются. |
 | Intel HEX | AS102/IQS5xx ASCII firmware readers | Extended address/EOF/separators, errors/streams и явный IQS5xx map profile; binary ihex_binrec — другой format. |
-| TAR | Marvell CPT `load_tar_archive` | [Сверка reader и streams](tar-linux.md), physical alignment служебных записей, GNU/PAX/sparse consumers и update. |
+| TAR | Marvell CPT `load_tar_archive` | [Read-side source audit закрыт](tar-linux.md#итоговая-read-side-сверка--2026-10-22): header/payload traversal и terminal records; physical layout служебных записей, GNU/PAX/sparse и writer boundaries описаны отдельно. |
 | Legacy LZ4, lzop | `lib/decompress_unlz4.c`, `decompress_unlzo.c` | [Framing readers](linux-frames.md), bounded C callbacks, consumed boundary, checksum и nested CPIO consumers. |
 
 APFS не входит в scope: соответствующего драйвера нет в основном дереве Linux.
