@@ -10,6 +10,64 @@ fs-verity now reuses the original shared Linux string scanner already linked
 for fscrypt. Source scope and validation are recorded with the
 [shared string-service transfer](erofs-linux.md#original-shared-string-services--2026-10-22).
 
+## HCTR2, Adiantum and ChaCha source comparison — 2026-10-22
+
+Completed comparison against Linux `58161ead29e50d70a317ea26b472e0c7508e69da`
+of `crypto/{hctr2,adiantum,chacha}.c`,
+`lib/crypto/{gf128hash,chacha,chacha-block-generic,nh,poly1305-donna32}.c`
+and the selected `lib/scatterlist.c` mapping-iterator subset. The local units
+contain 78 complete function definitions: 69 match after comments/whitespace,
+six have the adaptations below and three are fixed-provider constructors.
+Both alternative `clmul64` definitions were checked, rather than treating the
+first matching symbol as evidence for the compiled fallback. Headers, contexts,
+registration requirements, callers, error paths and dependencies were reviewed
+with the bodies. No missing read-mode branch or behavior fix was established
+in this selected group.
+
+| Selected unit | Complete-body result and host boundary |
+| --- | --- |
+| HCTR2 | Nine of twelve bodies match, including key/hash setup, tweak/message hashing, finish, completion, encrypt/decrypt and cleanup. The crypt body spells out GNU error chaining; initialization selects AES/XCTR directly instead of instance/spawn discovery. One constructor attaches callbacks, the original request-size calculation and 32-byte tweak size. |
+| Adiantum | Thirteen of sixteen bodies match, including subkey derivation, NH/Poly1305 buffering and hashing, modular arithmetic, encrypt/decrypt and cleanup. Crypt uses two C byte-pointer declarations in place of GNU void-pointer arithmetic. Initialization selects XChaCha/AES directly; one constructor attaches the original callbacks and request context. |
+| ChaCha request provider | All six original key/crypt bodies match. One constructor selects the original ChaCha20, XChaCha12 or XChaCha20 callbacks and IV size. XChaCha retains HChaCha subkey derivation and the original nonce/stream-position rearrangement. |
+| POLYVAL/GHASH | All 21 definitions match, including both integer-width alternatives for carryless multiplication. The stack noinline annotation uses the host compiler spelling. The target selects the original 32-bit-multiplication fallback; it does not enable the optional int128 or architecture backend. |
+| ChaCha/HChaCha libraries | Seven of eight bodies match; the remaining generic stream body changes only its temporary-buffer alignment annotation to C11. Round functions, counter update and partial final block remain original. Architecture initialization bodies are retained under their original disabled guards. |
+| NH and Poly1305 core | All four NH and three Poly1305 bodies match. NH buffering/padding remains in the original Adiantum caller, which supplies complete message units. Generic Poly1305 retains key clamping, block processing and final reduction/emission; its header initializer uses C11 `{0}` and the portable schedule size. Full MAC buffering is not used by this caller. |
+| Scatterlist mapping iterator | Six of seven bodies match. `sg_miter_next` constructs the synthetic page view from the bounded linear buffer instead of a kernel page object and uses C byte pointers for mapped addresses. Page progression, offset/remaining accounting, mapping flags, consumption and stop/release control flow remain original. |
+
+Compared the complete ChaCha, NH, GF128 hash and Poly1305 headers and the GHASH
+constants with the pinned units. Their functional layouts and helpers are
+retained; includes use the shared host types/endian/memory services. The original
+Poly1305 initializer's empty aggregate becomes `{0}` and the generic schedule
+configuration is explicit. This does not enable unavailable kernel architecture
+code. Fixed instantiations satisfy the original template constraints: AES has
+16-byte blocks and a 256-bit Adiantum key; the chosen XChaCha providers are
+synchronous, with the required key/IV sizes. Kernel algorithm registration,
+name negotiation, DMA and asynchronous hardware providers are omitted.
+
+Traced the consumers through the existing Crypto API dispatch and fscrypt mode
+table. HCTR2 preserves the minimum-block gate, zero-length bulk case, partial
+block padding, 32-byte tweak and original two hash passes around AES/XCTR.
+Adiantum preserves both single-page and streaming hash paths, the minimum-block
+gate, stream-length rounding and its rightmost-block transformation. Synthetic
+4096-byte crypto pages affect mapping/hash batching, not filesystem data-unit or
+policy geometry. The one-segment host scatterlist retains base/offset/length
+views; the original mapping iterator bounds each page view, and the flat stream
+walk copies/wipes its owned temporary buffers. Derived Adiantum keys use sized
+sensitive allocation/release. Original child-allocation failure paths release
+already-created transforms; constructor failures do not install exit callbacks
+over incomplete contexts. Request contexts retain the original trailing subrequest
+layout and size calculation.
+
+All 305 pinned reference hashes match. No production code changed in this
+comparison. The latest macOS `fscrypt_crypto` and ext consumer passes recorded
+below cover these same sources, including independent kernel known answers for
+HCTR2, both Adiantum variants and the three ChaCha providers, unaligned/in-place
+buffers, partial final blocks and the offset 4096-byte Adiantum streaming case.
+No redundant runtime batch or implementation-text regression was added;
+`git diff --check` passed. This closes the selected mode/primitive comparison
+with the stated host adaptations. Shared hash/utility and asymmetric/ASN.1 source
+closure, the overall ext audit and the parent format review remain open.
+
 ## AES/SM4 and block-mode source comparison — 2026-10-22
 
 Compared complete selected units against Linux
