@@ -82,7 +82,6 @@ struct timespec64 { int64_t tv_sec; long tv_nsec; };
 #define S_ISCHR(mode) (((mode) & 0170000) == S_IFCHR)
 #define S_ISBLK(mode) (((mode) & 0170000) == S_IFBLK)
 #include "../../include/linux/kdev_t.h"
-#define MKDEV(major, minor) (((uint32_t)(major) << 20) | (uint32_t)(minor))
 #define kmalloc(size, flags) malloc(size)
 #define GFP_KERNEL 0
 #define read_lock(lock) ((void)0)

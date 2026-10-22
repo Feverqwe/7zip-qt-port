@@ -63,6 +63,33 @@ class SquashfsTests(unittest.TestCase):
                     self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
                     self.assertEqual(result.stdout, expected)
 
+    def test_special_device_metadata_and_readable_siblings(self):
+        data, files = volume(fault="special-inodes", xattrs=True)
+        listing = self.run_image("7z", data, "l", streams=True)
+        self.assertEqual(listing.returncode, 0, listing.stderr.decode(errors="replace"))
+        records = {}
+        for block in listing.stdout.decode("utf-8").replace("\r\n", "\n").split("\n\n"):
+            fields = dict(line.split(" = ", 1) for line in block.splitlines() if " = " in line)
+            if "Path" in fields:
+                records[fields["Path"]] = fields
+        for name, major, minor in (("block", 0xabc, 0xdef12), ("char", 0, 0),
+                                    ("extended-block", 0xfff, 0xfffff),
+                                    ("extended-char", 0x123, 0x45678)):
+            with self.subTest(name=name):
+                self.assertEqual(records[name]["Device Major"], str(major))
+                self.assertEqual(records[name]["Device Minor"], str(minor))
+        for name, expected in files.items():
+            result = self.run_image("7z", data, "x", name)
+            self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+            self.assertEqual(result.stdout, expected)
+        for name in ("extended-block", "extended-char", "extended-fifo", "extended-socket"):
+            attribute = name + ":$XATTR.user.note"
+            self.assertEqual(records[attribute].get("Device Major", ""), "")
+            self.assertEqual(records[attribute].get("Device Minor", ""), "")
+            result = self.run_image("7z", data, "x", attribute, streams=True)
+            self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+            self.assertEqual(result.stdout, b"value")
+
     def test_core_only_standalone_rejects_new_decoder_features(self):
         for codec in ("lz4", "lzo-rle"):
             result = self.run_image("7zz", volume(codec=codec)[0], "x", "alpha")

@@ -261,6 +261,64 @@ class SquashfsStreamTests final : public QObject {
     }
   private slots:
     void initTestCase() { createArchive(); }
+    void specialInodesExposeMetadataWithoutHostDevices() {
+        loadFixture("zlib", true, "special-inodes");
+        CMyComPtr<IInStream> source = new Input(bytes_);
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
+        struct Device {
+            const char *name;
+            UInt32 major, minor, mode;
+        };
+        for (const auto &entry :
+             {Device{"block", 0xabc, 0xdef12, 0060640}, Device{"char", 0, 0, 0020640},
+              Device{"extended-block", 0xfff, 0xfffff, 0060640},
+              Device{"extended-char", 0x123, 0x45678, 0020640}, Device{"fifo", 0, 0, 0010640},
+              Device{"socket", 0, 0, 0140640}, Device{"extended-fifo", 0, 0, 0010640},
+              Device{"extended-socket", 0, 0, 0140640}}) {
+            const UInt32 item = index(entry.name);
+            QVERIFY(item != UInt32(-1));
+            NWindows::NCOM::CPropVariant mode, links;
+            QCOMPARE(archive_->GetProperty(item, kpidPosixAttrib, &mode), S_OK);
+            QCOMPARE(mode.vt, VARTYPE(VT_UI4));
+            QCOMPARE(mode.ulVal, entry.mode);
+            QCOMPARE(archive_->GetProperty(item, kpidLinks, &links), S_OK);
+            QCOMPARE(links.vt, VARTYPE(VT_UI4));
+            QCOMPARE(links.ulVal, UInt32(3));
+            for (const PROPID property : {kpidDeviceMajor, kpidDeviceMinor}) {
+                NWindows::NCOM::CPropVariant value;
+                QCOMPARE(archive_->GetProperty(item, property, &value), S_OK);
+                if ((entry.mode & 0170000) == 0060000 || (entry.mode & 0170000) == 0020000) {
+                    QCOMPARE(value.vt, VARTYPE(VT_UI4));
+                    QCOMPARE(value.ulVal, property == kpidDeviceMajor ? entry.major : entry.minor);
+                } else
+                    QCOMPARE(value.vt, VARTYPE(VT_EMPTY));
+            }
+        }
+        for (const QString &name : {QString("extended-block"), QString("extended-char"),
+                                    QString("extended-fifo"), QString("extended-socket")}) {
+            const QString attribute = name + ":$XATTR.user.note";
+            auto value = stream(attribute);
+            QVERIFY(value);
+            char bytes[5];
+            UInt32 count = 0;
+            QCOMPARE(value->Read(bytes, sizeof(bytes), &count), S_OK);
+            QCOMPARE(QByteArray(bytes, int(count)), QByteArray("value"));
+            for (const PROPID property : {kpidDeviceMajor, kpidDeviceMinor}) {
+                NWindows::NCOM::CPropVariant device;
+                QCOMPARE(archive_->GetProperty(index(attribute), property, &device), S_OK);
+                QCOMPARE(device.vt, VARTYPE(VT_EMPTY));
+            }
+        }
+        for (const QString &name : {QString("regular"), QString("link")}) {
+            for (const PROPID property : {kpidDeviceMajor, kpidDeviceMinor}) {
+                NWindows::NCOM::CPropVariant device;
+                QCOMPARE(archive_->GetProperty(index(name), property, &device), S_OK);
+                QCOMPARE(device.vt, VARTYPE(VT_EMPTY));
+            }
+        }
+        check(stream("regular"), "regular", 0, 8);
+        check(stream("link"), "link", 0, 7);
+    }
     void largeInodeInventoryOwnsPropertiesAndStreams() {
         loadFixture("zlib", false, "inode-inventory-large-recovery");
         CMyComPtr<IInStream> source = new Input(bytes_);

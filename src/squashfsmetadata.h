@@ -7,6 +7,7 @@ extern "C" {
 #endif
 struct sevenzip_squashfs_metadata;
 struct sevenzip_squashfs_file;
+uint32_t sevenzip_squashfs_decode_device(uint32_t device);
 enum {
     SEVENZIP_SQUASHFS_XATTR_UNAVAILABLE = 1,
     SEVENZIP_SQUASHFS_IDS_UNAVAILABLE = 2,

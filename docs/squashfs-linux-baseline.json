@@ -36,6 +36,7 @@
     "fs/squashfs/xz_wrapper.c": "5b379e4c696a2f08c57e6fac60b389cfd2890dd01b42c64922cf8aea21d0ffdc",
     "fs/squashfs/zlib_wrapper.c": "5a37f1193e5cee80128d831dbc67d9e0e9e083965bb07361ea3da831c07124e3",
     "fs/squashfs/zstd_wrapper.c": "947fcc51f8e2f7c93b897727ee591d9d3bd8a856641eebcca78d5b09a6c62a3f",
+    "include/linux/kdev_t.h": "88c47d8d1979f2c0e11aca3ad52f07d8da574db821a5a2b17bf64c5495991015",
     "include/linux/lz4.h": "e8f8201156a05f9e01a20487c731d99b4914c2380b09f3e562c7aae234029f57",
     "include/linux/lzo.h": "6323519cb8c1a03a9651027d6e576573fcfe1b196ff1798f8ebf441d0c217cb4",
     "include/uapi/linux/limits.h": "5c047eb319a61e211442af30493b420eb9e721a1eceee552258dce0d5a26dede",
@@ -63,6 +64,7 @@
     "fs/squashfs/xattr.c",
     "fs/squashfs/xattr_id.c",
     "fs/squashfs/xz_wrapper.c",
+    "include/linux/kdev_t.h",
     "lib/lzo/lzo1x_decompress_safe.c"
   ],
   "exact": [

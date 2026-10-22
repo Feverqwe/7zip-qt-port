@@ -5,6 +5,48 @@ Scope входит в [общую проверку форматов](filesystems
 современный LZO и проверки compressor options через отдельный format-модуль.
 Полная актуализация SquashFS read features по Linux ещё продолжается.
 
+## Метаданные специальных inode, 2026-10-22
+
+Сверены полные Linux `inode.c:squashfs_read_inode` branches для BLKDEV,
+CHRDEV, FIFO, SOCKET и четырёх extended variants, их disk structs,
+`include/linux/kdev_t.h:new_decode_dev`, SDK `Parse4`, properties и synthetic
+xattr consumers. Baselines остаются Linux
+`58161ead29e50d70a317ea26b472e0c7508e69da` и SDK
+`9128b80e3a471108678e2b3ec3c985861c8d7b0f` с retrieval links ниже.
+SDK содержал исходное чтение `RDev` в закомментированном виде: запись
+распознавалась, но major/minor не публиковались.
+
+В существующем v4 parser восстановлено чтение этого поля. GPL format-модуль
+выдаёт стандартные ABI properties Device Major/Minor только для четырёх
+device types. Для преобразования повторно используется общий Linux kdev_t
+header: добавлены исходные `MKDEV` и полное тело `new_decode_dev`, с portable
+32-bit типами вместо kernel `dev_t`/`u32` и обычным `static inline` вместо
+kernel attribute. Encoders, VFS printing и остальные helpers не требуются.
+Header закреплён также в SquashFS manifest; HFS использует прежние macros.
+UDF теперь получает `MKDEV` из этого единственного header вместо дубликата
+в host declarations; его caller передаёт те же unsigned 32-bit значения.
+FIFO/socket properties, mode/link count и extended xattr parsing сохранены.
+Synthetic xattr streams не наследуют device properties родительского inode.
+Core-only и legacy device publication не расширялись.
+
+Регрессии проверяют через ABI все восемь special types, zero/high/maximal
+major/minor, mode/link count, xattr payloads и отсутствие device numbers у
+обычных файлов, symlinks и xattr streams. CLI проверяет листинг и извлечение
+обычных данных и атрибутов; файлы устройств на хосте не создаются.
+Native Linux `6.8.0-147-generic` подтвердил `stat` восьми special inode,
+обычный payload и symlink на синтетическом 4 KiB loop,ro,nosuid,nodev,noexec
+образе (`20261022T035159Z-c286a98d`). Сами device entries не открывались;
+source hash неизменен, mount/temp data очищены, helper удалён.
+Это metadata read feature, без source writes, repair, replay или нового
+ограничения полезного read-only доступа. Native kernel и pinned source
+составляют отдельные свидетельства.
+
+Итоговые восемь focused suites (SquashFS CLI/ABI/C API, HFS ABI, UDF CLI/ABI
+и source contracts) прошли на macOS/Linux/Windows за 44,02/52,13/110,44 с;
+runner receipt `20261022T035426Z-b1cc2734`. Оба engines пересобраны из текущих
+исходников перед acceptance; incremental app build на macOS прошла.
+Full/slow suites, физические устройства и native UI не проверялись.
+
 ## Потоковое чтение inode metadata, 2026-10-22
 
 Сверены Linux `inode.c:squashfs_read_inode`, `cache.c:squashfs_read_metadata`

@@ -319,7 +319,7 @@ struct CNode {
     UInt32 MTime;
     UInt32 Number;
     UInt32 NumLinks;
-    // UInt32 RDev;
+    UInt32 RDev;
     UInt32 Xattr;
     // UInt32 Parent;
 
@@ -808,7 +808,7 @@ UInt32 CNode::Parse4(const Byte *p, UInt32 size, const CHeader &_h, UInt32 *need
     case kType_CHR + 7:
         if (!available(24))
             return 0;
-        // LE_32 (20, RDev);
+        LE_32(20, RDev);
         offset = 24;
         break;
     default:
@@ -1523,10 +1523,10 @@ HRESULT CHandler::AddAttributeItems(int root) {
 static const Byte kProps[] = {
     kpidPath,
 #ifdef SEVENZIP_LINUX_SQUASHFS
-    kpidIsAltStream, kpidError,
+    kpidIsAltStream, kpidError, kpidDeviceMajor, kpidDeviceMinor,
 #endif
-    kpidIsDir,       kpidSize,  kpidPackSize, kpidMTime,  kpidPosixAttrib, kpidUserId,
-    kpidGroupId,     kpidINode, kpidLinks,    kpidSymLink
+    kpidIsDir,       kpidSize,  kpidPackSize,    kpidMTime,       kpidPosixAttrib, kpidUserId,
+    kpidGroupId,     kpidINode, kpidLinks,       kpidSymLink
     // kpidLinks,
     // kpidOffset
 };
@@ -3162,6 +3162,8 @@ Z7_COM7F_IMF(CHandler::GetProperty(UInt32 index, PROPID propID, PROPVARIANT *val
         switch (propID) {
         case kpidINode:
         case kpidSymLink:
+        case kpidDeviceMajor:
+        case kpidDeviceMinor:
             prop.Detach(value);
             return S_OK;
         case kpidStreamId:
@@ -3182,6 +3184,14 @@ Z7_COM7F_IMF(CHandler::GetProperty(UInt32 index, PROPID propID, PROPVARIANT *val
 
     switch (propID) {
 #ifdef SEVENZIP_LINUX_SQUASHFS
+    case kpidDeviceMajor:
+    case kpidDeviceMinor:
+        if (!_h.IsOldVersion() && (node.Type == kType_BLK || node.Type == kType_CHR ||
+                                   node.Type == kType_BLK + 7 || node.Type == kType_CHR + 7)) {
+            const UInt32 device = sevenzip_squashfs_decode_device(node.RDev);
+            prop = propID == kpidDeviceMajor ? device >> 20 : device & 0xFFFFF;
+        }
+        break;
     case kpidError: {
         AString reasons;
         if (_incompleteDirectories.count(item.Node))

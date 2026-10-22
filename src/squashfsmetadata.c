@@ -9,7 +9,12 @@
 #include "fs/squashfs/xattr.h"
 #include "fs/squashfs/xattrcompat.h"
 #include "squashfsio.h"
+#include "include/linux/kdev_t.h"
 #include <limits.h>
+
+uint32_t sevenzip_squashfs_decode_device(uint32_t device) {
+    return new_decode_dev(device);
+}
 
 struct sevenzip_squashfs_metadata {
     struct sevenzip_squashfs_io io;

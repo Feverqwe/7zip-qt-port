@@ -19,6 +19,8 @@ def metadata(data, compressed=False):
 
 
 def volume(fault="", compressed=False, no_fragments=False, codec="zlib", xattrs=False, export=False):
+    if fault == "special-inodes":
+        return special_inode_volume(xattrs)
     if fault.startswith("inode-inventory-"):
         return inode_inventory_volume(fault)
     if fault == "legacy-large":
@@ -357,6 +359,60 @@ def volume(fault="", compressed=False, no_fragments=False, codec="zlib", xattrs=
         struct.pack_into("<Q", image, ids_table + delta, ids_metadata + delta)
     image += bytes((-len(image)) % 4096)
     return bytes(image), dict(zip(names, (first, second, b"alpha", first))) if not no_fragments else {}
+
+
+def special_inode_volume(xattrs):
+    payload = b"ordinary"
+    image = bytearray(96) + payload
+    inodes, entries = bytearray(), []
+
+    def base(kind, number):
+        return struct.pack("<HHHHII", kind, 0o755 if kind == 1 else 0o640,
+                           0, 0, 1700000000, number)
+
+    devices = ((4, "block", 0xabc, 0xdef12), (5, "char", 0, 0),
+               (11, "extended-block", 0xfff, 0xfffff), (12, "extended-char", 0x123, 0x45678),
+               (6, "fifo", None, None), (7, "socket", None, None),
+               (13, "extended-fifo", None, None), (14, "extended-socket", None, None))
+    for number, (kind, name, major, minor) in enumerate(devices, 1):
+        entries.append((name, len(inodes), number, kind - 7 if kind > 7 else kind))
+        inodes += base(kind, number) + struct.pack("<I", 3)
+        if major is not None:
+            encoded = (minor & 0xff) | (major << 8) | ((minor & ~0xff) << 12)
+            inodes += struct.pack("<I", encoded)
+        if kind > 7:
+            inodes += struct.pack("<I", 0 if xattrs else 0xffffffff)
+    entries.append(("regular", len(inodes), 9, 2))
+    inodes += base(2, 9) + struct.pack("<IIIII", 96, 0xffffffff, 0, len(payload), (1 << 24) | len(payload))
+    entries.append(("link", len(inodes), 10, 3))
+    inodes += base(3, 10) + struct.pack("<II", 1, 7) + b"regular"
+    root = len(inodes)
+    directory = bytearray()
+    for name, offset, number, kind in sorted(entries):
+        encoded = name.encode()
+        directory += struct.pack("<IIIHHHH", 0, 0, number, offset, 0, kind, len(encoded) - 1) + encoded
+    inodes += base(1, 11) + struct.pack("<IIHHI", 0, 2, len(directory) + 3, 0, 11)
+    inode_start = len(image)
+    image += metadata(inodes, True)
+    directory_start = len(image)
+    image += metadata(directory, True)
+    ids_metadata = len(image)
+    image += metadata(struct.pack("<I", 1000))
+    ids_table = len(image)
+    image += struct.pack("<Q", ids_metadata)
+    xattr_table = INVALID
+    if xattrs:
+        xattr_start = len(image)
+        attribute = struct.pack("<HH", 0, 4) + b"note" + struct.pack("<I", 5) + b"value"
+        image += metadata(attribute)
+        xattr_ids = len(image)
+        image += metadata(struct.pack("<QII", 0, 1, len(attribute)))
+        xattr_table = len(image)
+        image += struct.pack("<QIIQ", xattr_start, 1, 0, xattr_ids)
+    struct.pack_into("<5I6H8Q", image, 0, 0x73717368, 11, 0, BLOCK, 0, 1, 13, 0, 1, 4, 0,
+                     root, len(image), ids_table, xattr_table, inode_start, directory_start, INVALID, INVALID)
+    image += bytes((-len(image)) % 4096)
+    return bytes(image), {"regular": payload, "link": b"regular"}
 
 
 def inode_inventory_volume(fault):
