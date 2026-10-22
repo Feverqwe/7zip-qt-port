@@ -65,6 +65,8 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
                             runtime_.filePath("Formats/fat" + suffix)));
         QVERIFY(QFile::copy(QStringLiteral(SEVENZIP_SQUASHFS_MODULE),
                             runtime_.filePath("Formats/squashfs" + suffix)));
+        QVERIFY(QFile::copy(QStringLiteral(SEVENZIP_CRAMFS_MODULE),
+                            runtime_.filePath("Formats/cramfs" + suffix)));
     }
     void cleanupTestCase() { qputenv("SEVENZIP_SETTINGS_PATH", previousSettings_); }
     void deletedRecoveryConsent_data() {
@@ -283,6 +285,26 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
         QFETCH(bool, accept);
         confirmAndCopy(language, accept, kind);
     }
+    void confirmsLimitedCramfs_data() {
+        QTest::addColumn<QString>("language");
+        QTest::addColumn<bool>("accept");
+        QTest::addColumn<QString>("kind");
+        for (const QString &language : {"en", "ru"})
+            for (const QString &kind : {"cramfs-crc", "cramfs-short", "cramfs-clean"})
+                for (bool accept : {false, true}) {
+                    if (!accept && kind != "cramfs-crc")
+                        continue;
+                    QTest::newRow(
+                        qPrintable(language + '-' + kind + (accept ? "-accept" : "-cancel")))
+                        << language << accept << kind;
+                }
+    }
+    void confirmsLimitedCramfs() {
+        QFETCH(QString, language);
+        QFETCH(bool, accept);
+        QFETCH(QString, kind);
+        confirmAndCopy(language, accept, kind);
+    }
     void confirmsPartialSquashfsAttributes_data() {
         QTest::addColumn<QString>("language");
         QTest::addColumn<bool>("accept");
@@ -337,8 +359,9 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
         const bool ext = kind.startsWith("ext-");
         const bool fat = kind.startsWith("fat-");
         const bool squashfs = kind.startsWith("squashfs");
+        const bool cramfs = kind.startsWith("cramfs-");
         const bool lateBlocklist = kind.startsWith("squashfs-blocklist-");
-        const bool noOpeningLimitations = lateBlocklist ||
+        const bool noOpeningLimitations = lateBlocklist || kind == "cramfs-clean" ||
                                           kind.startsWith("squashfs-inode-block-") ||
                                           kind.startsWith("squashfs-directory-index-");
         const bool squashFragment =
@@ -370,8 +393,9 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
                     ? QStringList{QStringLiteral(SEVENZIP_SQUASHFS_FIXTURE), "--xattrs",
                                   "--fault=" + (kind == "squashfs" ? QString("xattr-ool-outside")
                                                                    : kind.mid(9))}
-                : ntfs ? QStringList{QStringLiteral(SEVENZIP_NTFS_FIXTURE), "--kind=" + kind}
-                       : QStringList{QStringLiteral(SEVENZIP_HFS_FIXTURE), kind});
+                : cramfs ? QStringList{QStringLiteral(SEVENZIP_CRAMFS_FIXTURE), kind.mid(7)}
+                : ntfs   ? QStringList{QStringLiteral(SEVENZIP_NTFS_FIXTURE), "--kind=" + kind}
+                         : QStringList{QStringLiteral(SEVENZIP_HFS_FIXTURE), kind});
             QVERIFY(generator.waitForFinished(10000));
             QCOMPARE(generator.exitCode(), 0);
             const QJsonObject data =
@@ -381,9 +405,9 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
             packed += QByteArray::fromBase64(data["image"].toString().toLatin1());
             image = qUncompress(packed);
             QVERIFY(!image.isEmpty());
-            filename = (ext || fat)         ? data["name"].toString()
-                       : (ntfs || squashfs) ? QStringLiteral("alpha")
-                                            : QStringLiteral("HfsFixture/alpha");
+            filename = (ext || fat)                   ? data["name"].toString()
+                       : (ntfs || squashfs || cramfs) ? QStringLiteral("alpha")
+                                                      : QStringLiteral("HfsFixture/alpha");
             if (fatDirectory)
                 filename = fatFolder + (fatFolder == "BROKEN" ? "/PREFIX.TXT" : "/GOOD.TXT");
             if (kind == "squashfs-directory-unavailable" || kind == "squashfs-inode-record" ||
@@ -522,7 +546,7 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
                                                   Q_ARG(int, 0)));
                 filename = fatFolder == "BROKEN" ? "PREFIX.TXT" : "GOOD.TXT";
             }
-            if (kind != "exfat" && !ntfs && !ext && !fat && !squashfs) {
+            if (kind != "exfat" && !ntfs && !ext && !fat && !squashfs && !cramfs) {
                 QTRY_VERIFY(Row(*table, "HfsFixture") >= 0);
                 const int row = Row(*table, "HfsFixture");
                 table->selectRow(row);
@@ -537,7 +561,7 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
             const QString output = directory.filePath("copied");
             ExtractionOptions copyOptions;
             copyOptions.pathMode = ExtractionOptions::PathMode::CurrentPaths;
-            if (kind != "exfat" && !ntfs && !ext && !fat && !squashfs)
+            if (kind != "exfat" && !ntfs && !ext && !fat && !squashfs && !cramfs)
                 copyOptions.currentFolder = "HfsFixture";
             else if (fatDirectory)
                 copyOptions.currentFolder = fatFolder;

@@ -135,6 +135,19 @@ class CramfsTests(unittest.TestCase):
                 self.assertNotEqual(result.returncode, 0)
                 self.assertEqual(result.stdout, b"")
 
+    def test_checksum_warning_preserves_readable_payload(self):
+        for engine in ("7z", "7zz"):
+            for endian in ("<", ">"):
+                data = bytearray(image([b"readable payload"], endian, prefix=512))
+                data[512 + 32] ^= 1
+                with self.subTest(engine=engine, endian=endian):
+                    listing = self.run_image(data, engine, "l")
+                    self.assertIn(listing.returncode, (0, 1), listing.stderr)
+                    self.assertIn(b"checksum does not match", listing.stdout)
+                    extracted = self.run_image(data, engine)
+                    self.assertIn(extracted.returncode, (0, 1), extracted.stderr)
+                    self.assertEqual(extracted.stdout, b"readable payload")
+
     def test_bad_data_ranges_and_streams(self):
         for fault in ("direct-range", "direct-length", "oversized-raw", "broken-zlib", "truncated"):
             data = bytearray(image([b"A" * 4096], storage=["direct-zlib"]))

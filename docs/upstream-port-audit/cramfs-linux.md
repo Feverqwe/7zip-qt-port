@@ -1,5 +1,56 @@
 # Cramfs read-side modernization against Linux
 
+## Optional whole-volume verification and limited reading — 2026-10-22
+
+Recompared Linux `inode.c:cramfs_read_super`/`cramfs_finalize_super`, folio
+reads and their source dependencies with SDK opening, CheckCrc, archive
+properties and CLI/backend/native-folder consumers. Baselines and retrievable
+repositories are recorded below. Linux reads fsid metadata but does not require
+whole-volume CRC verification before ordinary file access. The archive adapter
+added this scan; an I/O error in otherwise unused volume bytes refused all
+opening. A completed CRC mismatch also set a fatal header flag, causing CLI
+listing to fail even when the file bytes were readable.
+
+The same CRC scan and SDK CRC implementation are retained. Ordinary scan Seek/
+Read failure or a short read now leaves the checksum explicitly unverified;
+E_ABORT/E_OUTOFMEMORY and all progress-callback failures remain fatal. No
+partial scan is presented as a checked checksum or as a mismatch. A completed
+mismatch and a source shorter than the declared volume remain diagnostics,
+published as warnings rather than fatal opening errors. Actual metadata/path/
+bounds checks and file read/extraction errors are unchanged. No source writes,
+repair or replay are performed.
+
+Named read-only limitations distinguish unavailable verification, mismatch and
+short source. The existing native-folder UI requests explicit consent for the
+selected opening, defaults to Cancel, retains the limited-access badge and
+uses the existing refresh/reopen rules. Healthy controls have no limitations
+or false prompt. EN/RU diagnostics reuse the existing translation flow. The
+standalone overlay receives the same warning/property behavior; only the GPL
+module's bounded source path runs the optional streaming CRC scan.
+
+The ABI regression first reproduced refusal for both an I/O fault and a short
+read in an unused source tail. It now verifies exact file data despite that
+fault, fatal cancellation/OOM and progress-callback failure, cleared failure
+state and healthy reopen without a stale limitation. CLI controls on both
+engines and both byte orders retain exact payload after a checksum mismatch.
+UI controls cover consent/refusal, mismatch, short source, healthy opening,
+copying, image immutability, reopen and visible EN/RU normal/compact geometry.
+Current Cocoa widget JSON confirms translated diagnostic text fits; native
+Windows pixel parity and physical devices are not claimed.
+
+Final six focused suites (`cramfs`, `cramfs_module`,
+`filesystem_cramfs_read_ui`, `language`, `upstream_baseline`,
+`upstream_inventory`) passed on macOS/Linux/Windows; test phases took
+6.84/4.49/22.55 seconds. Runner receipt: `20261022T051434Z-c9c5b9a6`.
+The incremental macOS application build and diff check passed. Both engine
+overlays were rebuilt with existing caches; no full/slow suites or native
+mounts were run. Disposable fixtures were cleaned by their owners, superseded
+task UI reports removed, current review evidence and caches retained.
+
+This completes the optional-verification scenario, not the full cramfs audit.
+Contiguous metadata-prefix loading and directory-local errors still require
+their own source comparison and useful-read adaptation where supported.
+
 ## Independent file streams — 2026-10-22
 
 Rechecked the complete SDK `GetStream`, `ReadBlock`, `Close`/`Free`, allocation
@@ -39,9 +90,9 @@ mount acceptance are claimed; fixtures are RAM-only or temporary-owned and
 removed by their existing owners. Diff check passed.
 
 This iteration does not close the complete cramfs source/policy audit.
-In particular, opening still verifies the whole-volume CRC and loads a
-contiguous metadata prefix; their I/O dependencies and directory-local errors
-need comparison with Linux's useful read subset before acceptance.
+The optional-verification scenario above subsequently resolves the CRC opening
+dependency. Contiguous metadata-prefix loading and directory-local errors
+remain outside this lifetime fix and require useful-read comparison.
 
 ## Source comparison
 

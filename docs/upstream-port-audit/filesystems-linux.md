@@ -63,6 +63,9 @@ metadata и ancillary index bootstrap в [SquashFS](squashfs-linux.md) впос�
 изолированы. Сам по себе отказ mount нельзя считать доказательством отсутствия
 полезного archive reading. Общий source audit продолжается;
 новые gates должны опираться на конкретное поведение reader.
+В [cramfs](cramfs-linux.md) дополнительная проверка CRC тома также отделена
+от полезного чтения: недоступная проверка, несовпадение CRC и короткий источник
+имеют явные diagnostics/выбор limited read-only, без скрытия доступных файлов.
 
 Пятнадцать focused suites на macOS прошли за 125,74 с: device input/access,
 archive device, device UI, EN/RU limited-read UI и partial-read consumers FAT,

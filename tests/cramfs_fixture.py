@@ -65,3 +65,21 @@ def image(blocks, endian="<", storage=None, prefix=0, shifted=0, reverse=False,
     struct.pack_into(endian + "IIII", result, prefix + 32, 0, 0, len(blocks), 2)
     checksum(result, endian, prefix)
     return bytes(result)
+
+
+if __name__ == "__main__":
+    import base64
+    import json
+    import sys
+    payload = b"readable CramFS payload\n"
+    data = bytearray(image([payload], storage=["direct-raw"], prefix=512, name=b"alpha"))
+    state = sys.argv[1]
+    if state == "crc":
+        data[512 + 32] ^= 1
+    elif state == "short":
+        struct.pack_into("<I", data, 512 + 4, len(data) + 16)
+    elif state != "clean":
+        raise ValueError(state)
+    print(json.dumps({"size": len(data),
+                      "image": base64.b64encode(zlib.compress(data)).decode(),
+                      "files": {"alpha": base64.b64encode(payload).decode()}}))

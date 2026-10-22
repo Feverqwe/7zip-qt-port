@@ -188,6 +188,7 @@ Z7_CLASS_IMP_CHandler_IInArchive_1(
   UInt32 _headerOffset;
   Int64 _arcOffset;
   bool _linuxRead;
+  bool _crcUnavailable;
   IArchiveOpenCallback *_openCallback;
 
   UInt32 _errorFlags;
@@ -243,11 +244,15 @@ public:
       // kpidOffset
   };
 
-  static const Byte kArcProps[] = {kpidVolumeName,  kpidBigEndian, kpidCharacts,
-                                   kpidClusterSize, kpidMethod,    kpidHeadersSize,
-                                   kpidNumSubFiles, kpidNumBlocks};
+  static const PROPID kpidReadLimitations = kpidUserDefined + 1;
+  static const CStatProp kArcProps[] = {
+      {NULL, kpidVolumeName, VT_BSTR}, {NULL, kpidBigEndian, VT_BOOL},
+      {NULL, kpidCharacts, VT_BSTR},   {NULL, kpidClusterSize, VT_UI4},
+      {NULL, kpidMethod, VT_BSTR},     {NULL, kpidHeadersSize, VT_UI4},
+      {NULL, kpidNumSubFiles, VT_UI4}, {NULL, kpidNumBlocks, VT_UI4},
+      {NULL, kpidReadOnly, VT_BOOL},   {"Read-only limitations", kpidReadLimitations, VT_BSTR}};
 
-  IMP_IInArchive_Props IMP_IInArchive_ArcProps
+  IMP_IInArchive_Props IMP_IInArchive_ArcProps_WITH_NAME
 
       HRESULT
       CHandler::OpenDir(int parent, UInt32 baseOffset, unsigned level) {
@@ -343,7 +348,15 @@ HRESULT CHandler::EnsureData(UInt32 end) {
 }
 
 HRESULT CHandler::CheckCrc() {
-    RINOK(InStream_SeekSet(_stream, _volumePos + _headerOffset))
+    const auto unavailable = [this](HRESULT result) -> HRESULT {
+        if (result == E_ABORT || result == E_OUTOFMEMORY)
+            return result;
+        _crcUnavailable = true;
+        return S_OK;
+    };
+    HRESULT result = InStream_SeekSet(_stream, _volumePos + _headerOffset);
+    if (result != S_OK)
+        return unavailable(result);
     Byte buf[1 << 16];
     UInt32 crc = CRC_INIT_VAL;
     UInt32 pos = _headerOffset;
@@ -351,7 +364,9 @@ HRESULT CHandler::CheckCrc() {
         size_t part = _size - pos;
         if (part > sizeof(buf))
             part = sizeof(buf);
-        RINOK(ReadStream_FALSE(_stream, buf, part))
+        result = ReadStream_FALSE(_stream, buf, part);
+        if (result != S_OK)
+            return unavailable(result);
         if (pos == _headerOffset)
             SetUi32(buf + 0x20, 0) crc = CrcUpdate(crc, buf, part);
         pos += (UInt32)part;
@@ -623,6 +638,7 @@ Z7_COM7F_IMF(CHandler::Close())
   _headerOffset = 0;
   _arcOffset = 0;
   _linuxRead = false;
+  _crcUnavailable = false;
   _method = k_Flags_Method_ZLIB;
   _blockSizeLog = kBlockSizeLog;
   _h = CHeader();
@@ -645,43 +661,83 @@ Z7_COM7F_IMF(CHandler::GetNumberOfItems(UInt32 *numItems))
   return S_OK;
 }
 
-Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID propID, PROPVARIANT *value))
-{
-  COM_TRY_BEGIN
-  NWindows::NCOM::CPropVariant prop;
-  switch (propID)
-  {
-    case kpidVolumeName:
-    {
-      char dest[kHeaderNameSize + 4];
-      memcpy(dest, _h.Name, kHeaderNameSize);
-      dest[kHeaderNameSize] = 0;
-      prop = dest;
-      break;
+Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID propID, PROPVARIANT *value)) {
+    COM_TRY_BEGIN
+    NWindows::NCOM::CPropVariant prop;
+    switch (propID) {
+    case kpidReadOnly:
+        prop = true;
+        break;
+    case kpidReadLimitations: {
+        AString reasons;
+        if (_crcUnavailable)
+            reasons = "The CramFS volume checksum could not be verified. Some files may be damaged "
+                      "or unreadable.";
+        else if (_errorFlags & kpv_ErrorFlags_HeadersError)
+            reasons = "The CramFS volume checksum does not match. Some files may be damaged.";
+        if (_errorFlags & kpv_ErrorFlags_UnexpectedEnd) {
+            if (!reasons.IsEmpty())
+                reasons += '\n';
+            reasons += "The CramFS source is shorter than the declared volume. Some files may be "
+                       "incomplete or unreadable.";
+        }
+        if (!reasons.IsEmpty())
+            prop = reasons;
+        break;
     }
-    case kpidBigEndian: prop = _h.be; break;
-    case kpidCharacts: FLAGS_TO_PROP(k_Flags, _h.Flags, prop); break;
-    case kpidMethod: prop = k_Methods[_method]; break;
-    case kpidClusterSize: prop = (UInt32)1 << _blockSizeLog; break;
-    case kpidNumBlocks: if (_h.IsVer2()) prop = _h.NumBlocks; break;
-    case kpidNumSubFiles: if (_h.IsVer2()) prop = _h.NumFiles; break;
-    case kpidPhySize: prop = _phySize; break;
+    case kpidWarning:
+        if (_crcUnavailable)
+            prop = "The CramFS volume checksum could not be verified. Some files may be damaged or "
+                   "unreadable.";
+        break;
+    case kpidVolumeName: {
+        char dest[kHeaderNameSize + 4];
+        memcpy(dest, _h.Name, kHeaderNameSize);
+        dest[kHeaderNameSize] = 0;
+        prop = dest;
+        break;
+    }
+    case kpidBigEndian:
+        prop = _h.be;
+        break;
+    case kpidCharacts:
+        FLAGS_TO_PROP(k_Flags, _h.Flags, prop);
+        break;
+    case kpidMethod:
+        prop = k_Methods[_method];
+        break;
+    case kpidClusterSize:
+        prop = (UInt32)1 << _blockSizeLog;
+        break;
+    case kpidNumBlocks:
+        if (_h.IsVer2())
+            prop = _h.NumBlocks;
+        break;
+    case kpidNumSubFiles:
+        if (_h.IsVer2())
+            prop = _h.NumFiles;
+        break;
+    case kpidPhySize:
+        prop = _phySize;
+        break;
     case kpidOffset:
         prop.Set_Int64(_arcOffset);
         break;
-    case kpidHeadersSize: prop = _headersSize; break;
-    case kpidErrorFlags:
-    {
-      UInt32 v = _errorFlags;
-      if (!_isArc)
-        v |= kpv_ErrorFlags_IsNotArc;
-      prop = v;
-      break;
+    case kpidHeadersSize:
+        prop = _headersSize;
+        break;
+    case kpidWarningFlags:
+        if (_errorFlags)
+            prop = _errorFlags;
+        break;
+    case kpidErrorFlags: {
+        prop = (UInt32)(_isArc ? 0 : kpv_ErrorFlags_IsNotArc);
+        break;
     }
-  }
-  prop.Detach(value);
-  return S_OK;
-  COM_TRY_END
+    }
+    prop.Detach(value);
+    return S_OK;
+    COM_TRY_END
 }
 
 Z7_COM7F_IMF(CHandler::GetProperty(UInt32 index, PROPID propID, PROPVARIANT *value))

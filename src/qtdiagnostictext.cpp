@@ -57,6 +57,14 @@ UString QtArchiveDiagnosticText(const UString &source) {
         return UString(message.arg(text.mid(missingPrefix.size())).toStdWString().c_str());
     }
     const char *const warnings[] = {
+        QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                          "The CramFS volume checksum could not be verified. Some files may be "
+                          "damaged or unreadable."),
+        QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                          "The CramFS volume checksum does not match. Some files may be damaged."),
+        QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                          "The CramFS source is shorter than the declared volume. Some files may "
+                          "be incomplete or unreadable."),
         QT_TRANSLATE_NOOP("SevenZipDiagnostics", "32-bit overflow in headers"),
         QT_TRANSLATE_NOOP("SevenZipDiagnostics", "16-bit overflow for number of files in headers"),
         QT_TRANSLATE_NOOP("SevenZipDiagnostics",

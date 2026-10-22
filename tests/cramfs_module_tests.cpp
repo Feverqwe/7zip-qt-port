@@ -1,3 +1,4 @@
+#include "../third_party/7zip/C/7zCrc.h"
 #include "7zip/Archive/IArchive.h"
 #include "Common/MyCom.h"
 #include "Windows/PropVariant.h"
@@ -53,6 +54,8 @@ class Input final : public IInStream, public CMyUnknownImp {
   public:
     bool fail = false;
     HRESULT failure = E_FAIL;
+    UInt64 failAt = UINT64_MAX;
+    bool shortRead = false;
     explicit Input(QByteArray bytes, bool distant = false) : bytes_(std::move(bytes)) {
         if (distant) {
             tail_ = UInt64(1) << 30;
@@ -67,6 +70,8 @@ class Input final : public IInStream, public CMyUnknownImp {
             *processed = 0;
         if (fail)
             return failure;
+        if (position_ <= failAt && size > failAt - position_)
+            return shortRead ? S_OK : failure;
         size = UInt32(qMin<UInt64>(size, position_ < length_ ? length_ - position_ : 0));
         for (UInt32 i = 0; i < size; ++i) {
             const UInt64 pos = position_ + i;
@@ -137,6 +142,14 @@ class CancelOpen final : public IArchiveOpenCallback, public CMyUnknownImp {
   public:
     Z7_COM7F_IMF(SetTotal(const UInt64 *, const UInt64 *)) override { return S_OK; }
     Z7_COM7F_IMF(SetCompleted(const UInt64 *, const UInt64 *)) override { return E_ABORT; }
+};
+class ChecksumProgressFailure final : public IArchiveOpenCallback, public CMyUnknownImp {
+    Z7_COM_UNKNOWN_IMP_1(IArchiveOpenCallback)
+  public:
+    Z7_COM7F_IMF(SetTotal(const UInt64 *, const UInt64 *)) override { return S_OK; }
+    Z7_COM7F_IMF(SetCompleted(const UInt64 *, const UInt64 *bytes)) override {
+        return bytes ? E_FAIL : S_OK;
+    }
 };
 } // namespace
 
@@ -232,6 +245,56 @@ class CramfsModuleTests final : public QObject {
         QTest::addColumn<bool>("legacy");
         QTest::newRow("linux-extended") << false;
         QTest::newRow("sdk-zlib") << true;
+    }
+    void optionalChecksumReadDoesNotHideFiles_data() {
+        QTest::addColumn<bool>("shortRead");
+        QTest::newRow("io-failure") << false;
+        QTest::newRow("short-read") << true;
+    }
+    void optionalChecksumReadDoesNotHideFiles() {
+        QFETCH(bool, shortRead);
+        createArchive();
+        auto bytes = fixture();
+        bytes += QByteArray(16384, '\0');
+        qToLittleEndian(quint32(bytes.size()), bytes.data() + 512 + 4);
+        qToLittleEndian(quint32(0x801), bytes.data() + 512 + 8);
+        qToLittleEndian(quint32(2), bytes.data() + 512 + 44);
+        CrcGenerateTable();
+        qToLittleEndian(quint32(CrcCalc(bytes.constData() + 512, size_t(bytes.size() - 512))),
+                        bytes.data() + 512 + 32);
+        auto *input = new Input(bytes);
+        CMyComPtr<IInStream> source = input;
+        input->failAt = UInt64(bytes.size() - 1);
+        input->shortRead = shortRead;
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
+        NWindows::NCOM::CPropVariant limitations;
+        QCOMPARE(archive_->GetArchiveProperty(kpidUserDefined + 1, &limitations), S_OK);
+        QCOMPARE(limitations.vt, VARTYPE(VT_BSTR));
+        QVERIFY(QString::fromWCharArray(limitations.bstrVal).contains("checksum"));
+        CMyComPtr2<IArchiveExtractCallback, Extract> callback;
+        callback.Create_if_Empty();
+        const UInt32 index = 0;
+        QCOMPARE(archive_->Extract(&index, 1, 0, callback), S_OK);
+        QCOMPARE(callback->result, Int32(NArchive::NExtract::NOperationResult::kOK));
+        QCOMPARE(callback->output->bytes, contents);
+        if (!shortRead) {
+            for (HRESULT fatal : {E_ABORT, E_OUTOFMEMORY}) {
+                input->failure = fatal;
+                QCOMPARE(source->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
+                QCOMPARE(archive_->Open(source, nullptr, nullptr), fatal);
+                UInt32 count = 99;
+                QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+                QCOMPARE(count, 0u);
+            }
+        }
+        input->failAt = UINT64_MAX;
+        QCOMPARE(source->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
+        QCOMPARE(archive_->GetArchiveProperty(kpidUserDefined + 1, &limitations), S_OK);
+        QCOMPARE(limitations.vt, VARTYPE(VT_EMPTY));
+        CMyComPtr<IArchiveOpenCallback> callbackFailure = new ChecksumProgressFailure;
+        QCOMPARE(source->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
+        QCOMPARE(archive_->Open(source, nullptr, callbackFailure), E_FAIL);
     }
     void streamsSurviveCloseReopenAndSourceFailure() {
         QFETCH(bool, legacy);
