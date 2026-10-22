@@ -117,11 +117,12 @@ filesystem UI; физические носители и системная ав�
 | --- | --- | --- |
 | exFAT/TexFAT | `fs/exfat` | [Read-side source audit закрыт](exfat-linux.md#read-side-source-audit-closure-2026-10-21): C readers, metadata/chain/stream границы, исправления и ABI/CLI/backend consumers; runtime и archive/platform границы записаны отдельно. |
 | FAT12/16/32 | `fs/fat` | [Read-side source audit модуля закрыт](fat-linux.md#итоговая-сверка-read-side-source-scope--2026-10-22): BPB, FAT/namespace, NLS/timestamps, metadata и partial file streams; standalone/profile и runtime границы записаны отдельно. |
-| ext2/3/4 | `fs/ext2`, `fs/ext4` | Superblock/features, inode, directory, extents/indirect/inline data и sparse reads. |
+| ext2/3/4 | `fs/ext2`, `fs/ext4` | [Read-side source audit закрыт](ext-linux.md#final-ext-read-side-scope-comparison--2026-10-22): geometry/metadata, mapping/namespace, fscrypt, fs-verity и crypto/trust dependencies; archive/platform и runtime границы записаны отдельно. |
 | NTFS | `fs/ntfs3` | Boot/MFT, attributes/runlists, directories, sparse/compressed file reads. |
 | HFS/HFS+ | `fs/hfs`, `fs/hfsplus` | [Read-side source audit закрыт](hfs-linux.md#итоговая-сверка-read-side-source-scope--2026-10-21): volume/B-tree, extents, имена, metadata и data/resource forks; archive/platform и runtime границы записаны отдельно. |
 | cramfs, SquashFS | `fs/cramfs`, `fs/squashfs` | Read-side source audit закрыт для [cramfs](cramfs-linux.md#итоговая-сверка-read-side-source-scope--2026-10-22) и [SquashFS](squashfs-linux.md#итоговая-сверка-read-side-source-scope--2026-10-22): metadata, directories, blocks/fragments и decompressor boundaries; archive/platform и runtime границы записаны отдельно. |
-| ISO9660, UDF | `fs/isofs`, `fs/udf` | Descriptors, names/extensions, extents, sparse и embedded data. |
+| ISO9660 | `fs/isofs` | Descriptors, names/extensions и extents; source audit остаётся открытым. |
+| UDF | `fs/udf` | [Read-side source audit закрыт](udf-linux.md#итоговая-сверка-read-side-source-scope--2026-10-20): volume/partition, inode/FID, extents и embedded data; archive/platform и runtime границы записаны отдельно. |
 | EROFS (новый модуль) | `fs/erofs` | [Read-side source audit закрыт](erofs-linux.md#read-side-source-audit-closure--2026-10-22): C readers, зависимости, исправления metadata/device/namespace границ и archive consumers; runtime, VFS и recovery границы записаны отдельно. |
 | Base64 | `lib/base64.c`, fscrypt/Ceph callers | Standard/URL-safe/IMAP alphabets, padding/tail validation и archive handler lifecycle. |
 | ELF | `fs/binfmt_elf.c`, `fs/binfmt_elf_fdpic.c`, kexec/module readers | Headers, table/payload spans, Linux core numbering, metadata и archive streams; execution services не входят в byte reader. |
@@ -452,8 +453,10 @@ keys: software mode/KDF/IV paths, ciphertext names и Linux no-key view,
 symlink targets, casefold dirhash и композицию с fs-verity. Тот же reader
 подключён к прямому чтению устройств; standalone отказывает в encrypted data.
 Подключены builtin signatures и явно переданные сертификаты доверия; сквозные
-SDK/CLI/device проверки прошли на macOS, Linux и Windows. Полная актуализация ext4
-не завершена: оставшиеся feature/creator-OS read semantics остаются в общем scope.
+SDK/CLI/device проверки прошли на macOS, Linux и Windows в указанных компонентных
+итерациях. [Итоговая сверка исходников](ext-linux.md#final-ext-read-side-scope-comparison--2026-10-22)
+закрывает выбранный archive read scope, включая feature/creator-OS semantics;
+границы поздних macOS-проверок и прежних remote evidence описаны отдельно.
 Подключены также исходные Linux system zones: corrupt file references больше
 не позволяют извлечь служебные metadata/journal blocks; блоки журнала доступны
 своему inode. Сверены и исправлены partial/zero inode extensions временных меток.

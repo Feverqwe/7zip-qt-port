@@ -1,14 +1,79 @@
 # ext2/3/4 read-path review against Linux
 
-Part of the [Linux format review](filesystems-linux.md), 2026-10-19. This first
-integrated ext iteration covers classic indirect mapping, sparse reads, extent
-tree boundaries, directory record boundaries and archive stream consumers.
-The second integrates Linux metadata and inline-data readers. The ext row remains
-open for the remaining read features listed below.
+Part of the [Linux format review](filesystems-linux.md), started 2026-10-19.
+The final source-scope comparison below supersedes historical open-scope notes
+in the dated implementation evidence. Individual sections retain their original
+source, adaptation and runtime boundaries.
 
 fs-verity now reuses the original shared Linux string scanner already linked
 for fscrypt. Source scope and validation are recorded with the
 [shared string-service transfer](erofs-linux.md#original-shared-string-services--2026-10-22).
+
+## Final ext read-side scope comparison — 2026-10-22
+
+The selected ext2/3/4 archive read-side source comparison is complete against
+Linux `58161ead29e50d70a317ea26b472e0c7508e69da`, with the archive/platform
+adaptations below. This conclusion follows the complete component comparisons,
+their connected consumers and the final ownership review; the 305-file reference
+manifest and passing tests alone do not establish it. This closes the ext source
+review entry, not the remaining formats in the parent goal or all Linux VFS code.
+
+| Read requirement | Current authoritative implementation and evidence |
+| --- | --- |
+| Volume/features/creator OS | Original selected superblock geometry, checksums, descriptors, inode geometry, maximum-size, encoding and cluster helpers are connected before metadata/data publication. Read-only feature checks retain HURD/64bit/EA-inode, encryption-level and declared encoding rules. Late creator/legacy and BIGALLOC/classic corrections are recorded below; there is no remaining generic creator-OS implementation item. |
+| Inodes and optional metadata | Original checksum, extra-inode, role/identity/link, size, fast-link and mode checks are connected to owned raw inode decoding. Timestamps, ordinary/EA/special roles, xattr blocks/EA-inode values and ACL conversion have complete component comparisons. Independent data remains readable with explicit limitations when optional metadata fails. |
+| Allocations and mapping | Original descriptor/bitmap/system-zone checks protect initialized data and journal ownership. Classic indirect lookup, extent validation/inventory, sparse/unwritten handling and inline data are connected to archive stream consumers, including directory, slow-link and journal bootstrap callers. Bounds and source errors remain distinct from recovery consent. |
+| Namespace and symlinks | Directory framing/checksums, reachable htree traversal and fallback, inline directories, hash initialization and fscrypt hash inputs have complete comparisons. SDK projection owns archive paths/aliases/parent links, with the recorded incomplete-name/dot/cycle recovery corrections. Fast/block/inline/encrypted symlinks have original read-side acceptance and owned target buffers. |
+| Encryption | Original software fscrypt context/policy/KDF/key/IV/data/name/symlink paths and all selected crypto dependencies are compared and connected. Explicit raw keys and original no-key presentation remain distinct. Encrypted data is decrypted before fs-verity hashing, including verifier metadata beyond logical EOF. |
+| Verity and trust | Original descriptor/tree/hash/read verification and builtin-signature flow are connected to retained streams. Certificate/parser/trust, RSA/MPI, ECC and ML-DSA dependencies now have complete selected source comparisons. A present signature requires valid explicit trust; recovery consent cannot replace verification. |
+| Recovery and source ownership | Scoped ext limited-read consent/reporting permits independent readable data without repair/replay. Normal/special/EA consumers retain their validation contracts. Archive input stays read-only; source HRESULT/cancellation and per-file failure isolation have separate behavior coverage. |
+
+Final review traced `extreader.c`, `extblockreader.c`, their private/public types
+and the GPL handler's C-reader imports, callback setup and retained stream
+ownership. The C boundary copies the raw superblock/inodes and descriptor
+inventory, calls the selected original initializers/validators and publishes
+opaque objects only after mandatory checks. Error paths release unpublished
+objects. Temporary inode/xattr/block services are used during synchronous
+construction/visits and restored afterward; retained mapping, crypto and verity
+streams own the state and input they need after handler close/reopen/release.
+The SDK's initial parsing remains connected, with C size/timestamp/inline/error
+results imported before namespace publication. No disconnected second decoder
+or unconnected read-feature placeholder was identified in this scope.
+
+The current module/source boundary is the
+[license variant split](license-variants.md). The GPL handler under
+`src/gpl/CPP/7zip/Archive/ExtHandler.cpp` connects the Linux C readers; the SDK
+variant retains its independent license scope and explicitly refuses mandatory
+payload features it cannot decode. Passing dynamic-module checks does not claim
+feature equality for standalone `7zz`. Older descriptions of a shared handler
+or overlay layout in this history describe the pre-split implementation.
+
+Kernel inode/dentry caches, VFS operation tables, hash-cookie iteration, mount
+probing/options, host permissions/keyrings, hardware inline crypto/unwrap,
+allocation/write paths, journal/orphan/fast-commit replay, repair and page-cache
+acceleration remain archive/platform boundaries. Quota/project enforcement and
+coherency-only inode state are not archive operations. Stored casefold names are
+enumerated without implementing VFS filename lookup. Hardware-wrapped keys still
+need an unavailable device service; explicit raw keys do not supply hardware
+unwrap. Original unsupported-algorithm errors remain explicit. These stated
+boundaries do not defer a known missing disk-data decoder from the selected
+archive read scope.
+
+Runtime evidence remains separate from source closure. The latest macOS batch
+on these production sources passed nineteen focused suites in 30.15 s, including
+all eight ext/stream/fscrypt/xattr/provenance consumers, crypto/signature/hash/
+certificate and NTFS/device suites; the incremental application build passed.
+Earlier component sections own Linux/MSVC Windows and native read-only kernel
+fixture evidence. Later portable changes were checked on macOS under the current
+validation policy; those historical remote results do not validate every later
+revision. Physical devices, hardware keys, full/slow/release-install gates and
+native UI acceptance are not established by this closure. The separately tracked
+opening-consent UI CTest timeout remains explicit in the parent audit.
+
+All 305 pinned reference hashes match. This final scope reconciliation changes
+only documentation and passes `git diff --check`; no unchanged runtime batch or
+source-text test was added. Other filesystem/container/codec rows in the parent
+census remain subject to their own complete comparison and fixes.
 
 ## ECC and ML-DSA dependency source comparison — 2026-10-22
 
