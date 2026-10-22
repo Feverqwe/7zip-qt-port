@@ -4,6 +4,47 @@
 существующее чтение boot/MFT, атрибутов, sparse и compressed streams.
 Полная актуализация NTFS по Linux ещё не завершена.
 
+## Directory/index source comparison — 2026-10-22
+
+Compared complete local bodies in pinned Linux `fs/ntfs3/{dir,index,upcase}.c`,
+their on-disk types, immutable inode adapters and archive directory/name callers.
+Twelve bodies match after comments/whitespace; eight retain the adaptations
+below and one exposes directory counting to the archive. Both compilation
+contexts of `dir.c` were included. This closes comparison of the selected
+directory/index component, not remaining NTFS metadata/security or the goal.
+
+The original directory count traverses the root and bitmap-selected buffers;
+the adapter adds archive emission, child-range checks and explicit unverified
+results. Index header validation additionally bounds offsets before access.
+Index reads retain original allocation, fixups, VBN/header validation and cleanup,
+with checked VBN-to-byte shifting. Kernel block/run/lock services become existing
+validated logical streams; bitmap scanning keeps initialized/data bounds and
+original bit search. Both resident and nonresident bitmaps share that boundary.
+`get_cmp_func` selects only `$SII` unsigned lookup: directory enumeration does not
+perform sorted filename lookup. Mounted lookup, dentry/page caches, NLS mount
+selection, allocation and index mutation are outside this archive reader.
+The original UTF-16 conversion changes only the host's 16-bit character type;
+both upcase bodies match. Archive names retain SDK UTF-16 representation.
+
+Reviewed listed `$I30` ownership/extension selection, exact parent references,
+sequence mismatch diagnostics, MFT/index name reconciliation, DOS aliases,
+unavailable targets, duplicate paths and parent-cycle recovery with item/path
+consumers. Existing archive fallback and source-error/cancellation propagation
+remain explicit; VFS namespace acceptance is not claimed for recovery names.
+
+Removed the independent `__ffs` loop in the index adapter and reused the original
+generic Linux helper already owned by the ext baseline. Its header now carries
+only required host integer-width/compiler definitions instead of importing the
+whole crypto adapter. `find_bit.c` supplies its own `min`/`unlikely` host services;
+the original search/helper algorithms are unchanged. NTFS records this shared
+dependency in its pinned manifest. No implementation-presence test was added.
+
+Incremental application build and nineteen ordinary macOS NTFS, crypto/ext,
+archive-device and baseline suites passed (27.57 s for tests). This includes
+existing directory geometry, bitmap, namespace, errors, cancellation and retained
+stream behavior, plus consumers of the shared helper. Linux/Windows and slow
+suites were not run for this portable source-reuse change.
+
 ## Boot/MFT bootstrap stream identity — 2026-10-22
 
 Recompared boot geometry, record framing and bootstrap mapping with pinned

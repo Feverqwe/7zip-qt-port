@@ -13,6 +13,8 @@
  */
 
 #include "../include/asm-generic/bitops/__ffs.h"
+#define unlikely(value) (value)
+#define min(a, b) ((a) < (b) ? (a) : (b))
 #define BITMAP_FIRST_WORD_MASK(start) (~0UL << ((start) % BITS_PER_LONG))
 
 unsigned long _find_next_zero_bit(const unsigned long *addr, unsigned long nbits,

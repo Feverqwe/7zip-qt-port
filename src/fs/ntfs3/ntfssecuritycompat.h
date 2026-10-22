@@ -4,6 +4,7 @@
 #define SEVENZIP_NTFS_SECURITY_COMPAT_H
 #include "ntfs.h"
 #include "../../ntfssecurity.h"
+#include "../../include/asm-generic/bitops/__ffs.h"
 #define SECTOR_SHIFT 9
 #define SECTOR_SIZE 512
 #define E_NTFS_FIXUP 555
@@ -139,11 +140,6 @@ void fnd_clear(struct ntfs_fnd *);
 static inline struct ntfs_fnd *fnd_get(void) { return kzalloc_obj(struct ntfs_fnd, GFP_NOFS); }
 static inline void fnd_put(struct ntfs_fnd *fnd) {
     if (fnd) { fnd_clear(fnd); kfree(fnd); }
-}
-static inline unsigned __ffs(unsigned value) {
-    unsigned count = 0;
-    while (!(value & 1)) { value >>= 1; ++count; }
-    return count;
 }
 unsigned long _find_next_bit(const unsigned long *, unsigned long, unsigned long);
 #define MINUS_ONE_T SIZE_MAX

@@ -2,7 +2,21 @@
 #ifndef _ASM_GENERIC_BITOPS___FFS_H_
 #define _ASM_GENERIC_BITOPS___FFS_H_
 
-#include "../../../lib/crypto/userspace.h"
+#include <limits.h>
+
+#ifndef __always_inline
+#define __always_inline inline
+#endif
+#ifndef __attribute_const__
+#define __attribute_const__
+#endif
+#ifndef BITS_PER_LONG
+#if ULONG_MAX == 0xffffffffUL
+#define BITS_PER_LONG 32
+#else
+#define BITS_PER_LONG 64
+#endif
+#endif
 
 /**
  * generic___ffs - find first bit in word.
