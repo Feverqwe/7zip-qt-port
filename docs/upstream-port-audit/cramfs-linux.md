@@ -1,5 +1,62 @@
 # Cramfs read-side modernization against Linux
 
+## File I/O isolation and optional packed statistics — 2026-10-22
+
+Recompared Linux folio/error completion and read services, the adapted C I/O
+error latch, SDK cached Read, CopyCoder and Cramfs GetPackSize/GetProperty/
+Extract callers. Baselines and retrieval remain below. A local read error
+does not make another inode unreadable in Linux. The archive bridge returned
+every source I/O failure as a fatal extraction HRESULT, preventing the existing
+SDK loop from reaching a healthy sibling. Conversely, the boolean packed-size
+helper discarded source E_ABORT/E_OUTOFMEMORY as an ordinary unknown property.
+
+The same helpers/parsers, C folio body, SDK cache and copy loop are retained.
+Packed-size lookup now distinguishes a known value, an unavailable optional
+summary and fatal cancellation/OOM. Both property publication and extraction
+progress preserve those fatal results. An invalid end pointer, an extent
+beyond source bounds or encoded block flags is not published as a physical
+byte count. Flagged blocks remain readable by the existing Linux data path,
+including when the superblock did not advertise the optional extension bit.
+An unknown optional summary is not a verified file or an opening refusal.
+
+Ordinary Linux-profile source/decoding failures now use the SDK per-file
+DataError flow. CopyCoder preserves only the bytes completed before the error,
+reports failure for that file and continues other selected items. The C I/O
+error latch is checked before publishing the temporary folio buffer: failed
+reads never become successful zero-filled data. E_ABORT/E_OUTOFMEMORY remain
+fatal; E_NOTIMPL retains unsupported-operation reporting. Output-write and
+progress-callback failures retain their original fatal behavior. Invalid
+nonempty stream mappings are DataError rather than UnsupportedMethod; missing
+decoding is still unsupported. The COM Extract call's S_OK means the callback
+sequence completed, not that every item succeeded.
+
+New public ABI regressions first reproduced swallowed packed-stat cancellation
+and whole-extraction refusal before a healthy sibling. They now verify exact
+readable prefixes, per-item DataError/OK results, fatal Abort/OOM both in optional
+statistics and file data, recovery on a later read, unknown invalid/flagged
+packed sizes and exact flagged-block data. A RAM-only two-file image injects a
+late failure in the first file while the second remains readable. Existing
+retained-stream/source-error expectations now require S_FALSE/DataError for
+ordinary file I/O, preserving cancellation and retry checks. No new gate,
+repair/replay, source write or missing-decoder consent bypass is introduced.
+
+CLI plus source suites passed on macOS/Linux; the initial Windows first CLI
+process exceeded its existing 10-second test deadline on the direct-range
+control. The unchanged isolated suite passed in
+`20261022T060614Z-d25e540c` (2.07 seconds). The timeout's cause is unconfirmed;
+no deadline, retry policy or product behavior was changed to pass it. Final
+isolated ABI/backend checks passed on all three platforms, Linux/Windows
+receipt `20261022T060834Z-f0a7def3` (0.33/17.70 seconds), macOS 1.86 seconds.
+Both engines/module were rebuilt incrementally, the macOS application build
+and diff check passed. No new UI text/geometry changed, so appearance acceptance
+was not repeated. No full/slow suites, native mounts or physical devices were
+used; temporary fixture owners cleaned their data and compiler caches/build
+trees/current review evidence were retained.
+
+This closes the selected file-error/statistics scenario, not the entire
+cramfs source audit; declared-size/source-bound acceptance, prefix/physical
+reporting and the final read-side comparison remain open.
+
 ## Inode data presence and informational counts — 2026-10-22
 
 Recompared Linux `cramino`/`get_cramfs_inode`, folio reads, superblock fsid

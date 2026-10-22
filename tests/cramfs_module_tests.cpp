@@ -47,6 +47,30 @@ QByteArray fixture(bool legacy = false) {
     }
     return image;
 }
+QByteArray filePair() {
+    const int root = 588, firstTable = root + 40, secondTable = firstTable + 8;
+    const int firstData = secondTable + 4, secondData = firstData + contents.size();
+    QByteArray bytes(secondData + 16, '\0');
+    auto put = [&](int offset, quint32 value) { qToLittleEndian(value, bytes.data() + offset); };
+    put(512, 0x28cd3d45);
+    put(520, 0x800);
+    put(576, 0x41ed);
+    put(580, 40);
+    put(584, (root / 4) << 6);
+    for (int index = 0; index < 2; ++index) {
+        const int entry = root + index * 20;
+        put(entry, 0x81a4);
+        put(entry + 4, index == 0 ? quint32(contents.size()) : 16);
+        put(entry + 8, ((index == 0 ? firstTable : secondTable) / 4 << 6) | 2);
+        memcpy(bytes.data() + entry + 12, index == 0 ? "alpha" : "second", index == 0 ? 5 : 6);
+    }
+    put(firstTable, 0xc0000000 | (firstData / 4));
+    put(firstTable + 4, 0xc0000000 | ((firstData + 4096) / 4));
+    put(secondTable, 0xc0000000 | (secondData / 4));
+    memcpy(bytes.data() + firstData, contents.constData(), contents.size());
+    memcpy(bytes.data() + secondData, "healthy sibling\n", 16);
+    return bytes;
+}
 class Input final : public IInStream, public CMyUnknownImp {
     Z7_COM_UNKNOWN_IMP_2(ISequentialInStream, IInStream)
     QByteArray bytes_;
@@ -135,6 +159,7 @@ class Extract final : public IArchiveExtractCallback, public CMyUnknownImp {
     CMyComPtr2<ISequentialOutStream, Output> output;
     bool cancel = false;
     Int32 result = -1;
+    QList<Int32> results;
     Extract() { output.Create_if_Empty(); }
     Z7_COM7F_IMF(SetTotal(UInt64)) override { return S_OK; }
     Z7_COM7F_IMF(SetCompleted(const UInt64 *)) override { return cancel ? E_ABORT : S_OK; }
@@ -149,6 +174,7 @@ class Extract final : public IArchiveExtractCallback, public CMyUnknownImp {
     Z7_COM7F_IMF(PrepareOperation(Int32)) override { return S_OK; }
     Z7_COM7F_IMF(SetOperationResult(Int32 value)) override {
         result = value;
+        results.append(value);
         return S_OK;
     }
 };
@@ -287,8 +313,96 @@ class CramfsModuleTests final : public QObject {
         callback.Create_if_Empty();
         const UInt32 index = 0;
         input->fail = true;
-        QCOMPARE(archive_->Extract(&index, 1, 0, callback), E_FAIL);
+        QCOMPARE(archive_->Extract(&index, 1, 0, callback), S_OK);
+        QCOMPARE(callback->result, Int32(NArchive::NExtract::NOperationResult::kDataError));
+        QVERIFY(callback->output->bytes.isEmpty());
         input->fail = false;
+        QCOMPARE(archive_->Extract(&index, 1, 0, callback), S_OK);
+        QCOMPARE(callback->result, Int32(NArchive::NExtract::NOperationResult::kOK));
+        QCOMPARE(callback->output->bytes, contents);
+    }
+    void packedSizeReadErrorsPreserveCancellationAndUsefulPrefix() {
+        createArchive();
+        auto bytes = fixture(true);
+        qToLittleEndian(quint32(0), bytes.data() + 520);
+        const auto table = qFromLittleEndian<quint32>(bytes.constData() + 588 + 8) >> 6 << 2;
+        auto *input = new Input(bytes);
+        CMyComPtr<IInStream> source = input;
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
+        input->failAt = table + 4;
+        for (HRESULT failure : {E_ABORT, E_OUTOFMEMORY, E_FAIL}) {
+            input->failure = failure;
+            NWindows::NCOM::CPropVariant packed;
+            QCOMPARE(archive_->GetProperty(0, kpidPackSize, &packed),
+                     failure == E_FAIL ? S_OK : failure);
+            QCOMPARE(packed.vt, VARTYPE(VT_EMPTY));
+            CMyComPtr2<IArchiveExtractCallback, Extract> callback;
+            callback.Create_if_Empty();
+            const UInt32 index = 0;
+            QCOMPARE(archive_->Extract(&index, 1, 0, callback), failure == E_FAIL ? S_OK : failure);
+            if (failure == E_FAIL) {
+                QCOMPARE(callback->result, Int32(NArchive::NExtract::NOperationResult::kDataError));
+                QCOMPARE(callback->output->bytes, contents.left(4096));
+            } else {
+                QVERIFY(callback->results.isEmpty());
+                QVERIFY(callback->output->bytes.isEmpty());
+            }
+        }
+        input->failAt = UINT64_MAX;
+        NWindows::NCOM::CPropVariant packed;
+        QCOMPARE(archive_->GetProperty(0, kpidPackSize, &packed), S_OK);
+        QCOMPARE(packed.vt, VARTYPE(VT_UI4));
+        QVERIFY(packed.ulVal > 0);
+        qToLittleEndian(quint32(0xffffffff), bytes.data() + table + 4);
+        QCOMPARE(open(bytes), S_OK);
+        QCOMPARE(archive_->GetProperty(0, kpidPackSize, &packed), S_OK);
+        QCOMPARE(packed.vt, VARTYPE(VT_EMPTY));
+        const auto nameBits = qFromLittleEndian<quint32>(bytes.constData() + 596) & 63;
+        qToLittleEndian(quint32((0x0ffffffcu / 4) << 6) | nameBits, bytes.data() + 596);
+        QCOMPARE(open(bytes), S_OK);
+        CMyComPtr2<IArchiveExtractCallback, Extract> callback;
+        callback.Create_if_Empty();
+        const UInt32 index = 0;
+        QCOMPARE(archive_->Extract(&index, 1, 0, callback), S_OK);
+        QCOMPARE(callback->result, Int32(NArchive::NExtract::NOperationResult::kDataError));
+        QVERIFY(callback->output->bytes.isEmpty());
+    }
+    void sourceReadFailureDoesNotHideHealthySibling() {
+        createArchive();
+        const auto bytes = filePair();
+        auto *input = new Input(bytes);
+        CMyComPtr<IInStream> source = input;
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
+        input->failAt = quint64(bytes.size() - 16 - 4);
+        const UInt32 indices[] = {0, 1};
+        for (HRESULT failure : {E_FAIL, E_ABORT, E_OUTOFMEMORY}) {
+            input->failure = failure;
+            CMyComPtr2<IArchiveExtractCallback, Extract> callback;
+            callback.Create_if_Empty();
+            QCOMPARE(archive_->Extract(indices, 2, 0, callback),
+                     failure == E_FAIL ? S_OK : failure);
+            if (failure == E_FAIL) {
+                QCOMPARE(callback->results,
+                         QList<Int32>({NArchive::NExtract::NOperationResult::kDataError,
+                                       NArchive::NExtract::NOperationResult::kOK}));
+                QCOMPARE(callback->output->bytes, contents.left(4096) + "healthy sibling\n");
+            } else {
+                QVERIFY(callback->results.isEmpty());
+                QCOMPARE(callback->output->bytes, contents.left(4096));
+            }
+        }
+    }
+    void flaggedBlocksAreReadableWithoutFalsePackedSize() {
+        createArchive();
+        auto bytes = fixture();
+        qToLittleEndian(quint32(0), bytes.data() + 520);
+        QCOMPARE(open(bytes), S_OK);
+        NWindows::NCOM::CPropVariant packed;
+        QCOMPARE(archive_->GetProperty(0, kpidPackSize, &packed), S_OK);
+        QCOMPARE(packed.vt, VARTYPE(VT_EMPTY));
+        CMyComPtr2<IArchiveExtractCallback, Extract> callback;
+        callback.Create_if_Empty();
+        const UInt32 index = 0;
         QCOMPARE(archive_->Extract(&index, 1, 0, callback), S_OK);
         QCOMPARE(callback->result, Int32(NArchive::NExtract::NOperationResult::kOK));
         QCOMPARE(callback->output->bytes, contents);
@@ -481,7 +595,7 @@ class CramfsModuleTests final : public QObject {
         archive_.Release();
         if (!legacy) {
             input->fail = true;
-            QCOMPARE(second->Read(buffer, sizeof(buffer), &processed), E_FAIL);
+            QCOMPARE(second->Read(buffer, sizeof(buffer), &processed), S_FALSE);
             QCOMPARE(processed, 0u);
             input->failure = E_ABORT;
             QCOMPARE(second->Read(buffer, sizeof(buffer), &processed), E_ABORT);

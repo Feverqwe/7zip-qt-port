@@ -232,7 +232,7 @@ Z7_CLASS_IMP_CHandler_IInArchive_1(
   HRESULT EnsureData(UInt32 sourceOffset, UInt32 size, UInt32 &offset);
   HRESULT CheckCrc();
   AString GetPath(unsigned index) const;
-  bool GetPackSize(unsigned index, UInt32 &res);
+  HRESULT GetPackSize(unsigned index, UInt32 &res);
   void Free();
 
   UInt32 GetNumBlocks(UInt32 size) const {
@@ -628,37 +628,39 @@ AString CHandler::GetPath(unsigned index) const
   return path;
 }
 
-bool CHandler::GetPackSize(unsigned index, UInt32 &res) {
+HRESULT CHandler::GetPackSize(unsigned index, UInt32 &res) {
     res = 0;
     const CItem &item = _items[index];
     const Byte *p = _data + item.Offset;
     const bool be = _h.be;
     const UInt32 numBlocks = GetNumBlocks(GetDataSize(p, be));
     if (numBlocks == 0)
-        return true;
+        return S_OK;
     if (_linuxRead && (_h.Flags & kFlag_ExtBlockPointers))
-        return false;
+        return S_FALSE;
     const UInt32 offset = GetOffset(p, be);
     if (offset < kHeaderSize)
-        return false;
+        return S_FALSE;
     const UInt32 start = offset + numBlocks * 4;
     if (start > _size)
-        return false;
+        return S_FALSE;
     UInt32 end;
 #ifdef SEVENZIP_LINUX_CRAMFS
     if (_linuxRead) {
         Byte value[4];
         _linuxReadResult = S_OK;
         if (ReadLinux(this, start - 4, value, sizeof(value)))
-            return false;
+            return _linuxReadResult == E_ABORT || _linuxReadResult == E_OUTOFMEMORY
+                       ? _linuxReadResult
+                       : S_FALSE;
         end = Get32(value);
     } else
 #endif
         end = Get32(_data + start - 4);
-    if (end < start)
-        return false;
+    if (end < start || end > _size || (_linuxRead && (end & 0xc0000000u)))
+        return S_FALSE;
     res = end - start;
-    return true;
+    return S_OK;
 }
 
 Z7_COM7F_IMF(CHandler::Open(IInStream *stream, const UInt64 *, IArchiveOpenCallback *callback)) {
@@ -845,29 +847,33 @@ Z7_COM7F_IMF(CHandler::GetProperty(UInt32 index, PROPID propID, PROPVARIANT *val
           prop = GetDataSize(p, be);
       break;
   case kpidPackSize:
-      if (!isDir)
-      {
-        UInt32 size;
-        if (GetPackSize(index, size))
-          prop = size;
+      if (!isDir) {
+          UInt32 size;
+          const HRESULT result = GetPackSize(index, size);
+          if (result == S_OK)
+              prop = size;
+          else if (result != S_FALSE)
+              return result;
       }
       break;
-    case kpidPosixAttrib: prop = (UInt32)GetMode(p, be); break;
-    case kpidUserId:
-        prop = (UInt32)(be ? GetBe16(p + 2) : GetUi16(p + 2));
-        break;
-    case kpidGroupId:
-        prop = (UInt32)p[7];
-        break;
-    case kpidDeviceMajor:
-        if (MY_LIN_S_ISCHR(GetMode(p, be)) || MY_LIN_S_ISBLK(GetMode(p, be)))
-            prop = (UInt32)((GetSize(p, be) >> 8) & 0xFF);
-        break;
-    case kpidDeviceMinor:
-        if (MY_LIN_S_ISCHR(GetMode(p, be)) || MY_LIN_S_ISBLK(GetMode(p, be)))
-            prop = (UInt32)(GetSize(p, be) & 0xFF);
-        break;
-    }
+  case kpidPosixAttrib:
+      prop = (UInt32)GetMode(p, be);
+      break;
+  case kpidUserId:
+      prop = (UInt32)(be ? GetBe16(p + 2) : GetUi16(p + 2));
+      break;
+  case kpidGroupId:
+      prop = (UInt32)p[7];
+      break;
+  case kpidDeviceMajor:
+      if (MY_LIN_S_ISCHR(GetMode(p, be)) || MY_LIN_S_ISBLK(GetMode(p, be)))
+          prop = (UInt32)((GetSize(p, be) >> 8) & 0xFF);
+      break;
+  case kpidDeviceMinor:
+      if (MY_LIN_S_ISCHR(GetMode(p, be)) || MY_LIN_S_ISBLK(GetMode(p, be)))
+          prop = (UInt32)(GetSize(p, be) & 0xFF);
+      break;
+  }
   prop.Detach(value);
   return S_OK;
   COM_TRY_END
@@ -947,7 +953,10 @@ HRESULT CHandler::ReadBlock(UInt64 blockIndex, Byte *dest, size_t blockSize, UIn
         cramfs_source source = {NULL, _size, _h.be, this, InflateLinux, ReadLinux};
         _linuxReadResult = S_OK;
         if (cramfs_read_block(&source, table, fileSize, (UInt32)blockIndex, page))
-            return _linuxReadResult == S_OK ? S_FALSE : _linuxReadResult;
+            return _linuxReadResult == E_ABORT || _linuxReadResult == E_OUTOFMEMORY ||
+                           _linuxReadResult == E_NOTIMPL
+                       ? _linuxReadResult
+                       : S_FALSE;
         memcpy(dest, page, blockSize);
         return S_OK;
     }
@@ -1060,8 +1069,11 @@ Z7_COM7F_IMF(CHandler::Extract(const UInt32 *indices, UInt32 numItems,
       UInt32 curSize = GetDataSize(p, be);
       totalSize += curSize;
       UInt32 packSize;
-      if (GetPackSize(index, packSize))
+      const HRESULT packResult = GetPackSize(index, packSize);
+      if (packResult == S_OK)
           totalPackSize += packSize;
+      else if (packResult != S_FALSE)
+          return packResult;
 
       if (!testMode && !outStream)
           continue;
@@ -1075,12 +1087,11 @@ Z7_COM7F_IMF(CHandler::Extract(const UInt32 *indices, UInt32 numItems,
       {
           CMyComPtr<ISequentialInStream> inSeqStream;
           HRESULT hres = GetStream(index, &inSeqStream);
-          if (hres == E_OUTOFMEMORY)
-              return E_OUTOFMEMORY;
-          if (hres == S_FALSE || !inSeqStream)
+          if (hres == E_NOTIMPL)
               res = NExtract::NOperationResult::kUnsupportedMethod;
-          else {
-              RINOK(hres) {
+          else if (hres != S_FALSE) {
+              RINOK(hres)
+              if (inSeqStream) {
                   hres = copyCoder->Code(inSeqStream, outStream, NULL, NULL, progress);
                   if (hres == S_OK) {
                       if (copyCoderSpec->TotalSize == curSize)
