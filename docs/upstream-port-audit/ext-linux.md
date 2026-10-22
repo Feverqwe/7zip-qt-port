@@ -6,6 +6,71 @@ tree boundaries, directory record boundaries and archive stream consumers.
 The second integrates Linux metadata and inline-data readers. The ext row remains
 open for the remaining read features listed below.
 
+## Per-file extraction source I/O isolation — 2026-10-22
+
+Recompared the complete original SDK extraction/copy loop, both mapped streams,
+indirect/extent construction and their consumers with Linux's per-inode
+`ext4_file_read_iter`, `ext4_read_folio`/readpage acquisition and the connected
+fscrypt, fs-verity and symlink adapters. An ordinary source HRESULT during one
+selected file previously terminated the whole extraction, preventing an
+independently readable next file from being copied. This is an archive batch
+integration issue; Linux does not supply an archive extraction callback loop.
+
+The dynamic module now uses a private per-file source/output adapter. Ordinary
+source Read/Seek errors and premature source EOF become that item's DataError;
+the next selected item is still processed. Explicit source parameters connect
+the same adapter to indirect/extent metadata, initial/data seeks, mapped payloads,
+symlink inode/block reads, fscrypt data-unit acquisition and fs-verity metadata
+and data acquisition. The handler's shared source is not temporarily replaced.
+Original mapping/decoding/verification algorithms and SDK CopyCoder are reused;
+there is no alternate filesystem reader. The existing FAT extraction adaptation
+provides the integration pattern rather than another independent batch algorithm.
+
+Source Abort/OOM, output errors (including S_FALSE) and progress/callback failures
+still stop the batch. Output status is checked independently before interpreting
+a copy result, so a simultaneous source error cannot suppress a destination
+failure. SDK CopyCoder retains the successfully reported plaintext prefix,
+including bytes returned together with a source error. Crypto/verity paths still
+withhold incomplete data units/blocks; unavailable metadata does not fabricate
+a mapping or symlink target. This iteration isolates failed files, without
+claiming recovery of every readable range inside an unmappable file.
+
+The public GetStream interface retains its original source and HRESULTs; stream
+ownership, bounds, verification/trust and context/key restrictions are unchanged.
+Standalone receives the explicit-source plumbing but retains its existing strict
+source-failure behavior without GPL dependencies. No source write, repair or
+journal replay is introduced. A completed Extract call with per-file DataError
+does not mean successful extraction of those files.
+
+Behavior checks inject Read/Seek/EOF/Abort/OOM faults into direct/indirect data,
+external extent metadata, symlink inode/block storage and fs-verity metadata/data.
+Each injection must actually be reached. Extract and test-only modes distinguish
+DataError from the healthy sibling's OK result; exact bytes, partial-error prefixes,
+fatal destination/progress errors, public GetStream failures and healthy retries
+are checked. Native synthetic fscrypt fixtures exercise source errors and a
+separately stored next encrypted file across all 15 existing policy/data-unit
+cases, including verity combinations; exact plaintext hashes remain the oracle.
+The generators use bounded in-memory images and add no persistent test payloads.
+
+All 303 pinned reference-unit hashes were rechecked without mismatches. Eight
+focused local suites (`ext`, `ext_stream`, `ext_fscrypt`, `ext_fscrypt_cli`,
+`ext_fscrypt_backend`, `ext_xattr_backend`, `upstream_baseline`,
+`upstream_inventory`) passed on macOS arm64 in 8.09 seconds after both engines
+were prepared in the existing incremental trees. Source-port completeness for
+the broader ext read-feature scope is still under review.
+
+Linux CLI/source checks passed in `20261022T082221Z-5e264864` (four suites,
+12.714 seconds). Windows passed three suites in that batch; one existing invalid
+bitmap CLI extraction exceeded its subprocess timeout of 10 seconds. The isolated
+unchanged ext suite passed in `20261022T082359Z-2d6268ab`, without timeout/cache
+changes; the cause of the initial timeout is not established. Final module ABI
+and fscrypt/xattr backend suites passed on both guests in
+`20261022T082438Z-96422880`. The final sibling-fixture refinement also passed
+both local ABI suites. The application build and diff check passed. Fixtures
+are owned/cleaned by their tests; current small receipts, incremental trees and
+compiler caches are retained. No new native mount, physical-device, UI appearance,
+full/slow-suite or release-installation acceptance is claimed.
+
 ## Sources and comparison scope
 
 Linux repository:

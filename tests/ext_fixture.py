@@ -146,8 +146,8 @@ class Volume:
             self.data[pos + 8:pos + 8 + len(name)] = name
             pos += length
 
-    def superblock(self):
-        allocated = set(range(1, 11)) | {12} | ({13} if self.link_inode is not None else set())
+    def superblock(self, extra_inodes=()):
+        allocated = set(range(1, 11)) | {12} | ({13} if self.link_inode is not None else set()) | set(extra_inodes)
         s = 1024
         for offset, value in ((0, self.inode_count), (4, self.blocks), (12, self.blocks - self.first - len(self.used)),
                               (16, self.inode_count - len(allocated)), (20, self.first),
@@ -199,9 +199,65 @@ def readonly_volume(kind):
     return v
 
 
+def extraction_volume(layout):
+    if layout == "verity":
+        from ext_verity_fixture import VerityVolume
+        v = VerityVolume(salt=b"source failures")
+    elif layout == "symlink":
+        from ext_readlink_fixture import ReadlinkVolume
+        v = ReadlinkVolume("block-nul")
+    else:
+        v = Volume(layout)
+    bs = v.block_size
+    inode_size = struct.unpack_from("<H", v.data, 1024 + 88)[0]
+    v.healthy = b"healthy sibling with independent storage\n"
+    sibling = v.allocate(v.healthy)
+    offset = v.table * bs + 12 * inode_size
+    v.inode(offset, 0o100644, len(v.healthy), bs // 512)
+    v.put32(offset + 40, sibling)
+    v.data[v.inode_map * bs + 1] |= 1 << 4
+    v.put32(1024 + 16, struct.unpack_from("<I", v.data, 1024 + 16)[0] - 1)
+    gd = v.gdt * bs
+    struct.pack_into("<H", v.data, gd + 14, struct.unpack_from("<H", v.data, gd + 14)[0] - 1)
+    records = [(2, b".", 2), (2, b"..", 2),
+               (12, NAME.encode(), 7 if layout == "symlink" else 1),
+               (13, b"healthy space.bin", 1)]
+    pos = v.root_block * bs
+    end = pos + bs - (12 if hasattr(v, "refresh") else 0)
+    for i, (ino, name, kind) in enumerate(records):
+        length = ((8 + len(name) + 3) // 4) * 4 if i + 1 < len(records) else end - pos
+        struct.pack_into("<IHBB", v.data, pos, ino, length, len(name), kind)
+        v.data[pos + 8:pos + 8 + len(name)] = name
+        pos += length
+    if hasattr(v, "refresh"):
+        from ext_modern_fixture import crc32c
+        v.refresh()
+        checksum = crc32c(v.inode_seed(13), v.data[offset:offset + inode_size])
+        struct.pack_into("<H", v.data, offset + 124, checksum & 0xFFFF)
+    else:
+        # The classic fixture's superblock writer also updates allocation maps.
+        v.superblock((13,))
+    if layout == "verity":
+        v.failure_data = v.first_data
+        v.failure_metadata = v.descriptor_physical
+        v.failure_metadata_seek = v.metadata_physical * bs
+    elif layout == "symlink":
+        v.failure_data = v.first_data_offset
+        v.failure_metadata = v.file_inode
+    elif layout.startswith("extent"):
+        v.failure_data = struct.unpack_from("<I", v.data, v.extent_blocks[0] * bs + 20)[0] * bs
+        v.failure_metadata = v.extent_blocks[-1] * bs
+    else:
+        v.failure_data = struct.unpack_from("<I", v.file_block)[0] * bs
+        v.failure_metadata = v.indirect[(12,)] * bs if v.indirect else v.failure_data
+    return v
+
+
 if __name__ == "__main__":
     layout = sys.argv[1] if len(sys.argv) > 1 else "double-hole"
-    if layout.startswith("readonly-"):
+    if layout.startswith("extract-"):
+        v = extraction_volume(layout.removeprefix("extract-"))
+    elif layout.startswith("readonly-"):
         v = readonly_volume(layout.removeprefix("readonly-"))
     elif layout.startswith("readlink-"):
         from ext_readlink_fixture import ReadlinkVolume
@@ -257,6 +313,11 @@ if __name__ == "__main__":
                           "block_bitmap_offset": getattr(v, "block_map", 0) * getattr(v, "block_size", 0),
                           "next_index_offset": getattr(v, "next_index_offset", 0),
                           "first_data_offset": getattr(v, "first_data_offset", 0),
-                          "second_data_offset": getattr(v, "second_data_offset", 0)}))
+                          "second_data_offset": getattr(v, "second_data_offset", 0),
+                          "failure_data": getattr(v, "failure_data", 0),
+                          "failure_metadata": getattr(v, "failure_metadata", 0),
+                          "failure_metadata_seek": getattr(v, "failure_metadata_seek", getattr(v, "failure_metadata", 0)),
+                          "payload": v.read(0, v.size).hex() if layout.startswith("extract-") else "",
+                          "healthy": getattr(v, "healthy", b"").hex()}))
     else:
         sys.stdout.buffer.write(v.data)

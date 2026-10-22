@@ -23,12 +23,16 @@ class Input final : public IInStream, public CMyUnknownImp {
 
   public:
     UInt64 failAt = UINT64_MAX;
+    HRESULT failure = E_FAIL;
+    unsigned faults = 0;
     explicit Input(QByteArray bytes) : bytes_(std::move(bytes)) {}
     Z7_COM7F_IMF(Read(void *data, UInt32 size, UInt32 *processed)) override {
         if (processed)
             *processed = 0;
-        if (position_ <= failAt && failAt - position_ < size)
-            return E_FAIL;
+        if (position_ <= failAt && failAt - position_ < size) {
+            ++faults;
+            return failure;
+        }
         size = (UInt32)qMin<UInt64>(
             size, position_ < UInt64(bytes_.size()) ? bytes_.size() - position_ : 0);
         if (size)
@@ -68,6 +72,37 @@ class Keys final : public IArchiveOpenCallback,
         const auto value = text.toStdWString();
         *out = SysAllocStringLen(value.data(), (UINT)value.size());
         return *out ? S_OK : E_OUTOFMEMORY;
+    }
+};
+class Copy final : public IArchiveExtractCallback,
+                   public ISequentialOutStream,
+                   public CMyUnknownImp {
+    Z7_COM_UNKNOWN_IMP_2(IArchiveExtractCallback, ISequentialOutStream)
+    QByteArray current_;
+
+  public:
+    QVector<Int32> results;
+    QVector<QByteArray> files;
+    Z7_COM7F_IMF(SetTotal(UInt64)) override { return S_OK; }
+    Z7_COM7F_IMF(SetCompleted(const UInt64 *)) override { return S_OK; }
+    Z7_COM7F_IMF(GetStream(UInt32, ISequentialOutStream **stream, Int32 mode)) override {
+        current_.clear();
+        *stream = mode == NArchive::NExtract::NAskMode::kExtract ? this : nullptr;
+        if (*stream)
+            (*stream)->AddRef();
+        return S_OK;
+    }
+    Z7_COM7F_IMF(PrepareOperation(Int32)) override { return S_OK; }
+    Z7_COM7F_IMF(SetOperationResult(Int32 result)) override {
+        results.append(result);
+        files.append(current_);
+        return S_OK;
+    }
+    Z7_COM7F_IMF(Write(const void *data, UInt32 size, UInt32 *processed)) override {
+        current_.append(static_cast<const char *>(data), size);
+        if (processed)
+            *processed = size;
+        return S_OK;
     }
 };
 QByteArray load(const QString &name) {
@@ -242,6 +277,58 @@ class ExtFscryptTests final : public QObject {
         QCOMPARE(output, QByteArray(32, '?'));
         source->failAt = UINT64_MAX;
         readEquals(file, QByteArray::fromHex(first["plain_first"].toString().toLatin1()).first(32));
+    }
+    void extractionSourceFailureKeepsNextEncryptedFile() {
+        CMyComPtr2<IArchiveOpenCallback, Keys> keys;
+        keys.Create_if_Empty();
+        keys->text = keyText();
+        auto *source = new Input(image_);
+        CMyComPtr<IInStream> input = source;
+        QCOMPARE(archive_->Open(input, nullptr, keys), S_OK);
+        for (qsizetype i = 0; i < cases_.size(); ++i) {
+            const auto damaged = cases_[i].toObject();
+            const auto healthy = cases_[(i + 1) % cases_.size()].toObject();
+            const UInt32 selected[] = {
+                index(damaged["name"].toString() + '/' + damaged["filename"].toString()),
+                index(healthy["name"].toString() + '/' + healthy["filename"].toString())};
+            QVERIFY(selected[0] != UINT32_MAX && selected[1] != UINT32_MAX);
+            source->failAt =
+                UInt64(damaged["extents"].toArray().first().toArray()[1].toDouble()) + 16;
+            for (HRESULT error : {E_FAIL, S_FALSE, S_OK, E_ABORT, E_OUTOFMEMORY}) {
+                source->failure = error;
+                for (bool testOnly : {false, true}) {
+                    CMyComPtr2<IArchiveExtractCallback, Copy> callback;
+                    callback.Create_if_Empty();
+                    const unsigned faults = source->faults;
+                    const bool fatal = error == E_ABORT || error == E_OUTOFMEMORY;
+                    QCOMPARE(archive_->Extract(selected, 2, testOnly, callback),
+                             fatal ? error : S_OK);
+                    QVERIFY(source->faults > faults);
+                    if (fatal) {
+                        QVERIFY(callback->results.isEmpty());
+                    } else {
+                        QCOMPARE(callback->results,
+                                 QVector<Int32>({NArchive::NExtract::NOperationResult::kDataError,
+                                                 NArchive::NExtract::NOperationResult::kOK}));
+                        QVERIFY(callback->files[0].isEmpty());
+                        if (testOnly)
+                            QVERIFY(callback->files[1].isEmpty());
+                        else
+                            QCOMPARE(QCryptographicHash::hash(callback->files[1],
+                                                              QCryptographicHash::Sha256)
+                                         .toHex(),
+                                     healthy["native_sha256"].toString().toLatin1());
+                    }
+                }
+            }
+            source->failAt = UINT64_MAX;
+            CMyComPtr2<IArchiveExtractCallback, Copy> retry;
+            retry.Create_if_Empty();
+            QCOMPARE(archive_->Extract(selected, 1, 0, retry), S_OK);
+            QCOMPARE(retry->results, QVector<Int32>({NArchive::NExtract::NOperationResult::kOK}));
+            QCOMPARE(QCryptographicHash::hash(retry->files[0], QCryptographicHash::Sha256).toHex(),
+                     damaged["native_sha256"].toString().toLatin1());
+        }
     }
     void cleanupTestCase() { archive_.Release(); }
 };

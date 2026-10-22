@@ -25,13 +25,24 @@ class Input final : public IInStream, public CMyUnknownImp {
     HRESULT seekResult = S_OK;
     UInt64 failAt = UINT64_MAX, notifyAt = UINT64_MAX;
     HRESULT atResult = E_FAIL;
+    UInt32 maxRead = UINT32_MAX;
+    UInt64 seekFailAt = UINT64_MAX;
+    bool partialFailure = false;
+    unsigned faults = 0;
     bool notified = false;
     explicit Input(QByteArray bytes) : bytes_(std::move(bytes)) {}
     Z7_COM7F_IMF(Read(void *data, UInt32 size, UInt32 *processed)) override {
         if (processed)
             *processed = 0;
-        if (position_ <= failAt && failAt - position_ < size)
-            return atResult;
+        size = qMin(size, maxRead);
+        HRESULT result = S_OK;
+        if (position_ <= failAt && failAt - position_ < size) {
+            ++faults;
+            if (!partialFailure)
+                return atResult;
+            size = UInt32(failAt - position_);
+            result = atResult;
+        }
         if (position_ <= notifyAt && notifyAt - position_ < size)
             notified = true;
         if (fail)
@@ -45,7 +56,7 @@ class Input final : public IInStream, public CMyUnknownImp {
         position_ += size;
         if (processed)
             *processed = size;
-        return S_OK;
+        return result;
     }
     Z7_COM7F_IMF(Seek(Int64 offset, UInt32 origin, UInt64 *position)) override {
         if (seekResult != S_OK)
@@ -57,6 +68,10 @@ class Input final : public IInStream, public CMyUnknownImp {
                                                        : bytes_.size();
         if (offset < -base || (offset > 0 && base > INT64_MAX - offset))
             return E_INVALIDARG;
+        if (UInt64(base + offset) == seekFailAt) {
+            ++faults;
+            return atResult;
+        }
         position_ = UInt64(base + offset);
         if (position)
             *position = position_;
@@ -68,11 +83,12 @@ class Output final : public ISequentialOutStream, public CMyUnknownImp {
   public:
     QByteArray bytes;
     bool fail = false;
+    HRESULT failure = E_FAIL;
     Z7_COM7F_IMF(Write(const void *data, UInt32 size, UInt32 *processed)) override {
         if (processed)
             *processed = 0;
         if (fail)
-            return E_FAIL;
+            return failure;
         bytes.append(static_cast<const char *>(data), size);
         if (processed)
             *processed = size;
@@ -85,11 +101,19 @@ class Extract final : public IArchiveExtractCallback, public CMyUnknownImp {
     CMyComPtr2<ISequentialOutStream, Output> output;
     bool cancel = false;
     Int32 result = -1;
+    bool separateFiles = false;
+    QVector<Int32> results;
+    QVector<QByteArray> files;
+    HRESULT progressFailureAfterItem = S_OK;
     Extract() { output.Create_if_Empty(); }
     Z7_COM7F_IMF(SetTotal(UInt64)) override { return S_OK; }
-    Z7_COM7F_IMF(SetCompleted(const UInt64 *)) override { return cancel ? E_ABORT : S_OK; }
+    Z7_COM7F_IMF(SetCompleted(const UInt64 *)) override {
+        return cancel ? E_ABORT : results.isEmpty() ? S_OK : progressFailureAfterItem;
+    }
     Z7_COM7F_IMF(GetStream(UInt32, ISequentialOutStream **stream, Int32 mode)) override {
         *stream = nullptr;
+        if (separateFiles)
+            output->bytes.clear();
         if (mode == NArchive::NExtract::NAskMode::kExtract) {
             *stream = output.Interface();
             (*stream)->AddRef();
@@ -99,6 +123,8 @@ class Extract final : public IArchiveExtractCallback, public CMyUnknownImp {
     Z7_COM7F_IMF(PrepareOperation(Int32)) override { return S_OK; }
     Z7_COM7F_IMF(SetOperationResult(Int32 value)) override {
         result = value;
+        results.append(value);
+        files.append(output->bytes);
         return S_OK;
     }
 };
@@ -402,12 +428,12 @@ class ExtStreamTests final : public QObject {
         }
         createArchive();
     }
-    void inputSeekFailuresPropagateThroughExtract_data() {
+    void inputSeekFailuresAreLocalDuringExtract_data() {
         QTest::addColumn<QString>("layout");
         QTest::newRow("direct-data-seek") << QString("direct");
         QTest::newRow("indirect-metadata-seek") << QString("double-hole");
     }
-    void inputSeekFailuresPropagateThroughExtract() {
+    void inputSeekFailuresAreLocalDuringExtract() {
         QFETCH(QString, layout);
         const auto record = bundle(layout);
         const auto data = image(record);
@@ -419,9 +445,11 @@ class ExtStreamTests final : public QObject {
         QVERIFY(index != UInt32(-1));
         CMyComPtr2<IArchiveExtractCallback, Extract> callback;
         callback.Create_if_Empty();
-        for (const HRESULT error : {E_ABORT, E_FAIL}) {
+        for (const HRESULT error : {E_ABORT, E_OUTOFMEMORY, E_FAIL}) {
             source->seekResult = error;
-            QCOMPARE(archive_->Extract(&index, 1, 0, callback), error);
+            QCOMPARE(archive_->Extract(&index, 1, 0, callback), error == E_FAIL ? S_OK : error);
+            if (error == E_FAIL)
+                QCOMPARE(callback->result, Int32(NArchive::NExtract::NOperationResult::kDataError));
         }
         source->seekResult = S_OK;
         callback->cancel = true;
@@ -437,6 +465,135 @@ class ExtStreamTests final : public QObject {
         QCOMPARE(callback->output->bytes.size(), expectedSize);
         QCOMPARE(callback->output->bytes.left(4), QByteArray("head"));
         QCOMPARE(callback->output->bytes.right(4), QByteArray("tail"));
+    }
+    void fileSourceFailuresKeepHealthySiblings_data() {
+        QTest::addColumn<QString>("layout");
+        for (const char *layout : {"direct", "single", "extent-tree", "verity", "symlink"})
+            QTest::newRow(layout) << QString::fromLatin1(layout);
+    }
+    void fileSourceFailuresKeepHealthySiblings() {
+        QFETCH(QString, layout);
+        const auto record = bundle("extract-" + layout);
+        const QByteArray bytes = image(record);
+        QVERIFY(!bytes.isEmpty());
+        const QByteArray expected = QByteArray::fromHex(record["payload"].toString().toLatin1());
+        const QByteArray healthy = QByteArray::fromHex(record["healthy"].toString().toLatin1());
+        QVERIFY(!expected.isEmpty());
+        QVERIFY(!healthy.isEmpty());
+        auto *source = new Input(bytes);
+        CMyComPtr<IInStream> input = source;
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        const UInt32 indices[] = {fileIndex(), fileIndex("healthy space.bin")};
+        QVERIFY(indices[0] != UInt32(-1));
+        QVERIFY(indices[1] != UInt32(-1));
+        CMyComPtr<IInArchiveGetStream> provider;
+        QCOMPARE(
+            archive_->QueryInterface(IID_IInArchiveGetStream, reinterpret_cast<void **>(&provider)),
+            S_OK);
+        for (bool metadata : {false, true}) {
+            const UInt64 target =
+                UInt64(record[metadata ? "failure_metadata" : "failure_data"].toDouble());
+            QVERIFY(target > 0);
+            for (bool seek : {false, true}) {
+                const UInt64 seekTarget =
+                    metadata ? UInt64(record["failure_metadata_seek"].toDouble()) : target;
+                for (HRESULT error : {E_FAIL, S_FALSE, S_OK, E_ABORT, E_OUTOFMEMORY}) {
+                    if (seek && error == S_OK)
+                        continue;
+                    for (bool testOnly : {false, true}) {
+                        source->maxRead = 37;
+                        source->failAt = seek ? UINT64_MAX : target + (metadata ? 0 : 48);
+                        source->seekFailAt = seek ? seekTarget : UINT64_MAX;
+                        source->atResult = error;
+                        CMyComPtr2<IArchiveExtractCallback, Extract> callback;
+                        callback.Create_if_Empty();
+                        callback->separateFiles = true;
+                        const bool fatal = error == E_ABORT || error == E_OUTOFMEMORY;
+                        const unsigned faults = source->faults;
+                        QCOMPARE(archive_->Extract(indices, 2, testOnly, callback),
+                                 fatal ? error : S_OK);
+                        QVERIFY2(source->faults > faults,
+                                 qPrintable(QString("Unreached fault: metadata=%1 seek=%2 test=%3 "
+                                                    "error=%4 address=%5")
+                                                .arg(metadata)
+                                                .arg(seek)
+                                                .arg(testOnly)
+                                                .arg(quint32(error), 0, 16)
+                                                .arg(seek ? seekTarget : source->failAt)));
+                        if (fatal) {
+                            QVERIFY(callback->results.isEmpty());
+                        } else {
+                            QCOMPARE(
+                                callback->results,
+                                QVector<Int32>({NArchive::NExtract::NOperationResult::kDataError,
+                                                NArchive::NExtract::NOperationResult::kOK}));
+                            QCOMPARE(callback->files[1], testOnly ? QByteArray() : healthy);
+                            if (!testOnly) {
+                                QVERIFY(expected.startsWith(callback->files[0]));
+                                QVERIFY(callback->files[0].size() < expected.size());
+                                if (metadata || layout == "symlink")
+                                    QVERIFY(callback->files[0].isEmpty());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        source->maxRead = UINT32_MAX;
+        source->failAt = source->seekFailAt = UINT64_MAX;
+        CMyComPtr2<IArchiveExtractCallback, Extract> retry;
+        retry.Create_if_Empty();
+        retry->separateFiles = true;
+        QCOMPARE(archive_->Extract(indices, 2, 0, retry), S_OK);
+        QCOMPARE(retry->results, QVector<Int32>({NArchive::NExtract::NOperationResult::kOK,
+                                                 NArchive::NExtract::NOperationResult::kOK}));
+        QCOMPARE(retry->files, QVector<QByteArray>({expected, healthy}));
+        source->seekResult = E_FAIL;
+        CMyComPtr<ISequentialInStream> failed;
+        QCOMPARE(provider->GetStream(indices[0], &failed), E_FAIL);
+        QVERIFY(!failed);
+        source->seekResult = S_OK;
+    }
+    void extractionPrefixesPreserveConsumerFailures_data() {
+        QTest::addColumn<QString>("layout");
+        QTest::newRow("direct") << QString("direct");
+        QTest::newRow("extent") << QString("extent-tree");
+    }
+    void extractionPrefixesPreserveConsumerFailures() {
+        QFETCH(QString, layout);
+        const auto record = bundle("extract-" + layout);
+        auto *source = new Input(image(record));
+        CMyComPtr<IInStream> input = source;
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        const UInt32 indices[] = {fileIndex(), fileIndex("healthy space.bin")};
+        QVERIFY(indices[0] != UInt32(-1));
+        QVERIFY(indices[1] != UInt32(-1));
+        source->maxRead = 37;
+        source->partialFailure = true;
+        source->failAt = UInt64(record["failure_data"].toDouble()) + 48;
+        const QByteArray expected = QByteArray::fromHex(record["payload"].toString().toLatin1());
+        CMyComPtr2<IArchiveExtractCallback, Extract> prefix;
+        prefix.Create_if_Empty();
+        prefix->separateFiles = true;
+        QCOMPARE(archive_->Extract(indices, 2, 0, prefix), S_OK);
+        const qsizetype prefixSize = (layout == "direct" ? 0 : 2048) + 48;
+        QCOMPARE(prefix->files[0], expected.left(prefixSize));
+        QCOMPARE(prefix->results, QVector<Int32>({NArchive::NExtract::NOperationResult::kDataError,
+                                                  NArchive::NExtract::NOperationResult::kOK}));
+        for (HRESULT error : {E_FAIL, S_FALSE, E_ABORT}) {
+            CMyComPtr2<IArchiveExtractCallback, Extract> output;
+            output.Create_if_Empty();
+            output->output->fail = true;
+            output->output->failure = error;
+            QCOMPARE(archive_->Extract(indices, 2, 0, output), error);
+            QVERIFY(output->results.isEmpty());
+            CMyComPtr2<IArchiveExtractCallback, Extract> progress;
+            progress.Create_if_Empty();
+            progress->progressFailureAfterItem = error;
+            QCOMPARE(archive_->Extract(indices, 2, 0, progress), error);
+            QCOMPARE(progress->results,
+                     QVector<Int32>({NArchive::NExtract::NOperationResult::kDataError}));
+        }
     }
     void failedAndCancelledOpenCanBeReused() {
         const auto data = image(bundle("direct"));
