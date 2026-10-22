@@ -10,6 +10,68 @@ fs-verity now reuses the original shared Linux string scanner already linked
 for fscrypt. Source scope and validation are recorded with the
 [shared string-service transfer](erofs-linux.md#original-shared-string-services--2026-10-22).
 
+## ASN.1, certificate and trust source comparison — 2026-10-22
+
+Compared complete selected units against Linux
+`58161ead29e50d70a317ea26b472e0c7508e69da`: `lib/{asn1_decoder,oid_registry}.c`,
+`crypto/asymmetric_keys/{asymmetric_type,public_key,signature,x509_cert_parser,`
+`x509_public_key,pkcs7_parser,pkcs7_verify,pkcs7_trust}.c` and the two selected
+`certs/system_keyring.c` verification entry points. Of 79 complete local bodies,
+60 match after comments/whitespace and nineteen retain the adaptations below.
+Reviewed original schemas, compiler, headers, callback/algorithm tables and the
+archive-owned trust adapter with those bodies. No missing parser/trust branch
+or behavior correction was established in this selected scope.
+
+| Selected unit | Complete-body result and host boundary |
+| --- | --- |
+| BER decoder and OIDs | Both complete decoder bodies match. Opcode lengths use sequential C11 initialization with the original ordinal/reserved slots. OID lookup matches; parse uses a byte pointer and numeric presentation uses uint64_t/PRIu64 instead of host unsigned long. Original length/depth limits, tag/length rejection and action error propagation remain present. |
+| Asymmetric identifiers | Eleven of twelve bodies match, including ID construction/overflow checks, exact/partial/name comparisons, hex parsing and match ownership. Lookup only changes a byte-source pointer type. The complete original lookup still checks a required second ID after the keyring search. Kernel key registration, description, permissions and keyctl operations are omitted. |
+| Public-key/subtype verification | Three of five public-key bodies and both selected signature bodies match. Algorithm selection uses bounded snprintf in place of strscpy; packed key bytes use a byte pointer. Original algorithm/encoding/hash selection, signature/key-algorithm agreement, transform setup, parameter packing, error normalization and cleanup are retained. Query/sign/encrypt interfaces are not archive services. |
+| X.509 parser | Eleven of twenty bodies match. Adaptations cover byte pointers/uintptr_t offsets, explicit cleanup at every failed construction exit instead of cleanup attributes, and C11 statements replacing GNU time-decoding expressions. Complete TBS/signature, key/parameter, names, extensions, AKID and date-validation branches remain present. |
+| X.509 signature preparation | Both selected bodies match: digest/signature preparation and self-signature checking, including unsupported-algorithm handling and both authority IDs. Kernel key preparse/registration is omitted; owned trust creation retains the original subject-name ID construction separately. |
+| PKCS#7 parsing | Eighteen of 22 bodies match. Four adaptations use uintptr_t offsets or C byte-pointer arithmetic. Original signer/certificate accumulation, authenticated attributes, duplicate checks, time/content handling, parse failures and release paths remain connected to the unchanged schema. |
+| PKCS#7 verification/trust | All seven verification bodies and both trust-traversal bodies match. Digest comparison, signer selection, chain signature checks, seen/verified state, signing-time constraints and unsupported/rejected/no-key result priorities retain the original control flow. A matching identifier alone does not establish trust. |
+| System verification entry | Signature parse/verify/free matches. Message verification retains detached-data, cryptographic verification, revocation hook, trust validation and content callback/error flow; missing/special global keyrings are rejected in place of consulting kernel builtin/secondary/platform stores. Only an explicit owned archive ring is available. |
+
+The X.509, AKID and PKCS#7 schemas match exactly, as does `pkcs7_parser.h`.
+Checked the original ASN.1 compiler's token, tag/class/method and action/opcode
+rendering with its sequential C11 replacements. Remaining compiler differences
+are CRT binary file I/O, bounded read conversion, annotations, standard escape
+spelling and an explicit GNU conditional. The CMake consumers generate and compile
+the three selected machines and connect their original callbacks; no independent
+certificate decoder is introduced. OID data was regenerated in a disposable
+directory using the pinned original Perl generator: every index, encoded byte
+and search entry matches the checked table after its recorded C11 ordinal and
+unsigned-bitfield adaptations. The retained generator itself matches the pin.
+The temporary output was removed automatically.
+
+Reviewed the narrowed key/payload/reference headers, public-key structures,
+blacklist/revocation services and `keyringprovider.c`. The six local storage
+functions own copied DER, parsed certificates and the added subject identifier;
+failed creation destroys the partially populated array without publishing it.
+Search uses the original matcher and returns a separately allocated handle
+borrowing immutable payload. Synchronous callers retain the ring and release
+the handle after verification. Fresh PKCS#7 objects hold per-check traversal
+state. Trusting an embedded/self-signed certificate still requires intersection
+with the supplied anchors and verification with the trusted key. Kernel quotas,
+credentials, recursive keyrings, global revocation/blacklist stores and LSM
+services are outside this boundary; the selected original disabled services do
+not imply host-store revocation checks. Calendar conversion uses the complete
+original `mktime64`; selected string/hex helpers retain their original bodies.
+
+Traced the archive trust entry through `verify_pkcs7_signature` and fs-verity's
+formatted-digest verification consumer. A present signature still requires valid
+explicit trust; recovery consent supplies neither decoding nor trust. Existing
+certificate/trust behavior coverage includes changed signatures/content,
+truncation, empty/foreign anchors, partial trust creation, missing intermediates,
+identifier collisions and trusted variants that cannot verify the descendant.
+No production code changed in this audit-only iteration; no runtime batch or
+implementation-text regression was added. All 305 reference hashes match and
+`git diff --check` passed. This closes the selected certificate/parser/trust
+comparison with the stated archive adaptations. RSA/MPI, ECC/ECDSA/ECRDSA,
+ML-DSA and their Crypto API dependencies still need source closure; overall ext
+and the parent format review remain open.
+
 ## Shared hash and crypto utility source comparison — 2026-10-22
 
 Compared the selected complete units against Linux
