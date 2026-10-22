@@ -10,6 +10,63 @@ fs-verity now reuses the original shared Linux string scanner already linked
 for fscrypt. Source scope and validation are recorded with the
 [shared string-service transfer](erofs-linux.md#original-shared-string-services--2026-10-22).
 
+## Inline, xattr, ACL, hash and symlink source comparison — 2026-10-22
+
+Completed a whole-unit comparison of the selected read-side component against
+Linux `58161ead29e50d70a317ea26b472e0c7508e69da`. Inspected all 44 function
+bodies present in the six C units below, their original callers, disk/header
+types, host-service dependencies and archive entry points. Twenty-nine bodies
+match after ignoring comments/whitespace; ten retain the adaptations described
+below; five are archive ownership/export glue. This establishes the source scope
+of this component, rather than inferring completeness from regression results.
+
+| Original unit | Complete selected read scope and differences |
+| --- | --- |
+| `fs/ext4/inline.c` | All five transferred helpers: inline-size discovery, inline-data lookup/read, directory iteration and inline-link read. Size/link helpers match; three bodies replace GNU void-pointer arithmetic with byte pointers. The original iterator's available-header/record checks, synthetic dot entries, position handling, allocation and cleanup are preserved. Immutable inode-lock/version services replace concurrent VFS state. |
+| `fs/ext4/xattr.c` | All 24 present bodies: container checksums/validation, name search, in-inode lookup, external/EA-inode value getters, inode identity/reference/hash checks, classic/Lustre compatibility and both signed/unsigned entry hashes. Fifteen bodies match; C pointer arithmetic and the GNU omitted-middle conditional are adapted in five more. `ext4_xattr_block_get` additionally retains the relocated original block-validity check: optional xattrs are validated when requested rather than invalidating unrelated eager inode data. Namespace presentation and archive value enumeration are the two larger boundary adaptations; error isolation and container visitation are two local glue functions. |
+| `fs/ext4/acl.c` | Complete `ext4_acl_from_disk` matches. `ext4_acl_xattr_value` owns the result and passes it to original generic `posix_acl_to_xattr`, then releases the intermediate ACL. Disk entries/counts, user/group IDs, version/tag validation and public ACL encoding retain their original owners. |
+| `fs/ext4/hash.c` | All eight algorithm bodies match, including legacy signed/unsigned hashes, TEA, half-MD4, SipHash dispatch and the Unicode-aware wrapper body. The archive has no case-insensitive filename lookup: plaintext stored names are enumerated unchanged, ordinary encrypted names hash ciphertext, and encrypted/casefolded records supply their stored hash pair. Thus the wrapper's Unicode lookup branch is not enabled; this does not provide a Unicode lookup service. |
+| `fs/ext4/crypto.c` | Complete `ext4_get_context` matches and reads its private context through original strict xattr getters. It is connected to fscrypt initialization, independently of optional metadata export. This closes the ext4 context acquisition hook, not the separate generic fscrypt/crypto audit. |
+| `fs/ext4/symlink.c` | Complete `ext4_get_link` and `ext4_free_link` match. Two local functions acquire a bounded first block and export an owned target. Original inline/block choice, termination and delayed release remain; the private eager caller does not use RCU cache-only lookup. Fast links use validated inode data, and encrypted links use their existing fscrypt consumer. |
+
+The xattr namespace boundary was checked against the original handler map and
+user/trusted/security/Hurd handler units, plus ACL names. Archive enumeration
+exposes stored privileged metadata without applying the host mount's user-xattr,
+capability or LSM visibility policy. Private inline-data/encryption contexts and
+unknown namespaces are not exported as ordinary xattrs. The local prefix map is
+that visibility adapter; it is not another on-disk namespace decoder. Archive
+enumeration retrieves each value with the original strict getter, converts ACLs
+through the original converters and emits owned names/bytes with explicit
+partial-result diagnostics. The kernel's buffer-sized VFS list interface and
+host permissions are not the archive API.
+
+Dependencies checked with those bodies include `xattr.h`, `acl.h`, the existing
+`services.h`/`xattrread.h`/`hashread.h`/`aclcompat.h` bridges, original generic
+POSIX ACL conversion and link termination/delayed-call helpers. ACL count uses
+pointer-width signed arithmetic in place of the kernel's host `ssize_t`; UID/GID
+services preserve numeric filesystem IDs rather than remapping a host mount.
+Private buffer/allocation adapters replace mbcache, inode caches, locks and
+block-device batches. The read paths retain size/bounds/checksum/hash validation,
+hole rejection for EA-inode values, error/unwind and owned-result lifetimes.
+
+Connected archive consumers were traced through inline inode loading and
+directory projection, ordinary/htree name presentation, xattr/ACL alternate
+streams, fscrypt context acquisition and eager/public symlink streams. Their
+recent namespace-recovery changes do not replace these C decoders. Mutation,
+inline conversion/truncate, xattr/ACL setters, inode creation, journal replay,
+permission enforcement, Unicode lookup and VFS cache publication are outside
+this read-side component; no source writes are introduced.
+
+All 305 reference hashes match. Production sources did not change during this
+comparison: the eight macOS ext/stream/fscrypt/xattr/provenance PASS results and
+incremental application build recorded in the preceding helper iteration apply
+to these exact sources. No redundant runtime batch or new implementation-text
+test was added; this documentation-only iteration passed `git diff --check`.
+The selected source comparison is complete with the adaptations above; full ext
+mapping/superblock/directory/verity/crypto closure and the parent audit are not
+established by this component review. No new remote, full/slow, native-device,
+appearance or release-install acceptance is claimed.
+
 ## Original inode and group metadata helpers — 2026-10-22
 
 Compared complete pinned `__ext4_iget`, metadata initialization in the archive
