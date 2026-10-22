@@ -1,5 +1,51 @@
 # Read-only EROFS from Linux
 
+## Linux UUID publication and archive volume metadata — 2026-10-22
+
+Compared the pinned `super.c::erofs_read_superblock` UUID/name/geometry reads,
+`include/linux/fs.h::super_set_uuid`, the UUID fields in
+`include/linux/fs/super_types.h`, the C volume-info boundary and archive property
+enumeration/consumers. The host UUID setter was a no-op, losing the disk UUID.
+In addition, the handler returned no archive-property descriptors, hiding its
+existing volume-label and block-size properties from CLI/property enumeration.
+
+The original complete `super_set_uuid` helper is transferred into its original
+`include/linux/fs.h` path with its body unchanged. The private superblock bridge
+retains the original UUID/length field names and byte length type; a 16-byte
+array replaces kernel `uuid_t`. Warning evaluation keeps the original bounds
+clamp without kernel diagnostics. Other VFS definitions/services from that header
+are omitted. Both reference units are hashed in the existing EROFS baseline at
+the same Linux repository/revision below. The original EROFS parser call is
+unchanged. The C API now publishes the raw UUID alongside existing volume info.
+
+Archive `Id` presentation follows the pinned 7-Zip
+`CPP/7zip/Archive/ExtHandler.cpp::IsEmptyData` and its `GetArchiveProperty(kpidId)`
+branch: the helper and property convention are reused with the existing
+`Common/IntToString.cpp::ConvertDataToHex_Lower`. Nil IDs remain absent. Original
+7-Zip repository/revision remain those recorded below. The handler now advertises
+its volume label, cluster size and ID through the standard archive-property table;
+structural properties and physical-size queries keep their existing behavior.
+No UUID byte-order conversion or independent identifier formatter is introduced.
+
+The pre-fix module regression returned VT_EMPTY for a nonzero UUID. CLI
+enumeration showed neither the label nor cluster size. Direct C API coverage now
+checks raw UUID bytes from a source image; archive ABI coverage checks nonzero/nil
+IDs and Close state. CLI cases use creator images with 512-byte, 4 KiB and 64 KiB
+blocks, check label/geometry/ID output and unchanged source bytes. Existing suites
+retain extraction, layout, lifetime, error and cancellation coverage. This is
+normal metadata reading, with no new recovery mode or source-writing service.
+Overall EROFS source closure and the parent filesystem audit remain open.
+
+Validation: `erofs_reader`, `erofs_module`, `erofs`, `upstream_baseline` and
+`upstream_inventory` passed on macOS, Linux and Windows (guest receipt
+`20261022T170859Z-7ebfb358`). The incremental application build passed. The
+transferred UUID helper matches Linux byte-for-byte and all 51 EROFS reference
+hashes match. The expected pre-fix ABI/CLI failures establish sensitivity to the
+lost UUID and unadvertised metadata. Existing runtime snapshots, build trees and
+compiler caches were reused; disposable EROFS fixtures were absent afterwards
+on all three platforms. No full gate, slow suite, new native mount/device check,
+UI appearance acceptance or release installation was run.
+
 ## Original device mapping and slot-reader boundary — 2026-10-22
 
 Compared complete pinned `erofs_fill_from_devinfo`, `erofs_map_dev`,

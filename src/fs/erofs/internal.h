@@ -54,6 +54,7 @@ typedef u64 erofs_nid_t, erofs_off_t, erofs_blk_t;
 #define PTR_ERR(p) ((int)(intptr_t)(p))
 #define ERR_PTR(e) ((void *)(intptr_t)(e))
 #define DBG_BUGON(x) ((void)(x))
+#define WARN_ON(x) (!!(x))
 #define BUILD_BUG_ON(x) ((void)sizeof(char[1 - 2 * !!(x)]))
 #ifdef _MSC_VER
 #define __builtin_constant_p(x) 0
@@ -211,7 +212,10 @@ struct super_block {
     int (*decode)(void *, unsigned int, unsigned int, const void *, size_t, void *, size_t, int);
     int (*open_device)(void *, unsigned int, const char *, u64);
     unsigned int read_depth;
+    u8 s_uuid[16];
+    u8 s_uuid_len;
 };
+#include "../../include/linux/fs.h"
 // Owned single-page folios replace the kernel page cache. Decoder pages borrow
 // their data; only metadata folios are released through folio_put.
 struct page { u8 *data; };
@@ -327,7 +331,6 @@ static inline void erofs_printk(struct super_block *sb, const char *fmt, ...) {
 
 void *kmemdup_nul(const void *, size_t, int);
 char *kstrndup(const void *, size_t, int);
-void super_set_uuid(struct super_block *, const void *, size_t);
 u32 crc32c(u32, const void *, size_t);
 void erofs_put_metabuf(struct erofs_buf *);
 void erofs_unmap_metabuf(struct erofs_buf *);

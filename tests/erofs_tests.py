@@ -54,6 +54,30 @@ class ErofsTests(unittest.TestCase):
                 self.assertEqual(result.stdout, FILES[PAYLOAD_NAME])
                 self.assertEqual(path.read_bytes(), data)
 
+    def test_volume_identity_label_and_geometry_are_listed(self):
+        for variant in ("plain", "plain-512", "plain-64k"):
+            original = zlib.decompress((FIXTURES / (variant + ".erofs.zlib")).read_bytes())
+            for uuid in (bytes.fromhex("0123456789abcdef1032547698badcfe"), bytes(16)):
+                with self.subTest(variant=variant, uuid=uuid.hex()):
+                    data = bytearray(original)
+                    struct.pack_into("<I", data, 1032, 0)
+                    data[1072:1088] = uuid
+                    data[1088:1104] = b"EROFS volume".ljust(16, b"\0")
+                    path = self.runtime / "том 空.erofs"
+                    path.write_bytes(data)
+                    result = self.run_engine([str(self.runtime / ("7z" + SUFFIX)), "l", "-slt",
+                                              "-sccUTF-8", "--", str(path)])
+                    self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                    header = result.stdout.decode("utf-8").split("----------", 1)[0].splitlines()
+                    self.assertIn("Label = EROFS volume", header)
+                    self.assertIn("Cluster Size = " + str(1 << data[1036]), header)
+                    if uuid != bytes(16):
+                        self.assertIn("ID = " + uuid.hex(), header)
+                    else:
+                        self.assertFalse(any(line.startswith("ID = ") for line in header))
+                    self.assertEqual(path.read_bytes(), data)
+                    path.unlink()
+
     def test_malformed_metadata_and_data_are_rejected(self):
         original = zlib.decompress((FIXTURES / "plain.erofs.zlib").read_bytes())
         locations = mutation_locations(original)

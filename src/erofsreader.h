@@ -35,6 +35,7 @@ struct erofs_volume_info {
     uint64_t size, root_nid, inode_count;
     uint32_t block_size, compat, incompat;
     char name[17];
+    uint8_t uuid[16]; // Raw filesystem UUID bytes, in on-disk order.
     unsigned int extra_devices;
 };
 int erofs_open_volume(const struct erofs_source *, struct erofs_volume **);

@@ -4,6 +4,7 @@
 #include "7zip/Common/StreamObjects.h"
 #include "7zip/Common/StreamUtils.h"
 #include "Common/ComTry.h"
+#include "Common/IntToString.h"
 #include "Common/StringConvert.h"
 #include "Common/UTFConvert.h"
 #include "Windows/PropVariant.h"
@@ -27,6 +28,12 @@ bool IsDir(const erofs_item &item) { return (item.mode & typeMask) == directoryT
 bool HasData(const erofs_item &item) {
     const UInt32 type = item.mode & typeMask;
     return type == regularType || type == symlinkType;
+}
+static bool inline IsEmptyData(const Byte *data, unsigned size) {
+    for (unsigned i = 0; i < size; i++)
+        if (data[i] != 0)
+            return false;
+    return true;
 }
 UString Text(const char *bytes, size_t size) {
     AString raw;
@@ -367,6 +374,14 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID id, PROPVARIANT *value)) {
     if (reader_) {
         const auto &info = reader_->info;
         switch (id) {
+        case kpidId: {
+            if (!IsEmptyData(info.uuid, sizeof(info.uuid))) {
+                char text[sizeof(info.uuid) * 2 + 2];
+                ConvertDataToHex_Lower(text, info.uuid, sizeof(info.uuid));
+                prop = text;
+            }
+            break;
+        }
         case kpidPhySize:
             prop = UInt64(info.size);
             break;
@@ -495,6 +510,7 @@ static const Byte kProps[] = {kpidPath,        kpidIsAltStream, kpidIsDir, kpidS
                               kpidPackSize,    kpidPosixAttrib, kpidMTime, kpidUserId,
                               kpidGroupId,     kpidINode,       kpidLinks, kpidSymLink,
                               kpidDeviceMajor, kpidDeviceMinor};
+static const Byte kArcProps[] = {kpidVolumeName, kpidClusterSize, kpidId};
 
 Z7_COM7F_IMF(CHandler::GetParent(UInt32 index, UInt32 *parent, UInt32 *type)) {
     if (index >= items_.size())
@@ -518,7 +534,7 @@ Z7_COM7F_IMF(CHandler::GetRawProp(UInt32, PROPID, const void **data, UInt32 *siz
     *type = 0;
     return S_OK;
 }
-IMP_IInArchive_Props IMP_IInArchive_ArcProps_NO_Table static const Byte signature[] = {0xe2, 0xe1,
-                                                                                       0xf5, 0xe0};
+IMP_IInArchive_Props IMP_IInArchive_ArcProps static const Byte signature[] = {0xe2, 0xe1, 0xf5,
+                                                                              0xe0};
 REGISTER_ARC_I("EROFS", "erofs img", nullptr, 0xF2, signature, 1024, 0, nullptr)
 } // namespace NArchive::NErofs

@@ -237,6 +237,30 @@ class ErofsModuleTests final : public QObject {
     }
   private slots:
     void initTestCase() { createArchive(); }
+    void volumeIdentity_data() {
+        QTest::addColumn<QByteArray>("uuid");
+        QTest::newRow("mixed") << QByteArray::fromHex("0123456789abcdef1032547698badcfe");
+        QTest::newRow("absent") << QByteArray(16, '\0');
+    }
+    void volumeIdentity() {
+        QFETCH(QByteArray, uuid);
+        auto data = image("plain");
+        QVERIFY(!data.isEmpty());
+        qToLittleEndian(quint32(0), data.data() + 1032); // optional checksum
+        std::memcpy(data.data() + 1072, uuid.constData(), 16);
+        QCOMPARE(open(data), S_OK);
+        NWindows::NCOM::CPropVariant value;
+        QCOMPARE(archive_->GetArchiveProperty(kpidId, &value), S_OK);
+        if (uuid == QByteArray(16, '\0')) {
+            QCOMPARE(value.vt, VT_EMPTY);
+        } else {
+            QCOMPARE(value.vt, VT_BSTR);
+            QCOMPARE(QString::fromWCharArray(value.bstrVal), QString::fromLatin1(uuid.toHex()));
+        }
+        QCOMPARE(archive_->Close(), S_OK);
+        QCOMPARE(archive_->GetArchiveProperty(kpidId, &value), S_OK);
+        QCOMPARE(value.vt, VT_EMPTY);
+    }
     void specialInodeProperties_data() { erofsSpecialRows(); }
     void specialInodeProperties() {
         QFETCH(unsigned, shape);

@@ -30,9 +30,6 @@ char *kstrndup(const void *data, size_t size, int flags) {
     const char *end = memchr(data, 0, size);
     return kmemdup_nul(data, end ? (size_t)(end - (const char *)data) : size, flags);
 }
-void super_set_uuid(struct super_block *sb, const void *uuid, size_t size) {
-    (void)sb; (void)uuid; (void)size;
-}
 int erofs_init_metabuf(struct erofs_buf *buf, struct super_block *sb, bool in_metabox) {
     struct inode *mapping = in_metabox ? EROFS_SB(sb)->metabox_inode : NULL;
     if (buf->sb != sb || buf->mapping != mapping)
@@ -330,6 +327,7 @@ void erofs_get_volume_info(const struct erofs_volume *v, struct erofs_volume_inf
         .compat = v->info.feature_compat, .incompat = v->info.feature_incompat,
         .extra_devices = v->info.extra_devices
     };
+    memcpy(info->uuid, v->sb.s_uuid, sizeof(info->uuid));
     if (v->info.volume_name)
         memcpy(info->name, v->info.volume_name, strlen(v->info.volume_name));
 }

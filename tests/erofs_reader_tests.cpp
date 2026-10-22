@@ -109,6 +109,18 @@ qsizetype regularEntry(const QByteArray &bytes) {
 class ErofsReaderTests final : public QObject {
     Q_OBJECT
   private slots:
+    void volumeUuidIsPreserved() {
+        Reader reader;
+        reader.bytes = erofsSpecialImage(0, 0100000, 0, 0);
+        const auto uuid = QByteArray::fromHex("0123456789abcdef1032547698badcfe");
+        std::memcpy(reader.bytes.data() + 1072, uuid.constData(), size_t(uuid.size()));
+        const auto original = reader.bytes;
+        QCOMPARE(reader.Open(), 0);
+        erofs_volume_info info{};
+        erofs_get_volume_info(reader.volume.get(), &info);
+        QCOMPARE(QByteArray(reinterpret_cast<const char *>(info.uuid), sizeof(info.uuid)), uuid);
+        QCOMPARE(reader.bytes, original);
+    }
     void multipleDeviceMappings_data() {
         QTest::addColumn<bool>("external");
         QTest::addColumn<bool>("explicitId");
