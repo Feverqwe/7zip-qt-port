@@ -88,6 +88,7 @@ class CpioStreamTests final : public QObject {
     CMyComPtr<IInArchive> archive_;
     QByteArray image_;
     QMap<QString, QByteArray> files_;
+    QMap<QString, QString> links_;
 
     void fixture(const QString &kind) {
         QTemporaryDir temporary;
@@ -101,11 +102,15 @@ class CpioStreamTests final : public QObject {
              composite ? kind.mid(10) : kind, path});
         QVERIFY(process.waitForFinished(10000));
         QCOMPARE(process.exitCode(), 0);
-        const auto files =
-            QJsonDocument::fromJson(process.readAllStandardOutput()).object()["files"].toObject();
+        const auto metadata = QJsonDocument::fromJson(process.readAllStandardOutput()).object();
+        const auto files = metadata["files"].toObject();
         files_.clear();
         for (auto it = files.begin(); it != files.end(); ++it)
             files_[it.key()] = QByteArray::fromHex(it.value().toString().toLatin1());
+        links_.clear();
+        const auto links = metadata["links"].toObject();
+        for (auto it = links.begin(); it != links.end(); ++it)
+            links_[it.key()] = it.value().toString();
         QFile file(path);
         QVERIFY(file.open(QIODevice::ReadOnly));
         image_ = file.readAll();
@@ -165,12 +170,16 @@ class CpioStreamTests final : public QObject {
     void cleanup() { archive_.Release(); }
     void streams_data() {
         QTest::addColumn<QString>("kind");
-        for (const char *kind : {"newc", "name-nuls", "no-final-padding", "leading-zeros",
-                                 "member-chain", "links-first", "links-overwrite", "inode-single",
-                                 "inode-types", "trailer-reset", "no-reset", "binary-be", "odc"})
+        for (const char *kind :
+             {"newc", "name-nuls", "no-final-padding", "leading-zeros", "member-chain",
+              "links-first", "links-overwrite", "inode-single", "inode-types", "trailer-reset",
+              "no-reset", "binary-be", "odc", "symlink-trailer", "symlink-trailer-crc"})
             QTest::newRow(kind) << QString::fromLatin1(kind);
-        for (const char *method : {"gzip", "bzip2", "lzma", "xz", "lzo", "lz4", "zstd"})
+        for (const char *method : {"gzip", "bzip2", "lzma", "xz", "lzo", "lz4", "zstd"}) {
             QTest::newRow(method) << "initramfs:" + QString::fromLatin1(method) + "-links";
+            QTest::newRow(qPrintable(QString::fromLatin1(method) + "-symlink-trailer"))
+                << "initramfs:" + QString::fromLatin1(method) + "-symlink-trailer";
+        }
     }
     void streams() {
         QFETCH(QString, kind);
@@ -207,6 +216,13 @@ class CpioStreamTests final : public QObject {
                 QCOMPARE(byte, it.value()[1]);
             }
             check(first, it.value());
+        }
+        for (auto it = links_.begin(); it != links_.end(); ++it) {
+            QVERIFY(indices.contains(it.key()));
+            NWindows::NCOM::CPropVariant target;
+            QCOMPARE(archive_->GetProperty(indices[it.key()], kpidSymLink, &target), S_OK);
+            QCOMPARE(target.vt, VARTYPE(VT_BSTR));
+            QCOMPARE(QString::fromWCharArray(target.bstrVal), it.value());
         }
         const auto expected = files_.first();
         auto retained = stream(indices[files_.firstKey()]);

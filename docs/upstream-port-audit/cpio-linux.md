@@ -49,13 +49,11 @@ handler не перенаправляют уже выданный поток н�
 
 ## Границы raw-итерации
 
-Это законченная итерация raw CPIO entry reading, не завершение всего initramfs.
-Смешанные compressed/raw members, продолжение после compressed member и
-совместный hard-link state через decompressor dispatch остаются открытыми
-в [едином реестре](filesystems-linux.md). Обычный отдельный `.cpio.gz` уже
-открывается вложенными archive handlers, но это не доказывает поддержку всей
-грамматики initramfs. [Legacy LZ4/lzop readers](linux-frames.md) теперь перенесены
-отдельным компонентом; их подключение к общему CPIO dispatcher ещё требуется.
+Raw CPIO entry reading дополнено [composite initramfs](#composite-initramfs--2026-10-20)
+ниже: смешанные compressed/raw members и общий hard-link state подключены
+через decompressor dispatch. Обычное вложенное открытие `.cpio.gz` само по себе
+не доказывает поддержку этой грамматики. [Legacy LZ4/lzop readers](linux-frames.md)
+используются тем же dispatcher отдельного GPL module.
 
 Linux распаковывает rootfs через VFS; archive API представляет записи и их
 данные. Создание special nodes, chown, boot/mount и replay конечного namespace
@@ -180,3 +178,39 @@ suites повторно PASS на всех трёх ОС; receipt `20261020T1412
 и 49 invalid boundary cases, все результаты совпадают с исходным Linux FSM.
 SDK baseline: 422 exact / 242 adapted / 12 local, одна revision. Full/slow,
 native boot, физические устройства и UI appearance в эти проверки не входят.
+
+## Symlink `TRAILER!!!` и итог read-side сверки — 2026-10-22
+
+Повторно сопоставлены `init/initramfs.c:do_header`, `do_name`, `do_symlink`,
+hard-link state и `unpack_to_rootfs`/`flush_buffer` с CPIO record consumers,
+normalizer и single-member decoder boundaries. Все десять reference hashes
+manifest совпали с закреплённым Linux snapshot. Вместе с полной сверкой raw
+reader и composite scope выше это закрывает read-side source audit CPIO/initramfs
+для archive projection; VFS effects и runtime/platform acceptance отделены ниже.
+
+Обнаружен корректный случай, который reader терял: Linux направляет symlink
+в `do_symlink`, поэтому имя `TRAILER!!!` не проходит trailer check `do_name`.
+Исходный SDK predicate проверял только имя. Raw reader выдавал Headers Error
+и частичный каталог, а composite normalizer отклонял decoded part; hard-link
+aliases после такой записи не получали окончательные данные группы.
+
+Оба license variants исходного CPIO handler теперь исключают newc/crc symlinks
+из trailer predicate. `ReadInitramfsRecord`, raw enumeration и hard-link grouping
+получают одно решение. Новый parser не добавлен; поведение настоящего trailer,
+legacy binary/odc, checksum errors и строгая archive validation повреждённого
+trailer body сохранены. Recovery/write/VFS services не добавляются.
+
+CLI/ABI regression воспроизвёл отказ до исправления: два raw newc/crc варианта
+в обоих engines и symlink в отдельной compressed части для всех семи methods.
+Проверяются link metadata, окончательные bytes aliases до/после ссылки,
+сохранение группы через compression boundaries и retained streams. CLI composite
+checks выбирают regular entries, чтобы не требовать host symlink privileges.
+Существующий compiled Linux C reference подтвердил оба raw варианта: exact bytes,
+symlink target и общий inode aliases. Disposable reference trees удалены.
+
+Финальные macOS suites `cpio`, `cpio_stream`, `initramfs`, `linux_frames`,
+`linux_frames_stream`, `source_link_extract`, `upstream_baseline` — 7/7 PASS
+(7.08 s), с существующими incremental builds и compiler cache. Linux/Windows,
+slow и native boot не запускались: исправлена общая record classification,
+platform adapters не менялись.
+Финальный macOS application target собран с обновлёнными readers.

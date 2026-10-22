@@ -9,6 +9,7 @@ CASES = ("newc", "crc", "name-nuls", "name-max", "no-trailer", "no-final-padding
          "zero-padding", "leading-zeros", "empty", "member-chain", "mixed", "unused-sum", "rdev",
          "links-first", "links-middle", "links-last", "links-overwrite", "links-subset",
          "inode-single", "inode-types", "inode-devices", "trailer-reset", "no-reset",
+         "symlink-trailer", "symlink-trailer-crc",
          "binary-le", "binary-be", "odc")
 BAD = ("checksum", "checksum-overwritten", "checksum-empty", "name-garbage",
        "truncated-header", "truncated-data", "trailer-data", "broken-padding")
@@ -98,6 +99,14 @@ def volume(kind):
         files = {"empty": b""}
         links = {"symbolic": "empty"}
         data = record("empty", links=2) + record("symbolic", b"empty", links=2, mode=stat.S_IFLNK | 0o777)
+    elif kind in ("symlink-trailer", "symlink-trailer-crc"):
+        crc = kind.endswith("-crc")
+        files = {"a": b"last body", "b": b"last body", "target": b"target body"}
+        links = {"TRAILER!!!": "target"}
+        data = record("a", b"first body", links=2, crc=crc)
+        data += record("TRAILER!!!", b"target", ino=2, mode=stat.S_IFLNK | 0o777, crc=crc)
+        data += record("b", files["b"], links=2, crc=crc)
+        data += record("target", files["target"], ino=3, crc=crc)
     elif kind == "inode-devices":
         files = {"a": b"A", "b": b"B"}
         data = record("a", b"A", links=2, dev=1) + record("b", b"B", links=2, dev=2)

@@ -3,6 +3,7 @@ import bz2
 import gzip
 import json
 import lzma
+import stat
 from pathlib import Path
 import sys
 from cpio_fixture import record, trailer
@@ -30,7 +31,7 @@ def compress(method, data):
 CASES = tuple(m + "-" + case for m in METHODS for case in (
     "single", "no-trailer", "concat", "raw-first", "raw-last", "links", "trailer-reset",
     "empty-after", "zeros-after", "final-zeros", "large", "raw-final-unpadded",
-    "zeros-before-header")) + ("mixed", "leading-zeros", "xz-multiple-blocks")
+    "zeros-before-header", "symlink-trailer")) + ("mixed", "leading-zeros", "xz-multiple-blocks")
 BAD = tuple(m + "-" + case for m in METHODS for case in (
     "split-header", "split-body", "split-padding", "empty-first", "zeros-first",
     "truncated", "junk", "raw-unaligned"))
@@ -81,6 +82,13 @@ def volume(kind):
         if case == "trailer-reset":
             image += compress(method, trailer())
         image += compress(method, record("b", links=2) + trailer())
+    elif case == "symlink-trailer":
+        files = {"a": b"last body", "b": b"last body", "target": b"target body"}
+        image = compress(method, record("a", b"first body", links=2))
+        image += compress(method, record("TRAILER!!!", b"target", ino=2,
+                                         mode=stat.S_IFLNK | 0o777, crc=True))
+        image += compress(method, record("b", files["b"], links=2) +
+                          record("target", files["target"], ino=3) + trailer())
     elif case == "empty-after":
         image += compress(method, b"")
     elif case == "zeros-after":
@@ -105,4 +113,5 @@ def volume(kind):
 if __name__ == "__main__":
     image, files = volume(sys.argv[1])
     Path(sys.argv[2]).write_bytes(image)
-    print(json.dumps({"files": {name: data.hex() for name, data in files.items()}}))
+    print(json.dumps({"files": {name: data.hex() for name, data in files.items()},
+                      "links": {"TRAILER!!!": "target"} if sys.argv[1].endswith("symlink-trailer") else {}}))

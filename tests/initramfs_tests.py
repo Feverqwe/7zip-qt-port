@@ -22,9 +22,9 @@ class InitramfsTests(unittest.TestCase):
         (cls.root / "Formats").mkdir()
         shutil.copy2(MODULE, cls.root / "Formats" / MODULE.name)
 
-    def command(self, path, *args):
+    def command(self, path, *args, selected=()):
         return subprocess.run([str(self.root / ("7z" + SUFFIX)), *args, "-sccUTF-8", "-bsp0",
-                               "--", str(path)], capture_output=True, timeout=10)
+                               "--", str(path), *selected], capture_output=True, timeout=10)
 
     def test_complete_images(self):
         for kind in CASES:
@@ -33,7 +33,9 @@ class InitramfsTests(unittest.TestCase):
                 path = root / "образ 空.img"
                 image, files = volume(kind)
                 path.write_bytes(image)
-                result = self.command(path, "x", "-tCpio:s0", "-y", "-o" + str(root / "out"))
+                selected = list(files) if kind.endswith("symlink-trailer") else []
+                result = self.command(path, "x", "-tCpio:s0", "-y", "-o" + str(root / "out"),
+                                      selected=selected)
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                 for name, expected in files.items():
                     self.assertEqual((root / "out" / name).read_bytes(), expected)
@@ -41,6 +43,9 @@ class InitramfsTests(unittest.TestCase):
                 result = self.command(path, "l", "-t*:s0", "-slt")
                 self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
                 self.assertIn(b"Type = Cpio", result.stdout)
+                if kind.endswith("symlink-trailer"):
+                    self.assertIn(b"Path = TRAILER!!!", result.stdout)
+                    self.assertIn(b"Symbolic Link = target", result.stdout)
                 for name in files:
                     self.assertIn(name.encode(), result.stdout)
 

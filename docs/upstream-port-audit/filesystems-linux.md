@@ -286,7 +286,9 @@ Dynamic Cpio использует отдельный GPL plugin; standalone raw 
 Проверены exact extracted bytes, owned streams, отказ оборванных частей,
 cancellation/source errors и временное хранилище. Compiled Linux FSM/dispatch/
 wrappers reference подтвердил 143 сценария. Это закрывает composite initramfs
-read scenario; оставшиеся filesystem read features общей цели сохраняются.
+read scenario. [Итоговая read-side сверка](cpio-linux.md#symlink-trailer-и-итог-read-side-сверки--2026-10-22)
+исправляет также symlink с именем `TRAILER!!!`, сохраняя настоящие trailer resets
+и общие hard links; runtime/platform границы указаны отдельно.
 
 ### NTFS: reparse links и dedup reads
 

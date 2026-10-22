@@ -95,7 +95,10 @@ struct CItem {
     bool CanLink() const { return NumLinks >= 2 && !IsDir() && !Is_SymLink(); }
     bool IsDir() const { return MY_LIN_S_ISDIR(Mode); }
     bool Is_SymLink() const { return MY_LIN_S_ISLNK(Mode); }
-    bool IsTrailer() const { return strcmp(Name, kName_TRAILER) == 0; }
+    bool IsTrailer() const {
+        // Linux do_header routes symlinks to do_symlink, not do_name's trailer check.
+        return (!IsNew() || !Is_SymLink()) && strcmp(Name, kName_TRAILER) == 0;
+    }
     UInt64 GetDataPosition() const { return HeaderPos + HeaderSize; }
 };
 
