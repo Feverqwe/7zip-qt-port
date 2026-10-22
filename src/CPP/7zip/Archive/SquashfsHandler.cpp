@@ -871,6 +871,9 @@ Z7_CLASS_IMP_CHandler_IInArchive_1(
   bool _needCheckLzma;
 
   CRecordVector<CItem> _items;
+#ifdef SEVENZIP_LINUX_SQUASHFS
+  CObjectVector<AString> _itemNames;
+#endif
   CRecordVector<CNode> _nodes;
   CRecordVector<UInt32> _nodesPos;
   CRecordVector<bool> _activeDirs;
@@ -917,8 +920,11 @@ Z7_CLASS_IMP_CHandler_IInArchive_1(
   CRecordVector<UInt64> _nodeRecordSizes;
   std::set<unsigned> _incompleteBlocklists;
   HRESULT CreateLinuxFile(unsigned node, sevenzip_squashfs_file **file);
+  HRESULT ReadLinuxFileBlock(sevenzip_squashfs_file *file, UInt64 index,
+                             uint64_t *start, unsigned *size);
   HRESULT GetLinuxPackSize(unsigned node, UInt64 &total);
   HRESULT _linuxReadResult = S_OK;
+  UInt64 _metadataReadEnd = 0;
   static int ReadLinux(void *opaque, uint64_t offset, void *data, size_t size);
   HRESULT InitLinuxDecoder();
   static int ReadLinuxMetadata(void *, uint64_t, void *, unsigned *, uint64_t *);
@@ -947,7 +953,6 @@ Z7_CLASS_IMP_CHandler_IInArchive_1(
   HRESULT ScanCachedInodes(bool forRecovery = false);
   HRESULT EnsureInodeInventory();
   UInt64 _directoryDataEnd = 0;
-  std::map<UInt64, unsigned> _directoryBlockIndexes;
   HRESULT ReadNode(UInt32 position, int &nodeIndex, UInt64 *length = NULL, UInt32 *needed = NULL);
   bool _inodeMappingLimitations = false;
   bool InodeIdentityUnavailable(const CItem &item) const {
@@ -1011,6 +1016,7 @@ Z7_CLASS_IMP_CHandler_IInArchive_1(
   HRESULT ReadUids(UInt64 start, UInt32 num, CByteBuffer &ids);
   HRESULT Open2(IInStream *inStream);
   AString GetPath(unsigned index) const;
+  const Byte *GetItemName(unsigned index, unsigned &size) const;
   bool GetPackSize(unsigned index, UInt64 &res, bool fillOffsets);
   HRESULT CreateReadStream(UInt32 index, ISequentialInStream **stream, CHandler **reader = NULL);
 
@@ -1085,13 +1091,16 @@ HRESULT CHandler::LinuxResult(int result) const {
 int CHandler::ReadLinuxMetadata(void *opaque, uint64_t block, void *data, unsigned *size,
                                 uint64_t *next) {
     CHandler *handler = static_cast<CHandler *>(opaque);
-    if (block > handler->_h.Size) {
+    const UInt64 end = handler->_metadataReadEnd
+                           ? MyMin(handler->_metadataReadEnd, handler->_h.Size)
+                           : handler->_h.Size;
+    if (block > end) {
         handler->_linuxReadResult = S_FALSE;
         return -5;
     }
     try {
         HRESULT result = handler->Seek2(block);
-        UInt32 packed = (UInt32)MyMin(handler->_h.Size - block, (UInt64)kMetadataBlockSize + 3);
+        UInt32 packed = (UInt32)MyMin(end - block, (UInt64)kMetadataBlockSize + 3);
         handler->_dynOutStream->Init();
         if (result == S_OK)
             result = handler->ReadMetadataBlock(packed);
@@ -1309,10 +1318,24 @@ HRESULT CHandler::LoadNode(unsigned index) {
 HRESULT CHandler::CreateLinuxFile(unsigned index, sevenzip_squashfs_file **file) {
     const CNode &node = _nodes[index];
     _linuxReadResult = S_OK;
-    return LinuxResult(sevenzip_squashfs_file_create(
+    const UInt64 savedEnd = _metadataReadEnd;
+    _metadataReadEnd = _h.DirTable;
+    const int result = sevenzip_squashfs_file_create(
         _h.Size, _h.InodeTable, _h.DirTable, _h.BlockSize, _nodeReferences[index],
         node.Type == kType_FILE ? 32 : 56, node.FileSize, node.GetNumBlocks(_h), node.StartBlock,
-        node.Number, ReadLinuxMetadata, this, file));
+        node.Number, ReadLinuxMetadata, this, file);
+    _metadataReadEnd = savedEnd;
+    return LinuxResult(result);
+}
+
+HRESULT CHandler::ReadLinuxFileBlock(sevenzip_squashfs_file *file, UInt64 index, uint64_t *start,
+                                     unsigned *size) {
+    _linuxReadResult = S_OK;
+    const UInt64 savedEnd = _metadataReadEnd;
+    _metadataReadEnd = _h.DirTable;
+    const int result = sevenzip_squashfs_file_block(file, index, start, size);
+    _metadataReadEnd = savedEnd;
+    return LinuxResult(result);
 }
 
 HRESULT CHandler::GetLinuxPackSize(unsigned index, UInt64 &total) {
@@ -1328,9 +1351,7 @@ HRESULT CHandler::GetLinuxPackSize(unsigned index, UInt64 &total) {
     for (UInt64 i = 0; i < node.GetNumBlocks(_h); ++i) {
         uint64_t start;
         unsigned size;
-        _linuxReadResult = S_OK;
-        const HRESULT result =
-            LinuxResult(sevenzip_squashfs_file_block(file.get(), i, &start, &size));
+        const HRESULT result = ReadLinuxFileBlock(file.get(), i, &start, &size);
         if (result == S_FALSE)
             _incompleteBlocklists.insert(index);
         RINOK(result)
@@ -2124,6 +2145,11 @@ HRESULT CHandler::OpenDir(int parent, UInt32 startBlock, UInt32 offset, unsigned
     _activeDirs[nodeIndex] = true;
     CRecordVector<CTempItem> tempItems;
     const HRESULT readResult = ReadDirItems(parent, n, tempItems, _directoryCallbackResult);
+#ifdef SEVENZIP_LINUX_SQUASHFS
+    if (!_h.IsOldVersion() && _openCallback && _directoryCallbackResult == S_OK &&
+        (readResult == S_OK || readResult == S_FALSE))
+        _directoryCallbackResult = _openCallback->SetCompleted(NULL, NULL);
+#endif
     RINOK(_directoryCallbackResult)
     if (readResult != S_OK) {
 #ifdef SEVENZIP_LINUX_SQUASHFS
@@ -2180,66 +2206,80 @@ HRESULT CHandler::OpenDir(int parent, UInt32 startBlock, UInt32 offset, unsigned
 
 HRESULT CHandler::ReadDirItems(int parent, const CNode &n, CRecordVector<CTempItem> &tempItems,
                                HRESULT &callbackResult) {
-    int blockIndex;
-    UInt32 unpackPos;
+    UInt32 rem = 0;
+    const Byte *p = NULL;
     if ((UInt32)n.StartBlock != n.StartBlock)
         return S_FALSE;
 #ifdef SEVENZIP_LINUX_SQUASHFS
-    if (!_h.IsOldVersion()) {
-        auto found = _directoryBlockIndexes.find((UInt32)n.StartBlock);
-        const UInt64 needed = n.FileSize >= 3 ? n.Offset + n.FileSize - 3 : 0;
-        const bool extend =
-            found != _directoryBlockIndexes.end() &&
-            needed > _dirs.ContiguousEnd(found->second) - _dirs.UnpackPos[found->second];
-        if ((found == _directoryBlockIndexes.end() || extend) && n.FileSize >= 3) {
-            UInt64 position = n.StartBlock, next;
-            const HRESULT result = ReadMetadataRun(_dirs, _directoryBlockIndexes, _h.DirTable,
-                                                   _directoryDataEnd, position, next, needed);
-            RINOK(_directoryCallbackResult)
-            if (result == E_ABORT || result == E_OUTOFMEMORY || result == E_NOTIMPL)
-                return result;
-            found = _directoryBlockIndexes.find((UInt32)n.StartBlock);
-        }
-        blockIndex = found == _directoryBlockIndexes.end() ? -1 : (int)found->second;
+    const bool streamed = !_h.IsOldVersion();
+    uint64_t directoryBlock = 0;
+    unsigned directoryOffset = n.Offset;
+    UInt32 reads = 0;
+    Byte field[256];
+    if (streamed) {
+        if (n.FileSize < 3 || n.StartBlock >= _directoryDataEnd - _h.DirTable)
+            return S_FALSE;
+        directoryBlock = _h.DirTable + n.StartBlock;
+        rem = (UInt32)n.FileSize - 3;
     } else
 #endif
-        blockIndex = _dirs.PackPos.FindInSorted((UInt32)n.StartBlock);
-    if (blockIndex < 0)
-        return S_FALSE;
-    const UInt32 dirBlockEnd = (unsigned)blockIndex + 1 < _dirs.UnpackPos.Size()
-                                   ? _dirs.UnpackPos[blockIndex + 1]
-                                   : (UInt32)_dirs.Size();
-    if (n.Offset >= dirBlockEnd - _dirs.UnpackPos[blockIndex])
-        return S_FALSE;
-    unpackPos = _dirs.UnpackPos[blockIndex] + n.Offset;
-    if (unpackPos < n.Offset || unpackPos > _dirs.Size())
-        return S_FALSE;
-
-    UInt32 rem = _dirs.ContiguousEnd((unsigned)blockIndex) - unpackPos;
-    const Byte *p = _dirs.Data + unpackPos;
-    UInt32 fileSize = (UInt32)n.FileSize;
-
-    // for some squashfs files: fileSize = rem + 3  !!!
-    if (_h.Major >= 3) {
-        if (fileSize < 3)
+    {
+        const int blockIndex = _dirs.PackPos.FindInSorted((UInt32)n.StartBlock);
+        if (blockIndex < 0)
             return S_FALSE;
-        fileSize -= 3;
+        const UInt32 dirBlockEnd = (unsigned)blockIndex + 1 < _dirs.UnpackPos.Size()
+                                       ? _dirs.UnpackPos[blockIndex + 1]
+                                       : (UInt32)_dirs.Size();
+        if (n.Offset >= dirBlockEnd - _dirs.UnpackPos[blockIndex])
+            return S_FALSE;
+        const UInt32 unpackPos = _dirs.UnpackPos[blockIndex] + n.Offset;
+        if (unpackPos < n.Offset || unpackPos > _dirs.Size())
+            return S_FALSE;
+        rem = _dirs.ContiguousEnd((unsigned)blockIndex) - unpackPos;
+        p = _dirs.Data + unpackPos;
+        UInt32 fileSize = (UInt32)n.FileSize;
+        // for some squashfs files: fileSize = rem + 3  !!!
+        if (_h.Major >= 3) {
+            if (fileSize < 3)
+                return S_FALSE;
+            fileSize -= 3;
+        }
+        if (fileSize > rem)
+            return S_FALSE;
+        rem = fileSize;
     }
-    bool truncated = false;
-    if (fileSize > rem) {
+    const auto readField = [&](UInt32 size) -> HRESULT {
 #ifdef SEVENZIP_LINUX_SQUASHFS
-        if (!_h.IsOldVersion()) {
-            fileSize = rem;
-            truncated = true;
-        } else
+        if (streamed) {
+            if (size > rem || size > sizeof(field))
+                return S_FALSE;
+            _linuxReadResult = S_OK;
+            const UInt64 savedEnd = _metadataReadEnd;
+            _metadataReadEnd = _directoryDataEnd;
+            const int read = sevenzip_squashfs_directory_read(_linuxMetadata, &directoryBlock,
+                                                              &directoryOffset, field, size);
+            _metadataReadEnd = savedEnd;
+            const HRESULT result = LinuxResult(read);
+            if (result == E_ABORT || result == E_OUTOFMEMORY || result == E_NOTIMPL)
+                return result;
+            if (_openCallback && ((reads++ & 255) == 0 || result != S_OK)) {
+                callbackResult = _openCallback->SetCompleted(NULL, NULL);
+                RINOK(callbackResult)
+            }
+            if (result != S_OK)
+                return S_FALSE;
+            p = field;
+        }
+#else
+        (void)size;
 #endif
-            return S_FALSE;
-    }
-    rem = fileSize;
+        return S_OK;
+    };
 
     AString tempString;
 
     while (rem != 0) {
+        RINOK(readField(_h.Major <= 2 ? 4 : _h.Major == 3 ? 9 : 12))
         const bool be = _h.be;
         UInt32 count;
         CTempItem tempItem;
@@ -2288,6 +2328,7 @@ HRESULT CHandler::ReadDirItems(int parent, const CNode &n, CRecordVector<CTempIt
             const UInt32 nameOffset = _h.GetFileNameOffset();
             if (rem < nameOffset)
                 return S_FALSE;
+            RINOK(readField(nameOffset))
 
             if (_items.Size() >= kNumFilesMax)
                 return S_FALSE;
@@ -2304,7 +2345,10 @@ HRESULT CHandler::ReadDirItems(int parent, const CNode &n, CRecordVector<CTempIt
 #ifdef SEVENZIP_LINUX_SQUASHFS
             item.RecoveredInode = parent >= 0 && _items[parent].RecoveredInode;
 #endif
-            item.Ptr = (UInt32)(p - (const Byte *)_dirs.Data);
+#ifdef SEVENZIP_LINUX_SQUASHFS
+            if (!streamed)
+#endif
+                item.Ptr = (UInt32)(p - (const Byte *)_dirs.Data);
 
             UInt32 size;
             if (_h.IsOldVersion()) {
@@ -2337,6 +2381,7 @@ HRESULT CHandler::ReadDirItems(int parent, const CNode &n, CRecordVector<CTempIt
             size++;
             if (rem < size)
                 return S_FALSE;
+            RINOK(readField(size))
             if (_h.Major == 4) {
                 if (size > 256 || tempItem.Type > kType_SOCK || (size == 1 && p[0] == '.') ||
                     (size == 2 && p[0] == '.' && p[1] == '.'))
@@ -2351,6 +2396,13 @@ HRESULT CHandler::ReadDirItems(int parent, const CNode &n, CRecordVector<CTempIt
                 if (!CheckUTF8_AString(tempString))
                     _openCodePage = CP_OEMCP;
             }
+#ifdef SEVENZIP_LINUX_SQUASHFS
+            if (streamed) {
+                AString name;
+                name.SetFrom_CalcLen((const char *)p, size);
+                _itemNames.Add(name);
+            }
+#endif
 
             p += size;
             rem -= size;
@@ -2360,7 +2412,7 @@ HRESULT CHandler::ReadDirItems(int parent, const CNode &n, CRecordVector<CTempIt
         }
     }
 
-    return truncated ? S_FALSE : S_OK;
+    return S_OK;
 }
 
 HRESULT CHandler::ReadUids(UInt64 start, UInt32 num, CByteBuffer &ids) {
@@ -2623,6 +2675,23 @@ HRESULT CHandler::Open2(IInStream *inStream) {
     return S_OK;
 }
 
+const Byte *CHandler::GetItemName(unsigned index, unsigned &size) const {
+#ifdef SEVENZIP_LINUX_SQUASHFS
+    if (!_h.IsOldVersion()) {
+        const AString &name = _itemNames[index];
+        size = name.Len();
+        return (const Byte *)name.Ptr();
+    }
+#endif
+    const bool be = _h.be;
+    const Byte *p = _dirs.Data + _items[index].Ptr;
+    const unsigned limit = (_h.IsOldVersion() ? (unsigned)p[2] : (unsigned)Get16(p + 6)) + 1;
+    p += _h.GetFileNameOffset();
+    for (size = 0; size < limit && p[size]; ++size)
+        ;
+    return p;
+}
+
 AString CHandler::GetPath(unsigned index) const {
 #ifdef SEVENZIP_LINUX_SQUASHFS
     const CItem &entry = _items[index];
@@ -2642,15 +2711,10 @@ AString CHandler::GetPath(unsigned index) const {
 #endif
     unsigned len = 0;
     const unsigned indexMem = index;
-    const bool be = _h.be;
     for (;;) {
         const CItem &item = _items[index];
-        const Byte *p = _dirs.Data + item.Ptr;
-        const unsigned size = (_h.IsOldVersion() ? (unsigned)p[2] : (unsigned)Get16(p + 6)) + 1;
-        p += _h.GetFileNameOffset();
         unsigned i;
-        for (i = 0; i < size && p[i]; i++)
-            ;
+        GetItemName(index, i);
         len += i + 1;
         index = (unsigned)item.Parent;
         if (item.Parent < 0)
@@ -2663,12 +2727,8 @@ AString CHandler::GetPath(unsigned index) const {
     index = indexMem;
     for (;;) {
         const CItem &item = _items[index];
-        const Byte *p = _dirs.Data + item.Ptr;
-        const unsigned size = (_h.IsOldVersion() ? (unsigned)p[2] : (unsigned)Get16(p + 6)) + 1;
-        p += _h.GetFileNameOffset();
         unsigned i;
-        for (i = 0; i < size && p[i]; i++)
-            ;
+        const Byte *p = GetItemName(index, i);
         dest -= i;
         memcpy(dest, p, i);
         index = (unsigned)item.Parent;
@@ -2724,8 +2784,9 @@ Z7_COM7F_IMF(CHandler::Close()) {
     _inodeBlockIndexes.clear();
     _unavailableInodeBlocks.clear();
     _badInodePositions.clear();
-    _directoryBlockIndexes.clear();
+    _itemNames.Clear();
     _directoryDataEnd = 0;
+    _metadataReadEnd = 0;
     _inodeTableIncomplete = false;
     _inodeInventoryScanned = false;
     _inodeMappingLimitations = false;
@@ -3326,8 +3387,7 @@ HRESULT CHandler::ReadBlock(UInt64 blockIndex, Byte *dest, size_t blockSize) {
     if (_linuxFile && blockIndex < node.GetNumBlocks(_h)) {
         uint64_t start;
         unsigned size;
-        _linuxReadResult = S_OK;
-        RINOK(LinuxResult(sevenzip_squashfs_file_block(_linuxFile, blockIndex, &start, &size)))
+        RINOK(ReadLinuxFileBlock(_linuxFile, blockIndex, &start, &size))
         blockOffset = start;
         packBlockSize = GET_COMPRESSED_BLOCK_SIZE(size);
         compressed = IS_COMPRESSED_BLOCK(size);

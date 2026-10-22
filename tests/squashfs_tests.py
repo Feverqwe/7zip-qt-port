@@ -359,6 +359,19 @@ class SquashfsTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
         self.assertEqual(result.stdout, files["broken/payload"])
 
+    def test_directory_fields_span_short_metadata_blocks(self):
+        for fault in ("directory-block-short", "directory-block-short-bad"):
+            data, files = volume(fault)
+            for name in ("alpha", "broken/payload"):
+                with self.subTest(fault=fault, name=name):
+                    result = self.run_image("7z", data, "x", name)
+                    self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                    self.assertEqual(result.stdout, files[name])
+            if fault == "directory-block-short":
+                result = self.run_image("7z", data, "x", "good 空/payload")
+                self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                self.assertEqual(result.stdout, files["good 空/payload"])
+
     def test_ambiguous_inode_numbers_do_not_merge_unrelated_files(self):
         data, files = volume("directory-ambiguous", xattrs=True)
         with tempfile.TemporaryDirectory(dir=self.runtime) as temporary:

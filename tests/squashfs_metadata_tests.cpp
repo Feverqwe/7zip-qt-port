@@ -59,6 +59,32 @@ class SquashfsMetadataTests final : public QObject {
         return value;
     }
   private slots:
+    void directoryCursorBoundsDoNotLeakIntoOtherMetadata() {
+        Source source{fixture_};
+        auto reader = create(source);
+        QVERIFY(reader);
+        uint64_t block = qFromLittleEndian<quint64>(source.bytes.constData() + 72);
+        unsigned offset = 0;
+        char header[12];
+        QCOMPARE(
+            sevenzip_squashfs_directory_read(reader.get(), &block, &offset, header, sizeof(header)),
+            0);
+        QCOMPARE(qFromLittleEndian<quint32>(header), 3u);
+        const auto ids = qFromLittleEndian<quint64>(source.bytes.constData() + 48);
+        block = qFromLittleEndian<quint64>(source.bytes.constData() + ids);
+        offset = 0;
+        QVERIFY(sevenzip_squashfs_directory_read(reader.get(), &block, &offset, header,
+                                                 sizeof(header)) < 0);
+        unsigned id = 0;
+        QCOMPARE(sevenzip_squashfs_id(reader.get(), 0, &id), 0);
+        QCOMPARE(id, 1000u);
+        block = qFromLittleEndian<quint64>(source.bytes.constData() + 72);
+        offset = 0;
+        QCOMPARE(
+            sevenzip_squashfs_directory_read(reader.get(), &block, &offset, header, sizeof(header)),
+            0);
+        QCOMPARE(qFromLittleEndian<quint32>(header), 3u);
+    }
     void blocklistIndexCachePreservesSparseMappingsAndFailures() {
         constexpr unsigned blocks = 20000;
         QByteArray records(32 + (blocks + 1) * 4, '\0');

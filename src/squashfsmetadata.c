@@ -22,7 +22,7 @@ struct sevenzip_squashfs_metadata {
     unsigned char buffer[SQUASHFS_METADATA_SIZE];
     bool cached;
     unsigned unavailable;
-    bool inode_only;
+    uint64_t metadata_start, metadata_end, directory_end;
 };
 
 struct squashfs_cache_entry *
@@ -32,19 +32,19 @@ squashfs_cache_get(struct super_block *sb, struct squashfs_cache *cache, u64 blo
     uint64_t next = block;
     (void)sb;
     (void)length;
-    if (reader->inode_only && (block < reader->msblk.inode_table ||
-                              block >= reader->msblk.directory_table)) {
+    if (reader->metadata_end && (block < reader->metadata_start || block >= reader->metadata_end)) {
         reader->entry.error = -EIO;
         reader->cached = false;
         return &reader->entry;
     }
-    if (reader->cached && reader->entry.block == block)
+    if (reader->cached && reader->entry.block == block &&
+        (!reader->metadata_end || reader->entry.next_index <= reader->metadata_end))
         return &reader->entry;
     reader->entry.block = block;
     reader->entry.error = reader->read_meta(reader->io.opaque, block, reader->buffer, &size, &next);
     if (!reader->entry.error && (!size || size > sizeof(reader->buffer) || next <= block ||
                                  next > (uint64_t)reader->msblk.bytes_used ||
-                                 (reader->inode_only && next > reader->msblk.directory_table)))
+                                 (reader->metadata_end && next > reader->metadata_end)))
         reader->entry.error = -EIO;
     reader->entry.length = (int)size;
     reader->entry.next_index = next;
@@ -102,7 +102,8 @@ int sevenzip_squashfs_file_create(uint64_t bytes_used, uint64_t inode_table,
     reader = &file->reader;
     reader->io.opaque = opaque;
     reader->read_meta = read_meta;
-    reader->inode_only = true;
+    reader->metadata_start = inode_table;
+    reader->metadata_end = directory_table;
     reader->msblk.inode_table = inode_table;
     reader->msblk.directory_table = directory_table;
     reader->msblk.bytes_used = (long long)bytes_used;
@@ -330,6 +331,7 @@ int sevenzip_squashfs_metadata_create(uint64_t bytes_used, sevenzip_squashfs_rea
         }
     }
     *directory_end = directory_limit;
+    reader->directory_end = directory_limit;
     free(disk);
     *result = reader;
     return 0;
@@ -338,6 +340,25 @@ failed_disk:
 failed:
     sevenzip_squashfs_metadata_destroy(reader);
     return error;
+}
+
+int sevenzip_squashfs_directory_read(struct sevenzip_squashfs_metadata *reader, uint64_t *block,
+                                     unsigned *offset, void *buffer, unsigned size) {
+    uint64_t saved_start, saved_end;
+    int position, result;
+    if (!reader || !block || !offset || *offset >= SQUASHFS_METADATA_SIZE || size > INT_MAX ||
+        !reader->directory_end)
+        return -EINVAL;
+    saved_start = reader->metadata_start;
+    saved_end = reader->metadata_end;
+    reader->metadata_start = reader->msblk.directory_table;
+    reader->metadata_end = reader->directory_end;
+    position = (int)*offset;
+    result = squashfs_read_metadata(&reader->sb, buffer, block, &position, (int)size);
+    *offset = (unsigned)position;
+    reader->metadata_start = saved_start;
+    reader->metadata_end = saved_end;
+    return result < 0 ? result : 0;
 }
 
 int sevenzip_squashfs_id(struct sevenzip_squashfs_metadata *reader, unsigned index, unsigned *id) {

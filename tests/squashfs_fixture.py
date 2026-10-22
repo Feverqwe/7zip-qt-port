@@ -469,7 +469,18 @@ def directory_volume(fault):
     root_block, good_block = metadata(root), metadata(child, True)
     bad_block = bytearray(metadata(child, fault not in ("directory-block-clean", "directory-block-io", "directory-block-unused", "directory-block-index-recovery")))
     shared = fault == "directory-block-shared"
-    if shared:
+    if fault in ("directory-block-short", "directory-block-short-bad"):
+        def short_blocks(data):
+            return b"".join(metadata(data[offset:offset + 7], offset % 2 != 0)
+                            for offset in range(0, len(data), 7))
+        root_block = short_blocks(root)
+        bad_block = short_blocks(child)
+        good_block = short_blocks(child)
+        if fault == "directory-block-short-bad":
+            # Only the tail of the final root filename is unavailable.
+            tail = len(root) // 7 * 7
+            root_block = short_blocks(root[:tail]) + struct.pack("<H", 0x8000)
+    elif shared:
         half = len(child) // 2
         root_block = metadata(root + child[:half])
         bad_block = bytearray()

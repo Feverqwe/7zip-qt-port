@@ -32,6 +32,10 @@ int sevenzip_squashfs_metadata_create(uint64_t bytes_used, sevenzip_squashfs_rea
                                       struct sevenzip_squashfs_metadata **,
                                       uint64_t *directory_end);
 void sevenzip_squashfs_metadata_destroy(struct sevenzip_squashfs_metadata *);
+// Read exactly size bytes through the native metadata cursor, within directory
+// table bounds. Partial field output on failure must be discarded by the caller.
+int sevenzip_squashfs_directory_read(struct sevenzip_squashfs_metadata *, uint64_t *block,
+                                     unsigned *offset, void *, unsigned size);
 unsigned sevenzip_squashfs_unavailable_tables(const struct sevenzip_squashfs_metadata *);
 int sevenzip_squashfs_id(struct sevenzip_squashfs_metadata *, unsigned, unsigned *);
 int sevenzip_squashfs_fragment(struct sevenzip_squashfs_metadata *, unsigned, uint64_t *,

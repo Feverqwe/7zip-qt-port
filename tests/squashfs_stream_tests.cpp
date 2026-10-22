@@ -27,12 +27,15 @@ class Input final : public IInStream, public CMyUnknownImp {
     HRESULT atFailure = E_FAIL;
     bool notified = false;
     UInt64 gapAt = UINT64_MAX, gapSize = 0;
+    UInt64 forbiddenBoundary = UINT64_MAX;
     explicit Input(QByteArray bytes) : bytes_(std::move(bytes)) {}
     Z7_COM7F_IMF(Read(void *data, UInt32 size, UInt32 *processed)) override {
         if (processed)
             *processed = 0;
         if (failure != S_OK)
             return failure;
+        if (position_ < forbiddenBoundary && forbiddenBoundary - position_ < size)
+            return E_ABORT;
         if (failAt >= position_ && failAt - position_ < size)
             return atFailure;
         if (notifyAt >= position_ && notifyAt - position_ < size)
@@ -476,6 +479,71 @@ class SquashfsStreamTests final : public QObject {
               "directory-block-span", "directory-block-io", "directory-block-shared",
               "directory-block-unused"})
             QTest::newRow(qPrintable(fault)) << fault;
+    }
+    void directoryFieldsCrossShortBlocks_data() {
+        QTest::addColumn<bool>("damaged");
+        QTest::newRow("complete") << false;
+        QTest::newRow("last-name-unreadable") << true;
+    }
+    void directoryBlockCannotReadAcrossItsTableBoundary() {
+        loadFixture("zlib", false, "directory-block-clean");
+        const auto directory = qFromLittleEndian<quint64>(bytes_.constData() + 72);
+        const auto used = qFromLittleEndian<quint64>(bytes_.constData() + 40);
+        const auto ids = qFromLittleEndian<quint64>(bytes_.constData() + 48);
+        const auto boundary = qFromLittleEndian<quint64>(bytes_.constData() + ids);
+        qToLittleEndian(quint16(0x8000 | (used - directory - 2)), bytes_.data() + directory);
+        CMyComPtr2<IInStream, Input> source;
+        source.SetFromCls(new Input(bytes_));
+        source->forbiddenBoundary = boundary;
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
+        NWindows::NCOM::CPropVariant limitations;
+        QCOMPARE(archive_->GetArchiveProperty(kpidUserDefined, &limitations), S_OK);
+        QCOMPARE(limitations.vt, VARTYPE(VT_BSTR));
+    }
+    void fileBlocklistCannotReadAcrossItsTableBoundary() {
+        loadFixture("zlib", false, "blocklist-clean");
+        const auto inode = qFromLittleEndian<quint64>(bytes_.constData() + 64);
+        const auto directory = qFromLittleEndian<quint64>(bytes_.constData() + 72);
+        const auto used = qFromLittleEndian<quint64>(bytes_.constData() + 40);
+        const auto late = inode + 34 + 6;
+        qToLittleEndian(quint16(0x8000 | (used - late - 2)), bytes_.data() + late);
+        CMyComPtr2<IInStream, Input> source;
+        source.SetFromCls(new Input(bytes_));
+        source->forbiddenBoundary = directory;
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
+        auto data = stream("alpha");
+        QVERIFY(data);
+        check(data, "alpha", 0, 8192);
+        char byte;
+        UInt32 count = 99;
+        QCOMPARE(data->Seek(8192, STREAM_SEEK_SET, nullptr), S_OK);
+        QCOMPARE(data->Read(&byte, 1, &count), S_FALSE);
+        QCOMPARE(count, 0u);
+        NWindows::NCOM::CPropVariant packed;
+        QCOMPARE(archive_->GetProperty(index("alpha"), kpidPackSize, &packed), S_OK);
+        QCOMPARE(packed.vt, VARTYPE(VT_EMPTY));
+        check(data, "alpha", 0, 8192);
+    }
+    void directoryFieldsCrossShortBlocks() {
+        QFETCH(bool, damaged);
+        loadFixture("zlib", false, damaged ? "directory-block-short-bad" : "directory-block-short");
+        CMyComPtr<IInStream> source = new Input(bytes_);
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
+        auto alpha = stream("alpha");
+        QVERIFY(alpha);
+        check(alpha, "alpha", 0, 237);
+        auto child = stream("broken/payload");
+        QVERIFY(child);
+        check(child, "broken/payload", 0, 333);
+        QCOMPARE(index("good 空/payload") != UInt32(-1), !damaged);
+        if (!damaged) {
+            auto sibling = stream("good 空/payload");
+            QVERIFY(sibling);
+            check(sibling, "good 空/payload", 0, 333);
+        }
+        NWindows::NCOM::CPropVariant limits;
+        QCOMPARE(archive_->GetArchiveProperty(kpidUserDefined, &limits), S_OK);
+        QCOMPARE(limits.vt, VARTYPE(damaged ? VT_BSTR : VT_EMPTY));
     }
     void directoryBlocksAreIsolated() {
         QFETCH(QString, fault);

@@ -5,6 +5,67 @@ Scope входит в [общую проверку форматов](filesystems
 современный LZO и проверки compressor options через отдельный format-модуль.
 Полная актуализация SquashFS read features по Linux ещё продолжается.
 
+## Потоковое чтение directory metadata, 2026-10-22
+
+Сверены полные Linux `dir.c:squashfs_readdir`, directory index helpers,
+`cache.c:squashfs_read_metadata`/copy/cache contracts и SDK `OpenDir`,
+directory field parser, `GetPath`, callers, item storage, synthetic root и
+xattr paths. Baselines прежние: Linux
+`58161ead29e50d70a317ea26b472e0c7508e69da`, SDK
+`9128b80e3a471108678e2b3ec3c985861c8d7b0f`; retrieval links ниже.
+Linux читает header, entry и filename по metadata cursor, не сохраняет весь
+decoded directory table ради последующего получения имён.
+
+GPL v4 adapter теперь использует исходный C `squashfs_read_metadata` для этих
+полей. Сохранены SDK parser/control flow, порядок полей, endian/type/count/
+UTF/path checks и алгоритм построения пути. Узкий field hook заменяет backing
+buffer; завершённые имена принадлежат portable `CObjectVector<AString>`.
+`GetItemName` выносит прежнее получение имени из двух проходов `GetPath` и
+выбирает owned name для v4; core/legacy используют прежние raw records.
+Synthetic root/alternate-stream names по-прежнему обрабатываются отдельно.
+V4 больше не вызывает directory `ReadMetadataRun`, не накапливает decoded
+directory bytes/offset maps и не зависит от UInt32 aggregate directory cache.
+Retained item/name catalog масштабируется по реально выданным entries;
+inode decoded cache и существующие resource limits остаются отдельным scope.
+
+C host API ограничивает cursor directory range, проверяет bounds также для
+cache hits и восстанавливает ancillary range после успеха/ошибки. Тот же range
+mechanism сохраняет прежние постоянные inode bounds file blocklist reader.
+CPP metadata bridge передаёт packed end в исходный `ReadMetadataBlock` до
+payload I/O как для directory fields, так и для file creation/block lookup.
+Два ABI regressions воспроизвели нежелательный Abort при malformed packed
+length, пересекающей соседнюю таблицу. После исправления невозможный block
+отклоняется до такого чтения; partial directory/file result остаётся локальным,
+packed size неизвестен, доступный file prefix сохраняется.
+Сам Linux cache/copy/read_metadata algorithm не переписан. Metadata cache и
+field buffer ограничены одним block и максимальной длиной поля независимо
+от суммарной длины directory table. Partial field output не публикуется;
+полностью прочитанные records до ошибки остаются доступны. Fatal source
+Abort/OOM/unsupported и callback results сохранены, checkpoints работают
+при чтении и завершении каталога. Реальные неполные каталоги используют
+прежние diagnostics/согласие/badge и copy results.
+
+C API regression проверяет directory cursor и восстановление ID access после
+отклонённого выхода за directory bounds. ABI/CLI проверяют header/entry/name,
+пересекающие короткие смешанные compressed/raw blocks, и отказ в хвосте имени:
+доступные prefix entries и вложенные файлы сохраняются, недочитанное имя не
+выдаётся. Существующие consumers покрывают shared blocks, unused metadata,
+wide physical spans, recovery, xattrs, callbacks, Close/reopen и legacy paths.
+Native readonly Linux `6.8.0-147-generic` подтвердил четыре controls:
+short/short-bad/shared/unused; receipt `20261022T023056Z-c865eb9c`.
+Listing/payloads совпали, source hashes не изменились, mounts/temp data очищены,
+одноразовый helper удалён. Native kernel и pinned source — разные evidence.
+Большие реальные directory images и slow matrices не запускались.
+
+На macOS прошли ABI/CLI/C API три suites за 6,07 с и шесть остальных direct
+consumers за 39,79 с. На Linux/Windows девять suites прошли за 19,76/59,97 с,
+receipt `20261022T023251Z-75963aae`. После финальных packed-boundary fixes
+повторно прошли затронутые три suites на macOS/Linux/Windows за
+5,58/5,16/22,48 с (`20261022T024443Z-df80c193`); остальные consumers не
+повторялись. Incremental macOS app build прошла. Full/slow acceptance и
+физические устройства не проверялись; source completeness и runtime evidence
+учитываются отдельно.
+
 ## Необязательные индексы extended directories, 2026-10-22
 
 Сверены полные Linux `inode.c:squashfs_read_inode` (LDIR branch),
