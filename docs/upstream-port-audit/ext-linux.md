@@ -10,6 +10,63 @@ fs-verity now reuses the original shared Linux string scanner already linked
 for fscrypt. Source scope and validation are recorded with the
 [shared string-service transfer](erofs-linux.md#original-shared-string-services--2026-10-22).
 
+## AES/SM4 and block-mode source comparison — 2026-10-22
+
+Compared complete selected units against Linux
+`58161ead29e50d70a317ea26b472e0c7508e69da`: `lib/crypto/aes.c` and
+`crypto/{sm4,sm4_generic,cbc,ecb,xts,cts,essiv}.c`, with their key/mode headers,
+registration metadata, request contexts, callers and allocation/error paths.
+Of 113 local function bodies, 80 match after comments/whitespace, 19 retain the
+adaptations below and 14 provide archive allocation/dispatch glue. AES lookup
+tables and all SM4 constants match the pinned source separately from body
+comparison. No missing algorithm branch or behavior correction was established
+in this selected scope.
+
+| Selected unit | Complete-body result and boundary |
+| --- | --- |
+| AES library | 39 of 49 bodies match. Ten adaptations name the initial encryption-key member, replace GNU transparent-union access with that initial address, use byte-pointer arithmetic, C11 alignment and memcpy-based unaligned loads. Key expansion, rounds, CBC/CTS, ECB, XTS stealing, CTR and XCTR algorithms remain original. Three original noinline declarations use the host compiler annotation. |
+| SM4 primitive/provider | All eight primitive bodies and all three generic cipher callbacks match. One local constructor replaces kernel algorithm registration and attaches the original setkey/encrypt/decrypt callbacks to an owned context. |
+| Generic CBC/ECB | All six CBC bodies and the ECB block iterator match. Five glue functions in each unit bind flat synchronous requests, key setup and owned raw-cipher lifetime to those original functions. The selected raw cipher is SM4; AES uses its original library modes. |
+| Generic XTS | Ten of fourteen bodies match; encrypt/decrypt use explicit equivalents of GNU short-circuit error chains, and initialization allocates the fixed child/tweak providers instead of spawning a kernel instance. One local constructor connects callbacks. Original key validation, tweak passes, partial-block handling, completion bodies, request sizing and failure cleanup remain present. |
+| CTS | Six of twelve bodies match; two temporary-buffer annotations use C11 alignment, two request bodies spell out GNU error chaining and initialization selects its fixed CBC child. One local constructor connects callbacks. The original request implementation is retained rather than substituting the library CTS API, whose IV clobbering contract differs. |
+| ESSIV | Seven of nine bodies match. Initialization supplies AES/SHA-256/CBC directly instead of instance/spawn discovery, and one local constructor replaces registration. The original key hash, encrypted IV, data request, cleanup and error flow remain connected. |
+
+Checked `aes.h`, the four AES mode headers, `sm4.h`, `xts.h`, `b128ops.h`
+and the selected XTS field-multiplication helper with their consumers. AES mode
+headers match exactly; XTS weak-key checks and the selected 128-bit operations
+retain complete original bodies. The named first AES key member preserves the
+address used by both encryption-only and full-key callers. Unused GF multiplication
+variants, assembly aliases, architecture acceleration, FIPS/module initialization
+and AES MAC/AEAD modes are omitted; these are not missing fscrypt read modes.
+ESSIV's dm-crypt AEAD branch and runtime kernel template negotiation are outside
+this archive reader. Fixed child choices satisfy the original template checks:
+16-byte raw blocks, matching CBC IV/block sizes and an ECB child without an IV
+for XTS.
+
+Reviewed `aesprovider.c`, `skciphercompat.{c,h}`, `skcipherwalk.c` and
+`skciphermemory.c` as the host boundary. Requests use one bounded memory segment
+and synchronous providers; they do not implement general kernel scatterlists,
+DMA or asynchronous hardware completion. Bounds and installed-key state are
+checked before dispatch, including invalidating readiness after failed setkey.
+AES-XTS copies the incoming IV to its evolving private tweak; XCTR starts its
+per-request counter at one and preserves the supplied IV. Generic XTS walks use
+owned aligned copies, publish only processed bytes and wipe temporary storage.
+Request/context destruction wipes owned state; nested transforms are released by
+the original exit paths or their fixed-provider wrappers. Sized sensitive-buffer
+allocation checks header-size overflow and retains the allocation size for wiping.
+These are archive services around the original algorithms, not a second cipher
+implementation or a new license-selection conditional.
+
+All 305 reference hashes match. No production code changed in this comparison;
+the latest macOS `fscrypt_crypto` and eight ext/stream/fscrypt/xattr/provenance
+passes recorded below cover the same sources. Existing known-answer checks cover
+AES/SM4 modes, in-place and unaligned buffers, partial blocks, final IVs, ESSIV,
+weak keys, missing/failed keys and request bounds. No redundant runtime batch or
+source-text regression was added. `git diff --check` passed for this audit-only
+iteration. HCTR2/Adiantum/ChaCha, shared hash/utility primitives and the asymmetric/
+ASN.1 dependency source comparisons remain open, as do whole ext and parent
+format closure.
+
 ## fscrypt software read-core source comparison — 2026-10-22
 
 Completed whole-unit comparison of the selected fscrypt read core against Linux
