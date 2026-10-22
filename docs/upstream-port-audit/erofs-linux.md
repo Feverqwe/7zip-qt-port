@@ -1,5 +1,14 @@
 # Read-only EROFS from Linux
 
+## Recovery priority — 2026-10-22
+
+The user's narrowed [recovery scope](../../AGENTS.md#read-only-filesystem-access)
+defers new partial-access modes for damaged EROFS images. Source comparison found
+that an unreadable inode xattr currently fails archive opening through
+`ReadAttributes`, even when ordinary file bytes could be read. That recovery
+scenario is deferred; no code change was made for it. Correct reading of supported
+EROFS layouts and their Linux source comparison remain in scope.
+
 ## Original metadata-buffer ownership and failed-read cleanup — 2026-10-22
 
 Compared the complete pinned `data.c` metadata-buffer helpers, their

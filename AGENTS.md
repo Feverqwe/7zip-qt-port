@@ -67,6 +67,15 @@ Keep adaptations narrow; account for formatting separately from functional chang
 
 ## Read-only filesystem access
 
+- Scope the recovery/partial-access policy below to NTFS, FAT/exFAT and ext.
+  These are the current priorities for reading damaged or inconsistent volumes.
+  For other filesystems, including EROFS, defer new recovery modes and partial
+  access to damaged images unless the user specifically includes that scenario.
+  A general Linux format audit does not require adding those recovery paths.
+  Preserve already implemented limited-access behavior. Correct reading of
+  supported format features and comparison with Linux remain in scope for all
+  selected formats. Read-only source access and bounds/path validation always
+  apply, regardless of recovery priority.
 - Favor useful read-only access when the reader can retrieve filesystem data,
   including partial or potentially inconsistent data. Distinguish actual reader
   limitations from restrictions introduced by product policy. A recovery flag,
