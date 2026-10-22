@@ -7,7 +7,8 @@ at Linux `58161ead29e50d70a317ea26b472e0c7508e69da`. The transferred scope below
 the compressed-read comparison and the dated corrections account for the format
 readers, dependencies and C/archive consumers. This is source closure at that
 revision, not a claim that the Linux VFS driver was ported wholesale or that
-every possible image was exercised. The parent multi-format goal remains open.
+every possible image was exercised. Current multi-format status is owned by
+the [parent audit](filesystems-linux.md).
 
 The final comparison rechecked complete inode and symlink bodies, checksum and
 superblock parsing, variable metadata reads, device-slot/mapping consumers,

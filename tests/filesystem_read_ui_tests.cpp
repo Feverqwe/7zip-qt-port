@@ -127,6 +127,8 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
     }
     void confirmsAndCopiesFlaggedVolume_data() { flaggedVolumeData("en"); }
     void confirmsAndCopiesFlaggedVolumeRu_data() { flaggedVolumeData("ru"); }
+    void confirmsLimitedExt_data() { flaggedVolumeData("en", true); }
+    void confirmsLimitedExtRu_data() { flaggedVolumeData("ru", true); }
 
     void confirmsPartialSquashfsIndexes_data() {
         QTest::addColumn<QString>("language");
@@ -172,7 +174,7 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
     }
 
   private:
-    void flaggedVolumeData(const QString &language) {
+    void flaggedVolumeData(const QString &language, bool extOnly = false) {
         QTest::addColumn<QString>("language");
         QTest::addColumn<bool>("accept");
         QTest::addColumn<QString>("kind");
@@ -208,6 +210,8 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
                                         "source-partial-data",
                                         "source-backup-used",
                                         "source-backup-mismatch"}) {
+                if (kind.startsWith("ext-") != extOnly)
+                    continue;
                 // Rejection uses the shared consent service; acceptance checks every reason.
                 if (!accept && kind != "exfat" && kind != "unclean" && kind != "volume-dirty" &&
                     kind != "ext-recover" && kind != "ext-directory" && kind != "ext-xattrs" &&
@@ -225,6 +229,18 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
         confirmAndCopy(language, accept, kind);
     }
     void confirmsAndCopiesFlaggedVolumeRu() {
+        QFETCH(QString, language);
+        QFETCH(bool, accept);
+        QFETCH(QString, kind);
+        confirmAndCopy(language, accept, kind);
+    }
+    void confirmsLimitedExt() {
+        QFETCH(QString, language);
+        QFETCH(bool, accept);
+        QFETCH(QString, kind);
+        confirmAndCopy(language, accept, kind);
+    }
+    void confirmsLimitedExtRu() {
         QFETCH(QString, language);
         QFETCH(bool, accept);
         QFETCH(QString, kind);

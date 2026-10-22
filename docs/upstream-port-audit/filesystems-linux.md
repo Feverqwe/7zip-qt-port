@@ -27,6 +27,47 @@ VFS/platform services и запись не подменяют работу на�
 Linux-расширений следует проверять GPL-вариант и его зависимости; SDK-вариант
 остаётся отдельным потребителем исходного формата.
 
+## Итог — 2026-10-23
+
+Запрошенная проверка и актуализация завершены для всех 27 format names,
+подтверждённых census ниже, на закреплённой Linux revision. Индивидуальные
+read-side audits учитывают readers, read features, зависимости, найденные
+исправления и archive consumers; их source completeness отделена от runtime
+evidence. Открытых известных read gaps в этом scope не осталось.
+
+Read-only EROFS реализован и подключён к dynamic engine и приложению;
+standalone SDK/GPL differences описаны у соответствующих modules. Исходные
+варианты разделены по запросу пользователя. Приоритет новых recovery scenarios
+сохраняется по [AGENTS.md](../../AGENTS.md#read-only-filesystem-access);
+повреждённые EROFS scenarios не добавляются в обязательный scope. Kernel VFS,
+запись/repair/replay, execution/firmware services и host permissions не выдаются
+за недостающие archive read features.
+
+Финальная сверка 25 Linux manifests подтвердила 705 уникальных reference paths:
+704 доступны в source cache, сохранённый GPL notice совпал в `third_party/linux`.
+Manifest, audit и проходящие tests используются совместно: hashes подтверждают
+эталон, source comparisons — transfer/adaptations, runtime — наблюдаемое чтение.
+
+Финальная macOS validation: **97/97 обычных suites PASS**, 337.67 s, включая
+все format CLI/C ABI/stream readers, direct backend/device consumers, codec/
+runtime/provenance и EN/RU read-only UI на Cocoa. Сборка приложения прошла.
+Сохранены incremental build и compiler cache; Linux/Windows результаты остаются
+датированной evidence соответствующих audits. Full/release, slow suites
+(включая `fat_maximum`), physical devices, native boot/firmware и установка
+в пользовательскую `/Applications` этим итогом не заявляются.
+
+Первый общий прогон дал 84/86 PASS: две EN/RU UI matrices превысили 60 s.
+Ext cases выделены в самостоятельные ordinary groups: для каждого языка
+сохранены все 40 rows (24 общих и 16 ext), общий dialog/copy/reopen helper,
+прежний timeout и resource lock. Финальный набор включает обе новые группы
+и остальные limited-read scenarios; тестовые сценарии не удалялись.
+
+Перед финальной validation удалён локальный устаревший `sevenzip_formats.so`
+от прежней aggregate filesystem-worker ветки, отсутствующей в текущих targets.
+Он дублировал отдельные modules в runtime. Текущий `7z i` содержит 66 уникальных
+formats без дублей; `7zz i` — 61, с пятью documented dynamic-only format names.
+Compiler caches/build trees и посторонние plugins этим cleanup не очищались.
+
 ## Эталон и границы
 
 Linux: <https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git>,
@@ -130,17 +171,21 @@ filesystem UI; физические носители и системная ав�
 | EFI capsules | `drivers/firmware/efi/capsule-loader.c`, `capsule.c`, x86 EFI quirks | [Read-side source audit закрыт](uefi-linux.md#итог-read-side-сверки-и-quark-like-guid--2026-10-23): common header/payload и Quark mapping, включая generic GUID collision; UEFIf и firmware services отделены. |
 | Intel HEX | AS102/IQS5xx ASCII firmware readers | [Read-side source audit закрыт](ihex-linux.md#итоговая-read-side-сверка--2026-10-23): extended address/EOF/separators, errors/streams и явный IQS5xx map profile; binary ihex_binrec и hardware services отделены от archive scope. |
 | TAR | Marvell CPT `load_tar_archive` | [Read-side source audit закрыт](tar-linux.md#итоговая-read-side-сверка--2026-10-22): header/payload traversal и terminal records; physical layout служебных записей, GNU/PAX/sparse и writer boundaries описаны отдельно. |
-| Legacy LZ4, lzop | `lib/decompress_unlz4.c`, `decompress_unlzo.c` | [Framing readers](linux-frames.md), bounded C callbacks, consumed boundary, checksum и nested CPIO consumers. |
+| APM, GPT, MBR | `block/partitions` | Read-side source audits закрыты для [APM](apm-linux.md), [GPT](gpt-linux.md) и [MBR](mbr-linux.md): tables, geometry, subtype readers и bounded partition streams; kernel block-device services отделены. |
+| CPIO/initramfs | `init/initramfs.c`, `lib/decompress_*` | [Read-side source audit закрыт](cpio-linux.md#symlink-trailer-и-итог-read-side-сверки--2026-10-22): raw/compressed transitions, record boundaries, hard links и owned streams; boot/VFS effects отделены. |
+| Gzip, bzip2, LZMA, XZ, Zstd | `lib/decompress_*` и соответствующие libraries | Read-side source audits закрыты для [gzip](gzip-linux.md), [bzip2](bzip2-linux.md), [LZMA](lzma-linux.md), [XZ](xz-linux.md) и [Zstd](zstd-linux.md): framing/decoding, stream boundaries, callbacks и direct consumers; runtime и context-specific границы описаны у каждого reader. |
+| Legacy LZ4, lzop | `lib/decompress_unlz4.c`, `decompress_unlzo.c` | [Read-side source audit закрыт](linux-frames.md): framing, bounded C callbacks, consumed boundary, checksum и nested CPIO consumers; PREBOOT/boot services отделены. |
 
 APFS не входит в scope: соответствующего драйвера нет в основном дереве Linux.
 GPT/MBR/APM проверяются как дополнительные форматы разметки дисков.
 Наличие обработчика в engine не считается доказательством проверки по Linux.
 
-Дополнительный scope уточняется по полному списку `7z i` поставляемого engine:
+Дополнительный scope определён по полному списку `7z i` поставляемого engine:
 разметка GPT/MBR/APM, CPIO/initramfs, gzip/bzip2/LZMA/XZ/Zstd, Base64, загрузочные
 образы ELF/PE/COFF и остальные фактически совпадающие parsers/decoders.
-Проверка дополнительных форматов ещё не завершена; ограничения отдельных
-подформатов Linux и 7-Zip должны быть указаны при source comparison.
+Индивидуальные read-side source audits покрывают весь подтверждённый census
+ниже; ограничения подформатов Linux/7-Zip, host services и runtime evidence
+записаны у соответствующих readers.
 
 Для каждой строки сначала сравниваются полные тела, заголовки, callers и
 значимые ветви выбранного read scenario. Все найденные source-visible пробелы
@@ -218,7 +263,7 @@ Firmware services и общий format census не закрываются это
 [Сверка PE](pe-linux.md): поздние headers, 64-bit file spans, debug iteration,
 certificate/symbol bounds, cleanup/cancellation и retained section/resource
 streams. Общий COFF consumer, оба engines и backend проверены вместе.
-TE и оставшийся census требуют отдельных source evidence.
+TE/standalone COFF отделены от PE; соответствующий census evidence приведён выше.
 
 ### ELF: headers, core numbering и streams
 
@@ -324,8 +369,8 @@ bounds checks; owner IDs, POSIX mode, readonly override и special inode/device
 metadata. Обычный payload сохраняется, special inode не выдаёт ложный regular
 stream. CLI/ABI/backend и native read-only reference проверены отдельно;
 device-number отличие старого native kernel записано в linked audit.
-Это завершённый metadata scenario, остальные NTFS read branches ещё требуют
-полного сравнения по общему scope.
+Этот metadata scenario дополнен итоговой полной NTFS read-side сверкой,
+связанной из таблицы выше.
 
 ### MBR primary/EBR и block-layer границы
 
@@ -380,7 +425,7 @@ RR producer layouts и оставшиеся read-side consumers сверены �
 логический EOF, bounded directory reads и metadata bootstrap проверены вместе
 для обоих engines. [Итоговая source-сверка UDF read scope](udf-linux.md#итоговая-сверка-read-side-source-scope--2026-10-20)
 отделяет закрытые disk readers от kernel/platform services и runtime границ.
-Остальные строки общей задачи остаются открытыми. Динамический UDF-модуль
+Состояние остальных областей отражено в таблице выше. Динамический UDF-модуль
 подключает исходные Linux C allocation
 continuations, включая short/long chains, directory data и межраздельные адреса;
 indirect ICB/strategy 4096 выбирают актуальную запись inode через Linux C reader,
@@ -500,8 +545,8 @@ prefixed superblock и metadata branches; её фактический scope и �
 
 Начальная итерация: определены фактические обработчики поставляемого
 `Bundles/Format7zF/Arc_gcc.mak` и локальные модули, закреплён Linux baseline,
-проверено место сборки engine. Функциональная проверка перечисленных
-обработчиков и EROFS ещё не завершена. Эта запись задаёт scope проверки,
+проверено место сборки engine. На том этапе функциональная проверка перечисленных
+обработчиков и EROFS ещё не была завершена. Эта историческая запись задаёт scope,
 а не заявляет совместимость или полную передачу Linux drivers.
 
 ### exFAT: отмена cached FAT traversal
