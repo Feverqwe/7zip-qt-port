@@ -6,12 +6,20 @@
 #ifndef ZIP7_INC_OPEN_ARCHIVE_H
 #define ZIP7_INC_OPEN_ARCHIVE_H
 
+#ifdef QT_CORE_LIB
 #include "Windows/PropVariant.h"
 
 #include "7zip/UI/Common/ArchiveOpenCallback.h"
 #include "7zip/UI/Common/DirItem.h"
 #include "7zip/UI/Common/LoadCodecs.h"
 #include "7zip/UI/Common/Property.h"
+#else
+#include "../../../Windows/PropVariant.h"
+#include "ArchiveOpenCallback.h"
+#include "DirItem.h"
+#include "LoadCodecs.h"
+#include "Property.h"
+#endif
 
 #ifndef Z7_SFX
 

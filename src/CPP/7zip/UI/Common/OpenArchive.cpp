@@ -3,7 +3,11 @@
 // Igor Pavlov, LGPL-2.1-or-later; see third_party/7zip/License.txt.
 // Adaptations: include owners, optional process-open service, shared default-name body.
 
+#ifdef QT_CORE_LIB
 #include "7zip/UI/Common/StdAfx.h"
+#else
+#include "StdAfx.h"
+#endif
 
 // #define SHOW_DEBUG_INFO
 
@@ -11,6 +15,7 @@
 #include <stdio.h>
 #endif
 
+#ifdef QT_CORE_LIB
 #include "../../../../../third_party/7zip/C/CpuArch.h"
 
 #include "Common/ComTry.h"
@@ -35,6 +40,26 @@
 
 #ifndef Z7_SFX
 #include "7zip/UI/Common/SetProperties.h"
+#endif
+#else
+#include "../../../../C/CpuArch.h"
+#include "../../../Common/ComTry.h"
+#include "../../../Common/IntToString.h"
+#include "../../../Common/StringConvert.h"
+#include "../../../Common/StringToInt.h"
+#include "../../../Common/UTFConvert.h"
+#include "../../../Common/Wildcard.h"
+#include "../../../Windows/FileDir.h"
+#include "../../Common/FileStreams.h"
+#include "../../Common/LimitedStreams.h"
+#include "../../Common/ProgressUtils.h"
+#include "../../Common/StreamUtils.h"
+#include "../../Compress/CopyCoder.h"
+#include "DefaultName.h"
+#include "OpenArchive.h"
+#ifndef Z7_SFX
+#include "SetProperties.h"
+#endif
 #endif
 
 #ifndef Z7_SFX
@@ -1188,20 +1213,28 @@ HRESULT CArc::ReadBasicProps(IInArchive *archive, UInt64 startPos, HRESULT openR
         NCOM::CPropVariant prop;
         RINOK(archive->GetArchiveProperty(kpidError, &prop))
         if (prop.vt != VT_EMPTY)
+#ifdef QT_CORE_LIB
             ErrorInfo.ErrorMessage =
                 (prop.vt == VT_BSTR
                      ? UString(prop.bstrVal)
                      : QtDiagnosticText(QT_TRANSLATE_NOOP("SevenZipDiagnostics", "Unknown error")));
+#else
+            ErrorInfo.ErrorMessage = (prop.vt == VT_BSTR ? prop.bstrVal : L"Unknown error");
+#endif
     }
 
     {
         NCOM::CPropVariant prop;
         RINOK(archive->GetArchiveProperty(kpidWarning, &prop))
         if (prop.vt != VT_EMPTY)
+#ifdef QT_CORE_LIB
             ErrorInfo.WarningMessage =
                 (prop.vt == VT_BSTR ? UString(prop.bstrVal)
                                     : QtDiagnosticText(QT_TRANSLATE_NOOP("SevenZipDiagnostics",
                                                                          "Unknown warning")));
+#else
+            ErrorInfo.WarningMessage = (prop.vt == VT_BSTR ? prop.bstrVal : L"Unknown warning");
+#endif
     }
 
     if (openRes == S_OK || ErrorInfo.IsArc_After_NonOpen()) {
@@ -1969,6 +2002,7 @@ HRESULT CArc::OpenStream2(const COpenOptions &op) {
                 endOfFile = true;
         }
         CUIntVector sortedFormats;
+        unsigned numSignatureFormats = 0;
 
         unsigned i;
 
@@ -1997,7 +2031,11 @@ HRESULT CArc::OpenStream2(const COpenOptions &op) {
                 if (isArcRes == k_IsArc_Res_NEED_MORE && endOfFile)
                     continue;
                 // if (isArcRes == k_IsArc_Res_YES_LOW_PROB) continue;
-                sortedFormats.Insert(0, form);
+                // Keep signature-less probes (for example raw LZMA) behind
+                // formats with identifying signatures, but ahead of fallback opens.
+                sortedFormats.Insert(ai.Signatures.IsEmpty() ? numSignatureFormats : 0, form);
+                if (!ai.Signatures.IsEmpty())
+                    ++numSignatureFormats;
                 continue;
             }
 
@@ -2018,6 +2056,7 @@ HRESULT CArc::OpenStream2(const COpenOptions &op) {
                 }
                 if (k != ai.Signatures.Size()) {
                     sortedFormats.Insert(0, form);
+                    ++numSignatureFormats;
                     continue;
                 }
             }

@@ -94,4 +94,46 @@ Forced APM/ABI reader checks проходят. Сбой повторён на pr
 `20652199` после временного удаления всех GPT/HandlerCont изменений и пересборки
 того же incremental runtime. Это не новый GPT regression; прежняя успешная
 acceptance выше не доказывает актуальную automatic-routing acceptance.
-APM routing остаётся незавершённой частью общей задачи.
+Исправление ниже закрывает обнаруженный routing regression.
+
+### Сигнатурные и несигнатурные кандидаты
+
+Для исправления сопоставлены полные `CArc::OpenStream2`, frontal candidate loop,
+последующее открытие/cleanup и parser fallback, `CArcInfoEx`/`LoadCodecs`
+signature representation, APM registration/probe и LZMA preview/registration.
+Источник — тот же 7-Zip repository и commit `9128b80e3a471108678e2b3ec3c985861c8d7b0f`.
+Qt port `OpenArchive.cpp`/`.h` сохраняет свой первоначальный mixed baseline
+`0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17`; сравнение с текущим engine baseline
+подтвердило одинаковые исходные алгоритмы и declarations за пределами записанных
+Qt include/diagnostic/service и default-name adaptations.
+
+После расширения LZMA dictionary support его short preview мог успешно
+декодировать нулевой префикс APM как начало большого LZMA output. `OpenStream2`
+ставил каждый положительный probe в начало списка, и несигнатурный LZMA
+опережал APM. Само чтение APM не было повреждено.
+
+Исходный frontal sort теперь сохраняет сигнатурные candidates впереди
+несигнатурных positive probes; последние остаются перед generic fallback opens.
+Внутри каждой группы сохраняется прежний порядок. Explicit type, main-extension
+handling, parser scan, открытия/ошибки/отмена и handlers/decoders не меняются.
+Не добавлены APM-specific исключение в LZMA, новый parser или IsArc result.
+Настоящие LZMA потоки с нестандартными dictionary/properties продолжают
+автоматически распознаваться и извлекаться.
+
+Те же `OpenArchive.cpp`/`.h` включены в SDK runtime overlays из manifest:
+Qt и оба console engines используют одну authoritative реализацию выбора.
+`QT_CORE_LIB` выбирает только include owners и перевод диагностик; native path
+переиспользует original includes/messages. Optional Qt service остаётся null
+в native callers. Header dependencies пересобирают потребителей изменённого
+внутреннего `COpenOptions`; экспортируемые archive/codec ABI не меняются.
+
+Существующая APM matrix обнаруживает исходную ошибку без source-text checks;
+дополнительная automatic extraction сравнивает точные partition bytes.
+macOS: 11 focused suites (`apm`, `apm_stream`, `lzma`, `lzma_stream`, `gpt`,
+`gpt_stream`, `archive_opening`, `agent_opening`, `native_folder_opening`,
+`upstream_baseline`, `runtime_cache`) PASS, 7.93 s. Из-за общего candidate sort
+дополнительно `tar`, `pe`, `elf`, `base64`, `zstd`, `xz`, `gzip`, `cpio`,
+`native_archive_opening`, `codec_probe` PASS, 6.37 s. Сохранены incremental
+builds и compiler cache. Linux/Windows, slow и full gate не запускались;
+OS services и presentation не менялись.
+Финальный macOS application target собран с тем же runtime.

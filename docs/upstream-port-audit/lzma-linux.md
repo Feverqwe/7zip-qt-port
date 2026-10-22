@@ -121,3 +121,12 @@ properties требуют bounded data proof, но при declared size 0 FINISH
 такого empty candidate теперь требует EOS status через исходный LzmaDecode.
 Explicit Open сохраняет FINISH_ANY, decoder и форматное чтение не сужаются.
 Оба engines проходят GPT discovery и прежние LZMA positive/error/ABI suites.
+
+### Follow-up: APM и приоритет сигнатуры
+
+Повторная integration проверка обнаружила положительный LZMA preview на нулевом
+префиксе некоторых APM maps. [Исправление общего frontal sort](apm-linux.md#сигнатурные-и-несигнатурные-кандидаты)
+сохраняет пригодный LZMA preview как fallback после сигнатурных candidates.
+LZMA parser/decoder и поддерживаемые headers не сужаются. Automatic APM
+listing/extraction и прежние LZMA auto-discovery/bytes/error/ABI suites прошли
+на обоих engines в macOS validation.

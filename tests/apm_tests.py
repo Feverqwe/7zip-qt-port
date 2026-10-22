@@ -21,13 +21,14 @@ class ApmTests(unittest.TestCase):
                      "7z.dll" if sys.platform == "win32" else "7z.so"):
             shutil.copy2(RUNTIME / name, cls.runtime / name)
 
-    def run_image(self, engine, image, listing=False):
+    def run_image(self, engine, image, listing=False, forced=True):
         with tempfile.TemporaryDirectory(prefix="sevenzip-apm-") as temporary:
             path = Path(temporary) / "карта 空.bin"
             path.write_bytes(image)
             args = [str(self.runtime / (engine + SUFFIX)), "l" if listing else "x",
                     "-sccUTF-8", "-bsp0"]
-            args += ["-t*", "-slt"] if listing else ["-tAPM", "-so", "-bso0", "-bse2"]
+            args += (["-t*", "-slt"] if listing else
+                     ["-tAPM" if forced else "-t*", "-so", "-bso0", "-bse2"])
             args += ["--", str(path)]
             if not listing:
                 args += ["data.hfs"]
@@ -51,6 +52,14 @@ class ApmTests(unittest.TestCase):
                         self.assertIn(b"Path = data.hfs", result.stdout)
                     else:
                         self.assertNotIn(b"Path = data.hfs", result.stdout)
+
+    def test_automatic_partition_extraction(self):
+        image, expected, _ = volume("block-512")
+        for engine in ("7z", "7zz"):
+            with self.subTest(engine=engine):
+                result = self.run_image(engine, image, forced=False)
+                self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+                self.assertEqual(result.stdout, expected)
 
     def test_invalid_maps_fail_normally(self):
         for kind in BAD:

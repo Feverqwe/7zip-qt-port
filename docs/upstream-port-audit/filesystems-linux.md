@@ -340,9 +340,9 @@ kernel/platform services и отдельный AIX volume format не подме
 [Сверка APM](apm-linux.md): block sizes до 32768, reserved fields, first-entry
 count, end signature и безопасные partition spans; оба engine и backend consumer.
 Сохранён отдельный legacy installation-image mode 7-Zip. Исторические native и
-focused проверки трёх ОС приведены в linked audit. Повторная проверка обнаружила
-прежний APM/LZMA automatic-routing regression; эта integration часть остаётся
-открытой.
+focused проверки трёх ОС приведены в linked audit. Обнаруженный при повторной
+проверке APM/LZMA automatic-routing regression исправлен общим приоритетом
+сигнатурных candidates; final macOS CLI/native checks описаны там же.
 
 ### GPT: tables, geometry и partition streams
 

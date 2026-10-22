@@ -44,6 +44,8 @@
     "src/CPP/7zip/Compress/LzmaDecoder.cpp",
     "src/CPP/7zip/Compress/XzDecoder.cpp",
     "src/CPP/7zip/Compress/ZstdDecoder.cpp",
+    "src/CPP/7zip/UI/Common/OpenArchive.cpp",
+    "src/CPP/7zip/UI/Common/OpenArchive.h",
     "src/CPP/Common/Wildcard.cpp",
     "src/CPP/Common/Wildcard.h"
   ],
