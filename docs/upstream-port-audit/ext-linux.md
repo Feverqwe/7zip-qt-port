@@ -21,8 +21,10 @@ file returned no bytes, although its inode/data and record were intact. The new
 CLI regression failed on those missing bytes. The GPL parser now applies the
 original Linux `ext4_filetype_table`/`get_dtype` implementation from its original
 `fs/ext4/ext4.h` path; the independent compatibility helper was replaced. Linux
-dir_emit ABI constants remain in the existing host-services bridge, including on
-Windows. The original `include/linux/fs_dirent.h` dependency is added to the
+dir_emit ABI constants now come from the shared adapted
+`include/linux/fs_dirent.h` header through the host-services bridge, including on
+Windows; its [EROFS integration](erofs-linux.md#original-linux-dirent-conversion-and-c-reader-callback-abi--2026-10-22)
+retains the same ext helper behavior. The original header dependency is added to the
 reference hashes; no new C decoder or format unit is introduced.
 
 Unknown/disabled hints no longer prevent reading validated inode data or later

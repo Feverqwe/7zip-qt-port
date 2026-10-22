@@ -44,6 +44,7 @@ void erofs_close_file(struct erofs_file *);
 void erofs_get_file_info(const struct erofs_file *, struct erofs_item *);
 int erofs_pread_file(struct erofs_file *, uint64_t, void *, size_t, size_t *);
 // Callback: 0 to continue; nonzero to stop. Its result is returned to the caller.
+// The last argument uses Linux DT_* dirent types; names are borrowed during emit.
 int erofs_read_directory(struct erofs_file *, void *,
                          int (*emit)(void *, const char *, size_t, uint64_t, unsigned int));
 // Values use Linux public namespaces and VFS ACL serialization. Borrowed during emit.

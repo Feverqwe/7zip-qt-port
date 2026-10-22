@@ -401,6 +401,7 @@
     "include/linux/blk-crypto.h",
     "include/linux/count_zeros.h",
     "include/linux/fs.h",
+    "include/linux/fs_dirent.h",
     "include/linux/fsverity.h",
     "include/linux/mpi.h",
     "include/linux/namei.h",

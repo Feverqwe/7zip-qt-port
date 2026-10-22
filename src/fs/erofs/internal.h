@@ -104,6 +104,7 @@ typedef u64 erofs_nid_t, erofs_off_t, erofs_blk_t;
 #define S_ISDIR(mode) (((mode) & S_IFMT) == S_IFDIR)
 #define S_ISREG(mode) (((mode) & S_IFMT) == S_IFREG)
 #define S_ISLNK(mode) (((mode) & S_IFMT) == S_IFLNK)
+#include "../../include/linux/fs_dirent.h"
 #define fallthrough ((void)0)
 #if defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_BIG_ENDIAN__
 #define le16_to_cpu(x) __builtin_bswap16(x)
@@ -257,7 +258,6 @@ static inline void inode_set_mtime(struct inode *inode, s64 sec, u32 nsec) {
 #define new_decode_dev(x) (x)
 #define inode_set_cached_link(inode, link, size) ((inode)->i_link = (link))
 #define in_range32(v, start, len) ((u32)((v) - (start)) < (u32)(len))
-#define fs_ftype_to_dtype(x) (x)
 #define erofs_nid_to_ino64(sbi, nid) (nid)
 struct dir_context {
     u64 pos;

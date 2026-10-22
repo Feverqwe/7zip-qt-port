@@ -37,6 +37,23 @@ class ErofsTests(unittest.TestCase):
                       (error.stdout or b"").decode(errors="replace") +
                       (error.stderr or b"").decode(errors="replace"))
 
+    def test_unknown_directory_type_hint_keeps_inode_data_readable(self):
+        original = zlib.decompress((FIXTURES / "plain.erofs.zlib").read_bytes())
+        location = mutation_locations(original)["entry"]
+        for hint in (0, 255):
+            with self.subTest(hint=hint), tempfile.TemporaryDirectory(dir=self.runtime) as directory:
+                data = bytearray(original)
+                compat = struct.unpack_from("<I", data, 1032)[0]
+                struct.pack_into("<I", data, 1032, compat & ~1)
+                data[location + 10] = hint
+                path = Path(directory) / "unknown hint 空.erofs"
+                path.write_bytes(data)
+                result = self.run_engine([str(self.runtime / ("7z" + SUFFIX)), "x", "-tEROFS",
+                                          "-so", "-bso0", "-bse2", "--", str(path), PAYLOAD_NAME])
+                self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                self.assertEqual(result.stdout, FILES[PAYLOAD_NAME])
+                self.assertEqual(path.read_bytes(), data)
+
     def test_malformed_metadata_and_data_are_rejected(self):
         original = zlib.decompress((FIXTURES / "plain.erofs.zlib").read_bytes())
         locations = mutation_locations(original)

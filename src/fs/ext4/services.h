@@ -39,15 +39,7 @@ loff_t ext4_max_bitmap_size(int, int);
 #define EXT4_MIN_INLINE_DATA_SIZE 60
 #define EXT4_INLINE_DOTDOT_SIZE 4
 #define EXT4_XATTR_SYSTEM_DATA "data"
-/* Linux dir_emit ABI values, also used on hosts without POSIX dirent.h. */
-#define DT_UNKNOWN 0
-#define DT_FIFO 1
-#define DT_CHR 2
-#define DT_DIR 4
-#define DT_BLK 6
-#define DT_REG 8
-#define DT_LNK 10
-#define DT_SOCK 12
+#include "../../include/linux/fs_dirent.h"
 #define i_checksum_lo osd2.linux2.l_i_checksum_lo
 #define i_blocks_high osd2.linux2.l_i_blocks_high
 typedef u32 ext4_lblk_t;

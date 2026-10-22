@@ -1,7 +1,7 @@
 # Linux C read-side code is isolated from the core engine's codec licenses.
 add_library(sevenzip_erofs_core STATIC
     src/erofsreader.c src/fs/erofs/data.c src/fs/erofs/dir.c
-    src/fs/erofs/xattr.c src/fs/posix_acl.c src/lib/xxhash.c
+    src/fs/erofs/xattr.c src/fs/posix_acl.c src/fs/fs_dirent.c src/lib/xxhash.c
     src/fs/erofs/inode.c src/fs/erofs/super.c src/fs/erofs/zmap.c
     src/fs/erofs/decompressor.c src/fs/erofs/decompressor_lzma.c
     src/fs/erofs/decompressor_deflate.c src/fs/erofs/decompressor_zstd.c
@@ -54,6 +54,14 @@ function(sevenzip_deploy_erofs)
     add_dependencies(sevenzip_desktop sevenzip_erofs_runtime)
 endfunction()
 if(BUILD_TESTING)
+    qt_add_executable(erofs_reader_tests tests/erofs_reader_tests.cpp)
+    set_target_properties(erofs_reader_tests PROPERTIES AUTOMOC ON)
+    target_include_directories(erofs_reader_tests PRIVATE src)
+    target_link_libraries(erofs_reader_tests PRIVATE sevenzip_erofs_core Qt6::Test)
+    target_compile_definitions(erofs_reader_tests PRIVATE
+        "SEVENZIP_EROFS_FIXTURES=\"${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/erofs\"")
+    add_test(NAME erofs_reader COMMAND erofs_reader_tests -silent)
+    set_tests_properties(erofs_reader PROPERTIES TIMEOUT 30)
     qt_add_executable(erofs_module_tests tests/erofs_module_tests.cpp)
     set_target_properties(erofs_module_tests PROPERTIES AUTOMOC ON)
     target_include_directories(erofs_module_tests PRIVATE src third_party/7zip/CPP)

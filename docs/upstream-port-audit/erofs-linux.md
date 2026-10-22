@@ -1,5 +1,50 @@
 # Read-only EROFS from Linux
 
+## Original Linux dirent conversion and C-reader callback ABI — 2026-10-22
+
+Compared complete pinned `fs/fs_dirent.c`, `include/linux/fs_dirent.h`,
+`erofs_fill_dentries`, the archive directory emitter and its Qt consumer. The
+EROFS host adapter replaced `fs_ftype_to_dtype` with identity conversion, so the
+public C enumeration callback received disk `FT_*` values rather than Linux
+`DT_*`. The Qt consumer already ignores that hint and derives folder/file
+classification from the inode's actual mode. The defect affected the C-reader
+callback and source fidelity.
+
+The new direct C-reader regression failed before the fix: a real creator-image
+directory was emitted as type 2 instead of Linux DT_DIR (4). The original full
+`fs/fs_dirent.c` implementation is now compiled as C11 into the existing EROFS
+core, with its tables and all three function bodies unchanged. Only includes and
+kernel symbol-export registration are adapted. The complete original header
+retains its ABI definitions/declarations; portable fixed-width `umode_t` and the
+Linux file-kind mask replace kernel type/stat includes. Original notices remain.
+Repository and revision remain the Linux source below, with full unit/header
+hashes and adapted scope in the existing baseline.
+
+The identity macro is removed and `erofs_fill_dentries` now calls the real
+conversion. ext uses the same adapted ABI header instead of a second constant
+bridge; its original `get_dtype` behavior is retained. Unknown encoded types
+become DT_UNKNOWN while names/inode IDs remain available. The Qt handler still
+uses validated inode mode, with unchanged bounds/path/cycle checks, source
+read-only access and copy behavior. No source-writing or repair service is added.
+
+A focused C API consumer enumerates the native plain image and compares callback
+types with each inode's Linux stat mode, checks unknown/unsupported hints without
+lost names, returns a callback stop error and reads the directory again. CLI
+coverage copies exact Unicode-named file data with missing/unsupported type hints
+and verifies unchanged source bytes. Existing module/backend coverage continues
+to exercise all established creator variants and transport/error boundaries.
+The overall EROFS source-closure audit and parent filesystem goal remain open.
+
+Validation: all eleven focused EROFS/ext/provenance suites passed on macOS,
+Linux and Windows (guest receipt `20261022T132809Z-99cb7f9d`). The incremental
+application build passed. Full-unit comparison confirms that the shared C unit
+differs only in include/export services, while all three original function bodies
+and both tables are retained. All 48 EROFS and 304 ext reference hashes match.
+The expected pre-fix callback-type failure establishes regression sensitivity.
+Existing build trees, runtime snapshots and compiler caches were reused;
+disposable EROFS/ext fixtures were absent after checks. No full gate, slow suite,
+new native mount/device check, UI appearance acceptance or release install was run.
+
 ## Reference and ownership
 
 Part of the [Linux format review](filesystems-linux.md), 2026-10-19.
