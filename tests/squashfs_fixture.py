@@ -221,10 +221,14 @@ def volume(fault="", compressed=False, no_fragments=False, codec="zlib", xattrs=
     xattr_id_table = INVALID
     if xattrs:
         attributes = [(0, b"inline", b"v\0a\0lue"), (2, b"label", b"test-label"), (0, b"empty", b"")]
+        if fault == "xattr-list-large":
+            attributes = [(0, f"{i:04d}".encode() + b"n" * 236, bytes((i % 256,)))
+                          for i in range(280)]
         entries = bytearray()
         for kind, name, value in attributes:
             entries += struct.pack("<HH", kind, len(name)) + name
             entries += struct.pack("<I", len(value)) + value
+        prefix_size = len(entries)
         references = []
         for kind, name in ((1, b"large"), (0, b"duplicate")):
             entries += struct.pack("<HH", kind | 256, len(name)) + name + struct.pack("<I", 8)
@@ -237,8 +241,11 @@ def volume(fault="", compressed=False, no_fragments=False, codec="zlib", xattrs=
         value = bytes(range(251)) * 36
         entries += struct.pack("<I", len(value)) + value
         xattr_start = len(image)
-        for offset in range(0, len(entries), BLOCK):
-            image += metadata(entries[offset:offset + BLOCK])
+        if fault == "xattr-list-tail":
+            image += metadata(entries[:prefix_size]) + struct.pack("<H", 0x8000)
+        else:
+            for offset in range(0, len(entries), BLOCK):
+                image += metadata(entries[offset:offset + BLOCK])
         unused_xattr = None
         if fault == "inode-unused-xattr":
             unused_xattr = (len(image) - xattr_start) << 16

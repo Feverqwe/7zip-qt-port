@@ -54,6 +54,26 @@ class SquashfsTests(unittest.TestCase):
                         self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
                         self.assertEqual(result.stdout, expected)
 
+    def test_damaged_attribute_list_keeps_readable_prefix(self):
+        data, files = volume("xattr-list-tail", xattrs=True)
+        listing = self.run_image("7z", data, "l", streams=True)
+        self.assertEqual(listing.returncode, 0, listing.stderr.decode(errors="replace"))
+        self.assertIn(b"extended attributes are unavailable", listing.stdout)
+        for name, expected in (("alpha:$XATTR.user.inline", b"v\0a\0lue"),
+                               ("alpha:$XATTR.security.label", b"test-label"),
+                               ("hardlink:$XATTR.user.empty", b""), ("alpha", files["alpha"])):
+            with self.subTest(name=name):
+                result = self.run_image("7z", data, "x", name, streams=":$XATTR." in name)
+                self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                self.assertEqual(result.stdout, expected)
+
+    def test_large_attribute_name_list_remains_readable(self):
+        data, _ = volume("xattr-list-large", xattrs=True)
+        name = "alpha:$XATTR.user.0279" + "n" * 236
+        result = self.run_image("7z", data, "x", name, streams=True)
+        self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+        self.assertEqual(result.stdout, bytes((279 % 256,)))
+
     def test_optional_padding_preserves_physical_size_and_file_data(self):
         import struct
         data, files = volume(compressed=True)

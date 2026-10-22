@@ -468,69 +468,62 @@ int sevenzip_squashfs_xattr(struct sevenzip_squashfs_metadata *reader, unsigned 
     return -EOPNOTSUPP;
 }
 
+struct xattr_visitor {
+    struct sevenzip_squashfs_metadata *reader;
+    unsigned index;
+    sevenzip_squashfs_xattr_emit emit;
+    void *context;
+    int incomplete;
+};
+
+static int visit_xattr_name(void *opaque, const char *name) {
+    struct xattr_visitor *visitor = opaque;
+    void *value;
+    int result;
+    int size = sevenzip_squashfs_xattr(visitor->reader, visitor->index, name, NULL, 0);
+    if (size < 0 || size > 65536) {
+        result = size < 0 ? size : -EIO;
+        if (result == -ENOMEM || result == -ECANCELED)
+            return result;
+        visitor->incomplete = result;
+        return 0;
+    }
+    value = malloc(size ? (size_t)size : 1);
+    if (!value)
+        return -ENOMEM;
+    result = sevenzip_squashfs_xattr(visitor->reader, visitor->index, name, value, (size_t)size);
+    if (result == size) {
+        result = visitor->emit ? visitor->emit(visitor->context, name, value, (size_t)size) : 0;
+        free(value);
+        return result;
+    }
+    if (result >= 0)
+        result = -EIO;
+    free(value);
+    if (result == -ENOMEM || result == -ECANCELED)
+        return result;
+    visitor->incomplete = result;
+    return 0;
+}
+
 int sevenzip_squashfs_visit_xattrs(struct sevenzip_squashfs_metadata *reader, unsigned index,
                                    sevenzip_squashfs_xattr_emit emit, void *context) {
-    char *names, *name;
-    int length, result = 0, incomplete = 0;
+    char name[256];
+    struct inode inode;
+    struct dentry dentry = {&inode};
+    struct xattr_visitor visitor = {reader, index, emit, context, 0};
+    int result;
     if (index == SQUASHFS_INVALID_XATTR)
         return 0;
     if (reader->unavailable & SEVENZIP_SQUASHFS_XATTR_UNAVAILABLE)
         return -EIO;
     if (!reader->msblk.xattr_id_table)
         return 0;
-    length = sevenzip_squashfs_xattrs(reader, index, NULL, 0);
-    if (length < 0)
-        return length;
-    if (length > 65536)
-        return -EIO;
-    names = malloc((size_t)length + 1);
-    if (!names)
-        return -ENOMEM;
-    result = sevenzip_squashfs_xattrs(reader, index, names, (size_t)length);
-    if (result != length) {
-        free(names);
-        return result < 0 ? result : -EIO;
-    }
-    names[length] = 0;
-    for (name = names; name < names + length; name += strlen(name) + 1) {
-        void *value;
-        int size;
-        if (strlen(name) > 255) {
-            result = -EIO;
-            break;
-        }
-        size = sevenzip_squashfs_xattr(reader, index, name, NULL, 0);
-        if (size < 0 || size > 65536) {
-            result = size < 0 ? size : -EIO;
-            if (result == -ENOMEM || result == -ECANCELED)
-                break;
-            incomplete = result;
-            result = 0;
-            continue;
-        }
-        value = malloc(size ? (size_t)size : 1);
-        if (!value) {
-            result = -ENOMEM;
-            break;
-        }
-        result = sevenzip_squashfs_xattr(reader, index, name, value, (size_t)size);
-        if (result == size) {
-            result = emit ? emit(context, name, value, (size_t)size) : 0;
-            free(value);
-            if (result)
-                break;
-            continue;
-        }
-        if (result >= 0)
-            result = -EIO;
-        free(value);
-        if (result == -ENOMEM || result == -ECANCELED)
-            break;
-        incomplete = result;
-        result = 0;
-    }
-    free(names);
-    return result ? result : incomplete;
+    result = xattr_inode(reader, index, &inode);
+    if (result < 0)
+        return result;
+    result = (int)squashfs_listxattr_visit(&dentry, name, sizeof(name), visit_xattr_name, &visitor);
+    return result ? result : visitor.incomplete;
 }
 int sevenzip_squashfs_validate_xattrs(struct sevenzip_squashfs_metadata *reader, unsigned index) {
     return sevenzip_squashfs_visit_xattrs(reader, index, NULL, NULL);

@@ -18,8 +18,8 @@
 
 static const struct xattr_handler *squashfs_xattr_handler(int);
 
-ssize_t squashfs_listxattr(struct dentry *d, char *buffer,
-	size_t buffer_size)
+ssize_t squashfs_listxattr_visit(struct dentry *d, char *buffer,
+	size_t buffer_size, int (*emit)(void *, const char *), void *context)
 {
 	struct inode *inode = d_inode(d);
 	struct super_block *sb = inode->i_sb;
@@ -29,6 +29,7 @@ ssize_t squashfs_listxattr(struct dentry *d, char *buffer,
 	int offset = SQUASHFS_XATTR_OFFSET(squashfs_i(inode)->xattr);
 	int count = squashfs_i(inode)->xattr_count;
 	size_t rest = buffer_size;
+	char *name_buffer = buffer;
 	int err;
 
 	/* check that the file system has xattrs */
@@ -41,6 +42,12 @@ ssize_t squashfs_listxattr(struct dentry *d, char *buffer,
 		struct squashfs_xattr_val val;
 		const struct xattr_handler *handler;
 		int name_size;
+		bool named = false;
+
+		if (emit) {
+			buffer = name_buffer;
+			rest = buffer_size;
+		}
 
 		err = squashfs_read_metadata(sb, &entry, &start, &offset,
 							sizeof(entry));
@@ -70,6 +77,7 @@ ssize_t squashfs_listxattr(struct dentry *d, char *buffer,
 				buffer += name_size + 1;
 			}
 			rest -= prefix_size + name_size + 1;
+			named = true;
 		} else  {
 			/* no handler or insuffficient privileges, so skip */
 			err = squashfs_read_metadata(sb, NULL, &start,
@@ -89,11 +97,22 @@ ssize_t squashfs_listxattr(struct dentry *d, char *buffer,
 						le32_to_cpu(val.vsize));
 		if (err < 0)
 			goto failed;
+		if (emit && named) {
+			err = emit(context, name_buffer);
+			if (err)
+				goto failed;
+		}
 	}
-	err = buffer_size - rest;
+	err = emit ? 0 : buffer_size - rest;
 
 failed:
 	return err;
+}
+
+ssize_t squashfs_listxattr(struct dentry *d, char *buffer,
+	size_t buffer_size)
+{
+	return squashfs_listxattr_visit(d, buffer, buffer_size, NULL, NULL);
 }
 
 

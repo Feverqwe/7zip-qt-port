@@ -264,6 +264,66 @@ class SquashfsStreamTests final : public QObject {
     }
   private slots:
     void initTestCase() { createArchive(); }
+    void attributeEnumerationIsNotLimitedByAggregateNameBuffer() {
+        loadFixture("zlib", true, "xattr-list-large");
+        CMyComPtr<IInStream> source = new Input(bytes_);
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
+        NWindows::NCOM::CPropVariant limitations;
+        QCOMPARE(archive_->GetArchiveProperty(kpidUserDefined, &limitations), S_OK);
+        QCOMPARE(limitations.vt, VARTYPE(VT_EMPTY));
+        for (int number : {0, 266, 279}) {
+            const QString name = QString("alpha:$XATTR.user.%1").arg(number, 4, 10, QChar('0')) +
+                                 QString(236, QChar('n'));
+            auto value = stream(name);
+            QVERIFY(value);
+            char byte = 0;
+            UInt32 count = 0;
+            QCOMPARE(value->Read(&byte, 1, &count), S_OK);
+            QCOMPARE(count, UInt32(1));
+            QCOMPARE(quint8(byte), quint8(number % 256));
+        }
+    }
+    void damagedAttributeListPreservesCompletePrefix() {
+        loadFixture("zlib", true, "xattr-list-tail");
+        const auto table = qFromLittleEndian<quint64>(bytes_.constData() + 56);
+        const auto start = qFromLittleEndian<quint64>(bytes_.constData() + table);
+        const auto tail =
+            start + 2 + (qFromLittleEndian<quint16>(bytes_.constData() + start) & 0x7fff);
+        for (const HRESULT failure : {E_ABORT, E_OUTOFMEMORY}) {
+            CMyComPtr2<IInStream, Input> failed;
+            failed.SetFromCls(new Input(bytes_));
+            failed->failAt = tail;
+            failed->atFailure = failure;
+            QCOMPARE(archive_->Open(failed, nullptr, nullptr), failure);
+            UInt32 count = 99;
+            QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+            QCOMPARE(count, UInt32(0));
+        }
+        CMyComPtr<IInStream> source = new Input(bytes_);
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
+        auto value = stream("alpha:$XATTR.user.inline");
+        auto label = stream("alpha:$XATTR.security.label");
+        auto empty = stream("hardlink:$XATTR.user.empty");
+        QVERIFY(value && label && empty);
+        QVERIFY(index("alpha:$XATTR.trusted.large") == UInt32(-1));
+        NWindows::NCOM::CPropVariant limitations, error;
+        QCOMPARE(archive_->GetArchiveProperty(kpidUserDefined, &limitations), S_OK);
+        QCOMPARE(limitations.vt, VARTYPE(VT_BSTR));
+        QCOMPARE(archive_->GetProperty(index("alpha"), kpidError, &error), S_OK);
+        QCOMPARE(error.vt, VARTYPE(VT_BSTR));
+        auto file = stream("alpha");
+        QVERIFY(file);
+        check(file, "alpha", 0, 8202);
+        QCOMPARE(archive_->Close(), S_OK);
+        char data[16];
+        UInt32 count = 0;
+        QCOMPARE(value->Read(data, sizeof(data), &count), S_OK);
+        QCOMPARE(QByteArray(data, int(count)), QByteArray("v\0a\0lue", 7));
+        QCOMPARE(label->Read(data, sizeof(data), &count), S_OK);
+        QCOMPARE(QByteArray(data, int(count)), QByteArray("test-label"));
+        QCOMPARE(empty->Read(data, sizeof(data), &count), S_OK);
+        QCOMPARE(count, UInt32(0));
+    }
     void headerDoesNotRequireFirstFileData() {
         loadFixture("zlib");
         CMyComPtr2<IInStream, Input> source;

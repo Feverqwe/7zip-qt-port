@@ -30,4 +30,6 @@ struct xattr_handler {
 };
 extern const struct xattr_handler * const squashfs_xattr_handlers[];
 ssize_t squashfs_listxattr(struct dentry *, char *, size_t);
+ssize_t squashfs_listxattr_visit(struct dentry *, char *, size_t,
+    int (*)(void *, const char *), void *);
 #endif

@@ -5,6 +5,59 @@ Scope входит в [общую проверку форматов](filesystems
 современный LZO и проверки compressor options через отдельный format-модуль.
 Полная актуализация SquashFS read features по Linux ещё продолжается.
 
+## Потоковое перечисление xattr names и доступный префикс, 2026-10-22
+
+Повторно сверены полные Linux `xattr.c` list/get/namespace branches,
+`xattr_id.c`, metadata cursors и SDK consumers owned attributes, errors,
+alternate streams и Close. Baselines: Linux
+`58161ead29e50d70a317ea26b472e0c7508e69da`, SDK
+`9128b80e3a471108678e2b3ec3c985861c8d7b0f`; retrieval links ниже.
+Linux get конкретного xattr не требует успешного list всего inode.
+Archive adapter сначала полностью перечислял имена, поэтому отказ хвоста
+скрывал доступный префикс. Общий 64 KiB buffer limit также скрывал все
+атрибуты исправного inode с большим списком допустимых имён.
+
+В перенесённый исходный list loop добавлен узкий name callback после полного
+чтения entry; namespace selection, metadata fields, skip и error branches
+сохранены в единственном parser. Исходный `squashfs_listxattr` вызывает то же
+тело без callback, сохраняя свой strict list contract. Archive visitor
+использует buffer одного допустимого имени и передаёт каждое завершённое
+имя в прежний get/owned-value flow. Второго xattr parser нет. Reentrant get
+использует тот же cache, а local list cursor сохраняет позицию следующей записи.
+Не требуется общий buffer всего списка или повторный проход для его размера.
+Ограничения отдельного имени/значения, source bounds, namespace handling и
+path validation сохранены. Retained catalog масштабируется с реальными
+атрибутами; временный name buffer не зависит от их суммарного числа.
+
+При локальной ошибке list сохраняются уже прочитанные значения, незавершённое
+имя не публикуется. Ошибки отдельных значений по-прежнему не скрывают другие
+доступные значения. Итоговая ошибка сохраняет прежние диагностику неполноты,
+явное согласие на выбранное открытие и видимый badge. Abort/OOM/callback
+failures остаются фатальными; Close очищает состояние, возвращённые потоки
+владеют bytes. Исправный большой список не помечается неполным только из-за
+VFS syscall list limit. Source access остаётся read-only, repair/replay нет.
+
+ABI regression до исправления воспроизвёл потерю prefix streams при доступных
+данных файла. После исправления проверяются binary/security/empty values,
+hardlink projection, симптомы неполноты, Abort/OOM после доступного префикса
+и retained streams. Другой control имеет более 64 KiB допустимых names:
+значения за прежней границей доступны без ложной диагностики. CLI копирует
+конкретные атрибуты и обычный payload. Native Linux `6.8.0-147-generic`
+подтвердил оба controls (`20261022T044219Z-7ecde162`): list syscall возвращает
+EIO/E2BIG соответственно, но отдельные values и оба файла читаются точно.
+Архивное перечисление доступного префикса является адаптацией полезного
+read-only доступа, а не partial-success контрактом Linux listxattr syscall.
+Synthetic loop,ro,nosuid,nodev,noexec images не изменились, mounts/temp очищены,
+helper удалён. Native kernel и pinned source — отдельные evidence.
+
+Пять backend/source suites на macOS прошли за 8,62 с, существующий UI consumer
+consent/badge для неполных attributes — за 12,56 с вне sandbox. Все шесть
+прошли на Linux/Windows за 10,92/38,35 с
+(`20261022T044315Z-09f5d6c0`). Incremental macOS app build и diff check прошли.
+Full/slow suites, физические устройства и visual parity не проверялись.
+Это завершение перечисления names/доступного префикса, не закрытие общего
+аудита остальных read-side scenarios и форматов.
+
 ## Границы необходимых чтений при открытии, 2026-10-22
 
 Сверены Linux `super.c:squashfs_fill_super` и superblock layout, полные SDK
