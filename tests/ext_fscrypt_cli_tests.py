@@ -10,7 +10,7 @@ import tempfile
 import unittest
 import zlib
 from ext_modern_fixture import crc32c
-from ext_readlink_fixture import encrypted_link_size, encrypted_link_payload_length
+from ext_readlink_fixture import encrypted_link_size, encrypted_link_payload_length, encrypted_link_indirect
 from ext_partial_fixture import encrypted_partial_map, encrypted_indirect_map
 
 
@@ -221,6 +221,30 @@ class FscryptCliTests(unittest.TestCase):
                     self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
                     self.assertEqual(result.stdout,
                                      bytes.fromhex(case["plain_first"]) + bytes(4096) + b"end")
+        finally:
+            self.image_bytes = original
+            self.image.write_bytes(original)
+
+    def test_classic_symlink_transport_preserves_native_ciphertext_decoding(self):
+        original = self.image_bytes
+        case = self.record["cases"][0]
+        try:
+            self.image_bytes = encrypted_link_size(encrypted_link_indirect(original, case), case, 1)
+            self.image.write_bytes(self.image_bytes)
+            for key, expected in ((self.keys, case["symlink_target"]),
+                                  ("fscrypt:none", case["nokey_symlink_target"])):
+                with self.subTest(key_available=key != "fscrypt:none"):
+                    listing = self.invoke("7z", "l", key)
+                    self.assertEqual(listing.returncode, 0, listing.stderr.decode(errors="replace"))
+                    path = case["name"] + "/link"
+                    if key == "fscrypt:none":
+                        chunks = listing.stdout.decode().replace("\r\n", "\n").split("\n\n")
+                        chunk = next(part for part in chunks if "Symbolic Link = " + expected in part)
+                        path = next(line[7:] for line in chunk.splitlines() if line.startswith("Path = "))
+                        self.assertTrue(path.replace("\\", "/").startswith(case["name"] + "/"))
+                    result = self.invoke("7z", "x", key, path)
+                    self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                    self.assertEqual(result.stdout, expected.encode())
         finally:
             self.image_bytes = original
             self.image.write_bytes(original)

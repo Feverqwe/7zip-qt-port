@@ -39,10 +39,33 @@ def encrypted_link_payload_length(image, case, length):
     return bytes(data)
 
 
+def encrypted_link_indirect(image, case):
+    """Keep native ciphertext/context while changing only its storage map."""
+    data = bytearray(image)
+    bs = 1024 << struct.unpack_from("<I", data, 1024 + 24)[0]
+    inode_size = struct.unpack_from("<H", data, 1024 + 88)[0]
+    table = struct.unpack_from("<I", data, bs + 8)[0]
+    inode = table * bs + (case["symlink_inode"] - 1) * inode_size
+    assert struct.unpack_from("<H", data, inode + 42)[0] == 1
+    assert struct.unpack_from("<H", data, inode + 46)[0] == 0
+    assert struct.unpack_from("<I", data, inode + 52)[0] == 0
+    assert struct.unpack_from("<H", data, inode + 56)[0] == 1
+    assert struct.unpack_from("<H", data, inode + 58)[0] == 0
+    physical = struct.unpack_from("<I", data, inode + 60)[0]
+    size = struct.unpack_from("<I", data, inode + 4)[0]
+    flags = struct.unpack_from("<I", data, inode + 32)[0]
+    data[inode + 40:inode + 100] = bytes(60)
+    struct.pack_into("<I", data, inode + 40, physical)
+    struct.pack_into("<I", data, inode + 32, flags & ~(1 << 19))
+    return encrypted_link_size(data, case, size)
+
+
 class ReadlinkVolume(ModernVolume):
     def __init__(self, layout="block-tail"):
         neighbors = layout.startswith("isolated-")
         layout = layout.removeprefix("isolated-")
+        classic = layout.startswith("classic-")
+        layout = layout.removeprefix("classic-")
         super().__init__()
         bs = self.block_size
         self.data[self.root_block * bs + 31] = 7
@@ -69,6 +92,11 @@ class ReadlinkVolume(ModernVolume):
             self.put32(self.file_inode + 32, 1 << 19)
             self.data[self.file_inode + 40:self.file_inode + 100] = self.extent_header(
                 0, [(0, 1, first), (1, 0x8001 if layout == "unwritten-tail" else 1, second)], 4)
+            if classic:
+                self.put32(self.file_inode + 32, 0)
+                self.data[self.file_inode + 40:self.file_inode + 100] = bytes(60)
+                self.put32(self.file_inode + 40, first)
+                self.put32(self.file_inode + 44, second)
             self.expected = payload.split(b"\0", 1)[0][:bs - 1]
             if layout == "large-size":
                 self.put32(self.file_inode + 4, 16 * bs + 3)

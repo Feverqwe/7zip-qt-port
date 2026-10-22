@@ -6,6 +6,58 @@ tree boundaries, directory record boundaries and archive stream consumers.
 The second integrates Linux metadata and inline-data readers. The ext row remains
 open for the remaining read features listed below.
 
+## Complete archive classic-map consumer integration — 2026-10-22
+
+Rechecked the complete pinned `ext4_get_link`, `ext4_encrypted_get_link`,
+`ext4_inode_is_fast_symlink`, indirect lookup and SDK stream factories/callers.
+The remaining GPL consumers of SDK bitmap mapping were raw slow-symlink storage
+and direct directory streams without range inventory. Both now use the same
+original Linux lookup as regular files, allocated EA-inode data, directory
+enumeration and journal protection. Fast/inline storage retains its existing
+original inode/inline readers; it does not require a block lookup.
+
+The raw symlink boundary still exposes exactly one initialized filesystem block,
+not the inode's advertised file size. Holes and protected/out-of-image references
+remain errors. Plain target termination and ownership stay in the transferred
+Linux symlink reader. Encrypted raw storage bypasses regular-file data-unit
+decryption and reaches the existing fscrypt target decoder unchanged, including
+its storage-size and ciphertext-length checks and native no-key presentation.
+Public target streams remain owned decoded buffers, so source/handler release
+does not invalidate them. No reader-policy gate, source write, repair or journal
+replay was introduced.
+
+The SDK dense-map class and traversal are now compiled only into the non-GPL
+engine profile. Dead GPL crypto/prefix adapters were removed from that fallback;
+its algorithms and existing local fixes remain. Its seek initializer again has
+the original no-argument form, with the same behavior as its former default-false
+argument. This closes integration of the selected classic mapping service in
+the GPL archive module, not all ext read features or source scope: extent mapping,
+namespace presentation and other remaining audit entries are still open.
+
+Existing ABI error/isolation/retry checks now run for both classic and extent
+symlinks; the nesting/indentation change keeps the prior cases. Additional bounded
+classic variants check first-block termination, embedded NUL, larger advertised
+size, unread second storage block and retained target ownership. A public raw
+directory stream returns exact noncontiguous physical-block contents, supports
+backward seeks after Close and never reads the intervening unused block. A
+checksum-correct bitmap variant of a native encrypted symlink, with inode size
+reduced to one byte, returns exact keyed plaintext and the native no-key target.
+Only its map/inode checksum changes; ciphertext and encryption context remain
+those of the existing fixture. Existing CLI coverage retains mandatory source
+invariance, EA/cluster fast-link classification and protected metadata rejection.
+
+Validation: macOS passed the eight ext/code/provenance suites and incremental
+application build. Linux and Windows passed all eight in
+`20261022T122951Z-83fa54ba`, including both prepared SDK engine profiles and
+the GPL module. Review strengthened the new crypto regression to select the
+converted inode explicitly: native cases share a plaintext target. The final
+test passed again on macOS and both guests in `20261022T123203Z-a6bf1e93`.
+All 303 pinned Linux reference hashes match; no new Linux unit or dependency
+was added, and the transferred mapper/symlink bodies were not changed.
+Existing incremental runtime/build/compiler caches were reused. No full gate,
+slow suite, new kernel-mount/device check, UI appearance acceptance or release
+install was performed. Overall ext and filesystem source closure remains open.
+
 ## Linux indirect lookup for directory ranges — 2026-10-22
 
 Compared the pinned Linux indirect lookup, its buffer validation/release branches

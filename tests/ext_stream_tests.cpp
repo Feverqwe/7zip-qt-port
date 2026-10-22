@@ -819,8 +819,15 @@ class ExtStreamTests final : public QObject {
         QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
         QVERIFY(fileIndex() != UInt32(-1));
     }
+    void symlinkReadsAreBoundedAndOwned_data() {
+        QTest::addColumn<QString>("layout");
+        for (const char *layout :
+             {"block-tail", "classic-block-tail", "classic-block-nul", "classic-large-size"})
+            QTest::newRow(layout) << QStringLiteral("readlink-") + QString::fromLatin1(layout);
+    }
     void symlinkReadsAreBoundedAndOwned() {
-        const auto record = bundle("readlink-block-tail");
+        QFETCH(QString, layout);
+        const auto record = bundle(layout);
         CMyComPtr2<IInStream, Input> input;
         input.SetFromCls(new Input(image(record)));
         input->failAt = UInt64(record["second_data_offset"].toDouble());
@@ -840,7 +847,9 @@ class ExtStreamTests final : public QObject {
         UInt32 read = 0;
         QCOMPARE(target->Read(actual.data(), UInt32(actual.size()), &read), S_OK);
         QCOMPARE(read, UInt32(actual.size()));
-        QCOMPARE(actual, QByteArray(actual.size(), 't'));
+        const QByteArray expected =
+            layout.endsWith("block-nul") ? QByteArray("visible") : QByteArray(actual.size(), 't');
+        QCOMPARE(actual, expected);
         createArchive();
     }
     void symlinkFailuresAreLocalAndRetryable_data() {
@@ -861,65 +870,75 @@ class ExtStreamTests final : public QObject {
         QFETCH(bool, seek);
         QFETCH(bool, partial);
         QFETCH(int, failure);
-        const auto record = bundle("readlink-isolated-block-tail");
-        CMyComPtr2<IInStream, Input> input;
-        input.SetFromCls(new Input(image(record)));
-        const UInt64 offset = UInt64(record["first_data_offset"].toDouble());
-        QVERIFY(offset > 0);
-        input->failAt = seek ? UINT64_MAX : offset + (partial ? 123 : 0);
-        input->seekFailAt = seek ? offset : UINT64_MAX;
-        input->partialFailure = partial;
-        input->atResult = HRESULT(failure);
-        const bool fatal = HRESULT(failure) == E_ABORT || HRESULT(failure) == E_OUTOFMEMORY;
-        QCOMPARE(archive_->Open(input, nullptr, nullptr), fatal ? HRESULT(failure) : S_OK);
-        QVERIFY(input->faults > 0);
-        if (fatal) {
-            UInt32 count = 99;
-            QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
-            QCOMPARE(count, UInt32(0));
-            return;
+        for (const char *layout :
+             {"readlink-isolated-block-tail", "readlink-isolated-classic-block-tail"}) {
+            const auto record = bundle(layout);
+            CMyComPtr2<IInStream, Input> input;
+            input.SetFromCls(new Input(image(record)));
+            const UInt64 offset = UInt64(record["first_data_offset"].toDouble());
+            QVERIFY(offset > 0);
+            input->failAt = seek ? UINT64_MAX : offset + (partial ? 123 : 0);
+            input->seekFailAt = seek ? offset : UINT64_MAX;
+            input->partialFailure = partial;
+            input->atResult = HRESULT(failure);
+            const bool fatal = HRESULT(failure) == E_ABORT || HRESULT(failure) == E_OUTOFMEMORY;
+            QCOMPARE(archive_->Open(input, nullptr, nullptr), fatal ? HRESULT(failure) : S_OK);
+            QVERIFY(input->faults > 0);
+            if (fatal) {
+                UInt32 count = 99;
+                QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+                QCOMPARE(count, UInt32(0));
+                continue;
+            }
+            QVERIFY(!readLimitations().isEmpty());
+            const UInt32 link = fileIndex(), healthy = fileIndex("healthy.bin"),
+                         later = fileIndex("later-link");
+            QVERIFY(link != UInt32(-1) && healthy != UInt32(-1) && later != UInt32(-1));
+            NWindows::NCOM::CPropVariant value;
+            QCOMPARE(archive_->GetProperty(link, kpidSymLink, &value), S_OK);
+            QCOMPARE(value.vt, VARTYPE(VT_EMPTY));
+            QCOMPARE(archive_->GetProperty(link, kpidSize, &value), S_OK);
+            QCOMPARE(value.vt, VARTYPE(VT_EMPTY));
+            QCOMPARE(archive_->GetProperty(link, kpidError, &value), S_OK);
+            QCOMPARE(value.vt, VARTYPE(VT_BSTR));
+            CMyComPtr<IInArchiveGetStream> provider;
+            QCOMPARE(archive_->QueryInterface(IID_IInArchiveGetStream,
+                                              reinterpret_cast<void **>(&provider)),
+                     S_OK);
+            CMyComPtr<ISequentialInStream> target;
+            QCOMPARE(provider->GetStream(link, &target), HRESULT(failure));
+            QVERIFY(!target);
+            const UInt32 indices[] = {link, healthy, later};
+            CMyComPtr2<IArchiveExtractCallback, Extract> extract;
+            extract.SetFromCls(new Extract);
+            extract->separateFiles = true;
+            QCOMPARE(archive_->Extract(indices, 3, false, extract), S_OK);
+            QCOMPARE(extract->results,
+                     (QVector<Int32>{NArchive::NExtract::NOperationResult::kDataError,
+                                     NArchive::NExtract::NOperationResult::kOK,
+                                     NArchive::NExtract::NOperationResult::kOK}));
+            QCOMPARE(extract->files,
+                     (QVector<QByteArray>{
+                         QByteArray(), QByteArray::fromHex(record["healthy"].toString().toLatin1()),
+                         QByteArray("healthy.bin")}));
+            input->failAt = input->seekFailAt = UINT64_MAX;
+            extract.SetFromCls(new Extract);
+            QCOMPARE(archive_->Extract(&link, 1, false, extract), S_OK);
+            QCOMPARE(extract->result, Int32(NArchive::NExtract::NOperationResult::kOK));
+            QCOMPARE(extract->output->bytes, QByteArray(record["file_size"].toInt(), 't'));
+            QCOMPARE(input->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
+            QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+            QVERIFY(readLimitations().isEmpty());
         }
-        QVERIFY(!readLimitations().isEmpty());
-        const UInt32 link = fileIndex(), healthy = fileIndex("healthy.bin"),
-                     later = fileIndex("later-link");
-        QVERIFY(link != UInt32(-1) && healthy != UInt32(-1) && later != UInt32(-1));
-        NWindows::NCOM::CPropVariant value;
-        QCOMPARE(archive_->GetProperty(link, kpidSymLink, &value), S_OK);
-        QCOMPARE(value.vt, VARTYPE(VT_EMPTY));
-        QCOMPARE(archive_->GetProperty(link, kpidSize, &value), S_OK);
-        QCOMPARE(value.vt, VARTYPE(VT_EMPTY));
-        QCOMPARE(archive_->GetProperty(link, kpidError, &value), S_OK);
-        QCOMPARE(value.vt, VARTYPE(VT_BSTR));
-        CMyComPtr<IInArchiveGetStream> provider;
-        QCOMPARE(
-            archive_->QueryInterface(IID_IInArchiveGetStream, reinterpret_cast<void **>(&provider)),
-            S_OK);
-        CMyComPtr<ISequentialInStream> target;
-        QCOMPARE(provider->GetStream(link, &target), HRESULT(failure));
-        QVERIFY(!target);
-        const UInt32 indices[] = {link, healthy, later};
-        CMyComPtr2<IArchiveExtractCallback, Extract> extract;
-        extract.SetFromCls(new Extract);
-        extract->separateFiles = true;
-        QCOMPARE(archive_->Extract(indices, 3, false, extract), S_OK);
-        QCOMPARE(extract->results, (QVector<Int32>{NArchive::NExtract::NOperationResult::kDataError,
-                                                   NArchive::NExtract::NOperationResult::kOK,
-                                                   NArchive::NExtract::NOperationResult::kOK}));
-        QCOMPARE(extract->files,
-                 (QVector<QByteArray>{QByteArray(),
-                                      QByteArray::fromHex(record["healthy"].toString().toLatin1()),
-                                      QByteArray("healthy.bin")}));
-        input->failAt = input->seekFailAt = UINT64_MAX;
-        extract.SetFromCls(new Extract);
-        QCOMPARE(archive_->Extract(&link, 1, false, extract), S_OK);
-        QCOMPARE(extract->result, Int32(NArchive::NExtract::NOperationResult::kOK));
-        QCOMPARE(extract->output->bytes, QByteArray(record["file_size"].toInt(), 't'));
-        QCOMPARE(input->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
-        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
-        QVERIFY(readLimitations().isEmpty());
+    }
+    void symlinkCallbacksRemainFatal_data() {
+        QTest::addColumn<QString>("layout");
+        QTest::newRow("extents") << QString("readlink-isolated-block-tail");
+        QTest::newRow("classic") << QString("readlink-isolated-classic-block-tail");
     }
     void symlinkCallbacksRemainFatal() {
-        const auto record = bundle("readlink-isolated-block-tail");
+        QFETCH(QString, layout);
+        const auto record = bundle(layout);
         CMyComPtr2<IInStream, Input> input;
         input.SetFromCls(new Input(image(record)));
         input->notifyAt = UInt64(record["first_data_offset"].toDouble());
@@ -1145,6 +1164,44 @@ class ExtStreamTests final : public QObject {
         QVERIFY(readLimitations().isEmpty());
         QVERIFY(fileIndex() != UInt32(-1));
         QVERIFY(fileIndex("after-hole.bin") != UInt32(-1));
+    }
+    void classicDirectoryRawStreamsKeepMappedBlockBoundaries() {
+        const auto record = bundle("directory-namespace");
+        const auto bytes = image(record);
+        const auto first = record["directory_head_offset"].toInteger();
+        const auto last = record["directory_tail_offset"].toInteger();
+        const auto blockSize = record["inode_page_size"].toInteger();
+        const QByteArray expected = bytes.mid(qsizetype(first), qsizetype(blockSize)) +
+                                    bytes.mid(qsizetype(last), qsizetype(blockSize));
+        CMyComPtr2<IInStream, Input> input;
+        input.SetFromCls(new Input(bytes));
+        input->failAt = UInt64(first + blockSize);
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        CMyComPtr<IInArchiveGetStream> provider;
+        QCOMPARE(
+            archive_->QueryInterface(IID_IInArchiveGetStream, reinterpret_cast<void **>(&provider)),
+            S_OK);
+        const UInt32 directory = fileIndex("DIRECTORY");
+        QVERIFY(directory != UInt32(-1));
+        CMyComPtr<ISequentialInStream> sequential;
+        QCOMPARE(provider->GetStream(directory, &sequential), S_OK);
+        CMyComPtr<IInStream> stream;
+        QCOMPARE(sequential->QueryInterface(IID_IInStream, reinterpret_cast<void **>(&stream)),
+                 S_OK);
+        QCOMPARE(archive_->Close(), S_OK);
+        for (const auto offset : {blockSize, qint64(0)}) {
+            QCOMPARE(stream->Seek(offset, STREAM_SEEK_SET, nullptr), S_OK);
+            QByteArray actual;
+            while (actual.size() < expected.size() - offset) {
+                char data[257];
+                UInt32 done = 0;
+                QCOMPARE(stream->Read(data, UInt32(sizeof(data)), &done), S_OK);
+                QVERIFY(done > 0);
+                actual.append(data, done);
+            }
+            QCOMPARE(actual, expected.mid(qsizetype(offset)));
+        }
+        QCOMPARE(input->faults, 0U);
     }
     void directoryFaultsKeepOtherBlocksAndFatalCallbacks_data() {
         QTest::addColumn<bool>("head");

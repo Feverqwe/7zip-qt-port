@@ -986,10 +986,12 @@ Z7_CLASS_IMP_CHandler_IInArchive_2(
   HRESULT ReadDir(unsigned iNodeDir, HRESULT &callbackResult);
   int FindTargetItem_for_SymLink(unsigned dirNode, const AString &path) const;
 
+#ifndef SEVENZIP_LINUX_EXT
   HRESULT FillFileBlocks2(UInt32 block, unsigned level, unsigned numBlocks, CRecordVector<UInt32> &blocks,
       IInStream *source);
   HRESULT FillFileBlocks(const Byte *p, unsigned numBlocks, CRecordVector<UInt32> &blocks,
       IInStream *source = NULL);
+#endif
   HRESULT FillExtents(const Byte *p, size_t size, CRecordVector<CExtent> &extents, int parentDepth,
       UInt32 firstBlock = 0, UInt64 blockLimit = (UInt64)1 << 32, IInStream *source = NULL);
 
@@ -3388,6 +3390,7 @@ Z7_COM7F_IMF(CHandler::GetProperty(UInt32 index, PROPID propID, PROPVARIANT *val
     COM_TRY_END
 }
 
+#ifndef SEVENZIP_LINUX_EXT
 Z7_CLASS_IMP_IInStream(CClusterInStream2) UInt64 _virtPos;
 UInt64 _physPos;
 UInt32 _curRem;
@@ -3397,21 +3400,14 @@ unsigned BlockBits;
 UInt64 Size;
 CMyComPtr<IInStream> Stream;
 CRecordVector<UInt32> Vector;
-#ifdef SEVENZIP_LINUX_EXT
-CExtCryptData Crypt;
-#endif
 
 HRESULT SeekToPhys() { return InStream_SeekSet(Stream, _physPos); }
 
-HRESULT InitAndSeek(bool deferSeek = false) {
+HRESULT InitAndSeek() {
     _curRem = 0;
     _virtPos = 0;
     _physPos = 0;
     if (Vector.Size()) {
-        if (deferSeek) {
-            _physPos = ~(UInt64)0;
-            return S_OK;
-        }
         _physPos = (UInt64)Vector[0] << BlockBits;
         return SeekToPhys();
     }
@@ -3450,16 +3446,6 @@ Z7_COM7F_IMF(CClusterInStream2::Read(void *data, UInt32 size, UInt32 *processedS
         }
 
         UInt64 newPos = ((UInt64)phyBlock << BlockBits) + offsetInBlock;
-#ifdef SEVENZIP_LINUX_EXT
-        if (Crypt.Defined()) {
-            UInt32 done = 0;
-            const HRESULT result = Crypt.Read(Stream, _virtPos, newPos, data, size, &done);
-            _virtPos += done;
-            if (processedSize)
-                *processedSize = done;
-            return result;
-        }
-#endif
         if (newPos != _physPos) {
             const HRESULT result = InStream_SeekSet(Stream, newPos);
             if (result != S_OK) {
@@ -3510,6 +3496,8 @@ Z7_COM7F_IMF(CClusterInStream2::Seek(Int64 offset, UInt32 seekOrigin, UInt64 *ne
         *newPosition = (UInt64)offset;
     return S_OK;
 }
+
+#endif
 
 Z7_CLASS_IMP_IInStream(CExtInStream) UInt64 _virtPos;
 UInt64 _phyPos;
@@ -3636,6 +3624,7 @@ Z7_COM7F_IMF(CExtInStream::Seek(Int64 offset, UInt32 seekOrigin, UInt64 *newPosi
     return S_OK;
 }
 
+#ifndef SEVENZIP_LINUX_EXT
 HRESULT CHandler::FillFileBlocks2(UInt32 block, unsigned level, unsigned numBlocks,
                                   CRecordVector<UInt32> &blocks, IInStream *source) {
     const size_t blockSize = (size_t)1 << _h.BlockBits;
@@ -3647,10 +3636,6 @@ HRESULT CHandler::FillFileBlocks2(UInt32 block, unsigned level, unsigned numBloc
     RINOK(SeekAndRead(source, block, tempBuf, blockSize))
 
     const Byte *p = tempBuf;
-#ifdef SEVENZIP_LINUX_EXT
-    if (ext_linux_blockrefs(_volume.get(), _blockInode, p, (UInt32)(blockSize / 4)))
-        return S_FALSE;
-#endif
     size_t num = (size_t)1 << (_h.BlockBits - 2);
 
     for (size_t i = 0; i < num; i++) {
@@ -3695,10 +3680,6 @@ HRESULT CHandler::FillFileBlocks(const Byte *p, unsigned numBlocks, CRecordVecto
         source = _stream;
 
     blocks.ClearAndReserve(numBlocks);
-#ifdef SEVENZIP_LINUX_EXT
-    if (ext_linux_blockrefs(_volume.get(), _blockInode, p, 15))
-        return S_FALSE;
-#endif
 
     for (unsigned i = 0; i < kNumDirectNodeBlocks; i++) {
         if (i == numBlocks)
@@ -3731,6 +3712,8 @@ HRESULT CHandler::FillFileBlocks(const Byte *p, unsigned numBlocks, CRecordVecto
 
     return blocks.Size() == numBlocks ? S_OK : S_FALSE;
 }
+
+#endif
 
 static void AddSkipExtents(CRecordVector<CExtent> &extents, UInt32 virtBlock, UInt32 numBlocks) {
     while (numBlocks != 0) {
@@ -3951,9 +3934,12 @@ HRESULT CHandler::GetStream_Node(unsigned nodeIndex, ISequentialInStream **strea
         *stream = streamTemp.Detach();
         return S_OK;
     }
-    if (node.IsRegular() && !node.IsFlags_EXTENTS() && !allocated) {
+    if (!node.IsFlags_EXTENTS()) {
+        if (allocated)
+            return S_FALSE;
         RINOK(CreateExtIndirectStream(_volume, source, node.Block, node.InodeNumber, _h.BlockBits,
-                                      streamSize, requireAllocated, crypt, &streamTemp))
+                                      streamSize, requireAllocated,
+                                      node.IsRegular() ? crypt : CExtCryptInode{}, &streamTemp))
         *stream = streamTemp.Detach();
         return S_OK;
     }
@@ -4028,7 +4014,9 @@ HRESULT CHandler::GetStream_Node(unsigned nodeIndex, ISequentialInStream **strea
             streamTemp = verified;
         }
 #endif
-    } else {
+    }
+#ifndef SEVENZIP_LINUX_EXT
+    else {
         {
             UInt64 numBlocks2 = numBlocks64;
 
@@ -4069,23 +4057,9 @@ HRESULT CHandler::GetStream_Node(unsigned nodeIndex, ISequentialInStream **strea
         streamSpec->BlockBits = _h.BlockBits;
         streamSpec->Size = streamSize;
         streamSpec->Stream = source;
-#ifdef SEVENZIP_LINUX_EXT
-        if (crypt && node.IsRegular())
-            streamSpec->Crypt.Init(crypt);
-#endif
-
         const HRESULT mappingResult =
             FillFileBlocks(node.Block, numBlocks, streamSpec->Vector, source);
-#ifdef SEVENZIP_LINUX_EXT
-        if (mappingResult == S_FALSE && mappingIncomplete)
-            *mappingIncomplete = true;
-        if (mappingResult == S_FALSE && allowPrefix && !streamSpec->Vector.IsEmpty()) {
-            streamSpec->Size = MyMin(streamSize, (UInt64)streamSpec->Vector.Size() << _h.BlockBits);
-        } else
-#endif
-        {
-            RINOK(mappingResult)
-        }
+        RINOK(mappingResult)
         if (allocated) {
             FOR_VECTOR(i, streamSpec->Vector) {
                 const UInt32 physical = streamSpec->Vector[i];
@@ -4112,12 +4086,9 @@ HRESULT CHandler::GetStream_Node(unsigned nodeIndex, ISequentialInStream **strea
             if (!streamSpec->Vector[i])
                 return S_FALSE;
         }
-#ifdef SEVENZIP_LINUX_EXT
-        RINOK(streamSpec->InitAndSeek(allowPrefix && node.IsDir()))
-#else
         RINOK(streamSpec->InitAndSeek())
-#endif
     }
+#endif
 
     *stream = streamTemp.Detach();
 
