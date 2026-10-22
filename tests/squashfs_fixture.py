@@ -19,6 +19,9 @@ def metadata(data, compressed=False):
 
 
 def volume(fault="", compressed=False, no_fragments=False, codec="zlib", xattrs=False, export=False):
+    cache_alias = fault in ("cache-data-compressed", "cache-fragment-compressed")
+    if cache_alias:
+        compressed = fault == "cache-data-compressed"
     if fault == "special-inodes":
         return special_inode_volume(xattrs)
     if fault.startswith("inode-inventory-"):
@@ -34,6 +37,9 @@ def volume(fault="", compressed=False, no_fragments=False, codec="zlib", xattrs=
         return directory_volume(fault)
     image = bytearray(96)
     first = b"A" * BLOCK + b"first-tail"
+    if fault == "cache-fragment-compressed":
+        # A stored zlib frame occupies exactly one raw filesystem block.
+        first = zlib.compress(b"C" * (BLOCK - 11), 0) + b"first-tail"
     if codec == "lz4":
         image += metadata(struct.pack("<II", 1, 0))
     elif codec == "lzo-rle":
@@ -70,6 +76,13 @@ def volume(fault="", compressed=False, no_fragments=False, codec="zlib", xattrs=
     packed = zlib.compress(fragment) if compressed else fragment
     image += packed
     fragment_size = len(packed) | (0 if compressed else 1 << 24)
+    if cache_alias:
+        fragment_start, size = descriptors[0]
+        fragment_size = size ^ (1 << 24)
+        shared = image[fragment_start:fragment_start + (size & ~(1 << 24))]
+        tail = shared if compressed else zlib.decompress(shared)
+        first = first[:BLOCK] + tail[:10]
+        second = second[:BLOCK * 2] + tail[10:21]
     alternate_fragment = None
     if fault == "fragment-remap":
         alternate_fragment = len(image)

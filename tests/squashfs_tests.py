@@ -63,6 +63,16 @@ class SquashfsTests(unittest.TestCase):
                     self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
                     self.assertEqual(result.stdout, expected)
 
+    def test_data_and_fragment_alias_preserve_each_compression_mode(self):
+        for fault in ("cache-data-compressed", "cache-fragment-compressed"):
+            data, files = volume(fault=fault)
+            for engine in ("7z", "7zz"):
+                for name in ("alpha", "данные 空"):
+                    with self.subTest(fault=fault, engine=engine, name=name):
+                        result = self.run_image(engine, data, "x", name)
+                        self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                        self.assertEqual(result.stdout, files[name])
+
     def test_special_device_metadata_and_readable_siblings(self):
         data, files = volume(fault="special-inodes", xattrs=True)
         listing = self.run_image("7z", data, "l", streams=True)

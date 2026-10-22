@@ -5,6 +5,43 @@ Scope входит в [общую проверку форматов](filesystems
 современный LZO и проверки compressor options через отдельный format-модуль.
 Полная актуализация SquashFS read features по Linux ещё продолжается.
 
+## Представление данных в block cache, 2026-10-22
+
+Повторно сверены Linux `block.c:squashfs_read_data`, `file.c` regular/fragment
+read branches, полные `file_cache.c`, `file_direct.c`, cache lookup/fill и
+SDK `ReadBlock`, `ClearCache`, decoder и returned-stream consumers.
+Baselines: Linux `58161ead29e50d70a317ea26b472e0c7508e69da`, SDK
+`9128b80e3a471108678e2b3ec3c985861c8d7b0f`; retrieval links ниже.
+Linux раздельно обслуживает data и fragment caches либо читает data прямо
+в page cache. Portable handler использует общий decoded block cache для
+data и fragments; его исходный ключ включал только source address и длину.
+
+Воспроизведена успешная выдача неверного хвоста файла в обоих engines:
+data block и fragment ссылаются на одинаковый packed range, но задают
+противоположные compression flags. После первого чтения повторно выдавалось
+другое представление тех же source bytes. При смене представления источник также
+ошибочно не получал повторный запрос. Исправлен ключ существующего SDK cache:
+добавлен compression flag, сбрасываемый вместе с cache и публикуемый только
+после успешного чтения/декодирования. Parser, decoder bodies и stream control
+flow сохранены. Изменение применяется и к GPL-модулю, и к standalone engine.
+Одинаковое корректное представление по-прежнему может использовать cache.
+
+ABI regression проверяет оба направления переключения, точный payload,
+E_ABORT и E_FAIL при повторном source read после уже выданного полного блока.
+CLI regression до исправления воспроизвёл четыре неверных результата:
+два направления в каждом engine; после исправления проверяет точные данные
+и независимый Unicode sibling. Native Linux `6.8.0-147-generic` подтвердил
+оба файла в обоих controls (`20261022T040006Z-705eacee`), loop,ro,nosuid,nodev,
+noexec. Source hashes неизменны, mounts/temp удалены, helper удалён после
+проверки. Native kernel и pinned source — отдельные evidence.
+Нового запрета открытия или согласия на эти читаемые данные не введено;
+source access остаётся read-only, ошибки источника не скрываются cache hit.
+
+После incremental пересборки обоих engines пять focused CLI/ABI/C API/source
+suites прошли на macOS/Linux/Windows за 6,13/6,94/36,50 с; runner receipt
+`20261022T040039Z-95b83af0`. Incremental macOS app build прошла.
+Full/slow suites, физические устройства и native UI не проверялись.
+
 ## Метаданные специальных inode, 2026-10-22
 
 Сверены полные Linux `inode.c:squashfs_read_inode` branches для BLKDEV,

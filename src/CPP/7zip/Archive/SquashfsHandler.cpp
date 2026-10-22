@@ -915,6 +915,7 @@ Z7_CLASS_IMP_CHandler_IInArchive_1(
   UInt64 _processedPackSize = 0;
   UInt32 _cachedPackBlockSize;
   UInt32 _cachedUnpackBlockSize;
+  bool _cachedBlockCompressed;
 
   CMyComPtr2_Create<ISequentialInStream, CLimitedSequentialInStream> _limitedInStream;
   CMyComPtr2_Create<ISequentialOutStream, CBufPtrSeqOutStream> _outStream;
@@ -1011,6 +1012,7 @@ Z7_CLASS_IMP_CHandler_IInArchive_1(
     _cachedBlockStartPos = 0;
     _cachedPackBlockSize = 0;
     _cachedUnpackBlockSize = 0;
+    _cachedBlockCompressed = false;
   }
 
   HRESULT Seek2(UInt64 offset)
@@ -3444,7 +3446,8 @@ HRESULT CHandler::ReadBlock(UInt64 blockIndex, Byte *dest, size_t blockSize) {
         return S_OK;
     }
 
-    if (blockOffset != _cachedBlockStartPos || packBlockSize != _cachedPackBlockSize) {
+    if (blockOffset != _cachedBlockStartPos || packBlockSize != _cachedPackBlockSize ||
+        compressed != _cachedBlockCompressed) {
         ClearCache();
         RINOK(Seek2(blockOffset))
         _limitedInStream->Init(packBlockSize);
@@ -3468,6 +3471,7 @@ HRESULT CHandler::ReadBlock(UInt64 blockIndex, Byte *dest, size_t blockSize) {
         }
         _cachedBlockStartPos = blockOffset;
         _cachedPackBlockSize = packBlockSize;
+        _cachedBlockCompressed = compressed;
         _processedPackSize += packBlockSize;
     }
 

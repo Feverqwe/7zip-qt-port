@@ -261,6 +261,33 @@ class SquashfsStreamTests final : public QObject {
     }
   private slots:
     void initTestCase() { createArchive(); }
+    void dataAndFragmentCacheKeepsCompressionMode() {
+        for (const QString &fault :
+             {QString("cache-data-compressed"), QString("cache-fragment-compressed")}) {
+            for (const HRESULT failure : {S_OK, E_ABORT, E_FAIL}) {
+                loadFixture("zlib", false, fault);
+                Input *source = new Input(bytes_);
+                CMyComPtr<IInStream> input = source;
+                QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+                auto data = stream("alpha");
+                QVERIFY(data);
+                check(data, "alpha", 0, 8192);
+                source->failure = failure;
+                char tail[10];
+                UInt32 count = 0;
+                QCOMPARE(data->Read(tail, sizeof(tail), &count), failure);
+                if (failure == S_OK) {
+                    QCOMPARE(count, UInt32(sizeof(tail)));
+                    const auto expected = QByteArray::fromBase64(
+                        record_["files"].toObject()["alpha"].toString().toLatin1());
+                    QCOMPARE(QByteArray(tail, int(count)), expected.mid(8192));
+                } else
+                    QCOMPARE(count, UInt32(0));
+                source->failure = S_OK;
+                QCOMPARE(archive_->Close(), S_OK);
+            }
+        }
+    }
     void specialInodesExposeMetadataWithoutHostDevices() {
         loadFixture("zlib", true, "special-inodes");
         CMyComPtr<IInStream> source = new Input(bytes_);
