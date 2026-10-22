@@ -277,35 +277,74 @@ out:
 }
 
 
-int ext_linux_indirect_map(struct ext_volume *volume, uint32_t ino, const void *refs,
-                           uint32_t logical, uint32_t count,
-                           const struct ext_indirect_services *services,
-                           uint64_t *physical, uint32_t *length)
+int ext_linux_indirect_open(struct ext_volume *volume, uint32_t ino, const void *refs,
+                            const struct ext_indirect_services *services,
+                            struct ext_indirect **output)
 {
-    struct ext_indirect_super owner = { .sb = volume->sb, .services = services };
-    struct inode inode = { .i_sb = &owner.sb, .i_ino = ino };
-    journal_t journal = { .j_inode = &inode };
+    struct ext_indirect *owner;
+    int result;
+    *output = NULL;
+    if (!services || !services->read) return -EINVAL;
+    owner = calloc(1, sizeof(*owner));
+    if (!owner) return -ENOMEM;
+    owner->sb = volume->sb;
+    owner->services = *services;
+    owner->inode.i_sb = &owner->sb;
+    owner->inode.i_ino = ino;
+    owner->sb.info.s_sb = &owner->sb;
+    owner->sb.info.s_journal = NULL;
+    if (ext4_has_feature_journal(&owner->sb) && ino == le32_to_cpu(volume->raw.s_journal_inum)) {
+        owner->journal.j_inode = &owner->inode;
+        owner->sb.info.s_journal = &owner->journal;
+    }
+    memcpy(owner->inode.info.i_data, refs, sizeof(owner->inode.info.i_data));
+    result = ext4_check_blockref(__func__, __LINE__, &owner->inode,
+                                owner->inode.info.i_data, EXT4_N_BLOCKS);
+    if (result) { free(owner); return result; }
+    *output = owner;
+    return 0;
+}
+
+void ext_linux_indirect_close(struct ext_indirect *owner)
+{
+    unsigned i;
+    if (!owner) return;
+    for (i = 0; i < 3; ++i) free(owner->buffers[i]);
+    free(owner);
+}
+
+int ext_linux_indirect_lookup(struct ext_indirect *owner, uint32_t logical, uint32_t count,
+                              uint64_t *physical, uint32_t *length)
+{
     struct ext4_map_blocks map = { .m_lblk = logical, .m_len = count };
     int result;
     *physical = 0;
     *length = 0;
-    if (!services || !services->read || !count || count > INT_MAX ||
+    if (!owner || !count || count > INT_MAX ||
         (u64)logical + count > (1ULL << 32)) return -EINVAL;
-    owner.sb.info.s_sb = &owner.sb;
-    owner.sb.info.s_journal = NULL;
-    if (ext4_has_feature_journal(&owner.sb) && ino == le32_to_cpu(volume->raw.s_journal_inum))
-        owner.sb.info.s_journal = &journal;
-    memcpy(inode.info.i_data, refs, sizeof(inode.info.i_data));
-    result = ext4_check_blockref(__func__, __LINE__, &inode, inode.info.i_data, EXT4_N_BLOCKS);
-    if (!result) result = ext4_ind_map_blocks(NULL, &inode, &map, 0);
+    result = ext4_ind_map_blocks(NULL, &owner->inode, &map, 0);
     if (result < 0) return result;
     if (!map.m_len || map.m_len > count) return -EIO;
     if (map.m_flags & EXT4_MAP_MAPPED) {
         /* Archive source bounds also apply to the journal owner, whose
          * ext4_check_blockref deliberately bypasses reference validation. */
-        if (!ext4_inode_block_valid(&inode, map.m_pblk, map.m_len)) return -EFSCORRUPTED;
+        if (!ext4_inode_block_valid(&owner->inode, map.m_pblk, map.m_len)) return -EFSCORRUPTED;
         *physical = map.m_pblk;
     }
     *length = map.m_len;
     return 0;
+}
+
+int ext_linux_indirect_map(struct ext_volume *volume, uint32_t ino, const void *refs,
+                           uint32_t logical, uint32_t count,
+                           const struct ext_indirect_services *services,
+                           uint64_t *physical, uint32_t *length)
+{
+    struct ext_indirect *owner = NULL;
+    int result = ext_linux_indirect_open(volume, ino, refs, services, &owner);
+    *physical = 0;
+    *length = 0;
+    if (!result) result = ext_linux_indirect_lookup(owner, logical, count, physical, length);
+    ext_linux_indirect_close(owner);
+    return result;
 }

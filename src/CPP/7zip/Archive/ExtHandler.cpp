@@ -926,6 +926,11 @@ Z7_CLASS_IMP_CHandler_IInArchive_2(
   };
   static int ReadIndexBlock(void *, uint32_t, void *, size_t) noexcept;
   static int EmitIndexBlock(void *, uint32_t, const void *, size_t) noexcept;
+  struct CIndirectDirectoryContext {
+    CHandler *Owner;
+    CRecordVector<CExtent> *Ranges;
+  };
+  static HRESULT EmitIndirectDirectoryRange(void *, UInt32, UInt64, UInt32);
   static int EmitXattr(void *, const char *, const void *, size_t) noexcept;
   HRESULT LoadXattrs();
   HRESULT LoadEncryption();
@@ -1224,6 +1229,28 @@ HRESULT CHandler::ParseDir(const Byte *p, size_t size, unsigned iNodeDir, CDirPa
 }
 
 #ifdef SEVENZIP_LINUX_EXT
+HRESULT CHandler::EmitIndirectDirectoryRange(void *opaque, UInt32 logical, UInt64 physical,
+                                             UInt32 count) {
+    auto &context = *static_cast<CIndirectDirectoryContext *>(opaque);
+    if (context.Owner->_openCallback)
+        RINOK(context.Owner->CheckProgress2())
+    if (!physical)
+        return S_OK;
+    while (count) {
+        const UInt16 length = UInt16(MyMin(count, UInt32(1U << 15)));
+        CExtent range;
+        range.VirtBlock = logical;
+        range.Len = length;
+        range.IsInited = true;
+        range.PhyStart = physical;
+        context.Ranges->Add(range);
+        logical += length;
+        physical += length;
+        count -= length;
+    }
+    return S_OK;
+}
+
 int CHandler::ReadIndexBlock(void *opaque, uint32_t block, void *data, size_t size) noexcept {
     auto &context = *static_cast<CDirectoryContext *>(opaque);
     try {
@@ -3912,6 +3939,18 @@ HRESULT CHandler::GetStream_Node(unsigned nodeIndex, ISequentialInStream **strea
         (streamSize + (UInt64)(((UInt32)1 << _h.BlockBits) - 1)) >> _h.BlockBits;
 
 #ifdef SEVENZIP_LINUX_EXT
+    if (node.IsDir() && !node.IsFlags_EXTENTS() && allocated) {
+        CIndirectDirectoryContext context{this, allocated};
+        const HRESULT result = CreateExtIndirectDirectoryStream(
+            _volume, source, node.Block, node.InodeNumber, _h.BlockBits, streamSize, &context,
+            EmitIndirectDirectoryRange, &streamTemp);
+        if (result == S_FALSE && mappingIncomplete)
+            *mappingIncomplete = true;
+        if (result != S_OK && !(result == S_FALSE && allowPrefix && !allocated->IsEmpty()))
+            return result;
+        *stream = streamTemp.Detach();
+        return S_OK;
+    }
     if (node.IsRegular() && !node.IsFlags_EXTENTS() && !allocated) {
         RINOK(CreateExtIndirectStream(_volume, source, node.Block, node.InodeNumber, _h.BlockBits,
                                       streamSize, requireAllocated, crypt, &streamTemp))

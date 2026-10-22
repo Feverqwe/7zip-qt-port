@@ -334,6 +334,13 @@ if __name__ == "__main__":
     elif layout in ("directory-stream", "directory-corrupt"):
         from ext_directory_fixture import DirectoryVolume
         v = DirectoryVolume(fault="checksum" if layout == "directory-corrupt" else None)
+    elif layout == "directory-indirect-wide":
+        from ext_directory_fixture import wide_indirect_directory_volume
+        v = wide_indirect_directory_volume()
+    elif layout.startswith("directory-indirect"):
+        from ext_directory_fixture import DirectoryVolume
+        v = DirectoryVolume("indirect", tail_logical=12 + 256 + 3,
+                            fault="mapping" if layout.endswith("corrupt") else None)
     elif layout.startswith("xattrs"):
         from ext_xattr_fixture import XattrVolume
         v = XattrVolume(layout)
@@ -386,6 +393,7 @@ if __name__ == "__main__":
                           "xattr_block_offset": getattr(v, "xattr_block_offset", 0),
                           "directory_head_offset": getattr(v, "directory_head_offset", 0),
                           "directory_tail_offset": getattr(v, "directory_tail_offset", 0),
+                          "directory_mapping_offset": getattr(v, "directory_mapping_offset", 0),
                           "root_directory_offset": getattr(v, "root_block", 0) * getattr(v, "block_size", 0),
                           "block_bitmap_offset": getattr(v, "block_map", 0) * getattr(v, "block_size", 0),
                           "next_index_offset": getattr(v, "next_index_offset", 0),

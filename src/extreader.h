@@ -52,6 +52,12 @@ struct ext_indirect_services {
     void *context;
     int (*read)(void *, uint64_t block, void *, size_t);
 };
+struct ext_indirect;
+int ext_linux_indirect_open(struct ext_volume *, uint32_t ino, const void *refs,
+                            const struct ext_indirect_services *, struct ext_indirect **);
+void ext_linux_indirect_close(struct ext_indirect *);
+int ext_linux_indirect_lookup(struct ext_indirect *, uint32_t logical, uint32_t count,
+                              uint64_t *, uint32_t *);
 int ext_linux_indirect_map(struct ext_volume *, uint32_t ino, const void *refs,
                            uint32_t logical, uint32_t count,
                            const struct ext_indirect_services *, uint64_t *, uint32_t *);

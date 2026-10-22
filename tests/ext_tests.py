@@ -18,7 +18,7 @@ from ext_xattr_fixture import XattrVolume
 from ext_block_fixture import BlockVolume, JournalVolume
 from ext_symlink_fixture import SymlinkVolume
 from ext_inode_fixture import inode_volume, inventory_volume
-from ext_directory_fixture import DirectoryVolume
+from ext_directory_fixture import DirectoryVolume, wide_indirect_directory_volume
 from ext_htree_fixture import HtreeVolume
 from ext_readlink_fixture import ReadlinkVolume
 
@@ -308,6 +308,17 @@ class ExtTests(unittest.TestCase):
                 result = self.run_image(volume, engine, name="after-hole.bin", memory_limit=512 << 20)
                 self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
                 self.assertEqual(result.stdout, volume.read(0, volume.size))
+
+    def test_wide_classic_directory_reaches_last_addressable_block(self):
+        volume = wide_indirect_directory_volume()
+        listing = self.run_image(volume, command="l", name=None)
+        self.assertEqual(listing.returncode, 0, listing.stderr.decode(errors="replace"))
+        self.assertIn(b"Path = last-entry.bin", listing.stdout)
+        for name in (NAME, "last-entry.bin"):
+            with self.subTest(name=name):
+                result = self.run_image(volume, name=name)
+                self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                self.assertEqual(result.stdout, volume.files[name])
 
     def test_casefold_encoding_is_recognized_without_changing_stored_names(self):
         for flags in (0, 1, 0x8000):

@@ -6,6 +6,62 @@ tree boundaries, directory record boundaries and archive stream consumers.
 The second integrates Linux metadata and inline-data readers. The ext row remains
 open for the remaining read features listed below.
 
+## Linux indirect lookup for directory ranges — 2026-10-22
+
+Compared the pinned Linux indirect lookup, its buffer validation/release branches
+and directory mapping consumers with SDK `ReadDir`, `GetStream_Node`, allocated
+range inventory and indexed-directory callbacks. Classic directories now use the
+same original C lookup as regular files and journal bootstrap. The scan retains
+allocated ranges rather than one entry per logical block; confirmed holes are
+skipped and an unknown mapping tail is not presented as zero-filled directory
+metadata. A failed lookup preserves already confirmed ranges and the existing
+limited-read warning/consent flow. Htree and linear fallback consumers retain
+their existing range checks, checksum/name handling and callback cancellation.
+Directory blocks do not enter regular-file fscrypt data-unit decryption;
+existing filename/context handling remains authoritative.
+
+The private C boundary now owns an inode/root snapshot and up to three retained
+indirect buffers per lookup object. Only unreferenced buffers can be replaced.
+The original Linux helpers and map body are unchanged; the narrow buffer adapter
+marks a buffer reusable only after its read and original block-reference check
+succeed. Failed/invalid buffers remain unvalidated and are reread on retry.
+Regular-file streams own this object together with their original source, volume
+and crypto state. The journal bootstrap's transient wrapper retains its existing
+callback lifetime and protection-tree behavior. Source bounds, protected-metadata
+ownership and explicit read-only behavior remain in force; no write, repair or
+journal-replay service was added.
+
+A bounded 8 MiB image declares a classic directory ending at logical block
+`UINT32_MAX`. The old dense map rejected its 2^32-block count before allocation;
+the new reader lists the final entries and copies their exact small payloads.
+The last allocated range's end is consumed with 64-bit arithmetic. This is a
+short sample/directory test, not a maximum-file extraction or a slow suite.
+Additional ABI rows cover direct directory data, indirect metadata Read/Seek
+failures, sparse holes, protected-pointer corruption, callback errors, cancellation,
+independent copying and healthy reopen. Retry regressions ensure a transient
+metadata read error can recover and repeated invalid-reference reads never become
+successful cached reads. Existing regular-file, EA-inode, encrypted-file,
+journal-owner and retained-stream checks exercise the shared lookup boundary.
+
+This transfers the selected classic directory mapping path, not all ext namespace
+logic: SDK directory presentation and extent mapping remain under review, and
+standalone retains its non-GPL reader.
+
+Validation: all eight ext/code/provenance suites passed on macOS and Linux
+(`20261022T121508Z-6f0d0c97` for Linux). The same Windows run passed seven
+suites, while CLI `ext` reached its 45-second suite timeout. No child process
+remained; its single disposable fixture directory was removed. An unchanged
+verbose diagnostic ran all 50 CLI tests successfully in 37.651 seconds
+(`20261022T121844Z-b4ccfe40`), then the ordinary Windows `ext` wrapper passed
+with the original timeout (`20261022T122025Z-db20bcba`). The initial timing
+failure was not reproduced; no timeout increase or functional workaround was
+introduced. The incremental macOS application build passed. All checks reused
+existing runtime/build/cache state. The three original indirect helper bodies
+still match the pinned source bytes, and all 303 reference hashes match.
+No new Linux unit was added. No full gate, slow suite, physical-device test,
+new kernel-mount comparison, UI appearance acceptance or release install was
+performed; the broader ext and filesystem audits remain open.
+
 ## Linux indirect lookup for journal system-zone bootstrap — 2026-10-22
 
 Compared the pinned Linux `fs/ext4/block_validity.c` reserved-inode protection

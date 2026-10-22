@@ -1,7 +1,7 @@
 """Checksummed directories with mapped, missing and unwritten logical blocks."""
 import struct
 from ext_modern_fixture import ModernVolume
-from ext_fixture import Volume, NAME
+from ext_fixture import Volume, NAME, wide_indirect_volume
 
 
 class DirectoryVolume(ModernVolume):
@@ -27,7 +27,28 @@ class DirectoryVolume(ModernVolume):
         if mapping == "indirect":
             self.data[self.root_inode + 40:self.root_inode + 100] = bytes(60)
             self.put32(self.root_inode + 40, self.root_block)
-            self.put32(self.root_inode + 48, tail)
+            refs = bs // 4
+            logical = tail_logical
+            if logical < 12:
+                offsets = [logical]
+            elif logical < 12 + refs:
+                offsets = [12, logical - 12]
+            elif logical < 12 + refs + refs * refs:
+                logical -= 12 + refs
+                offsets = [13, logical // refs, logical % refs]
+            else:
+                logical -= 12 + refs + refs * refs
+                offsets = [14, logical // (refs * refs), logical // refs % refs, logical % refs]
+            base = self.root_inode + 40
+            self.directory_mapping_offset = 0
+            for offset in offsets[:-1]:
+                block = self.allocate()
+                if not self.directory_mapping_offset:
+                    self.directory_mapping_offset = block * bs
+                self.put32(base + offset * 4, block)
+                base = block * bs
+            self.put32(base + offsets[-1] * 4, tail)
+            self.put32(self.root_inode + 28, (len(offsets) + 1) * bs // 512)
         else:
             entries = [(0, 1, self.root_block), (tail_logical, 1, tail)]
             if mapping in ("unwritten", "allocated-zero"):
@@ -42,6 +63,8 @@ class DirectoryVolume(ModernVolume):
         self.refresh()
         if fault == "checksum":
             self.data[tail * bs + bs - 1] ^= 1
+        elif fault == "mapping":
+            self.put32(base + offsets[-1] * 4, self.table)
 
     def u32(self, offset):
         return struct.unpack_from("<I", self.data, offset)[0]
@@ -76,3 +99,33 @@ class NamespaceVolume(Volume):
         self.directory_head_offset = first * bs
         self.directory_tail_offset = last * bs
         self.superblock((13,))
+
+
+def wide_indirect_directory_volume():
+    v = wide_indirect_volume()
+    bs = v.block_size
+    refs = bs // 4
+    root = bytearray(v.data[v.file_inode + 40:v.file_inode + 100])
+    struct.pack_into("<I", root, 0, v.root_block)
+    last_index = ((1 << 32) - 1 - 12 - refs - refs * refs) % refs
+    leaf = v.indirect[max(v.indirect, key=len)] * bs
+    tail = struct.unpack_from("<I", v.data, leaf + last_index * 4)[0]
+    v.data[tail * bs:(tail + 1) * bs] = bytes(bs)
+    for offset, length, name in ((0, 12, b"x"), (12, bs - 12, b"last-entry.bin")):
+        struct.pack_into("<IHBB", v.data, tail * bs + offset, 13, length, len(name), 1)
+        v.data[tail * bs + offset + 8:tail * bs + offset + 8 + len(name)] = name
+    v.inode(v.root_inode, 0o40755, (1 << 32) * bs, 5 * bs // 512, links=2)
+    v.data[v.root_inode + 40:v.root_inode + 100] = root
+    v.data[v.file_inode:v.file_inode + 128] = bytes(128)
+    payload = b"small file in a wide directory\n"
+    v.inode(v.file_inode, 0o100644, len(payload), bs // 512)
+    v.put32(v.file_inode + 40, v.allocate(payload))
+    struct.pack_into("<H", v.data, v.link_inode + 26, 3)
+    v.size = len(payload)
+    v.content = {0: payload}
+    v.files[NAME] = payload
+    v.files["last-entry.bin"] = v.files["link"]
+    v.superblock()
+    v.put32(1024 + 96, 2 | 0x4000)
+    v.put32(1024 + 100, 2 | 8)
+    return v

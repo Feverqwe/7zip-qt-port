@@ -1155,6 +1155,10 @@ class ExtStreamTests final : public QObject {
         QTest::newRow("first-child-block") << true << QString("directory-namespace") << false;
         QTest::newRow("last-child-block") << false << QString("directory-namespace") << false;
         QTest::newRow("unknown-parent-name") << true << QString("directory-namespace") << true;
+        QTest::newRow("indirect-first-block") << true << QString("directory-indirect") << false;
+        QTest::newRow("indirect-last-block") << false << QString("directory-indirect") << false;
+        QTest::newRow("indirect-map-unreadable")
+            << false << QString("directory-indirect-mapping") << false;
     }
     void directoryFaultsKeepOtherBlocksAndFatalCallbacks() {
         QFETCH(bool, head);
@@ -1176,9 +1180,10 @@ class ExtStreamTests final : public QObject {
             const auto bytes = QByteArray::fromHex(sample["bytes"].toString().toLatin1());
             QCOMPARE(expected.mid(sample["offset"].toInt(), bytes.size()), bytes);
         }
-        const UInt64 target = UInt64(record[root   ? "root_directory_offset"
-                                            : head ? "directory_head_offset"
-                                                   : "directory_tail_offset"]
+        const UInt64 target = UInt64(record[layout.endsWith("-mapping") ? "directory_mapping_offset"
+                                            : root                      ? "root_directory_offset"
+                                            : head                      ? "directory_head_offset"
+                                                                        : "directory_tail_offset"]
                                          .toDouble());
         for (bool seek : {false, true}) {
             for (HRESULT error : {E_FAIL, S_FALSE, S_OK, E_ABORT, E_OUTOFMEMORY}) {
@@ -1289,6 +1294,75 @@ class ExtStreamTests final : public QObject {
         QCOMPARE(callback->results, QVector<Int32>({NArchive::NExtract::NOperationResult::kOK,
                                                     NArchive::NExtract::NOperationResult::kOK}));
         QCOMPARE(callback->files, QVector<QByteArray>({expected, expected}));
+    }
+    void failedIndirectBuffersAreNotReusedAsValidated_data() {
+        QTest::addColumn<bool>("corrupt");
+        QTest::newRow("unreadable block can be retried") << false;
+        QTest::newRow("invalid references stay invalid") << true;
+    }
+    void failedIndirectBuffersAreNotReusedAsValidated() {
+        QFETCH(bool, corrupt);
+        const auto record = bundle("extract-single");
+        auto bytes = image(record);
+        const UInt64 metadata = UInt64(record["failure_metadata"].toInteger());
+        QVERIFY(metadata && metadata + 4 < UInt64(bytes.size()));
+        if (corrupt)
+            qToLittleEndian(quint32(1), bytes.data() + metadata);
+        CMyComPtr2<IInStream, Input> input;
+        input.SetFromCls(new Input(bytes));
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        CMyComPtr<IInArchiveGetStream> provider;
+        QCOMPARE(
+            archive_->QueryInterface(IID_IInArchiveGetStream, reinterpret_cast<void **>(&provider)),
+            S_OK);
+        CMyComPtr<ISequentialInStream> sequential;
+        QCOMPARE(provider->GetStream(fileIndex(), &sequential), S_OK);
+        CMyComPtr<IInStream> stream;
+        QCOMPARE(sequential->QueryInterface(IID_IInStream, reinterpret_cast<void **>(&stream)),
+                 S_OK);
+        const auto logical = record["prefix_size"].toInteger();
+        QCOMPARE(stream->Seek(logical, STREAM_SEEK_SET, nullptr), S_OK);
+        input->failAt = corrupt ? UINT64_MAX : metadata;
+        char byte = '!';
+        for (unsigned attempt = 0; attempt < 2; ++attempt) {
+            UInt32 done = 99;
+            QCOMPARE(stream->Read(&byte, 1, &done), corrupt ? S_FALSE : E_FAIL);
+            QCOMPARE(done, UInt32(0));
+            QCOMPARE(byte, '!');
+        }
+        if (!corrupt) {
+            input->failAt = UINT64_MAX;
+            UInt32 done = 0;
+            QCOMPARE(stream->Read(&byte, 1, &done), S_OK);
+            QCOMPARE(done, UInt32(1));
+            const auto expected = QByteArray::fromHex(record["payload"].toString().toLatin1());
+            QCOMPARE(byte, expected.at(qsizetype(logical)));
+        }
+    }
+    void indirectDirectoriesReachLastBlockAndKeepConfirmedPrefix() {
+        for (const char *layout : {"directory-indirect-wide", "directory-indirect-corrupt"}) {
+            const auto record = bundle(layout);
+            CMyComPtr<IInStream> input = new Input(image(record));
+            QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+            const bool incomplete = QString::fromLatin1(layout).endsWith("corrupt");
+            QCOMPARE(!readLimitations().isEmpty(), incomplete);
+            const UInt32 index = fileIndex();
+            QVERIFY(index != UInt32(-1));
+            QCOMPARE(fileIndex("after-hole.bin") == UInt32(-1), true);
+            if (!incomplete)
+                QVERIFY(fileIndex("last-entry.bin") != UInt32(-1));
+            CMyComPtr2<IArchiveExtractCallback, Extract> copy;
+            copy.Create_if_Empty();
+            QCOMPARE(archive_->Extract(&index, 1, 0, copy), S_OK);
+            QCOMPARE(copy->results, QVector<Int32>({NArchive::NExtract::NOperationResult::kOK}));
+            QCOMPARE(copy->output->bytes.size(), record["file_size"].toInt());
+            for (const auto &value : record["samples"].toArray()) {
+                const auto sample = value.toObject();
+                const auto expected = QByteArray::fromHex(sample["bytes"].toString().toLatin1());
+                QCOMPARE(copy->output->bytes.mid(sample["offset"].toInt(), expected.size()),
+                         expected);
+            }
+        }
     }
     void indirectJournalOwnership_data() {
         QTest::addColumn<QString>("layout");
