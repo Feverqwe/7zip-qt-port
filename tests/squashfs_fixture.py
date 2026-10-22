@@ -104,10 +104,15 @@ def volume(fault="", compressed=False, no_fragments=False, codec="zlib", xattrs=
         node = 0 if i == 3 else i
         directory += struct.pack("<4H", offsets[node], node, 3 if node == 2 else 2, len(name) - 1) + name
     root_offset = len(inodes)
-    extended_root = fault == "inode-split-directory"
+    directory_index = fault.startswith("directory-index-")
+    extended_root = fault == "inode-split-directory" or directory_index
     if extended_root:
         inodes += base(8, 4) + struct.pack("<IIIIHHI", 2, len(directory) + 3, 0, 1, 1, 0, 0xffffffff)
         inodes += struct.pack("<III", 0, 0, 0) + b"a"
+        if fault in ("directory-index-name", "directory-index-inline-name"):
+            struct.pack_into("<I", inodes, root_offset + 48, 0xffffffff)
+        elif fault == "directory-index-count":
+            struct.pack_into("<H", inodes, root_offset + 32, 0xffff)
     else:
         inodes += base(1, 4) + struct.pack("<2I2HI", 0, 2, len(directory) + 3, 0, 1)
     unused_inode = fault in ("inode-unused-fragment", "inode-unused-owner", "inode-unused-xattr")
@@ -124,7 +129,7 @@ def volume(fault="", compressed=False, no_fragments=False, codec="zlib", xattrs=
         inodes += struct.pack("<I", size)
     if fault == "inode-unused":
         inodes += base(0xffff, 5) + bytes(4)
-    split_inodes = fault.startswith("inode-split")
+    split_inodes = fault.startswith("inode-split") or (directory_index and "-inline-" not in fault)
 
     def inode_ref(offset):
         return (((offset // 17) * 19) << 16) + offset % 17 if split_inodes else offset
@@ -135,14 +140,23 @@ def volume(fault="", compressed=False, no_fragments=False, codec="zlib", xattrs=
             name = names[i].encode()
             node = 0 if i == 3 else i
             reference = inode_ref(offsets[node])
+            inode_offset = reference & 0xffff
+            if fault.startswith("directory-index-recovery") and i == 0:
+                inode_offset = 0xffff
             directory += struct.pack("<IIIHHHH", 0, reference >> 16, node + 1,
-                                     reference & 0xffff, 0, 3 if node == 2 else 2, len(name) - 1) + name
+                                     inode_offset, 0, 3 if node == 2 else 2, len(name) - 1) + name
         struct.pack_into("<I" if extended_root else "<H", inodes,
                          root_offset + (20 if extended_root else 24), len(directory) + 3)
     inode_start = len(image)
     if split_inodes:
         for offset in range(0, len(inodes), 17):
-            image += metadata(inodes[offset:offset + 17])
+            last = offset + 17 >= len(inodes)
+            packed = bytearray(metadata(inodes[offset:offset + 17], last and fault == "directory-index-zlib"))
+            if last and fault in ("directory-index-header", "directory-index-recovery-bad"):
+                struct.pack_into("<H", packed, 0, 0x8000)
+            elif last and fault == "directory-index-zlib":
+                packed[-1] ^= 0xff
+            image += packed
     else:
         image += metadata(inodes, compressed)
     dir_start = len(image)
@@ -439,19 +453,21 @@ def directory_volume(fault):
     image += first
     second_start = len(image)
     image += second
-    offsets = (0, 36, 72, 104, 136)
+    index_recovery = fault == "directory-block-index-recovery"
+    offsets = (0, 36, 72, 125, 157) if index_recovery else (0, 36, 72, 104, 136)
 
     def entries(items):
         result = bytearray(struct.pack("<III", len(items) - 1, 0, 1))
         for name, node, kind in items:
             encoded = name.encode()
-            result += struct.pack("<HHHH", offsets[node], node, kind, len(encoded) - 1) + encoded
+            offset = 0xffff if index_recovery and name == "alpha" else offsets[node]
+            result += struct.pack("<HHHH", offset, node, kind, len(encoded) - 1) + encoded
         return bytes(result)
 
     root = entries((("alpha", 0, 2), ("broken", 2, 1), ("good 空", 3, 1)))
     child = entries((("payload", 1, 2),))
     root_block, good_block = metadata(root), metadata(child, True)
-    bad_block = bytearray(metadata(child, fault not in ("directory-block-clean", "directory-block-io", "directory-block-unused")))
+    bad_block = bytearray(metadata(child, fault not in ("directory-block-clean", "directory-block-io", "directory-block-unused", "directory-block-index-recovery")))
     shared = fault == "directory-block-shared"
     if shared:
         half = len(child) // 2
@@ -460,11 +476,11 @@ def directory_volume(fault):
         good_block = metadata(child[half:] + child, True)
     elif fault in ("directory-block-header", "directory-block-inode"):
         struct.pack_into("<H", bad_block, 0, 0x8000)
-    elif fault not in ("directory-block-clean", "directory-block-io", "directory-block-unused"):
+    elif fault not in ("directory-block-clean", "directory-block-io", "directory-block-unused", "directory-block-index-recovery"):
         bad_block[-1] ^= 0xff  # Output can precede the failing Adler checksum.
 
     def base(kind, number):
-        return struct.pack("<HHHHII", kind, 0o755 if kind == 1 else 0o644, 0, 0, 0, number)
+        return struct.pack("<HHHHII", kind, 0o755 if kind in (1, 8) else 0o644, 0, 0, 0, number)
 
     inodes = bytearray()
     for number, start, body in ((1, first_start, first), (2, second_start, second)):
@@ -472,7 +488,11 @@ def directory_volume(fault):
     for number, start, size, offset in ((3, 0 if shared else len(root_block), len(child), len(root) if shared else 0),
                                        (4, len(root_block) + len(bad_block), len(child), len(child) - half if shared else 0),
                                        (5, 0, len(root) + (len(child) if fault == "directory-block-span" else 0), 0)):
-        inodes += base(1, number) + struct.pack("<IIHHI", start, 2, size + 3, offset, 5)
+        if index_recovery and number == 3:
+            inodes += base(8, number) + struct.pack("<IIIIHHI", 2, size + 3, start, 5, 1, offset, 0xffffffff)
+            inodes += struct.pack("<III", 0, start, 256) + b"a"
+        else:
+            inodes += base(1, number) + struct.pack("<IIHHI", start, 2, size + 3, offset, 5)
     if fault == "directory-block-inode":
         struct.pack_into("<H", inodes, 0, 0xffff)
     inode_start = len(image)

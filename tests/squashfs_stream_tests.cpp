@@ -246,6 +246,16 @@ class SquashfsStreamTests final : public QObject {
         for (const char *codec : {"zlib", "lz4", "lzo-rle"})
             QTest::newRow(codec) << QString::fromLatin1(codec);
     }
+    quint64 lastInodeBlock() const {
+        quint64 block = qFromLittleEndian<quint64>(bytes_.constData() + 64);
+        const auto end = qFromLittleEndian<quint64>(bytes_.constData() + 72);
+        for (;;) {
+            const auto size = qFromLittleEndian<quint16>(bytes_.constData() + block) & 0x7fff;
+            if (size == 0 || block + 2 + size >= end)
+                return block;
+            block += 2 + size;
+        }
+    }
   private slots:
     void initTestCase() { createArchive(); }
     void inodePropertiesDescribeHardlinksAndSymlinks() {
@@ -601,6 +611,80 @@ class SquashfsStreamTests final : public QObject {
         QTest::addColumn<QString>("fault");
         for (const QString &fault : {"inode-split", "inode-split-directory", "inode-split-link"})
             QTest::newRow(qPrintable(fault)) << fault;
+    }
+    void directoryIndexesAreOptional_data() {
+        QTest::addColumn<QString>("fault");
+        for (const QString &fault :
+             {"directory-index-clean", "directory-index-header", "directory-index-zlib",
+              "directory-index-name", "directory-index-count", "directory-index-inline-name"})
+            QTest::newRow(qPrintable(fault)) << fault;
+    }
+    void directoryIndexesAreOptional() {
+        QFETCH(QString, fault);
+        loadFixture("zlib", true, fault);
+        const auto last = lastInodeBlock();
+        CMyComPtr2<IInStream, Input> source;
+        source.SetFromCls(new Input(bytes_));
+        if (!fault.contains("-inline-"))
+            source->notifyAt = last;
+        if (fault == "directory-index-clean") {
+            source->failAt = last;
+            source->atFailure = E_ABORT;
+        }
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
+        for (const QString &name : {QString("alpha"), QString("hardlink"), QString("данные 空")}) {
+            auto data = stream(name);
+            QVERIFY(data);
+            const int size =
+                QByteArray::fromBase64(record_["files"].toObject()[name].toString().toLatin1())
+                    .size();
+            check(data, name, 0, size);
+        }
+        QVERIFY(!source->notified);
+        NWindows::NCOM::CPropVariant limitations;
+        QCOMPARE(archive_->GetArchiveProperty(kpidUserDefined, &limitations), S_OK);
+        QCOMPARE(limitations.vt, VARTYPE(VT_EMPTY));
+    }
+    void directoryIndexesDoNotAuthorizeUnprovenRecovery_data() {
+        QTest::addColumn<QString>("fault");
+        QTest::newRow("complete") << QString("directory-index-recovery");
+        QTest::newRow("incomplete") << QString("directory-index-recovery-bad");
+    }
+    void directoryIndexesDoNotAuthorizeUnprovenRecovery() {
+        QFETCH(QString, fault);
+        loadFixture("zlib", true, fault);
+        CMyComPtr<IInStream> source = new Input(bytes_);
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
+        auto recovered = stream("alpha");
+        QCOMPARE(bool(recovered), fault == "directory-index-recovery");
+        if (recovered)
+            check(recovered, "alpha", 0, 8202);
+        auto healthy = stream("данные 空");
+        QVERIFY(healthy);
+        check(healthy, "данные 空", 0, 16395);
+    }
+    void directoryIndexRequiredForRecoveryPropagatesFatalErrors() {
+        loadFixture("zlib", true, "directory-index-recovery");
+        CMyComPtr2<IInStream, Input> source;
+        source.SetFromCls(new Input(bytes_));
+        source->failAt = lastInodeBlock();
+        for (HRESULT failure : {E_ABORT, E_OUTOFMEMORY, E_NOTIMPL}) {
+            source->atFailure = failure;
+            QCOMPARE(source->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
+            QCOMPARE(archive_->Open(source, nullptr, nullptr), failure);
+        }
+    }
+    void failedIndexInventoryDoesNotPoisonCanonicalDirectory() {
+        loadFixture("zlib", false, "directory-block-index-recovery");
+        CMyComPtr<IInStream> source = new Input(bytes_);
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
+        QVERIFY(!stream("alpha"));
+        auto independent = stream("broken/payload");
+        QVERIFY(independent);
+        check(independent, "broken/payload", 0, 333);
+        auto healthy = stream("good 空/payload");
+        QVERIFY(healthy);
+        check(healthy, "good 空/payload", 0, 333);
     }
     void blocklistsAreReadOnDemand_data() {
         QTest::addColumn<QString>("fault");

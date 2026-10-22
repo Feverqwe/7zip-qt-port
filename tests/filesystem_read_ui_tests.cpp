@@ -311,7 +311,8 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
             for (bool accept : {false, true})
                 for (const QString &kind :
                      {"squashfs-directory-tail", "squashfs-directory-block-span",
-                      "squashfs-directory-reference", "squashfs-directory-unavailable"}) {
+                      "squashfs-directory-reference", "squashfs-directory-unavailable",
+                      "squashfs-directory-index-header", "squashfs-directory-index-inline-name"}) {
                     if (!accept && kind != "squashfs-directory-tail")
                         continue;
                     QTest::newRow(
@@ -337,7 +338,9 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
         const bool fat = kind.startsWith("fat-");
         const bool squashfs = kind.startsWith("squashfs");
         const bool lateBlocklist = kind.startsWith("squashfs-blocklist-");
-        const bool deferredBlocklist = lateBlocklist || kind.startsWith("squashfs-inode-block-");
+        const bool noOpeningLimitations = lateBlocklist ||
+                                          kind.startsWith("squashfs-inode-block-") ||
+                                          kind.startsWith("squashfs-directory-index-");
         const bool squashFragment =
             kind == "squashfs-fragment-metadata-zero" || kind == "squashfs-metadata-combined";
         const bool fatDirectory = kind.startsWith("fat-directory-");
@@ -484,14 +487,14 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
         automation.start(10);
         window.openArchive(path);
         QVERIFY2(unexpectedErrors.isEmpty(), qPrintable(unexpectedErrors.join('\n')));
-        QCOMPARE(questions, deferredBlocklist ? 0 : 1);
+        QCOMPARE(questions, noOpeningLimitations ? 0 : 1);
         QVERIFY(geometry);
         auto *badge = window.findChild<QLabel *>("deviceReadOnlyLabel");
         QVERIFY(badge);
         if (!accept) {
             QVERIFY(!badge->isVisible());
         } else {
-            if (deferredBlocklist) {
+            if (noOpeningLimitations) {
                 QVERIFY(!badge->isVisible());
             } else {
                 QTRY_VERIFY(badge->isVisible());
@@ -582,8 +585,8 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
             }
             window.findChild<QAction *>("refreshAction")->trigger();
             QTRY_VERIFY(Row(*table, filename) >= 0);
-            QCOMPARE(questions, deferredBlocklist ? 0 : 1);
-            QCOMPARE(badge->isVisible(), !deferredBlocklist);
+            QCOMPARE(questions, noOpeningLimitations ? 0 : 1);
+            QCOMPARE(badge->isVisible(), !noOpeningLimitations);
             window.openPath(directory.path());
             QVERIFY(!badge->isVisible());
             // Change our fixture after closing the old Windows read lease.
@@ -596,7 +599,7 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
                 changed.close();
             }
             window.openArchive(path);
-            QCOMPARE(questions, deferredBlocklist ? 0 : 2);
+            QCOMPARE(questions, noOpeningLimitations ? 0 : 2);
         }
         automation.stop();
         QVERIFY2(unexpectedErrors.isEmpty(), qPrintable(unexpectedErrors.join('\n')));

@@ -345,6 +345,20 @@ class SquashfsTests(unittest.TestCase):
                     self.assertNotEqual(result.returncode, 0)
                     self.assertEqual(result.stdout, files["alpha"][:8192])
 
+    def test_directory_index_failure_does_not_hide_files(self):
+        for fault in ("directory-index-clean", "directory-index-header", "directory-index-zlib",
+                      "directory-index-name", "directory-index-count", "directory-index-inline-name"):
+            data, files = volume(fault, xattrs=True, export=True)
+            for name in ("alpha", "данные 空"):
+                with self.subTest(fault=fault, name=name):
+                    result = self.run_image("7z", data, "x", name)
+                    self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                    self.assertEqual(result.stdout, files[name])
+        data, files = volume("directory-block-index-recovery")
+        result = self.run_image("7z", data, "x", "broken/payload")
+        self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+        self.assertEqual(result.stdout, files["broken/payload"])
+
     def test_ambiguous_inode_numbers_do_not_merge_unrelated_files(self):
         data, files = volume("directory-ambiguous", xattrs=True)
         with tempfile.TemporaryDirectory(dir=self.runtime) as temporary:

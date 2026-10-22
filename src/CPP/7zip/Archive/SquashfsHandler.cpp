@@ -720,6 +720,8 @@ UInt32 CNode::Parse4(const Byte *p, UInt32 size, const CHeader &_h, UInt32 *need
         LE_16(34, Offset);
         LE_32(36, Xattr);
 
+        if (headerOnly)
+            return 40;
         UInt32 pos = 40;
         for (UInt32 i = 0; i < iCount; i++) {
             // UInt32 index
@@ -942,7 +944,7 @@ Z7_CLASS_IMP_CHandler_IInArchive_1(
   std::set<UInt32> _badInodePositions;
   bool _inodeTableIncomplete = false;
   bool _inodeInventoryScanned = false;
-  HRESULT ScanCachedInodes();
+  HRESULT ScanCachedInodes(bool forRecovery = false);
   HRESULT EnsureInodeInventory();
   UInt64 _directoryDataEnd = 0;
   std::map<UInt64, unsigned> _directoryBlockIndexes;
@@ -1192,12 +1194,28 @@ HRESULT CHandler::ReadNode(UInt32 pos, int &nodeIndex, UInt64 *length, UInt32 *n
         return S_FALSE;
     if (_badInodePositions.count(pos))
         return S_FALSE;
+    const UInt32 *starts = &_inodesData.UnpackPos[0];
+    const unsigned block =
+        (unsigned)(std::upper_bound(starts, starts + _inodesData.UnpackPos.Size(), pos) - starts -
+                   1);
+    const auto cachedNode = [&](unsigned index, UInt64 size) {
+        if (length && _nodes[index].Type == kType_DIR + 7) {
+            CNode complete;
+            size =
+                complete.Parse4(_inodesData.Data + pos, _inodesData.ContiguousEnd(block) - pos, _h);
+            if (!size) {
+                _inodeTableIncomplete = true;
+                return S_FALSE;
+            }
+        }
+        nodeIndex = (int)index;
+        if (length)
+            *length = size;
+        return S_OK;
+    };
     auto next = _inodePositions.lower_bound(pos);
     if (next != _inodePositions.end() && next->first == pos) {
-        nodeIndex = (int)next->second.first;
-        if (length)
-            *length = _nodeRecordSizes[(unsigned)nodeIndex];
-        return S_OK;
+        return cachedNode(next->second.first, _nodeRecordSizes[next->second.first]);
     }
     if (next != _inodePositions.begin()) {
         auto previous = next;
@@ -1206,17 +1224,10 @@ HRESULT CHandler::ReadNode(UInt32 pos, int &nodeIndex, UInt64 *length, UInt32 *n
             _inodeTableIncomplete = true;
         }
     }
-    const UInt32 *starts = &_inodesData.UnpackPos[0];
-    const unsigned block =
-        (unsigned)(std::upper_bound(starts, starts + _inodesData.UnpackPos.Size(), pos) - starts -
-                   1);
     const UInt64 reference = ((UInt64)_inodesData.PackPos[block] << 16) + pos - starts[block];
     const auto existing = _inodeNodes.find(reference);
     if (existing != _inodeNodes.end()) {
-        nodeIndex = (int)existing->second.first;
-        if (length)
-            *length = existing->second.second;
-        return S_OK;
+        return cachedNode(existing->second.first, existing->second.second);
     }
     CNode n;
     UInt32 required = 0;
@@ -1232,7 +1243,10 @@ HRESULT CHandler::ReadNode(UInt32 pos, int &nodeIndex, UInt64 *length, UInt32 *n
     }
     if (!size || _nodes.Size() >= kNumFilesMax) {
         _inodeTableIncomplete = true;
-        _badInodePositions.insert(pos);
+        // A full-inventory failure may concern an optional suffix rather
+        // than the header used by a canonical reference.
+        if (needed)
+            _badInodePositions.insert(pos);
         return S_FALSE;
     }
     if (next != _inodePositions.end() && parsed > next->first - pos)
@@ -1886,7 +1900,7 @@ HRESULT CHandler::ReadDirectoryData(UInt64 end) {
     return S_OK;
 }
 
-HRESULT CHandler::ScanCachedInodes() {
+HRESULT CHandler::ScanCachedInodes(bool forRecovery) {
     if (_inodeInventoryScanned)
         return S_OK;
     const auto first = _inodeBlockIndexes.find(0);
@@ -1902,6 +1916,14 @@ HRESULT CHandler::ScanCachedInodes() {
     _inodeInventoryScanned = true;
     UInt64 pos = _inodesData.UnpackPos[first->second];
     for (UInt32 i = 0; i < _h.NumInodes; ++i) {
+        // Optional directory indexes are not required by namespace enumeration.
+        // Their variable extent matters only when proving a recovery inventory.
+        if (!forRecovery && pos < end && end - pos >= 40 &&
+            GetUi16(_inodesData.Data + pos) == kType_DIR + 7 &&
+            GetUi16(_inodesData.Data + pos + 32) != 0) {
+            _inodeInventoryScanned = false;
+            return S_OK;
+        }
         int node;
         UInt64 length = 0;
         const HRESULT result = pos < end ? ReadNode((UInt32)pos, node, &length) : S_FALSE;
@@ -1919,7 +1941,7 @@ HRESULT CHandler::ScanCachedInodes() {
 }
 
 HRESULT CHandler::EnsureInodeInventory() {
-    RINOK(ScanCachedInodes())
+    RINOK(ScanCachedInodes(true))
     if (_inodeInventoryScanned || _inodeTableIncomplete)
         return S_OK;
     UInt64 position = 0, next;
@@ -1929,7 +1951,7 @@ HRESULT CHandler::EnsureInodeInventory() {
     if (result == E_ABORT || result == E_OUTOFMEMORY || result == E_NOTIMPL)
         return result;
     if (result == S_OK) {
-        RINOK(ScanCachedInodes())
+        RINOK(ScanCachedInodes(true))
     }
     if (result != S_OK || !_inodeInventoryScanned) {
         _inodeInventoryScanned = true;

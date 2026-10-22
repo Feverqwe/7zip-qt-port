@@ -5,6 +5,56 @@ Scope входит в [общую проверку форматов](filesystems
 современный LZO и проверки compressor options через отдельный format-модуль.
 Полная актуализация SquashFS read features по Linux ещё продолжается.
 
+## Необязательные индексы extended directories, 2026-10-22
+
+Сверены полные Linux `inode.c:squashfs_read_inode` (LDIR branch),
+`dir.c:get_dir_index_using_offset`/`squashfs_readdir`,
+`namei.c:get_dir_index_using_name`/`squashfs_lookup`, metadata/cache dependencies
+и SDK `Parse4`, canonical/cache lookup, inventory/recovery, directory traversal
+и свойства. Baselines остаются Linux
+`58161ead29e50d70a317ea26b472e0c7508e69da` и SDK
+`9128b80e3a471108678e2b3ec3c985861c8d7b0f` с retrieval links ниже.
+Linux загружает заголовок LDIR отдельно от variable-length index и допускает
+последовательное чтение при отказе необязательной подсказки поиска.
+
+GPL v4 canonical path теперь использует полный фиксированный заголовок LDIR
+без обязательного разбора индекса; SDK field parser, формат и directory reader
+сохранены. Последовательное archive enumeration не использует эти hints.
+Обычный cache-only inventory scan не требует индекса только ради глобального
+подтверждения: он оставляет inventory недоказанным, а не объявляет его полным.
+Для фактического number-based recovery сохраняется полный строгий разбор,
+включая variable extent уже закэшированного LDIR. Неполный inventory не
+разрешает подменить невалидный canonical reference догадкой по номеру.
+
+Отказ полного inventory не помещает fixed header в negative cache canonical
+чтения. Regression воспроизвёл потерю доступного child directory после попытки
+recovery другой записи; после исправления этот child и его файлы доступны.
+Abort/OOM/unsupported при действительно необходимом чтении inventory остаются
+fatal. Проверки inode/header, bounds и путей не ослаблены. Непрочитанный либо
+ненужный индекс не создаёт ложный limited mode; известные реальные ограничения
+по-прежнему используют существующие согласие, badge и честные copy errors.
+Core/legacy paths используют прежний полный record scan.
+
+ABI/CLI проверяют отдельный index block (включая E_ABORT, который не должен
+читаться), header/checksum faults, malformed name/count, индекс внутри уже
+прочитанного block, hardlinks/Unicode, строгий recovery и independent child
+после его отказа. EN/RU UI проверяет открытие/копирование/refresh/reopen без
+ненужного предупреждения, сохраняя проверки реального partial mode.
+Native readonly Linux `6.8.0-147-generic` подтвердил семь controls, включая
+сохранность списка, данных, symlinks/xattrs и доступного child при невалидном
+соседнем reference; receipt `20261022T021356Z-d7bc4947`. Образы не изменились,
+mounts/temp data очищены, одноразовый helper удалён. Native kernel старше
+source baseline, его runtime evidence учитывается отдельно.
+
+Девять focused suites прошли на macOS/Linux/Windows за 39,24/19,94/72,33 с;
+remote receipt `20261022T021527Z-e1892190`. После исправления permissions/hint
+в новом synthetic child fixture ABI/CLI повторно прошли на macOS за 5,33 с;
+product code не менялся. Incremental macOS app build прошла. Full/slow suites
+и физические устройства не проверялись; build trees/compiler caches сохранены.
+
+Суммарный namespace decoded cache по-прежнему ограничен UInt32; эта итерация
+не заявляет устранения всего metadata-size scope или завершения SquashFS audit.
+
 ## Blocklist файлов по запросу, 2026-10-22
 
 Эталон нового C-переноса: Linux
