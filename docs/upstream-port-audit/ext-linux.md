@@ -10,6 +10,43 @@ fs-verity now reuses the original shared Linux string scanner already linked
 for fscrypt. Source scope and validation are recorded with the
 [shared string-service transfer](erofs-linux.md#original-shared-string-services--2026-10-22).
 
+## Unused directory slots and following live names — 2026-10-22
+
+Compared original SDK `CHandler::ParseDir`, pinned Linux `ext4_readdir`,
+`htree_dirblock_to_tree`, `ext4_read_inline_dir`, record validation and the
+archive's normal/htree/inline consumers. Linux validates record framing and
+skips an inode-zero slot without publishing its name. The GPL parser instead
+constructed a plaintext name and checked its NUL-terminated length before
+skipping the slot. Stale bytes containing NUL could therefore stop parsing
+and hide a valid following name in the same block.
+
+The GPL parser now advances across each validated record and skips inode zero
+before name conversion, fscrypt presentation or item publication. Live records
+retain their original name/context/inode/type checks. Checksums, record lengths,
+name-length bounds and inode-number bounds are still checked before the skip.
+The SDK fallback source variant is unchanged. This follows the original Linux
+read-side ordering without adding another directory decoder or changing the
+existing incomplete-directory recovery mode. Unused slots do not become files
+or by themselves require a limited-opening warning; source writes, repair and
+journal replay remain absent.
+
+The CLI regression combines an unused slot with a following live Unicode name
+in ordinary, reachable htree and inline directories. Ordinary stale text and
+NUL/slash bytes are tested with valid record framing/checksums. Exact following
+file contents and absence of spurious limitations are checked; the shared
+fixture runner also verifies unchanged source bytes. Inline is a control for
+the existing Linux iterator, which already filters unused slots.
+
+Validation on macOS: seven companion ext/stream/fscrypt/xattr/provenance suites
+passed in the initial eight-suite selection. Its new inline fixture initially
+had an obsolete hard-link count after removing an alias; the fixture count was
+corrected, and the affected `ext` suite passed on rerun. Production code was
+unchanged between those batches. The incremental application build passed.
+Existing runtime/build/compiler caches were reused and disposable fixtures were
+absent afterwards. The change is platform-independent, so remote runs were not
+repeated. No full/slow suite, native mount/device, UI appearance or release
+installation was run. The broader ext and parent format audits remain open.
+
 ## Original directory-record framing shared by archive consumers — 2026-10-22
 
 Compared complete pinned `ext4_hash_in_dirent`, `ext4_dir_rec_len` and

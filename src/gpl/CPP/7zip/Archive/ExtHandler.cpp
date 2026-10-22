@@ -1005,6 +1005,13 @@ HRESULT CHandler::ParseDir(const Byte *p, size_t size, unsigned iNodeDir, CDirPa
         if (iNode > _h.NumInodes)
             return S_FALSE;
 
+        const Byte *record = p;
+        p += recLen;
+        size -= recLen;
+        blockOffset = (blockOffset + recLen) & (blockSize - 1);
+        if (iNode == 0)
+            continue;
+
         item.Clear();
 
         item.Type = ext_linux_directory_type(_volume.get(), type) ? type : k_Type_UNKNOWN;
@@ -1013,32 +1020,23 @@ HRESULT CHandler::ParseDir(const Byte *p, size_t size, unsigned iNodeDir, CDirPa
         item.Node = iNode;
         unsigned presentedLen = nameLen;
         if (dirCrypt) {
-            if (iNode) {
-                uint32_t hash = 0, minor = 0;
-                if (ext_linux_directory_hash(_volume.get(), nodeDir.Flags, nodeDir.FileSize,
-                                             dirCrypt.get(), rootHashVersion, state.LinearFallback,
-                                             p, recLen, &hash, &minor) != 0)
-                    return S_FALSE;
-                CByteBuffer name(256);
-                size_t len = 0;
-                const int result = sevenzip_fscrypt_present_name(dirCrypt.get(), hash, minor, p + 8,
-                                                                 nameLen, name, name.Size(), &len);
-                if (result)
-                    return result == -ENOMEM ? E_OUTOFMEMORY : S_FALSE;
-                presentedLen = (unsigned)len;
-                if (!len || memchr(name, '/', len))
-                    return S_FALSE;
-                item.Name.SetFrom_CalcLen((const char *)(const Byte *)name, presentedLen);
-            } else {
-                presentedLen = 0;
-                item.Name.Empty();
-            }
+            uint32_t hash = 0, minor = 0;
+            if (ext_linux_directory_hash(_volume.get(), nodeDir.Flags, nodeDir.FileSize,
+                                         dirCrypt.get(), rootHashVersion, state.LinearFallback,
+                                         record, recLen, &hash, &minor) != 0)
+                return S_FALSE;
+            CByteBuffer name(256);
+            size_t len = 0;
+            const int result = sevenzip_fscrypt_present_name(
+                dirCrypt.get(), hash, minor, record + 8, nameLen, name, name.Size(), &len);
+            if (result)
+                return result == -ENOMEM ? E_OUTOFMEMORY : S_FALSE;
+            presentedLen = (unsigned)len;
+            if (!len || memchr(name, '/', len))
+                return S_FALSE;
+            item.Name.SetFrom_CalcLen((const char *)(const Byte *)name, presentedLen);
         } else
-            item.Name.SetFrom_CalcLen((const char *)(p + 8), nameLen);
-
-        p += recLen;
-        size -= recLen;
-        blockOffset = (blockOffset + recLen) & (blockSize - 1);
+            item.Name.SetFrom_CalcLen((const char *)(record + 8), nameLen);
 
         if (item.Name.Len() != presentedLen)
             return S_FALSE;
@@ -1046,21 +1044,6 @@ HRESULT CHandler::ParseDir(const Byte *p, size_t size, unsigned iNodeDir, CDirPa
         if (_isUTF) {
             // 21.07 : we force UTF8
             // _isUTF = CheckUTF8_AString(item.Name);
-        }
-
-        if (iNode == 0) {
-            /*
-            ext3 deleted??
-            if (item.Name.Len() != 0)
-              return S_FALSE;
-            */
-
-            PRF(printf("\n EMPTY %6d %d %s", (unsigned)recLen, (unsigned)type,
-                       (const char *)item.Name));
-            if (type == 0xDE) {
-                // checksum
-            }
-            continue;
         }
 
         if (verify_dirent_name(item.Name.Ptr(), (int)item.Name.Len()))

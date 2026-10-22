@@ -367,6 +367,34 @@ class ExtTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
         self.assertNotIn(b"[UNKNOWN]", result.stdout)
 
+    def test_unused_directory_names_do_not_hide_following_live_entries(self):
+        for layout in ("ordinary", "htree", "inline"):
+            for stale_name in (b"gone", b"a\0/b"):
+                with self.subTest(layout=layout, stale_name=stale_name):
+                    volume = ModernVolume(inline=layout == "inline", indexed=layout == "htree")
+                    unused = volume.dirent(0, stale_name, 16, 255)
+                    if layout == "inline":
+                        volume.set_inline(volume.inline_dir_inode,
+                                          struct.pack("<I", 2) + unused +
+                                          volume.dirent(12, NAME.encode(), 80))
+                        struct.pack_into("<H", volume.data, volume.file_inode + 26, 2)
+                        name, expected = "nested/" + NAME, volume.payload
+                    else:
+                        prefix = (volume.dirent(2, b".", 12, 2) +
+                                  volume.dirent(2, b"..", 12, 2)) if layout == "ordinary" else b""
+                        start = volume.dir_leaves[0] * volume.block_size
+                        records = prefix + unused + volume.dirent(
+                            12, NAME.encode(), volume.block_size - 12 - len(prefix) - len(unused))
+                        volume.data[start:start + len(records)] = records
+                        name, expected = NAME, volume.read(0, volume.size)
+                    volume.refresh()
+                    result = self.run_image(volume, name=name)
+                    self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                    self.assertEqual(result.stdout, expected)
+                    listing = self.run_image(volume, command="l", name=None)
+                    self.assertEqual(listing.returncode, 0, listing.stderr.decode(errors="replace"))
+                    self.assertNotIn(b"Read-only limitations = ", listing.stdout)
+
     def test_special_inode_device_encoding_is_not_a_data_block_pointer(self):
         for engine in ("7z", "7zz"):
             with self.subTest(engine=engine):
