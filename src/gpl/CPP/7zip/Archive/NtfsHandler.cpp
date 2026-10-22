@@ -2874,9 +2874,10 @@ HRESULT CDatabase::SelectActiveDataAttributes() {
 HRESULT CDatabase::LoadMftAttributes(CMftRec &rec) {
     if (rec.AttrListAttrs.IsEmpty())
         return S_OK;
-    if (rec.AttrListAttrs.Size() != 1 || !rec.AttrListAttrs[0].Name.IsEmpty() ||
-        !rec.DataAttrs[0].Name.IsEmpty() || !rec.DataAttrs[0].NonResident ||
-        rec.DataAttrs[0].LowVcn || (rec.DataAttrs[0].Flags & 0xc0ff))
+    if (rec.AttrListAttrs.Size() != 1 || !rec.AttrListAttrs[0].NameValid ||
+        !rec.AttrListAttrs[0].Name.IsEmpty() || !rec.DataAttrs[0].Name.IsEmpty() ||
+        !rec.DataAttrs[0].NonResident || rec.DataAttrs[0].LowVcn ||
+        (rec.DataAttrs[0].Flags & 0xc0ff))
         return S_FALSE;
     const UInt64 mftSize = rec.DataAttrs[0].Size;
     if ((mftSize >> Header.MftRecordSizeLog) > (1u << 30))
@@ -2964,7 +2965,8 @@ HRESULT CDatabase::LoadMftAttributes(CMftRec &rec) {
         bool found = false;
         for (unsigned i = 0; i < owner->DataAttrs.Size(); ++i) {
             const CAttr &attr = owner->DataAttrs[i];
-            if (attr.Instance != entry.id || !attr.Name.IsEmpty() || attr.LowVcn != entry.vcn)
+            if (!attr.NameValid || attr.Instance != entry.id || !attr.Name.IsEmpty() ||
+                attr.LowVcn != entry.vcn)
                 continue;
             if (!attr.NonResident || (attr.Flags & 0xc0ff))
                 return S_FALSE;
@@ -3771,6 +3773,12 @@ HRESULT CDatabase::Open() {
                 return S_FALSE;
             if (!mftRec.Is_Magic_FILE())
                 return S_FALSE;
+            // Like ntfs_read_mft, bootstrap only from unnamed DATA, never ADS.
+            for (unsigned i = mftRec.DataAttrs.Size(); i;) {
+                const CAttr &attr = mftRec.DataAttrs[--i];
+                if (!attr.NameValid || !attr.Name.IsEmpty())
+                    mftRec.DataAttrs.Delete(i);
+            }
             mftRec.ParseDataNames(); // it sorts DataAttrs[] by Name and fills
                                      // DataAttrs[].NextAttrIndex values.
             if (mftRec.DataAttrs.Size() == 0)

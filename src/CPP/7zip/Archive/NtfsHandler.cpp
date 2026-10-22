@@ -351,6 +351,7 @@ struct CExtent {
 };
 
 struct CAttr {
+    bool NameValid = true;
     unsigned NextAttrIndex; /* DataAttrs[NextAttrIndex] is nearest
           item with a different name, skipping items with identical names. */
     Byte NonResident;
@@ -454,6 +455,7 @@ unsigned CAttr::ParseAttr(const Byte *const p, const unsigned size, UInt32 &type
             if (nameOffset + nameLen * 2 > len)
                 return 0;
             GetString(p + nameOffset, nameLen, Name);
+            NameValid = Name.Len() == nameLen;
             PRF(printf(" N="));
             PRF_UTF16(Name)
         }
@@ -1855,6 +1857,12 @@ HRESULT CDatabase::Open() {
                 return S_FALSE;
             if (!mftRec.Is_Magic_FILE())
                 return S_FALSE;
+            // Like ntfs_read_mft, bootstrap only from unnamed DATA, never ADS.
+            for (unsigned i = mftRec.DataAttrs.Size(); i;) {
+                const CAttr &attr = mftRec.DataAttrs[--i];
+                if (!attr.NameValid || !attr.Name.IsEmpty())
+                    mftRec.DataAttrs.Delete(i);
+            }
             mftRec.ParseDataNames(); // it sorts DataAttrs[] by Name and fills
                                      // DataAttrs[].NextAttrIndex values.
             if (mftRec.DataAttrs.Size() == 0)

@@ -11,10 +11,27 @@ def volume(kind):
     offset, rec = record(image, 0)
     attrs = [a for _, a in attributes(rec)]
     data = next(a for a in attrs if u32(a, 0) == 0x80)
+    if kind in ("mft-list-named-only", "mft-list-nul-name", "mft-list-named-decoy", "mft-list-nul-decoy"):
+        from ntfs_security_fixture import named_nonresident
+        from ntfs_ea_fixture import set_attributes
+        name = "\0" if "nul" in kind else "unrelated"
+        named = named_nonresident(data, 0x80, name,
+                                  [(u64(data, 40) // 4096, u64(image, 0x30))],
+                                  u64(data, 48), u16(data, 14) + 1)
+        # Keep bytes readable to detect choosing ADS solely by its sorted position.
+        if kind.endswith("decoy"):
+            attrs.insert(attrs.index(data) + 1, named)
+        else:
+            attrs[attrs.index(data)] = named
+        set_attributes(image, offset, rec, attrs)
+        return bytes(image), files
     base_seq = u16(rec, 16)
     split, target, extension_number = 8, 1000, 16
     extension = bytearray(rec)
     ext_data = nonresident(data, [(19 - split, target)], 0)
+    if kind == "mft-list-nul-extension":
+        from ntfs_security_fixture import named_nonresident
+        ext_data = named_nonresident(data, 0x80, "\0", [(19 - split, target)], 0, 0)
     put(ext_data, 16, "QQ", split, 18)
     put(ext_data, 40, "QQQ", 0, 0, 0)
     put(ext_data, 14, "H", 0)

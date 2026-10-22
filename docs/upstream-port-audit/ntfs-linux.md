@@ -4,6 +4,52 @@
 существующее чтение boot/MFT, атрибутов, sparse и compressed streams.
 Полная актуализация NTFS по Linux ещё не завершена.
 
+## Boot/MFT bootstrap stream identity — 2026-10-22
+
+Recompared boot geometry, record framing and bootstrap mapping with pinned
+Linux `super.c:ntfs_init_from_boot`/`true_sectors_per_clst`,
+`record.c:mi_read`/`mi_enum_attr`, `fsntfs.c:ntfs_fix_post_read` and the
+`inode.c:ntfs_read_mft` DATA/bootstrap branches. Reviewed complete SDK/current
+`CHeader::Parse`, `CAttr::ParseAttr`, `CMftRec::ParseRec`,
+`CDatabase::LoadMftAttributes` and opening through the MFT scan, with attribute
+sorting and stream consumers. Sector/cluster powers and bounds, signed record
+sizes, 4096-byte record/index limits, 512-byte USA stride, record totals,
+attribute framing and extension sequence/base references retain the previously
+documented checks. The original C fixup body is unchanged; its adapter reports
+fixup mismatches as limited reading without source repair. Short-source,
+partial-USA and record-local recovery remain explicit archive adaptations.
+
+Found a bootstrap selection gap: without an attribute list, both engines
+selected the first sorted DATA even when it was a named ADS. Linux ignores
+named DATA for `$MFT`. A NUL in the on-disk name also became an empty SDK
+string and could masquerade as unnamed DATA, including in an extension record.
+Bootstrap now filters named/truncated-name DATA before sorting/grouping; GPL
+extension matching and attribute-list selection also require intact names.
+The SDK variant records name validity using the same narrow length check
+already present in GPL. The original record/parser/stream organization remains;
+no license switch or independent decoder was added.
+
+This is an ownership check for the source of the MFT mapping. An unrelated ADS
+does not establish that mapping. If no usable unnamed DATA remains, the existing
+technical opening failure applies. A valid unnamed map remains readable even
+beside an unrelated or NUL-named ADS. Subsequent general MFT scanning still
+preserves independently readable records under the existing recovery policy.
+No repair, journal replay or source writes are introduced.
+
+Creator-image mutations reproduced successful extraction from named-only and
+NUL-named-only maps in both pre-fix engines. CLI regressions now require failure
+without output for those cases and the NUL-named extension; two controls verify
+exact file bytes with a valid map beside named/NUL-named ADS. Source bytes must
+remain unchanged. Existing ABI rejection/reopen coverage includes all three
+invalid mappings, while fragmented-MFT and cancellation controls remain active.
+
+Final incremental runtime/target builds and eight ordinary macOS suites passed:
+`ntfs`, `ntfs_stream`, `ntfs_directory`, `ntfs_record`, `ntfs_deleted`,
+`ntfs_security_list`, `ntfs_security`, `upstream_baseline` (27.71 s). All 32
+pinned NTFS reference hashes match. Portable parser/selection changes were
+validated on macOS; Linux/Windows and opt-in slow suites were not run. Remaining
+NTFS namespace/metadata source closure and the parent filesystem goal stay open.
+
 ## Runlist arithmetic correction — 2026-10-22
 
 Compared the complete SDK `CAttr::ParseExtents` and its adapted bodies in both

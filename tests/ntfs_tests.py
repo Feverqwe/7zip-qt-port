@@ -231,6 +231,20 @@ class NtfsTests(unittest.TestCase):
                         self.assertEqual(result.returncode, 0, result.stderr)
                         self.assertEqual(result.stdout, files[name])
 
+    def test_mft_bootstrap_uses_only_unnamed_data(self):
+        for kind in ("mft-list-named-only", "mft-list-nul-name", "mft-list-named-decoy",
+                     "mft-list-nul-decoy", "mft-list-nul-extension"):
+            image, files = volume(kind)
+            for engine in ("7z", "7zz"):
+                with self.subTest(kind=kind, engine=engine):
+                    result = self.run_image(engine, image, "x", "alpha")
+                    if kind.endswith("decoy"):
+                        self.assertEqual(result.returncode, 0, result.stderr)
+                        self.assertEqual(result.stdout, files["alpha"])
+                    else:
+                        self.assertNotEqual(result.returncode, 0)
+                        self.assertEqual(result.stdout, b"")
+
     def test_linux_ea_values_and_ads_namespaces(self):
         for kind in ("ea-xattrs", "ea-xattrs-fragmented", "ea-xattrs-extension", "ea-xattrs-collision"):
             image, files = volume(kind)
