@@ -27,7 +27,7 @@ class CMemoryDevice final : public DeviceReadHandle {
         if (Disconnected)
             return E_FAIL;
         if (offset > quint64(Bytes.size()) || size > quint64(Bytes.size()) - offset ||
-            offset % 4096 || size % 4096 || quintptr(data) % 4096)
+            offset % 512 || size % 512 || quintptr(data) % 512)
             return E_INVALIDARG;
         memcpy(data, Bytes.constData() + offset, size);
         TotalRead += size;
@@ -100,7 +100,10 @@ class DeviceFolderTests final : public QObject {
         return process.readAllStandardOutput();
     }
     static HRESULT worker(const std::function<HRESULT()> &action) {
-        return std::async(std::launch::async, action).get();
+        auto result = std::async(std::launch::async, action);
+        while (result.wait_for(std::chrono::milliseconds(0)) != std::future_status::ready)
+            QTest::qWait(1);
+        return result.get();
     }
   private slots:
     void initTestCase() {
@@ -144,7 +147,8 @@ class DeviceFolderTests final : public QObject {
         auto handle = std::make_shared<CMemoryDevice>(bytes);
         ExternalDevice description;
         description.size = quint64(bytes.size());
-        description.sectorSize = 4096;
+        // The shared GPT fixture was generated with 512-byte LBAs.
+        description.sectorSize = 512;
         CMyComPtr<IInStream> input, selected;
         QCOMPARE(CreateDeviceInput(description, handle, &input), S_OK);
         ArchiveDevice device(backend.codecCatalog());

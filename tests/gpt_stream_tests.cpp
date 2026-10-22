@@ -2,6 +2,7 @@
 #include "Common/MyCom.h"
 #include "Windows/PropVariant.h"
 #include "archivebackend.h"
+#include "deviceaccess.h"
 #include <QDir>
 #include <QFile>
 #include <QJsonDocument>
@@ -12,6 +13,22 @@
 #include <QtTest>
 
 namespace {
+class Handle final : public DeviceReadHandle {
+    QByteArray bytes_;
+    quint32 sector_;
+
+  public:
+    Handle(QByteArray bytes, quint32 sector) : bytes_(std::move(bytes)), sector_(sector) {}
+    qint32 readAt(quint64 offset, void *data, quint32 size, quint32 &read) override {
+        read = 0;
+        if (offset % sector_ || size % sector_ || quintptr(data) % sector_ ||
+            offset > quint64(bytes_.size()) || size > quint64(bytes_.size()) - offset)
+            return E_INVALIDARG;
+        memcpy(data, bytes_.constData() + offset, size);
+        read = size;
+        return S_OK;
+    }
+};
 class Input final : public IInStream, public CMyUnknownImp {
     Z7_COM_UNKNOWN_IMP_2(ISequentialInStream, IInStream)
     QByteArray bytes_;
@@ -188,6 +205,36 @@ class GptStreamTests final : public QObject {
         archive_.Release();
         input.Release();
         check(first, expected);
+    }
+    void deviceGeometry_data() {
+        QTest::addColumn<quint32>("sector");
+        for (quint32 sector = 512; sector <= 65536; sector <<= 1)
+            QTest::newRow(qPrintable(QString::number(sector))) << sector;
+    }
+    void deviceGeometry() {
+        QFETCH(quint32, sector);
+        fixture(sector == 4096 ? QStringLiteral("device-4096-decoy")
+                               : QStringLiteral("sector-%1").arg(sector));
+        ExternalDevice description;
+        description.size = quint64(image_.size());
+        description.sectorSize = sector;
+        const auto handle = std::make_shared<Handle>(image_, sector);
+        CMyComPtr<IInStream> input;
+        QCOMPARE(CreateDeviceInput(description, handle, &input), S_OK);
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        check(stream(), payload_);
+        QCOMPARE(archive_->Close(), S_OK);
+        // A known geometry must not fall back to another sector size.
+        if (sector != 4096) {
+            description.sectorSize = sector == 512 ? 1024 : 512;
+            input.Release();
+            const auto mismatched = std::make_shared<Handle>(image_, description.sectorSize);
+            QCOMPARE(CreateDeviceInput(description, mismatched, &input), S_OK);
+            QCOMPARE(archive_->Open(input, nullptr, nullptr), S_FALSE);
+            UInt32 count = 99;
+            QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+            QCOMPARE(count, UInt32(0));
+        }
     }
     void failuresAndCancellation() {
         fixture("sector-512");

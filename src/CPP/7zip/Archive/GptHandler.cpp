@@ -152,6 +152,20 @@ Z7_class_CHandler_final : public CHandlerCont {
 };
 
 HRESULT CHandler::Open2(IInStream *stream) {
+    unsigned firstSectorLog = 9, lastSectorLog = 16;
+    CMyComPtr<IStreamGetProp> props;
+    if (stream->QueryInterface(IID_IStreamGetProp, (void **)&props) == S_OK) {
+        NCOM::CPropVariant sector;
+        RINOK(props->GetProperty(kpidSectorSize, &sector))
+        if (sector.vt == VT_UI4) {
+            const UInt32 size = sector.ulVal;
+            if (size < 512 || size > (1u << 16) || (size & (size - 1)))
+                return E_INVALIDARG;
+            while ((1u << firstSectorLog) < size)
+                ++firstSectorLog;
+            lastSectorLog = firstSectorLog;
+        }
+    }
     UInt64 fileEnd;
     RINOK(InStream_GetSize_SeekToEnd(stream, fileEnd))
     if (fileEnd < 512)
@@ -165,7 +179,7 @@ HRESULT CHandler::Open2(IInStream *stream) {
     for (unsigned i = 0; i < 4; ++i)
         if (mbr[446 + i * 16 + 4] == 0xEE && Get32(mbr + 446 + i * 16 + 8) == 1)
             protective = true;
-    for (_sectorSizeLog = 9; _sectorSizeLog <= 12; ++_sectorSizeLog) {
+    for (_sectorSizeLog = firstSectorLog; _sectorSizeLog <= lastSectorLog; ++_sectorSizeLog) {
         HRESULT result = ReadTable(stream, 1, fileEnd);
         if (result != S_FALSE)
             return result;
@@ -459,7 +473,7 @@ API_FUNC_static_IsArc IsArc_Gpt(const Byte *data, size_t size) {
     for (unsigned i = 0; i < 4; ++i)
         if (data[446 + i * 16 + 4] == 0xEE && Get32(data + 446 + i * 16 + 8) == 1)
             return k_IsArc_Res_YES;
-    for (unsigned log = 9; log <= 12; ++log) {
+    for (unsigned log = 9; log <= 16; ++log) {
         const size_t offset = (size_t)1 << log;
         if (size < offset + k_SignatureSize)
             return k_IsArc_Res_NEED_MORE;

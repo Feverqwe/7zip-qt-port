@@ -37,7 +37,7 @@ archive stream не представляет unsigned wraparound как разм
 Alternate-LBA вне образа не дискредитирует пригодный primary и не раздувает
 archive physical size. Failed open очищает опубликованные entries и buffer.
 
-Поддержаны logical sectors 512/1024/2048/4096; signature больше не требует
+Поддержаны power-of-two logical sectors 512..65536; signature больше не требует
 конкретного revision, который Linux также не проверяет. Автоматический probe
 и вложенные image-extension consumers согласованы с этими geometry и protective
 MBR. Сохранены исходные archive quotas и поддержка 128..4096-byte entries;
@@ -68,6 +68,50 @@ ABI regression воспроизвёл ошибку исходного `CHandlerC
 Новый disk parser, private test access или второй потоковый алгоритм не добавлены.
 Изменение действует также на остальные `CHandlerCont` containers; выбор более
 широкой validation связан именно с этим общим consumer.
+
+## Известная геометрия устройства — 2026-10-22
+
+Повторная source comparison `efi.c:last_lba`, `read_lba`,
+`alloc_read_gpt_header`, `is_gpt_valid` и их consumers выявила пропущенную
+границу: Linux использует queue logical block size, а GPT handler всегда
+перебирал только 512..4096. Сопоставлены полные `Open2`/`ReadTable`/probe,
+`IStreamGetProp`, существующий MBR geometry adapter, `CHandlerImg::Open` и
+`GetImgExt`. Изменения сохраняют исходные parser и framework.
+
+GPT теперь использует опубликованный устройством `kpidSectorSize` через тот же
+стандартный interface, что MBR; при известной геометрии альтернативные размеры
+не пробуются. Неверный размер отклоняется, ошибка property сохраняет HRESULT.
+Для обычного файла без geometry property остаётся archive inference по
+validated headers, расширенный до 65536. Это не обнаружение физической геометрии
+по отсутствующим полям и не изменение native device adapter.
+
+Automatic probe и вложенный image-extension consumer используют тот же диапазон.
+Временный буфер image probe выделяется через исходный `CByteBuffer`, signature
+проверяется только внутри фактически прочитанных bytes. CRC, usable ranges,
+partition bounds, primary precedence и ранее описанная backup policy сохранены.
+
+ABI regression на прежнем runtime воспроизвёл выбор ложной 512-byte таблицы
+на устройстве с сектором 4096, игнорирование несовпадающей известной геометрии
+и отказ при 8192..65536. Проверка использует настоящий device stream adapter
+с mock handle, требующим выравнивания, и сравнивает partition bytes на всех
+восьми геометриях. CLI обоих engines проверяет большие сектора, automatic
+recognition и GPT без protective entry; VHD consumer — имя внутреннего образа
+и точные bytes для 65536. Исходники после исправления сопоставлены повторно.
+
+Два integration mocks объявляли 4096-byte геометрию для общей GPT fixture с
+512-byte LBAs; mocks согласованы с образом. Device-folder harness также теперь
+обрабатывает GUI events при ожидании worker, как production progress loop:
+readiness кодеков нельзя обслужить при блокированном GUI thread.
+
+Focused macOS validation: девять suites прошли в общей серии; после исправления
+device-folder harness повторно прошли `gpt`, `gpt_stream`, `archive_device`,
+`device_folder`, `upstream_baseline` (10.53 s). Итоговый объединённый scope —
+эти пять плюс `mbr`, `mbr_stream`, `apm_stream`, `device_input`, `native_rar_memory`.
+Все используют существующий incremental build и compiler cache. Linux/Windows
+и slow suites не запускались: изменения общих readers не меняют platform adapters.
+Финальный macOS application target собран с обновлённым runtime.
+Отдельная CLI `apm` остаётся с подтверждённым baseline routing failure,
+описанным в [APM audit](apm-linux.md#повторная-integration-проверка--2026-10-22).
 
 ## Проверки и границы
 

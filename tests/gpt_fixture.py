@@ -6,7 +6,9 @@ import sys
 import uuid
 import zlib
 
-CASES = ("sector-512", "sector-1024", "sector-2048", "sector-4096", "header-full",
+CASES = ("sector-512", "sector-1024", "sector-2048", "sector-4096",
+         "sector-8192", "sector-16384", "sector-32768", "sector-65536",
+         "no-pmbr-65536", "header-full",
          "revision", "backup-crc", "backup-array", "backup-signature", "backup-short",
          "primary-only", "primary-wins", "backup-address", "entry-outside", "entry-256")
 BAD = ("short-header", "long-header", "usable-first", "usable-last", "usable-reversed",
@@ -15,11 +17,15 @@ BAD = ("short-header", "long-header", "usable-first", "usable-last", "usable-rev
 
 
 def volume(kind):
-    sector = int(kind[7:]) if kind.startswith("sector-") else 512
+    sector = (int(kind[7:]) if kind.startswith("sector-") else
+              int(kind[8:]) if kind.startswith("no-pmbr-") else
+              4096 if kind == "device-4096-decoy" else 512)
     image = bytearray(128 * sector)
     image[510:512] = b"\x55\xaa"
     image[450] = 0xee
     struct.pack_into("<II", image, 454, 1, 127)
+    if kind.startswith("no-pmbr-"):
+        image[446:462] = bytes(16)
     entry_size = 256 if kind == "entry-256" else 128
     entries = bytearray(entry_size * 4)
     entries[:16] = uuid.UUID("0fc63daf-8483-4772-8e79-3d69d8477de4").bytes_le
@@ -88,6 +94,9 @@ def volume(kind):
         if damaged and (kind in ("crc", "backup-crc", "primary-only")):
             header[16] ^= 1
         image[lba * sector:(lba + 1) * sector] = header
+    if kind == "device-4096-decoy":
+        decoy, _, _ = volume("sector-512")
+        image[512:1536] = decoy[512:1536]
     return bytes(image), payload, sector
 
 

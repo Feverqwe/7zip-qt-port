@@ -56,7 +56,7 @@ class GptTests(unittest.TestCase):
                     self.assertEqual(self.run_image(engine, image).returncode, 2)
 
     def test_virtual_disk_inner_gpt_name(self):
-        for kind in ("sector-1024", "sector-2048", "backup-signature"):
+        for kind in ("sector-1024", "sector-2048", "backup-signature", "no-pmbr-65536"):
             image, _, _ = volume(kind)
             footer = bytearray(512)
             footer[:8] = b"conectix"

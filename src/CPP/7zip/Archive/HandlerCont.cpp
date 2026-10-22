@@ -5,6 +5,7 @@
 #include "../../../C/CpuArch.h"
 
 #include "../../Common/ComTry.h"
+#include "../../Common/MyBuffer.h"
 
 #include "../Common/LimitedStreams.h"
 #include "../Common/ProgressUtils.h"
@@ -145,16 +146,17 @@ static const Byte k_GDP_Signature[] = {'E', 'F', 'I', ' ', 'P', 'A', 'R', 'T'};
 
 static const char *GetImgExt(ISequentialInStream *stream) {
     // const size_t kHeaderSize_for_Ext = (1 << 11); // for ext
-    const size_t kHeaderSize = 2 << 12; // for 4 KB sector GPT
-    Byte buf[kHeaderSize];
+    const size_t kHeaderSize = (1u << 16) + sizeof(k_GDP_Signature);
+    CByteBuffer buf(kHeaderSize);
     size_t processed = kHeaderSize;
     if (ReadStream(stream, buf, &processed) == S_OK) {
-        if (processed >= kHeaderSize)
+        if (processed >= 512)
             if (buf[0x1FE] == 0x55 && buf[0x1FF] == 0xAA) {
                 for (unsigned i = 0; i < 4; ++i)
                     if (buf[446 + i * 16 + 4] == 0xEE && GetUi32(buf + 446 + i * 16 + 8) == 1)
                         return "gpt";
-                for (unsigned k = (1 << 9); k <= (1u << 12); k <<= 1)
+                for (unsigned k = (1 << 9);
+                     k <= (1u << 16) && k + sizeof(k_GDP_Signature) <= processed; k <<= 1)
                     if (memcmp(buf + k, k_GDP_Signature, sizeof(k_GDP_Signature)) == 0)
                         return "gpt";
                 return "mbr";

@@ -85,3 +85,13 @@ Slow, full gate и UI appearance проверки в этой итерации �
 
 Остальной scope, включая MBR и дополнительные shared formats, остаётся
 в [едином реестре](filesystems-linux.md).
+
+### Повторная integration проверка — 2026-10-22
+
+При расширении GPT geometry обычная CLI suite выявила прежний routing regression:
+14 valid APM variants при automatic opening выбирают `lzma` в обоих engines.
+Forced APM/ABI reader checks проходят. Сбой повторён на production sources
+`20652199` после временного удаления всех GPT/HandlerCont изменений и пересборки
+того же incremental runtime. Это не новый GPT regression; прежняя успешная
+acceptance выше не доказывает актуальную automatic-routing acceptance.
+APM routing остаётся незавершённой частью общей задачи.

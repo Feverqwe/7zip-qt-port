@@ -339,13 +339,16 @@ kernel/platform services и отдельный AIX volume format не подме
 
 [Сверка APM](apm-linux.md): block sizes до 32768, reserved fields, first-entry
 count, end signature и безопасные partition spans; оба engine и backend consumer.
-Сохранён отдельный legacy installation-image mode 7-Zip. Native Linux и
-focused три ОС проверяют read scope; MBR и остальные shared formats ещё открыты.
+Сохранён отдельный legacy installation-image mode 7-Zip. Исторические native и
+focused проверки трёх ОС приведены в linked audit. Повторная проверка обнаружила
+прежний APM/LZMA automatic-routing regression; эта integration часть остаётся
+открытой.
 
 ### GPT: tables, geometry и partition streams
 
 [Сверка и исправления GPT](gpt-linux.md): validated header/table spans и CRC,
-usable ranges, out-of-disk entries, четыре размера сектора, primary precedence
+usable ranges, out-of-disk entries, logical sectors 512..65536 с приоритетом
+известной device geometry, primary precedence
 и backup recovery с явной archive adaptation относительно Linux `force_gpt`.
 Оба engine и вложенный image consumer используют обновлённый исходный 7-Zip
 handler; общие container streams переиспользуют готовый extent reader для
