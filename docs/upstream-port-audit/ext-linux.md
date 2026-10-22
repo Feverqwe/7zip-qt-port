@@ -10,6 +10,66 @@ fs-verity now reuses the original shared Linux string scanner already linked
 for fscrypt. Source scope and validation are recorded with the
 [shared string-service transfer](erofs-linux.md#original-shared-string-services--2026-10-22).
 
+## Mapping, bitmap and system-zone source comparison — 2026-10-22
+
+Completed whole-unit comparison of the selected block-read component against
+Linux `58161ead29e50d70a317ea26b472e0c7508e69da`: all 49 functions present
+in `indirect.c`, `extents.c`, `block_validity.c`, `balloc.c` and `bitmap.c`.
+Thirty-eight complete bodies match after comments/whitespace are ignored; five
+have the adaptations below; six are private lookup/export ownership functions.
+Original types, significant branches, read callers and buffer/error lifetimes
+were inspected separately from existing runtime evidence.
+
+| Original unit | Read-side source result |
+| --- | --- |
+| `fs/ext4/indirect.c` | All eight present functions checked. Complete `add_chain`, `ext4_block_to_path` and `ext4_get_branch` match. `ext4_ind_map_blocks` retains its original lookup, contiguous-run/hole sizing and cleanup; allocation/journal branches and their locals are omitted, with creation unsupported. Four C entry points own the private mapper, validate the requested/output ranges and release it. |
+| `fs/ext4/extents.c` | All 20 present functions checked. Seventeen complete checksum, capacity, extent/index validation, path cleanup, leaf caching and tree-block acquisition bodies match. `ext4_ext_precache` retains the original DFS; its adaptation exports root/external leaves, uses NOCACHE to avoid duplicate publication, initializes cleanup depth and omits the unpublished inode's semaphore. Two local functions export a validated leaf and own the walk. |
+| `fs/ext4/block_validity.c` | All ten present functions checked. Seven complete owner/overlap validation, reserved-inode mapping, release and lifecycle bodies match. `add_system_zone` substitutes owned allocations for slab services; destruction uses the original postorder primitives without GNU iterator syntax. Setup omits optional debug printing. Tree insertion/merge, protected ranges, inode owner exceptions and unwind are preserved. |
+| `fs/ext4/balloc.c` | All nine transferred bodies match: sparse-super/sparse-super2/META_BG descriptor geometry, base metadata ranges, group cluster sizing and structural/padding bitmap checks. Allocation and write-side bitmap initialization are not transferred. |
+| `fs/ext4/bitmap.c` | Both complete bitmap checksum verifiers match, retaining checksum-feature and descriptor-width rules. Checksum setters are outside the read-only component. |
+
+The original depth-first extent inventory is the archive consumer of tree data;
+the VFS's demand lookup, extent-status cache, fiemap reporting and block-allocation
+interfaces are not alternate decoders required by this eager inventory API.
+All reachable validated extents are exported, including metadata beyond the
+ordinary file size needed by verity. The archive retains its parent upper-bound
+check before publishing a leaf range. The original extent header/accessors were
+also compared: layouts, initialized/unwritten length decoding, 48-bit physical
+addresses, depth and tail placement remain, with byte-pointer arithmetic replacing
+GNU void-pointer arithmetic. No write-side extent operation is made available.
+
+Traced all `FillExtents` callers and the normal/classic directory, journal,
+EA-inode, symlink, regular-file, fscrypt and verity stream consumers. The GPL
+handler delegates physical mapping to these original C routines. Its retained
+SDK extent stream projects an already validated inventory; the separate classic
+stream obtains ranges through original indirect lookup. The archive adapters
+provide seekable COM input, bounded buffer acquisition, progress/HRESULT transport
+and owned lifetimes because neither kernel supplies that userspace interface.
+The separate SDK-only handler variant retains its SDK mapping implementation.
+
+Reviewed `extentread.h`, `indirectread.h`, `blockread.h`, `extblockreader.c` and
+`extindirectstream.cpp` with those consumers. The private indirect cache retains
+at most three branch buffers and only reuses validated references; failed reads
+remain retryable. Extent paths retain at most one block per level and release
+every acquired level after read/visitor failure. The system-zone tree uses the
+already audited original rbtree dependency with pointer-width host adaptations.
+Private immutable trees replace RCU/cache/slab services, rather than exposing a
+mount/remount concurrency API. Journal-owner reads retain explicit source bounds.
+Source failures, OOM/cancellation and output failures remain distinct at the
+archive boundary; holes/unwritten data are not metadata aliases or invented
+success after an unavailable mapping tail. Existing limited-prefix behavior is
+an explicit archive adaptation, and performs no repair or journal replay.
+
+All 305 pinned reference hashes match. No production code changed during this
+review; the eight macOS focused suites and incremental application build in
+[the metadata-helper iteration](#original-inode-and-group-metadata-helpers--2026-10-22)
+cover these exact sources. No redundant runtime batch or source-text regression
+was added; this documentation-only change passed `git diff --check`. This closes
+the selected mapping/bitmap/system-zone source comparison with the adaptations
+above. Superblock/inode acquisition, directory, generic crypto/verity and the
+overall ext/parent audit are not closed by this component result. No new remote,
+full/slow, native-device, UI appearance or release-install acceptance is claimed.
+
 ## Inline, xattr, ACL, hash and symlink source comparison — 2026-10-22
 
 Completed a whole-unit comparison of the selected read-side component against
