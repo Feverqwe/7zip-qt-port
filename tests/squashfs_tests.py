@@ -225,6 +225,18 @@ class SquashfsTests(unittest.TestCase):
                     self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
                     self.assertEqual(result.stdout, files[name])
 
+    def test_unreachable_inode_dependencies_do_not_limit_the_namespace(self):
+        for fault in ("inode-unused-owner", "inode-unused-fragment", "inode-unused-xattr"):
+            data, files = volume(fault, xattrs=True, export=True)
+            with self.subTest(fault=fault):
+                listing = self.run_image("7z", data, "l")
+                self.assertEqual(listing.returncode, 0, listing.stderr.decode(errors="replace"))
+                self.assertNotIn(b"Read-only limitations =", listing.stdout)
+                for name in ("alpha", "hardlink", "данные 空"):
+                    result = self.run_image("7z", data, "x", name)
+                    self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                    self.assertEqual(result.stdout, files[name])
+
     def test_export_payload_is_independent_of_ordinary_file_reads(self):
         for engine in ("7z", "7zz"):
             for xattrs in (False, True):

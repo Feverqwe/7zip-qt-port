@@ -98,6 +98,18 @@ def volume(fault="", compressed=False, no_fragments=False, codec="zlib", xattrs=
         directory += struct.pack("<4H", offsets[node], node, 3 if node == 2 else 2, len(name) - 1) + name
     root_offset = len(inodes)
     inodes += base(1, 4) + struct.pack("<2I2HI", 0, 2, len(directory) + 3, 0, 1)
+    unused_inode = fault in ("inode-unused-fragment", "inode-unused-owner", "inode-unused-xattr")
+    if unused_inode:
+        unused_offset = len(inodes)
+        start, size = descriptors[0]
+        if fault == "inode-unused-xattr":
+            inodes += base(9, 5) + struct.pack("<QQQ4I", start, len(first), 0, 1, 0, 0, 1)
+        else:
+            record = bytearray(base(2, 5))
+            if fault == "inode-unused-owner":
+                struct.pack_into("<HH", record, 4, 2048, 2048)
+            inodes += record + struct.pack("<4I", start, 512 if fault == "inode-unused-fragment" else 0, 0, len(first))
+        inodes += struct.pack("<I", size)
     if fault == "inode-unused":
         inodes += base(0xffff, 5) + bytes(4)
     inode_start = len(image)
@@ -117,7 +129,7 @@ def volume(fault="", compressed=False, no_fragments=False, codec="zlib", xattrs=
                                       fragment_size, 0), compressed)
         fragment_count = 1
         fragment_indexes = [fragment_metadata]
-        if fault in ("fragment-unused-block", "fragment-remap"):
+        if fault in ("fragment-unused-block", "fragment-remap", "inode-unused-fragment"):
             fragment_count = 513
             fragment_indexes.append(len(image))
             image += (metadata(struct.pack("<QII", fragment_start, fragment_size, 0))
@@ -130,13 +142,18 @@ def volume(fault="", compressed=False, no_fragments=False, codec="zlib", xattrs=
     lookup_table = INVALID
     if export:
         lookup_metadata = len(image)
-        image += metadata(struct.pack("<4Q", offsets[0], offsets[1], offsets[2], root_offset))
+        refs = offsets + [root_offset] + ([unused_offset] if unused_inode else [])
+        image += metadata(struct.pack("<" + "Q" * len(refs), *refs))
         lookup_table = len(image)
         image += struct.pack("<Q", lookup_metadata)
     ids_metadata = len(image)
     image += metadata(struct.pack("<I", 1000), compressed)
+    id_indexes = [ids_metadata]
+    if fault == "inode-unused-owner":
+        id_indexes.append(len(image))
+        image += struct.pack("<H", 0x8000)
     ids_table = len(image)
-    image += struct.pack("<Q", ids_metadata)
+    image += b"".join(struct.pack("<Q", block) for block in id_indexes)
     xattr_id_table = INVALID
     if xattrs:
         attributes = [(0, b"inline", b"v\0a\0lue"), (2, b"label", b"test-label"), (0, b"empty", b"")]
@@ -158,13 +175,20 @@ def volume(fault="", compressed=False, no_fragments=False, codec="zlib", xattrs=
         xattr_start = len(image)
         for offset in range(0, len(entries), BLOCK):
             image += metadata(entries[offset:offset + BLOCK])
+        unused_xattr = None
+        if fault == "inode-unused-xattr":
+            unused_xattr = (len(image) - xattr_start) << 16
+            image += metadata(struct.pack("<HH", 0, 6) + b"unused" + struct.pack("<I", 6) + b"unused")
         xattr_ids_metadata = len(image)
-        image += metadata(struct.pack("<QII", 0, len(attributes) + 3, len(entries)))
+        xattr_ids = struct.pack("<QII", 0, len(attributes) + 3, len(entries))
+        if unused_xattr is not None:
+            xattr_ids += struct.pack("<QII", unused_xattr, 1, 20)
+        image += metadata(xattr_ids)
         xattr_id_table = len(image)
-        image += struct.pack("<QIIQ", xattr_start, 1, 0, xattr_ids_metadata)
-    struct.pack_into("<5I6H8Q", image, 0, 0x73717368, 1 if no_fragments else 5 if fault == "inode-unused" else 4,
+        image += struct.pack("<QIIQ", xattr_start, 2 if unused_xattr is not None else 1, 0, xattr_ids_metadata)
+    struct.pack_into("<5I6H8Q", image, 0, 0x73717368, 1 if no_fragments else 5 if fault == "inode-unused" or unused_inode else 4,
                      0, BLOCK, 0 if no_fragments else fragment_count, 5 if codec == "lz4" else 3 if codec == "lzo-rle" else 1,
-                     13, 1 << 10 if codec == "lz4" else 0, 1, 4, 0,
+                     13, 1 << 10 if codec == "lz4" else 0, 2049 if fault == "inode-unused-owner" else 1, 4, 0,
                      root_offset, len(image), ids_table, xattr_id_table, inode_start, dir_start,
                      fragment_table, lookup_table)
     # Structural mutations use uncompressed metadata so each targets a single boundary.

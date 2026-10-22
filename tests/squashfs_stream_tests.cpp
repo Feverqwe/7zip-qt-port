@@ -774,6 +774,62 @@ class SquashfsStreamTests final : public QObject {
              {"fragment-remap", "fragment-high-index", "fragment-unused-block"})
             QTest::newRow(qPrintable(fault)) << fault;
     }
+    void unreachableInodeDependenciesAreNotRead_data() {
+        QTest::addColumn<QString>("fault");
+        for (const QString &fault :
+             {"inode-unused-fragment", "inode-unused-owner", "inode-unused-xattr"})
+            QTest::newRow(qPrintable(fault)) << fault;
+    }
+    void unreachableInodeDependenciesAreNotRead() {
+        QFETCH(QString, fault);
+        loadFixture("zlib", true, fault);
+        CMyComPtr2<IInStream, Input> source;
+        source.SetFromCls(new Input(bytes_));
+        if (fault == "inode-unused-xattr") {
+            const auto table = qFromLittleEndian<quint64>(bytes_.constData() + 56);
+            const auto start = qFromLittleEndian<quint64>(bytes_.constData() + table);
+            const auto ids = qFromLittleEndian<quint64>(bytes_.constData() + table + 16);
+            const auto unused = qFromLittleEndian<quint64>(bytes_.constData() + ids + 2 + 16);
+            source->failAt = start + (unused >> 16);
+        } else {
+            const auto table = qFromLittleEndian<quint64>(
+                bytes_.constData() + (fault == "inode-unused-owner" ? 48 : 80));
+            source->failAt = qFromLittleEndian<quint64>(bytes_.constData() + table + 8);
+        }
+        source->atFailure = E_ABORT;
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
+        for (const QString &name : {QString("alpha"), QString("hardlink"), QString("данные 空")}) {
+            auto data = stream(name);
+            QVERIFY(data);
+            const int size =
+                QByteArray::fromBase64(record_["files"].toObject()[name].toString().toLatin1())
+                    .size();
+            check(data, name, 0, size);
+        }
+        auto attribute = stream("alpha:$XATTR.user.inline");
+        QVERIFY(attribute);
+        char bytes[7];
+        UInt32 count = 0;
+        QCOMPARE(attribute->Read(bytes, sizeof(bytes), &count), S_OK);
+        QCOMPARE(QByteArray(bytes, int(count)), QByteArray("v\0a\0lue", 7));
+        NWindows::NCOM::CPropVariant uid;
+        QCOMPARE(archive_->GetProperty(index("alpha"), kpidUserId, &uid), S_OK);
+        QCOMPARE(uid.vt, VARTYPE(VT_UI4));
+        QCOMPARE(uid.ulVal, 1000u);
+        UInt32 properties = 0;
+        QCOMPARE(archive_->GetNumberOfArchiveProperties(&properties), S_OK);
+        for (UInt32 i = 0; i < properties; ++i) {
+            CMyComBSTR name;
+            PROPID id;
+            VARTYPE type;
+            QCOMPARE(archive_->GetArchivePropertyInfo(i, &name, &id, &type), S_OK);
+            if (name && QString::fromWCharArray(name) == "Read-only limitations") {
+                NWindows::NCOM::CPropVariant value;
+                QCOMPARE(archive_->GetArchiveProperty(id, &value), S_OK);
+                QCOMPARE(value.vt, VARTYPE(VT_EMPTY));
+            }
+        }
+    }
     void fragmentsAreLoadedByReferencedIndex() {
         QFETCH(QString, fault);
         loadFixture("zlib", true, fault);

@@ -5,6 +5,45 @@ Scope входит в [общую проверку форматов](filesystems
 современный LZO и проверки compressor options через отдельный format-модуль.
 Полная актуализация SquashFS read features по Linux ещё продолжается.
 
+## Зависимости inode вне namespace, 2026-10-22
+
+Сверены Linux `namei.c:squashfs_lookup`, `inode.c:squashfs_iget`/read branches,
+`id.c`, `fragment.c` и xattr lookup/read dependencies с SDK inventory scan,
+root/directory traversal, number-based recovery, hardlinks и metadata consumers.
+Linux запрашивает зависимости при обращении к inode; недостижимый inode сам
+по себе не требует чтения своих UID/GID, fragment entry или xattr values.
+Прежний archive scan выполнял такие обращения и мог отвергать весь образ
+при ошибке данных, не нужных его namespace.
+
+GPL v4 adapter разделяет исходный `Parse4`/reference inventory и загрузку
+зависимостей. Полный доступный inventory сохраняется для проверки конфликтов
+inode numbers и ограниченного recovery; новый decoder не создаётся. После
+разрешения root/directory reference исходные Linux readers загружают нужные
+UID/GID, fragments и xattrs. ID entries кэшируются по исходному index;
+публикуются только действительно загруженные свойства. Недостижимые записи
+не вызывают чтения ancillary payloads и ложного предупреждения об ограничениях.
+
+Сохраняются проверки record bounds/type/count, неопределённые identities при
+неполной таблице, конфликтующие numbers и unverified recovery. Достижимые
+ошибки по-прежнему дают неизвестные свойства/неполный результат с согласием;
+fatal source/callback results останавливают открытие. Shared hardlinks не
+инициализируют зависимости повторно. Close очищает состояние, streams
+сохраняют собственные mappings/leases. Linux C readers не менялись, legacy/
+core-only scope не расширялся.
+
+Три малых fixtures содержат дополнительный корректно разбираемый inode,
+отсутствующий в каталоге: с отдельным ownership metadata block, fragment block
+или xattr set. ABI устанавливает source E_ABORT на соответствующем ancillary
+block и проверяет успешное открытие, точные данные, xattr/UID и отсутствие ложной
+read-only limitation. CLI проверяет тот же namespace и все payloads. Native
+readonly Linux `6.8.0-147-generic` подтвердил три образа: файлы/hardlinks и
+`user.inline` совпали побайтно; образы не изменились, mounts/data удалены.
+Receipt `20261022T010427Z-14ac2193`. Девять focused suites на macOS/Linux/Windows
+прошли за 69,18/15,55/68,38 с; remote receipt `20261022T010457Z-e2acd07f`.
+Incremental macOS app build также прошла. Full/slow suites и физические
+устройства не проверялись. Whole-metadata caches и их пределы остаются отдельной незакрытой частью
+общей source-сверки; namespace-lazy directory/inode metadata не заявляется.
+
 ## Загрузка fragment entries по inode references, 2026-10-22
 
 Сверены полные Linux `fragment.c` loader/lookup, regular/extended regular

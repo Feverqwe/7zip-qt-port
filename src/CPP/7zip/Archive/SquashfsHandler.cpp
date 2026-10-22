@@ -896,6 +896,10 @@ Z7_CLASS_IMP_CHandler_IInArchive_1(
   static int ReadLinuxMetadata(void *, uint64_t, void *, unsigned *, uint64_t *);
   HRESULT LoadLinuxTables(UInt64 &directoryEnd);
   HRESULT LoadFragment(CNode &node);
+  HRESULT LoadId(UInt32 index);
+  HRESULT LoadNode(unsigned index);
+  CRecordVector<bool> _loadedNodes;
+  std::set<UInt32> _loadedIds;
   std::map<UInt32, UInt32> _fragmentIndexes;
   HRESULT LinuxResult(int result) const;
   using CAttributes = std::shared_ptr<std::vector<ArchiveAttribute>>;
@@ -1095,18 +1099,25 @@ HRESULT CHandler::LoadLinuxTables(UInt64 &directoryEnd) {
     _indexLimitations = unavailable != 0;
     directoryEnd = end;
     _uids.Alloc((size_t)_h.NumIDs * 4);
-    for (unsigned i = 0; i < _h.NumIDs; ++i) {
-        _linuxReadResult = S_OK;
-        unsigned id = 0;
-        const HRESULT result = LinuxResult(sevenzip_squashfs_id(_linuxMetadata, i, &id));
-        if (result == E_ABORT || result == E_OUTOFMEMORY || result == E_NOTIMPL)
-            return result;
-        if (result != S_OK)
-            _unavailableIds.insert(i);
-        SetUi32(_uids + (size_t)i * 4, id);
-        if (_openCallback && (i & 255) == 0)
-            RINOK(_openCallback->SetCompleted(NULL, NULL))
+    return S_OK;
+}
+
+HRESULT CHandler::LoadId(UInt32 index) {
+    if (index >= _h.NumIDs || _loadedIds.count(index))
+        return S_OK;
+    _linuxReadResult = S_OK;
+    unsigned id = 0;
+    const HRESULT result = LinuxResult(sevenzip_squashfs_id(_linuxMetadata, index, &id));
+    if (result == E_ABORT || result == E_OUTOFMEMORY || result == E_NOTIMPL)
+        return result;
+    if (_openCallback) {
+        _directoryCallbackResult = _openCallback->SetCompleted(NULL, NULL);
+        RINOK(_directoryCallbackResult)
     }
+    if (result != S_OK)
+        _unavailableIds.insert(index);
+    SetUi32(_uids + (size_t)index * 4, id);
+    _loadedIds.insert(index);
     return S_OK;
 }
 
@@ -1190,17 +1201,35 @@ HRESULT CHandler::ReadNode(UInt32 pos, int &nodeIndex, UInt32 *length) {
         RINOK(_directoryCallbackResult)
     }
     const UInt16 type = n.Type > kType_SOCK ? n.Type - 7 : n.Type;
-    RINOK(LoadFragment(n))
     const auto inserted = _inodeReferences.emplace(n.Number, std::make_pair(reference, type));
     if (!inserted.second) {
         inserted.first->second.first = UINT64_MAX;
         _inodeMappingLimitations = true;
     }
+    const unsigned index = _nodes.Size();
+    _attributes.resize(index + 1);
+    _loadedNodes.Add(false);
+    _nodesPos.Add(pos);
+    _nodes.Add(n);
+    _activeDirs.Add(false);
+    _inodePositions.emplace(pos, std::make_pair(index, pos + size));
+    _inodeNodes.emplace(reference, std::make_pair(index, size));
+    nodeIndex = (int)index;
+    if (length)
+        *length = size;
+    return S_OK;
+}
+
+HRESULT CHandler::LoadNode(unsigned index) {
+    if (_loadedNodes[index])
+        return S_OK;
+    CNode &n = _nodes[index];
+    RINOK(LoadId(n.Uid))
+    RINOK(LoadId(n.Gid))
+    RINOK(LoadFragment(n))
     _ownershipLimitations |= OwnershipUnavailable(n);
     _fragmentLimitations |= FragmentUnavailable(n);
     _linuxReadResult = S_OK;
-    const unsigned index = _nodes.Size();
-    _attributes.resize(index + 1);
     auto found = _attributeSets.find(n.Xattr);
     if (found == _attributeSets.end()) {
         _attributes[index] = std::make_shared<std::vector<ArchiveAttribute>>();
@@ -1216,14 +1245,7 @@ HRESULT CHandler::ReadNode(UInt32 pos, int &nodeIndex, UInt32 *length) {
         _attributeSets.emplace(n.Xattr, _attributes[index]);
     } else
         _attributes[index] = found->second;
-    _nodesPos.Add(pos);
-    _nodes.Add(n);
-    _activeDirs.Add(false);
-    _inodePositions.emplace(pos, std::make_pair(index, pos + size));
-    _inodeNodes.emplace(reference, std::make_pair(index, size));
-    nodeIndex = (int)index;
-    if (length)
-        *length = size;
+    _loadedNodes[index] = true;
     return S_OK;
 }
 
@@ -1926,8 +1948,10 @@ HRESULT CHandler::FindNode(UInt32 startBlock, UInt32 offset, int &nodeIndex) {
         return S_FALSE;
 
 #ifdef SEVENZIP_LINUX_SQUASHFS
-    if (!_h.IsOldVersion())
-        return ReadNode(unpackPos, nodeIndex);
+    if (!_h.IsOldVersion()) {
+        RINOK(ReadNode(unpackPos, nodeIndex))
+        return LoadNode((unsigned)nodeIndex);
+    }
 #endif
     nodeIndex = _nodesPos.FindInSorted(unpackPos);
     return nodeIndex < 0 ? S_FALSE : S_OK;
@@ -2566,6 +2590,8 @@ Z7_COM7F_IMF(CHandler::Close()) {
     _fragmentLimitations = false;
     _indexLimitations = false;
     _fragmentIndexes.clear();
+    _loadedIds.clear();
+    _loadedNodes.Clear();
     _rootAttributeName.Empty();
 #endif
     _openCodePage = CP_UTF8;
