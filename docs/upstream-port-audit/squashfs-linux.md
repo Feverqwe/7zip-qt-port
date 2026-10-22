@@ -3,7 +3,63 @@
 Scope входит в [общую проверку форматов](filesystems-linux.md). Исправлено
 существующее чтение в обоих engines; приложение также получает Linux LZ4,
 современный LZO и проверки compressor options через отдельный format-модуль.
-Полная актуализация SquashFS read features по Linux ещё продолжается.
+Итоговая сверка read-side source scope приведена ниже; runtime evidence и
+границы archive/VFS различаются. Датированные разделы сохраняют свидетельства
+отдельных итераций; указанные в них прежние ограничения заменены поздними
+исправлениями и итогом сверки.
+
+## Итоговая сверка read-side source scope — 2026-10-22
+
+После `0ffd561b` повторно сверены оставшиеся units полного `fs/squashfs`
+из закреплённого [manifest](../squashfs-linux-baseline.json), их headers,
+Kconfig/Makefile composition и подключения к текущему GPL module/SDK handler.
+Linux baseline: `58161ead29e50d70a317ea26b472e0c7508e69da`, SDK:
+`9128b80e3a471108678e2b3ec3c985861c8d7b0f`; retrievable repositories ниже.
+Сверка read features этого baseline закрыта в следующих границах:
+
+| Linux units / read contract | Текущий перенос и граница |
+| --- | --- |
+| `super.c`, disk headers | v4.0, geometry, bytes_used, root и порядок ancillary tables проверяются при открытии. Исходные table helpers подключены через C metadata service. Локальные ошибки optional tables изолированы; зависимости отдельных файлов остаются честно недоступными. |
+| `inode.c`, `symlink.c` | Все обычные/extended regular, directory, symlink, device, FIFO/socket types разобраны исходным SDK parser. UID/GID, mode, mtime, number/nlink, device major/minor и xattrs доступны через archive properties; symlink bytes принадлежат потоку. VFS atime/ctime являются проекцией того же mtime, отдельных полей на диске нет. |
+| `dir.c`, `namei.c` | Полные directory headers/entries читаются streaming SDK traversal через Linux metadata cursor. Directory indexes являются необязательным ускорением, перечисление их не требует. Synthetic `.`/`..`, dentry lookup и directory f_pos относятся к VFS; archive tree использует реальные directory entries. |
+| `file.c`, `fragment.c` | Исходный C blocklist/index-cache lookup подключён к seek/read и packed-size consumer. Sparse descriptor, обычный последний блок и общий fragment с offset обрабатываются отдельно; поздняя ошибка не превращается в нули и не скрывает доступный prefix. |
+| `block.c`, `cache.c`, `id.c`, `export.c`, `xattr_id.c`, `xattr.c` | Исходные raw/metadata reads, переходы blocks, index loaders, list/get и namespaces подключены к bounded source. Export payload не является зависимостью namespace; xattr values публикуются owned alternate streams. Большие raw tables и списки xattr не ограничены aggregate compression-bit/list-syscall пределами. |
+| `decompressor.c`, single, LZ4/LZO/XZ wrappers | Подключены original framework/options и Linux LZ4/LZO decoding. Для Zlib/XZ/Zstd повторно используются исходные portable SDK decoders; checked first-stream semantics и ошибки проверены отдельными итерациями ниже. Все поддерживаемые Linux compression IDs доступны; LZMA ID не поддерживает сам Linux. |
+
+`file_cache.c`, `file_direct.c`, оставшаяся folio/readahead часть `file.c`,
+special page actors и multi/percpu decompressor pools меняют размещение,
+кэширование и планирование тех же decoded bytes. Archive stream использует
+intermediate actor, собственный decoder/cache и исходный SDK cached stream.
+Эти kernel services не вводят дополнительный disk encoding. VFS mmap/splice,
+lease/locking, SEEK_DATA/HOLE и NFS filehandles не являются операциями archive
+ABI; обычный Seek и чтение sparse bytes подключены. Mount options threads/
+errors=panic, statfs, registration, inode allocation/RCU и teardown kernel
+не копируются. Запись, repair и journal replay отсутствуют.
+
+Sparse summary в extended inode используется Linux для учёта `i_blocks`,
+а не для определения hole bytes; archive packed size вычисляется из реальных
+descriptors. Parent inode number нужен synthetic `..`/NFS; archive parent
+получается из namespace traversal. Отсутствие этих VFS projections не означает
+пропуск payload. Linux block-size/page-size gate относится к folio service;
+archive reader может читать блоки меньше своей промежуточной страницы.
+
+Сохраняются практические ограничения каталога SDK по количеству items и
+глубине, память для retained namespace/xattr values и bounded decoder
+allocations. Это ресурсные ограничения archive API, а не обещание приёмки
+любой ёмкости Linux mount. Versions 1–3 остаются дополнительной SDK support;
+core-only standalone не получает GPL-only возможности. Приложение на всех
+трёх ОС использует dynamic engine с соответствующим format module.
+
+Проверка provenance также обнаружила, что ранее перенесённый `file.c` был
+только в reference hashes, но отсутствовал в группе `adapted`: классификация
+исправлена без изменения baseline/hash или функционального кода.
+Runtime evidence, включая pre-fix regressions, native controls и focused
+проверки трёх ОС, приведено в соответствующих разделах ниже. Эта завершающая
+сверка не требует повторения уже прошедших проверок неизменённого кода;
+изменены только audit/provenance, выполнен diff check. Native kernel 6.8
+и pinned source остаются разными evidence; физические носители, full/slow
+suites и release installation этим итогом не валидируются. Остальные
+filesystem/format rows общего аудита остаются открытыми.
 
 ## Большие raw index tables, 2026-10-22
 
@@ -1089,7 +1145,9 @@ Linux эталон поддерживает v4.0. Форматирование �
 Открытие учитывает реальную длину входа, v4.0/block-size contract,
 отсутствующий fragment index при нулевом числе fragments и пустой root.
 Конец directory metadata определяется перед fragment/lookup/ID metadata,
-а не по началу массива fragment pointers. Сохраняется исходный eager parser.
+а не по началу массива fragment pointers. Для v4 GPL module исходный SDK
+parser подключён к streaming metadata cursors; legacy/core-only путь
+сохраняет eager buffers.
 
 Добавлены проверки inode IDs/mode/number, отрицательного размера, fragment
 tail, directory counts/names, root type и смещений внутри конкретного
@@ -1218,11 +1276,12 @@ build trees и compiler caches сохранены. Начальная загру
 и eager inode/directory failures остаются в открытом scope общего аудита.
 
 Сохранены GNU-to-C portability adaptations. Raw table range проверяется до
-выделения памяти; длина не должна пересекаться с кодируемым uncompressed bit.
+выделения памяти; page-sized requests не пересекаются с uncompressed bit.
 Отрицательный xattr count отклоняется до signed loop, names/values ограничены
-Linux VFS xattr limits. Eager archive open отклоняет повреждённые metadata
-целиком; Linux может сообщить ошибку позднее при отдельном xattr/NFS access.
-Это отличие момента отказа не подменяет корректные байты файла нулями.
+Linux VFS xattr limits. GPL module изолирует повреждённые metadata и
+показывает доступный subset с диагностикой/согласием; непрочитанные данные
+не объявляются проверенными и не подменяются нулями. Core-only/legacy путь
+не получает эту адаптацию.
 
 В обоих engines восстановлены реальные inode number/nlink и цель symlink.
 Стандартные archive/item inode properties подключают существующий механизм
@@ -1232,8 +1291,8 @@ hardlinks `ArchiveExtractCallback`; новый алгоритм создания
 не выдаёт вымышленные нули вместо ошибки Linux.
 
 Проверенный source scope перечислен выше отдельно от runtime evidence.
-Eager metadata limits и bounded-buffer decoder allocation policy сохраняются;
-другие filesystem/format rows общего аудита продолжаются.
+Bounded-buffer decoder allocation policy и ограничения retained archive
+catalog сохраняются; другие filesystem/format rows общего аудита продолжаются.
 
 ## Проверки
 

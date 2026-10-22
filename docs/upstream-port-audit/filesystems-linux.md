@@ -80,7 +80,7 @@ filesystem UI; физические носители и системная ав�
 | ext2/3/4 | `fs/ext2`, `fs/ext4` | Superblock/features, inode, directory, extents/indirect/inline data и sparse reads. |
 | NTFS | `fs/ntfs3` | Boot/MFT, attributes/runlists, directories, sparse/compressed file reads. |
 | HFS/HFS+ | `fs/hfs`, `fs/hfsplus` | [Read-side source audit закрыт](hfs-linux.md#итоговая-сверка-read-side-source-scope--2026-10-21): volume/B-tree, extents, имена, metadata и data/resource forks; archive/platform и runtime границы записаны отдельно. |
-| cramfs, SquashFS | `fs/cramfs`, `fs/squashfs` | Metadata, directories, blocks/fragments, decompressor boundaries. |
+| cramfs, SquashFS | `fs/cramfs`, `fs/squashfs` | Metadata, directories, blocks/fragments, decompressor boundaries. [SquashFS read-side source audit закрыт](squashfs-linux.md#итоговая-сверка-read-side-source-scope--2026-10-22); cramfs проверяется отдельно. |
 | ISO9660, UDF | `fs/isofs`, `fs/udf` | Descriptors, names/extensions, extents, sparse и embedded data. |
 | EROFS (новый модуль) | `fs/erofs` | Сначала полный source comparison read path и зависимостей, затем C-перенос, 7-Zip ABI, deployment и end-to-end чтение. |
 | Base64 | `lib/base64.c`, fscrypt/Ceph callers | Standard/URL-safe/IMAP alphabets, padding/tail validation и archive handler lifecycle. |

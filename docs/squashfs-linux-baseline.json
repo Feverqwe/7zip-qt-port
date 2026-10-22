@@ -52,6 +52,7 @@
     "fs/squashfs/decompressor.h",
     "fs/squashfs/decompressor_single.c",
     "fs/squashfs/export.c",
+    "fs/squashfs/file.c",
     "fs/squashfs/fragment.c",
     "fs/squashfs/id.c",
     "fs/squashfs/lz4_wrapper.c",
