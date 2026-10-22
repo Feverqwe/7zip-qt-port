@@ -50,13 +50,16 @@ class Input final : public IInStream, public CMyUnknownImp {
     UInt64 position_ = 0;
     UInt64 tail_ = 0;
     UInt64 length_;
+    UInt64 directory_ = 0;
+    UInt32 directorySize_ = 0;
 
   public:
     bool fail = false;
     HRESULT failure = E_FAIL;
     UInt64 failAt = UINT64_MAX;
     bool shortRead = false;
-    explicit Input(QByteArray bytes, bool distant = false) : bytes_(std::move(bytes)) {
+    explicit Input(QByteArray bytes, bool distant = false, UInt32 directory = 0)
+        : bytes_(std::move(bytes)) {
         if (distant) {
             tail_ = UInt64(1) << 30;
             const int table = bytes_.size() - contents.size() - 8;
@@ -64,6 +67,13 @@ class Input final : public IInStream, public CMyUnknownImp {
             qToLittleEndian(quint32(0xc0000000 | ((tail_ + 4096) / 4)), bytes_.data() + table + 4);
         }
         length_ = tail_ ? tail_ + contents.size() : bytes_.size();
+        if (directory) {
+            directory_ = directory;
+            directorySize_ = qFromLittleEndian<quint32>(bytes_.constData() + 512 + 68) & 0xffffff;
+            qToLittleEndian(quint32(0xc00), bytes_.data() + 512 + 8);
+            qToLittleEndian(quint32((directory / 4) << 6), bytes_.data() + 512 + 72);
+            length_ = qMax(length_, directory_ + directorySize_);
+        }
     }
     Z7_COM7F_IMF(Read(void *data, UInt32 size, UInt32 *processed)) override {
         if (processed)
@@ -75,11 +85,13 @@ class Input final : public IInStream, public CMyUnknownImp {
         size = UInt32(qMin<UInt64>(size, position_ < length_ ? length_ - position_ : 0));
         for (UInt32 i = 0; i < size; ++i) {
             const UInt64 pos = position_ + i;
-            static_cast<char *>(data)[i] = !tail_         ? bytes_[qsizetype(pos)]
-                                           : pos >= tail_ ? contents[qsizetype(pos - tail_)]
-                                           : pos < UInt64(bytes_.size() - contents.size())
-                                               ? bytes_[qsizetype(pos)]
-                                               : '\0';
+            static_cast<char *>(data)[i] =
+                directory_ && pos >= directory_ && pos - directory_ < directorySize_
+                    ? bytes_[qsizetype(512 + 76 + pos - directory_)]
+                : !tail_                                        ? bytes_[qsizetype(pos)]
+                : pos >= tail_                                  ? contents[qsizetype(pos - tail_)]
+                : pos < UInt64(bytes_.size() - contents.size()) ? bytes_[qsizetype(pos)]
+                                                                : '\0';
         }
         position_ += size;
         if (processed)
@@ -250,6 +262,47 @@ class CramfsModuleTests final : public QObject {
         QTest::addColumn<bool>("shortRead");
         QTest::newRow("io-failure") << false;
         QTest::newRow("short-read") << true;
+    }
+    void directoryReadsSkipUnrelatedSourceBytes_data() {
+        QTest::addColumn<quint32>("directory");
+        QTest::addColumn<quint64>("fault");
+        QTest::newRow("boot-prefix") << quint32(16384) << quint64(16);
+        QTest::newRow("gap") << quint32(16384) << quint64(8192);
+        QTest::newRow("last-addressable-directory") << quint32(0x0ffffffc) << quint64(8192);
+    }
+    void directoryReadsSkipUnrelatedSourceBytes() {
+        QFETCH(quint32, directory);
+        QFETCH(quint64, fault);
+        createArchive();
+        auto *input = new Input(fixture(), true, directory);
+        CMyComPtr<IInStream> source = input;
+        input->failAt = fault;
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
+        NWindows::NCOM::CPropVariant path;
+        QCOMPARE(archive_->GetProperty(0, kpidPath, &path), S_OK);
+        QCOMPARE(QString::fromWCharArray(path.bstrVal), name);
+        CMyComPtr2<IArchiveExtractCallback, Extract> callback;
+        callback.Create_if_Empty();
+        const UInt32 index = 0;
+        QCOMPARE(archive_->Extract(&index, 1, 0, callback), S_OK);
+        QCOMPARE(callback->result, Int32(NArchive::NExtract::NOperationResult::kOK));
+        QCOMPARE(callback->output->bytes, contents);
+        if (fault == 16) {
+            for (HRESULT fatal : {E_ABORT, E_OUTOFMEMORY}) {
+                input->failure = fatal;
+                QCOMPARE(source->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
+                QCOMPARE(archive_->Open(source, nullptr, nullptr), fatal);
+            }
+        }
+        for (HRESULT failure : {E_FAIL, E_ABORT, E_OUTOFMEMORY}) {
+            input->failAt = directory;
+            input->failure = failure;
+            QCOMPARE(source->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
+            QCOMPARE(archive_->Open(source, nullptr, nullptr), failure);
+            UInt32 count = 99;
+            QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+            QCOMPARE(count, 0u);
+        }
     }
     void optionalChecksumReadDoesNotHideFiles() {
         QFETCH(bool, shortRead);

@@ -211,7 +211,7 @@ Z7_CLASS_IMP_CHandler_IInArchive_1(
 
   HRESULT OpenDir(int parent, UInt32 baseOffsetBase, unsigned level);
   HRESULT Open2(IInStream *inStream);
-  HRESULT EnsureData(UInt32 end);
+  HRESULT EnsureData(UInt32 sourceOffset, UInt32 size, UInt32 &offset);
   HRESULT CheckCrc();
   AString GetPath(unsigned index) const;
   bool GetPackSize(unsigned index, UInt32 &res);
@@ -256,7 +256,8 @@ public:
 
       HRESULT
       CHandler::OpenDir(int parent, UInt32 baseOffset, unsigned level) {
-      RINOK(EnsureData(baseOffset + kNodeSize))
+      if (baseOffset > _loadedSize || kNodeSize > _loadedSize - baseOffset)
+          return S_FALSE;
       const Byte *p = _data + baseOffset;
       bool be = _h.be;
       const UInt32 mode = GetMode(p, be);
@@ -273,7 +274,11 @@ public:
       UInt32 end = offset + size;
       if (offset < kHeaderSize || end > _size || level > kNumDirLevelsMax)
           return S_FALSE;
-      RINOK(EnsureData(end))
+      if (_linuxRead) {
+          UInt32 cachedOffset;
+          RINOK(EnsureData(offset, size, cachedOffset))
+          offset = cachedOffset;
+      }
       UpdatePhySize(end);
       if (end > _headersSize)
           _headersSize = end;
@@ -315,37 +320,38 @@ public:
       return S_OK;
   }
 
-HRESULT CHandler::EnsureData(UInt32 end) {
-    if (end <= _loadedSize)
-        return S_OK;
-    if (end > _size || end > kArcSizeMax)
-        return S_FALSE;
-    if (end > _capacity) {
-        UInt32 capacity = _capacity ? _capacity : (1u << 16);
-        while (capacity < end)
-            capacity = capacity > kArcSizeMax / 2 ? kArcSizeMax : capacity * 2;
-        Byte *data = (Byte *)MidAlloc(capacity);
-        if (!data)
-            return E_OUTOFMEMORY;
-        if (_loadedSize)
-            memcpy(data, _data, _loadedSize);
-        _dataOwner.reset(data, [](Byte *buffer) { MidFree(buffer); });
-        _data = data;
-        _capacity = capacity;
-    }
-    RINOK(InStream_SeekSet(_stream, _volumePos + _loadedSize))
-    while (_loadedSize < end) {
-        size_t part = end - _loadedSize;
-        if (part > (1u << 20))
-            part = 1u << 20;
-        RINOK(ReadStream_FALSE(_stream, _data + _loadedSize, part))
-        _loadedSize += (UInt32)part;
-        if (_openCallback) {
-            RINOK(_openCallback->SetCompleted(NULL, NULL))
-        }
-    }
-    return S_OK;
-}
+  HRESULT CHandler::EnsureData(UInt32 sourceOffset, UInt32 size, UInt32 &offset) {
+      // Archive item offsets address retained metadata, not gaps in the source.
+      if (sourceOffset > _size || size > _size - sourceOffset || size > kArcSizeMax - _loadedSize)
+          return S_FALSE;
+      offset = _loadedSize;
+      const UInt32 end = offset + size;
+      if (end > _capacity) {
+          UInt32 capacity = _capacity ? _capacity : (1u << 16);
+          while (capacity < end)
+              capacity = capacity > kArcSizeMax / 2 ? kArcSizeMax : capacity * 2;
+          Byte *data = (Byte *)MidAlloc(capacity);
+          if (!data)
+              return E_OUTOFMEMORY;
+          if (_loadedSize)
+              memcpy(data, _data, _loadedSize);
+          _dataOwner.reset(data, [](Byte *buffer) { MidFree(buffer); });
+          _data = data;
+          _capacity = capacity;
+      }
+      RINOK(InStream_SeekSet(_stream, _volumePos + sourceOffset))
+      while (_loadedSize < end) {
+          size_t part = end - _loadedSize;
+          if (part > (1u << 20))
+              part = 1u << 20;
+          RINOK(ReadStream_FALSE(_stream, _data + _loadedSize, part))
+          _loadedSize += (UInt32)part;
+          if (_openCallback) {
+              RINOK(_openCallback->SetCompleted(NULL, NULL))
+          }
+      }
+      return S_OK;
+  }
 
 HRESULT CHandler::CheckCrc() {
     const auto unavailable = [this](HRESULT result) -> HRESULT {
@@ -386,10 +392,12 @@ HRESULT CHandler::Open2(IInStream *inStream) {
     UInt64 headerPos = initialPos;
     UInt64 volumePos = initialPos == 512 ? 0 : initialPos;
     Byte buf[kHeaderSize + kNodeSize];
-    RINOK(ReadStream_FALSE(inStream, buf, sizeof(buf)))
-    if (!_h.Parse(buf)) {
+    const HRESULT headerResult = ReadStream_FALSE(inStream, buf, sizeof(buf));
+    if (headerResult == E_ABORT || headerResult == E_OUTOFMEMORY)
+        return headerResult;
+    if (headerResult != S_OK || !_h.Parse(buf)) {
         if (initialPos != 0)
-            return S_FALSE;
+            return headerResult == S_OK ? S_FALSE : headerResult;
         headerPos = 512;
         RINOK(InStream_SeekSet(inStream, headerPos))
         RINOK(ReadStream_FALSE(inStream, buf, sizeof(buf)))
@@ -440,7 +448,8 @@ HRESULT CHandler::Open2(IInStream *inStream) {
             return S_FALSE;
         available -= volumePos;
         _size = available < _h.Size ? (UInt32)available : _h.Size;
-        RINOK(EnsureData(_headerOffset + sizeof(buf)))
+        UInt32 headerCache;
+        RINOK(EnsureData(_headerOffset, sizeof(buf), headerCache))
         if (_h.IsVer2()) {
             if (_size != _h.Size)
                 _errorFlags = kpv_ErrorFlags_UnexpectedEnd;
@@ -451,7 +460,7 @@ HRESULT CHandler::Open2(IInStream *inStream) {
                 _items.ClearAndReserve(_h.NumFiles - 1);
         } else
             _phySize = _size;
-        return OpenDir(-1, _headerOffset + kHeaderSize, 0);
+        return OpenDir(-1, headerCache + kHeaderSize, 0);
     }
     _data = (Byte *)MidAlloc(_h.Size);
     if (!_data)

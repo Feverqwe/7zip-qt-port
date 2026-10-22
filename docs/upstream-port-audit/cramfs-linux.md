@@ -1,5 +1,62 @@
 # Cramfs read-side modernization against Linux
 
+## Addressed metadata reads — 2026-10-22
+
+Compared complete Linux `cramfs_read_super`, `cramfs_read`/block-device buffer
+acquisition, `cramfs_readdir`/`cramfs_lookup`, the disk inode header and SDK
+Open2/OpenDir/EnsureData plus all retained-item/path/property/stream consumers.
+Baselines are recorded below. Linux reads metadata around its referenced
+location, without depending on every byte preceding a directory. The archive
+adapter instead loaded the contiguous source prefix to the greatest metadata
+address, so an unrelated unreadable gap hid readable directories/files.
+
+The original SDK directory walker and disk parsers are retained. The narrow
+buffer service now appends only the selected source range; archive item offsets
+refer to retained metadata and disk inode offsets still refer to source bytes.
+The header cache begins at the chosen superblock, excluding its boot prefix.
+Source range and retained-buffer capacity are checked before allocation/read;
+physical/header-size accounting keeps source coordinates. Growth, ownership,
+progress callbacks and recursive publication retain their existing structure.
+Historical whole-image profiles retain their buffer/path; no Linux parser is
+reimplemented and the original C folio data reader is unchanged.
+
+The primary header candidate can also be unreadable while a supported header
+at byte 512 is readable. The handler now tries that candidate after an ordinary
+initial read failure/short read as it already did after a magic mismatch.
+E_ABORT/E_OUTOFMEMORY remain fatal, and explicit nonzero starting positions
+preserve their read failure rather than probing an unrelated location. This
+is bounded archive-source adaptation; Linux block-buffer I/O granularity and
+failure-to-zero behavior are not claimed to match the archive callback.
+
+The old 272 MiB bound was sufficient for format address geometry: inode offsets
+have 26 bits shifted by two, and a directory size has 24 bits. It was not a
+missing higher directory-address encoding. The remaining retained-catalog
+capacity/item/depth guards are resource limits; cache occupancy no longer grows
+with unused source gaps. A virtual source regression places a directory at
+the final addressable offset and file data at 1 GiB without creating a large
+file. Both it and a smaller shifted-directory control previously failed on an
+unrelated gap, and now extract exact bytes with the correct Unicode path.
+Another pre-fix failure reproduces the unreadable boot prefix. Required
+directory I/O failures, cancellation and OOM still propagate and clear partial
+open state. No extra limited-read warning is fabricated for unrequested gap
+bytes; whole-volume verification has its own explicit state described below.
+Source remains read-only, with no repair or replay.
+
+Final five focused suites (`cramfs`, `cramfs_module`,
+`filesystem_cramfs_read_ui`, `upstream_baseline`, `upstream_inventory`)
+passed on macOS/Linux/Windows in 6.79/3.85/19.06 seconds; runner receipt
+`20261022T052236Z-3fc6c724`. Both engine overlays and the GPL module were
+rebuilt incrementally with retained compiler caches. The macOS application
+build and diff check passed. Existing CLI tests exercise both byte orders,
+nested directories, legacy profiles and data errors; UI tests retain their
+consent/badge/copy checks. No full/slow suites, native mounts, physical
+devices or new UI visual acceptance were performed. Fixtures are RAM-only
+or temporary-owned; incremental build trees and caches were retained.
+
+This resolves unnecessary source-prefix dependencies, not directory-local
+recovery: currently an unavailable required directory can still reject the
+opening. That useful-subset scenario remains in the full cramfs audit.
+
 ## Optional whole-volume verification and limited reading — 2026-10-22
 
 Recompared Linux `inode.c:cramfs_read_super`/`cramfs_finalize_super`, folio
@@ -48,8 +105,8 @@ mounts were run. Disposable fixtures were cleaned by their owners, superseded
 task UI reports removed, current review evidence and caches retained.
 
 This completes the optional-verification scenario, not the full cramfs audit.
-Contiguous metadata-prefix loading and directory-local errors still require
-their own source comparison and useful-read adaptation where supported.
+The addressed-read scenario above subsequently removes contiguous source-prefix
+dependencies. Directory-local errors remain in the open useful-read scope.
 
 ## Independent file streams — 2026-10-22
 
@@ -91,8 +148,8 @@ removed by their existing owners. Diff check passed.
 
 This iteration does not close the complete cramfs source/policy audit.
 The optional-verification scenario above subsequently resolves the CRC opening
-dependency. Contiguous metadata-prefix loading and directory-local errors
-remain outside this lifetime fix and require useful-read comparison.
+dependency. Addressed metadata reads above remove the contiguous-prefix
+dependency; directory-local errors remain outside this lifetime fix.
 
 ## Source comparison
 
