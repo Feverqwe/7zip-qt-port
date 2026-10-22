@@ -70,29 +70,13 @@ static int erofs_read_physical(struct inode *inode, struct erofs_map_blocks *map
     struct erofs_sb_info *sbi = EROFS_SB(sb);
     if ((map->m_flags & EROFS_MAP_META) && erofs_inode_in_metabox(inode))
         return sb->read_inode(sbi->metabox_inode, map->m_pa, data, (size_t)map->m_plen);
-    u64 pos = map->m_pa;
-    unsigned int device = map->m_deviceid;
-    if (device) {
-        if (device > sbi->extra_devices)
-            return -ENODEV;
-        if (sbi->flatdev) {
-            const u64 start = erofs_pos(sb, sbi->devices[device - 1].uniaddr);
-            if (check_add_overflow(pos, start, &pos))
-                return -EFSCORRUPTED;
-            device = 0;
-        }
-    } else if (!sbi->flatdev) {
-        for (unsigned int i = 0; i < sbi->extra_devices; ++i) {
-            const struct erofs_device_info *dif = &sbi->devices[i];
-            const u64 start = erofs_pos(sb, dif->uniaddr);
-            if (start && pos >= start && erofs_blknr(sb, pos - start) < dif->blocks) {
-                pos -= start;
-                device = i + 1;
-                break;
-            }
-        }
-    }
-    u64 length = device ? erofs_pos(sb, sbi->devices[device - 1].blocks) : sb->image_size;
+    struct erofs_map_dev mdev = { .m_pa = map->m_pa, .m_deviceid = map->m_deviceid };
+    int error = erofs_map_dev(sb, &mdev);
+    if (error)
+        return error;
+    const u64 pos = mdev.m_pa;
+    const unsigned int device = mdev.m_dif->id;
+    u64 length = device ? erofs_pos(sb, mdev.m_dif->blocks) : sb->image_size;
     if (pos > length || map->m_plen > length - pos)
         return -EIO;
     return sb->read(sb->context, device, pos, data, (size_t)map->m_plen) ? -EIO : 0;

@@ -166,6 +166,12 @@ struct erofs_inode {
     struct inode vfs_inode;
 };
 struct erofs_device_info { u64 blocks, uniaddr; unsigned int id; u8 tag[64]; };
+struct erofs_map_dev {
+    struct super_block *m_sb;
+    struct erofs_device_info *m_dif;
+    erofs_off_t m_pa;
+    unsigned int m_deviceid;
+};
 struct erofs_xattr_prefix_item {
     struct erofs_xattr_long_prefix *prefix;
     u8 infix_len;
@@ -331,6 +337,7 @@ struct folio *erofs_read_cache_folio(struct erofs_buf *, pgoff_t);
 void *erofs_read_metabuf(struct erofs_buf *, struct super_block *, erofs_off_t, bool);
 void *erofs_read_metadata(struct super_block *, struct erofs_buf *, erofs_off_t *, int *);
 int erofs_map_blocks(struct inode *, struct erofs_map_blocks *);
+int erofs_map_dev(struct super_block *, struct erofs_map_dev *);
 int z_erofs_map_blocks_iter(struct inode *, struct erofs_map_blocks *, int);
 int erofs_read_inode(struct inode *);
 int erofs_read_superblock(struct super_block *);

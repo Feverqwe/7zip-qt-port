@@ -24,17 +24,33 @@ QByteArray image() {
 }
 struct Reader {
     QByteArray bytes;
+    QList<QByteArray> devices;
+    QStringList openedDevices;
+    QMap<unsigned, unsigned> reads;
+    bool external = false;
     bool fail = false;
     uint64_t failAt = UINT64_MAX;
     std::unique_ptr<erofs_volume, decltype(&erofs_close_volume)> volume{nullptr,
                                                                         erofs_close_volume};
     std::unique_ptr<erofs_file, decltype(&erofs_close_file)> root{nullptr, erofs_close_file};
     static int Read(void *opaque, unsigned device, uint64_t offset, void *data, size_t size) {
-        const auto &self = *static_cast<Reader *>(opaque);
-        if (self.fail || (self.failAt >= offset && self.failAt - offset < size) || device ||
-            offset > uint64_t(self.bytes.size()) || size > self.bytes.size() - offset)
+        auto &self = *static_cast<Reader *>(opaque);
+        ++self.reads[device];
+        if (device > unsigned(self.devices.size()))
             return -EIO;
-        std::memcpy(data, self.bytes.constData() + offset, size);
+        const auto &bytes = device ? self.devices[device - 1] : self.bytes;
+        if (self.fail || (self.failAt >= offset && self.failAt - offset < size) ||
+            offset > uint64_t(bytes.size()) || size > bytes.size() - offset)
+            return -EIO;
+        std::memcpy(data, bytes.constData() + offset, size);
+        return 0;
+    }
+    static int OpenDevice(void *opaque, unsigned id, const char *tag, uint64_t size) {
+        auto &self = *static_cast<Reader *>(opaque);
+        if (!id || id > unsigned(self.devices.size()) ||
+            size > uint64_t(self.devices[id - 1].size()))
+            return -ENODEV;
+        self.openedDevices.append(QString::fromUtf8(tag));
         return 0;
     }
     int Open() {
@@ -42,6 +58,8 @@ struct Reader {
         source.context = this;
         source.size = uint64_t(bytes.size());
         source.read = Read;
+        source.open_device = OpenDevice;
+        source.external_devices = external;
         erofs_volume *v = nullptr;
         int result = erofs_open_volume(&source, &v);
         volume.reset(v);
@@ -91,6 +109,82 @@ qsizetype regularEntry(const QByteArray &bytes) {
 class ErofsReaderTests final : public QObject {
     Q_OBJECT
   private slots:
+    void multipleDeviceMappings_data() {
+        QTest::addColumn<bool>("external");
+        QTest::addColumn<bool>("explicitId");
+        QTest::addColumn<unsigned>("fault");
+        for (bool external : {false, true})
+            for (bool explicitId : {false, true})
+                for (unsigned fault : {0U, 1U, 2U}) {
+                    if (fault == 2 && !explicitId)
+                        continue;
+                    const auto row = QByteArray::number(external) + '-' +
+                                     QByteArray::number(explicitId) + '-' +
+                                     QByteArray::number(fault);
+                    QTest::newRow(row.constData()) << external << explicitId << fault;
+                }
+    }
+    void multipleDeviceMappings() {
+        QFETCH(bool, external);
+        QFETCH(bool, explicitId);
+        QFETCH(unsigned, fault);
+        Reader reader;
+        reader.external = external;
+        reader.devices = {QByteArray(4096, 'A'), QByteArray(4096, 'B')};
+        reader.bytes = erofsSpecialImage(0, 0100000, 0, 0);
+        auto u16 = [&](int at, quint16 value) { qToLittleEndian(value, reader.bytes.data() + at); };
+        auto u32 = [&](int at, quint32 value) { qToLittleEndian(value, reader.bytes.data() + at); };
+        u32(1104, 12); // chunked file and device table
+        u16(1110, 2);
+        u16(1112, 16); // device slots at byte 2048
+        for (int i = 0; i < 2; ++i) {
+            const int slot = 2048 + i * 128;
+            const QByteArray tag = i ? "second.bin" : "first.bin";
+            std::memcpy(reader.bytes.data() + slot, tag.constData(), tag.size());
+            u32(slot + 64, 1);
+            u32(slot + 68, i ? 5 : 3);
+        }
+        const int node = 4096 + 128;
+        u16(node, 8);
+        u32(node + 8, 8192);
+        u16(node + 16, 0x20); // indexed chunks with device IDs
+        for (int i = 0; i < 2; ++i) {
+            const int index = node + 32 + i * 8;
+            u16(index + 2, explicitId ? (i && fault == 2 ? 3 : i + 1) : 0);
+            u32(index + 4, explicitId ? (i && fault == 1 ? 1 : 0) : (i ? (fault == 1 ? 6 : 5) : 3));
+        }
+        if (!external) {
+            reader.bytes.append(reader.devices[0]);
+            reader.bytes.append(QByteArray(4096, '\0')); // gap between unified device ranges
+            reader.bytes.append(reader.devices[1]);
+        }
+        const auto original = reader.bytes;
+        QCOMPARE(reader.Open(), 0);
+        QCOMPARE(reader.openedDevices,
+                 external ? QStringList({"first.bin", "second.bin"}) : QStringList());
+        erofs_file *raw = nullptr;
+        QCOMPARE(erofs_open_file(reader.volume.get(), 4, &raw), 0);
+        std::unique_ptr<erofs_file, decltype(&erofs_close_file)> file(raw, erofs_close_file);
+        reader.reads.clear();
+        QByteArray data(8192, '?');
+        size_t processed = 0;
+        QCOMPARE(erofs_pread_file(raw, 0, data.data(), size_t(data.size()), &processed),
+                 fault == 2   ? -ENODEV
+                 : fault == 1 ? -EIO
+                              : 0);
+        QCOMPARE(processed, size_t(fault ? 4096 : 8192));
+        QCOMPARE(data.left(4096), reader.devices[0]);
+        if (!fault)
+            QCOMPARE(data.mid(4096), reader.devices[1]);
+        if (external) {
+            QVERIFY(reader.reads.contains(1));
+            QCOMPARE(reader.reads.contains(2), fault == 0);
+        } else {
+            QVERIFY(!reader.reads.contains(1));
+            QVERIFY(!reader.reads.contains(2));
+        }
+        QCOMPARE(reader.bytes, original);
+    }
     void chunkMetadataReadFailureCanBeRetried() {
         Reader reader;
         reader.bytes = erofsSpecialImage(0, 0100000, 0, 0);

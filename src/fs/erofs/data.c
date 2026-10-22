@@ -167,3 +167,50 @@ out:
 	trace_erofs_map_blocks_exit(inode, map, 0, err);
 	return err;
 }
+
+static void erofs_fill_from_devinfo(struct erofs_map_dev *map,
+		struct super_block *sb, struct erofs_device_info *dif)
+{
+	map->m_sb = sb;
+	map->m_dif = dif;
+	/* Device/block-file handles are supplied by the archive transport. */
+}
+
+int erofs_map_dev(struct super_block *sb, struct erofs_map_dev *map)
+{
+	/* The immutable stream table replaces the kernel IDR and its read lock. */
+	struct erofs_sb_info *devs = EROFS_SB(sb);
+	struct erofs_device_info *dif;
+	erofs_off_t startoff;
+	unsigned int id;
+
+	erofs_fill_from_devinfo(map, sb, &EROFS_SB(sb)->dif0);
+	if (map->m_deviceid) {
+		dif = map->m_deviceid <= devs->extra_devices ?
+			&devs->devices[map->m_deviceid - 1] : NULL;
+		if (!dif)
+			return -ENODEV;
+		if (devs->flatdev) {
+			if (check_add_overflow(map->m_pa,
+					       erofs_pos(sb, dif->uniaddr), &map->m_pa))
+				return -EFSCORRUPTED;
+			return 0;
+		}
+		erofs_fill_from_devinfo(map, sb, dif);
+	} else if (devs->extra_devices && !devs->flatdev) {
+		for (id = 0; id < devs->extra_devices; ++id) {
+			dif = &devs->devices[id];
+			if (!dif->uniaddr)
+				continue;
+
+			startoff = erofs_pos(sb, dif->uniaddr);
+			if (map->m_pa >= startoff &&
+			    erofs_blknr(sb, map->m_pa - startoff) < dif->blocks) {
+				map->m_pa -= startoff;
+				erofs_fill_from_devinfo(map, sb, dif);
+				break;
+			}
+		}
+	}
+	return 0;
+}

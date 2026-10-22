@@ -1,5 +1,44 @@
 # Read-only EROFS from Linux
 
+## Original device mapping and slot-reader boundary — 2026-10-22
+
+Compared complete pinned `erofs_fill_from_devinfo`, `erofs_map_dev`,
+`erofs_init_device`, `erofs_scan_devices` and their uncompressed/compressed stream
+consumers. The archive reader had an independent device-selection implementation.
+The original mapper and fill helper are now transferred into their original
+`fs/erofs/data.c` module and used by physical stream reads. Primary-device default,
+explicit IDs, unified-image address adjustment and implicit unified-range lookup
+retain Linux's branch order. Immutable bounded array lookup/iteration replaces
+the kernel IDR and lock; stream descriptors replace file/block-device handles.
+Existing checked addition and subtraction-based interval checks retain overflow
+protection at the archive boundary.
+
+The original `erofs_init_device` boundary now owns metadata acquisition, tag and
+32/48-bit slot fields, total-block accounting and cursor advancement in
+`fs/erofs/super.c`. Existing safe-name/read-only stream callbacks replace kernel
+path allocation and file/bdev opening. The scanner still owns the immutable
+stream table and its bounds; missing-volume fallback and cancellation remain
+archive transport behavior. This iteration removes source-transfer debt; the
+previous device selection was not shown to return wrong data for the tested
+layouts.
+
+New public C-reader cases use two auxiliary devices with a gap between their
+unified ranges. Both external streams and a unified image are read through
+explicit IDs and implicit unified addresses. Invalid IDs and exact-end addresses
+return errors with the exact readable first-chunk prefix. Callback routing and
+unchanged source bytes are checked. Existing native creator-image ABI/CLI tests
+cover named volume acquisition, cancellation, missing-volume fallback and all
+other EROFS layouts. No recovery mode or write service is added.
+
+Validation: five focused EROFS/provenance suites passed on macOS, Linux and
+Windows (guest receipt `20261022T163641Z-3cb006df`); the incremental application
+build passed. All 49 EROFS reference hashes match. Existing incremental build
+trees, runtime snapshots and compiler caches were reused; disposable EROFS
+fixtures were absent on all three platforms afterwards. No full gate, slow
+suite, new native mount/device check, UI appearance acceptance or release
+installation was run. Overall EROFS source closure and the parent filesystem
+goal remain open.
+
 ## Recovery priority — 2026-10-22
 
 The user's narrowed [recovery scope](../../AGENTS.md#read-only-filesystem-access)

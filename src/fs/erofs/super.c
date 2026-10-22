@@ -187,6 +187,40 @@ out:
 	return ret;
 }
 
+static int erofs_init_device(struct erofs_buf *buf, struct super_block *sb,
+			     struct erofs_device_info *dif, erofs_off_t *pos)
+{
+	struct erofs_sb_info *sbi = EROFS_SB(sb);
+	struct erofs_deviceslot *dis;
+	bool _48bit;
+
+	dis = erofs_read_metabuf(buf, sb, *pos, false);
+	if (IS_ERR(dis))
+		return PTR_ERR(dis);
+
+	/* Archive callbacks replace path allocation and read-only file/bdev opens. */
+	memcpy(dif->tag, dis->tag, sizeof(dif->tag));
+	_48bit = erofs_sb_has_48bit(sbi);
+	dif->blocks = le32_to_cpu(dis->blocks_lo) |
+		(_48bit ? (u64)le16_to_cpu(dis->blocks_hi) << 32 : 0);
+	dif->uniaddr = le32_to_cpu(dis->uniaddr_lo) |
+		(_48bit ? (u64)le16_to_cpu(dis->uniaddr_hi) << 32 : 0);
+	sbi->total_blocks += dif->blocks;
+	if (!sbi->flatdev) {
+		char tag[65];
+		memcpy(tag, dif->tag, 64);
+		tag[64] = 0;
+		if (!sb->open_device)
+			return -ENODEV;
+		int err = sb->open_device(sb->context, dif->id, tag,
+					 erofs_pos(sb, dif->blocks));
+		if (err)
+			return err;
+	}
+	*pos += EROFS_DEVT_SLOT_SIZE;
+	return 0;
+}
+
 int erofs_scan_devices(struct super_block *sb, struct erofs_super_block *dsb)
 {
 	struct erofs_sb_info *sbi = EROFS_SB(sb);
@@ -194,7 +228,6 @@ int erofs_scan_devices(struct super_block *sb, struct erofs_super_block *dsb)
 	erofs_off_t pos = le16_to_cpu(dsb->devt_slotoff) * EROFS_DEVT_SLOT_SIZE;
 	unsigned int count = erofs_sb_has_device_table(sbi) ?
 		le16_to_cpu(dsb->extra_devices) : 0;
-	bool _48bit = erofs_sb_has_48bit(sbi);
 	int err = 0;
 
 	sbi->total_blocks = sbi->dif0.blocks;
@@ -208,32 +241,11 @@ int erofs_scan_devices(struct super_block *sb, struct erofs_super_block *dsb)
 	sbi->extra_devices = count;
 	sbi->device_id_mask = (u16)((1U << (ilog2(count) + 1)) - 1);
 	for (unsigned int id = 0; id < count; ++id) {
-		struct erofs_deviceslot *dis = erofs_read_metabuf(&buf, sb, pos, false);
 		struct erofs_device_info *dif = &sbi->devices[id];
-		if (IS_ERR(dis)) {
-			err = PTR_ERR(dis);
-			break;
-		}
 		dif->id = id + 1;
-		memcpy(dif->tag, dis->tag, sizeof(dif->tag));
-		dif->blocks = le32_to_cpu(dis->blocks_lo) |
-			(_48bit ? (u64)le16_to_cpu(dis->blocks_hi) << 32 : 0);
-		dif->uniaddr = le32_to_cpu(dis->uniaddr_lo) |
-			(_48bit ? (u64)le16_to_cpu(dis->uniaddr_hi) << 32 : 0);
-		sbi->total_blocks += dif->blocks;
-		if (!sbi->flatdev) {
-			char tag[65];
-			memcpy(tag, dif->tag, 64);
-			tag[64] = 0;
-			if (!sb->open_device) {
-				err = -ENODEV;
-				break;
-			}
-			err = sb->open_device(sb->context, id + 1, tag, erofs_pos(sb, dif->blocks));
-			if (err)
-				break;
-		}
-		pos += EROFS_DEVT_SLOT_SIZE;
+		err = erofs_init_device(&buf, sb, dif, &pos);
+		if (err)
+			break;
 	}
 	erofs_put_metabuf(&buf);
 	return err;
