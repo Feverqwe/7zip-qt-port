@@ -4,8 +4,9 @@ from ntfs_ea_fixture import resident, set_attributes
 from ntfs_security_fixture import read_stream
 
 VALID = ("bitmap-base", "bitmap-padding", "bitmap-last", "bitmap-full",
-         "bitmap-fragmented", "bitmap-resident")
-BAD = ("bitmap-short", "bitmap-uninitialized", "bitmap-bad-run", "bitmap-hole")
+         "bitmap-fragmented", "bitmap-resident", "bitmap-uninitialized",
+         "bitmap-encrypted", "bitmap-compressed", "bitmap-tail-hole")
+BAD = ("bitmap-short", "bitmap-bad-run", "bitmap-hole")
 
 
 def expected(kind, image):
@@ -53,6 +54,12 @@ def volume(kind):
         put(data, 48, "QQ", 8, 8)
     elif kind == "bitmap-uninitialized":
         put(data, 56, "Q", 0)
+    elif kind == "bitmap-encrypted":
+        put(data, 12, "H", 0x4000)
+    elif kind == "bitmap-compressed":
+        attrs[attrs.index(data)] = nonresident(data, [(1, lcn)], len(bitmap), flags=1, unit=4)
+    elif kind == "bitmap-tail-hole":
+        attrs[attrs.index(data)] = nonresident(data, [(1, lcn), (1, None)], 8192, flags=0x8000)
     elif kind == "bitmap-bad-run":
         attrs[attrs.index(data)] = nonresident(data, [(1, bits + 1)], len(bitmap))
     elif kind == "bitmap-hole":

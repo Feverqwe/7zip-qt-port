@@ -1860,7 +1860,8 @@ struct CDatabase {
     int FindMetadataAttribute(UInt32 baseIndex, UInt32 type, const CByteBuffer &list, bool useList,
                               const CAttr *&attr) const;
     HRESULT ReadMetadataList(UInt32 baseIndex, CByteBuffer &list, HRESULT *callbackResult = NULL);
-    HRESULT GetRawMetadataStream(const CMftRec &reader, bool prefix, IInStream **stream);
+    HRESULT GetRawMetadataStream(const CMftRec &reader, bool prefix, IInStream **stream,
+                                 UInt64 limit = (UInt64)-1);
     HRESULT ProbeReparseType(const CAttr &primary, int &type);
     HRESULT LoadVolumeMetadata();
     HRESULT LoadAttributeDefinitions();
@@ -1944,20 +1945,11 @@ HRESULT CDatabase::LoadFreeSpace() {
     if ((UInt64)(size_t)Header.NumClusters != Header.NumClusters)
         return E_NOTIMPL;
     const UInt64 bytes = sevenzip_ntfs_bitmap_size((size_t)Header.NumClusters);
-    if (!attr.Name.IsEmpty() || attr.GetSize() < bytes ||
-        (attr.NonResident && attr.InitializedSize < bytes))
+    if (!attr.Name.IsEmpty() || attr.GetSize() < bytes)
         return S_FALSE;
     CMyComPtr<IInStream> stream;
-    CMyComPtr2<IInStream, CInStream> mapped;
-    RINOK(bitmap.GetStream(InStream, 0, Header.ClusterSizeLog, Header.NumClusters, &stream,
-                           attr.NonResident ? &mapped : NULL))
-    if (mapped) {
-        const UInt64 clusters = (bytes + Header.ClusterSize() - 1) >> Header.ClusterSizeLog;
-        const CRecordVector<CExtent> &extents = mapped->Extents;
-        for (unsigned i = 0; i + 1 < extents.Size(); ++i)
-            if (extents[i].Virt < clusters && extents[i].IsEmpty())
-                return S_FALSE;
-    }
+    // wnd_rescan counts the raw bitmap range, without file decoding or valid-size zeros.
+    RINOK(GetRawMetadataStream(bitmap, false, &stream, bytes))
     CAlignedBuffer block;
     block.Alloc(4096);
     if (!block)
@@ -2440,7 +2432,8 @@ HRESULT CDatabase::LoadVolumeMetadata() {
     return S_OK;
 }
 
-HRESULT CDatabase::GetRawMetadataStream(const CMftRec &reader, bool prefix, IInStream **stream) {
+HRESULT CDatabase::GetRawMetadataStream(const CMftRec &reader, bool prefix, IInStream **stream,
+                                        UInt64 limit) {
     *stream = NULL;
     const CAttr &attr = reader.DataAttrs[0];
     if (!attr.NonResident) {
@@ -2467,11 +2460,14 @@ HRESULT CDatabase::GetRawMetadataStream(const CMftRec &reader, bool prefix, IInS
     } else
         RINOK(DataParseExtents(Header.ClusterSizeLog, reader.DataAttrs, 0, Header.NumClusters,
                                raw->Extents))
-    raw->Size = prefix ? MyMin(attr.Size, (UInt64)64) : attr.Size;
+    raw->Size = prefix ? MyMin(attr.Size, (UInt64)64) : MyMin(attr.Size, limit);
     if (raw->Size && raw->Extents.Size() < 2)
         return S_FALSE;
     for (unsigned i = 0; i + 1 < raw->Extents.Size(); ++i)
-        if (raw->Extents[i].IsEmpty() && (!prefix || raw->Extents[i].Virt == 0)) {
+        if (raw->Extents[i].IsEmpty() && (!prefix || raw->Extents[i].Virt == 0) &&
+            (limit == (UInt64)-1 ||
+             raw->Extents[i].Virt <
+                 ((raw->Size + Header.ClusterSize() - 1) >> Header.ClusterSizeLog))) {
             if (attr.Partial)
                 raw->Extents[i].Phy = kUnavailableExtent;
             else
@@ -2555,16 +2551,27 @@ HRESULT CDatabase::ReadReparsePayload(UInt32 baseIndex, const CAttr &primary,
         CByteBuffer data;
         data.Alloc((size_t)MyMin(size, (UInt64)64));
         result = ReadStream_FALSE(stream, data, data.Size());
-        if (result == S_OK &&
-            sevenzip_ntfs_classify_reparse(data, data.Size(), NULL) == SEVENZIP_NTFS_REPARSE_LINK) {
-            if (!AttributeDefinitionsKnown)
+        if (result == S_OK) {
+            const bool link = sevenzip_ntfs_classify_reparse(data, data.Size(), NULL) ==
+                              SEVENZIP_NTFS_REPARSE_LINK;
+            if (link && !AttributeDefinitionsKnown)
                 ReparseLimitations = true;
-            if (size > ReparseMaxSize || size > SIZE_MAX)
+            if (link && (size > ReparseMaxSize || size > SIZE_MAX))
                 return S_FALSE;
-            result = GetRawMetadataStream(reader, false, &stream);
-            if (result == S_OK) {
-                data.Alloc((size_t)size);
-                result = ReadStream_FALSE(stream, data, data.Size());
+            if (size > data.Size() && size <= ReparseMaxSize && size <= SIZE_MAX) {
+                CByteBuffer full;
+                result = GetRawMetadataStream(reader, false, &stream);
+                if (result == S_OK) {
+                    full.Alloc((size_t)size);
+                    result = ReadStream_FALSE(stream, full, full.Size());
+                }
+                if (result == S_OK)
+                    data = full;
+                else if (!link && result != E_ABORT && result != E_OUTOFMEMORY) {
+                    // A valid classification header can still serve DATA reads.
+                    ReparseLimitations = true;
+                    result = S_OK;
+                }
             }
         }
         if (result == S_OK) {
@@ -4385,7 +4392,8 @@ Z7_COM7F_IMF(CHandler::GetRawProp(const UInt32 index, const PROPID propID, const
         const CMftRec &rec = Recs[item.RecIndex];
         if (rec.ReparseDataIndex >= 0) {
             const CByteBuffer &reparse = ReparseDataVector[rec.ReparseDataIndex];
-            if (reparse.Size() != 0) {
+            if (reparse.Size() != 0 && reparse.Size() == rec.ReparseSize &&
+                reparse.Size() <= UINT32_MAX) {
                 *dataSize = (UInt32)reparse.Size();
                 *propType = NPropDataType::kRaw;
                 *data = (const Byte *)reparse;
@@ -4609,9 +4617,8 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(const PROPID propID, PROPVARIANT *cons
     case kpidFreeSpace:
         if (!Recs.IsEmpty()) {
             const HRESULT result = LoadFreeSpace();
-            if (SourceTruncated && result != S_OK && result != E_ABORT && result != E_OUTOFMEMORY)
-                break; // Missing allocation statistics do not close a usable source prefix.
-            RINOK(result)
+            if (result == E_ABORT || result == E_OUTOFMEMORY)
+                return result;
             if (FreeSpaceDefined)
                 prop = FreeSpace;
         }

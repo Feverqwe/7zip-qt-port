@@ -52,13 +52,21 @@ class NtfsTests(unittest.TestCase):
 
     def test_volume_free_space_in_dynamic_engine(self):
         from ntfs_bitmap_fixture import expected
-        for kind in ("bitmap-base", "bitmap-last", "bitmap-fragmented"):
+        from ntfs_bitmap_fixture import VALID, BAD
+        for kind in (*VALID, *BAD):
             with self.subTest(kind=kind):
-                image, _ = volume(kind)
+                image, files = volume(kind)
                 listing = self.run_image("7z", image, "l")
                 self.assertEqual(listing.returncode, 0, listing.stderr)
-                self.assertIn(("Free Space = " + str(expected(kind, image))).encode(),
-                              listing.stdout.splitlines())
+                free = expected(kind, image)
+                if free is None:
+                    self.assertFalse(any(line.startswith(b"Free Space = ")
+                                         for line in listing.stdout.splitlines()))
+                    result = self.run_image("7z", image, "x", "alpha")
+                    self.assertEqual(result.returncode, 0, result.stderr)
+                    self.assertEqual(result.stdout, files["alpha"])
+                else:
+                    self.assertIn(("Free Space = " + str(free)).encode(), listing.stdout.splitlines())
 
     def test_directory_indexes_and_unverified_mft_fallback(self):
         from ntfs_directory_fixture import CASES, LIMITED

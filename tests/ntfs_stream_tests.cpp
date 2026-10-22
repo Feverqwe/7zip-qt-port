@@ -234,9 +234,10 @@ class NtfsStreamTests final : public QObject, protected Fixture {
     }
     void volumeFreeSpace_data() {
         QTest::addColumn<QString>("kind");
-        for (const char *kind : {"bitmap-base", "bitmap-padding", "bitmap-last", "bitmap-full",
-                                 "bitmap-fragmented", "bitmap-resident", "bitmap-short",
-                                 "bitmap-uninitialized", "bitmap-bad-run", "bitmap-hole"})
+        for (const char *kind :
+             {"bitmap-base", "bitmap-padding", "bitmap-last", "bitmap-full", "bitmap-fragmented",
+              "bitmap-resident", "bitmap-short", "bitmap-uninitialized", "bitmap-bad-run",
+              "bitmap-hole", "bitmap-encrypted", "bitmap-compressed", "bitmap-tail-hole"})
             QTest::newRow(kind) << QString::fromLatin1(kind);
     }
     void volumeFreeSpace() {
@@ -246,11 +247,12 @@ class NtfsStreamTests final : public QObject, protected Fixture {
         QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
         NWindows::NCOM::CPropVariant value;
         const bool available = !record_["free_space"].isNull();
-        QCOMPARE(archive_->GetArchiveProperty(kpidFreeSpace, &value), available ? S_OK : S_FALSE);
+        QCOMPARE(archive_->GetArchiveProperty(kpidFreeSpace, &value), S_OK);
         if (available) {
             QCOMPARE(value.vt, VARTYPE(VT_UI8));
             QCOMPARE(value.uhVal.QuadPart, UInt64(record_["free_space"].toDouble()));
-        }
+        } else
+            QCOMPARE(value.vt, VARTYPE(VT_EMPTY));
         // Unavailable allocation metadata must not block ordinary file recovery.
         auto retained = stream("alpha");
         QVERIFY(retained);
@@ -268,7 +270,9 @@ class NtfsStreamTests final : public QObject, protected Fixture {
         NWindows::NCOM::CPropVariant value;
         for (HRESULT failure : {E_FAIL, E_ABORT}) {
             source->failure = failure;
-            QCOMPARE(archive_->GetArchiveProperty(kpidFreeSpace, &value), failure);
+            QCOMPARE(archive_->GetArchiveProperty(kpidFreeSpace, &value),
+                     failure == E_ABORT ? E_ABORT : S_OK);
+            QCOMPARE(value.vt, VARTYPE(VT_EMPTY));
         }
         source->failure = S_OK;
         QCOMPARE(archive_->GetArchiveProperty(kpidFreeSpace, &value), S_OK);
@@ -835,6 +839,34 @@ class NtfsStreamTests final : public QObject, protected Fixture {
                                  "wof-xpress4k-unknown-uninitialized",
                                  "wof-xpress4k-uninitialized"})
             QTest::newRow(kind) << QString::fromLatin1(kind);
+    }
+    void rawReparseNeverPublishesAClassificationPrefix() {
+        CMyComPtr<IArchiveGetRawProps> raw;
+        QCOMPARE(archive_->QueryInterface(IID_IArchiveGetRawProps, reinterpret_cast<void **>(&raw)),
+                 S_OK);
+        for (const char *kind :
+             {"wof-xpress4k-reparse-padding-small", "wof-xpress4k-reparse-padding",
+              "wof-xpress4k-reparse-padding-unmapped-tail",
+              "wof-xpress4k-reparse-padding-within-limit-unmapped-tail"}) {
+            loadFixture(QString::fromLatin1(kind));
+            CMyComPtr<IInStream> input = new Input(bytes_);
+            QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+            const void *data = nullptr;
+            UInt32 size = 0, type = 0;
+            QCOMPARE(raw->GetRawProp(index("gamma"), kpidNtReparse, &data, &size, &type), S_OK);
+            if (QString::fromLatin1(kind).endsWith("-small")) {
+                const QByteArray expected =
+                    QByteArray::fromHex("170000801000000001000000020000000100000000000000") +
+                    QByteArray(104, '\0');
+                QCOMPARE(QByteArray(static_cast<const char *>(data), int(size)), expected);
+                QCOMPARE(type, UInt32(NPropDataType::kRaw));
+            } else {
+                QCOMPARE(size, UInt32(0));
+                QVERIFY(!data);
+            }
+            check(stream("gamma"), "gamma", 0, 200000);
+            QCOMPARE(archive_->Close(), S_OK);
+        }
     }
     void reparseLinks_data() {
         QTest::addColumn<QString>("kind");

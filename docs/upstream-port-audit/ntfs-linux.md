@@ -1,8 +1,79 @@
 # NTFS: read paths по Linux NTFS3
 
-Итерация входит в [общий scope форматов](filesystems-linux.md). Исправлено
-существующее чтение boot/MFT, атрибутов, sparse и compressed streams.
-Полная актуализация NTFS по Linux ещё не завершена.
+Модуль входит в [общий scope форматов](filesystems-linux.md). Read-side source
+audit выбранного archive reader закрыт на закреплённом Linux snapshot; границы
+переноса и runtime evidence указаны отдельно ниже. Это не закрывает общий goal.
+
+## Final NTFS read-side source scope — 2026-10-22
+
+The final comparison uses Linux `58161ead29e50d70a317ea26b472e0c7508e69da`
+from the repository recorded below and all 33 pinned dependency hashes. Existing
+component sections own their bodies/callers, fixes and behavior evidence; this
+table reconciles their final read scope rather than introducing another inventory.
+
+| Read component | Source result and retained archive boundary |
+| --- | --- |
+| Boot, MFT frames/bootstrap | Sector/cluster/record geometry, original C fixups, attribute framing, named-stream exclusion and authoritative extension references reviewed with complete SDK readers. Fixed-size archive enumeration and partial-record recovery remain explicit adaptations; mirror repair and replay are absent. |
+| Attribute lists and mappings | Original C list enumeration/lookup plus SDK resident/nonresident parsers and complete/partial run assembly. Checked signed deltas, special sparse LCN, VCN continuity, physical bounds, initialized data and unavailable-range errors. |
+| File payloads | Original LZNT1, XPRESS and LZX read bodies, WOF offset tables/caches and retained streams. Volume-selected reparse limits and header-only classification now match the selected Linux read branches. Unsupported EFS/dedup/WIM-provider operations remain explicit as in the reference reader. |
+| Namespace and metadata | Original directory count/index-buffer traversal, bitmap selection, upcase/Unicode readers and source-owned SII lookup. SDK item/path/name projection, MFT/index reconciliation and recovery names are archive services, not mounted VFS namespace parity. |
+| Security and EAs | Original descriptor/SID/ACL, EA lookup/validation and WSL-permission readers. Bounded immutable stream adapters, list-selected owners, transactional metadata publication and per-ID/range failure isolation retain original format logic. |
+| Volume and allocation properties | Original volume-info predicates/fields, attribute-definition walk, bitmap sizing and population count reviewed with their complete consumers. Immutable raw bitmap reads replace kernel block/cache services; statistics remain unknown when their required range is unavailable. |
+| Property/extraction consumers | Actual names, sizes, timestamps, flags, links, IDs/device fields, raw security/reparse properties and readable DATA traced through archive/Agent consumers. Optional unknown metadata is not a fabricated value or an opening failure; cancellation/OOM and incomplete file reads retain errors. |
+
+Final volume/bitmap comparison covered `super.c:ntfs_fill_super`,
+`inode.c:ntfs_read_mft`, `bitmap.c: wnd_rescan`/`ntfs_bitmap_weight_le`,
+`ntfs_fs.h:ntfs3_bitmap_size`, the selected types and property callers. Both
+bitmap algorithm bodies match the reference. The fixed 64-bit host-word service
+retains NTFS's quad-aligned bitmap representation on LLP64; byte order is
+irrelevant to a full-word population count and remains explicit for its masked
+last word. Allocator trees, MFT-zone management, VFS/page/block caches, mount
+policy, xattr/ACL installation, inode credentials and every write/repair/replay
+service remain outside this read-only archive module. They do not stand in for
+missing format decoding. NT4 security and EFS key services are not implemented
+by this Linux reader and are not claimed by this port.
+
+The GPL module is the Linux-enhanced reader; the separately licensed SDK variant
+retains its documented standalone subset, as owned by
+[license variants](license-variants.md). Archive namespace, partial source,
+deleted-record salvage and no-replay reading differences remain explicit in the
+component sections. The read-side source comparison is complete at this pin;
+that statement is distinct from full runtime/platform/large-matrix acceptance.
+Latest portable corrections were validated on macOS, with historical native
+Linux and guest evidence identified in the corresponding sections. Opt-in slow
+suites, physical devices and all combinations of filesystem features are not
+claimed tested. Other formats in the parent goal remain open.
+
+## Raw reparse properties and bitmap statistics — 2026-10-22
+
+Final property review found that the previous header-only classification change
+could export that prefix as a complete `kpidNtReparse` payload. Recompared the
+complete raw-property getter, reparse loader and Agent extract/update consumers.
+Bounded full metadata is now retained when readable; an unavailable tail can
+leave the valid classification header usable for DATA while reporting the
+metadata limitation. The raw property publishes only a complete payload whose
+size fits its UInt32 interface. It never exports a prefix or narrows an oversized
+length. Link decoding still requires its complete validated payload.
+
+Bitmap review found that ordinary file decoding/initialized-tail semantics were
+incorrect for `wnd_rescan`'s raw block reads. Free-space calculation now uses the
+existing raw metadata stream for exactly the required bitmap range, retaining
+run/bounds validation and rejecting holes inside that range. An unused sparse
+tail does not invalidate the count. Encryption/compression flags and initialized
+file tails do not transform raw bitmap bytes. If allocation metadata is missing
+or a nonfatal statistics read fails, the optional free-space property is empty
+instead of returning an HRESULT that aborts CLI listing. E_ABORT/OOM still
+propagate; ordinary file failures are unchanged.
+
+Pre-fix regressions observed a 64-byte raw prefix instead of the full 128-byte
+payload and CLI listing failures for raw bitmaps with file flags/initialized
+tails. ABI/CLI controls now check exact raw bytes, absent partial properties,
+exact decoded WOF DATA, raw bitmap counts, unknown statistics, an unused hole,
+healthy file extraction, source immutability and retry/cancellation behavior.
+Eleven focused macOS NTFS, raw-metadata consumer, archive-device and baseline
+suites passed (24.07 s). A final raw-property length bound was followed by the
+affected stream/baseline checks. Incremental targets/caches were reused; no
+Linux/Windows, full gate, opt-in slow suite or real-media run was performed.
 
 ## Reparse limits and header-only classification — 2026-10-22
 
@@ -1951,20 +2022,19 @@ Windows `ntfs_stream` прошёл отдельно, receipt `20261021T111946Z-c
 В итоге все 11 относящихся к изменению suites проверены на macOS/Linux/Windows
 через focused batches; это не полный gate проекта или закрытие всего NTFS audit.
 
-## Открытый read scope
+## Итоговая граница read scope
 
 Известный security-metadata gate исправлен описанным выше сценарием.
 Per-opening consent, постоянный limited-access badge, read-only input и честные
-per-file errors проверены для рассмотренных MFT/DATA/name/security scenarios;
-это не доказывает полное соответствие всех оставшихся read features.
+per-file errors проверены для рассмотренных MFT/DATA/name/security scenarios.
 Известные global returns при orphan/deleted metadata изолированы описанным выше
-recovery scenario; это не заменяет дальнейшую сверку всего NTFS read scope.
+recovery scenario; это архивное представление, а не mounted VFS namespace.
 Named `$SII` ROOT/ALLOCATION membership исправлен описанным выше сценарием.
 Независимо читаемые `$SDS` descriptors сохраняются описанным выше сценарием;
 непроверенные mappings по-прежнему не считаются источником достоверных ACL.
 
-Выбранные classic/WOF/MFT bootstrap scenarios подключены и проверены.
-Остальные metadata/read features NTFS должны пройти оставшийся source audit;
-эта итерация не закрывает остальные файловые системы и общие форматы goal.
+Classic/WOF/MFT bootstrap и metadata read paths подключены; итоговая сверка
+source scope приведена в начале документа. Она не закрывает остальные файловые
+системы и общие форматы goal и не заменяет перечисленные runtime boundaries.
 VFS/page cache, mount services, запись/journal replay и EFS key service не
 переносятся в archive handler; Linux сам не расшифровывает EFS при чтении.
