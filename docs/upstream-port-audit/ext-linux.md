@@ -10,6 +10,66 @@ fs-verity now reuses the original shared Linux string scanner already linked
 for fscrypt. Source scope and validation are recorded with the
 [shared string-service transfer](erofs-linux.md#original-shared-string-services--2026-10-22).
 
+## Superblock and inode acquisition source comparison — 2026-10-22
+
+Completed whole-unit source comparison for the selected metadata-acquisition
+component after the ibody and cluster-geometry corrections. All 26 functions
+present in `fs/ext4/super.c` and `fs/ext4/inode.c` were checked against Linux
+`58161ead29e50d70a317ea26b472e0c7508e69da`, together with the complete original
+`__ext4_iget`, mount initialization, disk types and archive callers. Eighteen
+complete bodies match after comments/whitespace; eight have the boundaries below.
+The real Unicode-enabled encoding initializer was inspected separately from its
+same-named no-CONFIG_UNICODE stub, rather than treating the stub as the reference.
+
+| Read-side group | Source result and connected owner |
+| --- | --- |
+| Superblock/group checksums and descriptor location | Complete `ext4_superblock_csum`, its verifier, group-descriptor checksum/verifier, `descriptor_loc` and three bitmap/table address helpers match. The archive uses them before inode/data publication. |
+| Geometry, sizes and hash initialization | Complete `ext4_check_descriptors`, `ext4_max_bitmap_size`, `ext4_inode_info_init`, `ext4_check_geometry` and `ext4_hash_info_init` match. `ext4_max_size` only omits the kernel `blkcnt_t` build assertion because archive counts use explicit u64. Cluster-size initialization retains the original read control flow with the allocation-option omission recorded below. |
+| Feature/encoding selection | `ext4_feature_set_ok` is a read-only subset: supported incompatibilities, stored-name enumeration and no write-mount service. `ext4_check_feature_compatibility` preserves HURD/64bit/EA-inode and encryption-level acceptance; ext2/ext3 driver probing, warning-only revision diagnostics and DAX/write-mount options are omitted. The original encoding table/lookup match; `ext4_encoding_init` retains the declared-charset gate without allocating a Unicode filename-lookup map. |
+| Inode checksum, role and link helpers | Complete inode checksum/verifier, `check_igot_inode` and `ext4_inode_is_fast_symlink` match. `ext4_iget_extra_inode` only substitutes C byte-pointer arithmetic. `ext4_inode_blocks` receives its private inode explicitly and uses u64 instead of kernel `blkcnt_t`; its feature-dependent decoding branches are unchanged. |
+| Inode acquisition | `__ext4_iget` accepts the archive's already owned inode and returns status rather than a VFS cache object. Its complete normal/special/EA role, reserved/range, link-state, maximum-size, file-kind, boot-loader and casefold checks remain. Disk initialization and read consumers omitted from that compact body are accounted for separately below. |
+
+Traced the original inode initialization branches through `ext_linux_inode_open`
+and SDK `CNode::Parse`, rather than assuming the compact `__ext4_iget` alone
+implements the original acquisition. Checksummed owned raw bytes supply flags,
+mode, generation, link count, block count/references, file size, external-xattr
+address and checksum seed. Original extra-inode/inline discovery, extent-root and
+fast-link validation, extended timestamps and normal/special/EA acceptance are
+connected before publication. The SDK retains its numeric UID/GID/property
+projection; the C++ consumer imports the C reader's size/timestamp/inline and
+acceptance results. Device/FIFO/socket modes are metadata, not block pointers
+or host device objects. Quota/project enforcement, inode versions used only for
+VFS cache coherency and native operation tables are not archive APIs; EA-inode
+reference/hash fields remain in their original value-reader consumers.
+
+The raw inode checksum and extra-size bounds stay strict. The separately recorded
+ibody adaptation retains independent contents only when optional xattrs fail;
+inline, encryption and EA-inode dependencies stay strict. External-xattr address
+validation is deferred to original value/export readers so optional metadata
+cannot hide unrelated file data. Fast/block/inline/encrypted symlinks retain
+their existing strict target acceptance and owned stream boundaries. No orphan
+cleanup, fast-commit/journal replay, inode creation or source mutation is performed.
+
+Reviewed volume initialization/cleanup, descriptor/group setup, bitmap validation,
+eager inode inventory and failed-block individual-inode retry callers with those
+checks. Kernel inode allocation/cache lookup, NOWAIT/fhandle lookup, cache locks,
+read-ahead, mount recovery state, DAX/page-cache mapping order and VFS-operation
+publication are replaced or omitted at the private immutable-image boundary.
+The constructor retains original disk-field initialization and calls the copied
+helpers where available; archive bounds and COM error/ownership services remain
+local integration. This is the selected archive read component, not a claim that
+all kernel mount/inode-cache code has been transferred.
+
+All 305 pinned reference hashes match. Production sources did not change during
+this final comparison: the eight macOS suites and incremental application build
+recorded in [the cluster-geometry iteration](#original-cluster-geometry-and-read-only-bigallocclassic-mapping--2026-10-22)
+apply to these exact sources. This documentation-only change passed
+`git diff --check`; no redundant runtime batch or implementation-text test was
+added. The selected superblock/inode source comparison is complete with the
+adaptations above. Directory traversal, generic crypto/verity and whole ext/parent
+closure remain separate; no new remote, full/slow, physical-device, UI appearance
+or release-install acceptance is claimed.
+
 ## Original cluster geometry and read-only BIGALLOC/classic mapping — 2026-10-22
 
 Whole superblock review found an unconditional local BIGALLOC-without-EXTENTS
