@@ -239,6 +239,7 @@ Z7_CLASS_IMP_CHandler_IInArchive_1(
   HRESULT Open2(IInStream *inStream);
   HRESULT EnsureData(UInt32 sourceOffset, UInt32 size, UInt32 &offset);
   HRESULT CheckCrc();
+  HRESULT ResolveVolumePosition(UInt64 headerPos, UInt64 &volumePos, bool &crcChecked);
   AString GetPath(unsigned index) const;
   HRESULT GetPackSize(unsigned index, UInt32 &res);
   void Free();
@@ -454,6 +455,42 @@ public:
       return S_OK;
   }
 
+  HRESULT CHandler::ResolveVolumePosition(UInt64 headerPos, UInt64 &volumePos, bool &crcChecked) {
+      UInt64 sourceSize;
+      RINOK(InStream_GetSize_SeekToEnd(_stream, sourceSize))
+      const auto probe = [&](UInt64 origin, bool &verified, bool &checked) -> HRESULT {
+          verified = checked = false;
+          if (origin > sourceSize || _h.Size > sourceSize - origin ||
+              _h.Size < headerPos - origin + kHeaderSize + kNodeSize)
+              return S_OK;
+          _volumePos = origin;
+          _headerOffset = (UInt32)(headerPos - origin);
+          _errorFlags = 0;
+          _crcUnavailable = false;
+          checked = true;
+          RINOK(CheckCrc())
+          verified = !_crcUnavailable && !_errorFlags;
+          return S_OK;
+      };
+      bool verified;
+      RINOK(probe(volumePos, verified, crcChecked))
+      if (verified)
+          return S_OK;
+      const UInt32 firstErrors = _errorFlags;
+      const bool firstUnavailable = _crcUnavailable;
+      const UInt64 alternative = volumePos == headerPos ? headerPos - 512 : headerPos;
+      bool alternativeChecked;
+      RINOK(probe(alternative, verified, alternativeChecked))
+      if (verified) {
+          volumePos = alternative;
+          crcChecked = alternativeChecked;
+      } else {
+          _errorFlags = firstErrors;
+          _crcUnavailable = firstUnavailable;
+      }
+      return S_OK;
+  }
+
 HRESULT CHandler::Open2(IInStream *inStream) {
     UInt64 initialPos;
     RINOK(inStream->Seek(0, STREAM_SEEK_CUR, &initialPos))
@@ -488,13 +525,22 @@ HRESULT CHandler::Open2(IInStream *inStream) {
 #ifdef SEVENZIP_LINUX_CRAMFS
     _linuxRead = (_h.Flags & ~0xFFFu) == 0;
 #endif
+    bool crcChecked = false;
     if (_h.IsVer2()) {
         _method = _h.GetMethod();
         // FIT IT. Now we don't know correct way to work with collision in method field.
         if (_method == k_Flags_Method_NONE)
             _method = k_Flags_Method_ZLIB;
         _blockSizeLog = kBlockSizeLog + (_linuxRead ? 0 : _h.GetBlockSizeShift());
-        if (!_linuxRead && (_h.Size < _headerOffset + sizeof(buf) || _h.Size > kArcSizeMax))
+        if (!_linuxRead && _h.Size > kArcSizeMax)
+            return S_FALSE;
+        if (initialPos >= 512 && headerPos == initialPos) {
+            RINOK(ResolveVolumePosition(headerPos, volumePos, crcChecked))
+            _headerOffset = (UInt32)(headerPos - volumePos);
+            _volumePos = volumePos;
+            _arcOffset = (Int64)volumePos;
+        }
+        if (!_linuxRead && _h.Size < _headerOffset + sizeof(buf))
             return S_FALSE;
         _phySize = _h.Size;
     } else {
@@ -522,7 +568,7 @@ HRESULT CHandler::Open2(IInStream *inStream) {
             if (available < _h.Size) {
                 _errorFlags = kpv_ErrorFlags_UnexpectedEnd;
                 _phySize = _size;
-            } else {
+            } else if (!crcChecked) {
                 RINOK(CheckCrc())
             }
         } else

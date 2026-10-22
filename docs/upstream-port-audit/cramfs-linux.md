@@ -1,5 +1,53 @@
 # Cramfs read-side modernization against Linux
 
+## Verified v2 volume origin after signature scanning — 2026-10-22
+
+Recompared Linux's superblock-at-0/512 selection with the complete SDK handler
+opening, registration and marker-scan/ReadBasicProps/ReOpen stream contract.
+Linux already knows the selected device/partition origin. The archive scanner
+instead supplies the whole bounded stream positioned at a matching header.
+The adapter's unconditional interpretation of a header at byte 512 as a boot
+prefix confuses an ordinary volume embedded at that address; an embedded
+boot-prefixed volume can conversely be read relative to its header instead
+of its true origin. The original SDK has no resolver for this added native
+boot-prefix scenario.
+
+For v2 marker opens, the adapter reuses its existing bounded incremental CRC
+check to verify the current interpretation, then the alternative header-at-0
+or header-at-512 interpretation if necessary. A verified alternative supplies
+all subsequent metadata/file-read coordinates and the public archive offset.
+Already verified CRC is reused in the Linux-profile opening path. No second
+parser or root-offset heuristic is introduced: Linux permits a boot-prefixed
+volume's directory before its superblock. The probe checks source/declaration
+spans before scanning, preserves fatal cancellation/OOM/progress failures and
+retains the original diagnostics if neither interpretation verifies. A CRC
+mismatch or unavailable optional scan does not introduce an opening gate.
+Opening from an explicit stream origin still follows the existing 0/512 path.
+
+Eight initial process cases reproduced the wrong offset/catalog or refusal
+before correction. Both engines now read the exact payload with the correct
+origin and physical size, in either byte order, for ordinary volumes embedded
+at 512 and boot-prefixed volumes embedded at 1024. A larger ordinary image
+ensures the first candidate is actually scanned and rejected, rather than
+merely lacking enough bytes. A native fixture with its root before the
+superblock protects the Linux placement contract. The module ABI checks
+embedded direct-block extraction, fatal checksum/callback errors, cleanup and
+reuse. Existing optional-CRC failure/short-read cases now also open directly
+at the native marker: readable files remain accessible and unverified status
+is retained. No UI text or layout changes are introduced.
+
+Local focused CLI/source and ABI/UI checks passed (five suites, 19.05 seconds);
+the final expanded marker/optional-CRC ABI check passed separately (1.07 seconds).
+Linux/Windows CLI/source checks passed in `20261022T065714Z-fe9a8d40`
+(2.45/25.45 seconds), final ABI plus existing Cramfs UI checks in
+`20261022T065817Z-a4701f6f`. The incremental application build and diff check
+passed. No full/slow suites, new appearance acceptance, native mount or physical
+device checks were run; fixture owners clean their data and build trees/compiler
+caches/current review evidence are retained.
+Origin inference without a verifiable v2 CRC remains unresolved,
+including v1 marker opens and ambiguous damaged embedded images. This iteration
+does not claim completion of the entire Cramfs adapter or the parent audit.
+
 ## Incomplete block tables and readable file prefixes — 2026-10-22
 
 Compared the pinned Linux folio mapping, direct/end-pointer dependencies and
@@ -491,6 +539,26 @@ Inventory unit: complete `fs/cramfs` (`inode.c`, `uncompress.c`, `internal.h`,
 [Reproducible source hashes](../cramfs-linux-baseline.json) cover these units.
 The comparison covered feature acceptance, superblock placement, directory
 entries, inode types, folio reads, direct/end pointers, holes and zlib boundaries.
+
+2026-10-22 full inventory reread: all seven recorded reference hashes match.
+The following classification accounts for complete Linux bodies and their
+callers; it does not turn runtime checks into proof of a complete source port.
+
+| Reference bodies / dependencies | Archive read-side treatment |
+| --- | --- |
+| `cramfs_read_folio`, block flags and inode wire widths | Original C read algorithm, shared pointer-mapping segment and bounded/endian C services. Safety/error and aligned-final-page deviations are recorded in the integrated scenario. |
+| `cramino`, `get_cramfs_inode`, `cramfs_read_super`, `cramfs_finalize_super`, `cramfs_statfs` | SDK inode/header/property adapter: non-data-bearing inode handling, UID/GID, old device numbering, root placement and raw fsid counters. Root permission normalization, artificial zero timestamps, kernel inode identities and inode caching are VFS presentation, not additional stored fields. Shared data offsets remain readable through independent archive streams. |
+| `cramfs_readdir`, `cramfs_lookup` and directory operation tables | Existing SDK walker/public paths, complete-entry publication, bounded names, partial directories and cycle/resource guards. Sorted lookup is a VFS name-search optimization; enumeration does not require it. Cross-platform extraction path validation is retained. |
+| `cramfs_blkdev_read`, `cramfs_direct_read`, `cramfs_read` | Seekable bounded input services, including declared-size and partial-table scenarios above. Kernel block/MTD caching and read-ahead are omitted. Failed acquisition is reported as unavailable data instead of treating the kernel service's zero-page fallback as verified file bytes. |
+| `cramfs_uncompress_block`, init/exit and `internal.h`, zlib Kconfig dependency | Existing SDK zlib/Deflate implementation and per-reader ownership provide complete-stream decompression and short-page zero fill. The kernel's single global stream/workspace lifecycle is not copied into an archive plugin. |
+| `cramfs_get_block_range`, `cramfs_last_page_is_shared`, MMU/NOMMU mmap/get-unmapped-area/capabilities and physmem operation table | Native mapping/XIP optimization, omitted as a kernel platform service. The ordinary C folio reader retrieves the same raw/direct file bytes, including shared final-page layouts, without mapping physical memory. |
+| blockdev/MTD fill-super, kill/reconfigure, get-tree/context/type registration and module init/exit; Makefile/Kconfig | Kernel device acquisition, lifecycle and module configuration are omitted. Archive ABI registration, input lifetime and separate GPL-module deployment supply the userspace boundary. Source handles remain read-only; no sync, repair or journal replay is transferred. |
+| `fs/cramfs/README`, UAPI header | Disk layout, flags, byte order and direct-block contracts compared in full. The SDK's opposite-endian decoding and explicit historical LZMA/enlarged-block branches remain additional archive compatibility; Linux-only unsupported flags are not interpreted by the C reader. |
+
+All pinned Linux read features are accounted for by these copied/adapted paths;
+the adapter audit remains open because unverified embedded-origin selection is
+still an integration gap. The CRC-verified v2 correction above is evidence for
+its specific layouts, not general origin inference or kernel runtime acceptance.
 
 7-Zip repository: <https://github.com/ip7z/7zip.git>, commit
 `9128b80e3a471108678e2b3ec3c985861c8d7b0f`. Complete

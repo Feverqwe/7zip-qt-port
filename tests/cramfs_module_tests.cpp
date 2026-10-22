@@ -352,6 +352,46 @@ class CramfsModuleTests final : public QObject {
         QCOMPARE(stream->Read(buffer, 4, &processed), S_OK);
         QCOMPARE(QByteArray(buffer, processed), QByteArray("tail"));
     }
+    void embeddedBootVolumeUsesVerifiedOriginAndPreservesFatalChecks() {
+        createArchive();
+        auto bytes = fixture();
+        qToLittleEndian(quint32(0x801), bytes.data() + 520);
+        qToLittleEndian(quint32(bytes.size()), bytes.data() + 516);
+        qToLittleEndian(quint32(0), bytes.data() + 544);
+        qToLittleEndian(quint32(CrcCalc(bytes.constData() + 512, bytes.size() - 512)),
+                        bytes.data() + 544);
+        bytes.prepend(QByteArray(1024, 'X'));
+        const auto sourceAtHeader = [&]() {
+            auto *input = new Input(bytes);
+            CMyComPtr<IInStream> source = input;
+            source->Seek(1536, STREAM_SEEK_SET, nullptr);
+            return source;
+        };
+        auto source = sourceAtHeader();
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
+        CMyComPtr2<IArchiveExtractCallback, Extract> callback;
+        callback.Create_if_Empty();
+        const UInt32 index = 0;
+        QCOMPARE(archive_->Extract(&index, 1, 0, callback), S_OK);
+        QCOMPARE(callback->result, Int32(NArchive::NExtract::NOperationResult::kOK));
+        QCOMPARE(callback->output->bytes, contents);
+        for (HRESULT result : {E_ABORT, E_OUTOFMEMORY}) {
+            auto *input = new Input(bytes);
+            source = input;
+            input->failAt = quint64(bytes.size() - 1);
+            input->failure = result;
+            QCOMPARE(source->Seek(1536, STREAM_SEEK_SET, nullptr), S_OK);
+            QCOMPARE(archive_->Open(source, nullptr, nullptr), result);
+        }
+        source = sourceAtHeader();
+        CMyComPtr<IArchiveOpenCallback> progress = new ChecksumProgressFailure;
+        QCOMPARE(archive_->Open(source, nullptr, progress), E_FAIL);
+        UInt32 count = 99;
+        QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, 0u);
+        source = sourceAtHeader();
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
+    }
     void emptyFileRetainsAnIndependentStreamWithoutSourceReads() {
         createArchive();
         auto bytes = fixture();
@@ -524,8 +564,11 @@ class CramfsModuleTests final : public QObject {
     }
     void optionalChecksumReadDoesNotHideFiles_data() {
         QTest::addColumn<bool>("shortRead");
-        QTest::newRow("io-failure") << false;
-        QTest::newRow("short-read") << true;
+        QTest::addColumn<quint64>("start");
+        QTest::newRow("io-failure") << false << quint64(0);
+        QTest::newRow("short-read") << true << quint64(0);
+        QTest::newRow("io-failure-marker") << false << quint64(512);
+        QTest::newRow("short-read-marker") << true << quint64(512);
     }
     void directoryFailureRetainsPrefixAndSibling() {
         createArchive();
@@ -634,6 +677,7 @@ class CramfsModuleTests final : public QObject {
     }
     void optionalChecksumReadDoesNotHideFiles() {
         QFETCH(bool, shortRead);
+        QFETCH(quint64, start);
         createArchive();
         auto bytes = fixture();
         bytes += QByteArray(16384, '\0');
@@ -647,6 +691,7 @@ class CramfsModuleTests final : public QObject {
         CMyComPtr<IInStream> source = input;
         input->failAt = UInt64(bytes.size() - 1);
         input->shortRead = shortRead;
+        QCOMPARE(source->Seek(Int64(start), STREAM_SEEK_SET, nullptr), S_OK);
         QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
         NWindows::NCOM::CPropVariant limitations;
         QCOMPARE(archive_->GetArchiveProperty(kpidUserDefined + 1, &limitations), S_OK);
@@ -661,7 +706,7 @@ class CramfsModuleTests final : public QObject {
         if (!shortRead) {
             for (HRESULT fatal : {E_ABORT, E_OUTOFMEMORY}) {
                 input->failure = fatal;
-                QCOMPARE(source->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
+                QCOMPARE(source->Seek(Int64(start), STREAM_SEEK_SET, nullptr), S_OK);
                 QCOMPARE(archive_->Open(source, nullptr, nullptr), fatal);
                 UInt32 count = 99;
                 QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
@@ -669,12 +714,12 @@ class CramfsModuleTests final : public QObject {
             }
         }
         input->failAt = UINT64_MAX;
-        QCOMPARE(source->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
+        QCOMPARE(source->Seek(Int64(start), STREAM_SEEK_SET, nullptr), S_OK);
         QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
         QCOMPARE(archive_->GetArchiveProperty(kpidUserDefined + 1, &limitations), S_OK);
         QCOMPARE(limitations.vt, VARTYPE(VT_EMPTY));
         CMyComPtr<IArchiveOpenCallback> callbackFailure = new ChecksumProgressFailure;
-        QCOMPARE(source->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
+        QCOMPARE(source->Seek(Int64(start), STREAM_SEEK_SET, nullptr), S_OK);
         QCOMPARE(archive_->Open(source, nullptr, callbackFailure), E_FAIL);
     }
     void streamsSurviveCloseReopenAndSourceFailure() {

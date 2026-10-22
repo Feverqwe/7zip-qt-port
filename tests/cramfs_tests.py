@@ -97,6 +97,39 @@ class CramfsTests(unittest.TestCase):
                         self.assertIn(extracted.returncode, (0, 1), extracted.stderr)
                         self.assertEqual(extracted.stdout, b"volume payload")
 
+    def test_verified_volume_origin_distinguishes_embedded_and_boot_prefixes(self):
+        for engine in ("7z", "7zz"):
+            for endian in ("<", ">"):
+                large = bytes((i * 73 + i // 17) % 256 for i in range(2048))
+                for boot, outer, payload in ((0, 512, b"verified origin"),
+                                             (0, 512, large), (512, 1024, b"verified origin")):
+                    with self.subTest(engine=engine, endian=endian, boot=boot, outer=outer, size=len(payload)):
+                        volume = image([payload], endian, prefix=boot)
+                        data = b"X" * outer + volume
+                        listing = self.run_image(data, engine, "l", forced=False)
+                        self.assertEqual(listing.returncode, 0, listing.stderr)
+                        header = listing.stdout.partition(b"----------")[0]
+                        properties = dict(line.split(b" = ", 1) for line in header.splitlines() if b" = " in line)
+                        self.assertEqual(int(properties[b"Offset"]), outer)
+                        self.assertEqual(int(properties[b"Physical Size"]), len(volume))
+                        self.assertNotIn(b"Read-only limitations =", header)
+                        extracted = self.run_image(data, engine, forced=False)
+                        self.assertEqual(extracted.returncode, 0, extracted.stderr)
+                        self.assertEqual(extracted.stdout, payload)
+
+    def test_boot_prefix_can_have_its_root_before_the_superblock(self):
+        for engine in ("7z", "7zz"):
+            for endian in ("<", ">"):
+                data = bytearray(image([b"root before superblock"], endian, prefix=512))
+                data[76:96] = data[588:608]
+                data[588:608] = bytes(20)
+                data[576:588] = inode(0o40755, 20, 76, endian=endian)
+                checksum(data, endian, 512)
+                with self.subTest(engine=engine, endian=endian):
+                    extracted = self.run_image(data, engine, forced=False)
+                    self.assertEqual(extracted.returncode, 0, extracted.stderr)
+                    self.assertEqual(extracted.stdout, b"root before superblock")
+
     def test_underdeclared_size_keeps_referenced_data_with_explicit_limitations(self):
         for endian in ("<", ">"):
             for prefix in (0, 512):
