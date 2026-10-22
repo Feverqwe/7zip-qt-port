@@ -499,7 +499,7 @@ class ExtTests(unittest.TestCase):
     def test_bad_xattrs_are_omitted_without_hiding_readable_files_and_values(self):
         for fault in ("bad-data", "bad-hash", "bad-entry-hash", "missing-flag", "no-links",
                       "many-links", "no-refs", "size", "self", "unwritten", "bad-acl",
-                      "bad-block", "block-range"):
+                      "bad-block", "block-range", "ea-bad-ibody"):
             with self.subTest(fault=fault):
                 volume = XattrVolume("xattrs-" + fault)
                 bad_name = "system.posix_acl_access" if fault in ("bad-acl", "bad-block", "block-range") else "user.large"
@@ -515,6 +515,39 @@ class ExtTests(unittest.TestCase):
                     result = self.run_image(volume, name=name)
                     self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
                     self.assertEqual(result.stdout, volume.files[name])
+
+    def test_bad_in_inode_xattrs_preserve_independent_data_and_links(self):
+        for target in ("file", "root", "block-link", "fast-link"):
+            with self.subTest(target=target):
+                volume = ReadlinkVolume("isolated-block-nul") if "link" in target else ModernVolume()
+                inode = (volume.root_inode if target == "root" else
+                         volume.table * volume.block_size + 13 * 256 if target == "fast-link" else
+                         volume.file_inode)
+                struct.pack_into("<H", volume.data, inode + 128, 32)
+                volume.put32(inode + 160, 0xEA020000)
+                # Framed user.z entry whose nonempty value lies beyond the inode.
+                struct.pack_into("<BBHIII", volume.data, inode + 164, 1, 1, 0xFFFF, 0, 4, 0)
+                volume.data[inode + 180] = ord("z")
+                volume.data[inode + 184:inode + 188] = bytes(4)
+                volume.refresh()
+                listing = self.run_image(volume, command="l", name=None, streams=True)
+                self.limited_listing(volume, listing=listing)
+                self.assertNotIn(b":$XATTR.user.z", listing.stdout)
+                names = (NAME, *volume.files) if "link" in target else (NAME,)
+                for name in names:
+                    result = self.run_image(volume, name=name)
+                    self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                    expected = volume.files[name] if name != NAME else volume.read(0, volume.size)
+                    self.assertEqual(result.stdout, expected)
+
+        volume = XattrVolume("xattrs-bad-ibody")
+        listing = self.run_image(volume, command="l", name=None, streams=True)
+        self.limited_listing(volume, listing=listing)
+        for name in ("data.bin", "alias.bin", "data.bin:$XATTR.trusted.fixture",
+                     "data.bin:$XATTR.system.posix_acl_access"):
+            result = self.run_image(volume, name=name)
+            self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+            self.assertEqual(result.stdout, volume.files[name])
 
     def test_sparse_indirect_and_extent_reads(self):
         for engine in ("7z", "7zz"):

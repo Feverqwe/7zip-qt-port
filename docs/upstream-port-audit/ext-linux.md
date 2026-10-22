@@ -10,6 +10,65 @@ fs-verity now reuses the original shared Linux string scanner already linked
 for fscrypt. Source scope and validation are recorded with the
 [shared string-service transfer](erofs-linux.md#original-shared-string-services--2026-10-22).
 
+## Invalid in-inode xattrs and independent file data — 2026-10-22
+
+Whole-inode source review found an earlier-than-export failure: original
+`ext4_iget_extra_inode` validates the in-inode xattr container during inode
+acquisition. A malformed optional value could therefore discard an otherwise
+checksummed inode before directory publication, hiding a regular file, root
+directory contents or a plaintext symlink. Recompared complete original
+`__ext4_iget`, `ext4_iget_extra_inode`, `check_xattrs`, inline-data discovery,
+ibody/block/EA-inode getters and the eager archive consumers before changing
+the boundary. The original strict initialization/validation bodies are retained.
+
+The GPL archive boundary now records the optional ibody error on its owned inode
+and retains independent data/mapping metadata. Untrusted xattr/inline discovery
+state is cleared; no unchecked container entries are used. The existing export
+error service reports incomplete xattrs even when alternate streams are hidden.
+Inline, encrypted and EA-inode flags keep strict initialization, since their
+metadata can be essential to decoding. OOM, raw inode checksum, extra-size,
+mapping/reference and normal/special inode acceptance checks are unchanged.
+The fscrypt-context entry point also returns the stored ibody error explicitly.
+
+After the ibody error is reported, an independently valid external xattr block
+can still be exported. The existing external-block visitor is shared with the
+normal path, and its values use original `ext4_xattr_block_get` directly in this
+limited mode. It retains original system-zone, checksum, entry, EA-inode/hash
+and ACL validation. This avoids treating failed ibody lookup as verified absence
+or asking it to supply values for the external container. Ordinary successful
+openings retain their original ibody-before-block precedence. A damaged ibody's
+possible overrides are unknown; the limited metadata set does not promise a
+complete native VFS view. No decoder is recreated or source bytes repaired.
+
+The change is confined to archive ownership/error/export glue, with one private
+error field and a factored existing block visitor. Original Linux getters and
+extra-inode initialization remain unchanged. This is an explicit recovery
+adaptation beyond Linux's strict inode acquisition, within the requested ext
+partial-access policy. Existing per-opening consent, limitation diagnostics and
+read-only source handling are reused; no new UI text, writes or replay is added.
+The SDK-only source variant is unchanged.
+
+CLI regressions use checksum-correct malformed ibody values on a regular file,
+the root directory, a block symlink and a fast symlink. Exact original file/link
+bytes and independent siblings survive; the malformed attribute is absent and
+limitations visible. A native creator fixture retains exact main/alias bytes,
+trusted xattrs and ACL bytes from the independent external block. An EA-inode
+negative control remains unavailable as an attribute value while unrelated data
+and attributes stay readable. Existing malformed-inline/fscrypt and stream/error
+controls retain their strict contracts; every CLI fixture verifies unchanged
+source bytes.
+
+Validation on macOS: the initial eight ext/stream/fscrypt/xattr/provenance suites
+passed (8.65 s). After completing external-block isolation, all six behavioral
+suites passed (8.38 s); after adding the EA-inode negative control, the affected
+`ext` suite passed again (8.40 s). Production code was unchanged for that final
+test-only addition. The incremental application build passed. Runtime/build/
+compiler caches were reused and disposable ext fixtures were absent afterwards.
+No platform-dependent service or dependency changed, so remote checks were not
+repeated. No full/slow suite, physical device, appearance or release installation
+was run. This fixes the ibody recovery scenario; whole superblock/inode source
+closure and the broader ext/parent review remain open.
+
 ## Mapping, bitmap and system-zone source comparison — 2026-10-22
 
 Completed whole-unit comparison of the selected block-read component against

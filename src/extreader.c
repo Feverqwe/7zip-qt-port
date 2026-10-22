@@ -192,7 +192,17 @@ int ext_linux_inode_open(struct ext_volume *volume, uint32_t ino, const void *da
             ei->i_extra_isize = sizeof(struct ext4_inode) - EXT4_GOOD_OLD_INODE_SIZE;
         } else {
             error = ext4_iget_extra_inode(inode, raw, ei);
-            if (error) goto fail;
+            if (error) {
+                /* Optional metadata must not hide independent file/directory
+                 * data. Inline, encrypted and EA-inode decoding stays strict. */
+                if (error == -ENOMEM || (inode->flags & ((1U << 28) | 0x800U | (1U << 21))))
+                    goto fail;
+                node->xattr_error = error;
+                ei->i_state_flags = 0;
+                ei->i_inline_off = 0;
+                ei->i_inline_size = 0;
+                inode->error = 0;
+            }
         }
     }
     if (inode->flags & (1U << 28)) {
@@ -219,7 +229,7 @@ int ext_linux_inode_open(struct ext_volume *volume, uint32_t ino, const void *da
     }
     info->size = inode->i_size;
     info->checksum_seed = ei->i_csum_seed;
-    info->has_xattrs = ext4_test_inode_state(inode, EXT4_STATE_XATTR) || ei->i_file_acl != 0;
+    info->has_xattrs = node->xattr_error || ext4_test_inode_state(inode, EXT4_STATE_XATTR) || ei->i_file_acl != 0;
     DECODE_TIME(info->atime, i_atime);
     DECODE_TIME(info->mtime, i_mtime);
     DECODE_TIME(info->change_time, i_ctime);
@@ -280,13 +290,20 @@ int ext_linux_xattr_visit(struct ext_node *node, const struct ext_xattr_services
     const struct ext_xattr_services *previous = sbi->xattr_services;
     int result;
     sbi->xattr_services = services;
-    result = ext4_xattr_visit(&node->inode, emit, context);
+    if (node->xattr_error) {
+        result = services && services->handle_error ?
+            services->handle_error(services->context, node->xattr_error) : node->xattr_error;
+        if (!result)
+            result = ext4_xattr_visit_block(&node->inode, emit, context, true);
+    } else
+        result = ext4_xattr_visit(&node->inode, emit, context);
     sbi->xattr_services = previous;
     return result;
 }
 int ext_linux_fscrypt_context(struct ext_node *node, const struct ext_xattr_services *services,
                                void *output, size_t size)
 {
+    if (node->xattr_error) return node->xattr_error;
     struct ext4_sb_info *sbi = EXT4_SB(node->inode.i_sb);
     const struct ext_xattr_services *previous = sbi->xattr_services;
     sbi->xattr_services = services;

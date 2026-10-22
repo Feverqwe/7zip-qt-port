@@ -138,6 +138,7 @@ int __ext4_xattr_check_block(struct inode *, struct buffer_head *, const char *,
 int __xattr_check_inode(struct inode *, struct ext4_xattr_ibody_header *, void *, const char *, unsigned int);
 int ext4_xattr_get(struct inode *, int, const char *, void *, size_t);
 int ext4_xattr_visit(struct inode *, ext_xattr_emit, void *);
+int ext4_xattr_visit_block(struct inode *, ext_xattr_emit, void *, bool);
 #define ext4_xattr_check_block(inode, bh) __ext4_xattr_check_block(inode, bh, __func__, __LINE__)
 #define xattr_check_inode(inode, header, end) __xattr_check_inode(inode, header, end, __func__, __LINE__)
 #endif

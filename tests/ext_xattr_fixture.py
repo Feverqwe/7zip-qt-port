@@ -100,6 +100,19 @@ class XattrVolume:
             self.refresh_inode(self.record["ea_inode"], ea)
         elif kind == "xattrs-bad-block":
             self.data[self.xattr_block_offset + 16] ^= 1
+        elif kind == "xattrs-bad-ibody":
+            # Keep checksummed inode/data and external xattrs intact, but make
+            # the first in-inode value extend outside its container.
+            extra = struct.unpack_from("<H", self.data, parent + 128)[0]
+            struct.pack_into("<H", self.data, parent + 128 + extra + 4 + 2, 0xFFFF)
+            self.refresh_inode(self.record["parent_inode"], parent)
+        elif kind == "xattrs-ea-bad-ibody":
+            struct.pack_into("<H", self.data, ea + 128, 32)
+            put(ea + 160, "I", 0xEA020000)
+            struct.pack_into("<BBHIII", self.data, ea + 164, 1, 1, 0xFFFF, 0, 4, 0)
+            self.data[ea + 180] = ord("z")
+            self.data[ea + 184:ea + 188] = bytes(4)
+            self.refresh_inode(self.record["ea_inode"], ea)
         elif kind == "xattrs-block-range":
             put(parent + 104, "I", len(self.data) // 1024)
             self.refresh_inode(self.record["parent_inode"], parent)
