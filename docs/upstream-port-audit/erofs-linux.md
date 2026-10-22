@@ -1,5 +1,44 @@
 # Read-only EROFS from Linux
 
+## Inline metadata and data-device address spaces — 2026-10-22
+
+Compared the pinned `data.c::erofs_iomap_begin` inline-data acquisition,
+`fileio.c::erofs_fileio_scan_folio`, `zdata.c::z_erofs_pcluster_begin`,
+`erofs_map_dev`, metadata-buffer services and the archive's physical-read
+consumer. Linux acquires `EROFS_MAP_META` bytes through metadata buffers for
+both ordinary inline data and compressed inline tails. The archive adapter
+instead sent primary inline metadata through the data-device mapper. An
+auxiliary device's unified-address range could therefore redirect a directory
+or file's metadata bytes into that device.
+
+The transport boundary now uses the existing original `erofs_read_metabuf`
+path for all metadata extents, selecting primary metadata or metabox mapping
+from the inode. It releases the acquired buffer after copying and retains
+explicit logical-source and filesystem-block bounds. Ordinary data extents
+still use the original device mapper. No filesystem mapping or decompression
+algorithm is replaced, and no new source unit is copied. The complete source
+units remain hashed at the Linux repository/revision below.
+
+A public C-reader regression combines an inline root directory and inline
+regular file in primary metadata with an indexed file on an external device.
+Its synthetic device range covers the numeric metadata coordinates. The test
+checks exact namespace/file bytes, no external read for directory metadata,
+actual external reads for file data and unchanged primary/auxiliary sources.
+Existing producer-image module/CLI suites cover compressed inline tails,
+metabox, multi-device reads, cancellation and errors. This fixes the existing
+address-space boundary; it does not add a recovery mode or authorize writes,
+repair or journal replay. Overall EROFS source closure and the parent audit
+remain open.
+
+Validation: `erofs_reader`, `erofs_module`, `erofs`, `upstream_baseline` and
+`upstream_inventory` passed on macOS, Linux and Windows (guest receipt
+`20261022T173439Z-53f7d81d`). The incremental application build passed. The
+changed transport was compared again with the original inline-metadata consumers;
+all 54 EROFS reference hashes match. Existing runtime snapshots, build trees and
+compiler caches were reused, and disposable EROFS fixtures were absent on all
+three platforms afterwards. No full gate, slow suite, new native mount/device
+check, UI appearance acceptance or release installation was run.
+
 ## Original directory iterator and omitted-dot handling — 2026-10-22
 
 Compared complete pinned `dir.c::erofs_readdir`/`erofs_fill_dentries`,

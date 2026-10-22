@@ -50,8 +50,23 @@ struct folio *erofs_read_cache_folio(struct erofs_buf *buf, pgoff_t index) {
 static int erofs_read_physical(struct inode *inode, struct erofs_map_blocks *map, void *data) {
     struct super_block *sb = inode->i_sb;
     struct erofs_sb_info *sbi = EROFS_SB(sb);
-    if ((map->m_flags & EROFS_MAP_META) && erofs_inode_in_metabox(inode))
-        return sb->read_inode(sbi->metabox_inode, map->m_pa, data, (size_t)map->m_plen);
+    if (map->m_flags & EROFS_MAP_META) {
+        const bool in_metabox = erofs_inode_in_metabox(inode);
+        const u64 length = in_metabox ?
+            (sbi->metabox_inode ? (u64)sbi->metabox_inode->i_size : 0) : sb->image_size;
+        if (map->m_pa > length || map->m_plen > length - map->m_pa)
+            return -EIO;
+        if (map->m_plen > sb->s_blocksize - erofs_blkoff(sb, map->m_pa))
+            return -EFSCORRUPTED;
+        // Linux's inline-data paths acquire metadata, not a mapped data device.
+        struct erofs_buf buf = __EROFS_BUF_INITIALIZER;
+        void *src = erofs_read_metabuf(&buf, sb, map->m_pa, in_metabox);
+        if (IS_ERR(src))
+            return PTR_ERR(src);
+        memcpy(data, src, (size_t)map->m_plen);
+        erofs_put_metabuf(&buf);
+        return 0;
+    }
     struct erofs_map_dev mdev = { .m_pa = map->m_pa, .m_deviceid = map->m_deviceid };
     int error = erofs_map_dev(sb, &mdev);
     if (error)

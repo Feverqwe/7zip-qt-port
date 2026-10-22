@@ -112,6 +112,65 @@ qsizetype regularEntry(const QByteArray &bytes) {
 class ErofsReaderTests final : public QObject {
     Q_OBJECT
   private slots:
+    void inlineMetadataIsIndependentOfDataDeviceRanges() {
+        Reader reader;
+        reader.external = true;
+        reader.bytes = erofsSpecialImage(0, 0100000, 0, 0);
+        reader.devices = {QByteArray(4096, 'B')};
+        const QByteArray inlineData("primary-inline");
+        auto u16 = [&](unsigned at, quint16 value) {
+            qToLittleEndian(value, reader.bytes.data() + at);
+        };
+        auto u32 = [&](unsigned at, quint32 value) {
+            qToLittleEndian(value, reader.bytes.data() + at);
+        };
+        u32(1040, 3);
+        u32(1104, 12); // chunked files and a device table
+        u16(1110, 1);
+        u16(1112, 16);
+        std::memcpy(reader.bytes.data() + 2048, "blob.bin", 8);
+        u32(2048 + 64, 1);
+        u32(2048 + 68, 1); // data-device range includes primary metadata coordinates
+        const unsigned root = 4096, node = root + 128, blob = root + 256;
+        u32(root + 8, 59);
+        const unsigned directory = root + 32;
+        std::memset(reader.bytes.data() + directory, 0, 59);
+        for (unsigned i = 0; i < 4; ++i) {
+            u32(directory + i * 12, i == 2 ? 8 : i == 3 ? 4 : 0);
+            u16(directory + i * 12 + 8, i == 0 ? 48 : i == 1 ? 49 : i == 2 ? 51 : 55);
+            reader.bytes[directory + i * 12 + 10] = char(i < 2 ? 2 : 1);
+        }
+        std::memcpy(reader.bytes.data() + directory + 48, "...blobnode", 11);
+        u16(node, 4); // flat inline file in primary metadata
+        u32(node + 8, unsigned(inlineData.size()));
+        std::memcpy(reader.bytes.data() + node + 32, inlineData.constData(), inlineData.size());
+        u16(blob, 8);
+        u16(blob + 4, 0100644);
+        u16(blob + 6, 1);
+        u32(blob + 8, 4096);
+        u16(blob + 16, 0x20); // indexed chunk on explicit device 1
+        u16(blob + 34, 1);
+        const auto original = reader.bytes, device = reader.devices[0];
+        QCOMPARE(reader.Open(), 0);
+        Entries entries;
+        QCOMPARE(erofs_read_directory(reader.root.get(), &entries, Entries::Emit), 0);
+        QCOMPARE(entries.order, (QList<QByteArray>{".", "..", "blob", "node"}));
+        QCOMPARE(reader.reads.value(1), 0U);
+        for (const auto &name : {QByteArray("node"), QByteArray("blob")}) {
+            erofs_file *raw = nullptr;
+            QCOMPARE(erofs_open_file(reader.volume.get(), entries.values[name].nid, &raw), 0);
+            std::unique_ptr<erofs_file, decltype(&erofs_close_file)> file(raw, erofs_close_file);
+            const auto expected = name == "node" ? inlineData : device;
+            QByteArray data(expected.size(), '?');
+            size_t processed = 0;
+            QCOMPARE(erofs_pread_file(raw, 0, data.data(), size_t(data.size()), &processed), 0);
+            QCOMPARE(processed, size_t(expected.size()));
+            QCOMPARE(data, expected);
+        }
+        QVERIFY(reader.reads.value(1) > 0);
+        QCOMPARE(reader.bytes, original);
+        QCOMPARE(reader.devices[0], device);
+    }
     void omittedDotInMultiblockDirectory_data() {
         QTest::addColumn<unsigned>("bits");
         QTest::addColumn<bool>("extended");
