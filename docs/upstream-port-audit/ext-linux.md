@@ -10,6 +10,47 @@ fs-verity now reuses the original shared Linux string scanner already linked
 for fscrypt. Source scope and validation are recorded with the
 [shared string-service transfer](erofs-linux.md#original-shared-string-services--2026-10-22).
 
+## Original inode and group metadata helpers — 2026-10-22
+
+Compared complete pinned `__ext4_iget`, metadata initialization in the archive
+boundary, inode/inline/xattr consumers, descriptor/system-zone readers and htree
+depth selection. Nine format helpers were living in the host-services header,
+partly as equivalent local macros/formulas rather than their original bodies.
+They now reside under the original `fs/ext4/ext4.h` path with complete bodies
+matching the pinned Linux source byte-for-byte:
+
+| Original helpers | Connected read-side consumers |
+| --- | --- |
+| `ext4_valid_inum`, `is_special_ino` | Normal/special/EA inode acquisition and reserved-inode validation. |
+| `ext4_isize`, `ext4_get_maxbytes`, `ext4_has_inline_data` | Inode size acceptance, classic/extent limits, inline data/directories/symlinks and xattr readers. |
+| `ext4_group_first_block_no`, `ext4_has_group_desc_csum`, `ext4_blocks_count` | Group/bitmap/descriptor geometry, inode-table placement and protected system zones. |
+| `ext4_dir_htree_level` | Original index probe/next-block depth checks, including LARGEDIR. |
+
+The original `ext4_read_incompat_64bit_val` macro replaces the local block-count
+formula; the original inline-data helper replaces its local macro and uses the
+existing immutable-inode flag service. No parallel implementation remains in
+`services.h`. Private types, allocation, bounded buffers, immutable state and
+kernel-service substitutions retain their existing owner. Source remains C,
+with original notices and the already recorded header baseline; no new unit or
+license-switch condition is added. The SDK source variant is unchanged.
+
+No incorrect runtime result was established in the previous equivalents. This
+iteration removes source-transfer debt without inventing another metadata
+decoder. Existing behavior checks cover the affected geometry, sparse/large
+sizes, reserved/EA inodes, inline layouts, htree traversal, crypto and malformed
+metadata; new tests of helper presence or implementation text are unnecessary.
+The inode acquisition/cache/VFS-operation boundary and full directory transfer
+are still adaptations rather than a complete kernel inode/VFS implementation.
+
+Validation: all nine complete helper bodies and the shared macro were compared
+again with Linux `58161ead29e50d70a317ea26b472e0c7508e69da`; all 305 pinned
+reference hashes match. Eight focused ext/stream/fscrypt/xattr/provenance suites
+passed on macOS (8.71 s), as did the incremental application build. Existing
+runtime/build/compiler caches were reused; disposable ext fixtures were absent.
+This portable source-transfer change did not require remote checks. No full/slow,
+native-device, appearance or release-install acceptance was run. The broader
+ext and parent format audits remain open.
+
 ## Framed namespace errors and following readable entries — 2026-10-22
 
 Recompared complete SDK `ParseDir`, its name storage and named-parent checks,

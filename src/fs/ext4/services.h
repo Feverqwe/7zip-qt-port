@@ -137,12 +137,10 @@ EXT_FEATURE(dir_index, compat, 5)
 #define EXT4_HTREE_LEVEL 3
 #define ERR_BAD_DX_DIR (-4094)
 #define HASH_NB_ALWAYS 1
-static inline int ext4_dir_htree_level(struct super_block *sb) {
-    return ext4_has_feature_largedir(sb) ? EXT4_HTREE_LEVEL : EXT4_HTREE_LEVEL_COMPAT;
-}
 int ext4_hash_info_init(struct super_block *);
 int ext4_inode_info_init(struct super_block *, struct ext4_super_block *);
 #define EXT4_INODE_HUGE_FILE 18
+#define EXT4_INODE_INLINE_DATA 28
 #define ext4_test_inode_flag(inode, flag) (((inode)->flags & (1U << (flag))) != 0)
 #define EXT4_CLUSTER_SIZE(sb) (1024U << le32_to_cpu(EXT4_SB(sb)->s_es->s_log_cluster_size))
 int ext4_inode_is_fast_symlink(struct inode *);
@@ -150,32 +148,6 @@ u64 ext4_inode_blocks(struct ext4_inode *, struct ext4_inode_info *, struct inod
 int ext4_ext_check_inode(struct inode *);
 int __ext4_ext_check(const char *, unsigned int, struct inode *, struct ext4_extent_header *, int, ext4_fsblk_t, ext4_lblk_t);
 #define ext4_error_inode_err(inode, ...) ((inode)->error = -EFSCORRUPTED)
-static inline loff_t ext4_isize(struct super_block *sb,
-				struct ext4_inode *raw_inode)
-{
-	if (ext4_has_feature_largedir(sb) ||
-	    S_ISREG(le16_to_cpu(raw_inode->i_mode)))
-		return ((loff_t)le32_to_cpu(raw_inode->i_size_high) << 32) |
-			le32_to_cpu(raw_inode->i_size_lo);
-
-	return (loff_t) le32_to_cpu(raw_inode->i_size_lo);
-}
-static inline loff_t ext4_get_maxbytes(struct inode *inode)
-{
-	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
-		return inode->i_sb->s_maxbytes;
-	return EXT4_SB(inode->i_sb)->s_bitmap_maxbytes;
-}
-static inline bool is_special_ino(struct super_block *sb, unsigned long ino)
-{
-	struct ext4_super_block *es = EXT4_SB(sb)->s_es;
-
-	return (ino < EXT4_FIRST_INO(sb) && ino != EXT4_ROOT_INO) ||
-		ino == le32_to_cpu(es->s_usr_quota_inum) ||
-		ino == le32_to_cpu(es->s_grp_quota_inum) ||
-		ino == le32_to_cpu(es->s_prj_quota_inum) ||
-		ino == le32_to_cpu(es->s_orphan_file_inum);
-}
 #define EXT4_BLOCKS_PER_GROUP(sb) le32_to_cpu(EXT4_SB(sb)->s_es->s_blocks_per_group)
 #define EXT4_BG_INODE_ZEROED 4
 #define ext4_debug(...) ((void)0)
@@ -184,11 +156,6 @@ static inline bool is_special_ino(struct super_block *sb, unsigned long ino)
 #define ext4_lock_group(sb, group) ((void)0)
 #define ext4_unlock_group(sb, group) ((void)0)
 int ext4_check_descriptors(struct super_block *, ext4_fsblk_t, ext4_group_t *);
-static inline u64 ext4_blocks_count(struct ext4_super_block *es) {
-    return le32_to_cpu(es->s_blocks_count_lo) |
-        ((le32_to_cpu(es->s_feature_incompat) & EXT4_FEATURE_INCOMPAT_64BIT) ?
-        (u64)le32_to_cpu(es->s_blocks_count_hi) << 32 : 0);
-}
 #define EXT4_DESC_SIZE(sb) (EXT4_SB(sb)->s_desc_size)
 #define EXT4_DESC_PER_BLOCK(sb) (EXT4_SB(sb)->s_desc_per_block)
 #define EXT4_MAX_BLOCK_FILE_PHYS 0xFFFFFFFF
@@ -227,19 +194,6 @@ int ext4_check_blockref(const char *, unsigned int, struct inode *, __le32 *, un
 static inline bool ext4_has_unknown_ext4_incompat_features(struct super_block *sb) {
     return (EXT4_SB(sb)->s_es->s_feature_incompat & cpu_to_le32(~EXT4_FEATURE_INCOMPAT_SUPP)) != 0;
 }
-static inline bool ext4_has_group_desc_csum(struct super_block *sb) {
-    return ext4_has_feature_metadata_csum(sb) || ext4_has_feature_gdt_csum(sb);
-}
-static inline ext4_fsblk_t ext4_group_first_block_no(struct super_block *sb, ext4_group_t group) {
-    return (ext4_fsblk_t)group * le32_to_cpu(EXT4_SB(sb)->s_es->s_blocks_per_group) +
-        le32_to_cpu(EXT4_SB(sb)->s_es->s_first_data_block);
-}
-static inline int ext4_valid_inum(struct super_block *sb, unsigned long ino)
-{
-	return ino == EXT4_ROOT_INO ||
-		(ino >= EXT4_FIRST_INO(sb) &&
-		 ino <= le32_to_cpu(EXT4_SB(sb)->s_es->s_inodes_count));
-}
 #define EXT4_DIRENT_TAIL(block, size) ((struct ext4_dir_entry_tail *)((char *)(block) + (size) - sizeof(struct ext4_dir_entry_tail)))
 #define ext4_raw_inode(iloc) ((struct ext4_inode *)((iloc)->bh->b_data + (iloc)->offset))
 static inline int ext4_get_inode_loc(struct inode *inode, struct ext4_iloc *iloc) {
@@ -253,7 +207,6 @@ static inline int ext4_test_inode_state(struct inode *inode, int bit) {
 static inline void ext4_set_inode_state(struct inode *inode, int bit) {
     EXT4_I(inode)->i_state_flags |= 1UL << bit;
 }
-#define ext4_has_inline_data(inode) (((inode)->flags & (1U << 28)) && (inode)->info.i_inline_off)
 #define file_inode(file) ((file)->inode)
 #define inode_eq_iversion(inode, cookie) ((cookie) == 1)
 #define inode_query_iversion(inode) 1

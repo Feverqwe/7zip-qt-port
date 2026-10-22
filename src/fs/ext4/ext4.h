@@ -332,6 +332,77 @@ enum {
 
 #include "services.h"
 
+static inline int ext4_valid_inum(struct super_block *sb, unsigned long ino)
+{
+	return ino == EXT4_ROOT_INO ||
+		(ino >= EXT4_FIRST_INO(sb) &&
+		 ino <= le32_to_cpu(EXT4_SB(sb)->s_es->s_inodes_count));
+}
+
+static inline ext4_fsblk_t
+ext4_group_first_block_no(struct super_block *sb, ext4_group_t group_no)
+{
+	return group_no * (ext4_fsblk_t)EXT4_BLOCKS_PER_GROUP(sb) +
+		le32_to_cpu(EXT4_SB(sb)->s_es->s_first_data_block);
+}
+
+static inline int ext4_dir_htree_level(struct super_block *sb)
+{
+	return ext4_has_feature_largedir(sb) ?
+		EXT4_HTREE_LEVEL : EXT4_HTREE_LEVEL_COMPAT;
+}
+
+static inline bool is_special_ino(struct super_block *sb, unsigned long ino)
+{
+	struct ext4_super_block *es = EXT4_SB(sb)->s_es;
+
+	return (ino < EXT4_FIRST_INO(sb) && ino != EXT4_ROOT_INO) ||
+		ino == le32_to_cpu(es->s_usr_quota_inum) ||
+		ino == le32_to_cpu(es->s_grp_quota_inum) ||
+		ino == le32_to_cpu(es->s_prj_quota_inum) ||
+		ino == le32_to_cpu(es->s_orphan_file_inum);
+}
+
+static inline int ext4_has_group_desc_csum(struct super_block *sb)
+{
+	return ext4_has_feature_gdt_csum(sb) ||
+	       ext4_has_feature_metadata_csum(sb);
+}
+
+#define ext4_read_incompat_64bit_val(es, name) \
+	(((es)->s_feature_incompat & cpu_to_le32(EXT4_FEATURE_INCOMPAT_64BIT) \
+		? (ext4_fsblk_t)le32_to_cpu(es->name##_hi) << 32 : 0) | \
+		le32_to_cpu(es->name##_lo))
+
+static inline ext4_fsblk_t ext4_blocks_count(struct ext4_super_block *es)
+{
+	return ext4_read_incompat_64bit_val(es, s_blocks_count);
+}
+
+static inline loff_t ext4_isize(struct super_block *sb,
+				struct ext4_inode *raw_inode)
+{
+	if (ext4_has_feature_largedir(sb) ||
+	    S_ISREG(le16_to_cpu(raw_inode->i_mode)))
+		return ((loff_t)le32_to_cpu(raw_inode->i_size_high) << 32) |
+			le32_to_cpu(raw_inode->i_size_lo);
+
+	return (loff_t) le32_to_cpu(raw_inode->i_size_lo);
+}
+
+static inline loff_t ext4_get_maxbytes(struct inode *inode)
+{
+	if (ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
+		return inode->i_sb->s_maxbytes;
+	return EXT4_SB(inode->i_sb)->s_bitmap_maxbytes;
+}
+
+static inline int ext4_has_inline_data(struct inode *inode)
+{
+	return ext4_test_inode_flag(inode, EXT4_INODE_INLINE_DATA) &&
+	       EXT4_I(inode)->i_inline_off;
+}
+
 static inline bool ext4_hash_in_dirent(const struct inode *inode)
 {
 	return IS_CASEFOLDED(inode) && IS_ENCRYPTED(inode);
