@@ -10,6 +10,40 @@ fs-verity now reuses the original shared Linux string scanner already linked
 for fscrypt. Source scope and validation are recorded with the
 [shared string-service transfer](erofs-linux.md#original-shared-string-services--2026-10-22).
 
+## Original directory-record framing shared by archive consumers — 2026-10-22
+
+Compared complete pinned `ext4_hash_in_dirent`, `ext4_dir_rec_len` and
+`ext4_rec_len_from_disk` bodies, the normal/inline/htree record-validation
+consumers, and GPL `CHandler::ParseDir`. The host-services header carried
+independent equivalents of the three helpers, while the archive parser also
+decoded `rec_len` independently after C validation.
+
+The complete original helpers now reside in their original `fs/ext4/ext4.h`
+path and match Linux byte-for-byte. Existing immutable-inode flag services
+provide `IS_CASEFOLDED`/`IS_ENCRYPTED` in place of VFS state. A narrow C ABI
+accessor passes the record's on-disk length to the original decoder; the GPL
+archive parser uses it after its existing available-header check. Inline
+records retain their existing original C iteration and archive projection.
+Record bounds, checksum, name and inode checks remain in their current owners.
+The separate SDK source variant retains its original implementation; no new
+license-switch condition or GPL runtime overlay is added.
+
+This removes source-transfer debt; incorrect bytes were not established in the
+previous equivalents. Existing normal, inline, htree, fscrypt/name/hash, malformed
+record, stream/error and backend suites provide the relevant behavior coverage;
+no source-presence or trivial helper test was added. The original header's
+existing full baseline hash is verified and unchanged. There is no new recovery
+mode, source write, replay or platform service.
+
+Validation: `ext`, `ext_stream`, `ext_fscrypt`, `ext_fscrypt_cli`,
+`ext_fscrypt_backend`, `ext_xattr_backend`, `upstream_baseline` and
+`upstream_inventory` passed on macOS. The incremental application build passed.
+This is platform-independent record decoding and source organization, so remote
+checks were not repeated under the user's validation scope. Existing runtime,
+build and compiler caches were reused; disposable ext fixtures were absent
+afterwards. No full/slow suite, native mount/device, UI appearance or release
+installation was run. The broader ext source audit remains open.
+
 ## Advisory directory file types and readable namespace recovery — 2026-10-22
 
 Compared the pinned ext4 `get_dtype`, normal/inline/htree directory emitters,

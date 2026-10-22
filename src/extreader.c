@@ -397,6 +397,12 @@ uint8_t ext_linux_directory_type(struct ext_volume *volume, uint8_t filetype)
     return get_dtype(&volume->sb, filetype);
 }
 
+unsigned int ext_linux_directory_record_length(const void *record, unsigned int blocksize)
+{
+    const struct ext4_dir_entry_2 *entry = record;
+    return ext4_rec_len_from_disk(entry->rec_len, blocksize);
+}
+
 int ext_linux_directory_entry_check(struct ext_volume *volume, uint32_t flags,
                                     const void *data, size_t size, unsigned int offset)
 {

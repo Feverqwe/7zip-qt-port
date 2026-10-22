@@ -331,6 +331,37 @@ enum {
 };
 
 #include "services.h"
+
+static inline bool ext4_hash_in_dirent(const struct inode *inode)
+{
+	return IS_CASEFOLDED(inode) && IS_ENCRYPTED(inode);
+}
+
+/*
+ * The rec_len is dependent on the type of directory. Directories that are
+ * casefolded and encrypted need to store the hash as well, so we add room for
+ * ext4_extended_dir_entry_2. For all entries related to '.' or '..' you should
+ * pass NULL for dir, as those entries do not use the extra fields.
+ */
+static inline unsigned int ext4_dir_rec_len(__u8 name_len,
+						const struct inode *dir)
+{
+	int rec_len = (name_len + 8 + EXT4_DIR_ROUND);
+
+	if (dir && ext4_hash_in_dirent(dir))
+		rec_len += sizeof(struct ext4_dir_entry_hash);
+	return (rec_len & ~EXT4_DIR_ROUND);
+}
+
+static inline unsigned int
+ext4_rec_len_from_disk(__le16 dlen, unsigned blocksize)
+{
+	unsigned len = le16_to_cpu(dlen);
+
+	if (len == EXT4_MAX_REC_LEN || len == 0)
+		return blocksize;
+	return (len & 65532) | ((len & 3) << 16);
+}
 static const unsigned char ext4_filetype_table[] = {
 	DT_UNKNOWN, DT_REG, DT_DIR, DT_CHR, DT_BLK, DT_FIFO, DT_SOCK, DT_LNK
 };

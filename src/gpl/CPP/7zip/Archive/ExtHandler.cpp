@@ -993,12 +993,7 @@ HRESULT CHandler::ParseDir(const Byte *p, size_t size, unsigned iNodeDir, CDirPa
             return S_FALSE;
         UInt32 iNode;
         LE_32(0x00, iNode)
-        unsigned recLen;
-        LE_16(0x04, recLen)
-        if (recLen == 0 || recLen == 0xFFFF)
-            recLen = (unsigned)blockSize;
-        else
-            recLen = (recLen & 65532) | ((recLen & 3) << 16);
+        const unsigned recLen = ext_linux_directory_record_length(p, (unsigned)blockSize);
         const unsigned nameLen = p[6];
         const Byte type = p[7];
 

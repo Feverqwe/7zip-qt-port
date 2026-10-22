@@ -26,6 +26,7 @@ int ext4_encoding_init(struct super_block *, struct ext4_super_block *);
 #define is_power_of_2(n) ((n) && !((n) & ((n) - 1)))
 #define i_size_read(inode) ((inode)->i_size)
 #define IS_CASEFOLDED(inode) (((inode)->flags & 0x40000000U) != 0)
+#define IS_ENCRYPTED(inode) (((inode)->flags & 0x00000800U) != 0)
 #define S_ISCHR(mode) (((mode) & 0170000) == 0020000)
 #define S_ISBLK(mode) (((mode) & 0170000) == 0060000)
 #define S_ISFIFO(mode) (((mode) & 0170000) == 0010000)
@@ -238,19 +239,6 @@ static inline int ext4_valid_inum(struct super_block *sb, unsigned long ino)
 	return ino == EXT4_ROOT_INO ||
 		(ino >= EXT4_FIRST_INO(sb) &&
 		 ino <= le32_to_cpu(EXT4_SB(sb)->s_es->s_inodes_count));
-}
-static inline bool ext4_hash_in_dirent(const struct inode *inode) {
-    return (inode->flags & 0x40000800U) == 0x40000800U;
-}
-static inline unsigned int ext4_dir_rec_len(__u8 name_len, const struct inode *dir) {
-    int rec_len = name_len + 8 + EXT4_DIR_ROUND;
-    if (dir && ext4_hash_in_dirent(dir)) rec_len += sizeof(struct ext4_dir_entry_hash);
-    return rec_len & ~EXT4_DIR_ROUND;
-}
-static inline unsigned int ext4_rec_len_from_disk(__le16 dlen, unsigned int blocksize) {
-    unsigned int len = le16_to_cpu(dlen);
-    if (len == EXT4_MAX_REC_LEN || len == 0) return blocksize;
-    return (len & 65532) | ((len & 3) << 16);
 }
 #define EXT4_DIRENT_TAIL(block, size) ((struct ext4_dir_entry_tail *)((char *)(block) + (size) - sizeof(struct ext4_dir_entry_tail)))
 #define ext4_raw_inode(iloc) ((struct ext4_inode *)((iloc)->bh->b_data + (iloc)->offset))
