@@ -4,6 +4,53 @@
 существующее чтение boot/MFT, атрибутов, sparse и compressed streams.
 Полная актуализация NTFS по Linux ещё не завершена.
 
+## Reparse limits and header-only classification — 2026-10-22
+
+Compared complete `inode.c:ntfs_readlink_hlp`/`ntfs_translate_junction`,
+`frecord.c:ni_parse_reparse`, their ATTR_DATA/reparse callers and the
+`super.c:ntfs_fill_super` attribute-definition walk at the pinned revision.
+Junction translation matches byte-for-byte. Readlink retains original tag
+dispatch, resident/nonresident loading, Unicode conversion, slash conversion,
+size/error paths and release; adaptations are the existing non-wrapping offsets,
+unaligned UTF-16 access and host character type. Native dentry/get_link lifetime
+and NLS mount selection remain archive/platform boundaries.
+
+Found a remaining read gap: the archive imposed 16384 bytes for all reparse
+payloads and supplied that constant to the C readlink context. Linux obtains
+the link limit from `$AttrDef`, while WOF classification consumes its fixed
+header without reading an unused tail. The table walk now returns both original
+EA and reparse limits. One early loader selects active, base, unnamed `$AttrDef`
+DATA through the existing attribute-list owner/segment services before reparse
+classification; EA uses the same published result later. Bounds, file semantics,
+callback failures/cancellation and allocation results are preserved. This also
+retains the preceding named/deleted-table fixes across the earlier loading stage.
+
+Link payloads honor the volume's limit, including limits above and below 16 KiB.
+The existing 16-KiB recovery subset remains available when the definition table
+cannot be read; that reading is explicitly unverified. WOF/dedup/unknown-tag
+classification stores only the bounded header prefix, following the original
+classifier. Link targets retain full validated payloads and original decoding.
+The original logical size is retained separately so a later WSL link projection
+cannot bypass the volume limit by using a cached prefix. Oversized host spans
+use bounded immutable memory I/O instead of narrowing their length into a
+resident-attribute field. No new format decoder, source repair or write is added.
+Deleted-record salvage retains its existing SDK scope and is not a Linux VFS
+namespace; standalone receives no GPL reparse/EA feature or license conditional.
+
+Before rebuilding, creator-image regressions reproduced both mismatches: a
+valid 32-KiB padded link was rejected, and a link exceeding a smaller declared
+limit was accepted. Controls now cover exact-boundary success, one-byte overflow,
+healthy independent files, retained link streams and unchanged source bytes.
+WOF controls read exact decompressed bytes with a 32-KiB reparse payload and an
+unused sparse tail. Listed/unlisted `$AttrDef` DATA controls protect the earlier
+ownership stage and existing EA/WSL publication contract.
+
+All eight ordinary macOS NTFS/baseline suites passed on final sources (28.21 s)
+with existing incremental targets/caches; all 33 pinned reference hashes match.
+No Linux/Windows, slow suites or full gate were run for this portable reader
+change. This completes this reparse component iteration, not the remaining
+whole-NTFS source closure or the parent filesystem goal.
+
 ## Security/EA source comparison and `$AttrDef` identity — 2026-10-22
 
 Compared complete local security/EA readers in Linux

@@ -7,9 +7,10 @@ from ntfs_security_fixture import named_resident
 VALID = ("link-symlink", "link-print-name", "link-unicode", "link-surrogate", "link-nul",
          "link-backslashes", "link-junction", "link-junction-lost", "link-nonresident",
          "link-fragmented", "link-extension", "link-directory", "link-readonly", "link-ads",
-         "link-user", "link-named-reparse", "link-odd-offset", "link-cloud")
+         "link-user", "link-named-reparse", "link-odd-offset", "link-cloud", "link-limit-large")
 UNSUPPORTED = ("link-bad-offset", "link-bad-length", "link-no-print-name", "link-unknown-ms",
-               "link-user-short", "link-junction-no-drive", "link-dedup")
+               "link-user-short", "link-junction-no-drive", "link-dedup",
+               "link-limit-small", "link-limit-large-rejected")
 
 
 def target(kind):
@@ -49,6 +50,19 @@ def volume(kind):
         data = fields + (b"" if junction else struct.pack("<I", 1)) + substitute + encoded
         payload = struct.pack("<IHH", 0xa0000003 if junction else 0xa000000c, len(data), 0) + data
     payload = bytearray(payload)
+    if kind.startswith("link-limit-"):
+        if kind != "link-limit-small":
+            payload += bytes(32768 - len(payload))
+        _, defs = record(image, 4)
+        attr = next(a for _, a in attributes(defs) if u32(a, 0) == 0x80)
+        rp = u16(attr, 32)
+        lcn = int.from_bytes(attr[rp + 2:rp + 2 + (attr[rp] >> 4)], "little")
+        limit = {"link-limit-small": len(payload) - 1, "link-limit-large": len(payload),
+                 "link-limit-large-rejected": len(payload) - 1}[kind]
+        for pos in range(lcn * 4096, lcn * 4096 + u64(attr, 48), 0xa0):
+            if u32(image, pos + 0x80) == 0xc0:
+                put(image, pos + 0x98, "Q", limit)
+                break
     if kind == "link-bad-offset":put(payload, 12, "H", 0xffff)
     elif kind == "link-bad-length":put(payload, 14, "H", 0xfffe)
     elif kind == "link-no-print-name":put(payload, 14, "H", 0)
@@ -57,7 +71,7 @@ def volume(kind):
     elif kind == "link-dedup":payload = bytearray(struct.pack("<IHH16x", 0x80000013, 16, 0))
     elif kind == "link-user-short":
         payload = bytearray(struct.pack("<IHH16s", 0x2000000d, 2, 0, bytes(16)) + bytes(8))
-    if kind in ("link-nonresident", "link-fragmented"):
+    if kind in ("link-nonresident", "link-fragmented", "link-limit-large", "link-limit-large-rejected"):
         template = next(a for a in attrs if u32(a, 0) == 0x80 and a[8])
         lcns = list(range(1400, 1400 + (len(payload) + 4095) // 4096 * 2, 2))
         for i, lcn in enumerate(lcns):

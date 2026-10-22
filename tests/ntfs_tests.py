@@ -329,7 +329,8 @@ class NtfsTests(unittest.TestCase):
 
     def test_linux_wof_and_fragmented_mft(self):
         for kind in ("mft-list", "mft-list-nonresident", "wof-xpress4k", "wof-xpress8k",
-                     "wof-xpress16k", "wof-lzx32k", "wof-xpress4k-resident", "wof-lzx32k-resident"):
+                     "wof-xpress16k", "wof-lzx32k", "wof-xpress4k-resident", "wof-lzx32k-resident",
+                     "wof-xpress4k-reparse-padding", "wof-xpress4k-reparse-padding-unmapped-tail"):
             image, files = volume(kind)
             for name in ("alpha", "данные 空", "gamma"):
                 with self.subTest(kind=kind, name=name):

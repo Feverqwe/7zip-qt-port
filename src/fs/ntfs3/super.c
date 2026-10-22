@@ -31,11 +31,12 @@ int sevenzip_ntfs_read_volume_info(const void *data, size_t bytes, int nonreside
     return 0;
 }
 
-int sevenzip_ntfs_ea_limit(const void *data, size_t bytes, u32 *limit)
+int sevenzip_ntfs_attribute_limits(const void *data, size_t bytes, u32 *ea_limit, u64 *reparse_limit)
 {
     const struct ATTR_DEF_ENTRY *t = data;
     size_t done;
-    *limit = 0;
+    *ea_limit = 0;
+    *reparse_limit = 0;
     if (!data || bytes < sizeof(*t) || bytes > 100 * sizeof(*t) || ATTR_STD != t->type)
         return -EINVAL;
     t += 1;
@@ -45,8 +46,10 @@ int sevenzip_ntfs_ea_limit(const void *data, size_t bytes, u32 *limit)
         u64 sz = le64_to_cpu(t->max_sz);
         if ((t32 & 0xF) || le32_to_cpu(t[-1].type) >= t32)
             break;
-        if (t->type == ATTR_EA)
-            *limit = (u32)sz;
+        if (t->type == ATTR_REPARSE)
+            *reparse_limit = sz;
+        else if (t->type == ATTR_EA)
+            *ea_limit = (u32)sz;
         done += sizeof(*t);
         t += 1;
     }

@@ -99,6 +99,14 @@ def volume(kind):
     put(reparse, 0, "II", 0xc0, len(reparse))
     put(reparse, 14, "HIH", 4, len(reparse_data), 24)
     reparse[24:] = reparse_data
+    if "reparse-padding" in kind:
+        from ntfs_ea_fixture import allocated
+        reparse = nonresident(data_attr, [(1, 1600), (7, None if "unmapped-tail" in kind else 1601)],
+                               32768)
+        put(reparse, 0, "I", 0xc0)
+        put(reparse, 14, "H", 4)
+        image[1600 * 4096:1600 * 4096 + 32768] = reparse_data + bytes(32768 - len(reparse_data))
+        allocated(image, 6, 0x80, list(range(1600, 1608)))
     attrs = []
     for attr in original:
         if u32(attr, 0) == 0x80:

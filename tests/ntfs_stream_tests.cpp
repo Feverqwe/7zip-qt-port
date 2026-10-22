@@ -416,14 +416,15 @@ class NtfsStreamTests final : public QObject, protected Fixture {
     void eaListAuthorityAndPartialMetadata_data() {
         QTest::addColumn<QString>("kind");
         QTest::addColumn<bool>("limited");
-        for (const char *kind : {"ea-list-selected", "ea-list-nonresident", "ea-list-split",
-                                 "ea-list-metadata-flags", "ea-list-unlisted", "ea-def-decoy"})
+        for (const char *kind :
+             {"ea-list-selected", "ea-list-nonresident", "ea-list-split", "ea-list-metadata-flags",
+              "ea-list-unlisted", "ea-def-decoy", "ea-listed-def"})
             QTest::newRow(kind) << QString::fromLatin1(kind) << false;
         for (const char *kind :
              {"ea-list-bad-id", "ea-list-bad-sequence", "ea-list-missing-tail", "ea-list-bad-run",
               "ea-record-small", "ea-record-overrun", "ea-record-short", "ea-info-zero",
               "ea-info-overrun", "ea-attr-overrun", "ea-limit", "ea-bad-mode", "ea-bad-def",
-              "ea-named-def", "ea-deleted-def"})
+              "ea-named-def", "ea-deleted-def", "ea-unlisted-def"})
             QTest::newRow(kind) << QString::fromLatin1(kind) << true;
     }
     void eaListAuthorityAndPartialMetadata() {
@@ -821,6 +822,8 @@ class NtfsStreamTests final : public QObject, protected Fixture {
                                  "mft-list",
                                  "mft-list-nonresident",
                                  "wof-xpress4k",
+                                 "wof-xpress4k-reparse-padding",
+                                 "wof-xpress4k-reparse-padding-unmapped-tail",
                                  "wof-xpress8k",
                                  "wof-xpress16k",
                                  "wof-lzx32k",
@@ -835,14 +838,20 @@ class NtfsStreamTests final : public QObject, protected Fixture {
     }
     void reparseLinks_data() {
         QTest::addColumn<QString>("kind");
-        for (const char *kind :
-             {"link-symlink",       "link-print-name",  "link-unicode",    "link-surrogate",
-              "link-nul",           "link-backslashes", "link-junction",   "link-junction-lost",
-              "link-nonresident",   "link-fragmented",  "link-extension",  "link-directory",
-              "link-readonly",      "link-ads",         "link-user",       "link-named-reparse",
-              "link-odd-offset",    "link-cloud",       "link-bad-offset", "link-bad-length",
-              "link-no-print-name", "link-unknown-ms",  "link-user-short", "link-junction-no-drive",
-              "link-dedup"})
+        for (const char *kind : {"link-symlink",       "link-print-name",
+                                 "link-unicode",       "link-surrogate",
+                                 "link-nul",           "link-backslashes",
+                                 "link-junction",      "link-junction-lost",
+                                 "link-nonresident",   "link-fragmented",
+                                 "link-extension",     "link-directory",
+                                 "link-readonly",      "link-ads",
+                                 "link-user",          "link-named-reparse",
+                                 "link-odd-offset",    "link-cloud",
+                                 "link-bad-offset",    "link-bad-length",
+                                 "link-no-print-name", "link-unknown-ms",
+                                 "link-user-short",    "link-junction-no-drive",
+                                 "link-dedup",         "link-limit-small",
+                                 "link-limit-large",   "link-limit-large-rejected"})
             QTest::newRow(kind) << QString::fromLatin1(kind);
     }
     void reparseLinks() {
@@ -864,7 +873,8 @@ class NtfsStreamTests final : public QObject, protected Fixture {
         if (regular) {
             QCOMPARE(link.vt, VARTYPE(VT_EMPTY));
             QCOMPARE(mode.vt, VARTYPE(VT_EMPTY));
-        } else if (kind == "link-dedup") {
+        } else if (kind == "link-dedup" || kind == "link-limit-small" ||
+                   kind == "link-limit-large-rejected") {
             QCOMPARE(mode.vt, VARTYPE(VT_EMPTY));
         } else {
             QCOMPARE(mode.vt, VARTYPE(VT_UI4));
@@ -886,7 +896,8 @@ class NtfsStreamTests final : public QObject, protected Fixture {
                                               reinterpret_cast<void **>(&provider)),
                      S_OK);
             CMyComPtr<ISequentialInStream> data;
-            QCOMPARE(provider->GetStream(id, &data), E_NOTIMPL);
+            QCOMPARE(provider->GetStream(id, &data),
+                     kind.startsWith("link-limit-") ? S_FALSE : E_NOTIMPL);
             QVERIFY(!data);
         }
         auto retained = supported ? stream(name) : CMyComPtr<IInStream>();

@@ -6,10 +6,10 @@ from ntfs_fixture import attributes, nonresident, put, record, save_record, u16,
 VALID = ("ea-resident", "ea-nonresident", "ea-fragmented", "ea-extension", "ea-readonly",
          "ea-incomplete", "ea-long-uid", "ea-short-info", "ea-no-data", "ea-next-size",
          "ea-zero-size", "ea-device-wide", "ea-mode-high", "ea-chr", "ea-blk", "ea-fifo", "ea-sock",
-         "ea-directory", "ea-stale-directory-bit", "ea-def-decoy")
+         "ea-directory", "ea-stale-directory-bit", "ea-def-decoy", "ea-listed-def")
 BAD = ("ea-record-small", "ea-record-overrun", "ea-record-short", "ea-info-zero",
        "ea-info-overrun", "ea-attr-overrun", "ea-limit", "ea-bad-mode", "ea-bad-def",
-       "ea-named-def", "ea-deleted-def")
+       "ea-named-def", "ea-deleted-def", "ea-unlisted-def")
 
 
 def properties(kind):
@@ -146,7 +146,7 @@ def volume(kind):
         if kind == "ea-attr-overrun":
             put(ea_attr, 40, "QQQ", 131072, 131072, 131072)
         allocated(image, 6, 0x80, clusters)
-    if kind in ("ea-named-def", "ea-deleted-def", "ea-def-decoy"):
+    if kind in ("ea-named-def", "ea-deleted-def", "ea-def-decoy", "ea-listed-def", "ea-unlisted-def"):
         from ntfs_security_fixture import named_nonresident
         def_offset, defs = record(image, 4)
         def_attrs = [a for _, a in attributes(defs)]
@@ -160,8 +160,14 @@ def volume(kind):
             def_attrs[def_attrs.index(def_attr)] = named
         elif kind == "ea-def-decoy":
             def_attrs.insert(def_attrs.index(def_attr) + 1, named)
-        else:
+        elif kind == "ea-deleted-def":
             put(defs, 22, "H", 0)
+        else:
+            from ntfs_data_list_fixture import list_bytes, row
+            rows = [row(a, 4, u16(defs, 16)) for a in def_attrs
+                    if kind != "ea-unlisted-def" or u32(a, 0) != 0x80]
+            def_attrs.append(resident(0x20, list_bytes(rows), u16(named, 14)))
+            def_attrs.sort(key=lambda a: u32(a, 0))
         set_attributes(image, def_offset, defs, def_attrs)
     if kind in ("ea-limit", "ea-bad-def"):
         def_offset, defs = record(image, 4)

@@ -1191,6 +1191,7 @@ struct CMftRec {
     int MyItemIndex; // index in Items[] of main item for that record, or -1 if there is no item for
                      // that record
     int ReparseDataIndex;
+    UInt64 ReparseSize = 0;
     bool Wof;
 
     CObjectVector<CAttr> DataAttrs; // will be sorted by CAttr::Name and CAttr::LowVcn
@@ -1780,6 +1781,9 @@ struct CDatabase {
     UInt64 FreeSpace = 0;
     bool ReparseLimitations = false;
     bool EaLimitations = false;
+    bool AttributeDefinitionsKnown = false;
+    UInt32 EaMaxSize = 0;
+    UInt64 ReparseMaxSize = 16384; // Existing recovery subset when $AttrDef is unavailable.
     bool DataLimitations = false;
     bool MetadataLimitations = false;
     bool MftLimitations = false;
@@ -1859,6 +1863,7 @@ struct CDatabase {
     HRESULT GetRawMetadataStream(const CMftRec &reader, bool prefix, IInStream **stream);
     HRESULT ProbeReparseType(const CAttr &primary, int &type);
     HRESULT LoadVolumeMetadata();
+    HRESULT LoadAttributeDefinitions();
     HRESULT LoadActiveReparseMetadata();
     HRESULT SelectActiveEaMetadata();
     HRESULT SelectActiveDataAttributes();
@@ -1901,6 +1906,9 @@ void CDatabase::Clear() {
     FreeSpace = 0;
     ReparseLimitations = false;
     EaLimitations = false;
+    AttributeDefinitionsKnown = false;
+    EaMaxSize = 0;
+    ReparseMaxSize = 16384;
     DataLimitations = false;
     MetadataLimitations = false;
     MftLimitations = false;
@@ -2536,27 +2544,40 @@ HRESULT CDatabase::ReadReparsePayload(UInt32 baseIndex, const CAttr &primary,
     RINOK(CollectMetadataAttributes(baseIndex, ATTR_TYPE_REPARSE_POINT, primary, list, useList,
                                     reader.DataAttrs))
     const UInt64 size = primary.GetSize();
-    if (!size || size > 16384)
+    if (!size)
         return S_FALSE;
     reader.ParseDataNames();
     CMyComPtr<IInStream> stream;
-    HRESULT result = GetRawMetadataStream(reader, false, &stream);
+    HRESULT result = GetRawMetadataStream(reader, true, &stream);
     if (result == S_OK && stream) {
         if (OpenCallback)
             RINOK(OpenCallback->SetCompleted(NULL, NULL))
         CByteBuffer data;
-        data.Alloc((size_t)size);
-        result = ReadStream_FALSE(stream, data, (size_t)size);
+        data.Alloc((size_t)MyMin(size, (UInt64)64));
+        result = ReadStream_FALSE(stream, data, data.Size());
+        if (result == S_OK &&
+            sevenzip_ntfs_classify_reparse(data, data.Size(), NULL) == SEVENZIP_NTFS_REPARSE_LINK) {
+            if (!AttributeDefinitionsKnown)
+                ReparseLimitations = true;
+            if (size > ReparseMaxSize || size > SIZE_MAX)
+                return S_FALSE;
+            result = GetRawMetadataStream(reader, false, &stream);
+            if (result == S_OK) {
+                data.Alloc((size_t)size);
+                result = ReadStream_FALSE(stream, data, data.Size());
+            }
+        }
         if (result == S_OK) {
             if (OpenCallback)
                 RINOK(OpenCallback->SetCompleted(NULL, NULL))
             CMftRec &rec = Recs[baseIndex];
             rec.ReparseDataIndex = (int)ReparseDataVector.Add(data);
+            rec.ReparseSize = size;
             rec.Wof = size >= 4 && Get32(data) == 0x80000017;
             return S_OK;
         }
     }
-    return result == E_ABORT || result == E_NOTIMPL ? result : S_FALSE;
+    return result == E_ABORT || result == E_OUTOFMEMORY || result == E_NOTIMPL ? result : S_FALSE;
 }
 
 HRESULT CDatabase::LoadActiveReparseMetadata() {
@@ -3577,8 +3598,10 @@ HRESULT CDatabase::LoadLinks() {
         AString absolute("/");
         absolute += utf8;
         char target[4096];
-        const int length =
-            sevenzip_ntfs_readlink(data, data.Size(), absolute, target, sizeof(target));
+        const int length = rec.ReparseSize > ReparseMaxSize
+                               ? -1
+                               : sevenzip_ntfs_readlink(data, data.Size(), absolute, target,
+                                                        sizeof(target), ReparseMaxSize);
         if (length == -ENOMEM)
             return E_OUTOFMEMORY;
         if (length <= 0)
@@ -3590,48 +3613,64 @@ HRESULT CDatabase::LoadLinks() {
     return S_OK;
 }
 
-HRESULT CDatabase::LoadEaMetadata() {
-    bool needed = false;
-    FOR_VECTOR(i, Recs) {
-        const CMftRec &rec = Recs[i];
-        if (rec.Is_Magic_FILE() && rec.InUse() && rec.BaseMftRef.IsBaseItself() &&
-            !rec.EaInfoAttrs.IsEmpty() && !rec.EaAttrs.IsEmpty())
-            needed = true;
-    }
-    if (!needed)
+HRESULT CDatabase::LoadAttributeDefinitions() {
+    if (Recs.Size() <= 4)
         return S_OK;
+    const CMftRec &base = Recs[4];
+    if (!base.Is_Magic_FILE() || !base.InUse() || base.IsDir() || !base.BaseMftRef.IsBaseItself())
+        return S_OK;
+    CByteBuffer list;
+    HRESULT callbackResult = S_OK;
+    HRESULT result = ReadMetadataList(4, list, &callbackResult);
+    RINOK(callbackResult)
+    if (result != S_OK)
+        return result == E_ABORT || result == E_OUTOFMEMORY ? result : S_OK;
+    const bool useList = !base.AttrListAttrs.IsEmpty();
+    const CAttr *primary;
+    if (FindMetadataAttribute(4, ATTR_TYPE_DATA, list, useList, primary) <= 0)
+        return S_OK;
+    const UInt64 size = primary->GetSize();
+    if (size < 0xA0 || size > 100 * 0xA0)
+        return S_OK;
+    CMftRec selected;
+    selected.Flags = base.Flags;
+    result =
+        CollectMetadataAttributes(4, ATTR_TYPE_DATA, *primary, list, useList, selected.DataAttrs);
+    if (result != S_OK)
+        return result == E_ABORT || result == E_OUTOFMEMORY ? result : S_OK;
+    selected.ParseDataNames();
     CEaRead reader;
     reader.Callback = OpenCallback;
-    UInt32 limit = 0;
-    HRESULT definitionsResult = S_FALSE;
-    // ntfs_iget5/ntfs_read_mft: $AttrDef belongs to an active base inode's unnamed DATA.
-    if (Recs.Size() > 4 && Recs[4].Is_Magic_FILE() && Recs[4].InUse() &&
-        Recs[4].BaseMftRef.IsBaseItself() && !Recs[4].DataAttrs.IsEmpty() &&
-        Recs[4].DataAttrs[0].NameValid && Recs[4].DataAttrs[0].Name.IsEmpty()) {
-        const UInt64 size = Recs[4].DataAttrs[0].GetSize();
-        if (size >= 0xA0 && size <= 100 * 0xA0) {
-            definitionsResult = Recs[4].GetStream(InStream, 0, Header.ClusterSizeLog,
-                                                  Header.NumClusters, &reader.Stream);
-            if (definitionsResult == S_OK) {
-                CByteBuffer definitions;
-                definitions.Alloc((size_t)size);
-                if (CEaRead::Read(&reader, 0, definitions, (size_t)size))
-                    definitionsResult = reader.Result;
-                else if (sevenzip_ntfs_ea_limit(definitions, definitions.Size(), &limit))
-                    definitionsResult = S_FALSE;
+    result =
+        selected.GetStream(InStream, 0, Header.ClusterSizeLog, Header.NumClusters, &reader.Stream);
+    if (result == S_OK) {
+        CByteBuffer definitions;
+        definitions.Alloc((size_t)size);
+        if (CEaRead::Read(&reader, 0, definitions, (size_t)size))
+            result = reader.Result;
+        else {
+            UInt32 ea;
+            UInt64 reparse;
+            if (sevenzip_ntfs_attribute_limits(definitions, definitions.Size(), &ea, &reparse) ==
+                0) {
+                EaMaxSize = ea;
+                ReparseMaxSize = reparse;
+                AttributeDefinitionsKnown = true;
             }
         }
     }
     if (reader.CallbackResult != S_OK)
         return reader.CallbackResult;
-    if (definitionsResult == E_ABORT || definitionsResult == E_OUTOFMEMORY)
-        return definitionsResult;
+    return result == E_ABORT || result == E_OUTOFMEMORY ? result : S_OK;
+}
+
+HRESULT CDatabase::LoadEaMetadata() {
     FOR_VECTOR(i, Recs) {
         CMftRec &rec = Recs[i];
         if (!rec.Is_Magic_FILE() || !rec.InUse() || !rec.BaseMftRef.IsBaseItself() ||
             rec.EaInfoAttrs.IsEmpty() || rec.EaAttrs.IsEmpty())
             continue;
-        const HRESULT result = definitionsResult == S_OK ? ReadEaMetadata(rec, limit) : S_FALSE;
+        const HRESULT result = AttributeDefinitionsKnown ? ReadEaMetadata(rec, EaMaxSize) : S_FALSE;
         if (result == S_FALSE) {
             rec.EaUnavailable = true;
             EaLimitations = true;
@@ -3932,6 +3971,7 @@ HRESULT CDatabase::Open() {
 
     RINOK(SelectActiveFileMetadata())
     RINOK(LoadVolumeMetadata())
+    RINOK(LoadAttributeDefinitions())
     RINOK(LoadActiveReparseMetadata())
     RINOK(SelectActiveEaMetadata())
     RINOK(SelectActiveDataAttributes())
@@ -4023,6 +4063,7 @@ HRESULT CDatabase::Open() {
             return result;
         }
         rec.ReparseDataIndex = (int)ReparseDataVector.Add(data);
+        rec.ReparseSize = size;
         rec.Wof = size >= 4 && Get32(data) == 0x80000017;
         rec.ReparseAttrs.ClearAndFree();
     }
