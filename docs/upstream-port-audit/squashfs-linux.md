@@ -5,6 +5,40 @@ Scope входит в [общую проверку форматов](filesystems
 современный LZO и проверки compressor options через отдельный format-модуль.
 Полная актуализация SquashFS read features по Linux ещё продолжается.
 
+## Большие raw index tables, 2026-10-22
+
+Сверены Linux `cache.c:squashfs_read_table`, raw branch
+`block.c:squashfs_read_data`/`copy_bio_to_actor`, page actor и callers в
+`id.c`, `fragment.c`, `export.c`, `xattr_id.c`; baseline Linux
+`58161ead29e50d70a317ea26b472e0c7508e69da`, retrieval links ниже.
+Локальная защита от пересечения длины с compression flag запрещала любые
+raw tables от 16 MiB, хотя у этих таблиц нет encoded compression-size field.
+В Linux исходный вызов передаёт всю длину через `length | flag`; это также
+не представляет произвольную большую длину без потери бита. Возможность
+native allocation большой contiguous table является отдельным ограничением.
+
+Сохранены исходные C allocation, page actor, raw read path и cleanup.
+Archive adapter читает таблицу последовательными page-sized requests через
+тот же `squashfs_read_data`, без aggregate compression-flag cap. Source range
+проверяется до allocation; округление числа страниц не переполняет int.
+Каждый запрос должен вернуть точную длину: при ошибке/коротком чтении вся
+незавершённая таблица освобождается и не публикуется. Отмена остаётся
+фатальной, обычная недоступность optional table сохраняет независимые данные
+через существующий механизм неполноты. Записей в source, repair/replay нет.
+
+Public C API regression использует RAM-only fragment index размером
+32 MiB + 8 bytes и проверяет доступ к поздней записи, ошибку I/O посередине
+таблицы с сохранением независимого UID и фатальную отмену. До исправления
+поздняя запись возвращала EIO; после — точные block/size. Fixture изолирует
+index bootstrap/lookup, а не доказывает корректность всех неиспользуемых
+объявленных fragments или native mount огромного filesystem. Peak allocation
+около 64 MiB, файл на диске не создаётся; native mount здесь не проверялся.
+
+На macOS три backend suites прошли за 6,68 с, UI/source suites — за 7,33 с
+(Cocoa вне sandbox). Все шесть прошли на Linux/Windows за 9,52/47,26 с,
+receipt `20261022T045619Z-d04e5d63`. Это проверка large-table reader и его
+прямых consumers; общий read-side аудит SquashFS остаётся открытым.
+
 ## Потоковое перечисление xattr names и доступный префикс, 2026-10-22
 
 Повторно сверены полные Linux `xattr.c` list/get/namespace branches,

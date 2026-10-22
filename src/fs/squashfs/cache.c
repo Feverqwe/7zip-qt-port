@@ -126,17 +126,16 @@ void *squashfs_read_table(struct super_block *sb, u64 block, int length)
 {
 	int pages;
 	int i, res;
-	void *table, *buffer, **data;
+	void *table, **data;
 	struct squashfs_page_actor *actor;
 
-	/* Validate the archive range before allocating, and avoid the encoded
-	 * uncompressed flag aliasing a large table length. */
-	if (length <= 0 || length >= SQUASHFS_COMPRESSED_BIT_BLOCK ||
+	/* Validate the archive range before allocating. */
+	if (length <= 0 ||
 	    block > (u64)sb->s_fs_info->bytes_used ||
 	    (unsigned int)length > (u64)sb->s_fs_info->bytes_used - block)
 		return ERR_PTR(-EINVAL);
-	pages = (length + PAGE_SIZE - 1) >> PAGE_SHIFT;
-	table = buffer = kmalloc(length, GFP_KERNEL);
+	pages = ((length - 1) >> PAGE_SHIFT) + 1;
+	table = kmalloc(length, GFP_KERNEL);
 	if (table == NULL)
 		return ERR_PTR(-ENOMEM);
 
@@ -152,11 +151,23 @@ void *squashfs_read_table(struct super_block *sb, u64 block, int length)
 		goto failed2;
 	}
 
-	for (i = 0; i < pages; i++, buffer = (char *)buffer + PAGE_SIZE)
-		data[i] = buffer;
+	for (i = 0; i < pages; i++)
+		data[i] = (char *)table + (size_t)i * PAGE_SIZE;
 
-	res = squashfs_read_data(sb, block, length |
-		SQUASHFS_COMPRESSED_BIT_BLOCK, NULL, actor);
+	/* Raw tables have no compressed-size field.  Keep each request below
+	 * the encoded flag bit instead of limiting the complete table. */
+	for (i = 0; i < pages; i++) {
+		actor->buffer = data + i;
+		actor->pages = 1;
+		actor->length = min(length - i * PAGE_SIZE, PAGE_SIZE);
+		res = squashfs_read_data(sb, block + (u64)i * PAGE_SIZE,
+			actor->length | SQUASHFS_COMPRESSED_BIT_BLOCK, NULL, actor);
+		if (res != actor->length) {
+			if (res >= 0)
+				res = -EIO;
+			break;
+		}
+	}
 
 	kfree(data);
 	kfree(actor);

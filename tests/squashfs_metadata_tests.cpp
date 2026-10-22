@@ -5,14 +5,19 @@
 #include <QSet>
 #include <QtEndian>
 #include <QtTest>
+#include <cerrno>
 #include <memory>
 
 namespace {
 struct Source {
     QByteArray bytes;
     quint64 failBlock = UINT64_MAX;
+    quint64 failReadAt = UINT64_MAX;
+    int failReadCode = -5;
     static int read(void *opaque, uint64_t offset, void *output, size_t size) {
         auto *source = static_cast<Source *>(opaque);
+        if (offset <= source->failReadAt && size > source->failReadAt - offset)
+            return source->failReadCode;
         if (offset > quint64(source->bytes.size()) || size > quint64(source->bytes.size()) - offset)
             return -5;
         memcpy(output, source->bytes.constData() + offset, size);
@@ -59,6 +64,62 @@ class SquashfsMetadataTests final : public QObject {
         return value;
     }
   private slots:
+    void largeRawFragmentIndexRetainsLateEntriesAndRejectsFailedReads() {
+        const quint32 fragments = 0x80000001u;
+        const quint64 index = 512;
+        const quint64 indexBytes = ((quint64(fragments) + 511) / 512) * 8;
+        const quint64 idsMetadata = index + indexBytes;
+        const quint64 idsIndex = idsMetadata + 6;
+        Source source;
+        source.bytes = QByteArray(qsizetype(idsIndex + 8), '\0');
+        char *data = source.bytes.data();
+        qToLittleEndian(quint32(0x73717368), data);
+        qToLittleEndian(quint32(1), data + 4);
+        qToLittleEndian(quint32(8192), data + 12);
+        qToLittleEndian(fragments, data + 16);
+        qToLittleEndian(quint16(1), data + 20);
+        qToLittleEndian(quint16(13), data + 22);
+        qToLittleEndian(quint16(1), data + 26);
+        qToLittleEndian(quint16(4), data + 28);
+        for (const auto &field : {qMakePair(40, quint64(source.bytes.size())),
+                                  qMakePair(48, idsIndex), qMakePair(56, quint64(UINT64_MAX)),
+                                  qMakePair(64, quint64(96)), qMakePair(72, quint64(130)),
+                                  qMakePair(80, index), qMakePair(88, quint64(UINT64_MAX))})
+            qToLittleEndian(field.second, data + field.first);
+        qToLittleEndian(quint16(0x8020), data + 96);
+        qToLittleEndian(quint16(1), data + 98);
+        qToLittleEndian(quint16(0755), data + 100);
+        qToLittleEndian(quint32(1), data + 110);
+        qToLittleEndian(quint32(2), data + 118);
+        qToLittleEndian(quint16(3), data + 122);
+        qToLittleEndian(quint32(1), data + 126);
+        qToLittleEndian(quint16(0x8010), data + 256);
+        qToLittleEndian(quint64(96), data + 258);
+        qToLittleEndian(quint32((1 << 24) | 1), data + 266);
+        for (quint64 position = index; position < idsMetadata; position += 8)
+            qToLittleEndian(quint64(256), data + position);
+        qToLittleEndian(quint16(0x8004), data + idsMetadata);
+        qToLittleEndian(quint32(1000), data + idsMetadata + 2);
+        qToLittleEndian(idsMetadata, data + idsIndex);
+        auto reader = create(source);
+        QVERIFY(reader);
+        uint64_t block = 0;
+        unsigned size = 0;
+        QCOMPARE(sevenzip_squashfs_fragment(reader.get(), fragments - 1, &block, &size), 0);
+        QCOMPARE(block, uint64_t(96));
+        QCOMPARE(size, unsigned((1 << 24) | 1));
+        reader.reset();
+        source.failReadAt = index + indexBytes / 2;
+        reader = create(source);
+        QVERIFY(reader);
+        QVERIFY(sevenzip_squashfs_fragment(reader.get(), fragments - 1, &block, &size) < 0);
+        unsigned uid = 0;
+        QCOMPARE(sevenzip_squashfs_id(reader.get(), 0, &uid), 0);
+        QCOMPARE(uid, 1000u);
+        reader.reset();
+        source.failReadCode = -ECANCELED;
+        QVERIFY(!create(source));
+    }
     void directoryCursorBoundsDoNotLeakIntoOtherMetadata() {
         Source source{fixture_};
         auto reader = create(source);
