@@ -17,7 +17,7 @@ from ext_verity_fixture import VerityVolume
 from ext_xattr_fixture import XattrVolume
 from ext_block_fixture import BlockVolume
 from ext_symlink_fixture import SymlinkVolume
-from ext_inode_fixture import inode_volume
+from ext_inode_fixture import inode_volume, inventory_volume
 from ext_directory_fixture import DirectoryVolume
 from ext_htree_fixture import HtreeVolume
 from ext_readlink_fixture import ReadlinkVolume
@@ -142,7 +142,10 @@ class ExtTests(unittest.TestCase):
                         self.assertEqual(result.stdout, volume.read(0, volume.size))
                         continue
                     result = self.run_image(volume)
-                    self.assertNotEqual(result.returncode, 0)
+                    if result.returncode == 0:
+                        self.limited_listing(volume, (NAME.encode(),))
+                    else:
+                        self.assertIn(result.returncode, (1, 2), result.stderr.decode(errors="replace"))
                     # A bad indirect data reference does not invalidate the
                     # preceding direct blocks. Never publish the metadata alias
                     # itself, or fabricate a zero block in its place.
@@ -177,7 +180,10 @@ class ExtTests(unittest.TestCase):
             for engine in ("7z", "7zz"):
                 with self.subTest(case=case, engine=engine):
                     result = self.run_image(SymlinkVolume(case), engine, "l", None)
-                    self.assertNotEqual(result.returncode, 0)
+                    if engine == "7z":
+                        self.limited_listing(SymlinkVolume(case), (b"link",), result)
+                    else:
+                        self.assertNotEqual(result.returncode, 0)
         result = self.run_image(SymlinkVolume("ea-slow-alias"))
         self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
         volume = SymlinkVolume("ea-slow-alias")
@@ -204,7 +210,24 @@ class ExtTests(unittest.TestCase):
                 else:
                     volume.put32(root + 20, volume.table)
                 result = self.run_image(volume, command="l", name=None)
-                self.assertNotEqual(result.returncode, 0)
+                if result.returncode == 0:
+                    self.limited_listing(volume, (NAME.encode(),), result)
+                else:
+                    self.assertIn(result.returncode, (1, 2), result.stderr.decode(errors="replace"))
+
+    def test_corrupt_nonroot_inodes_do_not_hide_independent_data(self):
+        for fault in ("checksum", "empty", "extra-size", "conflicting-flags", "symlink-flags", "extent-root"):
+            with self.subTest(fault=fault):
+                volume = inventory_volume(fault)
+                self.limited_listing(volume, (NAME.encode(),))
+                for name, expected in volume.files.items():
+                    result = self.run_image(volume, name=name)
+                    self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                    self.assertEqual(result.stdout, expected)
+        for fault in ("root-checksum", "root-empty", "journal-corrupt"):
+            with self.subTest(fault=fault):
+                result = self.run_image(inventory_volume(fault), command="l", name=None)
+                self.assertIn(result.returncode, (1, 2), result.stderr.decode(errors="replace"))
 
     def test_named_inodes_require_linux_read_acceptance(self):
         for case in ("mode-zero", "mode-unknown", "unlinked", "casefold", "reserved-alias",
@@ -454,7 +477,7 @@ class ExtTests(unittest.TestCase):
                            "extent": volume.extent_blocks[0] * 1024 + 8}
                 volume.data[offsets[location]] ^= 1
                 result = self.run_image(volume)
-                if location == "dir":
+                if location in ("dir", "inode"):
                     self.limited_listing(volume, (NAME.encode(),))
                 else:
                     self.assertNotEqual(result.returncode, 0)
@@ -654,8 +677,21 @@ class ExtTests(unittest.TestCase):
                     volume.put32(volume.inline_dir_inode + 44, 1000)
                 volume.refresh()
                 result = self.run_image(volume)
-                self.assertNotEqual(result.returncode, 0)
-                self.assertEqual(result.stdout, b"")
+                self.limited_listing(volume, (b"nested/alias.bin",) if fault in ("record", "inode-number") else (NAME.encode(),))
+                self.assertEqual(result.stdout, volume.payload if fault in ("record", "inode-number") else b"")
+
+    def test_inline_directory_keeps_valid_entries_before_a_bad_record(self):
+        volume = ModernVolume(inline=True)
+        payload = (struct.pack("<I", 2) + volume.dirent(12, NAME.encode(), 56) +
+                   volume.dirent(12, b"alias.bin", 40))
+        payload = bytearray(payload)
+        struct.pack_into("<H", payload, 4 + 56 + 4, 39)
+        volume.set_inline(volume.inline_dir_inode, payload)
+        volume.refresh()
+        self.limited_listing(volume, (b"nested/alias.bin",))
+        result = self.run_image(volume, name="nested/" + NAME)
+        self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+        self.assertEqual(result.stdout, volume.payload)
 
     def test_unknown_layout_and_encrypted_content_cannot_succeed(self):
         for encrypted in (False, True):
@@ -771,7 +807,10 @@ class ExtTests(unittest.TestCase):
                         self.assertEqual(result.stdout, v.read(0, v.size))
                         continue
                     result = self.run_image(v, engine)
-                    self.assertIn(result.returncode, (1, 2), result.stderr.decode(errors="replace"))
+                    if engine == "7z" and result.returncode == 0:
+                        self.limited_listing(v, (NAME.encode(),))
+                    else:
+                        self.assertIn(result.returncode, (1, 2), result.stderr.decode(errors="replace"))
                     expected = v.read(0, 3 * v.block_size) if engine == "7z" and fault == "child-overrun" else b""
                     self.assertEqual(result.stdout, expected)
 

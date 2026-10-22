@@ -3,6 +3,41 @@ import struct
 from ext_fixture import Volume
 
 
+def inventory_volume(case):
+    if case == "journal-corrupt":
+        from ext_block_fixture import BlockVolume
+        volume = BlockVolume(target="journal-owner")
+        volume.put32(volume.table * volume.block_size + 7 * 128 + 32, (1 << 19) | (1 << 28))
+        return volume
+    from ext_readlink_fixture import ReadlinkVolume
+    volume = ReadlinkVolume("isolated-block-tail")
+    inode = volume.file_inode
+    if case == "control":
+        pass
+    elif case == "checksum":
+        volume.data[inode + 8] ^= 1
+        return volume
+    elif case == "root-checksum":
+        volume.data[volume.root_inode + 8] ^= 1
+        return volume
+    elif case in ("empty", "root-empty"):
+        start = volume.root_inode if case == "root-empty" else inode
+        volume.data[start:start + 256] = bytes(256)
+        return volume
+    elif case == "extra-size":
+        struct.pack_into("<H", volume.data, inode + 128, 3)
+    elif case == "conflicting-flags":
+        volume.put32(inode + 32, (1 << 19) | (1 << 28))
+    elif case == "symlink-flags":
+        volume.put32(inode + 32, (1 << 19) | 0x20)
+    elif case == "extent-root":
+        struct.pack_into("<H", volume.data, inode + 40, 0)
+    else:
+        raise ValueError(case)
+    volume.refresh()
+    return volume
+
+
 def inode_volume(case):
     volume = Volume("extent" if case.startswith("extent-") else "direct")
     legacy = case.startswith("legacy-")

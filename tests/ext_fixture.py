@@ -296,6 +296,9 @@ if __name__ == "__main__":
     elif layout.startswith("readlink-"):
         from ext_readlink_fixture import ReadlinkVolume
         v = ReadlinkVolume(layout.removeprefix("readlink-"))
+    elif layout.startswith("inode-inventory-"):
+        from ext_inode_fixture import inventory_volume
+        v = inventory_volume(layout.removeprefix("inode-inventory-"))
     elif layout.startswith("htree-"):
         from ext_htree_fixture import HtreeVolume
         v = HtreeVolume(layout.removeprefix("htree-"))
@@ -345,6 +348,9 @@ if __name__ == "__main__":
                           "file_size": v.size, "name": getattr(v, "name", NAME), "samples": samples,
                           "files": {name: value.hex() for name, value in getattr(v, "files", {}).items()},
                           "ea_data_offset": getattr(v, "ea_data_offset", 0),
+                          "inode_page_offset": (getattr(v, "file_inode", 0) // getattr(v, "block_size", 1024)) * getattr(v, "block_size", 1024),
+                          "inode_page_size": getattr(v, "block_size", 1024),
+                          "root_inode_page_offset": (getattr(v, "root_inode", 0) // getattr(v, "block_size", 1024)) * getattr(v, "block_size", 1024),
                           "xattr_block_offset": getattr(v, "xattr_block_offset", 0),
                           "directory_head_offset": getattr(v, "directory_head_offset", 0),
                           "directory_tail_offset": getattr(v, "directory_tail_offset", 0),

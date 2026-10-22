@@ -3962,6 +3962,10 @@ Are you sure you want to split archive into such volumes?</source>
             <translation>Каталог ext прочитан не полностью.</translation>
         </message>
         <message>
+            <source>Some ext inodes could not be read. Files or metadata may be missing; readable files remain accessible.</source>
+            <translation>Не удалось прочитать некоторые inode ext. Часть файлов или метаданных может отсутствовать. Доступные файлы можно читать.</translation>
+        </message>
+        <message>
             <source>Some extended attributes of this ext item could not be read.</source>
             <translation>Некоторые расширенные атрибуты этого объекта ext недоступны для чтения.</translation>
         </message>

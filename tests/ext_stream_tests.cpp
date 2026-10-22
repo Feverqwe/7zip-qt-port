@@ -24,9 +24,11 @@ class Input final : public IInStream, public CMyUnknownImp {
     HRESULT readResult = S_OK;
     HRESULT seekResult = S_OK;
     UInt64 failAt = UINT64_MAX, notifyAt = UINT64_MAX;
+    UInt64 failUntil = 0;
     HRESULT atResult = E_FAIL;
     UInt32 maxRead = UINT32_MAX;
     UInt64 seekFailAt = UINT64_MAX;
+    UInt64 seekFailUntil = 0;
     bool partialFailure = false;
     unsigned faults = 0;
     bool notified = false;
@@ -36,9 +38,10 @@ class Input final : public IInStream, public CMyUnknownImp {
             *processed = 0;
         size = qMin(size, maxRead);
         HRESULT result = S_OK;
-        if (position_ <= failAt && failAt - position_ < size) {
+        if (size && failAt != UINT64_MAX && position_ < qMax(failUntil, failAt + 1) &&
+            (position_ >= failAt || failAt - position_ < size)) {
             ++faults;
-            if (!partialFailure)
+            if (!partialFailure || position_ >= failAt)
                 return atResult;
             size = UInt32(failAt - position_);
             result = atResult;
@@ -68,7 +71,8 @@ class Input final : public IInStream, public CMyUnknownImp {
                                                        : bytes_.size();
         if (offset < -base || (offset > 0 && base > INT64_MAX - offset))
             return E_INVALIDARG;
-        if (UInt64(base + offset) == seekFailAt) {
+        if (UInt64(base + offset) == seekFailAt ||
+            (UInt64(base + offset) >= seekFailAt && UInt64(base + offset) < seekFailUntil)) {
             ++faults;
             return atResult;
         }
@@ -873,6 +877,115 @@ class ExtStreamTests final : public QObject {
             QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
             QCOMPARE(count, UInt32(0));
         }
+    }
+    void inodeTableReadFailuresAreLocal_data() { symlinkFailuresAreLocalAndRetryable_data(); }
+    void inodeTableReadFailuresAreLocal() {
+        QFETCH(bool, seek);
+        QFETCH(bool, partial);
+        QFETCH(int, failure);
+        const auto record = bundle("inode-inventory-control");
+        CMyComPtr2<IInStream, Input> input;
+        input.SetFromCls(new Input(image(record)));
+        const UInt64 page = UInt64(record["inode_page_offset"].toDouble());
+        QVERIFY(page > UInt64(record["root_inode_page_offset"].toDouble()));
+        input->failAt = seek ? UINT64_MAX : page + (partial ? 123 : 0);
+        input->seekFailAt = seek ? page : UINT64_MAX;
+        input->failUntil = input->seekFailUntil = page + UInt64(record["inode_page_size"].toInt());
+        input->partialFailure = partial;
+        input->atResult = HRESULT(failure);
+        const bool fatal = HRESULT(failure) == E_ABORT || HRESULT(failure) == E_OUTOFMEMORY;
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), fatal ? HRESULT(failure) : S_OK);
+        QVERIFY(input->faults > 0);
+        if (fatal) {
+            UInt32 count = 99;
+            QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+            QCOMPARE(count, UInt32(0));
+            return;
+        }
+        QVERIFY(!readLimitations().isEmpty());
+        QCOMPARE(fileIndex(), UInt32(-1));
+        const UInt32 indices[] = {fileIndex("healthy.bin"), fileIndex("later-link")};
+        QVERIFY(indices[0] != UInt32(-1) && indices[1] != UInt32(-1));
+        CMyComPtr2<IArchiveExtractCallback, Extract> extract;
+        extract.SetFromCls(new Extract);
+        extract->separateFiles = true;
+        QCOMPARE(archive_->Extract(indices, 2, false, extract), S_OK);
+        QCOMPARE(extract->results, (QVector<Int32>{NArchive::NExtract::NOperationResult::kOK,
+                                                   NArchive::NExtract::NOperationResult::kOK}));
+        QCOMPARE(extract->files,
+                 (QVector<QByteArray>{QByteArray::fromHex(record["healthy"].toString().toLatin1()),
+                                      QByteArray("healthy.bin")}));
+        input->failAt = input->seekFailAt = UINT64_MAX;
+        QCOMPARE(input->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        QVERIFY(readLimitations().isEmpty());
+        QVERIFY(fileIndex() != UInt32(-1));
+    }
+    void mandatoryRootInodeAndInventoryCallbacksRemainFatal() {
+        const auto record = bundle("inode-inventory-control");
+        CMyComPtr2<IInStream, Input> input;
+        input.SetFromCls(new Input(image(record)));
+        input->failAt = UInt64(record["root_inode_page_offset"].toDouble());
+        input->failUntil = input->failAt + UInt64(record["inode_page_size"].toInt());
+        QVERIFY(input->failAt > 0);
+        for (HRESULT result : {E_FAIL, E_ABORT, E_OUTOFMEMORY}) {
+            input->atResult = result;
+            QCOMPARE(input->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
+            QCOMPARE(archive_->Open(input, nullptr, nullptr), result == E_FAIL ? S_FALSE : result);
+            UInt32 count = 99;
+            QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+            QCOMPARE(count, UInt32(0));
+        }
+        input->failAt = UINT64_MAX;
+        input->notifyAt = UInt64(record["inode_page_offset"].toDouble());
+        CMyComPtr2<IArchiveOpenCallback, CancelXattrOpen> callback;
+        callback.SetFromCls(new CancelXattrOpen);
+        callback->source = input.ClsPtr();
+        for (HRESULT result : {E_ABORT, E_FAIL, S_FALSE, E_OUTOFMEMORY}) {
+            callback->result = result;
+            input->notified = false;
+            QCOMPARE(input->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
+            QCOMPARE(archive_->Open(input, nullptr, callback), result);
+            QVERIFY(input->notified);
+            UInt32 count = 99;
+            QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+            QCOMPARE(count, UInt32(0));
+        }
+    }
+    void inodeRetriesKeepCompleteRecordsFromFailedBlocks_data() {
+        QTest::addColumn<bool>("root");
+        QTest::newRow("root survives a different unreadable record") << true;
+        QTest::newRow("file survives an unreadable following record") << false;
+    }
+    void inodeRetriesKeepCompleteRecordsFromFailedBlocks() {
+        QFETCH(bool, root);
+        const auto record = bundle("inode-inventory-control");
+        const auto bytes = image(record);
+        const UInt64 inodeSize = qFromLittleEndian<quint16>(bytes.constData() + 1024 + 88);
+        CMyComPtr2<IInStream, Input> input;
+        input.SetFromCls(new Input(bytes));
+        const UInt64 pageSize = UInt64(record["inode_page_size"].toInt());
+        const UInt64 page = root ? UInt64(record["root_inode_page_offset"].toDouble())
+                                 : UInt64(record["inode_page_offset"].toDouble()) + pageSize;
+        // Fail a different record in the root's block, or the record after
+        // healthy.bin in the final block. Whole-block I/O fails; a complete
+        // read/checksum of the root or healthy file's inode remains possible.
+        input->failAt = root ? page : page + inodeSize;
+        input->failUntil = root ? page + inodeSize : page + pageSize;
+        input->partialFailure = true;
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        QVERIFY(input->faults > 0);
+        QVERIFY(!readLimitations().isEmpty());
+        QCOMPARE(fileIndex("later-link") == UInt32(-1), !root);
+        QVERIFY(fileIndex() != UInt32(-1));
+        const UInt32 index = fileIndex("healthy.bin");
+        QVERIFY(index != UInt32(-1));
+        CMyComPtr2<IArchiveExtractCallback, Extract> extract;
+        extract.SetFromCls(new Extract);
+        QCOMPARE(archive_->Extract(&index, 1, false, extract), S_OK);
+        QCOMPARE(extract->result, Int32(NArchive::NExtract::NOperationResult::kOK));
+        QCOMPARE(extract->output->bytes,
+                 QByteArray::fromHex(record["healthy"].toString().toLatin1()));
     }
     void htreeIndexReadsPreserveErrorsCancellationAndReuse() {
         for (const char *layout : {"htree-depth2", "htree-next-index"}) {

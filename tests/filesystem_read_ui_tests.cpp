@@ -193,6 +193,7 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
                                         "ext-directory",
                                         "ext-xattrs",
                                         "ext-symlink",
+                                        "ext-inode",
                                         "ext-orphan",
                                         "ext-unclean",
                                         "ext-unverified",
@@ -209,7 +210,7 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
                 // Rejection uses the shared consent service; acceptance checks every reason.
                 if (!accept && kind != "exfat" && kind != "unclean" && kind != "volume-dirty" &&
                     kind != "ext-recover" && kind != "ext-directory" && kind != "ext-xattrs" &&
-                    kind != "ext-symlink")
+                    kind != "ext-symlink" && kind != "ext-inode")
                     continue;
                 QTest::newRow(qPrintable(language + (accept ? "-accept-" : "-cancel-") + kind))
                     << language << accept << kind;
@@ -402,6 +403,7 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
                 : ext ? QStringList{QStringLiteral(SEVENZIP_EXT_FIXTURE),
                                     kind == "ext-xattrs"    ? "xattrs-bad-data"
                                     : kind == "ext-symlink" ? "readlink-isolated-hole"
+                                    : kind == "ext-inode"   ? "inode-inventory-checksum"
                                                             : "readonly-" + kind.mid(4),
                                     "--bundle"}
                 : squashfs
@@ -429,13 +431,13 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
                 kind.startsWith("squashfs-inode-block-") ||
                 kind == "squashfs-table-indexes-combined")
                 filename = "данные 空";
-            if (kind == "ext-symlink")
+            if (kind == "ext-symlink" || kind == "ext-inode")
                 filename = "healthy.bin";
-            if (ext && kind != "ext-xattrs" && kind != "ext-symlink") {
+            if (ext && kind != "ext-xattrs" && kind != "ext-symlink" && kind != "ext-inode") {
                 payload = QByteArray(data["file_size"].toInt(), '\0');
                 payload.replace(0, 4, "head");
                 payload.replace(payload.size() - 4, 4, "tail");
-            } else if (kind == "ext-xattrs" || kind == "ext-symlink") {
+            } else if (kind == "ext-xattrs" || kind == "ext-symlink" || kind == "ext-inode") {
                 payload =
                     QByteArray::fromHex(data["files"].toObject()[filename].toString().toLatin1());
             } else

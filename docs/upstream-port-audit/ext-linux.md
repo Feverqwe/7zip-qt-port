@@ -6,6 +6,82 @@ tree boundaries, directory record boundaries and archive stream consumers.
 The second integrates Linux metadata and inline-data readers. The ext row remains
 open for the remaining read features listed below.
 
+## Inode inventory isolation and useful read-only opening — 2026-10-22
+
+Compared pinned Linux `__ext4_get_inode_loc`, `__ext4_iget`, inode checksum,
+extra-inode/inline initialization and role checks with the complete SDK inventory,
+reference lookup, directory scan and system-zone consumers. Linux's inode lookup
+uses a table block and reports failure for the requested inode; the eager archive
+inventory previously read a whole group's table in one operation and rejected
+the volume when any allocated inode failed initialization. The Linux/SDK source
+repositories and full revisions remain those recorded below. No inode parser,
+checksum algorithm or filesystem decoder was replaced or newly implemented.
+The adapted archive boundary is `CPP/7zip/Archive/ExtHandler.cpp`, principally
+`CHandler::Open2`, limitation properties and reset. Original Linux C bodies
+remain unchanged; Linux supplies per-inode operations rather than the archive's
+whole-volume inventory lifecycle.
+
+The module now reads table blocks independently through the existing read-only
+source adapter. After a short or failed block read, allocated inodes in that block
+are retried through full individual reads using the existing bounded raw-inode
+service. Only a completely reread inode enters the original validation; a partial
+block prefix or previous group's buffer contents never become inode metadata.
+This can preserve a usable root or file record when a different record in the
+same block is unavailable. Valid blocks remain usable. Allocated inodes whose SDK parse,
+original Linux initialization or required inline file payload decoding fails are
+omitted; allocated empty user-inode slots are also reported as unavailable.
+Linux checksum, extra-size, flags, extent-root and inline checks still reject
+the same data. Directory entries referencing an omitted inode follow the existing
+incomplete-directory path, retaining later valid records and independent files.
+Inline directories keep records already emitted by the original Linux reader
+before an error, retain normal path validation, and report an incomplete directory;
+the unparsed suffix is not fabricated as directory records. An inline directory
+without any usable emitted record is omitted.
+The inode inventory adds an explicit read-only limitation, translated through the
+existing EN/RU confirmation and persistent per-opening mode.
+
+Fatal results are distinct from unavailable data. C allocation failures propagate
+as E_OUTOFMEMORY; source abort/OOM and every explicit progress callback failure,
+including S_FALSE, abort opening. Progress is queried only when a callback exists.
+The root reference must be present and nonnegative before system-zone setup or
+other consumers use it. No fabricated root or inode metadata is substituted.
+Missing mandatory journal/service dependencies still fail original system-zone
+setup. Superblock, geometry, group descriptors and allocation bitmap checks remain
+mandatory; this change does not claim recovery from those failures or relax a
+later essential encryption-context or protected-root mapping check.
+
+Source comparison is complete for the non-root inventory failure scenario, not
+the full ext read audit. Existing standalone table loading remains unchanged;
+the application module supplies the Linux-dependent validation and partial
+inventory mode. Both engine profiles continue to compile the shared SDK source.
+
+Validation: eleven focused suites passed on macOS, Linux and Windows: `ext`,
+`ext_stream`, `ext_fscrypt`, `ext_fscrypt_cli`, `ext_fscrypt_backend`,
+`ext_xattr_backend`, `upstream_baseline`, `upstream_inventory`,
+`filesystem_read_ui`, `filesystem_read_ui_ru` and `language`. Guest receipts:
+`build/runners/hyperv/20261022T103128Z-147dbae4/{linux,windows}`. After the
+localized inline-directory prefix and individual-inode retry follow-ups, the
+eight ext/code/provenance suites
+were rebuilt and passed again on all three platforms; final guest receipts:
+`build/runners/hyperv/20261022T104712Z-95b7430d/{linux,windows}`. Runtime snapshots,
+build trees and compiler caches were reused. The incremental macOS application
+build also succeeded; the final module/runtime was rebuilt by the focused checks.
+
+Regressions cover corrupted/empty allocated inodes, invalid extra sizes and
+flags/extent roots, surviving independent files and later links, table block
+read/partial-read/seek failures, successful individual-inode retries preserving
+the root or an independent file, fatal abort/OOM/callback results, healthy reopen,
+unavailable root/journal dependencies and exact inline-prefix file bytes. Existing
+security cases require rejection or explicit limited listing with the bad item
+omitted, never filesystem metadata exported as data or a fabricated valid empty
+file. EN/RU UI checks cover consent/decline, visible mode, exact copying, refresh,
+reopen scope and source invariance. Current Cocoa warning JSON is 420×227 (EN)
+and 420×301 (RU), including both namespace and inode limitations with fitting
+visible labels. Rendered Windows pixel parity is not claimed. All 303 pinned
+Linux reference hashes match. No full gate, slow suite, physical-device test,
+new kernel-mount comparison or release installation was run. Broader ext source
+closure remains open.
+
 ## Unavailable symlink targets and useful read-only opening — 2026-10-22
 
 Recompared pinned Linux `ext4_get_link`, `ext4_encrypted_get_link`, inline target

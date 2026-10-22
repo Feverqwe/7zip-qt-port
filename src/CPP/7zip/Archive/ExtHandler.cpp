@@ -887,6 +887,7 @@ Z7_CLASS_IMP_CHandler_IInArchive_2(
   bool _directoryLimitations = false;
   bool _xattrLimitations = false;
   bool _linkLimitations = false;
+  bool _inodeLimitations = false;
   void MarkDirectoryIncomplete(CNode &node)
   {
     node.DirectoryIncomplete = true;
@@ -2067,6 +2068,11 @@ HRESULT CHandler::Open2(IInStream *inStream) {
 
             CByteBuffer nodesMap;
             nodesMap.Alloc(blockSize);
+#ifdef SEVENZIP_LINUX_EXT
+            CByteBuffer inodePages;
+            inodePages.Alloc((nodesDataSize + blockSize - 1) >> _h.BlockBits);
+            CMyComPtr<IInStream> inodeSource = CreateReadOnlyInput(inStream);
+#endif
 
             unsigned globalNodeIndex = 0;
             // unsigned numEmpty = 0;
@@ -2108,7 +2114,21 @@ HRESULT CHandler::Open2(IInStream *inStream) {
                         return S_FALSE;
                 }
 #endif
+#ifdef SEVENZIP_LINUX_EXT
+                for (size_t offset = 0; offset < nodesDataSize; offset += blockSize) {
+                    const HRESULT result = SeekAndRead(
+                        inodeSource, gd.InodeTable + (offset >> _h.BlockBits),
+                        (Byte *)nodesData + offset, MyMin(blockSize, nodesDataSize - offset));
+                    if (result != S_OK && result != S_FALSE)
+                        return result;
+                    if (_openCallback) {
+                        RINOK(CheckProgress2())
+                    }
+                    inodePages[offset >> _h.BlockBits] = result == S_OK;
+                }
+#else
                 RINOK(SeekAndRead(inStream, gd.InodeTable, nodesData, nodesDataSize))
+#endif
 
                 unsigned numEmpty_in_Map = 0;
 
@@ -2119,10 +2139,35 @@ HRESULT CHandler::Open2(IInStream *inStream) {
                         continue;
                     }
 
+#ifdef SEVENZIP_LINUX_EXT
+                    if (!inodePages[((size_t)n * _h.InodeSize) >> _h.BlockBits]) {
+                        // A failed block read can still leave individual inodes
+                        // readable through the source's smaller read requests.
+                        CXattrContext context{this, 0, S_OK, 0, {}};
+                        context.Source = inodeSource;
+                        const int result = ReadXattr(
+                            &context, 0, (gd.InodeTable << _h.BlockBits) + (UInt64)n * _h.InodeSize,
+                            (Byte *)nodesData + (size_t)n * _h.InodeSize, _h.InodeSize);
+                        RINOK(_openCallbackResult)
+                        if (context.Result != S_OK && context.Result != S_FALSE)
+                            return context.Result;
+                        if (_openCallback) {
+                            RINOK(CheckProgress2())
+                        }
+                        if (result) {
+                            _inodeLimitations = true;
+                            continue;
+                        }
+                    }
+#endif
                     const Byte *p = nodesData + (size_t)n * _h.InodeSize;
                     if (IsEmptyData(p, _h.InodeSize)) {
                         if (globalNodeIndex + 1 >= _h.FirstInode) {
+#ifdef SEVENZIP_LINUX_EXT
+                            _inodeLimitations = true;
+#else
                             _headersError = true;
+#endif
                             // return S_FALSE;
                         }
                         continue;
@@ -2133,14 +2178,25 @@ HRESULT CHandler::Open2(IInStream *inStream) {
 
                     PRF(printf("\nnode = %5d ", (unsigned)n));
 
-                    if (!node.Parse(p, _h))
+                    if (!node.Parse(p, _h)) {
+#ifdef SEVENZIP_LINUX_EXT
+                        _inodeLimitations = true;
+                        continue;
+#else
                         return S_FALSE;
+#endif
+                    }
 #ifdef SEVENZIP_LINUX_EXT
                     ext_node *linuxNode = NULL;
                     ext_node_info info;
-                    if (ext_linux_inode_open(_volume.Ptr, globalNodeIndex + 1, p, &linuxNode,
-                                             &info) != 0)
-                        return S_FALSE;
+                    const int inodeResult = ext_linux_inode_open(_volume.Ptr, globalNodeIndex + 1,
+                                                                 p, &linuxNode, &info);
+                    if (inodeResult) {
+                        if (inodeResult == -ENOMEM)
+                            return E_OUTOFMEMORY;
+                        _inodeLimitations = true;
+                        continue;
+                    }
                     struct CNodeOwner {
                         ext_node *Ptr;
                         ~CNodeOwner() { ext_linux_inode_close(Ptr); }
@@ -2164,20 +2220,31 @@ HRESULT CHandler::Open2(IInStream *inStream) {
                             CInlineDirectory dir;
                             dir.Data.Alloc(blockSize);
                             memset(dir.Data, 0, blockSize);
-                            if (ext_linux_inline_directory(linuxNode, CInlineDirectory::Emit,
-                                                           &dir) != 0 ||
-                                dir.Used == 0)
-                                return S_FALSE;
+                            const int result =
+                                ext_linux_inline_directory(linuxNode, CInlineDirectory::Emit, &dir);
+                            if (result == -ENOMEM)
+                                return E_OUTOFMEMORY;
+                            if (result || dir.Used == 0) {
+                                if (!dir.Used) {
+                                    _inodeLimitations = true;
+                                    continue;
+                                }
+                                MarkDirectoryIncomplete(node);
+                            }
                             SetUi16(
                                 (Byte *)dir.Data + dir.Last + 4,
                                 (UInt16)(blockSize - dir.Last == 65536 ? 0 : blockSize - dir.Last))
                                 payload = dir.Data;
                         } else {
                             payload.Alloc(node.IsLink() ? info.inline_size : (size_t)node.FileSize);
-                            if (ext_linux_inline_read(linuxNode, payload,
-                                                      (unsigned)payload.Size()) !=
-                                (int)payload.Size())
-                                return S_FALSE;
+                            const int result =
+                                ext_linux_inline_read(linuxNode, payload, (unsigned)payload.Size());
+                            if (result != (int)payload.Size()) {
+                                if (result == -ENOMEM)
+                                    return E_OUTOFMEMORY;
+                                _inodeLimitations = true;
+                                continue;
+                            }
                         }
                         node.InlineIndex = (int)_inlineData.Size();
                         _inlineData.Add(payload);
@@ -2221,6 +2288,10 @@ HRESULT CHandler::Open2(IInStream *inStream) {
 
             if (_refs.Size() <= k_INODE_ROOT)
                 return S_FALSE;
+#ifdef SEVENZIP_LINUX_EXT
+            if (_refs[k_INODE_ROOT] < 0)
+                return S_FALSE;
+#endif
 
             // printf("\n numReserveInodes = %6d, _refs.Size() = %d, numEmpty = %7d\n",
             // numReserveInodes, _refs.Size(), (unsigned)numEmpty);
@@ -2568,6 +2639,7 @@ Z7_COM7F_IMF(CHandler::Close()) {
     _directoryLimitations = false;
     _xattrLimitations = false;
     _linkLimitations = false;
+    _inodeLimitations = false;
 #endif
     _isUTF = true;
     _openCallback = NULL;
@@ -2805,6 +2877,12 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID propID, PROPVARIANT *value)) {
                 reasons += '\n';
             reasons += "Some ext symbolic-link targets could not be read. Copying affected links "
                        "may fail; readable files remain accessible.";
+        }
+        if (_inodeLimitations) {
+            if (!reasons.IsEmpty())
+                reasons += '\n';
+            reasons += "Some ext inodes could not be read. Files or metadata may be missing; "
+                       "readable files remain accessible.";
         }
 #endif
         if (_h.FeatureIncompat & 4) {
