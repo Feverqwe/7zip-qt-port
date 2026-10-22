@@ -261,6 +261,58 @@ class SquashfsStreamTests final : public QObject {
     }
   private slots:
     void initTestCase() { createArchive(); }
+    void largeInodeInventoryOwnsPropertiesAndStreams() {
+        loadFixture("zlib", false, "inode-inventory-large-recovery");
+        CMyComPtr<IInStream> source = new Input(bytes_);
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
+        auto sparse = stream("alpha");
+        QVERIFY(sparse);
+        for (const UInt64 offset : {UInt64(0), UInt64(16384) * 8192, UInt64(20000) * 8192}) {
+            QCOMPARE(sparse->Seek((Int64)offset, STREAM_SEEK_SET, nullptr), S_OK);
+            char data[7];
+            UInt32 count = 0;
+            QCOMPARE(sparse->Read(data, sizeof(data), &count), S_OK);
+            QCOMPARE(QByteArray(data, int(count)), QByteArray(7, '\0'));
+        }
+        auto link = stream("link");
+        auto other = stream("otherlink");
+        auto file = stream("данные 空");
+        QVERIFY(link && other && file);
+        check(link, "link", 0, 3006);
+        check(other, "otherlink", 0, 16);
+        check(file, "данные 空", 0, 333);
+        for (const auto &entry : QList<QPair<QString, unsigned>>{
+                 {"alpha", 1}, {"данные 空", 2}, {"link", 3}, {"otherlink", 4}}) {
+            NWindows::NCOM::CPropVariant time;
+            QCOMPARE(archive_->GetProperty(index(entry.first), kpidMTime, &time), S_OK);
+            QCOMPARE(time.vt, VARTYPE(VT_FILETIME));
+            const UInt64 ticks =
+                (UInt64(time.filetime.dwHighDateTime) << 32) | time.filetime.dwLowDateTime;
+            QCOMPARE(ticks, (UInt64(11644473600) + 1700000000 + entry.second) * 10000000);
+        }
+        NWindows::NCOM::CPropVariant target;
+        QCOMPARE(archive_->GetProperty(index("link"), kpidSymLink, &target), S_OK);
+        QCOMPARE(target.vt, VARTYPE(VT_BSTR));
+        QCOMPARE(QString::fromWCharArray(target.bstrVal), QString("al"));
+        QCOMPARE(archive_->Close(), S_OK);
+        check(link, "link", 0, 3006);
+        check(other, "otherlink", 0, 16);
+        check(file, "данные 空", 0, 333);
+    }
+    void canonicalCandidateOutsideInventoryCannotAuthorizeRecovery() {
+        loadFixture("zlib", false, "inode-inventory-overlap");
+        CMyComPtr<IInStream> source = new Input(bytes_);
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
+        auto observed = stream("observed");
+        QVERIFY(observed);
+        check(observed, "observed", 0, 1);
+        QVERIFY(!stream("recover"));
+        NWindows::NCOM::CPropVariant size, error;
+        QCOMPARE(archive_->GetProperty(index("recover"), kpidSize, &size), S_OK);
+        QCOMPARE(size.vt, VARTYPE(VT_EMPTY));
+        QCOMPARE(archive_->GetProperty(index("recover"), kpidError, &error), S_OK);
+        QCOMPARE(error.vt, VARTYPE(VT_BSTR));
+    }
     void inodePropertiesDescribeHardlinksAndSymlinks() {
         loadFixture("zlib", true);
         CMyComPtr<IInStream> source = new Input(bytes_);

@@ -85,6 +85,30 @@ class SquashfsMetadataTests final : public QObject {
             0);
         QCOMPARE(qFromLittleEndian<quint32>(header), 3u);
     }
+    void inodeCursorRestoresOtherRangesAfterFailure() {
+        Source source{fixture_};
+        auto reader = create(source);
+        QVERIFY(reader);
+        const auto table = qFromLittleEndian<quint64>(source.bytes.constData() + 64);
+        const auto root = qFromLittleEndian<quint64>(source.bytes.constData() + 32);
+        uint64_t block = table + (root >> 16);
+        unsigned offset = unsigned(root & 0xffff);
+        char header[20];
+        QCOMPARE(
+            sevenzip_squashfs_inode_read(reader.get(), &block, &offset, header, sizeof(header)), 0);
+        QCOMPARE(qFromLittleEndian<quint16>(header), 1u);
+        block = qFromLittleEndian<quint64>(source.bytes.constData() + 72);
+        offset = 0;
+        QVERIFY(sevenzip_squashfs_inode_read(reader.get(), &block, &offset, header,
+                                             sizeof(header)) < 0);
+        unsigned id = 0;
+        QCOMPARE(sevenzip_squashfs_id(reader.get(), 0, &id), 0);
+        QCOMPARE(id, 1000u);
+        block = qFromLittleEndian<quint64>(source.bytes.constData() + 72);
+        offset = 0;
+        QCOMPARE(sevenzip_squashfs_directory_read(reader.get(), &block, &offset, header, 12), 0);
+        QCOMPARE(qFromLittleEndian<quint32>(header), 3u);
+    }
     void blocklistIndexCachePreservesSparseMappingsAndFailures() {
         constexpr unsigned blocks = 20000;
         QByteArray records(32 + (blocks + 1) * 4, '\0');

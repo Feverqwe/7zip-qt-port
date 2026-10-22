@@ -342,23 +342,50 @@ failed:
     return error;
 }
 
-int sevenzip_squashfs_directory_read(struct sevenzip_squashfs_metadata *reader, uint64_t *block,
-                                     unsigned *offset, void *buffer, unsigned size) {
+static int read_metadata_range(struct sevenzip_squashfs_metadata *reader, uint64_t start,
+    uint64_t end, uint64_t *block, unsigned *offset, void *buffer, unsigned size) {
     uint64_t saved_start, saved_end;
     int position, result;
     if (!reader || !block || !offset || *offset >= SQUASHFS_METADATA_SIZE || size > INT_MAX ||
-        !reader->directory_end)
+        !end || start > end)
         return -EINVAL;
     saved_start = reader->metadata_start;
     saved_end = reader->metadata_end;
-    reader->metadata_start = reader->msblk.directory_table;
-    reader->metadata_end = reader->directory_end;
+    reader->metadata_start = start;
+    reader->metadata_end = end;
     position = (int)*offset;
     result = squashfs_read_metadata(&reader->sb, buffer, block, &position, (int)size);
     *offset = (unsigned)position;
     reader->metadata_start = saved_start;
     reader->metadata_end = saved_end;
     return result < 0 ? result : 0;
+}
+
+int sevenzip_squashfs_directory_read(struct sevenzip_squashfs_metadata *reader, uint64_t *block,
+                                     unsigned *offset, void *buffer, unsigned size) {
+    if (!reader)
+        return -EINVAL;
+    return read_metadata_range(reader, reader->msblk.directory_table, reader->directory_end,
+                               block, offset, buffer, size);
+}
+
+int sevenzip_squashfs_inode_read(struct sevenzip_squashfs_metadata *reader, uint64_t *block,
+                                 unsigned *offset, void *buffer, unsigned size) {
+    if (!reader)
+        return -EINVAL;
+    return read_metadata_range(reader, reader->msblk.inode_table, reader->msblk.directory_table,
+                               block, offset, buffer, size);
+}
+
+unsigned sevenzip_squashfs_cached_inodes(struct sevenzip_squashfs_metadata *reader, void *buffer,
+                                        unsigned capacity) {
+    if (!reader || !buffer || !reader->cached || reader->entry.error ||
+        reader->entry.block != reader->msblk.inode_table ||
+        reader->entry.next_index != reader->msblk.directory_table ||
+        reader->entry.length <= 0 || (unsigned)reader->entry.length > capacity)
+        return 0;
+    memcpy(buffer, reader->buffer, (unsigned)reader->entry.length);
+    return (unsigned)reader->entry.length;
 }
 
 int sevenzip_squashfs_id(struct sevenzip_squashfs_metadata *reader, unsigned index, unsigned *id) {

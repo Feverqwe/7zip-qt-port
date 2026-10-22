@@ -36,6 +36,10 @@ void sevenzip_squashfs_metadata_destroy(struct sevenzip_squashfs_metadata *);
 // table bounds. Partial field output on failure must be discarded by the caller.
 int sevenzip_squashfs_directory_read(struct sevenzip_squashfs_metadata *, uint64_t *block,
                                      unsigned *offset, void *, unsigned size);
+int sevenzip_squashfs_inode_read(struct sevenzip_squashfs_metadata *, uint64_t *block,
+                                 unsigned *offset, void *, unsigned size);
+// Copy a complete single-block inode table only if it is already cached.
+unsigned sevenzip_squashfs_cached_inodes(struct sevenzip_squashfs_metadata *, void *, unsigned);
 unsigned sevenzip_squashfs_unavailable_tables(const struct sevenzip_squashfs_metadata *);
 int sevenzip_squashfs_id(struct sevenzip_squashfs_metadata *, unsigned, unsigned *);
 int sevenzip_squashfs_fragment(struct sevenzip_squashfs_metadata *, unsigned, uint64_t *,

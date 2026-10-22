@@ -19,6 +19,8 @@ def metadata(data, compressed=False):
 
 
 def volume(fault="", compressed=False, no_fragments=False, codec="zlib", xattrs=False, export=False):
+    if fault.startswith("inode-inventory-"):
+        return inode_inventory_volume(fault)
     if fault == "legacy-large":
         image, payload = legacy_volume(large=True)
         return image, {"alpha": payload}
@@ -355,6 +357,77 @@ def volume(fault="", compressed=False, no_fragments=False, codec="zlib", xattrs=
         struct.pack_into("<Q", image, ids_table + delta, ids_metadata + delta)
     image += bytes((-len(image)) % 4096)
     return bytes(image), dict(zip(names, (first, second, b"alpha", first))) if not no_fragments else {}
+
+
+def inode_inventory_volume(fault):
+    image = bytearray(96)
+    payload = b"X" if fault == "inode-inventory-overlap" else b"B" * 333
+    image += payload
+
+    def base(kind, number):
+        return struct.pack("<HHHHII", kind, 0o755 if kind == 1 else 0o644,
+                           0, 0, 1700000000 + number, number)
+
+    def regular(number, size, descriptors):
+        return base(2, number) + struct.pack("<IIII", 96, 0xffffffff, 0, size) + descriptors
+
+    if fault == "inode-inventory-overlap":
+        fake = regular(2, 1, struct.pack("<I", (1 << 24) | 1))
+        first = regular(1, 9 * BLOCK, fake)
+        root_offset = len(first)
+        entries = [("alpha", 0, 1, 2), ("observed", 32, 2, 2), ("recover", 0xffff, 2, 2)]
+        inodes = bytearray(first)
+        files = {"observed": payload}
+        count, root_number = 2, 3
+    else:
+        first = regular(1, 20000 * BLOCK + 7, bytes(20001 * 4))
+        inodes = bytearray(first)
+        entries = [("alpha", 0 if fault.endswith("-clean") else 0xffff, 1, 2)]
+        entries.append(("данные 空", len(inodes), 2, 2))
+        inodes += regular(2, len(payload), struct.pack("<I", (1 << 24) | len(payload)))
+        target = b"al\0pha" + b"T" * 3000
+        other = "данные 空".encode()
+        for name, number, body in (("link", 3, target), ("otherlink", 4, other)):
+            entries.append((name, len(inodes), number, 3))
+            inodes += base(10, number) + struct.pack("<II", 1, len(body)) + body
+            inodes += struct.pack("<I", 0xffffffff)
+        root_offset = len(inodes)
+        files = {"данные 空": payload, "link": target, "otherlink": other}
+        count, root_number = 5, 5
+    inodes += base(1, root_number) + struct.pack("<IIHHI", 0, 2, 3, 0, root_number)
+    chunks, positions = [], []
+    position = 0
+    for offset in range(0, len(inodes), BLOCK):
+        positions.append(position)
+        packed = metadata(inodes[offset:offset + BLOCK], True)
+        chunks.append(packed)
+        position += len(packed)
+
+    def reference(offset):
+        return (positions[offset // BLOCK] << 16) | (offset % BLOCK)
+
+    directory = bytearray()
+    for name, offset, number, kind in sorted(entries):
+        encoded = name.encode()
+        ref = reference(offset) if offset != 0xffff else 0xffff
+        directory += struct.pack("<IIIHHHH", 0, ref >> 16, number, ref & 0xffff,
+                                 0, kind, len(encoded) - 1) + encoded
+    struct.pack_into("<H", inodes, root_offset + 24, len(directory) + 3)
+    # Only the root size changed; block starts before its final metadata block remain stable.
+    chunks[-1] = metadata(inodes[(len(chunks) - 1) * BLOCK:], True)
+    inode_start = len(image)
+    image += b"".join(chunks)
+    directory_start = len(image)
+    image += metadata(directory)
+    ids_metadata = len(image)
+    image += metadata(struct.pack("<I", 1000))
+    ids_table = len(image)
+    image += struct.pack("<Q", ids_metadata)
+    struct.pack_into("<5I6H8Q", image, 0, 0x73717368, count, 0, BLOCK, 0, 1, 13, 0, 1, 4, 0,
+                     reference(root_offset), len(image), ids_table, INVALID, inode_start,
+                     directory_start, INVALID, INVALID)
+    image += bytes((-len(image)) % 4096)
+    return bytes(image), files
 
 
 def blocklist_volume(fault):

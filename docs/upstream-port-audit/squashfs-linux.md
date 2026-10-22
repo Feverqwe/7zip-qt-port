@@ -5,6 +5,71 @@ Scope входит в [общую проверку форматов](filesystems
 современный LZO и проверки compressor options через отдельный format-модуль.
 Полная актуализация SquashFS read features по Linux ещё продолжается.
 
+## Потоковое чтение inode metadata, 2026-10-22
+
+Сверены Linux `inode.c:squashfs_read_inode`, `cache.c:squashfs_read_metadata`
+и copy/cache contracts, SDK `CNode::Parse4`, canonical lookup, recovery,
+properties, packed-size и stream consumers. Baselines: Linux
+`58161ead29e50d70a317ea26b472e0c7508e69da`, SDK
+`9128b80e3a471108678e2b3ec3c985861c8d7b0f`; retrieval links ниже.
+Linux VFS inode construction не является готовым archive ABI. Сохранён
+исходный SDK field parser; узкий availability hook получает продолжение
+record через перенесённый C `squashfs_read_metadata`. Variable directory
+indexes разбираются исходным циклом без повторного прохода каждого prefix.
+
+GPL v4 adapter больше не сохраняет общий decoded inode table и UInt32
+offsets в нём. Canonical references и endpoints содержат physical metadata
+block и decoded offset; отрицательный cache относится к конкретной ссылке.
+MTime хранится в parsed node, symlink payload принадлежит node и сохраняет
+все байты, включая NUL. Display property сохраняет прежнее представление,
+а raw stream возвращает полный payload и переживает Close обработчика.
+Все прежние raw-table consumers сверены: properties, symlink streams,
+regular streams и packed sizes. Legacy/core paths сохраняют прежние buffers.
+
+Чтение inode использует те же временные range bounds, что directory reader,
+с восстановлением ancillary bounds после успеха и ошибки. Packed boundary
+проверяется до payload I/O. C cache/copy/read_metadata algorithms не менялись.
+Обычное открытие не загружает blocklist или optional directory indexes.
+Только уже закэшированный полный single-block inode table может сохраняться
+как bounded snapshot для прежних count/unused/duplicate diagnostics; getter
+не выполняет I/O. Размер snapshot не превышает одного metadata block.
+
+Полный recovery inventory читается последовательным cursor: regular blocklists
+пропускаются исходным NULL-buffer metadata reader, extended-directory indexes
+проверяются полностью. Mapping для восстановления публикуется только после
+точного count/end и отсутствия неполноты; observed canonical candidates сами
+по себе не подтверждают inventory. Пересечения record extents запрещают
+такое восстановление, сохраняя независимое canonical чтение доступных данных.
+Abort/OOM/unsupported и callback results сохраняются. Ошибки и неполные
+результаты используют прежние diagnostics, согласие и видимый режим.
+Это соответствует политике полезного read-only доступа без source writes,
+repair или replay; согласие не подменяет доказательство recovery mapping.
+
+Transient memory ограничена record, metadata block и skip chunk вместо всей
+decoded таблицы. Максимальные variable records ограничены форматом; retained
+node/name/link catalog масштабируется с реальными entries. Реальный образ
+с decoded inode table больше 4 GiB и slow matrices не проверялись.
+
+Новые ABI/CLI fixtures проверяют blocklist на нескольких metadata blocks,
+переход symlink через block boundary, binary/Unicode targets, MTime, потоки
+после Close и запрет recovery по ложному inode внутри чужого blocklist.
+C API проверяет inode cursor и восстановление ID/directory access после
+отклонённого выхода за bounds. Sparse fixture не материализует большой файл:
+проверяются несколько коротких чтений, сами образы занимают по 4 KiB.
+Native loop,ro Linux `6.8.0-147-generic` подтвердил clean/recovery controls,
+данные, MTime, symlink display/raw length и sparse samples; невалидная
+canonical ссылка даёт EIO. Number-based recovery остаётся явно обозначенным
+расширением reader, а не поведением native kernel. Receipt
+`20261022T033608Z-fa32a857`; source hashes не изменились, mounts/temp очищены,
+одноразовый helper удалён. Runtime kernel и pinned source — разные evidence.
+
+На macOS ABI/CLI/C API прошли за 6,23 с, семь связанных stream/UI/source suites
+за 31,98 с; вместе покрыты девять выбранных suites. На Linux/Windows все девять
+прошли за 17,50/68,64 с (`20261022T033838Z-1f9cfdd4`). Incremental macOS app
+build прошла. Full/slow acceptance и физические устройства не проверялись.
+Эта итерация закрывает aggregate inode-cache scope; полная source-актуализация
+SquashFS и общая проверка остальных форматов остаются открытыми.
+
 ## Потоковое чтение directory metadata, 2026-10-22
 
 Сверены полные Linux `dir.c:squashfs_readdir`, directory index helpers,

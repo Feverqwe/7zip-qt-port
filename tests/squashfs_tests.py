@@ -372,6 +372,18 @@ class SquashfsTests(unittest.TestCase):
                 self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
                 self.assertEqual(result.stdout, files["good 空/payload"])
 
+    def test_inode_inventory_does_not_hide_independent_files(self):
+        for fault, name in (("inode-inventory-large-recovery", "данные 空"),
+                            ("inode-inventory-overlap", "observed")):
+            data, files = volume(fault)
+            result = self.run_image("7z", data, "x", name)
+            self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+            self.assertEqual(result.stdout, files[name])
+        data, _ = volume("inode-inventory-overlap")
+        result = self.run_image("7z", data, "x", "recover")
+        self.assertNotEqual(result.returncode, 0)
+        self.assertEqual(result.stdout, b"")
+
     def test_ambiguous_inode_numbers_do_not_merge_unrelated_files(self):
         data, files = volume("directory-ambiguous", xattrs=True)
         with tempfile.TemporaryDirectory(dir=self.runtime) as temporary:
