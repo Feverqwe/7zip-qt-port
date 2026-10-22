@@ -172,9 +172,10 @@ Preserve unrelated working-tree changes and other tasks' memory entries.
 
 ### Validation scope
 
-Use macOS for validation. Do not launch Linux/Windows validation unless the user
-asks for those platforms. Existing runner access permissions do not by themselves
-request cross-platform checks.
+Validate platform-independent changes on macOS. For platform-dependent changes,
+run the relevant checks on all supported platforms: macOS, Linux and Windows.
+Select focused checks from the changed behavior and its platform dependencies;
+do not repeat cross-platform validation for platform-independent changes alone.
 
 For behavior changes, cover the concrete observable bug or risk with a regression
 that fails without the fix; reuse sufficient existing coverage rather than adding
