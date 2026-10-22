@@ -273,10 +273,13 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
         QTest::addColumn<QString>("kind");
         QTest::addColumn<bool>("accept");
         for (const QString &language : {"en", "ru"}) {
-            for (const QString &kind : {"fat-file-free-32", "fat-file-eof-12", "fat-file-cycle-16"})
+            for (const QString &kind : {"fat-file-free-32", "fat-file-eof-12", "fat-file-cycle-16",
+                                        "fat-file-metadata-12", "fat-file-metadata-start-32"})
                 QTest::newRow(qPrintable(language + '-' + kind)) << language << kind << true;
             QTest::newRow(qPrintable(language + "-cancel-file"))
                 << language << QString("fat-file-free-32") << false;
+            QTest::newRow(qPrintable(language + "-cancel-overlap"))
+                << language << QString("fat-file-metadata-start-32") << false;
         }
     }
     void confirmsPartialFatFile() {

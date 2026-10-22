@@ -3842,6 +3842,14 @@ Are you sure you want to split archive into such volumes?</source>
             <translation>Часть таблицы FAT прочитать не удалось. Свободное место неизвестно; некоторые файлы и каталоги могут быть неполными или недоступными.</translation>
         </message>
         <message>
+            <source>Some FAT files share clusters with directories. File contents may include directory entries or unrelated data. Copying remains available but reports an error.</source>
+            <translation>Некоторые файлы FAT используют общие кластеры с каталогами. Содержимое файлов может включать записи каталогов или посторонние данные. Копирование доступно, но будет сообщено об ошибке.</translation>
+        </message>
+        <message>
+            <source>The FAT file shares clusters with a directory. Its contents are unverified.</source>
+            <translation>Файл FAT использует общие кластеры с каталогом. Его содержимое не проверено.</translation>
+        </message>
+        <message>
             <source>Some FAT file chains are incomplete. Only readable prefixes of affected files are available; copying them reports an error.</source>
             <translation>Цепочки некоторых файлов FAT повреждены. Можно прочитать только доступное начало этих файлов; копирование завершится с ошибкой.</translation>
         </message>

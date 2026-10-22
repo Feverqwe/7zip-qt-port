@@ -303,6 +303,7 @@ class CItem {
 #ifdef SEVENZIP_LINUX_FAT
     bool DirectoryIncomplete = false;
     bool FileIncomplete = false;
+    bool FileCrossLinked = false;
 #endif
 
     CItem() {}
@@ -450,6 +451,7 @@ struct CDatabase {
     bool DirectoryLimitations = false;
     bool FileLimitations = false;
     bool TableLimitations = false;
+    bool CrossLinkedFiles = false;
 #endif
     char VolLabel[11];
     bool VolItem_Defined;
@@ -465,7 +467,7 @@ struct CDatabase {
     void GetItemPath(UInt32 index, UString &s) const;
     HRESULT Open();
     HRESULT GetFileClusters(const CItem &item, CRecordVector<UInt32> &clusters,
-                            bool reportProgress = false);
+                            bool reportProgress = false, bool *directoryOverlap = NULL);
     HRESULT ReadDir(Int32 parent, UInt32 cluster, unsigned level);
     HRESULT ReadDirItems(Int32 parent, UInt32 cluster, unsigned level, HRESULT &callbackResult,
                          CRecordVector<UInt32> &activeClusters);
@@ -496,6 +498,7 @@ void CDatabase::Clear() {
     DirectoryLimitations = false;
     FileLimitations = false;
     TableLimitations = false;
+    CrossLinkedFiles = false;
     Header.Dirty = false;
 #endif
     PhySize = 0;
@@ -1053,9 +1056,10 @@ HRESULT CDatabase::Open() {
         CItem &item = Items[i];
         if (!item.IsDir()) {
             CRecordVector<UInt32> clusters;
-            RINOK(GetFileClusters(item, clusters, true))
+            RINOK(GetFileClusters(item, clusters, true, &item.FileCrossLinked))
             item.FileIncomplete = ((UInt64)clusters.Size() << Header.ClusterSizeLog) < item.Size;
             FileLimitations |= item.FileIncomplete;
+            CrossLinkedFiles |= item.FileCrossLinked;
         }
         RINOK(OpenProgress())
     }
@@ -1123,7 +1127,9 @@ Z7_class_CHandler_final:
 // clang-format on
 
 HRESULT CDatabase::GetFileClusters(const CItem &item, CRecordVector<UInt32> &clusters,
-                                   bool reportProgress) {
+                                   bool reportProgress, bool *directoryOverlap) {
+    if (directoryOverlap)
+        *directoryOverlap = false;
     const UInt32 numClusters = Header.GetNumClusters(item.Size);
     clusters.ClearAndReserve(MyMin(numClusters, Header.FatSize - 2));
     struct CActiveFileScope {
@@ -1138,11 +1144,20 @@ HRESULT CDatabase::GetFileClusters(const CItem &item, CRecordVector<UInt32> &clu
     } scope(Fat, clusters);
     UInt32 cluster = item.Cluster;
     for (UInt32 i = 0; i < numClusters; ++i) {
-        if (!Header.IsValidCluster(cluster) ||
-            (Fat[cluster] & (kFatItemUsedByDirMask | kFatItemActiveFileMask)))
+        if (!Header.IsValidCluster(cluster) || (Fat[cluster] & kFatItemActiveFileMask))
             break;
+#ifdef SEVENZIP_LINUX_FAT
+        if (directoryOverlap && (Fat[cluster] & kFatItemUsedByDirMask))
+            *directoryOverlap = true;
+#else
+        if (Fat[cluster] & kFatItemUsedByDirMask)
+            break;
+#endif
         clusters.AddInReserved(cluster - 2);
-        const UInt32 next = Fat[cluster];
+        UInt32 next = Fat[cluster];
+#ifdef SEVENZIP_LINUX_FAT
+        next &= ~(kFatItemUsedByDirMask | kFatItemActiveDirMask);
+#endif
         Fat[cluster] |= kFatItemActiveFileMask;
         // A BAD next-link is terminal even when its numeric value is also
         // addressable as a first physical cluster at the FAT32 size limit.
@@ -1290,6 +1305,13 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID propID, PROPVARIANT *value)) {
             reasons += "Some FAT table entries could not be read. Free space is unknown; some "
                        "files or directories may be incomplete or unreadable.";
         }
+        if (CrossLinkedFiles) {
+            if (!reasons.IsEmpty())
+                reasons += '\n';
+            reasons += "Some FAT files share clusters with directories. File contents may include "
+                       "directory entries or unrelated data. Copying remains available but reports "
+                       "an error.";
+        }
         if (!reasons.IsEmpty())
             prop = reasons;
         break;
@@ -1422,6 +1444,8 @@ Z7_COM7F_IMF(CHandler::GetProperty(UInt32 index, PROPID propID, PROPVARIANT *val
             prop = "The FAT directory could not be read completely.";
         else if (item.FileIncomplete)
             prop = "The FAT file chain is incomplete. Only the readable prefix is available.";
+        else if (item.FileCrossLinked)
+            prop = "The FAT file shares clusters with a directory. Its contents are unverified.";
         break;
 #endif
     case kpidPath:
@@ -1590,7 +1614,11 @@ Z7_COM7F_IMF(CHandler::Extract(const UInt32 *indices, UInt32 numItems, Int32 tes
                 RINOK(hres)
                 if (inStream) {
                     RINOK(copyCoder.Interface()->Code(inStream, realOutStream, NULL, NULL, lps))
-                    if (copyCoder->TotalSize == item.Size)
+                    if (copyCoder->TotalSize == item.Size
+#ifdef SEVENZIP_LINUX_FAT
+                        && !item.FileCrossLinked
+#endif
+                    )
                         res = NExtract::NOperationResult::kOK;
                 }
             }

@@ -58,6 +58,13 @@ UString QtArchiveDiagnosticText(const UString &source) {
     }
     const char *const warnings[] = {
         QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                          "Some FAT files share clusters with directories. File contents may "
+                          "include directory entries or unrelated data. Copying remains available "
+                          "but reports an error."),
+        QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                          "The FAT file shares clusters with a directory. Its contents are "
+                          "unverified."),
+        QT_TRANSLATE_NOOP("SevenZipDiagnostics",
                           "The CramFS volume origin is ambiguous. File names or contents may "
                           "belong to another candidate volume. Results from the selected origin "
                           "are unverified."),

@@ -180,7 +180,7 @@ class FatStreamTests final : public QObject {
         QTest::addColumn<QString>("chain");
         for (int bits : {12, 16, 32})
             for (const QString &chain : {"free", "eof", "bad", "range", "self", "cycle", "metadata",
-                                         "start", "oversized", "tail", "shared"})
+                                         "metadata-start", "start", "oversized", "tail", "shared"})
                 QTest::newRow(qPrintable(chain + '-' + QString::number(bits))) << bits << chain;
     }
     void incompleteFileChains() {
@@ -199,6 +199,10 @@ class FatStreamTests final : public QObject {
         QCOMPARE(size.ulVal, UInt32(fixture_["declared_file_size"].toInteger()));
         QCOMPARE(archive_->GetProperty(indices[0], kpidError, &error), S_OK);
         QCOMPARE(error.vt, VARTYPE(limited ? VT_BSTR : VT_EMPTY));
+        if (chain.startsWith("metadata")) {
+            QVERIFY(QString::fromWCharArray(error.bstrVal).contains("shares clusters"));
+            QCOMPARE(prefix.size(), qsizetype(fixture_["declared_file_size"].toInteger()));
+        }
         UInt32 count = 0;
         QCOMPARE(archive_->GetNumberOfArchiveProperties(&count), S_OK);
         bool found = false;

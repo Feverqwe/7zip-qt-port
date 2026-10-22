@@ -5,6 +5,69 @@ The integrated iterations cover BPB-based FAT12/16/32 geometry, directory
 and file reads, then DOS 1.x recognition, names, dates and archive consumers.
 Other filesystem and shared-format rows remain in the active goal.
 
+## Read-only file/directory cluster overlap — 2026-10-22
+
+Recompared pinned Linux `fat_get_start`, `fat_get_cluster`,
+`fat_bmap_cluster`, `fat_get_mapped_cluster`, file-size bounds and their inode
+read callers with the complete SDK/current FAT directory ownership flags,
+GetFileClusters/GetStream, opening diagnostics, properties and extraction loop.
+Linux does not reject a file mapping because a directory references the same
+cluster. The adapter's unconditional directory-ownership stop was a product
+restriction, not missing decoding. It discarded accessible bytes and could
+refuse the entire file stream when its first cluster was shared.
+
+The dynamic application's module now permits these bounded mappings through
+the existing stream/copy implementation. Only private directory-bookkeeping
+bits are removed before interpreting a next-link; unknown-table state, physical
+cluster validity, file-size bounds, BAD transitions, cycle detection and scoped
+traversal cleanup remain effective. No new decoder, kernel C routine, source
+write or repair is introduced. The standalone legacy profile retains its
+previous strict ownership behavior.
+
+Opening records the overlap before the existing per-opening read-only consent
+and persistent badge. EN/RU diagnostics explain that file contents can include
+directory entries or unrelated data. Known overlapping files expose the bytes
+but retain an item error and SDK DataError result even when every declared byte
+was copied; the metadata conflict is not presented as a verified file. Healthy
+selected siblings remain readable. This archive-result distinction differs
+from the kernel's successful byte read, and is separate from a genuinely
+incomplete chain. Cancellation/OOM and output failures retain their original
+behavior, and clean reopening clears the limitation.
+
+The existing FAT stream fixture now contains nonzero directory records in a
+later shared cluster and a file starting in a directory cluster whose chain
+continues. The latter requires removing bookkeeping from the next-link as
+well as admitting the first cluster. Public ABI cases reproduced the old
+refusal/truncation for all three variants before the correction. They now
+check exact complete bytes, honest diagnostics/results, healthy siblings,
+retained streams, repeated reads, cancellation/output failure and reuse.
+Both-engine process checks preserve the legacy profile's expected prefix and
+require the expanded bytes from the module. EN/RU UI cases cover accept/Cancel,
+copy diagnostics, exact output, read-only command state, refresh and source
+preservation through the existing normal/compact geometry checks.
+
+Local focused `fat`, `fat_stream`, `fat_directory`, `fat_table`, `fat_module`,
+`filesystem_fat_file_ui`, `upstream_baseline` and `upstream_inventory` suites
+passed (11.51 seconds). Supplementary native vfat `6.8.0-147-generic` matched
+the exact main/healthy-file bytes for both overlap modes in FAT12/16/32,
+receipt `20261022T072748Z-a97d0c2b`. Each generated image used its own read-only
+loop mapping and read-only mount; SHA-256 stayed unchanged. All mounts/loops
+and task-owned temporary images were removed. The disposable reference helper
+was deleted before final runner synchronization. This native kernel differs
+from the pinned source; it does not establish maximum-geometry acceptance.
+Final Linux/Windows CLI/source suites passed in `20261022T072930Z-de703d74`;
+directory/stream/table ABI and exact FAT-file UI suites passed in
+`20261022T073147Z-2afe03bb`; isolated `fat_module` passed in
+`20261022T073333Z-33be17e5`. All 21 pinned FAT reference hashes matched, the
+incremental application build and diff check passed. Current Cocoa EN/RU
+warning JSON has fitting labels at 420×214/288 logical pixels. Linux/Windows
+UI behavior and geometry are offscreen, without rendered Windows visual-parity
+acceptance. No slow/full suite or physical media was used; `fat_maximum`
+remains excluded under the user's ordinary-check scope. Incremental builds,
+compiler caches and current review evidence are retained.
+This closes the overlap/policy scenario, not the remaining FAT source review
+or the broader filesystem/format goal.
+
 ## Sources and retained ownership
 
 Linux repository:
@@ -59,7 +122,7 @@ partial-read diagnostics.
 
 File reads stop at the directory entry's size, allowing preallocated empty files
 and unused allocated tails. Later iterations retain readable prefixes before
-missing/repeated clusters or known directory-owned data, while reporting errors
+missing/repeated clusters, while reporting errors
 instead of complete extraction. Original stream helpers remain authoritative and
 each file retains its independent cursor. Mapping capacity stays bounded by the
 file size and addressable cluster count; unused tails are not copied. These
@@ -422,8 +485,10 @@ link need not invalidate every earlier byte. The original SDK traversal is
 factored into a shared helper, used by stream construction and the dynamic
 module's opening diagnostics. No new FAT decoder or Linux C unit is added.
 
-Streams now expose the prefix before the first invalid, repeated or known
-directory-owned cluster. A private in-memory traversal flag is cleared by a
+At that iteration, streams exposed the prefix before the first invalid,
+repeated or known directory-owned cluster. The later overlap scenario above
+replaces the directory-ownership refusal with explicit limited reading.
+A private in-memory traversal flag is cleared by a
 scope guard, so one file or callback failure cannot poison another mapping.
 Capacity remains bounded by the file size and available data-cluster count.
 Empty files and unused allocated tails remain readable; safe shared file chains

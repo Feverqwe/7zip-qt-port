@@ -331,12 +331,14 @@ class FatTests(unittest.TestCase):
     def test_incomplete_file_chains_preserve_prefix_and_report_error(self):
         for engine in ("7z", "7zz"):
             for bits in (12, 16, 32):
-                for mode in ("free", "eof", "bad", "range", "self", "cycle", "metadata",
+                for mode in ("free", "eof", "bad", "range", "self", "cycle", "metadata", "metadata-start",
                              "start", "oversized", "tail", "shared"):
                     with self.subTest(engine=engine, bits=bits, mode=mode):
                         volume = chain_volume(f"{mode}-{bits}")
                         result = self.run_image(volume, engine)
-                        self.assertEqual(result.stdout, volume.expected_files[LONG_NAME])
+                        expected = (getattr(volume, "legacy_file_prefix", volume.expected_files[LONG_NAME])
+                                    if engine == "7zz" else volume.expected_files[LONG_NAME])
+                        self.assertEqual(result.stdout, expected)
                         if volume.file_limited:
                             self.assertNotEqual(result.returncode, 0)
                             self.assertIn(b"Data Error", result.stderr)

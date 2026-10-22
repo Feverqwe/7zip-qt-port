@@ -24,14 +24,30 @@ def chain_volume(kind):
     mode, bits = kind.rsplit("-", 1)
     v = stream_volume(int(bits))
     prefix = PAYLOAD[:1024]
-    if mode in ("free", "eof", "bad", "range", "self", "cycle", "metadata"):
-        if mode == "metadata":
+    if mode in ("free", "eof", "bad", "range", "self", "cycle", "metadata", "metadata-start"):
+        if mode in ("metadata", "metadata-start"):
             v.set_fat(30, v.eof)
             v.records.append(entry(b"FOLDER     ", 30, attr=0x10))
+            directory = entry(b"INSIDE  TXT", 0, 0)
+            v.data[v.offset(30):v.offset(30) + len(directory)] = directory
+        if mode == "metadata-start":
+            v.set_fat(30, 31)
+            v.set_fat(31, v.eof)
+            v.data[v.offset(31):v.offset(31) + v.cluster_size] = b"directory tail\n".ljust(v.cluster_size, b"\0")
+            record = next(r for r in v.records if r[:11] == v.alias)
+            struct.pack_into("<H", record, 26, 30)
+            struct.pack_into("<I", record, 28, 2 * v.cluster_size)
+            prefix = bytes(v.data[v.offset(30):v.offset(30) + v.cluster_size])
+            prefix += bytes(v.data[v.offset(31):v.offset(31) + v.cluster_size])
+            v.legacy_file_prefix = b""
+        elif mode == "metadata":
+            v.legacy_file_prefix = prefix
+            prefix += bytes(v.data[v.offset(30):v.offset(30) + len(PAYLOAD) - len(prefix)])
         value = {"free": 0, "eof": v.eof, "bad": v.eof - 8,
                  "range": v.clusters + 2, "self": v.chain[1],
-                 "cycle": v.chain[0], "metadata": 30}[mode]
-        v.set_fat(v.chain[1], value)
+                 "cycle": v.chain[0], "metadata": 30, "metadata-start": v.eof}[mode]
+        if mode != "metadata-start":
+            v.set_fat(v.chain[1], value)
     elif mode == "start":
         record = next(r for r in v.records if r[:11] == v.alias)
         struct.pack_into("<H", record, 26, 0)
@@ -52,7 +68,8 @@ def chain_volume(kind):
     else:
         raise ValueError(kind)
     v.file_limited = mode not in ("tail", "shared")
-    v.declared_file_size = 0xffffffff if mode == "oversized" else len(PAYLOAD)
+    v.declared_file_size = (0xffffffff if mode == "oversized" else
+                            2 * v.cluster_size if mode == "metadata-start" else len(PAYLOAD))
     v.expected_files[LONG_NAME] = prefix
     v.write_directory()
     return v
