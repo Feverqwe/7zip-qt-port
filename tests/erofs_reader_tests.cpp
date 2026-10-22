@@ -24,12 +24,15 @@ QByteArray image() {
 }
 struct Reader {
     QByteArray bytes;
+    bool fail = false;
+    uint64_t failAt = UINT64_MAX;
     std::unique_ptr<erofs_volume, decltype(&erofs_close_volume)> volume{nullptr,
                                                                         erofs_close_volume};
     std::unique_ptr<erofs_file, decltype(&erofs_close_file)> root{nullptr, erofs_close_file};
     static int Read(void *opaque, unsigned device, uint64_t offset, void *data, size_t size) {
         const auto &self = *static_cast<Reader *>(opaque);
-        if (device || offset > uint64_t(self.bytes.size()) || size > self.bytes.size() - offset)
+        if (self.fail || (self.failAt >= offset && self.failAt - offset < size) || device ||
+            offset > uint64_t(self.bytes.size()) || size > self.bytes.size() - offset)
             return -EIO;
         std::memcpy(data, self.bytes.constData() + offset, size);
         return 0;
@@ -88,6 +91,56 @@ qsizetype regularEntry(const QByteArray &bytes) {
 class ErofsReaderTests final : public QObject {
     Q_OBJECT
   private slots:
+    void chunkMetadataReadFailureCanBeRetried() {
+        Reader reader;
+        reader.bytes = erofsSpecialImage(0, 0100000, 0, 0);
+        reader.bytes.resize(3 * 65536, '\0');
+        const quint64 node = 2 * 65536 - 32;
+        const quint64 nid = (node - 4096) / 32;
+        qToLittleEndian(quint32(reader.bytes.size() / 4096), reader.bytes.data() + 1060);
+        qToLittleEndian(quint32(4), reader.bytes.data() + 1104); // chunked-file feature
+        qToLittleEndian(nid, reader.bytes.data() + 4096 + 32 + 24);
+        qToLittleEndian(quint16(8), reader.bytes.data() + node); // compact chunk-based inode
+        qToLittleEndian(quint16(0100600), reader.bytes.data() + node + 4);
+        qToLittleEndian(quint16(1), reader.bytes.data() + node + 6);
+        qToLittleEndian(quint32(4096), reader.bytes.data() + node + 8);
+        qToLittleEndian(quint32(33), reader.bytes.data() + node + 32); // first chunk
+        const QByteArray expected(4096, 'q');
+        std::memcpy(reader.bytes.data() + 33 * 4096, expected.constData(), expected.size());
+        const auto original = reader.bytes;
+        QCOMPARE(reader.Open(), 0);
+        erofs_file *raw = nullptr;
+        QCOMPARE(erofs_open_file(reader.volume.get(), nid, &raw), 0);
+        std::unique_ptr<erofs_file, decltype(&erofs_close_file)> file(raw, erofs_close_file);
+        QByteArray data(4096, '?');
+        reader.failAt = 2 * 65536;
+        for (unsigned i = 0; i < 32; ++i) {
+            size_t processed = 99;
+            QCOMPARE(erofs_pread_file(raw, 0, data.data(), size_t(data.size()), &processed), -EIO);
+            QCOMPARE(processed, size_t(0));
+        }
+        reader.failAt = UINT64_MAX;
+        size_t processed = 0;
+        QCOMPARE(erofs_pread_file(raw, 0, data.data(), size_t(data.size()), &processed), 0);
+        QCOMPARE(processed, size_t(expected.size()));
+        QCOMPARE(data, expected);
+        QCOMPARE(reader.bytes, original);
+    }
+    void failedMetadataReadCanBeRetried() {
+        Reader reader;
+        reader.bytes = image();
+        QVERIFY(!reader.bytes.isEmpty());
+        const auto original = reader.bytes;
+        reader.fail = true;
+        for (unsigned i = 0; i < 32; ++i)
+            QCOMPARE(reader.Open(), -EIO);
+        reader.fail = false;
+        QCOMPARE(reader.Open(), 0);
+        Entries entries;
+        QCOMPARE(erofs_read_directory(reader.root.get(), &entries, Entries::Emit), 0);
+        QVERIFY(entries.values.contains("duplicate.bin"));
+        QCOMPARE(reader.bytes, original);
+    }
     void specialInodeMetadata_data() { erofsSpecialRows(); }
     void specialInodeMetadata() {
         QFETCH(unsigned, shape);

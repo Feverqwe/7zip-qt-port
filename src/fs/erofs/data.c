@@ -6,6 +6,68 @@
  */
 #include "internal.h"
 
+void erofs_unmap_metabuf(struct erofs_buf *buf)
+{
+	if (!buf->base)
+		return;
+	kunmap_local(buf->base);
+	buf->base = NULL;
+}
+
+void erofs_put_metabuf(struct erofs_buf *buf)
+{
+	if (!buf->page)
+		return;
+	erofs_unmap_metabuf(buf);
+	folio_put(page_folio(buf->page));
+	buf->page = NULL;
+}
+
+void *erofs_bread(struct erofs_buf *buf, erofs_off_t offset, bool need_kmap)
+{
+	struct super_block *sb = buf->sb;
+	if (!sb && buf->mapping)
+		sb = buf->sb = buf->mapping->i_sb;
+	if (!sb)
+		return ERR_PTR(-EINVAL);
+	if (offset >= (buf->mapping ? (u64)buf->mapping->i_size : sb->image_size))
+		return ERR_PTR(-EIO);
+	if (sb->poll && sb->poll(sb->context))
+		return ERR_PTR(-ECANCELED);
+	pgoff_t index = (buf->off + offset) >> PAGE_SHIFT;
+	struct folio *folio = NULL;
+
+	if (buf->page) {
+		folio = page_folio(buf->page);
+		if (folio_file_page(folio, index) != buf->page)
+			erofs_unmap_metabuf(buf);
+	}
+	if (!folio || !folio_contains(folio, index)) {
+		erofs_put_metabuf(buf);
+		folio = erofs_read_cache_folio(buf, index);
+		if (IS_ERR(folio))
+			return folio;
+	}
+	buf->page = folio_file_page(folio, index);
+	if (!need_kmap)
+		return NULL;
+	if (!buf->base)
+		buf->base = kmap_local_page(buf->page);
+	return (char *)buf->base + ((buf->off + offset) & ~PAGE_MASK);
+}
+
+void *erofs_read_metabuf(struct erofs_buf *buf, struct super_block *sb,
+			 erofs_off_t offset, bool in_metabox)
+{
+	int err;
+
+	err = erofs_init_metabuf(buf, sb, in_metabox);
+	if (err)
+		return ERR_PTR(err);
+	return erofs_bread(buf, offset, true);
+}
+
+
 static int erofs_map_chunks(struct inode *inode, struct erofs_map_blocks *map)
 {
 	struct erofs_buf buf = __EROFS_BUF_INITIALIZER;

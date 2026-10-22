@@ -60,6 +60,7 @@ typedef u64 erofs_nid_t, erofs_off_t, erofs_blk_t;
 #endif
 #define PAGE_SHIFT 16
 #define PAGE_SIZE (1U << PAGE_SHIFT)
+#define PAGE_MASK (~((u64)PAGE_SIZE - 1))
 #define U16_MAX UINT16_MAX
 #ifndef EFSCORRUPTED
 #define EFSCORRUPTED 990
@@ -205,7 +206,30 @@ struct super_block {
     int (*open_device)(void *, unsigned int, const char *, u64);
     unsigned int read_depth;
 };
-struct erofs_buf { u8 *base; u64 index; bool in_metabox; struct super_block *sb; struct inode *mapping; };
+// Owned single-page folios replace the kernel page cache. Decoder pages borrow
+// their data; only metadata folios are released through folio_put.
+struct page { u8 *data; };
+struct folio { struct page page; u64 index; u8 data[PAGE_SIZE]; };
+typedef u64 pgoff_t;
+static inline struct folio *page_folio(struct page *page) {
+    return container_of(page, struct folio, page);
+}
+static inline bool folio_contains(struct folio *folio, pgoff_t index) {
+    return folio->index == index;
+}
+static inline struct page *folio_file_page(struct folio *folio, pgoff_t index) {
+    return folio_contains(folio, index) ? &folio->page : NULL;
+}
+static inline void folio_put(struct folio *folio) { free(folio); }
+static inline void *kmap_local_page(struct page *page) { return page->data; }
+#define kunmap_local(p) ((void)(p))
+struct erofs_buf {
+    u8 *base;
+    struct page *page;
+    u64 off;
+    struct super_block *sb;
+    struct inode *mapping;
+};
 struct qstr { const char *name; unsigned int len; };
 #define QSTR(text) ((struct qstr){(text), (unsigned int)strlen(text)})
 #define __EROFS_BUF_INITIALIZER ((struct erofs_buf){0})
@@ -303,6 +327,7 @@ void erofs_put_metabuf(struct erofs_buf *);
 void erofs_unmap_metabuf(struct erofs_buf *);
 int erofs_init_metabuf(struct erofs_buf *, struct super_block *, bool);
 void *erofs_bread(struct erofs_buf *, erofs_off_t, bool);
+struct folio *erofs_read_cache_folio(struct erofs_buf *, pgoff_t);
 void *erofs_read_metabuf(struct erofs_buf *, struct super_block *, erofs_off_t, bool);
 void *erofs_read_metadata(struct super_block *, struct erofs_buf *, erofs_off_t *, int *);
 int erofs_map_blocks(struct inode *, struct erofs_map_blocks *);

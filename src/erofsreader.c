@@ -33,61 +33,36 @@ char *kstrndup(const void *data, size_t size, int flags) {
 void super_set_uuid(struct super_block *sb, const void *uuid, size_t size) {
     (void)sb; (void)uuid; (void)size;
 }
-void erofs_put_metabuf(struct erofs_buf *buf) {
-    free(buf->base);
-    memset(buf, 0, sizeof(*buf));
-}
-void erofs_unmap_metabuf(struct erofs_buf *buf) {
-    // An owned userspace buffer stays mapped until its owner releases it.
-    (void)buf;
-}
 int erofs_init_metabuf(struct erofs_buf *buf, struct super_block *sb, bool in_metabox) {
     struct inode *mapping = in_metabox ? EROFS_SB(sb)->metabox_inode : NULL;
     if (buf->sb != sb || buf->mapping != mapping)
         erofs_put_metabuf(buf);
     buf->sb = sb;
-    buf->in_metabox = in_metabox;
+    buf->off = 0; // The archive transport owns any primary-stream base offset.
     buf->mapping = mapping;
     return in_metabox && !EROFS_SB(sb)->metabox_inode ? -EFSCORRUPTED : 0;
 }
-void *erofs_bread(struct erofs_buf *buf, erofs_off_t offset, bool need_kmap) {
+struct folio *erofs_read_cache_folio(struct erofs_buf *buf, pgoff_t index) {
     struct super_block *sb = buf->sb;
-    if (!sb && buf->mapping)
-        sb = buf->sb = buf->mapping->i_sb;
-    if (!sb)
-        return ERR_PTR(-EINVAL);
-    if (sb->poll && sb->poll(sb->context))
-        return ERR_PTR(-ECANCELED);
     struct inode *meta = buf->mapping;
     u64 length = meta ? (u64)meta->i_size : sb->image_size;
-    if (offset >= length)
+    const u64 pos = index << PAGE_SHIFT;
+    if (pos >= length)
         return ERR_PTR(-EIO);
-    u64 index = offset >> PAGE_SHIFT;
-    if (!buf->base || index != buf->index) {
-        if (!buf->base) {
-            buf->base = malloc(PAGE_SIZE);
-            if (!buf->base)
-                return ERR_PTR(-ENOMEM);
-        }
-        buf->index = UINT64_MAX;
-        u64 pos = index << PAGE_SHIFT;
-        size_t size = (size_t)min((u64)PAGE_SIZE, length - pos);
-        int error;
-        if (meta)
-            error = sb->read_inode(meta, pos, buf->base, size);
-        else
-            error = sb->read(sb->context, 0, pos, buf->base, size) ? -EIO : 0;
-        if (error)
-            return ERR_PTR(error);
-        memset(buf->base + size, 0, PAGE_SIZE - size);
-        buf->index = index;
+    struct folio *folio = malloc(sizeof(*folio));
+    if (!folio)
+        return ERR_PTR(-ENOMEM);
+    const size_t size = (size_t)min((u64)PAGE_SIZE, length - pos);
+    int error = meta ? sb->read_inode(meta, pos, folio->data, size) :
+        sb->read(sb->context, 0, pos, folio->data, size) ? -EIO : 0;
+    if (error) {
+        free(folio);
+        return ERR_PTR(error);
     }
-    return need_kmap ? buf->base + (offset & (PAGE_SIZE - 1)) : NULL;
-}
-void *erofs_read_metabuf(struct erofs_buf *buf, struct super_block *sb,
-                         erofs_off_t offset, bool in_metabox) {
-    int error = erofs_init_metabuf(buf, sb, in_metabox);
-    return error ? ERR_PTR(error) : erofs_bread(buf, offset, true);
+    memset(folio->data + size, 0, PAGE_SIZE - size);
+    folio->page.data = folio->data;
+    folio->index = index;
+    return folio;
 }
 
 static int erofs_read_physical(struct inode *inode, struct erofs_map_blocks *map, void *data) {

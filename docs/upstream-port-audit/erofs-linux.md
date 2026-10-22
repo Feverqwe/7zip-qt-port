@@ -1,5 +1,60 @@
 # Read-only EROFS from Linux
 
+## Original metadata-buffer ownership and failed-read cleanup — 2026-10-22
+
+Compared the complete pinned `data.c` metadata-buffer helpers, their
+`erofs_map_chunks`, inode, superblock/configuration, xattr/prefix and zmap callers,
+and the local stream/page services. Linux callers can return directly after a
+failed initial metadata read: `read_cache_folio` returns an error without
+transferring a folio to the buffer. The independent userspace `erofs_bread`
+allocated its buffer before reading and retained it on failure, violating that
+ownership contract. Failed superblock opens and chunk-table reads could leak one
+metadata allocation each.
+
+The original `erofs_unmap_metabuf`, `erofs_put_metabuf`, `erofs_bread` and
+`erofs_read_metabuf` now live in their original `fs/erofs/data.c` module. Unmap,
+put and the read wrapper are byte-exact. The original bread cache-hit, release,
+acquire, publish and map control flow is retained; adaptations resolve the host
+stream context, retain source bounds/cancellation checks, replace cache loading
+with the bounded host service and cast byte-pointer arithmetic for portable C.
+The separate independent implementations are removed.
+
+The host cache service allocates an owned single-page folio and publishes it
+only after a complete bounded read; errors release that allocation locally.
+Metadata folios use the existing 64 KiB page ceiling, including zero padding of
+a valid final partial page. The shared contiguous page adapter also serves the
+existing plain decompression transform. Actual VFS page-cache sharing,
+readahead, asynchronous I/O and mapping services remain outside the archive
+reader. Stream mapping selection retains primary/metabox/packed-inode handling,
+and the transport still owns any embedded-image base offset. No decoding or
+filesystem mapping algorithm is reimplemented.
+
+A public C-reader scenario repeats failed superblock opens and then enumerates
+the recovered image. A second synthetic chunk-based image places its inode and
+chunk table on different metadata pages, injects repeated table-read failures,
+then reads exact payload bytes through the same file handle. Both verify source
+preservation. Existing module/CLI suites cover all creator layouts, xattrs and
+prefixes, embedded-image offsets, retained streams, failure/cancellation and
+reuse. macOS `leaks --atExit` on the initial-open scenario found 32 leaked
+allocations (2,621,440 allocator-accounted bytes) before the fix and zero after
+the fix. This is a resource-lifetime defect; the ordinary operation-result test
+alone already passed before the fix.
+
+Source access remains read-only and bounded, with no new opening restriction,
+writes, repair or journal replay. The EROFS source-closure audit and parent
+filesystem goal remain open.
+
+Validation: `erofs_reader`, `erofs_module`, `erofs`, `upstream_baseline` and
+`upstream_inventory` passed on macOS, Linux and Windows (guest receipt
+`20261022T135553Z-f04a080c`). The incremental application build passed. The full
+56-case direct C-reader run also reported zero leaks under macOS `leaks --atExit`,
+including both repeated-read-failure scenarios. Final comparison confirms all
+four transferred metadata functions after the explicit host adaptations above;
+all 49 EROFS reference hashes match. Existing incremental build/runtime/cache
+state was retained. Disposable EROFS fixtures were absent on all three platforms
+after validation. No full gate, slow suite, new native mount/device check,
+UI appearance acceptance or release installation was run.
+
 ## Linux device-number decoding and special inode metadata — 2026-10-22
 
 Compared the pinned `fs/erofs/inode.c` compact/extended inode readers and special
@@ -112,7 +167,8 @@ filesystem/format rows in the parent review remain separate work.
 - `inode.c` retains `erofs_fill_symlink` and `erofs_read_inode`; VFS inode
   publication, mmap/DAX, ioctl and mount registration are omitted. An explicit
   check rejects signed overflow in compact inode epoch/mtime addition.
-- `data.c` retains `erofs_map_chunks` and `erofs_map_blocks`. Raw, inline,
+- `data.c` retains metadata-buffer ownership/read helpers, `erofs_map_chunks`
+  and `erofs_map_blocks`. Raw, inline,
   chunk/index arrays, sparse chunks and 48-bit block fields keep their C paths.
 - `zmap.c` retains all format-mapping bodies through
   `z_erofs_map_blocks_iter`, including full/compact indexes, big pclusters,
