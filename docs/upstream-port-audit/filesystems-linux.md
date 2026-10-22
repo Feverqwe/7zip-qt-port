@@ -96,7 +96,7 @@ filesystem UI; физические носители и системная ав�
 | HFS/HFS+ | `fs/hfs`, `fs/hfsplus` | [Read-side source audit закрыт](hfs-linux.md#итоговая-сверка-read-side-source-scope--2026-10-21): volume/B-tree, extents, имена, metadata и data/resource forks; archive/platform и runtime границы записаны отдельно. |
 | cramfs, SquashFS | `fs/cramfs`, `fs/squashfs` | Read-side source audit закрыт для [cramfs](cramfs-linux.md#итоговая-сверка-read-side-source-scope--2026-10-22) и [SquashFS](squashfs-linux.md#итоговая-сверка-read-side-source-scope--2026-10-22): metadata, directories, blocks/fragments и decompressor boundaries; archive/platform и runtime границы записаны отдельно. |
 | ISO9660, UDF | `fs/isofs`, `fs/udf` | Descriptors, names/extensions, extents, sparse и embedded data. |
-| EROFS (новый модуль) | `fs/erofs` | Сначала полный source comparison read path и зависимостей, затем C-перенос, 7-Zip ABI, deployment и end-to-end чтение. |
+| EROFS (новый модуль) | `fs/erofs` | [Read-side source audit закрыт](erofs-linux.md#read-side-source-audit-closure--2026-10-22): C readers, зависимости, исправления metadata/device/namespace границ и archive consumers; runtime, VFS и recovery границы записаны отдельно. |
 | Base64 | `lib/base64.c`, fscrypt/Ceph callers | Standard/URL-safe/IMAP alphabets, padding/tail validation и archive handler lifecycle. |
 | ELF | `fs/binfmt_elf.c`, `fs/binfmt_elf_fdpic.c`, kexec/module readers | Headers, table/payload spans, Linux core numbering, metadata и archive streams; execution services не входят в byte reader. |
 | PE | `crypto/asymmetric_keys/verify_pefile.c`, kexec callers | Headers, certificate/file spans и byte streams; общий COFF consumer проверяется вместе, kernel trust/execution — отдельные contracts. |

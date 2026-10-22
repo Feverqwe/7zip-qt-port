@@ -1,5 +1,47 @@
 # Read-only EROFS from Linux
 
+## Read-side source audit closure — 2026-10-22
+
+The read-side source audit is closed for this module's image/archive scenario
+at Linux `58161ead29e50d70a317ea26b472e0c7508e69da`. The transferred scope below,
+the compressed-read comparison and the dated corrections account for the format
+readers, dependencies and C/archive consumers. This is source closure at that
+revision, not a claim that the Linux VFS driver was ported wholesale or that
+every possible image was exercised. The parent multi-format goal remains open.
+
+The final comparison rechecked complete inode and symlink bodies, checksum and
+superblock parsing, variable metadata reads, device-slot/mapping consumers,
+the complete xattr transfer and shared ACL conversions. Inode/symlink bodies
+match after the recorded strict-C pointer and signed-overflow adaptations.
+Variable metadata reading matches unchanged; checksum/superblock differences
+are pointer casts and early stream-block geometry setup. The xattr unit matches
+after declaration/type adaptations and omission of the ACL-cache shortcut.
+The source-visible gaps found during the audit, including UUID publication,
+directory iteration and inline-metadata routing, are resolved by the recorded
+iterations rather than hidden behind passing runtime checks.
+
+No remaining format-read branch was identified in the reviewed scope. The
+explicit boundaries are significant: archive indexing replaces VFS pathname
+lookup and inode publication; stored modification time is exposed, while VFS
+synthetic access/change-time aliases and DAX/statx I/O-alignment information are
+not separate stored fields. Volume-label ioctl semantics are represented by
+the archive label property. Kernel mount/sysfs controls, permission enforcement,
+page-cache/ACL-cache management, scheduling and acceleration are not archive
+format operations. New damaged-image partial-reading modes remain deferred
+under the user's EROFS recovery scope; the concrete existing limitations above
+and below remain applicable.
+
+All 54 reference hashes, ten unchanged copied dependencies and the generated
+CRC dependency hash match their recorded baselines. Runtime/build/test inputs
+are unchanged since `e9a209ed`; its focused macOS `erofs_reader`, `erofs_module`,
+`erofs`, `upstream_baseline` and `upstream_inventory` pass and application build
+remain the current local evidence. The suites cover the C API, archive ABI,
+CLI/backend consumers and producer layouts described below. Earlier Linux and
+Windows results remain dated evidence; no remote validation was launched for
+this closure. Physical-device/native-mount acceptance, UI appearance, release
+installation, full and slow gates are not established by this iteration.
+Only documentation changed, checked with `git diff --check`.
+
 ## Compressed read-side source comparison — 2026-10-22
 
 Completed the selected comparison of compressed mapping, configuration, padding,
@@ -442,6 +484,11 @@ filesystem/format rows in the parent review remain separate work.
 - `super.c` retains checksum verification, variable metadata acquisition and
   superblock parsing. Device slots and unified/external-device addresses are
   adapted to bounded streams; device opening is delegated to a callback.
+- `xattr.c`/`xattr.h` retain namespace/value iterators, shared/inline attributes,
+  filters, long prefixes and ACL readers, using selected `fs/posix_acl.c`
+  converters. The unused no-ACL cache shortcut is omitted; it does not replace
+  public ACL value reads. Page-cache fingerprint sharing is disabled, while
+  its on-disk prefix configuration remains understood by the xattr reader.
 - Decompression configuration validation and plain shifted/interlaced transforms
   retain their original module paths. Stream-pool allocation, cache/overlap
   scheduling and kernel acceleration services are omitted. Compressed extents
@@ -450,6 +497,15 @@ filesystem/format rows in the parent review remain separate work.
   original generator produces the checked-in tables; only its unused generated
   kernel-configuration include and polynomial-header path are adapted.
   `include/linux/crc32poly.h` is copied unchanged.
+- `namei.c`'s binary pathname lookup is omitted because archive consumers select
+  indexed entries from full directory enumeration. `fileio.c`, `zdata.c`,
+  `zutil.c`, `ishare.c` and `decompressor_crypto.c` provide the transport/cache/
+  scheduling/acceleration boundaries described in the compressed-read comparison;
+  their payload consumers use the retained mappers and decoders. `sysfs.c`,
+  `Kconfig` and `Makefile` are reference inventory; the host CMake module and
+  bounded callback services own build configuration and lifetime. Private
+  `internal.h`/`compress.h` services expose only the required host types and
+  read-side operations.
 
 The userspace header provides inode/superblock/buffer services and preserves
 relevant original field names. C stays C11. Original licensing and copyright
