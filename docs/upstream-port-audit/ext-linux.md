@@ -6,6 +6,53 @@ tree boundaries, directory record boundaries and archive stream consumers.
 The second integrates Linux metadata and inline-data readers. The ext row remains
 open for the remaining read features listed below.
 
+## Linux indirect lookup for journal system-zone bootstrap — 2026-10-22
+
+Compared the pinned Linux `fs/ext4/block_validity.c` reserved-inode protection
+loop and `fs/ext4/inode.c` mapping/validity callers with the archive's complete
+`extblockreader.c` services and SDK bootstrap callback. The journal's classic
+mapping still built a dense SDK pointer vector even though ordinary regular-file
+streams already used Linux's indirect lookup. Bootstrap now calls that same
+original C lookup for each requested range, including coalesced data and holes;
+the dense journal vector and its separate indirect traversal are removed.
+The original system-zone loop, ownership, overlap detection and publication
+remain authoritative. Extent-based bootstrap retains its existing adapter.
+
+Source acquisition reuses the read-only physical input adapter and preserves
+progress cancellation and source HRESULTs through the C callback. The kernel's
+journal-owner exception bypasses block-reference validation, so archive adapters
+retain explicit source bounds before acquiring an indirect block and validate
+the returned physical run with the existing Linux block-validity service.
+This is necessary during bootstrap, before the system-zone tree is published,
+as well as for later journal-owner stream reads. It introduces no source writes,
+repair or journal replay. An unreadable mandatory journal map still prevents
+publishing an unverified protection tree; this does not add a policy gate to
+ordinary recoverable file reads.
+
+Small disposable images cover single, double and triple indirect journal maps,
+exact head/hole/tail reads by the journal owner, independent user data, rejection
+of a foreign file aliasing journal data, metadata overlap and out-of-image data
+and index pointers. ABI checks cover Read/Seek source failures, cancellation,
+empty state after failure and successful reuse. CLI checks compare complete
+single/double journal output, including all sparse zeros. Triple-indirect checks
+read bounded samples from a 1 MiB physical image, without extracting its larger
+logical journal. The new ABI test was corrected to accumulate legal short Reads
+across map boundaries. Directory allocated-range inventory remains an SDK
+consumer; this iteration does not claim closure of all ext mapping paths.
+
+Validation: all eight ext/code/provenance suites passed on macOS and Windows
+(`20261022T120225Z-ab7fcaff`). Linux exposed a missing explicit `<climits>`
+include, corrected before its final eight-suite PASS in
+`20261022T120435Z-510cf06c`. The final include was rebuilt and the ABI suite
+passed on Windows again (`20261022T120434Z-adea81c4`); macOS repeated all eight
+on the final source and its application build passed. Existing incremental
+build trees, runtime snapshots and compiler caches were reused. The three
+transferred indirect helper bodies remain byte-identical to the pinned Linux
+source, and all 303 reference hashes match. No new Linux unit or dependency was
+added. Disposable fixture directories were empty after validation. No full gate,
+slow suite, physical-device check, new kernel-mount comparison or release install
+was run. The broader filesystem goal and ext read-feature audit remain open.
+
 ## Linux indirect lookup and bounded regular-file streams — 2026-10-22
 
 Compared complete pinned Linux `fs/ext4/indirect.c` bodies and callers with SDK

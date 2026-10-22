@@ -42,6 +42,7 @@
 #include "extveritypolicy.h"
 #include "extveritystream.h"
 #include <cerrno>
+#include <climits>
 #include <new>
 #endif
 
@@ -907,10 +908,10 @@ Z7_CLASS_IMP_CHandler_IInArchive_2(
   struct CSystemZoneContext {
     CXattrContext Io;
     CRecordVector<CExtent> Extents;
-    CRecordVector<UInt32> Blocks;
     bool Mapped = false;
   };
   static int ReadSystemInode(void *, uint32_t, void *, size_t) noexcept;
+  static int ReadSystemBlock(void *, uint64_t, void *, size_t) noexcept;
   static int MapSystemInode(void *, uint32_t, uint32_t, uint32_t *, uint64_t *) noexcept;
   HRESULT LoadSystemZone(const void *descriptors, UInt32 groups);
   struct CDirectoryContext {
@@ -1565,6 +1566,11 @@ int CHandler::ReadSystemInode(void *opaque, uint32_t ino, void *raw, size_t size
     return ReadXattrInode(&static_cast<CSystemZoneContext *>(opaque)->Io, ino, raw, size);
 }
 
+int CHandler::ReadSystemBlock(void *opaque, uint64_t block, void *data, size_t size) noexcept {
+    auto &context = *static_cast<CSystemZoneContext *>(opaque);
+    return ReadXattr(&context.Io, 0, block << context.Io.Owner->_h.BlockBits, data, size);
+}
+
 int CHandler::MapSystemInode(void *opaque, uint32_t ino, uint32_t logical, uint32_t *count,
                              uint64_t *physical) noexcept {
     auto &context = *static_cast<CSystemZoneContext *>(opaque);
@@ -1579,40 +1585,36 @@ int CHandler::MapSystemInode(void *opaque, uint32_t ino, uint32_t logical, uint3
         const CNode &node = owner._nodes[owner._refs[ino]];
         if (!node.IsRegular() || node.InlineIndex >= 0)
             return -EIO;
+        if (!node.IsFlags_EXTENTS()) {
+            const UInt64 blocks =
+                (node.FileSize + (((UInt64)1 << owner._h.BlockBits) - 1)) >> owner._h.BlockBits;
+            if (blocks > UINT32_MAX || logical >= blocks || !*count)
+                return -EIO;
+            const ext_indirect_services services{&context, ReadSystemBlock};
+            const UInt32 requested =
+                MyMin(MyMin(*count, UInt32(blocks - logical)), UInt32(INT_MAX));
+            return ext_linux_indirect_map(owner._volume.get(), ino, node.Block, logical, requested,
+                                          &services, physical, count);
+        }
         if (!context.Mapped) {
             owner._blockInode = ino;
             owner._extentChecksumSeed = node.ChecksumSeed;
             owner._extentRootDepth = GetUi16(node.Block + 6);
-            if (node.IsFlags_EXTENTS()) {
-                context.Io.Result =
-                    owner.FillExtents(node.Block, kNodeBlockFieldSize, context.Extents, -1);
-            } else {
-                const UInt64 blocks =
-                    (node.FileSize + (((UInt64)1 << owner._h.BlockBits) - 1)) >> owner._h.BlockBits;
-                if (blocks > UINT32_MAX)
-                    return -EIO;
-                context.Io.Result =
-                    owner.FillFileBlocks(node.Block, (unsigned)blocks, context.Blocks);
-            }
+            context.Io.Result =
+                owner.FillExtents(node.Block, kNodeBlockFieldSize, context.Extents, -1);
             if (context.Io.Result != S_OK)
                 return -EIO;
             context.Mapped = true;
         }
         *physical = 0;
-        if (node.IsFlags_EXTENTS()) {
-            FOR_VECTOR(i, context.Extents) {
-                const auto &extent = context.Extents[i];
-                if (logical >= extent.VirtBlock && logical - extent.VirtBlock < extent.Len) {
-                    *count = MyMin(*count, extent.Len - (logical - extent.VirtBlock));
-                    if (extent.PhyStart)
-                        *physical = extent.PhyStart + logical - extent.VirtBlock;
-                    return 0;
-                }
+        FOR_VECTOR(i, context.Extents) {
+            const auto &extent = context.Extents[i];
+            if (logical >= extent.VirtBlock && logical - extent.VirtBlock < extent.Len) {
+                *count = MyMin(*count, extent.Len - (logical - extent.VirtBlock));
+                if (extent.PhyStart)
+                    *physical = extent.PhyStart + logical - extent.VirtBlock;
+                return 0;
             }
-        } else if (logical < context.Blocks.Size()) {
-            *count = 1;
-            *physical = context.Blocks[logical];
-            return 0;
         }
         *count = 1;
         return 0;
@@ -1692,7 +1694,7 @@ HRESULT CHandler::ReadLink(unsigned index, CByteBuffer &data, IInStream *source)
 }
 
 HRESULT CHandler::LoadSystemZone(const void *descriptors, UInt32 groups) {
-    CSystemZoneContext context{{this, 0, S_OK, 0, {}}, {}, {}, false};
+    CSystemZoneContext context{{this, 0, S_OK, 0, {}}, {}, false};
     ext_block_services services{&context, ReadSystemInode, MapSystemInode};
     const int error = ext_linux_system_zone(_volume.get(), descriptors, groups, &services);
     if (context.Io.Result != S_OK)

@@ -341,6 +341,10 @@ if __name__ == "__main__":
         from ext_block_fixture import BlockVolume
         v = BlockVolume(mapping="descriptor-overlap") if layout == "block-overlap" else \
             BlockVolume(target=layout.removeprefix("block-"))
+    elif layout.startswith("journal-"):
+        from ext_block_fixture import JournalVolume
+        parts = layout.removeprefix("journal-").split(":", 1)
+        v = JournalVolume(parts[0], parts[1] if len(parts) > 1 else None)
     elif layout in ("verity-salted", "verity-corrupt"):
         from ext_verity_fixture import VerityVolume
         v = VerityVolume("sha512", b"salt")
@@ -372,6 +376,8 @@ if __name__ == "__main__":
                    for pos in (0, max(0, v.size - 17), 1010)]
         print(json.dumps({"size": len(v.data), "image": base64.b64encode(zlib.compress(v.data)).decode(),
                           "file_size": v.size, "name": getattr(v, "name", NAME), "samples": samples,
+                          "journal_samples": getattr(v, "journal_samples", []),
+                          "journal_metadata": getattr(v, "journal_metadata", 0),
                           "files": {name: value.hex() for name, value in getattr(v, "files", {}).items()},
                           "ea_data_offset": getattr(v, "ea_data_offset", 0),
                           "inode_page_offset": (getattr(v, "file_inode", 0) // getattr(v, "block_size", 1024)) * getattr(v, "block_size", 1024),

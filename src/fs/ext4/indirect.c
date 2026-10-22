@@ -300,7 +300,12 @@ int ext_linux_indirect_map(struct ext_volume *volume, uint32_t ino, const void *
     if (!result) result = ext4_ind_map_blocks(NULL, &inode, &map, 0);
     if (result < 0) return result;
     if (!map.m_len || map.m_len > count) return -EIO;
-    if (map.m_flags & EXT4_MAP_MAPPED) *physical = map.m_pblk;
+    if (map.m_flags & EXT4_MAP_MAPPED) {
+        /* Archive source bounds also apply to the journal owner, whose
+         * ext4_check_blockref deliberately bypasses reference validation. */
+        if (!ext4_inode_block_valid(&inode, map.m_pblk, map.m_len)) return -EFSCORRUPTED;
+        *physical = map.m_pblk;
+    }
     *length = map.m_len;
     return 0;
 }

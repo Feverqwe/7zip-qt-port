@@ -44,3 +44,34 @@ class BlockVolume(Volume):
             self.put32(self.file_inode + 104, block)
         else:
             raise ValueError(mapping)
+
+
+class JournalVolume(Volume):
+    """A sparse classic journal with independent user data and bounded storage."""
+    def __init__(self, mapping="single", fault=None):
+        super().__init__(mapping)
+        bs = self.block_size
+        self.journal_size = self.size
+        self.journal_samples = [{"offset": offset, "bytes": self.read(offset, 37).hex()}
+                                for offset in (0, 12 * bs, self.size - 17)]
+        journal_inode = self.table * bs + 7 * 128
+        self.data[journal_inode:journal_inode + 128] = self.data[self.file_inode:self.file_inode + 128]
+        self.journal_metadata = next(iter(self.indirect.values())) * bs
+        self.journal_tail = self.next_block - 1
+        # Keep the user file independent of journal-owned data.
+        self.content = {0: b"independent user file\n"}
+        self.size = len(self.content[0])
+        self.data[self.file_inode:self.file_inode + 128] = bytes(128)
+        self.inode(self.file_inode, 0o100600, self.size, bs // 512)
+        self.put32(self.file_inode + 40, self.allocate(self.content[0]))
+        if fault == "alias":
+            self.put32(self.file_inode + 40, self.journal_tail)
+        elif fault == "data-bound":
+            self.put32(journal_inode + 40, self.blocks)
+        elif fault == "index-bound":
+            self.put32(journal_inode + 40 + 12 * 4, self.blocks)
+        elif fault == "overlap":
+            self.put32(journal_inode + 40, self.table)
+        self.superblock()
+        self.put32(1024 + 92, 4)
+        self.put32(1024 + 224, 8)

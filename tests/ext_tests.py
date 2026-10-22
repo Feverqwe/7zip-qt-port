@@ -15,7 +15,7 @@ from ext_fixture import Volume, NAME, readonly_volume
 from ext_modern_fixture import ModernVolume, crc32c
 from ext_verity_fixture import VerityVolume
 from ext_xattr_fixture import XattrVolume
-from ext_block_fixture import BlockVolume
+from ext_block_fixture import BlockVolume, JournalVolume
 from ext_symlink_fixture import SymlinkVolume
 from ext_inode_fixture import inode_volume, inventory_volume
 from ext_directory_fixture import DirectoryVolume
@@ -165,6 +165,21 @@ class ExtTests(unittest.TestCase):
         result = self.run_image(BlockVolume(mapping="descriptor-overlap"))
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual(result.stdout, b"")
+
+    def test_indirect_journal_bootstrap_preserves_independent_files(self):
+        for mapping in ("single", "double-hole"):
+            with self.subTest(mapping=mapping):
+                volume = JournalVolume(mapping)
+                result = self.run_image(volume)
+                self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                self.assertEqual(result.stdout, volume.read(0, volume.size))
+                result = self.run_image(volume, name="[SYS]/Journal")
+                self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                expected_payload = bytearray(volume.journal_size)
+                for sample in volume.journal_samples:
+                    expected = bytes.fromhex(sample["bytes"])
+                    expected_payload[sample["offset"]:sample["offset"] + len(expected)] = expected
+                self.assertEqual(result.stdout, expected_payload)
 
     def test_symlink_cluster_ea_inode_and_huge_block_geometry(self):
         for case in ("bigalloc", "bigalloc-huge", "ea-slow", "ea-fast-extents"):

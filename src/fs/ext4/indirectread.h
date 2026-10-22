@@ -49,6 +49,7 @@ static int ext4_read_bh(struct buffer_head *bh, int flags, void *end, bool wait)
     const struct ext_indirect_services *services =
         ((struct ext_indirect_super *)buffer->sb)->services;
     (void)flags; (void)end; (void)wait;
+    if (bh->b_blocknr >= ext4_blocks_count(EXT4_SB(buffer->sb)->s_es)) return -EIO;
     return services->read(services->context, bh->b_blocknr, bh->b_data, bh->b_size);
 }
 #define put_bh(bh) brelse(bh)
