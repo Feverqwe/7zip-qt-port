@@ -962,9 +962,11 @@ Z7_CLASS_IMP_CHandler_IInArchive_2(
       UInt32 firstBlock = 0, UInt64 blockLimit = (UInt64)1 << 32, IInStream *source = NULL);
 
   HRESULT GetStream_Node(unsigned nodeIndex, ISequentialInStream **stream, bool requireAllocated = false,
-      bool rawLink = false, CRecordVector<CExtent> *allocated = NULL, IInStream *source = NULL);
+      bool rawLink = false, CRecordVector<CExtent> *allocated = NULL, IInStream *source = NULL,
+      bool *mappingIncomplete = NULL);
   HRESULT ExtractNode(unsigned nodeIndex, CByteBuffer &data, IInStream *source = NULL);
-  HRESULT GetFileStream(UInt32 index, ISequentialInStream **stream, IInStream *source);
+  HRESULT GetFileStream(UInt32 index, ISequentialInStream **stream, IInStream *source,
+      bool *mappingIncomplete = NULL);
 
   void ClearRefs();
   HRESULT Open2(IInStream *inStream);
@@ -3487,11 +3489,22 @@ HRESULT CHandler::FillExtents(const Byte *p, size_t size, CRecordVector<CExtent>
             return S_FALSE;
 #endif
 
+        const unsigned previousSize = extents.Size();
         if (!UpdateExtents(extents, e.VirtBlock))
             return S_FALSE;
 
-        RINOK(SeekAndRead(source, e.PhyLeaf, tempBuf, blockSize))
-        RINOK(FillExtents(tempBuf, blockSize, extents, eth.Depth, e.VirtBlock, next, source))
+        const unsigned pendingSize = extents.Size();
+        HRESULT result = SeekAndRead(source, e.PhyLeaf, tempBuf, blockSize);
+        if (result == S_OK)
+            result = FillExtents(tempBuf, blockSize, extents, eth.Depth, e.VirtBlock, next, source);
+        if (result != S_OK) {
+            // An unreadable/unvalidated child cannot establish the preceding
+            // hole. Keep only ranges confirmed before this child or within it.
+            if (extents.Size() == pendingSize)
+                while (extents.Size() > previousSize)
+                    extents.DeleteBack();
+            return result;
+        }
     }
 
     return S_OK;
@@ -3499,12 +3512,15 @@ HRESULT CHandler::FillExtents(const Byte *p, size_t size, CRecordVector<CExtent>
 
 HRESULT CHandler::GetStream_Node(unsigned nodeIndex, ISequentialInStream **stream,
                                  bool requireAllocated, bool rawLink,
-                                 CRecordVector<CExtent> *allocated, IInStream *source) {
+                                 CRecordVector<CExtent> *allocated, IInStream *source,
+                                 bool *mappingIncomplete) {
     COM_TRY_BEGIN
     if (!source)
         source = _stream;
 
     *stream = NULL;
+    if (mappingIncomplete)
+        *mappingIncomplete = false;
     if (allocated)
         allocated->Clear();
 
@@ -3514,6 +3530,8 @@ HRESULT CHandler::GetStream_Node(unsigned nodeIndex, ISequentialInStream **strea
                                                                : node.SpecialReadError)
         return S_FALSE;
     const bool verity = (node.Flags & ((UInt32)1 << 20)) != 0;
+    const bool allowPrefix = mappingIncomplete && node.IsRegular() && !verity &&
+                             !requireAllocated && !rawLink && !allocated;
     if (verity && (!node.IsRegular() || !node.IsFlags_EXTENTS() || node.InlineIndex >= 0))
         return S_FALSE;
     const CExtCryptInode &crypt = _cryptInodes[nodeIndex];
@@ -3536,6 +3554,7 @@ HRESULT CHandler::GetStream_Node(unsigned nodeIndex, ISequentialInStream **strea
     _blockInode = node.InodeNumber;
     _extentRootDepth = GetUi16(node.Block + 6);
 #else
+    (void)mappingIncomplete;
     (void)rawLink;
     if (node.Flags & (((UInt32)1 << 20) | 0x800))
         return E_NOTIMPL;
@@ -3591,13 +3610,24 @@ HRESULT CHandler::GetStream_Node(unsigned nodeIndex, ISequentialInStream **strea
             streamSpec->Crypt.Init(crypt);
 #endif
 
-        RINOK(FillExtents(node.Block, kNodeBlockFieldSize, streamSpec->Extents, -1, 0,
-                          (UInt64)1 << 32, source))
+        const HRESULT mappingResult = FillExtents(
+            node.Block, kNodeBlockFieldSize, streamSpec->Extents, -1, 0, (UInt64)1 << 32, source);
+#ifdef SEVENZIP_LINUX_EXT
+        if (mappingResult == S_FALSE && mappingIncomplete)
+            *mappingIncomplete = true;
+        if (mappingResult == S_FALSE && allowPrefix && !streamSpec->Extents.IsEmpty()) {
+            streamSpec->Size =
+                MyMin(streamSize, (UInt64)streamSpec->Extents.Back().GetVirtEnd() << _h.BlockBits);
+        } else
+#endif
+        {
+            RINOK(mappingResult)
+        }
 
         UInt32 end = 0;
         if (!streamSpec->Extents.IsEmpty())
             end = streamSpec->Extents.Back().GetVirtEnd();
-        if (end < numBlocks64) {
+        if (mappingResult == S_OK && end < numBlocks64) {
             AddSkipExtents(streamSpec->Extents, end, (UInt32)(numBlocks64 - end));
             // return S_FALSE;
         }
@@ -3676,7 +3706,18 @@ HRESULT CHandler::GetStream_Node(unsigned nodeIndex, ISequentialInStream **strea
             streamSpec->Crypt.Init(crypt);
 #endif
 
-        RINOK(FillFileBlocks(node.Block, numBlocks, streamSpec->Vector, source))
+        const HRESULT mappingResult =
+            FillFileBlocks(node.Block, numBlocks, streamSpec->Vector, source);
+#ifdef SEVENZIP_LINUX_EXT
+        if (mappingResult == S_FALSE && mappingIncomplete)
+            *mappingIncomplete = true;
+        if (mappingResult == S_FALSE && allowPrefix && !streamSpec->Vector.IsEmpty()) {
+            streamSpec->Size = MyMin(streamSize, (UInt64)streamSpec->Vector.Size() << _h.BlockBits);
+        } else
+#endif
+        {
+            RINOK(mappingResult)
+        }
         if (allocated) {
             FOR_VECTOR(i, streamSpec->Vector) {
                 const UInt32 physical = streamSpec->Vector[i];
@@ -3872,7 +3913,8 @@ Z7_COM7F_IMF(CHandler::Extract(const UInt32 *indices, UInt32 numItems, Int32 tes
                 CMyComPtr<IInStream> source = io;
                 io->Input = _stream;
                 io->Output = outStream;
-                HRESULT hres = GetFileStream(index, &inSeqStream, source);
+                bool mappingIncomplete = false;
+                HRESULT hres = GetFileStream(index, &inSeqStream, source, &mappingIncomplete);
 #else
                 HRESULT hres = GetStream(index, &inSeqStream);
 #endif
@@ -3882,11 +3924,11 @@ Z7_COM7F_IMF(CHandler::Extract(const UInt32 *indices, UInt32 numItems, Int32 tes
                 if (hres == S_FALSE || !inSeqStream) {
                     if (hres == E_OUTOFMEMORY)
                         return hres;
-                    opRes =
+                    opRes = NExtract::NOperationResult::kUnsupportedMethod;
 #ifdef SEVENZIP_LINUX_EXT
-                        io->SourceError ? NExtract::NOperationResult::kDataError :
+                    if (io->SourceError || mappingIncomplete)
+                        opRes = NExtract::NOperationResult::kDataError;
 #endif
-                                        NExtract::NOperationResult::kUnsupportedMethod;
                 } else {
                     RINOK(hres) {
                         hres = copyCoder.Interface()->Code(inSeqStream,
@@ -3900,7 +3942,11 @@ Z7_COM7F_IMF(CHandler::Extract(const UInt32 *indices, UInt32 numItems, Int32 tes
                         RINOK(io->OutputResult)
 #endif
                         if (hres == S_OK) {
-                            if (copyCoder->TotalSize == unpackSize)
+                            if (copyCoder->TotalSize == unpackSize
+#ifdef SEVENZIP_LINUX_EXT
+                                && !mappingIncomplete
+#endif
+                            )
                                 opRes = NExtract::NOperationResult::kOK;
                         } else if (hres == E_NOTIMPL) {
                             opRes = NExtract::NOperationResult::kUnsupportedMethod;
@@ -3918,8 +3964,11 @@ Z7_COM7F_IMF(CHandler::Extract(const UInt32 *indices, UInt32 numItems, Int32 tes
     COM_TRY_END
 }
 
-HRESULT CHandler::GetFileStream(UInt32 index, ISequentialInStream **stream, IInStream *source) {
+HRESULT CHandler::GetFileStream(UInt32 index, ISequentialInStream **stream, IInStream *source,
+                                bool *mappingIncomplete) {
     *stream = NULL;
+    if (mappingIncomplete)
+        *mappingIncomplete = false;
     if (index >= _items.Size())
         return S_FALSE;
 #ifdef SEVENZIP_LINUX_EXT
@@ -3931,7 +3980,8 @@ HRESULT CHandler::GetFileStream(UInt32 index, ISequentialInStream **stream, IInS
         return S_OK;
     }
 #endif
-    return GetStream_Node((unsigned)_refs[_items[index].Node], stream, false, false, NULL, source);
+    return GetStream_Node((unsigned)_refs[_items[index].Node], stream, false, false, NULL, source,
+                          mappingIncomplete);
 }
 
 Z7_COM7F_IMF(CHandler::GetStream(UInt32 index, ISequentialInStream **stream)) {

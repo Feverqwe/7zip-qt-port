@@ -200,12 +200,27 @@ def readonly_volume(kind):
 
 
 def extraction_volume(layout):
-    if layout == "verity":
+    if layout.startswith("verity"):
         from ext_verity_fixture import VerityVolume
         v = VerityVolume(salt=b"source failures")
+        if layout == "verity-tree":
+            fields = [struct.unpack_from("<IHHI", v.data, v.file_inode + 52 + i * 12)
+                      for i in range(4)]
+            entries = [(logical, length, physical) for logical, length, high, physical in fields]
+            left = v.allocate(v.extent_header(0, entries[:3], 4))
+            right = v.allocate(v.extent_header(0, entries[3:], 4))
+            v.extent_blocks.extend((left, right))
+            v.data[v.file_inode + 40:v.file_inode + 100] = v.extent_header(
+                1, [(entries[0][0], left), (entries[3][0], right)], 4)
+            v.put32(v.file_inode + 28, struct.unpack_from("<I", v.data, v.file_inode + 28)[0] + 4)
+            v.refresh()
     elif layout == "symlink":
         from ext_readlink_fixture import ReadlinkVolume
         v = ReadlinkVolume("block-nul")
+    elif layout == "extent-two-branches-full-prefix":
+        v = Volume("extent-two-branches")
+        v.size = 3 * v.block_size
+        v.put32(v.file_inode + 4, v.size)
     else:
         v = Volume(layout)
     bs = v.block_size
@@ -237,19 +252,32 @@ def extraction_volume(layout):
     else:
         # The classic fixture's superblock writer also updates allocation maps.
         v.superblock((13,))
-    if layout == "verity":
+    v.prefix_size = 0
+    if layout.startswith("verity"):
         v.failure_data = v.first_data
-        v.failure_metadata = v.descriptor_physical
-        v.failure_metadata_seek = v.metadata_physical * bs
+        v.failure_metadata = v.extent_blocks[-1] * bs if layout == "verity-tree" else v.descriptor_physical
+        v.failure_metadata_seek = v.failure_metadata if layout == "verity-tree" else v.metadata_physical * bs
     elif layout == "symlink":
         v.failure_data = v.first_data_offset
         v.failure_metadata = v.file_inode
     elif layout.startswith("extent"):
         v.failure_data = struct.unpack_from("<I", v.data, v.extent_blocks[0] * bs + 20)[0] * bs
         v.failure_metadata = v.extent_blocks[-1] * bs
+        if layout.startswith("extent-two-branches"):
+            v.prefix_size = 3 * bs
     else:
         v.failure_data = struct.unpack_from("<I", v.file_block)[0] * bs
-        v.failure_metadata = v.indirect[(12,)] * bs if v.indirect else v.failure_data
+        if layout == "double-subtree":
+            v.failure_metadata = v.indirect[(13, 1)] * bs
+            v.prefix_size = (12 + 2 * (bs // 4)) * bs
+        elif layout == "double-hole":
+            v.failure_metadata = v.indirect[(13,)] * bs
+            v.prefix_size = (12 + bs // 4) * bs
+        elif v.indirect:
+            v.failure_metadata = v.indirect[(12,)] * bs
+            v.prefix_size = 12 * bs
+        else:
+            v.failure_metadata = v.failure_data
     return v
 
 
@@ -317,6 +345,7 @@ if __name__ == "__main__":
                           "failure_data": getattr(v, "failure_data", 0),
                           "failure_metadata": getattr(v, "failure_metadata", 0),
                           "failure_metadata_seek": getattr(v, "failure_metadata_seek", getattr(v, "failure_metadata", 0)),
+                          "prefix_size": getattr(v, "prefix_size", 0),
                           "payload": v.read(0, v.size).hex() if layout.startswith("extract-") else "",
                           "healthy": getattr(v, "healthy", b"").hex()}))
     else:

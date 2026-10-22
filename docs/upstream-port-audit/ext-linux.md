@@ -6,6 +6,70 @@ tree boundaries, directory record boundaries and archive stream consumers.
 The second integrates Linux metadata and inline-data readers. The ext row remains
 open for the remaining read features listed below.
 
+## Readable prefixes before unavailable mapping metadata — 2026-10-22
+
+Recompared Linux `ext4_get_branch`/`ext4_ind_map_blocks`, `ext4_find_extent`
+and their read callers with the complete SDK indirect/extent materializers,
+mapped streams and extraction loop. Linux requests the map for a selected range;
+the SDK constructs a whole file map before returning its stream. A late
+unreadable or invalid metadata block therefore discarded an already validated
+file prefix. This follow-up extends the previous per-file I/O isolation without
+introducing a second mapping algorithm.
+
+The application's Extract path can now reuse the original materializers' known
+contiguous prefix after a mapping DataError. The original stream is bounded to
+that prefix; no unreadable indirect/extent tail is converted into sparse zeros.
+Extent traversal rolls back a tentative gap before a child that supplied no
+validated ranges. Earlier validated leaves, including real holes/unwritten
+ranges, remain readable. Normal metadata, checksum, system-zone, path and range
+checks still run. An incomplete map always reports per-file DataError, even when
+its readable prefix happens to cover the declared file size. Healthy selected
+siblings continue, while Abort/OOM and output/progress failures remain fatal.
+
+This extraction mode covers regular files and fscrypt's complete data units.
+Linux's policy validation bounds the data-unit size by the inode block size;
+the known block prefix does not authorize reading an unknown crypto unit.
+fs-verity still requires its complete validated mapping and verifier setup:
+readable ciphertext/plaintext alone does not authorize bypassing verification.
+Directories, EA/internal allocated-map consumers, symlink targets, public
+GetStream and standalone retain their strict stream-construction contracts.
+An incomplete map is not published as a valid directory, xattr or target string.
+No source write, repair, journal replay or new consent bypass is introduced.
+The supported result is a contiguous prefix, not arbitrary recovery of every
+disconnected later range.
+
+ABI fixtures cover direct/single/double-indirect boundaries, nested missing
+subtrees, first/later invalid extent children, gaps before failed children,
+verity metadata and a prefix equal to the full file size. Addressed Read/Seek,
+EOF, Abort/OOM, test-only mode, destination/progress failures, strict public
+GetStream and healthy retries remain covered. Existing metadata-alias and parent
+range regressions now assert exact safe prefixes with an error, retaining the
+prohibition on exposing filesystem/journal blocks. A child that has not validated
+its preceding gap cannot add zero bytes to that prefix.
+
+The existing 15 native synthetic fscrypt policy cases also run through the real
+CLI with a checksummed first leaf and an invalid next leaf. Fourteen ordinary
+encrypted files return their exact first plaintext block with an error; the
+verity combination publishes no unverified bytes. A separately stored healthy
+file still extracts exactly. Original fixture images remain unchanged; mutations
+and CLI copies belong to automatically cleaned temporary directories. These
+bounded tests are ordinary suites, not a new slow matrix. All 303 pinned Linux
+reference hashes were rechecked without mismatches. Broader ext source review
+remains open; this does not claim identical kernel recovery or native-mount
+acceptance of the synthetic corrupt trees.
+
+Local focused validation covered `ext`, `ext_stream`, `ext_fscrypt`,
+`ext_fscrypt_cli`, both ext backend suites and both provenance suites. Seven
+passed in the shared run; the ext CLI suite then passed in 4.88 seconds after
+its old blanket-empty assertions were replaced by the exact-prefix contracts
+described above. Final CLI/source checks passed on Linux and Windows in
+`20261022T083858Z-352b5422` (14.087/43.377 seconds); module ABI and both backend
+suites passed on both guests in `20261022T084026Z-39e995b5`. The application build
+and diff check passed. Existing incremental builds/compiler caches and current
+small receipts are retained; disposable fixture owners clean their temporary
+data. No full/slow suites, native UI appearance, physical-device, new native-mount
+or release-installation checks were run for this iteration.
+
 ## Per-file extraction source I/O isolation — 2026-10-22
 
 Recompared the complete original SDK extraction/copy loop, both mapped streams,

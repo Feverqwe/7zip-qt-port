@@ -11,6 +11,7 @@ import unittest
 import zlib
 from ext_modern_fixture import crc32c
 from ext_readlink_fixture import encrypted_link_size
+from ext_partial_fixture import encrypted_partial_map
 
 
 class FscryptCliTests(unittest.TestCase):
@@ -62,6 +63,30 @@ class FscryptCliTests(unittest.TestCase):
                     result = self.invoke(engine, "x", self.keys, case["name"] + "/link")
                     self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
                     self.assertEqual(result.stdout, case["symlink_target"].encode())
+
+    def test_partial_encrypted_maps_keep_only_verified_prefixes(self):
+        original = self.image_bytes
+        try:
+            cases = self.record["cases"]
+            for i, case in enumerate(cases):
+                with self.subTest(policy=case["name"]):
+                    self.image_bytes = encrypted_partial_map(original, case)
+                    self.image.write_bytes(self.image_bytes)
+                    result = self.invoke("7z", "x", self.keys, case["name"] + "/" + case["filename"])
+                    self.assertNotEqual(result.returncode, 0)
+                    # A complete encryption unit can be decrypted from the
+                    # first leaf. fs-verity additionally needs its missing map
+                    # and must never publish these bytes without verification.
+                    expected = b"" if case["verity"] else bytes.fromhex(case["plain_first"])
+                    self.assertEqual(result.stdout, expected)
+                    healthy = cases[(i + 1) % len(cases)]
+                    result = self.invoke("7z", "x", self.keys,
+                                         healthy["name"] + "/" + healthy["filename"])
+                    self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                    self.assertEqual(result.stdout, bytes.fromhex(healthy["plain_first"]) + bytes(4096) + b"end")
+        finally:
+            self.image_bytes = original
+            self.image.write_bytes(original)
 
     def test_unsigned_default_hash_versions_read_encrypted_names(self):
         original = self.image_bytes

@@ -468,7 +468,10 @@ class ExtStreamTests final : public QObject {
     }
     void fileSourceFailuresKeepHealthySiblings_data() {
         QTest::addColumn<QString>("layout");
-        for (const char *layout : {"direct", "single", "extent-tree", "verity", "symlink"})
+        for (const char *layout :
+             {"direct", "single", "double-hole", "double-subtree", "extent-tree",
+              "extent-two-branches", "extent-two-branches-full-prefix", "verity", "verity-tree",
+              "symlink"})
             QTest::newRow(layout) << QString::fromLatin1(layout);
     }
     void fileSourceFailuresKeepHealthySiblings() {
@@ -530,8 +533,11 @@ class ExtStreamTests final : public QObject {
                             QCOMPARE(callback->files[1], testOnly ? QByteArray() : healthy);
                             if (!testOnly) {
                                 QVERIFY(expected.startsWith(callback->files[0]));
-                                QVERIFY(callback->files[0].size() < expected.size());
-                                if (metadata || layout == "symlink")
+                                QVERIFY(callback->files[0].size() <= expected.size());
+                                if (metadata)
+                                    QCOMPARE(callback->files[0],
+                                             expected.left(record["prefix_size"].toInt()));
+                                else if (layout == "symlink")
                                     QVERIFY(callback->files[0].isEmpty());
                             }
                         }
@@ -554,13 +560,56 @@ class ExtStreamTests final : public QObject {
         QVERIFY(!failed);
         source->seekResult = S_OK;
     }
+    void incompleteExtentMappingsDoNotInventHoles_data() {
+        QTest::addColumn<QString>("layout");
+        QTest::newRow("first-child-invalid") << QString("extent-tree");
+        QTest::newRow("later-child-invalid") << QString("extent-two-branches");
+        QTest::newRow("verity-metadata-invalid") << QString("verity-tree");
+    }
+    void incompleteExtentMappingsDoNotInventHoles() {
+        QFETCH(QString, layout);
+        const auto record = bundle("extract-" + layout);
+        auto damaged = image(record);
+        const auto offset = qsizetype(record["failure_metadata"].toDouble());
+        QVERIFY(offset > 0 && offset < damaged.size());
+        damaged[offset] ^= 1;
+        CMyComPtr<IInStream> input = new Input(damaged);
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        const UInt32 indices[] = {fileIndex(), fileIndex("healthy space.bin")};
+        QVERIFY(indices[0] != UInt32(-1) && indices[1] != UInt32(-1));
+        const QByteArray expected = QByteArray::fromHex(record["payload"].toString().toLatin1());
+        const QByteArray healthy = QByteArray::fromHex(record["healthy"].toString().toLatin1());
+        for (bool testOnly : {false, true}) {
+            CMyComPtr2<IArchiveExtractCallback, Extract> callback;
+            callback.Create_if_Empty();
+            callback->separateFiles = true;
+            QCOMPARE(archive_->Extract(indices, 2, testOnly, callback), S_OK);
+            QCOMPARE(callback->results,
+                     QVector<Int32>({NArchive::NExtract::NOperationResult::kDataError,
+                                     NArchive::NExtract::NOperationResult::kOK}));
+            QCOMPARE(callback->files[0],
+                     testOnly ? QByteArray() : expected.left(record["prefix_size"].toInt()));
+            QCOMPARE(callback->files[1], testOnly ? QByteArray() : healthy);
+        }
+        CMyComPtr<IInArchiveGetStream> provider;
+        QCOMPARE(
+            archive_->QueryInterface(IID_IInArchiveGetStream, reinterpret_cast<void **>(&provider)),
+            S_OK);
+        CMyComPtr<ISequentialInStream> stream;
+        QCOMPARE(provider->GetStream(indices[0], &stream), S_FALSE);
+        QVERIFY(!stream);
+    }
     void extractionPrefixesPreserveConsumerFailures_data() {
         QTest::addColumn<QString>("layout");
-        QTest::newRow("direct") << QString("direct");
-        QTest::newRow("extent") << QString("extent-tree");
+        QTest::addColumn<bool>("metadata");
+        QTest::newRow("direct") << QString("direct") << false;
+        QTest::newRow("extent") << QString("extent-tree") << false;
+        QTest::newRow("indirect-metadata") << QString("single") << true;
+        QTest::newRow("extent-metadata") << QString("extent-two-branches") << true;
     }
     void extractionPrefixesPreserveConsumerFailures() {
         QFETCH(QString, layout);
+        QFETCH(bool, metadata);
         const auto record = bundle("extract-" + layout);
         auto *source = new Input(image(record));
         CMyComPtr<IInStream> input = source;
@@ -570,13 +619,15 @@ class ExtStreamTests final : public QObject {
         QVERIFY(indices[1] != UInt32(-1));
         source->maxRead = 37;
         source->partialFailure = true;
-        source->failAt = UInt64(record["failure_data"].toDouble()) + 48;
+        source->failAt = UInt64(record[metadata ? "failure_metadata" : "failure_data"].toDouble()) +
+                         (metadata ? 0 : 48);
         const QByteArray expected = QByteArray::fromHex(record["payload"].toString().toLatin1());
         CMyComPtr2<IArchiveExtractCallback, Extract> prefix;
         prefix.Create_if_Empty();
         prefix->separateFiles = true;
         QCOMPARE(archive_->Extract(indices, 2, 0, prefix), S_OK);
-        const qsizetype prefixSize = (layout == "direct" ? 0 : 2048) + 48;
+        const qsizetype prefixSize =
+            metadata ? record["prefix_size"].toInt() : (layout == "direct" ? 0 : 2048) + 48;
         QCOMPARE(prefix->files[0], expected.left(prefixSize));
         QCOMPARE(prefix->results, QVector<Int32>({NArchive::NExtract::NOperationResult::kDataError,
                                                   NArchive::NExtract::NOperationResult::kOK}));

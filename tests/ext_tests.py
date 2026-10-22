@@ -123,9 +123,14 @@ class ExtTests(unittest.TestCase):
                         "extent", "extent-unwritten", "extent-index", "xattr"):
             for target in ("super", "gdt", "block-map", "inode-map", "table", "journal"):
                 with self.subTest(mapping=mapping, target=target):
-                    result = self.run_image(BlockVolume(mapping, target))
+                    volume = BlockVolume(mapping, target)
+                    result = self.run_image(volume)
                     self.assertNotEqual(result.returncode, 0)
-                    self.assertEqual(result.stdout, b"")
+                    # A bad indirect data reference does not invalidate the
+                    # preceding direct blocks. Never publish the metadata alias
+                    # itself, or fabricate a zero block in its place.
+                    expected = volume.read(0, 12 * volume.block_size) if mapping == "indirect-data" else b""
+                    self.assertEqual(result.stdout, expected)
 
     def test_reserved_journal_blocks_remain_readable_by_their_owner(self):
         volume = BlockVolume(target="journal-owner")
@@ -705,7 +710,8 @@ class ExtTests(unittest.TestCase):
                         v.data[root:root + 60] = v.extent_header(1, [(2, block), (3, block)], 4)
                     result = self.run_image(v, engine)
                     self.assertIn(result.returncode, (1, 2), result.stderr.decode(errors="replace"))
-                    self.assertEqual(result.stdout, b"")
+                    expected = v.read(0, 3 * v.block_size) if engine == "7z" and fault == "child-overrun" else b""
+                    self.assertEqual(result.stdout, expected)
 
     def test_invalid_directory_records_terminate(self):
         for engine in ("7z", "7zz"):
