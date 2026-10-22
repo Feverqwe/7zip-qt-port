@@ -124,11 +124,11 @@ filesystem UI; физические носители и системная ав�
 | ISO9660 | `fs/isofs` | [Read-side source audit закрыт](isofs-linux.md#итоговая-сверка-read-side-source-scope--2026-10-22): descriptors/geometry, namespace/metadata, sections/extents и zisofs; standalone, archive/platform и runtime границы записаны отдельно. |
 | UDF | `fs/udf` | [Read-side source audit закрыт](udf-linux.md#итоговая-сверка-read-side-source-scope--2026-10-20): volume/partition, inode/FID, extents и embedded data; archive/platform и runtime границы записаны отдельно. |
 | EROFS (новый модуль) | `fs/erofs` | [Read-side source audit закрыт](erofs-linux.md#read-side-source-audit-closure--2026-10-22): C readers, зависимости, исправления metadata/device/namespace границ и archive consumers; runtime, VFS и recovery границы записаны отдельно. |
-| Base64 | `lib/base64.c`, fscrypt/Ceph callers | Standard/URL-safe/IMAP alphabets, padding/tail validation и archive handler lifecycle. |
+| Base64 | `lib/base64.c`, fscrypt/Ceph callers | [Read-side source audit закрыт](base64-linux.md#итоговая-read-side-сверка--2026-10-23): standard/URL-safe/IMAP alphabets, padding/tail validation и archive handler lifecycle; caller/platform границы описаны отдельно. |
 | ELF | `fs/binfmt_elf.c`, `fs/binfmt_elf_fdpic.c`, kexec/module readers | Headers, table/payload spans, Linux core numbering, metadata и archive streams; execution services не входят в byte reader. |
 | PE | `crypto/asymmetric_keys/verify_pefile.c`, kexec callers | Headers, certificate/file spans и byte streams; общий COFF consumer проверяется вместе, kernel trust/execution — отдельные contracts. |
 | EFI capsules | `drivers/firmware/efi/capsule-loader.c`, `capsule.c`, x86 EFI quirks | Common header/payload и Quark mapping; UEFIf проверяется как общий SDK consumer, firmware updates не выполняются. |
-| Intel HEX | AS102/IQS5xx ASCII firmware readers | Extended address/EOF/separators, errors/streams и явный IQS5xx map profile; binary ihex_binrec — другой format. |
+| Intel HEX | AS102/IQS5xx ASCII firmware readers | [Read-side source audit закрыт](ihex-linux.md#итоговая-read-side-сверка--2026-10-23): extended address/EOF/separators, errors/streams и явный IQS5xx map profile; binary ihex_binrec и hardware services отделены от archive scope. |
 | TAR | Marvell CPT `load_tar_archive` | [Read-side source audit закрыт](tar-linux.md#итоговая-read-side-сверка--2026-10-22): header/payload traversal и terminal records; physical layout служебных записей, GNU/PAX/sparse и writer boundaries описаны отдельно. |
 | Legacy LZ4, lzop | `lib/decompress_unlz4.c`, `decompress_unlzo.c` | [Framing readers](linux-frames.md), bounded C callbacks, consumed boundary, checksum и nested CPIO consumers. |
 

@@ -1,5 +1,24 @@
 # Base64: alphabets, canonical tails и handler lifecycle
 
+## Итоговая read-side сверка — 2026-10-23
+
+Read-side source audit Base64 закрыт для archive projection ниже на закреплённой
+Linux revision. Повторно сравнены полные `base64_decode`, alphabet tables и
+tail/padding branches с текущими `Base64Code`, probe, in-place decoder,
+Open/Extract и их callers. Все шесть reference hashes manifest совпали.
+
+Все три alphabets, padded/unpadded groups, canonical tail bits и error paths
+подключены к исходному SDK reader. Caller-selected kernel variant заменён
+последовательным определением совместимого alphabet из archive input.
+Whitespace envelope, extension policy, cached archive operation и отдельная
+DMG/XML overload остаются явно описанными adapters/границами. Kernel encoder
+и host fscrypt/Ceph services не входят в read-only archive contract.
+
+Новых source-visible read gaps не обнаружено; код не менялся. Прежние CLI/ABI
+и compiled-reference checks приведены ниже. После изменения общего archive
+discovery Base64 CLI обоих engines повторно прошёл macOS validation `fb09caf3`;
+это не расширяет перечисленные ниже платформенные/runtime свидетельства.
+
 ## Source comparison
 
 7-Zip: <https://github.com/ip7z/7zip.git>, commit

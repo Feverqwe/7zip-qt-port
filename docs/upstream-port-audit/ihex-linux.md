@@ -1,5 +1,23 @@
 # Intel HEX: ASCII records и IQS5xx profile
 
+## Итоговая read-side сверка — 2026-10-23
+
+Read-side source audit ASCII Intel HEX закрыт на закреплённом Linux commit
+для описанной ниже archive projection. Повторно сопоставлены полные
+`atohx`/`parse_hex_line`, `iqs5xx_fw_file_parse`, их address/checksum/type/EOF
+branches и текущие SDK probe/record assembly, IQS profile и owned streams.
+Все пять reference hashes manifest совпали с текущим snapshot.
+
+Generic reader сохраняет extended/start records и полный 32-bit address span;
+явный IQS profile передаёт vendor map, overlap, separators и settings exception
+без автоматического ослабления generic checksum policy. Более строгий отказ
+malformed input и отличие от отдельного binary ihex_binrec объяснены ниже.
+Firmware acquisition/upload, I2C/USB и device update/verify не относятся к
+архивному чтению и не переносились. Нового пропущенного read feature не найдено.
+
+Эта повторная сверка не меняет production code и не добавляет runtime acceptance.
+Применимая CLI/ABI/reference evidence и ограничения платформ указаны ниже.
+
 ## Source comparison
 
 7-Zip: <https://github.com/ip7z/7zip.git>, commit
