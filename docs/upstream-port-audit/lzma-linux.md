@@ -72,9 +72,9 @@ Actual output в несколько петабайт не создавался: 
 
 LZMA86 — дополнительная совместимость 7-Zip, отсутствующая у Linux unlzma;
 сохранены обе filter ветви и явный type selection. Отдельные LZMA concatenated
-members не заменяют composite initramfs и его общий CPIO state. Этот scope,
-оставшиеся bzip2/XZ/Zstd comparisons и census других shared formats остаются
-в [едином реестре](filesystems-linux.md).
+members не заменяют [composite initramfs](cpio-linux.md#composite-initramfs--2026-10-20)
+и его общий CPIO state. Завершённый format census и отдельные bzip2/XZ/Zstd
+comparisons связаны из [единого реестра](filesystems-linux.md).
 
 ## Validation
 

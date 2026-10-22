@@ -62,13 +62,11 @@ DEFLATE и прибавляет восемь bytes footer к consumed size. Он
 старого magic, и его отказ не является пропущенной read feature.
 Сохранены более широкие optional gzip fields и member concatenation 7-Zip.
 
-Это итерация gzip archive reader. Composite initramfs, raw/compressed member
-transitions, точные границы каждого decompressor и общий CPIO hard-link state
-остаются открытыми в [едином реестре](filesystems-linux.md). Простое объединение
-выхода нескольких compressed members не доказывает соответствие initramfs:
-Linux требует отдельного завершения CPIO state при выходе каждого decompressor.
-Для LZO/LZ4 добавлены [GPL framing readers](linux-frames.md) в dynamic runtime;
-они дополняют Linux block decoders файловых систем, но ещё не общий dispatcher.
+Standalone gzip дополняется [composite initramfs](cpio-linux.md#composite-initramfs--2026-10-20):
+raw/compressed transitions, exact consumed boundaries и общий CPIO hard-link
+state подключены к единому dispatcher, включая [LZO/LZ4 readers](linux-frames.md).
+Это отдельная проверка от простого объединения decoded members: Linux требует
+завершённого CPIO state на выходе каждого decompressor.
 
 ## Validation
 

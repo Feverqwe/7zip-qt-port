@@ -180,6 +180,8 @@ class CpioStreamTests final : public QObject {
             QTest::newRow(qPrintable(QString::fromLatin1(method) + "-symlink-trailer"))
                 << "initramfs:" + QString::fromLatin1(method) + "-symlink-trailer";
         }
+        QTest::newRow("zstd-wide-window") << QStringLiteral("initramfs:zstd-wide-window");
+        QTest::newRow("zstd-window-limit") << QStringLiteral("initramfs:zstd-window-limit");
     }
     void streams() {
         QFETCH(QString, kind);

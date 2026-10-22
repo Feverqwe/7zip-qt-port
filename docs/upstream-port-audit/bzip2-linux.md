@@ -62,11 +62,10 @@ fixture не добавлялся, и новая native acceptance этого р
 Single-thread boot decoder Linux не заменяет существующий multithread decoder
 архива; обе ветви 7-Zip проверяются отдельно.
 
-Это законченная итерация standalone bzip2 read scenario. Composite initramfs,
-границы отдельного decompressor и общий CPIO hard-link state остаются
-в [едином реестре](filesystems-linux.md). Простой concatenated bzip2 output
-не доказывает соответствие всей грамматике initramfs. Запись файловых систем,
-boot/VFS и реальные носители здесь не проверяются.
+Standalone bzip2 дополнен [composite initramfs](cpio-linux.md#composite-initramfs--2026-10-20)
+с single-member boundary и общим CPIO hard-link state. Простой concatenated
+bzip2 output сам по себе не доказывает соответствие этой грамматике.
+Запись файловых систем, boot/VFS и реальные носители здесь не проверяются.
 
 ## Validation
 

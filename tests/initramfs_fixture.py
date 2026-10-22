@@ -31,10 +31,11 @@ def compress(method, data):
 CASES = tuple(m + "-" + case for m in METHODS for case in (
     "single", "no-trailer", "concat", "raw-first", "raw-last", "links", "trailer-reset",
     "empty-after", "zeros-after", "final-zeros", "large", "raw-final-unpadded",
-    "zeros-before-header", "symlink-trailer")) + ("mixed", "leading-zeros", "xz-multiple-blocks")
+    "zeros-before-header", "symlink-trailer")) + (
+        "mixed", "leading-zeros", "xz-multiple-blocks", "zstd-wide-window", "zstd-window-limit")
 BAD = tuple(m + "-" + case for m in METHODS for case in (
     "split-header", "split-body", "split-padding", "empty-first", "zeros-first",
-    "truncated", "junk", "raw-unaligned"))
+    "truncated", "junk", "raw-unaligned")) + ("zstd-window-exceeded",)
 
 
 def volume(kind):
@@ -42,7 +43,14 @@ def volume(kind):
     first, second = record("данные 空.txt", b"first payload"), record("second", b"second body", ino=2, crc=True)
     files = {"данные 空.txt": b"first payload"}
     image = compress(method, first + trailer())
-    if case == "large":
+    if method == "zstd" and case in ("wide-window", "window-limit", "window-exceeded"):
+        # A known small content size bounds SDK allocation despite the declared window.
+        frame = zstd_raw(first + trailer(), fcs=4)
+        maximum = 31 if sys.maxsize > (1 << 32) else 30
+        window_log = {"wide-window": 28, "window-limit": maximum,
+                      "window-exceeded": 32}[case]
+        image = frame[:4] + bytes((frame[4] & ~0x20, (window_log - 10) << 3)) + frame[5:]
+    elif case == "large":
         files = {"large": bytes(range(256)) * 768}
         image = compress(method, record("large", files["large"]) + trailer())
     elif case == "multiple-blocks":

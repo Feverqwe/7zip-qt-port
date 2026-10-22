@@ -58,9 +58,41 @@ runtime. Kernel wrapper comments о старом window limit не исполь�
 
 Kernel initramfs dispatcher распознаёт обычный Zstd magic; поддержка skip frames
 в lib/zstd не доказывает их автоматический выбор в boot parser. Проверенное
-archive discovery шире этого dispatch. Composite initramfs и полный census
-оставшихся форматов открыты в [едином реестре](filesystems-linux.md).
+archive discovery шире этого dispatch. [Composite initramfs](cpio-linux.md#composite-initramfs--2026-10-20)
+подключает Zstd single-frame boundary к общему CPIO state; полный format census
+зафиксирован в [едином реестре](filesystems-linux.md).
 Эта итерация не заявляет boot/VFS acceptance.
+
+### Window boundary initramfs — 2026-10-22
+
+Повторно сравнены полный `__unzstd`, header parser, `zstd_init_dstream`,
+`ZSTD_DCtx_resetParameters` и single-pass/streaming branches
+`ZSTD_decompressStream` с `DecodeZstd` в initramfs adapter. Header bounds
+определяются действующими `ZSTD_WINDOWLOG_MAX_32=30`/`_64=31` из
+`include/linux/zstd_lib.h`; комментарий boot wrapper о 128 MB не определяет
+этот read limit. Adapter ошибочно применял 128 MiB как безусловный отказ.
+
+Теперь он использует unsigned bound соответствующей разрядности size_t.
+Исходный SDK decoder, memory validation, frame end и consumed boundary сохранены.
+Standalone Zstd продолжает свой более широкий SDK scope; изменение относится
+только к composite initramfs. Linux streaming context также имеет отдельный
+default window limit 27, но complete known-size frame может пройти его
+single-pass shortcut. Поэтому header bound и каждый runtime path различаются:
+из этого изменения не следует native streaming acceptance любых больших frames.
+
+Новые обычные fixtures имеют маленький известный content size и объявленные
+окна 256 MiB, предельное для разрядности и превышающее предел. SDK выделяет
+буфер по известному content size; большие allocations тест не создаёт.
+До исправления оба positive cases дали E_NOTIMPL через CLI и ABI. После
+исправления exact extraction/retained streams проходят, oversized frame
+отклоняется. Compiled Linux buffer decoder подтвердил bytes обоих positives
+и отказ negative; это не запуск boot streaming wrapper с большим workspace.
+
+macOS `initramfs`, `cpio`, `cpio_stream`, `zstd`, `zstd_stream`,
+`source_link_extract`, `upstream_baseline` — 7/7 PASS, 6.65 s. Использованы
+прежние incremental build/cache; SDK overlays не менялись. Linux/Windows,
+32-bit runtime, slow suites и native boot в эту проверку не входят.
+Финальный macOS application target собран с обновлённым module.
 
 ## Validation
 

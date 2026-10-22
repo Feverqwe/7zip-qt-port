@@ -107,6 +107,8 @@ HRESULT DecodeXz(ISequentialInStream *input, ISequentialOutStream *output,
 
 HRESULT DecodeZstd(ISequentialInStream *input, ISequentialOutStream *output,
                    ICompressProgressInfo *progress, UInt64 &consumed) {
+    // Linux unzstd uses ZSTD_WINDOWLOG_MAX; its old 128 MB comment is stale.
+    constexpr UInt64 maxWindowSize = UInt64(1) << (sizeof(size_t) == 4 ? 30 : 31);
     const auto deleter = [](CZstdDec *decoder) { ZstdDec_Destroy(decoder); };
     std::unique_ptr<CZstdDec, decltype(deleter)> decoder(
         ZstdDec_Create(&g_AlignedAlloc, &g_BigAlloc), deleter);
@@ -137,7 +139,7 @@ HRESULT DecodeZstd(ISequentialInStream *input, ISequentialOutStream *output,
         }
         if (result != SZ_OK)
             return SResToHRESULT(result);
-        if (state.info.windowSize_MAX > (UInt64(1) << 27))
+        if (state.info.windowSize_MAX > maxWindowSize)
             return E_NOTIMPL;
         if (state.status == ZSTD_STATUS_FINISHED_FRAME) {
             CZstdDecResInfo info;

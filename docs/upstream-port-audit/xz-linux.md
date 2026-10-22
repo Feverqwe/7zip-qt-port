@@ -65,8 +65,8 @@ properties/chains 7-Zip сохранены без новой acceptance этих
 
 Standalone XZ требует padding кратный четырём. Внешний initramfs parser Linux
 пропускает произвольные NUL gaps; это отдельный контракт. Concatenated XZ
-проверен здесь, а composite initramfs с общим CPIO state остаётся открытым в
-[едином реестре](filesystems-linux.md). Kernel boot/VFS не проверялись.
+проверен здесь, а [composite initramfs](cpio-linux.md#composite-initramfs--2026-10-20)
+подключает single-stream boundary к общему CPIO state. Kernel boot/VFS не проверялись.
 
 ## Validation
 

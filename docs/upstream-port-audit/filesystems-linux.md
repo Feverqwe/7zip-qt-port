@@ -239,28 +239,30 @@ optional callback, error cleanup и cached extraction. Фактический с
 [Сверка Zstd](zstd-linux.md): автоматическое открытие leading skippable frames,
 размеры и cleanup Open, parse overflow, source HRESULT в Code/Read и
 PrepareOperation/final progress cancellation. Проверены оба engines,
-native ZIP и backend; composite initramfs и census остаются открытыми.
+native ZIP и backend; composite initramfs подключён ниже. Повторная сверка
+исправила устаревший безусловный 128 MiB window limit его Zstd adapter;
+действующие header bounds и native streaming ограничения описаны в linked audit.
 
 ### XZ: streams, Index и random access
 
 [Сверка XZ](xz-linux.md): длинный padding, пустой EOF stream, независимое
 время жизни выданных streams, source HRESULT и Open/Extract cancellation.
 Проверены Linux BCJ filters, integrity, оба engines, native ZIP и backend.
-Composite initramfs и оставшийся census форматов остаются открытыми.
+Composite initramfs подключён ниже; его границы отделены от standalone XZ.
 
 ### Bzip2: end padding, CRC и cancellation
 
 [Сверка bzip2](bzip2-linux.md): unused end bits больше не превращаются в
 DataError, учитываются Open и последний Extract callback. CRC и общий
 decoder сохранены; проверены levels, selectors, blocks, streams и I/O errors.
-Composite initramfs этим не закрывается.
+Single-member consumer для composite initramfs описан ниже.
 
 ### LZMA: headers, dictionary и ошибки чтения
 
 [Сверка LZMA](lzma-linux.md): arbitrary dictionary fields, 64-bit declared size,
 пустой первый member, bounded probe и source HRESULT в общем decoder.
 Подключены оба shipped engines и локальный ZIP consumer; LZMA86 сохранён.
-Это не завершение composite initramfs или оставшихся compression formats.
+Single-member consumer и остальные compression audits связаны ниже.
 
 ### Gzip: probe, metadata и member extraction
 
