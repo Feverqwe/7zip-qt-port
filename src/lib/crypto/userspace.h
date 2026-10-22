@@ -190,10 +190,5 @@ static inline bool check_add_overflow(u64 a, u64 b, u64 *result)
 	*result = a + b;
 	return *result < a;
 }
-static inline unsigned __ffs(unsigned long v)
-{
-	unsigned n = 0;
-	while (!(v & 1)) { v >>= 1; ++n; }
-	return n;
-}
+#include "../../include/asm-generic/bitops/__ffs.h"
 #endif

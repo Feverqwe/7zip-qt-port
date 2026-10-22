@@ -10,6 +10,77 @@ fs-verity now reuses the original shared Linux string scanner already linked
 for fscrypt. Source scope and validation are recorded with the
 [shared string-service transfer](erofs-linux.md#original-shared-string-services--2026-10-22).
 
+## ECC and ML-DSA dependency source comparison — 2026-10-22
+
+Compared complete selected units against Linux
+`58161ead29e50d70a317ea26b472e0c7508e69da`:
+`crypto/{ecc,ecdsa,ecdsa-x962,ecdsa-p1363,ecrdsa,mldsa}.c` and
+`lib/crypto/mldsa.c`. Of 121 complete local function bodies, 104 match after
+comments/whitespace, twelve retain the adaptations below and five construct
+owned fixed providers. Reviewed curve/parameter tables, schemas, headers,
+provider metadata, consumers and cleanup paths with those bodies. No missing
+selected signature-verification branch was established.
+
+| Selected unit | Complete-body result and host boundary |
+| --- | --- |
+| ECC arithmetic | Fifty of 54 bodies match, including point allocation, conversion, full/partial public-point validation, multiplication, Shamir combination and field/modular arithmetic. Four bodies replace compiler carry/borrow intrinsics with equivalent unsigned overflow services. Half-word multiplication and reductions retain original control flow. |
+| ECDSA | Thirteen of fourteen bodies match. One constructor replaces registration for all four original NIST curve providers. Original key reset/validation, scalar checks, digest truncation, point verification and error results remain present. |
+| X9.62 encoding | Eight of eleven bodies match. Integer conversion uses a byte pointer, initialization allocates the fixed child instead of spawning an instance, and one constructor replaces registration. The unchanged ASN.1 schema still supplies both scalar callbacks to the original verifier. |
+| P1363 encoding | Five of eight bodies match. Verify uses C byte-pointer arithmetic, initialization selects the fixed child and one constructor replaces registration. Original signature-length, coordinate-width and key/digest-size forwarding remain connected. |
+| ECRDSA | Seven of ten bodies match. Two use C byte-pointer arithmetic; one constructor replaces module registration. Original curve/digest OID selection, parameter/key parsing, public-point checks, scalar/digest limits and signature arithmetic remain present. |
+| ML-DSA wrapper/library | Ten of eleven wrapper bodies match and one constructor selects the original three parameter sets. Eleven of thirteen library bodies match; sampling uses C11 zero initialization and verification explicitly wipes/frees its workspace on all allocated exits instead of a cleanup attribute. Key/signature length gates, coefficient/hint validation, SHAKE domain separation, transforms, challenge reconstruction and result codes retain the original algorithms. |
+
+Both complete curve-definition headers match byte-for-byte, including all four
+NIST curves and five implemented GOST curves. The two GOST parameter sets not
+implemented by Linux retain rejection. ECDSA and ECRDSA schemas also match
+byte-for-byte, with generated callbacks connected by the existing CMake owner.
+ECC headers retain functional types/helpers with host includes and the removed
+kernel sparse annotation. Portable carry/borrow services use the original generic
+path and exact unsigned 64-bit operations; no architecture intrinsic or native
+unsigned-long-long pointer assumption is required. Private-key generation,
+public-key generation and ECDH random services are omitted from this signature
+read scenario, not substituted with archive implementations.
+
+ML-DSA's transform constants and parameter values match the pin. Parameter-table
+positions and nested algorithm metadata use sequential/nested C11 initializers;
+host pointer width selects the original inline policy. Its three constructors
+retain key ownership, parameter-set initialization and unsupported signing/private
+key callbacks. Library workspace size depends only on those selected parameter
+sets. Length/decode failures, challenge mismatch and success all reach sensitive
+release after allocation. SHAKE and inverse-memory scanning use their existing
+original shared implementations. The enabled library remains pure ML-DSA with
+an empty context as in Linux; no extra algorithm or signing workflow is claimed.
+
+Dependency review found a remaining independent `__ffs` loop in the shared crypto
+host header, while the complete original generic bit-scan header was already
+transferred for MPI. Removed that duplicate and connected all crypto consumers
+to `asm-generic/bitops/__ffs.h`. Its complete original algorithm is authoritative;
+the host include adaptation and guards also support inclusion through MPI's
+count-zero header. The nonzero-input contract is unchanged: XOR calls it only
+for a nonzero relative-alignment mask. This source-fidelity correction does not
+add a new behavior contract or implementation-presence regression. Existing
+unaligned/in-place cipher known answers exercise the affected XOR consumer;
+signature and ext suites cover its other direct consumers.
+
+This completes source comparison of the selected crypto dependencies used by
+the archive fscrypt/fs-verity readers, together with the preceding component
+sections and their stated host adaptations/omissions. It does not establish a
+complete kernel Crypto API, FIPS certification, private-key operations or whole
+ext/parent-format completion.
+
+Validation on macOS: the final nineteen focused crypto/signature/certificate/
+hash/ext/NTFS/device/provenance suites passed (30.15 s), and the incremental
+application build passed. The first twelve-suite crypto/ext batch passed before
+the application build exposed that NTFS includes the shared header without the
+crypto target's include search path. The final include is relative to its owner;
+the application was rebuilt and all nineteen suites passed afterward. Existing
+runtime/build/compiler caches were reused. No disposable task fixture/output
+remained; unrelated retained fixture helpers and build products were preserved.
+All 305 reference hashes match and `git diff --check` passed. This portable
+source-sharing change does not alter platform services; remote validation was
+not repeated. Full/slow, native-device, appearance and installation gates were
+not run. Whole ext and the parent format review remain active.
+
 ## RSA, MPI and signature-request source comparison — 2026-10-22
 
 Completed comparison with Linux `58161ead29e50d70a317ea26b472e0c7508e69da`
