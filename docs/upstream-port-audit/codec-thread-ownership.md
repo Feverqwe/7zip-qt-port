@@ -73,3 +73,42 @@ follows from this nonvisual change.
 Application builds and all six selected suites passed on macOS arm64 (7.50 s),
 Linux x64 (8.74 s) and Windows x64 (12.68 s), using Qt 6.12 and the persistent
 incremental builds/caches. Guest evidence: `20261018T124053Z-a5f7c10a`.
+
+## Opening during discovery — 2026-10-22
+
+An opening immediately after launching File Manager could snapshot an absent
+catalog while asynchronous discovery still owned the backend. Its subsequent
+process listing then failed the busy check with `E_FAIL`; a later retry worked.
+Compared original `CAgent::Open`, `CFfpOpen`, `CPanel::OpenAsArc_Msg`,
+`OpenAsArc_Index` and `OpenItem` bodies/callers at the revision above with Qt
+discovery, opening, progress and command guards. Original codec loading is
+synchronous; there is no upstream asynchronous readiness service to transplant.
+
+The existing Qt opening worker now awaits the current discovery transaction
+before obtaining its immutable catalog lease. State/subscription/publication
+stay on the GUI thread, and cancellation uses the original progress callback.
+Cancelling this opening releases its subscription without cancelling shared
+discovery. Failed/missing-module discovery retains the existing process fallback;
+handler selection, decoding and library-loading bodies are unchanged.
+
+The original `OpenAsArc_Msg` already reports non-`S_FALSE` failures, and its
+`OpenItem` caller reported the same HRESULT again. Removed that second call in
+the Qt port while preserving error propagation, encrypted refusal and external
+fallback decisions. This is an intentional presentation correction to upstream.
+
+A controlled delayed-module fixture reproduced `E_FAIL` before the fix. Agent
+tests now cover opening during discovery, cancellation and retry after shared
+discovery finishes. A command-driven UI regression reproduced two dialogs on
+the unchanged production sources and now requires exactly one, an unchanged
+folder after failure and a successful retry. Its fixtures use local temporary
+archives, including Unicode/spaces and a misleading `.pkg` suffix.
+
+Final incremental application build and six ordinary macOS suites passed:
+`agent_opening`, `native_folder_opening`, `archive_opening`, `codec_catalog`,
+`codec_probe`, `upstream_baseline` (7.40 s). The new UI case passed separately
+with offscreen and native Cocoa. A wider `panel_activation` run exposed existing
+Enter-routing failures; the representative `modifierWorkflow:0-0-3-0-0-0`
+also fails with all production changes reverted to the preceding commit.
+Full acceptance of that matrix is not claimed. No slow suites, Linux/Windows
+checks or installed-application replacement were performed. The user's package
+was only listed read-only for diagnosis, never executed or extracted to disk.

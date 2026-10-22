@@ -18,6 +18,7 @@
 #include <QMutex>
 #include <QMutexLocker>
 #include <QScopeGuard>
+#include <QSemaphore>
 #include <QThread>
 #include <atomic>
 
@@ -44,9 +45,9 @@ struct QtArchiveFolderManager::COpenServices final : IQtAgentOpenServices {
                   IProgress *progress, bool ownedStreamFile, const COpenOptions *requested)
         : Manager(manager), Progress(progress), OwnedStreamFile(ownedStreamFile),
           Requested(requested), Format(format ? format : L""),
-          Lease(new QtArchiveFileResource(QString::fromWCharArray(path))),
-          Catalog(manager._backend.codecCatalog()) {}
+          Lease(new QtArchiveFileResource(QString::fromWCharArray(path))) {}
     HRESULT LoadCodecs(const CCodecs *&codecs) override {
+        RINOK(Manager.WaitForCodecCatalog(Catalog, Progress))
         codecs = Catalog && Catalog->result() == S_OK ? &Catalog->nativeCodecs() : nullptr;
         static_cast<QtArchiveFileResource *>(Lease.Interface())->AttachCodecCatalog(Catalog);
         return S_OK;
@@ -56,6 +57,49 @@ struct QtArchiveFolderManager::COpenServices final : IQtAgentOpenServices {
         return Manager.OpenLinkImpl(link, options, *this);
     }
 };
+
+HRESULT
+QtArchiveFolderManager::WaitForCodecCatalog(std::shared_ptr<const ArchiveCodecCatalog> &catalog,
+                                            IProgress *progress) {
+    struct Request {
+        QSemaphore Ready;
+        std::atomic<bool> Cancelled{false};
+        QMetaObject::Connection Connection;
+        std::shared_ptr<const ArchiveCodecCatalog> Catalog;
+    };
+    const auto request = std::make_shared<Request>();
+    QMetaObject::invokeMethod(
+        this,
+        [this, request] {
+            if (request->Cancelled.load())
+                return;
+            const auto complete = [this, request] {
+                request->Catalog = _backend.codecCatalog();
+                QObject::disconnect(request->Connection);
+                request->Ready.release();
+            };
+            if (_backend.discoveringCodecs())
+                request->Connection =
+                    connect(&_backend, &ArchiveBackend::codecCatalogReady, this, complete);
+            else
+                complete();
+        },
+        Qt::QueuedConnection);
+    auto *callback = dynamic_cast<COpenCallbackImp *>(progress);
+    CNativeOpenProgress nativeProgress(progress, callback ? callback->Callback : nullptr);
+    while (!request->Ready.tryAcquire(1, 10)) {
+        const HRESULT result = nativeProgress.Open_CheckBreak();
+        if (result != S_OK) {
+            request->Cancelled.store(true);
+            QMetaObject::invokeMethod(
+                this, [request] { QObject::disconnect(request->Connection); },
+                Qt::QueuedConnection);
+            return result;
+        }
+    }
+    catalog = std::move(request->Catalog);
+    return nativeProgress.Open_CheckBreak();
+}
 
 QtArchiveFolderManager::QtArchiveFolderManager(ArchiveBackend &backend) : _backend(backend) {
     connect(&backend, &ArchiveBackend::infoReady, this, [this](const ArchiveInfo &info) {

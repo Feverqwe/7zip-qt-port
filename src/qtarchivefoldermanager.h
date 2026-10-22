@@ -25,6 +25,8 @@ class QtArchiveFolderManager final : public QObject,
     std::shared_ptr<const ArchiveCodecCatalog> _associationCatalog;
     std::unique_ptr<CArchiveFolderManager> _associationManager;
     CArchiveFolderManager *AssociationManager();
+    HRESULT WaitForCodecCatalog(std::shared_ptr<const ArchiveCodecCatalog> &catalog,
+                                IProgress *progress);
     void Start(const std::shared_ptr<CRequest> &request, const QString &path, const QString &format,
                const QString &password);
     HRESULT OpenFolderFileImpl(IInStream *stream, const wchar_t *path, const wchar_t *format,

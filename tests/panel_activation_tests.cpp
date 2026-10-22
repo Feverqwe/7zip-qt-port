@@ -56,6 +56,57 @@ class PanelActivationTests final : public QObject, protected MainWindowTestSuppo
         version_ = backend.codecCatalog()->version();
 #endif
     }
+    void archiveOpeningFailureHasOneDialogAndCanRetry() {
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QString path = fixture.filePath("broken.pkg");
+        QFile file(path);
+        QVERIFY(file.open(QIODevice::WriteOnly));
+        QCOMPARE(file.write("fixture"), qint64(7));
+        file.close();
+        ControlledBackend backend;
+        MainWindow window(&backend);
+        window.show();
+        window.activateWindow();
+        QVERIFY(QTest::qWaitForWindowActive(&window));
+        address(window, 0).setFocus();
+        address(window, 0).setText(fixture.path());
+        QTest::keyClick(&address(window, 0), Qt::Key_Return);
+        auto &view = list(window, 0);
+        QTRY_COMPARE(view.rowCount(), 1);
+        view.sourcePanel->Set_AutoRefresh_Mode(false);
+        action(window, "viewMode3Action")->trigger();
+        QTRY_VERIFY(view.isVisible() && view.isEnabled());
+        const auto previous = view.sourcePanel->GetCurrentFolderPrefix();
+        int row = 0;
+        while (row < view.rowCount() && view.item(row, 0)->text() != "broken.pkg")
+            ++row;
+        QVERIFY(row < view.rowCount());
+        view.setCurrentCell(row, 0);
+        view.selectRow(row);
+        view.setFocus();
+        QTest::mouseClick(view.viewport(), Qt::LeftButton, Qt::NoModifier,
+                          view.visualRect(view.model()->index(row, 0)).center());
+        QTRY_VERIFY(action(window, "openItemAction")->isEnabled());
+        backend.queueListAction([&] { backend.fail("fixture opening failure", E_FAIL); });
+        unsigned errors = 0;
+        QTimer responder;
+        connect(&responder, &QTimer::timeout, &window, [&] {
+            if (auto *box = qobject_cast<QMessageBox *>(QApplication::activeModalWidget())) {
+                ++errors;
+                box->accept();
+            }
+        });
+        responder.start(0);
+        action(window, "openItemAction")->trigger();
+        responder.stop();
+        QCOMPARE(errors, 1u);
+        QCOMPARE(view.sourcePanel->GetCurrentFolderPrefix(), previous);
+        backend.queueList({{"payload.bin", 7, false}});
+        action(window, "openItemAction")->trigger();
+        QTRY_VERIFY(view.sourcePanel->IsArcFolder());
+        QCOMPARE(backend.listCalls, 2);
+    }
     void modifierWorkflow_data() {
         QTest::addColumn<unsigned>("pane");
         QTest::addColumn<bool>("russian");

@@ -106,6 +106,8 @@ class ArchiveBackend : public QObject {
     }
     ArchiveBackend *createIndependentBackend(QObject *parent = nullptr) const;
     bool discoverCodecCatalog(const QString &module = {});
+    // GUI-thread state; opening workers request it through their manager.
+    bool discoveringCodecs() const { return codecDiscoveryActive_; }
     void cancelCodecDiscovery();
     QString openDialogFilter() const;
     bool supportsArchiveUpdate(const QString &format) const;

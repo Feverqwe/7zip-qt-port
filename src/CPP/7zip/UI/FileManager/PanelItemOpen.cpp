@@ -562,7 +562,7 @@ void CPanel::OpenItem(unsigned index, bool tryInternal, bool tryExternal, const 
             if (res == S_OK || res == E_ABORT)
                 return;
             if (res != S_FALSE) {
-                MessageBox_Error_HRESULT(res);
+                // OpenAsArc_Msg already presented this opening failure.
                 return;
             }
         }

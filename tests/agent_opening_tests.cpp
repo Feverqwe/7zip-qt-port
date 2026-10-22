@@ -17,10 +17,11 @@ class CBindingProgress final : public IProgress, public IArchiveOpenCallback, pu
 
   public:
     bool CancelBinding = false;
+    bool CancelWaiting = false;
     std::atomic<unsigned> BindingTotals{0};
     std::atomic<unsigned> BindingCompleted{0};
     Z7_COM7F_IMF(SetTotal(UInt64)) override { return S_OK; }
-    Z7_COM7F_IMF(SetCompleted(const UInt64 *)) override { return S_OK; }
+    Z7_COM7F_IMF(SetCompleted(const UInt64 *)) override { return CancelWaiting ? E_ABORT : S_OK; }
     Z7_COM7F_IMF(SetTotal(const UInt64 *files, const UInt64 *)) override {
         if (files)
             ++BindingTotals;
@@ -135,6 +136,51 @@ class AgentOpeningTests final : public QObject, protected ArchiveBackendTestSupp
     void initTestCase() {
         engine_ = QStandardPaths::findExecutable("7zz");
         QVERIFY2(!engine_.isEmpty(), "Official fixture engine is required");
+    }
+    void openingWaitsForPendingCodecDiscovery_data() {
+        QTest::addColumn<bool>("cancel");
+        QTest::newRow("open") << false;
+        QTest::newRow("cancel") << true;
+    }
+    void openingWaitsForPendingCodecDiscovery() {
+        QFETCH(bool, cancel);
+        QTemporaryDir temporary;
+        QVERIFY(temporary.isValid());
+        const QString input = temporary.filePath(QStringLiteral("файл 空.bin"));
+        const QString path = temporary.filePath(QStringLiteral("архив 空.pkg"));
+        writeFile(input, "startup payload");
+        createArchive(path, input);
+        const QByteArray oldDelay = qgetenv("SEVENZIP_SLOW_CODEC_DELAY");
+        qputenv("SEVENZIP_SLOW_CODEC_DELAY", "500");
+        const auto restore = qScopeGuard([&] {
+            if (oldDelay.isNull())
+                qunsetenv("SEVENZIP_SLOW_CODEC_DELAY");
+            else
+                qputenv("SEVENZIP_SLOW_CODEC_DELAY", oldDelay);
+        });
+        COpeningBackend backend(engine_);
+        QSignalSpy ready(&backend, &ArchiveBackend::codecCatalogReady);
+        QVERIFY(backend.discoverCodecCatalog(QString::fromUtf8(SLOW_CODEC_FIXTURE)));
+        CMyComPtr<IFolderManager> manager = new QtArchiveFolderManager(backend);
+        CMyComPtr<IFolderFolder> folder;
+        auto *observer = new CBindingProgress;
+        CMyComPtr<IProgress> progress = observer;
+        observer->CancelWaiting = cancel;
+        QCOMPARE(open(backend, manager, path, nullptr, &folder, progress), cancel ? E_ABORT : S_OK);
+        QTRY_COMPARE(ready.size(), 1);
+        if (cancel) {
+            QVERIFY(!folder);
+            QCOMPARE(backend.Listings, 0u);
+            observer->CancelWaiting = false;
+            QCOMPARE(open(backend, manager, path, nullptr, &folder, progress), S_OK);
+        }
+        QCOMPARE(ready.size(), 1);
+        QVERIFY(folder);
+        QCOMPARE(folder->LoadItems(), S_OK);
+        UInt32 count = 0;
+        QCOMPARE(folder->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, UInt32(1));
+        QCOMPARE(backend.Listings, 1u);
     }
     void proxyProgressAndCancellation_data() {
         QTest::addColumn<bool>("cancel");
