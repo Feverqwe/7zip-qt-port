@@ -26,7 +26,9 @@ struct erofs_source {
 struct erofs_item {
     uint64_t nid, size, packed_size;
     int64_t mtime;
-    uint32_t nsec, mode, uid, gid, nlink, rdev;
+    uint32_t nsec, mode, uid, gid, nlink;
+    // Linux internal dev_t: 12-bit major above a 20-bit minor; zero for FIFO/socket.
+    uint32_t rdev;
     unsigned int layout;
 };
 struct erofs_volume_info {

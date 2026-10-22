@@ -10,6 +10,7 @@
 #include <stdarg.h>
 #include <errno.h>
 #include <limits.h>
+#include "../../include/linux/kdev_t.h"
 
 typedef uint8_t u8;
 typedef uint16_t u16, __le16;
@@ -255,7 +256,6 @@ static inline void inode_set_mtime(struct inode *inode, s64 sec, u32 nsec) {
 #define inode_get_mtime(...) 0
 #define cache_no_acl(...) ((void)0)
 #define erofs_inode_has_noacl(...) 0
-#define new_decode_dev(x) (x)
 #define inode_set_cached_link(inode, link, size) ((inode)->i_link = (link))
 #define in_range32(v, start, len) ((u32)((v) - (start)) < (u32)(len))
 #define erofs_nid_to_ino64(sbi, nid) (nid)

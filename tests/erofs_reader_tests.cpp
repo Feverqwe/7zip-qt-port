@@ -1,3 +1,4 @@
+#include "erofs_special_fixture.h"
 #include "erofsreader.h"
 #include <QFile>
 #include <QJsonDocument>
@@ -87,6 +88,31 @@ qsizetype regularEntry(const QByteArray &bytes) {
 class ErofsReaderTests final : public QObject {
     Q_OBJECT
   private slots:
+    void specialInodeMetadata_data() { erofsSpecialRows(); }
+    void specialInodeMetadata() {
+        QFETCH(unsigned, shape);
+        QFETCH(unsigned, mode);
+        QFETCH(unsigned, major);
+        QFETCH(unsigned, minor);
+        Reader reader;
+        reader.bytes = erofsSpecialImage(shape, mode, major, minor);
+        const auto original = reader.bytes;
+        QCOMPARE(reader.Open(), 0);
+        Entries entries;
+        QCOMPARE(erofs_read_directory(reader.root.get(), &entries, Entries::Emit), 0);
+        QVERIFY(entries.values.contains("node"));
+        erofs_file *raw = nullptr;
+        QCOMPARE(erofs_open_file(reader.volume.get(), entries.values["node"].nid, &raw), 0);
+        std::unique_ptr<erofs_file, decltype(&erofs_close_file)> file(raw, erofs_close_file);
+        erofs_item inode{};
+        erofs_get_file_info(raw, &inode);
+        QCOMPARE(inode.mode, mode | 0600U);
+        QCOMPARE(inode.nlink, 1U);
+        QCOMPARE(inode.size, quint64(0));
+        const bool device = mode == 0020000 || mode == 0060000;
+        QCOMPARE(inode.rdev, device ? (major << 20) | minor : 0U);
+        QCOMPARE(reader.bytes, original);
+    }
     void callbackTypesMatchLinuxDirentAbi() {
         Reader reader;
         reader.bytes = image();

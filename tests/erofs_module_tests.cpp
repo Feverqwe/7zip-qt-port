@@ -3,6 +3,7 @@
 #include "Windows/PropVariant.h"
 #include "archivebackend.h"
 #include "archivecodeccatalog.h"
+#include "erofs_special_fixture.h"
 #include <QDir>
 #include <QFile>
 #include <QJsonDocument>
@@ -236,6 +237,36 @@ class ErofsModuleTests final : public QObject {
     }
   private slots:
     void initTestCase() { createArchive(); }
+    void specialInodeProperties_data() { erofsSpecialRows(); }
+    void specialInodeProperties() {
+        QFETCH(unsigned, shape);
+        QFETCH(unsigned, mode);
+        QFETCH(unsigned, major);
+        QFETCH(unsigned, minor);
+        QCOMPARE(open(erofsSpecialImage(shape, mode, major, minor)), S_OK);
+        const UInt32 index = fileIndex("node");
+        QVERIFY(index != UInt32(-1));
+        const bool device = mode == 0020000 || mode == 0060000;
+        for (auto pair : {qMakePair(kpidDeviceMajor, major), qMakePair(kpidDeviceMinor, minor)}) {
+            NWindows::NCOM::CPropVariant value;
+            QCOMPARE(archive_->GetProperty(index, pair.first, &value), S_OK);
+            QCOMPARE(value.vt, device ? VT_UI4 : VT_EMPTY);
+            if (device)
+                QCOMPARE(value.ulVal, pair.second);
+        }
+        CMyComPtr<IInArchiveGetStream> provider;
+        QCOMPARE(
+            archive_->QueryInterface(IID_IInArchiveGetStream, reinterpret_cast<void **>(&provider)),
+            S_OK);
+        CMyComPtr<ISequentialInStream> stream;
+        QCOMPARE(provider->GetStream(index, &stream), S_OK);
+        QVERIFY(stream);
+        char data = 'x';
+        UInt32 processed = 99;
+        QCOMPARE(stream->Read(&data, 1, &processed), S_OK);
+        QCOMPARE(processed, 0U);
+        QCOMPARE(data, 'x');
+    }
     void failuresCancellationAndReuse() {
         CMyComPtr2<IArchiveOpenCallback, OpenCallback> cancelled;
         cancelled.Create_if_Empty();

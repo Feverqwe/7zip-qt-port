@@ -10,6 +10,7 @@
 #include "Windows/TimeUtils.h"
 #include "erofsarchiveattributes.h"
 #include "erofsarchivereader.h"
+#include "include/linux/kdev_t.h"
 #include <algorithm>
 #include <array>
 #include <cstring>
@@ -342,9 +343,7 @@ Z7_COM7F_IMF(CHandler::GetProperty(UInt32 index, PROPID id, PROPVARIANT *value))
     case kpidDeviceMajor:
     case kpidDeviceMinor:
         if ((inode.mode & typeMask) == 0020000 || (inode.mode & typeMask) == 0060000)
-            prop = UInt32(id == kpidDeviceMajor
-                              ? (inode.rdev >> 8) & 0xfff
-                              : (inode.rdev & 0xff) | ((inode.rdev >> 12) & 0xfff00));
+            prop = UInt32(id == kpidDeviceMajor ? MAJOR(inode.rdev) : MINOR(inode.rdev));
         break;
     case kpidMTime: {
         UInt64 ticks;

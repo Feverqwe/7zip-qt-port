@@ -1,5 +1,49 @@
 # Read-only EROFS from Linux
 
+## Linux device-number decoding and special inode metadata — 2026-10-22
+
+Compared the pinned `fs/erofs/inode.c` compact/extended inode readers and special
+file branches, `include/linux/kdev_t.h`, the C metadata boundary and every EROFS
+consumer of `rdev`. The host services had replaced `new_decode_dev` with an
+identity macro, leaving disk-encoded device numbers in `i_rdev`. The archive
+handler independently decoded those disk numbers, so its major/minor properties
+were already correct; the C reader did not expose Linux's internal device-number
+representation.
+
+The identity macro is removed. The original inode branches now call the existing
+shared Linux `new_decode_dev` adaptation, already used by other filesystem
+modules. Its original function body and Linux MAJOR/MINOR/MKDEV definitions are
+retained; fixed-width `uint32_t` and ordinary inline linkage replace kernel types
+and attributes. Unused encoders and VFS printing remain omitted. The EROFS
+baseline now records that shared header at the same repository/revision below.
+The C boundary documents the resulting Linux 12-bit major/20-bit minor `rdev`
+representation. The archive handler uses the shared MAJOR/MINOR definitions,
+removing its independent disk decoder without changing archive properties.
+
+Metadata-only synthetic images exercise compact inodes, extended inodes and an
+extended inode spanning two metadata blocks. Character/block devices cover
+zero, ordinary, mixed high-bit and maximum device numbers; FIFO/socket cases
+confirm that their disk union is ignored. Direct C tests verify decoded metadata
+and unchanged source bytes. Module ABI tests verify major/minor property values
+and absence for non-devices, plus empty streams for all four special types.
+No host special files are created or opened. Before the fix, the new C regression
+returned 259 for device 1:3 instead of Linux dev_t 1048579, including both extended
+inode paths; archive property/stream tests already passed.
+
+Source reads remain bounded and read-only; no writes, repair, journal replay,
+device-node extraction or new opening restriction is introduced. Overall EROFS
+source closure and the parent filesystem audit remain open.
+
+Validation: `erofs_reader`, `erofs_module`, `erofs`, `upstream_baseline` and
+`upstream_inventory` passed on macOS, Linux and Windows (guest receipt
+`20261022T134745Z-bff06d4c`). The incremental application build passed.
+All 49 EROFS reference hashes match; the shared decoder body and original
+special-inode branches match the pinned Linux source. Existing build trees,
+runtime snapshots and compiler caches were reused. Disposable EROFS fixtures
+were absent locally and on both guests after validation. No full gate, slow
+suite, new native mount/device check, UI appearance acceptance or release
+installation was run.
+
 ## Original Linux dirent conversion and C-reader callback ABI — 2026-10-22
 
 Compared complete pinned `fs/fs_dirent.c`, `include/linux/fs_dirent.h`,
