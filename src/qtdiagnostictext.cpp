@@ -177,6 +177,12 @@ UString QtArchiveDiagnosticText(const UString &source) {
         QT_TRANSLATE_NOOP("SevenZipDiagnostics",
                           "Some extended attributes of this ext item could not be read."),
         QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                          "The ext symbolic-link target could not be read when opening."),
+        QT_TRANSLATE_NOOP(
+            "SevenZipDiagnostics",
+            "Some ext symbolic-link targets could not be read. Copying affected links "
+            "may fail; readable files remain accessible."),
+        QT_TRANSLATE_NOOP("SevenZipDiagnostics",
                           "Some ext extended attributes could not be read. Unreadable attributes "
                           "have been omitted; readable files remain accessible."),
         QT_TRANSLATE_NOOP("SevenZipDiagnostics",

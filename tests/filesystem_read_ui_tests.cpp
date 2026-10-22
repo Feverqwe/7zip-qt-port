@@ -192,6 +192,7 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
                                         "ext-recover",
                                         "ext-directory",
                                         "ext-xattrs",
+                                        "ext-symlink",
                                         "ext-orphan",
                                         "ext-unclean",
                                         "ext-unverified",
@@ -207,7 +208,8 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
                                         "source-backup-mismatch"}) {
                 // Rejection uses the shared consent service; acceptance checks every reason.
                 if (!accept && kind != "exfat" && kind != "unclean" && kind != "volume-dirty" &&
-                    kind != "ext-recover" && kind != "ext-directory" && kind != "ext-xattrs")
+                    kind != "ext-recover" && kind != "ext-directory" && kind != "ext-xattrs" &&
+                    kind != "ext-symlink")
                     continue;
                 QTest::newRow(qPrintable(language + (accept ? "-accept-" : "-cancel-") + kind))
                     << language << accept << kind;
@@ -398,8 +400,9 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
                                                  : "--readonly=" + kind.mid(4),
                                     "--bundle"}
                 : ext ? QStringList{QStringLiteral(SEVENZIP_EXT_FIXTURE),
-                                    kind == "ext-xattrs" ? "xattrs-bad-data"
-                                                         : "readonly-" + kind.mid(4),
+                                    kind == "ext-xattrs"    ? "xattrs-bad-data"
+                                    : kind == "ext-symlink" ? "readlink-isolated-hole"
+                                                            : "readonly-" + kind.mid(4),
                                     "--bundle"}
                 : squashfs
                     ? QStringList{QStringLiteral(SEVENZIP_SQUASHFS_FIXTURE), "--xattrs",
@@ -426,11 +429,13 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
                 kind.startsWith("squashfs-inode-block-") ||
                 kind == "squashfs-table-indexes-combined")
                 filename = "данные 空";
-            if (ext && kind != "ext-xattrs") {
+            if (kind == "ext-symlink")
+                filename = "healthy.bin";
+            if (ext && kind != "ext-xattrs" && kind != "ext-symlink") {
                 payload = QByteArray(data["file_size"].toInt(), '\0');
                 payload.replace(0, 4, "head");
                 payload.replace(payload.size() - 4, 4, "tail");
-            } else if (kind == "ext-xattrs") {
+            } else if (kind == "ext-xattrs" || kind == "ext-symlink") {
                 payload =
                     QByteArray::fromHex(data["files"].toObject()[filename].toString().toLatin1());
             } else

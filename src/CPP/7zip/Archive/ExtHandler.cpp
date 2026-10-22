@@ -597,6 +597,7 @@ struct CNode {
     int ReadError, SpecialReadError, EaReadError;
     bool DirectoryIncomplete = false;
     bool XattrsIncomplete = false;
+    bool LinkUnavailable = false;
     unsigned XattrFirst, XattrCount;
 #endif
 
@@ -614,6 +615,7 @@ struct CNode {
         XattrFirst = XattrCount = 0;
         DirectoryIncomplete = false;
         XattrsIncomplete = false;
+        LinkUnavailable = false;
 #endif
     }
 
@@ -884,6 +886,7 @@ Z7_CLASS_IMP_CHandler_IInArchive_2(
   int _rootXattrAux;
   bool _directoryLimitations = false;
   bool _xattrLimitations = false;
+  bool _linkLimitations = false;
   void MarkDirectoryIncomplete(CNode &node)
   {
     node.DirectoryIncomplete = true;
@@ -1701,6 +1704,10 @@ HRESULT CHandler::LoadSystemZone(const void *descriptors, UInt32 groups) {
         const CNode &node = _nodes[i];
         if ((node.Flags & ((UInt32)1 << 21)) ? node.EaReadError : node.SpecialReadError)
             continue;
+        // The target reader validates the full mapping before reading it.
+        // A bad link storage reference must not suppress independent files.
+        if (node.IsLink())
+            continue;
         const bool fastLink = node.IsFastSymlink(_h);
         if (node.InlineIndex < 0 && !fastLink && node.IsFlags_EXTENTS() &&
             (node.IsRegular() || node.IsDir() || node.IsLink()) &&
@@ -2355,6 +2362,9 @@ HRESULT CHandler::Open2(IInStream *inStream) {
 
         AString s;
         CByteBuffer data;
+#ifdef SEVENZIP_LINUX_EXT
+        CMyComPtr<IInStream> source = CreateReadOnlyInput(_stream);
+#endif
 
         unsigned i;
         for (i = 0; i < _refs.Size(); i++) {
@@ -2367,7 +2377,14 @@ HRESULT CHandler::Open2(IInStream *inStream) {
 #ifdef SEVENZIP_LINUX_EXT
             if (node.SpecialReadError)
                 continue;
-            RINOK(ExtractNode((unsigned)nodeIndex, data))
+            const HRESULT linkResult = ExtractNode((unsigned)nodeIndex, data, source);
+            RINOK(_openCallbackResult)
+            if (linkResult == S_FALSE) {
+                node.LinkUnavailable = true;
+                _linkLimitations = true;
+                continue;
+            }
+            RINOK(linkResult)
             s.SetFrom_CalcLen((const char *)(const Byte *)data, (unsigned)data.Size());
             node.SymLinkIndex = (int)_symLinks.Add(s);
             RINOK(CheckProgress())
@@ -2550,6 +2567,7 @@ Z7_COM7F_IMF(CHandler::Close()) {
 #ifdef SEVENZIP_LINUX_EXT
     _directoryLimitations = false;
     _xattrLimitations = false;
+    _linkLimitations = false;
 #endif
     _isUTF = true;
     _openCallback = NULL;
@@ -2781,6 +2799,12 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID propID, PROPVARIANT *value)) {
                 reasons += '\n';
             reasons += "Some ext extended attributes could not be read. Unreadable attributes "
                        "have been omitted; readable files remain accessible.";
+        }
+        if (_linkLimitations) {
+            if (!reasons.IsEmpty())
+                reasons += '\n';
+            reasons += "Some ext symbolic-link targets could not be read. Copying affected links "
+                       "may fail; readable files remain accessible.";
         }
 #endif
         if (_h.FeatureIncompat & 4) {
@@ -3106,6 +3130,11 @@ Z7_COM7F_IMF(CHandler::GetProperty(UInt32 index, PROPID propID, PROPVARIANT *val
                         errors += '\n';
                     errors += "Some extended attributes of this ext item could not be read.";
                 }
+                if (node.LinkUnavailable) {
+                    if (!errors.IsEmpty())
+                        errors += '\n';
+                    errors += "The ext symbolic-link target could not be read when opening.";
+                }
                 if (!errors.IsEmpty())
                     prop = errors;
             }
@@ -3149,7 +3178,8 @@ Z7_COM7F_IMF(CHandler::GetProperty(UInt32 index, PROPID propID, PROPVARIANT *val
         case kpidSize:
             if (!isDir) {
 #ifdef SEVENZIP_LINUX_EXT
-                prop = GetUnpackSize(node);
+                if (!node.LinkUnavailable)
+                    prop = GetUnpackSize(node);
 #else
                 prop = node.FileSize;
 #endif
@@ -4134,10 +4164,21 @@ Z7_COM7F_IMF(CHandler::Extract(const UInt32 *indices, UInt32 numItems, Int32 tes
                         return hres;
                     opRes = NExtract::NOperationResult::kUnsupportedMethod;
 #ifdef SEVENZIP_LINUX_EXT
-                    if (io->SourceError || mappingIncomplete)
+                    if (io->SourceError || mappingIncomplete || node.LinkUnavailable)
                         opRes = NExtract::NOperationResult::kDataError;
 #endif
                 } else {
+#ifdef SEVENZIP_LINUX_EXT
+                    if (item.XattrIndex < 0 && node.IsLink() && node.LinkUnavailable) {
+                        // A retry may decode a target whose size was unavailable
+                        // during Open. Compare against the complete owned target,
+                        // not the raw inode size or a fabricated empty value.
+                        CMyComPtr<IInStream> target;
+                        RINOK(inSeqStream->QueryInterface(IID_IInStream,
+                                                          reinterpret_cast<void **>(&target)))
+                        RINOK(InStream_GetSize_SeekToBegin(target, unpackSize))
+                    }
+#endif
                     RINOK(hres) {
                         hres = copyCoder.Interface()->Code(inSeqStream,
 #ifdef SEVENZIP_LINUX_EXT

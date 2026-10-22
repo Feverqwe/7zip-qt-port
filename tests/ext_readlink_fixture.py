@@ -1,6 +1,7 @@
 """Bounded ext plaintext symlinks with independent inode/storage lengths."""
 import struct
 from ext_modern_fixture import ModernVolume, crc32c
+from ext_fixture import NAME
 
 
 def encrypted_link_size(image, case, size):
@@ -23,8 +24,25 @@ def encrypted_link_size(image, case, size):
     return bytes(data)
 
 
+def encrypted_link_payload_length(image, case, length):
+    data = bytearray(image)
+    bs = 1024 << struct.unpack_from("<I", data, 1024 + 24)[0]
+    inode_size = struct.unpack_from("<H", data, 1024 + 88)[0]
+    table = struct.unpack_from("<I", data, bs + 8)[0]
+    inode = table * bs + (case["symlink_inode"] - 1) * inode_size
+    # The native fixture stores these ciphertexts in one initialized extent.
+    assert struct.unpack_from("<H", data, inode + 46)[0] == 0
+    assert struct.unpack_from("<I", data, inode + 52)[0] == 0
+    block = struct.unpack_from("<I", data, inode + 60)[0]
+    block |= struct.unpack_from("<H", data, inode + 58)[0] << 32
+    struct.pack_into("<H", data, block * bs, length)
+    return bytes(data)
+
+
 class ReadlinkVolume(ModernVolume):
     def __init__(self, layout="block-tail"):
+        neighbors = layout.startswith("isolated-")
+        layout = layout.removeprefix("isolated-")
         super().__init__()
         bs = self.block_size
         self.data[self.root_block * bs + 31] = 7
@@ -57,8 +75,38 @@ class ReadlinkVolume(ModernVolume):
             if layout == "hole":
                 self.put32(self.file_inode + 32, 0)
                 self.data[self.file_inode + 40:self.file_inode + 100] = bytes(60)
+        if neighbors:
+            self.add_neighbors()
         self.refresh()
         self.size = len(self.expected)
+
+    def add_neighbors(self):
+        bs = self.block_size
+        self.healthy = b"readable sibling\0with exact bytes\xff"
+        block = self.allocate(self.healthy)
+        self.extra_inodes = (13, 14)
+        for ino, mode, payload, sectors in (
+                (13, 0o100644, self.healthy, bs // 512),
+                (14, 0o120777, b"healthy.bin", 0)):
+            start = self.table * bs + (ino - 1) * 256
+            self.inode(start, mode, len(payload), sectors)
+            struct.pack_into("<H", self.data, start + 128, 32)
+            if ino == 13:
+                self.put32(start + 40, block)
+            else:
+                self.data[start + 40:start + 40 + len(payload)] = payload
+            bit = ino - 1
+            self.data[self.inode_map * bs + bit // 8] |= 1 << (bit % 8)
+        free = struct.unpack_from("<I", self.data, 1024 + 16)[0] - 2
+        self.put32(1024 + 16, free)
+        struct.pack_into("<H", self.data, self.gdt * bs + 14, free)
+        records = self.dirent(2, b".", 12, 2) + self.dirent(2, b"..", 12, 2)
+        name = NAME.encode()
+        records += self.dirent(12, name, (8 + len(name) + 3) & ~3, 7)
+        records += self.dirent(13, b"healthy.bin", 20)
+        records += self.dirent(14, b"later-link", bs - 12 - len(records), 7)
+        self.data[self.root_block * bs:self.root_block * bs + bs - 12] = records
+        self.files = {"healthy.bin": self.healthy, "later-link": b"healthy.bin"}
 
     def read(self, offset, length):
         return self.expected[offset:offset + length]

@@ -3966,6 +3966,14 @@ Are you sure you want to split archive into such volumes?</source>
             <translation>Некоторые расширенные атрибуты этого объекта ext недоступны для чтения.</translation>
         </message>
         <message>
+            <source>The ext symbolic-link target could not be read when opening.</source>
+            <translation>Не удалось прочитать цель символической ссылки ext при открытии.</translation>
+        </message>
+        <message>
+            <source>Some ext symbolic-link targets could not be read. Copying affected links may fail; readable files remain accessible.</source>
+            <translation>Не удалось прочитать цели некоторых символических ссылок ext. При копировании этих ссылок возможны ошибки. Доступные файлы можно читать.</translation>
+        </message>
+        <message>
             <source>Some ext extended attributes could not be read. Unreadable attributes have been omitted; readable files remain accessible.</source>
             <translation>Некоторые расширенные атрибуты ext недоступны для чтения и пропущены. Доступные файлы можно читать.</translation>
         </message>

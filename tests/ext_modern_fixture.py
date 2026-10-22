@@ -169,7 +169,7 @@ class ModernVolume(Volume):
                 capacity = struct.unpack_from("<H", self.data, start + 4)[0]
                 tail = start + 12 + 12 * capacity
                 self.put32(tail, crc32c(self.inode_seed(12), self.data[start:tail]))
-        for ino in ((2, 12, 13) if self.inline else (2, 12)):
+        for ino in ((2, 12, 13) if self.inline else (2, 12)) + getattr(self, "extra_inodes", ()):
             start = self.table * bs + (ino - 1) * 256
             struct.pack_into("<H", self.data, start + 124, 0)
             has_checksum_hi = struct.unpack_from("<H", self.data, start + 128)[0] >= 4

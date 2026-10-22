@@ -179,6 +179,11 @@ class ExtTests(unittest.TestCase):
                     result = self.run_image(SymlinkVolume(case), engine, "l", None)
                     self.assertNotEqual(result.returncode, 0)
         result = self.run_image(SymlinkVolume("ea-slow-alias"))
+        self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+        volume = SymlinkVolume("ea-slow-alias")
+        self.assertEqual(result.stdout, volume.read(0, volume.size))
+        self.limited_listing(volume)
+        result = self.run_image(volume, name="link")
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual(result.stdout, b"")
 
@@ -539,7 +544,14 @@ class ExtTests(unittest.TestCase):
                 listing = self.run_image(volume, command="l")
                 self.assertEqual(listing.returncode, 0, listing.stderr.decode(errors="replace"))
                 self.assertIn(b"Size = " + str(len(volume.expected)).encode(), listing.stdout)
-        result = self.run_image(ReadlinkVolume("hole"))
+        volume = ReadlinkVolume("isolated-hole")
+        listing = self.limited_listing(volume)
+        self.assertIn(b"Symbolic Link = healthy.bin", listing.stdout)
+        for name, expected in volume.files.items():
+            result = self.run_image(volume, name=name)
+            self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+            self.assertEqual(result.stdout, expected)
+        result = self.run_image(volume)
         self.assertNotEqual(result.returncode, 0)
         self.assertEqual(result.stdout, b"")
 

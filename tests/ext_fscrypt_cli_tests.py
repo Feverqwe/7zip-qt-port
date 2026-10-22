@@ -10,7 +10,7 @@ import tempfile
 import unittest
 import zlib
 from ext_modern_fixture import crc32c
-from ext_readlink_fixture import encrypted_link_size
+from ext_readlink_fixture import encrypted_link_size, encrypted_link_payload_length
 from ext_partial_fixture import encrypted_partial_map
 
 
@@ -179,6 +179,31 @@ class FscryptCliTests(unittest.TestCase):
                 result = self.invoke("7z", "x", key, path)
                 self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
                 self.assertEqual(result.stdout, target.encode())
+        finally:
+            self.image_bytes = original
+            self.image.write_bytes(original)
+
+    def test_bad_encrypted_link_is_reported_without_hiding_independent_data(self):
+        original = self.image_bytes
+        case = self.record["cases"][0]
+        bs = 1024 << struct.unpack_from("<I", original, 1024 + 24)[0]
+        try:
+            for length in (0, bs):
+                with self.subTest(length=length):
+                    self.image_bytes = encrypted_link_payload_length(original, case, length)
+                    self.image.write_bytes(self.image_bytes)
+                    for key in (self.keys, "fscrypt:none"):
+                        listing = self.invoke("7z", "l", key)
+                        self.assertEqual(listing.returncode, 0, listing.stderr.decode(errors="replace"))
+                        self.assertIn(b"Read-only limitations = ", listing.stdout)
+                    result = self.invoke("7z", "x", self.keys, case["name"] + "/link")
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertEqual(result.stdout, b"")
+                    result = self.invoke("7z", "x", self.keys,
+                                         case["name"] + "/" + case["filename"])
+                    self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                    self.assertEqual(result.stdout,
+                                     bytes.fromhex(case["plain_first"]) + bytes(4096) + b"end")
         finally:
             self.image_bytes = original
             self.image.write_bytes(original)

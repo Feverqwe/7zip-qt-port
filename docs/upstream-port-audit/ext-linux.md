@@ -6,6 +6,62 @@ tree boundaries, directory record boundaries and archive stream consumers.
 The second integrates Linux metadata and inline-data readers. The ext row remains
 open for the remaining read features listed below.
 
+## Unavailable symlink targets and useful read-only opening — 2026-10-22
+
+Recompared pinned Linux `ext4_get_link`, `ext4_encrypted_get_link`, inline target
+handling, fscrypt presentation and block-reference checks with SDK eager target
+discovery, properties, GetStream and extraction. The source repositories and full
+Linux/SDK revisions remain those recorded below; no new dependency, link parser
+or cryptographic decoder was introduced. Linux reports a target-read failure on
+the inode operation; the archive's eager discovery previously failed the entire
+opening after a decoded link's storage read or target presentation failed.
+
+The application module now keeps the named link and independent namespace data
+when its target is unavailable. Its target and exported size are left unknown,
+with a per-item error and archive read-only limitation. Subsequent good links
+are still decoded. Eager storage read/seek errors use the existing source-only
+adapter; semantic target errors retain the original Linux reader result. Abort,
+allocation failures, explicit callback errors and internal failures still abort
+opening without exposing partial items. Both warning languages use the existing
+per-opening consent, visible limited-access indication and source-write guard.
+
+Symlink mapping checks formerly performed during global system-zone validation
+are deferred to the target reader's existing full mapping validation. Protected
+metadata aliases are rejected before target bytes can be read; source bounds,
+allocation requirements, extent checks and ciphertext length validation remain
+mandatory. Mandatory inode initialization, inode checksums, fast-link acceptance
+and encryption-context validation are unchanged. This scenario starts from a
+successfully initialized inode; it does not claim recovery from every malformed
+inode or a missing essential cryptographic context.
+
+Copying retries the target read. Persistent failure reports a per-link data error
+without publishing partial target bytes, and processing continues to selected
+healthy files/links. A successful retry exports the complete owned decoded target;
+its actual stream size is used for extraction acceptance instead of the raw inode
+size, which may exceed Linux's target termination bound. Direct GetStream keeps
+the original source HRESULT. A healthy reopen clears the limitation. Standalone
+retains its SDK profile; both engine profiles still compile the shared source.
+
+Validation: the incremental macOS application build succeeded. Eleven focused
+suites passed on macOS, Linux and Windows: `ext`, `ext_stream`, `ext_fscrypt`,
+`ext_fscrypt_cli`, `ext_fscrypt_backend`, `ext_xattr_backend`, `upstream_baseline`,
+`upstream_inventory`, `filesystem_read_ui`, `filesystem_read_ui_ru` and `language`.
+Guest receipts are
+`build/runners/hyperv/20261022T101603Z-ea092026/{linux,windows}`; existing runtime,
+build trees and compiler caches were reused. New public behavior checks retain
+an independent file and later valid link after a first target failure, reject
+metadata aliases, exercise read/partial-read/seek errors, require exact retry
+output and healthy reopen, and preserve fatal abort/OOM/callback results.
+Native encrypted fixtures with invalid zero/oversized ciphertext lengths list
+with a limitation both with keys and without keys; failed target extraction
+emits no bytes, while the independent encrypted file decodes exactly. EN/RU UI
+tests cover consent/decline, visible mode, exact copying, refresh, reopen scope
+and unchanged source bytes. Current Cocoa warning JSON has fitting visible
+reason labels at 420×214 (EN) and 420×275 (RU); rendered Windows pixel parity is
+not claimed. All 303 pinned Linux reference hashes match. No full gate, slow
+suite, physical device, new native kernel-mount comparison or release installation
+was run. The broader ext audit remains open.
+
 ## Optional extended attributes and useful read-only opening — 2026-10-22
 
 Compared pinned Linux `fs/ext4/xattr.c` getters, EA-inode role/refcount/hash
@@ -1638,9 +1694,10 @@ Archive payload size describes those target bytes (as already done for encrypted
 links), whereas native lstat can retain a malformed raw i_size. Embedded NULs,
 bytes after the first block and unused inline padding are not returned as target
 data. Returned streams copy their owned target before Linux callbacks release
-their buffers and survive Close/reopen/release. Source E_FAIL/E_ABORT and callback
-cancellation during eager symlink reads propagate instead of being swallowed by
-the former optional-property discovery loop. Failed Open exposes no partial items.
+their buffers and survive Close/reopen/release. The later unavailable-target
+iteration above confines ordinary eager source errors to the link with explicit
+read-only consent. E_ABORT and explicit callback errors still propagate; failed
+Open exposes no partial items. Public GetStream preserves source HRESULTs.
 Standalone retains its SDK fallback and does not gain the GPL readlink reader.
 
 Public CLI regressions cover first-block bounds, embedded NUL, unwritten tails,
