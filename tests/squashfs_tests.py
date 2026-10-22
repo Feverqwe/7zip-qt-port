@@ -330,6 +330,21 @@ class SquashfsTests(unittest.TestCase):
                     self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
                     self.assertEqual(result.stdout, files[name])
 
+    def test_late_blocklist_failure_preserves_readable_prefix(self):
+        for fault in ("blocklist-clean", "blocklist-header", "blocklist-zlib"):
+            data, files = volume(fault)
+            with self.subTest(fault=fault):
+                healthy = self.run_image("7z", data, "x", "данные 空")
+                self.assertEqual(healthy.returncode, 0, healthy.stderr.decode(errors="replace"))
+                self.assertEqual(healthy.stdout, files["данные 空"])
+                result = self.run_image("7z", data, "x", "alpha")
+                if fault == "blocklist-clean":
+                    self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                    self.assertEqual(result.stdout, files["alpha"])
+                else:
+                    self.assertNotEqual(result.returncode, 0)
+                    self.assertEqual(result.stdout, files["alpha"][:8192])
+
     def test_ambiguous_inode_numbers_do_not_merge_unrelated_files(self):
         data, files = volume("directory-ambiguous", xattrs=True)
         with tempfile.TemporaryDirectory(dir=self.runtime) as temporary:

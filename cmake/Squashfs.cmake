@@ -3,7 +3,7 @@ add_library(sevenzip_squashfs_metadata STATIC
     src/squashfsmetadata.c src/squashfsio.c src/fs/squashfs/cache.c
     src/fs/squashfs/id.c src/fs/squashfs/fragment.c src/fs/squashfs/export.c
     src/fs/squashfs/xattr_id.c src/fs/squashfs/xattr.c
-    src/fs/squashfs/block.c src/fs/squashfs/page_actor.c)
+    src/fs/squashfs/block.c src/fs/squashfs/page_actor.c src/fs/squashfs/file.c)
 target_include_directories(sevenzip_squashfs_metadata PRIVATE src)
 set_target_properties(sevenzip_squashfs_metadata PROPERTIES AUTOMOC OFF AUTOUIC OFF
     POSITION_INDEPENDENT_CODE ON C_STANDARD 11 C_STANDARD_REQUIRED ON)

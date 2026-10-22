@@ -175,7 +175,12 @@ UString QtArchiveDiagnosticText(const UString &source) {
                           "missing. Inode identities are unverified."),
         QT_TRANSLATE_NOOP("SevenZipDiagnostics",
                           "Some SquashFS metadata indexes are unavailable. File data, ownership or "
-                          "extended attributes may be incomplete.")};
+                          "extended attributes may be incomplete."),
+        QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                          "Some SquashFS file block lists are unavailable. Only readable portions "
+                          "of affected files can be copied; incomplete copies report an error."),
+        QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                          "Some SquashFS file block-list metadata is unavailable.")};
     for (const char *warning : warnings)
         if (text == QString::fromLatin1(warning))
             return QtDiagnosticText(warning);

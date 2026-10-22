@@ -39,6 +39,7 @@ typedef uint64_t pgoff_t;
 #define kcalloc(n, s, flags) calloc(n, s)
 #define kmalloc_obj(obj) malloc(sizeof(obj))
 #define kzalloc_obj(obj) calloc(1, sizeof(obj))
+#define kzalloc_objs(obj, n) calloc(n, sizeof(obj))
 #define kfree(p) free(p)
 #define vmalloc(n) malloc(n)
 #define vfree(p) free(p)

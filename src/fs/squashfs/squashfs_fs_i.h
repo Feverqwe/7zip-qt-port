@@ -8,10 +8,19 @@
 #ifndef SEVENZIP_SQUASHFS_FS_I_H
 #define SEVENZIP_SQUASHFS_FS_I_H
 struct squashfs_inode_info {
+    u64 start;
+    int offset;
+    u64 block_list_start;
     u64 xattr;
     unsigned int xattr_size;
     int xattr_count;
 };
-struct inode { struct super_block *i_sb; struct squashfs_inode_info info; };
+struct inode {
+    struct super_block *i_sb;
+    struct squashfs_inode_info info;
+    u64 i_size;
+    unsigned int i_ino;
+};
+static inline u64 i_size_read(struct inode *inode) { return inode->i_size; }
 static inline struct squashfs_inode_info *squashfs_i(struct inode *inode) { return &inode->info; }
 #endif

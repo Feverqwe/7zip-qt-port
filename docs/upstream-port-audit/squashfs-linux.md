@@ -5,6 +5,72 @@ Scope входит в [общую проверку форматов](filesystems
 современный LZO и проверки compressor options через отдельный format-модуль.
 Полная актуализация SquashFS read features по Linux ещё продолжается.
 
+## Blocklist файлов по запросу, 2026-10-22
+
+Эталон нового C-переноса: Linux
+[`58161ead29e50d70a317ea26b472e0c7508e69da`](https://github.com/torvalds/linux/tree/58161ead29e50d70a317ea26b472e0c7508e69da),
+`fs/squashfs/file.c`. Перед изменением и после него сверены полные
+`locate_meta_index`, `empty_meta_index`, `release_meta_index`, `read_indexes`,
+`calculate_skip`, `fill_meta_index`, `read_blocklist_ptrs`/`read_blocklist`,
+их metadata/cache/header dependencies, `inode.c` и SDK parser/stream callers.
+SDK baseline остаётся `9128b80e3a471108678e2b3ec3c985861c8d7b0f` из общего аудита.
+
+В `src/fs/squashfs/file.c` перенесены эти тела и исходные notices; файл
+компилируется как C в том же отдельном GPL module. Dependency fields inode,
+superblock/meta-index и allocation adapter подключены к существующему C host.
+Внутренние blocklist entry points получили module prefix при экспорте в host;
+последнее чтение descriptor выделено в общий helper для sequential cursor.
+Index-slot selection, skip calculation, lookup/growth/error cleanup сохранены.
+Host сериализует обращения, поэтому kernel mutex adapters остаются no-op.
+Сохраняются bounded metadata cache и собственный index cache потока; размеры
+его mapping arrays не зависят от размера файла. Ancillary tables для него
+не загружаются. Host lifetime/cache API оставлен вместе с metadata service,
+чтобы не дублировать его ownership и bounds checks.
+
+Folio/page-cache/readahead и VFS file operations из второй части `file.c`
+не переносятся: SDK cached IInStream, sparse/fragment handling и decoder
+выполняют чтение archive bytes. VFS SEEK_HOLE/DATA не входит в IInStream ABI.
+GPL v4 canonical inode требует только заголовок regular file; blocklist
+больше не копируется целиком в inode cache или offset arrays при GetStream.
+Seek/read запрашивают mappings через C reader. Последовательный cursor
+использует тот же descriptor helper, избегая повторного scan предыдущих
+descriptors. Packed-size property вычисляется отдельно, линейно; ошибка
+делает её неизвестной и диагностируется, но не запрещает полезное чтение.
+Extraction progress использует encoded-byte counters принадлежащего потоку
+reader без предварительного обхода blocklist. Старые offset arrays копируются
+только legacy-потокам: новый regression воспроизвёл неверное чтение fragment
+после v3 → v4 reopen и теперь проверяет также сохранённый старый поток.
+Decoded metadata cache для namespace по-прежнему ограничен UInt32: эта
+итерация устраняет хранение blocklist в нём, а не весь оставшийся size scope.
+
+Поздний повреждённый metadata block не скрывает заголовок/размер и читаемое
+начало файла. Copy возвращает доступный prefix и DataError; sibling читается
+полностью. Abort/OOM/unsupported/source failures сохраняют свои результаты.
+Ошибка, ещё не встреченная при обычном открытии, не выдаётся за заранее
+диагностированный limited mode; известные ограничения открытия сохраняют
+прежние выбор пользователя и badge. Две новые диагностики локализованы.
+
+ABI/CLI/UI проверяют prefix/error и independent sibling, readonly source,
+basic/extended headers, sparse/tail reads, seek, поток после Close/reopen и
+fatal errors. C API дополнительно проверяет sparse mappings через несколько
+index-cache entries и возврат к читаемому началу после ошибки позднего блока
+на малом metadata source без большого файла/матрицы. Native readonly Linux
+`6.8.0-147-generic` подтвердил clean/header/checksum controls, размер файла,
+8192-byte prefix, EIO позднее и healthy sibling; receipt
+`20261022T014850Z-2f924233`. Источники побайтно не изменились, mounts/data
+очищены, одноразовый helper удалён. Native kernel и закреплённый source
+baseline учитываются отдельно.
+
+Девять ordinary focused suites прошли на macOS/Linux/Windows за
+36,46/16,38/92,04 с; remote receipt `20261022T014955Z-c093b0fe`.
+После локализации и адресных уточнений повторялись только affected consumers:
+language/error policy/inode UI — macOS и оба runner
+(`20261022T015313Z-ca5d264f`), extraction/stream/read UI — все три ОС
+(`20261022T015536Z-e33fdf7f`). Финальные ABI/CLI с regression v3 → v4 прошли
+на всех трёх ОС (`20261022T015820Z-d6d3a458`). Incremental macOS app build
+прошла. C source comparison и runtime acceptance учитываются отдельно;
+full/slow suites и физические устройства не проверялись.
+
 ## Inode metadata по запросу, 2026-10-22
 
 Повторно сверены все type branches Linux `inode.c:squashfs_read_inode`,

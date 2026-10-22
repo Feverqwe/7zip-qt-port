@@ -570,16 +570,26 @@ class SquashfsStreamTests final : public QObject {
         const UInt32 alpha = index("alpha");
         QVERIFY(alpha != UInt32(-1));
         QCOMPARE(archive_->GetProperty(alpha, kpidSize, &size), S_OK);
-        QCOMPARE(size.vt, VARTYPE(clean ? VT_UI8 : VT_EMPTY));
+        QCOMPARE(size.vt, VARTYPE(VT_UI8));
+        QCOMPARE(size.uhVal.QuadPart, UInt64(237));
         if (clean) {
             auto data = stream("alpha");
             QVERIFY(data);
             check(data, "alpha", 0, 237);
         } else {
-            QVERIFY(!stream("alpha"));
+            auto data = stream("alpha");
+            QVERIFY(data);
+            char byte;
+            UInt32 read = 99;
+            QCOMPARE(data->Read(&byte, 1, &read), fault == "inode-block-io" ? E_FAIL : S_FALSE);
+            QCOMPARE(read, 0u);
+            NWindows::NCOM::CPropVariant packed;
+            QCOMPARE(archive_->GetProperty(alpha, kpidPackSize, &packed),
+                     fault == "inode-block-io" ? E_FAIL : S_OK);
+            QCOMPARE(packed.vt, VARTYPE(VT_EMPTY));
             NWindows::NCOM::CPropVariant error;
             QCOMPARE(archive_->GetProperty(alpha, kpidError, &error), S_OK);
-            QCOMPARE(error.vt, VARTYPE(VT_BSTR));
+            QCOMPARE(error.vt, VARTYPE(fault == "inode-block-io" ? VT_EMPTY : VT_BSTR));
         }
         QCOMPARE(archive_->Close(), S_OK);
         loadFixture("zlib", true, "inode-block-clean");
@@ -591,6 +601,86 @@ class SquashfsStreamTests final : public QObject {
         QTest::addColumn<QString>("fault");
         for (const QString &fault : {"inode-split", "inode-split-directory", "inode-split-link"})
             QTest::newRow(qPrintable(fault)) << fault;
+    }
+    void blocklistsAreReadOnDemand_data() {
+        QTest::addColumn<QString>("fault");
+        for (const QString &fault : {"blocklist-clean", "blocklist-header", "blocklist-zlib"})
+            QTest::newRow(qPrintable(fault)) << fault;
+    }
+    void blocklistsAreReadOnDemand() {
+        QFETCH(QString, fault);
+        loadFixture("zlib", false, fault);
+        const auto inode = qFromLittleEndian<quint64>(bytes_.constData() + 64);
+        CMyComPtr2<IInStream, Input> source;
+        source.SetFromCls(new Input(bytes_));
+        source->notifyAt = inode + 34 + 6;
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
+        QVERIFY(!source->notified);
+        auto data = stream("alpha");
+        QVERIFY(data);
+        check(data, "alpha", 0, 8192);
+        QVERIFY(!source->notified);
+        if (fault == "blocklist-clean") {
+            check(data, "alpha", 8192 * 2, 8192 + 7);
+            check(data, "alpha", 8192, 8192);
+        } else {
+            char byte;
+            UInt32 count = 99;
+            QCOMPARE(data->Seek(8192, STREAM_SEEK_SET, nullptr), S_OK);
+            QCOMPARE(data->Read(&byte, 1, &count), S_FALSE);
+            QCOMPARE(count, 0u);
+            check(data, "alpha", 0, 8192);
+            const UInt32 item = index("alpha");
+            CMyComPtr2<IArchiveExtractCallback, Extract> extraction;
+            extraction.SetFromCls(new Extract);
+            extraction->capture = true;
+            QCOMPARE(archive_->Extract(&item, 1, false, extraction), S_OK);
+            QCOMPARE(extraction->result, Int32(NArchive::NExtract::NOperationResult::kDataError));
+            QCOMPARE(extraction->output->bytes, QByteArray(8192, 'A'));
+        }
+        auto good = stream("данные 空");
+        QVERIFY(good);
+        check(good, "данные 空", 0, 329);
+    }
+    void requiredBlocklistReadFailuresPropagate() {
+        for (HRESULT result : {E_ABORT, E_OUTOFMEMORY, E_NOTIMPL, E_FAIL}) {
+            loadFixture("zlib", false, "blocklist-clean");
+            const auto inode = qFromLittleEndian<quint64>(bytes_.constData() + 64);
+            CMyComPtr2<IInStream, Input> source;
+            source.SetFromCls(new Input(bytes_));
+            source->failAt = inode + 34 + 6 + 2;
+            source->atFailure = result;
+            QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
+            auto data = stream("alpha");
+            QVERIFY(data);
+            check(data, "alpha", 0, 8192);
+            char byte;
+            UInt32 count = 99;
+            QCOMPARE(data->Seek(8192, STREAM_SEEK_SET, nullptr), S_OK);
+            QCOMPARE(data->Read(&byte, 1, &count), result);
+            QCOMPARE(count, 0u);
+        }
+    }
+    void modernFragmentsDoNotInheritLegacyMappings() {
+        loadFixture("zlib", false, "legacy-large");
+        CMyComPtr<IInStream> legacySource = new Input(bytes_);
+        QCOMPARE(archive_->Open(legacySource, nullptr, nullptr), S_OK);
+        auto legacy = stream("alpha");
+        QVERIFY(legacy);
+        check(legacy, "alpha", 0, 8192 * 3 + 7);
+        QCOMPARE(archive_->Close(), S_OK);
+        loadFixture("zlib");
+        CMyComPtr<IInStream> modernSource = new Input(bytes_);
+        QCOMPARE(archive_->Open(modernSource, nullptr, nullptr), S_OK);
+        auto modern = stream("alpha");
+        QVERIFY(modern);
+        check(modern, "alpha", 8192, 10);
+        check(modern, "alpha", 0, 8192);
+        char bytes[7];
+        UInt32 count = 0;
+        QCOMPARE(legacy->Seek(8192 * 3, STREAM_SEEK_SET, nullptr), S_OK);
+        QCOMPARE(legacy->Read(bytes, sizeof(bytes), &count), S_OK);
+        QCOMPARE(QByteArray(bytes, int(count)), QByteArray(7, 'L'));
     }
     void inodeRecordsRequestTheirOwnExtent() {
         QFETCH(QString, fault);
@@ -656,7 +746,7 @@ class SquashfsStreamTests final : public QObject {
         const auto directory = qFromLittleEndian<quint64>(bytes_.constData() + 72);
         const auto broken =
             fault == "inode-block-io"
-                ? inode + 2 + (qFromLittleEndian<quint16>(bytes_.constData() + inode) & 0x7fff)
+                ? inode
                 : directory + qFromLittleEndian<quint32>(bytes_.constData() + inode + 2 + 72 + 16);
         CMyComPtr2<IInStream, Input> source;
         source.SetFromCls(new Input(bytes_));

@@ -3906,6 +3906,14 @@ Are you sure you want to split archive into such volumes?</source>
             <translation>Некоторые индексы метаданных SquashFS недоступны. Данные файлов, сведения о владельцах или расширенные атрибуты могут быть неполными.</translation>
         </message>
         <message>
+            <source>Some SquashFS file block lists are unavailable. Only readable portions of affected files can be copied; incomplete copies report an error.</source>
+            <translation>Некоторые списки блоков файлов SquashFS недоступны. Можно скопировать только читаемые части затронутых файлов; при неполном копировании будет сообщено об ошибке.</translation>
+        </message>
+        <message>
+            <source>Some SquashFS file block-list metadata is unavailable.</source>
+            <translation>Часть метаданных списка блоков файла SquashFS недоступна.</translation>
+        </message>
+        <message>
             <source>The FAT directory could not be read completely.</source>
             <translation>Каталог FAT прочитан не полностью.</translation>
         </message>

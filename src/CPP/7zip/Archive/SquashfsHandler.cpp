@@ -293,7 +293,8 @@ struct CNode {
     UInt32 Parse1(const Byte *p, UInt32 size, const CHeader &_h);
     UInt32 Parse2(const Byte *p, UInt32 size, const CHeader &_h);
     UInt32 Parse3(const Byte *p, UInt32 size, const CHeader &_h);
-    UInt32 Parse4(const Byte *p, UInt32 size, const CHeader &_h, UInt32 *needed = NULL);
+    UInt32 Parse4(const Byte *p, UInt32 size, const CHeader &_h, UInt32 *needed = NULL,
+                  bool headerOnly = false);
 
     bool IsDir() const { return (Type == kType_DIR || Type == kType_DIR + 7); }
     bool IsLink() const { return (Type == kType_LNK || Type == kType_LNK + 7); }
@@ -632,7 +633,8 @@ UInt32 CNode::Parse3(const Byte *p, UInt32 size, const CHeader &_h) {
     return 0;
 }
 
-UInt32 CNode::Parse4(const Byte *p, UInt32 size, const CHeader &_h, UInt32 *needed) {
+UInt32 CNode::Parse4(const Byte *p, UInt32 size, const CHeader &_h, UInt32 *needed,
+                     bool headerOnly) {
     if (needed)
         *needed = 0;
     const auto available = [&](UInt64 required) {
@@ -689,6 +691,8 @@ UInt32 CNode::Parse4(const Byte *p, UInt32 size, const CHeader &_h, UInt32 *need
                                  (FileSize & (_h.BlockSize - 1)) > _h.BlockSize - Offset)))
             return 0;
         UInt64 pos = GetNumBlocks(_h) * 4 + offset;
+        if (headerOnly)
+            return offset;
         return available(pos) ? (UInt32)pos : 0;
     }
 
@@ -888,6 +892,7 @@ Z7_CLASS_IMP_CHandler_IInArchive_1(
 
   CByteBuffer _cachedBlock;
   UInt64 _cachedBlockStartPos;
+  UInt64 _processedPackSize = 0;
   UInt32 _cachedPackBlockSize;
   UInt32 _cachedUnpackBlockSize;
 
@@ -905,6 +910,12 @@ Z7_CLASS_IMP_CHandler_IInArchive_1(
 #ifdef SEVENZIP_LINUX_SQUASHFS
   sevenzip_squashfs_decoder *_linuxDecoder = NULL;
   sevenzip_squashfs_metadata *_linuxMetadata = NULL;
+  sevenzip_squashfs_file *_linuxFile = NULL;
+  CRecordVector<UInt64> _nodeReferences;
+  CRecordVector<UInt64> _nodeRecordSizes;
+  std::set<unsigned> _incompleteBlocklists;
+  HRESULT CreateLinuxFile(unsigned node, sevenzip_squashfs_file **file);
+  HRESULT GetLinuxPackSize(unsigned node, UInt64 &total);
   HRESULT _linuxReadResult = S_OK;
   static int ReadLinux(void *opaque, uint64_t offset, void *data, size_t size);
   HRESULT InitLinuxDecoder();
@@ -924,8 +935,8 @@ Z7_CLASS_IMP_CHandler_IInArchive_1(
   std::set<UInt32> _unavailableIds;
   std::set<UInt32> _incompleteDirectories;
   std::map<UInt32, std::pair<UInt64, UInt16>> _inodeReferences;
-  std::map<UInt32, std::pair<unsigned, UInt32>> _inodePositions;
-  std::map<UInt64, std::pair<unsigned, UInt32>> _inodeNodes;
+  std::map<UInt32, std::pair<unsigned, UInt64>> _inodePositions;
+  std::map<UInt64, std::pair<unsigned, UInt64>> _inodeNodes;
   std::map<UInt64, unsigned> _inodeBlockIndexes;
   std::set<UInt32> _unavailableInodeBlocks;
   std::set<UInt32> _badInodePositions;
@@ -935,7 +946,7 @@ Z7_CLASS_IMP_CHandler_IInArchive_1(
   HRESULT EnsureInodeInventory();
   UInt64 _directoryDataEnd = 0;
   std::map<UInt64, unsigned> _directoryBlockIndexes;
-  HRESULT ReadNode(UInt32 position, int &nodeIndex, UInt32 *length = NULL, UInt32 *needed = NULL);
+  HRESULT ReadNode(UInt32 position, int &nodeIndex, UInt64 *length = NULL, UInt32 *needed = NULL);
   bool _inodeMappingLimitations = false;
   bool InodeIdentityUnavailable(const CItem &item) const {
     if (item.RecoveredInode)
@@ -999,6 +1010,7 @@ Z7_CLASS_IMP_CHandler_IInArchive_1(
   HRESULT Open2(IInStream *inStream);
   AString GetPath(unsigned index) const;
   bool GetPackSize(unsigned index, UInt64 &res, bool fillOffsets);
+  HRESULT CreateReadStream(UInt32 index, ISequentialInStream **stream, CHandler **reader = NULL);
 
 public:
   CHandler();
@@ -1007,6 +1019,7 @@ public:
 #ifdef SEVENZIP_LINUX_SQUASHFS
     sevenzip_squashfs_decoder_destroy(_linuxDecoder);
     sevenzip_squashfs_metadata_destroy(_linuxMetadata);
+    sevenzip_squashfs_file_destroy(_linuxFile);
 #endif
     XzUnpacker_Free(&_xz);
     if (_zstd)
@@ -1170,7 +1183,7 @@ HRESULT CHandler::LoadFragment(CNode &node) {
     return S_OK;
 }
 
-HRESULT CHandler::ReadNode(UInt32 pos, int &nodeIndex, UInt32 *length, UInt32 *needed) {
+HRESULT CHandler::ReadNode(UInt32 pos, int &nodeIndex, UInt64 *length, UInt32 *needed) {
     nodeIndex = -1;
     if (needed)
         *needed = 0;
@@ -1183,7 +1196,7 @@ HRESULT CHandler::ReadNode(UInt32 pos, int &nodeIndex, UInt32 *length, UInt32 *n
     if (next != _inodePositions.end() && next->first == pos) {
         nodeIndex = (int)next->second.first;
         if (length)
-            *length = next->second.second - pos;
+            *length = _nodeRecordSizes[(unsigned)nodeIndex];
         return S_OK;
     }
     if (next != _inodePositions.begin()) {
@@ -1207,8 +1220,11 @@ HRESULT CHandler::ReadNode(UInt32 pos, int &nodeIndex, UInt32 *length, UInt32 *n
     }
     CNode n;
     UInt32 required = 0;
-    const UInt32 size =
-        n.Parse4(_inodesData.Data + pos, _inodesData.ContiguousEnd(block) - pos, _h, &required);
+    const UInt32 parsed = n.Parse4(_inodesData.Data + pos, _inodesData.ContiguousEnd(block) - pos,
+                                   _h, &required, needed != NULL);
+    UInt64 size = parsed;
+    if (parsed && needed && (n.Type == kType_FILE || n.Type == kType_FILE + 7))
+        size += n.GetNumBlocks(_h) * 4;
     if (!size && required) {
         if (needed)
             *needed = required;
@@ -1219,7 +1235,7 @@ HRESULT CHandler::ReadNode(UInt32 pos, int &nodeIndex, UInt32 *length, UInt32 *n
         _badInodePositions.insert(pos);
         return S_FALSE;
     }
-    if (next != _inodePositions.end() && size > next->first - pos)
+    if (next != _inodePositions.end() && parsed > next->first - pos)
         _inodeTableIncomplete = true;
     if (_openCallback && (_nodes.Size() & 255) == 0) {
         _directoryCallbackResult = _openCallback->SetCompleted(NULL, NULL);
@@ -1235,9 +1251,11 @@ HRESULT CHandler::ReadNode(UInt32 pos, int &nodeIndex, UInt32 *length, UInt32 *n
     _attributes.resize(index + 1);
     _loadedNodes.Add(false);
     _nodesPos.Add(pos);
+    _nodeReferences.Add(reference);
+    _nodeRecordSizes.Add(size);
     _nodes.Add(n);
     _activeDirs.Add(false);
-    _inodePositions.emplace(pos, std::make_pair(index, pos + size));
+    _inodePositions.emplace(pos, std::make_pair(index, (UInt64)pos + parsed));
     _inodeNodes.emplace(reference, std::make_pair(index, size));
     nodeIndex = (int)index;
     if (length)
@@ -1271,6 +1289,54 @@ HRESULT CHandler::LoadNode(unsigned index) {
     } else
         _attributes[index] = found->second;
     _loadedNodes[index] = true;
+    return S_OK;
+}
+
+HRESULT CHandler::CreateLinuxFile(unsigned index, sevenzip_squashfs_file **file) {
+    const CNode &node = _nodes[index];
+    _linuxReadResult = S_OK;
+    return LinuxResult(sevenzip_squashfs_file_create(
+        _h.Size, _h.InodeTable, _h.DirTable, _h.BlockSize, _nodeReferences[index],
+        node.Type == kType_FILE ? 32 : 56, node.FileSize, node.GetNumBlocks(_h), node.StartBlock,
+        node.Number, ReadLinuxMetadata, this, file));
+}
+
+HRESULT CHandler::GetLinuxPackSize(unsigned index, UInt64 &total) {
+    sevenzip_squashfs_file *raw = NULL;
+    const HRESULT created = CreateLinuxFile(index, &raw);
+    std::unique_ptr<sevenzip_squashfs_file, decltype(&sevenzip_squashfs_file_destroy)> file(
+        raw, sevenzip_squashfs_file_destroy);
+    if (created == S_FALSE)
+        _incompleteBlocklists.insert(index);
+    RINOK(created)
+    const CNode &node = _nodes[index];
+    total = 0;
+    for (UInt64 i = 0; i < node.GetNumBlocks(_h); ++i) {
+        uint64_t start;
+        unsigned size;
+        _linuxReadResult = S_OK;
+        const HRESULT result =
+            LinuxResult(sevenzip_squashfs_file_block(file.get(), i, &start, &size));
+        if (result == S_FALSE)
+            _incompleteBlocklists.insert(index);
+        RINOK(result)
+        total += GET_COMPRESSED_BLOCK_SIZE(size);
+        if (_openCallback && (i & 255) == 0) {
+            _directoryCallbackResult = _openCallback->SetCompleted(NULL, NULL);
+            RINOK(_directoryCallbackResult)
+        }
+    }
+    if (node.ThereAreFrags()) {
+        if (FragmentUnavailable(node))
+            return S_FALSE;
+        const CFrag &frag = _frags[node.Frag];
+        const UInt32 size = GET_COMPRESSED_BLOCK_SIZE(frag.Size);
+        if (size == 0 || size > _h.BlockSize || frag.StartBlock > _h.Size ||
+            size > _h.Size - frag.StartBlock)
+            return S_FALSE;
+        if (node.Offset == 0)
+            total += size;
+    }
     return S_OK;
 }
 
@@ -1834,11 +1900,11 @@ HRESULT CHandler::ScanCachedInodes() {
     if (_inodesData.PackEnd[last] != _h.DirTable - _h.InodeTable)
         return S_OK;
     _inodeInventoryScanned = true;
-    UInt32 pos = _inodesData.UnpackPos[first->second];
+    UInt64 pos = _inodesData.UnpackPos[first->second];
     for (UInt32 i = 0; i < _h.NumInodes; ++i) {
         int node;
-        UInt32 length = 0;
-        const HRESULT result = pos < end ? ReadNode(pos, node, &length) : S_FALSE;
+        UInt64 length = 0;
+        const HRESULT result = pos < end ? ReadNode((UInt32)pos, node, &length) : S_FALSE;
         RINOK(_directoryCallbackResult)
         if (result == S_FALSE) {
             _inodeTableIncomplete = true;
@@ -2620,6 +2686,11 @@ Z7_COM7F_IMF(CHandler::Close()) {
     _linuxDecoder = NULL;
     sevenzip_squashfs_metadata_destroy(_linuxMetadata);
     _linuxMetadata = NULL;
+    sevenzip_squashfs_file_destroy(_linuxFile);
+    _linuxFile = NULL;
+    _nodeReferences.Clear();
+    _nodeRecordSizes.Clear();
+    _incompleteBlocklists.clear();
     _attributes.clear();
     _attributeSets.clear();
     _incompleteAttributes.clear();
@@ -2726,6 +2797,15 @@ bool CHandler::GetPackSize(unsigned index, UInt64 &totalPack, bool fillOffsets) 
 #endif
     const CItem &item = _items[index];
     const CNode &node = _nodes[item.Node];
+#ifdef SEVENZIP_LINUX_SQUASHFS
+    if (!_h.IsOldVersion() && (node.Type == kType_FILE || node.Type == kType_FILE + 7) &&
+        node.FileSize != 0) {
+        const HRESULT result = GetLinuxPackSize((unsigned)item.Node, totalPack);
+        if (FAILED(result))
+            _linuxReadResult = result;
+        return result == S_OK;
+    }
+#endif
     const UInt32 ptr = _nodesPos[item.Node];
     const Byte *p = _inodesData.Data + ptr;
     const bool be = _h.be;
@@ -2848,6 +2928,12 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID propID, PROPVARIANT *value)) {
                 reasons += '\n';
             reasons += "Some SquashFS directories could not be read completely. Files or names may "
                        "be missing. Readable files remain accessible.";
+        }
+        if (!_incompleteBlocklists.empty()) {
+            if (!reasons.IsEmpty())
+                reasons += '\n';
+            reasons += "Some SquashFS file block lists are unavailable. Only readable portions "
+                       "of affected files can be copied; incomplete copies report an error.";
         }
         if (_inodeMappingLimitations) {
             if (!reasons.IsEmpty())
@@ -3042,6 +3128,11 @@ Z7_COM7F_IMF(CHandler::GetProperty(UInt32 index, PROPID propID, PROPVARIANT *val
             reasons +=
                 "The SquashFS file fragment is unavailable. Only the readable prefix is available.";
         }
+        if (item.Attribute < 0 && _incompleteBlocklists.count((unsigned)item.Node)) {
+            if (!reasons.IsEmpty())
+                reasons += '\n';
+            reasons += "Some SquashFS file block-list metadata is unavailable.";
+        }
         if (!reasons.IsEmpty())
             prop = reasons;
         break;
@@ -3111,8 +3202,15 @@ Z7_COM7F_IMF(CHandler::GetProperty(UInt32 index, PROPID propID, PROPVARIANT *val
     case kpidPackSize:
         if (!isDir) {
             UInt64 size;
+#ifdef SEVENZIP_LINUX_SQUASHFS
+            _linuxReadResult = S_OK;
+#endif
             if (GetPackSize(index, size, false))
                 prop = size;
+#ifdef SEVENZIP_LINUX_SQUASHFS
+            if (FAILED(_linuxReadResult))
+                return _linuxReadResult;
+#endif
         }
         break;
     case kpidMTime: {
@@ -3202,7 +3300,18 @@ HRESULT CHandler::ReadBlock(UInt64 blockIndex, Byte *dest, size_t blockSize) {
     UInt32 packBlockSize;
     UInt32 offsetInBlock = 0;
     bool compressed;
-    if (blockIndex < _blockCompressed.Size()) {
+#ifdef SEVENZIP_LINUX_SQUASHFS
+    if (_linuxFile && blockIndex < node.GetNumBlocks(_h)) {
+        uint64_t start;
+        unsigned size;
+        _linuxReadResult = S_OK;
+        RINOK(LinuxResult(sevenzip_squashfs_file_block(_linuxFile, blockIndex, &start, &size)))
+        blockOffset = start;
+        packBlockSize = GET_COMPRESSED_BLOCK_SIZE(size);
+        compressed = IS_COMPRESSED_BLOCK(size);
+    } else
+#endif
+        if (blockIndex < _blockCompressed.Size()) {
         compressed = _blockCompressed[(unsigned)blockIndex];
         blockOffset = _blockOffsets[(unsigned)blockIndex];
         packBlockSize = (UInt32)(_blockOffsets[(unsigned)blockIndex + 1] - blockOffset);
@@ -3259,6 +3368,7 @@ HRESULT CHandler::ReadBlock(UInt64 blockIndex, Byte *dest, size_t blockSize) {
         }
         _cachedBlockStartPos = blockOffset;
         _cachedPackBlockSize = packBlockSize;
+        _processedPackSize += packBlockSize;
     }
 
     if (_cachedUnpackBlockSize < offsetInBlock ||
@@ -3327,8 +3437,11 @@ Z7_COM7F_IMF(CHandler::Extract(const UInt32 *indices, UInt32 numItems, Int32 tes
             const UInt64 unpackSize = GetItemSize(index);
             totalSize += unpackSize;
             UInt64 packSize;
-            if (GetPackSize(index, packSize, false))
-                totalPackSize += packSize;
+#ifdef SEVENZIP_LINUX_SQUASHFS
+            if (_h.IsOldVersion())
+#endif
+                if (GetPackSize(index, packSize, false))
+                    totalPackSize += packSize;
 
             if (!testMode && !outStream)
                 continue;
@@ -3337,7 +3450,8 @@ Z7_COM7F_IMF(CHandler::Extract(const UInt32 *indices, UInt32 numItems, Int32 tes
             res = NExtract::NOperationResult::kDataError;
             {
                 CMyComPtr<ISequentialInStream> inSeqStream;
-                HRESULT hres = GetStream(index, &inSeqStream);
+                CHandler *reader = NULL;
+                HRESULT hres = CreateReadStream(index, &inSeqStream, &reader);
                 if (hres == E_NOTIMPL) {
                     res = NExtract::NOperationResult::kUnsupportedMethod;
                 } else if (hres != S_FALSE) {
@@ -3346,6 +3460,11 @@ Z7_COM7F_IMF(CHandler::Extract(const UInt32 *indices, UInt32 numItems, Int32 tes
                         return E_FAIL;
                     {
                         hres = copyCoder.Interface()->Code(inSeqStream, outStream, NULL, NULL, lps);
+#ifdef SEVENZIP_LINUX_SQUASHFS
+                        if (!_h.IsOldVersion())
+                            totalPackSize +=
+                                reader ? reader->_processedPackSize : copyCoder->TotalSize;
+#endif
                         if (hres == S_OK) {
                             if (copyCoder->TotalSize == unpackSize)
                                 res = NExtract::NOperationResult::kOK;
@@ -3371,8 +3490,15 @@ Z7_COM7F_IMF(CHandler::Extract(const UInt32 *indices, UInt32 numItems, Int32 tes
 }
 
 Z7_COM7F_IMF(CHandler::GetStream(UInt32 index, ISequentialInStream **stream)) {
+    return CreateReadStream(index, stream);
+}
+
+HRESULT CHandler::CreateReadStream(UInt32 index, ISequentialInStream **stream,
+                                   CHandler **readerResult) {
     COM_TRY_BEGIN
     *stream = NULL;
+    if (readerResult)
+        *readerResult = NULL;
     if (index >= _items.Size())
         return E_INVALIDARG;
 
@@ -3403,8 +3529,11 @@ Z7_COM7F_IMF(CHandler::GetStream(UInt32 index, ISequentialInStream **stream)) {
     }
 
     UInt64 packSize;
-    if (!GetPackSize(index, packSize, true))
-        return S_FALSE;
+#ifdef SEVENZIP_LINUX_SQUASHFS
+    if (_h.IsOldVersion())
+#endif
+        if (!GetPackSize(index, packSize, true))
+            return S_FALSE;
 
     CSquashfsInStream *streamSpec = new CSquashfsInStream;
     CMyComPtr<IInStream> streamTemp = streamSpec;
@@ -3418,8 +3547,13 @@ Z7_COM7F_IMF(CHandler::GetStream(UInt32 index, ISequentialInStream **stream)) {
     reader->_needCheckLzma = _needCheckLzma;
     reader->_nodes.Add(node);
     reader->_nodeIndex = 0;
-    reader->_blockOffsets = _blockOffsets;
-    reader->_blockCompressed = _blockCompressed;
+#ifdef SEVENZIP_LINUX_SQUASHFS
+    if (_h.IsOldVersion())
+#endif
+    {
+        reader->_blockOffsets = _blockOffsets;
+        reader->_blockCompressed = _blockCompressed;
+    }
     if (node.ThereAreFrags()) {
         if (node.Frag < _frags.Size())
             reader->_frags.Add(_frags[node.Frag]);
@@ -3436,6 +3570,10 @@ Z7_COM7F_IMF(CHandler::GetStream(UInt32 index, ISequentialInStream **stream)) {
     reader->_limitedInStream->SetStream(_stream);
 #ifdef SEVENZIP_LINUX_SQUASHFS
     RINOK(reader->InitLinuxDecoder())
+    if (!_h.IsOldVersion()) {
+        reader->_nodeReferences.Add(_nodeReferences[(unsigned)item.Node]);
+        RINOK(reader->CreateLinuxFile(0, &reader->_linuxFile))
+    }
 #endif
     reader->_cachedBlock.Alloc(_h.BlockSize);
     reader->ClearCache();
@@ -3445,6 +3583,10 @@ Z7_COM7F_IMF(CHandler::GetStream(UInt32 index, ISequentialInStream **stream)) {
     if (!streamSpec->Alloc(_h.BlockSizeLog, cacheSizeLog - _h.BlockSizeLog))
         return E_OUTOFMEMORY;
     streamSpec->Init(node.FileSize);
+    // The stream owns this reader; extraction may inspect its counters only
+    // while keeping the returned stream alive.
+    if (readerResult)
+        *readerResult = reader;
     *stream = streamTemp.Detach();
 
     return S_OK;

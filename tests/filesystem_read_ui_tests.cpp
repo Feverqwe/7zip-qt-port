@@ -153,7 +153,8 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
             for (bool accept : {false, true})
                 for (const QString &kind :
                      {"squashfs-inode-record", "squashfs-inode-unused",
-                      "squashfs-inode-block-header", "squashfs-inode-block-zlib"}) {
+                      "squashfs-inode-block-header", "squashfs-inode-block-zlib",
+                      "squashfs-blocklist-header", "squashfs-blocklist-zlib"}) {
                     if (!accept && kind != "squashfs-inode-record")
                         continue;
                     QTest::newRow(
@@ -335,12 +336,14 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
         const bool ext = kind.startsWith("ext-");
         const bool fat = kind.startsWith("fat-");
         const bool squashfs = kind.startsWith("squashfs");
+        const bool lateBlocklist = kind.startsWith("squashfs-blocklist-");
+        const bool deferredBlocklist = lateBlocklist || kind.startsWith("squashfs-inode-block-");
         const bool squashFragment =
             kind == "squashfs-fragment-metadata-zero" || kind == "squashfs-metadata-combined";
         const bool fatDirectory = kind.startsWith("fat-directory-");
         const bool fatFile = kind.startsWith("fat-file-");
         const bool copyDiagnostic =
-            fatFile || squashFragment || kind == "squashfs-directory-reference";
+            fatFile || squashFragment || lateBlocklist || kind == "squashfs-directory-reference";
         const QString fatFolder = kind == "fat-directory-free32" ? "BROKEN" : "GOOD";
         SaveRegLang(UString(language == "en" ? L"-" : L"ru"),
                     qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
@@ -392,6 +395,8 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
                 payload = QByteArray::fromBase64(
                     data["files"].toObject()[filename].toString().toLatin1());
             if (squashFragment)
+                payload = payload.left(8192);
+            if (lateBlocklist)
                 payload = payload.left(8192);
         }
         QTemporaryDir directory;
@@ -479,24 +484,29 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
         automation.start(10);
         window.openArchive(path);
         QVERIFY2(unexpectedErrors.isEmpty(), qPrintable(unexpectedErrors.join('\n')));
-        QCOMPARE(questions, 1);
+        QCOMPARE(questions, deferredBlocklist ? 0 : 1);
         QVERIFY(geometry);
         auto *badge = window.findChild<QLabel *>("deviceReadOnlyLabel");
         QVERIFY(badge);
         if (!accept) {
             QVERIFY(!badge->isVisible());
         } else {
-            QTRY_VERIFY(badge->isVisible());
-            QCOMPARE(badge->text(),
-                     QCoreApplication::translate("mainwindow_panel", "Read only · limited access"));
-            for (QSize size : {QSize(980, 620), QSize(640, 400)}) {
-                window.resize(size);
-                QCoreApplication::processEvents();
-                QVERIFY(UiInspection::fullyVisible(*badge, window));
-                QVERIFY(UiInspection::labelFits(*badge));
-                window.setProperty("uiInspection_language", language);
-                QVERIFY(UiInspection::writeReport(window, "filesystem-limited-" + language + '-' +
-                                                              QString::number(size.width())));
+            if (deferredBlocklist) {
+                QVERIFY(!badge->isVisible());
+            } else {
+                QTRY_VERIFY(badge->isVisible());
+                QCOMPARE(badge->text(), QCoreApplication::translate("mainwindow_panel",
+                                                                    "Read only · limited access"));
+                for (QSize size : {QSize(980, 620), QSize(640, 400)}) {
+                    window.resize(size);
+                    QCoreApplication::processEvents();
+                    QVERIFY(UiInspection::fullyVisible(*badge, window));
+                    QVERIFY(UiInspection::labelFits(*badge));
+                    window.setProperty("uiInspection_language", language);
+                    QVERIFY(UiInspection::writeReport(window, "filesystem-limited-" + language +
+                                                                  '-' +
+                                                                  QString::number(size.width())));
+                }
             }
             auto *table = window.findChild<QTableWidget *>("archiveTable");
             QVERIFY(table);
@@ -572,8 +582,8 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
             }
             window.findChild<QAction *>("refreshAction")->trigger();
             QTRY_VERIFY(Row(*table, filename) >= 0);
-            QCOMPARE(questions, 1);
-            QVERIFY(badge->isVisible());
+            QCOMPARE(questions, deferredBlocklist ? 0 : 1);
+            QCOMPARE(badge->isVisible(), !deferredBlocklist);
             window.openPath(directory.path());
             QVERIFY(!badge->isVisible());
             // Change our fixture after closing the old Windows read lease.
@@ -586,7 +596,7 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
                 changed.close();
             }
             window.openArchive(path);
-            QCOMPARE(questions, 2);
+            QCOMPARE(questions, deferredBlocklist ? 0 : 2);
         }
         automation.stop();
         QVERIFY2(unexpectedErrors.isEmpty(), qPrintable(unexpectedErrors.join('\n')));

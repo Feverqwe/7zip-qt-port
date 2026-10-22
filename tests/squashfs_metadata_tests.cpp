@@ -59,6 +59,51 @@ class SquashfsMetadataTests final : public QObject {
         return value;
     }
   private slots:
+    void blocklistIndexCachePreservesSparseMappingsAndFailures() {
+        constexpr unsigned blocks = 20000;
+        QByteArray records(32 + (blocks + 1) * 4, '\0');
+        qToLittleEndian(quint32((1 << 24) | 8192), records.data() + 32);
+        qToLittleEndian(quint32((1 << 24) | 7), records.data() + 32 + blocks * 4);
+        Source source;
+        source.bytes.resize(96);
+        for (qsizetype offset = 0; offset < records.size(); offset += 8192) {
+            const QByteArray part = records.mid(offset, 8192);
+            char header[2];
+            qToLittleEndian(quint16(0x8000 | part.size()), header);
+            source.bytes.append(header, 2);
+            source.bytes += part;
+        }
+        using File =
+            std::unique_ptr<sevenzip_squashfs_file, decltype(&sevenzip_squashfs_file_destroy)>;
+        const auto createFile = [&] {
+            sevenzip_squashfs_file *raw = nullptr;
+            const int result = sevenzip_squashfs_file_create(
+                source.bytes.size(), 96, source.bytes.size(), 8192, 0, 32,
+                quint64(blocks) * 8192 + 7, blocks + 1, 96, 1, Source::metadata, &source, &raw);
+            return result == 0 ? File(raw, sevenzip_squashfs_file_destroy)
+                               : File(nullptr, sevenzip_squashfs_file_destroy);
+        };
+        auto file = createFile();
+        QVERIFY(file);
+        for (unsigned index : {0u, 2047u, 2048u, 16384u, blocks - 1, blocks, 7u, blocks}) {
+            uint64_t start = UINT64_MAX;
+            unsigned size = 99;
+            QCOMPARE(sevenzip_squashfs_file_block(file.get(), index, &start, &size), 0);
+            QCOMPARE(start, uint64_t(index == 0 ? 96 : 96 + 8192));
+            QCOMPARE(size, index == 0        ? unsigned((1 << 24) | 8192)
+                           : index == blocks ? unsigned((1 << 24) | 7)
+                                             : 0u);
+        }
+        source.failBlock = 96 + 8194 * 5;
+        file = createFile();
+        QVERIFY(file);
+        uint64_t start;
+        unsigned size;
+        QVERIFY(sevenzip_squashfs_file_block(file.get(), blocks, &start, &size) < 0);
+        QCOMPARE(sevenzip_squashfs_file_block(file.get(), 0, &start, &size), 0);
+        QCOMPARE(start, uint64_t(96));
+        QCOMPARE(size, unsigned((1 << 24) | 8192));
+    }
     void initTestCase() {
         QProcess generator;
         generator.start(QString::fromUtf8(SEVENZIP_SQUASHFS_PYTHON),

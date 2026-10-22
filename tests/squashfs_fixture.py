@@ -19,6 +19,11 @@ def metadata(data, compressed=False):
 
 
 def volume(fault="", compressed=False, no_fragments=False, codec="zlib", xattrs=False, export=False):
+    if fault == "legacy-large":
+        image, payload = legacy_volume(large=True)
+        return image, {"alpha": payload}
+    if fault.startswith("blocklist-"):
+        return blocklist_volume(fault)
     if fault.startswith("inode-block-"):
         return inode_metadata_volume(fault)
     if fault.startswith("directory-block-"):
@@ -338,6 +343,48 @@ def volume(fault="", compressed=False, no_fragments=False, codec="zlib", xattrs=
     return bytes(image), dict(zip(names, (first, second, b"alpha", first))) if not no_fragments else {}
 
 
+def blocklist_volume(fault):
+    image = bytearray(96)
+    first = b"A" * BLOCK + b"B" * BLOCK + bytes(BLOCK) + b"tailend"
+    second = b"healthy" * 47
+    first_start = len(image)
+    image += first[:BLOCK * 2] + first[-7:]
+    second_start = len(image)
+    image += second
+
+    def base(kind, number):
+        return struct.pack("<HHHHII", kind, 0o755 if kind == 1 else 0o644, 0, 0, 0, number)
+
+    header = base(2, 1) + struct.pack("<IIII", first_start, 0xffffffff, 0, len(first))
+    prefix = metadata(header) + metadata(struct.pack("<I", (1 << 24) | BLOCK))
+    tail = bytearray(metadata(struct.pack("<III", (1 << 24) | BLOCK, 0, (1 << 24) | 7), True))
+    if fault == "blocklist-header":
+        struct.pack_into("<H", tail, 0, 0x8000)
+    elif fault == "blocklist-zlib":
+        tail[-1] ^= 0xff
+    healthy = base(2, 2) + struct.pack("<IIIII", second_start, 0xffffffff, 0, len(second),
+                                     (1 << 24) | len(second))
+    healthy_block = len(prefix) + len(tail)
+    directory = bytearray()
+    for name, block, number in (("alpha", 0, 1), ("данные 空", healthy_block, 2)):
+        encoded = name.encode()
+        directory += struct.pack("<IIIHHHH", 0, block, number, 0, 0, 2, len(encoded) - 1) + encoded
+    root = base(1, 3) + struct.pack("<IIHHI", 0, 2, len(directory) + 3, 0, 3)
+    inode_start = len(image)
+    image += prefix + tail + metadata(healthy + root)
+    directory_start = len(image)
+    image += metadata(directory)
+    ids_metadata = len(image)
+    image += metadata(struct.pack("<I", 1000))
+    ids_table = len(image)
+    image += struct.pack("<Q", ids_metadata)
+    struct.pack_into("<5I6H8Q", image, 0, 0x73717368, 3, 0, BLOCK, 0, 1, 13, 0, 1, 4, 0,
+                     (healthy_block << 16) | len(healthy), len(image), ids_table, INVALID,
+                     inode_start, directory_start, INVALID, INVALID)
+    image += bytes((-len(image)) % 4096)
+    return bytes(image), {"alpha": first, "данные 空": second}
+
+
 def inode_metadata_volume(fault):
     image = bytearray(96)
     first, second = b"A" * 237, b"B" * 333
@@ -444,10 +491,12 @@ def directory_volume(fault):
     return bytes(image), {"alpha": first, "broken/payload": second, "good 空/payload": second}
 
 
-def legacy_volume(endian="<", compressed=False):
+def legacy_volume(endian="<", compressed=False, large=False):
     """v3 remains a 7-Zip read extension; current Linux only mounts v4."""
     image = bytearray(119)
     payload = b"legacy" + bytes(range(256)) * 3
+    if large:
+        payload = b"L" * (BLOCK * 3 + 7)
     image += payload
 
     def base(kind, number):
@@ -455,7 +504,8 @@ def legacy_volume(endian="<", compressed=False):
         return struct.pack(endian + "HBBII", mode, 0, 255, 0, number)
 
     file_inode = base(2, 1) + struct.pack(endian + "QIII", 119, 0xffffffff, 0, len(payload))
-    file_inode += struct.pack(endian + "I", (1 << 24) | len(payload))
+    for offset in range(0, len(payload), BLOCK):
+        file_inode += struct.pack(endian + "I", (1 << 24) | len(payload[offset:offset + BLOCK]))
     root_offset = len(file_inode)
     entry = (2 if endian == ">" else 2 << 13)
     directory = bytes(1) + struct.pack(endian + "IIHBH", 0, 1, entry, 4, 0) + b"alpha"

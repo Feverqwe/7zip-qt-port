@@ -12,6 +12,10 @@ struct squashfs_sb_info {
     const struct squashfs_decompressor *decompressor;
     void *stream;
     unsigned int block_size;
+    unsigned int block_log;
+    int next_meta_index;
+    struct mutex meta_index_mutex;
+    struct meta_index *meta_index;
     long long bytes_used;
     bool panic_on_errors;
     const struct squashfs_decompressor_thread_ops *thread_ops;
