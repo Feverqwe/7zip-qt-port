@@ -6,7 +6,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
-from cramfs_fixture import image, checksum, inode, partial_directory, declare_size
+from cramfs_fixture import image, checksum, inode, partial_directory, declare_size, partial_table
 
 RUNTIME = Path(sys.argv.pop(1))
 MODULE = Path(sys.argv.pop(1))
@@ -139,6 +139,20 @@ class CramfsTests(unittest.TestCase):
                     extracted = self.run_image(data, forced=forced)
                     self.assertIn(extracted.returncode, (0, 1), extracted.stderr)
                     self.assertEqual(extracted.stdout, b"readable prefix")
+
+    def test_incomplete_table_keeps_direct_block_prefix_and_reports_failure(self):
+        for endian in ("<", ">"):
+            for prefix in (0, 512):
+                for kind in ("direct-raw", "direct-zlib"):
+                    for version2 in (False, True):
+                        with self.subTest(endian=endian, prefix=prefix, kind=kind, v2=version2):
+                            data, payload = partial_table(endian, prefix, kind, version2)
+                            listing = self.run_image(data, command="l", forced=False)
+                            self.assertIn(listing.returncode, (0, 1), listing.stderr)
+                            self.assertIn(b"CramFS file block tables are incomplete", listing.stdout)
+                            extracted = self.run_image(data, forced=False, members=("alpha",))
+                            self.assertEqual(extracted.returncode, 2, extracted.stderr)
+                            self.assertEqual(extracted.stdout, payload)
 
     def test_shared_direct_data_and_short_uncompressed_tail(self):
         data = bytearray(image([b"A" * 4096] * 2, storage=["direct-raw"] * 2))

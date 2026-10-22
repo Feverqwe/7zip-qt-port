@@ -1,5 +1,55 @@
 # Cramfs read-side modernization against Linux
 
+## Incomplete block tables and readable file prefixes — 2026-10-22
+
+Compared the pinned Linux folio mapping, direct/end-pointer dependencies and
+bounded source reads with the C bridge, SDK GetStream/cache/CopyCoder and
+per-file extraction callbacks. Linux reads the current pointer and only the
+previous-pointer/header dependencies required by that page. The adapter instead
+required the entire table inside the source before returning a file stream or
+reading any page. That hides valid earlier direct blocks when the table lies
+after their payloads and only the last table entries are unavailable.
+
+The Linux profile now uses the existing mapper and bounded acquisition for
+each requested page. Whole-table preconditions are removed from both C bridge
+entry points and from Linux-profile GetStream. Arithmetic representability is
+checked separately from source availability in the shared C mapper; file-size
+rounding is widened before addition. The legacy reader retains its whole-table
+validation because it indexes its complete buffer directly. No unchecked source
+read or substitute bytes are introduced: an unavailable pointer fails that
+page before its temporary buffer is copied, preserving earlier completed
+output and the SDK per-file DataError result. Other selected files remain
+accessible, with cancellation/OOM and output failures retaining their existing
+fatal behavior.
+
+Opening checks published inode table ranges without decoding payloads. A
+known incomplete table uses the existing per-opening consent, read-only badge
+and refresh behavior, with an EN/RU explanation that partial copies report an
+error. Consent does not mark an incomplete file successful or authorize repair.
+An image may have usable direct blocks despite this limitation; ordinary end
+pointers continue to require all dependencies used by the selected page.
+
+Small process fixtures relocate a table after its existing payloads and omit
+its final pointer, covering raw/zlib direct blocks, v1/v2 and both byte orders
+with and without a native boot prefix. They require the exact readable prefix
+and a failing extraction result, rather than accepting fabricated file tails.
+The ABI scenario verifies that a healthy sibling is copied, and that a failed
+seek/read of the unavailable page does not prevent rereading the first page.
+The EN/RU UI scenario covers consent/cancellation, mode visibility, partial
+copy diagnostics, exact output and unchanged source bytes. Local focused
+`cramfs`, `cramfs_module`, `filesystem_cramfs_read_ui`, `upstream_baseline` and
+`upstream_inventory` checks passed (19.11 seconds). Linux/Windows CLI/source
+checks passed in `20261022T064621Z-9a75d75f`; final ABI and exact Cramfs UI
+checks passed in `20261022T064718Z-c314b9e4`. The application build and diff
+check passed. Current Cocoa JSON for the EN/RU warning labels shows complete
+visibility and fitting text (420×214/275 logical pixels); the UI scenario
+checks the badge in normal/compact windows too. Linux/Windows UI behavior is
+offscreen, without a rendered Windows visual reference. Temporary fixture
+owners clean their data; current review/failure evidence, build trees and
+compiler caches are retained. No full or slow suites were run.
+The remaining Cramfs source audit and general embedded-origin inference remain
+open; this is not native-kernel or physical-device acceptance.
+
 ## Declared size and available source bounds — 2026-10-22
 
 Recompared the pinned Linux `cramfs_read_super`, `cramfs_blkdev_read`,

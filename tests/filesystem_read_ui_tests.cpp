@@ -292,10 +292,10 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
         for (const QString &language : {"en", "ru"})
             for (const QString &kind :
                  {"cramfs-crc", "cramfs-short", "cramfs-clean", "cramfs-directory",
-                  "cramfs-directory-cycle", "cramfs-counts", "cramfs-size"})
+                  "cramfs-directory-cycle", "cramfs-counts", "cramfs-size", "cramfs-table"})
                 for (bool accept : {false, true}) {
                     if (!accept && kind != "cramfs-crc" && kind != "cramfs-directory" &&
-                        kind != "cramfs-size")
+                        kind != "cramfs-size" && kind != "cramfs-table")
                         continue;
                     QTest::newRow(
                         qPrintable(language + '-' + kind + (accept ? "-accept" : "-cancel")))
@@ -372,8 +372,8 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
             kind == "squashfs-fragment-metadata-zero" || kind == "squashfs-metadata-combined";
         const bool fatDirectory = kind.startsWith("fat-directory-");
         const bool fatFile = kind.startsWith("fat-file-");
-        const bool copyDiagnostic =
-            fatFile || squashFragment || lateBlocklist || kind == "squashfs-directory-reference";
+        const bool copyDiagnostic = kind == "cramfs-table" || fatFile || squashFragment ||
+                                    lateBlocklist || kind == "squashfs-directory-reference";
         const QString fatFolder = kind == "fat-directory-free32" ? "BROKEN" : "GOOD";
         SaveRegLang(UString(language == "en" ? L"-" : L"ru"),
                     qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));

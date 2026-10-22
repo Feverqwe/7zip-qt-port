@@ -469,6 +469,39 @@ class CramfsModuleTests final : public QObject {
             }
         }
     }
+    void incompleteTableRetainsReadableBlockAndHealthySibling() {
+        createArchive();
+        auto bytes = filePair();
+        const int oldTable = 588 + 40;
+        const QByteArray firstPointer = bytes.mid(oldTable, 4);
+        const int table = bytes.size();
+        bytes += firstPointer;
+        qToLittleEndian(quint32((table / 4 << 6) | 2), bytes.data() + 588 + 8);
+        QCOMPARE(open(bytes), S_OK);
+        CMyComPtr2<IArchiveExtractCallback, Extract> callback;
+        callback.Create_if_Empty();
+        QCOMPARE(archive_->Extract(nullptr, UInt32(-1), 0, callback), S_OK);
+        QCOMPARE(callback->results, QList<Int32>({NArchive::NExtract::NOperationResult::kDataError,
+                                                  NArchive::NExtract::NOperationResult::kOK}));
+        QCOMPARE(callback->output->bytes, contents.left(4096) + "healthy sibling\n");
+        CMyComPtr<IInArchiveGetStream> provider;
+        QCOMPARE(
+            archive_->QueryInterface(IID_IInArchiveGetStream, reinterpret_cast<void **>(&provider)),
+            S_OK);
+        CMyComPtr<ISequentialInStream> sequential;
+        QCOMPARE(provider->GetStream(0, &sequential), S_OK);
+        CMyComPtr<IInStream> stream;
+        QCOMPARE(sequential->QueryInterface(IID_IInStream, reinterpret_cast<void **>(&stream)),
+                 S_OK);
+        char buffer[4];
+        UInt32 processed;
+        QCOMPARE(stream->Seek(4096, STREAM_SEEK_SET, nullptr), S_OK);
+        QCOMPARE(stream->Read(buffer, sizeof(buffer), &processed), S_FALSE);
+        QCOMPARE(processed, 0u);
+        QCOMPARE(stream->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
+        QCOMPARE(stream->Read(buffer, sizeof(buffer), &processed), S_OK);
+        QCOMPARE(QByteArray(buffer, processed), QByteArray("AAAA"));
+    }
     void flaggedBlocksAreReadableWithoutFalsePackedSize() {
         createArchive();
         auto bytes = fixture();

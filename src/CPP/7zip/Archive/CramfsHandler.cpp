@@ -111,6 +111,9 @@ static const char *const kDirectoryLimitations =
 static const char *const kSizeLimitations =
     "The declared CramFS volume size does not bound all file references reliably. Reading uses "
     "the available source bounds. Some files may be damaged or unreadable.";
+static const char *const kFileLimitations =
+    "Some CramFS file block tables are incomplete. Only readable portions of affected files can "
+    "be copied; incomplete copies report an error.";
 
 static UInt32 GetSize(const Byte *p, bool be)
 {
@@ -203,6 +206,7 @@ Z7_CLASS_IMP_CHandler_IInArchive_1(
   bool _directoryLimitations;
   bool _sizeLimitations;
   bool _extentUnknown;
+  bool _fileLimitations;
   HRESULT _directoryCallbackResult;
   std::set<UInt32> _activeDirectories;
   IArchiveOpenCallback *_openCallback;
@@ -524,6 +528,13 @@ HRESULT CHandler::Open2(IInStream *inStream) {
         } else
             _phySize = _size;
         RINOK(OpenDir(-1, headerCache + kHeaderSize, 0))
+        FOR_VECTOR(i, _items) {
+            const Byte *p = _data + _items[i].Offset;
+            const UInt32 size = GetDataSize(p, _h.be);
+            if (!IsDir(p, _h.be) && size &&
+                (UInt64)GetOffset(p, _h.be) + GetNumBlocks(size) * 4 > _size)
+                _fileLimitations = true;
+        }
 #ifdef SEVENZIP_LINUX_CRAMFS
         if (_h.IsVer2() && available > _h.Size) {
             RINOK(CheckExtents())
@@ -722,6 +733,7 @@ Z7_COM7F_IMF(CHandler::Close())
   _directoryLimitations = false;
   _sizeLimitations = false;
   _extentUnknown = false;
+  _fileLimitations = false;
   _directoryCallbackResult = S_OK;
   _activeDirectories.clear();
   _method = k_Flags_Method_ZLIB;
@@ -776,6 +788,11 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID propID, PROPVARIANT *value)) {
                 reasons += '\n';
             reasons += kSizeLimitations;
         }
+        if (_fileLimitations) {
+            if (!reasons.IsEmpty())
+                reasons += '\n';
+            reasons += kFileLimitations;
+        }
         if (!reasons.IsEmpty())
             prop = reasons;
         break;
@@ -795,6 +812,11 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID propID, PROPVARIANT *value)) {
             if (!warning.IsEmpty())
                 warning += '\n';
             warning += kSizeLimitations;
+        }
+        if (_fileLimitations) {
+            if (!warning.IsEmpty())
+                warning += '\n';
+            warning += kFileLimitations;
         }
         if (!warning.IsEmpty())
             prop = warning;
@@ -1204,7 +1226,7 @@ Z7_COM7F_IMF(CHandler::GetStream(UInt32 index, ISequentialInStream **stream))
       return S_OK;
   }
 
-  if (offset + numBlocks * 4 > _size)
+  if (!_linuxRead && offset + numBlocks * 4 > _size)
       return S_FALSE;
   UInt32 prev = offset;
   for (UInt32 i = 0; !_linuxRead && i < numBlocks; i++) {

@@ -17,8 +17,8 @@
 int cramfs_map_inode_block(struct inode *inode, u32 index, struct cramfs_extent *extent)
 {
 	struct super_block *sb = inode->i_sb;
-	u32 maxblock = (inode->i_size + PAGE_SIZE - 1) >> PAGE_SHIFT;
-	if (index >= maxblock)
+	u32 maxblock = ((uint64_t)inode->i_size + PAGE_SIZE - 1) >> PAGE_SHIFT;
+	if (index >= maxblock || OFFSET(inode) > UINT32_MAX - maxblock * 4)
 		return -1;
 	u32 blkptr_offset = OFFSET(inode) + index * 4;
 	u32 block_ptr, block_start, block_len;
@@ -98,7 +98,7 @@ int cramfs_read_folio(struct file *file, struct folio *folio)
 	void *pgdata;
 	bool success = false;
 
-	maxblock = (inode->i_size + PAGE_SIZE - 1) >> PAGE_SHIFT;
+	maxblock = ((uint64_t)inode->i_size + PAGE_SIZE - 1) >> PAGE_SHIFT;
 	bytes_filled = 0;
 	pgdata = kmap_local_folio(folio, 0);
 

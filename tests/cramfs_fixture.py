@@ -75,6 +75,20 @@ def image(blocks, endian="<", storage=None, prefix=0, shifted=0, reverse=False,
     return bytes(result)
 
 
+def partial_table(endian="<", prefix=512, kind="direct-raw", version2=True):
+    payload = b"A" * 4096
+    data = bytearray(image([payload, b"missing tail"], endian, [kind, kind],
+                           prefix=prefix, name=b"alpha", version2=version2))
+    root = prefix + 76
+    old_table = root + 20
+    data.extend(bytes((-len(data)) % 4))
+    table = len(data)
+    data.extend(data[old_table:old_table + 4])
+    data[root:root + 12] = inode(0o100644, 4096 + 12, table, 8, endian)
+    checksum(data, endian, prefix)
+    return data, payload
+
+
 def partial_directory(state, endian="<"):
     prefix, root = 512, 588
     child = root + 40
@@ -119,6 +133,9 @@ if __name__ == "__main__":
         checksum(data, prefix=512)
     elif state == "size":
         data = declare_size(data, len(data) - 1, prefix=512)
+    elif state == "table":
+        data, payload = partial_table()
+        files = {"alpha": payload}
     elif state.startswith("directory"):
         data, files, fault_offset = partial_directory(state)
     elif state != "clean":

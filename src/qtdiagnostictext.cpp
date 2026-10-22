@@ -58,6 +58,9 @@ UString QtArchiveDiagnosticText(const UString &source) {
     }
     const char *const warnings[] = {
         QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                          "Some CramFS file block tables are incomplete. Only readable portions "
+                          "of affected files can be copied; incomplete copies report an error."),
+        QT_TRANSLATE_NOOP("SevenZipDiagnostics",
                           "The declared CramFS volume size does not bound all file references "
                           "reliably. Reading uses the available source bounds. Some files may be "
                           "damaged or unreadable."),
