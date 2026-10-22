@@ -5,6 +5,41 @@ Scope входит в [общую проверку форматов](filesystems
 современный LZO и проверки compressor options через отдельный format-модуль.
 Полная актуализация SquashFS read features по Linux ещё продолжается.
 
+## Загрузка fragment entries по inode references, 2026-10-22
+
+Сверены полные Linux `fragment.c` loader/lookup, regular/extended regular
+branches `inode.c` и SDK `Parse4`, block mapping, properties и retained streams.
+Linux загружает fragment index при mount, затем читает конкретную entry при
+разборе inode. Прежний archive adapter обходил весь declared fragment count
+и выделял массив соответствующего размера, включая неиспользуемые entries;
+большой count мог отвергнуть пригодное чтение либо потребовать лишнюю память.
+
+GPL v4 adapter теперь вызывает исходный Linux lookup только для fragment IDs,
+встреченных в разобранных regular inodes. Одна полученная entry используется
+всеми её потребителями; внутренний компактный индекс сохраняет исходные SDK
+block/stream paths. Count/range проверяет Linux reader, missing entry остаётся
+недоступной. Прежние partial-prefix errors, packed-size uncertainty, fatal
+source/callback results и независимое время жизни streams сохраняются.
+Close очищает mapping. Linux C-код и legacy/core-only scope не менялись.
+
+Новые ABI/CLI controls проверяют разные payloads при IDs в разных index blocks,
+fragment ID выше прежнего eager-count предела и недоступный неиспользуемый
+metadata block. Последний не читается даже при source E_ABORT на этом block.
+Проверяются точные хвосты/полные payloads, hardlinks, interleaving и streams
+после Close/reopen. Образ с большим ID содержит около 4 МиБ index, а не массив
+всех объявленных fragment entries; это обычная focused проверка, не slow suite.
+
+Native Linux `6.8.0-147-generic` подтвердил точные payloads для разных fragment
+blocks и неиспользуемого повреждённого блока. Большой index получил ENOMEM при
+mount: его native payload acceptance не подтверждён. Runtime failure не
+подменён форматом/искусственным отказом reader и не обходился изменением памяти
+или кэшей runner. Образы не изменились, mounts/data удалены; receipt
+`20261022T005520Z-dc2abf18`. Девять focused suites на macOS/Linux/Windows прошли
+за 68,41/14,17/91,39 с; remote receipt `20261022T005546Z-0f658519`.
+Incremental macOS app build также прошла; full/slow и физические устройства
+не проверялись. Общая сверка продолжается, включая существующие whole-metadata
+cache пределы и предварительный разбор inode records вне достижимого namespace.
+
 ## Недоступные служебные indexes: ограниченное чтение, 2026-10-21
 
 Сопоставлены полные Linux `super.c:squashfs_fill_super`, `id.c`, `fragment.c`,

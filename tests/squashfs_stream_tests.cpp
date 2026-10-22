@@ -768,6 +768,44 @@ class SquashfsStreamTests final : public QObject {
         QTest::newRow("ownership") << false;
         QTest::newRow("fragment") << true;
     }
+    void fragmentsAreLoadedByReferencedIndex_data() {
+        QTest::addColumn<QString>("fault");
+        for (const QString &fault :
+             {"fragment-remap", "fragment-high-index", "fragment-unused-block"})
+            QTest::newRow(qPrintable(fault)) << fault;
+    }
+    void fragmentsAreLoadedByReferencedIndex() {
+        QFETCH(QString, fault);
+        loadFixture("zlib", true, fault);
+        CMyComPtr2<IInStream, Input> source;
+        source.SetFromCls(new Input(bytes_));
+        if (fault == "fragment-unused-block") {
+            const auto table = qFromLittleEndian<quint64>(bytes_.constData() + 80);
+            source->failAt = qFromLittleEndian<quint64>(bytes_.constData() + table + 8);
+            source->atFailure = E_ABORT;
+        }
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
+        auto first = stream("alpha");
+        auto second = stream("данные 空");
+        QVERIFY(first && second);
+        check(first, "alpha", 8189, 13);
+        check(second, "данные 空", 16380, 15);
+        check(first, "alpha", 0, 8202);
+        for (const QString &name : {QString("alpha"), QString("hardlink"), QString("данные 空")}) {
+            NWindows::NCOM::CPropVariant error;
+            QCOMPARE(archive_->GetProperty(index(name), kpidError, &error), S_OK);
+            QCOMPARE(error.vt, VARTYPE(VT_EMPTY));
+        }
+        QCOMPARE(archive_->Close(), S_OK);
+        loadFixture("zlib", true);
+        CMyComPtr<IInStream> healthy = new Input(bytes_);
+        QCOMPARE(archive_->Open(healthy, nullptr, nullptr), S_OK);
+        check(first, "alpha", 8192, 10);
+        check(second, "данные 空", 16384, 11);
+        auto reopened = stream("alpha");
+        QVERIFY(reopened);
+        check(reopened, "alpha", 0, 8202);
+    }
     void tableReadFailuresAndCancellation() {
         QFETCH(bool, fragment);
         loadFixture("zlib", true);

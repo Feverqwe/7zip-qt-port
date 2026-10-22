@@ -895,6 +895,8 @@ Z7_CLASS_IMP_CHandler_IInArchive_1(
   HRESULT InitLinuxDecoder();
   static int ReadLinuxMetadata(void *, uint64_t, void *, unsigned *, uint64_t *);
   HRESULT LoadLinuxTables(UInt64 &directoryEnd);
+  HRESULT LoadFragment(CNode &node);
+  std::map<UInt32, UInt32> _fragmentIndexes;
   HRESULT LinuxResult(int result) const;
   using CAttributes = std::shared_ptr<std::vector<ArchiveAttribute>>;
   std::vector<CAttributes> _attributes;
@@ -1105,29 +1107,38 @@ HRESULT CHandler::LoadLinuxTables(UInt64 &directoryEnd) {
         if (_openCallback && (i & 255) == 0)
             RINOK(_openCallback->SetCompleted(NULL, NULL))
     }
-    if (unavailable & SEVENZIP_SQUASHFS_FRAGMENTS_UNAVAILABLE)
+    return S_OK;
+}
+
+HRESULT CHandler::LoadFragment(CNode &node) {
+    if ((node.Type != kType_FILE && node.Type != kType_FILE + 7) || !node.ThereAreFrags())
         return S_OK;
-    if (_h.NumFrags > kNumFilesMax)
-        return S_FALSE;
-    _frags.ClearAndReserve(_h.NumFrags);
-    for (UInt32 i = 0; i < _h.NumFrags; ++i) {
-        _linuxReadResult = S_OK;
-        uint64_t start = 0;
-        unsigned size = 0;
-        const HRESULT result =
-            LinuxResult(sevenzip_squashfs_fragment(_linuxMetadata, i, &start, &size));
-        if (result == E_ABORT || result == E_OUTOFMEMORY || result == E_NOTIMPL)
-            return result;
-        CFrag frag;
-        const UInt32 packed = GET_COMPRESSED_BLOCK_SIZE(size);
-        frag.Available = result == S_OK && packed != 0 && packed <= _h.BlockSize &&
-                         start <= _h.Size && packed <= _h.Size - start;
-        frag.StartBlock = start;
-        frag.Size = size;
-        _frags.AddInReserved(frag);
-        if (_openCallback && (i & 255) == 0)
-            RINOK(_openCallback->SetCompleted(NULL, NULL))
+    const auto found = _fragmentIndexes.find(node.Frag);
+    if (found != _fragmentIndexes.end()) {
+        node.Frag = found->second;
+        return S_OK;
     }
+    _linuxReadResult = S_OK;
+    uint64_t start = 0;
+    unsigned size = 0;
+    const HRESULT result =
+        LinuxResult(sevenzip_squashfs_fragment(_linuxMetadata, node.Frag, &start, &size));
+    if (result == E_ABORT || result == E_OUTOFMEMORY || result == E_NOTIMPL)
+        return result;
+    if (_openCallback) {
+        _directoryCallbackResult = _openCallback->SetCompleted(NULL, NULL);
+        RINOK(_directoryCallbackResult)
+    }
+    CFrag frag;
+    const UInt32 packed = GET_COMPRESSED_BLOCK_SIZE(size);
+    frag.Available = result == S_OK && packed != 0 && packed <= _h.BlockSize && start <= _h.Size &&
+                     packed <= _h.Size - start;
+    frag.StartBlock = start;
+    frag.Size = size;
+    const UInt32 index = _frags.Size();
+    _fragmentIndexes.emplace(node.Frag, index);
+    _frags.Add(frag);
+    node.Frag = index;
     return S_OK;
 }
 
@@ -1179,6 +1190,7 @@ HRESULT CHandler::ReadNode(UInt32 pos, int &nodeIndex, UInt32 *length) {
         RINOK(_directoryCallbackResult)
     }
     const UInt16 type = n.Type > kType_SOCK ? n.Type - 7 : n.Type;
+    RINOK(LoadFragment(n))
     const auto inserted = _inodeReferences.emplace(n.Number, std::make_pair(reference, type));
     if (!inserted.second) {
         inserted.first->second.first = UINT64_MAX;
@@ -2553,6 +2565,7 @@ Z7_COM7F_IMF(CHandler::Close()) {
     _ownershipLimitations = false;
     _fragmentLimitations = false;
     _indexLimitations = false;
+    _fragmentIndexes.clear();
     _rootAttributeName.Empty();
 #endif
     _openCodePage = CP_UTF8;

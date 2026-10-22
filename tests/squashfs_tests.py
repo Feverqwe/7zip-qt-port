@@ -216,6 +216,15 @@ class SquashfsTests(unittest.TestCase):
                 self.assertEqual(first.stdout, files["alpha"][:8192] if fault in fragment_faults else files["alpha"])
                 self.assertEqual(first.returncode == 0, fault not in fragment_faults)
 
+    def test_only_referenced_fragments_are_needed(self):
+        for fault in ("fragment-remap", "fragment-high-index", "fragment-unused-block"):
+            data, files = volume(fault, xattrs=True, export=True)
+            for name in ("alpha", "hardlink", "данные 空"):
+                with self.subTest(fault=fault, name=name):
+                    result = self.run_image("7z", data, "x", name)
+                    self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                    self.assertEqual(result.stdout, files[name])
+
     def test_export_payload_is_independent_of_ordinary_file_reads(self):
         for engine in ("7z", "7zz"):
             for xattrs in (False, True):

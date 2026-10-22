@@ -61,6 +61,10 @@ def volume(fault="", compressed=False, no_fragments=False, codec="zlib", xattrs=
     packed = zlib.compress(fragment) if compressed else fragment
     image += packed
     fragment_size = len(packed) | (0 if compressed else 1 << 24)
+    alternate_fragment = None
+    if fault == "fragment-remap":
+        alternate_fragment = len(image)
+        image += b"0123456789second-tail"
     inodes = bytearray()
 
     def base(kind, number):
@@ -109,9 +113,20 @@ def volume(fault="", compressed=False, no_fragments=False, codec="zlib", xattrs=
         root_offset = 0
         fragment_table = INVALID
     else:
-        image += metadata(struct.pack("<QII", fragment_start, fragment_size, 0), compressed)
+        image += metadata(struct.pack("<QII", alternate_fragment if alternate_fragment is not None else fragment_start,
+                                      fragment_size, 0), compressed)
+        fragment_count = 1
+        fragment_indexes = [fragment_metadata]
+        if fault in ("fragment-unused-block", "fragment-remap"):
+            fragment_count = 513
+            fragment_indexes.append(len(image))
+            image += (metadata(struct.pack("<QII", fragment_start, fragment_size, 0))
+                      if fault == "fragment-remap" else struct.pack("<H", 0x8000))
+        elif fault == "fragment-high-index":
+            fragment_count = (1 << 28) + 1
+            fragment_indexes *= (fragment_count + 511) // 512
         fragment_table = len(image)
-        image += struct.pack("<Q", fragment_metadata)
+        image += b"".join(struct.pack("<Q", block) for block in fragment_indexes)
     lookup_table = INVALID
     if export:
         lookup_metadata = len(image)
@@ -148,7 +163,7 @@ def volume(fault="", compressed=False, no_fragments=False, codec="zlib", xattrs=
         xattr_id_table = len(image)
         image += struct.pack("<QIIQ", xattr_start, 1, 0, xattr_ids_metadata)
     struct.pack_into("<5I6H8Q", image, 0, 0x73717368, 1 if no_fragments else 5 if fault == "inode-unused" else 4,
-                     0, BLOCK, 0 if no_fragments else 1, 5 if codec == "lz4" else 3 if codec == "lzo-rle" else 1,
+                     0, BLOCK, 0 if no_fragments else fragment_count, 5 if codec == "lz4" else 3 if codec == "lzo-rle" else 1,
                      13, 1 << 10 if codec == "lz4" else 0, 1, 4, 0,
                      root_offset, len(image), ids_table, xattr_id_table, inode_start, dir_start,
                      fragment_table, lookup_table)
@@ -240,6 +255,9 @@ def volume(fault="", compressed=False, no_fragments=False, codec="zlib", xattrs=
                 struct.pack_into("<Q", image, table, len(image))
     elif fault == "fragment-count-large":
         struct.pack_into("<I", image, 16, 0xffffffff)
+    elif fault in ("fragment-high-index", "fragment-remap"):
+        struct.pack_into("<I", image, inode_start + 2 + (44 if xattrs else 20),
+                         (1 << 28) if fault == "fragment-high-index" else 512)
     elif fault == "id-count-zero":
         struct.pack_into("<H", image, 26, 0)
     elif fault == "id-metadata-gap":
