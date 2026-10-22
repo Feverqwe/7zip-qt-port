@@ -6,6 +6,70 @@ tree boundaries, directory record boundaries and archive stream consumers.
 The second integrates Linux metadata and inline-data readers. The ext row remains
 open for the remaining read features listed below.
 
+## Optional extended attributes and useful read-only opening — 2026-10-22
+
+Compared pinned Linux `fs/ext4/xattr.c` getters, EA-inode role/refcount/hash
+checks, `acl.c` conversion and `__ext4_iget`'s external-block address check with
+the archive inode inventory, eager attribute export and fscrypt consumers.
+The Linux baseline remains
+`58161ead29e50d70a317ea26b472e0c7508e69da` from the repository linked above;
+SDK integration remains based on
+`9128b80e3a471108678e2b3ec3c985861c8d7b0f`. No new source dependency or
+independent value decoder was introduced.
+
+The dynamic module now confines optional attribute failures to the affected
+value or external container. Main data, other inodes and independently validated
+attributes remain available. Invalid EA-inode roles, link/reference counts,
+sizes, mappings, hashes and ACL encodings do not publish a value. A failed value
+does not suppress later entries in a structurally validated container. A failed
+external block preserves valid in-inode attributes; invalid external entries or
+checksums never become an unchecked list. Metadata source read/seek failures are
+localized through the existing read-only input adapter. Cancellation, allocation
+failure, explicit callback errors and internal interface failures still propagate.
+
+The archive inventory defers external xattr validation to its consumers. The
+original Linux `ext4_inode_block_valid` check is now performed before an external
+attribute block read in the visitor and getter, rather than rejecting the entire
+archive during inventory. This also protects the strict fscrypt getter. Bounds,
+system-zone validation, container checksums and complete value verification remain
+mandatory before export. This differs deliberately from Linux's inode-acquisition
+refusal for an invalid `i_file_acl`: useful independent archive data can be offered
+with explicit consent. Internal inline-data and encryption contexts are not
+optional exported metadata; their decoding and validation have not been relaxed.
+
+EA-inode link counts are checked by the original attribute getter, not reconciled
+against directory entries, because these service inodes have no directory links.
+Affected native items report unavailable attributes; valid exported attribute
+streams do not inherit that error. The archive reports a read-only limitation,
+using the existing per-opening confirmation, visible mode and source-write
+prohibition. Healthy reopen clears the limitation. Standalone `7zz` retains the
+non-Linux reader profile; the new partial attribute export belongs to the GPL
+module, with shared SDK code still compiled in both engine profiles.
+
+Source scope is complete for this optional export scenario, not for all ext
+inode initialization, symlink or encryption failure isolation. In-inode structural
+validation is still part of mandatory inode initialization; this change does not
+assert recovery from an undecodable inode or unsupported essential payload.
+
+Runtime validation: incremental application build succeeded on macOS. All eleven
+focused suites passed on macOS, Linux and Windows: `ext`, `ext_stream`,
+`ext_fscrypt`, `ext_fscrypt_cli`, `ext_fscrypt_backend`, `ext_xattr_backend`,
+`upstream_baseline`, `upstream_inventory`, `filesystem_read_ui`,
+`filesystem_read_ui_ru` and `language`. Guest receipts are
+`build/runners/hyperv/20261022T100331Z-6c22fd26/{linux,windows}`. Both runtime
+profiles were prepared with the existing build/cache directories before checks.
+The CLI regressions retain exact main-file/alias and healthy attribute bytes
+while omitting bad EA-inode values, ACLs and invalid external containers. They
+also exercise protected metadata pointers without exporting metadata bytes as
+attributes. ABI tests inject read/seek failures, cancellation, allocation errors
+and explicit callback failures, verify per-item diagnostics, and require healthy
+reopen to clear the mode. EN/RU UI checks cover consent/decline, persistent mode,
+exact copying, refresh, per-opening scope and unchanged source bytes. Current
+Cocoa warning JSON reports 420×214 (EN) and 420×262 (RU), with visible fitting
+reason labels. This is geometry evidence, not rendered Windows pixel parity.
+All 303 pinned Linux reference hashes match. No full gate, slow suite, physical
+device, new kernel-mount comparison or release installation was performed.
+
 ## Incomplete directory namespace and useful read-only opening — 2026-10-22
 
 Recompared pinned Linux `ext4_readdir`, directory checksum/record validation,
@@ -535,8 +599,9 @@ including ibody-before-block precedence, EA-inode acquisition, exact size,
 role/refcount and data/entry hashes. Both unsigned and legacy signed name hashes,
 plus the original Lustre backpointer compatibility branch, are retained.
 `check_igot_inode` comes from the same pinned `inode.c`. Recomparison found these
-read bodies unchanged apart from explicit C pointer casts and replacement of
-GNU's omitted ternary operand for MSVC. New dependencies are pinned in the
+read bodies unchanged apart from explicit C pointer casts, replacement of
+GNU's omitted ternary operand for MSVC and the deferred external-block address
+guard described above. New dependencies are pinned in the
 existing source inventory; no sibling checkout is modified.
 
 Linux `acl.c` supplies the complete `ext4_acl_from_disk` body; `fs/posix_acl.c`

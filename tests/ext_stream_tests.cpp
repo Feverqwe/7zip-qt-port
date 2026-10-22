@@ -372,26 +372,66 @@ class ExtStreamTests final : public QObject {
         const auto record = bundle("xattrs");
         CMyComPtr2<IInStream, Input> input;
         input.SetFromCls(new Input(image(record)));
-        input->failAt = UInt64(record["ea_data_offset"].toDouble());
-        for (HRESULT result : {E_FAIL, E_ABORT}) {
-            QCOMPARE(input->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
-            input->atResult = result;
-            QCOMPARE(archive_->Open(input, nullptr, nullptr), result);
-            UInt32 count = 99;
-            QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
-            QCOMPARE(count, UInt32(0));
+        for (const char *key : {"ea_data_offset", "xattr_block_offset"}) {
+            const UInt64 offset = UInt64(record[key].toDouble());
+            QVERIFY(offset > 0);
+            for (bool seek : {false, true}) {
+                input->failAt = seek ? UINT64_MAX : offset;
+                input->seekFailAt = seek ? offset : UINT64_MAX;
+                for (HRESULT result : {E_FAIL, E_ABORT, E_OUTOFMEMORY}) {
+                    input->faults = 0;
+                    QCOMPARE(input->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
+                    input->atResult = result;
+                    QCOMPARE(archive_->Open(input, nullptr, nullptr),
+                             result == E_FAIL ? S_OK : result);
+                    UInt32 count = 99;
+                    QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+                    if (result == E_FAIL) {
+                        QVERIFY(input->faults > 0);
+                        QVERIFY(!readLimitations().isEmpty());
+                        QCOMPARE(fileIndex(QString(key) == "ea_data_offset"
+                                               ? "data.bin:$XATTR.user.large"
+                                               : "data.bin:$XATTR.system.posix_acl_access"),
+                                 UInt32(-1));
+                        QVERIFY(fileIndex("data.bin:$XATTR.user.empty") != UInt32(-1));
+                        const UInt32 index = fileIndex("data.bin");
+                        QVERIFY(index != UInt32(-1));
+                        NWindows::NCOM::CPropVariant diagnostic;
+                        QCOMPARE(archive_->GetProperty(index, kpidError, &diagnostic), S_OK);
+                        QCOMPARE(diagnostic.vt, VARTYPE(VT_BSTR));
+                        CMyComPtr2<IArchiveExtractCallback, Extract> extract;
+                        extract.SetFromCls(new Extract);
+                        QCOMPARE(archive_->Extract(&index, 1, false, extract), S_OK);
+                        QCOMPARE(extract->files.size(), 1);
+                        QByteArray expected;
+                        for (int b = 0; b < 100; ++b)
+                            expected += char(b);
+                        QCOMPARE(extract->files[0], expected);
+                        QCOMPARE(extract->results,
+                                 QList<Int32>{NArchive::NExtract::NOperationResult::kOK});
+                    } else
+                        QCOMPARE(count, UInt32(0));
+                }
+            }
         }
-        input->notifyAt = input->failAt;
+        input->notifyAt = UInt64(record["ea_data_offset"].toDouble());
         input->failAt = UINT64_MAX;
+        input->seekFailAt = UINT64_MAX;
         CMyComPtr2<IArchiveOpenCallback, CancelXattrOpen> cancel;
         cancel.SetFromCls(new CancelXattrOpen);
         cancel->source = input.ClsPtr();
-        QCOMPARE(input->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
-        QCOMPARE(archive_->Open(input, nullptr, cancel), E_ABORT);
+        for (HRESULT result : {E_ABORT, E_FAIL, S_FALSE, E_OUTOFMEMORY}) {
+            cancel->result = result;
+            input->notified = false;
+            QCOMPARE(input->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
+            QCOMPARE(archive_->Open(input, nullptr, cancel), result);
+            QVERIFY(input->notified);
+        }
         input->notifyAt = UINT64_MAX;
         input->notified = false;
         QCOMPARE(input->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
         QCOMPARE(archive_->Open(input, nullptr, cancel), S_OK);
+        QVERIFY(readLimitations().isEmpty());
         QVERIFY(fileIndex("data.bin:$XATTR.user.large") != UInt32(-1));
     }
     void sparseStreamsRetainSourceAfterCloseAndRelease_data() {

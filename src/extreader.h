@@ -63,6 +63,9 @@ struct ext_xattr_services {
     void *context;
     ext_xattr_read_fn read;
     ext_xattr_inode_fn inode;
+    /* Optional export only: return zero to skip a failed value/container.
+     * Getters used for decoding filesystem data remain strict. */
+    int (*handle_error)(void *, int);
 };
 typedef int (*ext_xattr_emit)(void *, const char *name, const void *value, size_t size);
 int ext_linux_xattr_visit(struct ext_node *, const struct ext_xattr_services *, ext_xattr_emit, void *);

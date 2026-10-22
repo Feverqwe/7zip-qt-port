@@ -135,6 +135,12 @@ class ExtTests(unittest.TestCase):
             for target in ("super", "gdt", "block-map", "inode-map", "table", "journal"):
                 with self.subTest(mapping=mapping, target=target):
                     volume = BlockVolume(mapping, target)
+                    if mapping == "xattr":
+                        self.limited_listing(volume)
+                        result = self.run_image(volume)
+                        self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                        self.assertEqual(result.stdout, volume.read(0, volume.size))
+                        continue
                     result = self.run_image(volume)
                     self.assertNotEqual(result.returncode, 0)
                     # A bad indirect data reference does not invalidate the
@@ -325,13 +331,25 @@ class ExtTests(unittest.TestCase):
                     self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
                     self.assertEqual(result.stdout, expected)
 
-    def test_ea_inode_integrity_cannot_return_value_bytes(self):
+    def test_bad_xattrs_are_omitted_without_hiding_readable_files_and_values(self):
         for fault in ("bad-data", "bad-hash", "bad-entry-hash", "missing-flag", "no-links",
-                      "many-links", "no-refs", "size", "self", "unwritten", "bad-acl"):
+                      "many-links", "no-refs", "size", "self", "unwritten", "bad-acl",
+                      "bad-block", "block-range"):
             with self.subTest(fault=fault):
-                result = self.run_image(XattrVolume("xattrs-" + fault), name="data.bin:$XATTR.user.large")
-                self.assertNotEqual(result.returncode, 0)
-                self.assertEqual(result.stdout, b"")
+                volume = XattrVolume("xattrs-" + fault)
+                bad_name = "system.posix_acl_access" if fault in ("bad-acl", "bad-block", "block-range") else "user.large"
+                listing = self.run_image(volume, command="l", name=None, streams=True)
+                self.limited_listing(volume, [b"data.bin:$XATTR." + bad_name.encode()], listing)
+                for name in ("data.bin", "alias.bin", "data.bin:$XATTR.user.empty",
+                             "data.bin:$XATTR.user.comment#1", "[ROOT]:$XATTR.user.root"):
+                    result = self.run_image(volume, name=name)
+                    self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                    self.assertEqual(result.stdout, volume.files[name])
+                if fault not in ("bad-block", "block-range"):
+                    name = "data.bin:$XATTR.trusted.fixture"
+                    result = self.run_image(volume, name=name)
+                    self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                    self.assertEqual(result.stdout, volume.files[name])
 
     def test_sparse_indirect_and_extent_reads(self):
         for engine in ("7z", "7zz"):
@@ -684,9 +702,10 @@ class ExtTests(unittest.TestCase):
                     struct.pack_into("<BBHIII", volume.data, start + 32, 4, 1, 8, 0, 64, 0)
                     volume.data[start + 48:start + 52] = b"name"
                     volume.refresh()
+                self.limited_listing(volume)
                 result = self.run_image(volume)
-                self.assertNotEqual(result.returncode, 0)
-                self.assertEqual(result.stdout, b"")
+                self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                self.assertEqual(result.stdout, volume.read(0, volume.size))
 
     def test_complete_group_and_fast_symlink_with_xattr(self):
         for engine in ("7z", "7zz"):
@@ -733,6 +752,12 @@ class ExtTests(unittest.TestCase):
                     else:
                         block = v.extent_blocks[0]
                         v.data[root:root + 60] = v.extent_header(1, [(2, block), (3, block)], 4)
+                    if fault == "acl-range" and engine == "7z":
+                        self.limited_listing(v)
+                        result = self.run_image(v, engine)
+                        self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                        self.assertEqual(result.stdout, v.read(0, v.size))
+                        continue
                     result = self.run_image(v, engine)
                     self.assertIn(result.returncode, (1, 2), result.stderr.decode(errors="replace"))
                     expected = v.read(0, 3 * v.block_size) if engine == "7z" and fault == "child-overrun" else b""

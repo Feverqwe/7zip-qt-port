@@ -3962,6 +3962,14 @@ Are you sure you want to split archive into such volumes?</source>
             <translation>Каталог ext прочитан не полностью.</translation>
         </message>
         <message>
+            <source>Some extended attributes of this ext item could not be read.</source>
+            <translation>Некоторые расширенные атрибуты этого объекта ext недоступны для чтения.</translation>
+        </message>
+        <message>
+            <source>Some ext extended attributes could not be read. Unreadable attributes have been omitted; readable files remain accessible.</source>
+            <translation>Некоторые расширенные атрибуты ext недоступны для чтения и пропущены. Доступные файлы можно читать.</translation>
+        </message>
+        <message>
             <source>Some ext directories could not be read completely. The file list may be incomplete or outdated.</source>
             <translation>Некоторые каталоги ext прочитаны не полностью. Список файлов может быть неполным или устаревшим.</translation>
         </message>

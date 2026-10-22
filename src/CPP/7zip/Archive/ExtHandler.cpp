@@ -596,6 +596,7 @@ struct CNode {
     bool FastSymlink;
     int ReadError, SpecialReadError, EaReadError;
     bool DirectoryIncomplete = false;
+    bool XattrsIncomplete = false;
     unsigned XattrFirst, XattrCount;
 #endif
 
@@ -612,6 +613,7 @@ struct CNode {
         HasXattrs = false;
         XattrFirst = XattrCount = 0;
         DirectoryIncomplete = false;
+        XattrsIncomplete = false;
 #endif
     }
 
@@ -676,8 +678,10 @@ bool CNode::Parse(const Byte *p, const CHeader &_h) {
     LE_32(0x68, FileAcl)
     if (_h.Is64Bit())
         FileAcl |= (UInt64)Get16(p + 0x76) << 32;
+#ifndef SEVENZIP_LINUX_EXT
     if (FileAcl != 0 && (FileAcl <= (unsigned)(_h.BlockBits == 10) || FileAcl >= _h.NumBlocks))
         return false;
+#endif
 
     {
         UInt32 highSize;
@@ -833,7 +837,7 @@ static void ImportTime(const ext_time &source, CExtTime &time) {
 #endif
 
 #ifdef SEVENZIP_LINUX_EXT
-static IInStream *CreateDirectoryInput(IInStream *source);
+static IInStream *CreateReadOnlyInput(IInStream *source);
 #endif
 
 // clang-format off
@@ -879,6 +883,7 @@ Z7_CLASS_IMP_CHandler_IInArchive_2(
   CObjectVector<CExtXattr> _xattrs;
   int _rootXattrAux;
   bool _directoryLimitations = false;
+  bool _xattrLimitations = false;
   void MarkDirectoryIncomplete(CNode &node)
   {
     node.DirectoryIncomplete = true;
@@ -894,6 +899,7 @@ Z7_CLASS_IMP_CHandler_IInArchive_2(
   };
   static int ReadXattr(void *, uint32_t, uint64_t, void *, size_t) noexcept;
   static int ReadXattrInode(void *, uint32_t, void *, size_t) noexcept;
+  static int HandleXattrError(void *, int) noexcept;
   static int ReadLinkBlock(void *, void *, size_t) noexcept;
   HRESULT ReadLink(unsigned, CByteBuffer &, IInStream *source = NULL);
   struct CSystemZoneContext {
@@ -1275,7 +1281,7 @@ HRESULT CHandler::ReadDir(unsigned iNodeDir, HRESULT &callbackResult) {
     _dirs.AddNew();
     CDirParseState state;
 #ifdef SEVENZIP_LINUX_EXT
-    CMyComPtr<IInStream> source = CreateDirectoryInput(_stream);
+    CMyComPtr<IInStream> source = CreateReadOnlyInput(_stream);
     if (iNodeDir == k_INODE_ROOT)
         node.ParentNode = k_INODE_ROOT;
     if (node.InlineIndex >= 0) {
@@ -1695,8 +1701,6 @@ HRESULT CHandler::LoadSystemZone(const void *descriptors, UInt32 groups) {
         const CNode &node = _nodes[i];
         if ((node.Flags & ((UInt32)1 << 21)) ? node.EaReadError : node.SpecialReadError)
             continue;
-        if (node.FileAcl && !ext_linux_block_valid(_volume.Ptr, node.InodeNumber, node.FileAcl, 1))
-            return S_FALSE;
         const bool fastLink = node.IsFastSymlink(_h);
         if (node.InlineIndex < 0 && !fastLink && node.IsFlags_EXTENTS() &&
             (node.IsRegular() || node.IsDir() || node.IsLink()) &&
@@ -1821,7 +1825,7 @@ HRESULT CHandler::LoadEncryption() {
             ext_node *Ptr;
             ~CNodeOwner() { ext_linux_inode_close(Ptr); }
         } holder{inode};
-        ext_xattr_services services{&context, ReadXattr, ReadXattrInode};
+        ext_xattr_services services{&context, ReadXattr, ReadXattrInode, NULL};
         Byte value[40] = {};
         if (!result)
             result = ext_linux_fscrypt_context(inode, &services, NULL, 0);
@@ -1845,13 +1849,30 @@ HRESULT CHandler::LoadEncryption() {
     return S_OK;
 }
 
+int CHandler::HandleXattrError(void *opaque, int error) noexcept {
+    auto &context = *static_cast<CXattrContext *>(opaque);
+    CHandler &owner = *context.Owner;
+    if (owner._openCallbackResult != S_OK) {
+        context.Result = owner._openCallbackResult;
+        return error;
+    }
+    if (error == -ENOMEM || (context.Result != S_OK && context.Result != S_FALSE))
+        return error;
+    owner._nodes[context.NodeIndex].XattrsIncomplete = true;
+    owner._xattrLimitations = true;
+    context.Result = S_OK;
+    return 0;
+}
+
 HRESULT CHandler::LoadXattrs() {
+    CMyComPtr<IInStream> source = CreateReadOnlyInput(_stream);
     FOR_VECTOR(i, _nodes) {
         CNode &node = _nodes[i];
         if (node.SpecialReadError || !node.HasXattrs || (node.Flags & ((UInt32)1 << 21)))
             continue;
         node.XattrFirst = _xattrs.Size();
         CXattrContext context{this, i, S_OK, 0, {}};
+        context.Source = source;
         CByteBuffer raw;
         raw.Alloc(_h.InodeSize);
         int result = ReadXattr(&context, 0, node.RawOffset, raw, raw.Size());
@@ -1863,8 +1884,10 @@ HRESULT CHandler::LoadXattrs() {
             ext_node *Ptr;
             ~CNodeOwner() { ext_linux_inode_close(Ptr); }
         } holder{inode};
-        ext_xattr_services services{&context, ReadXattr, ReadXattrInode};
-        if (!result)
+        ext_xattr_services services{&context, ReadXattr, ReadXattrInode, HandleXattrError};
+        if (result)
+            result = HandleXattrError(&context, result);
+        else
             result = ext_linux_xattr_visit(inode, &services, EmitXattr, &context);
         if (context.Result != S_OK)
             return context.Result;
@@ -2115,13 +2138,6 @@ HRESULT CHandler::Open2(IInStream *inStream) {
                         ext_node *Ptr;
                         ~CNodeOwner() { ext_linux_inode_close(Ptr); }
                     } owner{linuxNode};
-                    if (node.FileAcl) {
-                        CByteBuffer xattr;
-                        xattr.Alloc(blockSize);
-                        RINOK(SeekAndRead(inStream, node.FileAcl, xattr, blockSize))
-                        if (ext_linux_xattr_check(linuxNode, node.FileAcl, xattr) != 0)
-                            return S_FALSE;
-                    }
                     node.ChecksumSeed = info.checksum_seed;
                     node.RawOffset = (gd.InodeTable << _h.BlockBits) + (UInt64)n * _h.InodeSize;
                     node.InodeNumber = globalNodeIndex + 1;
@@ -2258,7 +2274,11 @@ HRESULT CHandler::Open2(IInStream *inStream) {
                 continue;
             const CNode &node = _nodes[nodeIndex];
 
-            if (node.NumLinks != node.NumLinksCalced) {
+            if (node.NumLinks != node.NumLinksCalced
+#ifdef SEVENZIP_LINUX_EXT
+                && !(node.Flags & ((UInt32)1 << 21))
+#endif
+            ) {
                 if (node.NumLinks != 1 || node.NumLinksCalced != 0
                     // ) && i >= _h.FirstInode
                 ) {
@@ -2529,6 +2549,7 @@ Z7_COM7F_IMF(CHandler::Close()) {
     _linksError = false;
 #ifdef SEVENZIP_LINUX_EXT
     _directoryLimitations = false;
+    _xattrLimitations = false;
 #endif
     _isUTF = true;
     _openCallback = NULL;
@@ -2755,6 +2776,12 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID propID, PROPVARIANT *value)) {
         if (_directoryLimitations)
             reasons = "Some ext directories could not be read completely. The file list may be "
                       "incomplete or outdated.";
+        if (_xattrLimitations) {
+            if (!reasons.IsEmpty())
+                reasons += '\n';
+            reasons += "Some ext extended attributes could not be read. Unreadable attributes "
+                       "have been omitted; readable files remain accessible.";
+        }
 #endif
         if (_h.FeatureIncompat & 4) {
             if (!reasons.IsEmpty())
@@ -3070,8 +3097,18 @@ Z7_COM7F_IMF(CHandler::GetProperty(UInt32 index, PROPID propID, PROPVARIANT *val
         switch (propID) {
 #ifdef SEVENZIP_LINUX_EXT
         case kpidError:
-            if (!xattr && node.DirectoryIncomplete)
-                prop = "The ext directory could not be read completely.";
+            if (!xattr) {
+                AString errors;
+                if (node.DirectoryIncomplete)
+                    errors = "The ext directory could not be read completely.";
+                if (node.XattrsIncomplete) {
+                    if (!errors.IsEmpty())
+                        errors += '\n';
+                    errors += "Some extended attributes of this ext item could not be read.";
+                }
+                if (!errors.IsEmpty())
+                    prop = errors;
+            }
             break;
         case kpidIsAltStream:
             prop = xattr;
@@ -3972,7 +4009,7 @@ class CFileExtractionIO final : public IInStream,
         return OutputResult;
     }
 };
-static IInStream *CreateDirectoryInput(IInStream *source) {
+static IInStream *CreateReadOnlyInput(IInStream *source) {
     CFileExtractionIO *io = new CFileExtractionIO;
     io->Input = source;
     return io;

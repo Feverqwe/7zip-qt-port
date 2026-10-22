@@ -175,6 +175,11 @@ UString QtArchiveDiagnosticText(const UString &source) {
         QT_TRANSLATE_NOOP("SevenZipDiagnostics", "The FAT directory could not be read completely."),
         QT_TRANSLATE_NOOP("SevenZipDiagnostics", "The ext directory could not be read completely."),
         QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                          "Some extended attributes of this ext item could not be read."),
+        QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                          "Some ext extended attributes could not be read. Unreadable attributes "
+                          "have been omitted; readable files remain accessible."),
+        QT_TRANSLATE_NOOP("SevenZipDiagnostics",
                           "Some ext directories could not be read completely. The file list may be "
                           "incomplete or outdated."),
         QT_TRANSLATE_NOOP("SevenZipDiagnostics",

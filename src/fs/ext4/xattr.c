@@ -287,6 +287,13 @@ static const char *ext4_xattr_prefix(unsigned index)
     return index < ARRAY_SIZE(prefixes) ? prefixes[index] : NULL;
 }
 
+static int ext4_xattr_export_error(struct inode *inode, int error)
+{
+    const struct ext_xattr_services *services = EXT4_SB(inode->i_sb)->xattr_services;
+    if (error == -ENOMEM || !services || !services->handle_error) return error;
+    return services->handle_error(services->context, error);
+}
+
 static int ext4_xattr_list_entries(struct inode *inode, struct ext4_xattr_entry *entry,
                                     ext_xattr_emit emit, void *context)
 {
@@ -300,16 +307,31 @@ static int ext4_xattr_list_entries(struct inode *inode, struct ext4_xattr_entry 
         memcpy(name, entry->e_name, entry->e_name_len);
         name[entry->e_name_len] = 0;
         size = ext4_xattr_get(inode, entry->e_name_index, name, NULL, 0);
-        if (size < 0) return size;
+        if (size < 0) {
+            result = ext4_xattr_export_error(inode, size);
+            if (result) return result;
+            continue;
+        }
         value = malloc(size ? (size_t)size : 1);
         if (!value) return -ENOMEM;
         result = ext4_xattr_get(inode, entry->e_name_index, name, value, size);
-        if (result != size) { free(value); return result < 0 ? result : -EIO; }
+        if (result != size) {
+            free(value);
+            result = ext4_xattr_export_error(inode, result < 0 ? result : -EIO);
+            if (result) return result;
+            continue;
+        }
         output = value;
         output_size = size;
         if (entry->e_name_index == 2 || entry->e_name_index == 3) {
             result = ext4_acl_xattr_value(value, size, &output, &output_size);
-            if (result) { free(value); if (result == -ENODATA) continue; return result; }
+            if (result) {
+                free(value);
+                if (result == -ENODATA) continue;
+                result = ext4_xattr_export_error(inode, result);
+                if (result) return result;
+                continue;
+            }
         }
         prefix_size = strlen(prefix);
         full_name = malloc(prefix_size + entry->e_name_len + 1);
@@ -340,10 +362,13 @@ int ext4_xattr_visit(struct inode *inode, ext_xattr_emit emit, void *context)
         if (result) return result;
     }
     if (!EXT4_I(inode)->i_file_acl) return 0;
+    if (!ext4_inode_block_valid(inode, EXT4_I(inode)->i_file_acl, 1))
+        return ext4_xattr_export_error(inode, -EFSCORRUPTED);
     bh = ext4_sb_bread(inode->i_sb, EXT4_I(inode)->i_file_acl, REQ_PRIO);
-    if (IS_ERR(bh)) return PTR_ERR(bh);
+    if (IS_ERR(bh)) return ext4_xattr_export_error(inode, PTR_ERR(bh));
     result = ext4_xattr_check_block(inode, bh);
-    if (!result) result = ext4_xattr_list_entries(inode, BFIRST(bh), emit, context);
+    if (result) result = ext4_xattr_export_error(inode, result);
+    else result = ext4_xattr_list_entries(inode, BFIRST(bh), emit, context);
     brelse(bh);
     return result;
 }
@@ -585,6 +610,9 @@ ext4_xattr_block_get(struct inode *inode, int name_index, const char *name,
 
 	if (!EXT4_I(inode)->i_file_acl)
 		return -ENODATA;
+	/* The eager archive inode loader defers optional xattr validation here. */
+	if (!ext4_inode_block_valid(inode, EXT4_I(inode)->i_file_acl, 1))
+		return -EFSCORRUPTED;
 	ea_idebug(inode, "reading block %llu",
 		  (unsigned long long)EXT4_I(inode)->i_file_acl);
 	bh = ext4_sb_bread(inode->i_sb, EXT4_I(inode)->i_file_acl, REQ_PRIO);

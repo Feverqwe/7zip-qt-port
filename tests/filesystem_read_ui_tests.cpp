@@ -191,6 +191,7 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
                                         "standard-short",
                                         "ext-recover",
                                         "ext-directory",
+                                        "ext-xattrs",
                                         "ext-orphan",
                                         "ext-unclean",
                                         "ext-unverified",
@@ -206,7 +207,7 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
                                         "source-backup-mismatch"}) {
                 // Rejection uses the shared consent service; acceptance checks every reason.
                 if (!accept && kind != "exfat" && kind != "unclean" && kind != "volume-dirty" &&
-                    kind != "ext-recover" && kind != "ext-directory")
+                    kind != "ext-recover" && kind != "ext-directory" && kind != "ext-xattrs")
                     continue;
                 QTest::newRow(qPrintable(language + (accept ? "-accept-" : "-cancel-") + kind))
                     << language << accept << kind;
@@ -396,7 +397,9 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
                                     : fatFile    ? "--file-chain=" + kind.mid(9)
                                                  : "--readonly=" + kind.mid(4),
                                     "--bundle"}
-                : ext ? QStringList{QStringLiteral(SEVENZIP_EXT_FIXTURE), "readonly-" + kind.mid(4),
+                : ext ? QStringList{QStringLiteral(SEVENZIP_EXT_FIXTURE),
+                                    kind == "ext-xattrs" ? "xattrs-bad-data"
+                                                         : "readonly-" + kind.mid(4),
                                     "--bundle"}
                 : squashfs
                     ? QStringList{QStringLiteral(SEVENZIP_SQUASHFS_FIXTURE), "--xattrs",
@@ -423,10 +426,13 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
                 kind.startsWith("squashfs-inode-block-") ||
                 kind == "squashfs-table-indexes-combined")
                 filename = "данные 空";
-            if (ext) {
+            if (ext && kind != "ext-xattrs") {
                 payload = QByteArray(data["file_size"].toInt(), '\0');
                 payload.replace(0, 4, "head");
                 payload.replace(payload.size() - 4, 4, "tail");
+            } else if (kind == "ext-xattrs") {
+                payload =
+                    QByteArray::fromHex(data["files"].toObject()[filename].toString().toLatin1());
             } else
                 payload = QByteArray::fromBase64(
                     data["files"].toObject()[filename].toString().toLatin1());

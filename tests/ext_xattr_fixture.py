@@ -29,6 +29,7 @@ class XattrVolume:
         parent = self.record["parent_offset"]
         ea = self.record["ea_offset"]
         self.ea_data_offset = (self.u32(ea + 60) | struct.unpack_from("<H", self.data, ea + 58)[0] << 32) * 1024
+        self.xattr_block_offset = self.record["entries"]["2."]["block"] * 1024
         entry = self.record["entries"]["1.large"]
         def put(offset, fmt, *values):
             struct.pack_into("<" + fmt, self.data, offset, *values)
@@ -76,6 +77,11 @@ class XattrVolume:
                     put(other["offset"] + 12, "I", self.entry_hash(key.split('.', 1)[1], value_hash))
                     self.refresh_entry(other)
             self.refresh_inode(self.record["ea_inode"], ea)
+        elif kind == "xattrs-bad-block":
+            self.data[self.xattr_block_offset + 16] ^= 1
+        elif kind == "xattrs-block-range":
+            put(parent + 104, "I", len(self.data) // 1024)
+            self.refresh_inode(self.record["parent_inode"], parent)
         elif kind == "xattrs-bad-acl":
             acl = self.record["entries"]["2."]
             value = acl["block"] * 1024 + struct.unpack_from("<H", self.data, acl["offset"] + 2)[0]
