@@ -26,6 +26,7 @@ class Input final : public IInStream, public CMyUnknownImp {
     UInt64 failAt = UINT64_MAX, notifyAt = UINT64_MAX;
     HRESULT atFailure = E_FAIL;
     bool notified = false;
+    UInt64 gapAt = UINT64_MAX, gapSize = 0;
     explicit Input(QByteArray bytes) : bytes_(std::move(bytes)) {}
     Z7_COM7F_IMF(Read(void *data, UInt32 size, UInt32 *processed)) override {
         if (processed)
@@ -36,10 +37,15 @@ class Input final : public IInStream, public CMyUnknownImp {
             return atFailure;
         if (notifyAt >= position_ && notifyAt - position_ < size)
             notified = true;
+        if (gapSize && position_ >= gapAt && position_ - gapAt < gapSize)
+            return E_ABORT;
+        if (gapSize && position_ < gapAt)
+            size = UInt32(qMin<UInt64>(size, gapAt - position_));
+        const UInt64 physical = position_ - (gapSize && position_ >= gapAt + gapSize ? gapSize : 0);
         size = UInt32(qMin<UInt64>(
-            size, position_ < UInt64(bytes_.size()) ? UInt64(bytes_.size()) - position_ : 0));
+            size, physical < UInt64(bytes_.size()) ? UInt64(bytes_.size()) - physical : 0));
         if (size)
-            memcpy(data, bytes_.constData() + position_, size);
+            memcpy(data, bytes_.constData() + physical, size);
         position_ += size;
         if (processed)
             *processed = size;
@@ -52,7 +58,7 @@ class Input final : public IInStream, public CMyUnknownImp {
             return E_INVALIDARG;
         const Int64 base = origin == STREAM_SEEK_SET   ? 0
                            : origin == STREAM_SEEK_CUR ? Int64(position_)
-                                                       : bytes_.size();
+                                                       : Int64(bytes_.size() + gapSize);
         if (offset < -base || (offset > 0 && base > INT64_MAX - offset))
             return E_INVALIDARG;
         position_ = UInt64(base + offset);
@@ -457,13 +463,15 @@ class SquashfsStreamTests final : public QObject {
         QTest::addColumn<QString>("fault");
         for (const QString &fault :
              {"directory-block-clean", "directory-block-header", "directory-block-zlib",
-              "directory-block-span", "directory-block-io"})
+              "directory-block-span", "directory-block-io", "directory-block-shared",
+              "directory-block-unused"})
             QTest::newRow(qPrintable(fault)) << fault;
     }
     void directoryBlocksAreIsolated() {
         QFETCH(QString, fault);
         loadFixture("zlib", true, fault);
-        const bool clean = fault == "directory-block-clean";
+        const bool clean = fault == "directory-block-clean" || fault == "directory-block-shared" ||
+                           fault == "directory-block-unused";
         const auto inode = qFromLittleEndian<quint64>(bytes_.constData() + 64);
         const auto directory = qFromLittleEndian<quint64>(bytes_.constData() + 72);
         const auto broken =
@@ -472,6 +480,11 @@ class SquashfsStreamTests final : public QObject {
         source.SetFromCls(new Input(bytes_));
         if (fault == "directory-block-io")
             source->failAt = broken + 2;
+        if (fault == "directory-block-unused") {
+            const auto table = qFromLittleEndian<quint64>(bytes_.constData() + 48);
+            source->failAt = qFromLittleEndian<quint64>(bytes_.constData() + table) - 2;
+            source->atFailure = E_ABORT;
+        }
         QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
         for (const QString &name : {QString("alpha"), QString("good 空/payload")}) {
             auto data = stream(name);
@@ -496,6 +509,37 @@ class SquashfsStreamTests final : public QObject {
         CMyComPtr<IInStream> healthy = new Input(bytes_);
         QCOMPARE(archive_->Open(healthy, nullptr, nullptr), S_OK);
         QVERIFY(stream("broken/payload"));
+    }
+    void directoryTableSpanCanExceed32Bits() {
+        loadFixture("zlib", true, "directory-block-clean");
+        const auto table = qFromLittleEndian<quint64>(bytes_.constData() + 48);
+        const auto ids = qFromLittleEndian<quint64>(bytes_.constData() + table);
+        const auto inode = qFromLittleEndian<quint64>(bytes_.constData() + 64);
+        const auto directory = qFromLittleEndian<quint64>(bytes_.constData() + 72);
+        const auto good = qFromLittleEndian<quint32>(bytes_.constData() + inode + 2 + 104 + 16);
+        const UInt64 gap = (UInt64(1) << 32) - 16 - good;
+        const auto used = qFromLittleEndian<quint64>(bytes_.constData() + 40);
+        qToLittleEndian(used + gap, bytes_.data() + 40);
+        qToLittleEndian(table + gap, bytes_.data() + 48);
+        qToLittleEndian(ids + gap, bytes_.data() + table);
+        qToLittleEndian(quint32(good + gap), bytes_.data() + inode + 2 + 104 + 16);
+        CMyComPtr2<IInStream, Input> source;
+        source.SetFromCls(new Input(bytes_));
+        source->gapAt = directory + good;
+        source->gapSize = gap;
+        // Reading the virtual gap aborts. Neither allocating nor scanning a
+        // directory table's whole declared address span is necessary. The good
+        // directory's compressed block itself crosses the 32-bit boundary.
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
+        for (const QString &name :
+             {QString("alpha"), QString("broken/payload"), QString("good 空/payload")}) {
+            auto data = stream(name);
+            QVERIFY(data);
+            const int size =
+                QByteArray::fromBase64(record_["files"].toObject()[name].toString().toLatin1())
+                    .size();
+            check(data, name, 0, size);
+        }
     }
     void inodeBlocksAreIsolated_data() {
         QTest::addColumn<QString>("fault");

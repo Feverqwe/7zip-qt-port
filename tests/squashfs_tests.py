@@ -274,12 +274,12 @@ class SquashfsTests(unittest.TestCase):
                 self.assertNotEqual(rejected.returncode, 0)
 
     def test_directory_metadata_blocks_do_not_hide_other_directories(self):
-        for fault in ("directory-block-clean", "directory-block-header", "directory-block-zlib", "directory-block-span"):
+        for fault in ("directory-block-clean", "directory-block-header", "directory-block-zlib", "directory-block-span", "directory-block-shared", "directory-block-unused"):
             data, files = volume(fault)
             with self.subTest(fault=fault):
                 result = self.run_image("7z", data, "l")
                 self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
-                if fault != "directory-block-clean":
+                if fault not in ("directory-block-clean", "directory-block-shared", "directory-block-unused"):
                     self.assertNotIn(b"Path = broken/payload", result.stdout)
                     self.assertNotIn(b"Path = payload", result.stdout)
                 for name in ("alpha", "good 空/payload"):

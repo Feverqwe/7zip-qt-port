@@ -790,7 +790,7 @@ struct CData {
     CByteBuffer Data;
     size_t ValidSize = 0;
     bool HasValidSize = false;
-    CRecordVector<UInt32> PackPos;
+    CRecordVector<UInt64> PackPos;
     CRecordVector<UInt32> UnpackPos;
     CRecordVector<UInt32> UnpackEnd;
 
@@ -911,12 +911,12 @@ Z7_CLASS_IMP_CHandler_IInArchive_1(
   std::map<UInt32, std::pair<UInt64, UInt16>> _inodeReferences;
   std::map<UInt32, std::pair<unsigned, UInt32>> _inodePositions;
   std::map<UInt64, std::pair<unsigned, UInt32>> _inodeNodes;
-  std::map<UInt32, unsigned> _inodeBlockIndexes;
+  std::map<UInt64, unsigned> _inodeBlockIndexes;
   std::set<UInt32> _unavailableInodeBlocks;
   std::set<UInt32> _badInodePositions;
   bool _inodeTableIncomplete = false;
   UInt64 _directoryDataEnd = 0;
-  std::map<UInt32, unsigned> _directoryBlockIndexes;
+  std::map<UInt64, unsigned> _directoryBlockIndexes;
   HRESULT ReadNode(UInt32 position, int &nodeIndex, UInt32 *length = NULL);
   bool _inodeMappingLimitations = false;
   bool InodeIdentityUnavailable(const CItem &item) const {
@@ -972,8 +972,8 @@ Z7_CLASS_IMP_CHandler_IInArchive_1(
 #ifdef SEVENZIP_LINUX_SQUASHFS
   HRESULT ReadDirectoryData(UInt64 end);
   HRESULT ReadInodeData();
-  HRESULT ReadMetadataRun(CData &data, std::map<UInt32, unsigned> &indexes,
-                          UInt64 start, UInt64 end, UInt32 &position, UInt32 &next, UInt64 needed);
+  HRESULT ReadMetadataRun(CData &data, std::map<UInt64, unsigned> &indexes,
+                          UInt64 start, UInt64 end, UInt64 &position, UInt64 &next, UInt64 needed);
 #endif
 
   HRESULT OpenDir(int parent, UInt32 startBlock, UInt32 offset, unsigned level, int &nodeIndex);
@@ -1788,29 +1788,9 @@ HRESULT CHandler::ReadData(CData &data, UInt64 start, UInt64 end) {
 #ifdef SEVENZIP_LINUX_SQUASHFS
 HRESULT CHandler::ReadDirectoryData(UInt64 end) {
     const UInt64 start = _h.DirTable;
-    if (end < start || end > _h.Size || end - start >= ((UInt64)1 << 32))
+    if (end < start || end > _h.Size)
         return S_FALSE;
-    const UInt32 size = (UInt32)(end - start);
     _directoryDataEnd = end;
-    std::set<UInt32> anchors;
-    FOR_VECTOR(i, _nodes) {
-        const CNode &node = _nodes[i];
-        if (node.IsDir() && node.StartBlock < size)
-            anchors.insert((UInt32)node.StartBlock);
-    }
-    UInt32 position = 0;
-    while (position < size) {
-        UInt32 next = size;
-        const HRESULT result =
-            ReadMetadataRun(_dirs, _directoryBlockIndexes, start, end, position, next, UINT64_MAX);
-        RINOK(_directoryCallbackResult)
-        if (result == E_ABORT || result == E_OUTOFMEMORY || result == E_NOTIMPL)
-            return result;
-        const auto anchor = anchors.upper_bound(position);
-        if (anchor != anchors.end() && *anchor < next)
-            next = *anchor;
-        position = next;
-    }
     return S_OK;
 }
 
@@ -1820,9 +1800,9 @@ HRESULT CHandler::ReadInodeData() {
         return S_FALSE;
     const UInt32 size = (UInt32)(_h.DirTable - _h.InodeTable);
     const UInt64 root = _h.RootInode >> 16;
-    UInt32 position = 0;
+    UInt64 position = 0;
     while (position < size) {
-        UInt32 next;
+        UInt64 next;
         const HRESULT result = ReadMetadataRun(_inodesData, _inodeBlockIndexes, _h.InodeTable,
                                                _h.DirTable, position, next, UINT64_MAX);
         RINOK(_directoryCallbackResult)
@@ -1830,27 +1810,30 @@ HRESULT CHandler::ReadInodeData() {
             return result;
         if (result != S_OK) {
             _inodeTableIncomplete = true;
-            _unavailableInodeBlocks.insert(position);
+            _unavailableInodeBlocks.insert((UInt32)position);
         }
         if (root > position && root < next)
-            next = (UInt32)root;
+            next = root;
         position = next;
     }
     return S_OK;
 }
 
-HRESULT CHandler::ReadMetadataRun(CData &data, std::map<UInt32, unsigned> &indexes, UInt64 start,
-                                  UInt64 end, UInt32 &position, UInt32 &next, UInt64 needed) {
-    const UInt32 size = (UInt32)(end - start);
+HRESULT CHandler::ReadMetadataRun(CData &data, std::map<UInt64, unsigned> &indexes, UInt64 start,
+                                  UInt64 end, UInt64 &position, UInt64 &next, UInt64 needed) {
+    if (end < start || end > _h.Size || position > end - start)
+        return S_FALSE;
+    const UInt64 size = end - start;
     next = size;
     CMyComPtr2_Create<ISequentialOutStream, CDynBufSeqOutStream> block;
-    CRecordVector<UInt32> packedPositions, unpackedPositions;
+    CRecordVector<UInt64> packedPositions;
+    CRecordVector<UInt32> unpackedPositions;
     _dynOutStream->Init();
     HRESULT result = S_OK;
     UInt32 blocks = 0;
     const size_t oldSize = data.Size();
     while (position < size && _dynOutStream->GetSize() < needed) {
-        UInt32 packed = size - position;
+        UInt32 packed = (UInt32)MyMin(size - position, (UInt64)kMetadataBlockSize + 3);
         bool boundaryKnown = false;
         block->Init();
         result = Seek2(start + position);
@@ -1920,7 +1903,7 @@ HRESULT CHandler::FindNode(UInt32 startBlock, UInt32 offset, int &nodeIndex) {
             const UInt64 size = _h.DirTable - _h.InodeTable;
             if (startBlock >= size)
                 return S_FALSE;
-            UInt32 position = startBlock, next;
+            UInt64 position = startBlock, next;
             const HRESULT result = ReadMetadataRun(_inodesData, _inodeBlockIndexes, _h.InodeTable,
                                                    _h.DirTable, position, next, UINT64_MAX);
             RINOK(_directoryCallbackResult)
@@ -1928,7 +1911,7 @@ HRESULT CHandler::FindNode(UInt32 startBlock, UInt32 offset, int &nodeIndex) {
                 return result;
             if (result != S_OK) {
                 _inodeTableIncomplete = true;
-                _unavailableInodeBlocks.insert(position);
+                _unavailableInodeBlocks.insert((UInt32)position);
             }
             found = _inodeBlockIndexes.find(startBlock);
         }
@@ -2036,11 +2019,14 @@ HRESULT CHandler::ReadDirItems(int parent, const CNode &n, CRecordVector<CTempIt
 #ifdef SEVENZIP_LINUX_SQUASHFS
     if (!_h.IsOldVersion()) {
         auto found = _directoryBlockIndexes.find((UInt32)n.StartBlock);
-        if (found == _directoryBlockIndexes.end() && n.FileSize >= 3) {
-            UInt32 position = (UInt32)n.StartBlock, next;
-            const HRESULT result =
-                ReadMetadataRun(_dirs, _directoryBlockIndexes, _h.DirTable, _directoryDataEnd,
-                                position, next, n.Offset + n.FileSize - 3);
+        const UInt64 needed = n.FileSize >= 3 ? n.Offset + n.FileSize - 3 : 0;
+        const bool extend =
+            found != _directoryBlockIndexes.end() &&
+            needed > _dirs.ContiguousEnd(found->second) - _dirs.UnpackPos[found->second];
+        if ((found == _directoryBlockIndexes.end() || extend) && n.FileSize >= 3) {
+            UInt64 position = n.StartBlock, next;
+            const HRESULT result = ReadMetadataRun(_dirs, _directoryBlockIndexes, _h.DirTable,
+                                                   _directoryDataEnd, position, next, needed);
             RINOK(_directoryCallbackResult)
             if (result == E_ABORT || result == E_OUTOFMEMORY || result == E_NOTIMPL)
                 return result;

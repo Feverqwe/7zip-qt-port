@@ -376,10 +376,16 @@ def directory_volume(fault):
     root = entries((("alpha", 0, 2), ("broken", 2, 1), ("good 空", 3, 1)))
     child = entries((("payload", 1, 2),))
     root_block, good_block = metadata(root), metadata(child, True)
-    bad_block = bytearray(metadata(child, fault != "directory-block-clean" and fault != "directory-block-io"))
-    if fault in ("directory-block-header", "directory-block-inode"):
+    bad_block = bytearray(metadata(child, fault not in ("directory-block-clean", "directory-block-io", "directory-block-unused")))
+    shared = fault == "directory-block-shared"
+    if shared:
+        half = len(child) // 2
+        root_block = metadata(root + child[:half])
+        bad_block = bytearray()
+        good_block = metadata(child[half:] + child, True)
+    elif fault in ("directory-block-header", "directory-block-inode"):
         struct.pack_into("<H", bad_block, 0, 0x8000)
-    elif fault != "directory-block-clean" and fault != "directory-block-io":
+    elif fault not in ("directory-block-clean", "directory-block-io", "directory-block-unused"):
         bad_block[-1] ^= 0xff  # Output can precede the failing Adler checksum.
 
     def base(kind, number):
@@ -388,16 +394,18 @@ def directory_volume(fault):
     inodes = bytearray()
     for number, start, body in ((1, first_start, first), (2, second_start, second)):
         inodes += base(2, number) + struct.pack("<IIIII", start, 0xffffffff, 0, len(body), (1 << 24) | len(body))
-    for number, start, size in ((3, len(root_block), len(child)),
-                                (4, len(root_block) + len(bad_block), len(child)),
-                                (5, 0, len(root) + (len(child) if fault == "directory-block-span" else 0))):
-        inodes += base(1, number) + struct.pack("<IIHHI", start, 2, size + 3, 0, 5)
+    for number, start, size, offset in ((3, 0 if shared else len(root_block), len(child), len(root) if shared else 0),
+                                       (4, len(root_block) + len(bad_block), len(child), len(child) - half if shared else 0),
+                                       (5, 0, len(root) + (len(child) if fault == "directory-block-span" else 0), 0)):
+        inodes += base(1, number) + struct.pack("<IIHHI", start, 2, size + 3, offset, 5)
     if fault == "directory-block-inode":
         struct.pack_into("<H", inodes, 0, 0xffff)
     inode_start = len(image)
     image += metadata(inodes)
     directory_start = len(image)
     image += root_block + bad_block + good_block
+    if fault == "directory-block-unused":
+        image += struct.pack("<H", 0x8000)
     ids_metadata = len(image)
     image += metadata(struct.pack("<I", 1000))
     ids_table = len(image)

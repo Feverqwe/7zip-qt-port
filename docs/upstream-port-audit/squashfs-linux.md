@@ -5,6 +5,46 @@ Scope входит в [общую проверку форматов](filesystems
 современный LZO и проверки compressor options через отдельный format-модуль.
 Полная актуализация SquashFS read features по Linux ещё продолжается.
 
+## Directory metadata ranges и 64-битные physical spans, 2026-10-22
+
+Сверены полные Linux `dir.c`/`namei.c`, `cache.c:squashfs_read_metadata`, SDK
+`ReadData`, directory traversal и потребители cached raw offsets. Linux читает
+блоки по directory inode reference и длине каталога, а не требует заранее
+загрузить весь span directory table. Предыдущая адаптация декодировала table
+целиком, включая недостижимые blocks, и ограничивала её physical span 32 битами.
+
+GPL v4 reader теперь загружает bounded run при обращении к каталогу. Если
+каталог делит первый block с уже прочитанным каталогом, но продолжается дальше,
+его запрос расширяет доступный contiguous run. Append cache сохраняет старые
+item offsets; partial output после decoder failure не публикуется, gaps не
+склеиваются. Недоступный посторонний block больше не нужен для открытия.
+При ошибке нужного блока сохраняются прежние partial directory diagnostics,
+согласие и badge; Abort/OOM/unsupported decoder и callbacks остаются fatal.
+
+Physical packed positions и run arithmetic расширены до UInt64. Чтение одного
+metadata block по-прежнему ограничено исходным SDK пределом; сами directory
+references и decoded-cache offsets проверяются отдельно. Обновлён общий тип
+packed-position vector без изменения legacy/core parser flow. Изначальная
+загрузка inode table и пределы суммарного decoded cache пока не устранены;
+полная поддержка всех metadata sizes Linux не заявляется.
+
+ABI/CLI покрывают совместный block и продолжение каталога, а ABI дополнительно
+ставит E_ABORT на недостижимый block. Малый виртуальный source проверяет
+compressed directory block, пересекающий 32-битную boundary: gap не выделяется
+в памяти, попытка его сканировать немедленно прерывается. Native readonly
+Linux `6.8.0-147-generic` подтвердил shared/unused controls и wide physical span
+(`20261022T011228Z-2e9bc929`), затем actual cross-boundary block
+(`20261022T011443Z-8c057bfc`). Последний sparse image занимал 8 КиБ физически;
+файлы совпали побайтно. Проверены записанные regions, size/allocated blocks и
+mtime источника после mount; весь sparse gap не хешировался и не сканировался.
+Mounts/data удалены, память/кэши runner не менялись.
+
+Девять focused suites на macOS/Linux/Windows прошли за 64,68/15,66/61,74 с,
+receipt `20261022T011312Z-7258eafd`. После усиления boundary fixture ABI suite
+повторно прошла на macOS/Linux/Windows за 4,89/3,14/6,87 с,
+receipt `20261022T011513Z-8c16e790`. Incremental macOS app build также прошла.
+Full/slow suites, физические устройства и изменения UI appearance не запускались.
+
 ## Зависимости inode вне namespace, 2026-10-22
 
 Сверены Linux `namei.c:squashfs_lookup`, `inode.c:squashfs_iget`/read branches,
