@@ -6,6 +6,72 @@ tree boundaries, directory record boundaries and archive stream consumers.
 The second integrates Linux metadata and inline-data readers. The ext row remains
 open for the remaining read features listed below.
 
+## Linux extent-tree inventory for archive consumers — 2026-10-22
+
+Compared complete pinned `ext4_ext_precache`, its extent-cache/read/cleanup
+helpers, `ext4_find_extent`, the read branches of `ext4_ext_map_blocks` and
+`ext4_fiemap` with SDK `FillExtents` and all its consumers. The archive requires
+an ordered inventory, including metadata extents beyond user `i_size` for verity;
+Linux's existing depth-first precache walk supplies that complete traversal
+without adding an independent tree decoder or repeatedly searching each extent.
+
+Transferred `ext4_ext_path_brelse`, `ext4_ext_drop_refs`, `ext4_free_ext_path`,
+`ext4_cache_extents`, `__read_extent_tree_block` and `ext4_ext_precache` into the
+existing C `fs/ext4/extents.c` unit, with the required original path/header
+accessors. The first five complete helper bodies match the pinned Linux bytes.
+The source remains Torvalds Linux at
+`58161ead29e50d70a317ea26b472e0c7508e69da`; the existing adapted unit and header
+retain their original notices and C11 compilation. No new upstream unit is
+needed. A private buffer/export adapter replaces block-device I/O and VFS extent
+status caching, with at most one filesystem block per active tree level.
+
+The precache control flow retains its original DFS/read/error/unwind branches.
+The archive adds a leaf export hook, handles a depth-zero inode root through that
+hook and uses the original no-cache flag so each validated leaf is exported once.
+Inode semaphores are omitted for the private unpublished inode snapshot. Cleanup
+depth is initialized explicitly so failure at any acquired level or visitor
+releases every retained buffer. The maximum depth is checked before allocation.
+Source HRESULTs, OOM and progress-callback failures remain distinct at the C++
+boundary. Kernel allocation/write/journal mutation code is not transferred.
+
+Original block/reference/checksum validation remains authoritative. The archive
+also retains its existing parent upper-bound check, using the original path's
+next index at each ancestor. It rejects an extent crossing that bound before
+exporting it. Consistent non-root leaves must be nonempty, matching the original
+`ext4_ext_map_blocks` read check. Only validated data/unwritten ranges are exported;
+the existing stream owner derives gaps after the next range has validated, so a
+failed child cannot create a fake zero tail. Readable prefixes retain the existing
+limited-access behavior. Mandatory journal protection and complete EA/verity
+validation remain strict at their existing boundaries.
+
+Every GPL extent inventory consumer now uses this C walk: regular files, sparse
+and unwritten reads, directory/htree range inventory, raw symlink storage,
+allocated EA-inode values, journal protection and verity backing metadata.
+Existing C++ streams still own transport/crypto/verification and retained mapping
+vectors. The SDK recursive tree decoder is compiled only in the non-GPL engine
+profile. This closes the selected eager tree-inventory transfer, not the whole
+Linux extent module or broader ext namespace/source audit.
+
+Existing behavior regressions cover malformed roots, empty children, depth five,
+checksums, parent boundaries, first/later failed children without invented holes,
+source Read/Seek failures, cancellation, Unicode/spaces, protected metadata,
+retained streams, native crypto/EA/verity and directory fallback. Added small
+journal fixtures cover external extent trees through depth five, exact owner
+data/unwritten-zero/tail bytes, foreign-file alias rejection, failure at the
+deepest leaf, empty failed-open state and successful reuse after cancellation.
+
+Validation: macOS passed all eight ext/code/provenance suites, including the
+new journal ABI cases, and the incremental application build. Linux and Windows
+passed the same eight in `20261022T125042Z-19b13ca4`; prepared dynamic and
+standalone SDK engines were rebuilt through the existing runtime workflow.
+Source comparison confirms the SDK `FillExtents` branch is unchanged after
+selecting its existing build profile, and all 303 pinned Linux hashes match.
+The final source/provenance checks and fixture-remnant inspections passed;
+no disposable ext fixtures remained locally or on either guest. Existing build
+trees and compiler caches were reused. No full gate, slow suite, new native
+kernel-mount/device check, UI appearance acceptance or release install was run.
+Overall filesystem and ext source completeness remains open.
+
 ## Complete archive classic-map consumer integration — 2026-10-22
 
 Rechecked the complete pinned `ext4_get_link`, `ext4_encrypted_get_link`,

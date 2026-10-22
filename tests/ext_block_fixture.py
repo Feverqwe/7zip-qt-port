@@ -47,17 +47,20 @@ class BlockVolume(Volume):
 
 
 class JournalVolume(Volume):
-    """A sparse classic journal with independent user data and bounded storage."""
+    """A sparse journal with independent user data and bounded storage."""
     def __init__(self, mapping="single", fault=None):
         super().__init__(mapping)
         bs = self.block_size
         self.journal_size = self.size
+        offsets = (2 * bs, 4 * bs, self.size - 17) if self.extent_blocks else (0, 12 * bs, self.size - 17)
         self.journal_samples = [{"offset": offset, "bytes": self.read(offset, 37).hex()}
-                                for offset in (0, 12 * bs, self.size - 17)]
+                                for offset in offsets]
         journal_inode = self.table * bs + 7 * 128
         self.data[journal_inode:journal_inode + 128] = self.data[self.file_inode:self.file_inode + 128]
-        self.journal_metadata = next(iter(self.indirect.values())) * bs
-        self.journal_tail = self.next_block - 1
+        self.journal_metadata = (self.extent_blocks[0] if self.extent_blocks else
+                                 next(iter(self.indirect.values()))) * bs
+        self.journal_tail = (struct.unpack_from("<I", self.data, self.journal_metadata + 20)[0]
+                             if self.extent_blocks else self.next_block - 1)
         # Keep the user file independent of journal-owned data.
         self.content = {0: b"independent user file\n"}
         self.size = len(self.content[0])

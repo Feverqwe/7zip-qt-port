@@ -48,6 +48,17 @@ struct ext4_ext_path {
 };
 
 #define EXT_INIT_MAX_LEN (1U << 15)
+#define EXT4_MAX_EXTENT_DEPTH 5
+#define EXT_LAST_INDEX(hdr) (EXT_FIRST_INDEX(hdr) + le16_to_cpu((hdr)->eh_entries) - 1)
+static inline struct ext4_extent_header *ext_block_hdr(struct buffer_head *bh)
+{
+	return (struct ext4_extent_header *) bh->b_data;
+}
+static inline int ext4_ext_is_unwritten(struct ext4_extent *ext)
+{
+	/* Extent with ee_len of 0x8000 is treated as an initialized extent */
+	return (le16_to_cpu(ext->ee_len) > EXT_INIT_MAX_LEN);
+}
 static inline int ext4_ext_get_actual_len(struct ext4_extent *ext)
 {
 	return (le16_to_cpu(ext->ee_len) <= EXT_INIT_MAX_LEN ?

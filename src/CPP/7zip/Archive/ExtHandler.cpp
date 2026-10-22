@@ -874,7 +874,6 @@ Z7_CLASS_IMP_CHandler_IInArchive_2(
   std::vector<CExtCryptInode> _cryptInodes;
   UInt32 _extentChecksumSeed;
   UInt32 _blockInode = 0;
-  UInt32 _extentRootDepth = 0;
   CObjectVector<CExtXattr> _xattrs;
   int _rootXattrAux;
   bool _directoryLimitations = false;
@@ -931,6 +930,14 @@ Z7_CLASS_IMP_CHandler_IInArchive_2(
     CRecordVector<CExtent> *Ranges;
   };
   static HRESULT EmitIndirectDirectoryRange(void *, UInt32, UInt64, UInt32);
+  struct CExtentReadContext {
+    CHandler *Owner;
+    IInStream *Source;
+    CRecordVector<CExtent> *Ranges;
+    HRESULT Result = S_OK;
+  };
+  static int ReadExtentBlock(void *, uint64_t, void *, size_t) noexcept;
+  static int EmitExtent(void *, uint32_t, uint64_t, uint32_t, int) noexcept;
   static int EmitXattr(void *, const char *, const void *, size_t) noexcept;
   HRESULT LoadXattrs();
   HRESULT LoadEncryption();
@@ -1628,7 +1635,6 @@ int CHandler::MapSystemInode(void *opaque, uint32_t ino, uint32_t logical, uint3
         if (!context.Mapped) {
             owner._blockInode = ino;
             owner._extentChecksumSeed = node.ChecksumSeed;
-            owner._extentRootDepth = GetUi16(node.Block + 6);
             context.Io.Result =
                 owner.FillExtents(node.Block, kNodeBlockFieldSize, context.Extents, -1);
             if (context.Io.Result != S_OK)
@@ -3750,11 +3756,66 @@ static bool UpdateExtents(CRecordVector<CExtent> &extents, UInt32 block) {
     return true;
 }
 
+#ifdef SEVENZIP_LINUX_EXT
+int CHandler::ReadExtentBlock(void *opaque, uint64_t physical, void *data, size_t size) noexcept {
+    auto &context = *static_cast<CExtentReadContext *>(opaque);
+    try {
+        context.Result = context.Owner->SeekAndRead(context.Source, physical, (Byte *)data, size);
+        if (context.Result == S_OK && context.Owner->_openCallback)
+            context.Result = context.Owner->CheckProgress2();
+        return context.Result == S_OK ? 0 : -EIO;
+    } catch (const std::bad_alloc &) {
+        context.Result = E_OUTOFMEMORY;
+        return -ENOMEM;
+    } catch (...) {
+        context.Result = E_FAIL;
+        return -EIO;
+    }
+}
+
+int CHandler::EmitExtent(void *opaque, uint32_t logical, uint64_t physical, uint32_t count,
+                         int written) noexcept {
+    auto &context = *static_cast<CExtentReadContext *>(opaque);
+    try {
+        if (context.Owner->_openCallback)
+            context.Result = context.Owner->CheckProgress2();
+        if (context.Result != S_OK)
+            return -EIO;
+        if (!UpdateExtents(*context.Ranges, logical))
+            return -EIO;
+        CExtent extent;
+        extent.VirtBlock = logical;
+        extent.Len = (UInt16)count;
+        extent.PhyStart = physical;
+        extent.IsInited = written != 0;
+        context.Ranges->Add(extent);
+        return 0;
+    } catch (const std::bad_alloc &) {
+        context.Result = E_OUTOFMEMORY;
+        return -ENOMEM;
+    } catch (...) {
+        context.Result = E_FAIL;
+        return -EIO;
+    }
+}
+#endif
+
 HRESULT CHandler::FillExtents(const Byte *p, size_t size, CRecordVector<CExtent> &extents,
                               int parentDepth, UInt32 firstBlock, UInt64 blockLimit,
                               IInStream *source) {
     if (!source)
         source = _stream;
+#ifdef SEVENZIP_LINUX_EXT
+    (void)parentDepth;
+    (void)firstBlock;
+    (void)blockLimit;
+    CExtentReadContext context{this, source, &extents};
+    const ext_extent_services services{&context, ReadExtentBlock, EmitExtent};
+    const int result =
+        ext_linux_extent_walk(_volume.get(), _blockInode, _extentChecksumSeed, p, size, &services);
+    RINOK(context.Result)
+    return result == 0 ? S_OK : result == -ENOMEM ? E_OUTOFMEMORY : S_FALSE;
+#else
     CExtentTreeHeader eth;
     if (!eth.Parse(p))
         return S_FALSE;
@@ -3771,11 +3832,6 @@ HRESULT CHandler::FillExtents(const Byte *p, size_t size, CRecordVector<CExtent>
 
     if (eth.Depth >= kNumTreeLevelsMax)
         return S_FALSE;
-#ifdef SEVENZIP_LINUX_EXT
-    if (ext_linux_extent_check(_volume.get(), _blockInode, _extentChecksumSeed, _extentRootDepth, p,
-                               size, eth.Depth, 0, firstBlock))
-        return S_FALSE;
-#endif
 
     if (eth.Depth == 0) {
         for (unsigned i = 0; i < eth.NumEntries; i++) {
@@ -3784,10 +3840,6 @@ HRESULT CHandler::FillExtents(const Byte *p, size_t size, CRecordVector<CExtent>
             if (e.PhyStart == 0 || e.PhyStart > _h.NumBlocks || e.PhyStart + e.Len > _h.NumBlocks ||
                 !e.IsLenOK() || e.VirtBlock < firstBlock || e.GetVirtEnd() > blockLimit)
                 return S_FALSE;
-#ifdef SEVENZIP_LINUX_EXT
-            if (!ext_linux_block_valid(_volume.get(), _blockInode, e.PhyStart, e.Len))
-                return S_FALSE;
-#endif
             if (!UpdateExtents(extents, e.VirtBlock))
                 return S_FALSE;
             extents.Add(e);
@@ -3809,10 +3861,6 @@ HRESULT CHandler::FillExtents(const Byte *p, size_t size, CRecordVector<CExtent>
 
         if (e.PhyLeaf == 0 || e.PhyLeaf >= _h.NumBlocks)
             return S_FALSE;
-#ifdef SEVENZIP_LINUX_EXT
-        if (!ext_linux_block_valid(_volume.get(), _blockInode, e.PhyLeaf, 1))
-            return S_FALSE;
-#endif
 
         const unsigned previousSize = extents.Size();
         if (!UpdateExtents(extents, e.VirtBlock))
@@ -3833,6 +3881,7 @@ HRESULT CHandler::FillExtents(const Byte *p, size_t size, CRecordVector<CExtent>
     }
 
     return S_OK;
+#endif
 }
 
 HRESULT CHandler::GetStream_Node(unsigned nodeIndex, ISequentialInStream **stream,
@@ -3878,7 +3927,6 @@ HRESULT CHandler::GetStream_Node(unsigned nodeIndex, ISequentialInStream **strea
     }
     _extentChecksumSeed = node.ChecksumSeed;
     _blockInode = node.InodeNumber;
-    _extentRootDepth = GetUi16(node.Block + 6);
 #else
     (void)mappingIncomplete;
     (void)rawLink;

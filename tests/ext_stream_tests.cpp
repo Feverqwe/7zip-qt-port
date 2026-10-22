@@ -1421,12 +1421,13 @@ class ExtStreamTests final : public QObject {
             }
         }
     }
-    void indirectJournalOwnership_data() {
+    void journalOwnership_data() {
         QTest::addColumn<QString>("layout");
-        for (const char *mapping : {"single", "double-hole", "triple"})
+        for (const char *mapping :
+             {"single", "double-hole", "triple", "extent-tree", "extent-depth5"})
             QTest::newRow(mapping) << QStringLiteral("journal-") + QString::fromLatin1(mapping);
     }
-    void indirectJournalOwnership() {
+    void journalOwnership() {
         QFETCH(QString, layout);
         const auto record = bundle(layout);
         CMyComPtr<IInStream> input = new Input(image(record));
@@ -1459,11 +1460,11 @@ class ExtStreamTests final : public QObject {
         }
         QVERIFY(readLimitations().isEmpty());
     }
-    void indirectJournalFailuresAndSourceErrors() {
+    void journalFailuresAndSourceErrors() {
         UInt32 count = 99;
-        for (const char *fault : {"alias", "data-bound", "index-bound", "overlap"}) {
-            const auto record =
-                bundle(QStringLiteral("journal-single:") + QString::fromLatin1(fault));
+        for (const char *layout : {"single:alias", "single:data-bound", "single:index-bound",
+                                   "single:overlap", "extent-depth5:alias"}) {
+            const auto record = bundle(QStringLiteral("journal-") + QString::fromLatin1(layout));
             CMyComPtr2<IInStream, Input> input;
             const auto bytes = image(record);
             QVERIFY(!bytes.isEmpty());
@@ -1474,37 +1475,39 @@ class ExtStreamTests final : public QObject {
             QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
             QCOMPARE(count, UInt32(0));
         }
-        const auto record = bundle("journal-single");
-        CMyComPtr2<IInStream, Input> input;
-        input.SetFromCls(new Input(image(record)));
-        const auto metadata = UInt64(record["journal_metadata"].toInteger());
-        QVERIFY(metadata > 0);
-        for (bool seek : {false, true}) {
-            for (HRESULT error : {S_FALSE, E_FAIL, E_ABORT, E_OUTOFMEMORY}) {
-                input->failAt = seek ? UINT64_MAX : metadata;
-                input->seekFailAt = seek ? metadata : UINT64_MAX;
-                input->atResult = error;
-                input->faults = 0;
-                QCOMPARE(input->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
-                QCOMPARE(archive_->Open(input, nullptr, nullptr), error);
-                QVERIFY(input->faults > 0);
-                QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
-                QCOMPARE(count, UInt32(0));
+        for (const char *layout : {"journal-single", "journal-extent-depth5"}) {
+            const auto record = bundle(layout);
+            CMyComPtr2<IInStream, Input> input;
+            input.SetFromCls(new Input(image(record)));
+            const auto metadata = UInt64(record["journal_metadata"].toInteger());
+            QVERIFY(metadata > 0);
+            for (bool seek : {false, true}) {
+                for (HRESULT error : {S_FALSE, E_FAIL, E_ABORT, E_OUTOFMEMORY}) {
+                    input->failAt = seek ? UINT64_MAX : metadata;
+                    input->seekFailAt = seek ? metadata : UINT64_MAX;
+                    input->atResult = error;
+                    input->faults = 0;
+                    QCOMPARE(input->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
+                    QCOMPARE(archive_->Open(input, nullptr, nullptr), error);
+                    QVERIFY(input->faults > 0);
+                    QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+                    QCOMPARE(count, UInt32(0));
+                }
             }
+            input->failAt = input->seekFailAt = UINT64_MAX;
+            input->notifyAt = metadata;
+            input->notified = false;
+            CMyComPtr2<IArchiveOpenCallback, CancelXattrOpen> cancel;
+            cancel.SetFromCls(new CancelXattrOpen);
+            cancel->source = input.ClsPtr();
+            QCOMPARE(input->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
+            QCOMPARE(archive_->Open(input, nullptr, cancel), E_ABORT);
+            input->notifyAt = UINT64_MAX;
+            input->notified = false;
+            QCOMPARE(input->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
+            QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+            QVERIFY(fileIndex("[SYS]/Journal") != UInt32(-1));
         }
-        input->failAt = input->seekFailAt = UINT64_MAX;
-        input->notifyAt = metadata;
-        input->notified = false;
-        CMyComPtr2<IArchiveOpenCallback, CancelXattrOpen> cancel;
-        cancel.SetFromCls(new CancelXattrOpen);
-        cancel->source = input.ClsPtr();
-        QCOMPARE(input->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
-        QCOMPARE(archive_->Open(input, nullptr, cancel), E_ABORT);
-        input->notifyAt = UINT64_MAX;
-        input->notified = false;
-        QCOMPARE(input->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
-        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
-        QVERIFY(fileIndex("[SYS]/Journal") != UInt32(-1));
     }
     void systemZoneFailureAndJournalCancellationCanBeReused() {
         UInt32 count = 99;

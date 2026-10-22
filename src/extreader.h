@@ -92,6 +92,13 @@ int ext_linux_directory_hash(struct ext_volume *, uint32_t flags, uint64_t direc
 int ext_linux_extent_check(struct ext_volume *, uint32_t ino, uint32_t seed,
                            uint32_t root_depth, const void *block, size_t size,
                            uint32_t depth, uint64_t physical, uint32_t logical);
+struct ext_extent_services {
+    void *context;
+    int (*read)(void *, uint64_t physical, void *, size_t);
+    int (*emit)(void *, uint32_t logical, uint64_t physical, uint32_t count, int written);
+};
+int ext_linux_extent_walk(struct ext_volume *, uint32_t ino, uint32_t seed,
+                          const void *root, size_t, const struct ext_extent_services *);
 int ext_linux_directory_check(struct ext_volume *, uint32_t seed, uint32_t flags,
                               uint32_t logical, const void *block);
 int ext_linux_directory_entry_check(struct ext_volume *, uint32_t flags,

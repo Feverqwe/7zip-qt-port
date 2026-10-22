@@ -19,6 +19,7 @@
 
 #include "ext4.h"
 #include "ext4_extents.h"
+#include "extentread.h"
 
 static __le32 ext4_extent_block_csum(struct inode *inode,
 				     struct ext4_extent_header *eh)
@@ -277,4 +278,204 @@ corrupted:
 int ext4_ext_check_inode(struct inode *inode)
 {
 	return ext4_ext_check(inode, ext_inode_hdr(inode), ext_depth(inode), 0);
+}
+
+static inline void ext4_ext_path_brelse(struct ext4_ext_path *path)
+{
+	brelse(path->p_bh);
+	path->p_bh = NULL;
+}
+
+static void ext4_ext_drop_refs(struct ext4_ext_path *path)
+{
+	int depth, i;
+
+	if (IS_ERR_OR_NULL(path))
+		return;
+	depth = path->p_depth;
+	for (i = 0; i <= depth; i++, path++)
+		ext4_ext_path_brelse(path);
+}
+
+void ext4_free_ext_path(struct ext4_ext_path *path)
+{
+	if (IS_ERR_OR_NULL(path))
+		return;
+	ext4_ext_drop_refs(path);
+	kfree(path);
+}
+
+static void ext4_cache_extents(struct inode *inode,
+			       struct ext4_extent_header *eh)
+{
+	struct ext4_extent *ex = EXT_FIRST_EXTENT(eh);
+	ext4_lblk_t prev = 0;
+	int i;
+
+	KUNIT_STATIC_STUB_REDIRECT(ext4_cache_extents, inode, eh);
+
+	for (i = le16_to_cpu(eh->eh_entries); i > 0; i--, ex++) {
+		unsigned int status = EXTENT_STATUS_WRITTEN;
+		ext4_lblk_t lblk = le32_to_cpu(ex->ee_block);
+		int len = ext4_ext_get_actual_len(ex);
+
+		if (prev && (prev != lblk))
+			ext4_es_cache_extent(inode, prev, lblk - prev, ~0,
+					     EXTENT_STATUS_HOLE);
+
+		if (ext4_ext_is_unwritten(ex))
+			status = EXTENT_STATUS_UNWRITTEN;
+		ext4_es_cache_extent(inode, lblk, len,
+				     ext4_ext_pblock(ex), status);
+		prev = lblk + len;
+	}
+}
+
+static struct buffer_head *
+__read_extent_tree_block(const char *function, unsigned int line,
+			 struct inode *inode, struct ext4_extent_idx *idx,
+			 int depth, int flags)
+{
+	struct buffer_head		*bh;
+	int				err;
+	gfp_t				gfp_flags = __GFP_MOVABLE | GFP_NOFS;
+	ext4_fsblk_t			pblk;
+
+	if (flags & EXT4_EX_NOFAIL)
+		gfp_flags |= __GFP_NOFAIL;
+
+	pblk = ext4_idx_pblock(idx);
+	bh = sb_getblk_gfp(inode->i_sb, pblk, gfp_flags);
+	if (unlikely(!bh))
+		return ERR_PTR(-ENOMEM);
+
+	if (!bh_uptodate_or_lock(bh)) {
+		trace_ext4_ext_load_extent(inode, pblk, _RET_IP_);
+		err = ext4_read_bh(bh, 0, NULL, false);
+		if (err < 0)
+			goto errout;
+	}
+	if (buffer_verified(bh) && !(flags & EXT4_EX_FORCE_CACHE))
+		return bh;
+	err = __ext4_ext_check(function, line, inode, ext_block_hdr(bh),
+			       depth, pblk, le32_to_cpu(idx->ei_block));
+	if (err)
+		goto errout;
+	set_buffer_verified(bh);
+	/*
+	 * If this is a leaf block, cache all of its entries
+	 */
+	if (!(flags & EXT4_EX_NOCACHE) && depth == 0) {
+		struct ext4_extent_header *eh = ext_block_hdr(bh);
+		ext4_cache_extents(inode, eh);
+	}
+	return bh;
+errout:
+	put_bh(bh);
+	return ERR_PTR(err);
+
+}
+
+#define read_extent_tree_block(inode, idx, depth, flags)		\
+	__read_extent_tree_block(__func__, __LINE__, (inode), (idx),	\
+				 (depth), (flags))
+
+static int ext_archive_visit_leaf(struct inode *inode, struct ext4_ext_path *path, int depth)
+{
+    struct ext_extent_owner *owner = (struct ext_extent_owner *)inode->i_sb;
+    struct ext4_extent_header *leaf = path ? path[depth].p_hdr : ext_inode_hdr(inode);
+    int i;
+    if (depth && !leaf->eh_entries) return -EFSCORRUPTED;
+    owner->leaf_limit = 1ULL << 32;
+    for (i = 0; i < depth; ++i) {
+        if (path[i].p_idx <= EXT_LAST_INDEX(path[i].p_hdr)) {
+            u32 next = le32_to_cpu(path[i].p_idx->ei_block);
+            if (next < owner->leaf_limit) owner->leaf_limit = next;
+        }
+    }
+    ext4_cache_extents(inode, leaf);
+    return owner->error;
+}
+
+int ext4_ext_precache(struct inode *inode)
+{
+	struct ext4_ext_path *path = NULL;
+	struct buffer_head *bh;
+	int i = 0, depth, ret = 0;
+
+	if (!ext4_test_inode_flag(inode, EXT4_INODE_EXTENTS))
+		return 0;	/* not an extent-mapped inode */
+
+	ext4_check_map_extents_env(inode);
+
+	depth = ext_depth(inode);
+
+	/* Don't cache anything if there are no external extent blocks */
+	if (!depth)
+		return ext_archive_visit_leaf(inode, NULL, 0);
+
+	path = kzalloc_objs(struct ext4_ext_path, depth + 1, GFP_NOFS);
+	if (path == NULL) {
+		return -ENOMEM;
+	}
+
+	/* Cleanup must include every acquired level after a failed read/visitor. */
+	path[0].p_depth = depth;
+	path[0].p_hdr = ext_inode_hdr(inode);
+	ret = ext4_ext_check(inode, path[0].p_hdr, depth, 0);
+	if (ret)
+		goto out;
+	path[0].p_idx = EXT_FIRST_INDEX(path[0].p_hdr);
+	while (i >= 0) {
+		/*
+		 * If this is a leaf block or we've reached the end of
+		 * the index block, go up
+		 */
+		if (i == depth) {
+			ret = ext_archive_visit_leaf(inode, path, depth);
+			if (ret)
+				break;
+		}
+		if ((i == depth) ||
+		    path[i].p_idx > EXT_LAST_INDEX(path[i].p_hdr)) {
+			ext4_ext_path_brelse(path + i);
+			i--;
+			continue;
+		}
+		bh = read_extent_tree_block(inode, path[i].p_idx++,
+					    depth - i - 1,
+					    EXT4_EX_NOCACHE);
+		if (IS_ERR(bh)) {
+			ret = PTR_ERR(bh);
+			break;
+		}
+		i++;
+		path[i].p_bh = bh;
+		path[i].p_hdr = ext_block_hdr(bh);
+		path[i].p_idx = EXT_FIRST_INDEX(path[i].p_hdr);
+	}
+	ext4_set_inode_state(inode, EXT4_STATE_EXT_PRECACHED);
+out:
+	ext4_free_ext_path(path);
+	return ret;
+}
+
+int ext_linux_extent_walk(struct ext_volume *volume, uint32_t ino, uint32_t seed,
+                          const void *root, size_t size, const struct ext_extent_services *services)
+{
+    struct ext_extent_owner owner = { .sb = volume->sb, .services = services };
+    int result;
+    if (size != sizeof(owner.inode.info.i_data) || !services || !services->read || !services->emit)
+        return -EINVAL;
+    owner.sb.info.s_sb = &owner.sb;
+    owner.sb.info.s_journal = NULL;
+    owner.inode.i_sb = &owner.sb;
+    owner.inode.i_ino = ino;
+    owner.inode.flags = 1U << EXT4_INODE_EXTENTS;
+    owner.inode.info.i_csum_seed = seed;
+    memcpy(owner.inode.info.i_data, root, size);
+    if (ext_depth(&owner.inode) > EXT4_MAX_EXTENT_DEPTH) return -EFSCORRUPTED;
+    result = ext4_ext_check_inode(&owner.inode);
+    if (!result) result = ext4_ext_precache(&owner.inode);
+    return result;
 }
