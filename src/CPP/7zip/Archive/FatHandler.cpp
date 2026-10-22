@@ -1114,6 +1114,37 @@ HRESULT CDatabase::ReadFatData(Byte *data, CByteBuffer &known, UInt32 sector, UI
 }
 #endif
 
+#ifdef SEVENZIP_LINUX_FAT
+class CFileExtractionIO final : public IInStream,
+                                public ISequentialOutStream,
+                                public CMyUnknownImp {
+    Z7_COM_UNKNOWN_IMP_3(IInStream, ISequentialInStream, ISequentialOutStream)
+    HRESULT InputResult(HRESULT result) {
+        if (result != S_OK && result != E_ABORT && result != E_OUTOFMEMORY) {
+            SourceError = true;
+            return S_FALSE;
+        }
+        return result;
+    }
+
+  public:
+    CMyComPtr<IInStream> Input;
+    CMyComPtr<ISequentialOutStream> Output;
+    bool SourceError = false;
+    HRESULT OutputResult = S_OK;
+    Z7_COM7F_IMF(Read(void *data, UInt32 size, UInt32 *processed)) override {
+        return InputResult(Input->Read(data, size, processed));
+    }
+    Z7_COM7F_IMF(Seek(Int64 offset, UInt32 origin, UInt64 *position)) override {
+        return InputResult(Input->Seek(offset, origin, position));
+    }
+    Z7_COM7F_IMF(Write(const void *data, UInt32 size, UInt32 *processed)) override {
+        OutputResult = Output->Write(data, size, processed);
+        return OutputResult;
+    }
+};
+#endif
+
 // clang-format off
 Z7_class_CHandler_final:
     public IInArchive,
@@ -1123,6 +1154,7 @@ Z7_class_CHandler_final:
     CDatabase
 {
     Z7_IFACES_IMP_UNK_3(IInArchive, IArchiveGetRawProps, IInArchiveGetStream)
+    HRESULT GetFileStream(UInt32 index, ISequentialInStream **stream, IInStream *source);
 };
 // clang-format on
 
@@ -1171,6 +1203,10 @@ HRESULT CDatabase::GetFileClusters(const CItem &item, CRecordVector<UInt32> &clu
 }
 
 Z7_COM7F_IMF(CHandler::GetStream(UInt32 index, ISequentialInStream **stream)) {
+    return GetFileStream(index, stream, InStream);
+}
+
+HRESULT CHandler::GetFileStream(UInt32 index, ISequentialInStream **stream, IInStream *source) {
     COM_TRY_BEGIN
     *stream = NULL;
     const CItem &item = Items[index];
@@ -1180,7 +1216,7 @@ Z7_COM7F_IMF(CHandler::GetStream(UInt32 index, ISequentialInStream **stream)) {
 #endif
     CClusterInStream *streamSpec = new CClusterInStream;
     CMyComPtr<ISequentialInStream> streamTemp = streamSpec;
-    streamSpec->Stream = InStream;
+    streamSpec->Stream = source;
     streamSpec->StartOffset = (UInt64)Header.DataSector << Header.SectorSizeLog;
     streamSpec->BlockSizeLog = Header.ClusterSizeLog;
     RINOK(GetFileClusters(item, streamSpec->Vector))
@@ -1609,12 +1645,29 @@ Z7_COM7F_IMF(CHandler::Extract(const UInt32 *indices, UInt32 numItems, Int32 tes
             RINOK(extractCallback->PrepareOperation(askMode))
             res = NExtract::NOperationResult::kDataError;
             CMyComPtr<ISequentialInStream> inStream;
+            ISequentialOutStream *copyOutput = realOutStream;
+#ifdef SEVENZIP_LINUX_FAT
+            CFileExtractionIO *io = new CFileExtractionIO;
+            CMyComPtr<IInStream> ioOwner = io;
+            io->Input = InStream;
+            io->Output = realOutStream;
+            if (realOutStream)
+                copyOutput = static_cast<ISequentialOutStream *>(io);
+            const HRESULT hres = GetFileStream(index, &inStream, io);
+#else
             const HRESULT hres = GetStream(index, &inStream);
+#endif
             if (hres != S_FALSE) {
                 RINOK(hres)
                 if (inStream) {
-                    RINOK(copyCoder.Interface()->Code(inStream, realOutStream, NULL, NULL, lps))
-                    if (copyCoder->TotalSize == item.Size
+                    const HRESULT copyResult =
+                        copyCoder.Interface()->Code(inStream, copyOutput, NULL, NULL, lps);
+#ifdef SEVENZIP_LINUX_FAT
+                    RINOK(io->OutputResult)
+                    if (!(copyResult == S_FALSE && io->SourceError))
+#endif
+                        RINOK(copyResult)
+                    if (copyResult == S_OK && copyCoder->TotalSize == item.Size
 #ifdef SEVENZIP_LINUX_FAT
                         && !item.FileCrossLinked
 #endif

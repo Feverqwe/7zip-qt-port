@@ -176,7 +176,12 @@ class FatModuleTests final : public QObject {
         QCOMPARE(archive_->Extract(&index, 1, 0, callback), E_FAIL);
         callback->output->fail = false;
         input->fail = true;
-        QCOMPARE(archive_->Extract(&index, 1, 0, callback), E_FAIL);
+        callback->output->bytes.clear();
+        callback->results.clear();
+        QCOMPARE(archive_->Extract(&index, 1, 0, callback), S_OK);
+        QCOMPARE(callback->results,
+                 QVector<Int32>({NArchive::NExtract::NOperationResult::kDataError}));
+        QVERIFY(callback->output->bytes.isEmpty());
         input->fail = false;
         callback->output->bytes.clear();
         QCOMPARE(archive_->Extract(&index, 1, 0, callback), S_OK);

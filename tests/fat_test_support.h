@@ -16,20 +16,23 @@ class Input final : public IInStream, public CMyUnknownImp {
     UInt64 failAt = UINT64_MAX;
     UInt64 failEnd = 0;
     UInt32 partialBytes = 0;
+    bool partialFailure = false;
     bool reachedFault = false;
     HRESULT failure = E_FAIL;
     bool failSeek = false;
     explicit Input(QByteArray bytes) : bytes_(std::move(bytes)) {}
     Z7_COM7F_IMF(Read(void *data, UInt32 size, UInt32 *processed)) override {
+        bool failedWithBytes = false;
         if (processed)
             *processed = 0;
         if (fail)
             return E_FAIL;
         if (!failSeek && (position_ == failAt || (position_ > failAt && position_ < failEnd))) {
             reachedFault = true;
-            if (position_ == failAt && partialBytes)
+            if (position_ == failAt && partialBytes) {
                 size = qMin(size, partialBytes);
-            else
+                failedWithBytes = partialFailure;
+            } else
                 return failure;
         }
         if (!failSeek && position_ < failAt && failAt - position_ < size)
@@ -41,7 +44,7 @@ class Input final : public IInStream, public CMyUnknownImp {
         position_ += size;
         if (processed)
             *processed = size;
-        return S_OK;
+        return failedWithBytes ? failure : S_OK;
     }
     Z7_COM7F_IMF(Seek(Int64 offset, UInt32 origin, UInt64 *position)) override {
         if (origin > STREAM_SEEK_END)
@@ -66,11 +69,12 @@ class Output final : public ISequentialOutStream, public CMyUnknownImp {
   public:
     QByteArray bytes;
     bool fail = false;
+    HRESULT failure = E_FAIL;
     Z7_COM7F_IMF(Write(const void *data, UInt32 size, UInt32 *processed)) override {
         if (processed)
             *processed = 0;
         if (fail)
-            return E_FAIL;
+            return failure;
         bytes.append(static_cast<const char *>(data), size);
         if (processed)
             *processed = size;
@@ -82,11 +86,14 @@ class Extract final : public IArchiveExtractCallback, public CMyUnknownImp {
   public:
     CMyComPtr2<ISequentialOutStream, Output> output;
     bool cancel = false;
+    HRESULT progressFailureAfterItem = S_OK;
     Int32 result = -1;
     QVector<Int32> results;
     Extract() { output.Create_if_Empty(); }
     Z7_COM7F_IMF(SetTotal(UInt64)) override { return S_OK; }
-    Z7_COM7F_IMF(SetCompleted(const UInt64 *)) override { return cancel ? E_ABORT : S_OK; }
+    Z7_COM7F_IMF(SetCompleted(const UInt64 *)) override {
+        return cancel ? E_ABORT : results.isEmpty() ? S_OK : progressFailureAfterItem;
+    }
     Z7_COM7F_IMF(GetStream(UInt32, ISequentialOutStream **stream, Int32 mode)) override {
         *stream = nullptr;
         if (mode == NArchive::NExtract::NAskMode::kExtract) {

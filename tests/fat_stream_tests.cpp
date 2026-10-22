@@ -183,6 +183,112 @@ class FatStreamTests final : public QObject {
                                          "metadata-start", "start", "oversized", "tail", "shared"})
                 QTest::newRow(qPrintable(chain + '-' + QString::number(bits))) << bits << chain;
     }
+    void sourceFailuresRemainLocalToSelectedFile_data() {
+        QTest::addColumn<int>("bits");
+        QTest::addColumn<bool>("testOnly");
+        for (int bits : {12, 16, 32})
+            for (bool testOnly : {false, true})
+                QTest::newRow(qPrintable(QString::number(bits) + (testOnly ? "-test" : "-extract")))
+                    << bits << testOnly;
+    }
+    void sourceFailuresRemainLocalToSelectedFile() {
+        QFETCH(int, bits);
+        QFETCH(bool, testOnly);
+        open(bits);
+        const QString main = fixture_["name"].toString();
+        const QByteArray data = expected(main), second = expected("SECOND.BIN");
+        const auto offsets = fixture_["stream_offsets"].toArray();
+        UInt32 indices[2];
+        itemIndex(main, indices[0]);
+        itemIndex("SECOND.BIN", indices[1]);
+        for (bool seek : {false, true})
+            for (int block : {0, 1})
+                for (HRESULT failure : {E_FAIL, E_ABORT, E_OUTOFMEMORY, S_OK}) {
+                    if (seek && failure == S_OK)
+                        continue;
+                    source_->failAt = UInt64(offsets[block].toInteger());
+                    source_->failure = failure;
+                    source_->failSeek = seek;
+                    if (seek && block == 0) {
+                        CMyComPtr<IInStream> direct;
+                        stream(main, direct, failure);
+                    }
+                    CMyComPtr2<IArchiveExtractCallback, Extract> callback;
+                    callback.Create_if_Empty();
+                    const bool fatal = failure == E_ABORT || failure == E_OUTOFMEMORY;
+                    QCOMPARE(archive_->Extract(indices, 2, testOnly, callback),
+                             fatal ? failure : S_OK);
+                    const auto prefix = data.left(block * 512);
+                    if (fatal) {
+                        QVERIFY(callback->results.isEmpty());
+                        QCOMPARE(callback->output->bytes, testOnly ? QByteArray() : prefix);
+                    } else {
+                        QCOMPARE(callback->results,
+                                 QVector<Int32>({NArchive::NExtract::NOperationResult::kDataError,
+                                                 NArchive::NExtract::NOperationResult::kOK}));
+                        QCOMPARE(callback->output->bytes,
+                                 testOnly ? QByteArray() : prefix + second);
+                    }
+                }
+        source_->failAt = UINT64_MAX;
+        CMyComPtr2<IArchiveExtractCallback, Extract> healthy;
+        healthy.Create_if_Empty();
+        QCOMPARE(archive_->Extract(indices, 2, 0, healthy), S_OK);
+        QCOMPARE(healthy->output->bytes, data + second);
+        QCOMPARE(healthy->results, QVector<Int32>(2, NArchive::NExtract::NOperationResult::kOK));
+    }
+    void destinationAndProgressFailuresRemainFatalAfterSourceError() {
+        open(12);
+        const auto offsets = fixture_["stream_offsets"].toArray();
+        const auto data = expected(fixture_["name"].toString());
+        UInt32 indices[2];
+        itemIndex(fixture_["name"].toString(), indices[0]);
+        itemIndex("SECOND.BIN", indices[1]);
+        source_->failAt = UInt64(offsets[1].toInteger());
+        source_->failure = E_FAIL;
+        for (HRESULT failure : {E_FAIL, S_FALSE, E_ABORT}) {
+            CMyComPtr2<IArchiveExtractCallback, Extract> callback;
+            callback.Create_if_Empty();
+            callback->output->fail = true;
+            callback->output->failure = failure;
+            QCOMPARE(archive_->Extract(indices, 2, 0, callback), failure);
+            QVERIFY(callback->results.isEmpty());
+            QVERIFY(callback->output->bytes.isEmpty());
+            callback->output->fail = false;
+            callback->progressFailureAfterItem = failure;
+            QCOMPARE(archive_->Extract(indices, 2, 0, callback), failure);
+            QCOMPARE(callback->results,
+                     QVector<Int32>({NArchive::NExtract::NOperationResult::kDataError}));
+            QCOMPARE(callback->output->bytes, data.left(512));
+        }
+    }
+    void sourceFailurePreservesBytesReportedWithTheError() {
+        open(12);
+        UInt32 indices[2];
+        itemIndex(fixture_["name"].toString(), indices[0]);
+        itemIndex("SECOND.BIN", indices[1]);
+        const auto data = expected(fixture_["name"].toString());
+        const auto second = expected("SECOND.BIN");
+        source_->failAt = UInt64(fixture_["stream_offsets"].toArray()[0].toInteger()) + 37;
+        source_->partialBytes = 11;
+        source_->partialFailure = true;
+        for (HRESULT failure : {E_FAIL, S_FALSE, E_ABORT, E_OUTOFMEMORY}) {
+            source_->failure = failure;
+            CMyComPtr2<IArchiveExtractCallback, Extract> callback;
+            callback.Create_if_Empty();
+            const bool fatal = failure == E_ABORT || failure == E_OUTOFMEMORY;
+            QCOMPARE(archive_->Extract(indices, 2, 0, callback), fatal ? failure : S_OK);
+            if (fatal) {
+                QVERIFY(callback->results.isEmpty());
+                QCOMPARE(callback->output->bytes, data.left(48));
+            } else {
+                QCOMPARE(callback->results,
+                         QVector<Int32>({NArchive::NExtract::NOperationResult::kDataError,
+                                         NArchive::NExtract::NOperationResult::kOK}));
+                QCOMPARE(callback->output->bytes, data.left(48) + second);
+            }
+        }
+    }
     void incompleteFileChains() {
         QFETCH(int, bits);
         QFETCH(QString, chain);

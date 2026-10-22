@@ -5,6 +5,59 @@ The integrated iterations cover BPB-based FAT12/16/32 geometry, directory
 and file reads, then DOS 1.x recognition, names, dates and archive consumers.
 Other filesystem and shared-format rows remain in the active goal.
 
+## Per-file source I/O failures during extraction — 2026-10-22
+
+Recompared pinned Linux cluster/bmap failure boundaries and inode read callers
+with the complete SDK GetStream, CClusterInStream initialization/Read/Seek,
+CopyCoder and extraction callback loop. Linux returns a read failure for the
+affected inode without preventing a different inode from being read. The
+archive loop instead propagated any CopyCoder/source-seek HRESULT as a fatal
+whole-selection result, hiding readable selected siblings.
+
+The existing stream-construction body is shared by direct GetStream and
+extraction. An extraction-only I/O adapter separates physical source faults
+from destination results: ordinary source read/seek failures enter the existing
+per-file DataError flow, while Abort/OOM stay fatal. Direct GetStream retains
+its original HRESULT and retry semantics. Cluster mapping, bounds, file-size
+limits and the authoritative SDK CopyCoder remain unchanged; no decoder or
+Linux C unit is added. SDK helpers do not otherwise distinguish the input and
+output origin of a common HRESULT, so this narrow archive I/O boundary is
+required rather than changing the generic copy implementation.
+
+CopyCoder preserves bytes completed before the source error, including bytes
+reported in the failing Read call. The damaged file is never reported as OK,
+and later selected files continue. Destination HRESULTs are checked independently
+before classifying the source result, including S_FALSE when it coincides with
+the normalized source error. Output and progress failures therefore still stop
+the operation. Per-file ownership releases output references before the SDK
+SetOperationResult callback. COM Extract S_OK means the callback sequence
+completed; individual DataError results remain failures. The standalone legacy
+profile retains its previous strict extraction HRESULT behavior.
+
+Public ABI regressions first reproduced selection-wide refusal on FAT12/16/32.
+They now cover read and seek faults at the first and later file blocks,
+ordinary I/O, EOF/short reads, Abort/OOM, exact prefixes and healthy siblings in
+extract and test-only modes. A separate input returns bytes together with an
+error to verify preserved output. Combined source/destination failures and
+progress failures after a per-file error include E_FAIL/S_FALSE/Abort and must
+remain fatal. Existing direct-stream fault/retry tests are retained, with an
+additional failed-initial-seek control. The existing module source-error case
+now requires DataError and no fabricated bytes rather than whole-selection
+E_FAIL, while its output failure, cancellation and healthy reuse checks remain.
+
+Local direct FAT/source suites passed; final expanded stream/table/directory/
+module checks passed (5.29 seconds), then the final direct-initial-seek stream
+control passed separately (2.04 seconds). Linux/Windows CLI/source suites passed
+in `20261022T074621Z-de5a1b31`, final stream/table/directory suites in
+`20261022T075049Z-9171f646`; isolated module/backend checks passed in
+`20261022T075350Z-326eb520` on both runners.
+All 21 pinned FAT hashes matched; the incremental application build and diff
+check passed. No UI text/geometry changed, and no new appearance acceptance,
+native kernel fault injection, full/slow suite, physical media or installation
+is claimed. Temporary fixture owners clean their data, and current evidence,
+incremental build trees and compiler caches are retained. This closes source-I/O
+isolation, not the remaining full FAT source audit or the parent format goal.
+
 ## Read-only file/directory cluster overlap — 2026-10-22
 
 Recompared pinned Linux `fat_get_start`, `fat_get_cluster`,
