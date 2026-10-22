@@ -126,6 +126,25 @@ class UpstreamBaselineTests(unittest.TestCase):
             baseline.prepare_runtime_snapshot(self.manifest, snapshot, self.upstream)
         self.assertEqual(private.read_bytes(), b"user data")
 
+    def test_license_variants_keep_sdk_runtime_isolated(self):
+        sdk = "src/" + self.source
+        gpl = "src/gpl/" + self.source
+        (self.port / gpl).parent.mkdir(parents=True)
+        (self.port / gpl).write_bytes(b"Linux reader variant\n")
+        self.manifest["adapted"] = sorted([sdk, gpl])
+        self.manifest["runtime_adapted"] = [sdk]
+        self.manifest_path.write_text(json.dumps(self.manifest))
+        data = baseline.load_manifest(self.manifest_path)
+        baseline.verify(data, self.upstream)
+        snapshot = pathlib.Path(self.temporary.name) / "runtime"
+        baseline.prepare_runtime_snapshot(data, snapshot, self.upstream)
+        expected = (self.port / sdk).read_bytes()
+        self.assertEqual((snapshot / self.source).read_bytes(), expected)
+        data["runtime_adapted"] = [gpl]
+        with self.assertRaisesRegex(ValueError, "GPL reader variants"):
+            baseline.prepare_runtime_snapshot(data, snapshot, self.upstream)
+        self.assertEqual((snapshot / self.source).read_bytes(), expected)
+
     def test_runtime_rebuilds_transitive_adapted_header_consumers(self):
         directory = "CPP/7zip/UI/Console"
         header = "CPP/7zip/Common/Model.h"

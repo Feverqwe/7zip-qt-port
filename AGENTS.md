@@ -13,6 +13,12 @@ for Windows, macOS, and Linux. The official source checkout is `../7zip-upstream
   control flow. Adapted sources belong under `src/<upstream-relative-path>`;
   unchanged reusable dependencies under `third_party/7zip/<upstream-relative-path>`.
   Keep one authoritative implementation per module and reuse portable upstream types.
+- License-specific archive variants use separate source roots: SDK adaptations
+  under `src/CPP` and Linux/GPL reader variants under `src/gpl/CPP`, preserving
+  upstream-relative paths within each root. Keep one implementation per variant;
+  select it in CMake instead of branching on `SEVENZIP_LINUX_*` inside handlers.
+  Shared portable dependencies remain shared. The SDK runtime overlay excludes
+  the GPL source root; record both variants in the existing provenance inventory.
 - Preserve the source language: upstream `C/` stays C and is compiled as C;
   `CPP/` stays C++. Local UI/integration uses C++17 / Qt 6; necessary platform
   bridges may use their native language, with the reason recorded in the audit.

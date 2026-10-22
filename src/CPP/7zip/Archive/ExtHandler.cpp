@@ -35,17 +35,6 @@
 
 #include "../Compress/CopyCoder.h"
 
-#ifdef SEVENZIP_LINUX_EXT
-#include "extfscrypt.h"
-#include "extindirectstream.h"
-#include "extreader.h"
-#include "extveritypolicy.h"
-#include "extveritystream.h"
-#include <cerrno>
-#include <climits>
-#include <new>
-#endif
-
 using namespace NWindows;
 
 UInt32 LzhCrc16Update(UInt32 crc, const void *data, size_t size);
@@ -101,11 +90,7 @@ static UInt32 Crc32C_Calc(Byte const *data, size_t size)
 
 #define CRC16_INIT_VAL 0xFFFF
 
-#ifdef SEVENZIP_LINUX_EXT
-#define Crc16Update(value, data, size) crc16((UInt16)(value), (const Byte *)(data), size)
-#else
 #define Crc16Update(crc, data, size) LzhCrc16Update(crc, data, size)
-#endif
 
 static UInt32 Crc16Calc(Byte const *data, size_t size) {
     return Crc16Update(CRC16_INIT_VAL, data, size);
@@ -589,19 +574,6 @@ struct CNode {
     bool HugeBlocks;
 
     Byte Block[kNodeBlockFieldSize];
-#ifdef SEVENZIP_LINUX_EXT
-    UInt32 ChecksumSeed;
-    int InlineIndex;
-    UInt64 RawOffset;
-    UInt32 InodeNumber;
-    bool HasXattrs;
-    bool FastSymlink;
-    int ReadError, SpecialReadError, EaReadError;
-    bool DirectoryIncomplete = false;
-    bool XattrsIncomplete = false;
-    bool LinkUnavailable = false;
-    unsigned XattrFirst, XattrCount;
-#endif
 
     void Construct() {
         ParentNode = -1;
@@ -609,16 +581,6 @@ struct CNode {
         SymLinkIndex = -1;
         DirIndex = -1;
         NumLinksCalced = 0;
-#ifdef SEVENZIP_LINUX_EXT
-        InlineIndex = -1;
-        RawOffset = 0;
-        InodeNumber = 0;
-        HasXattrs = false;
-        XattrFirst = XattrCount = 0;
-        DirectoryIncomplete = false;
-        XattrsIncomplete = false;
-        LinkUnavailable = false;
-#endif
     }
 
     bool IsFlags_HUGE() const { return HugeBlocks; }
@@ -633,10 +595,6 @@ struct CNode {
 };
 
 bool CNode::IsFastSymlink(const CHeader &header) const {
-#ifdef SEVENZIP_LINUX_EXT
-    (void)header;
-    return FastSymlink;
-#else
     if (!IsLink() || (Flags & ((UInt32)1 << 28)))
         return false;
     if (header.FeatureIncompat & (1U << 10))
@@ -645,7 +603,6 @@ bool CNode::IsFastSymlink(const CHeader &header) const {
         (header.FeatureRoCompat & 0x200) ? header.ClusterBits + 10 : header.BlockBits;
     const UInt64 eaSectors = FileAcl ? (UInt64)1 << (clusterBits - 9) : 0;
     return NumBlocks == (IsFlags_HUGE() ? eaSectors >> (header.BlockBits - 9) : eaSectors);
-#endif
 }
 
 bool CNode::Parse(const Byte *p, const CHeader &_h) {
@@ -682,10 +639,8 @@ bool CNode::Parse(const Byte *p, const CHeader &_h) {
     LE_32(0x68, FileAcl)
     if (_h.Is64Bit())
         FileAcl |= (UInt64)Get16(p + 0x76) << 32;
-#ifndef SEVENZIP_LINUX_EXT
     if (FileAcl != 0 && (FileAcl <= (unsigned)(_h.BlockBits == 10) || FileAcl >= _h.NumBlocks))
         return false;
-#endif
 
     {
         UInt32 highSize;
@@ -753,20 +708,14 @@ bool CNode::Parse(const Byte *p, const CHeader &_h) {
 
     if (IsLink() && (Flags & (0x10U | 0x20U)))
         return false;
-#ifndef SEVENZIP_LINUX_EXT
     if (!(Flags & 0x800U) && IsFastSymlink(_h) &&
         (FileSize == 0 || FileSize >= kNodeBlockFieldSize || memchr(Block, 0, (size_t)FileSize) ||
          Block[(size_t)FileSize] != 0))
         return false;
-#endif
     return true;
 }
 
 struct CItem {
-#ifdef SEVENZIP_LINUX_EXT
-    int XattrIndex = -1, XattrParent = -1;
-    bool ContextAllowed = true;
-#endif
     unsigned Node;        // in _refs[]
     int ParentNode;       // in _refs[]
     int SymLinkItemIndex; // in _items[], if the Node contains SymLink to existing dir
@@ -777,10 +726,6 @@ struct CItem {
     CItem() : Node(0), ParentNode(-1), SymLinkItemIndex(-1), Type(k_Type_UNKNOWN) {}
 
     void Clear() {
-#ifdef SEVENZIP_LINUX_EXT
-        XattrIndex = XattrParent = -1;
-        ContextAllowed = true;
-#endif
         Node = 0;
         ParentNode = -1;
         SymLinkItemIndex = -1;
@@ -794,60 +739,11 @@ struct CItem {
 
 static const unsigned kNumTreeLevelsMax = 6; // must be >= 3
 
-#ifdef SEVENZIP_LINUX_EXT
-struct CExtXattr {
-    AString RawName, Name;
-    CByteBuffer Data;
-};
-
-struct CInlineDirectory {
-    CByteBuffer Data;
-    size_t Used = 0;
-    size_t Last = 0;
-    static int Emit(void *opaque, uint32_t ino, unsigned type, const char *name, unsigned len) {
-        CInlineDirectory &dir = *static_cast<CInlineDirectory *>(opaque);
-        const size_t size = (8 + len + 3) & ~(size_t)3;
-        if (size > dir.Data.Size() - dir.Used)
-            return -1;
-        Byte *p = (Byte *)dir.Data + dir.Used;
-        memset(p, 0, size);
-        SetUi32(p, ino) SetUi16(p + 4, (UInt16)size) p[6] = (Byte)len;
-        // Linux dir_emit uses DT_*; the archive uses EXT4_FT_*.
-        const Byte types[] = {0, 5, 3, 0, 2, 0, 4, 0, 1, 0, 7, 0, 6};
-        p[7] = type < sizeof(types) ? types[type] : 0;
-        memcpy(p + 8, name, len);
-        dir.Last = dir.Used;
-        dir.Used += size;
-        return 0;
-    }
-};
-
-static void ImportTime(const ext_time &source, CExtTime &time) {
-    time.Val = (UInt32)source.seconds;
-    time.Extra =
-        (source.nsec << 2) |
-        ((UInt64)(source.seconds + ((source.seconds & 0x80000000) ? ((Int64)1 << 32) : 0)) >> 32);
-    time.Defined = source.defined != 0;
-}
-#endif
-
-#ifdef SEVENZIP_LINUX_EXT
-static IInStream *CreateReadOnlyInput(IInStream *source);
-#endif
-
 // clang-format off
-#ifdef SEVENZIP_LINUX_EXT
-Z7_CLASS_IMP_CHandler_IInArchive_3(
-  IArchiveGetRawProps,
-  IInArchiveGetStream,
-  ISetProperties
-)
-#else
 Z7_CLASS_IMP_CHandler_IInArchive_2(
   IArchiveGetRawProps,
   IInArchiveGetStream
 )
-#endif
   CObjectVector<CItem> _items;
   CIntVector _refs;                 // iNode -> (index in _nodes). if (_refs[iNode] < 0), that node is not filled
   CRecordVector<CNode> _nodes;
@@ -867,87 +763,6 @@ Z7_CLASS_IMP_CHandler_IInArchive_2(
   bool _isUTF;
 
   CHeader _h;
-#ifdef SEVENZIP_LINUX_EXT
-  std::shared_ptr<ext_volume> _volume;
-  CExtVerityPolicy _verityPolicy;
-  CObjectVector<CByteBuffer> _inlineData;
-  std::vector<CExtCryptInode> _cryptInodes;
-  UInt32 _extentChecksumSeed;
-  UInt32 _blockInode = 0;
-  CObjectVector<CExtXattr> _xattrs;
-  int _rootXattrAux;
-  bool _directoryLimitations = false;
-  bool _xattrLimitations = false;
-  bool _linkLimitations = false;
-  bool _inodeLimitations = false;
-  bool _indirectLimitations = false;
-  bool HasIndirectRangeLimit(const CNode &node) const
-  {
-    return node.IsRegular() && node.InlineIndex < 0 && !node.IsFlags_EXTENTS() &&
-        node.FileSize > ((UInt64)1 << (32 + _h.BlockBits));
-  }
-  void MarkDirectoryIncomplete(CNode &node)
-  {
-    node.DirectoryIncomplete = true;
-    _directoryLimitations = true;
-  }
-  struct CXattrContext {
-    CHandler *Owner;
-    unsigned NodeIndex;
-    HRESULT Result;
-    UInt32 StreamInode;
-    CMyComPtr<IInStream> Stream;
-    IInStream *Source = NULL;
-  };
-  static int ReadXattr(void *, uint32_t, uint64_t, void *, size_t) noexcept;
-  static int ReadXattrInode(void *, uint32_t, void *, size_t) noexcept;
-  static int HandleXattrError(void *, int) noexcept;
-  static int ReadLinkBlock(void *, void *, size_t) noexcept;
-  HRESULT ReadLink(unsigned, CByteBuffer &, IInStream *source = NULL);
-  struct CSystemZoneContext {
-    CXattrContext Io;
-    CRecordVector<CExtent> Extents;
-    bool Mapped = false;
-  };
-  static int ReadSystemInode(void *, uint32_t, void *, size_t) noexcept;
-  static int ReadSystemBlock(void *, uint64_t, void *, size_t) noexcept;
-  static int MapSystemInode(void *, uint32_t, uint32_t, uint32_t *, uint64_t *) noexcept;
-  HRESULT LoadSystemZone(const void *descriptors, UInt32 groups);
-  struct CDirectoryContext {
-    CHandler *Owner;
-    IInStream *Stream;
-    const CRecordVector<CExtent> *Ranges;
-    unsigned Inode;
-    CDirParseState *State;
-    HRESULT Result = S_OK;
-    HRESULT CallbackResult = S_OK;
-    CUIntVector *Emitted = NULL;
-  };
-  static int ReadIndexBlock(void *, uint32_t, void *, size_t) noexcept;
-  static int EmitIndexBlock(void *, uint32_t, const void *, size_t) noexcept;
-  struct CIndirectDirectoryContext {
-    CHandler *Owner;
-    CRecordVector<CExtent> *Ranges;
-  };
-  static HRESULT EmitIndirectDirectoryRange(void *, UInt32, UInt64, UInt32);
-  struct CExtentReadContext {
-    CHandler *Owner;
-    IInStream *Source;
-    CRecordVector<CExtent> *Ranges;
-    HRESULT Result = S_OK;
-  };
-  static int ReadExtentBlock(void *, uint64_t, void *, size_t) noexcept;
-  static int EmitExtent(void *, uint32_t, uint64_t, uint32_t, int) noexcept;
-  static int EmitXattr(void *, const char *, const void *, size_t) noexcept;
-  HRESULT LoadXattrs();
-  HRESULT LoadEncryption();
-  UInt64 GetUnpackSize(const CNode &node) const
-  {
-    return node.IsLink() && node.SymLinkIndex >= 0 ?
-        _symLinks[(unsigned)node.SymLinkIndex].Len() : node.FileSize;
-  }
-  void AddXattrItem(unsigned node, int parent, unsigned attribute);
-#endif
 
   IArchiveOpenCallback *_openCallback;
   HRESULT _openCallbackResult = S_OK;
@@ -993,12 +808,10 @@ Z7_CLASS_IMP_CHandler_IInArchive_2(
   HRESULT ReadDir(unsigned iNodeDir, HRESULT &callbackResult);
   int FindTargetItem_for_SymLink(unsigned dirNode, const AString &path) const;
 
-#ifndef SEVENZIP_LINUX_EXT
   HRESULT FillFileBlocks2(UInt32 block, unsigned level, unsigned numBlocks, CRecordVector<UInt32> &blocks,
       IInStream *source);
   HRESULT FillFileBlocks(const Byte *p, unsigned numBlocks, CRecordVector<UInt32> &blocks,
       IInStream *source = NULL);
-#endif
   HRESULT FillExtents(const Byte *p, size_t size, CRecordVector<CExtent> &extents, int parentDepth,
       UInt32 firstBlock = 0, UInt64 blockLimit = (UInt64)1 << 32, IInStream *source = NULL);
 
@@ -1026,12 +839,6 @@ HRESULT CHandler::ParseDir(const Byte *p, size_t size, unsigned iNodeDir, CDirPa
     PRF(printf("\n\n========= node = %5d    size = %5d", (unsigned)iNodeDir, (unsigned)size));
 
     CNode &nodeDir = _nodes[_refs[iNodeDir]];
-#ifdef SEVENZIP_LINUX_EXT
-    if (nodeDir.Flags & ((UInt32)1 << 21))
-        return S_FALSE;
-    const CExtCryptInode &dirCrypt = _cryptInodes[(unsigned)_refs[iNodeDir]];
-    const int rootHashVersion = state.RootHashVersion;
-#endif
     CUIntVector &dir = _dirs[(unsigned)nodeDir.DirIndex];
     int &parentNode = state.ParentNode;
 
@@ -1042,13 +849,6 @@ HRESULT CHandler::ParseDir(const Byte *p, size_t size, unsigned iNodeDir, CDirPa
             break;
         if (size < 8)
             return S_FALSE;
-#ifdef SEVENZIP_LINUX_EXT
-        if (nodeDir.InlineIndex < 0 &&
-            ext_linux_directory_entry_check(_volume.get(), nodeDir.Flags, p - blockOffset,
-                                            MyMin(size, blockSize - blockOffset) + blockOffset,
-                                            (unsigned)blockOffset))
-            return S_FALSE;
-#endif
         UInt32 iNode;
         LE_32(0x00, iNode)
         unsigned recLen;
@@ -1065,64 +865,25 @@ HRESULT CHandler::ParseDir(const Byte *p, size_t size, unsigned iNodeDir, CDirPa
         if (nameLen + 8 > recLen)
             return S_FALSE;
 
-#ifdef SEVENZIP_LINUX_EXT
-        if (iNode > _h.NumInodes)
-#else
         if (iNode >= _refs.Size())
-#endif
             return S_FALSE;
 
         item.Clear();
 
-#ifdef SEVENZIP_LINUX_EXT
-        item.Type = ext_linux_directory_type(_volume.get(), type) ? type : k_Type_UNKNOWN;
-#else
         if (_h.IsThereFileType())
             item.Type = type;
         else if (type != 0)
             return S_FALSE;
-#endif
 
         item.ParentNode = (int)iNodeDir;
         item.Node = iNode;
-#ifdef SEVENZIP_LINUX_EXT
-        unsigned presentedLen = nameLen;
-        if (dirCrypt) {
-            if (iNode) {
-                uint32_t hash = 0, minor = 0;
-                if (ext_linux_directory_hash(_volume.get(), nodeDir.Flags, nodeDir.FileSize,
-                                             dirCrypt.get(), rootHashVersion, state.LinearFallback,
-                                             p, recLen, &hash, &minor) != 0)
-                    return S_FALSE;
-                CByteBuffer name(256);
-                size_t len = 0;
-                const int result = sevenzip_fscrypt_present_name(dirCrypt.get(), hash, minor, p + 8,
-                                                                 nameLen, name, name.Size(), &len);
-                if (result)
-                    return result == -ENOMEM ? E_OUTOFMEMORY : S_FALSE;
-                presentedLen = (unsigned)len;
-                if (!len || memchr(name, '/', len))
-                    return S_FALSE;
-                item.Name.SetFrom_CalcLen((const char *)(const Byte *)name, presentedLen);
-            } else {
-                presentedLen = 0;
-                item.Name.Empty();
-            }
-        } else
-#endif
-            item.Name.SetFrom_CalcLen((const char *)(p + 8), nameLen);
+        item.Name.SetFrom_CalcLen((const char *)(p + 8), nameLen);
 
         p += recLen;
         size -= recLen;
         blockOffset = (blockOffset + recLen) & (blockSize - 1);
 
-        if (item.Name.Len() !=
-#ifdef SEVENZIP_LINUX_EXT
-            presentedLen
-#else
-            nameLen
-#endif
-        )
+        if (item.Name.Len() != nameLen)
             return S_FALSE;
 
         if (_isUTF) {
@@ -1145,46 +906,20 @@ HRESULT CHandler::ParseDir(const Byte *p, size_t size, unsigned iNodeDir, CDirPa
             continue;
         }
 
-#ifdef SEVENZIP_LINUX_EXT
-        if (verify_dirent_name(item.Name.Ptr(), (int)item.Name.Len()))
-            return S_FALSE;
-#else
         if (item.Name.IsEmpty() || item.Name.Find('/') >= 0)
             return S_FALSE;
-#endif
         const int nodeIndex = iNode < _refs.Size() ? _refs[iNode] : -1;
         if (nodeIndex < 0) {
-#ifdef SEVENZIP_LINUX_EXT
-            MarkDirectoryIncomplete(nodeDir);
-            continue;
-#else
             return S_FALSE;
-#endif
         }
         CNode &node = _nodes[nodeIndex];
-#ifdef SEVENZIP_LINUX_EXT
-        if (node.ReadError || (node.Flags & ((UInt32)1 << 21))) {
-            MarkDirectoryIncomplete(nodeDir);
-            continue;
-        }
-        item.ContextAllowed =
-            sevenzip_fscrypt_permitted_context(
-                dirCrypt.get(), _cryptInodes[(unsigned)nodeIndex].get(), node.Mode) != 0;
-#endif
 
-#ifdef SEVENZIP_LINUX_EXT
-        if (item.Type != k_Type_UNKNOWN && k_TypeToMode[item.Type] != (node.Mode & MY_LIN_S_IFMT)) {
-            MarkDirectoryIncomplete(nodeDir);
-            item.Type = k_Type_UNKNOWN;
-        }
-#else
         if (_h.IsThereFileType() && type != 0) {
             if (type >= Z7_ARRAY_SIZE(k_TypeToMode))
                 return S_FALSE;
             if (k_TypeToMode[type] != (node.Mode & MY_LIN_S_IFMT))
                 return S_FALSE;
         }
-#endif
 
         node.NumLinksCalced++;
 
@@ -1223,16 +958,10 @@ HRESULT CHandler::ParseDir(const Byte *p, size_t size, unsigned iNodeDir, CDirPa
         if (iNode == iNodeDir)
             return S_FALSE;
 
-#ifndef SEVENZIP_LINUX_EXT
         if (parentNode < 0)
             return S_FALSE;
-#endif
 
         if (node.IsDir()) {
-#ifdef SEVENZIP_LINUX_EXT
-            if (!item.ContextAllowed)
-                return HRESULT(0x80070005L);
-#endif
             if (node.ParentNode < 0)
                 node.ParentNode = (int)iNodeDir;
             else if ((unsigned)node.ParentNode != iNodeDir)
@@ -1248,152 +977,23 @@ HRESULT CHandler::ParseDir(const Byte *p, size_t size, unsigned iNodeDir, CDirPa
     return S_OK;
 }
 
-#ifdef SEVENZIP_LINUX_EXT
-HRESULT CHandler::EmitIndirectDirectoryRange(void *opaque, UInt32 logical, UInt64 physical,
-                                             UInt32 count) {
-    auto &context = *static_cast<CIndirectDirectoryContext *>(opaque);
-    if (context.Owner->_openCallback)
-        RINOK(context.Owner->CheckProgress2())
-    if (!physical)
-        return S_OK;
-    while (count) {
-        const UInt16 length = UInt16(MyMin(count, UInt32(1U << 15)));
-        CExtent range;
-        range.VirtBlock = logical;
-        range.Len = length;
-        range.IsInited = true;
-        range.PhyStart = physical;
-        context.Ranges->Add(range);
-        logical += length;
-        physical += length;
-        count -= length;
-    }
-    return S_OK;
-}
-
-int CHandler::ReadIndexBlock(void *opaque, uint32_t block, void *data, size_t size) noexcept {
-    auto &context = *static_cast<CDirectoryContext *>(opaque);
-    try {
-        const auto &ranges = *context.Ranges;
-        unsigned left = 0, right = ranges.Size();
-        while (left < right) {
-            const unsigned middle = left + (right - left) / 2;
-            if (ranges[middle].VirtBlock <= block)
-                left = middle + 1;
-            else
-                right = middle;
-        }
-        if (!left || block >= (UInt64)ranges[left - 1].VirtBlock + ranges[left - 1].Len)
-            return 1; // Linux bread reports an unmapped directory block as a hole.
-        context.Result =
-            InStream_SeekSet(context.Stream, (UInt64)block << context.Owner->_h.BlockBits);
-        if (context.Result == S_OK)
-            context.Result = ReadStream_FALSE(context.Stream, data, size);
-        if (context.Result == S_OK) {
-            context.Owner->_totalRead += size;
-            if (context.Owner->_openCallback)
-                context.Result = context.CallbackResult = context.Owner->CheckProgress2();
-        }
-        return context.Result == S_OK ? 0 : -EIO;
-    } catch (const std::bad_alloc &) {
-        context.Result = E_OUTOFMEMORY;
-        return -ENOMEM;
-    } catch (...) {
-        context.Result = E_FAIL;
-        return -EIO;
-    }
-}
-
-int CHandler::EmitIndexBlock(void *opaque, uint32_t block, const void *data, size_t size) noexcept {
-    auto &context = *static_cast<CDirectoryContext *>(opaque);
-    try {
-        if (context.Emitted)
-            context.Emitted->Add(block);
-        if (block == 0 && size >= 32)
-            context.State->RootHashVersion = static_cast<const Byte *>(data)[28];
-        context.Result = context.Owner->ParseDir(static_cast<const Byte *>(data), size,
-                                                 context.Inode, *context.State);
-        return context.Result == S_OK ? 0 : -EIO;
-    } catch (const std::bad_alloc &) {
-        context.Result = E_OUTOFMEMORY;
-        return -ENOMEM;
-    } catch (...) {
-        context.Result = E_FAIL;
-        return -EIO;
-    }
-}
-#endif
-
 HRESULT CHandler::ReadDir(unsigned iNodeDir, HRESULT &callbackResult) {
     const unsigned nodeIndex = (unsigned)_refs[iNodeDir];
     CNode &node = _nodes[nodeIndex];
     node.DirIndex = (int)_dirs.Size();
     _dirs.AddNew();
     CDirParseState state;
-#ifdef SEVENZIP_LINUX_EXT
-    CMyComPtr<IInStream> source = CreateReadOnlyInput(_stream);
-    if (iNodeDir == k_INODE_ROOT)
-        node.ParentNode = k_INODE_ROOT;
-    if (node.InlineIndex >= 0) {
-        const CByteBuffer &data = _inlineData[(unsigned)node.InlineIndex];
-        if (data.Size() == 0)
-            return S_FALSE;
-        if ((node.Flags & 0x1000) && data.Size() >= 32)
-            state.RootHashVersion = data[28];
-        RINOK(ParseDir(data, data.Size(), iNodeDir, state))
-    } else
-#endif
     {
         const size_t blockSize = (size_t)1 << _h.BlockBits;
         if (node.FileSize == 0)
             return S_FALSE;
-#ifdef SEVENZIP_LINUX_EXT
-        if (_h.UseMetadataChecksum() && (node.FileSize & (blockSize - 1)))
-            return S_FALSE;
-#endif
         CRecordVector<CExtent> allocated;
         CMyComPtr<ISequentialInStream> input;
-#ifdef SEVENZIP_LINUX_EXT
-        bool mappingIncomplete = false;
-        const HRESULT mappingResult =
-            GetStream_Node(nodeIndex, &input, false, true, &allocated, source, &mappingIncomplete);
-        callbackResult = _openCallbackResult;
-        RINOK(callbackResult)
-        if (mappingIncomplete)
-            MarkDirectoryIncomplete(node);
-        RINOK(mappingResult)
-        CUIntVector emitted;
-#else
         RINOK(GetStream_Node(nodeIndex, &input, false, true, &allocated))
-#endif
         if (!input)
             return S_FALSE;
         CMyComPtr<IInStream> seekable;
         RINOK(input->QueryInterface(IID_IInStream, reinterpret_cast<void **>(&seekable)))
-#ifdef SEVENZIP_LINUX_EXT
-        if ((_h.FeatureCompat & 0x20) && (node.Flags & 0x1000)) {
-            CDirectoryContext context{this, seekable, &allocated, iNodeDir, &state};
-            context.Emitted = &emitted;
-            const int result =
-                ext_linux_index_directory(_volume.get(), iNodeDir, node.ChecksumSeed, node.Flags,
-                                          node.FileSize, &context, ReadIndexBlock, EmitIndexBlock);
-            callbackResult = context.CallbackResult;
-            RINOK(callbackResult)
-            if (context.Result != S_OK && context.Result != S_FALSE)
-                return context.Result;
-            if (result == -ENOMEM)
-                return E_OUTOFMEMORY;
-            if (result != 1) {
-                if (!result)
-                    return state.ParentNode < 0 || !state.SelfLink ? S_FALSE : S_OK;
-                MarkDirectoryIncomplete(node);
-            }
-            emitted.Sort(
-                [](const unsigned *a, const unsigned *b, void *) { return *a < *b ? -1 : *a > *b; },
-                NULL);
-            state.LinearFallback = true;
-        }
-#endif
         CByteBuffer data(blockSize);
         const UInt64 blocks = (node.FileSize + blockSize - 1) >> _h.BlockBits;
         FOR_VECTOR(i, allocated) {
@@ -1401,50 +1001,15 @@ HRESULT CHandler::ReadDir(unsigned iNodeDir, HRESULT &callbackResult) {
             const UInt64 end = MyMin((UInt64)range.VirtBlock + range.Len, blocks);
             if (range.VirtBlock >= end)
                 continue;
-#ifndef SEVENZIP_LINUX_EXT
             RINOK(InStream_SeekSet(seekable, (UInt64)range.VirtBlock << _h.BlockBits))
-#endif
             for (UInt64 block = range.VirtBlock; block < end; ++block) {
-#ifdef SEVENZIP_LINUX_EXT
-                if (emitted.FindInSorted((unsigned)block) >= 0)
-                    continue;
-#endif
                 const size_t size =
                     (size_t)MyMin<UInt64>(blockSize, node.FileSize - (block << _h.BlockBits));
-#ifdef SEVENZIP_LINUX_EXT
-                HRESULT result = InStream_SeekSet(seekable, block << _h.BlockBits);
-                if (result == S_OK)
-                    result = ReadStream_FALSE(input, data, size);
-                if (result == E_ABORT || result == E_OUTOFMEMORY)
-                    return result;
-                if (_openCallback) {
-                    callbackResult = CheckProgress2();
-                    RINOK(callbackResult)
-                }
-                if (result != S_OK) {
-                    MarkDirectoryIncomplete(node);
-                    continue;
-                }
-#else
                 RINOK(ReadStream_FALSE(input, data, size))
-#endif
                 _totalRead += size;
                 if (block == 0 && (node.Flags & 0x1000) && size >= 32)
                     state.RootHashVersion = data[28];
-#ifdef SEVENZIP_LINUX_EXT
-                if (_h.UseMetadataChecksum() &&
-                    ext_linux_directory_check(_volume.get(), node.ChecksumSeed, node.Flags,
-                                              (UInt32)block, data)) {
-                    MarkDirectoryIncomplete(node);
-                    continue;
-                }
-#endif
                 const HRESULT parsed = ParseDir(data, size, iNodeDir, state);
-#ifdef SEVENZIP_LINUX_EXT
-                if (parsed == S_FALSE)
-                    MarkDirectoryIncomplete(node);
-                else
-#endif
                 {
                     RINOK(parsed)
                 }
@@ -1553,433 +1118,6 @@ HRESULT CHandler::SeekAndRead(IInStream *inStream, UInt64 block, Byte *data, siz
     return ReadStream_FALSE(inStream, data, size);
 }
 
-#ifdef SEVENZIP_LINUX_EXT
-int CHandler::ReadXattr(void *opaque, uint32_t ino, uint64_t offset, void *data,
-                        size_t size) noexcept {
-    auto &context = *static_cast<CXattrContext *>(opaque);
-    CHandler &owner = *context.Owner;
-    try {
-        if (owner._openCallback)
-            context.Result = owner.CheckProgress2();
-        if (context.Result != S_OK)
-            return -EIO;
-        if (!ino) {
-            const UInt64 volumeSize = owner._h.GetPhySize();
-            if (offset > volumeSize || size > volumeSize - offset)
-                return -EIO;
-            IInStream *source = context.Source ? context.Source : owner._stream.Interface();
-            context.Result = InStream_SeekSet(source, offset);
-            if (context.Result == S_OK)
-                context.Result = ReadStream_FALSE(source, data, size);
-        } else {
-            if (ino >= owner._refs.Size() || owner._refs[ino] < 0)
-                return -EIO;
-            if (context.StreamInode != ino) {
-                CMyComPtr<ISequentialInStream> sequential;
-                context.Stream.Release();
-                context.Result = owner.GetStream_Node((unsigned)owner._refs[ino], &sequential, true,
-                                                      false, NULL, context.Source);
-                if (context.Result == S_OK)
-                    context.Result = sequential->QueryInterface(
-                        IID_IInStream, reinterpret_cast<void **>(&context.Stream));
-                if (context.Result != S_OK)
-                    return -EIO;
-                context.StreamInode = ino;
-            }
-            context.Result = InStream_SeekSet(context.Stream, offset);
-            if (context.Result == S_OK)
-                context.Result = ReadStream_FALSE(context.Stream, data, size);
-        }
-        owner._totalRead += size;
-        return context.Result == S_OK ? 0 : -EIO;
-    } catch (const std::bad_alloc &) {
-        context.Result = E_OUTOFMEMORY;
-        return -ENOMEM;
-    } catch (...) {
-        context.Result = E_FAIL;
-        return -EIO;
-    }
-}
-
-int CHandler::ReadXattrInode(void *opaque, uint32_t ino, void *raw, size_t size) noexcept {
-    auto &context = *static_cast<CXattrContext *>(opaque);
-    CHandler &owner = *context.Owner;
-    if (ino >= owner._refs.Size() || owner._refs[ino] < 0 || size != owner._h.InodeSize)
-        return -EIO;
-    return ReadXattr(opaque, 0, owner._nodes[owner._refs[ino]].RawOffset, raw, size);
-}
-
-int CHandler::ReadSystemInode(void *opaque, uint32_t ino, void *raw, size_t size) noexcept {
-    return ReadXattrInode(&static_cast<CSystemZoneContext *>(opaque)->Io, ino, raw, size);
-}
-
-int CHandler::ReadSystemBlock(void *opaque, uint64_t block, void *data, size_t size) noexcept {
-    auto &context = *static_cast<CSystemZoneContext *>(opaque);
-    return ReadXattr(&context.Io, 0, block << context.Io.Owner->_h.BlockBits, data, size);
-}
-
-int CHandler::MapSystemInode(void *opaque, uint32_t ino, uint32_t logical, uint32_t *count,
-                             uint64_t *physical) noexcept {
-    auto &context = *static_cast<CSystemZoneContext *>(opaque);
-    auto &owner = *context.Io.Owner;
-    try {
-        if (owner._openCallback)
-            context.Io.Result = owner.CheckProgress2();
-        if (context.Io.Result != S_OK)
-            return -EIO;
-        if (ino >= owner._refs.Size() || owner._refs[ino] < 0)
-            return -EIO;
-        const CNode &node = owner._nodes[owner._refs[ino]];
-        if (!node.IsRegular() || node.InlineIndex >= 0)
-            return -EIO;
-        if (!node.IsFlags_EXTENTS()) {
-            const UInt64 blocks =
-                (node.FileSize + (((UInt64)1 << owner._h.BlockBits) - 1)) >> owner._h.BlockBits;
-            if (blocks > UINT32_MAX || logical >= blocks || !*count)
-                return -EIO;
-            const ext_indirect_services services{&context, ReadSystemBlock};
-            const UInt32 requested =
-                MyMin(MyMin(*count, UInt32(blocks - logical)), UInt32(INT_MAX));
-            return ext_linux_indirect_map(owner._volume.get(), ino, node.Block, logical, requested,
-                                          &services, physical, count);
-        }
-        if (!context.Mapped) {
-            owner._blockInode = ino;
-            owner._extentChecksumSeed = node.ChecksumSeed;
-            context.Io.Result =
-                owner.FillExtents(node.Block, kNodeBlockFieldSize, context.Extents, -1);
-            if (context.Io.Result != S_OK)
-                return -EIO;
-            context.Mapped = true;
-        }
-        *physical = 0;
-        FOR_VECTOR(i, context.Extents) {
-            const auto &extent = context.Extents[i];
-            if (logical >= extent.VirtBlock && logical - extent.VirtBlock < extent.Len) {
-                *count = MyMin(*count, extent.Len - (logical - extent.VirtBlock));
-                if (extent.PhyStart)
-                    *physical = extent.PhyStart + logical - extent.VirtBlock;
-                return 0;
-            }
-        }
-        *count = 1;
-        return 0;
-    } catch (const std::bad_alloc &) {
-        context.Io.Result = E_OUTOFMEMORY;
-        return -ENOMEM;
-    } catch (...) {
-        context.Io.Result = E_FAIL;
-        return -EIO;
-    }
-}
-
-int CHandler::ReadLinkBlock(void *opaque, void *data, size_t size) noexcept {
-    auto &context = *static_cast<CXattrContext *>(opaque);
-    try {
-        if (!context.Stream) {
-            CMyComPtr<ISequentialInStream> sequential;
-            context.Result = context.Owner->GetStream_Node(context.NodeIndex, &sequential, true,
-                                                           true, NULL, context.Source);
-            if (context.Result == S_OK)
-                context.Result = sequential->QueryInterface(
-                    IID_IInStream, reinterpret_cast<void **>(&context.Stream));
-        }
-        if (context.Result == S_OK)
-            context.Result = InStream_SeekSet(context.Stream, 0);
-        if (context.Result == S_OK)
-            context.Result = ReadStream_FALSE(context.Stream, data, size);
-        context.Owner->_totalRead += size;
-        if (context.Result == S_OK && context.Owner->_openCallback)
-            context.Result = context.Owner->CheckProgress2();
-        return context.Result == S_OK ? 0 : -EIO;
-    } catch (const std::bad_alloc &) {
-        context.Result = E_OUTOFMEMORY;
-        return -ENOMEM;
-    } catch (...) {
-        context.Result = E_FAIL;
-        return -EIO;
-    }
-}
-
-HRESULT CHandler::ReadLink(unsigned index, CByteBuffer &data, IInStream *source) {
-    const CNode &node = _nodes[index];
-    if (node.SpecialReadError)
-        return S_FALSE;
-    CXattrContext context{this, index, S_OK, 0, {}};
-    context.Source = source;
-    const size_t blockSize = (size_t)1 << _h.BlockBits;
-    if (_cryptInodes[index]) {
-        data.Alloc(node.IsFastSymlink(_h) ? kNodeBlockFieldSize : blockSize);
-        ReadLinkBlock(&context, data, data.Size());
-        RINOK(context.Result)
-        return ExtCryptPresentSymlink(_cryptInodes[index], data);
-    }
-    CByteBuffer raw(_h.InodeSize);
-    int status = ReadXattr(&context, 0, node.RawOffset, raw, raw.Size());
-    ext_node *inode = NULL;
-    ext_node_info info;
-    if (!status)
-        status = ext_linux_inode_open(_volume.get(), node.InodeNumber, raw, &inode, &info);
-    struct CLinkOwner {
-        ext_node *Ptr;
-        ~CLinkOwner() { ext_linux_inode_close(Ptr); }
-    } holder{inode};
-    data.Alloc(blockSize + 1);
-    size_t size = 0;
-    ext_link_services services{&context, ReadLinkBlock};
-    if (!status)
-        status = ext_linux_readlink(inode, &services, data, data.Size(), &size);
-    RINOK(context.Result)
-    if (status)
-        return status == -ENOMEM ? E_OUTOFMEMORY : S_FALSE;
-    CByteBuffer target(size);
-    if (size)
-        memcpy(target, data, size);
-    data = target;
-    return S_OK;
-}
-
-HRESULT CHandler::LoadSystemZone(const void *descriptors, UInt32 groups) {
-    CSystemZoneContext context{{this, 0, S_OK, 0, {}}, {}, false};
-    ext_block_services services{&context, ReadSystemInode, MapSystemInode};
-    const int error = ext_linux_system_zone(_volume.get(), descriptors, groups, &services);
-    if (context.Io.Result != S_OK)
-        return context.Io.Result;
-    if (error)
-        return error == -ENOMEM ? E_OUTOFMEMORY : S_FALSE;
-    FOR_VECTOR(i, _nodes) {
-        const CNode &node = _nodes[i];
-        if ((node.Flags & ((UInt32)1 << 21)) ? node.EaReadError : node.SpecialReadError)
-            continue;
-        // The target reader validates the full mapping before reading it.
-        // A bad link storage reference must not suppress independent files.
-        if (node.IsLink())
-            continue;
-        const bool fastLink = node.IsFastSymlink(_h);
-        if (node.InlineIndex < 0 && !fastLink && node.IsFlags_EXTENTS() &&
-            (node.IsRegular() || node.IsDir() || node.IsLink()) &&
-            ext_linux_extent_check(_volume.get(), node.InodeNumber, node.ChecksumSeed,
-                                   GetUi16(node.Block + 6), node.Block, kNodeBlockFieldSize,
-                                   GetUi16(node.Block + 6), 0, 0))
-            return S_FALSE;
-        if (node.InlineIndex < 0 && !node.IsFlags_EXTENTS() &&
-            (node.IsRegular() || node.IsDir() || (node.IsLink() && !fastLink)) &&
-            ext_linux_blockrefs(_volume.get(), node.InodeNumber, node.Block, 15))
-            return S_FALSE;
-    }
-    return S_OK;
-}
-
-int CHandler::EmitXattr(void *opaque, const char *name, const void *data, size_t size) noexcept {
-    auto &context = *static_cast<CXattrContext *>(opaque);
-    CHandler &owner = *context.Owner;
-    try {
-        if (owner._openCallback)
-            context.Result = owner.CheckProgress2();
-        if (context.Result != S_OK)
-            return -EIO;
-        const unsigned first = owner._nodes[context.NodeIndex].XattrFirst;
-        for (unsigned i = first; i < owner._xattrs.Size(); ++i)
-            if (owner._xattrs[i].RawName == name)
-                return 0;
-        CExtXattr &attribute = owner._xattrs.AddNew();
-        attribute.RawName = name;
-        attribute.Name = "$XATTR.";
-        static const char hex[] = "0123456789ABCDEF";
-        for (const unsigned char *p = (const unsigned char *)name; *p; ++p) {
-            const unsigned char c = *p;
-            if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') ||
-                c == '.' || c == '_' || c == '-')
-                attribute.Name += (char)c;
-            else {
-                attribute.Name += '%';
-                attribute.Name += hex[c >> 4];
-                attribute.Name += hex[c & 15];
-            }
-        }
-        attribute.Data.CopyFrom((const Byte *)data, size);
-        return 0;
-    } catch (const std::bad_alloc &) {
-        context.Result = E_OUTOFMEMORY;
-        return -ENOMEM;
-    } catch (...) {
-        context.Result = E_FAIL;
-        return -EIO;
-    }
-}
-
-void CHandler::AddXattrItem(unsigned node, int parent, unsigned attribute) {
-    CItem item;
-    item.Node = node;
-    item.Type = k_Type_REG_FILE;
-    item.XattrParent = parent;
-    item.XattrIndex = (int)attribute;
-    if (parent >= 0)
-        item.ContextAllowed = _items[(unsigned)parent].ContextAllowed;
-    const AString base = _xattrs[attribute].Name;
-    item.Name = base;
-    const AString host =
-        parent >= 0 ? _items[(unsigned)parent].Name : _auxItems[(unsigned)_rootXattrAux];
-    const int parentNode = parent >= 0 ? _items[(unsigned)parent].ParentNode : k_INODE_ROOT;
-    for (UInt32 suffix = 0;;) {
-        AString full = host;
-        full += ':';
-        full += item.Name;
-        bool collision = false;
-        FOR_VECTOR(i, _items) {
-            const CItem &other = _items[i];
-            if ((other.XattrIndex >= 0 && other.XattrParent == parent &&
-                 StringsAreEqualNoCase(UString(other.Name), UString(item.Name))) ||
-                (other.XattrIndex < 0 && other.ParentNode == parentNode &&
-                 StringsAreEqualNoCase(UString(other.Name), UString(full)))) {
-                collision = true;
-                break;
-            }
-        }
-        if (!collision)
-            break;
-        char number[16];
-        ConvertUInt32ToString(++suffix, number);
-        item.Name = base;
-        item.Name += '#';
-        item.Name += number;
-    }
-    _items.Add(item);
-}
-
-HRESULT CHandler::LoadEncryption() {
-    _cryptInodes.resize(_nodes.Size());
-    bool encrypted = false;
-    FOR_VECTOR(i, _nodes)
-    if (!_nodes[i].SpecialReadError && (_nodes[i].Flags & 0x800))
-        encrypted = true;
-    if (!encrypted)
-        return S_OK;
-    CExtCryptKeys keys;
-    RINOK(keys.Read(_openCallback))
-    sevenzip_fscrypt_geometry geometry;
-    ext_linux_fscrypt_geometry(_volume.get(), &geometry);
-    FOR_VECTOR(i, _nodes) {
-        const CNode &node = _nodes[i];
-        if (node.SpecialReadError || !(node.Flags & 0x800))
-            continue;
-        if (!(_h.FeatureIncompat & 0x10000) || node.InlineIndex >= 0 ||
-            (!node.IsDir() && !node.IsRegular() && !node.IsLink()))
-            return S_FALSE;
-        if (node.IsLink() && node.FileSize > ((UInt64)1 << _h.BlockBits))
-            return S_FALSE;
-        CXattrContext context{this, i, S_OK, 0, {}};
-        CByteBuffer raw(_h.InodeSize);
-        int result = ReadXattr(&context, 0, node.RawOffset, raw, raw.Size());
-        ext_node *inode = NULL;
-        ext_node_info info;
-        if (!result)
-            result = ext_linux_inode_open(_volume.get(), node.InodeNumber, raw, &inode, &info);
-        struct CNodeOwner {
-            ext_node *Ptr;
-            ~CNodeOwner() { ext_linux_inode_close(Ptr); }
-        } holder{inode};
-        ext_xattr_services services{&context, ReadXattr, ReadXattrInode, NULL};
-        Byte value[40] = {};
-        if (!result)
-            result = ext_linux_fscrypt_context(inode, &services, NULL, 0);
-        const int contextSize = result;
-        if (result >= 0 && (unsigned)result <= sizeof(value))
-            result = ext_linux_fscrypt_context(inode, &services, value, sizeof(value));
-        if (context.Result != S_OK)
-            return context.Result;
-        if (result < 0)
-            return result == -ENOMEM ? E_OUTOFMEMORY : S_FALSE;
-        sevenzip_fscrypt_inode_options options{};
-        options.geometry = &geometry;
-        options.inode_number = node.InodeNumber;
-        options.mode = node.Mode;
-        options.casefolded = (node.Flags & 0x40000000U) != 0;
-        options.context = value;
-        options.context_size = (size_t)contextSize;
-        options.allow_unsupported = 1;
-        RINOK(keys.Prepare(options, _cryptInodes[i]))
-    }
-    return S_OK;
-}
-
-int CHandler::HandleXattrError(void *opaque, int error) noexcept {
-    auto &context = *static_cast<CXattrContext *>(opaque);
-    CHandler &owner = *context.Owner;
-    if (owner._openCallbackResult != S_OK) {
-        context.Result = owner._openCallbackResult;
-        return error;
-    }
-    if (error == -ENOMEM || (context.Result != S_OK && context.Result != S_FALSE))
-        return error;
-    owner._nodes[context.NodeIndex].XattrsIncomplete = true;
-    owner._xattrLimitations = true;
-    context.Result = S_OK;
-    return 0;
-}
-
-HRESULT CHandler::LoadXattrs() {
-    CMyComPtr<IInStream> source = CreateReadOnlyInput(_stream);
-    FOR_VECTOR(i, _nodes) {
-        CNode &node = _nodes[i];
-        if (node.SpecialReadError || !node.HasXattrs || (node.Flags & ((UInt32)1 << 21)))
-            continue;
-        node.XattrFirst = _xattrs.Size();
-        CXattrContext context{this, i, S_OK, 0, {}};
-        context.Source = source;
-        CByteBuffer raw;
-        raw.Alloc(_h.InodeSize);
-        int result = ReadXattr(&context, 0, node.RawOffset, raw, raw.Size());
-        ext_node *inode = NULL;
-        ext_node_info info;
-        if (!result)
-            result = ext_linux_inode_open(_volume.get(), node.InodeNumber, raw, &inode, &info);
-        struct CNodeOwner {
-            ext_node *Ptr;
-            ~CNodeOwner() { ext_linux_inode_close(Ptr); }
-        } holder{inode};
-        ext_xattr_services services{&context, ReadXattr, ReadXattrInode, HandleXattrError};
-        if (result)
-            result = HandleXattrError(&context, result);
-        else
-            result = ext_linux_xattr_visit(inode, &services, EmitXattr, &context);
-        if (context.Result != S_OK)
-            return context.Result;
-        if (result)
-            return result == -ENOMEM ? E_OUTOFMEMORY : S_FALSE;
-        node.XattrCount = _xattrs.Size() - node.XattrFirst;
-    }
-    const unsigned count = _items.Size();
-    for (unsigned i = 0; i < count; ++i) {
-        const unsigned ino = _items[i].Node;
-        const CNode &node = _nodes[_refs[ino]];
-        for (unsigned a = 0; a < node.XattrCount; ++a)
-            AddXattrItem(ino, (int)i, node.XattrFirst + a);
-    }
-    const CNode &root = _nodes[_refs[k_INODE_ROOT]];
-    if (root.XattrCount) {
-        AString name("[ROOT]");
-        for (;;) {
-            bool collision = false;
-            for (unsigned i = 0; i < count; ++i)
-                if (_items[i].ParentNode == k_INODE_ROOT &&
-                    StringsAreEqualNoCase(UString(_items[i].Name), UString(name)))
-                    collision = true;
-            FOR_VECTOR(i, _auxItems)
-            if (StringsAreEqualNoCase(UString(_auxItems[i]), UString(name)))
-                collision = true;
-            if (!collision)
-                break;
-            name += '_';
-        }
-        _rootXattrAux = (int)_auxItems.Add(name);
-        for (unsigned a = 0; a < root.XattrCount; ++a)
-            AddXattrItem(k_INODE_ROOT, -1, root.XattrFirst + a);
-    }
-    return S_OK;
-}
-#endif
-
 static const unsigned kHeaderSize = 2 * 1024;
 static const unsigned kHeaderDataOffset = 1024;
 
@@ -1989,12 +1127,6 @@ HRESULT CHandler::Open2(IInStream *inStream) {
         RINOK(ReadStream_FALSE(inStream, buf, kHeaderSize))
         if (!_h.Parse(buf + kHeaderDataOffset))
             return S_FALSE;
-#ifdef SEVENZIP_LINUX_EXT
-        ext_volume *volume = NULL;
-        if (ext_linux_open(buf + kHeaderDataOffset, &volume) != 0)
-            return S_FALSE;
-        _volume.reset(volume, ext_linux_close);
-#endif
         if (_h.BlockGroupNr != 0)
             return S_FALSE; // it's just copy of super block
     }
@@ -2026,10 +1158,6 @@ HRESULT CHandler::Open2(IInStream *inStream) {
 
         UInt64 fileSize = 0;
         RINOK(InStream_GetSize_SeekToEnd(inStream, fileSize))
-#ifdef SEVENZIP_LINUX_EXT
-        if (ext_linux_geometry_check(_volume.get(), fileSize) != 0)
-            return S_FALSE;
-#endif
 
         CRecordVector<CGroupDescriptor> groups;
 
@@ -2041,28 +1169,13 @@ HRESULT CHandler::Open2(IInStream *inStream) {
             if ((gdBufSize >> gdBits) != numGroups)
                 return S_FALSE;
             gdBuf.Alloc(gdBufSize);
-#ifdef SEVENZIP_LINUX_EXT
-            const size_t blockSize = (size_t)1 << _h.BlockBits;
-            for (size_t offset = 0; offset < gdBufSize; offset += blockSize) {
-                const size_t size = MyMin(blockSize, gdBufSize - offset);
-                RINOK(SeekAndRead(
-                    inStream,
-                    ext_linux_descriptor_block(_volume.get(), (unsigned)(offset >> _h.BlockBits)),
-                    (Byte *)gdBuf + offset, size))
-            }
-#else
             RINOK(SeekAndRead(inStream, (_h.BlockBits <= 10 ? 2 : 1), gdBuf, gdBufSize))
-#endif
 
             const unsigned gd_Size = (unsigned)1 << gdBits;
             const Byte *p = gdBuf;
             for (unsigned i = 0; i < numGroups; i++, p += gd_Size) {
                 CGroupDescriptor gd;
                 gd.Parse(p, gd_Size);
-#ifdef SEVENZIP_LINUX_EXT
-                if (ext_linux_group_check(_volume.get(), i, p) != 0)
-                    return S_FALSE;
-#else
                 if (_h.UseMetadataChecksum()) {
                     // use CRC32c
                 } else if (_h.UseGdtChecksum()) {
@@ -2075,7 +1188,6 @@ HRESULT CHandler::Open2(IInStream *inStream) {
                     if (crc != gd.Checksum)
                         return S_FALSE;
                 }
-#endif
 
                 groups.Add(gd);
             }
@@ -2116,11 +1228,6 @@ HRESULT CHandler::Open2(IInStream *inStream) {
 
             CByteBuffer nodesMap;
             nodesMap.Alloc(blockSize);
-#ifdef SEVENZIP_LINUX_EXT
-            CByteBuffer inodePages;
-            inodePages.Alloc((nodesDataSize + blockSize - 1) >> _h.BlockBits);
-            CMyComPtr<IInStream> inodeSource = CreateReadOnlyInput(inStream);
-#endif
 
             unsigned globalNodeIndex = 0;
             // unsigned numEmpty = 0;
@@ -2131,52 +1238,11 @@ HRESULT CHandler::Open2(IInStream *inStream) {
                     break;
 
                 const CGroupDescriptor &gd = groups[gi];
-#ifdef SEVENZIP_LINUX_EXT
-                // Linux rejects either uninitialized bitmap in the root group.
-                if (gi == 0 && (_h.UseGdtChecksum() || _h.UseMetadataChecksum()) && (gd.Flags & 3))
-                    return S_FALSE;
-                if ((_h.UseGdtChecksum() || _h.UseMetadataChecksum()) && (gd.Flags & 1)) {
-                    const UInt32 count = MyMin(numNodes, _h.NumInodes - globalNodeIndex);
-                    globalNodeIndex += count;
-                    numEmpty_in_Maps += count;
-                    continue;
-                }
-#endif
 
                 PRF(printf("\n\ng%6d block = %6x\n", gi, (unsigned)gd.InodeTable));
 
                 RINOK(SeekAndRead(inStream, gd.InodeBitmap, nodesMap, blockSize))
-#ifdef SEVENZIP_LINUX_EXT
-                if (ext_linux_bitmap_check(_volume.get(), gi,
-                                           (const Byte *)gdBuf + ((size_t)gi << gdBits), nodesMap,
-                                           1) != 0)
-                    return S_FALSE;
-                // Uninitialized block bitmaps are synthesized by the kernel.
-                if (!((_h.UseGdtChecksum() || _h.UseMetadataChecksum()) && (gd.Flags & 2))) {
-                    CByteBuffer blockMap;
-                    blockMap.Alloc(blockSize);
-                    RINOK(SeekAndRead(inStream, gd.BlockBitmap, blockMap, blockSize))
-                    if (ext_linux_bitmap_check(_volume.get(), gi,
-                                               (const Byte *)gdBuf + ((size_t)gi << gdBits),
-                                               blockMap, 0) != 0)
-                        return S_FALSE;
-                }
-#endif
-#ifdef SEVENZIP_LINUX_EXT
-                for (size_t offset = 0; offset < nodesDataSize; offset += blockSize) {
-                    const HRESULT result = SeekAndRead(
-                        inodeSource, gd.InodeTable + (offset >> _h.BlockBits),
-                        (Byte *)nodesData + offset, MyMin(blockSize, nodesDataSize - offset));
-                    if (result != S_OK && result != S_FALSE)
-                        return result;
-                    if (_openCallback) {
-                        RINOK(CheckProgress2())
-                    }
-                    inodePages[offset >> _h.BlockBits] = result == S_OK;
-                }
-#else
                 RINOK(SeekAndRead(inStream, gd.InodeTable, nodesData, nodesDataSize))
-#endif
 
                 unsigned numEmpty_in_Map = 0;
 
@@ -2187,35 +1253,10 @@ HRESULT CHandler::Open2(IInStream *inStream) {
                         continue;
                     }
 
-#ifdef SEVENZIP_LINUX_EXT
-                    if (!inodePages[((size_t)n * _h.InodeSize) >> _h.BlockBits]) {
-                        // A failed block read can still leave individual inodes
-                        // readable through the source's smaller read requests.
-                        CXattrContext context{this, 0, S_OK, 0, {}};
-                        context.Source = inodeSource;
-                        const int result = ReadXattr(
-                            &context, 0, (gd.InodeTable << _h.BlockBits) + (UInt64)n * _h.InodeSize,
-                            (Byte *)nodesData + (size_t)n * _h.InodeSize, _h.InodeSize);
-                        RINOK(_openCallbackResult)
-                        if (context.Result != S_OK && context.Result != S_FALSE)
-                            return context.Result;
-                        if (_openCallback) {
-                            RINOK(CheckProgress2())
-                        }
-                        if (result) {
-                            _inodeLimitations = true;
-                            continue;
-                        }
-                    }
-#endif
                     const Byte *p = nodesData + (size_t)n * _h.InodeSize;
                     if (IsEmptyData(p, _h.InodeSize)) {
                         if (globalNodeIndex + 1 >= _h.FirstInode) {
-#ifdef SEVENZIP_LINUX_EXT
-                            _inodeLimitations = true;
-#else
                             _headersError = true;
-#endif
                             // return S_FALSE;
                         }
                         continue;
@@ -2227,77 +1268,8 @@ HRESULT CHandler::Open2(IInStream *inStream) {
                     PRF(printf("\nnode = %5d ", (unsigned)n));
 
                     if (!node.Parse(p, _h)) {
-#ifdef SEVENZIP_LINUX_EXT
-                        _inodeLimitations = true;
-                        continue;
-#else
                         return S_FALSE;
-#endif
                     }
-#ifdef SEVENZIP_LINUX_EXT
-                    ext_node *linuxNode = NULL;
-                    ext_node_info info;
-                    const int inodeResult = ext_linux_inode_open(_volume.get(), globalNodeIndex + 1,
-                                                                 p, &linuxNode, &info);
-                    if (inodeResult) {
-                        if (inodeResult == -ENOMEM)
-                            return E_OUTOFMEMORY;
-                        _inodeLimitations = true;
-                        continue;
-                    }
-                    struct CNodeOwner {
-                        ext_node *Ptr;
-                        ~CNodeOwner() { ext_linux_inode_close(Ptr); }
-                    } owner{linuxNode};
-                    node.ChecksumSeed = info.checksum_seed;
-                    node.RawOffset = (gd.InodeTable << _h.BlockBits) + (UInt64)n * _h.InodeSize;
-                    node.InodeNumber = globalNodeIndex + 1;
-                    node.HasXattrs = info.has_xattrs != 0;
-                    node.FileSize = info.size;
-                    node.FastSymlink = info.fast_symlink != 0;
-                    node.ReadError = info.read_error;
-                    node.SpecialReadError = info.special_read_error;
-                    node.EaReadError = info.ea_read_error;
-                    ImportTime(info.atime, node.ATime);
-                    ImportTime(info.mtime, node.MTime);
-                    ImportTime(info.change_time, node.ChangeTime);
-                    ImportTime(info.birth_time, node.CTime);
-                    if (info.inline_size) {
-                        CByteBuffer payload;
-                        if (node.IsDir()) {
-                            CInlineDirectory dir;
-                            dir.Data.Alloc(blockSize);
-                            memset(dir.Data, 0, blockSize);
-                            const int result =
-                                ext_linux_inline_directory(linuxNode, CInlineDirectory::Emit, &dir);
-                            if (result == -ENOMEM)
-                                return E_OUTOFMEMORY;
-                            if (result || dir.Used == 0) {
-                                if (!dir.Used) {
-                                    _inodeLimitations = true;
-                                    continue;
-                                }
-                                MarkDirectoryIncomplete(node);
-                            }
-                            SetUi16(
-                                (Byte *)dir.Data + dir.Last + 4,
-                                (UInt16)(blockSize - dir.Last == 65536 ? 0 : blockSize - dir.Last))
-                                payload = dir.Data;
-                        } else {
-                            payload.Alloc(node.IsLink() ? info.inline_size : (size_t)node.FileSize);
-                            const int result =
-                                ext_linux_inline_read(linuxNode, payload, (unsigned)payload.Size());
-                            if (result != (int)payload.Size()) {
-                                if (result == -ENOMEM)
-                                    return E_OUTOFMEMORY;
-                                _inodeLimitations = true;
-                                continue;
-                            }
-                        }
-                        node.InlineIndex = (int)_inlineData.Size();
-                        _inlineData.Add(payload);
-                    }
-#endif
 
                     // PRF(printf("\n %6d", (unsigned)n));
                     /*
@@ -2318,10 +1290,6 @@ HRESULT CHandler::Open2(IInStream *inStream) {
                     }
 
                     _refs.Add((int)_nodes.Add(node));
-#ifdef SEVENZIP_LINUX_EXT
-                    if (!node.SpecialReadError && HasIndirectRangeLimit(node))
-                        _indirectLimitations = true;
-#endif
                 }
 
                 numEmpty_in_Maps += numEmpty_in_Map;
@@ -2340,24 +1308,13 @@ HRESULT CHandler::Open2(IInStream *inStream) {
 
             if (_refs.Size() <= k_INODE_ROOT)
                 return S_FALSE;
-#ifdef SEVENZIP_LINUX_EXT
-            if (_refs[k_INODE_ROOT] < 0)
-                return S_FALSE;
-#endif
 
             // printf("\n numReserveInodes = %6d, _refs.Size() = %d, numEmpty = %7d\n",
             // numReserveInodes, _refs.Size(), (unsigned)numEmpty);
         }
-#ifdef SEVENZIP_LINUX_EXT
-        _stream = inStream;
-        RINOK(LoadSystemZone(gdBuf, numGroups))
-#endif
     }
 
     _stream = inStream; // we need stream for dir nodes
-#ifdef SEVENZIP_LINUX_EXT
-    RINOK(LoadEncryption())
-#endif
 
     {
         // ---------- Read Dirs ----------
@@ -2368,25 +1325,13 @@ HRESULT CHandler::Open2(IInStream *inStream) {
                 if (nodeIndex < 0)
                     continue;
                 const CNode &node = _nodes[nodeIndex];
-#ifdef SEVENZIP_LINUX_EXT
-                if (node.SpecialReadError)
-                    continue;
-#endif
                 if (!node.IsDir())
                     continue;
             }
             HRESULT callbackResult = S_OK;
             const HRESULT directoryResult = ReadDir(i, callbackResult);
             RINOK(callbackResult)
-#ifdef SEVENZIP_LINUX_EXT
-            if (directoryResult == S_FALSE)
-                MarkDirectoryIncomplete(_nodes[nodeIndex]);
-            else {
-                RINOK(directoryResult)
-            }
-#else
             RINOK(directoryResult)
-#endif
             RINOK(CheckProgress())
         }
 
@@ -2404,11 +1349,7 @@ HRESULT CHandler::Open2(IInStream *inStream) {
                 continue;
             const CNode &node = _nodes[nodeIndex];
 
-            if (node.NumLinks != node.NumLinksCalced
-#ifdef SEVENZIP_LINUX_EXT
-                && !(node.Flags & ((UInt32)1 << 21))
-#endif
-            ) {
+            if (node.NumLinks != node.NumLinksCalced) {
                 if (node.NumLinks != 1 || node.NumLinksCalced != 0
                     // ) && i >= _h.FirstInode
                 ) {
@@ -2422,11 +1363,7 @@ HRESULT CHandler::Open2(IInStream *inStream) {
 
             if (node.ParentNode < 0) {
                 if (i >= _h.FirstInode) {
-#ifdef SEVENZIP_LINUX_EXT
-                    MarkDirectoryIncomplete(_nodes[nodeIndex]);
-#else
                     return S_FALSE;
-#endif
                 }
                 continue;
             }
@@ -2485,9 +1422,6 @@ HRESULT CHandler::Open2(IInStream *inStream) {
 
         AString s;
         CByteBuffer data;
-#ifdef SEVENZIP_LINUX_EXT
-        CMyComPtr<IInStream> source = CreateReadOnlyInput(_stream);
-#endif
 
         unsigned i;
         for (i = 0; i < _refs.Size(); i++) {
@@ -2497,26 +1431,7 @@ HRESULT CHandler::Open2(IInStream *inStream) {
             CNode &node = _nodes[nodeIndex];
             if (!node.IsLink())
                 continue;
-#ifdef SEVENZIP_LINUX_EXT
-            if (node.SpecialReadError)
-                continue;
-            const HRESULT linkResult = ExtractNode((unsigned)nodeIndex, data, source);
-            RINOK(_openCallbackResult)
-            if (linkResult == S_FALSE) {
-                node.LinkUnavailable = true;
-                _linkLimitations = true;
-                continue;
-            }
-            RINOK(linkResult)
-            s.SetFrom_CalcLen((const char *)(const Byte *)data, (unsigned)data.Size());
-            node.SymLinkIndex = (int)_symLinks.Add(s);
-            RINOK(CheckProgress())
-#else
-            if (node.FileSize > ((UInt32)1 << 14)
-#ifdef SEVENZIP_LINUX_EXT
-                && !(node.Flags & 0x800)
-#endif
-            )
+            if (node.FileSize > ((UInt32)1 << 14))
                 continue;
             if (ExtractNode((unsigned)nodeIndex, data) == S_OK && data.Size() != 0) {
                 s.SetFrom_CalcLen((const char *)(const Byte *)data, (unsigned)data.Size());
@@ -2524,7 +1439,6 @@ HRESULT CHandler::Open2(IInStream *inStream) {
                     node.SymLinkIndex = (int)_symLinks.Add(s);
                 RINOK(CheckProgress())
             }
-#endif
         }
 
         for (i = 0; i < _dirs.Size(); i++) {
@@ -2537,11 +1451,7 @@ HRESULT CHandler::Open2(IInStream *inStream) {
         for (i = 0; i < _items.Size(); i++) {
             CItem &item = _items[i];
             const int sym = _nodes[_refs[item.Node]].SymLinkIndex;
-            if (sym >= 0 && item.ParentNode >= 0
-#ifdef SEVENZIP_LINUX_EXT
-                && item.ContextAllowed
-#endif
-            ) {
+            if (sym >= 0 && item.ParentNode >= 0) {
                 item.SymLinkItemIndex =
                     FindTargetItem_for_SymLink((unsigned)item.ParentNode, _symLinks[sym]);
                 if (_openCallback) {
@@ -2567,18 +1477,8 @@ HRESULT CHandler::Open2(IInStream *inStream) {
                 continue;
             CNode &node = _nodes[nodeIndex];
 
-#ifdef SEVENZIP_LINUX_EXT
-            if (node.SpecialReadError)
-                continue;
-            if (node.Flags & ((UInt32)1 << 21))
-                continue;
-#endif
             const bool unnamedDirectory = node.IsDir() && node.ItemIndex < 0 && i != k_INODE_ROOT;
-            if (node.NumLinksCalced == 0
-#ifdef SEVENZIP_LINUX_EXT
-                || unnamedDirectory
-#endif
-            ) {
+            if (node.NumLinksCalced == 0) {
                 CItem item;
                 item.Node = i;
 
@@ -2602,16 +1502,8 @@ HRESULT CHandler::Open2(IInStream *inStream) {
                     item.Name.Add_UInt32(item.Node);
 
                 const unsigned itemIndex = _items.Add(item);
-#ifdef SEVENZIP_LINUX_EXT
-                if (unnamedDirectory) {
-                    MarkDirectoryIncomplete(node);
-                    node.ParentNode = -1;
-                    node.ItemIndex = (int)itemIndex;
-                }
-#else
                 (void)itemIndex;
                 (void)unnamedDirectory;
-#endif
             }
         }
 
@@ -2621,9 +1513,6 @@ HRESULT CHandler::Open2(IInStream *inStream) {
             _auxUnknownIndex = (int)_auxItems.Add((AString) "[UNKNOWN]");
     }
 
-#ifdef SEVENZIP_LINUX_EXT
-    RINOK(LoadXattrs())
-#endif
     return S_OK;
 }
 
@@ -2661,13 +1550,6 @@ Z7_COM7F_IMF(CHandler::Open(IInStream *stream, const UInt64 *, IArchiveOpenCallb
 // clang-format on
 
 void CHandler::ClearRefs() {
-#ifdef SEVENZIP_LINUX_EXT
-    _inlineData.Clear();
-    _cryptInodes.clear();
-    _xattrs.Clear();
-    _rootXattrAux = -1;
-    _volume.reset();
-#endif
     _stream.Release();
     _items.Clear();
     _nodes.Clear();
@@ -2687,13 +1569,6 @@ Z7_COM7F_IMF(CHandler::Close()) {
     _headersError = false;
     _headersWarning = false;
     _linksError = false;
-#ifdef SEVENZIP_LINUX_EXT
-    _directoryLimitations = false;
-    _xattrLimitations = false;
-    _linkLimitations = false;
-    _inodeLimitations = false;
-    _indirectLimitations = false;
-#endif
     _isUTF = true;
     _openCallback = NULL;
     _openCallbackResult = S_OK;
@@ -2701,15 +1576,6 @@ Z7_COM7F_IMF(CHandler::Close()) {
     ClearRefs();
     return S_OK;
 }
-
-#ifdef SEVENZIP_LINUX_EXT
-Z7_COM7F_IMF(CHandler::SetProperties(const wchar_t *const *names, const PROPVARIANT *values,
-                                     UInt32 numProps)) {
-    COM_TRY_BEGIN
-    return _verityPolicy.SetProperties(names, values, numProps);
-    COM_TRY_END
-}
-#endif
 
 static void ChangeSeparatorsInName(char *s, unsigned num) {
     for (unsigned i = 0; i < num; i++) {
@@ -2726,18 +1592,6 @@ void CHandler::GetPath(unsigned index, AString &s) const {
         s = _auxItems[index - _items.Size()];
         return;
     }
-#ifdef SEVENZIP_LINUX_EXT
-    if (_items[index].XattrIndex >= 0) {
-        const CItem &item = _items[index];
-        if (item.XattrParent >= 0)
-            GetPath((unsigned)item.XattrParent, s);
-        else
-            s = _auxItems[(unsigned)_rootXattrAux];
-        s += ':';
-        s += item.Name;
-        return;
-    }
-#endif
 
     for (;;) {
         const CItem &item = _items[index];
@@ -2778,12 +1632,6 @@ bool CHandler::GetPackSize(unsigned index, UInt64 &totalPack) const {
     }
 
     const CItem &item = _items[index];
-#ifdef SEVENZIP_LINUX_EXT
-    if (item.XattrIndex >= 0) {
-        totalPack = _xattrs[(unsigned)item.XattrIndex].Data.Size();
-        return true;
-    }
-#endif
     const CNode &node = _nodes[_refs[item.Node]];
 
     // if (!node.IsFlags_EXTENTS())
@@ -2841,11 +1689,7 @@ enum {
 };
 
 static const UInt32 kProps[] = {
-    kpidPath,
-#ifdef SEVENZIP_LINUX_EXT
-    kpidIsAltStream, kpidEncrypted, kpidError,
-#endif
-    kpidIsDir, kpidSize, kpidPackSize, kpidPosixAttrib, kpidMTime, kpidCTime, kpidATime,
+    kpidPath, kpidIsDir, kpidSize, kpidPackSize, kpidPosixAttrib, kpidMTime, kpidCTime, kpidATime,
     // kpidChangeTime,
     // kpidDTime,
     kpidINode, kpidLinks, kpidSymLink, kpidCharacts, kpidUserId, kpidGroupId};
@@ -2915,35 +1759,6 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID propID, PROPVARIANT *value)) {
         break;
     case kpidReadLimitations: {
         AString reasons;
-#ifdef SEVENZIP_LINUX_EXT
-        if (_directoryLimitations)
-            reasons = "Some ext directories could not be read completely. The file list may be "
-                      "incomplete or outdated.";
-        if (_xattrLimitations) {
-            if (!reasons.IsEmpty())
-                reasons += '\n';
-            reasons += "Some ext extended attributes could not be read. Unreadable attributes "
-                       "have been omitted; readable files remain accessible.";
-        }
-        if (_linkLimitations) {
-            if (!reasons.IsEmpty())
-                reasons += '\n';
-            reasons += "Some ext symbolic-link targets could not be read. Copying affected links "
-                       "may fail; readable files remain accessible.";
-        }
-        if (_inodeLimitations) {
-            if (!reasons.IsEmpty())
-                reasons += '\n';
-            reasons += "Some ext inodes could not be read. Files or metadata may be missing; "
-                       "readable files remain accessible.";
-        }
-        if (_indirectLimitations) {
-            if (!reasons.IsEmpty())
-                reasons += '\n';
-            reasons += "Some ext file data is outside the reader's logical address range. Only "
-                       "addressable data is available; copying affected files reports an error.";
-        }
-#endif
         if (_h.FeatureIncompat & 4) {
             if (!reasons.IsEmpty())
                 reasons += '\n';
@@ -2978,11 +1793,6 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID propID, PROPVARIANT *value)) {
             prop = reasons;
         break;
     }
-#ifdef SEVENZIP_LINUX_EXT
-    case kpidIsAltStream:
-        prop = !_xattrs.IsEmpty();
-        break;
-#endif
     // case kpidIsAux: prop = true; break;
     case kpidINode:
         prop = true;
@@ -3068,11 +1878,7 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID propID, PROPVARIANT *value)) {
         UInt32 v = 0;
         if (!_isArc)
             v |= kpv_ErrorFlags_IsNotArc;
-        if (_linksError
-#ifdef SEVENZIP_LINUX_EXT
-            && !_directoryLimitations
-#endif
-        )
+        if (_linksError)
             v |= kpv_ErrorFlags_HeadersError;
         if (_headersError)
             v |= kpv_ErrorFlags_HeadersError;
@@ -3128,14 +1934,6 @@ Z7_COM7F_IMF(CHandler::GetParent(UInt32 index, UInt32 *parent, UInt32 *parentTyp
 
     const CItem &item = _items[index];
 
-#ifdef SEVENZIP_LINUX_EXT
-    if (item.XattrIndex >= 0) {
-        *parentType = NParentType::kAltStream;
-        *parent = item.XattrParent >= 0 ? (UInt32)item.XattrParent
-                                        : (UInt32)(_items.Size() + (unsigned)_rootXattrAux);
-        return S_OK;
-    }
-#endif
     if (item.ParentNode < 0) {
         const int aux = GetParentAux(item);
         if (aux >= 0)
@@ -3233,58 +2031,8 @@ Z7_COM7F_IMF(CHandler::GetProperty(UInt32 index, PROPID propID, PROPVARIANT *val
         const CItem &item = _items[index];
         const CNode &node = _nodes[_refs[item.Node]];
         bool isDir = node.IsDir();
-#ifdef SEVENZIP_LINUX_EXT
-        const bool xattr = item.XattrIndex >= 0;
-        if (xattr)
-            isDir = false;
-        if (xattr && (propID == kpidSize || propID == kpidPackSize || propID == kpidIsDir ||
-                      propID == kpidPosixAttrib || propID == kpidSymLink || propID == kpidLinks ||
-                      propID == kpidINode || propID == kpidStreamId || propID == kpidCharacts)) {
-            if (propID == kpidSize || propID == kpidPackSize)
-                prop = (UInt64)_xattrs[(unsigned)item.XattrIndex].Data.Size();
-            else if (propID == kpidIsDir)
-                prop = false;
-            else if (propID == kpidPosixAttrib)
-                prop = (UInt32)(MY_LIN_S_IFREG | 0444);
-            else if (propID == kpidLinks)
-                prop = (UInt32)1;
-            else if (propID == kpidStreamId)
-                prop = ((UInt64)1 << 63) | (unsigned)item.XattrIndex;
-            prop.Detach(value);
-            return S_OK;
-        }
-#endif
 
         switch (propID) {
-#ifdef SEVENZIP_LINUX_EXT
-        case kpidError:
-            if (!xattr) {
-                AString errors;
-                if (node.DirectoryIncomplete)
-                    errors = "The ext directory could not be read completely.";
-                if (node.XattrsIncomplete) {
-                    if (!errors.IsEmpty())
-                        errors += '\n';
-                    errors += "Some extended attributes of this ext item could not be read.";
-                }
-                if (node.LinkUnavailable) {
-                    if (!errors.IsEmpty())
-                        errors += '\n';
-                    errors += "The ext symbolic-link target could not be read when opening.";
-                }
-                if (HasIndirectRangeLimit(node)) {
-                    if (!errors.IsEmpty())
-                        errors += '\n';
-                    errors += "Some ext file data is outside the reader's logical address range.";
-                }
-                if (!errors.IsEmpty())
-                    prop = errors;
-            }
-            break;
-        case kpidIsAltStream:
-            prop = xattr;
-            break;
-#endif
         case kpidPath: {
             UString u;
             {
@@ -3319,19 +2067,9 @@ Z7_COM7F_IMF(CHandler::GetProperty(UInt32 index, PROPID propID, PROPVARIANT *val
 
         case kpidSize:
             if (!isDir) {
-#ifdef SEVENZIP_LINUX_EXT
-                if (!node.LinkUnavailable)
-                    prop = GetUnpackSize(node);
-#else
                 prop = node.FileSize;
-#endif
             }
             break;
-#ifdef SEVENZIP_LINUX_EXT
-        case kpidEncrypted:
-            prop = !xattr && ((node.Flags & 0x800) != 0);
-            break;
-#endif
 
         case kpidPackSize:
             if (!isDir) {
@@ -3384,10 +2122,6 @@ Z7_COM7F_IMF(CHandler::GetProperty(UInt32 index, PROPID propID, PROPVARIANT *val
             break;
 
         case kpidSymLink: {
-#ifdef SEVENZIP_LINUX_EXT
-            if (!item.ContextAllowed)
-                break;
-#endif
             if (node.SymLinkIndex >= 0) {
                 UString u;
                 {
@@ -3407,7 +2141,6 @@ Z7_COM7F_IMF(CHandler::GetProperty(UInt32 index, PROPID propID, PROPVARIANT *val
     COM_TRY_END
 }
 
-#ifndef SEVENZIP_LINUX_EXT
 Z7_CLASS_IMP_IInStream(CClusterInStream2) UInt64 _virtPos;
 UInt64 _physPos;
 UInt32 _curRem;
@@ -3514,8 +2247,6 @@ Z7_COM7F_IMF(CClusterInStream2::Seek(Int64 offset, UInt32 seekOrigin, UInt64 *ne
     return S_OK;
 }
 
-#endif
-
 Z7_CLASS_IMP_IInStream(CExtInStream) UInt64 _virtPos;
 UInt64 _phyPos;
 
@@ -3524,9 +2255,6 @@ unsigned BlockBits;
 UInt64 Size;
 CMyComPtr<IInStream> Stream;
 CRecordVector<CExtent> Extents;
-#ifdef SEVENZIP_LINUX_EXT
-CExtCryptData Crypt;
-#endif
 
 HRESULT StartSeek(bool deferSeek = false) {
     _virtPos = 0;
@@ -3588,16 +2316,6 @@ Z7_COM7F_IMF(CExtInStream::Read(void *data, UInt32 size, UInt32 *processedSize))
 
         const UInt64 phyBlock = extent.PhyStart + bo;
         const UInt64 phy = (phyBlock << BlockBits) + offset;
-#ifdef SEVENZIP_LINUX_EXT
-        if (Crypt.Defined()) {
-            UInt32 done = 0;
-            const HRESULT result = Crypt.Read(Stream, _virtPos, phy, data, size, &done);
-            _virtPos += done;
-            if (processedSize)
-                *processedSize = done;
-            return result;
-        }
-#endif
 
         if (phy != _phyPos) {
             const HRESULT result = InStream_SeekSet(Stream, phy);
@@ -3641,7 +2359,6 @@ Z7_COM7F_IMF(CExtInStream::Seek(Int64 offset, UInt32 seekOrigin, UInt64 *newPosi
     return S_OK;
 }
 
-#ifndef SEVENZIP_LINUX_EXT
 HRESULT CHandler::FillFileBlocks2(UInt32 block, unsigned level, unsigned numBlocks,
                                   CRecordVector<UInt32> &blocks, IInStream *source) {
     const size_t blockSize = (size_t)1 << _h.BlockBits;
@@ -3730,8 +2447,6 @@ HRESULT CHandler::FillFileBlocks(const Byte *p, unsigned numBlocks, CRecordVecto
     return blocks.Size() == numBlocks ? S_OK : S_FALSE;
 }
 
-#endif
-
 static void AddSkipExtents(CRecordVector<CExtent> &extents, UInt32 virtBlock, UInt32 numBlocks) {
     while (numBlocks != 0) {
         UInt32 len = numBlocks;
@@ -3767,66 +2482,11 @@ static bool UpdateExtents(CRecordVector<CExtent> &extents, UInt32 block) {
     return true;
 }
 
-#ifdef SEVENZIP_LINUX_EXT
-int CHandler::ReadExtentBlock(void *opaque, uint64_t physical, void *data, size_t size) noexcept {
-    auto &context = *static_cast<CExtentReadContext *>(opaque);
-    try {
-        context.Result = context.Owner->SeekAndRead(context.Source, physical, (Byte *)data, size);
-        if (context.Result == S_OK && context.Owner->_openCallback)
-            context.Result = context.Owner->CheckProgress2();
-        return context.Result == S_OK ? 0 : -EIO;
-    } catch (const std::bad_alloc &) {
-        context.Result = E_OUTOFMEMORY;
-        return -ENOMEM;
-    } catch (...) {
-        context.Result = E_FAIL;
-        return -EIO;
-    }
-}
-
-int CHandler::EmitExtent(void *opaque, uint32_t logical, uint64_t physical, uint32_t count,
-                         int written) noexcept {
-    auto &context = *static_cast<CExtentReadContext *>(opaque);
-    try {
-        if (context.Owner->_openCallback)
-            context.Result = context.Owner->CheckProgress2();
-        if (context.Result != S_OK)
-            return -EIO;
-        if (!UpdateExtents(*context.Ranges, logical))
-            return -EIO;
-        CExtent extent;
-        extent.VirtBlock = logical;
-        extent.Len = (UInt16)count;
-        extent.PhyStart = physical;
-        extent.IsInited = written != 0;
-        context.Ranges->Add(extent);
-        return 0;
-    } catch (const std::bad_alloc &) {
-        context.Result = E_OUTOFMEMORY;
-        return -ENOMEM;
-    } catch (...) {
-        context.Result = E_FAIL;
-        return -EIO;
-    }
-}
-#endif
-
 HRESULT CHandler::FillExtents(const Byte *p, size_t size, CRecordVector<CExtent> &extents,
                               int parentDepth, UInt32 firstBlock, UInt64 blockLimit,
                               IInStream *source) {
     if (!source)
         source = _stream;
-#ifdef SEVENZIP_LINUX_EXT
-    (void)parentDepth;
-    (void)firstBlock;
-    (void)blockLimit;
-    CExtentReadContext context{this, source, &extents};
-    const ext_extent_services services{&context, ReadExtentBlock, EmitExtent};
-    const int result =
-        ext_linux_extent_walk(_volume.get(), _blockInode, _extentChecksumSeed, p, size, &services);
-    RINOK(context.Result)
-    return result == 0 ? S_OK : result == -ENOMEM ? E_OUTOFMEMORY : S_FALSE;
-#else
     CExtentTreeHeader eth;
     if (!eth.Parse(p))
         return S_FALSE;
@@ -3892,7 +2552,6 @@ HRESULT CHandler::FillExtents(const Byte *p, size_t size, CRecordVector<CExtent>
     }
 
     return S_OK;
-#endif
 }
 
 HRESULT CHandler::GetStream_Node(unsigned nodeIndex, ISequentialInStream **stream,
@@ -3910,40 +2569,10 @@ HRESULT CHandler::GetStream_Node(unsigned nodeIndex, ISequentialInStream **strea
         allocated->Clear();
 
     const CNode &node = _nodes[nodeIndex];
-#ifdef SEVENZIP_LINUX_EXT
-    if ((requireAllocated && (node.Flags & ((UInt32)1 << 21))) ? node.EaReadError
-                                                               : node.SpecialReadError)
-        return S_FALSE;
-    const bool verity = (node.Flags & ((UInt32)1 << 20)) != 0;
-    const bool allowPrefix =
-        mappingIncomplete && !verity && !requireAllocated &&
-        ((node.IsRegular() && !rawLink && !allocated) || (node.IsDir() && rawLink && allocated));
-    if (verity && (!node.IsRegular() || !node.IsFlags_EXTENTS() || node.InlineIndex >= 0))
-        return S_FALSE;
-    const CExtCryptInode &crypt = _cryptInodes[nodeIndex];
-    if ((node.Flags & 0x800) && !crypt)
-        return S_FALSE;
-    if (crypt && node.IsRegular())
-        RINOK(ExtCryptRequireKey(crypt))
-    if (node.IsLink() && !rawLink) {
-        CByteBuffer target;
-        RINOK(ExtractNode(nodeIndex, target, source))
-        Create_BufInStream_WithNewBuffer(target, target.Size(), stream);
-        return S_OK;
-    }
-    if (node.InlineIndex >= 0) {
-        const CByteBuffer &payload = _inlineData[(unsigned)node.InlineIndex];
-        Create_BufInStream_WithNewBuffer(payload, payload.Size(), stream);
-        return S_OK;
-    }
-    _extentChecksumSeed = node.ChecksumSeed;
-    _blockInode = node.InodeNumber;
-#else
     (void)mappingIncomplete;
     (void)rawLink;
     if (node.Flags & (((UInt32)1 << 20) | 0x800))
         return E_NOTIMPL;
-#endif
 
     if (!node.IsRegular() && !node.IsDir() && !node.IsLink()) {
         if (node.FileSize)
@@ -3957,12 +2586,7 @@ HRESULT CHandler::GetStream_Node(unsigned nodeIndex, ISequentialInStream **strea
         const bool fastLink = node.IsFastSymlink(_h);
         if ((fastLink || (inlineData && node.NumBlocks == 0)) &&
             node.FileSize < kNodeBlockFieldSize) {
-            Create_BufInStream_WithNewBuffer(node.Block,
-#ifdef SEVENZIP_LINUX_EXT
-                                             rawLink && node.IsLink() ? kNodeBlockFieldSize :
-#endif
-                                                                      (size_t)node.FileSize,
-                                             stream);
+            Create_BufInStream_WithNewBuffer(node.Block, (size_t)node.FileSize, stream);
             return S_OK;
         }
     }
@@ -3972,37 +2596,9 @@ HRESULT CHandler::GetStream_Node(unsigned nodeIndex, ISequentialInStream **strea
 
     CMyComPtr<IInStream> streamTemp;
 
-    const UInt64 streamSize =
-#ifdef SEVENZIP_LINUX_EXT
-        rawLink && node.IsLink() ? (UInt64)1 << _h.BlockBits :
-#endif
-                                 node.FileSize;
+    const UInt64 streamSize = node.FileSize;
     const UInt64 numBlocks64 =
         (streamSize + (UInt64)(((UInt32)1 << _h.BlockBits) - 1)) >> _h.BlockBits;
-
-#ifdef SEVENZIP_LINUX_EXT
-    if (node.IsDir() && !node.IsFlags_EXTENTS() && allocated) {
-        CIndirectDirectoryContext context{this, allocated};
-        const HRESULT result = CreateExtIndirectDirectoryStream(
-            _volume, source, node.Block, node.InodeNumber, _h.BlockBits, streamSize, &context,
-            EmitIndirectDirectoryRange, &streamTemp);
-        if (result == S_FALSE && mappingIncomplete)
-            *mappingIncomplete = true;
-        if (result != S_OK && !(result == S_FALSE && allowPrefix && !allocated->IsEmpty()))
-            return result;
-        *stream = streamTemp.Detach();
-        return S_OK;
-    }
-    if (!node.IsFlags_EXTENTS()) {
-        if (allocated)
-            return S_FALSE;
-        RINOK(CreateExtIndirectStream(_volume, source, node.Block, node.InodeNumber, _h.BlockBits,
-                                      streamSize, requireAllocated,
-                                      node.IsRegular() ? crypt : CExtCryptInode{}, &streamTemp))
-        *stream = streamTemp.Detach();
-        return S_OK;
-    }
-#endif
 
     if (node.IsFlags_EXTENTS()) {
         if ((UInt32)numBlocks64 != numBlocks64)
@@ -4014,24 +2610,10 @@ HRESULT CHandler::GetStream_Node(unsigned nodeIndex, ISequentialInStream **strea
         streamSpec->BlockBits = _h.BlockBits;
         streamSpec->Size = streamSize;
         streamSpec->Stream = source;
-#ifdef SEVENZIP_LINUX_EXT
-        if (crypt && node.IsRegular())
-            streamSpec->Crypt.Init(crypt);
-#endif
 
         const HRESULT mappingResult = FillExtents(
             node.Block, kNodeBlockFieldSize, streamSpec->Extents, -1, 0, (UInt64)1 << 32, source);
-#ifdef SEVENZIP_LINUX_EXT
-        if (mappingResult == S_FALSE && mappingIncomplete)
-            *mappingIncomplete = true;
-        if (mappingResult == S_FALSE && allowPrefix && !streamSpec->Extents.IsEmpty()) {
-            streamSpec->Size =
-                MyMin(streamSize, (UInt64)streamSpec->Extents.Back().GetVirtEnd() << _h.BlockBits);
-        } else
-#endif
-        {
-            RINOK(mappingResult)
-        }
+        {RINOK(mappingResult)}
 
         UInt32 end = 0;
         if (!streamSpec->Extents.IsEmpty())
@@ -4057,25 +2639,8 @@ HRESULT CHandler::GetStream_Node(unsigned nodeIndex, ISequentialInStream **strea
             }
         }
 
-#ifdef SEVENZIP_LINUX_EXT
-        RINOK(streamSpec->StartSeek(allowPrefix && node.IsDir()))
-#else
         RINOK(streamSpec->StartSeek())
-#endif
-#ifdef SEVENZIP_LINUX_EXT
-        if (verity) {
-            if (!end)
-                return S_FALSE;
-            streamSpec->Size = (UInt64)end << _h.BlockBits;
-            CMyComPtr<IInStream> verified;
-            RINOK(CreateExtVerityStream(streamSpec, node.FileSize, _h.BlockBits, end, _verityPolicy,
-                                        &verified))
-            streamTemp = verified;
-        }
-#endif
-    }
-#ifndef SEVENZIP_LINUX_EXT
-    else {
+    } else {
         {
             UInt64 numBlocks2 = numBlocks64;
 
@@ -4147,7 +2712,6 @@ HRESULT CHandler::GetStream_Node(unsigned nodeIndex, ISequentialInStream **strea
         }
         RINOK(streamSpec->InitAndSeek())
     }
-#endif
 
     *stream = streamTemp.Detach();
 
@@ -4159,14 +2723,6 @@ HRESULT CHandler::GetStream_Node(unsigned nodeIndex, ISequentialInStream **strea
 HRESULT CHandler::ExtractNode(unsigned nodeIndex, CByteBuffer &data, IInStream *source) {
     data.Free();
     const CNode &node = _nodes[nodeIndex];
-#ifdef SEVENZIP_LINUX_EXT
-    if (node.IsLink())
-        return ReadLink(nodeIndex, data, source);
-    if (node.IsDir() && node.InlineIndex >= 0) {
-        data = _inlineData[(unsigned)node.InlineIndex];
-        return S_OK;
-    }
-#endif
     size_t size = (size_t)node.FileSize;
     if (size != node.FileSize)
         return S_FALSE;
@@ -4179,46 +2735,6 @@ HRESULT CHandler::ExtractNode(unsigned nodeIndex, CByteBuffer &data, IInStream *
     RINOK(ReadStream_FALSE(inSeqStream, data, size))
     return S_OK;
 }
-
-#ifdef SEVENZIP_LINUX_EXT
-class CFileExtractionIO final : public IInStream,
-                                public ISequentialOutStream,
-                                public CMyUnknownImp {
-    Z7_COM_UNKNOWN_IMP_3(IInStream, ISequentialInStream, ISequentialOutStream)
-    HRESULT InputResult(HRESULT result) {
-        if (result != S_OK && result != E_ABORT && result != E_OUTOFMEMORY) {
-            SourceError = true;
-            return S_FALSE;
-        }
-        return result;
-    }
-
-  public:
-    CMyComPtr<IInStream> Input;
-    CMyComPtr<ISequentialOutStream> Output;
-    bool SourceError = false;
-    HRESULT OutputResult = S_OK;
-    Z7_COM7F_IMF(Read(void *data, UInt32 size, UInt32 *processed)) override {
-        UInt32 done = 0;
-        const HRESULT result = Input->Read(data, size, &done);
-        if (processed)
-            *processed = done;
-        return InputResult(result == S_OK && size && !done ? S_FALSE : result);
-    }
-    Z7_COM7F_IMF(Seek(Int64 offset, UInt32 origin, UInt64 *position)) override {
-        return InputResult(Input->Seek(offset, origin, position));
-    }
-    Z7_COM7F_IMF(Write(const void *data, UInt32 size, UInt32 *processed)) override {
-        OutputResult = Output->Write(data, size, processed);
-        return OutputResult;
-    }
-};
-static IInStream *CreateReadOnlyInput(IInStream *source) {
-    CFileExtractionIO *io = new CFileExtractionIO;
-    io->Input = source;
-    return io;
-}
-#endif
 
 Z7_COM7F_IMF(CHandler::Extract(const UInt32 *indices, UInt32 numItems, Int32 testMode,
                                IArchiveExtractCallback *extractCallback)) {
@@ -4238,18 +2754,8 @@ Z7_COM7F_IMF(CHandler::Extract(const UInt32 *indices, UInt32 numItems, Int32 tes
             continue;
         const CItem &item = _items[index];
         const CNode &node = _nodes[_refs[item.Node]];
-#ifdef SEVENZIP_LINUX_EXT
-        if (item.XattrIndex >= 0) {
-            totalSize += _xattrs[(unsigned)item.XattrIndex].Data.Size();
-            continue;
-        }
-#endif
         if (!node.IsDir())
-#ifdef SEVENZIP_LINUX_EXT
-            totalSize += GetUnpackSize(node);
-#else
             totalSize += node.FileSize;
-#endif
     }
 
     RINOK(extractCallback->SetTotal(totalSize))
@@ -4287,27 +2793,14 @@ Z7_COM7F_IMF(CHandler::Extract(const UInt32 *indices, UInt32 numItems, Int32 tes
             const CItem &item = _items[index];
             const CNode &node = _nodes[_refs[item.Node]];
 
-            if (node.IsDir()
-#ifdef SEVENZIP_LINUX_EXT
-                && item.XattrIndex < 0
-#endif
-            ) {
+            if (node.IsDir()) {
                 RINOK(extractCallback->PrepareOperation(askMode))
                 Int32 directoryResult = NExtract::NOperationResult::kOK;
-#ifdef SEVENZIP_LINUX_EXT
-                if (node.DirectoryIncomplete)
-                    directoryResult = NExtract::NOperationResult::kDataError;
-#endif
                 RINOK(extractCallback->SetOperationResult(directoryResult))
                 continue;
             }
 
             UInt64 unpackSize = node.FileSize;
-#ifdef SEVENZIP_LINUX_EXT
-            unpackSize = GetUnpackSize(node);
-            if (item.XattrIndex >= 0)
-                unpackSize = _xattrs[(unsigned)item.XattrIndex].Data.Size();
-#endif
             totalSize += unpackSize;
             UInt64 packSize;
             if (GetPackSize(index, packSize))
@@ -4320,16 +2813,7 @@ Z7_COM7F_IMF(CHandler::Extract(const UInt32 *indices, UInt32 numItems, Int32 tes
             opRes = NExtract::NOperationResult::kDataError;
             {
                 CMyComPtr<ISequentialInStream> inSeqStream;
-#ifdef SEVENZIP_LINUX_EXT
-                CFileExtractionIO *io = new CFileExtractionIO;
-                CMyComPtr<IInStream> source = io;
-                io->Input = _stream;
-                io->Output = outStream;
-                bool mappingIncomplete = false;
-                HRESULT hres = GetFileStream(index, &inSeqStream, source, &mappingIncomplete);
-#else
                 HRESULT hres = GetStream(index, &inSeqStream);
-#endif
                 if (hres != S_FALSE) {
                     RINOK(hres)
                 }
@@ -4337,39 +2821,11 @@ Z7_COM7F_IMF(CHandler::Extract(const UInt32 *indices, UInt32 numItems, Int32 tes
                     if (hres == E_OUTOFMEMORY)
                         return hres;
                     opRes = NExtract::NOperationResult::kUnsupportedMethod;
-#ifdef SEVENZIP_LINUX_EXT
-                    if (io->SourceError || mappingIncomplete || node.LinkUnavailable)
-                        opRes = NExtract::NOperationResult::kDataError;
-#endif
                 } else {
-#ifdef SEVENZIP_LINUX_EXT
-                    if (item.XattrIndex < 0 && node.IsLink() && node.LinkUnavailable) {
-                        // A retry may decode a target whose size was unavailable
-                        // during Open. Compare against the complete owned target,
-                        // not the raw inode size or a fabricated empty value.
-                        CMyComPtr<IInStream> target;
-                        RINOK(inSeqStream->QueryInterface(IID_IInStream,
-                                                          reinterpret_cast<void **>(&target)))
-                        RINOK(InStream_GetSize_SeekToBegin(target, unpackSize))
-                    }
-#endif
                     RINOK(hres) {
-                        hres = copyCoder.Interface()->Code(inSeqStream,
-#ifdef SEVENZIP_LINUX_EXT
-                                                           outStream ? io : NULL,
-#else
-                                                           outStream,
-#endif
-                                                           NULL, NULL, lps);
-#ifdef SEVENZIP_LINUX_EXT
-                        RINOK(io->OutputResult)
-#endif
+                        hres = copyCoder.Interface()->Code(inSeqStream, outStream, NULL, NULL, lps);
                         if (hres == S_OK) {
-                            if (copyCoder->TotalSize == unpackSize
-#ifdef SEVENZIP_LINUX_EXT
-                                && !mappingIncomplete
-#endif
-                            )
+                            if (copyCoder->TotalSize == unpackSize)
                                 opRes = NExtract::NOperationResult::kOK;
                         } else if (hres == E_NOTIMPL) {
                             opRes = NExtract::NOperationResult::kUnsupportedMethod;
@@ -4394,15 +2850,6 @@ HRESULT CHandler::GetFileStream(UInt32 index, ISequentialInStream **stream, IInS
         *mappingIncomplete = false;
     if (index >= _items.Size())
         return S_FALSE;
-#ifdef SEVENZIP_LINUX_EXT
-    if (!_items[index].ContextAllowed)
-        return HRESULT(0x80070005L);
-    if (_items[index].XattrIndex >= 0) {
-        const CByteBuffer &data = _xattrs[(unsigned)_items[index].XattrIndex].Data;
-        Create_BufInStream_WithNewBuffer(data, data.Size(), stream);
-        return S_OK;
-    }
-#endif
     return GetStream_Node((unsigned)_refs[_items[index].Node], stream, false, false, NULL, source,
                           mappingIncomplete);
 }
@@ -4428,7 +2875,7 @@ API_FUNC_IsArc IsArc_Ext_PhySize(const Byte *p, size_t size, UInt64 *phySize) {
 API_FUNC_IsArc IsArc_Ext(const Byte *p, size_t size);
 API_FUNC_IsArc IsArc_Ext(const Byte *p, size_t size) { return IsArc_Ext_PhySize(p, size, NULL); }
 
-#if defined(SEVENZIP_LINUX_EXT) || !defined(Z7_EXTERNAL_CODECS)
+#if !defined(Z7_EXTERNAL_CODECS)
 static const Byte k_Signature[] = {0x53, 0xEF};
 REGISTER_ARC_I("Ext", "ext ext2 ext3 ext4 img", NULL, 0xC7, k_Signature, 0x438, 0, IsArc_Ext)
 #endif

@@ -20,16 +20,6 @@ namespace NArchive {
 namespace NUdf {
 
 static void UdfTimeToFileTime(const CTime &t, NWindows::NCOM::CPropVariant &prop) {
-#ifdef SEVENZIP_LINUX_UDF
-    sevenzip_udf_time time{};
-    sevenzip_udf_stamp(t.Data, &time);
-    UInt64 value;
-    if (NWindows::NTime::UnixTime64_To_FileTime64(time.seconds, value) &&
-        value <= UINT64_MAX - time.nanoseconds / 100) {
-        value += time.nanoseconds / 100;
-        prop.SetAsTimeFrom_Ft64_Prec(value, k_PropVar_TimePrec_Base + 6);
-    }
-#else
     UInt64 numSecs;
     const Byte *d = t.Data;
     if (!NWindows::NTime::GetSecondsSince1601(t.GetYear(), d[4], d[5], d[6], d[7], d[8], numSecs))
@@ -46,255 +36,214 @@ static void UdfTimeToFileTime(const CTime &t, NWindows::NCOM::CPropVariant &prop
         numDigits = 6;
     }
     prop.SetAsTimeFrom_Ft64_Prec(v, k_PropVar_TimePrec_Base + numDigits);
-#endif
 }
 
-static const Byte kProps[] = {
-    kpidPath, kpidIsDir, kpidSize, kpidPackSize, kpidMTime, kpidATime, kpidCTime, kpidChangeTime,
-    // kpidUserId,
-    // kpidGroupId,
-    // kpidPosixAttrib,
-    kpidLinks
-#ifdef SEVENZIP_LINUX_UDF
-    ,
-    kpidSymLink, kpidPosixAttrib, kpidUserId, kpidGroupId, kpidDeviceMajor, kpidDeviceMinor
-#endif
-};
+static const Byte kProps[] = {kpidPath, kpidIsDir, kpidSize, kpidPackSize, kpidMTime, kpidATime,
+                              kpidCTime, kpidChangeTime,
+                              // kpidUserId,
+                              // kpidGroupId,
+                              // kpidPosixAttrib,
+                              kpidLinks};
 
-static const Byte kArcProps[] =
-{
-  kpidUnpackVer,
-  kpidClusterSize,
-  kpidSectorSize,
-  kpidCTime,
-  kpidMTime,
-  kpidComment
-};
+static const Byte kArcProps[] = {kpidUnpackVer, kpidClusterSize, kpidSectorSize,
+                                 kpidCTime,     kpidMTime,       kpidComment};
 
-IMP_IInArchive_Props
-IMP_IInArchive_ArcProps
+IMP_IInArchive_Props IMP_IInArchive_ArcProps
 
-Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID propID, PROPVARIANT *value))
-{
-  COM_TRY_BEGIN
-  NWindows::NCOM::CPropVariant prop;
-  switch (propID)
-  {
-    case kpidPhySize: prop = _archive.PhySize; break;
+Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID propID, PROPVARIANT *value)) {
+    COM_TRY_BEGIN
+    NWindows::NCOM::CPropVariant prop;
+    switch (propID) {
+    case kpidPhySize:
+        prop = _archive.PhySize;
+        break;
 
-    case kpidUnpackVer:
-    {
-      if (_archive.LogVols.Size() == 1)
-      {
-        UString s;
-        const CLogVol &vol = _archive.LogVols[0];
-        vol.DomainId.AddUdfVersionTo(s);
-        if (!s.IsEmpty())
-          prop = s;
-      }
-      break;
+    case kpidUnpackVer: {
+        if (_archive.LogVols.Size() == 1) {
+            UString s;
+            const CLogVol &vol = _archive.LogVols[0];
+            vol.DomainId.AddUdfVersionTo(s);
+            if (!s.IsEmpty())
+                prop = s;
+        }
+        break;
     }
-    case kpidComment:
-    {
-      UString comment = _archive.GetComment();
-      if (!comment.IsEmpty())
-        prop = comment;
-      break;
+    case kpidComment: {
+        UString comment = _archive.GetComment();
+        if (!comment.IsEmpty())
+            prop = comment;
+        break;
     }
 
     case kpidClusterSize:
-      if (_archive.LogVols.Size() > 0)
-      {
-        UInt32 blockSize = _archive.LogVols[0].BlockSize;
-        unsigned i;
-        for (i = 1; i < _archive.LogVols.Size(); i++)
-          if (_archive.LogVols[i].BlockSize != blockSize)
-            break;
-        if (i == _archive.LogVols.Size())
-          prop = blockSize;
-      }
-      break;
+        if (_archive.LogVols.Size() > 0) {
+            UInt32 blockSize = _archive.LogVols[0].BlockSize;
+            unsigned i;
+            for (i = 1; i < _archive.LogVols.Size(); i++)
+                if (_archive.LogVols[i].BlockSize != blockSize)
+                    break;
+            if (i == _archive.LogVols.Size())
+                prop = blockSize;
+        }
+        break;
 
-    case kpidSectorSize: prop = ((UInt32)1 << _archive.SecLogSize); break;
+    case kpidSectorSize:
+        prop = ((UInt32)1 << _archive.SecLogSize);
+        break;
 
     case kpidCTime:
-      if (_archive.LogVols.Size() == 1)
-      {
-        const CLogVol &vol = _archive.LogVols[0];
-        if (vol.FileSets.Size() >= 1)
-          UdfTimeToFileTime(vol.FileSets[0].RecordingTime, prop);
-      }
-      break;
+        if (_archive.LogVols.Size() == 1) {
+            const CLogVol &vol = _archive.LogVols[0];
+            if (vol.FileSets.Size() >= 1)
+                UdfTimeToFileTime(vol.FileSets[0].RecordingTime, prop);
+        }
+        break;
     case kpidMTime:
-      if (_archive.PrimeVols.Size() == 1)
-      {
-        const CPrimeVol &pv = _archive.PrimeVols[0];
-        UdfTimeToFileTime(pv.RecordingTime, prop);
-      }
-      break;
+        if (_archive.PrimeVols.Size() == 1) {
+            const CPrimeVol &pv = _archive.PrimeVols[0];
+            UdfTimeToFileTime(pv.RecordingTime, prop);
+        }
+        break;
 
-    case kpidErrorFlags:
-    {
-      UInt32 v = 0;
-      if (!_archive.IsArc) v |= kpv_ErrorFlags_IsNotArc;
-      if (_archive.Unsupported) v |= kpv_ErrorFlags_UnsupportedFeature;
-      if (_archive.UnexpectedEnd) v |= kpv_ErrorFlags_UnexpectedEnd;
-      if (_archive.NoEndAnchor) v |= kpv_ErrorFlags_HeadersError;
-      prop = v;
-      break;
+    case kpidErrorFlags: {
+        UInt32 v = 0;
+        if (!_archive.IsArc)
+            v |= kpv_ErrorFlags_IsNotArc;
+        if (_archive.Unsupported)
+            v |= kpv_ErrorFlags_UnsupportedFeature;
+        if (_archive.UnexpectedEnd)
+            v |= kpv_ErrorFlags_UnexpectedEnd;
+        if (_archive.NoEndAnchor)
+            v |= kpv_ErrorFlags_HeadersError;
+        prop = v;
+        break;
     }
-  }
-  prop.Detach(value);
-  return S_OK;
-  COM_TRY_END
+    }
+    prop.Detach(value);
+    return S_OK;
+    COM_TRY_END
 }
 
-class CProgressImp Z7_final: public CProgressVirt
-{
-  CMyComPtr<IArchiveOpenCallback> _callback;
-  UInt64 _numFiles;
-  UInt64 _numBytes;
-public:
-  HRESULT SetTotal(UInt64 numBytes) Z7_override;
-  HRESULT SetCompleted(UInt64 numFiles, UInt64 numBytes) Z7_override;
-  HRESULT SetCompleted() Z7_override;
-  CProgressImp(IArchiveOpenCallback *callback Z7_lifetimebound): _callback(callback), _numFiles(0), _numBytes(0) {}
+class CProgressImp Z7_final : public CProgressVirt {
+    CMyComPtr<IArchiveOpenCallback> _callback;
+    UInt64 _numFiles;
+    UInt64 _numBytes;
+
+  public:
+    HRESULT SetTotal(UInt64 numBytes) Z7_override;
+    HRESULT SetCompleted(UInt64 numFiles, UInt64 numBytes) Z7_override;
+    HRESULT SetCompleted() Z7_override;
+    CProgressImp(IArchiveOpenCallback *callback Z7_lifetimebound)
+        : _callback(callback), _numFiles(0), _numBytes(0) {}
 };
 
-HRESULT CProgressImp::SetTotal(UInt64 numBytes)
-{
-  if (_callback)
-    return _callback->SetTotal(NULL, &numBytes);
-  return S_OK;
+HRESULT CProgressImp::SetTotal(UInt64 numBytes) {
+    if (_callback)
+        return _callback->SetTotal(NULL, &numBytes);
+    return S_OK;
 }
 
-HRESULT CProgressImp::SetCompleted(UInt64 numFiles, UInt64 numBytes)
-{
-  _numFiles = numFiles;
-  _numBytes = numBytes;
-  return SetCompleted();
+HRESULT CProgressImp::SetCompleted(UInt64 numFiles, UInt64 numBytes) {
+    _numFiles = numFiles;
+    _numBytes = numBytes;
+    return SetCompleted();
 }
 
-HRESULT CProgressImp::SetCompleted()
-{
-  if (_callback)
-    return _callback->SetCompleted(&_numFiles, &_numBytes);
-  return S_OK;
+HRESULT CProgressImp::SetCompleted() {
+    if (_callback)
+        return _callback->SetCompleted(&_numFiles, &_numBytes);
+    return S_OK;
 }
 
-Z7_COM7F_IMF(CHandler::Open(IInStream *stream, const UInt64 *, IArchiveOpenCallback *callback))
-{
-  COM_TRY_BEGIN
-  {
-    Close();
-    CProgressImp progressImp(callback);
-    RINOK(_archive.Open(stream, &progressImp))
-    bool showVolName = (_archive.LogVols.Size() > 1);
-    FOR_VECTOR (volIndex, _archive.LogVols)
-    {
-      const CLogVol &vol = _archive.LogVols[volIndex];
-      bool showFileSetName = (vol.FileSets.Size() > 1);
-      // showFileSetName = true; // for debug
-      FOR_VECTOR (fsIndex, vol.FileSets)
-      {
-        const CFileSet &fs = vol.FileSets[fsIndex];
-        for (unsigned i = ((showVolName || showFileSetName) ? 0 : 1); i < fs.Refs.Size(); i++)
-        {
-          CRef2 ref2;
-          ref2.Vol = volIndex;
-          ref2.Fs = fsIndex;
-          ref2.Ref = i;
-          _refs2.Add(ref2);
+Z7_COM7F_IMF(CHandler::Open(IInStream *stream, const UInt64 *, IArchiveOpenCallback *callback)) {
+    COM_TRY_BEGIN {
+        Close();
+        CProgressImp progressImp(callback);
+        RINOK(_archive.Open(stream, &progressImp))
+        bool showVolName = (_archive.LogVols.Size() > 1);
+        FOR_VECTOR(volIndex, _archive.LogVols) {
+            const CLogVol &vol = _archive.LogVols[volIndex];
+            bool showFileSetName = (vol.FileSets.Size() > 1);
+            // showFileSetName = true; // for debug
+            FOR_VECTOR(fsIndex, vol.FileSets) {
+                const CFileSet &fs = vol.FileSets[fsIndex];
+                for (unsigned i = ((showVolName || showFileSetName) ? 0 : 1); i < fs.Refs.Size();
+                     i++) {
+                    CRef2 ref2;
+                    ref2.Vol = volIndex;
+                    ref2.Fs = fsIndex;
+                    ref2.Ref = i;
+                    _refs2.Add(ref2);
+                }
+            }
         }
-      }
+        _inStream = stream;
     }
-    _inStream = stream;
-  }
-  return S_OK;
-  COM_TRY_END
+    return S_OK;
+    COM_TRY_END
 }
 
-Z7_COM7F_IMF(CHandler::Close())
-{
-  _inStream.Release();
-  _archive.Clear();
-  _refs2.Clear();
-  return S_OK;
+Z7_COM7F_IMF(CHandler::Close()) {
+    _inStream.Release();
+    _archive.Clear();
+    _refs2.Clear();
+    return S_OK;
 }
 
-Z7_COM7F_IMF(CHandler::GetNumberOfItems(UInt32 *numItems))
-{
-  *numItems = _refs2.Size();
-  return S_OK;
+Z7_COM7F_IMF(CHandler::GetNumberOfItems(UInt32 *numItems)) {
+    *numItems = _refs2.Size();
+    return S_OK;
 }
 
-Z7_COM7F_IMF(CHandler::GetProperty(UInt32 index, PROPID propID, PROPVARIANT *value))
-{
-  COM_TRY_BEGIN
-  NWindows::NCOM::CPropVariant prop;
-  {
-    const CRef2 &ref2 = _refs2[index];
-    const CLogVol &vol = _archive.LogVols[ref2.Vol];
-    const CRef &ref = vol.FileSets[ref2.Fs].Refs[ref2.Ref];
-    const CFile &file = _archive.Files[ref.FileIndex];
-    const CItem &item = _archive.Items[file.ItemIndex];
-#ifdef SEVENZIP_LINUX_UDF
-    // USE has no FE/EFE timestamps. Do not publish uninitialized VFS/slab dates.
-    if (item.IsUnallocated && (propID == kpidMTime || propID == kpidATime || propID == kpidCTime ||
-                               propID == kpidChangeTime)) {
-        prop.Detach(value);
-        return S_OK;
-    }
-#endif
-    switch (propID)
+Z7_COM7F_IMF(CHandler::GetProperty(UInt32 index, PROPID propID, PROPVARIANT *value)) {
+    COM_TRY_BEGIN
+    NWindows::NCOM::CPropVariant prop;
     {
-      case kpidPath:  prop = _archive.GetItemPath(ref2.Vol, ref2.Fs, ref2.Ref,
-            _archive.LogVols.Size() > 1, vol.FileSets.Size() > 1); break;
-      case kpidIsDir:  prop = item.IsDir(); break;
-      case kpidSize:      if (!item.IsDir()) prop = (UInt64)item.Size; break;
-      case kpidPackSize:  if (!item.IsDir()) prop = (UInt64)item.NumLogBlockRecorded * vol.BlockSize; break;
-      case kpidMTime:  UdfTimeToFileTime(item.MTime, prop); break;
-      case kpidATime:  UdfTimeToFileTime(item.ATime, prop); break;
-      case kpidCTime:
-        if (item.IsExtended)
-            UdfTimeToFileTime(item.CreateTime, prop);
-        break;
-      case kpidChangeTime:  UdfTimeToFileTime(item.AttribTime, prop); break;
-      // case kpidUserId: prop = item.Uid; break;
-      // case kpidGroupId: prop = item.Gid; break;
-      // case kpidPosixAttrib: prop = (UInt32)item.Permissions; break;
-#ifdef SEVENZIP_LINUX_UDF
-      case kpidLinks: prop = item.LinuxAttributes.links; break;
-#else
-      case kpidLinks: prop = (UInt32)item.FileLinkCount; break;
-#endif
-#ifdef SEVENZIP_LINUX_UDF
-      case kpidSymLink:
-          if (item.IcbTag.FileType == ICB_FILE_TYPE_SYMLINK)
-              prop = item.SymLink;
-          break;
-      case kpidPosixAttrib:
-          prop = item.LinuxAttributes.mode;
-          break;
-      case kpidUserId:
-          prop = item.LinuxAttributes.uid;
-          break;
-      case kpidGroupId:
-          prop = item.LinuxAttributes.gid;
-          break;
-      case kpidDeviceMajor:
-      case kpidDeviceMinor:
-          if ((item.LinuxAttributes.mode & 0170000) == 0020000 ||
-              (item.LinuxAttributes.mode & 0170000) == 0060000)
-              prop = propID == kpidDeviceMajor ? item.LinuxAttributes.device_major
-                                               : item.LinuxAttributes.device_minor;
-          break;
-#endif
-      }
-  }
-  prop.Detach(value);
-  return S_OK;
-  COM_TRY_END
+        const CRef2 &ref2 = _refs2[index];
+        const CLogVol &vol = _archive.LogVols[ref2.Vol];
+        const CRef &ref = vol.FileSets[ref2.Fs].Refs[ref2.Ref];
+        const CFile &file = _archive.Files[ref.FileIndex];
+        const CItem &item = _archive.Items[file.ItemIndex];
+        switch (propID) {
+        case kpidPath:
+            prop = _archive.GetItemPath(ref2.Vol, ref2.Fs, ref2.Ref, _archive.LogVols.Size() > 1,
+                                        vol.FileSets.Size() > 1);
+            break;
+        case kpidIsDir:
+            prop = item.IsDir();
+            break;
+        case kpidSize:
+            if (!item.IsDir())
+                prop = (UInt64)item.Size;
+            break;
+        case kpidPackSize:
+            if (!item.IsDir())
+                prop = (UInt64)item.NumLogBlockRecorded * vol.BlockSize;
+            break;
+        case kpidMTime:
+            UdfTimeToFileTime(item.MTime, prop);
+            break;
+        case kpidATime:
+            UdfTimeToFileTime(item.ATime, prop);
+            break;
+        case kpidCTime:
+            if (item.IsExtended)
+                UdfTimeToFileTime(item.CreateTime, prop);
+            break;
+        case kpidChangeTime:
+            UdfTimeToFileTime(item.AttribTime, prop);
+            break;
+        // case kpidUserId: prop = item.Uid; break;
+        // case kpidGroupId: prop = item.Gid; break;
+        // case kpidPosixAttrib: prop = (UInt32)item.Permissions; break;
+        case kpidLinks:
+            prop = (UInt32)item.FileLinkCount;
+            break;
+        }
+    }
+    prop.Detach(value);
+    return S_OK;
+    COM_TRY_END
 }
 
 Z7_COM7F_IMF(CHandler::GetStream(UInt32 index, ISequentialInStream **stream)) {
@@ -388,23 +337,17 @@ Z7_COM7F_IMF(CHandler::Extract(const UInt32 *indices, UInt32 numItems, Int32 tes
     COM_TRY_END
 }
 
-#if defined(SEVENZIP_LINUX_UDF) || !defined(Z7_EXTERNAL_CODECS)
-#ifdef SEVENZIP_LINUX_UDF
-static const UInt32 kIsoStartPos = 0x8001;
-static const Byte k_Signature[] = {5, 'B', 'E', 'A', '0', '1', 5, 'N', 'S', 'R', '0', '2',
-                                   5, 'N', 'S', 'R', '0', '3', 5, 'C', 'D', '0', '0', '1',
-                                   5, 'B', 'O', 'O', 'T', '2', 5, 'C', 'D', 'W', '0', '2'};
-#else
+#if !defined(Z7_EXTERNAL_CODECS)
 static const UInt32 kIsoStartPos = 0x8000;
 
 //  5, { 0, 'N', 'S', 'R', '0' },
 
 static const Byte k_Signature[] = {8, 0, 'B', 'E', 'A', '0', '1', 1,
                                    0, 6, 1,   'C', 'D', '0', '0', '1'};
-#endif
 
 REGISTER_ARC_I("Udf", "udf iso img", NULL, 0xE0, k_Signature, kIsoStartPos,
                NArcInfoFlags::kMultiSignature | NArcInfoFlags::kStartOpen, IsArc_Udf)
 #endif
 
-}}
+} // namespace NUdf
+} // namespace NArchive

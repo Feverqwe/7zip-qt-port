@@ -1,7 +1,7 @@
 # Linux UDF allocation readers stay in an isolated GPL format module.
 add_library(sevenzip_udf MODULE
-    src/CPP/7zip/Archive/Udf/UdfIn.cpp src/CPP/7zip/Archive/Udf/UdfHandler.cpp
-    src/CPP/7zip/Archive/Udf/UdfLinux.cpp src/CPP/7zip/Archive/Udf/UdfDiscovery.cpp src/exfatmodule.cpp
+    src/gpl/CPP/7zip/Archive/Udf/UdfIn.cpp src/gpl/CPP/7zip/Archive/Udf/UdfHandler.cpp
+    src/gpl/CPP/7zip/Archive/Udf/UdfLinux.cpp src/gpl/CPP/7zip/Archive/Udf/UdfDiscovery.cpp src/exfatmodule.cpp
     src/fs/udf/inode.c src/fs/udf/directory.c src/fs/udf/reader.c src/fs/udf/dir.c
     src/fs/udf/misc.c src/lib/crc/crc-itu-t.c
     src/fs/udf/partition.c src/fs/udf/super.c src/fs/udf/vat.c src/fs/udf/metadata.c
@@ -38,7 +38,7 @@ set_source_files_properties(src/fs/udf/inode.c src/fs/udf/directory.c src/fs/udf
     src/fs/udf/partition.c src/fs/udf/super.c src/fs/udf/vat.c src/fs/udf/metadata.c
     src/fs/udf/discovery.c src/fs/udf/lowlevel.c src/fs/udf/unicode.c src/fs/udf/symlink.c src/fs/udf/udftime.c
     PROPERTIES INCLUDE_DIRECTORIES "${CMAKE_CURRENT_SOURCE_DIR}/src/fs/udf/include")
-target_compile_definitions(sevenzip_udf PRIVATE SEVENZIP_LINUX_UDF Z7_ST)
+target_compile_definitions(sevenzip_udf PRIVATE Z7_ST)
 target_link_libraries(sevenzip_udf PRIVATE Threads::Threads)
 set_target_properties(sevenzip_udf PROPERTIES AUTOMOC OFF AUTOUIC OFF PREFIX ""
     C_STANDARD 11 C_STANDARD_REQUIRED ON)
@@ -58,3 +58,7 @@ function(sevenzip_deploy_udf)
         DEPENDS sevenzip_udf VERBATIM)
     add_dependencies(sevenzip_desktop sevenzip_udf_runtime)
 endfunction()
+
+# The GPL reader sources use their own upstream-shaped include root.
+target_include_directories(sevenzip_udf BEFORE PRIVATE src/gpl/CPP
+    src/gpl/CPP/7zip/Archive/Udf src/CPP third_party/7zip)

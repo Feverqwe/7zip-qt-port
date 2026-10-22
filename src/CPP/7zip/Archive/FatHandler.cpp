@@ -10,10 +10,6 @@
 #include "../../Common/MyBuffer2.h"
 #include "../../Common/MyCom.h"
 #include "../../Common/StringConvert.h"
-#ifdef SEVENZIP_LINUX_FAT
-#include "../../../fatreader.h"
-#include "../../Common/UTFConvert.h"
-#endif
 
 #include "../../Windows/PropVariant.h"
 #include "../../Windows/TimeUtils.h"
@@ -45,9 +41,6 @@ namespace NFat {
 static const UInt32 kFatItemUsedByDirMask = (UInt32)1 << 31;
 static const UInt32 kFatItemActiveFileMask = (UInt32)1 << 29;
 static const UInt32 kFatItemUnknownMask = (UInt32)1 << 28;
-#ifdef SEVENZIP_LINUX_FAT
-static const UInt32 kFatItemActiveDirMask = (UInt32)1 << 30;
-#endif
 
 struct CHeader {
     Byte NumFatBits;
@@ -59,9 +52,6 @@ struct CHeader {
 
     bool VolFieldsDefined;
     bool HeadersWarning;
-#ifdef SEVENZIP_LINUX_FAT
-    bool Dirty = false;
-#endif
 
     UInt32 FatSize;
     UInt32 BadCluster;
@@ -132,19 +122,12 @@ API_FUNC_IsArc IsArc_Fat(const Byte *p, size_t size) {
     CHeader h;
     if (h.Parse(p))
         return k_IsArc_Res_YES;
-#ifdef SEVENZIP_LINUX_FAT
-    Byte normalized[kHeaderSize];
-    if (fat_linux_legacy_header(p, size, normalized) && h.Parse(normalized))
-        return k_IsArc_Res_YES;
-#endif
     return k_IsArc_Res_NO;
 }
 
 bool CHeader::Parse(const Byte *p) {
-#ifndef SEVENZIP_LINUX_FAT
     if (Get16(p + 0x1FE) != 0xAA55)
         return false;
-#endif
 
     HeadersWarning = false;
 
@@ -300,11 +283,6 @@ class CItem {
     UInt32 CTime;
     UInt32 Cluster;
     Int32 Parent;
-#ifdef SEVENZIP_LINUX_FAT
-    bool DirectoryIncomplete = false;
-    bool FileIncomplete = false;
-    bool FileCrossLinked = false;
-#endif
 
     CItem() {}
 
@@ -335,30 +313,10 @@ static char *CopyAndTrim(char *dest Z7_lifetimebound, const char *src, unsigned 
 }
 
 static void FatStringToUnicode(UString &dest, const char *s) {
-#ifdef SEVENZIP_LINUX_FAT
-    char utf8[64];
-    const int size =
-        fat_linux_oem_name((const unsigned char *)s, (unsigned)strlen(s), utf8, sizeof(utf8));
-    if (size >= 0) {
-        AString encoded;
-        encoded.SetFrom(utf8, (unsigned)size);
-        ConvertUTF8ToUnicode(encoded, dest);
-    } else
-        dest.Empty();
-#else
     MultiByteToUnicodeString2(dest, AString(s), CP_OEMCP);
-#endif
 }
 
 void CItem::GetShortName(UString &shortName) const {
-#ifdef SEVENZIP_LINUX_FAT
-    char utf8[73];
-    const int size = fat_linux_short_name((const unsigned char *)DosName, Flags, utf8);
-    AString encoded;
-    if (size > 0)
-        encoded.SetFrom(utf8, (unsigned)size);
-    ConvertUTF8ToUnicode(encoded, shortName);
-#else
     char s[16];
     char *dest = CopyAndTrim(s, DosName, 8, NameIsLow());
     *dest++ = '.';
@@ -366,7 +324,6 @@ void CItem::GetShortName(UString &shortName) const {
     if (dest == dest2)
         dest[-1] = 0;
     FatStringToUnicode(shortName, s);
-#endif
 }
 
 // numWords != 0
@@ -376,17 +333,14 @@ static unsigned ParseLongName(UInt16 *buf, unsigned numWords) {
         const unsigned c = Get16(buf + i);
         if (c == 0)
             break;
-#ifndef SEVENZIP_LINUX_FAT
         if (c == 0xFFFF)
             return 0;
-#endif
     }
     if (i == 0)
         return 0;
     SetUi16(buf + i, 0);
     numWords -= i;
     i++;
-#ifndef SEVENZIP_LINUX_FAT
     if (numWords > 1) {
         numWords--;
         buf += i;
@@ -395,7 +349,6 @@ static unsigned ParseLongName(UInt16 *buf, unsigned numWords) {
                 return 0;
         while (--numWords);
     }
-#endif
     return i; // it includes NULL terminator
 }
 
@@ -403,19 +356,10 @@ void CItem::GetName(UString &name) const {
     if (LongName.Size() >= 2) {
         const Byte *const p = LongName;
         const unsigned numWords = ((unsigned)LongName.Size() - 2) / 2;
-#ifdef SEVENZIP_LINUX_FAT
-        char utf8[4 * 260];
-        const int size = fat_linux_long_name(p, numWords, utf8, sizeof(utf8));
-        AString encoded;
-        if (size > 0)
-            encoded.SetFrom(utf8, (unsigned)size);
-        ConvertUTF8ToUnicode(encoded, name);
-#else
         wchar_t *dest = name.GetBuf(numWords);
         for (unsigned i = 0; i < numWords; i++)
             dest[i] = (wchar_t)Get16(p + (size_t)i * 2);
         name.ReleaseBuf_SetEnd(numWords);
-#endif
     } else
         GetShortName(name);
     if (name.IsEmpty()) // it's unexpected
@@ -446,13 +390,6 @@ struct CDatabase {
     UInt64 PhySize;
 
     UInt32 Vol_MTime;
-#ifdef SEVENZIP_LINUX_FAT
-    bool SourceTruncated = false;
-    bool DirectoryLimitations = false;
-    bool FileLimitations = false;
-    bool TableLimitations = false;
-    bool CrossLinkedFiles = false;
-#endif
     char VolLabel[11];
     bool VolItem_Defined;
 
@@ -471,14 +408,6 @@ struct CDatabase {
     HRESULT ReadDir(Int32 parent, UInt32 cluster, unsigned level);
     HRESULT ReadDirItems(Int32 parent, UInt32 cluster, unsigned level, HRESULT &callbackResult,
                          CRecordVector<UInt32> &activeClusters);
-#ifdef SEVENZIP_LINUX_FAT
-    HRESULT ReadFatData(Byte *data, CByteBuffer &known, UInt32 sector, UInt32 size);
-    void MarkDirectoryIncomplete(Int32 parent) {
-        DirectoryLimitations = true;
-        if (parent >= 0)
-            Items[(unsigned)parent].DirectoryIncomplete = true;
-    }
-#endif
 
     UInt64 GetHeadersSize() const {
         return ((UInt64)Header.DataSector + ((UInt64)NumDirClusters << Header.SectorsPerClusterLog))
@@ -493,14 +422,6 @@ HRESULT CDatabase::SeekToSector(UInt32 sector) {
 }
 
 void CDatabase::Clear() {
-#ifdef SEVENZIP_LINUX_FAT
-    SourceTruncated = false;
-    DirectoryLimitations = false;
-    FileLimitations = false;
-    TableLimitations = false;
-    CrossLinkedFiles = false;
-    Header.Dirty = false;
-#endif
     PhySize = 0;
     VolItem_Defined = false;
     NumDirClusters = 0;
@@ -551,29 +472,16 @@ void CDatabase::GetItemPath(UInt32 index, UString &s) const {
 
 HRESULT CDatabase::ReadDirItems(Int32 parent, UInt32 cluster, unsigned level,
                                 HRESULT &callbackResult, CRecordVector<UInt32> &activeClusters) {
-#ifndef SEVENZIP_LINUX_FAT
     (void)activeClusters;
-#endif
     const unsigned startIndex = Items.Size();
     if (startIndex >= (1 << 30) || level > 256)
         return S_FALSE;
 
     UInt32 blockSize = Header.ClusterSize();
     const bool clusterMode = (Header.IsFat32() || parent >= 0);
-#ifdef SEVENZIP_LINUX_FAT
-    if (clusterMode && !Header.IsValidCluster(cluster))
-        return S_FALSE;
-    blockSize = Header.SectorSize();
-    UInt32 clusterSectorsLeft = 0;
-    UInt64 nextSector = Header.RootDirSector;
-    UInt32 validBlockSize = 0;
-    bool gapAfterBlock = false;
-#endif
     if (!clusterMode) {
         blockSize = Header.SectorSize();
-#ifndef SEVENZIP_LINUX_FAT
         RINOK(SeekToSector(Header.RootDirSector))
-#endif
     }
 
     ByteBuf.Alloc(blockSize);
@@ -592,26 +500,10 @@ HRESULT CDatabase::ReadDirItems(Int32 parent, UInt32 cluster, unsigned level,
     bool is_record_error = false;
 
     for (UInt32 pos = blockSize;; pos += 32) {
-#ifdef SEVENZIP_LINUX_FAT
-        if (pos >= validBlockSize) {
-#else
         if (pos == blockSize) {
-#endif
-#ifdef SEVENZIP_LINUX_FAT
-            if (gapAfterBlock) {
-                MarkDirectoryIncomplete(parent);
-                num_lfn_records = lfn_RecordIndex = 0;
-                checkSum = -1;
-                is_record_error = false;
-            }
-#endif
             pos = 0;
 
-            if (clusterMode
-#ifdef SEVENZIP_LINUX_FAT
-                && !clusterSectorsLeft
-#endif
-            ) {
+            if (clusterMode) {
                 if (cluster & kFatItemUnknownMask)
                     return S_FALSE;
                 if (Header.IsEoc(cluster))
@@ -619,32 +511,13 @@ HRESULT CDatabase::ReadDirItems(Int32 parent, UInt32 cluster, unsigned level,
                 if (!Header.IsValidCluster(cluster))
                     return S_FALSE;
                 PRF(printf("\nCluster = %4X", cluster));
-#ifdef SEVENZIP_LINUX_FAT
-                nextSector = Header.ClusterToSector(cluster);
-                clusterSectorsLeft = (UInt32)1 << Header.SectorsPerClusterLog;
-#else
                 RINOK(SeekToCluster(cluster))
-#endif
                 const UInt32 newCluster = Fat[cluster];
-#ifdef SEVENZIP_LINUX_FAT
-                if (newCluster & kFatItemActiveDirMask)
-                    return S_FALSE;
-                activeClusters.Add(cluster);
-                Fat[cluster] |= kFatItemActiveDirMask;
-                const bool firstVisit = (newCluster & kFatItemUsedByDirMask) == 0;
-#else
                 if (newCluster & kFatItemUsedByDirMask)
                     return S_FALSE;
-#endif
                 Fat[cluster] |= kFatItemUsedByDirMask;
-#ifdef SEVENZIP_LINUX_FAT
-                cluster = newCluster & ~(kFatItemUsedByDirMask | kFatItemActiveDirMask);
-                if (firstVisit)
-                    NumDirClusters++;
-#else
                 cluster = newCluster;
                 NumDirClusters++;
-#endif
                 // Do not interpret a BAD next-link as a physical directory
                 // at the FAT32 limit. Preserve the incomplete-directory
                 // result unless a known end marker is read in this cluster.
@@ -661,33 +534,8 @@ HRESULT CDatabase::ReadDirItems(Int32 parent, UInt32 cluster, unsigned level,
             // if (curDirBytes_read > (1u << 28)) // do we need some relaxed limit for non-MS FATs?
             if (curDirBytes_read >= (1u << 21)) // 2MB limit from FAT specification.
                 return S_FALSE;
-#ifdef SEVENZIP_LINUX_FAT
-            HRESULT result = InStream_SeekSet(InStream, nextSector++ << Header.SectorSizeLog);
-            size_t size = blockSize;
-            if (result == S_OK)
-                result = ReadStream(InStream, ByteBuf, &size);
-            if (result == E_ABORT || result == E_OUTOFMEMORY)
-                return result;
-            callbackResult = OpenProgress();
-            RINOK(callbackResult)
-            if (result != S_OK)
-                size = 0;
-            gapAfterBlock = size != blockSize;
-            validBlockSize = (UInt32)size & ~(UInt32)31;
-            // A known end marker needs only its first byte; other records
-            // require all 32 bytes before their metadata can be interpreted.
-            if (validBlockSize < size && ByteBuf[validBlockSize] == 0)
-                ++validBlockSize;
-            if (clusterMode)
-                --clusterSectorsLeft;
-#else
             RINOK(ReadStream_FALSE(InStream, ByteBuf, blockSize))
-#endif
             curDirBytes_read += blockSize;
-#ifdef SEVENZIP_LINUX_FAT
-            if (!validBlockSize)
-                continue;
-#endif
         }
 
         if (is_record_error) {
@@ -842,28 +690,10 @@ HRESULT CDatabase::ReadDirItems(Int32 parent, UInt32 cluster, unsigned level,
 HRESULT CDatabase::ReadDir(Int32 parent, UInt32 cluster, unsigned level) {
     const unsigned startIndex = Items.Size();
     CRecordVector<UInt32> activeClusters;
-#ifdef SEVENZIP_LINUX_FAT
-    struct CActiveDirectoryScope {
-        UInt32 *Fat;
-        const CRecordVector<UInt32> &Clusters;
-        ~CActiveDirectoryScope() {
-            FOR_VECTOR(i, Clusters)
-            Fat[Clusters[i]] &= ~kFatItemActiveDirMask;
-        }
-    } scope{Fat, activeClusters};
-    RINOK(OpenProgress())
-#endif
     HRESULT callbackResult = S_OK;
     const HRESULT result = ReadDirItems(parent, cluster, level, callbackResult, activeClusters);
     RINOK(callbackResult)
-#ifdef SEVENZIP_LINUX_FAT
-    if (result == E_ABORT || result == E_OUTOFMEMORY)
-        return result;
-    if (result != S_OK)
-        MarkDirectoryIncomplete(parent);
-#else
     RINOK(result)
-#endif
 
     const unsigned finishIndex = Items.Size();
     for (unsigned i = startIndex; i < finishIndex; i++) {
@@ -887,24 +717,12 @@ HRESULT CDatabase::Open() {
         UInt64 fileSize;
         RINOK(InStream_GetSize_SeekToEnd(InStream, fileSize))
         if (!Header.Parse((Byte *)(void *)buf32)) {
-#ifdef SEVENZIP_LINUX_FAT
-            if (!fat_linux_legacy_header(buf32, fileSize, buf32) ||
-                !Header.Parse((Byte *)(void *)buf32))
-#endif
-                return S_FALSE;
+            return S_FALSE;
         }
         const UInt64 fatEnd = ((UInt64)Header.GetFatSector() + Header.CalcFatSizeInSectors())
                               << Header.SectorSizeLog;
         if (fatEnd > fileSize)
             return S_FALSE;
-#ifdef SEVENZIP_LINUX_FAT
-        int dirty = 0;
-        if (fat_linux_volume_state(buf32, kHeaderSize, &dirty))
-            return S_FALSE;
-        Header.Dirty = dirty != 0;
-        SourceTruncated = fileSize < Header.GetPhySize();
-        PhySize = MyMin(fileSize, Header.GetPhySize());
-#endif
 
         /* we comment that check to support truncated images */
         /*
@@ -936,15 +754,10 @@ HRESULT CDatabase::Open() {
         NumFreeClusters = 0;
 
     CByteBuffer byteBuf;
-#ifdef SEVENZIP_LINUX_FAT
-    CByteBuffer knownBuf;
-#endif
     Fat = new UInt32[Header.FatSize];
 
     RINOK(OpenProgressFat())
-#ifndef SEVENZIP_LINUX_FAT
     RINOK(SeekToSector(Header.GetFatSector()))
-#endif
     if (Header.NumFatBits == 32) {
         const UInt32 kBufSize = 1 << 15;
         byteBuf.Alloc(kBufSize);
@@ -956,39 +769,20 @@ HRESULT CDatabase::Open() {
             if (size > kBufSize32)
                 size = kBufSize32;
             const UInt32 readSize = Header.SizeToSectors(size * 4) << Header.SectorSizeLog;
-#ifdef SEVENZIP_LINUX_FAT
-            RINOK(ReadFatData(byteBuf, knownBuf,
-                              Header.GetFatSector() + (i >> (Header.SectorSizeLog - 2)), readSize))
-#else
             RINOK(ReadStream_FALSE(InStream, byteBuf, readSize))
-#endif
             NumCurUsedBytes += readSize;
 
             const UInt32 *src = (const UInt32 *)(const void *)(const Byte *)byteBuf;
             UInt32 *dest = Fat + i;
             const UInt32 *srcLim = src + size;
-#ifdef SEVENZIP_LINUX_FAT
-            const UInt32 *const srcStart = src;
-#endif
             if (numFreeClusters_Defined)
                 do
-#ifdef SEVENZIP_LINUX_FAT
-                    *dest++ = knownBuf[(src - srcStart) * 4 + 3] ? Get32a(src) & 0x0FFFFFFF
-                                                                 : kFatItemUnknownMask;
-#else
                     *dest++ = Get32a(src) & 0x0FFFFFFF;
-#endif
                 while (++src != srcLim);
             else {
                 UInt32 numFreeClusters = 0;
                 do {
-                    const UInt32 v =
-#ifdef SEVENZIP_LINUX_FAT
-                        knownBuf[(src - srcStart) * 4 + 3] ? Get32a(src) & 0x0FFFFFFF
-                                                           : kFatItemUnknownMask;
-#else
-                        Get32a(src) & 0x0FFFFFFF;
-#endif
+                    const UInt32 v = Get32a(src) & 0x0FFFFFFF;
                     *dest++ = v;
                     numFreeClusters += (UInt32)(v - 1) >> 31;
                 } while (++src != srcLim);
@@ -1004,31 +798,15 @@ HRESULT CDatabase::Open() {
         NumCurUsedBytes += kBufSize;
         byteBuf.Alloc(kBufSize);
         Byte *p = byteBuf;
-#ifdef SEVENZIP_LINUX_FAT
-        RINOK(ReadFatData(p, knownBuf, Header.GetFatSector(), kBufSize))
-#else
         RINOK(ReadStream_FALSE(InStream, p, kBufSize))
-#endif
         const UInt32 fatSize = Header.FatSize;
         UInt32 *fat = &Fat[0];
         if (Header.NumFatBits == 16)
             for (UInt32 j = 0; j < fatSize; j++)
-                fat[j] =
-#ifdef SEVENZIP_LINUX_FAT
-                    knownBuf[j * 2 + 1] ? Get16a(p + j * 2) : kFatItemUnknownMask;
-#else
-                    Get16a(p + j * 2);
-#endif
+                fat[j] = Get16a(p + j * 2);
         else
             for (UInt32 j = 0; j < fatSize; j++)
-                fat[j] =
-#ifdef SEVENZIP_LINUX_FAT
-                    knownBuf[j * 3 / 2] && knownBuf[j * 3 / 2 + 1]
-                        ? (Get16(p + j * 3 / 2) >> ((j & 1) << 2)) & 0xFFF
-                        : kFatItemUnknownMask;
-#else
-                    (Get16(p + j * 3 / 2) >> ((j & 1) << 2)) & 0xFFF;
-#endif
+                fat[j] = (Get16(p + j * 3 / 2) >> ((j & 1) << 2)) & 0xFFF;
 
         if (!numFreeClusters_Defined) {
             UInt32 numFreeClusters = 0;
@@ -1051,99 +829,9 @@ HRESULT CDatabase::Open() {
 
     RINOK(ReadDir(-1, Header.RootCluster, 0))
 
-#ifdef SEVENZIP_LINUX_FAT
-    FOR_VECTOR(i, Items) {
-        CItem &item = Items[i];
-        if (!item.IsDir()) {
-            CRecordVector<UInt32> clusters;
-            RINOK(GetFileClusters(item, clusters, true, &item.FileCrossLinked))
-            item.FileIncomplete = ((UInt64)clusters.Size() << Header.ClusterSizeLog) < item.Size;
-            FileLimitations |= item.FileIncomplete;
-            CrossLinkedFiles |= item.FileCrossLinked;
-        }
-        RINOK(OpenProgress())
-    }
-#endif
-
-#ifndef SEVENZIP_LINUX_FAT
     PhySize = Header.GetPhySize();
-#endif
     return S_OK;
 }
-
-#ifdef SEVENZIP_LINUX_FAT
-HRESULT CDatabase::ReadFatData(Byte *data, CByteBuffer &known, UInt32 sector, UInt32 size) {
-    known.Alloc(size);
-    memset(known, 0, size);
-    const UInt32 blockSize = Header.SectorSize();
-    const UInt64 tableBytes = ((UInt64)Header.FatSize * Header.NumFatBits + 7) / 8;
-    const UInt64 consumed = ((UInt64)sector - Header.GetFatSector()) << Header.SectorSizeLog;
-    const UInt32 required = (UInt32)MyMin((UInt64)size, tableBytes - consumed);
-    HRESULT result = SeekToSector(sector);
-    size_t read = 0;
-    if (result == S_OK) {
-        read = size;
-        result = ReadStream(InStream, data, &read);
-    }
-    if (result == E_ABORT || result == E_OUTOFMEMORY)
-        return result;
-    memset(known, 1, read);
-    RINOK(OpenProgressFat(false))
-    if (read >= required)
-        return S_OK;
-
-    // Retain the successful prefix, then isolate only the unavailable sectors.
-    for (UInt32 offset = (UInt32)read & ~(blockSize - 1); offset < size; offset += blockSize) {
-        result = SeekToSector(sector + (offset >> Header.SectorSizeLog));
-        read = 0;
-        if (result == S_OK) {
-            read = blockSize;
-            result = ReadStream(InStream, data + offset, &read);
-        }
-        if (result == E_ABORT || result == E_OUTOFMEMORY)
-            return result;
-        memset(known + offset, 1, read);
-        RINOK(OpenProgressFat(false))
-    }
-    for (UInt32 i = 0; i < required; ++i)
-        if (!known[i]) {
-            TableLimitations = true;
-            break;
-        }
-    return S_OK;
-}
-#endif
-
-#ifdef SEVENZIP_LINUX_FAT
-class CFileExtractionIO final : public IInStream,
-                                public ISequentialOutStream,
-                                public CMyUnknownImp {
-    Z7_COM_UNKNOWN_IMP_3(IInStream, ISequentialInStream, ISequentialOutStream)
-    HRESULT InputResult(HRESULT result) {
-        if (result != S_OK && result != E_ABORT && result != E_OUTOFMEMORY) {
-            SourceError = true;
-            return S_FALSE;
-        }
-        return result;
-    }
-
-  public:
-    CMyComPtr<IInStream> Input;
-    CMyComPtr<ISequentialOutStream> Output;
-    bool SourceError = false;
-    HRESULT OutputResult = S_OK;
-    Z7_COM7F_IMF(Read(void *data, UInt32 size, UInt32 *processed)) override {
-        return InputResult(Input->Read(data, size, processed));
-    }
-    Z7_COM7F_IMF(Seek(Int64 offset, UInt32 origin, UInt64 *position)) override {
-        return InputResult(Input->Seek(offset, origin, position));
-    }
-    Z7_COM7F_IMF(Write(const void *data, UInt32 size, UInt32 *processed)) override {
-        OutputResult = Output->Write(data, size, processed);
-        return OutputResult;
-    }
-};
-#endif
 
 // clang-format off
 Z7_class_CHandler_final:
@@ -1178,18 +866,10 @@ HRESULT CDatabase::GetFileClusters(const CItem &item, CRecordVector<UInt32> &clu
     for (UInt32 i = 0; i < numClusters; ++i) {
         if (!Header.IsValidCluster(cluster) || (Fat[cluster] & kFatItemActiveFileMask))
             break;
-#ifdef SEVENZIP_LINUX_FAT
-        if (directoryOverlap && (Fat[cluster] & kFatItemUsedByDirMask))
-            *directoryOverlap = true;
-#else
         if (Fat[cluster] & kFatItemUsedByDirMask)
             break;
-#endif
         clusters.AddInReserved(cluster - 2);
         UInt32 next = Fat[cluster];
-#ifdef SEVENZIP_LINUX_FAT
-        next &= ~(kFatItemUsedByDirMask | kFatItemActiveDirMask);
-#endif
         Fat[cluster] |= kFatItemActiveFileMask;
         // A BAD next-link is terminal even when its numeric value is also
         // addressable as a first physical cluster at the FAT32 size limit.
@@ -1210,10 +890,6 @@ HRESULT CHandler::GetFileStream(UInt32 index, ISequentialInStream **stream, IInS
     COM_TRY_BEGIN
     *stream = NULL;
     const CItem &item = Items[index];
-#ifdef SEVENZIP_LINUX_FAT
-    if (item.DirectoryIncomplete)
-        return S_FALSE;
-#endif
     CClusterInStream *streamSpec = new CClusterInStream;
     CMyComPtr<ISequentialInStream> streamTemp = streamSpec;
     streamSpec->Stream = source;
@@ -1233,9 +909,6 @@ HRESULT CHandler::GetFileStream(UInt32 index, ISequentialInStream **stream, IInS
 static const Byte kProps[] = {
     kpidPath,  kpidIsDir, kpidSize,   kpidPackSize,  kpidMTime,
     kpidCTime, kpidATime, kpidAttrib, kpidShortName,
-#ifdef SEVENZIP_LINUX_FAT
-    kpidError,
-#endif
     // , kpidCharacts
 };
 
@@ -1245,14 +918,8 @@ enum {
     // kpidVolName,
     // kpidFileSysType
 };
-#ifdef SEVENZIP_LINUX_FAT
-static const PROPID kpidReadLimitations = kpidUserDefined + 1;
-#endif
 
 static const CStatProp kArcProps[] = {
-#ifdef SEVENZIP_LINUX_FAT
-    {NULL, kpidReadOnly, VT_BOOL},   {"Read-only limitations", kpidReadLimitations, VT_BSTR},
-#endif
     {NULL, kpidFileSystem, VT_BSTR}, {NULL, kpidClusterSize, VT_UI4},
     {NULL, kpidFreeSpace, VT_UI8},   {NULL, kpidHeadersSize, VT_UI8},
     {NULL, kpidMTime, VT_FILETIME},  {NULL, kpidVolumeName, VT_BSTR},
@@ -1272,21 +939,10 @@ IMP_IInArchive_Props IMP_IInArchive_ArcProps_WITH_NAME
     static void
     FatTimeToProp(UInt32 dosTime, UInt32 ms10, NWindows::NCOM::CPropVariant &prop) {
     FILETIME localFileTime, utc;
-#ifdef SEVENZIP_LINUX_FAT
-    int64_t seconds;
-    uint32_t nsec;
-    fat_linux_time(dosTime, (Byte)ms10, &seconds, &nsec);
-    if (NWindows::NTime::UnixTime64_To_FileTime(seconds, localFileTime))
-#else
     if (NWindows::NTime::DosTime_To_FileTime(dosTime, localFileTime))
-#endif
         if (LocalFileTimeToFileTime(&localFileTime, &utc)) {
             UInt64 t64 = (((UInt64)utc.dwHighDateTime) << 32) + utc.dwLowDateTime;
-#ifdef SEVENZIP_LINUX_FAT
-            t64 += nsec / 100;
-#else
             t64 += ms10 * 100000;
-#endif
             utc.dwLowDateTime = (DWORD)t64;
             utc.dwHighDateTime = (DWORD)(t64 >> 32);
             prop.SetAsTimeFrom_FT_Prec(utc, k_PropVar_TimePrec_Base + 2);
@@ -1309,50 +965,6 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID propID, PROPVARIANT *value)) {
     COM_TRY_BEGIN
     NWindows::NCOM::CPropVariant prop;
     switch (propID) {
-#ifdef SEVENZIP_LINUX_FAT
-    case kpidReadOnly:
-        prop = true;
-        break;
-    case kpidReadLimitations: {
-        AString reasons;
-        if (Header.Dirty)
-            reasons = "The FAT volume was not properly unmounted. Some data may be corrupt.";
-        if (SourceTruncated) {
-            if (!reasons.IsEmpty())
-                reasons += '\n';
-            reasons += "The FAT source is shorter than the declared volume. Some files may be "
-                       "incomplete or unreadable.";
-        }
-        if (DirectoryLimitations) {
-            if (!reasons.IsEmpty())
-                reasons += '\n';
-            reasons += "Some FAT directories could not be read completely. Files or names may "
-                       "be missing. Readable files remain accessible.";
-        }
-        if (FileLimitations) {
-            if (!reasons.IsEmpty())
-                reasons += '\n';
-            reasons += "Some FAT file chains are incomplete. Only readable prefixes of affected "
-                       "files are available; copying them reports an error.";
-        }
-        if (TableLimitations) {
-            if (!reasons.IsEmpty())
-                reasons += '\n';
-            reasons += "Some FAT table entries could not be read. Free space is unknown; some "
-                       "files or directories may be incomplete or unreadable.";
-        }
-        if (CrossLinkedFiles) {
-            if (!reasons.IsEmpty())
-                reasons += '\n';
-            reasons += "Some FAT files share clusters with directories. File contents may include "
-                       "directory entries or unrelated data. Copying remains available but reports "
-                       "an error.";
-        }
-        if (!reasons.IsEmpty())
-            prop = reasons;
-        break;
-    }
-#endif
     case kpidFileSystem: {
         char s[16];
         s[0] = 'F';
@@ -1369,10 +981,6 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID propID, PROPVARIANT *value)) {
         prop = PhySize;
         break;
     case kpidFreeSpace:
-#ifdef SEVENZIP_LINUX_FAT
-        if (TableLimitations)
-            break;
-#endif
         prop = (UInt64)NumFreeClusters << Header.ClusterSizeLog;
         break;
     case kpidHeadersSize:
@@ -1380,11 +988,7 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID propID, PROPVARIANT *value)) {
         break;
     case kpidMTime:
         if (VolItem_Defined)
-#ifdef SEVENZIP_LINUX_FAT
-            FatTimeToProp(Vol_MTime, 0, prop);
-#else
             PropVariant_SetFrom_DosTime(prop, Vol_MTime);
-#endif
         break;
     case kpidShortComment:
     case kpidVolumeName:
@@ -1450,7 +1054,6 @@ Z7_COM7F_IMF(CHandler::GetRawProp(UInt32 index, PROPID propID, const void **data
     *dataSize = 0;
     *propType = 0;
 
-#ifndef SEVENZIP_LINUX_FAT
     if (index < Items.Size() && propID == kpidName) {
         CByteBuffer &buf = Items[index].LongName;
         const UInt32 size = (UInt32)buf.Size();
@@ -1460,12 +1063,6 @@ Z7_COM7F_IMF(CHandler::GetRawProp(UInt32 index, PROPID propID, const void **data
             *data = (const void *)(const Byte *)buf;
         }
     }
-#else
-    // Linux canonicalizes invalid UTF-16 during name conversion. Publish that
-    // same name through GetProperty rather than exposing unsanitized raw slots.
-    (void)index;
-    (void)propID;
-#endif
     return S_OK;
 }
 
@@ -1474,16 +1071,6 @@ Z7_COM7F_IMF(CHandler::GetProperty(UInt32 index, PROPID propID, PROPVARIANT *val
     NWindows::NCOM::CPropVariant prop;
     const CItem &item = Items[index];
     switch (propID) {
-#ifdef SEVENZIP_LINUX_FAT
-    case kpidError:
-        if (item.DirectoryIncomplete)
-            prop = "The FAT directory could not be read completely.";
-        else if (item.FileIncomplete)
-            prop = "The FAT file chain is incomplete. Only the readable prefix is available.";
-        else if (item.FileCrossLinked)
-            prop = "The FAT file shares clusters with a directory. Its contents are unverified.";
-        break;
-#endif
     case kpidPath:
     case kpidName:
     case kpidShortName: {
@@ -1509,21 +1096,13 @@ Z7_COM7F_IMF(CHandler::GetProperty(UInt32 index, PROPID propID, PROPVARIANT *val
         prop = item.IsDir();
         break;
     case kpidMTime:
-#ifdef SEVENZIP_LINUX_FAT
-        FatTimeToProp(item.MTime, 0, prop);
-#else
         PropVariant_SetFrom_DosTime(prop, item.MTime);
-#endif
         break;
     case kpidCTime:
         FatTimeToProp(item.CTime, item.CTime2, prop);
         break;
     case kpidATime:
-#ifdef SEVENZIP_LINUX_FAT
-        FatTimeToProp((UInt32)item.ADate << 16, 0, prop);
-#else
         PropVariant_SetFrom_DosTime(prop, ((UInt32)item.ADate << 16));
-#endif
         break;
     case kpidAttrib:
         prop = (UInt32)item.Attrib;
@@ -1629,10 +1208,6 @@ Z7_COM7F_IMF(CHandler::Extract(const UInt32 *indices, UInt32 numItems, Int32 tes
             if (item.IsDir()) {
                 RINOK(extractCallback->PrepareOperation(askMode))
                 res = NExtract::NOperationResult::kOK;
-#ifdef SEVENZIP_LINUX_FAT
-                if (item.DirectoryIncomplete)
-                    res = NExtract::NOperationResult::kDataError;
-#endif
                 RINOK(extractCallback->SetOperationResult(res))
                 continue;
             }
@@ -1646,32 +1221,14 @@ Z7_COM7F_IMF(CHandler::Extract(const UInt32 *indices, UInt32 numItems, Int32 tes
             res = NExtract::NOperationResult::kDataError;
             CMyComPtr<ISequentialInStream> inStream;
             ISequentialOutStream *copyOutput = realOutStream;
-#ifdef SEVENZIP_LINUX_FAT
-            CFileExtractionIO *io = new CFileExtractionIO;
-            CMyComPtr<IInStream> ioOwner = io;
-            io->Input = InStream;
-            io->Output = realOutStream;
-            if (realOutStream)
-                copyOutput = static_cast<ISequentialOutStream *>(io);
-            const HRESULT hres = GetFileStream(index, &inStream, io);
-#else
             const HRESULT hres = GetStream(index, &inStream);
-#endif
             if (hres != S_FALSE) {
                 RINOK(hres)
                 if (inStream) {
                     const HRESULT copyResult =
                         copyCoder.Interface()->Code(inStream, copyOutput, NULL, NULL, lps);
-#ifdef SEVENZIP_LINUX_FAT
-                    RINOK(io->OutputResult)
-                    if (!(copyResult == S_FALSE && io->SourceError))
-#endif
-                        RINOK(copyResult)
-                    if (copyResult == S_OK && copyCoder->TotalSize == item.Size
-#ifdef SEVENZIP_LINUX_FAT
-                        && !item.FileCrossLinked
-#endif
-                    )
+                    RINOK(copyResult)
+                    if (copyResult == S_OK && copyCoder->TotalSize == item.Size)
                         res = NExtract::NOperationResult::kOK;
                 }
             }
@@ -1687,9 +1244,7 @@ Z7_COM7F_IMF(CHandler::GetNumberOfItems(UInt32 *numItems)) {
     return S_OK;
 }
 
-#ifdef SEVENZIP_LINUX_FAT
-REGISTER_ARC_I_NO_SIG("FAT", "fat img", NULL, 0xDA, 0, NArcInfoFlags::kPureStartOpen, IsArc_Fat)
-#elif !defined(Z7_EXTERNAL_CODECS)
+#if !defined(Z7_EXTERNAL_CODECS)
 static const Byte k_Signature[] = {0x55, 0xAA};
 REGISTER_ARC_I("FAT", "fat img", NULL, 0xDA, k_Signature, 0x1FE, 0, IsArc_Fat)
 #endif

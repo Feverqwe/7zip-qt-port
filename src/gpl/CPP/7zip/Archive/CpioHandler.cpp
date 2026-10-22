@@ -1,0 +1,1231 @@
+// CpioHandler.cpp
+
+#include "7zip/Archive/StdAfx.h"
+
+#include "C/CpuArch.h"
+
+#include "Common/ComTry.h"
+#include "Common/MyLinux.h"
+#include "Common/StringConvert.h"
+#include "Common/StringToInt.h"
+#include "Common/UTFConvert.h"
+
+#include "Windows/PropVariant.h"
+#include "Windows/TimeUtils.h"
+
+#include "7zip/Common/LimitedStreams.h"
+#include "7zip/Common/ProgressUtils.h"
+#include "7zip/Common/RegisterArc.h"
+#include "7zip/Common/StreamUtils.h"
+
+#include "7zip/Compress/CopyCoder.h"
+
+#include "7zip/Archive/Common/ItemNameUtils.h"
+#include "initramfsdecoders.h"
+#include "initramfsreader.h"
+
+using namespace NWindows;
+
+namespace NArchive {
+HRESULT ReadZeroTail(ISequentialInStream *stream, bool &areThereNonZeros, UInt64 &numZeros,
+                     UInt64 maxSize);
+namespace NCpio {
+
+static const Byte kMagicBin0 = 0xC7;
+static const Byte kMagicBin1 = 0x71;
+
+static const Byte kMagicHex = '1';    // New ASCII Format
+static const Byte kMagicHexCrc = '2'; // New CRC Format
+static const Byte kMagicOct = '7';    // Portable ASCII Format
+
+static const char *const kName_TRAILER = "TRAILER!!!";
+
+static const unsigned k_BinRecord_Size = 2 + 8 * 2 + 2 * 4;
+static const unsigned k_OctRecord_Size = 6 + 8 * 6 + 2 * 11;
+static const unsigned k_HexRecord_Size = 6 + 13 * 8;
+
+static const unsigned k_RecordSize_Max = k_HexRecord_Size;
+
+enum EType { k_Type_BinLe, k_Type_BinBe, k_Type_Oct, k_Type_Hex, k_Type_HexCrc };
+
+static const char *const k_Types[] = {"Binary LE", "Binary BE", "Portable ASCII", "New ASCII",
+                                      "New CRC"};
+
+struct CItem {
+    UInt32 inode;
+    unsigned MainIndex_ForInode;
+    UInt32 Mode;
+    UInt32 MTime;
+    UInt32 DevMajor;
+    UInt32 DevMinor;
+    UInt64 Size;
+    UInt64 PackedSize;
+    UInt64 ArchiveIndex;
+    AString Name;
+    UInt32 NumLinks;
+    UInt32 UID;
+    UInt32 GID;
+    UInt32 RDevMajor;
+    UInt32 RDevMinor;
+    UInt32 ChkSum;
+
+    UInt32 AlignMask;
+    EType Type;
+
+    UInt32 HeaderSize;
+    UInt64 HeaderPos;
+
+    CByteBuffer Data; // for symlink
+
+    UInt32 GetAlignedSize(UInt32 size) const { return (size + AlignMask) & ~(UInt32)AlignMask; }
+
+    UInt64 GetPackSize() const { return PackedSize; }
+    UInt64 GetAlignedDataSize() const {
+        const UInt64 alignMask64 = AlignMask;
+        return (Size + alignMask64) & ~(UInt64)alignMask64;
+    }
+
+    bool IsSame_inode_Dev(const CItem &item) const {
+        return inode == item.inode && DevMajor == item.DevMajor && DevMinor == item.DevMinor &&
+               ArchiveIndex == item.ArchiveIndex &&
+               (!IsNew() || (Mode & MY_LIN_S_IFMT) == (item.Mode & MY_LIN_S_IFMT));
+    }
+
+    bool IsBin() const { return Type == k_Type_BinLe || Type == k_Type_BinBe; }
+    bool IsCrcFormat() const { return Type == k_Type_HexCrc; }
+    bool IsNew() const { return Type == k_Type_Hex || Type == k_Type_HexCrc; }
+    bool CanLink() const { return NumLinks >= 2 && !IsDir() && !Is_SymLink(); }
+    bool IsDir() const { return MY_LIN_S_ISDIR(Mode); }
+    bool Is_SymLink() const { return MY_LIN_S_ISLNK(Mode); }
+    bool IsTrailer() const { return strcmp(Name, kName_TRAILER) == 0; }
+    UInt64 GetDataPosition() const { return HeaderPos + HeaderSize; }
+};
+
+enum EErrorType {
+    k_ErrorType_OK,
+    k_ErrorType_BadSignature,
+    k_ErrorType_Corrupted,
+    k_ErrorType_UnexpectedEnd
+};
+
+struct CInArchive {
+    EErrorType errorType;
+    ISequentialInStream *Stream;
+    UInt64 Processed;
+    CItem item;
+    bool StartsWithZero;
+    bool EndOfStream;
+
+    HRESULT Read(void *data, size_t *size);
+    HRESULT GetNextItem();
+};
+
+HRESULT CInArchive::Read(void *data, size_t *size) {
+    const HRESULT res = ReadStream(Stream, data, size);
+    Processed += *size;
+    return res;
+}
+
+static bool CheckOctRecord(const Byte *p) {
+    for (unsigned i = 6; i < k_OctRecord_Size; i++) {
+        const unsigned c = (unsigned)p[i] - '0';
+        if (c > 7)
+            return false;
+    }
+    return true;
+}
+
+static bool CheckHexRecord(const Byte *p) {
+    for (unsigned i = 6; i < k_HexRecord_Size; i++) {
+        unsigned c = p[i];
+        c -= '0';
+        if (c > 9) {
+            c -= 'A' - '0';
+            c &= ~0x20u;
+            if (c > 5)
+                return false;
+        }
+    }
+    return true;
+}
+
+static UInt32 ReadHex(const Byte *p) {
+    char sz[16];
+    memcpy(sz, p, 8);
+    sz[8] = 0;
+    const char *end;
+    return ConvertHexStringToUInt32(sz, &end);
+}
+
+static UInt32 ReadOct6(const Byte *p) {
+    char sz[16];
+    memcpy(sz, p, 6);
+    sz[6] = 0;
+    const char *end;
+    return ConvertOctStringToUInt32(sz, &end);
+}
+
+static UInt64 ReadOct11(const Byte *p) {
+    char sz[16];
+    memcpy(sz, p, 11);
+    sz[11] = 0;
+    const char *end;
+    return ConvertOctStringToUInt64(sz, &end);
+}
+
+#define READ_HEX(y, dest) dest = ReadHex(p + 6 + (y) * 8);
+#define READ_OCT_6(y, dest) dest = ReadOct6(p + 6 + (y));
+#define READ_OCT_11(y, dest) dest = ReadOct11(p + 6 + (y));
+
+#define Get32spec(p) (((UInt32)GetUi16(p) << 16) + GetUi16(p + 2))
+#define G16(offs, v) v = GetUi16(p + (offs))
+#define G32(offs, v) v = Get32spec(p + (offs))
+
+static const unsigned kNameSizeMax = 1 << 12;
+
+API_FUNC_static_IsArc IsArc_Cpio(const Byte *p, size_t size) {
+    if (size < k_BinRecord_Size)
+        return k_IsArc_Res_NEED_MORE;
+
+    UInt32 namePos;
+    UInt32 nameSize;
+    UInt32 mode;
+    // UInt32 rDevMinor;
+    bool isNew = false;
+
+    if (p[0] == '0') {
+        if (p[1] != '7' || p[2] != '0' || p[3] != '7' || p[4] != '0')
+            return k_IsArc_Res_NO;
+        if (p[5] == kMagicOct) {
+            if (size < k_OctRecord_Size)
+                return k_IsArc_Res_NEED_MORE;
+            if (!CheckOctRecord(p))
+                return k_IsArc_Res_NO;
+            READ_OCT_6(2 * 6, mode)
+            // READ_OCT_6 (6 * 6, rDevMinor)
+            READ_OCT_6(7 * 6 + 11, nameSize)
+            namePos = k_OctRecord_Size;
+        } else if (p[5] == kMagicHex || p[5] == kMagicHexCrc) {
+            isNew = true;
+            if (size < k_HexRecord_Size)
+                return k_IsArc_Res_NEED_MORE;
+            if (!CheckHexRecord(p))
+                return k_IsArc_Res_NO;
+            READ_HEX(1, mode)
+            // READ_HEX (10, rDevMinor)
+            READ_HEX(11, nameSize)
+            namePos = k_HexRecord_Size;
+        } else
+            return k_IsArc_Res_NO;
+    } else {
+        if (p[0] == kMagicBin0 && p[1] == kMagicBin1) {
+            mode = GetUi16(p + 6);
+            // rDevMinor = GetUi16(p + 14);
+            nameSize = GetUi16(p + 20);
+        } else if (p[0] == kMagicBin1 && p[1] == kMagicBin0) {
+            mode = GetBe16(p + 6);
+            // rDevMinor = GetBe16(p + 14);
+            nameSize = GetBe16(p + 20);
+        } else
+            return k_IsArc_Res_NO;
+        namePos = k_BinRecord_Size;
+    }
+
+    if (mode >= (1 << 16))
+        return k_IsArc_Res_NO;
+
+    // Match the reader and Linux: rdev fields do not invalidate regular files.
+
+    // nameSize must include the null byte
+    if (nameSize == 0 || nameSize > kNameSizeMax)
+        return k_IsArc_Res_NO;
+    {
+        unsigned lim = namePos + nameSize - 1;
+        if (lim >= size)
+            lim = (unsigned)size;
+        else if (p[lim] != 0)
+            return k_IsArc_Res_NO;
+        bool terminated = false;
+        for (unsigned i = namePos; i < lim; i++) {
+            if (p[i] == 0)
+                terminated = true;
+            else if (terminated)
+                return k_IsArc_Res_NO;
+            if (terminated && !isNew)
+                return k_IsArc_Res_NO;
+        }
+    }
+
+    return k_IsArc_Res_YES;
+}
+}
+
+#define READ_STREAM(_dest_, _size_)                                                                \
+    {                                                                                              \
+        size_t processed = (_size_);                                                               \
+        RINOK(Read(_dest_, &processed));                                                           \
+        if (processed != (_size_)) {                                                               \
+            errorType = k_ErrorType_UnexpectedEnd;                                                 \
+            return S_OK;                                                                           \
+        }                                                                                          \
+    }
+
+HRESULT CInArchive::GetNextItem() {
+    errorType = k_ErrorType_BadSignature;
+
+    Byte p[k_RecordSize_Max];
+
+    size_t firstSize = k_BinRecord_Size;
+    RINOK(Read(p, &firstSize))
+    StartsWithZero = firstSize != 0 && p[0] == 0;
+    EndOfStream = firstSize == 0;
+    if (firstSize != k_BinRecord_Size) {
+        errorType = k_ErrorType_UnexpectedEnd;
+        return S_OK;
+    }
+
+    UInt32 nameSize;
+    UInt32 namePos;
+
+    /* we try to reduce probability of false detection,
+       so we check some fields for unuxpected values */
+
+    if (p[0] != '0') {
+        if (p[0] == kMagicBin0 && p[1] == kMagicBin1) {
+            item.Type = k_Type_BinLe;
+        } else if (p[0] == kMagicBin1 && p[1] == kMagicBin0) {
+            for (unsigned i = 2; i < k_BinRecord_Size; i += 2) {
+                const Byte b = p[i];
+                p[i] = p[i + 1];
+                p[i + 1] = b;
+            }
+            item.Type = k_Type_BinBe;
+        } else
+            return S_OK;
+
+        errorType = k_ErrorType_Corrupted;
+
+        item.AlignMask = 2 - 1;
+        item.DevMajor = 0;
+        item.RDevMajor = 0;
+        item.ChkSum = 0;
+
+        G16(2, item.DevMinor);
+        G16(4, item.inode);
+        G16(6, item.Mode);
+        G16(8, item.UID);
+        G16(10, item.GID);
+        G16(12, item.NumLinks);
+        G16(14, item.RDevMinor);
+        G32(16, item.MTime);
+        G16(20, nameSize);
+        G32(22, item.Size);
+
+        namePos = k_BinRecord_Size;
+    } else {
+        if (p[1] != '7' || p[2] != '0' || p[3] != '7' || p[4] != '0')
+            return S_OK;
+        if (p[5] == kMagicOct) {
+            errorType = k_ErrorType_Corrupted;
+
+            item.Type = k_Type_Oct;
+            READ_STREAM(p + k_BinRecord_Size, k_OctRecord_Size - k_BinRecord_Size)
+            item.AlignMask = 1 - 1;
+            item.DevMajor = 0;
+            item.RDevMajor = 0;
+            item.ChkSum = 0;
+
+            if (!CheckOctRecord(p))
+                return S_OK;
+
+            READ_OCT_6(0, item.DevMinor)
+            READ_OCT_6(1 * 6, item.inode)
+            READ_OCT_6(2 * 6, item.Mode)
+            READ_OCT_6(3 * 6, item.UID)
+            READ_OCT_6(4 * 6, item.GID)
+            READ_OCT_6(5 * 6, item.NumLinks)
+            READ_OCT_6(6 * 6, item.RDevMinor) {
+                UInt64 mTime64;
+                READ_OCT_11(7 * 6, mTime64)
+                item.MTime = 0;
+                if (mTime64 <= (UInt32)(Int32)-1)
+                    item.MTime = (UInt32)mTime64;
+            }
+            READ_OCT_6(7 * 6 + 11, nameSize)
+            READ_OCT_11(8 * 6 + 11, item.Size) // ?????
+
+            namePos = k_OctRecord_Size;
+        } else {
+            if (p[5] == kMagicHex)
+                item.Type = k_Type_Hex;
+            else if (p[5] == kMagicHexCrc)
+                item.Type = k_Type_HexCrc;
+            else
+                return S_OK;
+
+            errorType = k_ErrorType_Corrupted;
+
+            READ_STREAM(p + k_BinRecord_Size, k_HexRecord_Size - k_BinRecord_Size)
+
+            if (!CheckHexRecord(p))
+                return S_OK;
+
+            item.AlignMask = 4 - 1;
+            READ_HEX(0, item.inode)
+            READ_HEX(1, item.Mode)
+            READ_HEX(2, item.UID)
+            READ_HEX(3, item.GID)
+            READ_HEX(4, item.NumLinks)
+            READ_HEX(5, item.MTime)
+            READ_HEX(6, item.Size)
+            READ_HEX(7, item.DevMajor)
+            READ_HEX(8, item.DevMinor)
+            READ_HEX(9, item.RDevMajor)
+            READ_HEX(10, item.RDevMinor)
+            READ_HEX(11, nameSize)
+            READ_HEX(12, item.ChkSum)
+
+            namePos = k_HexRecord_Size;
+        }
+    }
+
+    if (item.Mode >= (1 << 16))
+        return S_OK;
+
+    /* v23.02: we have disabled rDevMinor check because real file
+       from Apple contains rDevMinor==255 by some unknown reason
+       cpio 2.13 and older versions: it copies stat::st_rdev to archive.
+          and stat::st_rdev can be non-zero for some old linux/filesystems cases for regular files.
+       cpio 2.14 (2023) copies st_rdev to archive only if (S_ISBLK (st->st_mode) || S_ISCHR
+       (st->st_mode)) v25.00: we have disabled RDevMajor check here to support some rare case
+       created by cpio 2.13- with old linux. IsArc_Cpio() also accepts these fields.
+    */
+#if 0 // 0 : to disable check to support some old linux cpio archives.
+  if (item.RDevMajor != 0
+      // || item.RDevMinor != 0
+      )
+  {
+    if (!MY_LIN_S_ISCHR(item.Mode) &&
+        !MY_LIN_S_ISBLK(item.Mode))
+      return S_OK;
+  }
+#endif
+
+    // Size must be 0 for FIFOs and directories
+    if (item.IsDir() || MY_LIN_S_ISFIFO(item.Mode))
+        if (item.Size != 0)
+            return S_OK;
+
+    // nameSize must include the null byte
+    if (nameSize == 0 || nameSize > kNameSizeMax)
+        return S_OK;
+    item.HeaderSize = item.GetAlignedSize(namePos + nameSize);
+    item.PackedSize = item.GetAlignedDataSize();
+    const UInt32 rem = item.HeaderSize - namePos;
+    char *s = item.Name.GetBuf(rem);
+    size_t processedSize = rem;
+    RINOK(Read(s, &processedSize))
+    if (processedSize != rem) {
+        item.Name.ReleaseBuf_SetEnd(0);
+        errorType = k_ErrorType_UnexpectedEnd;
+        return S_OK;
+    }
+    bool pad_error = false;
+    for (size_t i = nameSize; i < processedSize; i++)
+        if (s[i] != 0)
+            pad_error = true;
+    unsigned length = 0;
+    while (length < nameSize && s[length] != 0)
+        ++length;
+    if (item.IsNew())
+        for (unsigned i = length; i < nameSize; ++i)
+            if (s[i] != 0)
+                pad_error = true;
+    item.Name.ReleaseBuf_SetEnd(length);
+    if (length >= nameSize || (!item.IsNew() && length + 1 != nameSize) || pad_error)
+        return S_OK;
+    errorType = k_ErrorType_OK;
+    return S_OK;
+}
+
+Z7_CLASS_IMP_CHandler_IInArchive_1(IInArchiveGetStream) CObjectVector<CItem> _items;
+CMyComPtr<IInStream> _stream;
+UInt64 _phySize;
+EType _type;
+EErrorType _error;
+bool _isArc;
+bool _moreThanOneHardLinks_Error;
+bool _numLinks_Error;
+bool _pad_Error;
+bool _symLink_Error;
+bool _mixedTypes;
+bool _normalized;
+HRESULT Open2(IInStream *stream, IArchiveOpenCallback *callback);
+};
+
+static const Byte kArcProps[] = {kpidSubType};
+
+static const Byte kProps[] = {kpidPath,        kpidIsDir,       kpidSize,     kpidPackSize,
+                              kpidMTime,       kpidPosixAttrib, kpidLinks,    kpidINode,
+                              kpidUserId,      kpidGroupId,     kpidDevMajor, kpidDevMinor,
+                              kpidDeviceMajor, kpidDeviceMinor, kpidChecksum, kpidSymLink,
+                              kpidStreamId, // for debug
+                              kpidOffset};
+
+IMP_IInArchive_Props IMP_IInArchive_ArcProps
+
+Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID propID, PROPVARIANT *value)) {
+    COM_TRY_BEGIN
+    NCOM::CPropVariant prop;
+    switch (propID) {
+    case kpidSubType:
+        prop = _mixedTypes ? "New ASCII / New CRC" : k_Types[(unsigned)_type];
+        break;
+    case kpidPhySize:
+        prop = _phySize;
+        break;
+    case kpidINode:
+        prop = true;
+        break;
+    case kpidErrorFlags: {
+        UInt32 v = 0;
+        if (!_isArc)
+            v |= kpv_ErrorFlags_IsNotArc;
+        switch (_error) {
+        case k_ErrorType_UnexpectedEnd:
+            v |= kpv_ErrorFlags_UnexpectedEnd;
+            break;
+        case k_ErrorType_Corrupted:
+            v |= kpv_ErrorFlags_HeadersError;
+            break;
+        case k_ErrorType_OK:
+        case k_ErrorType_BadSignature:
+            // default:
+            break;
+        }
+        prop = v;
+        break;
+    }
+    case kpidWarningFlags: {
+        UInt32 v = 0;
+        if (_moreThanOneHardLinks_Error)
+            v |= kpv_ErrorFlags_UnsupportedFeature; // kpv_ErrorFlags_HeadersError
+        if (_numLinks_Error || _pad_Error || _symLink_Error)
+            v |= kpv_ErrorFlags_HeadersError;
+        if (v != 0)
+            prop = v;
+        break;
+    }
+    }
+    prop.Detach(value);
+    return S_OK;
+    COM_TRY_END
+}
+
+static int CompareItems(const unsigned *p1, const unsigned *p2, void *param) {
+    const CObjectVector<CItem> &items = *(const CObjectVector<CItem> *)param;
+    const unsigned index1 = *p1;
+    const unsigned index2 = *p2;
+    const CItem &i1 = items[index1];
+    const CItem &i2 = items[index2];
+    if (i1.ArchiveIndex < i2.ArchiveIndex)
+        return -1;
+    if (i1.ArchiveIndex > i2.ArchiveIndex)
+        return 1;
+    if (i1.DevMajor < i2.DevMajor)
+        return -1;
+    if (i1.DevMajor > i2.DevMajor)
+        return 1;
+    if (i1.DevMinor < i2.DevMinor)
+        return -1;
+    if (i1.DevMinor > i2.DevMinor)
+        return 1;
+    if (i1.inode < i2.inode)
+        return -1;
+    if (i1.inode > i2.inode)
+        return 1;
+    if (i1.IsNew() && i2.IsNew()) {
+        const UInt32 t1 = i1.Mode & MY_LIN_S_IFMT, t2 = i2.Mode & MY_LIN_S_IFMT;
+        if (t1 < t2)
+            return -1;
+        if (t1 > t2)
+            return 1;
+        if (i1.CanLink() != i2.CanLink())
+            return i1.CanLink() ? -1 : 1;
+    }
+    if (i1.IsDir()) {
+        if (!i2.IsDir())
+            return -1;
+    } else if (i2.IsDir())
+        return 1;
+    return MyCompare(index1, index2);
+}
+
+static HRESULT ReadInitramfsRecord(IInStream *stream, UInt64 position, InitramfsRecord &record) {
+    RINOK(InStream_SeekSet(stream, position))
+    CInArchive arc;
+    arc.Stream = stream;
+    arc.Processed = position;
+    arc.item.HeaderPos = position;
+    RINOK(arc.GetNextItem())
+    if (arc.errorType != k_ErrorType_OK)
+        return S_FALSE;
+    record = {arc.Processed, arc.item.Size, arc.item.GetPackSize(), arc.item.IsNew(),
+              arc.item.IsTrailer()};
+    return S_OK;
+}
+
+class CNormalizedProgress final : public IArchiveOpenCallback, public CMyUnknownImp {
+    Z7_COM_UNKNOWN_IMP_1(IArchiveOpenCallback)
+  public:
+    IArchiveOpenCallback *callback;
+    UInt64 physical;
+    Z7_COM7F_IMF(SetTotal(const UInt64 *, const UInt64 *)) override { return S_OK; }
+    Z7_COM7F_IMF(SetCompleted(const UInt64 *files, const UInt64 *)) override {
+        return callback->SetCompleted(files, &physical);
+    }
+};
+
+Z7_COM7F_IMF(CHandler::Open(IInStream *stream, const UInt64 *, IArchiveOpenCallback *callback)) {
+    COM_TRY_BEGIN
+    Close();
+    HRESULT result;
+    try {
+        CMyComPtr<IInStream> normalized;
+        UInt64 physical;
+        result = NormalizeInitramfs(stream, callback, ReadInitramfsRecord, &normalized, physical);
+        if (result == S_OK) {
+            _normalized = normalized != nullptr;
+            CMyComPtr2_Create<IArchiveOpenCallback, CNormalizedProgress> progress;
+            progress->callback = callback;
+            progress->physical = physical;
+            result = InStream_SeekToBegin(normalized ? normalized.Interface() : stream);
+            if (result == S_OK)
+                result = Open2(normalized ? normalized.Interface() : stream,
+                               normalized && callback ? progress.Interface() : callback);
+            if (_normalized)
+                _phySize = physical;
+            if (result == S_OK && callback)
+                result = callback->SetCompleted(nullptr, &physical);
+        }
+    } catch (...) {
+        Close();
+        throw;
+    }
+    if (result != S_OK)
+        Close();
+    return result;
+    COM_TRY_END
+}
+
+HRESULT CHandler::Open2(IInStream *stream, IArchiveOpenCallback *callback) {
+    {
+
+        UInt64 endPos;
+        RINOK(InStream_AtBegin_GetSize(stream, endPos))
+        if (callback) {
+            RINOK(callback->SetTotal(NULL, &endPos))
+        }
+
+        CInArchive arc;
+
+        arc.Stream = stream;
+        arc.Processed = 0;
+        bool sawHeader = false, sawNew = false;
+        UInt64 archiveIndex = 0;
+
+        for (;;) {
+            CItem &item = arc.item;
+            item.HeaderPos = arc.Processed;
+
+            RINOK(arc.GetNextItem())
+
+            _error = arc.errorType;
+            if (sawNew && arc.EndOfStream && item.HeaderPos == endPos) {
+                _error = k_ErrorType_OK;
+                break;
+            }
+            if (arc.StartsWithZero && (!sawHeader || sawNew)) {
+                arc.Processed = item.HeaderPos;
+                bool more = false;
+                bool shortTail = false;
+                do {
+                    RINOK(InStream_SeekSet(stream, arc.Processed))
+                    UInt64 zeros;
+                    RINOK(ReadZeroTail(stream, more, zeros, 1 << 20))
+                    arc.Processed += zeros;
+                    if (!more && zeros == 0 && arc.Processed < endPos) {
+                        shortTail = true;
+                        break;
+                    }
+                    if (callback)
+                        RINOK(callback->SetCompleted(NULL, &arc.Processed))
+                } while (!more && arc.Processed < endPos);
+                RINOK(InStream_SeekSet(stream, arc.Processed))
+                if (shortTail) {
+                    _error = k_ErrorType_UnexpectedEnd;
+                    break;
+                }
+                if (!more) {
+                    if (!sawHeader)
+                        return S_FALSE;
+                    _error = k_ErrorType_OK;
+                    break;
+                }
+                if (arc.Processed & 3) {
+                    _error = k_ErrorType_Corrupted;
+                    break;
+                }
+                continue;
+            }
+
+            if (_error != k_ErrorType_OK) {
+                if (_error == k_ErrorType_BadSignature || _error == k_ErrorType_Corrupted)
+                    arc.Processed = item.HeaderPos;
+                break;
+            }
+
+            if (!sawHeader)
+                _type = item.Type;
+            else if (item.Type != _type && !(item.IsNew() && sawNew)) {
+                _error = k_ErrorType_Corrupted;
+                arc.Processed = item.HeaderPos;
+                break;
+            }
+            if (item.IsNew() && (item.HeaderPos & 3)) {
+                _error = k_ErrorType_Corrupted;
+                break;
+            }
+            if (sawHeader && item.Type != _type)
+                _mixedTypes = true;
+            sawHeader = true;
+            sawNew = item.IsNew();
+            item.ArchiveIndex = archiveIndex;
+            if (item.IsTrailer()) {
+                if (!item.IsNew())
+                    break;
+                if (item.Size != 0) {
+                    _error = k_ErrorType_Corrupted;
+                    break;
+                }
+                ++archiveIndex;
+                continue;
+            }
+
+            item.MainIndex_ForInode = _items.Size();
+            _items.Add(item);
+
+            UInt64 dataSize = item.GetPackSize();
+            if (item.IsNew() && dataSize > endPos - arc.Processed &&
+                item.Size <= endPos - arc.Processed) {
+                dataSize = item.PackedSize = endPos - arc.Processed;
+                _items.Back().PackedSize = dataSize;
+            }
+            arc.Processed += dataSize;
+            if (arc.Processed > endPos) {
+                _error = k_ErrorType_UnexpectedEnd;
+                break;
+            }
+
+            if (item.Is_SymLink() && dataSize <= (1 << 12) && item.Size != 0) {
+                size_t cur = (size_t)dataSize;
+                CByteBuffer buf;
+                buf.Alloc(cur);
+                RINOK(ReadStream(stream, buf, &cur))
+                if (cur != dataSize) {
+                    _error = k_ErrorType_UnexpectedEnd;
+                    break;
+                }
+                size_t i;
+
+                for (i = (size_t)item.Size; i < dataSize; i++)
+                    if (buf[i] != 0)
+                        break;
+                if (i != dataSize)
+                    _pad_Error = true;
+
+                for (i = 0; i < (size_t)item.Size; i++)
+                    if (buf[i] == 0)
+                        break;
+                if (i != (size_t)item.Size)
+                    _symLink_Error = true;
+                else
+                    _items.Back().Data.CopyFrom(buf, (size_t)item.Size);
+            } else if (dataSize != 0) {
+                UInt64 newPos;
+                RINOK(stream->Seek((Int64)dataSize, STREAM_SEEK_CUR, &newPos))
+                if (arc.Processed != newPos)
+                    return E_FAIL;
+            }
+
+            if (callback && (_items.Size() & 0xFFF) == 0) {
+                const UInt64 numFiles = _items.Size();
+                RINOK(callback->SetCompleted(&numFiles, &item.HeaderPos))
+            }
+        }
+
+        _phySize = arc.Processed;
+    }
+
+    {
+        if (_error != k_ErrorType_OK) {
+            // we try to reduce probability of false detection
+            if (_items.Size() == 0)
+                return S_FALSE;
+            // bin file uses small signature. So we do additional check for single item case.
+            if (_items.Size() == 1 && _items[0].IsBin())
+                return S_FALSE;
+        } else {
+            // Read tailing zeros.
+            // Most of cpio files use 512-bytes aligned zeros
+            // rare case: 4K/8K aligment is possible also
+            const unsigned kTailSize_MAX = 1 << 9;
+            Byte buf[kTailSize_MAX];
+
+            unsigned pos = (unsigned)_phySize & (kTailSize_MAX - 1);
+            if (pos != 0) // use this check to support 512 bytes alignment only
+                for (;;) {
+                    const unsigned rem = kTailSize_MAX - pos;
+                    size_t processed = rem;
+                    RINOK(ReadStream(stream, buf + pos, &processed))
+                    if (processed != rem)
+                        break;
+                    for (; pos < kTailSize_MAX && buf[pos] == 0; pos++) {
+                    }
+                    if (pos != kTailSize_MAX)
+                        break;
+                    _phySize += processed;
+                    pos = 0;
+
+                    //       use break to support 512   bytes alignment zero tail
+                    // don't use break to support 512*n bytes alignment zero tail
+                    break;
+                }
+        }
+    }
+
+    {
+        /* there was such cpio archive example with hard links:
+           {
+             all hard links (same dev/inode) are stored in neighboring items, and
+               (item.Size == 0)  for non last hard link items
+               (item.Size != 0)  for     last hard link item
+           }
+           but here we sort items by (dev/inode) to support cases
+           where hard links (same dev/inode) are not stored in neighboring items.
+
+           // note: some cpio files have (numLinks == 0) ??
+        */
+
+        CUIntVector indices;
+        {
+            const unsigned numItems = _items.Size();
+            indices.ClearAndSetSize(numItems);
+            if (numItems != 0) {
+                unsigned *vals = &indices[0];
+                for (unsigned i = 0; i < numItems; i++)
+                    vals[i] = i;
+                indices.Sort(CompareItems, (void *)&_items);
+            }
+        }
+
+        /* Note: if cpio archive (maybe incorrect) contains
+           more then one non empty streams with identical inode number,
+           we want to extract all such data streams too.
+
+           So we place items with identical inode to groups:
+           all items in group will have same MainIndex_ForInode,
+           that is index of last item in group with (Size != 0).
+           Another (non last) items in group have (Size == 0).
+           If there are another hard links with same inode number
+           after (Size != 0) item, we place them to another next group(s).
+
+           Check it: maybe we should use single group for items
+           with identical inode instead, and ignore some extra data streams ?
+        */
+
+        for (unsigned i = 0; i < indices.Size();) {
+            unsigned k;
+            {
+                const CItem &item_Base = _items[indices[i]];
+
+                if (item_Base.IsDir()) {
+                    i++;
+                    continue;
+                }
+                if (item_Base.IsNew()) {
+                    if (!item_Base.CanLink()) {
+                        ++i;
+                        continue;
+                    }
+                    unsigned end = i + 1, main = indices[i];
+                    while (end < indices.Size()) {
+                        const CItem &item = _items[indices[end]];
+                        if (!item.CanLink() || !item.IsSame_inode_Dev(item_Base))
+                            break;
+                        if (item.Size != 0)
+                            main = indices[end];
+                        ++end;
+                    }
+                    for (unsigned j = i; j < end; ++j)
+                        _items[indices[j]].MainIndex_ForInode = main;
+                    i = end;
+                    continue;
+                }
+
+                if (i != 0) {
+                    const CItem &item_Prev = _items[indices[i - 1]];
+                    if (!item_Prev.IsDir())
+                        if (item_Base.IsSame_inode_Dev(item_Prev))
+                            _moreThanOneHardLinks_Error = true;
+                }
+
+                if (item_Base.Size != 0) {
+                    if (item_Base.NumLinks != 1)
+                        _numLinks_Error = true;
+                    i++;
+                    continue;
+                }
+
+                for (k = i + 1; k < indices.Size();) {
+                    const CItem &item = _items[indices[k]];
+                    if (item.IsDir())
+                        break;
+                    if (!item.IsSame_inode_Dev(item_Base))
+                        break;
+                    k++;
+                    if (item.Size != 0)
+                        break;
+                }
+            }
+
+            const unsigned numLinks = k - i;
+            for (;;) {
+                CItem &item = _items[indices[i]];
+                if (item.NumLinks != numLinks)
+                    _numLinks_Error = true;
+                if (++i == k)
+                    break;
+                // if (item.Size == 0)
+                item.MainIndex_ForInode = indices[k - 1];
+            }
+        }
+    }
+
+    _isArc = true;
+    _stream = stream;
+
+    return S_OK;
+}
+
+Z7_COM7F_IMF(CHandler::Close()) {
+    _items.Clear();
+    _stream.Release();
+    _phySize = 0;
+    _type = k_Type_BinLe;
+    _isArc = false;
+    _moreThanOneHardLinks_Error = false;
+    _numLinks_Error = false;
+    _pad_Error = false;
+    _symLink_Error = false;
+    _mixedTypes = false;
+    _normalized = false;
+    _error = k_ErrorType_OK;
+    return S_OK;
+}
+
+Z7_COM7F_IMF(CHandler::GetNumberOfItems(UInt32 *numItems)) {
+    *numItems = _items.Size();
+    return S_OK;
+}
+
+Z7_COM7F_IMF(CHandler::GetProperty(UInt32 index, PROPID propID, PROPVARIANT *value)) {
+    COM_TRY_BEGIN
+    if (!value || index >= _items.Size())
+        return E_INVALIDARG;
+    NCOM::CPropVariant prop;
+    const CItem &item = _items[index];
+
+    switch (propID) {
+    case kpidPath: {
+#ifdef _WIN32
+        UString u;
+        ConvertUTF8ToUnicode(item.Name, u);
+#else
+        const UString u = MultiByteToUnicodeString(item.Name, CP_OEMCP);
+#endif
+        prop = NItemName::GetOsPath(u);
+        break;
+    }
+    case kpidIsDir:
+        prop = item.IsDir();
+        break;
+
+    case kpidSize:
+        prop = (UInt64)_items[item.MainIndex_ForInode].Size;
+        break;
+
+    case kpidPackSize:
+        if (!_normalized)
+            prop = (UInt64)item.GetPackSize();
+        break;
+
+    case kpidMTime: {
+        if (item.MTime != 0)
+            PropVariant_SetFrom_UnixTime(prop, item.MTime);
+        break;
+    }
+    case kpidPosixAttrib:
+        prop = item.Mode;
+        break;
+    case kpidINode:
+        prop = item.inode;
+        break;
+    case kpidStreamId:
+        if (!item.IsDir())
+            prop = (UInt32)item.MainIndex_ForInode;
+        break;
+    case kpidDevMajor:
+        prop = (UInt32)item.DevMajor;
+        break;
+    case kpidDevMinor:
+        prop = (UInt32)item.DevMinor;
+        break;
+
+    case kpidUserId:
+        prop = item.UID;
+        break;
+    case kpidGroupId:
+        prop = item.GID;
+        break;
+
+    case kpidSymLink:
+        if (item.Is_SymLink() && item.Data.Size() != 0) {
+            AString s;
+            s.SetFrom_CalcLen((const char *)(const void *)(const Byte *)item.Data,
+                              (unsigned)item.Data.Size());
+            if (s.Len() == item.Data.Size()) {
+#ifdef _WIN32
+                UString u;
+                ConvertUTF8ToUnicode(s, u);
+#else
+                const UString u = MultiByteToUnicodeString(s, CP_OEMCP);
+#endif
+                prop = u;
+            }
+        }
+        break;
+
+    case kpidLinks:
+        prop = item.NumLinks;
+        break;
+    case kpidDeviceMajor:
+        // if (item.RDevMajor != 0)
+        prop = (UInt32)item.RDevMajor;
+        break;
+    case kpidDeviceMinor:
+        // if (item.RDevMinor != 0)
+        prop = (UInt32)item.RDevMinor;
+        break;
+    case kpidChecksum:
+        if (item.IsCrcFormat())
+            prop = item.ChkSum;
+        break;
+    case kpidOffset:
+        if (!_normalized)
+            prop = item.GetDataPosition();
+        break;
+    }
+    prop.Detach(value);
+    return S_OK;
+    COM_TRY_END
+}
+
+Z7_CLASS_IMP_NOQIB_1(COutStreamWithSum, ISequentialOutStream)
+CMyComPtr<ISequentialOutStream> _stream;
+UInt32 _checksum;
+bool _calculate;
+
+public:
+void SetStream(ISequentialOutStream *stream) { _stream = stream; }
+void ReleaseStream() { _stream.Release(); }
+void Init(bool calculate) {
+    _calculate = calculate;
+    _checksum = 0;
+}
+UInt32 GetChecksum() const { return _checksum; }
+}
+;
+
+Z7_COM7F_IMF(COutStreamWithSum::Write(const void *data, UInt32 size, UInt32 *processedSize)) {
+    HRESULT result = S_OK;
+    if (_stream)
+        result = _stream->Write(data, size, &size);
+    if (processedSize)
+        *processedSize = size;
+    if (_calculate) {
+        const Byte *p = (const Byte *)data;
+        const Byte *lim = p + size;
+        UInt32 sum = _checksum;
+        if (size >= 4) {
+            lim -= 4 - 1;
+            do {
+                sum += p[0] + p[1] + p[2] + p[3];
+                p += 4;
+            } while (p < lim);
+            lim += 4 - 1;
+        }
+        if (p != lim) {
+            sum += *p++;
+            if (p != lim) {
+                sum += *p++;
+                if (p != lim) {
+                    sum += *p++;
+                }
+            }
+        }
+        _checksum = sum;
+    }
+    return result;
+}
+
+Z7_COM7F_IMF(CHandler::Extract(const UInt32 *indices, UInt32 numItems, Int32 testMode,
+                               IArchiveExtractCallback *extractCallback)) {
+    COM_TRY_BEGIN
+    const bool allFilesMode = (numItems == (UInt32)(Int32)-1);
+    if (allFilesMode)
+        numItems = _items.Size();
+    if (numItems == 0)
+        return S_OK;
+    if (!extractCallback || !_stream || (!allFilesMode && !indices))
+        return E_INVALIDARG;
+    UInt64 totalSize = 0;
+    UInt32 i;
+    for (i = 0; i < numItems; i++) {
+        const UInt32 index = allFilesMode ? i : indices[i];
+        if (index >= _items.Size())
+            return E_INVALIDARG;
+        const CItem &item2 = _items[index];
+        const CItem &item = _items[item2.MainIndex_ForInode];
+        totalSize += item.Size;
+        if (item2.IsCrcFormat() && item2.MainIndex_ForInode != index)
+            totalSize += item2.Size;
+    }
+    RINOK(extractCallback->SetTotal(totalSize))
+
+    CMyComPtr2_Create<ICompressCoder, NCompress::CCopyCoder> copyCoder;
+    CMyComPtr2_Create<ICompressProgressInfo, CLocalProgress> lps;
+    lps->Init(extractCallback, false);
+    CMyComPtr2_Create<ISequentialInStream, CLimitedSequentialInStream> inStream;
+    inStream->SetStream(_stream);
+    CMyComPtr2_Create<ISequentialOutStream, COutStreamWithSum> outStreamSum;
+
+    UInt64 total_PackSize = 0;
+    UInt64 total_UnpackSize = 0;
+
+    for (i = 0;; i++) {
+        lps->InSize = total_PackSize;
+        lps->OutSize = total_UnpackSize;
+        RINOK(lps->SetCur())
+        if (i >= numItems)
+            break;
+        const Int32 askMode = testMode ? NExtract::NAskMode::kTest : NExtract::NAskMode::kExtract;
+        const UInt32 index = allFilesMode ? i : indices[i];
+        const CItem &item2 = _items[index];
+        const CItem &item = _items[item2.MainIndex_ForInode];
+        {
+            CMyComPtr<ISequentialOutStream> outStream;
+            RINOK(extractCallback->GetStream(index, &outStream, askMode))
+
+            total_PackSize += item2.GetPackSize();
+            total_UnpackSize += item.Size;
+
+            if (item2.IsDir()) {
+                RINOK(extractCallback->PrepareOperation(askMode))
+                RINOK(extractCallback->SetOperationResult(NExtract::NOperationResult::kOK))
+                continue;
+            }
+            if (!testMode && !outStream)
+                continue;
+            outStreamSum->Init(item.IsCrcFormat());
+            outStreamSum->SetStream(outStream);
+            RINOK(extractCallback->PrepareOperation(askMode))
+        }
+        RINOK(InStream_SeekSet(_stream, item.GetDataPosition()))
+        inStream->Init(item.Size);
+        RINOK(copyCoder.Interface()->Code(inStream, outStreamSum, NULL, NULL, lps))
+        outStreamSum->ReleaseStream();
+        Int32 res = NExtract::NOperationResult::kDataError;
+        if (copyCoder->TotalSize == item.Size) {
+            res = NExtract::NOperationResult::kOK;
+            if (item.IsCrcFormat() && item.ChkSum != outStreamSum->GetChecksum())
+                res = NExtract::NOperationResult::kCRCError;
+        }
+        // Linux checks each stored body, including one overwritten by a later hard link.
+        if (item2.IsCrcFormat() && item2.MainIndex_ForInode != index) {
+            lps->OutSize = total_UnpackSize;
+            RINOK(InStream_SeekSet(_stream, item2.GetDataPosition()))
+            inStream->Init(item2.Size);
+            outStreamSum->Init(true);
+            RINOK(copyCoder.Interface()->Code(inStream, outStreamSum, NULL, NULL, lps))
+            total_UnpackSize += item2.Size;
+            if (copyCoder->TotalSize != item2.Size)
+                res = NExtract::NOperationResult::kDataError;
+            else if (item2.ChkSum != outStreamSum->GetChecksum())
+                res = NExtract::NOperationResult::kCRCError;
+        }
+        RINOK(extractCallback->SetOperationResult(res))
+    }
+    return S_OK;
+    COM_TRY_END
+}
+
+Z7_COM7F_IMF(CHandler::GetStream(UInt32 index, ISequentialInStream **stream)) {
+    COM_TRY_BEGIN
+    if (!stream)
+        return E_INVALIDARG;
+    *stream = nullptr;
+    if (index >= _items.Size() || !_stream)
+        return E_INVALIDARG;
+    const CItem &item2 = _items[index];
+    const CItem &item = _items[item2.MainIndex_ForInode];
+    CExtentsStream *spec = new CExtentsStream;
+    CMyComPtr<ISequentialInStream> owner = spec;
+    spec->Stream = _stream;
+    CSeekExtent extent;
+    extent.Virt = 0;
+    extent.Phy = item.GetDataPosition();
+    spec->Extents.Add(extent);
+    extent.Virt = item.Size;
+    extent.Phy = 0;
+    spec->Extents.Add(extent);
+    spec->Init();
+    *stream = owner.Detach();
+    return S_OK;
+    COM_TRY_END
+}
+
+API_FUNC_static_IsArc IsArc_Initramfs(const Byte *p, size_t size) {
+    if (size && !p[0]) {
+        size_t offset = 0;
+        while (offset < size && !p[offset])
+            ++offset;
+        if (offset == size)
+            return k_IsArc_Res_NEED_MORE;
+        if (InitramfsCompression(p + offset, size - offset) != InitramfsMethod::None)
+            return k_IsArc_Res_YES;
+        return (offset & 3) ? k_IsArc_Res_NO : IsArc_Cpio(p + offset, size - offset);
+    }
+    if (InitramfsCompression(p, size) != InitramfsMethod::None)
+        return k_IsArc_Res_YES;
+    return IsArc_Cpio(p, size);
+}
+}
+static const Byte k_Signature[] = {
+    5, '0',  '7',  '0', '7',  '0',  2, kMagicBin0, kMagicBin1, 2, kMagicBin1, kMagicBin0,
+    2, 0x1f, 0x8b, 2,   0x1f, 0x9e, 2, 0x42,       0x5a,       2, 0x5d,       0x00,
+    2, 0xfd, 0x37, 2,   0x89, 0x4c, 2, 0x02,       0x21,       2, 0x28,       0xb5};
+REGISTER_ARC_I("Cpio", "cpio initramfs initrd img", NULL, 0xED, k_Signature, 0,
+               NArcInfoFlags::kMultiSignature, IsArc_Initramfs)
+}
+}

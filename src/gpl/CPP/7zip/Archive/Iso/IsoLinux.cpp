@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: GPL-2.0-only
 // Stream/record boundary for the original Linux Rock Ridge C readers.
-#include "../../../../isonames.h"
-#include "../../../Common/StringConvert.h"
-#include "../../Common/StreamUtils.h"
-#include "../IArchive.h"
-#include "IsoIn.h"
-#include "StdAfx.h"
+#include "7zip/Archive/IArchive.h"
+#include "7zip/Archive/Iso/IsoIn.h"
+#include "7zip/Archive/Iso/StdAfx.h"
+#include "7zip/Common/StreamUtils.h"
+#include "Common/StringConvert.h"
+#include "isonames.h"
 #include <errno.h>
 
 namespace NArchive {

@@ -28,6 +28,8 @@ def source_path(path):
         return "DOC/License.txt"
     if path.startswith("third_party/7zip/"):
         return path[len("third_party/7zip/") :]
+    if path.startswith("src/gpl/CPP/") or path.startswith("src/gpl/C/"):
+        return path[len("src/gpl/") :]
     if path.startswith("src/CPP/") or path.startswith("src/C/"):
         return path[len("src/") :]
     raise ValueError("Unexpected borrowed path: " + path)
@@ -45,9 +47,10 @@ def load_manifest(path):
     paths = [path for group in groups for path in group]
     if len(paths) != len(set(paths)):
         raise ValueError("Borrowed paths have multiple owners")
-    sources = [source_path(path) for path in paths]
+    sources = [("gpl" if path.startswith("src/gpl/") else "sdk", source_path(path))
+               for path in paths]
     if len(sources) != len(set(sources)):
-        raise ValueError("Upstream module has multiple authoritative implementations")
+        raise ValueError("Upstream module has multiple authoritative implementations in one variant")
     overrides = data.get("overrides", {})
     if not isinstance(overrides, dict) or set(overrides) - set(paths) or any(
         not re.fullmatch(r"[0-9a-f]{40}", value) for value in overrides.values()
@@ -58,7 +61,7 @@ def load_manifest(path):
 
 def tracked_paths():
     paths = git(ROOT, "ls-files", "--cached", "--others", "--exclude-standard",
-                "third_party/7zip/", "src/CPP/", "src/C/").decode().splitlines()
+                "third_party/7zip/", "src/CPP/", "src/C/", "src/gpl/").decode().splitlines()
     return {path for path in paths
             if path != "third_party/7zip/README.md" and (ROOT / path).is_file()}
 
@@ -126,6 +129,8 @@ def prepare_runtime_snapshot(data, snapshot, upstream):
     paths = data.get("runtime_adapted", [])
     if not isinstance(paths, list) or paths != sorted(set(paths)) or set(paths) - set(data["adapted"]):
         raise ValueError("Runtime sources must be selected adapted upstream modules")
+    if any(path.startswith("src/gpl/") for path in paths):
+        raise ValueError("GPL reader variants cannot be overlaid into the SDK runtime")
     snapshot.mkdir(parents=True, exist_ok=True)
     owner = snapshot / ".sevenzip-runtime-source.json"
     if snapshot.is_symlink() or (any(snapshot.iterdir()) and not owner.is_file()):

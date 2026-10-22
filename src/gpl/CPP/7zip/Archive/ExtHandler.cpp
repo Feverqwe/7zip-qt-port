@@ -1,0 +1,3750 @@
+// ExtHandler.cpp
+
+#include "7zip/Archive/StdAfx.h"
+
+// #define SHOW_DEBUG_INFO
+
+// #include <stdio.h>
+// #define PRF2(x) x
+
+#define PRF2(x)
+
+#ifdef SHOW_DEBUG_INFO
+#include <stdio.h>
+#define PRF(x) x
+#else
+#define PRF(x)
+#endif
+
+#include "C/Alloc.h"
+#include "C/CpuArch.h"
+
+#include "Common/ComTry.h"
+#include "Common/IntToString.h"
+#include "Common/MyLinux.h"
+#include "Common/StringConvert.h"
+#include "Common/UTFConvert.h"
+
+#include "Windows/PropVariantUtils.h"
+#include "Windows/TimeUtils.h"
+
+#include "7zip/Common/ProgressUtils.h"
+#include "7zip/Common/RegisterArc.h"
+#include "7zip/Common/StreamObjects.h"
+#include "7zip/Common/StreamUtils.h"
+
+#include "7zip/Compress/CopyCoder.h"
+
+#include "extfscrypt.h"
+#include "extindirectstream.h"
+#include "extreader.h"
+#include "extveritypolicy.h"
+#include "extveritystream.h"
+#include <cerrno>
+#include <climits>
+#include <new>
+
+using namespace NWindows;
+
+UInt32 LzhCrc16Update(UInt32 crc, const void *data, size_t size);
+
+namespace NArchive {
+namespace NExt {
+
+#define Get16(p) GetUi16(p)
+#define Get32(p) GetUi32(p)
+#define Get64(p) GetUi64(p)
+
+#define LE_16(offs, dest) dest = Get16(p + (offs));
+#define LE_32(offs, dest) dest = Get32(p + (offs));
+#define LE_64(offs, dest) dest = Get64(p + (offs));
+
+#define HI_16(offs, dest) dest |= (((UInt32)Get16(p + (offs))) << 16);
+#define HI_32(offs, dest) dest |= (((UInt64)Get32(p + (offs))) << 32);
+
+/*
+static UInt32 g_Crc32CTable[256];
+
+static struct CInitCrc32C
+{
+  CInitCrc32C()
+  {
+    for (unsigned i = 0; i < 256; i++)
+    {
+      UInt32 r = i;
+      unsigned j;
+      for (j = 0; j < 8; j++)
+        r = (r >> 1) ^ (0x82F63B78 & ~((r & 1) - 1));
+      g_Crc32CTable[i] = r;
+    }
+  }
+} g_InitCrc32C;
+
+#define CRC32C_INIT_VAL 0xFFFFFFFF
+#define CRC32C_GET_DIGEST(crc) ((crc) ^ CRC_INIT_VAL)
+#define CRC32C_UPDATE_BYTE(crc, b) (g_Crc32CTable[((crc) ^ (b)) & 0xFF] ^ ((crc) >> 8))
+
+static UInt32 Crc32C_Update(UInt32 crc, Byte const *data, size_t size)
+{
+  for (size_t i = 0; i < size; i++)
+    crc = CRC32C_UPDATE_BYTE(crc, data[i]);
+  return crc;
+}
+
+static UInt32 Crc32C_Calc(Byte const *data, size_t size)
+{
+  return Crc32C_Update(CRC32C_INIT_VAL, data, size);
+}
+*/
+
+#define CRC16_INIT_VAL 0xFFFF
+
+#define Crc16Update(value, data, size) crc16((UInt16)(value), (const Byte *)(data), size)
+
+static UInt32 Crc16Calc(Byte const *data, size_t size) {
+    return Crc16Update(CRC16_INIT_VAL, data, size);
+}
+
+#define EXT4_GOOD_OLD_INODE_SIZE 128
+#define EXT_NODE_SIZE_MIN 128
+
+// inodes numbers
+
+// #define k_INODE_BAD          1  // Bad blocks
+#define k_INODE_ROOT 2 // Root dir
+// #define k_INODE_USR_QUOTA    3  // User quota
+// #define k_INODE_GRP_QUOTA    4  // Group quota
+// #define k_INODE_BOOT_LOADER  5  // Boot loader
+// #define k_INODE_UNDEL_DIR    6  // Undelete dir
+#define k_INODE_RESIZE 7 // Reserved group descriptors
+// #define k_INODE_JOURNAL      8  // Journal
+
+// First non-reserved inode for old ext4 filesystems
+#define k_INODE_GOOD_OLD_FIRST 11
+
+static const char *const k_SysInode_Names[] = {"0",          "Bad",        "Root",     "UserQuota",
+                                               "GroupQuota", "BootLoader", "Undelete", "Resize",
+                                               "Journal",    "Exclude",    "Replica"};
+
+static const char *const kHostOS[] = {"Linux", "Hurd", "Masix", "FreeBSD", "Lites"};
+
+static const char *const g_FeatureCompat_Flags[] = {"DIR_PREALLOC",
+                                                    "IMAGIC_INODES",
+                                                    "HAS_JOURNAL",
+                                                    "EXT_ATTR",
+                                                    "RESIZE_INODE",
+                                                    "DIR_INDEX",
+                                                    "LAZY_BG" // not in Linux
+                                                    ,
+                                                    NULL // { 7, "EXCLUDE_INODE" // not used
+                                                    ,
+                                                    NULL // { 8, "EXCLUDE_BITMAP" // not in kernel
+                                                    ,
+                                                    "SPARSE_SUPER2",
+                                                    "FAST_COMMIT",
+                                                    "STABLE_INODES",
+                                                    "ORPHAN_FILE"};
+
+#define EXT4_FEATURE_INCOMPAT_FILETYPE (1 << 1)
+#define EXT4_FEATURE_INCOMPAT_64BIT (1 << 7)
+
+static const char *const g_FeatureIncompat_Flags[] = {"COMPRESSION",
+                                                      "FILETYPE",
+                                                      "RECOVER" /* Needs recovery */
+                                                      ,
+                                                      "JOURNAL_DEV" /* Journal device */
+                                                      ,
+                                                      "META_BG",
+                                                      NULL,
+                                                      "EXTENTS" /* extents support */
+                                                      ,
+                                                      "64BIT",
+                                                      "MMP",
+                                                      "FLEX_BG",
+                                                      "EA_INODE" /* EA in inode */
+                                                      ,
+                                                      NULL,
+                                                      "DIRDATA" /* data in dirent */
+                                                      ,
+                                                      "CSUM_SEED" /* stored crc32c seed */
+                                                      ,
+                                                      "LARGEDIR" /* >2GB or 3-lvl htree */
+                                                      ,
+                                                      "INLINE_DATA" /* data in inode */
+                                                      ,
+                                                      "ENCRYPT", // 16
+                                                      "CASEFOLD"};
+
+static const UInt32 RO_COMPAT_GDT_CSUM = 1 << 4;
+static const UInt32 RO_COMPAT_METADATA_CSUM = 1 << 10;
+
+static const char *const g_FeatureRoCompat_Flags[] = {
+    "SPARSE_SUPER",  "LARGE_FILE",  "BTREE_DIR",    "HUGE_FILE",     "GDT_CSUM",
+    "DIR_NLINK",     "EXTRA_ISIZE", "HAS_SNAPSHOT", "QUOTA",         "BIGALLOC",
+    "METADATA_CSUM", "REPLICA",     "READONLY", // 12
+    "PROJECT",       NULL,          "VERITY",       "ORPHAN_PRESENT"};
+
+static const UInt32 k_NodeFlags_HUGE = (UInt32)1 << 18;
+static const UInt32 k_NodeFlags_EXTENTS = (UInt32)1 << 19;
+
+static const char *const g_NodeFlags[] = {
+    "SECRM",       "UNRM",     "COMPR",        "SYNC",     "IMMUTABLE",   "APPEND",
+    "NODUMP",      "NOATIME",  "DIRTY",        "COMPRBLK", "NOCOMPR",     "ENCRYPT",
+    "INDEX",       "IMAGIC",   "JOURNAL_DATA", "NOTAIL",   "DIRSYNC",     "TOPDIR",
+    "HUGE_FILE",   "EXTENTS",  "VERITY",       "EA_INODE", "EOFBLOCKS",   NULL,
+    NULL,          "DAX",      NULL,           NULL,       "INLINE_DATA", // 28
+    "PROJINHERIT", "CASEFOLD", "RESERVED"};
+
+enum {
+    k_Type_UNKNOWN,
+    k_Type_REG_FILE,
+    k_Type_DIR,
+    k_Type_CHRDEV,
+    k_Type_BLKDEV,
+    k_Type_FIFO,
+    k_Type_SOCK,
+    k_Type_SYMLINK
+};
+
+static const UInt16 k_TypeToMode[] = {0,
+                                      MY_LIN_S_IFREG,
+                                      MY_LIN_S_IFDIR,
+                                      MY_LIN_S_IFCHR,
+                                      MY_LIN_S_IFBLK,
+                                      MY_LIN_S_IFIFO,
+                                      MY_LIN_S_IFSOCK,
+                                      MY_LIN_S_IFLNK};
+
+#define EXT4_GOOD_OLD_REV 0 // old (original) format
+// #define EXT4_DYNAMIC_REV 1  // V2 format with dynamic inode sizes
+
+struct CHeader {
+    unsigned BlockBits;
+    unsigned ClusterBits;
+
+    UInt32 NumInodes;
+    UInt64 NumBlocks;
+    // UInt64 NumBlocksSuper;
+    UInt64 NumFreeBlocks;
+    UInt32 NumFreeInodes;
+    UInt32 FirstDataBlock;
+
+    UInt32 BlocksPerGroup;
+    UInt32 ClustersPerGroup;
+    UInt32 InodesPerGroup;
+
+    UInt32 MountTime;
+    UInt32 WriteTime;
+
+    // UInt16 NumMounts;
+    // UInt16 NumMountsMax;
+
+    UInt16 State;
+    UInt32 LastOrphan;
+    // UInt16 Errors;
+    // UInt16 MinorRevLevel;
+
+    UInt32 LastCheckTime;
+    // UInt32 CheckInterval;
+    UInt32 CreatorOs;
+    UInt32 RevLevel;
+
+    // UInt16 DefResUid;
+    // UInt16 DefResGid;
+
+    UInt32 FirstInode;
+    UInt16 InodeSize;
+    UInt16 BlockGroupNr;
+    UInt32 FeatureCompat;
+    UInt32 FeatureIncompat;
+    UInt32 FeatureRoCompat;
+    Byte Uuid[16];
+    char VolName[16];
+    char LastMount[64];
+    // UInt32 BitmapAlgo;
+
+    UInt32 JournalInode;
+    UInt16 GdSize; // = 64 if 64-bit();
+    UInt32 CTime;
+    UInt16 MinExtraISize;
+    // UInt16 WantExtraISize;
+    // UInt32 Flags;
+    // Byte LogGroupsPerFlex;
+    // Byte ChecksumType;
+
+    UInt64 WrittenKB;
+
+    bool IsOldRev() const { return RevLevel == EXT4_GOOD_OLD_REV; }
+
+    UInt64 GetNumGroups() const {
+        return (NumBlocks - FirstDataBlock + BlocksPerGroup - 1) / BlocksPerGroup;
+    }
+    UInt64 GetNumGroups2() const {
+        return ((UInt64)NumInodes + InodesPerGroup - 1) / InodesPerGroup;
+    }
+
+    bool IsThereFileType() const { return (FeatureIncompat & EXT4_FEATURE_INCOMPAT_FILETYPE) != 0; }
+    bool Is64Bit() const { return (FeatureIncompat & EXT4_FEATURE_INCOMPAT_64BIT) != 0; }
+    bool UseGdtChecksum() const { return (FeatureRoCompat & RO_COMPAT_GDT_CSUM) != 0; }
+    bool UseMetadataChecksum() const { return (FeatureRoCompat & RO_COMPAT_METADATA_CSUM) != 0; }
+
+    UInt64 GetPhySize() const { return NumBlocks << BlockBits; }
+
+    bool Parse(const Byte *p);
+};
+
+static int inline GetLog(UInt32 num) {
+    for (unsigned i = 0; i < 32; i++)
+        if (((UInt32)1 << i) == num)
+            return (int)i;
+    return -1;
+}
+
+static bool inline IsEmptyData(const Byte *data, unsigned size) {
+    for (unsigned i = 0; i < size; i++)
+        if (data[i] != 0)
+            return false;
+    return true;
+}
+
+bool CHeader::Parse(const Byte *p) {
+    if (GetUi16(p + 0x38) != 0xEF53)
+        return false;
+
+    LE_32(0x18, BlockBits)
+    LE_32(0x1C, ClusterBits)
+
+    const bool bigalloc = (Get32(p + 0x64) & 0x200) != 0;
+    if (bigalloc ? ClusterBits < BlockBits || ClusterBits > 28 - 10
+                 : ClusterBits != 0 && BlockBits != ClusterBits)
+        return false;
+
+    if (BlockBits > 16 - 10)
+        return false;
+    BlockBits += 10;
+
+    LE_32(0x00, NumInodes)
+    LE_32(0x04, NumBlocks)
+    // LE_32 (0x08, NumBlocksSuper);
+    LE_32(0x0C, NumFreeBlocks)
+    LE_32(0x10, NumFreeInodes)
+
+    if (NumInodes < 2 || NumInodes <= NumFreeInodes)
+        return false;
+
+    LE_32(0x14, FirstDataBlock)
+    if (FirstDataBlock != (unsigned)(BlockBits == 10 ? 1 : 0) &&
+        !(bigalloc && BlockBits == 10 && FirstDataBlock == 0))
+        return false;
+
+    LE_32(0x20, BlocksPerGroup)
+    LE_32(0x24, ClustersPerGroup)
+
+    if (bigalloc ? (UInt64)ClustersPerGroup << (ClusterBits + 10 - BlockBits) != BlocksPerGroup
+                 : BlocksPerGroup != ClustersPerGroup)
+        return false;
+    if (BlocksPerGroup == 0)
+        return false;
+    if (BlocksPerGroup != ((UInt32)1 << (BlockBits + 3))) {
+        // it's allowed in ext2
+        // return false;
+    }
+
+    LE_32(0x28, InodesPerGroup)
+
+    if (InodesPerGroup < 1 || InodesPerGroup > NumInodes)
+        return false;
+
+    LE_32(0x2C, MountTime)
+    LE_32(0x30, WriteTime)
+
+    // LE_16 (0x34, NumMounts);
+    // LE_16 (0x36, NumMountsMax);
+
+    LE_16(0x3A, State)
+    LE_32(0xE8, LastOrphan)
+    // LE_16 (0x3C, Errors);
+    // LE_16 (0x3E, MinorRevLevel);
+
+    LE_32(0x40, LastCheckTime)
+    // LE_32 (0x44, CheckInterval);
+    LE_32(0x48, CreatorOs)
+    LE_32(0x4C, RevLevel)
+
+    // LE_16 (0x50, DefResUid);
+    // LE_16 (0x52, DefResGid);
+
+    FirstInode = k_INODE_GOOD_OLD_FIRST;
+    InodeSize = EXT4_GOOD_OLD_INODE_SIZE;
+
+    if (!IsOldRev()) {
+        LE_32(0x54, FirstInode)
+        LE_16(0x58, InodeSize)
+        if (FirstInode < k_INODE_GOOD_OLD_FIRST)
+            return false;
+        if (InodeSize > ((UInt32)1 << BlockBits) || InodeSize < EXT_NODE_SIZE_MIN ||
+            GetLog(InodeSize) < 0)
+            return false;
+    }
+
+    LE_16(0x5A, BlockGroupNr)
+    LE_32(0x5C, FeatureCompat)
+    LE_32(0x60, FeatureIncompat)
+    LE_32(0x64, FeatureRoCompat)
+
+    memcpy(Uuid, p + 0x68, sizeof(Uuid));
+    memcpy(VolName, p + 0x78, sizeof(VolName));
+    memcpy(LastMount, p + 0x88, sizeof(LastMount));
+
+    // LE_32 (0xC8, BitmapAlgo);
+
+    LE_32(0xE0, JournalInode)
+
+    LE_16(0xFE, GdSize)
+
+    LE_32(0x108, CTime)
+
+    if (Is64Bit()) {
+        HI_32(0x150, NumBlocks)
+        // HI_32(0x154, NumBlocksSuper);
+        HI_32(0x158, NumFreeBlocks)
+    }
+
+    if (NumBlocks >= (UInt64)1 << (63 - BlockBits))
+        return false;
+
+    LE_16(0x15C, MinExtraISize)
+    // LE_16(0x15E, WantExtraISize);
+    // LE_32(0x160, Flags);
+    // LE_16(0x164, RaidStride);
+    // LE_16(0x166, MmpInterval);
+    // LE_64(0x168, MmpBlock);
+
+    // LogGroupsPerFlex = p[0x174];
+    // ChecksumType = p[0x175];
+
+    LE_64(0x178, WrittenKB)
+
+    // LE_32(0x194, ErrorCount);
+    // LE_32(0x198, ErrorTime);
+    // LE_32(0x19C, ErrorINode);
+    // LE_32(0x1A0, ErrorBlock);
+
+    if (NumBlocks < 1)
+        return false;
+    if (NumFreeBlocks > NumBlocks)
+        return false;
+
+    if (GetNumGroups() != GetNumGroups2())
+        return false;
+
+    return true;
+}
+
+struct CGroupDescriptor {
+    UInt64 BlockBitmap;
+    UInt64 InodeBitmap;
+    UInt64 InodeTable;
+    UInt32 NumFreeBlocks;
+    UInt32 NumFreeInodes;
+    UInt32 DirCount;
+
+    UInt16 Flags;
+
+    UInt64 ExcludeBitmap;
+    UInt32 BlockBitmap_Checksum;
+    UInt32 InodeBitmap_Checksum;
+    UInt32 UnusedCount;
+    UInt16 Checksum;
+
+    void Parse(const Byte *p, unsigned size);
+};
+
+void CGroupDescriptor::Parse(const Byte *p, unsigned size) {
+    LE_32(0x00, BlockBitmap)
+    LE_32(0x04, InodeBitmap)
+    LE_32(0x08, InodeTable)
+    LE_16(0x0C, NumFreeBlocks)
+    LE_16(0x0E, NumFreeInodes)
+    LE_16(0x10, DirCount)
+    LE_16(0x12, Flags)
+    LE_32(0x14, ExcludeBitmap)
+    LE_16(0x18, BlockBitmap_Checksum)
+    LE_16(0x1A, InodeBitmap_Checksum)
+    LE_16(0x1C, UnusedCount)
+    LE_16(0x1E, Checksum)
+
+    if (size >= 64) {
+        p += 0x20;
+        HI_32(0x00, BlockBitmap)
+        HI_32(0x04, InodeBitmap)
+        HI_32(0x08, InodeTable)
+        HI_16(0x0C, NumFreeBlocks)
+        HI_16(0x0E, NumFreeInodes)
+        HI_16(0x10, DirCount)
+        HI_16(0x12, UnusedCount) // instead of Flags
+        HI_32(0x14, ExcludeBitmap)
+        HI_16(0x18, BlockBitmap_Checksum)
+        HI_16(0x1A, InodeBitmap_Checksum)
+        // HI_16 (0x1C, Reserved);
+    }
+}
+
+static const unsigned kNodeBlockFieldSize = 60;
+
+struct CExtentTreeHeader {
+    UInt16 NumEntries;
+    UInt16 MaxEntries;
+    UInt16 Depth;
+    // UInt32 Generation;
+
+    bool Parse(const Byte *p) {
+        LE_16(0x02, NumEntries)
+        LE_16(0x04, MaxEntries)
+        LE_16(0x06, Depth)
+        // LE_32 (0x08, Generation);
+        return Get16(p) == 0xF30A; // magic
+    }
+};
+
+struct CExtentIndexNode {
+    UInt32 VirtBlock;
+    UInt64 PhyLeaf;
+
+    void Parse(const Byte *p) {
+        LE_32(0x00, VirtBlock)
+        LE_32(0x04, PhyLeaf)
+        PhyLeaf |= (((UInt64)Get16(p + 8)) << 32);
+        // unused 16-bit field (at offset 0x0A) can be not zero in some cases. Why?
+    }
+};
+
+struct CExtent {
+    UInt32 VirtBlock;
+    UInt16 Len;
+    bool IsInited;
+    UInt64 PhyStart;
+
+    UInt32 GetVirtEnd() const { return VirtBlock + Len; }
+    bool IsLenOK() const { return VirtBlock + Len > VirtBlock; }
+
+    void Parse(const Byte *p) {
+        LE_32(0x00, VirtBlock)
+        LE_16(0x04, Len)
+        IsInited = true;
+        if (Len > (UInt32)0x8000) {
+            IsInited = false;
+            Len = (UInt16)(Len - (UInt32)0x8000);
+        }
+        LE_32(0x08, PhyStart)
+        UInt16 hi;
+        LE_16(0x06, hi)
+        PhyStart |= ((UInt64)hi << 32);
+    }
+};
+
+struct CExtTime {
+    UInt32 Val;
+    UInt32 Extra;
+    bool Defined;
+};
+
+struct CDirParseState {
+    int ParentNode = -1;
+    bool SelfLink = false;
+    int RootHashVersion = -1;
+    bool LinearFallback = false;
+};
+
+struct CNode {
+    Int32 ParentNode; // in _refs[], -1 if not dir
+    int ItemIndex;    // in _items[]   , (set as >=0 only for if (IsDir())
+    int SymLinkIndex; // in _symLinks[]
+    int DirIndex;     // in _dirs[]
+
+    UInt16 Mode;
+    UInt32 Uid; // fixed 21.02
+    UInt32 Gid; // fixed 21.02
+    // UInt16 Checksum;
+
+    UInt32 NumLinksCalced;
+
+    UInt64 FileSize;
+    CExtTime MTime;
+    CExtTime ATime;
+    CExtTime CTime;
+    CExtTime ChangeTime;
+    // CExtTime DTime;
+
+    UInt64 NumBlocks;
+    UInt64 FileAcl;
+    UInt32 NumLinks;
+    UInt32 Flags;
+    bool HugeBlocks;
+
+    Byte Block[kNodeBlockFieldSize];
+    UInt32 ChecksumSeed;
+    int InlineIndex;
+    UInt64 RawOffset;
+    UInt32 InodeNumber;
+    bool HasXattrs;
+    bool FastSymlink;
+    int ReadError, SpecialReadError, EaReadError;
+    bool DirectoryIncomplete = false;
+    bool XattrsIncomplete = false;
+    bool LinkUnavailable = false;
+    unsigned XattrFirst, XattrCount;
+
+    void Construct() {
+        ParentNode = -1;
+        ItemIndex = -1;
+        SymLinkIndex = -1;
+        DirIndex = -1;
+        NumLinksCalced = 0;
+        InlineIndex = -1;
+        RawOffset = 0;
+        InodeNumber = 0;
+        HasXattrs = false;
+        XattrFirst = XattrCount = 0;
+        DirectoryIncomplete = false;
+        XattrsIncomplete = false;
+        LinkUnavailable = false;
+    }
+
+    bool IsFlags_HUGE() const { return HugeBlocks; }
+    bool IsFlags_EXTENTS() const { return (Flags & k_NodeFlags_EXTENTS) != 0; }
+
+    bool IsDir() const { return MY_LIN_S_ISDIR(Mode); }
+    bool IsRegular() const { return MY_LIN_S_ISREG(Mode); }
+    bool IsLink() const { return MY_LIN_S_ISLNK(Mode); }
+    bool IsFastSymlink(const CHeader &header) const;
+
+    bool Parse(const Byte *p, const CHeader &_h);
+};
+
+bool CNode::IsFastSymlink(const CHeader &header) const {
+    (void)header;
+    return FastSymlink;
+}
+
+bool CNode::Parse(const Byte *p, const CHeader &_h) {
+    MTime.Defined = ATime.Defined = ChangeTime.Defined = true;
+    CTime.Defined = false;
+    MTime.Extra = 0;
+    ATime.Extra = 0;
+    CTime.Extra = 0;
+    CTime.Val = 0;
+    ChangeTime.Extra = 0;
+    // DTime.Extra = 0;
+
+    LE_16(0x00, Mode)
+    LE_16(0x02, Uid)
+    LE_32(0x04, FileSize)
+    LE_32(0x08, ATime.Val)
+    LE_32(0x0C, ChangeTime.Val)
+    LE_32(0x10, MTime.Val)
+    // LE_32 (0x14, DTime.Val);
+    LE_16(0x18, Gid)
+    LE_16(0x1A, NumLinks)
+
+    LE_32(0x1C, NumBlocks)
+    LE_32(0x20, Flags)
+    HugeBlocks = (_h.FeatureRoCompat & 8) != 0 && (Flags & k_NodeFlags_HUGE) != 0;
+    if ((Flags & (k_NodeFlags_EXTENTS | ((UInt32)1 << 28))) ==
+        (k_NodeFlags_EXTENTS | ((UInt32)1 << 28)))
+        return false;
+    // LE_32 (0x24, Union osd1);
+
+    memcpy(Block, p + 0x28, kNodeBlockFieldSize);
+
+    // LE_32 (0x64, Generation);  // File version (for NFS)
+    LE_32(0x68, FileAcl)
+    if (_h.Is64Bit())
+        FileAcl |= (UInt64)Get16(p + 0x76) << 32;
+
+    {
+        UInt32 highSize;
+        LE_32(0x6C, highSize) // In ext2/3 this field was named i_dir_acl
+
+        if (IsRegular() || (_h.FeatureIncompat & 0x4000))
+            FileSize |= ((UInt64)highSize << 32);
+    }
+
+    // UInt32 fragmentAddress;
+    // LE_32 (0x70, fragmentAddress);
+
+    // osd2
+    {
+        // Linux;
+        // ext2:
+        // Byte FragmentNumber = p[0x74];
+        // Byte FragmentSize = p[0x74 + 1];
+
+        // ext4:
+        UInt32 numBlocksHigh;
+        LE_16(0x74, numBlocksHigh)
+        if (_h.FeatureRoCompat & 8)
+            NumBlocks |= (UInt64)numBlocksHigh << 32;
+
+        HI_16(0x74 + 4, Uid)
+        HI_16(0x74 + 6, Gid)
+        /*
+        UInt32 checksum;
+        LE_16 (0x74 + 8, checksum);
+        checksum = checksum;
+        */
+    }
+
+    // 0x74: Byte Union osd2[12];
+
+    if (_h.InodeSize > 128) {
+        // InodeSize is power of 2, so the following check is not required:
+        // if (_h.InodeSize < 128 + 2) return false;
+        UInt16 extra_isize;
+        LE_16(0x80, extra_isize)
+        if ((extra_isize & 3) || 128 + extra_isize > _h.InodeSize)
+            return false;
+        if (extra_isize == 0)
+            extra_isize = 0x20; // Linux's standard ext4 inode extension.
+        if (extra_isize >= 8) {
+            LE_32(0x84, ChangeTime.Extra)
+        }
+        if (extra_isize >= 12) {
+            LE_32(0x88, MTime.Extra)
+        }
+        if (extra_isize >= 16) {
+            LE_32(0x8C, ATime.Extra)
+        }
+        if (extra_isize >= 20) {
+            LE_32(0x90, CTime.Val)
+            CTime.Defined = true;
+        }
+        if (extra_isize >= 24) {
+            LE_32(0x94, CTime.Extra)
+        }
+    }
+
+    PRF(printf("size = %5d", (unsigned)FileSize));
+
+    if (IsLink() && (Flags & (0x10U | 0x20U)))
+        return false;
+    return true;
+}
+
+struct CItem {
+    int XattrIndex = -1, XattrParent = -1;
+    bool ContextAllowed = true;
+    unsigned Node;        // in _refs[]
+    int ParentNode;       // in _refs[]
+    int SymLinkItemIndex; // in _items[], if the Node contains SymLink to existing dir
+    Byte Type;
+
+    AString Name;
+
+    CItem() : Node(0), ParentNode(-1), SymLinkItemIndex(-1), Type(k_Type_UNKNOWN) {}
+
+    void Clear() {
+        XattrIndex = XattrParent = -1;
+        ContextAllowed = true;
+        Node = 0;
+        ParentNode = -1;
+        SymLinkItemIndex = -1;
+        Type = k_Type_UNKNOWN;
+        Name.Empty();
+    }
+
+    bool IsDir() const { return Type == k_Type_DIR; }
+    // bool IsNotDir() const { return Type != k_Type_DIR && Type != k_Type_UNKNOWN; }
+};
+
+static const unsigned kNumTreeLevelsMax = 6; // must be >= 3
+
+struct CExtXattr {
+    AString RawName, Name;
+    CByteBuffer Data;
+};
+
+struct CInlineDirectory {
+    CByteBuffer Data;
+    size_t Used = 0;
+    size_t Last = 0;
+    static int Emit(void *opaque, uint32_t ino, unsigned type, const char *name, unsigned len) {
+        CInlineDirectory &dir = *static_cast<CInlineDirectory *>(opaque);
+        const size_t size = (8 + len + 3) & ~(size_t)3;
+        if (size > dir.Data.Size() - dir.Used)
+            return -1;
+        Byte *p = (Byte *)dir.Data + dir.Used;
+        memset(p, 0, size);
+        SetUi32(p, ino) SetUi16(p + 4, (UInt16)size) p[6] = (Byte)len;
+        // Linux dir_emit uses DT_*; the archive uses EXT4_FT_*.
+        const Byte types[] = {0, 5, 3, 0, 2, 0, 4, 0, 1, 0, 7, 0, 6};
+        p[7] = type < sizeof(types) ? types[type] : 0;
+        memcpy(p + 8, name, len);
+        dir.Last = dir.Used;
+        dir.Used += size;
+        return 0;
+    }
+};
+
+static void ImportTime(const ext_time &source, CExtTime &time) {
+    time.Val = (UInt32)source.seconds;
+    time.Extra =
+        (source.nsec << 2) |
+        ((UInt64)(source.seconds + ((source.seconds & 0x80000000) ? ((Int64)1 << 32) : 0)) >> 32);
+    time.Defined = source.defined != 0;
+}
+
+static IInStream *CreateReadOnlyInput(IInStream *source);
+
+// clang-format off
+Z7_CLASS_IMP_CHandler_IInArchive_3(
+  IArchiveGetRawProps,
+  IInArchiveGetStream,
+  ISetProperties
+)
+  CObjectVector<CItem> _items;
+  CIntVector _refs;                 // iNode -> (index in _nodes). if (_refs[iNode] < 0), that node is not filled
+  CRecordVector<CNode> _nodes;
+  CObjectVector<CUIntVector> _dirs; // each CUIntVector contains indexes in _items[] only for dir items;
+  AStringVector _symLinks;
+  AStringVector _auxItems;
+  int _auxSysIndex;
+  int _auxUnknownIndex;
+
+  CMyComPtr<IInStream> _stream;
+  UInt64 _phySize;
+  bool _isArc;
+  bool _headersError;
+  bool _headersWarning;
+  bool _linksError;
+
+  bool _isUTF;
+
+  CHeader _h;
+  std::shared_ptr<ext_volume> _volume;
+  CExtVerityPolicy _verityPolicy;
+  CObjectVector<CByteBuffer> _inlineData;
+  std::vector<CExtCryptInode> _cryptInodes;
+  UInt32 _extentChecksumSeed;
+  UInt32 _blockInode = 0;
+  CObjectVector<CExtXattr> _xattrs;
+  int _rootXattrAux;
+  bool _directoryLimitations = false;
+  bool _xattrLimitations = false;
+  bool _linkLimitations = false;
+  bool _inodeLimitations = false;
+  bool _indirectLimitations = false;
+  bool HasIndirectRangeLimit(const CNode &node) const
+  {
+    return node.IsRegular() && node.InlineIndex < 0 && !node.IsFlags_EXTENTS() &&
+        node.FileSize > ((UInt64)1 << (32 + _h.BlockBits));
+  }
+  void MarkDirectoryIncomplete(CNode &node)
+  {
+    node.DirectoryIncomplete = true;
+    _directoryLimitations = true;
+  }
+  struct CXattrContext {
+    CHandler *Owner;
+    unsigned NodeIndex;
+    HRESULT Result;
+    UInt32 StreamInode;
+    CMyComPtr<IInStream> Stream;
+    IInStream *Source = NULL;
+  };
+  static int ReadXattr(void *, uint32_t, uint64_t, void *, size_t) noexcept;
+  static int ReadXattrInode(void *, uint32_t, void *, size_t) noexcept;
+  static int HandleXattrError(void *, int) noexcept;
+  static int ReadLinkBlock(void *, void *, size_t) noexcept;
+  HRESULT ReadLink(unsigned, CByteBuffer &, IInStream *source = NULL);
+  struct CSystemZoneContext {
+    CXattrContext Io;
+    CRecordVector<CExtent> Extents;
+    bool Mapped = false;
+  };
+  static int ReadSystemInode(void *, uint32_t, void *, size_t) noexcept;
+  static int ReadSystemBlock(void *, uint64_t, void *, size_t) noexcept;
+  static int MapSystemInode(void *, uint32_t, uint32_t, uint32_t *, uint64_t *) noexcept;
+  HRESULT LoadSystemZone(const void *descriptors, UInt32 groups);
+  struct CDirectoryContext {
+    CHandler *Owner;
+    IInStream *Stream;
+    const CRecordVector<CExtent> *Ranges;
+    unsigned Inode;
+    CDirParseState *State;
+    HRESULT Result = S_OK;
+    HRESULT CallbackResult = S_OK;
+    CUIntVector *Emitted = NULL;
+  };
+  static int ReadIndexBlock(void *, uint32_t, void *, size_t) noexcept;
+  static int EmitIndexBlock(void *, uint32_t, const void *, size_t) noexcept;
+  struct CIndirectDirectoryContext {
+    CHandler *Owner;
+    CRecordVector<CExtent> *Ranges;
+  };
+  static HRESULT EmitIndirectDirectoryRange(void *, UInt32, UInt64, UInt32);
+  struct CExtentReadContext {
+    CHandler *Owner;
+    IInStream *Source;
+    CRecordVector<CExtent> *Ranges;
+    HRESULT Result = S_OK;
+  };
+  static int ReadExtentBlock(void *, uint64_t, void *, size_t) noexcept;
+  static int EmitExtent(void *, uint32_t, uint64_t, uint32_t, int) noexcept;
+  static int EmitXattr(void *, const char *, const void *, size_t) noexcept;
+  HRESULT LoadXattrs();
+  HRESULT LoadEncryption();
+  UInt64 GetUnpackSize(const CNode &node) const
+  {
+    return node.IsLink() && node.SymLinkIndex >= 0 ?
+        _symLinks[(unsigned)node.SymLinkIndex].Len() : node.FileSize;
+  }
+  void AddXattrItem(unsigned node, int parent, unsigned attribute);
+
+  IArchiveOpenCallback *_openCallback;
+  HRESULT _openCallbackResult = S_OK;
+  UInt64 _totalRead;
+  UInt64 _totalReadPrev;
+
+  CByteBuffer _tempBufs[kNumTreeLevelsMax];
+
+
+  HRESULT CheckProgress2()
+  {
+    const UInt64 numFiles = _items.Size();
+    const HRESULT result = _openCallback->SetCompleted(&numFiles, &_totalRead);
+    if (result != S_OK)
+      _openCallbackResult = result;
+    return result;
+  }
+
+  HRESULT CheckProgress()
+  {
+    HRESULT res = S_OK;
+    if (_openCallback)
+    {
+      if (_totalRead - _totalReadPrev >= ((UInt32)1 << 20))
+      {
+        _totalReadPrev = _totalRead;
+        res = CheckProgress2();
+      }
+    }
+    return res;
+  }
+
+
+  int GetParentAux(const CItem &item) const
+  {
+    if (item.Node < _h.FirstInode && _auxSysIndex >= 0)
+      return _auxSysIndex;
+    return _auxUnknownIndex;
+  }
+
+  HRESULT SeekAndRead(IInStream *inStream, UInt64 block, Byte *data, size_t size);
+  HRESULT ParseDir(const Byte *data, size_t size, unsigned iNodeDir, CDirParseState &state);
+  HRESULT ReadDir(unsigned iNodeDir, HRESULT &callbackResult);
+  int FindTargetItem_for_SymLink(unsigned dirNode, const AString &path) const;
+
+  HRESULT FillExtents(const Byte *p, size_t size, CRecordVector<CExtent> &extents, int parentDepth,
+      UInt32 firstBlock = 0, UInt64 blockLimit = (UInt64)1 << 32, IInStream *source = NULL);
+
+  HRESULT GetStream_Node(unsigned nodeIndex, ISequentialInStream **stream, bool requireAllocated = false,
+      bool rawLink = false, CRecordVector<CExtent> *allocated = NULL, IInStream *source = NULL,
+      bool *mappingIncomplete = NULL);
+  HRESULT ExtractNode(unsigned nodeIndex, CByteBuffer &data, IInStream *source = NULL);
+  HRESULT GetFileStream(UInt32 index, ISequentialInStream **stream, IInStream *source,
+      bool *mappingIncomplete = NULL);
+
+  void ClearRefs();
+  HRESULT Open2(IInStream *inStream);
+
+  void GetPath(unsigned index, AString &s) const;
+  bool GetPackSize(unsigned index, UInt64 &res) const;
+};
+
+// clang-format on
+
+HRESULT CHandler::ParseDir(const Byte *p, size_t size, unsigned iNodeDir, CDirParseState &state) {
+    const size_t blockSize = (size_t)1 << _h.BlockBits;
+    size_t blockOffset = 0;
+    bool &isThereSelfLink = state.SelfLink;
+
+    PRF(printf("\n\n========= node = %5d    size = %5d", (unsigned)iNodeDir, (unsigned)size));
+
+    CNode &nodeDir = _nodes[_refs[iNodeDir]];
+    if (nodeDir.Flags & ((UInt32)1 << 21))
+        return S_FALSE;
+    const CExtCryptInode &dirCrypt = _cryptInodes[(unsigned)_refs[iNodeDir]];
+    const int rootHashVersion = state.RootHashVersion;
+    CUIntVector &dir = _dirs[(unsigned)nodeDir.DirIndex];
+    int &parentNode = state.ParentNode;
+
+    CItem item;
+
+    for (;;) {
+        if (size == 0)
+            break;
+        if (size < 8)
+            return S_FALSE;
+        if (nodeDir.InlineIndex < 0 &&
+            ext_linux_directory_entry_check(_volume.get(), nodeDir.Flags, p - blockOffset,
+                                            MyMin(size, blockSize - blockOffset) + blockOffset,
+                                            (unsigned)blockOffset))
+            return S_FALSE;
+        UInt32 iNode;
+        LE_32(0x00, iNode)
+        unsigned recLen;
+        LE_16(0x04, recLen)
+        if (recLen == 0 || recLen == 0xFFFF)
+            recLen = (unsigned)blockSize;
+        else
+            recLen = (recLen & 65532) | ((recLen & 3) << 16);
+        const unsigned nameLen = p[6];
+        const Byte type = p[7];
+
+        if (recLen < 12 || (recLen & 3) != 0 || recLen > size || recLen > blockSize - blockOffset)
+            return S_FALSE;
+        if (nameLen + 8 > recLen)
+            return S_FALSE;
+
+        if (iNode > _h.NumInodes)
+            return S_FALSE;
+
+        item.Clear();
+
+        item.Type = ext_linux_directory_type(_volume.get(), type) ? type : k_Type_UNKNOWN;
+
+        item.ParentNode = (int)iNodeDir;
+        item.Node = iNode;
+        unsigned presentedLen = nameLen;
+        if (dirCrypt) {
+            if (iNode) {
+                uint32_t hash = 0, minor = 0;
+                if (ext_linux_directory_hash(_volume.get(), nodeDir.Flags, nodeDir.FileSize,
+                                             dirCrypt.get(), rootHashVersion, state.LinearFallback,
+                                             p, recLen, &hash, &minor) != 0)
+                    return S_FALSE;
+                CByteBuffer name(256);
+                size_t len = 0;
+                const int result = sevenzip_fscrypt_present_name(dirCrypt.get(), hash, minor, p + 8,
+                                                                 nameLen, name, name.Size(), &len);
+                if (result)
+                    return result == -ENOMEM ? E_OUTOFMEMORY : S_FALSE;
+                presentedLen = (unsigned)len;
+                if (!len || memchr(name, '/', len))
+                    return S_FALSE;
+                item.Name.SetFrom_CalcLen((const char *)(const Byte *)name, presentedLen);
+            } else {
+                presentedLen = 0;
+                item.Name.Empty();
+            }
+        } else
+            item.Name.SetFrom_CalcLen((const char *)(p + 8), nameLen);
+
+        p += recLen;
+        size -= recLen;
+        blockOffset = (blockOffset + recLen) & (blockSize - 1);
+
+        if (item.Name.Len() != presentedLen)
+            return S_FALSE;
+
+        if (_isUTF) {
+            // 21.07 : we force UTF8
+            // _isUTF = CheckUTF8_AString(item.Name);
+        }
+
+        if (iNode == 0) {
+            /*
+            ext3 deleted??
+            if (item.Name.Len() != 0)
+              return S_FALSE;
+            */
+
+            PRF(printf("\n EMPTY %6d %d %s", (unsigned)recLen, (unsigned)type,
+                       (const char *)item.Name));
+            if (type == 0xDE) {
+                // checksum
+            }
+            continue;
+        }
+
+        if (verify_dirent_name(item.Name.Ptr(), (int)item.Name.Len()))
+            return S_FALSE;
+        const int nodeIndex = iNode < _refs.Size() ? _refs[iNode] : -1;
+        if (nodeIndex < 0) {
+            MarkDirectoryIncomplete(nodeDir);
+            continue;
+        }
+        CNode &node = _nodes[nodeIndex];
+        if (node.ReadError || (node.Flags & ((UInt32)1 << 21))) {
+            MarkDirectoryIncomplete(nodeDir);
+            continue;
+        }
+        item.ContextAllowed =
+            sevenzip_fscrypt_permitted_context(
+                dirCrypt.get(), _cryptInodes[(unsigned)nodeIndex].get(), node.Mode) != 0;
+
+        if (item.Type != k_Type_UNKNOWN && k_TypeToMode[item.Type] != (node.Mode & MY_LIN_S_IFMT)) {
+            MarkDirectoryIncomplete(nodeDir);
+            item.Type = k_Type_UNKNOWN;
+        }
+
+        node.NumLinksCalced++;
+
+        PRF(printf("\n%s %6d %s", item.IsDir() ? "DIR  " : "     ", (unsigned)item.Node,
+                   (const char *)item.Name));
+
+        if (item.Name[0] == '.') {
+            if (item.Name[1] == 0) {
+                if (isThereSelfLink)
+                    return S_FALSE;
+                isThereSelfLink = true;
+                if (iNode != iNodeDir)
+                    return S_FALSE;
+                continue;
+            }
+
+            if (item.Name[1] == '.' && item.Name[2] == 0) {
+                if (parentNode >= 0)
+                    return S_FALSE;
+                if (!node.IsDir())
+                    return S_FALSE;
+                if (iNode == iNodeDir && iNode != k_INODE_ROOT)
+                    return S_FALSE;
+
+                parentNode = (int)iNode;
+
+                if (nodeDir.ParentNode < 0)
+                    nodeDir.ParentNode = (int)iNode;
+                else if ((unsigned)nodeDir.ParentNode != iNode)
+                    return S_FALSE;
+
+                continue;
+            }
+        }
+
+        if (iNode == iNodeDir)
+            return S_FALSE;
+
+        if (node.IsDir()) {
+            if (!item.ContextAllowed)
+                return HRESULT(0x80070005L);
+            if (node.ParentNode < 0)
+                node.ParentNode = (int)iNodeDir;
+            else if ((unsigned)node.ParentNode != iNodeDir)
+                return S_FALSE;
+            const unsigned itemIndex = _items.Size();
+            dir.Add(itemIndex);
+            node.ItemIndex = (int)itemIndex;
+        }
+
+        _items.Add(item);
+    }
+
+    return S_OK;
+}
+
+HRESULT CHandler::EmitIndirectDirectoryRange(void *opaque, UInt32 logical, UInt64 physical,
+                                             UInt32 count) {
+    auto &context = *static_cast<CIndirectDirectoryContext *>(opaque);
+    if (context.Owner->_openCallback)
+        RINOK(context.Owner->CheckProgress2())
+    if (!physical)
+        return S_OK;
+    while (count) {
+        const UInt16 length = UInt16(MyMin(count, UInt32(1U << 15)));
+        CExtent range;
+        range.VirtBlock = logical;
+        range.Len = length;
+        range.IsInited = true;
+        range.PhyStart = physical;
+        context.Ranges->Add(range);
+        logical += length;
+        physical += length;
+        count -= length;
+    }
+    return S_OK;
+}
+
+int CHandler::ReadIndexBlock(void *opaque, uint32_t block, void *data, size_t size) noexcept {
+    auto &context = *static_cast<CDirectoryContext *>(opaque);
+    try {
+        const auto &ranges = *context.Ranges;
+        unsigned left = 0, right = ranges.Size();
+        while (left < right) {
+            const unsigned middle = left + (right - left) / 2;
+            if (ranges[middle].VirtBlock <= block)
+                left = middle + 1;
+            else
+                right = middle;
+        }
+        if (!left || block >= (UInt64)ranges[left - 1].VirtBlock + ranges[left - 1].Len)
+            return 1; // Linux bread reports an unmapped directory block as a hole.
+        context.Result =
+            InStream_SeekSet(context.Stream, (UInt64)block << context.Owner->_h.BlockBits);
+        if (context.Result == S_OK)
+            context.Result = ReadStream_FALSE(context.Stream, data, size);
+        if (context.Result == S_OK) {
+            context.Owner->_totalRead += size;
+            if (context.Owner->_openCallback)
+                context.Result = context.CallbackResult = context.Owner->CheckProgress2();
+        }
+        return context.Result == S_OK ? 0 : -EIO;
+    } catch (const std::bad_alloc &) {
+        context.Result = E_OUTOFMEMORY;
+        return -ENOMEM;
+    } catch (...) {
+        context.Result = E_FAIL;
+        return -EIO;
+    }
+}
+
+int CHandler::EmitIndexBlock(void *opaque, uint32_t block, const void *data, size_t size) noexcept {
+    auto &context = *static_cast<CDirectoryContext *>(opaque);
+    try {
+        if (context.Emitted)
+            context.Emitted->Add(block);
+        if (block == 0 && size >= 32)
+            context.State->RootHashVersion = static_cast<const Byte *>(data)[28];
+        context.Result = context.Owner->ParseDir(static_cast<const Byte *>(data), size,
+                                                 context.Inode, *context.State);
+        return context.Result == S_OK ? 0 : -EIO;
+    } catch (const std::bad_alloc &) {
+        context.Result = E_OUTOFMEMORY;
+        return -ENOMEM;
+    } catch (...) {
+        context.Result = E_FAIL;
+        return -EIO;
+    }
+}
+
+HRESULT CHandler::ReadDir(unsigned iNodeDir, HRESULT &callbackResult) {
+    const unsigned nodeIndex = (unsigned)_refs[iNodeDir];
+    CNode &node = _nodes[nodeIndex];
+    node.DirIndex = (int)_dirs.Size();
+    _dirs.AddNew();
+    CDirParseState state;
+    CMyComPtr<IInStream> source = CreateReadOnlyInput(_stream);
+    if (iNodeDir == k_INODE_ROOT)
+        node.ParentNode = k_INODE_ROOT;
+    if (node.InlineIndex >= 0) {
+        const CByteBuffer &data = _inlineData[(unsigned)node.InlineIndex];
+        if (data.Size() == 0)
+            return S_FALSE;
+        if ((node.Flags & 0x1000) && data.Size() >= 32)
+            state.RootHashVersion = data[28];
+        RINOK(ParseDir(data, data.Size(), iNodeDir, state))
+    } else {
+        const size_t blockSize = (size_t)1 << _h.BlockBits;
+        if (node.FileSize == 0)
+            return S_FALSE;
+        if (_h.UseMetadataChecksum() && (node.FileSize & (blockSize - 1)))
+            return S_FALSE;
+        CRecordVector<CExtent> allocated;
+        CMyComPtr<ISequentialInStream> input;
+        bool mappingIncomplete = false;
+        const HRESULT mappingResult =
+            GetStream_Node(nodeIndex, &input, false, true, &allocated, source, &mappingIncomplete);
+        callbackResult = _openCallbackResult;
+        RINOK(callbackResult)
+        if (mappingIncomplete)
+            MarkDirectoryIncomplete(node);
+        RINOK(mappingResult)
+        CUIntVector emitted;
+        if (!input)
+            return S_FALSE;
+        CMyComPtr<IInStream> seekable;
+        RINOK(input->QueryInterface(IID_IInStream, reinterpret_cast<void **>(&seekable)))
+        if ((_h.FeatureCompat & 0x20) && (node.Flags & 0x1000)) {
+            CDirectoryContext context{this, seekable, &allocated, iNodeDir, &state};
+            context.Emitted = &emitted;
+            const int result =
+                ext_linux_index_directory(_volume.get(), iNodeDir, node.ChecksumSeed, node.Flags,
+                                          node.FileSize, &context, ReadIndexBlock, EmitIndexBlock);
+            callbackResult = context.CallbackResult;
+            RINOK(callbackResult)
+            if (context.Result != S_OK && context.Result != S_FALSE)
+                return context.Result;
+            if (result == -ENOMEM)
+                return E_OUTOFMEMORY;
+            if (result != 1) {
+                if (!result)
+                    return state.ParentNode < 0 || !state.SelfLink ? S_FALSE : S_OK;
+                MarkDirectoryIncomplete(node);
+            }
+            emitted.Sort(
+                [](const unsigned *a, const unsigned *b, void *) { return *a < *b ? -1 : *a > *b; },
+                NULL);
+            state.LinearFallback = true;
+        }
+        CByteBuffer data(blockSize);
+        const UInt64 blocks = (node.FileSize + blockSize - 1) >> _h.BlockBits;
+        FOR_VECTOR(i, allocated) {
+            const CExtent &range = allocated[i];
+            const UInt64 end = MyMin((UInt64)range.VirtBlock + range.Len, blocks);
+            if (range.VirtBlock >= end)
+                continue;
+            for (UInt64 block = range.VirtBlock; block < end; ++block) {
+                if (emitted.FindInSorted((unsigned)block) >= 0)
+                    continue;
+                const size_t size =
+                    (size_t)MyMin<UInt64>(blockSize, node.FileSize - (block << _h.BlockBits));
+                HRESULT result = InStream_SeekSet(seekable, block << _h.BlockBits);
+                if (result == S_OK)
+                    result = ReadStream_FALSE(input, data, size);
+                if (result == E_ABORT || result == E_OUTOFMEMORY)
+                    return result;
+                if (_openCallback) {
+                    callbackResult = CheckProgress2();
+                    RINOK(callbackResult)
+                }
+                if (result != S_OK) {
+                    MarkDirectoryIncomplete(node);
+                    continue;
+                }
+                _totalRead += size;
+                if (block == 0 && (node.Flags & 0x1000) && size >= 32)
+                    state.RootHashVersion = data[28];
+                if (_h.UseMetadataChecksum() &&
+                    ext_linux_directory_check(_volume.get(), node.ChecksumSeed, node.Flags,
+                                              (UInt32)block, data)) {
+                    MarkDirectoryIncomplete(node);
+                    continue;
+                }
+                const HRESULT parsed = ParseDir(data, size, iNodeDir, state);
+                if (parsed == S_FALSE)
+                    MarkDirectoryIncomplete(node);
+                else {
+                    RINOK(parsed)
+                }
+                if (_openCallback) {
+                    callbackResult = CheckProgress2();
+                    RINOK(callbackResult)
+                }
+            }
+        }
+    }
+    return state.ParentNode < 0 || !state.SelfLink ? S_FALSE : S_OK;
+}
+
+static int CompareItemsNames(const unsigned *p1, const unsigned *p2, void *param) {
+    const CObjectVector<CItem> &items = *(const CObjectVector<CItem> *)param;
+    return strcmp(items[*p1].Name, items[*p2].Name);
+}
+
+int CHandler::FindTargetItem_for_SymLink(unsigned iNode, const AString &path) const {
+    unsigned pos = 0;
+
+    if (path.IsEmpty())
+        return -1;
+
+    if (path[0] == '/') {
+        iNode = k_INODE_ROOT;
+        if (iNode >= _refs.Size())
+            return -1;
+        pos = 1;
+    }
+
+    AString s;
+
+    while (pos != path.Len()) {
+        const CNode &node = _nodes[_refs[iNode]];
+        const int slash = path.Find('/', pos);
+
+        if (slash < 0) {
+            s = path.Ptr(pos);
+            pos = path.Len();
+        } else {
+            s.SetFrom(path.Ptr(pos), (unsigned)slash - pos);
+            pos = (unsigned)slash + 1;
+        }
+
+        if (s[0] == '.') {
+            if (s[1] == 0)
+                continue;
+            else if (s[1] == '.' && s[2] == 0) {
+                if (node.ParentNode < 0)
+                    return -1;
+                if (iNode == k_INODE_ROOT)
+                    return -1;
+                iNode = (unsigned)node.ParentNode;
+                continue;
+            }
+        }
+
+        if (node.DirIndex < 0)
+            return -1;
+
+        const CUIntVector &dir = _dirs[node.DirIndex];
+
+        /*
+        for (unsigned i = 0;; i++)
+        {
+          if (i >= dir.Size())
+            return -1;
+          const CItem &item = _items[dir[i]];
+          if (item.Name == s)
+          {
+            iNode = item.Node;
+            break;
+          }
+        }
+        */
+
+        unsigned left = 0, right = dir.Size();
+        for (;;) {
+            if (left == right)
+                return -1;
+            const unsigned mid = (unsigned)(((size_t)left + (size_t)right) / 2);
+            const CItem &item = _items[dir[mid]];
+            const int comp = strcmp(s, item.Name);
+            if (comp == 0) {
+                iNode = item.Node;
+                break;
+            }
+            if (comp < 0)
+                right = mid;
+            else
+                left = mid + 1;
+        }
+    }
+
+    return _nodes[_refs[iNode]].ItemIndex;
+}
+
+HRESULT CHandler::SeekAndRead(IInStream *inStream, UInt64 block, Byte *data, size_t size) {
+    if (block == 0 || block >= _h.NumBlocks)
+        return S_FALSE;
+    if (((size + ((size_t)1 << _h.BlockBits) - 1) >> _h.BlockBits) > _h.NumBlocks - block)
+        return S_FALSE;
+    RINOK(InStream_SeekSet(inStream, (UInt64)block << _h.BlockBits))
+    _totalRead += size;
+    return ReadStream_FALSE(inStream, data, size);
+}
+
+int CHandler::ReadXattr(void *opaque, uint32_t ino, uint64_t offset, void *data,
+                        size_t size) noexcept {
+    auto &context = *static_cast<CXattrContext *>(opaque);
+    CHandler &owner = *context.Owner;
+    try {
+        if (owner._openCallback)
+            context.Result = owner.CheckProgress2();
+        if (context.Result != S_OK)
+            return -EIO;
+        if (!ino) {
+            const UInt64 volumeSize = owner._h.GetPhySize();
+            if (offset > volumeSize || size > volumeSize - offset)
+                return -EIO;
+            IInStream *source = context.Source ? context.Source : owner._stream.Interface();
+            context.Result = InStream_SeekSet(source, offset);
+            if (context.Result == S_OK)
+                context.Result = ReadStream_FALSE(source, data, size);
+        } else {
+            if (ino >= owner._refs.Size() || owner._refs[ino] < 0)
+                return -EIO;
+            if (context.StreamInode != ino) {
+                CMyComPtr<ISequentialInStream> sequential;
+                context.Stream.Release();
+                context.Result = owner.GetStream_Node((unsigned)owner._refs[ino], &sequential, true,
+                                                      false, NULL, context.Source);
+                if (context.Result == S_OK)
+                    context.Result = sequential->QueryInterface(
+                        IID_IInStream, reinterpret_cast<void **>(&context.Stream));
+                if (context.Result != S_OK)
+                    return -EIO;
+                context.StreamInode = ino;
+            }
+            context.Result = InStream_SeekSet(context.Stream, offset);
+            if (context.Result == S_OK)
+                context.Result = ReadStream_FALSE(context.Stream, data, size);
+        }
+        owner._totalRead += size;
+        return context.Result == S_OK ? 0 : -EIO;
+    } catch (const std::bad_alloc &) {
+        context.Result = E_OUTOFMEMORY;
+        return -ENOMEM;
+    } catch (...) {
+        context.Result = E_FAIL;
+        return -EIO;
+    }
+}
+
+int CHandler::ReadXattrInode(void *opaque, uint32_t ino, void *raw, size_t size) noexcept {
+    auto &context = *static_cast<CXattrContext *>(opaque);
+    CHandler &owner = *context.Owner;
+    if (ino >= owner._refs.Size() || owner._refs[ino] < 0 || size != owner._h.InodeSize)
+        return -EIO;
+    return ReadXattr(opaque, 0, owner._nodes[owner._refs[ino]].RawOffset, raw, size);
+}
+
+int CHandler::ReadSystemInode(void *opaque, uint32_t ino, void *raw, size_t size) noexcept {
+    return ReadXattrInode(&static_cast<CSystemZoneContext *>(opaque)->Io, ino, raw, size);
+}
+
+int CHandler::ReadSystemBlock(void *opaque, uint64_t block, void *data, size_t size) noexcept {
+    auto &context = *static_cast<CSystemZoneContext *>(opaque);
+    return ReadXattr(&context.Io, 0, block << context.Io.Owner->_h.BlockBits, data, size);
+}
+
+int CHandler::MapSystemInode(void *opaque, uint32_t ino, uint32_t logical, uint32_t *count,
+                             uint64_t *physical) noexcept {
+    auto &context = *static_cast<CSystemZoneContext *>(opaque);
+    auto &owner = *context.Io.Owner;
+    try {
+        if (owner._openCallback)
+            context.Io.Result = owner.CheckProgress2();
+        if (context.Io.Result != S_OK)
+            return -EIO;
+        if (ino >= owner._refs.Size() || owner._refs[ino] < 0)
+            return -EIO;
+        const CNode &node = owner._nodes[owner._refs[ino]];
+        if (!node.IsRegular() || node.InlineIndex >= 0)
+            return -EIO;
+        if (!node.IsFlags_EXTENTS()) {
+            const UInt64 blocks =
+                (node.FileSize + (((UInt64)1 << owner._h.BlockBits) - 1)) >> owner._h.BlockBits;
+            if (blocks > UINT32_MAX || logical >= blocks || !*count)
+                return -EIO;
+            const ext_indirect_services services{&context, ReadSystemBlock};
+            const UInt32 requested =
+                MyMin(MyMin(*count, UInt32(blocks - logical)), UInt32(INT_MAX));
+            return ext_linux_indirect_map(owner._volume.get(), ino, node.Block, logical, requested,
+                                          &services, physical, count);
+        }
+        if (!context.Mapped) {
+            owner._blockInode = ino;
+            owner._extentChecksumSeed = node.ChecksumSeed;
+            context.Io.Result =
+                owner.FillExtents(node.Block, kNodeBlockFieldSize, context.Extents, -1);
+            if (context.Io.Result != S_OK)
+                return -EIO;
+            context.Mapped = true;
+        }
+        *physical = 0;
+        FOR_VECTOR(i, context.Extents) {
+            const auto &extent = context.Extents[i];
+            if (logical >= extent.VirtBlock && logical - extent.VirtBlock < extent.Len) {
+                *count = MyMin(*count, extent.Len - (logical - extent.VirtBlock));
+                if (extent.PhyStart)
+                    *physical = extent.PhyStart + logical - extent.VirtBlock;
+                return 0;
+            }
+        }
+        *count = 1;
+        return 0;
+    } catch (const std::bad_alloc &) {
+        context.Io.Result = E_OUTOFMEMORY;
+        return -ENOMEM;
+    } catch (...) {
+        context.Io.Result = E_FAIL;
+        return -EIO;
+    }
+}
+
+int CHandler::ReadLinkBlock(void *opaque, void *data, size_t size) noexcept {
+    auto &context = *static_cast<CXattrContext *>(opaque);
+    try {
+        if (!context.Stream) {
+            CMyComPtr<ISequentialInStream> sequential;
+            context.Result = context.Owner->GetStream_Node(context.NodeIndex, &sequential, true,
+                                                           true, NULL, context.Source);
+            if (context.Result == S_OK)
+                context.Result = sequential->QueryInterface(
+                    IID_IInStream, reinterpret_cast<void **>(&context.Stream));
+        }
+        if (context.Result == S_OK)
+            context.Result = InStream_SeekSet(context.Stream, 0);
+        if (context.Result == S_OK)
+            context.Result = ReadStream_FALSE(context.Stream, data, size);
+        context.Owner->_totalRead += size;
+        if (context.Result == S_OK && context.Owner->_openCallback)
+            context.Result = context.Owner->CheckProgress2();
+        return context.Result == S_OK ? 0 : -EIO;
+    } catch (const std::bad_alloc &) {
+        context.Result = E_OUTOFMEMORY;
+        return -ENOMEM;
+    } catch (...) {
+        context.Result = E_FAIL;
+        return -EIO;
+    }
+}
+
+HRESULT CHandler::ReadLink(unsigned index, CByteBuffer &data, IInStream *source) {
+    const CNode &node = _nodes[index];
+    if (node.SpecialReadError)
+        return S_FALSE;
+    CXattrContext context{this, index, S_OK, 0, {}};
+    context.Source = source;
+    const size_t blockSize = (size_t)1 << _h.BlockBits;
+    if (_cryptInodes[index]) {
+        data.Alloc(node.IsFastSymlink(_h) ? kNodeBlockFieldSize : blockSize);
+        ReadLinkBlock(&context, data, data.Size());
+        RINOK(context.Result)
+        return ExtCryptPresentSymlink(_cryptInodes[index], data);
+    }
+    CByteBuffer raw(_h.InodeSize);
+    int status = ReadXattr(&context, 0, node.RawOffset, raw, raw.Size());
+    ext_node *inode = NULL;
+    ext_node_info info;
+    if (!status)
+        status = ext_linux_inode_open(_volume.get(), node.InodeNumber, raw, &inode, &info);
+    struct CLinkOwner {
+        ext_node *Ptr;
+        ~CLinkOwner() { ext_linux_inode_close(Ptr); }
+    } holder{inode};
+    data.Alloc(blockSize + 1);
+    size_t size = 0;
+    ext_link_services services{&context, ReadLinkBlock};
+    if (!status)
+        status = ext_linux_readlink(inode, &services, data, data.Size(), &size);
+    RINOK(context.Result)
+    if (status)
+        return status == -ENOMEM ? E_OUTOFMEMORY : S_FALSE;
+    CByteBuffer target(size);
+    if (size)
+        memcpy(target, data, size);
+    data = target;
+    return S_OK;
+}
+
+HRESULT CHandler::LoadSystemZone(const void *descriptors, UInt32 groups) {
+    CSystemZoneContext context{{this, 0, S_OK, 0, {}}, {}, false};
+    ext_block_services services{&context, ReadSystemInode, MapSystemInode};
+    const int error = ext_linux_system_zone(_volume.get(), descriptors, groups, &services);
+    if (context.Io.Result != S_OK)
+        return context.Io.Result;
+    if (error)
+        return error == -ENOMEM ? E_OUTOFMEMORY : S_FALSE;
+    FOR_VECTOR(i, _nodes) {
+        const CNode &node = _nodes[i];
+        if ((node.Flags & ((UInt32)1 << 21)) ? node.EaReadError : node.SpecialReadError)
+            continue;
+        // The target reader validates the full mapping before reading it.
+        // A bad link storage reference must not suppress independent files.
+        if (node.IsLink())
+            continue;
+        const bool fastLink = node.IsFastSymlink(_h);
+        if (node.InlineIndex < 0 && !fastLink && node.IsFlags_EXTENTS() &&
+            (node.IsRegular() || node.IsDir() || node.IsLink()) &&
+            ext_linux_extent_check(_volume.get(), node.InodeNumber, node.ChecksumSeed,
+                                   GetUi16(node.Block + 6), node.Block, kNodeBlockFieldSize,
+                                   GetUi16(node.Block + 6), 0, 0))
+            return S_FALSE;
+        if (node.InlineIndex < 0 && !node.IsFlags_EXTENTS() &&
+            (node.IsRegular() || node.IsDir() || (node.IsLink() && !fastLink)) &&
+            ext_linux_blockrefs(_volume.get(), node.InodeNumber, node.Block, 15))
+            return S_FALSE;
+    }
+    return S_OK;
+}
+
+int CHandler::EmitXattr(void *opaque, const char *name, const void *data, size_t size) noexcept {
+    auto &context = *static_cast<CXattrContext *>(opaque);
+    CHandler &owner = *context.Owner;
+    try {
+        if (owner._openCallback)
+            context.Result = owner.CheckProgress2();
+        if (context.Result != S_OK)
+            return -EIO;
+        const unsigned first = owner._nodes[context.NodeIndex].XattrFirst;
+        for (unsigned i = first; i < owner._xattrs.Size(); ++i)
+            if (owner._xattrs[i].RawName == name)
+                return 0;
+        CExtXattr &attribute = owner._xattrs.AddNew();
+        attribute.RawName = name;
+        attribute.Name = "$XATTR.";
+        static const char hex[] = "0123456789ABCDEF";
+        for (const unsigned char *p = (const unsigned char *)name; *p; ++p) {
+            const unsigned char c = *p;
+            if ((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') ||
+                c == '.' || c == '_' || c == '-')
+                attribute.Name += (char)c;
+            else {
+                attribute.Name += '%';
+                attribute.Name += hex[c >> 4];
+                attribute.Name += hex[c & 15];
+            }
+        }
+        attribute.Data.CopyFrom((const Byte *)data, size);
+        return 0;
+    } catch (const std::bad_alloc &) {
+        context.Result = E_OUTOFMEMORY;
+        return -ENOMEM;
+    } catch (...) {
+        context.Result = E_FAIL;
+        return -EIO;
+    }
+}
+
+void CHandler::AddXattrItem(unsigned node, int parent, unsigned attribute) {
+    CItem item;
+    item.Node = node;
+    item.Type = k_Type_REG_FILE;
+    item.XattrParent = parent;
+    item.XattrIndex = (int)attribute;
+    if (parent >= 0)
+        item.ContextAllowed = _items[(unsigned)parent].ContextAllowed;
+    const AString base = _xattrs[attribute].Name;
+    item.Name = base;
+    const AString host =
+        parent >= 0 ? _items[(unsigned)parent].Name : _auxItems[(unsigned)_rootXattrAux];
+    const int parentNode = parent >= 0 ? _items[(unsigned)parent].ParentNode : k_INODE_ROOT;
+    for (UInt32 suffix = 0;;) {
+        AString full = host;
+        full += ':';
+        full += item.Name;
+        bool collision = false;
+        FOR_VECTOR(i, _items) {
+            const CItem &other = _items[i];
+            if ((other.XattrIndex >= 0 && other.XattrParent == parent &&
+                 StringsAreEqualNoCase(UString(other.Name), UString(item.Name))) ||
+                (other.XattrIndex < 0 && other.ParentNode == parentNode &&
+                 StringsAreEqualNoCase(UString(other.Name), UString(full)))) {
+                collision = true;
+                break;
+            }
+        }
+        if (!collision)
+            break;
+        char number[16];
+        ConvertUInt32ToString(++suffix, number);
+        item.Name = base;
+        item.Name += '#';
+        item.Name += number;
+    }
+    _items.Add(item);
+}
+
+HRESULT CHandler::LoadEncryption() {
+    _cryptInodes.resize(_nodes.Size());
+    bool encrypted = false;
+    FOR_VECTOR(i, _nodes)
+    if (!_nodes[i].SpecialReadError && (_nodes[i].Flags & 0x800))
+        encrypted = true;
+    if (!encrypted)
+        return S_OK;
+    CExtCryptKeys keys;
+    RINOK(keys.Read(_openCallback))
+    sevenzip_fscrypt_geometry geometry;
+    ext_linux_fscrypt_geometry(_volume.get(), &geometry);
+    FOR_VECTOR(i, _nodes) {
+        const CNode &node = _nodes[i];
+        if (node.SpecialReadError || !(node.Flags & 0x800))
+            continue;
+        if (!(_h.FeatureIncompat & 0x10000) || node.InlineIndex >= 0 ||
+            (!node.IsDir() && !node.IsRegular() && !node.IsLink()))
+            return S_FALSE;
+        if (node.IsLink() && node.FileSize > ((UInt64)1 << _h.BlockBits))
+            return S_FALSE;
+        CXattrContext context{this, i, S_OK, 0, {}};
+        CByteBuffer raw(_h.InodeSize);
+        int result = ReadXattr(&context, 0, node.RawOffset, raw, raw.Size());
+        ext_node *inode = NULL;
+        ext_node_info info;
+        if (!result)
+            result = ext_linux_inode_open(_volume.get(), node.InodeNumber, raw, &inode, &info);
+        struct CNodeOwner {
+            ext_node *Ptr;
+            ~CNodeOwner() { ext_linux_inode_close(Ptr); }
+        } holder{inode};
+        ext_xattr_services services{&context, ReadXattr, ReadXattrInode, NULL};
+        Byte value[40] = {};
+        if (!result)
+            result = ext_linux_fscrypt_context(inode, &services, NULL, 0);
+        const int contextSize = result;
+        if (result >= 0 && (unsigned)result <= sizeof(value))
+            result = ext_linux_fscrypt_context(inode, &services, value, sizeof(value));
+        if (context.Result != S_OK)
+            return context.Result;
+        if (result < 0)
+            return result == -ENOMEM ? E_OUTOFMEMORY : S_FALSE;
+        sevenzip_fscrypt_inode_options options{};
+        options.geometry = &geometry;
+        options.inode_number = node.InodeNumber;
+        options.mode = node.Mode;
+        options.casefolded = (node.Flags & 0x40000000U) != 0;
+        options.context = value;
+        options.context_size = (size_t)contextSize;
+        options.allow_unsupported = 1;
+        RINOK(keys.Prepare(options, _cryptInodes[i]))
+    }
+    return S_OK;
+}
+
+int CHandler::HandleXattrError(void *opaque, int error) noexcept {
+    auto &context = *static_cast<CXattrContext *>(opaque);
+    CHandler &owner = *context.Owner;
+    if (owner._openCallbackResult != S_OK) {
+        context.Result = owner._openCallbackResult;
+        return error;
+    }
+    if (error == -ENOMEM || (context.Result != S_OK && context.Result != S_FALSE))
+        return error;
+    owner._nodes[context.NodeIndex].XattrsIncomplete = true;
+    owner._xattrLimitations = true;
+    context.Result = S_OK;
+    return 0;
+}
+
+HRESULT CHandler::LoadXattrs() {
+    CMyComPtr<IInStream> source = CreateReadOnlyInput(_stream);
+    FOR_VECTOR(i, _nodes) {
+        CNode &node = _nodes[i];
+        if (node.SpecialReadError || !node.HasXattrs || (node.Flags & ((UInt32)1 << 21)))
+            continue;
+        node.XattrFirst = _xattrs.Size();
+        CXattrContext context{this, i, S_OK, 0, {}};
+        context.Source = source;
+        CByteBuffer raw;
+        raw.Alloc(_h.InodeSize);
+        int result = ReadXattr(&context, 0, node.RawOffset, raw, raw.Size());
+        ext_node *inode = NULL;
+        ext_node_info info;
+        if (!result)
+            result = ext_linux_inode_open(_volume.get(), node.InodeNumber, raw, &inode, &info);
+        struct CNodeOwner {
+            ext_node *Ptr;
+            ~CNodeOwner() { ext_linux_inode_close(Ptr); }
+        } holder{inode};
+        ext_xattr_services services{&context, ReadXattr, ReadXattrInode, HandleXattrError};
+        if (result)
+            result = HandleXattrError(&context, result);
+        else
+            result = ext_linux_xattr_visit(inode, &services, EmitXattr, &context);
+        if (context.Result != S_OK)
+            return context.Result;
+        if (result)
+            return result == -ENOMEM ? E_OUTOFMEMORY : S_FALSE;
+        node.XattrCount = _xattrs.Size() - node.XattrFirst;
+    }
+    const unsigned count = _items.Size();
+    for (unsigned i = 0; i < count; ++i) {
+        const unsigned ino = _items[i].Node;
+        const CNode &node = _nodes[_refs[ino]];
+        for (unsigned a = 0; a < node.XattrCount; ++a)
+            AddXattrItem(ino, (int)i, node.XattrFirst + a);
+    }
+    const CNode &root = _nodes[_refs[k_INODE_ROOT]];
+    if (root.XattrCount) {
+        AString name("[ROOT]");
+        for (;;) {
+            bool collision = false;
+            for (unsigned i = 0; i < count; ++i)
+                if (_items[i].ParentNode == k_INODE_ROOT &&
+                    StringsAreEqualNoCase(UString(_items[i].Name), UString(name)))
+                    collision = true;
+            FOR_VECTOR(i, _auxItems)
+            if (StringsAreEqualNoCase(UString(_auxItems[i]), UString(name)))
+                collision = true;
+            if (!collision)
+                break;
+            name += '_';
+        }
+        _rootXattrAux = (int)_auxItems.Add(name);
+        for (unsigned a = 0; a < root.XattrCount; ++a)
+            AddXattrItem(k_INODE_ROOT, -1, root.XattrFirst + a);
+    }
+    return S_OK;
+}
+
+static const unsigned kHeaderSize = 2 * 1024;
+static const unsigned kHeaderDataOffset = 1024;
+
+HRESULT CHandler::Open2(IInStream *inStream) {
+    {
+        Byte buf[kHeaderSize];
+        RINOK(ReadStream_FALSE(inStream, buf, kHeaderSize))
+        if (!_h.Parse(buf + kHeaderDataOffset))
+            return S_FALSE;
+        ext_volume *volume = NULL;
+        if (ext_linux_open(buf + kHeaderDataOffset, &volume) != 0)
+            return S_FALSE;
+        _volume.reset(volume, ext_linux_close);
+        if (_h.BlockGroupNr != 0)
+            return S_FALSE; // it's just copy of super block
+    }
+
+    {
+        // ---------- Read groups and nodes ----------
+
+        unsigned numGroups;
+        {
+            const UInt64 numGroups64 = _h.GetNumGroups();
+            if (numGroups64 > (UInt32)1 << 31)
+                return S_FALSE;
+            numGroups = (unsigned)numGroups64;
+        }
+
+        unsigned gdBits = 5;
+        if (_h.Is64Bit()) {
+            if (_h.GdSize < 64 || _h.GdSize > 1024 || GetLog(_h.GdSize) < 0)
+                return S_FALSE;
+            gdBits = (unsigned)GetLog(_h.GdSize);
+        }
+
+        _isArc = true;
+        _phySize = _h.GetPhySize();
+
+        if (_openCallback) {
+            RINOK(_openCallback->SetTotal(NULL, &_phySize))
+        }
+
+        UInt64 fileSize = 0;
+        RINOK(InStream_GetSize_SeekToEnd(inStream, fileSize))
+        if (ext_linux_geometry_check(_volume.get(), fileSize) != 0)
+            return S_FALSE;
+
+        CRecordVector<CGroupDescriptor> groups;
+
+        CByteBuffer gdBuf;
+        {
+            // ---------- Read groups ----------
+
+            const size_t gdBufSize = (size_t)numGroups << gdBits;
+            if ((gdBufSize >> gdBits) != numGroups)
+                return S_FALSE;
+            gdBuf.Alloc(gdBufSize);
+            const size_t blockSize = (size_t)1 << _h.BlockBits;
+            for (size_t offset = 0; offset < gdBufSize; offset += blockSize) {
+                const size_t size = MyMin(blockSize, gdBufSize - offset);
+                RINOK(SeekAndRead(
+                    inStream,
+                    ext_linux_descriptor_block(_volume.get(), (unsigned)(offset >> _h.BlockBits)),
+                    (Byte *)gdBuf + offset, size))
+            }
+
+            const unsigned gd_Size = (unsigned)1 << gdBits;
+            const Byte *p = gdBuf;
+            for (unsigned i = 0; i < numGroups; i++, p += gd_Size) {
+                CGroupDescriptor gd;
+                gd.Parse(p, gd_Size);
+                if (ext_linux_group_check(_volume.get(), i, p) != 0)
+                    return S_FALSE;
+
+                groups.Add(gd);
+            }
+        }
+
+        {
+            // ---------- Read nodes ----------
+
+            if (_h.NumInodes < _h.NumFreeInodes)
+                return S_FALSE;
+
+            UInt32 numNodes = _h.InodesPerGroup;
+            if (numNodes > _h.NumInodes)
+                numNodes = _h.NumInodes;
+            const size_t nodesDataSize = (size_t)numNodes * _h.InodeSize;
+
+            if (nodesDataSize / _h.InodeSize != numNodes)
+                return S_FALSE;
+
+            // that code to reduce false detecting cases
+            if (nodesDataSize > fileSize) {
+                if (numNodes > (1 << 24))
+                    return S_FALSE;
+            }
+
+            const size_t blockSize = (size_t)1 << _h.BlockBits;
+            if (numNodes > blockSize * 8)
+                return S_FALSE;
+            const UInt32 numReserveInodes = _h.NumInodes - _h.NumFreeInodes + 1;
+            // numReserveInodes = _h.NumInodes + 1;
+            if (numReserveInodes != 0) {
+                _nodes.Reserve(numReserveInodes);
+                _refs.Reserve(numReserveInodes);
+            }
+
+            CByteBuffer nodesData;
+            nodesData.Alloc(nodesDataSize);
+
+            CByteBuffer nodesMap;
+            nodesMap.Alloc(blockSize);
+            CByteBuffer inodePages;
+            inodePages.Alloc((nodesDataSize + blockSize - 1) >> _h.BlockBits);
+            CMyComPtr<IInStream> inodeSource = CreateReadOnlyInput(inStream);
+
+            unsigned globalNodeIndex = 0;
+            // unsigned numEmpty = 0;
+            unsigned numEmpty_in_Maps = 0;
+
+            FOR_VECTOR(gi, groups) {
+                if (globalNodeIndex >= _h.NumInodes)
+                    break;
+
+                const CGroupDescriptor &gd = groups[gi];
+                // Linux rejects either uninitialized bitmap in the root group.
+                if (gi == 0 && (_h.UseGdtChecksum() || _h.UseMetadataChecksum()) && (gd.Flags & 3))
+                    return S_FALSE;
+                if ((_h.UseGdtChecksum() || _h.UseMetadataChecksum()) && (gd.Flags & 1)) {
+                    const UInt32 count = MyMin(numNodes, _h.NumInodes - globalNodeIndex);
+                    globalNodeIndex += count;
+                    numEmpty_in_Maps += count;
+                    continue;
+                }
+
+                PRF(printf("\n\ng%6d block = %6x\n", gi, (unsigned)gd.InodeTable));
+
+                RINOK(SeekAndRead(inStream, gd.InodeBitmap, nodesMap, blockSize))
+                if (ext_linux_bitmap_check(_volume.get(), gi,
+                                           (const Byte *)gdBuf + ((size_t)gi << gdBits), nodesMap,
+                                           1) != 0)
+                    return S_FALSE;
+                // Uninitialized block bitmaps are synthesized by the kernel.
+                if (!((_h.UseGdtChecksum() || _h.UseMetadataChecksum()) && (gd.Flags & 2))) {
+                    CByteBuffer blockMap;
+                    blockMap.Alloc(blockSize);
+                    RINOK(SeekAndRead(inStream, gd.BlockBitmap, blockMap, blockSize))
+                    if (ext_linux_bitmap_check(_volume.get(), gi,
+                                               (const Byte *)gdBuf + ((size_t)gi << gdBits),
+                                               blockMap, 0) != 0)
+                        return S_FALSE;
+                }
+                for (size_t offset = 0; offset < nodesDataSize; offset += blockSize) {
+                    const HRESULT result = SeekAndRead(
+                        inodeSource, gd.InodeTable + (offset >> _h.BlockBits),
+                        (Byte *)nodesData + offset, MyMin(blockSize, nodesDataSize - offset));
+                    if (result != S_OK && result != S_FALSE)
+                        return result;
+                    if (_openCallback) {
+                        RINOK(CheckProgress2())
+                    }
+                    inodePages[offset >> _h.BlockBits] = result == S_OK;
+                }
+
+                unsigned numEmpty_in_Map = 0;
+
+                for (size_t n = 0; n < numNodes && globalNodeIndex < _h.NumInodes;
+                     n++, globalNodeIndex++) {
+                    if ((nodesMap[n >> 3] & ((unsigned)1 << (n & 7))) == 0) {
+                        numEmpty_in_Map++;
+                        continue;
+                    }
+
+                    if (!inodePages[((size_t)n * _h.InodeSize) >> _h.BlockBits]) {
+                        // A failed block read can still leave individual inodes
+                        // readable through the source's smaller read requests.
+                        CXattrContext context{this, 0, S_OK, 0, {}};
+                        context.Source = inodeSource;
+                        const int result = ReadXattr(
+                            &context, 0, (gd.InodeTable << _h.BlockBits) + (UInt64)n * _h.InodeSize,
+                            (Byte *)nodesData + (size_t)n * _h.InodeSize, _h.InodeSize);
+                        RINOK(_openCallbackResult)
+                        if (context.Result != S_OK && context.Result != S_FALSE)
+                            return context.Result;
+                        if (_openCallback) {
+                            RINOK(CheckProgress2())
+                        }
+                        if (result) {
+                            _inodeLimitations = true;
+                            continue;
+                        }
+                    }
+                    const Byte *p = nodesData + (size_t)n * _h.InodeSize;
+                    if (IsEmptyData(p, _h.InodeSize)) {
+                        if (globalNodeIndex + 1 >= _h.FirstInode) {
+                            _inodeLimitations = true;
+                            // return S_FALSE;
+                        }
+                        continue;
+                    }
+
+                    CNode node;
+                    node.Construct();
+
+                    PRF(printf("\nnode = %5d ", (unsigned)n));
+
+                    if (!node.Parse(p, _h)) {
+                        _inodeLimitations = true;
+                        continue;
+                    }
+                    ext_node *linuxNode = NULL;
+                    ext_node_info info;
+                    const int inodeResult = ext_linux_inode_open(_volume.get(), globalNodeIndex + 1,
+                                                                 p, &linuxNode, &info);
+                    if (inodeResult) {
+                        if (inodeResult == -ENOMEM)
+                            return E_OUTOFMEMORY;
+                        _inodeLimitations = true;
+                        continue;
+                    }
+                    struct CNodeOwner {
+                        ext_node *Ptr;
+                        ~CNodeOwner() { ext_linux_inode_close(Ptr); }
+                    } owner{linuxNode};
+                    node.ChecksumSeed = info.checksum_seed;
+                    node.RawOffset = (gd.InodeTable << _h.BlockBits) + (UInt64)n * _h.InodeSize;
+                    node.InodeNumber = globalNodeIndex + 1;
+                    node.HasXattrs = info.has_xattrs != 0;
+                    node.FileSize = info.size;
+                    node.FastSymlink = info.fast_symlink != 0;
+                    node.ReadError = info.read_error;
+                    node.SpecialReadError = info.special_read_error;
+                    node.EaReadError = info.ea_read_error;
+                    ImportTime(info.atime, node.ATime);
+                    ImportTime(info.mtime, node.MTime);
+                    ImportTime(info.change_time, node.ChangeTime);
+                    ImportTime(info.birth_time, node.CTime);
+                    if (info.inline_size) {
+                        CByteBuffer payload;
+                        if (node.IsDir()) {
+                            CInlineDirectory dir;
+                            dir.Data.Alloc(blockSize);
+                            memset(dir.Data, 0, blockSize);
+                            const int result =
+                                ext_linux_inline_directory(linuxNode, CInlineDirectory::Emit, &dir);
+                            if (result == -ENOMEM)
+                                return E_OUTOFMEMORY;
+                            if (result || dir.Used == 0) {
+                                if (!dir.Used) {
+                                    _inodeLimitations = true;
+                                    continue;
+                                }
+                                MarkDirectoryIncomplete(node);
+                            }
+                            SetUi16(
+                                (Byte *)dir.Data + dir.Last + 4,
+                                (UInt16)(blockSize - dir.Last == 65536 ? 0 : blockSize - dir.Last))
+                                payload = dir.Data;
+                        } else {
+                            payload.Alloc(node.IsLink() ? info.inline_size : (size_t)node.FileSize);
+                            const int result =
+                                ext_linux_inline_read(linuxNode, payload, (unsigned)payload.Size());
+                            if (result != (int)payload.Size()) {
+                                if (result == -ENOMEM)
+                                    return E_OUTOFMEMORY;
+                                _inodeLimitations = true;
+                                continue;
+                            }
+                        }
+                        node.InlineIndex = (int)_inlineData.Size();
+                        _inlineData.Add(payload);
+                    }
+
+                    // PRF(printf("\n %6d", (unsigned)n));
+                    /*
+                      SetUi32(p + 0x7C, 0)
+                      SetUi32(p + 0x82, 0)
+
+                      UInt32 crc = Crc32C_Calc(_h.Uuid, sizeof(_h.Uuid));
+                      Byte i_le[4];
+                      SetUi32(i_le, n);
+                      crc = Crc32C_Update(crc, i_le, 4);
+                      crc = Crc32C_Update(crc, p, _h.InodeSize);
+                      if (crc != node.Checksum) return S_FALSE;
+                    */
+
+                    while (_refs.Size() < globalNodeIndex + 1) {
+                        // numEmpty++;
+                        _refs.Add(-1);
+                    }
+
+                    _refs.Add((int)_nodes.Add(node));
+                    if (!node.SpecialReadError && HasIndirectRangeLimit(node))
+                        _indirectLimitations = true;
+                }
+
+                numEmpty_in_Maps += numEmpty_in_Map;
+
+                if (numEmpty_in_Map != gd.NumFreeInodes) {
+                    _headersWarning = true;
+                    // return S_FALSE;
+                }
+            }
+
+            if (numEmpty_in_Maps != _h.NumFreeInodes) {
+                // some ext2 examples has incorrect value in _h.NumFreeInodes.
+                // so we disable check;
+                _headersWarning = true;
+            }
+
+            if (_refs.Size() <= k_INODE_ROOT)
+                return S_FALSE;
+            if (_refs[k_INODE_ROOT] < 0)
+                return S_FALSE;
+
+            // printf("\n numReserveInodes = %6d, _refs.Size() = %d, numEmpty = %7d\n",
+            // numReserveInodes, _refs.Size(), (unsigned)numEmpty);
+        }
+        _stream = inStream;
+        RINOK(LoadSystemZone(gdBuf, numGroups))
+    }
+
+    _stream = inStream; // we need stream for dir nodes
+    RINOK(LoadEncryption())
+
+    {
+        // ---------- Read Dirs ----------
+
+        FOR_VECTOR(i, _refs) {
+            const int nodeIndex = _refs[i];
+            {
+                if (nodeIndex < 0)
+                    continue;
+                const CNode &node = _nodes[nodeIndex];
+                if (node.SpecialReadError)
+                    continue;
+                if (!node.IsDir())
+                    continue;
+            }
+            HRESULT callbackResult = S_OK;
+            const HRESULT directoryResult = ReadDir(i, callbackResult);
+            RINOK(callbackResult)
+            if (directoryResult == S_FALSE)
+                MarkDirectoryIncomplete(_nodes[nodeIndex]);
+            else {
+                RINOK(directoryResult)
+            }
+            RINOK(CheckProgress())
+        }
+
+        const int ref = _refs[k_INODE_ROOT];
+        if (ref < 0 || _nodes[ref].ParentNode != k_INODE_ROOT)
+            return S_FALSE;
+    }
+
+    {
+        // ---------- Check NumLinks and unreferenced dir nodes ----------
+
+        FOR_VECTOR(i, _refs) {
+            int nodeIndex = _refs[i];
+            if (nodeIndex < 0)
+                continue;
+            const CNode &node = _nodes[nodeIndex];
+
+            if (node.NumLinks != node.NumLinksCalced && !(node.Flags & ((UInt32)1 << 21))) {
+                if (node.NumLinks != 1 || node.NumLinksCalced != 0
+                    // ) && i >= _h.FirstInode
+                ) {
+                    _linksError = true;
+                    // return S_FALSE;
+                }
+            }
+
+            if (!node.IsDir())
+                continue;
+
+            if (node.ParentNode < 0) {
+                if (i >= _h.FirstInode) {
+                    MarkDirectoryIncomplete(_nodes[nodeIndex]);
+                }
+                continue;
+            }
+        }
+    }
+
+    {
+        // ---------- Check that there is no loops in parents list ----------
+
+        unsigned numNodes = _refs.Size();
+        CIntArr UsedByNode(numNodes);
+        {
+            {
+                for (unsigned i = 0; i < numNodes; i++)
+                    UsedByNode[i] = -1;
+            }
+        }
+
+        FOR_VECTOR(i, _refs) {
+            {
+                int nodeIndex = _refs[i];
+                if (nodeIndex < 0)
+                    continue;
+                const CNode &node = _nodes[nodeIndex];
+                if (node.ParentNode < 0 // not dir
+                    || i == k_INODE_ROOT)
+                    continue;
+            }
+
+            unsigned c = i;
+
+            for (;;) {
+                const int nodeIndex = _refs[c];
+                if (nodeIndex < 0)
+                    return S_FALSE;
+                CNode &node = _nodes[nodeIndex];
+
+                if (UsedByNode[c] != -1) {
+                    if ((unsigned)UsedByNode[c] == i)
+                        return S_FALSE;
+                    break;
+                }
+
+                UsedByNode[c] = (int)i;
+                if (node.ParentNode < 0 || node.ParentNode == k_INODE_ROOT)
+                    break;
+                if ((unsigned)node.ParentNode == i)
+                    return S_FALSE;
+                c = (unsigned)node.ParentNode;
+            }
+        }
+    }
+
+    {
+        // ---------- Fill SymLinks data ----------
+
+        AString s;
+        CByteBuffer data;
+        CMyComPtr<IInStream> source = CreateReadOnlyInput(_stream);
+
+        unsigned i;
+        for (i = 0; i < _refs.Size(); i++) {
+            const int nodeIndex = _refs[i];
+            if (nodeIndex < 0)
+                continue;
+            CNode &node = _nodes[nodeIndex];
+            if (!node.IsLink())
+                continue;
+            if (node.SpecialReadError)
+                continue;
+            const HRESULT linkResult = ExtractNode((unsigned)nodeIndex, data, source);
+            RINOK(_openCallbackResult)
+            if (linkResult == S_FALSE) {
+                node.LinkUnavailable = true;
+                _linkLimitations = true;
+                continue;
+            }
+            RINOK(linkResult)
+            s.SetFrom_CalcLen((const char *)(const Byte *)data, (unsigned)data.Size());
+            node.SymLinkIndex = (int)_symLinks.Add(s);
+            RINOK(CheckProgress())
+        }
+
+        for (i = 0; i < _dirs.Size(); i++) {
+            _dirs[i].Sort(CompareItemsNames, (void *)&_items);
+        }
+
+        unsigned prev = 0;
+        unsigned complex = 0;
+
+        for (i = 0; i < _items.Size(); i++) {
+            CItem &item = _items[i];
+            const int sym = _nodes[_refs[item.Node]].SymLinkIndex;
+            if (sym >= 0 && item.ParentNode >= 0 && item.ContextAllowed) {
+                item.SymLinkItemIndex =
+                    FindTargetItem_for_SymLink((unsigned)item.ParentNode, _symLinks[sym]);
+                if (_openCallback) {
+                    complex++;
+                    if (complex - prev >= (1 << 10)) {
+                        prev = complex;
+                        RINOK(CheckProgress2())
+                    }
+                }
+            }
+        }
+    }
+
+    {
+        // ---------- Add items and aux folders for unreferenced files ----------
+
+        bool useSys = false;
+        bool useUnknown = false;
+
+        FOR_VECTOR(i, _refs) {
+            const int nodeIndex = _refs[i];
+            if (nodeIndex < 0)
+                continue;
+            CNode &node = _nodes[nodeIndex];
+
+            if (node.SpecialReadError)
+                continue;
+            if (node.Flags & ((UInt32)1 << 21))
+                continue;
+            const bool unnamedDirectory = node.IsDir() && node.ItemIndex < 0 && i != k_INODE_ROOT;
+            if (node.NumLinksCalced == 0 || unnamedDirectory) {
+                CItem item;
+                item.Node = i;
+
+                // we don't know how to work with k_INODE_RESIZE node (strange FileSize and Block
+                // values). so we ignore it;
+
+                if (i == k_INODE_RESIZE)
+                    continue;
+
+                if (node.FileSize == 0)
+                    continue;
+
+                if (i < _h.FirstInode) {
+                    if (item.Node < Z7_ARRAY_SIZE(k_SysInode_Names))
+                        item.Name = k_SysInode_Names[item.Node];
+                    useSys = true;
+                } else
+                    useUnknown = true;
+
+                if (item.Name.IsEmpty())
+                    item.Name.Add_UInt32(item.Node);
+
+                const unsigned itemIndex = _items.Add(item);
+                if (unnamedDirectory) {
+                    MarkDirectoryIncomplete(node);
+                    node.ParentNode = -1;
+                    node.ItemIndex = (int)itemIndex;
+                }
+            }
+        }
+
+        if (useSys)
+            _auxSysIndex = (int)_auxItems.Add((AString) "[SYS]");
+        if (useUnknown)
+            _auxUnknownIndex = (int)_auxItems.Add((AString) "[UNKNOWN]");
+    }
+
+    RINOK(LoadXattrs())
+    return S_OK;
+}
+
+// clang-format off
+Z7_COM7F_IMF(CHandler::Open(IInStream *stream, const UInt64 *, IArchiveOpenCallback *callback))
+{
+  COM_TRY_BEGIN
+  {
+    Close();
+    HRESULT res;
+    try
+    {
+      _openCallback = callback;
+      res = Open2(stream);
+      _openCallback = NULL;
+    }
+    catch(...)
+    {
+      _openCallback = NULL;
+      ClearRefs();
+      throw;
+    }
+
+    if (res != S_OK)
+    {
+      ClearRefs();
+      return res;
+    }
+    _stream = stream;
+  }
+  return S_OK;
+  COM_TRY_END
+}
+
+// clang-format on
+
+void CHandler::ClearRefs() {
+    _inlineData.Clear();
+    _cryptInodes.clear();
+    _xattrs.Clear();
+    _rootXattrAux = -1;
+    _volume.reset();
+    _stream.Release();
+    _items.Clear();
+    _nodes.Clear();
+    _refs.Clear();
+    _auxItems.Clear();
+    _symLinks.Clear();
+    _dirs.Clear();
+    _auxSysIndex = -1;
+    _auxUnknownIndex = -1;
+}
+
+Z7_COM7F_IMF(CHandler::Close()) {
+    _totalRead = 0;
+    _totalReadPrev = 0;
+    _phySize = 0;
+    _isArc = false;
+    _headersError = false;
+    _headersWarning = false;
+    _linksError = false;
+    _directoryLimitations = false;
+    _xattrLimitations = false;
+    _linkLimitations = false;
+    _inodeLimitations = false;
+    _indirectLimitations = false;
+    _isUTF = true;
+    _openCallback = NULL;
+    _openCallbackResult = S_OK;
+
+    ClearRefs();
+    return S_OK;
+}
+
+Z7_COM7F_IMF(CHandler::SetProperties(const wchar_t *const *names, const PROPVARIANT *values,
+                                     UInt32 numProps)) {
+    COM_TRY_BEGIN
+    return _verityPolicy.SetProperties(names, values, numProps);
+    COM_TRY_END
+}
+
+static void ChangeSeparatorsInName(char *s, unsigned num) {
+    for (unsigned i = 0; i < num; i++) {
+        char c = s[i];
+        if (c == CHAR_PATH_SEPARATOR || c == '/')
+            s[i] = '_';
+    }
+}
+
+void CHandler::GetPath(unsigned index, AString &s) const {
+    s.Empty();
+
+    if (index >= _items.Size()) {
+        s = _auxItems[index - _items.Size()];
+        return;
+    }
+    if (_items[index].XattrIndex >= 0) {
+        const CItem &item = _items[index];
+        if (item.XattrParent >= 0)
+            GetPath((unsigned)item.XattrParent, s);
+        else
+            s = _auxItems[(unsigned)_rootXattrAux];
+        s += ':';
+        s += item.Name;
+        return;
+    }
+
+    for (;;) {
+        const CItem &item = _items[index];
+        if (!s.IsEmpty())
+            s.InsertAtFront(CHAR_PATH_SEPARATOR);
+        s.Insert(0, item.Name);
+        // 18.06
+        ChangeSeparatorsInName(s.GetBuf(), item.Name.Len());
+
+        if (item.ParentNode == k_INODE_ROOT)
+            return;
+
+        if (item.ParentNode < 0) {
+            int aux = GetParentAux(item);
+            if (aux < 0)
+                break;
+            s.InsertAtFront(CHAR_PATH_SEPARATOR);
+            s.Insert(0, _auxItems[aux]);
+            return;
+        }
+
+        const CNode &node = _nodes[_refs[item.ParentNode]];
+        if (node.ItemIndex < 0)
+            return;
+        index = (unsigned)node.ItemIndex;
+
+        if (s.Len() > ((UInt32)1 << 16)) {
+            s.Insert(0, "[LONG]" STRING_PATH_SEPARATOR);
+            return;
+        }
+    }
+}
+
+bool CHandler::GetPackSize(unsigned index, UInt64 &totalPack) const {
+    if (index >= _items.Size()) {
+        totalPack = 0;
+        return false;
+    }
+
+    const CItem &item = _items[index];
+    if (item.XattrIndex >= 0) {
+        totalPack = _xattrs[(unsigned)item.XattrIndex].Data.Size();
+        return true;
+    }
+    const CNode &node = _nodes[_refs[item.Node]];
+
+    // if (!node.IsFlags_EXTENTS())
+    {
+        totalPack = (UInt64)node.NumBlocks << (node.IsFlags_HUGE() ? _h.BlockBits : 9);
+        return true;
+    }
+
+    /*
+    CExtentTreeHeader eth;
+    if (!eth.Parse(node.Block))
+      return false;
+    if (eth.NumEntries > 3)
+      return false;
+    if (!eth.Depth == 0)
+      return false;
+
+    UInt64 numBlocks = 0;
+    {
+      for (unsigned i = 0; i < eth.NumEntries; i++)
+      {
+        CExtent e;
+        e.Parse(node.Block + 12 + i * 12);
+        // const CExtent &e = node.leafs[i];
+        if (e.IsInited)
+          numBlocks += e.Len;
+      }
+    }
+
+    totalPack = numBlocks << _h.BlockBits;
+    return true;
+    */
+}
+
+Z7_COM7F_IMF(CHandler::GetNumberOfItems(UInt32 *numItems)) {
+    *numItems = _items.Size() + _auxItems.Size();
+    return S_OK;
+}
+
+enum {
+    kpidMountTime = kpidUserDefined,
+    kpidLastCheckTime,
+    kpidRevision,
+    kpidINodeSize,
+    kpidLastMount,
+    kpidFeatureIncompat,
+    kpidFeatureRoCompat,
+    kpidWrittenKB,
+    kpidReadLimitations
+
+    // kpidGroupSize,
+
+    // kpidChangeTime = kpidUserDefined + 256,
+    // kpidDTime
+};
+
+static const UInt32 kProps[] = {
+    kpidPath, kpidIsAltStream, kpidEncrypted, kpidError, kpidIsDir, kpidSize, kpidPackSize,
+    kpidPosixAttrib, kpidMTime, kpidCTime, kpidATime,
+    // kpidChangeTime,
+    // kpidDTime,
+    kpidINode, kpidLinks, kpidSymLink, kpidCharacts, kpidUserId, kpidGroupId};
+
+static const CStatProp kArcProps[] = {
+    {NULL, kpidHeadersSize, VT_BSTR},
+    // { NULL, kpidFileSystem, VT_BSTR },
+    // kpidMethod,
+    {NULL, kpidClusterSize, VT_UI4},
+    // { "Group Size", kpidGroupSize, VT_UI8 },
+    {NULL, kpidFreeSpace, VT_UI8},
+
+    {NULL, kpidMTime, VT_FILETIME},
+    {NULL, kpidCTime, VT_FILETIME},
+    {"Mount Time", kpidMountTime, VT_FILETIME},
+    {"Last Check Time", kpidLastCheckTime, VT_FILETIME},
+
+    {NULL, kpidHostOS, VT_BSTR},
+    {"Revision", kpidRevision, VT_UI4},
+    {"inode Size", kpidINodeSize, VT_UI4},
+    {NULL, kpidCodePage, VT_BSTR},
+    {NULL, kpidVolumeName, VT_BSTR},
+    {"Last Mounted", kpidLastMount, VT_BSTR},
+    {NULL, kpidId, VT_BSTR},
+    {NULL, kpidCharacts, VT_BSTR},
+    {"Incompatible Features", kpidFeatureIncompat, VT_BSTR},
+    {"Readonly-compatible Features", kpidFeatureRoCompat, VT_BSTR},
+    {"Written KiB", kpidWrittenKB, VT_UI8},
+    {NULL, kpidReadOnly, VT_BOOL},
+    {"Read-only limitations", kpidReadLimitations, VT_BSTR}};
+
+IMP_IInArchive_Props IMP_IInArchive_ArcProps_WITH_NAME
+
+    static void
+    StringToProp(bool isUTF, const char *s, unsigned size, NCOM::CPropVariant &prop) {
+    UString u;
+    AString a;
+    a.SetFrom_CalcLen(s, size);
+    if (!isUTF || !ConvertUTF8ToUnicode(a, u))
+        MultiByteToUnicodeString2(u, a);
+    prop = u;
+}
+
+static void UnixTimeToProp(UInt32 val, NCOM::CPropVariant &prop) {
+    if (val != 0)
+        PropVariant_SetFrom_UnixTime(prop, val);
+}
+
+Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID propID, PROPVARIANT *value)) {
+    COM_TRY_BEGIN
+
+    NCOM::CPropVariant prop;
+
+    switch (propID) {
+        /*
+        case kpidFileSystem:
+        {
+          AString res = "Ext4";
+          prop = res;
+          break;
+        }
+        */
+
+    case kpidIsTree:
+    case kpidReadOnly:
+        prop = true;
+        break;
+    case kpidReadLimitations: {
+        AString reasons;
+        if (_directoryLimitations)
+            reasons = "Some ext directories could not be read completely. The file list may be "
+                      "incomplete or outdated.";
+        if (_xattrLimitations) {
+            if (!reasons.IsEmpty())
+                reasons += '\n';
+            reasons += "Some ext extended attributes could not be read. Unreadable attributes "
+                       "have been omitted; readable files remain accessible.";
+        }
+        if (_linkLimitations) {
+            if (!reasons.IsEmpty())
+                reasons += '\n';
+            reasons += "Some ext symbolic-link targets could not be read. Copying affected links "
+                       "may fail; readable files remain accessible.";
+        }
+        if (_inodeLimitations) {
+            if (!reasons.IsEmpty())
+                reasons += '\n';
+            reasons += "Some ext inodes could not be read. Files or metadata may be missing; "
+                       "readable files remain accessible.";
+        }
+        if (_indirectLimitations) {
+            if (!reasons.IsEmpty())
+                reasons += '\n';
+            reasons += "Some ext file data is outside the reader's logical address range. Only "
+                       "addressable data is available; copying affected files reports an error.";
+        }
+        if (_h.FeatureIncompat & 4) {
+            if (!reasons.IsEmpty())
+                reasons += '\n';
+            reasons += "The ext filesystem requires journal recovery. The journal will not be "
+                       "replayed; files may be missing, outdated or unreadable.";
+        }
+        if (_h.LastOrphan || (_h.FeatureRoCompat & 0x10000)) {
+            if (!reasons.IsEmpty())
+                reasons += '\n';
+            reasons += "The ext filesystem requires orphan cleanup. Orphaned files will not be "
+                       "repaired; files may be missing or incomplete.";
+        }
+        if (!(_h.State & 1) || (_h.State & 2)) {
+            if (!reasons.IsEmpty())
+                reasons += '\n';
+            reasons += "The ext filesystem was not cleanly unmounted or reports errors. Files "
+                       "may be inconsistent.";
+        }
+        // These readonly-compatible declarations have supported read paths;
+        // the remaining bits retain the device reader's unverified mode.
+        const UInt32 unverified = _h.FeatureRoCompat & ~(UInt32)0xB77F;
+        if (unverified && unverified != 0x10000) {
+            NCOM::CPropVariant features;
+            FLAGS_TO_PROP(g_FeatureRoCompat_Flags, unverified & ~(UInt32)0x10000, features);
+            if (!reasons.IsEmpty())
+                reasons += '\n';
+            reasons += "Unverified ext read-only features: ";
+            reasons += UnicodeStringToMultiByte(features.bstrVal, CP_UTF8);
+            reasons += ".";
+        }
+        if (!reasons.IsEmpty())
+            prop = reasons;
+        break;
+    }
+    case kpidIsAltStream:
+        prop = !_xattrs.IsEmpty();
+        break;
+    // case kpidIsAux: prop = true; break;
+    case kpidINode:
+        prop = true;
+        break;
+
+    case kpidClusterSize:
+        prop = (UInt32)1 << _h.BlockBits;
+        break;
+        // case kpidGroupSize: prop = (UInt64)_h.BlocksPerGroup << _h.BlockBits; break;
+
+    case kpidFreeSpace:
+        prop = (UInt64)_h.NumFreeBlocks << _h.BlockBits;
+        break;
+
+    case kpidCTime:
+        UnixTimeToProp(_h.CTime, prop);
+        break;
+    case kpidMTime:
+        UnixTimeToProp(_h.WriteTime, prop);
+        break;
+    case kpidMountTime:
+        UnixTimeToProp(_h.MountTime, prop);
+        break;
+    case kpidLastCheckTime:
+        UnixTimeToProp(_h.LastCheckTime, prop);
+        break;
+
+    case kpidHostOS: {
+        TYPE_TO_PROP(kHostOS, _h.CreatorOs, prop);
+        break;
+    }
+
+    case kpidRevision:
+        prop = _h.RevLevel;
+        break;
+
+    case kpidINodeSize:
+        prop = (UInt32)_h.InodeSize;
+        break;
+
+    case kpidId: {
+        if (!IsEmptyData(_h.Uuid, sizeof(_h.Uuid))) {
+            char s[sizeof(_h.Uuid) * 2 + 2];
+            ConvertDataToHex_Lower(s, _h.Uuid, sizeof(_h.Uuid));
+            prop = s;
+        }
+        break;
+    }
+
+    case kpidCodePage:
+        if (_isUTF)
+            prop = "UTF-8";
+        break;
+
+    case kpidShortComment:
+    case kpidVolumeName:
+        StringToProp(_isUTF, _h.VolName, sizeof(_h.VolName), prop);
+        break;
+
+    case kpidLastMount:
+        StringToProp(_isUTF, _h.LastMount, sizeof(_h.LastMount), prop);
+        break;
+
+    case kpidCharacts:
+        FLAGS_TO_PROP(g_FeatureCompat_Flags, _h.FeatureCompat, prop);
+        break;
+    case kpidFeatureIncompat:
+        FLAGS_TO_PROP(g_FeatureIncompat_Flags, _h.FeatureIncompat, prop);
+        break;
+    case kpidFeatureRoCompat:
+        FLAGS_TO_PROP(g_FeatureRoCompat_Flags, _h.FeatureRoCompat, prop);
+        break;
+    case kpidWrittenKB:
+        if (_h.WrittenKB != 0)
+            prop = _h.WrittenKB;
+        break;
+
+    case kpidPhySize:
+        prop = _phySize;
+        break;
+
+    case kpidErrorFlags: {
+        UInt32 v = 0;
+        if (!_isArc)
+            v |= kpv_ErrorFlags_IsNotArc;
+        if (_linksError && !_directoryLimitations)
+            v |= kpv_ErrorFlags_HeadersError;
+        if (_headersError)
+            v |= kpv_ErrorFlags_HeadersError;
+        if (!_stream && v == 0 && _isArc)
+            v = kpv_ErrorFlags_HeadersError;
+        if (v != 0)
+            prop = v;
+        break;
+    }
+
+    case kpidWarningFlags: {
+        UInt32 v = 0;
+        if (_headersWarning)
+            v |= kpv_ErrorFlags_HeadersError;
+        if (v != 0)
+            prop = v;
+        break;
+    }
+    }
+
+    prop.Detach(value);
+    return S_OK;
+
+    COM_TRY_END
+}
+
+/*
+static const Byte kRawProps[] =
+{
+  // kpidSha1,
+};
+*/
+
+Z7_COM7F_IMF(CHandler::GetNumRawProps(UInt32 *numProps)) {
+    // *numProps = Z7_ARRAY_SIZE(kRawProps);
+    *numProps = 0;
+    return S_OK;
+}
+
+Z7_COM7F_IMF(CHandler::GetRawPropInfo(UInt32 /* index */, BSTR *name, PROPID *propID)) {
+    // *propID = kRawProps[index];
+    *propID = 0;
+    *name = NULL;
+    return S_OK;
+}
+
+Z7_COM7F_IMF(CHandler::GetParent(UInt32 index, UInt32 *parent, UInt32 *parentType)) {
+    *parentType = NParentType::kDir;
+    *parent = (UInt32)(Int32)-1;
+
+    if (index >= _items.Size())
+        return S_OK;
+
+    const CItem &item = _items[index];
+
+    if (item.XattrIndex >= 0) {
+        *parentType = NParentType::kAltStream;
+        *parent = item.XattrParent >= 0 ? (UInt32)item.XattrParent
+                                        : (UInt32)(_items.Size() + (unsigned)_rootXattrAux);
+        return S_OK;
+    }
+    if (item.ParentNode < 0) {
+        const int aux = GetParentAux(item);
+        if (aux >= 0)
+            *parent = _items.Size() + (unsigned)aux;
+    } else {
+        const int itemIndex = _nodes[_refs[item.ParentNode]].ItemIndex;
+        if (itemIndex >= 0)
+            *parent = (unsigned)itemIndex;
+    }
+
+    return S_OK;
+}
+
+Z7_COM7F_IMF(CHandler::GetRawProp(UInt32 index, PROPID propID, const void **data, UInt32 *dataSize,
+                                  UInt32 *propType)) {
+    *data = NULL;
+    *dataSize = 0;
+    *propType = 0;
+
+    if (propID == kpidName && _isUTF) {
+        if (index < _items.Size()) {
+            const AString &s = _items[index].Name;
+            if (!s.IsEmpty()) {
+                *data = (void *)(const char *)s;
+                *dataSize = (UInt32)s.Len() + 1;
+                *propType = NPropDataType::kUtf8z;
+            }
+            return S_OK;
+        } else {
+            const AString &s = _auxItems[index - _items.Size()];
+            {
+                *data = (void *)(const char *)s;
+                *dataSize = (UInt32)s.Len() + 1;
+                *propType = NPropDataType::kUtf8z;
+            }
+            return S_OK;
+        }
+    }
+
+    return S_OK;
+}
+
+static void ExtTimeToProp(const CExtTime &t, NCOM::CPropVariant &prop) {
+    if (!t.Defined)
+        return;
+
+    FILETIME ft;
+    unsigned low100ns = 0;
+    // if (t.Extra != 0)
+    {
+        // 1901-2446 :
+        Int64 v = (Int64)(Int32)t.Val;
+        v += (UInt64)(t.Extra & 3) << 32; // 2 low bits are offset for main timestamp
+        UInt64 ft64 = NTime::UnixTime64_To_FileTime64(v);
+        const UInt32 ns = (t.Extra >> 2);
+        if (ns < 1000000000) {
+            ft64 += ns / 100;
+            low100ns = (unsigned)(ns % 100);
+        }
+        ft.dwLowDateTime = (DWORD)ft64;
+        ft.dwHighDateTime = (DWORD)(ft64 >> 32);
+    }
+    /*
+    else
+    {
+      // 1901-2038 : that code is good for ext4 and compatibility with Extra
+      NTime::UnixTime64ToFileTime((Int32)t.Val, ft); // for
+
+      // 1970-2106 : that code is good if timestamp is used as unsigned 32-bit
+      // are there such systems?
+      // NTime::UnixTimeToFileTime(t.Val, ft); // for
+    }
+    */
+    prop.SetAsTimeFrom_FT_Prec_Ns100(ft, k_PropVar_TimePrec_1ns, low100ns);
+}
+
+Z7_COM7F_IMF(CHandler::GetProperty(UInt32 index, PROPID propID, PROPVARIANT *value)) {
+    COM_TRY_BEGIN
+    NCOM::CPropVariant prop;
+
+    if (index >= _items.Size()) {
+        switch (propID) {
+        case kpidPath:
+        case kpidName: {
+            prop = _auxItems[index - _items.Size()];
+            break;
+        }
+        case kpidIsDir:
+            prop = true;
+            break;
+            // case kpidIsAux: prop = true; break;
+        }
+    } else {
+
+        const CItem &item = _items[index];
+        const CNode &node = _nodes[_refs[item.Node]];
+        bool isDir = node.IsDir();
+        const bool xattr = item.XattrIndex >= 0;
+        if (xattr)
+            isDir = false;
+        if (xattr && (propID == kpidSize || propID == kpidPackSize || propID == kpidIsDir ||
+                      propID == kpidPosixAttrib || propID == kpidSymLink || propID == kpidLinks ||
+                      propID == kpidINode || propID == kpidStreamId || propID == kpidCharacts)) {
+            if (propID == kpidSize || propID == kpidPackSize)
+                prop = (UInt64)_xattrs[(unsigned)item.XattrIndex].Data.Size();
+            else if (propID == kpidIsDir)
+                prop = false;
+            else if (propID == kpidPosixAttrib)
+                prop = (UInt32)(MY_LIN_S_IFREG | 0444);
+            else if (propID == kpidLinks)
+                prop = (UInt32)1;
+            else if (propID == kpidStreamId)
+                prop = ((UInt64)1 << 63) | (unsigned)item.XattrIndex;
+            prop.Detach(value);
+            return S_OK;
+        }
+
+        switch (propID) {
+        case kpidError:
+            if (!xattr) {
+                AString errors;
+                if (node.DirectoryIncomplete)
+                    errors = "The ext directory could not be read completely.";
+                if (node.XattrsIncomplete) {
+                    if (!errors.IsEmpty())
+                        errors += '\n';
+                    errors += "Some extended attributes of this ext item could not be read.";
+                }
+                if (node.LinkUnavailable) {
+                    if (!errors.IsEmpty())
+                        errors += '\n';
+                    errors += "The ext symbolic-link target could not be read when opening.";
+                }
+                if (HasIndirectRangeLimit(node)) {
+                    if (!errors.IsEmpty())
+                        errors += '\n';
+                    errors += "Some ext file data is outside the reader's logical address range.";
+                }
+                if (!errors.IsEmpty())
+                    prop = errors;
+            }
+            break;
+        case kpidIsAltStream:
+            prop = xattr;
+            break;
+        case kpidPath: {
+            UString u;
+            {
+                AString s;
+                GetPath(index, s);
+                if (!_isUTF || !ConvertUTF8ToUnicode(s, u))
+                    MultiByteToUnicodeString2(u, s);
+            }
+            prop = u;
+            break;
+        }
+
+        case kpidName: {
+            {
+                UString u;
+                {
+                    if (!_isUTF || !ConvertUTF8ToUnicode(item.Name, u))
+                        MultiByteToUnicodeString2(u, item.Name);
+                }
+                prop = u;
+            }
+            break;
+        }
+
+        case kpidIsDir: {
+            bool isDir2 = isDir;
+            if (item.SymLinkItemIndex >= 0)
+                isDir2 = _nodes[_refs[_items[item.SymLinkItemIndex].Node]].IsDir();
+            prop = isDir2;
+            break;
+        }
+
+        case kpidSize:
+            if (!isDir) {
+                if (!node.LinkUnavailable)
+                    prop = GetUnpackSize(node);
+            }
+            break;
+        case kpidEncrypted:
+            prop = !xattr && ((node.Flags & 0x800) != 0);
+            break;
+
+        case kpidPackSize:
+            if (!isDir) {
+                UInt64 size;
+                if (GetPackSize(index, size))
+                    prop = size;
+            }
+            break;
+
+        case kpidPosixAttrib: {
+            /*
+            if (node.Type != 0 && node.Type < Z7_ARRAY_SIZE(k_TypeToMode))
+              prop = (UInt32)(node.Mode & 0xFFF) | k_TypeToMode[node.Type];
+            */
+            prop = (UInt32)(node.Mode);
+            break;
+        }
+
+        case kpidMTime:
+            ExtTimeToProp(node.MTime, prop);
+            break;
+        case kpidCTime:
+            ExtTimeToProp(node.CTime, prop);
+            break;
+        case kpidATime:
+            ExtTimeToProp(node.ATime, prop);
+            break;
+        // case kpidDTime: ExtTimeToProp(node.DTime, prop); break;
+        case kpidChangeTime:
+            ExtTimeToProp(node.ChangeTime, prop);
+            break;
+        case kpidUserId:
+            prop = (UInt32)node.Uid;
+            break;
+        case kpidGroupId:
+            prop = (UInt32)node.Gid;
+            break;
+        case kpidLinks:
+            prop = node.NumLinks;
+            break;
+        case kpidINode:
+            prop = (UInt32)item.Node;
+            break;
+        case kpidStreamId:
+            if (!isDir)
+                prop = (UInt32)item.Node;
+            break;
+        case kpidCharacts:
+            FLAGS_TO_PROP(g_NodeFlags, (UInt32)node.Flags, prop);
+            break;
+
+        case kpidSymLink: {
+            if (!item.ContextAllowed)
+                break;
+            if (node.SymLinkIndex >= 0) {
+                UString u;
+                {
+                    const AString &s = _symLinks[node.SymLinkIndex];
+                    if (!_isUTF || !ConvertUTF8ToUnicode(s, u))
+                        MultiByteToUnicodeString2(u, s);
+                }
+                prop = u;
+            }
+            break;
+        }
+        }
+    }
+
+    prop.Detach(value);
+    return S_OK;
+    COM_TRY_END
+}
+
+Z7_CLASS_IMP_IInStream(CExtInStream) UInt64 _virtPos;
+UInt64 _phyPos;
+
+public:
+unsigned BlockBits;
+UInt64 Size;
+CMyComPtr<IInStream> Stream;
+CRecordVector<CExtent> Extents;
+CExtCryptData Crypt;
+
+HRESULT StartSeek(bool deferSeek = false) {
+    _virtPos = 0;
+    _phyPos = 0;
+    return deferSeek ? S_OK : InStream_SeekSet(Stream, _phyPos);
+}
+};
+
+Z7_COM7F_IMF(CExtInStream::Read(void *data, UInt32 size, UInt32 *processedSize)) {
+    if (processedSize)
+        *processedSize = 0;
+    if (_virtPos >= Size)
+        return S_OK;
+    {
+        UInt64 rem = Size - _virtPos;
+        if (size > rem)
+            size = (UInt32)rem;
+    }
+    if (size == 0)
+        return S_OK;
+
+    UInt32 blockIndex = (UInt32)(_virtPos >> BlockBits);
+
+    unsigned left = 0, right = Extents.Size();
+    for (;;) {
+        unsigned mid = (left + right) / 2;
+        if (mid == left)
+            break;
+        if (blockIndex < Extents[mid].VirtBlock)
+            right = mid;
+        else
+            left = mid;
+    }
+
+    {
+        const CExtent &extent = Extents[left];
+        if (blockIndex < extent.VirtBlock)
+            return E_FAIL;
+        UInt32 bo = blockIndex - extent.VirtBlock;
+        if (bo >= extent.Len)
+            return E_FAIL;
+
+        UInt32 offset = ((UInt32)_virtPos & (((UInt32)1 << BlockBits) - 1));
+        UInt32 remBlocks = extent.Len - bo;
+        UInt64 remBytes = ((UInt64)remBlocks << BlockBits);
+        remBytes -= offset;
+
+        if (size > remBytes)
+            size = (UInt32)remBytes;
+
+        if (!extent.IsInited) {
+            memset(data, 0, size);
+            _virtPos += size;
+            if (processedSize)
+                *processedSize = size;
+            return S_OK;
+        }
+
+        const UInt64 phyBlock = extent.PhyStart + bo;
+        const UInt64 phy = (phyBlock << BlockBits) + offset;
+        if (Crypt.Defined()) {
+            UInt32 done = 0;
+            const HRESULT result = Crypt.Read(Stream, _virtPos, phy, data, size, &done);
+            _virtPos += done;
+            if (processedSize)
+                *processedSize = done;
+            return result;
+        }
+
+        if (phy != _phyPos) {
+            const HRESULT result = InStream_SeekSet(Stream, phy);
+            if (result != S_OK) {
+                _phyPos = ~(UInt64)0;
+                return result;
+            }
+            _phyPos = phy;
+        }
+
+        UInt32 realProcessSize = 0;
+
+        const HRESULT res = Stream->Read(data, size, &realProcessSize);
+
+        _phyPos += realProcessSize;
+        _virtPos += realProcessSize;
+        if (processedSize)
+            *processedSize = realProcessSize;
+        return res;
+    }
+}
+
+Z7_COM7F_IMF(CExtInStream::Seek(Int64 offset, UInt32 seekOrigin, UInt64 *newPosition)) {
+    switch (seekOrigin) {
+    case STREAM_SEEK_SET:
+        break;
+    case STREAM_SEEK_CUR:
+        offset += _virtPos;
+        break;
+    case STREAM_SEEK_END:
+        offset += Size;
+        break;
+    default:
+        return STG_E_INVALIDFUNCTION;
+    }
+    if (offset < 0)
+        return HRESULT_WIN32_ERROR_NEGATIVE_SEEK;
+    _virtPos = (UInt64)offset;
+    if (newPosition)
+        *newPosition = (UInt64)offset;
+    return S_OK;
+}
+
+static void AddSkipExtents(CRecordVector<CExtent> &extents, UInt32 virtBlock, UInt32 numBlocks) {
+    while (numBlocks != 0) {
+        UInt32 len = numBlocks;
+        const UInt32 kLenMax = (UInt32)1 << 15;
+        if (len > kLenMax)
+            len = kLenMax;
+        CExtent e;
+        e.VirtBlock = virtBlock;
+        e.Len = (UInt16)len;
+        e.IsInited = false;
+        e.PhyStart = 0;
+        extents.Add(e);
+        virtBlock += len;
+        numBlocks -= len;
+    }
+}
+
+static bool UpdateExtents(CRecordVector<CExtent> &extents, UInt32 block) {
+    if (extents.IsEmpty()) {
+        if (block == 0)
+            return true;
+        AddSkipExtents(extents, 0, block);
+        return true;
+    }
+
+    const CExtent &prev = extents.Back();
+    UInt32 prevEnd = prev.GetVirtEnd();
+    if (block < prevEnd)
+        return false;
+    if (block == prevEnd)
+        return true;
+    AddSkipExtents(extents, prevEnd, block - prevEnd);
+    return true;
+}
+
+int CHandler::ReadExtentBlock(void *opaque, uint64_t physical, void *data, size_t size) noexcept {
+    auto &context = *static_cast<CExtentReadContext *>(opaque);
+    try {
+        context.Result = context.Owner->SeekAndRead(context.Source, physical, (Byte *)data, size);
+        if (context.Result == S_OK && context.Owner->_openCallback)
+            context.Result = context.Owner->CheckProgress2();
+        return context.Result == S_OK ? 0 : -EIO;
+    } catch (const std::bad_alloc &) {
+        context.Result = E_OUTOFMEMORY;
+        return -ENOMEM;
+    } catch (...) {
+        context.Result = E_FAIL;
+        return -EIO;
+    }
+}
+
+int CHandler::EmitExtent(void *opaque, uint32_t logical, uint64_t physical, uint32_t count,
+                         int written) noexcept {
+    auto &context = *static_cast<CExtentReadContext *>(opaque);
+    try {
+        if (context.Owner->_openCallback)
+            context.Result = context.Owner->CheckProgress2();
+        if (context.Result != S_OK)
+            return -EIO;
+        if (!UpdateExtents(*context.Ranges, logical))
+            return -EIO;
+        CExtent extent;
+        extent.VirtBlock = logical;
+        extent.Len = (UInt16)count;
+        extent.PhyStart = physical;
+        extent.IsInited = written != 0;
+        context.Ranges->Add(extent);
+        return 0;
+    } catch (const std::bad_alloc &) {
+        context.Result = E_OUTOFMEMORY;
+        return -ENOMEM;
+    } catch (...) {
+        context.Result = E_FAIL;
+        return -EIO;
+    }
+}
+
+HRESULT CHandler::FillExtents(const Byte *p, size_t size, CRecordVector<CExtent> &extents,
+                              int parentDepth, UInt32 firstBlock, UInt64 blockLimit,
+                              IInStream *source) {
+    if (!source)
+        source = _stream;
+    (void)parentDepth;
+    (void)firstBlock;
+    (void)blockLimit;
+    CExtentReadContext context{this, source, &extents};
+    const ext_extent_services services{&context, ReadExtentBlock, EmitExtent};
+    const int result =
+        ext_linux_extent_walk(_volume.get(), _blockInode, _extentChecksumSeed, p, size, &services);
+    RINOK(context.Result)
+    return result == 0 ? S_OK : result == -ENOMEM ? E_OUTOFMEMORY : S_FALSE;
+}
+
+HRESULT CHandler::GetStream_Node(unsigned nodeIndex, ISequentialInStream **stream,
+                                 bool requireAllocated, bool rawLink,
+                                 CRecordVector<CExtent> *allocated, IInStream *source,
+                                 bool *mappingIncomplete) {
+    COM_TRY_BEGIN
+    if (!source)
+        source = _stream;
+
+    *stream = NULL;
+    if (mappingIncomplete)
+        *mappingIncomplete = false;
+    if (allocated)
+        allocated->Clear();
+
+    const CNode &node = _nodes[nodeIndex];
+    if ((requireAllocated && (node.Flags & ((UInt32)1 << 21))) ? node.EaReadError
+                                                               : node.SpecialReadError)
+        return S_FALSE;
+    const bool verity = (node.Flags & ((UInt32)1 << 20)) != 0;
+    const bool allowPrefix =
+        mappingIncomplete && !verity && !requireAllocated &&
+        ((node.IsRegular() && !rawLink && !allocated) || (node.IsDir() && rawLink && allocated));
+    if (verity && (!node.IsRegular() || !node.IsFlags_EXTENTS() || node.InlineIndex >= 0))
+        return S_FALSE;
+    const CExtCryptInode &crypt = _cryptInodes[nodeIndex];
+    if ((node.Flags & 0x800) && !crypt)
+        return S_FALSE;
+    if (crypt && node.IsRegular())
+        RINOK(ExtCryptRequireKey(crypt))
+    if (node.IsLink() && !rawLink) {
+        CByteBuffer target;
+        RINOK(ExtractNode(nodeIndex, target, source))
+        Create_BufInStream_WithNewBuffer(target, target.Size(), stream);
+        return S_OK;
+    }
+    if (node.InlineIndex >= 0) {
+        const CByteBuffer &payload = _inlineData[(unsigned)node.InlineIndex];
+        Create_BufInStream_WithNewBuffer(payload, payload.Size(), stream);
+        return S_OK;
+    }
+    _extentChecksumSeed = node.ChecksumSeed;
+    _blockInode = node.InodeNumber;
+
+    if (!node.IsRegular() && !node.IsDir() && !node.IsLink()) {
+        if (node.FileSize)
+            return E_NOTIMPL;
+        Create_BufInStream_WithNewBuffer(nullptr, 0, stream);
+        return S_OK;
+    }
+
+    {
+        const bool inlineData = (node.Flags & ((UInt32)1 << 28)) != 0;
+        const bool fastLink = node.IsFastSymlink(_h);
+        if ((fastLink || (inlineData && node.NumBlocks == 0)) &&
+            node.FileSize < kNodeBlockFieldSize) {
+            Create_BufInStream_WithNewBuffer(
+                node.Block, rawLink && node.IsLink() ? kNodeBlockFieldSize : (size_t)node.FileSize,
+                stream);
+            return S_OK;
+        }
+    }
+
+    if (node.FileSize >= ((UInt64)1 << 63))
+        return S_FALSE;
+
+    CMyComPtr<IInStream> streamTemp;
+
+    const UInt64 streamSize = rawLink && node.IsLink() ? (UInt64)1 << _h.BlockBits : node.FileSize;
+    const UInt64 numBlocks64 =
+        (streamSize + (UInt64)(((UInt32)1 << _h.BlockBits) - 1)) >> _h.BlockBits;
+
+    if (node.IsDir() && !node.IsFlags_EXTENTS() && allocated) {
+        CIndirectDirectoryContext context{this, allocated};
+        const HRESULT result = CreateExtIndirectDirectoryStream(
+            _volume, source, node.Block, node.InodeNumber, _h.BlockBits, streamSize, &context,
+            EmitIndirectDirectoryRange, &streamTemp);
+        if (result == S_FALSE && mappingIncomplete)
+            *mappingIncomplete = true;
+        if (result != S_OK && !(result == S_FALSE && allowPrefix && !allocated->IsEmpty()))
+            return result;
+        *stream = streamTemp.Detach();
+        return S_OK;
+    }
+    if (!node.IsFlags_EXTENTS()) {
+        if (allocated)
+            return S_FALSE;
+        RINOK(CreateExtIndirectStream(_volume, source, node.Block, node.InodeNumber, _h.BlockBits,
+                                      streamSize, requireAllocated,
+                                      node.IsRegular() ? crypt : CExtCryptInode{}, &streamTemp))
+        *stream = streamTemp.Detach();
+        return S_OK;
+    }
+
+    if (node.IsFlags_EXTENTS()) {
+        if ((UInt32)numBlocks64 != numBlocks64)
+            return S_FALSE;
+
+        CExtInStream *streamSpec = new CExtInStream;
+        streamTemp = streamSpec;
+
+        streamSpec->BlockBits = _h.BlockBits;
+        streamSpec->Size = streamSize;
+        streamSpec->Stream = source;
+        if (crypt && node.IsRegular())
+            streamSpec->Crypt.Init(crypt);
+
+        const HRESULT mappingResult = FillExtents(
+            node.Block, kNodeBlockFieldSize, streamSpec->Extents, -1, 0, (UInt64)1 << 32, source);
+        if (mappingResult == S_FALSE && mappingIncomplete)
+            *mappingIncomplete = true;
+        if (mappingResult == S_FALSE && allowPrefix && !streamSpec->Extents.IsEmpty()) {
+            streamSpec->Size =
+                MyMin(streamSize, (UInt64)streamSpec->Extents.Back().GetVirtEnd() << _h.BlockBits);
+        } else {
+            RINOK(mappingResult)
+        }
+
+        UInt32 end = 0;
+        if (!streamSpec->Extents.IsEmpty())
+            end = streamSpec->Extents.Back().GetVirtEnd();
+        if (mappingResult == S_OK && end < numBlocks64) {
+            AddSkipExtents(streamSpec->Extents, end, (UInt32)(numBlocks64 - end));
+            // return S_FALSE;
+        }
+        if (requireAllocated) {
+            FOR_VECTOR(i, streamSpec->Extents)
+            if (streamSpec->Extents[i].VirtBlock < numBlocks64 &&
+                (!streamSpec->Extents[i].IsInited || streamSpec->Extents[i].PhyStart == 0))
+                return S_FALSE;
+        }
+
+        if (allocated) {
+            allocated->ClearAndReserve(streamSpec->Extents.Size());
+            FOR_VECTOR(i, streamSpec->Extents) {
+                const CExtent &extent = streamSpec->Extents[i];
+                if (!extent.IsInited || !extent.PhyStart || extent.VirtBlock >= numBlocks64)
+                    continue;
+                allocated->AddInReserved(extent);
+            }
+        }
+
+        RINOK(streamSpec->StartSeek(allowPrefix && node.IsDir()))
+        if (verity) {
+            if (!end)
+                return S_FALSE;
+            streamSpec->Size = (UInt64)end << _h.BlockBits;
+            CMyComPtr<IInStream> verified;
+            RINOK(CreateExtVerityStream(streamSpec, node.FileSize, _h.BlockBits, end, _verityPolicy,
+                                        &verified))
+            streamTemp = verified;
+        }
+    }
+
+    *stream = streamTemp.Detach();
+
+    return S_OK;
+
+    COM_TRY_END
+}
+
+HRESULT CHandler::ExtractNode(unsigned nodeIndex, CByteBuffer &data, IInStream *source) {
+    data.Free();
+    const CNode &node = _nodes[nodeIndex];
+    if (node.IsLink())
+        return ReadLink(nodeIndex, data, source);
+    if (node.IsDir() && node.InlineIndex >= 0) {
+        data = _inlineData[(unsigned)node.InlineIndex];
+        return S_OK;
+    }
+    size_t size = (size_t)node.FileSize;
+    if (size != node.FileSize)
+        return S_FALSE;
+    CMyComPtr<ISequentialInStream> inSeqStream;
+    RINOK(GetStream_Node(nodeIndex, &inSeqStream, false, true, NULL, source))
+    if (!inSeqStream)
+        return S_FALSE;
+    data.Alloc(size);
+    _totalRead += size;
+    RINOK(ReadStream_FALSE(inSeqStream, data, size))
+    return S_OK;
+}
+
+class CFileExtractionIO final : public IInStream,
+                                public ISequentialOutStream,
+                                public CMyUnknownImp {
+    Z7_COM_UNKNOWN_IMP_3(IInStream, ISequentialInStream, ISequentialOutStream)
+    HRESULT InputResult(HRESULT result) {
+        if (result != S_OK && result != E_ABORT && result != E_OUTOFMEMORY) {
+            SourceError = true;
+            return S_FALSE;
+        }
+        return result;
+    }
+
+  public:
+    CMyComPtr<IInStream> Input;
+    CMyComPtr<ISequentialOutStream> Output;
+    bool SourceError = false;
+    HRESULT OutputResult = S_OK;
+    Z7_COM7F_IMF(Read(void *data, UInt32 size, UInt32 *processed)) override {
+        UInt32 done = 0;
+        const HRESULT result = Input->Read(data, size, &done);
+        if (processed)
+            *processed = done;
+        return InputResult(result == S_OK && size && !done ? S_FALSE : result);
+    }
+    Z7_COM7F_IMF(Seek(Int64 offset, UInt32 origin, UInt64 *position)) override {
+        return InputResult(Input->Seek(offset, origin, position));
+    }
+    Z7_COM7F_IMF(Write(const void *data, UInt32 size, UInt32 *processed)) override {
+        OutputResult = Output->Write(data, size, processed);
+        return OutputResult;
+    }
+};
+static IInStream *CreateReadOnlyInput(IInStream *source) {
+    CFileExtractionIO *io = new CFileExtractionIO;
+    io->Input = source;
+    return io;
+}
+
+Z7_COM7F_IMF(CHandler::Extract(const UInt32 *indices, UInt32 numItems, Int32 testMode,
+                               IArchiveExtractCallback *extractCallback)) {
+    COM_TRY_BEGIN
+    const bool allFilesMode = (numItems == (UInt32)(Int32)-1);
+    if (allFilesMode)
+        numItems = _items.Size() + _auxItems.Size();
+    if (numItems == 0)
+        return S_OK;
+
+    UInt64 totalSize = 0;
+    UInt32 i;
+
+    for (i = 0; i < numItems; i++) {
+        const UInt32 index = allFilesMode ? i : indices[i];
+        if (index >= _items.Size())
+            continue;
+        const CItem &item = _items[index];
+        const CNode &node = _nodes[_refs[item.Node]];
+        if (item.XattrIndex >= 0) {
+            totalSize += _xattrs[(unsigned)item.XattrIndex].Data.Size();
+            continue;
+        }
+        if (!node.IsDir())
+            totalSize += GetUnpackSize(node);
+    }
+
+    RINOK(extractCallback->SetTotal(totalSize))
+
+    UInt64 totalPackSize;
+    totalSize = totalPackSize = 0;
+
+    CMyComPtr2_Create<ICompressProgressInfo, CLocalProgress> lps;
+    lps->Init(extractCallback, false);
+    CMyComPtr2_Create<ICompressCoder, NCompress::CCopyCoder> copyCoder;
+
+    for (i = 0;; i++) {
+        lps->InSize = totalPackSize;
+        lps->OutSize = totalSize;
+        RINOK(lps->SetCur())
+        if (i >= numItems)
+            break;
+
+        int opRes;
+        {
+            CMyComPtr<ISequentialOutStream> outStream;
+            const Int32 askMode =
+                testMode ? NExtract::NAskMode::kTest : NExtract::NAskMode::kExtract;
+
+            const UInt32 index = allFilesMode ? i : indices[i];
+
+            RINOK(extractCallback->GetStream(index, &outStream, askMode))
+
+            if (index >= _items.Size()) {
+                RINOK(extractCallback->PrepareOperation(askMode))
+                RINOK(extractCallback->SetOperationResult(NExtract::NOperationResult::kOK))
+                continue;
+            }
+
+            const CItem &item = _items[index];
+            const CNode &node = _nodes[_refs[item.Node]];
+
+            if (node.IsDir() && item.XattrIndex < 0) {
+                RINOK(extractCallback->PrepareOperation(askMode))
+                Int32 directoryResult = NExtract::NOperationResult::kOK;
+                if (node.DirectoryIncomplete)
+                    directoryResult = NExtract::NOperationResult::kDataError;
+                RINOK(extractCallback->SetOperationResult(directoryResult))
+                continue;
+            }
+
+            UInt64 unpackSize = node.FileSize;
+            unpackSize = GetUnpackSize(node);
+            if (item.XattrIndex >= 0)
+                unpackSize = _xattrs[(unsigned)item.XattrIndex].Data.Size();
+            totalSize += unpackSize;
+            UInt64 packSize;
+            if (GetPackSize(index, packSize))
+                totalPackSize += packSize;
+
+            if (!testMode && !outStream)
+                continue;
+            RINOK(extractCallback->PrepareOperation(askMode))
+
+            opRes = NExtract::NOperationResult::kDataError;
+            {
+                CMyComPtr<ISequentialInStream> inSeqStream;
+                CFileExtractionIO *io = new CFileExtractionIO;
+                CMyComPtr<IInStream> source = io;
+                io->Input = _stream;
+                io->Output = outStream;
+                bool mappingIncomplete = false;
+                HRESULT hres = GetFileStream(index, &inSeqStream, source, &mappingIncomplete);
+                if (hres != S_FALSE) {
+                    RINOK(hres)
+                }
+                if (hres == S_FALSE || !inSeqStream) {
+                    if (hres == E_OUTOFMEMORY)
+                        return hres;
+                    opRes = NExtract::NOperationResult::kUnsupportedMethod;
+                    if (io->SourceError || mappingIncomplete || node.LinkUnavailable)
+                        opRes = NExtract::NOperationResult::kDataError;
+                } else {
+                    if (item.XattrIndex < 0 && node.IsLink() && node.LinkUnavailable) {
+                        // A retry may decode a target whose size was unavailable
+                        // during Open. Compare against the complete owned target,
+                        // not the raw inode size or a fabricated empty value.
+                        CMyComPtr<IInStream> target;
+                        RINOK(inSeqStream->QueryInterface(IID_IInStream,
+                                                          reinterpret_cast<void **>(&target)))
+                        RINOK(InStream_GetSize_SeekToBegin(target, unpackSize))
+                    }
+                    RINOK(hres) {
+                        hres = copyCoder.Interface()->Code(inSeqStream, outStream ? io : NULL, NULL,
+                                                           NULL, lps);
+                        RINOK(io->OutputResult)
+                        if (hres == S_OK) {
+                            if (copyCoder->TotalSize == unpackSize && !mappingIncomplete)
+                                opRes = NExtract::NOperationResult::kOK;
+                        } else if (hres == E_NOTIMPL) {
+                            opRes = NExtract::NOperationResult::kUnsupportedMethod;
+                        } else if (hres != S_FALSE) {
+                            RINOK(hres)
+                        }
+                    }
+                }
+            }
+        }
+        RINOK(extractCallback->SetOperationResult(opRes))
+    }
+
+    return S_OK;
+    COM_TRY_END
+}
+
+HRESULT CHandler::GetFileStream(UInt32 index, ISequentialInStream **stream, IInStream *source,
+                                bool *mappingIncomplete) {
+    *stream = NULL;
+    if (mappingIncomplete)
+        *mappingIncomplete = false;
+    if (index >= _items.Size())
+        return S_FALSE;
+    if (!_items[index].ContextAllowed)
+        return HRESULT(0x80070005L);
+    if (_items[index].XattrIndex >= 0) {
+        const CByteBuffer &data = _xattrs[(unsigned)_items[index].XattrIndex].Data;
+        Create_BufInStream_WithNewBuffer(data, data.Size(), stream);
+        return S_OK;
+    }
+    return GetStream_Node((unsigned)_refs[_items[index].Node], stream, false, false, NULL, source,
+                          mappingIncomplete);
+}
+
+Z7_COM7F_IMF(CHandler::GetStream(UInt32 index, ISequentialInStream **stream)) {
+    return GetFileStream(index, stream, _stream);
+}
+
+API_FUNC_IsArc IsArc_Ext_PhySize(const Byte *p, size_t size, UInt64 *phySize);
+API_FUNC_IsArc IsArc_Ext_PhySize(const Byte *p, size_t size, UInt64 *phySize) {
+    if (phySize)
+        *phySize = 0;
+    if (size < kHeaderSize)
+        return k_IsArc_Res_NEED_MORE;
+    CHeader h;
+    if (!h.Parse(p + kHeaderDataOffset))
+        return k_IsArc_Res_NO;
+    if (phySize)
+        *phySize = h.GetPhySize();
+    return k_IsArc_Res_YES;
+}
+
+API_FUNC_IsArc IsArc_Ext(const Byte *p, size_t size);
+API_FUNC_IsArc IsArc_Ext(const Byte *p, size_t size) { return IsArc_Ext_PhySize(p, size, NULL); }
+
+static const Byte k_Signature[] = {0x53, 0xEF};
+REGISTER_ARC_I("Ext", "ext ext2 ext3 ext4 img", NULL, 0xC7, k_Signature, 0x438, 0, IsArc_Ext)
+}
+}

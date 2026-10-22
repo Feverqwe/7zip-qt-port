@@ -11,9 +11,6 @@
 #include "../../../Windows/TimeUtils.h"
 
 #include "IsoHeader.h"
-#ifdef SEVENZIP_LINUX_ISO
-#include "../../../../isoreader.h"
-#endif
 
 namespace NArchive {
 namespace NIso {
@@ -28,13 +25,6 @@ struct CRecordingDateTime {
     signed char GmtOffset; // min intervals from -48 (West) to +52 (East) recorded.
 
     bool GetFileTime(NWindows::NCOM::CPropVariant &prop) const {
-#ifdef SEVENZIP_LINUX_ISO
-        unsigned char date[7] = {Year, Month, Day, Hour, Minute, Second, (Byte)GmtOffset};
-        const timespec64 time = sevenzip_iso_date(date, 0);
-        const UInt64 value = (UInt64)(time.tv_sec + 11644473600LL) * 10000000;
-        prop.SetAsTimeFrom_Ft64_Prec(value, k_PropVar_TimePrec_Base);
-        return true;
-#else
         UInt64 v;
         const bool res =
             NWindows::NTime::GetSecondsSince1601(Year + 1900, Month, Day, Hour, Minute, Second, v);
@@ -44,7 +34,6 @@ struct CRecordingDateTime {
             prop.SetAsTimeFrom_Ft64_Prec(v, k_PropVar_TimePrec_Base);
         }
         return res;
-#endif
     }
 };
 
@@ -84,14 +73,6 @@ struct CDirRecord {
     UInt16 VolSequenceNumber;
     CByteBuffer FileId;
     CByteBuffer SystemUse;
-#ifdef SEVENZIP_LINUX_ISO
-    sevenzip_iso_inode RockInode{};
-    AString RockName, RockLink;
-    bool RockDefined = false;
-    bool NameDefined = false;
-    bool RockHidden = false;
-    UInt64 RecordPosition = 0;
-#endif
 
     bool AreMultiPartEqualWith(const CDirRecord &a) const {
         return FileId == a.FileId &&
@@ -127,12 +108,6 @@ struct CDirRecord {
     }
 
     const Byte *GetNameCur(bool checkSusp, unsigned skipSize, unsigned &nameLenRes) const {
-#ifdef SEVENZIP_LINUX_ISO
-        if (!RockName.IsEmpty()) {
-            nameLenRes = RockName.Len();
-            return (const Byte *)(const char *)RockName;
-        }
-#endif
         const Byte *res = NULL;
         unsigned len = 0;
         if (checkSusp)

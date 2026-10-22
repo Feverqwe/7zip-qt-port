@@ -6,7 +6,7 @@ target_compile_definitions(sevenzip_ntfs_directory PRIVATE SEVENZIP_NTFS_DIRECTO
 set_target_properties(sevenzip_ntfs_directory PROPERTIES AUTOMOC OFF AUTOUIC OFF
     POSITION_INDEPENDENT_CODE ON C_STANDARD 11 C_STANDARD_REQUIRED ON)
 add_library(sevenzip_ntfs MODULE
-    src/CPP/7zip/Archive/NtfsHandler.cpp src/exfatmodule.cpp
+    src/gpl/CPP/7zip/Archive/NtfsHandler.cpp src/exfatmodule.cpp
     src/ntfsdecoder.c src/fs/ntfs3/lznt.c src/fs/ntfs3/bitmap.c src/lib/hweight.c src/lib/find_bit.c
     src/ntfswofstream.cpp src/fs/ntfs3/attrib.c src/fs/ntfs3/frecord.c
     src/fs/ntfs3/attrlist.c src/fs/ntfs3/fsntfs.c src/fs/ntfs3/upcase.c
@@ -38,7 +38,6 @@ add_library(sevenzip_ntfs MODULE
     third_party/7zip/C/CpuArch.c third_party/7zip/C/Alloc.c)
 target_include_directories(sevenzip_ntfs PRIVATE src third_party/7zip/CPP
     third_party/7zip/CPP/7zip/Archive)
-target_compile_definitions(sevenzip_ntfs PRIVATE SEVENZIP_LINUX_NTFS)
 target_link_libraries(sevenzip_ntfs PRIVATE Threads::Threads)
 set_target_properties(sevenzip_ntfs PROPERTIES AUTOMOC OFF AUTOUIC OFF PREFIX ""
     C_STANDARD 11 C_STANDARD_REQUIRED ON)
@@ -58,3 +57,6 @@ function(sevenzip_deploy_ntfs)
         DEPENDS sevenzip_ntfs VERBATIM)
     add_dependencies(sevenzip_desktop sevenzip_ntfs_runtime)
 endfunction()
+
+# The GPL reader sources use their own upstream-shaped include root.
+target_include_directories(sevenzip_ntfs BEFORE PRIVATE src/gpl/CPP src/CPP third_party/7zip)

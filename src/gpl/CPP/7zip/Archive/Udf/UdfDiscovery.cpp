@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL-2.0-only
 // clang-format off
-#include "StdAfx.h"
+#include "7zip/Archive/Udf/StdAfx.h"
 // clang-format on
-#include "../../Common/RegisterArc.h"
-#include "../../Common/StreamUtils.h"
-#include "UdfIn.h"
+#include "7zip/Archive/Udf/UdfIn.h"
+#include "7zip/Common/RegisterArc.h"
+#include "7zip/Common/StreamUtils.h"
 #include <errno.h>
 
 namespace NArchive {

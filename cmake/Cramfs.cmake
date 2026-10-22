@@ -1,6 +1,6 @@
 # Linux-derived C readers remain in a separate GPL format module.
 add_library(sevenzip_cramfs MODULE
-    src/CPP/7zip/Archive/CramfsHandler.cpp src/exfatmodule.cpp
+    src/gpl/CPP/7zip/Archive/CramfsHandler.cpp src/exfatmodule.cpp
     src/cramfsreader.c src/fs/cramfs/inode.c
     third_party/7zip/CPP/7zip/Archive/ArchiveExports.cpp
     third_party/7zip/CPP/7zip/Common/StreamUtils.cpp
@@ -30,7 +30,6 @@ add_library(sevenzip_cramfs MODULE
     third_party/7zip/C/CpuArch.c third_party/7zip/C/Alloc.c third_party/7zip/C/LzmaDec.c)
 target_include_directories(sevenzip_cramfs PRIVATE src third_party/7zip/CPP
     third_party/7zip/CPP/7zip/Archive)
-target_compile_definitions(sevenzip_cramfs PRIVATE SEVENZIP_LINUX_CRAMFS)
 target_link_libraries(sevenzip_cramfs PRIVATE Threads::Threads)
 set_target_properties(sevenzip_cramfs PROPERTIES AUTOMOC OFF AUTOUIC OFF PREFIX ""
     C_STANDARD 11 C_STANDARD_REQUIRED ON)
@@ -69,3 +68,6 @@ if(BUILD_TESTING)
     add_test(NAME cramfs_module COMMAND cramfs_module_tests -silent)
     set_tests_properties(cramfs_module PROPERTIES TIMEOUT 45)
 endif()
+
+# The GPL reader sources use their own upstream-shaped include root.
+target_include_directories(sevenzip_cramfs BEFORE PRIVATE src/gpl/CPP src/CPP third_party/7zip)

@@ -144,7 +144,7 @@ if(BUILD_TESTING)
 endif()
 add_library(sevenzip_ext MODULE
     src/fs/ext4/acl.c src/fs/posix_acl.c
-    src/CPP/7zip/Archive/ExtHandler.cpp src/exfatmodule.cpp
+    src/gpl/CPP/7zip/Archive/ExtHandler.cpp src/exfatmodule.cpp src/extpasswordguid.cpp
     src/extreader.c src/fs/readdir.c src/fs/libfs.c src/fs/ext4/super.c src/fs/ext4/crypto.c src/fs/ext4/balloc.c
     src/fs/ext4/inode.c src/fs/ext4/bitmap.c src/fs/ext4/inline.c src/fs/ext4/symlink.c
     src/fs/ext4/indirect.c src/extindirectstream.cpp
@@ -179,7 +179,6 @@ add_library(sevenzip_ext MODULE
     third_party/7zip/C/Sha512.c third_party/7zip/C/Sha512Opt.c)
 target_include_directories(sevenzip_ext PRIVATE src third_party/7zip/CPP
     third_party/7zip/CPP/7zip/Archive)
-target_compile_definitions(sevenzip_ext PRIVATE SEVENZIP_LINUX_EXT)
 target_link_libraries(sevenzip_ext PRIVATE Threads::Threads sevenzip_fscrypt_crypto)
 set_target_properties(sevenzip_ext PROPERTIES AUTOMOC OFF AUTOUIC OFF PREFIX ""
     C_STANDARD 11 C_STANDARD_REQUIRED ON)
@@ -199,3 +198,6 @@ function(sevenzip_deploy_ext)
         DEPENDS sevenzip_ext VERBATIM)
     add_dependencies(sevenzip_desktop sevenzip_ext_runtime)
 endfunction()
+
+# The GPL reader sources use their own upstream-shaped include root.
+target_include_directories(sevenzip_ext BEFORE PRIVATE src/gpl/CPP src/CPP third_party/7zip)

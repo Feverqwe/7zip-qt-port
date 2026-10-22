@@ -1,6 +1,6 @@
 # Linux nested partition readers remain in a separate GPL format module.
 add_library(sevenzip_mbr MODULE
-    src/CPP/7zip/Archive/MbrHandler.cpp src/CPP/7zip/Archive/HandlerCont.cpp
+    src/gpl/CPP/7zip/Archive/MbrHandler.cpp src/CPP/7zip/Archive/HandlerCont.cpp
     src/CPP/7zip/Archive/FatHandler.cpp src/exfatmodule.cpp
     src/block/partitions/msdos.c src/block/partitions/reader.c
     third_party/7zip/CPP/7zip/Archive/ArchiveExports.cpp
@@ -22,7 +22,7 @@ add_library(sevenzip_mbr MODULE
     third_party/7zip/C/CpuArch.c third_party/7zip/C/Alloc.c)
 target_include_directories(sevenzip_mbr PRIVATE src third_party/7zip/CPP
     third_party/7zip/CPP/7zip/Archive)
-target_compile_definitions(sevenzip_mbr PRIVATE SEVENZIP_LINUX_MBR SEVENZIP_CONTAINER_ONLY
+target_compile_definitions(sevenzip_mbr PRIVATE SEVENZIP_CONTAINER_ONLY
     SEVENZIP_FAT_PROBE_ONLY Z7_ST)
 target_link_libraries(sevenzip_mbr PRIVATE Threads::Threads)
 set_target_properties(sevenzip_mbr PROPERTIES AUTOMOC OFF AUTOUIC OFF PREFIX ""
@@ -43,3 +43,6 @@ function(sevenzip_deploy_mbr)
         DEPENDS sevenzip_mbr VERBATIM)
     add_dependencies(sevenzip_desktop sevenzip_mbr_runtime)
 endfunction()
+
+# The GPL reader sources use their own upstream-shaped include root.
+target_include_directories(sevenzip_mbr BEFORE PRIVATE src/gpl/CPP src/CPP third_party/7zip)

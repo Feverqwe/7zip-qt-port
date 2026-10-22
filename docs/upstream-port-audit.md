@@ -7,6 +7,9 @@
 
 ## Дополнительные форматы
 
+[Отдельные SDK/GPL-варианты обработчиков](upstream-port-audit/license-variants.md)
+— границы исходников и сборки вместо `SEVENZIP_LINUX_*` ветвлений.
+
 [Проверка файловых систем по Linux](upstream-port-audit/filesystems-linux.md)
 — текущий scope проверки существующих read handlers и добавления EROFS.
 

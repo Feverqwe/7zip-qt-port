@@ -9,11 +9,20 @@ paths. `overrides` records full commits for individual modules if an update is
 applied incrementally. The function/branch scope and reasons for local changes
 remain in [the port audit](upstream-port-audit.md).
 
+Archive readers with Linux dependencies have separate variants under
+`src/gpl/CPP/`, preserving the upstream path below that source root. Compare both
+variants with their recorded upstream revision during an update. Each variant
+has one authoritative implementation; shared portable dependencies stay shared.
+The [variant audit](upstream-port-audit/license-variants.md) records ownership and
+the original conditional source used for the split.
+
 `runtime_adapted` selects adapted engine modules for both dynamic and standalone
 runtime builds. Review these local changes during an upstream update as well;
 their compiled provenance and prepared-runtime cache include the source hashes.
 The builders refresh one owned source snapshot while retaining incremental
-compiler outputs. They do not compile in the upstream checkout.
+compiler outputs. They do not compile in the upstream checkout. GPL reader
+variants are excluded from this overlay and built as separate CMake modules;
+the snapshot preparer rejects a GPL variant in `runtime_adapted`.
 
 Start from a disposable Git snapshot of the official repository. The old
 `../7zip-upstream` checkout is not required, and it must not be modified:
@@ -23,7 +32,7 @@ git clone --no-checkout https://github.com/ip7z/7zip.git /tmp/7zip-update-review
 python3 scripts/upstream_baseline.py verify --upstream /tmp/7zip-update-review
 ```
 
-`verify` rejects missing/stale manifest entries, duplicate source owners,
+`verify` rejects missing/stale manifest entries, duplicate source owners within a variant,
 unknown revisions, new upstream counterparts for local-only paths, and changed
 bytes in exact files. It checks the current working-tree inventory, including
 nonignored new sources and excluding deleted files, so source moves can be

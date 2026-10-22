@@ -8,7 +8,7 @@ set_target_properties(sevenzip_linux_frames_core PROPERTIES AUTOMOC OFF AUTOUIC 
     POSITION_INDEPENDENT_CODE ON C_STANDARD 11 C_STANDARD_REQUIRED ON)
 add_library(sevenzip_linux_frames MODULE
     src/CPP/7zip/Archive/LinuxFrameHandler.cpp src/linuxframestream.cpp src/exfatmodule.cpp
-    src/CPP/7zip/Archive/CpioHandler.cpp
+    src/gpl/CPP/7zip/Archive/CpioHandler.cpp
     src/CPP/7zip/Archive/GzHandler.cpp src/CPP/7zip/Archive/LzmaHandler.cpp
     src/initramfsdecoders.cpp src/initramfsreader.cpp src/initramfscache.cpp
     src/CPP/7zip/Common/LimitedStreams.cpp
@@ -50,7 +50,7 @@ add_library(sevenzip_linux_frames MODULE
     third_party/7zip/CPP/Common/UTFConvert.cpp)
 target_include_directories(sevenzip_linux_frames PRIVATE src src/C third_party/7zip/C third_party/7zip/CPP
     third_party/7zip/CPP/7zip/Archive)
-target_compile_definitions(sevenzip_linux_frames PRIVATE SEVENZIP_LINUX_INITRAMFS Z7_ST)
+target_compile_definitions(sevenzip_linux_frames PRIVATE Z7_ST)
 set_source_files_properties(src/CPP/7zip/Archive/GzHandler.cpp
     src/CPP/7zip/Archive/LzmaHandler.cpp PROPERTIES
     COMPILE_DEFINITIONS SEVENZIP_INITRAMFS_FRAME_ONLY)
@@ -72,3 +72,6 @@ function(sevenzip_deploy_linux_frames)
         DEPENDS sevenzip_linux_frames VERBATIM)
     add_dependencies(sevenzip_desktop sevenzip_linux_frames_runtime)
 endfunction()
+
+# The GPL reader sources use their own upstream-shaped include root.
+target_include_directories(sevenzip_linux_frames BEFORE PRIVATE src/gpl/CPP src/CPP third_party/7zip)

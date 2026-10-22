@@ -21,10 +21,6 @@
 #include "../Compress/CopyCoder.h"
 
 #include "Common/ItemNameUtils.h"
-#ifdef SEVENZIP_LINUX_INITRAMFS
-#include "../../../initramfsdecoders.h"
-#include "../../../initramfsreader.h"
-#endif
 
 using namespace NWindows;
 
@@ -185,7 +181,7 @@ static UInt64 ReadOct11(const Byte *p) {
 
 static const unsigned kNameSizeMax = 1 << 12;
 
-#if defined(SEVENZIP_LINUX_INITRAMFS) || !defined(Z7_EXTERNAL_CODECS)
+#if !defined(Z7_EXTERNAL_CODECS)
 API_FUNC_static_IsArc IsArc_Cpio(const Byte *p, size_t size) {
     if (size < k_BinRecord_Size)
         return k_IsArc_Res_NEED_MORE;
@@ -565,59 +561,12 @@ static int CompareItems(const unsigned *p1, const unsigned *p2, void *param) {
     return MyCompare(index1, index2);
 }
 
-#ifdef SEVENZIP_LINUX_INITRAMFS
-static HRESULT ReadInitramfsRecord(IInStream *stream, UInt64 position, InitramfsRecord &record) {
-    RINOK(InStream_SeekSet(stream, position))
-    CInArchive arc;
-    arc.Stream = stream;
-    arc.Processed = position;
-    arc.item.HeaderPos = position;
-    RINOK(arc.GetNextItem())
-    if (arc.errorType != k_ErrorType_OK)
-        return S_FALSE;
-    record = {arc.Processed, arc.item.Size, arc.item.GetPackSize(), arc.item.IsNew(),
-              arc.item.IsTrailer()};
-    return S_OK;
-}
-
-class CNormalizedProgress final : public IArchiveOpenCallback, public CMyUnknownImp {
-    Z7_COM_UNKNOWN_IMP_1(IArchiveOpenCallback)
-  public:
-    IArchiveOpenCallback *callback;
-    UInt64 physical;
-    Z7_COM7F_IMF(SetTotal(const UInt64 *, const UInt64 *)) override { return S_OK; }
-    Z7_COM7F_IMF(SetCompleted(const UInt64 *files, const UInt64 *)) override {
-        return callback->SetCompleted(files, &physical);
-    }
-};
-#endif
-
 Z7_COM7F_IMF(CHandler::Open(IInStream *stream, const UInt64 *, IArchiveOpenCallback *callback)) {
     COM_TRY_BEGIN
     Close();
     HRESULT result;
     try {
-#ifdef SEVENZIP_LINUX_INITRAMFS
-        CMyComPtr<IInStream> normalized;
-        UInt64 physical;
-        result = NormalizeInitramfs(stream, callback, ReadInitramfsRecord, &normalized, physical);
-        if (result == S_OK) {
-            _normalized = normalized != nullptr;
-            CMyComPtr2_Create<IArchiveOpenCallback, CNormalizedProgress> progress;
-            progress->callback = callback;
-            progress->physical = physical;
-            result = InStream_SeekToBegin(normalized ? normalized.Interface() : stream);
-            if (result == S_OK)
-                result = Open2(normalized ? normalized.Interface() : stream,
-                               normalized && callback ? progress.Interface() : callback);
-            if (_normalized)
-                _phySize = physical;
-            if (result == S_OK && callback)
-                result = callback->SetCompleted(nullptr, &physical);
-        }
-#else
         result = Open2(stream, callback);
-#endif
     } catch (...) {
         Close();
         throw;
@@ -1215,30 +1164,7 @@ Z7_COM7F_IMF(CHandler::GetStream(UInt32 index, ISequentialInStream **stream)) {
     COM_TRY_END
 }
 
-#ifdef SEVENZIP_LINUX_INITRAMFS
-API_FUNC_static_IsArc IsArc_Initramfs(const Byte *p, size_t size) {
-    if (size && !p[0]) {
-        size_t offset = 0;
-        while (offset < size && !p[offset])
-            ++offset;
-        if (offset == size)
-            return k_IsArc_Res_NEED_MORE;
-        if (InitramfsCompression(p + offset, size - offset) != InitramfsMethod::None)
-            return k_IsArc_Res_YES;
-        return (offset & 3) ? k_IsArc_Res_NO : IsArc_Cpio(p + offset, size - offset);
-    }
-    if (InitramfsCompression(p, size) != InitramfsMethod::None)
-        return k_IsArc_Res_YES;
-    return IsArc_Cpio(p, size);
-}
-}
-static const Byte k_Signature[] = {
-    5, '0',  '7',  '0', '7',  '0',  2, kMagicBin0, kMagicBin1, 2, kMagicBin1, kMagicBin0,
-    2, 0x1f, 0x8b, 2,   0x1f, 0x9e, 2, 0x42,       0x5a,       2, 0x5d,       0x00,
-    2, 0xfd, 0x37, 2,   0x89, 0x4c, 2, 0x02,       0x21,       2, 0x28,       0xb5};
-REGISTER_ARC_I("Cpio", "cpio initramfs initrd img", NULL, 0xED, k_Signature, 0,
-               NArcInfoFlags::kMultiSignature, IsArc_Initramfs)
-#elif !defined(Z7_EXTERNAL_CODECS)
+#if !defined(Z7_EXTERNAL_CODECS)
 static const Byte k_Signature[] = {5, '0',        '7',        '0', '7',        '0',
                                    2, kMagicBin0, kMagicBin1, 2,   kMagicBin1, kMagicBin0};
 

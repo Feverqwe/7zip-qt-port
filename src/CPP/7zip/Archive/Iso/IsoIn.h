@@ -15,22 +15,10 @@ namespace NIso {
 
 struct CUnexpectedEndException {};
 struct CHeaderErrorException {};
-#ifdef SEVENZIP_LINUX_ISO
-// Read-side fields of Linux isofs_options; device/VFS mount services stay outside the archive.
-struct CReadOptions {
-    bool NoRock = false, NoJoliet = false, NoCompress = false;
-    bool Hide = false, ShowAssociated = false, Cruft = false;
-    UInt32 SbSector = 0;
-};
-#endif
 
 struct CDir : public CDirRecord {
     CDir *Parent = NULL;
     CObjectVector<CDir> _subItems;
-#ifdef SEVENZIP_LINUX_ISO
-    CObjectVector<CDirRecord> DirectorySections;
-    bool DirectoryRead = false;
-#endif
 
     CDir() = default;
     CDir(const CDir &) = default;
@@ -56,10 +44,6 @@ struct CDir : public CDirRecord {
             }
         }
         Parent = NULL;
-#ifdef SEVENZIP_LINUX_ISO
-        DirectorySections.Clear();
-        DirectoryRead = false;
-#endif
     }
 
     AString GetPath(bool checkSusp, unsigned skipSize) const {
@@ -146,9 +130,6 @@ struct CDir : public CDirRecord {
 };
 
 struct CDateTime {
-#ifdef SEVENZIP_LINUX_ISO
-    Byte Raw[17];
-#endif
     UInt16 Year;
     Byte Month;
     Byte Day;
@@ -159,34 +140,11 @@ struct CDateTime {
     signed char GmtOffset; // min intervals from -48 (West) to +52 (East) recorded.
 
     bool NotSpecified() const {
-#ifdef SEVENZIP_LINUX_ISO
-        for (unsigned i = 0; i < 16; ++i)
-            if (Raw[i] != 0 && Raw[i] != '0' && Raw[i] != ' ')
-                return false;
-        return true;
-#else
         return Year == 0 && Month == 0 && Day == 0 && Hour == 0 && Minute == 0 && Second == 0 &&
                GmtOffset == 0;
-#endif
     }
 
     bool GetFileTime(NWindows::NCOM::CPropVariant &prop) const {
-#ifdef SEVENZIP_LINUX_ISO
-        if (NotSpecified())
-            return false;
-        for (unsigned i = 0; i < 16; ++i)
-            if (Raw[i] < '0' || Raw[i] > '9')
-                return false;
-        unsigned char date[17];
-        memcpy(date, Raw, sizeof(date));
-        const timespec64 time = sevenzip_iso_long_date(date);
-        if (time.tv_sec < -11644473600LL)
-            return false;
-        prop.SetAsTimeFrom_Ft64_Prec(UInt64(time.tv_sec + 11644473600LL) * 10000000 +
-                                         time.tv_nsec / 100,
-                                     k_PropVar_TimePrec_Base + 2);
-        return true;
-#else
         UInt64 v;
         const bool res =
             NWindows::NTime::GetSecondsSince1601(Year, Month, Day, Hour, Minute, Second, v);
@@ -198,7 +156,6 @@ struct CDateTime {
             prop.SetAsTimeFrom_Ft64_Prec(v, k_PropVar_TimePrec_Base + 2);
         }
         return res;
-#endif
     }
 };
 
@@ -274,10 +231,8 @@ struct CVolumeDescriptor {
     Byte ApplicationUse[512];
 
     bool IsJoliet() const {
-#ifndef SEVENZIP_LINUX_ISO
         if ((VolFlags & 1) != 0)
             return false;
-#endif
         const Byte b = EscapeSequence[2];
         return (EscapeSequence[0] == 0x25 && EscapeSequence[1] == 0x2F &&
                 (b == 0x40 || b == 0x43 || b == 0x45));
@@ -331,24 +286,8 @@ class CInArchive {
 
     void ReadBootInfo();
     HRESULT Open2();
-#ifdef SEVENZIP_LINUX_ISO
-    bool _highSierra = false;
-    sevenzip_iso_state _rockState{};
-    HRESULT _rockResult = S_OK;
-    static int RockRead(void *, uint64_t, void *, size_t);
-    static int RockRelocate(void *, uint32_t, sevenzip_iso_inode *);
-    HRESULT ReadRock(CDirRecord &, bool namesOnly = false);
-    HRESULT ReadDirectory(CDir &);
-    HRESULT ReadName(CDirRecord &);
-    HRESULT SelectRockVolume(int primary, int joliet);
-#endif
 
   public:
-#ifdef SEVENZIP_LINUX_ISO
-    char NameMapping = 0;
-    int NameCharset = 0;
-    CReadOptions ReadOptions;
-#endif
     HRESULT Open(IInStream *inStream, IArchiveOpenCallback *openCallback);
     void Clear();
 
@@ -393,15 +332,7 @@ class CInArchive {
     bool CheckRef(const CRef &ref) const;
     UInt64 GetExtentSize(const CRef &ref, UInt32 index, UInt64 offset) const;
     bool IsSupported(const CRef &ref) const;
-    UInt64 GetUnpackSize(const CRef &ref) const {
-#ifdef SEVENZIP_LINUX_ISO
-        const CDir &item = ref.Dir->_subItems[ref.Index];
-        if (item.RockDefined && item.RockInode.i_file_format == 2 &&
-            (item.RockInode.i_mode & 0170000) == 0100000)
-            return item.RockInode.i_size;
-#endif
-        return ref.TotalSize;
-    }
+    UInt64 GetUnpackSize(const CRef &ref) const { return ref.TotalSize; }
     UInt64 GetDataPosition(const CDirRecord &record) const {
         return record.GetDataBlock() * VolDescs[MainVolDescIndex].LogicalBlockSize;
     }

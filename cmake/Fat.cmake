@@ -1,6 +1,6 @@
 # Linux FAT/NLS C code is isolated in a GPL format module.
 add_library(sevenzip_fat MODULE
-    src/CPP/7zip/Archive/FatHandler.cpp src/exfatmodule.cpp
+    src/gpl/CPP/7zip/Archive/FatHandler.cpp src/exfatmodule.cpp
     src/fs/fat/inode.c src/fs/fat/misc.c src/fs/fat/dir.c
     src/fs/nls/nls_cp437.c src/fs/nls/nls_base.c
     third_party/7zip/CPP/7zip/Archive/Common/ItemNameUtils.cpp
@@ -23,7 +23,6 @@ add_library(sevenzip_fat MODULE
     third_party/7zip/C/CpuArch.c third_party/7zip/C/Alloc.c)
 target_include_directories(sevenzip_fat PRIVATE src third_party/7zip/CPP
     third_party/7zip/CPP/7zip/Archive)
-target_compile_definitions(sevenzip_fat PRIVATE SEVENZIP_LINUX_FAT)
 target_link_libraries(sevenzip_fat PRIVATE Threads::Threads)
 set_target_properties(sevenzip_fat PROPERTIES AUTOMOC OFF AUTOUIC OFF PREFIX ""
     C_STANDARD 11 C_STANDARD_REQUIRED ON)
@@ -129,3 +128,6 @@ if(BUILD_TESTING)
         ${CMAKE_CURRENT_SOURCE_DIR}/build/codec-runtime)
     set_tests_properties(compound_stream PROPERTIES TIMEOUT 45)
 endif()
+
+# The GPL reader sources use their own upstream-shaped include root.
+target_include_directories(sevenzip_fat BEFORE PRIVATE src/gpl/CPP src/CPP third_party/7zip)

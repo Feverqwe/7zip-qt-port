@@ -9,12 +9,6 @@
 #include "../../Common/LimitedStreams.h"
 #include "../../Common/ProgressUtils.h"
 #include "../../Common/StreamUtils.h"
-#ifdef SEVENZIP_LINUX_ISO
-#include "../../../../isonames.h"
-#include "../../Common/MethodProps.h"
-#include "../../Common/StreamObjects.h"
-#include "IsoZisofs.h"
-#endif
 
 #include "../../Compress/CopyCoder.h"
 
@@ -27,71 +21,8 @@ using namespace NTime;
 
 namespace NArchive {
 namespace NIso {
-#ifdef SEVENZIP_LINUX_ISO
-// Standard 7-Zip open properties, following the source handler property loop.
-Z7_COM7F_IMF(CHandler::SetProperties(const wchar_t *const *names, const PROPVARIANT *values,
-                                     UInt32 numProps)) {
-    char mapping = 0;
-    int charset = 0;
-    CReadOptions options;
-    for (UInt32 i = 0; i < numProps; ++i) {
-        const wchar_t *name = names[i];
-        const PROPVARIANT &value = values[i];
-        if (StringsAreEqualNoCase_Ascii(name, "map")) {
-            if (value.vt != VT_BSTR)
-                return E_INVALIDARG;
-            if (StringsAreEqualNoCase_Ascii(value.bstrVal, "n") ||
-                StringsAreEqualNoCase_Ascii(value.bstrVal, "normal"))
-                mapping = 'n';
-            else if (StringsAreEqualNoCase_Ascii(value.bstrVal, "a") ||
-                     StringsAreEqualNoCase_Ascii(value.bstrVal, "acorn"))
-                mapping = 'a';
-            else if (StringsAreEqualNoCase_Ascii(value.bstrVal, "o") ||
-                     StringsAreEqualNoCase_Ascii(value.bstrVal, "off"))
-                mapping = 'o';
-            else
-                return E_INVALIDARG;
-        } else if (StringsAreEqualNoCase_Ascii(name, "iocharset")) {
-            if (value.vt != VT_BSTR)
-                return E_INVALIDARG;
-            AString charsetName = UnicodeStringToMultiByte(UString(value.bstrVal), CP_UTF8);
-            charsetName.MakeLower_Ascii();
-            charset = sevenzip_iso_charset(charsetName);
-            if (charset < 0)
-                return E_INVALIDARG;
-        } else if (StringsAreEqualNoCase_Ascii(name, "norock")) {
-            RINOK(PROPVARIANT_to_bool(value, options.NoRock))
-        } else if (StringsAreEqualNoCase_Ascii(name, "nojoliet")) {
-            RINOK(PROPVARIANT_to_bool(value, options.NoJoliet))
-        } else if (StringsAreEqualNoCase_Ascii(name, "nocompress")) {
-            RINOK(PROPVARIANT_to_bool(value, options.NoCompress))
-        } else if (StringsAreEqualNoCase_Ascii(name, "hide")) {
-            RINOK(PROPVARIANT_to_bool(value, options.Hide))
-        } else if (StringsAreEqualNoCase_Ascii(name, "showassoc") ||
-                   StringsAreEqualNoCase_Ascii(name, "unhide")) {
-            RINOK(PROPVARIANT_to_bool(value, options.ShowAssociated))
-        } else if (StringsAreEqualNoCase_Ascii(name, "cruft")) {
-            RINOK(PROPVARIANT_to_bool(value, options.Cruft))
-        } else if (StringsAreEqualNoCase_Ascii(name, "sbsector")) {
-            if (value.vt != VT_UI4)
-                return E_INVALIDARG;
-            RINOK(ParsePropToUInt32(UString(), value, options.SbSector))
-        } else if (!IsString1PrefixedByString2_NoCase_Ascii(name, "mt") &&
-                   !IsString1PrefixedByString2_NoCase_Ascii(name, "memuse"))
-            return E_INVALIDARG;
-    }
-    _archive.NameMapping = mapping;
-    _archive.NameCharset = charset;
-    _archive.ReadOptions = options;
-    return S_OK;
-}
-#endif
 
 static const Byte kProps[] = {kpidPath, kpidIsDir, kpidSize, kpidPackSize, kpidMTime,
-#ifdef SEVENZIP_LINUX_ISO
-                              kpidATime, kpidChangeTime, kpidUserId, kpidGroupId, kpidLinks,
-                              kpidMethod, kpidDeviceMajor, kpidDeviceMinor,
-#endif
                               // kpidCTime,
                               // kpidATime,
                               kpidPosixAttrib,
@@ -268,73 +199,6 @@ Z7_COM7F_IMF(CHandler::GetProperty(UInt32 index, PROPID propID, PROPVARIANT *val
     } else {
         const CRef &ref = _archive.Refs[index];
         const CDir &item = ref.Dir->_subItems[ref.Index];
-#ifdef SEVENZIP_LINUX_ISO
-        if (propID == kpidPath && item.NameDefined) {
-            UString text = MultiByteToUnicodeString(item.GetPath(false, 0), CP_UTF8);
-            NItemName::ReplaceToOsSlashes_Remove_TailSlash(text);
-            prop = text;
-            prop.Detach(value);
-            return S_OK;
-        }
-        if (item.RockDefined) {
-            const sevenzip_iso_inode &inode = item.RockInode;
-            bool handled = true;
-            switch (propID) {
-            case kpidSymLink:
-                if ((inode.i_mode & 0170000) == 0120000)
-                    prop = MultiByteToUnicodeString(item.RockLink, CP_UTF8);
-                break;
-            case kpidPosixAttrib:
-                prop = inode.i_mode;
-                break;
-            case kpidUserId:
-                prop = inode.i_uid;
-                break;
-            case kpidGroupId:
-                prop = inode.i_gid;
-                break;
-            case kpidLinks:
-                prop = inode.i_nlink;
-                break;
-            case kpidDeviceMajor:
-            case kpidDeviceMinor:
-                if ((inode.i_mode & 0170000) == 0020000 || (inode.i_mode & 0170000) == 0060000)
-                    prop = UInt32(propID == kpidDeviceMajor ? inode.i_rdev >> 20
-                                                            : inode.i_rdev & ((1U << 20) - 1));
-                break;
-            case kpidSize:
-                if (!item.IsDir())
-                    prop = _archive.GetUnpackSize(ref);
-                break;
-            case kpidMethod:
-                if (inode.i_file_format == 2 && (inode.i_mode & 0170000) == 0100000)
-                    prop = "zisofs";
-                break;
-            case kpidPackSize:
-                if (!item.IsDir())
-                    prop = (inode.i_mode & 0170000) == 0120000 ? UInt64(item.Size) : ref.TotalSize;
-                break;
-            case kpidMTime:
-            case kpidATime:
-            case kpidChangeTime: {
-                const timespec64 &time = propID == kpidMTime   ? inode.mtime
-                                         : propID == kpidATime ? inode.atime
-                                                               : inode.ctime;
-                if (time.tv_sec >= -11644473600LL)
-                    prop.SetAsTimeFrom_Ft64_Prec(UInt64(time.tv_sec + 11644473600LL) * 10000000 +
-                                                     time.tv_nsec / 100,
-                                                 k_PropVar_TimePrec_Base + 2);
-                break;
-            }
-            default:
-                handled = false;
-            }
-            if (handled) {
-                prop.Detach(value);
-                return S_OK;
-            }
-        }
-#endif
         switch (propID) {
         case kpidPath:
             // if (item.FileId.GetCapacity() >= 0)
@@ -544,13 +408,6 @@ Z7_COM7F_IMF(CHandler::GetStream(UInt32 index, ISequentialInStream **stream)) {
         const CDir &item = ref.Dir->_subItems[ref.Index];
         if (item.IsDir() || !_archive.CheckRef(ref) || !_archive.IsSupported(ref))
             return S_FALSE;
-#ifdef SEVENZIP_LINUX_ISO
-        if (item.RockDefined && (item.RockInode.i_mode & 0170000) == 0120000) {
-            Create_BufInStream_WithNewBuffer((const char *)item.RockLink, item.RockLink.Len(),
-                                             stream);
-            return S_OK;
-        }
-#endif
 
         for (UInt32 i = 0; i < ref.NumExtents; i++) {
             const CDir &item2 = ref.Dir->_subItems[ref.Index + i];
@@ -586,17 +443,6 @@ Z7_COM7F_IMF(CHandler::GetStream(UInt32 index, ISequentialInStream **stream)) {
     end.Virt = virtOffset;
     extentStream->Extents.Add(end);
     extentStream->Init();
-#ifdef SEVENZIP_LINUX_ISO
-    if (index < _archive.Refs.Size()) {
-        const CRef &ref = _archive.Refs[index];
-        const CDir &item = ref.Dir->_subItems[ref.Index];
-        if (item.RockDefined && item.RockInode.i_file_format == 2 &&
-            (item.RockInode.i_mode & 0170000) == 0100000)
-            return CreateZisofsStream(extentStream, ref.TotalSize,
-                                      _archive.VolDescs[_archive.MainVolDescIndex].LogicalBlockSize,
-                                      item.RockInode, stream);
-    }
-#endif
     *stream = extentStream.Detach();
     return S_OK;
     COM_TRY_END

@@ -1,8 +1,8 @@
 # Linux Rock Ridge stays in an isolated archive-only GPL module.
 add_library(sevenzip_iso MODULE
-    src/CPP/7zip/Archive/Iso/IsoIn.cpp src/CPP/7zip/Archive/Iso/IsoHandler.cpp
-    src/CPP/7zip/Archive/Iso/IsoRegister.cpp src/CPP/7zip/Archive/Iso/IsoLinux.cpp
-    src/CPP/7zip/Archive/Iso/IsoZisofs.cpp
+    src/gpl/CPP/7zip/Archive/Iso/IsoIn.cpp src/gpl/CPP/7zip/Archive/Iso/IsoHandler.cpp
+    src/gpl/CPP/7zip/Archive/Iso/IsoRegister.cpp src/gpl/CPP/7zip/Archive/Iso/IsoLinux.cpp
+    src/gpl/CPP/7zip/Archive/Iso/IsoZisofs.cpp
     src/CPP/7zip/Common/MethodProps.cpp third_party/7zip/CPP/Common/StringToInt.cpp
     third_party/7zip/CPP/7zip/Archive/Iso/IsoHeader.cpp
     src/fs/isofs/rock.c src/fs/isofs/inode.c src/fs/isofs/util.c src/kernel/time/time.c src/exfatmodule.cpp
@@ -49,7 +49,7 @@ add_library(sevenzip_iso MODULE
 target_include_directories(sevenzip_iso PRIVATE src third_party/7zip/CPP
     src/CPP/7zip/Archive/Iso third_party/7zip/CPP/7zip/Archive/Iso third_party/linux/fs/isofs
     src/include third_party/linux/include third_party/linux/lib/zlib_inflate)
-target_compile_definitions(sevenzip_iso PRIVATE SEVENZIP_LINUX_ISO CONFIG_ZISOFS Z7_ST)
+target_compile_definitions(sevenzip_iso PRIVATE CONFIG_ZISOFS Z7_ST)
 target_link_libraries(sevenzip_iso PRIVATE Threads::Threads)
 set_target_properties(sevenzip_iso PROPERTIES AUTOMOC OFF AUTOUIC OFF PREFIX ""
     C_STANDARD 11 C_STANDARD_REQUIRED ON)
@@ -69,3 +69,7 @@ function(sevenzip_deploy_iso)
         DEPENDS sevenzip_iso VERBATIM)
     add_dependencies(sevenzip_desktop sevenzip_iso_runtime)
 endfunction()
+
+# The GPL reader sources use their own upstream-shaped include root.
+target_include_directories(sevenzip_iso BEFORE PRIVATE src/gpl/CPP
+    src/gpl/CPP/7zip/Archive/Iso src/CPP third_party/7zip)

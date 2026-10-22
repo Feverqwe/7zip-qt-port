@@ -12,12 +12,7 @@
 namespace NArchive {
 namespace NIso {
 
-#ifdef SEVENZIP_LINUX_ISO
-Z7_CLASS_IMP_CHandler_IInArchive_2(IInArchiveGetStream, ISetProperties)
-#else
-Z7_CLASS_IMP_CHandler_IInArchive_1(IInArchiveGetStream)
-#endif
-    CMyComPtr<IInStream> _stream;
+Z7_CLASS_IMP_CHandler_IInArchive_1(IInArchiveGetStream) CMyComPtr<IInStream> _stream;
 CInArchive _archive;
 };
 

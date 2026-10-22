@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0-only
-#include "IsoZisofs.h"
-#include "../../../../zisofsreader.h"
-#include "../../../Common/MyCom.h"
-#include "../../Common/StreamUtils.h"
+#include "7zip/Archive/Iso/IsoZisofs.h"
+#include "7zip/Common/StreamUtils.h"
+#include "Common/MyCom.h"
+#include "zisofsreader.h"
 #include <errno.h>
 
 namespace NArchive {

@@ -10,7 +10,7 @@ set_target_properties(sevenzip_squashfs_metadata PROPERTIES AUTOMOC OFF AUTOUIC 
 
 # Linux-derived C readers remain in a separate GPL format module.
 add_library(sevenzip_squashfs MODULE
-    src/CPP/7zip/Archive/SquashfsHandler.cpp src/exfatmodule.cpp src/archiveattributes.cpp
+    src/gpl/CPP/7zip/Archive/SquashfsHandler.cpp src/exfatmodule.cpp src/archiveattributes.cpp
     src/squashfsdecoder.c src/fs/squashfs/decompressor.c
     src/fs/squashfs/decompressor_single.c
     src/fs/squashfs/lz4_wrapper.c src/fs/squashfs/lzo_wrapper.c src/fs/squashfs/xz_wrapper.c
@@ -50,7 +50,7 @@ add_library(sevenzip_squashfs MODULE
     third_party/7zip/C/Delta.c third_party/7zip/C/ZstdDec.c third_party/7zip/C/Xxh64.c)
 target_include_directories(sevenzip_squashfs PRIVATE src src/C third_party/7zip/C third_party/7zip/CPP
     third_party/7zip/CPP/7zip/Archive)
-target_compile_definitions(sevenzip_squashfs PRIVATE SEVENZIP_LINUX_SQUASHFS Z7_ST)
+target_compile_definitions(sevenzip_squashfs PRIVATE Z7_ST)
 target_link_libraries(sevenzip_squashfs PRIVATE sevenzip_squashfs_metadata Threads::Threads)
 set_target_properties(sevenzip_squashfs PROPERTIES AUTOMOC OFF AUTOUIC OFF PREFIX ""
     C_STANDARD 11 C_STANDARD_REQUIRED ON)
@@ -70,3 +70,6 @@ function(sevenzip_deploy_squashfs)
         DEPENDS sevenzip_squashfs VERBATIM)
     add_dependencies(sevenzip_desktop sevenzip_squashfs_runtime)
 endfunction()
+
+# The GPL reader sources use their own upstream-shaped include root.
+target_include_directories(sevenzip_squashfs BEFORE PRIVATE src/gpl/CPP src/CPP third_party/7zip)

@@ -1,6 +1,6 @@
 # Linux classic HFS and HFS+ readers stay in a separate GPL format module.
 add_library(sevenzip_hfs MODULE
-    src/CPP/7zip/Archive/HfsHandler.cpp src/exfatmodule.cpp
+    src/gpl/CPP/7zip/Archive/HfsHandler.cpp src/exfatmodule.cpp
     src/hfsreader.c src/fs/namei.c src/fs/hfsplus/unicode.c src/fs/hfsplus/tables.c src/fs/hfsplus/dir.c
     src/fs/hfsplus/inode.c src/fs/hfsplus/bfind.c src/fs/hfsplus/xattr.c
     src/fs/hfsplus/wrapper.c src/fs/hfsplus/super.c
@@ -32,7 +32,7 @@ add_library(sevenzip_hfs MODULE
     third_party/7zip/C/CpuArch.c third_party/7zip/C/Alloc.c)
 target_include_directories(sevenzip_hfs PRIVATE src third_party/7zip/CPP
     third_party/7zip/CPP/7zip/Archive)
-target_compile_definitions(sevenzip_hfs PRIVATE SEVENZIP_LINUX_HFS Z7_ST)
+target_compile_definitions(sevenzip_hfs PRIVATE Z7_ST)
 target_link_libraries(sevenzip_hfs PRIVATE Threads::Threads)
 set_target_properties(sevenzip_hfs PROPERTIES AUTOMOC OFF AUTOUIC OFF PREFIX ""
     C_STANDARD 11 C_STANDARD_REQUIRED ON)
@@ -52,3 +52,6 @@ function(sevenzip_deploy_hfs)
         DEPENDS sevenzip_hfs VERBATIM)
     add_dependencies(sevenzip_desktop sevenzip_hfs_runtime)
 endfunction()
+
+# The GPL reader sources use their own upstream-shaped include root.
+target_include_directories(sevenzip_hfs BEFORE PRIVATE src/gpl/CPP src/CPP third_party/7zip)

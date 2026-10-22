@@ -20,10 +20,6 @@
 #include "../Common/StreamUtils.h"
 
 #include "HandlerCont.h"
-#ifdef SEVENZIP_LINUX_MBR
-#include "../../../msdosreader.h"
-#include <errno.h>
-#endif
 
 #ifdef SHOW_DEBUG_INFO
 #define PRF(x) x
@@ -40,9 +36,6 @@ API_FUNC_IsArc IsArc_Fat(const Byte *p, size_t size);
 }
 
 namespace NMbr {
-#ifdef SEVENZIP_LINUX_MBR
-static int32_t ReadNested(void *context, uint64_t offset, void *data, unsigned size);
-#endif
 
 struct CChs {
     Byte Head;
@@ -197,10 +190,6 @@ Z7_class_CHandler_final : public CHandlerCont {
     unsigned _sectorSizeLog;
     unsigned _numLogical;
     bool _sectorSizeKnown;
-#ifdef SEVENZIP_LINUX_MBR
-    CPartition _primary[4];
-    HRESULT ReadSubtypes(IInStream * stream);
-#endif
 
     virtual int GetItem_ExtractInfo(UInt32 index, UInt64 & pos, UInt64 & size)
         const Z7_override Z7_final {
@@ -253,28 +242,12 @@ HRESULT CHandler::ReadTables(IInStream *stream, UInt64 baseLba, UInt64 lba, unsi
                 return level == 0 ? S_FALSE : S_OK;
             RINOK(InStream_SeekSet(stream, newPos))
             RINOK(ReadStream_FALSE(stream, buf, bufSize))
-#ifdef SEVENZIP_LINUX_MBR
-            if (level == 0) {
-                int isMbr = 0;
-                const int32_t result =
-                    sevenzip_msdos_candidate(stream, ReadNested, _totalSize, buf, &isMbr);
-                if (result == -ENOMEM)
-                    return E_OUTOFMEMORY;
-                RINOK(result)
-                if (!isMbr)
-                    return S_FALSE;
-            }
-#endif
             if (buf[0x1FE] != 0x55 || buf[0x1FF] != 0xAA)
                 return level == 0 ? S_FALSE : S_OK;
             if (level == 0)
                 _signature = GetUi32(buf + 0x1B8);
             for (unsigned i = 0; i < kNumHeaderParts; i++) {
                 parts[i].Parse(buf + 0x1BE + 16 * i);
-#ifdef SEVENZIP_LINUX_MBR
-                if (level == 0)
-                    _primary[i] = parts[i];
-#endif
                 if (level == 0 && parts[i].Status != 0 && parts[i].Status != 0x80)
                     return S_FALSE;
             }
@@ -477,47 +450,6 @@ const char *GetFileSystem(ISequentialInStream *stream, UInt64 partitionSize, HRE
     return NULL;
 }
 
-#ifdef SEVENZIP_LINUX_MBR
-static int32_t ReadNested(void *context, uint64_t offset, void *data, unsigned size) {
-    IInStream *stream = static_cast<IInStream *>(context);
-    RINOK(InStream_SeekSet(stream, offset))
-    return ReadStream_FALSE(stream, data, size);
-}
-
-HRESULT CHandler::ReadSubtypes(IInStream *stream) {
-    sevenzip_msdos_parent parents[4];
-    for (unsigned i = 0; i < 4; ++i) {
-        parents[i].offset = _primary[i].Lba << (_sectorSizeLog - 9);
-        parents[i].size = _primary[i].NumBlocks << (_sectorSizeLog - 9);
-        parents[i].type = _primary[i].Type;
-    }
-    sevenzip_msdos_part parts[251];
-    unsigned count = 0;
-    const int32_t result =
-        sevenzip_msdos_scan(stream, ReadNested, _totalSize, parents, 4, _numLogical, parts, &count);
-    if (result == -ENOMEM)
-        return E_OUTOFMEMORY;
-    if (result == -EINVAL)
-        return E_INVALIDARG;
-    RINOK(result)
-    _numLogical += count;
-    const UInt64 diskSectors = _totalSize >> 9;
-    for (unsigned i = 0; i < count; ++i) {
-        const sevenzip_msdos_part &part = parts[i];
-        if (!part.size || part.offset >= diskSectors)
-            continue;
-        CItem item;
-        item.IsPrim = false;
-        item.IsReal = true;
-        item.Part.Type = part.parent_type;
-        item.Offset = part.offset << 9;
-        item.Size = MyMin((UInt64)part.size, diskSectors - part.offset) << 9;
-        _items.Add(item);
-    }
-    return S_OK;
-}
-#endif
-
 Z7_COM7F_IMF(CHandler::Open(IInStream *stream, const UInt64 * /* maxCheckStartPosition */,
                             IArchiveOpenCallback * /* openArchiveCallback */)) {
     COM_TRY_BEGIN
@@ -564,9 +496,6 @@ HRESULT CHandler::Open2(IInStream *stream) {
         }
     }
 
-#ifdef SEVENZIP_LINUX_MBR
-    RINOK(ReadSubtypes(stream))
-#endif
     FOR_VECTOR(i, _items) {
         CItem &item = _items[i];
         if (item.Part.Type != kType_Windows_NTFS)
@@ -721,7 +650,7 @@ Z7_COM7F_IMF(CHandler::GetProperty(UInt32 index, PROPID propID, PROPVARIANT *val
 // 3, { 1, 1, 0 },
 // 2, { 0x55, 0x1FF },
 
-#if defined(SEVENZIP_LINUX_MBR) || !defined(Z7_EXTERNAL_CODECS)
+#if !defined(Z7_EXTERNAL_CODECS)
 REGISTER_ARC_I_NO_SIG("MBR", "mbr", NULL, 0xDB, 0, NArcInfoFlags::kPureStartOpen, NULL)
 #endif
 
