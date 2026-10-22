@@ -103,6 +103,7 @@ int ext_linux_directory_check(struct ext_volume *, uint32_t seed, uint32_t flags
                               uint32_t logical, const void *block);
 int ext_linux_directory_entry_check(struct ext_volume *, uint32_t flags,
                                     const void *block, size_t size, unsigned int offset);
+uint8_t ext_linux_directory_type(struct ext_volume *, uint8_t filetype);
 int verify_dirent_name(const char *, int);
 #ifdef __cplusplus
 }

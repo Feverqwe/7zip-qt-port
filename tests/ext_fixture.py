@@ -334,6 +334,11 @@ if __name__ == "__main__":
     elif layout in ("directory-stream", "directory-corrupt"):
         from ext_directory_fixture import DirectoryVolume
         v = DirectoryVolume(fault="checksum" if layout == "directory-corrupt" else None)
+    elif layout.startswith("directory-type-"):
+        from ext_directory_fixture import type_hint_volume
+        kind = layout.removeprefix("directory-type-")
+        v = type_hint_volume(kind.removeprefix("inline-").removeprefix("indexed-"),
+                             kind.startswith("inline-"), kind.startswith("indexed-"))
     elif layout == "directory-indirect-wide":
         from ext_directory_fixture import wide_indirect_directory_volume
         v = wide_indirect_directory_volume()

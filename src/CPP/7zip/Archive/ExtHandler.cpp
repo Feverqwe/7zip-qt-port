@@ -1074,10 +1074,14 @@ HRESULT CHandler::ParseDir(const Byte *p, size_t size, unsigned iNodeDir, CDirPa
 
         item.Clear();
 
+#ifdef SEVENZIP_LINUX_EXT
+        item.Type = ext_linux_directory_type(_volume.get(), type) ? type : k_Type_UNKNOWN;
+#else
         if (_h.IsThereFileType())
             item.Type = type;
         else if (type != 0)
             return S_FALSE;
+#endif
 
         item.ParentNode = (int)iNodeDir;
         item.Node = iNode;
@@ -1168,12 +1172,19 @@ HRESULT CHandler::ParseDir(const Byte *p, size_t size, unsigned iNodeDir, CDirPa
                 dirCrypt.get(), _cryptInodes[(unsigned)nodeIndex].get(), node.Mode) != 0;
 #endif
 
+#ifdef SEVENZIP_LINUX_EXT
+        if (item.Type != k_Type_UNKNOWN && k_TypeToMode[item.Type] != (node.Mode & MY_LIN_S_IFMT)) {
+            MarkDirectoryIncomplete(nodeDir);
+            item.Type = k_Type_UNKNOWN;
+        }
+#else
         if (_h.IsThereFileType() && type != 0) {
             if (type >= Z7_ARRAY_SIZE(k_TypeToMode))
                 return S_FALSE;
             if (k_TypeToMode[type] != (node.Mode & MY_LIN_S_IFMT))
                 return S_FALSE;
         }
+#endif
 
         node.NumLinksCalced++;
 

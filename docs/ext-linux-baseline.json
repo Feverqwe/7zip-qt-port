@@ -215,6 +215,7 @@
     "include/linux/delayed_call.h": "c139dd95fcefa1d9ff38ab3c8ab232da992295e98d7d7404842003b2f1df18fc",
     "include/linux/find.h": "2cca3fbff1a9ab1492690f8b986f05e4f1209f40b0264c1894cbba35425e2571",
     "include/linux/fs.h": "b98bc2c5c2898733a93d3d90c45a0df060ffd5ab241c6d9e9fe15b8f983fa169",
+    "include/linux/fs_dirent.h": "b5ba0af7f5f8249ba82505541b9e12f9700ce6ab2758ab0f13bdbcde4170200b",
     "include/linux/fscrypt.h": "e108ac8f57e4cc55d7b1f84983ca47e8de4ee30cab6ae7bff04f08397272a328",
     "include/linux/fsverity.h": "2323c06ef5548454a3c95f436fa0855c4523e63ab3177aefba7d2c1a49d41b75",
     "include/linux/hex.h": "b367b30dcb8c0e971110bc73ee1c06801d1059336646e626ce84d66f1f8f6774",

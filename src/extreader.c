@@ -392,6 +392,11 @@ int ext_linux_directory_check(struct ext_volume *volume, uint32_t seed, uint32_t
     return ext4_dirblock_csum_verify(&inode, &bh) ? 0 : -EFSBADCRC;
 }
 
+uint8_t ext_linux_directory_type(struct ext_volume *volume, uint8_t filetype)
+{
+    return get_dtype(&volume->sb, filetype);
+}
+
 int ext_linux_directory_entry_check(struct ext_volume *volume, uint32_t flags,
                                     const void *data, size_t size, unsigned int offset)
 {

@@ -39,7 +39,15 @@ loff_t ext4_max_bitmap_size(int, int);
 #define EXT4_MIN_INLINE_DATA_SIZE 60
 #define EXT4_INLINE_DOTDOT_SIZE 4
 #define EXT4_XATTR_SYSTEM_DATA "data"
+/* Linux dir_emit ABI values, also used on hosts without POSIX dirent.h. */
+#define DT_UNKNOWN 0
+#define DT_FIFO 1
+#define DT_CHR 2
 #define DT_DIR 4
+#define DT_BLK 6
+#define DT_REG 8
+#define DT_LNK 10
+#define DT_SOCK 12
 #define i_checksum_lo osd2.linux2.l_i_checksum_lo
 #define i_blocks_high osd2.linux2.l_i_blocks_high
 typedef u32 ext4_lblk_t;
@@ -277,10 +285,6 @@ static inline void ext4_set_inode_state(struct inode *inode, int bit) {
 static inline bool dir_emit(struct dir_context *ctx, const char *name, int len, u64 ino, unsigned int type) {
     ctx->error = ctx->emit(ctx->context, (u32)ino, type, name, len);
     return ctx->error == 0;
-}
-static inline unsigned int get_dtype(struct super_block *sb, unsigned int type) {
-    static const unsigned char types[] = {0, 8, 4, 2, 6, 1, 12, 10};
-    return ext4_has_feature_filetype(sb) && type < sizeof(types) ? types[type] : 0;
 }
 int ext4_bg_has_super(struct super_block *, ext4_group_t);
 int ext4_superblock_csum_verify(struct super_block *, struct ext4_super_block *);

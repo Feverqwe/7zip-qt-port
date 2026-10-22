@@ -1165,6 +1165,49 @@ class ExtStreamTests final : public QObject {
         QVERIFY(fileIndex() != UInt32(-1));
         QVERIFY(fileIndex("after-hole.bin") != UInt32(-1));
     }
+    void directoryTypeHintsDoNotHideReadableInodes_data() {
+        QTest::addColumn<QString>("kind");
+        QTest::addColumn<bool>("incomplete");
+        for (const char *prefix : {"", "inline-", "indexed-"})
+            for (const char *kind : {"unknown", "unsupported", "conflict", "legacy", "directory"}) {
+                const auto name = QString::fromLatin1(prefix) + QString::fromLatin1(kind);
+                QTest::newRow(qPrintable(name)) << name
+                                                << (QString::fromLatin1(kind) == "conflict" ||
+                                                    QString::fromLatin1(kind) == "directory");
+            }
+    }
+    void directoryTypeHintsDoNotHideReadableInodes() {
+        QFETCH(QString, kind);
+        QFETCH(bool, incomplete);
+        const auto record = bundle("directory-type-" + kind);
+        QVERIFY(!record.isEmpty());
+        CMyComPtr<IInStream> input = new Input(image(record));
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        QCOMPARE(!readLimitations().isEmpty(), incomplete);
+        const auto files = record["files"].toObject();
+        QVERIFY(!files.isEmpty());
+        for (auto it = files.begin(); it != files.end(); ++it) {
+            const UInt32 index = fileIndex(it.key());
+            QVERIFY2(index != UInt32(-1), qPrintable(it.key()));
+            NWindows::NCOM::CPropVariant isDir;
+            QCOMPARE(archive_->GetProperty(index, kpidIsDir, &isDir), S_OK);
+            QCOMPARE(isDir.vt, VARTYPE(VT_BOOL));
+            QCOMPARE(isDir.boolVal, VARIANT_BOOL(VARIANT_FALSE));
+            CMyComPtr2<IArchiveExtractCallback, Extract> copy;
+            copy.Create_if_Empty();
+            QCOMPARE(archive_->Extract(&index, 1, 0, copy), S_OK);
+            QCOMPARE(copy->results, QVector<Int32>({NArchive::NExtract::NOperationResult::kOK}));
+            QCOMPARE(copy->output->bytes, QByteArray::fromHex(it.value().toString().toLatin1()));
+        }
+        if (kind.startsWith("indexed-"))
+            return;
+        const UInt32 directory = fileIndex(kind.startsWith("inline-") ? "nested" : "DIRECTORY");
+        QVERIFY(directory != UInt32(-1));
+        NWindows::NCOM::CPropVariant isDir;
+        QCOMPARE(archive_->GetProperty(directory, kpidIsDir, &isDir), S_OK);
+        QCOMPARE(isDir.vt, VARTYPE(VT_BOOL));
+        QCOMPARE(isDir.boolVal, VARIANT_BOOL(VARIANT_TRUE));
+    }
     void classicDirectoryRawStreamsKeepMappedBlockBoundaries() {
         const auto record = bundle("directory-namespace");
         const auto bytes = image(record);

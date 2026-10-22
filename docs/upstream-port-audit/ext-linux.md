@@ -6,6 +6,53 @@ tree boundaries, directory record boundaries and archive stream consumers.
 The second integrates Linux metadata and inline-data readers. The ext row remains
 open for the remaining read features listed below.
 
+## Advisory directory file types and readable namespace recovery — 2026-10-22
+
+Compared the pinned ext4 `get_dtype`, normal/inline/htree directory emitters,
+`__ext4_check_dir_entry`, inode lookup and ext2 readdir with the SDK directory
+parser and archive properties/streams. Linux treats a directory entry's type as
+an optional hint: absent FILETYPE support or an unknown encoded value produces
+`DT_UNKNOWN`, while an opened inode supplies its actual mode. The archive instead
+stopped parsing the block for an unsupported hint or a mismatch with a readable
+inode, losing later names in that same block.
+
+The pre-fix production module reproduced this loss: selecting the valid following
+file returned no bytes, although its inode/data and record were intact. The new
+CLI regression failed on those missing bytes. The GPL parser now applies the
+original Linux `ext4_filetype_table`/`get_dtype` implementation from its original
+`fs/ext4/ext4.h` path; the independent compatibility helper was replaced. Linux
+dir_emit ABI constants remain in the existing host-services bridge, including on
+Windows. The original `include/linux/fs_dirent.h` dependency is added to the
+reference hashes; no new C decoder or format unit is introduced.
+
+Unknown/disabled hints no longer prevent reading validated inode data or later
+entries. A known hint conflicting with the actual inode is ignored while marking
+the parent directory's metadata incomplete. The existing per-opening limited-read
+reason/choice remains visible, with no new text or consent bypass. Files and
+directory navigation retain their actual inode type. Inode role/range validation,
+directory checksums/record bounds, names/path rules, parent identities and fscrypt
+context checks remain unchanged. This adds no source writes, repair or journal
+replay. The non-GPL SDK profile retains its original acceptance behavior.
+
+Bounded fixtures cover ordinary blocks, checksum-correct inline directories and
+htree leaves with unknown, unsupported, contradictory and FILETYPE-disabled hints.
+They retain a second valid name in the same block and verify exact file bytes,
+real file/directory properties, continued traversal, expected limitation state
+and reset on later ordinary openings. Existing crypto, missing-inode, malformed
+record/path and source-error checks retain the strict reader boundaries. This
+fixes the selected namespace scenario; transfer of the full ext directory/VFS
+implementation and overall filesystem source closure remain open.
+
+Validation: macOS passed all eight ext/code/provenance suites, the expanded ABI
+rows for htree leaves and the incremental application build. Linux and Windows
+passed all eight on the final source in `20261022T131138Z-f970c336`, using the
+existing runtime/build/compiler caches. The original `get_dtype` body matches
+the pinned Linux bytes and all 304 reference hashes match. The pre-fix CLI
+failure and final exact-copy checks establish sensitivity to the lost-entry bug.
+No new UI text/layout was introduced. No full gate, slow suite, physical-device
+test, new kernel-mount comparison, UI appearance acceptance or release install
+was run. The broader ext and filesystem source audits remain open.
+
 ## Linux extent-tree inventory for archive consumers — 2026-10-22
 
 Compared complete pinned `ext4_ext_precache`, its extent-cache/read/cleanup

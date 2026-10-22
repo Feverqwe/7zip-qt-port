@@ -129,3 +129,46 @@ def wide_indirect_directory_volume():
     v.put32(1024 + 96, 2 | 0x4000)
     v.put32(1024 + 100, 2 | 8)
     return v
+
+
+def type_hint_volume(kind="conflict", inline=False, indexed=False):
+    hint = {"unknown": 0, "unsupported": 255, "conflict": 2,
+            "legacy": 255, "directory": 1}[kind]
+    if indexed:
+        v = ModernVolume(indexed=True)
+        leaf = v.dir_leaves[0] * v.block_size
+        records = (v.dirent(12, NAME.encode(), 56, hint) +
+                   v.dirent(12, b"following.bin", v.block_size - 12 - 56))
+        v.data[leaf:leaf + len(records)] = records
+        struct.pack_into("<H", v.data, v.file_inode + 26, 2)
+        v.files = {NAME: v.read(0, v.size), "following.bin": v.read(0, v.size)}
+    elif inline:
+        v = ModernVolume(inline=True)
+        payload = (struct.pack("<I", 2) + v.dirent(12, NAME.encode(), 56, hint) +
+                   v.dirent(12, b"following.bin", 40))
+        v.set_inline(v.inline_dir_inode, payload)
+        v.files = {"nested/" + NAME: v.payload, "nested/following.bin": v.payload}
+    else:
+        v = NamespaceVolume()
+        bs = v.block_size
+        records = ModernVolume.dirent(13, b".", 12, 2)
+        records += ModernVolume.dirent(2, b"..", 12, 2)
+        records += ModernVolume.dirent(12, b"before-error.bin", 24, hint)
+        records += ModernVolume.dirent(12, b"following.bin", bs - len(records))
+        first = v.directory_head_offset
+        v.data[first:first + bs] = records
+        struct.pack_into("<H", v.data, v.file_inode + 26, 4)
+        v.files = {"DIRECTORY/before-error.bin": v.read(0, v.size),
+                   "DIRECTORY/following.bin": v.read(0, v.size),
+                   "DIRECTORY/after-error.bin": v.read(0, v.size)}
+    if kind == "directory":
+        root_child = v.root_block * v.block_size
+        if not indexed:
+            root_child += 24 + ((8 + len(NAME.encode()) + 3) & ~3)
+        v.data[root_child + 7] = 1
+    if kind == "legacy":
+        incompat = struct.unpack_from("<I", v.data, 1024 + 96)[0]
+        v.put32(1024 + 96, incompat & ~2)
+    if inline or indexed:
+        v.refresh()
+    return v

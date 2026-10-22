@@ -18,7 +18,7 @@ from ext_xattr_fixture import XattrVolume
 from ext_block_fixture import BlockVolume, JournalVolume
 from ext_symlink_fixture import SymlinkVolume
 from ext_inode_fixture import inode_volume, inventory_volume
-from ext_directory_fixture import DirectoryVolume, wide_indirect_directory_volume
+from ext_directory_fixture import DirectoryVolume, wide_indirect_directory_volume, type_hint_volume
 from ext_htree_fixture import HtreeVolume
 from ext_readlink_fixture import ReadlinkVolume
 
@@ -296,6 +296,14 @@ class ExtTests(unittest.TestCase):
             result = self.run_image(volume)
             self.assertEqual(result.returncode, 0)
             self.assertEqual(result.stdout, volume.read(0, volume.size))
+
+    def test_directory_type_conflict_does_not_hide_following_entries(self):
+        volume = type_hint_volume()
+        path = "DIRECTORY/following.bin"
+        result = self.run_image(volume, name=path)
+        self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+        self.assertEqual(result.stdout, volume.files[path])
+        self.limited_listing(volume)
 
     @unittest.skipUnless(sys.platform == "linux", "Linux child address-space limit")
     def test_largedir_reads_past_four_gib_with_bounded_memory(self):

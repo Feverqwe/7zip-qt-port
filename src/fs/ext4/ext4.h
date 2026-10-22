@@ -23,6 +23,7 @@ int ext4_get_context(struct inode *, void *, size_t);
 #define EXT4_N_BLOCKS 15
 #define EXT4_LABEL_MAX 16
 #define EXT4_NAME_LEN 255
+#define EXT4_FT_MAX 8
 #define EXT4_OS_HURD 1
 #define EXT4_FEATURE_INCOMPAT_FILETYPE 0x0002
 #define EXT4_FEATURE_INCOMPAT_RECOVER 0x0004
@@ -330,4 +331,15 @@ enum {
 };
 
 #include "services.h"
+static const unsigned char ext4_filetype_table[] = {
+	DT_UNKNOWN, DT_REG, DT_DIR, DT_CHR, DT_BLK, DT_FIFO, DT_SOCK, DT_LNK
+};
+
+static inline  unsigned char get_dtype(struct super_block *sb, int filetype)
+{
+	if (!ext4_has_feature_filetype(sb) || filetype >= EXT4_FT_MAX)
+		return DT_UNKNOWN;
+
+	return ext4_filetype_table[filetype];
+}
 #endif
