@@ -165,6 +165,14 @@ class AgentOpeningTests final : public QObject, protected ArchiveBackendTestSupp
             UInt32 count = 0;
             QCOMPARE(folder->GetNumberOfItems(&count), S_OK);
             QCOMPARE(count, UInt32(1));
+            auto *source = dynamic_cast<CAgentFolder *>(folder.Interface());
+            QVERIFY(source);
+            CMyComPtr<IFolderFolder> reopened;
+            QCOMPARE(run(backend, [&] { return source->ReOpen(nullptr, &reopened); }), S_OK);
+            QVERIFY(reopened);
+            QCOMPARE(reopened->LoadItems(), S_OK);
+            QCOMPARE(reopened->GetNumberOfItems(&count), S_OK);
+            QCOMPARE(count, UInt32(1));
         }
         QFile original(input);
         QVERIFY(original.open(QIODevice::ReadOnly));

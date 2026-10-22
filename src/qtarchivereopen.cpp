@@ -127,8 +127,10 @@ void QtArchiveFileResource::AttachReopenService(ArchiveBackend &backend, const Q
             if (outer)
                 ui = dynamic_cast<COpenArchiveCallback *>(outer->Callback);
         }
-        RINOK(PrepareLimitedFilesystemRead(nativeOpen->archiveLink(), ui,
-                                           FilesystemReadLimitations(), limitations))
+        if (nativeOpen) {
+            RINOK(PrepareLimitedFilesystemRead(nativeOpen->archiveLink(), ui,
+                                               FilesystemReadLimitations(), limitations))
+        }
         QString password;
         CMyComPtr<ICryptoGetTextPassword2> crypto;
         if (callback)

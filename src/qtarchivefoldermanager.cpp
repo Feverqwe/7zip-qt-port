@@ -230,7 +230,9 @@ HRESULT QtArchiveFolderManager::OpenLinkImpl(CArchiveLink &link, const COpenOpti
             return nativeResult;
     }
     QString limitations;
-    RINOK(PrepareLimitedFilesystemRead(nativeOpen->archiveLink(), ui, {}, limitations))
+    if (nativeOpen) {
+        RINOK(PrepareLimitedFilesystemRead(nativeOpen->archiveLink(), ui, {}, limitations))
+    }
     resource->SetFilesystemReadLimitations(limitations);
     resource->AttachNativeOpen(std::move(nativeOpen));
     const auto *nativeLink = resource->NativeArchiveLink();
