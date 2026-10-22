@@ -5,7 +5,34 @@
 Отдельный GPL-модуль добавляет оригинальные Linux C Rock Ridge/SUSP readers.
 Он также читает High Sierra и zisofs.
 Сверка read-side ISO9660 по pinned Linux выполнена в описанном ниже archive
-projection; отдельный UDF ещё не проверен. Границы runtime evidence указаны отдельно.
+projection; [UDF проверен отдельно](udf-linux.md). Границы runtime evidence указаны отдельно.
+
+## Итоговая сверка read-side source scope — 2026-10-22
+
+Read-side source audit ISO9660 закрыт для archive projection ниже на закреплённом
+Linux commit. Повторная проверка всех 83 reference hashes manifest не выявила
+расхождений. Сопоставлены оригинальные C readers и текущие адаптации, включая
+их C++ consumers; наличие записи в manifest само по себе не является source acceptance.
+
+| Read scope | Реализация и границы сверки |
+| --- | --- |
+| Descriptors, geometry, sections | Исходный 7-Zip reader с исправлениями по `isofs_fill_super`, `isofs_get_blocks`, `isofs_read_inode` и `isofs_read_level3_size`; High Sierra, XAR, directory dot inode, logical blocks и multi-section mapping. |
+| Namespace и metadata | Linux Rock Ridge/SUSP readers, Joliet/Acorn converters, NLS и timestamps; root choice, relocation, CE/XA, имена, links и read options подключены к archive enumeration. |
+| Data streams | Исходный extent mapper и Linux zisofs/zlib readers; bounded input, независимые курсоры, retained source, HRESULT/cancellation и decoded EOF проходят через существующие stream consumers. |
+| Host boundary | Owned buffers и callbacks заменяют VFS/page-cache services. Device session discovery, lookup/casefold, mount ownership/permissions, export и запись не входят в archive reader. |
+
+Повторно проверены изменения полных тел `dir.c`, `joliet.c`, `util.c`,
+root/section projection `inode.c`, Rock Ridge и zisofs, а также
+`IsoLinux.cpp`/`IsoZisofs.cpp` и их enumeration consumer. Отличия включают
+проверки spans до pointer advance, host UTF-16/alignment, расширенную длину имени,
+безопасную обработку повреждённых dates, stream-owned inflate state и проверку
+полного compression block. Их причины и намеренные расхождения с Linux malformed
+input policy описаны в соответствующих разделах ниже.
+
+Эта сверка уточняет source completeness, а не расширяет runtime acceptance.
+Код не менялся; прежние проверки и их платформенные ограничения приведены ниже.
+Standalone SDK engine сохраняет отдельно описанный набор возможностей без GPL
+readers. Read-only recovery для ISO9660 не расширяется этой сверкой.
 
 ## Источники и source comparison
 
@@ -344,7 +371,8 @@ RR parser вызывается только при включённом RR state
 Linux при превышении своего scan limit может вернуть частичный размер;
 archive reader отклоняет такую цепочку. Interleave и некорректный extent
 отклоняются до публикации каталога. VFS cache/operation tables, mount permission
-overrides и cruft mount option не копируются. GPL code остаётся только в
+overrides не копируются; `cruft` передан в следующей описанной ниже итерации.
+GPL code остаётся только в
 изолированном module; standalone engine сохраняет прежнее чтение ISO inode.
 
 ## Выбор read path, legacy sizes и необязательные даты
@@ -438,7 +466,7 @@ directory enumeration/inode identity/sections, RR/SUSP metadata/names/links,
 Joliet/NLS/Acorn, zisofs и read options. Изменения адаптеров проверялись отдельно
 от сходства C bodies. Kernel VFS/mount/lookup/export services, запись и page cache
 не копируются; остальные форматные строки общей задачи остаются открытыми.
-UDF — отдельный следующий source review, а не часть выполненной ISO сверки.
+[Завершённая сверка UDF](udf-linux.md) не является частью ISO сверки.
 
 El Torito virtual entries и uppercase ISO names сохраняют исходный archive
 namespace. Kernel default lowercase projection проверяется отдельно;
