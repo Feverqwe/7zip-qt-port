@@ -106,6 +106,9 @@ if __name__ == "__main__":
         data[512 + 32] ^= 1
     elif state == "short":
         struct.pack_into("<I", data, 512 + 4, len(data) + 16)
+    elif state == "counts":
+        struct.pack_into("<II", data, 512 + 40, 0xffffffff, 0xffffffff)
+        checksum(data, prefix=512)
     elif state.startswith("directory"):
         data, files, fault_offset = partial_directory(state)
     elif state != "clean":

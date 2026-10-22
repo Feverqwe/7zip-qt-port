@@ -1,5 +1,65 @@
 # Cramfs read-side modernization against Linux
 
+## Inode data presence and informational counts — 2026-10-22
+
+Recompared Linux `cramino`/`get_cramfs_inode`, folio reads, superblock fsid
+handling and `cramfs_statfs` with SDK GetDataSize/GetStream/GetPackSize,
+Open2 and item-count consumers. Baselines/retrieval remain below. Linux
+assigns no payload to zero-size inodes or special nodes, including buggy
+images with a nonzero unused offset. A zero data offset also produces a
+data-less inode even when its raw size field is nonzero: the existing
+GetDataSize rule already matches that behavior and is retained. Generic
+`fs/inode.c` initializes i_size to zero; `get_cramfs_inode` only fills it for
+data-bearing inode references. The partial-directory adapter had incorrectly
+diagnosed a zero-offset directory with nonzero raw size; that false limitation
+is removed according to the same Linux rule.
+
+The original SDK empty-buffer stream is now selected before validating unused
+data locations. Known empty streams also publish packed size zero before any
+extended-pointer/table lookup. Thus empty regular files, symlinks and special
+nodes do not require nonexistent block tables or a readable source payload.
+Real nonempty data keeps the existing source bounds, decoding and error paths;
+device major/minor metadata remains decoded independently from its data-less
+stream. No new inode parser or decoder was introduced.
+
+Linux's fsid file/block counts are informational statfs fields. The archive
+adapter rejected a large declared file count and reserved catalog memory from
+that untrusted hint before reading entries. Both count-dependent operations
+are removed in both engine profiles; the original vector grows from actual
+published records. The actual catalog/item/depth and source/memory bounds
+remain in place. Declared counts remain available as header metadata; they do
+not prove a complete namespace, control iteration or authorize allocation.
+There is no new limited-read warning for a harmless statistical hint.
+
+Pre-fix regressions reproduced unsupported-method errors for empty streams
+with unused high offsets, refusal of readable files with large fsid counts,
+and missing known-zero packed size. CLI controls now check exact empty bytes
+for regular/symlink/character inodes in both byte orders and both engines,
+including unchanged device properties. Counter controls check exact nonempty
+file data with zero/maximal wire counts without constructing a large image.
+The ABI control disables all source reads after Open and retains the empty
+stream after Close/release. An existing EN/RU UI scenario now verifies that
+large counters do not cause refusal, a false limited-mode prompt or failed
+copy of a healthy file. Source access stays read-only; repair/replay and
+missing-decoder policy are unchanged.
+
+Four CLI/UI/source suites passed on macOS/Linux/Windows, receipt
+`20261022T054533Z-fab3c42f`; the ABI/backend suite then passed separately on
+all three in `20261022T054736Z-9e60b446`. Scheduling it separately avoids
+combining its existing codec-discovery deadline with the CLI/UI process load;
+the deadline itself was not changed. After the zero-offset-directory follow-up,
+the affected CLI and two source suites passed again on all three platforms,
+receipt `20261022T054920Z-ebe7caac`; unchanged ABI/UI scenarios were not repeated.
+Both engine overlays and the module were rebuilt incrementally with existing
+compiler caches. Diff check passed. No full/slow suites, native mounts,
+physical devices or new UI appearance acceptance were performed. Fixtures are
+RAM-only or temporary-owned; build trees/caches and current evidence remain.
+The incremental macOS application build passed.
+
+This resolves empty-stream and count-hint dependencies, not the entire cramfs
+audit. Declared-size/source-bound acceptance, prefix/physical-size reporting
+and the final remaining read-side comparison still precede source closure.
+
 ## Partial directories and independent branches — 2026-10-22
 
 Recompared complete Linux `cramfs_readdir`/`cramfs_lookup`, inode publication
@@ -68,8 +128,9 @@ devices were used. Existing compiler caches/build trees and current review/
 failure evidence were retained; temporary fixture owners clean their data.
 
 This completes directory-local failure isolation, not the entire cramfs audit.
-Remaining inode/empty-data semantics, header/count acceptance and physical
-offset reporting still need final source comparison before closure.
+The inode/count scenario above subsequently resolves empty-data and fsid-hint
+dependencies. Declared-size/source-bound acceptance and physical offset
+reporting still need final source comparison before closure.
 
 ## Addressed metadata reads — 2026-10-22
 

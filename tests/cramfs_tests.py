@@ -111,6 +111,44 @@ class CramfsTests(unittest.TestCase):
             self.assertIn("User ID = 1234", text)
             self.assertIn("Group ID = 42", text)
 
+    def test_empty_inode_streams_do_not_require_unused_offsets(self):
+        for engine in ("7z", "7zz"):
+            for endian in ("<", ">"):
+                for mode, size in ((0o100644, 0), (0o120777, 0), (0o20644, 0x1234)):
+                    data = bytearray(image([], endian, mode=mode))
+                    data[76:88] = inode(mode, size, 0x0ffffffc, 8, endian)
+                    checksum(data, endian)
+                    with self.subTest(engine=engine, endian=endian, mode=mode):
+                        self.assertContents(data, b"", engine)
+                        listing = self.run_image(data, engine, "l")
+                        self.assertEqual(listing.returncode, 0, listing.stderr)
+                        self.assertIn(b"Packed Size = 0", listing.stdout)
+                        if mode == 0o20644:
+                            self.assertIn(b"Device Major = 18", listing.stdout)
+                            self.assertIn(b"Device Minor = 52", listing.stdout)
+
+    def test_fsid_counters_do_not_control_readable_file_access(self):
+        for engine in ("7z", "7zz"):
+            for endian in ("<", ">"):
+                for count in (0, 0xffffffff):
+                    data = bytearray(image([b"readable data"], endian))
+                    struct.pack_into(endian + "II", data, 40, count, count)
+                    checksum(data, endian)
+                    with self.subTest(engine=engine, endian=endian, count=count):
+                        self.assertContents(data, b"readable data", engine)
+
+    def test_zero_offset_directory_has_no_payload_despite_raw_size(self):
+        for engine in ("7z", "7zz"):
+            for endian in ("<", ">"):
+                data = bytearray(image([b"unreferenced data"], endian))
+                data[64:76] = inode(0o40755, 17, 0, endian=endian)
+                checksum(data, endian)
+                with self.subTest(engine=engine, endian=endian):
+                    self.assertContents(data, b"", engine)
+                    listing = self.run_image(data, engine, "l")
+                    self.assertEqual(listing.returncode, 0, listing.stderr)
+                    self.assertNotIn(b"Some CramFS directories", listing.stdout)
+
     def test_magic_detection_with_reserved_signature(self):
         for prefix in (0, 512):
             data = bytearray(image([b"tail"], storage=["direct-raw"], prefix=prefix))

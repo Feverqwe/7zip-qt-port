@@ -324,7 +324,7 @@ public:
       UInt32 offset = GetOffset(p, be);
       UInt32 size = GetSize(p, be);
       if ((_linuxRead && size == 0) || offset == 0)
-          return _linuxRead && size != 0 ? S_FALSE : S_OK;
+          return S_OK;
       UInt32 end = offset + size;
       if (offset < kHeaderSize || offset > _size || (!_linuxRead && end > _size) ||
           level > kNumDirLevelsMax)
@@ -482,8 +482,7 @@ HRESULT CHandler::Open2(IInStream *inStream) {
         if (_method == k_Flags_Method_NONE)
             _method = k_Flags_Method_ZLIB;
         _blockSizeLog = kBlockSizeLog + (_linuxRead ? 0 : _h.GetBlockSizeShift());
-        if (_h.Size < _headerOffset + sizeof(buf) || (!_linuxRead && _h.Size > kArcSizeMax) ||
-            _h.NumFiles > kNumFilesMax)
+        if (_h.Size < _headerOffset + sizeof(buf) || (!_linuxRead && _h.Size > kArcSizeMax))
             return S_FALSE;
         _phySize = _h.Size;
     } else {
@@ -512,8 +511,6 @@ HRESULT CHandler::Open2(IInStream *inStream) {
             else {
                 RINOK(CheckCrc())
             }
-            if (_h.NumFiles >= 1)
-                _items.ClearAndReserve(_h.NumFiles - 1);
         } else
             _phySize = _size;
         return OpenDir(-1, headerCache + kHeaderSize, 0);
@@ -553,8 +550,6 @@ HRESULT CHandler::Open2(IInStream *inStream) {
                 // _errorMessage = "CRC error";
             }
         }
-        if (_h.NumFiles >= 1)
-            _items.ClearAndReserve(_h.NumFiles - 1);
     }
 
     RINOK(OpenDir(-1, _headerOffset + kHeaderSize, 0))
@@ -633,20 +628,19 @@ AString CHandler::GetPath(unsigned index) const
   return path;
 }
 
-bool CHandler::GetPackSize(unsigned index, UInt32 &res)
-{
-    if (_linuxRead && (_h.Flags & kFlag_ExtBlockPointers))
-        return false;
+bool CHandler::GetPackSize(unsigned index, UInt32 &res) {
     res = 0;
     const CItem &item = _items[index];
     const Byte *p = _data + item.Offset;
     const bool be = _h.be;
-    const UInt32 offset = GetOffset(p, be);
-    if (offset < kHeaderSize)
-        return false;
     const UInt32 numBlocks = GetNumBlocks(GetDataSize(p, be));
     if (numBlocks == 0)
         return true;
+    if (_linuxRead && (_h.Flags & kFlag_ExtBlockPointers))
+        return false;
+    const UInt32 offset = GetOffset(p, be);
+    if (offset < kHeaderSize)
+        return false;
     const UInt32 start = offset + numBlocks * 4;
     if (start > _size)
         return false;
@@ -1122,19 +1116,18 @@ Z7_COM7F_IMF(CHandler::GetStream(UInt32 index, ISequentialInStream **stream))
   UInt32 size = GetDataSize(p, be);
   UInt32 numBlocks = GetNumBlocks(size);
   UInt32 offset = GetOffset(p, be);
-  if (offset < kHeaderSize)
-  {
-    if (offset != 0)
-      return S_FALSE;
-    CBufInStream *streamSpec = new CBufInStream;
-    CMyComPtr<IInStream> streamTemp = streamSpec;
-    streamSpec->Init(NULL, 0);
-    *stream = streamTemp.Detach();
-    return S_OK;
+  if (size == 0 || offset < kHeaderSize) {
+      if (size != 0 && offset != 0)
+          return S_FALSE;
+      CBufInStream *streamSpec = new CBufInStream;
+      CMyComPtr<IInStream> streamTemp = streamSpec;
+      streamSpec->Init(NULL, 0);
+      *stream = streamTemp.Detach();
+      return S_OK;
   }
 
   if (offset + numBlocks * 4 > _size)
-    return S_FALSE;
+      return S_FALSE;
   UInt32 prev = offset;
   for (UInt32 i = 0; !_linuxRead && i < numBlocks; i++) {
       UInt32 next = Get32(_data + offset + i * 4);

@@ -249,6 +249,35 @@ class CramfsModuleTests final : public QObject {
         QCOMPARE(stream->Read(buffer, 4, &processed), S_OK);
         QCOMPARE(QByteArray(buffer, processed), QByteArray("tail"));
     }
+    void emptyFileRetainsAnIndependentStreamWithoutSourceReads() {
+        createArchive();
+        auto bytes = fixture();
+        const int file = 512 + 76;
+        qToLittleEndian(quint32(42u << 24), bytes.data() + file + 4);
+        const auto nameBits = qFromLittleEndian<quint32>(bytes.constData() + file + 8) & 63;
+        qToLittleEndian(quint32((0x0ffffffcu / 4) << 6) | nameBits, bytes.data() + file + 8);
+        auto *input = new Input(bytes);
+        CMyComPtr<IInStream> source = input;
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
+        input->fail = true;
+        NWindows::NCOM::CPropVariant size;
+        QCOMPARE(archive_->GetProperty(0, kpidPackSize, &size), S_OK);
+        QCOMPARE(size.vt, VARTYPE(VT_UI4));
+        QCOMPARE(size.ulVal, 0u);
+        CMyComPtr<IInArchiveGetStream> provider;
+        QCOMPARE(
+            archive_->QueryInterface(IID_IInArchiveGetStream, reinterpret_cast<void **>(&provider)),
+            S_OK);
+        CMyComPtr<ISequentialInStream> stream;
+        QCOMPARE(provider->GetStream(0, &stream), S_OK);
+        QCOMPARE(archive_->Close(), S_OK);
+        provider.Release();
+        archive_.Release();
+        char buffer[8];
+        UInt32 processed = 99;
+        QCOMPARE(stream->Read(buffer, sizeof(buffer), &processed), S_OK);
+        QCOMPARE(processed, 0u);
+    }
     void distantDirectExtentsAndReadFailure() {
         createArchive();
         auto *input = new Input(fixture(), true);

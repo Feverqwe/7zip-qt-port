@@ -290,8 +290,9 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
         QTest::addColumn<bool>("accept");
         QTest::addColumn<QString>("kind");
         for (const QString &language : {"en", "ru"})
-            for (const QString &kind : {"cramfs-crc", "cramfs-short", "cramfs-clean",
-                                        "cramfs-directory", "cramfs-directory-cycle"})
+            for (const QString &kind :
+                 {"cramfs-crc", "cramfs-short", "cramfs-clean", "cramfs-directory",
+                  "cramfs-directory-cycle", "cramfs-counts"})
                 for (bool accept : {false, true}) {
                     if (!accept && kind != "cramfs-crc" && kind != "cramfs-directory")
                         continue;
@@ -363,6 +364,7 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
         const bool cramfs = kind.startsWith("cramfs-");
         const bool lateBlocklist = kind.startsWith("squashfs-blocklist-");
         const bool noOpeningLimitations = lateBlocklist || kind == "cramfs-clean" ||
+                                          kind == "cramfs-counts" ||
                                           kind.startsWith("squashfs-inode-block-") ||
                                           kind.startsWith("squashfs-directory-index-");
         const bool squashFragment =
