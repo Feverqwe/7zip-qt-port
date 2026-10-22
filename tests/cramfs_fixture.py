@@ -75,6 +75,28 @@ def image(blocks, endian="<", storage=None, prefix=0, shifted=0, reverse=False,
     return bytes(result)
 
 
+def ambiguous_origin(endian="<"):
+    first = image([b"selected candidate\n"], endian, name=b"alpha", version2=False)
+    second = image([b"other candidate\n"], endian, name=b"bravo", version2=False)
+    data = bytearray(512 + len(second))
+    data[76:len(first)] = first[76:]
+    data[512:] = second
+    return data, b"selected candidate\n"
+
+
+def partial_origin(endian="<"):
+    payload = b"readable alternative\n"
+    packed = zlib.compress(payload)
+    data = bytearray(644 + len(packed))
+    data[512:588] = image([], endian, version2=False)[:76]
+    data[576:588] = inode(0o40755, 32, 76, endian=endian)
+    data[588:608] = inode(0o100644, len(payload), 128, 8, endian) + b"alpha\0\0\0"
+    data[608:620] = inode(0o100644, 0, 0, endian=endian)
+    struct.pack_into(endian + "I", data, 640, 132 + len(packed))
+    data[644:] = packed
+    return data, payload
+
+
 def partial_table(endian="<", prefix=512, kind="direct-raw", version2=True):
     payload = b"A" * 4096
     data = bytearray(image([payload, b"missing tail"], endian, [kind, kind],
@@ -135,6 +157,9 @@ if __name__ == "__main__":
         data = declare_size(data, len(data) - 1, prefix=512)
     elif state == "table":
         data, payload = partial_table()
+        files = {"alpha": payload}
+    elif state == "origin":
+        data, payload = ambiguous_origin()
         files = {"alpha": payload}
     elif state.startswith("directory"):
         data, files, fault_offset = partial_directory(state)

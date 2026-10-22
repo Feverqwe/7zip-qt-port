@@ -3910,6 +3910,10 @@ Are you sure you want to split archive into such volumes?</source>
             <translation>Некоторые списки блоков файлов SquashFS недоступны. Можно скопировать только читаемые части затронутых файлов; при неполном копировании будет сообщено об ошибке.</translation>
         </message>
         <message>
+            <source>The CramFS volume origin is ambiguous. File names or contents may belong to another candidate volume. Results from the selected origin are unverified.</source>
+            <translation>Не удалось однозначно определить начало тома CramFS. Имена или содержимое файлов могут относиться к другому варианту тома. Результаты чтения с выбранного начала не проверены.</translation>
+        </message>
+        <message>
             <source>Some CramFS file block tables are incomplete. Only readable portions of affected files can be copied; incomplete copies report an error.</source>
             <translation>Некоторые таблицы блоков файлов CramFS неполны. Можно скопировать только читаемые части затронутых файлов; при неполном копировании будет сообщено об ошибке.</translation>
         </message>

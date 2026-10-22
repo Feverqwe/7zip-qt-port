@@ -292,10 +292,11 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
         for (const QString &language : {"en", "ru"})
             for (const QString &kind :
                  {"cramfs-crc", "cramfs-short", "cramfs-clean", "cramfs-directory",
-                  "cramfs-directory-cycle", "cramfs-counts", "cramfs-size", "cramfs-table"})
+                  "cramfs-directory-cycle", "cramfs-counts", "cramfs-size", "cramfs-table",
+                  "cramfs-origin"})
                 for (bool accept : {false, true}) {
                     if (!accept && kind != "cramfs-crc" && kind != "cramfs-directory" &&
-                        kind != "cramfs-size" && kind != "cramfs-table")
+                        kind != "cramfs-size" && kind != "cramfs-table" && kind != "cramfs-origin")
                         continue;
                     QTest::newRow(
                         qPrintable(language + '-' + kind + (accept ? "-accept" : "-cancel")))

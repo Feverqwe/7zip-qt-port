@@ -1,5 +1,89 @@
 # Cramfs read-side modernization against Linux
 
+Scope входит в [общую проверку форматов](filesystems-linux.md). Датированные
+разделы сохраняют evidence итераций; прежние открытые вопросы заменены поздними
+исправлениями и итогом сверки ниже. Source completeness и runtime acceptance
+остаются отдельными свидетельствами.
+
+## Итоговая сверка read-side source scope — 2026-10-22
+
+Сверка read features закреплённого Linux
+`58161ead29e50d70a317ea26b472e0c7508e69da` и подключённого архивного reader
+закрыта. Все семь reference hashes повторно совпали; полные тела, зависимости
+и классификация copied/adapted/omitted приведены в [source comparison](#source-comparison).
+SDK baseline — `9128b80e3a471108678e2b3ec3c985861c8d7b0f`, repositories и
+retrieval manifests указаны там же. Перенесённый C read path остаётся C;
+существующие SDK parser/decoder/cache/stream helpers переиспользуются.
+
+После завершённых исправлений не осталось известного отсутствующего disk-read
+feature этого Linux baseline: inode/directory metadata, обычные/прямые/raw
+блоки, sparse/short pages, обе позиции superblock, fsid/size contracts и
+частично доступные источники учтены. Ошибки отдельных файлов и каталогов не
+выдаются за успешное восстановление; Abort/OOM и ошибки потребителей не
+подавляются. Native block/MTD acquisition, VFS/page cache, mmap/XIP и запись
+классифицированы как kernel/platform services, а не пропущенные декодеры.
+
+Разница с Linux — marker scanner не всегда знает начало выбранного тома.
+CRC и тот же metadata walker разрешают различимые варианты; при фактической
+неоднозначности доступное чтение требует явного согласия, сохраняет индикатор
+и сообщает, что выбранная интерпретация не проверена. Это поддерживаемый
+ограниченный режим, а не утверждение о единственно возможном начале или полном
+namespace повреждённого образа. Kernel zero-page fallback не используется
+как доказательство успешно прочитанных файловых данных.
+
+Последняя функциональная итерация проверена CLI/source и ABI/ENRU UI suites
+на macOS, Linux и Windows; receipts и более ранние regressions приведены ниже.
+Нативный mount в настроенном Linux guest недоступен из-за отсутствия driver;
+runtime этих kernel/VM, физических устройств, full/slow suites и release
+installation этим итогом не валидируется. Общий аудит остальных форматов и
+задача EROFS этим source closure не объявляются завершёнными.
+
+## Catalog origin selection and explicit ambiguity — 2026-10-22
+
+Recompared the Linux selected-device origin, complete SDK marker/physical-size
+consumers, the existing metadata walker and the read-only consent/refresh flow.
+For marker opens without a verifiable v2 CRC, the same SDK directory walker is
+now run against both bounded candidate origins in temporary handler state.
+There is no second directory parser or root-address shortcut. A sole complete
+catalog is preferred over an incomplete one; if the default catalog exposes
+nothing but the alternative has a readable prefix, that prefix remains usable.
+CRC diagnostics follow the selected candidate. Bounds, path validation,
+directory/resource guards and fatal source/callback errors remain effective.
+
+Two plausible catalogs cannot establish a unique origin. Nor does a failed
+metadata read disprove the unavailable candidate. These cases retain an explicit
+unverified-origin limitation rather than silently claiming a uniquely identified
+volume or refusing supported reads. The existing per-opening EN/RU consent,
+badge, cancellation and refresh scope apply. Published physical size describes
+the bounded selected input window in this mode, not a verified filesystem end:
+the SDK marker opener requires a known span to return an archive at all.
+V1 physical-size initialization is reset after choosing a different origin,
+preventing a stale boot-prefix extent from synthesizing an unexpected-end error.
+Explicitly bounded opening from stream origin zero keeps the Linux 0/512 path.
+
+Process fixtures check v1 and bad-CRC v2 ordinary/boot-prefixed embedded volumes,
+two different valid catalogs sharing one header, and a partial alternative when
+the default exposes no entries. Selected bytes, public offsets and uncertainty
+are checked through the actual engine. The ABI test injects ordinary I/O failure
+only into the alternative's metadata: the selected file stays readable, the
+ambiguity remains visible, Abort/OOM propagate and a healthy reopen clears the
+limitation. EN/RU UI checks cover consent/refusal, exact copying, mode visibility,
+normal/compact badge geometry, refresh and unchanged source bytes. Current Cocoa
+JSON shows fitting EN/RU warning labels (420×214/275 logical pixels).
+
+An initial run exposed two integration issues: omitting physical size prevents
+the SDK marker scanner from returning the archive, and the legacy v1 reader
+retained its pre-selection header extent. Both are corrected rather than
+relaxing the behavior checks. Local CLI/ABI/UI/source checks passed (five suites,
+21.93 seconds). Linux/Windows CLI/source suites passed in
+`20261022T071305Z-d10db8be`; final ABI and exact Cramfs UI suites passed in
+`20261022T071422Z-fb4fcba3`. The incremental application build and diff check
+passed. Native Cocoa and offscreen Linux/Windows UI behavior/geometry are
+distinct from rendered Windows visual parity, which is not claimed. Temporary
+fixture owners cleaned their data; current evidence, build trees and compiler
+caches are retained. No full/slow suites were run. No source write, repair,
+replay or missing-decoder consent bypass is introduced.
+
 ## Verified v2 volume origin after signature scanning — 2026-10-22
 
 Recompared Linux's superblock-at-0/512 selection with the complete SDK handler
@@ -44,9 +128,9 @@ Linux/Windows CLI/source checks passed in `20261022T065714Z-fe9a8d40`
 passed. No full/slow suites, new appearance acceptance, native mount or physical
 device checks were run; fixture owners clean their data and build trees/compiler
 caches/current review evidence are retained.
-Origin inference without a verifiable v2 CRC remains unresolved,
-including v1 marker opens and ambiguous damaged embedded images. This iteration
-does not claim completion of the entire Cramfs adapter or the parent audit.
+At this iteration, origin inference without a verifiable v2 CRC remained open.
+The later catalog/explicit-ambiguity scenario above addresses that integration
+boundary without claiming that ambiguous bytes have a uniquely provable origin.
 
 ## Incomplete block tables and readable file prefixes — 2026-10-22
 
@@ -555,10 +639,10 @@ callers; it does not turn runtime checks into proof of a complete source port.
 | blockdev/MTD fill-super, kill/reconfigure, get-tree/context/type registration and module init/exit; Makefile/Kconfig | Kernel device acquisition, lifecycle and module configuration are omitted. Archive ABI registration, input lifetime and separate GPL-module deployment supply the userspace boundary. Source handles remain read-only; no sync, repair or journal replay is transferred. |
 | `fs/cramfs/README`, UAPI header | Disk layout, flags, byte order and direct-block contracts compared in full. The SDK's opposite-endian decoding and explicit historical LZMA/enlarged-block branches remain additional archive compatibility; Linux-only unsupported flags are not interpreted by the C reader. |
 
-All pinned Linux read features are accounted for by these copied/adapted paths;
-the adapter audit remains open because unverified embedded-origin selection is
-still an integration gap. The CRC-verified v2 correction above is evidence for
-its specific layouts, not general origin inference or kernel runtime acceptance.
+All pinned Linux read features are accounted for by these copied/adapted paths.
+The subsequent catalog-origin/explicit-ambiguity integration completes the
+selected adapter scope as summarized above. This classification does not imply
+general recovery of an ambiguous image or native-kernel runtime acceptance.
 
 7-Zip repository: <https://github.com/ip7z/7zip.git>, commit
 `9128b80e3a471108678e2b3ec3c985861c8d7b0f`. Complete

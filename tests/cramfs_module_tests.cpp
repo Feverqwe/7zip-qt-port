@@ -421,6 +421,40 @@ class CramfsModuleTests final : public QObject {
         QCOMPARE(stream->Read(buffer, sizeof(buffer), &processed), S_OK);
         QCOMPARE(processed, 0u);
     }
+    void unavailableAlternativeCatalogRemainsExplicitAndCancellable() {
+        createArchive();
+        auto *input = new Input(fixture());
+        CMyComPtr<IInStream> source = input;
+        input->failAt = 1100;
+        input->failReadSize = 12;
+        QCOMPARE(source->Seek(512, STREAM_SEEK_SET, nullptr), S_OK);
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
+        NWindows::NCOM::CPropVariant limitations, physical;
+        QCOMPARE(archive_->GetArchiveProperty(kpidUserDefined + 1, &limitations), S_OK);
+        QCOMPARE(limitations.vt, VARTYPE(VT_BSTR));
+        QVERIFY(QString::fromWCharArray(limitations.bstrVal).contains("origin is ambiguous"));
+        QCOMPARE(archive_->GetArchiveProperty(kpidPhySize, &physical), S_OK);
+        QCOMPARE(physical.vt, VARTYPE(VT_UI4));
+        QCOMPARE(physical.ulVal, UInt32(fixture().size()));
+        input->failAt = UINT64_MAX;
+        CMyComPtr2<IArchiveExtractCallback, Extract> callback;
+        callback.Create_if_Empty();
+        const UInt32 index = 0;
+        QCOMPARE(archive_->Extract(&index, 1, 0, callback), S_OK);
+        QCOMPARE(callback->result, Int32(NArchive::NExtract::NOperationResult::kOK));
+        QCOMPARE(callback->output->bytes, contents);
+        input->failAt = 1100;
+        for (HRESULT result : {E_ABORT, E_OUTOFMEMORY}) {
+            input->failure = result;
+            QCOMPARE(source->Seek(512, STREAM_SEEK_SET, nullptr), S_OK);
+            QCOMPARE(archive_->Open(source, nullptr, nullptr), result);
+        }
+        input->failAt = UINT64_MAX;
+        QCOMPARE(source->Seek(512, STREAM_SEEK_SET, nullptr), S_OK);
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
+        QCOMPARE(archive_->GetArchiveProperty(kpidUserDefined + 1, &limitations), S_OK);
+        QCOMPARE(limitations.vt, VARTYPE(VT_EMPTY));
+    }
     void distantDirectExtentsAndReadFailure() {
         createArchive();
         auto *input = new Input(fixture(), true);

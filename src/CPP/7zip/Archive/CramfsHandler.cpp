@@ -114,6 +114,9 @@ static const char *const kSizeLimitations =
 static const char *const kFileLimitations =
     "Some CramFS file block tables are incomplete. Only readable portions of affected files can "
     "be copied; incomplete copies report an error.";
+static const char *const kOriginLimitations =
+    "The CramFS volume origin is ambiguous. File names or contents may belong to another "
+    "candidate volume. Results from the selected origin are unverified.";
 
 static UInt32 GetSize(const Byte *p, bool be)
 {
@@ -149,6 +152,12 @@ struct CItem
   UInt32 Offset;
   int Parent;
   bool DirectoryIncomplete = false;
+};
+
+struct COriginCatalog {
+    bool Complete = false;
+    bool Unavailable = false;
+    UInt32 NumItems = 0;
 };
 
 struct CHeader
@@ -207,6 +216,8 @@ Z7_CLASS_IMP_CHandler_IInArchive_1(
   bool _sizeLimitations;
   bool _extentUnknown;
   bool _fileLimitations;
+  bool _originLimitations;
+  bool _metadataReadFailed;
   HRESULT _directoryCallbackResult;
   std::set<UInt32> _activeDirectories;
   IArchiveOpenCallback *_openCallback;
@@ -240,6 +251,8 @@ Z7_CLASS_IMP_CHandler_IInArchive_1(
   HRESULT EnsureData(UInt32 sourceOffset, UInt32 size, UInt32 &offset);
   HRESULT CheckCrc();
   HRESULT ResolveVolumePosition(UInt64 headerPos, UInt64 &volumePos, bool &crcChecked);
+  HRESULT ProbeVolumeCatalog(UInt64 headerPos, UInt64 origin, UInt64 sourceSize,
+                            COriginCatalog &catalog);
   AString GetPath(unsigned index) const;
   HRESULT GetPackSize(unsigned index, UInt32 &res);
   void Free();
@@ -405,12 +418,20 @@ public:
           _data = data;
           _capacity = capacity;
       }
-      RINOK(InStream_SeekSet(_stream, _volumePos + sourceOffset))
+      const HRESULT seekResult = InStream_SeekSet(_stream, _volumePos + sourceOffset);
+      if (seekResult != S_OK) {
+          _metadataReadFailed = true;
+          return seekResult;
+      }
       while (_loadedSize < end) {
           size_t part = end - _loadedSize;
           if (part > (1u << 20))
               part = 1u << 20;
-          RINOK(ReadStream_FALSE(_stream, _data + _loadedSize, part))
+          const HRESULT readResult = ReadStream_FALSE(_stream, _data + _loadedSize, part);
+          if (readResult != S_OK) {
+              _metadataReadFailed = true;
+              return readResult;
+          }
           _loadedSize += (UInt32)part;
           if (_openCallback) {
               _directoryCallbackResult = _openCallback->SetCompleted(NULL, NULL);
@@ -455,18 +476,45 @@ public:
       return S_OK;
   }
 
+  HRESULT CHandler::ProbeVolumeCatalog(UInt64 headerPos, UInt64 origin, UInt64 sourceSize,
+                                       COriginCatalog &catalog) {
+      if (origin > sourceSize || sourceSize - origin < headerPos - origin + kHeaderSize + kNodeSize)
+          return S_OK;
+      CHandler *candidate = new CHandler;
+      CMyComPtr<IInArchive> owner = candidate;
+      candidate->_h = _h;
+      candidate->_linuxRead = true;
+      candidate->_volumePos = origin;
+      candidate->_headerOffset = (UInt32)(headerPos - origin);
+      candidate->_size = (UInt32)MyMin(sourceSize - origin, (UInt64)0xFFFFFFFFu);
+      candidate->_stream = _stream;
+      candidate->_openCallback = _openCallback;
+      UInt32 cache;
+      HRESULT result =
+          candidate->EnsureData(candidate->_headerOffset, kHeaderSize + kNodeSize, cache);
+      if (result == S_OK)
+          result = candidate->OpenDir(-1, cache + kHeaderSize, 0);
+      RINOK(candidate->_directoryCallbackResult)
+      if (result == E_ABORT || result == E_OUTOFMEMORY)
+          return result;
+      catalog.Unavailable = candidate->_metadataReadFailed;
+      catalog.Complete = result == S_OK && !candidate->_directoryLimitations;
+      catalog.NumItems = candidate->_items.Size();
+      return S_OK;
+  }
+
   HRESULT CHandler::ResolveVolumePosition(UInt64 headerPos, UInt64 &volumePos, bool &crcChecked) {
       UInt64 sourceSize;
       RINOK(InStream_GetSize_SeekToEnd(_stream, sourceSize))
       const auto probe = [&](UInt64 origin, bool &verified, bool &checked) -> HRESULT {
           verified = checked = false;
-          if (origin > sourceSize || _h.Size > sourceSize - origin ||
+          _errorFlags = 0;
+          _crcUnavailable = false;
+          if (!_h.IsVer2() || origin > sourceSize || _h.Size > sourceSize - origin ||
               _h.Size < headerPos - origin + kHeaderSize + kNodeSize)
               return S_OK;
           _volumePos = origin;
           _headerOffset = (UInt32)(headerPos - origin);
-          _errorFlags = 0;
-          _crcUnavailable = false;
           checked = true;
           RINOK(CheckCrc())
           verified = !_crcUnavailable && !_errorFlags;
@@ -485,8 +533,23 @@ public:
           volumePos = alternative;
           crcChecked = alternativeChecked;
       } else {
-          _errorFlags = firstErrors;
-          _crcUnavailable = firstUnavailable;
+          const UInt32 alternativeErrors = _errorFlags;
+          const bool alternativeUnavailable = _crcUnavailable;
+          COriginCatalog firstCatalog, alternativeCatalog;
+          RINOK(ProbeVolumeCatalog(headerPos, volumePos, sourceSize, firstCatalog))
+          RINOK(ProbeVolumeCatalog(headerPos, alternative, sourceSize, alternativeCatalog))
+          _originLimitations = firstCatalog.Unavailable || alternativeCatalog.Unavailable ||
+                               firstCatalog.Complete == alternativeCatalog.Complete;
+          if (!firstCatalog.Complete && (alternativeCatalog.Complete ||
+                                         (!firstCatalog.NumItems && alternativeCatalog.NumItems))) {
+              volumePos = alternative;
+              crcChecked = alternativeChecked;
+              _errorFlags = alternativeErrors;
+              _crcUnavailable = alternativeUnavailable;
+          } else {
+              _errorFlags = firstErrors;
+              _crcUnavailable = firstUnavailable;
+          }
       }
       return S_OK;
   }
@@ -526,6 +589,13 @@ HRESULT CHandler::Open2(IInStream *inStream) {
     _linuxRead = (_h.Flags & ~0xFFFu) == 0;
 #endif
     bool crcChecked = false;
+    if (!_h.IsVer2() && initialPos >= 512 && headerPos == initialPos) {
+        RINOK(ResolveVolumePosition(headerPos, volumePos, crcChecked))
+        _headerOffset = (UInt32)(headerPos - volumePos);
+        _volumePos = volumePos;
+        _arcOffset = (Int64)volumePos;
+        _phySize = _headerOffset + sizeof(buf);
+    }
     if (_h.IsVer2()) {
         _method = _h.GetMethod();
         // FIT IT. Now we don't know correct way to work with collision in method field.
@@ -780,6 +850,8 @@ Z7_COM7F_IMF(CHandler::Close())
   _sizeLimitations = false;
   _extentUnknown = false;
   _fileLimitations = false;
+  _originLimitations = false;
+  _metadataReadFailed = false;
   _directoryCallbackResult = S_OK;
   _activeDirectories.clear();
   _method = k_Flags_Method_ZLIB;
@@ -839,6 +911,11 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID propID, PROPVARIANT *value)) {
                 reasons += '\n';
             reasons += kFileLimitations;
         }
+        if (_originLimitations) {
+            if (!reasons.IsEmpty())
+                reasons += '\n';
+            reasons += kOriginLimitations;
+        }
         if (!reasons.IsEmpty())
             prop = reasons;
         break;
@@ -863,6 +940,11 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID propID, PROPVARIANT *value)) {
             if (!warning.IsEmpty())
                 warning += '\n';
             warning += kFileLimitations;
+        }
+        if (_originLimitations) {
+            if (!warning.IsEmpty())
+                warning += '\n';
+            warning += kOriginLimitations;
         }
         if (!warning.IsEmpty())
             prop = warning;
@@ -896,7 +978,9 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID propID, PROPVARIANT *value)) {
             prop = _h.NumFiles;
         break;
     case kpidPhySize:
-        if (!_extentUnknown)
+        if (_originLimitations)
+            prop = _size;
+        else if (!_extentUnknown)
             prop = _phySize;
         break;
     case kpidOffset:

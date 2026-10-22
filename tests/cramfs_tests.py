@@ -6,7 +6,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
-from cramfs_fixture import image, checksum, inode, partial_directory, declare_size, partial_table
+from cramfs_fixture import image, checksum, inode, partial_directory, declare_size, partial_table, ambiguous_origin, partial_origin
 
 RUNTIME = Path(sys.argv.pop(1))
 MODULE = Path(sys.argv.pop(1))
@@ -129,6 +129,50 @@ class CramfsTests(unittest.TestCase):
                     extracted = self.run_image(data, engine, forced=False)
                     self.assertEqual(extracted.returncode, 0, extracted.stderr)
                     self.assertEqual(extracted.stdout, b"root before superblock")
+
+    def test_unverified_crc_or_v1_can_select_the_only_complete_catalog(self):
+        for engine in ("7z", "7zz"):
+            for version2 in (False, True):
+                for boot, outer in ((0, 512), (512, 1024)):
+                    volume = bytearray(image([b"catalog origin"], prefix=boot, version2=version2))
+                    if version2:
+                        volume[boot + 32] ^= 1
+                    with self.subTest(engine=engine, v2=version2, boot=boot, outer=outer):
+                        data = b"X" * outer + volume
+                        listing = self.run_image(data, engine, "l", forced=False)
+                        self.assertIn(listing.returncode, (0, 1), listing.stderr)
+                        self.assertIn(b"Offset = " + str(outer).encode(), listing.stdout)
+                        extracted = self.run_image(data, engine, forced=False)
+                        self.assertIn(extracted.returncode, (0, 1), extracted.stderr)
+                        self.assertEqual(extracted.stdout, b"catalog origin")
+
+    def test_ambiguous_catalogs_expose_selected_data_as_unverified(self):
+        for engine in ("7z", "7zz"):
+            for endian in ("<", ">"):
+                data, payload = ambiguous_origin(endian)
+                with self.subTest(engine=engine, endian=endian):
+                    listing = self.run_image(data, engine, "l", forced=False)
+                    self.assertIn(listing.returncode, (0, 1), listing.stderr)
+                    self.assertIn(b"volume origin is ambiguous", listing.stdout)
+                    self.assertIn(b"Read-only limitations =", listing.stdout)
+                    self.assertIn(b"Path = alpha", listing.stdout)
+                    self.assertNotIn(b"Path = bravo", listing.stdout)
+                    extracted = self.run_image(data, engine, forced=False)
+                    self.assertIn(extracted.returncode, (0, 1), extracted.stderr)
+                    self.assertEqual(extracted.stdout, payload)
+
+    def test_partial_alternative_is_readable_when_default_catalog_is_empty(self):
+        for endian in ("<", ">"):
+            data, payload = partial_origin(endian)
+            with self.subTest(endian=endian):
+                listing = self.run_image(data, command="l", forced=False)
+                self.assertIn(listing.returncode, (0, 1), listing.stderr)
+                self.assertIn(b"volume origin is ambiguous", listing.stdout)
+                self.assertIn(b"Some CramFS directories", listing.stdout)
+                self.assertIn(b"Offset = 512", listing.stdout)
+                extracted = self.run_image(data, forced=False)
+                self.assertIn(extracted.returncode, (0, 1), extracted.stderr)
+                self.assertEqual(extracted.stdout, payload)
 
     def test_underdeclared_size_keeps_referenced_data_with_explicit_limitations(self):
         for endian in ("<", ">"):
