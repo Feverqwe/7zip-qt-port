@@ -172,6 +172,10 @@ Preserve unrelated working-tree changes and other tasks' memory entries.
 
 ### Validation scope
 
+Use macOS for validation. Do not launch Linux/Windows validation unless the user
+asks for those platforms. Existing runner access permissions do not by themselves
+request cross-platform checks.
+
 For behavior changes, cover the concrete observable bug or risk with a regression
 that fails without the fix; reuse sufficient existing coverage rather than adding
 trivial or implementation-mirroring tests. A pre-fix failing run follows the

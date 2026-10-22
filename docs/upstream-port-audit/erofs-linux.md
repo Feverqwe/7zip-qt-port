@@ -1,5 +1,45 @@
 # Read-only EROFS from Linux
 
+## Compressed read-side source comparison — 2026-10-22
+
+Completed the selected comparison of compressed mapping, configuration, padding,
+plain transforms, packed fragments and their stream/decoder consumers at the
+pinned Linux revision below. The complete `zmap.c` read-side transfer matches
+the reference after the recorded LLP64 type and shift-overflow adaptations;
+only the iomap reporting wrapper is omitted. Complete `z_erofs_fixup_insize`,
+`z_erofs_transform_plain` and `z_erofs_parse_cfgs` bodies match unchanged.
+The complete LZ4 configuration body differs only in omitting kernel global-buffer
+pool growth. The LZMA/Deflate/Zstd validation and decoder adapters retain their
+previously recorded configuration and bounded-buffer boundaries.
+
+Compared `zdata.c::z_erofs_read_fragment`, fragment dispatch in
+`z_erofs_scan_folio`, compressed request construction in
+`z_erofs_decompress_pcluster`, `fileio.c` consumers, `zutil.c` buffer services,
+`ishare.c` and the corresponding `Kconfig`/`Makefile` choices. Packed fragments
+reach the packed inode through the existing bounded inode-read callback; Linux's
+folio copying/cache transport is not another format decoder. Global/reserved
+page pools, asynchronous bio/work queues, in-place page sharing, page-cache
+fingerprint sharing and hardware acceleration serve allocation/scheduling or
+optional acceleration. Their omission does not remove an additional encoded
+layout or codec. The earlier inline-metadata routing fix is required for both
+ordinary and compressed inline data and remains part of this comparison.
+
+The archive reader decodes and caches a whole mapped compressed extent. Thus
+damage outside a requested subrange can prevent returning an otherwise readable
+prefix. Kernel page-cache demand decoding can behave differently here; adding
+that damaged-image partial-reading scenario remains deferred under the user's
+EROFS recovery scope. The partial-reference format flag is retained and does
+not imply acceptance of corrupt data. Logical extent, source, metabox/fragment
+recursion and path checks remain active; no source writes or replay are added.
+
+No further code change was justified by this selected comparison. All 54 EROFS
+reference hashes match. Runtime evidence remains the existing focused macOS
+pass for the unchanged code recorded below; no repeat runtime run or remote
+validation was needed for this documentation/instruction-only iteration.
+`git diff --check` passed. This closes the selected compressed read-side source
+comparison, not the remaining whole-module dependency/consumer audit or the
+parent multi-format goal.
+
 ## Inline metadata and data-device address spaces — 2026-10-22
 
 Compared the pinned `data.c::erofs_iomap_begin` inline-data acquisition,
