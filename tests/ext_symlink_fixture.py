@@ -39,6 +39,13 @@ class SymlinkVolume(Volume):
                 bitmap[cluster // 8] |= 1 << (cluster % 8)
             self.data[self.block_map * bs:(self.block_map + 1) * bs] = bitmap
             self.put32(self.link_inode + 28, 4 if case.endswith("huge") else 8)
+            if case == "bigalloc-classic":
+                self.data[self.file_inode + 40:self.file_inode + 100] = self.file_block
+                self.data[self.root_inode + 40:self.root_inode + 100] = bytes(60)
+                self.put32(self.root_inode + 40, self.root_block)
+                self.put32(self.file_inode + 32, 0)
+                self.put32(self.root_inode + 32, 0)
+                self.put32(1024 + 96, 2)
             if case.endswith("huge"):
                 self.put32(self.link_inode + 32, 1 << 18)
         elif case == "append":

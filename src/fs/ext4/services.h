@@ -53,6 +53,7 @@ struct ext4_sb_info {
     u32 s_csum_seed, s_desc_size, s_desc_per_block, s_inode_size;
     u32 s_groups_count, s_gdb_count, s_itb_per_group;
     u32 s_cluster_ratio, s_cluster_bits, s_inodes_per_group, s_blockfile_groups;
+    u64 s_blocks_per_group, s_clusters_per_group;
     u32 s_first_ino, s_want_extra_isize;
     u32 s_hash_seed[4];
     unsigned int s_def_hash_version, s_hash_unsigned;
@@ -131,6 +132,8 @@ EXT_FEATURE(largedir, incompat, 14)
 EXT_FEATURE(casefold, incompat, 17)
 EXT_FEATURE(extra_isize, ro_compat, 6)
 EXT_FEATURE(dir_index, compat, 5)
+EXT_FEATURE(bigalloc, ro_compat, 9)
+int ext4_handle_clustersize(struct super_block *);
 #define EXT4_INODE_INDEX 12
 #define is_dx(dir) (ext4_has_feature_dir_index((dir)->i_sb) && ext4_test_inode_flag((dir), EXT4_INODE_INDEX))
 #define EXT4_HTREE_LEVEL_COMPAT 2

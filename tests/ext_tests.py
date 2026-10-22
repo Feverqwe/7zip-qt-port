@@ -191,6 +191,18 @@ class ExtTests(unittest.TestCase):
                     self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
                     self.assertIn("Symbolic Link = " + volume.target, result.stdout.decode("utf-8"))
 
+    def test_bigalloc_classic_mapping_is_readable_without_extent_feature(self):
+        volume = SymlinkVolume("bigalloc-classic")
+        result = self.run_image(volume)
+        self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+        self.assertEqual(result.stdout, volume.read(0, volume.size))
+        result = self.run_image(volume, name="link")
+        self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+        self.assertEqual(result.stdout, volume.target.encode())
+        listing = self.run_image(volume, command="l", name=None)
+        self.assertEqual(listing.returncode, 0, listing.stderr.decode(errors="replace"))
+        self.assertNotIn(b"Read-only limitations = ", listing.stdout)
+
     def test_invalid_symlink_flags_and_fast_target_lengths_are_rejected(self):
         for case in ("append", "immutable", "embedded-nul", "unterminated", "empty"):
             for engine in ("7z", "7zz"):

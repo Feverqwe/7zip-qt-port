@@ -10,6 +10,52 @@ fs-verity now reuses the original shared Linux string scanner already linked
 for fscrypt. Source scope and validation are recorded with the
 [shared string-service transfer](erofs-linux.md#original-shared-string-services--2026-10-22).
 
+## Original cluster geometry and read-only BIGALLOC/classic mapping — 2026-10-22
+
+Whole superblock review found an unconditional local BIGALLOC-without-EXTENTS
+refusal in `ext_linux_open`. Pinned Linux `ext4_feature_set_ok` returns for a
+read-only opening before that condition: it is a read-write restriction. The
+original indirect lookup also applies its BIGALLOC restriction only to the
+allocation branch. Neither condition prevents existing classic data from being
+read through the transferred lookup and validated cluster bitmap.
+
+Transferred complete `ext4_handle_clustersize` read-side control flow into its
+original `fs/ext4/super.c` unit and connected it to archive volume initialization,
+replacing the independent cluster geometry checks/calculations. The existing
+pre-call logarithm bound and nonzero blocks/group guard remain. Block/cluster
+relation, non-BIGALLOC limits, cluster-group alignment/count, cluster bits and
+ratio now come from the original helper. The only omitted tail sets the
+allocation-only STD_GROUP_SIZE mount option, which has no archive read consumer.
+Private group counts use explicit 64-bit storage, preserving Linux LP64 product
+width on supported hosts without depending on host `unsigned long`. Original
+notices, source language and header dependencies are retained; no new decoder
+or license-switch condition is introduced.
+
+Removed the write-only feature-pair refusal from the archive constructor.
+Classic BIGALLOC data now uses the already connected original indirect reader;
+inode EXTENTS flags still require their filesystem feature, and original
+checksums, geometry, allocation bitmaps and system-zone/path bounds remain.
+The ordinary read-only case does not acquire a recovery warning solely for this
+feature combination. Creation, allocation and all source writes remain absent.
+The separate SDK-only source variant is unchanged.
+
+The regression builds a bounded BIGALLOC image with classic regular-file/root
+mapping, no filesystem EXTENTS feature and a fast symlink with external xattrs.
+It verifies exact sparse file bytes, exact symlink target, successful enumeration,
+no spurious limited-mode declaration and unchanged image bytes. Existing creator
+BIGALLOC/inline/META_BG, huge-file/EA geometry and malformed metadata cases remain
+controls. The old unconditional refusal is source-visible and would prevent
+these reads; no pre-fix acceptance run was needed to establish that gap.
+
+Validation on macOS: all eight focused ext/stream/fscrypt/xattr/provenance suites
+passed (9.25 s), and the incremental application build passed. Post-edit source
+comparison confirms the original helper body apart from the documented omitted
+allocation option; all 305 pinned reference hashes match. Runtime/build/compiler
+caches were reused and disposable ext fixtures were absent. No platform-dependent
+service changed, so remote checks were not repeated. No full/slow, physical-device,
+UI appearance, new kernel-mount or release-install acceptance was run. The broader
+ext and parent audits remain open.
+
 ## Invalid in-inode xattrs and independent file data — 2026-10-22
 
 Whole-inode source review found an earlier-than-export failure: original

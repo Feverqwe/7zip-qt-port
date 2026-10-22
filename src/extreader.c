@@ -30,15 +30,9 @@ int ext_linux_open(const void *superblock, struct ext_volume **result)
     volume->sb.s_blocksize_bits = bits + 10;
     volume->sb.s_blocksize = 1024U << bits;
     if (ext4_hash_info_init(&volume->sb)) goto corrupt;
-    {
-        u32 cluster_bits = le32_to_cpu(volume->raw.s_log_cluster_size);
-        bool bigalloc = (le32_to_cpu(volume->raw.s_feature_ro_compat) & 0x200) != 0;
-        if (cluster_bits > 18 || (bigalloc ? cluster_bits < bits : cluster_bits != bits)) goto corrupt;
-        if (bigalloc && !(le32_to_cpu(volume->raw.s_feature_incompat) & 0x40)) goto corrupt;
-        if (!EXT4_CLUSTERS_PER_GROUP(&volume->sb) ||
-            ((u64)EXT4_CLUSTERS_PER_GROUP(&volume->sb) << (cluster_bits - bits)) !=
-                le32_to_cpu(volume->raw.s_blocks_per_group)) goto corrupt;
-    }
+    if (le32_to_cpu(volume->raw.s_log_cluster_size) > 18) goto corrupt;
+    sbi->s_blocks_per_group = le32_to_cpu(volume->raw.s_blocks_per_group);
+    if (!sbi->s_blocks_per_group || ext4_handle_clustersize(&volume->sb)) goto corrupt;
     desc = ext4_has_feature_64bit(&volume->sb) ? le16_to_cpu(volume->raw.s_desc_size) : 32;
     if (desc < (ext4_has_feature_64bit(&volume->sb) ? 64U : 32U) ||
         desc > 1024 || (desc & (desc - 1))) goto corrupt;
@@ -47,8 +41,6 @@ int ext_linux_open(const void *superblock, struct ext_volume **result)
     sbi->s_desc_size = desc;
     sbi->s_desc_per_block = volume->sb.s_blocksize / desc;
     sbi->s_inodes_per_group = EXT4_INODES_PER_GROUP(&volume->sb);
-    sbi->s_cluster_ratio = EXT4_CLUSTER_SIZE(&volume->sb) / volume->sb.s_blocksize;
-    sbi->s_cluster_bits = le32_to_cpu(volume->raw.s_log_cluster_size) - bits;
     if (ext4_inode_info_init(&volume->sb, &volume->raw)) goto corrupt;
     volume->sb.s_maxbytes = ext4_max_size((int)volume->sb.s_blocksize_bits,
         ext4_has_feature_huge_file(&volume->sb));
