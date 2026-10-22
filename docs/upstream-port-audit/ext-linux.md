@@ -10,6 +10,66 @@ fs-verity now reuses the original shared Linux string scanner already linked
 for fscrypt. Source scope and validation are recorded with the
 [shared string-service transfer](erofs-linux.md#original-shared-string-services--2026-10-22).
 
+## RSA, MPI and signature-request source comparison — 2026-10-22
+
+Completed comparison with Linux `58161ead29e50d70a317ea26b472e0c7508e69da`
+of `crypto/{rsa,rsa_helper,rsassa-pkcs1,akcipher,sig}.c` and all twenty selected
+MPI C units linked by `cmake/Ext.cmake`. These units contain 97 local function
+bodies: 82 match after comments/whitespace, nine have the adaptations below and
+six provide fixed-provider/context services. Also reviewed the five local
+provider functions in `akcipherprovider.c`/`sigprovider.c`, headers, complete
+low-level arithmetic macros, ASN.1 schemas, metadata and verification consumers.
+No missing selected arithmetic/verification branch or behavior correction was
+established in this group.
+
+| Selected unit | Complete-body result and host boundary |
+| --- | --- |
+| RSA | Twelve of fourteen bodies match, including payload/key-length checks, public-key operation, MPI key replacement/release and the generic callbacks. The CRT private operation spells out GNU short-circuit errors; one accessor exposes the original algorithm table in place of kernel registration. |
+| RSA key parser | All ten bodies match. Original public/private DER schemas match exactly, and the existing ASN.1 compiler consumers connect the original modulus/exponent/private-component callbacks. |
+| PKCS#1 v1.5 | Seven of ten bodies match. Sign uses C byte-pointer arithmetic; verify explicitly frees the sensitive request on every allocated exit in place of the original cleanup attribute. One constructor connects the original callbacks and fixed RSA child. Padding, DigestInfo prefixes, digest lengths, leading-zero handling and result codes retain the original branches. |
+| Synchronous akcipher requests | Both preparation/postprocessing bodies match. Encrypt/decrypt use explicit equivalents of GNU error chaining. Owned allocation, one-span scatterlist, wait/result handling and request release follow the original synchronous path. |
+| Signature services | Four original default callbacks match. Four local functions provide algorithm/context ownership, per-instance default installation, initialization state and destruction instead of kernel registration/lifetime services. Initialization failure does not invoke an exit callback for an uninitialized transform. |
+| MPI arithmetic/conversion | Forty-seven of 51 bodies match. Modular add/subtract/multiply use explicit GNU error-chain equivalents and exponentiation uses C11 zero initialization. Original signed arithmetic, carry/borrow, shifts, comparison, limb conversion, division, Karatsuba multiplication/squaring, modular exponentiation and allocation/release control flow remain present. |
+
+`mpi-inline.h` and the complete `longlong.h` match the pin. The internal header
+selects the original generic mixed-word macros with `NO_ASM`, uses fixed-width
+types in place of GNU compiler modes and includes the original inline helpers
+on every host compiler. Limbs themselves remain native unsigned long: 64-bit on
+LP64 and 32-bit on LLP64 Windows. `BITS_PER_LONG` follows that type, independently
+of pointer width. Multiplication/division and count-zero services therefore use
+the matching original limb geometry rather than narrowing host pointers. The
+selected generic bit-scan bodies are retained; the 32-bit fls64 branch makes its
+original narrowing conversions explicit. MPI allocation uses the existing sized
+sensitive owner, with overflow checking for array allocation and no kernel
+scheduling service in this preemptible process.
+
+Checked the PKCS#1 prefix table and original `rsa_set_key` helper with both key
+setters: key size is cleared before replacement, failed parsing releases old
+MPI state and verification cannot keep using the previous key. The C11 sentinel
+for the original zero-length `none` prefix still has encoded length zero.
+The verify request retains its original output-buffer extent while all error
+branches release the allocation base, including after advancing the output
+pointer past a leading zero. Provider construction retains algorithm metadata,
+context sizes, original defaults and child cleanup; the fixed registry supports
+the RSA/PKCS#1 names used by the original public-key verifier. Requests are
+synchronous bounded memory spans, not a general kernel asynchronous/DMA API.
+
+Traced the public-key verifier through fresh signature transforms and RSA MPI
+exponentiation back to the certificate/trust consumers. Existing RSA known-answer
+coverage checks accepted and malformed padding/prefix/digest results, modulus
+geometry, truncated signatures/digests, algorithm disagreement and failed key
+replacement followed by successful reuse. Private RSA operations remain copied
+dependencies, not a runtime-accepted archive signing/decryption feature. Kernel
+registration, algorithm discovery and FIPS startup/configuration remain omitted
+services; there is no new write/signing workflow or FIPS claim.
+
+All 305 pinned reference hashes match. No production source changed during this
+audit-only iteration; `git diff --check` passed. No unchanged runtime batch or
+implementation-text regression was added. This closes the selected RSA/MPI and
+request-service source comparison with the stated adaptations. ECC/ECDSA/ECRDSA
+and ML-DSA still need dependency source closure; overall ext and the parent
+format review remain open.
+
 ## ASN.1, certificate and trust source comparison — 2026-10-22
 
 Compared complete selected units against Linux
