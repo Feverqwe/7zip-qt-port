@@ -11,7 +11,7 @@ import unittest
 import zlib
 from ext_modern_fixture import crc32c
 from ext_readlink_fixture import encrypted_link_size, encrypted_link_payload_length
-from ext_partial_fixture import encrypted_partial_map
+from ext_partial_fixture import encrypted_partial_map, encrypted_indirect_map
 
 
 class FscryptCliTests(unittest.TestCase):
@@ -63,6 +63,23 @@ class FscryptCliTests(unittest.TestCase):
                     result = self.invoke(engine, "x", self.keys, case["name"] + "/link")
                     self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
                     self.assertEqual(result.stdout, case["symlink_target"].encode())
+
+    def test_indirect_file_transport_preserves_crypto_units_holes_and_tail(self):
+        original = self.image_bytes
+        try:
+            cases = {case["name"]: case for case in self.record["cases"]}
+            for name in ("v1-aes", "v2-subblock"):
+                case = cases[name]
+                with self.subTest(policy=case["name"]):
+                    self.image_bytes = encrypted_indirect_map(original, case)
+                    self.image.write_bytes(self.image_bytes)
+                    result = self.invoke("7z", "x", self.keys, case["name"] + "/" + case["filename"])
+                    self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+                    self.assertEqual(result.stdout,
+                                     bytes.fromhex(case["plain_first"]) + bytes(4096) + b"end")
+        finally:
+            self.image_bytes = original
+            self.image.write_bytes(original)
 
     def test_partial_encrypted_maps_keep_only_verified_prefixes(self):
         original = self.image_bytes

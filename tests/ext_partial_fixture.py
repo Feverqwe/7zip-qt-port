@@ -1,7 +1,39 @@
-"""Native fscrypt images with one validated leaf before an invalid sibling."""
+"""Checksum-correct native fscrypt mapping variants."""
 import struct
 from ext_fixture import Volume
 from ext_modern_fixture import crc32c
+
+
+def encrypted_indirect_map(image, case):
+    data = bytearray(image)
+    bs = 1024 << struct.unpack_from("<I", data, 1024 + 24)[0]
+    per_group = struct.unpack_from("<I", data, 1024 + 40)[0]
+    inode_size = struct.unpack_from("<H", data, 1024 + 88)[0]
+    descriptor_size = struct.unpack_from("<H", data, 1024 + 254)[0]
+    group, index = divmod(case["file_inode"] - 1, per_group)
+    descriptor = bs + group * descriptor_size
+    table = struct.unpack_from("<I", data, descriptor + 8)[0]
+    table |= struct.unpack_from("<I", data, descriptor + 40)[0] << 32
+    offset = table * bs + index * inode_size
+    inode = bytearray(data[offset:offset + inode_size])
+    inode[40:100] = bytes(60)
+    for logical, physical, length in case["extents"]:
+        for pos in range(0, length, bs):
+            block = (logical + pos) // bs
+            assert block < 12 and (physical + pos) // bs <= 0xffffffff
+            struct.pack_into("<I", inode, 40 + 4 * block, (physical + pos) // bs)
+    flags = struct.unpack_from("<I", inode, 32)[0] & ~(1 << 19)
+    struct.pack_into("<I", inode, 32, flags)
+    inode[124:126] = bytes(2)
+    inode[130:132] = bytes(2)
+    seed = crc32c(0xFFFFFFFF, data[1024 + 104:1024 + 120])
+    seed = crc32c(seed, struct.pack("<I", case["file_inode"]))
+    seed = crc32c(seed, inode[100:104])
+    checksum = crc32c(seed, inode)
+    struct.pack_into("<H", inode, 124, checksum & 0xffff)
+    struct.pack_into("<H", inode, 130, checksum >> 16)
+    data[offset:offset + inode_size] = inode
+    return bytes(data)
 
 
 def encrypted_partial_map(image, case):

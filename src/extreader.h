@@ -48,6 +48,13 @@ int ext_linux_system_zone(struct ext_volume *, const void *descriptors, uint32_t
                           const struct ext_block_services *);
 int ext_linux_block_valid(struct ext_volume *, uint32_t ino, uint64_t start, uint32_t count);
 int ext_linux_blockrefs(struct ext_volume *, uint32_t ino, const void *refs, uint32_t count);
+struct ext_indirect_services {
+    void *context;
+    int (*read)(void *, uint64_t block, void *, size_t);
+};
+int ext_linux_indirect_map(struct ext_volume *, uint32_t ino, const void *refs,
+                           uint32_t logical, uint32_t count,
+                           const struct ext_indirect_services *, uint64_t *, uint32_t *);
 int ext_linux_inode_open(struct ext_volume *, uint32_t ino, const void *raw,
                          struct ext_node **, struct ext_node_info *);
 void ext_linux_inode_close(struct ext_node *);

@@ -77,6 +77,27 @@ class XattrVolume:
                     put(other["offset"] + 12, "I", self.entry_hash(key.split('.', 1)[1], value_hash))
                     self.refresh_entry(other)
             self.refresh_inode(self.record["ea_inode"], ea)
+        elif kind in ("xattrs-classic", "xattrs-classic-hole"):
+            stored = bytes(self.data[ea + 40:ea + 100])
+            assert struct.unpack_from("<H", stored, 6)[0] == 0
+            put(ea + 32, "I", self.u32(ea + 32) & ~(1 << 19))
+            self.data[ea + 40:ea + 100] = bytes(60)
+            count = (entry["size"] + 1023) // 1024
+            assert count <= 12
+            if kind == "xattrs-classic":
+                for index in range(struct.unpack_from("<H", stored, 2)[0]):
+                    logical, length, high, low = struct.unpack_from("<IHHI", stored, 12 + 12 * index)
+                    assert not high and 0 < length < 0x8000 and logical + length <= 12
+                    for block in range(length):
+                        put(ea + 40 + 4 * (logical + block), "I", low + block)
+            else:
+                value_hash = crc32c(self.seed, bytes(entry["size"]))
+                put(ea + 8, "I", value_hash)
+                for key, other in self.record["entries"].items():
+                    if other["inode"] == self.record["ea_inode"]:
+                        put(other["offset"] + 12, "I", self.entry_hash(key.split('.', 1)[1], value_hash))
+                        self.refresh_entry(other)
+            self.refresh_inode(self.record["ea_inode"], ea)
         elif kind == "xattrs-bad-block":
             self.data[self.xattr_block_offset + 16] ^= 1
         elif kind == "xattrs-block-range":

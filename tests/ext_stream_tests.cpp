@@ -438,6 +438,58 @@ class ExtStreamTests final : public QObject {
         QVERIFY(readLimitations().isEmpty());
         QVERIFY(fileIndex("data.bin:$XATTR.user.large") != UInt32(-1));
     }
+    void wideIndirectStreamsReadRangesWithoutDenseAllocation_data() {
+        QTest::addColumn<QString>("layout");
+        QTest::newRow("32-bit last logical block") << QString("indirect-wide");
+        QTest::newRow("oversize does not wrap to the first block")
+            << QString("indirect-wide-oversize");
+    }
+    void wideIndirectStreamsReadRangesWithoutDenseAllocation() {
+        QFETCH(QString, layout);
+        const auto record = bundle(layout);
+        CMyComPtr<IInStream> input = new Input(image(record));
+        QCOMPARE(archive_->Open(input, nullptr, nullptr), S_OK);
+        const UInt32 index = fileIndex();
+        QVERIFY(index != UInt32(-1));
+        QCOMPARE(!readLimitations().isEmpty(), layout.endsWith("oversize"));
+        CMyComPtr<IInArchiveGetStream> provider;
+        QCOMPARE(
+            archive_->QueryInterface(IID_IInArchiveGetStream, reinterpret_cast<void **>(&provider)),
+            S_OK);
+        CMyComPtr<ISequentialInStream> sequential;
+        QCOMPARE(provider->GetStream(index, &sequential), S_OK);
+        CMyComPtr<IInStream> stream;
+        QCOMPARE(sequential->QueryInterface(IID_IInStream, reinterpret_cast<void **>(&stream)),
+                 S_OK);
+        QCOMPARE(archive_->Close(), S_OK);
+        CMyComPtr<IInStream> other = new Input(image(bundle("direct")));
+        QCOMPARE(archive_->Open(other, nullptr, nullptr), S_OK);
+        provider.Release();
+        archive_.Release();
+        input.Release();
+        const UInt64 blockSize = UInt64(1) << 16;
+        for (const auto &sample : QVector<QPair<UInt64, QByteArray>>{
+                 {0, QByteArray("head")},
+                 {(UInt64(1) << 31) * blockSize, QByteArray(37, '\0')},
+                 {UInt64(UINT32_MAX) * blockSize, QByteArray("last indirect block")},
+                 {0, QByteArray("head")}}) {
+            QCOMPARE(stream->Seek(Int64(sample.first), STREAM_SEEK_SET, nullptr), S_OK);
+            QByteArray bytes(sample.second.size(), '\0');
+            UInt32 done = 0;
+            QCOMPARE(stream->Read(bytes.data(), UInt32(bytes.size()), &done), S_OK);
+            QCOMPARE(done, UInt32(bytes.size()));
+            QCOMPARE(bytes, sample.second);
+        }
+        if (layout.endsWith("oversize")) {
+            QCOMPARE(stream->Seek(Int64((UInt64(1) << 32) * blockSize), STREAM_SEEK_SET, nullptr),
+                     S_OK);
+            char byte = 0;
+            UInt32 done = 99;
+            QCOMPARE(stream->Read(&byte, 1, &done), S_FALSE);
+            QCOMPARE(done, UInt32(0));
+        }
+        createArchive();
+    }
     void sparseStreamsRetainSourceAfterCloseAndRelease_data() {
         QTest::addColumn<QString>("layout");
         for (const char *layout : {"double-hole", "double-subtree", "triple", "triple-hole",
@@ -654,8 +706,15 @@ class ExtStreamTests final : public QObject {
         QCOMPARE(retry->files, QVector<QByteArray>({expected, healthy}));
         source->seekResult = E_FAIL;
         CMyComPtr<ISequentialInStream> failed;
-        QCOMPARE(provider->GetStream(indices[0], &failed), E_FAIL);
-        QVERIFY(!failed);
+        HRESULT failure = provider->GetStream(indices[0], &failed);
+        if (failure == S_OK) {
+            QVERIFY(failed);
+            char byte = 0;
+            UInt32 done = 99;
+            failure = failed->Read(&byte, 1, &done);
+            QCOMPARE(done, UInt32(0));
+        }
+        QCOMPARE(failure, E_FAIL);
         source->seekResult = S_OK;
     }
     void incompleteExtentMappingsDoNotInventHoles_data() {

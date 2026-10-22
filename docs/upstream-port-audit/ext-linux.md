@@ -6,6 +6,93 @@ tree boundaries, directory record boundaries and archive stream consumers.
 The second integrates Linux metadata and inline-data readers. The ext row remains
 open for the remaining read features listed below.
 
+## Linux indirect lookup and bounded regular-file streams — 2026-10-22
+
+Compared complete pinned Linux `fs/ext4/indirect.c` bodies and callers with SDK
+`FillFileBlocks`, `CClusterInStream2` and `GetStream_Node`. The archive reader
+allocated one pointer per logical file block before exposing a stream, including
+holes. Large sparse files therefore required memory proportional to their logical
+size; a stream with exactly 2^32 logical blocks was rejected by the unsigned-count
+conversion before reading any data. Linux's lookup visits only the requested
+branch and reports the mapped run or known hole.
+The pinned ext2 `ext2_max_size` and `ext2_block_to_path` were also compared:
+the normal ext2 size ceiling derives from its 32-bit sector count and fits the
+new lookup's logical range. This is not a new restriction on that supported range.
+
+Transferred `Indirect`, `add_chain`, `ext4_block_to_path`, `ext4_get_branch` and
+the read/cleanup paths of `ext4_ind_map_blocks` into their original C path. The
+three helper bodies match the pinned source bytes. The map body retains its
+read/coalescing/hole/error/cleanup branches; unused allocation locals and the
+create/allocation/journal-write branch are omitted, with an explicit unsupported
+result for that branch. The archive boundary calls it with flags zero. The source
+repository remains Linux Torvalds at
+`58161ead29e50d70a317ea26b472e0c7508e69da`, linked above; the full unit hash was
+already inventoried and the unit is now classified as adapted. Original notices
+and C11 compilation are retained.
+
+Private synchronous buffers replace the block cache and inode semaphore on the
+owned in-memory inode/root snapshot. At most three indirect blocks are acquired
+for one lookup and freed on every success/error path. Original block-reference
+checks protect inode and indirect arrays, filesystem bounds and system zones,
+including the journal-owner exception. The original `ext4_map_blocks` type fields
+are retained; buffer-state flags are private lookup results, not on-disk fields.
+No new filesystem decoder, allocation or source-writing service is introduced.
+
+The module's regular-file streams, including internal allocated EA-inode reads,
+now use that lookup lazily and cache only the current mapped run/hole. Existing
+fscrypt data-unit handling is reused; required-allocation reads still reject
+holes and xattr publication still requires complete value/hash verification.
+Metadata and data source HRESULTs remain distinguishable from corrupt mappings;
+opening a stream can now defer a transport failure to Read. Extraction keeps its
+per-file error, cancellation and independent-selection behavior. Only a confirmed
+hole produces zeros. Every data read seeks to its mapped physical address, so
+interleaved metadata acquisition cannot leave the data cursor at a stale offset.
+
+Returned streams share ownership of the original C volume/system-zone state as
+well as the source and crypto state. Close/reopen/release of the handler cannot
+invalidate or retarget them. Original directory allocated-range inventory and
+system-zone bootstrap mapping remain SDK consumers; this iteration does not claim
+closure of all ext mapping/namespace code. Standalone retains its non-GPL reader.
+
+The transferred mapper's logical index is Linux `ext4_lblk_t` (32 bits). A larger
+declared bitmap-file size can still expose addressable data, but an out-of-range
+Read fails rather than wrapping to the first block. The known limitation is
+reported globally and on the item, using EN/RU per-opening consent and the visible
+limited-access mode. An independent readable file remains copyable. The bounded
+range regression uses an 8 MiB image declaring 256 TiB, reads only small head,
+middle-hole and final-block samples, retains the stream after handler reuse and
+checks the first unaddressable position. It does not allocate/extract the logical
+file or introduce a slow maximum-file suite.
+
+Validation: macOS passed the eight ext/code/provenance suites and the three
+language/EN/RU filesystem-read UI suites; the incremental application build passed.
+Linux passed all eleven in `20261022T112048Z-aef06afc`. A Win32 `min` macro
+conflict in the new C++ glue was corrected with an explicit standard-library
+template call; Windows then passed all eleven in `20261022T112459Z-a3086b04`.
+The equivalent C++ change was rebuilt and `ext_stream` passed again on macOS and
+Linux (`20261022T112500Z-14a2e3c2`). Existing runtime snapshots, build trees and
+compiler caches were reused throughout.
+
+Additional checksum-correct bitmap variants of native fixtures exercise this
+new stream rather than the original extents transport. AES/default-unit and
+512-byte-unit encrypted files return exact golden plaintext, sparse zeros and
+tail bytes. Classic EA-inode values return exact bytes; holes remain rejected
+even after forging correct hashes for an all-zero value, while independent data
+stays readable. The affected `ext` and `ext_fscrypt_cli` suites passed on all three
+platforms (final guest receipt `20261022T113806Z-23d94c23`). Existing regressions
+retain source errors, per-file isolation, cancellation, special/journal ownership,
+Unicode/spaces, malformed paths, backward/cross-range seeks and owned streams
+after Close/reopen/release. Tests accept deferred read errors without requiring
+an eager GetStream failure.
+
+EN/RU UI checks cover confirmation/decline, visible mode, independent copying,
+refresh/reopen scope and unchanged source bytes. Current Cocoa warning JSON is
+420×214 (EN) and 420×275 (RU), with visible fitting reason labels; rendered Windows
+pixel parity is not claimed. All 303 pinned Linux reference hashes match, with
+the new adapted unit still owned by the existing source inventory. No full gate,
+slow suite, physical-device check, new native kernel-mount comparison or release
+installation was run. The broader ext/module and parent format audits remain open.
+
 ## Inode inventory isolation and useful read-only opening — 2026-10-22
 
 Compared pinned Linux `__ext4_get_inode_loc`, `__ext4_iget`, inode checksum,

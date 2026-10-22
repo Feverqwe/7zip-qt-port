@@ -37,6 +37,7 @@
 
 #ifdef SEVENZIP_LINUX_EXT
 #include "extfscrypt.h"
+#include "extindirectstream.h"
 #include "extreader.h"
 #include "extveritypolicy.h"
 #include "extveritystream.h"
@@ -793,15 +794,6 @@ struct CItem {
 static const unsigned kNumTreeLevelsMax = 6; // must be >= 3
 
 #ifdef SEVENZIP_LINUX_EXT
-struct CExtVolume {
-    ext_volume *Ptr = NULL;
-    ~CExtVolume() { Reset(); }
-    void Reset() {
-        ext_linux_close(Ptr);
-        Ptr = NULL;
-    }
-};
-
 struct CExtXattr {
     AString RawName, Name;
     CByteBuffer Data;
@@ -875,7 +867,7 @@ Z7_CLASS_IMP_CHandler_IInArchive_2(
 
   CHeader _h;
 #ifdef SEVENZIP_LINUX_EXT
-  CExtVolume _volume;
+  std::shared_ptr<ext_volume> _volume;
   CExtVerityPolicy _verityPolicy;
   CObjectVector<CByteBuffer> _inlineData;
   std::vector<CExtCryptInode> _cryptInodes;
@@ -888,6 +880,12 @@ Z7_CLASS_IMP_CHandler_IInArchive_2(
   bool _xattrLimitations = false;
   bool _linkLimitations = false;
   bool _inodeLimitations = false;
+  bool _indirectLimitations = false;
+  bool HasIndirectRangeLimit(const CNode &node) const
+  {
+    return node.IsRegular() && node.InlineIndex < 0 && !node.IsFlags_EXTENTS() &&
+        node.FileSize > ((UInt64)1 << (32 + _h.BlockBits));
+  }
   void MarkDirectoryIncomplete(CNode &node)
   {
     node.DirectoryIncomplete = true;
@@ -1031,7 +1029,7 @@ HRESULT CHandler::ParseDir(const Byte *p, size_t size, unsigned iNodeDir, CDirPa
             return S_FALSE;
 #ifdef SEVENZIP_LINUX_EXT
         if (nodeDir.InlineIndex < 0 &&
-            ext_linux_directory_entry_check(_volume.Ptr, nodeDir.Flags, p - blockOffset,
+            ext_linux_directory_entry_check(_volume.get(), nodeDir.Flags, p - blockOffset,
                                             MyMin(size, blockSize - blockOffset) + blockOffset,
                                             (unsigned)blockOffset))
             return S_FALSE;
@@ -1073,7 +1071,7 @@ HRESULT CHandler::ParseDir(const Byte *p, size_t size, unsigned iNodeDir, CDirPa
         if (dirCrypt) {
             if (iNode) {
                 uint32_t hash = 0, minor = 0;
-                if (ext_linux_directory_hash(_volume.Ptr, nodeDir.Flags, nodeDir.FileSize,
+                if (ext_linux_directory_hash(_volume.get(), nodeDir.Flags, nodeDir.FileSize,
                                              dirCrypt.get(), rootHashVersion, state.LinearFallback,
                                              p, recLen, &hash, &minor) != 0)
                     return S_FALSE;
@@ -1329,7 +1327,7 @@ HRESULT CHandler::ReadDir(unsigned iNodeDir, HRESULT &callbackResult) {
             CDirectoryContext context{this, seekable, &allocated, iNodeDir, &state};
             context.Emitted = &emitted;
             const int result =
-                ext_linux_index_directory(_volume.Ptr, iNodeDir, node.ChecksumSeed, node.Flags,
+                ext_linux_index_directory(_volume.get(), iNodeDir, node.ChecksumSeed, node.Flags,
                                           node.FileSize, &context, ReadIndexBlock, EmitIndexBlock);
             callbackResult = context.CallbackResult;
             RINOK(callbackResult)
@@ -1387,7 +1385,7 @@ HRESULT CHandler::ReadDir(unsigned iNodeDir, HRESULT &callbackResult) {
                     state.RootHashVersion = data[28];
 #ifdef SEVENZIP_LINUX_EXT
                 if (_h.UseMetadataChecksum() &&
-                    ext_linux_directory_check(_volume.Ptr, node.ChecksumSeed, node.Flags,
+                    ext_linux_directory_check(_volume.get(), node.ChecksumSeed, node.Flags,
                                               (UInt32)block, data)) {
                     MarkDirectoryIncomplete(node);
                     continue;
@@ -1673,7 +1671,7 @@ HRESULT CHandler::ReadLink(unsigned index, CByteBuffer &data, IInStream *source)
     ext_node *inode = NULL;
     ext_node_info info;
     if (!status)
-        status = ext_linux_inode_open(_volume.Ptr, node.InodeNumber, raw, &inode, &info);
+        status = ext_linux_inode_open(_volume.get(), node.InodeNumber, raw, &inode, &info);
     struct CLinkOwner {
         ext_node *Ptr;
         ~CLinkOwner() { ext_linux_inode_close(Ptr); }
@@ -1696,7 +1694,7 @@ HRESULT CHandler::ReadLink(unsigned index, CByteBuffer &data, IInStream *source)
 HRESULT CHandler::LoadSystemZone(const void *descriptors, UInt32 groups) {
     CSystemZoneContext context{{this, 0, S_OK, 0, {}}, {}, {}, false};
     ext_block_services services{&context, ReadSystemInode, MapSystemInode};
-    const int error = ext_linux_system_zone(_volume.Ptr, descriptors, groups, &services);
+    const int error = ext_linux_system_zone(_volume.get(), descriptors, groups, &services);
     if (context.Io.Result != S_OK)
         return context.Io.Result;
     if (error)
@@ -1712,13 +1710,13 @@ HRESULT CHandler::LoadSystemZone(const void *descriptors, UInt32 groups) {
         const bool fastLink = node.IsFastSymlink(_h);
         if (node.InlineIndex < 0 && !fastLink && node.IsFlags_EXTENTS() &&
             (node.IsRegular() || node.IsDir() || node.IsLink()) &&
-            ext_linux_extent_check(_volume.Ptr, node.InodeNumber, node.ChecksumSeed,
+            ext_linux_extent_check(_volume.get(), node.InodeNumber, node.ChecksumSeed,
                                    GetUi16(node.Block + 6), node.Block, kNodeBlockFieldSize,
                                    GetUi16(node.Block + 6), 0, 0))
             return S_FALSE;
         if (node.InlineIndex < 0 && !node.IsFlags_EXTENTS() &&
             (node.IsRegular() || node.IsDir() || (node.IsLink() && !fastLink)) &&
-            ext_linux_blockrefs(_volume.Ptr, node.InodeNumber, node.Block, 15))
+            ext_linux_blockrefs(_volume.get(), node.InodeNumber, node.Block, 15))
             return S_FALSE;
     }
     return S_OK;
@@ -1812,7 +1810,7 @@ HRESULT CHandler::LoadEncryption() {
     CExtCryptKeys keys;
     RINOK(keys.Read(_openCallback))
     sevenzip_fscrypt_geometry geometry;
-    ext_linux_fscrypt_geometry(_volume.Ptr, &geometry);
+    ext_linux_fscrypt_geometry(_volume.get(), &geometry);
     FOR_VECTOR(i, _nodes) {
         const CNode &node = _nodes[i];
         if (node.SpecialReadError || !(node.Flags & 0x800))
@@ -1828,7 +1826,7 @@ HRESULT CHandler::LoadEncryption() {
         ext_node *inode = NULL;
         ext_node_info info;
         if (!result)
-            result = ext_linux_inode_open(_volume.Ptr, node.InodeNumber, raw, &inode, &info);
+            result = ext_linux_inode_open(_volume.get(), node.InodeNumber, raw, &inode, &info);
         struct CNodeOwner {
             ext_node *Ptr;
             ~CNodeOwner() { ext_linux_inode_close(Ptr); }
@@ -1887,7 +1885,7 @@ HRESULT CHandler::LoadXattrs() {
         ext_node *inode = NULL;
         ext_node_info info;
         if (!result)
-            result = ext_linux_inode_open(_volume.Ptr, node.InodeNumber, raw, &inode, &info);
+            result = ext_linux_inode_open(_volume.get(), node.InodeNumber, raw, &inode, &info);
         struct CNodeOwner {
             ext_node *Ptr;
             ~CNodeOwner() { ext_linux_inode_close(Ptr); }
@@ -1944,8 +1942,10 @@ HRESULT CHandler::Open2(IInStream *inStream) {
         if (!_h.Parse(buf + kHeaderDataOffset))
             return S_FALSE;
 #ifdef SEVENZIP_LINUX_EXT
-        if (ext_linux_open(buf + kHeaderDataOffset, &_volume.Ptr) != 0)
+        ext_volume *volume = NULL;
+        if (ext_linux_open(buf + kHeaderDataOffset, &volume) != 0)
             return S_FALSE;
+        _volume.reset(volume, ext_linux_close);
 #endif
         if (_h.BlockGroupNr != 0)
             return S_FALSE; // it's just copy of super block
@@ -1979,7 +1979,7 @@ HRESULT CHandler::Open2(IInStream *inStream) {
         UInt64 fileSize = 0;
         RINOK(InStream_GetSize_SeekToEnd(inStream, fileSize))
 #ifdef SEVENZIP_LINUX_EXT
-        if (ext_linux_geometry_check(_volume.Ptr, fileSize) != 0)
+        if (ext_linux_geometry_check(_volume.get(), fileSize) != 0)
             return S_FALSE;
 #endif
 
@@ -1999,7 +1999,7 @@ HRESULT CHandler::Open2(IInStream *inStream) {
                 const size_t size = MyMin(blockSize, gdBufSize - offset);
                 RINOK(SeekAndRead(
                     inStream,
-                    ext_linux_descriptor_block(_volume.Ptr, (unsigned)(offset >> _h.BlockBits)),
+                    ext_linux_descriptor_block(_volume.get(), (unsigned)(offset >> _h.BlockBits)),
                     (Byte *)gdBuf + offset, size))
             }
 #else
@@ -2012,7 +2012,7 @@ HRESULT CHandler::Open2(IInStream *inStream) {
                 CGroupDescriptor gd;
                 gd.Parse(p, gd_Size);
 #ifdef SEVENZIP_LINUX_EXT
-                if (ext_linux_group_check(_volume.Ptr, i, p) != 0)
+                if (ext_linux_group_check(_volume.get(), i, p) != 0)
                     return S_FALSE;
 #else
                 if (_h.UseMetadataChecksum()) {
@@ -2099,7 +2099,7 @@ HRESULT CHandler::Open2(IInStream *inStream) {
 
                 RINOK(SeekAndRead(inStream, gd.InodeBitmap, nodesMap, blockSize))
 #ifdef SEVENZIP_LINUX_EXT
-                if (ext_linux_bitmap_check(_volume.Ptr, gi,
+                if (ext_linux_bitmap_check(_volume.get(), gi,
                                            (const Byte *)gdBuf + ((size_t)gi << gdBits), nodesMap,
                                            1) != 0)
                     return S_FALSE;
@@ -2108,7 +2108,7 @@ HRESULT CHandler::Open2(IInStream *inStream) {
                     CByteBuffer blockMap;
                     blockMap.Alloc(blockSize);
                     RINOK(SeekAndRead(inStream, gd.BlockBitmap, blockMap, blockSize))
-                    if (ext_linux_bitmap_check(_volume.Ptr, gi,
+                    if (ext_linux_bitmap_check(_volume.get(), gi,
                                                (const Byte *)gdBuf + ((size_t)gi << gdBits),
                                                blockMap, 0) != 0)
                         return S_FALSE;
@@ -2189,7 +2189,7 @@ HRESULT CHandler::Open2(IInStream *inStream) {
 #ifdef SEVENZIP_LINUX_EXT
                     ext_node *linuxNode = NULL;
                     ext_node_info info;
-                    const int inodeResult = ext_linux_inode_open(_volume.Ptr, globalNodeIndex + 1,
+                    const int inodeResult = ext_linux_inode_open(_volume.get(), globalNodeIndex + 1,
                                                                  p, &linuxNode, &info);
                     if (inodeResult) {
                         if (inodeResult == -ENOMEM)
@@ -2270,6 +2270,10 @@ HRESULT CHandler::Open2(IInStream *inStream) {
                     }
 
                     _refs.Add((int)_nodes.Add(node));
+#ifdef SEVENZIP_LINUX_EXT
+                    if (!node.SpecialReadError && HasIndirectRangeLimit(node))
+                        _indirectLimitations = true;
+#endif
                 }
 
                 numEmpty_in_Maps += numEmpty_in_Map;
@@ -2614,7 +2618,7 @@ void CHandler::ClearRefs() {
     _cryptInodes.clear();
     _xattrs.Clear();
     _rootXattrAux = -1;
-    _volume.Reset();
+    _volume.reset();
 #endif
     _stream.Release();
     _items.Clear();
@@ -2640,6 +2644,7 @@ Z7_COM7F_IMF(CHandler::Close()) {
     _xattrLimitations = false;
     _linkLimitations = false;
     _inodeLimitations = false;
+    _indirectLimitations = false;
 #endif
     _isUTF = true;
     _openCallback = NULL;
@@ -2883,6 +2888,12 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID propID, PROPVARIANT *value)) {
                 reasons += '\n';
             reasons += "Some ext inodes could not be read. Files or metadata may be missing; "
                        "readable files remain accessible.";
+        }
+        if (_indirectLimitations) {
+            if (!reasons.IsEmpty())
+                reasons += '\n';
+            reasons += "Some ext file data is outside the reader's logical address range. Only "
+                       "addressable data is available; copying affected files reports an error.";
         }
 #endif
         if (_h.FeatureIncompat & 4) {
@@ -3212,6 +3223,11 @@ Z7_COM7F_IMF(CHandler::GetProperty(UInt32 index, PROPID propID, PROPVARIANT *val
                     if (!errors.IsEmpty())
                         errors += '\n';
                     errors += "The ext symbolic-link target could not be read when opening.";
+                }
+                if (HasIndirectRangeLimit(node)) {
+                    if (!errors.IsEmpty())
+                        errors += '\n';
+                    errors += "Some ext file data is outside the reader's logical address range.";
                 }
                 if (!errors.IsEmpty())
                     prop = errors;
@@ -3603,7 +3619,7 @@ HRESULT CHandler::FillFileBlocks2(UInt32 block, unsigned level, unsigned numBloc
 
     const Byte *p = tempBuf;
 #ifdef SEVENZIP_LINUX_EXT
-    if (ext_linux_blockrefs(_volume.Ptr, _blockInode, p, (UInt32)(blockSize / 4)))
+    if (ext_linux_blockrefs(_volume.get(), _blockInode, p, (UInt32)(blockSize / 4)))
         return S_FALSE;
 #endif
     size_t num = (size_t)1 << (_h.BlockBits - 2);
@@ -3651,7 +3667,7 @@ HRESULT CHandler::FillFileBlocks(const Byte *p, unsigned numBlocks, CRecordVecto
 
     blocks.ClearAndReserve(numBlocks);
 #ifdef SEVENZIP_LINUX_EXT
-    if (ext_linux_blockrefs(_volume.Ptr, _blockInode, p, 15))
+    if (ext_linux_blockrefs(_volume.get(), _blockInode, p, 15))
         return S_FALSE;
 #endif
 
@@ -3744,7 +3760,7 @@ HRESULT CHandler::FillExtents(const Byte *p, size_t size, CRecordVector<CExtent>
     if (eth.Depth >= kNumTreeLevelsMax)
         return S_FALSE;
 #ifdef SEVENZIP_LINUX_EXT
-    if (ext_linux_extent_check(_volume.Ptr, _blockInode, _extentChecksumSeed, _extentRootDepth, p,
+    if (ext_linux_extent_check(_volume.get(), _blockInode, _extentChecksumSeed, _extentRootDepth, p,
                                size, eth.Depth, 0, firstBlock))
         return S_FALSE;
 #endif
@@ -3757,7 +3773,7 @@ HRESULT CHandler::FillExtents(const Byte *p, size_t size, CRecordVector<CExtent>
                 !e.IsLenOK() || e.VirtBlock < firstBlock || e.GetVirtEnd() > blockLimit)
                 return S_FALSE;
 #ifdef SEVENZIP_LINUX_EXT
-            if (!ext_linux_block_valid(_volume.Ptr, _blockInode, e.PhyStart, e.Len))
+            if (!ext_linux_block_valid(_volume.get(), _blockInode, e.PhyStart, e.Len))
                 return S_FALSE;
 #endif
             if (!UpdateExtents(extents, e.VirtBlock))
@@ -3782,7 +3798,7 @@ HRESULT CHandler::FillExtents(const Byte *p, size_t size, CRecordVector<CExtent>
         if (e.PhyLeaf == 0 || e.PhyLeaf >= _h.NumBlocks)
             return S_FALSE;
 #ifdef SEVENZIP_LINUX_EXT
-        if (!ext_linux_block_valid(_volume.Ptr, _blockInode, e.PhyLeaf, 1))
+        if (!ext_linux_block_valid(_volume.get(), _blockInode, e.PhyLeaf, 1))
             return S_FALSE;
 #endif
 
@@ -3892,6 +3908,15 @@ HRESULT CHandler::GetStream_Node(unsigned nodeIndex, ISequentialInStream **strea
                                  node.FileSize;
     const UInt64 numBlocks64 =
         (streamSize + (UInt64)(((UInt32)1 << _h.BlockBits) - 1)) >> _h.BlockBits;
+
+#ifdef SEVENZIP_LINUX_EXT
+    if (node.IsRegular() && !node.IsFlags_EXTENTS() && !allocated) {
+        RINOK(CreateExtIndirectStream(_volume, source, node.Block, node.InodeNumber, _h.BlockBits,
+                                      streamSize, requireAllocated, crypt, &streamTemp))
+        *stream = streamTemp.Detach();
+        return S_OK;
+    }
+#endif
 
     if (node.IsFlags_EXTENTS()) {
         if ((UInt32)numBlocks64 != numBlocks64)

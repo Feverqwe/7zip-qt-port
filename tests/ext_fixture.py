@@ -184,6 +184,30 @@ class Volume:
         return bytes(result)
 
 
+def wide_indirect_volume(oversize=False):
+    v = Volume("direct", block_bits=16)
+    v.content = {}
+    v.file_block = bytearray(60)
+    v.indirect = {}
+    v.add_data(0, b"head")
+    v.add_data((1 << 32) - 1, b"last indirect block")
+    v.size = ((1 << 32) + int(oversize)) * v.block_size
+    v.inode(v.file_inode, 0o100644, v.size, len(v.used) * v.block_size // 512)
+    v.data[v.file_inode + 40:v.file_inode + 100] = v.file_block
+    v.link_inode = v.table * v.block_size + 12 * 128
+    payload = b"independent readable file\n"
+    block = v.allocate(payload)
+    v.inode(v.link_inode, 0o100644, len(payload), v.block_size // 512)
+    v.put32(v.link_inode + 40, block)
+    v.directory()
+    extra = v.root_block * v.block_size + 24 + ((8 + len(NAME.encode()) + 3) & ~3)
+    v.data[extra + 7] = 1
+    v.files = {"link": payload}
+    v.superblock()
+    v.put32(1024 + 100, 2 | 8)
+    return v
+
+
 def readonly_volume(kind):
     v = Volume("direct")
     if kind == "directory":
@@ -291,6 +315,8 @@ if __name__ == "__main__":
     layout = sys.argv[1] if len(sys.argv) > 1 else "double-hole"
     if layout.startswith("extract-"):
         v = extraction_volume(layout.removeprefix("extract-"))
+    elif layout.startswith("indirect-wide"):
+        v = wide_indirect_volume(layout.endswith("oversize"))
     elif layout.startswith("readonly-"):
         v = readonly_volume(layout.removeprefix("readonly-"))
     elif layout.startswith("readlink-"):

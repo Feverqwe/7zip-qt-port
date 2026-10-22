@@ -147,6 +147,7 @@ add_library(sevenzip_ext MODULE
     src/CPP/7zip/Archive/ExtHandler.cpp src/exfatmodule.cpp
     src/extreader.c src/fs/readdir.c src/fs/libfs.c src/fs/ext4/super.c src/fs/ext4/crypto.c src/fs/ext4/balloc.c
     src/fs/ext4/inode.c src/fs/ext4/bitmap.c src/fs/ext4/inline.c src/fs/ext4/symlink.c
+    src/fs/ext4/indirect.c src/extindirectstream.cpp
     src/fs/ext4/block_validity.c src/lib/rbtree.c src/lib/find_bit.c src/extblockreader.c
     src/fs/ext4/xattr.c src/fs/ext4/dir.c src/fs/ext4/namei.c src/fs/ext4/hash.c
     src/fs/ext4/extents.c src/lib/crc/crc16.c src/lib/crc/crc32-main.c

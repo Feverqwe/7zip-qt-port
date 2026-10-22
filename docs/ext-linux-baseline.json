@@ -349,6 +349,7 @@
     "fs/ext4/ext4_extents.h",
     "fs/ext4/extents.c",
     "fs/ext4/hash.c",
+    "fs/ext4/indirect.c",
     "fs/ext4/inline.c",
     "fs/ext4/inode.c",
     "fs/ext4/namei.c",

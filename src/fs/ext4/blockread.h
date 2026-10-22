@@ -17,7 +17,13 @@
 #define EXT4_ERROR_INODE_ERR(inode, code, ...) ((inode)->error = -(code))
 struct rcu_head { int unused; };
 struct ext4_system_blocks { struct rb_root root; struct rcu_head rcu; };
-struct ext4_map_blocks { u64 m_pblk; u32 m_lblk, m_len; };
+struct ext4_map_blocks {
+    ext4_fsblk_t m_pblk;
+    ext4_lblk_t m_lblk;
+    unsigned int m_len;
+    unsigned int m_flags;
+    u64 m_seq;
+};
 struct inode *ext4_iget(struct super_block *, unsigned long, ext4_iget_flags);
 void iput(struct inode *);
 int ext4_map_blocks(void *, struct inode *, struct ext4_map_blocks *, int);

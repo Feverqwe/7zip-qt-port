@@ -359,6 +359,19 @@ class ExtTests(unittest.TestCase):
                     self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
                     self.assertEqual(result.stdout, expected)
 
+    def test_classic_ea_inode_requires_allocated_data_even_with_a_zero_value_hash(self):
+        volume = XattrVolume("xattrs-classic")
+        for name in ("data.bin:$XATTR.user.large", "alias.bin:$XATTR.user.large"):
+            result = self.run_image(volume, name=name)
+            self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+            self.assertEqual(result.stdout, volume.files[name])
+        volume = XattrVolume("xattrs-classic-hole")
+        listing = self.run_image(volume, command="l", name=None, streams=True)
+        self.limited_listing(volume, (b"data.bin:$XATTR.user.large", b"alias.bin:$XATTR.user.large"), listing)
+        result = self.run_image(volume, name="data.bin")
+        self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
+        self.assertEqual(result.stdout, volume.files["data.bin"])
+
     def test_bad_xattrs_are_omitted_without_hiding_readable_files_and_values(self):
         for fault in ("bad-data", "bad-hash", "bad-entry-hash", "missing-flag", "no-links",
                       "many-links", "no-refs", "size", "self", "unwritten", "bad-acl",

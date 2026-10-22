@@ -3962,6 +3962,14 @@ Are you sure you want to split archive into such volumes?</source>
             <translation>Каталог ext прочитан не полностью.</translation>
         </message>
         <message>
+            <source>Some ext file data is outside the reader's logical address range.</source>
+            <translation>Часть данных файла ext находится за пределами поддерживаемого диапазона адресов.</translation>
+        </message>
+        <message>
+            <source>Some ext file data is outside the reader's logical address range. Only addressable data is available; copying affected files reports an error.</source>
+            <translation>Часть данных файлов ext находится за пределами поддерживаемого диапазона адресов. Доступны только данные в этом диапазоне; копирование затронутых файлов завершится с ошибкой.</translation>
+        </message>
+        <message>
             <source>Some ext inodes could not be read. Files or metadata may be missing; readable files remain accessible.</source>
             <translation>Не удалось прочитать некоторые inode ext. Часть файлов или метаданных может отсутствовать. Доступные файлы можно читать.</translation>
         </message>
