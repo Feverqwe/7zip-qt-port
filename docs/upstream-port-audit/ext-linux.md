@@ -10,6 +10,61 @@ fs-verity now reuses the original shared Linux string scanner already linked
 for fscrypt. Source scope and validation are recorded with the
 [shared string-service transfer](erofs-linux.md#original-shared-string-services--2026-10-22).
 
+## fs-verity read-side source comparison — 2026-10-22
+
+Completed whole-unit comparison of all 24 functions present in `fs/ext4/verity.c`
+and `fs/verity/{open,hash_algs,pagecache,verify,signature}.c` against Linux
+`58161ead29e50d70a317ea26b472e0c7508e69da`. Eighteen complete bodies match
+after comments/whitespace; six retain the adaptations below. Original headers,
+descriptor/digest ABI, callers, verification state and error/cleanup branches
+were inspected with the archive's C reader, COM stream and policy owner.
+
+| Original read-side group | Compared result and archive boundary |
+| --- | --- |
+| ext4 metadata location/read | All five selected bodies checked. Metadata positioning, final-extent/descriptor bounds, descriptor reading and Merkle page acquisition match. `pagecache_read` only substitutes C byte-pointer arithmetic. The final extent query uses the already validated archive extent inventory; it is not a second tree decoder. |
+| Descriptor and tree initialization | Six bodies checked. Descriptor validation/acquisition, file-digest calculation and info destruction match. Tree-parameter initialization retains its calculation/validation/error branches but uses explicit 64-bit indices and omits the kernel's per-file-bitmap allocation cap. Info creation skips that bitmap because the archive uses bounded page-local verification state. |
+| Hash algorithms | All four bodies match: algorithm selection, padded-salt state, block hashing and buffer hashing. Algorithm table positions retain the on-disk ABI with sequential C11 initialization. SHA-256/SHA-512 primitives use existing SDK implementations behind the narrow hash service, including scalar two-input SHA-256 service. |
+| Page and block verification | The generic Merkle-page reader and five verification-context/pending-block bodies match. `is_hash_block_verified`/`verify_data_block` replace page-wide checked state with the page-local verified-block mask, use pointer-width-independent tree indices and C byte arithmetic; bottom-up hashing, expected/actual digest comparison and page release are retained. |
+| Builtin signatures | Complete `fsverity_verify_signature` control flow is retained with per-reader require/trust state in place of global kernel state and an owned-trust verification call in place of the global fs-verity keyring call. Formatted-digest bytes, unsigned-required refusal, empty-trust refusal, signature verification and error branches remain original. |
+
+Checked the page-mask adaptation with the complete original block-size gate:
+verity blocks are at least 1 KiB, no larger than the filesystem block or the
+fixed 64 KiB host page. Thus a page contains at most 64 hash blocks and its u64
+verified mask covers every legal position. The four cached pages retain their
+own verification bits and references; eviction releases their state, and pinned
+pages can be allocated outside the cache. The removed bitmap-size cap describes
+an allocation this host does not perform, rather than weakening tree/digest
+validation or allocating an unbounded per-file bitmap.
+
+Traced metadata read callbacks through the validated extent stream, including
+encrypted verity metadata, and the returned `CCachedInStream` data path. Physical
+metadata beyond logical EOF is available only to the verifier. Data blocks are
+zero-padded at logical EOF before hashing; failed verification does not publish
+the block or a valid cache tag. The owned stream retains its raw input, C reader
+and policy/trust lifetime after handler close/reopen/release. Source HRESULTs
+are retained separately from C errno/verification status at that boundary.
+
+The signature hook was traced through `CExtVerityPolicy`, the owned trust entry
+point and original `verify_pkcs7_signature`. A present signature requires valid
+explicit trust even when signatures are optional; required mode also rejects
+unsigned files. Invalid replacement properties do not publish a partially built
+trust policy. Host keyrings, LSM integrity publication, mount state, VFS caches,
+workqueues, enable/write ioctls and metadata mutation are not archive services.
+The full generic asymmetric/crypto dependency audit remains separate; this
+comparison establishes the verity caller and its trust boundary, not closure of
+every crypto primitive. No source write or journal replay is added.
+
+All 305 pinned reference hashes match. No production source changed during this
+comparison. The latest eight macOS ext/stream/fscrypt/xattr/provenance PASS results
+cover these same verity sources, including existing descriptor/tree corruption,
+source errors, signature/trust, encrypted composition and stream lifetime checks;
+their recorded incremental application build also applies. This docs-only change
+passed `git diff --check`; no redundant runtime batch or implementation-text test
+was added. The selected verity read-side source comparison is complete with the
+stated adaptations. Generic crypto/fscrypt and overall ext/parent closure remain
+separate; no new remote, full/slow, native-device, UI appearance or release-install
+acceptance is claimed.
+
 ## Directory source comparison and disconnected-cycle isolation — 2026-10-22
 
 Compared all 22 functions present in `fs/ext4/dir.c` and `fs/ext4/namei.c` with
