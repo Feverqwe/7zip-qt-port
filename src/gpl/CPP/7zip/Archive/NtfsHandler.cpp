@@ -634,13 +634,9 @@ bool CAttr::ParseExtents(CRecordVector<CExtent> &extents, const UInt64 numCluste
                         return false;
                     lcn -= distance;
                 } else {
-                    if (lcn == kEmptyExtent)
-                        lcn = v - 1;
-                    else {
-                        if (v > (UInt64)-1 - lcn)
-                            return false;
-                        lcn += v;
-                    }
+                    if (v > (UInt64)-1 - lcn)
+                        return false;
+                    lcn += v;
                 }
                 if (lcn >= numClustersMax || vcn - e.Virt > numClustersMax - lcn)
                     return false;

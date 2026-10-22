@@ -165,6 +165,20 @@ def volume(kind="base"):
     elif kind == "hole-first":
         attr = nonresident(attr, [(1, None), (31, lcn + 1)], len(ALPHA), flags=0x8000)
         expected["alpha"] = bytes(4096) + ALPHA[4096:]
+    elif kind in ("run-sentinel", "run-sentinel-overflow"):
+        overflow = kind == "run-sentinel-overflow"
+        attr = nonresident(attr, [(1, -1), (31, lcn + 1 if overflow else None)],
+                           len(ALPHA), flags=0x8000)
+        # Encoded -1 is Linux's special sparse LCN, not an allocated cluster.
+        put(attr, 64, "Q", 31 * 4096 if overflow else 0)
+        if overflow:
+            expected.pop("alpha")
+        else:
+            expected["alpha"] = bytes(len(ALPHA))
+    elif kind == "run-negative":
+        attr = nonresident(attr, [(1, lcn + 1), (31, lcn)], len(ALPHA))
+        image[(lcn + 1) * 4096:(lcn + 2) * 4096] = b"N" * 4096
+        expected["alpha"] = b"N" * 4096 + ALPHA[:4096] + b"N" * 4096 + ALPHA[8192:31 * 4096]
     elif kind == "initialized":
         put(attr, 56, "Q", 12345)
         expected["alpha"] = ALPHA[:12345] + bytes(len(ALPHA) - 12345)

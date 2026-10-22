@@ -214,6 +214,23 @@ class NtfsTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr.decode(errors="replace"))
         self.assertEqual(result.stdout, files["alpha"])
 
+    def test_runlist_sentinel_overflow_and_signed_deltas(self):
+        for kind in ("run-sentinel-overflow", "run-sentinel", "run-negative", "hole-first"):
+            image, files = volume(kind)
+            for engine in ("7z", "7zz"):
+                with self.subTest(kind=kind, engine=engine):
+                    result = self.run_image(engine, image, "x", "alpha")
+                    if "alpha" in files:
+                        self.assertEqual(result.returncode, 0, result.stderr)
+                        self.assertEqual(result.stdout, files["alpha"])
+                    else:
+                        self.assertNotEqual(result.returncode, 0)
+                        self.assertEqual(result.stdout, b"")
+                    for name in ("gamma", "данные 空"):
+                        result = self.run_image(engine, image, "x", name)
+                        self.assertEqual(result.returncode, 0, result.stderr)
+                        self.assertEqual(result.stdout, files[name])
+
     def test_linux_ea_values_and_ads_namespaces(self):
         for kind in ("ea-xattrs", "ea-xattrs-fragmented", "ea-xattrs-extension", "ea-xattrs-collision"):
             image, files = volume(kind)

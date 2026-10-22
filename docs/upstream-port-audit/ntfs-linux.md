@@ -4,6 +4,41 @@
 существующее чтение boot/MFT, атрибутов, sparse и compressed streams.
 Полная актуализация NTFS по Linux ещё не завершена.
 
+## Runlist arithmetic correction — 2026-10-22
+
+Compared the complete SDK `CAttr::ParseExtents` and its adapted bodies in both
+license variants with pinned Linux `run.c:run_unpack`, including signed delta
+decoding, special sparse LCN, ordinary offset-free sparse runs, VCN continuity,
+physical bounds and final extent length. Traced complete/partial DATA mapping
+and `CMftRec::GetStream` consumers: a rejected segment is unavailable data,
+not an implicit sparse hole. SDK vector ownership and stream construction
+remain the archive boundary; kernel run-tree insertion, deallocation and
+allocation-bitmap mutation are not transplanted into the read-only reader.
+The existing SDK end-marker tolerance remains bounded by exact final VCN
+agreement, as does Linux's exhausted-buffer case.
+
+Found a remaining mismatch: after the encoded special sparse LCN (`0 + -1`),
+a positive delta bypassed the overflow check and wrapped to a small physical
+LCN. Linux accepts the special sparse value but rejects that subsequent
+overflow. Removed the bypass in both SDK and GPL handlers, retaining signed
+underflow checks, ordinary sparse runs and the Linux special sparse case.
+No new decoder or license conditional was introduced.
+
+A deterministic mutation of the creator fixture reproduced false successful
+extraction in both engines before the fix. The regression now requires failure
+without invented output, preserves independent resident/nonresident files,
+and verifies exact bytes for encoded sparse runs, ordinary leading holes and
+valid negative LCN deltas. Every invocation checks that source bytes remain
+unchanged. Existing malformed-run tests cover underflow and volume bounds.
+
+Rebuilt the existing runtime and affected targets with compiler caches intact;
+all eight ordinary macOS suites passed: `ntfs`, `ntfs_stream`, `ntfs_directory`,
+`ntfs_record`, `ntfs_deleted`, `ntfs_security_list`, `ntfs_security` and
+`upstream_baseline` (26.22 s). All 32 pinned reference hashes match. The change
+is portable arithmetic; Linux/Windows and opt-in slow suites were not run.
+This closes the identified runlist defect, not the remaining boot/MFT and
+other NTFS component source audit or the overall filesystem goal.
+
 ## Compression and attribute-list source comparison — 2026-10-22
 
 Completed whole-unit comparison of the selected compressed-data/list component
