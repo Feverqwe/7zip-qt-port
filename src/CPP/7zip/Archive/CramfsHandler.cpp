@@ -102,11 +102,15 @@ static UInt32 GetMode(const Byte *p, bool be) { return be ? GetBe16(p) : GetUi16
 static bool IsDir(const Byte *p, bool be) { return MY_LIN_S_ISDIR(GetMode(p, be)); }
 static bool IsKnownMode(UInt32 mode) {
     return MY_LIN_S_ISDIR(mode) || MY_LIN_S_ISREG(mode) || MY_LIN_S_ISLNK(mode) ||
-           MY_LIN_S_ISCHR(mode) || MY_LIN_S_ISBLK(mode) || MY_LIN_S_ISFIFO(mode) || MY_LIN_S_ISSOCK(mode);
+           MY_LIN_S_ISCHR(mode) || MY_LIN_S_ISBLK(mode) || MY_LIN_S_ISFIFO(mode) ||
+           MY_LIN_S_ISSOCK(mode);
 }
 static const char *const kDirectoryLimitations =
     "Some CramFS directories could not be read completely. Files or names may be missing. Readable "
     "files remain accessible.";
+static const char *const kSizeLimitations =
+    "The declared CramFS volume size does not bound all file references reliably. Reading uses "
+    "the available source bounds. Some files may be damaged or unreadable.";
 
 static UInt32 GetSize(const Byte *p, bool be)
 {
@@ -180,8 +184,6 @@ struct CHeader
   unsigned GetMethod() const { return (unsigned)(Flags >> k_Flags_Method_Shift) & k_Flags_Method_Mask; }
 };
 
-
-
 Z7_CLASS_IMP_CHandler_IInArchive_1(
   IInArchiveGetStream
 )
@@ -199,6 +201,8 @@ Z7_CLASS_IMP_CHandler_IInArchive_1(
   bool _linuxRead;
   bool _crcUnavailable;
   bool _directoryLimitations;
+  bool _sizeLimitations;
+  bool _extentUnknown;
   HRESULT _directoryCallbackResult;
   std::set<UInt32> _activeDirectories;
   IArchiveOpenCallback *_openCallback;
@@ -252,13 +256,15 @@ public:
 #ifdef SEVENZIP_LINUX_CRAMFS
   static int InflateLinux(void *, void *, size_t, const void *, size_t);
   static int ReadLinux(void *, UInt32, void *, size_t);
+  static int InspectLinux(void *, UInt32, void *, size_t);
+  HRESULT CheckExtents();
   HRESULT _linuxReadResult;
 #endif
   };
 
   static const Byte kProps[] = {
-      kpidPath,   kpidIsDir,   kpidSize,        kpidPackSize,   kpidPosixAttrib,
-      kpidUserId, kpidGroupId, kpidDeviceMajor, kpidDeviceMinor, kpidError
+      kpidPath,    kpidIsDir,       kpidSize,        kpidPackSize, kpidPosixAttrib, kpidUserId,
+      kpidGroupId, kpidDeviceMajor, kpidDeviceMinor, kpidError
       // kpidOffset
   };
 
@@ -416,14 +422,16 @@ public:
           _crcUnavailable = true;
           return S_OK;
       };
+      if (_h.Size < _headerOffset + kHeaderSize + kNodeSize)
+          return unavailable(S_FALSE);
       HRESULT result = InStream_SeekSet(_stream, _volumePos + _headerOffset);
       if (result != S_OK)
           return unavailable(result);
       Byte buf[1 << 16];
       UInt32 crc = CRC_INIT_VAL;
       UInt32 pos = _headerOffset;
-      while (pos < _size) {
-          size_t part = _size - pos;
+      while (pos < _h.Size) {
+          size_t part = _h.Size - pos;
           if (part > sizeof(buf))
               part = sizeof(buf);
           result = ReadStream_FALSE(_stream, buf, part);
@@ -482,7 +490,7 @@ HRESULT CHandler::Open2(IInStream *inStream) {
         if (_method == k_Flags_Method_NONE)
             _method = k_Flags_Method_ZLIB;
         _blockSizeLog = kBlockSizeLog + (_linuxRead ? 0 : _h.GetBlockSizeShift());
-        if (_h.Size < _headerOffset + sizeof(buf) || (!_linuxRead && _h.Size > kArcSizeMax))
+        if (!_linuxRead && (_h.Size < _headerOffset + sizeof(buf) || _h.Size > kArcSizeMax))
             return S_FALSE;
         _phySize = _h.Size;
     } else {
@@ -502,18 +510,29 @@ HRESULT CHandler::Open2(IInStream *inStream) {
         if (available < volumePos)
             return S_FALSE;
         available -= volumePos;
-        _size = available < _h.Size ? (UInt32)available : _h.Size;
+        _size = (UInt32)MyMin(available, (UInt64)0xFFFFFFFFu);
+        UpdatePhySize(_headerOffset + sizeof(buf));
         UInt32 headerCache;
         RINOK(EnsureData(_headerOffset, sizeof(buf), headerCache))
         if (_h.IsVer2()) {
-            if (_size != _h.Size)
+            if (available < _h.Size) {
                 _errorFlags = kpv_ErrorFlags_UnexpectedEnd;
-            else {
+                _phySize = _size;
+            } else {
                 RINOK(CheckCrc())
             }
         } else
             _phySize = _size;
-        return OpenDir(-1, headerCache + kHeaderSize, 0);
+        RINOK(OpenDir(-1, headerCache + kHeaderSize, 0))
+#ifdef SEVENZIP_LINUX_CRAMFS
+        if (_h.IsVer2() && available > _h.Size) {
+            RINOK(CheckExtents())
+            _sizeLimitations = _extentUnknown || _phySize > _h.Size;
+            if (!_sizeLimitations)
+                _size = _h.Size;
+        }
+#endif
+        return S_OK;
     }
     _data = (Byte *)MidAlloc(_h.Size);
     if (!_data)
@@ -701,6 +720,8 @@ Z7_COM7F_IMF(CHandler::Close())
   _linuxRead = false;
   _crcUnavailable = false;
   _directoryLimitations = false;
+  _sizeLimitations = false;
+  _extentUnknown = false;
   _directoryCallbackResult = S_OK;
   _activeDirectories.clear();
   _method = k_Flags_Method_ZLIB;
@@ -750,6 +771,11 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID propID, PROPVARIANT *value)) {
                 reasons += '\n';
             reasons += kDirectoryLimitations;
         }
+        if (_sizeLimitations) {
+            if (!reasons.IsEmpty())
+                reasons += '\n';
+            reasons += kSizeLimitations;
+        }
         if (!reasons.IsEmpty())
             prop = reasons;
         break;
@@ -764,6 +790,11 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID propID, PROPVARIANT *value)) {
             if (!warning.IsEmpty())
                 warning += '\n';
             warning += kDirectoryLimitations;
+        }
+        if (_sizeLimitations) {
+            if (!warning.IsEmpty())
+                warning += '\n';
+            warning += kSizeLimitations;
         }
         if (!warning.IsEmpty())
             prop = warning;
@@ -797,7 +828,8 @@ Z7_COM7F_IMF(CHandler::GetArchiveProperty(PROPID propID, PROPVARIANT *value)) {
             prop = _h.NumFiles;
         break;
     case kpidPhySize:
-        prop = _phySize;
+        if (!_extentUnknown)
+            prop = _phySize;
         break;
     case kpidOffset:
         prop.Set_Int64(_arcOffset);
@@ -894,6 +926,41 @@ HRESULT CCramfsInStream::ReadBlock(UInt64 blockIndex, Byte *dest, size_t blockSi
 }
 
 #ifdef SEVENZIP_LINUX_CRAMFS
+int CHandler::InspectLinux(void *context, UInt32 offset, void *dest, size_t size) {
+    CHandler *self = static_cast<CHandler *>(context);
+    const int result = ReadLinux(context, offset, dest, size);
+    if (!result)
+        self->UpdatePhySize(offset + (UInt32)size);
+    return result;
+}
+
+HRESULT CHandler::CheckExtents() {
+    FOR_VECTOR(i, _items) {
+        const Byte *p = _data + _items[i].Offset;
+        if (IsDir(p, _h.be))
+            continue;
+        const UInt32 size = GetDataSize(p, _h.be);
+        const UInt32 blocks = GetNumBlocks(size);
+        const UInt32 table = GetOffset(p, _h.be);
+        cramfs_source source = {NULL, _size, _h.be, this, NULL, InspectLinux};
+        for (UInt32 block = 0; block < blocks; ++block) {
+            if (_openCallback && (block & 255) == 0)
+                RINOK(_openCallback->SetCompleted(NULL, NULL))
+            cramfs_extent extent;
+            _linuxReadResult = S_OK;
+            if (cramfs_map_block(&source, table, size, block, &extent)) {
+                if (_linuxReadResult == E_ABORT || _linuxReadResult == E_OUTOFMEMORY)
+                    return _linuxReadResult;
+                _extentUnknown = true;
+                break;
+            }
+            if (extent.length)
+                UpdatePhySize(extent.start + extent.length);
+        }
+    }
+    return S_OK;
+}
+
 int CHandler::ReadLinux(void *context, UInt32 offset, void *dest, size_t size) {
     CHandler *self = static_cast<CHandler *>(context);
     if (self->_linuxReadResult != S_OK)

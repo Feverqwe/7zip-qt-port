@@ -84,6 +84,7 @@ class Input final : public IInStream, public CMyUnknownImp {
     bool fail = false;
     HRESULT failure = E_FAIL;
     UInt64 failAt = UINT64_MAX;
+    UInt32 failReadSize = 0;
     bool shortRead = false;
     explicit Input(QByteArray bytes, bool distant = false, UInt32 directory = 0)
         : bytes_(std::move(bytes)) {
@@ -107,7 +108,8 @@ class Input final : public IInStream, public CMyUnknownImp {
             *processed = 0;
         if (fail)
             return failure;
-        if (position_ <= failAt && size > failAt - position_)
+        if ((!failReadSize || size == failReadSize) && position_ <= failAt &&
+            size > failAt - position_)
             return shortRead ? S_OK : failure;
         size = UInt32(qMin<UInt64>(size, position_ < length_ ? length_ - position_ : 0));
         for (UInt32 i = 0; i < size; ++i) {
@@ -125,6 +127,7 @@ class Input final : public IInStream, public CMyUnknownImp {
             *processed = size;
         return S_OK;
     }
+    void put32(int offset, quint32 value) { qToLittleEndian(value, bytes_.data() + offset); }
     Z7_COM7F_IMF(Seek(Int64 offset, UInt32 origin, UInt64 *position)) override {
         const Int64 base = origin == STREAM_SEEK_SET   ? 0
                            : origin == STREAM_SEEK_CUR ? Int64(position_)
@@ -200,6 +203,18 @@ class DirectoryProgressFailure final : public IArchiveOpenCallback, public CMyUn
         return files && *files >= 3 ? E_FAIL : S_OK;
     }
 };
+class ExtentProgressFailure final : public IArchiveOpenCallback, public CMyUnknownImp {
+    Z7_COM_UNKNOWN_IMP_1(IArchiveOpenCallback)
+    bool fileSeen_ = false;
+
+  public:
+    Z7_COM7F_IMF(SetTotal(const UInt64 *, const UInt64 *)) override { return S_OK; }
+    Z7_COM7F_IMF(SetCompleted(const UInt64 *files, const UInt64 *bytes)) override {
+        if (files && *files)
+            fileSeen_ = true;
+        return fileSeen_ && !files && !bytes ? E_ABORT : S_OK;
+    }
+};
 } // namespace
 
 class CramfsModuleTests final : public QObject {
@@ -249,6 +264,68 @@ class CramfsModuleTests final : public QObject {
         QCOMPARE(archive_->Extract(&index, 1, 0, callback), S_OK);
         QCOMPARE(callback->result, Int32(NArchive::NExtract::NOperationResult::kOK));
         QCOMPARE(callback->output->bytes, contents);
+    }
+    void extentInspectionRetainsFailuresAndHealthyBounds() {
+        createArchive();
+        auto bytes = fixture();
+        const int table = bytes.size() - contents.size() - 8;
+        qToLittleEndian(quint32(0x801), bytes.data() + 520);
+        qToLittleEndian(quint32(table + 8), bytes.data() + 516);
+        qToLittleEndian(quint32(0), bytes.data() + 544);
+        qToLittleEndian(quint32(CrcCalc(bytes.constData() + 512, table + 8 - 512)),
+                        bytes.data() + 544);
+        CMyComPtr<IArchiveOpenCallback> cancelled = new ExtentProgressFailure;
+        QCOMPARE(open(bytes, cancelled), E_ABORT);
+        UInt32 count = 99;
+        QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, 0u);
+        for (HRESULT failure : {E_FAIL, E_ABORT, E_OUTOFMEMORY}) {
+            auto *input = new Input(bytes);
+            CMyComPtr<IInStream> source = input;
+            input->failAt = quint64(table + 4);
+            input->failReadSize = 4;
+            input->failure = failure;
+            QCOMPARE(archive_->Open(source, nullptr, nullptr), failure == E_FAIL ? S_OK : failure);
+            if (failure == E_FAIL) {
+                NWindows::NCOM::CPropVariant physical;
+                QCOMPARE(archive_->GetArchiveProperty(kpidPhySize, &physical), S_OK);
+                QCOMPARE(physical.vt, VARTYPE(VT_EMPTY));
+                input->failAt = UINT64_MAX;
+                CMyComPtr2<IArchiveExtractCallback, Extract> callback;
+                callback.Create_if_Empty();
+                const UInt32 index = 0;
+                QCOMPARE(archive_->Extract(&index, 1, 0, callback), S_OK);
+                QCOMPARE(callback->result, Int32(NArchive::NExtract::NOperationResult::kOK));
+                QCOMPARE(callback->output->bytes, contents);
+            }
+        }
+        QCOMPARE(open(fixture()), S_OK);
+    }
+    void healthyDeclaredBoundsRemainEnforcedAfterInspection() {
+        createArchive();
+        auto bytes = fixture();
+        const int table = bytes.size() - contents.size() - 8;
+        qToLittleEndian(quint32(0x801), bytes.data() + 520);
+        qToLittleEndian(quint32(bytes.size()), bytes.data() + 516);
+        qToLittleEndian(quint32(0), bytes.data() + 544);
+        qToLittleEndian(quint32(CrcCalc(bytes.constData() + 512, bytes.size() - 512)),
+                        bytes.data() + 544);
+        const int tail = (bytes.size() + 3) & ~3;
+        bytes.resize(tail);
+        bytes += QByteArray(4096, 'X');
+        auto *input = new Input(bytes);
+        CMyComPtr<IInStream> source = input;
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
+        NWindows::NCOM::CPropVariant warning;
+        QCOMPARE(archive_->GetArchiveProperty(kpidWarning, &warning), S_OK);
+        QCOMPARE(warning.vt, VARTYPE(VT_EMPTY));
+        input->put32(table, quint32(0xc0000000 | (tail / 4)));
+        CMyComPtr2<IArchiveExtractCallback, Extract> callback;
+        callback.Create_if_Empty();
+        const UInt32 index = 0;
+        QCOMPARE(archive_->Extract(&index, 1, 0, callback), S_OK);
+        QCOMPARE(callback->result, Int32(NArchive::NExtract::NOperationResult::kDataError));
+        QVERIFY(callback->output->bytes.isEmpty());
     }
     void randomAccessAndStreamLifetime() {
         QCOMPARE(open(fixture()), S_OK);

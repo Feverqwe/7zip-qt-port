@@ -1,5 +1,73 @@
 # Cramfs read-side modernization against Linux
 
+## Declared size and available source bounds — 2026-10-22
+
+Recompared the pinned Linux `cramfs_read_super`, `cramfs_blkdev_read`,
+`cramfs_direct_read`, `cramfs_read_folio` and MTD acquisition with the complete
+adapter opening, metadata, checksum, stream and property consumers. Linux's
+block-device reader uses device bounds rather than treating `super.size` as an
+inode-data boundary; the MTD direct reader does enforce that declared size.
+The archive adapter previously imposed the latter restriction on every source,
+including refusing a readable volume whose declared size did not cover its
+header. The selected archive scenario now permits useful bounded reading with
+an explicit indication when the declared size is unreliable.
+
+The pointer-mapping segment of the original Linux folio implementation is
+factored into `cramfs_map_inode_block` in the same C translation unit. Both
+folio reads and optional extent inspection call that one implementation;
+there is no independent C++ block mapper. Existing endian loads, overflow
+guards, source bounds, hole handling and final raw-page correction remain.
+Mapping failures are checked before decompression/copying the temporary page.
+The narrow C bridge exposes the mapped extent without decoding payload data.
+
+When available bytes extend beyond a v2 declared size, the adapter inspects
+published file mappings against the actual bounded source. References beyond
+the declaration, an undersized header declaration or an unavailable mapping
+produce the existing per-opening read-only consent flow and persistent badge.
+Ordinary metadata/mapping failures retain the supported readable subset;
+cancellation, OOM and progress-callback failures remain fatal. An unavailable
+mapping leaves physical size unknown rather than inventing a verified end.
+Known extents extend physical-size accounting only as far as referenced data.
+For an overdeclared volume, the published physical size is bounded by the
+available source while the existing short-source warning remains. Publishing
+the unavailable declared extent made the SDK opener synthesize a hard
+unexpected-end error before the application could offer its read-only choice.
+If all inspected references fit the declaration, private file streams retain
+the declared bound: unrelated trailing bytes do not enable a recovery mode or
+silently become readable after an on-source pointer changes. CRC still covers
+only the declared volume; a declaration too short for its checksum header is
+explicitly unverified. No write, repair or replay is introduced. The legacy
+standalone profile keeps its existing declared-size acceptance.
+
+Small process fixtures cover both endiannesses, native prefixes, zero and
+underdeclared sizes, ordinary/raw/direct mappings, exact extracted bytes and
+the clean trailing-data control. ABI tests inject source failure, Abort/OOM
+and optional-inspection cancellation, verify reuse and unknown physical size,
+and mutate a valid pointer after opening to prove the retained source bound.
+The existing EN/RU UI scenario checks consent, cancellation, geometry, the
+visible mode and copying without source modification for the new limitation.
+An initial validation selection ran the general filesystem UI scenario rather
+than the separately registered `filesystem_cramfs_read_ui`. The exact Cramfs
+suite exposed the overdeclared-size refusal in EN/RU on all three platforms;
+that failure drove the physical-size correction above.
+
+Local final `cramfs`, `cramfs_module`, `filesystem_cramfs_read_ui`,
+`upstream_baseline` and `upstream_inventory` checks passed (15.59 seconds).
+Linux/Windows CLI/source checks passed in `20261022T064031Z-682e9e7a`
+(2.14/13.58 seconds); ABI plus the exact Cramfs UI suite passed in
+`20261022T064125Z-ef64c779` (4.82/14.03 seconds). Current Cocoa widget JSON
+confirms that the EN/RU limitation labels fit; the existing scenario also
+checks the persistent badge at normal and compact window sizes. The final
+application build passed. A subsequent test-only clarification makes the
+cancellation callback wait until a file is published, ensuring cancellation
+reaches extent inspection rather than initial metadata loading; its local ABI
+check and both runners passed (`20261022T064218Z-5cce7735`). These are native
+Cocoa and offscreen Linux/Windows behavior and
+geometry checks, not rendered Windows visual-parity acceptance.
+This closes the declared-size scenario, while the final
+remaining Cramfs source comparison and general embedded-origin inference remain
+open. No full/slow suite or native-kernel/device acceptance is claimed.
+
 ## File I/O isolation and optional packed statistics — 2026-10-22
 
 Recompared Linux folio/error completion and read services, the adapted C I/O
@@ -54,8 +122,8 @@ used; temporary fixture owners cleaned their data and compiler caches/build
 trees/current review evidence were retained.
 
 This closes the selected file-error/statistics scenario, not the entire
-cramfs source audit; declared-size/source-bound acceptance, prefix/physical
-reporting and the final read-side comparison remain open.
+cramfs source audit. Later sections record declared-size and volume-coordinate
+corrections; the final read-side comparison remains open.
 
 ## Inode data presence and informational counts — 2026-10-22
 
@@ -360,7 +428,7 @@ and on Linux/Windows (receipt `20261022T062607Z-cc27d7bc`); the local module ABI
 suite and application build passed too. The module ABI suite passed on both
 runners in receipt `20261022T062944Z-191d0d83`. These cases do not establish general inference of the
 origin of an embedded boot-prefixed volume. Declared-size/source-bound behavior
-and the remaining Cramfs source review remain open.
+is covered above; the remaining Cramfs source review remains open.
 
 ## Source comparison
 
@@ -391,8 +459,9 @@ a data error before the fix and passed through both engines afterwards.
 The subsequent integrated scenario adds the Linux extended-pointer read path,
 superblocks at byte 512, metadata validation and application deployment.
 
-`src/fs/cramfs/inode.c` retains the complete C body of Linux
-`cramfs_read_folio`. The userspace services replace VFS/folio mapping, locking,
+`src/fs/cramfs/inode.c` retains the Linux `cramfs_read_folio` read algorithm,
+with its pointer mapping factored into a shared C function as recorded above.
+The userspace services replace VFS/folio mapping, locking,
 bounded block acquisition and decompression. Native word loads become bounded,
 endian-aware loads. Input uses the original seekable engine stream; metadata
 is buffered separately, so direct extents beyond the old 272 MiB whole-image

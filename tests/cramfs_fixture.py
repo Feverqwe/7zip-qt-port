@@ -18,6 +18,14 @@ def checksum(data, endian="<", prefix=0):
     struct.pack_into(endian + "I", data, prefix + 32, zlib.crc32(data[prefix:]))
 
 
+def declare_size(data, size, endian="<", prefix=0):
+    data = bytearray(data)
+    struct.pack_into(endian + "I", data, prefix + 4, size)
+    struct.pack_into(endian + "I", data, prefix + 32, 0)
+    struct.pack_into(endian + "I", data, prefix + 32, zlib.crc32(data[prefix:size]))
+    return data
+
+
 def image(blocks, endian="<", storage=None, prefix=0, shifted=0, reverse=False,
           name=b"data.bin", short_zlib=False, version2=True, mode=0o100644, directory=None,
           legacy_block_bits=None):
@@ -109,6 +117,8 @@ if __name__ == "__main__":
     elif state == "counts":
         struct.pack_into("<II", data, 512 + 40, 0xffffffff, 0xffffffff)
         checksum(data, prefix=512)
+    elif state == "size":
+        data = declare_size(data, len(data) - 1, prefix=512)
     elif state.startswith("directory"):
         data, files, fault_offset = partial_directory(state)
     elif state != "clean":

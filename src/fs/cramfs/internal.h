@@ -48,4 +48,5 @@ const void *cramfs_read(struct super_block *, u32, u32);
 u32 cramfs_read_u32(struct super_block *, u32);
 uint16_t cramfs_read_u16(struct super_block *, u32);
 int cramfs_read_folio(struct file *, struct folio *);
+int cramfs_map_inode_block(struct inode *, u32, struct cramfs_extent *);
 #endif

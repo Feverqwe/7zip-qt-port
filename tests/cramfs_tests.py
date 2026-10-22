@@ -6,7 +6,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
-from cramfs_fixture import image, checksum, inode, partial_directory
+from cramfs_fixture import image, checksum, inode, partial_directory, declare_size
 
 RUNTIME = Path(sys.argv.pop(1))
 MODULE = Path(sys.argv.pop(1))
@@ -96,6 +96,49 @@ class CramfsTests(unittest.TestCase):
                         extracted = self.run_image(data, engine, forced=forced)
                         self.assertIn(extracted.returncode, (0, 1), extracted.stderr)
                         self.assertEqual(extracted.stdout, b"volume payload")
+
+    def test_underdeclared_size_keeps_referenced_data_with_explicit_limitations(self):
+        for endian in ("<", ">"):
+            for prefix in (0, 512):
+                for kind in ("zlib", "raw", "direct-zlib", "direct-raw"):
+                    payload = b"A" * 4096 + b"tail"
+                    original = image([payload[:4096], payload[4096:]], endian,
+                                     [kind, kind], prefix=prefix)
+                    for size in (0, prefix + 76, len(original) - 1):
+                        with self.subTest(endian=endian, prefix=prefix, kind=kind, size=size):
+                            data = declare_size(original, size, endian, prefix)
+                            listing = self.run_image(data, command="l", forced=False)
+                            self.assertIn(listing.returncode, (0, 1), listing.stderr)
+                            self.assertIn(b"declared CramFS volume size", listing.stdout)
+                            self.assertIn(b"Read-only limitations =", listing.stdout)
+                            extracted = self.run_image(data, forced=False)
+                            self.assertIn(extracted.returncode, (0, 1), extracted.stderr)
+                            self.assertEqual(extracted.stdout, payload)
+
+    def test_trailing_source_does_not_enable_limited_reading_or_extend_checksum(self):
+        for prefix in (0, 512):
+            original = image([b"payload"], storage=["direct-raw"], prefix=prefix)
+            listing = self.run_image(original + b"unrelated trailing data", command="l")
+            self.assertEqual(listing.returncode, 0, listing.stderr)
+            self.assertNotIn(b"Read-only limitations =", listing.stdout)
+            self.assertNotIn(b"declared CramFS volume size", listing.stdout)
+            extracted = self.run_image(original + b"unrelated trailing data")
+            self.assertEqual(extracted.returncode, 0, extracted.stderr)
+            self.assertEqual(extracted.stdout, b"payload")
+
+    def test_overdeclared_size_does_not_refuse_readable_file(self):
+        for prefix in (0, 512):
+            data = bytearray(image([b"readable prefix"], storage=["direct-raw"], prefix=prefix))
+            struct.pack_into("<I", data, prefix + 4, len(data) + 16)
+            for forced in (False, True):
+                with self.subTest(prefix=prefix, forced=forced):
+                    listing = self.run_image(data, command="l", forced=forced)
+                    self.assertIn(listing.returncode, (0, 1), listing.stderr)
+                    self.assertNotIn(b"ERRORS:", listing.stdout)
+                    self.assertIn(b"source is shorter than the declared volume", listing.stdout)
+                    extracted = self.run_image(data, forced=forced)
+                    self.assertIn(extracted.returncode, (0, 1), extracted.stderr)
+                    self.assertEqual(extracted.stdout, b"readable prefix")
 
     def test_shared_direct_data_and_short_uncompressed_tail(self):
         data = bytearray(image([b"A" * 4096] * 2, storage=["direct-raw"] * 2))

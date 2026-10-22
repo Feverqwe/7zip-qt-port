@@ -31,6 +31,16 @@ uint16_t cramfs_read_u16(struct super_block *sb, u32 offset) {
                                  : (uint16_t)(p[0] | (p[1] << 8));
 }
 
+int cramfs_map_block(const struct cramfs_source *source, uint32_t table, uint32_t size,
+                     uint32_t block, struct cramfs_extent *extent) {
+    struct super_block sb = {0};
+    sb.source = source;
+    struct inode inode = {&sb, size, table};
+    if (table > source->size || ((uint64_t)size + PAGE_SIZE - 1) / PAGE_SIZE * 4 > source->size - table)
+        return -1;
+    return cramfs_map_inode_block(&inode, block, extent);
+}
+
 int cramfs_read_block(const struct cramfs_source *source, uint32_t table, uint32_t size,
                      uint32_t block, unsigned char page[4096]) {
     struct super_block sb = {0};

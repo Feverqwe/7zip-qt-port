@@ -58,6 +58,10 @@ UString QtArchiveDiagnosticText(const UString &source) {
     }
     const char *const warnings[] = {
         QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                          "The declared CramFS volume size does not bound all file references "
+                          "reliably. Reading uses the available source bounds. Some files may be "
+                          "damaged or unreadable."),
+        QT_TRANSLATE_NOOP("SevenZipDiagnostics",
                           "Some CramFS directories could not be read completely. Files or names "
                           "may be missing. Readable files remain accessible."),
         QT_TRANSLATE_NOOP("SevenZipDiagnostics",

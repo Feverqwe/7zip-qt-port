@@ -3910,6 +3910,10 @@ Are you sure you want to split archive into such volumes?</source>
             <translation>Некоторые списки блоков файлов SquashFS недоступны. Можно скопировать только читаемые части затронутых файлов; при неполном копировании будет сообщено об ошибке.</translation>
         </message>
         <message>
+            <source>The declared CramFS volume size does not bound all file references reliably. Reading uses the available source bounds. Some files may be damaged or unreadable.</source>
+            <translation>Объявленный размер тома CramFS не позволяет надёжно определить границы данных файлов. Чтение ограничено доступным источником. Некоторые файлы могут быть повреждены или недоступны.</translation>
+        </message>
+        <message>
             <source>Some CramFS directories could not be read completely. Files or names may be missing. Readable files remain accessible.</source>
             <translation>Некоторые каталоги CramFS прочитаны не полностью. Файлы или имена могут отсутствовать. Читаемые файлы остаются доступны.</translation>
         </message>
