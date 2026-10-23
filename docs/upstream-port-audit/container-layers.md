@@ -172,7 +172,7 @@ Source inspection on 2026-10-23 identifies the remaining production dispatch:
 
 | Operation | Current owner and remaining boundary |
 | --- | --- |
-| Catalog discovery | `ArchiveCodecProbe` runs `i` to obtain the engine version and deployment libraries before native loading. |
+| Catalog discovery | Native `LoadDll`/`LoadExternalModules`/`SetLibCodecs` supply providers and version metadata without executing the console. Deployment images retain provider lifetimes; optional console copying remains for unmigrated consumers. |
 | Listing and testing | `ArchiveBackend::startNativeRead` uses official Open/Extract with a catalog; no-catalog consumers still use CLI fallback and technical-listing parsing. |
 | Extraction to a destination | `ArchiveBackend::extract` still constructs CLI passes for selection and overwrite handling. Source Agent/GUI extraction already has native callbacks and path policy. |
 | Extraction of one source entry | With a catalog, the joined read worker now opens and extracts the selected native index into a private stream. The no-catalog CLI fallback remains. |
@@ -185,8 +185,9 @@ editing/publication. The retained native reader path must remain independent of
 backend/window lifetime. Process completion owns continuations, temporary-file
 cleanup and publication; migrating dispatch must migrate these responsibilities
 together. Hashing and benchmark providers already use source/native workers.
-Codec discovery, runtime-image ownership and no-catalog consumers must migrate
-before removing the shared CLI transport.
+No-catalog consumers and the remaining operations must migrate before removing
+the shared CLI transport. Native discovery and retained runtime-image ownership
+are now independent of console availability.
 
 ### Native extraction of one source entry
 
@@ -247,3 +248,63 @@ listing/testing remain covered. Incremental build trees and compiler caches were
 retained; disposable fixtures clean themselves up. No slow suite or full gate
 was run. This accepts the selected native extraction path, not completion of
 the remaining CLI operations listed above.
+
+### Native catalog discovery
+
+Starting at `cfb18b78`, discovery no longer launches `7zz i` or parses its banner
+and library listing. Source reference: <https://github.com/ip7z/7zip.git>,
+`9128b80e3a471108678e2b3ec3c985861c8d7b0f`,
+`CPP/7zip/UI/Common/LoadCodecs.cpp/.h`: complete `CCodecs::Load`, `LoadDll`,
+`IsSupportedDll`, `LoadDllsFromFolder`, provider registration, `SetLibCodecs`,
+`CloseLibs` and their version/property and registry dependencies were compared
+with the existing port before the change and reviewed again afterward.
+The existing mixed-revision baselines remain authoritative; this comparison
+does not relabel the whole adapted module as a new upstream revision.
+
+Original native module ABI/version queries, directory enumeration, provider
+registration and diagnostics remain the functional owners. The original
+`GetBaseFolderPrefixFromRegistry` body is exposed through a narrow overload so
+the Qt-selected deployment can supply its starting directory. The zero-argument
+source caller retains its original starting point. The Qt adapter resolves its
+deployment paths and schedules loading; it does not replace the Windows
+registry search or infer codecs from console text. Module-only explicit loading
+retains its version-check contract. Deployment loading accepts usable external
+formats when the main module is missing and preserves the nonfatal diagnostic.
+
+Immutable module/plugin assets, original-path diagnostics, joined cancellation,
+deadlines and retained generations remain in the existing owners. Native DLL
+entrypoints cannot be safely interrupted; cancellation discards their result
+after the joined load returns. An optional console copy is retained solely for
+the remaining process consumers, without making native discovery depend on it.
+Console information output and its text transport are omitted from discovery.
+
+The affected native listing also now uses original `GetFormatNamePtr` like
+Console `List.cpp`, preserving the parser (`#`) type when no format index exists.
+Existing parser behavior coverage detects this missing projection. Opening tests
+now verify extracted stream bytes after caller/manager release and retained
+catalog extraction after failed replacement; obsolete spool-presence and
+process-listing hooks no longer describe those native paths.
+
+Focused acceptance covers discovery without a console (including a hanging or
+wrong-version console), module/provider warnings and failed replacement,
+plugin-only deployments, Unicode/space names, native list/test/source extraction,
+deadline/cancel/retry/destruction, opening and retained-layer consumers.
+Source comparison establishes the selected loader/adapter scope separately
+from runtime checks; ordinary destination extraction, writes and no-catalog
+fallbacks remain migration work.
+
+Runtime acceptance on 2026-10-23 selected `codec_probe`, `codec_catalog`,
+`external_codecs`, `native_listing`, `native_archive_test`,
+`native_source_extract`, `agent_opening`, `native_folder_opening`,
+`archive_layer_lifetime`, `associated_window` and `codec_capabilities`.
+macOS passed the eleven-suite set (11.61 s), the expanded plugin-only external
+codec cases (4.56 s), and the affected probe/opening rechecks after fixture
+isolation. Initial Linux/Windows receipt `20261023T194744Z-58670aea` passed nine
+suites and exposed two test fixtures accidentally discovering sibling build
+plugins. The slow modules now live in private temporary deployments. Linux
+passed both affected suites in `20261023T195103Z-e9baeeef` (9.65 s).
+Windows passed both in desktop receipt `20261023T195213Z-954bf7bf`.
+These runner checks cover DLL/so loading and the Windows registry boundary. Existing
+incremental trees and compiler caches were retained. Private fixtures clean up
+automatically; foreign runner artifacts were preserved. Host storage remained
+healthy, with no VHDX growth. No slow suite, full gate or visual check was run.

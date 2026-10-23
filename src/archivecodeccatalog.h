@@ -24,11 +24,12 @@ class ArchiveCodecCatalog final {
     HRESULT result_ = E_FAIL;
     QString error_;
     UInt32 version_ = 0;
-    HRESULT loadEnginePlugins(const QString &module, const QStringList &engineLibraries);
+    HRESULT loadDeploymentPlugins();
 
   public:
-    ArchiveCodecCatalog(const QString &module, UInt32 expectedVersion,
-                        const QStringList &engineLibraries = {}, const QString &engine = {});
+    enum class Scope { Module, Deployment };
+    ArchiveCodecCatalog(const QString &module, UInt32 expectedVersion, Scope scope = Scope::Module,
+                        const QString &engine = {});
     ~ArchiveCodecCatalog();
     ArchiveCodecCatalog(const ArchiveCodecCatalog &) = delete;
     ArchiveCodecCatalog &operator=(const ArchiveCodecCatalog &) = delete;

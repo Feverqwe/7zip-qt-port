@@ -12,7 +12,7 @@ struct ArchiveCodecProbeResult {
     std::shared_ptr<const ArchiveCodecCatalog> catalog;
 };
 
-// Process-version/discovery glue; format semantics remain in native CCodecs.
+// Joined native discovery; format semantics and ABI checks remain in CCodecs.
 class ArchiveCodecProbe final : public QObject {
     struct Work;
     std::unique_ptr<QThread> loader_;

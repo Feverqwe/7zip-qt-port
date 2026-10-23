@@ -97,6 +97,11 @@ Widgets invoke operations through this boundary and do not construct `7zz` synta
 Source extract/update callbacks and Agent folder bindings retain the original
 functional owners.
 
+Codec discovery loads the official native providers and their version metadata
+directly, retaining an immutable deployment image. It does not require a console
+executable; usable external format providers can supply a deployment without
+the main module, with the original loader's warning preserved.
+
 With a loaded native catalog, file navigation uses the retained official reader
 and its item indexes. Standalone listing and archive testing run official
 Open/Extract in a joined Qt worker, with operation-scoped password, pause and

@@ -1,11 +1,10 @@
 #include "archivecodecprobe.h"
+#include "Common/StringConvert.h"
 #include "qtlanguageservices.h"
 #include <QCoreApplication>
 #include <QDeadlineTimer>
 #include <QDir>
 #include <QFileInfo>
-#include <QProcess>
-#include <QRegularExpression>
 #include <QScopeGuard>
 #include <QStandardPaths>
 #include <atomic>
@@ -18,81 +17,35 @@ QString FindModule(const QString &program) {
 #else
     const QString name = QStringLiteral("7z.so");
 #endif
-    QString executable = program;
-    if (QFileInfo(executable).isRelative())
-        executable = QStandardPaths::findExecutable(program);
+    QString executable =
+        QFileInfo(program).isRelative() ? QStandardPaths::findExecutable(program) : program;
+    // A selected deployment can contain only modules. Do not silently replace
+    // an explicit location by an unrelated runtime when its console is absent.
+    if (executable.isEmpty() && QDir::fromNativeSeparators(program).contains('/'))
+        executable = QFileInfo(program).absoluteFilePath();
+    if (executable.isEmpty())
+        return QString::fromWCharArray(fs2us(GetBaseFolderPrefixFromRegistry())) + name;
     const QFileInfo engine(executable);
     const QString canonical = engine.canonicalFilePath();
     const QDir directory(canonical.isEmpty() ? engine.absolutePath()
                                              : QFileInfo(canonical).absolutePath());
-    // Explicit deployment locations, not arbitrary plugin directories. External
-    // plugin discovery/registration remains in its separate source owner.
-    const QStringList candidates = {QDir(QCoreApplication::applicationDirPath()).filePath(name),
-                                    directory.filePath(name), directory.filePath("../lib/" + name),
+    // Preserve source LoadCodecs' deployment boundary for plugin-only folders.
+    // Loading and enumeration themselves remain in that original module.
+    if (QDir(directory.filePath("Codecs")).exists() || QDir(directory.filePath("Formats")).exists())
+        return directory.filePath(name);
+    const QStringList candidates = {directory.filePath(name), directory.filePath("../lib/" + name),
                                     directory.filePath("../lib/7zip/" + name)};
     for (const QString &candidate : candidates)
         if (QFileInfo(candidate).isFile())
             return QDir::cleanPath(candidate);
+    if (engine.isExecutable()) {
+        FString prefix =
+            us2fs(QDir::toNativeSeparators(directory.absolutePath() + '/').toStdWString().c_str());
+        return QString::fromWCharArray(fs2us(GetBaseFolderPrefixFromRegistry(prefix))) + name;
+    }
     return directory.filePath(name); // Native loader reports the missing module.
 }
 
-UInt32 EngineVersion(const QByteArray &output) {
-    // Console/Main.cpp's official banner. There is no upstream parser of this
-    // output; only version transport is local, never format/extension inference.
-    static const QRegularExpression banner(
-        QStringLiteral("(?:^|\\n)7-Zip(?: \\([^\\r\\n]*\\))? ([0-9]+)\\.([0-9]+)(?=\\s|$)"));
-    const auto match = banner.match(QString::fromUtf8(output));
-    if (!match.hasMatch())
-        return 0;
-    bool majorOk = false, minorOk = false;
-    const quint32 major = match.captured(1).toUInt(&majorOk);
-    const quint32 minor = match.captured(2).toUInt(&minorOk);
-    return majorOk && minorOk && major && major <= 0xffff && minor <= 0xffff ? (major << 16) | minor
-                                                                             : 0;
-}
-
-QStringList EngineLibraries(const QByteArray &output) {
-    // Console/Main.cpp kInfo prints "index : version : full path" under Libs.
-    // This transport confirms shared deployment; native LoadCodecs owns metadata.
-    const QString text = QString::fromUtf8(output).replace("\r\n", "\n");
-    const int start = text.indexOf("\nLibs:\n");
-    if (start < 0)
-        return {};
-    const int end = text.indexOf("\nFormats:", start);
-    if (end < 0)
-        return {};
-    static const QRegularExpression line(QStringLiteral("^\\s*[0-9]+ : [0-9]+\\.[0-9]+ : (.+)$"));
-    QStringList paths;
-    for (const QString &row : text.mid(start + 7, end - start - 7).split('\n')) {
-        const auto match = line.match(row.trimmed());
-        if (match.hasMatch())
-            paths.append(match.captured(1));
-    }
-    return paths;
-}
-
-QString DeploymentModule(const QStringList &libraries, const QString &fallback) {
-#ifdef _WIN32
-    const QString name = QStringLiteral("7z.dll");
-#else
-    const QString name = QStringLiteral("7z.so");
-#endif
-    // The original engine has already resolved its registry/deployment folder.
-    // Transport that result rather than implement another registry policy.
-    for (const QString &library : libraries) {
-        const QFileInfo info(library);
-        if (info.fileName() == name)
-            return library;
-    }
-    for (const QString &library : libraries) {
-        QDir folder(QFileInfo(library).absolutePath());
-        if (folder.dirName() == "Codecs" || folder.dirName() == "Formats") {
-            folder.cdUp();
-            return folder.filePath(name); // May be missing: source load is nonfatal.
-        }
-    }
-    return fallback;
-}
 } // namespace
 
 struct ArchiveCodecProbe::Work {
@@ -117,52 +70,12 @@ ArchiveCodecProbeResult ArchiveCodecProbe::Discover(const QString &engine,
     if (work->Stopped())
         return result;
     const QString module = requestedModule.isEmpty() ? FindModule(engine) : requestedModule;
-    QProcess process;
-    process.setProcessChannelMode(QProcess::MergedChannels);
-    process.setProgram(engine);
-    process.setArguments({QStringLiteral("i"), QStringLiteral("-sccUTF-8")});
-    // Windows creates its pipes/process synchronously inside start(). Keep that
-    // platform phase and the process's QObject lifetime wholly in this worker.
-    process.start();
-    QByteArray output;
-    const auto readOutput = [&] {
-        const QByteArray bytes = process.readAll();
-        output.append(bytes.left(qMax(0, 8192 - int(output.size()))));
-    };
-    while (process.state() != QProcess::NotRunning) {
-        if (work->Stopped()) {
-            process.kill();
-            process.waitForFinished(3000);
-            return result;
-        }
-        process.waitForFinished(20);
-        readOutput();
-    }
-    readOutput();
-    if (work->Stopped())
-        return result;
-    if (process.error() == QProcess::FailedToStart ||
-        process.exitStatus() != QProcess::NormalExit || process.exitCode() != 0) {
-        result.error = QCoreApplication::translate(
-            "archivecodecprobe", "Could not determine the version of official 7zz.");
-    } else if (const UInt32 version = EngineVersion(output)) {
-        const QStringList libraries = EngineLibraries(output);
-        const QString deployment =
-            requestedModule.isEmpty() ? DeploymentModule(libraries, module) : module;
-        // CCodecs::LoadDll/LoadDllsFromFolder/SetLibCodecs and runtime copying
-        // stay inside the existing catalog owner. Only their scheduling changes.
-        try {
-            result.catalog =
-                std::make_shared<ArchiveCodecCatalog>(deployment, version, libraries, engine);
-            result.result = result.catalog->result();
-            result.error = result.catalog->error();
-        } catch (...) {
-            result.error =
-                QCoreApplication::translate("archivecodecprobe", "Could not load codec metadata.");
-        }
-    } else
-        result.error = QCoreApplication::translate("archivecodecprobe",
-                                                   "The 7zz version banner is missing or invalid.");
+    // CCodecs::LoadDll obtains ABI/version metadata through GetModuleProp;
+    // original directory loading and SetLibCodecs bind the retained providers.
+    result.catalog = std::make_shared<ArchiveCodecCatalog>(
+        module, 0, ArchiveCodecCatalog::Scope::Deployment, engine);
+    result.result = result.catalog->result();
+    result.error = result.catalog->error();
     return result;
 }
 
@@ -172,9 +85,8 @@ ArchiveCodecProbe::~ArchiveCodecProbe() {
     Cancel();
     if (loader_) {
         disconnect(loader_.get(), nullptr, this, nullptr);
-        // Neither CreateProcess nor native DLL entrypoints can be interrupted
-        // safely. Cancellation kills/reaps a child after start returns; join
-        // retains immutable inputs/results and module leases through that work.
+        // Native DLL entrypoints cannot be interrupted safely. Join retains
+        // immutable inputs/results and module leases through that work.
         loader_->wait();
     }
 }

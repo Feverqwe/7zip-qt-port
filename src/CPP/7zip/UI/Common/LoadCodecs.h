@@ -452,6 +452,10 @@ class CCodecs Z7_final :
 };
 
 #ifdef Z7_EXTERNAL_CODECS
+// Source deployment/registry lookup, shared with the native catalog scheduler.
+FString GetBaseFolderPrefixFromRegistry();
+FString GetBaseFolderPrefixFromRegistry(FString moduleFolderPrefix);
+
 #define CREATE_CODECS_OBJECT                                                                       \
     CCodecs *codecs = new CCodecs;                                                                 \
     CExternalCodecs _externalCodecs;                                                               \

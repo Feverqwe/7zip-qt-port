@@ -209,7 +209,7 @@ class ExternalCodecTests final : public QObject {
         QCOMPARE(missing->OperationResult,
                  Int32(NArchive::NExtract::NOperationResult::kUnsupportedMethod));
 
-        // Restore the backend's engine-confirmed plugin catalog after the
+        // Restore the backend's deployment catalog after the
         // deliberate catalog replacement used to check the retained handler.
         ready.clear();
         QVERIFY(backend.discoverCodecCatalog(module_));
@@ -320,14 +320,21 @@ class ExternalCodecTests final : public QObject {
                             int(callback->Stream->GetSize())),
                  bytes);
     }
+    void externalFormatWithoutMainModule_data() {
+        QTest::addColumn<bool>("console");
+        QTest::newRow("with legacy console") << true;
+        QTest::newRow("modules only") << false;
+    }
     void externalFormatWithoutMainModule() {
+        QFETCH(bool, console);
         QTemporaryDir deployment;
         QTemporaryDir fixture;
         QVERIFY(deployment.isValid());
         QVERIFY(fixture.isValid());
         const QString engine = deployment.filePath(kEngineName);
         const QString missingMain = deployment.filePath(kModuleName);
-        QVERIFY(QFile::copy(engine_, engine));
+        if (console)
+            QVERIFY(QFile::copy(engine_, engine));
         QVERIFY(QDir(deployment.path()).mkdir("Formats"));
         const QString formatModule = deployment.filePath(QString("Formats/only") + kModuleSuffix);
         QVERIFY(QFile::copy(module_, formatModule));
@@ -350,9 +357,16 @@ class ExternalCodecTests final : public QObject {
         CompressionOptions options;
         options.format = "7z";
         QSignalSpy finished(&backend, &ArchiveBackend::finished);
-        backend.create(archive, {source}, {}, false, options);
-        QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 10000);
-        QVERIFY2(finished[0][0].toBool(), qPrintable(finished[0][1].toString()));
+        if (console) {
+            backend.create(archive, {source}, {}, false, options);
+            QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 10000);
+            QVERIFY2(finished[0][0].toBool(), qPrintable(finished[0][1].toString()));
+        } else {
+            QProcess creator;
+            creator.start(engine_, {"a", "-t7z", "--", archive, source});
+            QVERIFY(creator.waitForFinished(10000));
+            QCOMPARE(creator.exitCode(), 0);
+        }
         CArchiveLink native;
         QCOMPARE(catalog->openArchive(native, archive, "7z", nullptr), S_OK);
         CMyComPtr2_Create<IArchiveExtractCallback, CExtractToMemory> callback;
@@ -361,24 +375,38 @@ class ExternalCodecTests final : public QObject {
         QCOMPARE(QByteArray(reinterpret_cast<const char *>(callback->Stream->GetBuffer()),
                             int(callback->Stream->GetSize())),
                  bytes);
-        QSignalSpy listed(&backend, &ArchiveBackend::entriesReady);
-        backend.list(archive);
-        QTRY_COMPARE_WITH_TIMEOUT(listed.size(), 1, 10000);
-        finished.clear();
-        backend.test(archive);
-        QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 10000);
-        QVERIFY(finished[0][0].toBool());
-        finished.clear();
-        const QString output = fixture.filePath("output");
-        backend.extract(archive, output);
-        QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 10000);
-        QVERIFY(finished[0][0].toBool());
-        QCOMPARE(read(QDir(output).filePath(QFileInfo(source).fileName())), bytes);
+        {
+            QSignalSpy listed(&backend, &ArchiveBackend::entriesReady);
+            finished.clear();
+            backend.list(archive);
+            QTRY_COMPARE(finished.size(), 1);
+            QVERIFY2(finished[0][0].toBool(), qPrintable(finished[0][1].toString()));
+            const auto entries = qvariant_cast<QList<ArchiveEntry>>(listed[0][0]);
+            QCOMPARE(entries.size(), 1);
+            finished.clear();
+            backend.testSourceArchive(archive, {});
+            QTRY_COMPARE(finished.size(), 1);
+            QVERIFY2(finished[0][0].toBool(), qPrintable(finished[0][1].toString()));
+            const QString output = fixture.filePath("native output.bin");
+            finished.clear();
+            backend.extractSourceEntry(archive, entries[0].path, output, "7z", {});
+            QTRY_COMPARE(finished.size(), 1);
+            QVERIFY2(finished[0][0].toBool(), qPrintable(finished[0][1].toString()));
+            QCOMPARE(read(output), bytes);
+        }
+        if (console) {
+            finished.clear();
+            const QString output = fixture.filePath("output");
+            backend.extract(archive, output);
+            QTRY_COMPARE_WITH_TIMEOUT(finished.size(), 1, 10000);
+            QVERIFY(finished[0][0].toBool());
+            QCOMPARE(read(QDir(output).filePath(QFileInfo(source).fileName())), bytes);
+        }
         QCOMPARE(read(source), bytes);
         QVERIFY(QFileInfo::exists(formatModule));
         QVERIFY(!QFileInfo::exists(missingMain));
     }
-    void mismatchedDeploymentRefusesAndRetainsLease() {
+    void explicitModuleSelectionRetainsPreviousLease() {
         const QString otherModule = runtime_.filePath(QString("different module") + kModuleSuffix);
         QVERIFY(QFile::copy(module_, otherModule));
         const auto remove = qScopeGuard([&] { QFile::remove(otherModule); });
@@ -386,8 +414,9 @@ class ExternalCodecTests final : public QObject {
         QSignalSpy ready(&backend, &ArchiveBackend::codecCatalogReady);
         QVERIFY(backend.discoverCodecCatalog(otherModule));
         QTRY_COMPARE(ready.size(), 1);
-        QVERIFY(!ready[0][0].toBool());
-        QVERIFY(!ready[0][1].toString().isEmpty());
+        QVERIFY2(ready[0][0].toBool(), qPrintable(ready[0][1].toString()));
+        QVERIFY(backend.codecCatalog()->canUpdate("zip"));
+        QCOMPARE(backend.codecCatalog()->nativeCodecs().Libs.Size(), 2u);
         QCOMPARE(catalog_->result(), S_OK);
         QCOMPARE(catalog_->nativeCodecs().Libs.Size(), 2u);
     }
@@ -434,9 +463,8 @@ class ExternalCodecTests final : public QObject {
         QSignalSpy ready(&backend, &ArchiveBackend::codecCatalogReady);
         QVERIFY(backend.discoverCodecCatalog());
         QTRY_COMPARE(ready.size(), 1);
-        QCOMPARE(ready[0][0].toBool(), !missing);
-        if (!missing)
-            QCOMPARE(backend.codecCatalog()->nativeCodecs().Libs.Size(), 2u);
+        QVERIFY2(ready[0][0].toBool(), qPrintable(ready[0][1].toString()));
+        QCOMPARE(backend.codecCatalog()->nativeCodecs().Libs.Size(), 2u);
     }
 };
 QTEST_GUILESS_MAIN(ExternalCodecTests)

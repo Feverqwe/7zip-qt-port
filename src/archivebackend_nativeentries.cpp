@@ -126,8 +126,7 @@ HRESULT ReadNativeArchiveListing(const ArchiveNativeOpen &reader, NativeArchiveL
     const auto &arc = reader.arc();
     auto &info = listing.Info;
     info.containerLevels = link.Arcs.Size();
-    if (const auto *format = reader.formatInfo())
-        info.format = Text(format->Name);
+    info.format = QString::fromWCharArray(reader.nativeCodecs().GetFormatNamePtr(arc.FormatIndex));
     info.offset = qint64(arc.GetGlobalOffset());
     info.physicalSize = SignedSize(arc.PhySize_Defined ? arc.PhySize : arc.FileSize);
     // Console/List visits outer properties/subfile properties and then the

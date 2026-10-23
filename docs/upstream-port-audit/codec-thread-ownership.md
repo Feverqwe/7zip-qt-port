@@ -64,8 +64,9 @@ identity. Exceptions from discovery are converted to an HRESULT at the worker
 boundary rather than escaping the thread. These are Qt ownership adaptations;
 they do not establish allocation-failure guarantees for Qt itself.
 
-Existing discovery tests cover rejected concurrent requests, retry after joined
-failure/cancellation, deadlines, destruction, native loading and child cleanup.
+At that checkpoint, discovery tests covered rejected concurrent requests, retry
+after joined failure/cancellation, deadlines, destruction, native loading and
+child cleanup.
 The selected acceptance scope is those tests plus codec catalog, capabilities,
 creation, native services and window lifecycle; no visual or slow-suite claim
 follows from this nonvisual change.
@@ -73,6 +74,9 @@ follows from this nonvisual change.
 Application builds and all six selected suites passed on macOS arm64 (7.50 s),
 Linux x64 (8.74 s) and Windows x64 (12.68 s), using Qt 6.12 and the persistent
 incremental builds/caches. Guest evidence: `20261018T124053Z-a5f7c10a`.
+
+Native-only discovery supersedes the child-process portion of this checkpoint;
+see [the current migration audit](container-layers.md#native-catalog-discovery).
 
 ## Opening during discovery — 2026-10-22
 

@@ -16,14 +16,14 @@ IOutArchive *CreateSourceZipWriter() { return new NArchive::NZip::CHandler; }
 IInArchive *CreateSourceRarReader() { return new NArchive::NRar5::CHandler; }
 } // namespace
 
-ArchiveCodecCatalog::ArchiveCodecCatalog(const QString &module, UInt32 expectedVersion,
-                                         const QStringList &engineLibraries,
+ArchiveCodecCatalog::ArchiveCodecCatalog(const QString &module, UInt32 expectedVersion, Scope scope,
                                          const QString &engine) {
     codecs_ = new CCodecs;
     owner_ = codecs_;
     bool loaded = false;
     QString nativeModule = module;
-    if (!engineLibraries.isEmpty()) {
+    const bool deployment = scope == Scope::Deployment;
+    if (deployment) {
         image_ = std::make_unique<ArchiveCodecImage>();
         if (!image_->prepare(module, engine)) {
             error_ = QCoreApplication::translate("archivecodeccatalog",
@@ -34,11 +34,14 @@ ArchiveCodecCatalog::ArchiveCodecCatalog(const QString &module, UInt32 expectedV
     }
     const auto path = QDir::toNativeSeparators(nativeModule).toStdWString();
     result_ = codecs_->LoadDll(us2fs(path.c_str()), false, &loaded);
-    if (result_ == S_OK && !engineLibraries.isEmpty())
-        result_ = loadEnginePlugins(module, engineLibraries);
+    if (result_ == S_OK && deployment) {
+        if (!loaded)
+            codecs_->MainDll_ErrorPath = us2fs(module.toStdWString().c_str());
+        result_ = loadDeploymentPlugins();
+    }
     UString message;
     codecs_->GetCodecsErrorMessage(message);
-    if (result_ != S_OK || (engineLibraries.isEmpty() && (!loaded || !codecs_->Errors.IsEmpty())) ||
+    if (result_ != S_OK || (!deployment && (!loaded || !codecs_->Errors.IsEmpty())) ||
         codecs_->Libs.IsEmpty() || codecs_->Formats.IsEmpty()) {
         result_ = E_FAIL;
         if (error_.isEmpty())
@@ -92,47 +95,18 @@ QString ArchiveCodecCatalog::runtimeEngine() const {
     return result_ == S_OK && image_ ? image_->engine() : QString();
 }
 
-HRESULT ArchiveCodecCatalog::loadEnginePlugins(const QString &module,
-                                               const QStringList &engineLibraries) {
-    QStringList canonicalLibraries;
-    for (const QString &library : engineLibraries)
-        canonicalLibraries.append(QFileInfo(library).canonicalFilePath());
-    const QString mainPath = QFileInfo(module).canonicalFilePath();
-    if (!mainPath.isEmpty() && !canonicalLibraries.contains(mainPath)) {
-        error_ = QCoreApplication::translate("archivecodeccatalog",
-                                             "The engine uses a different codec module.");
-        return E_FAIL;
-    }
+HRESULT ArchiveCodecCatalog::loadDeploymentPlugins() {
     const QString baseFolder = image_->baseFolder();
     RINOK(codecs_->LoadExternalModules(us2fs(baseFolder.toStdWString().c_str())))
-    bool sameDeployment = codecs_->Libs.Size() == unsigned(canonicalLibraries.size());
-    QStringList loadedLibraries;
     FOR_VECTOR(i, codecs_->Libs) {
         auto &library = codecs_->Libs[i];
         const QString original = image_->originalPath(QString::fromWCharArray(fs2us(library.Path)));
         library.Path = us2fs(original.toStdWString().c_str());
-        const QString loadedPath =
-            QFileInfo(QString::fromWCharArray(fs2us(codecs_->Libs[i].Path))).canonicalFilePath();
-        loadedLibraries.append(loadedPath);
-        if (!canonicalLibraries.contains(loadedPath))
-            sameDeployment = false;
     }
     FOR_VECTOR(i, codecs_->Errors) {
         auto &error = codecs_->Errors[i];
         const QString original = image_->originalPath(QString::fromWCharArray(fs2us(error.Path)));
         error.Path = us2fs(original.toStdWString().c_str());
-    }
-    if (!sameDeployment) {
-        error_ = QCoreApplication::translate(
-            "archivecodeccatalog", "The engine and application loaded different plugins.");
-        error_ += '\n' + QCoreApplication::translate(
-                             "archivecodeccatalog", "Engine modules:\n%1\nApplication modules:\n%2")
-                             .arg(canonicalLibraries.join('\n'), loadedLibraries.join('\n'));
-        UString message;
-        codecs_->GetCodecsErrorMessage(message);
-        if (!message.IsEmpty())
-            error_ += '\n' + QString::fromWCharArray(message.Ptr());
-        return E_FAIL;
     }
     UString message;
     codecs_->GetCodecsErrorMessage(message);

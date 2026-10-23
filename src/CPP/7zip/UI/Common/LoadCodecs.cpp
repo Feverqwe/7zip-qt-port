@@ -191,9 +191,7 @@ static bool ParseSignatures(const Byte *data, unsigned size,
 
 #ifdef Z7_EXTERNAL_CODECS
 
-static FString GetBaseFolderPrefixFromRegistry() {
-    FString moduleFolderPrefix = NDLL::GetModuleDirPrefix();
-
+FString GetBaseFolderPrefixFromRegistry(FString moduleFolderPrefix) {
 #ifdef _WIN32
     if (!NFind::DoesFileOrDirExist(moduleFolderPrefix + kMainDll) &&
         !NFind::DoesFileOrDirExist(moduleFolderPrefix + kCodecsFolderName) &&
@@ -209,6 +207,10 @@ static FString GetBaseFolderPrefixFromRegistry() {
 
     // printf("\nmoduleFolderPrefix = %s\n", (const char *)GetAnsiString(moduleFolderPrefix));
     return moduleFolderPrefix;
+}
+
+FString GetBaseFolderPrefixFromRegistry() {
+    return GetBaseFolderPrefixFromRegistry(NDLL::GetModuleDirPrefix());
 }
 
 static HRESULT GetCoderClass(Func_GetMethodProperty getMethodProperty, UInt32 index, PROPID propId,

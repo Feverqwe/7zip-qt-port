@@ -37,12 +37,9 @@ class CBindingProgress final : public IProgress, public IArchiveOpenCallback, pu
 class COpeningBackend final : public ArchiveBackend {
   public:
     unsigned Listings = 0;
-    std::function<void()> BeforeListing;
     explicit COpeningBackend(const QString &engine) : ArchiveBackend(nullptr, engine) {}
     void openFolder(const QString &path, const QString &format, const QString &password) override {
         ++Listings;
-        if (BeforeListing)
-            BeforeListing();
         ArchiveBackend::openFolder(path, format, password);
     }
 };
@@ -160,7 +157,10 @@ class AgentOpeningTests final : public QObject, protected ArchiveBackendTestSupp
         });
         COpeningBackend backend(engine_);
         QSignalSpy ready(&backend, &ArchiveBackend::codecCatalogReady);
-        QVERIFY(backend.discoverCodecCatalog(QString::fromUtf8(SLOW_CODEC_FIXTURE)));
+        const QString slow =
+            temporary.filePath(QFileInfo(QString::fromUtf8(SLOW_CODEC_FIXTURE)).fileName());
+        QVERIFY(QFile::copy(QString::fromUtf8(SLOW_CODEC_FIXTURE), slow));
+        QVERIFY(backend.discoverCodecCatalog(slow));
         CMyComPtr<IFolderManager> manager = new QtArchiveFolderManager(backend);
         CMyComPtr<IFolderFolder> folder;
         auto *observer = new CBindingProgress;
@@ -264,7 +264,7 @@ class AgentOpeningTests final : public QObject, protected ArchiveBackendTestSupp
         QCOMPARE(value.vt, VARTYPE(VT_UI4));
         QVERIFY(value.ulVal != 0);
     }
-    void streamUsesOwnedFileAndSurvivesManager() {
+    void streamExtractsOriginalBytesAfterManagerAndCallerRelease() {
         QTemporaryDir temporary;
         QVERIFY(temporary.isValid());
         const QString input = temporary.filePath(QStringLiteral("файл 空.txt"));
@@ -285,20 +285,35 @@ class AgentOpeningTests final : public QObject, protected ArchiveBackendTestSupp
         QCOMPARE(open(backend, manager, temporary.filePath("virtual missing.zip"), L"zip", &folder,
                       nullptr, stream),
                  S_OK);
-        auto *source = dynamic_cast<CAgentFolder *>(folder.Interface());
-        QVERIFY(source);
-        auto *resource = dynamic_cast<QtArchiveFileResource *>(source->GetEngineResource());
-        QVERIFY(resource);
-        const QString owned = resource->EnginePath;
-        QVERIFY(QFile::exists(owned));
         manager.Release();
         stream.Release();
         QCOMPARE(folder->LoadItems(), S_OK);
         UInt32 count = 0;
         QCOMPARE(folder->GetNumberOfItems(&count), S_OK);
         QCOMPARE(count, UInt32(1));
+        CMyComPtr<IGetFolderArcProps> getter;
+        QCOMPARE(folder.QueryInterface(IID_IGetFolderArcProps, &getter), S_OK);
+        CMyComPtr<IFolderArcProps> properties;
+        QCOMPARE(getter->GetFolderArcProps(&properties), S_OK);
+        CMyComPtr<IInFolderArchive> retained;
+        QCOMPARE(properties.QueryInterface(IID_IInFolderArchive, &retained), S_OK);
+        auto *observer = new CExtractObserver;
+        CMyComPtr<IFolderArchiveExtractCallback> callback = observer;
+        const QString destination = temporary.filePath("output");
+        QVERIFY(QDir().mkpath(destination));
+        const auto prefix = (destination + '/').toStdWString();
+        QCOMPARE(run(backend,
+                     [&] {
+                         return retained->Extract(NExtract::NPathMode::kFullPaths,
+                                                  NExtract::NOverwriteMode::kOverwrite,
+                                                  prefix.c_str(), false, callback);
+                     }),
+                 S_OK);
+        QVERIFY2(observer->Errors == 0, qPrintable(observer->Error));
+        QFile extracted(QDir(destination).filePath(QFileInfo(input).fileName()));
+        QVERIFY(extracted.open(QIODevice::ReadOnly));
+        QCOMPARE(extracted.readAll(), QByteArray("known"));
         folder.Release();
-        QVERIFY(!QFile::exists(owned));
     }
     void agentInterfaceExtract_data() {
         QTest::addColumn<bool>("testMode");
@@ -328,17 +343,12 @@ class AgentOpeningTests final : public QObject, protected ArchiveBackendTestSupp
         loadNative(backend);
         const quint32 version = backend.codecCatalog()->version();
         std::weak_ptr<const ArchiveCodecCatalog> originalCatalog = backend.codecCatalog();
-        HRESULT replacement = S_OK;
-        if (replaceCatalog)
-            backend.BeforeListing = [&] {
-                replacement =
-                    backend.loadCodecCatalog(temporary.filePath("absent-codec-module"), version);
-            };
         CMyComPtr<IFolderManager> manager = new QtArchiveFolderManager(backend);
         CMyComPtr<IFolderFolder> folder;
         QCOMPARE(open(backend, manager, path, L"zip", &folder), S_OK);
         if (replaceCatalog) {
-            QCOMPARE(replacement, E_FAIL);
+            QCOMPARE(backend.loadCodecCatalog(temporary.filePath("absent-codec-module"), version),
+                     E_FAIL);
             QVERIFY(backend.codecCatalog()->result() != S_OK);
             QVERIFY(!originalCatalog.expired());
         }

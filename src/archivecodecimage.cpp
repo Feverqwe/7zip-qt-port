@@ -90,9 +90,10 @@ bool ArchiveCodecImage::prepare(const QString &module, const QString &engine) {
                                        ? QFileInfo(engine).absoluteFilePath()
                                        : QStandardPaths::findExecutable(engine);
         const QFileInfo program(executable);
-        if (executable.isEmpty() || !copyFile(executable, program.fileName()))
-            return false;
-        engine_ = directory_.filePath(program.fileName());
+        // Legacy process consumers can share this deployment while they are
+        // being migrated. Native discovery does not require an executable.
+        if (!executable.isEmpty() && program.isFile() && copyFile(executable, program.fileName()))
+            engine_ = directory_.filePath(program.fileName());
     }
     return true;
 }
