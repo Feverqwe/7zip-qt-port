@@ -146,6 +146,24 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
         QFETCH(QString, kind);
         confirmAndCopy(language, accept, kind);
     }
+    void confirmsExfatRecovery_data() {
+        QTest::addColumn<QString>("language");
+        QTest::addColumn<bool>("accept");
+        QTest::addColumn<QString>("kind");
+        for (const QString &language : {"en", "ru"})
+            for (bool accept : {false, true})
+                for (const QString &fault : {"boot-checksum", "missing-bitmap", "short-source",
+                                             "file-eof", "file-short-source"})
+                    QTest::newRow(
+                        qPrintable(language + '-' + fault + (accept ? "-accept" : "-cancel")))
+                        << language << accept << "exfat-recovery-" + fault;
+    }
+    void confirmsExfatRecovery() {
+        QFETCH(QString, language);
+        QFETCH(bool, accept);
+        QFETCH(QString, kind);
+        confirmAndCopy(language, accept, kind);
+    }
 
     void confirmsPartialSquashfsIndexes_data() {
         QTest::addColumn<QString>("language");
@@ -398,6 +416,9 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
   private:
     void confirmAndCopy(const QString &language, bool accept, const QString &kind) {
         const bool exfat = kind == "exfat" || kind.startsWith("exfat-");
+        const bool exfatRecovery = kind.startsWith("exfat-recovery-");
+        const bool exfatDirectory = kind.startsWith("exfat-") && !exfatRecovery;
+        const bool exfatFile = kind.startsWith("exfat-recovery-file-");
         const bool ntfs = kind.startsWith("volume-") || kind.startsWith("reparse-") ||
                           kind.startsWith("ea-") || kind.startsWith("data-list-") ||
                           kind.startsWith("standard-") || kind.startsWith("dir-") ||
@@ -416,8 +437,9 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
             kind == "squashfs-fragment-metadata-zero" || kind == "squashfs-metadata-combined";
         const bool fatDirectory = kind.startsWith("fat-directory-");
         const bool fatFile = kind.startsWith("fat-file-");
-        const bool copyDiagnostic = kind == "cramfs-table" || fatFile || squashFragment ||
-                                    lateBlocklist || kind == "squashfs-directory-reference";
+        const bool copyDiagnostic = kind == "cramfs-table" || fatFile || exfatFile ||
+                                    squashFragment || lateBlocklist ||
+                                    kind == "squashfs-directory-reference";
         const QString fatFolder = kind == "fat-directory-free32" ? "BROKEN" : "GOOD";
         SaveRegLang(UString(language == "en" ? L"-" : L"ru"),
                     qEnvironmentVariable("SEVENZIP_SETTINGS_PATH"));
@@ -426,7 +448,13 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
         QByteArray image = fixture.image;
         QString filename = fixture.fragmentedName;
         QByteArray payload = QByteArray(512, 'A') + QByteArray(188, 'B');
-        if (kind.startsWith("exfat-")) {
+        if (exfatRecovery) {
+            fixture.recoveryFault(kind.mid(QStringLiteral("exfat-recovery-").size()));
+            image = fixture.image;
+            if (exfatFile)
+                payload = QByteArray(512, 'A') +
+                          (kind.endsWith("short-source") ? QByteArray(80, 'B') : QByteArray());
+        } else if (exfatDirectory) {
             fixture.directoryFault(kind.mid(6));
             image = fixture.image;
             if (kind == "exfat-entry-checksum") {
@@ -649,7 +677,7 @@ class FilesystemReadUiTests final : public QObject, protected NtfsTestSupport::F
                 qPrintable(
                     QDir(output).entryList(QDir::AllEntries | QDir::NoDotAndDotDot).join('\n')));
             QCOMPARE(copied.readAll(), payload);
-            if (kind.startsWith("exfat-")) {
+            if (exfatDirectory) {
                 const QString partial = directory.filePath("partial");
                 if (kind != "exfat-entry-checksum") {
                     QTRY_VERIFY(Row(*table, fixture.directoryName) >= 0);

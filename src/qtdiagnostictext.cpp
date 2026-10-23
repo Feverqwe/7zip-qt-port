@@ -176,6 +176,21 @@ UString QtArchiveDiagnosticText(const UString &source) {
         QT_TRANSLATE_NOOP("SevenZipDiagnostics",
                           "The exFAT directory could not be read completely."),
         QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                          "The exFAT source is shorter than the declared volume. Some files may be "
+                          "incomplete or unreadable."),
+        QT_TRANSLATE_NOOP(
+            "SevenZipDiagnostics",
+            "The exFAT boot region could not be verified. Files or metadata may be unreliable."),
+        QT_TRANSLATE_NOOP("SevenZipDiagnostics", "The exFAT allocation bitmap is unavailable. Free "
+                                                 "space and cluster allocation are unverified."),
+        QT_TRANSLATE_NOOP("SevenZipDiagnostics", "The exFAT root directory is marked unallocated. "
+                                                 "Allocation metadata may be inconsistent."),
+        QT_TRANSLATE_NOOP("SevenZipDiagnostics",
+                          "The exFAT volume label could not be read and has been omitted."),
+        QT_TRANSLATE_NOOP(
+            "SevenZipDiagnostics",
+            "The exFAT root directory could not be read. No readable entries were found."),
+        QT_TRANSLATE_NOOP("SevenZipDiagnostics",
                           "Some exFAT directories could not be read completely. Files or names may "
                           "be missing. Readable files remain accessible."),
         QT_TRANSLATE_NOOP("SevenZipDiagnostics", "The ext directory could not be read completely."),

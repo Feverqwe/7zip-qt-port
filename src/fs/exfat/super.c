@@ -179,9 +179,11 @@ int exfat_verify_boot_region(struct super_block *sb)
 		if (sn != 0 && sn <= 8) {
 			/* extended boot sector sub-regions */
 			p_sig = (__le32 *)&bh->b_data[sb->s_blocksize - 4];
-			if (le32_to_cpu(*p_sig) != EXBOOT_SIGNATURE)
+			if (le32_to_cpu(*p_sig) != EXBOOT_SIGNATURE) {
+				sb->boot_warning = true;
 				exfat_warn(sb, "Invalid exboot-signature(sector = %d): 0x%08x",
 					   sn, le32_to_cpu(*p_sig));
+			}
 		}
 
 		chksum = exfat_calc_chksum32(bh->b_data, sb->s_blocksize,

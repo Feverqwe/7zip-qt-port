@@ -483,7 +483,7 @@ static int exfat_get_volume_label_dentry(struct super_block *sb,
 		struct exfat_entry_set_cache *es)
 {
 	int i;
-	unsigned int type;
+	unsigned int type, walked = 0;
 	struct exfat_sb_info *sbi = EXFAT_SB(sb);
 	struct exfat_chain clu;
 	struct exfat_dentry *ep;
@@ -492,6 +492,8 @@ static int exfat_get_volume_label_dentry(struct super_block *sb,
 	exfat_chain_set(&clu, sbi->root_dir, 0, ALLOC_FAT_CHAIN);
 
 	while (clu.dir != EXFAT_EOF_CLUSTER) {
+		if (walked++ >= sb->root_clusters)
+			break;
 		for (i = 0; i < sbi->dentries_per_clu; i++) {
 			ep = exfat_get_dentry(sb, &clu, i, &bh);
 			if (!ep)
@@ -518,6 +520,8 @@ static int exfat_get_volume_label_dentry(struct super_block *sb,
 			return 0;
 		}
 
+		if (walked == sb->root_clusters)
+			break;
 		if (exfat_get_next_cluster(sb, &(clu.dir)))
 			return -EIO;
 	}

@@ -3866,6 +3866,30 @@ Are you sure you want to split archive into such volumes?</source>
             <translation>Некоторые каталоги exFAT прочитаны не полностью. Часть файлов или имён может отсутствовать. Доступные файлы можно копировать.</translation>
         </message>
         <message>
+            <source>The exFAT source is shorter than the declared volume. Some files may be incomplete or unreadable.</source>
+            <translation>Источник exFAT короче заявленного размера тома. Некоторые файлы могут быть неполными или недоступными для чтения.</translation>
+        </message>
+        <message>
+            <source>The exFAT boot region could not be verified. Files or metadata may be unreliable.</source>
+            <translation>Загрузочную область exFAT не удалось проверить. Данные файлов или метаданные могут быть недостоверными.</translation>
+        </message>
+        <message>
+            <source>The exFAT allocation bitmap is unavailable. Free space and cluster allocation are unverified.</source>
+            <translation>Карта занятости exFAT недоступна. Свободное место и распределение кластеров не проверены.</translation>
+        </message>
+        <message>
+            <source>The exFAT root directory is marked unallocated. Allocation metadata may be inconsistent.</source>
+            <translation>Корневой каталог exFAT помечен как свободный. Метаданные распределения кластеров могут быть несогласованными.</translation>
+        </message>
+        <message>
+            <source>The exFAT volume label could not be read and has been omitted.</source>
+            <translation>Метку тома exFAT не удалось прочитать, поэтому она не показана.</translation>
+        </message>
+        <message>
+            <source>The exFAT root directory could not be read. No readable entries were found.</source>
+            <translation>Корневой каталог exFAT не удалось прочитать. Доступных записей не найдено.</translation>
+        </message>
+        <message>
             <source>The exFAT directory could not be read completely.</source>
             <translation>Каталог exFAT прочитан не полностью.</translation>
         </message>

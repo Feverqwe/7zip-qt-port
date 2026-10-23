@@ -45,6 +45,20 @@ class DeviceFilesystemTests final : public QObject {
         QVERIFY2(catalog_->result() == S_OK, qPrintable(catalog_->error()));
 #endif
     }
+    void explainsUnreadableExfatRoot() {
+        ExfatFixture fixture;
+        fixture.recoveryFault("unreadable-root");
+        fixture.image.resize(fixture.image.size() / 512 * 512);
+        CMyComPtr<IInStream> raw = new CDeviceInput(fixture.image), direct;
+        QCOMPARE(DeviceInput(raw, quint64(fixture.image.size()), &direct, 512), S_OK);
+        COpenUi ui;
+        QString error;
+        std::shared_ptr<ArchiveNativeOpen> reader;
+        QVERIFY(OpenDeviceFilesystem(catalog_, direct, "USB 空", &ui, reader, &error) != S_OK);
+        QVERIFY(!reader);
+        QVERIFY2(error.contains("root directory"), qPrintable(error));
+        QVERIFY2(error.contains("No readable entries"), qPrintable(error));
+    }
     void readsFilesystemThroughDevice_data() {
         QTest::addColumn<QString>("kind");
         QTest::addColumn<QString>("format");

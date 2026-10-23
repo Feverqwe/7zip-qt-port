@@ -107,8 +107,17 @@ int exfat_count_num_clusters(struct super_block *sb,
 
 	clu = p_chain->dir;
 	count = 0;
+	*ret_count = 0;
 	for (i = EXFAT_FIRST_CLUSTER; i < sbi->num_clusters; i++) {
+		if (sb->visit_cluster) {
+			int error = sb->visit_cluster(sb->context, clu);
+			if (error) {
+				brelse(bh);
+				return error;
+			}
+		}
 		count++;
+		*ret_count = count;
 		if (exfat_ent_get(sb, clu, &clu, &bh))
 			return -EIO;
 		if (clu == EXFAT_EOF_CLUSTER)

@@ -113,6 +113,39 @@ void ExfatFixture::directoryFault(const QString &fault) {
         Q_ASSERT(false);
     }
 }
+void ExfatFixture::recoveryFault(const QString &fault) {
+    const unsigned active = quint8(image[106]) & 1;
+    const auto activeFat = [&](unsigned cluster, unsigned next) {
+        set32((FatSector + active * fatSectors) * sectorSize + cluster * 4, next);
+    };
+    if (fault == "boot-checksum")
+        image[120] ^= 1;
+    else if (fault == "boot-signature") {
+        set32(2 * sectorSize - 4, 0);
+        refreshBootChecksum();
+    } else if (fault == "root-cycle")
+        activeFat(10, 2);
+    else if (fault == "missing-bitmap")
+        image[rootOffset(active ? 31 : 0)] = 1;
+    else if (fault == "root-unallocated")
+        image[clusterOffset(active ? 13 : 3)] &= char(0xfe);
+    else if (fault == "bitmap-cycle")
+        activeFat(active ? 13 : 3, active ? 13 : 3);
+    else if (fault == "short-source")
+        image.chop(200000);
+    else if (fault == "file-free-link")
+        activeFat(5, 0);
+    else if (fault == "file-cycle")
+        activeFat(5, 5);
+    else if (fault == "file-eof")
+        activeFat(5, 0xffffffff);
+    else if (fault == "file-short-source")
+        image.truncate(clusterOffset(9) + 80);
+    else if (fault == "unreadable-root")
+        image.truncate(clusterOffset(2) + 80);
+    else
+        Q_ASSERT(false);
+}
 int ExfatFixture::rootOffset(int entry) const {
     const int perCluster = sectorSize / 32;
     const unsigned clusters[] = {2, 10, 11};

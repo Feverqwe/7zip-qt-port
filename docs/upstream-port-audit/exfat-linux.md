@@ -86,7 +86,7 @@ Explicit adaptations for untrusted image streams:
   block device; reject unsupported major revisions. Two-FAT/TexFAT reads are
   selected from the active allocation pair; status limitations are exposed as
   described in the current limited-read section below.
-- Preserve bounded root-chain bootstrap and FAT-chained file validation.
+- Preserve bounded root-chain bootstrap and validate requested file clusters.
   Child-directory enumeration uses the bounded original Linux walker and the
   declared directory size; ancestor cycles remain incomplete directories.
 - Require complete filename/stream entry sets and matching entry-set checksums;
@@ -101,8 +101,9 @@ Omitted scope is intentional: all writes, allocation/free operations, repair,
 deleted-file recovery, VFS mounting/options/inode publication, kernel caches and
 bio/iomap scheduling. Upcase loading and case-insensitive lookup are not needed
 because the module enumerates original names and 7-Zip selects indexed entries;
-no filesystem name lookup API is exposed. The Linux bitmap reader remains part
-of volume acceptance. `IOutArchive` and `IInArchiveGetStream` are not advertised;
+no filesystem name lookup API is exposed. The Linux bitmap reader supplies
+allocation checks when available; missing bitmap requires limited-read consent.
+`IOutArchive` and `IInArchiveGetStream` are not advertised;
 ordinary extraction is the available file-data interface. This is a bounded
 read-only source adaptation, not a complete source transfer of the Linux driver.
 
@@ -591,10 +592,8 @@ EN/RU UI cases cover root-entry corruption, child-chain failure and a cycle, wit
 cancel/accept, healthy copy, errors for incomplete copy, persistent mode, fresh
 consent and unchanged source bytes.
 
-Source transfer for this directory scenario is complete. This is not closure of all exFAT
-recovery gates: damaged root-chain/bitmap bootstrap, short-source opening and the
-file-data whole-chain precheck still require separate source/reader review under
-the active policy goal. They are not declared unavoidable decoder limitations.
+Source transfer for this directory scenario is complete. The subsequent section
+records the separate bootstrap, short-source and file-data review.
 
 Validation: **20/20 focused suites PASS on macOS, Linux and Windows**. The set
 contains exFAT ABI/backend, the new directory UI group, all existing limited-read
@@ -620,3 +619,69 @@ portable `sevenzip_desktop` target and updated plugin deployment passed in recei
 to macOS. The handler boundary was reviewed after this change: traversal,
 properties and extraction share one archive ABI owner, while disk decoding remains
 in C. Keeping that owner preserves the existing callback/error lifecycle.
+
+## Partial bootstrap and file data (2026-10-23)
+
+Compared complete pinned Linux `super.c::__exfat_fill_super`, boot verification,
+`inode.c::exfat_read_root`, `cache.c::exfat_get_cluster`, `fatent.c` chain readers,
+`balloc.c` bitmap load/test/count, `dir.c` label/readdir and `iomap.c` valid-size
+mapping with their local callers and stream boundaries. Repository, full Linux
+revision and per-file baseline above remain unchanged. The kernel root count
+guards bootstrap scans against loops; file mapping walks requested data instead
+of prevalidating an entire file chain. The kernel can proceed without a bitmap
+during bootstrap and privately marks an unallocated root cluster. Those behaviors
+support a bounded read-only subset without repair or an inactive TexFAT fallback.
+
+The C stream adapter now separates actual source length from declared geometry.
+Boot identification, supported geometry, logical/physical bounds and entry-set
+validation remain mandatory. Failed boot-region verification, short input,
+incomplete root chains, missing/unreadable active bitmap, an unallocated root
+cluster and unavailable volume labels become explicit limitations. The original
+checksum algorithm and extended-signature warning remain; no boot sector is
+reconstructed. Bitmap absence never bypasses cluster-range validation. Known
+unallocated non-root clusters still fail. The active FAT and bitmap remain the
+only allocation pair; inactive metadata is not used to recover old payloads.
+
+Original root counting retains the unique prefix through a host-owned visited
+cluster callback. Root bitmap/label scans are bounded by that count, and namespace
+enumeration retains its incomplete-root diagnostic. No readable root entries
+means failed opening with a specific diagnostic, rather than an apparently empty
+successful archive. The direct-device format probe retains that diagnostic after
+trying its other filesystem candidates. Free space is omitted when allocation or
+bootstrap metadata is unverified; an unreadable label is omitted separately.
+
+File reads use the original demand walker, existing valid-size zero tails and
+bounded stream offsets. Repeated data clusters stop at the readable prefix.
+Short source data and ordinary source I/O failures report per-file DataError
+after preserving delivered bytes, then allow independent files to continue.
+Callback failures, cancellation, allocation failure and output errors still abort;
+they cannot authorize partial opening. No source-write interface was added.
+
+The existing limited-read prompt, default Cancel, persistent badge and fresh
+consent on reopening cover these new diagnostics. EN/RU translations and native
+metadata/extraction are reused. ABI regressions cover boot/checksum/signature,
+root and bitmap failures, both TexFAT pairs, missing source tails, free/cyclic/EOF
+file links, isolated source I/O, independent healthy extraction, cancellation,
+callback failure and reusable handler state. UI regressions cover cancel/accept,
+healthy copying, erroneous prefix copying and unchanged source bytes. Device
+coverage checks the no-readable-root failure reason. This completes the selected
+exFAT bootstrap/data scenario, not the broader filesystem/archive policy audit.
+
+Validation: eight focused suites passed on macOS, Linux and Windows: exFAT ABI,
+backend, both exFAT UI groups, device filesystem/folder, native opening and archive
+recovery. macOS used Cocoa; the new recovery group took under 30 seconds and
+remains a normal suite. Remote receipt `20261023T035250Z-34358a59` contains the
+Linux/Windows results. The initial device regression used a non-sector-aligned
+truncated fixture and was rejected by the device boundary; aligning its length
+fixed the fixture, and all 55 device cases passed. EN/RU current warning JSON and
+normal/compact badge geometry were inspected without clipping. Temporary fixtures
+clean themselves; runner worktrees were unlocked before checks, no obsolete run
+payloads were present, and incremental outputs/caches were preserved. Physical
+devices, native Windows/Linux appearance, VoiceOver, installed packages and
+full/slow suites are not claimed.
+
+Incremental application builds passed on macOS and both guests; Linux/Windows
+receipt `20261023T035513Z-228a4ae2`. The final source comparison retains the
+original active-pair, checksum, mapping and valid-size branches; local changes
+remain read-only stream/diagnostic boundaries. No runtime or build tree reset was
+used.

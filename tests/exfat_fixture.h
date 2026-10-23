@@ -26,6 +26,7 @@ struct ExfatFixture {
     int rootOffset(int logicalEntry) const;
     void setNestedFile(const QString &name, const QByteArray &payload);
     void directoryFault(const QString &fault);
+    void recoveryFault(const QString &fault);
 };
 
 // The inactive pair deliberately describes stale data. Reading it either

@@ -66,10 +66,16 @@ struct super_block {
     unsigned int s_blocksize_bits;
     int64_t s_maxbytes;
     uint64_t image_size;
+    uint64_t source_size;
     void *context;
     int (*read)(void *, uint64_t, void *, size_t);
     int (*poll)(void *);
     bool directory_error;
+    bool allocation_error;
+    bool boot_warning;
+    bool root_unallocated;
+    unsigned int root_clusters;
+    int (*visit_cluster)(void *, uint32_t);
     char error[256];
 };
 struct buffer_head {

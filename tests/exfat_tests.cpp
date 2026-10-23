@@ -59,13 +59,14 @@ class Output final : public ISequentialOutStream, public CMyUnknownImp {
     Z7_COM_UNKNOWN_IMP_1(ISequentialOutStream)
   public:
     QByteArray bytes;
+    QByteArray *destination = nullptr;
     bool fail = false;
     Z7_COM7F_IMF(Write(const void *data, UInt32 size, UInt32 *processed)) override {
         if (processed)
             *processed = 0;
         if (fail)
             return E_FAIL;
-        bytes.append(static_cast<const char *>(data), size);
+        (destination ? *destination : bytes).append(static_cast<const char *>(data), size);
         if (processed)
             *processed = size;
         return S_OK;
@@ -77,10 +78,17 @@ class Extract final : public IArchiveExtractCallback, public CMyUnknownImp {
     CMyComPtr2<ISequentialOutStream, Output> output;
     bool cancel = false;
     Int32 result = -1;
+    bool collect = false;
+    UInt32 current = 0;
+    std::map<UInt32, QByteArray> files;
+    std::map<UInt32, Int32> results;
     Extract() { output.Create_if_Empty(); }
     Z7_COM7F_IMF(SetTotal(UInt64)) override { return S_OK; }
     Z7_COM7F_IMF(SetCompleted(const UInt64 *)) override { return cancel ? E_ABORT : S_OK; }
-    Z7_COM7F_IMF(GetStream(UInt32, ISequentialOutStream **stream, Int32 mode)) override {
+    Z7_COM7F_IMF(GetStream(UInt32 index, ISequentialOutStream **stream, Int32 mode)) override {
+        current = index;
+        if (collect)
+            output->destination = &files[index];
         *stream = nullptr;
         if (mode == NArchive::NExtract::NAskMode::kExtract) {
             *stream = output.Interface();
@@ -91,14 +99,16 @@ class Extract final : public IArchiveExtractCallback, public CMyUnknownImp {
     Z7_COM7F_IMF(PrepareOperation(Int32)) override { return S_OK; }
     Z7_COM7F_IMF(SetOperationResult(Int32 value)) override {
         result = value;
+        results[current] = value;
         return S_OK;
     }
 };
 class OpenProgress final : public IArchiveOpenCallback, public CMyUnknownImp {
     Z7_COM_UNKNOWN_IMP_1(IArchiveOpenCallback)
   public:
+    HRESULT failure = E_ABORT;
     Z7_COM7F_IMF(SetTotal(const UInt64 *, const UInt64 *)) override { return S_OK; }
-    Z7_COM7F_IMF(SetCompleted(const UInt64 *, const UInt64 *)) override { return E_ABORT; }
+    Z7_COM7F_IMF(SetCompleted(const UInt64 *, const UInt64 *)) override { return failure; }
 };
 QString path(IInArchive *archive, UInt32 index) {
     NWindows::NCOM::CPropVariant prop;
@@ -380,10 +390,19 @@ class ExfatTests final : public QObject {
             CMyComPtr<IInStream> source = input;
             input->failureOffset = fixture.clusterOffset(10);
             input->failureResult = error;
-            QCOMPARE(archive_->Open(source, nullptr, nullptr), error);
+            QCOMPARE(archive_->Open(source, nullptr, nullptr), error == E_ABORT ? E_ABORT : S_OK);
             UInt32 count;
             QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
-            QCOMPARE(count, 0u);
+            if (error == E_ABORT)
+                QCOMPARE(count, 0u);
+            else {
+                const UInt32 index = indexOf(fixture.fragmentedName);
+                QVERIFY(index != UInt32(-1));
+                CMyComPtr2<IArchiveExtractCallback, Extract> callback;
+                callback.Create_if_Empty();
+                QCOMPARE(archive_->Extract(&index, 1, 0, callback), S_OK);
+                QCOMPARE(callback->output->bytes, QByteArray(512, 'A') + QByteArray(188, 'B'));
+            }
             NWindows::NCOM::CPropVariant label;
             QCOMPARE(archive_->GetArchiveProperty(kpidVolumeName, &label), S_OK);
             QCOMPARE(label.vt, VARTYPE(VT_EMPTY));
@@ -394,10 +413,10 @@ class ExfatTests final : public QObject {
         ExfatFixture fixture;
         setVolumeLabel(fixture, 31, "broken");
         fixture.image[fixture.rootOffset(31) + 1] = 12;
-        QCOMPARE(open(fixture.image), S_FALSE);
+        QCOMPARE(open(fixture.image), S_OK);
         UInt32 count;
         QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
-        QCOMPARE(count, 0u);
+        QCOMPARE(count, 5u);
         NWindows::NCOM::CPropVariant label;
         QCOMPARE(archive_->GetArchiveProperty(kpidVolumeName, &label), S_OK);
         QCOMPARE(label.vt, VARTYPE(VT_EMPTY));
@@ -480,29 +499,98 @@ class ExfatTests final : public QObject {
         QCOMPARE(callback->result, Int32(NArchive::NExtract::NOperationResult::kOK));
         QCOMPARE(callback->output->bytes, QByteArray(4096, 'A') + QByteArray(188, 'B'));
     }
-    void malformedVolume_data() {
-        QTest::addColumn<QString>("fault");
-        for (const auto *fault : {"boot-checksum", "cluster-range", "root-cycle", "truncated"})
-            QTest::newRow(fault) << QString::fromLatin1(fault);
-    }
-    void malformedVolume() {
-        QFETCH(QString, fault);
+    void invalidVolumeGeometry() {
         ExfatFixture f;
-        if (fault == "boot-checksum")
-            f.image[120] = 1;
-        if (fault == "cluster-range") {
-            f.set32(92, 0xffffffff);
-            f.refreshBootChecksum();
-        }
-        if (fault == "root-cycle")
-            f.fat(10, 2);
-        if (fault == "truncated")
-            f.image.chop(200000);
+        f.set32(92, 0xffffffff);
+        f.refreshBootChecksum();
         QVERIFY(open(f.image) != S_OK);
         UInt32 count = 999;
         QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
         QCOMPARE(count, 0u);
         QCOMPARE(open(fixture_.image), S_OK); // Failed opens leave a reusable handler.
+    }
+    void recoveryMetadata_data() {
+        QTest::addColumn<QString>("fault");
+        for (const auto *fault : {"boot-checksum", "boot-signature", "root-cycle", "missing-bitmap",
+                                  "root-unallocated", "bitmap-cycle", "short-source"})
+            QTest::newRow(fault) << QString::fromLatin1(fault);
+    }
+    void recoveryMetadata() {
+        QFETCH(QString, fault);
+        ExfatFixture fixture;
+        fixture.recoveryFault(fault);
+        QCOMPARE(open(fixture.image), S_OK);
+        const UInt32 index = indexOf(fixture.fragmentedName);
+        QVERIFY(index != UInt32(-1));
+        CMyComPtr2<IArchiveExtractCallback, Extract> callback;
+        callback.Create_if_Empty();
+        QCOMPARE(archive_->Extract(&index, 1, 0, callback), S_OK);
+        QCOMPARE(callback->result, Int32(NArchive::NExtract::NOperationResult::kOK));
+        QCOMPARE(callback->output->bytes, QByteArray(512, 'A') + QByteArray(188, 'B'));
+        NWindows::NCOM::CPropVariant free;
+        QCOMPARE(archive_->GetArchiveProperty(kpidFreeSpace, &free), S_OK);
+        if (fault != "short-source")
+            QCOMPARE(free.vt, VARTYPE(VT_EMPTY));
+        QCOMPARE(open(fixture_.image), S_OK);
+        QCOMPARE(archive_->GetArchiveProperty(kpidFreeSpace, &free), S_OK);
+        QCOMPARE(free.vt, VARTYPE(VT_UI8));
+    }
+    void partialFileData_data() {
+        QTest::addColumn<QString>("fault");
+        for (const auto *fault :
+             {"file-free-link", "file-cycle", "file-eof", "file-short-source", "file-io"})
+            QTest::newRow(fault) << QString::fromLatin1(fault);
+    }
+    void partialFileData() {
+        QFETCH(QString, fault);
+        ExfatFixture fixture;
+        if (fault != "file-io")
+            fixture.recoveryFault(fault);
+        auto *input = new Input(fixture.image);
+        if (fault == "file-io") {
+            input->failureOffset = fixture.clusterOffset(9);
+            input->failureEnd = fixture.clusterOffset(10);
+        }
+        CMyComPtr<IInStream> source = input;
+        QCOMPARE(archive_->Open(source, nullptr, nullptr), S_OK);
+        const UInt32 bad = indexOf(fixture.fragmentedName);
+        const UInt32 good = indexOf(fixture.directoryName + '/' + fixture.nestedName);
+        QVERIFY(bad != UInt32(-1) && good != UInt32(-1));
+        const UInt32 indices[] = {bad, good};
+        CMyComPtr2<IArchiveExtractCallback, Extract> callback;
+        callback.Create_if_Empty();
+        callback->collect = true;
+        QCOMPARE(archive_->Extract(indices, 2, 0, callback), S_OK);
+        QCOMPARE(callback->results[bad], Int32(NArchive::NExtract::NOperationResult::kDataError));
+        QCOMPARE(callback->results[good], Int32(NArchive::NExtract::NOperationResult::kOK));
+        QCOMPARE(callback->files[bad],
+                 QByteArray(512, 'A') +
+                     (fault == "file-short-source" ? QByteArray(80, 'B') : QByteArray()));
+        QCOMPARE(callback->files[good], QByteArray("tail") + QByteArray(1020, '\0'));
+    }
+    void unreadableRootIsNotAnEmptySuccessfulArchive() {
+        ExfatFixture fixture;
+        fixture.recoveryFault("unreadable-root");
+        QCOMPARE(open(fixture.image), S_FALSE);
+        UInt32 count;
+        QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, 0u);
+        NWindows::NCOM::CPropVariant error;
+        QCOMPARE(archive_->GetArchiveProperty(kpidError, &error), S_OK);
+        QCOMPARE(error.vt, VARTYPE(VT_BSTR));
+        QVERIFY(::SysStringLen(error.bstrVal) > 0);
+        QCOMPARE(open(fixture_.image), S_OK);
+    }
+    void progressFailureCannotEnableRecovery() {
+        ExfatFixture fixture;
+        fixture.recoveryFault("boot-checksum");
+        CMyComPtr2<IArchiveOpenCallback, OpenProgress> progress;
+        progress.Create_if_Empty();
+        for (HRESULT failure : {E_ABORT, E_FAIL, E_OUTOFMEMORY}) {
+            progress->failure = failure;
+            QCOMPARE(open(fixture.image, progress), failure);
+        }
+        QCOMPARE(open(fixture_.image), S_OK);
     }
     void partialDirectories_data() {
         QTest::addColumn<QString>("fault");
@@ -569,7 +657,7 @@ class ExfatTests final : public QObject {
     }
     void dataFailureAndCancellation() {
         ExfatFixture broken;
-        broken.fat(9, 5);
+        broken.fat(5, 5);
         QCOMPARE(open(broken.image), S_OK);
         UInt32 index = indexOf(broken.fragmentedName);
         CMyComPtr2<IArchiveExtractCallback, Extract> callback;
@@ -600,10 +688,12 @@ class ExfatTests final : public QObject {
         // Request cancellation when the source returns data during extraction.
         input->cancelOnRead = &callback->cancel;
         QCOMPARE(archive_->Extract(&index, 1, 0, callback), E_ABORT);
-        QVERIFY(callback->output->bytes.isEmpty());
+        QVERIFY((QByteArray(512, 'A') + QByteArray(188, 'B')).startsWith(callback->output->bytes));
+        QCOMPARE(callback->result, Int32(-1));
         QCOMPARE(open(fixture_.image), S_OK);
         const UInt32 good = indexOf(fixture_.fragmentedName);
         callback->cancel = false;
+        callback->output->bytes.clear();
         QCOMPARE(archive_->Extract(&good, 1, 0, callback), S_OK);
         QCOMPARE(callback->result, Int32(NArchive::NExtract::NOperationResult::kOK));
         QCOMPARE(callback->output->bytes, QByteArray(512, 'A') + QByteArray(188, 'B'));
@@ -651,7 +741,7 @@ class ExfatTests final : public QObject {
         QCOMPARE(callback->output->bytes, QByteArray(512, 'A') + QByteArray(188, 'B'));
         QCOMPARE(fixture.image, original);
     }
-    void texfatRefusesInconsistentVolumes_data() {
+    void texfatLimitedMetadata_data() {
         QTest::addColumn<unsigned>("active");
         QTest::addColumn<QString>("fault");
         for (unsigned active : {0u, 1u})
@@ -661,7 +751,7 @@ class ExfatTests final : public QObject {
                 QTest::newRow(row.constData()) << active << QString::fromLatin1(fault);
             }
     }
-    void texfatRefusesInconsistentVolumes() {
+    void texfatLimitedMetadata() {
         QFETCH(unsigned, active);
         QFETCH(QString, fault);
         TexfatFixture fixture(active);
@@ -677,17 +767,24 @@ class ExfatTests final : public QObject {
             const unsigned start = active ? 13 : 3;
             fixture.fatCopy(active, start, start);
         }
-        QVERIFY(open(fixture.image) != S_OK);
-        UInt32 count = 999;
-        QCOMPARE(archive_->GetNumberOfItems(&count), S_OK);
-        QCOMPARE(count, 0u);
+        QCOMPARE(open(fixture.image), S_OK);
+        const UInt32 index = indexOf(fixture.fragmentedName);
+        QVERIFY(index != UInt32(-1));
+        CMyComPtr2<IArchiveExtractCallback, Extract> callback;
+        callback.Create_if_Empty();
+        QCOMPARE(archive_->Extract(&index, 1, 0, callback), S_OK);
+        QCOMPARE(callback->result, Int32(NArchive::NExtract::NOperationResult::kOK));
+        QCOMPARE(callback->output->bytes, QByteArray(512, 'A') + QByteArray(188, 'B'));
+        NWindows::NCOM::CPropVariant free;
+        QCOMPARE(archive_->GetArchiveProperty(kpidFreeSpace, &free), S_OK);
+        QCOMPARE(free.vt, VARTYPE(VT_EMPTY));
         QCOMPARE(open(fixture_.image), S_OK);
     }
     void texfatDoesNotRecoverFromInactivePair() {
         TexfatFixture fixture(1);
         fixture.image[106] = char(1 | 2 | 4);
         // The inactive copy still has an acyclic chain, but its payload is stale.
-        fixture.fatCopy(1, 9, 5);
+        fixture.fatCopy(1, 5, 0xffffffff);
         QCOMPARE(open(fixture.image), S_OK);
         const UInt32 index = indexOf(fixture.fragmentedName);
         QVERIFY(index != UInt32(-1));
@@ -695,7 +792,7 @@ class ExfatTests final : public QObject {
         callback.Create_if_Empty();
         QCOMPARE(archive_->Extract(&index, 1, 0, callback), S_OK);
         QCOMPARE(callback->result, Int32(NArchive::NExtract::NOperationResult::kDataError));
-        QVERIFY(callback->output->bytes.isEmpty());
+        QCOMPARE(callback->output->bytes, QByteArray(512, 'A'));
     }
     void texfatCancellation() {
         TexfatFixture fixture(1);

@@ -163,6 +163,7 @@ HRESULT OpenDeviceFilesystem(const std::shared_ptr<const ArchiveCodecCatalog> &c
     // Only filesystem readers are candidates. General archive autodetection
     // could accept a boot payload or descend into a different partition.
     // UDF precedes ISO for media that publish both directory trees.
+    QString failureReason;
     for (const QString &format :
          {QStringLiteral("APFS"), QStringLiteral("Ext"), QStringLiteral("NTFS"),
           QStringLiteral("exFAT"), QStringLiteral("HFS"), QStringLiteral("EROFS"),
@@ -175,8 +176,16 @@ HRESULT OpenDeviceFilesystem(const std::shared_ptr<const ArchiveCodecCatalog> &c
         RINOK(input->Seek(0, STREAM_SEEK_SET, nullptr))
         std::shared_ptr<ArchiveNativeOpen> opened;
         const HRESULT result = Open(catalog, input, name, format, callback, opened, options);
-        if (result == S_FALSE)
+        if (result == S_FALSE) {
+            if (opened) {
+                const auto &info = opened->archiveLink().NonOpen_ErrorInfo;
+                if (info.IsArc_After_NonOpen() && !info.ErrorMessage.IsEmpty())
+                    failureReason = QCoreApplication::translate(
+                        "SevenZipDiagnostics",
+                        QString::fromWCharArray(info.ErrorMessage).toUtf8().constData());
+            }
             continue;
+        }
         RINOK(result)
         const auto *direct = dynamic_cast<DirectDeviceInput *>(input);
         RINOK(CheckFeatures(opened->arc().Archive, format == QStringLiteral("Ext"),
@@ -184,6 +193,8 @@ HRESULT OpenDeviceFilesystem(const std::shared_ptr<const ArchiveCodecCatalog> &c
         reader = std::move(opened);
         return S_OK;
     }
+    if (error && !failureReason.isEmpty())
+        *error = failureReason;
     return S_FALSE;
     COM_TRY_END
 }

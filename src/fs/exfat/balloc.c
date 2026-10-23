@@ -132,7 +132,7 @@ err_out:
 
 int exfat_load_bitmap(struct super_block *sb)
 {
-	unsigned int i, type, seen = 0;
+	unsigned int i, type, seen = 0, walked = 0;
 	struct exfat_chain clu;
 	struct exfat_sb_info *sbi = EXFAT_SB(sb);
 	struct exfat_dentry selected = {0};
@@ -140,6 +140,8 @@ int exfat_load_bitmap(struct super_block *sb)
 
 	exfat_chain_set(&clu, sbi->root_dir, 0, ALLOC_FAT_CHAIN);
 	while (clu.dir != EXFAT_EOF_CLUSTER) {
+		if (walked++ >= sb->root_clusters)
+			break;
 		for (i = 0; i < sbi->dentries_per_clu; i++) {
 			struct exfat_dentry *ep;
 			struct buffer_head *bh;
@@ -165,6 +167,8 @@ int exfat_load_bitmap(struct super_block *sb)
 				goto load;
 		}
 
+		if (walked == sb->root_clusters)
+			break;
 		if (exfat_get_next_cluster(sb, &clu.dir))
 			return -EIO;
 	}
@@ -192,11 +196,10 @@ bool exfat_test_bitmap(struct super_block *sb, unsigned int clu)
 	unsigned int ent_idx;
 	struct exfat_sb_info *sbi = EXFAT_SB(sb);
 
-	if (!sbi->vol_amap)
-		return true;
-
 	if (!is_valid_cluster(sbi, clu))
 		return false;
+	if (!sbi->vol_amap || (sb->root_unallocated && clu == sbi->root_dir))
+		return true;
 
 	ent_idx = CLUSTER_TO_BITMAP_ENT(clu);
 	i = BITMAP_OFFSET_SECTOR_INDEX(sb, ent_idx);

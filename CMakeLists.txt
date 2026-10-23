@@ -4063,6 +4063,13 @@ if(BUILD_TESTING)
     add_test(NAME filesystem_fat_directory_ui COMMAND filesystem_read_ui_tests -silent confirmsPartialFatDirectory)
     add_test(NAME filesystem_fat_file_ui COMMAND filesystem_read_ui_tests -silent confirmsPartialFatFile)
     add_test(NAME filesystem_exfat_directory_ui COMMAND filesystem_read_ui_tests -silent confirmsPartialExfatDirectories)
+    add_test(NAME filesystem_exfat_recovery_ui COMMAND filesystem_read_ui_tests -silent confirmsExfatRecovery)
+    set_tests_properties(filesystem_exfat_recovery_ui PROPERTIES TIMEOUT 60 RESOURCE_LOCK sevenzip_ui_artifacts
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
+    if(APPLE)
+        set_property(TEST filesystem_exfat_recovery_ui PROPERTY ENVIRONMENT
+            "QT_QPA_PLATFORM=cocoa;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
+    endif()
     set_tests_properties(filesystem_exfat_directory_ui filesystem_cramfs_read_ui filesystem_squashfs_index_ui filesystem_squashfs_inode_ui filesystem_squashfs_directory_ui filesystem_squashfs_read_ui filesystem_read_ui filesystem_read_ui_ru filesystem_ext_read_ui filesystem_ext_read_ui_ru filesystem_security_read_ui filesystem_fat_read_ui filesystem_fat_directory_ui filesystem_fat_file_ui PROPERTIES TIMEOUT 60 RESOURCE_LOCK sevenzip_ui_artifacts
         ENVIRONMENT "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports")
     if(APPLE)
