@@ -8,12 +8,16 @@
 #include "CPP/7zip/UI/FileManager/OpenCallback.h"
 #include "Common/ComTry.h"
 #include "Common/StringConvert.h"
+#include "archivecodeccatalog.h"
+#include "archiveinputlayer.h"
 #include "archivenativeopen.h"
 #include "qtarchivebackendrequest.h"
 #include "qtarchivefileresource.h"
 #include "qtarchivenativeopenprogress.h"
 #include "qtfilesystemreadprompt.h"
 #include "qtlocationfolder.h"
+#include <QCoreApplication>
+#include <QPointer>
 #include <QThread>
 #include <memory>
 
@@ -92,21 +96,14 @@ HRESULT ReOpenArchiveFolder(CAgentFolder &folder, const QString &settingsPath, Q
 }
 
 void QtArchiveFileResource::AttachReopenService(ArchiveBackend &backend, const QString &format) {
-    _reopen = [this, &backend, format](IFolderFolder **metadata,
-                                       IArchiveOpenCallback *callback) -> HRESULT {
+    _reopen = [this, backend = QPointer<ArchiveBackend>(&backend),
+               format](IFolderFolder **metadata, IArchiveOpenCallback *callback) -> HRESULT {
         COM_TRY_BEGIN
         if (!metadata)
             return E_INVALIDARG;
         *metadata = nullptr;
-        if (QThread::currentThread() == backend.thread())
+        if (QThread::currentThread() == QCoreApplication::instance()->thread())
             return E_FAIL;
-        const auto request = std::make_shared<CMetadataRequest>();
-        CConnection info(
-            QObject::connect(&backend, &ArchiveBackend::infoReady, &backend,
-                             [request](const ArchiveInfo &value) { request->Info = value; }));
-        CConnection entries(QObject::connect(
-            &backend, &ArchiveBackend::entriesReady, &backend,
-            [request](const QList<ArchiveEntry> &value) { request->Entries = value; }));
         const QString path = EnginePath;
         auto *openCallback = dynamic_cast<COpenCallbackImp *>(callback);
         CMyComPtr<IProgress> nativeProgressCallback;
@@ -115,8 +112,21 @@ void QtArchiveFileResource::AttachReopenService(ArchiveBackend &backend, const Q
         CNativeOpenProgress nativeProgress(nativeProgressCallback,
                                            openCallback ? openCallback->Callback : nullptr);
         std::shared_ptr<ArchiveNativeOpen> nativeOpen;
-        RINOK(
-            backend.openNativeArchive(_codecs, path, format, &nativeProgress, nativeOpen, nullptr))
+        COpenOptions options;
+        CObjectVector<COpenType> types;
+        CIntVector excluded;
+        CMyComPtr<IInStream> inputCursor;
+        if (_streamInput) {
+            if (!_codecs || !_codecs->parseOpenTypes(format, types))
+                return E_INVALIDARG;
+            options.props = nullptr;
+            RINOK(_streamInput->OpenCursor(&inputCursor))
+            options.stream = inputCursor;
+            options.types = &types;
+            options.excludedFormats = &excluded;
+        }
+        RINOK(ArchiveBackend::openNativeArchive(_codecs, path, format, &nativeProgress, nativeOpen,
+                                                _streamInput ? &options : nullptr))
         QString limitations;
         bool nativeMetadata = false;
         auto *ui =
@@ -140,6 +150,15 @@ void QtArchiveFileResource::AttachReopenService(ArchiveBackend &backend, const Q
             UseNativeMetadata();
             return S_OK;
         }
+        if (!backend)
+            return E_FAIL;
+        const auto request = std::make_shared<CMetadataRequest>();
+        CConnection info(
+            QObject::connect(backend.data(), &ArchiveBackend::infoReady, backend.data(),
+                             [request](const ArchiveInfo &value) { request->Info = value; }));
+        CConnection entries(QObject::connect(
+            backend.data(), &ArchiveBackend::entriesReady, backend.data(),
+            [request](const QList<ArchiveEntry> &value) { request->Entries = value; }));
         QString password;
         CMyComPtr<ICryptoGetTextPassword2> crypto;
         if (callback)
@@ -161,8 +180,8 @@ void QtArchiveFileResource::AttachReopenService(ArchiveBackend &backend, const Q
                 password = QString::fromWCharArray(ui->Password);
         }
         RINOK(RunArchiveBackendRequest(
-            backend,
-            [&backend, path, format, password] { backend.openFolder(path, format, password); },
+            *backend,
+            [backend, path, format, password] { backend->openFolder(path, format, password); },
             callback, _sync))
         RINOK(ConfirmLimitedArchiveRead(ui ? &ui->ProgressDialog : nullptr, ui,
                                         FilesystemReadLimitations(), request->Info.readLimitations))

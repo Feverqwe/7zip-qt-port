@@ -37,8 +37,8 @@ QList<ExternalDevice> EnumerateExternalDevices(QString &error);
 DeviceAccessResult OpenExternalDevice(const ExternalDevice &device, bool authorize,
                                       const std::function<bool()> &cancelled = {});
 
-// Separates authorized native device sources from nested archive streams, which
-// continue using the existing spool-to-file transport.
+// Identifies authorized device views and their scoped read policy. Native
+// archive-item streams retain their own parent readers independently.
 class DirectDeviceInput {
   public:
     virtual ~DirectDeviceInput() = default;

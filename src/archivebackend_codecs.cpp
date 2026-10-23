@@ -11,6 +11,7 @@
 #include "archivecodeccatalog.h"
 #include "archivecodecprobe.h"
 #include "archivedevice.h"
+#include "archiveinputlayer.h"
 #include "archivenativeopen.h"
 #include "qtbenchmarkservices.h"
 #include "qtlanguageservices.h"
@@ -101,7 +102,7 @@ HRESULT ArchiveBackend::openNativeArchive(const std::shared_ptr<const ArchiveCod
                                           const QString &path, const QString &type,
                                           IOpenCallbackUI *callback,
                                           std::shared_ptr<ArchiveNativeOpen> &reader,
-                                          const COpenOptions *options) const {
+                                          const COpenOptions *options) {
     reader.reset();
     // Standalone callers and missing-module discovery retain the existing
     // process-only read fallback. A valid module uses the source opener.
@@ -119,7 +120,7 @@ ArchiveBackend::openDeviceFilesystem(const std::shared_ptr<const ArchiveCodecCat
                                      IInStream *input, const QString &name,
                                      IOpenCallbackUI *callback,
                                      std::shared_ptr<ArchiveNativeOpen> &reader, QString *error,
-                                     const COpenOptions *options) const {
+                                     const COpenOptions *options) {
     return OpenDeviceFilesystem(catalog, input, name, callback, reader, error, options);
 }
 
@@ -143,6 +144,7 @@ HRESULT ArchiveBackend::updateNativeComment(const std::shared_ptr<ArchiveNativeO
                                             IArchiveUpdateCallback *callback) const {
     if (!reader || !reader->hasCommentWriter())
         return E_NOTIMPL;
+    std::lock_guard<std::mutex> lock(reader->itemStreamMutex());
     CMyComPtr<IOutArchive> writer;
     RINOK(reader->arc().Archive.QueryInterface(IID_IOutArchive, &writer))
     RINOK(ValidateNativeUpdatePaths(count, callback))
@@ -202,6 +204,7 @@ HRESULT ArchiveBackend::setNativeArchiveProperties(const std::shared_ptr<Archive
                                                    const PROPVARIANT *values, UInt32 count) const {
     if (!reader || !reader->arc().Archive || reader->arc().IsReadOnly || reader->hasNestedStream())
         return E_NOTIMPL;
+    std::lock_guard<std::mutex> lock(reader->itemStreamMutex());
     CMyComPtr<ISetProperties> properties;
     RINOK(reader->arc().Archive.QueryInterface(IID_ISetProperties, &properties))
     return properties->SetProperties(names, values, count);
@@ -212,6 +215,7 @@ HRESULT ArchiveBackend::updateNativeArchive(const std::shared_ptr<ArchiveNativeO
                                             IArchiveUpdateCallback *callback) const {
     if (!reader || !reader->arc().Archive || reader->arc().IsReadOnly || reader->hasNestedStream())
         return E_NOTIMPL;
+    std::lock_guard<std::mutex> lock(reader->itemStreamMutex());
     CMyComPtr<IOutArchive> writer;
     RINOK(reader->arc().Archive.QueryInterface(IID_IOutArchive, &writer))
     RINOK(ValidateNativeUpdatePaths(count, callback))
@@ -226,6 +230,7 @@ HRESULT ArchiveBackend::updateNativeArchive(const std::shared_ptr<ArchiveNativeO
                                             const CompressionOptions &options) const {
     if (!reader || !reader->arc().Archive || reader->arc().IsReadOnly || reader->hasNestedStream())
         return E_NOTIMPL;
+    std::lock_guard<std::mutex> lock(reader->itemStreamMutex());
     CMyComPtr<IOutArchive> writer;
     RINOK(reader->arc().Archive.QueryInterface(IID_IOutArchive, &writer))
     RINOK(ValidateNativeUpdatePaths(count, callback, options.PathMode == NWildcard::k_AbsPath))
@@ -261,6 +266,8 @@ HRESULT ArchiveBackend::extractNativeArchive(const std::shared_ptr<ArchiveNative
                                              IArchiveExtractCallback *callback) {
     if (!reader || !reader->arc().Archive)
         return E_NOTIMPL;
+    std::lock_guard<std::mutex> lock(reader->itemStreamMutex());
+    ArchiveInputReadRequestScope readRequest(reader->inputStream(), callback);
     if (reader->hasNativeHashExtractor()) {
         RINOK(validateNativeHashReads(*reader, indices, count))
     }

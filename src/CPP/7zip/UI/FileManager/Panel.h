@@ -523,9 +523,10 @@ class CPanel : public QObject {
     }
     HRESULT OpenAsArc(IInStream *inStream, const CTempFileInfo &tempFileInfo,
                       const UString &virtualFilePath, const UString &arcFormat,
-                      COpenResult &openRes);
+                      COpenResult &openRes, bool materializeStream = false);
     HRESULT OpenAsArc_Msg(IInStream *inStream, const CTempFileInfo &tempFileInfo,
-                          const UString &virtualFilePath, const UString &arcFormat);
+                          const UString &virtualFilePath, const UString &arcFormat,
+                          bool materializeStream = false);
     HRESULT OpenAsArc_Name(const UString &relPath, const UString &arcFormat);
     HRESULT OpenAsArc_Index(unsigned index, const wchar_t *type = NULL);
     void OpenFolder(unsigned index);

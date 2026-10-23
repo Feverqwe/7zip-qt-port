@@ -1,4 +1,4 @@
-// File-only 7zz service for the native IInArchive extraction callback contract.
+// Retained native extraction, with a legacy file-only 7zz fallback.
 #include "7zip/Archive/IArchive.h"
 #include "7zip/Common/FileStreams.h"
 #include "7zip/Compress/CopyCoder.h"
@@ -12,6 +12,7 @@
 #include "qtarchivefileresource.h"
 #include "qtownedtempdir.h"
 #include <QFileInfo>
+#include <QPointer>
 
 namespace {
 class CExtractStreamProgress final : public ICompressProgressInfo, public CMyUnknownImp {
@@ -152,16 +153,20 @@ HRESULT ExtractItems(ArchiveBackend &backend, const QString &archive, const QStr
 
 void QtArchiveFileResource::AttachExtractService(ArchiveBackend &backend, const QString &format) {
     AttachProgressService(backend);
-    _extract = [this, &backend, format](IInArchive *metadata, const UInt32 *indices, UInt32 count,
-                                        Int32 testMode, IArchiveExtractCallback *callback) {
+    _extract = [this, backend = QPointer<ArchiveBackend>(&backend),
+                format](IInArchive *metadata, const UInt32 *indices, UInt32 count, Int32 testMode,
+                        IArchiveExtractCallback *callback) {
         COM_TRY_BEGIN
         if (HasNativeExtractService()) {
-            return backend.extractNativeArchive(_nativeOpen, indices, count, testMode, callback);
+            const auto reader = NativeReaderLease();
+            return ArchiveBackend::extractNativeArchive(reader, indices, count, testMode, callback);
         }
-        if (_nativeOpen &&
-            (_nativeOpen->hasNativeRarExtractor() || _nativeOpen->hasNativeHashExtractor()))
+        if (HasStreamInput() || (_nativeOpen && (_nativeOpen->hasNativeRarExtractor() ||
+                                                 _nativeOpen->hasNativeHashExtractor())))
             return E_FAIL;
-        return ExtractItems(backend, EnginePath, format, metadata, indices, count, testMode,
+        if (!backend)
+            return E_FAIL;
+        return ExtractItems(*backend, EnginePath, format, metadata, indices, count, testMode,
                             callback, _sync, Info.encrypted);
         COM_TRY_END
     };

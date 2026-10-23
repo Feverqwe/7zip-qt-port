@@ -21,6 +21,8 @@
 #include "Windows/FileName.h"
 #include "Windows/PropVariantConv.h"
 #include "Windows/System.h"
+#include "archivelayercontext.h"
+#include "qtarchiveitemopen.h"
 #include "qtexternalguicall.h"
 #include "qtfilemanagerstartup.h"
 #include "qtownedtempregistry.h"
@@ -339,7 +341,7 @@ void CPanel::MessageBox_Error_UnsupportOperation() const {
 
 HRESULT CPanel::OpenAsArc(IInStream *inStream, const CTempFileInfo &tempFileInfo,
                           const UString &virtualFilePath, const UString &arcFormat,
-                          COpenResult &openRes) {
+                          COpenResult &openRes, bool materializeStream) {
     openRes.Encrypted = false;
     CFolderLink folderLink;
     (CTempFileInfo &)folderLink = tempFileInfo;
@@ -356,12 +358,21 @@ HRESULT CPanel::OpenAsArc(IInStream *inStream, const CTempFileInfo &tempFileInfo
     CFfpOpen ffp(_folderManager);
     ffp.SettingsPath = _settingsPath;
     ffp.OwnedStreamFile = inStream && tempFileInfo.NeedDelete && !tempFileInfo.FilePath.IsEmpty();
+    ffp.MaterializeStreamFile = materializeStream;
     const HRESULT res = ffp.OpenFileFolderPlugin(
         inStream, folderLink.FilePath.IsEmpty() ? us2fs(virtualFilePath) : folderLink.FilePath,
         arcFormat, GetParent());
     openRes.Encrypted = ffp.Encrypted;
     openRes.ErrorMessage = ffp.ErrorMessage;
     RINOK(res)
+    CMyComPtr<IArchiveLayerFolder> child;
+    if (ffp.Folder.QueryInterface(IID_IArchiveLayerFolder, &child) == S_OK && child) {
+        UInt64 parentDepth = 0;
+        CMyComPtr<IArchiveLayerFolder> parent;
+        if (_folder && _folder.QueryInterface(IID_IArchiveLayerFolder, &parent) == S_OK && parent)
+            RINOK(parent->GetContainerDepth(&parentDepth))
+        RINOK(child->SetParentContainerDepth(parentDepth))
+    }
     if (ffp.MaterializedStreamFile) {
         if (!folderLink.FileInfo.Find(folderLink.FilePath))
             return GetLastError_noZero_HRESULT();
@@ -389,9 +400,11 @@ HRESULT CPanel::OpenAsArc(IInStream *inStream, const CTempFileInfo &tempFileInfo
 }
 
 HRESULT CPanel::OpenAsArc_Msg(IInStream *inStream, const CTempFileInfo &tempFileInfo,
-                              const UString &virtualFilePath, const UString &arcFormat) {
+                              const UString &virtualFilePath, const UString &arcFormat,
+                              bool materializeStream) {
     COpenResult opRes;
-    HRESULT res = OpenAsArc(inStream, tempFileInfo, virtualFilePath, arcFormat, opRes);
+    HRESULT res =
+        OpenAsArc(inStream, tempFileInfo, virtualFilePath, arcFormat, opRes, materializeStream);
     if (res == S_OK)
         return res;
     if (res == E_ABORT)
@@ -850,7 +863,20 @@ void CPanel::OpenItemInArchive(unsigned index, bool tryInternal, bool tryExterna
         _folder.QueryInterface(IID_IInArchiveGetStream, &getStream);
         if (getStream) {
             CMyComPtr<ISequentialInStream> subSeqStream;
-            getStream->GetStream(index, &subSeqStream);
+            bool defined = !_parentFolders.IsEmpty() && _parentFolders.Back().UsePassword;
+            UString password = defined ? _parentFolders.Back().Password : UString();
+            const HRESULT acquired = GetArchiveItemStream(
+                _folder, index, &subSeqStream, GetParent(), _settingsPath, defined, password);
+            if (!_parentFolders.IsEmpty()) {
+                _parentFolders.Back().UsePassword = defined;
+                _parentFolders.Back().Password = password;
+            }
+            if (acquired == E_ABORT)
+                return;
+            if (acquired != S_OK && acquired != S_FALSE && acquired != E_NOTIMPL) {
+                MessageBox_Error_HRESULT(acquired);
+                return;
+            }
             if (subSeqStream) {
                 CMyComPtr<IInStream> subStream;
                 subSeqStream.QueryInterface(IID_IInStream, &subStream);
@@ -1000,10 +1026,7 @@ void CPanel::OpenItemInArchive(unsigned index, bool tryInternal, bool tryExterna
             CMyComPtr2_Create<IInStream, CBufInStream> bufInStream;
             bufInStream->Init(file.Data, file.WrittenSize, virtFileSystem);
             const HRESULT res =
-                OpenAsArc_Msg(bufInStream, tempFileInfo, fullVirtPath, type ? type : L""
-                              // , encrypted
-                              // , true // showErrorMessage
-                );
+                OpenAsArc_Msg(bufInStream, tempFileInfo, fullVirtPath, type ? type : L"", true);
             if (res == S_OK) {
                 if (virtFileSystemSpec->Index_of_ZoneBuf_AltStream_in_Files >= 0 &&
                     !_parentFolders.IsEmpty()) {

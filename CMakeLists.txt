@@ -317,6 +317,7 @@ add_library(sevenzip_panel STATIC src/CPP/7zip/UI/FileManager/App.cpp
     src/CPP/7zip/UI/FileManager/OpenCallback.cpp src/CPP/7zip/UI/FileManager/OpenCallback.h
     src/CPP/7zip/UI/FileManager/FileFolderPluginOpen.cpp src/CPP/7zip/UI/FileManager/FileFolderPluginOpen.h
     src/CPP/7zip/UI/FileManager/PanelItemOpen.cpp
+    src/qtarchiveitemopen.cpp src/qtarchiveitemopen.h
     src/CPP/7zip/UI/FileManager/VerCtrl.cpp
     src/qtverctrlfileservices.cpp src/qtverctrlfileservices.h
     src/qtassociatedfileservices.cpp src/qtassociatedfileservices.h
@@ -476,6 +477,8 @@ add_library(sevenzip_filesystem STATIC
     src/archivecodeccatalog.cpp src/archivecodeccatalog.h
     src/archivecodecimage.cpp src/archivecodecimage.h
     src/archivenativeopen.cpp src/archivenativeopen.h
+    src/archiveinputlayer.cpp src/archiveinputlayer.h src/archivelayercontext.h
+    src/archivereadstream.h
     src/archivedevice.cpp src/archivedevice.h
     src/archivebackend_device.cpp
     src/deviceinput.cpp src/deviceaccess.h
@@ -1510,6 +1513,32 @@ if(BUILD_TESTING)
             "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\"")
     endif()
     add_test(NAME archive_open_options COMMAND archive_open_options_tests -silent)
+    qt_add_executable(archive_layer_chain_tests tests/archive_layer_chain_tests.cpp
+        ${source_extract_advanced_sources})
+    target_include_directories(archive_layer_chain_tests PRIVATE src tests)
+    target_link_libraries(archive_layer_chain_tests PRIVATE sevenzip_location Qt6::Test)
+    target_compile_definitions(archive_layer_chain_tests PRIVATE
+        LAYER_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/layers"
+        SEVENZIP_EXT_PYTHON="${Python3_EXECUTABLE}"
+        SEVENZIP_EXT_FIXTURE="${CMAKE_CURRENT_SOURCE_DIR}/tests/ext_fixture.py")
+    if(SEVENZIP_CODEC_MODULE)
+        target_compile_definitions(archive_layer_chain_tests PRIVATE
+            SEVENZIP_CODEC_MODULE="${SEVENZIP_CODEC_MODULE}")
+    endif()
+    add_test(NAME archive_layer_chain COMMAND archive_layer_chain_tests -silent)
+    set_tests_properties(archive_layer_chain PROPERTIES TIMEOUT 60
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+    qt_add_executable(archive_layer_lifetime_tests tests/archive_layer_lifetime_tests.cpp
+        ${source_extract_advanced_sources})
+    target_include_directories(archive_layer_lifetime_tests PRIVATE src tests)
+    target_link_libraries(archive_layer_lifetime_tests PRIVATE sevenzip_location Qt6::Test)
+    if(SEVENZIP_CODEC_MODULE)
+        target_compile_definitions(archive_layer_lifetime_tests PRIVATE
+            SEVENZIP_CODEC_MODULE="${SEVENZIP_CODEC_MODULE}")
+    endif()
+    add_test(NAME archive_layer_lifetime COMMAND archive_layer_lifetime_tests -silent)
+    set_tests_properties(archive_layer_lifetime PROPERTIES TIMEOUT 45
+        ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
     foreach(native_read_suite IN ITEMS native_archive_test native_listing)
         qt_add_executable(${native_read_suite}_tests tests/${native_read_suite}_tests.cpp
             ${source_extract_advanced_sources})
@@ -4467,6 +4496,7 @@ if(BUILD_TESTING AND WIN32)
             large_list_window worker_window_progress panel_sort_commands panel_refresh_drop panel_refresh_completion panel_rename_state deferred_rename navigation_reload panel_deleted_draw panel_column_menu panel_column_initialization panel_column_schema panel_column_sort panel_column_changes panel_cell_text native_column_workflow panel_item_changed
             archive_reload_command drag_reload_completion panel_creation_path copy_archive_refresh interarchive_recovery panel_load_count panel_activation progress_dialog progress_worker progress_cancel archive_progress volume_dialog language_dialog language_standard_buttons fm_settings list_settings_runtime
             language_main_dialog language_focus properties_runtime
+            archive_layer_chain archive_layer_lifetime
             archive_item_open archive_external_edit external_editors_ui language_archive_command overwrite_layout
             alt_streams_command alt_streams_archive_ui fs_provider_command native_archive_ads_copy view_menu)
         get_property(sevenzip_native_ui_environment TEST ${sevenzip_native_ui_test}

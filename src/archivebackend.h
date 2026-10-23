@@ -126,15 +126,17 @@ class ArchiveBackend : public QObject {
     HRESULT openNativeArchive(const QString &path, const QString &type, IOpenCallbackUI *callback,
                               std::shared_ptr<ArchiveNativeOpen> &reader,
                               const COpenOptions *options = nullptr) const;
-    HRESULT openNativeArchive(const std::shared_ptr<const ArchiveCodecCatalog> &catalog,
-                              const QString &path, const QString &type, IOpenCallbackUI *callback,
-                              std::shared_ptr<ArchiveNativeOpen> &reader,
-                              const COpenOptions *options) const;
-    HRESULT openDeviceFilesystem(const std::shared_ptr<const ArchiveCodecCatalog> &catalog,
-                                 IInStream *input, const QString &name, IOpenCallbackUI *callback,
-                                 std::shared_ptr<ArchiveNativeOpen> &reader,
-                                 QString *error = nullptr,
-                                 const COpenOptions *options = nullptr) const;
+    static HRESULT openNativeArchive(const std::shared_ptr<const ArchiveCodecCatalog> &catalog,
+                                     const QString &path, const QString &type,
+                                     IOpenCallbackUI *callback,
+                                     std::shared_ptr<ArchiveNativeOpen> &reader,
+                                     const COpenOptions *options);
+    static HRESULT openDeviceFilesystem(const std::shared_ptr<const ArchiveCodecCatalog> &catalog,
+                                        IInStream *input, const QString &name,
+                                        IOpenCallbackUI *callback,
+                                        std::shared_ptr<ArchiveNativeOpen> &reader,
+                                        QString *error = nullptr,
+                                        const COpenOptions *options = nullptr);
     static HRESULT inspectDevice(const std::shared_ptr<const ArchiveCodecCatalog> &catalog,
                                  IInStream *input, quint64 size, const QString &name,
                                  IOpenCallbackUI *callback, std::shared_ptr<ArchiveDevice> &source);

@@ -16,6 +16,7 @@ struct CFfpOpen {
     bool Encrypted;
     UString Password;
     bool OwnedStreamFile = false;
+    bool MaterializeStreamFile = false;
     bool MaterializedStreamFile = false;
 
     NWindows::NDLL::CLibrary Library;

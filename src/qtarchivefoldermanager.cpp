@@ -4,6 +4,7 @@
 #include "Common/ComTry.h"
 #include "archivebackend.h"
 #include "archivecodeccatalog.h"
+#include "archiveinputlayer.h"
 #include "archivenativeopen.h"
 #include "archiveprogresstransport.h"
 #include "deviceaccess.h"
@@ -37,14 +38,17 @@ struct QtArchiveFolderManager::COpenServices final : IQtAgentOpenServices {
     QtArchiveFolderManager &Manager;
     IProgress *Progress;
     bool OwnedStreamFile;
+    bool MaterializeStreamFile;
     const COpenOptions *Requested;
     UString Format;
     CMyComPtr<IUnknown> Lease;
     std::shared_ptr<const ArchiveCodecCatalog> Catalog;
     COpenServices(QtArchiveFolderManager &manager, const wchar_t *path, const wchar_t *format,
-                  IProgress *progress, bool ownedStreamFile, const COpenOptions *requested)
+                  IProgress *progress, bool ownedStreamFile, const COpenOptions *requested,
+                  bool materializeStream)
         : Manager(manager), Progress(progress), OwnedStreamFile(ownedStreamFile),
-          Requested(requested), Format(format ? format : L""),
+          MaterializeStreamFile(materializeStream), Requested(requested),
+          Format(format ? format : L""),
           Lease(new QtArchiveFileResource(QString::fromWCharArray(path))) {}
     HRESULT LoadCodecs(const CCodecs *&codecs) override {
         RINOK(Manager.WaitForCodecCatalog(Catalog, Progress))
@@ -184,20 +188,34 @@ Z7_COM7F_IMF(QtArchiveFolderManager::OpenFolderFile(IInStream *inStream, const w
 
 HRESULT QtArchiveFolderManager::OpenOwnedStreamFile(IInStream *stream, const wchar_t *path,
                                                     const wchar_t *format, IFolderFolder **folder,
-                                                    IProgress *progress) {
-    return OpenFolderFileImpl(stream, path, format, folder, progress, true);
+                                                    IProgress *progress, bool materialize,
+                                                    bool *materialized) {
+    if (!materialized)
+        return E_INVALIDARG;
+    *materialized = false;
+    const HRESULT result =
+        OpenFolderFileImpl(stream, path, format, folder, progress, true, nullptr, materialize);
+    if (result == S_OK && folder && *folder) {
+        auto *agent = dynamic_cast<CAgentFolder *>(*folder);
+        auto *resource =
+            agent ? dynamic_cast<QtArchiveFileResource *>(agent->GetEngineResource()) : nullptr;
+        *materialized = resource && !resource->HasStreamInput();
+    }
+    return result;
 }
 
 HRESULT QtArchiveFolderManager::OpenArchive(const COpenOptions &options, const wchar_t *format,
                                             IFolderFolder **folder, IProgress *progress) {
-    return OpenFolderFileImpl(nullptr, options.filePath, format, folder, progress, false, &options);
+    return OpenFolderFileImpl(options.stream, options.filePath, format, folder, progress, false,
+                              &options);
 }
 
 HRESULT QtArchiveFolderManager::OpenFolderFileImpl(IInStream *inStream, const wchar_t *filePath,
                                                    const wchar_t *arcFormat,
                                                    IFolderFolder **resultFolder,
                                                    IProgress *progress, bool ownedStreamFile,
-                                                   const COpenOptions *options) {
+                                                   const COpenOptions *options,
+                                                   bool materializeStream) {
     COM_TRY_BEGIN
     if (!resultFolder)
         return E_INVALIDARG;
@@ -208,7 +226,8 @@ HRESULT QtArchiveFolderManager::OpenFolderFileImpl(IInStream *inStream, const wc
         return E_FAIL;
     if (!filePath || !*filePath)
         return E_INVALIDARG;
-    COpenServices services(*this, filePath, arcFormat, progress, ownedStreamFile, options);
+    COpenServices services(*this, filePath, arcFormat, progress, ownedStreamFile, options,
+                           materializeStream);
     CArchiveFolderManager manager(services);
     return manager.OpenFolderFile(inStream, filePath, services.Format, resultFolder, progress);
     COM_TRY_END
@@ -249,7 +268,11 @@ HRESULT QtArchiveFolderManager::OpenLinkImpl(CArchiveLink &link, const COpenOpti
         RINOK(result)
         return CreateArchiveLinkTransport(link, nullptr, resource, sourceOptions.codecs);
     }
-    if (inStream) {
+    // CopyTo's in-memory result keeps its established owned-file publication
+    // and editing lifetime. Real handler streams stay direct.
+    const bool streamInput = inStream && services.Catalog && services.Catalog->result() == S_OK &&
+                             !services.MaterializeStreamFile;
+    if (inStream && !streamInput) {
         if (ownedStreamFile) {
             RINOK(resource->SpoolToOwnedFile(inStream, QString::fromWCharArray(filePath), progress))
             ownedPath = QString::fromWCharArray(filePath);
@@ -259,9 +282,15 @@ HRESULT QtArchiveFolderManager::OpenLinkImpl(CArchiveLink &link, const COpenOpti
     const QString path = resource->EnginePath;
     CNativeOpenProgress nativeProgress(progress, callback ? callback->Callback : nullptr);
     std::shared_ptr<ArchiveNativeOpen> nativeOpen;
+    std::shared_ptr<ArchiveInputLayer> inputLayer;
+    CMyComPtr<IInStream> inputCursor;
+    if (streamInput) {
+        const auto readRequest = CreateArchiveOpenReadRequest(&nativeProgress);
+        RINOK(ArchiveInputLayer::Create(inStream, inputLayer, readRequest))
+        RINOK(inputLayer->OpenCursor(&inputCursor))
+    }
     COpenOptions nativeOptions = services.Requested ? *services.Requested : sourceOptions;
-    // The file-only service has already spooled a caller's stream to its lease.
-    nativeOptions.stream = nullptr;
+    nativeOptions.stream = inputCursor;
     nativeOptions.QtOpenService = nullptr;
     const HRESULT nativeResult = _backend.openNativeArchive(
         services.Catalog, path, format, &nativeProgress, nativeOpen, &nativeOptions);
@@ -284,9 +313,11 @@ HRESULT QtArchiveFolderManager::OpenLinkImpl(CArchiveLink &link, const COpenOpti
     }
     resource->SetFilesystemReadLimitations(limitations);
     resource->AttachNativeOpen(std::move(nativeOpen));
+    if (streamInput)
+        resource->RetainStreamInput(std::move(inputLayer));
     if (resource->NativeArchiveLink()) {
         resource->UseNativeMetadata();
-        resource->AttachReopenService(_backend, resource->TransportFormat());
+        resource->AttachReopenService(_backend, streamInput ? format : resource->TransportFormat());
         resource->AttachExtractService(_backend, resource->TransportFormat());
         if (resource->HasNativeUpdateService())
             resource->AttachUpdateService(_backend, resource->TransportFormat());

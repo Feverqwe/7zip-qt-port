@@ -10,6 +10,8 @@
 #include "Windows/FileDir.h"
 #include "Windows/PropVariant.h"
 #include "archivecodeccatalog.h"
+#include "archiveinputlayer.h"
+#include "archivelayercontext.h"
 #include "archivenativeopen.h"
 #include "qtarchivedeleteinputs.h"
 #include "qtownedtempregistry.h"
@@ -41,7 +43,9 @@ HRESULT QtArchiveFileResource::CloseNativeOpen() {
     _nativeItemOrder = false;
     _nativePropertiesExplicit = false;
     auto reader = std::move(_nativeOpen);
-    return reader ? reader->Close() : S_OK;
+    // Child streams can still use this generation after navigation or refresh.
+    // Its final lease releases the handlers, input and codec image together.
+    return reader && reader.use_count() == 1 ? reader->Close() : S_OK;
 }
 
 void QtArchiveFileResource::AttachNativeOpen(std::shared_ptr<ArchiveNativeOpen> reader) {
@@ -49,6 +53,8 @@ void QtArchiveFileResource::AttachNativeOpen(std::shared_ptr<ArchiveNativeOpen> 
     _nativeMetadata = false;
     _nativePropertiesExplicit = false;
     _nativeNested = reader && reader->hasNestedStream();
+    if (reader)
+        _containerLevels = reader->archiveLink().Arcs.Size();
     _nativeReadOnly = reader && reader->arc().IsReadOnly;
     _nativeOpenType = reader ? reader->transportType() : QString();
     _nativeOpen = std::move(reader);
@@ -67,7 +73,21 @@ QString QtArchiveFileResource::TransportFormat() const {
     return _nativeNested ? _nativeOpenType : (RequiresOuterOpen() ? QString() : Info.format);
 }
 
+quint64 QtArchiveFileResource::ContainerDepth() const {
+    return _parentContainerDepth + qMax(_containerLevels, Info.containerLevels);
+}
+
+void QtArchiveFileResource::RetainStreamInput(std::shared_ptr<ArchiveInputLayer> input) {
+    if (const auto depth = input->ContainingContainerDepth()) {
+        _parentContainerDepth = *depth;
+        _inputContextDefined = true;
+    }
+    _streamInput = std::move(input);
+}
+
 bool QtArchiveFileResource::HasUpdateService() const {
+    if (HasStreamInput())
+        return false;
     // The original publisher can preserve a native SFX prefix when its source
     // input stream and offset are retained. A process-only plan cannot do so.
     const bool preservesPrefix = HasNativeUpdateService() && _nativeOpen->arc().InStream &&
@@ -166,7 +186,7 @@ HRESULT QtArchiveFileResource::GetArchivePropertyInfo(UInt32 index, BSTR *name, 
 
 HRESULT QtArchiveFileResource::ConfigureArc(CArc &arc, const CCodecs *codecs) const {
     const QFileInfo file(EnginePath);
-    if (!_directInput && !file.isFile())
+    if (!HasStreamInput() && !file.isFile())
         return E_FAIL;
     arc.Path = EnginePath.toStdWString().c_str();
     if (_nativeOpen) {
@@ -178,7 +198,8 @@ HRESULT QtArchiveFileResource::ConfigureArc(CArc &arc, const CCodecs *codecs) co
             if (const CArcInfoEx *format = _nativeOpen->formatInfo())
                 arc.FormatIndex = codecs->FindFormatForArchiveType(format->Name);
         arc.DefaultName = native.DefaultName;
-        arc.IsReadOnly = _directInput || native.IsReadOnly || !_filesystemReadLimitations.isEmpty();
+        arc.IsReadOnly =
+            HasStreamInput() || native.IsReadOnly || !_filesystemReadLimitations.isEmpty();
         arc.FileSize = native.FileSize;
         arc.ArcStreamOffset = native.ArcStreamOffset;
         arc.InStream = native.InStream;
@@ -229,7 +250,7 @@ const CCodecs *QtArchiveFileResource::NativeArchiveCodecs() const {
 
 HRESULT QtArchiveFileResource::Update(ISequentialOutStream *output, IInArchive *metadata,
                                       UInt32 count, IArchiveUpdateCallback *callback) {
-    if (!_update)
+    if (!HasUpdateService())
         return E_NOTIMPL;
     // A zero-item handler may never report progress. Use the source Sync at
     // both sides of the worker boundary, before the publisher can move output.
@@ -251,7 +272,7 @@ HRESULT QtArchiveFileResource::Extract(IInArchive *metadata, const UInt32 *indic
 
 std::unique_ptr<IQtProgressTransport>
 QtArchiveFileResource::CreateProgressTransport(CProgressDialog &dialog, bool nativeWorker) {
-    nativeWorker = nativeWorker || HasNativeUpdateService();
+    nativeWorker = nativeWorker || HasStreamInput() || HasNativeUpdateService();
     if (_compressionOptions && NativeItemProperties()) {
         const auto &options = *_compressionOptions;
         nativeWorker = nativeWorker || options.SymLinks.Val || options.HardLinks.Val ||

@@ -105,6 +105,19 @@ snapshot. Open warnings and item/block errors remain separate diagnostics.
 The CLI transport remains available to consumers without a native catalog and
 to operations that have not yet migrated.
 
+Seekable archive items can back nested readers directly. Each reader generation
+retains its codec image, input and parents; independent cursors serialize access
+to shared native handlers. Opening, stream acquisition and extraction bind the
+current operation's pause/cancel request while they can read ancestors. Refresh
+creates a new generation without closing one still used by a descendant.
+
+Interactive opening keeps the original stream-first/CopyTo choice. A handler
+that supplies no seekable stream uses one source extraction into bounded memory
+or a temporary file, retaining the existing spill and edit-publication lifetime.
+Direct streams and device views are read-only; materialized nested archives keep
+their supported edit and parent-update workflow. Sequential Extract is never
+exposed as seek through replay.
+
 Treat archive names and metadata as untrusted. Validate output destinations and
 member paths at the operation boundary, preserve literal Unicode arguments and
 avoid shell interpretation. Transactional update and temporary-resource owners

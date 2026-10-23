@@ -11,6 +11,8 @@
 #include "Common/MyVector.h"
 #include "IFolderArchive.h"
 #include "archivebackend.h"
+#include "archivelayercontext.h"
+#include "archivereadstream.h"
 #include "qtfolderpropertycapabilities.h"
 #include "qtprogresstransport.h"
 #include <atomic>
@@ -46,6 +48,8 @@ Z7_IFACE_CONSTR_FOLDERARC(IArchiveFolderInternal, 0xC)
 Z7_PURE_INTERFACES_END
 
 class CAgentFolder final : public IFolderFolder,
+                           public IArchiveLayerFolder,
+                           public IArchiveGetStreamWithRequest,
                            public IFolderCompare,
                            public IFolderGetItemName,
                            public IFolderProperties,
@@ -72,6 +76,8 @@ class CAgentFolder final : public IFolderFolder,
     Z7_COM_QI_ENTRY(IFolderAltStreams)
     Z7_COM_QI_ENTRY(IArchiveFolderInternal)
     Z7_COM_QI_ENTRY(IInArchiveGetStream)
+    Z7_COM_QI_ENTRY(IArchiveLayerFolder)
+    Z7_COM_QI_ENTRY(IArchiveGetStreamWithRequest)
     else if (iid == IID_IFolderOperations && (CanCopyFromFile() || CanCopyTo())) {
         *outObject = static_cast<IFolderOperations *>(this);
     }
@@ -88,6 +94,10 @@ class CAgentFolder final : public IFolderFolder,
     // only metadata choices and the integration path policy.
     const CExtractNtOptions *QtExtractNtOptions = nullptr;
     Z7_IFACE_COM7_IMP(IFolderFolder)
+    Z7_COM7F_IMP(GetContainerDepth(UInt64 *depth))
+    Z7_COM7F_IMP(SetParentContainerDepth(UInt64 depth))
+    Z7_COM7F_IMP(GetStreamWithRequest(UInt32 index, ISequentialInStream **stream,
+                                      IProgress *request))
     Z7_IFACE_COM7_IMP(IFolderGetItemName)
     Z7_IFACE_COM7_IMP(IFolderCompare)
     Z7_IFACE_COM7_IMP(IFolderProperties)

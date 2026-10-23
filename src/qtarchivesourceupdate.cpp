@@ -21,6 +21,7 @@
 #include "qtownedtempdir.h"
 #include <QDir>
 #include <QFileInfo>
+#include <QPointer>
 #include <QSet>
 
 namespace {
@@ -41,20 +42,27 @@ class CResourceProgress final : public IQtProgressTransport {
 } // namespace
 
 void QtArchiveFileResource::AttachProgressService(ArchiveBackend &backend) {
-    _progress = [this, &backend](CProgressDialog &dialog, bool nativeWorker) {
-        return std::make_unique<CResourceProgress>(this, dialog, backend, nativeWorker);
+    _progress = [this, backend = QPointer<ArchiveBackend>(&backend)](
+                    CProgressDialog &dialog,
+                    bool nativeWorker) -> std::unique_ptr<IQtProgressTransport> {
+        return backend ? std::make_unique<CResourceProgress>(this, dialog, *backend, nativeWorker)
+                       : nullptr;
     };
 }
 
 void QtArchiveFileResource::AttachUpdateService(ArchiveBackend &backend, const QString &format) {
     AttachReopenService(backend, format);
     AttachProgressService(backend);
-    _setProperties = [this, &backend](const wchar_t *const *names, const PROPVARIANT *values,
-                                      UInt32 count) {
-        return backend.setNativeArchiveProperties(_nativeOpen, names, values, count);
+    _setProperties = [this, backend = QPointer<ArchiveBackend>(&backend)](
+                         const wchar_t *const *names, const PROPVARIANT *values, UInt32 count) {
+        return backend ? backend->setNativeArchiveProperties(_nativeOpen, names, values, count)
+                       : E_FAIL;
     };
-    _update = [this, &backend, format](ISequentialOutStream *output, IInArchive *metadata,
-                                       UInt32 count, IArchiveUpdateCallback *callback) -> HRESULT {
+    _update = [this, backend = QPointer<ArchiveBackend>(&backend),
+               format](ISequentialOutStream *output, IInArchive *metadata, UInt32 count,
+                       IArchiveUpdateCallback *callback) -> HRESULT {
+        if (!backend)
+            return E_FAIL;
         _outputMTime.reset();
         if (auto *native = NativeItemProperties()) {
             CMyComPtr<IOutArchive> writer;
@@ -65,12 +73,12 @@ void QtArchiveFileResource::AttachUpdateService(ArchiveBackend &backend, const Q
                     source && source->CommentIndex >= 0 && source->Comment) {
                     if (!HasCommentService())
                         return E_NOTIMPL;
-                    return backend.updateNativeComment(_nativeOpen, output, count, callback);
+                    return backend->updateNativeComment(_nativeOpen, output, count, callback);
                 }
                 if (_compressionOptions && !_nativePropertiesExplicit)
-                    return backend.updateNativeArchive(_nativeOpen, output, count, callback,
-                                                       *_compressionOptions);
-                return backend.updateNativeArchive(_nativeOpen, output, count, callback);
+                    return backend->updateNativeArchive(_nativeOpen, output, count, callback,
+                                                        *_compressionOptions);
+                return backend->updateNativeArchive(_nativeOpen, output, count, callback);
             }
         }
         if (_compressionOptions &&
@@ -78,16 +86,16 @@ void QtArchiveFileResource::AttachUpdateService(ArchiveBackend &backend, const Q
              _compressionOptions->AltStreams.Val || _compressionOptions->NtSecurity.Val)) {
             if (!NativeItemProperties())
                 return E_NOTIMPL;
-            return backend.updateNativeArchive(_nativeOpen, output, count, callback,
-                                               *_compressionOptions);
+            return backend->updateNativeArchive(_nativeOpen, output, count, callback,
+                                                *_compressionOptions);
         }
         if (const auto *source = dynamic_cast<CArchiveUpdateCallback *>(callback);
             source && source->CommentIndex >= 0 && source->Comment) {
             if (!HasCommentService())
                 return E_NOTIMPL;
-            return backend.updateNativeComment(_nativeOpen, output, count, callback);
+            return backend->updateNativeComment(_nativeOpen, output, count, callback);
         }
-        return UpdateArchiveSourceStream(backend, EnginePath, format, output, metadata, count,
+        return UpdateArchiveSourceStream(*backend, EnginePath, format, output, metadata, count,
                                          callback, _sync,
                                          _compressionOptions ? &*_compressionOptions : nullptr);
     };

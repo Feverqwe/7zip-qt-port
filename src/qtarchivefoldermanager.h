@@ -31,7 +31,8 @@ class QtArchiveFolderManager final : public QObject,
                const QString &password);
     HRESULT OpenFolderFileImpl(IInStream *stream, const wchar_t *path, const wchar_t *format,
                                IFolderFolder **folder, IProgress *progress, bool ownedStreamFile,
-                               const COpenOptions *options = nullptr);
+                               const COpenOptions *options = nullptr,
+                               bool materializeStream = false);
     HRESULT OpenLinkImpl(CArchiveLink &link, const COpenOptions &options, COpenServices &services);
 
   public:
@@ -41,6 +42,7 @@ class QtArchiveFolderManager final : public QObject,
     HRESULT OpenArchive(const COpenOptions &options, const wchar_t *format, IFolderFolder **folder,
                         IProgress *progress);
     HRESULT OpenOwnedStreamFile(IInStream *stream, const wchar_t *path, const wchar_t *format,
-                                IFolderFolder **folder, IProgress *progress) override;
+                                IFolderFolder **folder, IProgress *progress, bool materialize,
+                                bool *materialized) override;
     std::unique_ptr<IQtProgressTransport> CreateProgressTransport(CProgressDialog &dialog) override;
 };

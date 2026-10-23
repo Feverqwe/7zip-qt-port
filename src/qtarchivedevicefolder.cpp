@@ -10,10 +10,15 @@ bool QtArchiveFileResource::AllowsIncompleteDeviceRead() const {
     return direct && direct->allowsIncompleteDeviceRead();
 }
 
-HRESULT QtArchiveFileResource::RefreshDeviceInput(ArchiveBackend &backend,
-                                                  IOpenCallbackUI *callback, QString *error) {
+HRESULT QtArchiveFileResource::RefreshDeviceInput(IOpenCallbackUI *callback, QString *error) {
+    const auto *device = dynamic_cast<DirectDeviceInput *>(_directInput.Interface());
+    if (!device)
+        return E_INVALIDARG;
+    CMyComPtr<IInStream> cursor;
+    RINOK(CreateDevicePartitionInput(_directInput, 0, device->deviceInputSize(), &cursor))
     std::shared_ptr<ArchiveNativeOpen> opened;
-    RINOK(backend.openDeviceFilesystem(_codecs, _directInput, EnginePath, callback, opened, error))
+    RINOK(
+        ArchiveBackend::openDeviceFilesystem(_codecs, cursor, EnginePath, callback, opened, error))
     AttachNativeOpen(std::move(opened));
     _nativeReadOnly = true;
     BindNativeItemOrder(nullptr);
@@ -30,20 +35,13 @@ HRESULT QtArchiveFileResource::OpenDeviceInput(ArchiveBackend &backend, IInStrea
     if (!dynamic_cast<DirectDeviceInput *>(input) || _directInput)
         return E_INVALIDARG;
     _directInput = input;
-    const HRESULT result = RefreshDeviceInput(backend, callback, error);
+    const HRESULT result = RefreshDeviceInput(callback, error);
     if (result != S_OK) {
         _directInput.Release();
         return result;
     }
-    AttachProgressService(backend);
-    _extract = [this, &backend](IInArchive *, const UInt32 *indices, UInt32 count, Int32 testMode,
-                                IArchiveExtractCallback *progress) {
-        return HasNativeExtractService()
-                   ? backend.extractNativeArchive(_nativeOpen, indices, count, testMode, progress)
-                   : E_FAIL;
-    };
-    _reopen = [this, &backend](IFolderFolder **metadata,
-                               IArchiveOpenCallback *callback) -> HRESULT {
+    AttachExtractService(backend, TransportFormat());
+    _reopen = [this](IFolderFolder **metadata, IArchiveOpenCallback *callback) -> HRESULT {
         COM_TRY_BEGIN
         if (!metadata)
             return E_INVALIDARG;
@@ -54,7 +52,7 @@ HRESULT QtArchiveFileResource::OpenDeviceInput(ArchiveBackend &backend, IInStrea
             callback->QueryInterface(IID_IProgress, (void **)&progress);
         CNativeOpenProgress nativeProgress(progress, open ? open->Callback : nullptr);
         RINOK(CloseNativeOpen())
-        return RefreshDeviceInput(backend, &nativeProgress);
+        return RefreshDeviceInput(&nativeProgress);
         COM_TRY_END
     };
     return S_OK;

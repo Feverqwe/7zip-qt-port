@@ -4,8 +4,10 @@
 #include "fscryptkeyrequest.h"
 #include <QString>
 #include <memory>
+#include <mutex>
 
 class ArchiveCodecCatalog;
+CMyComPtr<IProgress> CreateArchiveOpenReadRequest(IOpenCallbackUI *callback);
 
 // A source reader and its exact codec-index owner form one lifetime unit.
 // The catalog is destroyed after all handler/volume/stream references.
@@ -14,6 +16,8 @@ class ArchiveNativeOpen final : public IOpenCallbackUI, public IFscryptKeyUI {
     IOpenCallbackUI *callback_ = nullptr;
     QString transportType_;
     CArchiveLink link_;
+    CMyComPtr<IInStream> input_;
+    std::mutex itemStreamMutex_;
     HRESULT Open_CheckBreak() override;
     HRESULT Open_SetTotal(const UInt64 *files, const UInt64 *bytes) override;
     HRESULT Open_SetCompleted(const UInt64 *files, const UInt64 *bytes) override;
@@ -30,7 +34,9 @@ class ArchiveNativeOpen final : public IOpenCallbackUI, public IFscryptKeyUI {
     HRESULT Close();
     const CArc &arc() const { return *link_.GetArc(); }
     const CArchiveLink &archiveLink() const { return link_; }
+    IInStream *inputStream() const { return input_; }
     const CCodecs &nativeCodecs() const;
+    std::mutex &itemStreamMutex() { return itemStreamMutex_; }
     bool hasNestedStream() const { return link_.Arcs.Size() > 1; }
     bool hasVolumes() const { return !link_.VolumePaths.IsEmpty(); }
     bool hasCommentWriter() const;

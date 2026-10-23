@@ -1,6 +1,27 @@
 #include "archivenativeopen.h"
 #include "archivecodeccatalog.h"
+#include "archiveinputlayer.h"
 #include <QScopeGuard>
+
+namespace {
+class COpenReadRequest final : public IProgress, public CMyUnknownImp {
+    Z7_COM_UNKNOWN_IMP_1(IProgress)
+    IOpenCallbackUI *callback_;
+
+  public:
+    explicit COpenReadRequest(IOpenCallbackUI *callback) : callback_(callback) {}
+    // ArchiveOpenCallback::IProgress ignores internal structure-read counts.
+    // The opened handler owns its Open_SetTotal/Open_SetCompleted address space.
+    Z7_COM7F_IMF(SetTotal(UInt64)) override { return S_OK; }
+    Z7_COM7F_IMF(SetCompleted(const UInt64 *)) override {
+        return callback_ ? callback_->Open_CheckBreak() : S_OK;
+    }
+};
+} // namespace
+
+CMyComPtr<IProgress> CreateArchiveOpenReadRequest(IOpenCallbackUI *callback) {
+    return new COpenReadRequest(callback);
+}
 
 ArchiveNativeOpen::~ArchiveNativeOpen() { Close(); }
 
@@ -23,6 +44,9 @@ HRESULT ArchiveNativeOpen::Open(const QString &path, const QString &type, IOpenC
     // file-only listing/extract/reopen integration boundary.
     transportType_ = type.isEmpty() ? QStringLiteral("*:r") : type;
     const auto detach = qScopeGuard([&] { callback_ = nullptr; });
+    input_ = requested ? requested->stream : nullptr;
+    CMyComPtr<IProgress> readRequest = CreateArchiveOpenReadRequest(callback);
+    ArchiveInputReadRequestScope inputRequest(input_, readRequest);
     // Volume streams can retain the source COpenCallbackImp beyond opening.
     // Its UI pointer must remain valid, without retaining the opening dialog.
     if (requested) {
@@ -35,7 +59,8 @@ HRESULT ArchiveNativeOpen::Open(const QString &path, const QString &type, IOpenC
     // A handler can initially scan its own SFX prefix, leaving Offset positive
     // and ArcStreamOffset zero. The source ReOpen establishes a tail stream
     // and retains the physical input for ArchiveFolderOut's prefix publisher.
-    if (!hasNestedStream() && !hasVolumes() && !arc().IsReadOnly && arc().GetGlobalOffset() > 0) {
+    if ((!requested || !requested->stream) && !hasNestedStream() && !hasVolumes() &&
+        !arc().IsReadOnly && arc().GetGlobalOffset() > 0) {
         CMyComPtr<IOutArchive> writer;
         if (arc().Archive.QueryInterface(IID_IOutArchive, &writer) == S_OK && writer) {
             CMyComPtr2_Create<IArchiveOpenCallback, COpenCallbackImp> progress;
@@ -74,6 +99,7 @@ HRESULT ArchiveNativeOpen::Open_FscryptKeys(BSTR *keys) {
 HRESULT ArchiveNativeOpen::Close() {
     const HRESULT result = link_.IsOpen ? link_.Close() : S_OK;
     link_.Release();
+    input_.Release();
     return result;
 }
 

@@ -14,6 +14,7 @@ struct IProgress;
 class ArchiveBackend;
 class ArchiveCodecCatalog;
 class ArchiveNativeOpen;
+class ArchiveInputLayer;
 struct CArchiveLink;
 class CProgressSync;
 struct IInArchive;
@@ -48,7 +49,11 @@ class QtArchiveFileResource final : public IUnknown, public CMyUnknownImp {
     std::shared_ptr<const ArchiveCodecCatalog> _codecs;
     std::shared_ptr<ArchiveNativeOpen> _nativeOpen;
     CMyComPtr<IInStream> _directInput;
+    std::shared_ptr<ArchiveInputLayer> _streamInput;
     bool _nativeNested = false;
+    quint64 _parentContainerDepth = 0;
+    unsigned _containerLevels = 1;
+    bool _inputContextDefined = false;
     bool _nativeReadOnly = false;
     bool _nativeItemOrder = false;
     bool _nativeMetadata = false;
@@ -56,8 +61,7 @@ class QtArchiveFileResource final : public IUnknown, public CMyUnknownImp {
     QString _filesystemReadLimitations;
     std::function<HRESULT(const wchar_t *const *, const PROPVARIANT *, UInt32)> _setProperties;
     QString _nativeOpenType;
-    HRESULT RefreshDeviceInput(ArchiveBackend &backend, IOpenCallbackUI *callback,
-                               QString *error = nullptr);
+    HRESULT RefreshDeviceInput(IOpenCallbackUI *callback, QString *error = nullptr);
 
   public:
     QString EnginePath;
@@ -68,6 +72,13 @@ class QtArchiveFileResource final : public IUnknown, public CMyUnknownImp {
     HRESULT OpenDeviceInput(ArchiveBackend &backend, IInStream *input, IOpenCallbackUI *callback,
                             QString *error = nullptr);
     bool HasDirectInput() const { return _directInput != nullptr; }
+    bool HasStreamInput() const { return HasDirectInput() || _streamInput != nullptr; }
+    void RetainStreamInput(std::shared_ptr<ArchiveInputLayer> input);
+    quint64 ContainerDepth() const;
+    void SetParentContainerDepth(quint64 depth) {
+        if (!_inputContextDefined)
+            _parentContainerDepth = depth;
+    }
     bool AllowsIncompleteDeviceRead() const;
     const QString &FilesystemReadLimitations() const { return _filesystemReadLimitations; }
     void SetFilesystemReadLimitations(const QString &limitations) {
@@ -95,6 +106,7 @@ class QtArchiveFileResource final : public IUnknown, public CMyUnknownImp {
     HRESULT ConfigureArc(CArc &arc, const CCodecs *codecs = nullptr) const;
     bool CopyNativeVolumeMetadata(CArchiveLink &link) const;
     const CArchiveLink *NativeArchiveLink() const;
+    std::shared_ptr<ArchiveNativeOpen> NativeReaderLease() const { return _nativeOpen; }
     const CCodecs *NativeArchiveCodecs() const;
     void AttachCodecCatalog(std::shared_ptr<const ArchiveCodecCatalog> codecs) {
         _codecs = std::move(codecs);

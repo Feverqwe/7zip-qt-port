@@ -83,4 +83,81 @@ existing disposable MBR/ext4 source; the Zstandard image was produced by QEMU.
 Runtime evidence: macOS, Linux and Windows `archive_qcow` pass all nine cases, including
 stored/Deflate/Zstandard source-byte comparison, sparse tail and backward reads,
 unsupported layout rejection and corrupted cluster failure. Linux and Windows
-receipts are the focused runs above. Stream-chain validation remains pending.
+receipts are the focused runs above. Retained stream-chain validation is recorded
+below.
+
+## Retained native streams and generations
+
+Selected source changes:
+`a304ac2dce8b333973b034a883595879dcb938c2`,
+`60ac293c1585ba12f2f2b546a559a7cec76065e8`,
+`c11916e5fd515c1081a48f1b657296e2475a7e93`,
+`33828e5a4d3849d59d2547c1cae919d80ad5e9e4`, native portions of
+`5ce5784332c0c1567032a8856c46b8321581f895`, and final branch corrections.
+Upstream reference: <https://github.com/ip7z/7zip.git>,
+`9128b80e3a471108678e2b3ec3c985861c8d7b0f`:
+
+- `CPP/7zip/UI/Common/OpenArchive.cpp` complete `CArchiveLink::Open` stream descent,
+  `CArc::OpenStreamOrFile` and reopen/volume callback dependencies;
+- `CPP/7zip/UI/Agent/Agent.cpp/.h` stream-index/proxy mapping, update capability,
+  reopen and folder ownership;
+- `CPP/7zip/UI/FileManager/PanelItemOpen.cpp`, `FileFolderPluginOpen.cpp/.h`,
+  `ExtractCallback.cpp/.h`: stream-first opening, CopyTo, virtual-file memory
+  growth, spill, close, changed-file detection and parent-update prompt;
+- `CPP/7zip/Common/StreamObjects.cpp`, `CPP/7zip/Common/LimitedStreams.cpp`,
+  `CPP/7zip/Archive/7z/7zDecode.cpp::CLockedSequentialInStreamMT`: cursor/seek and
+  serialized shared input patterns. The source branch originally cites
+  `b88c6bc09339de32f7d18bbab900686b244f42ba`; these bodies were compared with
+  the available 9128 baseline again.
+
+The native handlers and their mappings are retained. Qt integration supplies
+reader-generation leases, independent cursor positions and scoped operation
+requests, with source seek/read control flow and bounds. Device generations
+also receive independent authorized cursors; stream properties such as sector
+size are forwarded when supplied. Native Extract/Open do not require a live
+window backend. Remaining window/process service callbacks use guarded owners.
+The native read-only boundary follows the input source, not total nesting depth.
+
+The source branch's lazy factory advertises seek before resolving its native
+stream, then falls back to replay. That factory was not copied. The original
+`IInArchiveGetStream::GetStream` signature has no per-call progress argument,
+so a narrow request-aware bridge preserves Agent's original index mapping and
+calls the real native factory in the joined opening worker. Only an actual
+native `IInStream` is exposed as seekable. No fallback decoder or synthetic
+sequential-Extract seek implementation is introduced.
+
+CopyTo retains its source memory allocation/spill logic. Its caller explicitly
+requests the existing owned-file materialization when opening the extracted
+memory result; arbitrary native streams remain direct. This preserves the
+materialized child's update path and source modified-file prompt. The blanket
+nested editing prohibition from `6c9ee3fc` is excluded.
+
+Also excluded: replay input/cache/budget, replay seek probes and special open
+results, replay-only memory/partial-result bridges and their tests, Alpine
+tooling and the branch's historical migration log. TAR provides a real native
+parent stream in the retained-chain regressions; ZIP remains an Extract-only
+child in the lifetime case. Fixtures check byte results rather than source text.
+
+Source comparison is complete for the selected stream, callback and caller
+scope above. Native format mapping/decoder bodies were not independently
+rewritten.
+
+Runtime evidence, 2026-10-23: the selected 18 suites passed on macOS and Linux.
+They cover stored/Deflate/Zstandard QCOW through MBR/ext to selected Unicode
+file bytes, sparse/backward reads without full intermediate copies, current
+request cancellation during native factory mapping and ancestor reads,
+independent old/new-generation cursors, refresh after backend destruction,
+retained extraction and final module release. Existing memory/spill, nested
+edit/publication, external editing, native test/listing and device consumers
+remain in the selected set. Linux receipt: `20261023T185403Z-5ca436fe`.
+
+Windows passed 17 suites in that same desktop run. `codec_update` reached its
+60-second limit there, then passed alone in 53.98 seconds, without source changes
+(`20261023T190042Z-a3121d3a`). The earlier 15-suite run also passed that suite;
+its new opening-options assertion needed native separator normalization, now
+covered by the final run. This accepts the selected Windows scenarios while
+retaining the timeout as a validation limitation. Incremental builds and compiler
+caches were reused. The application target built on all three platforms; Linux
+and Windows build receipts are `20261023T185917Z-15d6ed62` and
+`20261023T190202Z-5f97b611`. Slow suites and a full gate were not run; no physical-device
+or rendered-pixel parity is implied.

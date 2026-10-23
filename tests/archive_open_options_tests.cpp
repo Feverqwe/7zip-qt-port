@@ -96,6 +96,52 @@ class ArchiveOpenOptionsTests final : public QObject {
         return result == S_OK && ui->IsOK();
     }
   private slots:
+    void memoryInputUsesRequestedOpenOptions() {
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        const QByteArray payload("input bytes");
+        const QString archive = SourceExtractFixture::makeArchive(fixture.path(), payload);
+        QVERIFY(!archive.isEmpty());
+        const QByteArray bytes = SourceExtractFixture::readFile(archive);
+        auto *buffer = new CBufferInStream;
+        CMyComPtr<IInStream> input = buffer;
+        buffer->Buf.CopyFrom(reinterpret_cast<const Byte *>(bytes.constData()),
+                             size_t(bytes.size()));
+        buffer->Init();
+        ArchiveBackend backend;
+        load(backend);
+        CObjectVector<COpenType> types;
+        QVERIFY(backend.codecCatalog()->parseOpenTypes("zip", types));
+        CIntVector excluded;
+        COpenOptions options;
+        options.types = &types;
+        options.excludedFormats = &excluded;
+        options.props = nullptr;
+        options.stream = input;
+        options.filePath = L"virtual 空 input.zip";
+        QtArchiveBatchOpen opener(backend);
+        opener.SetOpenType(UString(L"zip"));
+        CArchiveLink opened;
+        auto worker =
+            std::async(std::launch::async, [&] { return opener.Open(opened, options, nullptr); });
+        const auto cancel = qScopeGuard([&] {
+            if (worker.valid() &&
+                worker.wait_for(std::chrono::milliseconds(0)) != std::future_status::ready)
+                backend.cancelAndWait();
+        });
+        QTRY_VERIFY_WITH_TIMEOUT(
+            worker.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready, 10000);
+        QCOMPARE(worker.get(), S_OK);
+        QVERIFY(opened.IsOpen);
+        NWindows::NCOM::CPropVariant path, size;
+        QCOMPARE(opened.GetArc()->Archive->GetProperty(0, kpidPath, &path), S_OK);
+        QCOMPARE(QDir::fromNativeSeparators(QString::fromWCharArray(path.bstrVal)),
+                 SourceExtractFixture::kName);
+        QCOMPARE(opened.GetArc()->Archive->GetProperty(0, kpidSize, &size), S_OK);
+        QCOMPARE(size.vt, VARTYPE(VT_UI8));
+        QCOMPARE(size.uhVal.QuadPart, UInt64(payload.size()));
+        QVERIFY(opened.GetArc()->IsReadOnly);
+    }
     void initTestCase() {
 #ifndef SEVENZIP_CODEC_MODULE
         QSKIP("Official codec module is unavailable");

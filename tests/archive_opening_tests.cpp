@@ -9,17 +9,58 @@
 #include "Windows/PropVariant.h"
 #include "archive_backend_test_support.h"
 #include "archivecodeccatalog.h"
+#include "archiveinputlayer.h"
 #include "qtarchivefileresource.h"
 #include "qtarchivefoldermanager.h"
 #include "qtarchiveproperties.h"
+#include "qtarchivereopen.h"
 #include "qtpanelfolder.h"
 #include <QApplication>
 #include <QLineEdit>
 #include <QMessageBox>
 #include <QPushButton>
 #include <QStandardPaths>
+#include <atomic>
+#include <future>
+#include <thread>
 
 namespace {
+class CReadBudgetInput final : public IInStream, public CMyUnknownImp {
+    Z7_COM_UNKNOWN_IMP_2(IInStream, ISequentialInStream)
+    CMyComPtr<IInStream> _input;
+    bool &_released;
+
+  public:
+    std::atomic<UInt64> Remaining{1 << 16};
+    bool YieldOnSeek = false;
+    HRESULT ReadFailure = S_OK;
+    HRESULT SeekFailure = S_OK;
+    CReadBudgetInput(IInStream *input, bool &released) : _input(input), _released(released) {}
+    ~CReadBudgetInput() { _released = true; }
+    Z7_COM7F_IMF(Read(void *data, UInt32 size, UInt32 *processed)) override {
+        if (processed)
+            *processed = 0;
+        if (ReadFailure != S_OK)
+            return ReadFailure;
+        const UInt64 remaining = Remaining.load();
+        if (size && !remaining)
+            return E_ABORT;
+        UInt32 actual = 0;
+        const HRESULT result = _input->Read(data, UInt32(qMin<UInt64>(size, remaining)), &actual);
+        Remaining.fetch_sub(actual);
+        if (processed)
+            *processed = actual;
+        return result;
+    }
+    Z7_COM7F_IMF(Seek(Int64 offset, UInt32 origin, UInt64 *position)) override {
+        if (SeekFailure != S_OK)
+            return SeekFailure;
+        const HRESULT result = _input->Seek(offset, origin, position);
+        if (YieldOnSeek)
+            std::this_thread::yield();
+        return result;
+    }
+};
 class CRecordingBackend final : public ArchiveBackend {
   public:
     explicit CRecordingBackend(const QString &engine) : ArchiveBackend(nullptr, engine) {}
@@ -234,6 +275,142 @@ class ArchiveOpeningTests : public QObject, protected ArchiveBackendTestSupport 
         QTest::newRow("accept") << true << false;
         QTest::newRow("empty") << true << true;
         QTest::newRow("cancel") << false << false;
+    }
+    void rangeReadFailureAndCancellationAllowRetry() {
+        const QByteArray bytes("source bytes stay unchanged");
+        auto *buffer = new CBufferInStream;
+        CMyComPtr<IInStream> raw = buffer;
+        buffer->Buf.CopyFrom(reinterpret_cast<const Byte *>(bytes.constData()),
+                             size_t(bytes.size()));
+        buffer->Init();
+        bool released = false;
+        auto *fault = new CReadBudgetInput(raw, released);
+        CMyComPtr<IInStream> source = fault;
+        std::shared_ptr<ArchiveInputLayer> layer;
+        QCOMPARE(ArchiveInputLayer::Create(source, layer), S_OK);
+        CMyComPtr<IInStream> cursor;
+        QCOMPARE(layer->OpenCursor(&cursor), S_OK);
+        QCOMPARE(cursor->Seek(7, STREAM_SEEK_SET, nullptr), S_OK);
+        char data[64];
+        UInt32 count = 99;
+        fault->ReadFailure = E_ABORT;
+        QCOMPARE(cursor->Read(data, sizeof(data), &count), E_ABORT);
+        QCOMPARE(count, UInt32(0));
+        fault->ReadFailure = S_OK;
+        fault->SeekFailure = E_FAIL;
+        QCOMPARE(cursor->Read(data, sizeof(data), &count), E_FAIL);
+        QCOMPARE(count, UInt32(0));
+        fault->SeekFailure = S_OK;
+        QCOMPARE(cursor->Read(data, sizeof(data), &count), S_OK);
+        QCOMPARE(QByteArray(data, int(count)), bytes.mid(7));
+        QCOMPARE(cursor->Read(data, sizeof(data), &count), S_OK);
+        QCOMPARE(count, UInt32(0));
+        QVERIFY(cursor->Seek(-1, STREAM_SEEK_SET, nullptr) != S_OK);
+        QCOMPARE(cursor->Seek(0, STREAM_SEEK_SET, nullptr), S_OK);
+        QCOMPARE(cursor->Read(data, sizeof(data), &count), S_OK);
+        QCOMPARE(QByteArray(data, int(count)), bytes);
+    }
+    void nativeStreamOpeningSkipsPayloadAndRetainsReaders() {
+        const QString engine = QStandardPaths::findExecutable("7zz");
+        QVERIFY(!engine.isEmpty());
+        ArchiveBackend backend(nullptr, engine);
+        QSignalSpy ready(&backend, &ArchiveBackend::codecCatalogReady);
+        QVERIFY(backend.discoverCodecCatalog());
+        QTRY_COMPARE(ready.size(), 1);
+        QVERIFY(ready[0][0].toBool());
+        QTemporaryDir fixture;
+        QVERIFY(fixture.isValid());
+        QVERIFY(QDir().mkdir(fixture.filePath("inside")));
+        QByteArray payload(1 << 19, '\0');
+        for (int i = 0; i < payload.size(); ++i)
+            payload[i] = char(i * 13);
+        writeFile(fixture.filePath("inside/file.bin"), payload);
+        const QString archive = fixture.filePath("input.tar");
+        QProcess creator;
+        creator.setWorkingDirectory(fixture.path());
+        creator.start(engine, {"a", "-ttar", "--", archive, "inside"});
+        QVERIFY(creator.waitForFinished(10000));
+        QCOMPARE(creator.exitCode(), 0);
+        QFile file(archive);
+        QVERIFY(file.open(QIODevice::ReadOnly));
+        const QByteArray bytes = file.readAll();
+        auto *buffer = new CBufferInStream;
+        CMyComPtr<IInStream> raw = buffer;
+        buffer->Buf.CopyFrom(reinterpret_cast<const Byte *>(bytes.constData()),
+                             size_t(bytes.size()));
+        buffer->Init();
+        bool released = false;
+        auto *budget = new CReadBudgetInput(raw, released);
+        CMyComPtr<IInStream> input = budget;
+        raw.Release();
+        CMyComPtr<IFolderManager> manager = new QtArchiveFolderManager(backend);
+        CFfpOpen opening(manager);
+        opening.OwnedStreamFile = true;
+        const QString virtualPath = fixture.filePath("virtual archive.tar");
+        // A full intermediate spool exceeds the source's opening read budget.
+        QCOMPARE(opening.OpenFileFolderPlugin(input, us2fs(virtualPath.toStdWString().c_str()),
+                                              UString(L"tar"), nullptr),
+                 S_OK);
+        budget->Remaining = UInt64(-1);
+        CMyComPtr<IFolderFolder> child;
+        QCOMPARE(opening.Folder->BindToFolder(L"inside", &child), S_OK);
+        QVERIFY(child);
+        CMyComPtr<IInArchiveGetStream> streams;
+        QCOMPARE(child.QueryInterface(IID_IInArchiveGetStream, &streams), S_OK);
+        CMyComPtr<ISequentialInStream> first, second;
+        QCOMPARE(streams->GetStream(0, &first), S_OK);
+        QVERIFY(first);
+        auto *agent = dynamic_cast<CAgentFolder *>(child.Interface());
+        QVERIFY(agent);
+        CMyComPtr<IFolderFolder> refreshed;
+        QCOMPARE(ReOpenArchiveFolder(*agent, {}, nullptr, &refreshed, false, UString()), S_OK);
+        CMyComPtr<IInArchiveGetStream> refreshedStreams;
+        QCOMPARE(refreshed.QueryInterface(IID_IInArchiveGetStream, &refreshedStreams), S_OK);
+        QCOMPARE(refreshedStreams->GetStream(0, &second), S_OK);
+        QVERIFY(second);
+        auto *resource = dynamic_cast<QtArchiveFileResource *>(agent->GetEngineResource());
+        QVERIFY(resource);
+        QCOMPARE(resource->CloseNativeOpen(), S_OK);
+        opening.Folder.Release();
+        child.Release();
+        streams.Release();
+        refreshedStreams.Release();
+        refreshed.Release();
+        input.Release();
+        QVERIFY(!released);
+        CMyComPtr<IInStream> seekable;
+        QCOMPARE(second.QueryInterface(IID_IInStream, &seekable), S_OK);
+        QCOMPARE(seekable->Seek(12345, STREAM_SEEK_SET, nullptr), S_OK);
+        char range[97];
+        UInt32 actual = 0;
+        QCOMPARE(second->Read(range, sizeof(range), &actual), S_OK);
+        QCOMPARE(QByteArray(range, int(actual)), payload.mid(12345, sizeof(range)));
+        QCOMPARE(first->Read(range, sizeof(range), &actual), S_OK);
+        QCOMPARE(QByteArray(range, int(actual)), payload.left(sizeof(range)));
+        CMyComPtr<IInStream> oldCursor;
+        QCOMPARE(first.QueryInterface(IID_IInStream, &oldCursor), S_OK);
+        budget->YieldOnSeek = true;
+        const auto readRanges = [&payload](IInStream *stream, int seed) {
+            for (int i = 0; i < 500; ++i) {
+                const int offset = (i * 357 + seed) % (payload.size() - 97);
+                char data[97];
+                UInt32 count = 0;
+                if (stream->Seek(offset, STREAM_SEEK_SET, nullptr) != S_OK ||
+                    stream->Read(data, sizeof(data), &count) != S_OK ||
+                    QByteArray(data, int(count)) != payload.mid(offset, sizeof(data)))
+                    return false;
+            }
+            return true;
+        };
+        auto oldReads = std::async(std::launch::async, readRanges, oldCursor.Interface(), 17);
+        auto newReads = std::async(std::launch::async, readRanges, seekable.Interface(), 12345);
+        QVERIFY(oldReads.get());
+        QVERIFY(newReads.get());
+        oldCursor.Release();
+        seekable.Release();
+        second.Release();
+        first.Release();
+        QVERIFY(released);
     }
     void memoryStreamSpoolLifetime() {
         const QString engine = QStandardPaths::findExecutable("7zz");

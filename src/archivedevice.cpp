@@ -4,6 +4,7 @@
 #include "Common/ComTry.h"
 #include "Windows/PropVariant.h"
 #include "archivecodeccatalog.h"
+#include "archiveinputlayer.h"
 #include "archivenativeopen.h"
 #include "deviceaccess.h"
 #include <QCoreApplication>
@@ -26,7 +27,12 @@ HRESULT Open(const std::shared_ptr<const ArchiveCodecCatalog> &catalog, IInStrea
         options = *requested;
     else
         options.props = nullptr;
-    options.stream = input;
+    std::shared_ptr<ArchiveInputLayer> layer;
+    const auto request = CreateArchiveOpenReadRequest(callback);
+    RINOK(ArchiveInputLayer::Create(input, layer, request))
+    CMyComPtr<IInStream> cursor;
+    RINOK(layer->OpenCursor(&cursor))
+    options.stream = cursor;
     options.filePath = name.toStdWString().c_str();
     CObjectVector<COpenType> types;
     CIntVector excluded;

@@ -32,6 +32,7 @@ struct CThreadArchiveOpen {
     CMyComPtr<IFolderManager> FolderManager;
     CMyComPtr<IProgress> OpenCallbackProgress;
     bool OwnedStreamFile = false;
+    bool MaterializeStreamFile = false;
     bool MaterializedStreamFile = false;
 
     COpenArchiveCallback *OpenCallbackSpec;
@@ -52,8 +53,8 @@ struct CThreadArchiveOpen {
                 dynamic_cast<IQtArchiveStreamOpenServices *>((IFolderManager *)FolderManager);
             if (InStream && OwnedStreamFile && services) {
                 Result = services->OpenOwnedStreamFile(InStream, Path, ArcFormat, &Folder,
-                                                       OpenCallbackProgress);
-                MaterializedStreamFile = Result == S_OK;
+                                                       OpenCallbackProgress, MaterializeStreamFile,
+                                                       &MaterializedStreamFile);
             } else
                 Result = FolderManager->OpenFolderFile(InStream, Path, ArcFormat, &Folder,
                                                        OpenCallbackProgress);
@@ -327,6 +328,7 @@ HRESULT CFfpOpen::OpenFileFolderPlugin(IInStream *inStream, const FString &path,
 
     t.InStream = inStream;
     t.OwnedStreamFile = OwnedStreamFile;
+    t.MaterializeStreamFile = MaterializeStreamFile;
     t.Path = fs2us(path);
     t.ArcFormat = arcFormat;
 

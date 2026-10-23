@@ -965,6 +965,13 @@ Z7_COM7F_IMF(CAgentFolder::BindToParentFolder(IFolderFolder **resultFolder)) {
 }
 
 Z7_COM7F_IMF(CAgentFolder::GetStream(UInt32 index, ISequentialInStream **stream)) {
+    return GetStreamWithRequest(index, stream, nullptr);
+}
+
+Z7_COM7F_IMF(CAgentFolder::GetStreamWithRequest(UInt32 index, ISequentialInStream **stream,
+                                                IProgress *request)) {
+    if (!stream)
+        return E_INVALIDARG;
     *stream = nullptr;
     if (!IsBound() || index >= GetNumberOfItems())
         return E_INVALIDARG;
@@ -986,7 +993,10 @@ Z7_COM7F_IMF(CAgentFolder::GetStream(UInt32 index, ISequentialInStream **stream)
         } else
             arcIndex = dir->SubFiles[realIndex - dir->SubDirs.Size()];
     }
-    return getStream->GetStream(arcIndex, stream);
+    CMyComPtr<IArchiveGetStreamWithRequest> requested;
+    getStream.QueryInterface(IID_IArchiveGetStreamWithRequest, &requested);
+    return requested ? requested->GetStreamWithRequest(arcIndex, stream, request)
+                     : getStream->GetStream(arcIndex, stream);
 }
 
 Z7_COM7F_IMF(CAgentFolder::GetFolderProperty(PROPID propID, PROPVARIANT *value)) {
@@ -1426,6 +1436,9 @@ bool CAgent::CanUpdate() const {
     // FAR plugin uses empty agent to create new archive !!!
     if (_archiveLink.Arcs.Size() == 0)
         return true;
+    if (auto *resource = dynamic_cast<QtArchiveFileResource *>(_engineResource.Interface()))
+        if (!resource->HasUpdateService())
+            return false;
     if (_isDeviceFile)
         return false;
     if (_archiveLink.Arcs.Size() != 1)
@@ -1587,8 +1600,8 @@ Z7_COM7F_IMF(CAgent::ReOpen(IArchiveOpenCallback *openArchiveCallback)) {
     options.callback = openArchiveCallback;
 
     auto *resource = dynamic_cast<QtArchiveFileResource *>(GetEngineResource());
-    if (resource && resource->HasDirectInput()) {
-        // A device refresh reuses its authorized stream; a virtual display
+    if (resource && resource->HasStreamInput()) {
+        // A stream refresh reuses its retained input; a virtual display
         // path must never be reopened through the host filesystem.
         if (_archiveLink.Arcs.Size() != 1)
             return E_FAIL;
@@ -1619,6 +1632,25 @@ Z7_COM7F_IMF(CAgent::Close()) {
 
 IUnknown *CAgentFolder::GetEngineResource() const {
     return _agentSpec ? _agentSpec->GetEngineResource() : nullptr;
+}
+
+Z7_COM7F_IMF(CAgentFolder::GetContainerDepth(UInt64 *depth)) {
+    if (!depth)
+        return E_INVALIDARG;
+    *depth = 0;
+    auto *resource = dynamic_cast<QtArchiveFileResource *>(GetEngineResource());
+    if (!resource)
+        return S_FALSE;
+    *depth = resource->ContainerDepth();
+    return S_OK;
+}
+
+Z7_COM7F_IMF(CAgentFolder::SetParentContainerDepth(UInt64 depth)) {
+    auto *resource = dynamic_cast<QtArchiveFileResource *>(GetEngineResource());
+    if (!resource)
+        return S_FALSE;
+    resource->SetParentContainerDepth(depth);
+    return S_OK;
 }
 
 HRESULT CAgentFolder::CloseArchive() {

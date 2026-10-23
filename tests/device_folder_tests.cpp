@@ -1,7 +1,9 @@
 #include "CPP/7zip/UI/Agent/Agent.h"
 #include "Common/StringConvert.h"
+#include "archive_copy_callback.h"
 #include "archivebackend.h"
 #include "archivedevice.h"
+#include "archivereadstream.h"
 #include "deviceaccess.h"
 #include "exfat_fixture.h"
 #include "qtarchivefoldermanager.h"
@@ -45,46 +47,7 @@ class CObservedBackend final : public ArchiveBackend {
         ArchiveBackend::openFolder(path, type, password);
     }
 };
-class CCopyCallback final : public IFolderOperationsExtractCallback,
-                            public IFolderArchiveExtractCallback,
-                            public CMyUnknownImp {
-    Z7_COM_UNKNOWN_IMP_2(IFolderOperationsExtractCallback, IFolderArchiveExtractCallback)
-  public:
-    bool Cancel = false;
-    unsigned Errors = 0;
-    Z7_COM7F_IMF(SetTotal(UInt64)) override { return Cancel ? E_ABORT : S_OK; }
-    Z7_COM7F_IMF(SetCompleted(const UInt64 *)) override { return Cancel ? E_ABORT : S_OK; }
-    Z7_COM7F_IMF(SetCurrentFilePath(const wchar_t *)) override { return S_OK; }
-    Z7_COM7F_IMF(SetNumFiles(UInt64)) override { return S_OK; }
-    Z7_COM7F_IMF(ShowMessage(const wchar_t *)) override {
-        ++Errors;
-        return S_OK;
-    }
-    Z7_COM7F_IMF(AskWrite(const wchar_t *, Int32, const FILETIME *, const UInt64 *,
-                          const wchar_t *path, BSTR *result, Int32 *answer))
-    override {
-        *answer = 1;
-        return StringToBstr(path, result);
-    }
-    Z7_COM7F_IMF(AskOverwrite(const wchar_t *, const FILETIME *, const UInt64 *, const wchar_t *,
-                              const FILETIME *, const UInt64 *, Int32 *answer))
-    override {
-        *answer = NOverwriteAnswer::kYes;
-        return S_OK;
-    }
-    Z7_COM7F_IMF(PrepareOperation(const wchar_t *, Int32, Int32, const UInt64 *)) override {
-        return Cancel ? E_ABORT : S_OK;
-    }
-    Z7_COM7F_IMF(MessageError(const wchar_t *)) override {
-        ++Errors;
-        return S_OK;
-    }
-    Z7_COM7F_IMF(SetOperationResult(Int32 result, Int32)) override {
-        if (result)
-            ++Errors;
-        return S_OK;
-    }
-};
+using CCopyCallback = CArchiveCopyCallback;
 } // namespace
 
 class DeviceFolderTests final : public QObject {
@@ -213,6 +176,46 @@ class DeviceFolderTests final : public QObject {
             QCOMPARE(folder->LoadItems(), S_OK);
             QCOMPARE(folder->GetNumberOfItems(&count), S_OK);
             QCOMPARE(count, UInt32(1));
+            CMyComPtr<IInArchiveGetStream> streams;
+            QCOMPARE(folder.QueryInterface(IID_IInArchiveGetStream, &streams), S_OK);
+            CMyComPtr<ISequentialInStream> stream;
+            QCOMPARE(streams->GetStream(0, &stream), S_OK);
+            if (!exfat)
+                QVERIFY(stream);
+            // Some native readers expose only Extract. Their ordinary CopyTo
+            // path below must remain available without a synthetic seek stream.
+            if (stream) {
+                CMyComPtr<IArchiveReadStream> requested;
+                QCOMPARE(stream.QueryInterface(IID_IArchiveReadStream, &requested), S_OK);
+                auto *probe = new CArchiveCopyCallback;
+                CMyComPtr<IProgress> request =
+                    static_cast<IFolderOperationsExtractCallback *>(probe);
+                probe->Cancel = true;
+                UInt64 position = 999;
+                QCOMPARE(worker([&] {
+                             return requested->SeekWithRequest(0, STREAM_SEEK_END, &position,
+                                                               request);
+                         }),
+                         E_ABORT);
+                QCOMPARE(position, UInt64(999));
+                probe->Cancel = false;
+                QCOMPARE(worker([&] {
+                             return requested->SeekWithRequest(1, STREAM_SEEK_SET, &position,
+                                                               request);
+                         }),
+                         S_OK);
+                QByteArray range(2048, '\0');
+                UInt32 read = 0;
+                QCOMPARE(worker([&] {
+                             return requested->ReadWithRequest(range.data(), UInt32(range.size()),
+                                                               &read, request);
+                         }),
+                         S_OK);
+                range.resize(int(read));
+                const QByteArray expected = exfat ? QByteArray("tail") + QByteArray(1020, '\0')
+                                                  : QByteArray("device ext4 payload\n");
+                QCOMPARE(range, expected.mid(1));
+            }
         }
         CMyComPtr<IFolderOperations> operations;
         QCOMPARE(folder.QueryInterface(IID_IFolderOperations, &operations), S_OK);

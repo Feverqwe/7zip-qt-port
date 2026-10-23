@@ -52,7 +52,7 @@ void QtArchiveBatchOpen::SetExtractionPolicy(const QString &destination,
 HRESULT QtArchiveBatchOpen::Open(CArchiveLink &link, const COpenOptions &options,
                                  IOpenCallbackUI *callback) {
     COM_TRY_BEGIN
-    if (options.stdInMode || options.stream || options.filePath.IsEmpty())
+    if (options.stdInMode || options.filePath.IsEmpty())
         return E_NOTIMPL;
     CMyComPtr<IProgress> progress = new CBatchOpenProgress(callback, _dialog);
     CMyComPtr<IFolderFolder> folder;
