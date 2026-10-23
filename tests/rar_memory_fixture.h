@@ -28,10 +28,11 @@ inline QByteArray header(const QByteArray &body) {
 }
 inline QString name() { return QStringLiteral("имя 空 with spaces.bin"); }
 inline QByteArray payload() { return QByteArray("binary\0value\xff", 13); }
-inline QByteArray archive(unsigned algorithm, const QString &firstName = name()) {
+inline QByteArray archive(unsigned algorithm, const QString &firstName = name(),
+                          unsigned dictionaryBits = 4) {
     QByteArray result("Rar!\x1a\x07\x01\0", 8);
     result += header(varInt(1) + varInt(0) + varInt(0));
-    const quint64 method = algorithm | (quint64(4) << 10); // Declared dictionary: 2 MiB.
+    const quint64 method = algorithm | (quint64(dictionaryBits) << 10); // Default: 2 MiB.
     for (const QString &path : {firstName, QStringLiteral("other.txt")}) {
         const QByteArray value = path == firstName ? payload() : QByteArray("other bytes");
         const QByteArray utf8 = path.toUtf8();

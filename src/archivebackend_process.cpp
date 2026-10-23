@@ -1,6 +1,7 @@
 #include "CPP/7zip/UI/Common/CompressCall.h"
 #include "CPP/7zip/UI/FileManager/RegistryUtils.h"
 #include "archivebackend.h"
+#include "qtarchivereadoperation.h"
 #include "qtownedtempdir.h"
 #include <QCoreApplication>
 #include <QFile>
@@ -117,6 +118,10 @@ void ArchiveBackend::providePassword(const QString &password) {
     if (!busy())
         return;
     pendingPassword_ = password;
+    if (readOperation_) {
+        readOperation_->providePassword(password);
+        return;
+    }
     if (job_ == Job::Extract)
         extractPassword_ = password;
     process_->write(password.toUtf8() + '\n');

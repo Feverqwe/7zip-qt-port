@@ -7,6 +7,7 @@
 #include "qtarchivecopypreparation.h"
 #include "qtarchivecreationlifecycle.h"
 #include "qtarchivehashoperation.h"
+#include "qtarchivereadoperation.h"
 #include "qtarchivevolumeoutput.h"
 #include "qtlanguageservices.h"
 
@@ -62,6 +63,10 @@ bool ArchiveBackend::busy() const {
 HRESULT ArchiveBackend::lastResult() const { return lastResult_; }
 
 HRESULT ArchiveBackend::setPaused(bool paused) {
+    if (readOperation_) {
+        readOperation_->setPaused(paused);
+        return S_OK;
+    }
     if (copyPreparation_) {
         copyPreparation_->setPaused(paused);
         return S_OK;
@@ -148,6 +153,8 @@ void ArchiveBackend::startListing(const QString &archive, const QString &passwor
     encrypted_ = false;
     pendingPassword_ = password;
     QStringList arguments{"l", "-slt", "-sns"};
+    if (startNativeRead(Job::List, archive_, password, format))
+        return;
     if (!format.isEmpty())
         arguments << QStringLiteral("-t") + format;
     arguments << "--" << archive_;
@@ -231,7 +238,7 @@ bool ArchiveBackend::restoreListedArchive(const QString &archive, bool allowLimi
         return false;
     const QString path = QFileInfo(archive).absoluteFilePath();
     const ListedSourceSnapshot &snapshot = listedSourceArchives_.constFind(path).value();
-    if (snapshot.LimitedRead && !allowLimited)
+    if (!allowLimited && (snapshot.LimitedRead || snapshot.ReadOnly))
         return false;
     archive_ = path;
     entries_ = snapshot.Entries;
@@ -379,6 +386,8 @@ void ArchiveBackend::test(const QString &archive, const QString &password) {
         return;
     }
     pendingPassword_ = password;
+    if (startNativeTest(archive_, password))
+        return;
     start(Job::Test, {"t", "-bsp1", "-bb1", "--", archive_});
 }
 
@@ -397,6 +406,8 @@ void ArchiveBackend::testSourceArchive(const QString &archive, const QString &pa
     }
     archive_ = file.absoluteFilePath();
     pendingPassword_ = password;
+    if (startNativeTest(archive_, password))
+        return;
     start(Job::Test, {"t", "-bsp1", "-bb1", "--", archive_});
 }
 
@@ -412,6 +423,8 @@ void ArchiveBackend::cancel() {
         copyPreparation_->cancel();
     if (hashOperation_)
         hashOperation_->cancel();
+    if (readOperation_)
+        readOperation_->cancel();
     if (creationLifecycle_)
         creationLifecycle_->cancel();
     if (volumeOutput_)
@@ -445,6 +458,11 @@ void ArchiveBackend::cancelAndWait() {
     if (hashOperation_) {
         hashOperation_->wait();
         finishHashOperation();
+        return;
+    }
+    if (readOperation_) {
+        readOperation_->wait();
+        finishReadOperation();
         return;
     }
     if (creationLifecycle_ && (job_ == Job::CreatePrepare || job_ == Job::CreateDeleteInputs)) {

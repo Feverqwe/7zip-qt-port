@@ -227,9 +227,8 @@ class CodecUpdateTests final : public QObject, protected ArchiveBackendTestSuppo
             QTimer::singleShot(100, &worker, [&] { worker.Sync.Set_Stopped(true); });
         }
         QCOMPARE(worker.Create(L"Native codec update", nullptr), S_OK);
-        // Publication reopens the folder through one metadata listing. No
-        // external mutation process is allowed, including after native failure.
-        QCOMPARE(processStarted.size(), mode == "success" ? 1 : 0);
+        // Publication refreshes the retained native metadata without a process.
+        QCOMPARE(processStarted.size(), 0);
         if (mode != "success") {
             QCOMPARE(worker.Result, mode == "cancel" ? E_ABORT : E_FAIL);
             QVERIFY(deleteOnly ? worker.Sync.Get_Stopped() : worker.ObservedNativeProgress);
@@ -363,19 +362,21 @@ class CodecUpdateTests final : public QObject, protected ArchiveBackendTestSuppo
         QCOMPARE(creator.exitCode(), 0);
         ArchiveBackend backend(nullptr, engine_);
         QCOMPARE(backend.loadCodecCatalog(module_, version_), S_OK);
-        QList<ArchiveEntry> entries;
-        connect(&backend, &ArchiveBackend::entriesReady, this,
-                [&](const QList<ArchiveEntry> &value) { entries = value; });
         CMyComPtr<IFolderManager> manager = new QtArchiveFolderManager(backend);
         CFfpOpen opening(manager);
         QCOMPARE(opening.OpenFileFolderPlugin(nullptr, us2fs(archive.toStdWString().c_str()),
                                               UString(L"zip"), nullptr),
                  S_OK);
-        QCOMPARE(entries.size(), 1);
         auto *folder = dynamic_cast<CAgentFolder *>(opening.Folder.Interface());
         QVERIFY(folder);
         auto *resource = dynamic_cast<QtArchiveFileResource *>(folder->GetEngineResource());
         QVERIFY(resource && resource->HasNativePropertyService());
+        // This second source Agent exercises its public SetProperties contract.
+        // Supply the fixture's known metadata instead of relying on CLI signals
+        // from the unrelated initial opening.
+        ArchiveEntry entry;
+        entry.path = name;
+        const QList<ArchiveEntry> entries{entry};
         CMyComPtr<IFolderFolder> metadata;
         QCOMPARE(CreateArchiveMetadata(entries, &metadata), S_OK);
         CMyComPtr2_Create<IFolderArcProps, CAgent> agent;
@@ -416,7 +417,7 @@ class CodecUpdateTests final : public QObject, protected ArchiveBackendTestSuppo
                 continue;
             }
             QCOMPARE(worker.Result, S_OK);
-            QCOMPARE(processes.size(), 1);
+            QCOMPARE(processes.size(), 0);
             QVERIFY(resource->HasNativePropertyService());
             NWindows::NCOM::CPropVariant packed;
             QCOMPARE(resource->NativeItemProperties()->GetProperty(0, kpidPackSize, &packed), S_OK);
@@ -435,7 +436,7 @@ class CodecUpdateTests final : public QObject, protected ArchiveBackendTestSuppo
                     .entryList({"*.tmp", ".sevenzip-*"}, QDir::Files | QDir::Hidden)
                     .isEmpty());
     }
-    void duplicateNamesDoNotProveNativeIndexes() {
+    void duplicateNamesRetainDistinctNativeIndexes() {
         QTemporaryDir fixture;
         QVERIFY(fixture.isValid());
         writeFile(fixture.filePath("one.bin"), "one");
@@ -483,17 +484,27 @@ class CodecUpdateTests final : public QObject, protected ArchiveBackendTestSuppo
         QVERIFY(folder);
         auto *resource = dynamic_cast<QtArchiveFileResource *>(folder->GetEngineResource());
         QVERIFY(resource);
-        QVERIFY(!resource->HasUpdateService());
+        QVERIFY(resource->HasUpdateService());
         CMyComPtr<IFolderOperations> operations;
         QCOMPARE(opening.Folder.QueryInterface(IID_IFolderOperations, &operations), S_OK);
         CCodecUpdateWorker worker(operations, {});
         worker.NewName = "renamed.bin";
         worker.DisableUserQuestions = true;
         QSignalSpy processes(&backend, &ArchiveBackend::engineStarted);
-        QCOMPARE(worker.Create(L"Ambiguous native indexes", nullptr), S_OK);
-        QCOMPARE(worker.Result, E_NOINTERFACE);
+        auto transport = resource->CreateProgressTransport(worker);
+        QVERIFY(transport);
+        QCOMPARE(worker.Create(L"Rename one duplicate entry", nullptr), S_OK);
+        QCOMPARE(worker.Result, S_OK);
         QCOMPARE(processes.size(), 0);
-        QCOMPARE(readFile(archive), original);
+        QVERIFY(readFile(archive) != original);
+        const QString destination = fixture.filePath("output");
+        QProcess extractor;
+        extractor.start(engine_, {"x", "-y", "-o" + destination, "--", archive});
+        QVERIFY(extractor.waitForFinished(10000));
+        QCOMPARE(extractor.exitCode(), 0);
+        QCOMPARE(readFile(QDir(destination).filePath("renamed.bin")), QByteArray("one"));
+        QCOMPARE(readFile(QDir(destination).filePath("duplicate.bin")),
+                 QByteArray("different two"));
     }
 };
 int main(int argc, char **argv) {

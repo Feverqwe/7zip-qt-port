@@ -9,6 +9,8 @@
 #include "qtarchivebatchopen.h"
 #include "qtarchivefileresource.h"
 #include "qtarchivefoldermanager.h"
+#include "qtarchiveproperties.h"
+#include "qtlocationfolder.h"
 #include "rar_memory_fixture.h"
 #include <QApplication>
 #include <QCheckBox>
@@ -199,7 +201,12 @@ class NativeRarMemoryTests final : public QObject {
         QCOMPARE(read(archive), original);
         // A lost index contract must refuse the actual source consumer, not
         // silently run the console decoder with different memory decisions.
-        resource->BindNativeItemOrder(nullptr);
+        ArchiveEntry otherEntry;
+        otherEntry.path = "another archive's file.bin";
+        CMyComPtr<IFolderFolder> unrelated;
+        QCOMPARE(CreateArchiveMetadata({otherEntry}, &unrelated), S_OK);
+        CMyComPtr<IInArchive> mismatched;
+        QCOMPARE(CreateArchivePropertyTransport(unrelated, &mismatched, resource), S_OK);
         QVERIFY(resource->HasNativeRarReader());
         QVERIFY(!resource->HasExtractService());
         const QString refusedOutput = fixture.filePath("refused-output");

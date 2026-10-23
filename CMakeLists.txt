@@ -449,6 +449,8 @@ endif()
 add_library(sevenzip_filesystem STATIC
     src/archivesfxmodule.cpp src/archivesfxmodule.h
     src/qtarchivehashoperation.cpp src/qtarchivehashoperation.h
+    src/qtarchivereadoperation.cpp src/qtarchivereadoperation.h
+    src/CPP/7zip/UI/Console/List.cpp src/CPP/7zip/UI/Console/List.h
     src/qtarchivecopypreparation.cpp src/qtarchivecopypreparation.h
     src/archiveenginelocation.cpp src/archiveenginelocation.h
     src/qtownedtempdir.cpp src/qtownedtempdir.h
@@ -1508,6 +1510,31 @@ if(BUILD_TESTING)
             "SEVENZIP_CODEC_MODULE=\"${SEVENZIP_CODEC_MODULE}\"")
     endif()
     add_test(NAME archive_open_options COMMAND archive_open_options_tests -silent)
+    foreach(native_read_suite IN ITEMS native_archive_test native_listing)
+        qt_add_executable(${native_read_suite}_tests tests/${native_read_suite}_tests.cpp
+            ${source_extract_advanced_sources})
+        target_include_directories(${native_read_suite}_tests PRIVATE src tests)
+        target_link_libraries(${native_read_suite}_tests PRIVATE sevenzip_location Qt6::Test)
+        if(SEVENZIP_CODEC_MODULE)
+            target_compile_definitions(${native_read_suite}_tests PRIVATE
+                SEVENZIP_CODEC_MODULE="${SEVENZIP_CODEC_MODULE}")
+        endif()
+        add_test(NAME ${native_read_suite} COMMAND ${native_read_suite}_tests -silent)
+        set_tests_properties(${native_read_suite} PROPERTIES TIMEOUT 45
+            ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
+    endforeach()
+    qt_add_executable(archive_qcow_tests tests/archive_qcow_tests.cpp
+        ${source_extract_advanced_sources})
+    target_include_directories(archive_qcow_tests PRIVATE src tests)
+    target_link_libraries(archive_qcow_tests PRIVATE sevenzip_location Qt6::Test)
+    target_compile_definitions(archive_qcow_tests PRIVATE
+        LAYER_FIXTURE_DIR="${CMAKE_CURRENT_SOURCE_DIR}/tests/fixtures/layers")
+    if(SEVENZIP_CODEC_MODULE)
+        target_compile_definitions(archive_qcow_tests PRIVATE
+            SEVENZIP_CODEC_MODULE="${SEVENZIP_CODEC_MODULE}")
+    endif()
+    add_test(NAME archive_qcow COMMAND archive_qcow_tests -silent)
+    set_tests_properties(archive_qcow PROPERTIES TIMEOUT 45 ENVIRONMENT "QT_QPA_PLATFORM=offscreen")
     set_tests_properties(archive_open_options PROPERTIES TIMEOUT 60 ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_SETTINGS_PATH=${CMAKE_BINARY_DIR}/archive-open-options.ini")
     qt_add_executable(source_extract_advanced_tests tests/source_extract_advanced_tests.cpp
@@ -3095,6 +3122,8 @@ foreach(engine_consumer IN LISTS engine_consumer_targets)
             src/archivebackend_process.cpp
             src/archivebackend_sourceextract.cpp src/archivebackend_volumes.cpp
             src/archivebackend_creation.cpp src/archivebackend_hash.cpp src/archivebackend_preparation.cpp
+            src/archivebackend_test.cpp
+            src/archivebackend_nativeentries.cpp src/archivebackend_nativeentries.h
             src/archivebackend_workerprogress.cpp src/archivebackend_transfer.cpp
             src/archivebackend_completion.cpp src/archivebackend_compression.cpp
             src/qtarchivetransferbackup.h)

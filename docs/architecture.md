@@ -97,6 +97,14 @@ Widgets invoke operations through this boundary and do not construct `7zz` synta
 Source extract/update callbacks and Agent folder bindings retain the original
 functional owners.
 
+With a loaded native catalog, file navigation uses the retained official reader
+and its item indexes. Standalone listing and archive testing run official
+Open/Extract in a joined Qt worker, with operation-scoped password, pause and
+cancel controls. A failed or cancelled listing does not publish a usable
+snapshot. Open warnings and item/block errors remain separate diagnostics.
+The CLI transport remains available to consumers without a native catalog and
+to operations that have not yet migrated.
+
 Treat archive names and metadata as untrusted. Validate output destinations and
 member paths at the operation boundary, preserve literal Unicode arguments and
 avoid shell interpretation. Transactional update and temporary-resource owners

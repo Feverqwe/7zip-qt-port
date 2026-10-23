@@ -258,7 +258,7 @@ HRESULT ArchiveBackend::updateNativeArchive(const std::shared_ptr<ArchiveNativeO
 
 HRESULT ArchiveBackend::extractNativeArchive(const std::shared_ptr<ArchiveNativeOpen> &reader,
                                              const UInt32 *indices, UInt32 count, Int32 testMode,
-                                             IArchiveExtractCallback *callback) const {
+                                             IArchiveExtractCallback *callback) {
     if (!reader || !reader->arc().Archive)
         return E_NOTIMPL;
     if (reader->hasNativeHashExtractor()) {

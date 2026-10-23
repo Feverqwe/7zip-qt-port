@@ -1,6 +1,8 @@
 #include "CPP/7zip/UI/FileManager/OverwriteDialog.h"
+#include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "archivecodeccatalog.h"
 #include "dot_path_cpio_fixture.h"
+#include "fixtures/progress_dialog.h"
 #include "mainwindow.h"
 
 #include <QAction>
@@ -128,9 +130,10 @@ class NestedArchiveTests : public QObject {
         if (native) {
 #ifdef SEVENZIP_CODEC_MODULE
             const QString module = QString::fromUtf8(SEVENZIP_CODEC_MODULE);
-            ArchiveCodecCatalog probe(module, 0);
-            QCOMPARE(probe.result(), S_OK);
-            QCOMPARE(backend.loadCodecCatalog(module, probe.version()), S_OK);
+            QSignalSpy ready(&backend, &ArchiveBackend::codecCatalogReady);
+            QVERIFY(backend.discoverCodecCatalog(module));
+            QTRY_COMPARE(ready.size(), 1);
+            QVERIFY2(ready[0][0].toBool(), qPrintable(ready[0][1].toString()));
 #endif
         }
         MainWindow window(&backend);
@@ -492,10 +495,18 @@ class NestedArchiveTests : public QObject {
         emit table->cellDoubleClicked(0, 0);
         QTRY_COMPARE(table->item(0, 0)->text(), QStringLiteral("вложенный архив.zip"));
         table->selectRow(0);
-        QTimer::singleShot(100, &window, [&window] {
-            if (auto *box = window.findChild<QMessageBox *>())
+        QTimer dismiss;
+        connect(&dismiss, &QTimer::timeout, &window, [] {
+            if (auto *box = qobject_cast<QMessageBox *>(QApplication::activeModalWidget()))
                 box->accept();
+            if (auto *progress =
+                    dynamic_cast<CProgressDialog *>(QApplication::activeModalWidget())) {
+                auto *close = progress->findChild<QPushButton *>("IDCANCEL");
+                if (TestProgressDialog::IsCloseButton(close))
+                    close->click();
+            }
         });
+        dismiss.start(1);
         inside->trigger();
         QTRY_COMPARE(backend.listed.size(), 2);
         QTRY_VERIFY(!QFileInfo::exists(backend.listed.last()));

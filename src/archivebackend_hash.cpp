@@ -105,7 +105,7 @@ void ArchiveBackend::finishHashOperation() {
 }
 
 HRESULT ArchiveBackend::validateNativeHashReads(const ArchiveNativeOpen &reader,
-                                                const UInt32 *indices, UInt32 count) const {
+                                                const UInt32 *indices, UInt32 count) {
     IInArchive *archive = reader.arc().Archive;
     UInt32 total = 0;
     RINOK(archive->GetNumberOfItems(&total))

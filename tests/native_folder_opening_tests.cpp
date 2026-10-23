@@ -118,7 +118,7 @@ class NativeFolderOpeningTests final : public QObject {
         QCOMPARE(opening.OpenFileFolderPlugin(nullptr, us2fs(path.toStdWString().c_str()),
                                               UString(L"*"), nullptr),
                  S_OK);
-        QCOMPARE(backend.Starts, 1u);
+        QCOMPARE(backend.Starts, 0u);
         auto *folder = dynamic_cast<CAgentFolder *>(opening.Folder.Interface());
         QVERIFY(folder);
         IInArchive *archive = folder->GetArchiveProperties();
@@ -141,7 +141,7 @@ class NativeFolderOpeningTests final : public QObject {
                                             UString(L"7z"), nullptr),
                  S_FALSE);
         QVERIFY(!wrong.Folder);
-        QCOMPARE(backend.Starts, 1u);
+        QCOMPARE(backend.Starts, 0u);
     }
     void nativeWimTreeRetainsRawParentsAndAgentBinding() {
         QTemporaryDir fixture;
@@ -519,7 +519,7 @@ class NativeFolderOpeningTests final : public QObject {
         QTRY_VERIFY_WITH_TIMEOUT(
             result.wait_for(std::chrono::milliseconds(0)) == std::future_status::ready, 10000);
         QCOMPARE(result.get(), cancel ? E_ABORT : S_OK);
-        QCOMPARE(backend.Starts, cancel ? 0u : 1u);
+        QCOMPARE(backend.Starts, 0u);
         QCOMPARE(bool(folder), !cancel);
         QCOMPARE(progress->PasswordCalls, cancel ? 0u : 1u);
         QVERIFY(bytes.open(QIODevice::ReadOnly));

@@ -29,6 +29,7 @@ class COpenUi final : public IOpenCallbackUI {
 class NativeArchivePropertiesTests final : public QObject {
     Q_OBJECT
     QString engine_, module_;
+    quint32 version_ = 0;
     bool create(const QString &format, const QString &path, const QString &input) {
         QProcess creator;
         creator.start(engine_, {"a", "-t" + format, "--", path, input});
@@ -42,6 +43,9 @@ class NativeArchivePropertiesTests final : public QObject {
         module_ = QString::fromUtf8(SEVENZIP_CODEC_MODULE);
         engine_ = QStandardPaths::findExecutable("7zz");
         QVERIFY(!engine_.isEmpty());
+        ArchiveCodecCatalog probe(module_, 0);
+        QCOMPARE(probe.result(), S_OK);
+        version_ = probe.version();
 #endif
     }
     void wrongExtensionRetainsNativeDiagnostics_data() {
@@ -69,11 +73,10 @@ class NativeArchivePropertiesTests final : public QObject {
         const QByteArray original = archive.readAll();
         archive.close();
 
-        ArchiveBackend backend(nullptr, engine_);
-        QSignalSpy ready(&backend, &ArchiveBackend::codecCatalogReady);
-        QVERIFY(backend.discoverCodecCatalog(module_));
-        QTRY_COMPARE(ready.size(), 1);
-        QVERIFY2(ready[0][0].toBool(), qPrintable(ready[0][1].toString()));
+        // Opening and listing must use the retained official reader even when
+        // the separate command-line executable is unavailable.
+        ArchiveBackend backend(nullptr, fixture.filePath("missing 7zz executable"));
+        QCOMPARE(backend.loadCodecCatalog(module_, version_), S_OK);
         auto catalog = backend.codecCatalog();
         std::weak_ptr<const ArchiveCodecCatalog> retained = catalog;
         COpenUi callback;
@@ -93,6 +96,19 @@ class NativeArchivePropertiesTests final : public QObject {
         CFfpOpen opening(manager);
         QCOMPARE(opening.OpenFileFolderPlugin(nullptr, us2fs(ToUString(path)), UString(), nullptr),
                  S_OK);
+        QCOMPARE(opening.Folder->LoadItems(), S_OK);
+        UInt32 count = 0;
+        QCOMPARE(opening.Folder->GetNumberOfItems(&count), S_OK);
+        QCOMPARE(count, UInt32(1));
+        NWindows::NCOM::CPropVariant name, size;
+        QCOMPARE(opening.Folder->GetProperty(0, kpidName, &name), S_OK);
+        QCOMPARE(name.vt, VARTYPE(VT_BSTR));
+        // The official producer enumerates macOS filesystem names in NFD.
+        QCOMPARE(ToQString(name.bstrVal).normalized(QString::NormalizationForm_C),
+                 QFileInfo(input.fileName()).fileName().normalized(QString::NormalizationForm_C));
+        QCOMPARE(opening.Folder->GetProperty(0, kpidSize, &size), S_OK);
+        QCOMPARE(size.vt, VARTYPE(VT_UI8));
+        QCOMPARE(size.uhVal.QuadPart, UInt64(18));
         CMyComPtr<IGetFolderArcProps> provider;
         QCOMPARE(opening.Folder.QueryInterface(IID_IGetFolderArcProps, &provider), S_OK);
         CMyComPtr<IFolderArcProps> props;

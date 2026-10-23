@@ -1,3 +1,4 @@
+#include "7zip/Common/StreamObjects.h"
 #include "7zip/UI/FileManager/ProgressDialog2Res.h"
 #include "CPP/7zip/UI/FileManager/ExtractCallback.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
@@ -21,18 +22,12 @@
 #include <future>
 
 namespace {
-class VolumeMetadataBackend final : public ArchiveBackend {
+class NativeOnlyBackend final : public ArchiveBackend {
   public:
-    int reportedVolumes = 1;
     int listingCalls = 0;
     void openFolder(const QString &, const QString &, const QString & = {}) override {
         ++listingCalls;
-        ArchiveInfo info;
-        info.format = "zip";
-        info.volumeCount = reportedVolumes;
-        emit infoReady(info);
-        emit entriesReady({ArchiveEntry{SourceExtractFixture::kName, 2048, 2048}});
-        emit finished(true, {});
+        emit finished(false, "CLI listing unavailable");
     }
 };
 class FinalMessageDismissal {
@@ -203,15 +198,12 @@ class ArchiveOpenOptionsTests final : public QObject {
         QCOMPARE(SourceExtractFixture::readFile(archive), bytes);
     }
     void batchRetainsSourceVolumeAccounting_data() {
-        QTest::addColumn<int>("reportedVolumes");
         QTest::addColumn<int>("outcome");
-        QTest::newRow("missing-process-count") << 1 << 0;
-        QTest::newRow("untrusted-process-count") << 10001 << 0;
-        QTest::newRow("missing-first-volume") << 1 << 1;
-        QTest::newRow("cancel-native-open") << 1 << 2;
+        QTest::newRow("native-volume-accounting") << 0;
+        QTest::newRow("missing-first-volume") << 1;
+        QTest::newRow("cancel-native-open") << 2;
     }
     void batchRetainsSourceVolumeAccounting() {
-        QFETCH(int, reportedVolumes);
         QFETCH(int, outcome);
         QTemporaryDir fixture;
         QVERIFY(fixture.isValid());
@@ -226,8 +218,7 @@ class ArchiveOpenOptionsTests final : public QObject {
         QVERIFY(engine.waitForFinished(10000));
         QCOMPARE(engine.exitCode(), 0);
         const QString archive = fixture.filePath(name + ".001");
-        VolumeMetadataBackend backend;
-        backend.reportedVolumes = reportedVolumes;
+        NativeOnlyBackend backend;
         load(backend);
         const auto catalog = backend.codecCatalog();
         CArchiveLink original;
@@ -270,7 +261,7 @@ class ArchiveOpenOptionsTests final : public QObject {
             QCOMPARE(QString::fromWCharArray(adapted.VolumePaths[i].Ptr()),
                      QString::fromWCharArray(expectedPaths[i].Ptr()));
             QCOMPARE(adapted.VolumesSize, expectedSize);
-            QCOMPARE(backend.listingCalls, 1);
+            QCOMPARE(backend.listingCalls, 0);
         } else {
             if (outcome == 2)
                 QCOMPARE(result, E_ABORT);
@@ -285,15 +276,14 @@ class ArchiveOpenOptionsTests final : public QObject {
                  bytes);
         QVERIFY(!backend.busy());
     }
-    void nativeSingleArchiveRetainsWriterDespiteProcessVolumeCount() {
+    void nativeSingleArchiveRetainsWriterWithoutCliListing() {
         QTemporaryDir fixture;
         QVERIFY(fixture.isValid());
         const QByteArray bytes(2048, 'x');
         const QString archive = SourceExtractFixture::makeArchive(fixture.path(), bytes);
         QVERIFY(!archive.isEmpty());
         const QByteArray before = SourceExtractFixture::readFile(archive);
-        VolumeMetadataBackend backend;
-        backend.reportedVolumes = 10001;
+        NativeOnlyBackend backend;
         load(backend);
         CObjectVector<COpenType> types;
         QVERIFY(backend.codecCatalog()->parseOpenTypes("zip", types));

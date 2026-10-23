@@ -21,6 +21,7 @@ class CArc;
 class QtArchiveVolumeOutput;
 class QtArchiveCreationLifecycle;
 class QtArchiveHashOperation;
+class QtArchiveReadOperation;
 class QtArchiveCopyPreparation;
 class ArchiveCodecCatalog;
 class ArchiveSfxModule;
@@ -31,6 +32,7 @@ class QtOwnedTempDir;
 class QtArchiveTransferBackup;
 class QThread;
 struct IOpenCallbackUI;
+struct NativeArchiveListing;
 struct IUpdateCallbackUI2;
 struct CUpdateOptions;
 struct CUpdateErrorInfo;
@@ -66,6 +68,7 @@ struct ArchiveInfo {
     bool encrypted = false;
     QMap<QString, QString> properties;
     QString readLimitations;
+    unsigned containerLevels = 1;
 };
 
 struct CompressionOptions : NCompressDialog::CInfo {
@@ -158,9 +161,9 @@ class ArchiveBackend : public QObject {
                                 ISequentialOutStream *output, UInt32 count,
                                 IArchiveUpdateCallback *callback,
                                 const CompressionOptions &options) const;
-    HRESULT extractNativeArchive(const std::shared_ptr<ArchiveNativeOpen> &reader,
-                                 const UInt32 *indices, UInt32 count, Int32 testMode,
-                                 IArchiveExtractCallback *callback) const;
+    static HRESULT extractNativeArchive(const std::shared_ptr<ArchiveNativeOpen> &reader,
+                                        const UInt32 *indices, UInt32 count, Int32 testMode,
+                                        IArchiveExtractCallback *callback);
     virtual void list(const QString &archive, const QString &password = {});
     virtual void openFolder(const QString &archive, const QString &format,
                             const QString &password = {});
@@ -265,6 +268,8 @@ class ArchiveBackend : public QObject {
         bool Encrypted = false;
         bool LimitedRead = false;
         QString Format;
+        unsigned ContainerLevels = 1;
+        bool ReadOnly = false;
     };
     enum class Job {
         None,
@@ -365,6 +370,9 @@ class ArchiveBackend : public QObject {
     std::unique_ptr<QtArchiveVolumeOutput> volumeOutput_;
     std::unique_ptr<QtArchiveCreationLifecycle> creationLifecycle_;
     std::unique_ptr<QtArchiveHashOperation> hashOperation_;
+    std::unique_ptr<QtArchiveReadOperation> readOperation_;
+    std::shared_ptr<NativeArchiveListing> nativeListing_;
+    quint64 readGeneration_ = 0;
     std::unique_ptr<QtArchiveCopyPreparation> copyPreparation_;
     std::function<void()> copyContinuation_;
     QTimer copyProgressTimer_{this};
@@ -385,8 +393,12 @@ class ArchiveBackend : public QObject {
     void reportWorkerProgress();
     void finishWorkerProgress();
     void finishHashOperation();
-    HRESULT validateNativeHashReads(const ArchiveNativeOpen &reader, const UInt32 *indices,
-                                    UInt32 count) const;
+    bool startNativeTest(const QString &archive, const QString &password);
+    bool startNativeRead(Job job, const QString &archive, const QString &password,
+                         const QString &format = {});
+    void finishReadOperation();
+    static HRESULT validateNativeHashReads(const ArchiveNativeOpen &reader, const UInt32 *indices,
+                                           UInt32 count);
     QString addBackup_;
     QString replacementEntry_;
     QString replacementRoot_;

@@ -284,10 +284,12 @@ HRESULT QtArchiveFolderManager::OpenLinkImpl(CArchiveLink &link, const COpenOpti
     }
     resource->SetFilesystemReadLimitations(limitations);
     resource->AttachNativeOpen(std::move(nativeOpen));
-    if (nativeMetadata) {
+    if (resource->NativeArchiveLink()) {
         resource->UseNativeMetadata();
         resource->AttachReopenService(_backend, resource->TransportFormat());
         resource->AttachExtractService(_backend, resource->TransportFormat());
+        if (resource->HasNativeUpdateService())
+            resource->AttachUpdateService(_backend, resource->TransportFormat());
         RINOK(CreateArchiveLinkTransport(link, nullptr, resource, sourceOptions.codecs))
         keepOwnedPath = true;
         return nativeResult;

@@ -1,0 +1,28 @@
+{
+  "virtual_size": 1073741824,
+  "source_size": 12582912,
+  "source_sha256": "565f850a5c24ecf789b92ad64ed15fa50209be404f44ca49d51f90022ff8c148",
+  "path": "папка 空/данные с пробелом.txt",
+  "payload": "device ext4 payload\n",
+  "images": [
+    {
+      "file": "stored.qcow2.gz",
+      "size": 61440,
+      "sha256": "1d795b528b77de0b771fcfda548a692429999bc624b5acd632993900ee1b7f53",
+      "compressed_clusters": 0
+    },
+    {
+      "file": "deflate.qcow2.gz",
+      "size": 57856,
+      "sha256": "3796fa7d653dd80ec9eb9e81d4116e0cf9208221fd1800a959f43a8eb1693e07",
+      "compressed_clusters": 10
+    },
+    {
+      "file": "zstd.qcow2.gz",
+      "size": 22016,
+      "sha256": "bcbf6c9cad7fa957fa4e439b8f08cfabfb4682ada6a4549424531e52ed4bdf9c",
+      "compression": "ZSTD",
+      "producer": "qemu-img"
+    }
+  ]
+}
