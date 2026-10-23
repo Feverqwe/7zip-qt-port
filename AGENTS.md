@@ -73,7 +73,10 @@ Keep adaptations narrow; account for formatting separately from functional chang
 
 ## Read-only filesystem access
 
-- Apply the recovery/partial-access requirements below only to filesystems
+- This policy covers read-only recovery/partial access to filesystems and
+  popular archive and compressed-stream formats. It does not make ordinary
+  archive editing read-only; the restrictions below apply to recovery access.
+- Apply the filesystem recovery/partial-access requirements below only to formats
   prioritized for common recovery needs or inconsistent-volume scenarios.
   The current scope is NTFS, FAT/exFAT and ext; do not automatically extend it
   to every filesystem supported by Linux or this project.
@@ -81,11 +84,17 @@ Keep adaptations narrow; account for formatting separately from functional chang
   access to damaged images unless the user specifically includes that scenario.
   A general Linux format audit does not require adding those recovery paths.
   Preserve already implemented limited-access behavior.
+- For archives and compressed streams, the recovery scope includes 7z, ZIP, RAR,
+  TAR, gzip, bzip2, xz and Zstandard. Favor access to readable entries or data in
+  damaged, truncated or incomplete inputs when the official engine provides a
+  usable reading mode. Do not automatically extend new recovery requirements
+  to every supported format; preserve existing limited-access behavior elsewhere.
 - For every selected format, correct reading of supported features and updates
-  against the Linux reference remain in scope. Read-only source access and
+  against the relevant reference remain in scope: Linux for filesystems and
+  upstream 7-Zip for archives and compressed streams. Read-only source access and
   bounds/path validation are mandatory regardless of recovery priority.
 - Within the recovery scope above, favor useful read-only access when the reader
-  can retrieve filesystem data, including partial or potentially inconsistent
+  can retrieve files or stream data, including partial or potentially inconsistent
   data. Distinguish actual reader
   limitations from restrictions introduced by product policy. A recovery flag,
   incomplete support or inability to guarantee consistency alone should not
@@ -95,12 +104,18 @@ Keep adaptations narrow; account for formatting separately from functional chang
   of the mode, and report unreadable/skipped files and incomplete results honestly.
   Reading a `RECOVER` filesystem without journal replay is the reference example:
   warn about missing, outdated or unreadable files while allowing copying.
+  For archives, distinguish successfully extracted entries from partial output,
+  checksum failures and unverified data; do not report a partial extraction as
+  complete success. Scope consent to the selected archive opening or extraction.
 - Check the relevant reader behavior before introducing or relaxing a gate;
   investigate whether a supported subset can be exposed. User consent does not
   implement missing decoding or make unreliable data verified. Preserve read-only
   source access and bounds/path validation; this choice does not authorize writes,
-  repair or journal replay on the source. When useful reading is genuinely
-  unavailable, explain the specific technical limitation.
+  repair or journal replay on the source. For archives, preserve extraction-path
+  and bounds validation and password requirements; consent does not bypass
+  encryption or supply missing volumes, codecs or recovery algorithms. Do not
+  reimplement decoding or recovery outside the official engine. When useful
+  reading is genuinely unavailable, explain the specific technical limitation.
 
 ## Context and memory
 
