@@ -451,6 +451,7 @@ add_library(sevenzip_filesystem STATIC
     src/archivesfxmodule.cpp src/archivesfxmodule.h
     src/qtarchivehashoperation.cpp src/qtarchivehashoperation.h
     src/qtarchivereadoperation.cpp src/qtarchivereadoperation.h
+    src/qtarchivedirectoryextract.cpp src/qtarchivedirectoryextract.h
     src/CPP/7zip/UI/Console/List.cpp src/CPP/7zip/UI/Console/List.h
     src/qtarchivecopypreparation.cpp src/qtarchivecopypreparation.h
     src/archiveenginelocation.cpp src/archiveenginelocation.h

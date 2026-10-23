@@ -481,7 +481,7 @@ NTFS-модуль дополнительно показывает WSL owner IDs,
 | Файловая система | Links, junctions, ADS, security metadata и native namespaces зависят от ОС, файловой системы и прав |
 | Associations | Изменения регистрации не подтверждают защищённый OS-выбор приложения по умолчанию; Apply/Cancel и отказы проверяются отдельно |
 | External codecs и SFX | Нужен совместимый официальный runtime; standalone `7zz` имеет иной набор возможностей, см. [настройку runtime](development.md) |
-| Чтение архивов | Каталог, listing, test и одиночное извлечение используют native runtime и не требуют запуска консоли; её наличие пока нужно для обычного Extract и операций записи. [Область миграции](upstream-port-audit/container-layers.md#migration-of-remaining-cli-operations) |
+| Чтение архивов | Каталог, listing, test и извлечение используют native runtime и не требуют запуска консоли; её наличие пока нужно для операций записи. Обычный Extract использует исходную обработку overwrite и относительный путь текущей папки. При ошибке пароля или данных исходный extractor может оставить непроверенный выходной файл; операция сообщает об ошибке. [Область миграции](upstream-port-audit/container-layers.md#migration-of-remaining-cli-operations) |
 | Поставка | Состав runtime и подпись описаны в [packaging/CI](ci.md); локальная relocation-проверка не подтверждает clean-OS установку |
 | Имя приложения | Qt-приложение называется Sevenzip; на macOS поставляется как `Sevenzip.app`. Настройки хранятся под именем Sevenzip отдельно от исходного 7zFM |
 

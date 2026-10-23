@@ -2,13 +2,16 @@
 #include "archivebackend.h"
 #include "archivebackend_nativeentries.h"
 #include "archivecodeccatalog.h"
+#include "qtarchivedirectoryextract.h"
 #include "qtarchivereadoperation.h"
 #include "qtlanguageservices.h"
 #include <QFileInfo>
+#include <QMetaMethod>
 #include <QPointer>
 
-void ArchiveBackend::startNativeRead(Job job, const QString &archive, const QString &password,
-                                     const QString &format) {
+void ArchiveBackend::startNativeRead(
+    Job job, const QString &archive, const QString &password, const QString &format,
+    std::shared_ptr<const QtArchiveDirectoryExtractRequest> directory) {
     const auto catalog = codecCatalog();
     QtArchiveReadOperation::Work work;
     if (job == Job::List) {
@@ -27,8 +30,10 @@ void ArchiveBackend::startNativeRead(Job job, const QString &archive, const QStr
         archive, password, catalog, std::move(work),
         job == Job::List            ? QtArchiveReadOperation::Kind::List
         : job == Job::SourceExtract ? QtArchiveReadOperation::Kind::ExtractEntry
+        : job == Job::Extract       ? QtArchiveReadOperation::Kind::ExtractDirectory
                                     : QtArchiveReadOperation::Kind::Test,
         format, configuredEngine_);
+    readOperation_->Directory = std::move(directory);
     if (job == Job::SourceExtract)
         readOperation_->Output = {sourceExtractEntry_, createTemporary_, sourceExtractAltStream_};
     const quint64 generation = ++readGeneration_;
@@ -44,6 +49,23 @@ void ArchiveBackend::startNativeRead(Job job, const QString &archive, const QStr
             [this, generation] {
                 if (readOperation_ && readGeneration_ == generation && !cancelled_)
                     emit passwordRequired();
+            },
+            Qt::QueuedConnection);
+    };
+    readOperation_->OverwriteRequired = [this, generation](const QString &path,
+                                                           const ArchiveEntry &entry) {
+        QMetaObject::invokeMethod(
+            this,
+            [this, generation, path, entry] {
+                if (!readOperation_ || readGeneration_ != generation || cancelled_)
+                    return;
+                if (!isSignalConnected(
+                        QMetaMethod::fromSignal(&ArchiveBackend::overwriteRequired))) {
+                    readOperation_->provideOverwriteAnswer(-1);
+                    return;
+                }
+                overwritePromptActive_ = true;
+                emit overwriteRequired(path, entry);
             },
             Qt::QueuedConnection);
     };
@@ -66,12 +88,14 @@ void ArchiveBackend::finishReadOperation() {
     auto listing = std::move(nativeListing_);
     const bool listingJob = job_ == Job::List;
     const bool sourceExtractJob = job_ == Job::SourceExtract;
+    const bool extractJob = job_ == Job::Extract || sourceExtractJob;
     const QString path = archive_;
     lastResult_ = cancelled_ ? E_ABORT : operation->Result;
     if (sourceExtractJob)
         finishSourceExtractOperation(*operation);
     const HRESULT result = lastResult_;
     pendingPassword_.clear();
+    overwritePromptActive_ = false;
     job_ = Job::None;
     const QPointer<ArchiveBackend> owner(this);
     QStringList diagnostics;
@@ -90,6 +114,12 @@ void ArchiveBackend::finishReadOperation() {
             diagnostics.append(operation->CatalogDiagnostic);
     }
     if (result != E_ABORT) {
+        for (const auto &message : operation->Messages) {
+            diagnostics.append(message);
+            emit outputReceived(message);
+            if (!owner)
+                return;
+        }
         for (const auto &error : operation->OpenErrors) {
             QStringList detail;
             for (const auto &text : {GetOpenArcErrorMessage(error.ErrorFlags),
@@ -151,7 +181,7 @@ void ArchiveBackend::finishReadOperation() {
         result == S_OK
             ? listingJob
                   ? QCoreApplication::translate("archivebackend_completion", "Archive opened.")
-              : sourceExtractJob
+              : extractJob
                   ? QCoreApplication::translate("archivebackend_completion",
                                                 "Extraction completed.")
                   : QCoreApplication::translate("archivebackend_completion", "No errors found.")

@@ -44,8 +44,8 @@ into `build/codec-runtime` on macOS/Linux. It produces `7z`, `7zz`, `7z.so`,
 license and source/version/SHA records, and refuses unowned artifacts. The Debug
 app uses this prepared runtime when present; deployed builds look beside the app
 or in `Resources/7zip`. `SEVENZIP_ENGINE_PATH` explicitly selects an engine;
-a selected deployment can contain only modules for reading. Destination
-extraction and writes still require the console while their migration continues.
+a selected deployment can contain only modules for reading and extraction.
+Writes still require the console while their migration continues.
 Codecs/Formats discovery and ABI checks follow original LoadCodecs in the selected
 deployment, without executing or parsing console information output.
 The immutable codec image uses Qt's selected temporary directory to copy and

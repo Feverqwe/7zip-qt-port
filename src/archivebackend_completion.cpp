@@ -9,14 +9,6 @@
 #include <utility>
 
 bool ArchiveBackend::advanceProcessJob(Job completed) {
-    if (completed == Job::Extract && !extractQueue_.isEmpty()) {
-        pendingPassword_ = extractPassword_;
-        const QStringList next = extractQueue_.takeFirst();
-        start(Job::Extract, next);
-        return true;
-    }
-    if (completed == Job::Extract)
-        extractPassword_.clear();
     if (completed == Job::ReplaceDelete) {
         start(Job::ReplaceAdd,
               {"a", "-y", "-bsp1", "-bb1", "-spd", "--", createTemporary_, replacementEntry_},
@@ -69,11 +61,9 @@ bool ArchiveBackend::advanceProcessJob(Job completed) {
 bool ArchiveBackend::failProcessJob(Job completed, int exitCode, QProcess::ExitStatus status) {
     if (cancelled_) {
         lastResult_ = E_ABORT;
-        extractPassword_.clear();
         createStages_.clear();
         createPassword_.clear();
         sourcePlanPassword_.clear();
-        extractQueue_.clear();
         if (completed == Job::Create || completed == Job::Add || completed == Job::Delete ||
             completed == Job::Rename || completed == Job::ReplaceDelete ||
             completed == Job::ReplaceAdd || completed == Job::SourceUpdate ||
@@ -86,11 +76,9 @@ bool ArchiveBackend::failProcessJob(Job completed, int exitCode, QProcess::ExitS
         return true;
     }
     if (status != QProcess::NormalExit || exitCode != 0) {
-        extractPassword_.clear();
         createStages_.clear();
         createPassword_.clear();
         sourcePlanPassword_.clear();
-        extractQueue_.clear();
         if (completed == Job::Create || completed == Job::Add || completed == Job::Delete ||
             completed == Job::Rename || completed == Job::ReplaceDelete ||
             completed == Job::ReplaceAdd || completed == Job::SourceUpdate ||
@@ -159,9 +147,7 @@ void ArchiveBackend::complete(int exitCode, QProcess::ExitStatus status) {
         return;
     emit finished(
         true,
-        completed == Job::Extract
-            ? QCoreApplication::translate("archivebackend_completion", "Extraction completed.")
-        : completed == Job::Hash
+        completed == Job::Hash
             ? QCoreApplication::translate("archivebackend_completion", "Checksums calculated.")
         : completed == Job::Create
             ? QCoreApplication::translate("archivebackend_completion", "Archive created.")

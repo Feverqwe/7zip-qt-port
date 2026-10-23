@@ -1,5 +1,6 @@
 #include "CPP/7zip/UI/Common/IFileExtractCallback.h"
 #include "archivebackend.h"
+#include "native_archive_fixture.h"
 
 #include <QCoreApplication>
 #include <QDir>
@@ -8,10 +9,8 @@
 #include <QProcess>
 #include <QSignalSpy>
 #include <QTemporaryDir>
-#include <QThread>
+#include <QTimer>
 #include <QtTest>
-
-#include <cstdio>
 
 class ExtractionOptionsTests : public QObject {
     Q_OBJECT
@@ -36,6 +35,108 @@ class ExtractionOptionsTests : public QObject {
     }
 
   private slots:
+    void destinationChangesWhileOverwritePending() {
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        const QString archive = temp.filePath("fixture.7z");
+        QVERIFY(NativeArchiveFixture::Write(archive, {{"file.txt", "new bytes"}}));
+        const QString destination = temp.filePath("output");
+        const QString preserved = temp.filePath("preserved output");
+        const QString outside = temp.filePath("outside");
+        QVERIFY(QDir().mkpath(destination));
+        QVERIFY(QDir().mkpath(outside));
+        writeFile(destination + "/file.txt", "original bytes");
+        writeFile(outside + "/file.txt", "outside bytes");
+        ArchiveBackend backend(nullptr, temp.filePath("missing console"));
+        QCOMPARE(NativeArchiveFixture::Attach(backend), S_OK);
+        backend.list(archive);
+        await(backend, true);
+        bool linked = false;
+        connect(&backend, &ArchiveBackend::overwriteRequired, &backend,
+                [&](const QString &, const ArchiveEntry &) {
+                    if (!QDir().rename(destination, preserved)) {
+                        backend.cancel();
+                        return;
+                    }
+                    linked = QFile::link(outside, destination);
+                    backend.provideOverwriteAnswer(linked ? NOverwriteAnswer::kYes
+                                                          : NOverwriteAnswer::kCancel);
+                });
+        ExtractionOptions options;
+        options.overwriteMode = ExtractionOptions::OverwriteMode::Ask;
+        backend.extract(archive, destination, {}, {}, options);
+        await(backend, false);
+        if (!linked)
+            QSKIP("This filesystem does not permit the test directory symlink");
+        QCOMPARE(readFile(preserved + "/file.txt"), QByteArray("original bytes"));
+        QCOMPARE(readFile(outside + "/file.txt"), QByteArray("outside bytes"));
+        QVERIFY(backend.lastResult() != E_ABORT);
+    }
+    void nativeDirectorySelection_data() {
+        QTest::addColumn<bool>("unsafeChild");
+        QTest::newRow("selected directory and current paths") << false;
+        QTest::newRow("unsafe descendant refuses the whole selection") << true;
+    }
+    void nativeDirectorySelection() {
+        QFETCH(bool, unsafeChild);
+        QTemporaryDir temp;
+        QVERIFY(temp.isValid());
+        const QString folder = QStringLiteral("папка 空 with spaces");
+        const QString name = QStringLiteral("δ selected.txt");
+        NativeArchiveFixture::Item directory;
+        directory.Path = folder;
+        directory.Directory = true;
+        QList<NativeArchiveFixture::Item> items{
+            directory, {folder + '/' + name, "selected bytes"}, {"unselected.txt", "unselected"}};
+        if (unsafeChild)
+            items.append({folder + "/../escape.txt", "unsafe bytes"});
+        const QString archive = temp.filePath("fixture.7z");
+        QVERIFY(NativeArchiveFixture::Write(archive, items));
+        const QByteArray original = readFile(archive);
+        ArchiveBackend backend(nullptr, temp.filePath("missing console"));
+        QCOMPARE(NativeArchiveFixture::Attach(backend), S_OK);
+        backend.list(archive);
+        await(backend, true);
+        const QString output = temp.filePath("output");
+        QSignalSpy done(&backend, &ArchiveBackend::finished);
+        backend.extract(archive, output, {folder});
+        QTRY_COMPARE(done.size(), 1);
+        QCOMPARE(done[0][0].toBool(), !unsafeChild);
+        QVERIFY(!QFileInfo::exists(output + "/unselected.txt"));
+        QVERIFY(!QFileInfo::exists(temp.filePath("escape.txt")));
+        if (unsafeChild) {
+            QVERIFY(!QFileInfo::exists(output + '/' + folder + '/' + name));
+            return;
+        }
+        QCOMPARE(readFile(output + '/' + folder + '/' + name), QByteArray("selected bytes"));
+
+        const QString flat = temp.filePath("current paths");
+        QVERIFY(QDir().mkpath(flat));
+        writeFile(flat + '/' + name, "old bytes");
+        ExtractionOptions options;
+        options.pathMode = ExtractionOptions::PathMode::CurrentPaths;
+        options.currentFolder = folder;
+        options.overwriteMode = ExtractionOptions::OverwriteMode::Ask;
+        QSignalSpy prompts(&backend, &ArchiveBackend::overwriteRequired);
+        connect(&backend, &ArchiveBackend::overwriteRequired, &backend,
+                [&](const QString &path, const ArchiveEntry &entry) {
+                    QCOMPARE(path, flat + '/' + name);
+                    QCOMPARE(entry.path, folder + '/' + name);
+                    QVERIFY(backend.busy());
+                    // The callback waits while the GUI continues processing events.
+                    QTimer::singleShot(0, &backend, [&] {
+                        backend.provideOverwriteAnswer(NOverwriteAnswer::kYes);
+                    });
+                });
+        done.clear();
+        backend.extract(archive, flat, {folder + '/' + name}, {}, options);
+        QTRY_COMPARE(done.size(), 1);
+        QVERIFY2(done[0][0].toBool(), qPrintable(done[0][1].toString()));
+        QCOMPARE(prompts.size(), 1);
+        QCOMPARE(readFile(flat + '/' + name), QByteArray("selected bytes"));
+        QVERIFY(!QFileInfo::exists(flat + '/' + folder));
+        QCOMPARE(readFile(archive), original);
+    }
     void timestampFilenameRemainsInsideDestination() {
 #ifdef Q_OS_WIN
         QSKIP("Colons are not ordinary Windows filename characters");
@@ -86,7 +187,7 @@ class ExtractionOptionsTests : public QObject {
         backend.list(archive);
         await(backend, true);
         const auto cancellation =
-            connect(&backend, &ArchiveBackend::engineStarted, &backend, &ArchiveBackend::cancel);
+            connect(&backend, &ArchiveBackend::phaseStarted, &backend, &ArchiveBackend::cancel);
         backend.testSourceArchive(archive, {});
         await(backend, false);
         disconnect(cancellation);
@@ -251,13 +352,13 @@ class ExtractionOptionsTests : public QObject {
         }
     }
 
-    void encryptedAskQueue_data() {
+    void encryptedOverwrite_data() {
         QTest::addColumn<QString>("format");
         QTest::newRow("7z") << QStringLiteral("7z");
         QTest::newRow("zip") << QStringLiteral("zip");
     }
 
-    void encryptedAskQueue() {
+    void encryptedOverwrite() {
         QFETCH(QString, format);
         QTemporaryDir temp;
         QVERIFY(temp.isValid());
@@ -280,9 +381,14 @@ class ExtractionOptionsTests : public QObject {
         ExtractionOptions options;
         options.overwriteMode = ExtractionOptions::OverwriteMode::Ask;
         QSignalSpy rejected(&backend, &ArchiveBackend::finished);
-        backend.extract(archive, output, {}, QStringLiteral("incorrect-test-password"), options);
+        const QString failedOutput = temp.filePath("wrong password output");
+        backend.extract(archive, failedOutput, {}, QStringLiteral("incorrect-test-password"),
+                        options);
         QTRY_COMPARE_WITH_TIMEOUT(rejected.size(), 1, 30000);
         QVERIFY(!rejected.takeFirst().first().toBool());
+        // Source ArchiveExtractCallback can leave unverified/partial output on
+        // a data-password failure. The backend must report that as failure.
+        QVERIFY(backend.lastResult() != S_OK);
         QCOMPARE(readFile(output + "/secret.txt"), QByteArray("old secret"));
         backend.extract(archive, output, {}, password, options);
         await(backend, true);
@@ -307,7 +413,7 @@ class ExtractionOptionsTests : public QObject {
         options.overwriteMode = ExtractionOptions::OverwriteMode::Ask;
         QSignalSpy finished(&backend, &ArchiveBackend::finished);
         backend.extract(archive, output, {}, {}, options);
-        QCOMPARE(finished.size(), 1);
+        QTRY_COMPARE(finished.size(), 1);
         QVERIFY(!finished.first().first().toBool());
         QVERIFY(!backend.busy());
         QCOMPARE(readFile(output + "/file.txt"), QByteArray("old"));
@@ -457,14 +563,15 @@ class ExtractionOptionsTests : public QObject {
     void skipRejectsLinkedDestination() {
         QTemporaryDir temp;
         QVERIFY(temp.isValid());
-        const QString archive = temp.filePath("fake.zip");
+        const QString archive = temp.filePath("fixture.7z");
         const QString destination = temp.filePath("destination");
         QVERIFY(QDir().mkpath(destination));
         writeFile(temp.filePath("outside.txt"), "outside");
         if (!QFile::link(temp.filePath("outside.txt"), destination + "/file.txt"))
             QSKIP("This filesystem does not permit test symlinks");
-        qputenv("SEVENZIP_EXTRACTION_HELPER", "1");
-        ArchiveBackend backend(nullptr, QCoreApplication::applicationFilePath());
+        QVERIFY(NativeArchiveFixture::Write(archive, {{"file.txt", "archive bytes"}}));
+        ArchiveBackend backend(nullptr, temp.filePath("missing console"));
+        QCOMPARE(NativeArchiveFixture::Attach(backend), S_OK);
         backend.list(archive);
         await(backend, true);
         ExtractionOptions skip;
@@ -474,48 +581,40 @@ class ExtractionOptionsTests : public QObject {
         QCOMPARE(rejected.size(), 1);
         QVERIFY(!rejected.takeFirst().at(0).toBool());
         QCOMPARE(readFile(temp.filePath("outside.txt")), QByteArray("outside"));
-        qunsetenv("SEVENZIP_EXTRACTION_HELPER");
     }
 
     void cancellation() {
         QTemporaryDir temp;
         QVERIFY(temp.isValid());
-        const QString archive = temp.filePath("fake.zip");
+        const QString archive = temp.filePath("fixture.7z");
         const QString destination = temp.filePath("output");
         QVERIFY(QDir().mkpath(destination));
-        writeFile(archive, "test fixture");
-        qputenv("SEVENZIP_EXTRACTION_HELPER", "1");
-        ArchiveBackend backend(nullptr, QCoreApplication::applicationFilePath());
+        QVERIFY(NativeArchiveFixture::Write(archive, {{"file.txt", "archive bytes"}}));
+        ArchiveBackend backend(nullptr, temp.filePath("missing console"));
+        QCOMPARE(NativeArchiveFixture::Attach(backend), S_OK);
         backend.list(archive);
         await(backend, true);
         ExtractionOptions flat;
         flat.pathMode = ExtractionOptions::PathMode::NoPaths;
         flat.overwriteMode = ExtractionOptions::OverwriteMode::SkipExisting;
-        QSignalSpy progress(&backend, &ArchiveBackend::progress);
+        const auto cancel =
+            connect(&backend, &ArchiveBackend::phaseStarted, &backend, &ArchiveBackend::cancel);
         QSignalSpy result(&backend, &ArchiveBackend::finished);
         backend.extract(archive, destination, {}, {}, flat);
-        QTRY_VERIFY_WITH_TIMEOUT(!progress.isEmpty(), 3000);
-        backend.cancel();
         QTRY_VERIFY_WITH_TIMEOUT(!result.isEmpty(), 3000);
         QVERIFY(!result.takeFirst().at(0).toBool());
         QVERIFY(!backend.busy());
-        qunsetenv("SEVENZIP_EXTRACTION_HELPER");
+        QCOMPARE(backend.lastResult(), E_ABORT);
+        QVERIFY(!QFileInfo::exists(destination + "/file.txt"));
+        disconnect(cancel);
+        backend.extract(archive, destination, {}, {}, flat);
+        await(backend, true);
+        QCOMPARE(readFile(destination + "/file.txt"), QByteArray("archive bytes"));
     }
 };
 
 int main(int argc, char **argv) {
     QCoreApplication app(argc, argv);
-    if (qEnvironmentVariableIsSet("SEVENZIP_EXTRACTION_HELPER")) {
-        if (app.arguments().contains("l")) {
-            std::fputs("Path = file.txt\nSize = 1\n\n", stdout);
-            std::fflush(stdout);
-            return 0;
-        }
-        std::fputs("1% file.txt\n", stdout);
-        std::fflush(stdout);
-        QThread::sleep(30);
-        return 0;
-    }
     ExtractionOptionsTests tests;
     return QTest::qExec(&tests, argc, argv);
 }

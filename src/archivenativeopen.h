@@ -33,6 +33,7 @@ class ArchiveNativeOpen final : public IOpenCallbackUI, public IFscryptKeyUI {
                  const COpenOptions *requested = nullptr);
     HRESULT Close();
     const CArc &arc() const { return *link_.GetArc(); }
+    CArc &arc() { return link_.Arcs.Back(); }
     const CArchiveLink &archiveLink() const { return link_; }
     IInStream *inputStream() const { return input_; }
     const CCodecs &nativeCodecs() const;

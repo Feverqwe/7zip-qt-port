@@ -82,6 +82,23 @@ struct CDecompressStat {
     }
 };
 
+// Integration boundary for a retained native reader. Selection, output paths,
+// overwrite and closing remain in DecompressArchive/ArchiveExtractCallback.
+struct IQtArchiveExtractService {
+    virtual ~IQtArchiveExtractService() = default;
+    virtual HRESULT Extract(const UInt32 *indices, UInt32 count, Int32 testMode,
+                            IArchiveExtractCallback *callback) = 0;
+};
+
+HRESULT DecompressArchive(CCodecs *codecs, const CArchiveLink &arcLink, UInt64 packSize,
+                          const NWildcard::CCensorNode &wildcardCensor,
+                          const CExtractOptions &options, bool calcCrc,
+                          IExtractCallbackUI *callback, IFolderArchiveExtractCallback *callbackFAE,
+                          CArchiveExtractCallback *ecs, UString &errorMessage,
+                          UInt64 &stdInProcessed, IQtArchiveExtractService *qtExtract = nullptr,
+                          const UStringVector *qtRemovePathParts = nullptr,
+                          bool qtRemovePartsForAltStreams = false);
+
 HRESULT Extract(
     // DECL_EXTERNAL_CODECS_LOC_VARS
     CCodecs *codecs, const CObjectVector<COpenType> &types, const CIntVector &excludedFormats,

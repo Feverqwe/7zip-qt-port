@@ -33,6 +33,7 @@ class QtArchiveTransferBackup;
 class QThread;
 struct IOpenCallbackUI;
 struct NativeArchiveListing;
+struct QtArchiveDirectoryExtractRequest;
 struct IUpdateCallbackUI2;
 struct CUpdateOptions;
 struct CUpdateErrorInfo;
@@ -226,12 +227,16 @@ class ArchiveBackend : public QObject {
                                     const QString &output, const QString &format,
                                     const QString &password, bool isAltStream = false);
     bool hasListedSourceArchive(const QString &archive) const;
-    // sourceFolder is the exact bound Agent prefix removed by the source callback;
-    // plain console extraction must leave it empty.
+    // sourceFolder is the exact bound Agent prefix removed by the source callback.
     bool validateExtraction(const QString &destination, const QStringList &selected,
                             const ExtractionOptions &options, QString *error,
                             bool nativeSource = false, const QString &sourceFolder = {},
                             const CArc *nativeMetadata = nullptr) const;
+    static bool validateExtractionEntries(const QList<ArchiveEntry> &entries,
+                                          const QString &destination, const QStringList &selected,
+                                          const ExtractionOptions &options, QString *error,
+                                          bool nativeSource = false,
+                                          const QString &sourceFolder = {});
     static bool validateExtractionOutput(const QString &destination, const QString &path,
                                          bool directory, QString *error);
     static bool validateExtractionStreamOutput(const QString &destination, const QString &path,
@@ -308,9 +313,6 @@ class ArchiveBackend : public QObject {
     void consumeOutput(const QByteArray &chunk, bool flush = false);
     void consumeLine(const QByteArray &line);
     static bool safePath(const QString &path);
-    bool prepareAskExtraction(const QString &outputDirectory, const QStringList &selected,
-                              ExtractionOptions::PathMode pathMode, QStringList *replaceEntries,
-                              QStringList *renameEntries);
     bool prepareMutation(const QString &archive);
     void prepareArchiveCopy(const QString &source, const QString &output,
                             std::function<void()> continuation);
@@ -388,7 +390,8 @@ class ArchiveBackend : public QObject {
     void finishWorkerProgress();
     void finishHashOperation();
     void startNativeRead(Job job, const QString &archive, const QString &password,
-                         const QString &format = {});
+                         const QString &format = {},
+                         std::shared_ptr<const QtArchiveDirectoryExtractRequest> directory = {});
     void finishReadOperation();
     static HRESULT validateNativeHashReads(const ArchiveNativeOpen &reader, const UInt32 *indices,
                                            UInt32 count);
@@ -407,12 +410,9 @@ class ArchiveBackend : public QObject {
     QString pendingPassword_;
     bool passwordPrompted_ = false;
     bool encrypted_ = false;
-    QString extractPassword_;
     bool sourceExtractRecovery_ = false;
     QString sourceExtractEntry_;
     bool sourceExtractAltStream_ = false;
     Int32 sourceExtractOperation_ = -1;
-    QList<QStringList> extractQueue_;
     bool overwritePromptActive_ = false;
-    int overwriteAnswer_ = -1;
 };

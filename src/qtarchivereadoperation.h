@@ -4,6 +4,7 @@
 #include <QList>
 #include <QMutex>
 #include <QString>
+#include <QStringList>
 #include <QThread>
 #include <QWaitCondition>
 #include <functional>
@@ -12,6 +13,8 @@
 class ArchiveCodecCatalog;
 class ArchiveNativeOpen;
 struct CArcErrorInfo;
+struct ArchiveEntry;
+struct QtArchiveDirectoryExtractRequest;
 
 // Joined worker around official opening and read-only archive operations.
 class QtArchiveReadOperation final : public QThread {
@@ -30,7 +33,7 @@ class QtArchiveReadOperation final : public QThread {
     };
     using Work = std::function<HRESULT(const std::shared_ptr<ArchiveNativeOpen> &,
                                        IArchiveExtractCallback *)>;
-    enum class Kind { Test, List, ExtractEntry };
+    enum class Kind { Test, List, ExtractEntry, ExtractDirectory };
     struct SourceOutput {
         QString Entry;
         QString Path;
@@ -42,6 +45,8 @@ class QtArchiveReadOperation final : public QThread {
     void cancel();
     void setPaused(bool paused);
     void providePassword(const QString &password);
+    void provideOverwriteAnswer(int answer);
+    HRESULT askOverwrite(const QString &path, const ArchiveEntry &entry, Int32 *answer);
     HRESULT checkpoint();
     HRESULT password(BSTR *value);
     void report(quint64 completed, quint64 total, const QString &path);
@@ -51,12 +56,15 @@ class QtArchiveReadOperation final : public QThread {
     std::shared_ptr<const ArchiveCodecCatalog> catalog() const { return catalog_; }
     QList<ItemError> Errors;
     QList<OpenError> OpenErrors;
+    QStringList Messages;
+    std::shared_ptr<const QtArchiveDirectoryExtractRequest> Directory;
     SourceOutput Output;
     bool OutputCreated = false;
     bool OutputClosed = false;
     Int32 OutputOperation = -1;
     std::function<void(quint64, quint64, const QString &)> Progress;
     std::function<void()> PasswordRequired;
+    std::function<void(const QString &, const ArchiveEntry &)> OverwriteRequired;
 
   private:
     void run() override;
@@ -74,4 +82,8 @@ class QtArchiveReadOperation final : public QThread {
     QString password_;
     bool passwordDefined_;
     bool passwordRequested_ = false;
+    QMutex overwriteMutex_;
+    QWaitCondition overwriteReady_;
+    bool overwriteAnswered_ = false;
+    int overwriteAnswer_ = -1;
 };

@@ -123,6 +123,15 @@ bool ArchiveBackend::validateExtraction(const QString &destination, const QStrin
             return false;
         }
     }
+    return validateExtractionEntries(nativeMetadata ? nativeEntries : entries_, destination,
+                                     selected, options, error, nativeSource, sourceFolder);
+}
+
+bool ArchiveBackend::validateExtractionEntries(const QList<ArchiveEntry> &entries,
+                                               const QString &destination,
+                                               const QStringList &selected,
+                                               const ExtractionOptions &options, QString *error,
+                                               bool nativeSource, const QString &sourceFolder) {
     if (destination.trimmed().isEmpty()) {
         *error = QCoreApplication::translate("archivebackend_validation",
                                              "Specify a destination folder.");
@@ -172,7 +181,7 @@ bool ArchiveBackend::validateExtraction(const QString &destination, const QStrin
     currentFolder.replace('\\', '/');
     QString boundFolder = sourceFolder;
     boundFolder.replace('\\', '/');
-    for (const ArchiveEntry &entry : nativeMetadata ? nativeEntries : entries_) {
+    for (const ArchiveEntry &entry : entries) {
         QString entryPath = entry.path;
         entryPath.replace('\\', '/');
         if (!selectedPaths.isEmpty() && !selectedPaths.contains(entryPath))
@@ -228,8 +237,8 @@ bool ArchiveBackend::validateExtraction(const QString &destination, const QStrin
             relative.remove(0, prefix.size());
         } else if (options.pathMode == ExtractionOptions::PathMode::NoPaths)
             relative = relative.section('/', -1);
-        // Only the bound source folder guarantees removal of this exact
-        // archive prefix. A plain console extraction still uses the full name.
+        // A bound source folder can remove this exact prefix even when the
+        // prefix itself contains parent components. Unbound inputs stay strict.
         const bool sourceRelative = options.pathMode == ExtractionOptions::PathMode::CurrentPaths &&
                                     !boundFolder.isEmpty() && boundFolder == currentFolder;
         QStringList checkedParts = (sourceRelative ? relative : boundedPath).split('/');

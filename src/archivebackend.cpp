@@ -6,6 +6,7 @@
 #include "archivesfxmodule.h"
 #include "qtarchivecopypreparation.h"
 #include "qtarchivecreationlifecycle.h"
+#include "qtarchivedirectoryextract.h"
 #include "qtarchivehashoperation.h"
 #include "qtarchivereadoperation.h"
 #include "qtarchivevolumeoutput.h"
@@ -111,8 +112,10 @@ HRESULT ArchiveBackend::processControlResult(HRESULT result) const {
 }
 
 void ArchiveBackend::provideOverwriteAnswer(int answer) {
-    if (overwritePromptActive_)
-        overwriteAnswer_ = answer;
+    if (overwritePromptActive_ && readOperation_) {
+        overwritePromptActive_ = false;
+        readOperation_->provideOverwriteAnswer(answer);
+    }
 }
 
 void ArchiveBackend::list(const QString &archive, const QString &password) {
@@ -153,68 +156,6 @@ void ArchiveBackend::startListing(const QString &archive, const QString &passwor
     encrypted_ = false;
     pendingPassword_ = password;
     startNativeRead(Job::List, archive_, password, format);
-}
-
-bool ArchiveBackend::prepareAskExtraction(const QString &outputDirectory,
-                                          const QStringList &selected,
-                                          ExtractionOptions::PathMode pathMode,
-                                          QStringList *replaceEntries, QStringList *renameEntries) {
-    enum class Mode { Ask, Skip, Overwrite, Rename };
-    Mode mode = Mode::Ask;
-    const auto incoming = entries_;
-    const QPointer<ArchiveBackend> owner(this);
-    for (const ArchiveEntry &entry : incoming) {
-        if (entry.directory || (!selected.isEmpty() && !selected.contains(entry.path)))
-            continue;
-        QString relative = entry.path;
-        relative.replace('\\', '/');
-        if (pathMode == ExtractionOptions::PathMode::NoPaths)
-            relative = relative.section('/', -1);
-        const QString target = QDir(outputDirectory).filePath(relative);
-        if (!QFileInfo::exists(target))
-            continue;
-        if (mode == Mode::Ask) {
-            overwritePromptActive_ = true;
-            overwriteAnswer_ = -1;
-            emit overwriteRequired(target, entry);
-            if (!owner)
-                return false;
-            overwritePromptActive_ = false;
-            if (cancelled_ || overwriteAnswer_ == NOverwriteAnswer::kCancel) {
-                cancelled_ = false;
-                lastResult_ = E_ABORT;
-                emit finished(false,
-                              QCoreApplication::translate("archivebackend", "Operation canceled."));
-                return false;
-            }
-            switch (overwriteAnswer_) {
-            case NOverwriteAnswer::kNo:
-                continue;
-            case NOverwriteAnswer::kNoToAll:
-                mode = Mode::Skip;
-                continue;
-            case NOverwriteAnswer::kYes:
-                *replaceEntries << entry.path;
-                continue;
-            case NOverwriteAnswer::kYesToAll:
-                mode = Mode::Overwrite;
-                break;
-            case NOverwriteAnswer::kAutoRename:
-                mode = Mode::Rename;
-                break;
-            default:
-                lastResult_ = E_FAIL;
-                emit finished(false, QCoreApplication::translate(
-                                         "archivebackend", "Overwrite decision is unavailable."));
-                return false;
-            }
-        }
-        if (mode == Mode::Overwrite)
-            *replaceEntries << entry.path;
-        else if (mode == Mode::Rename)
-            *renameEntries << entry.path;
-    }
-    return true;
 }
 
 bool ArchiveBackend::hasListedSourceArchive(const QString &archive) const {
@@ -301,69 +242,12 @@ void ArchiveBackend::extract(const QString &archive, const QString &destination,
                                  : validationError);
         return;
     }
-    extractQueue_.clear();
-    QStringList replaceEntries;
-    QStringList renameEntries;
-    if (options.overwriteMode == ExtractionOptions::OverwriteMode::Ask) {
-        if (!prepareAskExtraction(outputDirectory, selectedEntries, options.pathMode,
-                                  &replaceEntries, &renameEntries))
-            return;
-        if (!validateExtraction(destination, selectedEntries, options, &validationError)) {
-            emit finished(false, validationError);
-            return;
-        }
-    }
-    // Console defaults to extracting ADS belonging to a selected ordinary file.
-    // Keep its selection within the entries validated above (Extract.cpp AltStreams).
-    bool alternateStreams = false;
-    QStringList excludedStreams;
-    for (const ArchiveEntry &entry : entries_) {
-        if (entry.properties.value(QStringLiteral("Alternate Stream")) != "+")
-            continue;
-        if (selectedEntries.isEmpty() || selectedEntries.contains(entry.path))
-            alternateStreams = true;
-        else
-            excludedStreams.append("-x!" + entry.path);
-    }
-    QStringList arguments = {options.pathMode == ExtractionOptions::PathMode::NoPaths ? "e" : "x",
-                             "-y",
-                             "-bsp1",
-                             "-bb1",
-                             "-spd",
-                             alternateStreams ? "-sns" : "-sns-",
-                             "-o" + outputDirectory,
-                             "--",
-                             QFileInfo(archive).absoluteFilePath()};
-    if (alternateStreams && !excludedStreams.isEmpty()) {
-        const int boundary = arguments.indexOf("--");
-        arguments = arguments.mid(0, boundary) + excludedStreams + arguments.mid(boundary);
-    }
-    if (options.overwriteMode == ExtractionOptions::OverwriteMode::Ask ||
-        options.overwriteMode == ExtractionOptions::OverwriteMode::SkipExisting)
-        arguments.insert(2, "-aos");
-    else if (options.overwriteMode == ExtractionOptions::OverwriteMode::OverwriteExisting)
-        arguments.insert(2, "-aoa");
-    else if (options.overwriteMode == ExtractionOptions::OverwriteMode::RenameExtracted)
-        arguments.insert(2, "-aou");
-    else if (options.overwriteMode == ExtractionOptions::OverwriteMode::RenameExisting)
-        arguments.insert(2, "-aot");
-    arguments += selectedEntries;
-    if (options.overwriteMode == ExtractionOptions::OverwriteMode::Ask) {
-        const auto addConflictPass = [&](const QString &mode, const QStringList &entries) {
-            if (entries.isEmpty())
-                return;
-            QStringList pass = arguments;
-            pass.replace(2, mode);
-            pass.erase(pass.end() - selectedEntries.size(), pass.end());
-            pass += entries;
-            extractQueue_.append(pass);
-        };
-        addConflictPass("-aoa", replaceEntries);
-        addConflictPass("-aou", renameEntries);
-    }
+    auto request = std::make_shared<QtArchiveDirectoryExtractRequest>();
+    request->Destination = outputDirectory;
+    request->Selected = selectedEntries;
+    request->Options = options;
     pendingPassword_ = password;
-    extractPassword_ = password;
-    start(Job::Extract, arguments);
+    startNativeRead(Job::Extract, archive_, password, {}, std::move(request));
 }
 
 void ArchiveBackend::test(const QString &archive, const QString &password) {
@@ -426,7 +310,6 @@ void ArchiveBackend::cancel() {
         if (!owner)
             return;
     }
-    extractQueue_.clear();
     if (process_->state() != QProcess::NotRunning)
         process_->kill();
 }

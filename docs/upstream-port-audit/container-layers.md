@@ -174,7 +174,7 @@ Source inspection on 2026-10-23 identifies the remaining production dispatch:
 | --- | --- |
 | Catalog discovery | Native `LoadDll`/`LoadExternalModules`/`SetLibCodecs` supply providers and version metadata without executing the console. Deployment images retain provider lifetimes; optional console copying remains for unmigrated consumers. |
 | Listing and testing | `ArchiveBackend::startNativeRead` uses official Open/Extract; its joined worker acquires native providers when no catalog was supplied. CLI dispatch and technical-listing parsers have been removed. |
-| Extraction to a destination | `ArchiveBackend::extract` still constructs CLI passes for selection and overwrite handling. Source Agent/GUI extraction already has native callbacks and path policy. |
+| Extraction to a destination | `ArchiveBackend::extract` runs original `DecompressArchive` and `CArchiveExtractCallback` in the joined native worker. Original selection and overwrite replace the CLI passes; effective native selection is revalidated before writes. |
 | Extraction of one source entry | The joined read worker acquires native providers as needed and extracts the selected native index into a private stream. CLI dispatch, text error decoding and console selection files have been removed. |
 | Creation and public mutations | `archivebackend_creation.cpp` and `archivebackend_mutations.cpp` still dispatch creation stages, add, delete, rename and replace through the process transport. |
 | Source updates | `archivebackend_sourceupdate.cpp` and `archivebackend_sourceplan.cpp` still dispatch file/add, mutation and staged plan operations. Native `UpdateArchive` and Agent update interfaces exist and need their callers connected. |
@@ -185,7 +185,7 @@ editing/publication. The retained native reader path must remain independent of
 backend/window lifetime. Process completion owns continuations, temporary-file
 cleanup and publication; migrating dispatch must migrate these responsibilities
 together. Hashing and benchmark providers already use source/native workers.
-The remaining destination extraction and write operations must migrate before
+The remaining write operations must migrate before
 removing the shared CLI transport. Native discovery and retained runtime-image ownership
 are now independent of console availability.
 
@@ -389,3 +389,72 @@ hit its old 120 s cap before its obsolete hooks were replaced; only the native
 subset is accepted. No opt-in exhaustive matrix, full gate or visual comparison
 was run. Incremental builds and caches were preserved; obsolete task-owned
 timeout fixtures and the temporary stack sample were removed after diagnosis.
+
+### Native extraction to a destination
+
+Baseline `fd7d5229`; source review on 2026-10-24 against
+<https://github.com/ip7z/7zip.git>,
+`9128b80e3a471108678e2b3ec3c985861c8d7b0f`:
+`CPP/7zip/UI/Common/Extract.cpp/.h` (`Extract`, `DecompressArchive`),
+`ArchiveExtractCallback.cpp/.h` (initialization, selection, paths, overwrite,
+output/link metadata, item/block errors, memory requests and closing),
+`IFileExtractCallback.h`, `Common/Wildcard.cpp/.h`,
+`CPP/7zip/UI/Agent/Agent.cpp` (`CAgentFolder::Extract`) and their
+GUI/ExtractGUI and FileManager callback consumers. Rechecked complete helper
+and callback paths after integration. Existing source baselines, modules,
+notices and decoder implementations are retained.
+
+`DecompressArchive` is now callable for an already opened reader. Its native
+selection, AUX/alternate-stream rules, callback initialization and close/result
+sequence are preserved. A narrow optional extraction service sends its final
+indices through ArchiveBackend's existing serialized native extraction boundary;
+the source batch caller keeps its original direct invocation. Optional source
+path parts provide Agent-style CurrentPaths/ADS-folder prefix removal. Original
+outer-file mtime fallback is applied before extraction. No selection, overwrite,
+rename, metadata or archive algorithm is independently implemented in Qt.
+
+The destination adapter supplies typed progress, password, overwrite and
+item/block/filesystem diagnostics in the existing joined worker. Overwrite
+answers wait off the GUI thread and cancellation wakes that wait. Missing
+decision consumers fail without replacing the existing output. The existing
+validation body is shared with the worker and checks the actual selected native
+indices, including descendants of a selected directory, before extraction writes.
+The existing bounded-path policy remains attached to ArchiveExtractCallback;
+the destination is checked again after an overwrite decision in case the GUI
+wait allowed a link/path substitution. Backend source-snapshot requirements and
+the source-workflow-only advanced options remain unchanged.
+
+Removed the independent preliminary overwrite walk, its skip/overwrite/rename
+CLI passes, extraction process continuations and extraction-specific password
+state. All production archive reads/extraction now avoid console dispatch.
+Creation, public mutations and staged source writes remain pending; this does
+not complete the all-CLI migration goal.
+
+Observable source alignment: CurrentPaths now actually removes the selected
+archive-folder prefix (the prior CLI backend silently used full paths). Original
+overwrite happens during decoding, so a ZIP data-password failure can leave an
+unverified output after overwrite approval; no preliminary decode/replay pass
+has been retained. Item/data/open errors remain failures, with their native
+diagnostics. Tests cover failure separately from a successful overwrite retry.
+
+Focused macOS validation: app and nine affected targets built; `extraction_options`,
+`archive_backend`, `native_source_extract`, `native_archive_test`, `native_listing`,
+`source_extract_backend`, `source_extract_contract`, `source_extract_advanced`
+and `native_extract_callback` passed (11.91 s). After the final path-prefix
+normalization adjustment, the app and affected targets rebuilt and
+`extraction_options`/`archive_backend` passed again (42.51 s).
+Reference-fixture commands used
+the prepared official runtime on PATH. Coverage includes 7z/ZIP passwords,
+overwrite choices/all/rename/no consumer, pause/cancel ownership, selected
+Unicode/space names, destination substitution, unsafe descendants, CPIO dot paths,
+source batch extraction, metadata and existing advanced-source options.
+Obsolete fake-console fixtures and launch-count assertions were replaced or
+removed while preserving output/error assertions. CPIO's old module-only row
+incorrectly expected a GPL format provider inside the SDK module; it now uses
+native deployment discovery with that provider.
+
+This changes portable Qt/callback integration, not platform services or native
+loading. Under the user's runner rule Linux/Windows were not rerun; native NTFS
+security/ADS cases remain unverified for this iteration. No slow suite, full gate
+or visual acceptance was run. Incremental build trees/caches were retained and
+diagnostic logging/temporary fixtures removed.

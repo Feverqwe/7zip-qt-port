@@ -112,8 +112,10 @@ output stream. It preserves literal member selection and
 typed partial-data results before the source caller handles final publication.
 When no catalog is available, the read worker loads a retained deployment before
 opening the archive. Missing providers produce a native failure. Read operations
-never start the console; the CLI transport remains for destination extraction
-and write operations that have not yet migrated.
+never start the console. Destination extraction uses original Common/Extract
+and ArchiveExtractCallback in the same worker, including overwrite decisions
+delivered to the GUI and a final bounded-output policy. The CLI transport remains
+for write operations that have not yet migrated.
 
 Seekable archive items can back nested readers directly. Each reader generation
 retains its codec image, input and parents; independent cursors serialize access

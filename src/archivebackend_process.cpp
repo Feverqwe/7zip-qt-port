@@ -55,11 +55,9 @@ std::shared_ptr<QProcess> ArchiveBackend::makeProcess(const QString &executable)
                     job_ == Job::SourcePlanRename || job_ == Job::SourceMutation)
                     QFile::remove(createTemporary_);
                 job_ = Job::None;
-                extractQueue_.clear();
                 pendingPassword_.clear();
                 createStages_.clear();
                 createPassword_.clear();
-                extractPassword_.clear();
                 sourcePlanPassword_.clear();
                 emit finished(false,
                               QCoreApplication::translate(
@@ -113,8 +111,6 @@ void ArchiveBackend::providePassword(const QString &password) {
         readOperation_->providePassword(password);
         return;
     }
-    if (job_ == Job::Extract)
-        extractPassword_ = password;
     process_->write(password.toUtf8() + '\n');
 }
 

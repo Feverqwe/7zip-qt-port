@@ -18,6 +18,7 @@ struct Item {
     bool AltStream = false;
     QString SymLink;
     QString HardLink;
+    bool Directory = false;
 };
 inline std::shared_ptr<const ArchiveCodecCatalog> Catalog() {
     static const auto catalog = ArchiveCodecProbe::LoadCatalog(FindArchiveEngine());
@@ -50,9 +51,9 @@ class CWriter final : public IArchiveUpdateCallback,
         if (id == kpidPath)
             property = item.Path.toStdWString().c_str();
         else if (id == kpidSize)
-            property = UInt64(item.Bytes.size());
+            property = UInt64(item.Directory ? 0 : item.Bytes.size());
         else if (id == kpidIsDir)
-            property = false;
+            property = item.Directory;
         else if (id == kpidIsAltStream)
             property = item.AltStream;
         else if (id == kpidSymLink && !item.SymLink.isNull())
@@ -62,6 +63,10 @@ class CWriter final : public IArchiveUpdateCallback,
         return property.Detach(value);
     }
     Z7_COM7F_IMF(GetStream(UInt32 index, ISequentialInStream **stream)) override {
+        if (items_[int(index)].Directory) {
+            *stream = nullptr;
+            return S_OK;
+        }
         const auto &bytes = items_[int(index)].Bytes;
         Create_BufInStream_WithNewBuffer(bytes.constData(), size_t(bytes.size()), stream);
         return S_OK;

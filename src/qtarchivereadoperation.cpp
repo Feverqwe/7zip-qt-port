@@ -7,6 +7,7 @@
 #include "7zip/Common/FileStreams.h"
 #include "7zip/IPassword.h"
 #include "CPP/7zip/UI/Common/ArchiveOpenCallback.h"
+#include "CPP/7zip/UI/Common/IFileExtractCallback.h"
 #include "Common/ComTry.h"
 #include "Common/StringConvert.h"
 #include "Windows/PropVariant.h"
@@ -14,6 +15,7 @@
 #include "archivecodeccatalog.h"
 #include "archivecodecprobe.h"
 #include "archivenativeopen.h"
+#include "qtarchivedirectoryextract.h"
 #include <QDir>
 #include <QMutexLocker>
 
@@ -203,8 +205,43 @@ QtArchiveReadOperation::QtArchiveReadOperation(QString path, QString password,
 
 void QtArchiveReadOperation::cancel() {
     progress_.cancel();
-    QMutexLocker lock(&passwordMutex_);
-    passwordReady_.wakeAll();
+    {
+        QMutexLocker lock(&passwordMutex_);
+        passwordReady_.wakeAll();
+    }
+    QMutexLocker lock(&overwriteMutex_);
+    overwriteReady_.wakeAll();
+}
+
+void QtArchiveReadOperation::provideOverwriteAnswer(int answer) {
+    QMutexLocker lock(&overwriteMutex_);
+    overwriteAnswer_ = answer;
+    overwriteAnswered_ = true;
+    overwriteReady_.wakeAll();
+}
+
+HRESULT QtArchiveReadOperation::askOverwrite(const QString &path, const ArchiveEntry &entry,
+                                             Int32 *answer) {
+    if (!answer || !OverwriteRequired)
+        return E_FAIL;
+    {
+        QMutexLocker lock(&overwriteMutex_);
+        overwriteAnswered_ = false;
+    }
+    RINOK(checkpoint())
+    OverwriteRequired(path, entry);
+    for (;;) {
+        RINOK(checkpoint())
+        QMutexLocker lock(&overwriteMutex_);
+        if (overwriteAnswered_) {
+            *answer = overwriteAnswer_;
+            return overwriteAnswer_ >= NOverwriteAnswer::kYes &&
+                           overwriteAnswer_ <= NOverwriteAnswer::kCancel
+                       ? S_OK
+                       : E_FAIL;
+        }
+        overwriteReady_.wait(&overwriteMutex_, 50);
+    }
 }
 void QtArchiveReadOperation::setPaused(bool paused) { progress_.setPaused(paused); }
 HRESULT QtArchiveReadOperation::checkpoint() { return progress_.checkpoint(); }
@@ -279,9 +316,12 @@ void QtArchiveReadOperation::run() {
             reader->nativeCodecs().GetFormatNamePtr(reader->arc().FormatIndex));
         callback->Attach(&reader->arc());
         Result = kind_ == Kind::ExtractEntry ? ExtractEntry(*this, reader, *callback)
-                                             : work_(reader, callback);
+                 : kind_ == Kind::ExtractDirectory
+                     ? ExtractQtArchiveDirectory(*this, reader, callback)
+                     : work_(reader, callback);
         callback->Attach(nullptr);
-        if (Result == S_OK && (!Errors.isEmpty() || (kind_ != Kind::List && !OpenErrors.isEmpty())))
+        if (Result == S_OK && (!Errors.isEmpty() || !Messages.isEmpty() ||
+                               (kind_ != Kind::List && !OpenErrors.isEmpty())))
             Result = E_FAIL;
     } catch (...) {
         Result = E_OUTOFMEMORY;

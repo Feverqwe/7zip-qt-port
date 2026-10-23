@@ -578,7 +578,8 @@ class ArchiveBackendTests : public QObject, protected ArchiveBackendTestSupport 
         const QString destination = fixture.filePath("output");
         backend.extract(archive, destination, selected, {}, options);
         await(backend, true);
-        QFile extracted(QDir(destination).filePath("ProxyBridge.app/" + leaf));
+        QFile extracted(
+            QDir(destination).filePath(currentFolder ? leaf : "ProxyBridge.app/" + leaf));
         QVERIFY(extracted.open(QIODevice::ReadOnly));
         QCOMPARE(extracted.readAll(), QByteArray("payload bytes"));
     }

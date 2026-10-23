@@ -1,4 +1,4 @@
-// Retained native extraction, with a legacy file-only 7zz fallback.
+// Retained native extraction, with a typed file-only metadata-service adapter.
 #include "7zip/Archive/IArchive.h"
 #include "7zip/Common/FileStreams.h"
 #include "7zip/Compress/CopyCoder.h"
@@ -81,8 +81,8 @@ HRESULT ExtractItems(ArchiveBackend &backend, const QString &archive, const QStr
         if (path.vt != VT_BSTR || directory.vt != VT_BOOL)
             return E_FAIL;
         const QString name = QString::fromWCharArray(path.bstrVal);
-        // CLI selects names rather than archive indices. Ambiguous duplicate
-        // entries require the codec/index transport; never concatenate them.
+        // The file-only service selects names rather than archive indices.
+        // Ambiguous duplicate entries require a retained reader/index transport.
         for (UInt32 other = 0; other < total; ++other) {
             if (other == index)
                 continue;

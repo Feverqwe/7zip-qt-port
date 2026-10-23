@@ -31,19 +31,21 @@ static void SetErrorMessage(const char *message, const FString &path, HRESULT er
     s += fs2us(path);
 }
 
-static HRESULT DecompressArchive(CCodecs *codecs, const CArchiveLink &arcLink, UInt64 packSize,
-                                 const NWildcard::CCensorNode &wildcardCensor,
-                                 const CExtractOptions &options, bool calcCrc,
-                                 IExtractCallbackUI *callback,
-                                 IFolderArchiveExtractCallback *callbackFAE,
-                                 CArchiveExtractCallback *ecs, UString &errorMessage,
-                                 UInt64 &stdInProcessed) {
+HRESULT DecompressArchive(CCodecs *codecs, const CArchiveLink &arcLink, UInt64 packSize,
+                          const NWildcard::CCensorNode &wildcardCensor,
+                          const CExtractOptions &options, bool calcCrc,
+                          IExtractCallbackUI *callback, IFolderArchiveExtractCallback *callbackFAE,
+                          CArchiveExtractCallback *ecs, UString &errorMessage,
+                          UInt64 &stdInProcessed, IQtArchiveExtractService *qtExtract,
+                          const UStringVector *qtRemovePathParts, bool qtRemovePartsForAltStreams) {
     const CArc &arc = arcLink.Arcs.Back();
     stdInProcessed = 0;
     IInArchive *archive = arc.Archive;
     CRecordVector<UInt32> realIndices;
 
     UStringVector removePathParts;
+    if (qtRemovePathParts)
+        removePathParts = *qtRemovePathParts;
 
     FString outDir = options.OutputDir;
     if (options.OutDirMode != NExtractOutDirMode::k_Direct) {
@@ -178,7 +180,8 @@ static HRESULT DecompressArchive(CCodecs *codecs, const CArchiveLink &arcLink, U
     }
 
     ecs->Init(options.NtOptions, options.StdInMode ? &wildcardCensor : NULL, &arc, callbackFAE,
-              options.StdOutMode, options.TestMode, outDir, removePathParts, false, packSize);
+              options.StdOutMode, options.TestMode, outDir, removePathParts,
+              qtRemovePartsForAltStreams, packSize);
 
     ecs->Is_elimPrefix_Mode = elimIsPossible;
 
@@ -196,7 +199,8 @@ static HRESULT DecompressArchive(CCodecs *codecs, const CArchiveLink &arcLink, U
     CArchiveExtractCallback_Closer ecsCloser(ecs);
 
     if (options.StdInMode) {
-        result = archive->Extract(NULL, (UInt32)(Int32)-1, testMode, ecs);
+        result = qtExtract ? qtExtract->Extract(NULL, (UInt32)(Int32)-1, testMode, ecs)
+                           : archive->Extract(NULL, (UInt32)(Int32)-1, testMode, ecs);
         NCOM::CPropVariant prop;
         if (archive->GetArchiveProperty(kpidPhySize, &prop) == S_OK)
             ConvertPropVariantToUInt64(prop, stdInProcessed);
@@ -205,7 +209,10 @@ static HRESULT DecompressArchive(CCodecs *codecs, const CArchiveLink &arcLink, U
         IArchiveExtractCallback *aec = ecs;
         const UInt64 val = 0;
         RINOK(aec->SetCompleted(&val))
-        result = archive->Extract(realIndices.ConstData(), realIndices.Size(), testMode, aec);
+        result =
+            qtExtract
+                ? qtExtract->Extract(realIndices.ConstData(), realIndices.Size(), testMode, aec)
+                : archive->Extract(realIndices.ConstData(), realIndices.Size(), testMode, aec);
     }
 
     const HRESULT res2 = ecsCloser.Close();

@@ -223,26 +223,16 @@ class SourceExtractAdvancedTests final : public QObject {
     }
     void rootEliminationAndMetadata_data() {
         QTest::addColumn<bool>("native");
-        QTest::newRow("file-service") << false;
+        QTest::newRow("native-discovery") << false;
 #ifdef SEVENZIP_CODEC_MODULE
-        QTest::newRow("native-handler") << true;
+        QTest::newRow("module-catalog") << true;
 #endif
     }
-    void dotPathsInCpio_data() { rootEliminationAndMetadata_data(); }
     void dotPathsInCpio() {
-        QFETCH(bool, native);
         QTemporaryDir input, output;
         const QString archive = input.filePath("Payload.cpio");
         QVERIFY(writeFile(archive, DotPathCpioFixture()));
         ArchiveBackend backend;
-        if (native) {
-#ifdef SEVENZIP_CODEC_MODULE
-            const QString module = QString::fromUtf8(SEVENZIP_CODEC_MODULE);
-            ArchiveCodecCatalog probe(module, 0);
-            QCOMPARE(probe.result(), S_OK);
-            QCOMPARE(backend.loadCodecCatalog(module, probe.version()), S_OK);
-#endif
-        }
         CErrorDismissal dismissal;
         ExtractionOptions options;
         options.overwriteMode = ExtractionOptions::OverwriteMode::SkipExisting;
@@ -268,7 +258,6 @@ class SourceExtractAdvancedTests final : public QObject {
             QCOMPARE(backend.loadCodecCatalog(module, probe.version()), S_OK);
 #endif
         }
-        QSignalSpy engineStarts(&backend, &ArchiveBackend::engineStarted);
         ExtractionOptions options;
         options.overwriteMode = ExtractionOptions::OverwriteMode::SkipExisting;
         for (bool eliminate : {false, true}) {
@@ -286,9 +275,6 @@ class SourceExtractAdvancedTests final : public QObject {
             QVERIFY(!backend.busy());
         }
         QCOMPARE(readFile(archive), original);
-        // Each source batch opens/listings through the process service. A
-        // native decoder emits no additional per-file engine process.
-        QCOMPARE(engineStarts.size(), native ? 2 : 4);
     }
     void eliminationCancelKeepsCompletedFilesAndExistingTarget_data() {
         rootEliminationAndMetadata_data();
