@@ -37,15 +37,9 @@ namespace {
 class LanguageProgressTransport final : public IQtProgressTransport {
   public:
     bool Paused = false;
-    bool Background = false;
     int Requests = 0;
     HRESULT SetPaused(bool value) override {
         Paused = value;
-        ++Requests;
-        return S_OK;
-    }
-    HRESULT SetBackground(bool value) override {
-        Background = value;
         ++Requests;
         return S_OK;
     }
@@ -424,11 +418,8 @@ class LanguageDialogTests final : public QObject {
         dialog.Sync.AddError_Message(L"diagnostic 密碼");
         dialog.show();
         auto *pause = dialog.findChild<QPushButton *>("IDB_PAUSE");
-        auto *background = dialog.findChild<QPushButton *>("IDB_PROGRESS_BACKGROUND");
         auto *cancel = dialog.findChild<QPushButton *>("IDCANCEL");
         QTRY_VERIFY(dialog.windowTitle().startsWith("25% "));
-        background->click();
-        QVERIFY(transport.Background);
         pause->click();
         QVERIFY(transport.Paused);
         QVERIFY(dialog.Sync.Get_Paused());
@@ -438,8 +429,8 @@ class LanguageDialogTests final : public QObject {
         const QString englishPause = pause->text();
         for (const char *lang : {"ru", "-"}) {
             language(lang);
-            QCOMPARE(transport.Requests, 2);
-            QVERIFY(transport.Paused && transport.Background);
+            QCOMPARE(transport.Requests, 1);
+            QVERIFY(transport.Paused);
             QVERIFY(dialog.Sync.Get_Paused());
             QCOMPARE(list->topLevelItemCount(), rows);
             QCOMPARE(list->topLevelItem(0)->text(1), QString("diagnostic 密碼"));
@@ -448,27 +439,22 @@ class LanguageDialogTests final : public QObject {
             if (QString(lang) == "ru") {
                 QVERIFY(pause->text() != englishPause);
                 QVERIFY(dialog.windowTitle().startsWith(QStringLiteral("На паузе ")));
-                QCOMPARE(background->text(), QStringLiteral("&На передний план"));
             } else {
                 QCOMPARE(pause->text(), englishPause);
                 QVERIFY(dialog.windowTitle().startsWith("Paused "));
-                QCOMPARE(background->text(), QString("&Foreground"));
             }
             for (int width : {760, 640})
                 inspect(dialog, "language-progress-" + QString(lang), width,
                         width == 760 ? 450 : 380);
         }
         pause->click();
-        background->click();
-        QVERIFY(!transport.Paused && !transport.Background);
+        QVERIFY(!transport.Paused);
         QVERIFY(!dialog.Sync.Get_Paused());
         dialog.ProcessWasFinished();
         QTRY_COMPARE(cancel->text(), QString("&Close"));
-        QVERIFY(!background->isVisible());
         QVERIFY(!pause->isVisible());
         language("ru");
         QCOMPARE(cancel->text(), QStringLiteral("&Закрыть"));
-        QVERIFY(!background->isVisible());
         QVERIFY(!pause->isVisible());
         QCOMPARE(list->topLevelItemCount(), rows);
         language("-");

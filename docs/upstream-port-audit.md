@@ -7,6 +7,9 @@
 
 ## Дополнительные форматы
 
+[Удаление Background](upstream-port-audit/progress-controls.md)
+— запрошенное изменение controls/transport с сохранением Pause и Cancel.
+
 [Отдельные SDK/GPL-варианты обработчиков](upstream-port-audit/license-variants.md)
 — границы исходников и сборки вместо `SEVENZIP_LINUX_*` ветвлений.
 

@@ -485,7 +485,7 @@ class MainWindowOperationsTests : public QObject, protected MainWindowTestSuppor
             dynamic_cast<CProgressDialog *>(window.findChild<QDialog *>("progressDialog"));
         QVERIFY(copyProgress);
         QVERIFY(!copyProgress->findChild<QPushButton *>("IDB_PAUSE")->isEnabled());
-        QVERIFY(copyProgress->findChild<QPushButton *>("IDB_PROGRESS_BACKGROUND")->isEnabled());
+        QVERIFY(!copyProgress->findChild<QPushButton *>("IDB_PROGRESS_BACKGROUND"));
         QTRY_VERIFY(action(window, "copyAction")->isEnabled());
         QFile copiedFile(copied);
         QVERIFY(copiedFile.open(QIODevice::ReadOnly));

@@ -10,7 +10,6 @@
 #include "fixtures/panel_keys.h"
 #include "fixtures/widget_dialogs.h"
 #include "layout_inspection.h"
-#include "processpriority.h"
 #include "qtlangcontrols.h"
 #include "source_extract_fixture.h"
 #include "window_state_support.h"
@@ -83,21 +82,14 @@ class ToolbarArchiveWorkflowTests final : public QObject, protected MainWindowTe
     void repeatedArchiveTesting_data() {
         QTest::addColumn<QString>("format");
         QTest::addColumn<bool>("opened");
-        QTest::addColumn<bool>("background");
         for (const QString &format : {QStringLiteral("zip"), QStringLiteral("7z")})
             for (bool opened : {false, true})
                 QTest::newRow(qPrintable(format + (opened ? "-opened" : "-selected")))
-                    << format << opened << false;
-        QTest::newRow("zip-selected-background") << QStringLiteral("zip") << false << true;
+                    << format << opened;
     }
     void repeatedArchiveTesting() {
         QFETCH(QString, format);
         QFETCH(bool, opened);
-        QFETCH(bool, background);
-        bool previousBackground = false;
-        QCOMPARE(NProcessPriority::GetBackground(0, previousBackground), S_OK);
-        const auto restorePriority =
-            qScopeGuard([&] { NProcessPriority::SetBackground(0, previousBackground); });
         QTemporaryDir fixture;
         QVERIFY(fixture.isValid());
         const QString name = QStringLiteral("данные с пробелом.txt");
@@ -126,8 +118,6 @@ class ToolbarArchiveWorkflowTests final : public QObject, protected MainWindowTe
             PanelKeys::command(source, Qt::Key_T, Qt::ControlModifier | Qt::ShiftModifier);
             QVERIFY2(errors.isEmpty(), qPrintable(errors.join('\n')));
             QCOMPARE(successes.size(), attempt + 1);
-            if (background && attempt == 0)
-                QCOMPARE(NProcessPriority::SetBackground(0, true), S_OK);
         }
     }
     void filesystemToolbarFailureRestoresSource_data() {

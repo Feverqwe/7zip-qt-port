@@ -9,7 +9,6 @@ class QtCallbackProgressTransport final : public IQtProgressTransport {
   public:
     explicit QtCallbackProgressTransport(std::function<void()> cancel);
     HRESULT SetPaused(bool paused) override;
-    HRESULT SetBackground(bool background) override;
     bool CanPause() const override { return false; }
     void Cancel() override;
 };

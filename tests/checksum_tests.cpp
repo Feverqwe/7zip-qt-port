@@ -66,7 +66,6 @@ class ChecksumTests : public QObject {
         backend.hash({path}, "SHA256");
         QVERIFY(backend.busy());
         QCOMPARE(backend.setPaused(true), S_OK);
-        QCOMPARE(backend.setBackground(false), S_OK);
         backend.cancel();
         QVERIFY(finished.wait(30000));
         QVERIFY(!finished.takeFirst().first().toBool());

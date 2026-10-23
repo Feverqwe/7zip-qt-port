@@ -356,7 +356,7 @@ and statistic/message dependencies in ProgressDialog2.cpp. The approved redesign
 shows status, progress bar and the two-line directory/name first, then elapsed,
 remaining and the completed/total file count. Errors stay in the overview and an
 independent two-column message list. Details reveals total/speed/processed/packed/
-ratio in a label/value grid with right-aligned values. Background/Pause/Cancel
+ratio in a label/value grid with right-aligned values. Pause/Cancel
 use the common footer with native button roles. Percentage belongs in the title;
 hide text inside the bar.
 
@@ -376,14 +376,15 @@ sizes; the error list and footer remain outside that viewport. Initial height
 follows the collapsed content. Source NormalizeSize retains work-area protection.
 Normal 760×450 and compact 640×380 geometry tests check collapsed/expanded states,
 reachability, text/button fitting and footer/list separation. `ui_parity_progress` maps all
-26 IDs to 24 JSON reports across compression/errors/paused, native priority and finish-Close
-states. Captions follow source language bindings; clipboard shortcuts also accept macOS Meta.
-Background is the source default button and receives initial focus when native
-priority capability is available; Enter on focused Pause toggles pause instead.
-Real priority failure restores the previous caption/title and reports a source
-Sync error. Cancel uses source YES/NO/CANCEL and Escape-as-Cancel, temporarily
+26 source IDs with Background explicitly omitted by user instruction (2026-10-23).
+Current reports cover compression/errors/paused and finish-Close states.
+Captions follow source language bindings; clipboard shortcuts also accept macOS Meta.
+Cancel is the default button and receives initial focus; Enter on focused Pause
+still toggles pause. Background/Foreground, title markers and process-priority
+switching are removed, including inheritance into subsequent engine phases.
+Cancel uses source YES/NO/CANCEL and Escape-as-Cancel, temporarily
 pausing and restoring prior pause. Native completion while the question is open
-is deferred until the answer; completed errors hide Pause/Background and focus
+is deferred until the answer; completed errors hide Pause and focus
 the default Close button. Native message boxes use plain text. Their Qt platform
 layout is checked separately from the 26-control source resource; macOS ignores
 message-box window titles. Source MB_YESNOCANCEL and success MB_OK have no icon
@@ -395,8 +396,7 @@ four progress-report producers and Cancel use the native QPA/font database,
 as the main dialog already does. The offscreen plugin's missing-font fallback
 metrics are unsuitable for application geometry. Add in an open archive was the first operation consumer
 under P0-10.1. P0-10.2 connects the other current archive, filesystem and volume
-operations. Filesystem/volume workers expose cancellation and real background
-priority, but Pause is disabled because they have no worker pause capability.
+operations. Filesystem/volume workers expose cancellation, but Pause is disabled because they have no worker pause capability.
 
 MessagesDialog.rc (`IDD_MESSAGES`) uses a two-column numbered/message list and
 Close footer,456×176DLU initial client and resize/minimize/maximize capabilities

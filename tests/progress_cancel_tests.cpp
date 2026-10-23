@@ -62,11 +62,9 @@ class ProgressCancelTests : public QObject {
         QVERIFY(dialog.OnInit());
         dialog.show();
         auto *pause = dialog.findChild<QPushButton *>("IDB_PAUSE");
-        auto *background = dialog.findChild<QPushButton *>("IDB_PROGRESS_BACKGROUND");
         auto *cancel = dialog.findChild<QPushButton *>("IDCANCEL");
-        QVERIFY(pause && background && cancel);
+        QVERIFY(pause && cancel);
         QVERIFY(!pause->isEnabled());
-        QVERIFY(background->isEnabled());
         widgetDialogs_.respond(dialog, [this](QDialog &) {
             auto *question = Question(widgetDialogs_);
             QVERIFY(question);

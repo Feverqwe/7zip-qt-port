@@ -8,7 +8,6 @@ class IQtProgressTransport {
   public:
     virtual ~IQtProgressTransport() = default;
     virtual HRESULT SetPaused(bool paused) = 0;
-    virtual HRESULT SetBackground(bool background) = 0;
     virtual bool CanPause() const { return true; }
     virtual void Cancel() {}
 };

@@ -238,7 +238,6 @@ class ArchiveBackend : public QObject {
     virtual void cancel();
     // Native controls affect only this backend's live engine child.
     virtual HRESULT setPaused(bool paused);
-    virtual HRESULT setBackground(bool background);
     // Stop the transport before callers release its source/destination resources.
     void cancelAndWait();
     void providePassword(const QString &password);

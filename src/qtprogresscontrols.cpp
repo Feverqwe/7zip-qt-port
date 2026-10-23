@@ -113,19 +113,15 @@ CQtProgressDialog::CQtProgressDialog(QWidget *parent) : QDialog(parent) {
     messages->setColumnCount(2);
     messages->setTextElideMode(Qt::ElideNone);
     AddControl(IDL_PROGRESS_MESSAGES, "IDL_PROGRESS_MESSAGES", messages);
-    auto *background = new QPushButton(QStringLiteral("&Background"), this);
-    background->setAutoDefault(true);
-    background->setDefault(true); // Source DEFPUSHBUTTON.
-    AddControl(IDB_PROGRESS_BACKGROUND, "IDB_PROGRESS_BACKGROUND", background);
     auto *pause = new QPushButton(QStringLiteral("&Pause"), this);
     pause->setAutoDefault(true);
     AddControl(IDB_PAUSE, "IDB_PAUSE", pause);
     auto *cancel = new QPushButton(QStringLiteral("Cancel"), this);
     cancel->setAutoDefault(true);
+    cancel->setDefault(true);
     AddControl(kCancelID, "IDCANCEL", cancel);
     auto *buttons = new QDialogButtonBox(this);
     buttons->setObjectName("progressButtons");
-    buttons->addButton(background, QDialogButtonBox::ActionRole);
     buttons->addButton(pause, QDialogButtonBox::ActionRole);
     buttons->addButton(cancel, QDialogButtonBox::RejectRole);
     auto *outer = QtCreateDialogLayout(*this, *buttons);
@@ -197,8 +193,7 @@ CQtProgressDialog::CQtProgressDialog(QWidget *parent) : QDialog(parent) {
     outer->addWidget(messages, 1);
     GetItem(IDT_PROGRESS_STATUS)->setSizePolicy(QSizePolicy::Ignored, QSizePolicy::Preferred);
     setTabOrder(details->button(), messages);
-    setTabOrder(messages, background);
-    setTabOrder(background, pause);
+    setTabOrder(messages, pause);
     setTabOrder(pause, cancel);
     GetItem(IDT_PROGRESS_ERRORS)->hide();
     GetItem(IDT_PROGRESS_ERRORS_VAL)->hide();

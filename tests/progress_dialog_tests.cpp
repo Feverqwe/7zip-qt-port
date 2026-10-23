@@ -1,7 +1,6 @@
 #include "7zip/UI/FileManager/resourceGui.h"
 #include "CPP/7zip/UI/FileManager/ProgressDialog2.h"
 #include "layout_inspection.h"
-#include "processpriority.h"
 #include <QApplication>
 #include <QClipboard>
 #include <QLabel>
@@ -69,10 +68,10 @@ class ProgressDialogTests : public QObject {
         QCOMPARE(text(dialog, "IDT_PROGRESS_FILES_TOTAL"), QString());
         QCOMPARE(text(dialog, "IDT_PROGRESS_PROCESSED_VAL"), QString("0"));
         QVERIFY(!messages(dialog)->isVisible());
-        bool background;
-        QCOMPARE(dialog.findChild<QPushButton *>("IDB_PROGRESS_BACKGROUND")->isEnabled(),
-                 NProcessPriority::GetBackground(0, background) == S_OK);
+        QVERIFY(!dialog.findChild<QPushButton *>("IDB_PROGRESS_BACKGROUND"));
         QVERIFY(dialog.findChild<QPushButton *>("IDCANCEL")->isEnabled());
+        QVERIFY(dialog.findChild<QPushButton *>("IDCANCEL")->isDefault());
+        QCOMPARE(dialog.focusWidget(), dialog.findChild<QPushButton *>("IDCANCEL"));
         QVERIFY(pause(dialog)->isEnabled());
         dialog.accept();
         QTimer::singleShot(0, &dialog, [] {
@@ -318,9 +317,7 @@ class ProgressDialogTests : public QObject {
         auto *bar = dialog.findChild<QProgressBar *>("IDC_PROGRESS1");
         auto *file = dialog.findChild<QLabel *>("IDT_PROGRESS_FILE_NAME");
         QVERIFY(bar->geometry().bottom() < file->geometry().top());
-        auto *background = dialog.findChild<QPushButton *>("IDB_PROGRESS_BACKGROUND");
         auto *cancel = dialog.findChild<QPushButton *>("IDCANCEL");
-        QVERIFY(background->geometry().right() < pause(dialog)->geometry().left());
         QVERIFY(pause(dialog)->geometry().right() < cancel->geometry().left());
         if (errors)
             QVERIFY(UiInspection::bounds(*messages(dialog), dialog).bottom() <

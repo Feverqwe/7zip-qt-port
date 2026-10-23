@@ -37,7 +37,6 @@ class CResourceProgress final : public IQtProgressTransport {
     }
     ~CResourceProgress() override { _resourceSpec->SetUpdateProgress(nullptr); }
     HRESULT SetPaused(bool paused) override { return _transport.SetPaused(paused); }
-    HRESULT SetBackground(bool background) override { return _transport.SetBackground(background); }
 };
 } // namespace
 

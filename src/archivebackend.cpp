@@ -4,7 +4,6 @@
 #include "archivecodecprobe.h"
 #include "archiveenginelocation.h"
 #include "archivesfxmodule.h"
-#include "processpriority.h"
 #include "qtarchivecopypreparation.h"
 #include "qtarchivecreationlifecycle.h"
 #include "qtarchivehashoperation.h"
@@ -104,18 +103,6 @@ HRESULT ArchiveBackend::processControlResult(HRESULT result) const {
         return S_OK;
 #endif
     return result;
-}
-
-HRESULT ArchiveBackend::setBackground(bool background) {
-    // The source progress dialog already sets this application's priority.
-    // Native workers run in that process rather than a separate CLI child.
-    if (copyPreparation_ || hashOperation_ || volumeOutput_ || job_ == Job::CreatePrepare ||
-        job_ == Job::CreateDeleteInputs)
-        return S_OK;
-    if (process_->state() != QProcess::Running)
-        return E_FAIL;
-    return processControlResult(
-        NProcessPriority::SetBackground(UInt32(process_->processId()), background));
 }
 
 void ArchiveBackend::provideOverwriteAnswer(int answer) {

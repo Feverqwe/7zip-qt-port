@@ -9,7 +9,6 @@
 #include "Common/StringConvert.h"
 #include "LangUtils.h"
 #include "ViewSettings.h"
-#include "processpriority.h"
 #include "qtlangcontrols.h"
 #include "qtlistview.h"
 #include <QApplication>
@@ -39,9 +38,9 @@ static const unsigned IDCLOSE = 8;
 static const unsigned IDYES = 6;
 #endif
 
-static const UInt32 kLangIDs[] = {IDT_PROGRESS_ELAPSED, IDT_PROGRESS_REMAINING,  IDT_PROGRESS_TOTAL,
-                                  IDT_PROGRESS_SPEED,   IDT_PROGRESS_PROCESSED,  IDT_PROGRESS_RATIO,
-                                  IDT_PROGRESS_ERRORS,  IDB_PROGRESS_BACKGROUND, IDB_PAUSE};
+static const UInt32 kLangIDs[] = {
+    IDT_PROGRESS_ELAPSED,   IDT_PROGRESS_REMAINING, IDT_PROGRESS_TOTAL,  IDT_PROGRESS_SPEED,
+    IDT_PROGRESS_PROCESSED, IDT_PROGRESS_RATIO,     IDT_PROGRESS_ERRORS, IDB_PAUSE};
 static const UInt32 kLangIDs_Colon[] = {IDT_PROGRESS_PACKED, IDT_PROGRESS_FILES};
 #endif
 
@@ -335,8 +334,8 @@ static const unsigned kCurrentFileNameSizeLimit = 82;
 CProgressDialog::CProgressDialog(QWidget *parent, const UString &title)
     : CQtProgressDialog(parent), _isDir(false), _wasCreated(false), _needClose(false),
       _errorsWereDisplayed(false), _waitCloseByCancelButton(false), _cancelWasPressed(false),
-      _inCancelMessageBox(false), _externalCloseMessageWasReceived(false), _background(false),
-      WaitMode(false), MessagesDisplayed(false), CompressingMode(true), ShowCompressionInfo(true),
+      _inCancelMessageBox(false), _externalCloseMessageWasReceived(false), WaitMode(false),
+      MessagesDisplayed(false), CompressingMode(true), ShowCompressionInfo(true),
       _numPostedMessages(0), _numAutoSizeMessages(0), _numMessages(0), _timer(0), _title(title),
       IconID(-1), MainWindow(nullptr) {
     // GUI Parse1 sets the original process policy before constructing
@@ -358,10 +357,6 @@ CProgressDialog::CProgressDialog(QWidget *parent, const UString &title)
 #endif
     connect(static_cast<QPushButton *>(GetItem(IDB_PAUSE)), &QPushButton::clicked, this,
             &CProgressDialog::OnPauseButton);
-    auto *background = static_cast<QPushButton *>(GetItem(IDB_PROGRESS_BACKGROUND));
-    bool nativeBackground;
-    background->setEnabled(NProcessPriority::GetBackground(0, nativeBackground) == S_OK);
-    connect(background, &QPushButton::clicked, this, &CProgressDialog::OnPriorityButton);
     connect(static_cast<QPushButton *>(GetItem(IDCANCEL)), &QPushButton::clicked, this,
             [this] { OnButtonClicked(IDCANCEL); });
     GetItem(IDL_PROGRESS_MESSAGES)->installEventFilter(this);
@@ -431,16 +426,11 @@ bool CProgressDialog::OnInit() {
     _messageList.Attach(GetItem(IDL_PROGRESS_MESSAGES));
     _wasCreated = true;
     _dialogCreatedEvent.Set();
-    GetItemText(IDB_PROGRESS_BACKGROUND, _background_String);
-    _backgrounded_String = _background_String;
-    _backgrounded_String.RemoveChar(L'&');
     GetItemText(IDB_PAUSE, _pause_String);
-    LangString(IDS_PROGRESS_FOREGROUND, _foreground_String);
     LangString(IDS_CONTINUE, _continue_String);
     LangString(IDS_PROGRESS_PAUSED, _paused_String);
     SetText(_title);
     SetPauseText();
-    SetPriorityText();
     if (_transport && !_transport->CanPause())
         GetItem(IDB_PAUSE)->setEnabled(false);
     _messageList.InsertColumn(0, L"", 40);
@@ -464,8 +454,7 @@ bool CProgressDialog::OnInit() {
     _timer = startTimer(200);
     CheckNeedClose();
     SetTaskbarProgressState();
-    if (GetItem(IDB_PROGRESS_BACKGROUND)->isEnabled())
-        GetItem(IDB_PROGRESS_BACKGROUND)->setFocus();
+    GetItem(IDCANCEL)->setFocus();
     return true;
 }
 
@@ -727,10 +716,6 @@ void CProgressDialog::SetTitleText() {
         s.Add_UInt64(_prevPercentValue);
         s.Add_Char('%');
     }
-    if (_background) {
-        s.Add_Space();
-        s += _backgrounded_String;
-    }
     s.Add_Space();
     {
         unsigned len = s.Len();
@@ -768,27 +753,6 @@ void CProgressDialog::OnPauseButton() {
     SetTaskbarProgressState();
     _prevTime = curTime;
     SetPauseText();
-}
-
-void CProgressDialog::SetPriorityText() {
-    SetItemText(IDB_PROGRESS_BACKGROUND, _background ? _foreground_String : _background_String);
-    SetTitleText();
-}
-
-void CProgressDialog::OnPriorityButton() {
-    _background = !_background;
-    const HRESULT result = SetBackgroundTransport(_background);
-    if (result != S_OK) {
-        _background = !_background;
-        Sync.AddError_Code_Name(result, nullptr);
-    }
-    SetPriorityText();
-}
-
-HRESULT CProgressDialog::SetBackgroundTransport(bool background) {
-    if (_transport)
-        return _transport->SetBackground(background);
-    return NProcessPriority::SetBackground(0, background);
 }
 
 void CProgressDialog::AddMessageDirect(const wchar_t *message, bool needNumber) {
@@ -890,15 +854,10 @@ void CProgressDialog::resizeEvent(QResizeEvent *event) {
 }
 void CProgressDialog::changeEvent(QEvent *event) {
     if (event->type() == QEvent::LanguageChange && _wasCreated) {
-        LangString(IDB_PROGRESS_BACKGROUND, _background_String);
-        _backgrounded_String = _background_String;
-        _backgrounded_String.RemoveChar(L'&');
         LangString(IDB_PAUSE, _pause_String);
-        LangString(IDS_PROGRESS_FOREGROUND, _foreground_String);
         LangString(IDS_CONTINUE, _continue_String);
         LangString(IDS_PROGRESS_PAUSED, _paused_String);
         SetPauseText();
-        SetPriorityText();
         OnSize(width(), height());
     }
     CQtProgressDialog::changeEvent(event);
@@ -997,7 +956,6 @@ bool CProgressDialog::OnExternalCloseMessage() {
     UpdateStatInfo(true);
     SetItemText(IDCANCEL, LangString(IDS_CLOSE));
     QtBindLangText(GetItem(IDCANCEL), IDS_CLOSE);
-    HideItem(IDB_PROGRESS_BACKGROUND);
     HideItem(IDB_PAUSE);
     // QDialogButtonBox rebuilds its focus chain when action buttons disappear.
     SetDefaultButton(IDCANCEL);
@@ -1086,9 +1044,6 @@ bool CProgressDialog::OnButtonClicked(unsigned buttonID) {
         break;
     case IDB_PAUSE:
         OnPauseButton();
-        return true;
-    case IDB_PROGRESS_BACKGROUND:
-        OnPriorityButton();
         return true;
     default:
         return false;

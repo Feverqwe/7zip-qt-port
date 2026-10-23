@@ -148,7 +148,6 @@ add_library(sevenzip_common STATIC third_party/7zip/C/Sort.c third_party/7zip/C/
     third_party/7zip/CPP/7zip/Common/ProgressUtils.cpp
     src/CPP/7zip/UI/Common/LoadCodecs.cpp src/CPP/7zip/UI/Common/LoadCodecs.h
     third_party/7zip/CPP/7zip/UI/Common/DefaultName.cpp
-    src/processpriority.cpp src/processpriority.h
     src/processpause.cpp src/processpause.h
     third_party/7zip/C/Threads.c src/CPP/Windows/ErrorMsg.cpp
     src/CPP/Windows/DLL.cpp src/CPP/Windows/DLL.h
@@ -1755,7 +1754,6 @@ if(BUILD_TESTING)
     set_tests_properties(progress_cancel PROPERTIES ENVIRONMENT
         "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports"
         TIMEOUT 30)
-    qt_add_executable(process_priority_tests tests/process_priority_tests.cpp)
     qt_add_executable(process_pause_tests tests/process_pause_tests.cpp)
     target_include_directories(process_pause_tests PRIVATE src)
     target_link_libraries(process_pause_tests PRIVATE sevenzip_common Qt6::Test)
@@ -1783,23 +1781,7 @@ if(BUILD_TESTING)
         add_test(NAME process_spawn_allocation COMMAND process_spawn_allocation_tests)
         set_tests_properties(process_spawn_allocation PROPERTIES TIMEOUT 15)
     endif()
-    target_include_directories(process_priority_tests PRIVATE src)
-    target_link_libraries(process_priority_tests PRIVATE sevenzip_common Qt6::Test)
-    add_test(NAME process_priority COMMAND process_priority_tests -silent)
-    set_tests_properties(process_priority PROPERTIES TIMEOUT 15)
-    qt_add_executable(progress_priority_tests tests/progress_priority_tests.cpp
-        tests/layout_inspection.cpp)
-    target_link_libraries(progress_priority_tests PRIVATE sevenzip_panel Qt6::Test)
-    add_test(NAME progress_priority COMMAND progress_priority_tests -silent)
-    set_tests_properties(progress_priority PROPERTIES ENVIRONMENT
-        "QT_QPA_PLATFORM=offscreen;SEVENZIP_UI_REPORT_DIR=${CMAKE_BINARY_DIR}/ui-reports"
-        FIXTURES_SETUP ui_reference_progress_priority TIMEOUT 15)
     if(APPLE)
-        qt_add_executable(progress_priority_failure_tests tests/progress_priority_failure_tests.cpp)
-        target_link_libraries(progress_priority_failure_tests PRIVATE sevenzip_panel Qt6::Test)
-        add_test(NAME progress_priority_failure COMMAND progress_priority_failure_tests -silent)
-        set_tests_properties(progress_priority_failure PROPERTIES
-            ENVIRONMENT "QT_QPA_PLATFORM=offscreen" TIMEOUT 15)
         qt_add_executable(progress_taskbar_tests tests/progress_taskbar_tests.cpp
             tests/fixtures/dock_observer.mm tests/fixtures/dock_observer.h)
         target_link_libraries(progress_taskbar_tests PRIVATE sevenzip_panel Qt6::Test)
@@ -1829,7 +1811,7 @@ if(BUILD_TESTING)
         --reports ${CMAKE_BINARY_DIR}/ui-reports
         --output ${CMAKE_BINARY_DIR}/ui-reports/progress-parity.json)
     set_tests_properties(ui_parity_progress PROPERTIES
-        FIXTURES_REQUIRED "ui_reference_progress;ui_reference_progress_priority;ui_reference_progress_worker;ui_reference_archive_progress")
+        FIXTURES_REQUIRED "ui_reference_progress;ui_reference_progress_worker;ui_reference_archive_progress")
     qt_add_executable(file_find_tests tests/file_find_tests.cpp)
     target_link_libraries(file_find_tests PRIVATE sevenzip_filesystem Qt6::Test)
     add_test(NAME file_find COMMAND file_find_tests -silent)
@@ -4454,7 +4436,7 @@ if(BUILD_TESTING AND WIN32)
             drag_drop_add_ui modal_refresh_window
             main_shell panel_shell panel_key window_placement panel_key_source panel_list_load panel_item_icons panel_name_text archive_rename_window panel_copy_reload copy_publication_order filesystem_reload address_navigation panel_parent_reload panel_folder_sync native_archive_properties filesystem_comment fs_drives_device_ui namespace_hash native_network_navigation native_persisted_locations address_combo panel_address_keys root_command persisted_location ui_navigation ui_archive_states ui_archive_volumes
             large_list_window worker_window_progress panel_sort_commands panel_refresh_drop panel_refresh_completion panel_rename_state deferred_rename navigation_reload panel_deleted_draw panel_column_menu panel_column_initialization panel_column_schema panel_column_sort panel_column_changes panel_cell_text native_column_workflow panel_item_changed
-            archive_reload_command drag_reload_completion panel_creation_path copy_archive_refresh interarchive_recovery panel_load_count panel_activation progress_dialog progress_worker progress_cancel progress_priority archive_progress volume_dialog language_dialog language_standard_buttons fm_settings list_settings_runtime
+            archive_reload_command drag_reload_completion panel_creation_path copy_archive_refresh interarchive_recovery panel_load_count panel_activation progress_dialog progress_worker progress_cancel archive_progress volume_dialog language_dialog language_standard_buttons fm_settings list_settings_runtime
             language_main_dialog language_focus properties_runtime
             archive_item_open archive_external_edit external_editors_ui language_archive_command overwrite_layout
             alt_streams_command alt_streams_archive_ui fs_provider_command native_archive_ads_copy view_menu)

@@ -120,7 +120,6 @@ class CProgressDialog : public CQtProgressDialog {
     bool _cancelWasPressed;
     bool _inCancelMessageBox;
     bool _externalCloseMessageWasReceived;
-    bool _background;
 
   public:
     bool WaitMode;
@@ -135,9 +134,6 @@ class CProgressDialog : public CQtProgressDialog {
     UString _titleFileName;
     UString _filePath;
     UString _status;
-    UString _background_String;
-    UString _backgrounded_String;
-    UString _foreground_String;
     UString _pause_String;
     UString _continue_String;
     UString _paused_String;
@@ -213,9 +209,7 @@ class CProgressDialog : public CQtProgressDialog {
     bool OnSize(int xSize, int ySize);
     void SetTitleText();
     void SetPauseText();
-    void SetPriorityText();
     void OnPauseButton();
-    void OnPriorityButton();
     bool OnButtonClicked(unsigned buttonID);
     bool OnMessage(unsigned message);
     bool OnExternalCloseMessage();
@@ -244,7 +238,6 @@ class CProgressDialog : public CQtProgressDialog {
     virtual HRESULT SetPausedTransport(bool paused) {
         return _transport ? _transport->SetPaused(paused) : S_OK;
     }
-    virtual HRESULT SetBackgroundTransport(bool background);
 #ifndef _WIN32
     CQtProgressStartWait _startWait;
 #endif

@@ -134,7 +134,6 @@ class ControlledBackend : public ArchiveBackend {
         emit finished(false, QStringLiteral("Операция отменена."));
     }
     HRESULT setPaused(bool) override { return S_OK; }
-    HRESULT setBackground(bool) override { return S_OK; }
     void completeList(const QList<ArchiveEntry> &entries) {
         if (!listedInfoReported_) {
             // Model the engine's typed metadata for this disposable fixture.

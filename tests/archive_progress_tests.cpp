@@ -6,7 +6,6 @@
 #include "fixtures/progress_dialog.h"
 #include "fixtures/widget_dialogs.h"
 #include "layout_inspection.h"
-#include "processpriority.h"
 #include "qtexternalprocess.h"
 #include <QApplication>
 #include <QDeadlineTimer>
@@ -31,7 +30,6 @@ class CControlledTransport : public ArchiveBackend {
             Paused = value;
         return PauseResult;
     }
-    HRESULT setBackground(bool) override { return E_FAIL; }
     void cancel() override { Cancelled = true; }
     void Start() {
         Active = true;
@@ -139,7 +137,7 @@ class ArchiveProgressTests : public QObject, protected ArchiveBackendTestSupport
         ArchiveBackend backend(nullptr, QCoreApplication::applicationFilePath());
         QSignalSpy finished(&backend, &ArchiveBackend::finished);
         bool exited = false;
-        HRESULT pause = E_FAIL, background = E_FAIL;
+        HRESULT pause = E_FAIL;
         connect(&backend, &ArchiveBackend::engineStarted, &backend, [&] {
             // Keep Qt's completion notification pending while the OS child exits.
             QFile pidFile(fixture.filePath("pid"));
@@ -157,13 +155,11 @@ class ArchiveProgressTests : public QObject, protected ArchiveBackendTestSupport
             exited = child->Status() == QtProcessStatus::Exited;
             QVERIFY(exited);
             pause = backend.setPaused(true);
-            background = backend.setBackground(true);
         });
         backend.testSourceArchive(archive, {});
         QTRY_COMPARE(finished.size(), 1);
         QVERIFY(exited);
         QCOMPARE(pause, S_OK);
-        QCOMPARE(background, S_OK);
         QCOMPARE(finished[0][0].toBool(), exitCode == 0);
         QCOMPARE(backend.lastResult(), exitCode == 0 ? S_OK : E_FAIL);
         QVERIFY(!backend.busy());
@@ -220,8 +216,6 @@ class ArchiveProgressTests : public QObject, protected ArchiveBackendTestSupport
         CControlledTransport backend;
         ArchiveProgressOperation operation(backend, [&] { backend.Start(); });
         operation.resize(size);
-        bool priorBackground = false;
-        QCOMPARE(NProcessPriority::GetBackground(0, priorBackground), HRESULT(S_OK));
         unsigned stage = 0;
         bool geometry = false;
         QTimer responder;
@@ -237,11 +231,8 @@ class ArchiveProgressTests : public QObject, protected ArchiveBackendTestSupport
                 QCOMPARE(operation.Sync._completedBytes, UInt64(0));
                 QVERIFY(operation.findChild<QLabel *>("IDT_PROGRESS_TOTAL_VAL")->text().isEmpty());
                 QVERIFY(operation.windowTitle().contains(QStringLiteral("42%")));
-                operation.findChild<QPushButton *>("IDB_PROGRESS_BACKGROUND")->click();
-                bool actual = !priorBackground;
-                QCOMPARE(NProcessPriority::GetBackground(0, actual), HRESULT(S_OK));
-                QCOMPARE(actual, priorBackground); // Native parent policy rolled back.
-                QCOMPARE(operation.Sync.Messages.Size(), unsigned(1));
+                QVERIFY(!operation.findChild<QPushButton *>("IDB_PROGRESS_BACKGROUND"));
+                QCOMPARE(operation.Sync.Messages.Size(), 0u);
                 backend.PauseResult = E_FAIL;
                 pause->click();
                 QVERIFY(!operation.Sync.Get_Paused());
@@ -270,11 +261,8 @@ class ArchiveProgressTests : public QObject, protected ArchiveBackendTestSupport
         QCOMPARE(stage, unsigned(2));
         QVERIFY(geometry);
         QCOMPARE(operation.Result, HRESULT(S_OK));
-        QCOMPARE(operation.Sync.Messages.Size(), unsigned(2));
+        QCOMPARE(operation.Sync.Messages.Size(), 1u);
         QVERIFY(!backend.busy());
-        bool actual = !priorBackground;
-        QCOMPARE(NProcessPriority::GetBackground(0, actual), HRESULT(S_OK));
-        QCOMPARE(actual, priorBackground);
     }
     void startExceptionUsesSourceWorkerComposition_data() {
         QTest::addColumn<bool>("afterStart");

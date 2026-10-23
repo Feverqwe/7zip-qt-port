@@ -211,7 +211,6 @@ class ProgressWorkerTests : public QObject {
             geometry = worker.size() == size.expandedTo(worker.minimumSizeHint()) &&
                        UiInspection::fullyVisible(*close, worker) &&
                        close->sizeHint().width() <= close->width() &&
-                       !worker.findChild<QPushButton *>("IDB_PROGRESS_BACKGROUND")->isVisible() &&
                        !worker.findChild<QPushButton *>("IDB_PAUSE")->isVisible() &&
                        worker.findChild<QLabel *>("IDT_PROGRESS_ERRORS")->isVisible() && report;
             QTest::keyClick(close, Qt::Key_Return);
